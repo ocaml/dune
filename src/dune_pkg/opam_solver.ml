@@ -1597,6 +1597,23 @@ let files opam_packages_to_lock candidates_cache =
   >>| Package_name.Map.of_list_exn
 ;;
 
+let package_kind =
+  (* Heuristic to determine whether a package is an ocaml compiler *)
+  let opam_file_is_compiler (opam_package : OpamFile.OPAM.t) =
+    (* Identify compiler packages by using the fact that all compiler
+      Packages declare conflicts with other compiler packages. note
+      that relying on the "compiler" flag to identify compiler packages
+      will not work, as compiler options packages (such as
+      ocaml-option-flambda) also have this flag. *)
+    let ocaml_core_compiler = OpamPackage.Name.of_string "ocaml-core-compiler" in
+    List.mem opam_package.conflict_class ocaml_core_compiler ~equal:OpamPackage.Name.equal
+  in
+  fun package ->
+    if opam_file_is_compiler (Resolved_package.opam_file package)
+    then `Compiler
+    else `Non_compiler
+;;
+
 let solve_lock_dir
       solver_env
       version_preference
@@ -1662,15 +1679,21 @@ let solve_lock_dir
         in
         List.map opam_packages_to_lock ~f:(fun opam_package ->
           let name = OpamPackage.name opam_package |> Package_name.of_opam_package_name in
-          Lock_pkg.opam_package_to_lock_file_pkg
-            solver_env
-            stats_updater
-            version_by_package_name
-            opam_package
-            ~pinned:(Package_name.Set.mem pinned_package_names name)
-            (let version = OpamPackage.version opam_package in
-             (Table.find_exn candidates_cache name).resolved
-             |> OpamPackage.Version.Map.find version))
+          let resolved_package =
+            let version = OpamPackage.version opam_package in
+            (Table.find_exn candidates_cache name).resolved
+            |> OpamPackage.Version.Map.find version
+          in
+          let lock_pkg =
+            Lock_pkg.opam_package_to_lock_file_pkg
+              solver_env
+              stats_updater
+              version_by_package_name
+              opam_package
+              ~pinned:(Package_name.Set.mem pinned_package_names name)
+              resolved_package
+          in
+          package_kind resolved_package, lock_pkg)
       in
       let ocaml =
         (* This doesn't allow the compiler to live in the source tree. Oh

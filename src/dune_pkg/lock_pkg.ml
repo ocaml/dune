@@ -174,17 +174,6 @@ let make_action = function
   | actions -> Some (Action.Progn actions)
 ;;
 
-(* Heuristic to determine whether a package is an ocaml compiler *)
-let opam_file_is_compiler (opam_package : OpamFile.OPAM.t) =
-  (* Identify compiler packages by using the fact that all compiler
-     Packages declare conflicts with other compiler packages. note
-     that relying on the "compiler" flag to identify compiler packages
-     will not work, as compiler options packages (such as
-     ocaml-option-flambda) also have this flag. *)
-  let ocaml_core_compiler = OpamPackage.Name.of_string "ocaml-core-compiler" in
-  List.mem opam_package.conflict_class ocaml_core_compiler ~equal:OpamPackage.Name.equal
-;;
-
 let resolve_depopts ~resolve depopts =
   let rec collect acc depopts =
     match (depopts : OpamTypes.filtered_formula) with
@@ -473,8 +462,5 @@ let opam_package_to_lock_file_pkg
   let exported_env =
     OpamFile.OPAM.env opam_file |> List.map ~f:opam_env_update_to_env_update
   in
-  let kind = if opam_file_is_compiler opam_file then `Compiler else `Non_compiler in
-  ( kind
-  , { Lock_dir.Pkg.build_command; install_command; depends; depexts; info; exported_env }
-  )
+  { Lock_dir.Pkg.build_command; install_command; depends; depexts; info; exported_env }
 ;;

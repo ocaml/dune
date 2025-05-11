@@ -1686,11 +1686,20 @@ let solve_lock_dir
             resolved_package)
       in
       match Package_name.Map.of_list_map pkgs ~f:(fun pkg -> pkg.info.name, pkg) with
-      | Ok s -> s
       | Error (name, _pkg1, _pkg2) ->
         Code_error.raise
           "Solver selected multiple versions for the same package"
           [ "name", Package_name.to_dyn name ]
+      | Ok pkgs_by_name ->
+        let reachable =
+          reject_unreachable_packages
+            solver_env
+            ~dune_version:(Package_version.of_opam_package_version context.dune_version)
+            ~local_packages
+            ~pkgs_by_name
+        in
+        Package_name.Map.filteri pkgs_by_name ~f:(fun name _ ->
+          Package_name.Set.mem reachable name)
     in
     let ocaml =
       (* This doesn't allow the compiler to live in the source tree. Oh
@@ -1735,17 +1744,6 @@ let solve_lock_dir
                     (Package_name.to_string name)
                     (Package_name.to_string dep_name)
                 ]));
-      let pkgs_by_name =
-        let reachable =
-          reject_unreachable_packages
-            solver_env
-            ~dune_version:(Package_version.of_opam_package_version context.dune_version)
-            ~local_packages
-            ~pkgs_by_name
-        in
-        Package_name.Map.filteri pkgs_by_name ~f:(fun name _ ->
-          Package_name.Set.mem reachable name)
-      in
       Lock_dir.create_latest_version
         pkgs_by_name
         ~local_packages:(Package_name.Map.values local_packages)

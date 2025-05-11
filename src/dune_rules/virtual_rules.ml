@@ -101,7 +101,7 @@ let impl sctx ~(lib : Library.t) ~scope =
              let db = Scope.libs scope in
              let* preprocess =
                (* TODO wrong, this should be delayed *)
-               Preprocess.Per_module.with_instrumentation
+               Instrumentation.with_instrumentation
                  lib.buildable.preprocess
                  ~instrumentation_backend:(Lib.DB.instrumentation_backend db)
                |> Resolve.Memo.read_memo

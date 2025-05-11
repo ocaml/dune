@@ -382,7 +382,7 @@ end = struct
                  (* This is wrong. If the preprocessors fail to resolve,
                     we shouldn't install the binary rather than failing outright
                  *)
-                 Preprocess.Per_module.with_instrumentation
+                 Instrumentation.with_instrumentation
                    exes.buildable.preprocess
                    ~instrumentation_backend:
                      (Lib.DB.instrumentation_backend (Scope.libs scope))

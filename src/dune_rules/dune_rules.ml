@@ -52,7 +52,6 @@ module Ocamldep = Ocamldep
 module Dep_rules = Dep_rules
 module Dep_graph = Dep_graph
 module Lib_config = Lib_config
-module Preprocess = Preprocess
 module Pp_spec = Pp_spec
 module Pp_spec_rules = Pp_spec_rules
 module Command = Command
@@ -70,6 +69,7 @@ module Pkg_dev_tool = Pkg_dev_tool
 module Pkg_build_progress = Pkg_build_progress
 module Compile_time = Compile_time
 module Cram_rules = Cram_rules
+module Instrumentation = Instrumentation
 
 module Install_rules = struct
   let install_file = Install_rules.install_file

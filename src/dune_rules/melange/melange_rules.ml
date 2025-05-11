@@ -72,7 +72,7 @@ let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
     ocaml.version
   and* preprocess =
     Resolve.Memo.read_memo
-      (Preprocess.Per_module.with_instrumentation
+      (Instrumentation.with_instrumentation
          preprocess
          ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
   in
@@ -150,7 +150,7 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
     Resolve.Memo.read_memo
-      (Preprocess.Per_module.with_instrumentation
+      (Instrumentation.with_instrumentation
          mel.preprocess
          ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
     >>| Preprocess.Per_module.pps

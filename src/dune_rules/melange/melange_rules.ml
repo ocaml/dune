@@ -71,10 +71,10 @@ let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
     let+ ocaml = Context.ocaml (Super_context.context sctx) in
     ocaml.version
   and* preprocess =
-    Resolve.Memo.read_memo
-      (Instrumentation.with_instrumentation
-         preprocess
-         ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
+    Instrumentation.with_instrumentation
+      preprocess
+      ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
+    |> Resolve.Memo.read_memo
   in
   let pped_map = Staged.unstage (Pp_spec.pped_modules_map preprocess version) in
   Modules.map_user_written modules ~f:(fun m -> Memo.return @@ pped_map m)
@@ -149,10 +149,10 @@ let cmj_includes =
 let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
-    Resolve.Memo.read_memo
-      (Instrumentation.with_instrumentation
-         mel.preprocess
-         ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
+    Instrumentation.with_instrumentation
+      mel.preprocess
+      ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
+    |> Resolve.Memo.read_memo
     >>| Preprocess.Per_module.pps
   in
   let libraries =

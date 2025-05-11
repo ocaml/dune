@@ -1,6 +1,6 @@
 Testsuite for the (foreign_stubs ...) field.
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ echo "(lang dune 3.0)" > dune-project
   $ ./sandboxed.sh
 
 ----------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ Testsuite for the (foreign_stubs ...) field.
   > (rule
   >  (targets bar%{ext_obj})
   >  (deps bar.c)
-  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  >  (action (run %{cc} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
   > (rule
   >  (targets libbar.a)
   >  (deps bar%{ext_obj})
@@ -61,11 +61,11 @@ Testsuite for the (foreign_stubs ...) field.
   > (rule
   >  (targets dllbar%{ext_dll})
   >  (deps bar%{ext_obj})
-  >  (action (run %{ocaml-config:c_compiler} -shared -o %{targets} %{deps})))
+  >  (action (run %{cc} -shared -o %{targets} %{deps})))
   > (rule
   >  (targets qux%{ext_obj})
   >  (deps qux.cpp)
-  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  >  (action (run %{cxx} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
   > (rule
   >  (targets libqux.a)
   >  (deps qux%{ext_obj})
@@ -73,7 +73,7 @@ Testsuite for the (foreign_stubs ...) field.
   > (rule
   >  (targets dllqux%{ext_dll})
   >  (deps qux%{ext_obj})
-  >  (action (run %{ocaml-config:c_compiler} -shared -o %{targets} %{deps})))
+  >  (action (run %{cc} -shared -o %{targets} %{deps})))
   > (executable
   >  (name main)
   >  (modes exe byte)
@@ -126,7 +126,7 @@ Testsuite for the (foreign_stubs ...) field.
   > (rule
   >  (targets bar%{ext_obj})
   >  (deps bar.c)
-  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  >  (action (run %{cc} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
   > (rule
   >  (targets libbar.a)
   >  (deps bar%{ext_obj})
@@ -134,11 +134,11 @@ Testsuite for the (foreign_stubs ...) field.
   > (rule
   >  (targets dllbar%{ext_dll})
   >  (deps bar%{ext_obj})
-  >  (action (run %{ocaml-config:c_compiler} -shared -o %{targets} %{deps})))
+  >  (action (run %{cc} -shared -o %{targets} %{deps})))
   > (rule
   >  (targets qux%{ext_obj})
   >  (deps qux.cpp)
-  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  >  (action (run %{cxx} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
   > (rule
   >  (targets libqux.a)
   >  (deps qux%{ext_obj})
@@ -146,7 +146,7 @@ Testsuite for the (foreign_stubs ...) field.
   > (rule
   >  (targets dllqux%{ext_dll})
   >  (deps qux%{ext_obj})
-  >  (action (run %{ocaml-config:c_compiler} -shared -o %{targets} %{deps})))
+  >  (action (run %{cc} -shared -o %{targets} %{deps})))
   > (executable
   >  (name main)
   >  (modes exe byte)
@@ -191,7 +191,7 @@ Testsuite for the (foreign_stubs ...) field.
   > (rule
   >  (targets bar%{ext_obj})
   >  (deps bar.c)
-  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  >  (action (run %{cc} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
   > (rule
   >  (targets libbar.a)
   >  (deps bar%{ext_obj})
@@ -199,11 +199,11 @@ Testsuite for the (foreign_stubs ...) field.
   > (rule
   >  (targets dllbar%{ext_dll})
   >  (deps bar%{ext_obj})
-  >  (action (run %{ocaml-config:c_compiler} -shared -o %{targets} %{deps})))
+  >  (action (run %{cc} -shared -o %{targets} %{deps})))
   > (rule
   >  (targets qux%{ext_obj})
   >  (deps qux.cpp)
-  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  >  (action (run %{cxx} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
   > (rule
   >  (targets libqux.a)
   >  (deps qux%{ext_obj})
@@ -211,7 +211,7 @@ Testsuite for the (foreign_stubs ...) field.
   > (rule
   >  (targets dllqux%{ext_dll})
   >  (deps qux%{ext_obj})
-  >  (action (run %{ocaml-config:c_compiler} -shared -o %{targets} %{deps})))
+  >  (action (run %{cc} -shared -o %{targets} %{deps})))
   > (executable
   >  (name main)
   >  (modes exe byte)
@@ -255,7 +255,9 @@ Testsuite for the (foreign_stubs ...) field.
   > (library
   >  (name quad)
   >  (modules quad)
-  >  (foreign_stubs (language cxx) (names :standard \ foo)))
+  >  (foreign_stubs
+  >   (language cxx)
+  >   (names :standard \ foo)))
   > EOF
 
   $ dune clean

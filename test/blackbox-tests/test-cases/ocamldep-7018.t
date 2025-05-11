@@ -44,7 +44,8 @@ First we try to construct X.t directly
   File "x.ml", line 2, characters 15-17:
   2 | let () = Y.foo ()
                      ^^
-  Error: This expression has type t but an expression was expected of type X.t
+  Error: The constructor () has type t but an expression was expected of type
+           X.t
          Type X.t is abstract because no corresponding cmi file was found
          in path.
   [1]

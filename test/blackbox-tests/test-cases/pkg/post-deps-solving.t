@@ -28,7 +28,7 @@ We don't need bar, so we skip it
 We should also skip any artifacts that bar references:
 
   $ [ -d dune.lock/bar.files ] && ls -1 -x dune.lock/bar.files
-  bar.file
+  [1]
 
 Self dependency
 

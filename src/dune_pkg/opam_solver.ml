@@ -1670,7 +1670,11 @@ let solve_lock_dir
         (not (is_local_package name)) && not (Package_name.equal Dune_dep.name name))
     in
     let* candidates_cache = Fiber_cache.to_table context.candidates_cache in
-    let ocaml, pkgs =
+    let resolve_package name version =
+      (Table.find_exn candidates_cache name).resolved
+      |> OpamPackage.Version.Map.find version
+    in
+    let pkgs_by_name =
       let pkgs =
         let version_by_package_name =
           Package_name.Map.of_list_map_exn solution ~f:(fun (package : OpamPackage.t) ->
@@ -1680,88 +1684,83 @@ let solve_lock_dir
         List.map opam_packages_to_lock ~f:(fun opam_package ->
           let name = OpamPackage.name opam_package |> Package_name.of_opam_package_name in
           let resolved_package =
-            let version = OpamPackage.version opam_package in
-            (Table.find_exn candidates_cache name).resolved
-            |> OpamPackage.Version.Map.find version
+            resolve_package name (OpamPackage.version opam_package)
           in
-          let lock_pkg =
-            Lock_pkg.opam_package_to_lock_file_pkg
-              solver_env
-              stats_updater
-              version_by_package_name
-              opam_package
-              ~pinned:(Package_name.Set.mem pinned_package_names name)
-              resolved_package
-          in
-          package_kind resolved_package, lock_pkg)
+          Lock_pkg.opam_package_to_lock_file_pkg
+            solver_env
+            stats_updater
+            version_by_package_name
+            opam_package
+            ~pinned:(Package_name.Set.mem pinned_package_names name)
+            resolved_package)
       in
-      let ocaml =
-        (* This doesn't allow the compiler to live in the source tree. Oh
-           well, it's not possible now anyway. *)
-        match
-          List.filter_map pkgs ~f:(fun (kind, pkg) ->
-            match kind with
-            | `Compiler -> Some pkg.info.name
-            | `Non_compiler -> None)
-        with
-        | [] -> None
-        | [ x ] -> Some (Loc.none, x)
-        | _ ->
-          User_error.raise
-            (* CR rgrinberg: needs to include locations *)
-            [ Pp.text "multiple compilers selected" ]
-            ~hints:[ Pp.text "add a conflict" ]
-      in
-      let pkgs =
-        Package_name.Map.of_list_map pkgs ~f:(fun (_kind, pkg) -> pkg.info.name, pkg)
-      in
-      ocaml, pkgs
-    in
-    let lock_dir =
-      match pkgs with
+      match Package_name.Map.of_list_map pkgs ~f:(fun pkg -> pkg.info.name, pkg) with
+      | Ok s -> s
       | Error (name, _pkg1, _pkg2) ->
         Code_error.raise
           "Solver selected multiple versions for the same package"
           [ "name", Package_name.to_dyn name ]
-      | Ok pkgs_by_name ->
-        let expanded_solver_variable_bindings =
-          let stats = Solver_stats.Updater.snapshot stats_updater in
-          Solver_stats.Expanded_variable_bindings.of_variable_set
-            stats.expanded_variables
+    in
+    let ocaml =
+      (* This doesn't allow the compiler to live in the source tree. Oh
+         well, it's not possible now anyway. *)
+      match
+        Package_name.Map.filter_map pkgs_by_name ~f:(fun (pkg : Lock_dir.Pkg.t) ->
+          match
+            let version = Package_version.to_opam_package_version pkg.info.version in
+            resolve_package pkg.info.name version |> package_kind
+          with
+          | `Compiler -> Some pkg.info.name
+          | `Non_compiler -> None)
+        |> Package_name.Map.values
+      with
+      | [] -> None
+      | [ x ] -> Some (Loc.none, x)
+      | _ ->
+        User_error.raise
+          (* CR rgrinberg: needs to include locations *)
+          [ Pp.text "multiple compilers selected" ]
+          ~hints:[ Pp.text "add a conflict" ]
+    in
+    let lock_dir =
+      let expanded_solver_variable_bindings =
+        let stats = Solver_stats.Updater.snapshot stats_updater in
+        Solver_stats.Expanded_variable_bindings.of_variable_set
+          stats.expanded_variables
+          solver_env
+      in
+      Package_name.Map.iter
+        pkgs_by_name
+        ~f:(fun { Lock_dir.Pkg.depends; info = { name; _ }; _ } ->
+          List.iter depends ~f:(fun (loc, dep_name) ->
+            if Package_name.Map.mem local_packages dep_name
+            then
+              User_error.raise
+                ~loc
+                [ Pp.textf
+                    "Dune does not support packages outside the workspace depending on \
+                     packages in the workspace. The package %S is not in the workspace \
+                     but it depends on the package %S which is in the workspace."
+                    (Package_name.to_string name)
+                    (Package_name.to_string dep_name)
+                ]));
+      let pkgs_by_name =
+        let reachable =
+          reject_unreachable_packages
             solver_env
+            ~dune_version:(Package_version.of_opam_package_version context.dune_version)
+            ~local_packages
+            ~pkgs_by_name
         in
-        Package_name.Map.iter
-          pkgs_by_name
-          ~f:(fun { Lock_dir.Pkg.depends; info = { name; _ }; _ } ->
-            List.iter depends ~f:(fun (loc, dep_name) ->
-              if Package_name.Map.mem local_packages dep_name
-              then
-                User_error.raise
-                  ~loc
-                  [ Pp.textf
-                      "Dune does not support packages outside the workspace depending on \
-                       packages in the workspace. The package %S is not in the workspace \
-                       but it depends on the package %S which is in the workspace."
-                      (Package_name.to_string name)
-                      (Package_name.to_string dep_name)
-                  ]));
-        let pkgs_by_name =
-          let reachable =
-            reject_unreachable_packages
-              solver_env
-              ~dune_version:(Package_version.of_opam_package_version context.dune_version)
-              ~local_packages
-              ~pkgs_by_name
-          in
-          Package_name.Map.filteri pkgs_by_name ~f:(fun name _ ->
-            Package_name.Set.mem reachable name)
-        in
-        Lock_dir.create_latest_version
-          pkgs_by_name
-          ~local_packages:(Package_name.Map.values local_packages)
-          ~ocaml
-          ~repos:(Some repos)
-          ~expanded_solver_variable_bindings
+        Package_name.Map.filteri pkgs_by_name ~f:(fun name _ ->
+          Package_name.Set.mem reachable name)
+      in
+      Lock_dir.create_latest_version
+        pkgs_by_name
+        ~local_packages:(Package_name.Map.values local_packages)
+        ~ocaml
+        ~repos:(Some repos)
+        ~expanded_solver_variable_bindings
     in
     let+ files = files opam_packages_to_lock candidates_cache in
     Ok

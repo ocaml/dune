@@ -1028,7 +1028,7 @@ module Action_expander = struct
     Option.map pkg.build_command ~f:(function
       | Action action -> expand context pkg action
       | Dune ->
-        (* CR-rgrinberg: respect [dune subst] settings. *)
+        (* CR-someday rgrinberg: respect [dune subst] settings. *)
         Command.run_dyn_prog
           (Action_builder.of_memo (dune_exe context))
           ~dir:pkg.paths.source_dir

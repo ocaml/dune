@@ -118,7 +118,7 @@ let paths_matching g =
 let ignore x = map x ~f:ignore
 
 let paths_matching ~loc:_ g =
-  (* CR-rgrinberg: how about doing something with this location? Like pushing a
+  (* CR-someday rgrinberg: how about doing something with this location? Like pushing a
      stack frame with it for example *)
   let* () = return () in
   paths_matching g

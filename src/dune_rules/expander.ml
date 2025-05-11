@@ -129,7 +129,7 @@ let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
   match
     let name = Package.Name.of_string s in
     let packages =
-      (* CR-rgrinberg: craziness to preserve buggy behavior people are relying
+      (* CR-someday rgrinberg: craziness to preserve buggy behavior people are relying
          on at the moment *)
       Dune_project.including_hidden_packages project
     in

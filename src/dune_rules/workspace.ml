@@ -1,5 +1,6 @@
 open Import
 open Dune_lang.Decoder
+module Pin_stanza = Dune_lang.Pin_stanza
 module Repository = Dune_pkg.Pkg_workspace.Repository
 
 let default_repositories = [ Repository.overlay; Repository.upstream ]
@@ -648,7 +649,7 @@ type t =
   ; repos : Dune_pkg.Pkg_workspace.Repository.t list
   ; lock_dirs : Lock_dir.t list
   ; dir : Path.Source.t
-  ; pins : Dune_pkg.Pin_stanza.DB.Workspace.t
+  ; pins : Pin_stanza.Workspace.t
   }
 
 let to_dyn { merlin_context; contexts; env; config; repos; lock_dirs; pins; dir } =
@@ -661,7 +662,7 @@ let to_dyn { merlin_context; contexts; env; config; repos; lock_dirs; pins; dir 
     ; "repos", list Repository.to_dyn repos
     ; "solver", (list Lock_dir.to_dyn) lock_dirs
     ; "dir", Path.Source.to_dyn dir
-    ; "pins", Dune_pkg.Pin_stanza.DB.Workspace.to_dyn pins
+    ; "pins", Pin_stanza.Workspace.to_dyn pins
     ]
 ;;
 
@@ -673,7 +674,7 @@ let equal { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins }
   && List.equal Repository.equal repos w.repos
   && List.equal Lock_dir.equal lock_dirs w.lock_dirs
   && Path.Source.equal dir w.dir
-  && Dune_pkg.Pin_stanza.DB.Workspace.equal pins w.pins
+  && Pin_stanza.Workspace.equal pins w.pins
 ;;
 
 let hash { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins } =
@@ -685,7 +686,7 @@ let hash { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins } 
     , List.hash Repository.hash repos
     , List.hash Lock_dir.hash lock_dirs
     , Path.Source.hash dir
-    , Dune_pkg.Pin_stanza.DB.Workspace.hash pins )
+    , Pin_stanza.Workspace.hash pins )
 ;;
 
 let find_lock_dir t path =
@@ -855,7 +856,7 @@ let step1 clflags =
          ~default:(lazy []))
   and+ config_from_workspace_file = Dune_config.decode_fields_of_workspace_file
   and+ lock_dirs = multi_field "lock_dir" (Lock_dir.decode ~dir)
-  and+ pins = Dune_pkg.Pin_stanza.DB.Workspace.decode in
+  and+ pins = Pin_stanza.Workspace.decode in
   let+ contexts = multi_field "context" (lazy_ Context.decode) in
   let config =
     create_final_config
@@ -962,7 +963,7 @@ let default clflags =
   ; repos = default_repositories
   ; lock_dirs = []
   ; dir = Path.Source.root
-  ; pins = Dune_pkg.Pin_stanza.DB.Workspace.empty
+  ; pins = Pin_stanza.Workspace.empty
   }
 ;;
 

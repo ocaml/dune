@@ -1,55 +1,14 @@
 open Import
+module Pin_stanza = Dune_lang.Pin_stanza
+module Package = Pin_stanza.Package
 
-module Package = struct
-  type t =
-    { version : Package_version.t option
-    ; name : Package_name.t
-    ; loc : Loc.t
-    }
-
-  let decode =
-    let open Dune_lang.Decoder in
-    fields
-    @@
-    let+ name = field "name" Package_name.decode
-    and+ loc = loc
-    and+ version = field_o "version" Package_version.decode in
-    { name; version; loc }
-  ;;
-
-  let to_local_package t ~url ~origin =
-    { Local_package.url
-    ; version = Option.value ~default:Package_version.dev t.version
-    ; loc = t.loc
-    ; origin
-    ; name = t.name
-    }
-  ;;
-end
-
-type t =
-  { url : Loc.t * OpamUrl.t
-  ; packages : Package.t list
+let local_package_of_pin (t : Pin_stanza.Package.t) ~url ~origin =
+  { Local_package.url
+  ; version = Option.value ~default:Package_version.dev t.version
+  ; loc = t.loc
+  ; origin
+  ; name = t.name
   }
-
-let url t = t.url
-
-let common_fields =
-  let open Dune_lang.Decoder in
-  let+ url = field "url" OpamUrl.decode_loc
-  and+ packages = multi_field "package" Package.decode in
-  { url; packages }
-;;
-
-let decode = Dune_lang.Decoder.fields common_fields
-
-let decode_with_name =
-  let open Dune_lang.Decoder in
-  fields
-  @@
-  let+ t = common_fields
-  and+ name = field "name" (located string) in
-  name, t
 ;;
 
 module DB = struct
@@ -58,7 +17,7 @@ module DB = struct
     | Project of { dir : Path.Source.t }
 
   type nonrec t =
-    { all : t list (* we keep this for [encode] *)
+    { all : Pin_stanza.t list (* we keep this for [encode] *)
     ; map : (Local_package.pin * context) Package_name.Map.t
     ; context : context
     }
@@ -84,31 +43,17 @@ module DB = struct
     }
   ;;
 
-  let package_map_of_list list ~pin =
-    match Package_name.Map.of_list list with
-    | Ok map -> map
-    | Error (name, p, _) ->
-      let pin : Local_package.pin = pin p in
-      User_error.raise
-        ~loc:pin.loc
-        [ Pp.textf "package %S is already defined" (Package_name.to_string name) ]
+  let of_stanza ~dir pins =
+    let context = Project { dir } in
+    { all = Pin_stanza.Project.all pins
+    ; context
+    ; map =
+        Pin_stanza.Project.map pins
+        |> Package_name.Map.map ~f:(fun (url, pkg) ->
+          let pkg = local_package_of_pin pkg ~url ~origin:`Dune in
+          pkg, context)
+    }
   ;;
-
-  let gen_decode context =
-    let open Dune_lang.Decoder in
-    let+ all = multi_field "pin" decode in
-    let map =
-      List.concat_map all ~f:(fun source ->
-        List.map source.packages ~f:(fun (package : Package.t) ->
-          let name = package.name in
-          let package = Package.to_local_package package ~url:source.url ~origin:`Dune in
-          name, (package, context)))
-      |> package_map_of_list ~pin:fst
-    in
-    { all; map; context }
-  ;;
-
-  let decode ~dir = gen_decode (Project { dir })
 
   let super_context ((_, ctx) as x) ((_, ctx') as x') =
     match ctx, ctx' with
@@ -147,29 +92,16 @@ module DB = struct
     }
   ;;
 
-  let encode _ = (* CR-rgrinberg: needed for dune init *) []
-
   module Workspace = struct
     type nonrec t = Local_package.pin Package_name.Map.t String.Map.t
 
     let empty = String.Map.empty
 
-    let decode =
-      let open Dune_lang.Decoder in
-      let+ pins = Dune_lang.Decoder.multi_field "pin" decode_with_name in
-      match
-        String.Map.of_list_map pins ~f:(fun ((loc, name), pin) ->
-          let packages =
-            List.map pin.packages ~f:(fun (package : Package.t) ->
-              let package = Package.to_local_package package ~url:pin.url ~origin:`Dune in
-              package.name, package)
-            |> package_map_of_list ~pin:Fun.id
-          in
-          name, (loc, packages))
-      with
-      | Ok s -> String.Map.map ~f:snd s
-      | Error (name, ((loc, _), _), _) ->
-        User_error.raise ~loc [ Pp.textf "a pin named %S already defined" name ]
+    let of_stanza pins =
+      Dune_lang.Pin_stanza.Workspace.map pins
+      |> String.Map.map ~f:(fun map ->
+        Package_name.Map.map map ~f:(fun (url, package) ->
+          local_package_of_pin package ~url ~origin:`Dune))
     ;;
 
     let extract (t : t) ~names =
@@ -180,7 +112,8 @@ module DB = struct
           | Some packages ->
             Package_name.Map.to_list_map packages ~f:(fun name package ->
               name, (package, Workspace)))
-        |> package_map_of_list ~pin:fst
+        |> Pin_stanza.package_map_of_list ~loc:(fun ((pin : Local_package.pin), _) ->
+          pin.loc)
       in
       { all = []; map; context = Workspace }
     ;;

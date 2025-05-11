@@ -1,6 +1,7 @@
 open Dune_config
 open Import
 module Lock_dir = Dune_pkg.Lock_dir
+module Pin = Dune_pkg.Pin
 
 let is_enabled =
   lazy
@@ -84,7 +85,7 @@ let solve ~dev_tool ~local_packages =
   @@ Lock.solve
        workspace
        ~local_packages
-       ~project_pins:Dune_pkg.Pin_stanza.DB.empty
+       ~project_pins:Pin.DB.empty
        ~solver_env_from_current_system
        ~version_preference:None
        ~lock_dirs:[ lock_dir ]

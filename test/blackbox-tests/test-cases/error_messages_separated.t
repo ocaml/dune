@@ -63,7 +63,7 @@ between error messages for different files, as expected.
   File "b.ml", line 1, characters 9-10:
   1 | let () = 1
                ^
-  Error: This expression has type int but an expression was expected of type
+  Error: The constant 1 has type int but an expression was expected of type
            unit
   [1]
 
@@ -94,6 +94,6 @@ message either.
   File "b.ml", line 1, characters 9-10:
   1 | let () = 1
                ^
-  Error: This expression has type int but an expression was expected of type
+  Error: The constant 1 has type int but an expression was expected of type
            unit
   [1]

@@ -39,6 +39,10 @@ Testsuite for the (foreign_library ...) stanza.
   [1]
 
 ----------------------------------------------------------------------------------
+* From now onwards, we use `(lang dune 3.0)`.
+  $ echo "(lang dune 3.0)" > dune-project
+
+----------------------------------------------------------------------------------
 * Error message for a missing source file.
 
   $ cat >lib/dune <<EOF

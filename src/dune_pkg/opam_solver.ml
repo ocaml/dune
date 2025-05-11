@@ -1575,16 +1575,7 @@ let reject_unreachable_packages =
     reachable pkgs_by_name ~roots
 ;;
 
-let files opam_packages_to_lock candidates_cache =
-  let resolved_packages =
-    List.map opam_packages_to_lock ~f:(fun opam_package ->
-      let candidates : Context.candidates =
-        OpamPackage.name opam_package
-        |> Package_name.of_opam_package_name
-        |> Table.find_exn candidates_cache
-      in
-      OpamPackage.Version.Map.find (OpamPackage.version opam_package) candidates.resolved)
-  in
+let files resolved_packages =
   Resolved_package.get_opam_package_files resolved_packages
   >>| List.map2 resolved_packages ~f:(fun resolved_package entries ->
     let package_name =
@@ -1762,7 +1753,13 @@ let solve_lock_dir
         ~repos:(Some repos)
         ~expanded_solver_variable_bindings
     in
-    let+ files = files opam_packages_to_lock candidates_cache in
+    let+ files =
+      List.map opam_packages_to_lock ~f:(fun package ->
+        let name = Package_name.of_opam_package_name (OpamPackage.name package) in
+        let version = OpamPackage.version package in
+        resolve_package name version)
+      |> files
+    in
     Ok
       { Solver_result.lock_dir
       ; files

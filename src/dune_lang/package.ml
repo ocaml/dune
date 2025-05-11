@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp
+open Import
 module Name = Package_name
 
 module Id = struct

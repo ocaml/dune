@@ -1,7 +1,6 @@
 (** Stanza in dune/jbuild files *)
 
-open! Stdune
-open Dune_sexp
+open Import
 
 type repr = ..
 type t

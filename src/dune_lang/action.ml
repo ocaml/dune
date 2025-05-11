@@ -1,6 +1,6 @@
-open Stdune
-open Dune_sexp
+open Import
 open Dune_util.Action
+open Dune_sexp
 
 module Action_plugin = struct
   let syntax =

@@ -1,4 +1,4 @@
-open Dune_sexp
+open Import
 
 (* Note that this type is defined separately from [_ Ast.t] so that its
    constructors are scoped within the [Blang] module, allowing us to construct

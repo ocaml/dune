@@ -3,8 +3,7 @@
     Variables cannot contain "%\{", "%(", ")" or "\}". For instance in "%(cat
     %\{x\})", only "%\{x\}" will be considered a variable, the rest is text. *)
 
-open Stdune
-open Dune_sexp
+open Import
 
 (** A sequence of text and variables. *)
 type t

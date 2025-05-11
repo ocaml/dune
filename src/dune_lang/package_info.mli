@@ -1,3 +1,5 @@
+open Import
+
 type t
 
 val source : t -> Source_kind.t option
@@ -19,13 +21,8 @@ val example
 val empty : t
 val to_dyn : t Dyn.builder
 val encode_fields : t -> Dune_sexp.t list
-
-val decode
-  :  ?since:Dune_sexp.Syntax.Version.t
-  -> unit
-  -> t Dune_sexp.Decoder.fields_parser
-
-val decode_maintenance_intent : string list Dune_sexp.Decoder.t
+val decode : ?since:Syntax.Version.t -> unit -> t Decoder.fields_parser
+val decode_maintenance_intent : string list Decoder.t
 val superpose : t -> t -> t
 
 val create

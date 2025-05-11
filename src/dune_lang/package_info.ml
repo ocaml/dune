@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp
+open Import
 
 type t =
   { source : Source_kind.t option

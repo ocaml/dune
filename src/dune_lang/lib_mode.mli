@@ -1,8 +1,10 @@
+open Import
+
 type t =
   | Ocaml of Ocaml.Mode.t
   | Melange
 
-val decode : t Dune_sexp.Decoder.t
+val decode : t Decoder.t
 
 module Cm_kind : sig
   type t =

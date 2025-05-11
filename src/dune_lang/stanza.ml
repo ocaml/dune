@@ -1,5 +1,4 @@
-open! Stdune
-open Dune_sexp
+open Import
 module Id = Id.Make ()
 
 type repr = ..

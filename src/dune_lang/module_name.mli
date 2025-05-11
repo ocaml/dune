@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 (** Represents a valid OCaml module name *)
 type t
@@ -17,7 +17,7 @@ val pp_quote : Format.formatter -> t -> unit
 module Per_item : sig
   include Per_item with type key = t
 
-  val decode : default:'a -> 'a Dune_sexp.Decoder.t -> 'a t Dune_sexp.Decoder.t
+  val decode : default:'a -> 'a Decoder.t -> 'a t Decoder.t
 end
 
 module Infix : Comparator.OPS with type t = t
@@ -52,7 +52,7 @@ module Unique : sig
   val equal : t -> t -> bool
   val artifact_filename : t -> ext:string -> string
 
-  include Dune_sexp.Conv.S with type t := t
+  include Conv.S with type t := t
   include Comparable_intf.S with type key := t
 end
 
@@ -70,7 +70,7 @@ module Path : sig
 
   val wrap : t -> Unique.t
   val encode : t -> Dune_sexp.t list
-  val decode : t Dune_sexp.Decoder.t
+  val decode : t Decoder.t
   val append_double_underscore : t -> t
 end
 

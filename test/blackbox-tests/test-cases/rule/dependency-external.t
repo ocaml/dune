@@ -206,22 +206,22 @@ rules with dependencies outside the build dir are allowed
 
   $ dune exec --root=a/b -- $PWD/a/script.sh
   Entering directory 'a/b'
-  Leaving directory 'a/b'
   txt1
+  Leaving directory 'a/b'
 
 ## Test dune exec 1 level below
   $ dune exec --root=a/b -- ../script.sh
   Entering directory 'a/b'
-  Leaving directory 'a/b'
   txt1
+  Leaving directory 'a/b'
 
 ## Test dune exec 2 level below
   $ mv a/script.sh .
 
   $ dune exec --root=a/b -- ../../script.sh
   Entering directory 'a/b'
-  Leaving directory 'a/b'
   txt1
+  Leaving directory 'a/b'
 
 # Regression test for #5572
   $ dune exec --root=a/b -- ../

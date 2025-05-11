@@ -14,4 +14,4 @@ val opam_package_to_lock_file_pkg
   -> OpamPackage.t
   -> pinned:bool
   -> Resolved_package.t
-  -> [> `Compiler | `Non_compiler ] * Lock_dir.Pkg.t
+  -> Lock_dir.Pkg.t

@@ -87,9 +87,6 @@ module Per_module : sig
 
   val pps : Without_instrumentation.t t -> Without_instrumentation.t list
 
-  (** Preprocessing specification used by all modules or [No_preprocessing] *)
-  val single_preprocess : 'a t -> 'a preprocess
-
   val add_instrumentation
     :  With_instrumentation.t t
     -> Instrumentation.t

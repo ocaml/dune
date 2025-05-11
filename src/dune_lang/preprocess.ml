@@ -281,13 +281,6 @@ module Per_module = struct
     |> Lib_name.Map.foldi ~init:[] ~f:(fun pp loc acc -> (loc, pp) :: acc)
   ;;
 
-  (* Any dummy module name works here *)
-  let dummy_name = Module_name.of_string "A"
-
-  let single_preprocess t =
-    if Per_module.is_constant t then Per_module.get t dummy_name else No_preprocessing
-  ;;
-
   let add_instrumentation t { Instrumentation.flags; loc; deps; backend = libname } =
     Per_module.map t ~f:(fun pp ->
       match pp with

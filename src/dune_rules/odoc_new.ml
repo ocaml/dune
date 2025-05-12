@@ -680,7 +680,7 @@ module Artifact : sig
   val module_name : t -> Module_name.t option
   val name : t -> string
   val make_module : Context.t -> all:bool -> Index.t -> Path.t -> visible:bool -> t
-  val external_mld : Context.t -> Index.t -> Path.t -> t
+  val external_mld : Context.t -> Index.t -> Path.t * string -> t
   val index : Context.t -> all:bool -> Index.t -> t
 end = struct
   type artifact_ty =
@@ -755,8 +755,8 @@ end = struct
     v ~source ~odoc ~html_dir ~html_file:html ~ty:(Module visible)
   ;;
 
-  let int_make_mld ctx ~all index source ~is_index =
-    let basename = Path.basename source |> Filename.remove_extension in
+  let int_make_mld ctx ~all index (source, name) ~is_index =
+    let basename = name |> Filename.remove_extension in
     let odoc =
       (if is_index then Index.obj_dir ctx ~all index else Index.odoc_dir ctx ~all index)
       ++ ("page-" ^ basename ^ ".odoc")
@@ -768,15 +768,15 @@ end = struct
     v ~source ~odoc ~html_dir ~html_file:html ~ty:Mld
   ;;
 
-  let external_mld ctx index source =
-    int_make_mld ctx ~all:true index source ~is_index:false
+  let external_mld ctx index (source, name) =
+    int_make_mld ctx ~all:true index (source, name) ~is_index:false
   ;;
 
   let index ctx ~all index =
     let source =
       let filename = Index.mld_filename index in
       let dir = Index.obj_dir ctx ~all index in
-      Path.build (dir ++ filename)
+      Path.build (dir ++ filename), filename
     in
     int_make_mld ctx ~all index source ~is_index:true
   ;;
@@ -1245,7 +1245,7 @@ let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =
              | `File, dst ->
                let str = Install.Entry.Dst.to_string dst in
                if Filename.check_suffix str ".mld"
-               then Some (Path.relative doc_path str)
+               then Some (Path.relative doc_path str, str)
                else None
              | _ -> None))
       | _ -> None)
@@ -1255,7 +1255,13 @@ let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =
 let pkg_mlds sctx pkg =
   let* pkgs = Dune_load.packages () in
   if Package.Name.Map.mem pkgs pkg
-  then Packages.mlds sctx pkg >>| List.map ~f:Path.build
+  then
+    Packages.mlds sctx pkg
+    >>| List.filter_map ~f:(fun mld ->
+      match Path.Local.explode mld.Doc_sources.in_doc with
+      | [ name ] -> Some (Path.build mld.path, name)
+      | _ ->
+        None (* Filter non-toplevel pages as we are currently not able to build them *))
   else (
     let ctx = Super_context.context sctx in
     ext_package_mlds ctx pkg)
@@ -1263,7 +1269,7 @@ let pkg_mlds sctx pkg =
 
 let check_mlds_no_dupes ~pkg ~mlds =
   match
-    List.rev_map mlds ~f:(fun mld -> Filename.remove_extension (Path.basename mld), mld)
+    List.rev_map mlds ~f:(fun ((_path, mld_name) as mld) -> mld_name, mld)
     |> Filename.Map.of_list
   with
   | Ok m -> m
@@ -1272,8 +1278,8 @@ let check_mlds_no_dupes ~pkg ~mlds =
       [ Pp.textf
           "Package %s has two mld's with the same basename %s, %s"
           (Package.Name.to_string pkg)
-          (Path.to_string_maybe_quoted p1)
-          (Path.to_string_maybe_quoted p2)
+          (Path.to_string_maybe_quoted (fst p1))
+          (Path.to_string_maybe_quoted (fst p2))
       ]
 ;;
 
@@ -1284,12 +1290,12 @@ let pkg_artifacts sctx index pkg =
     check_mlds_no_dupes ~pkg ~mlds
   in
   let artifacts =
-    let mlds_noindex = String.Map.filteri ~f:(fun i _ -> i <> "index") mlds_map in
+    let mlds_noindex = String.Map.filteri ~f:(fun i _ -> i <> "index.mld") mlds_map in
     String.Map.values mlds_noindex
     |> List.map ~f:(fun mld -> Artifact.external_mld ctx index mld)
   in
-  let index_file = String.Map.find mlds_map "index" in
-  index_file, artifacts
+  let index_file = String.Map.find mlds_map "index.mld" in
+  Option.map ~f:fst index_file, artifacts
 ;;
 
 module Index_tree = struct

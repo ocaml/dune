@@ -203,20 +203,20 @@ let odoc_ext = ".odoc"
 module Mld : sig
   type t
 
-  val create : Path.Build.t -> t
+  val create : Path.Build.t * string -> t
   val odoc_file : doc_dir:Path.Build.t -> t -> Path.Build.t
   val odoc_input : t -> Path.Build.t
 end = struct
-  type t = Path.Build.t
+  type t = Path.Build.t * string
 
-  let create p = p
+  let create t = t
 
-  let odoc_file ~doc_dir t =
-    let t = Filename.remove_extension (Path.Build.basename t) in
-    Path.Build.relative doc_dir (sprintf "page-%s%s" t odoc_ext)
+  let odoc_file ~doc_dir (_path, name) =
+    let name = Filename.remove_extension name in
+    Path.Build.relative doc_dir (sprintf "page-%s%s" name odoc_ext)
   ;;
 
-  let odoc_input t = t
+  let odoc_input (p, _) = p
 end
 
 module Flags = struct
@@ -653,8 +653,7 @@ let create_odoc ctx ~target odoc_file =
 
 let check_mlds_no_dupes ~pkg ~mlds =
   match
-    List.rev_map mlds ~f:(fun mld ->
-      Filename.remove_extension (Path.Build.basename mld), mld)
+    List.rev_map mlds ~f:(fun ((_path, mld_name) as mld) -> mld_name, mld)
     |> Filename.Map.of_list
   with
   | Ok m -> m
@@ -663,9 +662,17 @@ let check_mlds_no_dupes ~pkg ~mlds =
       [ Pp.textf
           "Package %s has two mld's with the same basename %s, %s"
           (Package.Name.to_string pkg)
-          (Path.to_string_maybe_quoted (Path.build p1))
-          (Path.to_string_maybe_quoted (Path.build p2))
+          (Path.to_string_maybe_quoted (Path.build (fst p1)))
+          (Path.to_string_maybe_quoted (Path.build (fst p2)))
       ]
+;;
+
+let mlds sctx pkg =
+  Packages.mlds sctx pkg
+  >>| List.filter_map ~f:(fun mld ->
+    match Path.Local.explode mld.Doc_sources.in_doc with
+    | [ name ] -> Some (mld.path, name)
+    | _ -> None (* Filter non-toplevel pages as we are currently not able to build them *))
 ;;
 
 let odoc_artefacts sctx target =
@@ -674,10 +681,10 @@ let odoc_artefacts sctx target =
   match target with
   | Pkg pkg ->
     let+ mlds =
-      let+ mlds = Packages.mlds sctx pkg in
+      let+ mlds = mlds sctx pkg in
       let mlds = check_mlds_no_dupes ~pkg ~mlds in
-      Filename.Map.update mlds "index" ~f:(function
-        | None -> Some (Paths.gen_mld_dir ctx pkg ++ "index.mld")
+      Filename.Map.update mlds "index.mld" ~f:(function
+        | None -> Some (Paths.gen_mld_dir ctx pkg ++ "index.mld", "index.mld")
         | Some _ as s -> s)
     in
     Filename.Map.to_list_map mlds ~f:(fun _ mld ->
@@ -922,10 +929,10 @@ let package_mlds =
       ~input:(module Super_context.As_memo_key.And_package_name)
       (fun (sctx, pkg) ->
          Rules.collect (fun () ->
-           let* mlds = Packages.mlds sctx pkg in
+           let* mlds = mlds sctx pkg in
            let mlds = check_mlds_no_dupes ~pkg ~mlds in
            let ctx = Super_context.context sctx in
-           if Filename.Map.mem mlds "index"
+           if Filename.Map.mem mlds "index.mld"
            then Memo.return mlds
            else (
              let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
@@ -935,7 +942,7 @@ let package_mlds =
                  sctx
                  (Action_builder.write_file gen_mld (default_index ~pkg entry_modules))
              in
-             Filename.Map.set mlds "index" gen_mld)))
+             Filename.Map.set mlds "index" (gen_mld, "index.mld"))))
   in
   fun sctx ~pkg -> Memo.exec memo (sctx, pkg)
 ;;

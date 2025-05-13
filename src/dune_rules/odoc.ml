@@ -672,8 +672,14 @@ let mlds sctx pkg =
   >>| List.filter_map ~f:(fun mld ->
     match Path.Local.explode mld.Doc_sources.in_doc with
     | [ name ] when Filename.extension name = ".mld" -> Some (mld.path, name)
-    | _ -> None
-    (* Filter assets and non-toplevel pages as we are currently not able to build them *))
+    | _ ->
+      User_warning.emit
+        [ Pp.textf
+            "Dune does not support yet building documentation for assets, and mlds in a \
+             non-flat hierarchy. Ignoring %s."
+            (Path.Local.to_string mld.in_doc)
+        ];
+      None)
 ;;
 
 let odoc_artefacts sctx target =

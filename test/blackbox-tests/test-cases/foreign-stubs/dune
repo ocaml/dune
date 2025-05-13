@@ -9,3 +9,6 @@
  (executable
   (libraries stdune spawn unix)
   (name test)))
+
+(cram
+ (deps sandboxed.sh))

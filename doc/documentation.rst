@@ -91,6 +91,19 @@ excluding ``wip.mld``, in the current directory:
 All ``.mld`` files attached to a package will be included in the generated
 ``.install`` file for that package. They'll be installed by opam.
 
+.. code-block:: dune
+
+   (documentation
+    (files
+     (glob_files_rec
+      (doc/* with_prefix .))))
+
+All files in the ``doc/`` folder will be attached to the inferred package. The
+hierarchy between them will be preserved, relative to ``doc/`` considered as the
+root. (Note that dune supports installing those files, but not building the
+documentation with a non-flat hierarchy, or with non-mld files.)
+
+
 Package Entry Page
 ------------------
 

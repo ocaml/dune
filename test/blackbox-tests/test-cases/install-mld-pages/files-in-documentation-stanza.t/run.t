@@ -13,6 +13,7 @@ of documentation files
      (tuto*.mld with_prefix tutorial))
     ; Tutorial files are in a subdir in the doc hierarchy
     (pkgname.mld as index.mld) ; pkgname.mld is renamed in order to be the index file
+    notes.mld
     ))
 
 Here, the mld pages in tutorial/ will be installed in
@@ -27,6 +28,7 @@ Let's verify that:
   img1.png@
   img2.png@
   index.mld@
+  notes.mld@
   tutorial/
   $ ls _build/install/default/doc/testing_mld/odoc-pages/tutorial/
   tuto1.mld
@@ -45,6 +47,17 @@ Let's verify that:
     "_build/install/default/doc/testing_mld/odoc-pages/img1.png" {"odoc-pages/img1.png"}
     "_build/install/default/doc/testing_mld/odoc-pages/img2.png" {"odoc-pages/img2.png"}
     "_build/install/default/doc/testing_mld/odoc-pages/index.mld" {"odoc-pages/index.mld"}
+    "_build/install/default/doc/testing_mld/odoc-pages/notes.mld" {"odoc-pages/notes.mld"}
     "_build/install/default/doc/testing_mld/odoc-pages/tutorial/tuto1.mld" {"odoc-pages/tutorial/tuto1.mld"}
     "_build/install/default/doc/testing_mld/odoc-pages/tutorial/tuto2.mld" {"odoc-pages/tutorial/tuto2.mld"}
   ]
+
+Even though dune does not support yet building the doc with hierarchy, I can't
+resist building the doc to check what happens: currently, only top-level mld
+files are included in the doc generation.
+
+  $ dune build @doc
+  $ ls _build/default/_doc/_html/testing_mld
+  db.js
+  index.html
+  notes.html

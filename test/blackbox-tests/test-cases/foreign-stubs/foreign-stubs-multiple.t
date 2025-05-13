@@ -65,7 +65,7 @@ Testsuite for the (foreign_stubs ...) field.
   > (rule
   >  (targets qux%{ext_obj})
   >  (deps qux.cpp)
-  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  >  (action (run %{ocaml-config:c_compiler} -std=c++11 -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
   > (rule
   >  (targets libqux.a)
   >  (deps qux%{ext_obj})
@@ -138,7 +138,7 @@ Testsuite for the (foreign_stubs ...) field.
   > (rule
   >  (targets qux%{ext_obj})
   >  (deps qux.cpp)
-  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  >  (action (run %{ocaml-config:c_compiler} -std=c++11 -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
   > (rule
   >  (targets libqux.a)
   >  (deps qux%{ext_obj})
@@ -203,7 +203,7 @@ Testsuite for the (foreign_stubs ...) field.
   > (rule
   >  (targets qux%{ext_obj})
   >  (deps qux.cpp)
-  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  >  (action (run %{ocaml-config:c_compiler} -std=c++11 -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
   > (rule
   >  (targets libqux.a)
   >  (deps qux%{ext_obj})

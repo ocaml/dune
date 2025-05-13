@@ -60,3 +60,12 @@ Let's now verify that the install file is correct:
     "_build/install/default/doc/testing_mld/odoc-pages/index.mld" {"odoc-pages/index.mld"}
     "_build/install/default/doc/testing_mld/odoc-pages/tutorial/tuto1.mld" {"odoc-pages/tutorial/tuto1.mld"}
   ]
+
+Even though dune does not support yet building the doc with hierarchy, I can't
+resist building the doc to check what happens: currently, only top-level mld
+files are included in the doc generation.
+
+  $ dune build @doc
+  $ ls _build/default/_doc/_html/testing_mld
+  db.js
+  index.html

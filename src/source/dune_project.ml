@@ -2,20 +2,6 @@ open Import
 module Stanza = Dune_lang.Stanza
 open Dune_lang.Decoder
 
-module File_key = struct
-  type t = string
-
-  module Map = String.Map
-
-  let of_string s = s
-  let to_string s = s
-
-  let make ~name ~root =
-    let digest = Digest.generic (name, root) |> Digest.to_string in
-    String.take digest 12
-  ;;
-end
-
 type t =
   { name : Dune_project_name.t
   ; root : Path.Source.t
@@ -35,7 +21,6 @@ type t =
   ; generate_opam_files : bool
   ; warnings : Warning.Settings.t
   ; use_standard_c_and_cxx_flags : bool option
-  ; file_key : File_key.t
   ; dialects : Dialect.DB.t
   ; explicit_js_mode : bool
   ; format_config : Format_config.t option
@@ -66,7 +51,6 @@ let name t = t.name
 let root t = t.root
 let stanza_parser t = Dune_lang.Decoder.set key t t.stanza_parser
 let file t = t.project_file
-let file_key t = t.file_key
 let implicit_transitive_deps t = t.implicit_transitive_deps
 let generate_opam_files t = t.generate_opam_files
 let warnings t = t.warnings
@@ -96,7 +80,6 @@ let to_dyn
       ; generate_opam_files
       ; warnings
       ; use_standard_c_and_cxx_flags
-      ; file_key
       ; dialects
       ; explicit_js_mode
       ; format_config
@@ -129,7 +112,6 @@ let to_dyn
     ; "generate_opam_files", bool generate_opam_files
     ; "warnings", Warning.Settings.to_dyn warnings
     ; "use_standard_c_and_cxx_flags", option bool use_standard_c_and_cxx_flags
-    ; "file_key", string file_key
     ; "dialects", Dialect.DB.to_dyn dialects
     ; "explicit_js_mode", bool explicit_js_mode
     ; "format_config", option Format_config.to_dyn format_config
@@ -424,7 +406,6 @@ let infer ~dir info packages =
   let cram = cram_default ~lang in
   let expand_aliases_in_sandbox = expand_aliases_in_sandbox_default ~lang in
   let root = dir in
-  let file_key = File_key.make ~root ~name in
   let opam_file_location = opam_file_location_default ~lang in
   { name
   ; allow_approximate_merlin = None
@@ -446,7 +427,6 @@ let infer ~dir info packages =
   ; generate_opam_files = false
   ; warnings = Warning.Settings.empty
   ; use_standard_c_and_cxx_flags = use_standard_c_and_cxx_flags_default ~lang
-  ; file_key
   ; dialects = Dialect.DB.builtin
   ; explicit_js_mode
   ; format_config = None
@@ -493,7 +473,6 @@ let encode : t -> Dune_lang.t list =
           _
           (* The next three fields hold metadata that is about the dune-project
              file, but not represented in its content *)
-      ; file_key = _
       ; project_file = _
       ; root = _
       ; expand_aliases_in_sandbox
@@ -916,7 +895,6 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
            ~default:(expand_aliases_in_sandbox_default ~lang)
        in
        let root = dir in
-       let file_key = File_key.make ~name ~root in
        let dialects =
          let dialects =
            match String.Map.find explicit_extensions Melange_syntax.name with
@@ -929,7 +907,6 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
            ~f:(fun dialects (loc, dialect) -> Dialect.DB.add dialects ~loc dialect)
        in
        { name
-       ; file_key
        ; root
        ; version
        ; dune_version

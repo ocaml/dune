@@ -141,8 +141,7 @@ let subst_file path ~map opam_package_files =
         try
           subst_string ("version: \"%%" ^ "VERSION_NUM" ^ "%%\"") ~map (Path.source path)
         with
-        | User_error.E e ->
-          raise (User_error.E { e with loc = Some (Loc.in_file (Path.source path)) }))
+        | User_error.E _ -> None)
       else None
     in
     let path = Path.source path in

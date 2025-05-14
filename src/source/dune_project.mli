@@ -19,6 +19,7 @@ val to_dyn : t -> Dyn.t
 val file_key : t -> File_key.t
 val packages : t -> Package.t Package.Name.Map.t
 val name : t -> Dune_project_name.t
+val version : t -> Package_version.t option
 val root : t -> Path.Source.t
 val stanza_parser : t -> Dune_lang.Stanza.t list Dune_lang.Decoder.t
 val generate_opam_files : t -> bool

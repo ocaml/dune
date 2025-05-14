@@ -4,16 +4,8 @@ open Import
 
 type t
 
-module Spec : sig
-  type t
-
-  val equal : t -> t -> bool
-  val decode : check:unit Dune_lang.Decoder.t option -> t Dune_lang.Decoder.fields_parser
-  val standard : t
-end
-
 val make
-  :  spec:Spec.t
+  :  spec:Dune_lang.Link_flags.Spec.t
   -> default:t
   -> eval:
        (Ordered_set_lang.Unexpanded.t

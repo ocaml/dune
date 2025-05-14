@@ -10,7 +10,7 @@ type t =
   ; runtime_deps : Dep_conf.t list
   ; cinaps_version : Syntax.Version.t
   ; alias : Alias.Name.t option
-  ; link_flags : Link_flags.Spec.t
+  ; link_flags : Dune_lang.Link_flags.Spec.t
   }
 
 let name = "cinaps"
@@ -49,7 +49,8 @@ let decode =
      and+ cinaps_version = Dune_lang.Syntax.get_exn syntax
      and+ alias = field_o "alias" Dune_lang.Alias.decode
      and+ link_flags =
-       Link_flags.Spec.decode ~check:(Some (Dune_lang.Syntax.since syntax (1, 3)))
+       Dune_lang.Link_flags.Spec.decode
+         ~check:(Some (Dune_lang.Syntax.since syntax (1, 3)))
      (* TODO use this field? *)
      and+ _flags = Ocaml_flags.Spec.decode in
      { loc

@@ -10,6 +10,7 @@ type t =
   ; enabled_if : Blang.t
   ; aliases : Alias.Name.t list
   ; package : Package.t option
+  ; synopsis : Dune_engine.Synopsis.t option
   }
 
 include Stanza.S with type t := t

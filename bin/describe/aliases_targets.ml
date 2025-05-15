@@ -1,6 +1,28 @@
 open Import
 
-let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
+type name_synopses =
+  { name : string
+  ; synopses : (Loc.t * Dune_engine.Synopsis.t) list
+  }
+
+let pp_synopsis (loc, synopsis) =
+  let synopsis = Pp.text (Dune_engine.Synopsis.value synopsis) in
+  let loc_synopsis =
+    if Loc.is_none loc then [ synopsis ] else [ Loc.pp_file_colon_line loc; synopsis ]
+  in
+  Pp.concat ~sep:Pp.space loc_synopsis
+;;
+
+let pp_synopses synopses =
+  if synopses = []
+  then Pp.nop
+  else
+    Pp.map_tags
+      ~f:(fun _ -> User_message.Style.Details)
+      (Pp.concat [ Pp.verbatim "  "; Pp.enumerate synopses ~f:pp_synopsis ])
+;;
+
+let ls_term (fetch_results : Path.Build.t -> name_synopses list Action_builder.t) =
   let+ builder = Common.Builder.term
   and+ paths = Arg.(value & pos_all string [ "." ] & info [] ~docv:"DIR")
   and+ context =
@@ -76,8 +98,12 @@ let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
         (* If we are printing multiple directories, we print the directory
            name as a header. *)
         (if header then [ Pp.textf "%s:" (Path.to_string dir) ] else [])
-        @ [ Pp.concat_map targets ~f:Pp.text ~sep:Pp.space ]
-        |> Pp.concat ~sep:Pp.space)
+        @ [ Pp.concat_map targets ~sep:Pp.cut ~f:(fun { name; synopses } ->
+              Pp.concat
+                ~sep:(if synopses = [] then Pp.nop else Pp.cut)
+                [ Pp.hbox (Pp.textf "%s" name); pp_synopses synopses ])
+          ]
+        |> Pp.concat ~sep:Pp.cut)
     in
     Console.print
       [ Pp.vbox @@ Pp.concat_map ~f:Pp.vbox paragraphs ~sep:(Pp.seq Pp.space Pp.space) ]
@@ -97,10 +123,24 @@ module Aliases_cmd = struct
         Action_builder.of_memo (Load_rules.load_dir ~dir:(Path.build dir))
       in
       match load_dir with
-      | Load_rules.Loaded.Build build -> Dune_engine.Alias.Name.Map.keys build.aliases
+      | Load_rules.Loaded.Build build ->
+        let name_synopses =
+          build.aliases
+          |> Dune_engine.Alias.Name.Map.mapi ~f:(fun name expansions ->
+            let name = Dune_engine.Alias.Name.to_string name in
+            let synopses =
+              List.filter_map
+                ~f:(fun { Dune_engine.Rules.Dir_rules.Alias_spec.synopsis; loc; _ } ->
+                  synopsis |> Option.map ~f:(fun s -> loc, s))
+                expansions
+            in
+            { name; synopses })
+          |> Dune_engine.Alias.Name.Map.values
+        in
+        name_synopses
       | _ -> []
     in
-    List.map ~f:Dune_engine.Alias.Name.to_string alias_targets
+    alias_targets
   ;;
 
   let term = ls_term fetch_results
@@ -120,16 +160,24 @@ module Targets_cmd = struct
       >>| Path.Build.Map.to_list
       |> Action_builder.of_memo
     in
-    List.filter_map targets ~f:(fun (path, kind) ->
+    List.filter_map targets ~f:(fun (path, target_info) ->
       match Path.Build.equal (Path.Build.parent_exn path) dir with
       | false -> None
       | true ->
         (* directory targets can be distinguied by the trailing path separator
         *)
+        let synopses synopsis loc =
+          synopsis |> Option.to_list |> List.map ~f:(fun synopsis -> loc, synopsis)
+        in
         Some
-          (match kind with
-           | Target.File -> Path.Build.basename path
-           | Directory -> Path.Build.basename path ^ Filename.dir_sep))
+          (match target_info with
+           | { target_type = Target.File; synopsis; loc } ->
+             let target_name = Path.Build.basename path in
+             { name = target_name; synopses = synopses synopsis loc }
+           | { target_type = Target.Directory; synopsis; loc } ->
+             { name = Path.Build.basename path ^ Filename.dir_sep
+             ; synopses = synopses synopsis loc
+             }))
   ;;
 
   let term = ls_term fetch_results

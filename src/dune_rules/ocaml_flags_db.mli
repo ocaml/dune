@@ -11,7 +11,7 @@ val ocaml_flags
 val link_flags
   :  Super_context.t
   -> dir:Path.Build.t
-  -> Link_flags.Spec.t
+  -> Dune_lang.Link_flags.Spec.t
   -> Link_flags.t Memo.t
 
 val link_env : dir:Path.Build.t -> Link_flags.t Memo.t

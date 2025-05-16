@@ -1,4 +1,5 @@
 open Import
+module Link_flags := Dune_lang.Link_flags
 
 module Inline_tests : sig
   type t =

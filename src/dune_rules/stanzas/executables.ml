@@ -1,5 +1,6 @@
 open Import
 open Dune_lang.Decoder
+module Link_flags = Dune_lang.Link_flags
 
 module Names : sig
   type t

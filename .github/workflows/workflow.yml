@@ -182,36 +182,26 @@ jobs:
 
       - name: Checkout Code
         uses: actions/checkout@v4
-        with:
-          path: dune
 
-      - name: Use OCaml 4.14.x
+      - name: Use OCaml 5.2.x
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: 4.14.x
+          ocaml-compiler: 5.2.x
 
       - name: Install faked binaryen-bin package
-        # It's faster to use a cached version
+        # The binaries have already been downloaded
         run: opam install --fake binaryen-bin
 
-      - name: Update Dune
-        working-directory: ./dune
-        run: opam pin add -n dune . --with-version 3.17.0
-
       - name: Install Wasm_of_ocaml
-        run: |
-           opam install wasm_of_ocaml-compiler
+        run: opam install wasm_of_ocaml-compiler
 
       - name: Set Git User
         run: |
           git config --global user.name github-actions[bot]
           git config --global user.email github-actions[bot]@users.noreply.github.com
+
       - name: Run Tests
-        working-directory: ./dune
         run: opam exec -- make test-wasm
-        env:
-          # We disable the Dune cache when running the tests
-          DUNE_CACHE: disabled
 
   create-local-opam-switch:
     name: Create local opam switch

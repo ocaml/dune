@@ -1752,10 +1752,9 @@ let solve_lock_dir
         ~expanded_solver_variable_bindings
     in
     let+ files =
-      List.map opam_packages_to_lock ~f:(fun package ->
-        let name = Package_name.of_opam_package_name (OpamPackage.name package) in
-        let version = OpamPackage.version package in
-        resolve_package name version)
+      Package_name.Map.to_list_map pkgs_by_name ~f:(fun name (package : Lock_dir.Pkg.t) ->
+        Package_version.to_opam_package_version package.info.version
+        |> resolve_package name)
       |> files
     in
     Ok

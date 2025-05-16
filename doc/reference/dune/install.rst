@@ -114,6 +114,8 @@ install files to arbitrary locations on the file system. In 3.11, this behaviour
 is still supported (as some projects may depend on it) but will generate a
 warning and will be removed in a future version of Dune.
 
+.. _including-files-install-stanza:
+
 Including Files in the Install Stanza
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

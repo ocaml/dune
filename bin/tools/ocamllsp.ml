@@ -48,11 +48,25 @@ module Exec = struct
         ]
     | true ->
       let common, config = Common.init builder in
-      Scheduler.go_with_rpc_server ~common ~config (fun () ->
-        let open Fiber.O in
-        let* () = Lock_dev_tool.lock_ocamllsp () |> Memo.run in
-        let+ () = build_ocamllsp common in
-        run_ocamllsp (Common.root common) ~args)
+      (match Dune_util.Global_lock.lock ~timeout:None with
+       | Error () ->
+         Scheduler.go_without_rpc_server ~common ~config (fun () ->
+           let open Fiber.O in
+           let target =
+             Dune_lang.Dep_conf.File
+               (Dune_lang.String_with_vars.make_text
+                  Loc.none
+                  (Path.to_string ocamllsp_exe_path))
+           in
+           let* () = Lock_dev_tool.lock_ocamllsp () |> Memo.run in
+           Build_cmd.build_via_rpc_server ~print_on_success:false [ target ])
+       | Ok () ->
+         Scheduler.go_with_rpc_server ~common ~config (fun () ->
+           let open Fiber.O in
+           let* () = Lock_dev_tool.lock_ocamllsp () |> Memo.run in
+           let+ () = build_ocamllsp common in
+           ()));
+      run_ocamllsp (Common.root common) ~args
   ;;
 
   let info =

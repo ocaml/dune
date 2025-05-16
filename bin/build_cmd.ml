@@ -142,7 +142,7 @@ let run_build_command ~(common : Common.t) ~config ~request =
    for a response from the server indicating that the build succeeded or failed
    and print error messages if the build failed.
 *)
-let build_via_rpc_server targets =
+let build_via_rpc_server ~print_on_success targets =
   let open Fiber.O in
   let+ response = Rpc.Build.build ~wait:true targets in
   match response with
@@ -151,8 +151,10 @@ let build_via_rpc_server targets =
       "Error: %s\n%!"
       (Dyn.to_string (Dune_rpc_private.Response.Error.to_dyn error))
   | Ok Success ->
-    Console.print_user_message
-      (User_message.make [ Pp.text "Success" |> Pp.tag User_message.Style.Success ])
+    if print_on_success
+    then
+      Console.print_user_message
+        (User_message.make [ Pp.text "Success" |> Pp.tag User_message.Style.Success ])
   | Ok (Failure errors) ->
     List.iter errors ~f:(fun { Dune_engine.Compound_user_error.main; _ } ->
       Console.print_user_message main);
@@ -217,7 +219,7 @@ let build =
          perform the RPC call.
       *)
       Scheduler.go_without_rpc_server ~common ~config (fun () ->
-        build_via_rpc_server targets)
+        build_via_rpc_server ~print_on_success:true targets)
     | Ok () ->
       let request setup =
         Target.interpret_targets (Common.root common) config setup targets

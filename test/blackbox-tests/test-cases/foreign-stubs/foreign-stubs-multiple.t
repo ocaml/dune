@@ -49,7 +49,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (modules quad)
   >  (foreign_stubs (language c) (names foo))
   >  (foreign_archives bar qux)
-  >  (foreign_stubs (language cxx) (names baz)))
+  >  (foreign_stubs (language cxx) (names baz) (flags -x c++ :standard)))
   > (rule
   >  (targets bar%{ext_obj})
   >  (deps bar.c)
@@ -122,7 +122,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (modules quad)
   >  (foreign_stubs (language c) (names foo) (extra_deps eight.h))
   >  (foreign_archives bar qux)
-  >  (foreign_stubs (language cxx) (names baz)))
+  >  (foreign_stubs (language cxx) (names baz) (flags -x c++ :standard)))
   > (rule
   >  (targets bar%{ext_obj})
   >  (deps bar.c)
@@ -187,7 +187,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (modules quad)
   >  (foreign_stubs (language c) (names foo) (extra_deps eight.h) (include_dirs another/dir))
   >  (foreign_archives bar qux)
-  >  (foreign_stubs (language cxx) (names baz)))
+  >  (foreign_stubs (language cxx) (names baz) (flags -x c++ :standard)))
   > (rule
   >  (targets bar%{ext_obj})
   >  (deps bar.c)

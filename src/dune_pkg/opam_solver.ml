@@ -952,11 +952,8 @@ module Solver = struct
            Fiber.return None
          | Some sels ->
            let nb_avoids sels =
-             Input.Role.Map.fold
-               ~init:0
-               ~f:(fun sel count ->
-                 if Input.Impl.avoid sel.impl then count + 1 else count)
-               sels
+             Input.Role.Map.fold sels ~init:0 ~f:(fun sel count ->
+               if Input.Impl.avoid sel.impl then count + 1 else count)
            in
            let upper = nb_avoids sels in
            (* There exists a solution, using at least 1 and at most [upper]

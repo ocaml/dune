@@ -3,7 +3,8 @@ open Pkg_common
 module Package_version = Dune_pkg.Package_version
 module Opam_repo = Dune_pkg.Opam_repo
 module Lock_dir = Dune_pkg.Lock_dir
-module Pin_stanza = Dune_pkg.Pin_stanza
+module Pin_stanza = Dune_lang.Pin_stanza
+module Pin = Dune_pkg.Pin
 
 module Progress_indicator = struct
   module Per_lockdir = struct
@@ -52,18 +53,28 @@ module Progress_indicator = struct
   let add_overlay (t : t) = Console.Status_line.add_overlay (Live (fun () -> pp t))
 end
 
+let project_and_package_pins project =
+  let dir = Dune_project.root project in
+  let pins = Dune_project.pins project in
+  let packages = Dune_project.packages project in
+  Pin.DB.add_opam_pins (Pin.DB.of_stanza ~dir pins) packages
+;;
+
+(* For recursive pins, we must traverse the pinned sources. The [project_pins]
+   are the initial pins that we have in our project. *)
 let resolve_project_pins project_pins =
   let scan_project ~read ~files =
     let read file = Memo.of_reproducible_fiber (read file) in
     let open Memo.O in
+    (* Opam files may never contain recursive pins, so don't both reading them *)
     Dune_project.gen_load ~read ~files ~dir:Path.Source.root ~infer_from_opam_files:false
     >>| Option.map ~f:(fun project ->
-      let pins = Dune_project.pins project in
       let packages = Dune_project.packages project in
+      let pins = project_and_package_pins project in
       pins, packages)
     |> Memo.run
   in
-  Pin_stanza.resolve project_pins ~scan_project
+  Pin.resolve project_pins ~scan_project
 ;;
 
 let solve_lock_dir
@@ -83,9 +94,10 @@ let solve_lock_dir
     | None -> project_pins
     | Some lock_dir ->
       let workspace =
-        Pin_stanza.DB.Workspace.extract workspace.pins ~names:lock_dir.pins
+        Pin.DB.Workspace.of_stanza workspace.pins
+        |> Pin.DB.Workspace.extract ~names:lock_dir.pins
       in
-      Pin_stanza.DB.combine_exn workspace project_pins
+      Pin.DB.combine_exn workspace project_pins
   in
   let solver_env =
     solver_env
@@ -211,8 +223,9 @@ let solve
 let project_pins =
   let open Memo.O in
   Dune_rules.Dune_load.projects ()
-  >>| List.fold_left ~init:Pin_stanza.DB.empty ~f:(fun acc project ->
-    Pin_stanza.DB.combine_exn acc (Dune_project.pins project))
+  >>| List.fold_left ~init:Pin.DB.empty ~f:(fun acc project ->
+    let pins = project_and_package_pins project in
+    Pin.DB.combine_exn acc pins)
 ;;
 
 let lock ~version_preference ~lock_dirs_arg ~print_perf_stats =

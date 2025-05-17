@@ -1,5 +1,6 @@
 open Import
 module Stanza = Dune_lang.Stanza
+module Pin_stanza = Dune_lang.Pin_stanza
 open Dune_lang.Decoder
 
 type t =
@@ -27,7 +28,7 @@ type t =
   ; subst_config : (Loc.t * Subst_config.t) option
   ; strict_package_deps : bool
   ; allow_approximate_merlin : Loc.t option
-  ; pins : Dune_pkg.Pin_stanza.DB.t
+  ; pins : Pin_stanza.Project.t
   ; cram : bool
   ; expand_aliases_in_sandbox : bool
   ; opam_file_location : [ `Relative_to_project | `Inside_opam_directory ]
@@ -54,7 +55,6 @@ let file t = t.project_file
 let implicit_transitive_deps t = t.implicit_transitive_deps
 let generate_opam_files t = t.generate_opam_files
 let warnings t = t.warnings
-let pins t = Dune_pkg.Pin_stanza.DB.add_opam_pins t.pins t.packages
 let set_generate_opam_files generate_opam_files t = { t with generate_opam_files }
 let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
 let dialects t = t.dialects
@@ -117,7 +117,7 @@ let to_dyn
     ; "format_config", option Format_config.to_dyn format_config
     ; "subst_config", option Toggle.to_dyn (Option.map ~f:snd subst_config)
     ; "strict_package_deps", bool strict_package_deps
-    ; "pins", Dune_pkg.Pin_stanza.DB.to_dyn pins
+    ; "pins", Pin_stanza.Project.to_dyn pins
     ; "cram", bool cram
     ; "allow_approximate_merlin", opaque allow_approximate_merlin
     ; "expand_aliases_in_sandbox", bool expand_aliases_in_sandbox
@@ -409,7 +409,7 @@ let infer ~dir info packages =
   let opam_file_location = opam_file_location_default ~lang in
   { name
   ; allow_approximate_merlin = None
-  ; pins = Dune_pkg.Pin_stanza.DB.empty
+  ; pins = Pin_stanza.Project.empty
   ; packages
   ; root
   ; info
@@ -556,7 +556,7 @@ let encode : t -> Dune_lang.t list =
   let version =
     Option.map ~f:(constr "version" Package_version.encode) version |> Option.to_list
   in
-  let pins = Dune_pkg.Pin_stanza.DB.encode pins in
+  let pins = Pin_stanza.Project.encode pins in
   List.concat
     [ [ lang_stanza; name ]
     ; flags
@@ -600,6 +600,7 @@ let strict_package_deps t = t.strict_package_deps
 let allow_approximate_merlin t = t.allow_approximate_merlin
 let cram t = t.cram
 let info t = t.info
+let pins t = t.pins
 
 let update_execution_parameters t ep =
   ep
@@ -752,7 +753,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
      and+ version = field_o "version" Package_version.decode
      and+ info = Package_info.decode ()
      and+ packages = multi_field "package" (Package.decode ~dir)
-     and+ pins = Dune_pkg.Pin_stanza.DB.decode ~dir
+     and+ pins = Pin_stanza.Project.decode
      and+ explicit_extensions =
        multi_field
          "using"

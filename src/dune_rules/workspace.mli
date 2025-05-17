@@ -1,4 +1,5 @@
 (** Workspaces definitions *)
+module Pin_stanza := Dune_lang.Pin_stanza
 
 open Import
 
@@ -118,7 +119,7 @@ type t = private
   ; repos : Dune_pkg.Pkg_workspace.Repository.t list
   ; lock_dirs : Lock_dir.t list
   ; dir : Path.Source.t
-  ; pins : Dune_pkg.Pin_stanza.DB.Workspace.t
+  ; pins : Pin_stanza.Workspace.t
   }
 
 val equal : t -> t -> bool

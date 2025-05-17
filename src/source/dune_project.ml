@@ -49,6 +49,7 @@ let equal : t -> t -> bool = phys_equal
 let hash = Poly.hash
 let packages t = t.packages
 let name t = t.name
+let version t = t.version
 let root t = t.root
 let stanza_parser t = Dune_lang.Decoder.set key t t.stanza_parser
 let file t = t.project_file

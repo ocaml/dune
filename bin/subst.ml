@@ -141,8 +141,7 @@ let subst_file path ~map opam_package_files =
         try
           subst_string ("version: \"%%" ^ "VERSION_NUM" ^ "%%\"") ~map (Path.source path)
         with
-        | User_error.E e ->
-          raise (User_error.E { e with loc = Some (Loc.in_file (Path.source path)) }))
+        | User_error.E _ -> None)
       else None
     in
     let path = Path.source path in
@@ -264,6 +263,11 @@ end
 
 let make_watermark_map ~commit ~version ~dune_project ~info =
   let dune_project = Dune_project.project dune_project in
+  let version =
+    match version with
+    | Some _ -> version
+    | None -> Option.map ~f:Package_version.to_string (Dune_project.version dune_project)
+  in
   let version_num =
     let open Option.O in
     let+ version = version in

@@ -14,12 +14,6 @@ let of_filename_relative_to_initial_cwd s =
 let descendant p ~of_ = Dyn.option Path.to_dyn (Path.descendant p ~of_) |> print_dyn
 let is_descendant p ~of_ = Dyn.bool (Path.is_descendant p ~of_) |> print_dyn
 
-let explode s =
-  let open Dyn in
-  let exploded = Path.explode (Path.of_string s) in
-  option (list string) exploded |> print_dyn
-;;
-
 let reach p ~from =
   let p = Path.of_string p in
   let from = Path.of_string from in
@@ -254,38 +248,6 @@ let%expect_test _ =
   [%expect
     {|
 None
-|}]
-;;
-
-let%expect_test _ =
-  explode "a/b/c";
-  [%expect
-    {|
-Some [ "a"; "b"; "c" ]
-|}]
-;;
-
-let%expect_test _ =
-  explode "a/b";
-  [%expect
-    {|
-Some [ "a"; "b" ]
-|}]
-;;
-
-let%expect_test _ =
-  explode "a";
-  [%expect
-    {|
-Some [ "a" ]
-|}]
-;;
-
-let%expect_test _ =
-  explode "";
-  [%expect
-    {|
-Some []
 |}]
 ;;
 

@@ -1194,19 +1194,6 @@ let split_first_component t =
   | _ -> None
 ;;
 
-let explode t =
-  match local_or_external t with
-  | In_source_dir p when Local.is_root p -> Some []
-  | In_source_dir s -> Some (String.split (Local.to_string s) ~on:'/')
-  | External _ -> None
-;;
-
-let explode_exn t =
-  match explode t with
-  | Some s -> s
-  | None -> Code_error.raise "Path.explode_exn" [ "path", to_dyn t ]
-;;
-
 let relative_to_source_in_build_or_external ?error_loc ~dir s =
   match Build.extract_build_context dir with
   | None -> relative ?error_loc (In_build_dir dir) s

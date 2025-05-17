@@ -178,7 +178,13 @@ module Dune_project = struct
 
   let load ~dir ~files ~infer_from_opam_files =
     let open Memo.O in
-    let+ project = Dune_project.load ~dir ~files ~infer_from_opam_files in
+    let+ project =
+      Dune_project.load
+        ~dir
+        ~files
+        ~infer_from_opam_files
+        ~load_opam_file_with_contents:Dune_pkg.Opam_file.load_opam_file_with_contents
+    in
     let open Option.O in
     let* project = project in
     let* project_file = Dune_project.file project in

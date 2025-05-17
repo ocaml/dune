@@ -251,6 +251,7 @@ and find_dir_raw
         ~dir:path
         ~files:(Readdir.files readdir)
         ~infer_from_opam_files:false
+        ~load_opam_file_with_contents:Dune_pkg.Opam_file.load_opam_file_with_contents
       >>| Option.map
             ~f:(Only_packages.filter_packages_in_project ~vendored:(status = Vendored))
       >>| Option.value ~default:project
@@ -271,7 +272,11 @@ let root =
   in
   let vcs = Dir0.Vcs.get_vcs ~default:Ancestor_vcs ~readdir ~path in
   let* project =
-    Dune_project.load ~dir:path ~files:(Readdir.files readdir) ~infer_from_opam_files:true
+    Dune_project.load
+      ~dir:path
+      ~files:(Readdir.files readdir)
+      ~infer_from_opam_files:true
+      ~load_opam_file_with_contents:Dune_pkg.Opam_file.load_opam_file_with_contents
     >>| (function
      | Some p -> p
      | None -> Dune_project.anonymous ~dir:path Package_info.empty Package.Name.Map.empty)

@@ -113,7 +113,7 @@ let parse_stanzas ~file ~(eval : eval) sexps =
       | Some f -> f
       | None ->
         (* TODO this is wrong *)
-        Path.Source.relative eval.dir Dune_file0.fname
+        Path.Source.relative eval.dir Source.Dune_file.fname
     in
     let stanza_parser =
       Dune_project.stanza_parser eval.project |> Warning_emit.Bag.set warnings
@@ -380,9 +380,9 @@ module Eval = struct
   open Memo.O
 
   let context_independent ~eval dune_file =
-    let file = Dune_file0.path dune_file in
-    let static = Dune_file0.get_static_sexp dune_file in
-    match Dune_file0.kind dune_file with
+    let file = Source.Dune_file.path dune_file in
+    let static = Source.Dune_file.get_static_sexp dune_file in
+    match Source.Dune_file.kind dune_file with
     | Plain ->
       let+ dune_file, dynamic_includes = parse static ~file ~eval in
       Literal (eval, dune_file, dynamic_includes)
@@ -430,7 +430,7 @@ module Eval = struct
           let origin =
             Path.Build.append_source
               (Context_name.build_dir context)
-              (Path.Source.relative eval.dir Dune_file0.fname)
+              (Path.Source.relative eval.dir Source.Dune_file.fname)
           in
           let include_context = Include_stanza.in_build_file origin in
           collect_dynamic_includes eval include_context origin dynamic_includes

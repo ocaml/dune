@@ -46,7 +46,7 @@ type constructors = Stanza.Parser.t list
 let stanzas : constructors =
   [ Site_stanzas.all
   ; Cram_stanza.stanza
-  ; List.map Dune_file0.statically_evaluated_stanzas ~f:(fun stanza ->
+  ; List.map Source.Dune_file.statically_evaluated_stanzas ~f:(fun stanza ->
       ( stanza
       , let* loc = loc in
         User_error.raise

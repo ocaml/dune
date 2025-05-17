@@ -54,7 +54,7 @@ module Dir0 = struct
     ; status : Source_dir_status.t
     ; files : Filename.Set.t
     ; sub_dirs : sub_dir Filename.Map.t
-    ; dune_file : Dune_file0.t option
+    ; dune_file : Dune_file.t option
     ; project : Dune_project.t
     ; vcs : Vcs.t
     }
@@ -153,7 +153,7 @@ and virtual_ ~project ~sub_dirs ~parent_status ~dune_file ~init ~path =
   | Some df ->
     (* There's no files to read for virtual directories, but we still record
        their entries *)
-    let dirs = Dune_file0.sub_dirnames df in
+    let dirs = Dune_file.sub_dirnames df in
     let status_map = Source_dir_status.Spec.eval sub_dirs ~dirs in
     List.fold_left dirs ~init ~f:(fun acc fn ->
       match eval_status ~status_map ~parent_status fn with
@@ -193,15 +193,13 @@ and contents
       ~(dir_status : Source_dir_status.t)
   =
   let files = Readdir.files readdir in
-  let+ dune_file =
-    Dune_file0.load ~dir:path dir_status project ~files ~parent:dune_file
-  in
+  let+ dune_file = Dune_file.load ~dir:path dir_status project ~files ~parent:dune_file in
   let vcs = Dir0.Vcs.get_vcs ~default:default_vcs ~readdir ~path in
   let sub_dirs =
     let sub_dirs =
       match dune_file with
       | None -> Source_dir_status.Spec.default
-      | Some dune_file -> Dune_file0.sub_dir_status dune_file
+      | Some dune_file -> Dune_file.sub_dir_status dune_file
     in
     let dirs =
       physical

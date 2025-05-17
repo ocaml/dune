@@ -27,7 +27,6 @@ include struct
   open Source
   module Source_tree = Source_tree
   module Source_dir_status = Source_dir_status
-  module Dune_project = Dune_project
 end
 
 include struct
@@ -76,6 +75,7 @@ include struct
   module Package_info = Package_info
   module Section = Section
   module Dune_project_name = Dune_project_name
+  module Dune_project = Dune_project
 end
 
 module Log = Dune_util.Log

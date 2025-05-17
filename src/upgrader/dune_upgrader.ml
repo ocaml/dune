@@ -5,7 +5,6 @@ include struct
   module Source_tree = Source_tree
   module Source_dir_status = Source_dir_status
   module Dune_file0 = Dune_file0
-  module Dune_project = Dune_project
 end
 
 include struct
@@ -19,6 +18,7 @@ end
 include struct
   open Dune_lang
   module Dune_project_name = Dune_project_name
+  module Dune_project = Dune_project
 end
 
 module Console = Dune_console

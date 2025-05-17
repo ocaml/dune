@@ -60,7 +60,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
       in
       Memo.List.map unexpanded_file_bindings ~f:(fun fb ->
         let+ p =
-          File_binding.Unexpanded.destination_relative_to_install_path
+          File_binding_expand.destination_relative_to_install_path
             fb
             ~section:Bin
             ~expand:expand_str

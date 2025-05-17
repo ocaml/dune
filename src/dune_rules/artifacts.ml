@@ -88,7 +88,7 @@ let binary t ?hint ?(where = Install_dir) ~loc name =
      | Original_path ->
        let+ expanded =
          let* expander = Expander0.get ~dir in
-         File_binding.Unexpanded.expand
+         File_binding_expand.expand
            binding
            ~dir
            ~f:(Expander0.expand_str_and_build_deps expander)

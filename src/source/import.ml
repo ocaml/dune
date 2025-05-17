@@ -44,4 +44,5 @@ include struct
   module Dune_project_name = Dune_project_name
   module Package = Package
   module Dialect = Dialect
+  module Dune_project = Dune_project
 end

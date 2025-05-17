@@ -5,7 +5,7 @@ If you're a contributor, please include your CHANGES entry in a file
 `doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
 changelog properly.
 
-3.18.2 (2024-04-29)
+3.18.2 (2025-04-29)
 -------------------
 
 ### Fixed

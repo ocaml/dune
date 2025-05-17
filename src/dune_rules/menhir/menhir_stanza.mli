@@ -12,6 +12,7 @@ type t =
   ; enabled_if : Blang.t
   ; explain : Blang.t option
   ; menhir_syntax : Syntax.Version.t
+  ; messages : string option
   }
 
 val explain_since : Syntax.Version.t

@@ -318,9 +318,6 @@ val drop_optional_sandbox_root : t -> t
     otherwise fail. *)
 val drop_optional_build_context_src_exn : t -> Source.t
 
-val explode : t -> Filename.t list option
-val explode_exn : t -> Filename.t list
-
 (** The build directory *)
 val build_dir : t
 

@@ -28,7 +28,7 @@ module Dir : sig
   val status : t -> Source_dir_status.t
 
   (** Return the contents of the dune (or jbuild) file in this directory *)
-  val dune_file : t -> Dune_file0.t option
+  val dune_file : t -> Dune_file.t option
 
   (** Return the project this directory is part of *)
   val project : t -> Dune_project.t

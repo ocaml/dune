@@ -12,6 +12,12 @@ val solver_env
   -> unset_solver_vars_from_context:Dune_lang.Package_variable_name.Set.t option
   -> Dune_pkg.Solver_env.t
 
+val poll_solver_env_from_current_system : unit -> Dune_pkg.Solver_env.t Fiber.t
+
+val solver_env_from_system_and_context
+  :  lock_dir_path:Path.Source.t
+  -> Dune_pkg.Solver_env.t Fiber.t
+
 module Version_preference : sig
   type t := Dune_pkg.Version_preference.t
 

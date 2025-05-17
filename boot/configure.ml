@@ -22,6 +22,7 @@ let default_toggles : (string * [ `Disabled | `Enabled ]) list =
   ; "pkg_build_progress", `Disabled
   ; "lock_dev_tool", `Disabled
   ; "bin_dev_tools", `Disabled
+  ; "portable_lock_dir", `Disabled
   ]
 ;;
 
@@ -110,6 +111,10 @@ let () =
       , " Enable obtaining dev-tools binarys from the binary package opam repository. \
          Allows fast installation of dev-tools. \n\
         \      This flag is experimental and shouldn't be relied on by packagers." )
+    ; ( "--portable-lock-dir"
+      , toggle "portable_lock_dir"
+      , "Generate portable lock dirs. If this feature is disabled then lock dirs will be \
+         specialized to the machine where they are generated." )
     ]
   in
   let anon s = bad "Don't know what to do with %s" s in

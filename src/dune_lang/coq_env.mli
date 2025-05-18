@@ -18,4 +18,4 @@ val coqdep_flags : t -> Ordered_set_lang.Unexpanded.t
 val coqdoc_flags : t -> Ordered_set_lang.Unexpanded.t
 
 (** Parser for env stanza. *)
-val decode : t Dune_lang.Decoder.fields_parser
+val decode : t Decoder.fields_parser

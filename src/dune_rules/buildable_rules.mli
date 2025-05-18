@@ -44,5 +44,5 @@ val modules_rules
 val ocaml_flags
   :  Super_context.t
   -> dir:Path.Build.t
-  -> Ocaml_flags.Spec.t
+  -> Dune_lang.Ocaml_flags.Spec.t
   -> Ocaml_flags.t Memo.t

@@ -51,3 +51,4 @@ module Link_flags = Link_flags
 module Dune_project = Dune_project
 module File_binding = File_binding
 module Foreign_language = Foreign_language
+module Ocaml_flags = Ocaml_flags

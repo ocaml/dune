@@ -1,3 +1,5 @@
+open Import
+
 module Cm_kind : sig
   type t =
     | Cmi
@@ -16,3 +18,5 @@ module Cm_kind : sig
     val make_all : 'a -> 'a t
   end
 end
+
+val syntax : Syntax.t

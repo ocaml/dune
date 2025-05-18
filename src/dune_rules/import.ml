@@ -116,6 +116,7 @@ include struct
   module Preprocess = Preprocess
   module Dune_project = Dune_project
   module File_binding = File_binding
+  module Foreign_language = Foreign_language
 end
 
 include Dune_engine.No_io

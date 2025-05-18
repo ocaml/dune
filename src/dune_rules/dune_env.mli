@@ -1,5 +1,6 @@
 open Import
 module Link_flags := Dune_lang.Link_flags
+module Ocaml_flags := Dune_lang.Ocaml_flags
 
 module Inline_tests : sig
   type t =

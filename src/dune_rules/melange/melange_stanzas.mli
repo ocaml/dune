@@ -27,5 +27,3 @@ module Emit : sig
   val decode : t Dune_lang.Decoder.t
   val target_dir : t -> dir:Path.Build.t -> Path.Build.t
 end
-
-val syntax : Syntax.t

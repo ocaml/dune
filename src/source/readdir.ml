@@ -65,6 +65,11 @@ let is_temp_file fn =
   || String.is_suffix fn ~suffix:"~"
 ;;
 
+let ignore_pattern =
+  match Sys.getenv "DUNE_IGNORE" with
+  | exception _ -> None
+  | pat -> Some (Glob.of_string pat)
+
 let of_source_path_impl path =
   Fs_memo.dir_contents (In_source_dir path)
   >>= function
@@ -88,6 +93,9 @@ let of_source_path_impl path =
       |> Memo.parallel_map ~f:(fun (fn, (kind : File_kind.t)) ->
         let path = Path.Source.relative path fn in
         if is_special kind || Path.Source.is_in_build_dir path || is_temp_file fn
+           || (match ignore_pattern with
+                | None -> false
+                | Some glob -> Glob.test glob fn)
         then Memo.return List.Skip
         else
           let+ is_directory, file =

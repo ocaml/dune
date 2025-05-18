@@ -335,26 +335,27 @@ module Run (P : PARAMS) = struct
          (run menhir parser.mly --list-errors)))
 
        (rule
-        (with-stdout-to parser_messages.messages.update
-         (run menhir parser.mly --update-errors parser_messages.messages)))
+        (with-stdout-to parser_messages.messages.merged
+         (run menhir parser.mly --merge-errors parser_messages.messages.list
+                                --merge-errors parser_messages.messages)))
 
        (rule
-        (with-stdout-to parser_messages.messages.new
-         (run menhir parser.mly --merge-errors parser_messages.messages.list
-                                --merge-errors parser_messages.messages.update)))
+        (with-stdout-to parser_messages.messages.updated
+         (run sed -e "/^##/d" parser_messages.messages.merged)))
 
        (rule
         (target parser_messages.ml)
         (action
          (prog
-          (diff parser_messages.messages.new parser_messages.messages)
+          (diff parser_messages.messages.updated parser_messages.messages)
           (run menhir parser.mly --compile-errors parser_messages.messages))))
   *)
 
   let messages m = Path.relative (Path.build dir) (m ^ ".messages")
-  let messages_new m = Path.Build.relative dir (m ^ ".messages.new")
-  let messages_list m = Path.Build.relative dir (m ^ ".messages.list")
-  let messages_update m = Path.Build.relative dir (m ^ ".messages.update")
+  let messages_merged m = Path.Build.relative dir (m ^ ".messages.merged")
+  let messages_updated m = Path.Build.relative dir (m ^ ".messages.updated")
+  let messages_auto m = Path.Build.relative dir (m ^ ".messages.auto")
+  let messages_check m = Path.Build.relative dir (m ^ ".messages.check")
   let messages_ml m = Path.Build.relative dir (m ^ ".ml")
 
   let process_messages (stanza : stanza) (m : string) : unit Memo.t =
@@ -365,37 +366,59 @@ module Run (P : PARAMS) = struct
         ?stdout_to
         ([ Command.Args.dyn expanded_flags; Deps (sources stanza.modules) ] @ args)
     in
-    let list_errors = menhir ~stdout_to:(messages_list m) [ A "--list-errors" ] in
-    let update_errors =
-      menhir ~stdout_to:(messages_update m) [ A "--update-errors"; Dep (messages m) ]
+    let list_errors = menhir ~stdout_to:(messages_auto m) [ A "--list-errors" ] in
+    let compare_errors =
+      menhir
+        ~stdout_to:(messages_check m)
+        [ A "--compare-errors"
+        ; Dep (Path.build (messages_auto m))
+        ; A "--compare-errors"
+        ; Dep (messages m)
+        ]
     in
     let merge_errors =
       menhir
-        ~stdout_to:(messages_new m)
+        ~stdout_to:(messages_merged m)
         [ A "--merge-errors"
-        ; Dep (Path.build (messages_list m))
+        ; Dep (Path.build (messages_auto m))
         ; A "--merge-errors"
-        ; Dep (Path.build (messages_update m))
+        ; Dep (messages m)
         ]
+    in
+    let strip_errors =
+      Action_builder.write_file_dyn
+        (messages_updated m)
+        (let open Action_builder.O in
+         let+ lines = Action_builder.lines_of (Path.build (messages_merged m)) in
+         let lines =
+           List.filter ~f:(fun s -> not (String.starts_with ~prefix:"##" s)) lines
+         in
+         let buf = Buffer.create 0 in
+         List.iter
+           ~f:(fun s ->
+             Buffer.add_string buf s;
+             Buffer.add_char buf '\n')
+           lines;
+         Buffer.contents buf)
     in
     let compile_errors =
       let diff =
         let action =
           let open Action_builder.O in
-          let+ () = Action_builder.path (Path.build (messages_new m))
+          let+ () = Action_builder.path (Path.build (messages_updated m))
           and+ () = Action_builder.path (messages m) in
-          Action.Full.make (Promote.Diff_action.diff (messages m) (messages_new m))
+          Action.Full.make (Promote.Diff_action.diff (messages m) (messages_updated m))
         in
         { With_targets.build = action; targets = Targets.empty }
       in
       let compile =
         menhir ~stdout_to:(messages_ml m) [ A "--compile-errors"; Dep (messages m) ]
       in
-      Action_builder.progn [ diff; compile ]
+      Action_builder.progn [ diff; compare_errors; compile ]
     in
     Memo.sequential_iter
       ~f:rule
-      [ list_errors; update_errors; merge_errors; compile_errors ]
+      [ list_errors; merge_errors; strip_errors; compile_errors ]
   ;;
 
   (* ------------------------------------------------------------------------ *)

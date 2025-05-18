@@ -52,7 +52,7 @@ let decode =
        Dune_lang.Link_flags.Spec.decode
          ~check:(Some (Dune_lang.Syntax.since syntax (1, 3)))
      (* TODO use this field? *)
-     and+ _flags = Ocaml_flags.Spec.decode in
+     and+ _flags = Dune_lang.Ocaml_flags.Spec.decode in
      { loc
      ; files
      ; libraries

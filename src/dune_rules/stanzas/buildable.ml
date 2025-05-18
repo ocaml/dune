@@ -1,5 +1,6 @@
 open Import
 open Dune_lang.Decoder
+module Ocaml_flags = Dune_lang.Ocaml_flags
 
 type for_ =
   | Executable

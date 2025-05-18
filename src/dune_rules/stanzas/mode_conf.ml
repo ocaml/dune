@@ -144,7 +144,8 @@ module Lib = struct
       [ "byte", return @@ Ocaml Byte
       ; "native", return @@ Ocaml Native
       ; "best", return @@ Ocaml Best
-      ; "melange", Dune_lang.Syntax.since Melange_stanzas.syntax (0, 1) >>> return Melange
+      ; ( "melange"
+        , Dune_lang.Syntax.since Dune_lang.Melange.syntax (0, 1) >>> return Melange )
       ]
   ;;
 

@@ -1,5 +1,4 @@
 open Import
-open Dune_lang.Decoder
 
 (* We use the same set of options when producing Wasm code with
    wasm_of_ocaml, since the compilation process is similar and
@@ -65,6 +64,7 @@ module Sourcemap = struct
     | File
 
   let decode ~mode =
+    let open Decoder in
     match (mode : Mode.t) with
     | JS -> enum [ "no", No; "inline", Inline; "file", File ]
     | Wasm -> enum [ "no", No; "inline", Inline ]
@@ -96,6 +96,7 @@ module Flags = struct
   let field_oslu name = Ordered_set_lang.Unexpanded.field name
 
   let decode =
+    let open Decoder in
     let+ build_runtime = field_oslu "build_runtime_flags"
     and+ compile = field_oslu "flags"
     and+ link = field_oslu "link_flags" in
@@ -138,13 +139,13 @@ module Flags = struct
   ;;
 
   let dump ~mode t =
-    let open Action_builder.O in
+    let open Dune_engine.Action_builder.O in
     let+ build_runtime = t.build_runtime
     and+ compile = t.compile
     and+ link = t.link in
     let prefix = Mode.to_string mode in
     List.map
-      ~f:Dune_lang.Encoder.(pair string (list string))
+      ~f:Encoder.(pair string (list string))
       [ prefix ^ "_of_ocaml_flags", compile
       ; prefix ^ "_of_ocaml_build_runtime_flags", build_runtime
       ; prefix ^ "_of_ocaml_link_flags", link
@@ -157,7 +158,9 @@ module Compilation_mode = struct
     | Whole_program
     | Separate_compilation
 
-  let decode = enum [ "whole_program", Whole_program; "separate", Separate_compilation ]
+  let decode =
+    Decoder.enum [ "whole_program", Whole_program; "separate", Separate_compilation ]
+  ;;
 
   let equal x y =
     match x, y with
@@ -179,7 +182,8 @@ module In_buildable = struct
     }
 
   let decode ~in_library ~mode =
-    let* syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+    let open Decoder in
+    let* syntax_version = Syntax.get_exn Stanza.syntax in
     if syntax_version < (3, 0)
     then
       fields
@@ -202,9 +206,7 @@ module In_buildable = struct
         (let+ flags = Flags.decode
          and+ enabled_if =
            only_in_executable
-             (field_o
-                "enabled_if"
-                (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Blang.decode))
+             (field_o "enabled_if" (Syntax.since Stanza.syntax (3, 17) >>> Blang.decode))
          and+ javascript_files = field "javascript_files" (repeat string) ~default:[]
          and+ wasm_files =
            match (mode : Mode.t) with
@@ -212,18 +214,18 @@ module In_buildable = struct
            | Wasm ->
              field
                "wasm_files"
-               (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> repeat string)
+               (Syntax.since Stanza.syntax (3, 17) >>> repeat string)
                ~default:[]
          and+ compilation_mode =
            only_in_executable
              (field_o
                 "compilation_mode"
-                (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Compilation_mode.decode))
+                (Syntax.since Stanza.syntax (3, 17) >>> Compilation_mode.decode))
          and+ sourcemap =
            only_in_executable
              (field_o
                 "sourcemap"
-                (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode ~mode))
+                (Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode ~mode))
          in
          { flags; enabled_if; javascript_files; wasm_files; compilation_mode; sourcemap }))
   ;;
@@ -287,33 +289,31 @@ module Env = struct
   type 'a t =
     { compilation_mode : Compilation_mode.t option
     ; sourcemap : Sourcemap.t option
-    ; runtest_alias : Alias.Name.t option
+    ; runtest_alias : Alias_name.t option
     ; flags : 'a Flags.t
     ; enabled_if : Blang.t option
     }
 
   let decode ~mode =
+    let open Decoder in
     fields
     @@ let+ compilation_mode = field_o "compilation_mode" Compilation_mode.decode
        and+ sourcemap =
          field_o
            "sourcemap"
-           (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode ~mode)
-       and+ runtest_alias = field_o "runtest_alias" Dune_lang.Alias.decode
+           (Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode ~mode)
+       and+ runtest_alias = field_o "runtest_alias" Alias.decode
        and+ flags = Flags.decode
        and+ enabled_if =
-         field_o
-           "enabled_if"
-           (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Blang.decode)
+         field_o "enabled_if" (Syntax.since Stanza.syntax (3, 17) >>> Blang.decode)
        in
-       Option.iter ~f:Alias0.register_as_standard runtest_alias;
        { compilation_mode; sourcemap; runtest_alias; flags; enabled_if }
   ;;
 
   let equal { compilation_mode; sourcemap; runtest_alias; flags; enabled_if } t =
     Option.equal Compilation_mode.equal compilation_mode t.compilation_mode
     && Option.equal Sourcemap.equal sourcemap t.sourcemap
-    && Option.equal Alias.Name.equal runtest_alias t.runtest_alias
+    && Option.equal Alias_name.equal runtest_alias t.runtest_alias
     && Flags.equal Ordered_set_lang.Unexpanded.equal flags t.flags
     && Option.equal Blang.equal enabled_if t.enabled_if
   ;;

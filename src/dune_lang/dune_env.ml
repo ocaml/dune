@@ -1,12 +1,8 @@
 open Import
-open Dune_lang.Decoder
-module Link_flags = Dune_lang.Link_flags
-module Ocaml_flags = Dune_lang.Ocaml_flags
+open Decoder
 
 let foreign_flags ~since =
-  let check =
-    Option.map since ~f:(fun since -> Dune_lang.Syntax.since Stanza.syntax since)
-  in
+  let check = Option.map since ~f:(fun since -> Syntax.since Stanza.syntax since) in
   let+ c = Ordered_set_lang.Unexpanded.field "c_flags" ?check
   and+ cxx = Ordered_set_lang.Unexpanded.field "cxx_flags" ?check in
   Foreign_language.Dict.make ~c ~cxx
@@ -14,10 +10,10 @@ let foreign_flags ~since =
 
 let menhir_flags ~since ~deleted_in =
   let decode =
-    Dune_lang.Syntax.since Menhir_stanza.syntax since
-    >>> Dune_lang.Syntax.deleted_in
+    Syntax.since Menhir.syntax since
+    >>> Syntax.deleted_in
           ~extra_info:"Use (menhir (flags ...)) instead."
-          Menhir_stanza.syntax
+          Menhir.syntax
           deleted_in
     >>> Ordered_set_lang.Unexpanded.decode
   in
@@ -192,16 +188,14 @@ let equal { loc = _; rules } t =
 ;;
 
 let inline_tests_field =
-  field_o
-    "inline_tests"
-    (Dune_lang.Syntax.since Stanza.syntax (1, 11) >>> Inline_tests.decode)
+  field_o "inline_tests" (Syntax.since Stanza.syntax (1, 11) >>> Inline_tests.decode)
 ;;
 
 let env_vars_field =
   field
     "env-vars"
     ~default:Env.empty
-    (Dune_lang.Syntax.since Stanza.syntax (1, 5)
+    (Syntax.since Stanza.syntax (1, 5)
      >>> located (repeat (pair string string))
      >>| fun (loc, pairs) ->
      match Env.Map.of_list pairs with
@@ -211,47 +205,42 @@ let env_vars_field =
 ;;
 
 let odoc_field =
-  field
-    "odoc"
-    ~default:Odoc.empty
-    (Dune_lang.Syntax.since Stanza.syntax (2, 4) >>> Odoc.decode)
+  field "odoc" ~default:Odoc.empty (Syntax.since Stanza.syntax (2, 4) >>> Odoc.decode)
 ;;
 
 let menhir_field ~since =
-  field_o
-    "menhir"
-    (Dune_lang.Syntax.since Menhir_stanza.syntax since >>> Menhir_env.decode)
+  field_o "menhir" (Syntax.since Menhir.syntax since >>> Menhir_env.decode)
 ;;
 
 let js_of_ocaml_field =
   field
     "js_of_ocaml"
     ~default:Js_of_ocaml.Env.empty
-    (Dune_lang.Syntax.since Stanza.syntax (3, 0) >>> Js_of_ocaml.Env.decode ~mode:JS)
+    (Syntax.since Stanza.syntax (3, 0) >>> Js_of_ocaml.Env.decode ~mode:JS)
 ;;
 
 let wasm_of_ocaml_field =
   field
     "wasm_of_ocaml"
     ~default:Js_of_ocaml.Env.empty
-    (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Js_of_ocaml.Env.decode ~mode:Wasm)
+    (Syntax.since Stanza.syntax (3, 17) >>> Js_of_ocaml.Env.decode ~mode:Wasm)
 ;;
 
-let bin_annot = field_o "bin_annot" (Dune_lang.Syntax.since Stanza.syntax (3, 8) >>> bool)
+let bin_annot = field_o "bin_annot" (Syntax.since Stanza.syntax (3, 8) >>> bool)
 
 let config =
   let+ flags = Ocaml_flags.Spec.decode
   and+ foreign_flags = foreign_flags ~since:(Some (1, 7))
   and+ link_flags =
-    Link_flags.Spec.decode ~check:(Some (Dune_lang.Syntax.since Stanza.syntax (3, 0)))
+    Link_flags.Spec.decode ~check:(Some (Syntax.since Stanza.syntax (3, 0)))
   and+ env_vars = env_vars_field
   and+ binaries =
     field_o
       "binaries"
-      (Dune_lang.Syntax.since Stanza.syntax (1, 6) >>> File_binding.Unexpanded.L.decode)
+      (Syntax.since Stanza.syntax (1, 6) >>> File_binding.Unexpanded.L.decode)
   and+ inline_tests = inline_tests_field
-  and+ menhir = menhir_field ~since:Menhir_stanza.explain_since
-  and+ menhir_flags = menhir_flags ~since:(2, 1) ~deleted_in:Menhir_stanza.explain_since
+  and+ menhir = menhir_field ~since:Menhir.explain_since
+  and+ menhir_flags = menhir_flags ~since:(2, 1) ~deleted_in:Menhir.explain_since
   and+ odoc = odoc_field
   and+ js_of_ocaml = js_of_ocaml_field
   and+ wasm_of_ocaml = wasm_of_ocaml_field
@@ -314,10 +303,10 @@ let check_rules ~version ~loc rules =
 ;;
 
 let decode =
-  let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 0)
+  let+ () = Syntax.since Stanza.syntax (1, 0)
   and+ loc = loc
   and+ rules = repeat rule
-  and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
+  and+ version = Syntax.get_exn Stanza.syntax in
   check_rules ~version ~loc rules;
   { loc; rules }
 ;;

@@ -1062,8 +1062,10 @@ module DB = struct
 
   let get package_universe =
     let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
-    let+ all = Package_universe.lock_dir package_universe in
-    { all = all.packages; system_provided = dune }
+    let+ lock_dir = Package_universe.lock_dir package_universe
+    and+ solver_env = Lock_dir.Sys_vars.solver_env () in
+    let all = Dune_pkg.Lock_dir.packages_on_platform lock_dir ~platform:solver_env in
+    { all; system_provided = dune }
   ;;
 end
 
@@ -1106,25 +1108,53 @@ end = struct
          ; info
          ; exported_env
          ; depexts
+         ; enabled_on_platforms = _
          } as pkg) ->
       assert (Package.Name.equal name info.name);
+      let* platform = Lock_dir.Sys_vars.solver_env () in
+      let choose_for_current_platform field =
+        Dune_pkg.Lock_dir.Conditional_choice.choose_for_platform field ~platform
+      in
+      let depends = choose_for_current_platform depends |> Option.value ~default:[] in
       let* depends =
-        Memo.parallel_map depends ~f:(fun name ->
-          resolve db name package_universe
+        Memo.parallel_map depends ~f:(fun dependency ->
+          resolve db (dependency.loc, dependency.name) package_universe
           >>| function
           | `Inside_lock_dir pkg -> Some pkg
           | `System_provided -> None)
         >>| List.filter_opt
       and+ files_dir =
-        let+ lock_dir =
+        let* lock_dir =
           Package_universe.lock_dir_path package_universe >>| Option.value_exn
+        in
+        let+ files_dir =
+          (* TODO(steve): simplify this once portable lockdirs become the
+             default. This logic currently handles both the cases where
+             lockdirs are non-portable (the files dir won't have a version
+             number in its name) and the case where lockdirs are portable (the
+             solution may have multiple versions of the same package
+             necessitating version numbers in files dirs to prevent
+             collisions). *)
+          let path_without_version =
+            Dune_pkg.Lock_dir.Pkg.files_dir info.name None ~lock_dir
+          in
+          let path_with_version =
+            Dune_pkg.Lock_dir.Pkg.files_dir info.name (Some info.version) ~lock_dir
+          in
+          let+ path_with_version_exists =
+            Fs_memo.dir_exists
+              (Path.source path_with_version |> Path.as_outside_build_dir_exn)
+          in
+          if path_with_version_exists then path_with_version else path_without_version
         in
         Path.Build.append_source
           (Context_name.build_dir (Package_universe.context_name package_universe))
-          (Dune_pkg.Lock_dir.Pkg.files_dir info.name ~lock_dir)
+          files_dir
       in
       let id = Pkg.Id.gen () in
       let write_paths = Paths.make package_universe name ~relative:Path.Build.relative in
+      let install_command = choose_for_current_platform install_command in
+      let build_command = choose_for_current_platform build_command in
       let* paths, build_command, install_command =
         let paths = Paths.map_path write_paths ~f:Path.build in
         match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name with
@@ -1169,6 +1199,7 @@ end = struct
           , build_command
           , install_command )
       in
+      let depexts = choose_for_current_platform depexts |> Option.value ~default:[] in
       let t =
         { Pkg.id
         ; build_command
@@ -1812,8 +1843,14 @@ let setup_pkg_install_alias =
        sources. *)
     let open Action_builder.O in
     let project_deps : Package_universe.t = Project_dependencies ctx_name in
-    let* lock_dir = Action_builder.of_memo (Package_universe.lock_dir project_deps) in
-    Dune_lang.Package_name.Map.keys lock_dir.packages
+    let* packages =
+      Action_builder.of_memo
+        (let open Memo.O in
+         let+ lock_dir = Package_universe.lock_dir project_deps
+         and+ platform = Lock_dir.Sys_vars.solver_env () in
+         Dune_pkg.Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform)
+    in
+    Dune_lang.Package_name.Map.keys packages
     |> List.map ~f:(fun pkg ->
       Paths.make ~relative:Path.Build.relative project_deps pkg
       |> Paths.target_dir

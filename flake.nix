@@ -58,6 +58,7 @@
             "--pkg-build-progress" "enable"
             "--lock-dev-tool" "enable"
             "--bin-dev-tools" "enable"
+            "--portable-lock-dir" "enable"
           ];
       };
 

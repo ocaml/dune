@@ -21,6 +21,7 @@ module Sys_vars : sig
     }
 
   val poll : t
+  val solver_env : unit -> Dune_pkg.Solver_env.t Memo.t
 end
 
 val source_kind

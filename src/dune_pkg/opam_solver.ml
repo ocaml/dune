@@ -128,7 +128,7 @@ module Context = struct
     ; version_preference
     ; local_packages
     ; pinned_packages
-    ; solver_env
+    ; solver_env = Solver_env.add_sentinel_values_for_unset_platform_vars solver_env
     ; dune_version = Dune_dep.version
     ; stats_updater
     ; candidates_cache
@@ -1455,10 +1455,40 @@ let solve_package_list packages ~context =
 module Solver_result = struct
   type t =
     { lock_dir : Lock_dir.t
-    ; files : File_entry.t Package_name.Map.Multi.t
+    ; files : File_entry.t Package_version.Map.Multi.t Package_name.Map.t
     ; pinned_packages : Package_name.Set.t
     ; num_expanded_packages : int
     }
+
+  let merge a b =
+    let lock_dir = Lock_dir.merge_conditionals a.lock_dir b.lock_dir in
+    let files =
+      Package_name.Map.merge a.files b.files ~f:(fun _ a b ->
+        match a, b with
+        | None, None -> None
+        | Some x, None | None, Some x -> Some x
+        | Some a, Some b ->
+          Some
+            (Package_version.Map.merge a b ~f:(fun _ a b ->
+               match a, b with
+               | None, None -> None
+               | Some x, None | None, Some x -> Some x
+               | Some a, Some b ->
+                 (* The package is present in both solutions at the same version. Make
+             sure its associated files are the same in both instances. *)
+                 if not (List.equal File_entry.equal a b)
+                 then
+                   Code_error.raise
+                     "Package files differ between merged solver results"
+                     [ "files_1", Dyn.list File_entry.to_dyn a
+                     ; "files_2", Dyn.list File_entry.to_dyn b
+                     ];
+                 Some a)))
+    in
+    let pinned_packages = Package_name.Set.union a.pinned_packages b.pinned_packages in
+    let num_expanded_packages = a.num_expanded_packages + b.num_expanded_packages in
+    { lock_dir; files; pinned_packages; num_expanded_packages }
+  ;;
 end
 
 let reject_unreachable_packages =
@@ -1502,7 +1532,13 @@ let reject_unreachable_packages =
           Code_error.raise
             "package is both local and returned by solver"
             [ "name", Package_name.to_dyn name ]
-        | Some (pkg : Lock_dir.Pkg.t), None -> Some (List.map pkg.depends ~f:snd)
+        | Some (pkg : Lock_dir.Pkg.t), None ->
+          Some
+            (Lock_dir.Conditional_choice.choose_for_platform
+               pkg.depends
+               ~platform:solver_env
+             |> Option.value ~default:[]
+             |> List.map ~f:(fun (depend : Lock_dir.Dependency.t) -> depend.name))
         | None, Some (pkg : Local_package.For_solver.t) ->
           let deps =
             match
@@ -1575,13 +1611,17 @@ let reject_unreachable_packages =
 let files resolved_packages =
   Resolved_package.get_opam_package_files resolved_packages
   >>| List.map2 resolved_packages ~f:(fun resolved_package entries ->
-    let package_name =
-      Resolved_package.package resolved_package
-      |> OpamPackage.name
-      |> Package_name.of_opam_package_name
-    in
-    package_name, entries)
-  >>| List.filter ~f:(fun (_, entries) -> List.is_non_empty entries)
+    let package = Resolved_package.package resolved_package in
+    package, entries)
+  >>| List.filter_map ~f:(fun (package, entries) ->
+    if List.is_empty entries
+    then None
+    else (
+      let package_name = OpamPackage.name package |> Package_name.of_opam_package_name in
+      let package_version =
+        OpamPackage.version package |> Package_version.of_opam_package_version
+      in
+      Some (package_name, Package_version.Map.singleton package_version entries)))
   >>| Package_name.Map.of_list_exn
 ;;
 
@@ -1729,24 +1769,29 @@ let solve_lock_dir
       Package_name.Map.iter
         pkgs_by_name
         ~f:(fun { Lock_dir.Pkg.depends; info = { name; _ }; _ } ->
-          List.iter depends ~f:(fun (loc, dep_name) ->
-            if Package_name.Map.mem local_packages dep_name
-            then
-              User_error.raise
-                ~loc
-                [ Pp.textf
-                    "Dune does not support packages outside the workspace depending on \
-                     packages in the workspace. The package %S is not in the workspace \
-                     but it depends on the package %S which is in the workspace."
-                    (Package_name.to_string name)
-                    (Package_name.to_string dep_name)
-                ]));
+          Option.iter
+            (Lock_dir.Conditional_choice.choose_for_platform depends ~platform:solver_env)
+            ~f:(fun depends ->
+              List.iter depends ~f:(fun { Lock_dir.Dependency.name = dep_name; loc } ->
+                if Package_name.Map.mem local_packages dep_name
+                then
+                  User_error.raise
+                    ~loc
+                    [ Pp.textf
+                        "Dune does not support packages outside the workspace depending \
+                         on packages in the workspace. The package %S is not in the \
+                         workspace but it depends on the package %S which is in the \
+                         workspace."
+                        (Package_name.to_string name)
+                        (Package_name.to_string dep_name)
+                    ])));
       Lock_dir.create_latest_version
         pkgs_by_name
         ~local_packages:(Package_name.Map.values local_packages)
         ~ocaml
         ~repos:(Some repos)
         ~expanded_solver_variable_bindings
+        ~solved_for_platform:(Some solver_env)
     in
     let+ files =
       Package_name.Map.to_list_map pkgs_by_name ~f:(fun name (package : Lock_dir.Pkg.t) ->

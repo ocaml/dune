@@ -69,8 +69,7 @@ let make_local_package_wrapping_dev_tool ~dev_tool ~dev_tool_version ~extra_depe
 let solve ~dev_tool ~local_packages =
   let open Memo.O in
   let* solver_env_from_current_system =
-    Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
-    |> Dune_pkg.Sys_poll.solver_env_from_current_system
+    Pkg_common.poll_solver_env_from_current_system ()
     |> Memo.of_reproducible_fiber
     >>| Option.some
   and* workspace =
@@ -90,6 +89,7 @@ let solve ~dev_tool ~local_packages =
        ~version_preference:None
        ~lock_dirs:[ lock_dir ]
        ~print_perf_stats:false
+       ~portable_lock_dir:false
 ;;
 
 let compiler_package_name = Package_name.of_string "ocaml"
@@ -113,7 +113,10 @@ let locked_ocaml_compiler_version () =
     (* Dev tools are only ever built with the default context. *)
     Context_name.default
   in
-  let* result = Dune_rules.Lock_dir.get context in
+  let* result = Dune_rules.Lock_dir.get context
+  and* platform =
+    Pkg_common.poll_solver_env_from_current_system () |> Memo.of_reproducible_fiber
+  in
   match result with
   | Error _ ->
     User_error.raise
@@ -124,6 +127,7 @@ let locked_ocaml_compiler_version () =
             [ Pp.text "Try running"; User_message.command "dune pkg lock" ]
         ]
   | Ok { packages; _ } ->
+    let packages = Lock_dir.Packages.pkgs_on_platform_by_name packages ~platform in
     (match Package_name.Map.find packages compiler_package_name with
      | None ->
        User_error.raise
@@ -176,6 +180,10 @@ let lockdir_status dev_tool =
     (match Dune_pkg.Dev_tool.needs_to_build_with_same_compiler_as_project dev_tool with
      | false -> Memo.return `Lockdir_ok
      | true ->
+       let* platform =
+         Pkg_common.poll_solver_env_from_current_system () |> Memo.of_reproducible_fiber
+       in
+       let packages = Lock_dir.Packages.pkgs_on_platform_by_name packages ~platform in
        (match Package_name.Map.find packages compiler_package_name with
         | None -> Memo.return `No_compiler_lockfile_in_lockdir
         | Some { info; _ } ->

@@ -374,7 +374,11 @@ let opam_package_to_lock_file_pkg
       Resolve_opam_formula.filtered_formula_to_package_names
         ~with_test:false
         ~packages:version_by_package_name
-        ~env:(add_self_to_filter_env opam_package (Solver_env.to_env solver_env))
+        ~env:
+          (add_self_to_filter_env
+             opam_package
+             (Solver_env.add_sentinel_values_for_unset_platform_vars solver_env
+              |> Solver_env.to_env))
         what
     in
     let depends =
@@ -392,7 +396,8 @@ let opam_package_to_lock_file_pkg
       |> List.filter ~f:(fun package_name ->
         not (List.mem depends package_name ~equal:Package_name.equal))
     in
-    depends @ depopts |> List.map ~f:(fun package_name -> Loc.none, package_name)
+    depends @ depopts
+    |> List.map ~f:(fun name -> { Lock_dir.Dependency.loc = Loc.none; name })
   in
   let build_env action =
     let env_update =
@@ -445,6 +450,22 @@ let opam_package_to_lock_file_pkg
       |> Option.map ~f:build_env
       |> Option.map ~f:(fun action -> Lock_dir.Build_command.Action action))
   in
+  (* Some lockfile fields contain a choice of values predicated on a set of
+     platform variables to allow lockfiles to be portable across different
+     platforms. Each invocation of the solver produces a solution associated
+     with a single set of platform variables (those in [solver_env]).
+     [lockfile_field_choice value] creates a choice with a single possible
+     value predicated by the platform variables in [solver_env]. The
+     solver may be run multiple times, and the choice fields of lockfiles
+     will be merged such that different values can be chosen on different
+     platforms. *)
+  let lockfile_field_choice value =
+    Lock_dir.Conditional_choice.singleton solver_env value
+  in
+  let build_command =
+    Option.map build_command ~f:lockfile_field_choice
+    |> Option.value ~default:Lock_dir.Conditional_choice.empty
+  in
   let depexts =
     OpamFile.OPAM.depexts opam_file
     |> List.concat_map ~f:(fun (sys_pkgs, filter) ->
@@ -453,14 +474,31 @@ let opam_package_to_lock_file_pkg
       then OpamSysPkg.Set.to_list_map OpamSysPkg.to_string sys_pkgs
       else [])
   in
+  let depexts =
+    if List.is_empty depexts
+    then Lock_dir.Conditional_choice.empty
+    else lockfile_field_choice depexts
+  in
   let install_command =
     OpamFile.OPAM.install opam_file
     |> opam_commands_to_actions get_solver_var loc opam_package
     |> make_action
-    |> Option.map ~f:build_env
+    |> Option.map ~f:(fun action -> lockfile_field_choice (build_env action))
+    |> Option.value ~default:Lock_dir.Conditional_choice.empty
   in
   let exported_env =
     OpamFile.OPAM.env opam_file |> List.map ~f:opam_env_update_to_env_update
   in
-  { Lock_dir.Pkg.build_command; install_command; depends; depexts; info; exported_env }
+  let depends = lockfile_field_choice depends in
+  let enabled_on_platforms =
+    [ Solver_env.remove_all_except_platform_specific solver_env ]
+  in
+  { Lock_dir.Pkg.build_command
+  ; install_command
+  ; depends
+  ; depexts
+  ; info
+  ; exported_env
+  ; enabled_on_platforms
+  }
 ;;

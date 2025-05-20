@@ -22,13 +22,20 @@ let enumerate_lock_dirs_by_path workspace ~lock_dirs =
 let print_depexts ~lock_dirs_arg =
   let open Fiber.O in
   let open Lock_dir in
-  let+ workspace = Memo.run (Workspace.workspace ()) in
+  let+ workspace = Memo.run (Workspace.workspace ())
+  and+ platform =
+    Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
+    |> Dune_pkg.Sys_poll.solver_env_from_current_system
+  in
   let depexts =
     enumerate_lock_dirs_by_path workspace ~lock_dirs:lock_dirs_arg
     |> List.concat_map ~f:(fun lock_dir ->
-      lock_dir.packages
+      Lock_dir.Packages.pkgs_on_platform_by_name ~platform lock_dir.packages
       |> Package_name.Map.values
-      |> List.concat_map ~f:(fun (pkg : Lock_dir.Pkg.t) -> pkg.depexts))
+      |> List.concat_map ~f:(fun (pkg : Lock_dir.Pkg.t) ->
+        match Lock_dir.Conditional_choice.choose_for_platform pkg.depexts ~platform with
+        | Some depexts -> depexts
+        | None -> []))
   in
   Console.print [ Pp.concat_map ~sep:Pp.newline ~f:Pp.verbatim depexts ]
 ;;

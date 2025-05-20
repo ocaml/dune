@@ -13,6 +13,7 @@ module Lock_dir : sig
     ; constraints : Dune_lang.Package_dependency.t list
     ; pins : (Loc.t * string) list
     ; depopts : (Loc.t * Package.Name.t) list
+    ; solve_for_platforms : Dune_pkg.Solver_env.t list
     }
 
   val equal : t -> t -> bool

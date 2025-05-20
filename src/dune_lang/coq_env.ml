@@ -1,5 +1,5 @@
 open Import
-open Dune_lang.Decoder
+open Decoder
 
 type t =
   { flags : Ordered_set_lang.Unexpanded.t
@@ -26,15 +26,15 @@ let decode =
        (let+ flags =
           Ordered_set_lang.Unexpanded.field
             "flags"
-            ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 7))
+            ~check:(Syntax.since Stanza.syntax (2, 7))
         and+ coqdep_flags =
           Ordered_set_lang.Unexpanded.field
             "coqdep_flags"
-            ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 17))
+            ~check:(Syntax.since Stanza.syntax (3, 17))
         and+ coqdoc_flags =
           Ordered_set_lang.Unexpanded.field
             "coqdoc_flags"
-            ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 13))
+            ~check:(Syntax.since Stanza.syntax (3, 13))
         in
         { flags; coqdep_flags; coqdoc_flags }))
 ;;

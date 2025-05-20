@@ -4,21 +4,8 @@ open! Import
 
 type t
 
-module Spec : sig
-  type t
-
-  val equal : t -> t -> bool
-  val decode : t Dune_lang.Decoder.fields_parser
-  val standard : t
-
-  val make
-    :  common:Ordered_set_lang.Unexpanded.t
-    -> specific:Ordered_set_lang.Unexpanded.t Lib_mode.Map.t
-    -> t
-end
-
 val make
-  :  spec:Spec.t
+  :  spec:Dune_lang.Ocaml_flags.Spec.t
   -> default:t
   -> eval:
        (Ordered_set_lang.Unexpanded.t

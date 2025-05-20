@@ -19,6 +19,45 @@ let solver_env
   | Some unset_solver_vars -> Solver_env.unset_multi solver_env unset_solver_vars
 ;;
 
+let poll_solver_env_from_current_system () =
+  Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
+  |> Dune_pkg.Sys_poll.solver_env_from_current_system
+;;
+
+let get_lock_dir_from_context ~lock_dir_path =
+  Memo.run
+  @@
+  let open Memo.O in
+  let+ workspace = Workspace.workspace () in
+  Workspace.find_lock_dir workspace lock_dir_path
+;;
+
+let get_solver_env_from_context ~lock_dir_path =
+  let open Fiber.O in
+  let+ lock_dir = get_lock_dir_from_context ~lock_dir_path in
+  Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env)
+;;
+
+let get_unset_solver_vars_from_context ~lock_dir_path =
+  let open Fiber.O in
+  let+ lock_dir = get_lock_dir_from_context ~lock_dir_path in
+  Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.unset_solver_vars)
+;;
+
+let solver_env_from_system_and_context ~lock_dir_path =
+  let open Fiber.O in
+  let+ solver_env_from_current_system =
+    poll_solver_env_from_current_system () >>| Option.some
+  and+ solver_env_from_context = get_solver_env_from_context ~lock_dir_path
+  and+ unset_solver_vars_from_context =
+    get_unset_solver_vars_from_context ~lock_dir_path
+  in
+  solver_env
+    ~solver_env_from_current_system
+    ~solver_env_from_context
+    ~unset_solver_vars_from_context
+;;
+
 module Version_preference = struct
   include Dune_pkg.Version_preference
 

@@ -1,4 +1,5 @@
 open Import
+module Ocaml_flags = Dune_lang.Ocaml_flags
 
 module Backend = struct
   let name = Sub_system_name.of_string "inline_tests.backend"

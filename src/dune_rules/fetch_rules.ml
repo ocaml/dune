@@ -155,25 +155,25 @@ module A = Action_ext.Make (Spec)
 let action ~url ~checksum ~target ~kind = A.action { Spec.target; checksum; url; kind }
 
 let extract_checksums_and_urls (lockdir : Dune_pkg.Lock_dir.t) =
-  Package.Name.Map.fold
-    lockdir.packages
-    ~init:(Checksum.Map.empty, Dune_digest.Map.empty)
-    ~f:(fun package acc ->
-      let sources =
-        let sources = package.info.extra_sources |> List.rev_map ~f:snd in
-        match package.info.source with
-        | None -> sources
-        | Some source -> source :: sources
-      in
-      List.fold_left sources ~init:acc ~f:(fun (checksums, urls) (source : Source.t) ->
-        match Source.kind source with
-        | `Directory_or_archive _ -> checksums, urls
-        | `Fetch ->
-          let url = source.url in
-          (match source.checksum with
-           | Some ((_, checksum) as checksum_with_loc) ->
-             Checksum.Map.set checksums checksum (url, checksum_with_loc), urls
-           | None -> checksums, Digest.Map.set urls (digest_of_url (snd url)) url)))
+  Dune_pkg.Lock_dir.Packages.to_pkg_list lockdir.packages
+  |> List.fold_left
+       ~init:(Checksum.Map.empty, Dune_digest.Map.empty)
+       ~f:(fun acc (package : Lock_dir.Pkg.t) ->
+         let sources =
+           let sources = package.info.extra_sources |> List.rev_map ~f:snd in
+           match package.info.source with
+           | None -> sources
+           | Some source -> source :: sources
+         in
+         List.fold_left sources ~init:acc ~f:(fun (checksums, urls) (source : Source.t) ->
+           match Source.kind source with
+           | `Directory_or_archive _ -> checksums, urls
+           | `Fetch ->
+             let url = source.url in
+             (match source.checksum with
+              | Some ((_, checksum) as checksum_with_loc) ->
+                Checksum.Map.set checksums checksum (url, checksum_with_loc), urls
+              | None -> checksums, Digest.Map.set urls (digest_of_url (snd url)) url)))
 ;;
 
 let find_checksum, find_url =

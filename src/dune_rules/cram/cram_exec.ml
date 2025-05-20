@@ -298,8 +298,6 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
   { script; cram_to_output; metadata_file }
 ;;
 
-let _display_with_bars s = List.iter (String.split_lines s) ~f:(Printf.eprintf "| %s\n")
-
 let run ~env ~script lexbuf : string Fiber.t =
   let temp_dir =
     let suffix =

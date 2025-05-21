@@ -15,7 +15,6 @@ type t =
   ; version : Ocaml.Version.t
   ; builtins : Meta.Simplified.t Package.Name.Map.t Memo.t
   ; lib_config : Lib_config.t
-  ; is_oxcaml_supported : bool
   }
 
 val of_env_with_findlib
@@ -42,3 +41,5 @@ val best_mode : t -> Mode.t
 
 val check_fdo_support : t -> Context_name.t -> unit
 val register_response_file_support : t -> unit
+val is_oxcaml_supported : t -> bool
+val is_parametrized_library_supported : t -> bool

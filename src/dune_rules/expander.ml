@@ -566,7 +566,7 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
     static
     @@
     let+ ocaml = ocaml in
-    ocaml.is_oxcaml_supported |> string_of_bool |> string
+    Ocaml_toolchain.is_oxcaml_supported ocaml |> string_of_bool |> string
 ;;
 
 let ocaml_config_macro source macro_invocation context =

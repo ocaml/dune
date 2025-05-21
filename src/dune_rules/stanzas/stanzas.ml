@@ -62,6 +62,12 @@ let stanzas : constructors =
         match Library_redirect.Local.of_lib x with
         | None -> base
         | Some r -> Library_redirect.Local.make_stanza r :: base )
+    ; ( "library_parameter"
+      , let+ x = Parameter.decode in
+        let base = [ Library.make_stanza x ] in
+        match Library_redirect.Local.of_lib x with
+        | None -> base
+        | Some r -> Library_redirect.Local.make_stanza r :: base )
     ; ( "foreign_library"
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
         and+ x = Foreign_library.decode in

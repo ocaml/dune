@@ -19,6 +19,7 @@ module Kind : sig
     | Impl_vmodule
     | Wrapped_compat
     | Root
+    | Parameter
 
   include Dune_lang.Conv.S with type t := t
 

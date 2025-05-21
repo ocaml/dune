@@ -77,6 +77,7 @@ let gen_lib pub_name lib ~version =
   let preds =
     match kind with
     | Normal -> []
+    | Parameter -> [] (* failwith "TODO arthur" *)
     | Ppx_rewriter _ | Ppx_deriver _ -> [ Pos "ppx_driver" ]
   in
   let name lib =
@@ -128,6 +129,7 @@ let gen_lib pub_name lib ~version =
          ])
     ; (match kind with
        | Normal -> []
+       | Parameter -> [] (* failwith "TODO arthur" *)
        | Ppx_rewriter _ | Ppx_deriver _ ->
          (* Deprecated ppx method support *)
          let no_ppx_driver = Neg "ppx_driver"
@@ -140,6 +142,7 @@ let gen_lib pub_name lib ~version =
              ]
            ; (match kind with
               | Normal -> assert false
+              | Parameter -> assert false (* failwith "TODO arthur" *)
               | Ppx_rewriter _ ->
                 [ rule "ppx" [ no_ppx_driver; no_custom_ppx ] Set "./ppx.exe --as-ppx"
                 ; rule "library_kind" [] Set "ppx_rewriter"

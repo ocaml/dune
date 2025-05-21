@@ -2,5 +2,4 @@
  (applies_to :whole_subtree)
  ; CR maiste: we need a better way to detect OxCaml. It would silentely ignore
  ; the test when the version changes.
- (enabled_if
-  (= %{ocaml_version} "5.2.0+jst")))
+ (enabled_if %{oxcaml_supported}))

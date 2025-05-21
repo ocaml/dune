@@ -57,6 +57,7 @@ let add_stanza db ~dir (acc, pps) stanza =
        then (
          match Lib_info.kind info with
          | Normal -> Appendable_list.cons lib acc, pps
+         | Parameter -> failwith "TODO arthur"
          | Lib_kind.Ppx_rewriter _ | Ppx_deriver _ ->
            ( Appendable_list.cons lib acc
            , Appendable_list.cons (Lib_info.loc info, Lib_info.name info) pps ))
@@ -95,6 +96,7 @@ let add_stanza db ~dir (acc, pps) stanza =
          let info = Lib.info lib in
          match Lib_info.kind info with
          | Normal -> Appendable_list.cons lib acc, pps
+         | Parameter -> failwith "TODO arthur"
          | Ppx_rewriter _ | Ppx_deriver _ ->
            ( Appendable_list.cons lib acc
            , Appendable_list.cons (Lib_info.loc info, Lib_info.name info) pps )))

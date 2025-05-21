@@ -92,7 +92,7 @@ let build_lib
          Expander.expand_and_eval_set expander lib.library_flags ~standard)
     ; As
         (match lib.kind with
-         | Normal -> []
+         | Normal | Parameter -> []
          | Ppx_deriver _ | Ppx_rewriter _ -> [ "-linkall" ])
     ; Dyn
         (Cm_files.top_sorted_cms cm_files ~mode
@@ -439,18 +439,21 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
     Lib_info.eval_native_archives_exn lib_info ~modules:(Some modules)
   in
   let* () =
-    let cm_files =
-      let excluded_modules =
-        (* ctypes type_gen and function_gen scripts should not be included in the
+    if lib.is_parameter
+    then Memo.return ()
+    else (
+      let cm_files =
+        let excluded_modules =
+          (* ctypes type_gen and function_gen scripts should not be included in the
            library. Otherwise they will spew stuff to stdout on library load. *)
-        match lib.buildable.ctypes with
-        | Some ctypes -> Ctypes_field.non_installable_modules ctypes
-        | None -> []
+          match lib.buildable.ctypes with
+          | Some ctypes -> Ctypes_field.non_installable_modules ctypes
+          | None -> []
+        in
+        Cm_files.make ~excluded_modules ~obj_dir ~ext_obj ~modules ~top_sorted_modules ()
       in
-      Cm_files.make ~excluded_modules ~obj_dir ~ext_obj ~modules ~top_sorted_modules ()
-    in
-    iter_modes_concurrently modes.ocaml ~f:(fun mode ->
-      build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode ~cm_files)
+      iter_modes_concurrently modes.ocaml ~f:(fun mode ->
+        build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode ~cm_files))
   and* () =
     (* Build *.cma.js / *.wasma *)
     Memo.when_ modes.ocaml.byte (fun () ->

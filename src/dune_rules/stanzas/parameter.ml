@@ -1,0 +1,142 @@
+open Import
+open! Dune_lang.Decoder
+
+type t =
+  { name : Loc.t * Lib_name.Local.t
+  ; project : Dune_project.t
+  ; visibility : Library.visibility
+  ; buildable : Buildable.t
+  ; stdlib : Ocaml_stdlib.t option
+  ; enabled_if : Blang.t
+  ; optional : bool
+  ; synopsis : string option
+  ; loc : Loc.t
+  ; dune_version : Dune_lang.Syntax.Version.t
+  }
+
+let to_library t =
+  let loc, _ = t.name in
+  { Library.name = t.name
+  ; is_parameter = true
+  ; visibility = t.visibility
+  ; synopsis = t.synopsis
+  ; install_c_headers = []
+  ; public_headers = loc, []
+  ; ppx_runtime_libraries = []
+  ; modes = Mode_conf.Lib.Set.of_list [ Ocaml Byte, Inherited ]
+  ; kind = Lib_kind.Parameter
+  ; library_flags = Ordered_set_lang.Unexpanded.standard
+  ; c_library_flags = Ordered_set_lang.Unexpanded.standard
+  ; virtual_deps = []
+  ; wrapped = This (Simple false)
+  ; buildable = t.buildable
+  ; dynlink = Dynlink_supported.of_bool false
+  ; project = t.project
+  ; sub_systems = Sub_system_name.Map.empty
+  ; dune_version = t.dune_version
+  ; virtual_modules = None
+  ; implements = None
+  ; default_implementation = None
+  ; private_modules = None
+  ; stdlib = t.stdlib
+  ; special_builtin_support = None
+  ; enabled_if = t.enabled_if
+  ; instrumentation_backend = None
+  ; melange_runtime_deps = loc, []
+  ; optional = t.optional
+  }
+;;
+
+let decode =
+  fields
+    (let* stanza_loc = loc in
+     let wrapped = None in
+     (* Wrapped.Simple true in *)
+     let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+     let* project = Dune_project.get_exn () in
+     let+ buildable = Buildable.decode (Library (Option.map ~f:snd wrapped))
+     and+ name = field_o "name" Lib_name.Local.decode_loc
+     and+ public = field_o "public_name" (Public_lib.decode ~allow_deprecated_names:false)
+     and+ package =
+       field_o
+         "package"
+         (Dune_lang.Syntax.since Stanza.syntax (2, 8) >>> located Stanza_common.Pkg.decode)
+     and+ stdlib =
+       field_o
+         "stdlib"
+         (Dune_lang.Syntax.since Ocaml_stdlib.syntax (0, 1) >>> Ocaml_stdlib.decode)
+     and+ enabled_if =
+       let open Enabled_if in
+       let allowed_vars =
+         if Dune_project.dune_version project >= (3, 15)
+         then Any
+         else
+           Only
+             (("context_name", (2, 8))
+              :: ("profile", (2, 5))
+              :: Lib_config.allowed_in_enabled_if)
+       in
+       decode ~allowed_vars ~since:(Some (1, 10)) ()
+     and+ optional = field_b "optional"
+     and+ synopsis = field_o "synopsis" string in
+     let name =
+       let open Dune_lang.Syntax.Version.Infix in
+       match name, public with
+       | Some (loc, res), _ -> loc, res
+       | None, Some { Public_lib.name = loc, name; _ } ->
+         if dune_version >= (1, 1)
+         then (
+           match Lib_name.to_local (loc, name) with
+           | Ok m -> loc, m
+           | Error user_message ->
+             User_error.raise
+               ~loc
+               [ Pp.textf "Invalid library name."
+               ; Pp.text
+                   "Public library names don't have this restriction. You can either \
+                    change this public name to be a valid library name or add a \"name\" \
+                    field with a valid library name."
+               ]
+               ~hints:(Lib_name.Local.valid_format_doc :: user_message.hints))
+         else
+           User_error.raise
+             ~loc
+             [ Pp.text
+                 "name field cannot be omitted before version 1.1 of the dune language"
+             ]
+       | None, None ->
+         User_error.raise
+           ~loc:stanza_loc
+           [ Pp.text
+               (if dune_version >= (1, 1)
+                then "supply at least one of name or public_name fields"
+                else "name field is missing")
+           ]
+     in
+     let visibility =
+       match public, package with
+       | None, None -> Library.Private None
+       | Some public, None -> Public public
+       | None, Some (_loc, package) -> Private (Some package)
+       | Some public, Some (loc, _) ->
+         User_error.raise
+           ~loc
+           [ Pp.textf
+               "This library parameter has a public_name, it already belongs to the \
+                package %s"
+               (Package.Name.to_string (Package.name public.package))
+           ]
+     in
+     to_library
+       { name
+       ; visibility
+       ; buildable
+       ; project
+       ; stdlib
+       ; enabled_if
+       ; optional
+       ; synopsis
+       ; loc = stanza_loc
+       ; dune_version
+       })
+;;

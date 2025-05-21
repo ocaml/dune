@@ -20,10 +20,8 @@ we gave before.
 We can now run this test, which will record its PID.
   $ dune build @mycram
 
-We can now check if this PID is running. Since it suceeded, it means our
-subprocess is still around and has *not* been killed by dune.
+We can now check if this PID is running. Since it failed, it means our
+subprocess has been successfully killed by dune.
   $ kill -0 $(cat $FILE) 2> /dev/null
-
-We manually kill it ourselves by this point.
-  $ kill -9 $(cat $FILE)
+  [1]
 

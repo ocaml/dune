@@ -290,7 +290,11 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
         ; script = user_shell_code_file
         }
   in
-  fprln oc "trap 'exit 0' EXIT";
+  (* When the main shell script is exited we make sure to clean up any
+     subprocess PIDs as not to orphan them. The first "trap" will kill all
+     processes in the process group and the second "trap" will make sure the main
+     shell process exits gracefully. *)
+  fprln oc {|trap "trap 'exit 0' TERM && kill -- -$$" EXIT|};
   let+ cram_to_output = Fiber.sequential_map ~f:loop cram_stanzas in
   close_out oc;
   let command_count = !i in

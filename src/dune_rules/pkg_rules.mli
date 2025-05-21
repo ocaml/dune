@@ -26,6 +26,7 @@ val exported_env : Context_name.t -> Env.t Memo.t
 val ocamlpath : Context_name.t -> Path.t list Memo.t
 val find_package : Context_name.t -> Package.Name.t -> unit Action_builder.t option Memo.t
 val dev_tool_env : Dune_pkg.Dev_tool.t -> Env.t Memo.t
+val all_filtered_depexts : Context_name.t -> string list Memo.t
 
 val setup_pkg_install_alias
   :  dir:Path.Build.t

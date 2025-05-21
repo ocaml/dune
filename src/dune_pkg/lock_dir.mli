@@ -45,12 +45,19 @@ module Conditional_choice : sig
   val choose_for_platform : 'a t -> platform:Solver_env.t -> 'a option
 end
 
+module Depexts : sig
+  type t =
+    { external_package_names : string list
+    ; enabled_if : [ `Always | `Conditional of Slang.Blang.t ]
+    }
+end
+
 module Pkg : sig
   type t =
     { build_command : Build_command.t Conditional_choice.t
     ; install_command : Action.t Conditional_choice.t
     ; depends : Dependency.t list Conditional_choice.t
-    ; depexts : string list Conditional_choice.t
+    ; depexts : Depexts.t list
     ; info : Pkg_info.t
     ; exported_env : String_with_vars.t Action.Env_update.t list
     ; enabled_on_platforms : Solver_env.t list

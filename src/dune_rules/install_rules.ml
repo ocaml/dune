@@ -79,7 +79,7 @@ module Stanzas_to_entries : sig
 end = struct
   let lib_ppxs ctx ~scope ~(lib : Library.t) =
     match lib.kind with
-    | Normal | Ppx_deriver _ -> Memo.return []
+    | Normal | Parameter | Ppx_deriver _ -> Memo.return []
     | Ppx_rewriter _ ->
       Library.best_name lib
       |> Ppx_driver.ppx_exe ctx ~scope
@@ -266,6 +266,7 @@ end = struct
     let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
       Mode_conf.Lib.Set.eval lib.modes ~has_native
     in
+    let is_parameter = Library.is_parameter lib in
     let+ melange_runtime_entries = additional_deps lib.melange_runtime_deps
     and+ public_headers = additional_deps lib.public_headers
     and+ module_files =
@@ -297,16 +298,21 @@ end = struct
         fun m ->
           let cm_file kind = Obj_dir.Module.cm_file obj_dir m ~kind in
           let open Lib_mode.Cm_kind in
-          [ if_ (native || byte) (Ocaml Cmi, cm_file (Ocaml Cmi))
-          ; if_ native (Ocaml Cmx, cm_file (Ocaml Cmx))
-          ; if_ (byte && virtual_library) (Ocaml Cmo, cm_file (Ocaml Cmo))
-          ; if_
-              (native && virtual_library)
-              (Ocaml Cmx, Obj_dir.Module.o_file obj_dir m ~ext_obj)
-          ; if_ melange (Melange Cmi, cm_file (Melange Cmi))
-          ; if_ melange (Melange Cmj, cm_file (Melange Cmj))
-          ]
-          |> List.rev_concat
+          let cmi = if_ (native || byte) (Ocaml Cmi, cm_file (Ocaml Cmi)) in
+          let rest =
+            if is_parameter
+            then []
+            else
+              [ if_ native (Ocaml Cmx, cm_file (Ocaml Cmx))
+              ; if_ (byte && virtual_library) (Ocaml Cmo, cm_file (Ocaml Cmo))
+              ; if_
+                  (native && virtual_library)
+                  (Ocaml Cmx, Obj_dir.Module.o_file obj_dir m ~ext_obj)
+              ; if_ melange (Melange Cmi, cm_file (Melange Cmi))
+              ; if_ melange (Melange Cmj, cm_file (Melange Cmj))
+              ]
+          in
+          cmi :: rest |> List.rev_concat
       in
       let set_dir m = List.rev_map ~f:(fun (cm_kind, p) -> cm_dir m cm_kind, p) in
       let+ modules_impl =
@@ -344,15 +350,17 @@ end = struct
         Path.Build.relative dir (base ^ Foreign_language.header_extension)
         |> make_entry ~loc Lib)
     in
+    let if_ cond f = if cond then f else [] in
     List.rev_concat
       [ sources
       ; melange_runtime_entries
       ; List.rev_map module_files ~f:(fun (sub_dir, file) -> make_entry ?sub_dir Lib file)
-      ; List.rev_map lib_files ~f:(fun (section, file) -> make_entry section file)
-      ; List.rev_map execs ~f:(make_entry Libexec)
-      ; dll_files
-      ; install_c_headers
-      ; public_headers
+      ; if_ (not is_parameter)
+        @@ List.rev_map lib_files ~f:(fun (section, file) -> make_entry section file)
+      ; if_ (not is_parameter) @@ List.rev_map execs ~f:(make_entry Libexec)
+      ; if_ (not is_parameter) @@ dll_files
+      ; if_ (not is_parameter) @@ install_c_headers
+      ; if_ (not is_parameter) @@ public_headers
       ]
   ;;
 

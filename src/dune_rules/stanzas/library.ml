@@ -75,6 +75,7 @@ type t =
   ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
   ; dune_version : Dune_lang.Syntax.Version.t
   ; virtual_modules : Ordered_set_lang.Unexpanded.t option
+  ; is_parameter : bool
   ; implements : (Loc.t * Lib_name.t) option
   ; default_implementation : (Loc.t * Lib_name.t) option
   ; private_modules : Ordered_set_lang.Unexpanded.t option
@@ -254,6 +255,7 @@ let decode =
           [ Pp.text "Only virtual libraries can specify a default implementation." ]
       | _ -> ());
      { name
+     ; is_parameter = false
      ; visibility
      ; synopsis
      ; install_c_headers
@@ -369,6 +371,7 @@ let best_name t =
   | Public p -> snd p.name
 ;;
 
+let is_parameter t = t.is_parameter
 let is_virtual t = Option.is_some t.virtual_modules
 let is_impl t = Option.is_some t.implements
 
@@ -421,7 +424,9 @@ let to_lib_info
   let archive ?(dir = dir) ext = archive conf ~dir ~ext in
   let modes = Mode_conf.Lib.Set.eval ~has_native conf.modes in
   let archive_for_mode ~f_ext ~mode =
-    if Mode.Dict.get modes.ocaml mode then Some (archive (f_ext mode)) else None
+    if Mode.Dict.get modes.ocaml mode && not conf.is_parameter
+    then Some (archive (f_ext mode))
+    else None
   in
   let archives_for_mode ~f_ext =
     Mode.Dict.of_func (fun ~mode -> archive_for_mode ~f_ext ~mode |> Option.to_list)
@@ -578,6 +583,7 @@ let to_lib_info
     ~virtual_deps
     ~dune_version
     ~virtual_
+    ~is_parameter:false
     ~entry_modules
     ~implements
     ~default_implementation

@@ -16,6 +16,7 @@ type kind =
   | Virtual of Virtual.t
   | Implementation of Implementation.t
   | Exe_or_normal_lib
+  | Parameter
 
 let eval0 =
   let key = function
@@ -346,12 +347,12 @@ let eval
   let eval = eval0 ~expander ~loc:stanza_loc ~all_modules in
   let allow_new_public_modules =
     match kind with
-    | Exe_or_normal_lib | Virtual _ -> true
+    | Exe_or_normal_lib | Virtual _ | Parameter -> true
     | Implementation { allow_new_public_modules; _ } -> allow_new_public_modules
   in
   let existing_virtual_modules =
     match kind with
-    | Exe_or_normal_lib | Virtual _ -> Module_name.Path.Set.empty
+    | Exe_or_normal_lib | Virtual _ | Parameter -> Module_name.Path.Set.empty
     | Implementation { existing_virtual_modules; _ } -> existing_virtual_modules
   in
   let+ intf_only = eval ~standard:Module_trie.empty modules_without_implementation
@@ -359,6 +360,7 @@ let eval
     match kind with
     | Exe_or_normal_lib | Implementation _ -> Memo.return Module_trie.empty
     | Virtual { virtual_modules } -> eval ~standard:Module_trie.empty virtual_modules
+    | Parameter -> Memo.return (Module_trie.map ~f:(fun v -> stanza_loc, v) all_modules)
   and+ private_modules = eval ~standard:Module_trie.empty private_modules in
   check_invalid_module_listing
     ~stanza_loc
@@ -378,8 +380,10 @@ let eval
         if Module_trie.mem private_modules name then Visibility.Private else Public
       in
       let kind =
-        if Module_trie.mem virtual_modules name
-        then Module.Kind.Virtual
+        if kind = Parameter
+        then Module.Kind.Parameter
+        else if Module_trie.mem virtual_modules name
+        then Virtual
         else if Module.Source.has m ~ml_kind:Impl
         then (
           let name = Module.Source.name m in

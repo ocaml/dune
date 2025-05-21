@@ -660,16 +660,16 @@ module Vlib : sig
   (** Make sure that for every virtual library in the list there is at most one
       corresponding implementation.
 
-      Additionally, if linking is [true], ensures that every virtual library as
-      an implementation and re-arrange the list so that implementations replaces
-      virtual libraries. *)
+      Additionally, if linking is [true], ensures that every virtual library as an
+      implementation and re-arrange the list so that implementations replaces virtual
+      libraries. *)
   val associate
     :  (t * Dep_stack.t) list
     -> [ `Compile | `Link | `Partial_link ]
     -> t list Resolve.Memo.t
 
   module Unimplemented : sig
-    (** set of unimplemented libraries*)
+    (** set of unimplemented libraries *)
     type t
 
     val empty : t

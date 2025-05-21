@@ -562,6 +562,11 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
     (let+ inline_tests = Env_stanza_db.inline_tests ~dir in
      Dune_env.Inline_tests.to_string inline_tests |> string)
     |> static
+  | Oxcaml_supported ->
+    static
+    @@
+    let+ ocaml = ocaml in
+    ocaml.is_oxcaml_supported |> string_of_bool |> string
 ;;
 
 let ocaml_config_macro source macro_invocation context =

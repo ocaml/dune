@@ -14,6 +14,7 @@ type t =
   ; version : Ocaml.Version.t
   ; builtins : Meta.Simplified.t Package.Name.Map.t Memo.t
   ; lib_config : Lib_config.t
+  ; is_oxcaml_supported : bool
   }
 
 let make_builtins ~ocaml_config ~version =
@@ -92,6 +93,11 @@ let make name ~which ~env ~get_ocaml_tool =
   and* ocamlmklib = get_ocaml_tool "ocamlmklib"
   and* ocamlobjinfo = get_ocaml_tool "ocamlobjinfo" in
   let version = Ocaml.Version.of_ocaml_config ocaml_config in
+  let is_oxcaml_supported =
+    let oxcaml_latest = "5.2.0+jst" in
+    let version_string = Ocaml_config.version_string ocaml_config in
+    String.equal version_string oxcaml_latest
+  in
   let builtins = make_builtins ~version ~ocaml_config in
   Memo.return
     { bin_dir = ocaml_bin
@@ -106,6 +112,7 @@ let make name ~which ~env ~get_ocaml_tool =
     ; version
     ; builtins = Memo.Lazy.force builtins
     ; lib_config = Lib_config.create ocaml_config ~ocamlopt
+    ; is_oxcaml_supported
     }
 ;;
 

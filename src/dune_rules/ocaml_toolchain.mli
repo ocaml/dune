@@ -15,6 +15,7 @@ type t =
   ; version : Ocaml.Version.t
   ; builtins : Meta.Simplified.t Package.Name.Map.t Memo.t
   ; lib_config : Lib_config.t
+  ; is_oxcaml_supported : bool
   }
 
 val of_env_with_findlib

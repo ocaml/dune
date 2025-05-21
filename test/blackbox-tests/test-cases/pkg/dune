@@ -76,9 +76,3 @@
 (cram
  (deps %{bin:unzip})
  (applies_to pkg-extract-fail))
-
-;; disabled for flakiness
-
-(cram
- (enabled_if false)
- (applies_to gh10959))

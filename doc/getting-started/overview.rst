@@ -96,7 +96,7 @@ Terminology
      from this directory. Moreover, scopes are separate from your project's
      dependencies. The scope also determines where private items are visible.
      Private items include libraries or binaries that will not be installed.
-     See :doc:`concepts/scopes` for more details.
+     See :doc:`scopes` for more details.
 
    build context
      A specific configuration written in a
@@ -117,7 +117,7 @@ Terminology
      A build target that doesn't produce any file and has configurable
      dependencies. Targets starting with ``@`` on the command line are
      interpreted as aliases (e.g., ``dune build @src/runtest``). Aliases are
-     per-directory. See :doc:`reference/aliases`.
+     per-directory. See :doc:`/reference/aliases`.
 
    environment
      Determines the default values of various parameters, such as the

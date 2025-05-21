@@ -162,6 +162,8 @@ If the previous rule doesn't apply, i.e., no ancestor directory has a
 file named ``dune-workspace``, then the current directory will be used
 as root.
 
+.. _forcing-root:
+
 Forcing the Root (for Scripts)
 ------------------------------
 
@@ -210,7 +212,7 @@ targets upon starting:
     - _build/4.04.0/bin/prog.exe
 
 If a target starts with the ``@`` sign, it is interpreted as an :term:`alias`.
-See :doc:`reference/aliases`.
+See :doc:`/reference/aliases`.
 
 Variables for Artifacts
 -----------------------

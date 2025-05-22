@@ -13,7 +13,9 @@ subtree rooted at the directory containing the
 The root of the current workspace is determined by the outermost
 :doc:`/reference/dune-project/index` file in an ancestor of the current
 directory or by the presence of a :doc:`/reference/dune-workspace/index` file
-(see :ref:`finding-root` and :ref:`forcing-root` for details).
+(see :ref:`finding-root` and :ref:`forcing-root` for details). All
+:doc:`/reference/dune-workspace/index` files other than the one specifying the
+root of the workspace are ignored.
 
 Different Dune projects within the same Dune workspace are independent of each
 other and no settings are shared between them, even if they are nested within

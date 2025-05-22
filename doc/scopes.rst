@@ -13,18 +13,23 @@ subtree rooted at the directory containing the
 The root of the current workspace is determined by the outermost
 :doc:`/reference/dune-project/index` file in an ancestor of the current
 directory or by the presence of a :doc:`/reference/dune-workspace/index` file
-(see :ref:`finding-root` and :ref:`forcing-root` for details). All
-:doc:`/reference/dune-workspace/index` files other than the one specifying the
-root of the workspace are ignored.
+(see :ref:`finding-root` and :ref:`forcing-root` for details).
 
 Different Dune projects within the same Dune workspace are independent of each
 other and no settings are shared between them, even if they are nested within
 each other.
 
 Settings in :doc:`/reference/dune-workspace/index`, on the other hand, are
-inherited by all Dune projects in the workspace.
+inherited by all Dune projects in the workspace. Note that all
+:doc:`/reference/dune-workspace/index` files other than the one specifying the
+root of the workspace are ignored.
 
-Within a Dune project, :doc:`/reference/dune/index` files are used to define
-all objects of interest for Dune: libraries, executables, tests, etc. Only
-public items (public libraries, public executables) from a Dune project are
-visible to other Dune projects within the same Dune workspace.
+Within a Dune project, :doc:`/reference/dune/index` files are used to define all
+objects of interest for Dune: libraries, executables, tests, etc. All references
+within :doc:`/reference/dune/index` files are always written relative to the
+directory containing the file.  There are typically many Dune files in a Dune
+project (one per directory, unless the directory does not contain anything
+relevant to Dune).
+
+Finally, note that only public items (public libraries, public executables) of a
+Dune project are visible to other Dune projects within the same Dune workspace.

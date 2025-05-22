@@ -10,16 +10,14 @@ A Dune project is defined by the presence of a
 subtree rooted at the directory containing the
 :doc:`/reference/dune-project/index` file, excluding any nested Dune projects.
 
-The root of the workspace is defined by the outermost
-:doc:`/reference/dune-project/index` file starting from the current directory,
-or by the first :doc:`/reference/dune-workspace/index` file found when climbing
-up the directory hierachy starting from the current directory (see
-:ref:`finding-root`). It can also be specified explicitly by passing the
-``--root`` flag (see :ref:`forcing-root`).
+The root of the current workspace is determined by the outermost
+:doc:`/reference/dune-project/index` file in an ancestor of the current
+directory or by the presence of a :doc:`/reference/dune-workspace/index` file
+(see :ref:`finding-root` and :ref:`forcing-root` for details).
 
-Different Dune projects within the same Dune workspace are completely
-independent and no settings are shared between them, even if they are nested
-within each other.
+Different Dune projects within the same Dune workspace are independent of each
+other and no settings are shared between them, even if they are nested within
+each other.
 
 Settings in :doc:`/reference/dune-workspace/index`, on the other hand, are
 inherited by all Dune projects in the workspace.

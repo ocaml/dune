@@ -22,7 +22,7 @@ each other.
 Settings in :doc:`/reference/dune-workspace/index`, on the other hand, are
 inherited by all Dune projects in the workspace.
 
-Within a Dune project, :doc:``/reference/dune/index`` files are used to define
+Within a Dune project, :doc:`/reference/dune/index` files are used to define
 all objects of interest for Dune: libraries, executables, tests, etc. Only
 public items (public libraries, public executables) from a Dune project are
 visible to other Dune projects within the same Dune workspace.

@@ -137,7 +137,7 @@ let empty_package name ~version =
   { Lock_dir.Pkg.build_command = Lock_dir.Conditional_choice.empty
   ; install_command = Lock_dir.Conditional_choice.empty
   ; depends = Lock_dir.Conditional_choice.empty
-  ; depexts = Lock_dir.Conditional_choice.empty
+  ; depexts = []
   ; info =
       { Lock_dir.Pkg_info.name
       ; version

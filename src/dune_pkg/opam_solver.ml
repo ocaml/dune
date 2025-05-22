@@ -1650,6 +1650,7 @@ let solve_lock_dir
       ~pins:pinned_packages
       ~constraints
       ~selected_depopts
+      ~portable_lock_dir
   =
   let pinned_package_names = Package_name.Set.of_keys pinned_packages in
   let stats_updater = Solver_stats.Updater.init () in
@@ -1720,7 +1721,8 @@ let solve_lock_dir
             version_by_package_name
             opam_package
             ~pinned:(Package_name.Set.mem pinned_package_names name)
-            resolved_package)
+            resolved_package
+            ~portable_lock_dir)
       in
       match Package_name.Map.of_list_map pkgs ~f:(fun pkg -> pkg.info.name, pkg) with
       | Error (name, _pkg1, _pkg2) ->

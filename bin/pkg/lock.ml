@@ -92,6 +92,7 @@ let solve_multiple_platforms
       ~constraints
       ~selected_depopts
       ~solve_for_platforms
+      ~portable_lock_dir
   =
   let open Fiber.O in
   let solve_for_env env =
@@ -103,6 +104,7 @@ let solve_multiple_platforms
       ~local_packages
       ~constraints
       ~selected_depopts
+      ~portable_lock_dir
   in
   let portable_solver_env =
     Dune_pkg.Solver_env.unset_multi
@@ -195,6 +197,7 @@ let solve_lock_dir
       ~constraints:(constraints_of_workspace workspace ~lock_dir_path)
       ~selected_depopts:(depopts_of_workspace workspace ~lock_dir_path)
       ~solve_for_platforms
+      ~portable_lock_dir
   in
   let solver_result =
     match result with

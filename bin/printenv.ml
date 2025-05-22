@@ -25,7 +25,7 @@ let dump sctx ~dir =
   and+ menhir_dump =
     Dune_rules.Menhir_rules.menhir_env ~dir
     |> Action_builder.of_memo
-    >>= Dune_rules.Menhir_env.dump
+    >>= Dune_lang.Menhir_env.dump
   and+ coq_dump = Dune_rules.Coq.Coq_rules.coq_env ~dir >>| Dune_rules.Coq.Coq_flags.dump
   and+ jsoo_js_dump =
     let module Js_of_ocaml = Dune_rules.Js_of_ocaml in

@@ -21,7 +21,6 @@ between each change to its code.
   Had 1 error, waiting for filesystem changes...
   baz
   Success, waiting for filesystem changes...
-  $ PID=$!
 
 Wait for the $DONE_FLAG file to exist, then delete the file. This file is
 created by the program being exec'd, so when it exists we know that it's safe to
@@ -47,5 +46,3 @@ Wait until the error shows up in the log
 
   $ ../wait-for-file.sh $DONE_FLAG
 
-Prevent the test from leaking the dune process.
-  $ kill $PID

@@ -33,7 +33,5 @@ we are in watch mode.
   oh no!
   Program exited with code [1]
   Success, waiting for filesystem changes...
-  $ PID=$!
   $ ./wait-for-file.sh $DONE_FLAG
 
-  $ kill $PID

@@ -18,7 +18,7 @@ This document gives simple usage examples of Dune. You can also look at
 examples of projects using Dune with `CRAM stanzas <https://ocaml.org/p/craml/1.0.0>`__.
 
 To try these examples, you will need to have Dune installed. See
-:doc:`/howto/install-dune`.
+:doc:`howto/install-dune`.
 
 Initializing Projects
 =====================
@@ -107,7 +107,7 @@ which you can dive deeper into Dune's capabilities:
   details.
 * The ``project_name.opam`` file will be freshly generated from the
   ``dune-project`` file whenever you build your project. You shouldn't need to
-  worry about this, but you can see :doc:`/explanation/opam-integration` for
+  worry about this, but you can see :doc:`explanation/opam-integration` for
   details.
 * The ``dune`` files in each directory specify the component to be built with
   the files in that directory. For details on ``dune`` files, see :doc:`/reference/dune/index`.
@@ -166,17 +166,17 @@ Building a Hello World Program From Scratch
 ===========================================
 
 Create a new directory within a Dune project (:ref:`initializing-an-executable`).
-Since OCaml is a compiled language, first create a ``dune`` file in Nano, Vim,
-or your preferred text editor. Declare the ``hello_world`` executable by including the following stanza
-(shown below). Name this initial file ``dune`` and save it.
+Since OCaml is a compiled language, first create a ``dune`` file in Nano, Vim, 
+or your preferred text editor. Declare the ``hello_world`` executable by including the following stanza 
+(shown below). Name this initial file ``dune`` and save it. 
 
 .. code:: dune
 
     (executable
      (name hello_world))
 
-Create a second file containing the following code and name it ``hello_world.ml`` (including
-the .ml extension). It will implement the executable stanza in the ``dune`` file when built.
+Create a second file containing the following code and name it ``hello_world.ml`` (including 
+the .ml extension). It will implement the executable stanza in the ``dune`` file when built. 
 
 .. code:: ocaml
 
@@ -188,12 +188,12 @@ Next, build your new program in a shell using this command:
 
    $ dune build hello_world.exe
 
-This will create a directory called ``_build`` and build the
+This will create a directory called ``_build`` and build the 
 program: ``_build/default/hello_world.exe``. Note that
 native code executables will have the ``.exe`` extension on all platforms
-(including non-Windows systems).
+(including non-Windows systems). 
 
-Finally, run it with the following command to see that it worked. In
+Finally, run it with the following command to see that it worked. In 
 fact, the executable can both be built and run in a single
 step:
 
@@ -206,7 +206,7 @@ Voila! This should print "Hello, world!" in the command line.
 Building a Hello World Program Using Lwt
 ========================================
 
-Lwt is a concurrent library in OCaml.
+Lwt is a concurrent library in OCaml. 
 
 In a directory of your choice, write this ``dune`` file:
 
@@ -307,7 +307,7 @@ And build it with:
 
 The executable will be built as ``_build/default/hello_world.bc``.
 The executable can be built and run in a single
-step with ``dune exec ./hello_world.bc``. This bytecode version allows the usage of
+step with ``dune exec ./hello_world.bc``. This bytecode version allows the usage of 
 ``ocamldebug``.
 
 Setting the OCaml Compilation Flags Globally

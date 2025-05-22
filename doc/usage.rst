@@ -212,7 +212,7 @@ targets upon starting:
     - _build/4.04.0/bin/prog.exe
 
 If a target starts with the ``@`` sign, it is interpreted as an :term:`alias`.
-See :doc:`/reference/aliases`.
+See :doc:`reference/aliases`.
 
 Variables for Artifacts
 -----------------------

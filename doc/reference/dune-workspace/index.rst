@@ -2,9 +2,9 @@ dune-workspace
 ==============
 
 A ``dune-workspace`` file (if present) marks the root of the current Dune
-workspace (see :doc:`/getting-started/scopes`). It can be used to define
-compilation contexts (see :doc:`/reference/dune-workspace/context`) and specify
-settings common to all Dune projects contained within the workspace.
+workspace (see :doc:`/scopes`). It can be used to define compilation contexts
+(see :doc:`/reference/dune-workspace/context`) and specify settings common to
+all Dune projects contained within the workspace.
 
 By default, a workspace has only one build context named ``default`` which
 corresponds to the environment in which ``dune`` is run. You can define more

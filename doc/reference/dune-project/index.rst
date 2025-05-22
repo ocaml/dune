@@ -2,8 +2,8 @@ dune-project
 ============
 
 Each ``dune-project`` file marks the root of a Dune projects within the current
-Dune workspace (see :doc:`/getting-started/scopes`). It can also specify
-project-wide parameters.
+Dune workspace (see :doc:`/scopes`). It can also specify project-wide
+parameters.
 
 The first line of ``dune-project`` must be a ``lang`` stanza with no extra
 whitespace or comments. The ``lang`` stanza controls the names and contents of

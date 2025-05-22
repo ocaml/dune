@@ -7,7 +7,7 @@ what Dune is, how it works, and how to use it.
 .. toctree::
    :maxdepth: 2
 
-   overview
-   quick-start
-   scopes
-   usage
+   ../overview
+   ../quick-start
+   ../scopes
+   ../usage

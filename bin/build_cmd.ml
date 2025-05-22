@@ -207,7 +207,7 @@ let build =
        state of the lock could otherwise change between checking it and taking
        it. *)
     match Dune_util.Global_lock.lock ~timeout:None with
-    | Error () ->
+    | Error lock_held_by ->
       (* This case is reached if dune detects that another instance of dune
          is already running. Rather than performing the build itself, the
          current instance of dune will instruct the already-running instance to
@@ -217,6 +217,12 @@ let build =
          perform the RPC call.
       *)
       Scheduler.go_without_rpc_server ~common ~config (fun () ->
+        User_warning.emit
+          [ Dune_util.Global_lock.Lock_held_by.message lock_held_by
+          ; Pp.text
+              "The requested targets will still be built however functionality will be \
+               reduced and some command line arguments will be ignored."
+          ];
         build_via_rpc_server targets)
     | Ok () ->
       let request setup =

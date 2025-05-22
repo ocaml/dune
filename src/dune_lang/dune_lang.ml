@@ -53,3 +53,4 @@ module File_binding = File_binding
 module Foreign_language = Foreign_language
 module Ocaml_flags = Ocaml_flags
 module Coq_env = Coq_env
+module Menhir_env = Menhir_env

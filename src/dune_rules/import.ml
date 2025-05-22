@@ -118,6 +118,7 @@ include struct
   module File_binding = File_binding
   module Foreign_language = Foreign_language
   module Coq_env = Coq_env
+  module Menhir_env = Menhir_env
 end
 
 include Dune_engine.No_io

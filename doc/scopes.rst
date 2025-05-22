@@ -28,8 +28,9 @@ Within a Dune project, :doc:`/reference/dune/index` files are used to define all
 objects of interest for Dune: libraries, executables, tests, etc. References
 within :doc:`/reference/dune/index` files are resolved relative to the directory
 containing the file (except if using a :doc:`/reference/dune/subdir` stanza).
-There are typically many Dune files in a Dune project (one per directory, unless
-the directory does not contain anything relevant to Dune).
+There are typically many :doc:`/reference/dune/index` files in a Dune project
+(one per directory, unless the directory does not contain anything relevant to
+Dune).
 
 Finally, note that only public items (public libraries, public executables) of a
 Dune project are visible to other Dune projects within the same Dune workspace.

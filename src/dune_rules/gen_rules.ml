@@ -163,6 +163,8 @@ end = struct
     | Install_conf.T i ->
       let+ () = install_stanza_rules ~ctx_dir ~expander i in
       empty_none
+    (* TODO: What does this part of the code do? Why does Documentation.t has
+       not the same kind of install_stanza_rules? *)
     | Plugin.T p ->
       let+ () = Plugin_rules.setup_rules ~sctx ~dir p in
       empty_none

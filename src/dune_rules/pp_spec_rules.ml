@@ -144,7 +144,10 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
         fun ~source ~ast:_ ->
           Module.iter source ~f:(fun _ (src : Module.File.t) ->
             let src = Path.as_in_build_dir_exn (Module.File.path src) in
-            add_alias ~loc (action_for_pp ~sandbox ~loc ~expander ~action ~src))
+            add_alias
+              ~loc
+              ~synopsis:None
+              (action_for_pp ~sandbox ~loc ~expander ~action ~src))
       | Pps { loc; pps; flags; staged } ->
         if staged
         then
@@ -185,6 +188,7 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
           Module.iter ast ~f:(fun ml_kind src ->
             add_alias
               ~loc
+              ~synopsis:None
               (promote_correction
                  ~suffix:corrected_suffix
                  (Path.as_in_build_dir_exn

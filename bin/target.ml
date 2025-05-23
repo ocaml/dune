@@ -21,10 +21,16 @@ module Target_type = struct
   type t =
     | File
     | Directory
+
+  type target_info =
+    { target_type : t
+    ; synopsis : Dune_engine.Synopsis.t option
+    ; loc : Loc.t
+    }
 end
 
 module All_targets = struct
-  type t = Target_type.t Path.Build.Map.t
+  type t = Target_type.target_info Path.Build.Map.t
 
   include Monoid.Make (struct
       type nonrec t = t
@@ -62,9 +68,12 @@ let all_direct_targets dir =
         | External _ | Source _ -> All_targets.empty
         | Build { rules_here; _ } ->
           All_targets.combine
-            (Path.Build.Map.map rules_here.by_file_targets ~f:(fun _ -> Target_type.File))
-            (Path.Build.Map.map rules_here.by_directory_targets ~f:(fun _ ->
-               Target_type.Directory))
+            (Path.Build.Map.map rules_here.by_file_targets ~f:(fun { synopsis; loc; _ } ->
+               { Target_type.target_type = Target_type.File; synopsis; loc }))
+            (Path.Build.Map.map
+               rules_here.by_directory_targets
+               ~f:(fun { synopsis; loc; _ } ->
+                 { Target_type.target_type = Target_type.Directory; synopsis; loc }))
         | Build_under_directory_target _ -> All_targets.empty))
   >>| All_targets.reduce
 ;;
@@ -264,3 +273,9 @@ let interpret_targets root config setup user_targets =
 type target_type = Target_type.t =
   | File
   | Directory
+
+type target_info = Target_type.target_info =
+  { target_type : target_type
+  ; synopsis : Dune_engine.Synopsis.t option
+  ; loc : Loc.t
+  }

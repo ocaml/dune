@@ -1,6 +1,9 @@
 package
 -------
 
+This stanza is used to specify package metadata. In particular, this information
+is used when generating OPAM files (see :doc:`generate_opam_files`).
+
 .. describe:: (package ...)
 
    Define package-specific metadata.
@@ -46,50 +49,57 @@ package
 
       .. versionadded:: 2.0
 
-      The same as (and takes precedences over) the corresponding global field.
+      The same as (and takes precedences over) the corresponding global field
+      (see :doc:`license`).
 
    .. describe:: (authors ...)
 
       .. versionadded:: 2.0
 
-      The same as (and takes precedences over) the corresponding global field.
+      The same as (and takes precedences over) the corresponding global field
+      (see :doc:`authors`).
 
    .. describe:: (maintainers ...)
 
       .. versionadded:: 2.0
 
-      The same as (and takes precedences over) the corresponding global field.
+      The same as (and takes precedences over) the corresponding global field
+      (see :doc:`maintainers`).
 
    .. describe:: (maintenance_intent ...)
 
       .. versionadded:: 3.18
 
-      The same as (and takes precedences over) the corresponding global field.
-      See :doc:`the global field for details </reference/dune-project/generate_opam_files>`.
+      The same as (and takes precedences over) the corresponding global field
+      (see :doc:`maintenance_intent`).
 
    .. describe:: (source ...)
 
       .. versionadded:: 2.0
 
-      The same as (and takes precedences over) the corresponding global field.
+      The same as (and takes precedences over) the corresponding global field
+      (see :doc:`source`).
 
    .. describe:: (bug_reports ...)
 
       .. versionadded:: 2.0
 
-      The same as (and takes precedences over) the corresponding global field.
+      The same as (and takes precedences over) the corresponding global field
+      (see :doc:`bug_reports`).
 
    .. describe:: (homepage ...)
 
       .. versionadded:: 2.0
 
-      The same as (and takes precedences over) the corresponding global field.
+      The same as (and takes precedences over) the corresponding global field
+      (see :doc:`homepage`).
 
    .. describe:: (documentation ...)
 
       .. versionadded:: 2.0
 
-      The same as (and takes precedences over) the corresponding global field.
+      The same as (and takes precedences over) the corresponding global field
+      (see :doc:`documentation`).
 
    .. describe:: (sites ...)
 

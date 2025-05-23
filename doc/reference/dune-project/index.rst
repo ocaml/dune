@@ -15,19 +15,27 @@ Additionally, they can contains the following stanzas.
 .. toctree::
 
   accept_alternative_dune_file_name
+  authors
+  bug_reports
   cram
   dialect
+  documentation
   executables_implicit_empty_intf
   expand_aliases_in_sandbox
   explicit_js_mode
   formatting
   generate_opam_files
+  homepage
   implicit_transitive_deps
+  license
+  maintainers
+  maintenance_intent
   map_workspace_root
   name
   opam_file_location
   package
   pin
+  source
   subst
   use_standard_c_and_cxx_flags
   using

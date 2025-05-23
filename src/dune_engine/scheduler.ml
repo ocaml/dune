@@ -889,7 +889,10 @@ let wait_for_build_process t pid =
       ~on_cancel:(fun () ->
         Process_watcher.killall t.process_watcher Sys.sigkill;
         Fiber.return ())
-      (fun () -> wait_for_process t pid)
+      (fun () ->
+         let+ r = wait_for_process t pid in
+         kill_process_group pid Sys.sigkill;
+         r)
   in
   ( res
   , match outcome with

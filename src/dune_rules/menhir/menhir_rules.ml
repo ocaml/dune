@@ -138,8 +138,13 @@ module Run (P : PARAMS) = struct
 
   (* [menhir args] generates a Menhir command line (a build action). *)
 
-  let menhir (args : 'a args) : Action.Full.t Action_builder.With_targets.t =
-    Command.run_dyn_prog ~sandbox ~dir:(Path.build build_dir) menhir_binary args
+  let menhir ?stdout_to (args : 'a args) : Action.Full.t Action_builder.With_targets.t =
+    Command.run_dyn_prog
+      ~sandbox
+      ~dir:(Path.build build_dir)
+      ?stdout_to
+      menhir_binary
+      args
   ;;
 
   let rule ?(mode = stanza.mode)
@@ -316,6 +321,108 @@ module Run (P : PARAMS) = struct
 
   (* ------------------------------------------------------------------------ *)
 
+  (* [process_messages stanza m] generates rules to maintain a .messages file
+     corresponding to a Menhir grammar. *)
+
+  (* Given a Menhir stanza
+
+       (menhir (modules parser) (messages parser_messages))
+
+     the code below defines rules essentially equivalent to
+
+       (rule
+        (with-stodut-to parser_message.messages.list
+         (run menhir parser.mly --list-errors)))
+
+       (rule
+        (with-stdout-to parser_messages.messages.merged
+         (run menhir parser.mly --merge-errors parser_messages.messages.list
+                                --merge-errors parser_messages.messages)))
+
+       (rule
+        (with-stdout-to parser_messages.messages.updated
+         (run sed -e "/^##/d" parser_messages.messages.merged)))
+
+       (rule
+        (target parser_messages.ml)
+        (action
+         (prog
+          (diff parser_messages.messages.updated parser_messages.messages)
+          (run menhir parser.mly --compile-errors parser_messages.messages))))
+  *)
+
+  let messages m = Path.relative (Path.build dir) (m ^ ".messages")
+  let messages_merged m = Path.Build.relative dir (m ^ ".messages.merged")
+  let messages_updated m = Path.Build.relative dir (m ^ ".messages.updated")
+  let messages_auto m = Path.Build.relative dir (m ^ ".messages.auto")
+  let messages_check m = Path.Build.relative dir (m ^ ".messages.check")
+  let messages_ml m = Path.Build.relative dir (m ^ ".ml")
+
+  let process_messages (stanza : stanza) (m : string) : unit Memo.t =
+    let open Memo.O in
+    let* expanded_flags = expand_flags stanza.flags in
+    let menhir ?stdout_to args =
+      menhir
+        ?stdout_to
+        ([ Command.Args.dyn expanded_flags; Deps (sources stanza.modules) ] @ args)
+    in
+    let list_errors = menhir ~stdout_to:(messages_auto m) [ A "--list-errors" ] in
+    let compare_errors =
+      menhir
+        ~stdout_to:(messages_check m)
+        [ A "--compare-errors"
+        ; Dep (Path.build (messages_auto m))
+        ; A "--compare-errors"
+        ; Dep (messages m)
+        ]
+    in
+    let merge_errors =
+      menhir
+        ~stdout_to:(messages_merged m)
+        [ A "--merge-errors"
+        ; Dep (Path.build (messages_auto m))
+        ; A "--merge-errors"
+        ; Dep (messages m)
+        ]
+    in
+    let strip_errors =
+      Action_builder.write_file_dyn
+        (messages_updated m)
+        (let open Action_builder.O in
+         let+ lines = Action_builder.lines_of (Path.build (messages_merged m)) in
+         let lines =
+           List.filter ~f:(fun s -> not (String.starts_with ~prefix:"##" s)) lines
+         in
+         let buf = Buffer.create 0 in
+         List.iter
+           ~f:(fun s ->
+             Buffer.add_string buf s;
+             Buffer.add_char buf '\n')
+           lines;
+         Buffer.contents buf)
+    in
+    let compile_errors =
+      let diff =
+        let action =
+          let open Action_builder.O in
+          let+ () = Action_builder.path (Path.build (messages_updated m))
+          and+ () = Action_builder.path (messages m) in
+          Action.Full.make (Promote.Diff_action.diff (messages m) (messages_updated m))
+        in
+        { With_targets.build = action; targets = Targets.empty }
+      in
+      let compile =
+        menhir ~stdout_to:(messages_ml m) [ A "--compile-errors"; Dep (messages m) ]
+      in
+      Action_builder.progn [ diff; compare_errors; compile ]
+    in
+    Memo.sequential_iter
+      ~f:rule
+      [ list_errors; merge_errors; strip_errors; compile_errors ]
+  ;;
+
+  (* ------------------------------------------------------------------------ *)
+
   (* [process stanza] converts a Menhir stanza into a set of build rules, using
      either [process3] or [process1], as appropriate. *)
 
@@ -337,9 +444,13 @@ module Run (P : PARAMS) = struct
              | Some "--cmly" -> only_tokens, true
              | Some _ | None -> acc))
     in
-    if ocaml_type_inference_disabled || not stanza.infer
-    then process1 base stanza ~cmly
-    else process3 base stanza ~cmly
+    let open Memo.O in
+    let+ () =
+      if ocaml_type_inference_disabled || not stanza.infer
+      then process1 base stanza ~cmly
+      else process3 base stanza ~cmly
+    and+ () = Memo.Option.iter ~f:(process_messages stanza) stanza.messages in
+    ()
   ;;
 
   (* ------------------------------------------------------------------------ *)

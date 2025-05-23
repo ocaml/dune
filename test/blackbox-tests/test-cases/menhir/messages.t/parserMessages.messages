@@ -1,0 +1,33 @@
+main: INT DIV TIMES
+main: INT MINUS TIMES
+main: INT PLUS TIMES
+main: INT TIMES TIMES
+
+# All of these sentences correspond to a situation where we have just read a
+# (unary or binary) arithmetic operator.
+
+After an arithmetic operator, an expression is expected.
+
+main: INT RPAREN
+
+# We have an expression on the stack at offset 0.
+
+I have read the expression '$0'.
+I am now expecting either an arithmetic operator or the end of the input.
+
+main: LPAREN INT LPAREN
+
+# We have an expression on the stack at offset 0,
+# and an opening parenthesis at offset 1.
+
+I have read an opening parenthesis,
+followed with the expression '$0'.
+I am now expecting either an arithmetic operator or a closing parenthesis.
+
+main: LPAREN TIMES
+
+After an opening parenthesis, an expression is expected.
+
+main: TIMES
+
+At the beginning, an expression is expected.

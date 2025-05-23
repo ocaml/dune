@@ -411,12 +411,46 @@ module Dependencies = struct
   let encode t = Dune_lang.List (List.map t ~f:Dependency.encode)
 end
 
+module Conditional_external_dependencies = struct
+  type t =
+    { external_package_names : string list
+    ; enabled_if : Slang.blang
+    }
+
+  let to_dyn { external_package_names; enabled_if } =
+    Dyn.record
+      [ "external_package_names", Dyn.list Dyn.string external_package_names
+      ; "enabled_if", Slang.Blang.to_dyn enabled_if
+      ]
+  ;;
+
+  let equal { external_package_names; enabled_if } t =
+    List.equal String.equal external_package_names t.external_package_names
+    && Slang.Blang.equal enabled_if t.enabled_if
+  ;;
+
+  let encode { external_package_names; enabled_if } =
+    let open Encoder in
+    Dune_lang.List [ list string external_package_names; Slang.Blang.encode enabled_if ]
+  ;;
+
+  let decode =
+    let open Decoder in
+    enter
+      (let+ external_package_names = enter @@ repeat string
+       and+ enabled_if = Slang.Blang.decode in
+       { external_package_names; enabled_if })
+  ;;
+
+  let remove_locs t = { t with enabled_if = Slang.Blang.remove_locs t.enabled_if }
+end
+
 module Pkg = struct
   type t =
     { build_command : Build_command.t Conditional_choice.t
     ; install_command : Action.t Conditional_choice.t
     ; depends : Dependencies.t Conditional_choice.t
-    ; depexts : string list Conditional_choice.t
+    ; depexts : Conditional_external_dependencies.t list
     ; info : Pkg_info.t
     ; exported_env : String_with_vars.t Action.Env_update.t list
     ; enabled_on_platforms : Solver_env_disjunction.t
@@ -437,7 +471,7 @@ module Pkg = struct
     (* CR-rgrinberg: why do we ignore locations? *)
     && Conditional_choice.equal Action.equal_no_locs install_command t.install_command
     && Conditional_choice.equal Dependencies.equal depends t.depends
-    && Conditional_choice.equal (List.equal String.equal) depexts t.depexts
+    && List.equal Conditional_external_dependencies.equal depexts t.depexts
     && Pkg_info.equal info t.info
     && List.equal
          (Action.Env_update.equal String_with_vars.equal)
@@ -460,7 +494,7 @@ module Pkg = struct
     ; exported_env =
         List.map exported_env ~f:(Action.Env_update.map ~f:String_with_vars.remove_locs)
     ; depends = Conditional_choice.map depends ~f:Dependencies.remove_locs
-    ; depexts
+    ; depexts = List.map depexts ~f:Conditional_external_dependencies.remove_locs
     ; build_command = Conditional_choice.map build_command ~f:Build_command.remove_locs
     ; install_command = Conditional_choice.map install_command ~f:Action.remove_locs
     ; enabled_on_platforms
@@ -481,7 +515,7 @@ module Pkg = struct
       [ "build_command", Conditional_choice.to_dyn Build_command.to_dyn build_command
       ; "install_command", Conditional_choice.to_dyn Action.to_dyn install_command
       ; "depends", Conditional_choice.to_dyn Dependencies.to_dyn depends
-      ; "depexts", Conditional_choice.to_dyn (Dyn.list String.to_dyn) depexts
+      ; "depexts", Dyn.list Conditional_external_dependencies.to_dyn depexts
       ; "info", Pkg_info.to_dyn info
       ; ( "exported_env"
         , Dyn.list (Action.Env_update.to_dyn String_with_vars.to_dyn) exported_env )
@@ -529,10 +563,12 @@ module Pkg = struct
       <|> Conditional_choice_or_all_platforms.decode (enter @@ repeat Dependency.decode)
     in
     let parse_depexts_backwards_compatible =
-      (let+ depexts = repeat string in
-       Conditional_choice_or_all_platforms.Choice
-         (Conditional_choice.singleton_all_platforms depexts))
-      <|> Conditional_choice_or_all_platforms.decode (enter @@ repeat string)
+      (let+ external_package_names = repeat string in
+       [ { Conditional_external_dependencies.external_package_names
+         ; enabled_if = Slang.Blang.true_
+         }
+       ])
+      <|> repeat Conditional_external_dependencies.decode
     in
     let empty_choice = Conditional_choice_or_all_platforms.Choice [] in
     enter
@@ -546,8 +582,7 @@ module Pkg = struct
        and+ build_command = Build_command.decode_fields_backwards_compatible
        and+ depends =
          field ~default:empty_choice Fields.depends parse_depends_backwards_compatible
-       and+ depexts =
-         field ~default:empty_choice Fields.depexts parse_depexts_backwards_compatible
+       and+ depexts = field ~default:[] Fields.depexts parse_depexts_backwards_compatible
        and+ source = field_o Fields.source Source.decode
        and+ dev = field_b Fields.dev
        and+ avoid = field_b Fields.avoid
@@ -582,11 +617,6 @@ module Pkg = struct
            Conditional_choice_or_all_platforms.to_conditional_choice
              ~solved_for_platforms
              depends
-         in
-         let depexts =
-           Conditional_choice_or_all_platforms.to_conditional_choice
-             ~solved_for_platforms
-             depexts
          in
          let info =
            let make_source f =
@@ -653,7 +683,7 @@ module Pkg = struct
              | other -> other
            in
            encode_field Fields.depends Dependencies.encode depends)
-        , encode_field Fields.depexts (list string) depexts
+        , field_l Fields.depexts Conditional_external_dependencies.encode depexts
         , match
             Enabled_on_platforms.of_solver_env_disjunction
               ~solved_for_platforms
@@ -681,8 +711,15 @@ module Pkg = struct
         , field_l
             Fields.depexts
             string
-            (Conditional_choice.get_value_ensuring_at_most_one_choice depexts
-             |> Option.value ~default:[])
+            (match depexts with
+             | [] -> []
+             | [ { Conditional_external_dependencies.external_package_names; _ } ] ->
+               external_package_names
+             | _ ->
+               Code_error.raise
+                 "When using non-portable lockdirs it's expected that at most a single \
+                  set of depexts will be stored in each lockfile."
+                 [ "depexts", Dyn.list Conditional_external_dependencies.to_dyn depexts ])
         , [] )
     in
     record_fields
@@ -750,27 +787,13 @@ module Pkg = struct
         a.depends
         b.depends
     in
-    let depexts =
-      Conditional_choice.merge_combining_conditions
-        ~value_equal:(List.equal String.equal)
-        a.depexts
-        b.depexts
-    in
     let enabled_on_platforms = a.enabled_on_platforms @ b.enabled_on_platforms in
-    let ret =
-      { a with build_command; install_command; depends; depexts; enabled_on_platforms }
-    in
+    let ret = { a with build_command; install_command; depends; enabled_on_platforms } in
     if
       not
         (equal
            ret
-           { b with
-             build_command
-           ; install_command
-           ; depends
-           ; depexts
-           ; enabled_on_platforms
-           })
+           { b with build_command; install_command; depends; enabled_on_platforms })
     then
       Code_error.raise
         "Packages differ in a non-platform-specific field"

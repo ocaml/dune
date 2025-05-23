@@ -273,3 +273,11 @@ let rec partition_three xs ~f =
      | `Middle y -> xs, y :: ys, zs
      | `Right z -> xs, ys, z :: zs)
 ;;
+
+let deduplicate xs ~equal =
+  let rec loop = function
+    | [] -> []
+    | x :: xs -> x :: loop (filter xs ~f:(Fun.negate (equal x)))
+  in
+  loop xs
+;;

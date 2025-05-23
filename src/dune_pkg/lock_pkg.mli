@@ -14,4 +14,5 @@ val opam_package_to_lock_file_pkg
   -> OpamPackage.t
   -> pinned:bool
   -> Resolved_package.t
+  -> portable_lock_dir:bool
   -> Lock_dir.Pkg.t

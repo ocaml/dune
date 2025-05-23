@@ -891,7 +891,9 @@ let wait_for_build_process t pid =
         Fiber.return ())
       (fun () ->
          let+ r = wait_for_process t pid in
-         kill_process_group pid Sys.sigkill;
+         (* [kill_process_group] on Windows only kills the pid and by this
+            time the process should've exited anyway *)
+         if not Sys.win32 then kill_process_group pid Sys.sigkill;
          r)
   in
   ( res

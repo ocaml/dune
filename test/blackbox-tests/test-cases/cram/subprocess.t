@@ -12,18 +12,18 @@ We create a file for tracking the PID of a subprocess.
 
 We create a cram test that spawns a subprocess and records its PID in the file
 we gave before.
+
   $ cat > mycram.t <<EOF
   >   $ sleep 5 &
   >   $ echo \$! > $FILE
   > EOF
 
-We can now run this test, which will record its PID.
+We can now run this test, which will record its PID in the file.
+
   $ dune build @mycram
 
-We can now check if this PID is running. Since it suceeded, it means our
-subprocess is still around and has *not* been killed by dune.
-  $ kill -0 $(cat $FILE) 2> /dev/null
+The test finished successfully, now we make sure that the PID was correctly
+terminated.
 
-We manually kill it ourselves by this point.
-  $ kill -9 $(cat $FILE)
-
+  $ ps -p $(cat $FILE) > /dev/null || echo "Process terminated"
+  Process terminated

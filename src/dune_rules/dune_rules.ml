@@ -9,7 +9,6 @@ module Link_flags = Link_flags
 module Ocaml_flags = Ocaml_flags
 module Ocaml_flags_db = Ocaml_flags_db
 module Js_of_ocaml = Js_of_ocaml
-module Menhir_env = Menhir_env
 module Menhir_rules = Menhir_rules
 module Foreign_rules = Foreign_rules
 module Jsoo_rules = Jsoo_rules

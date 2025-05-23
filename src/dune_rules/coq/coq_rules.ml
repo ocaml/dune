@@ -486,6 +486,131 @@ let dep_theory_file ~dir ~wrapper_name =
   |> Path.Build.set_extension ~ext:".theory.d"
 ;;
 
+let theory_coq_args
+      ~sctx
+      ~dir
+      ~wrapper_name
+      ~boot_flags
+      ~stanza_flags
+      ~ml_flags
+      ~theories_deps
+      ~theory_dirs
+  =
+  let+ coq_stanza_flags =
+    let+ expander = Super_context.expander sctx ~dir in
+    let coq_flags =
+      let coq_flags = coq_flags ~expander ~dir ~stanza_flags ~per_file_flags:None in
+      (* By default we have the -q flag. We don't want to pass this to coqtop to
+         allow users to load their .coqrc files for interactive development.
+         Therefore we manually scrub the -q setting when passing arguments to
+         coqtop. *)
+      let rec remove_q = function
+        | "-q" :: l -> remove_q l
+        | x :: l -> x :: remove_q l
+        | [] -> []
+      in
+      let open Action_builder.O in
+      coq_flags >>| remove_q
+    in
+    Command.Args.dyn coq_flags (* stanza flags *)
+  in
+  let coq_native_flags =
+    let mode = Coq_mode.VoOnly in
+    coqc_native_flags ~sctx ~dir ~theories_deps ~theory_dirs ~mode
+  in
+  let file_flags = coqc_file_flags ~dir ~theories_deps ~wrapper_name ~ml_flags in
+  [ coq_stanza_flags; coq_native_flags; Dyn boot_flags; S file_flags ]
+;;
+
+let setup_coqproject_for_theory_rule
+      ~scope
+      ~sctx
+      ~dir
+      ~loc
+      ~theories_deps
+      ~wrapper_name
+      ~use_stdlib
+      ~ml_flags
+      ~coq_lang_version
+      ~stanza_flags
+      ~theory_dirs
+      coq_modules
+  =
+  (* Process coqdep and generate rules *)
+  let boot_type =
+    match coq_modules with
+    | [] -> Resolve.Memo.return Bootstrap.empty
+    | m :: _ -> Bootstrap.make ~scope ~use_stdlib ~wrapper_name ~coq_lang_version m
+  in
+  let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
+  let* args =
+    theory_coq_args
+      ~sctx
+      ~dir
+      ~wrapper_name
+      ~boot_flags
+      ~stanza_flags
+      ~ml_flags
+      ~theories_deps
+      ~theory_dirs
+  in
+  let contents : string With_targets.t =
+    let open With_targets.O in
+    let dir = Path.build dir in
+    let+ args_bld = Command.expand ~dir (Command.Args.S args)
+    and+ args_src =
+      let dir = Path.source (Path.drop_build_context_exn dir) in
+      Command.expand ~dir (Command.Args.S args)
+    in
+    let contents = Buffer.create 73 in
+    let rec add_args args_bld args_src =
+      match args_bld, args_src with
+      | (("-R" | "-Q") as o) :: db :: mb :: args_bld, _ :: ds :: ms :: args_src ->
+        Buffer.add_string contents o;
+        Buffer.add_char contents ' ';
+        Buffer.add_string contents db;
+        Buffer.add_char contents ' ';
+        Buffer.add_string contents mb;
+        Buffer.add_char contents '\n';
+        if db <> ds
+        then (
+          Buffer.add_string contents o;
+          Buffer.add_char contents ' ';
+          Buffer.add_string contents ds;
+          Buffer.add_char contents ' ';
+          Buffer.add_string contents ms;
+          Buffer.add_char contents '\n');
+        add_args args_bld args_src
+      | "-I" :: _ :: args_bld, "-I" :: d :: args_src ->
+        Buffer.add_string contents "-I ";
+        Buffer.add_string contents d;
+        Buffer.add_char contents '\n';
+        add_args args_bld args_src
+      | o :: args_bld, _ :: args_src ->
+        Buffer.add_string contents "-arg ";
+        Buffer.add_string contents o;
+        Buffer.add_char contents '\n';
+        add_args args_bld args_src
+      | [], [] -> ()
+      | _, _ -> assert false
+    in
+    add_args args_bld args_src;
+    Buffer.contents contents
+  in
+  let mode =
+    let open Rule.Promote in
+    let lifetime = Lifetime.Until_clean in
+    Rule.Mode.Promote { lifetime; into = None; only = None }
+  in
+  let coqproject = Path.Build.relative dir "_CoqProject" in
+  Super_context.add_rule
+    ~mode
+    ~loc
+    sctx
+    ~dir
+    (Action_builder.write_file_dyn coqproject contents.build)
+;;
+
 let setup_coqdep_for_theory_rule
       ~sctx
       ~dir
@@ -989,18 +1114,31 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
     | m :: _ -> Bootstrap.make ~scope ~use_stdlib ~wrapper_name ~coq_lang_version m
   in
   let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
-  setup_coqdep_for_theory_rule
+  setup_coqproject_for_theory_rule
+    ~scope
     ~sctx
     ~dir
     ~loc
     ~theories_deps
     ~wrapper_name
-    ~source_rule
+    ~use_stdlib
     ~ml_flags
-    ~mlpack_rule
-    ~boot_flags
-    ~stanza_coqdep_flags:s.coqdep_flags
+    ~coq_lang_version
+    ~stanza_flags
+    ~theory_dirs
     coq_modules
+  >>> setup_coqdep_for_theory_rule
+        ~sctx
+        ~dir
+        ~loc
+        ~theories_deps
+        ~wrapper_name
+        ~source_rule
+        ~ml_flags
+        ~mlpack_rule
+        ~boot_flags
+        ~stanza_coqdep_flags:s.coqdep_flags
+        coq_modules
   >>> Memo.parallel_iter
         coq_modules
         ~f:

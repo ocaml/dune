@@ -13,7 +13,7 @@ let equal { flags; explain } t =
 ;;
 
 let decode =
-  let open Dune_lang.Decoder in
+  let open Decoder in
   fields
   @@ let+ flags = Ordered_set_lang.Unexpanded.field "flags"
      and+ explain = field_o "explain" Blang.decode in
@@ -24,11 +24,11 @@ let empty = { flags = Ordered_set_lang.Unexpanded.standard; explain = None }
 let default = { flags = []; explain = None }
 
 let dump t =
-  let open Action_builder.O in
+  let open Dune_engine.Action_builder.O in
   let+ flags = t.flags in
   List.map
-    ~f:Dune_lang.Encoder.(pair string Fun.id)
-    [ "menhir_flags", Dune_lang.Encoder.(list string) flags
-    ; "menhir_explain", Dune_lang.Encoder.option Blang.encode t.explain
+    ~f:Encoder.(pair string Fun.id)
+    [ "menhir_flags", Encoder.(list string) flags
+    ; "menhir_explain", Encoder.option Blang.encode t.explain
     ]
 ;;

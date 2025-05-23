@@ -10,7 +10,7 @@ module Mode : sig
   val select : mode:t -> js:'a -> wasm:'a -> 'a
   val equal : t -> t -> bool
   val compare : t -> t -> Ordering.t
-  val decode : t Dune_lang.Decoder.t
+  val decode : t Decoder.t
   val to_dyn : t -> Dyn.t
   val all : t list
 
@@ -50,6 +50,8 @@ module Flags : sig
   val map : f:('a -> 'b) -> 'a t -> 'b t
   val standard : Spec.t
 
+  module Action_builder := Dune_engine.Action_builder
+
   val make
     :  spec:Spec.t
     -> default:string list Action_builder.t t
@@ -62,7 +64,7 @@ module Flags : sig
   val dump
     :  mode:Mode.t
     -> string list Action_builder.t t
-    -> Dune_lang.t list Action_builder.t
+    -> Dune_sexp.t list Action_builder.t
 end
 
 module Sourcemap : sig
@@ -88,7 +90,7 @@ module In_buildable : sig
     ; sourcemap : Sourcemap.t option
     }
 
-  val decode : in_library:bool -> mode:Mode.t -> t Dune_lang.Decoder.t
+  val decode : in_library:bool -> mode:Mode.t -> t Decoder.t
   val default : t
 end
 
@@ -120,14 +122,14 @@ module Env : sig
   type 'a t =
     { compilation_mode : Compilation_mode.t option
     ; sourcemap : Sourcemap.t option
-    ; runtest_alias : Alias.Name.t option
+    ; runtest_alias : Alias_name.t option
     ; flags : 'a Flags.t
     ; enabled_if : Blang.t option
     }
 
   val map : f:('a -> 'b) -> 'a t -> 'b t
   val equal : Ordered_set_lang.Unexpanded.t t -> Ordered_set_lang.Unexpanded.t t -> bool
-  val decode : mode:Mode.t -> Ordered_set_lang.Unexpanded.t t Dune_lang.Decoder.t
+  val decode : mode:Mode.t -> Ordered_set_lang.Unexpanded.t t Decoder.t
   val default : profile:Profile.t -> string list t
   val empty : Ordered_set_lang.Unexpanded.t t
 end

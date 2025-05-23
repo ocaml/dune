@@ -1,6 +1,4 @@
 open Import
-module Link_flags := Dune_lang.Link_flags
-module Ocaml_flags := Dune_lang.Ocaml_flags
 
 module Inline_tests : sig
   type t =
@@ -8,7 +6,7 @@ module Inline_tests : sig
     | Disabled
     | Ignored
 
-  val decode : t Dune_lang.Decoder.t
+  val decode : t Decoder.t
   val to_string : t -> string
 end
 
@@ -19,7 +17,7 @@ module Odoc : sig
 
   type t = { warnings : warnings option }
 
-  val decode : t Dune_lang.Decoder.t
+  val decode : t Decoder.t
 end
 
 type config =
@@ -54,10 +52,10 @@ val to_dyn : t -> Dyn.t
 val equal : t -> t -> bool
 
 val foreign_flags
-  :  since:Dune_lang.Syntax.Version.t option
-  -> Ordered_set_lang.Unexpanded.t Foreign_language.Dict.t Dune_lang.Decoder.fields_parser
+  :  since:Syntax.Version.t option
+  -> Ordered_set_lang.Unexpanded.t Foreign_language.Dict.t Decoder.fields_parser
 
-val decode : t Dune_lang.Decoder.t
+val decode : t Decoder.t
 val empty : t
 val find_opt : t -> profile:Profile.t -> config option
 val find : t -> profile:Profile.t -> config

@@ -15,8 +15,8 @@ let dump sctx ~dir =
     let* foreign_flags =
       Dune_rules.Foreign_rules.foreign_flags_env ~dir |> Action_builder.of_memo
     in
-    let+ c_flags = foreign_flags.c
-    and+ cxx_flags = foreign_flags.cxx in
+    let+ c_flags = Foreign_language.Dict.c foreign_flags
+    and+ cxx_flags = Foreign_language.Dict.cxx foreign_flags in
     List.map
       ~f:Dune_lang.Encoder.(pair string (list string))
       [ "c_flags", c_flags; "cxx_flags", cxx_flags ]

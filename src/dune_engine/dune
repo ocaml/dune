@@ -31,7 +31,6 @@
   dune_spawn
   ocamlc_loc
   dune_file_watcher
-  dune_filesystem_stubs
   dune_digest
   dune_metrics)
  (synopsis "Internal Dune library, do not use!"))

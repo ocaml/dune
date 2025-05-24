@@ -47,6 +47,7 @@ type t =
   ; synopsis : string option
   ; description : string option
   ; depends : Package_dependency.t list
+  ; doc_depends : Package_doc_dependency.t
   ; conflicts : Package_dependency.t list
   ; depopts : Package_dependency.t list
   ; info : Package_info.t
@@ -70,6 +71,7 @@ let deprecated_package_names t = t.deprecated_package_names
 let set_has_opam_file t has_opam_file = { t with has_opam_file }
 let version t = t.version
 let depends t = t.depends
+let doc_depends t = t.doc_depends
 let conflicts t = t.conflicts
 let depopts t = t.depopts
 let tags t = t.tags
@@ -89,6 +91,7 @@ let encode
       ; synopsis
       ; description
       ; depends
+      ; doc_depends
       ; conflicts
       ; depopts
       ; info
@@ -109,6 +112,7 @@ let encode
         ; field_o "synopsis" string synopsis
         ; field_o "description" string description
         ; field_l "depends" Package_dependency.encode depends
+        ; field_i "doc_depends" Package_doc_dependency.encode doc_depends
         ; field_l "conflicts" Package_dependency.encode conflicts
         ; field_l "depopts" Package_dependency.encode depopts
         ; field_o "version" Package_version.encode version
@@ -151,6 +155,11 @@ let decode =
        and+ version =
          field_o "version" (Syntax.since Stanza.syntax (2, 5) >>> Package_version.decode)
        and+ depends = field ~default:[] "depends" (repeat Package_dependency.decode)
+       and+ doc_depends =
+         field
+           ~default:{ Package_doc_dependency.libraries = []; packages = [] }
+           "doc_depends"
+           Package_doc_dependency.decode
        and+ conflicts = field ~default:[] "conflicts" (repeat Package_dependency.decode)
        and+ depopts = field ~default:[] "depopts" (repeat Package_dependency.decode)
        and+ info = Package_info.decode ~since:(2, 0) ()
@@ -183,6 +192,7 @@ let decode =
        ; synopsis
        ; description
        ; depends
+       ; doc_depends
        ; conflicts
        ; depopts
        ; info
@@ -210,6 +220,7 @@ let to_dyn
       ; synopsis
       ; description
       ; depends
+      ; doc_depends
       ; conflicts
       ; depopts
       ; info
@@ -229,6 +240,7 @@ let to_dyn
     ; "synopsis", option string synopsis
     ; "description", option string description
     ; "depends", list Package_dependency.to_dyn depends
+    ; "doc_depends", Package_doc_dependency.to_dyn doc_depends
     ; "conflicts", list Package_dependency.to_dyn conflicts
     ; "depopts", list Package_dependency.to_dyn depopts
     ; "info", Package_info.to_dyn info
@@ -253,6 +265,7 @@ let create
       ~version
       ~conflicts
       ~depends
+      ~doc_depends
       ~depopts
       ~info
       ~has_opam_file
@@ -272,6 +285,7 @@ let create
   ; synopsis
   ; description
   ; depends
+  ; doc_depends
   ; conflicts
   ; info
   ; depopts

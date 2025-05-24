@@ -1,7 +1,10 @@
 (** Workspaces definitions *)
-module Pin_stanza := Dune_lang.Pin_stanza
 
 open Import
+module Ordered_set_lang := Dune_lang.Ordered_set_lang
+module Dune_env := Dune_lang.Dune_env
+module Pin_stanza := Dune_lang.Pin_stanza
+module Lib_name := Dune_lang.Lib_name
 
 module Lock_dir : sig
   type t =

@@ -17,6 +17,8 @@ open struct
   module Only_packages = Only_packages
 end
 
+module Workspace = Source.Workspace
+
 open struct
   open Cmdliner
   module Cmd = Cmd
@@ -580,7 +582,7 @@ module Builder = struct
     ; always_show_command_line : bool
     ; promote_install_files : bool
     ; file_watcher : Dune_engine.Scheduler.Run.file_watcher
-    ; workspace_config : Dune_rules.Workspace.Clflags.t
+    ; workspace_config : Workspace.Clflags.t
     ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
     ; report_errors_config : Dune_engine.Report_errors_config.t
     ; separate_error_messages : bool
@@ -1191,12 +1193,10 @@ let init (builder : Builder.t) =
   (* We need to print this before reading the workspace file, so that the editor
      can interpret errors in the workspace file. *)
   print_entering_message c;
-  Dune_rules.Workspace.Clflags.set c.builder.workspace_config;
+  Workspace.Clflags.set c.builder.workspace_config;
   let config =
     (* Here we make the assumption that this computation doesn't yield. *)
-    Fiber.run
-      (Memo.run (Dune_rules.Workspace.workspace_config ()))
-      ~iter:(fun () -> assert false)
+    Fiber.run (Memo.run (Workspace.workspace_config ())) ~iter:(fun () -> assert false)
   in
   let config =
     Dune_config.adapt_display
@@ -1211,9 +1211,9 @@ let init (builder : Builder.t) =
        | Yes _ -> true);
   Dune_engine.Execution_parameters.init
     (let open Memo.O in
-     let+ w = Dune_rules.Workspace.workspace () in
+     let+ w = Workspace.workspace () in
      Dune_engine.Execution_parameters.builtin_default
-     |> Dune_rules.Workspace.update_execution_parameters w);
+     |> Workspace.update_execution_parameters w);
   Dune_rules.Global.init ~capture_outputs:c.builder.capture_outputs;
   let cache_config =
     match config.cache_enabled with

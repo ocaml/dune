@@ -1,5 +1,14 @@
 open Import
 open Dune_lang.Decoder
+
+include struct
+  open Dune_lang
+  module Dune_env = Dune_env
+  module File_binding = File_binding
+  module Package_variable_name = Package_variable_name
+  module Lib_name = Lib_name
+end
+
 module Pin_stanza = Dune_lang.Pin_stanza
 module Repository = Dune_pkg.Pkg_workspace.Repository
 module Solver_env = Dune_pkg.Solver_env

@@ -5,3 +5,6 @@ module Clflags = Clflags
 module Source_tree = Source_tree
 module Cram_test = Cram_test
 module Only_packages = Only_packages
+module Opam_switch = Opam_switch
+module Workspace = Workspace
+module Blang_expand = Blang_expand

@@ -124,6 +124,9 @@ include struct
   module Menhir_env = Menhir_env
   module Dune_env = Dune_env
   module Js_of_ocaml = Js_of_ocaml
+  module Copy_files = Copy_files
+  module Enabled_if = Enabled_if
+  module Rule_mode_decoder = Rule_mode_decoder
 end
 
 include Dune_engine.No_io

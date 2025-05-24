@@ -29,8 +29,7 @@ let sentinel_value_of_variable_name variable_name =
   let uppercase_replacing_dash_with_underscore =
     Package_variable_name.to_string variable_name
     |> String.uppercase
-    |> String.split_on_char ~sep:'-'
-    |> String.concat ~sep:"_"
+    |> String.replace_char ~from:'-' ~to_:'_'
   in
   string (String.concat ~sep:"" [ "__"; uppercase_replacing_dash_with_underscore ])
 ;;

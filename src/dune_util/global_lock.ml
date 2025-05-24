@@ -66,6 +66,28 @@ end
 
 let locked = ref false
 
+module Lock_held_by = struct
+  type t =
+    | Pid_from_lockfile of string
+    | Unknown
+
+  let read_lock_file () =
+    match Io.read_file (Path.build lock_file) with
+    | exception _ -> Unknown
+    | pid -> Pid_from_lockfile pid
+  ;;
+
+  let message t =
+    Pp.textf
+      "A running dune%s instance has locked the build directory. If this is not the \
+       case, please delete %S."
+      (match t with
+       | Unknown -> ""
+       | Pid_from_lockfile pid -> sprintf " (pid: %s)" pid)
+      (Path.Build.to_string_maybe_quoted lock_file)
+  ;;
+end
+
 let lock ~timeout =
   match Config.(get global_lock) with
   | `Disabled -> Ok ()
@@ -90,22 +112,15 @@ let lock ~timeout =
       | `Success ->
         locked := true;
         Ok ()
-      | `Failure -> Error ())
+      | `Failure ->
+        let lock_held_by = Lock_held_by.read_lock_file () in
+        Error lock_held_by)
 ;;
 
 let lock_exn ~timeout =
   match lock ~timeout with
   | Ok () -> ()
-  | Error () ->
-    User_error.raise
-      [ Pp.textf
-          "A running dune%s instance has locked the build directory. If this is not the \
-           case, please delete %s"
-          (match Io.read_file (Path.build lock_file) with
-           | exception _ -> ""
-           | pid -> sprintf " (pid: %s)" pid)
-          (Path.Build.to_string_maybe_quoted lock_file)
-      ]
+  | Error lock_held_by -> User_error.raise [ Lock_held_by.message lock_held_by ]
 ;;
 
 let unlock () =

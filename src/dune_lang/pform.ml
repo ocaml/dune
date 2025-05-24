@@ -139,6 +139,7 @@ module Var = struct
     | Inline_tests
     | Toolchain
     | Pkg of Pkg.t
+    | Oxcaml_supported
 
   let compare : t -> t -> Ordering.t = Poly.compare
 
@@ -191,7 +192,8 @@ module Var = struct
        | Corrected_suffix -> variant "Corrected_suffix" []
        | Inline_tests -> variant "Inline_tests" []
        | Toolchain -> variant "Toolchain" []
-       | Pkg pkg -> Pkg.to_dyn pkg)
+       | Pkg pkg -> Pkg.to_dyn pkg
+       | Oxcaml_supported -> variant "Oxcaml_supported" [])
   ;;
 
   let of_opam_global_variable_name name =
@@ -502,6 +504,7 @@ let encode_to_latest_dune_lang_version t =
        | Inline_tests -> Some "inline_tests"
        | Toolchain -> Some "toolchain"
        | Pkg pkg -> Some (Var.Pkg.encode_to_latest_dune_lang_version pkg)
+       | Oxcaml_supported -> Some "oxcaml_supported"
      with
      | None -> Pform_was_deleted
      | Some name -> Success { name; payload = None })
@@ -673,6 +676,7 @@ module Env = struct
         ; "-verbose", deleted_in ~version:(3, 0) Var.Nothing
         ; "ocaml_bin", No_info Ocaml_bin_dir
         ; "ocaml_version", No_info Ocaml_version
+        ; "oxcaml_supported", No_info Oxcaml_supported
         ; "ocaml_where", No_info Ocaml_stdlib_dir
         ; "ccomp_type", since ~version:(3, 0) Var.Ccomp_type
         ; "null", No_info Dev_null

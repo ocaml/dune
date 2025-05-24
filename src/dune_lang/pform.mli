@@ -84,6 +84,7 @@ module Var : sig
     | Inline_tests
     | Toolchain
     | Pkg of Pkg.t
+    | Oxcaml_supported
 
   val compare : t -> t -> Ordering.t
   val to_dyn : t -> Dyn.t

@@ -1,9 +1,9 @@
 open Import
-open Dune_lang.Decoder
+open Decoder
 
 type allowed_vars =
   | Any
-  | Only of (string * Dune_lang.Syntax.Version.t) list
+  | Only of (string * Syntax.Version.t) list
 
 (* The following variables are the ones allowed in the enabled_if fields of
    libraries, executables and install stanzas. While allowed variables for
@@ -36,7 +36,7 @@ let common_vars ~since =
 ;;
 
 let emit_warning allowed_vars is_error var =
-  let loc = Dune_lang.Template.Pform.loc var in
+  let loc = Template.Pform.loc var in
   let var_names = List.map ~f:fst allowed_vars in
   User_warning.emit
     ~loc
@@ -55,7 +55,7 @@ let decode_value ~allowed_vars ?(is_error = true) () =
     Blang.Ast.decode
       ~override_decode_bare_literal:None
       (String_with_vars.decode_manually (fun env var ->
-         let name = Dune_lang.Template.Pform.name var in
+         let name = Template.Pform.name var in
          if List.exists ~f:(String.equal name) common_vars_list
          then (
            match List.assoc allowed_vars name with
@@ -66,9 +66,9 @@ let decode_value ~allowed_vars ?(is_error = true) () =
              let current_ver = Pform.Env.syntax_version env in
              if min_ver > current_ver
              then (
-               let loc = Dune_lang.Template.Pform.loc var in
-               let what = Dune_lang.Template.Pform.describe var in
-               Dune_lang.Syntax.Error.since loc Stanza.syntax min_ver ~what)
+               let loc = Template.Pform.loc var in
+               let what = Template.Pform.describe var in
+               Syntax.Error.since loc Stanza.syntax min_ver ~what)
              else Pform.Env.unsafe_parse_without_checking_version env var)
          else (
            emit_warning allowed_vars is_error var;
@@ -80,7 +80,7 @@ let decode ~allowed_vars ?is_error ~since () =
   let decode =
     match since with
     | None -> decode
-    | Some since -> Dune_lang.Syntax.since Stanza.syntax since >>> decode
+    | Some since -> Syntax.since Stanza.syntax since >>> decode
   in
   field "enabled_if" ~default:Blang.true_ decode
 ;;

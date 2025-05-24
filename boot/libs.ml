@@ -271,7 +271,7 @@ let local_libraries =
     }
   ; { path = "src/dune_lang"
     ; main_module_name = Some "Dune_lang"
-    ; include_subdirs_unqualified = false
+    ; include_subdirs_unqualified = true
     ; special_builtin_support = None
     }
   ; { path = "src/fiber_event_bus"

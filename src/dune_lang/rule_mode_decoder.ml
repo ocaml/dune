@@ -1,5 +1,6 @@
 open Import
-open Dune_lang.Decoder
+open Decoder
+module Rule = Dune_engine.Rule
 
 module Promote = struct
   let into_decode =
@@ -7,16 +8,13 @@ module Promote = struct
     { Rule.Promote.Into.loc; dir }
   ;;
 
-  let decode : Rule.Promote.t Dune_lang.Decoder.t =
+  let decode : Rule.Promote.t Decoder.t =
     fields
       (let+ until_clean =
-         field_b "until-clean" ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 10))
-       and+ into =
-         field_o "into" (Dune_lang.Syntax.since Stanza.syntax (1, 10) >>> into_decode)
+         field_b "until-clean" ~check:(Syntax.since Stanza.syntax (1, 10))
+       and+ into = field_o "into" (Syntax.since Stanza.syntax (1, 10) >>> into_decode)
        and+ only =
-         field_o
-           "only"
-           (Dune_lang.Syntax.since Stanza.syntax (1, 10) >>> Predicate_lang.Glob.decode)
+         field_o "only" (Syntax.since Stanza.syntax (1, 10) >>> Predicate_lang.Glob.decode)
        in
        let only =
          Option.map only ~f:(fun only ->
@@ -37,25 +35,25 @@ let mode_decoders =
       Rule.Mode.Promote p )
   ; ( "promote-until-clean"
     , let+ () =
-        Dune_lang.Syntax.deleted_in
+        Syntax.deleted_in
           Stanza.syntax
           (3, 0)
           ~extra_info:"Use the (promote (until-clean)) syntax instead."
       in
       Rule.Mode.Promote { lifetime = Until_clean; into = None; only = None } )
   ; ( "promote-into"
-    , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 8)
+    , let+ () = Syntax.since Stanza.syntax (1, 8)
       and+ () =
-        Dune_lang.Syntax.deleted_in
+        Syntax.deleted_in
           Stanza.syntax
           (3, 0)
           ~extra_info:"Use the (promote (into <dir>)) syntax instead."
       and+ into = Promote.into_decode in
       Rule.Mode.Promote { lifetime = Unlimited; into = Some into; only = None } )
   ; ( "promote-until-clean-into"
-    , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 8)
+    , let+ () = Syntax.since Stanza.syntax (1, 8)
       and+ () =
-        Dune_lang.Syntax.deleted_in
+        Syntax.deleted_in
           Stanza.syntax
           (3, 0)
           ~extra_info:"Use the (promote (until-clean) (into <dir>)) syntax instead."

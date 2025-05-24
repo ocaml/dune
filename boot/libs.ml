@@ -89,6 +89,11 @@ let local_libraries =
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }
+  ; { path = "vendor/ocaml-blake3-mini"
+    ; main_module_name = Some "Blake3_mini"
+    ; include_subdirs_unqualified = false
+    ; special_builtin_support = None
+    }
   ; { path = "otherlibs/chrome-trace/src"
     ; main_module_name = Some "Chrome_trace"
     ; include_subdirs_unqualified = false

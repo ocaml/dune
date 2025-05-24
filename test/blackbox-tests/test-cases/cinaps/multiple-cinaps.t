@@ -21,7 +21,7 @@ Multiple cinaps stanzas in the same dune file
   > EOF
   $ dune runtest --diff-command diff 2>&1
   Error: Multiple rules generated for
-  _build/default/.cinaps.a7811055/cinaps.ml-gen:
+  _build/default/.cinaps.f0d91a31/cinaps.ml-gen:
   - dune:1
   - dune:2
   -> required by alias cinaps in dune:1

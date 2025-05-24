@@ -6,8 +6,8 @@ Test the --debug-digests command line option
   $ echo 1 > x
   $ dune build x --wait-for-filesystem-clock --debug-digests 2>&1 | sed 's/stats =.*/stats = XXX/'
   Re-digested file x because its stats changed:
-  { old_digest = digest "b83631c134a9649ec383d0eb9c356803"
-  ; new_digest = digest "705e0d7e5030b1831b18211b1e398faf"
+  { old_digest = digest "662cf3f7d59f76428301690d4ead67ae"
+  ; new_digest = digest "f31e1f1c33564e07cd02ad2c52f4df85"
   ; old_stats = XXX
   ; new_stats = XXX
   }

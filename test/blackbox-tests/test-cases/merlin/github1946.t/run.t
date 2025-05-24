@@ -17,7 +17,7 @@ in the same dune file, but require different ppx specifications
    (B $TESTCASE_ROOT/_build/default/.usesppx1.objs/byte)
    (S $TESTCASE_ROOT)
    (FLG (-w -40 -g))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/c152d6ca3c7e1d83471ffdf48bf729ae/ppx.exe --as-ppx --cookie 'library-name="usesppx1"'"))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/e5a600482cb65dfcb14104c728a9df4a/ppx.exe --as-ppx --cookie 'library-name="usesppx1"'"))
    (UNIT_NAME usesppx1))
   Usesppx1: _build/default/usesppx1.ml-gen
   ((INDEX $TESTCASE_ROOT/_build/default/.usesppx2.objs/cctx.ocaml-index)
@@ -30,7 +30,7 @@ in the same dune file, but require different ppx specifications
    (B $TESTCASE_ROOT/_build/default/.usesppx1.objs/byte)
    (S $TESTCASE_ROOT)
    (FLG (-w -40 -g))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/c152d6ca3c7e1d83471ffdf48bf729ae/ppx.exe --as-ppx --cookie 'library-name="usesppx1"'"))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/e5a600482cb65dfcb14104c728a9df4a/ppx.exe --as-ppx --cookie 'library-name="usesppx1"'"))
    (UNIT_NAME usesppx1))
   Usesppx2: _build/default/usesppx2
   ((INDEX $TESTCASE_ROOT/_build/default/.usesppx2.objs/cctx.ocaml-index)
@@ -43,7 +43,7 @@ in the same dune file, but require different ppx specifications
    (B $TESTCASE_ROOT/_build/default/.usesppx2.objs/byte)
    (S $TESTCASE_ROOT)
    (FLG (-w -40 -g))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/d7394c27c5e0f7ad7ab1110d6b092c05/ppx.exe --as-ppx --cookie 'library-name="usesppx2"'"))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/f455412d08561f269148a48a55f3aef7/ppx.exe --as-ppx --cookie 'library-name="usesppx2"'"))
    (UNIT_NAME usesppx2))
   Usesppx2: _build/default/usesppx2.ml-gen
   ((INDEX $TESTCASE_ROOT/_build/default/.usesppx2.objs/cctx.ocaml-index)
@@ -56,5 +56,5 @@ in the same dune file, but require different ppx specifications
    (B $TESTCASE_ROOT/_build/default/.usesppx2.objs/byte)
    (S $TESTCASE_ROOT)
    (FLG (-w -40 -g))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/d7394c27c5e0f7ad7ab1110d6b092c05/ppx.exe --as-ppx --cookie 'library-name="usesppx2"'"))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/f455412d08561f269148a48a55f3aef7/ppx.exe --as-ppx --cookie 'library-name="usesppx2"'"))
    (UNIT_NAME usesppx2))

@@ -98,7 +98,7 @@ module P = Persistent.Make (struct
     type t = File.t list
 
     let name = "TO-PROMOTE"
-    let version = 2
+    let version = 3
     let to_dyn = Dyn.list File.to_dyn
 
     let test_example () =

@@ -39,3 +39,9 @@ val alias
   -> expander:Expander.t
   -> Alias_conf.t
   -> unit Memo.t
+
+val interpret_and_add_locks
+  :  expander:Expander.t
+  -> Locks.t
+  -> Action.Full.t Action_builder.t
+  -> Action.Full.t Action_builder.t

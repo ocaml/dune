@@ -1437,7 +1437,6 @@ let set_of_build_paths_list =
 let set_of_external_paths set = External.Set.to_list set |> Set.of_list_map ~f:external_
 let rename old_path new_path = Unix.rename (to_string old_path) (to_string new_path)
 let chmod t ~mode = Unix.chmod (to_string t) mode
-let follow_symlink path = Fpath.follow_symlink (to_string path) |> Result.map ~f:of_string
 
 let drop_prefix path ~prefix =
   let prefix_s = to_string prefix in

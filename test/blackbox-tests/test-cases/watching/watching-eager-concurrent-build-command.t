@@ -24,12 +24,20 @@ Build the project once before starting the watch server so the watch server star
 
 Demonstrate that we can run "dune build" while the watch server is running.
   $ dune build
+  Warning: A running dune (pid: 124305) instance has locked the build
+  directory. If this is not the case, please delete "_build/.lock".
+  The requested targets will still be built however functionality will be
+  reduced and some command line arguments will be ignored.
   Success
 
 Demonstrate that error messages are still printed by "dune build" when it's
 acting as an RPC client while running concurrently with an RPC server.
   $ echo 'let () = print_endlin "Hello, World!"' > foo.ml
   $ dune build
+  Warning: A running dune (pid: 124305) instance has locked the build
+  directory. If this is not the case, please delete "_build/.lock".
+  The requested targets will still be built however functionality will be
+  reduced and some command line arguments will be ignored.
   File "$TESTCASE_ROOT/foo.ml", line 1, characters 9-21:
   1 | let () = print_endlin "Hello, World!"
                ^^^^^^^^^^^^

@@ -1,10 +1,8 @@
 Utop will load libs recursively:
 
-  $ echo 'exit 0;;' | dune utop . -- -init "" | grep -v 'version'
-  Enter #help;; for help.
-  
-  Init file not found: "".
-  # 
+  $ touch empty
+  $ echo 'open Stdlib;; print_endline "success";; exit 0;;' | dune utop . -- -stdin -init empty
+  success
 
 
 The message where the library path does not exist is different:

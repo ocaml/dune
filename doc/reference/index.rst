@@ -37,7 +37,6 @@ These documents specify the various features and languages present in Dune.
        :maxdepth: 1
        :caption: Concepts
 
-       ../concepts/scopes
        ../concepts/variables
        ../concepts/dependency-spec
        ../concepts/ocaml-flags

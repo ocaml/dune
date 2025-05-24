@@ -18,6 +18,8 @@ val decode : t Decoder.t
     messages. *)
 val proper_name : [< `C | `Cxx | `Asm ] -> string
 
+val all : t list
+
 module Dict : sig
   type 'a t
 

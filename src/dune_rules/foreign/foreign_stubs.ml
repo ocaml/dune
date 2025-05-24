@@ -66,9 +66,10 @@ let decode_stubs ~for_library =
   let+ loc_archive_name, archive_name = located (field_o "archive_name" string)
   and+ languages =
     fields_mutually_exclusive
+      ~default:Foreign_language.all
       [ "language", Foreign_language.decode >>| List.singleton
       ; ( "languages"
-        , Dune_lang.Syntax.since Stanza.syntax (3, 18) >>> repeat1 Foreign_language.decode
+        , Dune_lang.Syntax.since Stanza.syntax (3, 19) >>> repeat1 Foreign_language.decode
         )
       ]
     >>| Nonempty_list.of_list

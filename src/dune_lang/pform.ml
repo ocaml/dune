@@ -57,25 +57,6 @@ module Var = struct
 
     let compare = Poly.compare
 
-    let to_dyn t =
-      let open Dyn in
-      match t with
-      | Switch -> variant "Switch" []
-      | Os -> variant "Os" []
-      | Os_version -> variant "Os_version" []
-      | Os_distribution -> variant "Os_distribution" []
-      | Os_family -> variant "Os_family" []
-      | Build -> variant "Build" []
-      | Prefix -> variant "Prefix" []
-      | User -> variant "User" []
-      | Group -> variant "Group" []
-      | Jobs -> variant "Jobs" []
-      | Arch -> variant "Arch" []
-      | Sys_ocaml_version -> variant "Sys_ocaml_version" []
-      | Section_dir section ->
-        variant "Section_dir" [ string (Section.to_string section) ]
-    ;;
-
     let encode_to_latest_dune_lang_version = function
       | Switch -> "switch"
       | Os -> "os"
@@ -91,6 +72,8 @@ module Var = struct
       | Sys_ocaml_version -> "sys_ocaml_version"
       | Section_dir section -> Section.to_string section
     ;;
+
+    let to_dyn t = Dyn.variant (encode_to_latest_dune_lang_version t) []
   end
 
   type t =

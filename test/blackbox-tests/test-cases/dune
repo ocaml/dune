@@ -107,11 +107,6 @@
   (enabled_if %{bin-available:hg})))
 
 (cram
- (applies_to patch-back-source-tree)
- (enabled_if
-  (<> %{system} macosx)))
-
-(cram
  (applies_to link-time-transitive-deps dune-build-info-subdir)
  (deps
   (package dune-build-info)))

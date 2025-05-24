@@ -4,8 +4,8 @@ module Process = Dune_engine.Process
 
 (* [git diff] doesn't like symlink arguments *)
 let resolve_link_for_git path =
-  match Path.follow_symlink path with
-  | Ok p -> p
+  match Fpath.follow_symlink (Path.to_string path) with
+  | Ok p -> Path.of_string p
   | Error Not_a_symlink -> path
   | Error Max_depth_exceeded ->
     User_error.raise

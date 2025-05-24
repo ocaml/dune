@@ -14,7 +14,6 @@ module Jsoo_rules = Jsoo_rules
 module Super_context = Super_context
 module Compilation_context = Compilation_context
 module Colors = Colors
-module Workspace = Workspace
 module Dune_package = Dune_package
 module Alias_rec = Alias_rec
 module Dir_contents = Dir_contents

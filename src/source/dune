@@ -6,6 +6,7 @@
   dune_re
   predicate_lang
   dune_console
+  dune_config_file
   dune_digest
   dune_lang
   dune_glob

@@ -24,11 +24,6 @@ let local_libraries =
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }
-  ; { path = "otherlibs/stdune/dune_filesystem_stubs"
-    ; main_module_name = Some "Dune_filesystem_stubs"
-    ; include_subdirs_unqualified = false
-    ; special_builtin_support = None
-    }
   ; { path = "vendor/csexp/src"
     ; main_module_name = Some "Csexp"
     ; include_subdirs_unqualified = false

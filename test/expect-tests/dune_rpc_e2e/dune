@@ -54,7 +54,6 @@
   dune_rpc_e2e
   dune_engine
   dune_rpc_impl
-  dune_filesystem_stubs
   spawn
   stdune
   fiber

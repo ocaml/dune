@@ -50,7 +50,7 @@ end
 
     Return the [Common.t] and the final configuration, which is the same as the one
     returned in the [config] field of [Dune_rules.Workspace.workspace ()]) *)
-val init : Builder.t -> t * Dune_config_file.Dune_config.t
+val init : ?root:Workspace_root.t -> Builder.t -> t * Dune_config_file.Dune_config.t
 
 (** [examples [("description", "dune cmd foo"); ...]] is an [EXAMPLES] manpage
     section of enumerated examples illustrating how to run the documented

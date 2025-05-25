@@ -164,7 +164,6 @@ val best_src_dir : 'path t -> 'path
 type external_ = Path.t t
 type local = Path.Build.t t
 
-val user_written_deps : _ t -> Lib_dep.t list
 val of_local : local -> external_
 val as_local_exn : external_ -> local
 val set_version : 'a t -> Package_version.t option -> 'a t

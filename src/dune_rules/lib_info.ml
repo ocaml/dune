@@ -388,11 +388,6 @@ let eval_native_archives_exn (type path) (t : path t) ~modules =
     if Modules.With_vlib.has_impl modules then [ f ] else []
 ;;
 
-let user_written_deps t =
-  List.fold_left (t.virtual_deps @ t.ppx_runtime_deps) ~init:t.requires ~f:(fun acc s ->
-    Lib_dep.Direct s :: acc)
-;;
-
 let create
       ~loc
       ~path_kind

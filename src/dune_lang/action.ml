@@ -19,7 +19,7 @@ module Diff = struct
     let open Decoder in
     let+ file1 = path
     and+ file2 = target in
-    { Diff.optional; file1; file2; mode = Text }
+    { Diff.optional; force_source = false; file1; file2; mode = Text }
   ;;
 
   let decode_binary path target =
@@ -27,7 +27,7 @@ module Diff = struct
     let+ () = Syntax.since Stanza.syntax (1, 0)
     and+ file1 = path
     and+ file2 = target in
-    { Diff.optional = false; file1; file2; mode = Binary }
+    { Diff.optional = false; force_source = false; file1; file2; mode = Binary }
   ;;
 end
 
@@ -447,12 +447,12 @@ let rec encode =
   | Write_file (x, perm, y) ->
     List [ atom ("write-file" ^ File_perm.suffix perm); sw x; sw y ]
   | Mkdir x -> List [ atom "mkdir"; sw x ]
-  | Diff { optional; file1; file2; mode = Binary } ->
+  | Diff { optional; file1; file2; mode = Binary; _ } ->
     assert (not optional);
     List [ atom "cmp"; sw file1; sw file2 ]
-  | Diff { optional = false; file1; file2; mode = _ } ->
+  | Diff { optional = false; file1; file2; mode = _; _ } ->
     List [ atom "diff"; sw file1; sw file2 ]
-  | Diff { optional = true; file1; file2; mode = _ } ->
+  | Diff { optional = true; file1; file2; mode = _; _ } ->
     List [ atom "diff?"; sw file1; sw file2 ]
   | No_infer r -> List [ atom "no-infer"; encode r ]
   | Pipe (outputs, l) ->

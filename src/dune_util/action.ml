@@ -8,6 +8,7 @@ module Diff = struct
   type ('path, 'target) t =
     { optional : bool
     ; mode : Mode.t
+    ; force_source : bool
     ; file1 : 'path
     ; file2 : 'target
     }

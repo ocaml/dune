@@ -22,12 +22,6 @@
   %{bin:dune_cmd}
   (package dune)))
 
-(subdir
- jsoo
- (cram
-  (deps %{bin:node})
-  (alias runtest-js)))
-
 (cram
  (applies_to windows-diff github6644)
  (alias runtest-windows))

@@ -1,0 +1,11 @@
+(cram
+ (applies_to sandboxing)
+ (deps %{bin:file}))
+
+(cram
+ (applies_to sandboxing-stale-directory-target)
+ (deps %{bin:bash}))
+
+(cram
+ (applies_to interfere-sandbox-deletion)
+ (deps %{bin:bash}))

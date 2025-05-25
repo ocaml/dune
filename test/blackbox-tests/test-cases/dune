@@ -22,12 +22,6 @@
   %{bin:dune_cmd}
   (package dune)))
 
-(subdir
- jsoo
- (cram
-  (deps %{bin:node})
-  (alias runtest-js)))
-
 (cram
  (applies_to windows-diff github6644)
  (alias runtest-windows))
@@ -67,10 +61,6 @@
   (applies_to error)
   (enabled_if false)))
 
-(cram
- (applies_to sandboxing)
- (deps %{bin:file}))
-
 ; CONDITIONALLY DISABLED TESTS
 
 (cram
@@ -107,11 +97,6 @@
   (enabled_if %{bin-available:hg})))
 
 (cram
- (applies_to patch-back-source-tree)
- (enabled_if
-  (<> %{system} macosx)))
-
-(cram
  (applies_to link-time-transitive-deps dune-build-info-subdir)
  (deps
   (package dune-build-info)))
@@ -144,14 +129,6 @@
  (enabled_if
   (not %{arch_sixtyfour}))
  (deps %{bin:ocaml}))
-
-(cram
- (applies_to interfere-sandbox-deletion)
- (deps %{bin:bash}))
-
-(cram
- (applies_to sandboxing-stale-directory-target)
- (deps %{bin:bash}))
 
 (cram
  (applies_to hidden-deps-supported)

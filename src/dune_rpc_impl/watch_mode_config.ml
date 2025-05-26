@@ -8,6 +8,12 @@ type t =
   | No
   | Yes of rebuild_trigger
 
+let equal a b =
+  match a, b with
+  | No, No | Yes Eager, Yes Eager | Yes Passive, Yes Passive -> true
+  | _, _ -> false
+;;
+
 let all = [ No; Yes Eager; Yes Passive ]
 
 let to_string = function

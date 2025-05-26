@@ -47,4 +47,4 @@ Test the :with_test typo detection
 
 Test that :with_test warnings can also be disabled  
   $ DUNE_CONFIG__TYPO_WARNINGS=disabled dune build @all 2>&1 | grep -A2 -B2 "typo\|Warning.*with_test" || echo "No typo warnings found"
-  No typo warnings found  
+  No typo warnings found

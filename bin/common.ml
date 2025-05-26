@@ -22,7 +22,38 @@ module Workspace = Source.Workspace
 open struct
   open Cmdliner
   module Cmd = Cmd
-  module Term = Term
+
+  module Term = struct
+    include Term
+
+    (* Evaluate a parser, passing it no command-line arguments, in an
+       environment with no variables set. It's only valid to pass a parser
+       which can be evaluated with no arguments, otherwise a code error will
+       be raised. Returns the result of the parser. This is intended to be
+       used to extract the default value for a type implied by the behaviour
+       of its parser when no command-line arguments are passed to it. *)
+    let eval_no_args_empty_env t =
+      let raise_code_error data =
+        Code_error.raise "Unexpected result evaluating term with no args" data
+      in
+      (* Cmdliner doesn't allow argv to be empty. *)
+      let argv = [| "dune" |] in
+      let env _ = None in
+      match Cmd.eval_value ~argv ~env (Cmd.v (Cmd.info "dune") t) with
+      | Ok (`Ok x) -> x
+      | Ok `Help -> raise_code_error [ "ok", Dyn.string "help" ]
+      | Ok `Version -> raise_code_error [ "ok", Dyn.string "version" ]
+      | Error e ->
+        let error_string =
+          match e with
+          | `Parse -> "parse"
+          | `Term -> "term"
+          | `Exn -> "exn"
+        in
+        raise_code_error [ "error", Dyn.string error_string ]
+    ;;
+  end
+
   module Manpage = Manpage
 end
 
@@ -1025,6 +1056,8 @@ module Builder = struct
     ; log_file = Default
     }
   ;;
+
+  let default = Term.eval_no_args_empty_env term
 
   let equal
         t

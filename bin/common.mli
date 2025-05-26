@@ -39,6 +39,7 @@ module Builder : sig
   val set_promote : t -> Dune_engine.Clflags.Promote.t -> t
   val default_target : t -> Arg.Dep.t
   val term : t Cmdliner.Term.t
+  val default : t
 end
 
 (** [init] creates a [Common.t] by executing a sequence of side-effecting actions to

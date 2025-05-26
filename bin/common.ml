@@ -1025,6 +1025,92 @@ module Builder = struct
     ; log_file = Default
     }
   ;;
+
+  let equal
+        t
+        { debug_dep_path
+        ; debug_backtraces
+        ; debug_artifact_substitution
+        ; debug_load_dir
+        ; debug_digests
+        ; debug_package_logs
+        ; wait_for_filesystem_clock
+        ; only_packages
+        ; capture_outputs
+        ; diff_command
+        ; promote
+        ; ignore_promoted_rules
+        ; force
+        ; no_print_directory
+        ; ignore_lock_dir
+        ; store_orig_src_dir
+        ; default_target
+        ; watch
+        ; print_metrics
+        ; dump_memo_graph_file
+        ; dump_memo_graph_format
+        ; dump_memo_graph_with_timing
+        ; dump_gc_stats
+        ; always_show_command_line
+        ; promote_install_files
+        ; file_watcher
+        ; workspace_config
+        ; cache_debug_flags
+        ; report_errors_config
+        ; separate_error_messages
+        ; stop_on_first_error
+        ; require_dune_project_file
+        ; watch_exclusions
+        ; build_dir
+        ; root
+        ; stats_trace_file
+        ; stats_trace_extended
+        ; allow_builds
+        ; default_root_is_cwd
+        ; log_file
+        }
+    =
+    Bool.equal t.debug_dep_path debug_dep_path
+    && Bool.equal t.debug_backtraces debug_backtraces
+    && Bool.equal t.debug_artifact_substitution debug_artifact_substitution
+    && Bool.equal t.debug_load_dir debug_load_dir
+    && Bool.equal t.debug_digests debug_digests
+    && Bool.equal t.debug_package_logs debug_package_logs
+    && Bool.equal t.wait_for_filesystem_clock wait_for_filesystem_clock
+    && Only_packages.Clflags.equal t.only_packages only_packages
+    && Bool.equal t.capture_outputs capture_outputs
+    && Option.equal String.equal t.diff_command diff_command
+    && Option.equal Dune_engine.Clflags.Promote.equal t.promote promote
+    && Bool.equal t.ignore_promoted_rules ignore_promoted_rules
+    && Bool.equal t.force force
+    && Bool.equal t.no_print_directory no_print_directory
+    && Bool.equal t.ignore_lock_dir ignore_lock_dir
+    && Bool.equal t.store_orig_src_dir store_orig_src_dir
+    && Arg.Dep.equal t.default_target default_target
+    && Dune_rpc_impl.Watch_mode_config.equal t.watch watch
+    && Bool.equal t.print_metrics print_metrics
+    && Option.equal Path.External.equal t.dump_memo_graph_file dump_memo_graph_file
+    && Graph.File_format.equal t.dump_memo_graph_format dump_memo_graph_format
+    && Bool.equal t.dump_memo_graph_with_timing dump_memo_graph_with_timing
+    && Option.equal Path.External.equal t.dump_gc_stats dump_gc_stats
+    && Bool.equal t.always_show_command_line always_show_command_line
+    && Bool.equal t.promote_install_files promote_install_files
+    && Dune_engine.Scheduler.Run.file_watcher_equal t.file_watcher file_watcher
+    && Source.Workspace.Clflags.equal t.workspace_config workspace_config
+    && Dune_engine.Cache_debug_flags.equal t.cache_debug_flags cache_debug_flags
+    && Dune_engine.Report_errors_config.equal t.report_errors_config report_errors_config
+    && Bool.equal t.separate_error_messages separate_error_messages
+    && Bool.equal t.stop_on_first_error stop_on_first_error
+    && Bool.equal t.require_dune_project_file require_dune_project_file
+    && List.equal String.equal t.watch_exclusions watch_exclusions
+    && String.equal t.build_dir build_dir
+    && Option.equal String.equal t.root root
+    && Option.equal String.equal t.stats_trace_file stats_trace_file
+    && Bool.equal t.stats_trace_extended stats_trace_extended
+    && Bool.equal t.allow_builds allow_builds
+    && Bool.equal t.default_root_is_cwd default_root_is_cwd
+    && Log.File.equal t.log_file log_file
+  ;;
 end
 
 type t =

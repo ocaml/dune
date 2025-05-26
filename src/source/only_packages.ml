@@ -8,6 +8,16 @@ module Clflags = struct
         ; command_line_option : string
         }
 
+  let equal a b =
+    match a, b with
+    | No_restriction, No_restriction -> true
+    | ( Restrict { names = a_names; command_line_option = a_command_line_options }
+      , Restrict { names = b_names; command_line_option = b_command_line_options } ) ->
+      Package.Name.Set.equal a_names b_names
+      && String.equal a_command_line_options b_command_line_options
+    | _, _ -> false
+  ;;
+
   let to_dyn = function
     | No_restriction -> Dyn.Variant ("No_restriction", [])
     | Restrict { names; command_line_option } ->

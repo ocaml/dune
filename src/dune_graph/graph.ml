@@ -6,6 +6,12 @@ module File_format = struct
     | Dot
     | Summary
 
+  let equal a b =
+    match a, b with
+    | Gexf, Gexf | Dot, Dot | Summary, Summary -> true
+    | _, _ -> false
+  ;;
+
   let conv =
     ( (function
         | "gexf" -> Ok Gexf

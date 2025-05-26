@@ -143,6 +143,8 @@ module Clflags : sig
     ; config_from_config_file : Dune_config.Partial.t
     }
 
+  val equal : t -> t -> bool
+
   (** This must be called exactly once *)
   val set : t -> unit
 end

@@ -20,6 +20,7 @@ module Dune_config : sig
       | Fixed of int
       | Auto
 
+    val equal : t -> t -> bool
     val of_string : string -> (t, string) result
     val to_string : t -> string
   end
@@ -94,6 +95,7 @@ module Dune_config : sig
     val empty : t
     val superpose : t -> t -> t
     val to_dyn : t -> Dyn.t
+    val equal : t -> t -> bool
   end
 
   (** A standard list of watch exclusions *)

@@ -16,7 +16,7 @@ let info = Cmd.info "doc" ~doc ~man
 let lock_odoc_if_dev_tool_enabled () =
   match Lazy.force Lock_dev_tool.is_enabled with
   | false -> Action_builder.return ()
-  | true -> Action_builder.of_memo (Lock_dev_tool.lock_odoc ())
+  | true -> Action_builder.of_memo (Lock_dev_tool.lock_dev_tool Odoc)
 ;;
 
 let term =

@@ -7,6 +7,8 @@ module File : sig
     | No_log_file
     | This of Path.t
     | Stderr
+
+  val equal : t -> t -> bool
 end
 
 (** Initialise the log file *)

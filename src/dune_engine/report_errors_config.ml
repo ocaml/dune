@@ -15,6 +15,12 @@ type t =
      scheduling. *)
   | Twice
 
+let equal a b =
+  match a, b with
+  | Early, Early | Deterministic, Deterministic | Twice, Twice -> true
+  | _, _ -> false
+;;
+
 let default : t =
   match Dune_util.Execution_env.inside_dune with
   | true -> Deterministic

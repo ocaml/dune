@@ -113,19 +113,24 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                  :: t.deps
                | `js JS | `exe | `bc -> t.deps)
           in
-          let add_alias ~loc ~action =
-            (* CR rgrinberg: why are we going through the stanza api? *)
-            let alias =
-              { Alias_conf.name = runtest_alias
-              ; locks = t.locks
-              ; package = t.package
-              ; deps
-              ; action = Some (loc, action)
-              ; enabled_if = t.enabled_if
-              ; loc
-              }
-            in
-            Simple_rules.alias sctx ~extra_bindings ~dir ~expander alias
+          let add_alias =
+            let expander = Expander.add_bindings expander ~bindings:extra_bindings in
+            fun ~loc ~action ->
+              let action =
+                let chdir = Expander.dir expander in
+                Action_unexpanded.expand_no_targets
+                  action
+                  ~loc
+                  ~expander
+                  ~chdir
+                  ~deps
+                  ~what:"aliases"
+              in
+              Simple_rules.interpret_and_add_locks ~expander t.locks action
+              |> Simple_rules.Alias_rules.add
+                   sctx
+                   ~loc
+                   ~alias:(Alias.make ~dir runtest_alias)
           in
           match test_kind dir_contents (loc, s, ext) with
           | `Regular -> add_alias ~loc ~action:run_action
@@ -147,6 +152,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
             in
             add_alias ~loc ~action:(Diff diff)
             >>> let+ (_ignored_targets : Targets.Validated.t option) =
+                  (* CR-someday rgrinberg: use direct api *)
                   Simple_rules.user_rule sctx rule ~extra_bindings ~dir ~expander
                 in
                 ()))

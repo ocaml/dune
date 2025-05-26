@@ -10,6 +10,9 @@ include struct
   module Source_tree = Source_tree
   module Cram_test = Cram_test
   module Only_packages = Only_packages
+  module Workspace = Workspace
+  module Opam_switch = Opam_switch
+  module Blang_expand = Blang_expand
 end
 
 include struct
@@ -119,6 +122,11 @@ include struct
   module Foreign_language = Foreign_language
   module Coq_env = Coq_env
   module Menhir_env = Menhir_env
+  module Dune_env = Dune_env
+  module Js_of_ocaml = Js_of_ocaml
+  module Copy_files = Copy_files
+  module Enabled_if = Enabled_if
+  module Rule_mode_decoder = Rule_mode_decoder
 end
 
 include Dune_engine.No_io

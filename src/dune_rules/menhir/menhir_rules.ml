@@ -154,7 +154,7 @@ module Run (P : PARAMS) = struct
     and* env = env in
     let+ explain =
       match Option.first_some stanza.Menhir_stanza.explain env.Menhir_env.explain with
-      | None -> Memo.return (stanza.menhir_syntax >= Menhir_stanza.explain_since)
+      | None -> Memo.return (stanza.menhir_syntax >= Dune_lang.Menhir.explain_since)
       | Some explain -> Expander.eval_blang expander explain
     in
     if explain
@@ -207,7 +207,7 @@ module Run (P : PARAMS) = struct
         match String_with_vars.text_only sw with
         | None -> ()
         | Some "--explain" ->
-          if stanza.menhir_syntax >= Menhir_stanza.explain_since
+          if stanza.menhir_syntax >= Dune_lang.Menhir.explain_since
           then
             User_error.raise
               ~loc:(String_with_vars.loc sw)

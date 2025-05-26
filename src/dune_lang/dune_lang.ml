@@ -54,3 +54,11 @@ module Foreign_language = Foreign_language
 module Ocaml_flags = Ocaml_flags
 module Coq_env = Coq_env
 module Menhir_env = Menhir_env
+module Dune_env = Dune_env
+module Js_of_ocaml = Js_of_ocaml
+module Menhir = Menhir
+module Rule_mode_decoder = Rule_mode_decoder
+
+(* CR-someday rgrinberg: perhaps wrap these under [Stanzas]? *)
+module Copy_files = Copy_files
+module Enabled_if = Enabled_if

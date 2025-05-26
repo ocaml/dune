@@ -16,6 +16,8 @@ module Reproducibility_check : sig
     | Check_with_probability of float (** [0 < p < 1] *)
     | Check
 
+  val equal : t -> t -> bool
+
   (** Should we check the current build rule for reproducibility?
 
       - If [t = Skip], return [false].

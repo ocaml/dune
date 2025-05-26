@@ -8,6 +8,15 @@ type t =
       }
   | Tui
 
+let equal a b =
+  match a, b with
+  | ( Simple { status_line = a_status_line; verbosity = a_verbosity }
+    , Simple { status_line = b_status_line; verbosity = b_verbosity } ) ->
+    Bool.equal a_status_line b_status_line && Display.equal a_verbosity b_verbosity
+  | Tui, Tui -> true
+  | _, _ -> false
+;;
+
 let progress = Simple { status_line = true; verbosity = Quiet }
 let verbose = Simple { status_line = true; verbosity = Verbose }
 let short = Simple { status_line = true; verbosity = Short }

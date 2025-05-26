@@ -7,6 +7,13 @@ module File = struct
     | No_log_file
     | This of Path.t
     | Stderr
+
+  let equal a b =
+    match a, b with
+    | Default, Default | No_log_file, No_log_file | Stderr, Stderr -> true
+    | This a, This b -> Path.equal a b
+    | _, _ -> false
+  ;;
 end
 
 type real = { oc : out_channel option }

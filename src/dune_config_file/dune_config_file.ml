@@ -25,6 +25,13 @@ module Dune_config = struct
       ; license : string list option
       }
 
+    let equal t { authors; maintainers; maintenance_intent; license } =
+      Option.equal (List.equal String.equal) t.authors authors
+      && Option.equal (List.equal String.equal) t.authors maintainers
+      && Option.equal (List.equal String.equal) t.authors maintenance_intent
+      && Option.equal (List.equal String.equal) t.authors license
+    ;;
+
     let decode =
       fields
         (let+ authors = field_o "authors" (repeat string)
@@ -59,6 +66,14 @@ module Dune_config = struct
       ]
     ;;
 
+    let equal a b =
+      match a, b with
+      | Preserve, Preserve
+      | Clear_on_rebuild, Clear_on_rebuild
+      | Clear_on_rebuild_and_flush_history, Clear_on_rebuild_and_flush_history -> true
+      | _, _ -> false
+    ;;
+
     let to_dyn = function
       | Preserve -> Dyn.Variant ("Preserve", [])
       | Clear_on_rebuild -> Dyn.Variant ("Clear_on_rebuild", [])
@@ -73,6 +88,13 @@ module Dune_config = struct
     type t =
       | Fixed of int
       | Auto
+
+    let equal a b =
+      match a, b with
+      | Fixed a, Fixed b -> Int.equal a b
+      | Auto, Auto -> true
+      | _, _ -> false
+    ;;
 
     let error = Error "invalid concurrency value, must be 'auto' or a positive number"
 
@@ -105,6 +127,8 @@ module Dune_config = struct
   module Sandboxing_preference = struct
     type t = Sandbox_mode.t list
 
+    let equal = List.equal Sandbox_mode.equal
+
     let decode : Sandbox_mode.t Dune_sexp.Decoder.t =
       let open Dune_sexp.Decoder in
       enum
@@ -124,6 +148,14 @@ module Dune_config = struct
         | Disabled
         | Enabled_except_user_rules
         | Enabled
+
+      let equal a b =
+        match a, b with
+        | Disabled, Disabled
+        | Enabled_except_user_rules, Enabled_except_user_rules
+        | Enabled, Enabled -> true
+        | _, _ -> false
+      ;;
 
       let to_string = function
         | Disabled -> "disabled"
@@ -166,6 +198,8 @@ module Dune_config = struct
     module Storage_mode = struct
       type t = Dune_cache_storage.Mode.t option
 
+      let equal = Option.equal Dune_cache_storage.Mode.equal
+
       let all =
         ("auto", None)
         :: List.map ~f:(fun (name, mode) -> name, Some mode) Dune_cache_storage.Mode.all
@@ -204,6 +238,56 @@ module Dune_config = struct
       ; project_defaults : Project_defaults.t field
       ; experimental : (string * (Loc.t * string)) list field
       }
+  end
+
+  module Make_equal
+      (M : S)
+      (Equal : sig
+         val field : ('a -> 'a -> bool) -> 'a M.field -> 'a M.field -> bool
+       end) =
+  struct
+    let field = Equal.field
+
+    let equal
+          (t : M.t)
+          { M.display
+          ; concurrency
+          ; terminal_persistence
+          ; sandboxing_preference
+          ; cache_enabled
+          ; cache_reproducibility_check
+          ; cache_storage_mode
+          ; action_stdout_on_success
+          ; action_stderr_on_success
+          ; project_defaults
+          ; experimental
+          }
+      =
+      field Display.equal t.display display
+      && field Concurrency.equal t.concurrency concurrency
+      && field Terminal_persistence.equal t.terminal_persistence terminal_persistence
+      && field Sandboxing_preference.equal t.sandboxing_preference sandboxing_preference
+      && field Cache.Toggle.equal t.cache_enabled cache_enabled
+      && field
+           Dune_cache.Config.Reproducibility_check.equal
+           t.cache_reproducibility_check
+           cache_reproducibility_check
+      && field Cache.Storage_mode.equal t.cache_storage_mode cache_storage_mode
+      && field
+           Action_output_on_success.equal
+           t.action_stdout_on_success
+           action_stdout_on_success
+      && field
+           Action_output_on_success.equal
+           t.action_stderr_on_success
+           action_stderr_on_success
+      && field Project_defaults.equal t.project_defaults project_defaults
+      && field
+           (List.equal
+              (Tuple.T2.equal String.equal (Tuple.T2.equal Loc.equal String.equal)))
+           t.experimental
+           experimental
+    ;;
   end
 
   module Make_superpose
@@ -318,6 +402,13 @@ module Dune_config = struct
         (struct
           let field f = Dyn.option f
         end)
+
+    include
+      Make_equal
+        (M)
+        (struct
+          let field f = Option.equal f
+        end)
   end
 
   include
@@ -328,6 +419,13 @@ module Dune_config = struct
 
   include
     Make_to_dyn
+      (M)
+      (struct
+        let field f = f
+      end)
+
+  include
+    Make_equal
       (M)
       (struct
         let field f = f
@@ -352,7 +450,6 @@ module Dune_config = struct
   ;;
 
   let hash = Poly.hash
-  let equal a b = Poly.equal a b
 
   let default =
     { display = Simple { verbosity = Quiet; status_line = not Execution_env.inside_dune }

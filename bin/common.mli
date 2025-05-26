@@ -28,6 +28,7 @@ val prefix_target : t -> string -> string
 module Builder : sig
   type t
 
+  val equal : t -> t -> bool
   val root : t -> string option
   val set_root : t -> string -> t
   val forbid_builds : t -> t

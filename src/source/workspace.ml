@@ -749,6 +749,24 @@ module Clflags = struct
     ; config_from_config_file : Dune_config.Partial.t
     }
 
+  let equal
+        t
+        { x
+        ; profile
+        ; instrument_with
+        ; workspace_file
+        ; config_from_command_line
+        ; config_from_config_file
+        }
+    =
+    Option.equal Context_name.equal t.x x
+    && Option.equal Profile.equal t.profile profile
+    && Option.equal (List.equal Lib_name.equal) t.instrument_with instrument_with
+    && Option.equal Path.Outside_build_dir.equal t.workspace_file workspace_file
+    && Dune_config.Partial.equal t.config_from_command_line config_from_command_line
+    && Dune_config.Partial.equal t.config_from_config_file config_from_config_file
+  ;;
+
   let to_dyn
         { x
         ; profile

@@ -30,6 +30,8 @@ module Run : sig
     | Automatic
     | No_watcher
 
+  val file_watcher_equal : file_watcher -> file_watcher -> bool
+
   module Shutdown : sig
     module Reason : sig
       type t =

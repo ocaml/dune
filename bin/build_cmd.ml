@@ -205,7 +205,7 @@ let build =
        state of the lock could otherwise change between checking it and taking
        it. *)
     match Dune_util.Global_lock.lock ~timeout:None with
-    | Error () ->
+    | Error lock_held_by ->
       (* This case is reached if dune detects that another instance of dune
          is already running. Rather than performing the build itself, the
          current instance of dune will instruct the already-running instance to

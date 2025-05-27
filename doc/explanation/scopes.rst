@@ -10,10 +10,10 @@ A Dune project is defined by the presence of a
 file tree rooted at the directory containing the
 :doc:`/reference/dune-project/index` file, excluding any nested Dune projects.
 
-The root of the current workspace is determined by the outermost
-:doc:`/reference/dune-project/index` file in an ancestor of the current
-directory or by the presence of a :doc:`/reference/dune-workspace/index` file
-(see :ref:`finding-root` and :ref:`forcing-root` for details).
+Dune determines the root of the current workspace by finding the topmost
+ancestor containing a :doc:`/reference/dune-project/index` file or by the
+presence of a :doc:`/reference/dune-workspace/index` file (see :ref:`finding-root`
+and :ref:`forcing-root` for details).
 
 Different Dune projects within the same Dune workspace are independent of each
 other and no settings are shared between them, even if they are nested within

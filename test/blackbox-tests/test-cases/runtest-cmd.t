@@ -6,54 +6,52 @@ Here we test the features of the `dune runtest` command.
 
   $ cat > mytest.t <<EOF
   >   $ echo "Hello, world!"
-  > "Goodbye, world!"
+  >   "Goodbye, world!"
   > EOF
   $ mkdir -p tests/myothertest.t
   $ echo 'Hello, world!' > tests/myothertest.t/hello.world
   $ cat > tests/myothertest.t/run.t <<EOF
   >   $ cat hello.world
-  > "Goodbye, world!"
+  >   "Goodbye, world!"
   > EOF
   $ cat > tests/filetest.t <<EOF
   >   $ echo "Hello, world!"
-  > "Goodbye, world!"
+  >   "Goodbye, world!"
   > EOF
 
-
-This should work:
+dune runtest should be able to run a specfic test. In this case,
+tests/myothertest.t should fail because the expected output is different from
+the observed output.
 
   $ dune test tests/myothertest.t
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
   Error: Files _build/default/tests/myothertest.t/run.t and
   _build/default/tests/myothertest.t/run.t.corrected differ.
   [1]
-
-There is no diff produced because the test passes
-
   $ dune promotion diff tests/myothertest.t/run.t
 
-This should not work
+We use the promotion diff command to check there is a promotion pending. If
+there is no promotion it will warn. 
 
-  $ dune test myotherttest.t
-  Error: "myotherttest.t" does not match any known test.
-  [1]
-
-This is a bug. Running the test this way does not correctly include the
-dependencies.
+If the user writes the run.t file of a directory test, we should correct it to
+be the corresponding directory cram test.
 
   $ dune test tests/myothertest.t/run.t
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
   Error: Files _build/default/tests/myothertest.t/run.t and
   _build/default/tests/myothertest.t/run.t.corrected differ.
   [1]
-
   $ dune promotion diff tests/myothertest.t/run.t
 
-  $ cat _build/.promotion-staging/tests/myothertest.t/run.t
-    $ cat hello.world
-    cat: hello.world: No such file or directory
-    [1]
-  "Goodbye, world!"
+We cannot give the name of a cram test in a subdirectory and expect Dune to
+find it.
+
+  $ dune test myothertest.t
+  Error: "myothertest.t" does not match any known test.
+  [1]
+
+  $ dune promotion diff tests/myothertest.t/run.t
+  Warning: Nothing to promote for tests/myothertest.t/run.t.
 
 Passing no arguments to $ dune runtest should be equivalent to $ dune build
 @runtest.
@@ -161,7 +159,7 @@ the directory is mispelled.
   Error: This path is outside the workspace: /a/b/c/
   [1]
 
-Here we test behavour for running tests in specific contexts.
+Here we test behaviour for running tests in specific contexts.
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.20)

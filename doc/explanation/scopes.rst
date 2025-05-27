@@ -7,7 +7,7 @@ single Dune project.
 
 A Dune project is defined by the presence of a
 :doc:`/reference/dune-project/index` file. Each Dune project extends over the
-subtree rooted at the directory containing the
+file tree rooted at the directory containing the
 :doc:`/reference/dune-project/index` file, excluding any nested Dune projects.
 
 The root of the current workspace is determined by the outermost

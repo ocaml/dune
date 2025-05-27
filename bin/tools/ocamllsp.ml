@@ -29,6 +29,7 @@ let build_ocamllsp common =
 
 let is_in_dune_project builder =
   Workspace_root.create
+    ~from:Filename.current_dir_name
     ~default_is_cwd:(Common.Builder.default_root_is_cwd builder)
     ~specified_by_user:(Common.Builder.root builder)
     ()

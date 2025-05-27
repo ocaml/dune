@@ -51,10 +51,14 @@ let term =
     match version with
     | Some version -> version
     | None ->
-      let from = Option.map ~f:Filename.dirname path_opt in
+      let from =
+        match path_opt with
+        | None -> Filename.current_dir_name
+        | Some path -> Filename.dirname path
+      in
       (match
          Workspace_root.create
-           ?from
+           ~from
            ~default_is_cwd:(Common.Builder.default_root_is_cwd builder)
            ~specified_by_user:(Common.Builder.root builder)
            ()

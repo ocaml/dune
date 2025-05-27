@@ -83,7 +83,7 @@ let find from =
   loop 0 ~to_cwd:[] cwd ~candidate:None
 ;;
 
-let create ?(from = ".") ~default_is_cwd ~specified_by_user () =
+let create ~from ~default_is_cwd ~specified_by_user () =
   match
     match specified_by_user with
     | Some dn -> Some { Candidate.kind = Explicit; dir = dn; to_cwd = [] }
@@ -107,8 +107,8 @@ let create ?(from = ".") ~default_is_cwd ~specified_by_user () =
       }
 ;;
 
-let create_exn ?from ~default_is_cwd ~specified_by_user () =
-  match create ?from ~default_is_cwd ~specified_by_user () with
+let create_exn ~from ~default_is_cwd ~specified_by_user () =
+  match create ~from ~default_is_cwd ~specified_by_user () with
   | Some x -> x
   | None ->
     raise

@@ -871,6 +871,7 @@ let spawn
       ~(stdout : _ Io.t)
       ~(stderr : _ Io.t)
       ~(stdin : _ Io.t)
+      ~setpgid
       ~prog
       ~args
       ()
@@ -956,7 +957,7 @@ let spawn
       ~stdout
       ~stderr
       ~stdin
-      ~setpgid:Spawn.Pgid.new_process_group
+      ?setpgid
       ~cwd:
         (match dir with
          | None -> Inherit
@@ -985,6 +986,7 @@ let run_internal
       ?(stdin_from = Io.null In)
       ?env
       ?(metadata = default_metadata)
+      ?(setpgid = Some Spawn.Pgid.new_process_group)
       fail_mode
       prog
       args
@@ -1018,7 +1020,16 @@ let run_internal
       | _ -> Pp.nop
     in
     let t =
-      spawn ?dir ?env ~stdout:stdout_to ~stderr:stderr_to ~stdin:stdin_from ~prog ~args ()
+      spawn
+        ?dir
+        ?env
+        ~stdout:stdout_to
+        ~stderr:stderr_to
+        ~stdin:stdin_from
+        ~setpgid
+        ~prog
+        ~args
+        ()
     in
     let* () =
       let description =
@@ -1235,15 +1246,16 @@ let run_external_in_out =
     { Io.kind = External; fd = lazy fd; channel = lazy ch; status = Keep_open }
   in
   fun ?dir ?env prog args ->
-    run
+    run_internal
       ?dir
       ?env
       ~display:Display.Quiet
       ~stdout_to:(external_ (Out_chan stdout))
       ~stderr_to:(external_ (Out_chan stderr))
       ~stdin_from:(external_ (In_chan stdin))
+      ~setpgid:None
       Return
       prog
       args
-    >>| snd
+    >>| fst
 ;;

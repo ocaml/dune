@@ -7,7 +7,7 @@ the rest of the OCaml ecosystem.
 .. toctree::
    :maxdepth: 1
 
-   ../scopes
+   scopes
    preprocessing
    ocaml-ecosystem
    package-management

@@ -36,6 +36,51 @@ let client_term builder f =
   Scheduler.go_with_rpc_server ~common ~config f
 ;;
 
+let retry_loop once =
+  let open Fiber.O in
+  let rec loop () =
+    let* res = once () in
+    match res with
+    | Some result -> Fiber.return result
+    | None ->
+      let* () = Scheduler.sleep ~seconds:0.2 in
+      loop ()
+  in
+  loop ()
+;;
+
+let establish_connection_or_raise ~wait once =
+  let open Fiber.O in
+  if wait
+  then retry_loop once
+  else
+    let+ res = once () in
+    match res with
+    | Some conn -> conn
+    | None ->
+      let (_ : Dune_rpc_private.Where.t) = active_server () in
+      User_error.raise
+        [ Pp.text "failed to establish connection even though server seems to be running"
+        ]
+;;
+
+let establish_client_session ~wait =
+  let open Fiber.O in
+  let once () =
+    let where = Dune_rpc_impl.Where.get () in
+    match where with
+    | None -> Fiber.return None
+    | Some where ->
+      let+ connection = Client.Connection.connect where in
+      (match connection with
+       | Ok conn -> Some conn
+       | Error message ->
+         if not wait then Console.print_user_message message;
+         None)
+  in
+  establish_connection_or_raise ~wait once
+;;
+
 let wait_term =
   let doc = "poll until server starts listening and then establish connection." in
   Arg.(value & flag & info [ "wait" ] ~doc)

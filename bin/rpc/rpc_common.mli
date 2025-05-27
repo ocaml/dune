@@ -15,5 +15,7 @@ val request_exn
 (** Cmdliner term for a generic RPC client. *)
 val client_term : Common.Builder.t -> (unit -> 'a Fiber.t) -> 'a
 
+val establish_client_session : wait:bool -> Dune_rpc_client.Client.Connection.t Fiber.t
+
 (** Cmdliner argument for a wait flag. *)
 val wait_term : bool Cmdliner.Term.t

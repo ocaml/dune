@@ -92,5 +92,17 @@ module Build = struct
   let decl = Decl.Request.make ~method_:"build" ~generations:[ v1; v2 ]
 end
 
+module Runtest = struct
+  let v1 =
+    Decl.Request.make_current_gen
+      ~req:(Conv.list Conv.string)
+      ~resp:Build_outcome_with_diagnostics.sexp_v2
+      ~version:1
+  ;;
+
+  let decl = Decl.Request.make ~method_:"runtest" ~generations:[ v1 ]
+end
+
 let build = Build.decl
 let status = Status.decl
+let runtest = Runtest.decl

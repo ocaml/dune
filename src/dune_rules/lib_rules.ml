@@ -487,6 +487,27 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
     (fun () -> build_shared ~native_archives ~sctx lib ~dir ~flags)
 ;;
 
+let parameterize_root_module ~parameter ~root_module_name modules =
+  let* parameter_module_name =
+    let+ name = Lib.main_module_name parameter in
+    match Resolve.to_result name with
+    | Ok (Some name) -> name
+    | Ok None ->
+      (* The parameter must have a module name otherwise it can't exist. *)
+      assert false
+    | Error err -> Resolve.raise_error_with_stack_trace err
+  in
+  let set_implements_for_root_module m =
+    (* If the module name is the one of the root module, it must implements the
+       parameter. *)
+    Memo.return
+      (match Module_name.equal (Module.name m) root_module_name with
+       | true -> Module.set_implements m parameter_module_name
+       | false -> m)
+  in
+  Modules.map_user_written ~f:set_implements_for_root_module modules
+;;
+
 let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_info =
   let* flags = Buildable_rules.ocaml_flags sctx ~dir lib.buildable.flags
   and* vimpl = Virtual_rules.impl sctx ~lib ~scope in
@@ -500,18 +521,18 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
       scope
       source_modules
   in
-  let* modules = 
-      match vimpl with
-      | None -> Memo.return modules
-      | Some vimpl -> 
-    let lib = Vimpl.vlib vimpl in
-    let* module_name =
-      let+ name = Lib.main_module_name lib in
-      match name |> Resolve.to_result with
-      | Ok (Some name) -> name
-      | _ -> failwith "TODO: Module name"
-    in
-    Modules.map_user_written ~f:(fun m -> Memo.return @@ Module.set_implements m module_name ) modules
+  let* modules =
+    match vimpl with
+    | None -> Memo.return modules
+    | Some vimpl ->
+      let vlib = Vimpl.vlib vimpl in
+      if Lib_info.is_parameter @@ Lib.info vlib
+      then (
+        let root_module_name = lib.name |> Module_name.of_local_lib_name in
+        (* The root module can be extracted because the implementation must be
+         local to Dune *)
+        parameterize_root_module ~parameter:vlib ~root_module_name modules)
+      else Memo.return modules
   in
   let modules = Vimpl.impl_modules vimpl modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in

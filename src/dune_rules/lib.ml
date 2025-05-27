@@ -947,12 +947,15 @@ end = struct
           let open Resolve.Memo.O in
           let* vlib = resolve_forbid_ignore name in
           let virtual_ = Lib_info.virtual_ vlib.info in
-          match virtual_ with
-          | false -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
-          | true -> Resolve.Memo.return vlib
+          let parameterized = Lib_info.is_parameter vlib.info in
+          let _ = Format.printf "- (%s) Is\n%s\n----\n parameterized? %b@." __LOC__ (Lib_info.to_dyn Path.to_dyn vlib.info |> Dyn.to_string) parameterized in
+          match virtual_, parameterized with
+          | false,false -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
+          | true, false | false, true -> Resolve.Memo.return vlib
+          | true, true -> failwith "TODO @maiste"
         in
         Memo.map res ~f:Option.some
-    in
+    in 
     let* requires =
       let requires =
         let open Resolve.O in

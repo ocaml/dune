@@ -9,6 +9,7 @@ Build the project once before starting the watch server so the watch server star
   $ dune build --watch &
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
+  Success, waiting for filesystem changes...
   File "foo.ml", line 1, characters 9-21:
   1 | let () = print_endlin "Hello, World!"
                ^^^^^^^^^^^^
@@ -24,6 +25,13 @@ Build the project once before starting the watch server so the watch server star
 
 Demonstrate that we can run "dune build" while the watch server is running.
   $ dune build
+  Success
+
+Demonstrate that a warning is displayed when extra arguments are passed to
+"dune build", since those arguments will be ignored.
+  $ dune build --auto-promote 2>&1 | sed 's/pid: [0-9]*/pid: PID/g'
+  Warning: Your build request is being forwarded to a running Dune instance
+  (pid: PID) so most command-line arguments will be ignored.
   Success
 
 Demonstrate that error messages are still printed by "dune build" when it's

@@ -1,4 +1,4 @@
-Dune projects and workspaces
+Dune Projects and Workspaces
 ============================
 
 Whenever Dune builds anything, it does so at the level of a *Dune workspace*. A

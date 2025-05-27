@@ -202,6 +202,7 @@ type t =
   ; visibility : Visibility.t
   ; kind : Kind.t
   ; install_as : Path.Local.t option
+  ; implements : Module_name.t option
   }
 
 let name t = Source.name t.source
@@ -209,6 +210,9 @@ let path t = t.source.path
 let kind t = t.kind
 let pp_flags t = t.pp
 let install_as t = t.install_as
+let implements t = t.implements
+
+let set_implements t name = { t with implements = Some name}
 
 let of_source ~install_as ~obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
   (match kind, visibility with
@@ -245,7 +249,7 @@ let of_source ~install_as ~obj_name ~visibility ~(kind : Kind.t) (source : Sourc
          indication by the caller. *)
       Module_name.Unique.of_path_assuming_needs_no_mangling_allow_invalid file.path
   in
-  { install_as; source; obj_name; pp = None; visibility; kind }
+  { install_as; source; obj_name; pp = None; visibility; kind ; implements = None }
 ;;
 
 let has t ~ml_kind =
@@ -288,7 +292,8 @@ let map_files t ~f =
 let src_dir t = Source.src_dir t.source
 let set_pp t pp = { t with pp }
 
-let to_dyn { source; obj_name; pp; visibility; kind; install_as } =
+(* TODO @maiste encoding *)
+let to_dyn { source; obj_name; pp; visibility; kind; install_as ; _ } =
   Dyn.record
     [ "source", Source.to_dyn source
     ; "obj_name", Module_name.Unique.to_dyn obj_name
@@ -345,7 +350,7 @@ module Obj_map = struct
     end)
 end
 
-let encode ({ source; obj_name; pp = _; visibility; kind; install_as = _ } as t) ~src_dir =
+let encode ({ source; obj_name; pp = _; visibility; kind; install_as = _ ; _ } as t) ~src_dir =
   let open Dune_lang.Encoder in
   let has_impl = has t ~ml_kind:Impl in
   let kind =
@@ -382,7 +387,7 @@ let decode ~src_dir =
        | None when Option.is_some source.files.impl -> Impl
        | None -> Intf_only
      in
-     { install_as = None; source; obj_name; pp = None; kind; visibility })
+      { install_as = None; source; obj_name; pp = None; kind; visibility; implements = None })
 ;;
 
 let pped =

@@ -500,6 +500,19 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
       scope
       source_modules
   in
+  let* modules = 
+      match vimpl with
+      | None -> Memo.return modules
+      | Some vimpl -> 
+    let lib = Vimpl.vlib vimpl in
+    let* module_name =
+      let+ name = Lib.main_module_name lib in
+      match name |> Resolve.to_result with
+      | Ok (Some name) -> name
+      | _ -> failwith "TODO: Module name"
+    in
+    Modules.map_user_written ~f:(fun m -> Memo.return @@ Module.set_implements m module_name ) modules
+  in
   let modules = Vimpl.impl_modules vimpl modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let requires_link = Lib.Compile.requires_link compile_info in

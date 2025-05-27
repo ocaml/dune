@@ -1303,6 +1303,7 @@ let init ?(root : Workspace_root.t option) (builder : Builder.t) =
     | Some root -> root
     | None ->
       Workspace_root.create_exn
+        ~from:Filename.current_dir_name
         ~default_is_cwd:builder.default_root_is_cwd
         ~specified_by_user:builder.root
         ()

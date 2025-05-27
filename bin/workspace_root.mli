@@ -19,14 +19,14 @@ type t =
   }
 
 val create
-  :  ?from:string
+  :  from:string
   -> default_is_cwd:bool
   -> specified_by_user:string option
   -> unit
   -> t option
 
 val create_exn
-  :  ?from:string
+  :  from:string
   -> default_is_cwd:bool
   -> specified_by_user:string option
   -> unit

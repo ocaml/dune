@@ -1,30 +1,30 @@
+This test verifies `library_parameter` stanza works as expected.
 
-  $ cat >dune-project <<EOF
+  $ . ./helpers.sh
+  $ cat > "dune-project" <<EOF
   > (lang dune 3.20)
-  > (package (name param) (allow_empty))
-  > (package (name mylib) (allow_empty))
   > EOF
+
+  $ echo "(package (name param))" >> "dune-project"
+
+We create our first parameter. We use the `public_name` to prevent dune from
+being lazy.
 
   $ mkdir param
-  $ echo 'type t = int [@@deriving show]' > param/param_intf.mli
-  $ echo 'type t = int [@@deriving show]' > param/param_intf2.mli
-  $ cat >param/dune <<EOF
-  > (library_parameter (public_name param.intf) (name param_intf) (modules param_intf))
-  > (library_parameter (public_name param.intf2) (name param_intf2) (modules param_intf2))
+  $ echo "type t = int" > param/param_intf.mli
+  $ cat > "param/dune" <<EOF
+  > (library_parameter
+  >  (public_name param.intf)
+  >  (name param_intf))
   > EOF
-
-$ mkdir mylib
-$ echo 'type t = int' > mylib/mylib.ml
-$ cat >mylib/dune <<EOF
-> (library (public_name mylib))
-> EOF
 
 The test build should fails because of the oxcaml extension is not available.
 
   $ dune build
-  File "param/dune", line 1, characters 0-83:
-  1 | (library_parameter (public_name param.intf) (name param_intf) (modules param_intf))
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "param/dune", lines 1-3, characters 0-64:
+  1 | (library_parameter
+  2 |  (public_name param.intf)
+  3 |  (name param_intf))
   Error: 'library_parameter' is available only when oxcaml is enabled in the
   dune-project file. You must enable it using (using oxcaml 0.1) in your
   dune-project file.
@@ -39,12 +39,34 @@ Adding the extension in the dune project solve the problem.
   $ ocamlobjinfo _build/default/param/.param_intf.objs/byte/param_intf.cmi | grep 'Is parameter'
   Is parameter: YES
 
-$ dune describe rules param/.param_intf.objs/byte/param_intf.cmi
+We create a second parameter in the same directory. We rewrite the dune file to
+use the `modules` field.
 
+  $ cat > "param/dune" <<EOF
+  > (library_parameter
+  >  (public_name param.intf)
+  >  (name param_intf)
+  >  (modules param_intf))
+  > (library_parameter
+  >  (public_name param.intf2)
+  >  (name param_intf2)
+  >  (modules param_intf2))
+  > EOF
+
+  $ echo "type t = string" > param/param_intf2.mli
+
+We rebuild it and ensure we have the new parameter available.
+
+  $ dune build
   $ ocamlobjinfo _build/default/param/.param_intf2.objs/byte/param_intf2.cmi | grep "Is parameter"
   Is parameter: YES
 
+We build the installable version to ensure we have generated the correct
+information to access the parameter through different packages.
+
   $ dune build @install
+
+We check the META files exist.
 
   $ cat _build/install/default/lib/param/META
   package "intf" (
@@ -65,6 +87,10 @@ $ dune describe rules param/.param_intf.objs/byte/param_intf.cmi
     plugin(byte) = ""
     plugin(native) = ""
   )
+
+We ensure we have access to the `dune-package` and it contains the two
+parameters.
+
   $ cat _build/install/default/lib/param/dune-package
   (lang dune 3.20)
   (name param)
@@ -100,15 +126,7 @@ $ dune describe rules param/.param_intf.objs/byte/param_intf.cmi
      (kind parameter)
      (source (path Param_intf2) (intf (path intf2/param_intf2.mli))))))
 
-$ cat _build/install/default/lib/mylib/META
-  $ cat _build/install/default/lib/mylib/dune-package
-  (lang dune 3.20)
-  (name mylib)
-  (sections (lib .))
-  (files (lib (META dune-package)))
-  $ cat _build/install/default/param/
-  cat: _build/install/default/param/: No such file or directory
-  [1]
+We verify it will install the data to the correct location.
 
   $ cat _build/default/param.install
   lib: [

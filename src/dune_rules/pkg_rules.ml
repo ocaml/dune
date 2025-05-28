@@ -1861,9 +1861,7 @@ let setup_tmp_lock_alias =
 ;;
 
 let lock_rule lock_dir =
-  let target =
-    Path.Build.of_string (sprintf "_private/default/.lock/%s" lock_dir)
-  in
+  let target = Path.Build.of_string (sprintf "_private/default/.lock/%s" lock_dir) in
   Lock_rules.lock ~target ~lock_dir |> Memo.return
 ;;
 
@@ -1951,9 +1949,15 @@ let setup_rules ~components ~dir ctx =
     Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
   | true, ".dev-tool" :: _ :: _ :: _ ->
     Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
+  | _, [ ".lock" ] ->
+    Gen_rules.make
+      ~build_dir_only_sub_dirs:
+        (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
+      (Memo.return Rules.empty)
+    |> Memo.return
   | _, ".lock" :: lock_dir :: _ ->
     Printf.printf "registering lock rule for %S, HOORAY\n" lock_dir;
-    (* Memo.return @@ Gen_rules.rules_here Gen_rules.Rules.empty *)
+    Printf.printf "setting up lock rules for %S\n" (Path.Build.to_string dir);
     setup_lock_rules ~lock_dir
   | is_default, [] ->
     let sub_dirs = ".pkg" :: (if is_default then [ ".dev-tool" ] else []) in

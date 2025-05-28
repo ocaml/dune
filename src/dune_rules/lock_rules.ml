@@ -27,8 +27,11 @@ module A = Action_ext.Make (Spec)
 let action ~target ~lock_dir = A.action { Spec.target; lock_dir }
 
 let lock ~target ~lock_dir =
+  Printf.printf "Setting up action for target(%S)\n" (Path.Build.to_string target);
+  let file_target = Path.Build.relative target "lock.dune" in
   action ~target ~lock_dir
   |> Action.Full.make ~can_go_in_shared_cache:true
   |> Action_builder.With_targets.return
-  |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
+  |> Action_builder.With_targets.add ~file_targets:[ file_target ]
+  (* |> Action_builder.With_targets.add_directories ~directory_targets:[ target ] *)
 ;;

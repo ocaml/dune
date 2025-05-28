@@ -9,8 +9,9 @@ Here we test the features of the `dune runtest` command.
   > "Goodbye, world!"
   > EOF
   $ mkdir -p tests/myothertest.t
+  $ echo 'Hello, world!' > tests/myothertest.t/hello.world
   $ cat > tests/myothertest.t/run.t <<EOF
-  >   $ echo "Hello, world!"
+  >   $ cat hello.world
   > "Goodbye, world!"
   > EOF
   $ cat > tests/filetest.t <<EOF
@@ -27,19 +28,32 @@ This should work:
   _build/default/tests/myothertest.t/run.t.corrected differ.
   [1]
 
+There's no diff produced because the test passes
+
+  $ dune promotion diff tests/myothertest.t/run.t
+
 This should not work
 
   $ dune test myotherttest.t
   Error: "myotherttest.t" does not match any known test.
   [1]
 
-Should this work? Debatable but giving a hint if it doesn't would be good.
+This is a bug. Running the test this way does not correctly include the
+dependencies.
 
   $ dune test tests/myothertest.t/run.t
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
   Error: Files _build/default/tests/myothertest.t/run.t and
   _build/default/tests/myothertest.t/run.t.corrected differ.
   [1]
+
+  $ dune promotion diff tests/myothertest.t/run.t
+
+  $ cat _build/.promotion-staging/tests/myothertest.t/run.t
+    $ cat hello.world
+    cat: hello.world: No such file or directory
+    [1]
+  "Goodbye, world!"
 
 Passing no arguments to $ dune runtest should be equivalent to $ dune build
 @runtest.

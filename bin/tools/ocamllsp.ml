@@ -4,29 +4,6 @@ module Pkg_dev_tool = Dune_rules.Pkg_dev_tool
 let ocamllsp_exe_path = Path.build @@ Pkg_dev_tool.exe_path Ocamllsp
 let ocamllsp_exe_name = Pkg_dev_tool.exe_name Ocamllsp
 
-(* Replace the current dune process with ocamllsp. *)
-let run_ocamllsp common ~args =
-  let exe_path_string = Path.to_string ocamllsp_exe_path in
-  Console.print_user_message
-    (Dune_rules.Pkg_build_progress.format_user_message
-       ~verb:"Running"
-       ~object_:
-         (User_message.command (String.concat ~sep:" " (ocamllsp_exe_name :: args))));
-  Console.finish ();
-  restore_cwd_and_execve common exe_path_string args Env.initial
-;;
-
-let build_ocamllsp common =
-  let open Fiber.O in
-  let+ result =
-    Build_cmd.run_build_system ~common ~request:(fun _build_system ->
-      Action_builder.path ocamllsp_exe_path)
-  in
-  match result with
-  | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
-  | Ok () -> ()
-;;
-
 let is_in_dune_project builder =
   Workspace_root.create
     ~default_is_cwd:(Common.Builder.default_root_is_cwd builder)
@@ -48,11 +25,7 @@ module Exec = struct
         ]
     | true ->
       let common, config = Common.init builder in
-      Scheduler.go_with_rpc_server ~common ~config (fun () ->
-        let open Fiber.O in
-        let* () = Lock_dev_tool.lock_ocamllsp () |> Memo.run in
-        let+ () = build_ocamllsp common in
-        run_ocamllsp (Common.root common) ~args)
+      Tools_common.lock_build_and_run_dev_tool ~common ~config Ocamllsp ~args
   ;;
 
   let info =

@@ -38,7 +38,7 @@ module Implicit_transitive_deps = struct
       | Enabled -> Encoder.bool true
       | Disabled -> Encoder.bool false
       | Disabled_if_hidden_includes_supported ->
-        Encoder.string "disabled-if-hidden-includes-supported"
+        Encoder.string "false-if-hidden-includes-supported"
     ;;
 
     let decode =
@@ -46,7 +46,7 @@ module Implicit_transitive_deps = struct
       enum'
         [ "true", check (1, 7) >>> return Enabled
         ; "false", check (1, 7) >>> return Disabled
-        ; ( "disabled-if-hidden-includes-supported"
+        ; ( "false-if-hidden-includes-supported"
           , check (3, 20) >>> return Disabled_if_hidden_includes_supported )
         ]
     ;;

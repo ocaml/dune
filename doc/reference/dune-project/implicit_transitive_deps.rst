@@ -13,12 +13,13 @@ implicit_transitive_deps
 
    - ``false`` only listed dependencies are visible. If the ``-H`` flag is
      supported by the compiler (OCaml version >= 5.2) and Dune language version
-     >= 1.17, Dune will use it, which avoids some corner cases (see below).
+     is >= 1.17, Dune will pass the flag to the compiler, which avoids some
+     corner cases (see below).
 
-   - ``disabled-if-hidden-includes-supported`` only listed dependencies are
-     visible if the compiler supports the ``-H`` flag. Otherwise (OCaml version
-     < 5.2), the setting is ignored and all transitive dependencies are made
-     visible.
+   - ``false-if-hidden-includes-supported`` only listed dependencies are visible
+     if the compiler supports the ``-H`` flag. Otherwise (OCaml version < 5.2),
+     the setting is ignored and all transitive dependencies are made visible.
+     Introduced in Dune 3.20.
 
    .. code:: dune
 

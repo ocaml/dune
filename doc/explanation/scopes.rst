@@ -5,7 +5,7 @@ Whenever Dune builds anything, it does so at the level of a *Dune workspace*. A
 Dune workspace is a set of Dune projects. A typical workspace consists of a
 single Dune project.
 
-A Dune project is defined by the presence of a
+A *Dune project* is defined by the presence of a
 :doc:`/reference/dune-project/index` file. Each Dune project extends over the
 file tree rooted at the directory containing the
 :doc:`/reference/dune-project/index` file, excluding any nested Dune projects.

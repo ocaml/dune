@@ -19,6 +19,7 @@ module Spec = struct
     let open Fiber.O in
     let+ () = Fiber.return () in
     ()
+  ;;
 end
 
 module A = Action_ext.Make (Spec)

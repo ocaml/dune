@@ -1861,15 +1861,10 @@ let setup_tmp_lock_alias =
 ;;
 
 let lock_rule lock_dir =
-  let dune_lock =
-    Path.Build.of_string (sprintf "_private/default/.lock/%s/lock.dune" lock_dir)
+  let target =
+    Path.Build.of_string (sprintf "_private/default/.lock/%s" lock_dir)
   in
-  (* TODO: not just dune_lock but also the other .pkg files *)
-  let file_targets = [ dune_lock ] in
-  Action_builder.progn
-    [ Action_builder.write_file dune_lock "TODO: write actual content here" ]
-  |> Action_builder.With_targets.add ~file_targets
-  |> Memo.return
+  Lock_rules.lock ~target ~lock_dir |> Memo.return
 ;;
 
 let setup_lock_rules ~lock_dir : Gen_rules.result Memo.t =

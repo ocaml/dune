@@ -1,5 +1,3 @@
 open Import
 
-val lock :
-  unit 
-  -> Action.Full.t With_targets.t
+val lock : target:Path.Build.t -> lock_dir:string -> Action.Full.t With_targets.t

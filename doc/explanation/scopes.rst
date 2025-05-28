@@ -28,12 +28,16 @@ files, with the former taking precedence. Note that all
 root of the workspace are ignored.
 
 Within a Dune project, :doc:`/reference/dune/index` files are used to define all
-objects of interest for Dune: libraries, executables, tests, etc. References
-within :doc:`/reference/dune/index` files are resolved relative to the directory
-containing the file (except if using a :doc:`/reference/dune/subdir` stanza or
-the :doc:`/reference/actions/chdir` action`). There are typically many
-:doc:`/reference/dune/index` files in a Dune project (one per directory, unless
-the directory does not contain anything relevant to Dune).
+objects of interest for Dune: libraries, executables, tests, etc. There are
+typically many :doc:`/reference/dune/index` files in a Dune project: one per
+directory, unless the directory does not contain anything relevant to Dune. In
+each :doc:`/reference/dune/index` file, references are resolved relative to the
+directory containing the file.
+
+Note that there are specific stanzas and actions that may result in exceptions
+to some of the rules stated in the previous paragraph. See, for example, the
+:doc:`/reference/dune/subdir` and :doc:`/reference/dune/include_subdirs`
+stanzas, as well as the :doc:`/reference/actions/chdir` action.
 
 Finally, note that only public items (public libraries, public executables) of a
 Dune project are visible to other Dune projects within the same Dune workspace.

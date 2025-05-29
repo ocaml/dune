@@ -204,7 +204,7 @@ module Install_cookie = struct
       type nonrec t = t
 
       let name = "INSTALL-COOKIE"
-      let version = 1
+      let version = 2
       let to_dyn = to_dyn
       let test_example () = { files = Section.Map.empty; variables = [] }
     end)

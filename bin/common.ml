@@ -1297,17 +1297,7 @@ let maybe_init_cache (cache_config : Dune_cache.Config.t) =
        Disabled)
 ;;
 
-let init ?(root : Workspace_root.t option) (builder : Builder.t) =
-  let root =
-    match root with
-    | Some root -> root
-    | None ->
-      Workspace_root.create_exn
-        ~from:Filename.current_dir_name
-        ~default_is_cwd:builder.default_root_is_cwd
-        ~specified_by_user:builder.root
-        ()
-  in
+let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   let c = build root builder in
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
@@ -1418,6 +1408,17 @@ let init ?(root : Workspace_root.t option) (builder : Builder.t) =
       let path = Path.external_ file in
       Dune_util.Gc.serialize ~path stat);
   c, config
+;;
+
+let init (builder : Builder.t) =
+  let root =
+    Workspace_root.create_exn
+      ~from:Filename.current_dir_name
+      ~default_is_cwd:builder.default_root_is_cwd
+      ~specified_by_user:builder.root
+      ()
+  in
+  init_with_root ~root builder
 ;;
 
 let footer =

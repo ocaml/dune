@@ -44,13 +44,20 @@ module Builder : sig
   val default : t
 end
 
-(** [init] creates a [Common.t] by executing a sequence of side-effecting actions to
-    initialize Dune's working environment based on the options determined in the\
-    [Builder.t].
+(** [init_with_root] creates a [Common.t] by executing a sequence of
+    side-effecting actions to initialize Dune's working environment based on the
+    options determined in the\ [Builder.t].
 
     Return the [Common.t] and the final configuration, which is the same as the one
     returned in the [config] field of [Dune_rules.Workspace.workspace ()]) *)
-val init : ?root:Workspace_root.t -> Builder.t -> t * Dune_config_file.Dune_config.t
+val init_with_root
+  :  root:Workspace_root.t
+  -> Builder.t
+  -> t * Dune_config_file.Dune_config.t
+
+(** [init] is like [init_with_root], where [root] is the Workspace root
+    corresponding to the current working directory. *)
+val init : Builder.t -> t * Dune_config_file.Dune_config.t
 
 (** [examples [("description", "dune cmd foo"); ...]] is an [EXAMPLES] manpage
     section of enumerated examples illustrating how to run the documented

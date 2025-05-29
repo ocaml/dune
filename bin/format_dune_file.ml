@@ -65,7 +65,7 @@ let term =
        with
        | None -> Dune_lang.Syntax.greatest_supported_version_exn Dune_lang.Stanza.syntax
        | Some root ->
-         let common, config = Common.init ~root builder in
+         let common, config = Common.init_with_root ~root builder in
          Scheduler.go_with_rpc_server ~common ~config
          @@ fun () ->
          Memo.run

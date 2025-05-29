@@ -3,7 +3,6 @@ open Memo.O
 
 include struct
   open Dune_pkg
-  module Sys_poll = Sys_poll
   module Package_variable = Package_variable
   module Substs = Substs
   module Checksum = Checksum
@@ -642,10 +641,10 @@ module Action_expander = struct
     let expand_pkg (paths : Path.t Paths.t) (pform : Pform.Var.Pkg.t) =
       match pform with
       | Switch -> Memo.return [ Value.String "dune" ]
-      | Os -> sys_poll_var (fun { os; _ } -> os)
-      | Os_version -> sys_poll_var (fun { os_version; _ } -> os_version)
-      | Os_distribution -> sys_poll_var (fun { os_distribution; _ } -> os_distribution)
-      | Os_family -> sys_poll_var (fun { os_family; _ } -> os_family)
+      | Os Os -> sys_poll_var (fun { os; _ } -> os)
+      | Os Os_version -> sys_poll_var (fun { os_version; _ } -> os_version)
+      | Os Os_distribution -> sys_poll_var (fun { os_distribution; _ } -> os_distribution)
+      | Os Os_family -> sys_poll_var (fun { os_family; _ } -> os_family)
       | Sys_ocaml_version ->
         sys_poll_var (fun { sys_ocaml_version; _ } -> sys_ocaml_version)
       | Build -> Memo.return [ Value.Dir paths.source_dir ]

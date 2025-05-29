@@ -13,6 +13,15 @@ module Sys_vars = struct
     ; sys_ocaml_version : string option Memo.Lazy.t
     }
 
+  let os t (v : Dune_lang.Pform.Var.Os.t) =
+    Memo.Lazy.force
+      (match v with
+       | Os -> t.os
+       | Os_version -> t.os_version
+       | Os_distribution -> t.os_distribution
+       | Os_family -> t.os_family)
+  ;;
+
   let poll =
     let vars =
       lazy

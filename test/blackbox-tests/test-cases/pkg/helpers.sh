@@ -1,5 +1,13 @@
 export XDG_CACHE_HOME="$PWD/.cache"
 
+# Set the default platform for the purposes of solving dependencies so that the
+# output of tests is platform-independent.
+export DUNE_CONFIG__OS=linux
+export DUNE_CONFIG__ARCH=x86_64
+export DUNE_CONFIG__OS_FAMILY=debian
+export DUNE_CONFIG__OS_DISTRIBUTION=ubuntu
+export DUNE_CONFIG__OS_VERSION=24.11
+
 dune="dune"
 
 pkg_root="_build/_private/default/.pkg"

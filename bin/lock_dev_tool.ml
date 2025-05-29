@@ -205,7 +205,11 @@ let lockdir_status dev_tool =
                   ]))))
 ;;
 
-let lock_dev_tool dev_tool version =
+(* [lock_dev_tool_at_version dev_tool version] generates the lockdir for the
+   dev tool [dev_tool]. If [version] is [Some v] then version [v] of the tool
+   will be chosen by the solver. Otherwise the solver is free to choose the
+   appropriate version of the tool to install. *)
+let lock_dev_tool_at_version dev_tool version =
   let open Memo.O in
   let* need_to_solve =
     lockdir_status dev_tool
@@ -240,8 +244,15 @@ let lock_dev_tool dev_tool version =
 
 let lock_ocamlformat () =
   let version = Dune_pkg.Ocamlformat.version_of_current_project's_ocamlformat_config () in
-  lock_dev_tool Ocamlformat version
+  lock_dev_tool_at_version Ocamlformat version
 ;;
 
-let lock_odoc () = lock_dev_tool Odoc None
-let lock_ocamllsp () = lock_dev_tool Ocamllsp None
+let lock_odoc () = lock_dev_tool_at_version Odoc None
+let lock_ocamllsp () = lock_dev_tool_at_version Ocamllsp None
+
+let lock_dev_tool dev_tool =
+  match (dev_tool : Dune_pkg.Dev_tool.t) with
+  | Ocamlformat -> lock_ocamlformat ()
+  | Odoc -> lock_odoc ()
+  | Ocamllsp -> lock_ocamllsp ()
+;;

@@ -3,6 +3,15 @@ open Dune_config
 module Pin_stanza := Pin_stanza
 module Execution_parameters := Dune_engine.Execution_parameters
 
+module Implicit_transitive_deps : sig
+  type t =
+    | Enabled
+    | Disabled
+    | Disabled_with_hidden_includes
+
+  val to_bool : t -> bool
+end
+
 type t
 
 val to_dyn : t -> Dyn.t
@@ -95,7 +104,7 @@ val find_extension_args : t -> 'a Extension.t -> 'a option
 
 val is_extension_set : t -> 'a Extension.t -> bool
 val set_parsing_context : t -> 'a Decoder.t -> 'a Decoder.t
-val implicit_transitive_deps : t -> bool
+val implicit_transitive_deps : t -> Ocaml.Version.t -> Implicit_transitive_deps.t
 val dune_version : t -> Syntax.Version.t
 val wrapped_executables : t -> bool
 val map_workspace_root : t -> bool

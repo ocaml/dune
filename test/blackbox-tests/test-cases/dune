@@ -26,7 +26,7 @@
  (applies_to windows-diff github6644)
  (alias runtest-windows))
 
-; DISABLED TESTS
+;; DISABLED TESTS
 
 (subdir
  env
@@ -38,22 +38,22 @@
  (applies_to fdo)
  (enabled_if false))
 
-; This test copies a large file, which is too slow to be enabled all the time.
-; The source file is actually sparse, but sendfile seems to do a full copy
-; nevertheless.
+;; This test copies a large file, which is too slow to be enabled all the time.
+;; The source file is actually sparse, but sendfile seems to do a full copy
+;; nevertheless.
 
 (cram
  (applies_to sendfile-large-file)
  (enabled_if false))
 
-; This test is flaky
+;; This test is flaky
 
 (cram
  (applies_to tests-locks)
  (enabled_if false))
 
-; The following test is flaky due to platform sensitivity
-; see https://github.com/ocaml/dune/issues/3744
+;; The following test is flaky due to platform sensitivity
+;; see https://github.com/ocaml/dune/issues/3744
 
 (subdir
  cram
@@ -61,7 +61,7 @@
   (applies_to error)
   (enabled_if false)))
 
-; CONDITIONALLY DISABLED TESTS
+;; CONDITIONALLY DISABLED TESTS
 
 (cram
  (applies_to signal-exit-code)
@@ -84,7 +84,7 @@
 
 (subdir
  cram
- ;  mac has a different sh error message
+ ;; mac has a different sh error message
  (cram
   (applies_to error)
   (enabled_if
@@ -105,7 +105,7 @@
  (applies_to version-corruption)
  (deps %{bin:git} %{bin:chmod})
  (enabled_if
-  ; code signing moves placeholders in the binary
+  ;; code signing moves placeholders in the binary
   (or
    (<> %{system} macosx)
    (<> %{architecture} arm64))))

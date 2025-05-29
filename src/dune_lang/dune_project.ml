@@ -4,6 +4,68 @@ module Versioned_file = Dune_sexp.Versioned_file
 module Execution_parameters = Dune_engine.Execution_parameters
 module Compound_user_error = Dune_engine.Compound_user_error
 
+module Implicit_transitive_deps = struct
+  type t =
+    | Enabled
+    | Disabled
+    | Disabled_with_hidden_includes
+
+  let to_bool = function
+    | Enabled -> true
+    | Disabled | Disabled_with_hidden_includes -> false
+  ;;
+
+  module Stanza = struct
+    type mode = t
+
+    type t =
+      | Enabled
+      | Disabled
+      | Disabled_if_hidden_includes_supported
+
+    let default ~lang:_ = Enabled
+
+    let to_dyn = function
+      | Enabled -> Dyn.variant "Enabled" []
+      | Disabled -> Dyn.variant "Disabled" []
+      | Disabled_if_hidden_includes_supported ->
+        Dyn.variant "Disabled_if_hidden_includes_supported" []
+    ;;
+
+    let equal = Poly.equal
+
+    let encode = function
+      | Enabled -> Encoder.bool true
+      | Disabled -> Encoder.bool false
+      | Disabled_if_hidden_includes_supported ->
+        Encoder.string "false-if-hidden-includes-supported"
+    ;;
+
+    let decode =
+      let check ver = Syntax.since Stanza.syntax ver in
+      enum'
+        [ "true", check (1, 7) >>> return Enabled
+        ; "false", check (1, 7) >>> return Disabled
+        ; ( "false-if-hidden-includes-supported"
+          , check (3, 20) >>> return Disabled_if_hidden_includes_supported )
+        ]
+    ;;
+
+    let mode t ~ocaml_version ~dune_version : mode =
+      match t with
+      | Enabled -> Enabled
+      | Disabled ->
+        if Ocaml.Version.supports_hidden_includes ocaml_version && dune_version >= (3, 17)
+        then Disabled_with_hidden_includes
+        else Disabled
+      | Disabled_if_hidden_includes_supported ->
+        if Ocaml.Version.supports_hidden_includes ocaml_version
+        then Disabled_with_hidden_includes
+        else Enabled
+    ;;
+  end
+end
+
 type t =
   { name : Dune_project_name.t
   ; root : Path.Source.t
@@ -15,7 +77,7 @@ type t =
   ; project_file : Path.Source.t option
   ; extension_args : Univ_map.t
   ; parsing_context : Univ_map.t
-  ; implicit_transitive_deps : bool
+  ; implicit_transitive_deps : Implicit_transitive_deps.Stanza.t
   ; wrapped_executables : bool
   ; map_workspace_root : bool
   ; executables_implicit_empty_intf : bool
@@ -54,7 +116,14 @@ let version t = t.version
 let root t = t.root
 let stanza_parser t = Decoder.set key t t.stanza_parser
 let file t = t.project_file
-let implicit_transitive_deps t = t.implicit_transitive_deps
+
+let implicit_transitive_deps t ocaml_version =
+  Implicit_transitive_deps.Stanza.mode
+    t.implicit_transitive_deps
+    ~ocaml_version
+    ~dune_version:t.dune_version
+;;
+
 let generate_opam_files t = t.generate_opam_files
 let warnings t = t.warnings
 let set_generate_opam_files generate_opam_files t = { t with generate_opam_files }
@@ -106,7 +175,8 @@ let to_dyn
     ; ( "packages"
       , (list (pair Package.Name.to_dyn Package.to_dyn))
           (Package.Name.Map.to_list packages) )
-    ; "implicit_transitive_deps", bool implicit_transitive_deps
+    ; ( "implicit_transitive_deps"
+      , Implicit_transitive_deps.Stanza.to_dyn implicit_transitive_deps )
     ; "wrapped_executables", bool wrapped_executables
     ; "map_workspace_root", bool map_workspace_root
     ; "executables_implicit_empty_intf", bool executables_implicit_empty_intf
@@ -333,7 +403,6 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
 
 let filename = "dune-project"
 let opam_file_location_default ~lang:_ = `Relative_to_project
-let implicit_transitive_deps_default ~lang:_ = true
 let wrapped_executables_default ~(lang : Lang.Instance.t) = lang.version >= (2, 0)
 let map_workspace_root_default ~(lang : Lang.Instance.t) = lang.version >= (3, 0)
 
@@ -396,7 +465,7 @@ let infer ~dir info packages =
   let parsing_context, stanza_parser, extension_args =
     interpret_lang_and_extensions ~lang ~explicit_extensions:String.Map.empty
   in
-  let implicit_transitive_deps = implicit_transitive_deps_default ~lang in
+  let implicit_transitive_deps = Implicit_transitive_deps.Stanza.default ~lang in
   let wrapped_executables = wrapped_executables_default ~lang in
   let map_workspace_root = map_workspace_root_default ~lang in
   let executables_implicit_empty_intf = executables_implicit_empty_intf_default ~lang in
@@ -493,10 +562,17 @@ let encode : t -> Dune_sexp.t list =
     List.filter_opt
       [ flag "generate_opam_files" generate_opam_files (fun ~lang:_ ->
           not generate_opam_files)
-      ; flag
-          "implicit_transitive_deps"
-          implicit_transitive_deps
-          implicit_transitive_deps_default
+      ; (if
+           Implicit_transitive_deps.Stanza.equal
+             implicit_transitive_deps
+             (Implicit_transitive_deps.Stanza.default ~lang)
+         then None
+         else
+           Some
+             (constr
+                "implicit_transitive_deps"
+                Implicit_transitive_deps.Stanza.encode
+                implicit_transitive_deps))
       ; flag "wrapped_executables" wrapped_executables wrapped_executables_default
       ; flag "map_workspace_root" map_workspace_root map_workspace_root_default
       ; flag
@@ -762,7 +838,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
              version of extensions before parsing them. *)
           Extension.instantiate ~dune_lang_ver:lang.version ~loc ~parse_args name ver)
      and+ implicit_transitive_deps =
-       field_o_b "implicit_transitive_deps" ~check:(Syntax.since Stanza.syntax (1, 7))
+       field_o "implicit_transitive_deps" Implicit_transitive_deps.Stanza.decode
      and+ wrapped_executables =
        field_o_b "wrapped_executables" ~check:(Syntax.since Stanza.syntax (1, 11))
      and+ map_workspace_root =
@@ -843,7 +919,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        let implicit_transitive_deps =
          Option.value
            implicit_transitive_deps
-           ~default:(implicit_transitive_deps_default ~lang)
+           ~default:(Implicit_transitive_deps.Stanza.default ~lang)
        in
        let wrapped_executables =
          Option.value wrapped_executables ~default:(wrapped_executables_default ~lang)

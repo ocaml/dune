@@ -22,7 +22,7 @@ let lock_ocamlformat () =
        this logic remain outside of `dune build`, as `dune
        build` is intended to only build targets, and generating
        a lockdir is not building a target. *)
-    Lock_dev_tool.lock_ocamlformat () |> Memo.run
+    Lock_dev_tool.lock_dev_tool Ocamlformat |> Memo.run
   else Fiber.return ()
 ;;
 

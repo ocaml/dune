@@ -21,9 +21,13 @@ implicit_transitive_deps is set to false.
   -I .run.eobjs/byte
   -I .run.eobjs/native
 
+In the following two tests we use "false-if-hidden-includes-supported" for
+testing purposes, but since this test is guarded by OCaml version >= 5.2, this
+should be equivalent to "false".
+
   $ cat >dune-project <<EOF
-  > (lang dune 3.17)
-  > (implicit_transitive_deps false)
+  > (lang dune 3.20)
+  > (implicit_transitive_deps false-if-hidden-includes-supported)
   > EOF
 
   $ getincludes
@@ -40,8 +44,8 @@ implicit_transitive_deps is set to false.
 Test transitive deps can not be directly accessed, both for compiler versions supporting -H or not:
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.17)
-  > (implicit_transitive_deps false)
+  > (lang dune 3.20)
+  > (implicit_transitive_deps false-if-hidden-includes-supported)
   > EOF
 
   $ dune build ./runf.exe 2>&1 | grep -v ocamlc

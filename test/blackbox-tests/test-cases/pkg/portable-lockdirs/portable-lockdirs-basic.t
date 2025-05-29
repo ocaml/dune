@@ -148,7 +148,7 @@ Create a package that writes a different value to some files depending on the os
         (run touch %{lib}/%{pkg-self:name}/META)
         (run sh -c "echo arm64 > %{share}/machine")))))))
 
-  $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=arm64 DUNE_CONFIG__OS_FAMILY=debian DUNE_CONFIG__OS_DISTRIBUTION=ubuntu DUNE_CONFIG__OS_VERSION=24.11 dune build
+  $ DUNE_CONFIG__ARCH=arm64 dune build
   $ cat $pkg_root/foo/target/share/kernel
   Linux
   $ cat $pkg_root/foo/target/share/machine

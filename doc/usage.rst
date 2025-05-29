@@ -162,6 +162,8 @@ If the previous rule doesn't apply, i.e., no ancestor directory has a
 file named ``dune-workspace``, then the current directory will be used
 as root.
 
+.. _forcing-root:
+
 Forcing the Root (for Scripts)
 ------------------------------
 

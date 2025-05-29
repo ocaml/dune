@@ -152,12 +152,10 @@ let create
   let context = Super_context.context super_context in
   let* ocaml = Context.ocaml context in
   let direct_requires, hidden_requires =
-    if Dune_project.implicit_transitive_deps project
-    then Memo.Lazy.force requires_link, Resolve.Memo.return []
-    else if
-      Version.supports_hidden_includes ocaml.version
-      && Dune_project.dune_version project >= (3, 17)
-    then (
+    match Dune_project.implicit_transitive_deps project ocaml.version with
+    | Enabled -> Memo.Lazy.force requires_link, Resolve.Memo.return []
+    | Disabled -> requires_compile, Resolve.Memo.return []
+    | Disabled_with_hidden_includes ->
       let requires_hidden =
         let open Resolve.Memo.O in
         let+ requires_compile = requires_compile
@@ -166,8 +164,7 @@ let create
         List.iter ~f:(fun lib -> Table.set requires_table lib ()) requires_compile;
         List.filter requires_link ~f:(fun l -> not (Table.mem requires_table l))
       in
-      requires_compile, requires_hidden)
-    else requires_compile, Resolve.Memo.return []
+      requires_compile, requires_hidden
   in
   let sandbox = Sandbox_config.no_special_requirements in
   let modes =

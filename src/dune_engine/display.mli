@@ -10,4 +10,5 @@ type t =
   | Short
   | Verbose
 
+val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t

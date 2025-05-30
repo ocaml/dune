@@ -3,6 +3,12 @@ module Promote = struct
     | Automatically
     | Never
 
+  let equal a b =
+    match a, b with
+    | Automatically, Automatically | Never, Never -> true
+    | _, _ -> false
+  ;;
+
   let to_dyn = function
     | Automatically -> Dyn.variant "Automatically" []
     | Never -> Dyn.variant "Never" []

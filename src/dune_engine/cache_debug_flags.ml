@@ -7,3 +7,9 @@ type t =
   ; workspace_local_cache : bool
   ; fs_cache : bool
   }
+
+let equal t { shared_cache; workspace_local_cache; fs_cache } =
+  Bool.equal t.shared_cache shared_cache
+  && Bool.equal t.workspace_local_cache workspace_local_cache
+  && Bool.equal t.fs_cache fs_cache
+;;

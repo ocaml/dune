@@ -41,6 +41,7 @@ module Dep = struct
 
   type t = Dep_conf.t
 
+  let equal = Dep_conf.equal
   let file s = Dep_conf.File (String_with_vars.make_text Loc.none s)
 
   let make_alias_sw ~dir s =

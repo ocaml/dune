@@ -42,7 +42,7 @@ end
 
 let find from =
   let cwd =
-    if Filename.is_relative from then Filename.concat (Sys.getcwd ()) from else from
+    if Filename.is_relative from then Filename.concat Fpath.initial_cwd from else from
   in
   let rec loop counter ~(candidate : Candidate.t option) ~to_cwd dir : Candidate.t option =
     match Sys.readdir dir with

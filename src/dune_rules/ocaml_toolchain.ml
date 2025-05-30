@@ -196,7 +196,7 @@ let is_oxcaml_supported t =
 ;;
 
 let is_parameterized_library_supported t =
-  (* We create the alias to make sure it is easy to destinguish the
+  (* We create the alias to make sure it is easy to distinguish the
      functionality from the compiler variant. *)
   is_oxcaml_supported t
 ;;

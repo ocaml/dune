@@ -5,12 +5,12 @@ val foreign_flags
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> flags:Ordered_set_lang.Unexpanded.t
-  -> language:Foreign_language.t
+  -> language:[ `C | `Cxx ]
   -> string list Action_builder.t
 
 val build_o_files
   :  sctx:Super_context.t
-  -> foreign_sources:Foreign.Sources.t
+  -> foreign_sources:Foreign_source_files.t
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> requires:Lib.t list Resolve.t

@@ -281,7 +281,7 @@ let root =
     >>| Only_packages.filter_packages_in_project ~vendored:(dir_status = Vendored)
   in
   let* dirs_visited =
-    Readdir.File.of_source_path (In_source_dir path)
+    Readdir.File.of_source_path path
     >>| function
     | Ok file -> Dirs_visited.singleton path file
     | Error unix_error -> error_unable_to_load ~path unix_error

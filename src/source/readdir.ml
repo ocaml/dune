@@ -27,7 +27,7 @@ module File = struct
 
   module Map = Map.Make (T)
 
-  let of_source_path p = Fs_memo.path_stat p >>| Result.map ~f:of_stats
+  let of_source_path p = Fs_memo.path_stat (In_source_dir p) >>| Result.map ~f:of_stats
 end
 
 type t =
@@ -94,7 +94,7 @@ let of_source_path_impl path =
             match kind with
             | S_DIR ->
               let+ file =
-                File.of_source_path (In_source_dir path)
+                File.of_source_path path
                 >>| function
                 | Ok file -> file
                 | Error _ -> File.dummy

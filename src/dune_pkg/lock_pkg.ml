@@ -321,6 +321,40 @@ let opam_commands_to_actions
         Some action))
 ;;
 
+(* Translate the entire depexts field from the opam file into the lockfile by
+   way of the slang dsl. Note that this preserves platform variables such as
+   "os" and "os-distribution", which is different from how the "build",
+   "install" and "depends" fields are treated, where platform variables are
+   substituded with concrete values at solve time. There are many different
+   Linux distributions and it's possible that some depexts will have different
+   names on each distro and possibly also for different versions of the same
+   distro. Users are not expected to solve their project for each
+   distribution/version as that would take too long, instead opting to solve
+   without a distro/version specified to create a package solution that's
+   likely to work across all distros (except perhaps some unconventional
+   distros such as Alpine). However even when using a general package solution,
+   it's important that Dune is able to tell users the names of depexts tailored
+   specifically for their current distro at build time. Thus, information
+   mapping distro/version to package names must be preserved in lockfiles when
+   solving. Opam allows depexts to be filtered by arbitrary filter expressions,
+   which is why the slang dsl is needed as opposed to (say) a map from
+   distro/version to depext name. *)
+let depexts_to_conditional_external_dependencies package depexts =
+  List.map depexts ~f:(fun (sys_pkgs, filter) ->
+    let external_package_names =
+      OpamSysPkg.Set.to_list_map OpamSysPkg.to_string sys_pkgs
+    in
+    let condition =
+      filter_to_blang ~package ~loc:Loc.none filter |> Slang.simplify_blang
+    in
+    let enabled_if =
+      if Slang.Blang.equal condition Slang.Blang.true_
+      then `Always
+      else `Conditional condition
+    in
+    { Lock_dir.Depexts.external_package_names; enabled_if })
+;;
+
 let opam_package_to_lock_file_pkg
       solver_env
       stats_updater
@@ -328,6 +362,7 @@ let opam_package_to_lock_file_pkg
       opam_package
       ~pinned
       resolved_package
+      ~portable_lock_dir
   =
   let name = Package_name.of_opam_package_name (OpamPackage.name opam_package) in
   let version =
@@ -467,17 +502,24 @@ let opam_package_to_lock_file_pkg
     |> Option.value ~default:Lock_dir.Conditional_choice.empty
   in
   let depexts =
-    OpamFile.OPAM.depexts opam_file
-    |> List.concat_map ~f:(fun (sys_pkgs, filter) ->
-      let env = Solver_env.to_env solver_env in
-      if OpamFilter.eval_to_bool ~default:false env filter
-      then OpamSysPkg.Set.to_list_map OpamSysPkg.to_string sys_pkgs
-      else [])
-  in
-  let depexts =
-    if List.is_empty depexts
-    then Lock_dir.Conditional_choice.empty
-    else lockfile_field_choice depexts
+    if portable_lock_dir
+    then
+      depexts_to_conditional_external_dependencies
+        opam_package
+        (OpamFile.OPAM.depexts opam_file)
+    else (
+      (* In the non-portable case, only include depexts for the current platform. *)
+      let external_package_names =
+        OpamFile.OPAM.depexts opam_file
+        |> List.concat_map ~f:(fun (sys_pkgs, filter) ->
+          let env = Solver_env.to_env solver_env in
+          if OpamFilter.eval_to_bool ~default:false env filter
+          then OpamSysPkg.Set.to_list_map OpamSysPkg.to_string sys_pkgs
+          else [])
+      in
+      if List.is_empty external_package_names
+      then []
+      else [ { Lock_dir.Depexts.external_package_names; enabled_if = `Always } ])
   in
   let install_command =
     OpamFile.OPAM.install opam_file

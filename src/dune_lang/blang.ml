@@ -37,6 +37,15 @@ module Ast = struct
       variant "Compare" [ Relop.to_dyn o; string_to_dyn s1; string_to_dyn s2 ]
   ;;
 
+  let rec map_string ~f = function
+    | Const b -> Const b
+    | Not t -> Not (map_string ~f t)
+    | Expr s -> Expr (f s)
+    | And ts -> And (List.map ts ~f:(map_string ~f))
+    | Or ts -> Or (List.map ts ~f:(map_string ~f))
+    | Compare (o, s1, s2) -> Compare (o, f s1, f s2)
+  ;;
+
   let decode ~override_decode_bare_literal decode_string =
     let open Decoder in
     let decode_bare_literal =

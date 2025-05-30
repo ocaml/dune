@@ -42,6 +42,7 @@ type t =
   | Sandbox_config of Sandbox_config.t
   | Include of string
 
+val equal : t -> t -> bool
 val remove_locs : t -> t
 
 include Conv.S with type t := t

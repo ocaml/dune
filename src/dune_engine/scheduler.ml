@@ -1109,6 +1109,12 @@ module Run = struct
     | Automatic
     | No_watcher
 
+  let file_watcher_equal a b =
+    match a, b with
+    | Automatic, Automatic | No_watcher, No_watcher -> true
+    | _, _ -> false
+  ;;
+
   module Build_outcome = Build_outcome
   module Event_queue = Event.Queue
   module Event = Handler.Event

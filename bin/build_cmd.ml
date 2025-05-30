@@ -205,7 +205,7 @@ let build =
        state of the lock could otherwise change between checking it and taking
        it. *)
     match Dune_util.Global_lock.lock ~timeout:None with
-    | Error () ->
+    | Error lock_held_by ->
       (* This case is reached if dune detects that another instance of dune
          is already running. Rather than performing the build itself, the
          current instance of dune will instruct the already-running instance to
@@ -215,6 +215,16 @@ let build =
          perform the RPC call.
       *)
       Scheduler.go_without_rpc_server ~common ~config (fun () ->
+        if not (Common.Builder.equal builder Common.Builder.default)
+        then
+          User_warning.emit
+            [ Pp.textf
+                "Your build request is being forwarded to a running Dune instance%s so \
+                 most command-line arguments will be ignored."
+                (match (lock_held_by : Dune_util.Global_lock.Lock_held_by.t) with
+                 | Unknown -> ""
+                 | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
+            ];
         build_via_rpc_server ~print_on_success:true ~targets)
     | Ok () ->
       let request setup =

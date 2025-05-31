@@ -1,5 +1,5 @@
 open Import
-open Dune_lang.Decoder
+open Decoder
 
 (* Parse and resolve "package" fields *)
 module Pkg = struct

@@ -59,16 +59,17 @@ module List = struct
   include List
 
   let partition_map_skip t ~f =
-    let rec loop l r = function
-      | [] -> l, r
+    let rec loop l m r = function
+      | [] -> l, m, r
       | x :: xs ->
         (match f x with
-         | `Skip -> loop l r xs
-         | `Left x -> loop (x :: l) r xs
-         | `Right x -> loop l (x :: r) xs)
+         | `Skip -> loop l m r xs
+         | `Left x -> loop (x :: l) m r xs
+         | `Middle x -> loop l (x :: m) r xs
+         | `Right x -> loop l m (x :: r) xs)
     in
-    let l, r = loop [] [] t in
-    rev l, rev r
+    let l, m, r = loop [] [] [] t in
+    rev l, rev m, rev r
   ;;
 
   let rec filter_map l ~f =
@@ -750,6 +751,12 @@ end
 
 module Library = struct
   module File_kind = struct
+    type asm =
+      { syntax : [ `Gas | `Intel ]
+      ; arch : [ `Amd64 ] option
+      ; os : [ `Win | `Unix ] option
+      }
+
     type c =
       { arch : [ `Arm64 | `X86 ] option
       ; flags : string list
@@ -758,6 +765,7 @@ module Library = struct
     type t =
       | Header
       | C of c
+      | Asm of asm
       | Ml
       | Mli
       | Mll
@@ -770,6 +778,18 @@ module Library = struct
         | Not_found -> String.length fn
       in
       match String.sub fn ~pos:i ~len:(String.length fn - i) with
+      | (".S" | ".asm") as ext ->
+        let syntax = if ext = ".S" then `Gas else `Intel in
+        let os, arch =
+          let fn = Filename.remove_extension fn in
+          let check suffix = String.is_suffix fn ~suffix in
+          if check "x86-64_unix"
+          then Some `Unix, Some `Amd64
+          else if check "x86-64_windows_gnu" || check "x86-64_windows_msvc"
+          then Some `Win, Some `Amd64
+          else None, None
+        in
+        Some (Asm { syntax; arch; os })
       | ".c" ->
         let arch, flags =
           let fn = Filename.remove_extension fn in
@@ -835,7 +855,7 @@ module Library = struct
     let mangle_filename t ({ file; kind } : source) =
       let base = Filename.basename file in
       match kind with
-      | C _ | Header -> base
+      | Asm _ | C _ | Header -> base
       | Mll | Mly | Ml | Mli ->
         let ext =
           match kind with
@@ -900,7 +920,25 @@ module Library = struct
     { ocaml_files : string list
     ; alias_file : string option
     ; c_files : c_file list
+    ; asm_files : string list
     }
+
+  let keep_asm { File_kind.syntax; arch; os } ~ccomp_type ~architecture =
+    (match os with
+     | Some `Unix -> Sys.os_type = "Unix"
+     | Some `Win -> Sys.os_type = "Win32"
+     | None -> true)
+    && (match syntax, ccomp_type with
+        | `Intel, "msvc" -> true
+        | `Gas, "msvc" -> false
+        | `Gas, _ -> true
+        | `Intel, _ -> false)
+    &&
+    match arch, architecture with
+    | None, _ -> true
+    | Some `Amd64, "amd64" -> true
+    | Some `Amd64, _ -> false
+  ;;
 
   let keep_c { File_kind.arch; flags = _ } ~architecture =
     match arch with
@@ -922,7 +960,7 @@ module Library = struct
       let modules =
         List.fold_left files ~init:String.Set.empty ~f:(fun acc { file = fn; kind } ->
           match (kind : File_kind.t) with
-          | Header | C _ -> acc
+          | Asm _ | Header | C _ -> acc
           | Ml | Mli | Mll | Mly ->
             let module_name =
               let fn = Filename.basename fn in
@@ -942,7 +980,7 @@ module Library = struct
            let mangled = Wrapper.mangle_filename wrapper source in
            let dst = build_dir ^/ mangled in
            (match kind with
-            | Header | C _ ->
+            | Asm _ | Header | C _ ->
               copy ~header:"" "line" fn dst;
               Fiber.return [ mangled ]
             | Ml | Mli ->
@@ -970,22 +1008,24 @@ module Library = struct
            Some (src, mangled))
     >>| fun (files, build_info_file) ->
     let alias_file = Wrapper.generate_wrapper wrapper modules in
-    let c_files, ocaml_files =
+    let c_files, ocaml_files, asm_files =
       let files =
         let files = List.concat files in
         match build_info_file with
         | None -> files
         | Some fn -> fn :: files
       in
+      let ccomp_type = String.Map.find "ccomp_type" ocaml_config in
       let architecture = String.Map.find "architecture" ocaml_config in
       List.partition_map_skip files ~f:(fun (src, fn) ->
         match src.kind with
         | C c ->
           if keep_c c ~architecture then `Left { flags = c.flags; name = fn } else `Skip
-        | Ml | Mli | Mly | Mll -> `Right fn
-        | Header -> `Skip)
+        | Ml | Mli | Mly | Mll -> `Middle fn
+        | Header -> `Skip
+        | Asm asm -> if keep_asm asm ~ccomp_type ~architecture then `Right fn else `Skip)
     in
-    { ocaml_files; alias_file; c_files }
+    { ocaml_files; alias_file; c_files; asm_files }
   ;;
 end
 
@@ -1152,6 +1192,7 @@ let build
       ~ocaml_config
       ~dependencies
       ~c_files
+      ~asm_files
       ~build_flags
       ~link_flags
       { target = name, main; external_libraries; _ }
@@ -1196,6 +1237,9 @@ let build
   Fiber.fork_and_join_unit
     (fun () -> build (Filename.basename main))
     (fun () ->
+       let c_files =
+         c_files @ List.map asm_files ~f:(fun asm -> { Library.name = asm; flags = [] })
+       in
        Fiber.parallel_map c_files ~f:(fun { Library.name = file; flags } ->
          let flags = List.map flags ~f:(fun flag -> [ "-ccopt"; flag ]) |> List.concat in
          Process.run
@@ -1259,6 +1303,9 @@ let main () =
   let c_files =
     List.map ~f:(fun (lib : Library.t) -> lib.c_files) libraries |> List.concat
   in
+  let asm_files =
+    List.map ~f:(fun (lib : Library.t) -> lib.asm_files) libraries |> List.concat
+  in
   get_dependencies libraries
   >>= fun dependencies ->
   let ocaml_system =
@@ -1268,7 +1315,7 @@ let main () =
   in
   let build_flags = get_flags ocaml_system Libs.build_flags in
   let link_flags = get_flags ocaml_system Libs.link_flags in
-  build ~ocaml_config ~dependencies ~c_files ~build_flags ~link_flags task
+  build ~ocaml_config ~dependencies ~asm_files ~c_files ~build_flags ~link_flags task
 ;;
 
 let () = Fiber.run (main ())

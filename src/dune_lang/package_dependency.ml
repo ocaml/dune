@@ -44,55 +44,55 @@ let encode { name; constraint_ } =
 (* Check for common typos in package dependency constraints *)
 let check_for_typo ~loc { name; constraint_ } =
   (* Handle case where config system isn't initialized yet *)
-  let warnings_enabled = 
-    try
-      Dune_config.Config.(get typo_warnings) = `Enabled
-    with
-    | _ -> true  (* Default to enabled when config unavailable *)
+  let warnings_enabled =
+    try Dune_config.Config.(get typo_warnings) = `Enabled with
+    | _ -> true (* Default to enabled when config unavailable *)
   in
   (* Early return if warnings are disabled *)
-  if not warnings_enabled then None
-  else
-    (match constraint_ with
-     | Some
-         (Package_constraint.Uop
-            (Relop.Eq, Package_constraint.Value.String_literal "version")) ->
-       let message =
-         User_message.make
-           ~loc
-           [ Pp.textf
-               "Possible typo in constraint for dependency %S: '(= version)' might be a \
-                mistake."
-               (Package_name.to_string name)
-           ]
-           ~hints:
-             [ Pp.textf
-                 "Did you mean to use the `:version` variable instead? Example: (depends \
-                  (%s (= :version)))"
-                 (Package_name.to_string name)
-             ]
-       in
-       Some message
-     | Some (Package_constraint.Bvar var)
-       when String.equal (Package_variable_name.to_string var) "with_test" ->
-       let message =
-         User_message.make
-           ~loc
-           [ Pp.textf
-               "Possible typo in constraint for dependency %S: ':with_test' might be a \
-                mistake."
-               (Package_name.to_string name)
-           ]
-           ~hints:
-             [ Pp.textf
-                 "Did you mean to use ':with-test' instead? Example: (depends (%s \
-                  :with-test))"
-                 (Package_name.to_string name)
-             ]
-       in
-       Some message
-     | _ -> None)
-     
+  if not warnings_enabled
+  then None
+  else (
+    match constraint_ with
+    | Some
+        (Package_constraint.Uop
+           (Relop.Eq, Package_constraint.Value.String_literal "version")) ->
+      let message =
+        User_message.make
+          ~loc
+          [ Pp.textf
+              "Possible typo in constraint for dependency %S: '(= version)' might be a \
+               mistake."
+              (Package_name.to_string name)
+          ]
+          ~hints:
+            [ Pp.textf
+                "Did you mean to use the `:version` variable instead? Example: (depends \
+                 (%s (= :version)))"
+                (Package_name.to_string name)
+            ]
+      in
+      Some message
+    | Some (Package_constraint.Bvar var)
+      when String.equal (Package_variable_name.to_string var) "with_test" ->
+      let message =
+        User_message.make
+          ~loc
+          [ Pp.textf
+              "Possible typo in constraint for dependency %S: ':with_test' might be a \
+               mistake."
+              (Package_name.to_string name)
+          ]
+          ~hints:
+            [ Pp.textf
+                "Did you mean to use ':with-test' instead? Example: (depends (%s \
+                 :with-test))"
+                (Package_name.to_string name)
+            ]
+      in
+      Some message
+    | _ -> None)
+;;
+
 let decode =
   let open Dune_sexp.Decoder in
   let constrained =

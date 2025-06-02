@@ -41,8 +41,7 @@ let encode { name; constraint_ } =
 ;;
 
 (* Check for common typos in package dependency constraints *)
-(* Check for common typos in package dependency constraints *)
-let check_for_typo ~loc { name; constraint_ } =
+let dependency_constraint_variable_typo_warnings ~loc { name; constraint_ } =
   (* Handle case where config system isn't initialized yet *)
   let warnings_enabled =
     try Dune_config.Config.(get typo_warnings) = `Enabled with
@@ -101,7 +100,7 @@ let decode =
     and+ expr = Package_constraint.decode in
     let result = { name; constraint_ = Some expr } in
     (* Check for typos and emit warnings *)
-    (match check_for_typo ~loc result with
+    (match dependency_constraint_variable_typo_warnings ~loc result with
      | Some msg -> User_warning.emit_message msg
      | None -> ());
     result

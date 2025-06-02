@@ -41,10 +41,18 @@ let encode { name; constraint_ } =
 ;;
 
 (* Check for common typos in package dependency constraints *)
+(* Check for common typos in package dependency constraints *)
 let check_for_typo ~loc { name; constraint_ } =
-  match Dune_config.Config.(get typo_warnings) with
-  | `Disabled -> None
-  | `Enabled ->
+  (* Handle case where config system isn't initialized yet *)
+  let warnings_enabled = 
+    try
+      Dune_config.Config.(get typo_warnings) = `Enabled
+    with
+    | _ -> true  (* Default to enabled when config unavailable *)
+  in
+  (* Early return if warnings are disabled *)
+  if not warnings_enabled then None
+  else
     (match constraint_ with
      | Some
          (Package_constraint.Uop
@@ -84,8 +92,7 @@ let check_for_typo ~loc { name; constraint_ } =
        in
        Some message
      | _ -> None)
-;;
-
+     
 let decode =
   let open Dune_sexp.Decoder in
   let constrained =

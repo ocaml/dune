@@ -25,25 +25,20 @@ We compare both, they should be equal
   $ diff source_hierarchy installed_hierarchy
 
 For the curious reader, here is the hierarchy:
-  $ cat source_hierarchy
-  .:
+  $ cat source_hierarchy | grep -v ".:" # we remove ".:" for MacOS/Linux compatibility
   examples
   index.mld
   tutorial
   
-  ./examples:
   example1
   example2
   index.mld
   summary.mld
   
-  ./examples/example1:
   index.mld
   
-  ./examples/example2:
   index.mld
   
-  ./tutorial:
   tuto1.mld
 
 Let's now verify that the install file is correct:

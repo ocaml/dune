@@ -1872,13 +1872,14 @@ let setup_lock_rules ~lock_dir : Gen_rules.result Memo.t =
   in
   let rules = Rules.collect_unit (fun () -> gen_rules lock_dir) in
   (* not sure if this should be a rule *)
-  let _directory_targets =
+  let directory_targets =
     let target_dir =
       Path.Build.of_string (sprintf "_private/default/.lock/%s" lock_dir)
+      (* Path.Build.of_string "" *)
     in
     Path.Build.Map.singleton target_dir Loc.none
   in
-  let directory_targets = Path.Build.Map.empty in
+  (* let directory_targets = Path.Build.Map.empty in *)
   Gen_rules.make ~directory_targets rules |> Memo.return
 ;;
 
@@ -1952,6 +1953,9 @@ let setup_rules ~components ~dir ctx =
   | true, ".dev-tool" :: _ :: _ :: _ ->
     Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
   | _, [ ".lock" ] ->
+    Printf.printf
+      "Generating rules for just .lock at dir (%S)\n"
+      (Path.Build.to_string dir);
     Gen_rules.make
       ~build_dir_only_sub_dirs:
         (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)

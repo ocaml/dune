@@ -1871,12 +1871,14 @@ let setup_lock_rules ~lock_dir : Gen_rules.result Memo.t =
     rule ~loc:Loc.none lock_rule
   in
   let rules = Rules.collect_unit (fun () -> gen_rules lock_dir) in
-  let directory_targets =
+  (* not sure if this should be a rule *)
+  let _directory_targets =
     let target_dir =
       Path.Build.of_string (sprintf "_private/default/.lock/%s" lock_dir)
     in
     Path.Build.Map.singleton target_dir Loc.none
   in
+  let directory_targets = Path.Build.Map.empty in
   Gen_rules.make ~directory_targets rules |> Memo.return
 ;;
 

@@ -73,6 +73,10 @@ module Install_rules = struct
   let stanzas_to_entries = Install_rules.stanzas_to_entries
 end
 
+module Pkg_rules = struct
+  let all_filtered_depexts = Pkg_rules.all_filtered_depexts
+end
+
 module For_tests = struct
   module Dynlink_supported = Dynlink_supported
   module Ocamlobjinfo = Ocamlobjinfo

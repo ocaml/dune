@@ -675,7 +675,7 @@ module Env = struct
         ; "-verbose", deleted_in ~version:(3, 0) Var.Nothing
         ; "ocaml_bin", No_info Ocaml_bin_dir
         ; "ocaml_version", No_info Ocaml_version
-        ; "oxcaml_supported", No_info Oxcaml_supported
+        ; "oxcaml_supported", since ~version:(3, 20) Var.Oxcaml_supported
         ; "ocaml_where", No_info Ocaml_stdlib_dir
         ; "ccomp_type", since ~version:(3, 0) Var.Ccomp_type
         ; "null", No_info Dev_null

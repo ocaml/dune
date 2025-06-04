@@ -93,7 +93,7 @@ let dependency_constraint_variable_typo_warnings ~loc { name; constraint_ } =
 ;;
 
 let decode =
-  let open Dune_sexp.Decoder in
+  let open Decoder in
   let constrained =
     let+ loc = loc
     and+ name = Package_name.decode

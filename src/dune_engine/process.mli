@@ -163,7 +163,7 @@ val run_capture_zero_separated
   -> string list
   -> 'a Fiber.t
 
-(** [run_external_in_out] differs from the other [run] functions in the
+(** [run_inherit_std_in_out] differs from the other [run] functions in the
     followings ways:
 
     - The process group ID is inherited by the parent process rather than
@@ -173,7 +173,7 @@ val run_capture_zero_separated
 
     This version is intended for running external processes at the end of a
     build such as the ones spawned with "dune exec". *)
-val run_external_in_out
+val run_inherit_std_in_out
   :  ?dir:Path.t
   -> ?env:Env.t
   -> Path.t

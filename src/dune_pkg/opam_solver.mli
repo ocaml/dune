@@ -19,5 +19,14 @@ val solve_lock_dir
   -> pins:Resolved_package.t Package_name.Map.t
   -> constraints:Dune_lang.Package_dependency.t list
   -> selected_depopts:Package_name.t list
+  -> portable_lock_dir:bool
+       (** XXX(steve): Indicates that the solver should generate portable
+           lockdirs. We try to avoid having the solver behave differently
+           depending on whether we are generating portable lockdirs but
+           allowing minor changes in what information is stored in the lockdir
+           depending on this argument can greatly simplify the logic for
+           handling both portable and non-portable lockdirs with the same code.
+           Once portable lockdirs are enabled unconditionally, remove this
+           argument. *)
   -> (Solver_result.t, [ `Diagnostic_message of User_message.Style.t Pp.t ]) result
        Fiber.t

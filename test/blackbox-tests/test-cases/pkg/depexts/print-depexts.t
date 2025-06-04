@@ -20,5 +20,5 @@ Create a lockdir with a package that features some depexts.
 Printing the depexts should show all the depexts that the project has:
 
   $ dune show depexts
-  unzip
   gnupg
+  unzip

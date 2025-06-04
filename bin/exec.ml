@@ -154,7 +154,7 @@ let step ~setup ~prog ~args ~common ~no_rebuild ~context ~on_exit () =
     get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog
   and* args = Memo.parallel_map args ~f:expand in
   Memo.of_non_reproducible_fiber
-  @@ Dune_engine.Process.run_external_in_out
+  @@ Dune_engine.Process.run_inherit_std_in_out
        ~dir:(Path.of_string Fpath.initial_cwd)
        ~env
        path

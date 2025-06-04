@@ -1240,7 +1240,7 @@ let run_capture_line
              ]))
 ;;
 
-let run_external_in_out =
+let run_inherit_std_in_out =
   let external_ ch =
     let fd = Io.descr_of_channel ch in
     { Io.kind = External; fd = lazy fd; channel = lazy ch; status = Keep_open }

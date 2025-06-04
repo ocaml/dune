@@ -740,8 +740,8 @@ Testsuite for the (foreign_library ...) stanza.
 
   $ export OCAMLPATH=$PWD/external/install/lib; dune exec ./main.exe --root=some/dir
   Entering directory 'some/dir'
-  Answer = 42
   Leaving directory 'some/dir'
+  Answer = 42
 
 ----------------------------------------------------------------------------------
 * External library directories in (include_dir ...)

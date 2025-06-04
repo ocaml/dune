@@ -11,6 +11,8 @@ module Clflags : sig
           (** Which of [-p], [--only-packages], ... was passed *)
         }
 
+  val equal : t -> t -> bool
+
   (** This must be called exactly once *)
   val set : t -> unit
 end

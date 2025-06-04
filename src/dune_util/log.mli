@@ -6,7 +6,9 @@ module File : sig
     | Default
     | No_log_file
     | This of Path.t
-    | Out_channel of out_channel
+    | Stderr
+
+  val equal : t -> t -> bool
 end
 
 (** Initialise the log file *)

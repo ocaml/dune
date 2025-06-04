@@ -10,6 +10,7 @@ include struct
   module Build_command = Lock_dir.Build_command
   module Display = Dune_engine.Display
   module Pkg_info = Lock_dir.Pkg_info
+  module Depexts = Lock_dir.Depexts
 end
 
 module Variable = struct
@@ -327,7 +328,7 @@ module Pkg = struct
     ; build_command : Build_command.t option
     ; install_command : Dune_lang.Action.t option
     ; depends : t list
-    ; depexts : string list
+    ; depexts : Depexts.t list
     ; info : Pkg_info.t
     ; paths : Path.t Paths.t
     ; write_paths : Path.Build.t Paths.t
@@ -484,7 +485,7 @@ module Expander0 = struct
     ; depends :
         (Variable.value Package_variable_name.Map.t * Path.t Paths.t) Package.Name.Map.t
           Memo.t
-    ; depexts : string list
+    ; depexts : Depexts.t list
     ; context : Context_name.t
     ; version : Package_version.t
     ; env : Value.t list Env.Map.t
@@ -753,6 +754,30 @@ module Action_expander = struct
             ])
     ;;
 
+    let slang_expander t sw =
+      String_expander.Memo.expand_result_deferred_concat sw ~mode:Many ~f:(expand_pform t)
+    ;;
+
+    let eval_blang t blang =
+      Slang_expand.eval_blang blang ~dir:t.paths.source_dir ~f:(slang_expander t)
+    ;;
+
+    let eval_slangs_located t slangs =
+      Slang_expand.eval_multi_located slangs ~dir:t.paths.source_dir ~f:(slang_expander t)
+    ;;
+
+    let filtered_depexts t =
+      Memo.List.filter_map t.depexts ~f:(fun (depexts : Depexts.t) ->
+        let+ enabled =
+          match depexts.enabled_if with
+          | `Always -> Memo.return true
+          | `Conditional condition -> eval_blang t condition
+        in
+        if enabled then Some depexts.external_package_names else None)
+      >>| List.concat
+      >>| List.sort_uniq ~compare:String.compare
+    ;;
+
     let expand_exe_value t value ~loc =
       let+ prog =
         match value with
@@ -776,11 +801,12 @@ module Action_expander = struct
               | None ->
                 (let path = Global.env () |> Env_path.path in
                  Which.which ~path program)
-                >>| (function
-                 | Some p -> Ok p
+                >>= (function
+                 | Some p -> Memo.return (Ok p)
                  | None ->
+                   let+ depexts = filtered_depexts t in
                    let hint =
-                     Run_with_path.depexts_hint t.depexts
+                     Run_with_path.depexts_hint depexts
                      |> Option.map ~f:(fun pp -> Format.asprintf "%a" Pp.to_fmt pp)
                    in
                    Error
@@ -792,18 +818,6 @@ module Action_expander = struct
                         ()))))
       in
       Result.map prog ~f:(map_exe t)
-    ;;
-
-    let slang_expander t sw =
-      String_expander.Memo.expand_result_deferred_concat sw ~mode:Many ~f:(expand_pform t)
-    ;;
-
-    let eval_blang t blang =
-      Slang_expand.eval_blang blang ~dir:t.paths.source_dir ~f:(slang_expander t)
-    ;;
-
-    let eval_slangs_located t slangs =
-      Slang_expand.eval_multi_located slangs ~dir:t.paths.source_dir ~f:(slang_expander t)
     ;;
   end
 
@@ -837,7 +851,7 @@ module Action_expander = struct
          let+ exe =
            let prog = Value.Deferred_concat.force prog ~dir in
            Expander.expand_exe_value expander prog ~loc:prog_loc
-         in
+         and+ depexts = Expander.filtered_depexts expander in
          let args =
            Array.Immutable.of_list_map args ~f:(fun (_loc, arg) ->
              Value.Deferred_concat.parts arg
@@ -848,7 +862,7 @@ module Action_expander = struct
          in
          let ocamlfind_destdir = (Lazy.force expander.paths.install_roots).lib_root in
          Run_with_path.action
-           ~depexts:expander.depexts
+           ~depexts
            ~pkg:(expander.name, prog_loc)
            exe
            args
@@ -1198,7 +1212,6 @@ end = struct
           , build_command
           , install_command )
       in
-      let depexts = choose_for_current_platform depexts |> Option.value ~default:[] in
       let t =
         { Pkg.id
         ; build_command
@@ -2083,4 +2096,13 @@ let find_package ctx pkg =
        let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
        ())
     >>| Option.some
+;;
+
+let all_filtered_depexts context =
+  let* all_packages = all_packages context in
+  Memo.List.map all_packages ~f:(fun (pkg : Pkg.t) ->
+    let expander = Action_expander.expander context pkg in
+    Action_expander.Expander.filtered_depexts expander)
+  >>| List.concat
+  >>| List.sort_uniq ~compare:String.compare
 ;;

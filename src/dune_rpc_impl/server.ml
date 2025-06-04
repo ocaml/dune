@@ -108,8 +108,8 @@ module Run = struct
   ;;
 end
 
-type 'a pending_build_action =
-  | Build of 'a list * Dune_engine.Scheduler.Run.Build_outcome.t Fiber.Ivar.t
+type 'build_arg pending_build_action =
+  | Build of 'build_arg list * Dune_engine.Scheduler.Run.Build_outcome.t Fiber.Ivar.t
 
 module Client = Stdune.Unit
 
@@ -190,10 +190,10 @@ end = struct
   ;;
 end
 
-type 'a t =
+type 'build_arg t =
   { config : Run.t
-  ; pending_build_jobs : ('a list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
-  ; parse_build : string -> 'a
+  ; pending_build_jobs : ('build_arg list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
+  ; parse_build_arg : string -> 'build_arg
   ; mutable clients : Clients.t
   }
 
@@ -219,7 +219,7 @@ let get_current_diagnostic_errors () =
     | `Diagnostic compound_user_error -> Some compound_user_error)
 ;;
 
-let handler (t : _ t Fdecl.t) handle : 'a Dune_rpc_server.Handler.t =
+let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
     let client = () in
@@ -333,7 +333,7 @@ let handler (t : _ t Fdecl.t) handle : 'a Dune_rpc_server.Handler.t =
     let build _session targets =
       let server = Fdecl.get t in
       let ivar = Fiber.Ivar.create () in
-      let targets = List.map targets ~f:server.parse_build in
+      let targets = List.map targets ~f:server.parse_build_arg in
       let* () = Job_queue.write server.pending_build_jobs (targets, ivar) in
       let+ build_outcome = Fiber.Ivar.read ivar in
       match (build_outcome : Build_outcome.t) with
@@ -406,7 +406,7 @@ let handler (t : _ t Fdecl.t) handle : 'a Dune_rpc_server.Handler.t =
   rpc
 ;;
 
-let create ~lock_timeout ~registry ~root ~handle stats ~parse_build =
+let create ~lock_timeout ~registry ~root ~handle stats ~parse_build_arg =
   let t = Fdecl.create Dyn.opaque in
   let pending_build_jobs = Job_queue.create () in
   let handler = Dune_rpc_server.make (handler t handle) in
@@ -444,7 +444,7 @@ let create ~lock_timeout ~registry ~root ~handle stats ~parse_build =
     ; server_ivar = Fiber.Ivar.create ()
     }
   in
-  let res = { config; pending_build_jobs; clients = Clients.empty; parse_build } in
+  let res = { config; pending_build_jobs; clients = Clients.empty; parse_build_arg } in
   Fdecl.set t res;
   res
 ;;

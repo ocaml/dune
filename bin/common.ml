@@ -1157,7 +1157,7 @@ let build (builder : Builder.t) =
              ~registry
              ~root:root.dir
              ~handle:Dune_rules_rpc.register
-             ~parse_build:Dune_rules_rpc.parse_build
+             ~parse_build_arg:Dune_rules_rpc.parse_build_arg
              stats))
     else `Forbid_builds
   in

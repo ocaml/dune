@@ -134,7 +134,7 @@ let hash_config = Poly.hash
 
 let empty_config =
   { flags = Ocaml_flags.Spec.standard
-  ; foreign_flags = Foreign_language.Dict.make_both Ordered_set_lang.Unexpanded.standard
+  ; foreign_flags = Foreign_language.Dict.make_all Ordered_set_lang.Unexpanded.standard
   ; link_flags = Link_flags.Spec.standard
   ; env_vars = Env.empty
   ; binaries = None

@@ -52,7 +52,7 @@ let dep_parser =
   Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version) Dep_conf.decode
 ;;
 
-let parse_build s =
+let parse_build_arg s =
   Dune_lang.Decoder.parse
     dep_parser
     (Univ_map.set

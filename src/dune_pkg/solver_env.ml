@@ -121,7 +121,11 @@ let popular_platform_envs =
   let make ~os ~arch ~os_distribution ~os_family () =
     let env = empty in
     let env = set env Package_variable_name.os (Variable_value.string os) in
-    let env = set env Package_variable_name.arch (Variable_value.string arch) in
+    let env =
+      match arch with
+      | Some arch -> set env Package_variable_name.arch (Variable_value.string arch)
+      | None -> env
+    in
     let env =
       match os_distribution with
       | Some os_distribution ->
@@ -139,56 +143,9 @@ let popular_platform_envs =
     in
     env
   in
-  [ make
-      ~os:"linux"
-      ~arch:"x86_64"
-      ~os_distribution:(Some "ubuntu")
-      ~os_family:(Some "debian")
-      ()
-  ; make
-      ~os:"linux"
-      ~arch:"arm64"
-      ~os_distribution:(Some "ubuntu")
-      ~os_family:(Some "debian")
-      ()
-  ; make
-      ~os:"linux"
-      ~arch:"x86_64"
-      ~os_distribution:(Some "alpine")
-      ~os_family:(Some "alpine")
-      ()
-  ; make
-      ~os:"linux"
-      ~arch:"arm64"
-      ~os_distribution:(Some "alpine")
-      ~os_family:(Some "alpine")
-      ()
-  ; make ~os:"linux" ~arch:"x86_64" ~os_distribution:None ~os_family:None ()
-  ; make ~os:"linux" ~arch:"arm64" ~os_distribution:None ~os_family:None ()
-  ; make
-      ~os:"macos"
-      ~arch:"x86_64"
-      ~os_distribution:(Some "homebrew")
-      ~os_family:(Some "homebrew")
-      ()
-  ; make
-      ~os:"macos"
-      ~arch:"arm64"
-      ~os_distribution:(Some "homebrew")
-      ~os_family:(Some "homebrew")
-      ()
-  ; make
-      ~os:"win32"
-      ~arch:"x86_64"
-      ~os_distribution:(Some "cygwin")
-      ~os_family:(Some "windows")
-      ()
-  ; make
-      ~os:"win32"
-      ~arch:"arm64"
-      ~os_distribution:(Some "cygwin")
-      ~os_family:(Some "windows")
-      ()
+  [ make ~os:"linux" ~arch:None ~os_distribution:None ~os_family:None ()
+  ; make ~os:"macos" ~arch:None ~os_distribution:None ~os_family:None ()
+  ; make ~os:"win32" ~arch:None ~os_distribution:None ~os_family:None ()
   ]
 ;;
 

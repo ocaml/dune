@@ -46,107 +46,36 @@ Create a package that writes a different value to some files depending on the os
    (complete false)
    (used))
   
-  (solved_for_platforms
-   ((arch x86_64)
-    (os linux)
-    (os-distribution ubuntu)
-    (os-family debian))
-   ((arch arm64)
-    (os linux)
-    (os-distribution ubuntu)
-    (os-family debian))
-   ((arch x86_64)
-    (os linux)
-    (os-distribution alpine)
-    (os-family alpine))
-   ((arch arm64)
-    (os linux)
-    (os-distribution alpine)
-    (os-family alpine))
-   ((arch x86_64)
-    (os linux))
-   ((arch arm64)
-    (os linux))
-   ((arch x86_64)
-    (os macos)
-    (os-distribution homebrew)
-    (os-family homebrew))
-   ((arch arm64)
-    (os macos)
-    (os-distribution homebrew)
-    (os-family homebrew))
-   ((arch x86_64)
-    (os win32)
-    (os-distribution cygwin)
-    (os-family windows))
-   ((arch arm64)
-    (os win32)
-    (os-distribution cygwin)
-    (os-family windows)))
+  (solved_for_platforms ((os linux)) ((os macos)) ((os win32)))
 
   $ cat dune.lock/foo.0.0.1.pkg
   (version 0.0.1)
   
   (build
    (choice
-    ((((arch x86_64)
-       (os linux)
-       (os-distribution ubuntu)
-       (os-family debian))
-      ((arch x86_64)
-       (os linux)
-       (os-distribution alpine)
-       (os-family alpine))
-      ((arch x86_64)
-       (os linux)))
+    ((((os linux)))
      ((action
        (progn
         (run mkdir -p %{share} %{lib}/%{pkg-self:name})
         (run touch %{lib}/%{pkg-self:name}/META)
         (run sh -c "echo Linux > %{share}/kernel")
-        (run sh -c "echo x86_64 > %{share}/machine")))))
-    ((((arch arm64)
-       (os linux)
-       (os-distribution ubuntu)
-       (os-family debian))
-      ((arch arm64)
-       (os linux)
-       (os-distribution alpine)
-       (os-family alpine))
-      ((arch arm64)
-       (os linux)))
-     ((action
-       (progn
-        (run mkdir -p %{share} %{lib}/%{pkg-self:name})
-        (run touch %{lib}/%{pkg-self:name}/META)
-        (run sh -c "echo Linux > %{share}/kernel")
-        (run sh -c "echo arm64 > %{share}/machine")))))
-    ((((arch x86_64) (os macos) (os-distribution homebrew) (os-family homebrew)))
+        (when (= %{arch} x86_64) (run sh -c "echo x86_64 > %{share}/machine"))
+        (when (= %{arch} arm64) (run sh -c "echo arm64 > %{share}/machine"))))))
+    ((((os macos)))
      ((action
        (progn
         (run mkdir -p %{share} %{lib}/%{pkg-self:name})
         (run touch %{lib}/%{pkg-self:name}/META)
         (run sh -c "echo Darwin > %{share}/kernel")
-        (run sh -c "echo x86_64 > %{share}/machine")))))
-    ((((arch arm64) (os macos) (os-distribution homebrew) (os-family homebrew)))
+        (when (= %{arch} x86_64) (run sh -c "echo x86_64 > %{share}/machine"))
+        (when (= %{arch} arm64) (run sh -c "echo arm64 > %{share}/machine"))))))
+    ((((os win32)))
      ((action
        (progn
         (run mkdir -p %{share} %{lib}/%{pkg-self:name})
         (run touch %{lib}/%{pkg-self:name}/META)
-        (run sh -c "echo Darwin > %{share}/kernel")
-        (run sh -c "echo arm64 > %{share}/machine")))))
-    ((((arch x86_64) (os win32) (os-distribution cygwin) (os-family windows)))
-     ((action
-       (progn
-        (run mkdir -p %{share} %{lib}/%{pkg-self:name})
-        (run touch %{lib}/%{pkg-self:name}/META)
-        (run sh -c "echo x86_64 > %{share}/machine")))))
-    ((((arch arm64) (os win32) (os-distribution cygwin) (os-family windows)))
-     ((action
-       (progn
-        (run mkdir -p %{share} %{lib}/%{pkg-self:name})
-        (run touch %{lib}/%{pkg-self:name}/META)
-        (run sh -c "echo arm64 > %{share}/machine")))))))
+        (when (= %{arch} x86_64) (run sh -c "echo x86_64 > %{share}/machine"))
+        (when (= %{arch} arm64) (run sh -c "echo arm64 > %{share}/machine"))))))))
 
   $ DUNE_CONFIG__ARCH=arm64 dune build
   $ cat $pkg_root/foo/target/share/kernel

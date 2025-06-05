@@ -6,7 +6,14 @@ module File = struct
     | Default
     | No_log_file
     | This of Path.t
-    | Out_channel of out_channel
+    | Stderr
+
+  let equal a b =
+    match a, b with
+    | Default, Default | No_log_file, No_log_file | Stderr, Stderr -> true
+    | This a, This b -> Path.equal a b
+    | _, _ -> false
+  ;;
 end
 
 type real = { oc : out_channel option }
@@ -18,7 +25,7 @@ let init ?(file = File.Default) () =
   let oc =
     match file with
     | No_log_file -> None
-    | Out_channel s -> Some s
+    | Stderr -> Some stderr
     | This path ->
       Path.mkdir_p (Path.parent_exn path);
       Some (Io.open_out path)

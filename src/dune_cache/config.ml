@@ -8,6 +8,13 @@ module Reproducibility_check = struct
     | Check_with_probability of float
     | Check
 
+  let equal a b =
+    match a, b with
+    | Skip, Skip | Check, Check -> true
+    | Check_with_probability a, Check_with_probability b -> a = b
+    | _, _ -> false
+  ;;
+
   let sample = function
     | Skip -> false
     | Check_with_probability p -> Random.float 1. < p

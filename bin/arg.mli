@@ -21,6 +21,7 @@ end
 module Dep : sig
   type t = Dune_lang.Dep_conf.t
 
+  val equal : t -> t -> bool
   val file : string -> t
   val alias : dir:Stdune.Path.Local.t -> Dune_engine.Alias.Name.t -> t
   val alias_rec : dir:Stdune.Path.Local.t -> Dune_engine.Alias.Name.t -> t

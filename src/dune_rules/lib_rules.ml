@@ -470,7 +470,6 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
               ~obj_dir)
         in
         Memo.parallel_iter action_with_targets ~f:(fun rule ->
-          let* rule = rule in
           Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc rule)))
   in
   Memo.when_

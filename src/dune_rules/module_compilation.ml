@@ -318,7 +318,7 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
             (* Build *.cmo.js / *.wasmo *)
             let sctx = Compilation_context.super_context cctx in
             let dir = Compilation_context.dir cctx in
-            let* action_with_targets =
+            let action_with_targets =
               Jsoo_rules.build_cm
                 cctx
                 ~dir

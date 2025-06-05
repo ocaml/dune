@@ -764,6 +764,17 @@ let setup_separate_compilation_rules sctx components =
                      (jsoo_archives ~mode build_context config lib)
                      ~f:(Path.set_extension ~ext:Js_of_ocaml.Ext.js_shape))
                in
+               let l =
+                 match lib_name with
+                 | "stdlib" -> l
+                 | _ ->
+                   Path.build
+                     (in_build_dir
+                        build_context
+                        ~config
+                        [ "stdlib"; "stdlib.cma" ^ Js_of_ocaml.Ext.js_shape ])
+                   :: l
+               in
                Some (Action_builder.return l)
              | Wasm -> None
            in

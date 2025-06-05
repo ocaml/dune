@@ -23,3 +23,4 @@ In watch mode, pwd is also the folder from which dune is launched.
   $TESTCASE_ROOT/bin
   $ rm -rf $OUTPUT
   $ cd ..
+

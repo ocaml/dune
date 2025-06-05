@@ -510,6 +510,11 @@ end = struct
     let check_all_rules_are_descendant ~of_:dir rules =
       match
         Path.Build.Map.find_key (Rules.to_map rules) ~f:(fun p ->
+          Printf.printf
+            "p (%S) is descendant of dir (%S): %B\n"
+            (Path.Build.to_string p)
+            (Path.Build.to_string dir)
+            (Path.Build.is_descendant p ~of_:dir);
           not (Path.Build.is_descendant p ~of_:dir))
       with
       | None -> ()

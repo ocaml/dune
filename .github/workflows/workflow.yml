@@ -221,7 +221,12 @@ jobs:
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
       - uses: actions/checkout@v4
-      - run: opam switch create . -y
+      - name: Create an empty switch
+        run: opam switch create . --empty
+      - name: Pin local packages to local dependencies
+        run: opam pin add . -n --with-version=dev
+      - name: Install external dependencies
+        run: opam install .
 
   build-microbench:
     name: Build microbenchmarks

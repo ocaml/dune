@@ -49,7 +49,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (modules quad)
   >  (foreign_stubs (language c) (names foo))
   >  (foreign_archives bar qux)
-  >  (foreign_stubs (language cxx) (names baz) (flags -x c++ :standard)))
+  >  (foreign_stubs (language cxx) (names baz) (flags -x c++ -std=c++11 :standard)))
   > (rule
   >  (targets bar%{ext_obj})
   >  (deps bar.c)

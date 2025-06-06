@@ -520,7 +520,7 @@ let%expect_test "create and fix error" =
           ]
         ; [ "message"
           ; [ "Verbatim"
-            ; "This expression has type int but an expression was expected of type\n\
+            ; "The constant 123 has type int but an expression was expected of type\n\
               \  string\n\
                "
             ]
@@ -563,7 +563,7 @@ let%expect_test "create and fix error" =
           ]
         ; [ "message"
           ; [ "Verbatim"
-            ; "This expression has type int but an expression was expected of type\n\
+            ; "The constant 123 has type int but an expression was expected of type\n\
               \  string\n\
                "
             ]

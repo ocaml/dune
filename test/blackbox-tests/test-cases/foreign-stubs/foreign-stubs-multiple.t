@@ -49,7 +49,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (modules quad)
   >  (foreign_stubs (language c) (names foo))
   >  (foreign_archives bar qux)
-  >  (foreign_stubs (language cxx) (names baz)))
+  >  (foreign_stubs (language cxx) (names baz) (flags -x c++ -std=c++11 :standard)))
   > (rule
   >  (targets bar%{ext_obj})
   >  (deps bar.c)
@@ -65,7 +65,7 @@ Testsuite for the (foreign_stubs ...) field.
   > (rule
   >  (targets qux%{ext_obj})
   >  (deps qux.cpp)
-  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  >  (action (run %{ocaml-config:c_compiler} -x c++ -std=c++11 -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
   > (rule
   >  (targets libqux.a)
   >  (deps qux%{ext_obj})
@@ -122,7 +122,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (modules quad)
   >  (foreign_stubs (language c) (names foo) (extra_deps eight.h))
   >  (foreign_archives bar qux)
-  >  (foreign_stubs (language cxx) (names baz)))
+  >  (foreign_stubs (language cxx) (names baz) (flags -x c++ -std=c++11 :standard)))
   > (rule
   >  (targets bar%{ext_obj})
   >  (deps bar.c)
@@ -138,7 +138,7 @@ Testsuite for the (foreign_stubs ...) field.
   > (rule
   >  (targets qux%{ext_obj})
   >  (deps qux.cpp)
-  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  >  (action (run %{ocaml-config:c_compiler} -x c++ -std=c++11 -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
   > (rule
   >  (targets libqux.a)
   >  (deps qux%{ext_obj})
@@ -187,7 +187,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (modules quad)
   >  (foreign_stubs (language c) (names foo) (extra_deps eight.h) (include_dirs another/dir))
   >  (foreign_archives bar qux)
-  >  (foreign_stubs (language cxx) (names baz)))
+  >  (foreign_stubs (language cxx) (names baz) (flags -x c++ -std=c++11 :standard)))
   > (rule
   >  (targets bar%{ext_obj})
   >  (deps bar.c)
@@ -203,7 +203,7 @@ Testsuite for the (foreign_stubs ...) field.
   > (rule
   >  (targets qux%{ext_obj})
   >  (deps qux.cpp)
-  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  >  (action (run %{ocaml-config:c_compiler} -x c++ -std=c++11 -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
   > (rule
   >  (targets libqux.a)
   >  (deps qux%{ext_obj})
@@ -255,7 +255,7 @@ Testsuite for the (foreign_stubs ...) field.
   > (library
   >  (name quad)
   >  (modules quad)
-  >  (foreign_stubs (language cxx) (names :standard \ foo)))
+  >  (foreign_stubs (language cxx) (names :standard \ foo) (flags -x c++ -std=c++11 :standard)))
   > EOF
 
   $ dune clean

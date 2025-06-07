@@ -57,18 +57,6 @@ module Kind = struct
     | Wrapped_compat
     | Root
 
-  let to_dyn =
-    let open Dyn in
-    function
-    | Intf_only -> variant "Intf_only" []
-    | Virtual -> variant "Virtual" []
-    | Impl -> variant "Impl" []
-    | Alias path -> variant "Alias" [ Module_name.Path.to_dyn path ]
-    | Impl_vmodule -> variant "Impl_vmodule" []
-    | Wrapped_compat -> variant "Wrapped_compat" []
-    | Root -> variant "Root" []
-  ;;
-
   let encode =
     let open Dune_lang.Encoder in
     function
@@ -83,6 +71,8 @@ module Kind = struct
     | Wrapped_compat -> string "wrapped_compat"
     | Root -> string "root"
   ;;
+
+  let to_dyn t = Dune_sexp.to_dyn (encode t)
 
   let decode =
     let open Dune_lang.Decoder in

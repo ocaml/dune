@@ -129,6 +129,7 @@ include struct
   module Rule_mode_decoder = Rule_mode_decoder
   module Alias_conf = Alias_conf
   module Stanza_common = Stanza_common
+  module Include_subdirs = Include_subdirs
 end
 
 include Dune_engine.No_io

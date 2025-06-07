@@ -17,7 +17,7 @@ include Stanza.Make (struct
   end)
 
 let decode ~enable_qualified =
-  let open Dune_lang.Decoder in
+  let open Decoder in
   sum
     [ "no", return No
     ; "unqualified", return (Include Unqualified)

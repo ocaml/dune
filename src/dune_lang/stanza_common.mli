@@ -1,5 +1,5 @@
 open Import
-open Dune_lang.Decoder
+open Decoder
 
 module Pkg : sig
   val decode : Package.t t
@@ -17,5 +17,5 @@ module Modules_settings : sig
     }
 
   val since_expanded : Syntax.Version.t
-  val decode : t Dune_lang.Decoder.fields_parser
+  val decode : t Decoder.fields_parser
 end

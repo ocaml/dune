@@ -34,6 +34,10 @@ If a program encounters an exception, we should return a non-zero exit code.
   Fatal error: exception Failure("oh no!")
   [2]
 
+Disable shell monitoring (of jobs) so that we do not get spurious messages
+about signals.
+  $ set +m
+
 If a program segfaults, we should return a non-zero exit code.
 
   $ cat > foo.ml <<EOF
@@ -45,9 +49,8 @@ If a program segfaults, we should return a non-zero exit code.
   > EOF
 
 Note that 128 + 11 (SEGV) = 139
-  $ $(dune exec -- ./foo.exe)
-  Command got signal SEGV.
-  [1]
+  $ { dune exec -- ./foo.exe; } 2> /dev/null
+  [139]
 
 If a program is killed by a signal before it terminates, we should return a non-zero exit
 code.
@@ -66,6 +69,5 @@ code.
   > ;;
   > EOF
 
-  $ $(dune exec -- ./foo.exe)
-  Command got signal KILL.
-  [1]
+  $ { dune exec -- ./foo.exe; } 2> /dev/null
+  [137]

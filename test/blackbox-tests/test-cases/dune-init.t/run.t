@@ -409,8 +409,8 @@ We can build and run the resulting executable:
 
   $ dune exec --root new_exec_proj ./bin/main.exe
   Entering directory 'new_exec_proj'
-  Hello, World!
   Leaving directory 'new_exec_proj'
+  Hello, World!
 
 We can build and run the project's tests:
 

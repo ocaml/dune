@@ -64,3 +64,4 @@ module Copy_files = Copy_files
 module Enabled_if = Enabled_if
 module Alias_conf = Alias_conf
 module Stanza_common = Stanza_common
+module Include_subdirs = Include_subdirs

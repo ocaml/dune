@@ -130,6 +130,7 @@ include struct
   module Alias_conf = Alias_conf
   module Stanza_common = Stanza_common
   module Include_subdirs = Include_subdirs
+  module Mode_conf = Mode_conf
 end
 
 include Dune_engine.No_io

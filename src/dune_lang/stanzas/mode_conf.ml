@@ -1,5 +1,5 @@
 open Import
-open Dune_lang.Decoder
+open Decoder
 
 module T = struct
   type t =
@@ -32,7 +32,7 @@ let to_string = function
 ;;
 
 let to_dyn t = Dyn.variant (to_string t) []
-let encode t = Dune_lang.atom (to_string t)
+let encode t = Dune_sexp.atom (to_string t)
 
 module Kind = struct
   type t =
@@ -144,8 +144,7 @@ module Lib = struct
       [ "byte", return @@ Ocaml Byte
       ; "native", return @@ Ocaml Native
       ; "best", return @@ Ocaml Best
-      ; ( "melange"
-        , Dune_lang.Syntax.since Dune_lang.Melange.syntax (0, 1) >>> return Melange )
+      ; "melange", Syntax.since Melange.syntax (0, 1) >>> return Melange
       ]
   ;;
 
@@ -216,10 +215,10 @@ module Lib = struct
         ~eq:(fun (a, _) (b, _) -> equal a b)
         ~parse:(fun ~loc s ->
           let mode =
-            Dune_lang.Decoder.parse
+            Decoder.parse
               (Dune_project.set_parsing_context project decode)
               Univ_map.empty
-              (Atom (loc, Dune_lang.Atom.of_string s))
+              (Atom (loc, Dune_sexp.Atom.of_string s))
           in
           mode, Kind.Requested loc)
       |> of_list

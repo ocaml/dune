@@ -46,5 +46,5 @@ custom version:
 
   $ OCAMLPATH=$PWD/_install/lib dune exec --root external ./main.exe
   Entering directory 'external'
-  foobarlib
   Leaving directory 'external'
+  foobarlib

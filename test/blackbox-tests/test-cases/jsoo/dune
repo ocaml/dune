@@ -4,6 +4,8 @@
 
 (cram
  (applies_to inline-tests)
+ (enabled_if
+  (<> "macosx" %{ocaml-config:system}))
  (deps
   (package ppx_expect)))
 

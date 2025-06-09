@@ -47,8 +47,8 @@ jobs:
           - ocaml-compiler: 5.3.x
             os: macos-13
             skip_test: true
-          # MSVC (left behind until we upgrade to 5.2.0)
-          - ocaml-compiler: ocaml-base-compiler.4.14.2,system-msvc
+          # MSVC
+          - ocaml-compiler: ocaml-compiler.5.3.0,system-msvc
             os: windows-latest
           # mingw
           - ocaml-compiler: ocaml-base-compiler.5.2.1,system-mingw

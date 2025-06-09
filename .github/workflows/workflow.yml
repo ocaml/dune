@@ -51,7 +51,7 @@ jobs:
           - ocaml-compiler: ocaml-compiler.5.3.0,system-msvc
             os: windows-latest
           # mingw
-          - ocaml-compiler: ocaml-base-compiler.5.2.1,system-mingw
+          - ocaml-compiler: ocaml-base-compiler.5.3.0,system-mingw
             os: windows-latest
           - ocaml-compiler: 4.08.x
             os: ubuntu-latest

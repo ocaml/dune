@@ -21,38 +21,44 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - macos-latest
-          - ubuntu-latest
         # Please keep the list in sync with the minimal version of OCaml in
         # dune-project, dune.opam.template and bootstrap.ml
         #
         # We don't run tests on all versions of the Windows environment and on
         # 4.02.x and 4.07.x in other environments
-        ocaml-compiler:
-          - 5.3.x
         include:
           # OCaml trunk:
           - ocaml-compiler: ocaml-variants.5.4.0+trunk
             os: ubuntu-latest
             skip_test: true
-          # OCaml 4:
-          - ocaml-compiler: 4.14.x
+          # OCaml 5:
+          ## ubuntu (x86)
+          - ocaml-compiler: 5.3.x
             os: ubuntu-latest
-            skip_test: true
-          - ocaml-compiler: 4.14.x
+          ## macos (Apple Silicon)
+          - ocaml-compiler: 5.3.x
             os: macos-latest
-            skip_test: true
-          # macOS x86_64 (Intel)
+          ## macos (x86)
           - ocaml-compiler: 5.3.x
             os: macos-13
             skip_test: true
-          # MSVC (left behind until we upgrade to 5.2.0)
-          - ocaml-compiler: ocaml-base-compiler.4.14.2,system-msvc
+          ## MSVC
+          - ocaml-compiler: ocaml-compiler.5.3.0,system-msvc
             os: windows-latest
-          # mingw
-          - ocaml-compiler: ocaml-base-compiler.5.2.1,system-mingw
+          ## mingw
+          - ocaml-compiler: ocaml-base-compiler.5.3.0,system-mingw
             os: windows-latest
+          # OCaml 4:
+          ## ubuntu (x86)
+          - ocaml-compiler: 4.14.x
+            os: ubuntu-latest
+            skip_test: true
+          ## macos (Apple Silicon)
+          - ocaml-compiler: 4.14.x
+            os: macos-latest
+            skip_test: true
+          # OCaml 4.08:
+          ## ubuntu (x86)
           - ocaml-compiler: 4.08.x
             os: ubuntu-latest
             skip_test: true

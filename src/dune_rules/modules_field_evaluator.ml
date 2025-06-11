@@ -107,6 +107,7 @@ let find_errors
       ~private_modules
       ~existing_virtual_modules
       ~allow_new_public_modules
+      ~is_parameter
   =
   let all =
     (* We expect that [modules] is big and all the other ones are small, that's
@@ -149,7 +150,7 @@ let find_errors
            (add_if has_impl Spurious_module_virtual
             ++ add_if !?intf_only Virt_intf_overlap
             ++ add_if !?private_ Private_virt_module
-            ++ add_if (not !?modules) Undeclared_virtual_module)
+            ++ add_if ((not !?modules) && not is_parameter) Undeclared_virtual_module)
       @@ with_property
            modules
            (add_if
@@ -181,6 +182,7 @@ let check_invalid_module_listing
       ~existing_virtual_modules
       ~allow_new_public_modules
       ~is_vendored
+      ~is_parameter
       ~version
   =
   let { errors; unimplemented_virt_modules } =
@@ -191,6 +193,7 @@ let check_invalid_module_listing
       ~private_modules
       ~existing_virtual_modules
       ~allow_new_public_modules
+      ~is_parameter
   in
   if
     List.is_non_empty errors
@@ -362,6 +365,11 @@ let eval
     | Virtual { virtual_modules } -> eval ~standard:Module_trie.empty virtual_modules
     | Parameter -> Memo.return (Module_trie.map ~f:(fun v -> stanza_loc, v) all_modules)
   and+ private_modules = eval ~standard:Module_trie.empty private_modules in
+  let is_parameter =
+    match kind with
+    | Parameter -> true
+    | Virtual _ | Exe_or_normal_lib | Implementation _ -> false
+  in
   check_invalid_module_listing
     ~stanza_loc
     ~modules_without_implementation
@@ -372,6 +380,7 @@ let eval
     ~existing_virtual_modules
     ~allow_new_public_modules
     ~is_vendored
+    ~is_parameter
     ~version;
   let all_modules =
     Module_trie.mapi modules ~f:(fun _path (_, m) ->

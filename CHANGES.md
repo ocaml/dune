@@ -1,3 +1,11 @@
+3.19.1 (2025-06-11)
+------------------
+
+### Fixed
+
+- Revert changes in `dune exec` behaviour introduced in 3.19.0. (#11879, fixes
+  #11870, #11867 and #11881, @Alizter)
+
 3.19.0 (2025-05-21)
 -------------------
 

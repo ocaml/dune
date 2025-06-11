@@ -2,35 +2,10 @@
 
 (library
  (name dune_engine)
- (libraries
-  unix
-  csexp
-  stdune
-  dune_config
-  dune_console
-  dyn
-  fiber
-  memo
-  dune_async_io
-  threads.posix
-  predicate_lang
-  dune_cache
-  dune_cache_storage
-  dune_glob
-  dune_targets
-  chrome_trace
-  dune_stats
-  dune_action_plugin
-  dune_util
-  build_path_prefix_map
-  dune_output_truncation
-  csexp_rpc
-  dune_rpc_private
-  dune_rpc_client
-  dune_thread_pool
-  dune_spawn
-  ocamlc_loc
-  dune_file_watcher
-  dune_digest
-  dune_metrics)
+ (libraries unix csexp stdune dune_config dune_console dyn fiber memo
+  dune_async_io threads.posix predicate_lang dune_cache dune_cache_storage
+  dune_glob dune_targets chrome_trace dune_stats dune_action_plugin dune_util
+  build_path_prefix_map dune_output_truncation csexp_rpc dune_rpc_private
+  dune_rpc_client dune_thread_pool dune_spawn ocamlc_loc dune_file_watcher
+  dune_digest dune_metrics)
  (synopsis "Internal Dune library, do not use!"))

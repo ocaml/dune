@@ -1,10 +1,4 @@
 (library
  (name promote)
- (libraries
-  stdune
-  dune_engine
-  action_ext
-  dune_sexp
-  dune_console
-  dune_util
+ (libraries stdune dune_engine action_ext dune_sexp dune_console dune_util
   fiber))

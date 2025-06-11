@@ -136,7 +136,7 @@ RUN opam init --disable-sandboxing --auto-setup
 # make an opam switch for running benchmarks
 RUN echo "Cache busting to update the opam cache which serves no additional purpose besides this"
 RUN opam update && opam switch create bench 4.14.2
-RUN opam install -y dune ocamlbuild
+RUN opam install -y ocamlbuild
 
 # make an opam switch for preparing the files for the benchmark
 RUN opam switch create prepare 4.14.2
@@ -149,13 +149,15 @@ RUN opam install -y monorepo-benchmark/dune-monorepo-benchmark-runner
 # don't cause the docker image cache to be invalidated.
 RUN mkdir -p $HOME/dune
 WORKDIR $HOME/dune
+COPY --chown=user:users boot boot
 COPY --chown=user:users bin bin
 COPY --chown=user:users src src
 COPY --chown=user:users otherlibs otherlibs
 COPY --chown=user:users vendor vendor
 COPY --chown=user:users dune-project dune-project
 COPY --chown=user:users dune-file dune-file
-RUN . ~/.profile && dune build bin/main.exe --release
+RUN ocaml boot/bootstrap.ml
+RUN . ~/.profile && _boot/dune.exe build bin/main.exe --release
 
 # Switch to the benchmark project
 WORKDIR $HOME/monorepo-benchmark/benchmark
@@ -166,7 +168,7 @@ COPY --chown=user:users bench/monorepo/Makefile .
 # Build the benchmark runner
 RUN . ~/.profile && \
     cd /home/user/monorepo-benchmark/dune-monorepo-benchmark-runner && \
-    dune build src/main.exe --release
+    "$HOME/dune/_boot/dune.exe" build src/main.exe --release
 
 # Change to the benchmarking switch to run the benchmark
 RUN opam switch bench

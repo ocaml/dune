@@ -697,6 +697,14 @@ let expand_pform_macro
           (let open Memo.O in
            let* artifacts_host = t.artifacts_host in
            Coq_config.expand source macro_invocation artifacts_host))
+  | Oxcaml ->
+    Need_full_expander
+      (fun t ->
+        Without
+          (let open Memo.O in
+           let project = project t in
+           let+ ocaml = Context.ocaml context in
+           Oxcaml.expand project macro_invocation ocaml))
 ;;
 
 let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pform.t)

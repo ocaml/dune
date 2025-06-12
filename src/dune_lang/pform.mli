@@ -135,6 +135,7 @@ module Macro : sig
     | Artifact of Artifact.t
     | Pkg
     | Pkg_self
+    | Oxcaml
 
   val compare : t -> t -> Ordering.t
   val to_dyn : t -> Dyn.t

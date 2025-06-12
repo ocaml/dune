@@ -51,8 +51,8 @@ let decode =
     (let* stanza_loc = loc in
      let wrapped = None in
      (* Wrapped.Simple true in *)
-     let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
      let* project = Dune_project.get_exn () in
+     let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
      let+ buildable = Buildable.decode (Library (Option.map ~f:snd wrapped))
      and+ name = field_o "name" Lib_name.Local.decode_loc
      and+ public = field_o "public_name" (Public_lib.decode ~allow_deprecated_names:false)

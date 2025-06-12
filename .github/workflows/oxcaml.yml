@@ -29,7 +29,7 @@ jobs:
           # CR maiste: Update jst to not depend on a working commit anymore. It
           # prevents non working commits to break the Dune CI
           opam-repositories: |
-            jst: "git+https://github.com/janestreet/opam-repository#cbf6161d54895c14a9ee8dd62aaf69a317bf5b04"
+            jst: "git+https://github.com/janestreet/opam-repository#with-extensions"
             default: "git+https://github.com/ocaml/opam-repository.git"
 
       - name: Install deps

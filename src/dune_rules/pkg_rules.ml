@@ -1887,48 +1887,6 @@ let setup_pkg_install_alias =
     |> Gen_rules.rules_here
 ;;
 
-let setup_tmp_lock_alias =
-  fun ~dir ctx_name ->
-  let alias = Alias.make ~dir Alias0.pkg_lock in
-  let rule =
-    Rules.collect_unit (fun () ->
-      (* careful, need to point to a file that will be created by the rule *)
-      let path =
-        let ( / ) = Path.Build.relative in
-        (* TODO get lock dir name instead of hardcoding `dune.lock` *)
-        Private_context.t.build_dir
-        / Context_name.to_string ctx_name
-        / ".lock"
-        / "dune.lock"
-        / "content"
-      in
-      let deps = Action_builder.path (Path.build path) in
-      Rules.Produce.Alias.add_deps alias deps)
-  in
-  Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
-  |> Gen_rules.rules_here
-;;
-
-let lock_rule ~target lock_dir = Lock_rules.lock ~target ~lock_dir |> Memo.return
-
-let setup_lock_rules ctx_name ~lock_dir : Gen_rules.result =
-  let target =
-    let ( / ) = Path.Build.relative in
-    Private_context.t.build_dir
-    / Context_name.to_string ctx_name
-    / ".lock"
-    / lock_dir
-    / "content"
-  in
-  let gen_rules lock_dir =
-    let* lock_rule = lock_rule ~target lock_dir in
-    rule ~loc:Loc.none lock_rule
-  in
-  let rules = Rules.collect_unit (fun () -> gen_rules lock_dir) in
-  let directory_targets = Path.Build.Map.singleton target Loc.none in
-  Gen_rules.make ~directory_targets rules
-;;
-
 let setup_package_rules ~package_universe ~dir ~pkg_name : Gen_rules.result Memo.t =
   let name = User_error.ok_exn (Package.Name.of_string_user_error (Loc.none, pkg_name)) in
   let* db = DB.get package_universe in
@@ -1998,15 +1956,8 @@ let setup_rules ~components ~dir ctx =
     Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
   | true, ".dev-tool" :: _ :: _ :: _ ->
     Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
-  | _, [ ".lock" ] ->
-    Gen_rules.make
-      ~build_dir_only_sub_dirs:
-        (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
-      (Memo.return Rules.empty)
-    |> Memo.return
-  | _, [ ".lock"; lock_dir ] -> Memo.return @@ setup_lock_rules ctx ~lock_dir
   | is_default, [] ->
-    let sub_dirs = ".pkg" :: ".lock" :: (if is_default then [ ".dev-tool" ] else []) in
+    let sub_dirs = ".pkg" :: (if is_default then [ ".dev-tool" ] else []) in
     let build_dir_only_sub_dirs =
       Gen_rules.Build_only_sub_dirs.singleton ~dir @@ Subdir_set.of_list sub_dirs
     in

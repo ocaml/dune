@@ -1,6 +1,6 @@
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.18)
+  > (lang dune 3.20)
   > (package (name param) (allow_empty))
   > (package (name mylib) (allow_empty))
   > EOF
@@ -50,7 +50,7 @@ $ dune describe rules param/.param_intf.objs/byte/param_intf.cmi
     plugin(native) = ""
   )
   $ cat _build/install/default/lib/param/dune-package
-  (lang dune 3.19)
+  (lang dune 3.20)
   (name param)
   (sections (lib .))
   (files
@@ -86,7 +86,7 @@ $ dune describe rules param/.param_intf.objs/byte/param_intf.cmi
 
 $ cat _build/install/default/lib/mylib/META
   $ cat _build/install/default/lib/mylib/dune-package
-  (lang dune 3.19)
+  (lang dune 3.20)
   (name mylib)
   (sections (lib .))
   (files (lib (META dune-package)))

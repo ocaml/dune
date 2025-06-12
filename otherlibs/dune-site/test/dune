@@ -9,6 +9,8 @@
 ; set. Most CI systems set it.
 
 (cram
- (applies_to run)
+ (applies_to run_2_9 run)
  (enabled_if
-  (not %{env:CI=false})))
+  (and
+   (<> %{os_distribution} nixos)
+   (not %{env:CI=false}))))

@@ -56,61 +56,34 @@ let decode =
      let+ buildable = Buildable.decode (Library (Option.map ~f:snd wrapped))
      and+ name = field_o "name" Lib_name.Local.decode_loc
      and+ public = field_o "public_name" (Public_lib.decode ~allow_deprecated_names:false)
-     and+ package =
-       field_o
-         "package"
-         (Dune_lang.Syntax.since Stanza.syntax (2, 8) >>> located Stanza_common.Pkg.decode)
+     and+ package = field_o "package" (located Stanza_common.Pkg.decode)
+     and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (3, 20)) ()
+     and+ synopsis = field_o "synopsis" string
      and+ stdlib =
        field_o
          "stdlib"
          (Dune_lang.Syntax.since Ocaml_stdlib.syntax (0, 1) >>> Ocaml_stdlib.decode)
-     and+ enabled_if =
-       let open Enabled_if in
-       let allowed_vars =
-         if Dune_project.dune_version project >= (3, 15)
-         then Any
-         else
-           Only
-             (("context_name", (2, 8))
-              :: ("profile", (2, 5))
-              :: Lib_config.allowed_in_enabled_if)
-       in
-       decode ~allowed_vars ~since:(Some (1, 10)) ()
-     and+ optional = field_b "optional"
-     and+ synopsis = field_o "synopsis" string in
+     and+ optional = field_b "optional" in
      let name =
-       let open Dune_lang.Syntax.Version.Infix in
        match name, public with
        | Some (loc, res), _ -> loc, res
        | None, Some { Public_lib.name = loc, name; _ } ->
-         if dune_version >= (1, 1)
-         then (
-           match Lib_name.to_local (loc, name) with
-           | Ok m -> loc, m
-           | Error user_message ->
-             User_error.raise
-               ~loc
-               [ Pp.textf "Invalid library name."
-               ; Pp.text
-                   "Public library names don't have this restriction. You can either \
-                    change this public name to be a valid library name or add a \"name\" \
-                    field with a valid library name."
-               ]
-               ~hints:(Lib_name.Local.valid_format_doc :: user_message.hints))
-         else
-           User_error.raise
-             ~loc
-             [ Pp.text
-                 "name field cannot be omitted before version 1.1 of the dune language"
-             ]
+         (match Lib_name.to_local (loc, name) with
+          | Ok m -> loc, m
+          | Error user_message ->
+            User_error.raise
+              ~loc
+              [ Pp.textf "Invalid library name."
+              ; Pp.text
+                  "Public library names don't have this restriction. You can either \
+                   change this public name to be a valid library name or add a \"name\" \
+                   field with a valid library name."
+              ]
+              ~hints:(Lib_name.Local.valid_format_doc :: user_message.hints))
        | None, None ->
          User_error.raise
            ~loc:stanza_loc
-           [ Pp.text
-               (if dune_version >= (1, 1)
-                then "supply at least one of name or public_name fields"
-                else "name field is missing")
-           ]
+           [ Pp.text "supply at least one of name or public_name fields" ]
      in
      let visibility =
        match public, package with

@@ -58,19 +58,6 @@ module Kind = struct
     | Root
     | Parameter
 
-  let to_dyn =
-    let open Dyn in
-    function
-    | Intf_only -> variant "Intf_only" []
-    | Virtual -> variant "Virtual" []
-    | Impl -> variant "Impl" []
-    | Alias path -> variant "Alias" [ Module_name.Path.to_dyn path ]
-    | Impl_vmodule -> variant "Impl_vmodule" []
-    | Wrapped_compat -> variant "Wrapped_compat" []
-    | Root -> variant "Root" []
-    | Parameter -> variant "Parameter" []
-  ;;
-
   let encode =
     let open Dune_lang.Encoder in
     function

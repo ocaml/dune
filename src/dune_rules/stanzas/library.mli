@@ -29,7 +29,6 @@ type t =
   ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
   ; dune_version : Dune_lang.Syntax.Version.t
   ; virtual_modules : Ordered_set_lang.Unexpanded.t option
-  ; is_parameter : bool
   ; implements : (Loc.t * Lib_name.t) option
   ; default_implementation : (Loc.t * Lib_name.t) option
   ; private_modules : Ordered_set_lang.Unexpanded.t option

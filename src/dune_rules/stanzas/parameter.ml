@@ -17,7 +17,6 @@ type t =
 let to_library t =
   let loc, _ = t.name in
   { Library.name = t.name
-  ; is_parameter = true
   ; visibility = t.visibility
   ; synopsis = t.synopsis
   ; install_c_headers = []

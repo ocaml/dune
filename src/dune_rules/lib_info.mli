@@ -218,7 +218,6 @@ val create
   -> virtual_deps:(Loc.t * Lib_name.t) list
   -> dune_version:Dune_lang.Syntax.Version.t option
   -> virtual_:bool
-  -> is_parameter:bool
   -> entry_modules:(Module_name.t list, User_message.t) result Source.t
   -> implements:(Loc.t * Lib_name.t) option
   -> default_implementation:(Loc.t * Lib_name.t) option

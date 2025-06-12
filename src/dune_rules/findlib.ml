@@ -169,10 +169,6 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
     let melange_runtime_deps = Lib_info.File_deps.External [] in
     let preprocess = Preprocess.Per_module.no_preprocessing () in
     let virtual_ = false in
-    let is_parameter =
-      false
-      (* TODO arthur *)
-    in
     let default_implementation = None in
     let wrapped = None in
     let foreign_archives, native_archives =
@@ -273,7 +269,6 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
       ~virtual_deps
       ~dune_version
       ~virtual_
-      ~is_parameter
       ~entry_modules
       ~implements
       ~default_implementation

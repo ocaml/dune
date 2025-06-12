@@ -106,7 +106,6 @@ module Lib = struct
     let jsoo_runtime = Lib_info.jsoo_runtime info in
     let wasmoo_runtime = Lib_info.wasmoo_runtime info in
     let virtual_ = Lib_info.virtual_ info in
-    let is_parameter = Lib_info.is_parameter info in
     let instrumentation_backend = Lib_info.instrumentation_backend info in
     let native_archives =
       match Lib_info.native_archives info with
@@ -126,7 +125,6 @@ module Lib = struct
     @@ [ field "name" Lib_name.encode name
        ; field "kind" Lib_kind.encode kind
        ; field_b "virtual" virtual_
-       ; field_b "is_parameter" is_parameter
        ; field_o "synopsis" string synopsis
        ; field_o "orig_src_dir" path orig_src_dir
        ; mode_paths "archives" archives
@@ -221,7 +219,6 @@ module Lib = struct
        and+ requires = field_l "requires" (Lib_dep.decode ~allow_re_export:true)
        and+ ppx_runtime_deps = libs "ppx_runtime_deps"
        and+ virtual_ = field_b "virtual"
-       and+ is_parameter = field_b "is_parameter"
        and+ sub_systems = Sub_system_info.record_parser
        and+ orig_src_dir = field_o "orig_src_dir" path
        and+ modules = field "modules" (Modules.decode ~src_dir:base)
@@ -288,7 +285,6 @@ module Lib = struct
            ~virtual_deps
            ~dune_version
            ~virtual_
-           ~is_parameter
            ~entry_modules
            ~implements
            ~default_implementation

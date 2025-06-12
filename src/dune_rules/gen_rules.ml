@@ -647,7 +647,10 @@ let private_context ~dir components _ctx =
   analyze_private_context_path components
   >>= function
   | `Invalid_context -> Memo.return Gen_rules.unknown_context
-  | `Valid (ctx, components) -> Pkg_rules.setup_rules ctx ~dir ~components
+  | `Valid (ctx, components) ->
+    let+ lock_rules = Lock_rules.setup_rules ctx ~dir ~components
+    and+ pkg_rules = Pkg_rules.setup_rules ctx ~dir ~components in
+    Gen_rules.combine lock_rules pkg_rules
   | `Root ->
     let+ contexts = Per_context.list () in
     let build_dir_only_sub_dirs =
@@ -718,7 +721,7 @@ let gen_rules ctx ~dir components =
   else
     let* () = raise_on_lock_dir_out_of_sync ctx in
     let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in
-    let gen_lock_rule = Pkg_rules.setup_tmp_lock_alias ~dir ctx in
+    let gen_lock_rule = Lock_rules.setup_tmp_lock_alias ~dir ctx in
     let+ sctx_rules = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
     Gen_rules.combine (Gen_rules.combine sctx_rules gen_pkg_alias_rule) gen_lock_rule
 ;;

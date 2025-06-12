@@ -19,3 +19,8 @@
  (applies_to implicit-transitive-deps-5.2)
  (enabled_if
   (>= %{ocaml_version} 5.2)))
+
+(cram
+ (applies_to dialect)
+ (deps %{bin:melc})
+ (alias runtest-melange))

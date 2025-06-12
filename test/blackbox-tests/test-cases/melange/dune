@@ -4,6 +4,7 @@
    (DUNE_SANDBOX symlink))))
 
 (cram
+ (applies_to :whole_subtree)
  (deps %{bin:node} %{bin:melc})
  (alias runtest-melange))
 

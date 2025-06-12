@@ -2,25 +2,12 @@
 
 open Import
 
-module Modules_data : sig
-  (** Various information needed about a set of modules.
-
-      This is a subset of [Compilation_context]. We don't use
-      [Compilation_context] directory as this would create a circular
-      dependency. *)
-  type t =
-    { dir : Path.Build.t
-    ; obj_dir : Path.Build.t Obj_dir.t
-    ; sctx : Super_context.t
-    ; vimpl : Vimpl.t option
-    ; modules : Modules.With_vlib.t
-    ; stdlib : Ocaml_stdlib.t option
-    ; sandbox : Sandbox_config.t
-    }
-end
-
 val deps_of
-  :  Modules_data.t
+  :  sandbox:Sandbox_config.t
+  -> modules:Modules.With_vlib.t
+  -> sctx:Super_context.t
+  -> dir:Path.Build.t
+  -> obj_dir:Path.Build.t Obj_dir.t
   -> ml_kind:Ml_kind.t
   -> Module.t
   -> Module.t list Action_builder.t Memo.t

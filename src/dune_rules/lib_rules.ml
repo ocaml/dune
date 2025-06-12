@@ -439,7 +439,7 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
     Lib_info.eval_native_archives_exn lib_info ~modules:(Some modules)
   in
   let* () =
-    if lib.is_parameter
+    if Library.is_parameter lib
     then Memo.return ()
     else (
       let cm_files =

@@ -44,7 +44,6 @@ When reaching a signal like SEGV dune exec -w will exit.
   Had 1 error, waiting for filesystem changes...
   fixed signal
   Success, waiting for filesystem changes...
-  $ PID=$!
   $ ./wait-for-file.sh $DONE_FLAG
 
 Waiting for KILL signal...
@@ -64,4 +63,3 @@ This rebuilds successfully as indicated by the above output.
 
   $ ./wait-for-file.sh $DONE_FLAG
 
-  $ kill $PID

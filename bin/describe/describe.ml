@@ -21,6 +21,7 @@ let subcommands =
   ; Describe_pkg.command
   ; Describe_contexts.command
   ; Describe_depexts.command
+  ; Describe_location.command
   ]
 ;;
 

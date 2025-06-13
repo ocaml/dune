@@ -20,12 +20,23 @@ module Spec = struct
     let open Fiber.O in
     let+ () = Fiber.return () in
     Printf.eprintf
-      "Our ACTION target is %s, our lock_dir is %S\n"
+      "Running ACTION, target is %s, our lock_dir is %S\n"
       (Path.Build.to_string target)
       lock_dir;
     let path = Path.build target in
     Path.mkdir_p path;
-    Io.write_file ~binary:true (Path.relative path "lock.dune") "Hello I exist";
+    let t = Unix.localtime @@ Unix.gettimeofday () in
+    let content =
+      sprintf
+        "Created on %d-%0.2d-%0.2d %0.2d:%0.2d:%0.2d"
+        (t.tm_year + 1900)
+        (t.tm_mon + 1)
+        t.tm_mday
+        t.tm_hour
+        t.tm_min
+        t.tm_sec
+    in
+    Io.write_file ~binary:true (Path.relative path "lock.dune") content;
     ()
   ;;
 end
@@ -36,14 +47,12 @@ let action ~target ~lock_dir = A.action { Spec.target; lock_dir }
 
 let lock ~target ~lock_dir =
   action ~target ~lock_dir
-  |> Action.Full.make ~can_go_in_shared_cache:true
+  |> Action.Full.make ~can_go_in_shared_cache:false
   |> Action_builder.With_targets.return
   |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
 ;;
 
 module Gen_rules = Build_config.Gen_rules
-
-let lock_rule ~target lock_dir = lock ~target ~lock_dir |> Memo.return
 
 let rule ?loc { Action_builder.With_targets.build; targets } =
   (* TODO this ignores the workspace file *)
@@ -51,6 +60,7 @@ let rule ?loc { Action_builder.With_targets.build; targets } =
 ;;
 
 let setup_lock_rules ctx_name ~lock_dir : Gen_rules.result =
+  let sctx = Super_context.find_exn ctx_name in
   let target =
     let ( / ) = Path.Build.relative in
     Private_context.t.build_dir
@@ -60,15 +70,20 @@ let setup_lock_rules ctx_name ~lock_dir : Gen_rules.result =
     / "content"
   in
   let gen_rules lock_dir =
-    let* lock_rule = lock_rule ~target lock_dir in
+    let lock_rule = lock ~target ~lock_dir in
     rule ~loc:Loc.none lock_rule
   in
-  let rules = Rules.collect_unit (fun () -> gen_rules lock_dir) in
+  let rules =
+    Rules.collect_unit (fun () ->
+      (* deref Memo to create dependency on project *)
+      let* _sctx = sctx in
+      gen_rules lock_dir)
+  in
   let directory_targets = Path.Build.Map.singleton target Loc.none in
   Gen_rules.make ~directory_targets rules
 ;;
 
-let setup_rules ~components ~dir ctx =
+let setup_rules ~components ~dir ctx_name =
   match components with
   | [ ".lock" ] ->
     Gen_rules.make
@@ -76,7 +91,7 @@ let setup_rules ~components ~dir ctx =
         (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
       (Memo.return Rules.empty)
     |> Memo.return
-  | [ ".lock"; lock_dir ] -> Memo.return @@ setup_lock_rules ctx ~lock_dir
+  | [ ".lock"; lock_dir ] -> Memo.return @@ setup_lock_rules ctx_name ~lock_dir
   | [] ->
     let sub_dirs = [ ".lock" ] in
     let build_dir_only_sub_dirs =

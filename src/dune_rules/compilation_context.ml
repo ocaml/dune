@@ -96,7 +96,6 @@ type t =
   ; melange_package_name : Lib_name.t option
   ; modes : Lib_mode.Map.Set.t
   ; bin_annot : bool
-  ; ocamldep_modules_data : Ocamldep.Modules_data.t
   ; loc : Loc.t option
   ; ocaml : Ocaml_toolchain.t
   }
@@ -124,7 +123,6 @@ let vimpl t = t.vimpl
 let modes t = t.modes
 let bin_annot t = t.bin_annot
 let context t = Super_context.context t.super_context
-let ocamldep_modules_data t = t.ocamldep_modules_data
 let dep_graphs t = t.modules.dep_graphs
 let ocaml t = t.ocaml
 
@@ -179,17 +177,14 @@ let create
     let profile = Context.profile context in
     eval_opaque ocaml profile opaque
   in
-  let ocamldep_modules_data : Ocamldep.Modules_data.t =
-    { dir = Obj_dir.dir obj_dir
-    ; sandbox
-    ; obj_dir
-    ; sctx = super_context
-    ; vimpl
-    ; modules
-    ; stdlib
-    }
-  in
-  let+ dep_graphs = Dep_rules.rules ocamldep_modules_data
+  let+ dep_graphs =
+    Dep_rules.rules
+      ~dir:(Obj_dir.dir obj_dir)
+      ~sandbox
+      ~obj_dir
+      ~sctx:super_context
+      ~vimpl
+      ~modules
   and+ bin_annot =
     match bin_annot with
     | Some b -> Memo.return b
@@ -215,7 +210,6 @@ let create
   ; melange_package_name
   ; modes
   ; bin_annot
-  ; ocamldep_modules_data
   ; loc
   ; ocaml
   }

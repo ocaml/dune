@@ -1,4 +1,0 @@
-(cram
- (applies_to explicit-interfaces.t)
- (enabled_if
-  (<> %{os_distribution} nixos)))

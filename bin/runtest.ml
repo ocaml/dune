@@ -33,6 +33,20 @@ let runtest_info =
 ;;
 
 let find_cram_test path ~parent_dir =
+  (* We correct the [path] and [parent_dir] if we have a directory test and the
+     user has given a path to "run.t" rather than the directory cram test itself. *)
+  let path, parent_dir =
+    Option.value ~default:(path, parent_dir)
+    @@
+    let open Option.O in
+    let* basename = Path.Source.basename_opt path in
+    if String.equal basename Source.Cram_test.fname_in_dir_test
+    then
+      let* parent_dir_of_run = Path.Source.parent path in
+      let+ parent_dir = Path.Source.parent parent_dir_of_run in
+      parent_dir_of_run, parent_dir
+    else None
+  in
   let open Memo.O in
   Source_tree.nearest_dir parent_dir
   >>= Dune_rules.Cram_rules.cram_tests
@@ -42,13 +56,11 @@ let find_cram_test path ~parent_dir =
   >>| List.filter_map ~f:Result.to_option
   (* We search our list of known cram tests for the test we are looking
      for. *)
-  >>| List.find ~f:(fun (test : Source.Cram_test.t) ->
-    let src =
-      match test with
-      | File src -> src
-      | Dir { dir = src; _ } -> src
-    in
-    Path.Source.equal path src)
+  >>| List.find_map ~f:(fun (test : Source.Cram_test.t) ->
+    let open Option.O in
+    let* cram_basename = Source.Cram_test.path test |> Path.Source.basename_opt in
+    let* basename = Path.Source.basename_opt path in
+    Option.some_if (Filename.equal cram_basename basename) (test, parent_dir))
 ;;
 
 let explain_unsuccessful_search path ~parent_dir =
@@ -92,7 +104,7 @@ let disambiguate_test_name path =
     let open Memo.O in
     find_cram_test path ~parent_dir
     >>= (function
-     | Some test ->
+     | Some (test, parent_dir) ->
        (* If we find the cram test, then we request that is run. *)
        Memo.return (`Test (parent_dir, Source.Cram_test.name test))
      | None ->

@@ -143,25 +143,23 @@ let deps_of ~sandbox ~modules ~sctx ~dir ~obj_dir ~ml_kind unit =
   let+ () =
     let produce_all_deps =
       let open Action_builder.O in
-      let paths =
-        let+ immediate_deps =
-          Path.build ocamldep_output
-          |> Action_builder.lines_of
-          >>| parse_deps_exn ~file:(Module.File.path source)
-          >>| parse_module_names ~dir ~unit ~modules
-        in
-        ( transitive_deps obj_dir immediate_deps
-        , List.map immediate_deps ~f:(fun m ->
-            Module.obj_name m |> Module_name.Unique.to_string) )
-      in
-      Action_builder.with_file_targets
-        ~file_targets:[ all_deps_file ]
-        (let+ sources, extras =
-           Action_builder.dyn_paths
-             (let+ sources, extras = paths in
-              (sources, extras), sources)
-         in
-         Merge_files_into.action sources extras all_deps_file)
+      (let+ transitive, immediate =
+         (let+ immediate_deps =
+            Path.build ocamldep_output
+            |> Action_builder.lines_of
+            >>| parse_deps_exn ~file:(Module.File.path source)
+            >>| parse_module_names ~dir ~unit ~modules
+          in
+          let transitive_deps = transitive_deps obj_dir immediate_deps in
+          let immediate_deps =
+            List.map immediate_deps ~f:(fun m ->
+              Module.obj_name m |> Module_name.Unique.to_string)
+          in
+          (transitive_deps, immediate_deps), transitive_deps)
+         |> Action_builder.dyn_paths
+       in
+       Merge_files_into.action transitive immediate all_deps_file)
+      |> Action_builder.with_file_targets ~file_targets:[ all_deps_file ]
     in
     Action_builder.With_targets.map ~f:Action.Full.make produce_all_deps
     |> Super_context.add_rule sctx ~dir

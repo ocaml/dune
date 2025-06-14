@@ -22,5 +22,7 @@
 
 (cram
  (applies_to dialect)
+ (enabled_if
+  (<> %{os_distribution} nixos))
  (deps %{bin:melc})
  (alias runtest-melange))

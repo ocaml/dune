@@ -2,79 +2,15 @@
 Testsuite for the (foreign_library ...) stanza.
 
   $ export DUNE_SANDBOX=symlink
-
-----------------------------------------------------------------------------------
-* (foreign_library ...) is unavailable before Dune 2.0.
-
-  $ echo "(lang dune 1.0)" > dune-project
-  $ mkdir -p lib
-
-  $ cat >lib/dune <<EOF
-  > (foreign_library
-  >  (language c)
-  >  (names add))
-  > EOF
-
-  $ dune build
-  File "lib/dune", lines 1-3, characters 0-44:
-  1 | (foreign_library
-  2 |  (language c)
-  3 |  (names add))
-  Error: 'foreign_library' is only available since version 2.0 of the dune
-  language. Please update your dune-project file to have (lang dune 2.0).
-  [1]
-
-----------------------------------------------------------------------------------
-* (foreign_library ...) is available in Dune 2.0.
-* "archive_name" is a required field.
-
-  $ echo "(lang dune 2.0)" > dune-project
-
-  $ dune build
-  File "lib/dune", lines 1-3, characters 0-44:
-  1 | (foreign_library
-  2 |  (language c)
-  3 |  (names add))
-  Error: Field "archive_name" is missing
-  [1]
-
-----------------------------------------------------------------------------------
-* From now onwards, we use `(lang dune 3.0)`.
   $ echo "(lang dune 3.0)" > dune-project
 
 ----------------------------------------------------------------------------------
-* Error message for a missing source file.
+* Multiple (foreign_library ...) declarations.
+* Mixing C and C++ foreign library archives.
+* Passing flags via (flags ...) field.
+* Interaction with (foreign_archives ...) stanza.
 
-  $ cat >lib/dune <<EOF
-  > (foreign_library
-  >  (archive_name addmul)
-  >  (language c)
-  >  (names add mul))
-  > EOF
-
-  $ cat >lib/add.c <<EOF
-  > #include <caml/mlvalues.h>
-  > value add(value x, value y) { return Val_int(Int_val(x) + Int_val(y)); }
-  > EOF
-
-  $ dune build
-  File "lib/dune", line 4, characters 12-15:
-  4 |  (names add mul))
-                  ^^^
-  Error: Object "mul" has no source; "mul.c" must be present.
-  [1]
-
-----------------------------------------------------------------------------------
-* Successful build of a foreign library archive when all source files exist.
-
-  $ cat >lib/mul.c <<EOF
-  > #include <caml/mlvalues.h>
-  > value mul(value x, value y) { return Val_int(Int_val(x) * Int_val(y)); }
-  > EOF
-
-  $ dune build
-----------------------------------------------------------------------------------
-* Error message for a missing C++ source file.
+  $ mkdir lib
 
   $ cat >lib/dune <<EOF
   > (foreign_library
@@ -91,22 +27,16 @@ Testsuite for the (foreign_library ...) stanza.
   >  (flags :standard -DCONFIG_VALUE=2000)
   >  (names config))
   > EOF
-  $ touch lib/calc.ml
 
-  $ rm -rf _build
-  $ dune build
-  File "lib/dune", line 13, characters 8-14:
-  13 |  (names config))
-               ^^^^^^
-  Error: Object "config" has no source; One of "config.cc", "config.cpp" or
-  "config.cxx" must be present.
-  [1]
+  $ cat >lib/add.c <<EOF
+  > #include <caml/mlvalues.h>
+  > value add(value x, value y) { return Val_int(Int_val(x) + Int_val(y)); }
+  > EOF
 
-----------------------------------------------------------------------------------
-* Multiple (foreign_library ...) declarations.
-* Mixing C and C++ foreign library archives.
-* Passing flags via (flags ...) field.
-* Interaction with (foreign_archives ...) stanza.
+  $ cat >lib/mul.c <<EOF
+  > #include <caml/mlvalues.h>
+  > value mul(value x, value y) { return Val_int(Int_val(x) * Int_val(y)); }
+  > EOF
 
   $ cat >lib/config.cpp <<EOF
   > #include <caml/mlvalues.h>

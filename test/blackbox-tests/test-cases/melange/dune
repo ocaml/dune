@@ -5,6 +5,8 @@
 
 (cram
  (applies_to :whole_subtree)
+ (enabled_if
+  (<> %{os_distribution} nixos))
  (deps %{bin:node} %{bin:melc})
  (alias runtest-melange))
 

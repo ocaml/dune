@@ -27,9 +27,14 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     match Obj_dir.to_local vlib_obj_dir with
     | None -> Memo.return ()
     | Some vlib_obj_dir ->
-      let src = Obj_dir.Module.dep vlib_obj_dir (Immediate (m, Impl)) |> Path.build in
-      let dst = Obj_dir.Module.dep impl_obj_dir (Immediate (m, Impl)) in
-      copy_to_obj_dir ~src ~dst
+      (match Obj_dir.Module.dep vlib_obj_dir (Immediate (m, Impl)) with
+       | None -> Memo.return ()
+       | Some src ->
+         let src = Path.build src in
+         let dst =
+           Obj_dir.Module.dep impl_obj_dir (Immediate (m, Impl)) |> Option.value_exn
+         in
+         copy_to_obj_dir ~src ~dst)
   in
   let copy_interface_to_impl ~src kind () =
     let dst = Obj_dir.Module.cm_public_file_exn impl_obj_dir src ~kind in

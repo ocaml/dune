@@ -53,7 +53,9 @@ let ooi_deps
   let+ () = add_rule write
   and+ () =
     add_rule
-      (let target = Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) in
+      (let target =
+         Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) |> Option.value_exn
+       in
        Action_builder.map read ~f:transitive_deps_contents
        |> Action_builder.write_file_dyn target)
   in
@@ -111,8 +113,14 @@ let deps_of_vlib_module ~obj_dir ~vimpl ~dir ~sctx ~ml_kind sourced_module =
     in
     let m = Modules.Sourced_module.to_module sourced_module in
     let+ () =
-      let src = Obj_dir.Module.dep vlib_obj_dir (Transitive (m, ml_kind)) |> Path.build in
-      let dst = Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) in
+      let src =
+        Obj_dir.Module.dep vlib_obj_dir (Transitive (m, ml_kind))
+        |> Option.value_exn
+        |> Path.build
+      in
+      let dst =
+        Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) |> Option.value_exn
+      in
       Super_context.add_rule sctx ~dir (Action_builder.symlink ~src ~dst)
     in
     let modules = Vimpl.vlib_modules vimpl |> Modules.With_vlib.modules in

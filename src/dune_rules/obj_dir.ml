@@ -615,6 +615,13 @@ module Module = struct
   end
 
   let dep t dep =
+    let () =
+      match (dep : Dep.t) with
+      | Immediate (m, _) | Transitive (m, _) ->
+        (match Module.kind m with
+         | Module.Kind.Alias _ -> assert false
+         | _ -> ())
+    in
     let dir = obj_dir t in
     let name = Dep.basename dep in
     Path.Build.relative dir name

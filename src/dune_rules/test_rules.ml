@@ -15,6 +15,7 @@ let test_kind dir_contents (loc, name, ext) =
     `Expect
       { Diff.file1 = String_with_vars.make_text loc expected_basename
       ; file2 = String_with_vars.make_text loc (name ^ ext ^ ".output")
+      ; force_source = true
       ; optional = false
       ; mode = Text
       }

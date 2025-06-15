@@ -3,9 +3,11 @@
     Before starting rpc, writing to the build dir, this lock should be locked. *)
 
 module Lock_held_by : sig
-  type t =
-    | Pid_from_lockfile of int
-    | Unknown
+  type t
+
+  (** returns " (pid: X)" where X is the PID if the PID is known, otherwise the
+      empty string *)
+  val to_string_empty_if_unknown : t -> string
 end
 
 (** Attempt to acquire a lock. once a lock is locked, subsequent locks always

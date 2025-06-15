@@ -71,6 +71,11 @@ module Lock_held_by = struct
     | Pid_from_lockfile of int
     | Unknown
 
+  let to_string_empty_if_unknown = function
+    | Unknown -> ""
+    | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid
+  ;;
+
   let read_lock_file () =
     match Io.read_file (Path.build lock_file) with
     | exception _ -> Unknown
@@ -127,9 +132,7 @@ let lock_exn ~timeout =
       [ Pp.textf
           "A running dune%s instance has locked the build directory. If this is not the \
            case, please delete %S."
-          (match lock_held_by with
-           | Unknown -> ""
-           | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
+          (Lock_held_by.to_string_empty_if_unknown lock_held_by)
           (Path.Build.to_string_maybe_quoted lock_file)
       ]
 ;;

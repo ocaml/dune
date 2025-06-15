@@ -21,3 +21,14 @@ the correct compiler.
           ^
   Error: This value is local, but expected to be global because it is inside a module.
   [1]
+
+Demonstrate what happens when the extension isn't enabled:
+
+  $ cat >dune<<EOF
+  > (rule
+  >  (action (write-file foo bar))
+  >  (targets foo)
+  >  (enabled_if %{oxcaml:supported}))
+  > EOF
+
+  $ dune build ./foo

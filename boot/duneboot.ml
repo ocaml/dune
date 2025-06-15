@@ -508,7 +508,7 @@ end = struct
         let cmdline = String.concat ~sep:" " (prog :: args) in
         let cmdline =
           match cwd with
-          | Some x -> sprintf "cd %s && %s" x cmdline
+          | Some x -> sprintf "[%d] cd %s && %s" !Status_line.num_jobs_finished x cmdline
           | None -> cmdline
         in
         prerr_endline cmdline;

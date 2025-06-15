@@ -1197,6 +1197,7 @@ let build
       ~link_flags
       { target = name, main; external_libraries; _ }
   =
+  let c_compiler = String.Map.find "c_compiler" ocaml_config in
   let ext_obj =
     try String.Map.find "ext_obj" ocaml_config with
     | Not_found -> ".o"
@@ -1237,17 +1238,23 @@ let build
   Fiber.fork_and_join_unit
     (fun () -> build (Filename.basename main))
     (fun () ->
-       let c_files =
-         c_files @ List.map asm_files ~f:(fun asm -> { Library.name = asm; flags = [] })
-       in
-       Fiber.parallel_map c_files ~f:(fun { Library.name = file; flags } ->
-         let flags = List.map flags ~f:(fun flag -> [ "-ccopt"; flag ]) |> List.concat in
-         Process.run
-           ~cwd:build_dir
-           Config.compiler
-           (List.concat
-              [ [ "-c"; "-g" ]; external_includes; build_flags; [ file ]; flags ])
-         >>| fun () -> Filename.chop_extension file ^ ext_obj))
+       (Fiber.fork_and_join (fun () ->
+          Fiber.parallel_map c_files ~f:(fun { Library.name = file; flags } ->
+            let flags =
+              List.map flags ~f:(fun flag -> [ "-ccopt"; flag ]) |> List.concat
+            in
+            Process.run
+              ~cwd:build_dir
+              Config.compiler
+              (List.concat
+                 [ [ "-c"; "-g" ]; external_includes; build_flags; [ file ]; flags ])
+            >>| fun () -> Filename.chop_extension file ^ ext_obj)))
+         (fun () ->
+            Fiber.parallel_map asm_files ~f:(fun file ->
+              let out_file = Filename.chop_extension file ^ ext_obj in
+              Process.run ~cwd:build_dir c_compiler [ "-c"; file; "-o"; out_file ]
+              >>| fun () -> out_file))
+       >>| fun (x, y) -> x @ y)
   >>= fun obj_files ->
   let compiled_ml_files =
     let compiled_ml_ext =

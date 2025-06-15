@@ -114,6 +114,7 @@ module Status_line = struct
       displayed := new_displayed)
   ;;
 
+  let clear () = Printf.printf "\r*s\r%!"
   let () = at_exit (fun () -> Printf.printf "\r%*s\r" (String.length !displayed) "")
 end
 
@@ -511,6 +512,7 @@ end = struct
           | Some x -> sprintf "cd %s && %s" x cmdline
           | None -> cmdline
         in
+        Status_line.clear ();
         prerr_endline cmdline;
         prerr_string stderr_s;
         flush stderr);

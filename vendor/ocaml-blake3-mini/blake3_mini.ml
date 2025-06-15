@@ -4,6 +4,17 @@ module Digest = struct
   let equal = String.equal
   let compare = String.compare
   let to_binary x = x
+
+  include (
+  struct
+    let[@ocaml.warning "-32"] hash = Hashtbl.hash
+
+    include String
+  end :
+  sig
+    val hash : t -> int
+  end)
+
   let to_hex = Digest.to_hex
 
   let of_hex s =

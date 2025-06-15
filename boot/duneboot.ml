@@ -755,6 +755,7 @@ module Library = struct
       { syntax : [ `Gas | `Intel ]
       ; arch : [ `Amd64 ] option
       ; os : [ `Win | `Unix ] option
+      ; assembler : [ `C_comp | `Msvc_asm ]
       }
 
     type c =
@@ -780,16 +781,18 @@ module Library = struct
       match String.sub fn ~pos:i ~len:(String.length fn - i) with
       | (".S" | ".asm") as ext ->
         let syntax = if ext = ".S" then `Gas else `Intel in
-        let os, arch =
+        let os, arch, assembler =
           let fn = Filename.remove_extension fn in
           let check suffix = String.is_suffix fn ~suffix in
           if check "x86-64_unix"
-          then Some `Unix, Some `Amd64
-          else if check "x86-64_windows_gnu" || check "x86-64_windows_msvc"
-          then Some `Win, Some `Amd64
-          else None, None
+          then Some `Unix, Some `Amd64, `C_comp
+          else if check "x86-64_windows_gnu"
+          then Some `Win, Some `Amd64, `C_comp
+          else if check "x86-64_windows_msvc"
+          then Some `Win, Some `Amd64, `Msvc_asm
+          else None, None, `C_comp
         in
-        Some (Asm { syntax; arch; os })
+        Some (Asm { syntax; arch; os; assembler})
       | ".c" ->
         let arch, flags =
           let fn = Filename.remove_extension fn in
@@ -832,6 +835,12 @@ module Library = struct
   type c_file =
     { name : string
     ; flags : string list
+    }
+
+  type asm_file =
+    { assembler : [ `C_comp | `Msvc_asm ]
+    ; flags : string list
+    ; out_file : string
     }
 
   module Wrapper = struct
@@ -920,10 +929,10 @@ module Library = struct
     { ocaml_files : string list
     ; alias_file : string option
     ; c_files : c_file list
-    ; asm_files : string list
+    ; asm_files : asm_file list
     }
 
-  let keep_asm { File_kind.syntax; arch; os } ~ccomp_type ~architecture =
+  let keep_asm { File_kind.syntax; arch; os; assembler = _ } ~ccomp_type ~architecture =
     (match os with
      | Some `Unix -> Sys.os_type = "Unix"
      | Some `Win -> Sys.os_type = "Win32"
@@ -1015,6 +1024,10 @@ module Library = struct
         | None -> files
         | Some fn -> fn :: files
       in
+      let ext_obj =
+        try String.Map.find "ext_obj" ocaml_config with
+        | Not_found -> ".o"
+      in
       let ccomp_type = String.Map.find "ccomp_type" ocaml_config in
       let architecture = String.Map.find "architecture" ocaml_config in
       List.partition_map_skip files ~f:(fun (src, fn) ->
@@ -1023,7 +1036,19 @@ module Library = struct
           if keep_c c ~architecture then `Left { flags = c.flags; name = fn } else `Skip
         | Ml | Mli | Mly | Mll -> `Middle fn
         | Header -> `Skip
-        | Asm asm -> if keep_asm asm ~ccomp_type ~architecture then `Right fn else `Skip)
+        | Asm asm ->
+          if keep_asm asm ~ccomp_type ~architecture
+          then (
+            let out_file = Filename.chop_extension fn ^ ext_obj in
+            `Right
+              { flags =
+                  (match asm.assembler with
+                   | `C_comp -> [ "-c"; fn; "-o"; out_file ]
+                   | `Msvc_asm -> [ "/nologo"; "/quiet"; "/Fo" ^ out_file; "/c"; fn ])
+              ; assembler = asm.assembler
+              ; out_file
+              })
+          else `Skip)
     in
     { ocaml_files; alias_file; c_files; asm_files }
   ;;
@@ -1250,9 +1275,13 @@ let build
                  [ [ "-c"; "-g" ]; external_includes; build_flags; [ file ]; flags ])
             >>| fun () -> Filename.chop_extension file ^ ext_obj)))
          (fun () ->
-            Fiber.parallel_map asm_files ~f:(fun file ->
-              let out_file = Filename.chop_extension file ^ ext_obj in
-              Process.run ~cwd:build_dir c_compiler [ "-c"; file; "-o"; out_file ]
+            Fiber.parallel_map asm_files ~f:(fun { Library.assembler; flags; out_file } ->
+              Process.run
+                ~cwd:build_dir
+                (match assembler with
+                 | `C_comp -> c_compiler
+                 | `Msvc_asm -> "ml64.exe")
+                flags
               >>| fun () -> out_file))
        >>| fun (x, y) -> x @ y)
   >>= fun obj_files ->
@@ -1324,5 +1353,5 @@ let main () =
   let link_flags = get_flags ocaml_system Libs.link_flags in
   build ~ocaml_config ~dependencies ~asm_files ~c_files ~build_flags ~link_flags task
 ;;
-
+ 
 let () = Fiber.run (main ())

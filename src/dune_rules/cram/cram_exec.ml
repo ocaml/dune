@@ -292,14 +292,16 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
         ; script = user_shell_code_file
         }
   in
-  fprln oc "trap 'exit 0' EXIT";
+  (* When the main shell script is exited we make sure to clean up any
+     subprocess PIDs as not to orphan them. The first "trap" will kill all
+     processes in the process group and the second "trap" will make sure the main
+     shell process exits gracefully. *)
+  fprln oc {|trap "trap 'exit 0' TERM && kill -- -$$" EXIT|};
   let+ cram_to_output = Fiber.sequential_map ~f:loop cram_stanzas in
   let command_count = !i in
   let metadata_file = Option.some_if (command_count > 0) metadata_file in
   { script; cram_to_output; metadata_file }
 ;;
-
-let _display_with_bars s = List.iter (String.split_lines s) ~f:(Printf.eprintf "| %s\n")
 
 let run ~env ~script lexbuf : string Fiber.t =
   let temp_dir =

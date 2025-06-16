@@ -46,7 +46,6 @@ Now we set up a lock file with this package and then attempt to use it:
   > EOF
 
   $ dune exec -w ./x.exe > output.log 2>&1 &
-  $ PID=$!
 
   $ TIME_WAITED=0
   $ MAX_WAIT_TIME=20
@@ -59,4 +58,4 @@ Now we set up a lock file with this package and then attempt to use it:
   $ cat output.log | sort
   Success, waiting for filesystem changes...
   hello
-  $ kill $PID
+

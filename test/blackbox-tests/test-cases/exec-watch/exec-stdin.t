@@ -39,7 +39,6 @@ correctly. To simulate giving this input later we use a pipe.
   (2) what is your name?
   (2) hello Alice Johnson!
   Success, waiting for filesystem changes...
-  $ PID=$!
 
   $ cat > input.pipe <<EOF
   > John Doe
@@ -61,4 +60,3 @@ We can trigger arebuild and give another input.
 
   $ ./wait-for-file.sh $DONE_FLAG
 
-  $ kill $PID

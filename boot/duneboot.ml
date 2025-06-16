@@ -192,18 +192,27 @@ let split_lines s =
   loop ~acc:[] 0 0 ~last_is_cr:false
 ;;
 
-(* copy a file - fails if the file exists *)
-let copy ~header directive a b =
+let do_then_copy ~f a b =
   if Sys.file_exists b then fatal "%s already exists" b;
   let ic = open_in_bin a in
   let len = in_channel_length ic in
   let s = really_input_string ic len in
   close_in ic;
   let oc = open_out_bin b in
-  output_string oc header;
-  fprintf oc "#%s 1 %S\n" directive a;
+  f oc;
   output_string oc s;
   close_out oc
+;;
+
+(* copy a file - fails if the file exists *)
+let copy a b = do_then_copy ~f:(fun _ -> ()) a b
+
+(* copy a file and insert a header - fails if the file exists *)
+let copy_with_header ~header a b = do_then_copy ~f:(fun oc -> output_string oc header) a b
+
+(* copy a file and insert a directive - fails if the file exists *)
+let copy_with_directive ~directive a b =
+  do_then_copy ~f:(fun oc -> fprintf oc "#%s 1 %S\n" directive a) a b
 ;;
 
 let path_sep = if Sys.win32 then ';' else ':'
@@ -1004,11 +1013,14 @@ module Library = struct
            let mangled = Wrapper.mangle_filename wrapper source in
            let dst = build_dir ^/ mangled in
            (match kind with
-            | Asm _ | Header | C _ ->
-              copy ~header:"" "line" fn dst;
+            | Asm _ ->
+              copy fn dst;
+              Fiber.return [ mangled ]
+            | Header | C _ ->
+              copy_with_directive ~directive:"line" fn dst;
               Fiber.return [ mangled ]
             | Ml | Mli ->
-              copy "" fn dst ~header;
+              copy_with_header ~header fn dst;
               Fiber.return [ mangled ]
             | Mll -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
             | Mly ->

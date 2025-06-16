@@ -72,7 +72,7 @@ module Dep = struct
       Stanza.syntax
       (Active Stanza.latest_version)
       (String_with_vars.set_decoding_env
-         (Pform.Env.initial Stanza.latest_version)
+         (Pform.Env.initial ~stanza:Stanza.latest_version ~extensions:[])
          Dep_conf.decode)
   ;;
 

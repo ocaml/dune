@@ -1034,7 +1034,9 @@ let load_step1 clflags p =
     then default_step1 clflags
     else
       parse_contents lb ~f:(fun lang ->
-        String_with_vars.set_decoding_env (Pform.Env.initial lang.version) (step1 clflags)))
+        String_with_vars.set_decoding_env
+          (Pform.Env.initial ~stanza:lang.version ~extensions:[])
+          (step1 clflags)))
 ;;
 
 let filename = "dune-workspace"

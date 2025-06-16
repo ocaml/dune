@@ -160,6 +160,59 @@ index 0000000..557db03
 |}
 ;;
 
+(* "new file mode" present but ---/+++ indicate an edit, not a
+   create. The ---/+++ headers should take precedence. *)
+let spurious_new_file_mode =
+  {|
+diff --git a/dir/baz.ml b/dir/baz.ml
+new file mode 100644
+index b69a69a5a..ea988f6bd 100644
+--- a/dir/baz.ml
++++ b/dir/baz.ml
+@@ -1,1 +1,1 @@
+-This is wrong
++This is right
+|}
+;;
+
+(* "deleted file mode" present but ---/+++ indicate an edit, not a
+   delete. The ---/+++ headers should take precedence. *)
+let spurious_deleted_file_mode =
+  {|
+diff --git a/foo.ml b/foo.ml
+deleted file mode 100644
+index b69a69a5a..ea988f6bd 100644
+--- a/foo.ml
++++ b/foo.ml
+@@ -1,1 +1,1 @@
+-This is wrong
++This is right
+|}
+;;
+
+(* Combined patch where one entry has a spurious "new file mode".
+   Reproduces the opam-package-with-patch-multiple.t failure. *)
+let combined_with_spurious_new_file_mode =
+  {|
+diff --git a/bar.ml b/bar.ml
+index b69a69a5a..ea988f6bd 100644
+--- a/bar.ml
++++ b/bar.ml
+@@ -1,1 +1,1 @@
+-This is wrong
++This is right
+
+diff --git a/dir/baz.ml b/dir/baz.ml
+new file mode 100644
+index b69a69a5a..ea988f6bd 100644
+--- a/dir/baz.ml
++++ b/dir/baz.ml
+@@ -1,1 +1,1 @@
+-This is wrong
++This is right
+|}
+;;
+
 let edit_with_rename =
   {|
 diff --git a/source.ml b/target.ml

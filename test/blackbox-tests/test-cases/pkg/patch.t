@@ -46,7 +46,8 @@ Ed-format patches are not supported and should give a clear error:
   > EOF
 
   $ build_pkg ed-test 2>&1 | censor
-  Error: No patches in patch file detected
+  Error: Could not parse the patch file. Only unified diff format is supported.
+  Context diffs and ed commands are not supported.
   -> required by
      _build/_private/default/.pkg/ed-test.0.0.1-$DIGEST/target
   [1]

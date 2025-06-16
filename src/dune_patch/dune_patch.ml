@@ -1,21 +1,42 @@
 open Stdune
 
-include struct
-  open Dune_engine
-  module Action = Action
-  module Process = Process
-  module Utils = Utils
-  module Action_builder = Action_builder
-end
+(* Wrapper around the vendored [Patch] library that raises
+   [User_error.E] directly instead of letting raw exceptions escape. *)
+module Patch = struct
+  include Patch
 
-include struct
-  open Dune_lang
-  module Value = Value
+  let parse ~loc ~p data =
+    match parse ~p data with
+    | exception Parse_error { msg; lines } ->
+      User_error.raise
+        ~loc
+        (Pp.textf "Failed to parse patch: %s" msg
+         :: List.map lines ~f:(fun line -> Pp.seq (Pp.text "| ") (Pp.verbatim line)))
+    | exception Failure msg ->
+      User_error.raise ~loc [ Pp.textf "Invalid patch file: %s" msg ]
+    | patches -> patches
+  ;;
+
+  let apply ~file ~cleanly filedata diff =
+    match patch ~cleanly filedata diff with
+    | exception Invalid_argument _ ->
+      User_error.raise
+        [ Pp.textf
+            "Patch could not be applied to %S: hunk does not match file contents"
+            file
+        ]
+    | exception Failure msg ->
+      User_error.raise [ Pp.textf "Patch could not be applied to %S: %s" file msg ]
+    | result -> result
+  ;;
 end
 
 let re =
   let line xs = Re.seq ((Re.bol :: xs) @ [ Re.eol ]) in
   let followed_by_line xs = Re.seq [ Re.str "\n"; line xs ] in
+  (* CR-soon alizter: this truncates unquoted filenames at the first
+     space. Fixing this properly requires parsing the [diff --git]
+     header where filenames with spaces are unambiguous. *)
   let filename = Re.group (Re.rep1 (Re.compl [ Re.space ])) in
   (* We don't care about what's after the filename. (likely a timestamp) *)
   let junk = Re.rep Re.notnl in
@@ -26,168 +47,155 @@ let re =
        ]
 ;;
 
-module Patch = struct
-  (* CR-someday alizter: more parsed information about the patch should go here.
-     Eventually we wish to replace the patch command inside the patch action with a pure
-     OCaml implementation. *)
-  type operation =
-    | New of Path.Local.t
-    | Delete of Path.Local.t
-    | Replace of Path.Local.t
+let git_header_re = Re.compile @@ Re.seq [ Re.bol; Re.str "diff --git " ]
 
-  type t =
-    { prefix : int
-    ; op : operation
-    }
-end
-
-let patches_of_string patch_string =
+let prefix_of_patch ~patch_loc patch_string =
   Re.all re patch_string
   |> List.filter_map ~f:(fun group ->
     let open Option.O in
     (* A match failure means a file name couldn't be parsed. *)
     let* old_file = Re.Group.get_opt group 1 in
     let* new_file = Re.Group.get_opt group 2 in
+    let validate_as_path file =
+      if not (Filename.is_relative file)
+      then
+        User_error.raise
+          ~loc:patch_loc
+          [ Pp.textf "Absolute path %S in patch file is not allowed." file ]
+      else (
+        let path = Path.Local.parse_string_exn ~loc:patch_loc file in
+        if Path.Local.is_root path
+        then
+          User_error.raise
+            ~loc:patch_loc
+            [ Pp.textf "Directory %S in patch file is invalid." file ];
+        path)
+    in
+    let prefix file =
+      match validate_as_path file |> Path.Local.split_first_component with
+      | Some _ -> 1
+      | None -> 0
+    in
     match old_file = "/dev/null", new_file = "/dev/null" with
-    | true, true ->
-      (* when both files are /dev/null we don't care about the patch. *)
-      None
+    (* when both files are /dev/null we don't care about the patch. *)
+    | true, true -> None
     | true, false ->
-      (* New file *)
-      let path = Path.Local.of_string new_file in
-      let prefix, path =
-        match Path.Local.split_first_component path with
-        | Some ("b", path) -> 1, path
-        | _ -> 0, path
-      in
-      Some { Patch.op = Patch.New path; prefix }
+      (* Create file *)
+      Some (prefix new_file)
     | false, true ->
       (* Delete file *)
-      let path = Path.Local.of_string old_file in
-      let prefix, path =
-        match Path.Local.split_first_component path with
-        | Some ("a", path) -> 1, path
-        | _ -> 0, path
-      in
-      Some { Patch.op = Patch.Delete path; prefix }
+      Some (prefix old_file)
     | false, false ->
-      let old_path = Path.Local.of_string old_file in
-      let new_path = Path.Local.of_string new_file in
-      let new_path, prefix =
+      let old_path = validate_as_path old_file in
+      let new_path = validate_as_path new_file in
+      let prefix =
         match
           ( Path.Local.split_first_component old_path
           , Path.Local.split_first_component new_path )
         with
-        | Some (_, old_path), Some (_, new_path)
-          when Path.Local.equal old_path new_path && not (Path.Local.is_root new_path) ->
-          (* suffixes are the same and not empty *)
-          new_path, 1
-        | _, _ -> new_path, 0
+        | Some (_, old_suffix), Some (_, new_suffix)
+          when (not (Path.Local.is_root old_suffix))
+               && not (Path.Local.is_root new_suffix) ->
+          (* Both files have prefixes and suffixes are not empty *)
+          1
+        | _, _ -> 0
       in
       (* Replace file *)
-      Some { Patch.op = Patch.Replace new_path; prefix })
+      Some prefix)
+  |> List.min ~f:Int.compare
+  (* Git extension patches (e.g. rename-only) may lack ---/+++ lines;
+     default to p=1 when a [diff --git] header is present. *)
+  |> Option.value ~default:(if Re.execp git_header_re patch_string then 1 else 0)
 ;;
 
-let prog =
-  lazy
-    (let path = Env_path.path Env.initial in
-     let bins = [ "gpatch"; "patch" ] in
-     match List.find_map bins ~f:(Bin.which ~path) with
-     | Some p -> p
-     | None -> User_error.raise [ Pp.textf "%s not found." (String.enumerate_and bins) ])
+let parse_patches ~loc ~patch_file patch_contents =
+  let patch_loc = Loc.in_file patch_file in
+  match
+    Patch.parse ~loc ~p:(prefix_of_patch ~patch_loc patch_contents) patch_contents
+  with
+  | [] ->
+    User_error.raise
+      ~loc
+      [ Pp.text
+          "Could not parse the patch file. Only unified diff format is supported. \
+           Context diffs and ed commands are not supported."
+      ]
+  | patches -> patches
 ;;
 
-let exec display ~patch ~dir ~stderr =
+let write_patch_result ~file target_path = function
+  | Some contents -> Io.write_file target_path contents
+  | None ->
+    Code_error.raise
+      "Patch.patch returned None for non-delete"
+      [ "file", Dyn.string file ]
+;;
+
+let apply_patches ~dir patches =
+  let resolve filename = Path.append_local dir (Path.Local.of_string filename) in
+  (* CR-someday alizter: [cleanly] disables fuzzy offset matching.
+     The old external [patch] command used fuzz by default. If we
+     find opam packages with patches that need fuzz to apply, we
+     may need to revisit this. *)
+  let cleanly = true in
+  List.iter patches ~f:(fun (patch : Patch.t) ->
+    match patch.operation with
+    | Delete filename | Git_ext (_, filename, Delete_only) ->
+      Fpath.unlink_no_err (Path.to_string (resolve filename))
+    | Create filename | Git_ext (_, filename, Create_only) ->
+      let target = resolve filename in
+      Path.mkdir_p (Path.parent_exn target);
+      Patch.apply ~file:filename ~cleanly None patch
+      |> write_patch_result ~file:filename target
+    | Edit (old_file, new_file) ->
+      (* CR-someday alizter: package rules currently use copy
+         sandboxing. If we switch to symlink or hardlink sandboxing,
+         we should apply the patch atomically to avoid modifying
+         shared targets through symlinks/hardlinks. *)
+      let source = resolve old_file in
+      if Fpath.exists (Path.to_string source)
+      then (
+        let contents = Io.read_file source in
+        Patch.apply ~file:old_file ~cleanly (Some contents) patch
+        |> write_patch_result ~file:old_file (resolve new_file))
+      else
+        User_error.raise [ Pp.textf "Cannot edit file %S: file does not exist" old_file ]
+    | Git_ext (old_file, new_file, Rename_only (_, _)) ->
+      let source = resolve old_file in
+      if Fpath.exists (Path.to_string source)
+      then Fpath.rename_exn (Path.to_string source) (Path.to_string (resolve new_file))
+      else
+        User_error.raise
+          [ Pp.textf "Cannot rename file %S: file does not exist" old_file ])
+;;
+
+let exec ~loc ~dir ~patch =
   let open Fiber.O in
-  let* () = Fiber.return () in
-  let patches =
-    patch
-    (* Read the patch file. *)
-    |> Io.read_file
-    (* Collect all the patches. *)
-    |> patches_of_string
-  in
-  List.iter patches ~f:(fun { Patch.op; prefix = _ } ->
-    (* Depending on whether it is creating a new file or modifying an existing file
-       prepare the files that will be modified accordingly. For modifying existing files
-       this means materializing any symlinks or hardlinks. *)
-    match op with
-    | Patch.New _ | Delete _ -> ()
-    | Replace file ->
-      let file = Path.append_local dir file in
-      let temp = Path.extend_basename file ~suffix:".for_patch" in
-      Io.copy_file ~src:file ~dst:temp ();
-      Unix.rename (Path.to_string temp) (Path.to_string file));
-  match patches with
-  | [] -> User_error.raise [ Pp.text "No patches in patch file detected" ]
-  | { Patch.op = _; prefix } :: patches ->
-    (match
-       List.for_all ~f:(fun { Patch.op = _; prefix = p } -> Int.equal prefix p) patches
-     with
-     | false ->
-       User_error.raise [ Pp.text "Different prefix lengths in file unsupported" ]
-     | true ->
-       let p_flag = sprintf "-p%d" prefix in
-       Process.run
-         ~dir
-         ~display
-         ~stdout_to:Process.(Io.null Out)
-         ~stderr_to:stderr
-         ~stdin_from:Process.(Io.null In)
-         Process.Failure_mode.Strict
-         (Lazy.force prog)
-         [ p_flag; "-i"; Path.reach_for_running ~from:dir patch ])
+  let+ () = Fiber.return () in
+  Io.read_file patch |> parse_patches ~loc ~patch_file:patch |> apply_patches ~dir
 ;;
 
-module Spec = struct
-  type ('path, 'target) t = 'path
+module Action = Action_ext.Make (struct
+    open Dune_engine
 
-  let name = "patch"
-  let version = 2
-  let bimap patch f _ = f patch
-  let is_useful_to ~memoize = memoize
-  let encode patch input _ : Sexp.t = input patch
+    type ('path, 'target) t = 'path
 
-  let action patch ~ectx:_ ~(eenv : Action.env) =
-    exec !Dune_engine.Clflags.display ~patch ~dir:eenv.working_dir ~stderr:eenv.stderr_to
-  ;;
-end
+    let name = "patch"
+    let version = 3
+    let bimap patch f _ = f patch
+    let is_useful_to ~memoize = memoize
+    let encode patch input _ : Sexp.t = input patch
 
-(* CR-someday alizter: This should be an action builder. *)
-module Action = Action_ext.Make (Spec)
+    let action patch ~(ectx : Action.context) ~(eenv : Action.env) =
+      exec ~loc:ectx.rule_loc ~dir:eenv.working_dir ~patch
+    ;;
+  end)
 
 let action ~patch = Action.action patch
 
 module For_tests = struct
-  module Patch = struct
-    include Patch
-
-    let path_repr = Repr.abstract Path.Local.to_dyn
-
-    let operation_repr =
-      Repr.variant
-        "operation"
-        [ Repr.case "New" path_repr ~proj:(function
-            | New p -> Some p
-            | _ -> None)
-        ; Repr.case "Delete" path_repr ~proj:(function
-            | Delete p -> Some p
-            | _ -> None)
-        ; Repr.case "Replace" path_repr ~proj:(function
-            | Replace p -> Some p
-            | _ -> None)
-        ]
-    ;;
-
-    let repr =
-      Repr.record
-        "Patch"
-        [ Repr.field "prefix" Repr.int ~get:(fun t -> t.prefix)
-        ; Repr.field "op" operation_repr ~get:(fun t -> t.op)
-        ]
-    ;;
-  end
-
-  let patches_of_string = patches_of_string
+  let prefix_of_patch = prefix_of_patch
+  let parse_patches = parse_patches
+  let apply_patches = apply_patches
   let exec = exec
 end

@@ -6,9 +6,11 @@ let ocamllsp_exe_name = Pkg_dev_tool.exe_name Ocamllsp
 
 let is_in_dune_project builder =
   Workspace_root.create
+    ~from:Filename.current_dir_name
     ~default_is_cwd:(Common.Builder.default_root_is_cwd builder)
     ~specified_by_user:(Common.Builder.root builder)
-  |> Result.is_ok
+    ()
+  |> Option.is_some
 ;;
 
 module Exec = struct

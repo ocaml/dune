@@ -645,7 +645,11 @@ let private_context ~dir components _ctx =
   analyze_private_context_path components
   >>= function
   | `Invalid_context -> Memo.return Gen_rules.unknown_context
-  | `Valid (ctx, components) -> Pkg_rules.setup_rules ctx ~dir ~components
+  | `Valid (ctx, components) ->
+    let projects = Dune_load.projects () in
+    let+ lock_rules = Lock_rules.setup_rules ctx ~dir ~projects ~components
+    and+ pkg_rules = Pkg_rules.setup_rules ctx ~dir ~components in
+    Gen_rules.combine lock_rules pkg_rules
   | `Root ->
     let+ contexts = Per_context.list () in
     let build_dir_only_sub_dirs =
@@ -656,7 +660,7 @@ let private_context ~dir components _ctx =
     Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
 ;;
 
-let raise_on_lock_dir_out_of_sync =
+let _raise_on_lock_dir_out_of_sync =
   Per_context.create_by_name ~name:"check-lock-dir" (fun ctx ->
     Memo.lazy_ (fun () ->
       let* lock_dir_available = Lock_dir.lock_dir_active ctx in
@@ -713,9 +717,11 @@ let gen_rules ctx ~dir components =
   then private_context ~dir components ctx
   else if Context_name.equal ctx Fetch_rules.context.name
   then Fetch_rules.gen_rules ~dir ~components
-  else
-    let* () = raise_on_lock_dir_out_of_sync ctx in
+  else (
+    (* TODO enable when autolocking is not enabled *)
+    (* let* () = raise_on_lock_dir_out_of_sync ctx in *)
     let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in
+    let gen_lock_rule = Lock_rules.setup_tmp_lock_alias ~dir ctx in
     let+ sctx_rules = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
-    Gen_rules.combine sctx_rules gen_pkg_alias_rule
+    Gen_rules.combine (Gen_rules.combine sctx_rules gen_pkg_alias_rule) gen_lock_rule)
 ;;

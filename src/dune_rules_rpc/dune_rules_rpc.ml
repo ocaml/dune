@@ -61,6 +61,6 @@ let parse_build_arg s =
        (* CR-someday aalekseyev: hardcoding the version here is not
           ideal, but it will do for now since this command is not
           stable and we're only using it in tests. *)
-       (Pform.Env.initial (3, 0)))
+       (Pform.Env.initial ~stanza:(3, 0) ~extensions:[]))
     (Dune_lang.Parser.parse_string ~fname:"dune rpc" ~mode:Dune_lang.Parser.Mode.Single s)
 ;;

@@ -272,7 +272,6 @@ module Macro = struct
     | Artifact of Artifact.t
     | Pkg
     | Pkg_self
-    | Oxcaml
 
   let compare x y =
     match x, y with
@@ -331,9 +330,6 @@ module Macro = struct
     | Pkg_self, _ -> Lt
     | _, Pkg_self -> Gt
     | Artifact x, Artifact y -> Artifact.compare x y
-    | Oxcaml, Oxcaml -> Eq
-    | Oxcaml, _ -> Lt
-    | _, Oxcaml -> Gt
   ;;
 
   let to_dyn =
@@ -360,7 +356,6 @@ module Macro = struct
     | Artifact ext -> variant "Artifact" [ Artifact.to_dyn ext ]
     | Pkg -> variant "Pkg" []
     | Pkg_self -> variant "Pkg_self" []
-    | Oxcaml -> string "Oxcaml"
   ;;
 
   let encode = function
@@ -385,7 +380,6 @@ module Macro = struct
     | Pkg -> Ok "pkg"
     | Pkg_self -> Ok "pkg-self"
     | Artifact a -> Ok (String.drop (Artifact.ext a) 1)
-    | Oxcaml -> Ok "oxcaml"
   ;;
 end
 
@@ -645,7 +639,6 @@ module Env = struct
          ; "ocaml-config", macro Ocaml_config
          ; "env", since ~version:(1, 4) Macro.Env
          ; "coq", macro Coq_config
-         ; "oxcaml", since ~version:(3, 20) Macro.Oxcaml
          ]
          @ List.map ~f:artifact Artifact.all)
     in

@@ -14,7 +14,7 @@
 (using dune-bootstrap-info 0.1)
 
 ;; This is required to allow Dune to access OxCaml variable. It
-;; won't affect the behaviour if Dune if OxCaml is not available.
+;; won't affect the behaviour of Dune if OxCaml is not available.
 (using oxcaml 0.1)
 
 (license MIT)

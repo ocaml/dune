@@ -1,7 +1,7 @@
 The test ensures we are able to run OxCaml tests for Dune.
 
   $ cat > dune-project << EOF
-  > (lang dune 3.18)
+  > (lang dune 3.20)
   > EOF
 
   $ cat > main.ml << EOF
@@ -28,7 +28,21 @@ Demonstrate what happens when the extension isn't enabled:
   > (rule
   >  (action (write-file foo bar))
   >  (targets foo)
-  >  (enabled_if %{oxcaml:supported}))
+  >  (enabled_if %{oxcaml_supported}))
+  > EOF
+
+  $ dune build ./foo
+  Error: OxCaml variables are an experimental feature. They are not supported
+  by default.
+  -> required by %{oxcaml_supported} at dune:4
+  -> required by Computing directory contents of _build/default
+  Hint: Add (using oxcaml 0.1) to your dune-project
+  [1]
+
+Adding the extension to the dune-project removes the error
+
+  $ cat >> dune-project << EOF
+  > (using oxcaml 0.1)
   > EOF
 
   $ dune build ./foo

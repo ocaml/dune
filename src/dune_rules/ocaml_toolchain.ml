@@ -188,4 +188,3 @@ let check_fdo_support { version; lib_config = { has_native; _ }; ocaml_config; _
             version_string
         ]
 ;;
-

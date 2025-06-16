@@ -189,14 +189,3 @@ let check_fdo_support { version; lib_config = { has_native; _ }; ocaml_config; _
         ]
 ;;
 
-let is_oxcaml_supported t =
-  let suffix = "+jst" in
-  let version_string = Ocaml_config.version_string t.ocaml_config in
-  String.is_suffix ~suffix version_string
-;;
-
-let is_parameterized_library_supported t =
-  (* We create the alias to make sure it is easy to distinguish the
-     functionality from the compiler variant. *)
-  is_oxcaml_supported t
-;;

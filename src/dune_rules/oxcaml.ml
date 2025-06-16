@@ -30,6 +30,8 @@ let expand project macro (ocaml : Ocaml_toolchain.t) =
   let s = Pform.Macro_invocation.Args.whole macro in
   check_extension project;
   match s with
-  | "supported" -> [ Dune_lang.Value.of_bool (Ocaml_toolchain.is_oxcaml_supported ocaml) ]
+  | "supported" ->
+    let version = Ocaml_config.version_string ocaml.ocaml_config in
+    [ Dune_lang.Value.of_bool (Ocaml.Version.supports_oxcaml version) ]
   | _ -> Code_error.raise "Unknown name was request for oxcaml" [ "name", Dyn.string s ]
 ;;

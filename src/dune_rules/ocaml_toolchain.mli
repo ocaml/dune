@@ -41,5 +41,3 @@ val best_mode : t -> Mode.t
 
 val check_fdo_support : t -> Context_name.t -> unit
 val register_response_file_support : t -> unit
-val is_oxcaml_supported : t -> bool
-val is_parameterized_library_supported : t -> bool

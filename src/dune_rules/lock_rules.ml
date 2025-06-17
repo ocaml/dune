@@ -59,15 +59,8 @@ let rule ?loc { Action_builder.With_targets.build; targets } =
   Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
 ;;
 
-let setup_lock_rules ctx_name ~lock_dir ~projects : Gen_rules.result =
-  let target =
-    let ( / ) = Path.Build.relative in
-    Private_context.t.build_dir
-    / Context_name.to_string ctx_name
-    / ".lock"
-    / lock_dir
-    / "content"
-  in
+let setup_lock_rules ~dir ~lock_dir ~projects : Gen_rules.result =
+  let target = Path.Build.relative dir "content" in
   let gen_rules lock_dir =
     let lock_rule = lock ~target ~lock_dir in
     rule ~loc:Loc.none lock_rule
@@ -82,7 +75,7 @@ let setup_lock_rules ctx_name ~lock_dir ~projects : Gen_rules.result =
   Gen_rules.make ~directory_targets rules
 ;;
 
-let setup_rules ~components ~dir ctx_name =
+let setup_rules ~components ~dir =
   let projects = Dune_load.projects () in
   match components with
   | [ ".lock" ] ->
@@ -91,7 +84,7 @@ let setup_rules ~components ~dir ctx_name =
         (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
       (Memo.return Rules.empty)
     |> Memo.return
-  | [ ".lock"; lock_dir ] -> Memo.return @@ setup_lock_rules ctx_name ~lock_dir ~projects
+  | [ ".lock"; lock_dir ] -> Memo.return @@ setup_lock_rules ~dir ~lock_dir ~projects
   | [] ->
     let sub_dirs = [ ".lock" ] in
     let build_dir_only_sub_dirs =

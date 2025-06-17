@@ -739,12 +739,12 @@ module Env = struct
       User_error.raise
         ~loc
         [ Pp.textf
-            "Can't parse the variable %s without the extension %s"
+            "Can't parse the variable %s without the %s extension"
             name
             (Syntax.name extension)
         ]
         ~hints:
-          [ Pp.textf "Try enabling the extension with (using %s)" (Syntax.name extension)
+          [ Pp.textf "Try enabling the extension with (using %s <version>)" (Syntax.name extension)
           ]
   ;;
 

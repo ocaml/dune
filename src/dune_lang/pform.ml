@@ -710,7 +710,8 @@ module Env = struct
         ; "corrected-suffix", No_info Corrected_suffix
         ; "inline_tests", No_info Inline_tests
         ; "toolchains", since ~version:(3, 0) Var.Toolchain
-        ; "oxcaml_supported", since ~version:(3, 20) Var.Oxcaml_supported
+        ; ( "oxcaml_supported"
+          , since ~what:Oxcaml.syntax ~version:(0, 1) Var.Oxcaml_supported )
         ]
       in
       let os =

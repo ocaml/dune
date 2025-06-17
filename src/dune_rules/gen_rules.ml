@@ -648,8 +648,7 @@ let private_context ~dir components _ctx =
   >>= function
   | `Invalid_context -> Memo.return Gen_rules.unknown_context
   | `Valid (ctx, components) ->
-    let projects = Dune_load.projects () in
-    let+ lock_rules = Lock_rules.setup_rules ctx ~dir ~projects ~components
+    let+ lock_rules = Lock_rules.setup_rules ctx ~dir ~components
     and+ pkg_rules = Pkg_rules.setup_rules ctx ~dir ~components in
     Gen_rules.combine lock_rules pkg_rules
   | `Root ->

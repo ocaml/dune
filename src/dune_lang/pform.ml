@@ -744,7 +744,9 @@ module Env = struct
             (Syntax.name extension)
         ]
         ~hints:
-          [ Pp.textf "Try enabling the extension with (using %s <version>)" (Syntax.name extension)
+          [ Pp.textf
+              "Try enabling the extension with (using %s <version>)"
+              (Syntax.name extension)
           ]
   ;;
 

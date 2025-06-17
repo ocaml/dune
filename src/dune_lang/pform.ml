@@ -732,16 +732,20 @@ module Env = struct
     }
   ;;
 
-  let find_extension ~loc defined extension =
+  let find_extension ~loc ~name defined extension =
     match Syntax.Map.find defined extension with
     | Some version -> version
     | None ->
       User_error.raise
         ~loc
         [ Pp.textf
-            "cannoot use pform without enabling extension %s"
+            "Can't parse the variable %s without the extension %s"
+            name
             (Syntax.name extension)
         ]
+        ~hints:
+          [ Pp.textf "Try enabling the extension with (using %s)" (Syntax.name extension)
+          ]
   ;;
 
   let parse map syntax_version (pform : Template.Pform.t) =
@@ -755,13 +759,15 @@ module Env = struct
       (match v with
        | No_info v -> v
        | Since (v, what, min_version) ->
-         let syntax_version = find_extension ~loc:pform.loc syntax_version what in
+         let syntax_version =
+           find_extension ~loc:pform.loc ~name:pform.name syntax_version what
+         in
          if syntax_version >= min_version
          then v
          else Syntax.Error.since (P.loc pform) what min_version ~what:(P.describe pform)
        | Renamed_in (v, in_version, new_name) ->
          let syntax_version =
-           find_extension ~loc:pform.loc syntax_version Stanza.syntax
+           find_extension ~loc:pform.loc ~name:pform.name syntax_version Stanza.syntax
          in
          if syntax_version < in_version
          then v
@@ -774,7 +780,7 @@ module Env = struct
              ~to_:(P.describe { pform with name = new_name })
        | Deleted_in (v, in_version, repl) ->
          let syntax_version =
-           find_extension ~loc:pform.loc syntax_version Stanza.syntax
+           find_extension ~loc:pform.loc ~name:pform.name syntax_version Stanza.syntax
          in
          if syntax_version < in_version
          then v

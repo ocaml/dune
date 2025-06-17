@@ -9,3 +9,5 @@ val lock_build_and_run_dev_tool
   -> Dune_pkg.Dev_tool.t
   -> args:string list
   -> 'a
+
+val which_command : Dune_pkg.Dev_tool.t -> unit Cmd.t

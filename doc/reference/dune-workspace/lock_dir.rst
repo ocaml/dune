@@ -24,7 +24,7 @@ changed if desired.
    .. describe:: (repositories <name list>)
 
       The repositories to be used for finding a package solution, specified
-      in priority order. Supports ``:default`` which contains ``upstream`` and
+      in priority order. Supports ``:standard`` which contains ``upstream`` and
       ``overlay``.
 
       Additional repositories can be defined using the

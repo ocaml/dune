@@ -60,7 +60,6 @@ let rule ?loc { Action_builder.With_targets.build; targets } =
 ;;
 
 let setup_lock_rules ctx_name ~lock_dir ~projects : Gen_rules.result =
-  let sctx = Super_context.find_exn ctx_name in
   let target =
     let ( / ) = Path.Build.relative in
     Private_context.t.build_dir
@@ -76,7 +75,6 @@ let setup_lock_rules ctx_name ~lock_dir ~projects : Gen_rules.result =
   let rules =
     Rules.collect_unit (fun () ->
       (* deref Memo to create dependency on project *)
-      let* _sctx = sctx in
       let* _projects = projects in
       gen_rules lock_dir)
   in
@@ -84,7 +82,8 @@ let setup_lock_rules ctx_name ~lock_dir ~projects : Gen_rules.result =
   Gen_rules.make ~directory_targets rules
 ;;
 
-let setup_rules ~components ~dir ~projects ctx_name =
+let setup_rules ~components ~dir ctx_name =
+  let projects = Dune_load.projects () in
   match components with
   | [ ".lock" ] ->
     Gen_rules.make

@@ -1459,7 +1459,7 @@ struct
       Io.with_lexbuf_from_file pkg_file_path ~f:(Dune_sexp.Parser.parse ~mode:Many)
     in
     let parser =
-      let env = Pform.Env.pkg version in
+      let env = Pform.Env.pkg Dune_lang.Pkg.syntax version in
       let decode =
         Syntax.set Dune_lang.Pkg.syntax (Active version) Pkg.decode
         |> Syntax.set Dune_lang.Stanza.syntax (Active Dune_lang.Stanza.latest_version)

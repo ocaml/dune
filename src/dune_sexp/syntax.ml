@@ -222,6 +222,13 @@ and key =
       ; dune_lang_ver : Version.t
       }
 
+module Map = Map.Make (struct
+    type nonrec t = t
+
+    let to_dyn = Dyn.opaque
+    let compare (x : t) y = String.compare x.name y.name
+  end)
+
 let to_dyn { name; desc; key = _; supported_versions; experimental } =
   let open Dyn in
   record

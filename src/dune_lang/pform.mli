@@ -188,8 +188,13 @@ module Env : sig
   (** Decoding environment *)
   type t
 
-  val pkg : Syntax.Version.t -> t
-  val initial : Syntax.Version.t -> t
+  val pkg : Syntax.t -> Syntax.Version.t -> t
+
+  val initial
+    :  stanza:Syntax.Version.t
+    -> extensions:(Syntax.t * Syntax.Version.t) list
+    -> t
+
   val add_user_vars : t -> string list -> t
   val parse : t -> Template.Pform.t -> pform
 

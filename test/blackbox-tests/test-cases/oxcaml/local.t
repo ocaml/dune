@@ -32,11 +32,11 @@ Demonstrate what happens when the extension isn't enabled:
   > EOF
 
   $ dune build ./foo
-  Error: OxCaml variables are an experimental feature. They are not supported
-  by default.
-  -> required by %{oxcaml_supported} at dune:4
-  -> required by Computing directory contents of _build/default
-  Hint: Add (using oxcaml 0.1) to your dune-project
+  File "dune", line 4, characters 13-32:
+  4 |  (enabled_if %{oxcaml_supported}))
+                   ^^^^^^^^^^^^^^^^^^^
+  Error: Can't parse the variable oxcaml_supported without the oxcaml extension
+  Hint: Try enabling the extension with (using oxcaml <version>)
   [1]
 
 Adding the extension to the dune-project removes the error

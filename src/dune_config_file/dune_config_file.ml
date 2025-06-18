@@ -580,7 +580,9 @@ module Dune_config = struct
 
   let load_config_file p =
     load_exn p ~f:(fun lang ->
-      String_with_vars.set_decoding_env (Pform.Env.initial lang.version) decode)
+      String_with_vars.set_decoding_env
+        (Pform.Env.initial ~stanza:lang.version ~extensions:[])
+        decode)
   ;;
 
   let load_user_config_file () =

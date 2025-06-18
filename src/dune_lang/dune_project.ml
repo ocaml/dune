@@ -1059,3 +1059,8 @@ let load =
   in
   gen_load ~read
 ;;
+
+let _oxcaml_extension =
+  (* This is required to register the extension because OxCaml doesn't have a specific decoder. *)
+  Extension.register Oxcaml.syntax (Decoder.return ((), [])) Dyn.unit
+;;

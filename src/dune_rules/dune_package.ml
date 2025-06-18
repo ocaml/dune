@@ -595,7 +595,7 @@ module Or_meta = struct
     match
       Vfile.parse_contents lexbuf ~f:(fun lang ->
         String_with_vars.set_decoding_env
-          (Pform.Env.initial lang.version)
+          (Pform.Env.initial ~stanza:lang.version ~extensions:[])
           (decode ~lang ~dir))
     with
     | contents -> Ok contents

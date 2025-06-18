@@ -678,7 +678,7 @@ let mlds sctx pkg =
     | _ ->
       User_warning.emit
         [ Pp.textf
-            "Dune does not support yet building documentation for assets, and mlds in a \
+            "Dune does not yet support building documentation for assets, and mlds in a \
              non-flat hierarchy. Ignoring %s."
             (Path.Local.to_string mld.in_doc)
         ];

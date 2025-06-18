@@ -203,20 +203,22 @@ let odoc_ext = ".odoc"
 module Mld : sig
   type t
 
-  val create : Path.Build.t * string -> t
+  val create : path:Path.Build.t -> name:string -> t
   val odoc_file : doc_dir:Path.Build.t -> t -> Path.Build.t
   val odoc_input : t -> Path.Build.t
 end = struct
-  type t = Path.Build.t * string
+  type t =
+    { path : Path.Build.t
+    ; name : string
+    }
 
-  let create t = t
+  let create ~path ~name = { path; name }
 
-  let odoc_file ~doc_dir (_path, name) =
-    let name = Filename.remove_extension name in
+  let odoc_file ~doc_dir { name; _ } =
     Path.Build.relative doc_dir (sprintf "page-%s%s" name odoc_ext)
   ;;
 
-  let odoc_input (p, _) = p
+  let odoc_input { path; _ } = path
 end
 
 module Flags = struct
@@ -671,7 +673,8 @@ let mlds sctx pkg =
   Packages.mlds sctx pkg
   >>| List.filter_map ~f:(fun mld ->
     match Path.Local.explode mld.Doc_sources.in_doc with
-    | [ name ] when Filename.extension name = ".mld" -> Some (mld.path, name)
+    | [ name ] when Filename.extension name = ".mld" ->
+      Some (mld.path, Filename.remove_extension name)
     | _ ->
       User_warning.emit
         [ Pp.textf
@@ -691,11 +694,11 @@ let odoc_artefacts sctx target =
       let+ mlds = mlds sctx pkg in
       let mlds = check_mlds_no_dupes ~pkg ~mlds in
       Filename.Map.update mlds "index.mld" ~f:(function
-        | None -> Some (Paths.gen_mld_dir ctx pkg ++ "index.mld", "index.mld")
+        | None -> Some (Paths.gen_mld_dir ctx pkg ++ "index.mld", "index")
         | Some _ as s -> s)
     in
-    Filename.Map.to_list_map mlds ~f:(fun _ mld ->
-      Mld.create mld |> Mld.odoc_file ~doc_dir:dir |> create_odoc ctx ~target)
+    Filename.Map.to_list_map mlds ~f:(fun _ (path, name) ->
+      Mld.create ~path ~name |> Mld.odoc_file ~doc_dir:dir |> create_odoc ctx ~target)
   | Lib lib ->
     let info = Lib.Local.info lib in
     let obj_dir = Lib_info.obj_dir info in
@@ -961,10 +964,10 @@ let setup_package_odoc_rules sctx ~pkg =
      back to a package name here. Need to try and change that one day. *)
   let* odocs =
     Filename.Map.values mlds
-    |> Memo.parallel_map ~f:(fun mld ->
+    |> Memo.parallel_map ~f:(fun (path, name) ->
       compile_mld
         sctx
-        (Mld.create mld)
+        (Mld.create ~path ~name)
         ~pkg
         ~doc_dir:(Paths.odocs ctx (Pkg pkg))
         ~includes:(Action_builder.return []))

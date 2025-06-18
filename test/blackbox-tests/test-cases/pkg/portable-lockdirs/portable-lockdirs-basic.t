@@ -46,36 +46,65 @@ Create a package that writes a different value to some files depending on the os
    (complete false)
    (used))
   
-  (solved_for_platforms ((os linux)) ((os macos)) ((os win32)))
+  (solved_for_platforms
+   ((arch x86_64)
+    (os linux))
+   ((arch arm64)
+    (os linux))
+   ((arch x86_64)
+    (os macos))
+   ((arch arm64)
+    (os macos))
+   ((arch x86_64)
+    (os win32))
+   ((arch arm64)
+    (os win32)))
 
   $ cat dune.lock/foo.0.0.1.pkg
   (version 0.0.1)
   
   (build
    (choice
-    ((((os linux)))
+    ((((arch x86_64) (os linux)))
      ((action
        (progn
         (run mkdir -p %{share} %{lib}/%{pkg-self:name})
         (run touch %{lib}/%{pkg-self:name}/META)
         (run sh -c "echo Linux > %{share}/kernel")
-        (when (= %{arch} x86_64) (run sh -c "echo x86_64 > %{share}/machine"))
-        (when (= %{arch} arm64) (run sh -c "echo arm64 > %{share}/machine"))))))
-    ((((os macos)))
+        (run sh -c "echo x86_64 > %{share}/machine")))))
+    ((((arch arm64) (os linux)))
+     ((action
+       (progn
+        (run mkdir -p %{share} %{lib}/%{pkg-self:name})
+        (run touch %{lib}/%{pkg-self:name}/META)
+        (run sh -c "echo Linux > %{share}/kernel")
+        (run sh -c "echo arm64 > %{share}/machine")))))
+    ((((arch x86_64) (os macos)))
      ((action
        (progn
         (run mkdir -p %{share} %{lib}/%{pkg-self:name})
         (run touch %{lib}/%{pkg-self:name}/META)
         (run sh -c "echo Darwin > %{share}/kernel")
-        (when (= %{arch} x86_64) (run sh -c "echo x86_64 > %{share}/machine"))
-        (when (= %{arch} arm64) (run sh -c "echo arm64 > %{share}/machine"))))))
-    ((((os win32)))
+        (run sh -c "echo x86_64 > %{share}/machine")))))
+    ((((arch arm64) (os macos)))
      ((action
        (progn
         (run mkdir -p %{share} %{lib}/%{pkg-self:name})
         (run touch %{lib}/%{pkg-self:name}/META)
-        (when (= %{arch} x86_64) (run sh -c "echo x86_64 > %{share}/machine"))
-        (when (= %{arch} arm64) (run sh -c "echo arm64 > %{share}/machine"))))))))
+        (run sh -c "echo Darwin > %{share}/kernel")
+        (run sh -c "echo arm64 > %{share}/machine")))))
+    ((((arch x86_64) (os win32)))
+     ((action
+       (progn
+        (run mkdir -p %{share} %{lib}/%{pkg-self:name})
+        (run touch %{lib}/%{pkg-self:name}/META)
+        (run sh -c "echo x86_64 > %{share}/machine")))))
+    ((((arch arm64) (os win32)))
+     ((action
+       (progn
+        (run mkdir -p %{share} %{lib}/%{pkg-self:name})
+        (run touch %{lib}/%{pkg-self:name}/META)
+        (run sh -c "echo arm64 > %{share}/machine")))))))
 
   $ DUNE_CONFIG__ARCH=arm64 dune build
   $ cat $pkg_root/foo/target/share/kernel

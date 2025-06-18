@@ -19,6 +19,22 @@ $ cat >mylib/dune <<EOF
 > (library (public_name mylib))
 > EOF
 
+The test build should fails because of the oxcaml extension is not available.
+
+  $ dune build
+  File "param/dune", line 1, characters 0-83:
+  1 | (library_parameter (public_name param.intf) (name param_intf) (modules param_intf))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'library_parameter' is available only when oxcaml is enabled in the
+  dune-project file. You must enable it using (using oxcaml 0.1) in your
+  dune-project file.
+  Note however that oxcaml is experimental and might change without notice in
+  the future.
+  [1]
+
+Adding the extension in the dune project solve the problem.
+
+  $ echo "(using oxcaml 0.1)" >> dune-project
   $ dune build
   $ ocamlobjinfo _build/default/param/.param_intf.objs/byte/param_intf.cmi | grep 'Is parameter'
   Is parameter: YES

@@ -680,7 +680,7 @@ module Artifact : sig
   val module_name : t -> Module_name.t option
   val name : t -> string
   val make_module : Context.t -> all:bool -> Index.t -> Path.t -> visible:bool -> t
-  val external_mld : Context.t -> Index.t -> Path.t * string -> t
+  val external_mld : Context.t -> Index.t -> Path.t -> name:string -> t
   val index : Context.t -> all:bool -> Index.t -> t
 end = struct
   type artifact_ty =
@@ -755,30 +755,28 @@ end = struct
     v ~source ~odoc ~html_dir ~html_file:html ~ty:(Module visible)
   ;;
 
-  let int_make_mld ctx ~all index (source, name) ~is_index =
-    let basename = name |> Filename.remove_extension in
+  let int_make_mld ctx ~all index source ~name ~is_index =
     let odoc =
       (if is_index then Index.obj_dir ctx ~all index else Index.odoc_dir ctx ~all index)
-      ++ ("page-" ^ basename ^ ".odoc")
+      ++ ("page-" ^ name ^ ".odoc")
     in
     let html_dir = Index.html_dir ctx ~all index in
-    let html =
-      html_dir ++ if is_index then "index.html" else sprintf "%s.html" basename
-    in
+    let html = html_dir ++ if is_index then "index.html" else sprintf "%s.html" name in
     v ~source ~odoc ~html_dir ~html_file:html ~ty:Mld
   ;;
 
-  let external_mld ctx index (source, name) =
-    int_make_mld ctx ~all:true index (source, name) ~is_index:false
+  let external_mld ctx index source ~name =
+    int_make_mld ctx ~all:true index source ~name ~is_index:false
   ;;
 
   let index ctx ~all index =
+    let filename = Index.mld_filename index in
     let source =
-      let filename = Index.mld_filename index in
       let dir = Index.obj_dir ctx ~all index in
-      Path.build (dir ++ filename), filename
+      Path.build (dir ++ filename)
     in
-    int_make_mld ctx ~all index source ~is_index:true
+    let name = Filename.remove_extension filename in
+    int_make_mld ctx ~all index source ~name ~is_index:true
   ;;
 end
 
@@ -1259,7 +1257,8 @@ let pkg_mlds sctx pkg =
     Packages.mlds sctx pkg
     >>| List.filter_map ~f:(fun mld ->
       match Path.Local.explode mld.Doc_sources.in_doc with
-      | [ name ] when Filename.extension name = ".mld" -> Some (Path.build mld.path, name)
+      | [ name ] when Filename.extension name = ".mld" ->
+        Some (Path.build mld.path, Filename.remove_extension name)
       | _ ->
         User_warning.emit
           [ Pp.textf
@@ -1298,7 +1297,7 @@ let pkg_artifacts sctx index pkg =
   let artifacts =
     let mlds_noindex = String.Map.filteri ~f:(fun i _ -> i <> "index.mld") mlds_map in
     String.Map.values mlds_noindex
-    |> List.map ~f:(fun mld -> Artifact.external_mld ctx index mld)
+    |> List.map ~f:(fun (path, name) -> Artifact.external_mld ctx index path ~name)
   in
   let index_file = String.Map.find mlds_map "index.mld" in
   Option.map ~f:fst index_file, artifacts

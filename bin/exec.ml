@@ -111,19 +111,26 @@ let build_prog ~no_rebuild ~prog p =
     p
 ;;
 
-let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
+let expand ~sctx common cmd_arg = Cmd_arg.expand ~root:(Common.root common) ~sctx cmd_arg
+
+let get_path common ctx_name ~prog =
   let open Memo.O in
+  let* sctx = Super_context.find_exn ctx_name in
+  let dir =
+    let context = Dune_rules.Super_context.context sctx in
+    Path.Build.relative (Context.build_dir context) (Common.prefix_target common "")
+  in
   match Filename.analyze_program_name prog with
   | In_path ->
     Super_context.resolve_program_memo sctx ~dir ~loc:None prog
     >>= (function
      | Error (_ : Action.Prog.Not_found.t) -> not_found ~dir ~prog
-     | Ok p -> build_prog ~no_rebuild ~prog p)
+     | Ok p -> Memo.return p)
   | Relative_to_current_dir ->
     let path = Path.relative_to_source_in_build_or_external ~dir prog in
     Build_system.file_exists path
     >>= (function
-     | true -> build_prog ~no_rebuild ~prog path
+     | true -> Memo.return path
      | false -> not_found ~dir ~prog)
   | Absolute ->
     (match
@@ -140,19 +147,22 @@ let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
      | None -> not_found ~dir ~prog)
 ;;
 
-let step ~setup ~prog ~args ~common ~no_rebuild ~context ~on_exit () =
+let get_path_and_build_if_necessary common ctx_name ~no_rebuild ~prog =
   let open Memo.O in
-  let* sctx = setup >>| Import.Main.find_scontext_exn ~name:context in
-  let* env = Super_context.context_env sctx in
-  let expand = Cmd_arg.expand ~root:(Common.root common) ~sctx in
+  let* path = get_path common ctx_name ~prog in
+  match Filename.analyze_program_name prog with
+  | In_path | Relative_to_current_dir -> build_prog ~no_rebuild ~prog path
+  | Absolute -> Memo.return path
+;;
+
+let step ~prog ~args ~common ~no_rebuild ~ctx_name ~on_exit () =
+  let open Memo.O in
+  let* sctx = Super_context.find_exn ctx_name in
   let* path =
-    let dir =
-      let context = Dune_rules.Super_context.context sctx in
-      Path.Build.relative (Context.build_dir context) (Common.prefix_target common "")
-    in
-    let* prog = expand prog in
-    get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog
-  and* args = Memo.parallel_map args ~f:expand in
+    let* prog = expand ~sctx common prog in
+    get_path_and_build_if_necessary common ctx_name ~no_rebuild ~prog
+  and* args = Memo.parallel_map args ~f:(expand ~sctx common) in
+  let* env = Super_context.context_env sctx in
   Memo.of_non_reproducible_fiber
   @@ Dune_engine.Process.run_inherit_std_in_out
        ~dir:(Path.of_string Fpath.initial_cwd)
@@ -166,7 +176,7 @@ let step ~setup ~prog ~args ~common ~no_rebuild ~context ~on_exit () =
 
 let term : unit Term.t =
   let+ builder = Common.Builder.term
-  and+ context = Common.context_arg ~doc:{|Run the command in this build context.|}
+  and+ ctx_name = Common.context_arg ~doc:{|Run the command in this build context.|}
   and+ prog = Arg.(required & pos 0 (some Cmd_arg.conv) None (Arg.info [] ~docv:"PROG"))
   and+ no_rebuild =
     Arg.(value & flag & info [ "no-build" ] ~doc:"don't rebuild target before executing")
@@ -182,12 +192,11 @@ let term : unit Term.t =
     Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config
     @@ fun () ->
     let open Fiber.O in
-    let* setup = Import.Main.setup () in
     let on_exit = Console.printf "Program exited with code [%d]" in
     Scheduler.Run.poll
     @@
     let* () = Fiber.return @@ Scheduler.maybe_clear_screen ~details_hum:[] config in
-    build @@ step ~setup ~prog ~args ~common ~no_rebuild ~context ~on_exit
+    build @@ step ~prog ~args ~common ~no_rebuild ~ctx_name ~on_exit
   | No ->
     Scheduler.go_with_rpc_server ~common ~config
     @@ fun () ->
@@ -195,17 +204,13 @@ let term : unit Term.t =
     let* setup = Import.Main.setup () in
     build_exn (fun () ->
       let open Memo.O in
-      let* sctx = setup >>| Import.Main.find_scontext_exn ~name:context in
-      let* env = Super_context.context_env sctx in
-      let expand = Cmd_arg.expand ~root:(Common.root common) ~sctx in
-      let* prog =
-        let dir =
-          let context = Dune_rules.Super_context.context sctx in
-          Path.Build.relative (Context.build_dir context) (Common.prefix_target common "")
-        in
-        let* prog = expand prog in
-        get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog >>| Path.to_string
-      and* args = Memo.parallel_map ~f:expand args in
+      let* sctx = setup >>| Import.Main.find_scontext_exn ~name:ctx_name in
+      let* env = Super_context.context_env sctx
+      and* prog =
+        let* prog = expand ~sctx common prog in
+        get_path_and_build_if_necessary common ctx_name ~no_rebuild ~prog
+        >>| Path.to_string
+      and* args = Memo.parallel_map ~f:(expand ~sctx common) args in
       restore_cwd_and_execve (Common.root common) prog args env)
 ;;
 

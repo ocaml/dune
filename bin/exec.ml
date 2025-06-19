@@ -64,7 +64,16 @@ module Cmd_arg = struct
   let conv = Arg.conv ((fun s -> Ok (parse s)), pp)
 end
 
-let not_found ~dir ~prog =
+let not_found ~hints ~prog =
+  User_error.raise
+    ~hints
+    [ Pp.concat
+        ~sep:Pp.space
+        [ Pp.text "Program"; User_message.command prog; Pp.text "not found!" ]
+    ]
+;;
+
+let not_found_with_suggestions ~dir ~prog =
   let open Memo.O in
   let+ hints =
     (* Good candidates for the "./x.exe" instead of "x.exe" error are
@@ -81,30 +90,25 @@ let not_found ~dir ~prog =
     in
     User_message.did_you_mean prog ~candidates
   in
+  not_found ~hints ~prog
+;;
+
+let program_not_built_yet prog =
   User_error.raise
-    ~hints
     [ Pp.concat
         ~sep:Pp.space
-        [ Pp.text "Program"; User_message.command prog; Pp.text "not found!" ]
+        [ Pp.text "Program"
+        ; User_message.command prog
+        ; Pp.text "isn't built yet. You need to build it first or remove the"
+        ; User_message.command "--no-build"
+        ; Pp.text "option."
+        ]
     ]
 ;;
 
 let build_prog ~no_rebuild ~prog p =
   if no_rebuild
-  then
-    if Path.exists p
-    then Memo.return p
-    else
-      User_error.raise
-        [ Pp.concat
-            ~sep:Pp.space
-            [ Pp.text "Program"
-            ; User_message.command prog
-            ; Pp.text "isn't built yet. You need to build it first or remove the"
-            ; User_message.command "--no-build"
-            ; Pp.text "option."
-            ]
-        ]
+  then if Path.exists p then Memo.return p else program_not_built_yet prog
   else
     let open Memo.O in
     let+ () = Build_system.build_file p in
@@ -117,14 +121,14 @@ let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
   | In_path ->
     Super_context.resolve_program_memo sctx ~dir ~loc:None prog
     >>= (function
-     | Error (_ : Action.Prog.Not_found.t) -> not_found ~dir ~prog
+     | Error (_ : Action.Prog.Not_found.t) -> not_found_with_suggestions ~dir ~prog
      | Ok p -> build_prog ~no_rebuild ~prog p)
   | Relative_to_current_dir ->
     let path = Path.relative_to_source_in_build_or_external ~dir prog in
     Build_system.file_exists path
     >>= (function
      | true -> build_prog ~no_rebuild ~prog path
-     | false -> not_found ~dir ~prog)
+     | false -> not_found_with_suggestions ~dir ~prog)
   | Absolute ->
     (match
        let prog = Path.of_string prog in
@@ -137,7 +141,7 @@ let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
          Option.some_if (Path.exists prog) prog)
      with
      | Some prog -> Memo.return prog
-     | None -> not_found ~dir ~prog)
+     | None -> not_found_with_suggestions ~dir ~prog)
 ;;
 
 let step ~setup ~prog ~args ~common ~no_rebuild ~context ~on_exit () =
@@ -164,17 +168,83 @@ let step ~setup ~prog ~args ~common ~no_rebuild ~context ~on_exit () =
   | exit_code -> on_exit exit_code
 ;;
 
-let term : unit Term.t =
-  let+ builder = Common.Builder.term
-  and+ context = Common.context_arg ~doc:{|Run the command in this build context.|}
-  and+ prog = Arg.(required & pos 0 (some Cmd_arg.conv) None (Arg.info [] ~docv:"PROG"))
-  and+ no_rebuild =
-    Arg.(value & flag & info [ "no-build" ] ~doc:"don't rebuild target before executing")
-  and+ args = Arg.(value & pos_right 0 Cmd_arg.conv [] (Arg.info [] ~docv:"ARGS")) in
-  (* TODO we should make sure to finalize the current backend before exiting dune.
-     For watch mode, we should finalize the backend and then restart it in between
-     runs. *)
-  let common, config = Common.init builder in
+(* Similar to [get_path_and_build_if_necessary] but doesn't require the build
+   system (ie. it sequences with [Fiber] rather than with [Memo]) and builds
+   targets via an RPC server. Some functionality is not available but it can be
+   run concurrently while a second Dune process holds the global build
+   directory lock.
+
+   Returns the absolute path to the executable. *)
+let build_prog_via_rpc_if_necessary ~dir ~no_rebuild prog =
+  match Filename.analyze_program_name prog with
+  | In_path ->
+    (* This case is reached if [dune exec] is passed the name of an
+       executable (rather than a path to an executable). When dune is running
+       directly, dune will try to resolve the executbale name within the public
+       executables defined in the current project and its dependencies, and
+       only if no executable with the given name is found will dune then
+       resolve the name within the $PATH variable instead. Looking up an
+       executable's name within the current project requires running the
+       build system, but running the build system is not allowed while
+       another dune instance holds the global build directory lock. In this
+       case dune will only resolve the executable's name within $PATH.
+       Because this behaviour is different from the default, print a warning
+       so users are hopefully less surprised.
+    *)
+    User_warning.emit
+      [ Pp.textf
+          "As this is not the main instance of Dune it is unable to locate the \
+           executable %S within this project. Dune will attempt to resolve the \
+           executable's name within your PATH only."
+          prog
+      ];
+    let path = Env_path.path Env.initial in
+    (match Bin.which ~path prog with
+     | None -> not_found ~hints:[] ~prog
+     | Some prog_path -> Fiber.return (Path.to_absolute_filename prog_path))
+  | Relative_to_current_dir ->
+    let open Fiber.O in
+    let path = Path.relative_to_source_in_build_or_external ~dir prog in
+    let+ () =
+      if no_rebuild
+      then if Path.exists path then Fiber.return () else program_not_built_yet prog
+      else (
+        let target =
+          Dune_lang.Dep_conf.File
+            (Dune_lang.String_with_vars.make_text Loc.none (Path.to_string path))
+        in
+        Build_cmd.build_via_rpc_server ~print_on_success:false ~targets:[ target ])
+    in
+    Path.to_absolute_filename path
+  | Absolute ->
+    if Path.exists (Path.of_string prog)
+    then Fiber.return prog
+    else not_found ~hints:[] ~prog
+;;
+
+let exec_building_via_rpc_server ~common ~prog ~args ~no_rebuild =
+  let open Fiber.O in
+  let ensure_terminal v =
+    match (v : Cmd_arg.t) with
+    | Terminal s -> s
+    | Expandable (_, raw) ->
+      (* Variables cannot be expanded without running the build system. *)
+      User_error.raise
+        [ Pp.textf
+            "The term %S contains a variable but Dune is unable to expand variables when \
+             building via RPC."
+            raw
+        ]
+  in
+  let context = Common.x common |> Option.value ~default:Context_name.default in
+  let dir = Context_name.build_dir context in
+  let prog = ensure_terminal prog in
+  let args = List.map args ~f:ensure_terminal in
+  let+ prog = build_prog_via_rpc_if_necessary ~dir ~no_rebuild prog in
+  restore_cwd_and_execve (Common.root common) prog args Env.initial
+;;
+
+let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
   match Common.watch common with
   | Yes Passive ->
     User_error.raise [ Pp.textf "passive watch mode is unsupported by exec" ]
@@ -207,6 +277,45 @@ let term : unit Term.t =
         get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog >>| Path.to_string
       and* args = Memo.parallel_map ~f:expand args in
       restore_cwd_and_execve (Common.root common) prog args env)
+;;
+
+let term : unit Term.t =
+  let+ builder = Common.Builder.term
+  and+ context = Common.context_arg ~doc:{|Run the command in this build context.|}
+  and+ prog = Arg.(required & pos 0 (some Cmd_arg.conv) None (Arg.info [] ~docv:"PROG"))
+  and+ no_rebuild =
+    Arg.(value & flag & info [ "no-build" ] ~doc:"don't rebuild target before executing")
+  and+ args = Arg.(value & pos_right 0 Cmd_arg.conv [] (Arg.info [] ~docv:"ARGS")) in
+  (* TODO we should make sure to finalize the current backend before exiting dune.
+     For watch mode, we should finalize the backend and then restart it in between
+     runs. *)
+  let common, config = Common.init builder in
+  match Dune_util.Global_lock.lock ~timeout:None with
+  | Error lock_held_by ->
+    (match Common.watch common with
+     | Yes _ ->
+       User_error.raise
+         [ Pp.textf
+             "Another instance of dune%s has locked the _build directory. Refusing to \
+              start a new watch server until no other instances of dune are running."
+             (match lock_held_by with
+              | Unknown -> ""
+              | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
+         ]
+     | No ->
+       if not (Common.Builder.equal builder Common.Builder.default)
+       then
+         User_warning.emit
+           [ Pp.textf
+               "Your build request is being forwarded to a running Dune instance%s. Note \
+                that certain command line arguments may be ignored."
+               (match lock_held_by with
+                | Unknown -> ""
+                | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
+           ];
+       Scheduler.go_without_rpc_server ~common ~config
+       @@ fun () -> exec_building_via_rpc_server ~common ~prog ~args ~no_rebuild)
+  | Ok () -> exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild
 ;;
 
 let command = Cmd.v info term

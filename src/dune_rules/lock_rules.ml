@@ -5,6 +5,7 @@ module Spec = struct
   type ('path, 'target) t =
     { target : 'target
     ; lock_dir : string
+    ; projects : Dune_project.t list
     }
 
   let name = "lock"
@@ -12,11 +13,11 @@ module Spec = struct
   let bimap t _ g = { t with target = g t.target }
   let is_useful_to ~memoize = memoize
 
-  let encode { target; lock_dir } _encode_path encode_target : Sexp.t =
+  let encode { target; lock_dir; projects = _ } _encode_path encode_target : Sexp.t =
     Sexp.List [ encode_target target; Sexp.Atom lock_dir ]
   ;;
 
-  let action { target; lock_dir } ~ectx:_ ~eenv:_ =
+  let action { target; lock_dir; projects } ~ectx:_ ~eenv:_ =
     let open Fiber.O in
     let+ () = Fiber.return () in
     Printf.eprintf
@@ -25,28 +26,25 @@ module Spec = struct
       lock_dir;
     let path = Path.build target in
     Path.mkdir_p path;
-    let t = Unix.localtime @@ Unix.gettimeofday () in
     let content =
-      sprintf
-        "Created on %d-%0.2d-%0.2d %0.2d:%0.2d:%0.2d"
-        (t.tm_year + 1900)
-        (t.tm_mon + 1)
-        t.tm_mday
-        t.tm_hour
-        t.tm_min
-        t.tm_sec
+      projects
+      |> List.map ~f:(fun project ->
+        let pkgs = Dune_project.packages project in
+        Dune_lang.Package_name.Map.to_dyn Package.to_dyn pkgs
+      |>
+        Dyn.to_string)
+      |> String.concat ~sep:"\n"
     in
-    Io.write_file ~binary:true (Path.relative path "lock.dune") content;
-    ()
+    Io.write_file ~binary:true (Path.relative path "lock.dune") content
   ;;
 end
 
 module A = Action_ext.Make (Spec)
 
-let action ~target ~lock_dir = A.action { Spec.target; lock_dir }
+let action ~projects ~target ~lock_dir = A.action { Spec.target; lock_dir; projects }
 
-let lock ~target ~lock_dir =
-  action ~target ~lock_dir
+let lock ~projects ~target ~lock_dir =
+  action ~projects ~target ~lock_dir
   |> Action.Full.make ~can_go_in_shared_cache:false
   |> Action_builder.With_targets.return
   |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
@@ -61,15 +59,15 @@ let rule ?loc { Action_builder.With_targets.build; targets } =
 
 let setup_lock_rules ~dir ~lock_dir ~projects : Gen_rules.result =
   let target = Path.Build.relative dir "content" in
-  let gen_rules lock_dir =
-    let lock_rule = lock ~target ~lock_dir in
+  let gen_rules projects lock_dir =
+    let lock_rule = lock ~projects ~target ~lock_dir in
     rule ~loc:Loc.none lock_rule
   in
   let rules =
     Rules.collect_unit (fun () ->
       (* deref Memo to create dependency on project *)
-      let* _projects = projects in
-      gen_rules lock_dir)
+      let* projects = projects in
+      gen_rules projects lock_dir)
   in
   let directory_targets = Path.Build.Map.singleton target Loc.none in
   Gen_rules.make ~directory_targets rules

@@ -784,16 +784,6 @@ We also benchmark a demo Melange project's build time:
 
 https://ocaml.github.io/dune/dev/bench/
 
-Monorepo Benchmark
-------------------
-
-We benchmark the performance of Dune in building a large monorepo in every
-PR. The benchmark results can be found here:
-
-https://bench.ci.dev/ocaml/dune/branch/main?worker=fermat&image=bench%2Fmonorepo%2Fbench.Dockerfile
-
-You can find more information about these benchmarks `here <./dev/monorepo-bench.md>`_.
-
 Formatting
 ==========
 

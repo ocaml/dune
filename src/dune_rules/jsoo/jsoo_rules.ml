@@ -531,6 +531,12 @@ let jsoo_archives ~mode ctx config lib =
            ]))
 ;;
 
+let cmo_js_of_module ~mode m =
+  Module_name.Unique.artifact_filename
+    (Module.obj_name m)
+    ~ext:(Js_of_ocaml.Ext.cmo ~mode)
+;;
+
 let link_rule
       ~mode
       cc
@@ -546,11 +552,6 @@ let link_rule
   =
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in
-  let mod_name m =
-    Module_name.Unique.artifact_filename
-      (Module.obj_name m)
-      ~ext:(Js_of_ocaml.Ext.cmo ~mode)
-  in
   let ctx = Super_context.context sctx |> Context.build_context in
   let get_all =
     let open Action_builder.O in
@@ -576,12 +577,13 @@ let link_rule
     let special_units =
       List.concat_map to_link ~f:(function
         | Lib_flags.Lib_and_module.Lib _lib -> []
-        | Module (obj_dir, m) -> [ in_obj_dir' ~obj_dir ~config:None [ mod_name m ] ])
+        | Module (obj_dir, m) ->
+          [ in_obj_dir' ~obj_dir ~config:None [ cmo_js_of_module ~mode m ] ])
     in
     let all_libs = List.concat_map libs ~f:(jsoo_archives ~mode ctx config) in
     let all_other_modules =
       List.map cm ~f:(fun m ->
-        Path.build (in_obj_dir ~obj_dir ~config:None [ mod_name m ]))
+        Path.build (in_obj_dir ~obj_dir ~config:None [ cmo_js_of_module ~mode m ]))
     in
     let std_exit =
       Path.build
@@ -648,7 +650,7 @@ let build_cm' sctx ~dir ~in_context ~mode ~src ~target ~config ~shapes ~sourcema
     ~sourcemap
 ;;
 
-let build_cm cctx ~dir ~in_context ~mode ~src ~obj_dir ~config:config_opt =
+let build_cm cctx ~dir ~in_context ~mode ~src ~obj_dir ~deps ~config:config_opt =
   let name = with_js_ext ~mode (Path.basename src) in
   let target = in_obj_dir ~obj_dir ~config:config_opt [ name ] in
   let sctx = Compilation_context.super_context cctx in
@@ -656,6 +658,7 @@ let build_cm cctx ~dir ~in_context ~mode ~src ~obj_dir ~config:config_opt =
   let shapes =
     let open Action_builder.O in
     let+ libs = Resolve.Memo.read (Compilation_context.requires_link cctx)
+    and+ deps = deps
     and+ config =
       match config_opt with
       | None ->
@@ -665,8 +668,10 @@ let build_cm cctx ~dir ~in_context ~mode ~src ~obj_dir ~config:config_opt =
         |> Action_builder.map ~f:Config.of_flags
       | Some config -> Action_builder.return config
     in
-    Path.build (in_build_dir ctx ~config [ "stdlib"; with_js_ext ~mode "stdlib.cma" ])
-    :: List.concat_map libs ~f:(fun lib -> jsoo_archives ~mode ctx config lib)
+    (Path.build (in_build_dir ctx ~config [ "stdlib"; with_js_ext ~mode "stdlib.cma" ])
+     :: List.concat_map libs ~f:(fun lib -> jsoo_archives ~mode ctx config lib))
+    @ List.map deps ~f:(fun m ->
+      Path.build (in_obj_dir ~obj_dir ~config:config_opt [ cmo_js_of_module ~mode m ]))
   in
   build_cm'
     sctx

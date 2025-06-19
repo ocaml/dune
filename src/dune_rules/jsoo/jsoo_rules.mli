@@ -22,6 +22,7 @@ val build_cm
   -> mode:Js_of_ocaml.Mode.t
   -> src:Path.t
   -> obj_dir:Path.Build.t Obj_dir.t
+  -> deps:Module.t list Action_builder.t
   -> config:Config.t option
   -> Action.Full.t Action_builder.With_targets.t
 

@@ -54,3 +54,37 @@ let lock_build_and_run_dev_tool ~common ~config dev_tool ~args =
   lock_and_build_dev_tool ~common ~config dev_tool;
   run_dev_tool (Common.root common) dev_tool ~args
 ;;
+
+let which_command dev_tool =
+  let exe_path = dev_tool_exe_path dev_tool in
+  let exe_name = Pkg_dev_tool.exe_name dev_tool in
+  let term =
+    let+ builder = Common.Builder.term
+    and+ allow_not_installed =
+      Arg.(
+        value
+        & flag
+        & info
+            [ "allow-not-installed" ]
+            ~doc:
+              (sprintf
+                 "If %s is not installed as a dev tool, still print where it would be \
+                  installed."
+                 exe_name))
+    in
+    let _ : Common.t * Dune_config_file.Dune_config.t = Common.init builder in
+    if allow_not_installed || Path.exists exe_path
+    then print_endline (Path.to_string exe_path)
+    else User_error.raise [ Pp.textf "%s is not installed as a dev tool" exe_name ]
+  in
+  let info =
+    let doc =
+      sprintf
+        "Prints the path to the %s dev tool executable if it exists, errors out \
+         otherwise."
+        exe_name
+    in
+    Cmd.info exe_name ~doc
+  in
+  Cmd.v info term
+;;

@@ -459,7 +459,7 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
         let action_with_targets =
           List.map Jsoo_rules.Config.all ~f:(fun config ->
             Jsoo_rules.build_cm
-              sctx
+              cctx
               ~dir
               ~in_context:
                 (Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml
@@ -467,6 +467,7 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
               ~mode
               ~config:(Some config)
               ~src:(Path.build src)
+              ~deps:(Action_builder.return [])
               ~obj_dir)
         in
         Memo.parallel_iter action_with_targets ~f:(fun rule ->

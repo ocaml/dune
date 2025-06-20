@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version=9e836575a82f8307baae44243eb168d9943c3a58
+version=b4566b228e4753e5636bfab141b2617f86ce0488
 
 set -e -o pipefail
 
@@ -14,7 +14,7 @@ mkdir -p $pkg/{vendor,src}
 
 (
     cd $TMP
-    git clone https://github.com/rgrinberg/$pkg.git
+    git clone https://github.com/alizter/$pkg.git
     cd $pkg
     git checkout $version
 )
@@ -23,7 +23,11 @@ src=$TMP/$pkg
 
 (
     cp -v $src/src/*.{ml,mli,c} $pkg/
-    cp -v $src/vendor/*.{ml,mli,c,h} $pkg/
+    cp -v $src/vendor/*.{ml,mli,c,h,S,asm} $pkg/
+    rm $pkg/blake3_avx2.c
+    rm $pkg/blake3_avx512.c
+    rm $pkg/blake3_sse2.c
+    rm $pkg/blake3_sse41.c
 ) || true
 
 git checkout $pkg/dune

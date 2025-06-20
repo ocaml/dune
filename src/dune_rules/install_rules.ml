@@ -491,9 +491,9 @@ end = struct
           >>| List.rev_map ~f:(fun mld ->
             Install.Entry.make
               ~kind:`File
-              ~dst:(sprintf "odoc-pages/%s" (Path.Build.basename mld))
+              ~dst:(sprintf "odoc-pages/%s" (Path.Local.to_string mld.Doc_sources.in_doc))
               Section.Doc
-              mld
+              mld.path
             |> Install.Entry.Sourced.create ~loc:stanza.loc)
         | Plugin.T t -> Plugin_rules.install_rules ~sctx ~package_db ~dir t
         | _ -> Memo.return []

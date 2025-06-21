@@ -29,7 +29,8 @@ Check that the version guard is correct.
                     ^^^
   Error: Version 1.3 of the cinaps extension is not supported until version 3.8
   of the dune language.
-  Supported versions of this extension in version 3.7 of the dune language:
+  Supported versions of the cinaps extension in version 3.7 of the dune
+  language are:
   - 1.0 to 1.2
   [1]
 

@@ -156,17 +156,24 @@ let solve_lock_dir
       in
       Pin.DB.combine_exn workspace project_pins, lock_dir.solve_for_platforms
   in
+  let solver_env_from_context =
+    Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env)
+  in
   let solver_env =
     solver_env
-      ~solver_env_from_context:
-        (Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env))
+      ~solver_env_from_context
       ~solver_env_from_current_system
       ~unset_solver_vars_from_context:
         (unset_solver_vars_of_workspace workspace ~lock_dir_path)
   in
   let solve_for_platforms =
     match portable_lock_dir with
-    | true -> solve_for_platforms
+    | true ->
+      (match solver_env_from_context with
+       | Some solver_env_from_context ->
+         List.map solve_for_platforms ~f:(fun platform_env ->
+           Dune_pkg.Solver_env.extend solver_env_from_context platform_env)
+       | None -> solve_for_platforms)
     | false -> [ solver_env ]
   in
   let time_start = Unix.gettimeofday () in

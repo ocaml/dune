@@ -52,3 +52,21 @@ And without suffix it is accepted.
   > EOF
 
   $ dune build
+
+If a new version of dune lang is encountered, we print a helpful error message
+to the user:
+
+  $ cat > dune-project << EOF
+  > (lang dune 123.123)
+  > EOF
+
+  $ dune build
+  File "dune-project", line 1, characters 11-18:
+  1 | (lang dune 123.123)
+                 ^^^^^^^
+  Error: Version 123.123 of the dune language is not supported.
+  Supported versions of this extension in version 3.20 of the dune language:
+  - 1.0 to 1.12
+  - 2.0 to 2.9
+  - 3.0 to 3.20
+  [1]

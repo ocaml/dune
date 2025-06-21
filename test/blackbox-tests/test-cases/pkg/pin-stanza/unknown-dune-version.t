@@ -28,7 +28,7 @@ We are unable to pin projects that the version of dune doesn't understand.
   1 | (lang dune 3.XX)
                  ^^^^^
   Error: Version 100.1 of the dune language is not supported.
-  Supported versions of this extension in version 100.1 of the dune language:
+  Supported versions of this extension in version 3.XX of the dune language:
   - 1.0 to 1.12
   - 2.0 to 2.9
   - 3.XX to 3.XX

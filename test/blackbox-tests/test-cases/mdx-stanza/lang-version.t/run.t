@@ -9,10 +9,10 @@ The MDX stanza requires dune lang 2.4 or higher
   File "dune-project", line 2, characters 11-14:
   2 | (using mdx 0.1)
                  ^^^
-  Warning: Version 0.1 of mdx extension to verify code blocks in .md files is
-  not supported until version 2.4 of the dune language.
-  There are no supported versions of this extension in version 2.3 of the dune
-  language.
+  Warning: Version 0.1 of the mdx extension is not supported until version 2.4
+  of the dune language.
+  There are no supported versions of the mdx extension in version 2.3 of the
+  dune language.
   
   File "dune", line 1, characters 0-5:
   1 | (mdx)
@@ -32,8 +32,9 @@ The version 0.2 requires dune 3.0
   File "dune-project", line 2, characters 11-14:
   2 | (using mdx 0.2)
                  ^^^
-  Error: Version 0.2 of mdx extension to verify code blocks in .md files is not
-  supported until version 3.0 of the dune language.
-  Supported versions of this extension in version 2.9 of the dune language:
+  Error: Version 0.2 of the mdx extension is not supported until version 3.0 of
+  the dune language.
+  Supported versions of the mdx extension in version 2.9 of the dune language
+  are:
   - 0.1
   [1]

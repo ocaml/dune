@@ -6,6 +6,7 @@ Test that version of extensions is compatible with dune_lang version
                     ^^^
   Warning: Version 2.0 of the menhir extension is not supported until version
   1.4 of the dune language.
-  Supported versions of this extension in version 1.2 of the dune language:
+  Supported versions of the menhir extension in version 1.2 of the dune
+  language are:
   - 1.0
 

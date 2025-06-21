@@ -60,13 +60,12 @@ to the user:
   > (lang dune 123.123)
   > EOF
 
-  $ dune build
+  $ dune build 2>&1 | sed -E 's/ 3.[0-9]+/ 3.XX/g'
   File "dune-project", line 1, characters 11-18:
   1 | (lang dune 123.123)
                  ^^^^^^^
   Error: Version 123.123 of the dune language is not supported.
-  Supported versions of this extension in version 3.20 of the dune language:
+  Supported versions of the dune language in version 3.XX of dune are:
   - 1.0 to 1.12
   - 2.0 to 2.9
-  - 3.0 to 3.20
-  [1]
+  - 3.XX to 3.XX

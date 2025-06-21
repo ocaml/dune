@@ -6,7 +6,8 @@ version-mismatch.t
   2 | (using menhir 4.0)
                     ^^^
   Error: Version 4.0 of the menhir extension is not supported.
-  Supported versions of this extension in version 2.5 of the dune language:
+  Supported versions of the menhir extension in version 2.5 of the dune
+  language are:
   - 1.0 to 1.1
   - 2.0 to 2.1
   [1]

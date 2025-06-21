@@ -7,6 +7,7 @@ export DUNE_CONFIG__ARCH=x86_64
 export DUNE_CONFIG__OS_FAMILY=debian
 export DUNE_CONFIG__OS_DISTRIBUTION=ubuntu
 export DUNE_CONFIG__OS_VERSION=24.11
+export DUNE_CONFIG__SYS_OCAML_VERSION=5.4.0+fake
 
 dune="dune"
 

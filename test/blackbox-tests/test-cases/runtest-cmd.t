@@ -28,7 +28,7 @@ This should work:
   _build/default/tests/myothertest.t/run.t.corrected differ.
   [1]
 
-There's no diff produced because the test passes
+There is no diff produced because the test passes
 
   $ dune promotion diff tests/myothertest.t/run.t
 
@@ -128,8 +128,14 @@ messages are informative enough.
   Error: "testt" does not match any known test.
   Hint: did you mean tests?
   [1]
-- Note that this doesn't handle the case where the path is mostly correct but
+- Note that this does not handle the case where the path is mostly correct but
 the directory is mispelled.
   $ dune test testss/myothertest.t
   Error: "testss/myothertest.t" does not match any known test.
   [1]
+- Absolute paths give a nonsensical error that exposes internal details of the
+implementation.
+  $ dune test $PWD/mytest.t
+  Error: @@ on the command line must be followed by a relative path
+  [1]
+

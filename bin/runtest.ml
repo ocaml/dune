@@ -26,6 +26,7 @@ let runtest_info =
           , "dune runtest --force" )
         ; ( "Run tests sequentially without output buffering"
           , "dune runtest --no-buffer -j 1" )
+        ; "Run tests in a specific build context", "dune runtest _build/my_context/"
         ]
     ]
   in
@@ -111,14 +112,30 @@ let runtest_term =
   and+ dirs = Arg.(value & pos_all string [ "." ] name) in
   let common, config = Common.init builder in
   let request (setup : Import.Main.build_system) =
+    let contexts = setup.contexts in
     List.map dirs ~f:(fun dir ->
-      let dir = Path.(relative root) (Common.prefix_target common dir) in
+      let dir = Path.of_string dir |> Path.Expert.try_localize_external in
       let open Action_builder.O in
-      let* alias_kind =
-        match Path.as_in_source_tree dir with
-        (* If the path is in the source tree, we disambiguate it. *)
-        | Some path -> Action_builder.of_memo (disambiguate_test_name path)
-        | None -> Action_builder.return (`Runtest dir)
+      let* contexts, alias_kind =
+        match (Util.check_path contexts dir : Util.checked) with
+        | In_build_dir (context, dir) ->
+          let+ res = Action_builder.of_memo (disambiguate_test_name dir) in
+          [ context ], res
+        | In_source_dir dir ->
+          let+ res = Action_builder.of_memo (disambiguate_test_name dir) in
+          contexts, res
+        | In_private_context _ | In_install_dir _ ->
+          User_error.raise
+            [ Pp.textf
+                "This path is internal to dune: %s"
+                (Path.to_string_maybe_quoted dir)
+            ]
+        | External _ ->
+          User_error.raise
+            [ Pp.textf
+                "This path is outside the workspace: %s"
+                (Path.to_string_maybe_quoted dir)
+            ]
       in
       Alias.request
       @@
@@ -127,14 +144,10 @@ let runtest_term =
         Alias.in_dir
           ~name:(Dune_engine.Alias.Name.of_string alias_name)
           ~recursive:false
-          ~contexts:setup.contexts
+          ~contexts
           (Path.source dir)
       | `Runtest dir ->
-        Alias.in_dir
-          ~name:Dune_rules.Alias.runtest
-          ~recursive:true
-          ~contexts:setup.contexts
-          dir)
+        Alias.in_dir ~name:Dune_rules.Alias.runtest ~recursive:true ~contexts dir)
     |> Action_builder.all_unit
   in
   Build_cmd.run_build_command ~common ~config ~request

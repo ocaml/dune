@@ -6,7 +6,7 @@
 #include <caml/memory.h>
 #include <caml/osdeps.h>
 #include <caml/alloc.h>
-#include <Windows.h>
+#include <windows.h>
 
 typedef BOOL (WINAPI *LPFN_ISWOW64PROCESS2) (HANDLE, USHORT *, USHORT *);
 

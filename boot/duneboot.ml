@@ -1190,7 +1190,7 @@ let build
              ~cwd:build_dir
              Config.compiler
              (List.concat
-                [ [ "-c"; "-g"; "-no-alias-deps"; "-w"; "-49-6" ]
+                [ [ "-c"; "-g"; "-no-alias-deps"; "-w"; "-49-6-53" ]
                 ; allow_unstable_sources
                 ; external_includes
                 ; [ file ]

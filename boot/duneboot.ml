@@ -1179,6 +1179,32 @@ let common_build_args name ~external_includes ~external_libraries =
 
 let allow_unstable_sources = [ "-alert"; "-unstable" ]
 
+let ocaml_warnings =
+  let warnings =
+    [ (* Warning 49 [no-cmi-file]: no cmi file was found in path for module *)
+      "-49"
+    ; (* Warning 23: all the fields are explicitly listed in this record: the
+        'with' clause is useless. 
+
+         In order to stay version independent, we use a trick with `with` by
+         creating a dummy value and filling in the fields available in every
+         OCaml version. forced_major_collections is the one missing in versions
+         older than 4.12. We therefore disable warning 23 for our purposes. *)
+      "-23"
+    ; (* Warning 53 [misplaced-attribute]: the "alert" attribute cannot appear
+        in this context
+
+        Any .mli files that begin wtih [@@@alert] will cause the compiler to
+        emit warning 53 due to the way we alias modules with an `open!`. It may
+        be possible to use the command line flag `-open` instead, however this
+        complicates dependency tracking so disabling this warning instead is
+        suitable for our purposes. *)
+      "-53"
+    ]
+  in
+  [ "-w"; String.concat ~sep:"" warnings ]
+;;
+
 let build
       ~ocaml_config
       ~dependencies
@@ -1219,7 +1245,8 @@ let build
              ~cwd:build_dir
              Config.compiler
              (List.concat
-                [ [ "-c"; "-g"; "-no-alias-deps"; "-w"; "-49-6" ]
+                [ [ "-c"; "-g"; "-no-alias-deps" ]
+                ; ocaml_warnings
                 ; allow_unstable_sources
                 ; external_includes
                 ; [ file ]

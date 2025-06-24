@@ -29,8 +29,7 @@ Building in release mode does not currently disable the debug flag.
   $ grep -e stub.c _build/log | grep -ce "-g "
   1
 
-We should be able to explicitly disable the debug flag by editing our
-enviornment but this currently does not work.
+We are able to explicitly disable the debug flag by editing our enviornment.
 
   $ cat >> dune <<EOF
   > (env
@@ -41,5 +40,6 @@ enviornment but this currently does not work.
   $ dune clean
   $ dune build
   $ grep -e stub.c _build/log | grep -ce "-g "
-  1
+  0
+  [1]
 

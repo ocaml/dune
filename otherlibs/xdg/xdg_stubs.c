@@ -10,9 +10,9 @@
 #undef _WIN32_WINNT
 #define _WIN32_WINNT 0x0600
 
-#include <Windows.h>
-#include <Knownfolders.h>
-#include <Shlobj.h>
+#include <windows.h>
+#include <knownfolders.h>
+#include <shlobj.h>
 
 value dune_xdg__get_known_folder_path(value v_known_folder)
 {

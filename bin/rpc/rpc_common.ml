@@ -3,9 +3,11 @@ module Client = Dune_rpc_client.Client
 
 let active_server () =
   match Dune_rpc_impl.Where.get () with
-  | Some p -> p
-  | None -> User_error.raise [ Pp.text "RPC server not running." ]
+  | Some p -> Ok p
+  | None -> Error (User_error.make [ Pp.text "RPC server not running." ])
 ;;
+
+let active_server_exn () = active_server () |> User_error.ok_exn
 
 (* cwong: Should we put this into [dune-rpc]? *)
 let interpret_kind = function
@@ -36,49 +38,34 @@ let client_term builder f =
   Scheduler.go_with_rpc_server ~common ~config f
 ;;
 
-let retry_loop once =
+let establish_connection () =
+  let where = active_server () in
+  match where with
+  | Error e -> Fiber.return (Error e)
+  | Ok where -> Client.Connection.connect where
+;;
+
+let establish_connection_exn () =
   let open Fiber.O in
+  establish_connection () >>| User_error.ok_exn
+;;
+
+let establish_connection_with_retry () =
+  let open Fiber.O in
+  let pause_between_retries_s = 0.2 in
   let rec loop () =
-    let* res = once () in
-    match res with
-    | Some result -> Fiber.return result
-    | None ->
-      let* () = Scheduler.sleep ~seconds:0.2 in
+    establish_connection ()
+    >>= function
+    | Ok x -> Fiber.return x
+    | Error _ ->
+      let* () = Scheduler.sleep ~seconds:pause_between_retries_s in
       loop ()
   in
   loop ()
 ;;
 
-let establish_connection_or_raise ~wait once =
-  let open Fiber.O in
-  if wait
-  then retry_loop once
-  else
-    let+ res = once () in
-    match res with
-    | Some conn -> conn
-    | None ->
-      let (_ : Dune_rpc_private.Where.t) = active_server () in
-      User_error.raise
-        [ Pp.text "failed to establish connection even though server seems to be running"
-        ]
-;;
-
 let establish_client_session ~wait =
-  let open Fiber.O in
-  let once () =
-    let where = Dune_rpc_impl.Where.get () in
-    match where with
-    | None -> Fiber.return None
-    | Some where ->
-      let+ connection = Client.Connection.connect where in
-      (match connection with
-       | Ok conn -> Some conn
-       | Error message ->
-         if not wait then Console.print_user_message message;
-         None)
-  in
-  establish_connection_or_raise ~wait once
+  if wait then establish_connection_exn () else establish_connection_with_retry ()
 ;;
 
 let wait_term =

@@ -70,7 +70,7 @@ let scan_vo_cmxs ~dir dir_contents =
     (* Skip some files as Coq does, for now files with '-' *)
     | _ when String.contains d '-' -> Skip
     | (File_kind.S_REG | S_LNK) when Filename.check_suffix d ".cmxs" ->
-      Left (Left (Path.relative dir d))
+      Left (List.Left (Path.relative dir d))
     | (File_kind.S_REG | S_LNK) when Filename.check_suffix d ".vo" ->
       Left (Right (Path.relative dir d))
     | (File_kind.S_REG | S_LNK) when String.equal d Coq_package.rocq_package_file ->
@@ -79,8 +79,7 @@ let scan_vo_cmxs ~dir dir_contents =
       Skip
   in
   let objs, rocq_pkg = List.filter_partition_map ~f dir_contents in
-  let f = function Left x -> List.Left x | Right x -> List.Right x in
-  let cmxs, vo = List.filter_partition_map ~f objs in
+  let cmxs, vo = List.filter_partition_map ~f:Fun.id objs in
   cmxs, vo, rocq_pkg
 ;;
 

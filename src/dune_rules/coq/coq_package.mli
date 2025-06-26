@@ -6,11 +6,13 @@
 (* Written by: Emilio Jesús Gallego Arias      *)
 (* Written by: Rudi Grinberg                   *)
 (* Written by: Li-yao Xia                      *)
+open Import
 
 val rocq_package_file : string
 
 type t
 
-val make : unit -> t
+val make : theories:Coq_lib_name.t list -> t
+val parse : Path.t -> Lexbuf.t -> t
 val write : t -> string
 

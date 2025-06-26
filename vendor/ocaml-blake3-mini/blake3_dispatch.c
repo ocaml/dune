@@ -5,7 +5,7 @@
 #include "blake3_impl.h"
 
 #if defined(_MSC_VER)
-#include <Windows.h>
+#include <windows.h>
 #endif
 
 #if defined(IS_X86)

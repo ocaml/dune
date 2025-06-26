@@ -96,6 +96,7 @@ Building on linux fails because the lockdir doesn't contain a compatible solutio
   - os-distribution = ubuntu
   - os-family = debian
   - os-version = 24.11
+  - sys-ocaml-version = 5.4.0+fake
   Hint: Try adding the following to dune-workspace:
   Hint: (lock_dir (solve_for_platforms ((arch arm64) (os linux))))
   Hint: ...and then rerun 'dune pkg lock'

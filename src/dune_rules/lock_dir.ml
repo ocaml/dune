@@ -79,15 +79,14 @@ module Sys_vars = struct
   let solver_env () =
     let open Memo.O in
     let module V = Package_variable_name in
-    let { os; os_version; os_distribution; os_family; arch; sys_ocaml_version = _ } =
-      poll
-    in
+    let { os; os_version; os_distribution; os_family; arch; sys_ocaml_version } = poll in
     let+ var_value_pairs =
       [ V.os, os
       ; V.os_version, os_version
       ; V.os_distribution, os_distribution
       ; V.os_family, os_family
       ; V.arch, arch
+      ; V.sys_ocaml_version, sys_ocaml_version
       ]
       |> Memo.List.filter_map ~f:(fun (var, value) ->
         let+ value = Memo.Lazy.force value in

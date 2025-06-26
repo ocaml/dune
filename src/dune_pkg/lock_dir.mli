@@ -65,6 +65,7 @@ module Pkg : sig
 
   val remove_locs : t -> t
   val equal : t -> t -> bool
+  val to_dyn : t -> Dyn.t
 
   val decode
     : (lock_dir:Path.Source.t

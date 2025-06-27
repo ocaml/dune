@@ -1,0 +1,4 @@
+(rocq.extraction
+ (mode vo)
+ (prelude my_coq_file)
+ (extracted_modules Datatypes my_coq_file))

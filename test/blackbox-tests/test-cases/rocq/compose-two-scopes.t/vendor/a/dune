@@ -1,0 +1,3 @@
+(rocq.theory
+ (name a)
+ (package cvendor2))

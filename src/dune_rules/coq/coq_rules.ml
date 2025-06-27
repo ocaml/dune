@@ -340,10 +340,12 @@ let directories_of_lib ~sctx lib =
   let name = Coq_lib.name lib in
   match lib with
   | Coq_lib.Dune lib ->
-    let dir = Coq_lib.Dune.src_root lib in
-    let* dir_contents = Dir_contents.get sctx ~dir in
-    let+ coq_sources = Dir_contents.coq dir_contents in
-    Coq_sources.directories coq_sources ~name
+    (match Coq_lib.Dune.src_root lib with
+    | Left dir ->
+        let* dir_contents = Dir_contents.get sctx ~dir in
+        let+ coq_sources = Dir_contents.coq dir_contents in
+        Coq_sources.directories coq_sources ~name
+    | Right _ -> Memo.return [] (* TODO: Ok? *))
   | Coq_lib.Legacy _ ->
     (* TODO: we could return this if we don't restrict ourselves to
        Path.Build.t here.
@@ -784,10 +786,12 @@ let coq_modules_of_theory ~sctx lib =
   match lib with
   | Coq_lib.Legacy lib -> Memo.return @@ Coq_lib.Legacy.vo lib
   | Coq_lib.Dune lib ->
-    let dir = Coq_lib.Dune.src_root lib in
-    let* dir_contents = Dir_contents.get sctx ~dir in
-    let+ coq_sources = Dir_contents.coq dir_contents in
-    Coq_sources.library coq_sources ~name |> List.rev_map ~f:Coq_module.source
+    match Coq_lib.Dune.src_root lib with
+    | Left dir ->
+      let* dir_contents = Dir_contents.get sctx ~dir in
+      let+ coq_sources = Dir_contents.coq dir_contents in
+      Coq_sources.library coq_sources ~name |> List.rev_map ~f:Coq_module.source
+    | Right sources -> Memo.return sources
 ;;
 
 let source_rule ~sctx theories =

@@ -73,7 +73,7 @@ and Dune : sig
     ; implicit : bool (* Only useful for the stdlib *)
     ; use_stdlib : bool
       (* whether this theory uses the stdlib, eventually set to false for all libs *)
-    ; src_root : Path.Build.t
+    ; src_root : (Path.Build.t, Path.t list) Either.t
     ; obj_root : Path.Build.t
     ; theories : (Loc.t * R.t) list Resolve.t
     ; libraries : (Loc.t * Lib.t) list Resolve.t
@@ -82,7 +82,7 @@ and Dune : sig
     }
 
   val to_dyn : t -> Dyn.t
-  val src_root : t -> Path.Build.t
+  val src_root : t -> (Path.Build.t, Path.t list) Either.t
   val obj_root : t -> Path.Build.t
   val implicit : t -> bool
 
@@ -96,7 +96,7 @@ end = struct
     ; implicit : bool (* Only useful for the stdlib *)
     ; use_stdlib : bool
       (* whether this theory uses the stdlib, eventually set to false for all libs *)
-    ; src_root : Path.Build.t
+    ; src_root : (Path.Build.t, Path.t list) Either.t
     ; obj_root : Path.Build.t
     ; theories : (Loc.t * R.t) list Resolve.t
     ; libraries : (Loc.t * Lib.t) list Resolve.t
@@ -125,7 +125,7 @@ end = struct
         ; "id", Id.to_dyn id
         ; "implicit", Bool.to_dyn implicit
         ; "use_stdlib", Bool.to_dyn use_stdlib
-        ; "src_root", Path.Build.to_dyn src_root
+        ; "src_root", Either.to_dyn Path.Build.to_dyn (list Path.to_dyn) src_root
         ; "obj_root", Path.Build.to_dyn obj_root
         ; "theories", Resolve.to_dyn (Dyn.list (Dyn.pair Loc.to_dyn R.to_dyn)) theories
         ; ( "libraries"
@@ -489,7 +489,7 @@ module DB = struct
       ; use_stdlib
       ; implicit = s.boot
       ; obj_root = dir
-      ; src_root = dir
+      ; src_root = Left dir
       ; theories
       ; libraries
       ; theories_closure =

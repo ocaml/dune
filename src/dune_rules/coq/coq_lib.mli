@@ -8,7 +8,7 @@ module Dune : sig
   type t
 
   (** Source directory *)
-  val src_root : t -> Path.Build.t
+  val src_root : t -> (Path.Build.t, Path.t list) Either.t
 
   (** ML libraries *)
   val libraries : t -> (Loc.t * Lib.t) list Resolve.t

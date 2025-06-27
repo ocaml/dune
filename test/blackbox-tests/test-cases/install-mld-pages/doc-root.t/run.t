@@ -1,4 +1,4 @@
-A usefull pattern for documentation is to have a folder that contains only the
+A useful pattern for documentation is to have a folder that contains only the
 documentation, and to include everything in it with:
 
   $ cat dune

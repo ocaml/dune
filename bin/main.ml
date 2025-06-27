@@ -30,6 +30,7 @@ let all : _ Cmdliner.Cmd.t list =
   let groups =
     [ Ocaml.Ocaml_cmd.group
     ; Coq.Group.group
+    ; Rocq.group
     ; Describe.group
     ; Describe.Show.group
     ; Rpc.Group.group

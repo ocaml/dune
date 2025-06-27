@@ -1,0 +1,14 @@
+(rocq.theory
+ (name basic)
+ (package base)
+ (modules :standard)
+ (flags :standard -w declaration-outside-section)
+ (modules_flags
+  (bar :standard -w -declaration-outside-section))
+ (synopsis "Test Coq library"))
+
+; foo (:standard -w -declaration-outside-section -w declaration-outside-section)))
+
+(rule
+ (alias default)
+ (action (echo "%{read:base.install}")))

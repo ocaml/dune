@@ -273,6 +273,14 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
       | Coq_stanza.Extraction.T m ->
         Coq_rules.setup_extraction_rules ~sctx ~dir:ctx_dir ~dir_contents m
       | Coq_stanza.Coqpp.T m -> Coq_rules.setup_coqpp_rules ~sctx ~dir:ctx_dir m
+      | Rocq_stanza.Theory.T m ->
+        Expander.eval_blang expander m.enabled_if
+        >>= (function
+         | false -> Memo.return ()
+         | true -> Rocq_rules.setup_theory_rules ~sctx ~dir:ctx_dir ~dir_contents m)
+      | Rocq_stanza.Extraction.T m ->
+        Rocq_rules.setup_extraction_rules ~sctx ~dir:ctx_dir ~dir_contents m
+      | Rocq_stanza.Rocqpp.T m -> Rocq_rules.setup_rocqpp_rules ~sctx ~dir:ctx_dir m
       | _ -> Memo.return ())
   and+ () =
     let project = Dune_file.project dune_file in

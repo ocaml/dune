@@ -24,6 +24,7 @@ type t =
   ; foreign_sources : Foreign_sources.t Memo.Lazy.t
   ; mlds : (Documentation.t * Doc_sources.mld list) list Memo.Lazy.t
   ; coq : Coq_sources.t Memo.Lazy.t
+  ; rocq : Rocq_sources.t Memo.Lazy.t
   ; ml : Ml_sources.t Memo.Lazy.t
   ; source_dir : Source_tree.Dir.t option
   }
@@ -42,6 +43,7 @@ let empty kind ~dir ~source_dir =
   ; mlds = Memo.Lazy.of_val []
   ; foreign_sources = Memo.Lazy.of_val Foreign_sources.empty
   ; coq = Memo.Lazy.of_val Coq_sources.empty
+  ; rocq = Memo.Lazy.of_val Rocq_sources.empty
   }
 ;;
 
@@ -88,6 +90,7 @@ type triage =
 let dir t = t.dir
 let source_dir t = t.source_dir
 let coq t = Memo.Lazy.force t.coq
+let rocq t = Memo.Lazy.force t.rocq
 let ocaml t = Memo.Lazy.force t.ml
 
 let dirs t =
@@ -151,6 +154,12 @@ end = struct
               Path.Build.set_extension mlg_file ~ext:".ml" |> Path.Build.basename)
           | Coq_stanza.Extraction.T s ->
             Memo.return (Coq_stanza.Extraction.ml_target_fnames s)
+          | Rocq_stanza.Rocqpp.T { modules; _ } ->
+            Rocq_sources.mlg_files ~sctx ~dir ~modules
+            >>| List.rev_map ~f:(fun mlg_file ->
+              Path.Build.set_extension mlg_file ~ext:".ml" |> Path.Build.basename)
+          | Rocq_stanza.Extraction.T s ->
+            Memo.return (Rocq_stanza.Extraction.ml_target_fnames s)
           | Menhir_stanza.T menhir -> Memo.return (Menhir_stanza.targets menhir)
           | Rule_conf.T rule ->
             Simple_rules.user_rule sctx rule ~dir ~expander
@@ -275,6 +284,9 @@ end = struct
               ; coq =
                   Memo.lazy_ (fun () ->
                     stanzas >>| Coq_sources.of_dir ~dir ~include_subdirs ~dirs)
+              ; rocq =
+                  Memo.lazy_ (fun () ->
+                    stanzas >>| Rocq_sources.of_dir ~dir ~include_subdirs ~dirs)
               }
           ; rules
           ; subdirs = Path.Build.Map.empty
@@ -366,6 +378,10 @@ end = struct
              Memo.lazy_ (fun () ->
                stanzas >>| Coq_sources.of_dir ~dir ~dirs ~include_subdirs)
            in
+           let rocq =
+             Memo.lazy_ (fun () ->
+               stanzas >>| Rocq_sources.of_dir ~dir ~dirs ~include_subdirs)
+           in
            let mlds = mlds ~sctx ~dir ~dune_file ~files in
            let subdirs =
              List.map
@@ -379,6 +395,7 @@ end = struct
                  ; foreign_sources
                  ; mlds
                  ; coq
+                 ; rocq
                  })
            in
            let root =
@@ -390,6 +407,7 @@ end = struct
              ; foreign_sources
              ; mlds
              ; coq
+             ; rocq
              }
            in
            { Standalone_or_root.root

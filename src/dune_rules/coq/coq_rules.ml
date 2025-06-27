@@ -951,13 +951,10 @@ let extraction_context
   theories_deps, ml_flags, mlpack_rule
 ;;
 
-let setup_rocq_package_rule ~sctx ~dir ~wrapper_name ~theories_deps : unit Memo.t =
+let setup_rocq_package_rule ~sctx ~dir ~wrapper_name s : unit Memo.t =
   let dst = Path.Build.relative dir (Coq_package.rocq_package_file ^ "." ^ wrapper_name) in
-  let* theories = (* this looks wrong *) Resolve.Memo.read_memo theories_deps in
-  let _theories = List.map ~f:Coq_lib.name theories in
-  (* let rocq_package = Coq_package.make ~theories in *)
   Super_context.add_rule sctx ~dir
-    (Action_builder.write_file dst (* (Coq_package.write rocq_package) *) "todo")
+    (Action_builder.write_file dst (Coq_package.write (Coq_package.of_stanza s)))
 
 let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
   let* scope = Scope.DB.find_by_dir dir in
@@ -1035,7 +1032,7 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
   (* coqdoc rules *)
   >>> setup_coqdoc_rules ~sctx ~dir ~theories_deps s coq_modules
   (* And finally the rocq-package rule *)
-  >>> setup_rocq_package_rule ~sctx ~dir ~wrapper_name ~theories_deps
+  >>> setup_rocq_package_rule ~sctx ~dir ~wrapper_name s
 ;;
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) coq_module =

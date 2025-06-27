@@ -12,22 +12,27 @@ open Import
 (* It is what it is *)
 let rocq_package_file = "rocq-package"
 
-type t = {
+type meta = {
   name: Coq_lib_name.t;
+  theories: Coq_lib_name.t list;
+}
+
+type t = {
   path: Path.t;
-  theories: Coq_lib_name.t list
+  vo: Path.t list;
+  meta: meta;
 }
 
-let make ~name ~path ~theories = {
-  name; path; theories
-}
+let of_stanza (s : Coq_stanza.Theory.t) =
+  { name = snd s.name;
+    theories = List.map ~f:snd s.buildable.theories;
+  }
 
-let name t = t.name
+let fake_stanza _ = assert false
+
+let name t = t.meta.name
 let path t = t.path
-let vo _ = assert false
-let cmxs _ = assert false
-let cmxs_directories _ = assert false
-let stdlib _ = assert false
+let vo t = t.vo
 
 let decode () = let open Dune_lang.Decoder in return (assert false)
 

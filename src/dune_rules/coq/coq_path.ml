@@ -7,7 +7,7 @@
 
 open Import
 
-type t = Path of
+type legacy =
   { name : Coq_lib_name.t
   ; path : Path.t
   ; vo : Path.t list
@@ -15,31 +15,34 @@ type t = Path of
   ; cmxs_directories : Path.t list
   ; stdlib : bool
   }
-  | Coq_package of Coq_package.t [@@warning "-unused-constructor"]
+
+type t =
+  | Coq_package of Coq_package.t
+  | Legacy of legacy
 
 let name = function
-  | Path t -> t.name
+  | Legacy t -> t.name
   | Coq_package t -> Coq_package.name t
 
 let path = function
-  | Path t -> t.path
+  | Legacy t -> t.path
   | Coq_package t -> Coq_package.path t
 
 let vo = function
-  | Path t -> t.vo
+  | Legacy t -> t.vo
   | Coq_package t -> Coq_package.vo t
 
 let cmxs = function
-  | Path t -> t.cmxs
-  | Coq_package t -> Coq_package.cmxs t
+  | Legacy t -> t.cmxs
+  | Coq_package _ -> []
 
 let cmxs_directories = function
-  | Path t -> t.cmxs_directories
-  | Coq_package t -> Coq_package.cmxs_directories t
+  | Legacy t -> t.cmxs_directories
+  | Coq_package _ -> []
 
 let stdlib = function
-  | Path t -> t.stdlib
-  | Coq_package t -> Coq_package.stdlib t
+  | Legacy t -> t.stdlib
+  | Coq_package _ -> false
 
 let config_path_exn coq_config key =
   Coq_config.by_name coq_config key
@@ -74,7 +77,7 @@ let config_path ~default coq_config key =
 ;;
 
 let build_user_contrib ~cmxs ~cmxs_directories ~vo ~path ~name =
-  Path { name; path; cmxs; cmxs_directories; vo; stdlib = false }
+  Legacy { name; path; cmxs; cmxs_directories; vo; stdlib = false }
 ;;
 
 let path_pp fmt p = Format.fprintf fmt "%s" (Path.to_string p)
@@ -237,7 +240,7 @@ let of_coq_install coqc =
     let* vo = scan_vo coqlib_path in
     let cmxs, cmxs_directories = List.split stdlib_plugs in
     let cmxs = List.concat cmxs in
-    let stdlib = Path
+    let stdlib = Legacy
       { name = Coq_lib_name.stdlib
       ; path = Path.relative coqlib_path "theories"
       ; vo

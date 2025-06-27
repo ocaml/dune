@@ -527,7 +527,7 @@ module DB = struct
 
     (* XXX: Memoize? This is pretty cheap so not sure worth the cost,
        still called too much I have observed, suspicious! *)
-    let create_from_coqpath ~boot_id cp =
+    let create_from_coqpath_legacy ~boot_id cp =
       let name = Coq_path.name cp in
       let installed_root = Coq_path.path cp in
       let implicit = Coq_path.stdlib cp in
@@ -537,6 +537,14 @@ module DB = struct
       Resolve.Memo.return
         (Legacy { Legacy.boot_id; id; implicit; installed_root; vo; cmxs_directories })
     ;;
+
+    let create_from_coqpath coq_db db dir = function
+    | Coq_path.Coq_package pkg ->
+      Memo.map (create_from_stanza coq_db db dir (Coq_package.fake_stanza pkg)) ~f:(fun dune ->
+      Resolve.return (Dune dune))
+    | Coq_path.Legacy _ as cp ->
+        let boot_id = coq_db.boot_id in
+        create_from_coqpath_legacy ~boot_id cp
 
     module Resolve_result_no_redirect = struct
       (** In our second iteration, we remove all the redirects *)
@@ -594,8 +602,9 @@ module DB = struct
         let+ (_ : (Loc.t * lib) list) = theory.theories in
         Dune theory
       | Found_path cp ->
-        let boot_id = coq_db.boot_id in
-        create_from_coqpath ~boot_id cp
+        let db = assert false in
+        let dir = assert false in
+        create_from_coqpath coq_db db dir cp
     ;;
 
     let resolve_boot coq_db ~coq_lang_version =

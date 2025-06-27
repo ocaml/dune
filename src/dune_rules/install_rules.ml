@@ -488,10 +488,10 @@ end = struct
         | Documentation.T stanza ->
           Dir_contents.get sctx ~dir
           >>= Dir_contents.mlds ~stanza
-          >>| List.rev_map ~f:(fun mld ->
+          >>| List.rev_map ~f:(fun (mld : Doc_sources.mld) ->
             Install.Entry.make
               ~kind:`File
-              ~dst:(sprintf "odoc-pages/%s" (Path.Local.to_string mld.Doc_sources.in_doc))
+              ~dst:(sprintf "odoc-pages/%s" (Path.Local.to_string mld.in_doc))
               Section.Doc
               mld.path
             |> Install.Entry.Sourced.create ~loc:stanza.loc)

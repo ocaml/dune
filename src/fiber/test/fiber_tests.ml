@@ -1,7 +1,6 @@
 open Stdune
 open Fiber.O
 open Dyn
-open Dune_tests_common
 
 let printf = Printf.printf
 let print_dyn dyn = Dyn.to_string dyn |> print_endline

@@ -1,4 +1,3 @@
-open Stdune
 open Fiber.O
 module Scheduler = Fiber.Scheduler
 

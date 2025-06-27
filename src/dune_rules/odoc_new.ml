@@ -1255,8 +1255,8 @@ let pkg_mlds sctx pkg =
   if Package.Name.Map.mem pkgs pkg
   then
     Packages.mlds sctx pkg
-    >>| List.filter_map ~f:(fun mld ->
-      match Path.Local.explode mld.Doc_sources.in_doc with
+    >>| List.filter_map ~f:(fun (mld : Doc_sources.mld) ->
+      match Path.Local.explode mld.in_doc with
       | [ name ] when Filename.extension name = ".mld" ->
         Some (Path.build mld.path, Filename.remove_extension name)
       | _ ->

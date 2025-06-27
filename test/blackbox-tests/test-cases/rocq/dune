@@ -1,0 +1,9 @@
+; Coq for macos does not support native compilation yet.
+; TODO Enable tests when ready
+
+(cram
+ (applies_to :whole_subtree)
+ (deps %{bin:coqc} %{bin:coqdep} scrub_coq_args.sh)
+ (alias runtest-rocq)
+ (enabled_if
+  (= %{env:DUNE_ROCQ_TEST=disable} enable)))

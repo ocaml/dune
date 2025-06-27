@@ -458,23 +458,23 @@ module DB = struct
       Resolve.Memo.List.map theories ~f
     ;;
 
-    let create_from_stanza_impl (coq_db, db, dir, (s : Coq_stanza.Theory.t)) =
+    let create_from_coq_package_impl (coq_db, db, dir, (s : Coq_package.meta)) =
       let name = s.name in
       let id = Id.create ~path:(Path.build dir) ~name in
-      let coq_lang_version = s.buildable.coq_lang_version in
+      let coq_lang_version = s.coq_lang_version in
       let open Memo.O in
       let boot_id = if s.boot then None else boot_library_id coq_db in
       let allow_private_deps = Option.is_none s.package in
-      let use_stdlib = s.buildable.use_stdlib in
+      let use_stdlib = s.use_stdlib in
       let+ libraries =
-        resolve_plugins ~db ~allow_private_deps ~name:(snd name) s.buildable.plugins
+        resolve_plugins ~db ~allow_private_deps ~name:(snd name) s.plugins
       and+ theories =
         resolve_theories
           ~coq_db
           ~coq_lang_version
           ~allow_private_deps
           ~boot_id
-          s.buildable.theories
+          s.theories
       and+ boot = resolve_boot ~coq_lang_version ~coq_db boot_id in
       let theories = maybe_add_boot ~boot ~use_stdlib ~is_boot:s.boot theories in
       let map_error x =
@@ -483,7 +483,7 @@ module DB = struct
       in
       let theories = map_error theories in
       let libraries = map_error libraries in
-      { Dune.loc = s.buildable.loc
+      { Dune.loc = s.loc
       ; boot_id
       ; id
       ; use_stdlib
@@ -501,8 +501,9 @@ module DB = struct
     ;;
 
     module Input = struct
-      type nonrec t = t * Lib.DB.t * Path.Build.t * Coq_stanza.Theory.t
+      type nonrec t = t * Lib.DB.t * Path.Build.t * Coq_package.meta
 
+      (* TODO: does it makes sense to do phys_equal on Coq_package.meta? *)
       let equal (coq_db, ml_db, path, stanza) (coq_db', ml_db', path', stanza') =
         phys_equal coq_db coq_db'
         && phys_equal ml_db ml_db'
@@ -520,10 +521,12 @@ module DB = struct
         ~human_readable_description:(fun (_, _, path, theory) ->
           Id.pp (Id.create ~path:(Path.build path) ~name:theory.name))
         ~input:(module Input)
-        create_from_stanza_impl
+        create_from_coq_package_impl
     ;;
 
-    let create_from_stanza coq_db db dir stanza = Memo.exec memo (coq_db, db, dir, stanza)
+    let create_from_coq_package coq_db db dir pkg = Memo.exec memo (coq_db, db, dir, pkg)
+
+    let create_from_stanza coq_db db dir stanza = Memo.exec memo (coq_db, db, dir, Coq_package.of_stanza stanza)
 
     (* XXX: Memoize? This is pretty cheap so not sure worth the cost,
        still called too much I have observed, suspicious! *)
@@ -540,7 +543,7 @@ module DB = struct
 
     let create_from_coqpath coq_db db dir = function
     | Coq_path.Coq_package pkg ->
-      Memo.map (create_from_stanza coq_db db dir (Coq_package.fake_stanza pkg)) ~f:(fun dune ->
+      Memo.map (create_from_coq_package coq_db db dir (Coq_package.meta pkg)) ~f:(fun dune ->
       Resolve.return (Dune dune))
     | Coq_path.Legacy _ as cp ->
         let boot_id = coq_db.boot_id in

@@ -53,7 +53,19 @@ module String = struct
   module Map = Map.Make (String)
 
   let is_suffix t ~suffix = Filename.check_suffix t suffix
-  let is_prefix t ~prefix = String.starts_with t ~prefix
+
+  let is_prefix t ~prefix =
+    let len_s = length t
+    and len_pre = length prefix in
+    let rec aux i =
+      if i = len_pre
+      then true
+      else if unsafe_get t i <> unsafe_get prefix i
+      then false
+      else aux (i + 1)
+    in
+    len_s >= len_pre && aux 0
+  ;;
 end
 
 module List = struct

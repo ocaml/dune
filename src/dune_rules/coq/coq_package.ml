@@ -13,8 +13,8 @@ open Import
 let rocq_package_file = "rocq-package"
 
 type meta = {
-  name: Coq_lib_name.t;
-  theories: Coq_lib_name.t list;
+  name: Loc.t * Coq_lib_name.t;
+  theories: (Loc.t * Coq_lib_name.t) list;
 }
 
 type t = {
@@ -24,13 +24,13 @@ type t = {
 }
 
 let of_stanza (s : Coq_stanza.Theory.t) =
-  { name = snd s.name;
-    theories = List.map ~f:snd s.buildable.theories;
+  { name = s.name;
+    theories = s.buildable.theories;
   }
 
 let fake_stanza _ = assert false
 
-let name t = t.meta.name
+let name t = snd t.meta.name
 let path t = t.path
 let vo t = t.vo
 
@@ -45,7 +45,7 @@ let pp t =
   let open Dune_lang in
   let theories xs = List.map xs ~f:(fun t -> Encoder.string (Coq_lib_name.wrapper t)) in
   let fields = Encoder.record_fields [
-    Encoder.field_i "theories" theories t.theories
+    Encoder.field_i "theories" theories (List.map ~f:snd t.theories)
   ] in
   Pp.concat_map ~sep:Pp.newline ~f:Dune_lang.pp fields
 

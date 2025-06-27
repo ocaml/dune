@@ -954,10 +954,10 @@ let extraction_context
 let setup_rocq_package_rule ~sctx ~dir ~wrapper_name ~theories_deps : unit Memo.t =
   let dst = Path.Build.relative dir (Coq_package.rocq_package_file ^ "." ^ wrapper_name) in
   let* theories = (* this looks wrong *) Resolve.Memo.read_memo theories_deps in
-  let theories = List.map ~f:Coq_lib.name theories in
-  let rocq_package = Coq_package.make ~theories in
+  let _theories = List.map ~f:Coq_lib.name theories in
+  (* let rocq_package = Coq_package.make ~theories in *)
   Super_context.add_rule sctx ~dir
-    (Action_builder.write_file dst (Coq_package.write rocq_package))
+    (Action_builder.write_file dst (* (Coq_package.write rocq_package) *) "todo")
 
 let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
   let* scope = Scope.DB.find_by_dir dir in

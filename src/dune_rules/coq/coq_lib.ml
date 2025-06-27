@@ -535,7 +535,7 @@ module DB = struct
       let vo = Coq_path.vo cp in
       let id = Id.create ~path:installed_root ~name:(Loc.none, name) in
       Resolve.Memo.return
-        { Legacy.boot_id; id; implicit; installed_root; vo; cmxs_directories }
+        (Legacy { Legacy.boot_id; id; implicit; installed_root; vo; cmxs_directories })
     ;;
 
     module Resolve_result_no_redirect = struct
@@ -594,10 +594,8 @@ module DB = struct
         let+ (_ : (Loc.t * lib) list) = theory.theories in
         Dune theory
       | Found_path cp ->
-        let open Resolve.Memo.O in
         let boot_id = coq_db.boot_id in
-        let+ theory = create_from_coqpath ~boot_id cp in
-        Legacy theory
+        create_from_coqpath ~boot_id cp
     ;;
 
     let resolve_boot coq_db ~coq_lang_version =

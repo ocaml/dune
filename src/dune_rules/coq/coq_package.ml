@@ -13,12 +13,21 @@ open Import
 let rocq_package_file = "rocq-package"
 
 type t = {
+  name: Coq_lib_name.t;
+  path: Path.t;
   theories: Coq_lib_name.t list
 }
 
-let make ~theories = {
-  theories
+let make ~name ~path ~theories = {
+  name; path; theories
 }
+
+let name t = t.name
+let path t = t.path
+let vo _ = assert false
+let cmxs _ = assert false
+let cmxs_directories _ = assert false
+let stdlib _ = assert false
 
 let decode () = let open Dune_lang.Decoder in return (assert false)
 

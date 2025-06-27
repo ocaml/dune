@@ -7,7 +7,7 @@
 
 open Import
 
-type t =
+type t = Path of
   { name : Coq_lib_name.t
   ; path : Path.t
   ; vo : Path.t list
@@ -15,13 +15,31 @@ type t =
   ; cmxs_directories : Path.t list
   ; stdlib : bool
   }
+  | Coq_package of Coq_package.t [@@warning "-unused-constructor"]
 
-let name t = t.name
-let path t = t.path
-let vo t = t.vo
-let cmxs t = t.cmxs
-let cmxs_directories t = t.cmxs_directories
-let stdlib t = t.stdlib
+let name = function
+  | Path t -> t.name
+  | Coq_package t -> Coq_package.name t
+
+let path = function
+  | Path t -> t.path
+  | Coq_package t -> Coq_package.path t
+
+let vo = function
+  | Path t -> t.vo
+  | Coq_package t -> Coq_package.vo t
+
+let cmxs = function
+  | Path t -> t.cmxs
+  | Coq_package t -> Coq_package.cmxs t
+
+let cmxs_directories = function
+  | Path t -> t.cmxs_directories
+  | Coq_package t -> Coq_package.cmxs_directories t
+
+let stdlib = function
+  | Path t -> t.stdlib
+  | Coq_package t -> Coq_package.stdlib t
 
 let config_path_exn coq_config key =
   Coq_config.by_name coq_config key
@@ -56,7 +74,7 @@ let config_path ~default coq_config key =
 ;;
 
 let build_user_contrib ~cmxs ~cmxs_directories ~vo ~path ~name =
-  { name; path; cmxs; cmxs_directories; vo; stdlib = false }
+  Path { name; path; cmxs; cmxs_directories; vo; stdlib = false }
 ;;
 
 let path_pp fmt p = Format.fprintf fmt "%s" (Path.to_string p)
@@ -219,7 +237,7 @@ let of_coq_install coqc =
     let* vo = scan_vo coqlib_path in
     let cmxs, cmxs_directories = List.split stdlib_plugs in
     let cmxs = List.concat cmxs in
-    let stdlib =
+    let stdlib = Path
       { name = Coq_lib_name.stdlib
       ; path = Path.relative coqlib_path "theories"
       ; vo

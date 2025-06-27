@@ -6,19 +6,18 @@ Here we test the features of the `dune runtest` command.
 
   $ cat > mytest.t <<EOF
   >   $ echo "Hello, world!"
-  > "Goodbye, world!"
+  >   "Goodbye, world!"
   > EOF
   $ mkdir -p tests/myothertest.t
   $ echo 'Hello, world!' > tests/myothertest.t/hello.world
   $ cat > tests/myothertest.t/run.t <<EOF
   >   $ cat hello.world
-  > "Goodbye, world!"
+  >   "Goodbye, world!"
   > EOF
   $ cat > tests/filetest.t <<EOF
   >   $ echo "Hello, world!"
-  > "Goodbye, world!"
+  >   "Goodbye, world!"
   > EOF
-
 
 This should work:
 
@@ -27,33 +26,30 @@ This should work:
   Error: Files _build/default/tests/myothertest.t/run.t and
   _build/default/tests/myothertest.t/run.t.corrected differ.
   [1]
-
-There's no diff produced because the test passes
-
   $ dune promotion diff tests/myothertest.t/run.t
 
-This should not work
+We use the promotion diff to make sure that a promotion is being registered. If
+there is no promotion it will warn.
 
-  $ dune test myotherttest.t
-  Error: "myotherttest.t" does not match any known test.
-  [1]
-
-This is a bug. Running the test this way does not correctly include the
-dependencies.
+If the user writes the run.t file of a directory test, we should correct it to
+be the corresponding directory cram test.
 
   $ dune test tests/myothertest.t/run.t
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
   Error: Files _build/default/tests/myothertest.t/run.t and
   _build/default/tests/myothertest.t/run.t.corrected differ.
   [1]
-
   $ dune promotion diff tests/myothertest.t/run.t
 
-  $ cat _build/.promotion-staging/tests/myothertest.t/run.t
-    $ cat hello.world
-    cat: hello.world: No such file or directory
-    [1]
-  "Goodbye, world!"
+We cannot give the name of a cram test in a subdirectory and expect Dune to
+find it.
+
+  $ dune test myothertest.t
+  Error: "myothertest.t" does not match any known test.
+  [1]
+
+  $ dune promotion diff tests/myothertest.t/run.t
+  Warning: Nothing to promote for tests/myothertest.t/run.t.
 
 Passing no arguments to $ dune runtest should be equivalent to $ dune build
 @runtest.
@@ -128,7 +124,7 @@ messages are informative enough.
   Error: "testt" does not match any known test.
   Hint: did you mean tests?
   [1]
-- Note that this doesn't handle the case where the path is mostly correct but
+- Note that this does not handle the case where the path is mostly correct but
 the directory is mispelled.
   $ dune test testss/myothertest.t
   Error: "testss/myothertest.t" does not match any known test.

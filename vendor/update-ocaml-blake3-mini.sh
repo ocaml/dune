@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version=9e836575a82f8307baae44243eb168d9943c3a58
+version=c6aa40e5f1973c2e6b736660ce2c8dcd3b3f9c9f
 
 set -e -o pipefail
 
@@ -23,7 +23,11 @@ src=$TMP/$pkg
 
 (
     cp -v $src/src/*.{ml,mli,c} $pkg/
-    cp -v $src/vendor/*.{ml,mli,c,h} $pkg/
+    cp -v $src/vendor/*.{ml,mli,c,h,S,asm} $pkg/
+    rm $pkg/blake3_avx2.c
+    rm $pkg/blake3_avx512.c
+    rm $pkg/blake3_sse2.c
+    rm $pkg/blake3_sse41.c
 ) || true
 
 git checkout $pkg/dune

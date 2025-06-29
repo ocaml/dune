@@ -1,4 +1,3 @@
-open Stdune
 open Fiber.O
 module Scheduler = Fiber.Scheduler
 
@@ -16,7 +15,8 @@ let%expect_test "test fiber scheduler" =
      (match step with
       | Done () -> ()
       | Stalled _ -> assert false));
-  [%expect {|
+  [%expect
+    {|
     waiting for ivar
     ivar filled |}]
 ;;

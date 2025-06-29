@@ -35,13 +35,13 @@ let run t ~f =
       t.running <- t.running - 1;
       restart t)
     (fun () ->
-      if t.running < t.size
-      then (
-        t.running <- t.running + 1;
-        f ())
-      else (
-        let waiting = Ivar.create () in
-        Queue.push t.waiting waiting;
-        let* () = Ivar.read waiting in
-        f ()))
+       if t.running < t.size
+       then (
+         t.running <- t.running + 1;
+         f ())
+       else (
+         let waiting = Ivar.create () in
+         Queue.push t.waiting waiting;
+         let* () = Ivar.read waiting in
+         f ()))
 ;;

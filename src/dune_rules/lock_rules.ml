@@ -30,9 +30,7 @@ module Spec = struct
       projects
       |> List.map ~f:(fun project ->
         let pkgs = Dune_project.packages project in
-        Dune_lang.Package_name.Map.to_dyn Package.to_dyn pkgs
-      |>
-        Dyn.to_string)
+        Dune_lang.Package_name.Map.to_dyn Package.to_dyn pkgs |> Dyn.to_string)
       |> String.concat ~sep:"\n"
     in
     Io.write_file ~binary:true (Path.relative path "lock.dune") content

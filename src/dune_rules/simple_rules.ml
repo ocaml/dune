@@ -9,7 +9,7 @@ module Alias_rules = struct
       | Lt | Gt -> Memo.return ()
       | Eq ->
         let* project = Dune_load.find_project ~dir in
-        if Dune_project.dune_version project >= (3, 20)
+        if Dune_project.dune_version project >= (3, 21)
         then
           User_error.raise
             ~loc

@@ -3,7 +3,7 @@ open Memo.O
 
 module Alias_rules = struct
   let add sctx ~alias ~loc build =
-    match Alias.Name.compare (Alias.name alias) Alias.Name.empty with
+    match Alias.Name.compare (Alias.name alias) Alias0.empty with
     | Eq ->
       User_error.raise
         ~loc

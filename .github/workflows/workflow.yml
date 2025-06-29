@@ -53,6 +53,10 @@ jobs:
           - ocaml-compiler: 4.14.x
             os: ubuntu-latest
             skip_test: true
+          ## ubuntu (x86-32)
+          - ocaml-compiler: "ocaml-variants.4.14.2+options,ocaml-option-32bit"
+            os: ubuntu-latest
+            skip_test: true
           ## macos (Apple Silicon)
           - ocaml-compiler: 4.14.x
             os: macos-latest

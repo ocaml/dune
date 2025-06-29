@@ -3,14 +3,20 @@ open Memo.O
 
 module Alias_rules = struct
   let add sctx ~alias ~loc build =
-    match Alias.Name.compare (Alias.name alias) Alias0.empty with
-    | Eq ->
-      User_error.raise
-        ~loc
-        [ Pp.text "User-defined rules cannot be added to the 'empty' alias" ]
-    | Lt | Gt ->
-      let dir = Alias.dir alias in
-      Super_context.add_alias_action sctx alias ~dir ~loc build
+    let dir = Alias.dir alias in
+    let* () =
+      match Alias.Name.compare (Alias.name alias) Alias0.empty with
+      | Lt | Gt -> Memo.return ()
+      | Eq ->
+        let* project = Dune_load.find_project ~dir in
+        if Dune_project.dune_version project >= (3, 20)
+        then
+          User_error.raise
+            ~loc
+            [ Pp.text "User-defined rules cannot be added to the 'empty' alias" ]
+        else Memo.return ()
+    in
+    Super_context.add_alias_action sctx alias ~dir ~loc build
   ;;
 
   let add_empty sctx ~loc ~alias =

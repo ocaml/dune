@@ -53,6 +53,19 @@ module String = struct
   module Map = Map.Make (String)
 
   let is_suffix t ~suffix = Filename.check_suffix t suffix
+
+  let is_prefix t ~prefix =
+    let len_s = length t
+    and len_pre = length prefix in
+    let rec aux i =
+      if i = len_pre
+      then true
+      else if unsafe_get t i <> unsafe_get prefix i
+      then false
+      else aux (i + 1)
+    in
+    len_s >= len_pre && aux 0
+  ;;
 end
 
 module List = struct
@@ -983,7 +996,23 @@ module Library = struct
       List.partition_map_skip files ~f:(fun (src, fn) ->
         match src.kind with
         | C c ->
-          if keep_c c ~architecture then `Left { flags = c.flags; name = fn } else `Skip
+          if keep_c c ~architecture
+          then (
+            let extra_flags =
+              if String.is_prefix ~prefix:"blake3_" fn
+              then (
+                match architecture with
+                | "x86" | "i386" | "i486" | "i586" | "i686" ->
+                  [ "-DBLAKE3_NO_SSE2"
+                  ; "-DBLAKE3_NO_SSE41"
+                  ; "-DBLAKE3_NO_AVX2"
+                  ; "-DBLAKE3_NO_AVX512"
+                  ]
+                | _ -> [])
+              else []
+            in
+            `Left { flags = extra_flags @ c.flags; name = fn })
+          else `Skip
         | Ml | Mli | Mly | Mll -> `Right fn
         | Header -> `Skip)
     in

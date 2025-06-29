@@ -73,30 +73,30 @@ let with_handler t f ~on_cancel =
     h.handlers <- node;
     fork_and_join
       (fun () ->
-        let* y = f () in
-        match t.state with
-        | Cancelled -> return y
-        | Not_cancelled h ->
-          (match node with
-           | End_of_handlers ->
-             (* We could avoid this [assert false] with GADT sorcery given that
+         let* y = f () in
+         match t.state with
+         | Cancelled -> return y
+         | Not_cancelled h ->
+           (match node with
+            | End_of_handlers ->
+              (* We could avoid this [assert false] with GADT sorcery given that
                 we created [node] just above and we know for sure it is the
                 [Handler _] case, but it's not worth the code complexity. *)
-             assert false
-           | Handler node ->
-             (match node.prev with
-              | End_of_handlers -> h.handlers <- node.next
-              | Handler prev -> prev.next <- node.next);
-             (match node.next with
-              | End_of_handlers -> ()
-              | Handler next -> next.prev <- node.prev);
-             let+ () = Ivar.fill ivar Not_cancelled in
-             y))
+              assert false
+            | Handler node ->
+              (match node.prev with
+               | End_of_handlers -> h.handlers <- node.next
+               | Handler prev -> prev.next <- node.next);
+              (match node.next with
+               | End_of_handlers -> ()
+               | Handler next -> next.prev <- node.prev);
+              let+ () = Ivar.fill ivar Not_cancelled in
+              y))
       (fun () ->
-        Ivar.read ivar
-        >>= function
-        | Cancelled () ->
-          let+ x = on_cancel () in
-          Cancelled x
-        | Not_cancelled -> return Not_cancelled)
+         Ivar.read ivar
+         >>= function
+         | Cancelled () ->
+           let+ x = on_cancel () in
+           Cancelled x
+         | Not_cancelled -> return Not_cancelled)
 ;;

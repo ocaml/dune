@@ -351,10 +351,10 @@ let rec sequential_iter_seq (seq : _ Seq.t) ~f =
 ;;
 
 let parallel_iter_set
-  (type a s)
-  (module S : Set.S with type elt = a and type t = s)
-  set
-  ~(f : a -> unit t)
+      (type a s)
+      (module S : Set.S with type elt = a and type t = s)
+      set
+      ~(f : a -> unit t)
   =
   parallel_iter_seq (S.to_seq set) ~f
 ;;

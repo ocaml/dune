@@ -7,14 +7,14 @@ project with a single cram test.
 
 We create a file for tracking the PID of a subprocess.
 
-  $ FILE=$(realpath ./pid.txt)
+  $ pidFile="$PWD/pid.txt"
 
 We create a cram test that spawns a subprocess and records its PID in the file
 we gave before.
 
   $ cat > mycram.t <<EOF
   >   $ sleep 5 &
-  >   $ echo \$! > $FILE
+  >   $ echo \$! > $pidFile
   > EOF
 
 We can now run this test, which will record its PID in the file.
@@ -24,7 +24,7 @@ We can now run this test, which will record its PID in the file.
 The test finished successfully, now we make sure that the PID was correctly
 terminated.
 
-  $ [ -s $FILE ] && echo pid file created
+  $ [ -s $pidFile ] && echo pid file created
   pid file created
-  $ ps -p $(cat $FILE) > /dev/null || echo "Process terminated"
+  $ ps -p $(cat $pidFile) > /dev/null || echo "Process terminated"
   Process terminated

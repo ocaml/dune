@@ -97,13 +97,10 @@ let setup_tmp_lock_alias =
     Rules.collect_unit (fun () ->
       (* careful, need to point to a file that will be created by the rule *)
       let path =
-        let ( / ) = Path.Build.relative in
         (* TODO get lock dir name instead of hardcoding `dune.lock` *)
-        Private_context.t.build_dir
-        / Context_name.to_string ctx_name
-        / ".lock"
-        / "dune.lock"
-        / "content"
+        Path.Build.L.relative
+          Private_context.t.build_dir
+          [ Context_name.to_string ctx_name; ".lock"; "dune.lock"; "content" ]
       in
       let deps = Action_builder.path (Path.build path) in
       Rules.Produce.Alias.add_deps alias deps)

@@ -207,9 +207,13 @@ module Mld : sig
   val odoc_file : doc_dir:Path.Build.t -> t -> Path.Build.t
   val odoc_input : t -> Path.Build.t
 end = struct
+  (** The [(documentation (files ...))] stanza allows with the [as] keyword to
+      distinguish the input file and the path in the documentation. Here we do
+      not support layered hierarchy, but we do support changing the name (hence
+      the two fields) *)
   type t =
     { path : Path.Build.t
-    ; name : string
+    ; name : string (** The name of the mld compilation unit (without extension) *)
     }
 
   let create ~path ~name = { path; name }

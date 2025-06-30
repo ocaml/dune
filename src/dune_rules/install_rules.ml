@@ -168,6 +168,16 @@ end = struct
       Install.Entry.Sourced.create ~loc entry
   ;;
 
+  let doc_install_files ~loc mld_contents =
+    List.rev_map mld_contents ~f:(fun (mld : Doc_sources.mld) ->
+      Install.Entry.make
+        ~kind:`File
+        ~dst:(sprintf "odoc-pages/%s" (Path.Local.to_string mld.in_doc))
+        Section.Doc
+        mld.path
+      |> Install.Entry.Sourced.create ~loc)
+  ;;
+
   let lib_install_files
         sctx
         ~scope
@@ -486,15 +496,9 @@ end = struct
           lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
         | Coq_stanza.Theory.T coqlib -> Coq_rules.install_rules ~sctx ~dir coqlib
         | Documentation.T stanza ->
-          Dir_contents.get sctx ~dir
-          >>= Dir_contents.mlds ~stanza
-          >>| List.rev_map ~f:(fun (mld : Doc_sources.mld) ->
-            Install.Entry.make
-              ~kind:`File
-              ~dst:(sprintf "odoc-pages/%s" (Path.Local.to_string mld.in_doc))
-              Section.Doc
-              mld.path
-            |> Install.Entry.Sourced.create ~loc:stanza.loc)
+          let* dir_contents = Dir_contents.get sctx ~dir in
+          let+ mld_contents = Dir_contents.mlds ~stanza dir_contents in
+          doc_install_files ~loc:stanza.loc mld_contents
         | Plugin.T t -> Plugin_rules.install_rules ~sctx ~package_db ~dir t
         | _ -> Memo.return []
       in

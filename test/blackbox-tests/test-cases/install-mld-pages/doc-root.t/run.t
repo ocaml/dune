@@ -25,7 +25,7 @@ We compare both, they should be equal
   $ diff source_hierarchy installed_hierarchy
 
 For the curious reader, here is the hierarchy:
-  $ cat source_hierarchy | grep -v ".:" # we remove ".:" for MacOS/Linux compatibility
+  $ grep -v ".:" source_hierarchy # we remove ".:" for MacOS/Linux compatibility
   examples
   index.mld
   tutorial

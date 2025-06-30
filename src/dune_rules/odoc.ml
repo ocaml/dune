@@ -694,7 +694,7 @@ let mlds sctx pkg =
   let+ mlds = Packages.mlds sctx pkg in
   List.partition_map mlds ~f:(fun (mld : Doc_sources.mld) ->
     match Path.Local.explode mld.in_doc with
-    | [ name ] when String.equal name ".mld" ->
+    | [ name ] when String.equal (Filename.extension name) ".mld" ->
       Left (mld.path, Filename.remove_extension name)
     | _ -> Right mld)
 ;;

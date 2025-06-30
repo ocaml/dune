@@ -22,7 +22,7 @@ Where ``<optional-fields>`` are:
 
 - ``(files <arg>)``: the ``files`` field accepts the same arguments as the one
   from the :ref:`install stanza <including-files-install-stanza>`. It allows to
-  install mlds as well as asset files, and specify where they are in the
+  install ``mld`` files as well as asset files, and specify where they are in the
   hierarchy of documentation (with the ``as`` and ``with_prefix`` keyword). Note
   that dune supports installing those files, but not yet building the
   documentation with a non-flat hierarchy, or with non-mld files.

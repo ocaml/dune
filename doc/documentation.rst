@@ -100,8 +100,14 @@ All ``.mld`` files attached to a package will be included in the generated
 
 All files in the ``doc/`` folder will be attached to the inferred package. The
 hierarchy between them will be preserved, relative to ``doc/`` considered as the
-root. (Note that dune supports installing those files, but not building the
-documentation with a non-flat hierarchy, or with non-mld files.)
+root.
+
+.. note::
+
+   ``dune`` does not yet support building the documentation with a non-flat
+   hierarchy, or with non-mld files. However, it supports installing those files
+   following a convention, so that ``odoc_driver`` can build the docs with
+   hierarchy and asset files.
 
 
 Package Entry Page

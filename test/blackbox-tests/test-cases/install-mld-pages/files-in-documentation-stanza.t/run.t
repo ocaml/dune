@@ -45,8 +45,8 @@ files are included in the doc generation.
   Warning: Dune does not yet support building documentation for assets, and
   mlds in a non-flat hierarchy. Ignoring img1.png, img2.png,
   examples/example1/index.mld, examples/example2/index.mld, examples/index.mld,
-  examples/summary.mld, notes.mld, index.mld, tutorial/tuto1.mld,
-  tutorial/tuto2.mld.
+  examples/summary.mld, tutorial/tuto1.mld, tutorial/tuto2.mld.
   $ ls _build/default/_doc/_html/testing_mld
   db.js
   index.html
+  notes.html

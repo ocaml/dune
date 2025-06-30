@@ -1254,19 +1254,9 @@ let pkg_mlds sctx pkg =
   let* pkgs = Dune_load.packages () in
   if Package.Name.Map.mem pkgs pkg
   then
-    Packages.mlds sctx pkg
-    >>| List.filter_map ~f:(fun mld ->
-      match Path.Local.explode mld.Doc_sources.in_doc with
-      | [ name ] when String.equal name ".mld" ->
-        Some (Path.build mld.path, Filename.remove_extension name)
-      | _ ->
-        User_warning.emit
-          [ Pp.textf
-              "Dune does not yet support building documentation for assets, and mlds in \
-               a non-flat hierarchy. Ignoring %s."
-              (Path.Local.to_string mld.in_doc)
-          ];
-        None)
+    let+ res, warnings = Odoc.mlds sctx pkg in
+    let () = Odoc.report_warnings warnings in
+    List.map ~f:(fun (p, name) -> Path.build p, name) res
   else (
     let ctx = Super_context.context sctx in
     ext_package_mlds ctx pkg)

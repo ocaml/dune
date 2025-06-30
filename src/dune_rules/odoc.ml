@@ -673,20 +673,30 @@ let check_mlds_no_dupes ~pkg ~mlds =
       ]
 ;;
 
+let report_warnings warnings =
+  match warnings with
+  | [] -> ()
+  | _ :: _ ->
+    let l =
+      warnings
+      |> List.map ~f:(fun (mld : Doc_sources.mld) -> Path.Local.to_string mld.in_doc)
+      |> String.concat ~sep:", "
+    in
+    User_warning.emit
+      [ Pp.textf
+          "Dune does not yet support building documentation for assets, and mlds in a \
+           non-flat hierarchy. Ignoring %s."
+          l
+      ]
+;;
+
 let mlds sctx pkg =
-  Packages.mlds sctx pkg
-  >>| List.filter_map ~f:(fun mld ->
-    match Path.Local.explode mld.Doc_sources.in_doc with
+  let+ mlds = Packages.mlds sctx pkg in
+  List.partition_map mlds ~f:(fun (mld : Doc_sources.mld) ->
+    match Path.Local.explode mld.in_doc with
     | [ name ] when String.equal name ".mld" ->
-      Some (mld.path, Filename.remove_extension name)
-    | _ ->
-      User_warning.emit
-        [ Pp.textf
-            "Dune does not yet support building documentation for assets, and mlds in a \
-             non-flat hierarchy. Ignoring %s."
-            (Path.Local.to_string mld.in_doc)
-        ];
-      None)
+      Left (mld.path, Filename.remove_extension name)
+    | _ -> Right mld)
 ;;
 
 let odoc_artefacts sctx target =
@@ -695,7 +705,7 @@ let odoc_artefacts sctx target =
   match target with
   | Pkg pkg ->
     let+ mlds =
-      let+ mlds = mlds sctx pkg in
+      let+ mlds, _ = mlds sctx pkg in
       let mlds = check_mlds_no_dupes ~pkg ~mlds in
       Filename.Map.update mlds "index" ~f:(function
         | None -> Some (Paths.gen_mld_dir ctx pkg ++ "index.mld", "index")
@@ -943,7 +953,8 @@ let package_mlds =
       ~input:(module Super_context.As_memo_key.And_package_name)
       (fun (sctx, pkg) ->
          Rules.collect (fun () ->
-           let* mlds = mlds sctx pkg in
+           let* mlds, warnings = mlds sctx pkg in
+           report_warnings warnings;
            let mlds = check_mlds_no_dupes ~pkg ~mlds in
            let ctx = Super_context.context sctx in
            if Filename.Map.mem mlds "index"

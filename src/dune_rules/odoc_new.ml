@@ -1257,7 +1257,7 @@ let pkg_mlds sctx pkg =
     Packages.mlds sctx pkg
     >>| List.filter_map ~f:(fun mld ->
       match Path.Local.explode mld.Doc_sources.in_doc with
-      | [ name ] when Filename.extension name = ".mld" ->
+      | [ name ] when String.equal name ".mld" ->
         Some (Path.build mld.path, Filename.remove_extension name)
       | _ ->
         User_warning.emit
@@ -1278,13 +1278,13 @@ let check_mlds_no_dupes ~pkg ~mlds =
     |> Filename.Map.of_list
   with
   | Ok m -> m
-  | Error (_, p1, p2) ->
+  | Error (_, (p1, _name1), (p2, _name2)) ->
     User_error.raise
       [ Pp.textf
           "Package %s has two mld's with the same basename %s, %s"
           (Package.Name.to_string pkg)
-          (Path.to_string_maybe_quoted (fst p1))
-          (Path.to_string_maybe_quoted (fst p2))
+          (Path.to_string_maybe_quoted p1)
+          (Path.to_string_maybe_quoted p2)
       ]
 ;;
 

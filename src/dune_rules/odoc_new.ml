@@ -1295,7 +1295,9 @@ let pkg_artifacts sctx index pkg =
     check_mlds_no_dupes ~pkg ~mlds
   in
   let artifacts =
-    let mlds_noindex = String.Map.filteri ~f:(fun i _ -> i <> "index") mlds_map in
+    let mlds_noindex =
+      String.Map.filteri ~f:(fun i _ -> not (String.equal i "index")) mlds_map
+    in
     String.Map.values mlds_noindex
     |> List.map ~f:(fun (path, name) -> Artifact.external_mld ctx index path ~name)
   in

@@ -693,7 +693,7 @@ let odoc_artefacts sctx target =
     let+ mlds =
       let+ mlds = mlds sctx pkg in
       let mlds = check_mlds_no_dupes ~pkg ~mlds in
-      Filename.Map.update mlds "index.mld" ~f:(function
+      Filename.Map.update mlds "index" ~f:(function
         | None -> Some (Paths.gen_mld_dir ctx pkg ++ "index.mld", "index")
         | Some _ as s -> s)
     in
@@ -942,7 +942,7 @@ let package_mlds =
            let* mlds = mlds sctx pkg in
            let mlds = check_mlds_no_dupes ~pkg ~mlds in
            let ctx = Super_context.context sctx in
-           if Filename.Map.mem mlds "index.mld"
+           if Filename.Map.mem mlds "index"
            then Memo.return mlds
            else (
              let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
@@ -952,7 +952,7 @@ let package_mlds =
                  sctx
                  (Action_builder.write_file gen_mld (default_index ~pkg entry_modules))
              in
-             Filename.Map.set mlds "index" (gen_mld, "index.mld"))))
+             Filename.Map.set mlds "index" (gen_mld, "index"))))
   in
   fun sctx ~pkg -> Memo.exec memo (sctx, pkg)
 ;;

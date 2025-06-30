@@ -1255,8 +1255,8 @@ let pkg_mlds sctx pkg =
   if Package.Name.Map.mem pkgs pkg
   then
     Packages.mlds sctx pkg
-    >>| List.filter_map ~f:(fun (mld : Doc_sources.mld) ->
-      match Path.Local.explode mld.in_doc with
+    >>| List.filter_map ~f:(fun mld ->
+      match Path.Local.explode mld.Doc_sources.in_doc with
       | [ name ] when Filename.extension name = ".mld" ->
         Some (Path.build mld.path, Filename.remove_extension name)
       | _ ->
@@ -1295,11 +1295,11 @@ let pkg_artifacts sctx index pkg =
     check_mlds_no_dupes ~pkg ~mlds
   in
   let artifacts =
-    let mlds_noindex = String.Map.filteri ~f:(fun i _ -> i <> "index.mld") mlds_map in
+    let mlds_noindex = String.Map.filteri ~f:(fun i _ -> i <> "index") mlds_map in
     String.Map.values mlds_noindex
     |> List.map ~f:(fun (path, name) -> Artifact.external_mld ctx index path ~name)
   in
-  let index_file = String.Map.find mlds_map "index.mld" in
+  let index_file = String.Map.find mlds_map "index" in
   Option.map ~f:fst index_file, artifacts
 ;;
 

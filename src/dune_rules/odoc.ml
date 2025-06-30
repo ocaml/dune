@@ -680,6 +680,7 @@ let report_warnings warnings =
     let l =
       warnings
       |> List.map ~f:(fun (mld : Doc_sources.mld) -> Path.Local.to_string mld.in_doc)
+      |> List.sort ~compare:String.compare
       |> String.concat ~sep:", "
     in
     User_warning.emit

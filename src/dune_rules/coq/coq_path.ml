@@ -7,7 +7,7 @@
 
 open Import
 
-type t =
+type legacy =
   { name : Coq_lib_name.t
   ; path : Path.t
   ; vo : Path.t list
@@ -16,12 +16,33 @@ type t =
   ; stdlib : bool
   }
 
-let name t = t.name
-let path t = t.path
-let vo t = t.vo
-let cmxs t = t.cmxs
-let cmxs_directories t = t.cmxs_directories
-let stdlib t = t.stdlib
+type t =
+  | Coq_package of Coq_package.t
+  | Legacy of legacy
+
+let name = function
+  | Legacy t -> t.name
+  | Coq_package t -> Coq_package.name t
+
+let path = function
+  | Legacy t -> t.path
+  | Coq_package t -> Coq_package.path t
+
+let vo = function
+  | Legacy t -> t.vo
+  | Coq_package t -> Coq_package.vo t
+
+let cmxs = function
+  | Legacy t -> t.cmxs
+  | Coq_package _ -> []
+
+let cmxs_directories = function
+  | Legacy t -> t.cmxs_directories
+  | Coq_package _ -> []
+
+let stdlib = function
+  | Legacy t -> t.stdlib
+  | Coq_package _ -> false
 
 let config_path_exn coq_config key =
   Coq_config.by_name coq_config key
@@ -56,22 +77,31 @@ let config_path ~default coq_config key =
 ;;
 
 let build_user_contrib ~cmxs ~cmxs_directories ~vo ~path ~name =
-  { name; path; cmxs; cmxs_directories; vo; stdlib = false }
+  Legacy { name; path; cmxs; cmxs_directories; vo; stdlib = false }
 ;;
+
+let path_pp fmt p = Format.fprintf fmt "%s" (Path.to_string p)
 
 (* Scanning todos: blacklist? *)
 let scan_vo_cmxs ~dir dir_contents =
   let f (d, kind) =
     match kind with
+    | (File_kind.S_REG | S_LNK) when String.equal d Coq_package.rocq_package_file ->
+      List.Right (Path.relative dir d)
     (* Skip some files as Coq does, for now files with '-' *)
-    | _ when String.contains d '-' -> List.Skip
+    | _ when String.contains d '-' -> Skip
     | (File_kind.S_REG | S_LNK) when Filename.check_suffix d ".cmxs" ->
-      Left (Path.relative dir d)
+      Left (List.Left (Path.relative dir d))
     | (File_kind.S_REG | S_LNK) when Filename.check_suffix d ".vo" ->
+      Left (Right (Path.relative dir d))
+    | (File_kind.S_REG | S_LNK) when String.equal d Coq_package.rocq_package_file ->
       Right (Path.relative dir d)
-    | _ -> Skip
+    | _ ->
+      Skip
   in
-  List.filter_partition_map ~f dir_contents
+  let objs, rocq_pkg = List.filter_partition_map ~f dir_contents in
+  let cmxs, vo = List.filter_partition_map ~f:Fun.id objs in
+  cmxs, vo, rocq_pkg
 ;;
 
 (* Note this will only work for absolute paths *)
@@ -135,7 +165,7 @@ let scan_path ~f ~acc ~prefix dir =
     cmxs *)
 let scan_stdlib_plugins coqcorelib : (Path.t list * Path.t) list Memo.t =
   let f ~dir ~prefix:() ~subresults dir_contents =
-    let cmxs, _ = scan_vo_cmxs ~dir dir_contents in
+    let cmxs, _, _ = scan_vo_cmxs ~dir dir_contents in
     let res =
       match cmxs with
       | [] -> subresults
@@ -152,7 +182,11 @@ let scan_stdlib_plugins coqcorelib : (Path.t list * Path.t) list Memo.t =
     in [Dir_status] *)
 let scan_user_path root_path =
   let f ~dir ~prefix ~subresults dir_contents =
-    let cmxs, vo = scan_vo_cmxs ~dir dir_contents in
+    let cmxs, vo, pkg_file = scan_vo_cmxs ~dir dir_contents in
+    let () = match pkg_file with
+      | [] -> ()
+      | pkg_file :: _ -> Format.eprintf "Yes: %a@\n%!" path_pp pkg_file
+    in
     let cmxs_directories = if not (List.is_empty cmxs) then [ dir ] else [] in
     let cmxs_r, cdir_r, vo_r = retrieve_vo_cmxs subresults in
     let cmxs, cmxs_directories, vo =
@@ -166,7 +200,7 @@ let scan_user_path root_path =
 
 let scan_vo root_path =
   let f ~dir ~prefix:() ~subresults dir_contents =
-    let _, vo = scan_vo_cmxs ~dir dir_contents in
+    let _, vo, _ = scan_vo_cmxs ~dir dir_contents in
     Memo.return (vo @ subresults)
   in
   let acc _ _ = () in
@@ -206,7 +240,7 @@ let of_coq_install coqc =
     let* vo = scan_vo coqlib_path in
     let cmxs, cmxs_directories = List.split stdlib_plugs in
     let cmxs = List.concat cmxs in
-    let stdlib =
+    let stdlib = Legacy
       { name = Coq_lib_name.stdlib
       ; path = Path.relative coqlib_path "theories"
       ; vo

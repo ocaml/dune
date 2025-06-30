@@ -12,7 +12,10 @@ open Import
 
 (** This module is similar to [Dir_contents] but for globally installed libs *)
 
-type t
+type legacy
+type t =
+  | Coq_package of Coq_package.t
+  | Legacy of legacy
 
 val name : t -> Coq_lib_name.t
 val path : t -> Path.t

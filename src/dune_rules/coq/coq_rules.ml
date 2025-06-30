@@ -340,10 +340,12 @@ let directories_of_lib ~sctx lib =
   let name = Coq_lib.name lib in
   match lib with
   | Coq_lib.Dune lib ->
-    let dir = Coq_lib.Dune.src_root lib in
-    let* dir_contents = Dir_contents.get sctx ~dir in
-    let+ coq_sources = Dir_contents.coq dir_contents in
-    Coq_sources.directories coq_sources ~name
+    (match Coq_lib.Dune.src_root lib with
+    | Left dir ->
+        let* dir_contents = Dir_contents.get sctx ~dir in
+        let+ coq_sources = Dir_contents.coq dir_contents in
+        Coq_sources.directories coq_sources ~name
+    | Right _ -> Memo.return [] (* TODO: Ok? *))
   | Coq_lib.Legacy _ ->
     (* TODO: we could return this if we don't restrict ourselves to
        Path.Build.t here.
@@ -784,10 +786,12 @@ let coq_modules_of_theory ~sctx lib =
   match lib with
   | Coq_lib.Legacy lib -> Memo.return @@ Coq_lib.Legacy.vo lib
   | Coq_lib.Dune lib ->
-    let dir = Coq_lib.Dune.src_root lib in
-    let* dir_contents = Dir_contents.get sctx ~dir in
-    let+ coq_sources = Dir_contents.coq dir_contents in
-    Coq_sources.library coq_sources ~name |> List.rev_map ~f:Coq_module.source
+    match Coq_lib.Dune.src_root lib with
+    | Left dir ->
+      let* dir_contents = Dir_contents.get sctx ~dir in
+      let+ coq_sources = Dir_contents.coq dir_contents in
+      Coq_sources.library coq_sources ~name |> List.rev_map ~f:Coq_module.source
+    | Right sources -> Memo.return sources
 ;;
 
 let source_rule ~sctx theories =
@@ -947,6 +951,11 @@ let extraction_context
   theories_deps, ml_flags, mlpack_rule
 ;;
 
+let setup_rocq_package_rule ~sctx ~dir ~wrapper_name s : unit Memo.t =
+  let dst = Path.Build.relative dir (Coq_package.rocq_package_file ^ "." ^ wrapper_name) in
+  Super_context.add_rule sctx ~dir
+    (Action_builder.write_file dst (Coq_package.write (Coq_package.of_stanza s)))
+
 let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
   let* scope = Scope.DB.find_by_dir dir in
   let coq_lang_version = s.buildable.coq_lang_version in
@@ -1020,8 +1029,10 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
              ~ml_flags
              ~coq_lang_version
              ~theory_dirs)
-  (* And finally the coqdoc rules *)
+  (* coqdoc rules *)
   >>> setup_coqdoc_rules ~sctx ~dir ~theories_deps s coq_modules
+  (* And finally the rocq-package rule *)
+  >>> setup_rocq_package_rule ~sctx ~dir ~wrapper_name s
 ;;
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) coq_module =
@@ -1131,8 +1142,14 @@ let install_rules ~sctx ~dir s =
       else coq_plugins_install_rules ~scope ~package ~dst_dir s
     in
     let wrapper_name = Coq_lib_name.wrapper name in
-    let to_path f = Path.reach ~from:(Path.build dir) (Path.build f) in
     let to_dst f = Path.Local.to_string @@ Path.Local.relative dst_dir f in
+    let* rocq_package_install_rules =
+      let src = Path.Build.relative dir (Coq_package.rocq_package_file ^ "." ^ wrapper_name) in
+      let dst = to_dst Coq_package.rocq_package_file in
+      let entry = Install.Entry.make Section.Lib_root ~dst src ~kind:`File in
+      Memo.return (Install.Entry.Sourced.create ~loc entry)
+    in
+    let to_path f = Path.reach ~from:(Path.build dir) (Path.build f) in
     let make_entry (orig_file : Path.Build.t) (dst_file : string) =
       let entry =
         Install.Entry.make Section.Lib_root ~dst:(to_dst dst_file) orig_file ~kind:`File
@@ -1156,7 +1173,7 @@ let install_rules ~sctx ~dir s =
       let vfile = Coq_module.source vfile |> Path.as_in_build_dir_exn in
       let vfile_dst = to_path vfile in
       make_entry vfile vfile_dst :: obj_files)
-    |> List.rev_append coq_plugins_install_rules
+    |> List.rev_append (rocq_package_install_rules :: coq_plugins_install_rules)
 ;;
 
 let setup_coqpp_rules ~sctx ~dir ({ loc; modules } : Coq_stanza.Coqpp.t) =

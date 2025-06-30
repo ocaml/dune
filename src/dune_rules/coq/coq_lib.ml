@@ -73,7 +73,7 @@ and Dune : sig
     ; implicit : bool (* Only useful for the stdlib *)
     ; use_stdlib : bool
       (* whether this theory uses the stdlib, eventually set to false for all libs *)
-    ; src_root : Path.Build.t
+    ; src_root : (Path.Build.t, Path.t list) Either.t
     ; obj_root : Path.Build.t
     ; theories : (Loc.t * R.t) list Resolve.t
     ; libraries : (Loc.t * Lib.t) list Resolve.t
@@ -82,7 +82,7 @@ and Dune : sig
     }
 
   val to_dyn : t -> Dyn.t
-  val src_root : t -> Path.Build.t
+  val src_root : t -> (Path.Build.t, Path.t list) Either.t
   val obj_root : t -> Path.Build.t
   val implicit : t -> bool
 
@@ -96,7 +96,7 @@ end = struct
     ; implicit : bool (* Only useful for the stdlib *)
     ; use_stdlib : bool
       (* whether this theory uses the stdlib, eventually set to false for all libs *)
-    ; src_root : Path.Build.t
+    ; src_root : (Path.Build.t, Path.t list) Either.t
     ; obj_root : Path.Build.t
     ; theories : (Loc.t * R.t) list Resolve.t
     ; libraries : (Loc.t * Lib.t) list Resolve.t
@@ -125,7 +125,7 @@ end = struct
         ; "id", Id.to_dyn id
         ; "implicit", Bool.to_dyn implicit
         ; "use_stdlib", Bool.to_dyn use_stdlib
-        ; "src_root", Path.Build.to_dyn src_root
+        ; "src_root", Either.to_dyn Path.Build.to_dyn (list Path.to_dyn) src_root
         ; "obj_root", Path.Build.to_dyn obj_root
         ; "theories", Resolve.to_dyn (Dyn.list (Dyn.pair Loc.to_dyn R.to_dyn)) theories
         ; ( "libraries"
@@ -458,23 +458,23 @@ module DB = struct
       Resolve.Memo.List.map theories ~f
     ;;
 
-    let create_from_stanza_impl (coq_db, db, dir, (s : Coq_stanza.Theory.t)) =
+    let create_from_coq_package_impl (coq_db, db, dir, (s : Coq_package.meta)) =
       let name = s.name in
       let id = Id.create ~path:(Path.build dir) ~name in
-      let coq_lang_version = s.buildable.coq_lang_version in
+      let coq_lang_version = s.coq_lang_version in
       let open Memo.O in
       let boot_id = if s.boot then None else boot_library_id coq_db in
       let allow_private_deps = Option.is_none s.package in
-      let use_stdlib = s.buildable.use_stdlib in
+      let use_stdlib = s.use_stdlib in
       let+ libraries =
-        resolve_plugins ~db ~allow_private_deps ~name:(snd name) s.buildable.plugins
+        resolve_plugins ~db ~allow_private_deps ~name:(snd name) s.plugins
       and+ theories =
         resolve_theories
           ~coq_db
           ~coq_lang_version
           ~allow_private_deps
           ~boot_id
-          s.buildable.theories
+          s.theories
       and+ boot = resolve_boot ~coq_lang_version ~coq_db boot_id in
       let theories = maybe_add_boot ~boot ~use_stdlib ~is_boot:s.boot theories in
       let map_error x =
@@ -483,13 +483,13 @@ module DB = struct
       in
       let theories = map_error theories in
       let libraries = map_error libraries in
-      { Dune.loc = s.buildable.loc
+      { Dune.loc = s.loc
       ; boot_id
       ; id
       ; use_stdlib
       ; implicit = s.boot
       ; obj_root = dir
-      ; src_root = dir
+      ; src_root = Left dir
       ; theories
       ; libraries
       ; theories_closure =
@@ -501,8 +501,9 @@ module DB = struct
     ;;
 
     module Input = struct
-      type nonrec t = t * Lib.DB.t * Path.Build.t * Coq_stanza.Theory.t
+      type nonrec t = t * Lib.DB.t * Path.Build.t * Coq_package.meta
 
+      (* TODO: does it makes sense to do phys_equal on Coq_package.meta? *)
       let equal (coq_db, ml_db, path, stanza) (coq_db', ml_db', path', stanza') =
         phys_equal coq_db coq_db'
         && phys_equal ml_db ml_db'
@@ -520,14 +521,16 @@ module DB = struct
         ~human_readable_description:(fun (_, _, path, theory) ->
           Id.pp (Id.create ~path:(Path.build path) ~name:theory.name))
         ~input:(module Input)
-        create_from_stanza_impl
+        create_from_coq_package_impl
     ;;
 
-    let create_from_stanza coq_db db dir stanza = Memo.exec memo (coq_db, db, dir, stanza)
+    let create_from_coq_package coq_db db dir pkg = Memo.exec memo (coq_db, db, dir, pkg)
+
+    let create_from_stanza coq_db db dir stanza = Memo.exec memo (coq_db, db, dir, Coq_package.of_stanza stanza)
 
     (* XXX: Memoize? This is pretty cheap so not sure worth the cost,
        still called too much I have observed, suspicious! *)
-    let create_from_coqpath ~boot_id cp =
+    let create_from_coqpath_legacy ~boot_id cp =
       let name = Coq_path.name cp in
       let installed_root = Coq_path.path cp in
       let implicit = Coq_path.stdlib cp in
@@ -535,8 +538,16 @@ module DB = struct
       let vo = Coq_path.vo cp in
       let id = Id.create ~path:installed_root ~name:(Loc.none, name) in
       Resolve.Memo.return
-        { Legacy.boot_id; id; implicit; installed_root; vo; cmxs_directories }
+        (Legacy { Legacy.boot_id; id; implicit; installed_root; vo; cmxs_directories })
     ;;
+
+    let create_from_coqpath coq_db db dir = function
+    | Coq_path.Coq_package pkg ->
+      Memo.map (create_from_coq_package coq_db db dir (Coq_package.meta pkg)) ~f:(fun dune ->
+      Resolve.return (Dune dune))
+    | Coq_path.Legacy _ as cp ->
+        let boot_id = coq_db.boot_id in
+        create_from_coqpath_legacy ~boot_id cp
 
     module Resolve_result_no_redirect = struct
       (** In our second iteration, we remove all the redirects *)
@@ -594,10 +605,9 @@ module DB = struct
         let+ (_ : (Loc.t * lib) list) = theory.theories in
         Dune theory
       | Found_path cp ->
-        let open Resolve.Memo.O in
-        let boot_id = coq_db.boot_id in
-        let+ theory = create_from_coqpath ~boot_id cp in
-        Legacy theory
+        let db = assert false in
+        let dir = assert false in
+        create_from_coqpath coq_db db dir cp
     ;;
 
     let resolve_boot coq_db ~coq_lang_version =

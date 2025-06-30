@@ -213,6 +213,12 @@ end = struct
       (Path.to_string_maybe_quoted (Path.build dir))
   ;;
 
+  let mlds ~sctx ~dir ~dune_file ~files =
+    Memo.lazy_ (fun () ->
+      let* expander = Super_context.expander sctx ~dir in
+      Doc_sources.build_mlds_map dune_file ~dir ~files expander)
+  ;;
+
   let make_standalone sctx st_dir ~dir (d : Dune_file.t) =
     let human_readable_description () = human_readable_description dir in
     { Standalone_or_root.contents =
@@ -249,11 +255,7 @@ end = struct
                     ~lookup_vlib
                     ~dirs)
           in
-          let mlds =
-            Memo.lazy_ (fun () ->
-              let* expander = Super_context.expander sctx ~dir in
-              Doc_sources.build_mlds_map d ~dir ~files expander)
-          in
+          let mlds = mlds ~sctx ~dir ~dune_file:d ~files in
           { Standalone_or_root.root =
               { kind = Standalone
               ; dir
@@ -347,11 +349,7 @@ end = struct
              Memo.lazy_ (fun () ->
                stanzas >>| Coq_sources.of_dir ~dir ~dirs ~include_subdirs)
            in
-           let mlds =
-             Memo.lazy_ (fun () ->
-               let* expander = Super_context.expander sctx ~dir in
-               Doc_sources.build_mlds_map dune_file ~dir ~files expander)
-           in
+           let mlds = mlds ~sctx ~dir ~dune_file ~files in
            let subdirs =
              List.map subdirs ~f:(fun { Source_file_dir.dir; path_to_root = _; files } ->
                { kind = Group_part

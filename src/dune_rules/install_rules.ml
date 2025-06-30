@@ -488,12 +488,12 @@ end = struct
         | Documentation.T stanza ->
           Dir_contents.get sctx ~dir
           >>= Dir_contents.mlds ~stanza
-          >>| List.rev_map ~f:(fun mld ->
+          >>| List.rev_map ~f:(fun (mld : Doc_sources.mld) ->
             Install.Entry.make
               ~kind:`File
-              ~dst:(sprintf "odoc-pages/%s" (Path.Build.basename mld))
+              ~dst:(sprintf "odoc-pages/%s" (Path.Local.to_string mld.in_doc))
               Section.Doc
-              mld
+              mld.path
             |> Install.Entry.Sourced.create ~loc:stanza.loc)
         | Plugin.T t -> Plugin_rules.install_rules ~sctx ~package_db ~dir t
         | _ -> Memo.return []

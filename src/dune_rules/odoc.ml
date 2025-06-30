@@ -203,20 +203,22 @@ let odoc_ext = ".odoc"
 module Mld : sig
   type t
 
-  val create : Path.Build.t -> t
+  val create : path:Path.Build.t -> name:string -> t
   val odoc_file : doc_dir:Path.Build.t -> t -> Path.Build.t
   val odoc_input : t -> Path.Build.t
 end = struct
-  type t = Path.Build.t
+  type t =
+    { path : Path.Build.t
+    ; name : string
+    }
 
-  let create p = p
+  let create ~path ~name = { path; name }
 
-  let odoc_file ~doc_dir t =
-    let t = Filename.remove_extension (Path.Build.basename t) in
-    Path.Build.relative doc_dir (sprintf "page-%s%s" t odoc_ext)
+  let odoc_file ~doc_dir { name; _ } =
+    Path.Build.relative doc_dir (sprintf "page-%s%s" name odoc_ext)
   ;;
 
-  let odoc_input t = t
+  let odoc_input { path; _ } = path
 end
 
 module Flags = struct
@@ -653,8 +655,7 @@ let create_odoc ctx ~target odoc_file =
 
 let check_mlds_no_dupes ~pkg ~mlds =
   match
-    List.rev_map mlds ~f:(fun mld ->
-      Filename.remove_extension (Path.Build.basename mld), mld)
+    List.rev_map mlds ~f:(fun ((_path, mld_name) as mld) -> mld_name, mld)
     |> Filename.Map.of_list
   with
   | Ok m -> m
@@ -663,9 +664,25 @@ let check_mlds_no_dupes ~pkg ~mlds =
       [ Pp.textf
           "Package %s has two mld's with the same basename %s, %s"
           (Package.Name.to_string pkg)
-          (Path.to_string_maybe_quoted (Path.build p1))
-          (Path.to_string_maybe_quoted (Path.build p2))
+          (Path.to_string_maybe_quoted (Path.build (fst p1)))
+          (Path.to_string_maybe_quoted (Path.build (fst p2)))
       ]
+;;
+
+let mlds sctx pkg =
+  Packages.mlds sctx pkg
+  >>| List.filter_map ~f:(fun mld ->
+    match Path.Local.explode mld.Doc_sources.in_doc with
+    | [ name ] when Filename.extension name = ".mld" ->
+      Some (mld.path, Filename.remove_extension name)
+    | _ ->
+      User_warning.emit
+        [ Pp.textf
+            "Dune does not yet support building documentation for assets, and mlds in a \
+             non-flat hierarchy. Ignoring %s."
+            (Path.Local.to_string mld.in_doc)
+        ];
+      None)
 ;;
 
 let odoc_artefacts sctx target =
@@ -674,14 +691,14 @@ let odoc_artefacts sctx target =
   match target with
   | Pkg pkg ->
     let+ mlds =
-      let+ mlds = Packages.mlds sctx pkg in
+      let+ mlds = mlds sctx pkg in
       let mlds = check_mlds_no_dupes ~pkg ~mlds in
-      Filename.Map.update mlds "index" ~f:(function
-        | None -> Some (Paths.gen_mld_dir ctx pkg ++ "index.mld")
+      Filename.Map.update mlds "index.mld" ~f:(function
+        | None -> Some (Paths.gen_mld_dir ctx pkg ++ "index.mld", "index")
         | Some _ as s -> s)
     in
-    Filename.Map.to_list_map mlds ~f:(fun _ mld ->
-      Mld.create mld |> Mld.odoc_file ~doc_dir:dir |> create_odoc ctx ~target)
+    Filename.Map.to_list_map mlds ~f:(fun _ (path, name) ->
+      Mld.create ~path ~name |> Mld.odoc_file ~doc_dir:dir |> create_odoc ctx ~target)
   | Lib lib ->
     let info = Lib.Local.info lib in
     let obj_dir = Lib_info.obj_dir info in
@@ -922,10 +939,10 @@ let package_mlds =
       ~input:(module Super_context.As_memo_key.And_package_name)
       (fun (sctx, pkg) ->
          Rules.collect (fun () ->
-           let* mlds = Packages.mlds sctx pkg in
+           let* mlds = mlds sctx pkg in
            let mlds = check_mlds_no_dupes ~pkg ~mlds in
            let ctx = Super_context.context sctx in
-           if Filename.Map.mem mlds "index"
+           if Filename.Map.mem mlds "index.mld"
            then Memo.return mlds
            else (
              let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
@@ -935,7 +952,7 @@ let package_mlds =
                  sctx
                  (Action_builder.write_file gen_mld (default_index ~pkg entry_modules))
              in
-             Filename.Map.set mlds "index" gen_mld)))
+             Filename.Map.set mlds "index" (gen_mld, "index.mld"))))
   in
   fun sctx ~pkg -> Memo.exec memo (sctx, pkg)
 ;;
@@ -947,10 +964,10 @@ let setup_package_odoc_rules sctx ~pkg =
      back to a package name here. Need to try and change that one day. *)
   let* odocs =
     Filename.Map.values mlds
-    |> Memo.parallel_map ~f:(fun mld ->
+    |> Memo.parallel_map ~f:(fun (path, name) ->
       compile_mld
         sctx
-        (Mld.create mld)
+        (Mld.create ~path ~name)
         ~pkg
         ~doc_dir:(Paths.odocs ctx (Pkg pkg))
         ~includes:(Action_builder.return []))

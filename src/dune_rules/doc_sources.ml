@@ -6,6 +6,23 @@ type mld =
   ; in_doc : Path.Local.t
   }
 
+module T = struct
+  type t = mld
+
+  let to_dyn { path; in_doc } =
+    Dyn.Tuple [ Path.Build.to_dyn path; Path.Local.to_dyn in_doc ]
+  ;;
+
+  let compare x y =
+    let open Ordering.O in
+    let= () = Path.Build.compare x.path y.path in
+    Path.Local.compare x.in_doc y.in_doc
+  ;;
+end
+
+module Map = Map.Make (T)
+module Set = Set.Make (T) (Map)
+
 let of_file_bindings fbs =
   List.map fbs ~f:(fun file_binding ->
     let path = File_binding.Expanded.src file_binding in
@@ -61,5 +78,6 @@ let build_mlds_map stanzas ~dir ~files expander =
       >>| of_file_bindings
     in
     let mlds = from_mld_files @ from_files in
+    let mlds = mlds |> Set.of_list |> Set.to_list in
     doc, mlds)
 ;;

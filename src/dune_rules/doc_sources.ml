@@ -64,8 +64,7 @@ let build_mlds_map stanzas ~dir ~files expander =
   let mlds =
     lazy
       (Filename.Set.fold files ~init:Filename.Map.empty ~f:(fun fn acc ->
-         (* TODO this doesn't handle [.foo.mld] correctly *)
-         match String.lsplit2 fn ~on:'.' with
+         match String.rsplit2 fn ~on:'.' with
          | Some (_, "mld") -> Filename.Map.set acc fn fn
          | _ -> acc))
   in

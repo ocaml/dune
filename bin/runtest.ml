@@ -150,7 +150,7 @@ let runtest_term =
         Alias.in_dir ~name:Dune_rules.Alias.runtest ~recursive:true ~contexts dir)
     |> Action_builder.all_unit
   in
-  Build_cmd.run_build_command ~common ~config ~request
+  Build.run_build_command ~common ~config ~request
 ;;
 
 let commands =

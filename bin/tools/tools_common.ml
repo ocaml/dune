@@ -13,7 +13,7 @@ let dev_tool_build_target dev_tool =
 let build_dev_tool_directly common dev_tool =
   let open Fiber.O in
   let+ result =
-    Build_cmd.run_build_system ~common ~request:(fun _build_system ->
+    Build.run_build_system ~common ~request:(fun _build_system ->
       Action_builder.path (dev_tool_exe_path dev_tool))
   in
   match result with
@@ -23,7 +23,7 @@ let build_dev_tool_directly common dev_tool =
 
 let build_dev_tool_via_rpc dev_tool =
   let target = dev_tool_build_target dev_tool in
-  Build_cmd.build_via_rpc_server ~print_on_success:false ~targets:[ target ]
+  Build.build_via_rpc_server ~print_on_success:false ~targets:[ target ]
 ;;
 
 let lock_and_build_dev_tool ~common ~config dev_tool =

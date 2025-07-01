@@ -163,6 +163,8 @@ end = struct
     | Install_conf.T i ->
       let+ () = install_stanza_rules ~ctx_dir ~expander i in
       empty_none
+    (* There is probably something to do with documentation stanzas, as they
+       also generate install rules. *)
     | Plugin.T p ->
       let+ () = Plugin_rules.setup_rules ~sctx ~dir p in
       empty_none

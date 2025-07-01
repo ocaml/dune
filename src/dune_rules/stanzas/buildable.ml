@@ -23,6 +23,26 @@ type t =
   ; ctypes : Ctypes_field.t option
   }
 
+let decode_libraries ~allow_re_export =
+  field "libraries" (Lib_dep.L.decode ~allow_re_export) ~default:[]
+;;
+
+let decode_preprocess =
+  let+ preprocess, preprocessor_deps = Preprocess.preprocess_fields
+  and+ instrumentation = Preprocess.Instrumentation.instrumentation in
+  let init =
+    let f libname = Preprocess.With_instrumentation.Ordinary libname in
+    Module_name.Per_item.map preprocess ~f:(Preprocess.map ~f)
+  in
+  ( List.fold_left instrumentation ~init ~f:Preprocess.Per_module.add_instrumentation
+  , preprocessor_deps )
+;;
+
+let decode_ocaml_flags = Ocaml_flags.Spec.decode
+let decode_modules = Stanza_common.Modules_settings.decode
+let decode_lint = field "lint" Lint.decode ~default:Lint.default
+let decode_allow_overlapping = field_b "allow_overlapping_dependencies"
+
 let decode (for_ : for_) =
   let use_foreign =
     Dune_lang.Syntax.deleted_in

@@ -65,8 +65,8 @@ let decode (for_ : for_) =
       Foreign.Stubs.make ~loc ~language ~names ~flags :: foreign_stubs
   in
   let+ loc = loc
-  and+ preprocess, preprocessor_deps = Preprocess.preprocess_fields
-  and+ lint = field "lint" Lint.decode ~default:Lint.default
+  and+ preprocess, preprocessor_deps = decode_preprocess
+  and+ lint = decode_lint
   and+ foreign_stubs =
     multi_field
       "foreign_stubs"
@@ -93,7 +93,7 @@ let decode (for_ : for_) =
   and+ cxx_names_loc, cxx_names =
     located
       (only_in_library (field_o "cxx_names" (use_foreign >>> Ordered_set_lang.decode)))
-  and+ modules = Stanza_common.Modules_settings.decode
+  and+ modules = decode_modules
   and+ self_build_stubs_archive_loc, self_build_stubs_archive =
     located
       (only_in_library
@@ -106,8 +106,8 @@ let decode (for_ : for_) =
                ~extra_info:"Use the (foreign_archives ...) field instead."
              >>> enter (maybe string))))
   and+ libraries =
-    field "libraries" (Lib_dep.L.decode ~allow_re_export:in_library) ~default:[]
-  and+ flags = Ocaml_flags.Spec.decode
+    decode_libraries ~allow_re_export:in_library
+  and+ flags = decode_ocaml_flags
   and+ js_of_ocaml =
     field
       "js_of_ocaml"
@@ -119,24 +119,16 @@ let decode (for_ : for_) =
       (Dune_lang.Syntax.since Stanza.syntax (3, 17)
        >>> Js_of_ocaml.In_buildable.decode ~in_library ~mode:Wasm)
       ~default:Js_of_ocaml.In_buildable.default
-  and+ allow_overlapping_dependencies = field_b "allow_overlapping_dependencies"
+  and+ allow_overlapping_dependencies = decode_allow_overlapping
   and+ version = Dune_lang.Syntax.get_exn Stanza.syntax
   and+ ctypes =
     field_o
       "ctypes"
       (Dune_lang.Syntax.since Ctypes_field.syntax (0, 1) >>> Ctypes_field.decode)
-  and+ instrumentation = Preprocess.Instrumentation.instrumentation
   and+ empty_module_interface_if_absent =
     field_b
       "empty_module_interface_if_absent"
       ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
-  in
-  let preprocess =
-    let init =
-      let f libname = Preprocess.With_instrumentation.Ordinary libname in
-      Module_name.Per_item.map preprocess ~f:(Preprocess.map ~f)
-    in
-    List.fold_left instrumentation ~init ~f:Preprocess.Per_module.add_instrumentation
   in
   let foreign_stubs =
     foreign_stubs

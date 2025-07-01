@@ -1060,8 +1060,8 @@ module Library = struct
       List.partition_map_skip files ~f:(fun (src, fn) ->
         match src.kind with
         | C c ->
-          if keep_c c ~architecture then
-        (
+          if keep_c c ~architecture
+          then (
             let extra_flags =
               if String.is_prefix ~prefix:"blake3_" fn
               then (
@@ -1075,9 +1075,8 @@ module Library = struct
                 | _ -> [])
               else []
             in
-
-        `Left { flags = extra_flags @ c.flags; name = fn } )
-      else `Skip
+            `Left { flags = extra_flags @ c.flags; name = fn })
+          else `Skip
         | Ml | Mli | Mly | Mll -> `Middle fn
         | Header -> `Skip
         | Asm asm ->

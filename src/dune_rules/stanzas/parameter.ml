@@ -49,11 +49,35 @@ let to_library t =
 let decode =
   fields
     (let* stanza_loc = loc in
-     let wrapped = None in
-     (* Wrapped.Simple true in *)
      let* project = Dune_project.get_exn () in
      let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-     let+ buildable = Buildable.decode (Library (Option.map ~f:snd wrapped))
+     let+ buildable : Buildable.t =
+       let+ loc = loc
+       and+ libraries = Buildable.decode_libraries ~allow_re_export:true
+       and+ preprocess, preprocessor_deps = Buildable.decode_preprocess
+       and+ lint = Buildable.decode_lint
+       and+ flags = Buildable.decode_ocaml_flags
+       and+ allow_overlapping_dependencies = Buildable.decode_allow_overlapping
+       and+ modules = Buildable.decode_modules in
+       { Buildable.loc
+       ; modules
+       ; empty_module_interface_if_absent = false
+       ; libraries
+       ; foreign_archives = []
+       ; extra_objects = Foreign.Objects.empty
+       ; foreign_stubs = []
+       ; preprocess
+       ; preprocessor_deps
+       ; lint
+       ; flags
+       ; js_of_ocaml =
+           { js = Js_of_ocaml.In_buildable.default
+           ; wasm = Js_of_ocaml.In_buildable.default
+           }
+       ; allow_overlapping_dependencies
+       ; ctypes = None
+       }
+     (* let+ buildable = Buildable.decode Parameter  *)
      and+ name = field_o "name" Lib_name.Local.decode_loc
      and+ public = field_o "public_name" (Public_lib.decode ~allow_deprecated_names:false)
      and+ package = field_o "package" (located Stanza_common.Pkg.decode)

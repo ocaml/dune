@@ -1,8 +1,7 @@
 This project contains an (empty) package, which has some doc dependencies:
 
-  $ grep doc_depends -A 4 dune-project
+  $ grep documentation -A 4 dune-project
    (doc_depends
-    (libraries brr brr.poke)
     (packages
      (ppx_derivers (>= 1.0))
       brr)))
@@ -35,5 +34,4 @@ Now, let's check that it would install the correct `odoc-config.sexp` file
   $ dune build @install
 
   $ cat _build/install/default/doc/foo/odoc-config.sexp
-  (libraries brr brr.poke)
   (packages ppx_derivers brr)

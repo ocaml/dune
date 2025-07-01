@@ -5,8 +5,7 @@
 (package
  (name foo)
  (allow_empty)
- (doc_depends
-  (libraries brr brr.poke)
-  (packages
+ (documentation
+  (depends
    (ppx_derivers (>= 1.0))
     brr)))

@@ -213,7 +213,7 @@ let build_prog_via_rpc_if_necessary ~dir ~no_rebuild prog =
           Dune_lang.Dep_conf.File
             (Dune_lang.String_with_vars.make_text Loc.none (Path.to_string path))
         in
-        Build_cmd.build_via_rpc_server ~print_on_success:false ~targets:[ target ])
+        Build.build_via_rpc_server ~print_on_success:false ~targets:[ target ])
     in
     Path.to_absolute_filename path
   | Absolute ->

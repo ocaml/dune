@@ -85,7 +85,7 @@ let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
   Scheduler.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
-  Build_cmd.run_build_system ~common ~request
+  Build.run_build_system ~common ~request
   >>| fun (_ : (unit, [ `Already_reported ]) result) -> ()
 ;;
 

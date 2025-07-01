@@ -30,7 +30,7 @@ val hash : t -> int
 val set_has_opam_file : t -> opam_file -> t
 val version : t -> Package_version.t option
 val depends : t -> Package_dependency.t list
-val doc_depends : t -> Package_doc_dependency.t
+val documentation : t -> Package_documentation.t
 val conflicts : t -> Package_dependency.t list
 val depopts : t -> Package_dependency.t list
 val tags : t -> string list
@@ -60,7 +60,7 @@ val create
   -> version:Package_version.t option
   -> conflicts:Package_dependency.t list
   -> depends:Package_dependency.t list
-  -> doc_depends:Package_doc_dependency.t
+  -> documentation:Package_documentation.t
   -> depopts:Package_dependency.t list
   -> info:Package_info.t
   -> has_opam_file:opam_file

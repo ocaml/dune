@@ -96,6 +96,11 @@ let encode_fields
       }
   =
   let open Encoder in
+  let documentation =
+    match documentation with
+    | { url = None; packages = [] } -> None
+    | x -> Some x
+  in
   record_fields
     [ field_o "source" Source_kind.encode source
     ; field_l "authors" string (Option.value ~default:[] authors)
@@ -103,7 +108,7 @@ let encode_fields
     ; field_l "maintenance_intent" string (Option.value ~default:[] maintenance_intent)
     ; field_l "license" string (Option.value ~default:[] license)
     ; field_o "homepage" string homepage
-    ; field "documentation" Documentation.encode documentation
+    ; field_o "documentation" Documentation.encode documentation
     ; field_o "bug_reports" string bug_reports
     ]
 ;;

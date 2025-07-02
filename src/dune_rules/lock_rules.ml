@@ -7,6 +7,7 @@ module Spec = struct
     ; lock_dir : string
     ; packages : Dune_pkg.Local_package.t Package.Name.Map.t
     ; repos : Dune_pkg.Opam_repo.t list
+    ; env : Dune_pkg.Solver_env.t
     }
 
   let name = "lock"
@@ -14,7 +15,9 @@ module Spec = struct
   let bimap t _ g = { t with target = g t.target }
   let is_useful_to ~memoize = memoize
 
-  let encode { target; lock_dir; packages; repos } _encode_path encode_target : Sexp.t =
+  let encode { target; lock_dir; packages; repos; env } _encode_path encode_target
+    : Sexp.t
+    =
     let packages : Sexp.t =
       match Dune_pkg.Package_universe.dependency_digest packages with
       | None -> Atom "no packages"
@@ -26,10 +29,13 @@ module Spec = struct
         (List.map repos ~f:(fun repo ->
            repo |> Dune_pkg.Opam_repo.to_dyn |> Dyn.to_string |> fun s -> Sexp.Atom s))
     in
-    List [ encode_target target; Sexp.Atom lock_dir; packages; repos ]
+    let env : Sexp.t =
+      env |> Dune_pkg.Solver_env.to_dyn |> Dyn.to_string |> fun s -> Sexp.Atom s
+    in
+    List [ encode_target target; Sexp.Atom lock_dir; packages; repos; env ]
   ;;
 
-  let action { target; lock_dir; packages; repos } ~ectx:_ ~eenv:_ =
+  let action { target; lock_dir; packages; repos; env } ~ectx:_ ~eenv:_ =
     let open Fiber.O in
     let* () = Fiber.return () in
     Printf.eprintf
@@ -43,7 +49,6 @@ module Spec = struct
       Package.Name.Map.map packages ~f:Dune_pkg.Local_package.for_solver
     in
     (* TODO: add values to action *)
-    let env = Dune_pkg.Solver_env.empty in
     let pins = Package.Name.Map.empty in
     let constraints = [] in
     let selected_depopts = [] in
@@ -82,8 +87,8 @@ end
 
 module A = Action_ext.Make (Spec)
 
-let lock ~packages ~target ~lock_dir ~repos =
-  A.action { Spec.target; lock_dir; packages; repos }
+let lock ~packages ~target ~lock_dir ~repos ~env =
+  A.action { Spec.target; lock_dir; packages; repos; env }
   |> Action.Full.make ~can_go_in_shared_cache:false
   |> Action_builder.With_targets.return
   |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
@@ -145,7 +150,8 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
              ~repositories:
                [ Loc.none, Dune_pkg.Pkg_workspace.Repository.Name.of_string "upstream" ])
       in
-      let lock_rule = lock ~packages ~target ~lock_dir ~repos in
+      let env = Dune_pkg.Solver_env.with_defaults in
+      let lock_rule = lock ~packages ~target ~lock_dir ~repos ~env in
       rule ~loc:Loc.none lock_rule)
   in
   let directory_targets = Path.Build.Map.singleton target Loc.none in

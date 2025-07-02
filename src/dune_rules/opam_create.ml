@@ -115,7 +115,7 @@ let depends_field t =
       ~f:(fun (dep : Package_dependency.t) -> Package_name.equal pkg.name dep.name)
       depends
   in
-  let doc = Package.documentation t in
+  let doc = t |> Package.info |> Package_info.documentation in
   let doc_depends = doc.packages in
   let doc_depends =
     List.filter_map
@@ -156,7 +156,10 @@ let package_fields package ~project =
   let dep_fields =
     [ "depends", depends_field package
     ; ( "x-extra-doc-deps"
-      , Package.documentation package |> fun { packages; _ } -> packages )
+      , package
+        |> Package.info
+        |> Package_info.documentation
+        |> fun { packages; _ } -> packages )
     ; "conflicts", Package.conflicts package
     ; "depopts", Package.depopts package
     ]
@@ -261,7 +264,8 @@ let opam_fields project (package : Package.t) =
   let optional_fields =
     [ "bug-reports", Package_info.bug_reports info
     ; "homepage", Package_info.homepage info
-    ; "doc", Package_info.documentation info
+    ; ( "doc"
+      , Package_info.documentation info |> fun (x : Dune_lang.Documentation.t) -> x.url )
     ; ( "license"
       , match Package_info.license info with
         | Some [ x ] -> Some x

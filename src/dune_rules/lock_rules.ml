@@ -38,16 +38,20 @@ module Spec = struct
       lock_dir;
     let path = Path.build target in
     Path.mkdir_p path;
-    (* TODO: add values to action *)
-    let version_preference = Dune_pkg.Version_preference.Newest in
+    let version_preference = Dune_pkg.Version_preference.default in
     let local_packages =
       Package.Name.Map.map packages ~f:Dune_pkg.Local_package.for_solver
     in
+    (* TODO: add values to action *)
     let env = Dune_pkg.Solver_env.empty in
     let pins = Package.Name.Map.empty in
     let constraints = [] in
     let selected_depopts = [] in
-    let portable_lock_dir = false in
+    let portable_lock_dir =
+      match Config.get Compile_time.portable_lock_dir with
+      | `Enabled -> true
+      | `Disabled -> false
+    in
     let+ solver_result =
       Dune_pkg.Opam_solver.solve_lock_dir
         env
@@ -61,7 +65,9 @@ module Spec = struct
     in
     let _solver_result =
       match solver_result with
-      | Ok success -> success
+      | Ok success ->
+        Printf.eprintf "Solver found solution, TODO: write lock dir\n";
+        success
       | Error (`Diagnostic_message diagnostic) -> User_error.raise [ diagnostic ]
     in
     let content =
@@ -90,6 +96,37 @@ let rule ?loc { Action_builder.With_targets.build; targets } =
   Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
 ;;
 
+let repositories_of_workspace (workspace : Workspace.t) =
+  List.map workspace.repos ~f:(fun repo ->
+    Dune_pkg.Pkg_workspace.Repository.name repo, repo)
+  |> Dune_pkg.Pkg_workspace.Repository.Name.Map.of_list_exn
+;;
+
+let get_repos repos ~repositories =
+  let module Repository = Dune_pkg.Pkg_workspace.Repository in
+  repositories
+  |> Fiber.parallel_map ~f:(fun (loc, name) ->
+    match Repository.Name.Map.find repos name with
+    | None ->
+      User_error.raise
+        ~loc
+        [ Pp.textf "Repository '%s' is not a known repository"
+          @@ Repository.Name.to_string name
+        ]
+    | Some repo ->
+      let loc, opam_url = Repository.opam_url repo in
+      let module Opam_repo = Dune_pkg.Opam_repo in
+      (match Dune_pkg.OpamUrl.classify opam_url loc with
+       | `Git -> Opam_repo.of_git_repo loc opam_url
+       | `Path path -> Fiber.return @@ Opam_repo.of_opam_repo_dir_path loc path
+       | `Archive ->
+         User_error.raise
+           ~loc
+           [ Pp.textf "Repositories stored in archives (%s) are currently unsupported"
+             @@ OpamUrl.to_string opam_url
+           ]))
+;;
+
 let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
   let target = Path.Build.relative dir "content" in
   let rules =
@@ -98,8 +135,16 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
         Dune_load.packages ()
         >>| Dune_lang.Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
       in
-      (* TODO: read from the right place *)
-      let repos = [] in
+      let* workspace = Workspace.workspace () in
+      let repos = repositories_of_workspace workspace in
+      let* repos =
+        (* TODO: read from the right place instead of hardcoding here *)
+        Memo.of_non_reproducible_fiber
+          (get_repos
+             repos
+             ~repositories:
+               [ Loc.none, Dune_pkg.Pkg_workspace.Repository.Name.of_string "upstream" ])
+      in
       let lock_rule = lock ~packages ~target ~lock_dir ~repos in
       rule ~loc:Loc.none lock_rule)
   in

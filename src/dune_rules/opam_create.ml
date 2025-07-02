@@ -135,6 +135,38 @@ let rec constraint_of_blang (blang : Blang.t) : Package_constraint.t =
   | Expr b -> Bvar (var_of_sw b)
 ;;
 
+let depends_field t =
+  let depends = Package.depends t in
+  let pkg_already_in_depends (pkg : Package_dependency.t) =
+    List.exists
+      ~f:(fun (dep : Package_dependency.t) -> Package_name.equal pkg.name dep.name)
+      depends
+  in
+  let doc = Package.documentation t in
+  let doc_depends = doc.packages in
+  let doc_depends =
+    List.filter_map
+      ~f:(fun (doc_dep : Package_dependency.t) ->
+        if pkg_already_in_depends doc_dep
+        then None
+        else (
+          let constraint_ =
+            let c = Option.to_list doc_dep.constraint_ in
+            let c =
+              Package_constraint.And
+                (c
+                 @ [ Package_constraint.Bvar (Variable Package_variable_name.post)
+                   ; Package_constraint.Bvar (Variable Package_variable_name.with_doc)
+                   ])
+            in
+            Some c
+          in
+          Some { doc_dep with constraint_ }))
+      doc_depends
+  in
+  depends @ doc_depends
+;;
+
 let package_fields package ~project =
   let open Opam_file.Create in
   let tags =
@@ -149,7 +181,7 @@ let package_fields package ~project =
       | Some v -> Some (k, string v))
   in
   let dep_fields =
-    [ "depends", Package.depends package
+    [ "depends", depends_field package
     ; ( "x-extra-doc-deps"
       , Package.documentation package |> fun { packages; _ } -> packages )
     ; "conflicts", Package.conflicts package

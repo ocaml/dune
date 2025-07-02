@@ -1,5 +1,21 @@
 open Import
 open Memo.O
+module Solver_env = Dune_pkg.Solver_env
+
+let solver_env
+      ~solver_env_from_current_system
+      ~solver_env_from_context
+      ~unset_solver_vars_from_context
+  =
+  let solver_env =
+    [ solver_env_from_current_system; solver_env_from_context ]
+    |> List.filter_opt
+    |> List.fold_left ~init:Solver_env.with_defaults ~f:Solver_env.extend
+  in
+  match unset_solver_vars_from_context with
+  | None -> solver_env
+  | Some unset_solver_vars -> Solver_env.unset_multi solver_env unset_solver_vars
+;;
 
 module Spec = struct
   type ('path, 'target) t =
@@ -68,20 +84,17 @@ module Spec = struct
         ~selected_depopts
         ~portable_lock_dir
     in
-    let _solver_result =
-      match solver_result with
-      | Ok success ->
-        Printf.eprintf "Solver found solution, TODO: write lock dir\n";
-        success
-      | Error (`Diagnostic_message diagnostic) -> User_error.raise [ diagnostic ]
-    in
-    let content =
-      Package.Name.Map.values packages
-      |> List.map ~f:(fun (s : Dune_pkg.Local_package.t) ->
-        s.name |> Package.Name.to_dyn |> Dyn.to_string)
-      |> String.concat ~sep:"\n"
-    in
-    Io.write_file ~binary:true (Path.relative path "lock.dune") content
+    match solver_result with
+    | Error (`Diagnostic_message diagnostic) -> User_error.raise [ diagnostic ]
+    | Ok _success ->
+      Printf.eprintf "Solver found solution, TODO: write lock dir\n";
+      let content =
+        Package.Name.Map.values packages
+        |> List.map ~f:(fun (s : Dune_pkg.Local_package.t) ->
+          s.name |> Package.Name.to_dyn |> Dyn.to_string)
+        |> String.concat ~sep:"\n"
+      in
+      Io.write_file ~binary:true (Path.relative path "lock.dune") content
   ;;
 end
 
@@ -132,6 +145,11 @@ let get_repos repos ~repositories =
            ]))
 ;;
 
+let poll_solver_env_from_current_system () =
+  Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
+  |> Dune_pkg.Sys_poll.solver_env_from_current_system
+;;
+
 let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
   let target = Path.Build.relative dir "content" in
   let rules =
@@ -150,7 +168,17 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
              ~repositories:
                [ Loc.none, Dune_pkg.Pkg_workspace.Repository.Name.of_string "upstream" ])
       in
-      let env = Dune_pkg.Solver_env.with_defaults in
+      let* solver_env_from_current_system =
+        Memo.of_reproducible_fiber (poll_solver_env_from_current_system ())
+        >>| Option.some
+      in
+      let env =
+        (* TODO read context and other stuff *)
+        solver_env
+          ~solver_env_from_context:None
+          ~solver_env_from_current_system
+          ~unset_solver_vars_from_context:None
+      in
       let lock_rule = lock ~packages ~target ~lock_dir ~repos ~env in
       rule ~loc:Loc.none lock_rule)
   in

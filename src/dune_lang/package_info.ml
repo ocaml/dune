@@ -28,6 +28,7 @@ let bug_reports t =
 ;;
 
 let documentation t = t.documentation
+let set_documentation_url t documentation = { t with documentation }
 let maintainers t = t.maintainers
 let maintenance_intent t = t.maintenance_intent
 
@@ -85,6 +86,7 @@ let to_dyn
 ;;
 
 let encode_fields
+      ?(include_documentation = true)
       { source
       ; authors
       ; license
@@ -95,6 +97,7 @@ let encode_fields
       ; maintenance_intent
       }
   =
+  let documentation = if include_documentation then documentation else None in
   let open Encoder in
   record_fields
     [ field_o "source" Source_kind.encode source
@@ -186,7 +189,7 @@ let decode_maintenance_intent =
   Syntax.since Stanza.syntax (3, 18) >>> repeat valid_maintenance_intent
 ;;
 
-let decode ?since () =
+let decode ?(include_documentation = true) ?since () =
   let open Decoder in
   let v default = Option.value since ~default in
   let+ source =
@@ -204,7 +207,9 @@ let decode ?since () =
            >>> return l)
   and+ homepage = field_o "homepage" (Syntax.since Stanza.syntax (v (1, 10)) >>> string)
   and+ documentation =
-    field_o "documentation" (Syntax.since Stanza.syntax (v (1, 10)) >>> string)
+    if include_documentation
+    then field_o "documentation" (Syntax.since Stanza.syntax (v (1, 10)) >>> string)
+    else return None
   and+ bug_reports =
     field_o "bug_reports" (Syntax.since Stanza.syntax (v (1, 10)) >>> string)
   and+ maintainers =

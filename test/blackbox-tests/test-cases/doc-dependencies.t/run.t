@@ -1,10 +1,11 @@
 This project contains an (empty) package, which has some doc dependencies:
 
   $ grep documentation -A 4 dune-project
-   (doc_depends
-    (packages
+   (documentation
+    (depends
      (ppx_derivers (>= 1.0))
-      brr)))
+      brr)
+    (url "url")))
 
 Doc dependencies are explained here: https://ocaml.github.io/odoc/odoc/odoc_for_authors.html#config-file
 

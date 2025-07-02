@@ -64,4 +64,3 @@ This rebuilds successfully as indicated by the above output.
 
   $ ./wait-for-file.sh $DONE_FLAG
 
-  $ kill $PID

@@ -11,5 +11,3 @@ Test exec --watch with a program that ignores sigterm.
 
   $ ../wait-for-file.sh _build/done_flag
 
-Prevent the test from leaking the dune process.
-  $ kill $PID

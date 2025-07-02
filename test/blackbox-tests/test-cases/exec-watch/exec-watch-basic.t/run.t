@@ -47,5 +47,3 @@ Wait until the error shows up in the log
 
   $ ../wait-for-file.sh $DONE_FLAG
 
-Prevent the test from leaking the dune process.
-  $ kill $PID

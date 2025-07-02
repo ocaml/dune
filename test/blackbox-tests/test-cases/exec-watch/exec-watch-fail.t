@@ -36,4 +36,3 @@ we are in watch mode.
   $ PID=$!
   $ ./wait-for-file.sh $DONE_FLAG
 
-  $ kill $PID

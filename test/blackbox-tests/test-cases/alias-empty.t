@@ -58,4 +58,10 @@ For versions 3.20 and after these should fail:
   > EOF
 
   $ dune build @empty
+  File "dune", lines 1-3, characters 0-33:
+  1 | (alias
+  2 |  (name empty)
+  3 |  (deps foo))
+  Error: User-defined rules cannot be added to the 'empty' alias
+  [1]
 

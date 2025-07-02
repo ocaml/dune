@@ -6,7 +6,7 @@ type t =
   ; authors : string list option
   ; homepage : string option
   ; bug_reports : string option
-  ; documentation : string option
+  ; documentation : Documentation.t
   ; maintainers : string list option
   ; maintenance_intent : string list option
   }
@@ -28,7 +28,6 @@ let bug_reports t =
 ;;
 
 let documentation t = t.documentation
-let set_documentation_url t documentation = { t with documentation }
 let maintainers t = t.maintainers
 let maintenance_intent t = t.maintenance_intent
 
@@ -38,7 +37,7 @@ let empty =
   ; authors = None
   ; homepage = None
   ; bug_reports = None
-  ; documentation = None
+  ; documentation = { packages = []; url = None }
   ; maintainers = None
   ; maintenance_intent = None
   }
@@ -53,7 +52,7 @@ let example ~authors ~maintainers ~license =
       Some
         (Option.value maintainers ~default:[ "Maintainer Name <maintainer@example.com>" ])
   ; documentation =
-      Some "https://url/to/documentation"
+      { packages = []; url = Some "https://url/to/documentation" }
       (* homepage and bug_reports are inferred from the source *)
   ; homepage = None
   ; bug_reports = None
@@ -77,7 +76,7 @@ let to_dyn
     [ "source", (option Source_kind.to_dyn) source
     ; "license", (option (list string)) license
     ; "homepage", (option string) homepage
-    ; "documentation", (option string) documentation
+    ; "documentation", Documentation.to_dyn documentation
     ; "bug_reports", (option string) bug_reports
     ; "maintainers", option (list string) maintainers
     ; "maintenance_intent", option (list string) maintenance_intent
@@ -86,7 +85,6 @@ let to_dyn
 ;;
 
 let encode_fields
-      ?(include_documentation = true)
       { source
       ; authors
       ; license
@@ -97,7 +95,6 @@ let encode_fields
       ; maintenance_intent
       }
   =
-  let documentation = if include_documentation then documentation else None in
   let open Encoder in
   record_fields
     [ field_o "source" Source_kind.encode source
@@ -106,7 +103,7 @@ let encode_fields
     ; field_l "maintenance_intent" string (Option.value ~default:[] maintenance_intent)
     ; field_l "license" string (Option.value ~default:[] license)
     ; field_o "homepage" string homepage
-    ; field_o "documentation" string documentation
+    ; field "documentation" Documentation.encode documentation
     ; field_o "bug_reports" string bug_reports
     ]
 ;;
@@ -189,7 +186,7 @@ let decode_maintenance_intent =
   Syntax.since Stanza.syntax (3, 18) >>> repeat valid_maintenance_intent
 ;;
 
-let decode ?(include_documentation = true) ?since () =
+let decode ~toplevel ?since () =
   let open Decoder in
   let v default = Option.value since ~default in
   let+ source =
@@ -207,14 +204,17 @@ let decode ?(include_documentation = true) ?since () =
            >>> return l)
   and+ homepage = field_o "homepage" (Syntax.since Stanza.syntax (v (1, 10)) >>> string)
   and+ documentation =
-    if include_documentation
-    then field_o "documentation" (Syntax.since Stanza.syntax (v (1, 10)) >>> string)
-    else return None
+    field_o
+      "documentation"
+      (Syntax.since Stanza.syntax (v (1, 10)) >>> Documentation.decode ~toplevel)
   and+ bug_reports =
     field_o "bug_reports" (Syntax.since Stanza.syntax (v (1, 10)) >>> string)
   and+ maintainers =
     field_o "maintainers" (Syntax.since Stanza.syntax (v (1, 10)) >>> repeat string)
   and+ maintenance_intent = field_o "maintenance_intent" decode_maintenance_intent in
+  let documentation =
+    documentation |> Option.value ~default:{ Documentation.url = None; packages = [] }
+  in
   { source
   ; authors
   ; license
@@ -236,7 +236,7 @@ let superpose t1 t2 =
   ; authors = f t1.authors t2.authors
   ; license = f t1.license t2.license
   ; homepage = f t1.homepage t2.homepage
-  ; documentation = f t1.documentation t2.documentation
+  ; documentation = Documentation.superpose t1.documentation t2.documentation
   ; bug_reports = f t1.bug_reports t2.bug_reports
   ; maintainers = f t1.maintainers t2.maintainers
   ; maintenance_intent = f t1.maintenance_intent t2.maintenance_intent

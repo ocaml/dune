@@ -28,7 +28,6 @@ type t =
   ; synopsis : string option
   ; description : string option
   ; depends : Package_dependency.t list
-  ; documentation : Package_documentation.t
   ; conflicts : Package_dependency.t list
   ; depopts : Package_dependency.t list
   ; enabled_if : Blang.t option
@@ -55,7 +54,6 @@ let deprecated_package_names t = t.deprecated_package_names
 let set_has_opam_file t has_opam_file = { t with has_opam_file }
 let version t = t.version
 let depends t = t.depends
-let documentation t = t.documentation
 let conflicts t = t.conflicts
 let depopts t = t.depopts
 let tags t = t.tags
@@ -78,7 +76,6 @@ let encode
       ; synopsis
       ; description
       ; depends
-      ; documentation
       ; conflicts
       ; depopts
       ; info
@@ -96,16 +93,12 @@ let encode
   =
   let open Encoder in
   let fields =
-    Package_info.encode_fields ~include_documentation:false info
+    Package_info.encode_fields info
     @ record_fields
         [ field "name" Name.encode name
         ; field_o "synopsis" string synopsis
         ; field_o "description" string description
         ; field_l "depends" Package_dependency.encode depends
-        ; field_i
-            "documentation"
-            (Package_documentation.encode ~url:(Package_info.documentation info))
-            documentation
         ; field_l "conflicts" Package_dependency.encode conflicts
         ; field_l "depopts" Package_dependency.encode depopts
         ; field_o "enabled_if" Blang.encode enabled_if
@@ -178,17 +171,12 @@ let decode =
          field_o "version" (Syntax.since Stanza.syntax (2, 5) >>> Package_version.decode)
        and+ depends_with_locs =
          field ~default:[] "depends" (repeat (located Package_dependency.decode))
-       and+ url, documentation =
-         field
-           ~default:(None, { Package_documentation.packages = [] })
-           "documentation"
-           Package_documentation.decode
        and+ conflicts_with_locs =
          field ~default:[] "conflicts" (repeat (located Package_dependency.decode))
        and+ depopts_with_locs =
          field ~default:[] "depopts" (repeat (located Package_dependency.decode))
        and+ enabled_if = field_o "enabled_if" (Unreleased.since () >>> enabled_if)
-       and+ info = Package_info.decode ~since:(2, 0) ()
+       and+ info = Package_info.decode ~toplevel:false ~since:(2, 0) ()
        and+ tags = field "tags" (enter (repeat string)) ~default:[]
        and+ exclusive_dir =
          field_o
@@ -215,7 +203,6 @@ let decode =
            "Site location name"
        and+ allow_empty = field_b "allow_empty" ~check:(Syntax.since Stanza.syntax (3, 0))
        and+ lang_version = Syntax.get_exn Stanza.syntax in
-       let info = Package_info.set_documentation_url info url in
        let allow_empty = lang_version < (3, 0) || allow_empty in
        let duplicate_dep_warnings =
          List.concat
@@ -234,7 +221,6 @@ let decode =
        ; synopsis
        ; description
        ; depends
-       ; documentation
        ; conflicts
        ; depopts
        ; info
@@ -265,7 +251,6 @@ let to_dyn
       ; synopsis
       ; description
       ; depends
-      ; documentation
       ; conflicts
       ; depopts
       ; info
@@ -288,7 +273,6 @@ let to_dyn
     ; "synopsis", option string synopsis
     ; "description", option string description
     ; "depends", list Package_dependency.to_dyn depends
-    ; "documentation", Package_documentation.to_dyn documentation
     ; "conflicts", list Package_dependency.to_dyn conflicts
     ; "depopts", list Package_dependency.to_dyn depopts
     ; "info", Package_info.to_dyn info
@@ -314,7 +298,6 @@ let create
       ~version
       ~conflicts
       ~depends
-      ~documentation
       ~depopts
       ~enabled_if
       ~info
@@ -336,7 +319,6 @@ let create
   ; synopsis
   ; description
   ; depends
-  ; documentation
   ; conflicts
   ; info
   ; depopts

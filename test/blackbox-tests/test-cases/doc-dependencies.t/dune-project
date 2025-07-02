@@ -8,4 +8,5 @@
  (documentation
   (depends
    (ppx_derivers (>= 1.0))
-    brr)))
+    brr)
+  (url "url")))

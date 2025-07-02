@@ -96,13 +96,16 @@ let encode
   =
   let open Encoder in
   let fields =
-    Package_info.encode_fields info
+    Package_info.encode_fields ~include_documentation:false info
     @ record_fields
         [ field "name" Name.encode name
         ; field_o "synopsis" string synopsis
         ; field_o "description" string description
         ; field_l "depends" Package_dependency.encode depends
-        ; field_i "documentation" Package_documentation.encode documentation
+        ; field_i
+            "documentation"
+            (Package_documentation.encode ~url:(Package_info.documentation info))
+            documentation
         ; field_l "conflicts" Package_dependency.encode conflicts
         ; field_l "depopts" Package_dependency.encode depopts
         ; field_o "enabled_if" Blang.encode enabled_if
@@ -175,9 +178,9 @@ let decode =
          field_o "version" (Syntax.since Stanza.syntax (2, 5) >>> Package_version.decode)
        and+ depends_with_locs =
          field ~default:[] "depends" (repeat (located Package_dependency.decode))
-       and+ documentation =
+       and+ url, documentation =
          field
-           ~default:{ Package_documentation.packages = [] }
+           ~default:(None, { Package_documentation.packages = [] })
            "documentation"
            Package_documentation.decode
        and+ conflicts_with_locs =
@@ -212,6 +215,7 @@ let decode =
            "Site location name"
        and+ allow_empty = field_b "allow_empty" ~check:(Syntax.since Stanza.syntax (3, 0))
        and+ lang_version = Syntax.get_exn Stanza.syntax in
+       let info = Package_info.set_documentation_url info url in
        let allow_empty = lang_version < (3, 0) || allow_empty in
        let duplicate_dep_warnings =
          List.concat

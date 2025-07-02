@@ -109,6 +109,7 @@ include struct
   module Source_kind = Source_kind
   module Package_info = Package_info
   module Section = Section
+  module Package_name = Package_name
   module Package_dependency = Package_dependency
   module Package_constraint = Package_constraint
   module Dune_project_name = Dune_project_name

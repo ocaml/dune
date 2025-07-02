@@ -23,11 +23,13 @@ and check that the x-extra-doc-deps has been generated successfully
     "brr"
   ]
 
-The normal deps should not be modified
-  $ grep depends foo.opam -A 3
+The normal deps should be modified accordingly
+  $ grep depends foo.opam -A 5
   depends: [
     "dune" {>= "3.18"}
     "odoc" {with-doc}
+    "ppx_derivers" {>= "1.0" & post & with-doc}
+    "brr" {post & with-doc}
   ]
 
 Now, let's check that it would install the correct `odoc-config.sexp` file

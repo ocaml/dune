@@ -259,13 +259,14 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
   in
   let dir = Path.Source.parent_exn file in
   let info =
+    let documentation = { Dune_lang.Documentation.packages = []; url = get_one "doc" } in
     Dune_lang.Package_info.create
       ~maintainers:(get_many "maintainer")
       ~maintenance_intent:(get_many "x-maintenance-intent")
       ~authors:(get_many "authors")
       ~homepage:(get_one "homepage")
       ~bug_reports:(get_one "bug-reports")
-      ~documentation:(get_one "doc")
+      ~documentation
       ~license:(get_many "license")
       ~source:
         (let+ url = get_one "dev-repo" in
@@ -281,7 +282,6 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
        >>| User_error.ok_exn)
     ~conflicts:[]
     ~depends:[]
-    ~documentation:{ Dune_lang.Package_documentation.packages = [] }
     ~depopts:[]
     ~info
     ~synopsis:(get_one "synopsis")

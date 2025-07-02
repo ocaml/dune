@@ -9,8 +9,8 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
 ;;
 
 let need_odoc_config (pkg : Package.t) =
-  match Package.documentation pkg with
-  | { packages = [] } -> false
+  match pkg |> Package.info |> Package_info.documentation with
+  | { packages = []; url = _ } -> false
   | _ -> true
 ;;
 
@@ -865,7 +865,9 @@ end = struct
   ;;
 
   let gen_odoc_config sctx (pkg : Package.t) =
-    let { Dune_lang.Package_documentation.packages } = Package.documentation pkg in
+    let { Dune_lang.Documentation.packages; url = _ } =
+      pkg |> Package.info |> Package_info.documentation
+    in
     let ctx = Super_context.context sctx |> Context.build_context in
     match Package_paths.odoc_config_file ctx pkg with
     | None -> Memo.return ()

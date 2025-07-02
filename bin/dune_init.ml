@@ -433,7 +433,6 @@ module Component = struct
                 ; constraint_ = None
                 }
               ]
-            ~documentation:{ packages = [] }
             ~contents_basename:None
             ~enabled_if:None
         in

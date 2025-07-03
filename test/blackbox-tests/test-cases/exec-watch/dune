@@ -13,7 +13,7 @@
 
 (cram
  (applies_to exec-watch-basic exec-watch-server exec-watch-ignore-sigterm
-  exec-signal)
+  exec-signal exec-watch-fail exec-stdin)
  (enabled_if false))
 
 (cram

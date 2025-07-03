@@ -14,6 +14,7 @@ Reproduce internal error with dune pkg outdated in #11188.
   Solution for dune.lock:
   - a.0.0.1
 
-  $ dune pkg outdated 2>&1 | grep 'Error: exception Invalid_argument("filter_deps")'
-  Error: exception Invalid_argument("filter_deps")
+dune pkg outdated is able to handle :with-dev-setup correctly.
+  $ dune pkg outdated
+  dune.lock is up to date.
 

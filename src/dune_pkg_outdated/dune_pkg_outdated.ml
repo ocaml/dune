@@ -97,10 +97,11 @@ let better_candidate
       |> OpamFilter.filter_deps
            ~build:true
            ~post:false
-           ~dev:false
-           ~default:false
            ~test:false
            ~doc:false
+           ~dev_setup:false
+           ~dev:false
+           ~default:false
       |> OpamFormula.atoms
       |> List.exists ~f:(fun (name', _) -> OpamPackage.Name.equal pkg_name name'))
   in

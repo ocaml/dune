@@ -17,7 +17,7 @@ Tests stanzas produce aliases with the executable names
   > let () = print_endline "b"
   > EOF
 
-  $ dune build @a @b
+  $ dune build @runtest-a @runtest-b
   a
   b
 

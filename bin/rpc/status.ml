@@ -125,21 +125,14 @@ let term =
         in
         let message =
           match (menu : Dune_rpc_impl.Decl.Status.Menu.t) with
-          | Uninitialized ->
-            User_message.make
-              [ Pp.textf "Client [%s], conducting version negotiation" id ]
+          | Uninitialized -> [ Pp.textf "Client [%s], conducting version negotiation" id ]
           | Menu menu ->
-            User_message.make
-              [ Pp.vbox
-                  ~indent:2
-                  (Pp.concat
-                     ~sep:Pp.space
-                     (Pp.textf "Client [%s] with the following RPC versions:" id
-                      :: List.map menu ~f:(fun (method_, version) ->
-                        Pp.textf "%s: %d" method_ version)))
-              ]
+            [ Pp.textf "Client [%s] with the following RPC versions:" id
+            ; Pp.enumerate menu ~f:(fun (method_, version) ->
+                Pp.textf "%s: %d" method_ version)
+            ]
         in
-        Console.print_user_message message))
+        Console.print message))
     >>| function
     | Ok () -> ()
     | Error e -> Printf.printf "Error: %s\n" e)

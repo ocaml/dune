@@ -17,5 +17,5 @@ Reproduce internal error with dune pkg validate-lockdir in #11188.
   Solution for dune.lock:
   - a.0.0.1
 
-  $ dune pkg validate-lockdir 2>&1 | grep "Map.find_exn"
-    ("Map.find_exn: failed to find key", { key = "dune"; keys = [ "a" ] })
+Dune is able to verify this lock directory correctly:
+  $ dune pkg validate-lockdir

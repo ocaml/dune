@@ -60,8 +60,8 @@ packages are only declared in one single file.
 To maintain compatibility with a large number of existing projects, Dune
 continues to support `.opam` files. While it is recommended to declare the
 dependencies directly in the `dune-project` file, it is not mandatory to do so.
-Dune will fall back to reading dependencies from `.opam` files when they are not
-specified in `dune-project`.
+Dune will fall back to reading dependencies from `.opam` files when the package
+is not defined in `dune-project`.
 
 
 ## Locking

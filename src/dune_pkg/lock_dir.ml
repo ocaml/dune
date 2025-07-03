@@ -901,13 +901,14 @@ module Packages = struct
   ;;
 
   (* [choose_pkg_for_platform t name ~platform] returns the package whose name
-     is [name] which is enabled on [platform], and raises if either no package
-     exists whose name is [name] or if there is no version of the package that
-     is enabled on [platform]. *)
+     is [name] which is enabled on [platform], and returns [None] if either no
+     package exists whose name is [name] or if there is no version of the
+     package that is enabled on [platform]. *)
   let choose_pkg_for_platform t name ~platform =
-    Package_name.Map.find_exn t name
-    |> Package_version.Map.values
-    |> List.find_exn ~f:(Pkg.is_enabled_on_platform ~platform)
+    let open Option.O in
+    Package_name.Map.find t name
+    >>| Package_version.Map.values
+    >>= List.find ~f:(Pkg.is_enabled_on_platform ~platform)
   ;;
 
   let pkgs_on_platform_by_name t ~platform =
@@ -1630,15 +1631,20 @@ let transitive_dependency_closure t ~platform start =
       | Some node ->
         let unseen_deps =
           (* Note that the call to [Packages.choose_pkg_for_platform] won't
-             raise because [t] guarantees that its map of dependencies is
-             closed under "depends on". *)
+             in general return [None] because [t] guarantees that its map of
+             dependencies is closed under "depends on". Sometimes a package
+             (such as dune) is explicitly removed from the closure in which
+             case we will have a [None] and ignore it. *)
           Package_name.Set.(
             diff
               (of_list_map
-                 (let pkg = Packages.choose_pkg_for_platform t.packages node ~platform in
-                  Conditional_choice.choose_for_platform pkg.depends ~platform
-                  |> Option.value ~default:[])
-                 ~f:(fun depend -> depend.name))
+                 ~f:(fun depend -> depend.name)
+                 ((let open Option.O in
+                   let* pkg =
+                     Packages.choose_pkg_for_platform t.packages node ~platform
+                   in
+                   Conditional_choice.choose_for_platform pkg.depends ~platform)
+                  |> Option.value ~default:[]))
               seen)
         in
         push_set unseen_deps;

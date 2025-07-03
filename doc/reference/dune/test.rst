@@ -27,8 +27,8 @@ can define two tests at once with:
     <optional fields>)
 
 This defines an executable named ``mytest.exe``. These tests can be run by
-building the aliases ``mytest`` and ``expect_test`` respectively. They will also
-be added to the ``runtest`` alias.
+building the aliases ``runtest-mytest`` and ``runtest-expect_test``
+respectively. They will also be added to the ``runtest`` alias.
 
 If the directory also contains an ``expect_test.expected`` file, then
 ``expect_test`` will be used to define an expect test. That is, the test will be

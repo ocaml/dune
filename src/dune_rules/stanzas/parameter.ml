@@ -77,11 +77,10 @@ let decode =
        ; allow_overlapping_dependencies
        ; ctypes = None
        }
-     (* let+ buildable = Buildable.decode Parameter  *)
      and+ name = field_o "name" Lib_name.Local.decode_loc
      and+ public = field_o "public_name" (Public_lib.decode ~allow_deprecated_names:false)
      and+ package = field_o "package" (located Stanza_common.Pkg.decode)
-     and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (3, 20)) ()
+     and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
      and+ synopsis = field_o "synopsis" string
      and+ stdlib =
        field_o
@@ -97,11 +96,11 @@ let decode =
           | Error user_message ->
             User_error.raise
               ~loc
-              [ Pp.textf "Invalid library name."
+              [ Pp.textf "Invalid library_parameter name."
               ; Pp.text
-                  "Public library names don't have this restriction. You can either \
-                   change this public name to be a valid library name or add a \"name\" \
-                   field with a valid library name."
+                  "Public library_parameter names don't have this restriction. You can \
+                   either change this public name to be a valid library_parameter name \
+                   or add a \"name\" field with a valid library_parameter name."
               ]
               ~hints:(Lib_name.Local.valid_format_doc :: user_message.hints))
        | None, None ->

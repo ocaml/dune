@@ -389,7 +389,7 @@ let eval
         if Module_trie.mem private_modules name then Visibility.Private else Public
       in
       let kind =
-        if kind = Parameter
+        if is_parameter
         then Module.Kind.Parameter
         else if Module_trie.mem virtual_modules name
         then Virtual

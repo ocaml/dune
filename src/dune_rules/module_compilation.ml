@@ -311,6 +311,9 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
       match Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml Cmo) with
       | None -> Memo.return ()
       | Some src ->
+        let ml_kind = Ml_kind.Impl in
+        let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
+        let module_deps = Dep_graph.deps_of dep_graph m in
         Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
           Compilation_context.js_of_ocaml cctx
           |> Js_of_ocaml.Mode.Pair.select ~mode
@@ -320,12 +323,13 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
             let dir = Compilation_context.dir cctx in
             let action_with_targets =
               Jsoo_rules.build_cm
-                sctx
+                cctx
                 ~dir
                 ~in_context
                 ~mode
                 ~src:(Path.build src)
                 ~obj_dir
+                ~deps:module_deps
                 ~config:None
             in
             Super_context.add_rule sctx ~dir action_with_targets)))

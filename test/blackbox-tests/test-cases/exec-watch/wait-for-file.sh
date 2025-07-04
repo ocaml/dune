@@ -7,6 +7,6 @@ set -u
 FILE=$1
 until test -e $FILE
 do
-    sleep 0.01
+    sleep 0.1
 done
 rm $FILE

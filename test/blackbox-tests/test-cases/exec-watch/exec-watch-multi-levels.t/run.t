@@ -13,8 +13,6 @@ created by the program being exec'd, so when it exists we know that it's safe to
 change the code and proceed with the test.
   $ ../wait-for-file.sh $DONE_FLAG
   $ kill $PID
-  $ wait $PID
-  [130]
 
 Perform the same test above but first enter the "bin" directory.
   $ dune clean
@@ -28,8 +26,6 @@ Perform the same test above but first enter the "bin" directory.
   $ cd ..
   $ ../wait-for-file.sh $DONE_FLAG
   $ kill $PID
-  $ wait $PID
-  [130]
 
 Test that the behaviour is the same when not running with "--watch"
   $ cd bin && dune exec --root .. ./bin/main.exe

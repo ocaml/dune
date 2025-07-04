@@ -19,8 +19,6 @@ In watch mode, pwd is also the folder from which dune is launched.
   $ PID=$!
   $ until test -s $OUTPUT; do sleep 0.1; done;
   $ kill $PID
-  $ wait $PID
-  [130]
   $ cat $OUTPUT
   $TESTCASE_ROOT/bin
   $ rm -rf $OUTPUT

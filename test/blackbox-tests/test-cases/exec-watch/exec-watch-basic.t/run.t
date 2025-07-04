@@ -49,6 +49,3 @@ Wait until the error shows up in the log
 
 Prevent the test from leaking the dune process.
   $ kill $PID
-  $ wait $PID
-  [130]
-

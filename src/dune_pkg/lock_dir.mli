@@ -142,7 +142,7 @@ module Write_disk : sig
 
   val prepare
     :  portable_lock_dir:bool
-    -> lock_dir_path:Path.Source.t
+    -> lock_dir_path:Path.t
     -> files:File_entry.t Package_version.Map.Multi.t Package_name.Map.t
     -> lock_dir
     -> t

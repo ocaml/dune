@@ -253,7 +253,11 @@ let solve_lock_dir
     progress_state := None;
     let+ lock_dir = Lock_dir.compute_missing_checksums ~pinned_packages lock_dir in
     Ok
-      ( Lock_dir.Write_disk.prepare ~portable_lock_dir ~lock_dir_path ~files lock_dir
+      ( Lock_dir.Write_disk.prepare
+          ~portable_lock_dir
+          ~lock_dir_path:(Path.source lock_dir_path)
+          ~files
+          lock_dir
       , summary_message )
 ;;
 

@@ -37,3 +37,5 @@ we are in watch mode.
   $ ./wait-for-file.sh $DONE_FLAG
 
   $ kill $PID
+  $ wait $PID
+  [130]

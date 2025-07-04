@@ -51,15 +51,9 @@ module Spec = struct
     List [ encode_target target; Sexp.Atom lock_dir; packages; repos; env ]
   ;;
 
-  let action { target; lock_dir; packages; repos; env } ~ectx:_ ~eenv:_ =
+  let action { target; lock_dir = _; packages; repos; env } ~ectx:_ ~eenv:_ =
     let open Fiber.O in
     let* () = Fiber.return () in
-    Printf.eprintf
-      "Running ACTION, target is %s, our lock_dir is %S\n"
-      (Path.Build.to_string target)
-      lock_dir;
-    let path = Path.build target in
-    Path.mkdir_p path;
     let version_preference = Dune_pkg.Version_preference.default in
     let local_packages =
       Package.Name.Map.map packages ~f:Dune_pkg.Local_package.for_solver
@@ -87,17 +81,16 @@ module Spec = struct
     match solver_result with
     | Error (`Diagnostic_message diagnostic) -> User_error.raise [ diagnostic ]
     | Ok { pinned_packages; files; lock_dir; _ } ->
+      let lock_dir_path = Path.build target in
       let+ lock_dir =
         Dune_pkg.Lock_dir.compute_missing_checksums ~pinned_packages lock_dir
       in
-      let wd =
-        Dune_pkg.Lock_dir.Write_disk.prepare
-          ~portable_lock_dir
-          ~lock_dir_path:path
-          ~files
-          lock_dir
-      in
-      Dune_pkg.Lock_dir.Write_disk.commit wd
+      Dune_pkg.Lock_dir.Write_disk.prepare
+        ~portable_lock_dir
+        ~lock_dir_path
+        ~files
+        lock_dir
+      |> Dune_pkg.Lock_dir.Write_disk.commit
   ;;
 end
 

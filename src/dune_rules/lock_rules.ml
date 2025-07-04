@@ -106,8 +106,13 @@ let lock ~packages ~target ~lock_dir ~repos ~env =
 module Gen_rules = Build_config.Gen_rules
 
 let rule ?loc { Action_builder.With_targets.build; targets } =
-  (* TODO this ignores the workspace file *)
-  Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
+  let into : Rule.Promote.Into.t option =
+    (* TODO: this is a bit weird to go up the directory structure *)
+    Some { loc = Option.value ~default:Loc.none loc; dir = "../../../dune.lock_" }
+  in
+  let promote : Rule.Promote.t = { lifetime = Unlimited; into; only = None } in
+  let mode = Rule.Mode.Promote promote in
+  Rule.make ~mode ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
 ;;
 
 let repositories_of_workspace (workspace : Workspace.t) =

@@ -1,4 +1,4 @@
-This test verifies `library_parameter` stanza works as expected.
+This test verifies that the `library_parameter` stanza works as expected.
 
   $ . ./helpers.sh
   $ cat > "dune-project" <<EOF
@@ -18,7 +18,7 @@ being lazy.
   >  (name param_intf))
   > EOF
 
-The test build should fails because of the oxcaml extension is not available.
+The test build should fails because the oxcaml extension is not available.
 
   $ dune build
   File "param/dune", lines 1-3, characters 0-64:

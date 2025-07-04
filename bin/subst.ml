@@ -312,7 +312,11 @@ let make_watermark_map ~commit ~version ~dune_project ~info =
     ; "PKG_AUTHORS", make_separated "authors" ", " @@ Package_info.authors info
     ; "PKG_HOMEPAGE", make_value "homepage" @@ Package_info.homepage info
     ; "PKG_ISSUES", make_value "bug-reports" @@ Package_info.bug_reports info
-    ; "PKG_DOC", make_value "doc" @@ Package_info.documentation info
+    ; ( "PKG_DOC"
+      , make_value "doc"
+        @@
+        let x = Package_info.documentation info in
+        x |> fun (x : Documentation.t) -> x.url )
     ; "PKG_LICENSE", make_separated "license" ", " @@ Package_info.license info
     ; "PKG_REPO", make_dev_repo_value @@ Package_info.source info
     ]

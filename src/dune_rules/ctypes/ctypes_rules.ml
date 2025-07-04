@@ -205,7 +205,7 @@ let build_c_program
         ~dir
         ~expander
         ~flags:Ordered_set_lang.Unexpanded.standard
-        ~language:C
+        ~language:`C
     in
     Command.Args.S [ Dyn base_flags; As foreign_flags ]
   in
@@ -310,7 +310,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
   let* cflags =
     match ctypes.build_flags_resolver with
     | Vendored { c_flags; c_library_flags = _ } ->
-      Foreign_rules.foreign_flags sctx ~dir ~expander ~flags:c_flags ~language:C
+      Foreign_rules.foreign_flags sctx ~dir ~expander ~flags:c_flags ~language:`C
       |> Memo.return
     | Pkg_config ->
       let+ () =
@@ -379,8 +379,8 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
         in
         List.concat_map buildable.foreign_archives ~f:(fun (_loc, archive) ->
           let mode = Mode.Select.All in
-          [ Foreign.Archive.lib_file ~mode ~archive ~dir ~ext_lib
-          ; Foreign.Archive.dll_file ~mode ~archive ~dir ~ext_dll
+          [ Foreign_archive.lib_file ~mode ~archive ~dir ~ext_lib
+          ; Foreign_archive.dll_file ~mode ~archive ~dir ~ext_dll
           ])
       in
       build_c_program

@@ -1,10 +1,11 @@
 open Import
 open Memo.O
 
-let alias mode ~dir =
-  match mode with
-  | `js mode -> Jsoo_rules.js_of_ocaml_runtest_alias ~dir ~mode
-  | `exe | `bc -> Memo.return Alias0.runtest
+let runtest_alias mode ~dir =
+  (match mode with
+   | `js mode -> Jsoo_rules.js_of_ocaml_runtest_alias ~dir ~mode
+   | `exe | `bc -> Memo.return Alias0.runtest)
+  >>| Alias.make ~dir
 ;;
 
 let test_kind dir_contents (loc, name, ext) =
@@ -68,8 +69,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
     | false ->
       let loc = Nonempty_list.hd t.exes.names |> fst in
       Memo.parallel_iter runtest_modes ~f:(fun mode ->
-        let* alias_name = alias mode ~dir in
-        let alias = Alias.make alias_name ~dir in
+        let* alias = runtest_alias mode ~dir in
         Simple_rules.Alias_rules.add_empty sctx ~loc ~alias)
     | true ->
       Nonempty_list.to_list t.exes.names
@@ -97,7 +97,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
             in
             Pform.Map.singleton test_pform [ Value.Path test_exe_path ]
           in
-          let* runtest_alias = alias runtest_mode ~dir in
+          let* runtest_alias = runtest_alias runtest_mode ~dir in
           let deps =
             (* is this useless? we are going to infer the dependency anyway *)
             match custom_runner with
@@ -115,6 +115,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
           in
           let add_alias =
             let expander = Expander.add_bindings expander ~bindings:extra_bindings in
+            let alias = Alias.make ~dir (Alias.Name.of_string ("runtest-" ^ s)) in
             fun ~loc ~action ->
               let action =
                 let chdir = Expander.dir expander in
@@ -127,10 +128,10 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                   ~what:"aliases"
               in
               Simple_rules.interpret_and_add_locks ~expander t.locks action
-              |> Simple_rules.Alias_rules.add
-                   sctx
-                   ~loc
-                   ~alias:(Alias.make ~dir runtest_alias)
+              |> Simple_rules.Alias_rules.add sctx ~loc ~alias
+              >>> (Dep.alias alias
+                   |> Action_builder.dep
+                   |> Rules.Produce.Alias.add_deps runtest_alias)
           in
           match test_kind dir_contents (loc, s, ext) with
           | `Regular -> add_alias ~loc ~action:run_action

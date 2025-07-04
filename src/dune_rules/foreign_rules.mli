@@ -1,8 +1,7 @@
 open Import
 
 val foreign_flags
-  :  Super_context.t
-  -> dir:Path.Build.t
+  :  dir:Path.Build.t
   -> expander:Expander.t
   -> flags:Ordered_set_lang.Unexpanded.t
   -> language:Foreign_language.t

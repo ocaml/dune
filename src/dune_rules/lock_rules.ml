@@ -73,7 +73,7 @@ module Spec = struct
       | `Enabled -> true
       | `Disabled -> false
     in
-    let+ solver_result =
+    let* solver_result =
       Dune_pkg.Opam_solver.solve_lock_dir
         env
         version_preference
@@ -86,15 +86,18 @@ module Spec = struct
     in
     match solver_result with
     | Error (`Diagnostic_message diagnostic) -> User_error.raise [ diagnostic ]
-    | Ok _success ->
-      Printf.eprintf "Solver found solution, TODO: write lock dir\n";
-      let content =
-        Package.Name.Map.values packages
-        |> List.map ~f:(fun (s : Dune_pkg.Local_package.t) ->
-          s.name |> Package.Name.to_dyn |> Dyn.to_string)
-        |> String.concat ~sep:"\n"
+    | Ok { pinned_packages; files; lock_dir; _ } ->
+      let+ lock_dir =
+        Dune_pkg.Lock_dir.compute_missing_checksums ~pinned_packages lock_dir
       in
-      Io.write_file ~binary:true (Path.relative path "lock.dune") content
+      let wd =
+        Dune_pkg.Lock_dir.Write_disk.prepare
+          ~portable_lock_dir
+          ~lock_dir_path:path
+          ~files
+          lock_dir
+      in
+      Dune_pkg.Lock_dir.Write_disk.commit wd
   ;;
 end
 

@@ -8,7 +8,7 @@ module Dune : sig
   type t
 
   (** Source directory *)
-  val src_root : t -> Path.Build.t
+  val src_root : t -> (Path.Build.t, Path.t list) Either.t
 
   (** ML libraries *)
   val libraries : t -> (Loc.t * Lib.t) list Resolve.t
@@ -80,16 +80,19 @@ module DB : sig
   val find_many
     :  t
     -> (Loc.t * Coq_lib_name.t) list
+    -> db:Lib.DB.t
     -> coq_lang_version:Dune_sexp.Syntax.Version.t
     -> lib list Resolve.Memo.t
 
   val resolve_boot
     :  t
+    -> db:Lib.DB.t
     -> coq_lang_version:Dune_sexp.Syntax.Version.t
     -> (Loc.t * lib) option Resolve.Memo.t
 
   val resolve
     :  t
+    -> db:Lib.DB.t
     -> coq_lang_version:Dune_sexp.Syntax.Version.t
     -> Loc.t * Coq_lib_name.t
     -> lib Resolve.Memo.t

@@ -12,7 +12,10 @@ open Import
 
 (** This module is similar to [Dir_contents] but for globally installed libs *)
 
-type t
+type legacy
+type t =
+  | Coq_package of Coq_package.t
+  | Legacy of legacy
 
 val name : t -> Coq_lib_name.t
 val path : t -> Path.t
@@ -25,7 +28,7 @@ val cmxs : t -> Path.t list
 
 (** List of directories that contain .cmxs files and thus need to be passed to
     Coq using -I *)
-val cmxs_directories : t -> Path.t list
+val cmxs_directories_legacy : t -> Path.t list
 
 (** Does the path correspond to Coq's stdlib? *)
 val stdlib : t -> bool

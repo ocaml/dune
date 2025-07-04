@@ -3,5 +3,5 @@
  (enabled_if %{oxcaml_supported}))
 
 (cram
-  (deps helpers.sh)
-  (applies_to :whole_subtree))
+ (deps helpers.sh)
+ (applies_to :whole_subtree))

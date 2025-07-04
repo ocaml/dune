@@ -105,8 +105,7 @@ let decode (for_ : for_) =
                (2, 0)
                ~extra_info:"Use the (foreign_archives ...) field instead."
              >>> enter (maybe string))))
-  and+ libraries =
-    decode_libraries ~allow_re_export:in_library
+  and+ libraries = decode_libraries ~allow_re_export:in_library
   and+ flags = decode_ocaml_flags
   and+ js_of_ocaml =
     field

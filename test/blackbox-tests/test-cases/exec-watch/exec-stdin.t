@@ -62,3 +62,5 @@ We can trigger arebuild and give another input.
   $ ./wait-for-file.sh $DONE_FLAG
 
   $ kill $PID
+  $ wait $PID
+  [130]

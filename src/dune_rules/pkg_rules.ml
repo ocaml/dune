@@ -191,13 +191,15 @@ module Install_cookie = struct
   type t =
     { files : Path.t list Section.Map.t
     ; variables : Variable.t list
+    ; extra_digest : Digest.t option
     }
 
-  let to_dyn { files; variables } =
+  let to_dyn { files; variables; extra_digest } =
     let open Dyn in
     record
       [ "files", Section.Map.to_dyn (list Path.to_dyn) files
       ; "variables", list Variable.to_dyn variables
+      ; "extra_digest", option Digest.to_dyn extra_digest
       ]
   ;;
 
@@ -205,9 +207,12 @@ module Install_cookie = struct
       type nonrec t = t
 
       let name = "INSTALL-COOKIE"
-      let version = 2
+      let version = 3
       let to_dyn = to_dyn
-      let test_example () = { files = Section.Map.empty; variables = [] }
+
+      let test_example () =
+        { files = Section.Map.empty; variables = []; extra_digest = None }
+      ;;
     end)
 
   let load_exn f =
@@ -1168,10 +1173,10 @@ end = struct
       let write_paths = Paths.make package_universe name ~relative:Path.Build.relative in
       let install_command = choose_for_current_platform install_command in
       let build_command = choose_for_current_platform build_command in
-      let* paths, build_command, install_command =
+      let paths =
         let paths = Paths.map_path write_paths ~f:Path.build in
         match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name with
-        | false -> Memo.return (paths, build_command, install_command)
+        | false -> paths
         | true ->
           (* Modify the environment as well as build and install commands for
              the compiler package. The specific changes are:
@@ -1184,33 +1189,15 @@ end = struct
              - if a matching version of the compiler is
                already installed in the user's toolchain directory then the
                build and install commands are replaced with no-ops *)
-          let pkg_dir = Pkg_toolchain.pkg_dir pkg in
-          let suffix = Path.basename (Path.outside_build_dir pkg_dir) in
-          let prefix = Pkg_toolchain.installation_prefix ~pkg_dir in
+          let prefix = Pkg_toolchain.installation_prefix pkg in
           let install_roots =
             Pkg_toolchain.install_roots ~prefix
             |> Install.Roots.map ~f:Path.outside_build_dir
           in
-          let* build_command =
-            match build_command with
-            | None | Some Dune -> Memo.return build_command
-            | Some (Action action) ->
-              let+ action = Pkg_toolchain.modify_build_action ~prefix action in
-              Some (Build_command.Action action)
-          in
-          let+ install_command =
-            match install_command with
-            | None -> Memo.return None
-            | Some install_command ->
-              Pkg_toolchain.modify_install_action ~prefix ~suffix install_command
-              >>| Option.some
-          in
-          ( { paths with
-              prefix = Path.outside_build_dir prefix
-            ; install_roots = Lazy.from_val install_roots
-            }
-          , build_command
-          , install_command )
+          { paths with
+            prefix = Path.outside_build_dir prefix
+          ; install_roots = Lazy.from_val install_roots
+          }
       in
       let t =
         { Pkg.id
@@ -1606,9 +1593,30 @@ module Install_action = struct
         Section.Map.union from_install_action from_install_file ~f:(fun _ x y ->
           Some (x @ y))
       in
+      let* extra_digest =
+        match prefix_outside_build_dir with
+        | None -> Fiber.return None
+        | Some dir ->
+          let stats =
+            { Dune_digest.Stats_for_digest.st_kind = S_DIR; executable = true }
+          in
+          let dir = Path.outside_build_dir dir in
+          Async.async (fun () -> Digest.path_with_stats ~allow_dirs:true dir stats)
+          >>| (function
+           | Ok s -> Some s
+           | Error error ->
+             User_error.raise
+               [ Pp.text "error computing digest of toolchain"
+               ; Pp.text
+                   (match error with
+                    | Unexpected_kind -> "unexpected kind"
+                    | Unix_error error ->
+                      Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum error)
+               ])
+      in
       let* cookies =
         let+ variables = Async.async (fun () -> read_variables config_file) in
-        { Install_cookie.files; variables }
+        { Install_cookie.files; variables; extra_digest }
       in
       (* Produce the cookie file in the standard path *)
       let cookie_file = Path.build @@ Paths.install_cookie' target_dir in

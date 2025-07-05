@@ -1804,12 +1804,14 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
       |> Action_builder.return
       |> Action_builder.with_no_targets
     in
-    Action_builder.progn
-      (copy_action
-       @ [ progress_building ]
-       @ build_action
-       @ install_action
-       @ [ install_file_action ])
+    [ copy_action
+    ; [ progress_building ]
+    ; build_action
+    ; install_action
+    ; [ install_file_action ]
+    ]
+    |> List.concat
+    |> Action_builder.progn
   in
   let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
   let open Action_builder.With_targets.O in

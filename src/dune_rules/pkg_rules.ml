@@ -1184,8 +1184,8 @@ end = struct
              - if a matching version of the compiler is
                already installed in the user's toolchain directory then the
                build and install commands are replaced with no-ops *)
-          let pkg_dir = Pkg_toolchain.pkg_dir pkg in
-          let prefix = Pkg_toolchain.installation_prefix ~pkg_dir in
+          (* let pkg_dir = Pkg_toolchain.pkg_dir pkg in *)
+          let prefix = Pkg_toolchain.installation_prefix pkg in
           let install_roots =
             Pkg_toolchain.install_roots ~prefix
             |> Install.Roots.map ~f:Path.outside_build_dir

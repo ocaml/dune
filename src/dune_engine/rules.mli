@@ -79,16 +79,15 @@ module Produce : sig
     val add_deps
       :  t
       -> ?loc:Stdune.Loc.t
-      -> synopsis:Synopsis.t option
       -> unit Action_builder.t
       -> unit Memo.t
 
-    (** [add_action alias ~loc ~synopsis ~action] arrange things so that [action]
+    (** [add_action alias ~loc ~action] arrange things so that [action]
         is executed as part of the build of alias [alias]. *)
     val add_action
       :  t
       -> loc:Loc.t
-      -> synopsis:Synopsis.t option
+      -> ?synopsis:Synopsis.t
       -> Action.Full.t Action_builder.t
       -> unit Memo.t
   end

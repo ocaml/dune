@@ -150,11 +150,14 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
              | false -> rule.loc
            in
            let alias = Alias.make ~dir alias in
-           Rules.Produce.Alias.add_deps
-             alias
+           Alias_rules.add
+             sctx
+             ~alias
              ~loc
              ~synopsis:rule.synopsis
-             (Action_builder.path (Path.build alias_target)))
+             (let open Action_builder.O in
+              Action_builder.path (Path.build alias_target)
+              >>| fun () -> Action.Full.make Action.empty))
        and+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in
        Some targets
      | Aliases_only aliases ->
@@ -168,7 +171,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
            >>> Memo.parallel_iter extra_aliases ~f:(fun extra_alias ->
              Dep.alias alias
              |> Action_builder.dep
-             |> Rules.Produce.Alias.add_deps ~loc ~synopsis:rule.synopsis extra_alias)
+             |> Rules.Produce.Alias.add_deps ~loc extra_alias)
        in
        None)
 ;;
@@ -279,10 +282,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
     Memo.Option.iter def.alias ~f:(fun alias ->
       let alias = Alias.make alias ~dir in
       Alias_rules.check_empty ~loc ~dir alias
-      >>> Rules.Produce.Alias.add_deps
-            alias
-            ~synopsis:None
-            (Action_builder.path_set targets))
+      >>> Rules.Produce.Alias.add_deps alias (Action_builder.path_set targets))
   in
   targets
 ;;
@@ -305,7 +305,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
     (match alias_conf.action with
      | None ->
        let builder, _expander, _sandbox = Dep_conf_eval.named ~expander alias_conf.deps in
-       Rules.Produce.Alias.add_deps alias ~loc ~synopsis:None builder
+       Rules.Produce.Alias.add_deps alias ~loc builder
      | Some (action_loc, action) ->
        let action =
          let expander =
@@ -323,5 +323,9 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
            ~what:"aliases"
        in
        interpret_and_add_locks ~expander alias_conf.locks action
-       |> Alias_rules.add sctx ~loc ~synopsis:None ~alias)
+       |> Alias_rules.add
+            sctx
+            ~loc
+            ~synopsis:(Option.map alias_conf.synopsis ~f:Dune_util.Synopsis.of_string)
+            ~alias)
 ;;

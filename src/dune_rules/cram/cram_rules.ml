@@ -76,7 +76,6 @@ let test_rule
       Rules.Produce.Alias.add_deps
         ~loc
         extra_alias
-        ~synopsis:None
         (Action_builder.dep (Dep.alias alias)))
   in
   match test with

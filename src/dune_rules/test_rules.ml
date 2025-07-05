@@ -132,7 +132,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
               |> Simple_rules.Alias_rules.add sctx ~loc ~synopsis:None ~alias
               >>> (Dep.alias alias
                    |> Action_builder.dep
-                   |> Rules.Produce.Alias.add_deps runtest_alias ~synopsis:None)
+                   |> Rules.Produce.Alias.add_deps runtest_alias)
           in
           match test_kind dir_contents (loc, s, ext) with
           | `Regular -> add_alias ~loc ~action:run_action

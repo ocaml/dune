@@ -1887,7 +1887,7 @@ let setup_pkg_install_alias =
             | true -> build_packages_of_context ctx_name
             | false -> pkg_alias_disabled
           in
-          Rules.Produce.Alias.add_deps alias ~synopsis:None deps)
+          Rules.Produce.Alias.add_deps alias deps)
     in
     Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
     |> Gen_rules.rules_here

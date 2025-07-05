@@ -194,10 +194,7 @@ end = struct
   let alias ctx m = alias ~dir:(Paths.odocs ctx m)
 
   let setup_deps ctx m files =
-    Rules.Produce.Alias.add_deps
-      (alias ctx m)
-      ~synopsis:None
-      (Action_builder.path_set files)
+    Rules.Produce.Alias.add_deps (alias ctx m) (Action_builder.path_set files)
   ;;
 end
 
@@ -843,7 +840,6 @@ let setup_lib_html_rules_def =
       let paths = out_files ctx output odocs in
       Rules.Produce.Alias.add_deps
         (Dep.format_alias output ctx target)
-        ~synopsis:None
         (Action_builder.paths paths))
   in
   Memo.With_implicit_output.create
@@ -891,7 +887,6 @@ let setup_pkg_html_rules_def =
       let paths = out_files ctx output all_odocs in
       Rules.Produce.Alias.add_deps
         (Dep.format_alias output ctx (Pkg pkg))
-        ~synopsis:None
         (Action_builder.paths paths))
   in
   setup_pkg_rules_def "setup-package-html-rules" f
@@ -916,7 +911,7 @@ let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.
   |> List.map ~f:(Dep.format_alias output ctx)
   |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
   |> Action_builder.deps
-  |> Rules.Produce.Alias.add_deps alias ~synopsis:None
+  |> Rules.Produce.Alias.add_deps alias
 ;;
 
 let setup_package_aliases sctx (pkg : Package.t) =
@@ -1019,7 +1014,6 @@ let setup_private_library_doc_alias sctx ~scope ~dir (l : Library.t) =
     let lib = Lib (Lib.Local.of_lib_exn lib) in
     Rules.Produce.Alias.add_deps
       (Alias.make ~dir Alias0.private_doc)
-      ~synopsis:None
       (lib |> Dep.format_alias Html ctx |> Dune_engine.Dep.alias |> Action_builder.dep)
 ;;
 

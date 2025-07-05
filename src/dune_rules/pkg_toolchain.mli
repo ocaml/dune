@@ -23,12 +23,7 @@ val is_compiler_and_toolchains_enabled : Package.Name.t -> bool
     toolchain directory. This will be something like
     $XDG_CACHE_DIR/dune/toolchains/ocaml-base-compiler.5.2.1.XXXXXXXX where
     XXXXXXXX is a hash of the package's lockfile. *)
-val pkg_dir : Dune_pkg.Lock_dir.Pkg.t -> Path.Outside_build_dir.t
-
-(** Directory that will contain all the installed artifacts of the
-    package, suitable for passing as the --prefix argument to a configure
-    script. *)
-val installation_prefix : pkg_dir:Path.Outside_build_dir.t -> Path.Outside_build_dir.t
+val installation_prefix : Lock_dir.Pkg.t -> Path.Outside_build_dir.t
 
 val install_roots
   :  prefix:Path.Outside_build_dir.t

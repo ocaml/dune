@@ -26,7 +26,7 @@ let install_stanza_rules ~ctx_dir ~expander (install_conf : Install_conf.t) =
     let open Action_builder.O in
     Action_builder.of_memo files_and_dirs >>= Action_builder.paths
   in
-  Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir:ctx_dir) ~synopsis:None action
+  Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir:ctx_dir) action
 ;;
 
 module For_stanza : sig
@@ -208,7 +208,7 @@ let define_all_alias ~dir ~project ~js_targets =
     File_selector.of_predicate_lang ~dir:(Path.build dir) ~only_generated_files predicate
     |> Action_builder.paths_matching_unit ~loc:Loc.none
   in
-  Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir) ~synopsis:None deps
+  Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir) deps
 ;;
 
 let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_dir =

@@ -149,19 +149,19 @@ module Produce = struct
            (Dir_rules.Nonempty.singleton (Alias { name; spec })))
     ;;
 
-    let add_deps t ?(loc = Loc.none) ~synopsis expansion =
+    let add_deps t ?(loc = Loc.none) expansion =
       alias
         t
         { expansions =
             Appendable_list.singleton
               { Dir_rules.Alias_spec.loc
               ; item = Dir_rules.Alias_spec.Deps expansion
-              ; synopsis
+              ; synopsis = None
               }
         }
     ;;
 
-    let add_action t ~loc ~synopsis action =
+    let add_action t ~loc ?synopsis action =
       let action =
         let open Action_builder.O in
         let+ action = action in

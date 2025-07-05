@@ -1248,7 +1248,6 @@ let gen_package_install_file_rules sctx (package : Package.t) =
     let open Action_builder.O in
     Rules.Produce.Alias.add_deps
       target_alias
-      ~synopsis:None
       (Action_builder.dyn_deps
          (let+ packages = packages
           and+ () = install_file_deps in
@@ -1387,7 +1386,6 @@ let gen_install_alias sctx (package : Package.t) =
     let install_file = Path.relative (Path.build path) install_fn in
     Rules.Produce.Alias.add_deps
       install_alias
-      ~synopsis:None
       (Action_builder.path install_file))
 ;;
 

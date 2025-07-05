@@ -276,7 +276,7 @@ let build_js
 let add_deps_to_aliases ?(alias = Melange_stanzas.Emit.implicit_alias) ~dir deps =
   let alias = Alias.make alias ~dir in
   let dune_default_alias = Alias.make Alias0.all ~dir in
-  let attach alias = Rules.Produce.Alias.add_deps alias ~synopsis:None deps in
+  let attach alias = Rules.Produce.Alias.add_deps alias deps in
   Memo.parallel_iter ~f:attach [ alias; dune_default_alias ]
 ;;
 

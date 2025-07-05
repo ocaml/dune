@@ -125,6 +125,5 @@ let project_rule sctx project =
   let* indexes = context_indexes sctx in
   Rules.Produce.Alias.add_deps
     ocaml_index_alias
-    ~synopsis:None
     (Action_builder.paths_existing @@ indexes)
 ;;

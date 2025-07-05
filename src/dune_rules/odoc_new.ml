@@ -653,10 +653,7 @@ end = struct
   let alias ctx ~all index = alias ~dir:(Index.odoc_dir ctx ~all index)
 
   let setup_deps ctx ~all m files =
-    Rules.Produce.Alias.add_deps
-      (alias ctx ~all m)
-      ~synopsis:None
-      (Action_builder.path_set files)
+    Rules.Produce.Alias.add_deps (alias ctx ~all m) (Action_builder.path_set files)
   ;;
 end
 
@@ -1869,10 +1866,7 @@ let hierarchical_html_rules sctx all tree ~search_db =
         let html_dir = Index.html_dir ctx ~all index in
         Dep.html_alias html_dir
       in
-      Rules.Produce.Alias.add_deps
-        html_alias
-        ~synopsis:None
-        (Action_builder.paths html_files)
+      Rules.Produce.Alias.add_deps html_alias (Action_builder.paths html_files)
     in
     new_dirs @ dirs)
 ;;
@@ -1968,7 +1962,6 @@ let setup_all_html_rules sctx ~all =
     in
     Rules.Produce.Alias.add_deps
       (Dep.html_alias (Index.html_dir ctx ~all []))
-      ~synopsis:None
       (Action_builder.paths html)
   and+ () =
     let deps =
@@ -1979,7 +1972,6 @@ let setup_all_html_rules sctx ~all =
     in
     Rules.Produce.Alias.add_deps
       (Dep.html_alias (Index.html_dir ctx ~all []))
-      ~synopsis:None
       (Action_builder.deps deps)
   and+ dirs = hierarchical_html_rules sctx all tree ~search_db
   and+ () = setup_css_rule sctx ~all
@@ -2008,7 +2000,7 @@ let gen_project_rules sctx project =
         Dune_engine.Dep.alias top_alias
         |> Dune_engine.Dep.Set.singleton
         |> Action_builder.deps
-        |> Rules.Produce.Alias.add_deps alias ~synopsis:None
+        |> Rules.Produce.Alias.add_deps alias
     in
     let+ () = register ~all:false
     and+ () = register ~all:true in

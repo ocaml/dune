@@ -176,7 +176,7 @@ let add_rules t ?loc ~dir builds = Memo.parallel_iter builds ~f:(add_rule ?loc t
 
 let add_alias_action t alias ~dir ~loc ~synopsis action =
   let build = extend_action t action ~dir in
-  Rules.Produce.Alias.add_action alias ~synopsis ~loc build
+  Rules.Produce.Alias.add_action alias ~loc ?synopsis build
 ;;
 
 let resolve_program_memo t ~dir ?where ?hint ~loc bin =

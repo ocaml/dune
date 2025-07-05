@@ -149,16 +149,9 @@ module Emit = struct
   let target_dir (emit : t) ~dir = Path.Build.relative dir emit.target
 end
 
-let syntax =
-  Dune_lang.Syntax.create
-    ~name:Dune_project.Melange_syntax.name
-    ~desc:"the Melange extension"
-    [ (0, 1), `Since (3, 8) ]
-;;
-
 let () =
   Dune_project.Extension.register_simple
-    syntax
+    Dune_lang.Melange.syntax
     (return
        [ ( "melange.emit"
          , let+ stanza = Emit.decode in

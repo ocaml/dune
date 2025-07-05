@@ -48,8 +48,8 @@ error message.
   Error: Invalid first line, expected: (lang <lang> <version>)
   
   Hint: You may want to verify the following depexts are installed:
-  - unzip
   - gnupg
+  - unzip
   [1]
 
 Make dune.lock files with unknown program and unknown package.

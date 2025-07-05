@@ -1,3 +1,5 @@
+(include_subdirs unqualified)
+
 (library
  (name dune_lang)
  (synopsis "[Internal] S-expression library")
@@ -7,7 +9,11 @@
   dune_rpc_private
   dune_config
   opam_format
+  opam_core
   ocaml
+  ;; temporarily here
+  dune_engine
+  memo
   dune_util
   dyn
   ordering

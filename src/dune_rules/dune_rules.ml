@@ -8,15 +8,12 @@ module Env_node = Env_node
 module Link_flags = Link_flags
 module Ocaml_flags = Ocaml_flags
 module Ocaml_flags_db = Ocaml_flags_db
-module Js_of_ocaml = Js_of_ocaml
-module Menhir_env = Menhir_env
 module Menhir_rules = Menhir_rules
 module Foreign_rules = Foreign_rules
 module Jsoo_rules = Jsoo_rules
 module Super_context = Super_context
 module Compilation_context = Compilation_context
 module Colors = Colors
-module Workspace = Workspace
 module Dune_package = Dune_package
 module Alias_rec = Alias_rec
 module Dir_contents = Dir_contents
@@ -74,6 +71,10 @@ module Instrumentation = Instrumentation
 module Install_rules = struct
   let install_file = Install_rules.install_file
   let stanzas_to_entries = Install_rules.stanzas_to_entries
+end
+
+module Pkg_rules = struct
+  let all_filtered_depexts = Pkg_rules.all_filtered_depexts
 end
 
 module For_tests = struct

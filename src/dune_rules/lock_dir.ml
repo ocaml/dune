@@ -13,6 +13,15 @@ module Sys_vars = struct
     ; sys_ocaml_version : string option Memo.Lazy.t
     }
 
+  let os t (v : Dune_lang.Pform.Var.Os.t) =
+    Memo.Lazy.force
+      (match v with
+       | Os -> t.os
+       | Os_version -> t.os_version
+       | Os_distribution -> t.os_distribution
+       | Os_family -> t.os_family)
+  ;;
+
   let poll =
     let vars =
       lazy
@@ -65,6 +74,27 @@ module Sys_vars = struct
                "%s isn't allowed in this position."
                (Dune_sexp.Template.Pform.describe source)
            ])
+  ;;
+
+  let solver_env () =
+    let open Memo.O in
+    let module V = Package_variable_name in
+    let { os; os_version; os_distribution; os_family; arch; sys_ocaml_version = _ } =
+      poll
+    in
+    let+ var_value_pairs =
+      [ V.os, os
+      ; V.os_version, os_version
+      ; V.os_distribution, os_distribution
+      ; V.os_family, os_family
+      ; V.arch, arch
+      ]
+      |> Memo.List.filter_map ~f:(fun (var, value) ->
+        let+ value = Memo.Lazy.force value in
+        Option.map value ~f:(fun value -> var, Variable_value.string value))
+    in
+    List.fold_left var_value_pairs ~init:Solver_env.empty ~f:(fun acc (var, value) ->
+      Solver_env.set acc var value)
   ;;
 end
 

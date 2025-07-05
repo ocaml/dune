@@ -496,8 +496,8 @@ let portable_hardlink ~src ~dst =
   | true -> copy_file ~src ~dst ()
   | false ->
     let src =
-      match Path.follow_symlink src with
-      | Ok path -> path
+      match Fpath.follow_symlink (Path.to_string src) with
+      | Ok path -> Path.of_string path
       | Error Not_a_symlink -> src
       | Error Max_depth_exceeded ->
         user_error "Too many indirections; is this a cyclic symbolic link?"

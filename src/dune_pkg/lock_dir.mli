@@ -20,36 +20,81 @@ module Build_command : sig
   type t =
     | Action of Action.t
     | Dune (** pinned dune packages do not need to define a command *)
+
+  val to_dyn : t -> Dyn.t
+end
+
+module Dependency : sig
+  type t =
+    { loc : Loc.t
+    ; name : Package_name.t
+    }
+
+  val to_dyn : t -> Dyn.t
+end
+
+module Conditional_choice : sig
+  (** A sequence of values, each conditional on an environment. *)
+  type 'a t
+
+  val empty : 'a t
+  val singleton : Solver_env.t -> 'a -> 'a t
+
+  (** Returns the first value whose associated environment is a subset of the
+      specified environment. *)
+  val choose_for_platform : 'a t -> platform:Solver_env.t -> 'a option
+end
+
+module Depexts : sig
+  type t =
+    { external_package_names : string list
+    ; enabled_if : [ `Always | `Conditional of Slang.Blang.t ]
+    }
 end
 
 module Pkg : sig
   type t =
-    { build_command : Build_command.t option
-    ; install_command : Action.t option
-    ; depends : (Loc.t * Package_name.t) list
-    ; depexts : string list
+    { build_command : Build_command.t Conditional_choice.t
+    ; install_command : Action.t Conditional_choice.t
+    ; depends : Dependency.t list Conditional_choice.t
+    ; depexts : Depexts.t list
     ; info : Pkg_info.t
     ; exported_env : String_with_vars.t Action.Env_update.t list
+    ; enabled_on_platforms : Solver_env.t list
     }
 
   val remove_locs : t -> t
   val equal : t -> t -> bool
-  val decode : (lock_dir:Path.Source.t -> Package_name.t -> t) Decoder.t
-  val files_dir : Package_name.t -> lock_dir:Path.Source.t -> Path.Source.t
-end
 
-module Package_filename : sig
-  val of_package_name : Package_name.t -> string
+  val decode
+    : (lock_dir:Path.Source.t
+       -> solved_for_platforms:Solver_env.t list
+       -> Package_name.t
+       -> t)
+        Decoder.t
+
+  val files_dir
+    :  Package_name.t
+    -> Package_version.t option
+    -> lock_dir:Path.Source.t
+    -> Path.Source.t
 end
 
 module Repositories : sig
   type t
 end
 
+module Packages : sig
+  type t
+
+  val to_pkg_list : t -> Pkg.t list
+  val pkgs_on_platform_by_name : t -> platform:Solver_env.t -> Pkg.t Package_name.Map.t
+end
+
 type t = private
   { version : Syntax.Version.t
   ; dependency_hash : (Loc.t * Local_package.Dependency_hash.t) option
-  ; packages : Pkg.t Package_name.Map.t
+  ; packages : Packages.t
     (** It's guaranteed that this map will contain an entry for all dependencies
       of all packages in this map. That is, the set of packages is closed under
       the "depends on" relationship between packages. *)
@@ -59,6 +104,7 @@ type t = private
     (** Stores the solver variables that were evaluated while solving
       dependencies. Can be used to determine if a lockdir is compatible
       with a particular system. *)
+  ; solved_for_platforms : Loc.t * Solver_env.t list
   }
 
 val remove_locs : t -> t
@@ -76,6 +122,8 @@ val create_latest_version
   -> ocaml:(Loc.t * Package_name.t) option
   -> repos:Opam_repo.t list option
   -> expanded_solver_variable_bindings:Solver_stats.Expanded_variable_bindings.t
+  -> solved_for_platform:Solver_env.t option
+       (* TODO: make this non-optional when portable lockdirs becomes the default *)
   -> t
 
 val default_path : Path.Source.t
@@ -93,8 +141,9 @@ module Write_disk : sig
   type t
 
   val prepare
-    :  lock_dir_path:Path.Source.t
-    -> files:File_entry.t Package_name.Map.Multi.t
+    :  portable_lock_dir:bool
+    -> lock_dir_path:Path.Source.t
+    -> files:File_entry.t Package_version.Map.Multi.t Package_name.Map.t
     -> lock_dir
     -> t
 
@@ -116,16 +165,27 @@ module Make_load (Io : sig
   val load_exn : Path.Source.t -> t Io.t
 end
 
-(** [transitive_dependency_closure t names] returns the set of package names
+(** [transitive_dependency_closure t ~platform names] returns the set of package names
     making up the transitive closure of dependencies of the set [names], or
     [Error (`Missing_packages missing_packages)] if if any element of [names]
     is not found in the lockdir. [missing_packages] is a subset of [names]
-    not present in the lockdir. *)
+    not present in the lockdir. As a package's dependencies may vary between
+    platforms, a description of the current platform must also be provided. *)
 val transitive_dependency_closure
   :  t
+  -> platform:Solver_env.t
   -> Package_name.Set.t
   -> (Package_name.Set.t, [ `Missing_packages of Package_name.Set.t ]) result
 
 (** Attempt to download and compute checksums for packages that have source
     archive urls but no checksum. *)
 val compute_missing_checksums : t -> pinned_packages:Package_name.Set.t -> t Fiber.t
+
+(** Combine the platform-specific parts of a pair of lockdirs, throwing a code
+    error if the lockdirs differ in a non-platform-specific way. *)
+val merge_conditionals : t -> t -> t
+
+(** Returns the packages contained in the solution on the given platform. If
+    the lockdir does not contain a solution compatible with the given platform
+    then a [User_error] is raised. *)
+val packages_on_platform : t -> platform:Solver_env.t -> Pkg.t Package_name.Map.t

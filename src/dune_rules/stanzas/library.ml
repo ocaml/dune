@@ -187,7 +187,7 @@ let decode =
      and+ melange_runtime_deps =
        field
          "melange.runtime_deps"
-         (Dune_lang.Syntax.since Melange_stanzas.syntax (0, 1)
+         (Dune_lang.Syntax.since Dune_lang.Melange.syntax (0, 1)
           >>> located (repeat Dep_conf.decode))
          ~default:(stanza_loc, [])
      in

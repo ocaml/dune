@@ -1,13 +1,5 @@
 (library
  (name dune_rpc_server)
  (synopsis "Private API to define a dune rpc server")
- (libraries
-  fiber
-  stdune
-  chrome_trace
-  dyn
-  ordering
-  dune_stats
-  dune_util
-  dune_rpc_private
-  unix))
+ (libraries fiber stdune chrome_trace dyn ordering dune_stats dune_util
+  dune_rpc_private unix))

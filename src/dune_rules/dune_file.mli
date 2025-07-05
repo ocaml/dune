@@ -14,7 +14,7 @@ val find_stanzas : t -> 'a Stanza.Key.t -> 'a list Memo.t
 val fold_static_stanzas : t list -> init:'acc -> f:(t -> Stanza.t -> 'acc -> 'acc) -> 'acc
 
 val eval
-  :  (Path.Source.t * Dune_project.t * Dune_file0.t) Appendable_list.t
+  :  (Path.Source.t * Dune_project.t * Source.Dune_file.t) Appendable_list.t
   -> Only_packages.t
   -> t list Per_context.t Memo.t
 

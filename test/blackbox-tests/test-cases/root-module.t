@@ -40,8 +40,8 @@ Now we shadow lib1:
   File "lib2/lib2.ml", line 1, characters 14-27:
   1 | print_endline Lib1.greeting
                     ^^^^^^^^^^^^^
-  Error: This expression has type unit but an expression was expected of type
-           string
+  Error: The value Lib1.greeting has type unit
+         but an expression was expected of type string
   [1]
 
 We can use the rename dependency type to use lib1 with a different name:

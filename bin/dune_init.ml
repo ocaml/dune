@@ -180,11 +180,12 @@ module Init_context = struct
   let make path defaults =
     let open Memo.O in
     let+ project =
-      (* CR-rgrinberg: why not get the project from the source tree? *)
+      (* CR-someday rgrinberg: why not get the project from the source tree? *)
       Dune_project.load
         ~dir:Path.Source.root
         ~files:Filename.Set.empty
         ~infer_from_opam_files:true
+        ~load_opam_file_with_contents:Dune_pkg.Opam_file.load_opam_file_with_contents
       >>| function
       | Some p -> p
       | None ->

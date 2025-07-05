@@ -15,6 +15,8 @@ Run inline tests using node js
   inline tests (JS)
   inline tests (JS)
 
+CR-Alizter: This test has a different behaviour for the macos-latest in the CI and additionally runs the (Byte) tests. This seems unintentional and should be investigated. For now this test is disabled on macos.
+
   $ dune runtest --profile release
   Warning: your program contains effect handlers; you should probably run js_of_ocaml with option '--effects=cps'
   inline tests (JS)
@@ -22,7 +24,7 @@ Run inline tests using node js
   inline tests (Native)
   inline tests (Native)
 
-  $ dune build js/.inline_tests_js.inline-tests/inline_test_runner_inline_tests_js.bc --display short
+  $ dune build js/.inline_tests_js.inline-tests/inline_test_runner_inline_tests_js.bc
   Error: Don't know how to build
   js/.inline_tests_js.inline-tests/inline_test_runner_inline_tests_js.bc
   [1]

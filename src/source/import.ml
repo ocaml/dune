@@ -2,15 +2,18 @@ include Stdune
 include Dune_config
 include Dune_vcs
 include Dune_util
+include Dune_config_file
 module Console = Dune_console
 
 include struct
   open Dune_engine
+  module Context_name = Context_name
   module Execution_parameters = Execution_parameters
   module Compound_user_error = Compound_user_error
   module Fs_memo = Fs_memo
   module Build_system = Build_system
   module Fs_cache = Fs_cache
+  module Build_context = Build_context
   include No_io
 end
 
@@ -44,4 +47,8 @@ include struct
   module Dune_project_name = Dune_project_name
   module Package = Package
   module Dialect = Dialect
+  module Dune_project = Dune_project
+  module Ordered_set_lang = Ordered_set_lang
+  module Blang = Blang
+  module Relop = Relop
 end

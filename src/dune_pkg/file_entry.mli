@@ -8,3 +8,6 @@ type t =
   { original : source
   ; local_file : Path.Local.t
   }
+
+val equal : t -> t -> bool
+val to_dyn : t -> Dyn.t

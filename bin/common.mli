@@ -28,6 +28,7 @@ val prefix_target : t -> string -> string
 module Builder : sig
   type t
 
+  val equal : t -> t -> bool
   val root : t -> string option
   val set_root : t -> string -> t
   val forbid_builds : t -> t
@@ -38,6 +39,7 @@ module Builder : sig
   val set_promote : t -> Dune_engine.Clflags.Promote.t -> t
   val default_target : t -> Arg.Dep.t
   val term : t Cmdliner.Term.t
+  val default : t
 end
 
 (** [init] creates a [Common.t] by executing a sequence of side-effecting actions to

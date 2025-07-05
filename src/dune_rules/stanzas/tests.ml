@@ -23,7 +23,7 @@ let gen_parse names =
        (Bindings.var_names deps)
        (let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
         let+ buildable = Buildable.decode Executable
-        and+ link_flags = Link_flags.Spec.decode ~check:None
+        and+ link_flags = Dune_lang.Link_flags.Spec.decode ~check:None
         and+ names = names
         and+ package = field_o "package" Stanza_common.Pkg.decode
         and+ locks = Locks.field ()

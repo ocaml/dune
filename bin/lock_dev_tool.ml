@@ -1,6 +1,7 @@
 open Dune_config
 open Import
 module Lock_dir = Dune_pkg.Lock_dir
+module Pin = Dune_pkg.Pin
 
 let is_enabled =
   lazy
@@ -68,8 +69,7 @@ let make_local_package_wrapping_dev_tool ~dev_tool ~dev_tool_version ~extra_depe
 let solve ~dev_tool ~local_packages =
   let open Memo.O in
   let* solver_env_from_current_system =
-    Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
-    |> Dune_pkg.Sys_poll.solver_env_from_current_system
+    Pkg_common.poll_solver_env_from_current_system ()
     |> Memo.of_reproducible_fiber
     >>| Option.some
   and* workspace =
@@ -84,11 +84,12 @@ let solve ~dev_tool ~local_packages =
   @@ Lock.solve
        workspace
        ~local_packages
-       ~project_pins:Dune_pkg.Pin_stanza.DB.empty
+       ~project_pins:Pin.DB.empty
        ~solver_env_from_current_system
        ~version_preference:None
        ~lock_dirs:[ lock_dir ]
        ~print_perf_stats:false
+       ~portable_lock_dir:false
 ;;
 
 let compiler_package_name = Package_name.of_string "ocaml"
@@ -112,7 +113,10 @@ let locked_ocaml_compiler_version () =
     (* Dev tools are only ever built with the default context. *)
     Context_name.default
   in
-  let* result = Dune_rules.Lock_dir.get context in
+  let* result = Dune_rules.Lock_dir.get context
+  and* platform =
+    Pkg_common.poll_solver_env_from_current_system () |> Memo.of_reproducible_fiber
+  in
   match result with
   | Error _ ->
     User_error.raise
@@ -123,6 +127,7 @@ let locked_ocaml_compiler_version () =
             [ Pp.text "Try running"; User_message.command "dune pkg lock" ]
         ]
   | Ok { packages; _ } ->
+    let packages = Lock_dir.Packages.pkgs_on_platform_by_name packages ~platform in
     (match Package_name.Map.find packages compiler_package_name with
      | None ->
        User_error.raise
@@ -175,6 +180,10 @@ let lockdir_status dev_tool =
     (match Dune_pkg.Dev_tool.needs_to_build_with_same_compiler_as_project dev_tool with
      | false -> Memo.return `Lockdir_ok
      | true ->
+       let* platform =
+         Pkg_common.poll_solver_env_from_current_system () |> Memo.of_reproducible_fiber
+       in
+       let packages = Lock_dir.Packages.pkgs_on_platform_by_name packages ~platform in
        (match Package_name.Map.find packages compiler_package_name with
         | None -> Memo.return `No_compiler_lockfile_in_lockdir
         | Some { info; _ } ->
@@ -196,7 +205,11 @@ let lockdir_status dev_tool =
                   ]))))
 ;;
 
-let lock_dev_tool dev_tool version =
+(* [lock_dev_tool_at_version dev_tool version] generates the lockdir for the
+   dev tool [dev_tool]. If [version] is [Some v] then version [v] of the tool
+   will be chosen by the solver. Otherwise the solver is free to choose the
+   appropriate version of the tool to install. *)
+let lock_dev_tool_at_version dev_tool version =
   let open Memo.O in
   let* need_to_solve =
     lockdir_status dev_tool
@@ -231,8 +244,15 @@ let lock_dev_tool dev_tool version =
 
 let lock_ocamlformat () =
   let version = Dune_pkg.Ocamlformat.version_of_current_project's_ocamlformat_config () in
-  lock_dev_tool Ocamlformat version
+  lock_dev_tool_at_version Ocamlformat version
 ;;
 
-let lock_odoc () = lock_dev_tool Odoc None
-let lock_ocamllsp () = lock_dev_tool Ocamllsp None
+let lock_odoc () = lock_dev_tool_at_version Odoc None
+let lock_ocamllsp () = lock_dev_tool_at_version Ocamllsp None
+
+let lock_dev_tool dev_tool =
+  match (dev_tool : Dune_pkg.Dev_tool.t) with
+  | Ocamlformat -> lock_ocamlformat ()
+  | Odoc -> lock_odoc ()
+  | Ocamllsp -> lock_ocamllsp ()
+;;

@@ -318,9 +318,6 @@ val drop_optional_sandbox_root : t -> t
     otherwise fail. *)
 val drop_optional_build_context_src_exn : t -> Source.t
 
-val explode : t -> Filename.t list option
-val explode_exn : t -> Filename.t list
-
 (** The build directory *)
 val build_dir : t
 
@@ -415,15 +412,6 @@ val rename : t -> t -> unit
 (** Set permissions for a given path. You can use the [Permissions] module if
     you need to modify existing permissions in a non-trivial way. *)
 val chmod : t -> mode:int -> unit
-
-(** Attempts to resolve a symlink. Returns:
-
-    - [Ok path] with the resolved destination
-    - [Error Not_a_symlink] if the path isn't a symlink
-    - [Error Max_depth_exceeded] if the function reached the maximum symbolic
-      link depth
-    - [Error (Unix_error _)] with the underlying syscall error. *)
-val follow_symlink : t -> (t, Fpath.follow_symlink_error) result
 
 (** [drop_prefix_exn t ~prefix] drops the [prefix] from a path, including any
     leftover directory separator prefix. Raises a [Code_error.t] if the prefix

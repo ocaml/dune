@@ -20,7 +20,9 @@ module Sys_vars : sig
     ; sys_ocaml_version : string option Memo.Lazy.t
     }
 
+  val os : t -> Dune_lang.Pform.Var.Os.t -> string option Memo.t
   val poll : t
+  val solver_env : unit -> Dune_pkg.Solver_env.t Memo.t
 end
 
 val source_kind

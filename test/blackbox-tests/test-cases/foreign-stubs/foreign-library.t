@@ -39,6 +39,10 @@ Testsuite for the (foreign_library ...) stanza.
   [1]
 
 ----------------------------------------------------------------------------------
+* From now onwards, we use `(lang dune 3.0)`.
+  $ echo "(lang dune 3.0)" > dune-project
+
+----------------------------------------------------------------------------------
 * Error message for a missing source file.
 
   $ cat >lib/dune <<EOF
@@ -84,7 +88,7 @@ Testsuite for the (foreign_library ...) stanza.
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
-  >  (flags -DCONFIG_VALUE=2000)
+  >  (flags :standard -DCONFIG_VALUE=2000)
   >  (names config))
   > EOF
   $ touch lib/calc.ml
@@ -159,7 +163,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (language cxx)
   >  (include_dirs headers)
   >  (extra_deps eight.h)
-  >  (flags -DCONFIG_VALUE=2000)
+  >  (flags :standard -DCONFIG_VALUE=2000)
   >  (names config))
   > EOF
 
@@ -211,7 +215,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (language cxx)
   >  (include_dirs headers another/dir)
   >  (extra_deps eight.h)
-  >  (flags -DCONFIG_VALUE=2000)
+  >  (flags :standard -DCONFIG_VALUE=2000)
   >  (names config))
   > EOF
 
@@ -239,7 +243,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (language cxx)
   >  (include_dirs headers /some/path)
   >  (extra_deps eight.h)
-  >  (flags -DCONFIG_VALUE=2000)
+  >  (flags :standard -DCONFIG_VALUE=2000)
   >  (names config))
   > EOF
 
@@ -268,7 +272,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (language cxx)
   >  (include_dirs headers /usr/bin/env)
   >  (extra_deps eight.h)
-  >  (flags -DCONFIG_VALUE=2000)
+  >  (flags :standard -DCONFIG_VALUE=2000)
   >  (names config))
   > EOF
 
@@ -301,7 +305,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (language cxx)
   >  (include_dirs headers)
   >  (extra_deps eight.h)
-  >  (flags -DCONFIG_VALUE=2000)
+  >  (flags :standard -DCONFIG_VALUE=2000)
   >  (names config))
   > EOF
 
@@ -331,7 +335,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (language cxx)
   >  (include_dirs headers)
   >  (extra_deps eight.h)
-  >  (flags -DCONFIG_VALUE=2000)
+  >  (flags :standard -DCONFIG_VALUE=2000)
   >  (names config))
   > EOF
 
@@ -389,7 +393,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (language cxx)
   >  (include_dirs headers)
   >  (extra_deps eight.h)
-  >  (flags -DCONFIG_VALUE=2000)
+  >  (flags :standard -DCONFIG_VALUE=2000)
   >  (names config))
   > EOF
 
@@ -447,7 +451,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (language cxx)
   >  (include_dirs headers)
   >  (extra_deps eight.h)
-  >  (flags -DCONFIG_VALUE=2000)
+  >  (flags :standard -DCONFIG_VALUE=2000)
   >  (names config))
   > EOF
 
@@ -502,7 +506,7 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ cat >dune <<EOF
-  > (env (_ (cxx_flags -DCONFIG_VALUE=2000)))
+  > (env (_ (cxx_flags :standard -DCONFIG_VALUE=2000)))
   > (executable
   >  (modes exe)
   >  (name main)
@@ -535,7 +539,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (archive_name config)
   >  (language cxx)
   >  (include_dirs headers)
-  >  (flags -DCONFIG_VALUE=2000)
+  >  (flags :standard -DCONFIG_VALUE=2000)
   >  (extra_deps eight.h)
   >  (names config))
   > EOF
@@ -740,8 +744,8 @@ Testsuite for the (foreign_library ...) stanza.
 
   $ export OCAMLPATH=$PWD/external/install/lib; dune exec ./main.exe --root=some/dir
   Entering directory 'some/dir'
-  Answer = 42
   Leaving directory 'some/dir'
+  Answer = 42
 
 ----------------------------------------------------------------------------------
 * External library directories in (include_dir ...)

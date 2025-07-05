@@ -343,6 +343,7 @@ Test compiling an external plugin
 
   $ OCAMLPATH=$PWD/_install/lib:$OCAMLPATH PATH=$PWD/_install/bin:$PATH dune exec  --root=e -- c
   Entering directory 'e'
+  Leaving directory 'e'
   run a
   a: $TESTCASE_ROOT/_install/share/a/data
   run c: a linked registered:.
@@ -356,7 +357,6 @@ Test compiling an external plugin
   e: $TESTCASE_ROOT/e/_build/install/default/share/e/data
   info.txt is found: true
   run c: registered:e,b.
-  Leaving directory 'e'
 
   $ OCAMLPATH=$PWD/_install/lib:$OCAMLPATH dune install --root=e --prefix $PWD/_install
 

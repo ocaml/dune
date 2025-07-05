@@ -5,13 +5,14 @@ module Digest = Dune_digest
 
 include struct
   open Source
-  module Dune_project = Dune_project
   module Source_dir_status = Source_dir_status
-  module Dune_file0 = Dune_file0
   module Include_stanza = Include_stanza
   module Source_tree = Source_tree
   module Cram_test = Cram_test
   module Only_packages = Only_packages
+  module Workspace = Workspace
+  module Opam_switch = Opam_switch
+  module Blang_expand = Blang_expand
 end
 
 include struct
@@ -116,6 +117,20 @@ include struct
   module Lib_mode = Lib_mode
   module Module_name = Module_name
   module Preprocess = Preprocess
+  module Dune_project = Dune_project
+  module File_binding = File_binding
+  module Foreign_language = Foreign_language
+  module Coq_env = Coq_env
+  module Menhir_env = Menhir_env
+  module Dune_env = Dune_env
+  module Js_of_ocaml = Js_of_ocaml
+  module Copy_files = Copy_files
+  module Enabled_if = Enabled_if
+  module Rule_mode_decoder = Rule_mode_decoder
+  module Alias_conf = Alias_conf
+  module Stanza_common = Stanza_common
+  module Include_subdirs = Include_subdirs
+  module Mode_conf = Mode_conf
 end
 
 include Dune_engine.No_io

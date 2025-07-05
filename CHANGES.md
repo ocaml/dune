@@ -5,7 +5,53 @@ If you're a contributor, please include your CHANGES entry in a file
 `doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
 changelog properly.
 
-3.18.2 (2024-04-29)
+3.19.1 (2025-06-11)
+------------------
+
+### Fixed
+
+- Revert changes in `dune exec` behaviour introduced in 3.19.0. (#11879, fixes
+  #11870, #11867 and #11881, @Alizter)
+
+3.19.0 (2025-05-21)
+-------------------
+
+### Fixed
+
+- Fixed a bug that was causing cram tests attached to multiple aliases to be run multiple
+  times. (#11547, @Alizter)
+
+- Fix: pass pkg-config (extra) args in all pkgconfig invocations. A missing --personality
+  flag would result in pkgconf not finding libraries in some contexts. (#11619, @MisterDA)
+
+- Fix: Evaluate `enabled_if` when computing the stubs for stanzas such as
+  `foreign_library` (#11707, @Alizter, @rgrinberg)
+
+- Fix $ dune describe pp for libraries in the presence of `(include_subdirs
+  unqualified)` (#11729, fixes #10999, @rgrinberg)
+
+- Fix `$ dune subst` in sub directories of a git repository (#11760, fixes
+  #11045, @Richard-Degenne)
+
+- Fix a crash involving `Path.drop_prefix` when using Melange on Windows
+  (#11767, @nojb)
+
+### Added
+
+- Added detection and warning for common typos in package dependency
+  constraints (#11600, fixes #11575, @kemsguy7)
+
+- Added `(extra_objects)` field to `(foreign_library)` stanza with `(:include)` support.
+  (#11683, @Alizter)
+
+### Changed
+
+- Allow build RPC messages to be handled by dune's RPC server in eager watch
+  mode (#11622, @gridbugs)
+
+- Allow concurrent build with RPC server (#11712, @gridbugs)
+
+3.18.2 (2025-04-29)
 -------------------
 
 ### Fixed

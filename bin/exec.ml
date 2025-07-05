@@ -123,19 +123,8 @@ let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
     let path = Path.relative_to_source_in_build_or_external ~dir prog in
     Build_system.file_exists path
     >>= (function
-     | true -> Memo.return (Some path)
-     | false ->
-       if not (Filename.check_suffix prog ".exe")
-       then Memo.return None
-       else (
-         let path = Path.extend_basename path ~suffix:".exe" in
-         Build_system.file_exists path
-         >>| function
-         | true -> Some path
-         | false -> None))
-    >>= (function
-     | Some path -> build_prog ~no_rebuild ~prog path
-     | None -> not_found ~dir ~prog)
+     | true -> build_prog ~no_rebuild ~prog path
+     | false -> not_found ~dir ~prog)
   | Absolute ->
     (match
        let prog = Path.of_string prog in
@@ -165,7 +154,7 @@ let step ~setup ~prog ~args ~common ~no_rebuild ~context ~on_exit () =
     get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog
   and* args = Memo.parallel_map args ~f:expand in
   Memo.of_non_reproducible_fiber
-  @@ Dune_engine.Process.run_external_in_out
+  @@ Dune_engine.Process.run_inherit_std_in_out
        ~dir:(Path.of_string Fpath.initial_cwd)
        ~env
        path
@@ -204,7 +193,20 @@ let term : unit Term.t =
     @@ fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in
-    build_exn @@ step ~setup ~prog ~args ~common ~no_rebuild ~context ~on_exit:exit
+    build_exn (fun () ->
+      let open Memo.O in
+      let* sctx = setup >>| Import.Main.find_scontext_exn ~name:context in
+      let* env = Super_context.context_env sctx in
+      let expand = Cmd_arg.expand ~root:(Common.root common) ~sctx in
+      let* prog =
+        let dir =
+          let context = Dune_rules.Super_context.context sctx in
+          Path.Build.relative (Context.build_dir context) (Common.prefix_target common "")
+        in
+        let* prog = expand prog in
+        get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog >>| Path.to_string
+      and* args = Memo.parallel_map ~f:expand args in
+      restore_cwd_and_execve (Common.root common) prog args env)
 ;;
 
 let command = Cmd.v info term

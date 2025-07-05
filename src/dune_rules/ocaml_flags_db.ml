@@ -21,7 +21,7 @@ let ocaml_flags_env =
     (Staged.unstage f) dir
 ;;
 
-let ocaml_flags sctx ~dir (spec : Ocaml_flags.Spec.t) =
+let ocaml_flags sctx ~dir (spec : Dune_lang.Ocaml_flags.Spec.t) =
   let* flags =
     let* expander = Super_context.expander sctx ~dir in
     let+ ocaml_flags = ocaml_flags_env ~dir in
@@ -62,7 +62,7 @@ let link_env =
     (Staged.unstage f) dir
 ;;
 
-let link_flags sctx ~dir (spec : Link_flags.Spec.t) =
+let link_flags sctx ~dir (spec : Dune_lang.Link_flags.Spec.t) =
   let* expander = Super_context.expander sctx ~dir in
   let+ link_flags = link_env ~dir in
   Link_flags.make ~spec ~default:link_flags ~eval:(Expander.expand_and_eval_set expander)

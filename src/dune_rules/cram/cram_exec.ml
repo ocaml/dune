@@ -247,6 +247,8 @@ let compose_cram_output (cram_to_output : _ Cram_lexer.block list) =
 let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
   let script = Path.relative temp_dir "main.sh" in
   let oc = Io.open_out ~binary:true script in
+  Fiber.finalize ~finally:(fun () -> Fiber.return @@ close_out oc)
+  @@ fun () ->
   let file name = Path.relative temp_dir name in
   let open Fiber.O in
   let sh_path path =
@@ -292,7 +294,6 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
   in
   fprln oc "trap 'exit 0' EXIT";
   let+ cram_to_output = Fiber.sequential_map ~f:loop cram_stanzas in
-  close_out oc;
   let command_count = !i in
   let metadata_file = Option.some_if (command_count > 0) metadata_file in
   { script; cram_to_output; metadata_file }

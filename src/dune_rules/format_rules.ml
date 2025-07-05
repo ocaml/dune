@@ -182,7 +182,7 @@ let gen_rules_output
       Memo.Option.iter source_dir ~f:(fun source_dir ->
         Source_tree.Dir.dune_file source_dir
         |> Memo.Option.iter ~f:(fun f ->
-          Dune_file0.path f
+          Source.Dune_file.path f
           |> Memo.Option.iter ~f:(fun path ->
             let input_basename = Path.Source.basename path in
             let input = Path.build (Path.Build.relative dir input_basename) in

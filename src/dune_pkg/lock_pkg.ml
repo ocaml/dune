@@ -174,17 +174,6 @@ let make_action = function
   | actions -> Some (Action.Progn actions)
 ;;
 
-(* Heuristic to determine whether a package is an ocaml compiler *)
-let opam_file_is_compiler (opam_package : OpamFile.OPAM.t) =
-  (* Identify compiler packages by using the fact that all compiler
-     Packages declare conflicts with other compiler packages. note
-     that relying on the "compiler" flag to identify compiler packages
-     will not work, as compiler options packages (such as
-     ocaml-option-flambda) also have this flag. *)
-  let ocaml_core_compiler = OpamPackage.Name.of_string "ocaml-core-compiler" in
-  List.mem opam_package.conflict_class ocaml_core_compiler ~equal:OpamPackage.Name.equal
-;;
-
 let resolve_depopts ~resolve depopts =
   let rec collect acc depopts =
     match (depopts : OpamTypes.filtered_formula) with
@@ -332,6 +321,40 @@ let opam_commands_to_actions
         Some action))
 ;;
 
+(* Translate the entire depexts field from the opam file into the lockfile by
+   way of the slang dsl. Note that this preserves platform variables such as
+   "os" and "os-distribution", which is different from how the "build",
+   "install" and "depends" fields are treated, where platform variables are
+   substituded with concrete values at solve time. There are many different
+   Linux distributions and it's possible that some depexts will have different
+   names on each distro and possibly also for different versions of the same
+   distro. Users are not expected to solve their project for each
+   distribution/version as that would take too long, instead opting to solve
+   without a distro/version specified to create a package solution that's
+   likely to work across all distros (except perhaps some unconventional
+   distros such as Alpine). However even when using a general package solution,
+   it's important that Dune is able to tell users the names of depexts tailored
+   specifically for their current distro at build time. Thus, information
+   mapping distro/version to package names must be preserved in lockfiles when
+   solving. Opam allows depexts to be filtered by arbitrary filter expressions,
+   which is why the slang dsl is needed as opposed to (say) a map from
+   distro/version to depext name. *)
+let depexts_to_conditional_external_dependencies package depexts =
+  List.map depexts ~f:(fun (sys_pkgs, filter) ->
+    let external_package_names =
+      OpamSysPkg.Set.to_list_map OpamSysPkg.to_string sys_pkgs
+    in
+    let condition =
+      filter_to_blang ~package ~loc:Loc.none filter |> Slang.simplify_blang
+    in
+    let enabled_if =
+      if Slang.Blang.equal condition Slang.Blang.true_
+      then `Always
+      else `Conditional condition
+    in
+    { Lock_dir.Depexts.external_package_names; enabled_if })
+;;
+
 let opam_package_to_lock_file_pkg
       solver_env
       stats_updater
@@ -339,6 +362,7 @@ let opam_package_to_lock_file_pkg
       opam_package
       ~pinned
       resolved_package
+      ~portable_lock_dir
   =
   let name = Package_name.of_opam_package_name (OpamPackage.name opam_package) in
   let version =
@@ -385,7 +409,11 @@ let opam_package_to_lock_file_pkg
       Resolve_opam_formula.filtered_formula_to_package_names
         ~with_test:false
         ~packages:version_by_package_name
-        ~env:(add_self_to_filter_env opam_package (Solver_env.to_env solver_env))
+        ~env:
+          (add_self_to_filter_env
+             opam_package
+             (Solver_env.add_sentinel_values_for_unset_platform_vars solver_env
+              |> Solver_env.to_env))
         what
     in
     let depends =
@@ -403,7 +431,8 @@ let opam_package_to_lock_file_pkg
       |> List.filter ~f:(fun package_name ->
         not (List.mem depends package_name ~equal:Package_name.equal))
     in
-    depends @ depopts |> List.map ~f:(fun package_name -> Loc.none, package_name)
+    depends @ depopts
+    |> List.map ~f:(fun name -> { Lock_dir.Dependency.loc = Loc.none; name })
   in
   let build_env action =
     let env_update =
@@ -456,25 +485,62 @@ let opam_package_to_lock_file_pkg
       |> Option.map ~f:build_env
       |> Option.map ~f:(fun action -> Lock_dir.Build_command.Action action))
   in
+  (* Some lockfile fields contain a choice of values predicated on a set of
+     platform variables to allow lockfiles to be portable across different
+     platforms. Each invocation of the solver produces a solution associated
+     with a single set of platform variables (those in [solver_env]).
+     [lockfile_field_choice value] creates a choice with a single possible
+     value predicated by the platform variables in [solver_env]. The
+     solver may be run multiple times, and the choice fields of lockfiles
+     will be merged such that different values can be chosen on different
+     platforms. *)
+  let lockfile_field_choice value =
+    Lock_dir.Conditional_choice.singleton solver_env value
+  in
+  let build_command =
+    Option.map build_command ~f:lockfile_field_choice
+    |> Option.value ~default:Lock_dir.Conditional_choice.empty
+  in
   let depexts =
-    OpamFile.OPAM.depexts opam_file
-    |> List.concat_map ~f:(fun (sys_pkgs, filter) ->
-      let env = Solver_env.to_env solver_env in
-      if OpamFilter.eval_to_bool ~default:false env filter
-      then OpamSysPkg.Set.to_list_map OpamSysPkg.to_string sys_pkgs
-      else [])
+    if portable_lock_dir
+    then
+      depexts_to_conditional_external_dependencies
+        opam_package
+        (OpamFile.OPAM.depexts opam_file)
+    else (
+      (* In the non-portable case, only include depexts for the current platform. *)
+      let external_package_names =
+        OpamFile.OPAM.depexts opam_file
+        |> List.concat_map ~f:(fun (sys_pkgs, filter) ->
+          let env = Solver_env.to_env solver_env in
+          if OpamFilter.eval_to_bool ~default:false env filter
+          then OpamSysPkg.Set.to_list_map OpamSysPkg.to_string sys_pkgs
+          else [])
+      in
+      if List.is_empty external_package_names
+      then []
+      else [ { Lock_dir.Depexts.external_package_names; enabled_if = `Always } ])
   in
   let install_command =
     OpamFile.OPAM.install opam_file
     |> opam_commands_to_actions get_solver_var loc opam_package
     |> make_action
-    |> Option.map ~f:build_env
+    |> Option.map ~f:(fun action -> lockfile_field_choice (build_env action))
+    |> Option.value ~default:Lock_dir.Conditional_choice.empty
   in
   let exported_env =
     OpamFile.OPAM.env opam_file |> List.map ~f:opam_env_update_to_env_update
   in
-  let kind = if opam_file_is_compiler opam_file then `Compiler else `Non_compiler in
-  ( kind
-  , { Lock_dir.Pkg.build_command; install_command; depends; depexts; info; exported_env }
-  )
+  let depends = lockfile_field_choice depends in
+  let enabled_on_platforms =
+    [ Solver_env.remove_all_except_platform_specific solver_env ]
+  in
+  { Lock_dir.Pkg.build_command
+  ; install_command
+  ; depends
+  ; depexts
+  ; info
+  ; exported_env
+  ; enabled_on_platforms
+  }
 ;;

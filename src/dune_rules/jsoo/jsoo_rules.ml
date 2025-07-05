@@ -20,11 +20,13 @@ let compute_env ~mode =
             let+ v = Expander.eval_blang expander enabled_if in
             Some (Blang.Const v)
         in
+        let runtest_alias = Option.first_some local.runtest_alias parent.runtest_alias in
+        Option.iter ~f:Alias0.register_as_standard runtest_alias;
         { Js_of_ocaml.Env.compilation_mode =
             Option.first_some local.compilation_mode parent.compilation_mode
         ; sourcemap = Option.first_some local.sourcemap parent.sourcemap
         ; enabled_if
-        ; runtest_alias = Option.first_some local.runtest_alias parent.runtest_alias
+        ; runtest_alias
         ; flags =
             Js_of_ocaml.Flags.make
               ~spec:local.flags

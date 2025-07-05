@@ -2,6 +2,14 @@ open Import
 module Payload = Template.Pform.Payload
 
 module Var : sig
+  module Os : sig
+    type t =
+      | Os
+      | Os_version
+      | Os_distribution
+      | Os_family
+  end
+
   module Pkg : sig
     module Section : sig
       type t =
@@ -21,10 +29,7 @@ module Var : sig
 
     type t =
       | Switch
-      | Os
-      | Os_version
-      | Os_distribution
-      | Os_family
+      | Os of Os.t
       | Build
       | Prefix
       | User
@@ -69,6 +74,7 @@ module Var : sig
     | Profile
     | Context_name
     | Os_type
+    | Os of Os.t
     | Architecture
     | Arch_sixtyfour
     | System

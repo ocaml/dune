@@ -785,7 +785,7 @@ module Library = struct
           else if check "_avx2"
           then x86 [ "-mavx2" ] [ "/arch:AVX2" ]
           else if check "_avx512"
-          then x86 [ "-mavx512f"; "-mavx512vl" ] [ "/arch:AVX512" ]
+          then x86 [ "-mavx512f"; "-mavx512vl"; "-mavx512bw" ] [ "/arch:AVX512" ]
           else if String.is_suffix fn ~suffix:"_neon"
           then Some `Arm64, []
           else None, []

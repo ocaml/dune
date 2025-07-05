@@ -124,7 +124,7 @@ module Processed = struct
     type nonrec t = t
 
     let name = "merlin-conf"
-    let version = 6
+    let version = 7
     let to_dyn _ = Dyn.String "Use [dune ocaml dump-dot-merlin] instead"
 
     let test_example () =
@@ -687,8 +687,12 @@ module Unprocessed = struct
              >>= function
              | Some lib ->
                let+ libs =
-                 let linking =
-                   Dune_project.implicit_transitive_deps (Scope.project scope)
+                 let* linking =
+                   let+ ocaml = Context.ocaml (Super_context.context sctx) in
+                   Dune_project.Implicit_transitive_deps.to_bool
+                     (Dune_project.implicit_transitive_deps
+                        (Scope.project scope)
+                        ocaml.version)
                  in
                  Lib.closure [ lib ] ~linking
                  |> Resolve.Memo.peek

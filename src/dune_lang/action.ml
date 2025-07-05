@@ -396,7 +396,7 @@ let decode_pkg =
             Withenv (ops, t) )
     ; ( "when"
       , Syntax.since Stanza.syntax (0, 1)
-        >>> let+ condition = Slang.decode_blang
+        >>> let+ condition = Slang.Blang.decode
             and+ action = t in
             When (condition, action) )
     ; ( "run"
@@ -463,7 +463,7 @@ let rec encode =
   | Withenv (ops, t) ->
     List [ atom "withenv"; List (List.map ~f:Env_update.encode ops); encode t ]
   | When (condition, action) ->
-    List [ atom "when"; Slang.encode_blang condition; encode action ]
+    List [ atom "when"; Slang.Blang.encode condition; encode action ]
   | Format_dune_file (src, dst) -> List [ atom "format-dune-file"; sw src; sw dst ]
 ;;
 

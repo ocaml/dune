@@ -2,6 +2,25 @@ open Import
 module Payload = Template.Pform.Payload
 
 module Var = struct
+  module Os = struct
+    type t =
+      | Os
+      | Os_version
+      | Os_distribution
+      | Os_family
+
+    let all = [ Os; Os_version; Os_distribution; Os_family ]
+
+    let to_string = function
+      | Os -> "os"
+      | Os_version -> "os_version"
+      | Os_distribution -> "os_distribution"
+      | Os_family -> "os_family"
+    ;;
+
+    let to_dyn t = Dyn.variant (to_string t) []
+  end
+
   module Pkg = struct
     module Section = struct
       type t =
@@ -42,10 +61,7 @@ module Var = struct
 
     type t =
       | Switch
-      | Os
-      | Os_version
-      | Os_distribution
-      | Os_family
+      | Os of Os.t
       | Build
       | Prefix
       | User
@@ -57,31 +73,9 @@ module Var = struct
 
     let compare = Poly.compare
 
-    let to_dyn t =
-      let open Dyn in
-      match t with
-      | Switch -> variant "Switch" []
-      | Os -> variant "Os" []
-      | Os_version -> variant "Os_version" []
-      | Os_distribution -> variant "Os_distribution" []
-      | Os_family -> variant "Os_family" []
-      | Build -> variant "Build" []
-      | Prefix -> variant "Prefix" []
-      | User -> variant "User" []
-      | Group -> variant "Group" []
-      | Jobs -> variant "Jobs" []
-      | Arch -> variant "Arch" []
-      | Sys_ocaml_version -> variant "Sys_ocaml_version" []
-      | Section_dir section ->
-        variant "Section_dir" [ string (Section.to_string section) ]
-    ;;
-
     let encode_to_latest_dune_lang_version = function
+      | Os s -> Os.to_string s
       | Switch -> "switch"
-      | Os -> "os"
-      | Os_version -> "os_version"
-      | Os_distribution -> "os_distribution"
-      | Os_family -> "os_family"
       | Build -> "build"
       | Prefix -> "prefix"
       | User -> "user"
@@ -91,6 +85,8 @@ module Var = struct
       | Sys_ocaml_version -> "sys_ocaml_version"
       | Section_dir section -> Section.to_string section
     ;;
+
+    let to_dyn t = Dyn.variant (encode_to_latest_dune_lang_version t) []
   end
 
   type t =
@@ -124,6 +120,7 @@ module Var = struct
     | Profile
     | Context_name
     | Os_type
+    | Os of Os.t
     | Architecture
     | Arch_sixtyfour
     | System
@@ -191,6 +188,7 @@ module Var = struct
        | Corrected_suffix -> variant "Corrected_suffix" []
        | Inline_tests -> variant "Inline_tests" []
        | Toolchain -> variant "Toolchain" []
+       | Os os -> Os.to_dyn os
        | Pkg pkg -> Pkg.to_dyn pkg)
   ;;
 
@@ -201,10 +199,10 @@ module Var = struct
       (match name with
        | "make" -> Some Make
        | "switch" -> Some (Pkg Switch)
-       | "os" -> Some (Pkg Os)
-       | "os-version" -> Some (Pkg Os_version)
-       | "os-distribution" -> Some (Pkg Os_distribution)
-       | "os-family" -> Some (Pkg Os_family)
+       | "os" -> Some (Pkg (Os Os))
+       | "os-version" -> Some (Pkg (Os Os_version))
+       | "os-distribution" -> Some (Pkg (Os Os_distribution))
+       | "os-family" -> Some (Pkg (Os Os_family))
        | "build" -> Some (Pkg Build)
        | "prefix" -> Some (Pkg Prefix)
        | "user" -> Some (Pkg User)
@@ -501,6 +499,7 @@ let encode_to_latest_dune_lang_version t =
        | Corrected_suffix -> Some "corrected-suffix"
        | Inline_tests -> Some "inline_tests"
        | Toolchain -> Some "toolchain"
+       | Os os -> Some (Var.Os.to_string os)
        | Pkg pkg -> Some (Var.Pkg.encode_to_latest_dune_lang_version pkg)
      with
      | None -> Pform_was_deleted
@@ -571,10 +570,10 @@ module Env = struct
     let vars =
       let pkg =
         [ "switch", Var.Pkg.Switch
-        ; "os", Os
-        ; "os_version", Os_version
-        ; "os_distribution", Os_distribution
-        ; "os_family", Os_family
+        ; "os", Os Os
+        ; "os_version", Os Os_version
+        ; "os_distribution", Os Os_distribution
+        ; "os_family", Os Os_family
         ; "build", Build
         ; "prefix", Prefix
         ; "user", User
@@ -702,7 +701,11 @@ module Env = struct
         ; "toolchains", since ~version:(3, 0) Var.Toolchain
         ]
       in
-      String.Map.of_list_exn (List.concat [ lowercased; uppercased; other ])
+      let os =
+        List.map Var.Os.all ~f:(fun v ->
+          Var.Os.to_string v, since ~version:(3, 20) (Var.Os v))
+      in
+      String.Map.of_list_exn (List.concat [ lowercased; uppercased; other; os ])
     in
     fun syntax_version -> { syntax_version; vars; macros }
   ;;

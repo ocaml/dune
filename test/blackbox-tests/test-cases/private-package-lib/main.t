@@ -158,8 +158,8 @@ Now we make sure such libraries are transitively usable when installed:
   $ export OCAMLPATH=$PWD/_build/install/default/lib
   $ dune exec --root use -- ./run.exe
   Entering directory 'use'
-  Using library foo: from library foo secret string
   Leaving directory 'use'
+  Using library foo: from library foo secret string
 
 But we cannot use such libraries directly:
 

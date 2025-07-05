@@ -83,17 +83,17 @@ let explain_results_to_user results ~transitive ~lock_dir_path =
 
 let better_candidate
       ~repos
-      ~(local_packages : Dune_pkg.Local_package.t Package_name.Map.t)
+      ~(local_packages : Local_package.t Package_name.Map.t)
       (pkg : Lock_dir.Pkg.t)
   =
   let open Fiber.O in
   let pkg_name = pkg.info.name |> Package_name.to_string |> OpamPackage.Name.of_string in
   let is_immediate_dep_of_local_package =
     Package_name.Map.exists local_packages ~f:(fun local_package ->
-      Dune_pkg.Local_package.(
+      Local_package.(
         for_solver local_package
         |> (fun x -> x.dependencies)
-        |> Dune_pkg.Dependency_formula.to_filtered_formula)
+        |> Dependency_formula.to_filtered_formula)
       |> OpamFilter.filter_deps
            ~build:true
            ~post:false

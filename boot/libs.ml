@@ -389,11 +389,6 @@ let local_libraries =
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }
-  ; { path = "src/dune_pkg_outdated"
-    ; main_module_name = Some "Dune_pkg_outdated"
-    ; include_subdirs_unqualified = false
-    ; special_builtin_support = None
-    }
   ; { path = "vendor/cmdliner/src"
     ; main_module_name = None
     ; include_subdirs_unqualified = false

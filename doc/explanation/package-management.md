@@ -57,11 +57,12 @@ file. This allows projects to completely omit generation of `.opam` files, as
 long as they use Dune for package management. Thus all dependencies on OCaml
 packages are only declared in one single file.
 
-For compatibility with a larger amount of existing projects, Dune will also
-collect dependencies from `.opam` files in the project. So while recommended,
-there is no obligation to switch to declaring dependencies in the
-`dune-project`. Likewise the generation of `.opam` files continues to be
-supported.
+To maintain compatibility with a large number of existing projects, Dune
+continues to support `.opam` files. While it is recommended to declare the
+dependencies directly in the `dune-project` file, it is not mandatory to do so.
+Dune will fall back to reading dependencies from `.opam` files when the package
+is not defined in `dune-project`.
+
 
 ## Locking
 

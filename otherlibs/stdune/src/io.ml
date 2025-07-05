@@ -242,6 +242,10 @@ struct
 
   let with_file_in ?binary fn ~f = Exn.protectx (open_in ?binary fn) ~finally:close_in ~f
 
+  let with_file_in_fd fn ~f =
+    Exn.protectx (Unix.openfile fn [ O_RDONLY; O_CLOEXEC ] 0) ~f ~finally:Unix.close
+  ;;
+
   let with_file_out ?binary ?perm p ~f =
     Exn.protectx (open_out ?binary ?perm p) ~finally:close_out ~f
   ;;
@@ -273,6 +277,31 @@ struct
     let buf = Bytes.create len in
     let r = eagerly_input_acc ic buf ~pos:0 ~len 0 in
     if r = len then Bytes.unsafe_to_string buf else Bytes.sub_string buf ~pos:0 ~len:r
+  ;;
+
+  let read_all_fd =
+    let rec read fd buf pos left =
+      if left = 0
+      then `Ok
+      else (
+        match Unix.read fd buf pos left with
+        | 0 -> `Eof
+        | n -> read fd buf (pos + n) (left - n))
+    in
+    fun fd ->
+      match Unix.fstat fd with
+      | exception Unix.Unix_error (e, x, y) -> Error (`Unix (e, x, y))
+      | { Unix.st_size; _ } ->
+        if st_size = 0
+        then Ok ""
+        else if st_size > Sys.max_string_length
+        then Error `Too_big
+        else (
+          let b = Bytes.create st_size in
+          match read fd b 0 st_size with
+          | exception Unix.Unix_error (e, x, y) -> Error (`Unix (e, x, y))
+          | `Eof -> Error `Retry
+          | `Ok -> Ok (Bytes.unsafe_to_string b))
   ;;
 
   let read_all_unless_large =
@@ -321,13 +350,28 @@ struct
 
   let path_to_dyn path = String.to_dyn (Path.to_string path)
 
-  let read_file ?binary fn =
+  let read_file_chan ?binary fn =
     match with_file_in fn ~f:read_all_unless_large ?binary with
     | Ok x -> x
     | Error () ->
       Code_error.raise
         "read_file: file is larger than Sys.max_string_length"
         [ "fn", path_to_dyn fn ]
+  ;;
+
+  let read_file ?(binary = true) fn =
+    if binary
+    then
+      with_file_in_fd (Path.to_string fn) ~f:(fun fd ->
+        match read_all_fd fd with
+        | Ok s -> s
+        | Error `Retry -> read_file_chan ~binary fn
+        | Error `Too_big ->
+          Code_error.raise
+            "read_file: file is larger than Sys.max_string_length"
+            [ "fn", path_to_dyn fn ]
+        | Error (`Unix e) -> Dune_filesystem_stubs.Unix_error.Detailed.raise e)
+    else read_file_chan ~binary fn
   ;;
 
   let lines_of_file fn = with_file_in fn ~f:input_lines ~binary:false

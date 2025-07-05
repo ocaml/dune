@@ -1477,27 +1477,19 @@ module Solver_result = struct
   let merge a b =
     let lock_dir = Lock_dir.merge_conditionals a.lock_dir b.lock_dir in
     let files =
-      Package_name.Map.merge a.files b.files ~f:(fun _ a b ->
-        match a, b with
-        | None, None -> None
-        | Some x, None | None, Some x -> Some x
-        | Some a, Some b ->
-          Some
-            (Package_version.Map.merge a b ~f:(fun _ a b ->
-               match a, b with
-               | None, None -> None
-               | Some x, None | None, Some x -> Some x
-               | Some a, Some b ->
-                 (* The package is present in both solutions at the same version. Make
+      Package_name.Map.union a.files b.files ~f:(fun _ a b ->
+        Some
+          (Package_version.Map.union a b ~f:(fun _ a b ->
+             (* The package is present in both solutions at the same version. Make
              sure its associated files are the same in both instances. *)
-                 if not (List.equal File_entry.equal a b)
-                 then
-                   Code_error.raise
-                     "Package files differ between merged solver results"
-                     [ "files_1", Dyn.list File_entry.to_dyn a
-                     ; "files_2", Dyn.list File_entry.to_dyn b
-                     ];
-                 Some a)))
+             if not (List.equal File_entry.equal a b)
+             then
+               Code_error.raise
+                 "Package files differ between merged solver results"
+                 [ "files_1", Dyn.list File_entry.to_dyn a
+                 ; "files_2", Dyn.list File_entry.to_dyn b
+                 ];
+             Some a)))
     in
     let pinned_packages = Package_name.Set.union a.pinned_packages b.pinned_packages in
     let num_expanded_packages = a.num_expanded_packages + b.num_expanded_packages in

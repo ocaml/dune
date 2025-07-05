@@ -57,6 +57,7 @@ Test that installed binaries are visible in dependent packages
             ]
         }
   ; variables = []
+  ; extra_digest = None
   }
 
 It should also be visible in the workspace:

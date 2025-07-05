@@ -191,13 +191,15 @@ module Install_cookie = struct
   type t =
     { files : Path.t list Section.Map.t
     ; variables : Variable.t list
+    ; extra_digest : Digest.t option
     }
 
-  let to_dyn { files; variables } =
+  let to_dyn { files; variables; extra_digest } =
     let open Dyn in
     record
       [ "files", Section.Map.to_dyn (list Path.to_dyn) files
       ; "variables", list Variable.to_dyn variables
+      ; "extra_digest", option Digest.to_dyn extra_digest
       ]
   ;;
 
@@ -205,9 +207,12 @@ module Install_cookie = struct
       type nonrec t = t
 
       let name = "INSTALL-COOKIE"
-      let version = 2
+      let version = 3
       let to_dyn = to_dyn
-      let test_example () = { files = Section.Map.empty; variables = [] }
+
+      let test_example () =
+        { files = Section.Map.empty; variables = []; extra_digest = None }
+      ;;
     end)
 
   let load_exn f =
@@ -1588,9 +1593,30 @@ module Install_action = struct
         Section.Map.union from_install_action from_install_file ~f:(fun _ x y ->
           Some (x @ y))
       in
+      let* extra_digest =
+        match prefix_outside_build_dir with
+        | None -> Fiber.return None
+        | Some dir ->
+          let stats =
+            { Dune_digest.Stats_for_digest.st_kind = S_DIR; executable = true }
+          in
+          let dir = Path.outside_build_dir dir in
+          Async.async (fun () -> Digest.path_with_stats ~allow_dirs:true dir stats)
+          >>| (function
+           | Ok s -> Some s
+           | Error error ->
+             User_error.raise
+               [ Pp.text "error computing digest of toolchain"
+               ; Pp.text
+                   (match error with
+                    | Unexpected_kind -> "unexpected kind"
+                    | Unix_error error ->
+                      Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum error)
+               ])
+      in
       let* cookies =
         let+ variables = Async.async (fun () -> read_variables config_file) in
-        { Install_cookie.files; variables }
+        { Install_cookie.files; variables; extra_digest }
       in
       (* Produce the cookie file in the standard path *)
       let cookie_file = Path.build @@ Paths.install_cookie' target_dir in

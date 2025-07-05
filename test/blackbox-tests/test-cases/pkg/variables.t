@@ -47,6 +47,7 @@ Test that we can set variables
       ; ("somestrings", Strings [ "foo"; "bar" ])
       ; ("version", String "1.2.3")
       ]
+  ; extra_digest = None
   }
 
 Now we demonstrate we get a proper error from invalid .config files:

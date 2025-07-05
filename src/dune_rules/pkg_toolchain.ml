@@ -26,7 +26,10 @@ let pkg_dir (pkg : Dune_pkg.Lock_dir.Pkg.t) =
      corresponding lockfile in those projects is modified in the same
      way). *)
   let dir_name =
-    (* TODO should include resolved deps *)
+    (* CR rgrinberg: This directory should be based on the digest
+       of the installed compiler itself. While we should be building the
+       compiler in some sort of directory derived from the hash of the
+       dependencies. *)
     let pkg_hash = Digest.generic (Lock_dir.Pkg.remove_locs pkg) in
     (* A hash of the fields of a package that affect its installed artifacts *)
     sprintf

@@ -38,4 +38,5 @@ Testing install actions
             [ In_build_dir "_private/default/.pkg/test/target/lib/xxx" ]
         }
   ; variables = []
+  ; extra_digest = None
   }

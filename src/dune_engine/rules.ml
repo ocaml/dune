@@ -7,7 +7,13 @@ module Dir_rules = struct
       | Deps of unit Action_builder.t
       | Action of Rule.Anonymous_action.t Action_builder.t
 
-    type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
+    type expansion =
+      { loc : Loc.t
+      ; synopsis : Synopsis.t option
+      ; item : item
+      }
+
+    type t = { expansions : expansion Appendable_list.t } [@@unboxed]
 
     let union x y = { expansions = Appendable_list.( @ ) x.expansions y.expansions }
   end
@@ -143,14 +149,19 @@ module Produce = struct
            (Dir_rules.Nonempty.singleton (Alias { name; spec })))
     ;;
 
-    let add_deps t ?(loc = Loc.none) expansion =
+    let add_deps t ?(loc = Loc.none) ~synopsis expansion =
       alias
         t
-        { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Deps expansion)
+        { expansions =
+            Appendable_list.singleton
+              { Dir_rules.Alias_spec.loc
+              ; item = Dir_rules.Alias_spec.Deps expansion
+              ; synopsis
+              }
         }
     ;;
 
-    let add_action t ~loc action =
+    let add_action t ~loc ~synopsis action =
       let action =
         let open Action_builder.O in
         let+ action = action in
@@ -162,7 +173,12 @@ module Produce = struct
       in
       alias
         t
-        { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Action action)
+        { expansions =
+            Appendable_list.singleton
+              { Dir_rules.Alias_spec.loc
+              ; item = Dir_rules.Alias_spec.Action action
+              ; synopsis
+              }
         }
     ;;
   end

@@ -42,6 +42,8 @@ The syntax is as follows:
 - ``(package <package>)`` specifies this rule's package. This rule will be
   unavailable when installing other packages in release mode.
 
+- ``(synopsis <string>)`` A one line description of the rule.
+
 - ``(enabled_if <blang expression>)`` specifies the Boolean condition that must
   be true for the rule to be considered. The condition is specified using the
   :doc:`/reference/boolean-language`, and the field allows for

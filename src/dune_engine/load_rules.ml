@@ -32,7 +32,7 @@ module Loaded = struct
   type build =
     { allowed_subdirs : Path.Unspecified.w Dir_set.t
     ; rules_here : rules_here
-    ; aliases : (Loc.t * Rules.Dir_rules.Alias_spec.item) list Alias.Name.Map.t
+    ; aliases : Rules.Dir_rules.Alias_spec.expansion list Alias.Name.Map.t
     }
 
   type t =
@@ -297,6 +297,7 @@ end = struct
       let build_path = Path.Build.append_source ctx_dir src_path in
       Rule.make
         ~info:(Source_file_copy src_path)
+        ~synopsis:None
         ~targets:(Targets.File.create build_path)
         (copy_source_action ~src_path ~build_path))
   ;;
@@ -339,7 +340,14 @@ end = struct
     >>| function
     | Source _ | External _ ->
       Code_error.raise "Alias in a non-build dir" [ "alias", Alias.to_dyn alias ]
-    | Build { aliases; _ } -> Alias.Name.Map.find aliases (Alias.name alias)
+    | Build { aliases; _ } ->
+      Option.map
+        ~f:(fun (expansions : Rules.Dir_rules.Alias_spec.expansion list) ->
+          List.map
+            ~f:(fun (expansion : Rules.Dir_rules.Alias_spec.expansion) ->
+              expansion.loc, expansion.item)
+            expansions)
+        (Alias.Name.Map.find aliases (Alias.name alias))
     | Build_under_directory_target _ -> None
   ;;
 
@@ -358,7 +366,10 @@ end = struct
             Alias.Name.default
             { expansions =
                 Appendable_list.singleton
-                  (Loc.none, Rules.Dir_rules.Alias_spec.Deps expansion)
+                  { Rules.Dir_rules.Alias_spec.loc = Loc.none
+                  ; item = Deps expansion
+                  ; synopsis = None
+                  }
             }
     in
     Alias.Name.Map.map aliases ~f:(fun { Rules.Dir_rules.Alias_spec.expansions } ->

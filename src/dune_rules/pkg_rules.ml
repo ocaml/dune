@@ -1638,7 +1638,8 @@ let add_env env action =
 
 let rule ?loc { Action_builder.With_targets.build; targets } =
   (* TODO this ignores the workspace file *)
-  Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
+  Rule.make ~info:(Rule.Info.of_loc_opt loc) ~synopsis:None ~targets build
+  |> Rules.Produce.rule
 ;;
 
 let source_rules (pkg : Pkg.t) =
@@ -1886,7 +1887,7 @@ let setup_pkg_install_alias =
             | true -> build_packages_of_context ctx_name
             | false -> pkg_alias_disabled
           in
-          Rules.Produce.Alias.add_deps alias deps)
+          Rules.Produce.Alias.add_deps alias ~synopsis:None deps)
     in
     Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
     |> Gen_rules.rules_here

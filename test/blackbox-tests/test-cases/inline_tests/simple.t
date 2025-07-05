@@ -38,6 +38,14 @@ Inline tests also generate an alias
   Fatal error: exception File ".foo_simple.inline-tests/main.ml-gen", line 1, characters 40-46: Assertion failed
   [1]
 
+And can be ran with dune runtest
+  $ dune runtest foo_simple
+  File "dune", line 9, characters 1-40:
+  9 |  (inline_tests (backend backend_simple)))
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Fatal error: exception File ".foo_simple.inline-tests/main.ml-gen", line 1, characters 40-46: Assertion failed
+  [1]
+
 Make sure building both aliases doesn't build both
   $ dune build @runtest @lib-foo_simple
   Error: Alias "lib-foo_simple" specified on the command line is empty.

@@ -54,10 +54,10 @@ Here are the most common commands you'll be running:
    $ ./dune.exe build @foo
 
 
-Note that tests are currently written for version 5.1.1 of the OCaml compiler.
+Note that tests are currently written for version 5.3.0 of the OCaml compiler.
 Some tests depend on the specific wording of compilation errors which can change
 between compiler versions, so to reliably run the tests make sure that
-``ocaml.5.1.1`` is installed. The ``TEST_OCAMLVERSION`` in the ``Makefile`` at
+``ocaml.5.3.0`` is installed. The ``TEST_OCAMLVERSION`` in the ``Makefile`` at
 the root of the Dune repo contains the current compiler version for which tests
 are written.
 
@@ -783,16 +783,6 @@ Melange Bench
 We also benchmark a demo Melange project's build time:
 
 https://ocaml.github.io/dune/dev/bench/
-
-Monorepo Benchmark
-------------------
-
-We benchmark the performance of Dune in building a large monorepo in every
-PR. The benchmark results can be found here:
-
-https://bench.ci.dev/ocaml/dune/branch/main?worker=fermat&image=bench%2Fmonorepo%2Fbench.Dockerfile
-
-You can find more information about these benchmarks `here <./dev/monorepo-bench.md>`_.
 
 Formatting
 ==========

@@ -19,3 +19,10 @@
  (applies_to implicit-transitive-deps-5.2)
  (enabled_if
   (>= %{ocaml_version} 5.2)))
+
+(cram
+ (applies_to dialect)
+ (enabled_if
+  (<> %{os_distribution} nixos))
+ (deps %{bin:melc})
+ (alias runtest-melange))

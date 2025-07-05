@@ -889,7 +889,12 @@ let wait_for_build_process t pid =
       ~on_cancel:(fun () ->
         Process_watcher.killall t.process_watcher Sys.sigkill;
         Fiber.return ())
-      (fun () -> wait_for_process t pid)
+      (fun () ->
+         let+ r = wait_for_process t pid in
+         (* [kill_process_group] on Windows only kills the pid and by this
+            time the process should've exited anyway *)
+         if not Sys.win32 then kill_process_group pid Sys.sigterm;
+         r)
   in
   ( res
   , match outcome with

@@ -9,7 +9,10 @@ end
 module Which = struct
   let doc = "Command group for printing the path to wrapped tools."
   let info = Cmd.info ~doc "which"
-  let group = Cmd.group info [ Ocamlformat.Which.command; Ocamllsp.Which.command ]
+
+  let group =
+    Cmd.group info (List.map [ Ocamlformat; Ocamllsp ] ~f:Tools_common.which_command)
+  ;;
 end
 
 let doc = "Command group for wrapped tools."

@@ -164,7 +164,7 @@ A typical Dune project will have a ``dune-project`` and one or more
 interesting things are: libraries, executables, tests, documents to install,
 etc.
 
-We recommended organising your project to have exactly one library per
+We recommend organising your project to have exactly one library per
 directory. You can have several executables in the same directory, as long as
 they share the same build configuration. If you'd like to have multiple
 executables with different configurations in the same directory, you will have

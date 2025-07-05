@@ -221,7 +221,7 @@ let build =
             [ Pp.textf
                 "Your build request is being forwarded to a running Dune instance%s so \
                  most command-line arguments will be ignored."
-                (match (lock_held_by : Dune_util.Global_lock.Lock_held_by.t) with
+                (match lock_held_by with
                  | Unknown -> ""
                  | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
             ];

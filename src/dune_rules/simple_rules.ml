@@ -2,9 +2,23 @@ open Import
 open Memo.O
 
 module Alias_rules = struct
+  let check_empty ~loc ~dir alias =
+    match Alias.Name.compare (Alias.name alias) Alias0.empty with
+    | Lt | Gt -> Memo.return ()
+    | Eq ->
+      let* project = Dune_load.find_project ~dir in
+      if Dune_project.dune_version project >= (3, 20)
+      then
+        User_error.raise
+          ~loc
+          [ Pp.text "User-defined rules cannot be added to the 'empty' alias" ]
+      else Memo.return ()
+  ;;
+
   let add sctx ~alias ~loc ~synopsis build =
     let dir = Alias.dir alias in
-    Super_context.add_alias_action sctx alias ~dir ~loc ~synopsis build
+    check_empty ~loc ~dir alias
+    >>> Super_context.add_alias_action sctx alias ~dir ~loc ~synopsis build
   ;;
 
   let add_empty sctx ~loc ~alias =
@@ -264,7 +278,11 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let+ () =
     Memo.Option.iter def.alias ~f:(fun alias ->
       let alias = Alias.make alias ~dir in
-      Rules.Produce.Alias.add_deps alias ~synopsis:None (Action_builder.path_set targets))
+      Alias_rules.check_empty ~loc ~dir alias
+      >>> Rules.Produce.Alias.add_deps
+            alias
+            ~synopsis:None
+            (Action_builder.path_set targets))
   in
   targets
 ;;
@@ -279,7 +297,8 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let alias = Alias.make ~dir alias_conf.name in
   let loc = alias_conf.loc in
-  Expander.eval_blang expander alias_conf.enabled_if
+  Alias_rules.check_empty ~loc ~dir alias
+  >>> Expander.eval_blang expander alias_conf.enabled_if
   >>= function
   | false -> Alias_rules.add_empty sctx ~loc ~alias
   | true ->

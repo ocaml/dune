@@ -61,6 +61,7 @@ module Config_override_variables = struct
   let os_distribution = string_option_config "os_distribution"
   let os_family = string_option_config "os_family"
   let os_version = string_option_config "os_version"
+  let sys_ocaml_version = string_option_config "sys_ocaml_version"
 end
 
 (* CR-rgrinberg: do we need to call [uname] for every single option? Can't we
@@ -216,6 +217,12 @@ let os_family ~os_distribution ~os_release_fields ~os =
      | _ -> os_distribution)
 ;;
 
+let sys_ocaml_version ~path =
+  match Config_override_variables.sys_ocaml_version () with
+  | Some sys_ocaml_version -> Fiber.return (Some sys_ocaml_version)
+  | None -> run_capture_line ~path ~prog:"ocamlc" ~args:[ "-vnum" ]
+;;
+
 let make_lazy f = Fiber_lazy.create f |> Fiber_lazy.force
 
 let make ~path =
@@ -235,9 +242,7 @@ let make ~path =
   let os_family =
     make_lazy (fun () -> os_family ~os_release_fields ~os_distribution ~os)
   in
-  let sys_ocaml_version =
-    make_lazy (fun () -> run_capture_line ~path ~prog:"ocamlc" ~args:[ "-vnum" ])
-  in
+  let sys_ocaml_version = make_lazy (fun () -> sys_ocaml_version ~path) in
   { arch; os; os_version; os_distribution; os_family; sys_ocaml_version }
 ;;
 

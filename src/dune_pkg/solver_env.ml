@@ -143,9 +143,12 @@ let popular_platform_envs =
     in
     env
   in
-  [ make ~os:"linux" ~arch:None ~os_distribution:None ~os_family:None ()
-  ; make ~os:"macos" ~arch:None ~os_distribution:None ~os_family:None ()
-  ; make ~os:"win32" ~arch:None ~os_distribution:None ~os_family:None ()
+  [ make ~os:"linux" ~arch:(Some "x86_64") ~os_distribution:None ~os_family:None ()
+  ; make ~os:"linux" ~arch:(Some "arm64") ~os_distribution:None ~os_family:None ()
+  ; make ~os:"macos" ~arch:(Some "x86_64") ~os_distribution:None ~os_family:None ()
+  ; make ~os:"macos" ~arch:(Some "arm64") ~os_distribution:None ~os_family:None ()
+  ; make ~os:"win32" ~arch:(Some "x86_64") ~os_distribution:None ~os_family:None ()
+  ; make ~os:"win32" ~arch:(Some "arm64") ~os_distribution:None ~os_family:None ()
   ]
 ;;
 

@@ -28,7 +28,7 @@ This should work:
   _build/default/tests/myothertest.t/run.t.corrected differ.
   [1]
 
-There's no diff produced because the test passes
+There is no diff produced because the test passes
 
   $ dune promotion diff tests/myothertest.t/run.t
 
@@ -92,12 +92,24 @@ Passing a directory should run all the tests in that directory (recursively).
   File "tests/filetest.t", line 1, characters 0-0:
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
 
+- We can build in absolute paths:
+  $ dune test $PWD/mytest.t
+  File "mytest.t", line 1, characters 0-0:
+  Error: Files _build/default/mytest.t and _build/default/mytest.t.corrected
+  differ.
+  [1]
+  $ dune test $PWD/_build/default/mytest.t
+  File "mytest.t", line 1, characters 0-0:
+  Error: Files _build/default/mytest.t and _build/default/mytest.t.corrected
+  differ.
+  [1]
+
 Here we test some error cases a user may encounter and make sure the error
 messages are informative enough.
 
 - Giving a path outside the workspace gives an informative error:
   $ dune test ..
-  Error: @@ on the command line must be followed by a relative path
+  Error: path outside the workspace: .. from .
   [1]
 - Giving a nonexistent path gives an informative error:
   $ dune test nonexistent
@@ -128,8 +140,50 @@ messages are informative enough.
   Error: "testt" does not match any known test.
   Hint: did you mean tests?
   [1]
-- Note that this doesn't handle the case where the path is mostly correct but
+- Note that this does not handle the case where the path is mostly correct but
 the directory is mispelled.
   $ dune test testss/myothertest.t
   Error: "testss/myothertest.t" does not match any known test.
   [1]
+- Private _build/ paths should be rejected.
+  $ dune test _build/_private
+  Error: This path is internal to dune: _build/_private
+  [1]
+- Install paths should be rejected.
+  $ dune test _build/install/default
+  Error: This path is internal to dune: _build/install/default
+  [1]
+- Absolute paths that are invalid are rejected clearly:
+  $ dune test $PWD/..
+  Error: path outside the workspace: .. from .
+  [1]
+  $ dune test /a/b/c/
+  Error: This path is outside the workspace: /a/b/c/
+  [1]
+
+Here we test behavour for running tests in specific contexts.
+
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.20)
+  > (context (default))
+  > (context (default (name alt)))
+  > EOF
+
+- Building a specific test now will run them in both contexts.
+
+  $ dune test mytest.t
+  File "mytest.t", line 1, characters 0-0:
+  Error: Files _build/alt/mytest.t and _build/alt/mytest.t.corrected differ.
+  File "mytest.t", line 1, characters 0-0:
+  Error: Files _build/default/mytest.t and _build/default/mytest.t.corrected
+  differ.
+  [1]
+
+- Building a specific test in a specific build directory will build only in
+that context as expected.
+
+  $ dune test _build/alt/mytest.t
+  File "mytest.t", line 1, characters 0-0:
+  Error: Files _build/alt/mytest.t and _build/alt/mytest.t.corrected differ.
+  [1]
+

@@ -1,63 +1,56 @@
 open Import
 open Memo.O
 
-module Modules_data = struct
-  type t =
-    { dir : Path.Build.t
-    ; obj_dir : Path.Build.t Obj_dir.t
-    ; sctx : Super_context.t
-    ; vimpl : Vimpl.t option
-    ; modules : Modules.With_vlib.t
-    ; stdlib : Ocaml_stdlib.t option
-    ; sandbox : Sandbox_config.t
-    }
-end
-
-open Modules_data
-
 module Merge_files_into = struct
   module Spec = struct
-    type ('src, 'dst) t = 'src list * string list * 'dst
+    type ('src, 'dst) t =
+      { transitive : 'src list
+      ; immediate : Module_name.Unique.t list
+      ; target : 'dst
+      }
 
     let name = "merge_files_into"
-    let version = 1
+    let version = 2
     let is_useful_to ~memoize:_ = true
 
-    let bimap (paths, extras, dst) path target =
-      List.map paths ~f:path, extras, target dst
+    let bimap t path target =
+      { t with transitive = List.map t.transitive ~f:path; target = target t.target }
     ;;
 
     let encode
           (type src dst)
-          ((sources, extras, target) : (src, dst) t)
+          ({ transitive; immediate; target } : (src, dst) t)
           (input : src -> Sexp.t)
           (output : dst -> Sexp.t)
       : Sexp.t
       =
       List
-        [ List (List.map sources ~f:input)
-        ; List (List.map ~f:(fun s -> Sexp.Atom s) extras)
+        [ List (List.map transitive ~f:input)
+        ; List
+            (List.map ~f:(fun s -> Sexp.Atom (Module_name.Unique.to_string s)) immediate)
         ; output target
         ]
     ;;
 
-    let action (sources, extras, target) ~ectx:_ ~eenv:_ =
+    let action { transitive; immediate; target } ~ectx:_ ~eenv:_ =
       Async.async (fun () ->
-        let lines =
-          List.fold_left
-            sources
-            ~init:(String.Set.of_list extras)
-            ~f:(fun set source_path ->
-              Io.lines_of_file source_path |> String.Set.of_list |> String.Set.union set)
-        in
-        let target = Path.build target in
-        Io.write_lines target (String.Set.to_list lines))
+        List.fold_left
+          transitive
+          ~init:(Module_name.Unique.Set.of_list immediate)
+          ~f:(fun set source_path ->
+            Io.lines_of_file source_path
+            |> Module_name.Unique.Set.of_list_map ~f:Module_name.Unique.of_string
+            |> Module_name.Unique.Set.union set)
+        |> Module_name.Unique.Set.to_list_map ~f:Module_name.Unique.to_string
+        |> Io.write_lines (Path.build target))
     ;;
   end
 
   module Action = Action_ext.Make (Spec)
 
-  let action sources extras target = Action.action (sources, extras, target)
+  let action ~transitive ~immediate ~target =
+    Action.action { transitive; immediate; target }
+  ;;
 end
 
 let parse_module_names ~dir ~(unit : Module.t) ~modules words =
@@ -124,17 +117,12 @@ let transitive_deps =
   fun obj_dir modules -> List.filter_map modules ~f:(transive_dep obj_dir)
 ;;
 
-let deps_of
-      ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md)
-      ~ml_kind
-      unit
-  =
+let deps_of ~sandbox ~modules ~sctx ~dir ~obj_dir ~ml_kind unit =
   let source = Option.value_exn (Module.source unit ~ml_kind) in
   let dep = Obj_dir.Module.dep obj_dir in
-  let context = Super_context.context sctx in
-  let all_deps_file = dep (Transitive (unit, ml_kind)) in
   let ocamldep_output = dep (Immediate (unit, ml_kind)) in
   let* () =
+    let context = Super_context.context sctx in
     let ocamldep =
       (let+ ocaml = Context.ocaml context in
        ocaml.ocamldep)
@@ -158,28 +146,24 @@ let deps_of
          ]
        >>| Action.Full.add_sandbox sandbox)
   in
+  let all_deps_file = dep (Transitive (unit, ml_kind)) in
   let+ () =
     let produce_all_deps =
       let open Action_builder.O in
-      let paths =
-        let+ immediate_deps =
-          Path.build ocamldep_output
-          |> Action_builder.lines_of
-          >>| parse_deps_exn ~file:(Module.File.path source)
-          >>| parse_module_names ~dir:md.dir ~unit ~modules
-        in
-        ( transitive_deps obj_dir immediate_deps
-        , List.map immediate_deps ~f:(fun m ->
-            Module.obj_name m |> Module_name.Unique.to_string) )
-      in
-      Action_builder.with_file_targets
-        ~file_targets:[ all_deps_file ]
-        (let+ sources, extras =
-           Action_builder.dyn_paths
-             (let+ sources, extras = paths in
-              (sources, extras), sources)
-         in
-         Merge_files_into.action sources extras all_deps_file)
+      (let+ transitive, immediate =
+         (let+ immediate_deps =
+            Path.build ocamldep_output
+            |> Action_builder.lines_of
+            >>| parse_deps_exn ~file:(Module.File.path source)
+            >>| parse_module_names ~dir ~unit ~modules
+          in
+          let transitive_deps = transitive_deps obj_dir immediate_deps in
+          let immediate_deps = List.map immediate_deps ~f:Module.obj_name in
+          (transitive_deps, immediate_deps), transitive_deps)
+         |> Action_builder.dyn_paths
+       in
+       Merge_files_into.action ~transitive ~immediate ~target:all_deps_file)
+      |> Action_builder.with_file_targets ~file_targets:[ all_deps_file ]
     in
     Action_builder.With_targets.map ~f:Action.Full.make produce_all_deps
     |> Super_context.add_rule sctx ~dir

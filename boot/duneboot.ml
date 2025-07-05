@@ -53,6 +53,19 @@ module String = struct
   module Map = Map.Make (String)
 
   let is_suffix t ~suffix = Filename.check_suffix t suffix
+
+  let is_prefix t ~prefix =
+    let len_s = length t
+    and len_pre = length prefix in
+    let rec aux i =
+      if i = len_pre
+      then true
+      else if unsafe_get t i <> unsafe_get prefix i
+      then false
+      else aux (i + 1)
+    in
+    len_s >= len_pre && aux 0
+  ;;
 end
 
 module List = struct
@@ -114,6 +127,7 @@ module Status_line = struct
       displayed := new_displayed)
   ;;
 
+  let clear () = Printf.printf "\r*s\r%!"
   let () = at_exit (fun () -> Printf.printf "\r%*s\r" (String.length !displayed) "")
 end
 
@@ -511,6 +525,7 @@ end = struct
           | Some x -> sprintf "cd %s && %s" x cmdline
           | None -> cmdline
         in
+        Status_line.clear ();
         prerr_endline cmdline;
         prerr_string stderr_s;
         flush stderr);
@@ -981,7 +996,23 @@ module Library = struct
       List.partition_map_skip files ~f:(fun (src, fn) ->
         match src.kind with
         | C c ->
-          if keep_c c ~architecture then `Left { flags = c.flags; name = fn } else `Skip
+          if keep_c c ~architecture
+          then (
+            let extra_flags =
+              if String.is_prefix ~prefix:"blake3_" fn
+              then (
+                match architecture with
+                | "x86" | "i386" | "i486" | "i586" | "i686" ->
+                  [ "-DBLAKE3_NO_SSE2"
+                  ; "-DBLAKE3_NO_SSE41"
+                  ; "-DBLAKE3_NO_AVX2"
+                  ; "-DBLAKE3_NO_AVX512"
+                  ]
+                | _ -> [])
+              else []
+            in
+            `Left { flags = extra_flags @ c.flags; name = fn })
+          else `Skip
         | Ml | Mli | Mly | Mll -> `Right fn
         | Header -> `Skip)
     in
@@ -1148,6 +1179,32 @@ let common_build_args name ~external_includes ~external_libraries =
 
 let allow_unstable_sources = [ "-alert"; "-unstable" ]
 
+let ocaml_warnings =
+  let warnings =
+    [ (* Warning 49 [no-cmi-file]: no cmi file was found in path for module *)
+      "-49"
+    ; (* Warning 23: all the fields are explicitly listed in this record: the
+        'with' clause is useless. 
+
+         In order to stay version independent, we use a trick with `with` by
+         creating a dummy value and filling in the fields available in every
+         OCaml version. forced_major_collections is the one missing in versions
+         older than 4.12. We therefore disable warning 23 for our purposes. *)
+      "-23"
+    ; (* Warning 53 [misplaced-attribute]: the "alert" attribute cannot appear
+        in this context
+
+        Any .mli files that begin wtih [@@@alert] will cause the compiler to
+        emit warning 53 due to the way we alias modules with an `open!`. It may
+        be possible to use the command line flag `-open` instead, however this
+        complicates dependency tracking so disabling this warning instead is
+        suitable for our purposes. *)
+      "-53"
+    ]
+  in
+  [ "-w"; String.concat ~sep:"" warnings ]
+;;
+
 let build
       ~ocaml_config
       ~dependencies
@@ -1188,7 +1245,8 @@ let build
              ~cwd:build_dir
              Config.compiler
              (List.concat
-                [ [ "-c"; "-g"; "-no-alias-deps"; "-w"; "-49-6" ]
+                [ [ "-c"; "-g"; "-no-alias-deps" ]
+                ; ocaml_warnings
                 ; allow_unstable_sources
                 ; external_includes
                 ; [ file ]

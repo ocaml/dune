@@ -49,7 +49,7 @@ let local_libraries =
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }
-  ; { path = "vendor/fiber/src"
+  ; { path = "src/fiber/src"
     ; main_module_name = Some "Fiber"
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None

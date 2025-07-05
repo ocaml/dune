@@ -81,3 +81,9 @@ val supports_bin_annot_occurrences : t -> bool
 val supports_hidden_includes : t -> bool
 
 val add_std_cxx_flag : t -> bool
+
+(* Wheter the compiler supports OxCaml *)
+val supports_oxcaml : string -> bool
+
+(* Wether the compiler supports the parametrized library *)
+val supports_parametrized_library : string -> bool

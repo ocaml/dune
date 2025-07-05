@@ -12,7 +12,8 @@ DEV_DEPS := \
 core_bench \
 patdiff
 
-TEST_OCAMLVERSION := 5.2.1
+TEST_OCAMLVERSION := 5.3.0
+# When updating this version, don't forget to also bump the number in the docs.
 
 -include Makefile.dev
 
@@ -75,6 +76,7 @@ dev-switch:
 	else \
 		opam switch create -y . $(TEST_OCAMLVERSION) --no-install ; \
 	fi
+	opam pin add -y . -n --with-version=dev
 	opam install -y . --deps-only --with-test --with-dev-setup
 	$(MAKE) install-ocamlformat
 	opam install -y $(DEV_DEPS)

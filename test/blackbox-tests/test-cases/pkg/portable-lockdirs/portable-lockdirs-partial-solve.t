@@ -51,6 +51,16 @@ The log file will contain errors about the package being unavailable.
   # - foo -> (problem)
   #     No usable implementations:
   #       foo.0.0.1: Availability condition not satisfied
+  # Couldn't solve the package dependency formula.
+  # Selected candidates: x.dev
+  # - foo -> (problem)
+  #     No usable implementations:
+  #       foo.0.0.1: Availability condition not satisfied
+  # Couldn't solve the package dependency formula.
+  # Selected candidates: x.dev
+  # - foo -> (problem)
+  #     No usable implementations:
+  #       foo.0.0.1: Availability condition not satisfied
 
 The lockdir will contain a list of the platforms where solving succeeded.
   $ cat dune.lock/lock.dune
@@ -62,16 +72,22 @@ The lockdir will contain a list of the platforms where solving succeeded.
    (complete false)
    (used))
   
-  (solved_for_platforms ((os macos)))
+  (solved_for_platforms
+   ((arch x86_64)
+    (os macos))
+   ((arch arm64)
+    (os macos)))
 
 No errors when you try to build the platform on macos.
   $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=x86_64 DUNE_CONFIG__OS_FAMILY=homebrew DUNE_CONFIG__OS_DISTRIBUTION=homebrew DUNE_CONFIG__OS_VERSION=15.3.1 dune build
 
 Building on linux fails because the lockdir doesn't contain a compatible solution.
   $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=arm64 DUNE_CONFIG__OS_FAMILY=debian DUNE_CONFIG__OS_DISTRIBUTION=ubuntu DUNE_CONFIG__OS_VERSION=24.11 dune build
-  File "dune.lock/lock.dune", line 9, characters 22-34:
-  9 | (solved_for_platforms ((os macos)))
-                            ^^^^^^^^^^^^
+  File "dune.lock/lock.dune", lines 10-13, characters 1-58:
+  10 |  ((arch x86_64)
+  11 |   (os macos))
+  12 |  ((arch arm64)
+  13 |   (os macos)))
   Error: The lockdir does not contain a solution compatible with the current
   platform.
   The current platform is:
@@ -80,6 +96,7 @@ Building on linux fails because the lockdir doesn't contain a compatible solutio
   - os-distribution = ubuntu
   - os-family = debian
   - os-version = 24.11
+  - sys-ocaml-version = 5.4.0+fake
   Hint: Try adding the following to dune-workspace:
   Hint: (lock_dir (solve_for_platforms ((arch arm64) (os linux))))
   Hint: ...and then rerun 'dune pkg lock'

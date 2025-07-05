@@ -1,7 +1,6 @@
 open! Import
 module Pkg_dev_tool = Dune_rules.Pkg_dev_tool
 
-let ocamllsp_exe_path = Path.build @@ Pkg_dev_tool.exe_path Ocamllsp
 let ocamllsp_exe_name = Pkg_dev_tool.exe_name Ocamllsp
 
 let is_in_dune_project builder =
@@ -30,21 +29,6 @@ module Exec = struct
 
   let info =
     let doc = "Run ocamllsp, installing it as a dev tool if necessary." in
-    Cmd.info "ocamllsp" ~doc
-  ;;
-
-  let command = Cmd.v info term
-end
-
-module Which = struct
-  let term =
-    let+ builder = Common.Builder.term in
-    let _ : Common.t * Dune_config_file.Dune_config.t = Common.init builder in
-    print_endline (Path.to_string ocamllsp_exe_path)
-  ;;
-
-  let info =
-    let doc = "Prints the path to the ocamllsp binary." in
     Cmd.info "ocamllsp" ~doc
   ;;
 

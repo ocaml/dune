@@ -333,7 +333,21 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
   let parsing_context =
     let init =
       let init = Univ_map.singleton (Syntax.key lang.syntax) (Active lang.version) in
-      Univ_map.set init String_with_vars.decoding_env_key (Pform.Env.initial lang.version)
+      let extensions =
+        List.fold_left extensions ~init:[] ~f:(fun acc (ext : Extension.automatic) ->
+          match ext with
+          | Not_selected _ -> acc
+          | Selected ext ->
+            let syntax =
+              let (Extension.Packed ext) = ext.extension in
+              ext.syntax
+            in
+            (syntax, ext.version) :: acc)
+      in
+      Univ_map.set
+        init
+        String_with_vars.decoding_env_key
+        (Pform.Env.initial ~stanza:lang.version ~extensions)
     in
     List.fold_left extensions ~init ~f:(fun acc (ext : Extension.automatic) ->
       let syntax =
@@ -820,7 +834,8 @@ let parse_packages
 ;;
 
 let parse ~dir ~(lang : Lang.Instance.t) ~file =
-  String_with_vars.set_decoding_env (Pform.Env.initial lang.version)
+  String_with_vars.set_decoding_env
+    (Pform.Env.initial ~stanza:lang.version ~extensions:[])
   @@ fields
   @@ let+ name = field_o "name" Dune_project_name.decode
      and+ version = field_o "version" Package_version.decode
@@ -1043,4 +1058,9 @@ let load =
     Dune_engine.Fs_memo.file_contents (Path.Outside_build_dir.In_source_dir source)
   in
   gen_load ~read
+;;
+
+let _oxcaml_extension =
+  (* This is required to register the extension because OxCaml doesn't have a specific decoder. *)
+  Extension.register Oxcaml.syntax (Decoder.return ((), [])) Dyn.unit
 ;;

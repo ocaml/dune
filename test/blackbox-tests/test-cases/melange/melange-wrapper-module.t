@@ -24,11 +24,10 @@ If there's more than 1 module, we currently emit the module group wrapper,
   > EOF
 
   $ dune build @dist --display=short 2>&1 | grep 'melange\.js'
-          melc dist/.dist.mobjs/melange.js
+  [1]
   $ ls -a _build/default/dist
   .
   ..
-  .dist.mobjs
   x.js
   y.js
 

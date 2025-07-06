@@ -19,12 +19,6 @@ val box_with_title : attr:A.t -> title:string -> title_attr:A.t -> I.t -> I.t
 module Unicode : sig
   (** Unicode constants useful for drawing. *)
 
-  (** ᚛ U+169B *)
-  val ogham_feather_mark : Uchar.t
-
-  (** ᚜ U+169C *)
-  val ogham_reversed_feather_mark : Uchar.t
-
   (** ― U+2015 *)
   val horizontal_bar : Uchar.t
 

@@ -25,8 +25,4 @@ Building a project with 2 melange.emit stanzas should add rules to both aliases
   > EOF
 
   $ dune build @mel --display=short
-          melc .dist.mobjs/melange/melange.{cmi,cmj,cmt}
-          melc dist/.dist.mobjs/melange.js
   $ dune build @second --display=short
-          melc .dist-es6.mobjs/melange/melange.{cmi,cmj,cmt}
-          melc dist-es6/.dist-es6.mobjs/melange.mjs

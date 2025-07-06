@@ -176,7 +176,7 @@ let js_targets_of_modules modules ~module_systems ~output =
   List.map module_systems ~f:(fun (_, js_ext) ->
     modules
     |> Modules.With_vlib.drop_vlib
-    |> Modules.fold ~init:Path.Set.empty ~f:(fun m acc ->
+    |> Modules.fold_user_available ~init:Path.Set.empty ~f:(fun m acc ->
       if Module.has m ~ml_kind:Impl
       then (
         let target = Path.build @@ make_js_name ~js_ext ~output m in
@@ -479,7 +479,7 @@ let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas
   in
   let+ modules = modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess modules in
   let modules_for_js =
-    Modules.fold modules ~init:[] ~f:(fun x acc ->
+    Modules.fold_user_available modules ~init:[] ~f:(fun x acc ->
       if Module.has x ~ml_kind:Impl then x :: acc else acc)
   in
   modules, modules_for_js, obj_dir

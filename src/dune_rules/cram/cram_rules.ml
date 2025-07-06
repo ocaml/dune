@@ -73,10 +73,7 @@ let test_rule
      name of the cram test. *)
   let* () =
     Memo.parallel_iter extra_aliases ~f:(fun extra_alias ->
-      Rules.Produce.Alias.add_deps
-        ~loc
-        extra_alias
-        (Action_builder.dep (Dep.alias alias)))
+      Rules.Produce.Alias.add_deps ~loc extra_alias (Action_builder.dep (Dep.alias alias)))
   in
   match test with
   | Error (Missing_run_t test) ->

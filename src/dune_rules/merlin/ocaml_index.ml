@@ -123,7 +123,5 @@ let project_rule sctx project =
     Alias.make Alias0.ocaml_index ~dir
   in
   let* indexes = context_indexes sctx in
-  Rules.Produce.Alias.add_deps
-    ocaml_index_alias
-    (Action_builder.paths_existing @@ indexes)
+  Rules.Produce.Alias.add_deps ocaml_index_alias (Action_builder.paths_existing @@ indexes)
 ;;

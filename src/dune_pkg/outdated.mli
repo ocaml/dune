@@ -9,7 +9,7 @@ type t
     collection of [packages] by consulting the [repos] and [local_packages].*)
 val find
   :  repos:Opam_repo.t list
-  -> local_packages:Dune_pkg.Local_package.t Package_name.Map.t
+  -> local_packages:Local_package.t Package_name.Map.t
   -> Lock_dir.Pkg.t Package_name.Map.t
   -> t Fiber.t
 

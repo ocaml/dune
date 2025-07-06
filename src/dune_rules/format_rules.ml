@@ -238,7 +238,5 @@ let setup_alias ~dir =
     let output_dir = Path.Build.relative dir formatted_dir_basename in
     let alias = Alias.fmt ~dir in
     let alias_formatted = Alias.fmt ~dir:output_dir in
-    Rules.Produce.Alias.add_deps
-      alias
-      (Action_builder.dep (Dep.alias alias_formatted)))
+    Rules.Produce.Alias.add_deps alias (Action_builder.dep (Dep.alias alias_formatted)))
 ;;

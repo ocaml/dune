@@ -76,11 +76,7 @@ module Produce : sig
     (** [add_deps alias ?loc deps] arrange things so that all the dependencies
         registered by [deps] are considered as a part of alias expansion of
         [alias]. *)
-    val add_deps
-      :  t
-      -> ?loc:Stdune.Loc.t
-      -> unit Action_builder.t
-      -> unit Memo.t
+    val add_deps : t -> ?loc:Stdune.Loc.t -> unit Action_builder.t -> unit Memo.t
 
     (** [add_action alias ~loc ~action] arrange things so that [action]
         is executed as part of the build of alias [alias]. *)

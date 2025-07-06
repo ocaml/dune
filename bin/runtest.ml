@@ -87,8 +87,31 @@ let find_inline_test (path : Path.Build.t) =
       (`Test (Path.build parent_dir, "runtest-" ^ name)))
 ;;
 
+let find_stanza_tests_in_dir dir =
+  let open Memo.O in
+  Dune_rules.Dune_load.stanzas_in_dir dir
+  >>= Memo.Option.map ~f:(fun dune_file ->
+    Dune_file.find_stanzas dune_file Dune_rules.Tests.key
+    >>| List.concat_map ~f:(fun { Dune_rules.Tests.exes; _ } ->
+      exes.Executables.names |> Nonempty_list.to_list |> List.map ~f:snd))
+  >>| Option.to_list
+  >>| List.concat
+;;
+
+let find_stanza_test (path : Path.Build.t) =
+  let name = Path.Build.basename path in
+  let parent_dir = Path.Build.parent_exn path in
+  let open Memo.O in
+  find_stanza_tests_in_dir parent_dir
+  >>| List.find_map ~f:(fun test_stanza_name ->
+    Option.some_if
+      (String.equal name test_stanza_name)
+      (`Test (Path.build parent_dir, "runtest-" ^ name)))
+;;
+
 let search_for_test (path : Path.Build.t) =
-  [ find_cram_test; find_inline_test ] |> Memo.List.find_map ~f:(fun f -> f path)
+  [ find_cram_test; find_inline_test; find_stanza_test ]
+  |> Memo.List.find_map ~f:(fun f -> f path)
 ;;
 
 let disambiguate_test_name (path : Path.Build.t) =
@@ -147,8 +170,16 @@ let explain_unsuccessful_search (path : Path.t) contexts =
             |> Path.Build.parent_exn
           in
           find_inline_tests_in_dir dir >>| List.map ~f:Lib_name.Local.to_string)
+      and+ test_stanza_candidates =
+        Memo.List.concat_map contexts ~f:(fun context ->
+          let dir =
+            Path.Build.append_source (Context.build_dir context) path
+            |> Path.Build.parent_exn
+          in
+          find_stanza_tests_in_dir dir)
       in
-      List.concat [ file_candidates; dir_candidates; lib_candidates ]
+      List.concat
+        [ file_candidates; dir_candidates; lib_candidates; test_stanza_candidates ]
     in
     User_message.did_you_mean (Path.Source.to_string path) ~candidates
   in

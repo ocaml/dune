@@ -102,8 +102,32 @@ let attr_of_user_message_style fmt t (pp : User_message.Style.t Pp.t) : unit =
   Notty.I.pp_attr attr Pp.to_fmt fmt pp
 ;;
 
-let pp_to_image =
-  Notty.I.strf "%a" (Pp.to_fmt_with_tags ~tag_handler:attr_of_user_message_style)
+let detab_pp =
+  let detab str = String.split_on_char ~sep:'\t' str |> String.concat ~sep:"  " in
+  let rec detab_pp_ast ast : 'a Pp.Ast.t =
+    match (ast : 'a Pp.Ast.t) with
+    | Nop -> Nop
+    | Seq (x, y) -> Seq (detab_pp_ast x, detab_pp_ast y)
+    | Concat (x, l) -> Concat (detab_pp_ast x, List.map ~f:detab_pp_ast l)
+    | Box (i, x) -> Box (i, detab_pp_ast x)
+    | Vbox (i, x) -> Vbox (i, detab_pp_ast x)
+    | Hbox x -> Hbox (detab_pp_ast x)
+    | Hvbox (i, x) -> Hvbox (i, detab_pp_ast x)
+    | Hovbox (i, x) -> Hovbox (i, detab_pp_ast x)
+    | Verbatim s -> Verbatim (detab s)
+    | Char '\t' -> Verbatim "  "
+    | Char x -> Char x
+    | Break (fits, breaks) -> Break (fits, breaks)
+    | Newline -> Newline
+    | Text s -> Text (detab s)
+    | Tag (t, x) -> Tag (t, detab_pp_ast x)
+  in
+  fun pp -> Pp.to_ast pp |> detab_pp_ast |> Pp.of_ast
+;;
+
+let pp_to_image pp =
+  detab_pp pp
+  |> Notty.I.strf "%a" (Pp.to_fmt_with_tags ~tag_handler:attr_of_user_message_style)
 ;;
 
 module Unicode = struct

@@ -96,27 +96,27 @@ module Message_viewer = struct
     let index_is_hidden = is_hidden index in
     let status =
       I.hcat
-        [ I.uchar divider_attr Unicode.ogham_reversed_feather_mark 1 1
+        [ I.uchar divider_attr (Uchar.of_char '[') 1 1
         ; I.string user_feedback_attr (string_of_int (index + 1))
         ; I.string divider_attr "/"
         ; I.string user_feedback_attr (string_of_int total)
-        ; I.uchar divider_attr Unicode.ogham_feather_mark 1 1
+        ; I.uchar divider_attr (Uchar.of_char ']') 1 1
         ]
     in
     let toggle_indicator =
       I.hcat
-        [ I.uchar divider_attr Unicode.ogham_reversed_feather_mark 1 1
+        [ I.uchar divider_attr (Uchar.of_char '[') 1 1
         ; (if index_is_hidden then I.string helper_attr "+" else I.string helper_attr "-")
-        ; I.uchar divider_attr Unicode.ogham_feather_mark 1 1
+        ; I.uchar divider_attr (Uchar.of_char ']') 1 1
         ]
     in
     let synopsis =
       if index_is_hidden
       then
         I.hcat
-          [ I.hpad 1 0 @@ I.uchar divider_attr Unicode.ogham_reversed_feather_mark 1 1
+          [ I.hpad 1 0 @@ I.uchar divider_attr (Uchar.of_char '[') 1 1
           ; synopsis
-          ; I.uchar divider_attr Unicode.ogham_feather_mark 1 1
+          ; I.uchar divider_attr (Uchar.of_char ']') 1 1
           ]
       else I.empty
     in
@@ -223,9 +223,9 @@ let status_bar =
     let+ { toggle; _ } = help_box in
     let image =
       I.hcat
-        [ I.uchar helper_attr Unicode.ogham_reversed_feather_mark 1 1
+        [ I.uchar helper_attr (Uchar.of_char '[') 1 1
         ; I.char user_feedback_attr '?' 1 1
-        ; I.uchar helper_attr Unicode.ogham_feather_mark 1 1
+        ; I.uchar helper_attr (Uchar.of_char ']') 1 1
         ]
     in
     Button.of_ (Ui.atom image) toggle
@@ -236,13 +236,7 @@ let status_bar =
     | Some message -> Drawing.pp_to_image message
   in
   let status =
-    I.hcat
-      [ I.uchar helper_attr Unicode.ogham_reversed_feather_mark 1 1
-      ; I.char helper_attr ' ' 1 1
-      ; status
-      ; I.char helper_attr ' ' 1 1
-      ; I.uchar helper_attr Unicode.ogham_feather_mark 1 1
-      ]
+    I.hcat [ I.char helper_attr ' ' 1 1; status; I.char helper_attr ' ' 1 1 ]
   in
   let hsnap_or_leave ~width img =
     if I.width img < width then I.hsnap ~align:`Middle width img else img

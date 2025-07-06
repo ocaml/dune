@@ -77,7 +77,5 @@ let%expect_test _ =
   in
   run_action_expect_throws action;
   [%expect
-    {|
-    write_file: directory_that_does_not_exist/some_file: No such file or directory
-  |}]
+    {| write_file: open(directory_that_does_not_exist/some_file): No such file or directory |}]
 ;;

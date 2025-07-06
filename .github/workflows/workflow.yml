@@ -203,7 +203,7 @@ jobs:
         run: opam install --fake binaryen-bin
 
       - name: Install Wasm_of_ocaml
-        run: opam install wasm_of_ocaml-compiler
+        run: opam install "wasm_of_ocaml-compiler<6.1.0"
 
       - name: Set Git User
         run: |

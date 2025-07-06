@@ -131,8 +131,6 @@ let pp_to_image pp =
 ;;
 
 module Unicode = struct
-  let ogham_feather_mark = Uchar.of_int 0x169B
-  let ogham_reversed_feather_mark = Uchar.of_int 0x169C
   let horizontal_bar = Uchar.of_int 0x2015
   let box_drawings_double_horizontal = Uchar.of_int 0x2550
   let box_drawings_double_vertical = Uchar.of_int 0x2551

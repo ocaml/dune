@@ -3,7 +3,6 @@ open Import
 type t =
   { name : Alias_name.t
   ; deps : Dep_conf.t Bindings.t
-  ; synopsis : string option
   ; action : (Loc.t * Action.t) option
   ; locks : Locks.t
   ; package : Package.t option

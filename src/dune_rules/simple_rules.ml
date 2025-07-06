@@ -323,9 +323,5 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
            ~what:"aliases"
        in
        interpret_and_add_locks ~expander alias_conf.locks action
-       |> Alias_rules.add
-            sctx
-            ~loc
-            ~synopsis:(Option.map alias_conf.synopsis ~f:Dune_util.Synopsis.of_string)
-            ~alias)
+       |> Alias_rules.add sctx ~loc ~synopsis:None ~alias)
 ;;

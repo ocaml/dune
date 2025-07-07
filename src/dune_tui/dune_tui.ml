@@ -2,36 +2,56 @@ open Import
 open Lwd.O
 module Unicode = Drawing.Unicode
 
-let create () = Term.create ~nosig:false ~output:Unix.stderr ()
 let bytes = Bytes.make 64 '0'
 let sigcont_pipe = lazy (Unix.pipe ~cloexec:true ())
 
-let term =
-  let setup =
-    lazy
-      (Unix.set_nonblock (Lazy.force sigcont_pipe |> fst);
-       let term = ref (create ()) in
-       Sys.set_signal Sys.sigcont
-       @@ Sys.Signal_handle
-            (fun _ ->
-              Term.release !term;
-              term := create ();
-              assert (1 = Unix.single_write (Lazy.force sigcont_pipe |> snd) bytes 0 1));
-       let rec old =
-         lazy
-           (Sys.signal Sys.sigtstp
-            @@ Sys.Signal_handle
-                 (fun i ->
-                   Term.release !term;
-                   match Lazy.force old with
-                   | Sys.Signal_handle f -> f i
-                   | _ -> Unix.kill (Unix.getpid ()) Sys.sigstop))
-       in
-       ignore (Lazy.force old);
-       term)
-  in
-  fun () -> !(Lazy.force setup)
-;;
+module Terminal_manager = struct
+  let term_ref : Notty_unix.Term.t option ref = ref None
+  let old_sigtstp_handler = ref Sys.Signal_default
+
+  let get_term () =
+    match !term_ref with
+    | Some term -> term
+    | None -> Code_error.raise "Terminal is not enabled." []
+  ;;
+
+  let disable () =
+    match !term_ref with
+    | None -> ()
+    | Some term ->
+      Term.release term;
+      term_ref := None;
+      Sys.set_signal Sys.sigtstp !old_sigtstp_handler;
+      Sys.set_signal Sys.sigcont Sys.Signal_default
+  ;;
+
+  let rec enable () =
+    match !term_ref with
+    | Some _ -> ()
+    | None ->
+      let term = Term.create ~nosig:false ~output:Unix.stderr () in
+      term_ref := Some term;
+      (* Install signal handlers for user-initiated suspend/resume.
+         The SIGCONT handler should re-enable the terminal. *)
+      let sigcont_pipe_r, sigcont_pipe_w = Lazy.force sigcont_pipe in
+      Unix.set_nonblock sigcont_pipe_r;
+      old_sigtstp_handler
+      := Sys.signal Sys.sigtstp
+         @@ Sys.Signal_handle
+              (fun i ->
+                disable ();
+                match !old_sigtstp_handler with
+                | Sys.Signal_handle f -> f i
+                | _ -> Unix.kill (Unix.getpid ()) Sys.sigstop);
+      Sys.set_signal Sys.sigcont
+      @@ Sys.Signal_handle
+           (fun _ ->
+             if not (Option.is_some !term_ref)
+             then (
+               let _ = enable () in
+               assert (1 = Unix.single_write sigcont_pipe_w bytes 0 1)))
+  ;;
+end
 
 (* style for diving visual elements like borders or rules *)
 let divider_attr = A.(fg red)
@@ -73,6 +93,46 @@ module Message_viewer = struct
     | Some l -> max l w
   ;;
 
+  (* Stolen from RPC *)
+  let make_loc { Ocamlc_loc.path; chars; lines } : Loc.t =
+    let pos_lnum_start, pos_lnum_stop =
+      match lines with
+      | Single i -> i, i
+      | Range (i, j) -> i, j
+    in
+    let pos_cnum_start, pos_cnum_stop =
+      match chars with
+      | None -> 0, 0
+      | Some (x, y) -> x, y
+    in
+    let pos = { Lexing.pos_fname = path; pos_lnum = 0; pos_bol = 0; pos_cnum = 0 } in
+    let start = { pos with pos_lnum = pos_lnum_start; pos_cnum = pos_cnum_start } in
+    let stop = { pos with pos_lnum = pos_lnum_stop; pos_cnum = pos_cnum_stop } in
+    Stdune.Loc.create ~start ~stop
+  ;;
+
+  let message_filename =
+    let+ messages = Lwd.get messages in
+    fun index ->
+      let open Option.O in
+      let* message = List.nth messages index in
+      let loc = message.loc |> Option.value ~default:Loc.none in
+      if Loc.is_none loc
+      then
+        if User_message.has_embedded_location message
+        then (* try to extract location *)
+          User_message.pp message
+          |> Format.asprintf "%a" Pp.to_fmt
+          |> Ocamlc_loc.parse_raw
+          (* We only go to the first location, because we don't have a good way
+             of separating the locations in the message later. *)
+          |> List.find_map ~f:(function
+            | `Loc loc -> Some (make_loc loc)
+            | _ -> None)
+        else None
+      else Some loc
+  ;;
+
   (* Here we crop the message horizontally so that the first line will fit in
      the synopsis. The only issue here is that we don't know the real width of
      the first line but only the width of the message as a whole. This means if
@@ -98,13 +158,62 @@ module Message_viewer = struct
         else I.(cropped_image </> I.char A.empty ' ' img_width 1)
   ;;
 
+  let open_editor loc =
+    match
+      let open Option.O in
+      let* loc = loc in
+      let env = Env.initial in
+      let* editor = Env.get env "EDITOR" in
+      let+ prog = Bin.which ~path:(Env_path.path env) editor >>| Path.to_string in
+      let argv =
+        let { Lexing.pos_fname = file_to_open; pos_lnum = line; pos_cnum = col; _ } =
+          Loc.start loc
+        in
+        (* Editor specific logic for opening files at a location. *)
+        (* TODO: should we pass [prog] or [editor] to argv.(0)? *)
+        match editor with
+        | "vi" | "vim" | "nvim" ->
+          let position_arg = String.concat ~sep:"" [ "+"; Int.to_string line ] in
+          [ prog; position_arg; file_to_open ]
+        | "emacs" ->
+          let position_arg =
+            String.concat ~sep:"" [ "+"; Int.to_string line; ":"; Int.to_string col ]
+          in
+          [ prog; position_arg; file_to_open ]
+        | "code" ->
+          let position_arg =
+            String.concat ~sep:":" [ file_to_open; Int.to_string line; Int.to_string col ]
+          in
+          [ prog; "-g"; position_arg ]
+        (* TODO: subl, nano, ... ? *)
+        | _ -> [ prog; file_to_open ]
+      in
+      prog, argv
+    with
+    | Some (prog, argv) ->
+      Terminal_manager.disable ();
+      let () =
+        let _pid, exit_status =
+          Dune_spawn.Spawn.spawn ~prog ~argv () |> Unix.waitpid []
+        in
+        Dune_util.Log.command
+          ~command_line:(String.concat ~sep:" " argv)
+          ~output:""
+          ~exit_status
+      in
+      Terminal_manager.enable ();
+      `Handled
+    | None -> `Handled
+  ;;
+
   (* This is a line that shows the total number of messages and the message count used
      for separating messages. It also has a handler for clicks that minimizes the
      message. *)
   let horizontal_line_with_count total index =
     let+ is_hidden = Lwd.get is_message_hidden
     and+ w = max_message_length
-    and+ synopsis = Lwd.app (message_synopsis ~attr:helper_attr) (Lwd.return index) in
+    and+ synopsis = Lwd.app (message_synopsis ~attr:helper_attr) (Lwd.return index)
+    and+ file_to_open = Lwd.app message_filename (Lwd.return index) in
     let index_is_hidden = is_hidden index in
     let status =
       I.hcat
@@ -139,6 +248,7 @@ module Message_viewer = struct
     in
     let mouse_handler ~x ~y = function
       | `Left when 0 <= x && x < 3 && y = 0 -> toggle_minimize ()
+      | `Left when 3 <= x && y = 0 -> open_editor file_to_open
       | _ -> `Unhandled
     in
     Ui.atom
@@ -154,10 +264,16 @@ module Message_viewer = struct
      collapse the message. *)
   let line_separated_message ~total index msg =
     let+ horizontal_line_with_count = horizontal_line_with_count total index
-    and+ toggle = Lwd.app (Lwd.get is_message_hidden) (Lwd.return index) in
+    and+ toggle = Lwd.app (Lwd.get is_message_hidden) (Lwd.return index)
+    and+ file_to_open = Lwd.app message_filename (Lwd.return index) in
     if toggle
     then horizontal_line_with_count
-    else Ui.vcat [ horizontal_line_with_count; Ui.atom msg ]
+    else (
+      let mouse_handler ~x:_ ~y:_ = function
+        | `Left -> open_editor file_to_open
+        | _ -> `Unhandled
+      in
+      Ui.vcat [ horizontal_line_with_count; Ui.atom msg |> Ui.mouse_area mouse_handler ])
   ;;
 
   (* We take all the messages in the console and display them as
@@ -221,6 +337,7 @@ let help_box =
     ; "Press '?' to toggle this screen"
     ; "Navigate with the mouse or arrow keys (or vim bindings)"
     ; "Press 'm' to expand / collapse all messages"
+    ; "Left click on messages to open EDITOR at the specified location."
     ]
   in
   let* width, height = Lwd.get term_size in
@@ -286,14 +403,14 @@ let document =
 ;;
 
 module Console_backend = struct
-  let start () = ()
+  let start () = Terminal_manager.enable ()
   let reset () = ()
   let renderer = Renderer.make ()
 
   let set_state =
     let update equal v x = if not (equal (Lwd.peek v) x) then Lwd.set v x in
     fun (state : Dune_threaded_console.state) ->
-      let size = Term.size (term ()) in
+      let size = Term.size (Terminal_manager.get_term ()) in
       update (Tuple.T2.equal Int.equal Int.equal) term_size size;
       update
         (Option.equal (fun x y ->
@@ -309,7 +426,7 @@ module Console_backend = struct
   ;;
 
   let render (state : Dune_threaded_console.state) =
-    let size = Term.size (term ()) in
+    let size = Term.size (Terminal_manager.get_term ()) in
     (* Update the persistent values tracked by other components. *)
     set_state state;
     (* This is a standard [Lwd] routine for creating a document. *)
@@ -324,7 +441,7 @@ module Console_backend = struct
       stabilize ()
     in
     (* Finally we use Notty to show the image. *)
-    Term.image (term ()) image
+    Term.image (Terminal_manager.get_term ()) image
   ;;
 
   (* Update any global state and finish *)
@@ -361,7 +478,7 @@ module Console_backend = struct
       now +. time_budget
       (* Nothing to do, we return the time at the end of the time budget. *)
     | `Event ->
-      (match Term.event (term ()) with
+      (match Term.event (Terminal_manager.get_term ()) with
        | `End -> set_dirty ~mutex state
        (* on resize we wish to redraw so the state is set to dirty *)
        | `Resize (_width, _height) -> set_dirty ~mutex state
@@ -380,7 +497,7 @@ module Console_backend = struct
   ;;
 
   let reset_flush_history () = ()
-  let finish () = Term.release (term ())
+  let finish () = Terminal_manager.disable ()
 end
 
 let backend =

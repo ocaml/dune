@@ -27,9 +27,17 @@ We create two parameters, on public, the other one local.
 
 We implement the parameter using a library.
 
-TODO(@maiste): creating a public package generate a bug!
-
   $ rm -rf _build
+  $ make_dir_with_dune "foo_impl" <<EOF
+  > (library
+  >  (name foo_impl)
+  >  (implements foo))
+  > EOF
+  $ make_dummy_impl "foo_impl" "foo_impl"
+  $ dune build
+
+We change the implementation to be public instead of a local one.
+
   $ cat >> dune-project << EOF
   > (package (name foo_impl))
   > EOF
@@ -38,7 +46,6 @@ TODO(@maiste): creating a public package generate a bug!
   >  (public_name foo_impl)
   >  (implements foo))
   > EOF
-  $ make_dummy_impl "foo_impl" "foo_impl"
   $ dune build
 
 We create library implementing the parameter with a bigger interface than what
@@ -57,8 +64,8 @@ We add a library implementing a parameter with the wrong interface.
   $ dune build
   File "foo_impl/foo_impl.ml", line 1:
   Error: The argument module foo_impl/foo_impl.ml
-         does not match the parameter signature foo/.foo.objs/byte/foo.cmi: 
-         The value f is required but not provided
+         does not match the parameter signature foo_impl/.foo_impl.objs/byte/foo.cmi:
+          The value f is required but not provided
          File "foo/foo.mli", line 2, characters 0-17: Expected declaration
   [1]
 
@@ -81,4 +88,5 @@ A library implementing the parameter, but importing the content from other files
 We ensure we have all the necessary information for the impletamentation to be used with findlib.
 
   $ dune build @install
-  $ cat _build/install/foo_impl/foo_impl/dune-package
+  $ cat _build/install/default/lib/foo_impl/dune-package | grep "implements"
+   (implements foo)

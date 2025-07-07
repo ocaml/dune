@@ -5,7 +5,7 @@ let all : _ Cmdliner.Cmd.t list =
     Runtest.commands
     @ [ Installed_libraries.command
       ; External_lib_deps.command
-      ; Build_cmd.build
+      ; Build.build
       ; Fmt.command
       ; Clean.command
       ; Install_uninstall.install

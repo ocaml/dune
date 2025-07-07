@@ -43,6 +43,10 @@ let%expect_test "persistent digests" =
     72eb282c39bb084e69d6bd1615b8aaec
     ---
 
+    CRAM-RESULT version 1
+    65e543aaf5ccc8148d50a1305aa3622b
+    ---
+
     merlin-conf version 7
     a14a4700929a15bb2030e36f71e66d20
     ---

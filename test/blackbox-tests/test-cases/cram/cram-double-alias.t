@@ -22,4 +22,4 @@ aliases that are being built together.
 
 Here we make sure that the cram test is only run once
   $ cat _build/log | grep dune_cram | sed 's/.*dune_cram_[0-9a-f]*_/dune_cram_HASH_/g'
-  dune_cram_HASH_.foo.t/main.sh)
+  dune_cram_HASH_.cram.sh/main.sh)

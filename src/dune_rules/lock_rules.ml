@@ -111,11 +111,7 @@ module Spec = struct
     let local_packages =
       Package.Name.Map.map packages ~f:Dune_pkg.Local_package.for_solver
     in
-    let portable_lock_dir =
-      match Config.get Compile_time.portable_lock_dir with
-      | `Enabled -> true
-      | `Disabled -> false
-    in
+    let portable_lock_dir = false in
     let* solver_result =
       Dune_pkg.Opam_solver.solve_lock_dir
         env

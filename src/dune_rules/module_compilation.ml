@@ -238,10 +238,11 @@ let build_cm
      else Command.Args.empty
    in
    let as_parameter_arg = if Module.kind m = Parameter then [ "-as-parameter" ] else [] in
-   let as_argument_for = match Module.implements m with
-    | None -> []
-    | Some module_name -> [ "-as-argument-for" ; Module_name.to_string module_name]
-    in
+   let as_argument_for =
+     match Module.implements m with
+     | None -> []
+     | Some module_name -> [ "-as-argument-for"; Module_name.to_string module_name ]
+   in
    let flags, sandbox =
      let flags =
        Command.Args.dyn (Ocaml_flags.get (Compilation_context.flags cctx) mode)

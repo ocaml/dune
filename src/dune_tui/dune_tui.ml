@@ -72,18 +72,29 @@ module Message_viewer = struct
     | Some l -> max l w
   ;;
 
-  (* We approximate the first line of the message. Unfortunately due to the way Notty
-     images work, it is not easy to get the actual width of the first line. Therefore we
-     just chop a third off as an approximation. *)
+  (* Here we crop the message horizontally so that the first line will fit in
+     the synopsis. The only issue here is that we don't know the real width of
+     the first line but only the width of the message as a whole. This means if
+     the second line is longer than the first, there will be some padding in
+     the synopsis. *)
   let message_synopsis ~attr =
     let+ messages = message_images
-    and+ width, _ = Lwd.get term_size in
+    and+ t_width, _ = Lwd.get term_size in
     fun index ->
       match List.nth messages index with
       | None -> I.string attr "..."
       | Some message ->
         let cropped_image = I.vcrop 0 (I.height message - 1) message in
-        I.hcrop 0 (min (I.width cropped_image / 3) (width - 15)) cropped_image
+        let max_width = t_width - 12 in
+        let img_width = I.width cropped_image in
+        if img_width > max_width
+        then (
+          let ellipsis = I.string attr "..." in
+          let trimmed =
+            I.hcrop 0 (img_width - max 0 (max_width - I.width ellipsis)) cropped_image
+          in
+          I.(trimmed <|> ellipsis </> I.char A.empty ' ' max_width 1))
+        else I.(cropped_image </> I.char A.empty ' ' img_width 1)
   ;;
 
   (* This is a line that shows the total number of messages and the message count used

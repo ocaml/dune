@@ -724,8 +724,9 @@ end = struct
         let rec loop acc = function
           | [] -> Resolve.Memo.return acc
           | (lib, stack) :: libs ->
+            let is_parameter = Lib_info.is_parameter lib.info in
             let virtual_ = Lib_info.virtual_ lib.info in
-            (match lib.implements, virtual_ with
+            (match lib.implements, virtual_ || is_parameter with
              | None, false -> loop acc libs
              | Some _, true -> assert false (* can't be virtual and implement *)
              | None, true -> loop (Map.set acc lib (No_impl stack)) libs
@@ -949,12 +950,12 @@ end = struct
           let virtual_ = Lib_info.virtual_ vlib.info in
           let parameterized = Lib_info.is_parameter vlib.info in
           match virtual_, parameterized with
-          | false,false -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
+          | false, false -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
           | true, false | false, true -> Resolve.Memo.return vlib
           | true, true -> failwith "TODO @maiste"
         in
         Memo.map res ~f:Option.some
-    in 
+    in
     let* requires =
       let requires =
         let open Resolve.O in

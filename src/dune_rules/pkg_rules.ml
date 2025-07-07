@@ -1168,10 +1168,10 @@ end = struct
       let write_paths = Paths.make package_universe name ~relative:Path.Build.relative in
       let install_command = choose_for_current_platform install_command in
       let build_command = choose_for_current_platform build_command in
-      let* paths, build_command, install_command =
+      let paths =
         let paths = Paths.map_path write_paths ~f:Path.build in
         match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name with
-        | false -> Memo.return (paths, build_command, install_command)
+        | false -> paths
         | true ->
           (* Modify the environment as well as build and install commands for
              the compiler package. The specific changes are:
@@ -1184,33 +1184,15 @@ end = struct
              - if a matching version of the compiler is
                already installed in the user's toolchain directory then the
                build and install commands are replaced with no-ops *)
-          let pkg_dir = Pkg_toolchain.pkg_dir pkg in
-          let suffix = Path.basename (Path.outside_build_dir pkg_dir) in
-          let prefix = Pkg_toolchain.installation_prefix ~pkg_dir in
+          let prefix = Pkg_toolchain.installation_prefix pkg in
           let install_roots =
             Pkg_toolchain.install_roots ~prefix
             |> Install.Roots.map ~f:Path.outside_build_dir
           in
-          let* build_command =
-            match build_command with
-            | None | Some Dune -> Memo.return build_command
-            | Some (Action action) ->
-              let+ action = Pkg_toolchain.modify_build_action ~prefix action in
-              Some (Build_command.Action action)
-          in
-          let+ install_command =
-            match install_command with
-            | None -> Memo.return None
-            | Some install_command ->
-              Pkg_toolchain.modify_install_action ~prefix ~suffix install_command
-              >>| Option.some
-          in
-          ( { paths with
-              prefix = Path.outside_build_dir prefix
-            ; install_roots = Lazy.from_val install_roots
-            }
-          , build_command
-          , install_command )
+          { paths with
+            prefix = Path.outside_build_dir prefix
+          ; install_roots = Lazy.from_val install_roots
+          }
       in
       let t =
         { Pkg.id

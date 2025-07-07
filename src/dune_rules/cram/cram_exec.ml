@@ -197,9 +197,13 @@ let rewrite_paths build_path_prefix_map ~parent_script ~command_script s =
     |> Re.replace_string error_msg ~by:""
 ;;
 
-let sanitize ~parent_script cram_to_output
-  : (string list * metadata_result * string) Cram_lexer.block list
-  =
+type command_out =
+  { command : string list
+  ; metadata : metadata_result
+  ; output : string
+  }
+
+let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
   List.map cram_to_output ~f:(fun (t : (block_result * _) Cram_lexer.block) ->
     match t with
     | Cram_lexer.Comment t -> Cram_lexer.Comment t
@@ -215,7 +219,7 @@ let sanitize ~parent_script cram_to_output
                ~command_script:block_result.script
                build_path_prefix_map
       in
-      Command (block_result.command, metadata, output))
+      Command { command = block_result.command; metadata; output })
 ;;
 
 (* Compose user written cram stanzas to output *)
@@ -232,7 +236,7 @@ let compose_cram_output (cram_to_output : _ Cram_lexer.block list) =
   List.iter cram_to_output ~f:(fun block ->
     match (block : _ Cram_lexer.block) with
     | Comment lines -> List.iter lines ~f:add_line
-    | Command (command, metadata, output) ->
+    | Command { command; metadata; output } ->
       List.iteri command ~f:(fun i line ->
         let line = sprintf "%c %s" (if i = 0 then '$' else '>') line in
         add_line_prefixed_with_two_space line);

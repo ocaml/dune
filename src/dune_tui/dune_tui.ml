@@ -120,14 +120,13 @@ module Message_viewer = struct
           ]
       else I.empty
     in
-    let mouse_handler ~x:_ ~y = function
-      | `Left ->
-        if y = 0
-        then (
-          Lwd.set is_message_hidden (fun x ->
-            if x = index then not index_is_hidden else is_hidden x);
-          `Handled)
-        else `Unhandled
+    let toggle_minimize () =
+      Lwd.set is_message_hidden (fun x ->
+        if x = index then not index_is_hidden else is_hidden x);
+      `Handled
+    in
+    let mouse_handler ~x ~y = function
+      | `Left when 0 <= x && x < 3 && y = 0 -> toggle_minimize ()
       | _ -> `Unhandled
     in
     Ui.atom

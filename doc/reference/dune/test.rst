@@ -30,6 +30,10 @@ This defines an executable named ``mytest.exe``. These tests can be run by
 building the aliases ``runtest-mytest`` and ``runtest-expect_test``
 respectively. They will also be added to the ``runtest`` alias.
 
+You may also run the test directly by using ``dune runtest`` and passing the
+name of the test: ``dune runtest mytest``. If the test stanza was in a
+directory ``src/`` then it would be ``dune runtest src/mytest``. 
+
 If the directory also contains an ``expect_test.expected`` file, then
 ``expect_test`` will be used to define an expect test. That is, the test will be
 executed and its output will be compared to ``expect_test.expected``.

@@ -24,6 +24,9 @@ module Spec = struct
     ; packages : Dune_pkg.Local_package.t Package.Name.Map.t
     ; repos : Dune_pkg.Opam_repo.t list
     ; env : Dune_pkg.Solver_env.t
+    ; constraints : Package_dependency.t list
+    ; selected_depopts : Dune_lang.Package_name.t list
+    ; pins : Dune_pkg.Resolved_package.t Dune_lang.Package_name.Map.t
     }
 
   let name = "lock"
@@ -31,7 +34,10 @@ module Spec = struct
   let bimap t _ g = { t with target = g t.target }
   let is_useful_to ~memoize = memoize
 
-  let encode { target; lock_dir; packages; repos; env } _encode_path encode_target
+  let encode
+        { target; lock_dir; packages; repos; env; constraints; selected_depopts; pins }
+        _encode_path
+        encode_target
     : Sexp.t
     =
     let packages : Sexp.t =
@@ -48,20 +54,63 @@ module Spec = struct
     let env : Sexp.t =
       env |> Dune_pkg.Solver_env.to_dyn |> Dyn.to_string |> fun s -> Sexp.Atom s
     in
-    List [ encode_target target; Sexp.Atom lock_dir; packages; repos; env ]
+    let constraints : Sexp.t =
+      List
+        (List.map constraints ~f:(fun ({ name; constraint_ } : Package_dependency.t) ->
+           let name = Dune_lang.Package_name.to_string name in
+           let constraint_ =
+             match constraint_ with
+             | None -> "no constraints"
+             | Some c ->
+               c |> Dune_pkg.Package_dependency.Constraint.to_dyn |> Dyn.to_string
+           in
+           Sexp.List [ Sexp.Atom name; Sexp.Atom constraint_ ]))
+    in
+    let selected_depopts : Sexp.t =
+      List
+        (List.map selected_depopts ~f:(fun pkg_name ->
+           Sexp.Atom (Dune_lang.Package_name.to_string pkg_name)))
+    in
+    let pins =
+      pins
+      |> Dune_lang.Package_name.Map.to_list
+      |> List.sort ~compare:(fun (a, _) (b, _) -> Dune_lang.Package_name.compare a b)
+      |> List.map ~f:(fun (pkg_name, _resolved_pkg) ->
+        let name = Dune_lang.Package_name.to_string pkg_name in
+        Sexp.List [ Sexp.Atom name; Sexp.Atom "TODO: representation of resolved pkg" ])
+      |> fun xs -> Sexp.List xs
+    in
+    List
+      [ encode_target target
+      ; Sexp.Atom lock_dir
+      ; packages
+      ; repos
+      ; env
+      ; constraints
+      ; selected_depopts
+      ; pins
+      ]
   ;;
 
-  let action { target; lock_dir = _; packages; repos; env } ~ectx:_ ~eenv:_ =
+  let action
+        { target
+        ; lock_dir = _
+        ; packages
+        ; repos
+        ; env
+        ; constraints
+        ; selected_depopts
+        ; pins
+        }
+        ~ectx:_
+        ~eenv:_
+    =
     let open Fiber.O in
     let* () = Fiber.return () in
     let version_preference = Dune_pkg.Version_preference.default in
     let local_packages =
       Package.Name.Map.map packages ~f:Dune_pkg.Local_package.for_solver
     in
-    (* TODO: add values to action *)
-    let pins = Package.Name.Map.empty in
-    let constraints = [] in
-    let selected_depopts = [] in
     let portable_lock_dir =
       match Config.get Compile_time.portable_lock_dir with
       | `Enabled -> true
@@ -96,8 +145,9 @@ end
 
 module A = Action_ext.Make (Spec)
 
-let lock ~packages ~target ~lock_dir ~repos ~env =
-  A.action { Spec.target; lock_dir; packages; repos; env }
+let lock ~packages ~target ~lock_dir ~repos ~env ~constraints ~selected_depopts ~pins =
+  A.action
+    { Spec.target; lock_dir; packages; repos; env; constraints; selected_depopts; pins }
   |> Action.Full.make ~can_go_in_shared_cache:false
   |> Action_builder.With_targets.return
   |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
@@ -106,19 +156,25 @@ let lock ~packages ~target ~lock_dir ~repos ~env =
 module Gen_rules = Build_config.Gen_rules
 
 let rule ?loc { Action_builder.With_targets.build; targets } =
-  let into : Rule.Promote.Into.t option =
-    (* TODO: this is a bit weird to go up the directory structure *)
-    Some { loc = Option.value ~default:Loc.none loc; dir = "../../../dune.lock_" }
-  in
-  let promote : Rule.Promote.t = { lifetime = Unlimited; into; only = None } in
-  let mode = Rule.Mode.Promote promote in
-  Rule.make ~mode ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
+  Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
 ;;
 
 let repositories_of_workspace (workspace : Workspace.t) =
   List.map workspace.repos ~f:(fun repo ->
     Dune_pkg.Pkg_workspace.Repository.name repo, repo)
   |> Dune_pkg.Pkg_workspace.Repository.Name.Map.of_list_exn
+;;
+
+let constraints_of_workspace (workspace : Workspace.t) ~lock_dir_path =
+  match Workspace.find_lock_dir workspace lock_dir_path with
+  | None -> []
+  | Some lock_dir -> lock_dir.constraints
+;;
+
+let depopts_of_workspace (workspace : Workspace.t) ~lock_dir_path =
+  match Workspace.find_lock_dir workspace lock_dir_path with
+  | None -> []
+  | Some lock_dir -> lock_dir.depopts |> List.map ~f:snd
 ;;
 
 let get_repos repos ~repositories =
@@ -161,6 +217,11 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
       in
       let* workspace = Workspace.workspace () in
       let repos = repositories_of_workspace workspace in
+      let constraints, selected_depopts =
+        let lock_dir_path = Path.Source.of_string lock_dir in
+        ( constraints_of_workspace ~lock_dir_path workspace
+        , depopts_of_workspace ~lock_dir_path workspace )
+      in
       let* repos =
         (* TODO: read from the right place instead of hardcoding here *)
         Memo.of_non_reproducible_fiber
@@ -180,7 +241,11 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
           ~solver_env_from_current_system
           ~unset_solver_vars_from_context:None
       in
-      let lock_rule = lock ~packages ~target ~lock_dir ~repos ~env in
+      (* TODO load the pins *)
+      let pins = Package.Name.Map.empty in
+      let lock_rule =
+        lock ~packages ~target ~lock_dir ~repos ~env ~constraints ~selected_depopts ~pins
+      in
       rule ~loc:Loc.none lock_rule)
   in
   let directory_targets = Path.Build.Map.singleton target Loc.none in

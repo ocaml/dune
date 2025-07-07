@@ -2,7 +2,7 @@ Jsoo and build-info
 
   $ echo "(lang dune 3.17)" > dune-project
   $ dune build
-  Warning: '--source-map' is enabled but the bytecode program was compiled with no debugging information.
+  Warning [missing-debug-event]: '--source-map' is enabled but the bytecode program was compiled with no debugging information.
   Warning: Consider passing '-g' option to ocamlc.
   $ node _build/default/src/main.bc.wasm.js
   unknown
@@ -35,7 +35,7 @@ Jsoo and build-info
   $ git commit -m "empty2" --allow-empty -q
   $ echo "HELLO" > README
   $ dune build
-  Warning: '--source-map' is enabled but the bytecode program was compiled with no debugging information.
+  Warning [missing-debug-event]: '--source-map' is enabled but the bytecode program was compiled with no debugging information.
   Warning: Consider passing '-g' option to ocamlc.
   $ node _build/default/src/main.bc.wasm.js
   unknown
@@ -80,7 +80,7 @@ Jsoo and build-info
   $ echo "(name main)" >> dune-project
   $ echo "(version 0.2.0)" >> dune-project
   $ dune build
-  Warning: '--source-map' is enabled but the bytecode program was compiled with no debugging information.
+  Warning [missing-debug-event]: '--source-map' is enabled but the bytecode program was compiled with no debugging information.
   Warning: Consider passing '-g' option to ocamlc.
   $ node _build/default/src/main.bc.wasm.js
   0.2.0

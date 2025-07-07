@@ -207,6 +207,39 @@ let poll_solver_env_from_current_system () =
   |> Dune_pkg.Sys_poll.solver_env_from_current_system
 ;;
 
+let project_and_package_pins project =
+  let dir = Dune_project.root project in
+  let pins = Dune_project.pins project in
+  let packages = Dune_project.packages project in
+  Dune_pkg.Pin.DB.add_opam_pins (Dune_pkg.Pin.DB.of_stanza ~dir pins) packages
+;;
+
+let resolve_project_pins project_pins =
+  let scan_project ~read ~files =
+    let read file = Memo.of_reproducible_fiber (read file) in
+    (* Opam files may never contain recursive pins, so don't both reading them *)
+    Dune_project.gen_load
+      ~read
+      ~files
+      ~dir:Path.Source.root
+      ~infer_from_opam_files:false
+      ~load_opam_file_with_contents:Dune_pkg.Opam_file.load_opam_file_with_contents
+    >>| Option.map ~f:(fun project ->
+      let packages = Dune_project.packages project in
+      let pins = project_and_package_pins project in
+      pins, packages)
+    |> Memo.run
+  in
+  Dune_pkg.Pin.resolve project_pins ~scan_project
+;;
+
+let project_pins =
+  Dune_load.projects ()
+  >>| List.fold_left ~init:Dune_pkg.Pin.DB.empty ~f:(fun acc project ->
+    let pins = project_and_package_pins project in
+    Dune_pkg.Pin.DB.combine_exn acc pins)
+;;
+
 let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
   let target = Path.Build.relative dir "content" in
   let rules =
@@ -241,8 +274,8 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
           ~solver_env_from_current_system
           ~unset_solver_vars_from_context:None
       in
-      (* TODO load the pins *)
-      let pins = Package.Name.Map.empty in
+      let* project_pins = project_pins in
+      let* pins = Memo.of_reproducible_fiber (resolve_project_pins project_pins) in
       let lock_rule =
         lock ~packages ~target ~lock_dir ~repos ~env ~constraints ~selected_depopts ~pins
       in

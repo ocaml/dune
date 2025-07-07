@@ -9,7 +9,7 @@ Run inline tests using node js
   $ dune runtest
   inline tests (Byte)
   inline tests (Byte)
-  Warning: your program contains effect handlers; you should probably run js_of_ocaml with option '--effects=cps'
+  Warning [missing-effects-backend]: your program contains effect handlers; you should probably run js_of_ocaml with option '--effects=cps'
   inline tests (Native)
   inline tests (Native)
   inline tests (JS)
@@ -18,7 +18,7 @@ Run inline tests using node js
 CR-Alizter: This test has a different behaviour for the macos-latest in the CI and additionally runs the (Byte) tests. This seems unintentional and should be investigated. For now this test is disabled on macos.
 
   $ dune runtest --profile release
-  Warning: your program contains effect handlers; you should probably run js_of_ocaml with option '--effects=cps'
+  Warning [missing-effects-backend]: your program contains effect handlers; you should probably run js_of_ocaml with option '--effects=cps'
   inline tests (JS)
   inline tests (JS)
   inline tests (Native)

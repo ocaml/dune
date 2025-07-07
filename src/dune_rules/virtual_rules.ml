@@ -79,7 +79,7 @@ let impl sctx ~(lib : Library.t) ~scope =
          ]
      | Some vlib ->
        let info = Lib.info vlib in
-       if not (Lib_info.virtual_ info) && not (Lib_info.is_parameter info)
+       if (not (Lib_info.virtual_ info)) && not (Lib_info.is_parameter info)
        then
          User_error.raise
            ~loc:lib.buildable.loc

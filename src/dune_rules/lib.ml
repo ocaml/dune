@@ -952,7 +952,11 @@ end = struct
           match virtual_, parameterized with
           | false, false -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
           | true, false | false, true -> Resolve.Memo.return vlib
-          | true, true -> failwith "TODO @maiste"
+          | true, true ->
+            Code_error.raise
+              "A virtual library can't be a parameter or a parameter can't be a virtual \
+               library by construction"
+              []
         in
         Memo.map res ~f:Option.some
     in

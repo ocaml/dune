@@ -62,6 +62,9 @@ module Lock_dirs_arg : sig
       [Lock_dirs_arg.lock_dirs_of_workspace]. *)
   type t
 
+  (** Select all lockdirs *)
+  val all : t
+
   (** [Lock_dirs_arg.term] is a command-line argument that can be used to
       specify the lock directories to consider. This can then be passed to
       [Lock_dirs_arg.lock_dirs_of_workspace].

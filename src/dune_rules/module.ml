@@ -291,7 +291,6 @@ let map_files t ~f =
 let src_dir t = Source.src_dir t.source
 let set_pp t pp = { t with pp }
 
-(* TODO @maiste encoding *)
 let to_dyn { source; obj_name; pp; visibility; kind; install_as; _ } =
   Dyn.record
     [ "source", Source.to_dyn source

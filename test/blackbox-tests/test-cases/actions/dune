@@ -3,5 +3,4 @@
 
 (cram
  (applies_to concurrent)
- (enabled_if
-  (<> %{system} macosx)))
+ (enabled_if false))

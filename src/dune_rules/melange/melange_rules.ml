@@ -462,12 +462,54 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
     in
     Action_builder.paths paths
   in
-  let+ () =
+  let+ directory_targets =
     let loc = mel.loc in
-    Memo.parallel_iter copy ~f:(fun (src, dst) ->
-      Super_context.add_rule ~loc ~dir ~mode sctx (Action_builder.copy ~src ~dst))
+    let+ dirs =
+      Memo.parallel_map copy ~f:(fun (src, dst) ->
+        Load_rules.is_target src
+        >>= function
+        | No | Yes File ->
+          let+ () =
+            Super_context.add_rule ~loc ~dir ~mode sctx (Action_builder.copy ~src ~dst)
+          in
+          None
+        | Yes Directory ->
+          let+ () =
+            Super_context.add_rule
+              ~loc
+              ~dir
+              ~mode
+              sctx
+              (Action_builder.symlink_dir ~src ~dst)
+          in
+          Some dst
+        | Under_directory_target_so_cannot_say ->
+          Load_rules.load_dir ~dir:(Path.parent_exn src)
+          >>= (function
+           | Load_rules.Loaded.Build_under_directory_target { directory_target_ancestor }
+             ->
+             let src = Path.build directory_target_ancestor in
+             let dst =
+               let rel = Path.reach ~from:src (Path.build directory_target_ancestor) in
+               Path.Build.relative dst rel
+             in
+             let+ () =
+               Super_context.add_rule
+                 ~loc
+                 ~dir
+                 ~mode
+                 sctx
+                 (Action_builder.symlink_dir ~src ~dst)
+             in
+             Some dst
+           | Build _ | External _ | Source _ -> assert false))
+    in
+    Path.Build.Map.of_list_exn
+      (List.filter_map dirs ~f:(function
+         | Some dir -> Some (dir, loc)
+         | None -> None))
   and+ () = add_deps_to_aliases ?alias:mel.alias deps ~dir:target_dir in
-  ()
+  directory_targets
 ;;
 
 let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
@@ -511,26 +553,28 @@ let setup_entries_js
   and* compile_flags = melange_compile_flags ~sctx ~dir mel in
   let output = Output_kind.Private_library_or_emit target_dir in
   let obj_dir = Obj_dir.of_local local_obj_dir in
-  let* () =
-    setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_:`Emit mel
-  in
   let local_modules_and_obj_dir =
     Some (Modules.With_vlib.modules local_modules, local_obj_dir)
   in
-  Memo.parallel_iter modules_for_js ~f:(fun m ->
-    build_js
-      ~dir
-      ~loc
-      ~pkg_name
-      ~mode
-      ~module_systems
-      ~output
-      ~obj_dir
-      ~sctx
-      ~includes
-      ~compile_flags
-      ~local_modules_and_obj_dir
-      m)
+  let+ directory_targets =
+    setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_:`Emit mel
+  and+ () =
+    Memo.parallel_iter modules_for_js ~f:(fun m ->
+      build_js
+        ~dir
+        ~loc
+        ~pkg_name
+        ~mode
+        ~module_systems
+        ~output
+        ~obj_dir
+        ~sctx
+        ~includes
+        ~compile_flags
+        ~local_modules_and_obj_dir
+        m)
+  in
+  directory_targets
 ;;
 
 let setup_js_rules_libraries =
@@ -593,7 +637,7 @@ let setup_js_rules_libraries =
         in
         cmj_includes ~requires_link ~scope lib_config
       and* compile_flags = melange_compile_flags ~sctx ~dir mel in
-      let+ () =
+      let+ _directory_targets =
         setup_runtime_assets_rules
           sctx
           ~dir
@@ -676,10 +720,10 @@ let setup_js_rules_libraries_and_entries
   =
   let+ () =
     setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode mel
-  and+ () =
+  and+ directory_targets =
     setup_entries_js ~sctx ~dir ~dir_contents ~scope ~requires_link ~target_dir ~mode mel
   in
-  ()
+  directory_targets
 ;;
 
 let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
@@ -719,17 +763,20 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
     let module_systems = mel.module_systems in
     let output = Output_kind.Private_library_or_emit target_dir in
     let loc = mel.loc in
-    Memo.parallel_iter modules_for_js ~f:(fun m ->
-      Memo.parallel_iter module_systems ~f:(fun (_module_system, js_ext) ->
-        let file_targets = [ make_js_name ~output ~js_ext m ] in
-        Super_context.add_rule
-          sctx
-          ~dir
-          ~loc
-          ~mode
-          (Action_builder.fail
-             { fail = (fun () -> Resolve.raise_error_with_stack_trace resolve_error) }
-           |> Action_builder.with_file_targets ~file_targets)))
+    let+ () =
+      Memo.parallel_iter modules_for_js ~f:(fun m ->
+        Memo.parallel_iter module_systems ~f:(fun (_module_system, js_ext) ->
+          let file_targets = [ make_js_name ~output ~js_ext m ] in
+          Super_context.add_rule
+            sctx
+            ~dir
+            ~loc
+            ~mode
+            (Action_builder.fail
+               { fail = (fun () -> Resolve.raise_error_with_stack_trace resolve_error) }
+             |> Action_builder.with_file_targets ~file_targets)))
+    in
+    Path.Build.Map.empty
 ;;
 
 (* The emit stanza of melange outputs in a single output directory (and its
@@ -746,7 +793,7 @@ type t =
   }
 
 let emit_rules sctx { stanza_dir; stanza } =
-  Rules.collect_unit (fun () ->
+  Rules.collect (fun () ->
     let* sctx = sctx in
     let* dir_contents = Dir_contents.get sctx ~dir:stanza_dir in
     let* scope = Scope.DB.find_by_dir stanza_dir in
@@ -821,9 +868,11 @@ let setup_emit_js_rules sctx ~dir =
   >>= function
   | Some melange ->
     gen_emit_rules sctx ~dir melange
-    >>| (function
-     | None -> Gen_rules.redirect_to_parent Gen_rules.Rules.empty
-     | Some melange -> Gen_rules.make melange)
+    >>= (function
+     | None -> Memo.return (Gen_rules.redirect_to_parent Gen_rules.Rules.empty)
+     | Some melange ->
+       let+ directory_targets, melange = melange in
+       Gen_rules.make ~directory_targets (Memo.return melange))
   | None ->
     (* this should probably be handled by [Dir_status] *)
     Dune_load.stanzas_in_dir dir

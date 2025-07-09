@@ -36,7 +36,7 @@ let term : unit Term.t =
   let open Memo.O in
   let* sctx = setup >>| Import.Main.find_scontext_exn ~name:context in
   let* prog = Exec.Cmd_arg.expand ~root:(Common.root common) ~sctx prog in
-  let+ path = Exec.get_path common context ~prog >>| Path.to_string in
+  let+ path = Exec.get_path common sctx ~prog >>| Path.to_string in
   Dune_console.printf "%s" path
 ;;
 

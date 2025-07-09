@@ -382,6 +382,7 @@ include Sub_system.Register_end_point (struct
           sctx
           ~dir
           ~loc:info.loc
+          ~synopsis:None
           alias
           (let open Action_builder.O in
            let source_files = List.concat_map source_modules ~f:Module.sources in

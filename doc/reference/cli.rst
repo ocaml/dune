@@ -38,7 +38,8 @@ documentation for each command is available through ``dune COMMAND --help``.
 
    .. describe:: dune describe aliases
 
-      Print aliases in a given directory. Works similarly to ls.
+      Print aliases with synopsis attached to them in a given directory.
+      Works similarly to ls.
 
    .. describe:: dune describe env
 
@@ -71,7 +72,8 @@ documentation for each command is available through ``dune COMMAND --help``.
 
    .. describe:: dune describe targets
 
-      Print targets in a given directory. Works similarly to ls.
+      Print targets with synopsis in a given directory. 
+      Works similarly to ls.
 
    .. describe:: dune describe workspace
 

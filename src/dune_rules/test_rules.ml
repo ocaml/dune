@@ -128,7 +128,8 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                   ~what:"aliases"
               in
               Simple_rules.interpret_and_add_locks ~expander t.locks action
-              |> Simple_rules.Alias_rules.add sctx ~loc ~alias
+              (* TODO: Add synopsis support for runtest aliases when available *)
+              |> Simple_rules.Alias_rules.add sctx ~loc ~synopsis:None ~alias
               >>> (Dep.alias alias
                    |> Action_builder.dep
                    |> Rules.Produce.Alias.add_deps runtest_alias)
@@ -149,6 +150,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
               ; enabled_if = t.enabled_if
               ; aliases = []
               ; package = t.package
+              ; synopsis = None
               }
             in
             add_alias ~loc ~action:(Diff diff)

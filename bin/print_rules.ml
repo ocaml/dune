@@ -150,6 +150,11 @@ let encode_dep_set deps =
           | Universe -> string "Universe"))
 ;;
 
+let encode_synopsis_field = function
+  | None -> []
+  | Some synopsis -> [ "synopsis", Dune_lang.Synopsis.encode synopsis ]
+;;
+
 let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
   let sexp_of_action action = Action.for_shell action |> encode in
   let paths ps =
@@ -174,6 +179,7 @@ let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
             | None -> []
             | Some (c, _) -> [ "context", Dune_sexp.atom_or_quoted_string c ])
          ; [ "action", sexp_of_action rule.action ]
+         ; encode_synopsis_field rule.synopsis
          ])
   in
   Format.fprintf ppf "%a@," Pp.to_fmt (Dune_lang.pp sexp)

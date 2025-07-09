@@ -1620,7 +1620,8 @@ let add_env env action =
 
 let rule ?loc { Action_builder.With_targets.build; targets } =
   (* TODO this ignores the workspace file *)
-  Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
+  Rule.make ~info:(Rule.Info.of_loc_opt loc) ~synopsis:None ~targets build
+  |> Rules.Produce.rule
 ;;
 
 let source_rules (pkg : Pkg.t) =

@@ -156,27 +156,27 @@ let extend_action t ~dir action =
     | a -> Chdir (Path.build (Context.build_dir t.context), a))
 ;;
 
-let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =
+let make_rule t ?mode ?loc ~synopsis ~dir { Action_builder.With_targets.build; targets } =
   let build = extend_action t build ~dir in
-  Rule.make ?mode ~info:(Rule.Info.of_loc_opt loc) ~targets build
+  Rule.make ?mode ~info:(Rule.Info.of_loc_opt loc) ~synopsis ~targets build
 ;;
 
 let add_rule t ?mode ?loc ~dir build =
-  let rule = make_rule t ?mode ?loc ~dir build in
+  let rule = make_rule t ?mode ?loc ~synopsis:None ~dir build in
   Rules.Produce.rule rule
 ;;
 
-let add_rule_get_targets t ?mode ?loc ~dir build =
-  let rule = make_rule t ?mode ?loc ~dir build in
+let add_rule_get_targets t ?mode ?loc ~synopsis ~dir build =
+  let rule = make_rule t ?mode ?loc ~synopsis ~dir build in
   let+ () = Rules.Produce.rule rule in
   rule.targets
 ;;
 
 let add_rules t ?loc ~dir builds = Memo.parallel_iter builds ~f:(add_rule ?loc t ~dir)
 
-let add_alias_action t alias ~dir ~loc action =
+let add_alias_action t alias ~dir ~loc ~synopsis action =
   let build = extend_action t action ~dir in
-  Rules.Produce.Alias.add_action alias ~loc build
+  Rules.Produce.Alias.add_action alias ~loc ?synopsis build
 ;;
 
 let resolve_program_memo t ~dir ?where ?hint ~loc bin =

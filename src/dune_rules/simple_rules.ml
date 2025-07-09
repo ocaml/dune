@@ -15,15 +15,15 @@ module Alias_rules = struct
       else Memo.return ()
   ;;
 
-  let add sctx ~alias ~loc build =
+  let add sctx ~alias ~loc ~synopsis build =
     let dir = Alias.dir alias in
     check_empty ~loc ~dir alias
-    >>> Super_context.add_alias_action sctx alias ~dir ~loc build
+    >>> Super_context.add_alias_action sctx alias ~dir ~loc ~synopsis build
   ;;
 
   let add_empty sctx ~loc ~alias =
     let action = Action_builder.return (Action.Full.make Action.empty) in
-    add sctx ~loc ~alias action
+    add sctx ~loc ~alias ~synopsis:None action
   ;;
 end
 
@@ -84,7 +84,13 @@ let add_user_rule
     let build = interpret_and_add_locks ~expander rule.locks action.build in
     { action with Action_builder.With_targets.build }
   in
-  Super_context.add_rule_get_targets sctx ~dir ~mode:rule.mode ~loc:rule.loc action
+  Super_context.add_rule_get_targets
+    sctx
+    ~dir
+    ~mode:rule.mode
+    ~synopsis:rule.synopsis
+    ~loc:rule.loc
+    action
 ;;
 
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
@@ -144,10 +150,14 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
              | false -> rule.loc
            in
            let alias = Alias.make ~dir alias in
-           Rules.Produce.Alias.add_deps
-             alias
+           Alias_rules.add
+             sctx
+             ~alias
              ~loc
-             (Action_builder.path (Path.build alias_target)))
+             ~synopsis:rule.synopsis
+             (let open Action_builder.O in
+              Action_builder.path (Path.build alias_target)
+              >>| fun () -> Action.Full.make Action.empty))
        and+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in
        Some targets
      | Aliases_only aliases ->
@@ -157,7 +167,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
          | alias :: extra_aliases ->
            let loc = rule.loc in
            interpret_and_add_locks ~expander rule.locks action.build
-           |> Alias_rules.add sctx ~alias ~loc
+           |> Alias_rules.add sctx ~synopsis:rule.synopsis ~alias ~loc
            >>> Memo.parallel_iter extra_aliases ~f:(fun extra_alias ->
              Dep.alias alias
              |> Action_builder.dep
@@ -313,5 +323,5 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
            ~what:"aliases"
        in
        interpret_and_add_locks ~expander alias_conf.locks action
-       |> Alias_rules.add sctx ~loc ~alias)
+       |> Alias_rules.add sctx ~loc ~synopsis:None ~alias)
 ;;

@@ -78,7 +78,7 @@ let test_rule
   match test with
   | Error (Missing_run_t test) ->
     (* We error out on invalid tests even if they are disabled. *)
-    Alias_rules.add sctx ~alias ~loc (missing_run_t test)
+    Alias_rules.add sctx ~alias ~loc ~synopsis:None (missing_run_t test)
   | Ok test ->
     (* Morally, this is equivalent to evaluating them all concurrently and
        taking the conjunction, but we do it this way to avoid evaluating things
@@ -88,7 +88,7 @@ let test_rule
     >>= (function
      | false -> Alias_rules.add_empty sctx ~alias ~loc
      | true ->
-       Alias_rules.add sctx ~alias ~loc
+       Alias_rules.add sctx ~alias ~loc ~synopsis:None
        @@
        let open Action_builder.O in
        let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in

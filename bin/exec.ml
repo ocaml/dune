@@ -115,17 +115,14 @@ let build_prog ~no_rebuild ~prog p =
     p
 ;;
 
-let dir_of_context common context =
-  let open Memo.O in
-  let+ sctx = Super_context.find_exn context in
+let dir_of_context common sctx =
   let context = Dune_rules.Super_context.context sctx in
   Path.Build.relative (Context.build_dir context) (Common.prefix_target common "")
 ;;
 
-let get_path common context ~prog =
+let get_path common sctx ~prog =
   let open Memo.O in
-  let* sctx = Super_context.find_exn context
-  and* dir = dir_of_context common context in
+  let dir = dir_of_context common sctx in
   match Filename.analyze_program_name prog with
   | In_path ->
     Super_context.resolve_program_memo sctx ~dir ~loc:None prog
@@ -153,9 +150,9 @@ let get_path common context ~prog =
      | None -> not_found_with_suggestions ~dir ~prog)
 ;;
 
-let get_path_and_build_if_necessary common context ~no_rebuild ~prog =
+let get_path_and_build_if_necessary common sctx ~no_rebuild ~prog =
   let open Memo.O in
-  let* path = get_path common context ~prog in
+  let* path = get_path common sctx ~prog in
   match Filename.analyze_program_name prog with
   | In_path | Relative_to_current_dir -> build_prog ~no_rebuild ~prog path
   | Absolute -> Memo.return path
@@ -166,7 +163,7 @@ let step ~prog ~args ~common ~no_rebuild ~context ~on_exit () =
   let* sctx = Super_context.find_exn context in
   let* path =
     let* prog = Cmd_arg.expand ~root:(Common.root common) ~sctx prog in
-    get_path_and_build_if_necessary common context ~no_rebuild ~prog
+    get_path_and_build_if_necessary common sctx ~no_rebuild ~prog
   and* args =
     Memo.parallel_map args ~f:(Cmd_arg.expand ~root:(Common.root common) ~sctx)
   in
@@ -282,8 +279,7 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
       let* env = Super_context.context_env sctx
       and* prog =
         let* prog = Cmd_arg.expand ~root:(Common.root common) ~sctx prog in
-        get_path_and_build_if_necessary common context ~no_rebuild ~prog
-        >>| Path.to_string
+        get_path_and_build_if_necessary common sctx ~no_rebuild ~prog >>| Path.to_string
       and* args =
         Memo.parallel_map ~f:(Cmd_arg.expand ~root:(Common.root common) ~sctx) args
       in

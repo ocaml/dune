@@ -19,6 +19,6 @@ end
   - otherwise if [prog] is the name of an executable in one of the directories
     listed in the PATH environment variable, the path to that executable will be
     returned. *)
-val get_path : Common.t -> Context_name.t -> prog:string -> Path.t Memo.t
+val get_path : Common.t -> Super_context.t -> prog:string -> Path.t Memo.t
 
 val command : unit Cmd.t

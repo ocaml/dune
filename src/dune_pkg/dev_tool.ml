@@ -6,6 +6,7 @@ type t =
   | Ocamllsp
   | Utop
   | Ocamlearlybird
+  | Odig
 
 let to_dyn = function
   | Ocamlformat -> Dyn.variant "Ocamlformat" []
@@ -16,6 +17,9 @@ let to_dyn = function
 ;;
 
 let all = [ Ocamlformat; Odoc; Ocamllsp; Utop; Ocamlearlybird ]
+
+
+let all = [ Ocamlformat; Odoc; Ocamllsp; Ocamlearlybird ]
 
 let equal a b =
   match a, b with
@@ -28,6 +32,7 @@ let equal a b =
   | Utop, Utop -> true
   | Utop, _ | _, Utop -> false
   | Ocamlearlybird, Ocamlearlybird -> true
+  | _ -> false
 ;;
 
 let package_name = function

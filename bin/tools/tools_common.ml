@@ -88,3 +88,17 @@ let which_command dev_tool =
   in
   Cmd.v info term
 ;;
+
+let install_command dev_tool =
+  let exe_name = Pkg_dev_tool.exe_name dev_tool in
+  let term =
+    let+ builder = Common.Builder.term in
+    let common, config = Common.init builder in
+    lock_and_build_dev_tool ~common ~config dev_tool
+  in
+  let info =
+    let doc = sprintf "Install %s as a dev tool" exe_name in
+    Cmd.info exe_name ~doc
+  in
+  Cmd.v info term
+;;

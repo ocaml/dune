@@ -6,6 +6,15 @@ module Exec = struct
   let group = Cmd.group info [ Ocamlformat.Exec.command; Ocamllsp.Exec.command ]
 end
 
+module Install = struct
+  let doc = "Command group for installing wrapped tools."
+  let info = Cmd.info ~doc "install"
+
+  let group =
+    Cmd.group info (List.map [ Ocamlformat; Ocamllsp ] ~f:Tools_common.install_command)
+  ;;
+end
+
 module Which = struct
   let doc = "Command group for printing the path to wrapped tools."
   let info = Cmd.info ~doc "which"
@@ -17,4 +26,4 @@ end
 
 let doc = "Command group for wrapped tools."
 let info = Cmd.info ~doc "tools"
-let group = Cmd.group info [ Exec.group; Which.group ]
+let group = Cmd.group info [ Exec.group; Install.group; Which.group ]

@@ -423,26 +423,43 @@ let check_supported ~dune_lang_ver t (loc, ver) =
           please_port_message
       ]
   | `Unsupported_in_project (supported_ranges, min_lang_ver) ->
-    let dune_ver_text v =
-      Printf.sprintf "version %s of the dune language" (Version.to_string v)
+    let lang_or_ext =
+      match String.equal t.name "dune" with
+      | true -> `Language
+      | false -> `Extension
     in
-    let until =
-      match min_lang_ver with
-      | Some v -> Printf.sprintf " until %s" (dune_ver_text v)
-      | None -> ""
+    let dune_ver_text v =
+      match lang_or_ext with
+      | `Language -> Printf.sprintf "version %s of dune" (Version.to_string v)
+      | `Extension ->
+        Printf.sprintf "version %s of the dune language" (Version.to_string v)
+    in
+    let the_what =
+      match lang_or_ext with
+      | `Language -> Printf.sprintf "the %s language" t.name
+      | `Extension -> Printf.sprintf "the %s extension" t.name
     in
     let supported =
-      (if List.is_empty supported_ranges
-       then Pp.textf "There are no supported versions of this extension in %s."
-       else Pp.textf "Supported versions of this extension in %s:")
-        (dune_ver_text dune_lang_ver)
+      match List.is_empty supported_ranges with
+      | true ->
+        Pp.textf
+          "There are no supported versions of %s in %s."
+          the_what
+          (dune_ver_text dune_lang_ver)
+      | false ->
+        Pp.textf
+          "Supported versions of %s in %s are:"
+          the_what
+          (dune_ver_text dune_lang_ver)
     in
     let message =
       [ Pp.textf
           "Version %s of %s is not supported%s."
           (Version.to_string ver)
-          t.desc
-          until
+          the_what
+          (match min_lang_ver with
+           | Some v -> Printf.sprintf " until %s" (dune_ver_text v)
+           | None -> "")
       ; supported
       ; Pp.enumerate supported_ranges ~f:(fun (a, b) ->
           let open Version.Infix in
@@ -451,7 +468,7 @@ let check_supported ~dune_lang_ver t (loc, ver) =
           else Pp.textf "%s to %s" (Version.to_string a) (Version.to_string b))
       ]
     in
-    let is_error = String.is_empty until || dune_lang_ver >= (2, 6) in
+    let is_error = Option.is_none min_lang_ver || dune_lang_ver >= (2, 6) in
     User_warning.emit ~is_error ~loc message
 ;;
 

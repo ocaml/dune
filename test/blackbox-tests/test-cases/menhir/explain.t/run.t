@@ -31,7 +31,8 @@ First we check the version guards:
                     ^^^
   Error: Version 3.0 of the menhir extension is not supported until version
   3.13 of the dune language.
-  Supported versions of this extension in version 3.12 of the dune language:
+  Supported versions of the menhir extension in version 3.12 of the dune
+  language are:
   - 1.0 to 1.1
   - 2.0 to 2.1
   [1]

@@ -52,3 +52,20 @@ And without suffix it is accepted.
   > EOF
 
   $ dune build
+
+If a new version of dune lang is encountered, we print a helpful error message
+to the user:
+
+  $ cat > dune-project << EOF
+  > (lang dune 123.123)
+  > EOF
+
+  $ dune build 2>&1 | sed -E 's/ 3.[0-9]+/ 3.XX/g'
+  File "dune-project", line 1, characters 11-18:
+  1 | (lang dune 123.123)
+                 ^^^^^^^
+  Error: Version 123.123 of the dune language is not supported.
+  Supported versions of the dune language in version 3.XX of dune are:
+  - 1.0 to 1.12
+  - 2.0 to 2.9
+  - 3.XX to 3.XX

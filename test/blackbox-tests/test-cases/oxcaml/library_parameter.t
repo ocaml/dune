@@ -155,6 +155,7 @@ parameters.
   (library
    (name param.intf)
    (kind parameter)
+   (main_module_name Param_intf)
    (modes byte)
    (modules
     (singleton
@@ -165,6 +166,7 @@ parameters.
   (library
    (name param.intf2)
    (kind parameter)
+   (main_module_name Param_intf2)
    (modes byte)
    (modules
     (singleton

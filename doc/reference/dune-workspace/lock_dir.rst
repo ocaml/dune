@@ -71,3 +71,10 @@ changed if desired.
          dependencies and not added to the lockfile. They exist solely to add
          additional constraints if the packages to which the constraint is
          applied are selected and don't do anything otherwise.
+
+   .. describe:: (depopts <name list>)
+
+      .. versionadded:: 3.19
+
+      Defines which optional packages names (``depopts``) the solver should
+      include when attempting to find a solution for the project.

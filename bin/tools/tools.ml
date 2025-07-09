@@ -3,7 +3,12 @@ open! Import
 module Exec = struct
   let doc = "Command group for running wrapped tools."
   let info = Cmd.info ~doc "exec"
-  let group = Cmd.group info [ Ocamlformat.Exec.command; Ocamllsp.Exec.command ]
+
+  let group =
+    Cmd.group
+      info
+      (List.map [ Ocamlformat; Ocamllsp; Ocamlearlybird ] ~f:Tools_common.exec_command)
+  ;;
 end
 
 module Install = struct

@@ -1,0 +1,4 @@
+(lang dune 3.20)
+(name tutorial)
+(generate_opam_files true)
+(using oxcaml 0.1)

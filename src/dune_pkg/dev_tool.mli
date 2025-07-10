@@ -4,7 +4,9 @@ type t =
   | Ocamlformat
   | Odoc
   | Ocamllsp
+  | Utop
 
+val to_dyn : t -> Dyn.t
 val all : t list
 val equal : t -> t -> bool
 val package_name : t -> Package_name.t

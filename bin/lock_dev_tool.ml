@@ -247,12 +247,8 @@ let lock_ocamlformat () =
   lock_dev_tool_at_version Ocamlformat version
 ;;
 
-let lock_odoc () = lock_dev_tool_at_version Odoc None
-let lock_ocamllsp () = lock_dev_tool_at_version Ocamllsp None
-
 let lock_dev_tool dev_tool =
   match (dev_tool : Dune_pkg.Dev_tool.t) with
   | Ocamlformat -> lock_ocamlformat ()
-  | Odoc -> lock_odoc ()
-  | Ocamllsp -> lock_ocamllsp ()
+  | other -> lock_dev_tool_at_version other None
 ;;

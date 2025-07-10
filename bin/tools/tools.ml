@@ -11,7 +11,7 @@ module Install = struct
   let info = Cmd.info ~doc "install"
 
   let group =
-    Cmd.group info (List.map [ Ocamlformat; Ocamllsp ] ~f:Tools_common.install_command)
+    Cmd.group info (List.map Dune_pkg.Dev_tool.all ~f:Tools_common.install_command)
   ;;
 end
 
@@ -20,7 +20,7 @@ module Which = struct
   let info = Cmd.info ~doc "which"
 
   let group =
-    Cmd.group info (List.map [ Ocamlformat; Ocamllsp ] ~f:Tools_common.which_command)
+    Cmd.group info (List.map Dune_pkg.Dev_tool.all ~f:Tools_common.which_command)
   ;;
 end
 

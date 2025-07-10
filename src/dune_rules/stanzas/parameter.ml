@@ -29,7 +29,8 @@ let to_library t =
   ; virtual_deps = []
   ; wrapped =
       This (Simple true)
-      (* We set it as Simple true because, otherwise, we can extract the Singleton main module name. *)
+      (* We set it as Simple true because, otherwise, we can't extract the
+         Singleton main module name. *)
   ; buildable = t.buildable
   ; dynlink = Dynlink_supported.of_bool false
   ; project = t.project

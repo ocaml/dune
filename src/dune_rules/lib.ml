@@ -948,8 +948,8 @@ end = struct
           let open Resolve.Memo.O in
           let* vlib = resolve_forbid_ignore name in
           let virtual_ = Lib_info.virtual_ vlib.info in
-          let parameterized = Lib_info.is_parameter vlib.info in
-          match virtual_, parameterized with
+          let is_parameter = Lib_info.is_parameter vlib.info in
+          match virtual_, is_parameter with
           | false, false -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
           | true, false | false, true -> Resolve.Memo.return vlib
           | true, true ->

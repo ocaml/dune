@@ -724,8 +724,9 @@ end = struct
         let rec loop acc = function
           | [] -> Resolve.Memo.return acc
           | (lib, stack) :: libs ->
+            let is_parameter = Lib_info.is_parameter lib.info in
             let virtual_ = Lib_info.virtual_ lib.info in
-            (match lib.implements, virtual_ with
+            (match lib.implements, virtual_ || is_parameter with
              | None, false -> loop acc libs
              | Some _, true -> assert false (* can't be virtual and implement *)
              | None, true -> loop (Map.set acc lib (No_impl stack)) libs
@@ -947,9 +948,15 @@ end = struct
           let open Resolve.Memo.O in
           let* vlib = resolve_forbid_ignore name in
           let virtual_ = Lib_info.virtual_ vlib.info in
-          match virtual_ with
-          | false -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
-          | true -> Resolve.Memo.return vlib
+          let is_parameter = Lib_info.is_parameter vlib.info in
+          match virtual_, is_parameter with
+          | false, false -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
+          | true, false | false, true -> Resolve.Memo.return vlib
+          | true, true ->
+            Code_error.raise
+              "A virtual library can't be a parameter or a parameter can't be a virtual \
+               library by construction"
+              []
         in
         Memo.map res ~f:Option.some
     in

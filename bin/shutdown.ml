@@ -13,9 +13,9 @@ let send_shutdown cli =
   | Error e -> raise (Dune_rpc_private.Version_error.E e)
 ;;
 
-let exec common =
+let exec () =
   let open Fiber.O in
-  let where = Rpc_common.active_server common in
+  let where = Rpc_common.active_server_exn () in
   let* conn = Client.Connection.connect_exn where in
   Dune_rpc_impl.Client.client
     conn

@@ -8,7 +8,12 @@ let man =
 ;;
 
 let subcommands =
-  [ Lock.command; Print_solver_env.command; Outdated.command; Validate_lock_dir.command ]
+  [ Lock.command
+  ; Print_solver_env.command
+  ; Outdated.command
+  ; Validate_lock_dir.command
+  ; Pkg_enabled.command
+  ]
 ;;
 
 let info name =

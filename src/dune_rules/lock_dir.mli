@@ -8,7 +8,7 @@ val get : Context_name.t -> (t, User_message.t) result Memo.t
 val get_exn : Context_name.t -> t Memo.t
 val of_dev_tool : Dune_pkg.Dev_tool.t -> t Memo.t
 val lock_dir_active : Context_name.t -> bool Memo.t
-val get_path : Context_name.t -> Path.Source.t option Memo.t
+val get_path : Context_name.t -> Path.Build.t option Memo.t
 
 module Sys_vars : sig
   type t =

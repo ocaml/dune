@@ -1089,15 +1089,15 @@ let create_latest_version
   }
 ;;
 
-let dev_tools_path = Path.Source.(relative root "dev-tools.locks")
+let dev_tools_path = Path.Build.(relative root "dev-tools.locks")
 
 let dev_tool_lock_dir_path dev_tool =
-  Path.Source.relative
+  Path.Build.relative
     dev_tools_path
     (Package_name.to_string (Dev_tool.package_name dev_tool))
 ;;
 
-let default_path = Path.Source.(relative root "dune.lock")
+let default_path = Path.Build.(relative root "dune.lock")
 let metadata_filename = "lock.dune"
 
 module Metadata = Dune_sexp.Versioned_file.Make (Unit)
@@ -1386,9 +1386,9 @@ module Make_load (Io : sig
     include Monad.S
 
     val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
-    val readdir_with_kinds : Path.Source.t -> (Filename.t * Unix.file_kind) list t
-    val with_lexbuf_from_file : Path.Source.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
-    val stats_kind : Path.Source.t -> (File_kind.t, Unix_error.Detailed.t) result t
+    val readdir_with_kinds : Path.Build.t -> (Filename.t * Unix.file_kind) list t
+    val with_lexbuf_from_file : Path.Build.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
+    val stats_kind : Path.Build.t -> (File_kind.t, Unix_error.Detailed.t) result t
   end) =
 struct
   let load_metadata metadata_file_path =
@@ -1434,7 +1434,7 @@ struct
       User_error.raise
         [ Pp.textf
             "In %s, expected language to be %s, but found %s"
-            (Path.Source.to_string metadata_file_path)
+            (Path.Build.to_string metadata_file_path)
             (Syntax.name Dune_lang.Pkg.syntax)
             (Syntax.name syntax)
         ]
@@ -1449,7 +1449,7 @@ struct
     =
     let open Io.O in
     let pkg_file_path =
-      Path.Source.relative
+      Path.Build.relative
         lock_dir_path
         (Package_filename.make package_name maybe_package_version)
     in
@@ -1487,17 +1487,17 @@ struct
                  ]
                |> Pp.hovbox
              ]
-           [ Pp.textf "%s does not exist." (Path.Source.to_string lock_dir_path) ])
+           [ Pp.textf "%s does not exist." (Path.Build.to_string lock_dir_path) ])
     | Error e ->
       Error
         (User_error.make
-           [ Pp.textf "%s is not accessible" (Path.Source.to_string lock_dir_path)
+           [ Pp.textf "%s is not accessible" (Path.Build.to_string lock_dir_path)
            ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum e)
            ])
     | _ ->
       Error
         (User_error.make
-           [ Pp.textf "%s is not a directory." (Path.Source.to_string lock_dir_path) ])
+           [ Pp.textf "%s is not a directory." (Path.Build.to_string lock_dir_path) ])
   ;;
 
   let check_packages packages ~lock_dir_path =
@@ -1514,7 +1514,7 @@ struct
                  (Package_name.to_string dependant_package.info.name)
                  (Package_name.to_string dependency)
                  (Package_name.to_string dependency)
-                 (Path.Source.to_string_maybe_quoted lock_dir_path)
+                 (Path.Build.to_string_maybe_quoted lock_dir_path)
              ]));
       Error
         (User_error.make
@@ -1530,7 +1530,7 @@ struct
            [ Pp.textf
                "At least one package dependency is itself not present as a package in \
                 the lockdir %s."
-               (Path.Source.to_string_maybe_quoted lock_dir_path)
+               (Path.Build.to_string_maybe_quoted lock_dir_path)
            ])
   ;;
 
@@ -1547,7 +1547,7 @@ struct
            , expanded_solver_variable_bindings
            , solved_for_platforms )
         =
-        load_metadata (Path.Source.relative lock_dir_path metadata_filename)
+        load_metadata (Path.Build.relative lock_dir_path metadata_filename)
       in
       let+ packages =
         Io.readdir_with_kinds lock_dir_path
@@ -1592,20 +1592,20 @@ module Load_immediate = Make_load (struct
     include Monad.Id
 
     let stats_kind file =
-      Path.source file |> Path.stat |> Result.map ~f:(fun { Unix.st_kind; _ } -> st_kind)
+      Path.build file |> Path.stat |> Result.map ~f:(fun { Unix.st_kind; _ } -> st_kind)
     ;;
 
     let parallel_map xs ~f = List.map xs ~f
 
     let readdir_with_kinds path =
-      match Path.readdir_unsorted_with_kinds (Path.source path) with
+      match Path.readdir_unsorted_with_kinds (Path.build path) with
       | Ok entries -> entries
       | Error e ->
         User_error.raise
           [ Pp.text (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e) ]
     ;;
 
-    let with_lexbuf_from_file path ~f = Io.with_lexbuf_from_file (Path.source path) ~f
+    let with_lexbuf_from_file path ~f = Io.with_lexbuf_from_file (Path.build path) ~f
   end)
 
 let read_disk = Load_immediate.load

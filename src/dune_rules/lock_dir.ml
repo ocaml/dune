@@ -101,7 +101,7 @@ end
 module Load = Make_load (struct
     include Memo
 
-    let readdir_with_kinds path =
+    let readdir_with_kinds (path : Path.Build.t) =
       Fs_memo.dir_contents (In_source_dir path)
       >>| function
       | Error _ ->
@@ -121,7 +121,6 @@ module Load = Make_load (struct
   end)
 
 let select_lock_dir lock_dir_selection =
-  let* workspace = Workspace.workspace () in
   let expander ~source pform =
     Sys_vars.expand Sys_vars.poll ~source pform
     >>| function
@@ -134,7 +133,8 @@ let select_lock_dir lock_dir_selection =
         ]
     | Some variable_value -> [ Value.String variable_value ]
   in
-  Workspace.Lock_dir_selection.eval lock_dir_selection ~dir:workspace.dir ~f:expander
+  (* TODO unclear whether this is the right directory *)
+  Workspace.Lock_dir_selection.eval lock_dir_selection ~dir:Path.Build.root ~f:expander
 ;;
 
 let get_path ctx =

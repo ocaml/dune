@@ -64,7 +64,7 @@ let test_message
       number_of_transitive
       total_number_of_transitive
   in
-  let lock_dir_path = Stdune.Path.Source.of_string "dune.lock" in
+  let lock_dir_path = Stdune.Path.Build.of_string "dune.lock" in
   let message =
     Dune_pkg_outdated.For_tests.explain_results ~transitive ~lock_dir_path results
   in
@@ -285,7 +285,7 @@ let test_entire_output
       number_of_transitive
       total_number_of_transitive
   in
-  let lock_dir_path = Stdune.Path.Source.of_string "dune.lock" in
+  let lock_dir_path = Stdune.Path.Build.of_string "dune.lock" in
   let message = Dune_pkg_outdated.For_tests.pp ~transitive ~lock_dir_path results in
   Console.print [ message ]
 ;;

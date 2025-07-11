@@ -28,7 +28,7 @@ module Progress_indicator = struct
     end
 
     type t =
-      { lockdir_path : Path.Source.t
+      { lockdir_path : Path.Build.t
       ; state : State.t option ref
       }
 
@@ -45,7 +45,7 @@ module Progress_indicator = struct
     List.find_map t ~f:(fun { Per_lockdir.lockdir_path; state } ->
       Option.map !state ~f:(fun state ->
         Pp.concat
-          [ Pp.textf "Locking %s: " (Path.Source.to_string_maybe_quoted lockdir_path)
+          [ Pp.textf "Locking %s: " (Path.Build.to_string_maybe_quoted lockdir_path)
           ; Per_lockdir.State.pp state
           ]))
     |> Option.value ~default:Pp.nop
@@ -249,7 +249,7 @@ let solve_lock_dir
             User_message.Style.Success
             (Pp.textf
                "Solution for %s:"
-               (Path.Source.to_string_maybe_quoted lock_dir_path))
+               (Path.Build.to_string_maybe_quoted lock_dir_path))
           :: (match Lock_dir.Packages.to_pkg_list lock_dir.packages with
               | [] ->
                 Pp.tag User_message.Style.Warning @@ Pp.text "(no dependencies to lock)"
@@ -262,7 +262,7 @@ let solve_lock_dir
     Ok
       ( Lock_dir.Write_disk.prepare
           ~portable_lock_dir
-          ~lock_dir_path:(Path.source lock_dir_path)
+          ~lock_dir_path:(Path.build lock_dir_path)
           ~files
           lock_dir
       , summary_message )
@@ -315,7 +315,7 @@ let solve
     User_error.raise
       ([ Pp.text "Unable to solve dependencies for the following lock directories:" ]
        @ List.concat_map errors ~f:(fun (path, messages) ->
-         [ Pp.textf "Lock directory %s:" (Path.Source.to_string_maybe_quoted path)
+         [ Pp.textf "Lock directory %s:" (Path.Build.to_string_maybe_quoted path)
          ; Pp.hovbox (Pp.concat ~sep:Pp.newline messages)
          ]))
   | Ok write_disks_with_summaries ->

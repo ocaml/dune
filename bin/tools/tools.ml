@@ -1,27 +1,23 @@
 open! Import
 
+let all_tools = [ Dune_pkg.Dev_tool.Ocamlformat; Ocamllsp; Ocamlearlybird ]
+
 module Exec = struct
   let doc = "Command group for running wrapped tools."
   let info = Cmd.info ~doc "exec"
-  let group = Cmd.group info [ Ocamlformat.Exec.command; Ocamllsp.Exec.command ]
+  let group = Cmd.group info (List.map all_tools ~f:Tools_common.exec_command)
 end
 
 module Install = struct
   let doc = "Command group for installing wrapped tools."
   let info = Cmd.info ~doc "install"
-
-  let group =
-    Cmd.group info (List.map [ Ocamlformat; Ocamllsp ] ~f:Tools_common.install_command)
-  ;;
+  let group = Cmd.group info (List.map all_tools ~f:Tools_common.install_command)
 end
 
 module Which = struct
   let doc = "Command group for printing the path to wrapped tools."
   let info = Cmd.info ~doc "which"
-
-  let group =
-    Cmd.group info (List.map [ Ocamlformat; Ocamllsp ] ~f:Tools_common.which_command)
-  ;;
+  let group = Cmd.group info (List.map all_tools ~f:Tools_common.which_command)
 end
 
 let doc = "Command group for wrapped tools."

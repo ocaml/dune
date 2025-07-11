@@ -4,6 +4,7 @@ type t =
   | Ocamlformat
   | Odoc
   | Ocamllsp
+  | Ocamlearlybird
 
 val all : t list
 val equal : t -> t -> bool

@@ -36,7 +36,6 @@ other files are visible within the test.
   $ echo "Contents of file a" > dir/dir.t/a
   $ cat > dir/dir.t/run.t << EOF
   >   $ echo Dir test
-  >  
   >   $ cat a
   > EOF
 
@@ -52,7 +51,6 @@ other files are visible within the test.
   $ cat dir/dir.t/run.t
     $ echo Dir test
     Dir test
-   
     $ cat a
     Contents of file a
 

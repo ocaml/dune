@@ -7,6 +7,8 @@
  (deps %{bin:ocamlfind}))
 
 (cram
+ (enabled_if
+  (<> %{os_distribution} nixos))
  (applies_to github4125)
  (deps %{bin:opam}))
 

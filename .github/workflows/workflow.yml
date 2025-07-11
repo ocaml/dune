@@ -16,8 +16,80 @@ permissions:
   contents: read
 
 jobs:
+
+#
+# Stage 1
+#
+
+  nix-build:
+    name: Nix Build
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://anmonteiro.nix-cache.workers.dev
+            extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
+      - run: nix build
+
+  nix-test:
+    name: Nix Tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://anmonteiro.nix-cache.workers.dev
+            extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
+      - run: nix develop -i --set-env-var NIX_CI true -c make test
+
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://anmonteiro.nix-cache.workers.dev
+            extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
+      - run: nix develop .#fmt -c make fmt
+
+  doc:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://anmonteiro.nix-cache.workers.dev
+            extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
+      - run: nix develop .#doc -c make doc
+        env:
+          LC_ALL: C
+
+#
+# Stage 2
+#
+
   build:
     name: Build
+    # we only start building our other jobs, once our main tests have passed
+    needs: nix-test
     strategy:
       fail-fast: false
       matrix:
@@ -115,52 +187,9 @@ jobs:
         run: opam install ./dune-configurator.opam
         if: ${{ matrix.configurator == true }}
 
-  nix:
-    name: Nix
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - macos-latest
-          - ubuntu-latest
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v31
-        with:
-          extra_nix_config: |
-            extra-substituters = https://anmonteiro.nix-cache.workers.dev
-            extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
-      - run: nix build
-
-  fmt:
-    name: Format
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v31
-        with:
-          extra_nix_config: |
-            extra-substituters = https://anmonteiro.nix-cache.workers.dev
-            extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
-      - run: nix develop .#fmt -c make fmt
-
-  doc:
-    name: Documentation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v31
-        with:
-          extra_nix_config: |
-            extra-substituters = https://anmonteiro.nix-cache.workers.dev
-            extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
-      - run: nix develop .#doc -c make doc
-        env:
-          LC_ALL: C
-
   coq:
     name: Coq 8.16.1
+    needs: nix-build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -176,6 +205,7 @@ jobs:
 
   wasm:
     name: Wasm_of_ocaml
+    needs: nix-build
     runs-on: ubuntu-latest
     steps:
       - name: Install Node
@@ -213,6 +243,7 @@ jobs:
 
   create-local-opam-switch:
     name: Create local opam switch
+    needs: nix-build
     strategy:
       fail-fast: true
       matrix:
@@ -238,6 +269,7 @@ jobs:
 
   build-microbench:
     name: Build microbenchmarks
+    needs: nix-build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

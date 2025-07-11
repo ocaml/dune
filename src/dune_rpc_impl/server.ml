@@ -390,10 +390,22 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
     Handler.implement_request rpc Procedures.Public.diagnostics f
   in
   let () =
+    let files_to_promote : _ -> Promote.Diff_promotion.files_to_promote = function
+      | [] -> All
+      | files ->
+        let files = List.map files ~f:For_handlers.source_path_of_string in
+        let on_missing fn =
+          User_warning.emit
+            [ Pp.textf
+                "Nothing to promote for %s."
+                (Path.Source.to_string_maybe_quoted fn)
+            ]
+        in
+        These (files, on_missing)
+    in
     let f _ path =
-      let files = For_handlers.source_path_of_string path in
-      Promote.Diff_promotion.promote_files_registered_in_last_run
-        (These ([ files ], ignore));
+      let files = files_to_promote path in
+      Promote.Diff_promotion.promote_files_registered_in_last_run files;
       Fiber.return ()
     in
     Handler.implement_request rpc Procedures.Public.promote f

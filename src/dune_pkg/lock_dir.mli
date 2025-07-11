@@ -69,7 +69,7 @@ module Pkg : sig
   val to_dyn : t -> Dyn.t
 
   val decode
-    : (lock_dir:Path.Source.t
+    : (lock_dir:Path.Build.t
        -> solved_for_platforms:Solver_env.t list
        -> Package_name.t
        -> t)
@@ -78,8 +78,8 @@ module Pkg : sig
   val files_dir
     :  Package_name.t
     -> Package_version.t option
-    -> lock_dir:Path.Source.t
-    -> Path.Source.t
+    -> lock_dir:Path.Build.t
+    -> Path.Build.t
 end
 
 module Repositories : sig
@@ -128,11 +128,16 @@ val create_latest_version
        (* TODO: make this non-optional when portable lockdirs becomes the default *)
   -> t
 
-val default_path : Path.Source.t
+val default_path : Path.Build.t
 
 (** Returns the path to the lockdir that will be used to lock the
     given dev tool *)
-val dev_tool_lock_dir_path : Dev_tool.t -> Path.Source.t
+val dev_tool_lock_dir_path : Dev_tool.t -> Path.Build.t
+
+(** Temporary hack to get the path of a dev tool lock directory in the source
+    tree. Future versions will probably handle this differently and this
+    function should be removed *)
+val dev_tool_lock_dir_source_path : Dev_tool.t -> Path.Source.t
 
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit
 
@@ -152,19 +157,19 @@ module Write_disk : sig
   val commit : t -> unit
 end
 
-val read_disk : Path.Source.t -> (t, User_message.t) result
-val read_disk_exn : Path.Source.t -> t
+val read_disk : Path.Build.t -> (t, User_message.t) result
+val read_disk_exn : Path.Build.t -> t
 
 module Make_load (Io : sig
     include Monad.S
 
     val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
-    val readdir_with_kinds : Path.Source.t -> (Filename.t * Unix.file_kind) list t
-    val with_lexbuf_from_file : Path.Source.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
-    val stats_kind : Path.Source.t -> (File_kind.t, Unix_error.Detailed.t) result t
+    val readdir_with_kinds : Path.Build.t -> (Filename.t * Unix.file_kind) list t
+    val with_lexbuf_from_file : Path.Build.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
+    val stats_kind : Path.Build.t -> (File_kind.t, Unix_error.Detailed.t) result t
   end) : sig
-  val load : Path.Source.t -> (t, User_message.t) result Io.t
-  val load_exn : Path.Source.t -> t Io.t
+  val load : Path.Build.t -> (t, User_message.t) result Io.t
+  val load_exn : Path.Build.t -> t Io.t
 end
 
 (** [transitive_dependency_closure t ~platform names] returns the set of package names

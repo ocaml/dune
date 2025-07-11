@@ -679,7 +679,7 @@ let _raise_on_lock_dir_out_of_sync =
         with
         | `Valid -> ()
         | `Invalid ->
-          let loc = Loc.in_file (Path.source (Path.Source.relative path "lock.dune")) in
+          let loc = Loc.in_file (Path.build (Path.Build.relative path "lock.dune")) in
           let hints = Pp.[ text "run dune pkg lock" ] in
           User_error.raise
             ~loc

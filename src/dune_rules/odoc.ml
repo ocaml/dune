@@ -255,7 +255,7 @@ let odoc_base_flags quiet build_dir =
 ;;
 
 let odoc_dev_tool_lock_dir_exists () =
-  let path = Dune_pkg.Lock_dir.dev_tool_lock_dir_path Odoc in
+  let path = Dune_pkg.Lock_dir.dev_tool_lock_dir_source_path Odoc in
   Fs_memo.dir_exists (Path.Outside_build_dir.In_source_dir path)
 ;;
 

@@ -15,7 +15,7 @@ let term =
     in
     let any_lockdir_exists =
       List.exists lock_dir_paths ~f:(fun lock_dir_path ->
-        Path.exists (Path.source lock_dir_path))
+        Path.exists (Path.build lock_dir_path))
     in
     (* CR-Leonidas-from-XIV: change this logic when we stop detecting lock
        directories in the source tree *)

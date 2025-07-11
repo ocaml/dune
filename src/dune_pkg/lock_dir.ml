@@ -1325,16 +1325,14 @@ module Write_disk = struct
     =
     let lock_dir_hidden_src =
       (* The original lockdir path with the lockdir renamed to begin with a ".". *)
-      let hidden_basename = sprintf ".%s" (Path.Source.basename lock_dir_path_src) in
-      Path.Source.relative (Path.Source.parent_exn lock_dir_path_src) hidden_basename
+      let hidden_basename = sprintf ".%s" (Path.basename lock_dir_path_src) in
+      Path.relative (Path.parent_exn lock_dir_path_src) hidden_basename
     in
-    let lock_dir_hidden_src = Path.source lock_dir_hidden_src in
-    let lock_dir_path_external = Path.source lock_dir_path_src in
     let remove_hidden_dir_if_exists () =
       safely_remove_lock_dir_if_exists_thunk lock_dir_hidden_src ()
     in
     let rename_old_lock_dir_to_hidden =
-      safely_rename_lock_dir_thunk ~dst:lock_dir_hidden_src lock_dir_path_external
+      safely_rename_lock_dir_thunk ~dst:lock_dir_hidden_src lock_dir_path_src
     in
     let build lock_dir_path =
       let lock_dir_path = Result.ok_exn lock_dir_path in
@@ -1369,10 +1367,10 @@ module Write_disk = struct
               | Path src -> Io.copy_file ~src ~dst ()
               | Content content -> Io.write_file dst content))));
       rename_old_lock_dir_to_hidden ();
-      safely_rename_lock_dir_thunk ~dst:lock_dir_path_external lock_dir_path ();
+      safely_rename_lock_dir_thunk ~dst:lock_dir_path_src lock_dir_path ();
       remove_hidden_dir_if_exists ()
     in
-    match Path.(parent (source lock_dir_path_src)) with
+    match Path.parent lock_dir_path_src with
     | Some parent_dir ->
       fun () ->
         Path.mkdir_p parent_dir;

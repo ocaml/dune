@@ -16,6 +16,7 @@ Demonstrate the files and directories listed in a cram test:
   $ cat test.t
     $ find . | sort
     .
+    ./.cram.test.t
 
   $ ls _build/default | sort
   test.t

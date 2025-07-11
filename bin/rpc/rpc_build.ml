@@ -23,7 +23,7 @@ let establish_connection_or_raise ~wait once =
     match res with
     | Some conn -> conn
     | None ->
-      let (_ : Dune_rpc_private.Where.t) = Rpc_common.active_server () in
+      let (_ : Dune_rpc_private.Where.t) = Rpc_common.active_server_exn () in
       User_error.raise
         [ Pp.text "failed to establish connection even though server seems to be running"
         ]
@@ -77,7 +77,7 @@ let term =
   and+ wait = Rpc_common.wait_term
   and+ targets = Arg.(value & pos_all string [] name_) in
   Rpc_common.client_term builder
-  @@ fun _common ->
+  @@ fun () ->
   let open Fiber.O in
   let+ response = build_sexp_string_targets ~wait ~targets in
   match response with

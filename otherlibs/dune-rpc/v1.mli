@@ -327,7 +327,7 @@ module Request : sig
   val format_dune_file : (Path.t * [ `Contents of string ], string) t
 
   (** Promote a file. *)
-  val promote : (Path.t, unit) t
+  val promote : (Path.t list, unit) t
 
   (** Returns the location of the build directory for the current build. *)
   val build_dir : (unit, Path.t) t

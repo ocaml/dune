@@ -247,7 +247,7 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
       let* workspace = Workspace.workspace () in
       let repos = repositories_of_workspace workspace in
       let constraints, selected_depopts =
-        let lock_dir_path = Path.Source.of_string lock_dir in
+        let lock_dir_path = Path.Build.of_string lock_dir in
         ( constraints_of_workspace ~lock_dir_path workspace
         , depopts_of_workspace ~lock_dir_path workspace )
       in

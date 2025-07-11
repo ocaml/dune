@@ -1148,10 +1148,10 @@ end = struct
           | `System_provided -> None)
         >>| List.filter_opt
       and+ files_dir =
-        let* lock_dir =
+        let+ lock_dir =
           Package_universe.lock_dir_path package_universe >>| Option.value_exn
         in
-        let+ files_dir =
+        let files_dir =
           (* TODO(steve): simplify this once portable lockdirs become the
              default. This logic currently handles both the cases where
              lockdirs are non-portable (the files dir won't have a version
@@ -1165,13 +1165,17 @@ end = struct
           let path_with_version =
             Dune_pkg.Lock_dir.Pkg.files_dir info.name (Some info.version) ~lock_dir
           in
-          let+ path_with_version_exists =
-            Fs_memo.dir_exists
-              (Path.source path_with_version |> Path.as_outside_build_dir_exn)
+          let path_with_version_exists =
+            let dir_exists path =
+              match Path.Untracked.stat path with
+              | Ok { st_kind = Unix.S_DIR; _ } -> true
+              | _ -> false
+            in
+            path_with_version |> Path.build |> dir_exists
           in
           if path_with_version_exists then path_with_version else path_without_version
         in
-        Path.Build.append_source
+        Path.Build.append
           (Context_name.build_dir (Package_universe.context_name package_universe))
           files_dir
       in

@@ -42,34 +42,32 @@ call ``dune runtest`` from the shell (or the command alias ``dune test``). This
 will run all the tests defined in the current directory and any subdirectory
 recursively.
 
-Note that in any case, ``dune runtest`` is simply shorthand for building the
-``runtest`` alias, so you can always ask Dune to run the tests in conjunction
-with other targets by passing ``@runtest`` to ``dune build``. For instance:
-
-.. code:: console
-
-   $ dune build @install @runtest
-   $ dune build @install @test/runtest
-
-
 Running a Single Test
 ---------------------
 
-If you would only like to run a single test for your project, you may use ``dune
-exec`` to run the test executable (for the sake of this example,
-``project/tests/myTest.ml``):
+If you would only like to run a single test for your project, you may use
+``dune runtest`` to run the :doc:`test<reference/dune/test>` executable (for
+the sake of this example, ``project/tests/myTest.ml``):
 
 .. code:: console
 
-  $ dune exec project/tests/myTest.exe
+  $ dune runtest project/tests/myTest
 
-To run :ref:`cram-tests` you can pass their paths to the ``dune test``  command.
+To run :ref:`cram-tests` you can pass their paths to the ``dune runtest``
+command.
 
 .. code:: console
 
-   $ dune test tests/myCramTest.t
+   $ dune runtest tests/myCramTest.t
 
 This works both for directory and file cram tests.
+
+Library stanzas with :ref:`inline tests<inline_tests>` enabled may also be run
+by passing the name of the library:
+
+.. code:: console
+
+   $ dune runtest tests/myinlinetestlib
 
 Running Tests in a Directory
 ----------------------------
@@ -460,6 +458,8 @@ simple_tests)))`` wherever you want to write such tests. Note that
 this is only an example. We don't recommend using ``sed`` in your
 build, as this would cause portability problems.
 
+
+.. _test_stanza:
 
 Custom Tests
 ============

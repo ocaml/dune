@@ -107,9 +107,22 @@ type metadata_entry =
   ; build_path_prefix_map : string
   }
 
+let dyn_of_metadata_entry { exit_code; build_path_prefix_map } =
+  let open Dyn in
+  record
+    [ "exit_code", int exit_code; "build_path_prefix_map", string build_path_prefix_map ]
+;;
+
 type metadata_result =
   | Present of metadata_entry
   | Missing_unreachable
+
+let dyn_of_metadata_result =
+  let open Dyn in
+  function
+  | Missing_unreachable -> variant "Missing_unreachable" []
+  | Present p -> variant "Present" [ dyn_of_metadata_entry p ]
+;;
 
 type full_block_result = block_result * metadata_result
 
@@ -203,6 +216,15 @@ type command_out =
   ; output : string
   }
 
+let dyn_of_command_out { command; metadata; output } =
+  let open Dyn in
+  record
+    [ "command", (list string) command
+    ; "metadata", dyn_of_metadata_result metadata
+    ; "output", string output
+    ]
+;;
+
 let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
   List.map cram_to_output ~f:(fun (t : (block_result * _) Cram_lexer.block) ->
     match t with
@@ -245,6 +267,24 @@ let compose_cram_output (cram_to_output : _ Cram_lexer.block list) =
        | Missing_unreachable | Present { exit_code = 0; build_path_prefix_map = _ } -> ()
        | Present { exit_code; build_path_prefix_map = _ } ->
          add_line_prefixed_with_two_space (sprintf "[%d]" exit_code)));
+  Buffer.contents buf
+;;
+
+(* Compose user written cram stanzas to output *)
+let cram_commmands commands =
+  let buf = Buffer.create 256 in
+  let add_line line =
+    Buffer.add_string buf line;
+    Buffer.add_char buf '\n'
+  in
+  let add_line_prefixed_with_two_space line =
+    Buffer.add_string buf "  ";
+    add_line line
+  in
+  List.iter commands ~f:(fun command ->
+    List.iteri command ~f:(fun i line ->
+      let line = sprintf "%c %s" (if i = 0 then '$' else '>') line in
+      add_line_prefixed_with_two_space line));
   Buffer.contents buf
 ;;
 
@@ -305,7 +345,21 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
 
 let _display_with_bars s = List.iter (String.split_lines s) ~f:(Printf.eprintf "| %s\n")
 
-let run ~env ~script lexbuf : string Fiber.t =
+let make_run_env env ~temp_dir ~cwd =
+  let env = Env.add env ~var:"LC_ALL" ~value:"C" in
+  let temp_dir = Path.relative temp_dir "tmp" in
+  let env =
+    Dune_util.Build_path_prefix_map.extend_build_path_prefix_map
+      env
+      `New_rules_have_precedence
+      [ Some { source = Path.to_absolute_filename cwd; target = "$TESTCASE_ROOT" }
+      ; Some { source = Path.to_absolute_filename temp_dir; target = "$TMPDIR" }
+      ]
+  in
+  Env.add env ~var:Env.Var.temp_dir ~value:(Path.to_absolute_filename temp_dir)
+;;
+
+let make_temp_dir ~script =
   let temp_dir =
     let suffix =
       let basename = Path.basename script in
@@ -318,24 +372,14 @@ let run ~env ~script lexbuf : string Fiber.t =
     in
     Temp.create Dir ~prefix:"dune_cram" ~suffix
   in
-  let cram_stanzas = cram_stanzas lexbuf in
+  Path.mkdir_p temp_dir;
+  temp_dir
+;;
+
+let run_cram_test env ~script ~cram_stanzas ~temp_dir ~cwd =
   let open Fiber.O in
   let* sh_script = create_sh_script cram_stanzas ~temp_dir in
-  let cwd = Path.parent_exn script in
-  let env =
-    let env = Env.add env ~var:"LC_ALL" ~value:"C" in
-    let temp_dir = Path.relative temp_dir "tmp" in
-    let env =
-      Dune_util.Build_path_prefix_map.extend_build_path_prefix_map
-        env
-        `New_rules_have_precedence
-        [ Some { source = Path.to_absolute_filename cwd; target = "$TESTCASE_ROOT" }
-        ; Some { source = Path.to_absolute_filename temp_dir; target = "$TMPDIR" }
-        ]
-    in
-    Path.mkdir_p temp_dir;
-    Env.add env ~var:Env.Var.temp_dir ~value:(Path.to_absolute_filename temp_dir)
-  in
+  let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
   let+ () =
     let sh =
@@ -363,24 +407,172 @@ let run ~env ~script lexbuf : string Fiber.t =
       sh
       [ Path.to_string sh_script.script ]
   in
-  let raw = read_and_attach_exit_codes sh_script in
-  let sanitized = sanitize ~parent_script:sh_script.script raw in
-  compose_cram_output sanitized
+  read_and_attach_exit_codes sh_script |> sanitize ~parent_script:script
 ;;
 
-let run ~env ~script = run_expect_test script ~f:(fun lexbuf -> run ~env ~script lexbuf)
+let run_produce_correction ~env ~script lexbuf : string Fiber.t =
+  let temp_dir = make_temp_dir ~script in
+  let cram_stanzas = cram_stanzas lexbuf in
+  let open Fiber.O in
+  let cwd = Path.parent_exn script in
+  let env = make_run_env env ~temp_dir ~cwd in
+  run_cram_test env ~script ~cram_stanzas ~temp_dir ~cwd >>| compose_cram_output
+;;
 
-module Spec = struct
-  type ('path, _) t = 'path
+module Script = Persistent.Make (struct
+    type nonrec t = command_out list
 
-  let name = "cram"
-  let version = 2
-  let bimap path f _ = f path
-  let is_useful_to ~memoize:_ = true
-  let encode script path _ : Sexp.t = List [ path script ]
-  let action script ~ectx:_ ~(eenv : Action.env) = run ~env:eenv.env ~script
+    let name = "CRAM-RESULT"
+    let version = 1
+    let to_dyn = Dyn.list dyn_of_command_out
+    let test_example () = []
+  end)
+
+let run_and_produce_output ~env ~dir:cwd ~script ~dst =
+  let script_contents = Io.read_file ~binary:false script in
+  let lexbuf = Lexbuf.from_string script_contents ~fname:(Path.to_string script) in
+  let temp_dir = make_temp_dir ~script in
+  let cram_stanzas = cram_stanzas lexbuf in
+  Path.unlink_exn script;
+  let env = make_run_env env ~temp_dir ~cwd in
+  let open Fiber.O in
+  run_cram_test env ~script ~cram_stanzas ~temp_dir ~cwd
+  >>| List.filter_map ~f:(function
+    | Cram_lexer.Command c -> Some c
+    | Comment _ -> None)
+  >>| Script.dump (Path.build dst)
+;;
+
+module Run = struct
+  module Spec = struct
+    type ('path, 'target) t =
+      { dir : 'path
+      ; script : 'path
+      ; output : 'target
+      }
+
+    let name = "cram-run"
+    let version = 1
+
+    let bimap { dir; script; output } f g =
+      { dir = f dir; script = f script; output = g output }
+    ;;
+
+    let is_useful_to ~memoize:_ = true
+
+    let encode { dir; script; output } path target : Sexp.t =
+      List [ path dir; path script; target output ]
+    ;;
+
+    let action { dir; script; output } ~ectx:_ ~(eenv : Action.env) =
+      run_and_produce_output ~env:eenv.env ~dir ~script ~dst:output
+    ;;
+  end
+
+  include Action_ext.Make (Spec)
 end
 
-module Action = Action_ext.Make (Spec)
+let run ~dir ~script ~output = Run.action { dir; script; output }
+
+module Make_script = struct
+  module Spec = struct
+    type ('path, 'target) t = 'path * 'target
+
+    let name = "cram-generate"
+    let version = 1
+    let bimap (src, dst) f g = f src, g dst
+    let is_useful_to ~memoize:_ = true
+    let encode (src, dst) path target : Sexp.t = List [ path src; target dst ]
+
+    let action (src, dst) ~ectx:_ ~eenv:_ =
+      let commands =
+        Io.read_file ~binary:false src
+        |> Lexbuf.from_string ~fname:(Path.to_string src)
+        |> cram_stanzas
+        |> List.filter_map ~f:(function
+          | Cram_lexer.Comment _ -> None
+          | Command s -> Some s)
+        |> cram_commmands
+      in
+      Io.write_file ~binary:false (Path.build dst) commands;
+      Fiber.return ()
+    ;;
+  end
+
+  include Action_ext.Make (Spec)
+end
+
+let make_script ~src ~script = Make_script.action (src, script)
+
+module Diff = struct
+  module Spec = struct
+    type ('path, _) t =
+      { script : 'path
+      ; out : 'path
+      }
+
+    let name = "cram-generate"
+    let version = 1
+    let bimap { script; out } f _ = { script = f script; out = f out }
+    let is_useful_to ~memoize:_ = true
+    let encode { script; out } path _ : Sexp.t = List [ path script; path out ]
+
+    let action { script; out } ~ectx:_ ~eenv:_ =
+      let current = Io.read_file ~binary:false script in
+      let combined =
+        let out =
+          match Script.load out with
+          | Some s -> s
+          | None ->
+            User_error.raise
+              [ Pp.textf "%s does not exist or is corrupted" (Path.to_string out) ]
+        in
+        let current_stanzas =
+          Lexbuf.from_string ~fname:(Path.to_string script) current |> cram_stanzas
+        in
+        let rec loop acc current expected =
+          match current with
+          | [] -> acc
+          | Cram_lexer.Comment x :: current ->
+            loop (Cram_lexer.Comment x :: acc) current expected
+          | Command _ :: current ->
+            (match expected with
+             | [] -> acc
+             | out :: expected -> loop (Cram_lexer.Command out :: acc) current expected)
+        in
+        loop [] current_stanzas out |> List.rev
+      in
+      let expected = compose_cram_output combined in
+      let corrected_file = Path.extend_basename script ~suffix:".corrected" in
+      if String.equal current expected
+      then Path.rm_rf corrected_file
+      else Io.write_file ~binary:false corrected_file expected;
+      Fiber.return ()
+    ;;
+  end
+
+  include Action_ext.Make (Spec)
+end
+
+let diff ~src ~output = Diff.action { script = src; out = output }
+
+module Action = struct
+  module Spec = struct
+    type ('path, _) t = 'path
+
+    let name = "cram"
+    let version = 2
+    let bimap path f _ = f path
+    let is_useful_to ~memoize:_ = true
+    let encode script path _ : Sexp.t = List [ path script ]
+
+    let action script ~ectx:_ ~(eenv : Action.env) =
+      run_expect_test script ~f:(fun lexbuf ->
+        run_produce_correction ~env:eenv.env ~script lexbuf)
+    ;;
+  end
+
+  include Action_ext.Make (Spec)
+end
 
 let action = Action.action

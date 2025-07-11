@@ -24,4 +24,3 @@ side-effect should only contain a single "run":
 
   $ cat side-effect
   run
-  run

@@ -169,6 +169,8 @@ module Lock_dirs_arg = struct
     | All
     | Selected of Path.Source.t list
 
+  let all = All
+
   let term =
     Common.one_of
       (let+ arg =

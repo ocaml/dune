@@ -65,11 +65,11 @@ module Update = struct
 end
 
 let lock_dir_encode_decode_round_trip_test ?commit ~lock_dir_path ~lock_dir () =
-  let lock_dir_path = Path.Source.of_string lock_dir_path in
+  let lock_dir_path = Path.Build.of_string lock_dir_path in
   Lock_dir.Write_disk.(
     prepare
       ~portable_lock_dir:false
-      ~lock_dir_path:(Path.source lock_dir_path)
+      ~lock_dir_path:(Path.build lock_dir_path)
       ~files:Package_name.Map.empty
       lock_dir
     |> commit);
@@ -77,7 +77,7 @@ let lock_dir_encode_decode_round_trip_test ?commit ~lock_dir_path ~lock_dir () =
     try Lock_dir.read_disk_exn lock_dir_path with
     | User_error.E _ as exn ->
       let metadata_path =
-        Path.Source.relative lock_dir_path Lock_dir.metadata_filename |> Path.source
+        Path.Build.relative lock_dir_path Lock_dir.metadata_filename |> Path.build
       in
       let metadata_file_contents = Io.read_file metadata_path in
       print_endline

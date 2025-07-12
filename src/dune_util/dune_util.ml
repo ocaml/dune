@@ -13,7 +13,6 @@ module Action = Action
 module Alias_name = Alias_name
 module Terminal_signals = Terminal_signals
 module Gc = Gc
-module Prog = Prog
 open Stdune
 
 let xdg =

@@ -12,7 +12,7 @@ module Spec = struct
 
   let action cmd ~(ectx : Action.context) ~(eenv : Action.env) =
     let prog, arg =
-      Dune_util.Prog.system_shell_exn ~needed_to:"interpret (system ...) actions"
+      Env_path.system_shell_exn ~needed_to:"interpret (system ...) actions"
     in
     let display = !Clflags.display in
     Process.run

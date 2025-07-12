@@ -615,9 +615,14 @@ module Module = struct
   end
 
   let dep t dep =
-    let dir = obj_dir t in
-    let name = Dep.basename dep in
-    Path.Build.relative dir name
+    match (dep : Dep.t) with
+    | Immediate (m, _) | Transitive (m, _) ->
+      (match Module.kind m with
+       | Module.Kind.Alias _ -> None
+       | _ ->
+         let dir = obj_dir t in
+         let name = Dep.basename dep in
+         Some (Path.Build.relative dir name))
   ;;
 
   module L = struct

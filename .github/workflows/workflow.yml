@@ -51,6 +51,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      # git user needs to be configured for the following tests:
+      # otherlibs/build-info/test/run.t
+      # test/blackbox-tests/test-cases/dune-project-meta/run.t
+      # test/blackbox-tests/test-cases/subst/run.t
+      # test/expect-tests/vcs_tests.ml
+      - name: Set git user
+        run: |
+          git config --global user.name github-actions[bot]
+          git config --global user.email github-actions[bot]@users.noreply.github.com
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |

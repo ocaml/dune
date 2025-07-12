@@ -1,0 +1,12 @@
+(lang dune 3.18)
+
+(generate_opam_files true)
+
+(package
+ (name foo)
+ (allow_empty)
+ (documentation
+  (depends
+   (ppx_derivers (>= 1.0))
+    brr)
+  (url "url")))

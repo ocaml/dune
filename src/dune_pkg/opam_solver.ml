@@ -1697,12 +1697,13 @@ let solve_lock_dir
   >>= function
   | Error _ as e -> Fiber.return e
   | Ok solution ->
+    let is_dune name = Package_name.equal Dune_dep.name name in
     (* don't include local packages or dune in the lock dir *)
     let opam_packages_to_lock =
       let is_local_package = Package_name.Map.mem local_packages in
       List.filter solution ~f:(fun package ->
         let name = OpamPackage.name package |> Package_name.of_opam_package_name in
-        (not (is_local_package name)) && not (Package_name.equal Dune_dep.name name))
+        (not (is_local_package name)) && not (is_dune name))
     in
     let* candidates_cache = Fiber_cache.to_table context.candidates_cache in
     let resolve_package name version =
@@ -1774,7 +1775,7 @@ let solve_lock_dir
           Lock_dir.Conditional_choice.choose_for_platform depends ~platform:solver_env
           |> Option.iter ~f:(fun depends ->
             List.iter depends ~f:(fun { Lock_dir.Dependency.name = dep_name; loc } ->
-              if Package_name.Map.mem local_packages dep_name
+              if (not (is_dune dep_name)) && Package_name.Map.mem local_packages dep_name
               then
                 User_error.raise
                   ~loc

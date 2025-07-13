@@ -21,7 +21,6 @@ Dune is defined in the workspace where we're solving
   >  (name foo)
   >  (depends bar))
   > EOF
-  Error: Dune does not support packages outside the workspace depending on
-  packages in the workspace. The package "bar" is not in the workspace but it
-  depends on the package "dune" which is in the workspace.
-  [1]
+  Solution for dune.lock:
+  - bar.0.0.1
+  - test-dep.0.0.1

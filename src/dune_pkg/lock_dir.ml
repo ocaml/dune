@@ -1060,8 +1060,7 @@ let create_latest_version
      |> Code_error.raise "Invalid package table");
   let version = Syntax.greatest_supported_version_exn Dune_lang.Pkg.syntax in
   let dependency_hash =
-    local_packages
-    |> Local_package.For_solver.non_local_dependencies
+    Local_package.For_solver.non_local_dependencies local_packages
     |> Local_package.Dependency_hash.of_dependency_formula
     |> Option.map ~f:(fun dependency_hash -> Loc.none, dependency_hash)
   in
@@ -1074,10 +1073,7 @@ let create_latest_version
       complete, Some used
   in
   let solved_for_platform_platform_specific_only =
-    Option.map
-      ~f:(fun solved_for_platform ->
-        Solver_env.remove_all_except_platform_specific solved_for_platform)
-      solved_for_platform
+    Option.map solved_for_platform ~f:Solver_env.remove_all_except_platform_specific
   in
   { version
   ; dependency_hash

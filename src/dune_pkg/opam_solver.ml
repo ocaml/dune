@@ -1768,31 +1768,29 @@ let solve_lock_dir
           ~hints:[ Pp.text "add a conflict" ]
     in
     let lock_dir =
+      Package_name.Map.iter
+        pkgs_by_name
+        ~f:(fun { Lock_dir.Pkg.depends; info = { name; _ }; _ } ->
+          Lock_dir.Conditional_choice.choose_for_platform depends ~platform:solver_env
+          |> Option.iter ~f:(fun depends ->
+            List.iter depends ~f:(fun { Lock_dir.Dependency.name = dep_name; loc } ->
+              if Package_name.Map.mem local_packages dep_name
+              then
+                User_error.raise
+                  ~loc
+                  [ Pp.textf
+                      "Dune does not support packages outside the workspace depending on \
+                       packages in the workspace. The package %S is not in the workspace \
+                       but it depends on the package %S which is in the workspace."
+                      (Package_name.to_string name)
+                      (Package_name.to_string dep_name)
+                  ])));
       let expanded_solver_variable_bindings =
         let stats = Solver_stats.Updater.snapshot stats_updater in
         Solver_stats.Expanded_variable_bindings.of_variable_set
           stats.expanded_variables
           solver_env
       in
-      Package_name.Map.iter
-        pkgs_by_name
-        ~f:(fun { Lock_dir.Pkg.depends; info = { name; _ }; _ } ->
-          Option.iter
-            (Lock_dir.Conditional_choice.choose_for_platform depends ~platform:solver_env)
-            ~f:(fun depends ->
-              List.iter depends ~f:(fun { Lock_dir.Dependency.name = dep_name; loc } ->
-                if Package_name.Map.mem local_packages dep_name
-                then
-                  User_error.raise
-                    ~loc
-                    [ Pp.textf
-                        "Dune does not support packages outside the workspace depending \
-                         on packages in the workspace. The package %S is not in the \
-                         workspace but it depends on the package %S which is in the \
-                         workspace."
-                        (Package_name.to_string name)
-                        (Package_name.to_string dep_name)
-                    ])));
       Lock_dir.create_latest_version
         pkgs_by_name
         ~local_packages:(Package_name.Map.values local_packages)

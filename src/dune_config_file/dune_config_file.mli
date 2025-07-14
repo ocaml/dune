@@ -54,6 +54,10 @@ module Dune_config : sig
     end
   end
 
+  module Pkg_enabled : sig
+    type t = bool
+  end
+
   module Terminal_persistence : sig
     type t =
       | Preserve
@@ -83,6 +87,7 @@ module Dune_config : sig
       ; action_stdout_on_success : Action_output_on_success.t field
       ; action_stderr_on_success : Action_output_on_success.t field
       ; project_defaults : Project_defaults.t field
+      ; pkg_enabled : Pkg_enabled.t field
       ; experimental : (string * (Loc.t * string)) list field
       }
   end

@@ -17,7 +17,10 @@ let term =
       List.exists lock_dir_paths ~f:(fun lock_dir_path ->
         Path.exists (Path.source lock_dir_path))
     in
-    if any_lockdir_exists then () else exit 1)
+    let enabled = any_lockdir_exists || workspace.config.pkg_enabled in
+    match enabled with
+    | true -> ()
+    | false -> exit 1)
 ;;
 
 let info =

@@ -1,3 +1,6 @@
+;; These tests caus a filesystem deadlock
+
 (cram
  (applies_to :whole_subtree)
+ (enabled_if false)
  (deps %{bin:ocaml_index}))

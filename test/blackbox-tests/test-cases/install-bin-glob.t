@@ -1,3 +1,5 @@
+  $ rm ./git-helpers.sh
+
 Referring to files with a glob in the bin section of the install stanza
 
   $ cat >dune-project <<EOF

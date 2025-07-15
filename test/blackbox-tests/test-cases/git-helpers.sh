@@ -7,10 +7,10 @@
 # 
 git() {
   if [[ "$1" == "init" ]]; then
-		command git $@
+		command git "$@"
 		command git config user.name "Test Name"
 		command git config user.email "test@example.com"
   else
-    command git $@
+    command git "$@"
   fi
 }

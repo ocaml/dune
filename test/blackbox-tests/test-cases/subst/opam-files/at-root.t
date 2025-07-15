@@ -1,3 +1,5 @@
+  $ . ../../git-helpers.sh
+
 This test checks that `dune subst` adds a `version:` field to opam files.
 
   $ cat > dune-project << EOF

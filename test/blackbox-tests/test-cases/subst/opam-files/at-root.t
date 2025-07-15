@@ -1,3 +1,5 @@
+  $ . ../helpers.sh
+
 This test checks that `dune subst` adds a `version:` field to opam files.
 
   $ cat > dune-project << EOF
@@ -11,7 +13,7 @@ This test checks that `dune subst` adds a `version:` field to opam files.
 
 Git setup is required for dune subst:
 
-  $ git init -q
+  $ git_init
   $ git add dune-project pkg.opam
   $ git commit -m message|grep -v root-commit
    2 files changed, 3 insertions(+)

@@ -1,3 +1,5 @@
+  $ . ./helpers.sh
+
 Read from dune-project package stanza
 -------------------------------------
 And without an opam file preset.
@@ -14,7 +16,7 @@ And without an opam file preset.
   > let version = "${X}VERSION${X}"
   > EOF
 
-  $ git init --quiet
+  $ git_init
   $ git add .
   $ git commit -am _ --quiet
   $ git tag -a 1.0 -m 1.0

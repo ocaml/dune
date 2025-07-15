@@ -272,6 +272,8 @@
             makeDuneDevShell {
               extraBuildInputs = pkgs: (with pkgs; [
                 # dev tools
+                git
+                which
                 ccls
               ]) ++ (with pkgs.ocamlPackages; [
                 pkgs.ocamlPackages.ocaml-lsp

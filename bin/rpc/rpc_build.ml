@@ -23,7 +23,7 @@ let establish_connection_or_raise ~wait once =
     match res with
     | Some conn -> conn
     | None ->
-      let (_ : Dune_rpc_private.Where.t) = Rpc_common.active_server () in
+      let (_ : Dune_rpc_private.Where.t) = Rpc_common.active_server_exn () in
       User_error.raise
         [ Pp.text "failed to establish connection even though server seems to be running"
         ]

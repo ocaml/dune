@@ -11,6 +11,8 @@ Test embedding of build information
   > (package (name $i))
   > EOF
   >   (cd $i;
+  >    git config --local user.name "Test Name"
+  >    git config --local user.email "test@example.com"
   >    git init -q;
   >    git add .;
   >    git commit -q -m _;

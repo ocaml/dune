@@ -32,7 +32,7 @@ First we need a project that will have the patch applied:
 
   $ mkdir needs-patch
   $ cd needs-patch
-  $ git init --quiet
+  $ git_init
   $ cat > dune-project <<EOF
   > (lang dune 3.15)
   > (name needs-patch)

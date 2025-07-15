@@ -86,7 +86,7 @@ Git pinned source:
   $ dir=_bar_git
   $ mkdir $dir
   $ cd $dir
-  $ git init --quiet
+  $ git_init
   $ cat >opam <<EOF
   > opam-version: "2.0"
   > EOF
@@ -105,7 +105,7 @@ Git pinned source with toplevel opam file:
   $ dir=_bar_opam_git
   $ mkdir $dir
   $ cd $dir
-  $ git init --quiet
+  $ git_init
   $ cat >bar.opam <<EOF
   > opam-version: "2.0"
   > EOF
@@ -124,7 +124,7 @@ Git pinned source with toplevel opam dir 1
   $ dir=_bar_opam_dir_git1
   $ mkdir $dir
   $ cd $dir
-  $ git init --quiet
+  $ git_init
   $ mkdir opam
   $ cat >opam/opam <<EOF
   > opam-version: "2.0"
@@ -144,7 +144,7 @@ Git pinned source with toplevel opam dir 2
   $ dir=_bar_opam_dir_git2
   $ mkdir $dir
   $ cd $dir
-  $ git init --quiet
+  $ git_init
   $ mkdir opam
   $ cat >opam/foo.opam <<EOF
   > opam-version: "2.0"

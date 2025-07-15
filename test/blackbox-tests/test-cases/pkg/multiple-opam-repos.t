@@ -5,7 +5,7 @@ We want to test that support for multiple opam repositories works.
   $ mkpkg foo 1.0 <<EOF
   > EOF
   $ cd mock-opam-repository
-  $ git init --quiet
+  $ git_init
   $ git add -A
   $ git commit --quiet -m "Initial commit"
   $ cd ..
@@ -20,7 +20,7 @@ Create a new mock repo, with a different foo package
   $ mkpkg foo 2.0 <<EOF
   > EOF
   $ cd mock-opam-repository
-  $ git init --quiet
+  $ git_init
   $ git add -A
   $ git commit --quiet -m "Initial commit"
   $ cd ..

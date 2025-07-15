@@ -7,7 +7,7 @@ Thus we first create a repo:
   $ mkpkg foo 1.0 <<EOF
   > EOF
   $ cd mock-opam-repository
-  $ git init --quiet
+  $ git_init
   $ git add -A
   $ git commit --quiet -m "Initial commit"
   $ cd ..

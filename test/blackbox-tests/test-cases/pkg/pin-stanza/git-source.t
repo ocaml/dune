@@ -9,7 +9,7 @@ We create a repo with a fixed name for the default branch.
 
   $ mkdir _repo
   $ cd _repo
-  $ git init --initial-branch=duplicated --quiet
+  $ git_init --initial-branch=duplicated
   $ cat >dune-project <<EOF
   > (lang dune 3.13)
   > (package (name foo))

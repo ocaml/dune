@@ -9,7 +9,7 @@ This bug is reported in #10063
   $ src="_git_source"
 
   $ mkdir $src && cd $src
-  $ git init --quiet
+  $ git_init
   $ git checkout -b "branch1"
   Switched to a new branch 'branch1'
   $ echo "branch 1" > file

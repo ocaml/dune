@@ -4,7 +4,7 @@ Test fetching from git
 
   $ mkdir somerepo
   $ cd somerepo
-  $ git init --quiet
+  $ git_init
   $ echo "hello world" > foo
   $ git add foo
   $ git commit -am _ --quiet

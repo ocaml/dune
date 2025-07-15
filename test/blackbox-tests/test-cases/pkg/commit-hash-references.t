@@ -4,7 +4,7 @@ What happens if a branch has the same format as a ref?
   $ mkrepo
   $ mkpkg foo 1.0
   $ cd mock-opam-repository
-  $ git init --quiet
+  $ git_init
   $ git add -A
   $ git commit --quiet -m "Initial state, foo.1.0"
   $ AMBIGUOUS_REF=c3ba68d69316351bc660679f68fdc871bfb4f2d2

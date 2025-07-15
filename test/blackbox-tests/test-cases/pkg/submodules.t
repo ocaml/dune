@@ -23,7 +23,7 @@ And create a tree of repos with each of them referencing each other. First we
 create a regular repo containing `bar`
 
   $ cd remote-bar
-  $ git_init
+  $ git init --quiet
   $ git add -A
   $ git commit -m "Initial commit of bar package" --quiet
   $ SUBMODULE_BAR_LOCATION=$(pwd)
@@ -32,7 +32,7 @@ create a regular repo containing `bar`
 Then we add the `bar` repo as submodule of the `packages` repo:
 
   $ cd remote-submodule
-  $ git_init
+  $ git init --quiet
   $ git add -A
   $ GIT_ALLOW_PROTOCOL=file git submodule add ${SUBMODULE_BAR_LOCATION} bar
   Cloning into '$TESTCASE_ROOT/remote-submodule/bar'...
@@ -46,7 +46,7 @@ In our mock repository, we make sure to add the package submodule as
 `packages` folder:
 
   $ cd mock-opam-repository
-  $ git_init
+  $ git init --quiet
   $ GIT_ALLOW_PROTOCOL=file git submodule add ${SUBMODULE_LOCATION} packages
   Cloning into '$TESTCASE_ROOT/mock-opam-repository/packages'...
   done.

@@ -11,7 +11,7 @@ Make a mock repo tarball that will get used by dune to download the package
   > depends: [ "foo" ]
   > EOF
   $ cd mock-opam-repository
-  $ git_init
+  $ git init --quiet
   $ git add -A
   $ git commit -m "Initial commit" --quiet
   $ REPO_HASH=$(git rev-parse HEAD)

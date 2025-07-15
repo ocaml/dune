@@ -7,7 +7,7 @@ Package sources can be set to git and be nested:
 
   $ mkdir _repo
   $ cd _repo
-  $ git_init
+  $ git init --quiet
   $ cat >dune-project <<EOF
   > (lang dune 3.13)
   > (package (name foo))

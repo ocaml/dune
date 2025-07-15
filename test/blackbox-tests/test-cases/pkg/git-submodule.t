@@ -9,7 +9,7 @@ it as it is disabled for security purposes.
 This repository will be a submodule in our main repository.
   $ mkdir someotherrepo
   $ cd someotherrepo
-  $ git_init
+  $ git init --quiet
   $ echo "world" > bar
   $ git add bar
   $ git commit -am _ --quiet
@@ -20,7 +20,7 @@ We create a repository for the package that we wish to build that has
 someotherrepo as a submodule.
   $ mkdir somerepo
   $ cd somerepo
-  $ git_init
+  $ git init --quiet
   $ echo "hello" > foo
   $ git submodule add --quiet $SOMEOTHERREPO mysubmodule
   $ git add foo mysubmodule .gitmodules

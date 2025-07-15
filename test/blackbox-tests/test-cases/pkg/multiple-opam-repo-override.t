@@ -88,7 +88,7 @@ Now we repeat the tests but with a git repo:
   $ mkdir -p git-repo
   $ mkpkg git-repo 3.0.0
   $ cd git-repo
-  $ git_init
+  $ git init --quiet
   $ git add -A
   $ git commit --quiet -m "Initial commit"
   $ cd ..

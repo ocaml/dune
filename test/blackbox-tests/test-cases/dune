@@ -14,6 +14,7 @@
 (cram
  (applies_to :whole_subtree)
  (deps
+  ./git-helpers.sh
   %{bin:dune_cmd}
   (package dune)))
 

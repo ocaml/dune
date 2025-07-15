@@ -1,5 +1,6 @@
 Helper shell function that generates an opam file for a package:
 
+  $ . ../git-helpers.sh
   $ . ./helpers.sh
   $ mkrepo
 

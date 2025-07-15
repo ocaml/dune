@@ -1,3 +1,5 @@
+  $ . ../git-helpers.sh
+
 Version generated in opam and META files
 ----------------------------------------
 

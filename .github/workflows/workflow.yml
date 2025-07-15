@@ -21,7 +21,6 @@ jobs:
 # Stage 1
 #
 
-
   nix:
     name: Nix
     strategy:
@@ -51,21 +50,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      # git user needs to be configured for the following tests:
-      # otherlibs/build-info/test/run.t
-      # test/blackbox-tests/test-cases/dune-project-meta/run.t
-      # test/blackbox-tests/test-cases/subst/run.t
-      # test/expect-tests/vcs_tests.ml
-      - name: Set git user
-        run: |
-          git config --global user.name github-actions[bot]
-          git config --global user.email github-actions[bot]@users.noreply.github.com
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |
             extra-substituters = https://anmonteiro.nix-cache.workers.dev
             extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
-      - run: nix develop -c make test
+      - run: nix develop -i -c make test
 
   fmt:
     name: Format
@@ -160,16 +150,6 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
-
-      # git user needs to be configured for the following tests:
-      # otherlibs/build-info/test/run.t
-      # test/blackbox-tests/test-cases/dune-project-meta/run.t
-      # test/blackbox-tests/test-cases/subst/run.t
-      # test/expect-tests/vcs_tests.ml
-      - name: Set git user
-        run: |
-          git config --global user.name github-actions[bot]
-          git config --global user.email github-actions[bot]@users.noreply.github.com
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: opam install ./dune.opam --deps-only --with-test

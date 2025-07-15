@@ -9,6 +9,11 @@ export DUNE_CONFIG__OS_DISTRIBUTION=ubuntu
 export DUNE_CONFIG__OS_VERSION=24.11
 export DUNE_CONFIG__SYS_OCAML_VERSION=5.4.0+fake
 
+# Here we configure a local git user for our tests
+git init --quiet
+git config --local user.name "Test Name"
+git config --local user.email "test@example.com"
+
 dune="dune"
 
 pkg_root="_build/_private/default/.pkg"

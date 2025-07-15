@@ -1,5 +1,3 @@
-  $ . ../helpers.sh
-
 `dune subst` should work for opam files in opam subdirectory.
 See #9862.
 
@@ -17,7 +15,7 @@ See #9862.
 
 Git setup is required for dune subst:
 
-  $ git_init
+  $ git init -q
   $ git add dune-project opam/pkg.opam
   $ git commit -m message|grep -v root-commit
    2 files changed, 5 insertions(+)

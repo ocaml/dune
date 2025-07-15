@@ -1,4 +1,3 @@
-  $ . ./helpers.sh
 
 Test subst and files with unicode (#3879)
 -----------------------------------------
@@ -17,7 +16,7 @@ Test subst and files with unicode (#3879)
   > let version = "${X}VERSION${X}"
   > EOF
 
-  $ git_init
+  $ git init --quiet
   $ git add .
   $ git commit -am _ --quiet
   $ git tag -a 1.0 -m 1.0

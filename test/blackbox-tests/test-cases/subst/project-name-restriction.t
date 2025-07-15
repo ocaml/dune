@@ -1,5 +1,3 @@
-  $ . ./helpers.sh
-
 dune subst requires that the project name must exist as a package. However, dune
 doesn't verify that this is the case
 
@@ -16,7 +14,7 @@ doesn't verify that this is the case
   > let version = "${X}VERSION${X}"
   > EOF
 
-  $ git_init
+  $ git init --quiet
   $ git add .
   $ git commit -am _ --quiet
   $ git tag -a 1.0 -m 1.0

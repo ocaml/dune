@@ -1,8 +1,6 @@
-  $ . ./helpers.sh
-
 subst assumes that dune-project always exists:
 
-  $ git_init
+  $ git init -q
   $ touch foo
   $ git add -A
   $ git commit -m "test" -q

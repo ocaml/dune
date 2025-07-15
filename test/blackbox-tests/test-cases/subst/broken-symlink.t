@@ -1,5 +1,3 @@
-  $ . ./helpers.sh
-
 dune subst should not fail when encountering broken symlinks.
 See #9593.
 
@@ -13,7 +11,7 @@ See #9593.
 
 This test requires a git repository, otherwise `dune subst` does nothing.
 
-  $ git_init
+  $ git init -q
   $ git add dune-project broken
   $ git commit -m create |grep -v root-commit
    2 files changed, 5 insertions(+)

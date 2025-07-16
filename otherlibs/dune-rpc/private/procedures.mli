@@ -6,7 +6,7 @@ module Public : sig
   val diagnostics : (unit, Diagnostic.t list) Decl.Request.t
   val shutdown : unit Decl.Notification.t
   val format_dune_file : (Path.t * [ `Contents of string ], string) Decl.Request.t
-  val promote : (Path.t list, unit) Decl.Request.t
+  val promote : (Path.t, unit) Decl.Request.t
   val build_dir : (unit, Path.t) Decl.Request.t
 end
 

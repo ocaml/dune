@@ -92,5 +92,30 @@ module Build = struct
   let decl = Decl.Request.make ~method_:"build" ~generations:[ v1; v2 ]
 end
 
+module Promote = struct
+  let sexp =
+    let open Conv in
+    let to_ = function
+      | [] -> Promote.Diff_promotion.All
+      | paths -> These (List.map ~f:Stdune.Path.Source.of_string paths, ignore)
+    in
+    let from = function
+      | Promote.Diff_promotion.All -> []
+      | These (paths, _) -> List.map ~f:Stdune.Path.Source.to_string paths
+    in
+    iso (list Path.sexp) to_ from
+  ;;
+
+  let v1 =
+    Decl.Request.make_current_gen
+      ~req:sexp
+      ~resp:Build_outcome_with_diagnostics.sexp_v2
+      ~version:1
+  ;;
+
+  let decl = Decl.Request.make ~method_:"promote_but_better" ~generations:[ v1 ]
+end
+
 let build = Build.decl
 let status = Status.decl
+let promote = Promote.decl

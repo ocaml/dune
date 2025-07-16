@@ -13,44 +13,6 @@ let man =
   ]
 ;;
 
-let format_via_rpc_server () =
-  let open Fiber.O in
-  let* connection = Rpc_common.establish_client_session ~wait:true in
-  Dune_rpc_impl.Client.client
-    connection
-    (Dune_rpc.Initialize.Request.create ~id:(Dune_rpc.Id.make (Sexp.Atom "format")))
-    ~f:(fun client ->
-      Rpc_common.request_exn
-        client
-        (Dune_rpc_private.Decl.Request.witness Dune_rpc_impl.Decl.format)
-        ())
-;;
-
-let format_via_rpc_server () =
-  let open Fiber.O in
-  format_via_rpc_server ()
-  >>| function
-  | Error (error : Dune_rpc_private.Response.Error.t) ->
-    Printf.eprintf
-      "Error: %s\n%!"
-      (Dyn.to_string (Dune_rpc_private.Response.Error.to_dyn error))
-  | Ok Success ->
-    Console.print_user_message
-      (User_message.make [ Pp.text "Success" |> Pp.tag User_message.Style.Success ])
-  | Ok (Failure errors) ->
-    List.iter errors ~f:(fun { Dune_engine.Compound_user_error.main; _ } ->
-      Console.print_user_message main);
-    User_error.raise
-      [ (match List.length errors with
-         | 0 ->
-           Code_error.raise
-             "Format via RPC failed, but the RPC server did not send an error message."
-             []
-         | 1 -> Pp.textf "Format failed with 1 error."
-         | n -> Pp.textf "Format failed with %d errors." n)
-      ]
-;;
-
 let lock_ocamlformat () =
   if Lazy.force Lock_dev_tool.is_enabled
   then
@@ -64,6 +26,7 @@ let lock_ocamlformat () =
   else Fiber.return ()
 ;;
 
+(* FIXME! everything works with the normal fmt command, but we can't pass the flag --auto-promote that makes fmt worth typing *)
 let run_fmt_command ~builder =
   let open Fiber.O in
   let common, config = Common.init builder in
@@ -82,18 +45,13 @@ let run_fmt_command ~builder =
   match Dune_util.Global_lock.lock ~timeout:None with
   | Ok () -> Scheduler.go_with_rpc_server ~common ~config once
   | Error lock_held_by ->
-    Scheduler.go_without_rpc_server ~common ~config (fun () ->
-      if not (Common.Builder.equal builder Common.Builder.default)
-      then
-        User_warning.emit
-          [ Pp.textf
-              "Your request is being forwarded to a running Dune instance%s so most \
-               command-line arguments will be ignored."
-              (match (lock_held_by : Dune_util.Global_lock.Lock_held_by.t) with
-               | Unknown -> ""
-               | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
-          ];
-      format_via_rpc_server ())
+    Rpc_common.actually_run_via_rpc
+      ~builder
+      ~common
+      ~config
+      lock_held_by
+      (Rpc_common.fire_request ~name:"format" ~wait:true Dune_rpc_impl.Decl.format)
+      ()
 ;;
 
 let command =

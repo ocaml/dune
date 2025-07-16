@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         # Please keep the list in sync with the minimal version of OCaml in
-        # dune-project, dune.opam.template and bootstrap.ml
+        # dune-project, opam/dune.opam.template and bootstrap.ml
         #
         # We don't run tests on all versions of the Windows environment and on
         # 4.02.x and 4.07.x in other environments
@@ -96,7 +96,7 @@ jobs:
         run: sudo apt update
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
-      - run: opam install ./dune.opam --deps-only --with-test
+      - run: opam install ./opam/dune.opam --deps-only --with-test
 
       - name: Install system deps on macOS
         run: brew install coreutils pkg-config file
@@ -121,7 +121,7 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' && matrix.skip_test == false }}
 
       - name: Build configurator
-        run: opam install ./dune-configurator.opam
+        run: opam install ./opam/dune-configurator.opam
         if: ${{ matrix.configurator == true }}
 
   nix:

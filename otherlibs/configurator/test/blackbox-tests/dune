@@ -11,7 +11,3 @@
  (enabled_if
   (<> %{ocaml-config:system} win))
  (applies_to configurator.t))
-
-(cram
- (enabled_if
-  (<> %{os_distribution} nixos)))

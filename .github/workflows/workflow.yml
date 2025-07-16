@@ -108,7 +108,7 @@ jobs:
 
       - name: Install deps
         run: |
-          opam install . --deps-only --with-test
+          opam install opam/ --deps-only --with-test
           opam exec -- make dev-deps
         if: ${{ matrix.skip_test == false }}
 

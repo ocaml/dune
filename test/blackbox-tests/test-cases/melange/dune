@@ -5,13 +5,13 @@
 
 (cram
  (applies_to :whole_subtree)
- (enabled_if
-  (<> %{os_distribution} nixos))
  (deps %{bin:node} %{bin:melc})
  (alias runtest-melange))
 
 (cram
  (deps %{bin:melc_stdlib_prefix})
+ (enabled_if
+  (<> %{os_distribution} nixos))
  (applies_to merlin))
 
 (cram

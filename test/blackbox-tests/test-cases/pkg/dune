@@ -26,7 +26,7 @@
  (deps %{bin:strace}))
 
 (cram
- (deps %{bin:git} %{bin:awk} %{bin:cmp})
+ (deps %{bin:awk} %{bin:cmp})
  (applies_to git-repo))
 
 (cram

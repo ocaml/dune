@@ -273,6 +273,11 @@
               extraBuildInputs = pkgs: (with pkgs; [
                 # dev tools
                 ccls
+                # test dependencies
+                git
+                which
+                curl
+                procps
               ]) ++ (with pkgs.ocamlPackages; [
                 pkgs.ocamlPackages.ocaml-lsp
                 pkgs.ocamlPackages.melange

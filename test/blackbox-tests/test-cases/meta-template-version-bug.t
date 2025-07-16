@@ -1,3 +1,5 @@
+  $ . ./git-helpers.sh
+
 This test demonstrates a bug when there's a package with a meta template and a
 custom version:
 

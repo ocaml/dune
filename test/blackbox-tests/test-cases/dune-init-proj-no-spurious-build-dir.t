@@ -1,3 +1,5 @@
+  $ rm ./git-helpers.sh
+
 Ensure that running `dune init proj ...` doesn't create a spurious _build
 directory in the current directory.
 

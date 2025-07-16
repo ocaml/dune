@@ -1,0 +1,3 @@
+(cram
+ (applies_to subprocess)
+ (deps %{bin:ps}))

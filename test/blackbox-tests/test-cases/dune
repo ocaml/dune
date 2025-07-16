@@ -18,6 +18,10 @@
   (package dune)))
 
 (cram
+ (applies_to meta-template-version-bug version-corruption)
+ (deps ./git-helpers.sh))
+
+(cram
  (applies_to windows-diff github6644)
  (alias runtest-windows))
 

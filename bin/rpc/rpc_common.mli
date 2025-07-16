@@ -21,9 +21,7 @@ val client_term : Common.Builder.t -> (unit -> 'a Fiber.t) -> 'a
 (** Cmdliner argument for a wait flag. *)
 val wait_term : bool Cmdliner.Term.t
 
-val establish_client_session : wait:bool -> Dune_rpc_client.Client.Connection.t Fiber.t
-
-(** Send a request to the RPC server.
+(** Send a request to the RPC server. If [wait], it will poll forever until a server is listening.
     Should be scheduled by a scheduler that does not come with a RPC server on its own. *)
 val fire_request
   :  name:string

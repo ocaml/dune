@@ -52,10 +52,7 @@ module Public = struct
   end
 
   module Promote = struct
-    let v1 =
-      Decl.Request.make_current_gen ~req:(Conv.list Path.sexp) ~resp:Conv.unit ~version:1
-    ;;
-
+    let v1 = Decl.Request.make_current_gen ~req:Path.sexp ~resp:Conv.unit ~version:1
     let decl = Decl.Request.make ~method_:"promote" ~generations:[ v1 ]
   end
 

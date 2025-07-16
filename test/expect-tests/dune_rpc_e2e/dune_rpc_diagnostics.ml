@@ -652,7 +652,7 @@ let%expect_test "promoting dune files" =
           Build (alias foo) failed |}];
       print_endline "attempting to promote";
       let+ res =
-        request_exn client Request.promote [ Dune_rpc.Path.(relative dune_root fname) ]
+        request_exn client Request.promote Dune_rpc.Path.(relative dune_root fname)
       in
       (match res with
        | Ok () ->

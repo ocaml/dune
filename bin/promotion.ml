@@ -50,56 +50,28 @@ module Apply = struct
     Cmd.info ~doc ~man "apply"
   ;;
 
-  let remote_promote files_to_promote =
-    let open Fiber.O in
-    let* connection = Rpc_common.establish_client_session ~wait:true in
-    Dune_rpc_impl.Client.client
-      connection
-      (Dune_rpc.Initialize.Request.create ~id:(Dune_rpc.Id.make (Sexp.Atom "promote")))
-      ~f:(fun client ->
-        Rpc_common.request_exn
-          client
-          (Dune_rpc_private.Decl.Request.witness
-             Dune_rpc_private.Procedures.Public.promote)
-          files_to_promote)
-  ;;
-
-  let promote_via_rpc_server files_to_promote =
-    let open Fiber.O in
-    remote_promote files_to_promote
-    >>| function
-    | Error (error : Dune_rpc_private.Response.Error.t) ->
-      Printf.eprintf
-        "Error: %s\n%!"
-        (Dyn.to_string (Dune_rpc_private.Response.Error.to_dyn error))
-    | Ok () ->
-      Console.print_user_message
-        (User_message.make [ Pp.text "Success" |> Pp.tag User_message.Style.Success ])
-  ;;
-
   let term =
     let+ builder = Common.Builder.term
     and+ files = Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE") in
     let common, config = Common.init builder in
+    let files_to_promote = files_to_promote ~common files in
     match Dune_util.Global_lock.lock ~timeout:None with
     | Ok () ->
       Scheduler.go_with_rpc_server ~common ~config (fun () ->
-        Fiber.return
-          (let files_to_promote = files_to_promote ~common files in
-           Diff_promotion.promote_files_registered_in_last_run files_to_promote))
+        let open Fiber.O in
+        let+ () = Fiber.return () in
+        Diff_promotion.promote_files_registered_in_last_run files_to_promote)
     | Error lock_held_by ->
-      Scheduler.go_without_rpc_server ~common ~config (fun () ->
-        if not (Common.Builder.equal builder Common.Builder.default)
-        then
-          User_warning.emit
-            [ Pp.textf
-                "Your request is being forwarded to a running Dune instance%s so most \
-                 command-line arguments will be ignored."
-                (match (lock_held_by : Dune_util.Global_lock.Lock_held_by.t) with
-                 | Unknown -> ""
-                 | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
-            ];
-        promote_via_rpc_server files)
+      Rpc_common.actually_run_via_rpc
+        ~builder
+        ~common
+        ~config
+        lock_held_by
+        (Rpc_common.fire_request
+           ~name:"promote_but_better"
+           ~wait:true
+           Dune_rpc_impl.Decl.promote)
+        files_to_promote
   ;;
 
   let command = Cmd.v info term

@@ -93,11 +93,19 @@ module Build = struct
 end
 
 module Promote = struct
+  let on_missing fn =
+    User_warning.emit
+      [ Pp.paragraphf
+          "Nothing to promote for %s."
+          (Stdune.Path.Source.to_string_maybe_quoted fn)
+      ]
+  ;;
+
   let sexp =
     let open Conv in
     let to_ = function
       | [] -> Promote.Diff_promotion.All
-      | paths -> These (List.map ~f:Stdune.Path.Source.of_string paths, ignore)
+      | paths -> These (List.map ~f:Stdune.Path.Source.of_string paths, on_missing)
     in
     let from = function
       | Promote.Diff_promotion.All -> []
@@ -113,7 +121,9 @@ module Promote = struct
       ~version:1
   ;;
 
-  let decl = Decl.Request.make ~method_:"promote_but_better" ~generations:[ v1 ]
+  (* Due to conflict with `Dune_rpc_private.Procedures.Public.promote`,
+     this has to be named something other than "promote". *)
+  let decl = Decl.Request.make ~method_:"promote_but_different" ~generations:[ v1 ]
 end
 
 let build = Build.decl

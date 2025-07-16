@@ -2,7 +2,10 @@
  (_
   (env-vars
    (DUNE_CONFIG__BACKGROUND_SANDBOXES disabled)
-   (DUNE_CONFIG__BACKGROUND_DIGESTS disabled))
+   (DUNE_CONFIG__BACKGROUND_DIGESTS disabled)
+   ; We set ocaml to always be colored since it changes the output of
+   ; ocamlc error messages. See https://github.com/ocaml/ocaml/issues/14144
+   (OCAML_COLOR always))
   (binaries ../utils/dune_cmd.exe ../utils/dunepp.exe
    ../utils/melc_stdlib_prefix.exe ../utils/refmt.exe ../utils/curl
    ../utils/sherlodoc.exe ../utils/ocaml_index.exe)))
@@ -14,6 +17,7 @@
 (cram
  (applies_to :whole_subtree)
  (deps
+  (env_var OCAML_COLOR)
   %{bin:dune_cmd}
   (package dune)))
 

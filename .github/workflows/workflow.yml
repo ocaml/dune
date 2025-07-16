@@ -57,6 +57,7 @@ jobs:
           - ocaml-compiler: "ocaml-variants.4.14.2+options,ocaml-option-32bit"
             os: ubuntu-latest
             skip_test: true
+            apt_update: true
           ## macos (Apple Silicon)
           - ocaml-compiler: 4.14.x
             os: macos-latest
@@ -87,6 +88,12 @@ jobs:
         run: |
           git config --global user.name github-actions[bot]
           git config --global user.email github-actions[bot]@users.noreply.github.com
+
+      # The 32 bit gcc/g++ packages are by default out-of-date so we need to
+      # manually update our package listing.
+      - name: Update apt package listing
+        if: ${{ matrix.apt_update == true }}
+        run: sudo apt update
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: opam install ./dune.opam --deps-only --with-test

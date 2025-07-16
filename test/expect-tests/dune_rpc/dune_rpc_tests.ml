@@ -903,7 +903,7 @@ let%expect_test "print digests for all public RPCs" =
   [%expect
     {|
     Version 1:
-      Request: (List String)
+      Request: String
       Response: Unit
     |}];
   Decl.Request.print_generations Procedures.Public.build_dir;

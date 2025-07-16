@@ -73,7 +73,9 @@ let run thunk =
   let config : Scheduler.Config.t =
     { concurrency = 1; stats = None; print_ctrl_c_warning = false; watch_exclusions = [] }
   in
-  Scheduler.Run.go config ~on_event thunk
+  Scheduler.Run.go config ~on_event (fun () ->
+    let open Fiber.O in
+    Rev_store_tests.git_init_and_config_user (Path.of_string ".") >>> thunk ())
 ;;
 
 let%expect_test "downloading simple file" =
@@ -206,7 +208,8 @@ let%expect_test "downloading, tarball with no checksum match" =
 
 let download_git rev_store url ~target =
   let open Fiber.O in
-  Fetch.fetch_git rev_store ~target ~url:(Loc.none, url)
+  Rev_store_tests.git_init_and_config_user (Path.of_string ".")
+  >>> Fetch.fetch_git rev_store ~target ~url:(Loc.none, url)
   >>| function
   | Error _ ->
     let errs = [ Pp.text "Failure while downloading" ] in

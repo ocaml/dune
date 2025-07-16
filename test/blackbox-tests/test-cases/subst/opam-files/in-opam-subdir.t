@@ -1,3 +1,5 @@
+  $ . ../../git-helpers.sh
+
 `dune subst` should work for opam files in opam subdirectory.
 See #9862.
 

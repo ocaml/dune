@@ -12,6 +12,8 @@ Test embedding of build information
   > EOF
   >   (cd $i;
   >    git init -q;
+  >    git config user.name "Test Name"
+  >    git config user.email "test@example.com"
   >    git add .;
   >    git commit -q -m _;
   >    git tag -a 1.0+$i -m _)

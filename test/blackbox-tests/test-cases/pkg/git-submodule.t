@@ -1,3 +1,4 @@
+  $ . ../git-helpers.sh
   $ . ./helpers.sh
 
 When we fetch a package source we should also fetch any submodules. Since we

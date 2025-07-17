@@ -116,7 +116,7 @@ opam's own language. The syntax is a list of the following elements:
 
 .. productionlist:: pkg-dep
    op : '=' | '<' | '>' | '<>' | '>=' | '<='
-   filter : :dev | :build | :with-test | :with-doc | :post
+   filter : :dev | :build | :with-test | :with-doc | :with-dev-setup | :post
    constr : (<op> <version>)
    logop : or | and
    dep : <name>

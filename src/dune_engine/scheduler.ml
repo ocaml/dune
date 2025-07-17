@@ -1322,21 +1322,33 @@ let inject_memo_invalidation invalidation =
   Fiber.return ()
 ;;
 
-let wait_for_process_with_timeout t pid waiter ~timeout_seconds ~is_process_group_leader =
+let do_with_timeout t ~f ~on_timeout ~timeout_seconds =
   Fiber.of_thunk (fun () ->
     let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) ~seconds:timeout_seconds in
     Fiber.fork_and_join_unit
       (fun () ->
-         let+ res = Alarm_clock.await sleep in
-         if res = `Finished && Process_watcher.is_running t.process_watcher pid
-         then
-           if is_process_group_leader
-           then kill_process_group pid Sys.sigkill
-           else Unix.kill (Pid.to_int pid) Sys.sigkill)
+         Alarm_clock.await sleep
+         >>= function
+         | `Finished -> on_timeout ()
+         | `Cancelled -> Fiber.return ())
       (fun () ->
-         let+ res = waiter t pid in
-         Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
-         res))
+         Fiber.finalize f ~finally:(fun () ->
+           Fiber.return @@ Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep)))
+;;
+
+let wait_for_process_with_timeout t pid waiter ~timeout_seconds ~is_process_group_leader =
+  do_with_timeout
+    t
+    ~f:(fun () -> waiter t pid)
+    ~on_timeout:(fun () ->
+      Fiber.return
+      @@
+      if Process_watcher.is_running t.process_watcher pid
+      then
+        if is_process_group_leader
+        then kill_process_group pid Sys.sigkill
+        else Unix.kill (Pid.to_int pid) Sys.sigkill)
+    ~timeout_seconds
 ;;
 
 let wait_for_build_process ?timeout_seconds ?(is_process_group_leader = false) pid =
@@ -1363,6 +1375,11 @@ let wait_for_process ?timeout_seconds ?(is_process_group_leader = false) pid =
       wait_for_process
       ~timeout_seconds
       ~is_process_group_leader
+;;
+
+let do_with_timeout f ~on_timeout ~timeout_seconds =
+  let* t = t () in
+  do_with_timeout t ~f ~on_timeout ~timeout_seconds
 ;;
 
 let sleep ~seconds =

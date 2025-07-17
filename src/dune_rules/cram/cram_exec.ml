@@ -376,7 +376,9 @@ let make_temp_dir ~script =
   temp_dir
 ;;
 
-let run_cram_test env ~script ~cram_stanzas ~temp_dir ~cwd =
+exception Cram_timed_out
+
+let run_cram_test env ~script ~cram_stanzas ~temp_dir ~cwd ~timeout =
   let open Fiber.O in
   let* sh_script = create_sh_script cram_stanzas ~temp_dir in
   let env = make_run_env env ~temp_dir ~cwd in
@@ -398,25 +400,38 @@ let run_cram_test env ~script ~cram_stanzas ~temp_dir ~cwd =
       in
       Process.create_metadata ~name ~categories:[ "cram" ] ()
     in
-    Process.run
-      ~display:Quiet
-      ~metadata
-      ~dir:cwd
-      ~env
-      Strict
-      sh
-      [ Path.to_string sh_script.script ]
+    let cancel = Fiber.Ivar.create () in
+    let run () =
+      Process.run
+        ~display:Quiet
+        ~metadata
+        ~dir:cwd
+        ~env
+        ~cancel
+        Strict
+        sh
+        [ Path.to_string sh_script.script ]
+    in
+    match timeout with
+    | None -> run ()
+    | Some timeout ->
+      Dune_engine.Scheduler.do_with_timeout
+        run
+        ~timeout_seconds:timeout
+        ~on_timeout:(fun () ->
+          let+ () = Fiber.Ivar.read cancel >>= Fiber.Cancel.fire in
+          raise_notrace Cram_timed_out)
   in
   read_and_attach_exit_codes sh_script |> sanitize ~parent_script:script
 ;;
 
-let run_produce_correction ~env ~script lexbuf : string Fiber.t =
+let run_produce_correction ~env ~script ~timeout lexbuf : string Fiber.t =
   let temp_dir = make_temp_dir ~script in
   let cram_stanzas = cram_stanzas lexbuf in
   let open Fiber.O in
   let cwd = Path.parent_exn script in
   let env = make_run_env env ~temp_dir ~cwd in
-  run_cram_test env ~script ~cram_stanzas ~temp_dir ~cwd >>| compose_cram_output
+  run_cram_test env ~script ~cram_stanzas ~temp_dir ~cwd ~timeout >>| compose_cram_output
 ;;
 
 module Script = Persistent.Make (struct
@@ -428,7 +443,7 @@ module Script = Persistent.Make (struct
     let test_example () = []
   end)
 
-let run_and_produce_output ~env ~dir:cwd ~script ~dst =
+let run_and_produce_output ~env ~dir:cwd ~script ~dst ~timeout =
   let script_contents = Io.read_file ~binary:false script in
   let lexbuf = Lexbuf.from_string script_contents ~fname:(Path.to_string script) in
   let temp_dir = make_temp_dir ~script in
@@ -436,7 +451,7 @@ let run_and_produce_output ~env ~dir:cwd ~script ~dst =
   Path.unlink_exn script;
   let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
-  run_cram_test env ~script ~cram_stanzas ~temp_dir ~cwd
+  run_cram_test env ~script ~cram_stanzas ~temp_dir ~cwd ~timeout
   >>| List.filter_map ~f:(function
     | Cram_lexer.Command c -> Some c
     | Comment _ -> None)
@@ -446,33 +461,71 @@ let run_and_produce_output ~env ~dir:cwd ~script ~dst =
 module Run = struct
   module Spec = struct
     type ('path, 'target) t =
-      { dir : 'path
+      { src : 'path
+      ; dir : 'path
       ; script : 'path
       ; output : 'target
+      ; timeout : (Loc.t * float) option
       }
 
     let name = "cram-run"
-    let version = 1
+    let version = 2
 
-    let bimap { dir; script; output } f g =
-      { dir = f dir; script = f script; output = g output }
+    let bimap { src; dir; script; output; timeout } f g =
+      { src = f src; dir = f dir; script = f script; output = g output; timeout }
     ;;
 
     let is_useful_to ~memoize:_ = true
 
-    let encode { dir; script; output } path target : Sexp.t =
-      List [ path dir; path script; target output ]
+    let encode { src; dir; script; output; timeout } path target : Sexp.t =
+      List
+        [ path src
+        ; path dir
+        ; path script
+        ; target output
+        ; Dune_sexp.Encoder.(option float (Option.map ~f:snd timeout))
+          |> Dune_sexp.to_sexp
+          (* TODO: can we encode the location here? should we? *)
+        ]
     ;;
 
-    let action { dir; script; output } ~ectx:_ ~(eenv : Action.env) =
-      run_and_produce_output ~env:eenv.env ~dir ~script ~dst:output
+    let action { src; dir; script; output; timeout } ~ectx:_ ~(eenv : Action.env) =
+      Fiber.with_error_handler
+        (fun () ->
+           run_and_produce_output
+             ~env:eenv.env
+             ~dir
+             ~script
+             ~dst:output
+             ~timeout:(Option.map ~f:snd timeout))
+        ~on_error:(fun exn ->
+          match exn.exn with
+          | Cram_timed_out ->
+            let loc =
+              Loc.in_file (Path.drop_optional_build_context_maybe_sandboxed src)
+            in
+            let timeout_loc, timeout = Option.value_exn timeout in
+            raise
+            @@ User_error.raise
+                 ~loc
+                 [ Pp.concat
+                     [ Pp.paragraphf
+                         "Cram test timed out. A time limit of %.2fs has been set in "
+                         timeout
+                     ; Pp.tag User_message.Style.Loc @@ Loc.pp_file_colon_line timeout_loc
+                     ; Pp.verbatim "."
+                     ]
+                 ]
+          | _ -> Exn_with_backtrace.reraise exn)
     ;;
   end
 
   include Action_ext.Make (Spec)
 end
 
-let run ~dir ~script ~output = Run.action { dir; script; output }
+let run ~src ~dir ~script ~output ~timeout =
+  Run.action { src; dir; script; output; timeout }
+;;
 
 module Make_script = struct
   module Spec = struct
@@ -568,7 +621,7 @@ module Action = struct
 
     let action script ~ectx:_ ~(eenv : Action.env) =
       run_expect_test script ~f:(fun lexbuf ->
-        run_produce_correction ~env:eenv.env ~script lexbuf)
+        run_produce_correction ~env:eenv.env ~script lexbuf ~timeout:None)
     ;;
   end
 

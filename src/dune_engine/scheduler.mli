@@ -161,3 +161,9 @@ val stats : unit -> Dune_stats.t option Fiber.t
 val wait_for_build_input_change : unit -> unit Fiber.t
 
 val spawn_thread : (unit -> unit) -> unit
+
+val do_with_timeout
+  :  (unit -> 'a Fiber.t)
+  -> on_timeout:(unit -> unit Fiber.t)
+  -> timeout_seconds:float
+  -> 'a Fiber.t

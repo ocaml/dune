@@ -96,6 +96,7 @@ val run
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
   -> ?metadata:metadata
+  -> ?cancel:Fiber.Cancel.t Fiber.Ivar.t
   -> (unit, 'a) Failure_mode.t
   -> Path.t
   -> string list

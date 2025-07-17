@@ -987,6 +987,7 @@ let run_internal
       ?env
       ?(metadata = default_metadata)
       ?(setpgid = Some Spawn.Pgid.new_process_group)
+      ?cancel
       fail_mode
       prog
       args
@@ -1030,6 +1031,11 @@ let run_internal
         ~prog
         ~args
         ()
+    in
+    let* () =
+      match cancel with
+      | Some cancel -> Fiber.Ivar.fill cancel _cancel
+      | None -> Fiber.return ()
     in
     let* () =
       let description =
@@ -1106,7 +1112,18 @@ let run_internal
       res, times)
 ;;
 
-let run ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode prog args
+let run
+      ?dir
+      ~display
+      ?stdout_to
+      ?stderr_to
+      ?stdin_from
+      ?env
+      ?metadata
+      ?cancel
+      fail_mode
+      prog
+      args
   =
   let+ run =
     run_internal
@@ -1117,6 +1134,7 @@ let run ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode
       ?stdin_from
       ?env
       ?metadata
+      ?cancel
       fail_mode
       prog
       args

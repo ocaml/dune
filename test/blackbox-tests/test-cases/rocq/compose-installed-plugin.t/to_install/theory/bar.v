@@ -1,1 +1,1 @@
-Declare ML Module "plugin:global.plugin".
+Declare ML Module "global.plugin".

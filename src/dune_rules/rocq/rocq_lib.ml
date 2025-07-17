@@ -157,13 +157,11 @@ and Legacy : sig
     ; implicit : bool (* Only useful for the stdlib *)
     ; installed_root : Path.t (* ; libraries : (Loc.t * Lib.t) list Resolve.t *)
     ; vo : Path.t list
-    ; cmxs_directories : Path.t list
     }
 
   val to_dyn : t -> Dyn.t
   val implicit : t -> bool
   val installed_root : t -> Path.t
-  val cmxs_directories : t -> Path.t list
   val vo : t -> Path.t list
 end = struct
   type t =
@@ -172,23 +170,20 @@ end = struct
     ; implicit : bool (* Only useful for the stdlib *)
     ; installed_root : Path.t (* ; libraries : (Loc.t * Lib.t) list Resolve.t *)
     ; vo : Path.t list
-    ; cmxs_directories : Path.t list
     }
 
-  let to_dyn { boot_id; id; implicit; installed_root; vo; cmxs_directories } =
+  let to_dyn { boot_id; id; implicit; installed_root; vo } =
     Dyn.record
       [ "boot_id", Dyn.option Id.to_dyn boot_id
       ; "id", Id.to_dyn id
       ; "implicit", Dyn.bool implicit
       ; "installed_root", Path.to_dyn installed_root
       ; "vo", Dyn.list Path.to_dyn vo
-      ; "cmxs_directories", Dyn.list Path.to_dyn cmxs_directories
       ]
   ;;
 
   let implicit t = t.implicit
   let installed_root t = t.installed_root
-  let cmxs_directories t = t.cmxs_directories
   let vo t = t.vo
 end
 
@@ -497,11 +492,9 @@ module DB = struct
       let name = Rocq_path.name cp in
       let installed_root = Rocq_path.path cp in
       let implicit = Rocq_path.corelib cp in
-      let cmxs_directories = Rocq_path.cmxs_directories cp in
       let vo = Rocq_path.vo cp in
       let id = Id.create ~path:installed_root ~name:(Loc.none, name) in
-      Resolve.Memo.return
-        { Legacy.boot_id; id; implicit; installed_root; vo; cmxs_directories }
+      Resolve.Memo.return { Legacy.boot_id; id; implicit; installed_root; vo }
     ;;
 
     module Resolve_result_no_redirect = struct

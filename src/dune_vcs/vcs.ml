@@ -55,7 +55,16 @@ let git, hg =
     lazy
       (match Bin.which ~path:(Env_path.path Env.initial) prog with
        | Some x -> x
-       | None -> Utils.program_not_found prog ~loc:None)
+       | None ->
+         let hint =
+           match prog with
+           | "git" ->
+             Some
+               "Git is required for version information in 'dune subst', build info, and \
+                package management. Install git or add it to your PATH."
+           | _ -> None
+         in
+         Utils.program_not_found prog ~loc:None ?hint)
   in
   get "git", get "hg"
 ;;

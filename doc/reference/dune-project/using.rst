@@ -6,7 +6,7 @@ using
    Enable a dune language extension.
 
    The language of configuration files read by Dune can be extended to support
-   additional stanzas (e.g., ``menhir``, ``coq.theory``, ``mdx``).
+   additional stanzas (e.g., ``menhir``, ``rocq.theory``, ``mdx``).
 
    `<plugin>` is the name of the plugin that defines this stanza and
    `<version>` describes the configuration language's version. Note that this

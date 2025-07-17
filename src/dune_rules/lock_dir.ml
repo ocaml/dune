@@ -144,8 +144,11 @@ let select_lock_dir lock_dir_selection =
 ;;
 
 let enabled =
-  let+ workspace = Workspace.workspace () in
-  workspace.config.pkg_enabled
+  match !Clflags.ignore_lock_dir with
+  | true -> Memo.return false
+  | false ->
+    let+ workspace = Workspace.workspace () in
+    workspace.config.pkg_enabled
 ;;
 
 let get_path ctx =
@@ -194,14 +197,14 @@ let of_dev_tool dev_tool =
 ;;
 
 let lock_dir_active ctx =
-  (* CR-Leonidas-from-XIV: also read the configuration setting *)
-  if !Clflags.ignore_lock_dir
-  then Memo.return false
-  else
+  let* enabled = enabled in
+  match enabled with
+  | false -> Memo.return false
+  | true ->
     get_path ctx
-    >>| function
-    | None -> false
-    | Some _path -> true
+    >>| (function
+     | None -> false
+     | Some _path -> true)
 ;;
 
 let source_kind (source : Dune_pkg.Source.t) =

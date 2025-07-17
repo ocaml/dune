@@ -1087,18 +1087,9 @@ let create_latest_version
 let dev_tool_locks_name = "dev-tools.locks"
 let dev_tools_path = Path.Build.(relative root dev_tool_locks_name)
 
-(* CR-Leonidas-from-XIV: remove once obsoleted *)
-let dev_tools_source_path = Path.Source.(relative root dev_tool_locks_name)
-
 let dev_tool_lock_dir_path dev_tool =
   Path.Build.relative
     dev_tools_path
-    (Package_name.to_string (Dev_tool.package_name dev_tool))
-;;
-
-let dev_tool_lock_dir_source_path dev_tool =
-  Path.Source.relative
-    dev_tools_source_path
     (Package_name.to_string (Dev_tool.package_name dev_tool))
 ;;
 

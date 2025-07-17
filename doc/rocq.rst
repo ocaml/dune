@@ -366,6 +366,7 @@ The supported Rocq language versions (not the version of Rocq) are:
   + all deprecated features in ``(lang coq 0.10)`` have been removed.
   + Dune won't install .cmxs files in user-contrib (along .vo files) anymore.
   + ``(mode native)`` is not allowed anymore. It is the default if Rocq was configured with native compute enabled.
+  + ``COQPATH`` is not recognized anymore, use ``ROCQPATH``.
 
 .. _rocq-lang-1.0:
 

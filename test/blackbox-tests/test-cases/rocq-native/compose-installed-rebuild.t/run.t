@@ -1,8 +1,8 @@
 We test that installed Coq theories, when updated, prompt Dune to rebuild
 
   $ mkdir -p lib/coq
-  $ export COQLIB=$PWD/lib/coq
-  $ echo $COQLIB
+  $ export ROCQLIB=$PWD/lib/coq
+  $ echo $ROCQLIB
   $TESTCASE_ROOT/lib/coq
 
   $ mkdir -p lib/coq/theories/Init/

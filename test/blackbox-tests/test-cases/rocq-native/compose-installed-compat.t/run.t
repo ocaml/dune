@@ -4,12 +4,12 @@ passed to Coq. This meant that we essentially have `-Q "" user-contrib` being
 passed. In order to restore this behaviour for Coq lang < 0.8 we explicitly add
 that flag. This PR makes sure that this is indeed the case.
 
-We configure COQLIB to be lib/coq. Coq will search for user-contrib from here.
+We configure ROCQLIB to be lib/coq. Coq will search for user-contrib from here.
 We also need to set up a fake Coq install.
 
   $ mkdir -p lib/coq
-  $ export COQLIB=$PWD/lib/coq
-  $ echo $COQLIB
+  $ export ROCQLIB=$PWD/lib/coq
+  $ echo $ROCQLIB
   $TESTCASE_ROOT/lib/coq
 
   $ mkdir -p lib/coq/theories/Init/

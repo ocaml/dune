@@ -438,7 +438,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
         Pp.textf "loading OCAMLPATH for context %S" (Context_name.to_string builder.name))
       (fun () ->
          match kind with
-         | Lock _ -> Pkg_rules.ocamlpath builder.name
+         | Lock _ -> Pkg_rules.project_ocamlpath builder.name
          | Default | Opam _ ->
            let+ ocamlpath = builder.env >>| Findlib_config.ocamlpath_of_env in
            Kind.ocamlpath kind ~ocamlpath ~findlib_toolchain:builder.findlib_toolchain)

@@ -218,14 +218,24 @@ module L = struct
     Command.Args.S [ Dyn local; Hidden_deps external_; Dyn include_flags ]
   ;;
 
-  let toplevel_ld_paths ts =
+  let dll_dir_paths libs =
+    List.fold_left libs ~init:Path.Set.empty ~f:(fun dll_file_paths lib ->
+      List.fold_left
+        (Lib_info.foreign_dll_files (Lib.info lib))
+        ~init:dll_file_paths
+        ~f:(fun dll_file_paths dll_file_path ->
+          let dll_dir_path = Path.parent_exn dll_file_path in
+          Path.Set.add dll_file_paths dll_dir_path))
+  ;;
+
+  let toplevel_ld_paths ts lib_config =
     let with_dlls =
       List.filter ts ~f:(fun t ->
         match Lib_info.foreign_dll_files (Lib.info t) with
         | [] -> false
         | _ -> true)
     in
-    c_include_paths with_dlls
+    Path.Set.union (c_include_paths with_dlls lib_config) (dll_dir_paths with_dlls)
   ;;
 
   let toplevel_include_paths ts lib_config =

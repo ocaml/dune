@@ -139,10 +139,58 @@ let requires ~loc ~db ~libs =
   >>= Lib.closure ~linking:true
 ;;
 
+let utop_dev_tool_lock_dir_exists =
+  Memo.Lazy.create (fun () ->
+    let path = Dune_pkg.Lock_dir.dev_tool_lock_dir_path Utop in
+    Fs_memo.dir_exists (Path.Outside_build_dir.In_source_dir path))
+;;
+
+let utop_findlib_conf = Filename.concat utop_dir_basename "findlib.conf"
+
+(* The lib directory of the utop package and of each of its dependencies within
+   the _build directory (or the toolchains directory in the case of the OCaml
+   compiler). *)
+let utop_ocamlpath = Memo.Lazy.create (fun () -> Pkg_rules.dev_tool_ocamlpath Utop)
+
+(* Creates a rule that generates a custom findlib.conf containing the path to
+   the utop library as well as all of its dependencies in the _build directory
+   (or the toolchains directory in the case of the OCaml compiler). Utop uses
+   findlib to locate libraries at runtime. When utop is running as a devtool,
+   libraries are not in the location suggested by the default findlib.conf
+   (there may not even be a default findlib.conf on the current system) and so
+   we need to tell findlib where to look for libraries by means of a custom
+   findlib.conf file. *)
+let findlib_conf sctx ~dir =
+  let* lock_dir_exists = Memo.Lazy.force utop_dev_tool_lock_dir_exists in
+  match lock_dir_exists with
+  | false ->
+    (* If there isn't lockdir don't create the findlib.conf rule. *)
+    Memo.return ()
+  | true ->
+    let path = Path.Build.relative dir utop_findlib_conf in
+    let* ocamlpath = Memo.Lazy.force utop_ocamlpath in
+    let findlib_path =
+      String.concat (ocamlpath |> List.map ~f:Path.to_absolute_filename) ~sep:":"
+    in
+    let action = Action_builder.write_file path (sprintf "path=\"%s\"" findlib_path) in
+    Super_context.add_rule sctx ~dir action
+;;
+
+let lib_db sctx ~dir =
+  let* scope = Scope.DB.find_by_dir dir in
+  let* lock_dir_exists = Memo.Lazy.force utop_dev_tool_lock_dir_exists in
+  match lock_dir_exists with
+  | false -> Memo.return (Scope.libs scope)
+  | true ->
+    let* ocamlpath = Memo.Lazy.force utop_ocamlpath in
+    Lib.DB.of_paths (Super_context.context sctx) ~paths:ocamlpath
+    >>| Lib.DB.with_parent ~parent:(Some (Scope.libs scope))
+;;
+
 let setup sctx ~dir =
   let* expander = Super_context.expander sctx ~dir in
   let* scope = Scope.DB.find_by_dir dir in
-  let db = Scope.libs scope in
+  let* db = lib_db sctx ~dir in
   let* libs, pps = libs_and_ppx_under_dir sctx ~db ~dir:(Path.build dir) in
   let pps =
     if List.is_empty pps
@@ -190,13 +238,13 @@ let setup sctx ~dir =
       ~package:None
       ~preprocessing
   in
+  let* () = findlib_conf sctx ~dir in
   let toplevel = Toplevel.make ~cctx ~source ~preprocess:pps expander in
   Toplevel.setup_rules toplevel ~linkage:Exe.Linkage.byte
 ;;
 
 let requires_under_dir sctx ~dir =
-  let* scope = Scope.DB.find_by_dir dir in
-  let db = Scope.libs scope in
+  let* db = lib_db sctx ~dir in
   let* libs = libs_under_dir sctx ~db ~dir:(Path.build dir) in
   let loc = Toplevel.Source.loc (source ~dir) in
   requires ~loc ~db ~libs

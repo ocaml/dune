@@ -137,7 +137,7 @@ val dev_tool_lock_dir_path : Dev_tool.t -> Path.Build.t
 (** Temporary hack to get the path of a dev tool lock directory in the source
     tree. Future versions will probably handle this differently and this
     function should be removed *)
-val dev_tool_lock_dir_source_path : Dev_tool.t -> Path.Source.t
+(* val dev_tool_lock_dir_source_path : Dev_tool.t -> Path.Source.t *)
 
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit
 

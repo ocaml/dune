@@ -1,7 +1,6 @@
 (rocq.theory
  (name basic)
  (package base)
- (mode native)
  (modules :standard)
  (synopsis "Test Coq library"))
 

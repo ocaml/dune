@@ -74,6 +74,7 @@ These documents specify the various features and languages present in Dune.
        :maxdepth: 1
        :caption: Integrations
 
+       ../rocq
        ../coq
        ../rpc
        packages

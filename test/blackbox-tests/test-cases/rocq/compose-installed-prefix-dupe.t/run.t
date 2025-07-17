@@ -6,9 +6,9 @@ First we install our two theories with the conflicting name prefix.
   $ (cd B && dune build @install && dune install --prefix .)
   $ (cd C && dune build @install && dune install --prefix .)
 
-We add these to COQPATH
+We add these to ROCQPATH
 
-  $ export COQPATH=../B/lib/coq/user-contrib:../C/lib/coq/user-contrib:$COQPATH
+  $ export ROCQPATH=../B/lib/coq/user-contrib:../C/lib/coq/user-contrib:$ROCQPATH
 
 Now we create a theory that depends on both
 
@@ -32,11 +32,5 @@ Now we create a theory that depends on both
   > EOF
 
   $ dune build a.vo
-  Warning, feedback message received but no listener to handle it!
-  Warning: Deprecated environment variable COQPATH, use ROCQPATH instead.
-  [deprecated-coq-env-var,deprecated-since-9.0,deprecated,default]
   Inductive b : Prop :=  .
-  Warning, feedback message received but no listener to handle it!
-  Warning: Deprecated environment variable COQPATH, use ROCQPATH instead.
-  [deprecated-coq-env-var,deprecated-since-9.0,deprecated,default]
  

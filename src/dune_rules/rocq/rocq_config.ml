@@ -236,9 +236,10 @@ let make ~(coqc : Action.Prog.t) =
   let* config_output = config_output in
   match Vars.of_lines config_output with
   | Ok vars ->
+    (* EJGA: Note, this is still COQLIB and
+       COQ_NATIVE_COMPILER_DEFAULT in both [coqc --config] and [rocq c
+       --config] ; so BEWARE ! *)
     let rocqlib = Vars.get_path vars "COQLIB" in
-    (* this is not available in Coq < 8.14 *)
-    (* this is not available in Coq < 8.13 *)
     let rocq_native_compiler_default = Vars.get_opt vars "COQ_NATIVE_COMPILER_DEFAULT" in
     Ok { rocqlib; rocq_native_compiler_default }
   | Error msg ->

@@ -10,12 +10,7 @@ When using an installed theory with plugins, things should work fine.
 We now build the normal theory, and should work
 
   $ OCAMLPATH=$PWD/lib/:$OCAMLPATH
-  $ COQPATH=$PWD/lib/coq/user-contrib dune build --root user @all
+  $ ROCQPATH=$PWD/lib/coq/user-contrib dune build --root user @all
   Entering directory 'user'
-  Warning, feedback message received but no listener to handle it!
-  Warning: Deprecated environment variable COQPATH, use ROCQPATH instead.
-  [deprecated-coq-env-var,deprecated-since-9.0,deprecated,default]
-  Warning, feedback message received but no listener to handle it!
-  Warning: Deprecated environment variable COQPATH, use ROCQPATH instead.
-  [deprecated-coq-env-var,deprecated-since-9.0,deprecated,default]Hello
+  Hello
   Leaving directory 'user'

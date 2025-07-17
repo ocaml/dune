@@ -143,6 +143,11 @@ let select_lock_dir lock_dir_selection =
   Workspace.Lock_dir_selection.eval lock_dir_selection ~dir:Path.Build.root ~f:expander
 ;;
 
+let enabled =
+  let+ workspace = Workspace.workspace () in
+  workspace.config.pkg_enabled
+;;
+
 let get_path ctx =
   let* workspace = Workspace.workspace () in
   match
@@ -184,16 +189,8 @@ let get ctx = get_with_path ctx >>| Result.map ~f:snd
 let get_exn ctx = get ctx >>| User_error.ok_exn
 
 let of_dev_tool dev_tool =
-  let source_path, path =
-    Dune_pkg.Lock_dir.(
-      dev_tool_lock_dir_source_path dev_tool, dev_tool_lock_dir_path dev_tool)
-  in
-  Fs_memo.dir_exists (In_source_dir source_path)
-  >>= function
-  | true -> Load.load_exn path
-  | false ->
-    User_error.raise
-      [ Pp.textf "%s does not exist" (Path.Build.to_string_maybe_quoted path) ]
+  let path = dev_tool_lock_dir_path dev_tool in
+  Load.load_exn path
 ;;
 
 let lock_dir_active ctx =

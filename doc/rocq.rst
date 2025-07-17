@@ -360,6 +360,7 @@ The supported Rocq language versions (not the version of Rocq) are:
 
 - ``0.11``: Support for the Rocq Prover; most important changes are:
   + all deprecated features in ``(lang coq 0.10)`` have been removed.
+  + Dune won't install .cmxs files in user-contrib (along .vo files) anymore.
 
 .. _rocq-lang-1.0:
 

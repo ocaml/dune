@@ -17,16 +17,12 @@ type t =
   { name : Rocq_lib_name.t
   ; path : Path.t
   ; vo : Path.t list
-  ; cmxs : Path.t list
-  ; cmxs_directories : Path.t list
   ; corelib : bool
   }
 
 let name t = t.name
 let path t = t.path
 let vo t = t.vo
-let cmxs t = t.cmxs
-let cmxs_directories t = t.cmxs_directories
 let corelib t = t.corelib
 
 let config_path_exn rocq_config key =
@@ -50,42 +46,23 @@ let config_path_exn rocq_config key =
       ]
 ;;
 
-let config_path ~default rocq_config key =
-  Option.value
-    ~default:(Rocq_config.Value.path default)
-    (Rocq_config.by_name rocq_config key)
-  |> function
-  | Rocq_config.Value.Path p -> p (* We have found a path for key *)
-  | path ->
-    (* This should never happen *)
-    Code_error.raise "key is not a path" [ key, Rocq_config.Value.to_dyn path ]
-;;
-
-let build_user_contrib ~cmxs ~cmxs_directories ~vo ~path ~name =
-  { name; path; cmxs; cmxs_directories; vo; corelib = false }
-;;
+let build_user_contrib ~vo ~path ~name = { name; path; vo; corelib = false }
 
 (* Scanning todos: blacklist? *)
-let scan_vo_cmxs ~dir dir_contents =
+let scan_vo ~dir dir_contents =
   let f (d, kind) =
     match kind with
     (* Skip some files as Rocq does, for now files with '-' *)
-    | _ when String.contains d '-' -> List.Skip
-    | (File_kind.S_REG | S_LNK) when Filename.check_suffix d ".cmxs" ->
-      Left (Path.relative dir d)
+    | _ when String.contains d '-' -> None
     | (File_kind.S_REG | S_LNK) when Filename.check_suffix d ".vo" ->
-      Right (Path.relative dir d)
-    | _ -> Skip
+      Some (Path.relative dir d)
+    | _ -> None
   in
-  List.filter_partition_map ~f dir_contents
+  List.filter_map ~f dir_contents
 ;;
 
 (* Note this will only work for absolute paths *)
-let retrieve_vo_cmxs cps =
-  ( List.concat_map ~f:cmxs cps
-  , List.concat_map ~f:cmxs_directories cps
-  , List.concat_map ~f:vo cps )
-;;
+let retrieve_vo cps = List.concat_map ~f:vo cps
 
 module Scan_action = struct
   type ('prefix, 'res) t =
@@ -137,42 +114,21 @@ let scan_path ~f ~acc ~prefix dir =
     scan_path ~f ~acc ~prefix ~dir dir_contents
 ;;
 
-(** Scan the plugins in stdlib, returns list of cmxs + list of directories with
-    cmxs *)
-let scan_stdlib_plugins rocqcorelib : (Path.t list * Path.t) list Memo.t =
-  let f ~dir ~prefix:() ~subresults dir_contents =
-    let cmxs, _ = scan_vo_cmxs ~dir dir_contents in
-    let res =
-      match cmxs with
-      | [] -> subresults
-      | _ :: _ -> (cmxs, dir) :: subresults
-    in
-    Memo.return res
-  in
-  let pluginsdir = Path.relative rocqcorelib "plugins" in
-  let acc _ _ = () in
-  scan_path ~f ~acc ~prefix:() pluginsdir
-;;
-
 (** [scan_user_path path] Note that we already have very similar functionality
     in [Dir_status] *)
 let scan_user_path root_path =
   let f ~dir ~prefix ~subresults dir_contents =
-    let cmxs, vo = scan_vo_cmxs ~dir dir_contents in
-    let cmxs_directories = if not (List.is_empty cmxs) then [ dir ] else [] in
-    let cmxs_r, cdir_r, vo_r = retrieve_vo_cmxs subresults in
-    let cmxs, cmxs_directories, vo =
-      cmxs @ cmxs_r, cmxs_directories @ cdir_r, vo @ vo_r
-    in
-    Memo.return
-      (build_user_contrib ~cmxs ~cmxs_directories ~vo ~path:dir ~name:prefix :: subresults)
+    let vo = scan_vo ~dir dir_contents in
+    let vo_r = retrieve_vo subresults in
+    let vo = vo @ vo_r in
+    Memo.return (build_user_contrib ~vo ~path:dir ~name:prefix :: subresults)
   in
   scan_path ~f ~acc:Rocq_lib_name.append ~prefix:Rocq_lib_name.empty root_path
 ;;
 
 let scan_vo root_path =
   let f ~dir ~prefix:() ~subresults dir_contents =
-    let _, vo = scan_vo_cmxs ~dir dir_contents in
+    let vo = scan_vo ~dir dir_contents in
     Memo.return (vo @ subresults)
   in
   let acc _ _ = () in
@@ -207,17 +163,11 @@ let of_rocq_install coqc =
   | Ok rocq_config ->
     (* Now we query for rocqlib *)
     let rocqlib_path = config_path_exn rocq_config "rocqlib" in
-    let rocqcorelib = config_path rocq_config "rocqcorelib" ~default:rocqlib_path in
-    let* stdlib_plugs = scan_stdlib_plugins rocqcorelib in
     let* vo = scan_vo rocqlib_path in
-    let cmxs, cmxs_directories = List.split stdlib_plugs in
-    let cmxs = List.concat cmxs in
     let corelib =
       { name = Rocq_lib_name.corelib
       ; path = Path.relative rocqlib_path "theories"
       ; vo
-      ; cmxs
-      ; cmxs_directories
       ; corelib = true
       }
     in

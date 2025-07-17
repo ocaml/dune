@@ -71,7 +71,6 @@ val make : coqc:Action.Prog.t -> (t, User_message.Style.t Pp.t) result Memo.t
     Currently supported names are:
 
     - rocqlib
-    - rocqcorelib
     - rocq_native_compiler_default *)
 val by_name : t -> string -> Value.t Option.t
 

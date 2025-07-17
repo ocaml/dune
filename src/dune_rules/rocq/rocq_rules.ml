@@ -18,8 +18,6 @@ open Memo.O
    elsewhere; don't mix with the rest of the code. *)
 module Util : sig
   val include_flags : Lib.t list -> _ Command.Args.t
-  val include_flags_legacy : Rocq_lib.Legacy.t list -> _ Command.Args.t
-  val ml_pack_files : Lib.t -> Path.t list
   val meta_info : loc:Loc.t option -> context:Context_name.t -> Lib.t -> Path.t option
 
   (** Given a list of library names, we try to resolve them in order, returning
@@ -33,27 +31,6 @@ end = struct
   ;;
 
   let include_flags ts = include_paths ts |> Lib_flags.L.to_iflags
-
-  let include_flags_legacy cps =
-    let cmxs_dirs = List.concat_map ~f:Rocq_lib.Legacy.cmxs_directories cps in
-    let f p = [ Command.Args.A "-I"; Command.Args.Path p ] in
-    let l = List.concat_map ~f cmxs_dirs in
-    Command.Args.S l
-  ;;
-
-  (* rocqdep expects an mlpack file next to the sources otherwise it
-   * will omit the cmxs deps *)
-  let ml_pack_files lib =
-    let plugins =
-      let info = Lib.info lib in
-      let plugins = Lib_info.plugins info in
-      Mode.Dict.get plugins Mode.Native
-    in
-    let to_mlpack file =
-      [ Path.set_extension file ~ext:".mlpack"; Path.set_extension file ~ext:".mllib" ]
-    in
-    List.concat_map plugins ~f:to_mlpack
-  ;;
 
   let meta_info ~loc ~context (lib : Lib.t) =
     let name = Lib.name lib |> Lib_name.to_string in
@@ -447,11 +424,7 @@ let ml_pack_and_meta_rule ~context ~all_libs (buildable : Rocq_stanza.Buildable.
      omit the cmxs deps *)
   let plugin_loc = List.hd_opt buildable.plugins |> Option.map ~f:fst in
   let meta_info = Util.meta_info ~loc:plugin_loc ~context in
-  (* If the mlpack files don't exist, don't fail *)
-  Action_builder.all_unit
-    [ Action_builder.paths (List.filter_map ~f:meta_info all_libs)
-    ; Action_builder.paths_existing (List.concat_map ~f:Util.ml_pack_files all_libs)
-    ]
+  Action_builder.paths (List.filter_map ~f:meta_info all_libs)
 ;;
 
 let ml_flags_and_ml_pack_rule
@@ -462,12 +435,11 @@ let ml_flags_and_ml_pack_rule
   =
   let res =
     let open Resolve.Memo.O in
-    let+ all_libs, legacy_theories =
+    let+ all_libs, _legacy_theories =
       libs_of_theory ~lib_db ~theories_deps buildable.plugins
     in
     let findlib_plugin_flags = Util.include_flags all_libs in
-    let legacy_plugin_flags = Util.include_flags_legacy legacy_theories in
-    let ml_flags = Command.Args.S [ findlib_plugin_flags; legacy_plugin_flags ] in
+    let ml_flags = Command.Args.S [ findlib_plugin_flags ] in
     ml_flags, ml_pack_and_meta_rule ~context ~all_libs buildable
   in
   let mlpack_rule =
@@ -1212,44 +1184,10 @@ let rocqtop_args_theory ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) rocq
 (* Install rules *)
 (******************************************************************************)
 
-(* This is here for compatibility with Rocq < 8.11, which expects plugin files to
-   be in the folder containing the `.vo` files *)
-let rocq_plugins_install_rules ~scope ~package ~dst_dir (s : Rocq_stanza.Theory.t) =
-  let lib_db = Scope.libs scope in
-  let+ ml_libs =
-    (* get_libraries from Rocq's ML dependencies *)
-    Resolve.Memo.read_memo
-      (Resolve.Memo.List.map ~f:(Lib.DB.resolve lib_db) s.buildable.plugins)
-  in
-  let rules_for_lib lib =
-    let info = Lib.info lib in
-    (* Don't install libraries that don't belong to this package *)
-    if
-      let name = Package.name package in
-      Option.equal Package.Name.equal (Lib_info.package info) (Some name)
-    then (
-      let loc = Lib_info.loc info in
-      let plugins = Lib_info.plugins info in
-      Mode.Dict.get plugins Native
-      |> List.map ~f:(fun plugin_file ->
-        (* Safe because all rocq libraries are local for now *)
-        let plugin_file = Path.as_in_build_dir_exn plugin_file in
-        let plugin_file_basename = Path.Build.basename plugin_file in
-        let dst = Path.Local.(to_string (relative dst_dir plugin_file_basename)) in
-        let entry =
-          (* TODO this [loc] should come from [s.buildable.libraries] *)
-          Install.Entry.make Section.Lib_root ~dst ~kind:`File plugin_file
-        in
-        Install.Entry.Sourced.create ~loc entry))
-    else []
-  in
-  List.concat_map ~f:rules_for_lib ml_libs
-;;
-
 let install_rules ~sctx ~dir s =
   match s with
   | { Rocq_stanza.Theory.package = None; _ } -> Memo.return []
-  | { Rocq_stanza.Theory.package = Some package; buildable; _ } ->
+  | { Rocq_stanza.Theory.package = Some _package; buildable; _ } ->
     let loc = s.buildable.loc in
     let* mode = select_native_mode ~sctx ~dir buildable in
     let* scope = Scope.DB.find_by_dir dir in
@@ -1270,13 +1208,6 @@ let install_rules ~sctx ~dir s =
       else (
         let rocq_root = Path.Local.of_string "coq/user-contrib" in
         Path.Local.relative rocq_root dst_suffix)
-    in
-    (* Also, stdlib plugins are handled in a hardcoded way, so no compat install
-       is needed *)
-    let* rocq_plugins_install_rules =
-      if s.boot
-      then Memo.return []
-      else rocq_plugins_install_rules ~scope ~package ~dst_dir s
     in
     let wrapper_name = Rocq_lib_name.wrapper name in
     let to_path f = Path.reach ~from:(Path.build dir) (Path.build f) in
@@ -1304,7 +1235,6 @@ let install_rules ~sctx ~dir s =
       let vfile = Rocq_module.source vfile |> Path.as_in_build_dir_exn in
       let vfile_dst = to_path vfile in
       make_entry vfile vfile_dst :: obj_files)
-    |> List.rev_append rocq_plugins_install_rules
 ;;
 
 let setup_rocqpp_rules ~sctx ~dir ({ loc; modules } : Rocq_stanza.Rocqpp.t) =
@@ -1315,7 +1245,7 @@ let setup_rocqpp_rules ~sctx ~dir ({ loc; modules } : Rocq_stanza.Rocqpp.t) =
       ~where:Original_path
       ~dir
       ~loc:(Some loc)
-      ~hint:"opam install rocq"
+      ~hint:"opam install coq"
   and* mlg_files = Rocq_sources.mlg_files ~sctx ~dir ~modules in
   let mlg_rule m =
     let source = Path.build m in

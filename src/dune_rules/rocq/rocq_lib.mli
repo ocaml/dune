@@ -30,7 +30,7 @@ end
 module Legacy : sig
   type t
 
-  (** For each legacy library, we need two pieces of data:
+  (** For each legacy library, we need:
 
       - the list of [.vo] files, this is because we need to make the call to
         [rocqdep] depend on it. If due to external action the list of these files
@@ -43,14 +43,10 @@ module Legacy : sig
       via [Dir_contents.rocq], maybe we should move that function here and make
       it common.
 
-      - the list of directories containing [.cmxs] files, so we can add them to
-        the loadpath as Rocq does for all [user-contrib] *)
+  *)
 
   (** List of vo files *)
   val vo : t -> Path.t list
-
-  (** List of directories with cmxs *)
-  val cmxs_directories : t -> Path.t list
 end
 
 type t =

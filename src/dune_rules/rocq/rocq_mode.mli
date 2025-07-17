@@ -11,13 +11,15 @@
 (* Written by: Rodolphe Lepigre                *)
 (***********************************************)
 
-(* Legacy is used to signal that we are in a mode prior to Rocq syntax 0.3 ,
-   where mode was not supported, this allows us support older Coq compiler
-   versions with coq-lang < 0.3 *)
+(** We support different modes in order to speed up compilation:
+    [VoOnly], where even if native is enabled, we will skip the
+    compilation; [Native], meaning compile both .vo and "native" .cmxs
+    files, [VosOnly], to generate only vos files. *)
 type t =
-  | Legacy
   | VoOnly
   | Native
   | VosOnly
 
-val decode : rocq_syntax:Dune_lang.Syntax.t -> t Dune_lang.Decoder.t
+(** Note that we cannot decode [Native], as it is automatically
+    inferred *)
+val decode : t Dune_lang.Decoder.t

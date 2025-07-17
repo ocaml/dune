@@ -26,13 +26,6 @@ val path : t -> Path.t
 (** List of .vo files in a path *)
 val vo : t -> Path.t list
 
-(** Unused for now, maybe be useful for rocqdep -modules *)
-val cmxs : t -> Path.t list
-
-(** List of directories that contain .cmxs files and thus need to be passed to
-    Rocq using -I *)
-val cmxs_directories : t -> Path.t list
-
 (** Does the path correspond to Rocq's [Corelib]? *)
 val corelib : t -> bool
 

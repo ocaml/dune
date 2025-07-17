@@ -19,7 +19,6 @@ module Vars : sig
 
   val get_opt : t -> string -> string option
   val get_path : t -> string -> Path.t
-  val get_path_opt : t -> string -> Path.t option
   val of_lines : string list -> (t, User_message.Style.t Pp.t) result
 end = struct
   open Result.O
@@ -50,7 +49,6 @@ end = struct
   ;;
 
   let get_path t var = get t var |> Path.of_string
-  let get_path_opt t var = Option.map ~f:Path.of_string (get_opt t var)
 end
 
 module Value : sig
@@ -210,7 +208,6 @@ end
 
 type t =
   { rocqlib : Path.t
-  ; rocqcorelib : Path.t option (* EJGA: Notsure if we need this anymore *)
   ; rocq_native_compiler_default : string option
   }
 
@@ -241,18 +238,16 @@ let make ~(coqc : Action.Prog.t) =
   | Ok vars ->
     let rocqlib = Vars.get_path vars "COQLIB" in
     (* this is not available in Coq < 8.14 *)
-    let rocqcorelib = Vars.get_path_opt vars "COQCORELIB" in
     (* this is not available in Coq < 8.13 *)
     let rocq_native_compiler_default = Vars.get_opt vars "COQ_NATIVE_COMPILER_DEFAULT" in
-    Ok { rocqlib; rocqcorelib; rocq_native_compiler_default }
+    Ok { rocqlib; rocq_native_compiler_default }
   | Error msg ->
     User_error.raise Pp.[ textf "Cannot parse output of coqc --config:"; msg ]
 ;;
 
-let by_name { rocqlib; rocqcorelib; rocq_native_compiler_default } name =
+let by_name { rocqlib; rocq_native_compiler_default } name =
   match name with
   | "rocqlib" -> Some (Value.path rocqlib)
-  | "rocqcorelib" -> Option.map ~f:Value.path rocqcorelib
   | "rocq_native_compiler_default" ->
     Option.map ~f:Value.string rocq_native_compiler_default
   | _ ->
@@ -292,7 +287,7 @@ let expand source macro artifacts_host =
   | "version.suffix"
   | "version"
   | "ocaml-version" -> expand Version.make Version.by_name s
-  | "rocqlib" | "rocqcorelib" | "rocq_native_compiler_default" -> expand make by_name s
+  | "rocqlib" | "rocq_native_compiler_default" -> expand make by_name s
   | _ ->
     Code_error.raise
       "Unknown name was requested from rocq_config"

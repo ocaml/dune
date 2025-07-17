@@ -51,11 +51,9 @@ let term =
         | true ->
           let* () = Build_system.build_file utop_exe in
           let* () = lock_utop_if_dev_tool_enabled () in
-          let* utop_dev_tool_lock_dir_exists =
-            Memo.Lazy.force Utop.utop_dev_tool_lock_dir_exists
-          in
+          let* lock_dir_enabled = Dune_rules.Lock_dir.enabled in
           let* () =
-            if utop_dev_tool_lock_dir_exists
+            if lock_dir_enabled
             then
               (* Generate the custom findlib.conf file needed when utop is run
                  as a dev tool. *)
@@ -80,7 +78,7 @@ let term =
                  ~init:env
           in
           let env =
-            if utop_dev_tool_lock_dir_exists
+            if lock_dir_enabled
             then
               (* If there's a utop lockdir then dune will have built utop as a
                  dev tool. In order for it to run correctly dune needed to

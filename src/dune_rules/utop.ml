@@ -139,12 +139,6 @@ let requires ~loc ~db ~libs =
   >>= Lib.closure ~linking:true
 ;;
 
-let utop_dev_tool_lock_dir_exists =
-  Memo.Lazy.create (fun () ->
-    let path = Dune_pkg.Lock_dir.dev_tool_lock_dir_source_path Utop in
-    Fs_memo.dir_exists (Path.Outside_build_dir.In_source_dir path))
-;;
-
 let utop_findlib_conf = Filename.concat utop_dir_basename "findlib.conf"
 
 (* The lib directory of the utop package and of each of its dependencies within
@@ -161,8 +155,8 @@ let utop_ocamlpath = Memo.Lazy.create (fun () -> Pkg_rules.dev_tool_ocamlpath Ut
    we need to tell findlib where to look for libraries by means of a custom
    findlib.conf file. *)
 let findlib_conf sctx ~dir =
-  let* lock_dir_exists = Memo.Lazy.force utop_dev_tool_lock_dir_exists in
-  match lock_dir_exists with
+  let* lock_dir_enabled = Lock_dir.enabled in
+  match lock_dir_enabled with
   | false ->
     (* If there isn't lockdir don't create the findlib.conf rule. *)
     Memo.return ()
@@ -178,8 +172,8 @@ let findlib_conf sctx ~dir =
 
 let lib_db sctx ~dir =
   let* scope = Scope.DB.find_by_dir dir in
-  let* lock_dir_exists = Memo.Lazy.force utop_dev_tool_lock_dir_exists in
-  match lock_dir_exists with
+  let* lock_dir_enabled = Lock_dir.enabled in
+  match lock_dir_enabled with
   | false -> Memo.return (Scope.libs scope)
   | true ->
     let* ocamlpath = Memo.Lazy.force utop_ocamlpath in

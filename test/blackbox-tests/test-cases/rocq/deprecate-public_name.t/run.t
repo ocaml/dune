@@ -6,11 +6,11 @@ public_name field is deprecated
   > EOF
 
   $ dune build
-  File "dune", line 3, characters 1-18:
+  File "dune", line 3, characters 2-13:
   3 |  (public_name Foo))
-       ^^^^^^^^^^^^^^^^^
-  Warning: 'public_name' was deprecated in version 0.5 of Rocq Prover build
-  language. Please use 'package' instead.
+        ^^^^^^^^^^^
+  Error: Unknown field "public_name"
+  [1]
 
 both package and public_name field is an error
   $ cat > dune << EOF
@@ -21,15 +21,8 @@ both package and public_name field is an error
   > EOF
 
   $ dune build
-  File "dune", line 3, characters 1-18:
+  File "dune", line 3, characters 2-13:
   3 |  (public_name Foo)
-       ^^^^^^^^^^^^^^^^^
-  Warning: 'public_name' was deprecated in version 0.5 of Rocq Prover build
-  language. Please use 'package' instead.
-  File "dune", line 3, characters 14-17:
-  3 |  (public_name Foo)
-                    ^^^
-  Error: Cannot both use 'package' and 'public_name', please remove
-  'public_name' as it has been deprecated since version 0.5 of the Coq
-  language. It will be removed before version 1.0.
+        ^^^^^^^^^^^
+  Error: Unknown field "public_name"
   [1]

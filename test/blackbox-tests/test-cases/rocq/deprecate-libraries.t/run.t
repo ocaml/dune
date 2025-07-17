@@ -10,11 +10,11 @@ The libraries field is deprecated
   > EOF
 
   $ dune build
-  File "dune", line 7, characters 1-20:
+  File "dune", line 7, characters 2-11:
   7 |  (libraries bar.foo))
-       ^^^^^^^^^^^^^^^^^^^
-  Warning: 'libraries' was deprecated in version 0.5 of Rocq Prover build
-  language. It has been renamed to 'plugins'.
+        ^^^^^^^^^
+  Error: Unknown field "libraries"
+  [1]
 
 Having both a libraries and plugins field is an error
   $ cat > dune << EOF
@@ -29,16 +29,9 @@ Having both a libraries and plugins field is an error
   > EOF
 
   $ dune build
-  File "dune", line 7, characters 1-20:
+  File "dune", line 7, characters 2-11:
   7 |  (libraries bar.foo)
-       ^^^^^^^^^^^^^^^^^^^
-  Warning: 'libraries' was deprecated in version 0.5 of Rocq Prover build
-  language. It has been renamed to 'plugins'.
-  File "dune", line 7, characters 12-19:
-  7 |  (libraries bar.foo)
-                  ^^^^^^^
-  Error: Cannot both use 'plugins' and 'libraries', please remove 'libraries'
-  as it has been deprecated since version 0.5 of the Coq language. It will be
-  removed before version 1.0.
+        ^^^^^^^^^
+  Error: Unknown field "libraries"
   [1]
 

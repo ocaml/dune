@@ -2,12 +2,12 @@ We test composing a project with an installed Coq theory. The installed theory
 does *not* have to be a dune project. But for the purpose of this test, we use
 the installation of a Dune project.
 
-We configure COQLIB to be lib/coq. Coq will search for user-contrib from here.
+We configure ROCQLIB to be lib/coq. Coq will search for user-contrib from here.
 We also need to set up a fake Coq install.
 
   $ mkdir -p lib/coq
-  $ export COQLIB=$PWD/lib/coq
-  $ echo $COQLIB
+  $ export ROCQLIB=$PWD/lib/coq
+  $ echo $ROCQLIB
   $TESTCASE_ROOT/lib/coq
 
   $ mkdir -p lib/coq/theories/Init/
@@ -122,19 +122,16 @@ As expected, Dune can no longer build A:
   Leaving directory 'user'
   [1]
 
-We therefore set a variable called COQPATH which allows for library install
+We therefore set a variable called ROCQPATH which allows for library install
 locations alternative to user-contrib.
 
-  $ export COQPATH=$PWD/another-place/lib/coq/user-contrib
+  $ export ROCQPATH=$PWD/another-place/lib/coq/user-contrib
 
 Now Dune should be able to build `user` again, since we scan both user-contrib and
-all the directories found in COQPATH.
+all the directories found in ROCQPATH.
 
   $ dune build --root user
   Entering directory 'user'
-  Warning, feedback message received but no listener to handle it!
-  Warning: Deprecated environment variable COQPATH, use ROCQPATH instead.
-  [deprecated-coq-env-var,deprecated-since-9.0,deprecated,default]
   Inductive hello_alg : Set :=
       I : hello_alg
     | am : hello_alg
@@ -149,30 +146,12 @@ all the directories found in COQPATH.
     | install : hello_field
     | loc : hello_field
     | at_field : hello_field.
-  Warning, feedback message received but no listener to handle it!
-  Warning: Deprecated environment variable COQPATH, use ROCQPATH instead.
-  [deprecated-coq-env-var,deprecated-since-9.0,deprecated,default]
   Leaving directory 'user'
 
 We test if having global in the workspace and in user-contrib will cause Dune
 any problems. It shouldn't do, as the workspace should take precedence.
 
   $ dune build user
-  Warning, feedback message received but no listener to handle it!
-  Warning: Deprecated environment variable COQPATH, use ROCQPATH instead.
-  [deprecated-coq-env-var,deprecated-since-9.0,deprecated,default]
-  Warning, feedback message received but no listener to handle it!
-  Warning: Deprecated environment variable COQPATH, use ROCQPATH instead.
-  [deprecated-coq-env-var,deprecated-since-9.0,deprecated,default]
-  Warning, feedback message received but no listener to handle it!
-  Warning: Deprecated environment variable COQPATH, use ROCQPATH instead.
-  [deprecated-coq-env-var,deprecated-since-9.0,deprecated,default]
-  Warning, feedback message received but no listener to handle it!
-  Warning: Deprecated environment variable COQPATH, use ROCQPATH instead.
-  [deprecated-coq-env-var,deprecated-since-9.0,deprecated,default]
-  Warning, feedback message received but no listener to handle it!
-  Warning: Deprecated environment variable COQPATH, use ROCQPATH instead.
-  [deprecated-coq-env-var,deprecated-since-9.0,deprecated,default]
   Inductive hello_alg : Set :=
       I : hello_alg
     | am : hello_alg
@@ -187,9 +166,6 @@ any problems. It shouldn't do, as the workspace should take precedence.
     | install : hello_field
     | loc : hello_field
     | at_field : hello_field.
-  Warning, feedback message received but no listener to handle it!
-  Warning: Deprecated environment variable COQPATH, use ROCQPATH instead.
-  [deprecated-coq-env-var,deprecated-since-9.0,deprecated,default]
 
 We test updating the dune file for user to use the super-theory works:
 
@@ -200,9 +176,6 @@ We test updating the dune file for user to use the super-theory works:
   > EOF
   $ dune build --root user
   Entering directory 'user'
-  Warning, feedback message received but no listener to handle it!
-  Warning: Deprecated environment variable COQPATH, use ROCQPATH instead.
-  [deprecated-coq-env-var,deprecated-since-9.0,deprecated,default]
   Inductive hello_alg : Set :=
       I : hello_alg
     | am : hello_alg
@@ -217,9 +190,6 @@ We test updating the dune file for user to use the super-theory works:
     | install : hello_field
     | loc : hello_field
     | at_field : hello_field.
-  Warning, feedback message received but no listener to handle it!
-  Warning: Deprecated environment variable COQPATH, use ROCQPATH instead.
-  [deprecated-coq-env-var,deprecated-since-9.0,deprecated,default]
   Leaving directory 'user'
 
 We test whether installing `global` again in user-contrib will cause Dune to reject the

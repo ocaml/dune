@@ -520,6 +520,7 @@ let shared_with_config_file =
   ; action_stdout_on_success
   ; action_stderr_on_success
   ; project_defaults = None
+  ; pkg_enabled = None
   ; experimental = None
   }
 ;;

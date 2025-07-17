@@ -53,6 +53,14 @@ module Dune_config = struct
     ;;
   end
 
+  module Pkg_enabled = struct
+    type t = bool
+
+    let decode = enum' [ "enabled", return true; "disabled", return false ]
+    let equal = Bool.equal
+    let to_dyn = Dyn.bool
+  end
+
   module Terminal_persistence = struct
     type t =
       | Preserve
@@ -236,6 +244,7 @@ module Dune_config = struct
       ; action_stdout_on_success : Action_output_on_success.t field
       ; action_stderr_on_success : Action_output_on_success.t field
       ; project_defaults : Project_defaults.t field
+      ; pkg_enabled : Pkg_enabled.t field
       ; experimental : (string * (Loc.t * string)) list field
       }
   end
@@ -260,6 +269,7 @@ module Dune_config = struct
           ; action_stdout_on_success
           ; action_stderr_on_success
           ; project_defaults
+          ; pkg_enabled
           ; experimental
           }
       =
@@ -287,6 +297,7 @@ module Dune_config = struct
               (Tuple.T2.equal String.equal (Tuple.T2.equal Loc.equal String.equal)))
            t.experimental
            experimental
+      && field Pkg_enabled.equal t.pkg_enabled pkg_enabled
     ;;
   end
 
@@ -314,6 +325,7 @@ module Dune_config = struct
       ; action_stderr_on_success =
           field a.action_stderr_on_success b.action_stderr_on_success
       ; project_defaults = field a.project_defaults b.project_defaults
+      ; pkg_enabled = field a.pkg_enabled b.pkg_enabled
       ; experimental = field a.experimental b.experimental
       }
     ;;
@@ -338,6 +350,7 @@ module Dune_config = struct
           ; action_stdout_on_success
           ; action_stderr_on_success
           ; project_defaults
+          ; pkg_enabled
           ; experimental
           }
       =
@@ -358,6 +371,7 @@ module Dune_config = struct
         ; ( "action_stderr_on_success"
           , field Action_output_on_success.to_dyn action_stderr_on_success )
         ; "project_defaults", field Project_defaults.to_dyn project_defaults
+        ; "pkg_enabled", field Pkg_enabled.to_dyn pkg_enabled
         ; ( "experimental"
           , field Dyn.(list (pair string (fun (_, v) -> string v))) experimental )
         ]
@@ -382,6 +396,7 @@ module Dune_config = struct
       ; action_stdout_on_success = None
       ; action_stderr_on_success = None
       ; project_defaults = None
+      ; pkg_enabled = None
       ; experimental = None
       }
     ;;
@@ -467,6 +482,7 @@ module Dune_config = struct
         ; maintenance_intent = None
         ; license = Some [ "LICENSE" ]
         }
+    ; pkg_enabled = false
     ; experimental = []
     }
   ;;
@@ -533,6 +549,7 @@ module Dune_config = struct
     and+ action_stderr_on_success =
       field_o "action_stderr_on_success" (3, 0) Action_output_on_success.decode
     and+ project_defaults = field_o "project_defaults" (3, 17) Project_defaults.decode
+    and+ pkg_enabled = field_o "pkg" (3, 20) Pkg_enabled.decode
     and+ experimental =
       field_o "experimental" (3, 8) (repeat (pair string (located string)))
     in
@@ -554,6 +571,7 @@ module Dune_config = struct
     ; action_stdout_on_success
     ; action_stderr_on_success
     ; project_defaults
+    ; pkg_enabled
     ; experimental
     }
   ;;

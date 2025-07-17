@@ -104,6 +104,7 @@ val wait_for_process
 type termination_reason =
   | Normal
   | Cancel
+  | Timeout
 
 val wait_for_build_process
   :  ?timeout_seconds:float

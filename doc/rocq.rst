@@ -71,7 +71,7 @@ The Rocq theory stanza is very similar in form to the OCaml
      (rocqdep_flags <rocqdep_flags>)
      (rocqdoc_flags <rocqdoc_flags>)
      (stdlib <stdlib_included>)
-     (mode <rocq_native_mode>)
+     (mode <rocq_build_mode>)
      (theories <rocq_theories>))
 
 The stanza builds all the ``.v`` files in the given directory and its
@@ -163,15 +163,19 @@ The semantics of the fields are:
   See :ref:`Locating Theories<rocq-locating-theories>` for more information on how
   Rocq theories are located by Dune.
 
-- If Rocq has been configured with ``-native-compiler yes`` or ``ondemand``, Dune
-  will always build the ``cmxs`` files together with the ``vo`` files.
+- The ``<rocq_build_mode>`` field does control what Rocq objects are
+  built. Allowed values are ``vo`` or ``vos``.
 
-  You may override this by specifying ``(mode native)`` or ``(mode vo)``.
+  By default, Dune will build Rocq's ``.vo`` and ``.glob`` files.
 
-- If the ``(mode vos)`` field is present, only Rocq compiled interface files
-  ``.vos`` will be produced for the theory. This is mainly useful in conjunction
-  with ``dune rocq top``, since this makes the compilation of dependencies much
-  faster, at the cost of skipping proof checking.
+  If Rocq was configured with ``-native-compiler yes``, Dune will
+  also build the corresponding ``cmxs`` native files.
+
+  You may disable the compilation of native objects in this case by
+  specifying ``(mode vo)``, which can bring an important speedup in some cases.
+
+  If ``(mode vos)`` is set, Dune will instead output ``.vos``
+  interface files, which skip proof checking.
 
 Rocq Dependencies
 ~~~~~~~~~~~~~~~~~
@@ -341,6 +345,7 @@ The supported Rocq language versions (not the version of Rocq) are:
 - ``0.11``: Support for the Rocq Prover; most important changes are:
   + all deprecated features in ``(lang coq 0.10)`` have been removed.
   + Dune won't install .cmxs files in user-contrib (along .vo files) anymore.
+  + ``(mode native)`` is not allowed anymore. It is the default if Rocq was configured with native compute enabled.
 
 .. _rocq-lang-1.0:
 

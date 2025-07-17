@@ -1,6 +1,8 @@
 open Stdune
 module Console = Dune_console
 
+let () = Dune_tests_common.init ()
+
 (** [dummy_results a b c d] creates a dummy result with [a]/[b] immediate dependencies and
     [c]/[d] transitive dependencies. The total number of dependencies will be [b] + [d]
     of which [a] + [b] will be outdated. *)

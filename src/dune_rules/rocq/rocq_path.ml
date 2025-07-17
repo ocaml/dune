@@ -196,7 +196,7 @@ let of_env env =
   let rocqpath =
     (* windows uses ';' *)
     let rocqpath_sep = if Sys.cygwin then ';' else Bin.path_sep in
-    Env.get env "COQPATH"
+    Env.get env "ROCQPATH"
     |> function
     | None -> []
     | Some rocqpath -> Bin.parse_path ~sep:rocqpath_sep rocqpath

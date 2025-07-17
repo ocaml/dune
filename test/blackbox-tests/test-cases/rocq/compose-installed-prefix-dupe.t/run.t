@@ -6,9 +6,9 @@ First we install our two theories with the conflicting name prefix.
   $ (cd B && dune build @install && dune install --prefix .)
   $ (cd C && dune build @install && dune install --prefix .)
 
-We add these to COQPATH
+We add these to ROCQPATH
 
-  $ export COQPATH=../B/lib/coq/user-contrib:../C/lib/coq/user-contrib:$COQPATH
+  $ export ROCQPATH=../B/lib/coq/user-contrib:../C/lib/coq/user-contrib:$ROCQPATH
 
 Now we create a theory that depends on both
 

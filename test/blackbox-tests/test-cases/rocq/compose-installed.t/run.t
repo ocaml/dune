@@ -2,12 +2,12 @@ We test composing a project with an installed Coq theory. The installed theory
 does *not* have to be a dune project. But for the purpose of this test, we use
 the installation of a Dune project.
 
-We configure COQLIB to be lib/coq. Coq will search for user-contrib from here.
+We configure ROCQLIB to be lib/coq. Coq will search for user-contrib from here.
 We also need to set up a fake Coq install.
 
   $ mkdir -p lib/coq
-  $ export COQLIB=$PWD/lib/coq
-  $ echo $COQLIB
+  $ export ROCQLIB=$PWD/lib/coq
+  $ echo $ROCQLIB
   $TESTCASE_ROOT/lib/coq
 
   $ mkdir -p lib/coq/theories/Init/
@@ -77,13 +77,13 @@ As expected, Dune can no longer build A:
   Leaving directory 'A'
   [1]
 
-We therefore set a variable called COQPATH which allows for library install
+We therefore set a variable called ROCQPATH which allows for library install
 locations alternative to user-contrib.
 
-  $ export COQPATH=$PWD/another-place/lib/coq/user-contrib
+  $ export ROCQPATH=$PWD/another-place/lib/coq/user-contrib
 
 Now Dune should be able to build A again, since we scan both user-contrib and
-all the directories found in COQPATH.
+all the directories found in ROCQPATH.
 
   $ dune build --root A
   Entering directory 'A'

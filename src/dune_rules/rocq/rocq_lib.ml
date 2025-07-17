@@ -249,30 +249,6 @@ module Error = struct
          [ Pp.textf "Theory %S has not been found." name ]
   ;;
 
-  module Hidden_reason = struct
-    type t =
-      | LackOfTheoryComposition
-      | LackOfInstalledComposition
-  end
-
-  let hidden_without_composition ~loc ~reason name =
-    let name = Rocq_lib_name.to_string name in
-    let reason =
-      match reason with
-      | Hidden_reason.LackOfTheoryComposition ->
-        Pp.textf
-          "Upgrade coq lang to 0.4 to enable composition with theories in a different \
-           scope."
-      | LackOfInstalledComposition ->
-        Pp.textf "Upgrade coq lang to 0.8 to enable composition with installed theories."
-    in
-    Resolve.Memo.fail
-    @@ User_message.make
-         ~annots
-         ~loc
-         [ Pp.textf "Theory %s not found in the current scope." name; reason ]
-  ;;
-
   let private_deps_not_allowed ~loc name =
     let name = Rocq_lib_name.to_string name in
     Resolve.Memo.fail
@@ -367,16 +343,8 @@ module DB = struct
   ;;
 
   module rec R : sig
-    val resolve_boot
-      :  t
-      -> coq_lang_version:Dune_sexp.Syntax.Version.t
-      -> (Loc.t * lib) option Resolve.Memo.t
-
-    val resolve
-      :  t
-      -> coq_lang_version:Dune_sexp.Syntax.Version.t
-      -> Loc.t * Rocq_lib_name.t
-      -> lib Resolve.Memo.t
+    val resolve_boot : t -> (Loc.t * lib) option Resolve.Memo.t
+    val resolve : t -> Loc.t * Rocq_lib_name.t -> lib Resolve.Memo.t
   end = struct
     open R
 
@@ -431,24 +399,18 @@ module DB = struct
       else theories
     ;;
 
-    let resolve_boot ~coq_lang_version ~rocq_db (boot_id : Id.t option) =
+    let resolve_boot ~rocq_db (boot_id : Id.t option) =
       match boot_id with
       | Some boot_id ->
         let open Resolve.Memo.O in
-        let+ lib = resolve ~coq_lang_version rocq_db (boot_id.loc, boot_id.name) in
+        let+ lib = resolve rocq_db (boot_id.loc, boot_id.name) in
         Some (boot_id.loc, lib)
       | None -> Resolve.Memo.return None
     ;;
 
-    let resolve_theory
-          ~coq_lang_version
-          ~allow_private_deps
-          ~rocq_db
-          ~boot_id
-          (loc, theory_name)
-      =
+    let resolve_theory ~allow_private_deps ~rocq_db ~boot_id (loc, theory_name) =
       let open Resolve.Memo.O in
-      let* theory = resolve ~coq_lang_version rocq_db (loc, theory_name) in
+      let* theory = resolve rocq_db (loc, theory_name) in
       let* () = Resolve.Memo.lift @@ check_boot ~boot_id theory in
       let+ () =
         if allow_private_deps
@@ -461,15 +423,14 @@ module DB = struct
       loc, theory
     ;;
 
-    let resolve_theories ~coq_lang_version ~allow_private_deps ~rocq_db ~boot_id theories =
-      let f = resolve_theory ~coq_lang_version ~allow_private_deps ~rocq_db ~boot_id in
+    let resolve_theories ~allow_private_deps ~rocq_db ~boot_id theories =
+      let f = resolve_theory ~allow_private_deps ~rocq_db ~boot_id in
       Resolve.Memo.List.map theories ~f
     ;;
 
     let create_from_stanza_impl (rocq_db, db, dir, (s : Rocq_stanza.Theory.t)) =
       let name = s.name in
       let id = Id.create ~path:(Path.build dir) ~name in
-      let coq_lang_version = s.buildable.coq_lang_version in
       let open Memo.O in
       let boot_id = if s.boot then None else boot_library_id rocq_db in
       let allow_private_deps = Option.is_none s.package in
@@ -477,13 +438,8 @@ module DB = struct
       let+ libraries =
         resolve_plugins ~db ~allow_private_deps ~name:(snd name) s.buildable.plugins
       and+ theories =
-        resolve_theories
-          ~rocq_db
-          ~coq_lang_version
-          ~allow_private_deps
-          ~boot_id
-          s.buildable.theories
-      and+ boot = resolve_boot ~coq_lang_version ~rocq_db boot_id in
+        resolve_theories ~rocq_db ~allow_private_deps ~boot_id s.buildable.theories
+      and+ boot = resolve_boot ~rocq_db boot_id in
       let theories = maybe_add_boot ~boot ~use_stdlib ~is_boot:s.boot theories in
       let map_error x =
         let human_readable_description () = Id.pp id in
@@ -572,30 +528,21 @@ module DB = struct
       type t =
         | Found_stanza of Lib.DB.t * Path.Build.t * Rocq_stanza.Theory.t
         | Found_path of Rocq_path.t
-        | Hidden of Error.Hidden_reason.t
         | Not_found
     end
 
-    let find rocq_db ~coq_lang_version name : Resolve_final_result.t =
+    let find rocq_db name : Resolve_final_result.t =
       match find rocq_db name with
       | Not_found -> Not_found
-      | Theory (mldb, dir, stanza) when coq_lang_version >= (0, 4) ->
-        Found_stanza (mldb, dir, stanza)
-      | Legacy_theory cp when coq_lang_version >= (0, 8) -> Found_path cp
-      | Legacy_theory cp when Rocq_path.corelib cp -> Found_path cp
-      | Legacy_theory _ -> Hidden LackOfInstalledComposition
-      | Theory (mldb, dir, stanza) ->
-        (match rocq_db.resolve name with
-         | Not_found -> Hidden LackOfTheoryComposition
-         | Theory _ | Redirect _ | Legacy_theory _ -> Found_stanza (mldb, dir, stanza))
+      | Theory (mldb, dir, stanza) -> Found_stanza (mldb, dir, stanza)
+      | Legacy_theory cp -> Found_path cp
     ;;
 
     (** Our final final resolve is used externally, and should return the
         library data found from the previous iterations. *)
-    let resolve rocq_db ~coq_lang_version (loc, name) =
-      match find rocq_db ~coq_lang_version name with
+    let resolve rocq_db (loc, name) =
+      match find rocq_db name with
       | Not_found -> Error.theory_not_found ~loc name
-      | Hidden reason -> Error.hidden_without_composition ~loc ~reason name
       | Found_stanza (db, dir, stanza) ->
         let open Memo.O in
         let+ theory = create_from_stanza rocq_db db dir stanza in
@@ -610,9 +557,9 @@ module DB = struct
         Legacy theory
     ;;
 
-    let resolve_boot rocq_db ~coq_lang_version =
+    let resolve_boot rocq_db =
       let boot_id = boot_library_id rocq_db in
-      resolve_boot ~coq_lang_version ~rocq_db boot_id
+      resolve_boot ~rocq_db boot_id
     ;;
   end
 
@@ -702,9 +649,7 @@ module DB = struct
   ;;
 
   (* Resolve helpers *)
-  let find_many t theories ~coq_lang_version =
-    Resolve.Memo.List.map theories ~f:(resolve ~coq_lang_version t)
-  ;;
+  let find_many t theories = Resolve.Memo.List.map theories ~f:(resolve t)
 end
 
 let theories_closure = function

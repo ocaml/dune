@@ -346,7 +346,6 @@ let setup_native_theory_includes ~sctx ~theories_deps ~theory_dirs =
 
 let rocqc_native_flags ~sctx ~dir ~theories_deps ~theory_dirs ~(mode : Rocq_mode.t) =
   match mode with
-  | Legacy -> Command.Args.empty
   | VoOnly ->
     Command.Args.As
       [ "-w"

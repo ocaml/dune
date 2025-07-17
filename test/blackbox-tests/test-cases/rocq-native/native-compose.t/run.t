@@ -1,16 +1,4 @@
   $ dune build --profile=release --display short --debug-dependency-path @all
-  File "foo/dune", line 4, characters 7-13:
-  4 |  (mode native)
-             ^^^^^^
-  Warning: 'native' was deprecated in version 0.7 of Rocq Prover build
-  language. Since Coq lang 0.7 native mode is automatically inferred from the
-  configuration of Coq.
-  File "bar/dune", line 4, characters 7-13:
-  4 |  (mode native)
-             ^^^^^^
-  Warning: 'native' was deprecated in version 0.7 of Rocq Prover build
-  language. Since Coq lang 0.7 native mode is automatically inferred from the
-  configuration of Coq.
         coqdep bar/.bar.theory.d
         coqdep foo/.foo.theory.d
           coqc foo/Nfoo_foo.{cmi,cmxs},foo/foo.{glob,vo}
@@ -18,18 +6,6 @@
           coqc bar/Nbar_baz_bar.{cmi,cmxs},bar/bar.{glob,vo}
 
   $ dune build --profile=release --debug-dependency-path @default
-  File "foo/dune", line 4, characters 7-13:
-  4 |  (mode native)
-             ^^^^^^
-  Warning: 'native' was deprecated in version 0.7 of Rocq Prover build
-  language. Since Coq lang 0.7 native mode is automatically inferred from the
-  configuration of Coq.
-  File "bar/dune", line 4, characters 7-13:
-  4 |  (mode native)
-             ^^^^^^
-  Warning: 'native' was deprecated in version 0.7 of Rocq Prover build
-  language. Since Coq lang 0.7 native mode is automatically inferred from the
-  configuration of Coq.
   lib: [
     "_build/install/default/lib/base/META"
     "_build/install/default/lib/base/dune-package"

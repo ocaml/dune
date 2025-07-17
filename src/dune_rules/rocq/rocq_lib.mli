@@ -90,20 +90,7 @@ module DB : sig
       libraries are installed, we would infer the right amount of information. *)
   val create_from_rocqpaths : Rocq_path.t list -> t
 
-  val find_many
-    :  t
-    -> (Loc.t * Rocq_lib_name.t) list
-    -> coq_lang_version:Dune_sexp.Syntax.Version.t
-    -> lib list Resolve.Memo.t
-
-  val resolve_boot
-    :  t
-    -> coq_lang_version:Dune_sexp.Syntax.Version.t
-    -> (Loc.t * lib) option Resolve.Memo.t
-
-  val resolve
-    :  t
-    -> coq_lang_version:Dune_sexp.Syntax.Version.t
-    -> Loc.t * Rocq_lib_name.t
-    -> lib Resolve.Memo.t
+  val find_many : t -> (Loc.t * Rocq_lib_name.t) list -> lib list Resolve.Memo.t
+  val resolve_boot : t -> (Loc.t * lib) option Resolve.Memo.t
+  val resolve : t -> Loc.t * Rocq_lib_name.t -> lib Resolve.Memo.t
 end

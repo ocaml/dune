@@ -16,7 +16,7 @@ open Import
 module Buildable : sig
   type t =
     { flags : Ordered_set_lang.Unexpanded.t
-    ; coq_lang_version : Dune_sexp.Syntax.Version.t
+    ; rocq_lang_version : Dune_sexp.Syntax.Version.t
     ; mode : Rocq_mode.t option
     ; use_stdlib : bool
     ; plugins : (Loc.t * Lib_name.t) list (** ocaml plugins *)

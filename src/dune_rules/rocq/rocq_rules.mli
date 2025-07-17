@@ -20,7 +20,6 @@ val deps_of
   -> use_stdlib:bool
   -> wrapper_name:string
   -> mode:Rocq_mode.t
-  -> coq_lang_version:Dune_sexp.Syntax.Version.t
   -> Rocq_module.t
   -> unit Dune_engine.Action_builder.t
 

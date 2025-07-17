@@ -66,7 +66,7 @@ If we remove the setting from the workspace it should go back to the default
   $ dune pkg enabled || echo "Package management disabled"
   Package management disabled
 
-Enable the package management globally in the users config.
+Enable the package management globally in the user's config.
 
   $ cat > config <<EOF
   > (lang dune 3.20)

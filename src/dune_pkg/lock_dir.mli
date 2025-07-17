@@ -12,6 +12,7 @@ module Pkg_info : sig
     ; extra_sources : (Path.Local.t * Source.t) list
     }
 
+  val to_dyn : t -> Dyn.t
   val default_version : Package_version.t
   val variables : t -> OpamVariable.variable_contents Package_variable_name.Map.t
 end

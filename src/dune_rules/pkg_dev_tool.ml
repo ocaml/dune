@@ -28,3 +28,5 @@ let exe_path t =
     (package_install_path t)
     ("target" :: exe_path_components_within_package t)
 ;;
+
+let lib_path t = Path.Build.L.relative (package_install_path t) [ "target"; "lib" ]

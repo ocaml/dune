@@ -408,6 +408,17 @@ module Pkg = struct
     |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t -> dep t |> Dep.Set.add acc)
   ;;
 
+  let install_roots t =
+    let default_install_roots = Paths.install_roots t.paths in
+    match Pkg_toolchain.is_compiler_and_toolchains_enabled t.info.name with
+    | false -> default_install_roots
+    | true ->
+      (* Compiler packages store their libraries in a subdirectory named "ocaml". *)
+      { default_install_roots with
+        lib_root = Path.relative default_install_roots.lib_root "ocaml"
+      }
+  ;;
+
   (* Given a list of packages, construct an env containing variables
      set by each package. Variables containing delimited lists of
      paths (e.g. PATH) which appear in multiple package's envs are
@@ -418,7 +429,7 @@ module Pkg = struct
   let build_env_of_deps ts =
     List.fold_left ts ~init:Env.Map.empty ~f:(fun env t ->
       let env =
-        let roots = Paths.install_roots t.paths in
+        let roots = install_roots t in
         let init = Value_list_env.add_path env Env_path.var roots.bin in
         let vars = Install.Roots.to_env_without_path roots ~relative:Path.relative in
         List.fold_left vars ~init ~f:(fun acc (var, path) ->
@@ -961,7 +972,7 @@ module Action_expander = struct
         let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
         Action_builder.evaluate_and_collect_facts cookie
         |> Memo.map ~f:(fun ((cookie : Install_cookie.t), _) -> pkg, cookie))
-      |> Memo.map ~f:(fun cookies ->
+      |> Memo.map ~f:(fun (cookies : (Pkg.t * Install_cookie.t) list) ->
         List.fold_left
           cookies
           ~init:empty
@@ -1998,18 +2009,20 @@ let ocaml_toolchain context =
     Some (Action_builder.memoize "ocaml_toolchain" toolchain)
 ;;
 
-let all_packages context =
-  let* db = db_project context in
+let all_deps universe =
+  let* db = DB.get universe in
   Dune_lang.Package_name.Map.values db.all
   |> Memo.parallel_map ~f:(fun (package : Lock_dir.Pkg.t) ->
     let package = package.info.name in
-    resolve_pkg_project context (Loc.none, package)
+    Resolve.resolve db (Loc.none, package) universe
     >>| function
     | `Inside_lock_dir pkg -> Some pkg
     | `System_provided -> None)
   >>| List.filter_opt
   >>| Pkg.top_closure
 ;;
+
+let all_project_deps context = all_deps (Project_dependencies context)
 
 let which context =
   let artifacts_and_deps =
@@ -2020,7 +2033,7 @@ let which context =
           (Context_name.to_string context))
       (fun () ->
          let+ { binaries; dep_info = _ } =
-           all_packages context >>= Action_expander.Artifacts_and_deps.of_closure
+           all_project_deps context >>= Action_expander.Artifacts_and_deps.of_closure
          in
          binaries)
   in
@@ -2029,9 +2042,9 @@ let which context =
     Filename.Map.find artifacts program)
 ;;
 
-let ocamlpath context =
-  let+ all_packages = all_packages context in
-  let env = Pkg.build_env_of_deps all_packages in
+let ocamlpath universe =
+  let+ all_project_deps = all_deps universe in
+  let env = Pkg.build_env_of_deps all_project_deps in
   Env.Map.find env Dune_findlib.Config.ocamlpath_var
   |> Option.value ~default:[]
   |> List.map ~f:(function
@@ -2039,6 +2052,8 @@ let ocamlpath context =
     | String s -> Path.of_filename_relative_to_initial_cwd s)
 ;;
 
+let project_ocamlpath context = ocamlpath (Project_dependencies context)
+let dev_tool_ocamlpath dev_tool = ocamlpath (Dev_tool dev_tool)
 let lock_dir_active = Lock_dir.lock_dir_active
 let lock_dir_path = Lock_dir.get_path
 
@@ -2061,8 +2076,8 @@ let exported_env context =
   Memo.push_stack_frame ~human_readable_description:(fun () ->
     Pp.textf "lock directory environment for context %S" (Context_name.to_string context))
   @@ fun () ->
-  let+ all_packages = all_packages context in
-  let env = Pkg.build_env_of_deps all_packages in
+  let+ all_project_deps = all_project_deps context in
+  let env = Pkg.build_env_of_deps all_project_deps in
   let vars = Env.Map.map env ~f:Value_list_env.string_of_env_values in
   Env.extend Env.empty ~vars
 ;;
@@ -2083,8 +2098,8 @@ let find_package ctx pkg =
 ;;
 
 let all_filtered_depexts context =
-  let* all_packages = all_packages context in
-  Memo.List.map all_packages ~f:(fun (pkg : Pkg.t) ->
+  let* all_project_deps = all_project_deps context in
+  Memo.List.map all_project_deps ~f:(fun (pkg : Pkg.t) ->
     let expander = Action_expander.expander context pkg in
     Action_expander.Expander.filtered_depexts expander)
   >>| List.concat

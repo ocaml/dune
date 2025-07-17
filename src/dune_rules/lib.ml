@@ -1954,6 +1954,18 @@ module DB = struct
           Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.name)
   ;;
 
+  let with_parent t ~parent = { t with parent }
+
+  let of_paths context ~paths =
+    let open Memo.O in
+    let+ ocaml = Context.ocaml context
+    and+ findlib = Findlib.create_with_paths (Context.name context) ~paths in
+    create_from_findlib
+      findlib
+      ~has_bigarray_library:(Ocaml.Version.has_bigarray_library ocaml.version)
+      ~instrument_with:(Context.instrument_with context)
+  ;;
+
   let installed (context : Context.t) =
     let open Memo.O in
     let+ ocaml = Context.ocaml context

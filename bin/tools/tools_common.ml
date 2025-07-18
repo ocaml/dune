@@ -102,3 +102,28 @@ let install_command dev_tool =
   in
   Cmd.v info term
 ;;
+
+let exec_command dev_tool =
+  let exe_name = Pkg_dev_tool.exe_name dev_tool in
+  let term =
+    let+ builder = Common.Builder.term
+    and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS")) in
+    let common, config = Common.init builder in
+    lock_build_and_run_dev_tool ~common ~config dev_tool ~args
+  in
+  let info =
+    let doc =
+      sprintf
+        {|Wrapper for running %s intended to be run automatically
+          by a text editor. All positional arguments will be passed to the
+          %s executable (pass flags to %s after the '--'
+          argument, such as 'dune tools exec %s -- --help').|}
+        exe_name
+        exe_name
+        exe_name
+        exe_name
+    in
+    Cmd.info exe_name ~doc
+  in
+  Cmd.v info term
+;;

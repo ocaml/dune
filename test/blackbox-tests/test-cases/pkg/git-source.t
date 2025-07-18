@@ -1,5 +1,6 @@
 Test fetching from git
 
+  $ . ../git-helpers.sh
   $ . ./helpers.sh
 
   $ mkdir somerepo

@@ -1,5 +1,6 @@
 Demonstrate our support for pin-depends.
 
+  $ . ../git-helpers.sh
   $ . ./helpers.sh
 
   $ add_mock_repo_if_needed

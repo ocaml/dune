@@ -1,3 +1,5 @@
+  $ . ./git-helpers.sh
+
 Define a helper program that counts how many bytes differ between two files.
 
   $ cat > compare.ml << EOF

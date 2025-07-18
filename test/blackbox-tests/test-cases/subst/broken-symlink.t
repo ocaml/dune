@@ -1,3 +1,5 @@
+  $ . ../git-helpers.sh
+
 dune subst should not fail when encountering broken symlinks.
 See #9593.
 

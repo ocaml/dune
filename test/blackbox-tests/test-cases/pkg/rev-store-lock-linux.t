@@ -2,6 +2,7 @@ We want to test that a failing flock(2) shows an error.
 
 Thus we first create a repo:
 
+  $ . ../git-helpers.sh
   $ . ./helpers.sh
   $ mkrepo
   $ mkpkg foo 1.0 <<EOF

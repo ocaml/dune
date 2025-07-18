@@ -16,11 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # This is required for the test suite
-      - name: Set git user
-        run: |
-          git config --global user.name github-actions[oxcaml-bot]
-          git config --global user.email github-actions[oxcaml-bot]@users.noreply.github.com
 
       - name: Install OCaml
         uses: ocaml/setup-ocaml@v3

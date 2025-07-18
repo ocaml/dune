@@ -1,5 +1,6 @@
 Multiple opam repositories that define the same package:
 
+  $ . ../git-helpers.sh
   $ . ./helpers.sh
 
   $ pkg="packages/foo"

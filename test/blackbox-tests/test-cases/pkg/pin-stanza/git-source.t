@@ -1,5 +1,6 @@
 Package sources can be set to git:
 
+  $ . ../../git-helpers.sh
   $ . ../helpers.sh
 
   $ mkrepo

@@ -356,7 +356,7 @@ let rocqc_native_flags ~sctx ~dir ~theories_deps ~theory_dirs ~(mode : Rocq_mode
 ;;
 
 (* closure of all the ML libs a theory depends on *)
-let libs_of_theory ~lib_db ~theories_deps plugins : (Lib.t list * _) Resolve.Memo.t =
+let libs_of_theory ~lib_db ~theories_deps plugins : Lib.t list Resolve.Memo.t =
   let open Resolve.Memo.O in
   let* libs =
     Resolve.Memo.List.map plugins ~f:(fun (loc, name) ->
@@ -364,33 +364,26 @@ let libs_of_theory ~lib_db ~theories_deps plugins : (Lib.t list * _) Resolve.Mem
       loc, lib)
   in
   let* theories = theories_deps in
-  (* Filter dune theories *)
-  let f (t : Rocq_lib.t) =
-    match t with
-    | Dune t -> Left t
-    | Legacy t -> Right t
+  let f = function
+    | Rocq_lib.Dune d -> Rocq_lib.Dune.libraries d
+    | Rocq_lib.Legacy _ -> Resolve.return []
   in
-  let dune_theories, legacy_theories = List.partition_map ~f theories in
-  let* dlibs =
-    Resolve.List.concat_map ~f:Rocq_lib.Dune.libraries dune_theories |> Resolve.Memo.lift
-  in
+  let* dlibs = Resolve.List.concat_map ~f theories |> Resolve.Memo.lift in
   let libs = libs @ dlibs in
   let+ findlib_libs = Lib.closure ~linking:false (List.map ~f:snd libs) in
-  findlib_libs, legacy_theories
+  findlib_libs
 ;;
 
-(* compute include flags and mlpack rules *)
-let ml_pack_and_meta_rule ~context ~all_libs (buildable : Rocq_stanza.Buildable.t)
+(* depend on the right META files so findlib works for loading Rocq plugins *)
+let ml_meta_rule ~context ~all_libs (buildable : Rocq_stanza.Buildable.t)
   : unit Action_builder.t
   =
-  (* rocqdep expects an mlpack file next to the sources otherwise it will
-     omit the cmxs deps *)
   let plugin_loc = List.hd_opt buildable.plugins |> Option.map ~f:fst in
   let meta_info = Util.meta_info ~loc:plugin_loc ~context in
   Action_builder.paths (List.filter_map ~f:meta_info all_libs)
 ;;
 
-let ml_flags_and_ml_pack_rule
+let ml_flags_and_ml_meta_rule
       ~context
       ~lib_db
       ~theories_deps
@@ -398,19 +391,17 @@ let ml_flags_and_ml_pack_rule
   =
   let res =
     let open Resolve.Memo.O in
-    let+ all_libs, _legacy_theories =
-      libs_of_theory ~lib_db ~theories_deps buildable.plugins
-    in
+    let+ all_libs = libs_of_theory ~lib_db ~theories_deps buildable.plugins in
     let findlib_plugin_flags = Util.include_flags all_libs in
     let ml_flags = Command.Args.S [ findlib_plugin_flags ] in
-    ml_flags, ml_pack_and_meta_rule ~context ~all_libs buildable
+    ml_flags, ml_meta_rule ~context ~all_libs buildable
   in
-  let mlpack_rule =
+  let ml_meta_rule =
     let open Action_builder.O in
-    let* _, mlpack_rule = Resolve.Memo.read res in
-    mlpack_rule
+    let* _, ml_meta_rule = Resolve.Memo.read res in
+    ml_meta_rule
   in
-  Resolve.Memo.map ~f:fst res, mlpack_rule
+  Resolve.Memo.map ~f:fst res, ml_meta_rule
 ;;
 
 let dep_theory_file ~dir ~wrapper_name =
@@ -838,7 +829,7 @@ let theory_context ~context ~scope ~name buildable =
   (* ML-level flags for depending libraries *)
   let ml_flags, mlpack_rule =
     let lib_db = Scope.libs scope in
-    ml_flags_and_ml_pack_rule ~context ~theories_deps ~lib_db buildable
+    ml_flags_and_ml_meta_rule ~context ~theories_deps ~lib_db buildable
   in
   theory, theories_deps, ml_flags, mlpack_rule
 ;;
@@ -868,7 +859,7 @@ let extraction_context ~context ~scope (buildable : Rocq_stanza.Buildable.t) =
   in
   let ml_flags, mlpack_rule =
     let lib_db = Scope.libs scope in
-    ml_flags_and_ml_pack_rule ~context ~theories_deps ~lib_db buildable
+    ml_flags_and_ml_meta_rule ~context ~theories_deps ~lib_db buildable
   in
   theories_deps, ml_flags, mlpack_rule
 ;;

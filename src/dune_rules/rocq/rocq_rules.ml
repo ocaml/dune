@@ -220,8 +220,9 @@ end = struct
      "standard library" is being handled. See the main modes above. *)
   let make ~scope ~use_stdlib ~wrapper_name rocq_module =
     let open Resolve.Memo.O in
+    let db = Scope.libs scope in
     let* boot_lib =
-      Scope.rocq_libs scope |> Resolve.Memo.lift_memo >>= Rocq_lib.DB.resolve_boot
+      Scope.rocq_libs scope |> Resolve.Memo.lift_memo >>= Rocq_lib.DB.resolve_boot ~db
     in
     if use_stdlib
     then (
@@ -276,10 +277,12 @@ let directories_of_lib ~sctx lib =
   let name = Rocq_lib.name lib in
   match lib with
   | Rocq_lib.Dune lib ->
-    let dir = Rocq_lib.Dune.src_root lib in
-    let* dir_contents = Dir_contents.get sctx ~dir in
-    let+ rocq_sources = Dir_contents.rocq dir_contents in
-    Rocq_sources.directories rocq_sources ~name
+    (match Rocq_lib.Dune.src_root lib with
+     | Left dir ->
+       let* dir_contents = Dir_contents.get sctx ~dir in
+       let+ rocq_sources = Dir_contents.rocq dir_contents in
+       Rocq_sources.directories rocq_sources ~name
+     | Right _ -> Memo.return [] (* TODO Ok? *))
   | Rocq_lib.Legacy _ ->
     (* TODO: we could return this if we don't restrict ourselves to
        Path.Build.t here.
@@ -710,10 +713,12 @@ let rocq_modules_of_theory ~sctx lib =
   match lib with
   | Rocq_lib.Legacy lib -> Memo.return @@ Rocq_lib.Legacy.vo lib
   | Rocq_lib.Dune lib ->
-    let dir = Rocq_lib.Dune.src_root lib in
-    let* dir_contents = Dir_contents.get sctx ~dir in
-    let+ rocq_sources = Dir_contents.rocq dir_contents in
-    Rocq_sources.library rocq_sources ~name |> List.rev_map ~f:Rocq_module.source
+    (match Rocq_lib.Dune.src_root lib with
+     | Left dir ->
+       let* dir_contents = Dir_contents.get sctx ~dir in
+       let+ rocq_sources = Dir_contents.rocq dir_contents in
+       Rocq_sources.library rocq_sources ~name |> List.rev_map ~f:Rocq_module.source
+     | Right sources -> Memo.return sources)
 ;;
 
 let source_rule ~sctx theories =
@@ -822,8 +827,9 @@ let setup_rocqdoc_rules ~sctx ~dir ~theories_deps (s : Rocq_stanza.Theory.t) roc
 (* Common context for a theory, deps and rules *)
 let theory_context ~context ~scope ~name buildable =
   let theory =
+    let db = Scope.libs scope in
     let* rocq_lib_db = Scope.rocq_libs scope in
-    Rocq_lib.DB.resolve rocq_lib_db name
+    Rocq_lib.DB.resolve ~db rocq_lib_db name
   in
   let theories_deps =
     Resolve.Memo.bind theory ~f:(fun theory ->
@@ -839,17 +845,18 @@ let theory_context ~context ~scope ~name buildable =
 
 (* Common context for extraction, almost the same than above *)
 let extraction_context ~context ~scope (buildable : Rocq_stanza.Buildable.t) =
+  let db = Scope.libs scope in
   let rocq_lib_db = Scope.rocq_libs scope in
   let theories_deps =
     let* rocq_lib_db = rocq_lib_db in
-    Resolve.Memo.List.map buildable.theories ~f:(Rocq_lib.DB.resolve rocq_lib_db)
+    Resolve.Memo.List.map buildable.theories ~f:(Rocq_lib.DB.resolve ~db rocq_lib_db)
   in
   (* Extraction requires a boot library so we do this unconditionally
      for now. We must do this because it can happen that
      s.buildable.theories is empty *)
   let boot =
     let* rocq_lib_db = rocq_lib_db in
-    Rocq_lib.DB.resolve_boot rocq_lib_db
+    Rocq_lib.DB.resolve_boot ~db rocq_lib_db
   in
   let theories_deps =
     let open Resolve.Memo.O in
@@ -864,6 +871,16 @@ let extraction_context ~context ~scope (buildable : Rocq_stanza.Buildable.t) =
     ml_flags_and_ml_pack_rule ~context ~theories_deps ~lib_db buildable
   in
   theories_deps, ml_flags, mlpack_rule
+;;
+
+let setup_rocq_package_rule ~sctx ~dir ~wrapper_name s : unit Memo.t =
+  let dst =
+    Path.Build.relative dir (Rocq_package.rocq_package_file ^ "." ^ wrapper_name)
+  in
+  Super_context.add_rule
+    sctx
+    ~dir
+    (Action_builder.write_file dst (Rocq_package.write (Rocq_package.of_stanza s)))
 ;;
 
 let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
@@ -937,7 +954,9 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
              ~use_stdlib
              ~ml_flags
              ~theory_dirs)
-  (* And finally the rocqdoc rules *)
+  (* the rocq-package rule *)
+  >>> setup_rocq_package_rule ~sctx ~dir ~wrapper_name s
+  (* And finally the coqdoc rules *)
   >>> setup_rocqdoc_rules ~sctx ~dir ~theories_deps s rocq_modules
 ;;
 
@@ -1004,8 +1023,16 @@ let install_rules ~sctx ~dir s =
         Path.Local.relative rocq_root dst_suffix)
     in
     let wrapper_name = Rocq_lib_name.wrapper name in
-    let to_path f = Path.reach ~from:(Path.build dir) (Path.build f) in
     let to_dst f = Path.Local.to_string @@ Path.Local.relative dst_dir f in
+    let* rocq_package_install_rules =
+      let src =
+        Path.Build.relative dir (Rocq_package.rocq_package_file ^ "." ^ wrapper_name)
+      in
+      let dst = to_dst Rocq_package.rocq_package_file in
+      let entry = Install.Entry.make Section.Lib_root ~dst src ~kind:`File in
+      Memo.return (Install.Entry.Sourced.create ~loc entry)
+    in
+    let to_path f = Path.reach ~from:(Path.build dir) (Path.build f) in
     let make_entry (orig_file : Path.Build.t) (dst_file : string) =
       let entry =
         Install.Entry.make Section.Lib_root ~dst:(to_dst dst_file) orig_file ~kind:`File
@@ -1029,6 +1056,7 @@ let install_rules ~sctx ~dir s =
       let vfile = Rocq_module.source vfile |> Path.as_in_build_dir_exn in
       let vfile_dst = to_path vfile in
       make_entry vfile vfile_dst :: obj_files)
+    |> List.cons rocq_package_install_rules
 ;;
 
 let setup_rocqpp_rules ~sctx ~dir ({ loc; modules } : Rocq_stanza.Rocqpp.t) =

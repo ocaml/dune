@@ -43,14 +43,18 @@ so this also tests that it won't be a problem.
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/rocq-package
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/rocq-package
 
 
 Next we go into our Dune project and build it.
   $ dune build --root user
   Entering directory 'user'
+  TEST: $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra
+  TEST: $TESTCASE_ROOT/lib/coq/user-contrib/global/field
   Inductive hello_alg : Set :=
       I : hello_alg
     | am : hello_alg
@@ -75,9 +79,11 @@ somewhere else.
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.glob
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.v
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.vo
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/rocq-package
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.glob
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.v
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.vo
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/field/rocq-package
   Deleting empty directory $TESTCASE_ROOT/lib/global
   Deleting empty directory $TESTCASE_ROOT/lib/coq/user-contrib/global/field
   Deleting empty directory $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra
@@ -88,9 +94,11 @@ somewhere else.
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra/b_alg.glob
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra/b_alg.v
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra/b_alg.vo
+  Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra/rocq-package
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field/b_field.glob
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field/b_field.v
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field/b_field.vo
+  Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field/rocq-package
   $ rmdir lib/coq/user-contrib/global
 
 As expected, Dune can no longer build A:
@@ -118,6 +126,8 @@ all the directories found in ROCQPATH.
 
   $ dune build --root user
   Entering directory 'user'
+  TEST: $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra
+  TEST: $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field
   Inductive hello_alg : Set :=
       I : hello_alg
     | am : hello_alg
@@ -138,6 +148,8 @@ We test if having global in the workspace and in user-contrib will cause Dune
 any problems. It shouldn't do, as the workspace should take precedence.
 
   $ dune build user
+  TEST: $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra
+  TEST: $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field
   Inductive hello_alg : Set :=
       I : hello_alg
     | am : hello_alg
@@ -162,6 +174,8 @@ We test updating the dune file for user to use the super-theory works:
   > EOF
   $ dune build --root user
   Entering directory 'user'
+  TEST: $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra
+  TEST: $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field
   Inductive hello_alg : Set :=
       I : hello_alg
     | am : hello_alg
@@ -188,10 +202,16 @@ with the loadpath semantics of Coq.
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/rocq-package
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/rocq-package
 
   $ dune build --root user
   Entering directory 'user'
+  TEST: $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra
+  TEST: $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field
+  TEST: $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra
+  TEST: $TESTCASE_ROOT/lib/coq/user-contrib/global/field
   Leaving directory 'user'

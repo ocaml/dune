@@ -32,5 +32,7 @@ Now we create a theory that depends on both
   > EOF
 
   $ dune build a.vo
+  TEST: $TESTCASE_ROOT/mytheory/../B/lib/coq/user-contrib/A/B
+  TEST: $TESTCASE_ROOT/mytheory/../C/lib/coq/user-contrib/A/C
   Inductive b : Prop :=  .
  

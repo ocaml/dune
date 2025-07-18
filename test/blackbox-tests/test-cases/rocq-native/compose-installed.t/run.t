@@ -37,11 +37,13 @@ so this also tests that it won't be a problem.
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/rocq-package
 
 
 Next we go into our Dune project and build it.
   $ dune build --root A
   Entering directory 'A'
+  TEST: $TESTCASE_ROOT/lib/coq/user-contrib/B
   Inductive hello : Set :=
       I : hello | am : hello | an : hello | install : hello | loc : hello.
   Leaving directory 'A'
@@ -56,6 +58,7 @@ somewhere else.
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.glob
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/rocq-package
   Deleting empty directory $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native
   Deleting empty directory $TESTCASE_ROOT/lib/coq/user-contrib/B
   Deleting empty directory $TESTCASE_ROOT/lib/B
@@ -68,6 +71,7 @@ somewhere else.
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B/b.glob
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B/b.v
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B/b.vo
+  Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B/rocq-package
 
 As expected, Dune can no longer build A:
 
@@ -94,6 +98,7 @@ all the directories found in ROCQPATH.
 
   $ dune build --root A
   Entering directory 'A'
+  TEST: $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B
   Inductive hello : Set :=
       I : hello | am : hello | an : hello | install : hello | loc : hello.
   Leaving directory 'A'
@@ -102,6 +107,7 @@ We test if having B in the workspace and in user-contrib will cause Dune
 any problems. It shouldn't do, as the workspace should take precedence.
 
   $ dune build A
+  TEST: $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B
   Inductive hello : Set :=
       I : hello | am : hello | an : hello | install : hello | loc : hello.
 
@@ -117,7 +123,10 @@ with the loadpath semantics of Coq.
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/rocq-package
 
   $ dune build --root A
   Entering directory 'A'
+  TEST: $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B
+  TEST: $TESTCASE_ROOT/lib/coq/user-contrib/B
   Leaving directory 'A'

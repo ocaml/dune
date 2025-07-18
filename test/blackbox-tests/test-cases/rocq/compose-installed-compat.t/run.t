@@ -37,11 +37,13 @@ so this also tests that it won't be a problem.
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/rocq-package
 
 
 Next we go into our Dune project and build it.
   $ dune build --root A
   Entering directory 'A'
+  TEST: $TESTCASE_ROOT/lib/coq/user-contrib/B
   Inductive hello : Set :=
       I : hello | am : hello | an : hello | install : hello | loc : hello.
   Leaving directory 'A'

@@ -11,4 +11,5 @@
     "_build/install/default/lib/coq/user-contrib/b/b.glob" {"coq/user-contrib/b/b.glob"}
     "_build/install/default/lib/coq/user-contrib/b/b.v" {"coq/user-contrib/b/b.v"}
     "_build/install/default/lib/coq/user-contrib/b/b.vo" {"coq/user-contrib/b/b.vo"}
+    "_build/install/default/lib/coq/user-contrib/b/rocq-package" {"coq/user-contrib/b/rocq-package"}
   ]

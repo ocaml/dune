@@ -81,17 +81,18 @@ and Dune : sig
     ; implicit : bool (* Only useful for the stdlib *)
     ; use_stdlib : bool
       (* whether this theory uses the stdlib, eventually set to false for all libs *)
-    ; src_root : Path.Build.t
-    ; obj_root : Path.Build.t
+    ; src_root : (Path.Build.t, Path.t list) Either.t (* Right: list of source files *)
+    ; obj_root : (Path.Build.t, Path.t) Either.t
+      (* Left: local library. Right: installed library. *)
     ; theories : (Loc.t * R.t) list Resolve.t
     ; libraries : (Loc.t * Lib.t) list Resolve.t
     ; theories_closure : R.t list Resolve.t Lazy.t
-    ; package : Package.t option
+    ; package : [ `Private | `Local of Package.t | `Dependency ]
     }
 
   val to_dyn : t -> Dyn.t
-  val src_root : t -> Path.Build.t
-  val obj_root : t -> Path.Build.t
+  val src_root : t -> (Path.Build.t, Path.t list) Either.t
+  val obj_root : t -> (Path.Build.t, Path.t) Either.t
   val implicit : t -> bool
 
   (** ML libraries *)
@@ -104,12 +105,13 @@ end = struct
     ; implicit : bool (* Only useful for the stdlib *)
     ; use_stdlib : bool
       (* whether this theory uses the stdlib, eventually set to false for all libs *)
-    ; src_root : Path.Build.t
-    ; obj_root : Path.Build.t
+    ; src_root : (Path.Build.t, Path.t list) Either.t (* Right: list of source files *)
+    ; obj_root : (Path.Build.t, Path.t) Either.t
+      (* Left: local library. Right: installed library. *)
     ; theories : (Loc.t * R.t) list Resolve.t
     ; libraries : (Loc.t * Lib.t) list Resolve.t
     ; theories_closure : R.t list Resolve.t Lazy.t
-    ; package : Package.t option
+    ; package : [ `Private | `Local of Package.t | `Dependency ]
     }
 
   let to_dyn
@@ -133,14 +135,18 @@ end = struct
         ; "id", Id.to_dyn id
         ; "implicit", Bool.to_dyn implicit
         ; "use_stdlib", Bool.to_dyn use_stdlib
-        ; "src_root", Path.Build.to_dyn src_root
-        ; "obj_root", Path.Build.to_dyn obj_root
+        ; "src_root", Either.to_dyn Path.Build.to_dyn (list Path.to_dyn) src_root
+        ; "obj_root", Either.to_dyn Path.Build.to_dyn Path.to_dyn obj_root
         ; "theories", Resolve.to_dyn (Dyn.list (Dyn.pair Loc.to_dyn R.to_dyn)) theories
         ; ( "libraries"
           , Resolve.to_dyn (Dyn.list (Dyn.pair Loc.to_dyn Lib.to_dyn)) libraries )
         ; ( "theories_closure"
           , Resolve.to_dyn (Dyn.list R.to_dyn) (Lazy.force theories_closure) )
-        ; "package", Dyn.option Package.to_dyn package
+        ; ( "package"
+          , match package with
+            | `Private -> Dyn.variant "Private" []
+            | `Local pkg -> Dyn.variant "Local" [ Package.to_dyn pkg ]
+            | `Dependency -> Dyn.variant "Dependency" [] )
         ])
   ;;
 
@@ -205,7 +211,7 @@ let name = function
 ;;
 
 let obj_root = function
-  | Dune t -> Dune.obj_root t |> Path.build
+  | Dune t -> Dune.obj_root t |> Either.map ~l:Path.build ~r:Fun.id
   | Legacy t -> Legacy.installed_root t
 ;;
 
@@ -338,8 +344,8 @@ module DB = struct
   ;;
 
   module rec R : sig
-    val resolve_boot : t -> (Loc.t * lib) option Resolve.Memo.t
-    val resolve : t -> Loc.t * Rocq_lib_name.t -> lib Resolve.Memo.t
+    val resolve_boot : db:Lib.DB.t -> t -> (Loc.t * lib) option Resolve.Memo.t
+    val resolve : db:Lib.DB.t -> t -> Loc.t * Rocq_lib_name.t -> lib Resolve.Memo.t
   end = struct
     open R
 
@@ -394,47 +400,64 @@ module DB = struct
       else theories
     ;;
 
-    let resolve_boot ~rocq_db (boot_id : Id.t option) =
+    let resolve_boot ~db ~rocq_db (boot_id : Id.t option) =
       match boot_id with
       | Some boot_id ->
         let open Resolve.Memo.O in
-        let+ lib = resolve rocq_db (boot_id.loc, boot_id.name) in
+        let+ lib = resolve ~db rocq_db (boot_id.loc, boot_id.name) in
         Some (boot_id.loc, lib)
       | None -> Resolve.Memo.return None
     ;;
 
-    let resolve_theory ~allow_private_deps ~rocq_db ~boot_id (loc, theory_name) =
+    let resolve_theory ~db ~allow_private_deps ~rocq_db ~boot_id (loc, theory_name) =
       let open Resolve.Memo.O in
-      let* theory = resolve rocq_db (loc, theory_name) in
+      let* theory = resolve ~db rocq_db (loc, theory_name) in
       let* () = Resolve.Memo.lift @@ check_boot ~boot_id theory in
       let+ () =
         if allow_private_deps
         then Resolve.Memo.return ()
         else (
           match theory with
-          | Dune { package = None; _ } -> Error.private_deps_not_allowed ~loc theory_name
+          | Dune { package = `Private; _ } ->
+            Error.private_deps_not_allowed ~loc theory_name
           | Legacy _ | Dune _ -> Resolve.Memo.return ())
       in
       loc, theory
     ;;
 
-    let resolve_theories ~allow_private_deps ~rocq_db ~boot_id theories =
-      let f = resolve_theory ~allow_private_deps ~rocq_db ~boot_id in
+    let resolve_theories ~db ~allow_private_deps ~rocq_db ~boot_id theories =
+      let f = resolve_theory ~db ~allow_private_deps ~rocq_db ~boot_id in
       Resolve.Memo.List.map theories ~f
     ;;
 
-    let create_from_stanza_impl (rocq_db, db, dir, (s : Rocq_stanza.Theory.t)) =
+    let create_from_rocq_package_impl
+          ( rocq_db
+          , db
+          , (s : (Path.Build.t * Rocq_stanza.Theory.t, Rocq_package.t) Either.t) )
+      =
+      let of_package = function
+        | None -> `Private
+        | Some pkg -> `Local pkg
+      in
+      let path, package, s =
+        match s with
+        | Left (dir, s) -> Left dir, of_package s.package, Rocq_package.of_stanza s
+        | Right p -> Right (Rocq_package.path p), `Dependency, Rocq_package.meta p
+      in
       let name = s.name in
-      let id = Id.create ~path:(Path.build dir) ~name in
+      let id = Id.create ~path:(Either.map ~l:Path.build ~r:Fun.id path) ~name in
       let open Memo.O in
       let boot_id = if s.boot then None else boot_library_id rocq_db in
-      let allow_private_deps = Option.is_none s.package in
-      let use_stdlib = s.buildable.use_stdlib in
-      let+ libraries =
-        resolve_plugins ~db ~allow_private_deps ~name:(snd name) s.buildable.plugins
+      let allow_private_deps =
+        match package with
+        | `Private -> true
+        | _ -> false
+      in
+      let use_stdlib = s.use_stdlib in
+      let+ libraries = resolve_plugins ~db ~allow_private_deps ~name:(snd name) s.plugins
       and+ theories =
-        resolve_theories ~rocq_db ~allow_private_deps ~boot_id s.buildable.theories
-      and+ boot = resolve_boot ~rocq_db boot_id in
+        resolve_theories ~db ~rocq_db ~allow_private_deps ~boot_id s.theories
+      and+ boot = resolve_boot ~db ~rocq_db boot_id in
       let theories = maybe_add_boot ~boot ~use_stdlib ~is_boot:s.boot theories in
       let map_error x =
         let human_readable_description () = Id.pp id in
@@ -442,31 +465,39 @@ module DB = struct
       in
       let theories = map_error theories in
       let libraries = map_error libraries in
-      { Dune.loc = s.buildable.loc
+      let src_root =
+        Either.map ~l:(fun dir -> Left dir) ~r:(fun _path -> Right []) path
+      in
+      { Dune.loc = s.loc
       ; boot_id
       ; id
       ; use_stdlib
       ; implicit = s.boot
-      ; obj_root = dir
-      ; src_root = dir
+      ; obj_root = path
+      ; src_root
       ; theories
       ; libraries
       ; theories_closure =
           lazy
             (Resolve.bind theories ~f:(fun theories ->
                List.map theories ~f:snd |> top_closure))
-      ; package = s.package
+      ; package
       }
     ;;
 
     module Input = struct
-      type nonrec t = t * Lib.DB.t * Path.Build.t * Rocq_stanza.Theory.t
+      type nonrec t =
+        t * Lib.DB.t * (Path.Build.t * Rocq_stanza.Theory.t, Rocq_package.t) Either.t
 
-      let equal (rocq_db, ml_db, path, stanza) (rocq_db', ml_db', path', stanza') =
+      let equal (rocq_db, ml_db, s) (rocq_db', ml_db', s') =
         phys_equal rocq_db rocq_db'
         && phys_equal ml_db ml_db'
-        && Path.Build.equal path path'
-        && phys_equal stanza stanza'
+        &&
+        match s, s' with
+        | Left (path, s), Left (path', s') ->
+          Path.Build.equal path path' && phys_equal s s'
+        | Right s, Right s' -> phys_equal s s'
+        | _, _ -> false
       ;;
 
       let hash = Poly.hash
@@ -476,25 +507,41 @@ module DB = struct
     let memo =
       Memo.create
         "create-from-stanza"
-        ~human_readable_description:(fun (_, _, path, theory) ->
-          Id.pp (Id.create ~path:(Path.build path) ~name:theory.name))
+        ~human_readable_description:(fun (_, _, theory) ->
+          let path, name =
+            match theory with
+            | Left (dir, stanza) -> Path.build dir, stanza.name
+            | Right p -> Rocq_package.path p, (Rocq_package.meta p).name
+          in
+          Id.pp (Id.create ~path ~name))
         ~input:(module Input)
-        create_from_stanza_impl
+        create_from_rocq_package_impl
     ;;
 
-    let create_from_stanza rocq_db db dir stanza =
-      Memo.exec memo (rocq_db, db, dir, stanza)
+    let create_from_rocq_package ~db rocq_db pkg = Memo.exec memo (rocq_db, db, Right pkg)
+
+    let create_from_stanza ~db ~dir rocq_db stanza =
+      Memo.exec memo (rocq_db, db, Left (dir, stanza))
     ;;
 
     (* XXX: Memoize? This is pretty cheap so not sure worth the cost,
        still called too much I have observed, suspicious! *)
-    let create_from_rocqpath ~boot_id cp =
+    let create_from_rocqpath_legacy ~boot_id cp =
       let name = Rocq_path.name cp in
       let installed_root = Rocq_path.path cp in
       let implicit = Rocq_path.corelib cp in
       let vo = Rocq_path.vo cp in
       let id = Id.create ~path:installed_root ~name:(Loc.none, name) in
-      Resolve.Memo.return { Legacy.boot_id; id; implicit; installed_root; vo }
+      Resolve.Memo.return (Legacy { Legacy.boot_id; id; implicit; installed_root; vo })
+    ;;
+
+    let create_from_rocqpath ~db rocq_db = function
+      | Rocq_path.Rocq_package pkg ->
+        Memo.map (create_from_rocq_package ~db rocq_db pkg) ~f:(fun dune ->
+          Resolve.return (Dune dune))
+      | Rocq_path.Legacy _ as cp ->
+        let boot_id = rocq_db.boot_id in
+        create_from_rocqpath_legacy ~boot_id cp
     ;;
 
     module Resolve_result_no_redirect = struct
@@ -533,26 +580,22 @@ module DB = struct
 
     (** Our final final resolve is used externally, and should return the
         library data found from the previous iterations. *)
-    let resolve rocq_db (loc, name) =
+    let resolve ~db rocq_db (loc, name) =
       match find rocq_db name with
       | Not_found -> Error.theory_not_found ~loc name
       | Found_stanza (db, dir, stanza) ->
         let open Memo.O in
-        let+ theory = create_from_stanza rocq_db db dir stanza in
+        let+ theory = create_from_stanza ~db ~dir rocq_db stanza in
         let open Resolve.O in
         let* (_ : (Loc.t * Lib.t) list) = theory.libraries in
         let+ (_ : (Loc.t * lib) list) = theory.theories in
         Dune theory
-      | Found_path cp ->
-        let open Resolve.Memo.O in
-        let boot_id = rocq_db.boot_id in
-        let+ theory = create_from_rocqpath ~boot_id cp in
-        Legacy theory
+      | Found_path cp -> create_from_rocqpath ~db rocq_db cp
     ;;
 
-    let resolve_boot rocq_db =
+    let resolve_boot ~db rocq_db =
       let boot_id = boot_library_id rocq_db in
-      resolve_boot ~rocq_db boot_id
+      resolve_boot ~db ~rocq_db boot_id
     ;;
   end
 
@@ -642,7 +685,7 @@ module DB = struct
   ;;
 
   (* Resolve helpers *)
-  let find_many t theories = Resolve.Memo.List.map theories ~f:(resolve t)
+  let find_many t theories ~db = Resolve.Memo.List.map theories ~f:(resolve ~db t)
 end
 
 let theories_closure = function

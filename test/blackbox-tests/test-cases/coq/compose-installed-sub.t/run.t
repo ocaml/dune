@@ -49,11 +49,13 @@ so this also tests that it won't be a problem.
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/rocq-package
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/.coq-native/Nglobal_field_b_field.cmi
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/.coq-native/Nglobal_field_b_field.cmxs
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/rocq-package
 
 
 Next we go into our Dune project and build it.
@@ -89,11 +91,13 @@ somewhere else.
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.glob
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.v
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.vo
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/rocq-package
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/field/.coq-native/Nglobal_field_b_field.cmi
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/field/.coq-native/Nglobal_field_b_field.cmxs
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.glob
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.v
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.vo
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/field/rocq-package
   Deleting empty directory $TESTCASE_ROOT/lib/global
   Deleting empty directory $TESTCASE_ROOT/lib/coq/user-contrib/global/field/.coq-native
   Deleting empty directory $TESTCASE_ROOT/lib/coq/user-contrib/global/field
@@ -108,11 +112,13 @@ somewhere else.
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra/b_alg.glob
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra/b_alg.v
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra/b_alg.vo
+  Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra/rocq-package
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field/.coq-native/Nglobal_field_b_field.cmi
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field/.coq-native/Nglobal_field_b_field.cmxs
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field/b_field.glob
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field/b_field.v
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field/b_field.vo
+  Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field/rocq-package
   $ rmdir lib/coq/user-contrib/global
 
 As expected, Dune can no longer build A:
@@ -228,11 +234,13 @@ with the loadpath semantics of Coq.
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/rocq-package
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/.coq-native/Nglobal_field_b_field.cmi
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/.coq-native/Nglobal_field_b_field.cmxs
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/rocq-package
 
   $ dune build --root user
   Entering directory 'user'

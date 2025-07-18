@@ -45,6 +45,7 @@
     "_build/install/default/lib/coq/user-contrib/basic/bar.vos" {"coq/user-contrib/basic/bar.vos"}
     "_build/install/default/lib/coq/user-contrib/basic/foo.v" {"coq/user-contrib/basic/foo.v"}
     "_build/install/default/lib/coq/user-contrib/basic/foo.vos" {"coq/user-contrib/basic/foo.vos"}
+    "_build/install/default/lib/coq/user-contrib/basic/rocq-package" {"coq/user-contrib/basic/rocq-package"}
   ]
 
 Checking that we can go back to vo mode (without cleaning).
@@ -74,4 +75,5 @@ Checking that we can go back to vo mode (without cleaning).
     "_build/install/default/lib/coq/user-contrib/basic/foo.glob" {"coq/user-contrib/basic/foo.glob"}
     "_build/install/default/lib/coq/user-contrib/basic/foo.v" {"coq/user-contrib/basic/foo.v"}
     "_build/install/default/lib/coq/user-contrib/basic/foo.vo" {"coq/user-contrib/basic/foo.vo"}
+    "_build/install/default/lib/coq/user-contrib/basic/rocq-package" {"coq/user-contrib/basic/rocq-package"}
   ]

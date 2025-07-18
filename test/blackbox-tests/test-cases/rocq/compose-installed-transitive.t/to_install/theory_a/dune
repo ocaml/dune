@@ -1,0 +1,4 @@
+(rocq.theory
+ (name T_a)
+ (package global)
+ (plugins global.plugin))

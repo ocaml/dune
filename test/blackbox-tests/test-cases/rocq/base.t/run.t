@@ -16,4 +16,5 @@
     "_build/install/default/lib/coq/user-contrib/basic/foo.glob" {"coq/user-contrib/basic/foo.glob"}
     "_build/install/default/lib/coq/user-contrib/basic/foo.v" {"coq/user-contrib/basic/foo.v"}
     "_build/install/default/lib/coq/user-contrib/basic/foo.vo" {"coq/user-contrib/basic/foo.vo"}
+    "_build/install/default/lib/coq/user-contrib/basic/rocq-package" {"coq/user-contrib/basic/rocq-package"}
   ]

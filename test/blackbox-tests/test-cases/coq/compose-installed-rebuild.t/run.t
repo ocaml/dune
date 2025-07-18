@@ -40,6 +40,7 @@ so this also tests that it won't be a problem.
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/rocq-package
 
 
 Next we go into our Dune project and build it.
@@ -81,6 +82,8 @@ Next we update B and install it again.
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/rocq-package
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/rocq-package
 
 Now we should see that A is rebuilt
 
@@ -133,6 +136,8 @@ Next we add a new file to B that should cause a call to coqdep, but no rebuild.
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/c.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/c.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/c.vo
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/rocq-package
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/rocq-package
 
 Now we should see that A is not rebuilt, however coqdep is called, this seems to fail
 

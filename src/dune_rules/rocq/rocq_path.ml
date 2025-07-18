@@ -13,17 +13,36 @@
 
 open Import
 
-type t =
+type legacy =
   { name : Rocq_lib_name.t
   ; path : Path.t
   ; vo : Path.t list
   ; corelib : bool
   }
 
-let name t = t.name
-let path t = t.path
-let vo t = t.vo
-let corelib t = t.corelib
+type t =
+  | Rocq_package of Rocq_package.t
+  | Legacy of legacy
+
+let name = function
+  | Legacy t -> t.name
+  | Rocq_package t -> Rocq_package.name t
+;;
+
+let path = function
+  | Legacy t -> t.path
+  | Rocq_package t -> Rocq_package.path t
+;;
+
+let vo = function
+  | Legacy t -> t.vo
+  | Rocq_package t -> Rocq_package.vo t
+;;
+
+let corelib = function
+  | Legacy t -> t.corelib
+  | Rocq_package _ -> false
+;;
 
 let config_path_exn rocq_config key =
   Rocq_config.by_name rocq_config key
@@ -46,23 +65,26 @@ let config_path_exn rocq_config key =
       ]
 ;;
 
-let build_user_contrib ~vo ~path ~name = { name; path; vo; corelib = false }
+let build_user_contrib_legacy ~vo ~path ~name = Legacy { name; path; vo; corelib = false }
+let build_user_contrib ~vo ~path meta = Rocq_package (Rocq_package.make ~vo ~path meta)
 
 (* Scanning todos: blacklist? *)
-let scan_vo ~dir dir_contents =
+let scan_vo_and_pkg ~dir dir_contents =
   let f (d, kind) =
     match kind with
-    (* Skip some files as Rocq does, for now files with '-' *)
-    | _ when String.contains d '-' -> None
+    | (File_kind.S_REG | S_LNK) when String.equal d Rocq_package.rocq_package_file ->
+      List.Right (Path.relative dir d)
+    (* Skip some files as Coq does, for now files with '-' *)
+    | _ when String.contains d '-' -> Skip
     | (File_kind.S_REG | S_LNK) when Filename.check_suffix d ".vo" ->
-      Some (Path.relative dir d)
-    | _ -> None
+      Left (Path.relative dir d)
+    | _ -> Skip
   in
-  List.filter_map ~f dir_contents
+  List.filter_partition_map ~f dir_contents
 ;;
 
 (* Note this will only work for absolute paths *)
-let retrieve_vo cps = List.concat_map ~f:vo cps
+let retrieve_vo_and_pkgs cps = List.concat_map ~f:vo cps, ()
 
 module Scan_action = struct
   type ('prefix, 'res) t =
@@ -118,17 +140,24 @@ let scan_path ~f ~acc ~prefix dir =
     in [Dir_status] *)
 let scan_user_path root_path =
   let f ~dir ~prefix ~subresults dir_contents =
-    let vo = scan_vo ~dir dir_contents in
-    let vo_r = retrieve_vo subresults in
-    let vo = vo @ vo_r in
-    Memo.return (build_user_contrib ~vo ~path:dir ~name:prefix :: subresults)
+    let vo, pkg_files = scan_vo_and_pkg ~dir dir_contents in
+    match pkg_files with
+    | [] ->
+      let vo_r, _pkgs_r = retrieve_vo_and_pkgs subresults in
+      let vo = vo @ vo_r in
+      Memo.return (build_user_contrib_legacy ~vo ~path:dir ~name:prefix :: subresults)
+    | pkg_file :: [] ->
+      let meta = Rocq_package.of_file ~name:prefix pkg_file in
+      Format.eprintf "TEST: %s\n%!" (Path.to_string dir);
+      Memo.return (build_user_contrib ~vo ~path:dir meta :: subresults)
+    | _ -> assert false
   in
   scan_path ~f ~acc:Rocq_lib_name.append ~prefix:Rocq_lib_name.empty root_path
 ;;
 
 let scan_vo root_path =
   let f ~dir ~prefix:() ~subresults dir_contents =
-    let vo = scan_vo ~dir dir_contents in
+    let vo, _pkgs = scan_vo_and_pkg ~dir dir_contents in
     Memo.return (vo @ subresults)
   in
   let acc _ _ = () in
@@ -165,11 +194,12 @@ let of_rocq_install rocq =
     let rocqlib_path = config_path_exn rocq_config "rocqlib" in
     let* vo = scan_vo rocqlib_path in
     let corelib =
-      { name = Rocq_lib_name.corelib
-      ; path = Path.relative rocqlib_path "theories"
-      ; vo
-      ; corelib = true
-      }
+      Legacy
+        { name = Rocq_lib_name.corelib
+        ; path = Path.relative rocqlib_path "theories"
+        ; vo
+        ; corelib = true
+        }
     in
     let* user_contrib =
       let contrib_path = Path.relative rocqlib_path "user-contrib" in

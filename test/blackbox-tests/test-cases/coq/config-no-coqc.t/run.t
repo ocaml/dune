@@ -62,6 +62,7 @@ We first test the package builds as normal, when both are in scope:
     "_build/install/default/lib/coq/user-contrib/Common/Foo.glob" {"coq/user-contrib/Common/Foo.glob"}
     "_build/install/default/lib/coq/user-contrib/Common/Foo.v" {"coq/user-contrib/Common/Foo.v"}
     "_build/install/default/lib/coq/user-contrib/Common/Foo.vo" {"coq/user-contrib/Common/Foo.vo"}
+    "_build/install/default/lib/coq/user-contrib/Common/rocq-package" {"coq/user-contrib/Common/rocq-package"}
   ]
   libexec: [
     "_build/install/default/lib/example-coq/coq/extracted.cmxs" {"coq/extracted.cmxs"}

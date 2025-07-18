@@ -317,11 +317,10 @@ end = struct
        | Group_root group_root ->
          Is_component_of_a_group_but_not_the_root { stanzas = None; group_root })
     | Some (ctx, st_dir) ->
-      let src_dir = Source_tree.Dir.path st_dir in
       Pkg_rules.lock_dir_path (Context_name.of_string ctx)
       >>| (function
        | None -> false
-       | Some of_ -> Path.Source.is_descendant ~of_ src_dir)
+       | Some of_ -> Path.Build.is_descendant ~of_ dir)
       >>= (function
        | true -> Memo.return Lock_dir
        | false ->

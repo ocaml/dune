@@ -7,7 +7,7 @@ let term =
     Memo.run
     @@
     let open Memo.O in
-    let+ workspace = Workspace.workspace () in
+    let* workspace = Workspace.workspace () in
     let lock_dir_paths =
       Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace
         Pkg_common.Lock_dirs_arg.all
@@ -15,11 +15,12 @@ let term =
     in
     let any_lockdir_exists =
       List.exists lock_dir_paths ~f:(fun lock_dir_path ->
-        Path.exists (Path.source lock_dir_path))
+        Path.exists (Path.build lock_dir_path))
     in
     (* CR-Leonidas-from-XIV: change this logic when we stop detecting lock
        directories in the source tree *)
-    let enabled = any_lockdir_exists || workspace.config.pkg_enabled in
+    let+ lock_dir_enabled = Dune_rules.Lock_dir.enabled in
+    let enabled = any_lockdir_exists || lock_dir_enabled in
     match enabled with
     | true -> ()
     | false -> exit 1)

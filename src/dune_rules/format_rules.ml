@@ -32,11 +32,6 @@ module Alias = struct
 end
 
 module Ocamlformat = struct
-  let dev_tool_lock_dir_exists () =
-    let path = Dune_pkg.Lock_dir.dev_tool_lock_dir_path Ocamlformat in
-    Fs_memo.dir_exists (Path.source path |> Path.as_outside_build_dir_exn)
-  ;;
-
   (* Config files for ocamlformat. When these are changed, running
      `dune fmt` should cause ocamlformat to re-format the ocaml files
      in the project. *)
@@ -129,7 +124,7 @@ let gen_rules_output
   let loc = Format_config.loc config in
   let dir = Path.Build.parent_exn output_dir in
   let alias_formatted = Alias.fmt ~dir:output_dir in
-  let* ocamlformat_is_locked = Ocamlformat.dev_tool_lock_dir_exists () in
+  let* ocamlformat_is_locked = Lock_dir.enabled in
   let setup_formatting file =
     (let input_basename = Path.Source.basename file in
      let input = Path.Build.relative dir input_basename in

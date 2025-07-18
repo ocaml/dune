@@ -722,7 +722,12 @@ let gen_rules ctx ~dir components =
     (* TODO enable when autolocking is not enabled *)
     (* let* () = raise_on_lock_dir_out_of_sync ctx in *)
     let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in
-    let gen_lock_rule = Lock_rules.setup_tmp_lock_alias ~dir ctx in
-    let+ sctx_rules = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
-    Gen_rules.combine (Gen_rules.combine sctx_rules gen_pkg_alias_rule) gen_lock_rule)
+    let* sctx_rules = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
+    let sctx_rules = Gen_rules.combine sctx_rules gen_pkg_alias_rule in
+    let+ lock_dir_enabled = Lock_dir.enabled in
+    match lock_dir_enabled with
+    | false -> sctx_rules
+    | true ->
+      let gen_lock_rule = Lock_rules.setup_tmp_lock_alias ~dir ctx in
+      Gen_rules.combine sctx_rules gen_lock_rule)
 ;;

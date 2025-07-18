@@ -26,6 +26,8 @@ module Dep : sig
   val alias : dir:Stdune.Path.Local.t -> Dune_engine.Alias.Name.t -> t
   val alias_rec : dir:Stdune.Path.Local.t -> Dune_engine.Alias.Name.t -> t
   val to_string_maybe_quoted : t -> string
+  val alias_arg : t conv
+  val alias_rec_arg : t conv
 end
 
 val bytes : int64 conv

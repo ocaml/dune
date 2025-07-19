@@ -1,5 +1,3 @@
-open Stdune
-
 let signals : Signal.t list =
   [ Cont (* restore the terminal after process is resumed *)
   ; Tstp (* to restore the terminal after it's stopped (C-z) *)

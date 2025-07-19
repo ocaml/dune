@@ -32,6 +32,7 @@ module Option = Option
 module Or_exn = Or_exn
 module Ordering = Ordering
 module Flock = Flock
+module Terminal_signals = Terminal_signals
 
 module Pp = struct
   include Pp

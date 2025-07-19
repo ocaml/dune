@@ -1,3 +1,4 @@
+open Stdune
 open Dune_config
 module Display = Dune_engine.Display
 
@@ -45,7 +46,7 @@ let console_backend = function
   | Simple { status_line; _ } ->
     (match status_line with
      | false ->
-       Dune_util.Terminal_signals.unblock ();
+       Terminal_signals.unblock ();
        Dune_console.Backend.dumb
      | true ->
        (match Config.(get threaded_console) with
@@ -53,6 +54,6 @@ let console_backend = function
           Dune_threaded_console.progress
             ~frames_per_second:(Dune_util.frames_per_second ())
         | `Disabled ->
-          Dune_util.Terminal_signals.unblock ();
+          Terminal_signals.unblock ();
           Dune_console.Backend.progress))
 ;;

@@ -1,4 +1,3 @@
-module Execution_env = Execution_env
 module Log = Log
 module Persistent = Persistent
 module Report_error = Report_error
@@ -30,6 +29,6 @@ let xdg =
 let frames_per_second () =
   match Dune_config.Config.(get threaded_console_frames_per_second) with
   | `Custom fps -> fps
-  | `Default when Execution_env.inside_emacs -> 15
+  | `Default when Stdune.Execution_env.inside_emacs -> 15
   | `Default -> 60
 ;;

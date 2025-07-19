@@ -74,16 +74,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Use OCaml ${{ matrix.ocaml-compiler }}
-        uses: ocaml/setup-ocaml@v3
-        with:
-          ocaml-compiler: ${{ matrix.ocaml-compiler }}
-
       # The 32 bit gcc/g++ packages are by default out-of-date so we need to
       # manually update our package listing.
       - name: Update apt package listing
         if: ${{ matrix.apt_update == true }}
         run: sudo apt update
+
+      - name: Use OCaml ${{ matrix.ocaml-compiler }}
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: opam install ./dune.opam --deps-only --with-test

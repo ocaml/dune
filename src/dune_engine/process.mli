@@ -96,8 +96,21 @@ val run
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
   -> ?metadata:metadata
-  -> ?cancel:Fiber.Cancel.t Fiber.Ivar.t
   -> (unit, 'a) Failure_mode.t
+  -> Path.t
+  -> string list
+  -> 'a Fiber.t
+
+val run_with_timeout
+  :  ?dir:Path.t
+  -> display:Display.t
+  -> ?stdout_to:Io.output Io.t
+  -> ?stderr_to:Io.output Io.t
+  -> ?stdin_from:Io.input Io.t
+  -> ?env:Env.t
+  -> ?metadata:metadata
+  -> ?timeout_seconds:float
+  -> ((unit, [ `Timed_out ]) result, 'a) Failure_mode.t
   -> Path.t
   -> string list
   -> 'a Fiber.t

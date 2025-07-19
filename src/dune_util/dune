@@ -1,8 +1,5 @@
 (library
  (name dune_util)
- (foreign_stubs
-  (language c)
-  (names dune_flock))
  (libraries
   stdune
   dune_stats

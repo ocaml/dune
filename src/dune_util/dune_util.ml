@@ -10,7 +10,6 @@ module Build_path_prefix_map = Build_path_prefix_map0
 module Global_lock = Global_lock
 module Action = Action
 module Alias_name = Alias_name
-module Terminal_signals = Terminal_signals
 module Gc = Gc
 open Stdune
 

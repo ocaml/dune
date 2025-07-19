@@ -11,7 +11,6 @@ module Dune_config = struct
   module Pform = Dune_lang.Pform
   module Log = Dune_util.Log
   module Config = Dune_config.Config
-  module Execution_env = Dune_util.Execution_env
 
   (* the configuration file use the same version numbers as dune-project files for
      simplicity *)

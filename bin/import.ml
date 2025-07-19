@@ -21,7 +21,6 @@ include struct
 end
 
 module Cached_digest = Dune_digest.Cached_digest
-module Execution_env = Dune_util.Execution_env
 
 include struct
   open Source

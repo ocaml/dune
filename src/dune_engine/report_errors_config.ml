@@ -1,3 +1,5 @@
+open Import
+
 (** Controls when the errors are reported.
 
     - [Early] - report errors as soon as they are discovered. This means the
@@ -22,7 +24,7 @@ let equal a b =
 ;;
 
 let default : t =
-  match Dune_util.Execution_env.inside_dune with
+  match Execution_env.inside_dune with
   | true -> Deterministic
   | false -> Early
 ;;

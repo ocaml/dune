@@ -33,6 +33,7 @@ module Or_exn = Or_exn
 module Ordering = Ordering
 module Flock = Flock
 module Terminal_signals = Terminal_signals
+module Execution_env = Execution_env
 
 module Pp = struct
   include Pp

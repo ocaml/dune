@@ -12,8 +12,8 @@ val inside_ci : bool
 module Inside_dune : sig
   type t =
     | Yes
-    | In_context of Stdune.Path.Build.t
+    | In_context of Path.Build.t
 
-  val var : Stdune.Env.Var.t
+  val var : Env.Var.t
   val value : t -> string
 end

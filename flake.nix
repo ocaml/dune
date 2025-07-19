@@ -47,9 +47,61 @@
           });
         });
       };
+      # This creates a git repo and creates an annotated tag named after the
+      # current version of dune. This is necessary for the resulting dune
+      # executable to print the correct version in the output of `dune
+      # --version`. The git metadata is not copied to the environment where
+      # this flake is built, so the current tag of the repo can't be known
+      # here. Instead it's assumed that the first word of the first line of the
+      # changelog will be the version number of the current release. The logic
+      # in "dune subst" that determines the output of `dune --version`
+      # determines the version number from git, so we need to create a git repo
+      # containing the code with an annotated tag matching the desired version
+      # number.
+      version-tag-from-changelog = ''
+        VERSION=$(head -n1 CHANGES.md | cut -f1 -d' ')
+        export PATH=${pkgs.git}/bin:$PATH
+        export GIT_COMMITTER_NAME=user GIT_COMMITTER_EMAIL=user@example.com GIT_AUTHOR_NAME=user GIT_AUTHOR_EMAIL=user@example.com
+        git init
+        git add .
+        git commit --allow-empty -m dummy
+        git tag $VERSION -am dummy
+      '';
+      dune-versioned-overlay = self: super: {
+        ocamlPackages = super.ocaml-ng.ocamlPackages_5_3.overrideScope (oself: osuper: {
+          dune_3 = osuper.dune_3.overrideAttrs (a: {
+            src = ./.;
+            preBuild = ''
+              ${version-tag-from-changelog}
+              ocaml boot/bootstrap.ml
+              _boot/dune.exe subst
+            '';
+          });
+        });
+      };
+      dune-static-versioned-overlay = self: super: {
+        ocamlPackages = super.ocaml-ng.ocamlPackages_5_3.overrideScope (oself: osuper: {
+          dune_3 = osuper.dune_3.overrideAttrs (a: {
+            src = ./.;
+            preBuild = ''
+              ${version-tag-from-changelog}
+              ocaml boot/bootstrap.ml --static
+              _boot/dune.exe subst
+            '';
+          });
+        });
+      };
       pkgs-static = nixpkgs.legacyPackages.${system}.appendOverlays [
         ocaml-overlays.overlays.default
         dune-static-overlay
+      ];
+      pkgs-versioned = nixpkgs.legacyPackages.${system}.appendOverlays [
+        ocaml-overlays.overlays.default
+        dune-versioned-overlay
+      ];
+      pkgs-static-versioned = nixpkgs.legacyPackages.${system}.appendOverlays [
+        ocaml-overlays.overlays.default
+        dune-static-versioned-overlay
       ];
 
       add-experimental-configure-flags = pkg: pkg.overrideAttrs {
@@ -133,6 +185,8 @@
         };
         dune = self.packages.${system}.default;
         dune-static = pkgs-static.pkgsCross.musl64.ocamlPackages.dune;
+        dune-versioned = pkgs-versioned.ocamlPackages.dune;
+        dune-static-versioned = pkgs-static-versioned.pkgsCross.musl64.ocamlPackages.dune;
         dune-experimental = add-experimental-configure-flags self.packages.${system}.dune;
         dune-static-experimental = add-experimental-configure-flags self.packages.${system}.dune-static;
       };

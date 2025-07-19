@@ -92,5 +92,40 @@ module Build = struct
   let decl = Decl.Request.make ~method_:"build" ~generations:[ v1; v2 ]
 end
 
+module Promote = struct
+  let on_missing fn =
+    User_warning.emit
+      [ Pp.paragraphf
+          "Nothing to promote for %s."
+          (Stdune.Path.Source.to_string_maybe_quoted fn)
+      ]
+  ;;
+
+  let sexp =
+    let open Conv in
+    let to_ = function
+      | [] -> Promote.Diff_promotion.All
+      | paths -> These (List.map ~f:Stdune.Path.Source.of_string paths, on_missing)
+    in
+    let from = function
+      | Promote.Diff_promotion.All -> []
+      | These (paths, _) -> List.map ~f:Stdune.Path.Source.to_string paths
+    in
+    iso (list Path.sexp) to_ from
+  ;;
+
+  let v1 =
+    Decl.Request.make_current_gen
+      ~req:sexp
+      ~resp:Build_outcome_with_diagnostics.sexp_v2
+      ~version:1
+  ;;
+
+  (* Due to conflict with `Dune_rpc_private.Procedures.Public.promote`,
+     this has to be named something other than "promote". *)
+  let decl = Decl.Request.make ~method_:"promote_but_different" ~generations:[ v1 ]
+end
+
 let build = Build.decl
 let status = Status.decl
+let promote = Promote.decl

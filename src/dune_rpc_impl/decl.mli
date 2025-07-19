@@ -27,3 +27,8 @@ end
 
 val build : (string list, Build_outcome_with_diagnostics.t) Decl.Request.t
 val status : (unit, Status.t) Decl.Request.t
+
+val promote
+  : ( Promote.Diff_promotion.files_to_promote
+      , Build_outcome_with_diagnostics.t )
+      Decl.Request.t

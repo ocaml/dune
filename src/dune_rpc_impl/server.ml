@@ -390,6 +390,15 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
     Handler.implement_request rpc Procedures.Public.diagnostics f
   in
   let () =
+    let f _ files =
+      Promote.Diff_promotion.promote_files_registered_in_last_run files;
+      Fiber.return Build_outcome_with_diagnostics.Success
+    in
+    Handler.implement_request rpc Decl.promote f
+  in
+  (* The two handlers above and below implement the same thing: 'promote',
+     but in two slightly different ways. Maybe one should be removed/deprecated? *)
+  let () =
     let f _ path =
       let files = For_handlers.source_path_of_string path in
       Promote.Diff_promotion.promote_files_registered_in_last_run

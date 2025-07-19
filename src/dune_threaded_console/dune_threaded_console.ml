@@ -67,7 +67,7 @@ let make ~frames_per_second (module Base : S) : (module Dune_console.Backend) =
       Base.start ();
       Dune_engine.Scheduler.spawn_thread
       @@ fun () ->
-      Dune_util.Terminal_signals.unblock ();
+      Terminal_signals.unblock ();
       let last = ref (Unix.gettimeofday ()) in
       let frame_rate = 1. /. float_of_int frames_per_second in
       let cleanup exn =

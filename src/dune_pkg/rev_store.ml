@@ -526,6 +526,7 @@ module At_rev = struct
     ; revision : Object.t
     ; files : File.Set.t
     ; recursive_directory_entries : File.Set.t Path.Local.Table.t
+    ; submodules : Object.t Path.Local.Map.t
     }
 
   let equal x y = Object.equal x.revision y.revision
@@ -656,13 +657,12 @@ module At_rev = struct
 
   let rec of_rev repo ~revision =
     let* files, submodules = files_and_submodules repo revision in
+    let commit_paths = path_commit_map submodules in
     let+ files =
-      let commit_paths = path_commit_map submodules in
       let* submodules = Submodule.parse repo revision in
       (* It's not safe to do a parallel map because adding a remote
          requires getting the lock (which we're now holding) *)
-      submodules
-      |> Fiber.sequential_map ~f:(fun { Submodule.path; source } ->
+      Fiber.sequential_map submodules ~f:(fun { Submodule.path; source } ->
         match Path.Local.Map.find commit_paths path with
         | None ->
           User_error.raise
@@ -715,10 +715,13 @@ module At_rev = struct
         loop (File.path file |> Path.Local.parent));
       recursive_directory_entries
     in
-    { repo; revision; files; recursive_directory_entries }
+    { repo; revision; files; recursive_directory_entries; submodules = commit_paths }
   ;;
 
-  let content { repo; revision; files = _; recursive_directory_entries = _ } path =
+  let content
+        { repo; revision; files = _; recursive_directory_entries = _; submodules = _ }
+        path
+    =
     show repo [ `Path (revision, path) ]
   ;;
 
@@ -748,36 +751,46 @@ module At_rev = struct
         ; revision = Sha1 rev
         ; files = _
         ; recursive_directory_entries = _
+        ; submodules
         }
         ~target
     =
-    (* TODO iterate over submodules to output sources *)
     let git = Lazy.force Vcs.git in
     let temp_dir = Temp_dir.dir_for_target ~target ~prefix:"rev-store" ~suffix:rev in
     Fiber.finalize ~finally:(fun () ->
       let+ () = Fiber.return () in
       Temp.destroy Dir temp_dir)
     @@ fun () ->
-    let archive = Path.relative temp_dir "archive.tar" in
-    let stdout_to = Process.Io.file archive Process.Io.Out in
     let stderr_to = make_stderr () in
-    let* () =
-      let args = [ "archive"; "--format=tar"; rev ] in
-      let+ (), exit_code =
-        Process.run ~dir ~display:Quiet ~stdout_to ~stderr_to ~env failure_mode git args
-      in
-      if exit_code <> 0
-      then Git_error.raise_code_error { dir; args; exit_code; output = [] }
+    let* archives =
+      let all = Path.Local.Map.add_exn submodules Path.Local.root (Sha1 rev) in
+      Path.Local.Map.to_list all
+      |> Fiber.parallel_map ~f:(fun (path, Object.Sha1 rev) ->
+        let archive = Path.relative temp_dir (sprintf "%s.tar" rev) in
+        let stdout_to = Process.Io.file archive Process.Io.Out in
+        let args = [ "archive"; "--format=tar"; rev ] in
+        let+ (), exit_code =
+          Process.run ~dir ~display:Quiet ~stdout_to ~stderr_to ~env failure_mode git args
+        in
+        if exit_code <> 0
+        then Git_error.raise_code_error { dir; args; exit_code; output = [] };
+        path, archive)
     in
     (* We untar things into a temp dir to make sure we don't create garbage
        in the build dir until we know can produce the files *)
     let target_in_temp_dir = Path.relative temp_dir "dir" in
-    Archive_driver.extract Archive_driver.tar ~archive ~target:target_in_temp_dir
-    >>| function
-    | Error () -> User_error.raise [ Pp.text "failed to untar archive created by git" ]
-    | Ok () ->
-      Path.mkdir_p (Path.parent_exn target);
-      Path.rename target_in_temp_dir target
+    let+ () =
+      (* We don't necessarily need to unpack things sequentially, but it's the
+         easiest thing to do *)
+      Fiber.sequential_iter archives ~f:(fun (path, archive) ->
+        let target_in_temp_dir = Path.append_local target_in_temp_dir path in
+        Archive_driver.extract Archive_driver.tar ~archive ~target:target_in_temp_dir
+        >>| function
+        | Error () ->
+          User_error.raise [ Pp.text "failed to untar archive created by git" ]
+        | Ok () -> ())
+    in
+    Path.rename target_in_temp_dir target
   ;;
 end
 

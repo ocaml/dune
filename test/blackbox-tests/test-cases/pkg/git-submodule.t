@@ -42,12 +42,7 @@ not the case and only somerepo is pulled.
 
   $ build_pkg test 2>&1 | sed -E 's|.*/cat|cat|'
   hello
-  File "dune.lock/test.pkg", line 3, characters 33-36:
-  3 | (build (progn (run cat foo) (run cat mysubmodule/bar)))
-                                       ^^^
-  Error: Logs for package test
-  cat: mysubmodule/bar: No such file or directory
-  
+  world
 When the above works it should act like:
 
   $ make_lockdir

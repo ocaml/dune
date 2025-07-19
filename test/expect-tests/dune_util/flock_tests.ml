@@ -1,5 +1,4 @@
 open Stdune
-module Flock = Dune_util.Flock
 
 let%expect_test "blocking lock" =
   let fd = Unix.openfile "tlc1" [ Unix.O_CREAT ] 0o777 in

@@ -877,6 +877,7 @@ let wait_for_process t pid =
 type termination_reason =
   | Normal
   | Cancel
+  | Timeout
 
 (* We use this version privately in this module whenever we can pass the
    scheduler explicitly *)
@@ -1324,19 +1325,25 @@ let inject_memo_invalidation invalidation =
 
 let wait_for_process_with_timeout t pid waiter ~timeout_seconds ~is_process_group_leader =
   Fiber.of_thunk (fun () ->
+    let termination_reason_ivar = Fiber.Ivar.create () in
     let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) ~seconds:timeout_seconds in
     Fiber.fork_and_join_unit
       (fun () ->
-         let+ res = Alarm_clock.await sleep in
-         if res = `Finished && Process_watcher.is_running t.process_watcher pid
-         then
+         Alarm_clock.await sleep
+         >>= function
+         | `Finished when Process_watcher.is_running t.process_watcher pid ->
            if is_process_group_leader
            then kill_process_group pid Sys.sigkill
-           else Unix.kill (Pid.to_int pid) Sys.sigkill)
+           else Unix.kill (Pid.to_int pid) Sys.sigkill;
+           Fiber.Ivar.fill termination_reason_ivar `Timeout
+         | _ -> Fiber.return ())
       (fun () ->
-         let+ res = waiter t pid in
+         let* res, termination_reason = waiter t pid in
          Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
-         res))
+         Fiber.Ivar.peek termination_reason_ivar
+         >>| function
+         | Some `Timeout -> res, Timeout
+         | None -> res, termination_reason))
 ;;
 
 let wait_for_build_process ?timeout_seconds ?(is_process_group_leader = false) pid =
@@ -1353,16 +1360,7 @@ let wait_for_build_process ?timeout_seconds ?(is_process_group_leader = false) p
 ;;
 
 let wait_for_process ?timeout_seconds ?(is_process_group_leader = false) pid =
-  let* t = t () in
-  match timeout_seconds with
-  | None -> wait_for_process t pid
-  | Some timeout_seconds ->
-    wait_for_process_with_timeout
-      t
-      pid
-      wait_for_process
-      ~timeout_seconds
-      ~is_process_group_leader
+  wait_for_build_process ?timeout_seconds ~is_process_group_leader pid >>| fst
 ;;
 
 let sleep ~seconds =

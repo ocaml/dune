@@ -680,6 +680,7 @@ type t =
   ; stderr_on_success : Action_output_on_success.t
   ; stdout_limit : Action_output_limit.t
   ; stderr_limit : Action_output_limit.t
+  ; timeout_seconds : float option
   }
 
 module Result = struct
@@ -857,9 +858,9 @@ let report_process_finished
 
 let set_temp_dir_when_running_actions = ref true
 
-let await { response_file; pid; _ } =
+let await { response_file; pid; timeout_seconds; _ } =
   let+ process_info, termination_reason =
-    Scheduler.wait_for_build_process pid ~is_process_group_leader:true
+    Scheduler.wait_for_build_process ?timeout_seconds pid ~is_process_group_leader:true
   in
   Option.iter response_file ~f:Path.unlink_exn;
   process_info, termination_reason
@@ -874,6 +875,7 @@ let spawn
       ~setpgid
       ~prog
       ~args
+      ~timeout_seconds
       ()
   =
   let stdout_on_success = Io.output_on_success stdout
@@ -975,6 +977,7 @@ let spawn
   ; stderr_on_success
   ; stdout_limit
   ; stderr_limit
+  ; timeout_seconds
   }
 ;;
 
@@ -987,6 +990,7 @@ let run_internal
       ?env
       ?(metadata = default_metadata)
       ?(setpgid = Some Spawn.Pgid.new_process_group)
+      ?timeout_seconds
       fail_mode
       prog
       args
@@ -1019,7 +1023,7 @@ let run_internal
         cmdline
       | _ -> Pp.nop
     in
-    let t =
+    let (t : t) =
       spawn
         ?dir
         ?env
@@ -1029,6 +1033,7 @@ let run_internal
         ~setpgid
         ~prog
         ~args
+        ~timeout_seconds
         ()
     in
     let* () =
@@ -1103,12 +1108,13 @@ let run_internal
             ~has_unexpected_stderr:result.stderr.unexpected_output
       in
       Result.close result;
-      res, times)
+      res, times, `Finished
+    | Timeout -> 0, times, `Timeout)
 ;;
 
 let run ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode prog args
   =
-  let+ run =
+  let+ run, _, _ =
     run_internal
       ?dir
       ~display
@@ -1120,7 +1126,6 @@ let run ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode
       fail_mode
       prog
       args
-    >>| fst
   in
   Failure_mode.map_result fail_mode run ~f:ignore
 ;;
@@ -1137,7 +1142,7 @@ let run_with_times
       prog
       args
   =
-  let+ code, times =
+  let+ code, times, _ =
     run_internal
       ?dir
       ~display
@@ -1153,6 +1158,39 @@ let run_with_times
   Failure_mode.map_result fail_mode code ~f:(fun () -> times)
 ;;
 
+let run_with_timeout
+      ?dir
+      ~display
+      ?stdout_to
+      ?stderr_to
+      ?stdin_from
+      ?env
+      ?metadata
+      ?timeout_seconds
+      fail_mode
+      prog
+      args
+  =
+  let+ code, _, timeout =
+    run_internal
+      ?dir
+      ~display
+      ?stdout_to
+      ?stderr_to
+      ?stdin_from
+      ?env
+      ?metadata
+      ?timeout_seconds
+      fail_mode
+      prog
+      args
+  in
+  Failure_mode.map_result fail_mode code ~f:(fun _ ->
+    match timeout with
+    | `Timeout -> Error `Timed_out
+    | `Finished -> Ok ())
+;;
+
 let run_capture_gen
       ?dir
       ~display
@@ -1166,7 +1204,7 @@ let run_capture_gen
       ~f
   =
   let fn = Temp.create File ~prefix:"dune" ~suffix:"output" in
-  let+ run =
+  let+ run, _, _ =
     run_internal
       ?dir
       ~display
@@ -1178,7 +1216,6 @@ let run_capture_gen
       fail_mode
       prog
       args
-    >>| fst
   in
   Failure_mode.map_result fail_mode run ~f:(fun () ->
     let x = f fn in
@@ -1246,16 +1283,18 @@ let run_inherit_std_in_out =
     { Io.kind = External; fd = lazy fd; channel = lazy ch; status = Keep_open }
   in
   fun ?dir ?env prog args ->
-    run_internal
-      ?dir
-      ?env
-      ~display:Display.Quiet
-      ~stdout_to:(external_ (Out_chan stdout))
-      ~stderr_to:(external_ (Out_chan stderr))
-      ~stdin_from:(external_ (In_chan stdin))
-      ~setpgid:None
-      Return
-      prog
-      args
-    >>| fst
+    let+ run, _, _ =
+      run_internal
+        ?dir
+        ?env
+        ~display:Display.Quiet
+        ~stdout_to:(external_ (Out_chan stdout))
+        ~stderr_to:(external_ (Out_chan stderr))
+        ~stdin_from:(external_ (In_chan stdin))
+        ~setpgid:None
+        Return
+        prog
+        args
+    in
+    run
 ;;

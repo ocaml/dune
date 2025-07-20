@@ -102,6 +102,7 @@ val get : unit -> (t option, 'k) Decoder.parser
     written in dune-project. *)
 val find_extension_args : t -> 'a Extension.t -> 'a option
 
+val find_extension_version : t -> Syntax.t -> Syntax.Version.t option
 val is_extension_set : t -> 'a Extension.t -> bool
 val set_parsing_context : t -> 'a Decoder.t -> 'a Decoder.t
 val implicit_transitive_deps : t -> Ocaml.Version.t -> Implicit_transitive_deps.t

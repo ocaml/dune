@@ -6,18 +6,22 @@ module Output_kind = struct
     | Private_library_or_emit of Path.Build.t
     | Public_library of
         { lib_dir : Path.t
-        ; output_dir : Path.Build.t
+        ; target_dir : Path.Build.t
+        ; output_dir : Path.Local.t
         }
 
   let[@ocaml.warning "-32"] to_dyn t =
     match t with
     | Private_library_or_emit dir ->
       Dyn.variant "Private_library_or_emit" [ Path.Build.to_dyn dir ]
-    | Public_library { lib_dir; output_dir } ->
+    | Public_library { lib_dir; output_dir; target_dir } ->
       Dyn.variant
         "Public_library"
         [ Dyn.record
-            [ "lib_dir", Path.to_dyn lib_dir; "output_dir", Path.Build.to_dyn output_dir ]
+            [ "lib_dir", Path.to_dyn lib_dir
+            ; "output_dir", Path.Local.to_dyn output_dir
+            ; "target_dir", Path.Build.to_dyn target_dir
+            ]
         ]
   ;;
 end
@@ -26,8 +30,11 @@ let output_of_lib =
   let public_lib ~info ~target_dir lib_name =
     Output_kind.Public_library
       { lib_dir = Lib_info.src_dir info
+      ; target_dir
       ; output_dir =
-          Path.Build.L.relative target_dir [ "node_modules"; Lib_name.to_string lib_name ]
+          Path.Local.relative
+            (Path.Local.of_string "node_modules")
+            (Lib_name.to_string lib_name)
       }
   in
   fun ~target_dir lib ->
@@ -55,7 +62,8 @@ let make_js_name ~js_ext ~output m =
   let dst_dir =
     let src_dir = Module.file m ~ml_kind:Impl |> Option.value_exn |> Path.parent_exn in
     match output with
-    | Output_kind.Public_library { lib_dir; output_dir } ->
+    | Output_kind.Public_library { lib_dir; target_dir; output_dir } ->
+      let output_dir = Path.Build.append_local target_dir output_dir in
       lib_output_path ~output_dir ~lib_dir src_dir
     | Private_library_or_emit target_dir ->
       Path.Build.append_source
@@ -431,14 +439,17 @@ module Runtime_deps = struct
              Lib_file_deps.eval ~expander ~loc ~paths:Allow_all dep_conf)
       in
       match output with
-      | Output_kind.Public_library { lib_dir; output_dir } ->
+      | Output_kind.Public_library { lib_dir; target_dir; output_dir } ->
         Path.Set.fold ~init:empty deps ~f:(fun src ({ copy; deps = _ } as acc) ->
           let copy =
             match Path.as_external src with
-            | None -> (src, lib_output_path ~output_dir ~lib_dir src) :: copy
+            | None ->
+              let output_dir = Path.Build.append_local target_dir output_dir in
+              (src, lib_output_path ~output_dir ~lib_dir src) :: copy
             | Some src_e ->
               (match Path.as_external lib_dir with
                | Some lib_dir_e when Path.External.is_descendant src_e ~of_:lib_dir_e ->
+                 let output_dir = Path.Build.append_local target_dir output_dir in
                  (src, lib_output_path ~output_dir ~lib_dir src) :: copy
                | Some _ | None -> raise_external_dep_error src ~for_)
           in

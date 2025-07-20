@@ -352,7 +352,7 @@ let setup_emit_cmj_rules
     let stdlib_dir = (Compilation_context.ocaml cctx).lib_config.stdlib_dir in
     let+ () =
       let emit_and_libs_deps =
-        let target_dir = Path.Build.relative dir mel.target in
+        let target_dir = Melange_stanzas.Emit.target_dir ~dir mel in
         let module_systems = mel.module_systems in
         let open Action_builder.O in
         let+ () =
@@ -684,7 +684,8 @@ let setup_js_rules_libraries_and_entries
 
 let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
   let target_dir =
-    Melange_stanzas.Emit.target_dir ~dir:(Dir_contents.dir dir_contents) mel
+    let dir = Dir_contents.dir dir_contents in
+    Melange_stanzas.Emit.target_dir ~dir mel
   in
   let mode =
     match mel.promote with

@@ -110,6 +110,7 @@ jobs:
         run: opam exec -- make test-windows
         if: ${{ matrix.os == 'windows-latest' && matrix.skip_test == false }}
 
+      # We never build configurator
       - name: Build configurator
         run: opam install ./dune-configurator.opam
         if: ${{ matrix.configurator == true }}

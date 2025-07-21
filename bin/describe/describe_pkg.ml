@@ -3,11 +3,11 @@ module Lock_dir = Dune_pkg.Lock_dir
 module Local_package = Dune_pkg.Local_package
 
 module Show_lock = struct
-  let print_lock lock_dir_arg () =
+  let print_lock ctx_name lock_dir_arg () =
     let open Fiber.O in
     let* lock_dir_paths =
       Memo.run (Workspace.workspace ())
-      >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dir_arg
+      >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace ctx_name lock_dir_arg
     in
     Fiber.parallel_map lock_dir_paths ~f:(fun lock_dir_path ->
       let+ platform = Pkg_common.solver_env_from_system_and_context ~lock_dir_path in
@@ -28,10 +28,11 @@ module Show_lock = struct
 
   let term =
     let+ builder = Common.Builder.term
+    and+ ctx_name = Common.context_arg ~doc:"Build context to use."
     and+ lock_dir_arg = Pkg_common.Lock_dirs_arg.term in
     let builder = Common.Builder.forbid_builds builder in
     let common, config = Common.init builder in
-    Scheduler.go_with_rpc_server ~common ~config @@ print_lock lock_dir_arg
+    Scheduler.go_with_rpc_server ~common ~config @@ print_lock lock_dir_arg ctx_name
   ;;
 
   let command =
@@ -120,8 +121,10 @@ module List_locked_dependencies = struct
     |> Pp.vbox
   ;;
 
-  let enumerate_lock_dirs_by_path workspace ~lock_dirs =
-    let lock_dirs = Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs workspace in
+  let enumerate_lock_dirs_by_path ctx_name workspace ~lock_dirs =
+    let lock_dirs =
+      Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs ctx_name workspace
+    in
     List.filter_map lock_dirs ~f:(fun lock_dir_path ->
       if Path.exists (Path.build lock_dir_path)
       then (
@@ -137,12 +140,12 @@ module List_locked_dependencies = struct
       else None)
   ;;
 
-  let list_locked_dependencies ~transitive ~lock_dirs () =
+  let list_locked_dependencies ~transitive ctx_name ~lock_dirs () =
     let open Fiber.O in
     let* lock_dirs_by_path, local_packages =
       let open Memo.O in
       Memo.both
-        (Workspace.workspace () >>| enumerate_lock_dirs_by_path ~lock_dirs)
+        (Workspace.workspace () >>| enumerate_lock_dirs_by_path ctx_name ~lock_dirs)
         Pkg_common.find_local_packages
       |> Memo.run
     in
@@ -184,8 +187,9 @@ module List_locked_dependencies = struct
     and+ lock_dirs = Pkg_common.Lock_dirs_arg.term in
     let builder = Common.Builder.forbid_builds builder in
     let common, config = Common.init builder in
+    let ctx_name = Option.value ~default:Context_name.default @@ Common.x common in
     Scheduler.go_with_rpc_server ~common ~config
-    @@ list_locked_dependencies ~transitive ~lock_dirs
+    @@ list_locked_dependencies ~transitive ctx_name ~lock_dirs
   ;;
 
   let command = Cmd.v info term

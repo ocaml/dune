@@ -143,6 +143,11 @@ let select_lock_dir lock_dir_selection =
   Workspace.Lock_dir_selection.eval lock_dir_selection ~dir:Path.Build.root ~f:expander
 ;;
 
+let default_path ctx_name =
+  let dir = Context_name.build_dir ctx_name in
+  Path.Build.relative dir "dune.lock"
+;;
+
 let enabled =
   match !Clflags.ignore_lock_dir with
   | true -> Memo.return false
@@ -159,10 +164,11 @@ let get_path ctx =
       | false -> None
       | true -> Some ctx')
   with
-  | None -> Memo.return (Some default_path)
   | Some (Default { lock_dir = Some lock_dir_selection; _ }) ->
     select_lock_dir lock_dir_selection >>| Option.some
-  | Some (Default { lock_dir = None; _ }) -> Memo.return (Some default_path)
+  | Some (Default { lock_dir = None; _ }) | None ->
+    let default_path = default_path ctx in
+    Memo.return (Some default_path)
   | Some (Opam _) -> Memo.return None
 ;;
 

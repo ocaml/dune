@@ -10,6 +10,7 @@ val of_dev_tool : Dune_pkg.Dev_tool.t -> t Memo.t
 val lock_dir_active : Context_name.t -> bool Memo.t
 val get_path : Context_name.t -> Path.Build.t option Memo.t
 val enabled : bool Memo.t
+val default_path : Context_name.t -> Path.Build.t
 
 module Sys_vars : sig
   type t =

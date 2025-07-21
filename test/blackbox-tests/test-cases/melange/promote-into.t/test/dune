@@ -1,0 +1,7 @@
+(melange.emit
+ (modules test)
+ (alias dist)
+ (emit_stdlib false)
+ (promote (until-clean))
+ (runtime_deps snapshots/0.js)
+ (target dist))

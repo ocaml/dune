@@ -5,6 +5,7 @@ type t =
   | Odoc
   | Ocamllsp
   | Utop
+  | Ocamlearlybird
 
 val to_dyn : t -> Dyn.t
 val all : t list

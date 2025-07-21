@@ -333,7 +333,7 @@ let project_pins =
     Pin.DB.combine_exn acc pins)
 ;;
 
-let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir =
+let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ctx_name ~portable_lock_dir =
   let open Fiber.O in
   let* solver_env_from_current_system =
     poll_solver_env_from_current_system () >>| Option.some
@@ -347,7 +347,7 @@ let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir
     workspace, local_packages, project_pins
   in
   let lock_dirs =
-    Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
+    Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg ctx_name workspace
   in
   solve
     workspace
@@ -363,6 +363,7 @@ let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir
 let term =
   let+ builder = Common.Builder.term
   and+ version_preference = Version_preference.term
+  and+ ctx_name = Common.context_arg ~doc:"Build context to use."
   and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term
   and+ print_perf_stats = Arg.(value & flag & info [ "print-perf-stats" ]) in
   let builder = Common.Builder.forbid_builds builder in
@@ -373,7 +374,7 @@ let term =
       | `Enabled -> true
       | `Disabled -> false
     in
-    lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir)
+    lock ~version_preference ~lock_dirs_arg ~print_perf_stats ctx_name ~portable_lock_dir)
 ;;
 
 let info =

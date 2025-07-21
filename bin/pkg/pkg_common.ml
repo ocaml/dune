@@ -195,9 +195,10 @@ module Lock_dirs_arg = struct
        All)
   ;;
 
-  let lock_dirs_of_workspace t (workspace : Workspace.t) =
+  let lock_dirs_of_workspace t ctx_name (workspace : Workspace.t) =
+    let default_path = Dune_rules.Lock_dir.default_path ctx_name in
     let workspace_lock_dirs =
-      Lock_dir.default_path
+      default_path
       :: List.map workspace.lock_dirs ~f:(fun (lock_dir : Workspace.Lock_dir.t) ->
         lock_dir.path)
       |> Path.Build.Set.of_list
@@ -205,7 +206,7 @@ module Lock_dirs_arg = struct
     in
     match t with
     | All -> workspace_lock_dirs
-    | Selected [] -> [ Lock_dir.default_path ]
+    | Selected [] -> [ default_path ]
     | Selected chosen_lock_dirs ->
       let workspace_lock_dirs_set = Path.Build.Set.of_list workspace_lock_dirs in
       let chosen_lock_dirs_set = Path.Build.Set.of_list chosen_lock_dirs in

@@ -25,9 +25,19 @@ We create two parameters, on public, the other one local.
   $ dune build $(target_cmi "bar")
   $ dune build $(target_cmi "foo")
 
-We implement the parameter using a library.
+We implements the parameter using library calling a wrong parameter name.
 
   $ rm -rf _build
+  $ make_dir_with_dune "foo_impl" <<EOF
+  > (library
+  >  (name foo_impl)
+  >  (implements missing_foo))
+  > EOF
+  $ dune build
+
+We implement the parameter using a library with a correct parameter this time.
+
+  $ rm -rf _build foo_impl
   $ make_dir_with_dune "foo_impl" <<EOF
   > (library
   >  (name foo_impl)

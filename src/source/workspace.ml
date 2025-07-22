@@ -891,7 +891,11 @@ let step1 clflags =
          Path.Source.root
        | Some (In_source_dir s) -> s)
   in
-  let lock_dir_root = Path.Build.root in
+  let lock_dir_root =
+    (* TODO: figure out the context name from the right place *)
+    let ctx_name = Context_name.default in
+    Context_name.build_dir ctx_name
+  in
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
   let superpose_with_command_line cl field =
     let+ x = field in

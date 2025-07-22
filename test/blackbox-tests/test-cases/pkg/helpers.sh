@@ -13,6 +13,8 @@ dune="dune"
 
 pkg_root="_build/_private/default/.pkg"
 
+default_lock_dir="_build/default/dune.lock"
+
 build_pkg() {
   $dune build $pkg_root/$1/target/
 }

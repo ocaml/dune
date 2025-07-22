@@ -45,6 +45,12 @@ fail with the correct error message.
   >  (implements missing_foo))
   > EOF
   $ dune build
+  File "foo_impl/dune", line 3, characters 13-24:
+  3 |  (implements missing_foo))
+                   ^^^^^^^^^^^
+  Error: Library "missing_foo" not found.
+  -> required by alias default
+  [1]
 
 We implements the parameter using library calling a wrong parameter name.
 
@@ -55,6 +61,12 @@ We implements the parameter using library calling a wrong parameter name.
   >  (implements missing_foo))
   > EOF
   $ dune build
+  File "foo_impl/dune", line 3, characters 13-24:
+  3 |  (implements missing_foo))
+                   ^^^^^^^^^^^
+  Error: Library "missing_foo" not found.
+  -> required by alias default
+  [1]
 
 We implement the parameter using a library with a correct parameter this time.
 

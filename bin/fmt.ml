@@ -51,7 +51,7 @@ let run_fmt_command ~builder =
       ~config
       lock_held_by
       (Rpc_common.fire_request ~name:"format" ~wait:true Dune_rpc_impl.Decl.format)
-      ()
+      (Option.value_exn (Common.Builder.promote builder))
 ;;
 
 let command =

@@ -93,9 +93,22 @@ module Build = struct
 end
 
 module Format = struct
+  let sexp : Dune_engine.Clflags.Promote.t Conv.value =
+    let open Conv in
+    let auto =
+      constr "Automatically" unit (fun () -> Dune_engine.Clflags.Promote.Automatically)
+    in
+    let never = constr "Never" unit (fun () -> Dune_engine.Clflags.Promote.Never) in
+    sum
+      [ econstr auto; econstr never ]
+      (function
+        | Dune_engine.Clflags.Promote.Automatically -> case () auto
+        | Never -> case () never)
+  ;;
+
   let v1 =
     Decl.Request.make_current_gen
-      ~req:Conv.unit
+      ~req:sexp
       ~resp:Build_outcome_with_diagnostics.sexp_v2
       ~version:1
   ;;

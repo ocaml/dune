@@ -15,7 +15,7 @@ val create
 
 type 'build_arg pending_action_kind =
   | Build of 'build_arg list
-  | Format
+  | Format of Dune_engine.Clflags.Promote.t
 
 (** This type allows the build request handler to be defined externally to the
     RPC server. The [outcome] ivar is expected to be filled with the outcome of

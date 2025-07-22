@@ -97,7 +97,7 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
          match kind with
          | Build targets ->
            Target.interpret_targets (Common.root common) config setup targets
-         | Format ->
+         | Format promote ->
            let request (setup : Import.Main.build_system) =
              let dir = Path.(relative root) (Common.prefix_target common ".") in
              Alias.in_dir
@@ -107,7 +107,14 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
                dir
              |> Alias.request
            in
-           request setup
+           (match promote with
+            | Never -> request setup
+            | Automatically ->
+              (* Highly sketchy code right here *)
+              let previous = !Dune_engine.Clflags.promote in
+              Dune_engine.Clflags.promote := Some Automatically;
+              Action_builder.map (request setup) ~f:(fun () ->
+                Dune_engine.Clflags.promote := previous))
        in
        run_build_system ~common ~request, outcome)
 ;;

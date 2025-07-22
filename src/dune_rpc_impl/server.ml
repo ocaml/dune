@@ -110,7 +110,7 @@ end
 
 type 'build_arg pending_action_kind =
   | Build of 'build_arg list
-  | Format
+  | Format of Dune_engine.Clflags.Promote.t
 
 type 'build_arg pending_action =
   { kind : 'build_arg pending_action_kind
@@ -353,7 +353,9 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
       let targets = List.map targets ~f:server.parse_build_arg in
       Build targets)
   in
-  let () = implement_request_pending_action Decl.format ~f:(fun () -> Format) in
+  let () =
+    implement_request_pending_action Decl.format ~f:(fun promote -> Format promote)
+  in
   let () =
     let rec cancel_pending_jobs () =
       match Job_queue.pop_internal (Fdecl.get t).pending_jobs with

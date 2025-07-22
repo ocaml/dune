@@ -249,7 +249,9 @@ let solve_lock_dir
             User_message.Style.Success
             (Pp.textf
                "Solution for %s:"
-               (lock_dir_path |> Path.Build.local |> Path.Local.to_string_maybe_quoted))
+               (lock_dir_path
+                |> Path.Build.drop_build_context_exn
+                |> Path.Source.to_string_maybe_quoted))
           :: (match Lock_dir.Packages.to_pkg_list lock_dir.packages with
               | [] ->
                 Pp.tag User_message.Style.Warning @@ Pp.text "(no dependencies to lock)"

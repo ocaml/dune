@@ -1,7 +1,7 @@
 (library
  (name dune_pkg_unit_tests)
  (inline_tests
-  (deps tar-inputs/plaintext.md tarball.tar.gz %{bin:git}))
+  (deps tar-inputs/plaintext.md tarball.tar.gz %{bin:git} %{bin:curl}))
  (libraries
   dune_tests_common
   stdune

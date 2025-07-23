@@ -66,7 +66,7 @@ let make_local_package_wrapping_dev_tool ~dev_tool ~dev_tool_version ~extra_depe
   }
 ;;
 
-let solve ~dev_tool ~local_packages =
+let solve ctx_name ~dev_tool ~local_packages =
   let open Memo.O in
   let* solver_env_from_current_system =
     Pkg_common.poll_solver_env_from_current_system ()
@@ -79,7 +79,7 @@ let solve ~dev_tool ~local_packages =
       Workspace.add_repo workspace Dune_pkg.Pkg_workspace.Repository.binary_packages
     | `Disabled -> workspace
   in
-  let lock_dir = Lock_dir.dev_tool_lock_dir_path dev_tool in
+  let lock_dir = Lock_dir.dev_tool_lock_dir_path ctx_name dev_tool in
   Memo.of_reproducible_fiber
   @@ Lock.solve
        workspace
@@ -171,9 +171,9 @@ let extra_dependencies dev_tool =
     [ constraint_ ]
 ;;
 
-let lockdir_status dev_tool =
+let lockdir_status ctx_name dev_tool =
   let open Memo.O in
-  let dev_tool_lock_dir = Lock_dir.dev_tool_lock_dir_path dev_tool in
+  let dev_tool_lock_dir = Lock_dir.dev_tool_lock_dir_path ctx_name dev_tool in
   match Lock_dir.read_disk dev_tool_lock_dir with
   | Error _ -> Memo.return `No_lockdir
   | Ok { packages; _ } ->
@@ -205,14 +205,14 @@ let lockdir_status dev_tool =
                   ]))))
 ;;
 
-(* [lock_dev_tool_at_version dev_tool version] generates the lockdir for the
-   dev tool [dev_tool]. If [version] is [Some v] then version [v] of the tool
-   will be chosen by the solver. Otherwise the solver is free to choose the
-   appropriate version of the tool to install. *)
-let lock_dev_tool_at_version dev_tool version =
+(* [lock_dev_tool_at_version ctx_name dev_tool version] generates the lockdir
+   for the dev tool [dev_tool]. If [version] is [Some v] then version [v] of
+   the tool will be chosen by the solver. Otherwise the solver is free to
+   choose the appropriate version of the tool to install. *)
+let lock_dev_tool_at_version ctx_name dev_tool version =
   let open Memo.O in
   let* need_to_solve =
-    lockdir_status dev_tool
+    lockdir_status ctx_name dev_tool
     >>| function
     | `Lockdir_ok -> false
     | `No_lockdir -> true
@@ -238,17 +238,17 @@ let lock_dev_tool_at_version dev_tool version =
         ~extra_dependencies
     in
     let local_packages = Package_name.Map.singleton local_pkg.name local_pkg in
-    solve ~dev_tool ~local_packages
+    solve ctx_name ~dev_tool ~local_packages
   else Memo.return ()
 ;;
 
-let lock_ocamlformat () =
+let lock_ocamlformat ctx_name () =
   let version = Dune_pkg.Ocamlformat.version_of_current_project's_ocamlformat_config () in
-  lock_dev_tool_at_version Ocamlformat version
+  lock_dev_tool_at_version ctx_name Ocamlformat version
 ;;
 
-let lock_dev_tool dev_tool =
+let lock_dev_tool ctx_name dev_tool =
   match (dev_tool : Dune_pkg.Dev_tool.t) with
-  | Ocamlformat -> lock_ocamlformat ()
-  | other -> lock_dev_tool_at_version other None
+  | Ocamlformat -> lock_ocamlformat ctx_name ()
+  | other -> lock_dev_tool_at_version ctx_name other None
 ;;

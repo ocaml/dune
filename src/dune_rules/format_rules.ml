@@ -146,20 +146,22 @@ let gen_rules_output
      in
      format_action format ~ocamlformat_is_locked ~input ~output ~expander kind
      |> Memo.bind ~f:(fun rule ->
+       let open Memo.O in
+       let* sctx = sctx in
        if ocamlformat_is_locked
        then (
          let { Action_builder.With_targets.build; targets } = rule in
+         let ctx_name = sctx |> Super_context.context |> Context.name in
          let build =
            let open Action_builder.O in
            let+ build = build
-           and+ env = Action_builder.of_memo (Pkg_rules.dev_tool_env Ocamlformat) in
+           and+ env =
+             Action_builder.of_memo (Pkg_rules.dev_tool_env ctx_name Ocamlformat)
+           in
            Action.Full.add_env env build
          in
          Rule.make ~mode:Standard ~targets build |> Rules.Produce.rule)
-       else
-         let open Memo.O in
-         let* sctx = sctx in
-         Super_context.add_rule sctx ~mode:Standard ~loc ~dir rule)
+       else Super_context.add_rule sctx ~mode:Standard ~loc ~dir rule)
      >>> add_diff loc alias_formatted ~input:(Path.build input) ~output)
     |> Memo.Option.iter ~f:Fun.id
   in

@@ -144,7 +144,9 @@ let utop_findlib_conf = Filename.concat utop_dir_basename "findlib.conf"
 (* The lib directory of the utop package and of each of its dependencies within
    the _build directory (or the toolchains directory in the case of the OCaml
    compiler). *)
-let utop_ocamlpath = Memo.Lazy.create (fun () -> Pkg_rules.dev_tool_ocamlpath Utop)
+let utop_ocamlpath ctx_name =
+  Memo.Lazy.create (fun () -> Pkg_rules.dev_tool_ocamlpath ctx_name Utop)
+;;
 
 (* Creates a rule that generates a custom findlib.conf containing the path to
    the utop library as well as all of its dependencies in the _build directory
@@ -162,7 +164,8 @@ let findlib_conf sctx ~dir =
     Memo.return ()
   | true ->
     let path = Path.Build.relative dir utop_findlib_conf in
-    let* ocamlpath = Memo.Lazy.force utop_ocamlpath in
+    let ctx_name = sctx |> Super_context.context |> Context.name in
+    let* ocamlpath = Memo.Lazy.force (utop_ocamlpath ctx_name) in
     let findlib_path =
       String.concat (ocamlpath |> List.map ~f:Path.to_absolute_filename) ~sep:":"
     in
@@ -176,7 +179,8 @@ let lib_db sctx ~dir =
   match lock_dir_enabled with
   | false -> Memo.return (Scope.libs scope)
   | true ->
-    let* ocamlpath = Memo.Lazy.force utop_ocamlpath in
+    let ctx_name = sctx |> Super_context.context |> Context.name in
+    let* ocamlpath = Memo.Lazy.force (utop_ocamlpath ctx_name) in
     Lib.DB.of_paths (Super_context.context sctx) ~paths:ocamlpath
     >>| Lib.DB.with_parent ~parent:(Some (Scope.libs scope))
 ;;

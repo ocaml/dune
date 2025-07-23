@@ -12,13 +12,12 @@ let man =
 
 let info = Cmd.info "utop" ~doc ~man
 
-let lock_utop_if_dev_tool_enabled ~common ~config =
+let lock_utop_if_dev_tool_enabled ctx_name ~common ~config =
   match Lazy.force Lock_dev_tool.is_enabled with
   | false -> ()
   | true ->
     Scheduler.go_with_rpc_server ~common ~config (fun () ->
-      Memo.run (Lock_dev_tool.lock_dev_tool Utop))
-;;
+      Memo.run (Lock_dev_tool.lock_dev_tool ctx_name Utop))
 
 let term =
   let+ builder = Common.Builder.term
@@ -30,7 +29,7 @@ let term =
   if not (Path.is_directory (Path.of_string dir))
   then User_error.raise [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
   let env, utop_path =
-    lock_utop_if_dev_tool_enabled ~common ~config;
+    lock_utop_if_dev_tool_enabled ctx_name ~common ~config;
     Scheduler.go_with_rpc_server ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
@@ -53,7 +52,6 @@ let term =
             [ Pp.textf "no library is defined in %s" (String.maybe_quoted dir) ]
         | true ->
           let* () = Build_system.build_file utop_exe in
-          let () = lock_utop_if_dev_tool_enabled ~common ~config in
           let* lock_dir_enabled = Dune_rules.Lock_dir.enabled in
           let* () =
             if lock_dir_enabled

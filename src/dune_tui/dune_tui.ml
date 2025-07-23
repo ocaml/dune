@@ -72,6 +72,28 @@ module Message_viewer = struct
     | Some l -> max l w
   ;;
 
+  let message_filename =
+    let+ messages = Lwd.get messages in
+    fun index ->
+      let open Option.O in
+      let* message = List.nth messages index in
+      let loc = message.loc |> Option.value ~default:Loc.none in
+      if Loc.is_none loc
+      then
+        if User_message.has_embedded_location message
+        then (* try to extract location *)
+          User_message.pp message
+          |> Format.asprintf "%a" Pp.to_fmt
+          |> Ocamlc_loc.parse_raw
+          (* We only go to the first location, because we don't have a good way
+             of separating the locations in the message later. *)
+          |> List.find_map ~f:(function
+            | `Loc { Ocamlc_loc.path; _ } -> Some path
+            | _ -> None)
+        else None
+      else Some (Loc.start loc).Lexing.pos_fname
+  ;;
+
   (* Here we crop the message horizontally so that the first line will fit in
      the synopsis. The only issue here is that we don't know the real width of
      the first line but only the width of the message as a whole. This means if
@@ -97,13 +119,25 @@ module Message_viewer = struct
         else I.(cropped_image </> I.char A.empty ' ' img_width 1)
   ;;
 
+  (* CR alizter: We lose control of mouse events after this maneuver. *)
+  let open_editor file_to_open =
+    let (_ : int option) =
+      let open Option.O in
+      let* file = file_to_open in
+      let+ editor = Env.get Env.initial "EDITOR" in
+      String.concat ~sep:" " [ editor; file ] |> Sys.command
+    in
+    `Handled
+  ;;
+
   (* This is a line that shows the total number of messages and the message count used
      for separating messages. It also has a handler for clicks that minimizes the
      message. *)
   let horizontal_line_with_count total index =
     let+ is_hidden = Lwd.get is_message_hidden
     and+ w = max_message_length
-    and+ synopsis = Lwd.app (message_synopsis ~attr:helper_attr) (Lwd.return index) in
+    and+ synopsis = Lwd.app (message_synopsis ~attr:helper_attr) (Lwd.return index)
+    and+ file_to_open = Lwd.app message_filename (Lwd.return index) in
     let index_is_hidden = is_hidden index in
     let status =
       I.hcat
@@ -138,6 +172,7 @@ module Message_viewer = struct
     in
     let mouse_handler ~x ~y = function
       | `Left when 0 <= x && x < 3 && y = 0 -> toggle_minimize ()
+      | `Left when 3 <= x && y = 0 -> open_editor file_to_open
       | _ -> `Unhandled
     in
     Ui.atom
@@ -153,10 +188,16 @@ module Message_viewer = struct
      collapse the message. *)
   let line_separated_message ~total index msg =
     let+ horizontal_line_with_count = horizontal_line_with_count total index
-    and+ toggle = Lwd.app (Lwd.get is_message_hidden) (Lwd.return index) in
+    and+ toggle = Lwd.app (Lwd.get is_message_hidden) (Lwd.return index)
+    and+ file_to_open = Lwd.app message_filename (Lwd.return index) in
     if toggle
     then horizontal_line_with_count
-    else Ui.vcat [ horizontal_line_with_count; Ui.atom msg ]
+    else (
+      let mouse_handler ~x:_ ~y:_ = function
+        | `Left -> open_editor file_to_open
+        | _ -> `Unhandled
+      in
+      Ui.vcat [ horizontal_line_with_count; Ui.atom msg |> Ui.mouse_area mouse_handler ])
   ;;
 
   (* We take all the messages in the console and display them as

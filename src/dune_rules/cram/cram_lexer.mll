@@ -8,11 +8,13 @@ let eol = '\n' | eof
 
 let blank = [' ' '\t' '\r' '\012']
 
+let indent = "  " | "\t"
+
 rule block = parse
   | eof { None }
-  | "  $ " ([^'\n']* as str) eol
+  | indent "$ " ([^'\n']* as str) eol
     { Some (command_cont [str] lexbuf) }
-  | "  " [^'\n']* eol
+  | indent [^'\n']* eol
     { output [] lexbuf }
   | ' '? as str eol
     { comment [str] lexbuf }
@@ -40,17 +42,17 @@ and output maybe_comment = parse
     }
   | ' ' eof
     { Some (Comment (List.rev (" " :: maybe_comment))) }
-  | "  "? eof
+  | indent? eof
     { None }
-  | "  " eol
+  | indent eol
     { output [] lexbuf }
   | ' '? as s eol
     { output (s :: maybe_comment) lexbuf }
-  | "  $" eol
+  | indent "$" eol
     { output [] lexbuf }
-  | "  " '$' [^' ' '\n'] [^'\n']* eol
+  | indent "$" [^' ' '\n'] [^'\n']* eol
     { output [] lexbuf }
-  | "  " [^'$' '\n'] [^'\n']* eol
+  | indent [^'$' '\n'] [^'\n']* eol
     { output [] lexbuf }
   | ""
     { match maybe_comment with
@@ -59,9 +61,9 @@ and output maybe_comment = parse
     }
 
 and command_cont acc = parse
-  | "  > " ([^'\n']* as str) eol
+  | indent "> " ([^'\n']* as str) eol
     { command_cont (str :: acc) lexbuf }
-  | "  >" eol
+  | indent ">" eol
     { command_cont ("" :: acc) lexbuf }
   | ""
     { Command (List.rev acc)  }

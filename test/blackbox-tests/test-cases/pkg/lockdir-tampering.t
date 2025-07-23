@@ -103,7 +103,7 @@ Regenerate the lockdir and validate the result.
   - e.0.0.1
   $ dune pkg validate-lockdir
 
-  $ cat dune.lock/b.pkg
+  $ cat ${default_lock_dir}/b.pkg
   (version 0.0.2)
 Change the version of a dependency by modifying its lockfile.
   $ cat >dune.lock/b.pkg <<EOF

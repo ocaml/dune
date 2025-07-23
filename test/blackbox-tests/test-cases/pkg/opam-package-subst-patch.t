@@ -23,7 +23,7 @@ Make a package with a substs and patches field field
 
 The lockfile should contain the substitute and patch actions.
 
-  $ cat dune.lock/with-substs-and-patches.pkg 
+  $ cat ${default_lock_dir}/with-substs-and-patches.pkg 
   (version 0.0.1)
   
   (build

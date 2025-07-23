@@ -60,7 +60,7 @@ Checking that the patch files have been copied to the dune.lock dir
   dune.lock/with-patch.files/dir/bar.patch
 
 The lockfile should contain the patch action. 
-  $ cat dune.lock/with-patch.pkg 
+  $ cat ${default_lock_dir}/with-patch.pkg 
   (version 0.0.1)
   
   (build

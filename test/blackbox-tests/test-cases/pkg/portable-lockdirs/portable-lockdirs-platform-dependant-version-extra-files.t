@@ -75,19 +75,19 @@ Solve the project. The solution will contain extra files for both versions of fo
   - foo.2
 
 Verify the contents of the extra files for each version of foo:
-  $ cat dune.lock/foo.1.files/version.txt
+  $ cat ${default_lock_dir}/foo.1.files/version.txt
   version_1
-  $ cat dune.lock/foo.2.files/version.txt
+  $ cat ${default_lock_dir}/foo.2.files/version.txt
   version_2
 
 Build as if we're on linux and verify that the appropriate extra file was copied into _build:
   $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=arm64 DUNE_CONFIG__OS_FAMILY=debian DUNE_CONFIG__OS_DISTRIBUTION=ubuntu DUNE_CONFIG__OS_VERSION=24.11 dune build
-  $ cat _build/default/dune.lock/foo.1.files/version.txt
+  $ cat ${default_lock_dir}/foo.1.files/version.txt
   version_1
 
   $ dune clean
 
 Build as if we're on macos and verify that the appropriate extra file was copied into _build:
   $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=x86_64 DUNE_CONFIG__OS_FAMILY=homebrew DUNE_CONFIG__OS_DISTRIBUTION=homebrew DUNE_CONFIG__OS_VERSION=15.3.1 dune build
-  $ cat _build/default/dune.lock/foo.2.files/version.txt
+  $ cat ${default_lock_dir}/foo.2.files/version.txt
   version_2

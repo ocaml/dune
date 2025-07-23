@@ -30,7 +30,7 @@ Make a package with a patch behind a filter
 
 The lockfile should contain the patch action with the appropriate filter. 
 
-  $ cat dune.lock/with-patch-filter.pkg 
+  $ cat ${default_lock_dir}/with-patch-filter.pkg 
   (version 0.0.1)
   
   (build

@@ -60,7 +60,7 @@ first checksum to the lockfile for this package.
   - with-sha256.0.0.1
   - with-sha512.0.0.1
 
-  $ cat dune.lock/*
+  $ cat ${default_lock_dir}/*
   (lang package 0.1)
   
   (dependency_hash 32180cf311133b30d0b5be2a40c89f43)

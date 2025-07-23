@@ -48,7 +48,7 @@ Create a custom dune-workspace to solve for openbsd.
   Solution for dune.lock:
   - foo.0.0.1
 
-  $ cat dune.lock/lock.dune
+  $ cat ${default_lock_dir}/lock.dune
   (lang package 0.1)
   
   (dependency_hash 36e640fbcda71963e7e2f689f6c96c3e)

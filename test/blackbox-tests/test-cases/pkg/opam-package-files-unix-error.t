@@ -18,8 +18,10 @@ Make a package with a patch
   $ cat >$opam_repo/files/$fname2 <<EOF
   > bar
   > EOF
-We remove the read permissions for dir/
+We remove the read permissions for dir/ making sure to add them back if we exit
+the test.
 
+  $ trap "chmod +r $opam_repo/files/dir" EXIT
   $ chmod -r $opam_repo/files/dir
 
 The error message should have a location for the opam repository.
@@ -35,7 +37,4 @@ This does not currently seem to be the case.
   Error: Unable to read file in opam repository:
   opendir($TESTCASE_ROOT/mock-opam-repository/packages/with-patch/with-patch.0.0.1/files/dir): Permission denied
   [1]
- 
-Make sure to set permissions back so the sandbox can be cleaned up.
 
-  $ chmod +r $opam_repo/files/dir

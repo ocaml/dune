@@ -121,9 +121,9 @@ module Promote = struct
       ~version:1
   ;;
 
-  (* Due to conflict with `Dune_rpc_private.Procedures.Public.promote`,
-     this has to be named something other than "promote". *)
-  let decl = Decl.Request.make ~method_:"promote_but_different" ~generations:[ v1 ]
+  (* Not to be confused with `Dune_rpc_private.Procedures.Public.promote`,
+     this has a more practical type and is only internal to dune. *)
+  let decl = Decl.Request.make ~method_:"promote_many" ~generations:[ v1 ]
 end
 
 let build = Build.decl

@@ -68,7 +68,7 @@ module Apply = struct
         ~config
         lock_held_by
         (Rpc_common.fire_request
-           ~name:"promote_but_different"
+           ~name:"promote_many"
            ~wait:true
            Dune_rpc_impl.Decl.promote)
         files_to_promote

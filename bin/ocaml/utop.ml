@@ -12,10 +12,10 @@ let man =
 
 let info = Cmd.info "utop" ~doc ~man
 
-let lock_utop_if_dev_tool_enabled () =
+let lock_utop_if_dev_tool_enabled ctx_name =
   match Lazy.force Lock_dev_tool.is_enabled with
   | false -> Memo.return ()
-  | true -> Lock_dev_tool.lock_dev_tool Utop
+  | true -> Lock_dev_tool.lock_dev_tool ctx_name Utop
 ;;
 
 let term =
@@ -48,7 +48,7 @@ let term =
              and memoizing whether or not the utop dev tool lockdir exists.
              thus if we generate the lockdir any later than this point, dune
              will not observe the fact that it now exists. *)
-          lock_utop_if_dev_tool_enabled ()
+          lock_utop_if_dev_tool_enabled ctx_name
         in
         Build_system.file_exists utop_exe
         >>= function
@@ -57,7 +57,6 @@ let term =
             [ Pp.textf "no library is defined in %s" (String.maybe_quoted dir) ]
         | true ->
           let* () = Build_system.build_file utop_exe in
-          let () = lock_utop_if_dev_tool_enabled ~common ~config in
           let* lock_dir_enabled = Dune_rules.Lock_dir.enabled in
           let* () =
             if lock_dir_enabled

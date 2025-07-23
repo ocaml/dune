@@ -197,8 +197,8 @@ let get_with_path ctx =
 let get ctx = get_with_path ctx >>| Result.map ~f:snd
 let get_exn ctx = get ctx >>| User_error.ok_exn
 
-let of_dev_tool dev_tool =
-  let path = dev_tool_lock_dir_path dev_tool in
+let of_dev_tool ctx_name dev_tool =
+  let path = dev_tool_lock_dir_path ctx_name dev_tool in
   Load.load_exn path
 ;;
 

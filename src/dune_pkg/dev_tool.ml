@@ -14,12 +14,10 @@ let to_dyn = function
   | Ocamllsp -> Dyn.variant "Ocamllsp" []
   | Utop -> Dyn.variant "Utop" []
   | Ocamlearlybird -> Dyn.variant "Ocamlearlybird" []
+  | Odig -> Dyn.variant "Odig" []
 ;;
 
-let all = [ Ocamlformat; Odoc; Ocamllsp; Utop; Ocamlearlybird ]
-
-
-let all = [ Ocamlformat; Odoc; Ocamllsp; Ocamlearlybird ]
+let all = [ Ocamlformat; Odoc; Ocamllsp; Ocamlearlybird; Odig ]
 
 let equal a b =
   match a, b with
@@ -32,6 +30,7 @@ let equal a b =
   | Utop, Utop -> true
   | Utop, _ | _, Utop -> false
   | Ocamlearlybird, Ocamlearlybird -> true
+  | Odig, Odig -> true
   | _ -> false
 ;;
 
@@ -41,6 +40,7 @@ let package_name = function
   | Ocamllsp -> Package_name.of_string "ocaml-lsp-server"
   | Utop -> Package_name.of_string "utop"
   | Ocamlearlybird -> Package_name.of_string "earlybird"
+  | Odig -> Package_name.of_string "odig"
 ;;
 
 let of_package_name package_name =
@@ -50,6 +50,7 @@ let of_package_name package_name =
   | "ocaml-lsp-server" -> Ocamllsp
   | "utop" -> Utop
   | "earlybird" -> Ocamlearlybird
+  | "odig" -> Odig
   | other -> User_error.raise [ Pp.textf "No such dev tool: %s" other ]
 ;;
 
@@ -59,6 +60,7 @@ let exe_name = function
   | Ocamllsp -> "ocamllsp"
   | Utop -> "utop"
   | Ocamlearlybird -> "ocamlearlybird"
+  | Odig -> "odig"
 ;;
 
 let exe_path_components_within_package t =
@@ -68,6 +70,7 @@ let exe_path_components_within_package t =
   | Ocamllsp -> [ "bin"; exe_name t ]
   | Utop -> [ "bin"; exe_name t ]
   | Ocamlearlybird -> [ "bin"; exe_name t ]
+  | Odig -> ["bin"; exe_name t]
 ;;
 
 let needs_to_build_with_same_compiler_as_project = function
@@ -76,4 +79,5 @@ let needs_to_build_with_same_compiler_as_project = function
   | Ocamllsp -> true
   | Utop -> false
   | Ocamlearlybird -> false
+  | Odig -> true
 ;;

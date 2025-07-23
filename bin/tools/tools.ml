@@ -1,6 +1,6 @@
 open! Import
 
-let all_tools = [ Dune_pkg.Dev_tool.Ocamlformat; Ocamllsp; Ocamlearlybird ]
+let all_tools = [ Dune_pkg.Dev_tool.Ocamlformat; Ocamllsp; Ocamlearlybird; Odig ]
 
 module Exec = struct
   let doc = "Command group for running wrapped tools."

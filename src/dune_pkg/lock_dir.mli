@@ -164,7 +164,6 @@ module Make_load (Io : sig
     val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
     val readdir_with_kinds : Path.Build.t -> (Filename.t * Unix.file_kind) list t
     val with_lexbuf_from_file : Path.Build.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
-    val stats_kind : Path.Build.t -> (File_kind.t, Unix_error.Detailed.t) result t
   end) : sig
   val load : Path.Build.t -> (t, User_message.t) result Io.t
   val load_exn : Path.Build.t -> t Io.t

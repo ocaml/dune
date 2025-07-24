@@ -31,6 +31,7 @@ let has_META_files version = version >= (5, 0, 0)
 let supports_bin_annot_occurrences version = version >= (5, 2, 0)
 let supports_hidden_includes version = version >= (5, 2, 0)
 let add_std_cxx_flag version = version >= (5, 0, 0)
+let supports_cmi_file version = version >= (5, 0, 0)
 
 let supports_oxcaml version =
   let jst = "+jst" in

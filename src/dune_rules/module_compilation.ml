@@ -8,7 +8,16 @@ open Memo.O
    extension is not .ml or when the .ml and .mli are in different directories.
    This flags makes the compiler think there is a .mli file and will the read
    the cmi file rather than create it. *)
-let force_read_cmi source_file = [ "-intf-suffix"; Path.extension source_file ]
+let force_read_cmi ~obj_dir ~version ~src ~cm_kind module_ =
+  match Version.supports_cmi_file version, Lib_mode.of_cm_kind cm_kind with
+  | true, Ocaml _ ->
+    [ "-cmi-file"
+    ; Obj_dir.Module.cm_file_exn obj_dir module_ ~kind:(Lib_mode.Cm_kind.cmi cm_kind)
+      |> Path.Build.drop_build_context_exn
+      |> Path.Source.to_string
+    ]
+  | _ -> [ "-intf-suffix"; Path.extension src ]
+;;
 
 (* Build the cm* if the corresponding source is present, in the case of cmi if
    the mli is not present it is added as additional target to the .cmo
@@ -133,7 +142,7 @@ let build_cm
    let open Memo.O in
    let* extra_args, extra_deps, other_targets =
      if precompiled_cmi
-     then Memo.return (force_read_cmi src, [], [])
+     then Memo.return ([ "-intf-suffix"; Path.extension src ], [], [])
      else (
        (* If we're compiling an implementation, then the cmi is present *)
        let public_vlib_module = Module.kind m = Impl_vmodule in
@@ -155,7 +164,7 @@ let build_cm
           | (Ocaml (Cmo | Cmx) | Melange Cmj), _, _ ->
             let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
             Memo.return
-              ( force_read_cmi src
+              ( force_read_cmi ~obj_dir ~version:ocaml.version ~cm_kind ~src m
               , [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind) ]
               , [] )
           | (Ocaml Cmi | Melange Cmi), _, _ ->

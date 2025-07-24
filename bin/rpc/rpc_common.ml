@@ -108,7 +108,7 @@ let wrap_build_outcome_exn ~print_on_success f args () =
       ]
 ;;
 
-let actually_run_via_rpc ~builder ~common ~config lock_held_by f args =
+let run_via_rpc ~builder ~common ~config lock_held_by f args =
   if not (Common.Builder.equal builder Common.Builder.default)
   then
     User_warning.emit

@@ -62,7 +62,7 @@ module Apply = struct
         let+ () = Fiber.return () in
         Diff_promotion.promote_files_registered_in_last_run files_to_promote)
     | Error lock_held_by ->
-      Rpc_common.actually_run_via_rpc
+      Rpc_common.run_via_rpc
         ~builder
         ~common
         ~config

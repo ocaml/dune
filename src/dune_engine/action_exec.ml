@@ -396,7 +396,7 @@ let exec
       ~build_deps
   =
   let ectx =
-    let metadata = Process.create_metadata ~purpose:(Build_job targets) () in
+    let metadata = Process.create_metadata ~loc:rule_loc ~rule_loc ~purpose:(Build_job targets) () in
     { targets; metadata; context; rule_loc; build_deps }
   and eenv =
     let env =

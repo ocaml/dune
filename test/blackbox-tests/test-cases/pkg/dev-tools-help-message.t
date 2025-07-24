@@ -1,6 +1,15 @@
 Exercise printing the help messages for dev tools commands.
 
-  $ dune tools exec --help
+Disable the pagers, as the command line parser might use a pager from the users
+system which will reformat the output if not specifically requesting `plain`
+output.
+
+  $ export PAGER=false
+  $ export MANPAGER=false
+
+Output the help text:
+
+  $ dune tools exec --help=plain
   NAME
          dune-tools-exec - Command group for running wrapped tools.
   

@@ -397,6 +397,15 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
     Handler.implement_request rpc Decl.promote f
   in
   let () =
+    let f _ path =
+      let files = For_handlers.source_path_of_string path in
+      Promote.Diff_promotion.promote_files_registered_in_last_run
+        (These ([ files ], ignore));
+      Fiber.return ()
+    in
+    Handler.implement_request rpc Dune_rpc_private.Procedures.Public.promote f
+  in
+  let () =
     let f _ () = Fiber.return Path.Build.(to_string root) in
     Handler.implement_request rpc Procedures.Public.build_dir f
   in

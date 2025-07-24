@@ -42,7 +42,7 @@ val wrap_build_outcome_exn
   -> unit Fiber.t
 
 (**  Schedule a fiber to run via RPC, wrapping any errors. *)
-val actually_run_via_rpc
+val run_via_rpc
   :  builder:Common.Builder.t
   -> common:Common.t
   -> config:Dune_config_file.Dune_config.t

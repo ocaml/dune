@@ -198,7 +198,7 @@ let build =
          an RPC server in the background to schedule the fiber which will
          perform the RPC call.
       *)
-      Rpc_common.actually_run_via_rpc
+      Rpc_common.run_via_rpc
         ~builder
         ~common
         ~config

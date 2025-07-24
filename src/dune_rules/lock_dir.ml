@@ -116,14 +116,6 @@ module Load = Make_load (struct
     let with_lexbuf_from_file path ~f =
       path |> Path.build |> Io.Untracked.with_lexbuf_from_file ~f |> return
     ;;
-
-    let stats_kind path =
-      path
-      |> Path.build
-      |> Path.Untracked.stat
-      |> Stdune.Result.map ~f:(fun { Unix.st_kind; _ } -> st_kind)
-      |> return
-    ;;
   end)
 
 let select_lock_dir lock_dir_selection =

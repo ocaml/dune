@@ -18,6 +18,7 @@ let lock_utop_if_dev_tool_enabled ctx_name ~common ~config =
   | true ->
     Scheduler.go_with_rpc_server ~common ~config (fun () ->
       Memo.run (Lock_dev_tool.lock_dev_tool ctx_name Utop))
+;;
 
 let term =
   let+ builder = Common.Builder.term

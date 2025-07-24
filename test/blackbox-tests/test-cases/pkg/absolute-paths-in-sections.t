@@ -4,7 +4,7 @@ Test that section pforms are substituted with absolute paths.
 
   $ make_lockdir
 
-  $ cat >dune.lock/test.pkg <<EOF
+  $ cat > ${default_lock_dir}/test.pkg <<EOF
   > (version 0.0.1)
   > (install (progn
   >  (run echo --prefix %{prefix})

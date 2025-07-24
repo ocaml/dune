@@ -1,6 +1,6 @@
 Create a lock directory that didn't originally exist
 
-  $ cat >dune-workspace <<EOF
+  $ cat > dune-workspace <<EOF
   > (lang dune 3.10)
   > (lock_dir
   >  (repositories mock))

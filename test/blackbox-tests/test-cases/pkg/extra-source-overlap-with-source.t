@@ -4,7 +4,7 @@ file in the package's source.
   $ . ./helpers.sh
   $ make_lockdir
 
-  $ cat > dune.lock/foo.pkg <<EOF
+  $ cat > ${default_lock_dir}/foo.pkg <<EOF
   > (version 1)
   > (source
   >  (copy $PWD/foo-source))

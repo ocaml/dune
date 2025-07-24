@@ -40,7 +40,7 @@ location
 
 We generate the lockfile for the fake compiler
 
-  $ cat > dune.lock/ocaml-base-compiler.pkg << EOF
+  $ cat > ${default_lock_dir}/ocaml-base-compiler.pkg << EOF
   > (version 1)
   > (build
   >  (run ./configure %{prefix}))
@@ -54,7 +54,7 @@ We generate the lock file for the package to demonstrate the variable is
 replaced with the path to the sandbox inside of the path to the non-relocatable
 location.
 
-  $ cat > dune.lock/baz.pkg << EOF
+  $ cat > ${default_lock_dir}/baz.pkg << EOF
   > (version 1)
   > (build
   >  (run sh -exc "echo %{pkg:ocaml-base-compiler:share}"))

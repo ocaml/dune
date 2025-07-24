@@ -17,7 +17,7 @@ Make a package with a substs and patches field field
   $ solve with-substs-and-patches
   Solution for dune.lock:
   - with-substs-and-patches.0.0.1
-  $ cat >>dune.lock/with-substs-and-patches.pkg <<EOF
+  $ cat >> ${default_lock_dir}/with-substs-and-patches.pkg <<EOF
   > (source (copy $PWD/source))
   > EOF
 

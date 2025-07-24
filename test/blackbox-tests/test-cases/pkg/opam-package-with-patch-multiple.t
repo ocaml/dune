@@ -48,7 +48,7 @@ file and the second patches two, one of the files is in a subdirectory.:w
   $ solve with-patch
   Solution for dune.lock:
   - with-patch.0.0.1
-  $ cat >>dune.lock/with-patch.pkg <<EOF
+  $ cat >> ${default_lock_dir}/with-patch.pkg <<EOF
   > (source (copy $PWD/source))
   > EOF
 

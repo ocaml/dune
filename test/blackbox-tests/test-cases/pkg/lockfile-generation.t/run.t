@@ -14,7 +14,7 @@ Helper shell function that generates an opam file for a package:
   > }
 
 Generate a `dune-project` file.
-  $ cat >dune-project <<EOF
+  $ cat > dune-project <<EOF
   > (lang dune 3.8)
   > (package
   >  (name lockfile_generation_test)

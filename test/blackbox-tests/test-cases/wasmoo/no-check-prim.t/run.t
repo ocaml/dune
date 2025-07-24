@@ -18,9 +18,9 @@ Compilation using WasmOO
         ocamlc lib/.x.objs/byte/x.{cmi,cmo,cmt}
   wasm_of_ocaml .js/default/js_of_ocaml-compiler.runtime/jsoo_runtime.wasma
       ocamlopt lib/.x.objs/native/x.{cmx,o}
-        ocamlc bin/.technologic.eobjs/byte/dune__exe__Technologic.{cmi,cmti}
-        ocamlc lib/x.cma
         ocamlc bin/.technologic.eobjs/byte/dune__exe__Z.{cmi,cmo,cmt}
+        ocamlc lib/x.cma
+        ocamlc bin/.technologic.eobjs/byte/dune__exe__Technologic.{cmi,cmti}
   wasm_of_ocaml .js/default/js_of_ocaml/js_of_ocaml.wasma
       ocamlopt lib/x.{a,cmxa}
         ocamlc bin/.technologic.eobjs/byte/dune__exe__Technologic.{cmo,cmt}

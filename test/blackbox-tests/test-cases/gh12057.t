@@ -23,7 +23,7 @@ of the .ml twice.
 
   $ dune build
   File "foo.ml", line 1:
-  Error: The implementation foo.ml does not match the interface foo.ml: 
+  Error: The implementation foo.ml does not match the interface foo.mli: 
          Values do not match: val x : int is not included in val x : unit
          The type int is not compatible with the type unit
          File "foo.mli", line 1, characters 0-12: Expected declaration

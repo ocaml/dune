@@ -7,10 +7,7 @@ open! Import
 val build
   :  wait:bool
   -> Dune_lang.Dep_conf.t list
-  -> ( Dune_rpc_impl.Decl.Build_outcome_with_diagnostics.t
-       , Dune_rpc.Response.Error.t )
-       result
-       Fiber.t
+  -> (Dune_rpc.Build_outcome_with_diagnostics.t, Dune_rpc.Response.Error.t) result Fiber.t
 
 (** dune rpc build command *)
 val cmd : unit Cmdliner.Cmd.t

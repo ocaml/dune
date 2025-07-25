@@ -1,7 +1,7 @@
 open Import
 module Diff_promotion = Promote.Diff_promotion
 
-let files_to_promote ~common files : Diff_promotion.files_to_promote =
+let files_to_promote ~common files : Dune_rpc.Files_to_promote.t =
   match files with
   | [] -> All
   | _ ->
@@ -70,7 +70,7 @@ module Apply = struct
         (Rpc_common.fire_request
            ~name:"promote_many"
            ~wait:true
-           Dune_rpc_impl.Decl.promote)
+           Dune_rpc_private.Procedures.Public.promote_many)
         files_to_promote
   ;;
 

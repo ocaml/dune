@@ -1,7 +1,7 @@
 (library
  (name dune_rpc_private)
  (public_name dune-rpc.private)
- (libraries stdune ordering pp csexp dyn xdg unix)
+ (libraries csexp dyn ocamlc_loc ordering pp stdune unix xdg)
  (synopsis "for internal use only"))
 
 (ocamllex dbus_address)

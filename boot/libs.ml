@@ -164,6 +164,11 @@ let local_libraries =
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }
+  ; { path = "otherlibs/ocamlc-loc/src"
+    ; main_module_name = Some "Ocamlc_loc"
+    ; include_subdirs_unqualified = false
+    ; special_builtin_support = None
+    }
   ; { path = "otherlibs/dune-rpc/private"
     ; main_module_name = Some "Dune_rpc_private"
     ; include_subdirs_unqualified = false
@@ -191,11 +196,6 @@ let local_libraries =
     }
   ; { path = "src/dune_thread_pool"
     ; main_module_name = Some "Dune_thread_pool"
-    ; include_subdirs_unqualified = false
-    ; special_builtin_support = None
-    }
-  ; { path = "otherlibs/ocamlc-loc/src"
-    ; main_module_name = Some "Ocamlc_loc"
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }
@@ -324,11 +324,6 @@ let local_libraries =
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }
-  ; { path = "otherlibs/dune-site/src/private"
-    ; main_module_name = Some "Dune_site_private"
-    ; include_subdirs_unqualified = false
-    ; special_builtin_support = None
-    }
   ; { path = "src/dune_threaded_console"
     ; main_module_name = Some "Dune_threaded_console"
     ; include_subdirs_unqualified = false
@@ -369,13 +364,18 @@ let local_libraries =
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }
-  ; { path = "src/source"
-    ; main_module_name = Some "Source"
+  ; { path = "otherlibs/dune-site/src/private"
+    ; main_module_name = Some "Dune_site_private"
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }
   ; { path = "src/scheme"
     ; main_module_name = Some "Scheme"
+    ; include_subdirs_unqualified = false
+    ; special_builtin_support = None
+    }
+  ; { path = "src/source"
+    ; main_module_name = Some "Source"
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }

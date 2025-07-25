@@ -130,10 +130,6 @@ let group_by_targets db =
        ~f:(List.sort ~compare:(fun (x, _) (y, _) -> Path.Build.compare x y))
 ;;
 
-type files_to_promote =
-  | All
-  | These of Path.Source.t list * (Path.Source.t -> unit)
-
 let do_promote db files_to_promote =
   let by_targets = group_by_targets db in
   let promote_one dst srcs =
@@ -161,7 +157,7 @@ let do_promote db files_to_promote =
           ])
   in
   match files_to_promote with
-  | All ->
+  | Dune_rpc_private.Files_to_promote.All ->
     Path.Source.Map.iteri by_targets ~f:promote_one;
     []
   | These (files, on_missing) ->
@@ -205,7 +201,7 @@ let diff_for_file (file : File.t) =
 
 let filter_db files_to_promote db =
   match files_to_promote with
-  | All -> db
+  | Dune_rpc_private.Files_to_promote.All -> db
   | These (files, on_missing) ->
     List.filter_map files ~f:(fun file ->
       let r = List.find db ~f:(fun (f : File.t) -> Path.Source.equal f.dst file) in

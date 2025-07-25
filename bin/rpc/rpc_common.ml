@@ -1,6 +1,6 @@
 open Import
 module Client = Dune_rpc_client.Client
-module Rpc_error = Dune_rpc_private.Response.Error
+module Rpc_error = Dune_rpc.Response.Error
 
 let active_server () =
   match Dune_rpc_impl.Where.get () with
@@ -28,7 +28,7 @@ let request_exn client witness n =
   let open Fiber.O in
   let* decl = Client.Versioned.prepare_request client witness in
   match decl with
-  | Error e -> raise (Dune_rpc_private.Version_error.E e)
+  | Error e -> raise (Dune_rpc.Version_error.E e)
   | Ok decl -> Client.request client decl n
 ;;
 
@@ -79,8 +79,7 @@ let fire_request ~name ~wait request arg =
   Dune_rpc_impl.Client.client
     connection
     (Dune_rpc.Initialize.Request.create ~id:(Dune_rpc.Id.make (Sexp.Atom name)))
-    ~f:(fun client ->
-      request_exn client (Dune_rpc_private.Decl.Request.witness request) arg)
+    ~f:(fun client -> request_exn client (Dune_rpc.Decl.Request.witness request) arg)
 ;;
 
 let wrap_build_outcome_exn ~print_on_success f args () =
@@ -89,13 +88,13 @@ let wrap_build_outcome_exn ~print_on_success f args () =
   match response with
   | Error (error : Rpc_error.t) ->
     Printf.eprintf "Error: %s\n%!" (Dyn.to_string (Rpc_error.to_dyn error))
-  | Ok Dune_rpc_impl.Decl.Build_outcome_with_diagnostics.Success ->
+  | Ok Dune_rpc.Build_outcome_with_diagnostics.Success ->
     if print_on_success
     then
       Console.print_user_message
         (User_message.make [ Pp.text "Success" |> Pp.tag User_message.Style.Success ])
   | Ok (Failure errors) ->
-    List.iter errors ~f:(fun { Dune_engine.Compound_user_error.main; _ } ->
+    List.iter errors ~f:(fun { Dune_rpc.Compound_user_error.main; _ } ->
       Console.print_user_message main);
     User_error.raise
       [ (match List.length errors with

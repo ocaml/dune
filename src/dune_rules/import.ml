@@ -51,7 +51,6 @@ include struct
   module Sandbox_config = Sandbox_config
   module Sandbox_mode = Sandbox_mode
   module Action = Action
-  module Compound_user_error = Compound_user_error
   module Fs_cache = Fs_cache
   module Process = Process
   module Execution_parameters = Execution_parameters
@@ -62,6 +61,8 @@ include struct
   module Response_file = Response_file
   module Subdir_set = Subdir_set
 end
+
+module Compound_user_error = Dune_rpc_private.Compound_user_error
 
 include struct
   open Ocaml

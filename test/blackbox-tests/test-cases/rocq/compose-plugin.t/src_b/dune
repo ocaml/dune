@@ -1,0 +1,5 @@
+(library
+ (public_name cplugin.ml_plugin_b)
+ (name ml_plugin_b)
+ (flags :standard -rectypes)
+ (libraries ml_plugin_a))

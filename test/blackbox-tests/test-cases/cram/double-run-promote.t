@@ -24,3 +24,12 @@ side-effect should only contain a single "run":
 
   $ cat side-effect
   run
+
+However, if passing --force, we should still be able to re-run cram tests:
+
+  $ dune runtest foo.t --force
+
+There should be two "run"s here, however there is only one:
+  $ cat side-effect
+  run
+

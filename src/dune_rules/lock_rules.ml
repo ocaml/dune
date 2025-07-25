@@ -236,7 +236,7 @@ let project_pins =
     Dune_pkg.Pin.DB.combine_exn acc pins)
 ;;
 
-let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
+let setup_lock_rules ctx_name ~dir ~lock_dir : Gen_rules.result =
   let target = Path.Build.relative dir "content" in
   let rules =
     Rules.collect_unit (fun () ->
@@ -247,7 +247,9 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
       let* workspace = Workspace.workspace () in
       let repos = repositories_of_workspace workspace in
       let constraints, selected_depopts =
-        let lock_dir_path = Path.Build.of_string lock_dir in
+        let lock_dir_path =
+          Path.Build.relative (Context_name.build_dir ctx_name) lock_dir
+        in
         ( constraints_of_workspace ~lock_dir_path workspace
         , depopts_of_workspace ~lock_dir_path workspace )
       in
@@ -281,7 +283,7 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
   Gen_rules.make ~directory_targets rules
 ;;
 
-let setup_rules ~components ~dir =
+let setup_rules ctx_name ~components ~dir =
   match components with
   | [ ".lock" ] ->
     Gen_rules.make
@@ -289,7 +291,7 @@ let setup_rules ~components ~dir =
         (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
       (Memo.return Rules.empty)
     |> Memo.return
-  | [ ".lock"; lock_dir ] -> Memo.return @@ setup_lock_rules ~dir ~lock_dir
+  | [ ".lock"; lock_dir ] -> Memo.return @@ setup_lock_rules ctx_name ~dir ~lock_dir
   | [] ->
     let sub_dirs = [ ".lock" ] in
     let build_dir_only_sub_dirs =

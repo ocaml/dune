@@ -1,11 +1,11 @@
 open Import
 open Pkg_common
 
-let find_outdated_packages ~transitive ~lock_dirs_arg () =
+let find_outdated_packages ~transitive ctx_name ~lock_dirs_arg () =
   let open Fiber.O in
   let+ pps, not_founds =
     let* workspace = Memo.run (Workspace.workspace ()) in
-    Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
+    Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg ctx_name workspace
     |> Fiber.parallel_map ~f:(fun lock_dir_path ->
       (* updating makes sense when checking for outdated packages *)
       let* repos =
@@ -38,7 +38,7 @@ let find_outdated_packages ~transitive ~lock_dirs_arg () =
           ~sep:Pp.space
           [ Pp.textf
               "When checking %s, the following packages:"
-              (Path.Source.to_string_maybe_quoted lock_dir_path)
+              (Path.Build.to_string_maybe_quoted lock_dir_path)
             |> Pp.hovbox
           ; Pp.concat
               ~sep:Pp.space
@@ -72,11 +72,12 @@ let term =
       & info
           [ "transitive" ]
           ~doc:"Check for outdated packages in transitive dependencies")
+  and+ ctx_name = Common.context_arg ~doc:"Build context to use."
   and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
   Scheduler.go_with_rpc_server ~common ~config
-  @@ find_outdated_packages ~transitive ~lock_dirs_arg
+  @@ find_outdated_packages ~transitive ctx_name ~lock_dirs_arg
 ;;
 
 let info =

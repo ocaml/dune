@@ -12,7 +12,7 @@ Make a project:
 Create a lockdir with a package that features some depexts.
 
   $ make_lockdir
-  $ cat > dune.lock/foo.pkg <<EOF
+  $ cat > ${default_lock_dir}/foo.pkg <<EOF
   > (version 0.0.1)
   > (depexts unzip gnupg)
   > EOF

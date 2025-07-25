@@ -31,7 +31,7 @@ someotherrepo as a submodule.
 
   $ mkdir foo && cd foo
   $ make_lockdir
-  $ cat >dune.lock/test.pkg <<EOF
+  $ cat > ${default_lock_dir}/test.pkg <<EOF
   > (version 0.0.1)
   > (source (fetch (url "git+file://$SOMEREPO")))
   > (build (progn (run cat foo) (run cat mysubmodule/bar)))
@@ -46,7 +46,7 @@ not the case and only somerepo is pulled.
 When the above works it should act like:
 
   $ make_lockdir
-  $ cat >dune.lock/test.pkg <<EOF
+  $ cat > ${default_lock_dir}/test.pkg <<EOF
   > (version 0.0.1)
   > (source (fetch (url "git+file://$SOMEREPO")))
   > (build 

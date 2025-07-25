@@ -4,7 +4,7 @@ Use build paths in the install entries of a package
 
   $ make_lockdir
 
-  $ cat >dune.lock/test.pkg <<EOF
+  $ cat > ${default_lock_dir}/test.pkg <<EOF
   > (version 0.0.1)
   > (build
   >  (system "\| cat >test.install <<EOF

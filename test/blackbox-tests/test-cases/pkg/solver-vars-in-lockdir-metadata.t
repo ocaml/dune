@@ -38,13 +38,13 @@ the logic which stores solver vars in lockdir metadata in this case.
   $ solve_all() {
   > 
   >  solve static-deps
-  >  cat dune.lock/lock.dune
+  >  cat ${default_lock_dir}/lock.dune
   > 
   >  solve dynamic-deps
-  >  cat dune.lock/lock.dune
+  >  cat ${default_lock_dir}/lock.dune
   > 
   >  solve dynamic-deps-lazy
-  >  cat dune.lock/lock.dune
+  >  cat ${default_lock_dir}/lock.dune
   > }
 
 Make a workspace file which sets some of the variables.
@@ -136,7 +136,7 @@ stored in the lockdir metadata:
   Solution for dune.lock:
   - filtered-commands.0.0.1
 
-  $ cat dune.lock/filtered-commands.pkg
+  $ cat ${default_lock_dir}/filtered-commands.pkg
   (version 0.0.1)
   
   (install
@@ -146,7 +146,7 @@ stored in the lockdir metadata:
    (progn
     (run echo foo)
     (run echo baz)))
-  $ cat dune.lock/lock.dune
+  $ cat ${default_lock_dir}/lock.dune
   (lang package 0.1)
   
   (dependency_hash e99c6a04197fafe2e8b7153de21bba97)

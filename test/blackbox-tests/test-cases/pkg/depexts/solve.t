@@ -21,7 +21,7 @@ locking would add the opam 'depext' field to foo.pkg
   $ dune pkg lock
   Solution for dune.lock:
   - foo.0.0.1
-  $ cat dune.lock/foo.pkg
+  $ cat ${default_lock_dir}/foo.pkg
   (version 0.0.1)
   
   (depexts unzip gnupg)

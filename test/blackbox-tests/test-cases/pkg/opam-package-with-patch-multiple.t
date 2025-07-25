@@ -48,7 +48,7 @@ file and the second patches two, one of the files is in a subdirectory.:w
   $ solve with-patch
   Solution for dune.lock:
   - with-patch.0.0.1
-  $ cat >>dune.lock/with-patch.pkg <<EOF
+  $ cat >> ${default_lock_dir}/with-patch.pkg <<EOF
   > (source (copy $PWD/source))
   > EOF
 
@@ -60,7 +60,7 @@ Checking that the patch files have been copied to the dune.lock dir
   dune.lock/with-patch.files/dir/bar.patch
 
 The lockfile should contain the patch action. 
-  $ cat dune.lock/with-patch.pkg 
+  $ cat ${default_lock_dir}/with-patch.pkg 
   (version 0.0.1)
   
   (build

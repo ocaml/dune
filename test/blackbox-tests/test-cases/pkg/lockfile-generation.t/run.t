@@ -14,7 +14,7 @@ Helper shell function that generates an opam file for a package:
   > }
 
 Generate a `dune-project` file.
-  $ cat >dune-project <<EOF
+  $ cat > dune-project <<EOF
   > (lang dune 3.8)
   > (package
   >  (name lockfile_generation_test)
@@ -40,7 +40,7 @@ Run the solver and generate a lock directory.
 
 Helper to the name and contents of each file in the lock directory separated by
 "---", sorting by filename for consistency.
-  $ print_all() { find dune.lock -type f | sort | xargs -I{} sh -c "printf '{}:\n\n'; cat {}; printf '\n\n---\n\n'"; }
+  $ print_all() { find ${default_lock_dir} -type f | sort | xargs -I{} sh -c "printf '{}:\n\n'; cat {}; printf '\n\n---\n\n'"; }
 
 Print the contents of each file in the lockdir:
   $ print_all

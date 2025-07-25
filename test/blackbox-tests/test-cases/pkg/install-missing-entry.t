@@ -4,7 +4,7 @@ Test missing entries in the .install file
 
   $ make_lockdir
   $ lockfile() {
-  > cat >dune.lock/test.pkg <<EOF
+  > cat > ${default_lock_dir}/test.pkg <<EOF
   > (version 0.0.1)
   > (build
   >  (system "echo 'lib: [ \"$1\" ]' > test.install"))

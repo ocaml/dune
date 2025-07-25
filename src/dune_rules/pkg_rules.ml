@@ -55,33 +55,34 @@ module Package_universe = struct
      different universes. *)
   type t =
     | Project_dependencies of Context_name.t
-    | Dev_tool of Dune_pkg.Dev_tool.t
+    | Dev_tool of (Dune_pkg.Dev_tool.t * Context_name.t)
 
   let equal a b =
     match a, b with
     | Project_dependencies a, Project_dependencies b -> Context_name.equal a b
-    | Dev_tool a, Dev_tool b -> Dune_pkg.Dev_tool.equal a b
+    | Dev_tool (a, ctx_a), Dev_tool (b, ctx_b) ->
+      Dune_pkg.Dev_tool.equal a b && Context_name.equal ctx_a ctx_b
     | _ -> false
   ;;
 
   let context_name = function
     | Project_dependencies context_name -> context_name
-    | Dev_tool _ ->
+    | Dev_tool (_, ctx_name) ->
       (* Dev tools can only be built in the default context. *)
-      Context_name.default
+      ctx_name
   ;;
 
   let lock_dir t =
     match t with
     | Project_dependencies ctx -> Lock_dir.get_exn ctx
-    | Dev_tool dev_tool -> Lock_dir.of_dev_tool dev_tool
+    | Dev_tool (dev_tool, ctx_name) -> Lock_dir.of_dev_tool ctx_name dev_tool
   ;;
 
   let lock_dir_path t =
     match t with
     | Project_dependencies ctx -> Lock_dir.get_path ctx
-    | Dev_tool dev_tool ->
-      Memo.return (Some (Dune_pkg.Lock_dir.dev_tool_lock_dir_path dev_tool))
+    | Dev_tool (dev_tool, ctx_name) ->
+      Memo.return (Some (Dune_pkg.Lock_dir.dev_tool_lock_dir_path ctx_name dev_tool))
   ;;
 end
 
@@ -140,7 +141,7 @@ module Paths = struct
   let make package_universe name =
     let universe_root =
       match (package_universe : Package_universe.t) with
-      | Dev_tool dev_tool -> Pkg_dev_tool.universe_install_path dev_tool
+      | Dev_tool (dev_tool, _ctx_name) -> Pkg_dev_tool.universe_install_path dev_tool
       | Project_dependencies _ ->
         let build_dir =
           Path.Build.relative
@@ -1148,10 +1149,10 @@ end = struct
           | `System_provided -> None)
         >>| List.filter_opt
       and+ files_dir =
-        let* lock_dir =
+        let+ lock_dir =
           Package_universe.lock_dir_path package_universe >>| Option.value_exn
         in
-        let+ files_dir =
+        let files_dir =
           (* TODO(steve): simplify this once portable lockdirs become the
              default. This logic currently handles both the cases where
              lockdirs are non-portable (the files dir won't have a version
@@ -1165,13 +1166,17 @@ end = struct
           let path_with_version =
             Dune_pkg.Lock_dir.Pkg.files_dir info.name (Some info.version) ~lock_dir
           in
-          let+ path_with_version_exists =
-            Fs_memo.dir_exists
-              (Path.source path_with_version |> Path.as_outside_build_dir_exn)
+          let path_with_version_exists =
+            let dir_exists path =
+              match Path.Untracked.stat path with
+              | Ok { st_kind = Unix.S_DIR; _ } -> true
+              | _ -> false
+            in
+            path_with_version |> Path.build |> dir_exists
           in
           if path_with_version_exists then path_with_version else path_without_version
         in
-        Path.Build.append_source
+        Path.Build.append
           (Context_name.build_dir (Package_universe.context_name package_universe))
           files_dir
       in
@@ -1933,9 +1938,9 @@ let setup_rules ~components ~dir ctx =
   assert (String.equal Pkg_dev_tool.install_path_base_dir_name ".dev-tool");
   match Context_name.is_default ctx, components with
   | true, [ ".dev-tool"; pkg_name; pkg_dep_name ] ->
+    let dev_tool = Package.Name.of_string pkg_name |> Dune_pkg.Dev_tool.of_package_name in
     setup_package_rules
-      ~package_universe:
-        (Dev_tool (Package.Name.of_string pkg_name |> Dune_pkg.Dev_tool.of_package_name))
+      ~package_universe:(Dev_tool (dev_tool, ctx))
       ~dir
       ~pkg_name:pkg_dep_name
   | true, [ ".dev-tool" ] ->
@@ -2053,18 +2058,18 @@ let ocamlpath universe =
 ;;
 
 let project_ocamlpath context = ocamlpath (Project_dependencies context)
-let dev_tool_ocamlpath dev_tool = ocamlpath (Dev_tool dev_tool)
+let dev_tool_ocamlpath ctx_name dev_tool = ocamlpath (Dev_tool (dev_tool, ctx_name))
 let lock_dir_active = Lock_dir.lock_dir_active
 let lock_dir_path = Lock_dir.get_path
 
-let dev_tool_env tool =
+let dev_tool_env ctx_name tool =
   let package_name = Dune_pkg.Dev_tool.package_name tool in
   Memo.push_stack_frame ~human_readable_description:(fun () ->
     Pp.textf
       "lock directory environment for dev tools %S"
       (Package.Name.to_string package_name))
   @@ fun () ->
-  let universe : Package_universe.t = Dev_tool tool in
+  let universe : Package_universe.t = Dev_tool (tool, ctx_name) in
   let* db = DB.get universe in
   Resolve.resolve db (Loc.none, package_name) universe
   >>| function

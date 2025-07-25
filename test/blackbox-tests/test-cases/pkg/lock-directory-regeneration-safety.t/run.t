@@ -1,6 +1,6 @@
 Create a lock directory that didn't originally exist
 
-  $ cat >dune-workspace <<EOF
+  $ cat > dune-workspace <<EOF
   > (lang dune 3.10)
   > (lock_dir
   >  (repositories mock))
@@ -17,7 +17,7 @@ Create a lock directory that didn't originally exist
   $ dune pkg lock
   Solution for dune.lock:
   (no dependencies to lock)
-  $ cat dune.lock/lock.dune
+  $ cat ${default_lock_dir}/lock.dune
   (lang package 0.1)
   
   (repositories
@@ -28,7 +28,7 @@ Re-create a lock directory in the newly created lock dir
   $ dune pkg lock
   Solution for dune.lock:
   (no dependencies to lock)
-  $ cat dune.lock/lock.dune
+  $ cat ${default_lock_dir}/lock.dune
   (lang package 0.1)
   
   (repositories

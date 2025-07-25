@@ -3,6 +3,8 @@ open Stdune
 
 type t
 
+(* [x t] returns the [Context_name.t] of of the cross-compilation context, if
+  there is any *)
 val x : t -> Dune_engine.Context_name.t option
 val capture_outputs : t -> bool
 val root : t -> Workspace_root.t

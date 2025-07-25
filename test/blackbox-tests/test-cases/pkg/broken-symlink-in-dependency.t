@@ -19,13 +19,10 @@ Make a directory to contain a test project and change to it.
   $ cd project
 
 Create a lockdir for the project.
-  $ mkdir dune.lock
-  $ cat > dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ make_lockdir
 
 The package "foo" exercises copying package sources from a local directory.
-  $ cat > dune.lock/foo.pkg <<EOF
+  $ cat > ${default_lock_dir}/foo.pkg <<EOF
   > (version 0.0.1)
   > (source
   >  (fetch
@@ -34,7 +31,7 @@ The package "foo" exercises copying package sources from a local directory.
   > EOF
 
 The package "bar" exercises extracting a source archive from a local file.
-  $ cat > dune.lock/bar.pkg <<EOF
+  $ cat > ${default_lock_dir}/bar.pkg <<EOF
   > (version 0.0.1)
   > (source
   >  (fetch
@@ -43,7 +40,7 @@ The package "bar" exercises extracting a source archive from a local file.
   > EOF
 
 The package "bar" exercises extracting a source archive from a downloaded file.
-  $ cat > dune.lock/baz.pkg <<EOF
+  $ cat > ${default_lock_dir}/baz.pkg <<EOF
   > (version 0.0.1)
   > (source
   >  (fetch

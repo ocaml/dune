@@ -13,7 +13,7 @@ Fetch from more than one source
   > this is baz
   > EOF
 
-  $ cat >dune.lock/test.pkg <<EOF
+  $ cat > ${default_lock_dir}/test.pkg <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/foo))
   > (extra_sources (mybaz (copy $PWD/baz)))

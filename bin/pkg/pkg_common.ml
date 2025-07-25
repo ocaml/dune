@@ -167,7 +167,7 @@ let pp_packages packages = Pp.enumerate packages ~f:pp_package
 module Lock_dirs_arg = struct
   type t =
     | All
-    | Selected of Path.Source.t list
+    | Selected of Path.Build.t list
 
   let all = All
 
@@ -183,7 +183,7 @@ module Lock_dirs_arg = struct
                ~doc:
                  "Lock directories to check for outdated packages. Defaults to dune.lock.")
        in
-       Selected (List.map arg ~f:Path.Source.of_string))
+       Selected (List.map arg ~f:Path.Build.of_string))
       (let+ _all =
          Arg.(
            value
@@ -195,28 +195,29 @@ module Lock_dirs_arg = struct
        All)
   ;;
 
-  let lock_dirs_of_workspace t (workspace : Workspace.t) =
+  let lock_dirs_of_workspace t ctx_name (workspace : Workspace.t) =
+    let default_path = Dune_rules.Lock_dir.default_path ctx_name in
     let workspace_lock_dirs =
-      Lock_dir.default_path
+      default_path
       :: List.map workspace.lock_dirs ~f:(fun (lock_dir : Workspace.Lock_dir.t) ->
         lock_dir.path)
-      |> Path.Source.Set.of_list
-      |> Path.Source.Set.to_list
+      |> Path.Build.Set.of_list
+      |> Path.Build.Set.to_list
     in
     match t with
     | All -> workspace_lock_dirs
-    | Selected [] -> [ Lock_dir.default_path ]
+    | Selected [] -> [ default_path ]
     | Selected chosen_lock_dirs ->
-      let workspace_lock_dirs_set = Path.Source.Set.of_list workspace_lock_dirs in
-      let chosen_lock_dirs_set = Path.Source.Set.of_list chosen_lock_dirs in
-      if Path.Source.Set.is_subset chosen_lock_dirs_set ~of_:workspace_lock_dirs_set
+      let workspace_lock_dirs_set = Path.Build.Set.of_list workspace_lock_dirs in
+      let chosen_lock_dirs_set = Path.Build.Set.of_list chosen_lock_dirs in
+      if Path.Build.Set.is_subset chosen_lock_dirs_set ~of_:workspace_lock_dirs_set
       then chosen_lock_dirs
       else (
         let unknown_lock_dirs =
-          Path.Source.Set.diff chosen_lock_dirs_set workspace_lock_dirs_set
-          |> Path.Source.Set.to_list
+          Path.Build.Set.diff chosen_lock_dirs_set workspace_lock_dirs_set
+          |> Path.Build.Set.to_list
         in
-        let f x = Path.pp (Path.source x) in
+        let f x = Path.pp (Path.build x) in
         User_error.raise
           [ Pp.text
               "The following directories are not lock directories in this workspace:"

@@ -75,8 +75,10 @@ let extract t ~archive ~target =
   let* () = Fiber.return () in
   let command = Lazy.force t.command in
   let prefix = Path.basename target in
-  let suffix = Path.basename archive in
-  let target_in_temp = Temp_dir.dir_for_target ~target ~prefix ~suffix in
+  let target_in_temp =
+    let suffix = Path.basename archive in
+    Temp_dir.dir_for_target ~target ~prefix ~suffix
+  in
   let temp_stderr_path = Temp.create File ~prefix ~suffix:"stderr" in
   Fiber.finalize ~finally:(fun () ->
     Temp.destroy Dir target_in_temp;
@@ -84,10 +86,10 @@ let extract t ~archive ~target =
     Fiber.return ())
   @@ fun () ->
   Path.mkdir_p target_in_temp;
-  let stderr_to = Process.Io.file temp_stderr_path Out in
-  let stdout_to = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit in
-  let args = command.make_args ~archive ~target_in_temp in
   let+ (), exit_code =
+    let stdout_to = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit in
+    let args = command.make_args ~archive ~target_in_temp in
+    let stderr_to = Process.Io.file temp_stderr_path Out in
     Process.run ~display:Quiet ~stdout_to ~stderr_to Return command.bin args
   in
   if exit_code = 0

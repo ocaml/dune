@@ -67,6 +67,8 @@ module Pkg_build_progress = Pkg_build_progress
 module Compile_time = Compile_time
 module Cram_rules = Cram_rules
 module Instrumentation = Instrumentation
+module Sub_system_name = Sub_system_name
+module Sub_system_info = Sub_system_info
 
 module Install_rules = struct
   let install_file = Install_rules.install_file

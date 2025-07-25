@@ -67,6 +67,7 @@ CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
 #include <sys/sendfile.h>
 #include <sys/utsname.h>
 #include <linux/version.h>
+#include <stdio.h>
 
 #define FD_val(value) Int_val(value)
 

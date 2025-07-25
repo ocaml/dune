@@ -36,5 +36,5 @@ let syntax =
   Syntax.create
     ~name:Dune_project.Melange_syntax.name
     ~desc:"the Melange extension"
-    [ (0, 1), `Since (3, 8) ]
+    [ (0, 1), `Since (3, 8); (1, 0), `Since (3, 20) ]
 ;;

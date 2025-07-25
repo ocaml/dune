@@ -200,8 +200,15 @@ let to_dyn
     ]
 ;;
 
-let find_extension_args t key = Univ_map.find t.extension_args key
 let is_extension_set t key = Univ_map.mem t.extension_args key
+
+let find_extension_version t syntax =
+  match Univ_map.find t.parsing_context (Syntax.key syntax) with
+  | None | Some (Inactive _) -> None
+  | Some (Active v) -> Some v
+;;
+
+let find_extension_args t key = Univ_map.find t.extension_args key
 
 include Versioned_file.Make (struct
     type t = Stanza.Parser.t list

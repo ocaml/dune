@@ -12,12 +12,10 @@ let man =
 
 let info = Cmd.info "utop" ~doc ~man
 
-let lock_utop_if_dev_tool_enabled ~common ~config =
+let lock_utop_if_dev_tool_enabled () =
   match Lazy.force Lock_dev_tool.is_enabled with
-  | false -> ()
-  | true ->
-    Scheduler.go_with_rpc_server ~common ~config (fun () ->
-      Memo.run (Lock_dev_tool.lock_dev_tool Utop))
+  | false -> Memo.return ()
+  | true -> Lock_dev_tool.lock_dev_tool Utop
 ;;
 
 let term =
@@ -30,7 +28,6 @@ let term =
   if not (Path.is_directory (Path.of_string dir))
   then User_error.raise [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
   let env, utop_path =
-    lock_utop_if_dev_tool_enabled ~common ~config;
     Scheduler.go_with_rpc_server ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
@@ -46,6 +43,13 @@ let term =
         in
         let utop_exe = utop_target_path Utop.utop_exe in
         let utop_findlib_conf = utop_target_path Utop.utop_findlib_conf in
+        let* () =
+          (* Calling [Build_system.file_exists] has the side effect of checking
+             and memoizing whether or not the utop dev tool lockdir exists.
+             thus if we generate the lockdir any later than this point, dune
+             will not observe the fact that it now exists. *)
+          lock_utop_if_dev_tool_enabled ()
+        in
         Build_system.file_exists utop_exe
         >>= function
         | false ->

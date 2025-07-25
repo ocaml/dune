@@ -92,11 +92,31 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
   in
   Scheduler.Run.poll_passive
     ~get_build_request:
-      (let+ (Build (targets, ivar)) = Dune_rpc_impl.Server.pending_build_action rpc in
+      (let+ { outcome; kind } = Dune_rpc_impl.Server.pending_action rpc in
        let request setup =
-         Target.interpret_targets (Common.root common) config setup targets
+         match kind with
+         | Build targets ->
+           Target.interpret_targets (Common.root common) config setup targets
+         | Format promote ->
+           let request (setup : Import.Main.build_system) =
+             let dir = Path.(relative root) (Common.prefix_target common ".") in
+             Alias.in_dir
+               ~name:Dune_rules.Alias.fmt
+               ~recursive:true
+               ~contexts:setup.contexts
+               dir
+             |> Alias.request
+           in
+           (match promote with
+            | Never -> request setup
+            | Automatically ->
+              (* Highly sketchy code right here *)
+              let previous = !Dune_engine.Clflags.promote in
+              Dune_engine.Clflags.promote := Some Automatically;
+              Action_builder.map (request setup) ~f:(fun () ->
+                Dune_engine.Clflags.promote := previous))
        in
-       run_build_system ~common ~request, ivar)
+       run_build_system ~common ~request, outcome)
 ;;
 
 let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
@@ -139,30 +159,11 @@ let run_build_command ~(common : Common.t) ~config ~request =
 ;;
 
 let build_via_rpc_server ~print_on_success ~targets =
-  let open Fiber.O in
-  let+ response = Rpc.Build.build ~wait:true targets in
-  match response with
-  | Error (error : Dune_rpc_private.Response.Error.t) ->
-    Printf.eprintf
-      "Error: %s\n%!"
-      (Dyn.to_string (Dune_rpc_private.Response.Error.to_dyn error))
-  | Ok Success ->
-    if print_on_success
-    then
-      Console.print_user_message
-        (User_message.make [ Pp.text "Success" |> Pp.tag User_message.Style.Success ])
-  | Ok (Failure errors) ->
-    List.iter errors ~f:(fun { Dune_engine.Compound_user_error.main; _ } ->
-      Console.print_user_message main);
-    User_error.raise
-      [ (match List.length errors with
-         | 0 ->
-           Code_error.raise
-             "Build via RPC failed, but the RPC server did not send an error message."
-             []
-         | 1 -> Pp.textf "Build failed with 1 error."
-         | n -> Pp.textf "Build failed with %d errors." n)
-      ]
+  Rpc_common.wrap_build_outcome_exn
+    ~print_on_success
+    (Rpc.Build.build ~wait:true)
+    targets
+    ()
 ;;
 
 let build =
@@ -217,18 +218,13 @@ let build =
          an RPC server in the background to schedule the fiber which will
          perform the RPC call.
       *)
-      Scheduler.go_without_rpc_server ~common ~config (fun () ->
-        if not (Common.Builder.equal builder Common.Builder.default)
-        then
-          User_warning.emit
-            [ Pp.textf
-                "Your build request is being forwarded to a running Dune instance%s so \
-                 most command-line arguments will be ignored."
-                (match lock_held_by with
-                 | Unknown -> ""
-                 | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
-            ];
-        build_via_rpc_server ~print_on_success:true ~targets)
+      Rpc_common.actually_run_via_rpc
+        ~builder
+        ~common
+        ~config
+        lock_held_by
+        (Rpc.Build.build ~wait:true)
+        targets
     | Ok () ->
       let request setup =
         Target.interpret_targets (Common.root common) config setup targets

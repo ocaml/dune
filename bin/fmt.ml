@@ -7,8 +7,8 @@ let man =
   ; `P
       {|$(b,dune fmt) runs the formatter on the source code. The formatter is
         automatically selected. ocamlformat is used to format OCaml source code
-        (*.ml and *.mli files) and refmt is used to format Reason source code
-        (*.re and *.rei files).|}
+        ( *.ml and *.mli files) and refmt is used to format Reason source code
+        ( *.re and *.rei files).|}
   ; `Blocks Common.help_secs
   ]
 ;;
@@ -26,8 +26,10 @@ let lock_ocamlformat () =
   else Fiber.return ()
 ;;
 
-let run_fmt_command ~(common : Common.t) ~config =
+(* FIXME! everything works with the normal fmt command, but we can't pass the flag --auto-promote that makes fmt worth typing *)
+let run_fmt_command ~builder =
   let open Fiber.O in
+  let common, config = Common.init builder in
   let once () =
     let* () = lock_ocamlformat () in
     let request (setup : Import.Main.build_system) =
@@ -40,7 +42,16 @@ let run_fmt_command ~(common : Common.t) ~config =
     | Ok () -> ()
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
   in
-  Scheduler.go_with_rpc_server ~common ~config once
+  match Dune_util.Global_lock.lock ~timeout:None with
+  | Ok () -> Scheduler.go_with_rpc_server ~common ~config once
+  | Error lock_held_by ->
+    Rpc_common.actually_run_via_rpc
+      ~builder
+      ~common
+      ~config
+      lock_held_by
+      (Rpc_common.fire_request ~name:"format" ~wait:true Dune_rpc_impl.Decl.format)
+      (Option.value_exn (Common.Builder.promote builder))
 ;;
 
 let command =
@@ -60,8 +71,7 @@ let command =
     let builder =
       Common.Builder.set_promote builder (if no_promote then Never else Automatically)
     in
-    let common, config = Common.init builder in
-    run_fmt_command ~common ~config
+    run_fmt_command ~builder
   in
   Cmd.v (Cmd.info "fmt" ~doc ~man ~envs:Common.envs) term
 ;;

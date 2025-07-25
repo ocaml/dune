@@ -9,13 +9,14 @@ include struct
   open Dune_engine
   module Context_name = Context_name
   module Execution_parameters = Execution_parameters
-  module Compound_user_error = Compound_user_error
   module Fs_memo = Fs_memo
   module Build_system = Build_system
   module Fs_cache = Fs_cache
   module Build_context = Build_context
   include No_io
 end
+
+module Compound_user_error = Dune_rpc_private.Compound_user_error
 
 let phys_equal x y = x == y
 

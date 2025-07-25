@@ -21,10 +21,8 @@ let term =
     Rpc_common.fire_request ~name:"build" ~wait Dune_rpc_impl.Decl.build targets
   in
   match response with
-  | Error (error : Dune_rpc_private.Response.Error.t) ->
-    Printf.eprintf
-      "Error: %s\n%!"
-      (Dyn.to_string (Dune_rpc_private.Response.Error.to_dyn error))
+  | Error (error : Dune_rpc.Response.Error.t) ->
+    Printf.eprintf "Error: %s\n%!" (Dyn.to_string (Dune_rpc.Response.Error.to_dyn error))
   | Ok Success -> print_endline "Success"
   | Ok (Failure _) -> print_endline "Failure"
 ;;

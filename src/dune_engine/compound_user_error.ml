@@ -61,9 +61,25 @@ let make_loc ~dir { Ocamlc_loc.path; chars; lines } : Loc.t =
   Loc.create ~start ~stop
 ;;
 
-let parse_output ~dir s =
+(* There are various situations in which we can do something more helpful that
+   the raw output the compiler is able to provide. *)
+let override_report rule_loc report =
+  match (report : Ocamlc_loc.report), (rule_loc : Loc.t option) with
+  | ( { severity = Alert { name = "ocaml_deprecated_auto_include"; _ }
+      ; loc = { path = "_none_"; _ }
+      ; _
+      }
+    , Some rule_loc ) ->
+    { report with
+      loc = { report.loc with path = (Loc.to_lexbuf_loc rule_loc).start.pos_fname }
+    }
+  | _ -> report
+;;
+
+let parse_output ~rule_loc ~dir s =
   Ocamlc_loc.parse s
   |> List.map ~f:(fun (report : Ocamlc_loc.report) ->
+    let report = override_report rule_loc report in
     let make_message (loc, message) =
       let loc = make_loc ~dir loc in
       let message = Pp.verbatim message in

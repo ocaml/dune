@@ -66,6 +66,9 @@ type purpose =
     be attached to error messages. *)
 type metadata =
   { loc : Loc.t option
+  ; rule_loc : Loc.t option
+    (** Location of the rule (usually pointing to a stanza) associated to
+        running a process. *)
   ; annots : User_message.Annots.t
   ; name : string option
     (** name when emitting stats. defaults to the basename of the executable *)
@@ -75,6 +78,7 @@ type metadata =
 
 val create_metadata
   :  ?loc:Loc.t
+  -> ?rule_loc:Loc.t
   -> ?annots:User_message.Annots.t
   -> ?name:string
   -> ?categories:string list

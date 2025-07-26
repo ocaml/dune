@@ -54,7 +54,7 @@ jobs:
           extra_nix_config: |
             extra-substituters = https://anmonteiro.nix-cache.workers.dev
             extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
-      - run: nix develop -i --set-env-var NIX_CI true -c make test
+      - run: nix develop -i -c make test
 
   fmt:
     name: Format

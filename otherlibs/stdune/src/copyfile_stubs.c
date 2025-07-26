@@ -99,7 +99,7 @@ static ssize_t dune_copy_file_range(int in, int out, size_t length) {
   while (length > 0) {
     ret = copy_file_range_fn(in, NULL, out, NULL, length, 0);
     if (ret < 0) {
-      return ret;
+      return dune_sendfile(in, out, length);
     }
     length = length - ret;
   }

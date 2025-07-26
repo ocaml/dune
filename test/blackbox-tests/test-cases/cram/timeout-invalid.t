@@ -37,8 +37,10 @@ Negative values fail immediately.
   > EOF
 
   $ dune test test.t
-  File "test.t", line 1, characters 0-0:
-  Error: Cram test timed out. A time limit of -1.00s has been set in dune:2.
+  File "dune", line 2, characters 10-14:
+  2 |  (timeout -1.0))
+                ^^^^
+  Error: Timeout value must be a non-negative float.
   [1]
 
 Checking some currently accepted float values:
@@ -49,10 +51,25 @@ Checking some currently accepted float values:
   > }
 
   $ test -1
+  File "dune", line 1, characters 15-17:
+  1 | (cram (timeout -1))
+                     ^^
+  Error: Timeout value must be a non-negative float.
+  [1]
   $ test Inf
   $ test +Inf
   $ test -Inf
+  File "dune", line 1, characters 15-19:
+  1 | (cram (timeout -Inf))
+                     ^^^^
+  Error: Timeout value must be a non-negative float.
+  [1]
   $ test nan
+  File "dune", line 1, characters 15-18:
+  1 | (cram (timeout nan))
+                     ^^^
+  Error: Timeout value must be a non-negative float.
+  [1]
   $ test .5
   $ test 0.
   $ test 1.

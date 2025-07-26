@@ -69,7 +69,17 @@ let decode =
          "runtest_alias"
          (Dune_lang.Syntax.since Stanza.syntax (3, 12) >>> located bool)
      and+ timeout =
-       field_o "timeout" (Dune_lang.Syntax.since Stanza.syntax (3, 20) >>> located float)
+       field_o
+         "timeout"
+         (Dune_lang.Syntax.since Stanza.syntax (3, 20)
+          >>> located float
+          >>| fun (loc, t) ->
+          if t >= 0.
+          then loc, t
+          else
+            User_error.raise
+              ~loc
+              [ Pp.text "Timeout value must be a non-negative float." ])
      in
      { loc; alias; deps; enabled_if; locks; applies_to; package; runtest_alias; timeout })
 ;;

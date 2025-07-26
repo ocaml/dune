@@ -8,13 +8,13 @@ open Memo.O
    extension is not .ml or when the .ml and .mli are in different directories.
    This flags makes the compiler think there is a .mli file and will the read
    the cmi file rather than create it. *)
-let force_read_cmi ~obj_dir ~version ~src ~cm_kind module_ =
+let force_read_cmi ~dir ~obj_dir ~version ~src ~cm_kind module_ =
   match Version.supports_cmi_file version, Lib_mode.of_cm_kind cm_kind with
   | true, Ocaml _ ->
     [ "-cmi-file"
     ; Obj_dir.Module.cm_file_exn obj_dir module_ ~kind:(Lib_mode.Cm_kind.cmi cm_kind)
-      |> Path.Build.drop_build_context_exn
-      |> Path.Source.to_string
+      |> Path.build
+      |> Path.reach ~from:(Path.build dir)
     ]
   | _ -> [ "-intf-suffix"; Path.extension src ]
 ;;
@@ -164,7 +164,7 @@ let build_cm
           | (Ocaml (Cmo | Cmx) | Melange Cmj), _, _ ->
             let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
             Memo.return
-              ( force_read_cmi ~obj_dir ~version:ocaml.version ~cm_kind ~src m
+              ( force_read_cmi ~dir ~obj_dir ~version:ocaml.version ~cm_kind ~src m
               , [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind) ]
               , [] )
           | (Ocaml Cmi | Melange Cmi), _, _ ->

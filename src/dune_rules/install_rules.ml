@@ -350,17 +350,20 @@ end = struct
         Path.Build.relative dir (base ^ Foreign_language.header_extension)
         |> make_entry ~loc Lib)
     in
-    let if_ cond f = if cond then f else [] in
     List.rev_concat
       [ sources
       ; melange_runtime_entries
       ; List.rev_map module_files ~f:(fun (sub_dir, file) -> make_entry ?sub_dir Lib file)
-      ; if_ (not is_parameter)
-        @@ List.rev_map lib_files ~f:(fun (section, file) -> make_entry section file)
-      ; if_ (not is_parameter) @@ List.rev_map execs ~f:(make_entry Libexec)
-      ; if_ (not is_parameter) @@ dll_files
-      ; if_ (not is_parameter) @@ install_c_headers
-      ; if_ (not is_parameter) @@ public_headers
+      ; (match is_parameter with
+         | true -> []
+         | false ->
+           List.rev_concat
+             [ List.rev_map lib_files ~f:(fun (section, file) -> make_entry section file)
+             ; List.rev_map execs ~f:(make_entry Libexec)
+             ; dll_files
+             ; install_c_headers
+             ; public_headers
+             ])
       ]
   ;;
 

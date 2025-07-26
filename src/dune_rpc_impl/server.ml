@@ -22,7 +22,6 @@ end
 
 include struct
   open Decl
-  module Build_outcome_with_diagnostics = Build_outcome_with_diagnostics
   module Status = Status
 end
 
@@ -337,7 +336,7 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
       let* () = Job_queue.write server.pending_build_jobs (targets, ivar) in
       let+ build_outcome = Fiber.Ivar.read ivar in
       match (build_outcome : Build_outcome.t) with
-      | Success -> Build_outcome_with_diagnostics.Success
+      | Success -> Dune_rpc_private.Build_outcome_with_diagnostics.Success
       | Failure -> Failure (get_current_diagnostic_errors ())
     in
     Handler.implement_request rpc Decl.build build
@@ -390,13 +389,20 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
     Handler.implement_request rpc Procedures.Public.diagnostics f
   in
   let () =
+    let f _ files =
+      Promote.Diff_promotion.promote_files_registered_in_last_run files;
+      Fiber.return Dune_rpc_private.Build_outcome_with_diagnostics.Success
+    in
+    Handler.implement_request rpc Dune_rpc.Procedures.Public.promote_many f
+  in
+  let () =
     let f _ path =
       let files = For_handlers.source_path_of_string path in
       Promote.Diff_promotion.promote_files_registered_in_last_run
         (These ([ files ], ignore));
       Fiber.return ()
     in
-    Handler.implement_request rpc Procedures.Public.promote f
+    Handler.implement_request rpc Dune_rpc_private.Procedures.Public.promote f
   in
   let () =
     let f _ () = Fiber.return Path.Build.(to_string root) in

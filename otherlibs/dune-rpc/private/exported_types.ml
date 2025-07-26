@@ -703,3 +703,137 @@ module Job = struct
     ;;
   end
 end
+
+module Compound_user_error = struct
+  type t =
+    { main : User_message.t
+    ; related : User_message.t list
+    }
+
+  let create ~main ~related =
+    let () =
+      List.iter related ~f:(fun (related : User_message.t) ->
+        match related.loc with
+        | Some _ -> ()
+        | None ->
+          Code_error.raise
+            "related messages must have locations"
+            [ "related", String (Stdune.User_message.to_string related) ])
+    in
+    { main; related }
+  ;;
+
+  let sexp =
+    let open Conv in
+    let from { main; related } = main, related in
+    let to_ (main, related) = create ~main ~related in
+    let main = field "main" (required User_message.sexp_without_annots) in
+    let related = field "related" (required (list User_message.sexp_without_annots)) in
+    iso (record (both main related)) to_ from
+  ;;
+
+  let to_dyn { main; related } =
+    let open Dyn in
+    record
+      [ "main", string (Stdune.User_message.to_string main)
+      ; "related", (list string) (List.map related ~f:Stdune.User_message.to_string)
+      ]
+  ;;
+
+  let annot =
+    Stdune.User_message.Annots.Key.create ~name:"compound-user-error" (Dyn.list to_dyn)
+  ;;
+
+  let make ~main ~related = create ~main ~related
+
+  let make_loc ~dir { Ocamlc_loc.path; chars; lines } : Stdune.Loc.t =
+    let pos_fname =
+      let dir = Stdune.Path.drop_optional_build_context_maybe_sandboxed dir in
+      Stdune.Path.to_absolute_filename (Stdune.Path.relative dir path)
+    in
+    let pos_lnum_start, pos_lnum_stop =
+      match lines with
+      | Single i -> i, i
+      | Range (i, j) -> i, j
+    in
+    let pos_cnum_start, pos_cnum_stop =
+      match chars with
+      | None -> 0, 0
+      | Some (x, y) -> x, y
+    in
+    let pos = { Lexing.pos_fname; pos_lnum = 0; pos_bol = 0; pos_cnum = 0 } in
+    let start = { pos with pos_lnum = pos_lnum_start; pos_cnum = pos_cnum_start } in
+    let stop = { pos with pos_lnum = pos_lnum_stop; pos_cnum = pos_cnum_stop } in
+    Stdune.Loc.create ~start ~stop
+  ;;
+
+  let parse_output ~dir s =
+    Ocamlc_loc.parse s
+    |> List.map ~f:(fun (report : Ocamlc_loc.report) ->
+      let make_message (loc, message) =
+        let loc = make_loc ~dir loc in
+        let message = Pp.verbatim message in
+        Stdune.User_message.make ~loc [ message ]
+      in
+      let main = make_message (report.loc, report.message) in
+      let related = List.map report.related ~f:make_message in
+      make ~main ~related)
+  ;;
+end
+
+module Build_outcome_with_diagnostics = struct
+  type t =
+    | Success
+    | Failure of Compound_user_error.t list
+
+  let sexp_v1 =
+    let open Conv in
+    let success = constr "Success" unit (fun () -> Success) in
+    let failure = constr "Failure" unit (fun () -> Failure []) in
+    let variants = [ econstr success; econstr failure ] in
+    sum variants (function
+      | Success -> case () success
+      | Failure _ -> case () failure)
+  ;;
+
+  let sexp_v2 =
+    let open Conv in
+    let success = constr "Success" unit (fun () -> Success) in
+    let failure =
+      constr "Failure" (list Compound_user_error.sexp) (fun errors -> Failure errors)
+    in
+    let variants = [ econstr success; econstr failure ] in
+    sum variants (function
+      | Success -> case () success
+      | Failure errors -> case errors failure)
+  ;;
+
+  let sexp = sexp_v2
+end
+
+module Files_to_promote = struct
+  type t =
+    | All
+    | These of Stdune.Path.Source.t list * (Stdune.Path.Source.t -> unit)
+
+  let on_missing fn =
+    Stdune.User_warning.emit
+      [ Pp.paragraphf
+          "Nothing to promote for %s."
+          (Stdune.Path.Source.to_string_maybe_quoted fn)
+      ]
+  ;;
+
+  let sexp =
+    let open Conv in
+    let to_ = function
+      | [] -> All
+      | paths -> These (List.map ~f:Stdune.Path.Source.of_string paths, on_missing)
+    in
+    let from = function
+      | All -> []
+      | These (paths, _) -> List.map ~f:Stdune.Path.Source.to_string paths
+    in
+    iso (list Path.sexp) to_ from
+  ;;
+end

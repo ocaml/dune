@@ -17,6 +17,7 @@ type t =
   | Normal
   | Ppx_deriver of Ppx_args.t
   | Ppx_rewriter of Ppx_args.t
+  | Parameter
 
 val to_dyn : t Dyn.builder
 val equal : t -> t -> bool

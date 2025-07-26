@@ -13,22 +13,44 @@ module Failure_mode = struct
     | Strict : ('a, 'a) t
     | Accept : int Predicate.t -> ('a, ('a, int) result) t
     | Return : ('a, 'a * int) t
+    | Timeout :
+        { timeout_seconds : float option
+        ; failure_mode : ('a, 'b) t
+        }
+        -> ('a, ('b, [ `Timed_out ]) result) t
 
-  let accepted_codes : type a b. (a, b) t -> int -> bool = function
+  let rec accepted_codes : type a b. (a, b) t -> int -> bool = function
     | Strict -> Int.equal 0
     | Accept exit_codes -> fun i -> Predicate.test exit_codes i
     | Return -> fun _ -> true
+    | Timeout { failure_mode; _ } -> accepted_codes failure_mode
   ;;
 
-  let map_result : type a b. (a, b) t -> int -> f:(unit -> a) -> b =
-    fun mode t ~f ->
+  let exit_code_of_result = function
+    | `Finished n -> n
+    | `Timeout -> Code_error.raise "should not return `Timeout" []
+  ;;
+
+  let timeout_seconds : type a b. (a, b) t -> float option = function
+    | Timeout { timeout_seconds; _ } -> timeout_seconds
+    | Strict | Accept _ | Return -> None
+  ;;
+
+  let rec map_result
+    : type a b. (a, b) t -> [ `Timeout | `Finished of int ] -> f:(unit -> a) -> b
+    =
+    fun mode result ~f ->
     match mode with
     | Strict -> f ()
     | Accept _ ->
-      (match t with
+      (match exit_code_of_result result with
        | 0 -> Ok (f ())
        | n -> Error n)
-    | Return -> f (), t
+    | Return -> f (), exit_code_of_result result
+    | Timeout { failure_mode; _ } ->
+      (match result with
+       | `Timeout -> Error `Timed_out
+       | `Finished _ -> Ok (map_result failure_mode result ~f))
   ;;
 end
 
@@ -857,9 +879,9 @@ let report_process_finished
 
 let set_temp_dir_when_running_actions = ref true
 
-let await { response_file; pid; _ } =
+let await ~timeout_seconds { response_file; pid; _ } =
   let+ process_info, termination_reason =
-    Scheduler.wait_for_build_process pid ~is_process_group_leader:true
+    Scheduler.wait_for_build_process ?timeout_seconds pid ~is_process_group_leader:true
   in
   Option.iter response_file ~f:Path.unlink_exn;
   process_info, termination_reason
@@ -1019,7 +1041,7 @@ let run_internal
         cmdline
       | _ -> Pp.nop
     in
-    let t =
+    let (t : t) =
       spawn
         ?dir
         ?env
@@ -1045,7 +1067,9 @@ let run_internal
       in
       Running_jobs.start id t.pid ~description ~started_at:t.started_at
     in
-    let* process_info, termination_reason = await t in
+    let* process_info, termination_reason =
+      await ~timeout_seconds:(Failure_mode.timeout_seconds fail_mode) t
+    in
     let+ () = Running_jobs.stop id in
     let result = Result.make t process_info fail_mode in
     let times =
@@ -1076,6 +1100,7 @@ let run_internal
          we're about to return. *)
       Result.close result;
       raise (Memo.Non_reproducible Scheduler.Run.Build_cancelled)
+    | Timeout -> `Timeout, times
     | Normal ->
       let output = Result.Out.get result.stdout ^ Result.Out.get result.stderr in
       Log.command ~command_line ~output ~exit_status:process_info.status;
@@ -1103,12 +1128,12 @@ let run_internal
             ~has_unexpected_stderr:result.stderr.unexpected_output
       in
       Result.close result;
-      res, times)
+      `Finished res, times)
 ;;
 
 let run ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode prog args
   =
-  let+ run =
+  let+ run, _ =
     run_internal
       ?dir
       ~display
@@ -1120,7 +1145,6 @@ let run ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode
       fail_mode
       prog
       args
-    >>| fst
   in
   Failure_mode.map_result fail_mode run ~f:ignore
 ;;
@@ -1166,7 +1190,7 @@ let run_capture_gen
       ~f
   =
   let fn = Temp.create File ~prefix:"dune" ~suffix:"output" in
-  let+ run =
+  let+ run, _ =
     run_internal
       ?dir
       ~display
@@ -1178,7 +1202,6 @@ let run_capture_gen
       fail_mode
       prog
       args
-    >>| fst
   in
   Failure_mode.map_result fail_mode run ~f:(fun () ->
     let x = f fn in
@@ -1258,4 +1281,5 @@ let run_inherit_std_in_out =
       prog
       args
     >>| fst
+    >>| Failure_mode.exit_code_of_result
 ;;

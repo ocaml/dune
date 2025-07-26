@@ -11,6 +11,7 @@ module Spec = struct
     ; enabled_if : (Expander.t * Blang.t) list
     ; locks : Path.Set.t Action_builder.t
     ; packages : Package.Name.Set.t
+    ; timeout : (Loc.t * float) option
     }
 
   let make_empty ~test_name_alias =
@@ -22,6 +23,7 @@ module Spec = struct
     ; deps = []
     ; sandbox = Sandbox_config.needs_sandboxing
     ; packages = Package.Name.Set.empty
+    ; timeout = None
     }
   ;;
 end
@@ -59,6 +61,7 @@ let test_rule
        ; locks
        ; sandbox
        ; packages = _
+       ; timeout
        } :
         Spec.t)
       (test : (Cram_test.t, error) result)
@@ -131,6 +134,7 @@ let test_rule
               ()
           and+ locks = locks >>| Path.Set.to_list in
           Cram_exec.run
+            ~src:(Path.build script)
             ~dir:
               (Path.build
                  (match test with
@@ -138,6 +142,7 @@ let test_rule
                   | Dir d -> Path.Build.append_source prefix_with d.dir))
             ~script:(Path.build script_sh)
             ~output
+            ~timeout
           |> Action.Full.make ~locks ~sandbox)
          |> Action_builder.with_file_targets ~file_targets:[ output ]
          |> Super_context.add_rule sctx ~dir ~loc
@@ -280,6 +285,12 @@ let rules ~sctx ~dir tests =
                 | Some (p : Package.t) ->
                   Package.Name.Set.add acc.packages (Package.name p)
               in
+              let timeout =
+                Option.merge
+                  acc.timeout
+                  stanza.timeout
+                  ~f:(Ordering.min (fun x y -> Float.compare (snd x) (snd y)))
+              in
               ( runtest_alias
               , { acc with
                   enabled_if
@@ -289,6 +300,7 @@ let rules ~sctx ~dir tests =
                 ; extra_aliases
                 ; packages
                 ; sandbox
+                ; timeout
                 } ))
       in
       let extra_aliases =

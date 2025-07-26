@@ -101,7 +101,7 @@ let build_cm
       ~(phase : Fdo.phase option)
   =
   if force_write_cmi && precompiled_cmi
-  then Code_error.raise "force_read_cmi and precompiled_cmi are mutually exclusive" [];
+  then Code_error.raise "force_write_cmi and precompiled_cmi are mutually exclusive" [];
   let sctx = Compilation_context.super_context cctx in
   let dir = Compilation_context.dir cctx in
   let obj_dir = Compilation_context.obj_dir cctx in

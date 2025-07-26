@@ -6,13 +6,11 @@ open Printf
 
 let min_supported_natively = 4, 08, 0
 
-let keep_generated_files =
+let () =
   let anon s = raise (Arg.Bad (sprintf "don't know what to do with %s\n" s)) in
-  let keep_generated_files = ref false in
   Arg.parse
     [ "-j", Arg.Int ignore, "JOBS Concurrency"
     ; "--verbose", Arg.Unit ignore, " Set the display mode"
-    ; "--keep-generated-files", Arg.Set keep_generated_files, " Keep generated files"
     ; "--debug", Arg.Unit ignore, " Enable various debugging options"
     ; ( "--force-byte-compilation"
       , Arg.Unit ignore
@@ -21,32 +19,11 @@ let keep_generated_files =
     ; "--boot-dir", Arg.String (fun _ -> ()), " set the boot directory"
     ]
     anon
-    "Usage: ocaml bootstrap.ml <options>\nOptions are:";
-  !keep_generated_files
+    "Usage: ocaml bootstrap.ml <options>\nOptions are:"
 ;;
 
-let modules = [ "boot/types"; "boot/libs"; "boot/duneboot" ]
-let duneboot = ".duneboot"
-
-let () =
-  at_exit (fun () ->
-    Array.iter (Sys.readdir "boot") ~f:(fun fn ->
-      let fn = Filename.concat "boot" fn in
-      if Filename.check_suffix fn ".cmi" || Filename.check_suffix fn ".cmo"
-      then (
-        try Sys.remove fn with
-        | Sys_error _ -> ())));
-  if not keep_generated_files
-  then
-    at_exit (fun () ->
-      Array.iter (Sys.readdir ".") ~f:(fun fn ->
-        if
-          String.length fn >= String.length duneboot
-          && String.sub fn ~pos:0 ~len:(String.length duneboot) = duneboot
-        then (
-          try Sys.remove fn with
-          | Sys_error _ -> ())))
-;;
+let main = "boot/duneboot"
+let modules = [ "boot/types"; "boot/libs" ]
 
 let runf fmt =
   ksprintf
@@ -68,13 +45,23 @@ let read_file fn =
   s
 ;;
 
+let script chan =
+  let pwd = Sys.getcwd () in
+  let directive ~directive_name ~module_ =
+    let fn = Filename.concat pwd (module_ ^ ".ml") in
+    fprintf chan "#%s %S;;\n" directive_name fn
+  in
+  List.iter modules ~f:(fun module_ -> directive ~directive_name:"mod_use" ~module_);
+  directive ~directive_name:"use" ~module_:main
+;;
+
 let () =
   let v = Scanf.sscanf Sys.ocaml_version "%d.%d.%d" (fun a b c -> a, b, c) in
   let compiler, which =
     if v >= min_supported_natively
-    then "ocamlc", None
+    then "ocaml", None
     else (
-      let compiler = "ocamlfind -toolchain secondary ocamlc" in
+      let compiler = "ocamlfind -toolchain secondary ocaml" in
       let output_fn, out = Filename.open_temp_file "duneboot" "ocamlfind-output" in
       let n = runf "%s 2>%s" compiler output_fn in
       let s = read_file output_fn in
@@ -96,24 +83,26 @@ let () =
         exit 2);
       compiler, Some "--secondary")
   in
-  let prog, chan = Filename.open_temp_file ~perms:0o777 "dune" "boot.exe" in
-  exit_if_non_zero
-    (runf
-       "%s %s -intf-suffix .dummy -g -o %s -I boot %sunix.cma %s"
-       compiler
-       (* Make sure to produce a self-contained binary as dlls tend to cause
-          issues *)
-       (if v < (4, 10, 1) then "-custom" else "-output-complete-exe")
-       prog
-       (if v >= (5, 0, 0) then "-I +unix " else "")
-       (List.map modules ~f:(fun m -> m ^ ".ml") |> String.concat ~sep:" "));
-  close_out chan;
+  let script =
+    let fname, out = Filename.open_temp_file "duneboot" "main" in
+    script out;
+    close_out out;
+    fname
+  in
   let args = List.tl (Array.to_list Sys.argv) in
   let args =
     match which with
     | None -> args
     | Some x -> x :: args
   in
-  let args = prog :: args in
-  exit (runf "%s" (String.concat ~sep:" " args))
+  let cmd =
+    [ [ compiler ]
+    ; (if v >= (5, 0, 0) then [ "-I"; "+unix" ] else [])
+    ; [ "unix.cma"; script ]
+    ; args
+    ]
+    |> List.concat
+    |> String.concat ~sep:" "
+  in
+  runf "%s" cmd |> exit_if_non_zero
 ;;

@@ -76,9 +76,10 @@ let () =
     then "ocamlc", None
     else (
       let compiler = "ocamlfind -toolchain secondary ocamlc" in
-      let output_fn = duneboot ^ ".ocamlfind-output" in
+      let output_fn, out = Filename.open_temp_file "duneboot" "ocamlfind-output" in
       let n = runf "%s 2>%s" compiler output_fn in
       let s = read_file output_fn in
+      close_out out;
       prerr_endline s;
       if n <> 0 || s <> ""
       then (

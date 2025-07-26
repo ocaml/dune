@@ -77,13 +77,16 @@ val has_META_files : t -> bool
 (** Whether the compiler supports occurrences indexation *)
 val supports_bin_annot_occurrences : t -> bool
 
-(** Whether the compiler supports the -H flag *)
+(** Whether the compiler supports the [-H] flag *)
 val supports_hidden_includes : t -> bool
 
 val add_std_cxx_flag : t -> bool
 
-(* Wheter the compiler supports OxCaml *)
+(* Whether the compiler supports OxCaml *)
 val supports_oxcaml : string -> bool
 
-(* Wether the compiler supports the parametrized library *)
+(* Whether the compiler supports the parametrized library *)
 val supports_parametrized_library : string -> bool
+
+(** Whether the compiler supports the [-cmi-file] flag *)
+val supports_cmi_file : t -> bool

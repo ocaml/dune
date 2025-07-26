@@ -34,7 +34,9 @@ let () =
     Array.iter (Sys.readdir "boot") ~f:(fun fn ->
       let fn = Filename.concat "boot" fn in
       if Filename.check_suffix fn ".cmi" || Filename.check_suffix fn ".cmo"
-      then Sys.remove fn));
+      then (
+        try Sys.remove fn with
+        | Sys_error _ -> ())));
   if not keep_generated_files
   then
     at_exit (fun () ->

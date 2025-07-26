@@ -139,6 +139,7 @@
 
       devShells =
         let
+          INSIDE_NIX = "true";
           makeDuneDevShell =
             { extraBuildInputs ? (pkgs: [ ])
             , meta ? null
@@ -188,11 +189,13 @@
                 lwt
                 patdiff
               ] ++ (extraBuildInputs pkgs'));
+              inherit INSIDE_NIX;
             };
         in
         {
           doc =
             pkgs.mkShell {
+              inherit INSIDE_NIX;
               buildInputs = docInputs;
               meta.description = ''
                 Provides a shell environment suitable for building the Dune
@@ -202,6 +205,7 @@
 
           fmt =
             pkgs.mkShell {
+              inherit INSIDE_NIX;
               nativeBuildInputs = [ ocamlformat ];
               inputsFrom = [ pkgs.dune_3 ];
               meta.description = ''
@@ -226,6 +230,7 @@
             '';
           };
           slim-opam = with pkgs; mkShell {
+            inherit INSIDE_NIX;
             nativeBuildInputs = lib.remove pkgs.ocamlformat (testNativeBuildInputs pkgs);
             buildInputs = lib.optionals stdenv.isDarwin [
               darwin.apple_sdk.frameworks.CoreServices
@@ -238,6 +243,7 @@
 
           coq =
             pkgs.mkShell {
+              inherit INSIDE_NIX;
               nativeBuildInputs = (testNativeBuildInputs pkgs);
               # Coq requires OCaml 4.x
               inputsFrom = [ pkgs.ocaml-ng.ocamlPackages_4_14.dune_3 ];

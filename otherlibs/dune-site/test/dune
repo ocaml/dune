@@ -12,5 +12,5 @@
  (applies_to run_2_9 run)
  (enabled_if
   (and
-   (<> %{os_distribution} nixos)
-   (not %{env:CI=false}))))
+   (not %{env:CI=false})
+   (not %{env:INSIDE_NIX=false}))))

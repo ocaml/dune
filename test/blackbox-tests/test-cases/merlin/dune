@@ -8,7 +8,7 @@
 
 (cram
  (enabled_if
-  (<> %{os_distribution} nixos))
+  (not %{env:INSIDE_NIX=false}))
  (applies_to github4125)
  (deps %{bin:opam}))
 
@@ -25,6 +25,6 @@
 (cram
  (applies_to dialect)
  (enabled_if
-  (<> %{os_distribution} nixos))
+  (not %{env:INSIDE_NIX=false}))
  (deps %{bin:melc})
  (alias runtest-melange))

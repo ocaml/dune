@@ -67,6 +67,7 @@ CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
 #include <sys/sendfile.h>
 #include <sys/utsname.h>
 #include <linux/version.h>
+#include <dlfcn.h>
 #include <stdio.h>
 
 #define FD_val(value) Int_val(value)
@@ -89,10 +90,14 @@ static ssize_t dune_sendfile(int in, int out, size_t length) {
   return length;
 }
 
+typedef ssize_t (*copy_file_range_t)(int, loff_t*, int, loff_t*, size_t, unsigned int);
+
+static copy_file_range_t copy_file_range_fn = NULL;
+
 static ssize_t dune_copy_file_range(int in, int out, size_t length) {
   ssize_t ret;
   while (length > 0) {
-    ret = copy_file_range(in, NULL, out, NULL, length, 0);
+    ret = copy_file_range_fn(in, NULL, out, NULL, length, 0);
     if (ret < 0) {
       return ret;
     }
@@ -117,7 +122,8 @@ static int kernel_version(void) {
 CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
   static ssize_t (*dune_copyfile)(int, int, size_t) = NULL;
   if (dune_copyfile == NULL) {
-    if (kernel_version() < KERNEL_VERSION(5, 19, 0)) {
+    if (kernel_version() < KERNEL_VERSION(5, 19, 0) ||
+        (copy_file_range_fn = (copy_file_range_t)dlsym(NULL, "copy_file_range")) == NULL) {
       dune_copyfile = &dune_sendfile;
     } else {
       dune_copyfile = &dune_copy_file_range;

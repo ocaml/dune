@@ -64,7 +64,13 @@ let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) m
   match cm_kind with
   | Ocaml (Cmi | Cmo | Cmx) | Melange Cmi -> []
   | Melange Cmj ->
-    let bs_package_name, bs_package_output =
+    let melange_extension_version =
+      let scope = Compilation_context.scope cctx in
+      let dune_project = Scope.project scope in
+      Dune_project.find_extension_version dune_project Dune_lang.Melange.syntax
+      |> Option.value_exn
+    in
+    let mel_package_name, mel_package_output =
       let package_output =
         Module.file ~ml_kind:Impl module_ |> Option.value_exn |> Path.parent_exn
       in
@@ -84,15 +90,29 @@ let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) m
           |> Path.Local.to_string
           |> Path.Build.relative build_dir
         in
-        ( [ Command.Args.A "--bs-package-name"; A (Lib_name.to_string lib_name) ]
+        ( [ Command.Args.A
+              (if melange_extension_version >= (1, 0)
+               then "--mel-package-name"
+               else "--bs-package-name")
+          ; A (Lib_name.to_string lib_name)
+          ]
         , Path.build dir )
     in
-    Command.Args.A "--bs-stop-after-cmj"
-    :: A "--bs-package-output"
-    :: Command.Args.Path bs_package_output
-    :: A "--bs-module-name"
-    :: A (Melange.js_basename module_)
-    :: bs_package_name
+    if melange_extension_version >= (1, 0)
+    then
+      Command.Args.A "--mel-stop-after-cmj"
+      :: A "--mel-package-output"
+      :: Command.Args.Path mel_package_output
+      :: A "--mel-module-name"
+      :: A (Melange.js_basename module_)
+      :: mel_package_name
+    else
+      Command.Args.A "--bs-stop-after-cmj"
+      :: A "--bs-package-output"
+      :: Command.Args.Path mel_package_output
+      :: A "--bs-module-name"
+      :: A (Melange.js_basename module_)
+      :: mel_package_name
 ;;
 
 let build_cm

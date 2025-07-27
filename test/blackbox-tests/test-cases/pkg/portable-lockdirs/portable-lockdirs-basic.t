@@ -37,7 +37,7 @@ Create a package that writes a different value to some files depending on the os
   Solution for dune.lock:
   - foo.0.0.1
 
-  $ cat dune.lock/lock.dune
+  $ cat ${default_lock_dir}/lock.dune
   (lang package 0.1)
   
   (dependency_hash 36e640fbcda71963e7e2f689f6c96c3e)
@@ -60,7 +60,7 @@ Create a package that writes a different value to some files depending on the os
    ((arch arm64)
     (os win32)))
 
-  $ cat dune.lock/foo.0.0.1.pkg
+  $ cat ${default_lock_dir}/foo.0.0.1.pkg
   (version 0.0.1)
   
   (build

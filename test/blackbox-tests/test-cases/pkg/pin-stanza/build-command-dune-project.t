@@ -61,7 +61,7 @@ Demonstrate the build command we construct for different types of projects:
   - opam-only.dev
   - template.dev
   $ build_command() {
-  > grep "$1" dune.lock/$2.pkg
+  > grep "$1" "${default_lock_dir}/$2.pkg"
   > }
   $ build_command "(dune)" dune-only
   (dune)

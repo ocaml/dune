@@ -20,7 +20,7 @@ Demonstrate the generation of the lock directory in the presence of "|"
   - b.0.0.1
 Only a1 or a2 should appear but not both.
 
-  $ cat dune.lock/b.pkg
+  $ cat ${default_lock_dir}/b.pkg
   (version 0.0.1)
   
   (depends a1)

@@ -13,6 +13,8 @@ dune="dune"
 
 pkg_root="_build/_private/default/.pkg"
 
+default_lock_dir="_build/default/dune.lock"
+
 build_pkg() {
   $dune build $pkg_root/$1/target/
 }
@@ -52,29 +54,46 @@ mkpkg() {
   cat >>$mock_packages/$name/$name.$version/opam
 }
 
+add_mock_repo() {
+  repo="${1}"
+  # add the repo definition
+  cat >> dune-workspace <<EOF
+(repository
+ (name mock)
+ (url "${repo}"))
+EOF
+}
+
+create_dune_workspace() {
+  repo="${1}"
+  cat > dune-workspace <<EOF
+(lang dune 3.20)
+(lock_dir
+ (repositories mock))
+EOF
+  add_mock_repo "${repo}"
+}
+
+enable_pkg_if_needed() {
+  if ! grep '(pkg enabled)' > /dev/null dune-workspace
+  then
+    cat >> dune-workspace <<EOF
+(pkg enabled)
+EOF
+  fi
+}
+
 add_mock_repo_if_needed() {
   # default, but can be overridden, e.g. if git is required
   repo="${1:-file://$(pwd)/mock-opam-repository}"
 
   if [ ! -e dune-workspace ]
   then
-      cat >dune-workspace <<EOF
-(lang dune 3.10)
-(lock_dir
- (repositories mock))
-(repository
- (name mock)
- (url "${repo}"))
-EOF
+    create_dune_workspace "${repo}"
   else
     if ! grep '(name mock)' > /dev/null dune-workspace
     then
-      # add the repo definition
-      cat >>dune-workspace <<EOF
-(repository
- (name mock)
- (url "${repo}"))
-EOF
+      add_mock_repo "${repo}"
  
       # reference the repo
       if grep -s '(repositories'
@@ -89,13 +108,16 @@ EOF
   
     fi
   fi
+
+  # enable Dune pkg
+  enable_pkg_if_needed
 }
 
 make_lockpkg() {
-  local dir="dune.lock"
-  mkdir -p $dir
+  local dir="${default_lock_dir}"
+  mkdir -p "$dir"
   local f="$dir/$1.pkg"
-  cat >$f
+  cat > "$f"
 }
 
 solve_project() {
@@ -105,8 +127,8 @@ solve_project() {
 }
 
 make_lockdir() {
-  mkdir -p dune.lock
-  cat >dune.lock/lock.dune <<EOF
+  mkdir -p "${default_lock_dir}"
+  cat > "${default_lock_dir}"/lock.dune <<EOF
 (lang package 0.1)
 (repositories (complete true))
 EOF
@@ -123,7 +145,7 @@ EOF
 }
 
 print_source() {
-  cat dune.lock/$1.pkg | sed -n "/source/,//p" | sed "s#$PWD#PWD#g" | tr '\n' ' '| tr -s " "
+  cat "${default_lock_dir}"/"$1".pkg | sed -n "/source/,//p" | sed "s#$PWD#PWD#g" | tr '\n' ' '| tr -s " "
 }
 
 solve() {

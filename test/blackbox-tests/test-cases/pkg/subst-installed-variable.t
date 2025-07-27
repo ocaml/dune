@@ -7,7 +7,7 @@ Test the %{pkg:installed}% form inside file substitution:
   $ cat >source/foo.in <<EOF
   > foo: %{somepkg:installed}%
   > EOF
-  $ cat >dune.lock/test.pkg <<EOF
+  $ cat > ${default_lock_dir}/test.pkg <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/source))
   > (build

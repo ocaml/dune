@@ -52,7 +52,7 @@ Solve the project:
   - foo.0.0.1
 
 Confirming that the build action creates the conditional file:
-  $ cat dune.lock/foo.0.0.1.pkg
+  $ cat ${default_lock_dir}/foo.0.0.1.pkg
   (version 0.0.1)
   
   (build

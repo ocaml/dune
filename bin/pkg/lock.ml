@@ -28,7 +28,7 @@ module Progress_indicator = struct
     end
 
     type t =
-      { lockdir_path : Path.Source.t
+      { lockdir_path : Path.Build.t
       ; state : State.t option ref
       }
 
@@ -45,7 +45,7 @@ module Progress_indicator = struct
     List.find_map t ~f:(fun { Per_lockdir.lockdir_path; state } ->
       Option.map !state ~f:(fun state ->
         Pp.concat
-          [ Pp.textf "Locking %s: " (Path.Source.to_string_maybe_quoted lockdir_path)
+          [ Pp.textf "Locking %s: " (Path.Build.to_string_maybe_quoted lockdir_path)
           ; Per_lockdir.State.pp state
           ]))
     |> Option.value ~default:Pp.nop
@@ -249,7 +249,9 @@ let solve_lock_dir
             User_message.Style.Success
             (Pp.textf
                "Solution for %s:"
-               (Path.Source.to_string_maybe_quoted lock_dir_path))
+               (lock_dir_path
+                |> Path.Build.drop_build_context_exn
+                |> Path.Source.to_string_maybe_quoted))
           :: (match Lock_dir.Packages.to_pkg_list lock_dir.packages with
               | [] ->
                 Pp.tag User_message.Style.Warning @@ Pp.text "(no dependencies to lock)"
@@ -260,7 +262,11 @@ let solve_lock_dir
     progress_state := None;
     let+ lock_dir = Lock_dir.compute_missing_checksums ~pinned_packages lock_dir in
     Ok
-      ( Lock_dir.Write_disk.prepare ~portable_lock_dir ~lock_dir_path ~files lock_dir
+      ( Lock_dir.Write_disk.prepare
+          ~portable_lock_dir
+          ~lock_dir_path:(Path.build lock_dir_path)
+          ~files
+          lock_dir
       , summary_message )
 ;;
 
@@ -311,7 +317,7 @@ let solve
     User_error.raise
       ([ Pp.text "Unable to solve dependencies for the following lock directories:" ]
        @ List.concat_map errors ~f:(fun (path, messages) ->
-         [ Pp.textf "Lock directory %s:" (Path.Source.to_string_maybe_quoted path)
+         [ Pp.textf "Lock directory %s:" (Path.Build.to_string_maybe_quoted path)
          ; Pp.hovbox (Pp.concat ~sep:Pp.newline messages)
          ]))
   | Ok write_disks_with_summaries ->
@@ -329,7 +335,7 @@ let project_pins =
     Pin.DB.combine_exn acc pins)
 ;;
 
-let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir =
+let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ctx_name ~portable_lock_dir =
   let open Fiber.O in
   let* solver_env_from_current_system =
     poll_solver_env_from_current_system () >>| Option.some
@@ -343,7 +349,7 @@ let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir
     workspace, local_packages, project_pins
   in
   let lock_dirs =
-    Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
+    Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg ctx_name workspace
   in
   solve
     workspace
@@ -359,6 +365,7 @@ let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir
 let term =
   let+ builder = Common.Builder.term
   and+ version_preference = Version_preference.term
+  and+ ctx_name = Common.context_arg ~doc:"Build context to use."
   and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term
   and+ print_perf_stats = Arg.(value & flag & info [ "print-perf-stats" ]) in
   let builder = Common.Builder.forbid_builds builder in
@@ -369,7 +376,7 @@ let term =
       | `Enabled -> true
       | `Disabled -> false
     in
-    lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir)
+    lock ~version_preference ~lock_dirs_arg ~print_perf_stats ctx_name ~portable_lock_dir)
 ;;
 
 let info =

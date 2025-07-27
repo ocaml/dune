@@ -133,14 +133,16 @@ let check_for_unnecessary_packges_in_lock_dir
       ])
 ;;
 
-let up_to_date local_packages ~dependency_hash:saved_dependency_hash =
+let dependency_digest local_packages =
   let local_packages =
     Package_name.Map.values local_packages |> List.map ~f:Local_package.for_solver
   in
-  let dependency_hash =
-    Local_package.For_solver.non_local_dependencies local_packages
-    |> Local_package.Dependency_hash.of_dependency_formula
-  in
+  Local_package.For_solver.non_local_dependencies local_packages
+  |> Local_package.Dependency_hash.of_dependency_formula
+;;
+
+let up_to_date local_packages ~dependency_hash:saved_dependency_hash =
+  let dependency_hash = dependency_digest local_packages in
   match saved_dependency_hash, dependency_hash with
   | None, None -> `Valid
   | Some lock_dir_dependency_hash, Some non_local_dependencies_hash

@@ -15,7 +15,7 @@ val solver_env
 val poll_solver_env_from_current_system : unit -> Dune_pkg.Solver_env.t Fiber.t
 
 val solver_env_from_system_and_context
-  :  lock_dir_path:Path.Source.t
+  :  lock_dir_path:Path.Build.t
   -> Dune_pkg.Solver_env.t Fiber.t
 
 module Version_preference : sig
@@ -27,7 +27,7 @@ end
 
 val unset_solver_vars_of_workspace
   :  Workspace.t
-  -> lock_dir_path:Path.Source.t
+  -> lock_dir_path:Path.Build.t
   -> Dune_lang.Package_variable_name.Set.t option
 
 val repositories_of_workspace
@@ -36,17 +36,17 @@ val repositories_of_workspace
 
 val repositories_of_lock_dir
   :  Workspace.t
-  -> lock_dir_path:Path.Source.t
+  -> lock_dir_path:Path.Build.t
   -> (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
 
 val constraints_of_workspace
   :  Workspace.t
-  -> lock_dir_path:Path.Source.t
+  -> lock_dir_path:Path.Build.t
   -> Dune_lang.Package_dependency.t list
 
 val depopts_of_workspace
   :  Workspace.t
-  -> lock_dir_path:Path.Source.t
+  -> lock_dir_path:Path.Build.t
   -> Package_name.t list
 
 val get_repos
@@ -76,15 +76,16 @@ module Lock_dirs_arg : sig
         of the workspace are considered. *)
   val term : t Term.t
 
-  (** [Lock_dirs_arg.lock_dirs_of_workspace t workspace] returns the list of
-      lock directories that should be considered for various operations.
+  (** [Lock_dirs_arg.lock_dirs_of_workspace t ctx_name workspace] returns the
+      list of lock directories that should be considered for various
+      operations.
 
       The [workspace] argument is used to determine the list of all lock lock
       directories.
 
       A user error is raised if the list of positional arguments used when
       creating [t] is not a subset of the lock directories of the workspace. *)
-  val lock_dirs_of_workspace : t -> Workspace.t -> Path.Source.t list
+  val lock_dirs_of_workspace : t -> Context_name.t -> Workspace.t -> Path.Build.t list
 end
 
 (** [pp_packages lock_dir] returns a list of pretty-printed packages occurring in

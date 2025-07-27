@@ -24,7 +24,7 @@ We try to pull an opam package that isn't a dune project
   $ dune pkg lock
   Solution for dune.lock:
   - foo.dev
-  $ pkg="dune.lock/foo.pkg"
+  $ pkg="${default_lock_dir}/foo.pkg"
   $ grep version $pkg
   (version dev)
   $ grep dev $pkg

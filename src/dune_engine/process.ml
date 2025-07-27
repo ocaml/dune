@@ -184,6 +184,7 @@ type purpose =
 
 type metadata =
   { loc : Loc.t option
+  ; rule_loc : Loc.t option
   ; annots : User_message.Annots.t
   ; name : string option
   ; categories : string list
@@ -192,6 +193,7 @@ type metadata =
 
 let default_metadata =
   { loc = None
+  ; rule_loc = None
   ; annots = User_message.Annots.empty
   ; purpose = Internal_job
   ; categories = []
@@ -201,13 +203,14 @@ let default_metadata =
 
 let create_metadata
       ?loc
+      ?rule_loc
       ?(annots = default_metadata.annots)
       ?name
       ?(categories = default_metadata.categories)
       ?(purpose = Internal_job)
       ()
   =
-  { loc; annots; name; categories; purpose }
+  { loc; rule_loc; annots; name; categories; purpose }
 ;;
 
 let io_to_redirection_path (kind : Io.kind) =
@@ -528,7 +531,7 @@ end = struct
   ;;
 
   let get_loc_annots_and_dir ~dir ~metadata ~output =
-    let { loc; annots; _ } = metadata in
+    let { loc; annots; rule_loc; _ } = metadata in
     let dir = Option.value dir ~default:Path.root in
     let annots =
       match output with
@@ -539,7 +542,7 @@ end = struct
           let annots =
             User_message.Annots.set annots User_message.Annots.has_embedded_location ()
           in
-          match Compound_user_error.parse_output ~dir output.without_color with
+          match Compound_user_error.parse_output ~rule_loc ~dir output.without_color with
           | [] -> annots
           | errors -> User_message.Annots.set annots Compound_user_error.annot errors)
         else annots

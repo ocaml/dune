@@ -83,9 +83,7 @@ jobs:
 
       - name: Install all deps
         working-directory: pupilfirst
-        run: |
-          opam pin add --no-action .
-          opam install -y . --deps-only
+        run: opam install -y . --deps-only
 
       - name: Run pupilfirst benchmark
         working-directory: pupilfirst

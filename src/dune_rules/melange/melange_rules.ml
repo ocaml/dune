@@ -214,6 +214,7 @@ let js_targets_of_libs ~sctx ~scope ~module_systems ~target_dir libs =
 let build_js
       ~loc
       ~dir
+      ~scope
       ~pkg_name
       ~mode
       ~module_systems
@@ -225,6 +226,11 @@ let build_js
       ~local_modules_and_obj_dir
       m
   =
+  let melange_extension_version =
+    let project = Scope.project scope in
+    Dune_project.find_extension_version project Dune_lang.Melange.syntax
+    |> Option.value_exn
+  in
   let* compiler = Melange_binary.melc sctx ~loc:(Some loc) ~dir in
   Memo.parallel_iter module_systems ~f:(fun (module_system, js_ext) ->
     let build =
@@ -234,12 +240,19 @@ let build_js
         let obj_dir = [ Command.Args.A "-I"; Path (Obj_dir.melange_dir obj_dir) ] in
         let melange_package_args =
           let pkg_name_args =
-            match pkg_name with
-            | None -> []
-            | Some pkg_name -> [ "--bs-package-name"; Package.Name.to_string pkg_name ]
+            match pkg_name, melange_extension_version with
+            | None, _ -> []
+            | Some pkg_name, (0, 1) ->
+              [ "--bs-package-name"; Package.Name.to_string pkg_name ]
+            | Some pkg_name, _ ->
+              [ "--mel-package-name"; Package.Name.to_string pkg_name ]
           in
           let js_modules_str = Melange.Module_system.to_string module_system in
-          "--bs-module-type" :: js_modules_str :: pkg_name_args
+          (if melange_extension_version >= (1, 0)
+           then "--mel-module-type"
+           else "--bs-module-type")
+          :: js_modules_str
+          :: pkg_name_args
         in
         Command.run
           ~dir:(Super_context.context sctx |> Context.build_dir |> Path.build)
@@ -530,8 +543,9 @@ let setup_entries_js
   in
   Memo.parallel_iter modules_for_js ~f:(fun m ->
     build_js
-      ~dir
       ~loc
+      ~dir
+      ~scope
       ~pkg_name
       ~mode
       ~module_systems
@@ -561,7 +575,7 @@ let setup_js_rules_libraries =
     Memo.parallel_iter source_modules ~f:(build_js ~local_modules_and_obj_dir)
   in
   fun ~dir ~scope ~target_dir ~sctx ~requires_link ~mode (mel : Melange_stanzas.Emit.t) ->
-    let build_js = build_js ~sctx ~mode ~module_systems:mel.module_systems in
+    let build_js = build_js ~sctx ~scope ~mode ~module_systems:mel.module_systems in
     let with_vlib_implementations =
       let vlib_implementations =
         (* vlib_name => concrete_impl *)

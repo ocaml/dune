@@ -8,7 +8,7 @@ type t =
       }
   | Diagnostic of
       { id : Id.t
-      ; diagnostic : Dune_rpc_private.Compound_user_error.t
+      ; diagnostic : Compound_user_error.t
       ; dir : Path.t option
       ; promotion : Diff_promotion.Annot.t option
       }
@@ -29,14 +29,12 @@ let of_exn (exn : Exn_with_backtrace.t) =
   | User_error.E main ->
     let dir = Option.map ~f:Path.of_string main.dir in
     let promotion = User_message.Annots.find main.annots Diff_promotion.Annot.annot in
-    (match
-       User_message.Annots.find main.annots Dune_rpc_private.Compound_user_error.annot
-     with
+    (match User_message.Annots.find main.annots Compound_user_error.annot with
      | None ->
        [ Diagnostic
            { dir
            ; id = Id.gen ()
-           ; diagnostic = Dune_rpc_private.Compound_user_error.make ~main ~related:[]
+           ; diagnostic = Compound_user_error.make ~main ~related:[]
            ; promotion
            }
        ]

@@ -26,9 +26,7 @@ val dir : t -> Path.t option
     metadata that are extracted into [`Diagnostic] *)
 val description
   :  t
-  -> [ `Exn of Exn_with_backtrace.t
-     | `Diagnostic of Dune_rpc_private.Compound_user_error.t
-     ]
+  -> [ `Exn of Exn_with_backtrace.t | `Diagnostic of Compound_user_error.t ]
 
 val promotion : t -> Diff_promotion.Annot.t option
 
@@ -58,10 +56,7 @@ module For_tests : sig
 
   (** Construct an [Error.t] *)
   val make
-    :  description:
-         [ `Exn of Exn_with_backtrace.t
-         | `Diagnostic of Dune_rpc_private.Compound_user_error.t
-         ]
+    :  description:[ `Exn of Exn_with_backtrace.t | `Diagnostic of Compound_user_error.t ]
     -> dir:Path.t option
     -> promotion:Diff_promotion.Annot.t option
     -> unit

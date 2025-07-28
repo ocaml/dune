@@ -539,15 +539,9 @@ end = struct
           let annots =
             User_message.Annots.set annots User_message.Annots.has_embedded_location ()
           in
-          match
-            Dune_rpc_private.Compound_user_error.parse_output ~dir output.without_color
-          with
+          match Compound_user_error.parse_output ~dir output.without_color with
           | [] -> annots
-          | errors ->
-            User_message.Annots.set
-              annots
-              Dune_rpc_private.Compound_user_error.annot
-              errors)
+          | errors -> User_message.Annots.set annots Compound_user_error.annot errors)
         else annots
     in
     loc, annots, dir

@@ -19,7 +19,9 @@
  (deps
   (env_var OCAML_COLOR)
   %{bin:dune_cmd}
-  (package dune)))
+  (package dune))
+ ; Tests shouldn't take longer than 60s
+ (timeout 60))
 
 (cram
  (applies_to meta-template-version-bug version-corruption)

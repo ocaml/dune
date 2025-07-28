@@ -5,7 +5,8 @@ module Action_output_on_success := Execution_parameters.Action_output_on_success
 module Action_output_limit := Execution_parameters.Action_output_limit
 
 module Failure_mode : sig
-  (** How to handle sub-process failures. This type controls the way in which the process we are running can fail. *)
+  (** How to handle sub-process failures. This type controls the way in which
+      the process we are running can fail. *)
   type ('a, 'b) t =
     | Strict : ('a, 'a) t (** Fail if the process exits with anything else than [0] *)
     | Accept : int Predicate.t -> ('a, ('a, int) result) t
@@ -17,7 +18,8 @@ module Failure_mode : sig
         ; failure_mode : ('a, 'b) t
         }
         -> ('a, ('b, [ `Timed_out ]) result) t
-    (** In addition to the [failure_mode], finish early if [timeout_seconds] was reached. *)
+    (** In addition to the [failure_mode], finish early if [timeout_seconds]
+        was reached. *)
 end
 
 module Io : sig

@@ -458,7 +458,7 @@ let run_and_produce_output ~src ~env ~dir:cwd ~script ~dst ~timeout =
 module Run = struct
   module Spec = struct
     type ('path, 'target) t =
-      { src : 'path
+      { src : Path.t
       ; dir : 'path
       ; script : 'path
       ; output : 'target
@@ -468,16 +468,15 @@ module Run = struct
     let name = "cram-run"
     let version = 2
 
-    let bimap { src; dir; script; output; timeout } f g =
-      { src = f src; dir = f dir; script = f script; output = g output; timeout }
+    let bimap ({ src = _; dir; script; output; timeout } as t) f g =
+      { t with dir = f dir; script = f script; output = g output; timeout }
     ;;
 
     let is_useful_to ~memoize:_ = true
 
-    let encode { src; dir; script; output; timeout } path target : Sexp.t =
+    let encode { src = _; dir; script; output; timeout } path target : Sexp.t =
       List
-        [ path src
-        ; path dir
+        [ path dir
         ; path script
         ; target output
         ; Dune_sexp.Encoder.(option float (Option.map ~f:snd timeout))

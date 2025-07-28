@@ -1,7 +1,7 @@
 open Import
 module Diff_promotion = Promote.Diff_promotion
 
-let files_to_promote ~common files : Diff_promotion.files_to_promote =
+let files_to_promote ~common files : Dune_rpc.Files_to_promote.t =
   match files with
   | [] -> All
   | _ ->
@@ -53,9 +53,25 @@ module Apply = struct
   let term =
     let+ builder = Common.Builder.term
     and+ files = Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE") in
-    let common, _config = Common.init builder in
+    let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
-    Diff_promotion.promote_files_registered_in_last_run files_to_promote
+    match Dune_util.Global_lock.lock ~timeout:None with
+    | Ok () ->
+      Scheduler.go_with_rpc_server ~common ~config (fun () ->
+        let open Fiber.O in
+        let+ () = Fiber.return () in
+        Diff_promotion.promote_files_registered_in_last_run files_to_promote)
+    | Error lock_held_by ->
+      Rpc_common.run_via_rpc
+        ~builder
+        ~common
+        ~config
+        lock_held_by
+        (Rpc_common.fire_request
+           ~name:"promote_many"
+           ~wait:true
+           Dune_rpc_private.Procedures.Public.promote_many)
+        files_to_promote
   ;;
 
   let command = Cmd.v info term

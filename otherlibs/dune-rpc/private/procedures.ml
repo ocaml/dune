@@ -56,6 +56,17 @@ module Public = struct
     let decl = Decl.Request.make ~method_:"promote" ~generations:[ v1 ]
   end
 
+  module Promote_many = struct
+    let v1 =
+      Decl.Request.make_current_gen
+        ~req:Files_to_promote.sexp
+        ~resp:Build_outcome_with_diagnostics.sexp
+        ~version:1
+    ;;
+
+    let decl = Decl.Request.make ~method_:"promote_many" ~generations:[ v1 ]
+  end
+
   module Build_dir = struct
     let v1 = Decl.Request.make_current_gen ~req:Conv.unit ~resp:Path.sexp ~version:1
     let decl = Decl.Request.make ~method_:"build_dir" ~generations:[ v1 ]
@@ -66,6 +77,7 @@ module Public = struct
   let shutdown = Shutdown.decl
   let format_dune_file = Format_dune_file.decl
   let promote = Promote.decl
+  let promote_many = Promote_many.decl
   let build_dir = Build_dir.decl
 end
 

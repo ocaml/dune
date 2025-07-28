@@ -2,13 +2,13 @@
 
 (library
  (name dune_rules)
- (libraries stdune csexp fiber memo ocaml dune_re predicate_lang dune_console
-  dune_digest install dune_lang dune_glob ocaml_config dune_action_plugin
-  chrome_trace dune_stats dune_site_private dune_util dune_meta_parser
-  dune_section opam_format dune_cache dune_pkg dune_targets promote
-  action_ext build_path_prefix_map dune_engine dune_vcs dune_cache_storage
-  dune_config dune_config_file dune_findlib dune_patch source scheme fs unix
-  xdg)
+ (libraries action_ext build_path_prefix_map chrome_trace csexp
+  dune_action_plugin dune_cache dune_cache_storage dune_config
+  dune_config_file dune_console dune_digest dune_engine dune_findlib
+  dune_glob dune_lang dune_meta_parser dune_patch dune_pkg dune_re
+  dune_rpc_private dune_section dune_site_private dune_stats dune_targets
+  dune_util dune_vcs fiber fs install memo ocaml ocaml_config opam_format
+  predicate_lang promote scheme source stdune unix xdg)
  (synopsis "Internal Dune library, do not use!"))
 
 (ocamllex ocamlobjinfo)

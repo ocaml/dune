@@ -7,8 +7,8 @@ let man =
   ; `P
       {|$(b,dune fmt) runs the formatter on the source code. The formatter is
         automatically selected. ocamlformat is used to format OCaml source code
-        (*.ml and *.mli files) and refmt is used to format Reason source code
-        (*.re and *.rei files).|}
+        ( *.ml and *.mli files) and refmt is used to format Reason source code
+        ( *.re and *.rei files).|}
   ; `Blocks Common.help_secs
   ]
 ;;

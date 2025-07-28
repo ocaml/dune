@@ -1,6 +1,6 @@
 open Import
 module Diagnostic = Dune_rpc.Diagnostic
-module Compound_user_error = Dune_engine.Compound_user_error
+module Compound_user_error = Dune_rpc_private.Compound_user_error
 
 let absolutize_paths ~dir (loc : Loc.t) =
   let make_path name =

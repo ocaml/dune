@@ -2,7 +2,7 @@ Unreleased
 ----------
 
 If you're a contributor, please include your CHANGES entry in a file
-`doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
+`doc/changes/$PR_NUMBER.md`. At release time, it will be incoporated into the
 changelog properly.
 
 3.19.1 (2025-06-11)

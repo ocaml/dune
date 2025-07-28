@@ -32,7 +32,6 @@ module Fs_memo = Fs_memo
 module Execution_parameters = Execution_parameters
 module Cache_debug_flags = Cache_debug_flags
 module Report_errors_config = Report_errors_config
-module Compound_user_error = Compound_user_error
 module Reflection = Reflection
 module No_io = No_io
 module Rpc = Rpc

@@ -29,6 +29,7 @@ type t =
   ; locks : Locks.t
   ; package : Package.t option
   ; runtest_alias : (Loc.t * bool) option
+  ; timeout : (Loc.t * float) option
   }
 
 include Stanza.Make (struct
@@ -67,8 +68,20 @@ let decode =
        field_o
          "runtest_alias"
          (Dune_lang.Syntax.since Stanza.syntax (3, 12) >>> located bool)
+     and+ timeout =
+       field_o
+         "timeout"
+         (Dune_lang.Syntax.since Stanza.syntax (3, 20)
+          >>> located float
+          >>| fun (loc, t) ->
+          if t >= 0.
+          then loc, t
+          else
+            User_error.raise
+              ~loc
+              [ Pp.text "Timeout value must be a non-negative float." ])
      in
-     { loc; alias; deps; enabled_if; locks; applies_to; package; runtest_alias })
+     { loc; alias; deps; enabled_if; locks; applies_to; package; runtest_alias; timeout })
 ;;
 
 let stanza =

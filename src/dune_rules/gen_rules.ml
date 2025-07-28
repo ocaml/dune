@@ -306,10 +306,23 @@ let gen_format_and_cram_rules sctx ~dir source_dir =
   ()
 ;;
 
+let gen_lock_dir_rules sctx ~dir source_dir =
+  (* TODO: only generate if lock dir enabled *)
+  let source_path = Source_tree.Dir.path source_dir in
+  match Path.Source.equal Path.Source.root source_path with
+  | false -> Memo.return ()
+  | true ->
+    Printf.eprintf
+      "Generate lock dir rules for %s here!\n"
+      (Path.Source.to_string source_path);
+    Lock_rules.rules sctx ~dir
+;;
+
 let gen_rules_source_only sctx ~dir source_dir =
   Rules.collect_unit (fun () ->
     let* sctx = sctx in
     let+ () = gen_format_and_cram_rules sctx ~dir source_dir
+    and+ () = gen_lock_dir_rules sctx ~dir source_dir
     and+ () =
       define_all_alias ~dir ~js_targets:[] ~project:(Source_tree.Dir.project source_dir)
     in
@@ -647,10 +660,7 @@ let private_context ~dir components _ctx =
   analyze_private_context_path components
   >>= function
   | `Invalid_context -> Memo.return Gen_rules.unknown_context
-  | `Valid (ctx, components) ->
-    let+ lock_rules = Lock_rules.setup_rules ctx ~dir ~components
-    and+ pkg_rules = Pkg_rules.setup_rules ctx ~dir ~components in
-    Gen_rules.combine lock_rules pkg_rules
+  | `Valid (ctx, components) -> Pkg_rules.setup_rules ctx ~dir ~components
   | `Root ->
     let+ contexts = Per_context.list () in
     let build_dir_only_sub_dirs =

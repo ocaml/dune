@@ -236,71 +236,6 @@ let project_pins =
     Dune_pkg.Pin.DB.combine_exn acc pins)
 ;;
 
-let setup_lock_rules ctx_name ~dir ~lock_dir : Gen_rules.result =
-  let target = Path.Build.relative dir "content" in
-  let rules =
-    Rules.collect_unit (fun () ->
-      let* packages =
-        Dune_load.packages ()
-        >>| Dune_lang.Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
-      in
-      let* workspace = Workspace.workspace () in
-      let repos = repositories_of_workspace workspace in
-      let constraints, selected_depopts =
-        let lock_dir_path =
-          Path.Build.relative (Context_name.build_dir ctx_name) lock_dir
-        in
-        ( constraints_of_workspace ~lock_dir_path workspace
-        , depopts_of_workspace ~lock_dir_path workspace )
-      in
-      let* repos =
-        (* TODO: read from the right place instead of hardcoding here *)
-        Memo.of_non_reproducible_fiber
-          (get_repos
-             repos
-             ~repositories:
-               [ Loc.none, Dune_pkg.Pkg_workspace.Repository.Name.of_string "upstream" ])
-      in
-      let* solver_env_from_current_system =
-        Memo.of_reproducible_fiber (poll_solver_env_from_current_system ())
-        >>| Option.some
-      in
-      let env =
-        (* TODO read context and other stuff *)
-        solver_env
-          ~solver_env_from_context:None
-          ~solver_env_from_current_system
-          ~unset_solver_vars_from_context:None
-      in
-      let* project_pins = project_pins in
-      let* pins = Memo.of_reproducible_fiber (resolve_project_pins project_pins) in
-      let lock_rule =
-        lock ~packages ~target ~lock_dir ~repos ~env ~constraints ~selected_depopts ~pins
-      in
-      rule ~loc:Loc.none lock_rule)
-  in
-  let directory_targets = Path.Build.Map.singleton target Loc.none in
-  Gen_rules.make ~directory_targets rules
-;;
-
-let setup_rules ctx_name ~components ~dir =
-  match components with
-  | [ ".lock" ] ->
-    Gen_rules.make
-      ~build_dir_only_sub_dirs:
-        (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
-      (Memo.return Rules.empty)
-    |> Memo.return
-  | [ ".lock"; lock_dir ] -> Memo.return @@ setup_lock_rules ctx_name ~dir ~lock_dir
-  | [] ->
-    let sub_dirs = [ ".lock" ] in
-    let build_dir_only_sub_dirs =
-      Gen_rules.Build_only_sub_dirs.singleton ~dir @@ Subdir_set.of_list sub_dirs
-    in
-    Memo.return @@ Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
-  | _ -> Memo.return @@ Gen_rules.rules_here Gen_rules.Rules.empty
-;;
-
 let setup_tmp_lock_alias =
   fun ~dir ctx_name ->
   let alias = Alias.make ~dir Alias0.pkg_lock in
@@ -309,13 +244,53 @@ let setup_tmp_lock_alias =
       (* careful, need to point to a file that will be created by the rule *)
       let path =
         (* TODO get lock dir name instead of hardcoding `dune.lock` *)
-        Path.Build.L.relative
-          Private_context.t.build_dir
-          [ Context_name.to_string ctx_name; ".lock"; "dune.lock"; "content" ]
+        Path.Build.relative (Context_name.build_dir ctx_name) "dune.lock"
       in
       let deps = Action_builder.path (Path.build path) in
       Rules.Produce.Alias.add_deps alias deps)
   in
   Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
   |> Gen_rules.rules_here
+;;
+
+let rules _sctx ~dir =
+  Printf.eprintf "Generating rules for dir: %s\n" (Path.Build.to_string dir);
+  (* TODO: generate them for all lock dirs not just "dune.lock" *)
+  let lock_dir = "dune.lock" in
+  let target = Path.Build.relative dir lock_dir in
+  let* packages =
+    Dune_load.packages ()
+    >>| Dune_lang.Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
+  in
+  let* workspace = Workspace.workspace () in
+  let repos = repositories_of_workspace workspace in
+  let constraints, selected_depopts =
+    let lock_dir_path = target in
+    ( constraints_of_workspace ~lock_dir_path workspace
+    , depopts_of_workspace ~lock_dir_path workspace )
+  in
+  let* repos =
+    (* TODO: read from the right place instead of hardcoding here *)
+    Memo.of_non_reproducible_fiber
+      (get_repos
+         repos
+         ~repositories:
+           [ Loc.none, Dune_pkg.Pkg_workspace.Repository.Name.of_string "upstream" ])
+  in
+  let* solver_env_from_current_system =
+    Memo.of_reproducible_fiber (poll_solver_env_from_current_system ()) >>| Option.some
+  in
+  let env =
+    (* TODO read context and other stuff *)
+    solver_env
+      ~solver_env_from_context:None
+      ~solver_env_from_current_system
+      ~unset_solver_vars_from_context:None
+  in
+  let* project_pins = project_pins in
+  let* pins = Memo.of_reproducible_fiber (resolve_project_pins project_pins) in
+  let lock_rule =
+    lock ~packages ~target ~lock_dir ~repos ~env ~constraints ~selected_depopts ~pins
+  in
+  rule ~loc:Loc.none lock_rule
 ;;

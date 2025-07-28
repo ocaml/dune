@@ -16,8 +16,80 @@ permissions:
   contents: read
 
 jobs:
+
+#
+# Stage 1
+#
+
+  nix-build:
+    name: Nix Build
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://anmonteiro.nix-cache.workers.dev
+            extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
+      - run: nix build
+
+  nix-test:
+    name: Nix Tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://anmonteiro.nix-cache.workers.dev
+            extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
+      - run: nix develop -i -c make test
+
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://anmonteiro.nix-cache.workers.dev
+            extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
+      - run: nix develop .#fmt -c make fmt
+
+  doc:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://anmonteiro.nix-cache.workers.dev
+            extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
+      - run: nix develop .#doc -c make doc
+        env:
+          LC_ALL: C
+
+#
+# Stage 2
+#
+
   build:
     name: Build
+    # we only start building our other jobs, once our main tests have passed
+    needs: nix-test
     strategy:
       fail-fast: false
       matrix:
@@ -30,43 +102,41 @@ jobs:
           # OCaml trunk:
           - ocaml-compiler: ocaml-variants.5.4.0+trunk
             os: ubuntu-latest
-            skip_test: true
           # OCaml 5:
           ## ubuntu (x86)
           - ocaml-compiler: 5.3.x
             os: ubuntu-latest
+            run_tests: true
           ## macos (Apple Silicon)
           - ocaml-compiler: 5.3.x
             os: macos-latest
+            run_tests: true
           ## macos (x86)
           - ocaml-compiler: 5.3.x
             os: macos-13
-            skip_test: true
           ## MSVC
           - ocaml-compiler: ocaml-compiler.5.3.0,system-msvc
             os: windows-latest
+            run_tests: true
           ## mingw
           - ocaml-compiler: ocaml-base-compiler.5.3.0,system-mingw
             os: windows-latest
+            run_tests: true
           # OCaml 4:
           ## ubuntu (x86)
           - ocaml-compiler: 4.14.x
             os: ubuntu-latest
-            skip_test: true
           ## ubuntu (x86-32)
           - ocaml-compiler: "ocaml-variants.4.14.2+options,ocaml-option-32bit"
             os: ubuntu-latest
-            skip_test: true
             apt_update: true
           ## macos (Apple Silicon)
           - ocaml-compiler: 4.14.x
             os: macos-latest
-            skip_test: true
           # OCaml 4.08:
           ## ubuntu (x86)
           - ocaml-compiler: 4.08.x
             os: ubuntu-latest
-            skip_test: true
 
     runs-on: ${{ matrix.os }}
 
@@ -100,66 +170,24 @@ jobs:
         run: |
           opam install . --deps-only --with-test
           opam exec -- make dev-deps
-        if: ${{ matrix.skip_test == false }}
+        if: ${{ matrix.run_tests }}
 
       - name: Run test suite on Unix
         run: opam exec -- make test
-        if: ${{ matrix.os != 'windows-latest' && matrix.skip_test == false }}
+        if: ${{ matrix.os != 'windows-latest' && matrix.run_tests }}
 
       - name: Run test suite on Win32
         run: opam exec -- make test-windows
-        if: ${{ matrix.os == 'windows-latest' && matrix.skip_test == false }}
+        if: ${{ matrix.os == 'windows-latest' && matrix.run_tests }}
 
+      # We never build configurator
       - name: Build configurator
         run: opam install ./dune-configurator.opam
         if: ${{ matrix.configurator == true }}
 
-  nix:
-    name: Nix
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - macos-latest
-          - ubuntu-latest
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v31
-        with:
-          extra_nix_config: |
-            extra-substituters = https://anmonteiro.nix-cache.workers.dev
-            extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
-      - run: nix build
-
-  fmt:
-    name: Format
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v31
-        with:
-          extra_nix_config: |
-            extra-substituters = https://anmonteiro.nix-cache.workers.dev
-            extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
-      - run: nix develop .#fmt -c make fmt
-
-  doc:
-    name: Documentation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v31
-        with:
-          extra_nix_config: |
-            extra-substituters = https://anmonteiro.nix-cache.workers.dev
-            extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
-      - run: nix develop .#doc -c make doc
-        env:
-          LC_ALL: C
-
   coq:
     name: Coq 8.16.1
+    needs: nix-build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -175,6 +203,7 @@ jobs:
 
   wasm:
     name: Wasm_of_ocaml
+    needs: nix-build
     runs-on: ubuntu-latest
     steps:
       - name: Install Node
@@ -212,6 +241,7 @@ jobs:
 
   create-local-opam-switch:
     name: Create local opam switch
+    needs: nix-build
     strategy:
       fail-fast: true
       matrix:
@@ -237,6 +267,7 @@ jobs:
 
   build-microbench:
     name: Build microbenchmarks
+    needs: nix-build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

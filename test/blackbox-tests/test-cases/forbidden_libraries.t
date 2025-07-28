@@ -24,7 +24,6 @@ Test the `forbidden_libraries` feature
   -> required by library "b" in _build/default
   -> required by library "c" in _build/default
   -> required by executable main in dune:5
-  -> required by _build/default/.main.eobjs/byte/dune__exe__Main.cmi
   -> required by _build/default/.main.eobjs/native/dune__exe__Main.cmx
   -> required by _build/default/main.exe
   [1]

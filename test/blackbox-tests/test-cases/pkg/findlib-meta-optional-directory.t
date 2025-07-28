@@ -69,7 +69,6 @@ Clearer error here as we really depend on non-existing 'no'
   Error: Library "mypkg.no" in
   _build/_private/default/.pkg/mypkg/target/lib/mypkg/no is hidden (unsatisfied
   'exists_if').
-  -> required by _build/default/.foo.eobjs/byte/dune__exe__Foo.cmi
   -> required by _build/default/.foo.eobjs/native/dune__exe__Foo.cmx
   -> required by _build/default/foo.exe
   [1]

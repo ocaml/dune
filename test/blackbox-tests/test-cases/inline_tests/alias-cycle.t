@@ -37,7 +37,6 @@ This kind of cycle has a difficult to understand error message.
   Error: Dependency cycle between:
      _build/default/.foo_simple.objs/foo_simple__Bar.impl.all-deps
   -> _build/default/.foo_simple.objs/byte/foo_simple__Bar.cmi
-  -> _build/default/.foo_simple.inline-tests/.t.eobjs/byte/dune__exe__Main.cmi
   -> _build/default/.foo_simple.inline-tests/.t.eobjs/native/dune__exe__Main.cmx
   -> _build/default/.foo_simple.inline-tests/inline-test-runner.exe
   -> alias runtest-foo_simple in dune:9

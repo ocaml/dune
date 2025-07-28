@@ -17,7 +17,6 @@ Now we attempt to use an invalid dune-package library:
   $ OCAMLPATH=$PWD/findlib dune exec ./foo.exe
   File "$TESTCASE_ROOT/findlib/baz/dune-package", line 1, characters 0-0:
   Error: Invalid first line, expected: (lang <lang> <version>)
-  -> required by _build/default/.foo.eobjs/byte/dune__exe__Foo.cmi
   -> required by _build/default/.foo.eobjs/native/dune__exe__Foo.cmx
   -> required by _build/default/foo.exe
   [1]

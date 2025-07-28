@@ -369,6 +369,7 @@ let best_name t =
   | Public p -> snd p.name
 ;;
 
+let is_parameter t = t.kind = Parameter
 let is_virtual t = Option.is_some t.virtual_modules
 let is_impl t = Option.is_some t.implements
 
@@ -421,7 +422,9 @@ let to_lib_info
   let archive ?(dir = dir) ext = archive conf ~dir ~ext in
   let modes = Mode_conf.Lib.Set.eval ~has_native conf.modes in
   let archive_for_mode ~f_ext ~mode =
-    if Mode.Dict.get modes.ocaml mode then Some (archive (f_ext mode)) else None
+    if Mode.Dict.get modes.ocaml mode && not (is_parameter conf)
+    then Some (archive (f_ext mode))
+    else None
   in
   let archives_for_mode ~f_ext =
     Mode.Dict.of_func (fun ~mode -> archive_for_mode ~f_ext ~mode |> Option.to_list)

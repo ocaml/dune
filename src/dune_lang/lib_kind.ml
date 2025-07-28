@@ -62,6 +62,7 @@ type t =
   | Normal
   | Ppx_deriver of Ppx_args.t
   | Ppx_rewriter of Ppx_args.t
+  | Parameter
 
 let equal = Poly.equal
 
@@ -69,6 +70,7 @@ let to_dyn x =
   let open Dyn in
   match x with
   | Normal -> variant "Normal" []
+  | Parameter -> variant "Parameter" []
   | Ppx_deriver args -> variant "Ppx_deriver" [ Ppx_args.to_dyn args ]
   | Ppx_rewriter args -> variant "Ppx_rewriter" [ Ppx_args.to_dyn args ]
 ;;
@@ -77,6 +79,7 @@ let decode =
   let open Decoder in
   sum
     [ "normal", return Normal
+    ; "parameter", return Parameter
     ; ( "ppx_deriver"
       , let+ args = Ppx_args.decode in
         Ppx_deriver args )
@@ -90,6 +93,7 @@ let encode t =
   match
     match t with
     | Normal -> Dune_sexp.atom "normal"
+    | Parameter -> Dune_sexp.atom "parameter"
     | Ppx_deriver x -> List (Dune_sexp.atom "ppx_deriver" :: Ppx_args.encode x)
     | Ppx_rewriter x -> List (Dune_sexp.atom "ppx_rewriter" :: Ppx_args.encode x)
   with

@@ -217,6 +217,7 @@ let build_cm
      then A "-opaque"
      else Command.Args.empty
    in
+   let as_parameter_arg = if Module.kind m = Parameter then [ "-as-parameter" ] else [] in
    let flags, sandbox =
      let flags =
        Command.Args.dyn (Ocaml_flags.get (Compilation_context.flags cctx) mode)
@@ -269,6 +270,7 @@ let build_cm
             ; Command.Args.as_any
                 (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind)
             ; extra_args
+            ; As as_parameter_arg
             ; S (melange_args cctx cm_kind m)
             ; A "-no-alias-deps"
             ; opaque_arg

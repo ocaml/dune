@@ -51,7 +51,7 @@
 - Allow `dune promote` to properly run while a watch mode server is running
   (#12010, @ElectreAAS)
 
-- Add `--alias` and `--alias-rec` flags as an alternative to the `@` and `@@`
+- Add `--alias` and `--alias-rec` flags as an alternative to the `@@` and `@`
   syntax in the command line (#12043, fixes #5775, @rgrinberg)
 
 ### Changed
@@ -62,7 +62,7 @@
 - Switch from MD5 to BLAKE3 for digesting targets and rules. BLAKE3 is both more
   performant and difficult to break than MD5 (#11735, @rgrinberg, @Alizter)
 
-- Print a warning when `dune build` runs over RPC (#11836, @gridbugs)
+- Print a warning when `dune build` runs over RPC (#11833, @gridbugs)
 
 - Stop emitting empty module group wrapper `.js` file in `melange.emit`
   (#11987, fixes #11986, @anmonteiro)

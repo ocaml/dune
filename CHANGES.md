@@ -1,9 +1,71 @@
-Unreleased
-----------
+3.20.0~alpha0 (2025-07-28)
+--------------------------
 
-If you're a contributor, please include your CHANGES entry in a file
-`doc/changes/$PR_NUMBER.md`. At release time, it will be incoporated into the
-changelog properly.
+### Fixed
+
+- Stop re-running cram tests after promotion when it's not necessary (#11994,
+  @rgrinberg)
+
+- fix: `$ dune subst` should not fail when adding the version field in opam
+  files (#11801, fixes #11045, @btjorge)
+
+- Kill all processes in the process group after the main process has
+  terminated; in particular this avoids background processes in cram tests to
+  stick around after the test finished (#11841, fixes #11820, @Alizter,
+  @Leonidas-from-XIV)
+
+### Added
+
+- `(tests)` stanzas now generate aliases with the test name. To run
+  `(test (name a))` you can do `dune build @runtest-a`. (#11558, grants part of #10239,
+  @Alizter)
+
+- Inline test libraries now produce aliases `runtest-name_of_lib`
+  allowing users to run specific inline tests as `dune build
+  @runtest-name_of_lib`. (#11109, partially fixes #10239, @Alizter)
+
+- feature: `$ dune subst` use version from `dune-project` when no version
+  control repository has been detected (#11801, @btjorge)
+
+- Allow `dune exec` to run concurrently with another instance of dune in watch
+  mode (#11840, @gridbugs)
+
+- Introduce `%{os}`, `%{os_version}`, `%{os_distribution}`, and `%{os_family}`
+  percent forms. These have the same values as their opam counterparts.
+  (#11863, @rgrinberg)
+
+- Introduce option `(implicit_transitive_deps false-if-hidden-includes-supported)`
+  that is equivalent to `(implicit_transitive_deps false)` when `-H` is
+  supported by the compiler (OCaml >= 5.2) and equivalent to
+  `(implicit_transitive_deps true)` otherwise. (#11866, fixes #11212, @nojb)
+
+- Add `dune describe location` for printing the path to the executable that
+  would be run (#11905, @gridbugs)
+
+- `dune runtest` can now understand absolute paths as well as run tests in
+  specific build contexts (#11936, @Alizter).
+
+- Added 'empty' alias which contains no targets. (#11556 #11952 #11955 #11956,
+  grants #4161, @Alizter and @rgrinberg)
+
+- Allow `dune promote` to properly run while a watch mode server is running
+  (#12010, @ElectreAAS)
+
+- Add `--alias` and `--alias-rec` flags as an alternative to the `@` and `@@`
+  syntax in the command line (#12043, fixes #5775, @rgrinberg)
+
+### Changed
+
+- Format long lists in s-expressions to fill the line instead of
+  formatting them in a vertical way (#10892, fixes #10860, @nojb)
+
+- Switch from MD5 to BLAKE3 for digesting targets and rules. BLAKE3 is both more
+  performant and difficult to break than MD5 (#11735, @rgrinberg, @Alizter)
+
+- Print a warning when `dune build` runs over RPC (#11836, @gridbugs)
+
+- Stop emitting empty module group wrapper `.js` file in `melange.emit`
+  (#11987, fixes #11986, @anmonteiro)
 
 3.19.1 (2025-06-11)
 ------------------

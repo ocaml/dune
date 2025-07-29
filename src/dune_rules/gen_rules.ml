@@ -319,14 +319,23 @@ let gen_lock_dir_rules sctx ~dir source_dir =
 ;;
 
 let gen_rules_source_only sctx ~dir source_dir =
-  Rules.collect_unit (fun () ->
-    let* sctx = sctx in
-    let+ () = gen_format_and_cram_rules sctx ~dir source_dir
-    and+ () = gen_lock_dir_rules sctx ~dir source_dir
-    and+ () =
-      define_all_alias ~dir ~js_targets:[] ~project:(Source_tree.Dir.project source_dir)
-    in
-    ())
+  let rules =
+    Rules.collect_unit (fun () ->
+      let* sctx = sctx in
+      let+ () = gen_format_and_cram_rules sctx ~dir source_dir
+      and+ () = gen_lock_dir_rules sctx ~dir source_dir
+      and+ () =
+        define_all_alias ~dir ~js_targets:[] ~project:(Source_tree.Dir.project source_dir)
+      in
+      ())
+  in
+  (* TODO: make this nice instead of a hardcoded mess *)
+  let additional_directory_targets =
+    match Path.Build.(equal (of_string "default") dir) with
+    | true -> Path.Build.Map.singleton (Path.Build.of_string "default/dune.lock") Loc.none
+    | false -> Path.Build.Map.empty
+  in
+  rules, additional_directory_targets
 ;;
 
 let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
@@ -549,7 +558,7 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
             in
             Filename.Set.union automatic toplevel
           in
-          fun rules ->
+          fun ~additional_directory_targets rules ->
             let rules =
               let+ automatic_subdir_rules =
                 gen_automatic_subdir_rules sctx ~dir ~nearest_src_dir ~src_dir
@@ -560,17 +569,25 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
               and+ rules = rules in
               Rules.union (Rules.union project_rules automatic_subdir_rules) rules
             in
+            let directory_targets =
+              Path.Build.Map.superpose directory_targets additional_directory_targets
+            in
             Gen_rules.rules_for ~dir ~directory_targets ~allowed_subdirs rules
         in
         match dir_status with
         | Lock_dir -> Gen_rules.rules_here Gen_rules.Rules.empty
         | Source_only source_dir ->
-          gen_rules_source_only sctx ~dir source_dir |> make_rules |> Gen_rules.rules_here
+          let rules, additional_directory_targets =
+            gen_rules_source_only sctx ~dir source_dir
+          in
+          rules |> make_rules ~additional_directory_targets |> Gen_rules.rules_here
         | Generated | Is_component_of_a_group_but_not_the_root _ ->
-          Memo.return Rules.empty |> make_rules |> Gen_rules.redirect_to_parent
+          Memo.return Rules.empty
+          |> make_rules ~additional_directory_targets:Path.Build.Map.empty
+          |> Gen_rules.redirect_to_parent
         | Standalone (source_dir, _) | Group_root { source_dir; _ } ->
           gen_rules_standalone_or_root sctx ~dir ~source_dir
-          |> make_rules
+          |> make_rules ~additional_directory_targets:Path.Build.Map.empty
           |> Gen_rules.rules_here
       in
       match Opam_create.gen_rules sctx ~dir ~nearest_src_dir ~src_dir with

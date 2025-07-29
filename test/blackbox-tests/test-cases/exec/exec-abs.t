@@ -16,9 +16,23 @@ Testing interaction of dune exec and absolute directories.
   $ dune exec ./foo.exe
   hi
 
+Dune exec is able to handle absolute executable paths.
+
   $ dune exec $PWD/foo.exe
-  Error: Program
-  '$TESTCASE_ROOT/foo.exe'
-  not found!
+  hi
+
+Lets check some validation:
+
+  $ dune exec ..
+  Error: Program '..' not found!
+  [1]
+  $ dune exec .
+  Error: Program '.' not found!
+  [1]
+  $ dune exec /.
+  Error: Program '/.' not found!
+  [1]
+  $ dune exec /
+  Error: Program '/' not found!
   [1]
 

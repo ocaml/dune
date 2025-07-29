@@ -1,4 +1,4 @@
-3.20.0~alpha0 (2025-07-28)
+3.20.0~alpha1 (2025-07-29)
 --------------------------
 
 ### Fixed
@@ -53,6 +53,10 @@
 
 - Add `--alias` and `--alias-rec` flags as an alternative to the `@@` and `@`
   syntax in the command line (#12043, fixes #5775, @rgrinberg)
+
+- Added a `(timeout <float>)` field to the `(cram)` stanza to specify per-test
+  time limits. Tests exceeding the timeout are terminated with an error.
+  (#12041, @Alizter)
 
 ### Changed
 

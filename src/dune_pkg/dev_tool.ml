@@ -33,7 +33,7 @@ let equal a b =
   | Ocamlearlybird, _ -> false
   | _, Ocamlearlybird -> true
   | Odig, Odig -> true
-
+;;
 
 let package_name = function
   | Ocamlformat -> Package_name.of_string "ocamlformat"
@@ -71,7 +71,7 @@ let exe_path_components_within_package t =
   | Ocamllsp -> [ "bin"; exe_name t ]
   | Utop -> [ "bin"; exe_name t ]
   | Ocamlearlybird -> [ "bin"; exe_name t ]
-  | Odig -> [ "bin"; exe_name t]
+  | Odig -> [ "bin"; exe_name t ]
 ;;
 
 let needs_to_build_with_same_compiler_as_project = function

@@ -48,6 +48,31 @@ module Build = struct
 
   let decl = Decl.Request.make ~method_:"build" ~generations:[ v1; v2 ]
 end
+(*
+   module Format = struct
+  let sexp : Dune_engine.Clflags.Promote.t Conv.value =
+    let open Conv in
+    let auto =
+      constr "Automatically" unit (fun () -> Dune_engine.Clflags.Promote.Automatically)
+    in
+    let never = constr "Never" unit (fun () -> Dune_engine.Clflags.Promote.Never) in
+    sum
+      [ econstr auto; econstr never ]
+      (function
+        | Dune_engine.Clflags.Promote.Automatically -> case () auto
+        | Never -> case () never)
+  ;;
+
+  let v1 =
+    Decl.Request.make_current_gen
+      ~req:sexp
+      ~resp:Build_outcome_with_diagnostics.sexp_v2
+      ~version:1
+  ;;
+
+  let decl = Decl.Request.make ~method_:"format" ~generations:[ v1 ]
+end *)
 
 let build = Build.decl
 let status = Status.decl
+(* let format = Format.decl *)

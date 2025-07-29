@@ -13,15 +13,21 @@ val create
   -> parse_build_arg:(string -> 'build_arg)
   -> 'build_arg t
 
-(** This type allows the build request handler to be defined externally to the
-    RPC server. The ivar is expected to be filled with the outcome of the build
-    by the build request handler when the build completes (successfully or not)
-    and triggers the RPC server to reply to the client with the outcome of their
-    request. *)
-type 'build_arg pending_build_action =
-  | Build of 'build_arg list * Dune_engine.Scheduler.Run.Build_outcome.t Fiber.Ivar.t
+type 'build_arg pending_action_kind =
+  | Build of 'build_arg list
+  | Format of Dune_rpc_private.Promote.t
 
-val pending_build_action : 'build_arg t -> 'build_arg pending_build_action Fiber.t
+(** This type allows the build request handler to be defined externally to the
+    RPC server. The [outcome] ivar is expected to be filled with the outcome of
+    the build by the build request handler when the build completes
+    (successfully or not) and triggers the RPC server to reply to the client
+    with the outcome of their request. *)
+type 'build_arg pending_action =
+  { kind : 'build_arg pending_action_kind
+  ; outcome : Dune_engine.Scheduler.Run.Build_outcome.t Fiber.Ivar.t
+  }
+
+val pending_action : 'build_arg t -> 'build_arg pending_action Fiber.t
 
 (** Stop accepting new rpc connections. Fiber returns when all existing
     connections terminate *)

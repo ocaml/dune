@@ -194,6 +194,7 @@ module Procedures : sig
     val ping : (unit, unit) Decl.Request.t
     val diagnostics : (unit, Diagnostic.t list) Decl.Request.t
     val shutdown : unit Decl.Notification.t
+    val format : (Promote.t, Build_outcome_with_diagnostics.t) Decl.Request.t
     val format_dune_file : (Path.t * [ `Contents of string ], string) Decl.Request.t
     val promote : (Path.t, unit) Decl.Request.t
 
@@ -242,6 +243,7 @@ module Public : sig
 
     val ping : (unit, unit) t
     val diagnostics : (unit, Diagnostic.t list) t
+    val format : (Promote.t, Build_outcome_with_diagnostics.t) t
     val format_dune_file : (Path.t * [ `Contents of string ], string) t
     val promote : (Path.t, unit) t
     val promote_many : (Files_to_promote.t, Build_outcome_with_diagnostics.t) t

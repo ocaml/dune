@@ -704,6 +704,34 @@ module Job = struct
   end
 end
 
+module Promote = struct
+  type t =
+    | Automatically
+    | Never
+
+  let equal a b =
+    match a, b with
+    | Automatically, Automatically | Never, Never -> true
+    | _, _ -> false
+  ;;
+
+  let to_dyn = function
+    | Automatically -> Dyn.variant "Automatically" []
+    | Never -> Dyn.variant "Never" []
+  ;;
+
+  let sexp =
+    let open Conv in
+    let auto = constr "Automatically" unit (fun () -> Automatically) in
+    let never = constr "Never" unit (fun () -> Never) in
+    sum
+      [ econstr auto; econstr never ]
+      (function
+        | Automatically -> case () auto
+        | Never -> case () never)
+  ;;
+end
+
 module Compound_user_error = struct
   type t =
     { main : User_message.t

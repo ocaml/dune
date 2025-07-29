@@ -17,17 +17,8 @@ val debug_fs_cache : bool ref
 (** Print debug info when loading rules in directories *)
 val debug_load_dir : bool ref
 
-module Promote : sig
-  type t =
-    | Automatically
-    | Never
-
-  val equal : t -> t -> bool
-  val to_dyn : t -> Dyn.t
-end
-
 (** explicit promotion mode is set *)
-val promote : Promote.t option ref
+val promote : Dune_rpc_private.Promote.t option ref
 
 (** Force re-running actions associated to aliases *)
 val force : bool ref

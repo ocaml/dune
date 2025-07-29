@@ -220,6 +220,16 @@ module Job : sig
   end
 end
 
+module Promote : sig
+  type t =
+    | Automatically
+    | Never
+
+  val equal : t -> t -> bool
+  val to_dyn : t -> Dyn.t
+  val sexp : t Conv.value
+end
+
 (** A compound user error defineds an alternative format for error messages that
     retains more structure. This can be used to display the errors in richer
     form by RPC clients. *)

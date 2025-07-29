@@ -35,6 +35,17 @@ module Public = struct
     let decl = Decl.Notification.make ~method_:"shutdown" ~generations:[ v1 ]
   end
 
+  module Format = struct
+    let v1 =
+      Decl.Request.make_current_gen
+        ~req:Promote.sexp
+        ~resp:Build_outcome_with_diagnostics.sexp
+        ~version:1
+    ;;
+
+    let decl = Decl.Request.make ~method_:"format" ~generations:[ v1 ]
+  end
+
   module Format_dune_file = struct
     module V1 = struct
       let req =
@@ -75,6 +86,7 @@ module Public = struct
   let ping = Ping.decl
   let diagnostics = Diagnostics.decl
   let shutdown = Shutdown.decl
+  let format = Format.decl
   let format_dune_file = Format_dune_file.decl
   let promote = Promote.decl
   let promote_many = Promote_many.decl

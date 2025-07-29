@@ -36,6 +36,12 @@ Output the help text:
              ocamllsp executable (pass flags to ocamllsp after the '--'
              argument, such as 'dune tools exec ocamllsp -- --help').
   
+         odig [OPTION]… [ARGS]…
+             Wrapper for running odig intended to be run automatically by a
+             text editor. All positional arguments will be passed to the odig
+             executable (pass flags to odig after the '--' argument, such as
+             'dune tools exec odig -- --help').
+  
   COMMON OPTIONS
          --help[=FMT] (default=auto)
              Show this help in format FMT. The value FMT must be one of auto,

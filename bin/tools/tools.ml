@@ -7,7 +7,7 @@ module Exec = struct
   let group =
     Cmd.group
       info
-      (List.map [ Ocamlformat; Ocamllsp; Ocamlearlybird ] ~f:Tools_common.exec_command)
+      (List.map [ Ocamlformat; Ocamllsp; Ocamlearlybird; Odig ] ~f:Tools_common.exec_command)
   ;;
 end
 

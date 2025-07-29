@@ -141,19 +141,30 @@ sizes might vary on different platforms
 The cache deletes oldest files first.
 
   $ reset
-  $ dune build target_a target_b
-
-The [rm] commands below update the [ctime] of the corresponding cache entries.
-By deleting [target_b] first, we make its [ctime] older. The trimmer deletes
-older entries first, which is why [target_b] is trimmed while [target_a] is not.
-We know that [target_b] was trimmed, because it had to be rebuilt as indicated
-by the existence of [beacon_b].
-
-  $ rm -f _build/default/beacon_b _build/default/target_b
+  $ dune build target_b
   $ dune_cmd wait-for-fs-clock-to-advance
-  $ rm -f _build/default/beacon_a _build/default/target_a
+  $ dune build target_a
+
+The trimmer deletes older entries first, which is why [target_b] is trimmed
+while [target_a] is not. We know that [target_b] was trimmed, because it had to
+be rebuilt as indicated by the existence of [beacon_b].
+
+  $ ls -l _build/default --time=ctime --time-style=+%N
+  $ rm -f _build/default/target_a
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ rm -f _build/default/target_b
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ rm -f _build/default/beacon_a
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ rm -f _build/default/beacon_b
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ ls _build/default
+  $ find "$PWD/.xdg-cache/dune/db/files/v4" -type f -exec ls -i -l --time=ctime --time-style=+%N {} \;
+  $ for inum in $(find "$PWD/.xdg-cache/dune/db/files/v4" -type f -exec ls -i {} \; | awk '{print $1}'); do echo "Inode $inum"; find . -inum $inum; done
   $ dune cache trim --trimmed-size 1B
   Freed 79B (2 files removed)
+  $ find "$PWD/.xdg-cache/dune/db/files/v4" -type f -exec ls -i {} \;
+  $ for inum in $(find "$PWD/.xdg-cache/dune/db/files/v4" -type f -exec ls -i {} \; | awk '{print $1}'); do echo "Inode $inum"; find . -inum $inum; done
   $ dune build target_a target_b
   $ dune_cmd stat hardlinks _build/default/target_a
   2

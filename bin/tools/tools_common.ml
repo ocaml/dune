@@ -1,6 +1,12 @@
 open! Import
 module Pkg_dev_tool = Dune_rules.Pkg_dev_tool
 
+let add_dev_tools_to_path env =
+  List.fold_left Pkg_dev_tool.all ~init:env ~f:(fun acc tool ->
+    let dir = Pkg_dev_tool.exe_path tool |> Path.Build.parent_exn |> Path.build in
+    Env_path.cons acc ~dir)
+;;
+
 let dev_tool_exe_path dev_tool = Path.build @@ Pkg_dev_tool.exe_path dev_tool
 
 let dev_tool_build_target dev_tool =
@@ -47,7 +53,8 @@ let run_dev_tool workspace_root dev_tool ~args =
        ~verb:"Running"
        ~object_:(User_message.command (String.concat ~sep:" " (exe_name :: args))));
   Console.finish ();
-  restore_cwd_and_execve workspace_root exe_path_string args Env.initial
+  let env = add_dev_tools_to_path Env.initial in
+  restore_cwd_and_execve workspace_root exe_path_string args env
 ;;
 
 let lock_build_and_run_dev_tool ~common ~config dev_tool ~args =

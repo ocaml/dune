@@ -211,11 +211,69 @@ let js_targets_of_libs ~sctx ~scope ~module_systems ~target_dir libs =
         List.rev_append for_vlib base))
 ;;
 
+let compute_promote_in_source ~dune_project ~dir ~mode ~output ~js_output m =
+  match mode with
+  | Rule.Mode.Standard | Fallback | Ignore_source_files -> mode
+  | Rule.Mode.Promote p ->
+    (match output with
+     | Output_kind.Private_library_or_emit _ ->
+       let segment =
+         let segment =
+           Module.file m ~ml_kind:Impl |> Option.value_exn |> Path.parent_exn
+         in
+         Path.descendant segment ~of_:(Path.build dir)
+         |> Option.value_exn
+         |> Path.as_in_source_tree_exn
+       in
+       (* interpret `(into ...)` relative to the dune file, not the `target_dir` *)
+       let new_into =
+         let from = Path.build (Path.Build.parent_exn js_output) in
+         let into_dir =
+           match p.into with
+           | Some into -> Path.relative (Path.build dir) into.dir
+           | None -> Path.build dir
+         in
+         Path.reach ~from (Path.append_source into_dir segment)
+       in
+       let loc =
+         p.into
+         |> Option.map ~f:(fun (x : Rule.Promote.Into.t) -> x.loc)
+         |> Option.value ~default:Loc.none
+       in
+       Promote { p with into = Some { loc; dir = new_into } }
+     | Public_library { lib_dir; output_dir; target_dir = _ } ->
+       let segment =
+         Module.file m ~ml_kind:Impl
+         |> Option.value_exn
+         |> Path.parent_exn
+         |> Path.drop_prefix_exn ~prefix:lib_dir
+       in
+       let new_into =
+         let from =
+           Path.Build.parent_exn js_output
+           |> Path.build
+           |> Path.drop_build_context_exn
+           |> Path.source
+         in
+         let root = Dune_project.root dune_project in
+         let into_dir = Path.Source.append_local root output_dir in
+         Path.reach ~from (Path.Source.append_local into_dir segment |> Path.source)
+       in
+       let loc =
+         p.into
+         |> Option.map ~f:(fun (x : Rule.Promote.Into.t) -> x.loc)
+         |> Option.value ~default:Loc.none
+       in
+       Path.mkdir_p (Path.Source.append_local Path.Source.root output_dir |> Path.source);
+       Promote { p with into = Some { loc; dir = new_into } })
+;;
+
 let build_js
       ~loc
       ~dir
       ~scope
       ~pkg_name
+      ~promote_in_source
       ~mode
       ~module_systems
       ~output
@@ -233,10 +291,17 @@ let build_js
   in
   let* compiler = Melange_binary.melc sctx ~loc:(Some loc) ~dir in
   Memo.parallel_iter module_systems ~f:(fun (module_system, js_ext) ->
+    let js_output = make_js_name ~output ~js_ext m in
+    let mode =
+      if promote_in_source
+      then (
+        let dune_project = Scope.project scope in
+        compute_promote_in_source ~dune_project ~dir ~output ~mode ~js_output m)
+      else mode
+    in
     let build =
       let command =
         let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Melange Cmj) in
-        let output = make_js_name ~output ~js_ext m in
         let obj_dir = [ Command.Args.A "-I"; Path (Obj_dir.melange_dir obj_dir) ] in
         let melange_package_args =
           let pkg_name_args =
@@ -262,7 +327,7 @@ let build_js
           ; Command.Args.dyn (Ocaml_flags.get compile_flags Melange)
           ; As melange_package_args
           ; A "-o"
-          ; Target output
+          ; Target js_output
           ; Dep src
           ]
       in
@@ -509,6 +574,13 @@ let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas
   modules, modules_for_js, obj_dir
 ;;
 
+let should_promote_in_source scope =
+  let project = Scope.project scope in
+  match Dune_project.find_extension_version project Dune_lang.Melange.syntax with
+  | Some v -> v >= (1, 0)
+  | None -> false
+;;
+
 let setup_entries_js
       ~sctx
       ~dir
@@ -541,12 +613,14 @@ let setup_entries_js
   let local_modules_and_obj_dir =
     Some (Modules.With_vlib.modules local_modules, local_obj_dir)
   in
+  let promote_in_source = should_promote_in_source scope in
   Memo.parallel_iter modules_for_js ~f:(fun m ->
     build_js
       ~loc
       ~dir
       ~scope
       ~pkg_name
+      ~promote_in_source
       ~mode
       ~module_systems
       ~output
@@ -604,11 +678,12 @@ let setup_js_rules_libraries =
           lib
       in
       let info = Lib.info lib in
-      let loc = Lib_info.loc info in
       let build_js =
+        let loc = Lib_info.loc info in
+        let promote_in_source = should_promote_in_source scope in
         let obj_dir = Lib_info.obj_dir info in
         let pkg_name = Lib_info.package info in
-        build_js ~loc ~pkg_name ~obj_dir
+        build_js ~loc ~promote_in_source ~pkg_name ~obj_dir
       in
       let output = output_of_lib ~target_dir lib in
       let* includes =

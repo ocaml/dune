@@ -228,6 +228,7 @@ module Promote : sig
   val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t
   val sexp : t Conv.value
+  val to_string : t -> string
 end
 
 (** A compound user error defineds an alternative format for error messages that

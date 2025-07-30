@@ -26,8 +26,7 @@ let lock_ocamlformat () =
   else Fiber.return ()
 ;;
 
-(* FIXME! everything works with the normal fmt command, but we can't pass the flag --auto-promote that makes fmt worth typing *)
-let run_fmt_command ~builder =
+let run_fmt_command ~builder ~promote =
   let open Fiber.O in
   let common, config = Common.init builder in
   let once () =
@@ -54,7 +53,12 @@ let run_fmt_command ~builder =
          ~name:"format"
          ~wait:true
          Dune_rpc.Procedures.Public.format)
-      (Option.value_exn (Common.Builder.promote builder))
+      promote;
+    (match promote with
+     | Automatically ->
+       Promote.Diff_promotion.promote_files_registered_in_last_run
+         Dune_rpc.Files_to_promote.All
+     | Never -> ())
 ;;
 
 let command =
@@ -71,10 +75,9 @@ let command =
                This takes precedence over auto-promote as that flag is assumed for this \
                command.")
     in
-    let builder =
-      Common.Builder.set_promote builder (if no_promote then Never else Automatically)
-    in
-    run_fmt_command ~builder
+    let promote = if no_promote then Dune_rpc.Promote.Never else Automatically in
+    let builder = Common.Builder.set_promote builder promote in
+    run_fmt_command ~builder ~promote
   in
   Cmd.v (Cmd.info "fmt" ~doc ~man ~envs:Common.envs) term
 ;;

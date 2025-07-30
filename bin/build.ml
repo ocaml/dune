@@ -107,14 +107,11 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
                dir
              |> Alias.request
            in
-           (match promote with
-            | Never -> request setup
-            | Automatically ->
-              (* Highly sketchy code right here *)
-              let previous = !Dune_engine.Clflags.promote in
-              Dune_engine.Clflags.promote := Some Automatically;
-              Action_builder.map (request setup) ~f:(fun () ->
-                Dune_engine.Clflags.promote := previous))
+           Printf.eprintf
+             "From server, promote is: %s\n%!"
+             (Dune_rpc.Promote.to_string promote);
+           (* Having Diff_promotion.promote_files_registered_in_last_run here doesn't work for some reason??? *)
+           request setup
        in
        run_build_system ~common ~request, outcome)
 ;;

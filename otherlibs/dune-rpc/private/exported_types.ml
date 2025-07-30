@@ -730,6 +730,11 @@ module Promote = struct
         | Automatically -> case () auto
         | Never -> case () never)
   ;;
+
+  let to_string = function
+    | Automatically -> "Automatically"
+    | Never -> "Never"
+  ;;
 end
 
 module Compound_user_error = struct

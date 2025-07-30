@@ -30,8 +30,7 @@ let equal a b =
   | Utop, Utop -> true
   | Utop, _ | _, Utop -> false
   | Ocamlearlybird, Ocamlearlybird -> true
-  | Ocamlearlybird, _ -> false
-  | _, Ocamlearlybird -> true
+  | Ocamlearlybird, _ | _, Ocamlearlybird -> false
   | Odig, Odig -> true
 ;;
 

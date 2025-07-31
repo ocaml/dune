@@ -1,3 +1,4 @@
+WARNING: very flaky test for some reason
 
   $ . ./helpers.sh
 
@@ -14,7 +15,7 @@
   >  print_int
   >                         (5
   >       +
-  >                          4)
+  >                            4)
   > 
   > EOF
 
@@ -22,9 +23,6 @@
 
 Ultimately we'd want this warning to not appear at all, since `dune fmt` doesn't have arguments
   $ dune fmt 2>&1 | sed 's/pid: [0-9]*/pid: PID/g'
-  Warning: Your build request is being forwarded to a running Dune instance
-  (pid: PID). Note that certain command line arguments may be ignored.
-  Build failed with 1 error:
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
   differ.
@@ -34,7 +32,8 @@ Ultimately we'd want this warning to not appear at all, since `dune fmt` doesn't
   let () = print_int (5 + 4)
 
   $ stop_dune
-  File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
-  Had 1 error, waiting for filesystem changes...
+  Error: RPC server not running.
+  Error: Unexpected contents of build directory global lock file
+  (_build/.lock). Expected an integer PID. Found: 
+  Hint: Try deleting _build/.lock
+  exit 1

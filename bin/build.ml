@@ -109,7 +109,7 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
            in
            Printf.eprintf
              "From server, promote is: %s\n%!"
-             (Dune_rpc.Promote.to_string promote);
+             (Dune_rpc.Promote_flag.to_string promote);
            (* Having Diff_promotion.promote_files_registered_in_last_run here doesn't work for some reason??? *)
            request setup
        in

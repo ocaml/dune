@@ -331,6 +331,7 @@ type 'path t =
   ; default_implementation : (Loc.t * Lib_name.t) option
   ; wrapped : Wrapped.t Inherited.t option
   ; main_module_name : Main_module_name.t
+  ; local_main_module_name : Module_name.t option
   ; modes : Lib_mode.Map.Set.t
   ; modules : Modules.With_vlib.t option Source.t
   ; special_builtin_support : (Loc.t * Special_builtin_support.t) option
@@ -379,6 +380,7 @@ let special_builtin_support t = t.special_builtin_support
 let jsoo_runtime t = t.jsoo_runtime
 let wasmoo_runtime t = t.wasmoo_runtime
 let main_module_name t = t.main_module_name
+let local_main_module_name t = t.local_main_module_name
 let orig_src_dir t = t.orig_src_dir
 let best_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
 let set_version t version = { t with version }
@@ -406,6 +408,7 @@ let create
       ~version
       ~synopsis
       ~main_module_name
+      ~local_main_module_name
       ~sub_systems
       ~requires
       ~parameters
@@ -449,6 +452,7 @@ let create
   ; requires
   ; parameters
   ; main_module_name
+  ; local_main_module_name
   ; foreign_objects
   ; public_headers
   ; plugins
@@ -547,6 +551,7 @@ let to_dyn
       ; requires
       ; parameters
       ; main_module_name
+      ; local_main_module_name
       ; foreign_objects
       ; public_headers
       ; plugins
@@ -612,6 +617,7 @@ let to_dyn
     ; "default_implementation", option (snd Lib_name.to_dyn) default_implementation
     ; "wrapped", option (Inherited.to_dyn Wrapped.to_dyn) wrapped
     ; "main_module_name", Main_module_name.to_dyn main_module_name
+    ; "local_main_module_name", Dyn.option Module_name.to_dyn local_main_module_name
     ; "modes", Lib_mode.Map.Set.to_dyn modes
     ; "modules", Source.to_dyn (Dyn.option Modules.With_vlib.to_dyn) modules
     ; ( "special_builtin_support"
@@ -689,4 +695,36 @@ let for_dune_package
               | `File -> Path.relative dir (Path.basename p)
               | `Dir -> dir)
             else p)
+;;
+
+let for_instance ~dir ~ext_lib t =
+  let obj_dir =
+    Obj_dir.make_lib
+      ~dir
+      ~has_private_modules:false
+      ~private_lib:false
+      (Lib_name.Local.of_string "instance")
+  in
+  let archives =
+    Mode.Dict.mapi t.archives ~f:(fun m _ ->
+      [ Path.Build.relative dir ("archive" ^ Mode.compiled_lib_ext m) ])
+  in
+  let native_archives = Files [ Path.Build.relative dir ("archive" ^ ext_lib) ] in
+  { t with
+    obj_dir
+  ; archives
+  ; native_archives
+  ; modules = External None
+  ; src_dir = dir
+  ; orig_src_dir = None
+  ; plugins = Mode.Dict.make ~byte:[] ~native:[]
+  ; foreign_objects = Local
+  ; public_headers = File_deps.External []
+  ; foreign_archives = Mode.Map.empty
+  ; foreign_dll_files = []
+  ; jsoo_runtime = []
+  ; wasmoo_runtime = []
+  ; path_kind = Local
+  ; melange_runtime_deps = File_deps.External []
+  }
 ;;

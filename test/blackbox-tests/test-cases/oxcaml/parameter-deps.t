@@ -38,7 +38,7 @@ We ensure it built the parameter.
   $ ocamlobjinfo "$(build_target_cmi 'param_intf')" | grep "Is parameter"
   Is parameter: YES
 
-A library parameterized by this parameter has transitive access to the `signature`
+A library parameterised by this parameter has transitive access to the `signature`
 library by default:
 
   $ make_dir_with_dune "mylib" <<EOF

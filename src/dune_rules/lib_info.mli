@@ -143,6 +143,7 @@ val obj_dir : 'path t -> 'path Obj_dir.t
 val virtual_ : _ t -> bool
 val entry_modules : _ t -> (Module_name.t list, User_message.t) result Source.t
 val main_module_name : _ t -> Main_module_name.t
+val local_main_module_name : _ t -> Module_name.t option
 val wrapped : _ t -> Wrapped.t Inherited.t option
 val special_builtin_support : _ t -> (Loc.t * Special_builtin_support.t) option
 val modes : _ t -> Lib_mode.Map.Set.t
@@ -204,6 +205,7 @@ val create
   -> version:Package_version.t option
   -> synopsis:string option
   -> main_module_name:Main_module_name.t
+  -> local_main_module_name:Module_name.t option
   -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
   -> requires:Lib_dep.t list
   -> parameters:(Loc.t * Lib_name.t) list
@@ -237,3 +239,4 @@ val create
 
 val package : _ t -> Package.Name.t option
 val to_dyn : 'path Dyn.builder -> 'path t Dyn.builder
+val for_instance : dir:Path.Build.t -> ext_lib:string -> Path.t t -> Path.Build.t t

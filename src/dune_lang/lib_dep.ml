@@ -98,6 +98,12 @@ type t =
   | Direct of (Loc.t * Lib_name.t)
   | Re_export of (Loc.t * Lib_name.t)
   | Select of Select.t
+  | Instantiate of
+      { loc : Loc.t
+      ; lib : Lib_name.t
+      ; arguments : (Loc.t * Lib_name.t) list
+      ; new_name : Module_name.t option
+      }
 
 let equal = Poly.equal
 
@@ -107,6 +113,13 @@ let to_dyn =
   | Direct (_, name) -> Lib_name.to_dyn name
   | Re_export (_, name) -> variant "re_export" [ Lib_name.to_dyn name ]
   | Select s -> variant "select" [ Select.to_dyn s ]
+  | Instantiate { lib; arguments; new_name; loc = _ } ->
+    variant
+      "instantiate"
+      [ Lib_name.to_dyn lib
+      ; list (fun (_, arg) -> Lib_name.to_dyn arg) arguments
+      ; option Module_name.to_dyn new_name
+      ]
 ;;
 
 let direct x = Direct x
@@ -126,6 +139,16 @@ let decode ~allow_re_export =
            , let+ select = Select.decode in
              Select select )
          ]
+       <|> enter
+             (let+ () = Syntax.since Oxcaml.syntax (0, 1)
+              and+ loc, lib = located Lib_name.decode
+              and+ arguments, new_name =
+                until_keyword
+                  ":as"
+                  ~before:(located Lib_name.decode)
+                  ~after:Module_name.decode
+              in
+              Instantiate { loc; lib; arguments; new_name })
        <|> let+ loc, name = located Lib_name.decode in
            Direct (loc, name))
   in
@@ -144,11 +167,22 @@ let encode =
     Code_error.raise
       "Lib_dep.encode: cannot encode select"
       [ "select", Select.to_dyn select ]
+  | Instantiate { lib; arguments; new_name; loc = _ } ->
+    let as_name =
+      match new_name with
+      | None -> []
+      | Some new_name -> [ string ":as"; Module_name.encode new_name ]
+    in
+    list
+      sexp
+      ((Lib_name.encode lib :: List.map arguments ~f:(fun (_, arg) -> Lib_name.encode arg))
+       @ as_name)
 ;;
 
 module L = struct
   type kind =
     | Required
+    | Required_multiple
     | Optional
     | Forbidden
 
@@ -186,12 +220,21 @@ module L = struct
              [ Pp.textf
                  "library %S is present both as a forbidden and required dependency"
                  (Lib_name.to_string name)
+             ]
+         | Required_multiple, Required_multiple -> acc
+         | Required_multiple, _ | _, Required_multiple ->
+           User_error.raise
+             ~loc
+             [ Pp.textf
+                 "parameterised library %S is present in multiple forms"
+                 (Lib_name.to_string name)
              ])
     in
     ignore
       (List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
          match x with
          | Re_export (_, s) | Direct (_, s) -> add Required s acc
+         | Instantiate { lib = s; _ } -> add Required_multiple s acc
          | Select { choices; _ } ->
            List.fold_left choices ~init:acc ~f:(fun acc (c : Select.Choice.t) ->
              let acc = Lib_name.Set.fold c.required ~init:acc ~f:(add Optional) in

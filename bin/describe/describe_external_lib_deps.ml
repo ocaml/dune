@@ -97,7 +97,7 @@ let resolve_lib_deps db lib_deps =
   let open Memo.O in
   Memo.parallel_map lib_deps ~f:(fun (lib : Lib_dep.t) ->
     match lib with
-    | Direct (_, name) | Re_export (_, name) ->
+    | Direct (_, name) | Re_export (_, name) | Instantiate { lib = name; _ } ->
       let+ v = resolve_lib db name Kind.Required in
       [ v ]
     | Select select ->

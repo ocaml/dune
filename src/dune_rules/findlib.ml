@@ -143,6 +143,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
     let implements = None in
     let parameters = [] in
     let orig_src_dir = None in
+    let local_main_module_name = None in
     let main_module_name : Lib_info.Main_module_name.t = This None in
     let enabled = Memo.return Lib_info.Enabled_status.Normal in
     let requires =
@@ -252,6 +253,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
       ~version
       ~synopsis
       ~main_module_name
+      ~local_main_module_name
       ~sub_systems
       ~requires
       ~parameters

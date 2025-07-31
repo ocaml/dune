@@ -48,4 +48,5 @@ Note that this currently works due to a bug in @all detecting directory targets.
   foo.vo
   foo.vok
   foo.vos
+  rocq-package.basic
 

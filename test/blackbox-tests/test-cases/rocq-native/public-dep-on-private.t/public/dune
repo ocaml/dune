@@ -1,0 +1,4 @@
+(rocq.theory
+ (name public)
+ (package public)
+ (theories private))

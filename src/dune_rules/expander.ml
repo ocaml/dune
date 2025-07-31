@@ -702,6 +702,13 @@ let expand_pform_macro
           (let open Memo.O in
            let* artifacts_host = t.artifacts_host in
            Coq_config.expand source macro_invocation artifacts_host))
+  | Rocq_config ->
+    Need_full_expander
+      (fun t ->
+        Without
+          (let open Memo.O in
+           let* artifacts_host = t.artifacts_host in
+           Rocq_config.expand source macro_invocation artifacts_host))
 ;;
 
 let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pform.t)

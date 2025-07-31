@@ -1,0 +1,4 @@
+(coq.theory
+ (name T_b)
+ (package global)
+ (theories T_a))

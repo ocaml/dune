@@ -80,6 +80,7 @@ type config =
   ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
   ; wasm_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
   ; coq : Coq_env.t
+  ; rocq : Rocq_env.t
   ; format_config : Format_config.t option
   ; error_on_use : User_message.t option
   ; warn_on_load : User_message.t option
@@ -103,6 +104,7 @@ let equal_config
       ; js_of_ocaml
       ; wasm_of_ocaml
       ; coq
+      ; rocq
       ; format_config
       ; error_on_use
       ; warn_on_load
@@ -122,6 +124,7 @@ let equal_config
   && Menhir_env.equal menhir t.menhir
   && Odoc.equal odoc t.odoc
   && Coq_env.equal coq t.coq
+  && Rocq_env.equal rocq t.rocq
   && Option.equal Format_config.equal format_config t.format_config
   && Js_of_ocaml.Env.equal js_of_ocaml t.js_of_ocaml
   && Js_of_ocaml.Env.equal wasm_of_ocaml t.wasm_of_ocaml
@@ -144,6 +147,7 @@ let empty_config =
   ; js_of_ocaml = Js_of_ocaml.Env.empty
   ; wasm_of_ocaml = Js_of_ocaml.Env.empty
   ; coq = Coq_env.default
+  ; rocq = Rocq_env.default
   ; format_config = None
   ; error_on_use = None
   ; warn_on_load = None
@@ -245,6 +249,7 @@ let config =
   and+ js_of_ocaml = js_of_ocaml_field
   and+ wasm_of_ocaml = wasm_of_ocaml_field
   and+ coq = Coq_env.decode
+  and+ rocq = Rocq_env.decode
   and+ format_config = Format_config.field ~since:(2, 8)
   and+ bin_annot = bin_annot in
   let menhir =
@@ -266,6 +271,7 @@ let config =
   ; js_of_ocaml
   ; wasm_of_ocaml
   ; coq
+  ; rocq
   ; format_config
   ; error_on_use = None
   ; warn_on_load = None

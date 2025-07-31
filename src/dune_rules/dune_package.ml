@@ -254,6 +254,7 @@ module Lib = struct
            | Public (_, _) -> Lib_info.Status.Installed
          in
          let version = None in
+         let local_main_module_name = main_module_name in
          let main_module_name = Lib_info.Inherited.This main_module_name in
          let foreign_objects = Lib_info.Source.External foreign_objects in
          let public_headers = Lib_info.File_deps.External public_headers in
@@ -281,6 +282,7 @@ module Lib = struct
            ~version
            ~synopsis
            ~main_module_name
+           ~local_main_module_name
            ~sub_systems
            ~requires
            ~parameters

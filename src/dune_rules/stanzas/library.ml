@@ -432,6 +432,8 @@ let obj_dir ~dir t =
     (snd t.name)
 ;;
 
+let local_main_module_name t = Some (Module_name.of_local_lib_name t.name)
+
 let main_module_name t : Lib_info.Main_module_name.t =
   match t.implements, t.wrapped with
   | Some x, From _ -> From x
@@ -532,6 +534,7 @@ let to_lib_info
       in
       archives_for_mode ~f_ext:Mode.compiled_lib_ext, plugins)
   in
+  let local_main_module_name = local_main_module_name conf in
   let main_module_name = main_module_name conf in
   let name = best_name conf in
   let lib_id =
@@ -609,6 +612,7 @@ let to_lib_info
     ~version
     ~synopsis
     ~main_module_name
+    ~local_main_module_name
     ~sub_systems
     ~requires
     ~parameters

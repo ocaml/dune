@@ -13,6 +13,7 @@ val lib
   -> stdlib:Ocaml_stdlib.t option
   -> lib_name:Lib_name.Local.t
   -> implements:bool
+  -> has_instances:bool
   -> modules:Module.t Module_trie.t
   -> t
 
@@ -32,6 +33,7 @@ val exe_unwrapped : Module.t Module_trie.t -> obj_dir:Path.Build.t -> t
 val make_wrapped
   :  obj_dir:Path.Build.t
   -> modules:Module.t Module_trie.t
+  -> has_instances:bool
   -> [ `Exe | `Melange ]
   -> t
 

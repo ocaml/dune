@@ -53,12 +53,7 @@ let run_fmt_command ~builder ~promote =
          ~name:"format"
          ~wait:true
          Dune_rpc.Procedures.Public.format)
-      promote;
-    (match promote with
-     | Automatically ->
-       Promote.Diff_promotion.promote_files_registered_in_last_run
-         Dune_rpc.Files_to_promote.All
-     | Never -> ())
+      promote
 ;;
 
 let command =

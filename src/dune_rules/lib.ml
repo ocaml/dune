@@ -247,6 +247,30 @@ module Error = struct
           (Lib_name.to_string lib)
       ]
   ;;
+
+  let expected_parameter ~loc ~name =
+    make
+      ~loc
+      [ Pp.textf "Expected %S to be a library parameter." (Lib_name.to_string name) ]
+  ;;
+
+  let duplicate_parameters ~loc name name' =
+    make
+      ~loc
+      [ Pp.textf
+          "Duplicate library parameters: %S and %S."
+          (Lib_name.to_string name)
+          (Lib_name.to_string name')
+      ]
+  ;;
+
+  let missing_parameter ~loc p =
+    let name = Lib_name.to_string (Lib_info.name p) in
+    make_resolve
+      ~loc
+      [ Pp.textf "Parameter %S is missing." name ]
+      ~hints:[ Pp.textf "Add (parameters %s)" name ]
+  ;;
 end
 
 (* Types *)
@@ -337,6 +361,7 @@ module T = struct
     ; ppx_runtime_deps : t list Resolve.t
     ; pps : t list Resolve.t
     ; resolved_selects : Resolved_select.t list Resolve.t
+    ; parameters : t list Resolve.t
     ; implements : t Resolve.t option
     ; project : Dune_project.t option
     ; (* these fields cannot be forced until the library is instantiated *)
@@ -430,6 +455,7 @@ let name t = t.name
 let info t = t.info
 let project t = t.project
 let implements t = Option.map ~f:Memo.return t.implements
+let parameters t = Resolve.Memo.lift t.parameters
 let requires t = Memo.return t.requires
 let re_exports t = Memo.return t.re_exports
 let ppx_runtime_deps t = Memo.return t.ppx_runtime_deps
@@ -455,6 +481,21 @@ let main_module_name t =
      | This x -> x
      | From _ -> assert false)
 ;;
+
+module Parameterized = struct
+  let validate_required_parameters ~loc ~parameters lib =
+    let open Resolve.O in
+    let* lib = lib in
+    let* required_parameters = lib.parameters in
+    let+ () =
+      Resolve.List.iter required_parameters ~f:(function
+        | param when not (List.exists parameters ~f:(equal param)) ->
+          Error.missing_parameter ~loc param.info
+        | _ -> Resolve.return ())
+    in
+    lib
+  ;;
+end
 
 let wrapped t =
   match Lib_info.wrapped t.info with
@@ -861,6 +902,7 @@ module rec Resolve_names : sig
     :  db
     -> Lib_dep.t list
     -> private_deps:private_deps
+    -> parameters:t list
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t option
     -> Resolved.t Memo.t
@@ -898,6 +940,32 @@ end = struct
       >>| Package.Name.Map.of_list_exn)
   ;;
 
+  let resolve_parameters db ~private_deps info =
+    let open Resolve.Memo.O in
+    let* parameters =
+      Resolve.Memo.List.filter_map (Lib_info.parameters info) ~f:(fun (loc, name) ->
+        let* lib = Resolve.Memo.lift_memo (resolve_dep db ~private_deps (loc, name)) in
+        match lib with
+        | None -> Resolve.Memo.return None
+        | Some lib ->
+          let* lib = Resolve.Memo.lift lib in
+          (match Lib_info.kind lib.info with
+           | Parameter -> Resolve.Memo.return (Some (loc, name, lib))
+           | _ -> Error.expected_parameter ~loc ~name))
+    in
+    let parameters =
+      List.stable_sort parameters ~compare:(fun (_, _, a) (_, _, b) -> compare a b)
+    in
+    let rec check_duplicates = function
+      | [] | [ _ ] -> Resolve.Memo.return ()
+      | (_, name, p) :: (loc, name', p') :: _ when p = p' ->
+        Error.duplicate_parameters ~loc name name'
+      | _ :: ps -> check_duplicates ps
+    in
+    let+ () = check_duplicates parameters in
+    List.map parameters ~f:(fun (_, _, param) -> param)
+  ;;
+
   let instantiate_impl db (name, info, hidden) =
     let db = Lazy.force db in
     let open Memo.O in
@@ -925,6 +993,7 @@ end = struct
                in this position."
           ]
     in
+    let* parameters = resolve_parameters db ~private_deps info in
     let* resolved =
       let open Resolve.Memo.O in
       let* pps =
@@ -935,9 +1004,10 @@ end = struct
         |> Instrumentation.with_instrumentation ~instrumentation_backend
         >>| Preprocess.Per_module.pps
       in
+      let* parameters = Resolve.Memo.lift parameters in
       let dune_version = Lib_info.dune_version info in
       Lib_info.requires info
-      |> resolve_deps_and_add_runtime_deps db ~private_deps ~dune_version ~pps
+      |> resolve_deps_and_add_runtime_deps db ~private_deps ~parameters ~dune_version ~pps
       |> Memo.map ~f:Resolve.return
     in
     let* implements =
@@ -1067,6 +1137,7 @@ end = struct
          ; resolved_selects
          ; re_exports
          ; implements
+         ; parameters
          ; default_implementation
          ; project
          ; sub_systems =
@@ -1398,17 +1469,23 @@ end = struct
     res, { Resolved_select.src_fn; dst_fn = result_fn }
   ;;
 
-  let resolve_complex_deps db deps ~private_deps : Resolved.deps Memo.t =
+  let resolve_complex_deps db deps ~private_deps ~parameters : Resolved.deps Memo.t =
+    let open Memo.O in
+    let resolve_parameterized_dep (loc, lib) =
+      resolve_dep db (loc, lib) ~private_deps
+      >>| function
+      | None -> None
+      | Some dep -> Some (Parameterized.validate_required_parameters ~loc ~parameters dep)
+    in
     Memo.List.fold_left ~init:Resolved.Builder.empty deps ~f:(fun acc (dep : Lib_dep.t) ->
-      let open Memo.O in
       match dep with
       | Re_export lib ->
-        resolve_dep db lib ~private_deps
+        resolve_parameterized_dep lib
         >>| (function
          | None -> acc
          | Some lib -> Resolved.Builder.add_re_exports acc lib)
       | Direct lib ->
-        resolve_dep db lib ~private_deps
+        resolve_parameterized_dep lib
         >>| (function
          | None -> acc
          | Some lib -> Resolved.Builder.add_resolved acc lib)
@@ -1475,6 +1552,7 @@ end = struct
         db
         { Resolved.resolved; selects; re_exports }
         ~private_deps
+        ~parameters
         ~pps
         ~dune_version
     : Resolved.t Memo.t
@@ -1485,15 +1563,22 @@ end = struct
       let open Resolve.Memo.O in
       let* resolved = Memo.return resolved in
       let* runtime_deps = runtime_deps in
-      re_exports_closure (resolved @ runtime_deps)
+      re_exports_closure (List.concat [ resolved; runtime_deps; parameters ])
     and+ pps = pps in
     { Resolved.requires; pps; selects; re_exports }
   ;;
 
-  let resolve_deps_and_add_runtime_deps db deps ~private_deps ~pps ~dune_version =
+  let resolve_deps_and_add_runtime_deps
+        db
+        deps
+        ~private_deps
+        ~parameters
+        ~pps
+        ~dune_version
+    =
     let open Memo.O in
-    resolve_complex_deps db ~private_deps deps
-    >>= add_pp_runtime_deps db ~private_deps ~dune_version ~pps
+    resolve_complex_deps db ~private_deps ~parameters deps
+    >>= add_pp_runtime_deps db ~private_deps ~parameters ~dune_version ~pps
   ;;
 
   (* Compute transitive closure of libraries to figure which ones will trigger
@@ -2058,6 +2143,7 @@ module DB = struct
           t
           deps
           ~pps
+          ~parameters:[]
           ~private_deps:Allow_all
           ~dune_version:(Some dune_version))
     in
@@ -2193,6 +2279,11 @@ let to_dune_lib
     use_public_name
       ~info_field:(Lib_info.implements info)
       ~lib_field:(Option.map ~f:Memo.return lib.implements)
+  and+ parameters =
+    let+ lib_parameters = Resolve.Memo.lift lib.parameters in
+    List.map
+      (List.combine (Lib_info.parameters info) lib_parameters)
+      ~f:(fun ((loc, _), param) -> loc, mangled_name param)
   and+ default_implementation =
     use_public_name
       ~info_field:(Lib_info.default_implementation info)
@@ -2223,6 +2314,7 @@ let to_dune_lib
       ~foreign_objects
       ~obj_dir
       ~implements
+      ~parameters
       ~default_implementation
       ~sub_systems
       ~modules

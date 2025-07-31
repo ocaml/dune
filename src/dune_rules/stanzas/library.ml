@@ -76,6 +76,7 @@ type t =
   ; dune_version : Dune_lang.Syntax.Version.t
   ; virtual_modules : Ordered_set_lang.Unexpanded.t option
   ; implements : (Loc.t * Lib_name.t) option
+  ; parameters : (Loc.t * Lib_name.t) list
   ; default_implementation : (Loc.t * Lib_name.t) option
   ; private_modules : Ordered_set_lang.Unexpanded.t option
   ; stdlib : Ocaml_stdlib.t option
@@ -170,6 +171,12 @@ let decode =
        field_o
          "implements"
          (Dune_lang.Syntax.since Stanza.syntax (1, 7) >>> located Lib_name.decode)
+     and+ parameters =
+       field
+         "parameters"
+         (Dune_lang.Syntax.since Dune_lang.Oxcaml.syntax (0, 1)
+          >>> repeat (located Lib_name.decode))
+         ~default:[]
      and+ default_implementation =
        field_o
          "default_implementation"
@@ -298,6 +305,7 @@ let decode =
      ; dune_version
      ; virtual_modules
      ; implements
+     ; parameters
      ; default_implementation
      ; private_modules
      ; stdlib
@@ -563,6 +571,7 @@ let to_lib_info
     | Installed_private | Installed | Private _ -> None
   in
   let requires = conf.buildable.libraries in
+  let parameters = conf.parameters in
   let loc = conf.buildable.loc in
   let kind = conf.kind in
   let src_dir = dir in
@@ -602,6 +611,7 @@ let to_lib_info
     ~main_module_name
     ~sub_systems
     ~requires
+    ~parameters
     ~foreign_objects
     ~public_headers
     ~plugins

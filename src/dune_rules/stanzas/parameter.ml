@@ -37,6 +37,7 @@ let to_library t =
   ; dune_version = t.dune_version
   ; virtual_modules = None
   ; implements = None
+  ; parameters = []
   ; default_implementation = None
   ; private_modules = None
   ; stdlib = t.stdlib

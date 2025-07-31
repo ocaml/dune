@@ -89,6 +89,7 @@ type t =
   ; requires_link : Lib.t list Resolve.t Memo.Lazy.t
   ; implements : Virtual_rules.t
   ; parameters : Module_name.t list Resolve.Memo.t
+  ; instances : Lib.Parameterized.instance list Resolve.Memo.t
   ; includes : Includes.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
@@ -162,6 +163,7 @@ let create
       ?modes
       ?bin_annot
       ?loc
+      ?instances
       ()
   =
   let project = Scope.project scope in
@@ -186,6 +188,11 @@ let create
     match parameters with
     | None -> Resolve.Memo.return []
     | Some parameters -> parameters_main_modules parameters
+  in
+  let instances =
+    match instances with
+    | None -> Resolve.Memo.return []
+    | Some instances -> instances
   in
   let sandbox = Sandbox_config.no_special_requirements in
   let modes =
@@ -236,6 +243,7 @@ let create
   ; bin_annot
   ; loc
   ; ocaml
+  ; instances
   }
 ;;
 
@@ -244,7 +252,7 @@ let alias_and_root_module_flags =
   fun base -> Ocaml_flags.append_common base extra
 ;;
 
-let for_alias_module t alias_module =
+let for_alias_module ~has_instances t alias_module =
   let keep_flags = Modules.With_vlib.is_stdlib_alias (modules t) alias_module in
   let flags =
     if keep_flags
@@ -255,6 +263,15 @@ let for_alias_module t alias_module =
       let dune_version = Dune_project.dune_version project in
       let profile = Super_context.context t.super_context |> Context.profile in
       Ocaml_flags.default ~dune_version ~profile)
+  in
+  let flags =
+    if has_instances
+    then
+      (* If the alias file instantiates parameterized libraries,
+         the [misplace-attribute] warning is currently raised on
+         [@jane.non_erasable.instances] *)
+      Ocaml_flags.append_common flags [ "-w"; "-53" ]
+    else flags
   in
   let sandbox =
     (* If the compiler reads the cmi for module alias even with [-w -49
@@ -342,3 +359,4 @@ let for_plugin_executable t ~embed_in_plugin_libraries =
 let without_bin_annot t = { t with bin_annot = false }
 let set_obj_dir t obj_dir = { t with obj_dir }
 let set_modes t ~modes = { t with modes }
+let instances t = t.instances

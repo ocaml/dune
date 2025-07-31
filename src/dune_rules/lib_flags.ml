@@ -255,10 +255,14 @@ module Lib_and_module = struct
 
     let link_flags sctx ts ~(lib_config : Lib_config.t) ~mode =
       let open Action_builder.O in
+      let build_dir = Context.build_dir (Super_context.context sctx) in
       Command.Args.Dyn
         (let+ l =
            Action_builder.List.map ts ~f:(function
              | Lib t ->
+               let t =
+                 Lib.Parameterized.for_instance ~build_dir ~ext_lib:lib_config.ext_lib t
+               in
                let+ { Link_params.hidden_deps; include_dirs; deps } =
                  Action_builder.of_memo (Link_params.get sctx t mode lib_config)
                in
@@ -276,16 +280,16 @@ module Lib_and_module = struct
                        ~kind:(Ocaml (Mode.cm_kind (Link_mode.mode mode))))
                   ::
                   (match mode with
-                   | Byte | Byte_for_jsoo | Byte_with_stubs_statically_linked_in -> []
                    | Native ->
                      [ Command.Args.Hidden_deps
-                         ([ Obj_dir.Module.o_file_exn
-                              obj_dir
-                              m
-                              ~ext_obj:lib_config.ext_obj
-                          ]
-                          |> Dep.Set.of_files)
-                     ]))
+                         (Dep.Set.of_files
+                            [ Obj_dir.Module.o_file_exn
+                                obj_dir
+                                m
+                                ~ext_obj:lib_config.ext_obj
+                            ])
+                     ]
+                   | Byte | Byte_for_jsoo | Byte_with_stubs_statically_linked_in -> []))
                |> Action_builder.return)
          in
          Command.Args.S l)

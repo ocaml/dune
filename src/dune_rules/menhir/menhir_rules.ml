@@ -260,7 +260,7 @@ module Run (P : PARAMS) = struct
         let impl = Module.File.make Dialect.ocaml (Path.build (mock_ml base)) in
         Module.Source.make ~impl:(Some impl) ~intf:None [ name ]
       in
-      Module.of_source ~visibility:Public ~kind:Impl source
+      Module.of_source ~visibility:Public ~kind:Impl ~parameters:[] source
     in
     let* mock_module =
       Pp_spec.pp_module_as

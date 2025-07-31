@@ -202,6 +202,7 @@ type t =
   ; visibility : Visibility.t
   ; kind : Kind.t
   ; install_as : Path.Local.t option
+  ; parameters : Module_name.t list
   }
 
 let name t = Source.name t.source
@@ -209,8 +210,16 @@ let path t = t.source.path
 let kind t = t.kind
 let pp_flags t = t.pp
 let install_as t = t.install_as
+let parameters t = t.parameters
 
-let of_source ~install_as ~obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
+let of_source
+      ?install_as
+      ~obj_name
+      ~visibility
+      ~(kind : Kind.t)
+      ~parameters
+      (source : Source.t)
+  =
   (match kind, visibility with
    | (Alias _ | Impl_vmodule | Virtual | Wrapped_compat), Visibility.Public
    | Root, Public
@@ -245,7 +254,7 @@ let of_source ~install_as ~obj_name ~visibility ~(kind : Kind.t) (source : Sourc
          indication by the caller. *)
       Module_name.Unique.of_path_assuming_needs_no_mangling_allow_invalid file.path
   in
-  { install_as; source; obj_name; pp = None; visibility; kind }
+  { install_as; source; obj_name; pp = None; visibility; kind; parameters }
 ;;
 
 let has t ~ml_kind =
@@ -288,7 +297,7 @@ let map_files t ~f =
 let src_dir t = Source.src_dir t.source
 let set_pp t pp = { t with pp }
 
-let to_dyn { source; obj_name; pp; visibility; kind; install_as } =
+let to_dyn { source; obj_name; pp; visibility; kind; install_as; parameters } =
   Dyn.record
     [ "source", Source.to_dyn source
     ; "obj_name", Module_name.Unique.to_dyn obj_name
@@ -296,6 +305,7 @@ let to_dyn { source; obj_name; pp; visibility; kind; install_as } =
     ; "visibility", Visibility.to_dyn visibility
     ; "kind", Kind.to_dyn kind
     ; "install_as", Dyn.option Path.Local.to_dyn install_as
+    ; "parameters", Dyn.list Module_name.to_dyn parameters
     ]
 ;;
 
@@ -345,7 +355,10 @@ module Obj_map = struct
     end)
 end
 
-let encode ({ source; obj_name; pp = _; visibility; kind; install_as = _ } as t) ~src_dir =
+let encode
+      ({ source; obj_name; pp = _; visibility; kind; install_as = _; parameters } as t)
+      ~src_dir
+  =
   let open Dune_lang.Encoder in
   let has_impl = has t ~ml_kind:Impl in
   let kind =
@@ -366,6 +379,7 @@ let encode ({ source; obj_name; pp = _; visibility; kind; install_as = _ } as t)
     ; field "visibility" Visibility.encode visibility
     ; field_o "kind" Kind.encode kind
     ; field_l "source" Fun.id (Source.encode ~dir:src_dir source)
+    ; field_l "parameters" Module_name.encode parameters
     ]
 ;;
 
@@ -375,14 +389,15 @@ let decode ~src_dir =
     (let+ obj_name = field "obj_name" Module_name.Unique.decode
      and+ visibility = field "visibility" Visibility.decode
      and+ kind = field_o "kind" Kind.decode
-     and+ source = field "source" (Source.decode ~dir:src_dir) in
+     and+ source = field "source" (Source.decode ~dir:src_dir)
+     and+ parameters = field "parameters" ~default:[] (repeat Module_name.decode) in
      let kind =
        match kind with
        | Some k -> k
        | None when Option.is_some source.files.impl -> Impl
        | None -> Intf_only
      in
-     { install_as = None; source; obj_name; pp = None; kind; visibility })
+     { install_as = None; source; obj_name; pp = None; kind; visibility; parameters })
 ;;
 
 let pped =
@@ -431,11 +446,11 @@ let generated ?install_as ?obj_name ~(kind : Kind.t) ~src_dir (path : Module_nam
       But this currently triggers module hiding via [-I]. We need to fix that.
     *)
   in
-  of_source ~install_as ~visibility ~kind ~obj_name:(Some obj_name) source
+  of_source ?install_as ~visibility ~kind ~obj_name:(Some obj_name) ~parameters:[] source
 ;;
 
-let of_source ~visibility ~kind source =
-  of_source ~install_as:None ~obj_name:None ~visibility ~kind source
+let of_source ~visibility ~kind ~parameters source =
+  of_source ~obj_name:None ~visibility ~kind ~parameters source
 ;;
 
 module Name_map = struct

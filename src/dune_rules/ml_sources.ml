@@ -335,6 +335,32 @@ let virtual_modules ~lookup_vlib ~libs vlib =
   }
 ;;
 
+let parameters_main_modules libs (lib : Library.t) =
+  match lib.parameters with
+  | [] -> Resolve.Memo.return []
+  | _ ->
+    let open Memo.O in
+    let name = Library.best_name lib in
+    let* libs = libs in
+    let* lib = Lib.DB.find libs name in
+    (match lib with
+     | None ->
+       Code_error.raise
+         "Expected parameterized library to be found in database when self-referencing"
+         [ "lib", Lib_name.to_dyn name ]
+     | Some lib ->
+       let open Resolve.Memo.O in
+       let* parameters = Lib.parameters lib in
+       Resolve.Memo.List.map parameters ~f:(fun param ->
+         let+ main = Lib.main_module_name param in
+         match main with
+         | Some main -> main
+         | None ->
+           Code_error.raise
+             "Expected library parameter to have a main module"
+             [ "param", Lib.to_dyn param ]))
+;;
+
 let make_lib_modules
       ~expander
       ~dir
@@ -394,11 +420,13 @@ let make_lib_modules
       in
       kind, main_module_name, wrapped
   in
+  let* parameters = parameters_main_modules libs lib in
   let open Memo.O in
   let* sources, modules =
     let { Buildable.loc = stanza_loc; modules = modules_settings; _ } = lib.buildable in
     Modules_field_evaluator.eval
       ~expander
+      ~parameters
       ~modules
       ~stanza_loc
       ~kind
@@ -482,6 +510,7 @@ let modules_of_stanzas =
         ~src_dir:dir
         ~kind:Modules_field_evaluator.Exe_or_normal_lib
         ~private_modules:Ordered_set_lang.Unexpanded.standard
+        ~parameters:[]
         ~version:exes.dune_version
         modules_settings
     in
@@ -536,6 +565,7 @@ let modules_of_stanzas =
              let version = Dune_project.dune_version project in
              Modules_field_evaluator.eval
                ~expander
+               ~parameters:[]
                ~modules
                ~stanza_loc:mel.loc
                ~kind:Modules_field_evaluator.Exe_or_normal_lib

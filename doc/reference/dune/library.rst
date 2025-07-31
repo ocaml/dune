@@ -210,6 +210,14 @@ order to declare a multi-directory library, you need to use the
    unless you use Dune to synthesize the ``depends`` and ``depopts`` sections
    of your opam file.
 
+.. describe:: (parameters <library-parameter-names>)
+
+   List the library parameters used by the library and its dependencies.
+
+   This feature is experimental and requires the compiler you are using to
+   support parameterized libraries.
+   See :doc:`/reference/dune/library_parameter`.
+
 .. describe:: (js_of_ocaml ...)
 
    Sets options for JavaScript compilation, see :ref:`jsoo-field`.

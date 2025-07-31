@@ -517,7 +517,14 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
                 (* XXX sync this list with the pattern matches above. It's quite ugly
                    we need this, we should rewrite this code to avoid this. *)
                 Filename.Set.of_list
-                  [ ".js"; "_doc"; "_doc_new"; ".ppx"; ".dune"; ".topmod" ]
+                  [ ".js"
+                  ; "_doc"
+                  ; "_doc_new"
+                  ; ".ppx"
+                  ; ".dune"
+                  ; ".topmod"
+                  ; ".parameterized"
+                  ]
             in
             Filename.Set.union automatic toplevel
           in
@@ -605,6 +612,10 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
       ~dir
       (Subdir_set.of_set (Filename.Set.of_list [ "cc_vendor" ]))
       (fun () -> Configurator_rules.gen_rules ctx)
+  | ".parameterized" :: rest ->
+    let* sctx = sctx
+    and* scope = Scope.DB.find_by_dir dir in
+    Parameterized_rules.gen_rules ~sctx ~scope ~dir rest
   | _ -> gen_rules_regular_directory sctx ~src_dir ~components ~dir
 ;;
 

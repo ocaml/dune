@@ -792,7 +792,17 @@ let to_dyn t =
   | Stdlib s -> variant "Stdlib" [ Stdlib.to_dyn s ]
 ;;
 
-let lib ~obj_dir ~main_module_name ~wrapped ~stdlib ~lib_name ~implements ~modules =
+let lib
+      ~obj_dir
+      ~main_module_name
+      ~wrapped
+      ~stdlib
+      ~lib_name
+      ~implements
+      ~has_instances
+      ~modules
+  =
+  (* TODO art-w: if [has_instances] is true, then we always need an alias file *)
   let make_wrapped main_module_name =
     Wrapped
       (Wrapped.make ~obj_dir ~lib_name ~implements ~modules ~main_module_name ~wrapped)
@@ -810,7 +820,7 @@ let lib ~obj_dir ~main_module_name ~wrapped ~stdlib ~lib_name ~implements ~modul
          let mangle = Mangle.Unwrapped in
          Unwrapped (Unwrapped.of_trie modules ~mangle ~obj_dir)
        | (Yes_with_transition _ | Simple true), Some main_module_name, Some m ->
-         if Module.name m = main_module_name && not implements
+         if Module.name m = main_module_name && (not implements) && not has_instances
          then Singleton m
          else make_wrapped main_module_name
        | (Yes_with_transition _ | Simple true), Some main_module_name, None ->
@@ -837,15 +847,15 @@ let exe_unwrapped modules ~obj_dir =
   with_obj_map modules
 ;;
 
-let make_wrapped ~obj_dir ~modules kind =
+let make_wrapped ~obj_dir ~modules ~has_instances kind =
   let mangle : Mangle.t =
     match kind with
     | `Exe -> Exe
     | `Melange -> Melange
   in
   match Module_trie.as_singleton modules with
-  | Some m -> make_singleton m mangle
-  | None ->
+  | Some m when not has_instances -> make_singleton m mangle
+  | _ ->
     let modules = Wrapped (Wrapped.make_exe_or_melange ~obj_dir ~modules mangle) in
     with_obj_map modules
 ;;

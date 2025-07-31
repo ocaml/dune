@@ -184,6 +184,7 @@ let executables_rules
   let* cctx =
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
+    let instances = Lib.Compile.instances compile_info in
     let js_of_ocaml =
       Js_of_ocaml.Mode.Pair.mapi js_of_ocaml ~f:(fun mode x ->
         Option.some_if
@@ -205,6 +206,7 @@ let executables_rules
       ~opaque:Inherit_from_settings
       ~melange_package_name:None
       ~package:exes.package
+      ~instances
   in
   let lib_config = ocaml.lib_config in
   let* requires_compile = Compilation_context.requires_compile cctx in

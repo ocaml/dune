@@ -18,7 +18,7 @@ val debug_fs_cache : bool ref
 val debug_load_dir : bool ref
 
 (** explicit promotion mode is set *)
-val promote : Dune_rpc_private.Promote.t option ref
+val promote : Dune_rpc_private.Promote_flag.t option ref
 
 (** Force re-running actions associated to aliases *)
 val force : bool ref

@@ -109,7 +109,7 @@ end
 
 type 'build_arg pending_action_kind =
   | Build of 'build_arg list
-  | Format of Dune_rpc.Promote.t
+  | Format of Dune_rpc.Promote_flag.t
 
 type 'build_arg pending_action =
   { kind : 'build_arg pending_action_kind
@@ -339,7 +339,7 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
       let* () = Job_queue.write server.pending_jobs { kind = f input; outcome } in
       let+ build_outcome = Fiber.Ivar.read outcome in
       match (build_outcome : Build_outcome.t) with
-      | Success -> Dune_rpc_private.Build_outcome_with_diagnostics.Success
+      | Success -> Dune_rpc.Build_outcome_with_diagnostics.Success
       | Failure -> Failure (get_current_diagnostic_errors ())
     in
     Handler.implement_request rpc decl handler
@@ -404,7 +404,7 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
   let () =
     let f _ files =
       Promote.Diff_promotion.promote_files_registered_in_last_run files;
-      Fiber.return Dune_rpc_private.Build_outcome_with_diagnostics.Success
+      Fiber.return Dune_rpc.Build_outcome_with_diagnostics.Success
     in
     Handler.implement_request rpc Procedures.Public.promote_many f
   in

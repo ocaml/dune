@@ -97,7 +97,7 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
          match kind with
          | Build targets ->
            Target.interpret_targets (Common.root common) config setup targets
-         | Format _promote ->
+         | Format promote ->
            let request (setup : Import.Main.build_system) =
              let dir = Path.(relative root) (Common.prefix_target common ".") in
              Alias.in_dir
@@ -107,8 +107,12 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
                dir
              |> Alias.request
            in
-           (* Having Diff_promotion.promote_files_registered_in_last_run here doesn't work for some reason??? *)
-           request setup
+           (match promote with
+            | Automatically ->
+              Action_builder.map (request setup) ~f:(fun () ->
+                Promote.Diff_promotion.promote_files_registered_in_last_run
+                  Dune_rpc.Files_to_promote.All)
+            | Never -> request setup)
        in
        run_build_system ~common ~request, outcome)
 ;;

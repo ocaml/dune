@@ -59,6 +59,7 @@ module Js_of_ocaml = Js_of_ocaml
 module Menhir = Menhir
 module Rule_mode_decoder = Rule_mode_decoder
 module Mode_conf = Mode_conf
+module Oxcaml = Oxcaml
 
 (* CR-someday rgrinberg: perhaps wrap these under [Stanzas]? *)
 module Copy_files = Copy_files

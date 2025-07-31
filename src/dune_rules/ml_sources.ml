@@ -376,7 +376,7 @@ let make_lib_modules
       in
       let kind : Modules_field_evaluator.kind =
         match lib.virtual_modules with
-        | None -> Exe_or_normal_lib
+        | None -> if lib.kind = Parameter then Parameter else Exe_or_normal_lib
         | Some virtual_modules -> Virtual { virtual_modules }
       in
       Memo.return (Resolve.return (kind, main_module_name, wrapped))
@@ -434,6 +434,17 @@ let make_lib_modules
       in
       User_error.raise ~annots ~loc:loc_include_subdirs [ main_message ]
     | _, _ -> ()
+  in
+  let () =
+    if Library.is_parameter lib
+    then (
+      match Module_trie.as_singleton modules with
+      | Some _ -> ()
+      | None ->
+        User_error.raise
+          ~loc:lib.buildable.loc
+          [ Pp.text "a library_parameter can't declare more than one module." ])
+    else ()
   in
   let implements = Option.is_some lib.implements in
   let _loc, lib_name = lib.name in

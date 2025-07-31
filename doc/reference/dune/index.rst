@@ -76,6 +76,12 @@ The following pages describe the available stanzas and their meanings.
       ocamlyacc
 
     .. toctree::
+      :caption: Experimental
+      :maxdepth: 1
+
+      library_parameter
+
+    .. toctree::
       :caption: Deprecated
       :maxdepth: 1
 

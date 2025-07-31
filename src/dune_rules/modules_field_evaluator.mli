@@ -18,6 +18,7 @@ type kind =
   | Virtual of Virtual.t
   | Implementation of Implementation.t
   | Exe_or_normal_lib
+  | Parameter
 
 val eval
   :  expander:Expander.t

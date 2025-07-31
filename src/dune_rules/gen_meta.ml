@@ -76,7 +76,7 @@ let gen_lib pub_name lib ~version =
   in
   let preds =
     match kind with
-    | Normal -> []
+    | Normal | Parameter -> []
     | Ppx_rewriter _ | Ppx_deriver _ -> [ Pos "ppx_driver" ]
   in
   let name lib =
@@ -127,7 +127,7 @@ let gen_lib pub_name lib ~version =
          ; ppx_runtime_deps ppx_rt_deps
          ])
     ; (match kind with
-       | Normal -> []
+       | Normal | Parameter -> []
        | Ppx_rewriter _ | Ppx_deriver _ ->
          (* Deprecated ppx method support *)
          let no_ppx_driver = Neg "ppx_driver"
@@ -139,7 +139,7 @@ let gen_lib pub_name lib ~version =
              ; requires ~preds:[ no_ppx_driver ] ppx_runtime_deps_for_deprecated_method
              ]
            ; (match kind with
-              | Normal -> assert false
+              | Normal | Parameter -> assert false
               | Ppx_rewriter _ ->
                 [ rule "ppx" [ no_ppx_driver; no_custom_ppx ] Set "./ppx.exe --as-ppx"
                 ; rule "library_kind" [] Set "ppx_rewriter"

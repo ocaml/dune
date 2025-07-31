@@ -55,6 +55,7 @@ let with_lib_deps (t : Context.t) merlin_ident ~dir ~f =
 type kind =
   | Executables of Buildable.t * (Loc.t * string) list
   | Library of Buildable.t * Lib_name.Local.t
+  | Parameter of Buildable.t * Lib_name.Local.t
   | Melange of
       { preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
       ; preprocessor_deps : Dep_conf.t list
@@ -145,9 +146,22 @@ let modules_rules
 ;;
 
 let modules_rules sctx kind expander ~dir scope modules =
+  let* () =
+    match kind with
+    | Executables _ | Library _ | Melange _ -> Memo.return ()
+    | Parameter _ ->
+      let* ocaml = Super_context.context sctx |> Context.ocaml in
+      let ocaml_version = Ocaml_config.version_string ocaml.ocaml_config in
+      if Ocaml.Version.supports_parametrized_library ocaml_version
+      then Memo.return ()
+      else
+        User_error.raise
+          [ Pp.text "The compiler you are using is not compatible with library parameter"
+          ]
+  in
   let preprocess, preprocessor_deps, lint, empty_module_interface_if_absent =
     match kind with
-    | Executables (buildable, _) | Library (buildable, _) ->
+    | Executables (buildable, _) | Library (buildable, _) | Parameter (buildable, _) ->
       ( buildable.preprocess
       , buildable.preprocessor_deps
       , buildable.lint
@@ -158,12 +172,12 @@ let modules_rules sctx kind expander ~dir scope modules =
   let lib_name =
     match kind with
     | Executables _ | Melange _ -> None
-    | Library (_, name) -> Some name
+    | Library (_, name) | Parameter (_, name) -> Some name
   in
   let empty_intf_modules =
     match kind with
     | Executables (_, modules) -> Some modules
-    | Library _ | Melange _ -> None
+    | Library _ | Melange _ | Parameter _ -> None
   in
   modules_rules
     ~preprocess

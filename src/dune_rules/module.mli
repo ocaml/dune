@@ -47,7 +47,12 @@ val to_dyn : t -> Dyn.t
 (** When you initially construct a [t] using [of_source], it assumes no wrapping
     (so reports an incorrect [obj_name] if wrapping is used) and you might need
     to fix it later with [with_wrapper]. *)
-val of_source : visibility:Visibility.t -> kind:Kind.t -> Source.t -> t
+val of_source
+  :  visibility:Visibility.t
+  -> kind:Kind.t
+  -> parameters:Module_name.t list
+  -> Source.t
+  -> t
 
 val name : t -> Module_name.t
 val path : t -> Module_name.Path.t
@@ -62,6 +67,7 @@ val set_obj_name : t -> Module_name.Unique.t -> t
 val set_path : t -> Module_name.Path.t -> t
 val add_file : t -> Ml_kind.t -> File.t -> t
 val set_source : t -> Ml_kind.t -> File.t option -> t
+val parameters : t -> Module_name.t list
 
 (** Set preprocessing flags *)
 val set_pp : t -> (string list Action_builder.t * Sandbox_config.t) option -> t

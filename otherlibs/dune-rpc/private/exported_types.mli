@@ -220,14 +220,14 @@ module Job : sig
   end
 end
 
-module Promote : sig
+module Promote_flag : sig
   type t =
     | Automatically
     | Never
 
+  val sexp : t Conv.value
   val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t
-  val sexp : t Conv.value
   val to_string : t -> string
 end
 

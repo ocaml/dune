@@ -38,7 +38,7 @@ module Public = struct
   module Format = struct
     let v1 =
       Decl.Request.make_current_gen
-        ~req:Promote.sexp
+        ~req:Promote_flag.sexp
         ~resp:Build_outcome_with_diagnostics.sexp
         ~version:1
     ;;

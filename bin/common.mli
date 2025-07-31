@@ -38,8 +38,8 @@ module Builder : sig
   val set_default_root_is_cwd : t -> bool -> t
   val set_log_file : t -> Dune_util.Log.File.t -> t
   val disable_log_file : t -> t
-  val promote : t -> Dune_rpc_private.Promote.t option
-  val set_promote : t -> Dune_rpc_private.Promote.t -> t
+  val promote : t -> Dune_rpc_private.Promote_flag.t option
+  val set_promote : t -> Dune_rpc_private.Promote_flag.t -> t
   val default_target : t -> Arg.Dep.t
   val term : t Cmdliner.Term.t
   val default : t

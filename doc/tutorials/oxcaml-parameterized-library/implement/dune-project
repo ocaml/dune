@@ -1,0 +1,4 @@
+(lang dune 3.20)
+(using oxcaml 0.1)
+
+(package (name param))

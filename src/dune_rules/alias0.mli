@@ -7,6 +7,7 @@ module Name := Dune_engine.Alias.Name
 val fmt : Name.t
 val doc : Name.t
 val doc_json : Name.t
+val doc_markdown : Name.t
 val lint : Name.t
 val private_doc : Name.t
 val doc_new : Name.t

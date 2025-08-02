@@ -136,18 +136,19 @@ let get_path common sctx ~prog =
      | true -> Memo.return path
      | false -> not_found_with_suggestions ~dir ~prog)
   | Absolute ->
-    (match
-       let prog = Path.of_string prog in
-       if Path.exists prog
-       then Some prog
-       else if not Sys.win32
-       then None
-       else (
-         let prog = Path.extend_basename prog ~suffix:Bin.exe in
-         Option.some_if (Path.exists prog) prog)
-     with
-     | Some prog -> Memo.return prog
-     | None -> not_found_with_suggestions ~dir ~prog)
+    let path =
+      Path.of_string prog
+      |> Path.Expert.try_localize_external
+      |> Path.to_string
+      |> Path.relative_to_source_in_build_or_external ~dir
+    in
+    if Path.equal (Path.external_ Path.External.root) path
+    then not_found ~hints:[] ~prog
+    else
+      Build_system.file_exists path
+      >>= (function
+       | true -> Memo.return path
+       | false -> not_found_with_suggestions ~dir ~prog)
 ;;
 
 let get_path_and_build_if_necessary common sctx ~no_rebuild ~prog =

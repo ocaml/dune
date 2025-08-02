@@ -31,23 +31,19 @@ end
 type error = Missing_run_t of Cram_test.t
 
 let missing_run_t (error : Cram_test.t) =
-  Action_builder.fail
-    { fail =
-        (fun () ->
-          let dir =
-            match error with
-            | File _ ->
-              (* This error is impossible for file tests *)
-              assert false
-            | Dir { dir; file = _ } -> dir
-          in
-          User_error.raise
-            ~loc:(Loc.in_dir (Path.source dir))
-            [ Pp.textf
-                "Cram test directory %s does not contain a run.t file."
-                (Path.Source.to_string dir)
-            ])
-    }
+  let dir =
+    match error with
+    | File _ ->
+      (* This error is impossible for file tests *)
+      assert false
+    | Dir { dir; file = _ } -> dir
+  in
+  User_error.raise
+    ~loc:(Loc.in_dir (Path.source dir))
+    [ Pp.textf
+        "Cram test directory %s does not contain a run.t file."
+        (Path.Source.to_string dir)
+    ]
 ;;
 
 let test_rule
@@ -81,7 +77,8 @@ let test_rule
   match test with
   | Error (Missing_run_t test) ->
     (* We error out on invalid tests even if they are disabled. *)
-    Alias_rules.add sctx ~alias ~loc (missing_run_t test)
+    Action_builder.fail { fail = (fun () -> missing_run_t test) }
+    |> Alias_rules.add sctx ~alias ~loc
   | Ok test ->
     (* Morally, this is equivalent to evaluating them all concurrently and
        taking the conjunction, but we do it this way to avoid evaluating things

@@ -64,6 +64,10 @@ If there is no run.t file, an error message is displayed.
   File "dir-no-run/dir.t", line 1, characters 0-0:
   Error: Cram test directory dir-no-run/dir.t does not contain a run.t file.
   [1]
+  $ dune runtest dir-no-run/dir.t
+  File "dir-no-run/dir.t", line 1, characters 0-0:
+  Error: Cram test directory dir-no-run/dir.t does not contain a run.t file.
+  [1]
 
 However, if the directory is empty, this check is skipped. (git can leave such
 empty directories)

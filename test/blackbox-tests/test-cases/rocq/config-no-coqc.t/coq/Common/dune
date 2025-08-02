@@ -1,0 +1,5 @@
+(rocq.theory
+ (mode vo)
+ (name Common)
+ (package example-coq)
+ (modules Foo))

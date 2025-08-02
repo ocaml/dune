@@ -129,7 +129,10 @@ let stanzas : constructors =
       , let* project = Dune_project.get_exn () in
         let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
         and+ t =
-          let enable_qualified = Dune_project.is_extension_set project Coq_stanza.key in
+          let enable_qualified =
+            Dune_project.is_extension_set project Coq_stanza.key
+            || Dune_project.is_extension_set project Rocq_stanza.key
+          in
           Include_subdirs.decode ~enable_qualified
         and+ loc = loc in
         [ Include_subdirs.make_stanza (loc, t) ] )
@@ -169,5 +172,6 @@ let stanza_package stanza =
   | Documentation.T { package; _ }
   | Tests.T { package = Some package; _ } -> Some package
   | Coq_stanza.Theory.T { package = Some package; _ } -> Some package
+  | Rocq_stanza.Theory.T { package = Some package; _ } -> Some package
   | _ -> None
 ;;

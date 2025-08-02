@@ -1,0 +1,6 @@
+(rocq.theory
+ (name Plugin)
+ (package ml_lib)
+ (synopsis "Test Plugin")
+ (plugins ml_lib.ml_plugin_b)
+ (modules :standard))

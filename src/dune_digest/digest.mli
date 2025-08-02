@@ -33,7 +33,7 @@ end
 module Path_digest_error : sig
   type nonrec t =
     | Unexpected_kind
-    | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
+    | Unix_error of Unix_error.Detailed.t
     (** A Unix error, e.g., [(ENOENT, _, _)] if the path doesn't exist. *)
 end
 

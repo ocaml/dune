@@ -1599,9 +1599,7 @@ module Load_immediate = Make_load (struct
     let readdir_with_kinds path =
       match Path.readdir_unsorted_with_kinds (Path.source path) with
       | Ok entries -> entries
-      | Error e ->
-        User_error.raise
-          [ Pp.text (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e) ]
+      | Error e -> User_error.raise [ Pp.text (Unix_error.Detailed.to_string_hum e) ]
     ;;
 
     let with_lexbuf_from_file path ~f = Io.with_lexbuf_from_file (Path.source path) ~f

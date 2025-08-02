@@ -56,7 +56,7 @@ let resolve_link path =
   match Unix.readlink path with
   | exception Unix.Unix_error (EINVAL, _, _) -> Ok None
   | exception Unix.Unix_error (error, syscall, arg) ->
-    Error (Dune_filesystem_stubs.Unix_error.Detailed.create ~syscall ~arg error)
+    Error (Unix_error.Detailed.create ~syscall ~arg error)
   | link ->
     Ok
       (Some
@@ -68,7 +68,7 @@ let resolve_link path =
 type follow_symlink_error =
   | Not_a_symlink
   | Max_depth_exceeded
-  | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
+  | Unix_error of Unix_error.Detailed.t
 
 let follow_symlink path =
   let rec loop n path =
@@ -201,7 +201,7 @@ let traverse ~dir ~init ~on_file ~on_dir ~on_broken_symlink =
     | dir :: dirs ->
       let dir_path = Filename.concat root dir in
       (match Dune_filesystem_stubs.read_directory_with_kinds dir_path with
-       | Error e -> Dune_filesystem_stubs.Unix_error.Detailed.raise e
+       | Error e -> Unix_error.Detailed.raise e
        | Ok entries ->
          let stack, acc =
            List.fold_left entries ~init:(dirs, acc) ~f:(fun (stack, acc) (fname, kind) ->

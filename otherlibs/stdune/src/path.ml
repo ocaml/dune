@@ -1413,9 +1413,9 @@ let local_part = function
 ;;
 
 let stat_exn t = Unix.stat (to_string t)
-let stat t = Dune_filesystem_stubs.Unix_error.Detailed.catch stat_exn t
+let stat t = Unix_error.Detailed.catch stat_exn t
 let lstat_exn t = Unix.lstat (to_string t)
-let lstat t = Dune_filesystem_stubs.Unix_error.Detailed.catch lstat_exn t
+let lstat t = Unix_error.Detailed.catch lstat_exn t
 
 include (Comparator.Operators (T) : Comparator.OPS with type t := t)
 

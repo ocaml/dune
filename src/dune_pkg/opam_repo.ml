@@ -165,7 +165,7 @@ let all_packages_versions_in_dir loc ~dir opam_package_name =
       [ Pp.textf
           "Unable to read package versions from %s: %s"
           (Path.to_string_maybe_quoted dir)
-          (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e)
+          (Unix_error.Detailed.to_string_hum e)
       ]
 ;;
 

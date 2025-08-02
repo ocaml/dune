@@ -71,9 +71,9 @@ module Descr = struct
   (* Description of the dependencies of a module *)
   module Mod_deps = struct
     type t =
-      { for_intf : Dune_rules.Module_name.t list
+      { for_intf : Dune_lang.Module_name.t list
         (* direct module dependencies for the interface *)
-      ; for_impl : Dune_rules.Module_name.t list
+      ; for_impl : Dune_lang.Module_name.t list
         (* direct module dependencies for the implementation *)
       }
 
@@ -81,8 +81,8 @@ module Descr = struct
     let to_dyn { for_intf; for_impl } =
       let open Dyn in
       record
-        [ "for_intf", list Dune_rules.Module_name.to_dyn for_intf
-        ; "for_impl", list Dune_rules.Module_name.to_dyn for_impl
+        [ "for_intf", list Dune_lang.Module_name.to_dyn for_intf
+        ; "for_impl", list Dune_lang.Module_name.to_dyn for_impl
         ]
     ;;
   end
@@ -90,7 +90,7 @@ module Descr = struct
   (* Description of modules *)
   module Mod = struct
     type t =
-      { name : Dune_rules.Module_name.t (* name of the module *)
+      { name : Dune_lang.Module_name.t (* name of the module *)
       ; impl : Path.t option (* path to the .ml file, if any *)
       ; intf : Path.t option (* path to the .mli file, if any *)
       ; cmt : Path.t option (* path to the .cmt file, if any *)
@@ -114,7 +114,7 @@ module Descr = struct
         | Some module_deps -> [ module_deps ]
       in
       record
-      @@ [ "name", Dune_rules.Module_name.to_dyn name
+      @@ [ "name", Dune_lang.Module_name.to_dyn name
          ; "impl", option dyn_path impl
          ; "intf", option dyn_path intf
          ; "cmt", option dyn_path cmt

@@ -1,3 +1,5 @@
+open Import
+
 module Style = struct
   type t =
     | Loc
@@ -177,11 +179,23 @@ type t =
   ; dir : string option
   }
 
+let to_dyn { loc; paragraphs; hints; annots; context; dir } =
+  Dyn.record
+    [ "loc", Dyn.option Loc0.to_dyn loc
+    ; "paragraphs", Dyn.list (Pp.to_dyn Style.to_dyn) paragraphs
+    ; "hints", Dyn.list (Pp.to_dyn Style.to_dyn) hints
+    ; "annots", Annots.to_dyn annots
+    ; "context", Dyn.option Dyn.string context
+    ; "dir", Dyn.option Dyn.string dir
+    ]
+;;
+
 let compare { loc; paragraphs; hints; annots; context = _; dir = _ } t =
   let open Ordering.O in
   let= () = Option.compare Loc0.compare loc t.loc in
-  let= () = List.compare paragraphs t.paragraphs ~compare:Poly.compare in
-  let= () = List.compare hints t.hints ~compare:Poly.compare in
+  let compare = Pp.compare ~compare:Style.compare in
+  let= () = List.compare paragraphs t.paragraphs ~compare in
+  let= () = List.compare hints t.hints ~compare in
   Poly.compare annots t.annots
 ;;
 

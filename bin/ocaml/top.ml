@@ -109,7 +109,7 @@ module Module = struct
     let open Memo.O in
     let module_name =
       let name = Filename.remove_extension filename in
-      Dune_rules.Module_name.of_string_user_error (Loc.none, name) |> User_error.ok_exn
+      Dune_lang.Module_name.of_string_user_error (Loc.none, name) |> User_error.ok_exn
     in
     let* expander = Super_context.expander sctx ~dir in
     let* top_module_info = Dune_rules.Top_module.find_module sctx mod_ in
@@ -161,7 +161,7 @@ module Module = struct
                  in
                  let cmos =
                    let module Module = Dune_rules.Module in
-                   let module Module_name = Dune_rules.Module_name in
+                   let module Module_name = Dune_lang.Module_name in
                    let module_obj_name = Module.obj_name module_ in
                    List.filter_map modules ~f:(fun m ->
                      let obj_dir =
@@ -185,7 +185,7 @@ module Module = struct
         let module Merlin = Dune_rules.Merlin in
         let pps = Merlin.pp_config merlin ctx ~expander in
         let+ pps, _ = Action_builder.evaluate_and_collect_facts pps in
-        let pp = Dune_rules.Module_name.Per_item.get pps module_name in
+        let pp = Dune_lang.Module_name.Per_item.get pps module_name in
         match pp with
         | None -> None, None
         | Some pp_flags ->
@@ -199,7 +199,7 @@ module Module = struct
         let modules = Dune_rules.Compilation_context.modules cctx in
         let opens_ = Dune_rules.Modules.With_vlib.local_open modules module_ in
         List.map opens_ ~f:(fun name ->
-          sprintf "open %s" (Dune_rules.Module_name.to_string name))
+          sprintf "open %s" (Dune_lang.Module_name.to_string name))
       in
       { Dune_rules.Toplevel.files_to_load; pp; ppx; include_paths; uses = []; code }
   ;;

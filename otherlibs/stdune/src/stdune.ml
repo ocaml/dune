@@ -34,39 +34,6 @@ module Ordering = Ordering
 module Flock = Flock
 module Terminal_signals = Terminal_signals
 module Execution_env = Execution_env
-
-module Pp = struct
-  include Pp
-
-  (** This version of [Pp.compare] uses [Ordering.t] rather than returning an [int]. *)
-  let compare ~compare x y =
-    Ordering.of_int (Pp.compare (fun a b -> Ordering.to_int (compare a b)) x y)
-  ;;
-
-  let to_dyn tag_to_dyn t =
-    let rec to_dyn t =
-      let open Dyn in
-      match (t : _ Pp.Ast.t) with
-      | Nop -> variant "Nop" []
-      | Seq (x, y) -> variant "Seq" [ to_dyn x; to_dyn y ]
-      | Concat (x, y) -> variant "Concat" [ to_dyn x; list to_dyn y ]
-      | Box (i, t) -> variant "Box" [ int i; to_dyn t ]
-      | Vbox (i, t) -> variant "Vbox" [ int i; to_dyn t ]
-      | Hbox t -> variant "Hbox" [ to_dyn t ]
-      | Hvbox (i, t) -> variant "Hvbox" [ int i; to_dyn t ]
-      | Hovbox (i, t) -> variant "Hovbox" [ int i; to_dyn t ]
-      | Verbatim s -> variant "Verbatim" [ string s ]
-      | Char c -> variant "Char" [ char c ]
-      | Break (x, y) ->
-        variant "Break" [ triple string int string x; triple string int string y ]
-      | Newline -> variant "Newline" []
-      | Text s -> variant "Text" [ string s ]
-      | Tag (s, t) -> variant "Tag" [ tag_to_dyn s; to_dyn t ]
-    in
-    to_dyn (Pp.to_ast t)
-  ;;
-end
-
 module Result = Result
 module Set = Set
 module Signal = Signal
@@ -99,6 +66,7 @@ module Code_error = Code_error
 module User_error = User_error
 module User_message = User_message
 module User_warning = User_warning
+module Pp = Import.Pp
 module Lexbuf = Lexbuf
 module Scanf = Scanf
 module Sys = Sys
@@ -119,33 +87,10 @@ module Dev_null = Dev_null
 module Platform = Platform
 module Per_item = Per_item
 module Bit_set = Bit_set
+module Unix_error = Unix_error
+module File_kind = File_kind
 
 module type Per_item = Per_item_intf.S
-
-module Unix_error = struct
-  include Dune_filesystem_stubs.Unix_error
-
-  module Detailed = struct
-    include Dune_filesystem_stubs.Unix_error.Detailed
-
-    let to_dyn (error, syscall, arg) =
-      Dyn.Record
-        [ "error", String (Unix.error_message error)
-        ; "syscall", String syscall
-        ; "arg", String arg
-        ]
-    ;;
-
-    let pp ?(prefix = "") unix_error = Pp.verbatim (prefix ^ to_string_hum unix_error)
-  end
-end
-
-module File_kind = struct
-  include Dune_filesystem_stubs.File_kind
-
-  let to_dyn t = Dyn.String (to_string t)
-end
-
 module type Applicative = Applicative_intf.S
 module type Monad = Monad_intf.S
 module type Monoid = Monoid_intf.S

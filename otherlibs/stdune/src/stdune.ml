@@ -119,33 +119,10 @@ module Dev_null = Dev_null
 module Platform = Platform
 module Per_item = Per_item
 module Bit_set = Bit_set
+module Unix_error = Unix_error
+module File_kind = File_kind
 
 module type Per_item = Per_item_intf.S
-
-module Unix_error = struct
-  include Dune_filesystem_stubs.Unix_error
-
-  module Detailed = struct
-    include Dune_filesystem_stubs.Unix_error.Detailed
-
-    let to_dyn (error, syscall, arg) =
-      Dyn.Record
-        [ "error", String (Unix.error_message error)
-        ; "syscall", String syscall
-        ; "arg", String arg
-        ]
-    ;;
-
-    let pp ?(prefix = "") unix_error = Pp.verbatim (prefix ^ to_string_hum unix_error)
-  end
-end
-
-module File_kind = struct
-  include Dune_filesystem_stubs.File_kind
-
-  let to_dyn t = Dyn.String (to_string t)
-end
-
 module type Applicative = Applicative_intf.S
 module type Monad = Monad_intf.S
 module type Monoid = Monoid_intf.S

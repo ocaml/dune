@@ -1,16 +1,8 @@
 # Git related helper scripts
 
-# This function overrides 'git' so that it is used correctly in tests. It has
-# the following properties:
-#
-# - When we initialise a repository, we always want to set a git user manually.
-# 
-git() {
-  if [ "$1" = "init" ]; then
-    command git "$@"
-    command git config user.name "Test Name"
-    command git config user.email "test@example.com"
-  else
-    command git "$@"
-  fi
-}
+# These variables are used by Git and set here so the name and email of the
+# committer stay the same between different runs
+export GIT_AUTHOR_NAME="Test Name"
+export GIT_AUTHOR_EMAIL="test@example.com"
+export GIT_COMMITTER_NAME="${GIT_AUTHOR_NAME}"
+export GIT_COMMITTER_EMAIL="${GIT_AUTHOR_EMAIL}"

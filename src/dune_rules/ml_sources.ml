@@ -68,7 +68,6 @@ module Modules = struct
         libs
         ~init:(Lib_id.Local.Map.empty, Path.Build.Map.empty)
         ~f:(fun (by_id, by_obj_dir) part ->
-          let origin : Origin.t = Library part.stanza in
           let lib_id =
             let src_dir =
               Path.drop_optional_build_context_src_exn (Path.build part.dir)
@@ -76,6 +75,7 @@ module Modules = struct
             Library.to_lib_id ~src_dir part.stanza
           in
           let by_id =
+            let origin : Origin.t = Library part.stanza in
             Lib_id.Local.Map.add_exn by_id lib_id (origin, part.modules, part.obj_dir)
           and by_obj_dir =
             Path.Build.Map.update by_obj_dir (Obj_dir.obj_dir part.obj_dir) ~f:(function
@@ -170,8 +170,10 @@ let modules_of_files ~path ~dialects ~dir ~files =
         (match Dialect.DB.find_by_extension dialects ("." ^ ext) with
          | None -> Skip
          | Some (dialect, ml_kind) ->
-           let name = Module_name.of_string_allow_invalid (loc, s) in
-           let module_ = make_module dialect name fn in
+           let module_ =
+             let name = Module_name.of_string_allow_invalid (loc, s) in
+             make_module dialect name fn
+           in
            (match ml_kind with
             | Impl -> Left module_
             | Intf -> Right module_)))
@@ -251,20 +253,18 @@ let find_origin (t : t) ~libs path =
   | None | Some [] -> Memo.return None
   | Some [ (origin, _) ] -> Memo.return (Some origin)
   | Some origins ->
-    let* origins =
-      Memo.List.filter_map origins ~f:(fun (origin, dir) ->
-        match origin with
-        | Executables _ | Melange _ -> Memo.return (Some origin)
-        | Library lib ->
-          let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
-          Lib.DB.available_by_lib_id libs (Local (Library.to_lib_id ~src_dir lib))
-          >>| (function
-           | false -> None
-           | true -> Some origin))
-    in
-    (match origins with
-     | [] -> Memo.return None
-     | [ origin ] -> Memo.return (Some origin)
+    Memo.List.filter_map origins ~f:(fun (origin, dir) ->
+      match origin with
+      | Executables _ | Melange _ -> Memo.return (Some origin)
+      | Library lib ->
+        let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
+        Lib.DB.available_by_lib_id libs (Local (Library.to_lib_id ~src_dir lib))
+        >>| (function
+         | false -> None
+         | true -> Some origin))
+    >>| (function
+     | [] -> None
+     | [ origin ] -> Some origin
      | origins -> raise_module_conflict_error origins ~module_path:path)
 ;;
 
@@ -288,20 +288,17 @@ let modules_and_obj_dir t ~libs ~for_ =
      with
      | [] | [ _ ] -> Memo.return (modules, obj_dir)
      | lib_ids ->
-       let+ lib_ids =
-         Memo.List.filter lib_ids ~f:(fun lib_id ->
-           Lib.DB.available_by_lib_id libs (Local lib_id))
-       in
-       (match lib_ids with
+       Memo.List.filter lib_ids ~f:(fun lib_id ->
+         Lib.DB.available_by_lib_id libs (Local lib_id))
+       >>| (function
         | [] | [ _ ] -> modules, obj_dir
         | lib_ids ->
           let lib_id =
-            let lib_ids =
-              List.sort lib_ids ~compare:(fun a b ->
-                Loc.compare (Lib_id.Local.loc a) (Lib_id.Local.loc b))
-            in
             (* Get the 2nd loc *)
-            lib_ids |> List.tl |> List.hd
+            List.sort lib_ids ~compare:(fun a b ->
+              Loc.compare (Lib_id.Local.loc a) (Lib_id.Local.loc b))
+            |> List.tl
+            |> List.hd
           in
           User_error.raise
             ~loc:(Lib_id.Local.loc lib_id)
@@ -326,16 +323,14 @@ let modules_and_obj_dir t ~libs ~for_ =
 let modules t ~libs ~for_ = modules_and_obj_dir t ~libs ~for_ >>| fst
 
 let virtual_modules ~lookup_vlib ~libs vlib =
-  let info = Lib.info vlib in
   let+ modules =
-    match Lib_info.modules info with
+    match Lib_info.modules vlib with
     | External modules ->
-      let modules = Option.value_exn modules in
-      Memo.return (Modules_group.With_vlib.drop_vlib modules)
+      Option.value_exn modules |> Modules_group.With_vlib.drop_vlib |> Memo.return
     | Local ->
-      let src_dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
-      let* t = lookup_vlib ~dir:src_dir in
-      modules t ~libs ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
+      let src_dir = Lib_info.src_dir vlib |> Path.as_in_build_dir_exn in
+      lookup_vlib ~dir:src_dir
+      >>= modules ~libs ~for_:(Library (Lib_info.lib_id vlib |> Lib_id.to_local_exn))
   in
   let existing_virtual_modules = Modules_group.virtual_module_names modules in
   let allow_new_public_modules =
@@ -396,11 +391,13 @@ let make_lib_modules
          is [Some _] and this [lib] variable correspond to the same library. *)
       let* wrapped = Lib.wrapped resolved >>| Option.value_exn in
       let* main_module_name = Lib.main_module_name resolved in
-      let+ impl =
-        let* vlib = Lib.implements resolved |> Option.value_exn in
-        virtual_modules ~lookup_vlib ~libs vlib |> Resolve.Memo.lift_memo
+      let+ kind =
+        let+ impl =
+          let* vlib = Lib.implements resolved |> Option.value_exn >>| Lib.info in
+          virtual_modules ~lookup_vlib ~libs vlib |> Resolve.Memo.lift_memo
+        in
+        Modules_field_evaluator.Implementation impl
       in
-      let kind : Modules_field_evaluator.kind = Implementation impl in
       kind, main_module_name, wrapped
   in
   let open Memo.O in
@@ -436,15 +433,11 @@ let make_lib_modules
     | _, _ -> ()
   in
   let () =
-    if Library.is_parameter lib
-    then (
-      match Module_trie.as_singleton modules with
-      | Some _ -> ()
-      | None ->
-        User_error.raise
-          ~loc:lib.buildable.loc
-          [ Pp.text "a library_parameter can't declare more than one module." ])
-    else ()
+    if Library.is_parameter lib && Option.is_none (Module_trie.as_singleton modules)
+    then
+      User_error.raise
+        ~loc:lib.buildable.loc
+        [ Pp.text "a library_parameter can't declare more than one module." ]
   in
   let implements = Option.is_some lib.implements in
   let _loc, lib_name = lib.name in
@@ -589,13 +582,15 @@ let make
           dirs
           ~init:Module_trie.empty
           ~f:(fun acc { Source_file_dir.dir; path_to_root; files } ->
-            let path =
-              List.map path_to_root ~f:(fun m ->
-                Module_name.parse_string_exn
-                  (Loc.in_dir (Path.drop_optional_build_context (Path.build dir)), m))
-            in
-            let modules = modules_of_files ~dialects ~dir ~files ~path in
-            match Module_trie.set_map acc path modules with
+            match
+              let path =
+                List.map path_to_root ~f:(fun m ->
+                  (Loc.in_dir (Path.drop_optional_build_context (Path.build dir)), m)
+                  |> Module_name.parse_string_exn)
+              in
+              let modules = modules_of_files ~dialects ~dir ~files ~path in
+              Module_trie.set_map acc path modules
+            with
             | Ok s -> s
             | Error module_ ->
               let module_ =

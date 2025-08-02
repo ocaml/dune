@@ -38,7 +38,6 @@ include struct
   module Dune_file = Dune_file
   module Library = Library
   module Melange = Melange
-  module Melange_stanzas = Melange_stanzas
   module Executables = Executables
 end
 

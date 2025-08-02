@@ -206,8 +206,8 @@ end
 
 let check_module_name name =
   let s = Dune_lang.Atom.to_string name in
-  let (_ : Dune_rules.Module_name.t) =
-    Dune_rules.Module_name.of_string_user_error (Loc.none, s) |> User_error.ok_exn
+  let (_ : Dune_lang.Module_name.t) =
+    Dune_lang.Module_name.of_string_user_error (Loc.none, s) |> User_error.ok_exn
   in
   ()
 ;;

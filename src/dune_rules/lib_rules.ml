@@ -510,10 +510,10 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
   let package = Library.package lib in
   let js_of_ocaml = Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml in
   (* XXX(anmonteiro): `melange_package_name` is used to derive Melange's
-     `--bs-package-name` argument. We only use the library name for public
+     `--mel-package-name` argument. We only use the library name for public
      libraries / private libraries with `(package ..)` because we need Melange
      to preserve relative paths for private libs (i.e. not pass the
-     `--bs-package-name` arg). *)
+     `--mel-package-name` arg). *)
   let melange_package_name =
     match lib.visibility with
     | Public p -> Some (Public_lib.name p)

@@ -340,16 +340,11 @@ val is_strict_descendant_of_build_dir : t -> bool
 val split_first_component : t -> (Filename.t * t) option
 
 val exists : t -> bool
-
-val readdir_unsorted
-  :  t
-  -> (Filename.t list, Dune_filesystem_stubs.Unix_error.Detailed.t) Result.t
+val readdir_unsorted : t -> (Filename.t list, Unix_error.Detailed.t) Result.t
 
 val readdir_unsorted_with_kinds
   :  t
-  -> ( (Filename.t * Unix.file_kind) list
-       , Dune_filesystem_stubs.Unix_error.Detailed.t )
-       Result.t
+  -> ((Filename.t * Unix.file_kind) list, Unix_error.Detailed.t) Result.t
 
 val is_dir_sep : char -> bool
 
@@ -393,9 +388,9 @@ end
     of [/a/b] is [./a/b]. *)
 val local_part : t -> Local.t
 
-val stat : t -> (Unix.stats, Dune_filesystem_stubs.Unix_error.Detailed.t) Result.t
+val stat : t -> (Unix.stats, Unix_error.Detailed.t) Result.t
 val stat_exn : t -> Unix.stats
-val lstat : t -> (Unix.stats, Dune_filesystem_stubs.Unix_error.Detailed.t) Result.t
+val lstat : t -> (Unix.stats, Unix_error.Detailed.t) Result.t
 val lstat_exn : t -> Unix.stats
 
 (* it would be nice to call this [Set.of_source_paths], but it's annoying to

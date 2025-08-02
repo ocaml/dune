@@ -86,7 +86,7 @@ end
 module Path_digest_error = struct
   type nonrec t =
     | Unexpected_kind
-    | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
+    | Unix_error of Unix_error.Detailed.t
 end
 
 exception E of Path_digest_error.t
@@ -97,14 +97,14 @@ let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) =
   let rec loop path (stats : Stats_for_digest.t) =
     match stats.st_kind with
     | S_LNK ->
-      Dune_filesystem_stubs.Unix_error.Detailed.catch
+      Unix_error.Detailed.catch
         (fun path ->
            let contents = Path.to_string path |> Unix.readlink |> string in
            path_with_executable_bit ~executable:stats.executable ~content_digest:contents)
         path
       |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
     | S_REG ->
-      Dune_filesystem_stubs.Unix_error.Detailed.catch
+      Unix_error.Detailed.catch
         (file_with_executable_bit ~executable:stats.executable)
         path
       |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)

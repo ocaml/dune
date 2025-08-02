@@ -17,7 +17,7 @@ val mkdir_p : ?perms:int -> string -> mkdir_p_result
 type follow_symlink_error =
   | Not_a_symlink
   | Max_depth_exceeded
-  | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
+  | Unix_error of Unix_error.Detailed.t
 
 val follow_symlink : string -> (string, follow_symlink_error) result
 

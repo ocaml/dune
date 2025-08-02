@@ -370,7 +370,7 @@ struct
           Code_error.raise
             "read_file: file is larger than Sys.max_string_length"
             [ "fn", path_to_dyn fn ]
-        | Error (`Unix e) -> Dune_filesystem_stubs.Unix_error.Detailed.raise e)
+        | Error (`Unix e) -> Unix_error.Detailed.raise e)
     else read_file_chan ~binary fn
   ;;
 
@@ -535,8 +535,7 @@ let portable_hardlink ~src ~dst =
       | Error Not_a_symlink -> src
       | Error Max_depth_exceeded ->
         user_error "Too many indirections; is this a cyclic symbolic link?"
-      | Error (Unix_error error) ->
-        user_error (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum error)
+      | Error (Unix_error error) -> user_error (Unix_error.Detailed.to_string_hum error)
     in
     (try Path.link src dst with
      | Unix.Unix_error (Unix.EEXIST, _, _) ->

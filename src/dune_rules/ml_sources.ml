@@ -184,6 +184,7 @@ let modules_of_files ~path ~dialects ~dir ~files =
     | Error (name, f1, f2) ->
       let src_dir = Path.drop_build_context_exn dir in
       User_error.raise
+        ~loc:(Loc.in_dir dir)
         [ Pp.textf
             "Too many files for module %s in %s:"
             (Module_name.to_string name)

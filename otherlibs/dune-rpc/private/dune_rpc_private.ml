@@ -19,6 +19,7 @@ module Public = struct
 
     let ping = Procedures.Public.ping.decl
     let diagnostics = Procedures.Public.diagnostics.decl
+    let format = Procedures.Public.format.decl
     let format_dune_file = Procedures.Public.format_dune_file.decl
     let promote = Procedures.Public.promote.decl
     let promote_many = Procedures.Public.promote_many.decl
@@ -641,6 +642,7 @@ module Client = struct
       Builder.declare_request t Procedures.Public.diagnostics;
       Builder.declare_request t Procedures.Poll.(poll running_jobs);
       Builder.declare_notification t Procedures.Public.shutdown;
+      Builder.declare_request t Procedures.Public.format;
       Builder.declare_request t Procedures.Public.format_dune_file;
       Builder.declare_request t Procedures.Public.promote;
       Builder.declare_request t Procedures.Public.promote_many;

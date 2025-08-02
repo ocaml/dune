@@ -1,3 +1,5 @@
+open Import
+
 (** A message for the user *)
 
 (** User messages are styled document that can be printed to the console or in
@@ -73,6 +75,7 @@ type t =
 val compare : t -> t -> Ordering.t
 val equal : t -> t -> bool
 val pp : t -> Style.t Pp.t
+val to_dyn : t -> Dyn.t
 
 module Print_config : sig
   (** Associate ANSI terminal styles to symbolic styles *)

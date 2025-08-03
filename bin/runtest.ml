@@ -35,21 +35,20 @@ let runtest_info =
 
 let find_cram_test path ~parent_dir =
   let open Memo.O in
-  Source_tree.nearest_dir parent_dir
-  >>= Dune_rules.Cram_rules.cram_tests
-  (* We ignore the errors we get when searching for cram tests as they will
-     be reported during building anyway. We are only interested in the
-     presence of cram tests. *)
-  >>| List.filter_map ~f:Result.to_option
-  (* We search our list of known cram tests for the test we are looking
-     for. *)
-  >>| List.find ~f:(fun (test : Source.Cram_test.t) ->
-    let src =
-      match test with
-      | File src -> src
-      | Dir { dir = src; _ } -> src
-    in
-    Path.Source.equal path src)
+  Source_tree.find_dir parent_dir
+  >>= function
+  | None -> Memo.return None
+  | Some dir ->
+    Dune_rules.Cram_rules.cram_tests dir
+    >>| List.find_map ~f:(function
+      | Ok cram_test when Path.Source.equal path (Source.Cram_test.path cram_test) ->
+        Some cram_test
+      (* We raise any error we encounter when looking for our test specifically. *)
+      | Error (Dune_rules.Cram_rules.Missing_run_t cram_test)
+        when Path.Source.equal path (Source.Cram_test.path cram_test) ->
+        Dune_rules.Cram_rules.missing_run_t cram_test
+      (* Any errors or successes unrelated to our test are discarded. *)
+      | Error (Dune_rules.Cram_rules.Missing_run_t _) | Ok _ -> None)
 ;;
 
 let explain_unsuccessful_search path ~parent_dir =
@@ -95,7 +94,7 @@ let disambiguate_test_name path =
     >>= (function
      | Some test ->
        (* If we find the cram test, then we request that is run. *)
-       Memo.return (`Test (parent_dir, Source.Cram_test.name test))
+       Memo.return (`Cram (parent_dir, test))
      | None ->
        (* If we don't find it, then we assume the user intended a directory for
           @runtest to be used. *)
@@ -140,7 +139,8 @@ let runtest_term =
       Alias.request
       @@
       match alias_kind with
-      | `Test (dir, alias_name) ->
+      | `Cram (dir, cram) ->
+        let alias_name = Source.Cram_test.name cram in
         Alias.in_dir
           ~name:(Dune_engine.Alias.Name.of_string alias_name)
           ~recursive:false

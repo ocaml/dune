@@ -40,3 +40,15 @@ Cmj rules should include --mel-package-output
       pkg
 
 
+Using `(module_system es6)` is deprecated in `(using melange 1.0)`
+
+  $ cat > app/dune <<EOF
+  > (melange.emit (target dist) (module_systems es6))
+  > EOF
+  $ dune rules @app/melange > /dev/null
+  File "app/dune", line 1, characters 44-47:
+  1 | (melange.emit (target dist) (module_systems es6))
+                                                  ^^^
+  Warning: 'es6' was deprecated in version 1.0 of the Melange extension. Use
+  `esm' instead.
+

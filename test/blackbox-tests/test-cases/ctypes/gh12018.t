@@ -43,61 +43,15 @@ Reproduction case for https://github.com/ocaml/dune/issues/12018
 
   $ LIBEX=$(realpath "$PWD/libexample")
   $ DYLD_LIBRARY_PATH="$LIBEX" LD_LIBRARY_PATH="$LIBEX" PKG_CONFIG_PATH="$LIBEX/pkgconfig" PKG_CONFIG_ARGN="--define-prefix" dune exec ./foo.exe
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("link_many: unable to find module",
-     { main_module_name = "Libexample__type_gen"
-     ; modules =
-         Modules
-           (Singleton
-              { source =
-                  { path = [ "Foo" ]
-                  ; files =
-                      { impl =
-                          Some
-                            { path = In_build_dir "default/foo.ml"
-                            ; original_path = In_build_dir "default/foo.ml"
-                            ; dialect = "ocaml"
-                            }
-                      ; intf =
-                          Some
-                            { path = In_build_dir "default/foo.mli"
-                            ; original_path = In_build_dir "default/foo.mli"
-                            ; dialect = "ocaml"
-                            }
-                      }
-                  }
-              ; obj_name = "dune__exe__Foo"
-              ; pp = None
-              ; visibility = "public"
-              ; kind = "impl"
-              ; install_as = None
-              })
-     })
-  Raised at Stdune__Code_error.raise in file
-    "otherlibs/stdune/src/code_error.ml", line 10, characters 30-62
-  Called from Dune_rules__Exe.link_many.(fun) in file "src/dune_rules/exe.ml",
-    lines 312-316, characters 12-15
-  Called from Fiber__Scheduler.exec in file "src/fiber/src/scheduler.ml", line
-    76, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 38, characters 27-56
-  Called from Fiber__Scheduler.exec in file "src/fiber/src/scheduler.ml", line
-    76, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 38, characters 27-56
-  Called from Fiber__Scheduler.exec in file "src/fiber/src/scheduler.ml", line
-    76, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 38, characters 27-56
-  Called from Fiber__Scheduler.exec in file "src/fiber/src/scheduler.ml", line
-    76, characters 8-11
-  -> required by ("<unnamed>", ())
-  -> required by ("load-dir", In_build_dir "default")
-  
-  I must not crash.  Uncertainty is the mind-killer. Exceptions are the
-  little-death that brings total obliteration.  I will fully express my cases. 
-  Execution will pass over me and through me.  And when it has gone past, I
-  will unwind the stack along its path.  Where the cases are handled there will
-  be nothing.  Only I will remain.
+  File "dune", line 3, characters 10-13:
+  3 |  (modules foo)
+                ^^^
+  Error: Module Function_description is required by ctypes at dune:13 but is
+  missing in the modules field of the stanza.
+  File "dune", line 3, characters 10-13:
+  3 |  (modules foo)
+                ^^^
+  Error: Module Type_description is required by ctypes at dune:10 but is
+  missing in the modules field of the stanza.
   [1]
+

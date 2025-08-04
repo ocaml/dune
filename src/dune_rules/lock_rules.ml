@@ -259,7 +259,7 @@ let setup_lock_rules ctx_name ~dir ~lock_dir : Gen_rules.result =
           (get_repos
              repos
              ~repositories:
-               [ Loc.none, Dune_pkg.Pkg_workspace.Repository.Name.of_string "upstream" ])
+               [ Loc.none, Dune_pkg.Pkg_workspace.Repository.Name.of_string "mock" ])
       in
       let* solver_env_from_current_system =
         Memo.of_reproducible_fiber (poll_solver_env_from_current_system ())

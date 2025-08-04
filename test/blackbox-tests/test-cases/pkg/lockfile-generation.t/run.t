@@ -87,7 +87,19 @@ Print the contents of each file in the lockdir:
   
 
 Run the solver again preferring oldest versions of dependencies:
-  $ dune build @pkg-lock --version-preference=oldest
+
+  $ mv dune-workspace saved-dune-workspace
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.20)
+  > (pkg enabled)
+  > (lock_dir
+  >   (path dune.lock)
+  >   (repositories mock)
+  >   (version_preference oldest))
+  > EOF
+  $ add_mock_repo
+
+  $ dune build @pkg-lock
   $ show_solution
   Solution for dune.lock:
   - bar.0.4.0
@@ -131,6 +143,7 @@ Run the solver again preferring oldest versions of dependencies:
   
   ---
   
+  $ mv saved-dune-workspace dune-workspace
 
 Regenerate the `dune-project` file introducing an unsatisfiable constraint.
   $ cat >dune-project <<EOF

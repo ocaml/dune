@@ -27,6 +27,7 @@ module Spec = struct
     ; constraints : Package_dependency.t list
     ; selected_depopts : Dune_lang.Package_name.t list
     ; pins : Dune_pkg.Resolved_package.t Dune_lang.Package_name.Map.t
+    ; version_preference : Dune_pkg.Version_preference.t
     }
 
   let name = "lock"
@@ -35,7 +36,16 @@ module Spec = struct
   let is_useful_to ~memoize = memoize
 
   let encode
-        { target; lock_dir; packages; repos; env; constraints; selected_depopts; pins }
+        { target
+        ; lock_dir
+        ; packages
+        ; repos
+        ; env
+        ; constraints
+        ; selected_depopts
+        ; pins
+        ; version_preference
+        }
         _encode_path
         encode_target
     : Sexp.t
@@ -80,6 +90,15 @@ module Spec = struct
         Sexp.List [ Sexp.Atom name; Sexp.Atom "TODO: representation of resolved pkg" ])
       |> fun xs -> Sexp.List xs
     in
+    let version_preference =
+      Sexp.List
+        [ Sexp.Atom "version_preference"
+        ; Sexp.Atom
+            (match version_preference with
+             | Oldest -> "oldest"
+             | Newest -> "newest")
+        ]
+    in
     List
       [ encode_target target
       ; Sexp.Atom lock_dir
@@ -89,6 +108,7 @@ module Spec = struct
       ; constraints
       ; selected_depopts
       ; pins
+      ; version_preference
       ]
   ;;
 
@@ -101,13 +121,13 @@ module Spec = struct
         ; constraints
         ; selected_depopts
         ; pins
+        ; version_preference
         }
         ~ectx:_
         ~eenv:_
     =
     let open Fiber.O in
     let* () = Fiber.return () in
-    let version_preference = Dune_pkg.Version_preference.default in
     let local_packages =
       Package.Name.Map.map packages ~f:Dune_pkg.Local_package.for_solver
     in
@@ -141,9 +161,28 @@ end
 
 module A = Action_ext.Make (Spec)
 
-let lock ~packages ~target ~lock_dir ~repos ~env ~constraints ~selected_depopts ~pins =
+let lock
+      ~packages
+      ~target
+      ~lock_dir
+      ~repos
+      ~env
+      ~constraints
+      ~selected_depopts
+      ~pins
+      ~version_preference
+  =
   A.action
-    { Spec.target; lock_dir; packages; repos; env; constraints; selected_depopts; pins }
+    { Spec.target
+    ; lock_dir
+    ; packages
+    ; repos
+    ; env
+    ; constraints
+    ; selected_depopts
+    ; pins
+    ; version_preference
+    }
   |> Action.Full.make ~can_go_in_shared_cache:false
   |> Action_builder.With_targets.return
   |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
@@ -246,10 +285,10 @@ let setup_lock_rules ctx_name ~dir ~lock_dir : Gen_rules.result =
       in
       let* workspace = Workspace.workspace () in
       let repos = repositories_of_workspace workspace in
+      let lock_dir_path =
+        Path.Build.relative (Context_name.build_dir ctx_name) lock_dir
+      in
       let constraints, selected_depopts =
-        let lock_dir_path =
-          Path.Build.relative (Context_name.build_dir ctx_name) lock_dir
-        in
         ( constraints_of_workspace ~lock_dir_path workspace
         , depopts_of_workspace ~lock_dir_path workspace )
       in
@@ -274,8 +313,23 @@ let setup_lock_rules ctx_name ~dir ~lock_dir : Gen_rules.result =
       in
       let* project_pins = project_pins in
       let* pins = Memo.of_reproducible_fiber (resolve_project_pins project_pins) in
+      let version_preference =
+        (let open Option.O in
+         let* lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
+         lock_dir.version_preference)
+        |> Option.value ~default:Dune_pkg.Version_preference.default
+      in
       let lock_rule =
-        lock ~packages ~target ~lock_dir ~repos ~env ~constraints ~selected_depopts ~pins
+        lock
+          ~packages
+          ~target
+          ~lock_dir
+          ~repos
+          ~env
+          ~constraints
+          ~selected_depopts
+          ~pins
+          ~version_preference
       in
       rule ~loc:Loc.none lock_rule)
   in

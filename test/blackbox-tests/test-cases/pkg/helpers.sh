@@ -65,7 +65,7 @@ mkpkg() {
 }
 
 add_mock_repo() {
-  repo="${1}"
+  repo="${1:-file://$(pwd)/mock-opam-repository}"
   # add the repo definition
   cat >> dune-workspace <<EOF
 (repository

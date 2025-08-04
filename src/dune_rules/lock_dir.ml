@@ -136,8 +136,10 @@ let select_lock_dir lock_dir_selection =
 ;;
 
 let default_path ctx_name =
-  let dir = Context_name.build_dir ctx_name in
-  Path.Build.relative dir "dune.lock"
+  (* TODO remove ctx_name *)
+  Path.Build.L.relative
+    Private_context.t.build_dir
+    [ Context_name.to_string ctx_name; ".lock"; "dune.lock"; "content" ]
 ;;
 
 let enabled =

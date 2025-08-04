@@ -13,7 +13,7 @@ dune="dune"
 
 pkg_root="_build/_private/default/.pkg"
 
-default_lock_dir="_build/default/dune.lock"
+default_lock_dir="_build/_private/default/.lock/dune.lock/content"
 source_lock_dir="dune.lock"
 
 build_pkg() {

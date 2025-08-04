@@ -24,6 +24,16 @@ show_pkg() {
   find $pkg_root/$1 | sort | sed "s#$pkg_root/$1##"
 }
 
+# function to show the solver result of the default lock directory
+show_solution() {
+  echo "Solution for dune.lock:"
+  pkgs=$(ls ${default_lock_dir} | sort | grep -v lock.dune)
+  for pkg in ${pkgs}; do
+    version=$(sed -n "s/(version \(.*\))/\1/p" ${default_lock_dir}/${pkg})
+    echo "- ${pkg%.pkg}.${version}"
+  done
+}
+
 strip_sandbox() {
   sed -E 's#[^ ]*.sandbox/[^/]+#$SANDBOX#g'
 }

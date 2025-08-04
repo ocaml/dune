@@ -33,6 +33,7 @@ Generate a `dune-project` file.
 Run the solver and generate a lock directory.
 
   $ dune build @pkg-lock
+  $ show_solution
   Solution for dune.lock:
   - bar.0.5.0
   - baz.0.1.0
@@ -40,9 +41,13 @@ Run the solver and generate a lock directory.
 
 Helper to the name and contents of each file in the lock directory separated by
 "---", sorting by filename for consistency.
-  $ print_all() { find ${default_lock_dir} -type f | sort | xargs -I{} sh -c "printf '{}:\n\n'; cat {}; printf '\n\n---\n\n'"; }
+
+  $ print_all() {
+  >  ls ${default_lock_dir} | sort | xargs -I{} sh -c "printf 'dune.lock/{}:\n\n'; cat ${default_lock_dir}/{}; printf '\n\n---\n\n'";
+  > }
 
 Print the contents of each file in the lockdir:
+
   $ print_all
   dune.lock/bar.pkg:
   
@@ -82,7 +87,8 @@ Print the contents of each file in the lockdir:
   
 
 Run the solver again preferring oldest versions of dependencies:
-  $ dune pkg lock --version-preference=oldest
+  $ dune build @pkg-lock --version-preference=oldest
+  $ show_solution
   Solution for dune.lock:
   - bar.0.4.0
   - baz.0.1.0
@@ -138,9 +144,7 @@ Regenerate the `dune-project` file introducing an unsatisfiable constraint.
 
 Run the solver again. This time it will fail.
   $ dune build @pkg-lock
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
-  Couldn't solve the package dependency formula.
+  Error: Couldn't solve the package dependency formula.
   Selected candidates: baz.0.1.0 foo.0.0.1 lockfile_generation_test.dev
   - bar -> (problem)
       No usable implementations:
@@ -153,6 +157,11 @@ Run the solver again. This time it will fail.
         bar.0.0.1:
           Package does not satisfy constraints of local package
           lockfile_generation_test
+  -> required by _build/_private/default/.lock/dune.lock/content
+  -> required by lock directory environment for context "default"
+  -> required by base environment for context "default"
+  -> required by loading findlib for context "default"
+  -> required by loading the OCaml compiler for context "default"
   [1]
 
 We'll also test how the lockfile generation works with alternate solutions.
@@ -173,10 +182,12 @@ After running this we expact a solution that has either `bar` or `baz` but not
 both.
 
   $ dune build @pkg-lock
+  $ show_solution
   Solution for dune.lock:
-  - bar.0.5.0
   - bar-or-baz.0.0.1
-Top level or is simple, but does nested or work? nested-r defines nested or
+  - bar.0.5.0
+
+Top level OR is simple, but does nested OR work? `nested-or` defines nested OR
 patterns that can't be simplified
 
   $ cat >dune-project <<EOF
@@ -197,11 +208,13 @@ After runninng we expect the solution to have quux and either baz or quz as
 well as bar or qux.
 
   $ dune build @pkg-lock
+  $ show_solution
   Solution for dune.lock:
   - bar.0.5.0
   - baz.0.1.0
   - nested-or.0.0.1
   - quux.0.0.1
+
 In the dependency formulas, & should bind stronger than | so if we depend on
 bar and quux or baz, it should pick the first two or the last one, but nothing
 in between.
@@ -217,6 +230,7 @@ in between.
   > EOF
 
   $ dune build @pkg-lock
+  $ show_solution
   Solution for dune.lock:
   - bar.0.5.0
   - priorities.0.0.1
@@ -244,6 +258,7 @@ With versions 1 and 3 negated and version 4 removed via version constraint,
 we'd expect version 2 to be chosen:
 
   $ dune build @pkg-lock
+  $ show_solution
   Solution for dune.lock:
   - negation.0.0.1
   - pkg.2

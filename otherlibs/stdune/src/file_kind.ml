@@ -44,31 +44,4 @@ let equal x y =
   | S_SOCK, S_SOCK -> true
 ;;
 
-module Option = struct
-  [@@@warning "-37"]
-
-  (* The values are constructed on the C-side *)
-  type t =
-    | S_REG
-    | S_DIR
-    | S_CHR
-    | S_BLK
-    | S_LNK
-    | S_FIFO
-    | S_SOCK
-    | UNKNOWN
-
-  let elim ~none ~some t =
-    match t with
-    | S_REG -> some (S_REG : Unix.file_kind)
-    | S_DIR -> some S_DIR
-    | S_CHR -> some S_CHR
-    | S_BLK -> some S_BLK
-    | S_LNK -> some S_LNK
-    | S_FIFO -> some S_FIFO
-    | S_SOCK -> some S_SOCK
-    | UNKNOWN -> none ()
-  ;;
-end
-
 let to_dyn t = Dyn.String (to_string t)

@@ -293,12 +293,19 @@ let setup_lock_rules ctx_name ~dir ~lock_dir : Gen_rules.result =
         , depopts_of_workspace ~lock_dir_path workspace )
       in
       let* repos =
-        (* TODO: read from the right place instead of hardcoding here *)
-        Memo.of_non_reproducible_fiber
-          (get_repos
-             repos
-             ~repositories:
-               [ Loc.none, Dune_pkg.Pkg_workspace.Repository.Name.of_string "mock" ])
+        let default =
+          Workspace.default_repositories
+          |> List.map ~f:(fun repo ->
+            let name = Dune_pkg.Pkg_workspace.Repository.name repo in
+            Loc.none, name)
+        in
+        let repositories =
+          (let open Option.O in
+           let+ lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
+           lock_dir.repositories)
+          |> Option.value ~default
+        in
+        Memo.of_non_reproducible_fiber (get_repos repos ~repositories)
       in
       let* solver_env_from_current_system =
         Memo.of_reproducible_fiber (poll_solver_env_from_current_system ())

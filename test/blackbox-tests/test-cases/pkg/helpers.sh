@@ -145,7 +145,8 @@ make_lockpkg_file() {
 solve_project() {
   cat >dune-project
   add_mock_repo_if_needed
-  dune pkg lock $@
+  dune build @pkg-lock
+  show_solution
 }
 
 make_lockdir() {

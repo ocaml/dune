@@ -14,8 +14,6 @@
   stick around after the test finished (#11841, fixes #11820, @Alizter,
   @Leonidas-from-XIV)
 
-- fix: blake3 build *BSD and Haiku (#12121, fixes #12087, @Alizter)
-
 ### Added
 
 - `(tests)` stanzas now generate aliases with the test name. To run

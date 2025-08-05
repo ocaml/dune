@@ -2,16 +2,19 @@ Requesting to build a single package should not build unrelated things:
 
   $ . ./helpers.sh
 
-  $ make_lockdir
+  $ add_mock_repo_if_needed
+  $ mkrepo
 
   $ cat >dune-project <<EOF
   > (lang dune 3.12)
+  > (package
+  >  (name single)
+  >  (depends foo bar))
   > EOF
 
   $ pkg() {
-  > make_lockpkg $1 <<EOF
-  > (build (run echo building $1))
-  > (version dev)
+  > mkpkg $1 <<EOF
+  > build: ["echo" "building" "$1"]
   > EOF
   > }
 

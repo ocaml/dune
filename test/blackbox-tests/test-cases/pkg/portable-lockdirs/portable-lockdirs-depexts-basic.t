@@ -25,7 +25,7 @@ Demonstrate various cases representing depexts in lockfiles.
   Solution for dune.lock:
   - foo.0.0.1
 
-  $ cat dune.lock/foo.0.0.1.pkg
+  $ cat ${default_lock_dir}/foo.0.0.1.pkg
   (version 0.0.1)
   
   (depexts

@@ -77,7 +77,7 @@ Locking should be successful and it should include the additional file
   Solution for dune.lock:
   - foo.1.2
 
-  $ find dune.lock | sort
+  $ find ${default_lock_dir} | sort
   dune.lock
   dune.lock/foo.files
   dune.lock/foo.files/hello.txt
@@ -87,7 +87,7 @@ Locking should be successful and it should include the additional file
 The extra-file should have the same content as the original file, we determine
 that by hashing with the checksum that we expected in the OPAM file
 
-  $ cmp -s dune.lock/foo.files/$FILES_NAME "$FILES_FOLDER/$FILES_NAME" && echo "The contents match"
+  $ cmp -s ${default_lock_dir}/foo.files/$FILES_NAME "$FILES_FOLDER/$FILES_NAME" && echo "The contents match"
   The contents match
 
 The git repos support repo should also be able to handle unusual objects in our

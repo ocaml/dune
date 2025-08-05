@@ -6,7 +6,7 @@ without using locked dependencies.
 
   $ make_lockdir
 
-  $ cat >dune.lock/test.pkg <<EOF
+  $ cat > ${default_lock_dir}/test.pkg <<EOF
   > (build
   >  (run echo "I have not been ignored."))
   > EOF

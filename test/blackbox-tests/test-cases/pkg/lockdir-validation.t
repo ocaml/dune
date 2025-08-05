@@ -6,15 +6,15 @@ package graph then it's caught when loading the lockdir.
 
   $ make_lockdir
 
-  $ cat >dune.lock/a.pkg <<EOF
+  $ cat > ${default_lock_dir}/a.pkg <<EOF
   > (version 0.0.1)
   > (depends b)
   > EOF
-  $ cat >dune.lock/b.pkg <<EOF
+  $ cat > ${default_lock_dir}/b.pkg <<EOF
   > (version 0.0.1)
   > (depends c)
   > EOF
-  $ cat >dune.lock/c.pkg <<EOF
+  $ cat > ${default_lock_dir}/c.pkg <<EOF
   > (version 0.0.1)
   > (depends a)
   > EOF
@@ -25,7 +25,7 @@ package graph then it's caught when loading the lockdir.
   - b.0.0.1
   - c.0.0.1
 
-  $ cat >dune.lock/c.pkg <<EOF
+  $ cat > ${default_lock_dir}/c.pkg <<EOF
   > (version 0.0.1)
   > (depends a d)
   > EOF
@@ -40,7 +40,7 @@ package graph then it's caught when loading the lockdir.
   regenerate it by running: 'dune pkg lock'
   [1]
 
-  $ rm dune.lock/a.pkg
+  $ rm ${default_lock_dir}/a.pkg
 
   $ dune describe pkg lock
   File "dune.lock/c.pkg", line 2, characters 9-10:

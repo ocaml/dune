@@ -5,7 +5,7 @@ they could have been created or modified by previous build commands (such as
   $ . ./helpers.sh
 
   $ make_lockdir
-  $ cat >dune.lock/test.pkg <<EOF
+  $ cat > ${default_lock_dir}/test.pkg <<EOF
   > (version 0.0.1)
   > (build
   >  (progn

@@ -18,7 +18,7 @@ Make a fake ocamllsp package that prints out the PATH variable:
   > EOF
 
   $ make_lockdir
-  $ cat > dune.lock/ocaml.pkg <<EOF
+  $ cat > ${default_lock_dir}/ocaml.pkg <<EOF
   > (version 5.2.0)
   > EOF
 

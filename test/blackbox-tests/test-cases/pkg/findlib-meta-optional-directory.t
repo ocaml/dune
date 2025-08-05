@@ -33,13 +33,13 @@ Reproduces #11405
   > (lang dune 3.17)
   > EOF
 
-  $ mkdir dune.lock
+  $ make_lockdir
 
-  $ cat >dune.lock/lock.dune <<EOF
+  $ cat > ${default_lock_dir}/lock.dune <<EOF
   > (lang package 0.1)
   > EOF
 
-  $ cat >dune.lock/mypkg.pkg <<EOF
+  $ cat > ${default_lock_dir}/mypkg.pkg <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/external_sources))
   > EOF

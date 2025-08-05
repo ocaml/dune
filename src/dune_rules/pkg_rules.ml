@@ -662,7 +662,14 @@ module Action_expander = struct
       | Build -> Memo.return [ Value.Dir paths.source_dir ]
       | Prefix -> Memo.return [ Value.Dir paths.prefix ]
       | User -> Memo.return [ Value.String (Unix.getlogin ()) ]
-      | Jobs -> Memo.return [ Value.String (Int.to_string !Clflags.concurrency) ]
+      | Jobs ->
+        (* Note that here we intentionally don't set %{jobs} based on dune's
+           "-j" argument. Doing so would mean that each time a different
+           value is passed to "-j", all the dependencies of the project that
+           reference %{jobs} would be rebuilt (including the OCaml compiler
+           itself which takes several minutes). *)
+        Memo.return
+          [ Value.String (Int.to_string (Lazy.force Dune_config.auto_concurrency)) ]
       | Arch -> sys_poll_var (fun { arch; _ } -> arch)
       | Group ->
         let group = Unix.getgid () |> Unix.getgrgid in

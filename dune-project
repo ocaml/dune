@@ -79,6 +79,7 @@ executable was built.
   (dyn (= :version))
   (stdune (= :version))
   (ocaml (>= 4.08)))
+ (maintenance_intent none)
  (description "\
 !!!!!!!!!!!!!!!!!!!!!!
 !!!!! DO NOT USE !!!!!
@@ -169,6 +170,7 @@ understood by dune language."))
   (ocaml (>= 4.08.0))
   (ordering (= :version))
   (pp (>= 1.1.0)))
+ (maintenance_intent none)
  (description "Dynamic type"))
 
 (package
@@ -176,6 +178,7 @@ understood by dune language."))
  (synopsis "Element ordering")
  (depends
   (ocaml (>= 4.08.0)))
+ (maintenance_intent none)
  (description "Element ordering"))
 
 (package
@@ -195,6 +198,7 @@ understood by dune language."))
   (ordering (= :version))
   (pp (>= 2.0.0))
   (csexp (>= 1.5.0)))
+ (maintenance_intent none)
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 
 (package
@@ -205,6 +209,7 @@ understood by dune language."))
  (depends
   (ocaml (>= 4.08.0))
   (dyn (= :version)))
+ (maintenance_intent none)
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 
 (package

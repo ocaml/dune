@@ -34,24 +34,32 @@ let equal a b =
   | Odig, Odig -> true
 ;;
 
-let package_name = function
-  | Ocamlformat -> Package_name.of_string "ocamlformat"
-  | Odoc -> Package_name.of_string "odoc"
-  | Ocamllsp -> Package_name.of_string "ocaml-lsp-server"
-  | Utop -> Package_name.of_string "utop"
-  | Ocamlearlybird -> Package_name.of_string "earlybird"
-  | Odig -> Package_name.of_string "odig"
+let to_string = function
+  | Ocamlformat -> "ocamlformat"
+  | Odoc -> "odoc"
+  | Ocamllsp -> "ocaml-lsp-server"
+  | Utop -> "utop"
+  | Ocamlearlybird -> "earlybird"
+  | Odig -> "odig"
+;;
+
+let package_name v = v |> to_string |> Package_name.of_string
+
+let of_string = function
+  | "ocamlformat" -> Some Ocamlformat
+  | "odoc" -> Some Odoc
+  | "ocaml-lsp-server" -> Some Ocamllsp
+  | "utop" -> Some Utop
+  | "earlybird" -> Some Ocamlearlybird
+  | "odig" -> Some Odig
+  | _otherwise -> None
 ;;
 
 let of_package_name package_name =
-  match Package_name.to_string package_name with
-  | "ocamlformat" -> Ocamlformat
-  | "odoc" -> Odoc
-  | "ocaml-lsp-server" -> Ocamllsp
-  | "utop" -> Utop
-  | "earlybird" -> Ocamlearlybird
-  | "odig" -> Odig
-  | other -> User_error.raise [ Pp.textf "No such dev tool: %s" other ]
+  let s = Package_name.to_string package_name in
+  match of_string s with
+  | Some dev_tool -> dev_tool
+  | None -> User_error.raise [ Pp.textf "No such dev tool: %s" s ]
 ;;
 
 let exe_name = function

@@ -94,7 +94,9 @@ EOF
  (public_name foo))
 EOF
   cat > dune-workspace <<EOF
-(lang dune 3.13)
+(lang dune 3.20)
+
+(pkg enabled)
 
 (lock_dir
  (path "dev-tools.locks/ocamlformat")

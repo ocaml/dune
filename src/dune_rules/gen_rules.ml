@@ -728,6 +728,9 @@ let gen_rules ctx ~dir components =
     match lock_dir_enabled with
     | false -> sctx_rules
     | true ->
-      let gen_lock_rule = Lock_rules.setup_tmp_lock_alias ~dir ctx in
-      Gen_rules.combine sctx_rules gen_lock_rule)
+      let gen_lock_rule = Lock_rules.setup_lock_alias ~dir ctx in
+      let gen_ocamlformat_lock_rule = Lock_rules.setup_tmp_ocamlformat_alias ~dir ctx in
+      Gen_rules.combine
+        (Gen_rules.combine sctx_rules gen_lock_rule)
+        gen_ocamlformat_lock_rule)
 ;;

@@ -1,6 +1,7 @@
 open Import
 open Memo.O
 module Solver_env = Dune_pkg.Solver_env
+module Package_name = Dune_pkg.Package_name
 
 let solver_env
       ~solver_env_from_current_system
@@ -344,9 +345,223 @@ let setup_lock_rules ctx_name ~dir ~lock_dir : Gen_rules.result =
   Gen_rules.make ~directory_targets rules
 ;;
 
+let compiler_package_name = Dune_pkg.Package_name.of_string "ocaml"
+
+(* Some dev tools must be built with the same version of the ocaml
+   compiler as the project. This function returns the version of the
+   "ocaml" package used to compile the project in the default build
+   context.
+
+   TODO: This only makes sure that the version of compiler used to
+   build the dev tool matches the version of the compiler used to
+   build this project. This will fail if the project is built with a
+   custom compiler (e.g. ocaml-variants) since the version of the
+   compiler will be the same between the project and dev tool while
+   they still use different compilers. A more robust solution would be
+   to ensure that the exact compiler package used to build the dev
+   tool matches the package used to build the compiler. *)
+let locked_ocaml_compiler_version () =
+  let open Memo.O in
+  let context =
+    (* Dev tools are only ever built with the default context. *)
+    Context_name.default
+  in
+  let* result = Lock_dir.get context
+  and* platform = Solver_env.empty |> Memo.return in
+  match result with
+  | Error _ ->
+    (* TODO better error or so *)
+    Code_error.raise "Loading lock dir failed, something is up" []
+  | Ok { packages; _ } ->
+    let packages =
+      Dune_pkg.Lock_dir.Packages.pkgs_on_platform_by_name packages ~platform
+    in
+    (match Package_name.Map.find packages compiler_package_name with
+     | None ->
+       User_error.raise
+         [ Pp.textf
+             "The lockdir doesn't contain a lockfile for the package %S."
+             (Package_name.to_string compiler_package_name)
+         ]
+         ~hints:
+           [ Pp.concat
+               ~sep:Pp.space
+               [ Pp.textf
+                   "Add a dependency on %S to one of the packages in dune-project and \
+                    then run"
+                   (Package_name.to_string compiler_package_name)
+               ; User_message.command "dune pkg lock"
+               ]
+           ]
+     | Some pkg -> Memo.return pkg.info.version)
+;;
+
+let locked_ocaml_compiler_constraint () =
+  let open Dune_lang in
+  let open Memo.O in
+  let+ ocaml_compiler_version = locked_ocaml_compiler_version () in
+  let constraint_ =
+    Some
+      (Package_constraint.Uop
+         (Eq, String_literal (Package_version.to_string ocaml_compiler_version)))
+  in
+  { Package_dependency.name = compiler_package_name; constraint_ }
+;;
+
+let extra_dependencies dev_tool =
+  let open Memo.O in
+  match Dune_pkg.Dev_tool.needs_to_build_with_same_compiler_as_project dev_tool with
+  | false -> Memo.return []
+  | true ->
+    let+ constraint_ = locked_ocaml_compiler_constraint () in
+    [ constraint_ ]
+;;
+
+(* Returns a version constraint accepting (almost) all versions whose prefix is
+   the given version. This allows alternative distributions of packages to be
+   chosen, such as choosing "ocamlformat.0.26.2+binary" when .ocamlformat
+   contains "version=0.26.2". *)
+let relaxed_version_constraint_of_version version =
+  let open Dune_lang in
+  let min_version = Package_version.to_string version in
+  (* The goal here is to add a suffix to [min_version] to construct a version
+     number higher than than any version number likely to appear with
+     [min_version] as a prefix. "_" is the highest ascii symbol that can appear
+     in version numbers, excluding "~" which has a special meaning. It's
+     conceivable that one or two consecutive "_" characters may be used in a
+     version, so this appends "___" to [min_version].
+
+     Read more at: https://opam.ocaml.org/doc/Manual.html#Version-ordering
+  *)
+  let max_version = min_version ^ "___MAX_VERSION" in
+  Package_constraint.And
+    [ Package_constraint.Uop
+        (Relop.Gte, Package_constraint.Value.String_literal min_version)
+    ; Package_constraint.Uop
+        (Relop.Lte, Package_constraint.Value.String_literal max_version)
+    ]
+;;
+
+(* The solver satisfies dependencies for local packages, but dev tools
+   are not local packages. As a workaround, create an empty local package
+   which depends on the dev tool package. *)
+let make_local_package_wrapping_dev_tool ~dev_tool ~dev_tool_version ~extra_dependencies
+  : Dune_pkg.Local_package.t
+  =
+  let dev_tool_pkg_name = Dune_pkg.Dev_tool.package_name dev_tool in
+  let dependency =
+    let open Dune_lang in
+    let open Package_dependency in
+    let constraint_ =
+      Option.map dev_tool_version ~f:relaxed_version_constraint_of_version
+    in
+    { name = dev_tool_pkg_name; constraint_ }
+  in
+  let local_package_name =
+    Package_name.of_string (Package_name.to_string dev_tool_pkg_name ^ "_dev_tool_wrapper")
+  in
+  { Dune_pkg.Local_package.name = local_package_name
+  ; version = Dune_pkg.Lock_dir.Pkg_info.default_version
+  ; dependencies =
+      Dune_pkg.Dependency_formula.of_dependencies (dependency :: extra_dependencies)
+  ; conflicts = []
+  ; depopts = []
+  ; pins = Package_name.Map.empty
+  ; conflict_class = []
+  ; loc = Loc.none
+  ; command_source = Opam_file { build = []; install = [] }
+  }
+;;
+
+(* [lock_dev_tool_at_version ~target dev_tool version] generates the lockdir
+   for the dev tool [dev_tool]. If [version] is [Some v] then version [v] of
+   the tool will be chosen by the solver. Otherwise the solver is free to
+   choose the appropriate version of the tool to install. *)
+let lock_dev_tool_at_version ctx_name ~target dev_tool version =
+  let open Memo.O in
+  let* extra_dependencies = extra_dependencies dev_tool in
+  let local_pkg =
+    make_local_package_wrapping_dev_tool
+      ~dev_tool
+      ~dev_tool_version:version
+      ~extra_dependencies
+  in
+  let packages = Package_name.Map.singleton local_pkg.name local_pkg in
+  let constraints = [] in
+  let lock_dir = sprintf "dev-tools.locks/%s" (Dune_pkg.Dev_tool.to_string dev_tool) in
+  let* workspace = Workspace.workspace () in
+  let repos = repositories_of_workspace workspace in
+  let lock_dir_path = Path.Build.relative (Context_name.build_dir ctx_name) lock_dir in
+  let* repos =
+    let default =
+      Workspace.default_repositories
+      |> List.map ~f:(fun repo ->
+        let name = Dune_pkg.Pkg_workspace.Repository.name repo in
+        Loc.none, name)
+    in
+    let repositories =
+      (let open Option.O in
+       let+ lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
+       lock_dir.repositories)
+      |> Option.value ~default
+    in
+    Memo.of_non_reproducible_fiber (get_repos repos ~repositories)
+  in
+  let selected_depopts = [] in
+  let pins = Package_name.Map.empty in
+  let version_preference = Dune_pkg.Version_preference.default in
+  let* solver_env_from_current_system =
+    Memo.of_reproducible_fiber (poll_solver_env_from_current_system ()) >>| Option.some
+  in
+  let env =
+    (* TODO read context and other stuff *)
+    solver_env
+      ~solver_env_from_context:None
+      ~solver_env_from_current_system
+      ~unset_solver_vars_from_context:None
+  in
+  let lock_rule =
+    lock
+      ~packages
+      ~target
+      ~lock_dir
+      ~constraints
+      ~repos
+      ~env
+      ~selected_depopts
+      ~pins
+      ~version_preference
+  in
+  rule ~loc:Loc.none lock_rule
+;;
+
+let lock_ocamlformat ctx_name ~target =
+  let version = Dune_pkg.Ocamlformat.version_of_current_project's_ocamlformat_config () in
+  lock_dev_tool_at_version ctx_name ~target Ocamlformat version
+;;
+
+let setup_dev_tool_lock_rules ctx_name ~dir ~dev_tool : Gen_rules.result =
+  let target = Path.Build.relative dir "content" in
+  let directory_targets = Path.Build.Map.singleton target Loc.none in
+  let rules =
+    Rules.collect_unit (fun () ->
+      match (dev_tool : Dune_pkg.Dev_tool.t) with
+      | Ocamlformat -> lock_ocamlformat ctx_name ~target
+      | other -> lock_dev_tool_at_version ctx_name ~target other None)
+  in
+  Gen_rules.make ~directory_targets rules
+;;
+
 let setup_rules ctx_name ~components ~dir =
   match components with
-  | [ ".lock" ] ->
+  | [ ".dev-tool-lock"; tool ] ->
+    let dev_tool =
+      match Dune_pkg.Dev_tool.of_string tool with
+      | Some dev_tool -> dev_tool
+      | None -> User_error.raise [ Pp.textf "No rules for dev tool %s" tool ]
+    in
+    Memo.return @@ setup_dev_tool_lock_rules ctx_name ~dir ~dev_tool
+  | [ ".lock" ] | [ ".dev-tool-lock" ] ->
     Gen_rules.make
       ~build_dir_only_sub_dirs:
         (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
@@ -354,7 +569,7 @@ let setup_rules ctx_name ~components ~dir =
     |> Memo.return
   | [ ".lock"; lock_dir ] -> Memo.return @@ setup_lock_rules ctx_name ~dir ~lock_dir
   | [] ->
-    let sub_dirs = [ ".lock" ] in
+    let sub_dirs = [ ".lock"; ".dev-tool-lock" ] in
     let build_dir_only_sub_dirs =
       Gen_rules.Build_only_sub_dirs.singleton ~dir @@ Subdir_set.of_list sub_dirs
     in
@@ -362,7 +577,7 @@ let setup_rules ctx_name ~components ~dir =
   | _ -> Memo.return @@ Gen_rules.rules_here Gen_rules.Rules.empty
 ;;
 
-let setup_tmp_lock_alias =
+let setup_lock_alias =
   fun ~dir ctx_name ->
   let alias = Alias.make ~dir Alias0.pkg_lock in
   let rule =
@@ -373,6 +588,26 @@ let setup_tmp_lock_alias =
         Path.Build.L.relative
           Private_context.t.build_dir
           [ Context_name.to_string ctx_name; ".lock"; "dune.lock"; "content" ]
+      in
+      let deps = Action_builder.path (Path.build path) in
+      Rules.Produce.Alias.add_deps alias deps)
+  in
+  Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
+  |> Gen_rules.rules_here
+;;
+
+(* TODO remove this, just for debug purposes *)
+let setup_tmp_ocamlformat_alias =
+  fun ~dir ctx_name ->
+  let alias = Alias.make ~dir Alias0.pkg_tmp_ocamlformat_lock in
+  let rule =
+    Rules.collect_unit (fun () ->
+      (* careful, need to point to a file that will be created by the rule *)
+      let path =
+        (* TODO get lock dir name instead of hardcoding `dune.lock` *)
+        Path.Build.L.relative
+          Private_context.t.build_dir
+          [ Context_name.to_string ctx_name; ".dev-tool-lock"; "ocamlformat"; "content" ]
       in
       let deps = Action_builder.path (Path.build path) in
       Rules.Produce.Alias.add_deps alias deps)

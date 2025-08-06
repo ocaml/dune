@@ -6,7 +6,11 @@ let build ~wait targets =
       let sexp = Dune_lang.Dep_conf.encode target in
       Dune_lang.to_string sexp)
   in
-  Rpc_common.fire_request ~name:"build" ~wait Dune_rpc_impl.Decl.build targets
+  Rpc_common.fire_request
+    ~name:"build"
+    ~wait
+    (Dune_rpc.Decl.Request.witness Dune_rpc_impl.Decl.build)
+    targets
 ;;
 
 let term =
@@ -18,7 +22,11 @@ let term =
   @@ fun () ->
   let open Fiber.O in
   let+ response =
-    Rpc_common.fire_request ~name:"build" ~wait Dune_rpc_impl.Decl.build targets
+    Rpc_common.fire_request
+      ~name:"build"
+      ~wait
+      (Dune_rpc.Decl.Request.witness Dune_rpc_impl.Decl.build)
+      targets
   in
   match response with
   | Error (error : Dune_rpc.Response.Error.t) ->

@@ -70,7 +70,7 @@ module Apply = struct
         (Rpc_common.fire_request
            ~name:"promote_many"
            ~wait:true
-           Dune_rpc_private.Procedures.Public.promote_many)
+           (Dune_rpc.Decl.Request.witness Dune_rpc_private.Procedures.Public.promote_many))
         files_to_promote
   ;;
 

@@ -149,7 +149,7 @@ understood by dune language."))
 (package
  (name dune-rpc)
  (synopsis "Communicate with dune using rpc")
- (depends csexp ordering dyn xdg (stdune (= :version)) (pp (>= 1.1.0)))
+ (depends ocamlc-loc csexp ordering dyn xdg (stdune (= :version)) (pp (>= 1.1.0)))
  (description "Library to connect and control a running dune instance"))
 
 (package

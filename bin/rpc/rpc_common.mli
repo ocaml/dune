@@ -26,7 +26,7 @@ val wait_term : bool Cmdliner.Term.t
 val fire_request
   :  name:string
   -> wait:bool
-  -> ('a, 'b) Dune_rpc.Decl.request
+  -> ('a, 'b) Dune_rpc.Decl.Request.witness
   -> 'a
   -> ('b, Dune_rpc.Response.Error.t) result Fiber.t
 

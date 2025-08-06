@@ -142,6 +142,17 @@ let default_path ctx_name =
     [ Context_name.to_string ctx_name; ".lock"; "dune.lock"; "content" ]
 ;;
 
+let dev_tool_lock_dir_path ctx_name dev_tool =
+  let tool = dev_tool |> Dev_tool.package_name |> Package_name.to_string in
+  Path.Build.L.relative
+    Private_context.t.build_dir
+    [ Context_name.to_string ctx_name
+    ; ".lock"
+    ; sprintf "dev-tool-%s.lock" tool
+    ; "content"
+    ]
+;;
+
 let enabled =
   match !Clflags.ignore_lock_dir with
   | true -> Memo.return false

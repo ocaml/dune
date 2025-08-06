@@ -128,15 +128,6 @@ val create_latest_version
        (* TODO: make this non-optional when portable lockdirs becomes the default *)
   -> t
 
-(** Returns the path to the lockdir that will be used to lock the
-    given dev tool *)
-val dev_tool_lock_dir_path : Dune_engine.Context_name.t -> Dev_tool.t -> Path.Build.t
-
-(** Temporary hack to get the path of a dev tool lock directory in the source
-    tree. Future versions will probably handle this differently and this
-    function should be removed *)
-(* val dev_tool_lock_dir_source_path : Dev_tool.t -> Path.Source.t *)
-
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit
 
 val metadata_filename : Filename.t

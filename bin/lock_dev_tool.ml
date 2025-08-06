@@ -401,7 +401,7 @@ let solve ctx_name ~dev_tool ~local_packages =
       Workspace.add_repo workspace Dune_pkg.Pkg_workspace.Repository.binary_packages
     | `Disabled -> workspace
   in
-  let lock_dir = Lock_dir.dev_tool_lock_dir_path ctx_name dev_tool in
+  let lock_dir = Dune_rules.Lock_dir.dev_tool_lock_dir_path ctx_name dev_tool in
   Memo.of_reproducible_fiber
   @@ solve
        workspace
@@ -495,7 +495,7 @@ let extra_dependencies dev_tool =
 
 let lockdir_status ctx_name dev_tool =
   let open Memo.O in
-  let dev_tool_lock_dir = Lock_dir.dev_tool_lock_dir_path ctx_name dev_tool in
+  let dev_tool_lock_dir = Dune_rules.Lock_dir.dev_tool_lock_dir_path ctx_name dev_tool in
   match Lock_dir.read_disk dev_tool_lock_dir with
   | Error _ -> Memo.return `No_lockdir
   | Ok { packages; _ } ->

@@ -1084,18 +1084,6 @@ let create_latest_version
   }
 ;;
 
-let dev_tool_locks_name = "dev-tools.locks"
-
-let dev_tools_path ctx_name =
-  Path.Build.relative (Dune_engine.Context_name.build_dir ctx_name) dev_tool_locks_name
-;;
-
-let dev_tool_lock_dir_path ctx_name dev_tool =
-  Path.Build.relative
-    (dev_tools_path ctx_name)
-    (Package_name.to_string (Dev_tool.package_name dev_tool))
-;;
-
 let metadata_filename = "lock.dune"
 
 module Metadata = Dune_sexp.Versioned_file.Make (Unit)

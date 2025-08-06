@@ -16,7 +16,7 @@ Make a package with a build-env field
   - with-build-env.0.0.1
 The lockfile should contain a setenv action.
 
-  $ cat dune.lock/with-build-env.pkg 
+  $ cat ${default_lock_dir}/with-build-env.pkg 
   (version 0.0.1)
   
   (install

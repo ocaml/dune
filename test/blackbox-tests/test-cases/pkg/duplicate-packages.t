@@ -10,11 +10,8 @@ shouldn't be allowed (for now)
   $ cat > mypkg.opam <<EOF
   > opam-version: "2.0"
   > EOF
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
-  $ touch dune.lock/mypkg.lock
+  $ make_lockdir
+  $ touch ${default_lock_dir}/mypkg.lock
 
   $ dune build
 

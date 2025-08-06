@@ -13,6 +13,8 @@ dune="dune"
 
 pkg_root="_build/_private/default/.pkg"
 
+default_lock_dir="dune.lock"
+
 build_pkg() {
   $dune build $pkg_root/$1/target/
 }
@@ -92,10 +94,10 @@ EOF
 }
 
 make_lockpkg() {
-  local dir="dune.lock"
-  mkdir -p $dir
+  local dir="${default_lock_dir}"
+  mkdir -p "$dir"
   local f="$dir/$1.pkg"
-  cat >$f
+  cat > "$f"
 }
 
 solve_project() {
@@ -105,8 +107,8 @@ solve_project() {
 }
 
 make_lockdir() {
-  mkdir -p dune.lock
-  cat >dune.lock/lock.dune <<EOF
+  mkdir -p "${default_lock_dir}"
+  cat > "${default_lock_dir}"/lock.dune <<EOF
 (lang package 0.1)
 (repositories (complete true))
 EOF
@@ -123,7 +125,7 @@ EOF
 }
 
 print_source() {
-  cat dune.lock/$1.pkg | sed -n "/source/,//p" | sed "s#$PWD#PWD#g" | tr '\n' ' '| tr -s " "
+  cat "${default_lock_dir}"/"$1".pkg | sed -n "/source/,//p" | sed "s#$PWD#PWD#g" | tr '\n' ' '| tr -s " "
 }
 
 solve() {

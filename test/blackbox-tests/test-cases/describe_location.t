@@ -25,11 +25,13 @@ An executable from the current project:
   _build/default/foo.exe
 
 Test that executables from dependencies are located correctly:
-  $ mkdir dune.lock
-  $ cat > dune.lock/lock.dune << EOF
+
+  $ default_lock_dir="dune.lock"
+  $ mkdir -p "${default_lock_dir}"
+  $ cat > "${default_lock_dir}"/lock.dune <<EOF
   > (lang package 0.1)
   > EOF
-  $ cat > dune.lock/bar.pkg << EOF
+  $ cat > ${default_lock_dir}/bar.pkg << EOF
   > (version 0.1)
   > (install
   >  (progn

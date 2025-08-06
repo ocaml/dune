@@ -20,7 +20,7 @@ action.
 
 This is currently not the case. 
 
-  $ cat dune.lock/with-build-test-doc.pkg 
+  $ cat ${default_lock_dir}/with-build-test-doc.pkg 
   (version 0.0.1)
   
   (build

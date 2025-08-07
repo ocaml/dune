@@ -7,6 +7,7 @@ module Sub = Dune_rpc.Sub
 module Diagnostic = Dune_rpc.Diagnostic
 module Request = Dune_rpc.Public.Request
 module Response = Dune_rpc.Response
+module Re = Dune_re
 
 let%expect_test "turn on and shutdown" =
   let test () =
@@ -814,6 +815,86 @@ let g = A.f
           ; [ "severity"; "error" ]
           ; [ "targets"; [] ]
           ]
-        ] |}]);
-  [%expect {||}]
+        ] |}])
+;;
+
+let%expect_test "cyclic dependency error simple" =
+  setup_diagnostics (fun client ->
+    files
+      [ "dune", "(executable (name foo))"; "foo.ml", "open Bar"; "bar.ml", "open Foo" ];
+    let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
+    let* () = print_diagnostics poll in
+    [%expect
+      {|
+        <no diagnostics> |}];
+    let* () = dune_build client "./foo.exe" in
+    [%expect
+      {|
+        Building ./foo.exe
+        Build ./foo.exe failed |}];
+    let+ () = print_diagnostics poll in
+    [%expect
+      {|
+      [ "Add"
+      ; [ [ "id"; "0" ]
+        ; [ "message"
+          ; [ "Verbatim"
+            ; "Error: dependency cycle between modules in _build/default:\n\
+              \   Foo\n\
+               -> Bar\n\
+               -> Foo\n\
+               "
+            ]
+          ]
+        ; [ "promotion"; [] ]
+        ; [ "related"; [] ]
+        ; [ "severity"; "error" ]
+        ; [ "targets"; [] ]
+        ]
+      ]
+      |}])
+;;
+
+let%expect_test "cyclic dependency error" =
+  setup_diagnostics (fun client ->
+    files
+      [ "dune", "(executable (name foo))"
+      ; "foo.ml", "open Bar open Baz"
+      ; "bar.ml", "open Baz"
+      ; "baz.ml", "open Bar"
+      ];
+    let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
+    let* () = print_diagnostics poll in
+    [%expect
+      {|
+        <no diagnostics> |}];
+    let* () = dune_build client "./foo.exe" in
+    [%expect
+      {|
+        Building ./foo.exe
+        Build ./foo.exe failed |}];
+    let+ () = print_diagnostics poll in
+    let backtrace_regex = Re.str "\\ " |> Re.compile in
+    [%expect.output]
+    |> String.split_lines
+    |> List.filter ~f:(fun s -> not (Re.execp backtrace_regex s))
+    |> String.concat ~sep:"\n"
+    |> print_endline;
+    [%expect
+      {|
+      [ "Add"
+      ; [ [ "id"; "0" ]
+        ; [ "message"
+          ; [ "Verbatim"
+            ; "Cycle_error.E\n\
+               "
+            ]
+          ]
+        ; [ "promotion"; [] ]
+        ; [ "related"; [] ]
+        ; [ "severity"; "error" ]
+        ; [ "targets"; [] ]
+        ]
+      ]
+      |}])
 ;;

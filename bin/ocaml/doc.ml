@@ -13,12 +13,6 @@ let man =
 
 let info = Cmd.info "doc" ~doc ~man
 
-let lock_odoc_if_dev_tool_enabled ctx_name =
-  match Lazy.force Lock_dev_tool.is_enabled with
-  | false -> Action_builder.return ()
-  | true -> Action_builder.of_memo (Lock_dev_tool.lock_dev_tool ctx_name Odoc)
-;;
-
 let term =
   let+ builder = Common.Builder.term in
   let common, config = Common.init builder in
@@ -28,7 +22,9 @@ let term =
     let doc_ctx = List.find_exn setup.contexts ~f:is_default in
     let ctx_name = Context.name doc_ctx in
     let open Action_builder.O in
-    let* () = lock_odoc_if_dev_tool_enabled ctx_name in
+    let* () =
+      Action_builder.of_memo (Dev_tool_lock.lock_dir ctx_name Dune_pkg.Dev_tool.Odoc)
+    in
     let+ () =
       Alias.in_dir ~name:Dune_rules.Alias.doc ~recursive:true ~contexts:setup.contexts dir
       |> Alias.request

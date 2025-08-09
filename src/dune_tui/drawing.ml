@@ -125,9 +125,9 @@ let detab_pp =
   fun pp -> Pp.to_ast pp |> detab_pp_ast |> Pp.of_ast
 ;;
 
-let pp_to_image pp =
+let pp_to_image ~w pp =
   detab_pp pp
-  |> Notty.I.strf "%a" (Pp.to_fmt_with_tags ~tag_handler:attr_of_user_message_style)
+  |> Notty.I.strf ~w "%a" (Pp.to_fmt_with_tags ~tag_handler:attr_of_user_message_style)
 ;;
 
 module Unicode = struct

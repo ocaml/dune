@@ -14,7 +14,7 @@
  (applies_to path-pwd))
 
 (cram
- (applies_to what-dune-watches)
+ (applies_to github7170 what-dune-watches)
  (deps %{bin:strace}))
 
 ;; These tests sometimes get stuck and time out:

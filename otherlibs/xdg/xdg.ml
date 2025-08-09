@@ -1,6 +1,7 @@
 type t =
   { env : string -> string option
   ; win32 : bool
+  ; macos : bool
   ; home_dir : string
   ; mutable cache_dir : string
   ; mutable config_dir : string
@@ -20,13 +21,20 @@ external get_known_folder_path
   -> string option
   = "dune_xdg__get_known_folder_path"
 
-let make t env_var unix_default win32_folder =
+let macos_known_folder_path home = function
+  | InternetCache -> home / "Caches"
+  | LocalAppData -> home / "Application Support"
+;;
+
+let make t env_var unix_default known_folder =
   let default =
     if t.win32
     then (
-      match get_known_folder_path win32_folder with
+      match get_known_folder_path known_folder with
       | None -> ""
       | Some s -> s)
+    else if t.macos
+    then macos_known_folder_path t.home_dir known_folder
     else unix_default
   in
   match t.env env_var with
@@ -55,7 +63,7 @@ let state_dir t =
   make t "XDG_STATE_HOME" (home / ".local" / "state") LocalAppData
 ;;
 
-let create ?win32 ~env () =
+let create ?win32 ?(macos = false) ~env () =
   let win32 =
     match win32 with
     | None -> Sys.win32
@@ -70,6 +78,7 @@ let create ?win32 ~env () =
   let t =
     { env
     ; win32
+    ; macos
     ; home_dir
     ; cache_dir = ""
     ; config_dir = ""

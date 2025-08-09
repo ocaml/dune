@@ -13,6 +13,7 @@ module Package_name = Dune_lang.Package_name
 module Scheduler = Dune_engine.Scheduler
 
 let () = Dune_tests_common.init ()
+let ctx_name = Dune_engine.Context_name.default
 
 module Update = struct
   open Dyn
@@ -64,16 +65,21 @@ module Update = struct
   ;;
 end
 
-let lock_dir_encode_decode_round_trip_test ?commit ~lock_dir_path ~lock_dir () =
-  let lock_dir_path = Path.Source.of_string lock_dir_path in
+let lock_dir_encode_decode_round_trip_test ?commit ~lock_dir_path ~ctx_name ~lock_dir () =
+  let ctx_dir = Dune_engine.Context_name.to_string ctx_name in
+  let lock_dir_path = Path.Build.(relative (of_string ctx_dir) lock_dir_path) in
   Lock_dir.Write_disk.(
-    prepare ~portable_lock_dir:false ~lock_dir_path ~files:Package_name.Map.empty lock_dir
+    prepare
+      ~portable_lock_dir:false
+      ~lock_dir_path:(Path.build lock_dir_path)
+      ~files:Package_name.Map.empty
+      lock_dir
     |> commit);
   let lock_dir_round_tripped =
     try Lock_dir.read_disk_exn lock_dir_path with
     | User_error.E _ as exn ->
       let metadata_path =
-        Path.Source.relative lock_dir_path Lock_dir.metadata_filename |> Path.source
+        Path.Build.relative lock_dir_path Lock_dir.metadata_filename |> Path.build
       in
       let metadata_file_contents = Io.read_file metadata_path in
       print_endline
@@ -109,6 +115,7 @@ let run thunk =
 let%expect_test "encode/decode round trip test for lockdir with no deps" =
   lock_dir_encode_decode_round_trip_test
     ~lock_dir_path:"empty_lock_dir"
+    ~ctx_name
     ~lock_dir:
       (Lock_dir.create_latest_version
          Package_name.Map.empty
@@ -154,6 +161,7 @@ let empty_package name ~version =
 let%expect_test "encode/decode round trip test for lockdir with simple deps" =
   lock_dir_encode_decode_round_trip_test
     ~lock_dir_path:"simple_lock_dir"
+    ~ctx_name
     ~lock_dir:
       (let mk_pkg_basic ~name ~version =
          let name = Package_name.of_string name in
@@ -220,7 +228,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
                     }
                 }
           }
-    ; ocaml = Some ("simple_lock_dir/lock.dune:3", "ocaml")
+    ; ocaml = Some ("_build/default/simple_lock_dir/lock.dune:3", "ocaml")
     ; repos = { complete = true; used = None }
     ; expanded_solver_variable_bindings =
         { variable_values = [ ("os", "linux") ]
@@ -332,7 +340,11 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
       ~solved_for_platform:None
       (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ])
   in
-  lock_dir_encode_decode_round_trip_test ~lock_dir_path:"complex_lock_dir" ~lock_dir ();
+  lock_dir_encode_decode_round_trip_test
+    ~lock_dir_path:"complex_lock_dir"
+    ~ctx_name
+    ~lock_dir
+    ();
   [%expect
     {|
     lockdir matches after roundtrip:
@@ -380,7 +392,9 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                     ; depends =
                         [ { condition = [ map {} ]
                           ; value =
-                              [ { loc = "complex_lock_dir/b.pkg:3"; name = "a" }
+                              [ { loc = "_build/default/complex_lock_dir/b.pkg:3"
+                                ; name = "a"
+                                }
                               ]
                           }
                         ]
@@ -411,8 +425,12 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                     ; depends =
                         [ { condition = [ map {} ]
                           ; value =
-                              [ { loc = "complex_lock_dir/c.pkg:3"; name = "a" }
-                              ; { loc = "complex_lock_dir/c.pkg:3"; name = "b" }
+                              [ { loc = "_build/default/complex_lock_dir/c.pkg:3"
+                                ; name = "a"
+                                }
+                              ; { loc = "_build/default/complex_lock_dir/c.pkg:3"
+                                ; name = "b"
+                                }
                               ]
                           }
                         ]
@@ -434,7 +452,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                     }
                 }
           }
-    ; ocaml = Some ("complex_lock_dir/lock.dune:3", "ocaml")
+    ; ocaml = Some ("_build/default/complex_lock_dir/lock.dune:3", "ocaml")
     ; repos =
         { complete = true
         ; used = Some [ opam_repo_serializable "https://github.com/ocaml/dune" ]
@@ -482,6 +500,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
     lock_dir_encode_decode_round_trip_test
       ~commit:git_hash
       ~lock_dir_path:"complex_lock_dir"
+      ~ctx_name
       ~lock_dir
       ());
   [%expect
@@ -549,7 +568,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
                     }
                 }
           }
-    ; ocaml = Some ("complex_lock_dir/lock.dune:3", "ocaml")
+    ; ocaml = Some ("_build/default/complex_lock_dir/lock.dune:3", "ocaml")
     ; repos =
         { complete = true
         ; used =

@@ -2,13 +2,13 @@ Test that section pforms are substituted with absolute paths.
 
   $ . ./helpers.sh
 
-  $ make_lockdir
+  $ add_mock_repo_if_needed
 
-  $ cat > ${default_lock_dir}/test.pkg <<EOF
-  > (version 0.0.1)
-  > (install (progn
-  >  (run echo --prefix %{prefix})
-  >  (run echo --prefix=%{prefix})))
+  $ mkpkg test <<EOF
+  > install: [
+  >  ["echo" "--prefix" prefix]
+  >  ["echo" "--prefix=%{prefix}%"]
+  > ]
   > EOF
 
   $ cat >dune-project <<EOF

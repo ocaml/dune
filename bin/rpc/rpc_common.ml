@@ -79,7 +79,7 @@ let fire_request ~name ~wait request arg =
   Dune_rpc_impl.Client.client
     connection
     (Dune_rpc.Initialize.Request.create ~id:(Dune_rpc.Id.make (Sexp.Atom name)))
-    ~f:(fun client -> request_exn client (Dune_rpc.Decl.Request.witness request) arg)
+    ~f:(fun client -> request_exn client request arg)
 ;;
 
 let wrap_build_outcome_exn ~print_on_success f args () =

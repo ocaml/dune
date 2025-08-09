@@ -16,8 +16,6 @@
   > EOF
 
   $ bash -c 'set -o pipefail; dune build 2>&1 | head -n 20'
-  File "fooBar__type_gen.ml", line 3, characters 12-34:
-  3 |     (module Type_description.Types)
-                  ^^^^^^^^^^^^^^^^^^^^^^
-  Error: Unbound module Type_description
+  Error: Module Type_description is required by ctypes at dune:9 but is missing
+  in the modules field of the stanza.
   [1]

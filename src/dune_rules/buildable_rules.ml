@@ -94,6 +94,8 @@ let modules_rules
       ~preprocessor_deps
       ~lint
       ~empty_module_interface_if_absent
+      ~ctypes
+      ~modules_loc
       sctx
       expander
       ~dir
@@ -135,6 +137,29 @@ let modules_rules
         fun name -> default || List.mem executable_names name ~equal:Module_name.equal)
       else fun _ -> default
   in
+  let* () =
+    match ctypes with
+    | Some ctypes ->
+      let (ctypes : Ctypes_field.t) = ctypes in
+      let modules = Modules.With_vlib.modules modules in
+      (ctypes.type_description.functor_loc, ctypes.type_description.functor_)
+      :: List.map
+           ~f:(fun (x : Ctypes_field.Function_description.t) -> x.functor_loc, x.functor_)
+           ctypes.function_description
+      |> Memo.parallel_iter ~f:(fun ((functor_loc, m) : Loc.t * Module_name.t) ->
+        match Modules.With_vlib.find modules m with
+        | Some _ -> Memo.return ()
+        | None ->
+          User_error.raise
+            ?loc:modules_loc
+            [ Pp.textf
+                "Module %s is required by ctypes at %s but is missing in the modules \
+                 field of the stanza."
+                (Module_name.to_string m)
+                (Loc.to_file_colon_line functor_loc)
+            ])
+    | None -> Memo.return ()
+  in
   let+ modules =
     Modules.map_user_written modules ~f:(fun m ->
       let* m = Pp_spec.pp_module pp m in
@@ -159,15 +184,23 @@ let modules_rules sctx kind expander ~dir scope modules =
           [ Pp.text "The compiler you are using is not compatible with library parameter"
           ]
   in
-  let preprocess, preprocessor_deps, lint, empty_module_interface_if_absent =
+  let ( preprocess
+      , preprocessor_deps
+      , lint
+      , empty_module_interface_if_absent
+      , ctypes
+      , modules_loc )
+    =
     match kind with
     | Executables (buildable, _) | Library (buildable, _) | Parameter (buildable, _) ->
       ( buildable.preprocess
       , buildable.preprocessor_deps
       , buildable.lint
-      , buildable.empty_module_interface_if_absent )
+      , buildable.empty_module_interface_if_absent
+      , buildable.ctypes
+      , Ordered_set_lang.Unexpanded.loc buildable.modules.modules )
     | Melange { preprocess; preprocessor_deps; lint; empty_module_interface_if_absent } ->
-      preprocess, preprocessor_deps, lint, empty_module_interface_if_absent
+      preprocess, preprocessor_deps, lint, empty_module_interface_if_absent, None, None
   in
   let lib_name =
     match kind with
@@ -184,6 +217,8 @@ let modules_rules sctx kind expander ~dir scope modules =
     ~preprocessor_deps
     ~lint
     ~empty_module_interface_if_absent
+    ~ctypes
+    ~modules_loc
     sctx
     expander
     ~dir

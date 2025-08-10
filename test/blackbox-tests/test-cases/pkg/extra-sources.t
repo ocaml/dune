@@ -13,7 +13,7 @@ Fetch from more than one source
   > this is baz
   > EOF
 
-  $ cat >dune.lock/test.pkg <<EOF
+  $ cat > ${default_lock_dir}/test.pkg <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/foo))
   > (extra_sources (mybaz (copy $PWD/baz)))
@@ -114,7 +114,7 @@ url and the extra source.
   Solution for dune.lock:
   - needs-patch.0.0.1
 
-  $ sed -E 's/md5=[0-9a-f]+/md5=$HASH/g' dune.lock/needs-patch.pkg
+  $ sed -E 's/md5=[0-9a-f]+/md5=$HASH/g' ${default_lock_dir}/needs-patch.pkg
   (version 0.0.1)
   
   (build

@@ -11,16 +11,16 @@ Demonstrate our support for pin-depends.
   $ mkpkg bar 0.0.1
 
   $ runtest() {
-  > cat >foo.opam <<EOF
-  > opam-version: "2.0"
-  > depends: [ "bar" ]
-  > pin-depends: [ "bar.1.0.0" "$1" ]
+  >   cat > foo.opam <<EOF
+  >   opam-version: "2.0"
+  >   depends: [ "bar" ]
+  >   pin-depends: [ "bar.1.0.0" "$1" ]
   > EOF
-  > dune pkg lock && {
-  >   local pkg="dune.lock/bar.pkg";
-  >   grep version $pkg;
-  >   grep dev $pkg;
-  >   print_source "bar";
+  >   dune pkg lock && {
+  >     local pkg="${default_lock_dir}/bar.pkg"
+  >     grep version $pkg
+  >     grep dev $pkg
+  >     print_source "bar"
   >   } 
   > }
 
@@ -199,7 +199,7 @@ Pin to an HTTP archive detects wrong hash
   >  (name foo)
   >  (libraries bar))
   > EOF
-  $ sed -i.tmp "s/$MD5_CHECKSUM/92449184682b45b5f07e811fdd61d35f/g" dune.lock/bar.pkg
+  $ sed -i.tmp "s/$MD5_CHECKSUM/92449184682b45b5f07e811fdd61d35f/g" ${default_lock_dir}/bar.pkg
   $ rm -rf already-served
   $ dune build 2>&1 | grep -v "md5"
   File "dune.lock/bar.pkg", line 6, characters 12-48:

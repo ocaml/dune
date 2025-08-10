@@ -32,14 +32,25 @@ module Emit = struct
   let decode =
     let extension_field = extension in
     let module_systems =
+      let module Module_system = Melange.Module_system in
       let module_system =
-        enum [ "esm", Melange.Module_system.ESM; "es6", ESM; "commonjs", CommonJS ]
+        enum'
+          Module_system.
+            [ ( "es6"
+              , Syntax.deprecated_in
+                  Dune_lang.Melange.syntax
+                  (1, 0)
+                  ~extra_info:"Use `esm' instead."
+                >>> return ESM )
+            ; "esm", return ESM
+            ; "commonjs", return CommonJS
+            ]
       in
       let+ module_systems =
         repeat
           (pair module_system (located extension_field)
            <|> let+ loc, module_system = located module_system in
-               let _, ext = Melange.Module_system.default in
+               let _, ext = Module_system.default in
                module_system, (loc, ext))
       in
       let module_systems =

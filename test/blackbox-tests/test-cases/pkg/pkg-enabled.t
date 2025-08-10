@@ -34,7 +34,7 @@ When the default lockdir is present pkg is enabled:
 
   $ dune pkg enabled
 
-  $ rm -r dune.lock
+  $ rm -r ${default_lock_dir}
 
 When a non-default lockdir is present, pkg is still enabled:
   $ dune pkg lock dune.other.lock > /dev/null 2> /dev/null

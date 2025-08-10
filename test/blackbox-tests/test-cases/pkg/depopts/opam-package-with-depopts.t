@@ -16,7 +16,7 @@ Make a package with a depopts field
 When depopts are supported and selected, the above lock should change and we
 should also be able to see a deps field in the lock file:
 
-  $ cat dune.lock/with-depopts.pkg
+  $ cat ${default_lock_dir}/with-depopts.pkg
   (version 0.0.1)
 
 We should also be able to validate the lock directory:

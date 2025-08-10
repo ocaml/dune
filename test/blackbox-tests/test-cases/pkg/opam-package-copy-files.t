@@ -26,7 +26,7 @@ Make a package with a patch
 We expect that the files in the files directory of the opam repository get copied to the
 lock file. 
 
-  $ lock_dir="dune.lock/with-patch.files"
+  $ lock_dir="${default_lock_dir}/with-patch.files"
   $ [ -d $lock_dir ] && cat $lock_dir/$fname1
   foo
   $ [ -d $lock_dir ] && cat $lock_dir/$fname2

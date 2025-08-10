@@ -33,7 +33,7 @@ Now we verify the metadata we generated for the package. First we verify the
 build instructions and version are set correctly.
 
 We print the source separately for ease of post processing the output.
-  $ cat dune.lock/foo.pkg | sed "/source/,//d"
+  $ cat ${default_lock_dir}/foo.pkg | sed "/source/,//d"
   (version 1.0.0)
   
   (dune)

@@ -63,7 +63,7 @@ The log file will contain errors about the package being unavailable.
   #       foo.0.0.1: Availability condition not satisfied
 
 The lockdir will contain a list of the platforms where solving succeeded.
-  $ cat dune.lock/lock.dune
+  $ cat ${default_lock_dir}/lock.dune
   (lang package 0.1)
   
   (dependency_hash 36e640fbcda71963e7e2f689f6c96c3e)

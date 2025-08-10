@@ -26,7 +26,7 @@ A file that will comprise the package source:
 
 Replace the path in the lockfile as it would otherwise include the sandbox
 path.
-  $ cat dune.lock/foo.pkg
+  $ cat ${default_lock_dir}/foo.pkg
   (version 0.0.1)
   
   (source
@@ -54,7 +54,7 @@ Recreate the foo package with a fake port number to signal that the file will
   Warning: download failed with code 404
   Solution for dune.lock:
   - foo.0.0.1
-  $ cat dune.lock/foo.pkg
+  $ cat ${default_lock_dir}/foo.pkg
   (version 0.0.1)
   
   (source

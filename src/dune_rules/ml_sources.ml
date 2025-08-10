@@ -585,9 +585,10 @@ let make
           ~f:(fun acc { Source_file_dir.dir; path_to_root; files } ->
             match
               let path =
-                List.map path_to_root ~f:(fun m ->
-                  (Loc.in_dir (Path.drop_optional_build_context (Path.build dir)), m)
-                  |> Module_name.parse_string_exn)
+                let loc =
+                  Path.build dir |> Path.drop_optional_build_context |> Loc.in_dir
+                in
+                List.map path_to_root ~f:(fun m -> Module_name.parse_string_exn (loc, m))
               in
               let modules = modules_of_files ~dialects ~dir ~files ~path in
               Module_trie.set_map acc path modules

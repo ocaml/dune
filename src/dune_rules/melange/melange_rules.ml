@@ -217,30 +217,33 @@ let compute_promote_in_source ~dune_project ~dir ~mode ~output ~js_output m =
   | Rule.Mode.Promote p ->
     (match output with
      | Output_kind.Private_library_or_emit _ ->
-       let segment =
-         let segment =
-           Module.file m ~ml_kind:Impl |> Option.value_exn |> Path.parent_exn
-         in
-         Path.descendant segment ~of_:(Path.build dir)
-         |> Option.value_exn
-         |> Path.as_in_source_tree_exn
-       in
        (* interpret `(into ...)` relative to the dune file, not the `target_dir` *)
-       let new_into =
-         let from = Path.build (Path.Build.parent_exn js_output) in
-         let into_dir =
-           match p.into with
-           | Some into -> Path.relative (Path.build dir) into.dir
-           | None -> Path.build dir
+       let new_into_dir =
+         let segment =
+           let segment =
+             Module.file m ~ml_kind:Impl |> Option.value_exn |> Path.parent_exn
+           in
+           Path.descendant segment ~of_:(Path.build dir)
+           |> Option.value_exn
+           |> Path.as_in_source_tree_exn
          in
-         Path.reach ~from (Path.append_source into_dir segment)
+         let into_dir =
+           let into_dir =
+             match p.into with
+             | Some into -> Path.relative (Path.build dir) into.dir
+             | None -> Path.build dir
+           in
+           Path.append_source into_dir segment
+         in
+         let from = Path.build (Path.Build.parent_exn js_output) in
+         Path.reach ~from into_dir
        in
        let loc =
          p.into
          |> Option.map ~f:(fun (x : Rule.Promote.Into.t) -> x.loc)
          |> Option.value ~default:Loc.none
        in
-       Promote { p with into = Some { loc; dir = new_into } }
+       Promote { p with into = Some { loc; dir = new_into_dir } }
      | Public_library { lib_dir; output_dir; target_dir = _ } ->
        let segment =
          Module.file m ~ml_kind:Impl
@@ -264,7 +267,6 @@ let compute_promote_in_source ~dune_project ~dir ~mode ~output ~js_output m =
          |> Option.map ~f:(fun (x : Rule.Promote.Into.t) -> x.loc)
          |> Option.value ~default:Loc.none
        in
-       Path.mkdir_p (Path.Source.append_local Path.Source.root output_dir |> Path.source);
        Promote { p with into = Some { loc; dir = new_into } })
 ;;
 

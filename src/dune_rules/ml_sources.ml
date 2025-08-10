@@ -1,6 +1,5 @@
 open Import
 open Memo.O
-module Modules_group = Modules
 
 module Origin = struct
   type t =
@@ -27,8 +26,8 @@ module Origin = struct
   ;;
 end
 
-module Modules = struct
-  type component = Origin.t * Modules_group.t * Path.Build.t Obj_dir.t
+module Per_stanza = struct
+  type component = Origin.t * Modules.t * Path.Build.t Obj_dir.t
 
   type t =
     { libraries : component Lib_id.Local.Map.t
@@ -51,7 +50,7 @@ module Modules = struct
   type 'stanza group_part =
     { stanza : 'stanza
     ; sources : (Loc.t * Module.Source.t) Module_trie.t
-    ; modules : Modules_group.t
+    ; modules : Modules.t
     ; dir : Path.Build.t
     ; obj_dir : Path.Build.t Obj_dir.t
     }
@@ -137,7 +136,7 @@ module Modules = struct
 end
 
 type t =
-  { modules : Modules.t
+  { modules : Per_stanza.t
   ; artifacts : Artifacts_obj.t Memo.Lazy.t
   ; include_subdirs : Include_subdirs.t
   }
@@ -145,7 +144,7 @@ type t =
 let include_subdirs t = t.include_subdirs
 
 let empty =
-  { modules = Modules.empty
+  { modules = Per_stanza.empty
   ; artifacts = Memo.Lazy.of_val Artifacts_obj.empty
   ; include_subdirs = No
   }
@@ -278,8 +277,7 @@ let modules_and_obj_dir t ~libs ~for_ =
   with
   | Some (Library _, modules, obj_dir) ->
     let* () =
-      Modules_group.fold_user_written modules ~init:[] ~f:(fun m acc ->
-        Module.path m :: acc)
+      Modules.fold_user_written modules ~init:[] ~f:(fun m acc -> Module.path m :: acc)
       |> Memo.List.iter ~f:(fun module_path ->
         let+ (_origin : Origin.t option) = find_origin t ~libs module_path in
         ())
@@ -327,16 +325,14 @@ let virtual_modules ~lookup_vlib ~libs vlib =
   let+ modules =
     match Lib_info.modules vlib with
     | External modules ->
-      Option.value_exn modules |> Modules_group.With_vlib.drop_vlib |> Memo.return
+      Option.value_exn modules |> Modules.With_vlib.drop_vlib |> Memo.return
     | Local ->
       let src_dir = Lib_info.src_dir vlib |> Path.as_in_build_dir_exn in
       lookup_vlib ~dir:src_dir
       >>= modules ~libs ~for_:(Library (Lib_info.lib_id vlib |> Lib_id.to_local_exn))
   in
-  let existing_virtual_modules = Modules_group.virtual_module_names modules in
-  let allow_new_public_modules =
-    Modules_group.wrapped modules |> Wrapped.to_bool |> not
-  in
+  let existing_virtual_modules = Modules.virtual_module_names modules in
+  let allow_new_public_modules = Modules.wrapped modules |> Wrapped.to_bool |> not in
   { Modules_field_evaluator.Implementation.existing_virtual_modules
   ; allow_new_public_modules
   }
@@ -444,7 +440,7 @@ let make_lib_modules
   let _loc, lib_name = lib.name in
   Resolve.Memo.return
     ( sources
-    , Modules_group.lib
+    , Modules.lib
         ~stdlib:lib.stdlib
         ~implements
         ~lib_name
@@ -457,7 +453,7 @@ let make_lib_modules
 let modules_of_stanzas =
   let filter_partition_map =
     let rev_filter_partition =
-      let rec loop l (acc : Modules.groups) =
+      let rec loop l (acc : Per_stanza.groups) =
         match l with
         | [] -> acc
         | x :: l ->
@@ -470,8 +466,8 @@ let modules_of_stanzas =
       fun l -> loop l { libraries = []; executables = []; melange_emits = [] }
     in
     fun l ->
-      let { Modules.libraries; executables; melange_emits } = rev_filter_partition l in
-      { Modules.libraries = List.rev libraries
+      let { Per_stanza.libraries; executables; melange_emits } = rev_filter_partition l in
+      { Per_stanza.libraries = List.rev libraries
       ; executables = List.rev executables
       ; melange_emits = List.rev melange_emits
       }
@@ -495,10 +491,10 @@ let modules_of_stanzas =
     let modules =
       let obj_dir = Obj_dir.obj_dir obj_dir in
       if Dune_project.wrapped_executables project
-      then Modules_group.make_wrapped ~obj_dir ~modules `Exe
-      else Modules_group.exe_unwrapped modules ~obj_dir
+      then Modules.make_wrapped ~obj_dir ~modules `Exe
+      else Modules.exe_unwrapped modules ~obj_dir
     in
-    `Executables { Modules.stanza = exes; sources; modules; obj_dir; dir }
+    `Executables { Per_stanza.stanza = exes; sources; modules; obj_dir; dir }
   in
   fun stanzas ~expander ~project ~dir ~libs ~lookup_vlib ~modules ~include_subdirs ->
     Memo.parallel_map stanzas ~f:(fun stanza ->
@@ -534,7 +530,7 @@ let modules_of_stanzas =
              >>= Resolve.read_memo
            in
            let obj_dir = Library.obj_dir lib ~dir in
-           `Library { Modules.stanza = lib; sources; modules; dir; obj_dir }
+           `Library { Per_stanza.stanza = lib; sources; modules; dir; obj_dir }
          | Executables.T exes -> make_executables ~dir ~expander ~modules ~project exes
          | Tests.T { exes; _ } -> make_executables ~dir ~expander ~modules ~project exes
          | Melange_stanzas.Emit.T mel ->
@@ -552,12 +548,9 @@ let modules_of_stanzas =
                mel.modules
            in
            let modules =
-             Modules_group.make_wrapped
-               ~obj_dir:(Obj_dir.obj_dir obj_dir)
-               ~modules
-               `Melange
+             Modules.make_wrapped ~obj_dir:(Obj_dir.obj_dir obj_dir) ~modules `Melange
            in
-           `Melange_emit { Modules.stanza = mel; sources; modules; dir; obj_dir }
+           `Melange_emit { Per_stanza.stanza = mel; sources; modules; dir; obj_dir }
          | _ -> Memo.return `Skip))
     >>| filter_partition_map
 ;;
@@ -585,9 +578,10 @@ let make
           ~f:(fun acc { Source_file_dir.dir; path_to_root; files } ->
             match
               let path =
-                List.map path_to_root ~f:(fun m ->
-                  (Loc.in_dir (Path.drop_optional_build_context (Path.build dir)), m)
-                  |> Module_name.parse_string_exn)
+                let loc =
+                  Path.build dir |> Path.drop_optional_build_context |> Loc.in_dir
+                in
+                List.map path_to_root ~f:(fun m -> Module_name.parse_string_exn (loc, m))
               in
               let modules = modules_of_files ~dialects ~dir ~files ~path in
               Module_trie.set_map acc path modules
@@ -650,16 +644,17 @@ let make
       ~modules
       ~include_subdirs:(loc_include_subdirs, include_subdirs)
   in
-  let modules = Modules.make modules_of_stanzas in
+  let modules = Per_stanza.make modules_of_stanzas in
   let artifacts =
     Memo.lazy_ (fun () ->
       let libs =
-        List.map modules_of_stanzas.libraries ~f:(fun (part : _ Modules.group_part) ->
+        List.map modules_of_stanzas.libraries ~f:(fun (part : _ Per_stanza.group_part) ->
           part.stanza, part.modules, part.obj_dir)
       in
       let exes =
-        List.map modules_of_stanzas.executables ~f:(fun (part : _ Modules.group_part) ->
-          part.modules, part.obj_dir)
+        List.map
+          modules_of_stanzas.executables
+          ~f:(fun (part : _ Per_stanza.group_part) -> part.modules, part.obj_dir)
       in
       Artifacts_obj.make
         ~dir

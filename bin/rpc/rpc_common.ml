@@ -24,9 +24,11 @@ let raise_rpc_error (e : Rpc_error.t) =
     ]
 ;;
 
-let request_exn client witness n =
+let request_exn client request n =
   let open Fiber.O in
-  let* decl = Client.Versioned.prepare_request client witness in
+  let* decl =
+    Client.Versioned.prepare_request client (Dune_rpc.Decl.Request.witness request)
+  in
   match decl with
   | Error e -> raise (Dune_rpc.Version_error.E e)
   | Ok decl -> Client.request client decl n

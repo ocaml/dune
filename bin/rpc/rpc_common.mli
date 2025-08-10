@@ -11,7 +11,7 @@ val raise_rpc_error : Dune_rpc.Response.Error.t -> 'a
     fails in any way. Returns an [Error] if the response errors. *)
 val request_exn
   :  Dune_rpc_client.Client.t
-  -> ('a, 'b) Dune_rpc.Decl.Request.witness
+  -> ('a, 'b) Dune_rpc.Decl.request
   -> 'a
   -> ('b, Dune_rpc.Response.Error.t) result Fiber.t
 
@@ -26,7 +26,7 @@ val wait_term : bool Cmdliner.Term.t
 val fire_request
   :  name:string
   -> wait:bool
-  -> ('a, 'b) Dune_rpc.Decl.Request.witness
+  -> ('a, 'b) Dune_rpc.Decl.request
   -> 'a
   -> ('b, Dune_rpc.Response.Error.t) result Fiber.t
 

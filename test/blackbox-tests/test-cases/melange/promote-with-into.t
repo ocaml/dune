@@ -31,11 +31,4 @@ is relative to the artifact, not the dune file)
   > let () = print_endline "other"
   > EOF
   $ dune build @dist
-  File "app/dune", line 5, characters 16-25:
-  5 |  (promote (into ../../foo))
-                      ^^^^^^^^^
-  Error: Directory "app/dist/foo" does not exist. Please create it manually.
-  -> required by _build/default/app/dist/app/other/other.js
-  -> required by alias app/dist
-  [1]
 

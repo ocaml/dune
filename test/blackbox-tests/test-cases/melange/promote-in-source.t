@@ -95,20 +95,6 @@ emit into a different dest dir
 Limitation: directory must be manually created
 
   $ dune build @dist
-  File "app/dune", line 5, characters 16-32:
-  5 |  (promote (into ../toplevel-dist) (until-clean))
-                      ^^^^^^^^^^^^^^^^
-  Error: Directory "toplevel-dist" does not exist. Please create it manually.
-  -> required by _build/default/app/dist/app/x.js
-  -> required by alias app/dist
-  File "app/dune", line 5, characters 16-32:
-  5 |  (promote (into ../toplevel-dist) (until-clean))
-                      ^^^^^^^^^^^^^^^^
-  Error: Directory "toplevel-dist/other" does not exist. Please create it
-  manually.
-  -> required by _build/default/app/dist/app/other/other.js
-  -> required by alias app/dist
-  [1]
 
   $ mkdir -p toplevel-dist/other
   $ dune build @dist

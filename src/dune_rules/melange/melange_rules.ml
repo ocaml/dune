@@ -211,31 +211,29 @@ let js_targets_of_libs ~sctx ~scope ~module_systems ~target_dir libs =
         List.rev_append for_vlib base))
 ;;
 
-let compute_promote_in_source ~dune_project ~dir ~mode ~output ~js_output m =
+let compute_promote_in_source ~dune_project ~dir ~mode ~output ~src ~dst =
   match mode with
   | Rule.Mode.Standard | Fallback | Ignore_source_files -> mode
   | Rule.Mode.Promote p ->
     (match output with
      | Output_kind.Private_library_or_emit _ ->
-       (* interpret `(into ...)` relative to the dune file, not the `target_dir` *)
-       let new_into_dir =
+       let into_dir =
          let segment =
-           let segment =
-             Module.file m ~ml_kind:Impl |> Option.value_exn |> Path.parent_exn
-           in
+           let segment = src |> Path.parent_exn in
            Path.descendant segment ~of_:(Path.build dir)
            |> Option.value_exn
            |> Path.as_in_source_tree_exn
          in
          let into_dir =
-           let into_dir =
-             match p.into with
-             | Some into -> Path.relative (Path.build dir) into.dir
-             | None -> Path.build dir
-           in
-           Path.append_source into_dir segment
+           match p.into with
+           | Some into -> Path.relative (Path.build dir) into.dir
+           | None -> Path.build dir
          in
-         let from = Path.build (Path.Build.parent_exn js_output) in
+         Path.append_source into_dir segment
+       in
+       (* interpret `(into ...)` relative to the dune file, not the `target_dir` *)
+       let new_into_dir =
+         let from = Path.build (Path.Build.parent_exn dst) in
          Path.reach ~from into_dir
        in
        let loc =
@@ -245,29 +243,26 @@ let compute_promote_in_source ~dune_project ~dir ~mode ~output ~js_output m =
        in
        Promote { p with into = Some { loc; dir = new_into_dir } }
      | Public_library { lib_dir; output_dir; target_dir = _ } ->
-       let segment =
-         Module.file m ~ml_kind:Impl
-         |> Option.value_exn
-         |> Path.parent_exn
-         |> Path.drop_prefix_exn ~prefix:lib_dir
+       let into_dir =
+         let segment = src |> Path.parent_exn |> Path.drop_prefix_exn ~prefix:lib_dir in
+         let root = Dune_project.root dune_project in
+         Path.Source.append_local (Path.Source.append_local root output_dir) segment
        in
-       let new_into =
+       let new_into_dir =
          let from =
-           Path.Build.parent_exn js_output
+           Path.Build.parent_exn dst
            |> Path.build
            |> Path.drop_build_context_exn
            |> Path.source
          in
-         let root = Dune_project.root dune_project in
-         let into_dir = Path.Source.append_local root output_dir in
-         Path.reach ~from (Path.Source.append_local into_dir segment |> Path.source)
+         Path.reach ~from (Path.source into_dir)
        in
        let loc =
          p.into
          |> Option.map ~f:(fun (x : Rule.Promote.Into.t) -> x.loc)
          |> Option.value ~default:Loc.none
        in
-       Promote { p with into = Some { loc; dir = new_into } })
+       Promote { p with into = Some { loc; dir = new_into_dir } })
 ;;
 
 let build_js
@@ -298,7 +293,8 @@ let build_js
       if promote_in_source
       then (
         let dune_project = Scope.project scope in
-        compute_promote_in_source ~dune_project ~dir ~output ~mode ~js_output m)
+        let src = Module.file m ~ml_kind:Impl |> Option.value_exn in
+        compute_promote_in_source ~dune_project ~dir ~output ~mode ~src ~dst:js_output)
       else mode
     in
     let build =
@@ -544,7 +540,17 @@ module Runtime_deps = struct
   ;;
 end
 
-let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
+let setup_runtime_assets_rules
+      sctx
+      ~scope
+      ~dir
+      ~target_dir
+      ~mode
+      ~promote_in_source
+      ~output
+      ~for_
+      mel
+  =
   let* { Runtime_deps.copy; deps } = Runtime_deps.targets sctx ~dir ~output ~for_ mel in
   let deps =
     let paths =
@@ -556,6 +562,13 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
   let+ () =
     let loc = mel.loc in
     Memo.parallel_iter copy ~f:(fun (src, dst) ->
+      let mode =
+        if promote_in_source
+        then (
+          let dune_project = Scope.project scope in
+          compute_promote_in_source ~dune_project ~dir ~output ~mode ~src ~dst)
+        else mode
+      in
       Super_context.add_rule ~loc ~dir ~mode sctx (Action_builder.copy ~src ~dst))
   and+ () = add_deps_to_aliases ?alias:mel.alias deps ~dir:target_dir in
   ()
@@ -609,13 +622,22 @@ let setup_entries_js
   and* compile_flags = melange_compile_flags ~sctx ~dir mel in
   let output = Output_kind.Private_library_or_emit target_dir in
   let obj_dir = Obj_dir.of_local local_obj_dir in
+  let promote_in_source = should_promote_in_source scope in
   let* () =
-    setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_:`Emit mel
+    setup_runtime_assets_rules
+      sctx
+      ~scope
+      ~dir
+      ~target_dir
+      ~mode
+      ~promote_in_source
+      ~output
+      ~for_:`Emit
+      mel
   in
   let local_modules_and_obj_dir =
     Some (Modules.With_vlib.modules local_modules, local_obj_dir)
   in
-  let promote_in_source = should_promote_in_source scope in
   Memo.parallel_iter modules_for_js ~f:(fun m ->
     build_js
       ~loc
@@ -680,9 +702,9 @@ let setup_js_rules_libraries =
           lib
       in
       let info = Lib.info lib in
+      let promote_in_source = should_promote_in_source scope in
       let build_js =
         let loc = Lib_info.loc info in
-        let promote_in_source = should_promote_in_source scope in
         let obj_dir = Lib_info.obj_dir info in
         let pkg_name = Lib_info.package info in
         build_js ~loc ~promote_in_source ~pkg_name ~obj_dir
@@ -698,9 +720,11 @@ let setup_js_rules_libraries =
       let+ () =
         setup_runtime_assets_rules
           sctx
+          ~scope
           ~dir
           ~target_dir
           ~mode
+          ~promote_in_source
           ~output
           ~for_:(`Library info)
           mel

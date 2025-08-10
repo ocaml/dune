@@ -79,8 +79,6 @@ Dune clean gets rid of them
   $ ls app/other
   other.ml
 
-
-
 emit into a different dest dir
 
   $ cat > app/dune <<EOF
@@ -92,11 +90,6 @@ emit into a different dest dir
   >  (target dist))
   > EOF
 
-Limitation: directory must be manually created
-
-  $ dune build @dist
-
-  $ mkdir -p toplevel-dist/other
   $ dune build @dist
   $ ls toplevel-dist
   other
@@ -132,4 +125,22 @@ Promote dir can't be outside the workspace
                       ^^^^^^^^^
   Error: path outside the workspace: ../../../../foo from app/dist/app
   [1]
+
+It's possible to recover the behavior of emitting in the dist folder with
+`(promote (into ..))`
+
+  $ cat > app/dune <<EOF
+  > (include_subdirs unqualified)
+  > (melange.emit
+  >  (alias dist)
+  >  (emit_stdlib false)
+  >  (promote (into ./dist) (until-clean))
+  >  (target dist))
+  > EOF
+  $ dune build @dist
+  $ ls app/dist
+  other
+  x.js
+  $ ls app/dist/other
+  other.js
 

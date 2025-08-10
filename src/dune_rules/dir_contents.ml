@@ -86,7 +86,6 @@ type triage =
 let dir t = t.dir
 let coq t = Memo.Lazy.force t.coq
 let ocaml t = Memo.Lazy.force t.ml
-let artifacts t = Memo.Lazy.force t.ml >>= Ml_sources.artifacts
 
 let dirs t =
   match t.kind with
@@ -448,9 +447,8 @@ let modules_of_lib sctx lib =
 
 let () =
   Fdecl.set Expander.lookup_artifacts (fun ~dir ->
-    Context.DB.by_dir dir
-    >>| Context.name
-    >>= Super_context.find_exn
-    >>= Load.get ~dir
-    >>= artifacts)
+    let* t =
+      Context.DB.by_dir dir >>| Context.name >>= Super_context.find_exn >>= Load.get ~dir
+    in
+    Memo.Lazy.force t.ml >>= Ml_sources.artifacts)
 ;;

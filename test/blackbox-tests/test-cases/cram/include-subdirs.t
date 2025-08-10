@@ -36,9 +36,10 @@ However adding (include_subdirs unqualified) highlights two issues:
   > EOF
 
   $ dune runtest
-  Error: Multiple rules generated for _build/default/.cram.bar.t/cram.sh:
-  - <none>:1
-  - <none>:1
-  -> required by alias bar
-  -> required by alias runtest
+  File "bar.t/run.t", line 1, characters 0-0:
+  Error: Files _build/default/bar.t/run.t and
+  _build/default/bar.t/run.t.corrected differ.
+  File "sub/foo.t", line 1, characters 0-0:
+  Error: Files _build/default/sub/foo.t and _build/default/sub/foo.t.corrected
+  differ.
   [1]

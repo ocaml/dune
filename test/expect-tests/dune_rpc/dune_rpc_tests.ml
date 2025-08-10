@@ -48,10 +48,7 @@ module Drpc = struct
       (struct
         include Chan
 
-        let write t = function
-          | None -> close t
-          | Some packets -> write t packets >>| Result.ok_exn
-        ;;
+        let write t packets = write t packets >>| Result.ok_exn
       end)
 
   module Server = Dune_rpc_server.Make (Chan)

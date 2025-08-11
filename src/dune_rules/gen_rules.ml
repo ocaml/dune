@@ -477,6 +477,7 @@ let gen_rules_standalone_or_root sctx ~dir ~source_dir =
       let* cctxs = gen_rules_group_part_or_root sctx dir_contents [] ~source_dir ~dir in
       Dir_contents.Standalone_or_root.subdirs standalone_or_root
       >>= Memo.parallel_iter ~f:(fun dc ->
+        let source_dir = Option.value_exn (Dir_contents.source_dir dc) in
         let+ (_ : (Loc.t * Compilation_context.t) list) =
           gen_rules_group_part_or_root
             sctx
@@ -506,7 +507,7 @@ let gen_automatic_subdir_rules sctx ~dir ~nearest_src_dir ~src_dir =
 let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~components ~dir =
   Dir_status.DB.get ~dir
   >>= function
-  | Lock_dir -> Memo.return Gen_rules.no_rules
+  | Lock_dir _ -> Memo.return Gen_rules.no_rules
   | dir_status ->
     let+ rules =
       let* st_dir = Source_tree.find_dir src_dir in
@@ -550,7 +551,7 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
             Gen_rules.rules_for ~dir ~directory_targets ~allowed_subdirs rules
         in
         match dir_status with
-        | Lock_dir -> Gen_rules.rules_here Gen_rules.Rules.empty
+        | Lock_dir _ -> Gen_rules.rules_here Gen_rules.Rules.empty
         | Source_only source_dir ->
           gen_rules_source_only sctx ~dir source_dir |> make_rules |> Gen_rules.rules_here
         | Generated | Is_component_of_a_group_but_not_the_root _ ->

@@ -109,27 +109,24 @@ module Per_stanza = struct
           [ Pp.textf "Target %S appears for the second time in this directory" name ]
     in
     let rev_map =
-      let modules =
-        let by_path (origin : Origin.t * Path.Build.t) trie =
-          Module_trie.fold trie ~init:[] ~f:(fun (_loc, m) acc ->
-            (Module.Source.path m, origin) :: acc)
-        in
-        List.rev_concat
-          [ List.rev_concat_map libs ~f:(fun part ->
-              by_path (Library part.stanza, part.dir) part.sources)
-          ; List.rev_concat_map exes ~f:(fun part ->
-              by_path (Executables part.stanza, part.dir) part.sources)
-          ; List.rev_concat_map emits ~f:(fun part ->
-              by_path (Melange part.stanza, part.dir) part.sources)
-          ]
+      let by_path (origin : Origin.t * Path.Build.t) trie =
+        Module_trie.fold trie ~init:[] ~f:(fun (_loc, m) acc ->
+          (Module.Source.path m, origin) :: acc)
       in
-      List.fold_left
-        modules
-        ~init:Module_name.Path.Map.empty
-        ~f:(fun module_name_map (module_name, origin) ->
-          Module_name.Path.Map.update module_name_map module_name ~f:(function
-            | None -> Some [ origin ]
-            | Some origins -> Some (origin :: origins)))
+      List.rev_concat
+        [ List.rev_concat_map libs ~f:(fun part ->
+            by_path (Library part.stanza, part.dir) part.sources)
+        ; List.rev_concat_map exes ~f:(fun part ->
+            by_path (Executables part.stanza, part.dir) part.sources)
+        ; List.rev_concat_map emits ~f:(fun part ->
+            by_path (Melange part.stanza, part.dir) part.sources)
+        ]
+      |> List.fold_left
+           ~init:Module_name.Path.Map.empty
+           ~f:(fun module_name_map (module_name, origin) ->
+             Module_name.Path.Map.update module_name_map module_name ~f:(function
+               | None -> Some [ origin ]
+               | Some origins -> Some (origin :: origins)))
     in
     { libraries; executables; melange_emits; rev_map; libraries_by_obj_dir }
   ;;

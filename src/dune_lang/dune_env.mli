@@ -32,6 +32,7 @@ type config =
   ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
   ; wasm_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
   ; coq : Coq_env.t
+  ; rocq : Rocq_env.t
   ; format_config : Format_config.t option
   ; error_on_use : User_message.t option
   ; warn_on_load : User_message.t option

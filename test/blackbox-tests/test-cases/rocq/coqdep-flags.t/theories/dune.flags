@@ -1,0 +1,3 @@
+(rocq.theory
+ (name basic)
+ (rocqdep_flags (:standard --local-flag1 --local-flag2)))

@@ -3,7 +3,7 @@ Test that installed binaries are visible in dependent packages
   $ . ./helpers.sh
 
   $ make_lockdir
-  $ cat > ${default_lock_dir}/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (build
   >  (system "\| echo "#!/bin/sh\necho from test package" > foo;
@@ -18,7 +18,7 @@ Test that installed binaries are visible in dependent packages
   >  ))
   > EOF
 
-  $ cat > ${default_lock_dir}/usetest.pkg <<EOF
+  $ make_lockpkg usetest <<EOF
   > (version 0.0.1)
   > (depends test)
   > (build

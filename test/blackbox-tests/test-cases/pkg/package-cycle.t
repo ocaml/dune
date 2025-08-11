@@ -3,16 +3,15 @@ Package resolution creating a cycle
   $ . ./helpers.sh
 
   $ make_lockdir
-
-  $ cat > ${default_lock_dir}/a.pkg <<EOF
+  $ make_lockpkg a <<EOF
   > (version 0.0.1)
   > (depends b)
   > EOF
-  $ cat > ${default_lock_dir}/b.pkg <<EOF
+  $ make_lockpkg b <<EOF
   > (version 0.0.1)
   > (depends c)
   > EOF
-  $ cat > ${default_lock_dir}/c.pkg <<EOF
+  $ make_lockpkg c <<EOF
   > (version 0.0.1)
   > (depends a)
   > EOF

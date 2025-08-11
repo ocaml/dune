@@ -5,7 +5,7 @@
 Helper function to create a lockfile with a given install action and then build it, running the action.
   $ test_action() {
   >   dune clean || true
-  >   cat > ${default_lock_dir}/test.pkg <<EOF
+  >   make_lockpkg test <<EOF
   > (version 0.0.1)
   > (install $1)
   > EOF

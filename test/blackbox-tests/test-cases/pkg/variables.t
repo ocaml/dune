@@ -3,7 +3,7 @@ Test that we can set variables
   $ . ./helpers.sh
 
   $ make_lockdir
-  $ cat > ${default_lock_dir}/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (build
   >  (system "\| cat >test.config <<EOF
@@ -18,7 +18,7 @@ Test that we can set variables
   >  ))
   > EOF
 
-  $ cat > ${default_lock_dir}/usetest.pkg <<EOF
+  $ make_lockpkg usetest <<EOF
   > (version 0.0.1)
   > (depends test)
   > (build
@@ -51,7 +51,7 @@ Test that we can set variables
 
 Now we demonstrate we get a proper error from invalid .config files:
 
-  $ cat > ${default_lock_dir}/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (build
   >  (system "\| cat >test.config <<EOF

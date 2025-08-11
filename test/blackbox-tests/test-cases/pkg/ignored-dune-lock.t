@@ -3,15 +3,14 @@ Test that shows what happens when dune.lock is ignored.
   $ . ./helpers.sh
 
   $ make_lockdir
-  $ cat > ${default_lock_dir}/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (build
   >  (progn
   >   (run touch foo.ml)
   >   (patch foo.patch)))
   > EOF
-  $ mkdir ${default_lock_dir}/test.files
-  $ cat > ${default_lock_dir}/test.files/foo.patch <<EOF
+  $ make_lockpkg_file test foo.patch <<EOF
   > diff --git a/foo.ml b/foo.ml
   > index b69a69a5a..ea988f6bd 100644
   > --- a/foo.ml

@@ -5,7 +5,7 @@ A lock directory which does not exist in the source tree:
   $ mkdir project
 
   $ make_lockdir
-  $ cat > ${default_lock_dir}/foo.pkg <<EOF
+  $ make_lockpkg foo <<EOF
   > (build (run echo foo))
   > (version 1.0.0)
   > EOF

@@ -24,9 +24,11 @@ let raise_rpc_error (e : Rpc_error.t) =
     ]
 ;;
 
-let request_exn client witness n =
+let request_exn client request n =
   let open Fiber.O in
-  let* decl = Client.Versioned.prepare_request client witness in
+  let* decl =
+    Client.Versioned.prepare_request client (Dune_rpc.Decl.Request.witness request)
+  in
   match decl with
   | Error e -> raise (Dune_rpc.Version_error.E e)
   | Ok decl -> Client.request client decl n
@@ -40,7 +42,7 @@ let client_term builder f =
 ;;
 
 let wait_term =
-  let doc = "poll until server starts listening and then establish connection." in
+  let doc = "Poll until server starts listening and then establish connection." in
   Arg.(value & flag & info [ "wait" ] ~doc)
 ;;
 
@@ -79,7 +81,7 @@ let fire_request ~name ~wait request arg =
   Dune_rpc_impl.Client.client
     connection
     (Dune_rpc.Initialize.Request.create ~id:(Dune_rpc.Id.make (Sexp.Atom name)))
-    ~f:(fun client -> request_exn client (Dune_rpc.Decl.Request.witness request) arg)
+    ~f:(fun client -> request_exn client request arg)
 ;;
 
 let wrap_build_outcome_exn ~print_on_success f args () =

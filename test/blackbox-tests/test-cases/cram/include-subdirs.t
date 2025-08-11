@@ -26,10 +26,13 @@ the (include_subdirs unqualified) is not present, both tests fail as expected.
   differ.
   [1]
 
-However adding (include_subdirs unqualified) highlights two issues:
+Previously, adding (include_subdirs unqualified) highlights two issues:
 
 1. The file cram test in the subdirectory is no longer being run.
 2. Multiple rules are being generated for the directory test.
+
+These have now been fixed, and both cram tests work correctly with
+(include_subdirs unqualified) in tandem.
 
   $ cat >dune <<EOF
   > (include_subdirs unqualified)

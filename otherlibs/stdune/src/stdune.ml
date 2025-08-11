@@ -73,9 +73,14 @@ module Sys = Sys
 module Pid = Pid
 module Applicative = Applicative
 
-module type Top_closure = Top_closure_intf.S
+module type Top_closure = Top_closure.Top_closure
 
-module Top_closure = Top_closure
+module Top_closure = struct
+  module Make = Top_closure.Make
+  module Int = Make (Int.Set) (Monad.Id)
+  module String = Make (String.Set) (Monad.Id)
+end
+
 module Seq = Seq
 module Temp = Temp
 module Queue = Queue

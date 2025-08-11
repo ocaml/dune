@@ -1,3 +1,14 @@
+module type Monad = sig
+  type 'a t
+
+  val return : 'a -> 'a t
+
+  module O : sig
+    val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
+    val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
+  end
+end
+
 module type Keys = sig
   type t
   type elt
@@ -7,7 +18,7 @@ module type Keys = sig
   val mem : t -> elt -> bool
 end
 
-module type S = sig
+module type Top_closure = sig
   type key
   type 'a monad
 

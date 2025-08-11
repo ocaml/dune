@@ -29,6 +29,11 @@ let local_libraries =
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }
+  ; { path = "otherlibs/top-closure"
+    ; main_module_name = Some "Top_closure"
+    ; include_subdirs_unqualified = false
+    ; special_builtin_support = None
+    }
   ; { path = "otherlibs/stdune/src"
     ; main_module_name = Some "Stdune"
     ; include_subdirs_unqualified = false

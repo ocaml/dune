@@ -575,7 +575,7 @@ let make
         List.fold_left
           dirs
           ~init:Module_trie.empty
-          ~f:(fun acc { Source_file_dir.dir; path_to_root; files } ->
+          ~f:(fun acc { Source_file_dir.dir; path_to_root; files; source_dir = _ } ->
             match
               let path =
                 let loc =
@@ -620,7 +620,7 @@ let make
         List.fold_left
           dirs
           ~init:Module_name.Map.empty
-          ~f:(fun acc { Source_file_dir.dir; files; path_to_root = _ } ->
+          ~f:(fun acc { Source_file_dir.dir; files; path_to_root = _; source_dir = _ } ->
             let modules = modules_of_files ~dialects ~dir ~files ~path:[] in
             Module_name.Map.union acc modules ~f:(fun name x y ->
               User_error.raise

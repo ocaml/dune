@@ -189,19 +189,11 @@ understood by dune language."))
  (description "https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html"))
 
 (package
- (name top-closure)
- (synopsis "Topological Closure")
- (depends
-  (ocaml (>= 4.08)))
- (description "Generic Topological Closure"))
-
-(package
  (name stdune)
  (synopsis "Dune's unstable standard library")
  (depends
   (ocaml (>= 4.08.0))
   base-unix
-  (top-closure (= :version))
   (dyn (= :version))
   (ordering (= :version))
   (pp (>= 2.0.0))

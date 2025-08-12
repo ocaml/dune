@@ -14,9 +14,6 @@
   stick around after the test finished (#11841, fixes #11820, @Alizter,
   @Leonidas-from-XIV)
 
-- fix: `include_subdirs unqualified` does not generate duplicate cram rules
-  (#12142, @Alizter)
-
 ### Added
 
 - `(tests)` stanzas now generate aliases with the test name. To run

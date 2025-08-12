@@ -9,7 +9,12 @@ type library =
 let external_libraries = [ "unix"; "threads" ]
 
 let local_libraries =
-  [ { path = "otherlibs/ordering"
+  [ { path = "otherlibs/top-closure"
+    ; main_module_name = Some "Top_closure"
+    ; include_subdirs_unqualified = false
+    ; special_builtin_support = None
+    }
+  ; { path = "otherlibs/ordering"
     ; main_module_name = Some "Ordering"
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
@@ -26,11 +31,6 @@ let local_libraries =
     }
   ; { path = "vendor/csexp/src"
     ; main_module_name = Some "Csexp"
-    ; include_subdirs_unqualified = false
-    ; special_builtin_support = None
-    }
-  ; { path = "otherlibs/top-closure"
-    ; main_module_name = Some "Top_closure"
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }

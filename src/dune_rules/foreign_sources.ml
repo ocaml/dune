@@ -98,7 +98,7 @@ module Unresolved = struct
     List.fold_left
       dirs
       ~init:String.Map.empty
-      ~f:(fun acc { Source_file_dir.dir; path_to_root = _; files } ->
+      ~f:(fun acc { Source_file_dir.dir; path_to_root = _; files; source_dir = _ } ->
         let sources = load ~dir ~dune_version ~files in
         String.Map.Multi.rev_union sources acc)
   ;;

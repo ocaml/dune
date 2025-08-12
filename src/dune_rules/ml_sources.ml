@@ -577,14 +577,17 @@ let make
         List.fold_left
           dirs
           ~init:Module_trie.empty
-          ~f:(fun acc { Source_file_dir.dir; path_to_root; files } ->
-            let path =
-              List.map path_to_root ~f:(fun m ->
-                Module_name.parse_string_exn
-                  (Loc.in_dir (Path.drop_optional_build_context (Path.build dir)), m))
-            in
-            let modules = modules_of_files ~dialects ~dir ~files ~path in
-            match Module_trie.set_map acc path modules with
+          ~f:(fun acc { Source_file_dir.dir; path_to_root; files; source_dir = _ } ->
+            match
+              let path =
+                let loc =
+                  Path.build dir |> Path.drop_optional_build_context |> Loc.in_dir
+                in
+                List.map path_to_root ~f:(fun m -> Module_name.parse_string_exn (loc, m))
+              in
+              let modules = modules_of_files ~dialects ~dir ~files ~path in
+              Module_trie.set_map acc path modules
+            with
             | Ok s -> s
             | Error module_ ->
               let module_ =
@@ -619,7 +622,7 @@ let make
         List.fold_left
           dirs
           ~init:Module_name.Map.empty
-          ~f:(fun acc { Source_file_dir.dir; files; path_to_root = _ } ->
+          ~f:(fun acc { Source_file_dir.dir; files; path_to_root = _; source_dir = _ } ->
             let modules = modules_of_files ~dialects ~dir ~files ~path:[] in
             Module_name.Map.union acc modules ~f:(fun name x y ->
               User_error.raise

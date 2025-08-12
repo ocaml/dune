@@ -210,7 +210,7 @@ let kind t = t.kind
 let pp_flags t = t.pp
 let install_as t = t.install_as
 
-let of_source ?install_as ~obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
+let of_source ~install_as ~obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
   (match kind, visibility with
    | (Alias _ | Impl_vmodule | Virtual | Wrapped_compat), Visibility.Public
    | Root, Private
@@ -424,10 +424,12 @@ let generated ?install_as ?obj_name ~(kind : Kind.t) ~src_dir (path : Module_nam
     | Root -> Private
     | _ -> Public
   in
-  of_source ?install_as ~visibility ~kind ~obj_name:(Some obj_name) source
+  of_source ~install_as ~visibility ~kind ~obj_name:(Some obj_name) source
 ;;
 
-let of_source ~visibility ~kind source = of_source ~obj_name:None ~visibility ~kind source
+let of_source ~visibility ~kind source =
+  of_source ~install_as:None ~obj_name:None ~visibility ~kind source
+;;
 
 module Name_map = struct
   type nonrec t = t Module_name.Map.t

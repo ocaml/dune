@@ -250,7 +250,6 @@ jobs:
           - ubuntu-latest
         ocaml-compiler:
           - 5
-          - 4.14
     runs-on: ${{ matrix.os }}
     steps:
       - name: Use OCaml ${{ matrix.ocaml-compiler }}

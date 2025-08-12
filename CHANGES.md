@@ -1,4 +1,4 @@
-3.20.0~alpha3 (2025-08-06)
+3.20.0~alpha4 (2025-08-12)
 --------------------------
 
 ### Fixed
@@ -13,6 +13,9 @@
   terminated; in particular this avoids background processes in cram tests to
   stick around after the test finished (#11841, fixes #11820, @Alizter,
   @Leonidas-from-XIV)
+
+- fix: `include_subdirs unqualified` does not generate duplicate cram rules
+  (#12142, @Alizter)
 
 ### Added
 

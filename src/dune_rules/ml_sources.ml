@@ -195,7 +195,7 @@ let modules_of_files ~path ~dialects ~dir ~files =
   let impls = parse_one_set impl_files in
   let intfs = parse_one_set intf_files in
   Module_name.Map.merge impls intfs ~f:(fun name impl intf ->
-    Some (Module.Source.make (path @ [ name ]) ?impl ?intf))
+    Some (Module.Source.make (path @ [ name ]) ~impl ~intf))
 ;;
 
 type for_ =

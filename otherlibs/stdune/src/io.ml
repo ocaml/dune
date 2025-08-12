@@ -244,10 +244,6 @@ struct
 
   let with_file_in ?binary fn ~f = Exn.protectx (open_in ?binary fn) ~finally:close_in ~f
 
-  let with_file_in_fd fn ~f =
-    Exn.protectx (Unix.openfile fn [ O_RDONLY; O_CLOEXEC ] 0) ~f ~finally:Unix.close
-  ;;
-
   let with_file_out ?binary ?perm p ~f =
     Exn.protectx (open_out ?binary ?perm p) ~finally:close_out ~f
   ;;
@@ -260,141 +256,29 @@ struct
       f lb)
   ;;
 
-  let rec eagerly_input_acc ic s ~pos ~len acc =
-    if len <= 0
-    then acc
-    else (
-      let r = input ic s pos len in
-      if r = 0 then acc else eagerly_input_acc ic s ~pos:(pos + r) ~len:(len - r) (acc + r))
-  ;;
-
-  (* [eagerly_input_string ic len] tries to read [len] chars from the channel.
-     Unlike [really_input_string], if the file ends before [len] characters are
-     found, it returns the characters it was able to read instead of raising an
-     exception.
-
-     This can be detected by checking that the length of the resulting string is
-     less than [len]. *)
-  let eagerly_input_string ic len =
-    let buf = Bytes.create len in
-    let r = eagerly_input_acc ic buf ~pos:0 ~len 0 in
-    if r = len then Bytes.unsafe_to_string buf else Bytes.sub_string buf ~pos:0 ~len:r
-  ;;
-
-  let read_all_fd =
-    let rec read fd buf pos left =
-      if left = 0
-      then `Ok
-      else (
-        match Unix.read fd buf pos left with
-        | 0 -> `Eof
-        | n -> read fd buf (pos + n) (left - n))
-    in
-    fun fd ->
-      match Unix.fstat fd with
-      | exception Unix.Unix_error (e, x, y) -> Error (`Unix (e, x, y))
-      | { Unix.st_size; _ } ->
-        if st_size = 0
-        then Ok ""
-        else if st_size > Sys.max_string_length
-        then Error `Too_big
-        else (
-          let b = Bytes.create st_size in
-          match read fd b 0 st_size with
-          | exception Unix.Unix_error (e, x, y) -> Error (`Unix (e, x, y))
-          | `Eof -> Error `Retry
-          | `Ok -> Ok (Bytes.unsafe_to_string b))
-  ;;
-
-  let read_all_unless_large =
-    (* We use 65536 because that is the size of OCaml's IO buffers. *)
-    let chunk_size = 65536 in
-    (* Generic function for channels such that seeking is unsupported or
-       broken *)
-    let read_all_generic t buffer =
-      let rec loop () =
-        Buffer.add_channel buffer t chunk_size;
-        loop ()
-      in
-      try loop () with
-      | End_of_file -> Ok (Buffer.contents buffer)
-    in
-    fun t ->
-      (* Optimisation for regular files: if the channel supports seeking, we
-         compute the length of the file so that we read exactly what we need and
-         avoid an extra memory copy. We expect that most files Dune reads are
-         regular files so this optimizations seems worth it. *)
-      match in_channel_length t with
-      | exception Sys_error _ -> read_all_generic t (Buffer.create chunk_size)
-      | n when n > Sys.max_string_length -> Error ()
-      | n ->
-        (* For some files [in_channel_length] returns an invalid value. For
-           instance for files in /proc it returns [0] and on Windows the
-           returned value is larger than expected (it counts linebreaks as 2
-           chars, even in text mode).
-
-           To be robust in both directions, we: - use [eagerly_input_string]
-           instead of [really_input_string] in case we reach the end of the file
-           early - read one more character to make sure we did indeed reach the
-           end of the file *)
-        let s = eagerly_input_string t n in
-        (match input_char t with
-         | exception End_of_file -> Ok s
-         | c ->
-           (* The [+ chunk_size] is to make sure there is at least [chunk_size]
-              free space so that the first [Buffer.add_channel buffer t
-             chunk_size] in [read_all_generic] does not grow the buffer. *)
-           let buffer = Buffer.create (String.length s + 1 + chunk_size) in
-           Buffer.add_string buffer s;
-           Buffer.add_char buffer c;
-           read_all_generic t buffer)
-  ;;
-
-  let path_to_dyn path = String.to_dyn (Path.to_string path)
-
   let read_file_chan ?binary fn =
-    match with_file_in fn ~f:read_all_unless_large ?binary with
+    match with_file_in fn ~f:Fs_io.read_all_unless_large ?binary with
     | Ok x -> x
-    | Error () ->
-      Code_error.raise
-        "read_file: file is larger than Sys.max_string_length"
-        [ "fn", path_to_dyn fn ]
+    | Error exn -> raise exn
   ;;
 
   let read_file ?(binary = true) fn =
     if binary
-    then
-      with_file_in_fd (Path.to_string fn) ~f:(fun fd ->
-        match read_all_fd fd with
-        | Ok s -> s
-        | Error `Retry -> read_file_chan ~binary fn
-        | Error `Too_big ->
-          Code_error.raise
-            "read_file: file is larger than Sys.max_string_length"
-            [ "fn", path_to_dyn fn ]
-        | Error (`Unix e) -> Unix_error.Detailed.raise e)
+    then Fs_io.read_file (Path.to_string fn) |> Result.ok_exn
     else read_file_chan ~binary fn
   ;;
 
   let lines_of_file fn = with_file_in fn ~f:input_lines ~binary:false
   let zero_strings_of_file fn = with_file_in fn ~f:input_zero_separated ~binary:true
 
-  let write_file_fast =
-    let rec write fd str pos left =
-      if left > 0
-      then (
-        let written = Unix.single_write_substring fd str pos left in
-        write fd str (pos + written) (left - written))
-    in
-    fun ?(perm = default_out_perm) fn data ->
-      Unix.openfile fn [ O_WRONLY; O_CLOEXEC; O_CREAT; O_TRUNC ] perm
-      |> Exn.protectx ~finally:Unix.close ~f:(fun fd ->
-        write fd data 0 (String.length data))
-  ;;
-
   let write_file ?(binary = true) ?perm fn data =
     if binary
-    then write_file_fast ?perm (Path.to_string fn) data
+    then
+      Fs_io.write_file
+        ~perm:(Option.value ~default:default_out_perm perm)
+        ~data
+        ~path:(Path.to_string fn)
+      |> Result.ok_exn
     else with_file_out ~binary ?perm fn ~f:(fun oc -> output_string oc data)
   ;;
 

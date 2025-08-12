@@ -34,6 +34,11 @@ let local_libraries =
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }
+  ; { path = "otherlibs/fs-io"
+    ; main_module_name = Some "Fs_io"
+    ; include_subdirs_unqualified = false
+    ; special_builtin_support = None
+    }
   ; { path = "otherlibs/stdune/src"
     ; main_module_name = Some "Stdune"
     ; include_subdirs_unqualified = false

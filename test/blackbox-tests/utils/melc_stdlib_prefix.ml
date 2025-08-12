@@ -3,9 +3,9 @@ open Stdune
 let command cmd args =
   let p = Unix.open_process_args_in cmd (Array.of_list (cmd :: args)) in
   let output =
-    match Io.read_all_unless_large p with
+    match Fs_io.read_all_unless_large p with
     | Ok x -> x
-    | Error () -> assert false
+    | Error exn -> raise exn
   in
   match Unix.close_process_in p with
   | WEXITED 0 -> Ok output

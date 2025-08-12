@@ -13,7 +13,7 @@
 (executable
  (modules melc_stdlib_prefix)
  (name melc_stdlib_prefix)
- (libraries stdune unix))
+ (libraries stdune fs_io unix))
 
 (executable
  (name refmt)

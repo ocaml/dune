@@ -227,9 +227,8 @@ module Mangle = struct
       then None
       else
         Some
-          (Path.Local.L.relative
-             Path.Local.root
-             (List.map ~f:Module_name.uncapitalize path)
+          (List.map ~f:Module_name.uncapitalize path
+           |> Path.Local.L.relative Path.Local.root
            |> Path.Local.set_extension ~ext:".ml")
     in
     Module.generated ?install_as path ~obj_name ~kind ~src_dir:obj_dir

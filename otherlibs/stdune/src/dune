@@ -6,6 +6,7 @@
  (libraries
   unix
   csexp
+  (re_export top-closure)
   (re_export ordering)
   (re_export dyn)
   (re_export pp))

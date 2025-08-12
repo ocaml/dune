@@ -5,8 +5,7 @@ without using locked dependencies.
   $ . ./helpers.sh
 
   $ make_lockdir
-
-  $ cat > ${default_lock_dir}/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (build
   >  (run echo "I have not been ignored."))
   > EOF

@@ -39,7 +39,7 @@ Make a fake ocamlformat
   > EOF
 
   $ make_lockdir
-  $ cat > ${default_lock_dir}/ocaml.pkg <<EOF
+  $ make_lockpkg ocaml <<EOF
   > (version 5.2.0)
   > EOF
 

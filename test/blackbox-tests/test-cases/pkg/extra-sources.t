@@ -13,7 +13,7 @@ Fetch from more than one source
   > this is baz
   > EOF
 
-  $ cat > ${default_lock_dir}/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/foo))
   > (extra_sources (mybaz (copy $PWD/baz)))

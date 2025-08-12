@@ -3,8 +3,7 @@ Test that section pforms are substituted with absolute paths.
   $ . ./helpers.sh
 
   $ make_lockdir
-
-  $ cat > ${default_lock_dir}/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (install (progn
   >  (run echo --prefix %{prefix})

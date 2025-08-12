@@ -6,7 +6,7 @@ Testing the when action in lockfiles
 
 Case with a mix of uncoditional and conditional actions in a progn action
 
-  $ cat > ${default_lock_dir}/test.pkg <<'EOF'
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (install
   >  (progn

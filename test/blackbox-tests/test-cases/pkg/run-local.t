@@ -5,7 +5,7 @@ they could have been created or modified by previous build commands (such as
   $ . ./helpers.sh
 
   $ make_lockdir
-  $ cat > ${default_lock_dir}/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (build
   >  (progn

@@ -40,7 +40,7 @@ location
 
 We generate the lockfile for the fake compiler
 
-  $ cat > ${default_lock_dir}/ocaml-base-compiler.pkg << EOF
+  $ make_lockpkg ocaml-base-compiler << EOF
   > (version 1)
   > (build
   >  (run ./configure %{prefix}))
@@ -54,7 +54,7 @@ We generate the lock file for the package to demonstrate the variable is
 replaced with the path to the sandbox inside of the path to the non-relocatable
 location.
 
-  $ cat > ${default_lock_dir}/baz.pkg << EOF
+  $ make_lockpkg baz << EOF
   > (version 1)
   > (build
   >  (run sh -exc "echo %{pkg:ocaml-base-compiler:share}"))

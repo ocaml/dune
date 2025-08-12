@@ -114,12 +114,12 @@ module Per_stanza = struct
           Module_trie.fold trie ~init:[] ~f:(fun (_loc, m) acc ->
             (Module.Source.path m, origin) :: acc)
         in
-        List.concat
-          [ List.concat_map libs ~f:(fun part ->
+        List.rev_concat
+          [ List.rev_concat_map libs ~f:(fun part ->
               by_path (Library part.stanza, part.dir) part.sources)
-          ; List.concat_map exes ~f:(fun part ->
+          ; List.rev_concat_map exes ~f:(fun part ->
               by_path (Executables part.stanza, part.dir) part.sources)
-          ; List.concat_map emits ~f:(fun part ->
+          ; List.rev_concat_map emits ~f:(fun part ->
               by_path (Melange part.stanza, part.dir) part.sources)
           ]
       in

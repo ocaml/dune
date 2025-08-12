@@ -31,7 +31,7 @@ someotherrepo as a submodule.
 
   $ mkdir foo && cd foo
   $ make_lockdir
-  $ cat > ${default_lock_dir}/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (source (fetch (url "git+file://$SOMEREPO")))
   > (build (progn (run cat foo) (run cat mysubmodule/bar)))
@@ -43,10 +43,10 @@ not the case and only somerepo is pulled.
   $ build_pkg test 2>&1 | sed -E 's|.*/cat|cat|'
   hello
   world
+
 When the above works it should act like:
 
-  $ make_lockdir
-  $ cat > ${default_lock_dir}/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (source (fetch (url "git+file://$SOMEREPO")))
   > (build 

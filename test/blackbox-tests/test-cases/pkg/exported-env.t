@@ -3,7 +3,7 @@ Packages can export environment variables
   $ . ./helpers.sh
 
   $ make_lockdir
-  $ cat > ${default_lock_dir}/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (exported_env
   >  (= FOO bar)
@@ -12,7 +12,7 @@ Packages can export environment variables
   >  (:= BAR zzz))
   > EOF
 
-  $ cat > ${default_lock_dir}/usetest.pkg <<'EOF'
+  $ make_lockpkg usetest <<'EOF'
   > (depends test)
   > (version 1.2.3)
   > (build

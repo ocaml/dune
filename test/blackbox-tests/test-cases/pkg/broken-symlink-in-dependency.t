@@ -22,7 +22,7 @@ Create a lockdir for the project.
   $ make_lockdir
 
 The package "foo" exercises copying package sources from a local directory.
-  $ cat > ${default_lock_dir}/foo.pkg <<EOF
+  $ make_lockpkg foo <<EOF
   > (version 0.0.1)
   > (source
   >  (fetch
@@ -31,7 +31,7 @@ The package "foo" exercises copying package sources from a local directory.
   > EOF
 
 The package "bar" exercises extracting a source archive from a local file.
-  $ cat > ${default_lock_dir}/bar.pkg <<EOF
+  $ make_lockpkg bar <<EOF
   > (version 0.0.1)
   > (source
   >  (fetch
@@ -40,7 +40,7 @@ The package "bar" exercises extracting a source archive from a local file.
   > EOF
 
 The package "bar" exercises extracting a source archive from a downloaded file.
-  $ cat > ${default_lock_dir}/baz.pkg <<EOF
+  $ make_lockpkg baz <<EOF
   > (version 0.0.1)
   > (source
   >  (fetch

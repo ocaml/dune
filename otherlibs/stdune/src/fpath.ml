@@ -159,7 +159,7 @@ type clear_dir_result =
   | Directory_does_not_exist
 
 let rec clear_dir dir =
-  match Dune_filesystem_stubs.read_directory_with_kinds dir with
+  match Readdir.read_directory_with_kinds dir with
   | Error (ENOENT, _, _) -> Directory_does_not_exist
   | Error (error, _, _) ->
     raise (Unix.Unix_error (error, dir, "Stdune.Path.rm_rf: read_directory_with_kinds"))
@@ -200,7 +200,7 @@ let traverse ~dir ~init ~on_file ~on_dir ~on_broken_symlink =
     | [] -> acc
     | dir :: dirs ->
       let dir_path = Filename.concat root dir in
-      (match Dune_filesystem_stubs.read_directory_with_kinds dir_path with
+      (match Readdir.read_directory_with_kinds dir_path with
        | Error e -> Unix_error.Detailed.raise e
        | Ok entries ->
          let stack, acc =

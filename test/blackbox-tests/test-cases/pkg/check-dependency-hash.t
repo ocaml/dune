@@ -98,7 +98,7 @@ Remove all dependencies from the project:
 
 Exercise handling invalid dependency hashes.
   $ make_lock_metadata_with_hash() {
-  >   cat > ${default_lock_dir}/lock.dune <<EOF
+  >   cat > ${source_lock_dir}/lock.dune <<EOF
   > (lang package 0.1)
   > (dependency_hash $1)
   > (repositories

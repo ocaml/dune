@@ -26,8 +26,7 @@ Now we set up a lock file with this package and then attempt to use it:
   > EOF
 
   $ make_lockdir
-
-  $ cat > ${default_lock_dir}/mypkg.pkg <<EOF
+  $ make_lockpkg mypkg <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/external_sources))
   > (build (run dune build --release --promote-install-file=true . @install))

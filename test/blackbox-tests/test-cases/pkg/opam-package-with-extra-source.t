@@ -35,7 +35,7 @@ Make a package with an extra-source field and multiple checksums
   - with-extra-source.0.0.1
   - with-extra-source-md5.0.0.1
   - with-extra-source-multiple-checksums.0.0.1
-  $ cat >> ${default_lock_dir}/with-extra-source.pkg <<EOF
+  $ append_to_lockpkg with-extra-source <<EOF
   > (source (copy $PWD/source))
   > EOF
 

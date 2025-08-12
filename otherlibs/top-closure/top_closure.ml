@@ -1,4 +1,6 @@
-module Make (Keys : Top_closure_intf.Keys) (Monad : Monad_intf.S) = struct
+include S
+
+module Make (Keys : Keys) (Monad : Monad) = struct
   open Monad.O
 
   let top_closure ~key ~deps elements =
@@ -34,6 +36,3 @@ module Make (Keys : Top_closure_intf.Keys) (Monad : Monad_intf.S) = struct
   ;;
 end
 [@@inline always]
-
-module Int = Make (Int.Set) (Monad.Id)
-module String = Make (String.Set) (Monad.Id)

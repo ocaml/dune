@@ -140,7 +140,7 @@ module Source = struct
       ]
   ;;
 
-  let make ?impl ?intf path =
+  let make ~impl ~intf path =
     if path = [] then Code_error.raise "path cannot be empty" [];
     (match impl, intf with
      | None, None ->
@@ -210,7 +210,7 @@ let kind t = t.kind
 let pp_flags t = t.pp
 let install_as t = t.install_as
 
-let of_source ?install_as ~obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
+let of_source ~install_as ~obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
   (match kind, visibility with
    | (Alias _ | Impl_vmodule | Virtual | Wrapped_compat), Visibility.Public
    | Root, Private
@@ -417,17 +417,19 @@ let generated ?install_as ?obj_name ~(kind : Kind.t) ~src_dir (path : Module_nam
       let basename = Module_name.Unique.artifact_filename obj_name ~ext:ml_gen in
       Path.Build.relative src_dir basename |> Path.build |> File.make Dialect.ocaml
     in
-    Source.make ~impl path
+    Source.make ~impl:(Some impl) ~intf:None path
   in
   let visibility : Visibility.t =
     match kind with
     | Root -> Private
     | _ -> Public
   in
-  of_source ?install_as ~visibility ~kind ~obj_name:(Some obj_name) source
+  of_source ~install_as ~visibility ~kind ~obj_name:(Some obj_name) source
 ;;
 
-let of_source ~visibility ~kind source = of_source ~obj_name:None ~visibility ~kind source
+let of_source ~visibility ~kind source =
+  of_source ~install_as:None ~obj_name:None ~visibility ~kind source
+;;
 
 module Name_map = struct
   type nonrec t = t Module_name.Map.t

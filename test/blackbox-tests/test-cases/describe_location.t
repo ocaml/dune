@@ -26,12 +26,12 @@ An executable from the current project:
 
 Test that executables from dependencies are located correctly:
 
-  $ default_lock_dir="dune.lock"
-  $ mkdir -p "${default_lock_dir}"
-  $ cat > "${default_lock_dir}"/lock.dune <<EOF
+  $ source_lock_dir="dune.lock"
+  $ mkdir -p "${source_lock_dir}"
+  $ cat > "${source_lock_dir}"/lock.dune <<EOF
   > (lang package 0.1)
   > EOF
-  $ cat > ${default_lock_dir}/bar.pkg << EOF
+  $ cat > ${source_lock_dir}/bar.pkg << EOF
   > (version 0.1)
   > (install
   >  (progn

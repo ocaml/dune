@@ -54,7 +54,7 @@ attempt to build the package "foo".
 Create a lockdir and define the package "bar". Note its install command is
 `false` so it will fail to install.
   $ make_lockdir
-  $ cat > ${default_lock_dir}/bar.pkg <<EOF
+  $ make_lockpkg bar <<EOF
   > (version 0.0.1)
   > (install (run false))
   > EOF

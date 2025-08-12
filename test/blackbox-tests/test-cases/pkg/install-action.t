@@ -3,7 +3,7 @@ Testing install actions
   $ . ./helpers.sh
 
   $ make_lockdir
-  $ cat > ${default_lock_dir}/test.pkg <<'EOF'
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (install (system "echo foobar; mkdir -p %{lib}; touch %{lib}/xxx"))
   > EOF

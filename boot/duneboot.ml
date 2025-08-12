@@ -1299,7 +1299,7 @@ let build
   let num_dependencies = List.length dependencies in
   let table = Hashtbl.create num_dependencies in
   Status_line.num_jobs := num_dependencies;
-  let build m =
+  let build ~file ~deps m =
     match Hashtbl.find table m with
     | Not_started f ->
       Hashtbl.replace table m Initializing;
@@ -1307,7 +1307,9 @@ let build
       >>= fun fut ->
       Hashtbl.replace table m (Started fut);
       Fiber.Future.wait fut >>| fun () -> incr Status_line.num_jobs_finished
-    | Initializing -> fatal "dependency cycle!"
+    | Initializing ->
+      let deps = String.concat ~sep:", " deps in
+      fatal "dependency cycle compiling %s\ndependencies: %s" file deps
     | Started fut -> Fiber.Future.wait fut
     | exception Not_found -> fatal "file not found: %s" m
   in
@@ -1318,7 +1320,7 @@ let build
       file
       (Not_started
          (fun () ->
-           Fiber.parallel_iter deps ~f:build
+           Fiber.parallel_iter deps ~f:(build ~file ~deps)
            >>= fun () ->
            Process.run
              ~cwd:build_dir
@@ -1331,7 +1333,7 @@ let build
                 ; [ file ]
                 ]))));
   Fiber.fork_and_join_unit
-    (fun () -> build (Filename.basename main))
+    (fun () -> build ~file:main ~deps:[] (Filename.basename main))
     (fun () ->
        (Fiber.fork_and_join (fun () ->
           Fiber.parallel_map c_files ~f:(fun { Library.name = file; flags } ->

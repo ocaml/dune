@@ -10,3 +10,4 @@ RUN --mount=type=cache,target=/var/cache/apt sudo apt-get update && sudo apt-get
 # this docker file is mostly useful for quickly figuring out CI issues, so we
 # aren't too concerned
 RUN opam update && make dev-depext && make dev-deps && rm .ocamlformat Makefile
+WORKDIR /home/opam/dune

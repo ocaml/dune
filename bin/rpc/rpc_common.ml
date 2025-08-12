@@ -96,17 +96,19 @@ let wrap_build_outcome_exn ~print_on_success f args () =
       Console.print_user_message
         (User_message.make [ Pp.text "Success" |> Pp.tag User_message.Style.Success ])
   | Ok (Failure errors) ->
+    let error_msg =
+      match List.length errors with
+      | 0 ->
+        Code_error.raise
+          "Build via RPC failed, but the RPC server did not send an error message."
+          []
+      | 1 -> Pp.paragraph "Build failed with 1 error:"
+      | n -> Pp.paragraphf "Build failed with %d errors:" n
+    in
+    Console.print_user_message
+      (User_message.make [ error_msg |> Pp.tag User_message.Style.Error ]);
     List.iter errors ~f:(fun { Dune_rpc.Compound_user_error.main; _ } ->
-      Console.print_user_message main);
-    User_error.raise
-      [ (match List.length errors with
-         | 0 ->
-           Code_error.raise
-             "Build via RPC failed, but the RPC server did not send an error message."
-             []
-         | 1 -> Pp.textf "Build failed with 1 error."
-         | n -> Pp.textf "Build failed with %d errors." n)
-      ]
+      Console.print_user_message main)
 ;;
 
 let run_via_rpc ~builder ~common ~config lock_held_by f args =

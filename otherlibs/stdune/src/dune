@@ -9,7 +9,8 @@
   (re_export top-closure)
   (re_export ordering)
   (re_export dyn)
-  (re_export pp))
+  (re_export pp)
+  fs-io)
  (library_flags
   (:include flags/sexp))
  (foreign_stubs

@@ -226,3 +226,12 @@ understood by dune language."))
  (depends
   (ocaml (>= 4.08.0)))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
+
+(package
+ (name fs-io)
+ (synopsis "File System Operations")
+ (depends
+  base-unix
+  (ocaml (>= 4.08)))
+ (description "Misc. Collection of File System Operations"))
+

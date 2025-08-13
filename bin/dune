@@ -16,6 +16,7 @@
   fiber
   fiber_event_bus
   stdune
+  fs_io
   dune_console
   unix
   install

@@ -35,6 +35,27 @@ module Spec = struct
   let version = 1
   let bimap t _ g = { t with target = g t.target }
   let is_useful_to ~memoize = memoize
+  let encode_opam_file v : Sexp.t = Atom (OpamFile.OPAM.write_to_string v)
+
+  let encode_opam_package v : Sexp.t =
+    List
+      [ List [ Atom "name"; Atom (v |> OpamPackage.name |> OpamPackage.Name.to_string) ]
+      ; List
+          [ Atom "version"
+          ; Atom (v |> OpamPackage.version |> OpamPackage.Version.to_string)
+          ]
+      ]
+  ;;
+
+  let encode_resolved_pkg v : Sexp.t =
+    let module R = Dune_pkg.Resolved_package in
+    List
+      [ List [ Atom "opam_file"; v |> R.opam_file |> encode_opam_file ]
+      ; List [ Atom "package"; v |> R.package |> encode_opam_package ]
+      ; List [ Atom "loc"; Atom (v |> R.loc |> Loc.to_dyn |> Dyn.to_string) ]
+      ; List [ Atom "dune_build"; Atom (v |> R.dune_build |> Bool.to_string) ]
+      ]
+  ;;
 
   let encode
         { target
@@ -86,9 +107,9 @@ module Spec = struct
       pins
       |> Dune_lang.Package_name.Map.to_list
       |> List.sort ~compare:(fun (a, _) (b, _) -> Dune_lang.Package_name.compare a b)
-      |> List.map ~f:(fun (pkg_name, _resolved_pkg) ->
+      |> List.map ~f:(fun (pkg_name, resolved_pkg) ->
         let name = Dune_lang.Package_name.to_string pkg_name in
-        Sexp.List [ Sexp.Atom name; Sexp.Atom "TODO: representation of resolved pkg" ])
+        Sexp.List [ Sexp.Atom name; encode_resolved_pkg resolved_pkg ])
       |> fun xs -> Sexp.List xs
     in
     let version_preference =

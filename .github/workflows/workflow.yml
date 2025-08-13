@@ -158,7 +158,7 @@ jobs:
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: |
           opam pin -n . --with-version=3.20
-          opam install ./dune.opam --deps-only --with-test
+          opam install ./dune.opam --deps-only
 
       - name: Install system deps on macOS
         run: brew install coreutils pkg-config file

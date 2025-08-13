@@ -552,6 +552,86 @@ let setup_dev_tool_lock_rules ctx_name ~dir ~dev_tool : Gen_rules.result =
   Gen_rules.make ~directory_targets rules
 ;;
 
+module Copy = struct
+  module Spec = struct
+    type ('path, 'target) t =
+      { target : 'target
+      ; lock_dir : Path.Source.t
+      ; contents : Fs_cache.Dir_contents.t
+      }
+
+    let name = "copy-lock-dir"
+    let version = 1
+    let bimap t _ g = { t with target = g t.target }
+    let is_useful_to ~memoize = memoize
+
+    let encode { target; lock_dir; contents } _encode_path encode_target : Sexp.t =
+      let contents : Sexp.t list =
+        contents
+        |> Fs_cache.Dir_contents.to_list
+        |> List.map ~f:(fun (filename, filekind) ->
+          Sexp.List
+            [ Atom filename; Atom (filekind |> File_kind.to_dyn |> Dyn.to_string) ])
+      in
+      List [ encode_target target; Atom (Path.Source.to_string lock_dir); List contents ]
+    ;;
+
+    let action { target; lock_dir; contents } ~ectx:_ ~eenv:_ =
+      let open Fiber.O in
+      let+ () = Fiber.return () in
+      Path.mkdir_p (Path.build target);
+      Fs_cache.Dir_contents.iter contents ~f:(fun (filename, _file_kind) ->
+        let src = Path.Source.relative lock_dir filename in
+        let dst = Path.Build.relative target filename in
+        Io.copy_file ~src:(Path.source src) ~dst:(Path.build dst) ())
+    ;;
+  end
+
+  module A = Action_ext.Make (Spec)
+end
+
+let copy_lock_dir ~target ~lock_dir ~contents =
+  Copy.A.action { Copy.Spec.target; lock_dir; contents }
+  |> Action.Full.make ~can_go_in_shared_cache:false
+  |> Action_builder.With_targets.return
+  |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
+;;
+
+let setup_copy_rules _ctx_name ~dir ~lock_dir =
+  let target = Path.Build.relative dir "content" in
+  let rules =
+    Rules.collect_unit (fun () ->
+      let lock_dir = Path.Source.of_string lock_dir in
+      let obd = Path.Outside_build_dir.In_source_dir lock_dir in
+      let* dir_contents = Fs_memo.dir_contents obd in
+      let contents =
+        match dir_contents with
+        | Error _ -> User_error.raise [ Pp.text "eeek" ]
+        | Ok dir_contents -> dir_contents
+      in
+      let copy_rule = copy_lock_dir ~target ~lock_dir ~contents in
+      rule ~loc:Loc.none copy_rule)
+  in
+  let directory_targets = Path.Build.Map.singleton target Loc.none in
+  Gen_rules.make ~directory_targets rules
+;;
+
+let lock_dir_source ~lock_dir =
+  (* TODI determine this from workspace *)
+  let expected_path_in_source = Path.Outside_build_dir.of_string lock_dir in
+  let+ exists = Fs_memo.dir_exists expected_path_in_source in
+  match exists with
+  | true -> `Source_tree
+  | false -> `Generated
+;;
+
+let setup_lock_rules ctx_name ~dir ~lock_dir =
+  let+ source = lock_dir_source ~lock_dir in
+  match source with
+  | `Source_tree -> setup_copy_rules ctx_name ~dir ~lock_dir
+  | `Generated -> setup_lock_rules ctx_name ~dir ~lock_dir
+;;
+
 let setup_rules ctx_name ~components ~dir =
   match components with
   | [ ".dev-tool-lock"; tool ] ->
@@ -567,7 +647,7 @@ let setup_rules ctx_name ~components ~dir =
         (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
       (Memo.return Rules.empty)
     |> Memo.return
-  | [ ".lock"; lock_dir ] -> Memo.return @@ setup_lock_rules ctx_name ~dir ~lock_dir
+  | [ ".lock"; lock_dir ] -> setup_lock_rules ctx_name ~dir ~lock_dir
   | [] ->
     let sub_dirs = [ ".lock"; ".dev-tool-lock" ] in
     let build_dir_only_sub_dirs =

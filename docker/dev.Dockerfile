@@ -1,6 +1,6 @@
 # little dockerfile to debug CI issues
 FROM ocaml/opam
-RUN sudo ln -f /usr/bin/opam-2.1 /usr/bin/opam
+RUN sudo ln -f /usr/bin/opam-2.4 /usr/bin/opam
 RUN opam init --reinit -ni
 RUN mkdir -p /home/opam/dune/_boot /home/opam/dune/_build && chown opam:opam /home/opam/dune/_boot /home/opam/dune/_build
 COPY Makefile Makefile

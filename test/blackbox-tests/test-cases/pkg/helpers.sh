@@ -27,11 +27,21 @@ show_pkg() {
 # function to show the solver result of the default lock directory
 show_solution() {
   echo "Solution for dune.lock:"
-  pkgs=$(ls ${default_lock_dir} | sort | grep -v lock.dune)
-  for pkg in ${pkgs}; do
-    version=$(sed -n "s/(version \(.*\))/\1/p" ${default_lock_dir}/${pkg})
-    echo "- ${pkg%.pkg}.${version}"
-  done
+  if [ -d ${default_lock_dir} ]; then
+    local pkgs=$(ls ${default_lock_dir} 2>/dev/null | sort | grep -v lock.dune)
+    local count=0
+    for pkg in ${pkgs}; do
+      version=$(sed -n "s/(version \(.*\))/\1/p" ${default_lock_dir}/${pkg})
+      echo "- ${pkg%.pkg}.${version}"
+      count=$((count + 1))
+    done
+    if [ "${count}" -eq "0" ]; then
+      echo "(no dependencies to lock)"
+    fi
+  else
+    echo "(no solution found)"
+    return 1
+  fi
 }
 
 strip_sandbox() {

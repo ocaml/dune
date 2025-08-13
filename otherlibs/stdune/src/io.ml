@@ -232,7 +232,9 @@ struct
     if binary then Stdlib.open_in_bin fn else Stdlib.open_in fn
   ;;
 
-  let open_out ?(binary = true) ?(perm = 0o666) p =
+  let default_out_perm = 0o666
+
+  let open_out ?(binary = true) ?(perm = default_out_perm) p =
     let fn = Path.to_string p in
     let flags : Stdlib.open_flag list =
       [ Open_wronly; Open_creat; Open_trunc; (if binary then Open_binary else Open_text) ]
@@ -377,8 +379,23 @@ struct
   let lines_of_file fn = with_file_in fn ~f:input_lines ~binary:false
   let zero_strings_of_file fn = with_file_in fn ~f:input_zero_separated ~binary:true
 
-  let write_file ?binary ?perm fn data =
-    with_file_out ?binary ?perm fn ~f:(fun oc -> output_string oc data)
+  let write_file_fast =
+    let rec write fd str pos left =
+      if left > 0
+      then (
+        let written = Unix.single_write_substring fd str pos left in
+        write fd str (pos + written) (left - written))
+    in
+    fun ?(perm = default_out_perm) fn data ->
+      Unix.openfile fn [ O_WRONLY; O_CLOEXEC; O_CREAT; O_TRUNC ] perm
+      |> Exn.protectx ~finally:Unix.close ~f:(fun fd ->
+        write fd data 0 (String.length data))
+  ;;
+
+  let write_file ?(binary = true) ?perm fn data =
+    if binary
+    then write_file_fast ?perm (Path.to_string fn) data
+    else with_file_out ~binary ?perm fn ~f:(fun oc -> output_string oc data)
   ;;
 
   let write_lines ?binary ?perm fn lines =

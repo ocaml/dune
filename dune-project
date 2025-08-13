@@ -233,5 +233,6 @@ understood by dune language."))
  (depends
   base-unix
   (ocaml (>= 4.08)))
+ (maintenance_intent none)
  (description "Misc. Collection of File System Operations"))
 

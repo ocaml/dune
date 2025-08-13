@@ -618,17 +618,21 @@ let copy_lock_dir ~target ~lock_dir ~contents =
   |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
 ;;
 
-let setup_copy_rules _ctx_name ~dir ~lock_dir =
+let setup_copy_rules ~dir ~lock_dir =
   let target = Path.Build.relative dir "content" in
   let rules =
     Rules.collect_unit (fun () ->
-      let lock_dir = Path.Source.of_string lock_dir in
-      let obd = Path.Outside_build_dir.In_source_dir lock_dir in
-      let* dir_contents = Fs_memo.dir_contents obd in
+      let* dir_contents =
+        Fs_memo.dir_contents (Path.Outside_build_dir.In_source_dir lock_dir)
+      in
       let contents =
         match dir_contents with
-        | Error _ -> User_error.raise [ Pp.text "eeek" ]
         | Ok dir_contents -> dir_contents
+        | Error unix_error ->
+          User_error.raise
+            [ Pp.text "Failed to read lock directory from source tree"
+            ; Pp.text (Unix_error.Detailed.to_string_hum unix_error)
+            ]
       in
       let copy_rule = copy_lock_dir ~target ~lock_dir ~contents in
       rule ~loc:Loc.none copy_rule)
@@ -638,18 +642,18 @@ let setup_copy_rules _ctx_name ~dir ~lock_dir =
 ;;
 
 let lock_dir_source ~lock_dir =
-  (* TODI determine this from workspace *)
-  let expected_path_in_source = Path.Outside_build_dir.of_string lock_dir in
-  let+ exists = Fs_memo.dir_exists expected_path_in_source in
+  let* workspace = Workspace.workspace () in
+  let lock_dir = Path.Source.relative workspace.dir lock_dir in
+  let+ exists = Fs_memo.dir_exists (Path.Outside_build_dir.In_source_dir lock_dir) in
   match exists with
-  | true -> `Source_tree
+  | true -> `Source_tree lock_dir
   | false -> `Generated
 ;;
 
 let setup_lock_rules ctx_name ~dir ~lock_dir =
   let+ source = lock_dir_source ~lock_dir in
   match source with
-  | `Source_tree -> setup_copy_rules ctx_name ~dir ~lock_dir
+  | `Source_tree lock_dir -> setup_copy_rules ~dir ~lock_dir
   | `Generated -> setup_lock_rules ctx_name ~dir ~lock_dir
 ;;
 

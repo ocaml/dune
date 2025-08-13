@@ -91,6 +91,7 @@ module Exec = struct
     ; metadata : Process.metadata
     ; rule_loc : Loc.t
     ; build_deps : Dep.Set.t -> Dep.Facts.t Fiber.t
+    ; display : Display.t
     }
 
   type env =

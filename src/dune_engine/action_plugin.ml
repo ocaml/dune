@@ -39,7 +39,7 @@ let done_or_more_deps_union x y =
 
 open Action_intf.Exec
 
-let exec ~display ~(ectx : context) ~(eenv : env) prog args =
+let exec ~(ectx : context) ~(eenv : env) prog args =
   let open Fiber.O in
   let* () = Rpc.ensure_ready () in
   let run_arguments_fn = Temp.create File ~prefix:"dune" ~suffix:"run" in
@@ -78,7 +78,7 @@ let exec ~display ~(ectx : context) ~(eenv : env) prog args =
   in
   let+ () =
     Process.run
-      ~display
+      ~display:ectx.display
       Strict
       ~dir:eenv.working_dir
       ~env

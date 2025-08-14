@@ -140,11 +140,11 @@ end
 
 open Produce.O
 
-let exec_run ~display ~(ectx : context) ~(eenv : env) prog args : _ Produce.t =
+let exec_run ~(ectx : context) ~(eenv : env) prog args : _ Produce.t =
   let* (res : (Proc.Times.t, int) result) =
     Produce.of_fiber
     @@ Process.run_with_times
-         ~display
+         ~display:!Clflags.display
          (Accept eenv.exit_codes)
          ~dir:eenv.working_dir
          ~env:eenv.env
@@ -178,11 +178,11 @@ let bash_exn =
 let zero = Predicate_lang.element 0
 let maybe_async f = Produce.of_fiber (maybe_async f)
 
-let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
+let rec exec t ~ectx ~eenv : done_or_more_deps Produce.t =
   match (t : Action.t) with
   | Run (Error e, _) -> Action.Prog.Not_found.raise e
   | Run (Ok prog, args) ->
-    let+ () = exec_run ~display ~ectx ~eenv prog (Array.Immutable.to_list args) in
+    let+ () = exec_run ~ectx ~eenv prog (Array.Immutable.to_list args) in
     Done
   | With_accepted_exit_codes (exit_codes, t) ->
     let eenv =
@@ -191,13 +191,13 @@ let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
       in
       { eenv with exit_codes }
     in
-    exec t ~display ~ectx ~eenv
+    exec t ~ectx ~eenv
   | Dynamic_run (Error e, _) -> Action.Prog.Not_found.raise e
   | Dynamic_run (Ok prog, args) ->
-    Produce.of_fiber (Action_plugin.exec ~display ~ectx ~eenv prog args)
-  | Chdir (dir, t) -> exec t ~display ~ectx ~eenv:{ eenv with working_dir = dir }
+    Produce.of_fiber (Action_plugin.exec ~ectx ~eenv prog args)
+  | Chdir (dir, t) -> exec t ~ectx ~eenv:{ eenv with working_dir = dir }
   | Setenv (var, value, t) ->
-    exec t ~display ~ectx ~eenv:{ eenv with env = Env.add eenv.env ~var ~value }
+    exec t ~ectx ~eenv:{ eenv with env = Env.add eenv.env ~var ~value }
   | Redirect_out (Stdout, fn, perm, Echo s) ->
     let perm = Action.File_perm.to_unix_perm perm in
     let+ () =
@@ -207,13 +207,12 @@ let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
     Done
   | Redirect_out (outputs, fn, perm, t) ->
     let fn = Path.build fn in
-    redirect_out t ~display ~ectx ~eenv outputs ~perm fn
-  | Redirect_in (inputs, fn, t) -> redirect_in t ~display ~ectx ~eenv inputs fn
-  | Ignore (outputs, t) ->
-    redirect_out t ~display ~ectx ~eenv ~perm:Normal outputs Dev_null.path
-  | Progn ts -> exec_list ts ~display ~ectx ~eenv
+    redirect_out t ~ectx ~eenv outputs ~perm fn
+  | Redirect_in (inputs, fn, t) -> redirect_in t ~ectx ~eenv inputs fn
+  | Ignore (outputs, t) -> redirect_out t ~ectx ~eenv ~perm:Normal outputs Dev_null.path
+  | Progn ts -> exec_list ts ~ectx ~eenv
   | Concurrent ts ->
-    Produce.parallel_map ts ~f:(exec ~display ~ectx ~eenv)
+    Produce.parallel_map ts ~f:(exec ~ectx ~eenv)
     >>| List.fold_left ~f:done_or_more_deps_union ~init:Done
   | Echo strs ->
     let+ () = exec_echo eenv.stdout_to (String.concat strs ~sep:" ") in
@@ -239,7 +238,6 @@ let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
   | Bash cmd ->
     let+ () =
       exec_run
-        ~display
         ~ectx
         ~eenv
         (bash_exn ~loc:ectx.rule_loc ~needed_to:"interpret (bash ...) actions")
@@ -261,18 +259,17 @@ let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
   | Mkdir path ->
     let+ () = maybe_async (fun () -> Path.mkdir_p (Path.build path)) in
     Done
-  | Pipe (outputs, l) -> exec_pipe ~display ~ectx ~eenv outputs l
+  | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
   | Extension (module A) ->
     let+ () = Produce.of_fiber @@ A.Spec.action A.v ~ectx ~eenv in
     Done
 
-and redirect_out t ~display ~ectx ~eenv ~perm outputs fn =
-  redirect t ~display ~ectx ~eenv ~out:(outputs, fn, perm) ()
+and redirect_out t ~ectx ~eenv ~perm outputs fn =
+  redirect t ~ectx ~eenv ~out:(outputs, fn, perm) ()
 
-and redirect_in t ~display ~ectx ~eenv inputs fn =
-  redirect t ~display ~ectx ~eenv ~in_:(inputs, fn) ()
+and redirect_in t ~ectx ~eenv inputs fn = redirect t ~ectx ~eenv ~in_:(inputs, fn) ()
 
-and redirect t ~display ~ectx ~eenv ?in_ ?out () =
+and redirect t ~ectx ~eenv ?in_ ?out () =
   let stdin_from, release_in =
     match in_ with
     | None -> eenv.stdin_from, ignore
@@ -295,29 +292,27 @@ and redirect t ~display ~ectx ~eenv ?in_ ?out () =
       in
       stdout_to, stderr_to, fun () -> Process.Io.release out
   in
-  let+ result =
-    exec t ~display ~ectx ~eenv:{ eenv with stdin_from; stdout_to; stderr_to }
-  in
+  let+ result = exec t ~ectx ~eenv:{ eenv with stdin_from; stdout_to; stderr_to } in
   release_in ();
   release_out ();
   result
 
-and exec_list ts ~display ~ectx ~eenv : done_or_more_deps Produce.t =
+and exec_list ts ~ectx ~eenv : done_or_more_deps Produce.t =
   match ts with
   | [] -> Produce.return Done
-  | [ t ] -> exec t ~display ~ectx ~eenv
+  | [ t ] -> exec t ~ectx ~eenv
   | t :: rest ->
     let* done_or_deps =
       let stdout_to = Process.Io.multi_use eenv.stdout_to in
       let stderr_to = Process.Io.multi_use eenv.stderr_to in
       let stdin_from = Process.Io.multi_use eenv.stdin_from in
-      exec t ~display ~ectx ~eenv:{ eenv with stdout_to; stderr_to; stdin_from }
+      exec t ~ectx ~eenv:{ eenv with stdout_to; stderr_to; stdin_from }
     in
     (match done_or_deps with
      | Need_more_deps _ as need -> Produce.return need
-     | Done -> exec_list rest ~display ~ectx ~eenv)
+     | Done -> exec_list rest ~ectx ~eenv)
 
-and exec_pipe outputs ts ~display ~ectx ~eenv : done_or_more_deps Produce.t =
+and exec_pipe outputs ts ~ectx ~eenv : done_or_more_deps Produce.t =
   let tmp_file () =
     Dtemp.file ~prefix:"dune-pipe-action-" ~suffix:("." ^ Action.Outputs.to_string outputs)
   in
@@ -330,14 +325,14 @@ and exec_pipe outputs ts ~display ~ectx ~eenv : done_or_more_deps Produce.t =
         | Stderr -> { eenv with stdout_to = Process.Io.multi_use eenv.stderr_to }
         | _ -> eenv
       in
-      let+ result = redirect_in last_t ~display ~ectx ~eenv Stdin in_ in
+      let+ result = redirect_in last_t ~ectx ~eenv Stdin in_ in
       Dtemp.destroy File in_;
       result
     | t :: ts ->
       let out = tmp_file () in
       let* done_or_deps =
         let eenv = { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to } in
-        redirect t ~display ~ectx ~eenv ~in_:(Stdin, in_) ~out:(Stdout, out, Normal) ()
+        redirect t ~ectx ~eenv ~in_:(Stdin, in_) ~out:(Stdout, out, Normal) ()
       in
       Dtemp.destroy File in_;
       (match done_or_deps with
@@ -354,15 +349,15 @@ and exec_pipe outputs ts ~display ~ectx ~eenv : done_or_more_deps Produce.t =
       | Stdout -> { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to }
       | Stderr -> { eenv with stdout_to = Process.Io.multi_use eenv.stdout_to }
     in
-    let* done_or_deps = redirect_out t1 ~display ~ectx ~eenv ~perm:Normal outputs out in
+    let* done_or_deps = redirect_out t1 ~ectx ~eenv ~perm:Normal outputs out in
     (match done_or_deps with
      | Need_more_deps _ as need -> Produce.return need
      | Done -> loop ~in_:out ts)
 ;;
 
-let exec_until_all_deps_ready ~display ~ectx ~eenv t =
+let exec_until_all_deps_ready ~ectx ~eenv t =
   let rec loop ~eenv stages =
-    let* result = exec ~display ~ectx ~eenv t in
+    let* result = exec ~ectx ~eenv t in
     match result with
     | Done -> Produce.return stages
     | Need_more_deps (relative_deps, deps_to_build) ->
@@ -430,8 +425,7 @@ let exec
   in
   let open Fiber.O in
   let+ result =
-    Fiber.collect_errors (fun () ->
-      exec_until_all_deps_ready t ~display:!Clflags.display ~ectx ~eenv)
+    Fiber.collect_errors (fun () -> exec_until_all_deps_ready t ~ectx ~eenv)
   in
   match result with
   | Ok res -> Ok res

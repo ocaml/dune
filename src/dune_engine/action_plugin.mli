@@ -12,8 +12,7 @@ type done_or_more_deps =
 val done_or_more_deps_union : done_or_more_deps -> done_or_more_deps -> done_or_more_deps
 
 val exec
-  :  display:Display.t
-  -> ectx:Action_intf.Exec.context
+  :  ectx:Action_intf.Exec.context
   -> eenv:Action_intf.Exec.env
   -> Path.t
   -> string list

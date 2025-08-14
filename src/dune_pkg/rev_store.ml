@@ -121,18 +121,39 @@ module Cache = struct
   let cache_dir =
     lazy
       (let path =
-         Path.Outside_build_dir.relative
-           (Lazy.force Dune_util.xdg |> Xdg.cache_dir |> Path.Outside_build_dir.of_string)
-           "dune"
+         Path.L.relative
+           (Lazy.force Dune_util.xdg
+            |> Xdg.cache_dir
+            |> Path.Outside_build_dir.of_string
+            |> Path.outside_build_dir)
+           [ "dune"; "rev_store" ]
        in
-       match Path.mkdir_p (Path.outside_build_dir path) with
+       match Path.mkdir_p path with
        | exception _ -> Error ()
        | () -> Ok path)
   ;;
 
+  (* Some operations on the cache may end up filling up the map. This helper
+     function allows us to give a more helpful error message in those cases. *)
+  let protect_map_full f =
+    match f () with
+    | x -> x
+    | exception Lmdb.Mdb.Map_full ->
+      let dir =
+        match Lazy.force cache_dir with
+        | Ok dir -> dir
+        | Error () ->
+          Code_error.raise "Map_full raised even though cache doesn't exist" []
+      in
+      User_error.raise
+        [ Pp.text "Revision store cache is full."; Pp.text "Please delete:"; Path.pp dir ]
+  ;;
+
   let db =
     lazy
-      (Lazy.force cache_dir
+      (protect_map_full
+       @@ fun () ->
+       Lazy.force cache_dir
        |> Result.map ~f:(fun path ->
          Lmdb.Env.create
            ~max_readers:70
@@ -140,7 +161,7 @@ module Cache = struct
            ~max_maps:2
            ~flags:Lmdb.Env.Flags.(no_meta_sync)
            Rw
-           (Path.Outside_build_dir.to_string path)))
+           (Path.to_string path)))
   ;;
 
   let () =
@@ -187,7 +208,9 @@ module Cache = struct
 
   let map =
     lazy
-      (Lazy.force db
+      (protect_map_full
+       @@ fun () ->
+       Lazy.force db
        |> Result.map ~f:(fun env ->
          Lmdb.Map.create Nodup ~key:Key.conv ~value:Lmdb.Conv.string ~name:"objects" env)
       )
@@ -243,7 +266,9 @@ module Cache = struct
 
     let map =
       lazy
-        (Lazy.force db
+        (protect_map_full
+         @@ fun () ->
+         Lazy.force db
          |> Result.map ~f:(fun env ->
            Lmdb.Map.create Nodup ~key:Key.conv ~value:Value.conv ~name:"ls-tree" env))
     ;;
@@ -269,6 +294,8 @@ module Cache = struct
         (match Lazy.force db with
          | Error () -> ()
          | Ok env ->
+           protect_map_full
+           @@ fun () ->
            (match Lmdb.Txn.go Rw env (fun txn -> Lmdb.Map.set ~txn map key value) with
             | Some () -> ()
             | None -> ()))
@@ -297,6 +324,8 @@ module Cache = struct
       (match Lazy.force db with
        | Error () -> ()
        | Ok env ->
+         protect_map_full
+         @@ fun () ->
          (match
             Lmdb.Txn.go Rw env (fun txn ->
               Key.Map.iteri keys ~f:(fun key value -> Lmdb.Map.set ~txn map key value))

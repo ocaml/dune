@@ -1166,14 +1166,17 @@ end = struct
             Dune_pkg.Lock_dir.Pkg.files_dir info.name (Some info.version) ~lock_dir
           in
           let+ path_with_version_exists =
-            Fs_memo.dir_exists
-              (Path.source path_with_version |> Path.as_outside_build_dir_exn)
+            path_with_version |> Path.as_outside_build_dir_exn |> Fs_memo.dir_exists
           in
           if path_with_version_exists then path_with_version else path_without_version
         in
-        Path.Build.append_source
-          (Context_name.build_dir (Package_universe.context_name package_universe))
-          files_dir
+        let build_path =
+          Context_name.build_dir (Package_universe.context_name package_universe)
+        in
+        match files_dir with
+        | External _ -> Code_error.raise "TODO" []
+        | In_source_tree s -> Path.Build.append_source build_path s
+        | In_build_dir s -> Path.Build.append build_path s
       in
       let id = Pkg.Id.gen () in
       let write_paths = Paths.make package_universe name ~relative:Path.Build.relative in

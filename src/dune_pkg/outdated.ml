@@ -66,14 +66,14 @@ let explain_results_to_user results ~transitive ~lock_dir_path =
           "%d/%d packages in %s are outdated."
           count
           total_number_of_deps
-          (Path.Source.to_string_maybe_quoted lock_dir_path))
+          (Path.to_string_maybe_quoted lock_dir_path))
     :: transitive_helper ~all_of
   in
   match transitive_status with
   (* If there are no outdated transitive deps then everything is up to date. *)
   | `No_transitive_deps_outdated ->
     [ Pp.tag User_message.Style.Success
-      @@ Pp.textf "%s is up to date." (Path.Source.to_string_maybe_quoted lock_dir_path)
+      @@ Pp.textf "%s is up to date." (Path.to_string_maybe_quoted lock_dir_path)
     ]
   | `All_transitive_deps_outdated ->
     packages_in_lockdir_are ~all_of:true number_of_outdated_deps

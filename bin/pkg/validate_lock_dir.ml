@@ -21,10 +21,11 @@ let enumerate_lock_dirs_by_path ~lock_dirs () =
     Workspace.workspace () >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs
   in
   List.filter_map per_contexts ~f:(fun lock_dir_path ->
-    if Path.exists (Path.source lock_dir_path)
+    if Path.exists lock_dir_path
     then (
-      try Some (Ok (lock_dir_path, Lock_dir.read_disk_exn lock_dir_path)) with
-      | User_error.E e -> Some (Error (lock_dir_path, `Parse_error e)))
+      match Lock_dir.read_disk_exn lock_dir_path with
+      | lock_dir -> Some (Ok (lock_dir_path, lock_dir))
+      | exception User_error.E e -> Some (Error (lock_dir_path, `Parse_error e)))
     else None)
 ;;
 
@@ -57,9 +58,7 @@ let validate_lock_dirs ~lock_dirs () =
         | `Parse_error error ->
           User_message.prerr
             (User_message.make
-               [ Pp.textf
-                   "Failed to parse lockdir %s:"
-                   (Path.Source.to_string_maybe_quoted path)
+               [ Pp.textf "Failed to parse lockdir %s:" (Path.to_string_maybe_quoted path)
                ; User_message.pp error
                ])
         | `Lock_dir_out_of_sync error ->
@@ -67,13 +66,12 @@ let validate_lock_dirs ~lock_dirs () =
             (User_message.make
                [ Pp.textf
                    "Lockdir %s does not contain a solution for local packages:"
-                   (Path.Source.to_string path)
+                   (Path.to_string path)
                ]);
           User_message.prerr error);
       User_error.raise
         [ Pp.text "Some lockdirs do not contain solutions for local packages:"
-        ; Pp.enumerate errors_by_path ~f:(fun (path, _) ->
-            Pp.text (Path.Source.to_string path))
+        ; Pp.enumerate errors_by_path ~f:(fun (path, _) -> Pp.text (Path.to_string path))
         ]
 ;;
 

@@ -649,10 +649,7 @@ module Pkg = struct
          in
          let info =
            let make_source f =
-             Path.source lock_dir
-             |> Path.to_absolute_filename
-             |> Path.External.of_string
-             |> f
+             lock_dir |> Path.to_absolute_filename |> Path.External.of_string |> f
            in
            let source = Option.map source ~f:make_source in
            let extra_sources =
@@ -782,13 +779,8 @@ module Pkg = struct
   ;;
 
   let files_dir package_name maybe_package_version ~lock_dir =
-    match
-      files_dir_generic
-        package_name
-        maybe_package_version
-        ~lock_dir:(Path.source lock_dir)
-    with
-    | In_source_tree source_path -> source_path
+    match files_dir_generic package_name maybe_package_version ~lock_dir with
+    | In_source_tree _ as path -> path
     | other ->
       Code_error.raise "file_dir is not a source path" [ "path", Path.to_dyn other ]
   ;;
@@ -1086,15 +1078,12 @@ let create_latest_version
   }
 ;;
 
-let dev_tools_path = Path.Source.(relative root "dev-tools.locks")
-
 let dev_tool_lock_dir_path dev_tool =
-  Path.Source.relative
-    dev_tools_path
-    (Package_name.to_string (Dev_tool.package_name dev_tool))
+  let dev_tools_path = Path.(relative root "dev-tools.locks") in
+  Path.relative dev_tools_path (Package_name.to_string (Dev_tool.package_name dev_tool))
 ;;
 
-let default_path = Path.Source.(relative root "dune.lock")
+let default_path = lazy Path.(relative root "dune.lock")
 let metadata_filename = "lock.dune"
 
 module Metadata = Dune_sexp.Versioned_file.Make (Unit)
@@ -1315,22 +1304,20 @@ module Write_disk = struct
 
   let prepare
         ~portable_lock_dir
-        ~lock_dir_path:lock_dir_path_src
+        ~lock_dir_path:lock_dir_path_external
         ~(files : File_entry.t Package_version.Map.Multi.t Package_name.Map.t)
         lock_dir
     =
-    let lock_dir_hidden_src =
+    let lock_dir_hidden =
       (* The original lockdir path with the lockdir renamed to begin with a ".". *)
-      let hidden_basename = sprintf ".%s" (Path.Source.basename lock_dir_path_src) in
-      Path.Source.relative (Path.Source.parent_exn lock_dir_path_src) hidden_basename
+      let hidden_basename = sprintf ".%s" (Path.basename lock_dir_path_external) in
+      Path.relative (Path.parent_exn lock_dir_path_external) hidden_basename
     in
-    let lock_dir_hidden_src = Path.source lock_dir_hidden_src in
-    let lock_dir_path_external = Path.source lock_dir_path_src in
     let remove_hidden_dir_if_exists () =
-      safely_remove_lock_dir_if_exists_thunk lock_dir_hidden_src ()
+      safely_remove_lock_dir_if_exists_thunk lock_dir_hidden ()
     in
     let rename_old_lock_dir_to_hidden =
-      safely_rename_lock_dir_thunk ~dst:lock_dir_hidden_src lock_dir_path_external
+      safely_rename_lock_dir_thunk ~dst:lock_dir_hidden lock_dir_path_external
     in
     let build lock_dir_path =
       let lock_dir_path = Result.ok_exn lock_dir_path in
@@ -1368,7 +1355,7 @@ module Write_disk = struct
       safely_rename_lock_dir_thunk ~dst:lock_dir_path_external lock_dir_path ();
       remove_hidden_dir_if_exists ()
     in
-    match Path.(parent (source lock_dir_path_src)) with
+    match Path.parent lock_dir_path_external with
     | Some parent_dir ->
       fun () ->
         Path.mkdir_p parent_dir;
@@ -1385,9 +1372,9 @@ module Make_load (Io : sig
     include Monad.S
 
     val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
-    val readdir_with_kinds : Path.Source.t -> (Filename.t * Unix.file_kind) list t
-    val with_lexbuf_from_file : Path.Source.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
-    val stats_kind : Path.Source.t -> (File_kind.t, Unix_error.Detailed.t) result t
+    val readdir_with_kinds : Path.t -> (Filename.t * Unix.file_kind) list t
+    val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
+    val stats_kind : Path.t -> (File_kind.t, Unix_error.Detailed.t) result t
   end) =
 struct
   let load_metadata metadata_file_path =
@@ -1433,7 +1420,7 @@ struct
       User_error.raise
         [ Pp.textf
             "In %s, expected language to be %s, but found %s"
-            (Path.Source.to_string metadata_file_path)
+            (Path.to_string metadata_file_path)
             (Syntax.name Dune_lang.Pkg.syntax)
             (Syntax.name syntax)
         ]
@@ -1448,7 +1435,7 @@ struct
     =
     let open Io.O in
     let pkg_file_path =
-      Path.Source.relative
+      Path.relative
         lock_dir_path
         (Package_filename.make package_name maybe_package_version)
     in
@@ -1486,17 +1473,17 @@ struct
                  ]
                |> Pp.hovbox
              ]
-           [ Pp.textf "%s does not exist." (Path.Source.to_string lock_dir_path) ])
+           [ Pp.textf "%s does not exist." (Path.to_string lock_dir_path) ])
     | Error e ->
       Error
         (User_error.make
-           [ Pp.textf "%s is not accessible" (Path.Source.to_string lock_dir_path)
+           [ Pp.textf "%s is not accessible" (Path.to_string lock_dir_path)
            ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum e)
            ])
     | _ ->
       Error
         (User_error.make
-           [ Pp.textf "%s is not a directory." (Path.Source.to_string lock_dir_path) ])
+           [ Pp.textf "%s is not a directory." (Path.to_string lock_dir_path) ])
   ;;
 
   let check_packages packages ~lock_dir_path =
@@ -1513,7 +1500,7 @@ struct
                  (Package_name.to_string dependant_package.info.name)
                  (Package_name.to_string dependency)
                  (Package_name.to_string dependency)
-                 (Path.Source.to_string_maybe_quoted lock_dir_path)
+                 (Path.to_string_maybe_quoted lock_dir_path)
              ]));
       Error
         (User_error.make
@@ -1529,7 +1516,7 @@ struct
            [ Pp.textf
                "At least one package dependency is itself not present as a package in \
                 the lockdir %s."
-               (Path.Source.to_string_maybe_quoted lock_dir_path)
+               (Path.to_string_maybe_quoted lock_dir_path)
            ])
   ;;
 
@@ -1546,7 +1533,7 @@ struct
            , expanded_solver_variable_bindings
            , solved_for_platforms )
         =
-        load_metadata (Path.Source.relative lock_dir_path metadata_filename)
+        load_metadata (Path.relative lock_dir_path metadata_filename)
       in
       let+ packages =
         Io.readdir_with_kinds lock_dir_path
@@ -1591,18 +1578,18 @@ module Load_immediate = Make_load (struct
     include Monad.Id
 
     let stats_kind file =
-      Path.source file |> Path.stat |> Result.map ~f:(fun { Unix.st_kind; _ } -> st_kind)
+      file |> Path.stat |> Result.map ~f:(fun { Unix.st_kind; _ } -> st_kind)
     ;;
 
     let parallel_map xs ~f = List.map xs ~f
 
     let readdir_with_kinds path =
-      match Path.readdir_unsorted_with_kinds (Path.source path) with
+      match Path.readdir_unsorted_with_kinds path with
       | Ok entries -> entries
       | Error e -> User_error.raise [ Pp.text (Unix_error.Detailed.to_string_hum e) ]
     ;;
 
-    let with_lexbuf_from_file path ~f = Io.with_lexbuf_from_file (Path.source path) ~f
+    let with_lexbuf_from_file = Io.with_lexbuf_from_file
   end)
 
 let read_disk = Load_immediate.load

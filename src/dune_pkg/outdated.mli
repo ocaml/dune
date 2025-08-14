@@ -22,7 +22,7 @@ val find
       command to see them.
 
     - [lock_dir_path] is the path to the lock directory that will appear in the messages. *)
-val pp : t -> transitive:bool -> lock_dir_path:Path.Source.t -> User_message.Style.t Pp.t
+val pp : t -> transitive:bool -> lock_dir_path:Path.t -> User_message.Style.t Pp.t
 
 val packages_that_were_not_found : t -> Package_name.t list
 
@@ -43,12 +43,12 @@ module For_tests : sig
   val explain_results
     :  result list
     -> transitive:bool
-    -> lock_dir_path:Path.Source.t
+    -> lock_dir_path:Path.t
     -> User_message.Style.t Pp.t list
 
   val pp
     :  result list
     -> transitive:bool
-    -> lock_dir_path:Path.Source.t
+    -> lock_dir_path:Path.t
     -> User_message.Style.t Pp.t
 end

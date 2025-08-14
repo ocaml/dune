@@ -101,7 +101,7 @@ module Load = Make_load (struct
     include Memo
 
     let readdir_with_kinds path =
-      Fs_memo.dir_contents (In_source_dir path)
+      Fs_memo.dir_contents (Path.as_outside_build_dir_exn path)
       >>| function
       | Error _ ->
         (* CR-someday rgrinberg: add some proper message here *)
@@ -110,11 +110,11 @@ module Load = Make_load (struct
     ;;
 
     let with_lexbuf_from_file path ~f =
-      Fs_memo.with_lexbuf_from_file (In_source_dir path) ~f
+      Fs_memo.with_lexbuf_from_file (Path.as_outside_build_dir_exn path) ~f
     ;;
 
     let stats_kind p =
-      Fs_memo.path_stat (In_source_dir p)
+      Fs_memo.path_stat (Path.as_outside_build_dir_exn p)
       >>| Stdune.Result.map ~f:(fun { Fs_cache.Reduced_stats.st_kind; _ } -> st_kind)
     ;;
   end)
@@ -144,10 +144,10 @@ let get_path ctx =
       | false -> None
       | true -> Some ctx')
   with
-  | None -> Memo.return (Some default_path)
+  | None -> Memo.return (Some (Lazy.force default_path))
   | Some (Default { lock_dir = Some lock_dir_selection; _ }) ->
     select_lock_dir lock_dir_selection >>| Option.some
-  | Some (Default { lock_dir = None; _ }) -> Memo.return (Some default_path)
+  | Some (Default { lock_dir = None; _ }) -> Memo.return (Some (Lazy.force default_path))
   | Some (Opam _) -> Memo.return None
 ;;
 
@@ -178,12 +178,11 @@ let get_exn ctx = get ctx >>| User_error.ok_exn
 
 let of_dev_tool dev_tool =
   let path = Dune_pkg.Lock_dir.dev_tool_lock_dir_path dev_tool in
-  Fs_memo.dir_exists (In_source_dir path)
+  Fs_memo.dir_exists (Path.as_outside_build_dir_exn path)
   >>= function
   | true -> Load.load_exn path
   | false ->
-    User_error.raise
-      [ Pp.textf "%s does not exist" (Path.Source.to_string_maybe_quoted path) ]
+    User_error.raise [ Pp.textf "%s does not exist" (Path.to_string_maybe_quoted path) ]
 ;;
 
 let lock_dir_active ctx =
@@ -193,7 +192,7 @@ let lock_dir_active ctx =
     get_path ctx
     >>= function
     | None -> Memo.return false
-    | Some path -> Fs_memo.dir_exists (In_source_dir path)
+    | Some path -> Fs_memo.dir_exists (Path.as_outside_build_dir_exn path)
 ;;
 
 let source_kind (source : Dune_pkg.Source.t) =

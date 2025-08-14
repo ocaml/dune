@@ -321,7 +321,7 @@ end = struct
       Pkg_rules.lock_dir_path (Context_name.of_string ctx)
       >>| (function
        | None -> false
-       | Some of_ -> Path.Source.is_descendant ~of_ src_dir)
+       | Some of_ -> Path.is_descendant ~of_ (Path.source src_dir))
       >>= (function
        | true -> Memo.return (Lock_dir st_dir)
        | false ->

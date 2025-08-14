@@ -29,6 +29,10 @@ bootstrap:
 test-bootstrap:
 	@ocaml boot/bootstrap.ml --boot-dir _test_boot
 
+.PHONY: test-bootstrap-script
+test-bootstrap-script:
+	@ocamlc -i boot/bootstrap.ml
+
 .PHONY: release
 release: $(BIN)
 	@$(BIN) build @install -p dune --profile dune-bootstrap

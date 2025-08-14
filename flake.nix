@@ -55,9 +55,12 @@
       add-experimental-configure-flags = pkg: pkg.overrideAttrs {
         configureFlags =
           [
-            "--pkg-build-progress" "enable"
-            "--lock-dev-tool" "enable"
-            "--portable-lock-dir" "enable"
+            "--pkg-build-progress"
+            "enable"
+            "--lock-dev-tool"
+            "enable"
+            "--portable-lock-dir"
+            "enable"
           ];
       };
 
@@ -256,6 +259,17 @@
                 that can build Dune and the Coq testsuite.
               '';
             };
+
+          bootstrap-check =
+            pkgs.mkShell {
+              inherit INSIDE_NIX;
+              buildInputs = with pkgs; [ gnumake ocaml-ng.ocamlPackages_4_02.ocaml ];
+              meta.description = ''
+                Provides a minimal shell environment in order to test the
+                bootstrapping script.
+              '';
+            };
+
           microbench = makeDuneDevShell {
             extraBuildInputs = pkgs: [
               pkgs.ocamlPackages.core_bench

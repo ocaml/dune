@@ -156,7 +156,6 @@ module Cache = struct
        Lazy.force cache_dir
        |> Result.map ~f:(fun path ->
          Lmdb.Env.create
-           ~max_readers:70
            ~map_size:500_000_000 (* 500 MB *)
            ~max_maps:2
            ~flags:Lmdb.Env.Flags.(no_meta_sync)

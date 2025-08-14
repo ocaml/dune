@@ -15,19 +15,19 @@ location to it.
    enabled in a lock directory using the :doc:`/reference/dune-workspace/lock_dir`
    stanza.
 
-.. describe:: (repository ...)
+.. confval:: (repository ...)
 
    .. versionadded:: 3.12
 
    Defines a named package repository.
 
-   .. describe:: (name <string>)
+   .. confval:: (name <string>)
 
       The name used to refer to the repository. Names have to be unique.
 
       This must be specified.
 
-   .. describe:: (url <string>)
+   .. confval:: (url <string>)
 
       The location from which the repository will be loaded.
 

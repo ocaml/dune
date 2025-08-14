@@ -1,24 +1,24 @@
 dialect
 -------
 
-.. describe:: (dialect ...)
+.. confval:: (dialect ...)
 
    Declare a new :term:`dialect`.
 
-   .. describe:: (name <name>)
+   .. confval:: (name <name>)
 
       The name of the dialect being defined. It must be unique in a given
       project.
 
       This field is required.
 
-   .. describe:: (implementation ...)
+   .. confval:: (implementation ...)
 
       Details related to the implementation files (corresponding to `*.ml`).
 
       .. versionchanged:: 3.9 This field is made optional.
 
-      .. describe:: (extension <string>)
+      .. confval:: (extension <string>)
 
          Specify the file extension used for this dialect.
 
@@ -29,7 +29,7 @@ dialect
 
          This field is required.
 
-      .. describe:: (preprocess <action>)
+      .. confval:: (preprocess <action>)
 
          Run `<action>` to produce a valid OCaml abstract syntax tree.
 
@@ -43,7 +43,7 @@ dialect
 
          .. seealso:: :ref:`preprocessing-actions`
 
-      .. describe:: (format <action>)
+      .. confval:: (format <action>)
 
          Run `<action>` to format source code for this dialect.
 
@@ -58,7 +58,7 @@ dialect
 
          .. seealso:: :doc:`/howto/formatting`
 
-   .. describe:: (interface ...)
+   .. confval:: (interface ...)
 
       Details related to the interface files (corresponding to `*.mli`).
 
@@ -66,7 +66,7 @@ dialect
 
       .. versionchanged:: 3.9 This field is made optional.
 
-   .. describe:: (merlin_reader <program> <args>...)
+   .. confval:: (merlin_reader <program> <args>...)
 
       Configure Merlin to use `<program> <args>...` as READER. Merlin's READER
       is a mechanism to extend Merlin to support OCaml dialects by providing

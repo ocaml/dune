@@ -14,20 +14,20 @@ project and used for building dependencies.
    Defining a pin does not enable it by default. It needs to be enabled in a
    lock directory using the :doc:`/reference/dune-workspace/lock_dir` stanza.
 
-.. describe:: (pin ...)
+.. confval:: (pin ...)
 
    .. versionadded:: 3.15
 
    Defines a new package source.
 
-   .. describe:: (name <string>)
+   .. confval:: (name <string>)
 
       The name of the newly defined pin. This can be anything, it does not
       have to match the package.
 
       This must be specified.
 
-   .. describe:: (url <string>)
+   .. confval:: (url <string>)
 
       This can be a path to a directory on the local file system or remote Git
       repository. Local paths can be absolute or relative, and may optionally
@@ -38,17 +38,17 @@ project and used for building dependencies.
 
       This must be specified.
 
-   .. describe:: (package ...)
+   .. confval:: (package ...)
 
       Specifies the the packages to assign this pin to.
 
-      .. describe:: (name <string>)
+      .. confval:: (name <string>)
 
          The name of the package.
 
          This must be specified.
 
-      .. describe:: (version <string>)
+      .. confval:: (version <string>)
 
          The version that the package should be assumed to be. Defaults to
          ``dev`` if unspecified.

@@ -193,6 +193,7 @@ understood by dune language."))
  (synopsis "Topological Closure")
  (depends
   (ocaml (>= 4.08)))
+ (maintenance_intent none)
  (description "Generic Topological Closure"))
 
 (package

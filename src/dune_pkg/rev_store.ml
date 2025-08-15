@@ -6,11 +6,23 @@ module Scheduler = Dune_engine.Scheduler
 module Re = Dune_re
 open Fiber.O
 
-module Object = struct
+module Object : sig
+  type t
+
+  val to_dyn : t -> Dyn.t
+  val equal : t -> t -> bool
+  val compare : t -> t -> Ordering.t
+  val hash : t -> int
+  val to_hex : t -> string
+
+  type resolved = t
+
+  val of_sha1 : string -> resolved option
+end = struct
   type t = Sha1 of string
 
   let compare (Sha1 x) (Sha1 y) = String.compare x y
-  let to_string (Sha1 s) = s
+  let to_hex (Sha1 s) = s
   let equal (Sha1 x) (Sha1 y) = String.equal x y
   let to_dyn (Sha1 s) = Dyn.string s
   let hash (Sha1 s) = String.hash s
@@ -246,10 +258,16 @@ let rev_parse { dir; _ } rev =
   if code = 0 then Some (Option.value_exn (Object.of_sha1 line)) else None
 ;;
 
-let object_exists_no_lock { dir; _ } (Object.Sha1 sha1) =
+let object_exists_no_lock { dir; _ } obj =
   let git = Lazy.force Vcs.git in
   let+ (), code =
-    Process.run ~dir ~display:Quiet ~env Return git [ "cat-file"; "-e"; sha1 ]
+    Process.run
+      ~dir
+      ~display:Quiet
+      ~env
+      Return
+      git
+      [ "cat-file"; "-e"; Object.to_hex obj ]
   in
   code = 0
 ;;
@@ -274,8 +292,8 @@ let resolve_object t hash =
   | true -> Some hash
 ;;
 
-let mem_path repo (Object.Sha1 sha1) path =
-  cat_file repo [ "-e"; sprintf "%s:%s" sha1 (Path.Local.to_string path) ]
+let mem_path repo obj path =
+  cat_file repo [ "-e"; sprintf "%s:%s" (Object.to_hex obj) (Path.Local.to_string path) ]
 ;;
 
 let show =
@@ -286,7 +304,7 @@ let show =
       "show"
       :: List.map revs_and_paths ~f:(function
         | `Object o -> o
-        | `Path (Object.Sha1 r, path) -> sprintf "%s:%s" r (Path.Local.to_string path))
+        | `Path (r, path) -> sprintf "%s:%s" (Object.to_hex r) (Path.Local.to_string path))
     in
     let stderr_to = make_stderr () in
     Process.run_capture ~dir ~display:Quiet ~stderr_to failure_mode git command
@@ -308,8 +326,10 @@ let show =
           +
           match cmd with
           | `Object o -> String.length o
-          | `Path (Object.Sha1 r, path) ->
-            String.length r + String.length (Path.Local.to_string path) + 1
+          | `Path (r, path) ->
+            String.length (Object.to_hex r)
+            + String.length (Path.Local.to_string path)
+            + 1
         in
         let new_remaining = cmd_len_remaining - cmd_len in
         if new_remaining >= 0
@@ -500,7 +520,7 @@ let fetch_allow_failure repo ~url obj =
         ~allow_codes:(fun x -> x = 0 || x = 128)
         repo
         ~display:!Dune_engine.Clflags.display
-        [ "fetch"; "--no-write-fetch-head"; url; Object.to_string obj ]
+        [ "fetch"; "--no-write-fetch-head"; url; Object.to_hex obj ]
       >>| (function
        | Ok 128 -> `Not_found
        | Ok 0 ->
@@ -515,7 +535,7 @@ let fetch repo ~url obj =
   >>| function
   | `Fetched -> ()
   | `Not_found ->
-    User_error.raise [ Pp.textf "unable to fetch %S from %S" (Object.to_string obj) url ]
+    User_error.raise [ Pp.textf "unable to fetch %S from %S" (Object.to_hex obj) url ]
 ;;
 
 module At_rev = struct
@@ -566,8 +586,12 @@ module At_rev = struct
       section, arg, binding, value
     ;;
 
-    let config repo (Object.Sha1 rev) path : t Fiber.t =
-      [ "config"; "--list"; "--blob"; sprintf "%s:%s" rev (Path.Local.to_string path) ]
+    let config repo rev path : t Fiber.t =
+      [ "config"
+      ; "--list"
+      ; "--blob"
+      ; sprintf "%s:%s" (Object.to_hex rev) (Path.Local.to_string path)
+      ]
       |> run_capture_lines repo ~display:Quiet
       >>| Git_error.result_get_or_code_error
       >>| List.fold_left ~init:KV.Map.empty ~f:(fun acc line ->
@@ -624,8 +648,10 @@ module At_rev = struct
     ;;
   end
 
-  let files_and_submodules repo (Object.Sha1 rev) =
-    run_capture_zero_separated_lines repo [ "ls-tree"; "-z"; "--long"; "-r"; rev ]
+  let files_and_submodules repo rev =
+    run_capture_zero_separated_lines
+      repo
+      [ "ls-tree"; "-z"; "--long"; "-r"; Object.to_hex rev ]
     >>| Git_error.result_get_or_code_error
     >>| List.fold_left
           ~init:(File.Set.empty, Commit.Set.empty)
@@ -643,15 +669,14 @@ module At_rev = struct
       ~f:(fun { Commit.path; rev } m ->
         match Path.Local.Map.add m path rev with
         | Ok m -> m
-        | Error (Sha1 existing_rev) ->
-          let (Sha1 found_rev) = rev in
+        | Error existing_rev ->
           User_error.raise
             [ Pp.textf
                 "Path %s specified multiple times as submodule pointing to different \
                  commits: %s and %s"
                 (Path.Local.to_string path)
-                found_rev
-                existing_rev
+                (Object.to_hex rev)
+                (Object.to_hex existing_rev)
             ])
   ;;
 
@@ -748,7 +773,7 @@ module At_rev = struct
 
   let check_out
         { repo = { dir; _ }
-        ; revision = Sha1 rev
+        ; revision
         ; files = _
         ; recursive_directory_entries = _
         ; submodules
@@ -756,19 +781,21 @@ module At_rev = struct
         ~target
     =
     let git = Lazy.force Vcs.git in
-    let temp_dir = Temp_dir.dir_for_target ~target ~prefix:"rev-store" ~suffix:rev in
+    let temp_dir =
+      Temp_dir.dir_for_target ~target ~prefix:"rev-store" ~suffix:(Object.to_hex revision)
+    in
     Fiber.finalize ~finally:(fun () ->
       let+ () = Fiber.return () in
       Temp.destroy Dir temp_dir)
     @@ fun () ->
     let stderr_to = make_stderr () in
     let* archives =
-      let all = Path.Local.Map.add_exn submodules Path.Local.root (Sha1 rev) in
+      let all = Path.Local.Map.add_exn submodules Path.Local.root revision in
       Path.Local.Map.to_list all
-      |> Fiber.parallel_map ~f:(fun (path, Object.Sha1 rev) ->
-        let archive = Path.relative temp_dir (sprintf "%s.tar" rev) in
+      |> Fiber.parallel_map ~f:(fun (path, rev) ->
+        let archive = Path.relative temp_dir (sprintf "%s.tar" (Object.to_hex rev)) in
         let stdout_to = Process.Io.file archive Process.Io.Out in
-        let args = [ "archive"; "--format=tar"; rev ] in
+        let args = [ "archive"; "--format=tar"; Object.to_hex rev ] in
         let+ (), exit_code =
           Process.run ~dir ~display:Quiet ~stdout_to ~stderr_to ~env failure_mode git args
         in

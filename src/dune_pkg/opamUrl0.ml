@@ -105,4 +105,4 @@ let fetch_revision t ~loc resolve rev_store =
      | Some rev -> Ok rev)
 ;;
 
-let set_rev (t : t) rev = { t with hash = Some (Rev_store.Object.to_string rev) }
+let set_rev (t : t) rev = { t with hash = Some (Rev_store.Object.to_hex rev) }

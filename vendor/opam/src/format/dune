@@ -2,7 +2,7 @@
   (name        opam_format)
   (synopsis    "OCaml Package Manager file format handling library")
   ; TODO: Remove (re_export ...) when CI uses the OCaml version that includes https://github.com/ocaml/ocaml/pull/11989
-  (libraries   unix (re_export opam_core) (re_export opam_file_format) dune_re)
+  (libraries   unix (re_export opam_core) (re_export opam_file_format) re)
   (modules_without_implementation OpamTypes)
   (wrapped     false))
 

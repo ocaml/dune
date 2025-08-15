@@ -9,7 +9,12 @@ type library =
 let external_libraries = [ "unix"; "threads" ]
 
 let local_libraries =
-  [ { path = "otherlibs/top-closure"
+  [ { path = "vendor/re/src"
+    ; main_module_name = Some "Re"
+    ; include_subdirs_unqualified = false
+    ; special_builtin_support = None
+    }
+  ; { path = "otherlibs/top-closure"
     ; main_module_name = Some "Top_closure"
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
@@ -81,11 +86,6 @@ let local_libraries =
     }
   ; { path = "src/dune_async_io"
     ; main_module_name = Some "Dune_async_io"
-    ; include_subdirs_unqualified = false
-    ; special_builtin_support = None
-    }
-  ; { path = "vendor/re/src"
-    ; main_module_name = Some "Dune_re"
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }

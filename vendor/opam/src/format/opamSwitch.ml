@@ -9,8 +9,6 @@
 (*                                                                        *)
 (**************************************************************************)
 
-module Re = Dune_re
-
 include OpamStd.AbstractString
 
 let unset = of_string "#unset#"

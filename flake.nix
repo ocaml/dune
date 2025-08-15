@@ -178,6 +178,7 @@
                 ++ [ duneScript ];
               inputsFrom = [ pkgs'.ocamlPackages.dune_3 ];
               buildInputs = testBuildInputs ++ (with pkgs'.ocamlPackages; [
+                re
                 ocaml-lsp
                 merlin
                 ocaml-index
@@ -210,7 +211,14 @@
             pkgs.mkShell {
               inherit INSIDE_NIX;
               nativeBuildInputs = [ ocamlformat ];
-              inputsFrom = [ pkgs.dune_3 ];
+              # re shouldn't be needed. this is an issue with the fmt rules
+              inputsFrom = [
+                pkgs.dune_3
+              ];
+              buildInputs = [
+                pkgs.ocamlPackages.re
+                pkgs.ocamlPackages.findlib
+              ];
               meta.description = ''
                 Provides a shell environment suitable for formatting the Dune
                 codebase source code (e.g. with `make fmt`).
@@ -249,8 +257,11 @@
               inherit INSIDE_NIX;
               nativeBuildInputs = (testNativeBuildInputs pkgs);
               # Coq requires OCaml 4.x
-              inputsFrom = [ pkgs.ocaml-ng.ocamlPackages_4_14.dune_3 ];
+              inputsFrom = [
+                pkgs.ocaml-ng.ocamlPackages_4_14.dune_3
+              ];
               buildInputs = with pkgs; [
+                ocaml-ng.ocamlPackages_4_14.re
                 coq_8_16_native
                 coq_8_16_native.ocamlPackages.findlib
               ];

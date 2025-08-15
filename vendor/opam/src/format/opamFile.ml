@@ -18,7 +18,6 @@
       a string list list. These are mostly used internally
     - files using the "opam syntax" and lexer, parsed using OpamFormat.Pp.V
 *)
-module Re = Dune_re
 
 open OpamParserTypes.FullPos
 open OpamTypes

@@ -13,8 +13,8 @@ depends: [
   "dune" {>= "3.20"}
   "stdune" {= version}
   "dyn"
+  "re"
   "ordering"
-  "dune-private-libs" {= version}
   "odoc" {with-doc}
 ]
 dev-repo: "git+https://github.com/ocaml/dune.git"

@@ -37,7 +37,7 @@
  (libraries
   fiber
   stdune
-  dune_re
+  re
   dune_rpc_client
   dune_rpc_e2e
   dune_rpc_private

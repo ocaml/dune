@@ -135,8 +135,8 @@ execution of the action.
  (depends
   (stdune (= :version))
   dyn
-  ordering
-  (dune-private-libs (= :version)))
+  re
+  ordering)
  (description "\
 dune-glob provides a parser and interpreter for globs as \
 understood by dune language."))

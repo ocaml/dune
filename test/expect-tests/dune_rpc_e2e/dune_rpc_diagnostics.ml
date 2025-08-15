@@ -7,7 +7,6 @@ module Sub = Dune_rpc.Sub
 module Diagnostic = Dune_rpc.Diagnostic
 module Request = Dune_rpc.Public.Request
 module Response = Dune_rpc.Response
-module Re = Dune_re
 
 let%expect_test "turn on and shutdown" =
   let test () =

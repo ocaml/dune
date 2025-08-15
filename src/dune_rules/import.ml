@@ -73,7 +73,6 @@ include struct
   module Version = Version
 end
 
-module Re = Dune_re
 module Syntax = Dune_sexp.Syntax
 
 include struct

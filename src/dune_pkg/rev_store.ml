@@ -248,17 +248,11 @@ module Cache = struct
     ;;
 
     let get key =
-      match Lazy.force map with
-      | Error () -> None
-      | Ok m ->
-        (match Lazy.force db with
-         | Error () -> None
-         | Ok env ->
-           Lmdb.Txn.go Ro env (fun txn ->
-             match Lmdb.Map.get ~txn m key with
-             | exception Not_found -> None
-             | v -> Some v)
-           |> Option.bind ~f:Fun.id)
+      let open Option.O in
+      let* m = Lazy.force map |> Result.to_option in
+      match Lmdb.Map.get m key with
+      | exception Not_found -> None
+      | v -> Some v
     ;;
 
     let set key value =

@@ -266,15 +266,10 @@ module Cache = struct
     match Lazy.force map with
     | Error () -> Key.Map.empty
     | Ok m ->
-      (match Lazy.force db with
-       | Error () -> Key.Map.empty
-       | Ok env ->
-         Lmdb.Txn.go Ro env (fun txn ->
-           Key.Set.fold keys ~init:Key.Map.empty ~f:(fun key acc ->
-             match Lmdb.Map.get ~txn m key with
-             | exception Not_found -> acc
-             | v -> Key.Map.add_exn acc key v))
-         |> Option.value ~default:Key.Map.empty)
+      Key.Set.fold keys ~init:Key.Map.empty ~f:(fun key acc ->
+        match Lmdb.Map.get m key with
+        | exception Not_found -> acc
+        | v -> Key.Map.add_exn acc key v)
   ;;
 
   let set keys =

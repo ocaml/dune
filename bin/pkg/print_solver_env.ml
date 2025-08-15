@@ -16,12 +16,12 @@ let print_solver_env_for_lock_dir workspace ~solver_env_from_current_system lock
   Console.print
     [ Pp.textf
         "Solver environment for lock directory %s:"
-        (Path.Source.to_string_maybe_quoted lock_dir_path)
+        (Path.Build.to_string_maybe_quoted lock_dir_path)
     ; Dune_pkg.Solver_env.pp solver_env
     ]
 ;;
 
-let print_solver_env ~lock_dirs_arg =
+let print_solver_env ctx_name ~lock_dirs_arg =
   let open Fiber.O in
   let+ workspace = Memo.run (Workspace.workspace ())
   and+ solver_env_from_current_system =
@@ -29,7 +29,7 @@ let print_solver_env ~lock_dirs_arg =
     |> Dune_pkg.Sys_poll.solver_env_from_current_system
     >>| Option.some
   in
-  let lock_dirs = Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace in
+  let lock_dirs = Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg ctx_name workspace in
   List.iter
     lock_dirs
     ~f:(print_solver_env_for_lock_dir workspace ~solver_env_from_current_system)
@@ -37,10 +37,12 @@ let print_solver_env ~lock_dirs_arg =
 
 let term =
   let+ builder = Common.Builder.term
+  and+ ctx_name = Common.context_arg ~doc:"Build context to use."
   and+ lock_dirs_arg = Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config (fun () -> print_solver_env ~lock_dirs_arg)
+  Scheduler.go_with_rpc_server ~common ~config (fun () ->
+    print_solver_env ctx_name ~lock_dirs_arg)
 ;;
 
 let info =

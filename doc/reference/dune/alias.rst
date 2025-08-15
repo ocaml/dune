@@ -3,7 +3,7 @@
 alias
 -----
 
-.. describe:: (alias ...)
+.. confval:: (alias ...)
 
    Add dependencies to an alias.
 
@@ -28,7 +28,7 @@ alias
 
    This stanza supports the following fields:
 
-   .. describe:: (name <name>)
+   .. confval:: (name <name>)
 
       An alias name.
 
@@ -37,7 +37,7 @@ alias
 
       This field is required.
 
-   .. describe:: (deps <deps-conf list)
+   .. confval:: (deps <deps-conf list)
 
       Specifies the dependencies of the alias.
 
@@ -45,26 +45,26 @@ alias
 
       This field is required.
 
-   .. describe:: (enabled_if <blang expression>)
+   .. confval:: (enabled_if <blang expression>)
 
       Specifies the Boolean condition that must be true for the tests to run.
 
       The condition is specified using the :doc:`/reference/boolean-language`, and
       the field allows for :doc:`/concepts/variables` to appear in the expressions.
 
-   .. describe:: (action <action>)
+   .. confval:: (action <action>)
 
       .. versionremoved :: 2.0 use :doc:`rule` with the ``alias`` field instead.
 
       An :doc:`action </reference/actions/index>` for constructing the alias.
 
-   .. describe:: (package <name>)
+   .. confval:: (package <name>)
 
       Indicates that this alias stanza is part of package ``<name>`` and should be
       filtered out if ``<name>`` is filtered out from the command line, either with
       ``--only-packages <pkgs>`` or ``-p <pkgs>``.
 
-   .. describe:: (locks (<lock-names>))
+   .. confval:: (locks (<lock-names>))
 
       Specifies that the action must be run while holding the following locks. See
       :doc:`/concepts/locks` for more details.

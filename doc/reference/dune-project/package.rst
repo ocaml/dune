@@ -4,104 +4,104 @@ package
 This stanza is used to specify package metadata. In particular, this information
 is used when generating OPAM files (see :doc:`generate_opam_files`).
 
-.. describe:: (package ...)
+.. confval:: (package ...)
 
    Define package-specific metadata.
 
-   .. describe:: (name <string>)
+   .. confval:: (name <string>)
 
       The name of the package.
 
       This must be specified.
 
-   .. describe:: (synopsis <string>)
+   .. confval:: (synopsis <string>)
 
       A short package description.
 
-   .. describe:: (description <string>)
+   .. confval:: (description <string>)
 
       A longer package description.
 
-   .. describe:: (depends <dep-specification>)
+   .. confval:: (depends <dep-specification>)
 
       Package dependencies, as :token:`~pkg-dep:dep_specification`.
 
-   .. describe:: (conflicts <dep-specification>)
+   .. confval:: (conflicts <dep-specification>)
 
       Package conflicts, as :token:`~pkg-dep:dep_specification`.
 
-   .. describe:: (depopts <dep-specification>)
+   .. confval:: (depopts <dep-specification>)
 
       Optional package dependencies, as :token:`~pkg-dep:dep_specification`.
 
-   .. describe:: (tags <tags>)
+   .. confval:: (tags <tags>)
 
       A list of tags.
 
-   .. describe:: (deprecated_package_names <name list>)
+   .. confval:: (deprecated_package_names <name list>)
 
       A list of names that can be used with the
       :doc:`../dune/deprecated_library_name` stanza to migrate legacy libraries
       from other build systems that do not follow Dune's convention of
       prefixing the library's public name with the package name.
 
-   .. describe:: (license ...)
+   .. confval:: (license ...)
 
       .. versionadded:: 2.0
 
       The same as (and takes precedences over) the corresponding global field
       (see :doc:`license`).
 
-   .. describe:: (authors ...)
+   .. confval:: (authors ...)
 
       .. versionadded:: 2.0
 
       The same as (and takes precedences over) the corresponding global field
       (see :doc:`authors`).
 
-   .. describe:: (maintainers ...)
+   .. confval:: (maintainers ...)
 
       .. versionadded:: 2.0
 
       The same as (and takes precedences over) the corresponding global field
       (see :doc:`maintainers`).
 
-   .. describe:: (maintenance_intent ...)
+   .. confval:: (maintenance_intent ...)
 
       .. versionadded:: 3.18
 
       The same as (and takes precedences over) the corresponding global field
       (see :doc:`maintenance_intent`).
 
-   .. describe:: (source ...)
+   .. confval:: (source ...)
 
       .. versionadded:: 2.0
 
       The same as (and takes precedences over) the corresponding global field
       (see :doc:`source`).
 
-   .. describe:: (bug_reports ...)
+   .. confval:: (bug_reports ...)
 
       .. versionadded:: 2.0
 
       The same as (and takes precedences over) the corresponding global field
       (see :doc:`bug_reports`).
 
-   .. describe:: (homepage ...)
+   .. confval:: (homepage ...)
 
       .. versionadded:: 2.0
 
       The same as (and takes precedences over) the corresponding global field
       (see :doc:`homepage`).
 
-   .. describe:: (documentation ...)
+   .. confval:: (documentation ...)
 
       .. versionadded:: 2.0
 
       The same as (and takes precedences over) the corresponding global field
       (see :doc:`documentation`).
 
-   .. describe:: (sites ...)
+   .. confval:: (sites ...)
 
       Define a site.
 

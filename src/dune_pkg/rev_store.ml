@@ -25,7 +25,7 @@ end = struct
   let compare (Sha1 x) (Sha1 y) = String.compare x y
   let to_hex (Sha1 s) = s
   let equal (Sha1 x) (Sha1 y) = String.equal x y
-  let to_dyn (Sha1 s) = Dyn.string s
+  let to_dyn (Sha1 s) = Dyn.variant "Sha1" [ Dyn.string s ]
   let hash (Sha1 s) = String.hash s
   let of_sha1_unsafe s = Sha1 s
 
@@ -805,7 +805,7 @@ module At_rev = struct
       section, arg, binding, value
     ;;
 
-    let config repo rev path : t Fiber.t =
+    let config repo (rev : Object.t) path : t Fiber.t =
       [ "config"
       ; "--list"
       ; "--blob"
@@ -836,7 +836,7 @@ module At_rev = struct
       ; source : string
       }
 
-    let parse repo revision =
+    let parse repo (revision : Object.t) =
       let submodule_path = Path.Local.of_string ".gitmodules" in
       let* has_submodules = mem_path repo revision submodule_path in
       match has_submodules with
@@ -1178,7 +1178,9 @@ let content_of_files t files =
 ;;
 
 let content_of_files t files =
-  let keys = List.map files ~f:(fun file -> File.hash file |> Object.of_sha1_unsafe, file) in
+  let keys =
+    List.map files ~f:(fun file -> Object.of_sha1_unsafe (File.hash file), file)
+  in
   let cached = Cache.get (Cache.Key.Set.of_list_map keys ~f:fst) in
   let uncached =
     List.filter_map keys ~f:(fun (key, file) ->

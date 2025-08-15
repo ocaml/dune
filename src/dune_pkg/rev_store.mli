@@ -11,7 +11,7 @@ module Object : sig
   type resolved = private t
 
   val of_sha1 : string -> t option
-  val to_string : t -> string
+  val to_hex : t -> string
   val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t
 end

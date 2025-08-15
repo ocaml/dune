@@ -12,8 +12,6 @@ module Object : sig
 
   val of_sha1 : string -> t option
   val to_hex : t -> string
-  val equal : t -> t -> bool
-  val to_dyn : t -> Dyn.t
 end
 
 module File : sig

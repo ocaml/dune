@@ -214,55 +214,39 @@ let js_targets_of_libs ~sctx ~scope ~module_systems ~target_dir libs =
 let compute_promote_in_source ~dune_project ~dir ~mode ~output ~src ~dst =
   match mode with
   | Rule.Mode.Standard | Fallback | Ignore_source_files -> mode
-  | Rule.Mode.Promote p ->
-    (match output with
-     | Output_kind.Private_library_or_emit _ ->
-       let into_dir =
-         let segment =
-           let segment = src |> Path.parent_exn in
-           Path.descendant segment ~of_:(Path.build dir)
-           |> Option.value_exn
-           |> Path.as_in_source_tree_exn
-         in
-         let into_dir =
-           match p.into with
-           | Some into -> Path.relative (Path.build dir) into.dir
-           | None -> Path.build dir
-         in
-         Path.append_source into_dir segment
-       in
-       (* interpret `(into ...)` relative to the dune file, not the `target_dir` *)
-       let new_into_dir =
-         let from = Path.build (Path.Build.parent_exn dst) in
-         Path.reach ~from into_dir
-       in
-       let loc =
-         p.into
-         |> Option.map ~f:(fun (x : Rule.Promote.Into.t) -> x.loc)
-         |> Option.value ~default:Loc.none
-       in
-       Promote { p with into = Some { loc; dir = new_into_dir } }
-     | Public_library { lib_dir; output_dir; target_dir = _ } ->
-       let into_dir =
-         let segment = src |> Path.parent_exn |> Path.drop_prefix_exn ~prefix:lib_dir in
-         let root = Dune_project.root dune_project in
-         Path.Source.append_local (Path.Source.append_local root output_dir) segment
-       in
-       let new_into_dir =
-         let from =
-           Path.Build.parent_exn dst
-           |> Path.build
-           |> Path.drop_build_context_exn
-           |> Path.source
-         in
-         Path.reach ~from (Path.source into_dir)
-       in
-       let loc =
-         p.into
-         |> Option.map ~f:(fun (x : Rule.Promote.Into.t) -> x.loc)
-         |> Option.value ~default:Loc.none
-       in
-       Promote { p with into = Some { loc; dir = new_into_dir } })
+  | Promote p ->
+    let new_into_dir =
+      let dir = Path.build dir in
+      let src_dir = Path.parent_exn src in
+      let dst_dir = Path.Build.parent_exn dst |> Path.build in
+      match output with
+      | Output_kind.Private_library_or_emit _ ->
+        let into_dir =
+          let into_dir =
+            (* interpret `(into ...)` relative to the dune file, not the `target_dir` *)
+            Option.map p.into ~f:(fun into -> Path.relative dir into.dir)
+            |> Option.value ~default:dir
+          in
+          let segment =
+            Path.descendant src_dir ~of_:dir
+            |> Option.value_exn
+            |> Path.as_in_source_tree_exn
+          in
+          Path.append_source into_dir segment
+        in
+        Path.reach ~from:dst_dir into_dir
+      | Public_library { lib_dir; output_dir; target_dir = _ } ->
+        let into_dir =
+          let root = Dune_project.root dune_project in
+          let into_dir = Path.Source.append_local root output_dir in
+          let segment = Path.drop_prefix_exn src_dir ~prefix:lib_dir in
+          Path.Source.append_local into_dir segment
+        in
+        let from = Path.drop_build_context_exn dst_dir |> Path.source in
+        Path.reach ~from (Path.source into_dir)
+    in
+    let loc = Option.map p.into ~f:(fun x -> x.loc) |> Option.value ~default:Loc.none in
+    Promote { p with into = Some { loc; dir = new_into_dir } }
 ;;
 
 let build_js

@@ -21,6 +21,15 @@ type library =
 |}
 ;;
 
+let local_library ~special_builtin_support ~is_multi_dir ~main_module_name ~dir =
+  Dyn.record
+    [ "path", Path.Source.to_local dir |> Path.Local.to_dyn
+    ; "main_module_name", Dyn.option Module_name.to_dyn main_module_name
+    ; "include_subdirs_unqualified", Dyn.Bool is_multi_dir
+    ; "special_builtin_support", Dyn.option Module_name.to_dyn special_builtin_support
+    ]
+;;
+
 let rule sctx ~requires_link =
   let open Action_builder.O in
   let* () = Action_builder.return () in
@@ -62,20 +71,14 @@ let rule sctx ~requires_link =
         | _ :: _ :: _ -> true
         | _ -> false
       in
-      Dyn.record
-        [ ( "path"
-          , Path.Build.drop_build_context_exn dir
-            |> Path.Source.to_local
-            |> Path.Local.to_dyn )
-        ; ( "main_module_name"
-          , Dyn.option
-              Module_name.to_dyn
-              (match Lib_info.main_module_name info with
-               | From _ -> None
-               | This x -> x) )
-        ; "include_subdirs_unqualified", Dyn.Bool is_multi_dir
-        ; "special_builtin_support", Dyn.option Module_name.to_dyn special_builtin_support
-        ])
+      local_library
+        ~special_builtin_support
+        ~dir:(Path.Build.drop_build_context_exn dir)
+        ~is_multi_dir
+        ~main_module_name:
+          (match Lib_info.main_module_name info with
+           | From _ -> None
+           | This x -> x))
     |> Action_builder.of_memo
   in
   let externals =

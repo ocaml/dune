@@ -40,6 +40,76 @@ end = struct
   ;;
 end
 
+module Commit = struct
+  module T = struct
+    type t =
+      { path : Path.Local.t
+      ; rev : Object.t
+      }
+
+    let compare { path; rev } t =
+      let open Ordering.O in
+      let= () = Path.Local.compare path t.path in
+      Object.compare rev t.rev
+    ;;
+
+    let to_dyn { path; rev } =
+      Dyn.record [ "path", Path.Local.to_dyn path; "rev", Object.to_dyn rev ]
+    ;;
+  end
+
+  include T
+  module C = Comparable.Make (T)
+  module Set = C.Set
+end
+
+module File = struct
+  module T = struct
+    type t =
+      | Redirect of
+          { path : Path.Local.t
+          ; to_ : t
+          }
+      | Direct of
+          { path : Path.Local.t
+          ; size : int
+          ; hash : string
+          }
+
+    let compare = Poly.compare
+
+    let to_dyn = function
+      | Redirect _ -> Dyn.opaque ()
+      | Direct { path; size; hash } ->
+        Dyn.record
+          [ "path", Path.Local.to_dyn path
+          ; "size", Dyn.int size
+          ; "hash", Dyn.string hash
+          ]
+    ;;
+  end
+
+  include T
+
+  let path = function
+    | Redirect p -> p.path
+    | Direct p -> p.path
+  ;;
+
+  let rec size = function
+    | Direct t -> t.size
+    | Redirect t -> size t.to_
+  ;;
+
+  let rec hash = function
+    | Direct t -> t.hash
+    | Redirect t -> hash t.to_
+  ;;
+
+  module C = Comparable.Make (T)
+  module Set = C.Set
+end
+
 module Remote = struct
   type nonrec t =
     { url : string
@@ -372,76 +442,6 @@ let load_or_create ~dir =
   in
   t
 ;;
-
-module Commit = struct
-  module T = struct
-    type t =
-      { path : Path.Local.t
-      ; rev : Object.t
-      }
-
-    let compare { path; rev } t =
-      let open Ordering.O in
-      let= () = Path.Local.compare path t.path in
-      Object.compare rev t.rev
-    ;;
-
-    let to_dyn { path; rev } =
-      Dyn.record [ "path", Path.Local.to_dyn path; "rev", Object.to_dyn rev ]
-    ;;
-  end
-
-  include T
-  module C = Comparable.Make (T)
-  module Set = C.Set
-end
-
-module File = struct
-  module T = struct
-    type t =
-      | Redirect of
-          { path : Path.Local.t
-          ; to_ : t
-          }
-      | Direct of
-          { path : Path.Local.t
-          ; size : int
-          ; hash : string
-          }
-
-    let compare = Poly.compare
-
-    let to_dyn = function
-      | Redirect _ -> Dyn.opaque ()
-      | Direct { path; size; hash } ->
-        Dyn.record
-          [ "path", Path.Local.to_dyn path
-          ; "size", Dyn.int size
-          ; "hash", Dyn.string hash
-          ]
-    ;;
-  end
-
-  include T
-
-  let path = function
-    | Redirect p -> p.path
-    | Direct p -> p.path
-  ;;
-
-  let rec size = function
-    | Direct t -> t.size
-    | Redirect t -> size t.to_
-  ;;
-
-  let rec hash = function
-    | Direct t -> t.hash
-    | Redirect t -> hash t.to_
-  ;;
-
-  module C = Comparable.Make (T)
-  module Set = C.Set
-end
 
 module Entry = struct
   module T = struct

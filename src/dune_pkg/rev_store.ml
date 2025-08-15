@@ -180,22 +180,12 @@ module Cache = struct
     module Map = C.Map
     module Set = C.Set
 
-    let obj_size = 40
-
     let conv =
       Lmdb.Conv.make
         ~serialise:(fun alloc obj ->
-          let len = obj_size in
-          let bs = alloc len in
-          Bigstringaf.blit_from_string
-            (Object.to_hex obj)
-            ~src_off:0
-            bs
-            ~dst_off:0
-            ~len:obj_size;
-          bs)
+          Object.to_hex obj |> Lmdb.Conv.(serialise string alloc))
         ~deserialise:(fun bs ->
-          Bigstringaf.substring bs ~off:0 ~len:obj_size |> Object.of_sha1_unsafe)
+          Lmdb.Conv.(deserialise string bs) |> Object.of_sha1_unsafe)
         ()
     ;;
   end
@@ -222,22 +212,12 @@ module Cache = struct
       include T
       module C = Comparable.Make (T)
 
-      let obj_size = 40
-
       let conv =
         Lmdb.Conv.make
           ~serialise:(fun alloc obj ->
-            let len = obj_size in
-            let bs = alloc len in
-            Bigstringaf.blit_from_string
-              (Object.to_hex obj)
-              ~src_off:0
-              bs
-              ~dst_off:0
-              ~len:obj_size;
-            bs)
+            Object.to_hex obj |> Lmdb.Conv.(serialise string alloc))
           ~deserialise:(fun bs ->
-            Bigstringaf.substring bs ~off:0 ~len:obj_size |> Object.of_sha1_unsafe)
+            Lmdb.Conv.(deserialise string bs) |> Object.of_sha1_unsafe)
           ()
       ;;
     end

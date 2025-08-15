@@ -258,15 +258,7 @@ module Cache = struct
     let set key value =
       match Lazy.force map with
       | Error () -> ()
-      | Ok map ->
-        (match Lazy.force db with
-         | Error () -> ()
-         | Ok env ->
-           protect_map_full
-           @@ fun () ->
-           (match Lmdb.Txn.go Rw env (fun txn -> Lmdb.Map.set ~txn map key value) with
-            | Some () -> ()
-            | None -> ()))
+      | Ok map -> protect_map_full @@ fun () -> Lmdb.Map.set map key value
     ;;
   end
 

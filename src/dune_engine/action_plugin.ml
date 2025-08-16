@@ -21,22 +21,6 @@ let to_dune_dep_set =
     Dependency.Set.to_list_map set ~f:(of_DAP_dep ~loc ~working_dir) |> Dep.Set.of_list
 ;;
 
-type done_or_more_deps =
-  | Done
-  (* This code assumes that there can be at most one 'dynamic-run' within single
-     action. [Dependency.t] stores relative paths so name clash would be
-     possible if multiple 'dynamic-run' would be executed in different
-     subdirectories that contains targets having the same name. *)
-  | Need_more_deps of (Dependency.Set.t * Dep.Set.t)
-
-let done_or_more_deps_union x y =
-  match x, y with
-  | Done, Done -> Done
-  | Done, Need_more_deps x | Need_more_deps x, Done -> Need_more_deps x
-  | Need_more_deps (deps1, dyn_deps1), Need_more_deps (deps2, dyn_deps2) ->
-    Need_more_deps (Dependency.Set.union deps1 deps2, Dep.Set.union dyn_deps1 dyn_deps2)
-;;
-
 open Action_intf.Exec
 
 let exec ~(ectx : context) ~(eenv : env) prog args =
@@ -126,7 +110,7 @@ let exec ~(ectx : context) ~(eenv : env) prog args =
            that is incompatible with this version of dune."
           prog_name
       ]
-  | Ok Done -> Done
+  | Ok Done -> Done_or_more_deps.Done
   | Ok (Need_more_deps deps) ->
     Need_more_deps
       (deps, to_dune_dep_set deps ~loc:ectx.rule_loc ~working_dir:eenv.working_dir)

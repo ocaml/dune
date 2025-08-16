@@ -28,7 +28,6 @@ module type Ast = sig
   type t =
     | Run of program * string Array.Immutable.t
     | With_accepted_exit_codes of int Predicate_lang.t * t
-    | Dynamic_run of program * string list
     | Chdir of path * t
     | Setenv of string * string * t
     (* It's not possible to use a build path here since jbuild supports

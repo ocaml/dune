@@ -1,6 +1,5 @@
 open Stdune
 module Dune_rpc = Dune_rpc_private
-module Re = Dune_re
 
 let () =
   Stdune.Path.set_root (Stdune.Path.External.of_filename_relative_to_initial_cwd ".");

@@ -1217,11 +1217,12 @@ type status =
 let resolve_externals external_libraries =
   let external_libraries, external_includes =
     let convert = function
-      | "threads" -> "threads" ^ Config.ocaml_archive_ext, [ "-I"; "+threads" ]
-      | "unix" -> "unix" ^ Config.ocaml_archive_ext, Config.unix_library_flags
+      | "threads" -> Some ("threads" ^ Config.ocaml_archive_ext, [ "-I"; "+threads" ])
+      | "unix" -> Some ("unix" ^ Config.ocaml_archive_ext, Config.unix_library_flags)
+      | "seq" | "re" -> None
       | s -> fatal "unhandled external library %s" s
     in
-    List.map ~f:convert external_libraries |> List.split
+    List.filter_map ~f:convert external_libraries |> List.split
   in
   let external_includes = List.concat external_includes in
   external_libraries, external_includes

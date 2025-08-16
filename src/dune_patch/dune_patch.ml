@@ -1,5 +1,4 @@
 open Stdune
-module Re = Dune_re
 
 include struct
   open Dune_engine

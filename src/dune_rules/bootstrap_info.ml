@@ -30,6 +30,15 @@ let local_library ~special_builtin_support ~is_multi_dir ~main_module_name ~dir 
     ]
 ;;
 
+let re =
+  lazy
+    (local_library
+       ~is_multi_dir:false
+       ~main_module_name:(Some (Module_name.of_string "Re"))
+       ~special_builtin_support:None
+       ~dir:(Path.Source.of_string "vendor/re/src"))
+;;
+
 let rule sctx ~requires_link =
   let open Action_builder.O in
   let* () = Action_builder.return () in
@@ -81,10 +90,14 @@ let rule sctx ~requires_link =
            | This x -> x))
     |> Action_builder.of_memo
   in
+  let locals = Lazy.force re :: locals in
   let externals =
+    let available =
+      [ "threads.posix"; "re"; "seq" ] |> List.rev_map ~f:Lib_name.of_string
+    in
     List.filter_map externals ~f:(fun lib ->
       let name = Lib.name lib in
-      Option.some_if (not (Lib_name.equal name (Lib_name.of_string "threads.posix"))) name)
+      if List.mem available ~equal:Lib_name.equal name then None else Some name)
   in
   Format.asprintf
     "%a@."

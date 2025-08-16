@@ -3,7 +3,6 @@ open Dune_vcs
 module Process = Dune_engine.Process
 module Display = Dune_engine.Display
 module Scheduler = Dune_engine.Scheduler
-module Re = Dune_re
 open Fiber.O
 
 module Object : sig

@@ -158,8 +158,6 @@ type t =
     (* Pending fs sync operations indexed by the special sync filename. *)
   }
 
-module Re = Dune_re
-
 let create_should_exclude_predicate ~watch_exclusions =
   (* TODO we should really take the predicate directly and not depend on
      regular expressions in our file watching component *)

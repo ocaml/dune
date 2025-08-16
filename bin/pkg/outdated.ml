@@ -38,7 +38,7 @@ let find_outdated_packages ~transitive ~lock_dirs_arg () =
           ~sep:Pp.space
           [ Pp.textf
               "When checking %s, the following packages:"
-              (Path.Source.to_string_maybe_quoted lock_dir_path)
+              (Path.to_string_maybe_quoted lock_dir_path)
             |> Pp.hovbox
           ; Pp.concat
               ~sep:Pp.space

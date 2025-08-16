@@ -24,15 +24,6 @@
 
 exception Parse_error
 
-val glob :
-  ?anchored:bool ->
-  ?pathname:bool ->
-  ?match_backslashes:bool ->
-  ?period:bool ->
-  ?expand_braces:bool ->
-  ?double_asterisk:bool ->
-  string ->
-  Core.t
 (** Implements the semantics of shells patterns. The returned regular
     expression is unanchored by default.
 
@@ -67,22 +58,28 @@ val glob :
     [double_asterisk]: If this flag is set, double asterisks ('**') will match slash
     characters, even if [pathname] is set. The [period] flag still applies. Default to
     true. *)
+val glob
+  :  ?anchored:bool
+  -> ?pathname:bool
+  -> ?match_backslashes:bool
+  -> ?period:bool
+  -> ?expand_braces:bool
+  -> ?double_asterisk:bool
+  -> string
+  -> Core.t
 
-val glob' : ?anchored:bool -> bool -> string -> Core.t
 (** Same, but allows to choose whether dots at the beginning of a
     file name need to be explicitly matched (true) or not (false)
 
-    @deprecated Use [glob ~period].
-*)
+    @deprecated Use [glob ~period]. *)
+val glob' : ?anchored:bool -> bool -> string -> Core.t
 
-val globx : ?anchored:bool -> string -> Core.t
 (** This version of [glob] also recognizes the pattern \{..,..\}
 
-    @deprecated Prefer [glob ~expand_braces:true].
-*)
+    @deprecated Prefer [glob ~expand_braces:true]. *)
+val globx : ?anchored:bool -> string -> Core.t
 
-val globx' : ?anchored:bool -> bool -> string -> Core.t
 (** This version of [glob'] also recognizes the pattern \{..,..\}
 
-    @deprecated Prefer [glob ~expand_braces:true ~period].
-*)
+    @deprecated Prefer [glob ~expand_braces:true ~period]. *)
+val globx' : ?anchored:bool -> bool -> string -> Core.t

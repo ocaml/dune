@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-version=1.11.0
+version=1.13.2
 
 set -e -o pipefail
 

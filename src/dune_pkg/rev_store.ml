@@ -24,7 +24,7 @@ end = struct
   let compare (Sha1 x) (Sha1 y) = String.compare x y
   let to_hex (Sha1 s) = s
   let equal (Sha1 x) (Sha1 y) = String.equal x y
-  let to_dyn (Sha1 s) = Dyn.string s
+  let to_dyn (Sha1 s) = Dyn.variant "Sha1" [ Dyn.string s ]
   let hash (Sha1 s) = String.hash s
 
   type resolved = t
@@ -73,18 +73,36 @@ module File = struct
       | Direct of
           { path : Path.Local.t
           ; size : int
-          ; hash : string
+          ; hash : Object.t
           }
 
-    let compare = Poly.compare
+    let rec compare x y =
+      let open Ordering.O in
+      match x, y with
+      | Redirect { path; to_ }, Redirect t ->
+        let= () = Path.Local.compare path t.path in
+        compare to_ t.to_
+      | Redirect _, _ -> Lt
+      | _, Redirect _ -> Gt
+      | Direct { path; size; hash }, Direct t ->
+        let= () = Path.Local.compare path t.path in
+        let= () = Int.compare size t.size in
+        Object.compare hash t.hash
+    ;;
 
-    let to_dyn = function
-      | Redirect _ -> Dyn.opaque ()
+    let rec to_dyn = function
+      | Redirect { path; to_ } ->
+        Dyn.variant
+          "Redirect"
+          [ Dyn.record [ "path", Path.Local.to_dyn path; "to_", to_dyn to_ ] ]
       | Direct { path; size; hash } ->
-        Dyn.record
-          [ "path", Path.Local.to_dyn path
-          ; "size", Dyn.int size
-          ; "hash", Dyn.string hash
+        Dyn.variant
+          "Direct"
+          [ Dyn.record
+              [ "path", Path.Local.to_dyn path
+              ; "size", Dyn.int size
+              ; "hash", Object.to_dyn hash
+              ]
           ]
     ;;
   end
@@ -373,7 +391,7 @@ let show =
     let command =
       "show"
       :: List.map revs_and_paths ~f:(function
-        | `Object o -> o
+        | `Object o -> Object.to_hex o
         | `Path (r, path) -> sprintf "%s:%s" (Object.to_hex r) (Path.Local.to_string path))
     in
     let stderr_to = make_stderr () in
@@ -395,7 +413,7 @@ let show =
           (* space separator *)
           +
           match cmd with
-          | `Object o -> String.length o
+          | `Object o -> String.length (Object.to_hex o)
           | `Path (r, path) ->
             String.length (Object.to_hex r)
             + String.length (Path.Local.to_string path)
@@ -496,15 +514,15 @@ module Entry = struct
           Some
             (File
                (Direct
-                  { hash = Re.Group.get m 2
-                  ; size = Int.of_string_exn @@ Re.Group.get m 3
-                  ; path = Path.Local.of_string @@ Re.Group.get m 4
+                  { hash = Re.Group.get m 2 |> Object.of_sha1 |> Option.value_exn
+                  ; size = Re.Group.get m 3 |> Int.of_string_exn
+                  ; path = Re.Group.get m 4 |> Path.Local.of_string
                   }))
         | "commit" ->
           Some
             (Commit
                { rev = Re.Group.get m 2 |> Object.of_sha1 |> Option.value_exn
-               ; path = Path.Local.of_string @@ Re.Group.get m 4
+               ; path = Re.Group.get m 4 |> Path.Local.of_string
                })
         | _ -> None)
   ;;

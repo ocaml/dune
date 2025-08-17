@@ -113,9 +113,9 @@ module Status_line = struct
   let display_status_line =
     Unix.(isatty stdout)
     ||
-    match Sys.getenv "INSIDE_EMACS" with
-    | (_ : string) -> true
-    | exception Not_found -> false
+    match Sys.getenv_opt "INSIDE_EMACS" with
+    | Some (_ : string) -> true
+    | None -> false
   ;;
 
   let update jobs =
@@ -229,9 +229,9 @@ let split_path s =
 ;;
 
 let path =
-  match Sys.getenv "PATH" with
-  | exception Not_found -> []
-  | s -> split_path s
+  match Sys.getenv_opt "PATH" with
+  | None -> []
+  | Some s -> split_path s
 ;;
 
 let find_prog ~f =

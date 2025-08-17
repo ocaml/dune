@@ -324,6 +324,8 @@
                 pkgs.ocamlPackages.melange
                 js_of_ocaml-compiler
                 js_of_ocaml
+                pkgs.binaryen
+                wasm_of_ocaml-compiler
                 utop
                 core_bench
               ]);

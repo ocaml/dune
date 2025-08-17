@@ -4,7 +4,7 @@ the supported 'github', 'gitlab', 'sourcehut', and 'bitbucket'.
 Test a generated 'github' user repo
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.17)
+  > (lang dune 3.21)
   > (name foo)
   > (generate_opam_files true)
   > (source (github user/repo))
@@ -63,6 +63,15 @@ Test a generated 'codeberg' user repo
   homepage: "https://codeberg.org/user/repo"
   bug-reports: "https://codeberg.org/user/repo/issues"
   dev-repo: "git+https://codeberg.org/user/repo.git"
+
+Test a generated 'tangled' user repo
+
+  $ sed -i -e '4s|.*|(source (tangled @user.domain/repo))|' dune-project
+  $ dune build
+  $ cat foo.opam | grep -i tangled.sh
+  homepage: "https://tangled.sh/@user.domain/repo"
+  bug-reports: "https://tangled.sh/@user.domain/repo/issues"
+  dev-repo: "git+https://tangled.sh/@user.domain/repo"
 
 Test that the creation of a source stanza of the form 'org/project/repo' is
 disallowed by any forge type other than gitlab and that associated error

@@ -20,6 +20,7 @@ module Host : sig
     | Gitlab of gitlab_repo
     | Sourcehut of user_repo
     | Codeberg of user_repo
+    | Tangled of user_repo
 
   val homepage : t -> string
   val bug_reports : t -> string

@@ -94,6 +94,21 @@ jobs:
           extra_nix_config: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix develop -i .#bootstrap-check -c make test-bootstrap-script
 
+  nix-build-4-08:
+    name: Nix Build 4.08
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: ${{ env.EXTRA_NIX_CONFIG }}
+      - run: nix develop -i .#bootstrap-check_4_08 -c make release 
+
 #
 # Stage 2
 #
@@ -145,10 +160,6 @@ jobs:
           ## macos (Apple Silicon)
           - ocaml-compiler: 4.14.x
             os: macos-latest
-          # OCaml 4.08:
-          ## ubuntu (x86)
-          - ocaml-compiler: 4.08.x
-            os: ubuntu-latest
 
     runs-on: ${{ matrix.os }}
 

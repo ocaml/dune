@@ -324,8 +324,9 @@ module Fiber : sig
 
   module O : sig
     val ( >>> ) : unit t -> 'a t -> 'a t
-    val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
     val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
+    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
   end
 
   module Future : sig
@@ -360,6 +361,8 @@ end = struct
     let ( >>> ) a b k = a (fun () -> b k)
     let ( >>= ) t f k = t (fun x -> f x k)
     let ( >>| ) t f k = t (fun x -> k (f x))
+    let ( let+ ) = ( >>| )
+    let ( let* ) = ( >>= )
   end
 
   open O
@@ -403,28 +406,34 @@ end = struct
   ;;
 
   let fork_and_join f g =
-    fork f >>= fun a -> fork g >>= fun b -> both (Future.wait a) (Future.wait b)
+    let* a = fork f in
+    let* b = fork g in
+    both (Future.wait a) (Future.wait b)
   ;;
 
   let fork_and_join_unit f g =
-    fork f >>= fun a -> fork g >>= fun b -> Future.wait a >>> Future.wait b
+    let* a = fork f in
+    let* b = fork g in
+    Future.wait a >>> Future.wait b
   ;;
 
   let rec parallel_map l ~f =
     match l with
     | [] -> return []
     | x :: l ->
-      fork (fun () -> f x)
-      >>= fun future ->
-      parallel_map l ~f >>= fun l -> Future.wait future >>= fun x -> return (x :: l)
+      let* future = fork (fun () -> f x) in
+      let* l = parallel_map l ~f in
+      let* x = Future.wait future in
+      return (x :: l)
   ;;
 
   let rec parallel_iter l ~f =
     match l with
     | [] -> return ()
     | x :: l ->
-      fork (fun () -> f x)
-      >>= fun future -> parallel_iter l ~f >>= fun () -> Future.wait future
+      let* future = fork (fun () -> f x) in
+      let* () = parallel_iter l ~f in
+      Future.wait future
   ;;
 
   module Temp = struct
@@ -508,8 +517,7 @@ end = struct
     let initial_cwd = Sys.getcwd ()
 
     let run_process ?cwd prog args ~split =
-      throttle ()
-      >>= fun () ->
+      let* () = throttle () in
       let stdout_fn, stdout_fd = open_temp_file () in
       let stderr_fn, stderr_fd =
         if split then open_temp_file () else stdout_fn, stdout_fd
@@ -532,8 +540,7 @@ end = struct
       if split then Unix.close stderr_fd;
       let ivar = Ivar.create () in
       Hashtbl.add running ~key:pid ~data:ivar;
-      Ivar.read ivar
-      >>= fun (status : Unix.process_status) ->
+      let* (status : Unix.process_status) = Ivar.read ivar in
       let stdout_s = read_temp stdout_fn in
       let stderr_s = if split then read_temp stderr_fn else stdout_s in
       if stderr_s <> "" || status <> WEXITED 0 || verbose
@@ -674,8 +681,8 @@ end = struct
 
   let ocaml_config () =
     Process.run_and_capture ocamlc [ "-config" ]
-    >>| fun s ->
-    List.fold_left (split_lines s) ~init:String.Map.empty ~f:(fun acc line ->
+    >>| split_lines
+    >>| List.fold_left ~init:String.Map.empty ~f:(fun acc line ->
       match Scanf.sscanf line "%[^:]: %s" (fun k v -> k, v) with
       | k, v -> String.Map.add k v acc
       | exception _ ->
@@ -702,14 +709,13 @@ let insert_header fn ~header =
 
 let copy_lexer ~header src dst =
   let dst = Filename.remove_extension dst ^ ".ml" in
-  Process.run Config.ocamllex [ "-q"; "-o"; dst; src ]
-  >>| fun () -> insert_header dst ~header
+  let+ () = Process.run Config.ocamllex [ "-q"; "-o"; dst; src ] in
+  insert_header dst ~header
 ;;
 
 let copy_parser ~header src dst =
   let dst = Filename.remove_extension dst in
-  Process.run Config.ocamlyacc [ "-b"; dst; src ]
-  >>| fun () ->
+  let+ () = Process.run Config.ocamlyacc [ "-b"; dst; src ] in
   insert_header (dst ^ ".ml") ~header;
   insert_header (dst ^ ".mli") ~header
 ;;
@@ -736,9 +742,7 @@ module Build_info = struct
         Process.try_run_and_capture
           "git"
           [ "describe"; "--always"; "--dirty"; "--abbrev=7" ]
-        >>| (function
-         | Some s -> Some (String.trim s)
-         | None -> None)
+        >>| Option.map String.trim
   ;;
 
   let gen_data_module oc =
@@ -1007,42 +1011,43 @@ module Library = struct
     in
     let wrapper = Wrapper.make ~namespace ~modules in
     let header = Wrapper.header wrapper in
-    Fiber.fork_and_join
-      (fun () ->
-         Fiber.parallel_map files ~f:(fun ({ file = fn; kind } as source) ->
-           let mangled = Wrapper.mangle_filename wrapper source in
-           let dst = build_dir ^/ mangled in
-           (match kind with
-            | Asm _ ->
-              copy fn dst;
-              Fiber.return [ mangled ]
-            | Header | C _ ->
-              copy_with_directive ~directive:"line" fn dst;
-              Fiber.return [ mangled ]
-            | Ml | Mli ->
-              copy_with_header ~header fn dst;
-              Fiber.return [ mangled ]
-            | Mll -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
-            | Mly ->
-              (* CR rgrinberg: what if the parser already has an mli? *)
-              copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ])
-           >>| function
-           | mangled -> List.map mangled ~f:(fun m -> source, m)))
-      (fun () ->
-         match build_info_module with
-         | None -> Fiber.return None
-         | Some m ->
-           let src =
-             let fn = String.uncapitalize_ascii m ^ ".ml" in
-             { file = fn; kind = Ml }
-           in
-           let mangled = Wrapper.mangle_filename wrapper src in
-           let oc = open_out (build_dir ^/ mangled) in
-           Build_info.gen_data_module oc
-           >>| fun () ->
-           close_out oc;
-           Some (src, mangled))
-    >>| fun (files, build_info_file) ->
+    let+ files, build_info_file =
+      Fiber.fork_and_join
+        (fun () ->
+           Fiber.parallel_map files ~f:(fun ({ file = fn; kind } as source) ->
+             let mangled = Wrapper.mangle_filename wrapper source in
+             let dst = build_dir ^/ mangled in
+             let+ mangled =
+               match kind with
+               | Asm _ ->
+                 copy fn dst;
+                 Fiber.return [ mangled ]
+               | Header | C _ ->
+                 copy_with_directive ~directive:"line" fn dst;
+                 Fiber.return [ mangled ]
+               | Ml | Mli ->
+                 copy_with_header ~header fn dst;
+                 Fiber.return [ mangled ]
+               | Mll -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
+               | Mly ->
+                 (* CR rgrinberg: what if the parser already has an mli? *)
+                 copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]
+             in
+             List.map mangled ~f:(fun m -> source, m)))
+        (fun () ->
+           match build_info_module with
+           | None -> Fiber.return None
+           | Some m ->
+             let src =
+               let fn = String.uncapitalize_ascii m ^ ".ml" in
+               { file = fn; kind = Ml }
+             in
+             let mangled = Wrapper.mangle_filename wrapper src in
+             let oc = open_out (build_dir ^/ mangled) in
+             let+ () = Build_info.gen_data_module oc in
+             close_out oc;
+             Some (src, mangled))
+    in
     let alias_file = Wrapper.generate_wrapper wrapper modules in
     let c_files, ocaml_files, asm_files =
       let files =
@@ -1108,8 +1113,8 @@ end
 
 let ocamldep args =
   Process.run_and_capture Config.ocamldep ("-modules" :: args) ~cwd:build_dir
-  >>| fun s ->
-  List.map (split_lines s) ~f:(fun line ->
+  >>| split_lines
+  >>| List.map ~f:(fun line ->
     let colon = String.index line ':' in
     let filename = String.sub line ~pos:0 ~len:colon in
     let modules =
@@ -1122,7 +1127,7 @@ let ocamldep args =
         String.split_on_char ~sep:' ' modules)
     in
     { Dep.file = filename; deps = modules })
-  |> List.sort ~cmp:compare
+  >>| List.sort ~cmp:compare
 ;;
 
 let mk_flags arg l = List.map l ~f:(fun m -> [ arg; m ]) |> List.flatten
@@ -1176,8 +1181,9 @@ let get_dependencies libraries =
     List.map ~f:(fun (lib : Library.t) -> lib.ocaml_files) libraries |> List.concat
   in
   write_args "source_files" all_source_files;
-  ocamldep (mk_flags "-map" alias_files @ [ "-args"; "source_files" ])
-  >>| fun dependencies ->
+  let+ dependencies =
+    ocamldep (mk_flags "-map" alias_files @ [ "-args"; "source_files" ])
+  in
   let deps =
     let all_source_files =
       List.fold_left
@@ -1309,11 +1315,13 @@ let build
   let build ~file ~deps m =
     match Hashtbl.find table m with
     | Not_started f ->
-      Hashtbl.replace table m Initializing;
-      Fiber.fork f
-      >>= fun fut ->
+      let* fut =
+        Hashtbl.replace table m Initializing;
+        Fiber.fork f
+      in
       Hashtbl.replace table m (Started fut);
-      Fiber.Future.wait fut >>| fun () -> incr Status_line.num_jobs_finished
+      let+ () = Fiber.Future.wait fut in
+      incr Status_line.num_jobs_finished
     | Initializing ->
       let deps = String.concat ~sep:", " deps in
       fatal "dependency cycle compiling %s\ndependencies: %s" file deps
@@ -1327,8 +1335,7 @@ let build
       file
       (Not_started
          (fun () ->
-           Fiber.parallel_iter deps ~f:(build ~file ~deps)
-           >>= fun () ->
+           let* () = Fiber.parallel_iter deps ~f:(build ~file ~deps) in
            Process.run
              ~cwd:build_dir
              Config.compiler
@@ -1339,36 +1346,43 @@ let build
                 ; external_includes
                 ; [ file ]
                 ]))));
-  Fiber.fork_and_join_unit
-    (fun () -> build ~file:main ~deps:[] (Filename.basename main))
-    (let ext_obj =
-       try String.Map.find "ext_obj" ocaml_config with
-       | Not_found -> ".o"
-     in
-     let c_compiler = String.Map.find "c_compiler" ocaml_config in
-     fun () ->
-       (Fiber.fork_and_join (fun () ->
-          Fiber.parallel_map c_files ~f:(fun { Library.name = file; flags } ->
-            let flags =
-              List.map flags ~f:(fun flag -> [ "-ccopt"; flag ]) |> List.concat
-            in
-            Process.run
-              ~cwd:build_dir
-              Config.compiler
-              (List.concat
-                 [ [ "-c"; "-g" ]; external_includes; build_flags; [ file ]; flags ])
-            >>| fun () -> Filename.chop_extension file ^ ext_obj)))
-         (fun () ->
-            Fiber.parallel_map asm_files ~f:(fun { Library.assembler; flags; out_file } ->
-              Process.run
-                ~cwd:build_dir
-                (match assembler with
-                 | `C_comp -> c_compiler
-                 | `Msvc_asm -> "ml64.exe")
-                flags
-              >>| fun () -> out_file))
-       >>| fun (x, y) -> x @ y)
-  >>= fun obj_files ->
+  let* obj_files =
+    Fiber.fork_and_join_unit
+      (fun () -> build ~file:main ~deps:[] (Filename.basename main))
+      (let ext_obj =
+         try String.Map.find "ext_obj" ocaml_config with
+         | Not_found -> ".o"
+       in
+       let c_compiler = String.Map.find "c_compiler" ocaml_config in
+       fun () ->
+         (Fiber.fork_and_join (fun () ->
+            Fiber.parallel_map c_files ~f:(fun { Library.name = file; flags } ->
+              let flags =
+                List.map flags ~f:(fun flag -> [ "-ccopt"; flag ]) |> List.concat
+              in
+              let+ () =
+                Process.run
+                  ~cwd:build_dir
+                  Config.compiler
+                  (List.concat
+                     [ [ "-c"; "-g" ]; external_includes; build_flags; [ file ]; flags ])
+              in
+              Filename.chop_extension file ^ ext_obj)))
+           (fun () ->
+              Fiber.parallel_map
+                asm_files
+                ~f:(fun { Library.assembler; flags; out_file } ->
+                  let+ () =
+                    Process.run
+                      ~cwd:build_dir
+                      (match assembler with
+                       | `C_comp -> c_compiler
+                       | `Msvc_asm -> "ml64.exe")
+                      flags
+                  in
+                  out_file))
+         >>| fun (x, y) -> x @ y)
+  in
   let compiled_ml_files =
     let compiled_ml_ext =
       match Config.mode with
@@ -1416,18 +1430,15 @@ let main () =
    | Sys_error _ -> ());
   (try Unix.mkdir build_dir 0o777 with
    | Unix.Unix_error (Unix.EEXIST, _, _) -> ());
-  Config.ocaml_config ()
-  >>= fun ocaml_config ->
-  assemble_libraries ~ocaml_config task
-  >>= fun libraries ->
+  let* ocaml_config = Config.ocaml_config () in
+  let* libraries = assemble_libraries ~ocaml_config task in
   let c_files =
     List.map ~f:(fun (lib : Library.t) -> lib.c_files) libraries |> List.concat
   in
   let asm_files =
     List.map ~f:(fun (lib : Library.t) -> lib.asm_files) libraries |> List.concat
   in
-  get_dependencies libraries
-  >>= fun dependencies ->
+  let* dependencies = get_dependencies libraries in
   let ocaml_system =
     match String.Map.find_opt "system" ocaml_config with
     | None -> assert false

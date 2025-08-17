@@ -495,7 +495,7 @@ And the opam file will be generated as expected
   doc: "https://url/to/documentation"
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
-    "dune" {>= "3.20"}
+    "dune" {>= "3.21"}
     "ocaml"
     "odoc" {with-doc}
   ]

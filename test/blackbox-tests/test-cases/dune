@@ -102,11 +102,6 @@
   (enabled_if %{bin-available:hg})))
 
 (cram
- (applies_to link-time-transitive-deps dune-build-info-subdir)
- (deps
-  (package dune-build-info)))
-
-(cram
  (applies_to version-corruption)
  (deps %{bin:git} %{bin:chmod})
  (enabled_if

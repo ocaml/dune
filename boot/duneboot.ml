@@ -102,6 +102,8 @@ module List = struct
        | None -> find_map l ~f
        | Some _ as x -> x)
   ;;
+
+  let concat_map l ~f = List.map l ~f |> List.concat
 end
 
 let ( ^/ ) = Filename.concat
@@ -1178,7 +1180,7 @@ let get_dependencies libraries =
       | Some fn -> fn :: acc)
   in
   let all_source_files =
-    List.map ~f:(fun (lib : Library.t) -> lib.ocaml_files) libraries |> List.concat
+    List.concat_map ~f:(fun (lib : Library.t) -> lib.ocaml_files) libraries
   in
   write_args "source_files" all_source_files;
   let+ dependencies =
@@ -1357,9 +1359,7 @@ let build
        fun () ->
          (Fiber.fork_and_join (fun () ->
             Fiber.parallel_map c_files ~f:(fun { Library.name = file; flags } ->
-              let flags =
-                List.map flags ~f:(fun flag -> [ "-ccopt"; flag ]) |> List.concat
-              in
+              let flags = List.concat_map flags ~f:(fun flag -> [ "-ccopt"; flag ]) in
               let+ () =
                 Process.run
                   ~cwd:build_dir
@@ -1432,12 +1432,8 @@ let main () =
    | Unix.Unix_error (Unix.EEXIST, _, _) -> ());
   let* ocaml_config = Config.ocaml_config () in
   let* libraries = assemble_libraries ~ocaml_config task in
-  let c_files =
-    List.map ~f:(fun (lib : Library.t) -> lib.c_files) libraries |> List.concat
-  in
-  let asm_files =
-    List.map ~f:(fun (lib : Library.t) -> lib.asm_files) libraries |> List.concat
-  in
+  let c_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.c_files) libraries in
+  let asm_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.asm_files) libraries in
   let* dependencies = get_dependencies libraries in
   let ocaml_system =
     match String.Map.find_opt "system" ocaml_config with

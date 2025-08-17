@@ -60,12 +60,6 @@
 ;; The following test is flaky due to platform sensitivity
 ;; see https://github.com/ocaml/dune/issues/3744
 
-(subdir
- cram
- (cram
-  (applies_to error)
-  (enabled_if false)))
-
 ;; CONDITIONALLY DISABLED TESTS
 
 (cram
@@ -86,20 +80,6 @@
   (and
    (<> %{ocaml-config:system} macosx)
    (<> %{ocaml-config:system} win))))
-
-(subdir
- cram
- ;; mac has a different sh error message
- (cram
-  (applies_to error)
-  (enabled_if
-   (<> "macosx" %{ocaml-config:system}))))
-
-(subdir
- cram
- (cram
-  (applies_to hg-access)
-  (enabled_if %{bin-available:hg})))
 
 (cram
  (applies_to version-corruption)

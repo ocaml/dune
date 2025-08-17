@@ -93,6 +93,15 @@ module List = struct
        | None -> filter_map l ~f
        | Some x -> x :: filter_map l ~f)
   ;;
+
+  let rec find_map l ~f =
+    match l with
+    | [] -> None
+    | x :: l ->
+      (match f x with
+       | None -> find_map l ~f
+       | Some _ as x -> x)
+  ;;
 end
 
 let ( ^/ ) = Filename.concat
@@ -710,21 +719,16 @@ let copy_parser ~header src dst =
 (** {2 Preparation of library files} *)
 module Build_info = struct
   let get_version () =
-    let from_dune_project =
+    match
       match read_lines "dune-project" with
       | exception _ -> None
       | lines ->
-        let rec loop = function
-          | [] -> None
-          | line :: lines ->
-            (match Scanf.sscanf line "(version %[^)])" (fun v -> v) with
-             | exception _ -> loop lines
-             | v -> Some v)
-        in
-        loop lines
-    in
-    match from_dune_project with
-    | Some _ -> Fiber.return from_dune_project
+        List.find_map lines ~f:(fun line ->
+          match Scanf.sscanf line "(version %[^)])" (fun v -> v) with
+          | exception _ -> None
+          | v -> Some v)
+    with
+    | Some _ as s -> Fiber.return s
     | None ->
       if not (Sys.file_exists ".git")
       then Fiber.return None
@@ -768,10 +772,6 @@ module Build_info = struct
     prlist "statically_linked_libraries" libs ~f:(fun (name, v) -> pr "%S, %s\n" name v)
   ;;
 end
-
-(* module OCaml_file = struct module Kind = struct type t = Impl | Intf end
-
-   type t = { kind : Kind.t ; module_name = end *)
 
 module Library = struct
   module File_kind = struct
@@ -1097,6 +1097,15 @@ module Library = struct
   ;;
 end
 
+module Dep = struct
+  type t =
+    { file : string
+    ; deps : string list
+    }
+
+  let empty file = { file; deps = [] }
+end
+
 let ocamldep args =
   Process.run_and_capture Config.ocamldep ("-modules" :: args) ~cwd:build_dir
   >>| fun s ->
@@ -1112,13 +1121,13 @@ let ocamldep args =
         in
         String.split_on_char ~sep:' ' modules)
     in
-    filename, modules)
+    { Dep.file = filename; deps = modules })
   |> List.sort ~cmp:compare
 ;;
 
 let mk_flags arg l = List.map l ~f:(fun m -> [ arg; m ]) |> List.flatten
 
-let convert_dependencies ~all_source_files (file, dependencies) =
+let convert_dependencies ~all_source_files { Dep.file; deps = dependencies } =
   let is_mli = Filename.check_suffix file ".mli" in
   let convert_module module_name =
     let filename = String.uncapitalize_ascii module_name in
@@ -1147,7 +1156,7 @@ let convert_dependencies ~all_source_files (file, dependencies) =
     then (file ^ "i") :: dependencies
     else dependencies
   in
-  file, dependencies
+  { Dep.file; deps = dependencies }
 ;;
 
 let write_args file args =
@@ -1169,24 +1178,24 @@ let get_dependencies libraries =
   write_args "source_files" all_source_files;
   ocamldep (mk_flags "-map" alias_files @ [ "-args"; "source_files" ])
   >>| fun dependencies ->
-  let all_source_files =
-    List.fold_left
-      alias_files
-      ~init:(String.Set.of_list all_source_files)
-      ~f:(fun acc fn -> String.Set.add fn acc)
-  in
   let deps =
+    let all_source_files =
+      List.fold_left
+        alias_files
+        ~init:(String.Set.of_list all_source_files)
+        ~f:(fun acc fn -> String.Set.add fn acc)
+    in
     List.rev_append
       ((* Alias files have no dependencies *)
        List.rev_map
          alias_files
-         ~f:(fun fn -> fn, []))
+         ~f:Dep.empty)
       (List.rev_map dependencies ~f:(convert_dependencies ~all_source_files))
   in
   if debug
   then (
     eprintf "***** Dependencies *****\n";
-    List.iter deps ~f:(fun (fn, deps) ->
+    List.iter deps ~f:(fun { Dep.file = fn; deps } ->
       eprintf "%s: %s\n" fn (String.concat deps ~sep:" "));
     eprintf "**********\n");
   deps
@@ -1230,7 +1239,7 @@ let resolve_externals external_libraries =
 
 let sort_files dependencies ~main =
   let deps_by_file = Hashtbl.create (List.length dependencies) in
-  List.iter dependencies ~f:(fun (file, deps) -> Hashtbl.add deps_by_file file deps);
+  List.iter dependencies ~f:(fun { Dep.file; deps } -> Hashtbl.add deps_by_file file deps);
   let seen = ref String.Set.empty in
   let res = ref [] in
   let rec loop file =
@@ -1292,14 +1301,11 @@ let build
       ~link_flags
       { target = name, main; external_libraries; _ }
   =
-  let c_compiler = String.Map.find "c_compiler" ocaml_config in
-  let ext_obj =
-    try String.Map.find "ext_obj" ocaml_config with
-    | Not_found -> ".o"
+  let table =
+    let num_dependencies = List.length dependencies in
+    Status_line.num_jobs := num_dependencies;
+    Hashtbl.create num_dependencies
   in
-  let num_dependencies = List.length dependencies in
-  let table = Hashtbl.create num_dependencies in
-  Status_line.num_jobs := num_dependencies;
   let build ~file ~deps m =
     match Hashtbl.find table m with
     | Not_started f ->
@@ -1315,7 +1321,7 @@ let build
     | exception Not_found -> fatal "file not found: %s" m
   in
   let external_libraries, external_includes = resolve_externals external_libraries in
-  List.iter dependencies ~f:(fun (file, deps) ->
+  List.iter dependencies ~f:(fun { Dep.file; deps } ->
     Hashtbl.add
       table
       file
@@ -1335,7 +1341,12 @@ let build
                 ]))));
   Fiber.fork_and_join_unit
     (fun () -> build ~file:main ~deps:[] (Filename.basename main))
-    (fun () ->
+    (let ext_obj =
+       try String.Map.find "ext_obj" ocaml_config with
+       | Not_found -> ".o"
+     in
+     let c_compiler = String.Map.find "c_compiler" ocaml_config in
+     fun () ->
        (Fiber.fork_and_join (fun () ->
           Fiber.parallel_map c_files ~f:(fun { Library.name = file; flags } ->
             let flags =

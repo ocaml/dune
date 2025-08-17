@@ -28,6 +28,8 @@ source
        - ``(sourcehut user/repo)``
      * - `Codeberg <https://codeberg.org>`_
        - ``(codeberg user/repo)`` *(New in 3.17)*
+     * - `Tangled <https://tangled.sh>`_
+       - ``(tangled @user.domain/repo)`` *(New in 3.21)*
 
    Examples:
 

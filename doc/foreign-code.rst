@@ -103,7 +103,7 @@ file:
 
 .. code:: dune
 
-  (lang dune 3.21)
+  (lang dune {{latest}})
   (using ctypes 0.3)
 
 

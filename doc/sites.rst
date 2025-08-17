@@ -305,7 +305,7 @@ The Plugin "plugin1"
 
 .. code:: dune
 
-  (lang dune 3.21)
+  (lang dune {{latest}})
   (using dune_site 0.1)
 
   (generate_opam_files true)

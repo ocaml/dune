@@ -42,7 +42,7 @@ is enabled:
 
 .. code:: dune
 
-  (lang dune 3.21)
+  (lang dune {{latest}})
   (using melange 0.1)
 
 Next, write a :doc:`/reference/dune/index` file with a

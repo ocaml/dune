@@ -34,7 +34,7 @@ end
 module Ocamlformat = struct
   let dev_tool_lock_dir_exists () =
     let path = Dune_pkg.Lock_dir.dev_tool_lock_dir_path Ocamlformat in
-    Fs_memo.dir_exists (Path.source path |> Path.as_outside_build_dir_exn)
+    path |> Path.as_outside_build_dir_exn |> Fs_memo.dir_exists
   ;;
 
   (* Config files for ocamlformat. When these are changed, running

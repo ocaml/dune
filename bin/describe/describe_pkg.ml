@@ -19,7 +19,7 @@ module Show_lock = struct
       Pp.concat
         ~sep:Pp.space
         [ Pp.hovbox
-          @@ Pp.textf "Contents of %s:" (Path.Source.to_string_maybe_quoted lock_dir_path)
+          @@ Pp.textf "Contents of %s:" (Path.to_string_maybe_quoted lock_dir_path)
         ; Pkg_common.pp_packages packages
         ]
       |> Pp.vbox)
@@ -123,14 +123,14 @@ module List_locked_dependencies = struct
   let enumerate_lock_dirs_by_path workspace ~lock_dirs =
     let lock_dirs = Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs workspace in
     List.filter_map lock_dirs ~f:(fun lock_dir_path ->
-      if Path.exists (Path.source lock_dir_path)
+      if Path.exists lock_dir_path
       then (
         try Some (lock_dir_path, Lock_dir.read_disk_exn lock_dir_path) with
         | User_error.E e ->
           User_warning.emit
             [ Pp.textf
                 "Failed to parse lockdir %s:"
-                (Path.Source.to_string_maybe_quoted lock_dir_path)
+                (Path.to_string_maybe_quoted lock_dir_path)
             ; User_message.pp e
             ];
           None)
@@ -158,7 +158,7 @@ module List_locked_dependencies = struct
              [ Pp.hbox
                  (Pp.textf
                     "Dependencies of local packages locked in %s"
-                    (Path.Source.to_string_maybe_quoted lock_dir_path))
+                    (Path.to_string_maybe_quoted lock_dir_path))
              ; Pp.enumerate
                  (Package_name.Map.keys local_packages)
                  ~f:(package_deps_in_lock_dir_pp package_universe ~transitive)

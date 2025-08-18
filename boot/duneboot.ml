@@ -88,16 +88,6 @@ module List = struct
      versions allowing compatability >= 4.08 which will get shadowed when the
      stdlib version is available. *)
 
-  (* Introduced in 4.08 *)
-  let rec filter_map l ~f =
-    match l with
-    | [] -> []
-    | x :: l ->
-      (match f x with
-       | None -> filter_map l ~f
-       | Some x -> x :: filter_map l ~f)
-  ;;
-
   (* Introduced in 4.10 *)
   let rec find_map l ~f =
     match l with

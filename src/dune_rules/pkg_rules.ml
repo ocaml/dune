@@ -1174,7 +1174,10 @@ end = struct
           Context_name.build_dir (Package_universe.context_name package_universe)
         in
         match files_dir with
-        | External _ -> Code_error.raise "TODO" []
+        | External e ->
+          Code_error.raise
+            "Package files directory is external source directory, this is unsupported"
+            [ "dir", Path.External.to_dyn e ]
         | In_source_tree s -> Path.Build.append_source build_path s
         | In_build_dir s -> Path.Build.append build_path s
       in

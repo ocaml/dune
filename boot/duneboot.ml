@@ -69,8 +69,6 @@ module String = struct
 end
 
 module List = struct
-  include List
-
   let partition_map_skip t ~f =
     let rec loop l m r = function
       | [] -> l, m, r
@@ -82,9 +80,15 @@ module List = struct
          | `Right x -> loop l m (x :: r) xs)
     in
     let l, m, r = loop [] [] [] t in
-    rev l, rev m, rev r
+    List.(rev l, rev m, rev r)
   ;;
 
+  (* Some list functions are introduced in later OCaml versions. There are also
+     improvements to performance in some of these. We introduce fallback
+     versions allowing compatability >= 4.08 which will get shadowed when the
+     stdlib version is available. *)
+
+  (* Introduced in 4.08 *)
   let rec filter_map l ~f =
     match l with
     | [] -> []
@@ -94,6 +98,7 @@ module List = struct
        | Some x -> x :: filter_map l ~f)
   ;;
 
+  (* Introduced in 4.10 *)
   let rec find_map l ~f =
     match l with
     | [] -> None
@@ -103,7 +108,10 @@ module List = struct
        | Some _ as x -> x)
   ;;
 
+  (* Introduced in 4.14 *)
   let concat_map l ~f = List.map l ~f |> List.concat
+
+  include List
 end
 
 let ( ^/ ) = Filename.concat

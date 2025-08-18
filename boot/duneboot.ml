@@ -83,6 +83,8 @@ module List = struct
     List.(rev l, rev m, rev r)
   ;;
 
+  [@@@ocaml.warning "-32"]
+
   (* Some list functions are introduced in later OCaml versions. There are also
      improvements to performance in some of these. We introduce fallback
      versions allowing compatability >= 4.08 which will get shadowed when the

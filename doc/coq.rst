@@ -687,7 +687,7 @@ the plugin to sit in, otherwise Coq will not be able to find it.
 
 .. code:: dune
 
-  (lang dune 3.21)
+  (lang dune {{latest}})
   (using coq 0.8)
 
   (package

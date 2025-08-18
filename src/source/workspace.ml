@@ -17,7 +17,7 @@ let default_repositories = [ Repository.overlay; Repository.upstream ]
 
 module Lock_dir = struct
   type t =
-    { path : Path.t
+    { path : Path.Source.t
     ; version_preference : Dune_pkg.Version_preference.t option
     ; solver_env : Solver_env.t option
     ; unset_solver_vars : Package_variable_name.Set.t option
@@ -41,7 +41,7 @@ module Lock_dir = struct
         }
     =
     Dyn.record
-      [ "path", Path.to_dyn path
+      [ "path", Path.Source.to_dyn path
       ; ( "version_preference"
         , Dyn.option Dune_pkg.Version_preference.to_dyn version_preference )
       ; "solver_env", Dyn.option Solver_env.to_dyn solver_env
@@ -94,7 +94,7 @@ module Lock_dir = struct
         }
         t
     =
-    Path.equal path t.path
+    Path.Source.equal path t.path
     && Option.equal
          Dune_pkg.Version_preference.equal
          version_preference
@@ -124,7 +124,7 @@ module Lock_dir = struct
     let decode =
       let+ path =
         let+ path = field ~default:"dune.lock" "path" string in
-        Path.Source.relative dir path |> Path.source
+        Path.Source.relative dir path
       and+ solver_env = field_o "solver_env" Solver_env.decode
       and+ unset_solver_vars =
         field_o "unset_solver_vars" (repeat (located Package_variable_name.decode))
@@ -727,7 +727,7 @@ let hash { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins } 
 ;;
 
 let find_lock_dir t path =
-  List.find t.lock_dirs ~f:(fun lock_dir -> Path.equal lock_dir.path path)
+  List.find t.lock_dirs ~f:(fun lock_dir -> Path.equal (Path.source lock_dir.path) path)
 ;;
 
 let add_repo t repo = { t with repos = repo :: t.repos }

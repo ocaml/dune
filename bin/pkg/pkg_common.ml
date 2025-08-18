@@ -167,7 +167,7 @@ let pp_packages packages = Pp.enumerate packages ~f:pp_package
 module Lock_dirs_arg = struct
   type t =
     | All
-    | Selected of Path.t Lazy.t list
+    | Selected of Path.Source.t list
 
   let all = All
 
@@ -183,7 +183,7 @@ module Lock_dirs_arg = struct
                ~doc:
                  "Lock directories to check for outdated packages. Defaults to dune.lock.")
        in
-       Selected (List.map arg ~f:(fun s -> lazy (Path.of_string s))))
+       Selected (List.map arg ~f:Path.Source.of_string))
       (let+ _all =
          Arg.(
            value
@@ -200,7 +200,7 @@ module Lock_dirs_arg = struct
     let workspace_lock_dirs =
       default_path
       :: List.map workspace.lock_dirs ~f:(fun (lock_dir : Workspace.Lock_dir.t) ->
-        lock_dir.path)
+        lock_dir.path |> Path.source)
       |> Path.Set.of_list
       |> Path.Set.to_list
     in
@@ -209,7 +209,7 @@ module Lock_dirs_arg = struct
     | Selected [] -> [ default_path ]
     | Selected chosen_lock_dirs ->
       let workspace_lock_dirs_set = Path.Set.of_list workspace_lock_dirs in
-      let chosen_lock_dirs = List.map ~f:Lazy.force chosen_lock_dirs in
+      let chosen_lock_dirs = List.map ~f:Path.source chosen_lock_dirs in
       let chosen_lock_dirs_set = Path.Set.of_list chosen_lock_dirs in
       if Path.Set.is_subset chosen_lock_dirs_set ~of_:workspace_lock_dirs_set
       then chosen_lock_dirs

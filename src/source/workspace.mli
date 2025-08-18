@@ -8,7 +8,7 @@ module Lib_name := Dune_lang.Lib_name
 
 module Lock_dir : sig
   type t =
-    { path : Path.t
+    { path : Path.Source.t
     ; version_preference : Dune_pkg.Version_preference.t option
     ; solver_env : Dune_pkg.Solver_env.t option
     ; unset_solver_vars : Dune_lang.Package_variable_name.Set.t option

@@ -217,10 +217,7 @@ let split_lines s =
 
 let do_then_copy ~f a b =
   if Sys.file_exists b then fatal "%s already exists" b;
-  let ic = open_in_bin a in
-  let len = in_channel_length ic in
-  let s = really_input_string ic len in
-  close_in ic;
+  let s = read_file a in
   with_file_out b ~f:(fun oc ->
     f oc;
     output_string oc s)

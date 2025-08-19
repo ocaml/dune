@@ -2,6 +2,12 @@ open Stdune
 
 type t
 
+(** TODO: improve comment: Get the revision store. *)
+val get : t Fiber.t
+
+(* TODO: remove *)
+val load_or_create : dir:Path.t -> t Fiber.t
+
 module Object : sig
   (** A git object that can exist in storage *)
   type t
@@ -23,31 +29,40 @@ module File : sig
   module Set : Set.S with type elt = t
 end
 
+val content_of_files : t -> File.t list -> string list Fiber.t
+
 module At_rev : sig
+  (** A git repository at a particular revision. *)
   type t
 
+  val equal : t -> t -> bool
+
+  (* TODO: what is this? *)
   module Config : sig
     val parse : string -> (string * string option * string * string) option
   end
 
   val rev : t -> Object.t
   val content : t -> Path.Local.t -> string option Fiber.t
+
+  (** Get the files of a git repository at a particular revision. *)
   val directory_entries : t -> recursive:bool -> Path.Local.t -> File.Set.t
-  val equal : t -> t -> bool
+
+  (** Get the contents of a git repository at a paricular revision and unpack
+      them in the [target] directory. *)
   val check_out : t -> target:Path.t -> unit Fiber.t
 end
 
 module Remote : sig
-  (** handle representing a particular git repository *)
+  (** A git repomote with no particular revision set. *)
   type t
 
   val default_branch : t -> Object.resolved option Fiber.t
 end
 
 val remote : t -> url:Loc.t * string -> Remote.t
-val resolve_revision : t -> Remote.t -> revision:string -> Object.resolved option Fiber.t
-val content_of_files : t -> File.t list -> string list Fiber.t
-val load_or_create : dir:Path.t -> t Fiber.t
-val get : t Fiber.t
+
+(* Fetch an object at a given revision. *)
 val fetch_object : t -> Remote.t -> Object.t -> At_rev.t option Fiber.t
+val resolve_revision : t -> Remote.t -> revision:string -> Object.resolved option Fiber.t
 val fetch_resolved : t -> Remote.t -> Object.resolved -> At_rev.t Fiber.t

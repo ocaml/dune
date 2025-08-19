@@ -12,18 +12,30 @@ module Alias_name = Alias_name
 module Gc = Gc
 open Stdune
 
+let manual_xdg = ref None
+
 let xdg =
   lazy
-    (let env_map =
-       Env.update Env.initial ~var:"HOME" ~f:(function
-         | Some _ as s -> s
-         | None ->
-           let uid = Unix.getuid () in
-           (match Unix.getpwuid uid with
-            | exception Not_found -> None
-            | s -> Some s.pw_dir))
-     in
-     Xdg.create ~env:(Env.get env_map) ())
+    (match !manual_xdg with
+     | Some xdg -> xdg
+     | None ->
+       let env_map =
+         Env.update Env.initial ~var:"HOME" ~f:(function
+           | Some _ as s -> s
+           | None ->
+             let uid = Unix.getuid () in
+             (match Unix.getpwuid uid with
+              | exception Not_found -> None
+              | s -> Some s.pw_dir))
+       in
+       Xdg.create ~env:(Env.get env_map) ())
+;;
+
+let override_xdg : Xdg.t -> unit =
+  fun new_xdg ->
+  if Lazy.is_val xdg
+  then Code_error.raise "xdg overridden after being set" []
+  else manual_xdg := Some new_xdg
 ;;
 
 let frames_per_second () =

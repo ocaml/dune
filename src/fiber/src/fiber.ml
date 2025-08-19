@@ -7,6 +7,7 @@ module Svar = Svar
 module Throttle = Throttle
 module Mutex = Mutex
 module Scheduler = Scheduler
+module Lazy = Lazy
 
 let run =
   let rec loop ~iter (s : _ Scheduler.step) =

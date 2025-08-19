@@ -847,7 +847,7 @@ let remote =
     let f url =
       let command = [ "ls-remote"; url ] in
       let refs =
-        Fiber_lazy.create (fun () ->
+        Fiber.Lazy.create (fun () ->
           let+ hits =
             run_capture_lines t ~display:!Dune_engine.Clflags.display command
             >>| function
@@ -884,8 +884,8 @@ let remote =
           default_branch, String.Map.of_list_exn refs)
       in
       { Remote.url
-      ; default_branch = Fiber_lazy.force refs >>| fst
-      ; refs = Fiber_lazy.force refs >>| snd
+      ; default_branch = Fiber.Lazy.force refs >>| fst
+      ; refs = Fiber.Lazy.force refs >>| snd
       }
     in
     Table.find_or_add t.remotes ~f url
@@ -968,12 +968,12 @@ let content_of_files t files =
 ;;
 
 let get =
-  Fiber_lazy.create (fun () ->
+  Fiber.Lazy.create (fun () ->
     let dir =
       Path.L.relative
         (Path.of_string (Xdg.cache_dir (Lazy.force Dune_util.xdg)))
         [ "dune"; "git-repo" ]
     in
     load_or_create ~dir)
-  |> Fiber_lazy.force
+  |> Fiber.Lazy.force
 ;;

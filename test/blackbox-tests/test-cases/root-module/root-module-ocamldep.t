@@ -26,8 +26,6 @@ compilation unit.
   _build/default/.foo.objs/byte/foo__Root.cmi
   _build/default/.foo.objs/byte/foo__Root.cmo
   _build/default/.foo.objs/byte/foo__Root.cmt
-  _build/default/.foo.objs/foo__Root.impl.all-deps
-  _build/default/.foo.objs/foo__Root.impl.d
 
 Not only is running ocamldep wasteful, but it can also lead to cycles:
 
@@ -36,10 +34,3 @@ Not only is running ocamldep wasteful, but it can also lead to cycles:
   > EOF
 
   $ dune build foo.cma
-  Error: Dependency cycle between:
-     _build/default/.foo.objs/foo__Bar.impl.all-deps
-  -> _build/default/.foo.objs/foo__Root.impl.all-deps
-  -> _build/default/.foo.objs/foo__Bar.impl.all-deps
-  -> required by _build/default/.foo.objs/byte/foo__Bar.cmo
-  -> required by _build/default/foo.cma
-  [1]

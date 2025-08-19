@@ -137,15 +137,15 @@ let rec deps_of
           ~ml_kind
           (m : Modules.Sourced_module.t)
   =
-  let is_alias =
+  let is_alias_or_root =
     match m with
     | Impl_of_virtual_module _ -> false
     | Imported_from_vlib m | Normal m ->
       (match Module.kind m with
-       | Alias _ -> true
+       | Root | Alias _ -> true
        | _ -> false)
   in
-  if is_alias
+  if is_alias_or_root
   then Memo.return (Action_builder.return [])
   else (
     let skip_if_source_absent f sourced_module =
@@ -176,7 +176,7 @@ let has_single_file modules = Option.is_some @@ Modules.With_vlib.as_singleton m
 
 let immediate_deps_of unit modules ~obj_dir ~ml_kind =
   match Module.kind unit with
-  | Alias _ -> Action_builder.return []
+  | Root | Alias _ -> Action_builder.return []
   | Wrapped_compat ->
     let interface_module =
       match Modules.With_vlib.lib_interface modules with

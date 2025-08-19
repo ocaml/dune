@@ -109,7 +109,7 @@ let parse_deps_exn =
 let transitive_deps =
   let transive_dep obj_dir m =
     (match Module.kind m with
-     | Alias _ -> None
+     | Root | Alias _ -> None
      | _ -> if Module.has m ~ml_kind:Intf then Some Ml_kind.Intf else Some Impl)
     |> Option.map ~f:(fun ml_kind ->
       Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind))

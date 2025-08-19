@@ -248,6 +248,34 @@ module Svar : sig
   val write : 'a t -> 'a -> unit fiber
 end
 
+(** {1 Lazy fibers} *)
+module Lazy : sig
+  (** An asynchronous computation which is executed once only when forced. *)
+  type 'a t
+
+  (** Create an already evaluated lazy computation. *)
+  val of_value : 'a -> 'a t
+
+  (** An already evaluated lazy computation of unit type (a more efficient shortcut for
+      [of_value ()]. *)
+  val unit : unit t
+
+  (** Create a lazy computation from a thunk which will only be executed when forced. *)
+  val create : (unit -> 'a fiber) -> 'a t
+
+  (** Check if a lazy computation has successfully finished. Note that this does not force
+      the computation and a [false] result does not guarantee that the computation hasn't
+      finished. *)
+  val is_value : 'a t -> bool
+
+  (** Force the lazy computation and return its result or reraise its exceptions. *)
+  val force : 'a t -> 'a fiber
+
+  (** Concurrently force multiple lazy computation and wait until they all finish,
+      reraising any exceptions. *)
+  val force_all_unit : unit t list -> unit fiber
+end
+
 module Mutex : sig
   type t
 

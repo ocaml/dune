@@ -7,7 +7,16 @@ module Rev_store = Dune_pkg.Rev_store
 module Opam_repo = Dune_pkg.Opam_repo
 module Vcs = Dune_vcs.Vcs
 
-let () = Dune_tests_common.init ()
+let () =
+  Dune_util.override_xdg
+    (let env =
+       Env.update Env.initial ~var:"XDG_CACHE_HOME" ~f:(fun _ ->
+         Some (Path.of_filename_relative_to_initial_cwd ".cache" |> Path.to_string))
+       |> Env.get
+     in
+     Xdg.create ~env ());
+  Dune_tests_common.init ()
+;;
 
 let run thunk =
   let on_event _config _event = () in

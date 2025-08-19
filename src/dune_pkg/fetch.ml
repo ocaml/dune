@@ -34,7 +34,7 @@ module Curl = struct
   let compressed_supported =
     (* We check if curl supports --compressed by running curl -V and checking if
        the output contains the features we need. *)
-    Fiber_lazy.create (fun () ->
+    Fiber.Lazy.create (fun () ->
       let+ lines, _ =
         let stderr_to =
           Process.Io.make_stderr
@@ -54,7 +54,7 @@ module Curl = struct
   ;;
 
   let run ~url ~temp_dir ~output =
-    let* compressed_supported = Fiber_lazy.force compressed_supported in
+    let* compressed_supported = Fiber.Lazy.force compressed_supported in
     let args =
       List.flatten
         [ [ "-L"

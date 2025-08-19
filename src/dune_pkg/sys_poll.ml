@@ -223,7 +223,7 @@ let sys_ocaml_version ~path =
   | None -> run_capture_line ~path ~prog:"ocamlc" ~args:[ "-vnum" ]
 ;;
 
-let make_lazy f = Fiber_lazy.create f |> Fiber_lazy.force
+let make_lazy f = Fiber.Lazy.create f |> Fiber.Lazy.force
 
 let make ~path =
   let arch = make_lazy (fun () -> arch ~path) in

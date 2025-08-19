@@ -1,6 +1,7 @@
 open Import
-open Action_plugin
 open Action_intf.Exec
+open Done_or_more_deps
+module Dependency = Dune_action_plugin.Private.Protocol.Dependency
 
 let maybe_async =
   let maybe_async =
@@ -178,7 +179,7 @@ let bash_exn =
 let zero = Predicate_lang.element 0
 let maybe_async f = Produce.of_fiber (maybe_async f)
 
-let rec exec t ~ectx ~eenv : done_or_more_deps Produce.t =
+let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
   match (t : Action.t) with
   | Run (Error e, _) -> Action.Prog.Not_found.raise e
   | Run (Ok prog, args) ->
@@ -213,7 +214,7 @@ let rec exec t ~ectx ~eenv : done_or_more_deps Produce.t =
   | Progn ts -> exec_list ts ~ectx ~eenv
   | Concurrent ts ->
     Produce.parallel_map ts ~f:(exec ~ectx ~eenv)
-    >>| List.fold_left ~f:done_or_more_deps_union ~init:Done
+    >>| List.fold_left ~f:Done_or_more_deps.union ~init:Done
   | Echo strs ->
     let+ () = exec_echo eenv.stdout_to (String.concat strs ~sep:" ") in
     Done
@@ -260,9 +261,7 @@ let rec exec t ~ectx ~eenv : done_or_more_deps Produce.t =
     let+ () = maybe_async (fun () -> Path.mkdir_p (Path.build path)) in
     Done
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
-  | Extension (module A) ->
-    let+ () = Produce.of_fiber @@ A.Spec.action A.v ~ectx ~eenv in
-    Done
+  | Extension (module A) -> Produce.of_fiber @@ A.Spec.action A.v ~ectx ~eenv
 
 and redirect_out t ~ectx ~eenv ~perm outputs fn =
   redirect t ~ectx ~eenv ~out:(outputs, fn, perm) ()
@@ -297,7 +296,7 @@ and redirect t ~ectx ~eenv ?in_ ?out () =
   release_out ();
   result
 
-and exec_list ts ~ectx ~eenv : done_or_more_deps Produce.t =
+and exec_list ts ~ectx ~eenv : Done_or_more_deps.t Produce.t =
   match ts with
   | [] -> Produce.return Done
   | [ t ] -> exec t ~ectx ~eenv
@@ -312,7 +311,7 @@ and exec_list ts ~ectx ~eenv : done_or_more_deps Produce.t =
      | Need_more_deps _ as need -> Produce.return need
      | Done -> exec_list rest ~ectx ~eenv)
 
-and exec_pipe outputs ts ~ectx ~eenv : done_or_more_deps Produce.t =
+and exec_pipe outputs ts ~ectx ~eenv : Done_or_more_deps.t Produce.t =
   let tmp_file () =
     Dtemp.file ~prefix:"dune-pipe-action-" ~suffix:("." ^ Action.Outputs.to_string outputs)
   in
@@ -366,7 +365,7 @@ let exec_until_all_deps_ready ~ectx ~eenv t =
       let eenv =
         { eenv with
           prepared_dependencies =
-            Action_plugin.Dependency.Set.union eenv.prepared_dependencies relative_deps
+            Dependency.Set.union eenv.prepared_dependencies relative_deps
         }
       in
       loop ~eenv stages
@@ -419,7 +418,7 @@ let exec
             (Execution_parameters.action_stderr_on_success execution_parameters)
           ~output_limit:(Execution_parameters.action_stderr_limit execution_parameters)
     ; stdin_from = Process.Io.null In
-    ; prepared_dependencies = Action_plugin.Dependency.Set.empty
+    ; prepared_dependencies = Dependency.Set.empty
     ; exit_codes = Predicate.create (Int.equal 0)
     }
   in

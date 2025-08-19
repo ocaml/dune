@@ -238,8 +238,8 @@ let rec is_dynamic = function
   | Write_file _
   | Rename _
   | Remove_tree _
-  | Mkdir _
-  | Extension _ -> false
+  | Mkdir _ -> false
+  | Extension (module A) -> A.Spec.is_dynamic
 ;;
 
 let maybe_sandbox_path sandbox p =

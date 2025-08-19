@@ -161,44 +161,48 @@ include Stanza.Make (struct
 let decode =
   let open Dune_lang.Decoder in
   fields
-    (let+ external_library_name = field "external_library_name" string
-     and+ build_flags_resolver =
-       field_o "build_flags_resolver" Build_flags_resolver.decode
-     and+ type_description = field "type_description" Type_description.decode
-     and+ loc_fd, function_description =
-       located (multi_field "function_description" Function_description.decode)
-     and+ headers = field_o "headers" Headers.decode
-     and+ generated_types = field_o "generated_types" Module_name.decode
-     and+ generated_entry_point = field "generated_entry_point" Module_name.decode
-     and+ deps = field_o "deps" (repeat Dep_conf.decode)
-     and+ version = Syntax.get_exn syntax in
-     let external_library_name = External_lib_name.of_string external_library_name in
-     (match
-        String.Map.of_list_map function_description ~f:(fun fd ->
-          let key = c_generated_functions_cout_c_of_lib ~external_library_name fd in
-          key, ())
-      with
-      | Ok _ -> ()
-      | Error (_, a, _) ->
-        User_error.raise
-          ~loc:loc_fd
-          [ Pp.textf
-              "Only a single (function_description) can instantiate %s as %s."
-              (Module_name.to_string a.functor_)
-              (Module_name.to_string a.instance)
-          ]);
-     { external_library_name
-     ; build_flags_resolver =
-         Option.value build_flags_resolver ~default:Build_flags_resolver.default
-     ; headers = Option.value headers ~default:Headers.default
-     ; type_description
-     ; function_description
-     ; generated_types =
-         Option.value generated_types ~default:(Module_name.of_string "Types_generated")
-     ; generated_entry_point
-     ; deps = Option.value ~default:[] deps
-     ; version
-     })
+    (let* deps = field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty in
+     String_with_vars.add_user_vars_to_decoding_env
+       (Bindings.var_names deps)
+       (let+ external_library_name = field "external_library_name" string
+        and+ build_flags_resolver =
+          field_o "build_flags_resolver" Build_flags_resolver.decode
+        and+ type_description = field "type_description" Type_description.decode
+        and+ loc_fd, function_description =
+          located (multi_field "function_description" Function_description.decode)
+        and+ headers = field_o "headers" Headers.decode
+        and+ generated_types = field_o "generated_types" Module_name.decode
+        and+ generated_entry_point = field "generated_entry_point" Module_name.decode
+        and+ version = Syntax.get_exn syntax in
+        let external_library_name = External_lib_name.of_string external_library_name in
+        (match
+           String.Map.of_list_map function_description ~f:(fun fd ->
+             let key = c_generated_functions_cout_c_of_lib ~external_library_name fd in
+             key, ())
+         with
+         | Ok _ -> ()
+         | Error (_, a, _) ->
+           User_error.raise
+             ~loc:loc_fd
+             [ Pp.textf
+                 "Only a single (function_description) can instantiate %s as %s."
+                 (Module_name.to_string a.functor_)
+                 (Module_name.to_string a.instance)
+             ]);
+        { external_library_name
+        ; build_flags_resolver =
+            Option.value build_flags_resolver ~default:Build_flags_resolver.default
+        ; headers = Option.value headers ~default:Headers.default
+        ; type_description
+        ; function_description
+        ; generated_types =
+            Option.value
+              generated_types
+              ~default:(Module_name.of_string "Types_generated")
+        ; generated_entry_point
+        ; deps = Bindings.to_list deps
+        ; version
+        }))
 ;;
 
 let () =

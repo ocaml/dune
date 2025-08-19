@@ -992,6 +992,40 @@ module Library = struct
     | Some `X86 -> architecture = "amd64" || architecture = "x86_64"
   ;;
 
+  let gen_build_info_module wrapper m =
+    let src =
+      let fn = String.uncapitalize_ascii m ^ ".ml" in
+      { file = fn; kind = Ml }
+    in
+    let mangled = Wrapper.mangle_filename wrapper src in
+    let oc = open_out (build_dir ^/ mangled) in
+    let+ () = Build_info.gen_data_module oc in
+    close_out oc;
+    src, mangled
+  ;;
+
+  let process_source_file wrapper ~header ({ file = fn; kind } as source) =
+    let mangled = Wrapper.mangle_filename wrapper source in
+    let dst = build_dir ^/ mangled in
+    let+ mangled =
+      match kind with
+      | Asm _ ->
+        copy fn dst;
+        Fiber.return [ mangled ]
+      | Header | C _ ->
+        copy_with_directive ~directive:"line" fn dst;
+        Fiber.return [ mangled ]
+      | Ml | Mli ->
+        copy_with_header ~header fn dst;
+        Fiber.return [ mangled ]
+      | Mll -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
+      | Mly ->
+        (* CR rgrinberg: what if the parser already has an mli? *)
+        copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]
+    in
+    List.map mangled ~f:(fun m -> source, m)
+  ;;
+
   let process
         { Libs.path = dir
         ; main_module_name = namespace
@@ -1021,39 +1055,12 @@ module Library = struct
     let header = Wrapper.header wrapper in
     let+ files, build_info_file =
       Fiber.fork_and_join
-        (fun () ->
-           Fiber.parallel_map files ~f:(fun ({ file = fn; kind } as source) ->
-             let mangled = Wrapper.mangle_filename wrapper source in
-             let dst = build_dir ^/ mangled in
-             let+ mangled =
-               match kind with
-               | Asm _ ->
-                 copy fn dst;
-                 Fiber.return [ mangled ]
-               | Header | C _ ->
-                 copy_with_directive ~directive:"line" fn dst;
-                 Fiber.return [ mangled ]
-               | Ml | Mli ->
-                 copy_with_header ~header fn dst;
-                 Fiber.return [ mangled ]
-               | Mll -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
-               | Mly ->
-                 (* CR rgrinberg: what if the parser already has an mli? *)
-                 copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]
-             in
-             List.map mangled ~f:(fun m -> source, m)))
+        (fun () -> Fiber.parallel_map files ~f:(process_source_file wrapper ~header))
         (fun () ->
            match build_info_module with
            | None -> Fiber.return None
            | Some m ->
-             let src =
-               let fn = String.uncapitalize_ascii m ^ ".ml" in
-               { file = fn; kind = Ml }
-             in
-             let mangled = Wrapper.mangle_filename wrapper src in
-             let oc = open_out (build_dir ^/ mangled) in
-             let+ () = Build_info.gen_data_module oc in
-             close_out oc;
+             let+ src, mangled = gen_build_info_module wrapper m in
              Some (src, mangled))
     in
     let alias_file = Wrapper.generate_wrapper wrapper modules in

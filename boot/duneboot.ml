@@ -179,6 +179,18 @@ let read_file fn =
   s
 ;;
 
+let with_file_out file ~f =
+  let oc = open_out_bin file in
+  let res =
+    try Ok (f oc) with
+    | exn -> Error exn
+  in
+  close_out oc;
+  match res with
+  | Error e -> raise e
+  | Ok s -> s
+;;
+
 let split_lines s =
   let rec loop ~last_is_cr ~acc i j =
     if j = String.length s
@@ -209,10 +221,9 @@ let do_then_copy ~f a b =
   let len = in_channel_length ic in
   let s = really_input_string ic len in
   close_in ic;
-  let oc = open_out_bin b in
-  f oc;
-  output_string oc s;
-  close_out oc
+  with_file_out b ~f:(fun oc ->
+    f oc;
+    output_string oc s)
 ;;
 
 (* copy a file - fails if the file exists *)
@@ -703,10 +714,9 @@ let insert_header fn ~header =
   | "" -> ()
   | h ->
     let s = read_file fn in
-    let oc = open_out_bin fn in
-    output_string oc h;
-    output_string oc s;
-    close_out oc
+    with_file_out fn ~f:(fun oc ->
+      output_string oc h;
+      output_string oc s)
 ;;
 
 let copy_lexer ~header src dst =
@@ -925,13 +935,12 @@ module Library = struct
       | None -> None
       | Some t ->
         let fn = String.uncapitalize_ascii t.alias_module ^ ".ml" in
-        let oc = open_out (build_dir ^/ fn) in
-        String.Set.iter
-          (fun m ->
-             if m <> t.toplevel_module
-             then fprintf oc "module %s = %s__%s\n" m t.toplevel_module m)
-          modules;
-        close_out oc;
+        with_file_out (build_dir ^/ fn) ~f:(fun oc ->
+          String.Set.iter
+            (fun m ->
+               if m <> t.toplevel_module
+               then fprintf oc "module %s = %s__%s\n" m t.toplevel_module m)
+            modules);
         Some fn
     ;;
   end
@@ -1167,9 +1176,8 @@ let convert_dependencies ~all_source_files { Dep.file; deps = dependencies } =
 ;;
 
 let write_args file args =
-  let ch = open_out (build_dir ^/ file) in
-  output_string ch (String.concat ~sep:"\n" args);
-  close_out ch
+  with_file_out (build_dir ^/ file) ~f:(fun ch ->
+    output_string ch (String.concat ~sep:"\n" args))
 ;;
 
 let get_dependencies libraries =

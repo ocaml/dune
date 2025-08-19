@@ -63,7 +63,11 @@ end
 let link_even_if_there_are_too_many_links_already ~src ~dst =
   try Path.link src dst with
   | Unix.Unix_error (Unix.EMLINK, _, _) ->
-    Temp.with_temp_file ~dir:temp_dir ~prefix:"dune" ~suffix:"copy" ~f:(function
+    Temp.with_temp_file
+      ~dir:(Lazy.force temp_dir)
+      ~prefix:"dune"
+      ~suffix:"copy"
+      ~f:(function
       | Error e -> raise e
       | Ok temp_file ->
         Io.copy_file ~src ~dst:temp_file ();
@@ -144,7 +148,7 @@ module Artifacts = struct
           results
         | Some file_digest ->
           let path_in_temp_dir = Path.append_local temp_dir target in
-          let path_in_cache = file_path ~file_digest in
+          let path_in_cache = Lazy.force (file_path ~file_digest) in
           let store_using_hardlinks () =
             match
               Dune_cache_storage.Util.Optimistically.link
@@ -285,7 +289,7 @@ module Artifacts = struct
       let mk_file file file_digest =
         let target = Path.Build.append_local artifacts.root file in
         let dst = Path.build target in
-        let src = file_path ~file_digest in
+        let src = Lazy.force (file_path ~file_digest) in
         (match mode with
          | Hardlink -> hardlink ~src ~dst
          | Copy -> copy ~src ~dst);

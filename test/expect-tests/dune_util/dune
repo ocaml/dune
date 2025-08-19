@@ -28,13 +28,12 @@
   ;; Please add any dependenies that you wish to check are forcing XDG
   stdune
   dune_console
-  ;; These dependencies are currently forcing XDG
   dune_lang
   dune_vcs
+  dune_engine
   dune_config_file
   dune_cache
   dune_rules
-  dune_engine
   dune_pkg
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project

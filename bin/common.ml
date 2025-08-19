@@ -1352,7 +1352,7 @@ let init (builder : Builder.t) =
   Log.info
     [ Pp.textf
         "Shared cache location: %s"
-        (Path.to_string Dune_cache_storage.Layout.root_dir)
+        (Path.to_string (Lazy.force Dune_cache_storage.Layout.root_dir))
     ];
   Dune_rules.Main.init
     ~stats:c.stats

@@ -6,5 +6,5 @@
 
 let%expect_test "check xdg has been forced" =
   Dune_util.xdg |> Lazy.is_val |> Printf.printf "forced: %b";
-  [%expect {| forced: true |}]
+  [%expect {| forced: false |}]
 ;;

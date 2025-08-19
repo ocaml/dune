@@ -5,9 +5,6 @@ type t
 (** TODO: improve comment: Get the revision store. *)
 val get : t Fiber.t
 
-(* TODO: remove *)
-val load_or_create : dir:Path.t -> t Fiber.t
-
 module Object : sig
   (** A git object that can exist in storage *)
   type t

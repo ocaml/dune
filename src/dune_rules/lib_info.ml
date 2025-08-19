@@ -337,6 +337,7 @@ type 'path t =
   ; instrumentation_backend : (Loc.t * Lib_name.t) option
   ; path_kind : 'path path
   ; melange_runtime_deps : 'path File_deps.t
+  ; root_module : Module_name.t option
   }
 
 let name t = t.name
@@ -359,6 +360,7 @@ let public_headers t = t.public_headers
 let exit_module t = t.exit_module
 let instrumentation_backend t = t.instrumentation_backend
 let melange_runtime_deps t = t.melange_runtime_deps
+let root_module t = t.root_module
 let plugins t = t.plugins
 let src_dir t = t.src_dir
 let enabled t = t.enabled
@@ -429,6 +431,7 @@ let create
       ~exit_module
       ~instrumentation_backend
       ~melange_runtime_deps
+      ~root_module
   =
   { loc
   ; name
@@ -469,6 +472,7 @@ let create
   ; instrumentation_backend
   ; path_kind
   ; melange_runtime_deps
+  ; root_module
   }
 ;;
 
@@ -564,6 +568,7 @@ let to_dyn
       ; instrumentation_backend
       ; melange_runtime_deps
       ; entry_modules
+      ; root_module
       }
   =
   let open Dyn in
@@ -609,6 +614,7 @@ let to_dyn
     ; "exit_module", option Module_name.to_dyn exit_module
     ; "instrumentation_backend", option (snd Lib_name.to_dyn) instrumentation_backend
     ; "melange_runtime_deps", File_deps.to_dyn path melange_runtime_deps
+    ; "root_module", option Module_name.to_dyn root_module
     ]
 ;;
 

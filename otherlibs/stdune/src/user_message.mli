@@ -1,4 +1,4 @@
-open Import
+open! Import
 
 (** A message for the user *)
 

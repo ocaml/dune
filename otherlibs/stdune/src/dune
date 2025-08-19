@@ -11,6 +11,7 @@
   (re_export dyn)
   (re_export pp)
   fs-io)
+ (root_module root)
  (library_flags
   (:include flags/sexp))
  (foreign_stubs

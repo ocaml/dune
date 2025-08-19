@@ -314,6 +314,14 @@ type remote =
   ; refs : Object.resolved String.Map.t Fiber.t
   }
 
+let dyn_of_remote { url; default_branch; refs } =
+  Dyn.record
+    [ "url", Dyn.string url
+    ; "default_branch", Dyn.opaque default_branch
+    ; "refs", Dyn.opaque refs
+    ]
+;;
+
 type t =
   { dir : Path.t
   ; remotes : (string, remote) Table.t
@@ -321,6 +329,18 @@ type t =
     object_mutexes : (Object.t, Fiber.Mutex.t) Table.t
   ; present_objects : (Object.t, unit) Table.t
   }
+
+let to_dyn { dir; remotes; object_mutexes; present_objects } =
+  Dyn.record
+    [ (* This is an external path, so we relativize to sanitize. We don't use
+         [Path.to_dyn] since it wouldn't be correct and therefore confusing. *)
+      "dir", Path.Expert.try_localize_external dir |> Path.to_string |> Dyn.string
+    ; "remotes", Table.to_list remotes |> Dyn.list (Dyn.pair Dyn.string dyn_of_remote)
+    ; "object_mutexes", Dyn.opaque object_mutexes
+    ; ( "present_objects"
+      , Table.to_list present_objects |> Dyn.list (Dyn.pair Object.to_dyn Dyn.unit) )
+    ]
+;;
 
 let with_mutex t obj ~f =
   let* () = Fiber.return () in

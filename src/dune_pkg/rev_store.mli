@@ -5,6 +5,8 @@ type t
 (** Get the revision store and initialise if it hasn't been already. *)
 val get : t Fiber.t
 
+val to_dyn : t -> Dyn.t
+
 module Object : sig
   (** A git object that can exist in storage *)
   type t

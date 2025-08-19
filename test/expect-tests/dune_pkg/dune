@@ -15,6 +15,7 @@
   opam_core
   threads.posix
   unix
+  xdg
   base
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project

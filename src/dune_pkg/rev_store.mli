@@ -21,10 +21,6 @@ val to_dyn : t -> Dyn.t
 (** Get the revision store and initialise if it hasn't been already. *)
 val get : t Fiber.t
 
-(* CR-soon Alizter: Remove this when we are able to set the XDG_HOME
-   directories in the tests. *)
-val load_or_create : dir:Path.t -> t Fiber.t
-
 module Object : sig
   (** A git object that can exist in storage. *)
   type t

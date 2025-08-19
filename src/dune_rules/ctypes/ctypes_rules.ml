@@ -201,7 +201,6 @@ let build_c_program
     let* expander = Action_builder.of_memo (Super_context.expander sctx ~dir) in
     let+ foreign_flags =
       Foreign_rules.foreign_flags
-        sctx
         ~dir
         ~expander
         ~flags:Ordered_set_lang.Unexpanded.standard
@@ -310,8 +309,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
   let* cflags =
     match ctypes.build_flags_resolver with
     | Vendored { c_flags; c_library_flags = _ } ->
-      Foreign_rules.foreign_flags sctx ~dir ~expander ~flags:c_flags ~language:C
-      |> Memo.return
+      Foreign_rules.foreign_flags ~dir ~expander ~flags:c_flags ~language:C |> Memo.return
     | Pkg_config ->
       let+ () =
         let setup query =

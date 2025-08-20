@@ -493,8 +493,6 @@ module Computation0 = struct
   let create () = { ivar = Fiber.Ivar.create (); dag_node = Lazy_dag_node.create () }
 end
 
-module Changed_or_not = Deps.Changed_or_not
-
 (* For debugging *)
 let _print_dep_node ?prefix (dep_node : _ Dep_node.t) =
   let prefix =

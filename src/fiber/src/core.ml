@@ -7,9 +7,9 @@ and eff =
   | Fill_ivar : 'a ivar * 'a * (unit -> eff) -> eff
   | Suspend : ('a k -> unit) * ('a -> eff) -> eff
   | Resume : 'a k * 'a * (unit -> eff) -> eff
-  | Get_var : 'a Univ_map.Key.t * ('a option -> eff) -> eff
-  | Set_var : 'a Univ_map.Key.t * 'a * (unit -> eff) -> eff
-  | Unset_var : 'a Univ_map.Key.t * (unit -> eff) -> eff
+  | Get_var : 'a Var_map.Key.t * ('a -> eff) -> eff
+  | Set_var : 'a Var_map.Key.t * 'a * (unit -> eff) -> eff
+  | Update_var : 'a Var_map.Key.t * ('a -> 'a) * (unit -> eff) -> eff
   | With_error_handler : (Exn_with_backtrace.t -> Nothing.t t) * (unit -> eff) -> eff
   | Unwind : ('a -> eff) * 'a -> eff
   | Map_reduce_errors :
@@ -44,7 +44,7 @@ and value = ..
 and context =
   { parent : context
   ; on_error : Exn_with_backtrace.t k
-  ; vars : Univ_map.t
+  ; vars : Var_map.t
   ; map_reduce_context : map_reduce_context
   }
 
@@ -229,19 +229,23 @@ module Ivar = struct
 end
 
 module Var = struct
-  include Univ_map.Key
+  let get (key : 'a Var_map.Key.t) : 'a t = fun k -> Get_var (key, k)
 
-  let get var k = Get_var (var, k)
+  let set (key : 'a Var_map.Key.t) (value : 'a) (fiber : unit -> 'b t) : 'b t =
+    fun k -> Set_var (key, value, fun () -> fiber () (fun x -> Unwind (k, x)))
+  ;;
 
-  let get_exn var =
-    map (get var) ~f:(function
+  let get_exn (key : 'a option Var_map.Key.t) : 'a t =
+    map (get key) ~f:(function
       | None -> failwith "Fiber.Var.get_exn"
       | Some value -> value)
   ;;
 
-  let set var x f k = Set_var (var, x, fun () -> f () (fun x -> Unwind (k, x)))
-  let unset var f k = Unset_var (var, fun () -> f () (fun x -> Unwind (k, x)))
-  let create () = create ~name:"var" (fun _ -> Dyn.string "var")
+  let update (key : 'a Var_map.Key.t) ~(f : 'a -> 'a) (fiber : unit -> 'b t) : 'b t =
+    fun k -> Update_var (key, f, fun () -> fiber () (fun x -> Unwind (k, x)))
+  ;;
+
+  include Var_map.Key
 end
 
 let of_thunk f k = f () k

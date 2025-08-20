@@ -13,7 +13,7 @@ type t =
   ; mutable state : [ `Awaiting_start | `Running | `Stopped ]
   }
 
-let t = Fiber.Var.create ()
+let t = Fiber.Var.create None
 
 let stop ({ state; server; pool } as t) =
   let* () = Fiber.return () in
@@ -28,7 +28,7 @@ let stop ({ state; server; pool } as t) =
 let with_background_rpc server f =
   let pool = Fiber.Pool.create () in
   let v = { state = `Awaiting_start; server; pool } in
-  Fiber.Var.set t v (fun () ->
+  Fiber.Var.set t (Some v) (fun () ->
     Fiber.fork_and_join_unit
       (fun () -> Fiber.Pool.run pool)
       (fun () -> Fiber.finalize f ~finally:(fun () -> stop v)))

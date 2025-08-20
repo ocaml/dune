@@ -111,8 +111,8 @@ let%expect_test "execution context of ivars" =
   let open Fiber.O in
   let ivar = Fiber.Ivar.create () in
   let run_when_filled () =
-    let var = Fiber.Var.create () in
-    Fiber.Var.set var 42 (fun () ->
+    let var = Fiber.Var.create None in
+    Fiber.Var.set var (Some 42) (fun () ->
       let* peek = Fiber.Ivar.peek ivar in
       assert (peek = None);
       let* () = Fiber.Ivar.read ivar in
@@ -128,11 +128,11 @@ let%expect_test "execution context of ivars" =
 ;;
 
 let%expect_test "fiber vars are preserved across yields" =
-  let var = Fiber.Var.create () in
+  let var = Fiber.Var.create None in
   let fiber th () =
     let* v = Fiber.Var.get var in
     assert (v = None);
-    Fiber.Var.set var th (fun () ->
+    Fiber.Var.set var (Some th) (fun () ->
       let* v = Fiber.Var.get var in
       assert (v = Some th);
       let* () = Scheduler.yield () in
@@ -248,13 +248,14 @@ let%expect_test "collect errors inside with_error_handler" =
 ;;
 
 let%expect_test "collect_errors restores the execution context properly" =
-  let var = Fiber.Var.create () in
+  let var = Fiber.Var.create None in
   test
     unit
-    (Fiber.Var.set var "a" (fun () ->
+    (Fiber.Var.set var (Some "a") (fun () ->
        let* _res =
-         Fiber.Var.set var "b" (fun () ->
-           Fiber.collect_errors (fun () -> Fiber.Var.set var "c" (fun () -> raise Exit)))
+         Fiber.Var.set var (Some "b") (fun () ->
+           Fiber.collect_errors (fun () ->
+             Fiber.Var.set var (Some "c") (fun () -> raise Exit)))
        in
        let* v = Fiber.Var.get_exn var in
        print_endline v;

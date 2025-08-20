@@ -95,12 +95,18 @@ and exec : 'a. context -> ('a -> eff) -> 'a -> Jobs.t -> step' =
     loop jobs
   | Resume (suspended, x, k) ->
     exec ctx k () (Jobs.concat jobs (Job (suspended.ctx, suspended.run, x, Empty)))
-  | Get_var (key, k) -> exec ctx k (Univ_map.find ctx.vars key) jobs
+  | Get_var (key, k) -> exec ctx k (Var_map.get ctx.vars key) jobs
   | Set_var (key, x, k) ->
-    let ctx = { ctx with parent = ctx; vars = Univ_map.set ctx.vars key x } in
+    let ctx = { ctx with parent = ctx; vars = Var_map.set ctx.vars key x } in
     exec ctx k () jobs
-  | Unset_var (key, k) ->
-    let ctx = { ctx with parent = ctx; vars = Univ_map.remove ctx.vars key } in
+  | Update_var (key, f, k) ->
+    let ctx =
+      (* CR-someday rgrinberg: If [vars = ctx.vars], we could elide the re-allocation of
+         [ctx] here. This doesn't seem important for us at the moment though because all
+         existing call sites do change the value of the variable. *)
+      let vars = Var_map.update ctx.vars ~f key in
+      { ctx with parent = ctx; vars }
+    in
     exec ctx k () jobs
   | With_error_handler (on_error, k) ->
     let on_error = { ctx; run = (fun exn -> on_error exn Nothing.unreachable_code) } in
@@ -203,7 +209,7 @@ let start (type a) (t : a t) =
   let rec ctx =
     { parent = ctx
     ; on_error = { ctx; run = (fun exn -> Toplevel_exception exn) }
-    ; vars = Univ_map.empty
+    ; vars = Var_map.empty
     ; map_reduce_context =
         Map_reduce_context
           { k = { ctx; run = (fun _ -> assert false) }; ref_count = 1; errors = () }

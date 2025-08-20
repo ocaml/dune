@@ -602,7 +602,7 @@ module Call_stack = struct
   type t = Stack_frame_with_state.t list
 
   (* The variable holding the call stack for the current context. *)
-  let call_stack_var : t Fiber.Var.t = Fiber.Var.create ()
+  let call_stack_var : t option Fiber.Var.t = Fiber.Var.create None
   let get_call_stack () = Fiber.Var.get call_stack_var >>| Option.value ~default:[]
 
   let get_call_stack_without_state () =
@@ -612,7 +612,7 @@ module Call_stack = struct
   let push_frame (frame : Stack_frame_with_state.t) f =
     let* stack = get_call_stack () in
     let stack = frame :: stack in
-    Fiber.Var.set call_stack_var stack (fun () -> Implicit_output.forbid f)
+    Fiber.Var.set call_stack_var (Some stack) (fun () -> Implicit_output.forbid f)
   ;;
 
   (* Add all edges leading from the root of the call stack to [dag_node] to the cycle
@@ -772,7 +772,7 @@ module Error_handler : sig
 end = struct
   type t = Exn_with_backtrace.t -> unit Fiber.t
 
-  let var : t Fiber.Var.t = Fiber.Var.create ()
+  let var : t option Fiber.Var.t = Fiber.Var.create None
   let is_set = Fiber.map (Fiber.Var.get var) ~f:Option.is_some
   let get_exn = Fiber.Var.get_exn var
 
@@ -815,7 +815,7 @@ end = struct
          errors*)
       let t = deduplicate_errors t in
       Fiber.bind (Fiber.Var.get var) ~f:(function
-        | None -> Fiber.Var.set var t f
+        | None -> Fiber.Var.set var (Some t) f
         | Some _handler ->
           Code_error.raise
             "Memo.run_with_error_handler: an error handler is already installed"

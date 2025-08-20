@@ -829,8 +829,8 @@ type t =
   ; thread_pool : Thread_pool.t
   }
 
-let t : t Fiber.Var.t = Fiber.Var.create ()
-let set x f = Fiber.Var.set t x f
+let t : t option Fiber.Var.t = Fiber.Var.create None
+let set x f = Fiber.Var.set t (Some x) f
 let t_opt () = Fiber.Var.get t
 let t () = Fiber.Var.get_exn t
 

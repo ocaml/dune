@@ -248,7 +248,7 @@ module T_var : sig
   val get_exn : unit -> t Fiber.t
   val setup : t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
 end = struct
-  let t_var = Fiber.Var.create ()
+  let t_var = Fiber.Var.create None
 
   let get_exn () =
     let+ t = Fiber.Var.get_exn t_var in
@@ -260,7 +260,7 @@ end = struct
   ;;
 
   let setup t f =
-    Fiber.Var.set t_var t (fun () ->
+    Fiber.Var.set t_var (Some t) (fun () ->
       Fiber.finalize f ~finally:(fun () ->
         if t.started
         then (

@@ -123,13 +123,13 @@ module Var : sig
   type 'a t
 
   (** Create a new variable *)
-  val create : unit -> 'a t
+  val create : 'a -> 'a t
 
   (** [get var] reads the value of [var]. *)
-  val get : 'a t -> 'a option fiber
+  val get : 'a t -> 'a fiber
 
   (** Same as [get] but raises if [var] is unset. *)
-  val get_exn : 'a t -> 'a fiber
+  val get_exn : 'a option t -> 'a fiber
 
   (** [set var value fiber] sets [var] to [value] during the execution of
       [fiber].
@@ -141,7 +141,9 @@ module Var : sig
       ]} *)
   val set : 'a t -> 'a -> (unit -> 'b fiber) -> 'b fiber
 
-  val unset : 'a t -> (unit -> 'b fiber) -> 'b fiber
+  (** [update var ~f fiber] runs [fiber] with [var] updated by applying [f] to its current
+      value. Warning: do not use a lot of stack space in [f]. *)
+  val update : 'a t -> f:('a -> 'a) -> (unit -> 'b fiber) -> 'b fiber
 end
 
 (** {1 Error handling} *)

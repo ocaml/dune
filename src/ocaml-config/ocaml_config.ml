@@ -647,13 +647,13 @@ let make vars =
       Path.relative stdlib "Makefile.config"
     in
     let ox = get_bool vars "ox" in
-    let vars = Vars.load_makefile_config file in
+    let makefile_vars = Vars.load_makefile_config file in
     let module Getters =
       Vars.Getters (struct
         let origin = Origin.Makefile_config file
       end)
     in
-    let supports_shared_libraries = get_bool vars "SUPPORTS_SHARED_LIBRARIES" in
+    let supports_shared_libraries = get_bool makefile_vars "SUPPORTS_SHARED_LIBRARIES" in
     { version
     ; version_string
     ; standard_library_default

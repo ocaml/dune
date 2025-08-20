@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # for git describe
-      - uses: cachix/install-nix-action@v22
+      - uses: cachix/install-nix-action@v31
       - run: echo "(version $(git describe --always --dirty --abbrev=7))" >> dune-project
       - run: nix build ${{ matrix.installable }}
       - uses: actions/upload-artifact@v4

@@ -70,6 +70,14 @@ module Pkg : sig
   val digest_feed : t Dune_digest.Feed.t
   val to_dyn : t -> Dyn.t
   val files_dir : Package_name.t -> Package_version.t option -> lock_dir:Path.t -> Path.t
+
+  (** [source_files_dir p v l] returns the path of the versioned files dir. Might return
+      a path that does not exist. *)
+  val source_files_dir
+    :  Package_name.t
+    -> Package_version.t
+    -> lock_dir:Path.t
+    -> Path.Source.t
 end
 
 module Repositories : sig
@@ -118,10 +126,6 @@ val create_latest_version
        (* TODO: make this non-optional when portable lockdirs becomes the default *)
   -> t
 
-(** Returns the path to the lockdir that will be used to lock the
-    given dev tool *)
-val dev_tool_lock_dir_path : Dev_tool.t -> Path.t
-
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit
 
 val metadata_filename : Filename.t
@@ -149,7 +153,6 @@ module Make_load (Io : sig
     val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
     val readdir_with_kinds : Path.t -> (Filename.t * Unix.file_kind) list t
     val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
-    val stats_kind : Path.t -> (File_kind.t, Unix_error.Detailed.t) result t
   end) : sig
   val load : Path.t -> (t, User_message.t) result Io.t
   val load_exn : Path.t -> t Io.t

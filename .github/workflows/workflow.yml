@@ -36,7 +36,7 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: ${{ env.EXTRA_NIX_CONFIG }}
@@ -51,7 +51,7 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: ${{ env.EXTRA_NIX_CONFIG }}
@@ -61,7 +61,7 @@ jobs:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: ${{ env.EXTRA_NIX_CONFIG }}
@@ -71,7 +71,7 @@ jobs:
     name: Documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: ${{ env.EXTRA_NIX_CONFIG }}
@@ -88,7 +88,7 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: ${{ env.EXTRA_NIX_CONFIG }}
@@ -103,7 +103,7 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: ${{ env.EXTRA_NIX_CONFIG }}
@@ -165,7 +165,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # The 32 bit gcc/g++ packages are by default out-of-date so we need to
       # manually update our package listing.
@@ -215,7 +215,7 @@ jobs:
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |
@@ -242,7 +242,7 @@ jobs:
           token: ${{ github.token }}
 
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Use OCaml 5.2.x
         uses: ocaml/setup-ocaml@v3
@@ -281,7 +281,7 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Create an empty switch
         run: opam switch create . --empty
       - name: Pin local packages to local dependencies
@@ -294,7 +294,7 @@ jobs:
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: ${{ env.EXTRA_NIX_CONFIG }}

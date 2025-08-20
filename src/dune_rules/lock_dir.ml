@@ -174,9 +174,22 @@ let get_path ctx =
   | Some (Opam _) -> Memo.return None
 ;;
 
+let lock_dir_path_to_source_path path =
+  match (path : Path.t) with
+  | In_build_dir b ->
+    let components = Path.Build.explode b in
+    List.nth components 4 |> Option.value_exn |> Path.Source.of_string
+  | In_source_tree s -> s |> Path.Source.explode |> List.hd |> Path.Source.of_string
+  | External e ->
+    Code_error.raise
+      "Mapping external lock dir path to source tree paths unsupported"
+      [ "dir", Path.External.to_dyn e ]
+;;
+
 let get_workspace_lock_dir ctx =
   let* workspace = Workspace.workspace () in
   let+ path = get_path ctx >>| Option.value_exn in
+  let path = lock_dir_path_to_source_path path |> Path.source in
   Workspace.find_lock_dir workspace path
 ;;
 

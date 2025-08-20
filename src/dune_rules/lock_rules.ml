@@ -297,7 +297,7 @@ let project_pins =
     Dune_pkg.Pin.DB.combine_exn acc pins)
 ;;
 
-let setup_lock_rules ctx_name ~dir ~lock_dir : Gen_rules.result =
+let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
   let target = Path.Build.relative dir "content" in
   let rules =
     Rules.collect_unit (fun () ->
@@ -307,9 +307,7 @@ let setup_lock_rules ctx_name ~dir ~lock_dir : Gen_rules.result =
       in
       let* workspace = Workspace.workspace () in
       let repos = repositories_of_workspace workspace in
-      let lock_dir_path =
-        Path.Build.relative (Context_name.build_dir ctx_name) lock_dir |> Path.build
-      in
+      let lock_dir_path = Path.of_string lock_dir in
       let constraints, selected_depopts =
         ( constraints_of_workspace ~lock_dir_path workspace
         , depopts_of_workspace ~lock_dir_path workspace )
@@ -498,7 +496,7 @@ let make_local_package_wrapping_dev_tool ~dev_tool ~dev_tool_version ~extra_depe
    for the dev tool [dev_tool]. If [version] is [Some v] then version [v] of
    the tool will be chosen by the solver. Otherwise the solver is free to
    choose the appropriate version of the tool to install. *)
-let lock_dev_tool_at_version ctx_name ~target dev_tool version =
+let lock_dev_tool_at_version ~target dev_tool version =
   let open Memo.O in
   let* extra_dependencies = extra_dependencies dev_tool in
   let local_pkg =
@@ -512,9 +510,7 @@ let lock_dev_tool_at_version ctx_name ~target dev_tool version =
   let lock_dir = sprintf "dev-tools.locks/%s" (Dune_pkg.Dev_tool.to_string dev_tool) in
   let* workspace = Workspace.workspace () in
   let repos = repositories_of_workspace workspace in
-  let lock_dir_path =
-    Path.Build.relative (Context_name.build_dir ctx_name) lock_dir |> Path.build
-  in
+  let lock_dir_path = Path.of_string lock_dir in
   let* repos =
     let default =
       Workspace.default_repositories
@@ -558,19 +554,19 @@ let lock_dev_tool_at_version ctx_name ~target dev_tool version =
   rule ~loc:Loc.none lock_rule
 ;;
 
-let lock_ocamlformat ctx_name ~target =
+let lock_ocamlformat ~target =
   let version = Dune_pkg.Ocamlformat.version_of_current_project's_ocamlformat_config () in
-  lock_dev_tool_at_version ctx_name ~target Ocamlformat version
+  lock_dev_tool_at_version ~target Ocamlformat version
 ;;
 
-let setup_dev_tool_lock_rules ctx_name ~dir ~dev_tool : Gen_rules.result =
+let setup_dev_tool_lock_rules ~dir ~dev_tool : Gen_rules.result =
   let target = Path.Build.relative dir "content" in
   let directory_targets = Path.Build.Map.singleton target Loc.none in
   let rules =
     Rules.collect_unit (fun () ->
       match (dev_tool : Dune_pkg.Dev_tool.t) with
-      | Ocamlformat -> lock_ocamlformat ctx_name ~target
-      | other -> lock_dev_tool_at_version ctx_name ~target other None)
+      | Ocamlformat -> lock_ocamlformat ~target
+      | other -> lock_dev_tool_at_version ~target other None)
   in
   Gen_rules.make ~directory_targets rules
 ;;
@@ -652,14 +648,14 @@ let lock_dir_source ~lock_dir =
   | false -> `Generated
 ;;
 
-let setup_lock_rules ctx_name ~dir ~lock_dir =
+let setup_lock_rules ~dir ~lock_dir =
   let+ source = lock_dir_source ~lock_dir in
   match source with
   | `Source_tree lock_dir -> setup_copy_rules ~dir ~lock_dir
-  | `Generated -> setup_lock_rules ctx_name ~dir ~lock_dir
+  | `Generated -> setup_lock_rules ~dir ~lock_dir
 ;;
 
-let setup_rules ctx_name ~components ~dir =
+let setup_rules ~components ~dir =
   match components with
   | [ ".dev-tool-lock"; tool ] ->
     let dev_tool =
@@ -667,14 +663,14 @@ let setup_rules ctx_name ~components ~dir =
       | Some dev_tool -> dev_tool
       | None -> User_error.raise [ Pp.textf "No rules for dev tool %s" tool ]
     in
-    Memo.return @@ setup_dev_tool_lock_rules ctx_name ~dir ~dev_tool
+    Memo.return @@ setup_dev_tool_lock_rules ~dir ~dev_tool
   | [ ".lock" ] | [ ".dev-tool-lock" ] ->
     Gen_rules.make
       ~build_dir_only_sub_dirs:
         (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
       (Memo.return Rules.empty)
     |> Memo.return
-  | [ ".lock"; lock_dir ] -> setup_lock_rules ctx_name ~dir ~lock_dir
+  | [ ".lock"; lock_dir ] -> setup_lock_rules ~dir ~lock_dir
   | [] ->
     let sub_dirs = [ ".lock"; ".dev-tool-lock" ] in
     let build_dir_only_sub_dirs =

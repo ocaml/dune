@@ -1,8 +1,7 @@
 open Import
 
 val setup_rules
-  :  Context_name.t
-  -> components:string list
+  :  components:string list
   -> dir:Path.Build.t
   -> Build_config.Gen_rules.t Memo.t
 

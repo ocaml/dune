@@ -1,5 +1,3 @@
-#define _GNU_SOURCE
-
 #include <caml/fail.h>
 #include <caml/memory.h>
 #include <caml/mlvalues.h>

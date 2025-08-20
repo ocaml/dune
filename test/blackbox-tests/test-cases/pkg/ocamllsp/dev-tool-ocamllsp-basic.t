@@ -24,7 +24,7 @@ a lockdir containing an "ocaml" lockfile.
   > (version 5.2.0)
   > EOF
 
-  $ dune tools exec ocamllsp
+  $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune tools exec ocamllsp
   Solution for dev-tools.locks/ocaml-lsp-server:
   - ocaml.5.2.0
   - ocaml-lsp-server.0.0.1

@@ -342,6 +342,7 @@ let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir
   in
   let lock_dirs =
     Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
+    |> List.map ~f:Path.source
   in
   solve
     workspace

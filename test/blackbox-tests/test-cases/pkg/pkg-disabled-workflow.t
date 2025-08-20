@@ -65,9 +65,7 @@ management:
 Create a workspace configuration that explicitly disables package management:
 
   $ add_mock_repo_if_needed
-  $ cat >> dune-workspace << EOF
-  > (pkg disabled)
-  > EOF
+  $ disable_pkg
 
 Test that dune pkg enabled reports disabled:
 
@@ -77,8 +75,8 @@ Test that dune pkg enabled reports disabled:
 Test that pkg commands fail when disabled:
 
   $ dune pkg lock
-  File "dune-workspace", line 7, characters 5-13:
-  7 | (pkg disabled)
+  File "dune-workspace", line 2, characters 5-13:
+  2 | (pkg disabled)
            ^^^^^^^^
   Error: Package management is disabled in workspace configuration.
   Hint: To enable package management, remove the explicit (pkg disabled)
@@ -102,9 +100,7 @@ where lockdirs exist but pkg is disabled. First, temporarily enable pkg to
 create the lock file:
 
   $ create_mock_repo
-  $ cat >> dune-workspace << EOF
-  > (pkg enabled)
-  > EOF
+  $ enable_pkg
 
   $ dune pkg lock
   Solution for dune.lock:
@@ -113,9 +109,7 @@ create the lock file:
 Now disable pkg again:
 
   $ create_mock_repo  
-  $ cat >> dune-workspace << EOF
-  > (pkg disabled)
-  > EOF
+  $ disable_pkg
 
 Even with a proper lock directory present, pkg should still be reported as
 disabled:
@@ -136,9 +130,7 @@ packages.
 Test enabling package management again - it should work normally:
 
   $ create_mock_repo
-  $ cat >> dune-workspace << EOF
-  > (pkg enabled)
-  > EOF
+  $ enable_pkg
 
   $ dune pkg enabled
 
@@ -148,6 +140,7 @@ active.
 Now test the default (auto-detect) behavior:
 
   $ create_mock_repo
+  $ unset_pkg
 
 With lockdir present, auto-detect should enable pkg management:
 
@@ -167,9 +160,7 @@ Test that auto-detect can be overridden by explicit workspace settings:
   > EOF
 
   $ create_mock_repo
-  $ cat >> dune-workspace << EOF
-  > (pkg disabled)
-  > EOF
+  $ disable_pkg
 
 Even with lockdir present, explicit disabled should take precedence:
 
@@ -180,8 +171,6 @@ And explicit enabled should work even without lockdir:
 
   $ rm -rf ${default_lock_dir}
   $ create_mock_repo
-  $ cat >> dune-workspace << EOF
-  > (pkg enabled)
-  > EOF
+  $ enable_pkg
 
   $ dune pkg enabled

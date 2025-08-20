@@ -14,7 +14,7 @@ Demonstrate what happens when we try to fetch from a source that doesn't exist:
   > }
 
 Local file system
-  $ runtest "(copy \"$PWD/dummy\")" 2>&1 | sed "s#$(pwd)#PWD#" | sed '/ *^\^*$/d' | sed '\#^File "dune.lock/foo.pkg", line 2, characters#d'
+  $ runtest "(copy \"$PWD/dummy\")" 2>&1 | sed "s#$(pwd)#PWD#" | sed '/ *^\^*$/d' | sed '\#^File ".*dune.lock/foo.pkg", line 2, characters#d'
   2 | (source (copy "PWD/dummy"))
   Error:
   PWD/dummy

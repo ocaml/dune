@@ -44,7 +44,6 @@ dune.lock):
 
 Building fails as the patch cannot be found anymore
 
-  $ build_pkg test 2>&1 | sed 's|\.sandbox/[a-f0-9]*/|.sandbox/<hash>/|'
-  Error:
-  open(_build/.sandbox/<hash>/_private/default/.pkg/test/source/foo.patch): No such file or directory
-  -> required by _build/_private/default/.pkg/test/target
+  $ build_pkg test
+  Error: Don't know how to build _build/_private/default/.pkg/test/target/
+  [1]

@@ -11,10 +11,19 @@ val lock_dir_active : Context_name.t -> bool Memo.t
 val get_path : Context_name.t -> Path.t option Memo.t
 
 (** The default filesystem location where the lock dir is going to get created *)
-val default_path : Path.t Lazy.t
+val default_path : Path.t
 
 (** The default path where the lock dir will be written to manually *)
 val default_source_path : Path.Source.t
+
+(** The location in the source tree where a dev tool lock dir is expected *)
+val dev_tool_source_lock_dir : Dune_pkg.Dev_tool.t -> Path.Source.t
+
+(** Returns the path to the lockdir that will be used to lock the
+    given dev tool *)
+val dev_tool_lock_dir : Dune_pkg.Dev_tool.t -> Path.t
+
+val select_lock_dir : Workspace.Lock_dir_selection.t -> Path.Source.t Memo.t
 
 module Sys_vars : sig
   type t =

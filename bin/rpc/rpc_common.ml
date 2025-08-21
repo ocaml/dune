@@ -89,12 +89,13 @@ let wrap_build_outcome_exn ~print_on_success f args () =
   let+ response = f args in
   match response with
   | Error (error : Rpc_error.t) ->
-    Printf.eprintf "Error: %s\n%!" (Dyn.to_string (Rpc_error.to_dyn error))
+    Console.print
+      [ Pp.textf "Error: %s" (Dyn.to_string (Dune_rpc.Response.Error.to_dyn error))
+        |> Pp.tag User_message.Style.Error
+      ]
   | Ok Dune_rpc.Build_outcome_with_diagnostics.Success ->
     if print_on_success
-    then
-      Console.print_user_message
-        (User_message.make [ Pp.text "Success" |> Pp.tag User_message.Style.Success ])
+    then Console.print [ Pp.text "Success" |> Pp.tag User_message.Style.Success ]
   | Ok (Failure errors) ->
     let error_msg =
       match List.length errors with
@@ -105,8 +106,7 @@ let wrap_build_outcome_exn ~print_on_success f args () =
       | 1 -> Pp.paragraph "Build failed with 1 error:"
       | n -> Pp.paragraphf "Build failed with %d errors:" n
     in
-    Console.print_user_message
-      (User_message.make [ error_msg |> Pp.tag User_message.Style.Error ]);
+    Console.print [ error_msg |> Pp.tag User_message.Style.Error ];
     List.iter errors ~f:(fun { Dune_rpc.Compound_user_error.main; _ } ->
       Console.print_user_message main)
 ;;

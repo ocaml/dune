@@ -37,10 +37,7 @@ module Public = struct
 
   module Format = struct
     let v1 =
-      Decl.Request.make_current_gen
-        ~req:Promote_flag.sexp
-        ~resp:Build_outcome_with_diagnostics.sexp
-        ~version:1
+      Decl.Request.make_current_gen ~req:Promote_flag.sexp ~resp:Conv.unit ~version:1
     ;;
 
     let decl = Decl.Request.make ~method_:"format" ~generations:[ v1 ]

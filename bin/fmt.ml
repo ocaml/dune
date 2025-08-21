@@ -43,27 +43,22 @@ let run_fmt_command ~builder ~promote =
   in
   match Dune_util.Global_lock.lock ~timeout:None with
   | Ok () -> Scheduler.go_with_rpc_server ~common ~config once
-  | Error lock_held_by ->
-    Rpc_common.run_via_rpc
-      ~builder
-      ~common
-      ~config
-      lock_held_by
-      (Rpc_common.fire_request
-         ~name:"format"
-         ~wait:true
-         Dune_rpc.Procedures.Public.format)
-      promote;
-    Rpc_common.run_via_rpc
-      ~builder
-      ~common
-      ~config
-      lock_held_by
-      (Rpc_common.fire_request
-         ~name:"promote_many"
-         ~wait:true
-         Dune_rpc.Procedures.Public.promote_many)
-      Dune_rpc.Files_to_promote.All
+  | Error _lock_held_by ->
+    let response =
+      Scheduler.go_without_rpc_server ~common ~config (fun () ->
+        Rpc_common.fire_request
+          ~name:"format"
+          ~wait:true
+          Dune_rpc.Procedures.Public.format
+          promote)
+    in
+    (match response with
+     | Ok () -> ()
+     | Error error ->
+       Console.print
+         [ Pp.textf "Error: %s" (Dyn.to_string (Dune_rpc.Response.Error.to_dyn error))
+           |> Pp.tag User_message.Style.Error
+         ])
 ;;
 
 let command =

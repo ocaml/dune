@@ -385,8 +385,17 @@ let obj_dir ~dir t =
       ((* TODO instead of this fragile approximation, we should be looking at
           [Modules.t] and deciding. Unfortunately, [Obj_dir.t] is currently
           used in some places where [Modules.t] is not yet constructed. *)
-       t.private_modules <> None
-       || t.buildable.modules.root_module <> None)
+       t.private_modules
+       <> None
+          (* CR-someday rgrinberg: The following check used to be here:
+
+            {[
+              || t.buildable.modules.root_module <> None
+            ]}
+
+            but it doesn't work correctly. We need to always pass the
+            root_module with [ -H ] at least *)
+      )
     ~private_lib
     (snd t.name)
 ;;

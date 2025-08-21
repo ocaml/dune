@@ -213,7 +213,7 @@ let install_as t = t.install_as
 let of_source ~install_as ~obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
   (match kind, visibility with
    | (Alias _ | Impl_vmodule | Virtual | Wrapped_compat), Visibility.Public
-   | Root, Private
+   | Root, Public
    | (Impl | Intf_only | Parameter), _ -> ()
    | _, _ ->
      Code_error.raise
@@ -420,9 +420,16 @@ let generated ?install_as ?obj_name ~(kind : Kind.t) ~src_dir (path : Module_nam
     Source.make ~impl:(Some impl) ~intf:None path
   in
   let visibility : Visibility.t =
-    match kind with
-    | Root -> Private
-    | _ -> Public
+    Public
+    (* CR-someday rgrinberg: This used to be;:
+      {[
+        match kind with
+        | Root -> Private
+        | _ -> Public
+      ]}
+
+      But this currently triggers module hiding via [-I]. We need to fix that.
+    *)
   in
   of_source ~install_as ~visibility ~kind ~obj_name:(Some obj_name) source
 ;;

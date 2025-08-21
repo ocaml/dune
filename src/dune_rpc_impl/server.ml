@@ -345,12 +345,13 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
       let outcome = Fiber.Ivar.create () in
       let target = server.parse_build_arg "(alias_rec fmt)" in
       let* () = Job_queue.write server.pending_build_jobs ([ target ], outcome) in
-      let+ _build_outcome = Fiber.Ivar.read outcome in
-      match promote with
-      | Dune_rpc.Promote_flag.Automatically ->
+      let+ build_outcome = Fiber.Ivar.read outcome in
+      match build_outcome, promote with
+      (* A 'successful' formatting means there is nothing to promote. *)
+      | Success, _ | _, Dune_rpc.Promote_flag.Never -> ()
+      | Failure, Automatically ->
         Promote.Diff_promotion.promote_files_registered_in_last_run
           Dune_rpc.Files_to_promote.All
-      | Never -> ()
     in
     Handler.implement_request rpc Procedures.Public.format f
   in

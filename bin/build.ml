@@ -92,24 +92,11 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
   in
   Dune_engine.Scheduler.Run.poll_passive
     ~get_build_request:
-      (let+ { outcome; kind } = Dune_rpc_impl.Server.pending_action rpc in
+      (let+ (Build (targets, ivar)) = Dune_rpc_impl.Server.pending_build_action rpc in
        let request setup =
-         match kind with
-         | Build targets ->
-           Target.interpret_targets (Common.root common) config setup targets
-         | Format _promote ->
-           let request (setup : Import.Main.build_system) =
-             let dir = Path.(relative root) (Common.prefix_target common ".") in
-             Alias.in_dir
-               ~name:Dune_rules.Alias.fmt
-               ~recursive:true
-               ~contexts:setup.contexts
-               dir
-             |> Alias.request
-           in
-           request setup
+         Target.interpret_targets (Common.root common) config setup targets
        in
-       run_build_system ~common ~request, outcome)
+       run_build_system ~common ~request, ivar)
 ;;
 
 let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =

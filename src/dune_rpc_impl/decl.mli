@@ -19,6 +19,3 @@ end
 
 val build : (string list, Build_outcome_with_diagnostics.t) Decl.Request.t
 val status : (unit, Status.t) Decl.Request.t
-(*
-   val format
-  : (Dune_engine.Clflags.Promote.t, Build_outcome_with_diagnostics.t) Decl.Request.t *)

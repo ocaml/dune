@@ -53,7 +53,17 @@ let run_fmt_command ~builder ~promote =
          ~name:"format"
          ~wait:true
          Dune_rpc.Procedures.Public.format)
-      promote
+      promote;
+    Rpc_common.run_via_rpc
+      ~builder
+      ~common
+      ~config
+      lock_held_by
+      (Rpc_common.fire_request
+         ~name:"promote_many"
+         ~wait:true
+         Dune_rpc.Procedures.Public.promote_many)
+      Dune_rpc.Files_to_promote.All
 ;;
 
 let command =

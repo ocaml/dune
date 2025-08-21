@@ -4,6 +4,20 @@
  (foreign_stubs
   (names md5_stubs)
   (language c))
- (libraries stdune fiber fiber_util chrome_trace dune_engine dune_util
-  dune_stats dune_lang dune_console re dune_vcs dune_config opam_format
-  build_info sat xdg))
+ (libraries
+  stdune
+  fiber
+  fiber_util
+  chrome_trace
+  dune_engine
+  dune_util
+  dune_stats
+  dune_lang
+  dune_console
+  re
+  dune_vcs
+  dune_config
+  opam_format
+  build_info
+  sat
+  xdg))

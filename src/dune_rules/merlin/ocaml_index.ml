@@ -64,7 +64,12 @@ let cctx_rules cctx =
     in
     (* Indexation also depends on the current stanza's modules *)
     let modules_deps =
-      let cm_kind = Lib_mode.Cm_kind.(Ocaml Cmi) in
+      let modes = Compilation_context.modes cctx in
+      let cm_kind =
+        if modes.ocaml.native || modes.ocaml.byte
+        then Lib_mode.Cm_kind.(Ocaml Cmi)
+        else Lib_mode.Cm_kind.(Melange Cmi)
+      in
       (* We only index occurrences in user-written modules *)
       Compilation_context.modules cctx
       |> Modules.With_vlib.drop_vlib
@@ -104,6 +109,8 @@ let context_indexes sctx =
       match Stanza.repr stanza with
       | Executables.T exes | Tests.T { exes; _ } -> Some (Executables.obj_dir ~dir exes)
       | Library.T lib -> Some (Library.obj_dir ~dir lib)
+      | Melange_stanzas.Emit.T { target; _ } ->
+        Some (Obj_dir.make_melange_emit ~dir ~name:target)
       | _ -> None
     in
     match obj with

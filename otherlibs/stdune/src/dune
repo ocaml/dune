@@ -13,5 +13,10 @@
   (:include flags/sexp))
  (foreign_stubs
   (language c)
-  (names dune_flock readdir wait4_stubs platform_stubs copyfile_stubs
+  (names
+   dune_flock
+   readdir
+   wait4_stubs
+   platform_stubs
+   copyfile_stubs
    signal_stubs)))

@@ -6,9 +6,14 @@
    ; We set ocaml to always be colored since it changes the output of
    ; ocamlc error messages. See https://github.com/ocaml/ocaml/issues/14144
    (OCAML_COLOR always))
-  (binaries ../utils/dune_cmd.exe ../utils/dunepp.exe
-   ../utils/melc_stdlib_prefix.exe ../utils/refmt.exe ../utils/curl
-   ../utils/sherlodoc.exe ../utils/ocaml_index.exe)))
+  (binaries
+   ../utils/dune_cmd.exe
+   ../utils/dunepp.exe
+   ../utils/melc_stdlib_prefix.exe
+   ../utils/refmt.exe
+   ../utils/curl
+   ../utils/sherlodoc.exe
+   ../utils/ocaml_index.exe)))
 
 (cram
  (applies_to pp-cwd)

@@ -35,19 +35,35 @@
 
 (cram
  (deps %{bin:curl})
- (applies_to unavailable-source-package compute-checksums-when-missing e2e
-  ocamlformat-dev-tool source-caching tarball pin-depends extra-sources
+ (applies_to
+  unavailable-source-package
+  compute-checksums-when-missing
+  e2e
+  ocamlformat-dev-tool
+  source-caching
+  tarball
+  pin-depends
+  extra-sources
   broken-symlink-in-dependency))
 
 (cram
  (deps %{bin:md5sum})
- (applies_to source-caching extra-sources ocamlformat-dev-tool
-  dev-tool-conflict-test broken-symlink-in-dependency))
+ (applies_to
+  source-caching
+  extra-sources
+  ocamlformat-dev-tool
+  dev-tool-conflict-test
+  broken-symlink-in-dependency))
 
 (cram
  (deps %{bin:tar})
- (applies_to source-caching tarball pin-depends extra-sources
-  pkg-extract-fail broken-symlink-in-dependency))
+ (applies_to
+  source-caching
+  tarball
+  pin-depends
+  extra-sources
+  pkg-extract-fail
+  broken-symlink-in-dependency))
 
 (cram
  (deps %{bin:ocaml_index})

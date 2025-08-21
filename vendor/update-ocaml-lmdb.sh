@@ -39,6 +39,15 @@ cp -v $LMDB_SRC/midl.{c,h} ocaml-lmdb/
 cp -v $LMDB_SRC/COPYRIGHT ocaml-lmdb/
 cp -v $LMDB_SRC/LICENSE ocaml-lmdb/LICENSE-lmdb
 
+# Apply Cygwin patch to mdb.c
+echo "Applying Cygwin compatibility patch..."
+sed -i.bak '/^#ifndef MDB_USE_ROBUST/i\
+/* Cygwin does not support robust mutexes */\
+#ifdef __CYGWIN__\
+# define MDB_USE_ROBUST 0\
+#endif\
+' ocaml-lmdb/mdb.c && rm ocaml-lmdb/mdb.c.bak
+
 git checkout ocaml-lmdb/dune
 git add -A .
 

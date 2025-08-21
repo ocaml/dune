@@ -518,9 +518,11 @@ let root_source entries =
 ;;
 
 let build_root_module cctx root_module =
-  let entries = Compilation_context.root_module_entries cctx in
-  let cctx = Compilation_context.for_root_module cctx root_module in
   let sctx = Compilation_context.super_context cctx in
+  let entries =
+    Root_module.entries sctx ~requires_compile:(Compilation_context.requires_compile cctx)
+  in
+  let cctx = Compilation_context.for_root_module cctx root_module in
   let file = Option.value_exn (Module.file root_module ~ml_kind:Impl) in
   let dir = Compilation_context.dir cctx in
   let* () =

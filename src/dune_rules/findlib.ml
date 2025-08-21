@@ -279,6 +279,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
       ~exit_module:None
       ~instrumentation_backend:None
       ~melange_runtime_deps
+      ~root_module:None
   in
   Dune_package.Lib.of_findlib info external_location
 ;;

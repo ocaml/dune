@@ -33,18 +33,16 @@ end
 val content_of_files : t -> File.t list -> string list Fiber.t
 
 module Remote : sig
-  type rev_store = t
-
   (** A git remote repository. *)
   type t
-
-  (** [get rev_store ~loc ~url] gets the remote pointed to by [url] and makes
-      [rev_store] aware of it. *)
-  val get : rev_store -> loc:Loc.t -> url:string -> t
 
   (** The [default_branch] of a remote repository. *)
   val default_branch : t -> Object.resolved option Fiber.t
 end
+
+(** [remote t ~loc ~url] gets the remote pointed to by [url] and makes
+    the revision store aware of it. *)
+val remote : t -> loc:Loc.t -> url:string -> Remote.t
 
 module At_rev : sig
   (** A git repository at a particular revision. *)
@@ -75,3 +73,8 @@ val resolve_revision : t -> Remote.t -> revision:string -> Object.resolved optio
 
 (** Fetch the contents of the repository at the given revision into the store. *)
 val fetch_resolved : t -> Remote.t -> Object.resolved -> At_rev.t Fiber.t
+
+module Debug : sig
+  val files_and_submodules_cache : bool ref
+  val content_of_files_cache : bool ref
+end

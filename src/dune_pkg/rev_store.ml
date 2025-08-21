@@ -308,23 +308,27 @@ module Cache = struct
   ;;
 end
 
-type remote =
-  { url : string
-  ; default_branch : Object.resolved option Fiber.t
-  ; refs : Object.resolved String.Map.t Fiber.t
-  }
+module Remote = struct
+  type t =
+    { url : string
+    ; default_branch : Object.resolved option Fiber.t
+    ; refs : Object.resolved String.Map.t Fiber.t
+    }
 
-let dyn_of_remote { url; default_branch; refs } =
-  Dyn.record
-    [ "url", Dyn.string url
-    ; "default_branch", Dyn.opaque default_branch
-    ; "refs", Dyn.opaque refs
-    ]
-;;
+  let default_branch t = t.default_branch
+
+  let to_dyn { url; default_branch; refs } =
+    Dyn.record
+      [ "url", Dyn.string url
+      ; "default_branch", Dyn.opaque default_branch
+      ; "refs", Dyn.opaque refs
+      ]
+  ;;
+end
 
 type t =
   { dir : Path.t
-  ; remotes : (string, remote) Table.t
+  ; remotes : (string, Remote.t) Table.t
   ; (* The mutex that needs to be acquired before touching [present_objects] *)
     object_mutexes : (Object.t, Fiber.Mutex.t) Table.t
   ; present_objects : (Object.t, unit) Table.t
@@ -335,7 +339,7 @@ let to_dyn { dir; remotes; object_mutexes; present_objects } =
     [ (* This is an external path, so we relativize to sanitize. We don't use
          [Path.to_dyn] since it wouldn't be correct and therefore confusing. *)
       "dir", Path.Expert.try_localize_external dir |> Path.to_string |> Dyn.string
-    ; "remotes", Table.to_list remotes |> Dyn.list (Dyn.pair Dyn.string dyn_of_remote)
+    ; "remotes", Table.to_list remotes |> Dyn.list (Dyn.pair Dyn.string Remote.to_dyn)
     ; "object_mutexes", Dyn.opaque object_mutexes
     ; ( "present_objects"
       , Table.to_list present_objects |> Dyn.list (Dyn.pair Object.to_dyn Dyn.unit) )
@@ -752,6 +756,11 @@ let fetch repo ~url obj =
     User_error.raise [ Pp.textf "unable to fetch %S from %S" (Object.to_hex obj) url ]
 ;;
 
+module Debug = struct
+  let files_and_submodules_cache = ref false
+  let content_of_files_cache = ref false
+end
+
 module At_rev = struct
   type repo = t
 
@@ -864,6 +873,13 @@ module At_rev = struct
 
   let files_and_submodules repo key =
     let cached = Cache.Files_and_submodules.get key in
+    if !Debug.files_and_submodules_cache
+    then
+      Dune_console.printf
+        "files_and_submodules cache %s"
+        (match cached with
+         | Some _ -> "hit"
+         | None -> "missed");
     match cached with
     | Some v -> Fiber.return v
     | None ->
@@ -1043,65 +1059,58 @@ module At_rev = struct
   ;;
 end
 
-module Remote = struct
-  type rev_store = t
-  type t = remote
-
-  let default_branch t = t.default_branch
-
-  let get =
-    let hash = Re.(rep1 alnum) in
-    let head_mark, head = Re.mark (Re.str "HEAD") in
-    let ref = Re.(group (seq [ str "refs/"; rep1 any ])) in
-    let re = Re.(compile @@ seq [ bol; group hash; rep1 space; alt [ head; ref ] ]) in
-    fun t ~loc:url_loc ~url ->
-      let f url =
-        let command = [ "ls-remote"; url ] in
-        let refs =
-          Fiber.Lazy.create (fun () ->
-            let+ hits =
-              run_capture_lines t ~display:!Dune_engine.Clflags.display command
-              >>| function
-              | Ok lines -> lines
-              | Error git_error ->
-                (match git_error.exit_code with
-                 | 128 ->
-                   User_error.raise
-                     ~loc:url_loc
-                     ~hints:
-                       [ Pp.textf
-                           "Check that this Git URL in the project configuration is \
-                            correct: %S"
-                           url
-                       ]
-                     [ Pp.text "Failed to run external command:"
-                     ; User_message.command (sprintf "git ls-remote %S" url)
+let remote =
+  let hash = Re.(rep1 alnum) in
+  let head_mark, head = Re.mark (Re.str "HEAD") in
+  let ref = Re.(group (seq [ str "refs/"; rep1 any ])) in
+  let re = Re.(compile @@ seq [ bol; group hash; rep1 space; alt [ head; ref ] ]) in
+  fun t ~loc:url_loc ~url ->
+    let f url =
+      let command = [ "ls-remote"; url ] in
+      let refs =
+        Fiber.Lazy.create (fun () ->
+          let+ hits =
+            run_capture_lines t ~display:!Dune_engine.Clflags.display command
+            >>| function
+            | Ok lines -> lines
+            | Error git_error ->
+              (match git_error.exit_code with
+               | 128 ->
+                 User_error.raise
+                   ~loc:url_loc
+                   ~hints:
+                     [ Pp.textf
+                         "Check that this Git URL in the project configuration is \
+                          correct: %S"
+                         url
                      ]
-                 | _ -> Git_error.raise_code_error git_error)
-            in
-            let default_branch, refs =
-              List.fold_left hits ~init:(None, []) ~f:(fun (default_branch, refs) line ->
-                match Re.exec_opt re line with
-                | None -> default_branch, refs
-                | Some group ->
-                  let hash = Re.Group.get group 1 |> Object.of_sha1 |> Option.value_exn in
-                  if Re.Mark.test group head_mark
-                  then Some hash, refs
-                  else (
-                    let name = Re.Group.get group 2 in
-                    let entry = name, hash in
-                    default_branch, entry :: refs))
-            in
-            default_branch, String.Map.of_list_exn refs)
-        in
-        { url
-        ; default_branch = Fiber.Lazy.force refs >>| fst
-        ; refs = Fiber.Lazy.force refs >>| snd
-        }
+                   [ Pp.text "Failed to run external command:"
+                   ; User_message.command (sprintf "git ls-remote %S" url)
+                   ]
+               | _ -> Git_error.raise_code_error git_error)
+          in
+          let default_branch, refs =
+            List.fold_left hits ~init:(None, []) ~f:(fun (default_branch, refs) line ->
+              match Re.exec_opt re line with
+              | None -> default_branch, refs
+              | Some group ->
+                let hash = Re.Group.get group 1 |> Object.of_sha1 |> Option.value_exn in
+                if Re.Mark.test group head_mark
+                then Some hash, refs
+                else (
+                  let name = Re.Group.get group 2 in
+                  let entry = name, hash in
+                  default_branch, entry :: refs))
+          in
+          default_branch, String.Map.of_list_exn refs)
       in
-      Table.find_or_add t.remotes ~f url
-  ;;
-end
+      { Remote.url
+      ; default_branch = Fiber.Lazy.force refs >>| fst
+      ; refs = Fiber.Lazy.force refs >>| snd
+      }
+    in
+    Table.find_or_add t.remotes ~f url
+;;
 
 let fetch_resolved t (remote : Remote.t) revision =
   let* () = fetch t ~url:remote.url revision in
@@ -1186,6 +1195,15 @@ let content_of_files t files =
     List.filter_map keys ~f:(fun (key, file) ->
       if Cache.Key.Map.mem cached key then None else Some (key, file))
   in
+  if !Debug.content_of_files_cache
+  then (
+    match Cache.Key.Map.cardinal cached with
+    | 0 -> Dune_console.printf "contents_of_files cache missed"
+    | no_of_hits ->
+      Dune_console.printf
+        "content_of_files (%d/%d) cache hits"
+        no_of_hits
+        (List.length keys));
   content_of_files t (List.map ~f:snd uncached)
   >>| function
   | [] -> List.map keys ~f:(fun (key, _) -> Cache.Key.Map.find_exn cached key)

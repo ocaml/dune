@@ -10,6 +10,8 @@
   dune_util
   dune_lang
   dune_vcs
+  dune_console
+  dune_config
   fiber
   http
   opam_core

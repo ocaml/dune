@@ -8,14 +8,7 @@
 
   $ touch .ocamlformat
 
-  $ cat > foo.ml << EOF
-  > let () =
-  >  print_int
-  >                         (5
-  >       +
-  >                            4)
-  > 
-  > EOF
+  $ echo "let ()=print_int (5+4)" > foo.ml
 
   $ start_dune
 
@@ -24,10 +17,12 @@
 
   $ dune fmt
 
+Remove the fake ocamlformat from the dune file to see the real output
   $ cat foo.ml
-  let () = print_int (5 + 4)
+  (* fake ocamlformat output *)
 
   $ stop_dune
+  fake ocamlformat is running: "--impl" "foo.ml"
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
   differ.

@@ -20,7 +20,7 @@ Shows what happens when Dune tries to kill an action that has sub-processes.
 sub_process.exe spawns a sub-process that creates $BEACON_FILE. We
 wait for the beacon to be notified that the sub-process has started:
 
-  $ with_timeout dune_cmd wait-for-file-to-appear $BEACON_FILE
+  $ dune_cmd wait-for-file-to-appear $BEACON_FILE
   $ CHILD_PID=`cat $BEACON_FILE`
 
 Now we stop Dune, which should normally kill all sub-processes:

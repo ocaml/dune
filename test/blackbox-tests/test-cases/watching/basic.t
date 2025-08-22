@@ -57,7 +57,7 @@ Basic tests for the file-watching mode.
   $ cat _build/default/y
   new-contents3
 
-  $ with_timeout dune shutdown
+  $ dune shutdown
   $ cat .#dune-output
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...

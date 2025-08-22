@@ -6,22 +6,8 @@ start_dune () {
     DUNE_RUNNING=1;
 }
 
-timeout="$(command -v timeout || echo gtimeout)"
-
-with_timeout () {
-    $timeout 2 "$@"
-    exit_code=$?
-    if [ "$exit_code" = 124 ]
-    then
-        echo Timed out
-        cat .#dune-output
-    else
-        return "$exit_code"
-    fi
-}
-
 stop_dune () {
-    with_timeout dune shutdown;
+    dune shutdown;
     # On Linux, we may run into a bash pid aliasing bug that causes wait to
     # reject the pid. Therefore we use tail to wait instead.
     if [ "$(uname -s)" = "Linux" ]
@@ -36,5 +22,5 @@ stop_dune () {
 }
 
 build () {
-    with_timeout dune rpc build --wait "$@"
+    dune rpc build --wait "$@"
 }

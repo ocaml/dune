@@ -36,6 +36,7 @@ Next from a clean build we make sure that @all does *not* build any doc targets:
 Note that this currently works due to a bug in @all detecting directory targets.
   $ ls _build/default
   META.base
+  _CoqProject
   bar.glob
   bar.v
   bar.vo

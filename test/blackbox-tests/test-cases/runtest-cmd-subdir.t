@@ -26,7 +26,9 @@ This is currently not the case:
 
   $ (cd somelib && unset INSIDE_DUNE; dune runtest --diff-command=- my/path/)
   Entering directory '$TESTCASE_ROOT'
-  Error: "my/path" does not match any known test.
+  File "somelib/my/path/test.t", line 1, characters 0-0:
+  Error: Files _build/default/somelib/my/path/test.t and
+  _build/default/somelib/my/path/test.t.corrected differ.
   Leaving directory '$TESTCASE_ROOT'
   [1]
 

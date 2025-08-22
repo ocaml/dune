@@ -726,8 +726,22 @@ let hash { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins } 
     , Pin_stanza.Workspace.hash pins )
 ;;
 
+let source_path_of_lock_dir_path path =
+  match (path : Path.t) with
+  | In_source_tree s -> s
+  | In_build_dir b ->
+    (match Path.Build.explode b with
+     | [ _; _; ".lock"; lock_dir; "content" ] -> Path.Source.of_string lock_dir
+     | _ -> Code_error.raise "Unsupported build path" [ "dir", Path.Build.to_dyn b ])
+  | External e ->
+    Code_error.raise
+      "External lock dir path is unsupported"
+      [ "dir", Path.External.to_dyn e ]
+;;
+
 let find_lock_dir t path =
-  List.find t.lock_dirs ~f:(fun lock_dir -> Path.equal (Path.source lock_dir.path) path)
+  let path = source_path_of_lock_dir_path path in
+  List.find t.lock_dirs ~f:(fun lock_dir -> Path.Source.equal lock_dir.path path)
 ;;
 
 let add_repo t repo = { t with repos = repo :: t.repos }

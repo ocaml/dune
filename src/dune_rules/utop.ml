@@ -147,8 +147,8 @@ let requires ~loc ~db ~libs =
 
 let utop_dev_tool_lock_dir_exists =
   Memo.Lazy.create (fun () ->
-    let path = Dune_pkg.Lock_dir.dev_tool_lock_dir_path Utop in
-    Fs_memo.dir_exists (Path.as_outside_build_dir_exn path))
+    let path = Lock_dir.dev_tool_source_lock_dir Utop in
+    Fs_memo.dir_exists (In_source_dir path))
 ;;
 
 let utop_findlib_conf = Filename.concat utop_dir_basename "findlib.conf"

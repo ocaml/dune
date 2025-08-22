@@ -88,7 +88,7 @@ module Package_universe = struct
     match t with
     | Project_dependencies ctx -> Lock_dir.get_path ctx
     | Dev_tool dev_tool ->
-      Memo.return (Some (Dune_pkg.Lock_dir.dev_tool_lock_dir_path dev_tool))
+      dev_tool |> Lock_dir.dev_tool_lock_dir |> Option.some |> Memo.return
   ;;
 end
 

@@ -122,6 +122,11 @@ let runtest_term =
           let+ res = Action_builder.of_memo (disambiguate_test_name dir) in
           [ context ], res
         | In_source_dir dir ->
+          (* We need to adjust the path here to make up for the current working directory. *)
+          let { Workspace_root.to_cwd; _ } = Common.root common in
+          let dir =
+            Path.Source.L.relative Path.Source.root (to_cwd @ Path.Source.explode dir)
+          in
           let+ res = Action_builder.of_memo (disambiguate_test_name dir) in
           contexts, res
         | In_private_context _ | In_install_dir _ ->

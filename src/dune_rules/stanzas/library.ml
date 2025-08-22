@@ -600,6 +600,7 @@ let to_lib_info
     ~exit_module
     ~instrumentation_backend
     ~melange_runtime_deps
+    ~root_module:(Option.map conf.buildable.modules.root_module ~f:snd)
 ;;
 
 include Stanza.Make (struct

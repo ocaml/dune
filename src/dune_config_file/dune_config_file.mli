@@ -116,7 +116,7 @@ module Dune_config : sig
 
   val superpose : t -> Partial.t -> t
   val default : t
-  val user_config_file : Path.t
+  val user_config_file : Path.t Lazy.t
 
   (** We return a [Partial.t] here so that the result can easily be merged with
       other sources of configurations. *)

@@ -1031,6 +1031,7 @@ module Library = struct
         ; main_module_name = namespace
         ; include_subdirs_unqualified = scan_subdirs
         ; special_builtin_support = build_info_module
+        ; root_module
         }
         ~ocaml_config
     =
@@ -1047,9 +1048,15 @@ module Library = struct
             in
             String.Set.add module_name acc)
       in
-      match build_info_module with
+      let modules =
+        match build_info_module with
+        | None -> modules
+        | Some m -> String.Set.add (String.capitalize_ascii m) modules
+      in
+      match root_module with
       | None -> modules
-      | Some m -> String.Set.add (String.capitalize_ascii m) modules
+      | Some { Libs.name; entries = _ } ->
+        String.Set.add (String.capitalize_ascii name) modules
     in
     let wrapper = Wrapper.make ~namespace ~modules in
     let header = Wrapper.header wrapper in
@@ -1063,11 +1070,31 @@ module Library = struct
              let+ src, mangled = gen_build_info_module wrapper m in
              Some (src, mangled))
     in
+    let root_module =
+      Option.map
+        (fun { Libs.name; entries } ->
+           let src =
+             let fn = String.uncapitalize_ascii name ^ ".ml" in
+             { file = fn; kind = Ml }
+           in
+           let mangled = Wrapper.mangle_filename wrapper src in
+           with_file_out (build_dir ^/ mangled) ~f:(fun oc ->
+             List.iter entries ~f:(fun entry ->
+               let entry = String.capitalize_ascii entry in
+               fprintf oc "module %s = %s\n" entry entry));
+           src, mangled)
+        root_module
+    in
     let alias_file = Wrapper.generate_wrapper wrapper modules in
     let c_files, ocaml_files, asm_files =
       let files =
         let files = List.concat files in
-        match build_info_file with
+        let files =
+          match build_info_file with
+          | None -> files
+          | Some fn -> fn :: files
+        in
+        match root_module with
         | None -> files
         | Some fn -> fn :: files
       in
@@ -1233,6 +1260,7 @@ let assemble_libraries { local_libraries; target = _, main; _ } ~ocaml_config =
     ; main_module_name = Some namespace
     ; include_subdirs_unqualified = true
     ; special_builtin_support = None
+    ; root_module = None
     }
   in
   local_libraries @ [ task_lib ] |> Fiber.parallel_map ~f:(Library.process ~ocaml_config)

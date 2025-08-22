@@ -10,29 +10,58 @@ let flags flags =
   list (pair (list string) (list string)) flags
 ;;
 
+module Root_module_data = struct
+  type t =
+    { name : Module_name.t
+    ; entries : Module_name.t list
+    }
+
+  let to_dyn { name; entries } =
+    let open Dyn in
+    record
+      [ "name", string (Module_name.to_string name)
+      ; "entries", list Module_name.to_dyn entries
+      ]
+  ;;
+end
+
 let type_def =
   {|
+type root_module =
+  { name : string
+  ; entries : string list
+  }
+
 type library =
   { path : string
   ; main_module_name : string option
   ; include_subdirs_unqualified : bool
   ; special_builtin_support : string option
+  ; root_module : root_module option
   }
 |}
 ;;
 
-let local_library ~special_builtin_support ~is_multi_dir ~main_module_name ~dir =
+let local_library
+      ~root_module
+      ~special_builtin_support
+      ~is_multi_dir
+      ~main_module_name
+      ~dir
+  =
   Dyn.record
     [ "path", Path.Source.to_local dir |> Path.Local.to_dyn
     ; "main_module_name", Dyn.option Module_name.to_dyn main_module_name
     ; "include_subdirs_unqualified", Dyn.Bool is_multi_dir
     ; "special_builtin_support", Dyn.option Module_name.to_dyn special_builtin_support
+    ; "root_module", Dyn.(option Root_module_data.to_dyn) root_module
     ]
 ;;
 
 let re =
   lazy
     (local_library
+       ~root_module:None
        ~is_multi_dir:false
        ~main_module_name:(Some (Module_name.of_string "Re"))
        ~special_builtin_support:None
@@ -64,7 +93,7 @@ let rule sctx ~requires_link =
     ]
   in
   let+ locals =
-    Memo.parallel_map locals ~f:(fun x ->
+    Action_builder.List.map locals ~f:(fun x ->
       let info = Lib.Local.info x in
       let dir = Lib_info.src_dir info in
       let special_builtin_support =
@@ -72,15 +101,33 @@ let rule sctx ~requires_link =
         | Some (_loc, Build_info { data_module; _ }) -> Some data_module
         | _ -> None
       in
-      let open Memo.O in
-      let+ is_multi_dir =
-        Dir_contents.get sctx ~dir
-        >>| Dir_contents.dirs
-        >>| function
-        | _ :: _ :: _ -> true
-        | _ -> false
+      let open Action_builder.O in
+      let* is_multi_dir =
+        Action_builder.of_memo
+          (let open Memo.O in
+           Dir_contents.get sctx ~dir
+           >>| Dir_contents.dirs
+           >>| function
+           | _ :: _ :: _ -> true
+           | _ -> false)
+      in
+      let+ root_module =
+        match Lib_info.root_module info with
+        | None -> Action_builder.return None
+        | Some name ->
+          let+ entries =
+            let requires_compile =
+              let open Memo.O in
+              let* db = Scope.DB.find_by_dir dir >>| Scope.libs in
+              Lib.Compile.for_lib ~allow_overlaps:false db (Lib.Local.to_lib x)
+              |> Lib.Compile.direct_requires
+            in
+            Root_module.entries sctx ~requires_compile
+          in
+          Some { Root_module_data.name; entries }
       in
       local_library
+        ~root_module
         ~special_builtin_support
         ~dir:(Path.Build.drop_build_context_exn dir)
         ~is_multi_dir
@@ -88,7 +135,6 @@ let rule sctx ~requires_link =
           (match Lib_info.main_module_name info with
            | From _ -> None
            | This x -> x))
-    |> Action_builder.of_memo
   in
   let locals = Lazy.force re :: locals in
   let externals =

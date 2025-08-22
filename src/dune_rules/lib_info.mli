@@ -128,6 +128,7 @@ val public_headers : 'path t -> 'path File_deps.t
     the [Std_exit] module of the stdlib. *)
 val exit_module : _ t -> Module_name.t option
 
+val root_module : _ t -> Module_name.t option
 val instrumentation_backend : _ t -> (Loc.t * Lib_name.t) option
 val plugins : 'path t -> 'path list Mode.Dict.t
 val src_dir : 'path t -> 'path
@@ -228,6 +229,7 @@ val create
   -> exit_module:Module_name.t option
   -> instrumentation_backend:(Loc.t * Lib_name.t) option
   -> melange_runtime_deps:'a File_deps.t
+  -> root_module:Module_name.t option
   -> 'a t
 
 val package : _ t -> Package.Name.t option

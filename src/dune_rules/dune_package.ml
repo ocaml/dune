@@ -295,6 +295,8 @@ module Lib = struct
            ~exit_module:None
            ~instrumentation_backend
            ~melange_runtime_deps
+           ~root_module:None
+         (* CR-someday rgrinberg: maybe we should add this to installed packages? *)
        in
        let external_location =
          let opam_dir = Path.parent_exn base in

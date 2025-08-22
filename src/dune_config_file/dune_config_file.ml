@@ -585,8 +585,9 @@ module Dune_config = struct
   let decode_fields_of_workspace_file = decode_generic ~min_dune_version:(3, 0)
 
   let user_config_file =
-    let config_dir = Xdg.config_dir (Lazy.force Dune_util.xdg) in
-    Path.relative (Path.of_filename_relative_to_initial_cwd config_dir) "dune/config"
+    lazy
+      (let config_dir = Xdg.config_dir (Lazy.force Dune_util.xdg) in
+       Path.relative (Path.of_filename_relative_to_initial_cwd config_dir) "dune/config")
   ;;
 
   include Dune_lang.Versioned_file.Make (struct
@@ -603,6 +604,7 @@ module Dune_config = struct
   ;;
 
   let load_user_config_file () =
+    let user_config_file = Lazy.force user_config_file in
     if Path.exists user_config_file
     then load_config_file user_config_file
     else Partial.empty

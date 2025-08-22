@@ -1,5 +1,13 @@
+(env
+ (_
+  (binaries ../../utils/ocamlformat.exe)))
+
 (cram
  (deps helpers.sh))
+
+(cram
+ (applies_to fmt-test)
+ (deps %{bin:ocamlformat}))
 
 (cram
  ; see https://github.com/ocaml/dune/pull/4728

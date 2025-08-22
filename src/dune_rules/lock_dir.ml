@@ -136,6 +136,37 @@ let select_lock_dir lock_dir_selection =
   Workspace.Lock_dir_selection.eval lock_dir_selection ~dir:workspace.dir ~f:expander
 ;;
 
+let default_path =
+  (* TODO remove ctx_name *)
+  let ctx_name = "default" in
+  Path.Build.L.relative
+    Private_context.t.build_dir
+    [ ctx_name; ".lock"; "dune.lock"; "content" ]
+  |> Path.build
+;;
+
+let dev_tool_to_path_segment dev_tool =
+  dev_tool |> Dev_tool.package_name |> Package_name.to_string |> Path.Local.of_string
+;;
+
+let dev_tool_source_lock_dir dev_tool =
+  let dev_tools_path = Path.Source.(relative root "dev-tools.locks") in
+  let dev_tool_segment = dev_tool_to_path_segment dev_tool in
+  Path.Source.append_local dev_tools_path dev_tool_segment
+;;
+
+let dev_tool_lock_dir dev_tool =
+  (* dev tools always live in default *)
+  let ctx_name = "default" in
+  let l = dev_tool_to_path_segment dev_tool in
+  let lock_dir =
+    Path.Build.L.relative Private_context.t.build_dir [ ctx_name; ".lock" ]
+  in
+  let lock_dir = Path.Build.append_local lock_dir l in
+  let lock_dir = Path.Build.relative lock_dir "content" in
+  Path.build lock_dir
+;;
+
 let get_path ctx =
   let* workspace = Workspace.workspace () in
   match
@@ -144,10 +175,9 @@ let get_path ctx =
       | false -> None
       | true -> Some ctx')
   with
-  | None -> Memo.return (Some (Lazy.force default_path))
+  | None | Some (Default { lock_dir = None; _ }) -> Memo.return (Some default_path)
   | Some (Default { lock_dir = Some lock_dir_selection; _ }) ->
     select_lock_dir lock_dir_selection >>| Option.some
-  | Some (Default { lock_dir = None; _ }) -> Memo.return (Some (Lazy.force default_path))
   | Some (Opam _) -> Memo.return None
 ;;
 
@@ -177,12 +207,17 @@ let get ctx = get_with_path ctx >>| Result.map ~f:snd
 let get_exn ctx = get ctx >>| User_error.ok_exn
 
 let of_dev_tool dev_tool =
-  let path = Dune_pkg.Lock_dir.dev_tool_lock_dir_path dev_tool in
-  Fs_memo.dir_exists (Path.as_outside_build_dir_exn path)
+  let source_path = dev_tool_source_lock_dir dev_tool in
+  Fs_memo.dir_exists (In_source_dir source_path)
   >>= function
-  | true -> Load.load_exn path
+  | true ->
+    (* if it exists, load it from the build location by triggering the
+         copy rules *)
+    let lock_dir_path = dev_tool_lock_dir dev_tool in
+    Load.load_exn lock_dir_path
   | false ->
-    User_error.raise [ Pp.textf "%s does not exist" (Path.to_string_maybe_quoted path) ]
+    User_error.raise
+      [ Pp.textf "%s does not exist" (Path.Source.to_string_maybe_quoted source_path) ]
 ;;
 
 let lock_dir_active ctx =

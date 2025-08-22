@@ -189,8 +189,7 @@ let find_checksum, find_url =
           ~init:(Checksum.Map.empty, Digest.Map.empty)
           ~f:(fun acc dev_tool ->
             Fs_memo.dir_exists
-              (Path.as_outside_build_dir_exn
-                 (Dune_pkg.Lock_dir.dev_tool_lock_dir_path dev_tool))
+              (In_source_dir (Lock_dir.dev_tool_source_lock_dir dev_tool))
             >>= function
             | false -> Memo.return acc
             | true -> Lock_dir.of_dev_tool dev_tool >>| add_checksums_and_urls acc)

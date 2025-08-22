@@ -122,12 +122,6 @@ val create_latest_version
        (* TODO: make this non-optional when portable lockdirs becomes the default *)
   -> t
 
-val default_path : Path.t Lazy.t
-
-(** Returns the path to the lockdir that will be used to lock the
-    given dev tool *)
-val dev_tool_lock_dir_path : Dev_tool.t -> Path.t
-
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit
 
 val metadata_filename : Filename.t

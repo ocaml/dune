@@ -36,16 +36,6 @@ let local_library
     ]
 ;;
 
-let re =
-  lazy
-    (local_library
-       ~root_module:None
-       ~is_multi_dir:false
-       ~main_module_name:(Some (Module_name.of_string "Re"))
-       ~special_builtin_support:None
-       ~dir:(Path.Source.of_string "vendor/re/src"))
-;;
-
 let rule sctx ~requires_link =
   let open Action_builder.O in
   let* () = Action_builder.return () in
@@ -101,7 +91,6 @@ let rule sctx ~requires_link =
            | From _ -> None
            | This x -> x))
   in
-  let locals = Lazy.force re :: locals in
   let externals =
     let available =
       [ "threads.posix"; "re"; "seq" ] |> List.rev_map ~f:Lib_name.of_string

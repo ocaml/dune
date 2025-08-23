@@ -37,7 +37,7 @@ module Libs = struct
   let local_libraries =
     { path = "vendor/re/src"
     ; main_module_name = Some "Re"
-    ; include_subdirs_unqualified = false
+    ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
     }
@@ -1061,12 +1061,20 @@ module Library = struct
   let process
         { path = dir
         ; main_module_name = namespace
-        ; include_subdirs_unqualified = scan_subdirs
+        ; include_subdirs
         ; special_builtin_support = build_info_module
         ; root_module
         }
         ~ocaml_config
     =
+    let scan_subdirs =
+      match include_subdirs with
+      | No -> false
+      | Unqualified -> true
+      | Qualified ->
+        (* Unimplemented *)
+        assert false
+    in
     let files = scan ~dir ~scan_subdirs in
     let modules =
       let modules =

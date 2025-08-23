@@ -65,7 +65,7 @@ let establish_connection_with_retry () =
     >>= function
     | Ok x -> Fiber.return x
     | Error _ ->
-      let* () = Scheduler.sleep ~seconds:pause_between_retries_s in
+      let* () = Dune_engine.Scheduler.sleep ~seconds:pause_between_retries_s in
       loop ()
   in
   loop ()

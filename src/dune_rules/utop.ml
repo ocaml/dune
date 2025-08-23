@@ -56,8 +56,7 @@ let add_stanza db ~dir (acc, pps) stanza =
        if not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir
        then (
          match Lib_info.kind info with
-         | Normal -> Appendable_list.cons lib acc, pps
-         | Parameter -> Appendable_list.cons lib acc, pps
+         | Normal | Virtual | Parameter -> Appendable_list.cons lib acc, pps
          (* CR @maiste or @art-w: the parametrized libraries in utop follows
              the same schema as Normal library but it needs to be verified once
              parametrized libraries are fully supported. *)
@@ -98,8 +97,7 @@ let add_stanza db ~dir (acc, pps) stanza =
        List.fold_left libs ~init:(acc, pps) ~f:(fun (acc, pps) lib ->
          let info = Lib.info lib in
          match Lib_info.kind info with
-         | Normal -> Appendable_list.cons lib acc, pps
-         | Parameter -> Appendable_list.cons lib acc, pps
+         | Normal | Virtual | Parameter -> Appendable_list.cons lib acc, pps
          (* CR @maiste or @art-w: the parametrized libraries in utop follows
              the same schema as Normal library but it needs to be verified once
              parametrized libraries are fully supported. *)

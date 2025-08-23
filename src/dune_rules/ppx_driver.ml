@@ -370,7 +370,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
       let info = Lib.info t in
       let kind = Lib_info.kind info in
       match kind with
-      | Normal | Parameter -> Memo.return []
+      | Normal | Virtual | Parameter -> Memo.return []
       | Ppx_rewriter { cookies } | Ppx_deriver { cookies } ->
         Memo.List.map cookies ~f:(fun { Lib_kind.Ppx_args.Cookie.name; value } ->
           let+ value = Expander.No_deps.expand_str expander value in

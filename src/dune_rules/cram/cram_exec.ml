@@ -412,9 +412,7 @@ let run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout =
     User_error.raise
       ~loc:(Loc.in_file (Path.drop_optional_build_context_maybe_sandboxed src))
       [ Pp.concat
-          [ Pp.paragraphf
-              "Cram test timed out. A time limit of %.2fs has been set in "
-              timeout
+          [ Pp.textf "Cram test timed out. A time limit of %.2fs has been set in " timeout
           ; Pp.tag User_message.Style.Loc @@ Loc.pp_file_colon_line timeout_loc
           ; Pp.verbatim "."
           ]

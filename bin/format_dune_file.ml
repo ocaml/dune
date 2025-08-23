@@ -65,14 +65,6 @@ let term =
        with
        | None -> Dune_lang.Syntax.greatest_supported_version_exn Dune_lang.Stanza.syntax
        | Some root ->
-         if Execution_env.inside_dune
-         then
-           User_warning.emit
-             [ Pp.textf
-                 "You are running 'dune format-dune-file' inside Dune. This may not give \
-                  the expected results. It is recommended to use the \
-                  '(format-dune-file)' action instead."
-             ];
          let common, config = Common.init_with_root ~root builder in
          Scheduler.go_with_rpc_server ~common ~config
          @@ fun () ->

@@ -1,32 +1,20 @@
 The empty list and atoms are printed as is:
 
   $ echo '()' | dune format-dune-file
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   ()
 
   $ echo 'a' | dune format-dune-file
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   a
 
 Lists containing only atoms, quoted strings, templates, and singleton lists are
 printed inline:
 
   $ echo '(atom "string" %{template} (singleton))' | dune format-dune-file
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   (atom "string" %{template} (singleton))
 
 Other lists are displayed one element per line:
 
   $ echo '(a (b c d) e)' | dune format-dune-file
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   (a
    (b c d)
    e)
@@ -35,9 +23,6 @@ When there are several s-expressions, they are printed with an empty line
 between them:
 
   $ echo '(a b) (c d)' | dune format-dune-file
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   (a b)
   
   (c d)
@@ -45,17 +30,11 @@ between them:
 It is possible to pass a file name:
 
   $ dune format-dune-file dune.dune
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   (a b)
 
 Parse errors are displayed:
 
   $ echo '(' | dune format-dune-file
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   File "", line 2, characters 0-0:
   Error: unclosed parenthesis at end of input
   [1]
@@ -63,9 +42,6 @@ Parse errors are displayed:
 When a list is indented, there is no extra space at the end.
 
   $ echo ' (a (b (c d)))' | dune format-dune-file
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   (a
    (b
     (c d)))
@@ -95,9 +71,6 @@ it gets wrapped.
 The same file, but in the current version:
 
   $ echo '(library (name dune) (libraries unix stdune fiber xdg dune_re threads opam_file_format dune_lang ocaml_config which_program) (synopsis "Internal Dune library, do not use!") (preprocess  (action (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))' | dune format-dune-file
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   (library
    (name dune)
    (libraries
@@ -131,9 +104,6 @@ In multi-line strings, newlines are escaped, but their syntax is not preserved.
   > string
   > ")
   > EOF
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   (echo "multi\nline\nstring\nstring\n")
   
   (echo "multi\nline\nstring\n")
@@ -157,9 +127,6 @@ Comments are preserved.
   > g
   > )
   > EOF
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   ; comment
   
   (; first comment
@@ -193,9 +160,6 @@ When a comment is at the end of a list, the ")" is on a own line.
   >  ; multiline
   >  )
   > EOF
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   (a ; final attached comment
    )
   
@@ -215,16 +179,10 @@ When a comment is at the end of a list, the ")" is on a own line.
 Files in OCaml syntax are copied verbatim (but error when passed in stdin).
 
   $ dune format-dune-file < ocaml-syntax.dune
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   File "", line 1, characters 0-20:
   Error: OCaml syntax is not supported.
   [1]
   $ dune format-dune-file ocaml-syntax.dune
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   (* -*- tuareg -*- *)
   
   let () = Jbuild_plugin.V1.send {|
@@ -236,9 +194,6 @@ Files in OCaml syntax are copied verbatim (but error when passed in stdin).
 Non 0 error code:
 
   $ echo "(" | dune format-dune-file ; echo $?
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   File "", line 2, characters 0-0:
   Error: unclosed parenthesis at end of input
   1
@@ -318,9 +273,6 @@ project is used (if any).
   > EOF
 
   $ dune format-dune-file <test
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   (aaaaaaaaaaa bbbbbbbbbbbbb ccccccccccccccccc dddddddddddddddddd aaaaaaaaaaa
     bbbbbbbbbbbbb ccccccccccccccccc dddddddddddddddddd)
 
@@ -329,9 +281,6 @@ project is used (if any).
   > EOF
 
   $ dune format-dune-file <test
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   (aaaaaaaaaaa
    bbbbbbbbbbbbb
    ccccccccccccccccc
@@ -357,9 +306,6 @@ within Dune is always the directory directly containing the file.
 
   $ cd sub
   $ dune format-dune-file sub/test
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   Entering directory 'sub'
   (aaaaaaaaaaa bbbbbbbbbbbbb ccccccccccccccccc dddddddddddddddddd aaaaaaaaaaa
     bbbbbbbbbbbbb ccccccccccccccccc dddddddddddddddddd)
@@ -367,9 +313,6 @@ within Dune is always the directory directly containing the file.
 
   $ cd sub
   $ dune format-dune-file ../test
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   Entering directory '..'
   (aaaaaaaaaaa
    bbbbbbbbbbbbb

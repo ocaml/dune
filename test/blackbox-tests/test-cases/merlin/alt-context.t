@@ -66,9 +66,6 @@ Request config for file in alt context without using --context
 Request config for file in alt context using --context
 
   $ printf '(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin --context alt | dune format-dune-file | grep -i "$lib2" | sed 's/^[^:]*:[^:]*://'
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   $TESTCASE_ROOT/_build/alt/.bar.objs/cctx.ocaml-index)
   $TESTCASE_ROOT/_build/alt/.bar.objs/byte)
   bar))
@@ -76,9 +73,6 @@ Request config for file in alt context using --context
 Request config for default context without using --context
 
   $ printf '(4:File%d:%s)' ${#FILE1} $FILE1 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib1" | sed 's/^[^:]*:[^:]*://'
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
   $TESTCASE_ROOT/_build/default/.foo.objs/byte)
   foo))
@@ -86,7 +80,4 @@ Request config for default context without using --context
 Request config for default context using --context
 
   $ printf '(4:File%d:%s)' ${#FILE1} $FILE1 | dune ocaml-merlin --context alt | dune format-dune-file | grep -i "$lib1" | sed 's/^[^:]*:[^:]*://'
-  Warning: You are running 'dune format-dune-file' inside Dune. This may not
-  give the expected results. It is recommended to use the '(format-dune-file)'
-  action instead.
   No config found for file foo.ml. Try calling 'dune build'.))

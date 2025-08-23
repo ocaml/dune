@@ -5,11 +5,6 @@ let def name dyn =
   Pp.box ~indent:2 (Pp.textf "let %s = " name ++ Dyn.pp dyn)
 ;;
 
-let flags flags =
-  let open Dyn in
-  list (pair (list string) (list string)) flags
-;;
-
 module Root_module_data = struct
   type t =
     { name : Module_name.t
@@ -79,19 +74,6 @@ let rule sctx ~requires_link =
       | Some x -> Left x
       | None -> Right lib)
   in
-  let windows_system_values = [ "win32"; "win64"; "mingw"; "mingw64" ] in
-  let build_flags =
-    [ windows_system_values, [ "-ccopt"; "-D_UNICODE"; "-ccopt"; "-DUNICODE" ] ]
-  in
-  let link_flags =
-    (* additional link flags keyed by the platform *)
-    [ ( [ "macosx" ]
-      , [ "-cclib"; "-framework CoreFoundation"; "-cclib"; "-framework CoreServices" ] )
-    ; ( windows_system_values
-      , [ "-cclib"; "-lshell32"; "-cclib"; "-lole32"; "-cclib"; "-luuid" ] )
-    ; [ "beos" ], [ "-cclib"; "-lbsd" ] (* flags for Haiku *)
-    ]
-  in
   let+ locals =
     Action_builder.List.map locals ~f:(fun x ->
       let info = Lib.Local.info x in
@@ -155,9 +137,6 @@ let rule sctx ~requires_link =
        ; Pp.nop
        ; def "local_libraries" (List locals)
        ; Pp.nop
-       ; def "build_flags" (flags build_flags)
-       ; Pp.nop
-       ; def "link_flags" (flags link_flags)
        ]
      |> Pp.vbox)
 ;;

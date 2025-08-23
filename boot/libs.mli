@@ -20,5 +20,3 @@ type library =
 
 val external_libraries : string list
 val local_libraries : library list
-val build_flags : (string list * string list) list
-val link_flags : (string list * string list) list

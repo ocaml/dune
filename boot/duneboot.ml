@@ -1468,6 +1468,22 @@ let get_flags system xs =
   |> Option.value ~default:[]
 ;;
 
+let windows_system_values = [ "win32"; "win64"; "mingw"; "mingw64" ]
+
+let build_flags =
+  [ windows_system_values, [ "-ccopt"; "-D_UNICODE"; "-ccopt"; "-DUNICODE" ] ]
+;;
+
+let link_flags =
+  (* additional link flags keyed by the platform *)
+  [ ( [ "macosx" ]
+    , [ "-cclib"; "-framework CoreFoundation"; "-cclib"; "-framework CoreServices" ] )
+  ; ( windows_system_values
+    , [ "-cclib"; "-lshell32"; "-cclib"; "-lole32"; "-cclib"; "-luuid" ] )
+  ; [ "beos" ], [ "-cclib"; "-lbsd" ] (* flags for Haiku *)
+  ]
+;;
+
 (** {2 Bootstrap process} *)
 let main () =
   (try Io.clear build_dir with
@@ -1484,8 +1500,8 @@ let main () =
     | None -> assert false
     | Some s -> s
   in
-  let build_flags = get_flags ocaml_system Libs.build_flags in
-  let link_flags = get_flags ocaml_system Libs.link_flags in
+  let build_flags = get_flags ocaml_system build_flags in
+  let link_flags = get_flags ocaml_system link_flags in
   build ~ocaml_config ~dependencies ~asm_files ~c_files ~build_flags ~link_flags task
 ;;
 

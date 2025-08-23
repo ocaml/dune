@@ -528,19 +528,3 @@ let local_libraries =
     }
   ]
 
-let build_flags =
-  [ ([ "win32"; "win64"; "mingw"; "mingw64" ],
-     [ "-ccopt"; "-D_UNICODE"; "-ccopt"; "-DUNICODE" ])
-  ]
-
-let link_flags =
-  [ ([ "macosx" ],
-     [ "-cclib"
-     ; "-framework CoreFoundation"
-     ; "-cclib"
-     ; "-framework CoreServices"
-     ])
-  ; ([ "win32"; "win64"; "mingw"; "mingw64" ],
-     [ "-cclib"; "-lshell32"; "-cclib"; "-lole32"; "-cclib"; "-luuid" ])
-  ; ([ "beos" ], [ "-cclib"; "-lbsd" ])
-  ]

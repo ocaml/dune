@@ -265,7 +265,7 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
     @@ fun () ->
     let open Fiber.O in
     let on_exit = Console.printf "Program exited with code [%d]" in
-    Scheduler.Run.poll
+    Dune_engine.Scheduler.Run.poll
     @@
     let* () = Fiber.return @@ Scheduler.maybe_clear_screen ~details_hum:[] config in
     build @@ step ~prog ~args ~common ~no_rebuild ~context ~on_exit

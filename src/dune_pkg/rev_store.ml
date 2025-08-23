@@ -130,6 +130,11 @@ module File = struct
 end
 
 module Cache = struct
+  (* CR-someday Alizter: Various LMDB  operations are able to raise [Map_full]
+     when the database is full. We should handle this in a sensible way. For
+     now, we allow it to raise. It won't be visible to most users due to the
+     cache size we have chosen. *)
+
   let rev_store_cache =
     (* We only enable the cache on 64 bit platforms in order to have a sensible cache size. *)
     let default = if Int.equal Sys.word_size 64 then `Enabled else `Disabled in
@@ -152,27 +157,9 @@ module Cache = struct
        | exception _ -> Error ())
   ;;
 
-  (* Some operations on the cache may end up filling up the map. This helper
-     function allows us to give a more helpful error message in those cases. *)
-  let protect_map_full f =
-    match f () with
-    | x -> x
-    | exception Lmdb.Mdb.Map_full ->
-      let dir =
-        match Lazy.force cache_dir with
-        | Ok dir -> dir
-        | Error () ->
-          Code_error.raise "Map_full raised even though cache doesn't exist" []
-      in
-      User_error.raise
-        [ Pp.text "Revision store cache is full."; Pp.text "Please delete:"; Path.pp dir ]
-  ;;
-
   let db =
     lazy
-      (protect_map_full
-       @@ fun () ->
-       Lazy.force cache_dir
+      (Lazy.force cache_dir
        |> Result.map ~f:(fun path ->
          Lmdb.Env.create
            ~map_size:(Int64.to_int 5_000_000_000L) (* 5 GB *)
@@ -216,9 +203,7 @@ module Cache = struct
 
   let map =
     lazy
-      (protect_map_full
-       @@ fun () ->
-       Lazy.force db
+      (Lazy.force db
        |> Result.map ~f:(fun env ->
          Lmdb.Map.create Nodup ~key:Key.conv ~value:Lmdb.Conv.string ~name:"objects" env)
       )
@@ -258,9 +243,7 @@ module Cache = struct
 
     let map =
       lazy
-        (protect_map_full
-         @@ fun () ->
-         Lazy.force db
+        (Lazy.force db
          |> Result.map ~f:(fun env ->
            Lmdb.Map.create Nodup ~key:Key.conv ~value:Value.conv ~name:"ls-tree" env))
     ;;
@@ -276,7 +259,7 @@ module Cache = struct
     let set key value =
       match Lazy.force map with
       | Error () -> ()
-      | Ok map -> protect_map_full @@ fun () -> Lmdb.Map.set map key value
+      | Ok map -> Lmdb.Map.set map key value
     ;;
   end
 
@@ -297,8 +280,6 @@ module Cache = struct
       (match Lazy.force db with
        | Error () -> ()
        | Ok env ->
-         protect_map_full
-         @@ fun () ->
          (match
             Lmdb.Txn.go Rw env (fun txn ->
               Key.Map.iteri keys ~f:(fun key value -> Lmdb.Map.set ~txn map key value))

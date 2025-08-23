@@ -3,6 +3,7 @@ open Dune_vcs
 module Process = Dune_engine.Process
 module Display = Dune_engine.Display
 module Scheduler = Dune_engine.Scheduler
+module Console = Dune_console
 open Fiber.O
 
 module Object : sig
@@ -24,7 +25,7 @@ end = struct
   let compare (Sha1 x) (Sha1 y) = String.compare x y
   let to_hex (Sha1 s) = s
   let equal (Sha1 x) (Sha1 y) = String.equal x y
-  let to_dyn (Sha1 s) = Dyn.variant "Sha1" [ Dyn.string s ]
+  let to_dyn (Sha1 s) = Dyn.variant "Sha1" [ Dyn.opaque s ]
   let hash (Sha1 s) = String.hash s
   let of_sha1_unsafe s = Sha1 s
 
@@ -483,7 +484,7 @@ let run_with_exit_code { dir; _ } ~allow_codes ~display args =
         ]
         ~hints:[ User_message.command "Please update your git version." ]
     | _ ->
-      Dune_console.print [ Pp.verbatim stderr ];
+      Console.print [ Pp.verbatim stderr ];
       Error { Git_error.dir; args; exit_code; output = [] })
 ;;
 
@@ -745,6 +746,19 @@ let fetch repo ~url obj =
 module Debug = struct
   let files_and_submodules_cache = ref false
   let content_of_files_cache = ref false
+
+  type t =
+    { name : string
+    ; payload : (string * Dyn.t) list
+    }
+
+  let to_dyn { name; payload } =
+    Dyn.Tuple [ Dyn.string name; Dyn.list (Dyn.pair Dyn.string Fun.id) payload ]
+  ;;
+
+  let print : string -> (string * Dyn.t) list -> unit =
+    fun name payload -> Console.print [ to_dyn { name; payload } |> Dyn.pp ]
+  ;;
 end
 
 module At_rev = struct
@@ -860,12 +874,7 @@ module At_rev = struct
   let files_and_submodules repo key =
     let cached = Cache.Files_and_submodules.get key in
     if !Debug.files_and_submodules_cache
-    then
-      Dune_console.printf
-        "files_and_submodules cache %s"
-        (match cached with
-         | Some _ -> "hit"
-         | None -> "missed");
+    then Debug.print "files_and_submodules" [ "cached", Dyn.option Dyn.opaque cached ];
     match cached with
     | Some v -> Fiber.return v
     | None ->
@@ -1182,14 +1191,12 @@ let content_of_files t files =
       if Cache.Key.Map.mem cached key then None else Some (key, file))
   in
   if !Debug.content_of_files_cache
-  then (
-    match Cache.Key.Map.cardinal cached with
-    | 0 -> Dune_console.printf "contents_of_files cache missed"
-    | no_of_hits ->
-      Dune_console.printf
-        "content_of_files (%d/%d) cache hits"
-        no_of_hits
-        (List.length keys));
+  then
+    Debug.print
+      "contents_of_files"
+      [ "files", Dyn.list File.to_dyn files
+      ; "cached", Cache.Key.Map.to_dyn Dyn.string cached
+      ];
   content_of_files t (List.map ~f:snd uncached)
   >>| function
   | [] -> List.map keys ~f:(fun (key, _) -> Cache.Key.Map.find_exn cached key)

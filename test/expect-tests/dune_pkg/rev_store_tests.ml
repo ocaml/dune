@@ -137,8 +137,11 @@ let%expect_test "fetching an object twice from the store" =
     get_file remote_revision file_A >>> get_file remote_revision file_A);
   [%expect
     {|
-    files_and_submodules cache missed
-    contents_of_files cache missed
+    ("files_and_submodules", [ ("cached", None) ])
+    ("contents_of_files",
+     [ ("files", [ Direct { path = "file_A"; size = 15; hash = Sha1 <opaque> } ])
+     ; ("cached", map {})
+     ])
 
     content of file_A:
     ```
@@ -146,8 +149,12 @@ let%expect_test "fetching an object twice from the store" =
 
     ```
 
-    files_and_submodules cache hit
-    content_of_files (1/1) cache hits
+    ("files_and_submodules", [ ("cached", Some <opaque>) ])
+    ("contents_of_files",
+     [ ("files", [ Direct { path = "file_A"; size = 15; hash = Sha1 <opaque> } ])
+     ; ("cached", map { Sha1 <opaque> : "this is file A\n\
+                                         " })
+     ])
 
     content of file_A:
     ```
@@ -184,8 +191,12 @@ let%expect_test "fetching an object twice from the store" =
   *)
   [%expect
     {|
-    files_and_submodules cache missed
-    content_of_files (1/1) cache hits
+    ("files_and_submodules", [ ("cached", None) ])
+    ("contents_of_files",
+     [ ("files", [ Direct { path = "file_A"; size = 15; hash = Sha1 <opaque> } ])
+     ; ("cached", map { Sha1 <opaque> : "this is file A\n\
+                                         " })
+     ])
 
     content of file_A:
     ```
@@ -193,8 +204,12 @@ let%expect_test "fetching an object twice from the store" =
 
     ```
 
-    files_and_submodules cache hit
-    content_of_files (1/1) cache hits
+    ("files_and_submodules", [ ("cached", Some <opaque>) ])
+    ("contents_of_files",
+     [ ("files", [ Direct { path = "file_A"; size = 15; hash = Sha1 <opaque> } ])
+     ; ("cached", map { Sha1 <opaque> : "this is file A\n\
+                                         " })
+     ])
 
     content of file_A:
     ```
@@ -202,8 +217,11 @@ let%expect_test "fetching an object twice from the store" =
 
     ```
 
-    files_and_submodules cache hit
-    contents_of_files cache missed
+    ("files_and_submodules", [ ("cached", Some <opaque>) ])
+    ("contents_of_files",
+     [ ("files", [ Direct { path = "file_B"; size = 15; hash = Sha1 <opaque> } ])
+     ; ("cached", map {})
+     ])
 
     content of file_B:
     ```
@@ -211,8 +229,12 @@ let%expect_test "fetching an object twice from the store" =
 
     ```
 
-    files_and_submodules cache hit
-    content_of_files (1/1) cache hits
+    ("files_and_submodules", [ ("cached", Some <opaque>) ])
+    ("contents_of_files",
+     [ ("files", [ Direct { path = "file_B"; size = 15; hash = Sha1 <opaque> } ])
+     ; ("cached", map { Sha1 <opaque> : "this is file B\n\
+                                         " })
+     ])
 
     content of file_B:
     ```
@@ -226,8 +248,10 @@ let%expect_test "fetching an object twice from the store" =
        Path.L.relative path [ ".cache"; "dune"; "rev_store" ]
        |> Path.to_string
        |> Sys.readdir
-       |> Dyn.array Dyn.string
+       |> Array.to_list
+       |> List.sort ~compare:String.compare
+       |> Dyn.list Dyn.string
        |> Dyn.pp)
     ];
-  [%expect {| [| "lock.mdb";  "data.mdb" |] |}]
+  [%expect {| [ "data.mdb"; "lock.mdb" ] |}]
 ;;

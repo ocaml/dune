@@ -418,6 +418,12 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
+  ; { path = "src/action_plugin"
+    ; main_module_name = Some "Action_plugin"
+    ; include_subdirs_unqualified = false
+    ; special_builtin_support = None
+    ; root_module = None
+    }
   ; { path = "src/dune_threaded_console"
     ; main_module_name = Some "Dune_threaded_console"
     ; include_subdirs_unqualified = false

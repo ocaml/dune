@@ -66,6 +66,30 @@ module String = struct
     in
     len_s >= len_pre && aux 0
   ;;
+
+  let split_lines s =
+    let rec loop ~last_is_cr ~acc i j =
+      if j = String.length s
+      then (
+        let acc =
+          if j = i || (j = i + 1 && last_is_cr)
+          then acc
+          else String.sub s ~pos:i ~len:(j - i) :: acc
+        in
+        List.rev acc)
+      else (
+        match s.[j] with
+        | '\r' -> loop ~last_is_cr:true ~acc i (j + 1)
+        | '\n' ->
+          let line =
+            let len = if last_is_cr then j - i - 1 else j - i in
+            String.sub s ~pos:i ~len
+          in
+          loop ~acc:(line :: acc) (j + 1) (j + 1) ~last_is_cr:false
+        | _ -> loop ~acc i (j + 1) ~last_is_cr:false)
+    in
+    loop ~acc:[] 0 0 ~last_is_cr:false
+  ;;
 end
 
 module List = struct
@@ -143,96 +167,86 @@ module Status_line = struct
   let () = at_exit (fun () -> Printf.printf "\r%*s\r" (String.length !displayed) "")
 end
 
-(* Return a sorted list of entries in [path] as [path/entry] *)
-let readdir path =
-  Sys.readdir path
-  |> Array.to_list
-  |> List.map ~f:(fun entry -> path ^/ entry)
-  |> List.sort ~cmp:String.compare
-;;
+module Io = struct
+  (* Return a sorted list of entries in [path] as [path/entry] *)
+  let readdir path =
+    Sys.readdir path
+    |> Array.to_list
+    |> List.map ~f:(fun entry -> path ^/ entry)
+    |> List.sort ~cmp:String.compare
+  ;;
 
-let open_out file =
-  if Sys.file_exists file then fatal "%s already exists" file;
-  open_out file
-;;
+  let open_out file =
+    if Sys.file_exists file then fatal "%s already exists" file;
+    open_out file
+  ;;
 
-let input_lines ic =
-  let rec loop ic acc =
-    match input_line ic with
-    | line -> loop ic (line :: acc)
-    | exception End_of_file -> List.rev acc
-  in
-  loop ic []
-;;
+  let input_lines ic =
+    let rec loop ic acc =
+      match input_line ic with
+      | line -> loop ic (line :: acc)
+      | exception End_of_file -> List.rev acc
+    in
+    loop ic []
+  ;;
 
-let read_lines fn =
-  let ic = open_in fn in
-  let lines = input_lines ic in
-  close_in ic;
-  lines
-;;
+  let read_lines fn =
+    let ic = open_in fn in
+    let lines = input_lines ic in
+    close_in ic;
+    lines
+  ;;
 
-let read_file fn =
-  let ic = open_in_bin fn in
-  let s = really_input_string ic (in_channel_length ic) in
-  close_in ic;
-  s
-;;
+  let read_file fn =
+    let ic = open_in_bin fn in
+    let s = really_input_string ic (in_channel_length ic) in
+    close_in ic;
+    s
+  ;;
 
-let with_file_out file ~f =
-  let oc = open_out_bin file in
-  let res =
-    try Ok (f oc) with
-    | exn -> Error exn
-  in
-  close_out oc;
-  match res with
-  | Error e -> raise e
-  | Ok s -> s
-;;
+  let with_file_out file ~f =
+    let oc = open_out_bin file in
+    let res =
+      try Ok (f oc) with
+      | exn -> Error exn
+    in
+    close_out oc;
+    match res with
+    | Error e -> raise e
+    | Ok s -> s
+  ;;
 
-let split_lines s =
-  let rec loop ~last_is_cr ~acc i j =
-    if j = String.length s
-    then (
-      let acc =
-        if j = i || (j = i + 1 && last_is_cr)
-        then acc
-        else String.sub s ~pos:i ~len:(j - i) :: acc
-      in
-      List.rev acc)
-    else (
-      match s.[j] with
-      | '\r' -> loop ~last_is_cr:true ~acc i (j + 1)
-      | '\n' ->
-        let line =
-          let len = if last_is_cr then j - i - 1 else j - i in
-          String.sub s ~pos:i ~len
-        in
-        loop ~acc:(line :: acc) (j + 1) (j + 1) ~last_is_cr:false
-      | _ -> loop ~acc i (j + 1) ~last_is_cr:false)
-  in
-  loop ~acc:[] 0 0 ~last_is_cr:false
-;;
+  let do_then_copy ~f a b =
+    if Sys.file_exists b then fatal "%s already exists" b;
+    let s = read_file a in
+    with_file_out b ~f:(fun oc ->
+      f oc;
+      output_string oc s)
+  ;;
 
-let do_then_copy ~f a b =
-  if Sys.file_exists b then fatal "%s already exists" b;
-  let s = read_file a in
-  with_file_out b ~f:(fun oc ->
-    f oc;
-    output_string oc s)
-;;
+  (* copy a file - fails if the file exists *)
+  let copy a b = do_then_copy ~f:(fun _ -> ()) a b
 
-(* copy a file - fails if the file exists *)
-let copy a b = do_then_copy ~f:(fun _ -> ()) a b
+  (* copy a file and insert a header - fails if the file exists *)
+  let copy_with_header ~header a b =
+    do_then_copy ~f:(fun oc -> output_string oc header) a b
+  ;;
 
-(* copy a file and insert a header - fails if the file exists *)
-let copy_with_header ~header a b = do_then_copy ~f:(fun oc -> output_string oc header) a b
+  (* copy a file and insert a directive - fails if the file exists *)
+  let copy_with_directive ~directive a b =
+    do_then_copy ~f:(fun oc -> fprintf oc "#%s 1 %S\n" directive a) a b
+  ;;
 
-(* copy a file and insert a directive - fails if the file exists *)
-let copy_with_directive ~directive a b =
-  do_then_copy ~f:(fun oc -> fprintf oc "#%s 1 %S\n" directive a) a b
-;;
+  let rec rm_rf fn =
+    match Unix.lstat fn with
+    | { st_kind = S_DIR; _ } ->
+      clear fn;
+      Unix.rmdir fn
+    | _ -> Unix.unlink fn
+    | exception Unix.Unix_error (ENOENT, _, _) -> ()
+
+  and clear dir = List.iter (readdir dir) ~f:rm_rf
+end
 
 let path_sep = if Sys.win32 then ';' else ':'
 
@@ -519,7 +533,7 @@ end = struct
     ;;
 
     let read_temp fn =
-      let s = read_file fn in
+      let s = Io.read_file fn in
       Temp.destroy_file fn;
       s
     ;;
@@ -667,7 +681,7 @@ end = struct
              "ocamlfind"
              [ "-toolchain"; "secondary"; "query"; "ocaml" ])
       in
-      match split_lines s with
+      match String.split_lines s with
       | [] | _ :: _ :: _ -> fatal "Unexpected output locating secondary compiler"
       | [ bin_dir ] ->
         (match best_prog bin_dir "ocamlc" with
@@ -691,7 +705,7 @@ end = struct
 
   let ocaml_config () =
     Process.run_and_capture ocamlc [ "-config" ]
-    >>| split_lines
+    >>| String.split_lines
     >>| List.fold_left ~init:String.Map.empty ~f:(fun acc line ->
       match Scanf.sscanf line "%[^:]: %s" (fun k v -> k, v) with
       | k, v -> String.Map.add k v acc
@@ -710,8 +724,8 @@ let insert_header fn ~header =
   match header with
   | "" -> ()
   | h ->
-    let s = read_file fn in
-    with_file_out fn ~f:(fun oc ->
+    let s = Io.read_file fn in
+    Io.with_file_out fn ~f:(fun oc ->
       output_string oc h;
       output_string oc s)
 ;;
@@ -735,7 +749,7 @@ let copy_parser ~header src dst =
 module Build_info = struct
   let get_version () =
     match
-      match read_lines "dune-project" with
+      match Io.read_lines "dune-project" with
       | exception _ -> None
       | lines ->
         List.find_map lines ~f:(fun line ->
@@ -932,7 +946,7 @@ module Library = struct
       | None -> None
       | Some t ->
         let fn = String.uncapitalize_ascii t.alias_module ^ ".ml" in
-        with_file_out (build_dir ^/ fn) ~f:(fun oc ->
+        Io.with_file_out (build_dir ^/ fn) ~f:(fun oc ->
           String.Set.iter
             (fun m ->
                if m <> t.toplevel_module
@@ -950,7 +964,7 @@ module Library = struct
       | file :: files ->
         let acc =
           if Sys.is_directory file
-          then if scan_subdirs then loop (readdir file) acc else acc
+          then if scan_subdirs then loop (Io.readdir file) acc else acc
           else (
             match File_kind.analyse file with
             | Some kind -> { file; kind } :: acc
@@ -958,7 +972,7 @@ module Library = struct
         in
         loop files acc
     in
-    loop (readdir dir) []
+    loop (Io.readdir dir) []
   ;;
 
   type t =
@@ -998,7 +1012,7 @@ module Library = struct
       { file = fn; kind = Ml }
     in
     let mangled = Wrapper.mangle_filename wrapper src in
-    let oc = open_out (build_dir ^/ mangled) in
+    let oc = Io.open_out (build_dir ^/ mangled) in
     let+ () = Build_info.gen_data_module oc in
     close_out oc;
     src, mangled
@@ -1010,13 +1024,13 @@ module Library = struct
     let+ mangled =
       match kind with
       | Asm _ ->
-        copy fn dst;
+        Io.copy fn dst;
         Fiber.return [ mangled ]
       | Header | C _ ->
-        copy_with_directive ~directive:"line" fn dst;
+        Io.copy_with_directive ~directive:"line" fn dst;
         Fiber.return [ mangled ]
       | Ml | Mli ->
-        copy_with_header ~header fn dst;
+        Io.copy_with_header ~header fn dst;
         Fiber.return [ mangled ]
       | Mll -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
       | Mly ->
@@ -1078,7 +1092,7 @@ module Library = struct
              { file = fn; kind = Ml }
            in
            let mangled = Wrapper.mangle_filename wrapper src in
-           with_file_out (build_dir ^/ mangled) ~f:(fun oc ->
+           Io.with_file_out (build_dir ^/ mangled) ~f:(fun oc ->
              List.iter entries ~f:(fun entry ->
                let entry = String.capitalize_ascii entry in
                fprintf oc "module %s = %s\n" entry entry));
@@ -1155,7 +1169,7 @@ end
 
 let ocamldep args =
   Process.run_and_capture Config.ocamldep ("-modules" :: args) ~cwd:build_dir
-  >>| split_lines
+  >>| String.split_lines
   >>| List.map ~f:(fun line ->
     let colon = String.index line ':' in
     let filename = String.sub line ~pos:0 ~len:colon in
@@ -1172,7 +1186,7 @@ let ocamldep args =
   >>| List.sort ~cmp:compare
 ;;
 
-let mk_flags arg l = List.map l ~f:(fun m -> [ arg; m ]) |> List.flatten
+let mk_flags arg l = List.concat_map l ~f:(fun m -> [ arg; m ])
 
 let convert_dependencies ~all_source_files { Dep.file; deps = dependencies } =
   let is_mli = Filename.check_suffix file ".mli" in
@@ -1207,7 +1221,7 @@ let convert_dependencies ~all_source_files { Dep.file; deps = dependencies } =
 ;;
 
 let write_args file args =
-  with_file_out (build_dir ^/ file) ~f:(fun ch ->
+  Io.with_file_out (build_dir ^/ file) ~f:(fun ch ->
     output_string ch (String.concat ~sep:"\n" args))
 ;;
 
@@ -1449,16 +1463,6 @@ let build
        ])
 ;;
 
-let rec rm_rf fn =
-  match Unix.lstat fn with
-  | { st_kind = S_DIR; _ } ->
-    clear fn;
-    Unix.rmdir fn
-  | _ -> Unix.unlink fn
-  | exception Unix.Unix_error (ENOENT, _, _) -> ()
-
-and clear dir = List.iter (readdir dir) ~f:rm_rf
-
 let rec get_flags system = function
   | (set, f) :: r -> if List.mem system ~set then f else get_flags system r
   | [] -> []
@@ -1466,7 +1470,7 @@ let rec get_flags system = function
 
 (** {2 Bootstrap process} *)
 let main () =
-  (try clear build_dir with
+  (try Io.clear build_dir with
    | Sys_error _ -> ());
   (try Unix.mkdir build_dir 0o777 with
    | Unix.Unix_error (Unix.EEXIST, _, _) -> ());

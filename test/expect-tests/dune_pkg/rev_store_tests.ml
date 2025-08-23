@@ -112,7 +112,7 @@ let%expect_test "fetching an object twice from the store" =
     >>> git ~dir [ "add"; file ]
     >>> git ~dir [ "commit"; sprintf "-m '%s'" commit_msg ]
   in
-  let get_file remote_revision file =
+  let get_file remote_revision file expected_file_content =
     let* at_rev =
       Rev_store.Object.of_sha1 remote_revision
       |> Option.value_exn
@@ -125,16 +125,25 @@ let%expect_test "fetching an object twice from the store" =
     |> Option.to_list
     |> Rev_store.content_of_files rev_store
     >>| function
-    | [ content ] -> Console.printf "\ncontent of %s:\n```\n%s\n```\n" file content
+    | [ content ] ->
+      (* If files don't end in a newline, Git may insert a trailing new line
+         anyway. Therefore in order to compare file contents, we make sure we
+         strip trailing new lines if they exist. *)
+      assert (
+        String.equal
+          (String.drop_suffix_if_exists ~suffix:"\n" expected_file_content)
+          (String.drop_suffix_if_exists ~suffix:"\n" content))
     | _ -> assert false
   in
   (* Getting the file twice misses the cache on the first time, but hits on the
      second in both caches. *)
   let file_A = "file_A" in
+  let file_A_content = "this is file A" in
   run (fun () ->
-    add_file_to_remote "added file A" dir file_A [ "this is file A" ];
+    add_file_to_remote "added file A" dir file_A [ file_A_content ];
     let* remote_revision = get_remote_head dir in
-    get_file remote_revision file_A >>> get_file remote_revision file_A);
+    get_file remote_revision file_A file_A_content
+    >>> get_file remote_revision file_A file_A_content);
   [%expect
     {|
     ("files_and_submodules", [ ("cached", None) ])
@@ -142,37 +151,25 @@ let%expect_test "fetching an object twice from the store" =
      [ ("files", [ Direct { path = "file_A"; size = 15; hash = Sha1 <opaque> } ])
      ; ("cached", map {})
      ])
-
-    content of file_A:
-    ```
-    this is file A
-
-    ```
-
     ("files_and_submodules", [ ("cached", Some <opaque>) ])
     ("contents_of_files",
      [ ("files", [ Direct { path = "file_A"; size = 15; hash = Sha1 <opaque> } ])
      ; ("cached", map { Sha1 <opaque> : "this is file A\n\
                                          " })
      ])
-
-    content of file_A:
-    ```
-    this is file A
-
-    ```
     |}];
   (* Now we check that updating the repository doesn't invalidate our cache. *)
   let file_B = "file_B" in
+  let file_B_content = "this is file B" in
   run (fun () ->
-    add_file_to_remote "added file B" dir file_B [ "this is file B" ];
+    add_file_to_remote "added file B" dir file_B [ file_B_content ];
     let* remote_revision = get_remote_head dir in
     Fiber.sequential_iter
       ~f:Fun.id
-      [ get_file remote_revision file_A
-      ; get_file remote_revision file_A
-      ; get_file remote_revision file_B
-      ; get_file remote_revision file_B
+      [ get_file remote_revision file_A file_A_content
+      ; get_file remote_revision file_A file_A_content
+      ; get_file remote_revision file_B file_B_content
+      ; get_file remote_revision file_B file_B_content
       ]);
   (* Here we expect the following in each case:
 
@@ -197,50 +194,23 @@ let%expect_test "fetching an object twice from the store" =
      ; ("cached", map { Sha1 <opaque> : "this is file A\n\
                                          " })
      ])
-
-    content of file_A:
-    ```
-    this is file A
-
-    ```
-
     ("files_and_submodules", [ ("cached", Some <opaque>) ])
     ("contents_of_files",
      [ ("files", [ Direct { path = "file_A"; size = 15; hash = Sha1 <opaque> } ])
      ; ("cached", map { Sha1 <opaque> : "this is file A\n\
                                          " })
      ])
-
-    content of file_A:
-    ```
-    this is file A
-
-    ```
-
     ("files_and_submodules", [ ("cached", Some <opaque>) ])
     ("contents_of_files",
      [ ("files", [ Direct { path = "file_B"; size = 15; hash = Sha1 <opaque> } ])
      ; ("cached", map {})
      ])
-
-    content of file_B:
-    ```
-    this is file B
-
-    ```
-
     ("files_and_submodules", [ ("cached", Some <opaque>) ])
     ("contents_of_files",
      [ ("files", [ Direct { path = "file_B"; size = 15; hash = Sha1 <opaque> } ])
      ; ("cached", map { Sha1 <opaque> : "this is file B\n\
                                          " })
      ])
-
-    content of file_B:
-    ```
-    this is file B
-
-    ```
     |}];
   (* Checking for the presence of the lmdb database. *)
   Console.print

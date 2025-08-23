@@ -29,10 +29,12 @@ let concurrency, verbose, debug, secondary, force_byte_compilation, static, buil
 
 (** {2 General configuration} *)
 
+open Types
+
 type task =
   { target : string * string
   ; external_libraries : string list
-  ; local_libraries : Libs.library list
+  ; local_libraries : library list
   }
 
 let task =
@@ -791,7 +793,7 @@ module Build_info = struct
        | Some v -> sprintf "Some %S" v);
     pr "\n";
     let libs =
-      List.map task.local_libraries ~f:(fun (lib : Libs.library) -> lib.path, "version")
+      List.map task.local_libraries ~f:(fun (lib : library) -> lib.path, "version")
       @ List.map task.external_libraries ~f:(fun name ->
         name, {|Some "[distributed with OCaml]"|})
       |> List.sort ~cmp:(fun (a, _) (b, _) -> String.compare a b)
@@ -1041,7 +1043,7 @@ module Library = struct
   ;;
 
   let process
-        { Libs.path = dir
+        { path = dir
         ; main_module_name = namespace
         ; include_subdirs_unqualified = scan_subdirs
         ; special_builtin_support = build_info_module
@@ -1069,7 +1071,7 @@ module Library = struct
       in
       match root_module with
       | None -> modules
-      | Some { Libs.name; entries = _ } ->
+      | Some { name; entries = _ } ->
         String.Set.add (String.capitalize_ascii name) modules
     in
     let wrapper = Wrapper.make ~namespace ~modules in
@@ -1086,7 +1088,7 @@ module Library = struct
     in
     let root_module =
       Option.map
-        (fun { Libs.name; entries } ->
+        (fun { name; entries } ->
            let src =
              let fn = String.uncapitalize_ascii name ^ ".ml" in
              { file = fn; kind = Ml }
@@ -1270,7 +1272,7 @@ let assemble_libraries { local_libraries; target = _, main; _ } ~ocaml_config =
     let namespace =
       String.capitalize_ascii (Filename.chop_extension (Filename.basename main))
     in
-    { Libs.path = dir
+    { path = dir
     ; main_module_name = Some namespace
     ; include_subdirs_unqualified = true
     ; special_builtin_support = None

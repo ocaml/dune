@@ -137,9 +137,12 @@ module Cache = struct
      cache size we have chosen. *)
 
   let rev_store_cache =
-    (* We only enable the cache on 64 bit platforms in order to have a sensible cache size. *)
-    let default = if Int.equal Sys.word_size 64 then `Enabled else `Disabled in
-    Dune_config.Config.make_toggle ~name:"rev_store_cache" ~default
+    (* CR-soon Alizter: For now the cache is disabled by default. Once we add
+       versioning to the cache it will be safe to enable by default. 
+
+       When we do this we should check [Int.equal Sys.word_size 64] since
+       32-bit platforms won't handle our cache size well. *)
+    Dune_config.Config.make_toggle ~name:"rev_store_cache" ~default:`Disabled
   ;;
 
   let cache_dir =

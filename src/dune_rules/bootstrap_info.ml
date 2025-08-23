@@ -20,23 +20,6 @@ module Root_module_data = struct
   ;;
 end
 
-let type_def =
-  {|
-type root_module =
-  { name : string
-  ; entries : string list
-  }
-
-type library =
-  { path : string
-  ; main_module_name : string option
-  ; include_subdirs_unqualified : bool
-  ; special_builtin_support : string option
-  ; root_module : root_module option
-  }
-|}
-;;
-
 let local_library
       ~root_module
       ~special_builtin_support
@@ -132,7 +115,7 @@ let rule sctx ~requires_link =
     Pp.to_fmt
     (Pp.concat
        ~sep:Pp.cut
-       [ Pp.verbatim type_def
+       [ Pp.verbatim "open Types"
        ; def "external_libraries" (Dyn.list Lib_name.to_dyn externals)
        ; Pp.nop
        ; def "local_libraries" (List locals)

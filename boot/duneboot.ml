@@ -31,6 +31,20 @@ let concurrency, verbose, debug, secondary, force_byte_compilation, static, buil
 
 open Types
 
+module Libs = struct
+  let external_libraries = Libs.external_libraries
+
+  let local_libraries =
+    { path = "vendor/re/src"
+    ; main_module_name = Some "Re"
+    ; include_subdirs_unqualified = false
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+    :: Libs.local_libraries
+  ;;
+end
+
 type task =
   { target : string * string
   ; external_libraries : string list

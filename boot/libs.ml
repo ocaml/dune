@@ -2,13 +2,7 @@ open Types
 let external_libraries = [ "unix"; "threads" ]
 
 let local_libraries =
-  [ { path = "vendor/re/src"
-    ; main_module_name = Some "Re"
-    ; include_subdirs_unqualified = false
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "otherlibs/top-closure"
+  [ { path = "otherlibs/top-closure"
     ; main_module_name = Some "Top_closure"
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None

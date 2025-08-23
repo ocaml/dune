@@ -1102,7 +1102,9 @@ module Library = struct
     let header = Wrapper.header wrapper in
     let+ files, build_info_file =
       Fiber.fork_and_join
-        (fun () -> Fiber.parallel_map files ~f:(process_source_file wrapper ~header))
+        (fun () ->
+           Fiber.parallel_map files ~f:(process_source_file wrapper ~header)
+           >>| List.concat)
         (fun () ->
            match build_info_module with
            | None -> Fiber.return None
@@ -1128,7 +1130,6 @@ module Library = struct
     let alias_file = Wrapper.generate_wrapper wrapper modules in
     let c_files, ocaml_files, asm_files =
       let files =
-        let files = List.concat files in
         let files =
           match build_info_file with
           | None -> files

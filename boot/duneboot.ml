@@ -43,6 +43,8 @@ module Libs = struct
     }
     :: Libs.local_libraries
   ;;
+
+  let main = Libs.main
 end
 
 type task =
@@ -1282,16 +1284,10 @@ let assemble_libraries { local_libraries; target = _, main; _ } ~ocaml_config =
   (* In order to assemble all the sources in one place, the executables
        modules are also put in a namespace *)
   let task_lib =
-    let dir = Filename.dirname main in
     let namespace =
       String.capitalize_ascii (Filename.chop_extension (Filename.basename main))
     in
-    { path = dir
-    ; main_module_name = Some namespace
-    ; include_subdirs_unqualified = true
-    ; special_builtin_support = None
-    ; root_module = None
-    }
+    { Libs.main with main_module_name = Some namespace }
   in
   local_libraries @ [ task_lib ] |> Fiber.parallel_map ~f:(Library.process ~ocaml_config)
 ;;

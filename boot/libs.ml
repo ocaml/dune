@@ -509,3 +509,11 @@ let local_libraries =
     }
   ]
 
+let main =
+  { path = "bin"
+  ; main_module_name = None
+  ; include_subdirs_unqualified = true
+  ; special_builtin_support = None
+  ; root_module = None
+  }
+

@@ -9,3 +9,4 @@ open Types
 
 val external_libraries : string list
 val local_libraries : library list
+val main : library

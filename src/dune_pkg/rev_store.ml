@@ -151,16 +151,24 @@ module Cache = struct
             |> Path.outside_build_dir)
            [ "dune"; "rev_store" ]
        in
-       match Dune_config.Config.get rev_store_cache, Path.mkdir_p path with
-       | `Enabled, () -> Ok path
-       | `Disabled, () -> Error ()
-       | exception _ -> Error ())
+       let rev_store_cache = Dune_config.Config.get rev_store_cache in
+       Dune_util.Log.info
+         [ Pp.textf
+             "Revision store cache: %s"
+             (Dune_config.Config.Toggle.to_string rev_store_cache)
+         ];
+       match rev_store_cache, Path.mkdir_p path with
+       | `Enabled, () ->
+         Dune_util.Log.info
+           [ Pp.textf "Revision store cache location: %s" (Path.to_string path) ];
+         Some path
+       | `Disabled, () -> None)
   ;;
 
   let db =
     lazy
       (Lazy.force cache_dir
-       |> Result.map ~f:(fun path ->
+       |> Option.map ~f:(fun path ->
          Lmdb.Env.create
            ~map_size:(Int64.to_int 5_000_000_000L) (* 5 GB *)
            ~max_maps:2
@@ -174,8 +182,8 @@ module Cache = struct
       if Lazy.is_val db
       then (
         match Lazy.force db with
-        | Error () -> ()
-        | Ok db -> Lmdb.Env.close db))
+        | Some db -> Lmdb.Env.close db
+        | None -> ()))
   ;;
 
   module Key = struct
@@ -204,7 +212,7 @@ module Cache = struct
   let map =
     lazy
       (Lazy.force db
-       |> Result.map ~f:(fun env ->
+       |> Option.map ~f:(fun env ->
          Lmdb.Map.create Nodup ~key:Key.conv ~value:Lmdb.Conv.string ~name:"objects" env)
       )
   ;;
@@ -244,29 +252,31 @@ module Cache = struct
     let map =
       lazy
         (Lazy.force db
-         |> Result.map ~f:(fun env ->
+         |> Option.map ~f:(fun env ->
            Lmdb.Map.create Nodup ~key:Key.conv ~value:Value.conv ~name:"ls-tree" env))
     ;;
 
     let get key =
       let open Option.O in
-      let* m = Lazy.force map |> Result.to_option in
+      let* m = Lazy.force map in
       match Lmdb.Map.get m key with
       | exception Not_found -> None
       | v -> Some v
     ;;
 
     let set key value =
-      match Lazy.force map with
-      | Error () -> ()
-      | Ok map -> Lmdb.Map.set map key value
+      ignore
+      @@
+      let open Option.O in
+      let+ map = Lazy.force map in
+      Lmdb.Map.set map key value
     ;;
   end
 
   let get keys =
     match Lazy.force map with
-    | Error () -> Key.Map.empty
-    | Ok m ->
+    | None -> Key.Map.empty
+    | Some m ->
       Key.Set.fold keys ~init:Key.Map.empty ~f:(fun key acc ->
         match Lmdb.Map.get m key with
         | exception Not_found -> acc
@@ -274,18 +284,13 @@ module Cache = struct
   ;;
 
   let set keys =
-    match Lazy.force map with
-    | Error () -> ()
-    | Ok map ->
-      (match Lazy.force db with
-       | Error () -> ()
-       | Ok env ->
-         (match
-            Lmdb.Txn.go Rw env (fun txn ->
-              Key.Map.iteri keys ~f:(fun key value -> Lmdb.Map.set ~txn map key value))
-          with
-          | Some () -> ()
-          | None -> ()))
+    ignore
+    @@
+    let open Option.O in
+    let* map = Lazy.force map in
+    let* env = Lazy.force db in
+    Lmdb.Txn.go Rw env (fun txn ->
+      Key.Map.iteri keys ~f:(fun key value -> Lmdb.Map.set ~txn map key value))
   ;;
 end
 

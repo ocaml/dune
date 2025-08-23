@@ -42,6 +42,15 @@ let is_multi_dir dir_contents =
   | _ -> false
 ;;
 
+let make_root_module sctx ~name compile_info =
+  let open Action_builder.O in
+  let+ entries =
+    let requires_compile = Lib.Compile.direct_requires compile_info in
+    Root_module.entries sctx ~requires_compile
+  in
+  { Root_module_data.name; entries }
+;;
+
 let rule sctx ~requires_link ~main =
   let open Action_builder.O in
   let* () = Action_builder.return () in
@@ -72,16 +81,13 @@ let rule sctx ~requires_link ~main =
         match Lib_info.root_module info with
         | None -> Action_builder.return None
         | Some name ->
-          let+ entries =
-            let requires_compile =
-              let open Memo.O in
-              let* db = Scope.DB.find_by_dir dir >>| Scope.libs in
-              Lib.Compile.for_lib ~allow_overlaps:false db (Lib.Local.to_lib x)
-              |> Lib.Compile.direct_requires
-            in
-            Root_module.entries sctx ~requires_compile
+          let* compile_info =
+            (let open Memo.O in
+             let+ db = Scope.DB.find_by_dir dir >>| Scope.libs in
+             Lib.Compile.for_lib ~allow_overlaps:false db (Lib.Local.to_lib x))
+            |> Action_builder.of_memo
           in
-          Some { Root_module_data.name; entries }
+          make_root_module sctx ~name compile_info >>| Option.some
       in
       local_library
         ~root_module
@@ -117,23 +123,32 @@ let rule sctx ~requires_link ~main =
      |> Pp.vbox)
 ;;
 
-let make_main dir_contents =
+let make_main sctx ~root_module compile_info dir_contents =
   let open Action_builder.O in
-  let+ () = Action_builder.return () in
+  let* () = Action_builder.return () in
+  let+ root_module =
+    match root_module with
+    | None -> Action_builder.return None
+    | Some name -> make_root_module sctx ~name compile_info >>| Option.some
+  in
   local_library
-    ~root_module:None
+    ~root_module
     ~special_builtin_support:None
     ~dir:(Dir_contents.source_dir dir_contents |> Option.value_exn |> Source_tree.Dir.path)
     ~is_multi_dir:(is_multi_dir dir_contents)
     ~main_module_name:None
 ;;
 
-let gen_rules sctx (exes : Executables.t) ~dir ~requires_link dir_contents =
+let gen_rules sctx (exes : Executables.t) ~dir compile_info dir_contents =
   Memo.Option.iter exes.bootstrap_info ~f:(fun fname ->
+    let requires_link = Lib.Compile.requires_link compile_info in
     Action_builder.write_file_dyn
       (Path.Build.relative dir fname)
       (let open Action_builder.O in
-       let* main = make_main dir_contents in
+       let* main =
+         let root_module = Option.map exes.buildable.modules.root_module ~f:snd in
+         make_main sctx ~root_module compile_info dir_contents
+       in
        rule sctx ~requires_link ~main)
     |> Super_context.add_rule sctx ~loc:exes.buildable.loc ~dir)
 ;;

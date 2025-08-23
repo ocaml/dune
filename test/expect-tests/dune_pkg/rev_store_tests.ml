@@ -48,12 +48,6 @@ let git_out ~dir =
   fun args -> Process.run_capture_line ~dir ~display ~stderr_to failure_mode git args
 ;;
 
-let ls dir =
-  let stderr_to = make_stdout () in
-  let ls = Bin.which ~path:(Env.initial |> Env_path.path) "ls" |> Option.value_exn in
-  Process.run ~dir ~display ~stderr_to Strict ls []
-;;
-
 let git_init_and_config_user dir =
   Path.mkdir_p dir;
   let git = git ~dir in
@@ -227,12 +221,13 @@ let%expect_test "fetching an object twice from the store" =
     ```
     |}];
   (* Checking for the presence of the lmdb database. *)
-  run (fun () ->
-    let cwd = Path.External.cwd () |> Path.external_ in
-    ls (Path.L.relative cwd [ ".cache"; "dune"; "rev_store" ]));
-  [%expect
-    {|
-    data.mdb
-    lock.mdb
-    |}]
+  Console.print
+    [ (let path = Path.External.cwd () |> Path.external_ in
+       Path.L.relative path [ ".cache"; "dune"; "rev_store" ]
+       |> Path.to_string
+       |> Sys.readdir
+       |> Dyn.array Dyn.string
+       |> Dyn.pp)
+    ];
+  [%expect {| [| "lock.mdb";  "data.mdb" |] |}]
 ;;

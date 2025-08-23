@@ -11,4 +11,5 @@ val gen_rules
   -> Executables.t
   -> dir:Path.Build.t
   -> requires_link:Lib.t list Resolve.t Memo.Lazy.t
+  -> Dir_contents.t
   -> unit Memo.t

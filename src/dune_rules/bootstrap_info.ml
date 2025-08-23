@@ -36,7 +36,13 @@ let local_library
     ]
 ;;
 
-let rule sctx ~requires_link =
+let is_multi_dir dir_contents =
+  match Dir_contents.dirs dir_contents with
+  | _ :: _ :: _ -> true
+  | _ -> false
+;;
+
+let rule sctx ~requires_link ~main =
   let open Action_builder.O in
   let* () = Action_builder.return () in
   let* locals, externals =
@@ -60,11 +66,7 @@ let rule sctx ~requires_link =
       let* is_multi_dir =
         Action_builder.of_memo
           (let open Memo.O in
-           Dir_contents.get sctx ~dir
-           >>| Dir_contents.dirs
-           >>| function
-           | _ :: _ :: _ -> true
-           | _ -> false)
+           Dir_contents.get sctx ~dir >>| is_multi_dir)
       in
       let+ root_module =
         match Lib_info.root_module info with
@@ -109,14 +111,29 @@ let rule sctx ~requires_link =
        ; Pp.nop
        ; def "local_libraries" (List locals)
        ; Pp.nop
+       ; def "main" main
+       ; Pp.nop
        ]
      |> Pp.vbox)
 ;;
 
-let gen_rules sctx (exes : Executables.t) ~dir ~requires_link =
+let make_main dir_contents =
+  let open Action_builder.O in
+  let+ () = Action_builder.return () in
+  local_library
+    ~root_module:None
+    ~special_builtin_support:None
+    ~dir:(Dir_contents.source_dir dir_contents |> Option.value_exn |> Source_tree.Dir.path)
+    ~is_multi_dir:(is_multi_dir dir_contents)
+    ~main_module_name:None
+;;
+
+let gen_rules sctx (exes : Executables.t) ~dir ~requires_link dir_contents =
   Memo.Option.iter exes.bootstrap_info ~f:(fun fname ->
     Action_builder.write_file_dyn
       (Path.Build.relative dir fname)
-      (rule sctx ~requires_link)
+      (let open Action_builder.O in
+       let* main = make_main dir_contents in
+       rule sctx ~requires_link ~main)
     |> Super_context.add_rule sctx ~loc:exes.buildable.loc ~dir)
 ;;

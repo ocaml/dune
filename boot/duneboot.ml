@@ -1463,9 +1463,9 @@ let build
        ])
 ;;
 
-let rec get_flags system = function
-  | (set, f) :: r -> if List.mem system ~set then f else get_flags system r
-  | [] -> []
+let get_flags system xs =
+  List.find_map xs ~f:(fun (set, f) -> if List.mem system ~set then Some f else None)
+  |> Option.value ~default:[]
 ;;
 
 (** {2 Bootstrap process} *)

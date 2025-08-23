@@ -1367,7 +1367,8 @@ let ocaml_warnings =
 ;;
 
 let build
-      ~ocaml_config
+      ~ext_obj
+      ~c_compiler
       ~dependencies
       ~c_files
       ~asm_files
@@ -1417,12 +1418,7 @@ let build
   let* obj_files =
     Fiber.fork_and_join_unit
       (fun () -> build ~file:main ~deps:[] (Filename.basename main))
-      (let ext_obj =
-         try String.Map.find "ext_obj" ocaml_config with
-         | Not_found -> ".o"
-       in
-       let c_compiler = String.Map.find "c_compiler" ocaml_config in
-       fun () ->
+      (fun () ->
          (Fiber.fork_and_join (fun () ->
             Fiber.parallel_map c_files ~f:(fun { Library.name = file; flags } ->
               let flags = List.concat_map flags ~f:(fun flag -> [ "-ccopt"; flag ]) in
@@ -1514,7 +1510,20 @@ let main () =
   in
   let build_flags = get_flags ocaml_system build_flags in
   let link_flags = get_flags ocaml_system link_flags in
-  build ~ocaml_config ~dependencies ~asm_files ~c_files ~build_flags ~link_flags task
+  let ext_obj =
+    try String.Map.find "ext_obj" ocaml_config with
+    | Not_found -> ".o"
+  in
+  let c_compiler = String.Map.find "c_compiler" ocaml_config in
+  build
+    ~ext_obj
+    ~c_compiler
+    ~dependencies
+    ~asm_files
+    ~c_files
+    ~build_flags
+    ~link_flags
+    task
 ;;
 
 let () = Fiber.run (main ())

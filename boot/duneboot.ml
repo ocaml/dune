@@ -804,8 +804,7 @@ module Build_info = struct
           f x);
         pr "  ]\n"
     in
-    get_version ()
-    >>| fun version ->
+    let+ version = get_version () in
     pr
       "let version = %s\n"
       (match version with

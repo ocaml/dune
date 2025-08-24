@@ -916,6 +916,15 @@ module Source = struct
     }
 end
 
+let gen_module oc bindings =
+  List.iter bindings ~f:(fun (lhs, rhs) ->
+    fprintf
+      oc
+      "module %s = %s\n"
+      (String.capitalize_ascii lhs)
+      (String.capitalize_ascii rhs))
+;;
+
 module Wrapper = struct
   type t =
     { toplevel_module : string
@@ -965,11 +974,12 @@ module Wrapper = struct
     | Some t ->
       let fn = String.uncapitalize_ascii t.alias_module ^ ".ml" in
       Io.with_file_out (build_dir ^/ fn) ~f:(fun oc ->
-        String.Set.iter
-          (fun m ->
-             if m <> t.toplevel_module
-             then fprintf oc "module %s = %s__%s\n" m t.toplevel_module m)
-          modules);
+        String.Set.remove t.toplevel_module modules
+        |> String.Set.elements
+        |> List.map ~f:(fun name ->
+          let obj = sprintf "%s__%s" t.toplevel_module name in
+          name, obj)
+        |> gen_module oc);
       Some fn
   ;;
 end
@@ -1128,9 +1138,7 @@ module Library = struct
            in
            let mangled = Wrapper.mangle_filename wrapper src in
            Io.with_file_out (build_dir ^/ mangled) ~f:(fun oc ->
-             List.iter entries ~f:(fun entry ->
-               let entry = String.capitalize_ascii entry in
-               fprintf oc "module %s = %s\n" entry entry));
+             List.map entries ~f:(fun entry -> entry, entry) |> gen_module oc);
            src, mangled)
         root_module
     in

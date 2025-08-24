@@ -191,12 +191,7 @@ end
 
 module Io = struct
   (* Return a sorted list of entries in [path] as [path/entry] *)
-  let readdir path =
-    Sys.readdir path
-    |> Array.to_list
-    |> List.map ~f:(fun entry -> path ^/ entry)
-    |> List.sort ~cmp:String.compare
-  ;;
+  let readdir path = Sys.readdir path |> Array.to_list |> List.sort ~cmp:String.compare
 
   let open_out file =
     if Sys.file_exists file then fatal "%s already exists" file;
@@ -267,7 +262,11 @@ module Io = struct
     | _ -> Unix.unlink fn
     | exception Unix.Unix_error (ENOENT, _, _) -> ()
 
-  and clear dir = List.iter (readdir dir) ~f:rm_rf
+  and clear dir =
+    List.iter (readdir dir) ~f:(fun fn ->
+      let path = Filename.concat dir fn in
+      rm_rf path)
+  ;;
 end
 
 let path_sep = if Sys.win32 then ';' else ':'
@@ -843,8 +842,7 @@ module File_kind = struct
     | Mll
     | Mly
 
-  let analyse file =
-    let fn = Filename.basename file in
+  let analyse dn fn =
     let i =
       try String.index fn '.' with
       | Not_found -> String.length fn
@@ -892,7 +890,6 @@ module File_kind = struct
     | ".mly" -> Some Mly
     | ".defaults.ml" ->
       let fn' = String.sub fn ~pos:0 ~len:i ^ ".ml" in
-      let dn = Filename.dirname file in
       if Sys.file_exists (dn ^/ fn') then None else Some Ml
     | _ -> None
   ;;
@@ -987,17 +984,18 @@ end
 module Library = struct
   (* Collect source files *)
   let scan ~dir ~scan_subdirs =
-    let rec iter_paths paths acc =
-      List.fold_left paths ~init:acc ~f:(fun acc path ->
+    let rec iter_paths dir paths acc =
+      List.fold_left paths ~init:acc ~f:(fun acc fn ->
+        let path = Filename.concat dir fn in
         if Sys.is_directory path
         then if scan_subdirs then iter_dir path acc else acc
         else (
-          match File_kind.analyse path with
+          match File_kind.analyse dir fn with
           | Some kind -> { Source.file = path; kind } :: acc
           | None -> acc))
     and iter_dir path acc =
       let paths = Io.readdir path in
-      iter_paths paths acc
+      iter_paths path paths acc
     in
     iter_dir dir []
   ;;

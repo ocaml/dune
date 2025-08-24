@@ -1067,6 +1067,7 @@ module Library = struct
         ; special_builtin_support = build_info_module
         ; root_module
         }
+        ~ext_obj
         ~ocaml_config
     =
     let scan_subdirs =
@@ -1147,10 +1148,6 @@ module Library = struct
         match root_module with
         | None -> files
         | Some fn -> fn :: files
-      in
-      let ext_obj =
-        try String.Map.find "ext_obj" ocaml_config with
-        | Not_found -> ".o"
       in
       let ccomp_type = String.Map.find "ccomp_type" ocaml_config in
       let architecture = String.Map.find "architecture" ocaml_config in
@@ -1298,7 +1295,7 @@ let get_dependencies libraries =
   deps
 ;;
 
-let assemble_libraries { local_libraries; target = _, main; _ } ~ocaml_config =
+let assemble_libraries { local_libraries; target = _, main; _ } ~ext_obj ~ocaml_config =
   (* In order to assemble all the sources in one place, the executables
        modules are also put in a namespace *)
   local_libraries
@@ -1307,7 +1304,7 @@ let assemble_libraries { local_libraries; target = _, main; _ } ~ocaml_config =
        in
        { Libs.main with main_module_name = Some namespace })
     ]
-  |> Fiber.parallel_map ~f:(Library.process ~ocaml_config)
+  |> Fiber.parallel_map ~f:(Library.process ~ext_obj ~ocaml_config)
 ;;
 
 type status =
@@ -1515,7 +1512,11 @@ let main () =
   (try Unix.mkdir build_dir 0o777 with
    | Unix.Unix_error (Unix.EEXIST, _, _) -> ());
   let* ocaml_config = Config.ocaml_config () in
-  let* libraries = assemble_libraries ~ocaml_config task in
+  let ext_obj =
+    try String.Map.find "ext_obj" ocaml_config with
+    | Not_found -> ".o"
+  in
+  let* libraries = assemble_libraries ~ext_obj ~ocaml_config task in
   let c_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.c_files) libraries in
   let asm_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.asm_files) libraries in
   let* dependencies = get_dependencies libraries in
@@ -1526,10 +1527,6 @@ let main () =
   in
   let build_flags = get_flags ocaml_system build_flags in
   let link_flags = get_flags ocaml_system link_flags in
-  let ext_obj =
-    try String.Map.find "ext_obj" ocaml_config with
-    | Not_found -> ".o"
-  in
   let c_compiler = String.Map.find "c_compiler" ocaml_config in
   build
     ~ext_obj

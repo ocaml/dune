@@ -917,67 +917,65 @@ module Source = struct
     }
 end
 
+module Wrapper = struct
+  type t =
+    { toplevel_module : string
+    ; alias_module : string
+    }
+
+  let make ~namespace ~modules =
+    match namespace with
+    | None -> None
+    | Some namespace ->
+      let namespace = String.capitalize_ascii namespace in
+      if String.Set.equal modules (String.Set.singleton namespace)
+      then None
+      else if String.Set.mem namespace modules
+      then Some { toplevel_module = namespace; alias_module = namespace ^ "__" }
+      else Some { toplevel_module = namespace; alias_module = namespace }
+  ;;
+
+  let mangle_filename t ({ Source.file; kind } : Source.t) =
+    let base = Filename.basename file in
+    match kind with
+    | Asm _ | C _ | Header -> base
+    | Mll | Mly | Ml | Mli ->
+      let ext =
+        match kind with
+        | Mli -> ".mli"
+        | _ -> ".ml"
+      in
+      let base =
+        String.sub base ~pos:0 ~len:(String.index base '.') |> String.uncapitalize_ascii
+      in
+      (match t with
+       | None -> base ^ ext
+       | Some t ->
+         if String.capitalize_ascii base = t.toplevel_module
+         then base ^ ext
+         else (
+           let base = String.capitalize_ascii base in
+           String.uncapitalize_ascii t.toplevel_module ^ "__" ^ base ^ ext))
+  ;;
+
+  let header modules = List.map modules ~f:(sprintf "open! %s\n") |> String.concat ~sep:""
+
+  let generate_wrapper t modules =
+    match t with
+    | None -> None
+    | Some t ->
+      let fn = String.uncapitalize_ascii t.alias_module ^ ".ml" in
+      Io.with_file_out (build_dir ^/ fn) ~f:(fun oc ->
+        String.Set.iter
+          (fun m ->
+             if m <> t.toplevel_module
+             then fprintf oc "module %s = %s__%s\n" m t.toplevel_module m)
+          modules);
+      Some fn
+  ;;
+end
+
 module Library = struct
-  module Wrapper = struct
-    type t =
-      { toplevel_module : string
-      ; alias_module : string
-      }
-
-    let make ~namespace ~modules =
-      match namespace with
-      | None -> None
-      | Some namespace ->
-        let namespace = String.capitalize_ascii namespace in
-        if String.Set.equal modules (String.Set.singleton namespace)
-        then None
-        else if String.Set.mem namespace modules
-        then Some { toplevel_module = namespace; alias_module = namespace ^ "__" }
-        else Some { toplevel_module = namespace; alias_module = namespace }
-    ;;
-
-    let mangle_filename t ({ Source.file; kind } : Source.t) =
-      let base = Filename.basename file in
-      match kind with
-      | Asm _ | C _ | Header -> base
-      | Mll | Mly | Ml | Mli ->
-        let ext =
-          match kind with
-          | Mli -> ".mli"
-          | _ -> ".ml"
-        in
-        let base =
-          String.sub base ~pos:0 ~len:(String.index base '.') |> String.uncapitalize_ascii
-        in
-        (match t with
-         | None -> base ^ ext
-         | Some t ->
-           if String.capitalize_ascii base = t.toplevel_module
-           then base ^ ext
-           else (
-             let base = String.capitalize_ascii base in
-             String.uncapitalize_ascii t.toplevel_module ^ "__" ^ base ^ ext))
-    ;;
-
-    let header modules =
-      List.map modules ~f:(sprintf "open! %s\n") |> String.concat ~sep:""
-    ;;
-
-    let generate_wrapper t modules =
-      match t with
-      | None -> None
-      | Some t ->
-        let fn = String.uncapitalize_ascii t.alias_module ^ ".ml" in
-        Io.with_file_out (build_dir ^/ fn) ~f:(fun oc ->
-          String.Set.iter
-            (fun m ->
-               if m <> t.toplevel_module
-               then fprintf oc "module %s = %s__%s\n" m t.toplevel_module m)
-            modules);
-        Some fn
-    ;;
-  end
-
   (* Collect source files *)
   let scan ~dir ~scan_subdirs =
     let rec loop files acc =

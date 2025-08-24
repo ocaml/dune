@@ -1,4 +1,7 @@
-(** Representation of dune-package files *)
+(** Representation of dune-package files.
+
+    dune-package files represent package data for the purposes of installation.
+    They are not intended to be written or read by human users. *)
 
 open Import
 

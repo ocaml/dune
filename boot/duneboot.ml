@@ -833,14 +833,13 @@ module File_kind = struct
     ; flags : string list
     }
 
+  type ml = { kind : [ `Ml | `Mli | `Mll | `Mly ] }
+
   type t =
     | Header
     | C of c
     | Asm of asm
-    | Ml
-    | Mli
-    | Mll
-    | Mly
+    | Ml of ml
 
   let analyse dn fn =
     let i =
@@ -884,13 +883,13 @@ module File_kind = struct
       in
       Some (C { arch; flags })
     | ".h" -> Some Header
-    | ".ml" -> Some Ml
-    | ".mli" -> Some Mli
-    | ".mll" -> Some Mll
-    | ".mly" -> Some Mly
+    | ".ml" -> Some (Ml { kind = `Ml })
+    | ".mli" -> Some (Ml { kind = `Mli })
+    | ".mll" -> Some (Ml { kind = `Mll })
+    | ".mly" -> Some (Ml { kind = `Mly })
     | ".defaults.ml" ->
       let fn' = String.sub fn ~pos:0 ~len:i ^ ".ml" in
-      if Sys.file_exists (dn ^/ fn') then None else Some Ml
+      if Sys.file_exists (dn ^/ fn') then None else Some (Ml { kind = `Ml })
     | _ -> None
   ;;
 end
@@ -945,10 +944,10 @@ module Wrapper = struct
     let base = Filename.basename file in
     match kind with
     | Asm _ | C _ | Header -> base
-    | Mll | Mly | Ml | Mli ->
+    | Ml { kind } ->
       let ext =
         match kind with
-        | Mli -> ".mli"
+        | `Mli -> ".mli"
         | _ -> ".ml"
       in
       let base =
@@ -1039,7 +1038,7 @@ module Library = struct
   let gen_build_info_module wrapper m =
     let src =
       let fn = String.uncapitalize_ascii m ^ ".ml" in
-      { Source.file = fn; kind = Ml; module_path = [] }
+      { Source.file = fn; kind = Ml { kind = `Ml }; module_path = [] }
     in
     let mangled = Wrapper.mangle_filename wrapper src in
     let oc = Io.open_out (build_dir ^/ mangled) in
@@ -1063,11 +1062,11 @@ module Library = struct
       | Header | C _ ->
         Io.copy_with_directive ~directive:"line" fn dst;
         Fiber.return [ mangled ]
-      | Ml | Mli ->
+      | Ml { kind = `Ml | `Mli } ->
         Io.copy_with_header ~header fn dst;
         Fiber.return [ mangled ]
-      | Mll -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
-      | Mly ->
+      | Ml { kind = `Mll } -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
+      | Ml { kind = `Mly } ->
         (* CR rgrinberg: what if the parser already has an mli? *)
         copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]
     in
@@ -1101,7 +1100,7 @@ module Library = struct
           ~f:(fun acc { Source.file = fn; kind; module_path = _ } ->
             match (kind : File_kind.t) with
             | Asm _ | Header | C _ -> acc
-            | Ml | Mli | Mll | Mly ->
+            | Ml { kind = _ } ->
               let module_name =
                 let fn = Filename.basename fn in
                 String.sub fn ~pos:0 ~len:(String.index fn '.') |> String.capitalize_ascii
@@ -1141,7 +1140,7 @@ module Library = struct
         (fun { name; entries } ->
            let src =
              let fn = String.uncapitalize_ascii name ^ ".ml" in
-             { Source.file = fn; kind = Ml; module_path = [] }
+             { Source.file = fn; kind = Ml { kind = `Ml }; module_path = [] }
            in
            let mangled = Wrapper.mangle_filename wrapper src in
            Io.with_file_out (build_dir ^/ mangled) ~f:(fun oc ->
@@ -1183,7 +1182,7 @@ module Library = struct
             in
             `Left { Source.flags = extra_flags @ c.flags; name = fn })
           else `Skip
-        | Ml | Mli | Mly | Mll -> `Middle fn
+        | Ml { kind = _ } -> `Middle fn
         | Header -> `Skip
         | Asm asm ->
           if keep_asm asm ~ccomp_type ~architecture

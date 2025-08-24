@@ -70,9 +70,9 @@ module String = struct
   module Set = Set.Make (String)
   module Map = Map.Make (String)
 
-  let is_suffix t ~suffix = Filename.check_suffix t suffix
+  let ends_with t ~suffix = Filename.check_suffix t suffix
 
-  let is_prefix t ~prefix =
+  let starts_with t ~prefix =
     let len_s = length t
     and len_pre = length prefix in
     let rec aux i =
@@ -852,7 +852,7 @@ module Library = struct
         let syntax = if ext = ".S" then `Gas else `Intel in
         let os, arch, assembler =
           let fn = Filename.remove_extension fn in
-          let check suffix = String.is_suffix fn ~suffix in
+          let check suffix = String.ends_with fn ~suffix in
           if check "x86-64_unix"
           then Some `Unix, Some `Amd64, `C_comp
           else if check "x86-64_windows_gnu"
@@ -865,7 +865,7 @@ module Library = struct
       | ".c" ->
         let arch, flags =
           let fn = Filename.remove_extension fn in
-          let check suffix = String.is_suffix fn ~suffix in
+          let check suffix = String.ends_with fn ~suffix in
           let x86 gnu _msvc =
             (* CR rgrinberg: select msvc flags on windows *)
             Some `X86, gnu
@@ -878,7 +878,7 @@ module Library = struct
           then x86 [ "-mavx2" ] [ "/arch:AVX2" ]
           else if check "_avx512"
           then x86 [ "-mavx512f"; "-mavx512vl"; "-mavx512bw" ] [ "/arch:AVX512" ]
-          else if String.is_suffix fn ~suffix:"_neon"
+          else if String.ends_with fn ~suffix:"_neon"
           then Some `Arm64, []
           else None, []
         in
@@ -1151,7 +1151,7 @@ module Library = struct
           if keep_c c ~architecture
           then (
             let extra_flags =
-              if String.is_prefix ~prefix:"blake3_" fn
+              if String.starts_with ~prefix:"blake3_" fn
               then (
                 match architecture with
                 | "x86" | "i386" | "i486" | "i586" | "i686" ->

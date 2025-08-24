@@ -899,6 +899,7 @@ module Source = struct
   type t =
     { file : string
     ; kind : File_kind.t
+    ; module_path : string list
     }
 
   type c_file =
@@ -940,7 +941,7 @@ module Wrapper = struct
       else Some { toplevel_module = namespace; alias_module = namespace }
   ;;
 
-  let mangle_filename t ({ Source.file; kind } : Source.t) =
+  let mangle_filename t ({ Source.file; kind; module_path = _ } : Source.t) =
     let base = Filename.basename file in
     match kind with
     | Asm _ | C _ | Header -> base
@@ -984,20 +985,24 @@ end
 module Library = struct
   (* Collect source files *)
   let scan ~dir ~scan_subdirs =
-    let rec iter_paths dir paths acc =
+    let rec iter_paths dir module_path paths acc =
       List.fold_left paths ~init:acc ~f:(fun acc fn ->
         let path = Filename.concat dir fn in
         if Sys.is_directory path
-        then if scan_subdirs then iter_dir path acc else acc
+        then if scan_subdirs then iter_dir path (fn :: module_path) acc else acc
         else (
           match File_kind.analyse dir fn with
-          | Some kind -> { Source.file = path; kind } :: acc
-          | None -> acc))
-    and iter_dir path acc =
-      let paths = Io.readdir path in
-      iter_paths path paths acc
+          | None -> acc
+          | Some kind ->
+            let module_path =
+              Filename.chop_extension (Filename.basename fn) :: module_path
+            in
+            { Source.file = path; kind; module_path } :: acc))
+    and iter_dir dir module_path acc =
+      let paths = Io.readdir dir in
+      iter_paths dir module_path paths acc
     in
-    iter_dir dir []
+    iter_dir dir [] []
   ;;
 
   type t =
@@ -1034,7 +1039,7 @@ module Library = struct
   let gen_build_info_module wrapper m =
     let src =
       let fn = String.uncapitalize_ascii m ^ ".ml" in
-      { Source.file = fn; kind = Ml }
+      { Source.file = fn; kind = Ml; module_path = [] }
     in
     let mangled = Wrapper.mangle_filename wrapper src in
     let oc = Io.open_out (build_dir ^/ mangled) in
@@ -1043,7 +1048,11 @@ module Library = struct
     src, mangled
   ;;
 
-  let process_source_file wrapper ~header ({ Source.file = fn; kind } as source) =
+  let process_source_file
+        wrapper
+        ~header
+        ({ Source.file = fn; kind; module_path = _ } as source)
+    =
     let+ mangled =
       let mangled = Wrapper.mangle_filename wrapper source in
       let dst = build_dir ^/ mangled in
@@ -1089,7 +1098,7 @@ module Library = struct
         List.fold_left
           files
           ~init:String.Set.empty
-          ~f:(fun acc { Source.file = fn; kind } ->
+          ~f:(fun acc { Source.file = fn; kind; module_path = _ } ->
             match (kind : File_kind.t) with
             | Asm _ | Header | C _ -> acc
             | Ml | Mli | Mll | Mly ->
@@ -1132,7 +1141,7 @@ module Library = struct
         (fun { name; entries } ->
            let src =
              let fn = String.uncapitalize_ascii name ^ ".ml" in
-             { Source.file = fn; kind = Ml }
+             { Source.file = fn; kind = Ml; module_path = [] }
            in
            let mangled = Wrapper.mangle_filename wrapper src in
            Io.with_file_out (build_dir ^/ mangled) ~f:(fun oc ->

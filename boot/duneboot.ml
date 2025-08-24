@@ -822,84 +822,84 @@ module Build_info = struct
   ;;
 end
 
-module Library = struct
-  module File_kind = struct
-    type asm =
-      { syntax : [ `Gas | `Intel ]
-      ; arch : [ `Amd64 ] option
-      ; os : [ `Win | `Unix ] option
-      ; assembler : [ `C_comp | `Msvc_asm ]
-      }
+module File_kind = struct
+  type asm =
+    { syntax : [ `Gas | `Intel ]
+    ; arch : [ `Amd64 ] option
+    ; os : [ `Win | `Unix ] option
+    ; assembler : [ `C_comp | `Msvc_asm ]
+    }
 
-    type c =
-      { arch : [ `Arm64 | `X86 ] option
-      ; flags : string list
-      }
+  type c =
+    { arch : [ `Arm64 | `X86 ] option
+    ; flags : string list
+    }
 
-    type t =
-      | Header
-      | C of c
-      | Asm of asm
-      | Ml
-      | Mli
-      | Mll
-      | Mly
+  type t =
+    | Header
+    | C of c
+    | Asm of asm
+    | Ml
+    | Mli
+    | Mll
+    | Mly
 
-    let analyse file =
-      let fn = Filename.basename file in
-      let i =
-        try String.index fn '.' with
-        | Not_found -> String.length fn
+  let analyse file =
+    let fn = Filename.basename file in
+    let i =
+      try String.index fn '.' with
+      | Not_found -> String.length fn
+    in
+    match String.sub fn ~pos:i ~len:(String.length fn - i) with
+    | (".S" | ".asm") as ext ->
+      let syntax = if ext = ".S" then `Gas else `Intel in
+      let os, arch, assembler =
+        let fn = Filename.remove_extension fn in
+        let check suffix = String.ends_with fn ~suffix in
+        if check "x86-64_unix"
+        then Some `Unix, Some `Amd64, `C_comp
+        else if check "x86-64_windows_gnu"
+        then Some `Win, Some `Amd64, `C_comp
+        else if check "x86-64_windows_msvc"
+        then Some `Win, Some `Amd64, `Msvc_asm
+        else None, None, `C_comp
       in
-      match String.sub fn ~pos:i ~len:(String.length fn - i) with
-      | (".S" | ".asm") as ext ->
-        let syntax = if ext = ".S" then `Gas else `Intel in
-        let os, arch, assembler =
-          let fn = Filename.remove_extension fn in
-          let check suffix = String.ends_with fn ~suffix in
-          if check "x86-64_unix"
-          then Some `Unix, Some `Amd64, `C_comp
-          else if check "x86-64_windows_gnu"
-          then Some `Win, Some `Amd64, `C_comp
-          else if check "x86-64_windows_msvc"
-          then Some `Win, Some `Amd64, `Msvc_asm
-          else None, None, `C_comp
+      Some (Asm { syntax; arch; os; assembler })
+    | ".c" ->
+      let arch, flags =
+        let fn = Filename.remove_extension fn in
+        let check suffix = String.ends_with fn ~suffix in
+        let x86 gnu _msvc =
+          (* CR rgrinberg: select msvc flags on windows *)
+          Some `X86, gnu
         in
-        Some (Asm { syntax; arch; os; assembler })
-      | ".c" ->
-        let arch, flags =
-          let fn = Filename.remove_extension fn in
-          let check suffix = String.ends_with fn ~suffix in
-          let x86 gnu _msvc =
-            (* CR rgrinberg: select msvc flags on windows *)
-            Some `X86, gnu
-          in
-          if check "_sse2"
-          then x86 [ "-msse2" ] [ "/arch:SSE2" ]
-          else if check "_sse41"
-          then x86 [ "-msse4.1" ] [ "/arch:AVX" ]
-          else if check "_avx2"
-          then x86 [ "-mavx2" ] [ "/arch:AVX2" ]
-          else if check "_avx512"
-          then x86 [ "-mavx512f"; "-mavx512vl"; "-mavx512bw" ] [ "/arch:AVX512" ]
-          else if String.ends_with fn ~suffix:"_neon"
-          then Some `Arm64, []
-          else None, []
-        in
-        Some (C { arch; flags })
-      | ".h" -> Some Header
-      | ".ml" -> Some Ml
-      | ".mli" -> Some Mli
-      | ".mll" -> Some Mll
-      | ".mly" -> Some Mly
-      | ".defaults.ml" ->
-        let fn' = String.sub fn ~pos:0 ~len:i ^ ".ml" in
-        let dn = Filename.dirname file in
-        if Sys.file_exists (dn ^/ fn') then None else Some Ml
-      | _ -> None
-    ;;
-  end
+        if check "_sse2"
+        then x86 [ "-msse2" ] [ "/arch:SSE2" ]
+        else if check "_sse41"
+        then x86 [ "-msse4.1" ] [ "/arch:AVX" ]
+        else if check "_avx2"
+        then x86 [ "-mavx2" ] [ "/arch:AVX2" ]
+        else if check "_avx512"
+        then x86 [ "-mavx512f"; "-mavx512vl"; "-mavx512bw" ] [ "/arch:AVX512" ]
+        else if String.ends_with fn ~suffix:"_neon"
+        then Some `Arm64, []
+        else None, []
+      in
+      Some (C { arch; flags })
+    | ".h" -> Some Header
+    | ".ml" -> Some Ml
+    | ".mli" -> Some Mli
+    | ".mll" -> Some Mll
+    | ".mly" -> Some Mly
+    | ".defaults.ml" ->
+      let fn' = String.sub fn ~pos:0 ~len:i ^ ".ml" in
+      let dn = Filename.dirname file in
+      if Sys.file_exists (dn ^/ fn') then None else Some Ml
+    | _ -> None
+  ;;
+end
 
+module Library = struct
   type source =
     { file : string
     ; kind : File_kind.t

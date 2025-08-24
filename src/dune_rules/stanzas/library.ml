@@ -118,7 +118,22 @@ let decode =
          "modes"
          (Modes.decode ~stanza_loc ~dune_version project)
          ~default:(Mode_conf.Lib.Set.default stanza_loc)
-     and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
+     and+ virtual_modules, kind =
+       let* virtual_modules =
+         Ordered_set_lang.Unexpanded.field_o
+           ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 7))
+           ~since_expanded:Stanza_common.Modules_settings.since_expanded
+           "virtual_modules"
+       in
+       let+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal in
+       let kind : Lib_kind.t =
+         match virtual_modules, kind with
+         | Some _, (Normal | Virtual) -> Virtual
+         | None, kind -> kind
+         | Some _, _incompatible_kind ->
+           raise (Failure "TODO: Error on incompatible kind")
+       in
+       virtual_modules, kind
      and+ optional = field_b "optional"
      and+ no_dynlink = field_b "no_dynlink"
      and+ () =
@@ -136,11 +151,6 @@ let decode =
        let+ _ = field_b "no_keep_locs" ~check in
        ()
      and+ sub_systems = Sub_system_info.record_parser
-     and+ virtual_modules =
-       Ordered_set_lang.Unexpanded.field_o
-         ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 7))
-         ~since_expanded:Stanza_common.Modules_settings.since_expanded
-         "virtual_modules"
      and+ implements =
        field_o
          "implements"
@@ -370,7 +380,7 @@ let best_name t =
 ;;
 
 let is_parameter t = t.kind = Parameter
-let is_virtual t = Option.is_some t.virtual_modules
+let is_virtual t = t.kind = Virtual
 let is_impl t = Option.is_some t.implements
 
 let obj_dir ~dir t =
@@ -589,7 +599,6 @@ let to_lib_info
     ~enabled
     ~virtual_deps
     ~dune_version
-    ~virtual_
     ~entry_modules
     ~implements
     ~default_implementation

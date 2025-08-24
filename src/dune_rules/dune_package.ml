@@ -105,7 +105,6 @@ module Lib = struct
     let melange_runtime_deps = additional_paths (Lib_info.melange_runtime_deps info) in
     let jsoo_runtime = Lib_info.jsoo_runtime info in
     let wasmoo_runtime = Lib_info.wasmoo_runtime info in
-    let virtual_ = Lib_info.virtual_ info in
     let instrumentation_backend = Lib_info.instrumentation_backend info in
     let native_archives =
       match Lib_info.native_archives info with
@@ -124,7 +123,6 @@ module Lib = struct
     record_fields
     @@ [ field "name" Lib_name.encode name
        ; field "kind" Lib_kind.encode kind
-       ; field_b "virtual" virtual_
        ; field_o "synopsis" string synopsis
        ; field_o "orig_src_dir" path orig_src_dir
        ; mode_paths "archives" archives
@@ -192,7 +190,22 @@ module Lib = struct
        let+ synopsis = field_o "synopsis" string
        and+ loc = loc
        and+ modes = field_l "modes" Lib_mode.decode
-       and+ kind = field "kind" Lib_kind.decode
+       and+ kind =
+         let* kind = field "kind" Lib_kind.decode in
+         let+ virtual_ = field_b "virtual" in
+         match kind with
+         | (Normal | Virtual) when virtual_ ->
+           (* Backward compatible support for dune-project files that
+              that include the [(virtual)] field. )
+              TODO: can we migrate this instead,
+              If not, how do we eventually depricate it? *)
+           Lib_kind.Virtual
+         | _incompatible_kind when virtual_ ->
+           Code_error.raise
+             "invalid combination of 'kind' and 'virtual' fields in library stanza of \
+              dune-package file"
+             [ "kind", Lib_kind.to_dyn kind; "virtual", Dyn.Bool virtual_ ]
+         | otherwise -> otherwise
        and+ archives = mode_paths "archives"
        and+ plugins = mode_paths "plugins"
        and+ foreign_objects = paths "foreign_objects"
@@ -218,7 +231,6 @@ module Lib = struct
        and+ melange_runtime_deps = paths "melange_runtime_deps"
        and+ requires = field_l "requires" (Lib_dep.decode ~allow_re_export:true)
        and+ ppx_runtime_deps = libs "ppx_runtime_deps"
-       and+ virtual_ = field_b "virtual"
        and+ sub_systems = Sub_system_info.record_parser
        and+ orig_src_dir = field_o "orig_src_dir" path
        and+ modules = field "modules" (Modules.decode ~src_dir:base)
@@ -284,7 +296,6 @@ module Lib = struct
            ~enabled
            ~virtual_deps
            ~dune_version
-           ~virtual_
            ~entry_modules
            ~implements
            ~default_implementation

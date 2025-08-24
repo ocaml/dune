@@ -530,30 +530,7 @@ end
 
 let setup_runtime_assets_rules =
   let find_directory_target_ancestor =
-    let rec find_directory_target_ancestor ~dir src =
-      Dir_status.DB.get ~dir
-      >>= function
-      | Lock_dir _ -> Memo.return None
-      | Generated ->
-        let parent = Path.Build.parent_exn dir in
-        find_directory_target_ancestor ~dir:parent src
-      | ( Group_root _
-        | Is_component_of_a_group_but_not_the_root _
-        | Source_only _
-        | Standalone _ ) as dir_status ->
-        let+ directory_targets =
-          Dir_status.directory_targets
-            dir_status
-            ~jsoo_enabled:Jsoo_rules.jsoo_enabled
-            ~dir
-        in
-        Path.Build.Map.find_key directory_targets ~f:(fun dir_target ->
-          Path.Build.is_descendant ~of_:dir_target src)
-    in
-    fun src ->
-      match Path.Build.parent src with
-      | None -> Memo.return None
-      | Some dir -> find_directory_target_ancestor ~dir src
+    Dir_status.find_directory_target_ancestor ~jsoo_enabled:Jsoo_rules.jsoo_enabled
   in
   fun sctx ~scope ~dir ~target_dir ~mode ~promote_in_source ~output ~for_ mel ->
     let* { Runtime_deps.copy; deps } = Runtime_deps.targets sctx ~dir ~output ~for_ mel in

@@ -899,8 +899,8 @@ module File_kind = struct
   ;;
 end
 
-module Library = struct
-  type source =
+module Source = struct
+  type t =
     { file : string
     ; kind : File_kind.t
     }
@@ -915,7 +915,9 @@ module Library = struct
     ; flags : string list
     ; out_file : string
     }
+end
 
+module Library = struct
   module Wrapper = struct
     type t =
       { toplevel_module : string
@@ -934,7 +936,7 @@ module Library = struct
         else Some { toplevel_module = namespace; alias_module = namespace }
     ;;
 
-    let mangle_filename t ({ file; kind } : source) =
+    let mangle_filename t ({ Source.file; kind } : Source.t) =
       let base = Filename.basename file in
       match kind with
       | Asm _ | C _ | Header -> base
@@ -987,7 +989,7 @@ module Library = struct
           then if scan_subdirs then loop (Io.readdir file) acc else acc
           else (
             match File_kind.analyse file with
-            | Some kind -> { file; kind } :: acc
+            | Some kind -> { Source.file; kind } :: acc
             | None -> acc)
         in
         loop files acc
@@ -998,8 +1000,8 @@ module Library = struct
   type t =
     { ocaml_files : string list
     ; alias_file : string option
-    ; c_files : c_file list
-    ; asm_files : asm_file list
+    ; c_files : Source.c_file list
+    ; asm_files : Source.asm_file list
     }
 
   let keep_asm { File_kind.syntax; arch; os; assembler = _ } ~ccomp_type ~architecture =
@@ -1029,7 +1031,7 @@ module Library = struct
   let gen_build_info_module wrapper m =
     let src =
       let fn = String.uncapitalize_ascii m ^ ".ml" in
-      { file = fn; kind = Ml }
+      { Source.file = fn; kind = Ml }
     in
     let mangled = Wrapper.mangle_filename wrapper src in
     let oc = Io.open_out (build_dir ^/ mangled) in
@@ -1038,7 +1040,7 @@ module Library = struct
     src, mangled
   ;;
 
-  let process_source_file wrapper ~header ({ file = fn; kind } as source) =
+  let process_source_file wrapper ~header ({ Source.file = fn; kind } as source) =
     let+ mangled =
       let mangled = Wrapper.mangle_filename wrapper source in
       let dst = build_dir ^/ mangled in
@@ -1080,15 +1082,18 @@ module Library = struct
     let files = scan ~dir ~scan_subdirs in
     let modules =
       let modules =
-        List.fold_left files ~init:String.Set.empty ~f:(fun acc { file = fn; kind } ->
-          match (kind : File_kind.t) with
-          | Asm _ | Header | C _ -> acc
-          | Ml | Mli | Mll | Mly ->
-            let module_name =
-              let fn = Filename.basename fn in
-              String.sub fn ~pos:0 ~len:(String.index fn '.') |> String.capitalize_ascii
-            in
-            String.Set.add module_name acc)
+        List.fold_left
+          files
+          ~init:String.Set.empty
+          ~f:(fun acc { Source.file = fn; kind } ->
+            match (kind : File_kind.t) with
+            | Asm _ | Header | C _ -> acc
+            | Ml | Mli | Mll | Mly ->
+              let module_name =
+                let fn = Filename.basename fn in
+                String.sub fn ~pos:0 ~len:(String.index fn '.') |> String.capitalize_ascii
+              in
+              String.Set.add module_name acc)
       in
       let modules =
         match build_info_module with
@@ -1123,7 +1128,7 @@ module Library = struct
         (fun { name; entries } ->
            let src =
              let fn = String.uncapitalize_ascii name ^ ".ml" in
-             { file = fn; kind = Ml }
+             { Source.file = fn; kind = Ml }
            in
            let mangled = Wrapper.mangle_filename wrapper src in
            Io.with_file_out (build_dir ^/ mangled) ~f:(fun oc ->
@@ -1169,7 +1174,7 @@ module Library = struct
                 | _ -> [])
               else []
             in
-            `Left { flags = extra_flags @ c.flags; name = fn })
+            `Left { Source.flags = extra_flags @ c.flags; name = fn })
           else `Skip
         | Ml | Mli | Mly | Mll -> `Middle fn
         | Header -> `Skip
@@ -1178,7 +1183,7 @@ module Library = struct
           then (
             let out_file = Filename.chop_extension fn ^ ext_obj in
             `Right
-              { flags =
+              { Source.flags =
                   (match asm.assembler with
                    | `C_comp -> [ "-c"; fn; "-o"; out_file ]
                    | `Msvc_asm -> [ "/nologo"; "/quiet"; "/Fo" ^ out_file; "/c"; fn ])
@@ -1433,7 +1438,7 @@ let build
       (fun () -> build ~file:main ~deps:[] (Filename.basename main))
       (fun () ->
          (Fiber.fork_and_join (fun () ->
-            Fiber.parallel_map c_files ~f:(fun { Library.name = file; flags } ->
+            Fiber.parallel_map c_files ~f:(fun { Source.name = file; flags } ->
               let+ () =
                 List.concat
                   [ [ "-c"; "-g" ]
@@ -1448,7 +1453,7 @@ let build
            (fun () ->
               Fiber.parallel_map
                 asm_files
-                ~f:(fun { Library.assembler; flags; out_file } ->
+                ~f:(fun { Source.assembler; flags; out_file } ->
                   let+ () =
                     Process.run
                       ~cwd:build_dir

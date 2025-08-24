@@ -978,19 +978,19 @@ end
 module Library = struct
   (* Collect source files *)
   let scan ~dir ~scan_subdirs =
-    let rec loop files acc =
-      match files with
+    let rec loop paths acc =
+      match paths with
       | [] -> acc
-      | file :: files ->
+      | path :: paths ->
         let acc =
-          if Sys.is_directory file
-          then if scan_subdirs then loop (Io.readdir file) acc else acc
+          if Sys.is_directory path
+          then if scan_subdirs then loop (Io.readdir path) acc else acc
           else (
-            match File_kind.analyse file with
-            | Some kind -> { Source.file; kind } :: acc
+            match File_kind.analyse path with
+            | Some kind -> { Source.file = path; kind } :: acc
             | None -> acc)
         in
-        loop files acc
+        loop paths acc
     in
     loop (Io.readdir dir) []
   ;;

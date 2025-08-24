@@ -833,7 +833,10 @@ module File_kind = struct
     ; flags : string list
     }
 
-  type ml = { kind : [ `Ml | `Mli | `Mll | `Mly ] }
+  type ml =
+    { kind : [ `Ml | `Mli | `Mll | `Mly ]
+    ; name : string
+    }
 
   type t =
     | Header
@@ -846,6 +849,7 @@ module File_kind = struct
       try String.index fn '.' with
       | Not_found -> String.length fn
     in
+    let name = String.sub fn ~pos:0 ~len:i in
     match String.sub fn ~pos:i ~len:(String.length fn - i) with
     | (".S" | ".asm") as ext ->
       let syntax = if ext = ".S" then `Gas else `Intel in
@@ -883,13 +887,13 @@ module File_kind = struct
       in
       Some (C { arch; flags })
     | ".h" -> Some Header
-    | ".ml" -> Some (Ml { kind = `Ml })
-    | ".mli" -> Some (Ml { kind = `Mli })
-    | ".mll" -> Some (Ml { kind = `Mll })
-    | ".mly" -> Some (Ml { kind = `Mly })
+    | ".ml" -> Some (Ml { kind = `Ml; name })
+    | ".mli" -> Some (Ml { kind = `Mli; name })
+    | ".mll" -> Some (Ml { kind = `Mll; name })
+    | ".mly" -> Some (Ml { kind = `Mly; name })
     | ".defaults.ml" ->
       let fn' = String.sub fn ~pos:0 ~len:i ^ ".ml" in
-      if Sys.file_exists (dn ^/ fn') then None else Some (Ml { kind = `Ml })
+      if Sys.file_exists (dn ^/ fn') then None else Some (Ml { kind = `Ml; name })
     | _ -> None
   ;;
 end
@@ -944,15 +948,13 @@ module Wrapper = struct
     let base = Filename.basename file in
     match kind with
     | Asm _ | C _ | Header -> base
-    | Ml { kind } ->
+    | Ml { kind; name } ->
       let ext =
         match kind with
         | `Mli -> ".mli"
         | _ -> ".ml"
       in
-      let base =
-        String.sub base ~pos:0 ~len:(String.index base '.') |> String.uncapitalize_ascii
-      in
+      let base = String.uncapitalize_ascii name in
       (match t with
        | None -> base ^ ext
        | Some t ->
@@ -993,9 +995,7 @@ module Library = struct
           match File_kind.analyse dir fn with
           | None -> acc
           | Some kind ->
-            let module_path =
-              Filename.chop_extension (Filename.basename fn) :: module_path
-            in
+            let module_path = Filename.basename fn :: module_path in
             { Source.file = path; kind; module_path } :: acc))
     and iter_dir dir module_path acc =
       let paths = Io.readdir dir in
@@ -1037,8 +1037,9 @@ module Library = struct
 
   let gen_build_info_module wrapper m =
     let src =
-      let fn = String.uncapitalize_ascii m ^ ".ml" in
-      { Source.file = fn; kind = Ml { kind = `Ml }; module_path = [] }
+      let name = String.uncapitalize_ascii m in
+      let fn = name ^ ".ml" in
+      { Source.file = fn; kind = Ml { kind = `Ml; name }; module_path = [] }
     in
     let mangled = Wrapper.mangle_filename wrapper src in
     let oc = Io.open_out (build_dir ^/ mangled) in
@@ -1062,11 +1063,12 @@ module Library = struct
       | Header | C _ ->
         Io.copy_with_directive ~directive:"line" fn dst;
         Fiber.return [ mangled ]
-      | Ml { kind = `Ml | `Mli } ->
+      | Ml { kind = `Ml | `Mli; name = _ } ->
         Io.copy_with_header ~header fn dst;
         Fiber.return [ mangled ]
-      | Ml { kind = `Mll } -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
-      | Ml { kind = `Mly } ->
+      | Ml { kind = `Mll; name = _ } ->
+        copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
+      | Ml { kind = `Mly; name = _ } ->
         (* CR rgrinberg: what if the parser already has an mli? *)
         copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]
     in
@@ -1097,14 +1099,11 @@ module Library = struct
         List.fold_left
           files
           ~init:String.Set.empty
-          ~f:(fun acc { Source.file = fn; kind; module_path = _ } ->
+          ~f:(fun acc { Source.file = _; kind; module_path = _ } ->
             match (kind : File_kind.t) with
             | Asm _ | Header | C _ -> acc
-            | Ml { kind = _ } ->
-              let module_name =
-                let fn = Filename.basename fn in
-                String.sub fn ~pos:0 ~len:(String.index fn '.') |> String.capitalize_ascii
-              in
+            | Ml { kind = _; name } ->
+              let module_name = String.capitalize_ascii name in
               String.Set.add module_name acc)
       in
       let modules =
@@ -1140,7 +1139,7 @@ module Library = struct
         (fun { name; entries } ->
            let src =
              let fn = String.uncapitalize_ascii name ^ ".ml" in
-             { Source.file = fn; kind = Ml { kind = `Ml }; module_path = [] }
+             { Source.file = fn; kind = Ml { kind = `Ml; name }; module_path = [] }
            in
            let mangled = Wrapper.mangle_filename wrapper src in
            Io.with_file_out (build_dir ^/ mangled) ~f:(fun oc ->
@@ -1182,7 +1181,7 @@ module Library = struct
             in
             `Left { Source.flags = extra_flags @ c.flags; name = fn })
           else `Skip
-        | Ml { kind = _ } -> `Middle fn
+        | Ml { kind = _; name = _ } -> `Middle fn
         | Header -> `Skip
         | Asm asm ->
           if keep_asm asm ~ccomp_type ~architecture

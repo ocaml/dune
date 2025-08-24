@@ -128,10 +128,14 @@ let decode =
        let+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal in
        let kind : Lib_kind.t =
          match virtual_modules, kind with
-         | Some _, (Normal | Virtual) -> Virtual
+         | Some _, (Normal | Virtual) ->
+           (* For backward compatibility, libraries are virtual if they are
+              inferred or declared as normal and [virtual_modules] are
+              specified. *)
+           Virtual
          | None, kind -> kind
          | Some _, _incompatible_kind ->
-           raise (Failure "TODO: Error on incompatible kind")
+           raise (Failure "TODO: Error on incompatible kind with virtual_modules")
        in
        virtual_modules, kind
      and+ optional = field_b "optional"

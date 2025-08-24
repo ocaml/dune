@@ -195,10 +195,8 @@ module Lib = struct
          let+ virtual_ = field_b "virtual" in
          match kind with
          | (Normal | Virtual) when virtual_ ->
-           (* Backward compatible support for dune-project files that
-              that include the [(virtual)] field. )
-              TODO: can we migrate this instead,
-              If not, how do we eventually depricate it? *)
+           (* Backward compatible support for dune-project files
+              that include the [(virtual)] field. *)
            Lib_kind.Virtual
          | _incompatible_kind when virtual_ ->
            Code_error.raise

@@ -694,10 +694,10 @@ end = struct
     if secondary
     then (
       let s =
-        Fiber.run
-          (Process.run_and_capture
-             "ocamlfind"
-             [ "-toolchain"; "secondary"; "query"; "ocaml" ])
+        Process.run_and_capture
+          "ocamlfind"
+          [ "-toolchain"; "secondary"; "query"; "ocaml" ]
+        |> Fiber.run
       in
       match String.split_lines s with
       | [] | _ :: _ :: _ -> fatal "Unexpected output locating secondary compiler"
@@ -1414,29 +1414,29 @@ let build
       (Not_started
          (fun () ->
            let* () = Fiber.parallel_iter deps ~f:(build ~file ~deps) in
-           Process.run
-             ~cwd:build_dir
-             Config.compiler
-             (List.concat
-                [ [ "-c"; "-g"; "-no-alias-deps" ]
-                ; ocaml_warnings
-                ; allow_unstable_sources
-                ; external_includes
-                ; [ file ]
-                ]))));
+           List.concat
+             [ [ "-c"; "-g"; "-no-alias-deps" ]
+             ; ocaml_warnings
+             ; allow_unstable_sources
+             ; external_includes
+             ; [ file ]
+             ]
+           |> Process.run ~cwd:build_dir Config.compiler)));
   let* obj_files =
     Fiber.fork_and_join_unit
       (fun () -> build ~file:main ~deps:[] (Filename.basename main))
       (fun () ->
          (Fiber.fork_and_join (fun () ->
             Fiber.parallel_map c_files ~f:(fun { Library.name = file; flags } ->
-              let flags = List.concat_map flags ~f:(fun flag -> [ "-ccopt"; flag ]) in
               let+ () =
-                Process.run
-                  ~cwd:build_dir
-                  Config.compiler
-                  (List.concat
-                     [ [ "-c"; "-g" ]; external_includes; build_flags; [ file ]; flags ])
+                List.concat
+                  [ [ "-c"; "-g" ]
+                  ; external_includes
+                  ; build_flags
+                  ; [ file ]
+                  ; List.concat_map flags ~f:(fun flag -> [ "-ccopt"; flag ])
+                  ]
+                |> Process.run ~cwd:build_dir Config.compiler
               in
               Filename.chop_extension file ^ ext_obj)))
            (fun () ->
@@ -1466,18 +1466,15 @@ let build
       | _ -> None)
   in
   write_args "compiled_ml_files" compiled_ml_files;
-  Process.run
-    ~cwd:build_dir
-    Config.compiler
-    (let static_flags = if static then [ "-ccopt"; "-static" ] else [] in
-     List.concat
-       [ common_build_args name ~external_includes ~external_libraries
-       ; obj_files
-       ; [ "-args"; "compiled_ml_files" ]
-       ; link_flags
-       ; static_flags
-       ; allow_unstable_sources
-       ])
+  List.concat
+    [ common_build_args name ~external_includes ~external_libraries
+    ; obj_files
+    ; [ "-args"; "compiled_ml_files" ]
+    ; link_flags
+    ; (if static then [ "-ccopt"; "-static" ] else [])
+    ; allow_unstable_sources
+    ]
+  |> Process.run ~cwd:build_dir Config.compiler
 ;;
 
 let get_flags system xs =

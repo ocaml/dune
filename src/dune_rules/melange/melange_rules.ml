@@ -724,74 +724,75 @@ let setup_js_rules_libraries =
       let+ ocaml = Super_context.context sctx |> Context.ocaml in
       ocaml.lib_config
     in
-    Memo.parallel_iter requires_link ~f:(fun lib ->
-      let lib_compile_info =
-        Lib.Compile.for_lib
-          ~allow_overlaps:mel.allow_overlapping_dependencies
-          (Scope.libs scope)
-          lib
-      in
-      let info = Lib.info lib in
-      let promote_in_source = should_promote_in_source scope in
-      let build_js =
-        let loc = Lib_info.loc info in
-        let obj_dir = Lib_info.obj_dir info in
-        let pkg_name = Lib_info.package info in
-        build_js ~loc ~promote_in_source ~pkg_name ~obj_dir
-      in
-      let output = output_of_lib ~target_dir lib in
-      let* includes =
-        let+ requires_link =
-          Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)
-          |> Resolve.Memo.map ~f:(with_vlib_implementations lib)
+    let+ dir_targets =
+      Memo.parallel_map requires_link ~f:(fun lib ->
+        let lib_compile_info =
+          Lib.Compile.for_lib
+            ~allow_overlaps:mel.allow_overlapping_dependencies
+            (Scope.libs scope)
+            lib
         in
-        cmj_includes ~requires_link ~scope lib_config
-      and* compile_flags = melange_compile_flags ~sctx ~dir mel in
-      let+ _directory_targets =
-        setup_runtime_assets_rules
-          sctx
-          ~scope
-          ~dir
-          ~target_dir
-          ~mode
-          ~promote_in_source
-          ~output
-          ~for_:(`Library info)
-          mel
-      and+ () =
-        match Lib.implements lib with
-        | None -> Memo.return ()
-        | Some vlib ->
-          let* vlib = Resolve.Memo.read_memo vlib in
-          let vlib_output = output_of_lib ~target_dir vlib in
-          (match vlib_output, output with
-           | Public_library _, Private_library_or_emit _ ->
-             let info = Lib.info lib in
-             User_error.raise
-               ~loc:(Lib_info.loc info)
-               [ Pp.text
-                   "Dune doesn't currently support building private implementations of \
-                    virtual public libaries for `(modes melange)`"
-               ]
-               ~hints:
-                 [ Pp.textf
-                     "Add a `public_name` to the library `%s'."
-                     (Lib_name.to_string (Lib_info.name info))
+        let info = Lib.info lib in
+        let promote_in_source = should_promote_in_source scope in
+        let build_js =
+          let loc = Lib_info.loc info in
+          let obj_dir = Lib_info.obj_dir info in
+          let pkg_name = Lib_info.package info in
+          build_js ~loc ~promote_in_source ~pkg_name ~obj_dir
+        in
+        let output = output_of_lib ~target_dir lib in
+        let* includes =
+          let+ requires_link =
+            Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)
+            |> Resolve.Memo.map ~f:(with_vlib_implementations lib)
+          in
+          cmj_includes ~requires_link ~scope lib_config
+        and* compile_flags = melange_compile_flags ~sctx ~dir mel in
+        let+ directory_targets =
+          setup_runtime_assets_rules
+            sctx
+            ~scope
+            ~dir
+            ~target_dir
+            ~mode
+            ~promote_in_source
+            ~output
+            ~for_:(`Library info)
+            mel
+        and+ () =
+          match Lib.implements lib with
+          | None -> Memo.return ()
+          | Some vlib ->
+            let* vlib = Resolve.Memo.read_memo vlib in
+            let vlib_output = output_of_lib ~target_dir vlib in
+            (match vlib_output, output with
+             | Public_library _, Private_library_or_emit _ ->
+               let info = Lib.info lib in
+               User_error.raise
+                 ~loc:(Lib_info.loc info)
+                 [ Pp.text
+                     "Dune doesn't currently support building private implementations of \
+                      virtual public libaries for `(modes melange)`"
                  ]
-           | Public_library _, Public_library _ | Private_library_or_emit _, _ ->
-             let* includes =
-               let+ requires_link =
+                 ~hints:
+                   [ Pp.textf
+                       "Add a `public_name` to the library `%s'."
+                       (Lib_name.to_string (Lib_info.name info))
+                   ]
+             | Public_library _, Public_library _ | Private_library_or_emit _, _ ->
+               let* includes =
                  let+ requires_link =
-                   Lib.Compile.for_lib
-                     ~allow_overlaps:mel.allow_overlapping_dependencies
-                     (Scope.libs scope)
-                     vlib
-                   |> Lib.Compile.requires_link
-                   |> Memo.Lazy.force
-                 in
-                 let open Resolve.O in
-                 let+ requires_link = requires_link in
-                 (* Whenever a `concrete_lib` implementation contains a field
+                   let+ requires_link =
+                     Lib.Compile.for_lib
+                       ~allow_overlaps:mel.allow_overlapping_dependencies
+                       (Scope.libs scope)
+                       vlib
+                     |> Lib.Compile.requires_link
+                     |> Memo.Lazy.force
+                   in
+                   let open Resolve.O in
+                   let+ requires_link = requires_link in
+                   (* Whenever a `concrete_lib` implementation contains a field
                     `(implements virt_lib)`, we also set up the JS targets for the
                     modules defined in `virt_lib`.
 
@@ -801,23 +802,30 @@ let setup_js_rules_libraries =
                     `virt_lib` depend on `concrete_lib`, such that Melange can find
                     the correct `.cmj` file, which is needed to emit the correct
                     path in `import` / `require`. *)
-                 lib :: requires_link
+                   lib :: requires_link
+                 in
+                 cmj_includes ~requires_link ~scope lib_config
                in
-               cmj_includes ~requires_link ~scope lib_config
-             in
-             parallel_build_source_modules
-               ~sctx
-               ~scope
-               vlib
-               ~f:(build_js ~dir ~output:vlib_output ~includes ~compile_flags))
-      and+ () =
-        parallel_build_source_modules
-          ~sctx
-          ~scope
-          lib
-          ~f:(build_js ~dir ~output ~includes ~compile_flags)
-      in
-      ())
+               parallel_build_source_modules
+                 ~sctx
+                 ~scope
+                 vlib
+                 ~f:(build_js ~dir ~output:vlib_output ~includes ~compile_flags))
+        and+ () =
+          parallel_build_source_modules
+            ~sctx
+            ~scope
+            lib
+            ~f:(build_js ~dir ~output ~includes ~compile_flags)
+        in
+        directory_targets)
+    in
+    List.fold_left dir_targets ~init:Path.Build.Map.empty ~f:(fun acc dir_targets ->
+      Path.Build.Map.merge acc dir_targets ~f:(fun _ l1 l2 ->
+        match l1, l2 with
+        | None, None -> None
+        | Some loc, None | None, Some loc -> Some loc
+        | Some _, Some _ -> assert false))
 ;;
 
 let setup_js_rules_libraries_and_entries
@@ -830,12 +838,19 @@ let setup_js_rules_libraries_and_entries
       ~target_dir
       mel
   =
-  let+ () =
+  let+ dir_targets_libraries =
     setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode mel
   and+ directory_targets =
     setup_entries_js ~sctx ~dir ~dir_contents ~scope ~requires_link ~target_dir ~mode mel
   in
-  directory_targets
+  Path.Build.Map.merge
+    dir_targets_libraries
+    directory_targets
+    ~f:(fun _ lib_dir emit_dir ->
+      match lib_dir, emit_dir with
+      | None, None -> None
+      | Some loc, None | None, Some loc -> Some loc
+      | Some _, Some _ -> assert false)
 ;;
 
 let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =

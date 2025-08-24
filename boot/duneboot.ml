@@ -978,18 +978,13 @@ module Library = struct
   (* Collect source files *)
   let scan ~dir ~scan_subdirs =
     let rec iter_paths paths acc =
-      match paths with
-      | [] -> acc
-      | path :: paths ->
-        let acc =
-          if Sys.is_directory path
-          then if scan_subdirs then iter_dir path acc else acc
-          else (
-            match File_kind.analyse path with
-            | Some kind -> { Source.file = path; kind } :: acc
-            | None -> acc)
-        in
-        iter_paths paths acc
+      List.fold_left paths ~init:acc ~f:(fun acc path ->
+        if Sys.is_directory path
+        then if scan_subdirs then iter_dir path acc else acc
+        else (
+          match File_kind.analyse path with
+          | Some kind -> { Source.file = path; kind } :: acc
+          | None -> acc))
     and iter_dir path acc =
       let paths = Io.readdir path in
       iter_paths paths acc

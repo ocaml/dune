@@ -1079,7 +1079,8 @@ module Library = struct
         ; root_module
         }
         ~ext_obj
-        ~ocaml_config
+        ~ccomp_type
+        ~architecture
     =
     let scan_subdirs =
       match include_subdirs with
@@ -1155,8 +1156,6 @@ module Library = struct
         | None -> files
         | Some fn -> fn :: files
       in
-      let ccomp_type = String.Map.find "ccomp_type" ocaml_config in
-      let architecture = String.Map.find "architecture" ocaml_config in
       List.partition_map_skip files ~f:(fun (src, fn) ->
         match src.kind with
         | C c ->
@@ -1300,7 +1299,12 @@ let get_dependencies libraries =
   deps
 ;;
 
-let assemble_libraries { local_libraries; target = _, main; _ } ~ext_obj ~ocaml_config =
+let assemble_libraries
+      { local_libraries; target = _, main; _ }
+      ~ext_obj
+      ~ccomp_type
+      ~architecture
+  =
   (* In order to assemble all the sources in one place, the executables
        modules are also put in a namespace *)
   local_libraries
@@ -1309,7 +1313,7 @@ let assemble_libraries { local_libraries; target = _, main; _ } ~ext_obj ~ocaml_
        in
        { Libs.main with main_module_name = Some namespace })
     ]
-  |> Fiber.parallel_map ~f:(Library.process ~ext_obj ~ocaml_config)
+  |> Fiber.parallel_map ~f:(Library.process ~ext_obj ~ccomp_type ~architecture)
 ;;
 
 type status =
@@ -1521,7 +1525,9 @@ let main () =
     try String.Map.find "ext_obj" ocaml_config with
     | Not_found -> ".o"
   in
-  let* libraries = assemble_libraries ~ext_obj ~ocaml_config task in
+  let ccomp_type = String.Map.find "ccomp_type" ocaml_config in
+  let architecture = String.Map.find "architecture" ocaml_config in
+  let* libraries = assemble_libraries task ~ext_obj ~ccomp_type ~architecture in
   let c_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.c_files) libraries in
   let asm_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.asm_files) libraries in
   let* dependencies = get_dependencies libraries in

@@ -1037,9 +1037,9 @@ module Library = struct
   ;;
 
   let process_source_file wrapper ~header ({ file = fn; kind } as source) =
-    let mangled = Wrapper.mangle_filename wrapper source in
-    let dst = build_dir ^/ mangled in
     let+ mangled =
+      let mangled = Wrapper.mangle_filename wrapper source in
+      let dst = build_dir ^/ mangled in
       match kind with
       | Asm _ ->
         Io.copy fn dst;
@@ -1253,32 +1253,32 @@ let write_args file args =
 ;;
 
 let get_dependencies libraries =
-  let alias_files =
-    List.fold_left libraries ~init:[] ~f:(fun acc (lib : Library.t) ->
-      match lib.alias_file with
-      | None -> acc
-      | Some fn -> fn :: acc)
-  in
-  let all_source_files =
-    List.concat_map ~f:(fun (lib : Library.t) -> lib.ocaml_files) libraries
-  in
-  write_args "source_files" all_source_files;
-  let+ dependencies =
-    ocamldep (mk_flags "-map" alias_files @ [ "-args"; "source_files" ])
-  in
-  let deps =
+  let+ deps =
+    let alias_files =
+      List.fold_left libraries ~init:[] ~f:(fun acc (lib : Library.t) ->
+        match lib.alias_file with
+        | None -> acc
+        | Some fn -> fn :: acc)
+    in
     let all_source_files =
-      List.fold_left
-        alias_files
-        ~init:(String.Set.of_list all_source_files)
-        ~f:(fun acc fn -> String.Set.add fn acc)
+      List.concat_map libraries ~f:(fun (lib : Library.t) -> lib.ocaml_files)
+    in
+    write_args "source_files" all_source_files;
+    let+ dependencies =
+      ocamldep (mk_flags "-map" alias_files @ [ "-args"; "source_files" ])
     in
     List.rev_append
       ((* Alias files have no dependencies *)
        List.rev_map
          alias_files
          ~f:Dep.empty)
-      (List.rev_map dependencies ~f:(convert_dependencies ~all_source_files))
+      (let all_source_files =
+         List.fold_left
+           alias_files
+           ~init:(String.Set.of_list all_source_files)
+           ~f:(fun acc fn -> String.Set.add fn acc)
+       in
+       List.rev_map dependencies ~f:(convert_dependencies ~all_source_files))
   in
   if debug
   then (
@@ -1292,13 +1292,13 @@ let get_dependencies libraries =
 let assemble_libraries { local_libraries; target = _, main; _ } ~ocaml_config =
   (* In order to assemble all the sources in one place, the executables
        modules are also put in a namespace *)
-  let task_lib =
-    let namespace =
-      String.capitalize_ascii (Filename.chop_extension (Filename.basename main))
-    in
-    { Libs.main with main_module_name = Some namespace }
-  in
-  local_libraries @ [ task_lib ] |> Fiber.parallel_map ~f:(Library.process ~ocaml_config)
+  local_libraries
+  @ [ (let namespace =
+         String.capitalize_ascii (Filename.chop_extension (Filename.basename main))
+       in
+       { Libs.main with main_module_name = Some namespace })
+    ]
+  |> Fiber.parallel_map ~f:(Library.process ~ocaml_config)
 ;;
 
 type status =
@@ -1460,7 +1460,8 @@ let build
       | Byte -> ".cmo"
       | Native -> ".cmx"
     in
-    List.filter_map (sort_files dependencies ~main) ~f:(fun fn ->
+    sort_files dependencies ~main
+    |> List.filter_map ~f:(fun fn ->
       match Filename.extension fn with
       | ".ml" -> Some (Filename.remove_extension fn ^ compiled_ml_ext)
       | _ -> None)

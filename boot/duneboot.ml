@@ -1267,7 +1267,8 @@ let convert_dependencies ~all_source_files { Dep.file; deps = dependencies } =
 
 let write_args file args =
   Io.with_file_out (build_dir ^/ file) ~f:(fun ch ->
-    output_string ch (String.concat ~sep:"\n" args))
+    output_string ch (String.concat ~sep:"\n" args));
+  [ "-args"; file ]
 ;;
 
 let get_dependencies libraries =
@@ -1281,10 +1282,8 @@ let get_dependencies libraries =
     let all_source_files =
       List.concat_map libraries ~f:(fun (lib : Library.t) -> lib.ocaml_files)
     in
-    write_args "source_files" all_source_files;
-    let+ dependencies =
-      ocamldep (mk_flags "-map" alias_files @ [ "-args"; "source_files" ])
-    in
+    let args = write_args "source_files" all_source_files in
+    let+ dependencies = ocamldep (mk_flags "-map" alias_files @ args) in
     List.rev_append
       ((* Alias files have no dependencies *)
        List.rev_map
@@ -1484,11 +1483,11 @@ let build
       | ".ml" -> Some (Filename.remove_extension fn ^ compiled_ml_ext)
       | _ -> None)
   in
-  write_args "compiled_ml_files" compiled_ml_files;
+  let args = write_args "compiled_ml_files" compiled_ml_files in
   List.concat
     [ common_build_args name ~external_includes ~external_libraries
     ; obj_files
-    ; [ "-args"; "compiled_ml_files" ]
+    ; args
     ; link_flags
     ; (if static then [ "-ccopt"; "-static" ] else [])
     ; allow_unstable_sources

@@ -125,9 +125,8 @@ let decode =
            ~since_expanded:Stanza_common.Modules_settings.since_expanded
            "virtual_modules"
        in
-       let+ kind_loc, dune_file_kind =
-         located
-         @@ field "kind" Lib_kind.Dune_file.decode ~default:Lib_kind.Dune_file.Normal
+       let+ dune_file_kind =
+         field "kind" Lib_kind.Dune_file.decode ~default:Lib_kind.Dune_file.Normal
        in
        let kind : Lib_kind.t =
          match virtual_modules with

@@ -1,7 +1,7 @@
 Cram
 ----
 
-.. describe:: (cram ...)
+.. confval:: (cram ...)
 
    Configure Cram tests in the current directory (and subdirectories).
 
@@ -11,7 +11,7 @@ Cram
 
    .. seealso:: :doc:`/reference/cram`
 
-   .. describe:: (deps <dep-spec>)
+   .. confval:: (deps <dep-spec>)
 
       Specify the dependencies of the test.
 
@@ -32,7 +32,7 @@ Cram
 
       .. seealso:: :doc:`/concepts/dependency-spec`.
 
-   .. describe:: (applies_to <predicate-lang>)
+   .. confval:: (applies_to <predicate-lang>)
 
       Specify the scope of this ``cram`` stanza. By default it applies to all the
       Cram tests in the current directory. The special ``:whole_subtree`` value
@@ -50,30 +50,30 @@ Cram
 
       .. seealso:: :doc:`/reference/predicate-language`
 
-   .. describe:: (enabled_if <blang>)
+   .. confval:: (enabled_if <blang>)
 
       Control whether the tests are enabled.
 
       .. seealso:: :doc:`/reference/boolean-language`, :doc:`/concepts/variables`
 
-   .. describe:: (alias <name>)
+   .. confval:: (alias <name>)
 
       Alias that can be used to run the test. In addition to the user alias,
       every test ``foo.t`` is attached to the :doc:`/reference/aliases/runtest`
       alias and gets its own ``@foo`` alias to make it convenient to run
       individually.
 
-   .. describe:: (locks <lock-names>)
+   .. confval:: (locks <lock-names>)
 
       Specify that the tests must be run while holding the following locks.
 
       .. seealso:: :doc:`/concepts/locks`
 
-   .. describe:: (package <name>)
+   .. confval:: (package <name>)
 
       Attach the tests selected by this stanza to the specified package.
 
-   .. describe:: (runtest_alias <true|false>)
+   .. confval:: (runtest_alias <true|false>)
 
       .. versionadded:: 3.12
 
@@ -81,7 +81,7 @@ Cram
       The default is to add every Cram test to ``runtest``, but this is not
       always desired.
 
-   .. describe:: (timeout <float>)
+   .. confval:: (timeout <float>)
 
       .. versionadded:: 3.20
 

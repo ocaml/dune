@@ -64,8 +64,6 @@ module Dune_file = struct
     | Ppx_deriver of Ppx_args.t
     | Ppx_rewriter of Ppx_args.t
 
-  let equal = Poly.equal
-
   let cstr_name = function
     | Normal -> "normal"
     | Ppx_deriver _ -> "ppx_deriver"
@@ -109,8 +107,6 @@ type t =
   | Virtual
   | Parameter
   | Dune_file of Dune_file.t
-
-let equal = Poly.equal
 
 let to_dyn x =
   let open Dyn in

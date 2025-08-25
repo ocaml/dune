@@ -25,8 +25,6 @@ module Dune_file : sig
       E.g., [cstr_name Normal = "normal"] *)
   val cstr_name : t -> string
 
-  val equal : t -> t -> bool
-
   include Conv.S with type t := t
 end
 
@@ -42,6 +40,5 @@ type t =
       stanza. *)
 
 val to_dyn : t Dyn.builder
-val equal : t -> t -> bool
 
 include Conv.S with type t := t

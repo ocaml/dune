@@ -11,7 +11,7 @@ module Copy = struct
     type ('path, 'target) t =
       { target : 'target
       ; lock_dir : Path.Source.t
-      ; contents : Fs_cache.Dir_contents.t
+      ; files : Path.Source.Set.t
       }
 
     let name = "copy-lock-dir"
@@ -19,24 +19,30 @@ module Copy = struct
     let bimap t _ g = { t with target = g t.target }
     let is_useful_to ~memoize = memoize
 
-    let encode { target; lock_dir; contents } _encode_path encode_target : Sexp.t =
+    let encode { target; lock_dir; files } _encode_path encode_target : Sexp.t =
       let contents : Sexp.t list =
-        contents
-        |> Fs_cache.Dir_contents.to_list
-        |> List.map ~f:(fun (filename, filekind) ->
-          Sexp.List
-            [ Atom filename; Atom (filekind |> File_kind.to_dyn |> Dyn.to_string) ])
+        files
+        |> Path.Source.Set.to_list
+        |> List.sort ~compare:Path.Source.compare
+        |> List.map ~f:(fun p -> Sexp.Atom (Path.Source.to_string p))
       in
       List [ encode_target target; Atom (Path.Source.to_string lock_dir); List contents ]
     ;;
 
-    let action { target; lock_dir; contents } ~ectx:_ ~eenv:_ =
+    let action { target; lock_dir = _; files } ~ectx:_ ~eenv:_ =
       let open Fiber.O in
       let+ () = Fiber.return () in
       Path.mkdir_p (Path.build target);
-      Fs_cache.Dir_contents.iter contents ~f:(fun (filename, _file_kind) ->
-        let src = Path.Source.relative lock_dir filename in
-        let dst = Path.Build.relative target filename in
+      Path.Source.Set.iter files ~f:(fun src ->
+        (* let src = Path.Source.relative lock_dir filename in *)
+        let dst =
+          match Path.Source.explode src with
+          | [] -> Code_error.raise "meh" []
+          | _ :: components -> Path.Build.L.relative target components
+        in
+        let parent = Path.Build.parent_exn dst in
+        (* Printf.eprintf "Source to copy %S => %S (parent %S)\n" (Path.Source.to_string src) (Path.Build.to_string dst) (Path.Build.to_string parent); *)
+        Path.mkdir_p (Path.build parent);
         Io.copy_file ~src:(Path.source src) ~dst:(Path.build dst) ())
     ;;
   end
@@ -44,8 +50,30 @@ module Copy = struct
   module A = Action_ext.Make (Spec)
 end
 
-let copy_lock_dir ~target ~lock_dir ~contents =
-  Copy.A.action { Copy.Spec.target; lock_dir; contents }
+let rec files p =
+  let open Memo.O in
+  let* dir_contents = Fs_memo.dir_contents (Path.Outside_build_dir.In_source_dir p) in
+  let dir_contents =
+    match dir_contents with
+    | Ok dir_contents -> dir_contents
+    | Error _ -> User_error.raise [ Pp.text "meh" ]
+  in
+  let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
+  Memo.List.fold_left
+    dir_contents
+    ~f:(fun acc (file_name, file_kind) ->
+      let p = Path.Source.relative p file_name in
+      match file_kind with
+      | S_REG -> Memo.return (Path.Source.Set.add acc p)
+      | S_DIR ->
+        let* recursive = files p in
+        Path.Source.Set.union acc recursive |> Memo.return
+      | _ -> User_error.raise [ Pp.text "lock dir is problematique" ])
+    ~init:Path.Source.Set.empty
+;;
+
+let copy_lock_dir ~target ~lock_dir ~files =
+  Copy.A.action { Copy.Spec.target; lock_dir; files }
   |> Action.Full.make ~can_go_in_shared_cache:false
   |> Action_builder.With_targets.return
   |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
@@ -55,19 +83,8 @@ let setup_copy_rules ~dir ~lock_dir =
   let target = Path.Build.relative dir "content" in
   let rules =
     Rules.collect_unit (fun () ->
-      let* dir_contents =
-        Fs_memo.dir_contents (Path.Outside_build_dir.In_source_dir lock_dir)
-      in
-      let contents =
-        match dir_contents with
-        | Ok dir_contents -> dir_contents
-        | Error unix_error ->
-          User_error.raise
-            [ Pp.text "Failed to read lock directory from source tree"
-            ; Pp.text (Unix_error.Detailed.to_string_hum unix_error)
-            ]
-      in
-      let copy_rule = copy_lock_dir ~target ~lock_dir ~contents in
+      let* files = files lock_dir in
+      let copy_rule = copy_lock_dir ~target ~lock_dir ~files in
       rule ~loc:Loc.none copy_rule)
   in
   let directory_targets = Path.Build.Map.singleton target Loc.none in

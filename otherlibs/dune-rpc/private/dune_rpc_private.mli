@@ -486,7 +486,8 @@ module Client : sig
       (Chan : sig
          type t
 
-         val write : t -> Csexp.t list option -> unit Fiber.t
+         val close : t -> unit Fiber.t
+         val write : t -> Csexp.t list -> unit Fiber.t
          val read : t -> Csexp.t option Fiber.t
        end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
 end

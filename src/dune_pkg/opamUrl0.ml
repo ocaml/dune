@@ -46,7 +46,7 @@ let classify url loc =
 
 include Comparable.Make (T)
 
-let remote t ~loc rev_store = Rev_store.remote rev_store ~url:(loc, OpamUrl.base_url t)
+let remote t ~loc rev_store = Rev_store.remote rev_store ~loc ~url:(OpamUrl.base_url t)
 
 type resolve =
   | Resolved of Rev_store.Object.resolved

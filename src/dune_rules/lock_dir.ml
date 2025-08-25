@@ -184,6 +184,7 @@ let get_workspace_lock_dir ctx =
 
 let get_with_path ctx =
   let* path = get_path ctx >>| Option.value_exn in
+  let* () = Build_system.build_dir path in
   Load.load path
   >>= function
   | Error e -> Memo.return (Error e)

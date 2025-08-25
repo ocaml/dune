@@ -6,8 +6,7 @@ See #11523.
   $ export DUNE_CACHE=enabled
 
   $ cat > dune-project << EOF
-  > (lang dune 3.0)
-  > (using directory-targets 0.1)
+  > (lang dune 3.13)
   > EOF
 
   $ cat > dune << EOF

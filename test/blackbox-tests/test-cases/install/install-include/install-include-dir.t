@@ -1,9 +1,8 @@
 Example of including a file in the dirs field of the install stanza
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.5)
+  > (lang dune 3.13)
   > (package (name hello))
-  > (using directory-targets 0.1)
   > EOF
 
   $ cat >dune <<EOF

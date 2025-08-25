@@ -101,21 +101,16 @@ module Load = Make_load (struct
     include Memo
 
     let readdir_with_kinds path =
-      Fs_memo.dir_contents (Path.as_outside_build_dir_exn path)
-      >>| function
+      Readdir.read_directory_with_kinds (Path.to_string path)
+      |> function
       | Error _ ->
         (* CR-someday rgrinberg: add some proper message here *)
         User_error.raise [ Pp.text "" ]
-      | Ok content -> Fs_cache.Dir_contents.to_list content
+      | Ok content -> return content
     ;;
 
     let with_lexbuf_from_file path ~f =
-      Fs_memo.with_lexbuf_from_file (Path.as_outside_build_dir_exn path) ~f
-    ;;
-
-    let stats_kind p =
-      Fs_memo.path_stat (Path.as_outside_build_dir_exn p)
-      >>| Stdune.Result.map ~f:(fun { Fs_cache.Reduced_stats.st_kind; _ } -> st_kind)
+      Io.Untracked.with_lexbuf_from_file path ~f |> return
     ;;
   end)
 
@@ -160,7 +155,7 @@ let dev_tool_lock_dir dev_tool =
   let ctx_name = "default" in
   let l = dev_tool_to_path_segment dev_tool in
   let lock_dir =
-    Path.Build.L.relative Private_context.t.build_dir [ ctx_name; ".lock" ]
+    Path.Build.L.relative Private_context.t.build_dir [ ctx_name; ".dev-tool-locks" ]
   in
   let lock_dir = Path.Build.append_local lock_dir l in
   let lock_dir = Path.Build.relative lock_dir "content" in
@@ -221,13 +216,7 @@ let of_dev_tool dev_tool =
 ;;
 
 let lock_dir_active ctx =
-  if !Clflags.ignore_lock_dir
-  then Memo.return false
-  else
-    get_path ctx
-    >>= function
-    | None -> Memo.return false
-    | Some path -> Fs_memo.dir_exists (Path.as_outside_build_dir_exn path)
+  if !Clflags.ignore_lock_dir then Memo.return false else get_path ctx >>| Option.is_some
 ;;
 
 let source_kind (source : Dune_pkg.Source.t) =

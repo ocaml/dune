@@ -115,7 +115,12 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
           in
           let add_alias =
             let expander = Expander.add_bindings expander ~bindings:extra_bindings in
-            let alias = Alias.make ~dir (Alias.Name.of_string ("runtest-" ^ s)) in
+            let alias =
+              [ Alias.Name.to_string (Alias.name runtest_alias); s ]
+              |> String.concat ~sep:"-"
+              |> Alias.Name.of_string
+              |> Alias.make ~dir
+            in
             fun ~loc ~action ->
               let action =
                 let chdir = Expander.dir expander in

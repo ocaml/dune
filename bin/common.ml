@@ -1241,12 +1241,7 @@ let print_entering_message c =
 
 (* CR-someday rleshchinskiy: The split between `build` and `init` seems quite arbitrary,
    we should probably refactor that at some point. *)
-let build (builder : Builder.t) =
-  let root =
-    Workspace_root.create_exn
-      ~default_is_cwd:builder.default_root_is_cwd
-      ~specified_by_user:builder.root
-  in
+let build (root : Workspace_root.t) (builder : Builder.t) =
   let stats =
     Option.map builder.stats_trace_file ~f:(fun f ->
       let stats =
@@ -1302,8 +1297,8 @@ let maybe_init_cache (cache_config : Dune_cache.Config.t) =
        Disabled)
 ;;
 
-let init (builder : Builder.t) =
-  let c = build builder in
+let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
+  let c = build root builder in
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string c.builder.build_dir);
@@ -1413,6 +1408,17 @@ let init (builder : Builder.t) =
       let path = Path.external_ file in
       Dune_util.Gc.serialize ~path stat);
   c, config
+;;
+
+let init (builder : Builder.t) =
+  let root =
+    Workspace_root.create_exn
+      ~from:Filename.current_dir_name
+      ~default_is_cwd:builder.default_root_is_cwd
+      ~specified_by_user:builder.root
+      ()
+  in
+  init_with_root ~root builder
 ;;
 
 let footer =

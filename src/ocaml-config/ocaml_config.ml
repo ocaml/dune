@@ -136,6 +136,7 @@ type t =
   ; natdynlink_supported : bool
   ; supports_shared_libraries : bool
   ; windows_unicode : bool
+  ; ox : bool
   }
 
 let version t = t.version
@@ -190,6 +191,7 @@ let cmt_magic_number t = t.cmt_magic_number
 let natdynlink_supported t = t.natdynlink_supported
 let supports_shared_libraries t = t.supports_shared_libraries
 let windows_unicode t = t.windows_unicode
+let ox t = t.ox
 
 let to_list
       { version = _
@@ -244,6 +246,7 @@ let to_list
       ; natdynlink_supported
       ; supports_shared_libraries
       ; windows_unicode
+      ; ox
       }
   : (string * Value.t) list
   =
@@ -298,6 +301,7 @@ let to_list
   ; "natdynlink_supported", Bool natdynlink_supported
   ; "supports_shared_libraries", Bool supports_shared_libraries
   ; "windows_unicode", Bool windows_unicode
+  ; "ox", Bool ox
   ]
 ;;
 
@@ -357,6 +361,7 @@ let by_name
       ; natdynlink_supported
       ; supports_shared_libraries
       ; windows_unicode
+      ; ox
       }
       name
   : Value.t option
@@ -413,6 +418,7 @@ let by_name
   | "natdynlink_supported" -> Some (Bool natdynlink_supported)
   | "supports_shared_libraries" -> Some (Bool supports_shared_libraries)
   | "windows_unicode" -> Some (Bool windows_unicode)
+  | "ox" -> Some (Bool ox)
   | _ -> None
 ;;
 
@@ -640,13 +646,14 @@ let make vars =
       let stdlib = Path.external_ (Path.External.of_string standard_library) in
       Path.relative stdlib "Makefile.config"
     in
-    let vars = Vars.load_makefile_config file in
+    let ox = get_bool vars "ox" in
+    let makefile_vars = Vars.load_makefile_config file in
     let module Getters =
       Vars.Getters (struct
         let origin = Origin.Makefile_config file
       end)
     in
-    let supports_shared_libraries = get_bool vars "SUPPORTS_SHARED_LIBRARIES" in
+    let supports_shared_libraries = get_bool makefile_vars "SUPPORTS_SHARED_LIBRARIES" in
     { version
     ; version_string
     ; standard_library_default
@@ -699,6 +706,7 @@ let make vars =
     ; natdynlink_supported
     ; supports_shared_libraries
     ; windows_unicode
+    ; ox
     }
   with
   | t -> Ok t

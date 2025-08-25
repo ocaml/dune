@@ -415,6 +415,10 @@ let setup_emit_cmj_rules
           { ocaml = { byte = None; native = None }; melange = Some (Requested mel.loc) }
     in
     let* () = Module_compilation.build_all cctx in
+    let* () =
+      Memo.when_ (Compilation_context.bin_annot cctx) (fun () ->
+        Ocaml_index.cctx_rules cctx)
+    in
     let* requires_compile = Compilation_context.requires_compile cctx in
     let* requires_hidden = Compilation_context.requires_hidden cctx in
     let stdlib_dir = (Compilation_context.ocaml cctx).lib_config.stdlib_dir in

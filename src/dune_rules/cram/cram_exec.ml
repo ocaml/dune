@@ -409,14 +409,42 @@ let run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout =
   | Ok () -> read_and_attach_exit_codes sh_script |> sanitize ~parent_script:script
   | Error `Timed_out ->
     let timeout_loc, timeout = Option.value_exn timeout in
-    User_error.raise
-      ~loc:(Loc.in_file (Path.drop_optional_build_context_maybe_sandboxed src))
-      [ Pp.concat
+    let stuck_command_info =
+      let completed_commands = read_exit_codes_and_prefix_maps sh_script.metadata_file in
+      let completed_count = List.length completed_commands in
+      (* Count only Command blocks, not Comment blocks *)
+      let command_blocks_only = 
+        List.filter_map sh_script.cram_to_output ~f:(function
+          | Cram_lexer.Comment _ -> None
+          | Cram_lexer.Command block_result -> Some block_result)
+      in
+      let total_commands = List.length command_blocks_only in
+      if completed_count < total_commands then
+        (* Find the command that got stuck - it's the one at index completed_count *)
+        match List.nth command_blocks_only completed_count with
+        | Some { command; _ } -> Some (String.concat ~sep:" " command)
+        | None -> None
+      else None
+    in
+    let timeout_msg = 
+      match stuck_command_info with
+      | Some cmd -> 
+        Pp.concat
+          [ Pp.textf "Cram test timed out while running command: %s. " cmd
+          ; Pp.textf "A time limit of %.2fs has been set in " timeout
+          ; Pp.tag User_message.Style.Loc @@ Loc.pp_file_colon_line timeout_loc
+          ; Pp.verbatim "."
+          ]
+      | None ->
+        Pp.concat
           [ Pp.textf "Cram test timed out. A time limit of %.2fs has been set in " timeout
           ; Pp.tag User_message.Style.Loc @@ Loc.pp_file_colon_line timeout_loc
           ; Pp.verbatim "."
           ]
-      ]
+    in
+    User_error.raise
+      ~loc:(Loc.in_file (Path.drop_optional_build_context_maybe_sandboxed src))
+      [ timeout_msg ]
 ;;
 
 let run_produce_correction ~src ~env ~script ~timeout lexbuf =

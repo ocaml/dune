@@ -16,11 +16,12 @@ let dev_tool_build_target dev_tool =
        (Path.to_string (dev_tool_exe_path dev_tool)))
 ;;
 
-let build_dev_tool_directly common dev_tool =
+let build_dev_tool_directly ctx_name common dev_tool =
   let open Fiber.O in
+  let lock_dir_path = Dune_rules.Lock_dir.dev_tool_lock_dir_path ctx_name dev_tool in
   let+ result =
     Build.run_build_system ~common ~request:(fun _build_system ->
-      Action_builder.path (dev_tool_exe_path dev_tool))
+      Action_builder.paths [ lock_dir_path; dev_tool_exe_path dev_tool ])
   in
   match result with
   | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
@@ -32,17 +33,14 @@ let build_dev_tool_via_rpc dev_tool =
   Build.build_via_rpc_server ~print_on_success:false ~targets:[ target ]
 ;;
 
-let lock_and_build_dev_tool ~common ~config dev_tool =
-  let open Fiber.O in
+let lock_and_build_dev_tool ctx_name ~common ~config dev_tool =
   match Dune_util.Global_lock.lock ~timeout:None with
   | Error _lock_held_by ->
     Scheduler.go_without_rpc_server ~common ~config (fun () ->
-      let* () = Lock_dev_tool.lock_dev_tool dev_tool |> Memo.run in
       build_dev_tool_via_rpc dev_tool)
   | Ok () ->
     Scheduler.go_with_rpc_server ~common ~config (fun () ->
-      let* () = Lock_dev_tool.lock_dev_tool dev_tool |> Memo.run in
-      build_dev_tool_directly common dev_tool)
+      build_dev_tool_directly ctx_name common dev_tool)
 ;;
 
 let run_dev_tool workspace_root dev_tool ~args =
@@ -57,8 +55,8 @@ let run_dev_tool workspace_root dev_tool ~args =
   restore_cwd_and_execve workspace_root exe_path_string args env
 ;;
 
-let lock_build_and_run_dev_tool ~common ~config dev_tool ~args =
-  lock_and_build_dev_tool ~common ~config dev_tool;
+let lock_build_and_run_dev_tool ctx_name ~common ~config dev_tool ~args =
+  lock_and_build_dev_tool ctx_name ~common ~config dev_tool;
   run_dev_tool (Common.root common) dev_tool ~args
 ;;
 
@@ -99,9 +97,10 @@ let which_command dev_tool =
 let install_command dev_tool =
   let exe_name = Pkg_dev_tool.exe_name dev_tool in
   let term =
-    let+ builder = Common.Builder.term in
+    let+ builder = Common.Builder.term
+    and+ ctx_name = Common.context_arg ~doc:"Build context to use." in
     let common, config = Common.init builder in
-    lock_and_build_dev_tool ~common ~config dev_tool
+    lock_and_build_dev_tool ctx_name ~common ~config dev_tool
   in
   let info =
     let doc = sprintf "Install %s as a dev tool" exe_name in
@@ -114,9 +113,10 @@ let exec_command dev_tool =
   let exe_name = Pkg_dev_tool.exe_name dev_tool in
   let term =
     let+ builder = Common.Builder.term
+    and+ ctx_name = Common.context_arg ~doc:"Build_context to use."
     and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS")) in
     let common, config = Common.init builder in
-    lock_build_and_run_dev_tool ~common ~config dev_tool ~args
+    lock_build_and_run_dev_tool ctx_name ~common ~config dev_tool ~args
   in
   let info =
     let doc =

@@ -100,22 +100,19 @@ end
 module Load = Make_load (struct
     include Memo
 
-    let readdir_with_kinds path =
-      Fs_memo.dir_contents (Path.as_outside_build_dir_exn path)
-      >>| function
+    let dir_contents path = Readdir.read_directory_with_kinds (Path.to_string path)
+
+    let readdir_with_kinds (path : Path.t) =
+      dir_contents path
+      |> function
       | Error _ ->
         (* CR-someday rgrinberg: add some proper message here *)
         User_error.raise [ Pp.text "" ]
-      | Ok content -> Fs_cache.Dir_contents.to_list content
+      | Ok content -> return content
     ;;
 
     let with_lexbuf_from_file path ~f =
-      Fs_memo.with_lexbuf_from_file (Path.as_outside_build_dir_exn path) ~f
-    ;;
-
-    let stats_kind p =
-      Fs_memo.path_stat (Path.as_outside_build_dir_exn p)
-      >>| Stdune.Result.map ~f:(fun { Fs_cache.Reduced_stats.st_kind; _ } -> st_kind)
+      Io.Untracked.with_lexbuf_from_file path ~f |> Memo.return
     ;;
   end)
 
@@ -133,7 +130,32 @@ let select_lock_dir lock_dir_selection =
         ]
     | Some variable_value -> [ Value.String variable_value ]
   in
+  (* TODO unclear whether this is the right directory *)
   Workspace.Lock_dir_selection.eval lock_dir_selection ~dir:workspace.dir ~f:expander
+;;
+
+let default_path ctx_name =
+  (* TODO remove ctx_name *)
+  Path.Build.L.relative
+    Private_context.t.build_dir
+    [ Context_name.to_string ctx_name; ".lock"; "dune.lock"; "content" ]
+  |> Path.build
+;;
+
+let dev_tool_lock_dir_path ctx_name dev_tool =
+  let tool = dev_tool |> Dev_tool.package_name |> Package_name.to_string in
+  Path.Build.L.relative
+    Private_context.t.build_dir
+    [ Context_name.to_string ctx_name; ".dev-tool-lock"; tool; "content" ]
+  |> Path.build
+;;
+
+let enabled =
+  match !Clflags.ignore_lock_dir with
+  | true -> Memo.return false
+  | false ->
+    let+ workspace = Workspace.workspace () in
+    workspace.config.pkg_enabled
 ;;
 
 let get_path ctx =
@@ -144,21 +166,37 @@ let get_path ctx =
       | false -> None
       | true -> Some ctx')
   with
-  | None -> Memo.return (Some (Lazy.force default_path))
   | Some (Default { lock_dir = Some lock_dir_selection; _ }) ->
     select_lock_dir lock_dir_selection >>| Option.some
-  | Some (Default { lock_dir = None; _ }) -> Memo.return (Some (Lazy.force default_path))
+  | Some (Default { lock_dir = None; _ }) | None ->
+    let default_path = default_path ctx in
+    Memo.return (Some default_path)
   | Some (Opam _) -> Memo.return None
+;;
+
+let lock_dir_path_to_source_path path =
+  match (path : Path.t) with
+  | In_build_dir b ->
+    let components = Path.Build.explode b in
+    List.nth components 4 |> Option.value_exn |> Path.Source.of_string
+  | In_source_tree s -> s |> Path.Source.explode |> List.hd |> Path.Source.of_string
+  | External e ->
+    Code_error.raise
+      "Mapping external lock dir path to source tree paths unsupported"
+      [ "dir", Path.External.to_dyn e ]
 ;;
 
 let get_workspace_lock_dir ctx =
   let* workspace = Workspace.workspace () in
   let+ path = get_path ctx >>| Option.value_exn in
+  let path = lock_dir_path_to_source_path path |> Path.source in
   Workspace.find_lock_dir workspace path
 ;;
 
 let get_with_path ctx =
   let* path = get_path ctx >>| Option.value_exn in
+  (* make sure the lock directory gets built before loading the lock directory *)
+  let* () = Build_system.build_dir path in
   Load.load path
   >>= function
   | Error e -> Memo.return (Error e)
@@ -176,23 +214,20 @@ let get_with_path ctx =
 let get ctx = get_with_path ctx >>| Result.map ~f:snd
 let get_exn ctx = get ctx >>| User_error.ok_exn
 
-let of_dev_tool dev_tool =
-  let path = Dune_pkg.Lock_dir.dev_tool_lock_dir_path dev_tool in
-  Fs_memo.dir_exists (Path.as_outside_build_dir_exn path)
-  >>= function
-  | true -> Load.load_exn path
-  | false ->
-    User_error.raise [ Pp.textf "%s does not exist" (Path.to_string_maybe_quoted path) ]
+let of_dev_tool ctx_name dev_tool =
+  let path = dev_tool_lock_dir_path ctx_name dev_tool in
+  Load.load_exn path
 ;;
 
 let lock_dir_active ctx =
-  if !Clflags.ignore_lock_dir
-  then Memo.return false
-  else
+  let* enabled = enabled in
+  match enabled with
+  | false -> Memo.return false
+  | true ->
     get_path ctx
-    >>= function
-    | None -> Memo.return false
-    | Some path -> Fs_memo.dir_exists (Path.as_outside_build_dir_exn path)
+    >>| (function
+     | None -> false
+     | Some _path -> true)
 ;;
 
 let source_kind (source : Dune_pkg.Source.t) =

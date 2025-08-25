@@ -1454,7 +1454,7 @@ end = struct
             let open Resolve.O in
             let* lib = lib in
             (match allow_only_ppx_deps, Lib_info.kind lib.info with
-             | true, Normal -> Error.only_ppx_deps_allowed ~loc lib.info
+             | true, Dune_file Normal -> Error.only_ppx_deps_allowed ~loc lib.info
              | _ -> Resolve.return (Some lib)))
         >>= linking_closure_with_overlap_checks None ~forbidden_libraries:Map.empty
       in

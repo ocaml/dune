@@ -17,18 +17,12 @@ Test `(include_subdirs qualified)` with sandboxing
   > let hello = "hello from sub"
   > EOF
 
-Errors in sandbox
-
   $ DUNE_SANDBOX=symlink dune build
-  File "lib/bar.ml", line 1, characters 12-27:
-  1 | let hello = Sub.Hello.hello
-                  ^^^^^^^^^^^^^^^
-  Error: The module Sub is an alias for module Foo__Sub, which is missing
-  [1]
 
-Transitive deps file doesn't include the alias module
+Transitive deps file includes the alias module
 
   $ cat _build/default/lib/.foo.objs/foo__Bar.impl.d
   lib/bar.ml: Sub
   $ cat _build/default/lib/.foo.objs/foo__Bar.impl.all-deps
+  foo__Sub
   foo__Sub__Hello

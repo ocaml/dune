@@ -119,10 +119,8 @@ let to_dyn x =
 let decode =
   let open Decoder in
   (* TODO: Less code reuse with either? *)
-  map ~f:(fun k -> Dune_file k) Dune_file.decode <|> enum [
-
-    "parameter", Parameter;
-    "virtual", Virtual ]
+  map ~f:(fun k -> Dune_file k) Dune_file.decode
+  <|> enum [ "parameter", Parameter; "virtual", Virtual ]
 ;;
 
 let encode t =

@@ -41,6 +41,9 @@ behaviour is for dune to kill the cram test immediately.
 
   $ timeout 1 dune test test.t
   File "test.t", line 1, characters 0-0:
-  Error: Cram test timed out. A time limit of 0.00s has been set in dune:2.
+  Error: Cram test timed out while running command:
+    $ echo hi
+  A time limit of 0.00s has been set in 
+  dune:2
   [1]
 

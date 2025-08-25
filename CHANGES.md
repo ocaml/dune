@@ -1,3 +1,20 @@
+3.20.1 (2025-08-25)
+-------------------
+
+### Fixed
+
+- Fix `runtest-js` mistakenly depending on `byte` (fixes #12243, #12242,
+  @vouillon and @Alizter)
+
+- Fix the interpretation of paths in `dune runtest` when running from within a
+  subdirectory. (#12251, fixes #12250, @Alizter)
+
+### Changed
+
+- Revert formatting change introduced in 3.20.0 making long lists in
+  s-expressions fill the line instead of formatting them in a vertical way
+  (#12245, reverts #10892, @nojb)
+
 3.20.0 (2025-08-18)
 -------------------
 

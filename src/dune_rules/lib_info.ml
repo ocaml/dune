@@ -368,7 +368,7 @@ let kind t = t.kind
 let default_implementation t = t.default_implementation
 let obj_dir t = t.obj_dir
 let virtual_ t = t.kind = Virtual
-let is_parameter t = t.kind = (Dune_file Parameter)
+let is_parameter t = t.kind = Dune_file Parameter
 let implements t = t.implements
 let synopsis t = t.synopsis
 let wrapped t = t.wrapped

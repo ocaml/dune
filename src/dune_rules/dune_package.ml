@@ -198,11 +198,11 @@ module Lib = struct
            (* Backward compatible support for dune-project files
               that include the [(virtual)] field. *)
            Lib_kind.Virtual
-         | _incompatible_kind when virtual_ ->
+         | incompatible_kind when virtual_ ->
            Code_error.raise
              "invalid combination of 'kind' and 'virtual' fields in library stanza of \
               dune-package file"
-             [ "kind", Lib_kind.to_dyn kind; "virtual", Dyn.Bool virtual_ ]
+             [ "kind", Lib_kind.to_dyn incompatible_kind; "virtual", Dyn.Bool virtual_ ]
          | otherwise -> otherwise
        and+ archives = mode_paths "archives"
        and+ plugins = mode_paths "plugins"

@@ -135,7 +135,7 @@ let decode =
            (match dune_file_kind with
             | Normal ->
               (* Libraries are virtual just in case [virtual_modules] are specified
-                 and they do not have an *non-normal* kind specified. *)
+                 and they do not have a *non-normal* kind specified. *)
               Virtual
             | (Parameter | Ppx_deriver _ | Ppx_rewriter _) as incompatable_kind ->
               User_error.raise

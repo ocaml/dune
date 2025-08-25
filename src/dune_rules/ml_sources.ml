@@ -365,7 +365,7 @@ let make_lib_modules
       in
       let kind : Modules_field_evaluator.kind =
         match lib.virtual_modules with
-        | None -> if lib.kind = (Dune_file Parameter) then Parameter else Exe_or_normal_lib
+        | None -> if Library.is_parameter lib then Parameter else Exe_or_normal_lib
         | Some virtual_modules -> Virtual { virtual_modules }
       in
       Memo.return (Resolve.return (kind, main_module_name, wrapped))

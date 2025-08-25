@@ -99,13 +99,14 @@ module Dune_file = struct
     | x -> x
   ;;
 
-let to_dyn x =
-  let open Dyn in
-  match x with
-  | Normal -> variant "Normal" []
-  | Parameter -> variant "Parameter" []
-  | Ppx_deriver args -> variant "Ppx_deriver" [ Ppx_args.to_dyn args ]
-  | Ppx_rewriter args -> variant "Ppx_rewriter" [ Ppx_args.to_dyn args ]
+  let to_dyn x =
+    let open Dyn in
+    match x with
+    | Normal -> variant "Normal" []
+    | Parameter -> variant "Parameter" []
+    | Ppx_deriver args -> variant "Ppx_deriver" [ Ppx_args.to_dyn args ]
+    | Ppx_rewriter args -> variant "Ppx_rewriter" [ Ppx_args.to_dyn args ]
+  ;;
 end
 
 type t =
@@ -117,24 +118,14 @@ let equal = Poly.equal
 let to_dyn x =
   let open Dyn in
   match x with
-  | Dune_file t -> variant "Dune_file" [Dune_file.to_dyn t]
+  | Dune_file t -> variant "Dune_file" [ Dune_file.to_dyn t ]
   | Virtual -> variant "Virtual" []
 ;;
 
 let decode =
   let open Decoder in
   (* TODO: Less code reuse with either? *)
-  sum
-    [ "normal", return (Dune_file Normal)
-    ; "parameter", return (Dune_file Parameter)
-    ; ( "ppx_deriver"
-      , let+ args = Ppx_args.decode in
-        Dune_file (Ppx_deriver args) )
-    ; ( "ppx_rewriter"
-      , let+ args = Ppx_args.decode in
-        Dune_file (Ppx_rewriter args) )
-    ; "virtual", return Virtual
-    ]
+  map ~f:(fun k -> Dune_file k) Dune_file.decode <|> enum [ "virtual", Virtual ]
 ;;
 
 let encode t =

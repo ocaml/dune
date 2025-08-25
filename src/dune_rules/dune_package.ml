@@ -194,7 +194,7 @@ module Lib = struct
          let* kind = field "kind" Lib_kind.decode in
          let+ virtual_ = field_b "virtual" in
          match kind with
-         | (Normal | Virtual) when virtual_ ->
+         | (Dune_file Normal | Virtual) when virtual_ ->
            (* Backward compatible support for dune-project files
               that include the [(virtual)] field. *)
            Lib_kind.Virtual

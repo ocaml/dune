@@ -125,17 +125,29 @@ let decode =
            ~since_expanded:Stanza_common.Modules_settings.since_expanded
            "virtual_modules"
        in
-       let+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal in
+       let+ kind_loc, dune_file_kind =
+         located
+         @@ field "kind" Lib_kind.Dune_file.decode ~default:Lib_kind.Dune_file.Normal
+       in
        let kind : Lib_kind.t =
-         match virtual_modules, kind with
-         | Some _, (Normal | Virtual) ->
-           (* For backward compatibility, libraries are virtual if they are
-              inferred or declared as normal and [virtual_modules] are
-              specified. *)
-           Virtual
-         | None, kind -> kind
-         | Some _, _incompatible_kind ->
-           raise (Failure "TODO: Error on incompatible kind with virtual_modules")
+         match virtual_modules with
+         | None -> Dune_file dune_file_kind
+         | Some _ ->
+           (match dune_file_kind with
+            | Normal ->
+              (* Libraries are virtual just in case [virtual_modules] are specified
+                 and they do not have an *non-normal* kind specified. *)
+              Virtual
+            | (Parameter | Ppx_deriver _ | Ppx_rewriter _) as incompatable_kind ->
+              User_error.raise
+                ~loc:stanza_loc
+                ~hints:[ Pp.text "Remove either the 'kind' or 'virtual_modules' fields" ]
+                [ Pp.text "Only virtual libraries can have 'virtual_modules'"
+                ; Pp.textf
+                    "but this library has 'virtual_modules' and is specified as kind \
+                     '%s'."
+                    (Lib_kind.Dune_file.cstr_name incompatable_kind)
+                ])
        in
        virtual_modules, kind
      and+ optional = field_b "optional"
@@ -383,7 +395,7 @@ let best_name t =
   | Public p -> snd p.name
 ;;
 
-let is_parameter t = t.kind = Parameter
+let is_parameter t = t.kind = Dune_file Parameter
 let is_virtual t = t.kind = Virtual
 let is_impl t = Option.is_some t.implements
 

@@ -55,12 +55,12 @@ let add_stanza db ~dir (acc, pps) stanza =
        let not_impl = Option.is_none (Lib_info.implements info) in
        if not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir
        then (
-         match Lib_info.kind info with
-         | Normal | Virtual | Parameter -> Appendable_list.cons lib acc, pps
+         match (Lib_info.kind info : Lib_kind.t) with
+         | Virtual | Dune_file (Normal | Parameter) -> Appendable_list.cons lib acc, pps
          (* CR @maiste or @art-w: the parametrized libraries in utop follows
              the same schema as Normal library but it needs to be verified once
              parametrized libraries are fully supported. *)
-         | Lib_kind.Ppx_rewriter _ | Ppx_deriver _ ->
+         | Dune_file (Ppx_rewriter _ | Ppx_deriver _) ->
            ( Appendable_list.cons lib acc
            , Appendable_list.cons (Lib_info.loc info, Lib_info.name info) pps ))
        else acc, pps)
@@ -96,12 +96,12 @@ let add_stanza db ~dir (acc, pps) stanza =
      | Ok libs ->
        List.fold_left libs ~init:(acc, pps) ~f:(fun (acc, pps) lib ->
          let info = Lib.info lib in
-         match Lib_info.kind info with
-         | Normal | Virtual | Parameter -> Appendable_list.cons lib acc, pps
+         match (Lib_info.kind info : Lib_kind.t) with
+         | Virtual | Dune_file (Normal | Parameter) -> Appendable_list.cons lib acc, pps
          (* CR @maiste or @art-w: the parametrized libraries in utop follows
              the same schema as Normal library but it needs to be verified once
              parametrized libraries are fully supported. *)
-         | Ppx_rewriter _ | Ppx_deriver _ ->
+         | Dune_file (Ppx_rewriter _ | Ppx_deriver _) ->
            ( Appendable_list.cons lib acc
            , Appendable_list.cons (Lib_info.loc info, Lib_info.name info) pps )))
   | _ -> Memo.return (acc, pps)

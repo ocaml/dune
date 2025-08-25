@@ -137,7 +137,7 @@ let decode =
               (* Libraries are virtual just in case [virtual_modules] are specified
                  and they do not have a *non-normal* kind specified. *)
               Virtual
-            | (Parameter | Ppx_deriver _ | Ppx_rewriter _) as incompatable_kind ->
+            | (Ppx_deriver _ | Ppx_rewriter _) as incompatable_kind ->
               User_error.raise
                 ~loc:stanza_loc
                 ~hints:[ Pp.text "Remove either the 'kind' or 'virtual_modules' fields" ]
@@ -394,7 +394,7 @@ let best_name t =
   | Public p -> snd p.name
 ;;
 
-let is_parameter t = t.kind = Dune_file Parameter
+let is_parameter t = t.kind = Parameter
 let is_virtual t = t.kind = Virtual
 let is_impl t = Option.is_some t.implements
 

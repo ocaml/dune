@@ -18,7 +18,6 @@ module Dune_file : sig
       field *)
   type t =
     | Normal
-    | Parameter
     | Ppx_deriver of Ppx_args.t
     | Ppx_rewriter of Ppx_args.t
 
@@ -33,13 +32,14 @@ end
 
 (** Internal representation the of the possible kinds of libraries *)
 type t =
+  | Virtual
+  | Parameter
   | Dune_file of Dune_file.t
   (** A kind which is represented explicitly in the [kind] field of a dune
       library stanza.
 
       The remaining variants are derived from other fields in the library
       stanza. *)
-  | Virtual
 
 val to_dyn : t Dyn.builder
 val equal : t -> t -> bool

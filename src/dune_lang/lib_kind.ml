@@ -61,7 +61,6 @@ end
 module Dune_file = struct
   type t =
     | Normal
-    | Parameter
     | Ppx_deriver of Ppx_args.t
     | Ppx_rewriter of Ppx_args.t
 
@@ -69,7 +68,6 @@ module Dune_file = struct
 
   let cstr_name = function
     | Normal -> "normal"
-    | Parameter -> "parameter"
     | Ppx_deriver _ -> "ppx_deriver"
     | Ppx_rewriter _ -> "ppx_rewriter"
   ;;
@@ -78,7 +76,6 @@ module Dune_file = struct
     let open Decoder in
     sum
       [ "normal", return Normal
-      ; "parameter", return Parameter
       ; ( "ppx_deriver"
         , let+ args = Ppx_args.decode in
           Ppx_deriver args )
@@ -91,7 +88,7 @@ module Dune_file = struct
   let encode t =
     match
       match t with
-      | Normal | Parameter -> Dune_sexp.atom (cstr_name t)
+      | Normal -> Dune_sexp.atom (cstr_name t)
       | Ppx_deriver x | Ppx_rewriter x ->
         List (Dune_sexp.atom (cstr_name t) :: Ppx_args.encode x)
     with
@@ -103,36 +100,41 @@ module Dune_file = struct
     let open Dyn in
     match x with
     | Normal -> variant "Normal" []
-    | Parameter -> variant "Parameter" []
     | Ppx_deriver args -> variant "Ppx_deriver" [ Ppx_args.to_dyn args ]
     | Ppx_rewriter args -> variant "Ppx_rewriter" [ Ppx_args.to_dyn args ]
   ;;
 end
 
 type t =
-  | Dune_file of Dune_file.t
   | Virtual
+  | Parameter
+  | Dune_file of Dune_file.t
 
 let equal = Poly.equal
 
 let to_dyn x =
   let open Dyn in
   match x with
-  | Dune_file t -> variant "Dune_file" [ Dune_file.to_dyn t ]
   | Virtual -> variant "Virtual" []
+  | Parameter -> variant "Parameter" []
+  | Dune_file t -> variant "Dune_file" [ Dune_file.to_dyn t ]
 ;;
 
 let decode =
   let open Decoder in
   (* TODO: Less code reuse with either? *)
-  map ~f:(fun k -> Dune_file k) Dune_file.decode <|> enum [ "virtual", Virtual ]
+  map ~f:(fun k -> Dune_file k) Dune_file.decode <|> enum [
+
+    "parameter", Parameter;
+    "virtual", Virtual ]
 ;;
 
 let encode t =
   match
     match t with
-    | Dune_file d -> Dune_file.encode d
     | Virtual -> Dune_sexp.atom "virtual"
+    | Parameter -> Dune_sexp.atom "parameter"
+    | Dune_file d -> Dune_file.encode d
   with
   | List [ x ] -> x
   | x -> x

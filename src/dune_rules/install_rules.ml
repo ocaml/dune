@@ -79,7 +79,7 @@ module Stanzas_to_entries : sig
 end = struct
   let lib_ppxs ctx ~scope ~(lib : Library.t) =
     match lib.kind with
-    | Virtual | Dune_file (Normal | Parameter | Ppx_deriver _) -> Memo.return []
+    | Virtual | Parameter | Dune_file (Normal  | Ppx_deriver _) -> Memo.return []
     | Dune_file (Ppx_rewriter _) ->
       Library.best_name lib
       |> Ppx_driver.ppx_exe ctx ~scope

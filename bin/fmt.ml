@@ -26,8 +26,9 @@ let lock_ocamlformat () =
   else Fiber.return ()
 ;;
 
-let run_fmt_command ~(common : Common.t) ~config =
+let run_fmt_command ~builder ~promote =
   let open Fiber.O in
+  let common, config = Common.init builder in
   let once () =
     let* () = lock_ocamlformat () in
     let request (setup : Import.Main.build_system) =
@@ -40,7 +41,24 @@ let run_fmt_command ~(common : Common.t) ~config =
     | Ok () -> ()
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
   in
-  Scheduler.go_with_rpc_server ~common ~config once
+  match Dune_util.Global_lock.lock ~timeout:None with
+  | Ok () -> Scheduler.go_with_rpc_server ~common ~config once
+  | Error _lock_held_by ->
+    let response =
+      Scheduler.go_without_rpc_server ~common ~config (fun () ->
+        Rpc_common.fire_request
+          ~name:"format"
+          ~wait:true
+          Dune_rpc.Procedures.Public.format
+          promote)
+    in
+    (match response with
+     | Ok () -> ()
+     | Error error ->
+       Console.print
+         [ Pp.textf "Error: %s" (Dyn.to_string (Dune_rpc.Response.Error.to_dyn error))
+           |> Pp.tag User_message.Style.Error
+         ])
 ;;
 
 let command =
@@ -57,11 +75,9 @@ let command =
                This takes precedence over auto-promote as that flag is assumed for this \
                command.")
     in
-    let builder =
-      Common.Builder.set_promote builder (if no_promote then Never else Automatically)
-    in
-    let common, config = Common.init builder in
-    run_fmt_command ~common ~config
+    let promote = if no_promote then Dune_rpc.Promote_flag.Never else Automatically in
+    let builder = Common.Builder.set_promote builder promote in
+    run_fmt_command ~builder ~promote
   in
   Cmd.v (Cmd.info "fmt" ~doc ~man ~envs:Common.envs) term
 ;;

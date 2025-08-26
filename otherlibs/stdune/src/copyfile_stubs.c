@@ -59,13 +59,9 @@ CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
 
 #elif __linux__
 
-/* Necessary so that loff_t is defined in musl libc */
-#define _GNU_SOURCE
-
 #include <caml/threads.h>
 #include <caml/unixsupport.h>
 
-#include <sys/types.h>
 #include <sys/sendfile.h>
 #include <sys/utsname.h>
 #include <linux/version.h>
@@ -92,7 +88,7 @@ static ssize_t dune_sendfile(int in, int out, size_t length) {
   return length;
 }
 
-typedef ssize_t (*copy_file_range_t)(int, loff_t*, int, loff_t*, size_t, unsigned int);
+typedef ssize_t (*copy_file_range_t)(int, void *, int, void *, size_t, unsigned int);
 
 static copy_file_range_t copy_file_range_fn = NULL;
 

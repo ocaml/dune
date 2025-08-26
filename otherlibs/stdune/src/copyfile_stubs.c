@@ -59,6 +59,9 @@ CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
 
 #elif __linux__
 
+/* Necessary so that loff_t is defined in musl libc */
+#define _GNU_SOURCE
+
 #include <caml/threads.h>
 #include <caml/unixsupport.h>
 

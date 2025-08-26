@@ -212,8 +212,8 @@ order to declare a multi-directory library, you need to use the
 
 .. describe:: (implements <name>)
 
-   ``name`` defines the name of the virtual library or the parameter you are
-   implementing.
+   ``name`` defines the name of the virtual library or the parameter library you
+   are implementing.
 
    See :doc:`/virtual-libraries` or :doc:`/reference/dune/library_parameter`.
 

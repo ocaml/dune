@@ -25,7 +25,7 @@ let keep_generated_files =
   !keep_generated_files
 ;;
 
-let modules = [ "boot/libs"; "boot/duneboot" ]
+let modules = [ "boot/types"; "boot/libs"; "boot/duneboot" ]
 let duneboot = ".duneboot"
 let prog = duneboot ^ ".exe"
 
@@ -99,7 +99,7 @@ let () =
   in
   exit_if_non_zero
     (runf
-       "%s %s -g -o %s -I boot %sunix.cma %s"
+       "%s %s -intf-suffix .dummy -g -o %s -I boot %sunix.cma %s"
        compiler
        (* Make sure to produce a self-contained binary as dlls tend to cause
           issues *)

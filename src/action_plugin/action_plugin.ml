@@ -1,6 +1,7 @@
 open Import
 module DAP = Dune_action_plugin.Private.Protocol
 module Dependency = Dune_action_plugin.Private.Protocol.Dependency
+open Action.Ext.Exec
 
 let to_dune_dep_set =
   let of_DAP_dep ~loc ~working_dir : Dependency.t -> Dep.t =
@@ -20,8 +21,6 @@ let to_dune_dep_set =
   fun set ~loc ~working_dir ->
     Dependency.Set.to_list_map set ~f:(of_DAP_dep ~loc ~working_dir) |> Dep.Set.of_list
 ;;
-
-open Action_intf.Exec
 
 let exec ~(ectx : context) ~(eenv : env) prog args =
   let open Fiber.O in
@@ -114,4 +113,46 @@ let exec ~(ectx : context) ~(eenv : env) prog args =
   | Ok (Need_more_deps deps) ->
     Need_more_deps
       (deps, to_dune_dep_set deps ~loc:ectx.rule_loc ~working_dir:eenv.working_dir)
+;;
+
+module Spec = struct
+  type ('path, 'target) t = ('path, Action.Prog.Not_found.t) result * string list
+
+  let name = "dynamic-run"
+  let version = 1
+  let is_useful_to ~memoize = memoize
+  let is_dynamic = true
+
+  let encode (prog, args) f _ : Sexp.t =
+    let open Sexp in
+    List
+      [ Atom name
+      ; Atom (Int.to_string version)
+      ; (match prog with
+         | Ok s -> f s
+         | Error _ -> assert false)
+      ; List (List.map args ~f:(fun s -> Atom s))
+      ]
+  ;;
+
+  let bimap (prog, args) f _ = Result.map ~f prog, args
+
+  let action (prog, args) ~ectx ~eenv =
+    match prog with
+    | Error e -> Action.Prog.Not_found.raise e
+    | Ok prog -> exec ~ectx ~eenv prog args
+  ;;
+end
+
+let action ~prog ~args =
+  let module M = struct
+    type path = Path.t
+    type target = Path.Build.t
+
+    module Spec = Spec
+
+    let v = prog, args
+  end
+  in
+  Action.Extension (module M)
 ;;

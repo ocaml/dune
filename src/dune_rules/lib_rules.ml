@@ -92,8 +92,8 @@ let build_lib
          Expander.expand_and_eval_set expander lib.library_flags ~standard)
     ; As
         (match lib.kind with
-         | Normal | Parameter -> []
-         | Ppx_deriver _ | Ppx_rewriter _ -> [ "-linkall" ])
+         | Virtual | Parameter | Dune_file Normal -> []
+         | Dune_file (Ppx_deriver _ | Ppx_rewriter _) -> [ "-linkall" ])
     ; Dyn
         (Cm_files.top_sorted_cms cm_files ~mode
          |> Action_builder.map ~f:(fun x -> Command.Args.Deps x))

@@ -71,7 +71,6 @@ let rec encode : Action.For_shell.t -> Dune_lang.t =
       ; Predicate_lang.encode Dune_sexp.Encoder.int pred
       ; encode t
       ]
-  | Dynamic_run (a, xs) -> List (atom "run_dynamic" :: program a :: List.map xs ~f:string)
   | Chdir (a, r) -> List [ atom "chdir"; path a; encode r ]
   | Setenv (k, v, r) -> List [ atom "setenv"; string k; string v; encode r ]
   | Redirect_out (outputs, fn, perm, r) ->

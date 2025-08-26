@@ -185,16 +185,9 @@ module Mangle = struct
                |> Module_name.of_string
            ; public = main_module_name
            })
-    | Exe ->
-      sprintf "dune__exe"
-      |> Module_name.of_string
-      |> Visibility.Map.make_both
-      |> Option.some
+    | Exe -> Module_name.of_string "dune__exe" |> Visibility.Map.make_both |> Option.some
     | Melange ->
-      sprintf "melange"
-      |> Module_name.of_string
-      |> Visibility.Map.make_both
-      |> Option.some
+      Module_name.of_string "melange" |> Visibility.Map.make_both |> Option.some
     | Unwrapped -> None
   ;;
 

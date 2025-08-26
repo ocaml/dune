@@ -524,38 +524,82 @@ module Runtime_deps = struct
   ;;
 end
 
-let setup_runtime_assets_rules
-      sctx
-      ~scope
-      ~dir
-      ~target_dir
-      ~mode
-      ~promote_in_source
-      ~output
-      ~for_
-      mel
-  =
-  let* { Runtime_deps.copy; deps } = Runtime_deps.targets sctx ~dir ~output ~for_ mel in
-  let deps =
-    let paths =
-      List.fold_left copy ~init:deps ~f:(fun paths (_, target) ->
-        Path.build target :: paths)
+let setup_runtime_assets_rules =
+  let find_directory_target_ancestor =
+    let rec find_directory_target_ancestor ~dir src =
+      Dir_status.DB.get ~dir
+      >>= function
+      | Lock_dir _ -> Memo.return None
+      | Generated ->
+        let parent = Path.Build.parent_exn dir in
+        find_directory_target_ancestor ~dir:parent src
+      | ( Group_root _
+        | Is_component_of_a_group_but_not_the_root _
+        | Source_only _
+        | Standalone _ ) as dir_status ->
+        let+ directory_targets =
+          Dir_status.directory_targets
+            dir_status
+            ~jsoo_enabled:Jsoo_rules.jsoo_enabled
+            ~dir
+        in
+        Path.Build.Map.find_key directory_targets ~f:(fun dir_target ->
+          Path.Build.is_descendant ~of_:dir_target src)
     in
-    Action_builder.paths paths
+    fun src ->
+      match Path.Build.parent src with
+      | None -> Memo.return None
+      | Some dir -> find_directory_target_ancestor ~dir src
   in
-  let+ () =
-    let loc = mel.loc in
-    Memo.parallel_iter copy ~f:(fun (src, dst) ->
-      let mode =
-        if promote_in_source
-        then (
-          let dune_project = Scope.project scope in
-          compute_promote_in_source ~dune_project ~dir ~output ~mode ~src ~dst)
-        else mode
+  fun sctx ~scope ~dir ~target_dir ~mode ~promote_in_source ~output ~for_ mel ->
+    let* { Runtime_deps.copy; deps } = Runtime_deps.targets sctx ~dir ~output ~for_ mel in
+    let deps =
+      let paths =
+        List.fold_left copy ~init:deps ~f:(fun paths (_, target) ->
+          Path.build target :: paths)
       in
-      Super_context.add_rule ~loc ~dir ~mode sctx (Action_builder.copy ~src ~dst))
-  and+ () = add_deps_to_aliases ?alias:mel.alias deps ~dir:target_dir in
-  ()
+      Action_builder.paths paths
+    in
+    let+ directory_targets =
+      let loc = mel.loc in
+      let+ dirs =
+        Memo.parallel_map copy ~f:(fun (src, dst) ->
+          let mode =
+            if promote_in_source
+            then (
+              let dune_project = Scope.project scope in
+              compute_promote_in_source ~dune_project ~dir ~output ~mode ~src ~dst)
+            else mode
+          in
+          Memo.Option.bind (Path.as_in_build_dir src) ~f:find_directory_target_ancestor
+          >>= function
+          | None ->
+            let+ () =
+              Super_context.add_rule ~loc ~dir ~mode sctx (Action_builder.copy ~src ~dst)
+            in
+            None
+          | Some directory_target_ancestor ->
+            let dst =
+              let rel = Path.reach ~from:src (Path.build directory_target_ancestor) in
+              Path.Build.relative dst rel
+            in
+            let+ () =
+              let src = Path.build directory_target_ancestor in
+              Super_context.add_rule
+                ~loc
+                ~dir
+                ~mode
+                sctx
+                (Action_builder.symlink_dir ~src ~dst)
+            in
+            Some dst)
+      in
+      List.filter_map dirs ~f:(function
+        | Some dir -> Some (dir, loc)
+        | None -> None)
+      |> Path.Build.Map.of_list_exn
+    and+ () = add_deps_to_aliases ?alias:mel.alias deps ~dir:target_dir in
+    directory_targets
 ;;
 
 let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
@@ -607,7 +651,10 @@ let setup_entries_js
   let output = Output_kind.Private_library_or_emit target_dir in
   let obj_dir = Obj_dir.of_local local_obj_dir in
   let promote_in_source = should_promote_in_source scope in
-  let* () =
+  let local_modules_and_obj_dir =
+    Some (Modules.With_vlib.modules local_modules, local_obj_dir)
+  in
+  let+ directory_targets =
     setup_runtime_assets_rules
       sctx
       ~scope
@@ -618,26 +665,25 @@ let setup_entries_js
       ~output
       ~for_:`Emit
       mel
+  and+ () =
+    Memo.parallel_iter modules_for_js ~f:(fun m ->
+      build_js
+        ~loc
+        ~dir
+        ~scope
+        ~pkg_name
+        ~promote_in_source
+        ~mode
+        ~module_systems
+        ~output
+        ~obj_dir
+        ~sctx
+        ~includes
+        ~compile_flags
+        ~local_modules_and_obj_dir
+        m)
   in
-  let local_modules_and_obj_dir =
-    Some (Modules.With_vlib.modules local_modules, local_obj_dir)
-  in
-  Memo.parallel_iter modules_for_js ~f:(fun m ->
-    build_js
-      ~loc
-      ~dir
-      ~scope
-      ~pkg_name
-      ~promote_in_source
-      ~mode
-      ~module_systems
-      ~output
-      ~obj_dir
-      ~sctx
-      ~includes
-      ~compile_flags
-      ~local_modules_and_obj_dir
-      m)
+  directory_targets
 ;;
 
 let setup_js_rules_libraries =
@@ -678,74 +724,75 @@ let setup_js_rules_libraries =
       let+ ocaml = Super_context.context sctx |> Context.ocaml in
       ocaml.lib_config
     in
-    Memo.parallel_iter requires_link ~f:(fun lib ->
-      let lib_compile_info =
-        Lib.Compile.for_lib
-          ~allow_overlaps:mel.allow_overlapping_dependencies
-          (Scope.libs scope)
-          lib
-      in
-      let info = Lib.info lib in
-      let promote_in_source = should_promote_in_source scope in
-      let build_js =
-        let loc = Lib_info.loc info in
-        let obj_dir = Lib_info.obj_dir info in
-        let pkg_name = Lib_info.package info in
-        build_js ~loc ~promote_in_source ~pkg_name ~obj_dir
-      in
-      let output = output_of_lib ~target_dir lib in
-      let* includes =
-        let+ requires_link =
-          Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)
-          |> Resolve.Memo.map ~f:(with_vlib_implementations lib)
+    let+ dir_targets =
+      Memo.parallel_map requires_link ~f:(fun lib ->
+        let lib_compile_info =
+          Lib.Compile.for_lib
+            ~allow_overlaps:mel.allow_overlapping_dependencies
+            (Scope.libs scope)
+            lib
         in
-        cmj_includes ~requires_link ~scope lib_config
-      and* compile_flags = melange_compile_flags ~sctx ~dir mel in
-      let+ () =
-        setup_runtime_assets_rules
-          sctx
-          ~scope
-          ~dir
-          ~target_dir
-          ~mode
-          ~promote_in_source
-          ~output
-          ~for_:(`Library info)
-          mel
-      and+ () =
-        match Lib.implements lib with
-        | None -> Memo.return ()
-        | Some vlib ->
-          let* vlib = Resolve.Memo.read_memo vlib in
-          let vlib_output = output_of_lib ~target_dir vlib in
-          (match vlib_output, output with
-           | Public_library _, Private_library_or_emit _ ->
-             let info = Lib.info lib in
-             User_error.raise
-               ~loc:(Lib_info.loc info)
-               [ Pp.text
-                   "Dune doesn't currently support building private implementations of \
-                    virtual public libaries for `(modes melange)`"
-               ]
-               ~hints:
-                 [ Pp.textf
-                     "Add a `public_name` to the library `%s'."
-                     (Lib_name.to_string (Lib_info.name info))
+        let info = Lib.info lib in
+        let promote_in_source = should_promote_in_source scope in
+        let build_js =
+          let loc = Lib_info.loc info in
+          let obj_dir = Lib_info.obj_dir info in
+          let pkg_name = Lib_info.package info in
+          build_js ~loc ~promote_in_source ~pkg_name ~obj_dir
+        in
+        let output = output_of_lib ~target_dir lib in
+        let* includes =
+          let+ requires_link =
+            Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)
+            |> Resolve.Memo.map ~f:(with_vlib_implementations lib)
+          in
+          cmj_includes ~requires_link ~scope lib_config
+        and* compile_flags = melange_compile_flags ~sctx ~dir mel in
+        let+ directory_targets =
+          setup_runtime_assets_rules
+            sctx
+            ~scope
+            ~dir
+            ~target_dir
+            ~mode
+            ~promote_in_source
+            ~output
+            ~for_:(`Library info)
+            mel
+        and+ () =
+          match Lib.implements lib with
+          | None -> Memo.return ()
+          | Some vlib ->
+            let* vlib = Resolve.Memo.read_memo vlib in
+            let vlib_output = output_of_lib ~target_dir vlib in
+            (match vlib_output, output with
+             | Public_library _, Private_library_or_emit _ ->
+               let info = Lib.info lib in
+               User_error.raise
+                 ~loc:(Lib_info.loc info)
+                 [ Pp.text
+                     "Dune doesn't currently support building private implementations of \
+                      virtual public libaries for `(modes melange)`"
                  ]
-           | Public_library _, Public_library _ | Private_library_or_emit _, _ ->
-             let* includes =
-               let+ requires_link =
+                 ~hints:
+                   [ Pp.textf
+                       "Add a `public_name` to the library `%s'."
+                       (Lib_name.to_string (Lib_info.name info))
+                   ]
+             | Public_library _, Public_library _ | Private_library_or_emit _, _ ->
+               let* includes =
                  let+ requires_link =
-                   Lib.Compile.for_lib
-                     ~allow_overlaps:mel.allow_overlapping_dependencies
-                     (Scope.libs scope)
-                     vlib
-                   |> Lib.Compile.requires_link
-                   |> Memo.Lazy.force
-                 in
-                 let open Resolve.O in
-                 let+ requires_link = requires_link in
-                 (* Whenever a `concrete_lib` implementation contains a field
+                   let+ requires_link =
+                     Lib.Compile.for_lib
+                       ~allow_overlaps:mel.allow_overlapping_dependencies
+                       (Scope.libs scope)
+                       vlib
+                     |> Lib.Compile.requires_link
+                     |> Memo.Lazy.force
+                   in
+                   let open Resolve.O in
+                   let+ requires_link = requires_link in
+                   (* Whenever a `concrete_lib` implementation contains a field
                     `(implements virt_lib)`, we also set up the JS targets for the
                     modules defined in `virt_lib`.
 
@@ -755,23 +802,30 @@ let setup_js_rules_libraries =
                     `virt_lib` depend on `concrete_lib`, such that Melange can find
                     the correct `.cmj` file, which is needed to emit the correct
                     path in `import` / `require`. *)
-                 lib :: requires_link
+                   lib :: requires_link
+                 in
+                 cmj_includes ~requires_link ~scope lib_config
                in
-               cmj_includes ~requires_link ~scope lib_config
-             in
-             parallel_build_source_modules
-               ~sctx
-               ~scope
-               vlib
-               ~f:(build_js ~dir ~output:vlib_output ~includes ~compile_flags))
-      and+ () =
-        parallel_build_source_modules
-          ~sctx
-          ~scope
-          lib
-          ~f:(build_js ~dir ~output ~includes ~compile_flags)
-      in
-      ())
+               parallel_build_source_modules
+                 ~sctx
+                 ~scope
+                 vlib
+                 ~f:(build_js ~dir ~output:vlib_output ~includes ~compile_flags))
+        and+ () =
+          parallel_build_source_modules
+            ~sctx
+            ~scope
+            lib
+            ~f:(build_js ~dir ~output ~includes ~compile_flags)
+        in
+        directory_targets)
+    in
+    List.fold_left dir_targets ~init:Path.Build.Map.empty ~f:(fun acc dir_targets ->
+      Path.Build.Map.merge acc dir_targets ~f:(fun _ l1 l2 ->
+        match l1, l2 with
+        | None, None -> None
+        | Some loc, None | None, Some loc -> Some loc
+        | Some _, Some _ -> assert false))
 ;;
 
 let setup_js_rules_libraries_and_entries
@@ -784,12 +838,19 @@ let setup_js_rules_libraries_and_entries
       ~target_dir
       mel
   =
-  let+ () =
+  let+ dir_targets_libraries =
     setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode mel
-  and+ () =
+  and+ directory_targets =
     setup_entries_js ~sctx ~dir ~dir_contents ~scope ~requires_link ~target_dir ~mode mel
   in
-  ()
+  Path.Build.Map.merge
+    dir_targets_libraries
+    directory_targets
+    ~f:(fun _ lib_dir emit_dir ->
+      match lib_dir, emit_dir with
+      | None, None -> None
+      | Some loc, None | None, Some loc -> Some loc
+      | Some _, Some _ -> assert false)
 ;;
 
 let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
@@ -830,17 +891,20 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
     let module_systems = mel.module_systems in
     let output = Output_kind.Private_library_or_emit target_dir in
     let loc = mel.loc in
-    Memo.parallel_iter modules_for_js ~f:(fun m ->
-      Memo.parallel_iter module_systems ~f:(fun (_module_system, js_ext) ->
-        let file_targets = [ make_js_name ~output ~js_ext m ] in
-        Super_context.add_rule
-          sctx
-          ~dir
-          ~loc
-          ~mode
-          (Action_builder.fail
-             { fail = (fun () -> Resolve.raise_error_with_stack_trace resolve_error) }
-           |> Action_builder.with_file_targets ~file_targets)))
+    let+ () =
+      Memo.parallel_iter modules_for_js ~f:(fun m ->
+        Memo.parallel_iter module_systems ~f:(fun (_module_system, js_ext) ->
+          let file_targets = [ make_js_name ~output ~js_ext m ] in
+          Super_context.add_rule
+            sctx
+            ~dir
+            ~loc
+            ~mode
+            (Action_builder.fail
+               { fail = (fun () -> Resolve.raise_error_with_stack_trace resolve_error) }
+             |> Action_builder.with_file_targets ~file_targets)))
+    in
+    Path.Build.Map.empty
 ;;
 
 (* The emit stanza of melange outputs in a single output directory (and its
@@ -857,7 +921,7 @@ type t =
   }
 
 let emit_rules sctx { stanza_dir; stanza } =
-  Rules.collect_unit (fun () ->
+  Rules.collect (fun () ->
     let* sctx = sctx in
     let* dir_contents = Dir_contents.get sctx ~dir:stanza_dir in
     let* scope = Scope.DB.find_by_dir stanza_dir in
@@ -932,9 +996,11 @@ let setup_emit_js_rules sctx ~dir =
   >>= function
   | Some melange ->
     gen_emit_rules sctx ~dir melange
-    >>| (function
-     | None -> Gen_rules.redirect_to_parent Gen_rules.Rules.empty
-     | Some melange -> Gen_rules.make melange)
+    >>= (function
+     | None -> Memo.return (Gen_rules.redirect_to_parent Gen_rules.Rules.empty)
+     | Some melange ->
+       let+ directory_targets, melange = melange in
+       Gen_rules.make ~directory_targets (Memo.return melange))
   | None ->
     (* this should probably be handled by [Dir_status] *)
     Dune_load.stanzas_in_dir dir

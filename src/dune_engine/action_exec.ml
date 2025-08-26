@@ -193,9 +193,6 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
       { eenv with exit_codes }
     in
     exec t ~ectx ~eenv
-  | Dynamic_run (Error e, _) -> Action.Prog.Not_found.raise e
-  | Dynamic_run (Ok prog, args) ->
-    Produce.of_fiber (Action_plugin.exec ~ectx ~eenv prog args)
   | Chdir (dir, t) -> exec t ~ectx ~eenv:{ eenv with working_dir = dir }
   | Setenv (var, value, t) ->
     exec t ~ectx ~eenv:{ eenv with env = Env.add eenv.env ~var ~value }

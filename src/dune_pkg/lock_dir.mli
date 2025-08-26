@@ -74,6 +74,14 @@ module Pkg : sig
         Decoder.t
 
   val files_dir : Package_name.t -> Package_version.t option -> lock_dir:Path.t -> Path.t
+
+  (** [source_files_dir p v l] returns the path of the versioned files dir. Might return
+      a path that does not exist. *)
+  val source_files_dir
+    :  Package_name.t
+    -> Package_version.t
+    -> lock_dir:Path.t
+    -> Path.Source.t
 end
 
 module Repositories : sig

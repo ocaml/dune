@@ -65,6 +65,7 @@ CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
 #include <caml/threads.h>
 #include <caml/unixsupport.h>
 
+#include <sys/types.h>
 #include <sys/sendfile.h>
 #include <sys/utsname.h>
 #include <linux/version.h>

@@ -343,7 +343,9 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
     let f _ promote =
       let server = Fdecl.get t in
       let outcome = Fiber.Ivar.create () in
-      let target = server.parse_build_arg "(alias_rec fmt)" in
+      let target =
+        Dune_lang.Dep_conf.Alias_rec (Dune_lang.String_with_vars.make_text Loc.none "fmt")
+      in
       let* () = Job_queue.write server.pending_build_jobs ([ target ], outcome) in
       let+ build_outcome = Fiber.Ivar.read outcome in
       match build_outcome, promote with

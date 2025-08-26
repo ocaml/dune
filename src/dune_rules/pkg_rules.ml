@@ -1209,7 +1209,9 @@ end = struct
             "Package files directory is external source directory, this is unsupported"
             [ "dir", Path.External.to_dyn e ]
         | In_source_tree s -> Path.Build.append_source build_path s
-        | In_build_dir s -> Path.Build.append build_path s
+        | In_build_dir b ->
+          (* it's already a build path, no need to do anything *)
+          b
       in
       let id = Pkg.Id.gen () in
       let write_paths = Paths.make package_universe name ~relative:Path.Build.relative in
@@ -1739,17 +1741,69 @@ let source_rules (pkg : Pkg.t) =
   source_deps, Memo.parallel_iter copy_rules ~f:(fun (loc, copy) -> rule ~loc copy)
 ;;
 
+let source_path_of_files_dir file_dir =
+  match Path.Build.explode file_dir with
+  | [ _; _; ".lock"; name; "content"; dir ] ->
+    Path.Source.L.relative Path.Source.root [ name; dir ]
+  | components ->
+    Code_error.raise "Invalid path" [ "components", Dyn.list Dyn.string components ]
+;;
+
+let rec scan_contents p =
+  let dir_contents =
+    match Readdir.read_directory_with_kinds (Path.Build.to_string p) with
+    | Ok dir_contents -> dir_contents
+    | Error e ->
+      Code_error.raise
+        "Failure to enumerate files"
+        [ "error", Unix_error.Detailed.to_dyn e ]
+  in
+  List.fold_left
+    dir_contents
+    ~f:(fun (files, empty_directories) (file_name, file_kind) ->
+      let p = Path.Build.relative p file_name in
+      match (file_kind : Unix.file_kind) with
+      | S_REG -> Path.Build.Set.add files p, empty_directories
+      | S_DIR ->
+        let recursive_files, recursive_empty_dir = scan_contents p in
+        (match
+           ( Path.Build.Set.is_empty recursive_files
+           , Path.Build.Set.is_empty recursive_empty_dir )
+         with
+         | true, true ->
+           recursive_files, Path.Build.Set.union empty_directories recursive_empty_dir
+         | true, false ->
+           files, Path.Build.Set.union empty_directories recursive_empty_dir
+         | false, _ -> Path.Build.Set.union files recursive_files, empty_directories)
+      | _ -> User_error.raise [ Pp.text "lock dir is problematique" ])
+    ~init:(Path.Build.Set.empty, Path.Build.Set.empty)
+;;
+
+let files p =
+  let files, empty_directories = scan_contents p in
+  let tp s =
+    Path.Build.Set.fold
+      s
+      ~f:(fun e acc -> Path.Set.add acc (Path.build e))
+      ~init:Path.Set.empty
+  in
+  let files = tp files in
+  let empty_directories = tp empty_directories in
+  Dep.Set.of_source_files ~files ~empty_directories, files
+;;
+
 let build_rule context_name ~source_deps (pkg : Pkg.t) =
   let+ build_action =
     let+ copy_action, build_action, install_action =
       let+ copy_action =
         let+ copy_action =
-          Fs_memo.dir_exists
-            (In_source_dir (Path.Build.drop_build_context_exn pkg.files_dir))
+          let path_in_source = source_path_of_files_dir pkg.files_dir in
+          Fs_memo.dir_exists (In_source_dir path_in_source)
           >>= function
           | false -> Memo.return []
           | true ->
-            let+ deps, source_deps = Source_deps.files (Path.build pkg.files_dir) in
+            let+ () = Memo.return () in
+            let deps, source_deps = files pkg.files_dir in
             let open Action_builder.O in
             [ Action_builder.with_no_targets
               @@ (Action_builder.deps deps

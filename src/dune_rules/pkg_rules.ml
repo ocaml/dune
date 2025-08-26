@@ -1189,16 +1189,16 @@ end = struct
              solution may have multiple versions of the same package
              necessitating version numbers in files dirs to prevent
              collisions). *)
-          let path_without_version =
-            Dune_pkg.Lock_dir.Pkg.files_dir info.name None ~lock_dir
-          in
           let path_with_version =
-            Dune_pkg.Lock_dir.Pkg.files_dir info.name (Some info.version) ~lock_dir
+            Dune_pkg.Lock_dir.Pkg.source_files_dir info.name info.version ~lock_dir
           in
           let+ path_with_version_exists =
-            path_with_version |> Path.as_outside_build_dir_exn |> Fs_memo.dir_exists
+            Fs_memo.dir_exists (Path.Outside_build_dir.In_source_dir path_with_version)
           in
-          if path_with_version_exists then path_with_version else path_without_version
+          match path_with_version_exists with
+          | true ->
+            Dune_pkg.Lock_dir.Pkg.files_dir info.name (Some info.version) ~lock_dir
+          | false -> Dune_pkg.Lock_dir.Pkg.files_dir info.name None ~lock_dir
         in
         let build_path =
           Context_name.build_dir (Package_universe.context_name package_universe)

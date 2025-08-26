@@ -78,6 +78,7 @@ module For_tests = struct
   module Dynlink_supported = Dynlink_supported
   module Ocamlobjinfo = Ocamlobjinfo
   module Action_unexpanded = Action_unexpanded
+  module Cram_exec = Cram_exec
 end
 
 module Coq = struct

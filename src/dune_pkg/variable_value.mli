@@ -9,6 +9,7 @@ val false_ : t
 val string : string -> t
 
 val equal : t -> t -> bool
+val hash : t -> int
 val compare : t -> t -> ordering
 val to_dyn : t -> Dyn.t
 val decode : t Decoder.t

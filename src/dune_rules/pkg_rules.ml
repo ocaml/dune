@@ -64,6 +64,13 @@ module Package_universe = struct
     | _ -> false
   ;;
 
+  let hash t =
+    match t with
+    | Project_dependencies context_name ->
+      Tuple.T2.hash Int.hash Context_name.hash (0, context_name)
+    | Dev_tool dev_tool -> Tuple.T2.hash Int.hash Dune_pkg.Dev_tool.hash (1, dev_tool)
+  ;;
+
   let context_name = function
     | Project_dependencies context_name -> context_name
     | Dev_tool _ ->
@@ -1084,6 +1091,19 @@ module DB = struct
     && Package.Name.Set.equal t.system_provided system_provided
   ;;
 
+  let hash { all; system_provided } =
+    let hash_all =
+      Package.Name.Map.foldi all ~init:0 ~f:(fun key value running_hash ->
+        Tuple.T3.hash
+          Package.Name.hash
+          Lock_dir.Pkg.hash
+          Int.hash
+          (key, value, running_hash))
+    in
+    Package.Name.Set.fold system_provided ~init:hash_all ~f:(fun name running_hash ->
+      Tuple.T2.hash Package.Name.hash Int.hash (name, running_hash))
+  ;;
+
   let get package_universe =
     let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
     let+ lock_dir = Package_universe.lock_dir package_universe
@@ -1116,7 +1136,7 @@ end = struct
     ;;
 
     let hash { db; package; universe } =
-      Poly.hash (Poly.hash db, Package.Name.hash package, Poly.hash universe)
+      Tuple.T3.hash DB.hash Package.Name.hash Package_universe.hash (db, package, universe)
     ;;
 
     let to_dyn = Dyn.opaque

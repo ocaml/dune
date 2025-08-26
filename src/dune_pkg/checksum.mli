@@ -18,5 +18,6 @@ val of_md5 : Md5.t -> t
 
 val pp : t -> 'a Pp.t
 val equal : t -> t -> bool
+val hash : t -> int
 
 module Map : Map.S with type key = t

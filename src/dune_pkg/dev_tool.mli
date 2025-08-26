@@ -11,6 +11,7 @@ type t =
 val to_dyn : t -> Dyn.t
 val all : t list
 val equal : t -> t -> bool
+val hash : t -> int
 val package_name : t -> Package_name.t
 val of_package_name : Package_name.t -> t
 val exe_name : t -> string

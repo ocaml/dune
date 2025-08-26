@@ -31,6 +31,13 @@ let to_dyn { url = _loc, url; checksum } =
     ]
 ;;
 
+let hash { url; checksum } =
+  Tuple.T2.hash
+    (Tuple.T2.hash Loc.hash OpamUrl.hash)
+    (Option.hash (Tuple.T2.hash Loc.hash Checksum.hash))
+    (url, checksum)
+;;
+
 let fetch_archive_cached =
   let cache = Single_run_file_cache.create () in
   fun (url_loc, url) ->

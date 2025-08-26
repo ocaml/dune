@@ -40,7 +40,7 @@ Test that we can set variables
   version: 1.2.3
 
   $ show_pkg_cookie test
-  { files = map {}
+  { files = []
   ; variables =
       [ ("abool", Bool true)
       ; ("astring", String "foobar")

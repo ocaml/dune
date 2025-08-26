@@ -3,7 +3,7 @@ parameterized libraries.
 
   $ . ./helpers.sh
 
-We create two parameters, on public, the other one local.
+We create two parameters, one public, the other one local.
 
   $ init_project
 
@@ -35,8 +35,8 @@ We create two parameters, on public, the other one local.
   $ dune build
 
 
-We implements a non parameter library (neither a virtual module). It should
-fail with the correct error message.
+Trying to implement a non-parameter and non-virtual library should fail with the
+correct error message.
 
   $ rm -rf _build
   $ make_dir_with_dune "foo_impl" <<EOF
@@ -52,7 +52,7 @@ fail with the correct error message.
   -> required by alias default
   [1]
 
-We implements the parameter using library calling a wrong parameter name.
+We implement the parameter using a library calling a wrong parameter name.
 
   $ rm -rf _build foo_impl
   $ make_dir_with_dune "foo_impl" <<EOF

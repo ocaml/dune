@@ -8,6 +8,7 @@ let depexts_hint = function
     ; Pp.enumerate ~f:Pp.verbatim depexts
     ]
     |> Pp.concat_map ~sep:Pp.cut ~f:(fun pp -> Pp.box pp)
+    |> Pp.vbox
     |> Option.some
 ;;
 

@@ -202,11 +202,12 @@ understood by dune language."))
  (depends
   (ocaml (>= 4.08.0))
   base-unix
-  (top-closure (= :version))
+  (csexp (>= 1.5.0))
   (dyn (= :version))
+  (fs-io (= :version))
   (ordering (= :version))
   (pp (>= 2.0.0))
-  (csexp (>= 1.5.0)))
+  (top-closure (= :version)))
  (maintenance_intent none)
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 

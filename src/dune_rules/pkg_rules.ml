@@ -1743,7 +1743,7 @@ let source_rules (pkg : Pkg.t) =
 
 let source_path_of_files_dir file_dir =
   match Path.Build.explode file_dir with
-  | [ _; _; ".lock"; name; "content"; dir ] ->
+  | [ _; _; ".lock"; name; dir ] ->
     Path.Source.L.relative Path.Source.root [ name; dir ]
   | components ->
     Code_error.raise "Invalid path" [ "components", Dyn.list Dyn.string components ]

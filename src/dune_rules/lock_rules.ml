@@ -81,8 +81,7 @@ let copy_lock_dir ~target ~lock_dir ~files =
   |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
 ;;
 
-let setup_copy_rules ~dir ~lock_dir =
-  let target = Path.Build.relative dir "content" in
+let setup_copy_rules ~dir:target ~lock_dir =
   let+ _deps, file_set = Source_deps.files (Path.source lock_dir) in
   let directory_targets, rules =
     match Path.Set.is_empty file_set with
@@ -90,6 +89,7 @@ let setup_copy_rules ~dir ~lock_dir =
       let directory_targets = Some (Path.Build.Map.singleton target Loc.none) in
       ( directory_targets
       , Rules.collect_unit (fun () ->
+          (* TODO use Source_deps.files here too *)
           let* _files = files lock_dir in
           let files =
             Path.Set.fold
@@ -111,6 +111,7 @@ let setup_copy_rules ~dir ~lock_dir =
 
 let setup_lock_rules ~dir ~lock_dir =
   let* workspace = Workspace.workspace () in
+  let dir = Path.Build.relative dir lock_dir in
   let lock_dir = Path.Source.relative workspace.dir lock_dir in
   setup_copy_rules ~dir ~lock_dir
 ;;
@@ -118,12 +119,8 @@ let setup_lock_rules ~dir ~lock_dir =
 let setup_rules ~components ~dir =
   match components with
   | [ ".lock" ] ->
-    Gen_rules.make
-      ~build_dir_only_sub_dirs:
-        (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
-      (Memo.return Rules.empty)
-    |> Memo.return
-  | [ ".lock"; lock_dir ] -> setup_lock_rules ~dir ~lock_dir
+     (* TODO enable other lock dirs too, by reading them from the workspace *)
+    setup_lock_rules ~dir ~lock_dir:"dune.lock"
   | [] ->
     let sub_dirs = [ ".lock" ] in
     let build_dir_only_sub_dirs =

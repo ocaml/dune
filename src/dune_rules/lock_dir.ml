@@ -136,7 +136,7 @@ let default_path =
   let ctx_name = "default" in
   Path.Build.L.relative
     Private_context.t.build_dir
-    [ ctx_name; ".lock"; "dune.lock"; "content" ]
+    [ ctx_name; ".lock"; "dune.lock" ]
   |> Path.build
 ;;
 
@@ -158,7 +158,6 @@ let dev_tool_lock_dir dev_tool =
     Path.Build.L.relative Private_context.t.build_dir [ ctx_name; ".dev-tool-locks" ]
   in
   let lock_dir = Path.Build.append_local lock_dir l in
-  let lock_dir = Path.Build.relative lock_dir "content" in
   Path.build lock_dir
 ;;
 

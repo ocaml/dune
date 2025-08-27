@@ -731,7 +731,7 @@ let source_path_of_lock_dir_path path =
   | In_source_tree s -> s
   | In_build_dir b ->
     (match Path.Build.explode b with
-     | [ _; _; ".lock"; lock_dir; "content" ] -> Path.Source.of_string lock_dir
+     | [ _; _; ".lock"; lock_dir ] -> Path.Source.of_string lock_dir
      | _ -> Code_error.raise "Unsupported build path" [ "dir", Path.Build.to_dyn b ])
   | External e ->
     Code_error.raise

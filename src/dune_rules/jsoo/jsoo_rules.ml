@@ -668,6 +668,7 @@ let build_cm cctx ~dir ~in_context ~mode ~src ~obj_dir ~deps ~config:config_opt 
         |> Action_builder.map ~f:Config.of_flags
       | Some config -> Action_builder.return config
     in
+    let deps = List.filter deps ~f:(fun m -> Module.has m ~ml_kind:Impl) in
     (Path.build (in_build_dir ctx ~config [ "stdlib"; with_js_ext ~mode "stdlib.cma" ])
      :: List.concat_map libs ~f:(fun lib -> jsoo_archives ~mode ctx config lib))
     @ List.map deps ~f:(fun m ->

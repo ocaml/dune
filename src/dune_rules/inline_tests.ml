@@ -362,18 +362,19 @@ include Sub_system.Register_end_point (struct
             |> Action_builder.with_stdout_to partition_file
             |> Super_context.add_rule sctx ~dir ~loc
         in
+        let* runtest_alias =
+          match mode with
+          | Native | Best | Byte -> Memo.return Alias0.runtest
+          | Jsoo mode -> Jsoo_rules.js_of_ocaml_runtest_alias ~dir ~mode
+        in
         let alias =
-          "runtest-" ^ Lib_name.Local.to_string lib_name
+          [ Alias.Name.to_string runtest_alias; Lib_name.Local.to_string lib_name ]
+          |> String.concat ~sep:"-"
           |> Alias.Name.of_string
           |> Alias.make ~dir
         in
         let* () =
-          let* runtest_alias =
-            (match mode with
-             | Native | Best | Byte -> Memo.return Alias0.runtest
-             | Jsoo mode -> Jsoo_rules.js_of_ocaml_runtest_alias ~dir ~mode)
-            >>| Alias.make ~dir
-          in
+          let runtest_alias = Alias.make ~dir runtest_alias in
           Dep.alias alias
           |> Action_builder.dep
           |> Rules.Produce.Alias.add_deps runtest_alias ~loc

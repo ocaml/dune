@@ -102,7 +102,9 @@ let setup_copy_rules ~dir ~lock_dir =
           in
           let copy_rule = copy_lock_dir ~target ~lock_dir ~files in
           rule ~loc:Loc.none copy_rule) )
-    | true -> None, Memo.return Rules.empty
+    | true ->
+        Printf.eprintf "No rules here\n";
+        Some (Path.Build.Map.empty), Memo.return Rules.empty
   in
   Gen_rules.make ?directory_targets rules
 ;;

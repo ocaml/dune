@@ -200,6 +200,7 @@ let remove_old_artifacts
         Path.Build.Map.mem rules_here.by_file_targets path
         || Path.Build.Map.mem rules_here.by_directory_targets path
       in
+      Printf.eprintf "Considering %S? Target %B Keep? %B\n" (Path.Build.to_string path) path_is_a_target (Subdir_set.mem subdirs_to_keep fn);
       if not path_is_a_target
       then (
         match kind with
@@ -855,6 +856,7 @@ end = struct
         ~dir
         ~real_directory_targets:(Rules.directory_targets rules_produced)
         ~directory_targets;
+      (* Printf.eprintf "Descendants to keep %S\n" (Dir_set.to_dyn (Path.Local_gen.to_dyn) descendants_to_keep); *)
       (let subdirs_to_keep = Subdir_set.of_dir_set descendants_to_keep in
        remove_old_artifacts ~dir ~rules_here ~subdirs_to_keep;
        remove_old_sub_dirs_in_anonymous_actions_dir

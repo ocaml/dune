@@ -134,9 +134,7 @@ let select_lock_dir lock_dir_selection =
 let default_path =
   (* TODO remove ctx_name *)
   let ctx_name = "default" in
-  Path.Build.L.relative
-    Private_context.t.build_dir
-    [ ctx_name; ".lock"; "dune.lock" ]
+  Path.Build.L.relative Private_context.t.build_dir [ ctx_name; ".lock"; "dune.lock" ]
   |> Path.build
 ;;
 
@@ -164,7 +162,7 @@ let dev_tool_lock_dir dev_tool =
 let get_path ctx =
   (* TODO check if lock dir was ignored *)
   let* workspace = Workspace.workspace () in
-  let* v = match
+  match
     List.find_map workspace.contexts ~f:(fun ctx' ->
       match Context_name.equal (Workspace.Context.name ctx') ctx with
       | false -> None
@@ -174,38 +172,19 @@ let get_path ctx =
   | Some (Default { lock_dir = Some lock_dir_selection; _ }) ->
     select_lock_dir lock_dir_selection >>| Option.some
   | Some (Opam _) -> Memo.return None
-  in
-  match v with
-  | None -> Memo.return None
-  | Some p ->
-      let temp = Path.Source.of_string "dune.lock" in
-      let* dir = Source_tree.find_dir temp in
-      match dir with
-      | None ->
-          Printf.eprintf "Not part of the source tree\n";
-          Memo.return (Some p)
-      | Some _ ->
-          Printf.eprintf "We got a path\n";
-          Memo.return (Some p)
 ;;
 
 let get_workspace_lock_dir ctx =
   let* workspace = Workspace.workspace () in
   let+ path = get_path ctx in
   let open Option.O in
-  let* path in
+  let* path = path in
   Workspace.find_lock_dir workspace path
 ;;
 
 let get_with_path ctx =
   let* path = get_path ctx >>| Option.value_exn in
-  let temp = Path.Source.of_string "dune.lock" in
-  let* dir = Source_tree.find_dir temp in
-  let* () = match dir with
-    (* | None -> Memo.return () *)
-    | None
-    | Some _ -> Build_system.build_dir path
-  in
+  let* () = Build_system.build_dir path in
   Load.load path
   >>= function
   | Error e -> Memo.return (Error e)

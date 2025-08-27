@@ -200,7 +200,6 @@ let remove_old_artifacts
         Path.Build.Map.mem rules_here.by_file_targets path
         || Path.Build.Map.mem rules_here.by_directory_targets path
       in
-      Printf.eprintf "Considering %S? Target %B Keep? %B\n" (Path.Build.to_string path) path_is_a_target (Subdir_set.mem subdirs_to_keep fn);
       if not path_is_a_target
       then (
         match kind with

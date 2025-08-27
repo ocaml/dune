@@ -85,10 +85,11 @@ let setup_copy_rules ~dir:target ~lock_dir =
   let+ _deps, file_set = Source_deps.files (Path.source lock_dir) in
   let directory_targets, rules =
     match Path.Set.is_empty file_set with
+    | true -> Path.Build.Map.empty, Memo.return Rules.empty
     | false ->
-      let directory_targets = Some (Path.Build.Map.singleton target Loc.none) in
-      ( directory_targets
-      , Rules.collect_unit (fun () ->
+      let directory_targets = Path.Build.Map.singleton target Loc.none in
+      let rules =
+        Rules.collect_unit (fun () ->
           (* TODO use Source_deps.files here too *)
           let* _files = files lock_dir in
           let files =
@@ -101,12 +102,11 @@ let setup_copy_rules ~dir:target ~lock_dir =
               file_set
           in
           let copy_rule = copy_lock_dir ~target ~lock_dir ~files in
-          rule ~loc:Loc.none copy_rule) )
-    | true ->
-        Printf.eprintf "No rules here\n";
-        Some (Path.Build.Map.empty), Memo.return Rules.empty
+          rule ~loc:Loc.none copy_rule)
+      in
+      directory_targets, rules
   in
-  Gen_rules.make ?directory_targets rules
+  Gen_rules.make ~directory_targets rules
 ;;
 
 let setup_lock_rules ~dir ~lock_dir =
@@ -119,7 +119,7 @@ let setup_lock_rules ~dir ~lock_dir =
 let setup_rules ~components ~dir =
   match components with
   | [ ".lock" ] ->
-     (* TODO enable other lock dirs too, by reading them from the workspace *)
+    (* TODO enable other lock dirs too, by reading them from the workspace *)
     setup_lock_rules ~dir ~lock_dir:"dune.lock"
   | [] ->
     let sub_dirs = [ ".lock" ] in

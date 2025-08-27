@@ -34,6 +34,8 @@ Test that shows what happens when dune.lock is ignored.
 Building test works when the dune.lock is visible to dune.
 
   $ build_pkg test
+  $ tree dune.lock
+  $ tree _build/_private/default/.lock/dune.lock/content
 
 Now the project is changed to only include src (which effectively ignores
 dune.lock):
@@ -52,4 +54,6 @@ Building fails as the patch cannot be found anymore
 And the backage cannot be shown:
 
   $ show_pkg test
-  
+
+  $ tree $pkg_root
+  $ tree -a _build/_private/default

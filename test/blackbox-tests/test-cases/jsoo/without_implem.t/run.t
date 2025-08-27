@@ -18,6 +18,3 @@
   > EOF
 
   $ dune build
-  File ".main.eobjs/jsoo/_unknown_", line 1, characters 0-0:
-  Error: No rule found for .main.eobjs/jsoo/dune__exe__Interface.cmo.js
-  [1]

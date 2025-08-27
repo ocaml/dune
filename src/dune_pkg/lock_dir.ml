@@ -19,6 +19,8 @@ module Solver_env_disjunction = struct
     List.equal Solver_env.equal a b
   ;;
 
+  let hash t = List.hash Solver_env.hash t
+
   let encode t =
     let open Encoder in
     list sexp (List.map ~f:Solver_env.encode t)
@@ -47,6 +49,10 @@ module Conditional = struct
 
   let equal value_equal { condition; value } t =
     Solver_env_disjunction.equal condition t.condition && value_equal value t.value
+  ;;
+
+  let hash { condition; value } ~f =
+    Tuple.T2.hash Solver_env_disjunction.hash f (condition, value)
   ;;
 
   let to_dyn value_to_dyn { condition; value } =
@@ -88,6 +94,7 @@ module Conditional_choice = struct
      codebase and can be removed when portable lockdirs is the only option. *)
   let singleton_all_platforms value = singleton Solver_env.empty value
   let equal value_equal = List.equal (Conditional.equal value_equal)
+  let hash t ~f = List.hash (Conditional.hash ~f) t
   let map ~f = List.map ~f:(Conditional.map ~f)
   let to_dyn value_to_dyn = Dyn.list (Conditional.to_dyn value_to_dyn)
 
@@ -172,6 +179,16 @@ module Pkg_info = struct
          (Tuple.T2.equal Path.Local.equal Source.equal)
          extra_sources
          t.extra_sources
+  ;;
+
+  let hash { name; version; dev; avoid; source; extra_sources } =
+    Poly.hash
+      ( Package_name.hash name
+      , Package_version.hash version
+      , Bool.hash dev
+      , Bool.hash avoid
+      , Option.hash Source.hash source
+      , List.hash (Tuple.T2.hash Path.Local.hash Source.hash) extra_sources )
   ;;
 
   let remove_locs t =
@@ -510,6 +527,26 @@ module Pkg = struct
          exported_env
          t.exported_env
     && Solver_env_disjunction.equal enabled_on_platforms t.enabled_on_platforms
+  ;;
+
+  let hash
+        { build_command
+        ; install_command
+        ; depends
+        ; depexts
+        ; info
+        ; exported_env
+        ; enabled_on_platforms
+        }
+    =
+    Poly.hash
+      ( Conditional_choice.hash ~f:Poly.hash build_command
+      , Conditional_choice.hash ~f:Poly.hash install_command
+      , Conditional_choice.hash ~f:Poly.hash depends
+      , depexts
+      , Pkg_info.hash info
+      , exported_env
+      , Solver_env_disjunction.hash enabled_on_platforms )
   ;;
 
   let remove_locs

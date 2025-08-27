@@ -17,6 +17,7 @@ let true_ = "true"
 let false_ = "false"
 let string = Fun.id
 let equal = String.equal
+let hash = String.hash
 let compare = String.compare
 let to_dyn = Dyn.string
 let to_string = Fun.id

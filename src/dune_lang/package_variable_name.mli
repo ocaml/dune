@@ -15,6 +15,7 @@ module Set : Set.S with type elt = t and type 'a map = 'a Map.t
 
 val of_string : string -> t
 val to_string : t -> string
+val hash : t -> int
 val arch : t
 val os : t
 val os_version : t

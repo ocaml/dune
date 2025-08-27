@@ -4,6 +4,7 @@ type t
 
 val empty : t
 val equal : t -> t -> bool
+val hash : t -> int
 val compare : t -> t -> ordering
 val to_dyn : t -> Dyn.t
 val is_empty : t -> bool

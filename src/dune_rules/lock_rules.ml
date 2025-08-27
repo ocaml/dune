@@ -34,10 +34,12 @@ module Copy = struct
       let+ () = Fiber.return () in
       Path.mkdir_p (Path.build target);
       Path.Source.Set.iter files ~f:(fun src ->
-        (* let src = Path.Source.relative lock_dir filename in *)
         let dst =
           match Path.Source.explode src with
-          | [] -> Code_error.raise "meh" []
+          | [] ->
+            Code_error.raise
+              "Somehow the path is unexpected"
+              [ "src", Path.Source.to_dyn src ]
           | _ :: components -> Path.Build.L.relative target components
         in
         let parent = Path.Build.parent_exn dst in
@@ -81,18 +83,32 @@ let copy_lock_dir ~target ~lock_dir ~files =
 
 let setup_copy_rules ~dir ~lock_dir =
   let target = Path.Build.relative dir "content" in
-  let rules =
-    Rules.collect_unit (fun () ->
-      let* files = files lock_dir in
-      let copy_rule = copy_lock_dir ~target ~lock_dir ~files in
-      rule ~loc:Loc.none copy_rule)
+  let+ _deps, file_set = Source_deps.files (Path.source lock_dir) in
+  let directory_targets, rules =
+    match Path.Set.is_empty file_set with
+    | false ->
+      let directory_targets = Some (Path.Build.Map.singleton target Loc.none) in
+      ( directory_targets
+      , Rules.collect_unit (fun () ->
+          let* _files = files lock_dir in
+          let files =
+            Path.Set.fold
+              ~init:Path.Source.Set.empty
+              ~f:(fun e acc ->
+                match (e : Path.t) with
+                | In_source_tree p -> Path.Source.Set.add acc p
+                | _ -> Code_error.raise "Whatsup" [])
+              file_set
+          in
+          let copy_rule = copy_lock_dir ~target ~lock_dir ~files in
+          rule ~loc:Loc.none copy_rule) )
+    | true -> None, Memo.return Rules.empty
   in
-  let directory_targets = Path.Build.Map.singleton target Loc.none in
-  Gen_rules.make ~directory_targets rules
+  Gen_rules.make ?directory_targets rules
 ;;
 
 let setup_lock_rules ~dir ~lock_dir =
-  let+ workspace = Workspace.workspace () in
+  let* workspace = Workspace.workspace () in
   let lock_dir = Path.Source.relative workspace.dir lock_dir in
   setup_copy_rules ~dir ~lock_dir
 ;;

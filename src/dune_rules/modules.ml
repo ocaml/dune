@@ -453,7 +453,10 @@ module Group = struct
         (* XXX ocamldep can't currently give us precise dependencies for
            modules under [(include_subdirs qualified)] directories. For that
            reason we currently depend on everything under the sub-directory. *)
-        Module_name.Map.values g.modules |> List.concat_map ~f:closure_node
+        let closure =
+          Module_name.Map.values g.modules |> List.concat_map ~f:closure_node
+        in
+        lib_interface :: closure
       | _ -> [ lib_interface ]
 
     and closure_node = function

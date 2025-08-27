@@ -52,28 +52,6 @@ module Copy = struct
   module A = Action_ext.Make (Spec)
 end
 
-let rec files p =
-  let open Memo.O in
-  let* dir_contents = Fs_memo.dir_contents (Path.Outside_build_dir.In_source_dir p) in
-  let dir_contents =
-    match dir_contents with
-    | Ok dir_contents -> dir_contents
-    | Error _ -> User_error.raise [ Pp.text "meh" ]
-  in
-  let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
-  Memo.List.fold_left
-    dir_contents
-    ~f:(fun acc (file_name, file_kind) ->
-      let p = Path.Source.relative p file_name in
-      match file_kind with
-      | S_REG -> Memo.return (Path.Source.Set.add acc p)
-      | S_DIR ->
-        let* recursive = files p in
-        Path.Source.Set.union acc recursive |> Memo.return
-      | _ -> User_error.raise [ Pp.text "lock dir is problematique" ])
-    ~init:Path.Source.Set.empty
-;;
-
 let copy_lock_dir ~target ~lock_dir ~files =
   Copy.A.action { Copy.Spec.target; lock_dir; files }
   |> Action.Full.make ~can_go_in_shared_cache:false
@@ -90,15 +68,20 @@ let setup_copy_rules ~dir:target ~lock_dir =
       let directory_targets = Path.Build.Map.singleton target Loc.none in
       let rules =
         Rules.collect_unit (fun () ->
-          (* TODO use Source_deps.files here too *)
-          let* _files = files lock_dir in
           let files =
             Path.Set.fold
               ~init:Path.Source.Set.empty
               ~f:(fun e acc ->
                 match (e : Path.t) with
                 | In_source_tree p -> Path.Source.Set.add acc p
-                | _ -> Code_error.raise "Whatsup" [])
+                | In_build_dir b ->
+                  Code_error.raise
+                    "Source deps returned build paths"
+                    [ "path", Path.Build.to_dyn b ]
+                | External e ->
+                  Code_error.raise
+                    "Source deps returned external path"
+                    [ "path", Path.External.to_dyn e ])
               file_set
           in
           let copy_rule = copy_lock_dir ~target ~lock_dir ~files in

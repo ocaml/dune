@@ -1,22 +1,25 @@
 open Import
 
 let term =
-  let+ builder = Common.Builder.term in
+  let+ builder = Common.Builder.term
+  and+ ctx_name = Common.context_arg ~doc:"Build context to use." in
   let common, config = Common.init builder in
   Scheduler.go_with_rpc_server ~common ~config (fun () ->
     Memo.run
     @@
     let open Memo.O in
-    let+ workspace = Workspace.workspace () in
+    let* workspace = Workspace.workspace () in
     let lock_dir_paths =
       Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace
         Pkg_common.Lock_dirs_arg.all
+        ctx_name
         workspace
     in
     let any_lockdir_exists = List.exists lock_dir_paths ~f:Path.exists in
     (* CR-Leonidas-from-XIV: change this logic when we stop detecting lock
        directories in the source tree *)
-    let enabled = any_lockdir_exists || workspace.config.pkg_enabled in
+    let+ lock_dir_enabled = Dune_rules.Lock_dir.enabled in
+    let enabled = any_lockdir_exists || lock_dir_enabled in
     match enabled with
     | true -> ()
     | false -> exit 1)

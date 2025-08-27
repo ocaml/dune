@@ -1078,12 +1078,6 @@ let create_latest_version
   }
 ;;
 
-let dev_tool_lock_dir_path dev_tool =
-  let dev_tools_path = Path.(relative root "dev-tools.locks") in
-  Path.relative dev_tools_path (Package_name.to_string (Dev_tool.package_name dev_tool))
-;;
-
-let default_path = lazy Path.(relative root "dune.lock")
 let metadata_filename = "lock.dune"
 
 module Metadata = Dune_sexp.Versioned_file.Make (Unit)
@@ -1374,7 +1368,6 @@ module Make_load (Io : sig
     val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
     val readdir_with_kinds : Path.t -> (Filename.t * Unix.file_kind) list t
     val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
-    val stats_kind : Path.t -> (File_kind.t, Unix_error.Detailed.t) result t
   end) =
 struct
   let load_metadata metadata_file_path =
@@ -1456,36 +1449,6 @@ struct
       package_name
   ;;
 
-  let check_path lock_dir_path =
-    let open Io.O in
-    Io.stats_kind lock_dir_path
-    >>| function
-    | Ok S_DIR -> Ok ()
-    | Error (Unix.ENOENT, _, _) ->
-      Error
-        (User_error.make
-           ~hints:
-             [ Pp.concat
-                 ~sep:Pp.space
-                 [ Pp.text "Run"
-                 ; User_message.command "dune pkg lock"
-                 ; Pp.text "to generate it."
-                 ]
-               |> Pp.hovbox
-             ]
-           [ Pp.textf "%s does not exist." (Path.to_string lock_dir_path) ])
-    | Error e ->
-      Error
-        (User_error.make
-           [ Pp.textf "%s is not accessible" (Path.to_string lock_dir_path)
-           ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum e)
-           ])
-    | _ ->
-      Error
-        (User_error.make
-           [ Pp.textf "%s is not a directory." (Path.to_string lock_dir_path) ])
-  ;;
-
   let check_packages packages ~lock_dir_path =
     match validate_packages packages with
     | Ok () -> Ok ()
@@ -1522,50 +1485,46 @@ struct
 
   let load lock_dir_path =
     let open Io.O in
-    let* result = check_path lock_dir_path in
-    match result with
-    | Error e -> Io.return (Error e)
-    | Ok () ->
-      let* ( version
-           , dependency_hash
-           , ocaml
-           , repos
-           , expanded_solver_variable_bindings
-           , solved_for_platforms )
-        =
-        load_metadata (Path.relative lock_dir_path metadata_filename)
-      in
-      let+ packages =
-        Io.readdir_with_kinds lock_dir_path
-        >>| List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
-          match kind with
-          | S_REG -> Package_filename.to_package_name_and_version name |> Result.to_option
-          | _ ->
-            (* TODO *)
-            None)
-        >>= Io.parallel_map ~f:(fun (package_name, maybe_package_version) ->
-          let _loc, solved_for_platforms = solved_for_platforms in
-          let+ pkg =
-            load_pkg
-              ~version
-              ~lock_dir_path
-              ~solved_for_platforms
-              package_name
-              maybe_package_version
-          in
-          pkg)
-        >>| Packages.of_pkg_list
-      in
-      check_packages packages ~lock_dir_path
-      |> Result.map ~f:(fun () ->
-        { version
-        ; dependency_hash
-        ; packages
-        ; ocaml
-        ; repos
-        ; expanded_solver_variable_bindings
-        ; solved_for_platforms
-        })
+    let* ( version
+         , dependency_hash
+         , ocaml
+         , repos
+         , expanded_solver_variable_bindings
+         , solved_for_platforms )
+      =
+      load_metadata (Path.relative lock_dir_path metadata_filename)
+    in
+    let+ packages =
+      Io.readdir_with_kinds lock_dir_path
+      >>| List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
+        match kind with
+        | S_REG -> Package_filename.to_package_name_and_version name |> Result.to_option
+        | _ ->
+          (* TODO *)
+          None)
+      >>= Io.parallel_map ~f:(fun (package_name, maybe_package_version) ->
+        let _loc, solved_for_platforms = solved_for_platforms in
+        let+ pkg =
+          load_pkg
+            ~version
+            ~lock_dir_path
+            ~solved_for_platforms
+            package_name
+            maybe_package_version
+        in
+        pkg)
+      >>| Packages.of_pkg_list
+    in
+    check_packages packages ~lock_dir_path
+    |> Result.map ~f:(fun () ->
+      { version
+      ; dependency_hash
+      ; packages
+      ; ocaml
+      ; repos
+      ; expanded_solver_variable_bindings
+      ; solved_for_platforms
+      })
   ;;
 
   let load_exn lock_dir_path =
@@ -1576,10 +1535,6 @@ end
 
 module Load_immediate = Make_load (struct
     include Monad.Id
-
-    let stats_kind file =
-      file |> Path.stat |> Result.map ~f:(fun { Unix.st_kind; _ } -> st_kind)
-    ;;
 
     let parallel_map xs ~f = List.map xs ~f
 

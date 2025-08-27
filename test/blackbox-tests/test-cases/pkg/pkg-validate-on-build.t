@@ -20,7 +20,8 @@ Test that we validate lockdirs before using them to build a package.
 Helper function that creates a workspace file with a given solver env.
   $ generate_workspace() {
   >  cat <<EOF
-  > (lang dune 3.12)
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (lock_dir
   >  (repositories mock)
   > EOF

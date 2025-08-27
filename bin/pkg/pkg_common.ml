@@ -195,8 +195,8 @@ module Lock_dirs_arg = struct
        All)
   ;;
 
-  let lock_dirs_of_workspace t (workspace : Workspace.t) =
-    let default_path = Lazy.force Lock_dir.default_path in
+  let lock_dirs_of_workspace t ctx_name (workspace : Workspace.t) =
+    let default_path = Dune_rules.Lock_dir.default_path ctx_name in
     let workspace_lock_dirs =
       default_path
       :: List.map workspace.lock_dirs ~f:(fun (lock_dir : Workspace.Lock_dir.t) ->

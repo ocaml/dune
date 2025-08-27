@@ -45,4 +45,4 @@ Building the package should succeed and print no output:
 Checks the package is installed:
 
   $ show_pkg_cookie y
-  { files = map {}; variables = [] }
+  { files = []; variables = [] }

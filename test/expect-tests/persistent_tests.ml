@@ -31,7 +31,7 @@ let%expect_test "persistent digests" =
     48031a13035ffa6b93b6b79ce277d39c
     ---
 
-    INSTALL-COOKIE version 2
+    INSTALL-COOKIE version 3
     da4ce847dd41df462849adecfe43f4eb
     ---
 

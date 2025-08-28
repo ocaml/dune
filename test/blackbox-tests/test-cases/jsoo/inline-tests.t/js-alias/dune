@@ -1,0 +1,8 @@
+(library
+ (name inline_tests_js_alias)
+ (inline_tests (modes byte js) (backend fake_backend)))
+
+(env
+ (_
+  (js_of_ocaml
+   (runtest_alias runtest-js))))

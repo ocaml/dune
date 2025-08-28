@@ -987,6 +987,7 @@ module Library = struct
         ; special_builtin_support = build_info_module
         }
         ~ocaml_config
+        ~word_size
     =
     let files = scan ~dir ~scan_subdirs in
     let modules =
@@ -1063,16 +1064,16 @@ module Library = struct
           if keep_c c ~architecture
           then (
             let extra_flags =
-              if String.is_prefix ~prefix:"blake3_" fn
-              then (
-                match architecture with
-                | "x86" | "i386" | "i486" | "i586" | "i686" ->
+              if String.starts_with ~prefix:"blake3_" fn
+              then
+                if Sys.cygwin || String.equal word_size "32"
+                then
                   [ "-DBLAKE3_NO_SSE2"
                   ; "-DBLAKE3_NO_SSE41"
                   ; "-DBLAKE3_NO_AVX2"
                   ; "-DBLAKE3_NO_AVX512"
                   ]
-                | _ -> [])
+                else []
               else []
             in
             `Left { flags = extra_flags @ c.flags; name = fn })
@@ -1192,7 +1193,7 @@ let get_dependencies libraries =
   deps
 ;;
 
-let assemble_libraries { local_libraries; target = _, main; _ } ~ocaml_config =
+let assemble_libraries { local_libraries; target = _, main; _ } ~ocaml_config ~word_size =
   (* In order to assemble all the sources in one place, the executables
        modules are also put in a namespace *)
   let task_lib =
@@ -1206,7 +1207,8 @@ let assemble_libraries { local_libraries; target = _, main; _ } ~ocaml_config =
     ; special_builtin_support = None
     }
   in
-  local_libraries @ [ task_lib ] |> Fiber.parallel_map ~f:(Library.process ~ocaml_config)
+  local_libraries @ [ task_lib ]
+  |> Fiber.parallel_map ~f:(Library.process ~ocaml_config ~word_size)
 ;;
 
 type status =
@@ -1404,7 +1406,8 @@ let main () =
    | Unix.Unix_error (Unix.EEXIST, _, _) -> ());
   Config.ocaml_config ()
   >>= fun ocaml_config ->
-  assemble_libraries ~ocaml_config task
+  let word_size = String.Map.find "word_size" ocaml_config in
+  assemble_libraries ~ocaml_config ~word_size task
   >>= fun libraries ->
   let c_files =
     List.map ~f:(fun (lib : Library.t) -> lib.c_files) libraries |> List.concat

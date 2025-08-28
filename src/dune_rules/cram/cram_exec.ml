@@ -445,14 +445,19 @@ let run_and_produce_output ~src ~env ~dir:cwd ~script ~dst ~timeout =
   let lexbuf = Lexbuf.from_string script_contents ~fname:(Path.to_string script) in
   let temp_dir = make_temp_dir ~script in
   let cram_stanzas = cram_stanzas lexbuf in
-  Path.unlink_exn script;
+  (* We don't want the ".cram.run.t" dir around when executing the script. *)
+  Path.rm_rf (Path.parent_exn script);
   let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
-  run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout
-  >>| List.filter_map ~f:(function
-    | Cram_lexer.Command c -> Some c
-    | Comment _ -> None)
-  >>| Script.dump (Path.build dst)
+  let+ commands =
+    run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout
+    >>| List.filter_map ~f:(function
+      | Cram_lexer.Command c -> Some c
+      | Comment _ -> None)
+  in
+  let dst = Path.build dst in
+  Path.mkdir_p (Path.parent_exn dst);
+  Script.dump dst commands
 ;;
 
 module Run = struct

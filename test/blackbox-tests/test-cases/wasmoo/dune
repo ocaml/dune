@@ -6,6 +6,10 @@
   (= %{env:DUNE_WASM_TEST=disable} enable)))
 
 (cram
+ (applies_to inline-tests)
+ (alias runtest-windows))
+
+(cram
  (applies_to build-info)
  (deps
   (package dune-build-info)))

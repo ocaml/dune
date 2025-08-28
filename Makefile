@@ -90,7 +90,7 @@ test: $(BIN)
 	$(BIN) runtest
 
 test-windows: $(BIN)
-	$(BIN) build @runtest-windows
+	DUNE_WASM_TEST=enable $(BIN) build @runtest-windows
 
 test-js: $(BIN)
 	$(BIN) build @runtest-js

@@ -14,7 +14,7 @@ of the :doc:`../dune-project/index` file when initializing a project with
 
 ``<optional-fields>`` are:
 
-.. describe:: (authors <string(s)>)
+.. confval:: (authors <string(s)>)
 
    Specify authors.
 
@@ -27,7 +27,7 @@ of the :doc:`../dune-project/index` file when initializing a project with
          "Jane Doe <jane.doe@example.com>"
          "John Doe <john.doe@example.com>"))
 
-.. describe:: (maintainers <string(s)>)
+.. confval:: (maintainers <string(s)>)
 
    Specify maintainers.
 
@@ -40,7 +40,7 @@ of the :doc:`../dune-project/index` file when initializing a project with
          "Jane Doe <jane.doe@example.com>"
          "John Doe <john.doe@example.com>"))
 
-.. describe:: (license <string(s)>)
+.. confval:: (license <string(s)>)
 
    Specify license, ideally as an identifier from the `SPDX License List
    <https://spdx.org/licenses/>`__.

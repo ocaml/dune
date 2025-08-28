@@ -5,6 +5,23 @@ If you're a contributor, please include your CHANGES entry in a file
 `doc/changes/$PR_NUMBER.md`. At release time, it will be incoporated into the
 changelog properly.
 
+3.20.1 (2025-08-25)
+-------------------
+
+### Fixed
+
+- Fix `runtest-js` mistakenly depending on `byte` (#12242, fixes #12243,
+  @vouillon and @Alizter)
+
+- Fix the interpretation of paths in `dune runtest` when running from within a
+  subdirectory. (#12251, fixes #12250, @Alizter)
+
+### Changed
+
+- Revert formatting change introduced in 3.20.0 making long lists in
+  s-expressions fill the line instead of formatting them in a vertical way
+  (#12245, reverts #10892, @nojb)
+
 3.20.0 (2025-08-18)
 -------------------
 

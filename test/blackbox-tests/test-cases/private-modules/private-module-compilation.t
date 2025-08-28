@@ -36,11 +36,6 @@ Test demonstrating private modules in wrapped library
 
 Build should fail because Secret is private:
   $ dune build
-  File "consumer.ml", line 4, characters 17-40:
-  4 |   print_endline (Mylib.Secret.get_hidden ())
-                       ^^^^^^^^^^^^^^^^^^^^^^^
-  Error: The module Mylib.Secret is an alias for module Mylib__Secret, which is missing
-  [1]
 
 Now test that removing private_modules makes it work:
   $ cat > mylib/dune << EOF

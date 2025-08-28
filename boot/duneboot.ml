@@ -1014,8 +1014,8 @@ module Library = struct
 
   let keep_asm { File_kind.syntax; arch; os; assembler = _ } ~ccomp_type ~architecture =
     (match os with
-     | Some `Unix -> Sys.os_type = "Unix"
-     | Some `Win -> Sys.os_type = "Win32"
+     | Some `Unix -> Sys.unix
+     | Some `Win -> Sys.win32
      | None -> true)
     && (match syntax, ccomp_type with
         | `Intel, "msvc" -> true

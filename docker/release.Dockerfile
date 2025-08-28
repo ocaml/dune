@@ -1,26 +1,23 @@
-ARG BASE_IMAGE=debian:latest
-FROM ${BASE_IMAGE}
+ARG BASE_IMAGE=debian:13
+FROM ${BASE_IMAGE} AS build
 
-RUN apt-get update && apt-get upgrade -y
-RUN apt-get install -y build-essential curl git sudo ocaml wget
+RUN apt-get update && apt-get upgrade -y && apt-get install -y adduser build-essential curl ocaml
 
-RUN git config --global user.email "docker@example.com"
-RUN git config --global user.name "Docker"
+RUN addgroup --gid 1000 dune && adduser --uid 1000 --ingroup dune dune
 
-RUN addgroup --system --gid 1000 dune
-RUN adduser --system --uid 1000 --ingroup dune dune
+USER dune:dune
 WORKDIR /home/dune
 
 # Use release assets from Docker context
-RUN tar -xvjf dune*.tbz
-RUN mv dune-[0-9]*/ dune
-WORKDIR /home/dune/dune
+RUN tar -xf dune*.tbz && mv dune-*/ dune
 
 # Build and install dune
-RUN ./configure --prefix=/usr/local
-RUN make bootstrap
-RUN make release
-RUN make install
+RUN cd dune && ./configure --prefix=/home/dune/install && make bootstrap && make release && make install
 
-# Verify installation
-RUN dune --version
+FROM ${BASE_IMAGE} AS run
+
+RUN apt-get update && apt-get upgrade -y && apt-get install -y adduser curl ocaml git && rm -rf /var/lib/{apt,dpkg,cache,log}/
+RUN addgroup --gid 1000 dune && adduser --uid 1000 --ingroup dune dune
+
+COPY --from=build /home/dune/install/bin/dune /usr/local/bin
+USER dune:dune

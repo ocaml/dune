@@ -167,7 +167,10 @@ jobs:
       - run: opam exec -- make release
 
       - name: Install deps
+        # CR-soon Alizter: Lwt 5.9.2 breaks on msvc so we pin it here. Remove
+        # this when https://github.com/ocsigen/lwt/issues/1071 is fixed.
         run: |
+          opam pin add lwt 5.9.1 --no-action
           opam install . --deps-only --with-test
           opam exec -- make dev-deps
         if: ${{ matrix.run_tests }}

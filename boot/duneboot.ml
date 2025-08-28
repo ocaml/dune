@@ -1081,6 +1081,7 @@ module Library = struct
         ~ext_obj
         ~ccomp_type
         ~architecture
+        ~word_size
     =
     let scan_subdirs =
       match include_subdirs with
@@ -1163,15 +1164,15 @@ module Library = struct
           then (
             let extra_flags =
               if String.starts_with ~prefix:"blake3_" fn
-              then (
-                match architecture with
-                | "x86" | "i386" | "i486" | "i586" | "i686" ->
+              then
+                if Sys.cygwin || String.equal word_size "32"
+                then
                   [ "-DBLAKE3_NO_SSE2"
                   ; "-DBLAKE3_NO_SSE41"
                   ; "-DBLAKE3_NO_AVX2"
                   ; "-DBLAKE3_NO_AVX512"
                   ]
-                | _ -> [])
+                else []
               else []
             in
             `Left { Source.flags = extra_flags @ c.flags; name = fn })
@@ -1304,6 +1305,7 @@ let assemble_libraries
       ~ext_obj
       ~ccomp_type
       ~architecture
+      ~word_size
   =
   (* In order to assemble all the sources in one place, the executables
        modules are also put in a namespace *)
@@ -1313,7 +1315,7 @@ let assemble_libraries
        in
        { Libs.main with main_module_name = Some namespace })
     ]
-  |> Fiber.parallel_map ~f:(Library.process ~ext_obj ~ccomp_type ~architecture)
+  |> Fiber.parallel_map ~f:(Library.process ~ext_obj ~ccomp_type ~architecture ~word_size)
 ;;
 
 type status =
@@ -1527,7 +1529,10 @@ let main () =
   in
   let ccomp_type = String.Map.find "ccomp_type" ocaml_config in
   let architecture = String.Map.find "architecture" ocaml_config in
-  let* libraries = assemble_libraries task ~ext_obj ~ccomp_type ~architecture in
+  let word_size = String.Map.find "word_size" ocaml_config in
+  let* libraries =
+    assemble_libraries task ~ext_obj ~ccomp_type ~architecture ~word_size
+  in
   let c_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.c_files) libraries in
   let asm_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.asm_files) libraries in
   let* dependencies = get_dependencies libraries in

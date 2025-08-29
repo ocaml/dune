@@ -1012,10 +1012,15 @@ module Library = struct
     ; asm_files : Source.asm_file list
     }
 
-  let keep_asm { File_kind.syntax; arch; os; assembler = _ } ~ccomp_type ~architecture =
+  let keep_asm
+        { File_kind.syntax; arch; os; assembler = _ }
+        ~ccomp_type
+        ~architecture
+        ~os_type
+    =
     (match os with
-     | Some `Unix -> Sys.unix
-     | Some `Win -> Sys.win32
+     | Some `Unix -> String.equal os_type "Unix"
+     | Some `Win -> String.equal os_type "Win32"
      | None -> true)
     && (match syntax, ccomp_type with
         | `Intel, "msvc" -> true
@@ -1082,6 +1087,7 @@ module Library = struct
         ~ccomp_type
         ~architecture
         ~word_size
+        ~os_type
     =
     let scan_subdirs =
       match include_subdirs with
@@ -1165,7 +1171,7 @@ module Library = struct
             let extra_flags =
               if String.starts_with ~prefix:"blake3_" fn
               then
-                if Sys.cygwin || String.equal word_size "32"
+                if String.equal os_type "Cygwin" || String.equal word_size "32"
                 then
                   [ "-DBLAKE3_NO_SSE2"
                   ; "-DBLAKE3_NO_SSE41"
@@ -1180,7 +1186,7 @@ module Library = struct
         | Ml _ -> `Middle fn
         | Header -> `Skip
         | Asm asm ->
-          if keep_asm asm ~ccomp_type ~architecture
+          if keep_asm asm ~ccomp_type ~architecture ~os_type
           then (
             let out_file = Filename.chop_extension fn ^ ext_obj in
             `Right
@@ -1306,6 +1312,7 @@ let assemble_libraries
       ~ccomp_type
       ~architecture
       ~word_size
+      ~os_type
   =
   (* In order to assemble all the sources in one place, the executables
        modules are also put in a namespace *)
@@ -1315,7 +1322,8 @@ let assemble_libraries
        in
        { Libs.main with main_module_name = Some namespace })
     ]
-  |> Fiber.parallel_map ~f:(Library.process ~ext_obj ~ccomp_type ~architecture ~word_size)
+  |> Fiber.parallel_map
+       ~f:(Library.process ~ext_obj ~ccomp_type ~architecture ~word_size ~os_type)
 ;;
 
 type status =
@@ -1530,8 +1538,9 @@ let main () =
   let ccomp_type = String.Map.find "ccomp_type" ocaml_config in
   let architecture = String.Map.find "architecture" ocaml_config in
   let word_size = String.Map.find "word_size" ocaml_config in
+  let os_type = String.Map.find "os_type" ocaml_config in
   let* libraries =
-    assemble_libraries task ~ext_obj ~ccomp_type ~architecture ~word_size
+    assemble_libraries task ~ext_obj ~ccomp_type ~architecture ~word_size ~os_type
   in
   let c_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.c_files) libraries in
   let asm_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.asm_files) libraries in

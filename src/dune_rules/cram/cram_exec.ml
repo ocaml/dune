@@ -49,6 +49,15 @@ let cram_stanzas lexbuf =
   loop []
 ;;
 
+module For_tests = struct
+  let cram_stanzas = cram_stanzas
+
+  let dyn_of_block = function
+    | Cram_lexer.Comment lines -> Dyn.variant "Comment" [ Dyn.list Dyn.string lines ]
+    | Command lines -> Dyn.variant "Command" [ Dyn.list Dyn.string lines ]
+  ;;
+end
+
 let run_expect_test file ~f =
   let open Fiber.O in
   let* file_contents =

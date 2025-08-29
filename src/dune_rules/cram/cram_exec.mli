@@ -17,3 +17,8 @@ val diff : src:Path.t -> output:Path.t -> Action.t
 
 (** Corresponds the user written cram action *)
 val action : Path.t -> Action.t
+
+module For_tests : sig
+  val cram_stanzas : Lexing.lexbuf -> string list Cram_lexer.block list
+  val dyn_of_block : string list Cram_lexer.block -> Dyn.t
+end

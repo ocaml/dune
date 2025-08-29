@@ -50,6 +50,6 @@ Test transitive deps can not be directly accessed, both for compiler versions su
 
   $ dune build ./runf.exe 2>&1 | grep -v ocamlc
   File "runf.ml", line 1, characters 16-21:
-  1 | let a = Bar.y + Foo.v
+  1 | let _ = Bar.y + Foo.v
                       ^^^^^
   Error: Unbound module Foo

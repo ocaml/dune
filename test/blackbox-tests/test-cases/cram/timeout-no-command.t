@@ -26,8 +26,7 @@ which specific command caused the timeout:
   File "test.t", line 1, characters 0-0:
   Error: Cram test timed out while running command:
     $ echo "This is the problematic command" && sleep 2
-  A time limit of 0.10s has been set in 
-  dune:2
+  A time limit of 0.10s has been set in dune:2
   [1]
 
 The error message above shows that we get a generic timeout message but no

@@ -413,6 +413,8 @@ let run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout =
       [ Pp.textf "A time limit of %.2fs has been set in " timeout
       ; Pp.tag User_message.Style.Loc @@ Loc.pp_file_colon_line timeout_loc
       ]
+      |> Pp.concat
+      |> Pp.hovbox
     in
     let timeout_msg =
       match
@@ -441,7 +443,7 @@ let run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout =
     in
     User_error.raise
       ~loc:(Loc.in_file (Path.drop_optional_build_context_maybe_sandboxed src))
-      (timeout_msg @ timeout_set_message)
+      (timeout_msg @ [ timeout_set_message ])
 ;;
 
 let run_produce_correction ~src ~env ~script ~timeout lexbuf =

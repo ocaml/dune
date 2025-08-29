@@ -196,33 +196,35 @@ module Lock_dirs_arg = struct
   ;;
 
   let lock_dirs_of_workspace t (workspace : Workspace.t) =
-    let default_path = Dune_rules.Lock_dir.default_path in
+    let default_path = Dune_rules.Lock_dir.default_source_path in
     let workspace_lock_dirs =
       default_path
       :: List.map workspace.lock_dirs ~f:(fun (lock_dir : Workspace.Lock_dir.t) ->
-        lock_dir.path |> Path.source)
-      |> Path.Set.of_list
-      |> Path.Set.to_list
+        lock_dir.path)
+      |> Path.Source.Set.of_list
+      |> Path.Source.Set.to_list
     in
     match t with
     | All -> workspace_lock_dirs
     | Selected [] -> [ default_path ]
     | Selected chosen_lock_dirs ->
-      let workspace_lock_dirs_set = Path.Set.of_list workspace_lock_dirs in
-      let chosen_lock_dirs = List.map ~f:Path.source chosen_lock_dirs in
-      let chosen_lock_dirs_set = Path.Set.of_list chosen_lock_dirs in
-      if Path.Set.is_subset chosen_lock_dirs_set ~of_:workspace_lock_dirs_set
+      let workspace_lock_dirs_set = Path.Source.Set.of_list workspace_lock_dirs in
+      (* let chosen_lock_dirs = List.map ~f:Path.source chosen_lock_dirs in *)
+      let chosen_lock_dirs_set = Path.Source.Set.of_list chosen_lock_dirs in
+      if Path.Source.Set.is_subset chosen_lock_dirs_set ~of_:workspace_lock_dirs_set
       then chosen_lock_dirs
       else (
         let unknown_lock_dirs =
-          Path.Set.diff chosen_lock_dirs_set workspace_lock_dirs_set |> Path.Set.to_list
+          Path.Source.Set.diff chosen_lock_dirs_set workspace_lock_dirs_set
+          |> Path.Source.Set.to_list
         in
+        let f x = Path.pp (Path.source x) in
         User_error.raise
           [ Pp.text
               "The following directories are not lock directories in this workspace:"
-          ; Pp.enumerate unknown_lock_dirs ~f:Path.pp
+          ; Pp.enumerate unknown_lock_dirs ~f
           ; Pp.text "This workspace contains the following lock directories:"
-          ; Pp.enumerate workspace_lock_dirs ~f:Path.pp
+          ; Pp.enumerate workspace_lock_dirs ~f
           ])
   ;;
 end

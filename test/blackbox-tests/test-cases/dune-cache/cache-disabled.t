@@ -37,13 +37,13 @@ Second build, no-op as cache is warm
   $ wc -l _build/log 
   17 _build/log
 
-Build with --cache=disabled, which should be a no-op as _build is already populated
+Build with --cache=disabled, which should be a no-op as _build is already populated. But unfortunately it is not.
 
   $ dune build --cache=disabled --config-file config
   $ wc -l _build/log 
   22 _build/log
 
-Second build with --cache=disabled, should be the same
+Second build with --cache=disabled, should be the same. Here we see it is really a no-op
 
   $ dune build --cache=disabled --config-file config
   $ wc -l _build/log 

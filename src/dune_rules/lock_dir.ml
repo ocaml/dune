@@ -138,6 +138,8 @@ let default_path =
   |> Path.build
 ;;
 
+let default_source_path = Path.Source.(relative root "dune.lock")
+
 let dev_tool_to_path_segment dev_tool =
   dev_tool |> Dev_tool.package_name |> Package_name.to_string |> Path.Local.of_string
 ;;
@@ -159,19 +161,31 @@ let dev_tool_lock_dir dev_tool =
   Path.build lock_dir
 ;;
 
-let get_path ctx =
+let get_path ctx_name =
   (* TODO check if lock dir was ignored *)
   let* workspace = Workspace.workspace () in
-  match
-    List.find_map workspace.contexts ~f:(fun ctx' ->
-      match Context_name.equal (Workspace.Context.name ctx') ctx with
+  let ctx =
+    List.find_map workspace.contexts ~f:(fun ctx ->
+      match Context_name.equal (Workspace.Context.name ctx) ctx_name with
       | false -> None
-      | true -> Some ctx')
-  with
-  | None | Some (Default { lock_dir = None; _ }) -> Memo.return (Some default_path)
-  | Some (Default { lock_dir = Some lock_dir_selection; _ }) ->
-    select_lock_dir lock_dir_selection >>| Option.some
-  | Some (Opam _) -> Memo.return None
+      | true -> Some ctx)
+  in
+  let* lock_dir_paths =
+    match ctx with
+    | None | Some (Default { lock_dir = None; _ }) ->
+      Memo.return (Some (default_source_path, default_path))
+    | Some (Default { lock_dir = Some lock_dir_selection; _ }) ->
+      let+ source_lock_dir = select_lock_dir lock_dir_selection in
+      Some (source_lock_dir, Path.of_string "TODO")
+    | Some (Opam _) -> Memo.return None
+  in
+  match lock_dir_paths with
+  | None -> Memo.return None
+  | Some (source_path, lock_dir_path) ->
+    let* in_source_tree = Source_tree.find_dir source_path in
+    (match in_source_tree with
+     | Some _ -> Memo.return (Some lock_dir_path)
+     | None -> Memo.return None)
 ;;
 
 let get_workspace_lock_dir ctx =

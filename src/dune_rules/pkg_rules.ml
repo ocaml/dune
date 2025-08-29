@@ -2041,7 +2041,12 @@ let setup_rules ~components ~dir ctx =
       (Memo.return Rules.empty)
     |> Memo.return
   | _, [ ".pkg"; pkg_name ] ->
-    setup_package_rules ~package_universe:(Project_dependencies ctx) ~dir ~pkg_name
+    (* Only generate pkg rules if there is a lock dir for that context *)
+    let* lock_dir_active = Lock_dir.lock_dir_active ctx in
+    (match lock_dir_active with
+     | false -> Memo.return @@ Gen_rules.make (Memo.return Rules.empty)
+     | true ->
+       setup_package_rules ~package_universe:(Project_dependencies ctx) ~dir ~pkg_name)
   | _, ".pkg" :: _ :: _ ->
     Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
   | true, ".dev-tool" :: _ :: _ :: _ ->

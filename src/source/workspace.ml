@@ -267,7 +267,7 @@ module Lock_dir_selection = struct
   let eval t ~dir ~f =
     let open Memo.O in
     match t with
-    | Name name -> Path.Source.relative dir name |> Path.source |> Memo.return
+    | Name name -> Path.Source.relative dir name |> Memo.return
     | Cond cond ->
       let+ value = Cond_expand.eval cond ~dir:(Path.source dir) ~f in
       (match (value : Value.t option) with
@@ -275,8 +275,9 @@ module Lock_dir_selection = struct
          User_error.raise
            ~loc:cond.loc
            [ Pp.text "None of the conditions matched so no lockdir could be chosen." ]
-       | Some (String s) -> Path.Source.relative dir s |> Path.source
-       | Some (Dir p | Path p) -> Path.reach ~from:(Path.source dir) p |> Path.of_string)
+       | Some (String s) -> Path.Source.relative dir s
+       | Some (Dir p | Path p) ->
+         Path.reach ~from:(Path.source dir) p |> Path.Source.of_string)
   ;;
 end
 

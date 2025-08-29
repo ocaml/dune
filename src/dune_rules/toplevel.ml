@@ -50,6 +50,8 @@ module Source = struct
     let include_dirs =
       Dyn.list (fun d -> Dyn.string (Path.to_absolute_filename d)) include_dirs
     in
+    (* CR-soon rgrinberg: This is buggy and needs to use [hidden_include_dirs]
+       when available *)
     Pp.vbox
       ~indent:2
       (Pp.verbatim "Clflags.include_dirs :=" ++ Pp.cut ++ Dyn.pp include_dirs)

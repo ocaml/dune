@@ -281,10 +281,10 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
        their implementation must also be compiled with -opaque *)
     Ocaml.Version.supports_opaque_for_mli cctx.ocaml.version
   in
-  let direct_requires = requires in
-  let hidden_requires = Resolve.Memo.return [] in
   let modules = singleton_modules module_ in
   let includes =
+    let hidden_requires = Resolve.Memo.return [] in
+    let direct_requires = requires in
     Includes.make
       ~project:(Scope.project cctx.scope)
       ~opaque

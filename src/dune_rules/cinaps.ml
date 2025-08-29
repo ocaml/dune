@@ -184,6 +184,7 @@ let gen_rules sctx t ~dir ~scope =
         ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
         ~melange_package_name:None
         ~package:None
+        ~bin_annot:false
     in
     let link_args =
       let open Action_builder.O in

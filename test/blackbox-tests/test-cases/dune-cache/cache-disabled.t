@@ -49,6 +49,14 @@ Second build with --cache=disabled, should be the same
   $ wc -l _build/log 
   17 _build/log
 
+  $ dune clean
+  $ dune build --cache=disabled --config-file config
+  $ wc -l _build/log 
+  22 _build/log
+  $ dune build --cache=disabled --config-file config
+  $ wc -l _build/log 
+  17 _build/log
+
 Run the tests with cache except user rules
 
   $ rm config
@@ -85,6 +93,14 @@ Build with --cache=disabled, which should be a no-op as _build is already popula
 
 Second build with --cache=disabled, should be the same
 
+  $ dune build --cache=disabled --config-file config
+  $ wc -l _build/log 
+  17 _build/log
+
+  $ dune clean
+  $ dune build --cache=disabled --config-file config
+  $ wc -l _build/log 
+  22 _build/log
   $ dune build --cache=disabled --config-file config
   $ wc -l _build/log 
   17 _build/log
@@ -128,3 +144,12 @@ Second build with --cache=disabled, should be the same
   $ dune build --cache=disabled --config-file config
   $ wc -l _build/log 
   17 _build/log
+
+  $ dune clean
+  $ dune build --cache=disabled --config-file config
+  $ wc -l _build/log 
+  22 _build/log
+  $ dune build --cache=disabled --config-file config
+  $ wc -l _build/log 
+  17 _build/log
+

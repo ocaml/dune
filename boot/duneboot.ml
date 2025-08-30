@@ -294,14 +294,7 @@ module Bin = struct
   ;;
 
   let find_prog ~f =
-    let rec search = function
-      | [] -> None
-      | dir :: rest ->
-        (match f dir with
-         | None -> search rest
-         | Some fn -> Some (dir, fn))
-    in
-    search path
+    List.find_map path ~f:(fun dir -> Option.map (fun fn -> dir, fn) (f dir))
   ;;
 
   let exe = if Sys.win32 then ".exe" else ""

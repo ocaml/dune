@@ -1122,7 +1122,7 @@ module Library = struct
   let gen_build_info_module wrapper m =
     let src =
       let fn = Module_name.to_fname m ~kind:`Ml in
-      { Source.file = fn; kind = Ml { kind = `Ml; name = m; module_path = [] } }
+      { Source.file = fn; kind = Ml { kind = `Ml; name = m; module_path = [ m ] } }
     in
     let mangled = Wrapper.mangle_filename wrapper src in
     let oc = Io.open_out (build_dir ^/ mangled) in
@@ -1190,7 +1190,7 @@ module Library = struct
       Option.map root_module ~f:(fun { name; entries } ->
         let src =
           let fn = Module_name.to_fname name ~kind:`Ml in
-          { Source.file = fn; kind = Ml { kind = `Ml; name; module_path = [] } }
+          { Source.file = fn; kind = Ml { kind = `Ml; name; module_path = [ name ] } }
         in
         let mangled = Wrapper.mangle_filename wrapper src in
         Io.with_file_out (build_dir ^/ mangled) ~f:(fun oc ->

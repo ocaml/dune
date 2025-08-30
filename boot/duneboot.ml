@@ -1063,6 +1063,26 @@ module Library = struct
     iter_dir dir [] []
   ;;
 
+  let modules files ~build_info_module ~root_module =
+    let modules =
+      List.fold_left
+        files
+        ~init:Module_name.Set.empty
+        ~f:(fun acc { Source.file = _; kind } ->
+          match (kind : File_kind.t) with
+          | Asm _ | Header | C _ -> acc
+          | Ml { kind = _; name; module_path = _ } -> Module_name.Set.add name acc)
+    in
+    let modules =
+      match build_info_module with
+      | None -> modules
+      | Some m -> Module_name.Set.add m modules
+    in
+    match root_module with
+    | None -> modules
+    | Some { name; entries = _ } -> Module_name.Set.add name modules
+  ;;
+
   type t =
     { ocaml_files : string list
     ; alias_file : string option
@@ -1147,25 +1167,7 @@ module Library = struct
         ~os_type
     =
     let files = scan ~dir ~include_subdirs in
-    let modules =
-      let modules =
-        List.fold_left
-          files
-          ~init:Module_name.Set.empty
-          ~f:(fun acc { Source.file = _; kind } ->
-            match (kind : File_kind.t) with
-            | Asm _ | Header | C _ -> acc
-            | Ml { kind = _; name; module_path = _ } -> Module_name.Set.add name acc)
-      in
-      let modules =
-        match build_info_module with
-        | None -> modules
-        | Some m -> Module_name.Set.add m modules
-      in
-      match root_module with
-      | None -> modules
-      | Some { name; entries = _ } -> Module_name.Set.add name modules
-    in
+    let modules = modules files ~build_info_module ~root_module in
     let wrapper = Wrapper.make ~namespace ~modules in
     let header =
       Option.map wrapper ~f:(fun (m : Wrapper.t) -> m.alias_module)

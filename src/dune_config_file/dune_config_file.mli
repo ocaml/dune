@@ -135,6 +135,9 @@ module Dune_config : sig
   val hash : t -> int
   val equal : t -> t -> bool
 
+  (** The degree of concurrency dune will use by default. *)
+  val auto_concurrency : int lazy_t
+
   (** [for_scheduler config ?watch_exclusions stats_opt ~signal_watcher]
       creates a configuration for a scheduler from the user-visible Dune
       [config]. *)

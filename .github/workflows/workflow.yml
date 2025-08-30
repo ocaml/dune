@@ -37,9 +37,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      - uses: cachix/install-nix-action@v31
+      - uses: nixbuild/nix-quick-install-action@v33
         with:
-          extra_nix_config: ${{ env.EXTRA_NIX_CONFIG }}
+          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix build
 
   nix-test:
@@ -52,9 +52,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      - uses: cachix/install-nix-action@v31
+      - uses: nixbuild/nix-quick-install-action@v33
         with:
-          extra_nix_config: ${{ env.EXTRA_NIX_CONFIG }}
+          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix develop -i -c make test
 
   fmt:
@@ -62,9 +62,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: cachix/install-nix-action@v31
+      - uses: nixbuild/nix-quick-install-action@v33
         with:
-          extra_nix_config: ${{ env.EXTRA_NIX_CONFIG }}
+          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix develop .#fmt -c make fmt
 
   doc:
@@ -72,9 +72,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: cachix/install-nix-action@v31
+      - uses: nixbuild/nix-quick-install-action@v33
         with:
-          extra_nix_config: ${{ env.EXTRA_NIX_CONFIG }}
+          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix develop .#doc -c make doc
         env:
           LC_ALL: C
@@ -89,9 +89,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      - uses: cachix/install-nix-action@v31
+      - uses: nixbuild/nix-quick-install-action@v33
         with:
-          extra_nix_config: ${{ env.EXTRA_NIX_CONFIG }}
+          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix develop -i .#bootstrap-check -c make test-bootstrap-script
 
   nix-build-4-08:
@@ -104,9 +104,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      - uses: cachix/install-nix-action@v31
+      - uses: nixbuild/nix-quick-install-action@v33
         with:
-          extra_nix_config: ${{ env.EXTRA_NIX_CONFIG }}
+          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix develop -i .#bootstrap-check_4_08 -c make release 
 
 #
@@ -219,11 +219,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: cachix/install-nix-action@v31
+      - uses: nixbuild/nix-quick-install-action@v33
         with:
-          extra_nix_config: |
-            extra-substituters = https://anmonteiro.nix-cache.workers.dev
-            extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
+          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix develop .#coq -c make test-coq
         env:
           # We disable the Dune cache when running the tests
@@ -316,7 +314,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: cachix/install-nix-action@v31
+      - uses: nixbuild/nix-quick-install-action@v33
         with:
-          extra_nix_config: ${{ env.EXTRA_NIX_CONFIG }}
+          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix develop .#microbench -c make dune build bench/micro

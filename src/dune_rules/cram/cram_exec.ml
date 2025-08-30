@@ -49,6 +49,15 @@ let cram_stanzas lexbuf =
   loop []
 ;;
 
+module For_tests = struct
+  let cram_stanzas = cram_stanzas
+
+  let dyn_of_block = function
+    | Cram_lexer.Comment lines -> Dyn.variant "Comment" [ Dyn.list Dyn.string lines ]
+    | Command lines -> Dyn.variant "Command" [ Dyn.list Dyn.string lines ]
+  ;;
+end
+
 let run_expect_test file ~f =
   let open Fiber.O in
   let* file_contents =
@@ -409,16 +418,41 @@ let run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout =
   | Ok () -> read_and_attach_exit_codes sh_script |> sanitize ~parent_script:script
   | Error `Timed_out ->
     let timeout_loc, timeout = Option.value_exn timeout in
+    let timeout_set_message =
+      [ Pp.textf "A time limit of %.2fs has been set in " timeout
+      ; Pp.tag User_message.Style.Loc @@ Loc.pp_file_colon_line timeout_loc
+      ]
+      |> Pp.concat
+      |> Pp.hovbox
+    in
+    let timeout_msg =
+      match
+        let completed_count =
+          read_exit_codes_and_prefix_maps sh_script.metadata_file |> List.length
+        in
+        let command_blocks_only =
+          List.filter_map sh_script.cram_to_output ~f:(function
+            | Cram_lexer.Comment _ -> None
+            | Cram_lexer.Command block_result -> Some block_result)
+        in
+        let total_commands = List.length command_blocks_only in
+        if completed_count < total_commands
+        then (
+          (* Find the command that got stuck - it's the one at index completed_count *)
+          match List.nth command_blocks_only completed_count with
+          | Some { command; _ } -> Some (String.concat ~sep:" " command)
+          | None -> None)
+        else None
+      with
+      | None -> [ Pp.text "Cram test timed out" ]
+      | Some cmd ->
+        [ Pp.textf "Cram test timed out while running command:"
+        ; Pp.verbatimf "  $ %s" cmd
+        ]
+    in
     User_error.raise
       ~loc:(Loc.in_file (Path.drop_optional_build_context_maybe_sandboxed src))
-      [ Pp.concat
-          [ Pp.paragraphf
-              "Cram test timed out. A time limit of %.2fs has been set in "
-              timeout
-          ; Pp.tag User_message.Style.Loc @@ Loc.pp_file_colon_line timeout_loc
-          ; Pp.verbatim "."
-          ]
-      ]
+      (timeout_msg @ [ timeout_set_message ])
 ;;
 
 let run_produce_correction ~src ~env ~script ~timeout lexbuf =
@@ -445,14 +479,19 @@ let run_and_produce_output ~src ~env ~dir:cwd ~script ~dst ~timeout =
   let lexbuf = Lexbuf.from_string script_contents ~fname:(Path.to_string script) in
   let temp_dir = make_temp_dir ~script in
   let cram_stanzas = cram_stanzas lexbuf in
-  Path.unlink_exn script;
+  (* We don't want the ".cram.run.t" dir around when executing the script. *)
+  Path.rm_rf (Path.parent_exn script);
   let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
-  run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout
-  >>| List.filter_map ~f:(function
-    | Cram_lexer.Command c -> Some c
-    | Comment _ -> None)
-  >>| Script.dump (Path.build dst)
+  let+ commands =
+    run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout
+    >>| List.filter_map ~f:(function
+      | Cram_lexer.Command c -> Some c
+      | Comment _ -> None)
+  in
+  let dst = Path.build dst in
+  Path.mkdir_p (Path.parent_exn dst);
+  Script.dump dst commands
 ;;
 
 module Run = struct

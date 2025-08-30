@@ -185,16 +185,9 @@ module Mangle = struct
                |> Module_name.of_string
            ; public = main_module_name
            })
-    | Exe ->
-      sprintf "dune__exe"
-      |> Module_name.of_string
-      |> Visibility.Map.make_both
-      |> Option.some
+    | Exe -> Module_name.of_string "dune__exe" |> Visibility.Map.make_both |> Option.some
     | Melange ->
-      sprintf "melange"
-      |> Module_name.of_string
-      |> Visibility.Map.make_both
-      |> Option.some
+      Module_name.of_string "melange" |> Visibility.Map.make_both |> Option.some
     | Unwrapped -> None
   ;;
 
@@ -460,7 +453,10 @@ module Group = struct
         (* XXX ocamldep can't currently give us precise dependencies for
            modules under [(include_subdirs qualified)] directories. For that
            reason we currently depend on everything under the sub-directory. *)
-        Module_name.Map.values g.modules |> List.concat_map ~f:closure_node
+        let closure =
+          Module_name.Map.values g.modules |> List.concat_map ~f:closure_node
+        in
+        lib_interface :: closure
       | _ -> [ lib_interface ]
 
     and closure_node = function

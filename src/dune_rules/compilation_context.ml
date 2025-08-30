@@ -7,50 +7,52 @@ module Includes = struct
   let make ~project ~opaque ~direct_requires ~hidden_requires lib_config
     : _ Lib_mode.Cm_kind.Map.t
     =
-    (* TODO : some of the requires can filtered out using [ocamldep] info *)
+    (* TODO: some of the requires can filtered out using [ocamldep] info *)
     let open Resolve.Memo.O in
     let iflags direct_libs hidden_libs mode =
       Lib_flags.L.include_flags ~project ~direct_libs ~hidden_libs mode lib_config
     in
     let make_includes_args ~mode groups =
-      Command.Args.memo
-        (Resolve.Memo.args
-           (let+ direct_libs = direct_requires
-            and+ hidden_libs = hidden_requires in
-            Command.Args.S
-              [ iflags direct_libs hidden_libs mode
-              ; Hidden_deps (Lib_file_deps.deps (direct_libs @ hidden_libs) ~groups)
-              ]))
+      (let+ direct_libs = direct_requires
+       and+ hidden_libs = hidden_requires in
+       Command.Args.S
+         [ iflags direct_libs hidden_libs mode
+         ; Hidden_deps (Lib_file_deps.deps (direct_libs @ hidden_libs) ~groups)
+         ])
+      |> Resolve.Memo.args
+      |> Command.Args.memo
     in
-    let cmi_includes = make_includes_args ~mode:(Ocaml Byte) [ Ocaml Cmi ] in
-    let cmx_includes =
-      Command.Args.memo
-        (Resolve.Memo.args
-           (let+ direct_libs = direct_requires
-            and+ hidden_libs = hidden_requires in
-            Command.Args.S
-              [ iflags direct_libs hidden_libs (Ocaml Native)
-              ; Hidden_deps
-                  (if opaque
-                   then
-                     List.map (direct_libs @ hidden_libs) ~f:(fun lib ->
-                       ( lib
-                       , if Lib.is_local lib
-                         then [ Lib_file_deps.Group.Ocaml Cmi ]
-                         else [ Ocaml Cmi; Ocaml Cmx ] ))
-                     |> Lib_file_deps.deps_with_exts
-                   else
-                     Lib_file_deps.deps
-                       (direct_libs @ hidden_libs)
-                       ~groups:[ Lib_file_deps.Group.Ocaml Cmi; Ocaml Cmx ])
-              ]))
-    in
-    let melange_cmi_includes = make_includes_args ~mode:Melange [ Melange Cmi ] in
-    let melange_cmj_includes =
-      make_includes_args ~mode:Melange [ Melange Cmi; Melange Cmj ]
-    in
-    { ocaml = { cmi = cmi_includes; cmo = cmi_includes; cmx = cmx_includes }
-    ; melange = { cmi = melange_cmi_includes; cmj = melange_cmj_includes }
+    { ocaml =
+        (let cmi_includes = make_includes_args ~mode:(Ocaml Byte) [ Ocaml Cmi ] in
+         { cmi = cmi_includes
+         ; cmo = cmi_includes
+         ; cmx =
+             (let+ direct_libs = direct_requires
+              and+ hidden_libs = hidden_requires in
+              Command.Args.S
+                [ iflags direct_libs hidden_libs (Ocaml Native)
+                ; Hidden_deps
+                    (let libs = direct_libs @ hidden_libs in
+                     if opaque
+                     then
+                       List.map libs ~f:(fun lib ->
+                         ( lib
+                         , if Lib.is_local lib
+                           then [ Lib_file_deps.Group.Ocaml Cmi ]
+                           else [ Ocaml Cmi; Ocaml Cmx ] ))
+                       |> Lib_file_deps.deps_with_exts
+                     else
+                       Lib_file_deps.deps
+                         libs
+                         ~groups:[ Lib_file_deps.Group.Ocaml Cmi; Ocaml Cmx ])
+                ])
+             |> Resolve.Memo.args
+             |> Command.Args.memo
+         })
+    ; melange =
+        { cmi = make_includes_args ~mode:Melange [ Melange Cmi ]
+        ; cmj = make_includes_args ~mode:Melange [ Melange Cmi; Melange Cmj ]
+        }
     }
   ;;
 

@@ -211,19 +211,21 @@ let build_c_program
   in
   let include_args =
     let open Action_builder.O in
-    let* ocaml = Action_builder.of_memo ocaml in
-    let ocaml_where = ocaml.lib_config.stdlib_dir in
-    (* XXX: need glob dependency *)
-    let open Action_builder.O in
-    let ctypes = Lib_name.of_string "ctypes" in
-    let+ lib =
-      Lib.DB.resolve (Scope.libs scope) (Loc.none, ctypes) |> Resolve.Memo.read
+    let+ include_dirs =
+      let* ocaml = Action_builder.of_memo ocaml in
+      let+ ctypes_include_dirs =
+        (* XXX: need glob dependency *)
+        let open Action_builder.O in
+        let+ lib =
+          let ctypes = Lib_name.of_string "ctypes" in
+          Lib.DB.resolve (Scope.libs scope) (Loc.none, ctypes) |> Resolve.Memo.read
+        in
+        Lib_flags.L.include_paths [ lib ] (Ocaml Native) ocaml.lib_config
+        |> Path.Set.to_list
+      in
+      let ocaml_where = ocaml.lib_config.stdlib_dir in
+      ocaml_where :: ctypes_include_dirs
     in
-    let ctypes_include_dirs =
-      Lib_flags.L.include_paths [ lib ] (Ocaml Native) ocaml.lib_config
-      |> Path.Set.to_list
-    in
-    let include_dirs = ocaml_where :: ctypes_include_dirs in
     Command.Args.S
       (List.map include_dirs ~f:(fun dir -> Command.Args.S [ A "-I"; Path dir ]))
   in

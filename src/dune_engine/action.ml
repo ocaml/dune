@@ -183,7 +183,6 @@ let fold_one_step t ~init:acc ~f =
   | With_accepted_exit_codes (_, t) -> f acc t
   | Progn l | Pipe (_, l) | Concurrent l -> List.fold_left l ~init:acc ~f
   | Run _
-  | Dynamic_run _
   | Echo _
   | Cat _
   | Copy _
@@ -220,7 +219,6 @@ let chdirs =
 let empty = Progn []
 
 let rec is_dynamic = function
-  | Dynamic_run _ -> true
   | Chdir (_, t)
   | Setenv (_, _, t)
   | Redirect_out (_, _, _, t)
@@ -289,7 +287,6 @@ let is_useful_to memoize =
     | Remove_tree _ -> false
     | Mkdir _ -> false
     | Run _ -> true
-    | Dynamic_run _ -> true
     | Bash _ -> true
     | Extension (module A) -> A.Spec.is_useful_to ~memoize
   in

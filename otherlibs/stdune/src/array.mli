@@ -10,6 +10,7 @@ val swap : 'a t -> int -> int -> unit
 module Immutable : sig
   type 'a t
 
+  val of_array_unsafe : 'a array -> 'a t
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
   val get : 'a t -> int -> 'a
   val of_array : 'a array -> 'a t

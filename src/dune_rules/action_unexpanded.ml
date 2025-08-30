@@ -454,7 +454,7 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     O.With_accepted_exit_codes (pred, t)
   | Dynamic_run (prog, args) ->
     let+ prog, args = expand_run prog args in
-    O.Dynamic_run (prog, args)
+    Action_plugin.action ~prog ~args
   | Chdir (fn, t) ->
     E.At_rule_eval_stage.path fn ~f:(fun dir ->
       A.chdir

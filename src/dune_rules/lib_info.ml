@@ -324,7 +324,6 @@ type 'path t =
   ; virtual_deps : (Loc.t * Lib_name.t) list
   ; dune_version : Dune_lang.Syntax.Version.t option
   ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
-  ; virtual_ : bool
   ; entry_modules : (Module_name.t list, User_message.t) result Source.t
   ; implements : (Loc.t * Lib_name.t) option
   ; default_implementation : (Loc.t * Lib_name.t) option
@@ -368,7 +367,7 @@ let status t = t.status
 let kind t = t.kind
 let default_implementation t = t.default_implementation
 let obj_dir t = t.obj_dir
-let virtual_ t = t.virtual_
+let virtual_ t = t.kind = Virtual
 let is_parameter t = t.kind = Parameter
 let implements t = t.implements
 let synopsis t = t.synopsis
@@ -420,7 +419,6 @@ let create
       ~enabled
       ~virtual_deps
       ~dune_version
-      ~virtual_
       ~entry_modules
       ~implements
       ~default_implementation
@@ -460,7 +458,6 @@ let create
   ; virtual_deps
   ; dune_version
   ; sub_systems
-  ; virtual_
   ; entry_modules
   ; implements
   ; default_implementation
@@ -557,7 +554,6 @@ let to_dyn
       ; virtual_deps
       ; dune_version
       ; sub_systems
-      ; virtual_
       ; implements
       ; default_implementation
       ; modes
@@ -598,7 +594,6 @@ let to_dyn
     ; "virtual_deps", list (snd Lib_name.to_dyn) virtual_deps
     ; "dune_version", option Dune_lang.Syntax.Version.to_dyn dune_version
     ; "sub_systems", Sub_system_name.Map.to_dyn Dyn.opaque sub_systems
-    ; "virtual_", bool virtual_
     ; ( "entry_modules"
       , Source.to_dyn
           (Result.to_dyn (list Module_name.to_dyn) string)

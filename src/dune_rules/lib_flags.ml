@@ -257,38 +257,36 @@ module Lib_and_module = struct
       let open Action_builder.O in
       Command.Args.Dyn
         (let+ l =
-           Action_builder.all
-             (List.map ts ~f:(function
-                | Lib t ->
-                  let+ p =
-                    Action_builder.of_memo (Link_params.get sctx t mode lib_config)
-                  in
-                  Command.Args.S
-                    (Deps p.deps
-                     :: Hidden_deps (Dep.Set.of_files p.hidden_deps)
-                     :: List.map p.include_dirs ~f:(fun dir ->
-                       Command.Args.S [ A "-I"; Path dir ]))
-                | Module (obj_dir, m) ->
-                  Action_builder.return
-                    (Command.Args.S
-                       (Dep
-                          (Obj_dir.Module.cm_file_exn
-                             obj_dir
-                             m
-                             ~kind:(Ocaml (Mode.cm_kind (Link_mode.mode mode))))
-                        ::
-                        (match mode with
-                         | Native ->
-                           [ Command.Args.Hidden_deps
-                               (Dep.Set.of_files
-                                  [ Obj_dir.Module.o_file_exn
-                                      obj_dir
-                                      m
-                                      ~ext_obj:lib_config.ext_obj
-                                  ])
-                           ]
-                         | Byte | Byte_for_jsoo | Byte_with_stubs_statically_linked_in ->
-                           [])))))
+           Action_builder.List.map ts ~f:(function
+             | Lib t ->
+               let+ { Link_params.hidden_deps; include_dirs; deps } =
+                 Action_builder.of_memo (Link_params.get sctx t mode lib_config)
+               in
+               Command.Args.S
+                 (Deps deps
+                  :: Hidden_deps (Dep.Set.of_files hidden_deps)
+                  :: List.map include_dirs ~f:(fun dir ->
+                    Command.Args.S [ A "-I"; Path dir ]))
+             | Module (obj_dir, m) ->
+               Command.Args.S
+                 (Dep
+                    (Obj_dir.Module.cm_file_exn
+                       obj_dir
+                       m
+                       ~kind:(Ocaml (Mode.cm_kind (Link_mode.mode mode))))
+                  ::
+                  (match mode with
+                   | Byte | Byte_for_jsoo | Byte_with_stubs_statically_linked_in -> []
+                   | Native ->
+                     [ Command.Args.Hidden_deps
+                         ([ Obj_dir.Module.o_file_exn
+                              obj_dir
+                              m
+                              ~ext_obj:lib_config.ext_obj
+                          ]
+                          |> Dep.Set.of_files)
+                     ]))
+               |> Action_builder.return)
          in
          Command.Args.S l)
     ;;

@@ -19,8 +19,6 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     | Run (prog, args) ->
       Run (f_program ~dir prog, Array.Immutable.map args ~f:(f_string ~dir))
     | With_accepted_exit_codes (pred, t) -> With_accepted_exit_codes (pred, f t ~dir)
-    | Dynamic_run (prog, args) ->
-      Dynamic_run (f_program ~dir prog, List.map args ~f:(f_string ~dir))
     | Chdir (fn, t) -> Chdir (f_path ~dir fn, f t ~dir:fn)
     | Setenv (var, value, t) -> Setenv (f_string ~dir var, f_string ~dir value, f t ~dir)
     | Redirect_out (outputs, fn, perm, t) ->

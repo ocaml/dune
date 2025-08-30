@@ -400,8 +400,8 @@ let either =
 ;;
 
 let ( <|> ) x y =
-  let+ res = either x y in
-  match res with
+  either x y
+  >>| function
   | Left x -> x
   | Right x -> x
 ;;

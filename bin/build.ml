@@ -90,7 +90,7 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
     | `Allow server -> server
     | `Forbid_builds -> Code_error.raise "rpc server must be allowed in passive mode" []
   in
-  Scheduler.Run.poll_passive
+  Dune_engine.Scheduler.Run.poll_passive
     ~get_build_request:
       (let+ (Build (targets, ivar)) = Dune_rpc_impl.Server.pending_build_action rpc in
        let request setup =
@@ -105,7 +105,7 @@ let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
     (* Run two fibers concurrently. One is responible for rebuilding targets
        named on the command line in reaction to file system changes. The other
        is responsible for building targets named in RPC build requests. *)
-    let+ () = Scheduler.Run.poll (run_build_system ~common ~request)
+    let+ () = Dune_engine.Scheduler.Run.poll (run_build_system ~common ~request)
     and+ () = poll_handling_rpc_build_requests ~common ~config in
     ())
 ;;

@@ -29,6 +29,7 @@ let pp v =
 ;;
 
 let equal = OpamHash.equal
+let hash = Poly.hash
 
 include Comparable.Make (struct
     type nonrec t = t

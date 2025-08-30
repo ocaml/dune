@@ -58,44 +58,77 @@ module Ppx_args = struct
   ;;
 end
 
-type t =
-  | Normal
-  | Ppx_deriver of Ppx_args.t
-  | Ppx_rewriter of Ppx_args.t
-  | Parameter
+module Dune_file = struct
+  type t =
+    | Normal
+    | Ppx_deriver of Ppx_args.t
+    | Ppx_rewriter of Ppx_args.t
 
-let equal = Poly.equal
+  let cstr_name = function
+    | Normal -> "normal"
+    | Ppx_deriver _ -> "ppx_deriver"
+    | Ppx_rewriter _ -> "ppx_rewriter"
+  ;;
+
+  let decode =
+    let open Decoder in
+    sum
+      [ "normal", return Normal
+      ; ( "ppx_deriver"
+        , let+ args = Ppx_args.decode in
+          Ppx_deriver args )
+      ; ( "ppx_rewriter"
+        , let+ args = Ppx_args.decode in
+          Ppx_rewriter args )
+      ]
+  ;;
+
+  let encode t =
+    match
+      match t with
+      | Normal -> Dune_sexp.atom (cstr_name t)
+      | Ppx_deriver x | Ppx_rewriter x ->
+        List (Dune_sexp.atom (cstr_name t) :: Ppx_args.encode x)
+    with
+    | List [ x ] -> x
+    | x -> x
+  ;;
+
+  let to_dyn x =
+    let open Dyn in
+    match x with
+    | Normal -> variant "Normal" []
+    | Ppx_deriver args -> variant "Ppx_deriver" [ Ppx_args.to_dyn args ]
+    | Ppx_rewriter args -> variant "Ppx_rewriter" [ Ppx_args.to_dyn args ]
+  ;;
+end
+
+type t =
+  | Virtual
+  | Parameter
+  | Dune_file of Dune_file.t
 
 let to_dyn x =
   let open Dyn in
   match x with
-  | Normal -> variant "Normal" []
+  | Virtual -> variant "Virtual" []
   | Parameter -> variant "Parameter" []
-  | Ppx_deriver args -> variant "Ppx_deriver" [ Ppx_args.to_dyn args ]
-  | Ppx_rewriter args -> variant "Ppx_rewriter" [ Ppx_args.to_dyn args ]
+  | Dune_file t -> variant "Dune_file" [ Dune_file.to_dyn t ]
 ;;
 
 let decode =
   let open Decoder in
-  sum
-    [ "normal", return Normal
-    ; "parameter", return Parameter
-    ; ( "ppx_deriver"
-      , let+ args = Ppx_args.decode in
-        Ppx_deriver args )
-    ; ( "ppx_rewriter"
-      , let+ args = Ppx_args.decode in
-        Ppx_rewriter args )
-    ]
+  (* TODO: Less code reuse with either? *)
+  map ~f:(fun k -> Dune_file k) Dune_file.decode
+  <|> enum [ "parameter", Parameter; "virtual", Virtual ]
 ;;
 
 let encode t =
   match
     match t with
-    | Normal -> Dune_sexp.atom "normal"
+    | Virtual -> Dune_sexp.atom "virtual"
     | Parameter -> Dune_sexp.atom "parameter"
-    | Ppx_deriver x -> List (Dune_sexp.atom "ppx_deriver" :: Ppx_args.encode x)
-    | Ppx_rewriter x -> List (Dune_sexp.atom "ppx_rewriter" :: Ppx_args.encode x)
+    | Dune_file d -> Dune_file.encode d
   with
   | List [ x ] -> x
   | x -> x

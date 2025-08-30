@@ -88,7 +88,9 @@ static ssize_t dune_sendfile(int in, int out, size_t length) {
   return length;
 }
 
-typedef ssize_t (*copy_file_range_t)(int, loff_t*, int, loff_t*, size_t, unsigned int);
+/* The second and fourth arguments are type-incorrect, but as they are unused,
+   this is OK */
+typedef ssize_t (*copy_file_range_t)(int, void *, int, void *, size_t, unsigned int);
 
 static copy_file_range_t copy_file_range_fn = NULL;
 

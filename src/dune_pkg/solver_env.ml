@@ -11,6 +11,15 @@ end
 include T
 include Comparable.Make (T)
 
+let hash t =
+  Package_variable_name.Map.foldi t ~init:0 ~f:(fun key value running_hash ->
+    Tuple.T3.hash
+      Package_variable_name.hash
+      Variable_value.hash
+      Int.hash
+      (key, value, running_hash))
+;;
+
 let empty = Package_variable_name.Map.empty
 let is_empty = Package_variable_name.Map.is_empty
 

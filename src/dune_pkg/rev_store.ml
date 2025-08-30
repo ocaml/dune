@@ -128,11 +128,19 @@ module File = struct
 end
 
 module Remote = struct
-  type nonrec t =
+  type t =
     { url : string
     ; default_branch : Object.resolved option Fiber.t
     ; refs : Object.resolved String.Map.t Fiber.t
     }
+
+  let to_dyn { url; default_branch; refs } =
+    Dyn.record
+      [ "url", Dyn.string url
+      ; "default_branch", Dyn.opaque default_branch
+      ; "refs", Dyn.opaque refs
+      ]
+  ;;
 
   let default_branch t = t.default_branch
 end
@@ -144,6 +152,18 @@ type t =
     object_mutexes : (Object.t, Fiber.Mutex.t) Table.t
   ; present_objects : (Object.t, unit) Table.t
   }
+
+let to_dyn { dir; remotes; object_mutexes; present_objects } =
+  Dyn.record
+    [ (* This is an external path, so we relativize to sanitize. We don't use
+         [Path.to_dyn] since it wouldn't be correct and therefore confusing. *)
+      "dir", Path.Expert.try_localize_external dir |> Path.to_string |> Dyn.string
+    ; "remotes", Table.to_list remotes |> Dyn.list (Dyn.pair Dyn.string Remote.to_dyn)
+    ; "object_mutexes", Dyn.opaque object_mutexes
+    ; ( "present_objects"
+      , Table.to_list present_objects |> Dyn.list (Dyn.pair Object.to_dyn Dyn.unit) )
+    ]
+;;
 
 let with_mutex t obj ~f =
   let* () = Fiber.return () in
@@ -843,7 +863,7 @@ let remote =
   let head_mark, head = Re.mark (Re.str "HEAD") in
   let ref = Re.(group (seq [ str "refs/"; rep1 any ])) in
   let re = Re.(compile @@ seq [ bol; group hash; rep1 space; alt [ head; ref ] ]) in
-  fun t ~url:(url_loc, url) ->
+  fun t ~loc:url_loc ~url ->
     let f url =
       let command = [ "ls-remote"; url ] in
       let refs =

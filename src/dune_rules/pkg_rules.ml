@@ -64,6 +64,13 @@ module Package_universe = struct
     | _ -> false
   ;;
 
+  let hash t =
+    match t with
+    | Project_dependencies context_name ->
+      Tuple.T2.hash Int.hash Context_name.hash (0, context_name)
+    | Dev_tool dev_tool -> Tuple.T2.hash Int.hash Dune_pkg.Dev_tool.hash (1, dev_tool)
+  ;;
+
   let context_name = function
     | Project_dependencies context_name -> context_name
     | Dev_tool _ ->
@@ -188,32 +195,42 @@ module Install_cookie = struct
      don't have to know anything about the installation procedure.
   *)
 
-  type t =
-    { files : Path.t list Section.Map.t
-    ; variables : Variable.t list
-    }
+  module Gen = struct
+    type 'files t =
+      { files : 'files
+      ; variables : Variable.t list
+      }
 
-  let to_dyn { files; variables } =
-    let open Dyn in
-    record
-      [ "files", Section.Map.to_dyn (list Path.to_dyn) files
-      ; "variables", list Variable.to_dyn variables
-      ]
-  ;;
+    let to_dyn f { files; variables } =
+      let open Dyn in
+      record [ "files", f files; "variables", list Variable.to_dyn variables ]
+    ;;
+  end
 
-  include Dune_util.Persistent.Make (struct
-      type nonrec t = t
+  type t = Path.t list Section.Map.t Gen.t
+
+  module Persistent = Persistent.Make (struct
+      type nonrec t = (Section.t * Path.t list) list Gen.t
 
       let name = "INSTALL-COOKIE"
-      let version = 2
-      let to_dyn = to_dyn
-      let test_example () = { files = Section.Map.empty; variables = [] }
+      let version = 3
+
+      let to_dyn =
+        let open Dyn in
+        Gen.to_dyn (list (pair Section.to_dyn (list Path.to_dyn)))
+      ;;
+
+      let test_example () = { Gen.files = []; variables = [] }
     end)
 
   let load_exn f =
-    match load f with
-    | Some f -> f
+    match Persistent.load f with
+    | Some f -> { f with files = Section.Map.of_list_exn f.files }
     | None -> User_error.raise ~loc:(Loc.in_file f) [ Pp.text "unable to load" ]
+  ;;
+
+  let dump path (t : t) =
+    Persistent.dump path { t with files = Section.Map.to_list t.files }
   ;;
 end
 
@@ -535,7 +552,7 @@ module Substitute = struct
       }
 
     let name = "substitute"
-    let version = 2
+    let version = 3
     let bimap t f g = { t with src = f t.src; dst = g t.dst }
     let is_useful_to ~memoize = memoize
 
@@ -543,11 +560,11 @@ module Substitute = struct
       let e =
         let paths (p : Path.t Paths.t) = p.source_dir, p.target_dir, p.name in
         ( paths expander.paths
-        , artifacts
+        , String.Map.to_list artifacts
         , Package.Name.Map.to_list_map depends ~f:(fun _ (m, p) -> m, paths p)
         , expander.version
         , expander.context
-        , expander.env )
+        , Env.Map.to_list expander.env |> Digest.generic |> Digest.to_string_raw )
         |> Digest.generic
         |> Digest.to_string_raw
       in
@@ -1084,6 +1101,19 @@ module DB = struct
     && Package.Name.Set.equal t.system_provided system_provided
   ;;
 
+  let hash { all; system_provided } =
+    let hash_all =
+      Package.Name.Map.foldi all ~init:0 ~f:(fun key value running_hash ->
+        Tuple.T3.hash
+          Package.Name.hash
+          Lock_dir.Pkg.hash
+          Int.hash
+          (key, value, running_hash))
+    in
+    Package.Name.Set.fold system_provided ~init:hash_all ~f:(fun name running_hash ->
+      Tuple.T2.hash Package.Name.hash Int.hash (name, running_hash))
+  ;;
+
   let get package_universe =
     let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
     let+ lock_dir = Package_universe.lock_dir package_universe
@@ -1116,7 +1146,7 @@ end = struct
     ;;
 
     let hash { db; package; universe } =
-      Poly.hash (Poly.hash db, Package.Name.hash package, Poly.hash universe)
+      Tuple.T3.hash DB.hash Package.Name.hash Package_universe.hash (db, package, universe)
     ;;
 
     let to_dyn = Dyn.opaque
@@ -1604,10 +1634,11 @@ module Install_action = struct
         (* TODO we should make sure that overwrites aren't allowed *)
         Section.Map.union from_install_action from_install_file ~f:(fun _ x y ->
           Some (x @ y))
+        |> Section.Map.map ~f:(List.sort ~compare:Path.compare)
       in
       let* cookies =
         let+ variables = Async.async (fun () -> read_variables config_file) in
-        { Install_cookie.files; variables }
+        { Install_cookie.Gen.files; variables }
       in
       (* Produce the cookie file in the standard path *)
       let cookie_file = Path.build @@ Paths.install_cookie' target_dir in

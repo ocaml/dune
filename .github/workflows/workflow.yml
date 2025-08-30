@@ -40,6 +40,13 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v33
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
+      - uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: |
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
+          gc-max-store-size-linux: 2G
+          gc-max-store-size-macos: 2G
       - run: nix build
 
   nix-test:
@@ -55,6 +62,12 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v33
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
+      - uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: |
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
+          gc-max-store-size-linux: 10G
       - run: nix develop -i -c make test
 
   fmt:
@@ -65,6 +78,12 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v33
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
+      - uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: |
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
+          gc-max-store-size-linux: 2G
       - run: nix develop .#fmt -c make fmt
 
   doc:
@@ -75,6 +94,12 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v33
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
+      - uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: |
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
+          gc-max-store-size-linux: 2G
       - run: nix develop .#doc -c make doc
         env:
           LC_ALL: C
@@ -92,6 +117,12 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v33
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
+      - uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: |
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
+          gc-max-store-size-linux: 2G
       - run: nix develop -i .#bootstrap-check -c make test-bootstrap-script
 
   nix-build-4-08:
@@ -107,6 +138,12 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v33
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
+      - uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: |
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
+          gc-max-store-size-linux: 2G
       - run: nix develop -i .#bootstrap-check_4_08 -c make release 
 
 #
@@ -222,6 +259,12 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v33
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
+      - uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: |
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
+          gc-max-store-size-linux: 5G
       - run: nix develop .#coq -c make test-coq
         env:
           # We disable the Dune cache when running the tests
@@ -317,4 +360,10 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v33
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
+      - uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: |
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
+          gc-max-store-size-linux: 5G
       - run: nix develop .#microbench -c make dune build bench/micro

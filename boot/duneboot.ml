@@ -888,7 +888,7 @@ module File_kind = struct
   type ml =
     { kind : [ `Ml | `Mli | `Mll | `Mly ]
     ; name : Module_name.t
-    ; module_path : string list
+    ; module_path : Module_name.t list
     }
 
   type t =
@@ -897,14 +897,20 @@ module File_kind = struct
     | Asm of asm
     | Ml of ml
 
-  let analyse module_path dn fn =
+  let analyse ~include_subdirs module_path dn fn =
     let i =
       try String.index fn '.' with
       | Not_found -> String.length fn
     in
     let module_name = String.sub fn ~pos:0 ~len:i in
     let name = lazy (Module_name.of_fname module_name) in
-    let module_path = module_name :: module_path in
+    let module_path =
+      lazy
+        (let (lazy name) = name in
+         match include_subdirs with
+         | Qualified -> List.rev (name :: List.map ~f:Module_name.of_fname module_path)
+         | No | Unqualified -> [ name ])
+    in
     match String.sub fn ~pos:i ~len:(String.length fn - i) with
     | (".S" | ".asm") as ext ->
       let syntax = if ext = ".S" then `Gas else `Intel in
@@ -942,15 +948,25 @@ module File_kind = struct
       in
       Some (C { arch; flags })
     | ".h" -> Some Header
-    | ".ml" -> Some (Ml { kind = `Ml; name = Lazy.force name; module_path })
-    | ".mli" -> Some (Ml { kind = `Mli; name = Lazy.force name; module_path })
-    | ".mll" -> Some (Ml { kind = `Mll; name = Lazy.force name; module_path })
-    | ".mly" -> Some (Ml { kind = `Mly; name = Lazy.force name; module_path })
+    | ".ml" ->
+      Some
+        (Ml { kind = `Ml; name = Lazy.force name; module_path = Lazy.force module_path })
+    | ".mli" ->
+      Some
+        (Ml { kind = `Mli; name = Lazy.force name; module_path = Lazy.force module_path })
+    | ".mll" ->
+      Some
+        (Ml { kind = `Mll; name = Lazy.force name; module_path = Lazy.force module_path })
+    | ".mly" ->
+      Some
+        (Ml { kind = `Mly; name = Lazy.force name; module_path = Lazy.force module_path })
     | ".defaults.ml" ->
       let fn' = String.sub fn ~pos:0 ~len:i ^ ".ml" in
       if Sys.file_exists (dn ^/ fn')
       then None
-      else Some (Ml { kind = `Ml; name = Lazy.force name; module_path })
+      else
+        Some
+          (Ml { kind = `Ml; name = Lazy.force name; module_path = Lazy.force module_path })
     | _ -> None
   ;;
 end
@@ -1036,14 +1052,17 @@ end
 
 module Library = struct
   (* Collect source files *)
-  let scan ~dir ~scan_subdirs =
+  let scan ~dir ~include_subdirs =
     let rec iter_paths dir module_path paths acc =
       List.fold_left paths ~init:acc ~f:(fun acc fn ->
         let path = Filename.concat dir fn in
         if Sys.is_directory path
-        then if scan_subdirs then iter_dir path (fn :: module_path) acc else acc
+        then (
+          match include_subdirs with
+          | No -> acc
+          | Unqualified | Qualified -> iter_dir path (fn :: module_path) acc)
         else (
-          match File_kind.analyse module_path dir fn with
+          match File_kind.analyse ~include_subdirs module_path dir fn with
           | None -> acc
           | Some kind -> { Source.file = path; kind } :: acc))
     and iter_dir dir module_path acc =
@@ -1136,15 +1155,7 @@ module Library = struct
         ~word_size
         ~os_type
     =
-    let scan_subdirs =
-      match include_subdirs with
-      | No -> false
-      | Unqualified -> true
-      | Qualified ->
-        (* Unimplemented *)
-        assert false
-    in
-    let files = scan ~dir ~scan_subdirs in
+    let files = scan ~dir ~include_subdirs in
     let modules =
       let modules =
         List.fold_left

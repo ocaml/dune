@@ -120,6 +120,14 @@ module String = struct
   include String
 end
 
+module Option = struct
+  include Option
+
+  let iter t ~f = Option.iter f t
+  let map t ~f = Option.map f t
+  let bind t ~f = Option.bind t f
+end
+
 module List = struct
   let partition_map_skip t ~f =
     let rec loop l m r = function
@@ -294,7 +302,7 @@ module Bin = struct
   ;;
 
   let find_prog ~f =
-    List.find_map path ~f:(fun dir -> Option.map (fun fn -> dir, fn) (f dir))
+    List.find_map path ~f:(fun dir -> Option.map (f dir) ~f:(fun fn -> dir, fn))
   ;;
 
   let exe = if Sys.win32 then ".exe" else ""
@@ -304,12 +312,9 @@ end
 
 let concurrency =
   let try_run_and_capture_line (prog, args) =
-    match
-      Bin.find_prog ~f:(fun dir ->
-        if Sys.file_exists (dir ^/ prog) then Some prog else None)
-    with
-    | None -> None
-    | Some (dir, prog) ->
+    Bin.find_prog ~f:(fun dir ->
+      if Sys.file_exists (dir ^/ prog) then Some prog else None)
+    |> Option.bind ~f:(fun (dir, prog) ->
       let path = dir ^/ prog in
       let args = Array.of_list @@ (path :: args) in
       let ic, oc, ec = Unix.open_process_args_full path args (Unix.environment ()) in
@@ -318,37 +323,27 @@ let concurrency =
         | s -> Some s
         | exception End_of_file -> None
       in
-      (match Unix.close_process_full (ic, oc, ec), line with
-       | WEXITED 0, Some s -> Some s
-       | _ -> None)
+      match Unix.close_process_full (ic, oc, ec), line with
+      | WEXITED 0, Some s -> Some s
+      | _ -> None)
   in
   match concurrency with
   | Some n -> n
   | None ->
     (* If no [-j] was given, try to autodetect the number of processors *)
-    if Sys.win32
-    then (
-      match Sys.getenv_opt "NUMBER_OF_PROCESSORS" with
-      | None -> 1
-      | Some s ->
-        (match int_of_string s with
-         | exception _ -> 1
-         | n -> n))
-    else (
-      let commands =
-        [ "nproc", []
-        ; "getconf", [ "_NPROCESSORS_ONLN" ]
-        ; "getconf", [ "NPROCESSORS_ONLN" ]
-        ]
-      in
-      List.find_map commands ~f:(fun cmd ->
-        match try_run_and_capture_line cmd with
-        | None -> None
-        | Some s ->
-          (match int_of_string (String.trim s) with
-           | n -> Some n
-           | exception _ -> None))
-      |> Option.value ~default:1)
+    (if Sys.win32
+     then Sys.getenv_opt "NUMBER_OF_PROCESSORS" |> Option.bind ~f:int_of_string_opt
+     else (
+       let commands =
+         [ "nproc", []
+         ; "getconf", [ "_NPROCESSORS_ONLN" ]
+         ; "getconf", [ "NPROCESSORS_ONLN" ]
+         ]
+       in
+       List.find_map commands ~f:(fun cmd ->
+         try_run_and_capture_line cmd
+         |> Option.bind ~f:(fun s -> int_of_string_opt (String.trim s)))))
+    |> Option.value ~default:1
 ;;
 
 (** {2 Fibers} *)
@@ -564,9 +559,7 @@ end = struct
       let stderr_fn, stderr_fd =
         if split then open_temp_file () else stdout_fn, stdout_fd
       in
-      (match cwd with
-       | Some x -> Sys.chdir x
-       | None -> ());
+      Option.iter cwd ~f:Sys.chdir;
       let pid =
         Unix.create_process
           prog
@@ -575,9 +568,7 @@ end = struct
           stdout_fd
           stderr_fd
       in
-      (match cwd with
-       | Some _ -> Sys.chdir initial_cwd
-       | None -> ());
+      Option.iter cwd ~f:(fun _ -> Sys.chdir initial_cwd);
       Unix.close stdout_fd;
       if split then Unix.close stderr_fd;
       let ivar = Ivar.create () in
@@ -783,7 +774,7 @@ module Build_info = struct
         Process.try_run_and_capture
           "git"
           [ "describe"; "--always"; "--dirty"; "--abbrev=7" ]
-        >>| Option.map String.trim
+        >>| Option.map ~f:String.trim
   ;;
 
   let gen_data_module oc =
@@ -933,15 +924,13 @@ module Wrapper = struct
     }
 
   let make ~namespace ~modules =
-    match namespace with
-    | None -> None
-    | Some namespace ->
+    Option.bind namespace ~f:(fun namespace ->
       let namespace = String.capitalize_ascii namespace in
       if String.Set.equal modules (String.Set.singleton namespace)
       then None
       else if String.Set.mem namespace modules
       then Some { toplevel_module = namespace; alias_module = namespace ^ "__" }
-      else Some { toplevel_module = namespace; alias_module = namespace }
+      else Some { toplevel_module = namespace; alias_module = namespace })
   ;;
 
   let mangle_filename t ({ Source.file; kind } : Source.t) =
@@ -968,9 +957,7 @@ module Wrapper = struct
   let header modules = List.map modules ~f:(sprintf "open! %s\n") |> String.concat ~sep:""
 
   let generate_wrapper t modules =
-    match t with
-    | None -> None
-    | Some t ->
+    Option.map t ~f:(fun t ->
       let fn = String.uncapitalize_ascii t.alias_module ^ ".ml" in
       Io.with_file_out (build_dir ^/ fn) ~f:(fun oc ->
         String.Set.remove t.toplevel_module modules
@@ -979,7 +966,7 @@ module Wrapper = struct
           let obj = sprintf "%s__%s" t.toplevel_module name in
           name, obj)
         |> gen_module oc);
-      Some fn
+      fn)
   ;;
 end
 
@@ -1119,7 +1106,7 @@ module Library = struct
     in
     let wrapper = Wrapper.make ~namespace ~modules in
     let header =
-      Option.map (fun (m : Wrapper.t) -> m.alias_module) wrapper
+      Option.map wrapper ~f:(fun (m : Wrapper.t) -> m.alias_module)
       |> Option.to_list
       |> Wrapper.header
     in
@@ -1136,17 +1123,15 @@ module Library = struct
              Some (src, mangled))
     in
     let root_module =
-      Option.map
-        (fun { name; entries } ->
-           let src =
-             let fn = String.uncapitalize_ascii name ^ ".ml" in
-             { Source.file = fn; kind = Ml { kind = `Ml; name; module_path = [] } }
-           in
-           let mangled = Wrapper.mangle_filename wrapper src in
-           Io.with_file_out (build_dir ^/ mangled) ~f:(fun oc ->
-             List.map entries ~f:(fun entry -> entry, entry) |> gen_module oc);
-           src, mangled)
-        root_module
+      Option.map root_module ~f:(fun { name; entries } ->
+        let src =
+          let fn = String.uncapitalize_ascii name ^ ".ml" in
+          { Source.file = fn; kind = Ml { kind = `Ml; name; module_path = [] } }
+        in
+        let mangled = Wrapper.mangle_filename wrapper src in
+        Io.with_file_out (build_dir ^/ mangled) ~f:(fun oc ->
+          List.map entries ~f:(fun entry -> entry, entry) |> gen_module oc);
+        src, mangled)
     in
     let alias_file = Wrapper.generate_wrapper wrapper modules in
     let c_files, ocaml_files, asm_files =

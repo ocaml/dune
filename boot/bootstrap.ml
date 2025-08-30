@@ -27,7 +27,6 @@ let keep_generated_files =
 
 let modules = [ "boot/types"; "boot/libs"; "boot/duneboot" ]
 let duneboot = ".duneboot"
-let prog = duneboot ^ ".exe"
 
 let () =
   at_exit (fun () ->
@@ -97,6 +96,7 @@ let () =
         exit 2);
       compiler, Some "--secondary")
   in
+  let prog, chan = Filename.open_temp_file ~perms:0o777 "dune" "boot.exe" in
   exit_if_non_zero
     (runf
        "%s %s -intf-suffix .dummy -g -o %s -I boot %sunix.cma %s"
@@ -107,12 +107,13 @@ let () =
        prog
        (if v >= (5, 0, 0) then "-I +unix " else "")
        (List.map modules ~f:(fun m -> m ^ ".ml") |> String.concat ~sep:" "));
+  close_out chan;
   let args = List.tl (Array.to_list Sys.argv) in
   let args =
     match which with
     | None -> args
     | Some x -> x :: args
   in
-  let args = Filename.concat "." prog :: args in
+  let args = prog :: args in
   exit (runf "%s" (String.concat ~sep:" " args))
 ;;

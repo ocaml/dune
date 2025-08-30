@@ -347,17 +347,14 @@ let concurrency =
         ; "getconf", [ "NPROCESSORS_ONLN" ]
         ]
       in
-      let rec loop = function
-        | [] -> 1
-        | cmd :: rest ->
-          (match try_run_and_capture_line cmd with
-           | None -> loop rest
-           | Some s ->
-             (match int_of_string (String.trim s) with
-              | n -> n
-              | exception _ -> loop rest))
-      in
-      loop commands)
+      List.find_map commands ~f:(fun cmd ->
+        match try_run_and_capture_line cmd with
+        | None -> None
+        | Some s ->
+          (match int_of_string (String.trim s) with
+           | n -> Some n
+           | exception _ -> None))
+      |> Option.value ~default:1)
 ;;
 
 (** {2 Fibers} *)

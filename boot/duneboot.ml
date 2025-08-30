@@ -120,6 +120,66 @@ module String = struct
   include String
 end
 
+module Ml_kind = struct
+  type t =
+    [ `Mli
+    | `Ml
+    | `Mll
+    | `Mly
+    ]
+
+  let ext = function
+    | `Mli -> ".mli"
+    | `Ml -> ".ml"
+    | `Mll -> ".mll"
+    | `Mly -> ".mly"
+  ;;
+end
+
+module Module_name : sig
+  type t
+
+  val equal : t -> t -> bool
+  val of_fname : string -> t
+  val to_fname : t -> kind:Ml_kind.t -> string
+  val of_string : string -> t
+  val alias_suffix : t -> t
+  val to_string : t -> string
+  val mangle : t -> prefix:t -> t
+
+  module Set : Set.S with type elt = t
+end = struct
+  include String
+
+  let mangle t ~prefix = prefix ^ "__" ^ t
+  let to_string s = s
+
+  let of_string s =
+    assert (s <> "");
+    (match s.[0] with
+     | 'A' .. 'Z' -> ()
+     | _ -> failwith ("invalid module " ^ s));
+    for i = 1 to String.length s - 1 do
+      match s.[i] with
+      | 'A' .. 'Z' | 'a' .. 'z' | '_' | '0' .. '9' -> ()
+      | _ -> failwith ("invalid module " ^ s)
+    done;
+    s
+  ;;
+
+  let to_fname t ~kind = String.uncapitalize_ascii t ^ Ml_kind.ext kind
+
+  let of_fname x =
+    (match String.index_opt x '.' with
+     | None -> x
+     | Some len -> String.sub x ~pos:0 ~len)
+    |> String.capitalize_ascii
+    |> of_string
+  ;;
+
+  let alias_suffix s = s ^ "__"
+end
+
 module Option = struct
   include Option
 
@@ -812,7 +872,7 @@ module File_kind = struct
 
   type ml =
     { kind : [ `Ml | `Mli | `Mll | `Mly ]
-    ; name : string
+    ; name : Module_name.t
     ; module_path : string list
     }
 
@@ -827,8 +887,9 @@ module File_kind = struct
       try String.index fn '.' with
       | Not_found -> String.length fn
     in
-    let name = String.sub fn ~pos:0 ~len:i in
-    let module_path = name :: module_path in
+    let module_name = String.sub fn ~pos:0 ~len:i in
+    let name = lazy (Module_name.of_fname module_name) in
+    let module_path = module_name :: module_path in
     match String.sub fn ~pos:i ~len:(String.length fn - i) with
     | (".S" | ".asm") as ext ->
       let syntax = if ext = ".S" then `Gas else `Intel in
@@ -866,15 +927,15 @@ module File_kind = struct
       in
       Some (C { arch; flags })
     | ".h" -> Some Header
-    | ".ml" -> Some (Ml { kind = `Ml; name; module_path })
-    | ".mli" -> Some (Ml { kind = `Mli; name; module_path })
-    | ".mll" -> Some (Ml { kind = `Mll; name; module_path })
-    | ".mly" -> Some (Ml { kind = `Mly; name; module_path })
+    | ".ml" -> Some (Ml { kind = `Ml; name = Lazy.force name; module_path })
+    | ".mli" -> Some (Ml { kind = `Mli; name = Lazy.force name; module_path })
+    | ".mll" -> Some (Ml { kind = `Mll; name = Lazy.force name; module_path })
+    | ".mly" -> Some (Ml { kind = `Mly; name = Lazy.force name; module_path })
     | ".defaults.ml" ->
       let fn' = String.sub fn ~pos:0 ~len:i ^ ".ml" in
       if Sys.file_exists (dn ^/ fn')
       then None
-      else Some (Ml { kind = `Ml; name; module_path })
+      else Some (Ml { kind = `Ml; name = Lazy.force name; module_path })
     | _ -> None
   ;;
 end
@@ -899,60 +960,59 @@ end
 
 let gen_module oc bindings =
   List.iter bindings ~f:(fun (lhs, rhs) ->
-    fprintf
-      oc
-      "module %s = %s\n"
-      (String.capitalize_ascii lhs)
-      (String.capitalize_ascii rhs))
+    fprintf oc "module %s = %s\n" (Module_name.to_string lhs) (Module_name.to_string rhs))
 ;;
 
 module Wrapper = struct
   type t =
-    { toplevel_module : string
-    ; alias_module : string
+    { toplevel_module : Module_name.t
+    ; alias_module : Module_name.t
     }
 
   let make ~namespace ~modules =
     Option.bind namespace ~f:(fun namespace ->
-      let namespace = String.capitalize_ascii namespace in
-      if String.Set.equal modules (String.Set.singleton namespace)
+      if Module_name.Set.equal modules (Module_name.Set.singleton namespace)
       then None
-      else if String.Set.mem namespace modules
-      then Some { toplevel_module = namespace; alias_module = namespace ^ "__" }
+      else if Module_name.Set.mem namespace modules
+      then
+        Some
+          { toplevel_module = namespace
+          ; alias_module = Module_name.alias_suffix namespace
+          }
       else Some { toplevel_module = namespace; alias_module = namespace })
   ;;
 
   let mangle_filename t ({ Source.file; kind } : Source.t) =
-    let base = Filename.basename file in
     match kind with
-    | Asm _ | C _ | Header -> base
+    | Asm _ | C _ | Header -> Filename.basename file
     | Ml { kind; name; module_path = _ } ->
-      let ext =
+      let kind =
         match kind with
-        | `Mli -> ".mli"
-        | _ -> ".ml"
+        | `Mli -> `Mli
+        | _ -> `Ml
       in
-      let base = String.uncapitalize_ascii name in
       (match t with
-       | None -> base ^ ext
+       | None -> Module_name.to_fname name ~kind
        | Some t ->
-         if String.capitalize_ascii base = t.toplevel_module
-         then base ^ ext
-         else (
-           let base = String.capitalize_ascii base in
-           String.uncapitalize_ascii t.toplevel_module ^ "__" ^ base ^ ext))
+         if Module_name.equal name t.toplevel_module
+         then Module_name.to_fname name ~kind
+         else
+           Module_name.mangle ~prefix:t.toplevel_module name |> Module_name.to_fname ~kind)
   ;;
 
-  let header modules = List.map modules ~f:(sprintf "open! %s\n") |> String.concat ~sep:""
+  let header modules =
+    List.map modules ~f:(fun m -> Module_name.to_string m |> sprintf "open! %s\n")
+    |> String.concat ~sep:""
+  ;;
 
   let generate_wrapper t modules =
     Option.map t ~f:(fun t ->
-      let fn = String.uncapitalize_ascii t.alias_module ^ ".ml" in
+      let fn = Module_name.to_fname t.alias_module ~kind:`Ml in
       Io.with_file_out (build_dir ^/ fn) ~f:(fun oc ->
-        String.Set.remove t.toplevel_module modules
-        |> String.Set.elements
+        Module_name.Set.remove t.toplevel_module modules
+        |> Module_name.Set.elements
         |> List.map ~f:(fun name ->
-          let obj = sprintf "%s__%s" t.toplevel_module name in
+          let obj = Module_name.mangle ~prefix:t.toplevel_module name in
           name, obj)
         |> gen_module oc);
       fn)
@@ -1016,9 +1076,8 @@ module Library = struct
 
   let gen_build_info_module wrapper m =
     let src =
-      let name = String.uncapitalize_ascii m in
-      let fn = name ^ ".ml" in
-      { Source.file = fn; kind = Ml { kind = `Ml; name; module_path = [] } }
+      let fn = Module_name.to_fname m ~kind:`Ml in
+      { Source.file = fn; kind = Ml { kind = `Ml; name = m; module_path = [] } }
     in
     let mangled = Wrapper.mangle_filename wrapper src in
     let oc = Io.open_out (build_dir ^/ mangled) in
@@ -1062,6 +1121,7 @@ module Library = struct
         ~word_size
         ~os_type
     =
+    let namespace = Option.map ~f:Module_name.of_fname namespace in
     let scan_subdirs =
       match include_subdirs with
       | No -> false
@@ -1075,23 +1135,21 @@ module Library = struct
       let modules =
         List.fold_left
           files
-          ~init:String.Set.empty
+          ~init:Module_name.Set.empty
           ~f:(fun acc { Source.file = _; kind } ->
             match (kind : File_kind.t) with
             | Asm _ | Header | C _ -> acc
-            | Ml { kind = _; name; module_path = _ } ->
-              let module_name = String.capitalize_ascii name in
-              String.Set.add module_name acc)
+            | Ml { kind = _; name; module_path = _ } -> Module_name.Set.add name acc)
       in
       let modules =
         match build_info_module with
         | None -> modules
-        | Some m -> String.Set.add (String.capitalize_ascii m) modules
+        | Some m -> Module_name.Set.add (Module_name.of_fname m) modules
       in
       match root_module with
       | None -> modules
       | Some { name; entries = _ } ->
-        String.Set.add (String.capitalize_ascii name) modules
+        Module_name.Set.add (Module_name.of_fname name) modules
     in
     let wrapper = Wrapper.make ~namespace ~modules in
     let header =
@@ -1108,18 +1166,23 @@ module Library = struct
            match build_info_module with
            | None -> Fiber.return None
            | Some m ->
+             let m = Module_name.of_string m in
              let+ src, mangled = gen_build_info_module wrapper m in
              Some (src, mangled))
     in
     let root_module =
       Option.map root_module ~f:(fun { name; entries } ->
+        let name = Module_name.of_fname name in
         let src =
-          let fn = String.uncapitalize_ascii name ^ ".ml" in
+          let fn = Module_name.to_fname name ~kind:`Ml in
           { Source.file = fn; kind = Ml { kind = `Ml; name; module_path = [] } }
         in
         let mangled = Wrapper.mangle_filename wrapper src in
         Io.with_file_out (build_dir ^/ mangled) ~f:(fun oc ->
-          List.map entries ~f:(fun entry -> entry, entry) |> gen_module oc);
+          List.map entries ~f:(fun entry ->
+            let entry = Module_name.of_string entry in
+            entry, entry)
+          |> gen_module oc);
         src, mangled)
     in
     let alias_file = Wrapper.generate_wrapper wrapper modules in

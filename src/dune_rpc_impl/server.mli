@@ -10,8 +10,8 @@ val create
   -> handle:(unit Dune_rpc_server.Handler.t -> unit)
        (** register additional requests or notifications *)
   -> Dune_stats.t option
-  -> parse_build_arg:(string -> 'build_arg)
-  -> 'build_arg t
+  -> parse_build_arg:(string -> Dune_lang.Dep_conf.t)
+  -> Dune_lang.Dep_conf.t t
 
 (** This type allows the build request handler to be defined externally to the
     RPC server. The ivar is expected to be filled with the outcome of the build

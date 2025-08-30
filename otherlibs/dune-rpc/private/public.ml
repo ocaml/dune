@@ -6,6 +6,7 @@ module Request = struct
 
   let ping = Procedures.Public.ping.decl
   let diagnostics = Procedures.Public.diagnostics.decl
+  let format = Procedures.Public.format.decl
   let format_dune_file = Procedures.Public.format_dune_file.decl
   let promote = Procedures.Public.promote.decl
   let promote_many = Procedures.Public.promote_many.decl

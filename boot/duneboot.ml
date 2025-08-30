@@ -34,6 +34,7 @@ open Types
 (** {2 Utility functions} *)
 
 open StdLabels
+open MoreLabels
 open Printf
 
 module String = struct
@@ -402,8 +403,6 @@ module Fiber : sig
 
   val run : 'a t -> 'a
 end = struct
-  open MoreLabels
-
   type 'a t = ('a -> unit) -> unit
 
   let return x k = k x
@@ -781,7 +780,7 @@ end = struct
     >>| String.split_lines
     >>| List.fold_left ~init:String.Map.empty ~f:(fun acc line ->
       match Scanf.sscanf line "%[^:]: %s" (fun k v -> k, v) with
-      | k, v -> String.Map.add k v acc
+      | key, data -> String.Map.add ~key ~data acc
       | exception _ ->
         fatal "invalid line in output of 'ocamlc -config': %s" (String.escaped line))
   ;;
@@ -1398,7 +1397,8 @@ let resolve_externals external_libraries =
 
 let sort_files dependencies ~main =
   let deps_by_file = Hashtbl.create (List.length dependencies) in
-  List.iter dependencies ~f:(fun { Dep.file; deps } -> Hashtbl.add deps_by_file file deps);
+  List.iter dependencies ~f:(fun { Dep.file; deps } ->
+    Hashtbl.add deps_by_file ~key:file ~data:deps);
   let seen = ref String.Set.empty in
   let res = ref [] in
   let rec loop file =
@@ -1470,10 +1470,10 @@ let build
     match Hashtbl.find table m with
     | Not_started f ->
       let* fut =
-        Hashtbl.replace table m Initializing;
+        Hashtbl.replace table ~key:m ~data:Initializing;
         Fiber.fork f
       in
-      Hashtbl.replace table m (Started fut);
+      Hashtbl.replace table ~key:m ~data:(Started fut);
       let+ () = Fiber.Future.wait fut in
       incr Status_line.num_jobs_finished
     | Initializing ->
@@ -1486,18 +1486,19 @@ let build
   List.iter dependencies ~f:(fun { Dep.file; deps } ->
     Hashtbl.add
       table
-      file
-      (Not_started
-         (fun () ->
-           let* () = Fiber.parallel_iter deps ~f:(build ~file ~deps) in
-           List.concat
-             [ [ "-c"; "-g"; "-no-alias-deps" ]
-             ; ocaml_warnings
-             ; allow_unstable_sources
-             ; external_includes
-             ; [ file ]
-             ]
-           |> Process.run ~cwd:build_dir Config.compiler)));
+      ~key:file
+      ~data:
+        (Not_started
+           (fun () ->
+             let* () = Fiber.parallel_iter deps ~f:(build ~file ~deps) in
+             List.concat
+               [ [ "-c"; "-g"; "-no-alias-deps" ]
+               ; ocaml_warnings
+               ; allow_unstable_sources
+               ; external_includes
+               ; [ file ]
+               ]
+             |> Process.run ~cwd:build_dir Config.compiler)));
   let* obj_files =
     Fiber.fork_and_join_unit
       (fun () -> build ~file:main ~deps:[] (Filename.basename main))

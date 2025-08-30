@@ -304,9 +304,11 @@ let concurrency =
     Bin.find_prog ~f:(fun dir ->
       if Sys.file_exists (dir ^/ prog) then Some prog else None)
     |> Option.bind ~f:(fun (dir, prog) ->
-      let path = dir ^/ prog in
-      let args = Array.of_list @@ (path :: args) in
-      let ic, oc, ec = Unix.open_process_args_full path args (Unix.environment ()) in
+      let ic, oc, ec =
+        let path = dir ^/ prog in
+        let args = Array.of_list @@ (path :: args) in
+        Unix.open_process_args_full path args (Unix.environment ())
+      in
       let line =
         match input_line ic with
         | s -> Some s
@@ -322,16 +324,14 @@ let concurrency =
     (* If no [-j] was given, try to autodetect the number of processors *)
     (if Sys.win32
      then Sys.getenv_opt "NUMBER_OF_PROCESSORS" |> Option.bind ~f:int_of_string_opt
-     else (
-       let commands =
-         [ "nproc", []
-         ; "getconf", [ "_NPROCESSORS_ONLN" ]
-         ; "getconf", [ "NPROCESSORS_ONLN" ]
-         ]
-       in
-       List.find_map commands ~f:(fun cmd ->
+     else
+       [ "nproc", []
+       ; "getconf", [ "_NPROCESSORS_ONLN" ]
+       ; "getconf", [ "NPROCESSORS_ONLN" ]
+       ]
+       |> List.find_map ~f:(fun cmd ->
          try_run_and_capture_line cmd
-         |> Option.bind ~f:(fun s -> int_of_string_opt (String.trim s)))))
+         |> Option.bind ~f:(fun s -> int_of_string_opt (String.trim s))))
     |> Option.value ~default:1
 ;;
 
@@ -770,15 +770,15 @@ module Build_info = struct
     let pr fmt = fprintf oc fmt in
     let prlist name l ~f =
       match l with
-      | [] -> pr "let %s = []\n" name
-      | x :: l ->
-        pr "let %s =\n" name;
-        pr "  [ ";
-        f x;
+      | [] -> pr "let %s =\n" name
+      | _ :: _ ->
         List.iter l ~f:(fun x ->
-          pr "  ; ";
-          f x);
-        pr "  ]\n"
+          pr "  [ ";
+          f x;
+          List.iter l ~f:(fun x ->
+            pr "  ; ";
+            f x);
+          pr "  ]\n")
     in
     let+ version = get_version () in
     pr
@@ -1253,8 +1253,10 @@ let get_dependencies libraries =
     let all_source_files =
       List.concat_map libraries ~f:(fun (lib : Library.t) -> lib.ocaml_files)
     in
-    let args = write_args "source_files" all_source_files in
-    let+ dependencies = ocamldep (mk_flags "-map" alias_files @ args) in
+    let+ dependencies =
+      let args = write_args "source_files" all_source_files in
+      ocamldep (mk_flags "-map" alias_files @ args)
+    in
     List.rev_append
       ((* Alias files have no dependencies *)
        List.rev_map
@@ -1350,7 +1352,7 @@ let ocaml_warnings =
     [ (* Warning 49 [no-cmi-file]: no cmi file was found in path for module *)
       "-49"
     ; (* Warning 23: all the fields are explicitly listed in this record: the
-        'with' clause is useless. 
+        'with' clause is useless.
 
          In order to stay version independent, we use a trick with `with` by
          creating a dummy value and filling in the fields available in every
@@ -1450,19 +1452,21 @@ let build
                   out_file))
          >>| fun (x, y) -> x @ y)
   in
-  let compiled_ml_files =
-    let compiled_ml_ext =
-      match Config.mode with
-      | Byte -> ".cmo"
-      | Native -> ".cmx"
+  let args =
+    let compiled_ml_files =
+      let compiled_ml_ext =
+        match Config.mode with
+        | Byte -> ".cmo"
+        | Native -> ".cmx"
+      in
+      sort_files dependencies ~main
+      |> List.filter_map ~f:(fun fn ->
+        match Filename.extension fn with
+        | ".ml" -> Some (Filename.remove_extension fn ^ compiled_ml_ext)
+        | _ -> None)
     in
-    sort_files dependencies ~main
-    |> List.filter_map ~f:(fun fn ->
-      match Filename.extension fn with
-      | ".ml" -> Some (Filename.remove_extension fn ^ compiled_ml_ext)
-      | _ -> None)
+    write_args "compiled_ml_files" compiled_ml_files
   in
-  let args = write_args "compiled_ml_files" compiled_ml_files in
   List.concat
     [ common_build_args name ~external_includes ~external_libraries
     ; obj_files

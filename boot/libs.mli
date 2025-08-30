@@ -8,5 +8,5 @@
 open Types
 
 val external_libraries : string list
-val local_libraries : library list
-val main : library
+val local_libraries : string library list
+val main : string library

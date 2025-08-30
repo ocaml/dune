@@ -9,7 +9,6 @@ module Stringlike = Dune_util.Stringlike
 
 module type Stringlike = Dune_util.Stringlike
 
-module Spawn = Dune_spawn.Spawn
 module Persistent = Dune_util.Persistent
 module Glob = Dune_glob.V1
 module Targets = Dune_targets

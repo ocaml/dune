@@ -30,6 +30,7 @@ jobs:
       - name: Install deps
         run: |
           opam install . --deps-only
+          opam install spawn
 
       - name: Build dune
         run: opam exec -- make bootstrap

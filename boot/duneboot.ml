@@ -41,6 +41,12 @@ module Libs = struct
     ; special_builtin_support = None
     ; root_module = None
     }
+    :: { path = "vendor/spawn/src"
+       ; main_module_name = Some "Spawn"
+       ; include_subdirs = No
+       ; special_builtin_support = None
+       ; root_module = None
+       }
     :: Libs.local_libraries
   ;;
 
@@ -269,44 +275,38 @@ module Io = struct
   ;;
 end
 
-let path_sep = if Sys.win32 then ';' else ':'
+module Bin = struct
+  let path =
+    let path_sep = if Sys.win32 then ';' else ':' in
+    let split_path s =
+      let rec loop i j =
+        if j = String.length s
+        then [ String.sub s ~pos:i ~len:(j - i) ]
+        else if s.[j] = path_sep
+        then String.sub s ~pos:i ~len:(j - i) :: loop (j + 1) (j + 1)
+        else loop i (j + 1)
+      in
+      loop 0 0
+    in
+    match Sys.getenv_opt "PATH" with
+    | None -> []
+    | Some s -> split_path s
+  ;;
 
-let split_path s =
-  let rec loop i j =
-    if j = String.length s
-    then [ String.sub s ~pos:i ~len:(j - i) ]
-    else if s.[j] = path_sep
-    then String.sub s ~pos:i ~len:(j - i) :: loop (j + 1) (j + 1)
-    else loop i (j + 1)
-  in
-  loop 0 0
-;;
+  let find_prog ~f =
+    List.find_map path ~f:(fun dir -> Option.map (fun fn -> dir, fn) (f dir))
+  ;;
 
-let path =
-  match Sys.getenv_opt "PATH" with
-  | None -> []
-  | Some s -> split_path s
-;;
-
-let find_prog ~f =
-  let rec search = function
-    | [] -> None
-    | dir :: rest ->
-      (match f dir with
-       | None -> search rest
-       | Some fn -> Some (dir, fn))
-  in
-  search path
-;;
-
-let exe = if Sys.win32 then ".exe" else ""
+  let exe = if Sys.win32 then ".exe" else ""
+end
 
 (** {2 Concurrency level} *)
 
 let concurrency =
   let try_run_and_capture_line (prog, args) =
     match
-      find_prog ~f:(fun dir -> if Sys.file_exists (dir ^/ prog) then Some prog else None)
+      Bin.find_prog ~f:(fun dir ->
+        if Sys.file_exists (dir ^/ prog) then Some prog else None)
     with
     | None -> None
     | Some (dir, prog) ->
@@ -341,17 +341,14 @@ let concurrency =
         ; "getconf", [ "NPROCESSORS_ONLN" ]
         ]
       in
-      let rec loop = function
-        | [] -> 1
-        | cmd :: rest ->
-          (match try_run_and_capture_line cmd with
-           | None -> loop rest
-           | Some s ->
-             (match int_of_string (String.trim s) with
-              | n -> n
-              | exception _ -> loop rest))
-      in
-      loop commands)
+      List.find_map commands ~f:(fun cmd ->
+        match try_run_and_capture_line cmd with
+        | None -> None
+        | Some s ->
+          (match int_of_string (String.trim s) with
+           | n -> Some n
+           | exception _ -> None))
+      |> Option.value ~default:1)
 ;;
 
 (** {2 Fibers} *)
@@ -677,15 +674,15 @@ end = struct
   let prog_not_found prog = fatal "Program %s not found in PATH" prog
 
   let best_prog dir prog =
-    let fn = dir ^/ prog ^ ".opt" ^ exe in
+    let fn = dir ^/ prog ^ ".opt" ^ Bin.exe in
     if Sys.file_exists fn
     then Some fn
     else (
-      let fn = dir ^/ prog ^ exe in
+      let fn = dir ^/ prog ^ Bin.exe in
       if Sys.file_exists fn then Some fn else None)
   ;;
 
-  let find_prog prog = find_prog ~f:(fun dir -> best_prog dir prog)
+  let find_prog prog = Bin.find_prog ~f:(fun dir -> best_prog dir prog)
 
   let get_prog dir prog =
     match best_prog dir prog with
@@ -1336,7 +1333,7 @@ let resolve_externals external_libraries =
     let convert = function
       | "threads" -> Some ("threads" ^ Config.ocaml_archive_ext, [ "-I"; "+threads" ])
       | "unix" -> Some ("unix" ^ Config.ocaml_archive_ext, Config.unix_library_flags)
-      | "seq" | "re" -> None
+      | "seq" | "re" | "spawn" -> None
       | s -> fatal "unhandled external library %s" s
     in
     List.filter_map ~f:convert external_libraries |> List.split

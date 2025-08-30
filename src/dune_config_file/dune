@@ -14,5 +14,5 @@
   dune_stats
   dune_tui
   dune_util
-  dune_spawn)
+  spawn)
  (synopsis "Internal Dune library, do not use!"))

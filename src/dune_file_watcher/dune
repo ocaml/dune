@@ -1,7 +1,7 @@
 (library
  (name dune_file_watcher)
  (libraries
-  dune_spawn
+  spawn
   fsevents
   dune_console
   unix

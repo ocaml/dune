@@ -1,5 +1,5 @@
 open Types
-let external_libraries = [ "unix"; "threads" ]
+let external_libraries = [ "unix"; "threads"; "spawn" ]
 
 let local_libraries =
   [ { path = "otherlibs/top-closure"
@@ -125,12 +125,6 @@ let local_libraries =
     }
   ; { path = "otherlibs/chrome-trace/src"
     ; main_module_name = Some "Chrome_trace"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "vendor/spawn/src"
-    ; main_module_name = Some "Dune_spawn"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None

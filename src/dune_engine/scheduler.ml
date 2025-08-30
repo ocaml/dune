@@ -443,6 +443,12 @@ let kill_process_group pid signal =
        signal twice we're greatly increasing the existing race condition where
        we call [wait] in parallel with [kill]. *)
     (try Unix.kill (-Pid.to_int pid) signal with
+     (* If we cannot find the process group, then we fall back to trying to
+        kill the process. In this case the process group may be different to
+        the usual one. (Such as with dune exec -w) *)
+     | Unix.Unix_error (Unix.ESRCH, "kill", _) ->
+       (try Unix.kill (Pid.to_int pid) signal with
+        | Unix.Unix_error _ -> ())
      | Unix.Unix_error _ -> ())
   | true ->
     (* Process groups are not supported on Windows (or even if they are, [spawn]

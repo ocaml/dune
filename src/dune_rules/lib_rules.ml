@@ -123,15 +123,19 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
        | Simple _ -> assert false
        | Yes_with_transition r -> r)
   in
+  let main_module_name =
+    lazy
+      (match Library.main_module_name lib with
+       | This (Some mmn) -> Module_name.to_string mmn
+       | _ -> assert false)
+  in
   Modules.With_vlib.wrapped_compat modules
   |> Module_name.Map.to_seq
   |> Memo.parallel_iter_seq ~f:(fun (name, m) ->
-    let main_module_name =
-      match Library.main_module_name lib with
-      | This (Some mmn) -> Module_name.to_string mmn
-      | _ -> assert false
-    in
     let contents =
+      let main_module_name = Lazy.force main_module_name in
+      let open Action_builder.O in
+      let+ () = Action_builder.return () in
       let name = Module_name.to_string name in
       let hidden_name = sprintf "%s__%s" main_module_name name in
       let real_name = sprintf "%s.%s" main_module_name name in
@@ -144,7 +148,7 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
     let source_path = Option.value_exn (Module.file m ~ml_kind:Impl) in
     let loc = lib.buildable.loc in
     let sctx = Compilation_context.super_context cctx in
-    Action_builder.write_file (Path.as_in_build_dir_exn source_path) contents
+    Action_builder.write_file_dyn (Path.as_in_build_dir_exn source_path) contents
     |> Super_context.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx))
 ;;
 

@@ -74,7 +74,9 @@ Paths to Melange stdlib appear in B and S entries without melange.emit stanza
   $ touch main.ml
   $ dune build @check
   $ dune ocaml merlin dump-config $PWD | grep -i "$target"
+  ((INDEX $TESTCASE_ROOT/_build/default/.output.mobjs/cctx.ocaml-index)
    (B $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
+  ((INDEX $TESTCASE_ROOT/_build/default/.output.mobjs/cctx.ocaml-index)
    (B $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
 
 Dump-dot-merlin includes the melange flags
@@ -91,6 +93,7 @@ Dump-dot-merlin includes the melange flags
   S /MELC_STDLIB/__private__/melange_mini_stdlib
   S /MELC_STDLIB
   S $TESTCASE_ROOT
+  INDEX $TESTCASE_ROOT/_build/default/.output.mobjs/cctx.ocaml-index
   # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g --mel-noassertfalse
   
 Check for flag directives ordering when another preprocessor is defined

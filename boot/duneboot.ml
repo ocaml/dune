@@ -94,11 +94,12 @@ module Ml_kind = struct
     | `Mly
     ]
 
-  let ext = function
-    | `Mli -> ".mli"
-    | `Ml -> ".ml"
-    | `Mll -> ".mll"
-    | `Mly -> ".mly"
+  let all = [ `Mli, ".mli"; `Ml, ".ml"; `Mll, ".mll"; `Mly, ".mly" ]
+  let ext t = List.assoc t all
+
+  let of_ext ext =
+    let all = List.map all ~f:(fun (x, y) -> y, x) in
+    List.assoc_opt ext all
   ;;
 end
 
@@ -947,18 +948,6 @@ module File_kind = struct
       in
       Some (C { arch; flags })
     | ".h" -> Some Header
-    | ".ml" ->
-      Some
-        (Ml { kind = `Ml; name = Lazy.force name; module_path = Lazy.force module_path })
-    | ".mli" ->
-      Some
-        (Ml { kind = `Mli; name = Lazy.force name; module_path = Lazy.force module_path })
-    | ".mll" ->
-      Some
-        (Ml { kind = `Mll; name = Lazy.force name; module_path = Lazy.force module_path })
-    | ".mly" ->
-      Some
-        (Ml { kind = `Mly; name = Lazy.force name; module_path = Lazy.force module_path })
     | ".defaults.ml" ->
       let fn' = String.sub fn ~pos:0 ~len:i ^ ".ml" in
       if Sys.file_exists (dn ^/ fn')
@@ -966,7 +955,10 @@ module File_kind = struct
       else
         Some
           (Ml { kind = `Ml; name = Lazy.force name; module_path = Lazy.force module_path })
-    | _ -> None
+    | ext ->
+      Ml_kind.of_ext ext
+      |> Option.map ~f:(fun kind ->
+        Ml { kind; name = Lazy.force name; module_path = Lazy.force module_path })
   ;;
 end
 

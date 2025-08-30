@@ -215,9 +215,10 @@
               inputsFrom = [
                 pkgs.dune_3
               ];
-              buildInputs = [
-                pkgs.ocamlPackages.re
-                pkgs.ocamlPackages.findlib
+              buildInputs = with pkgs.ocamlPackages; [
+                re
+                spawn
+                findlib
               ];
               meta.description = ''
                 Provides a shell environment suitable for formatting the Dune
@@ -262,6 +263,7 @@
               ];
               buildInputs = with pkgs; [
                 ocaml-ng.ocamlPackages_4_14.re
+                ocaml-ng.ocamlPackages_4_14.spawn
                 coq_8_16_native
                 coq_8_16_native.ocamlPackages.findlib
               ];

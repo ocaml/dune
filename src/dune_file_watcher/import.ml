@@ -1,1 +1,1 @@
-module Spawn = Dune_spawn.Spawn
+include Stdune

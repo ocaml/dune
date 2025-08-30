@@ -45,7 +45,7 @@
   dune_rules_rpc
   dune_rpc_private
   dune_rpc_client
-  dune_spawn
+  spawn
   opam_format
   source
   xdg)

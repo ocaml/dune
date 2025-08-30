@@ -1,6 +1,6 @@
-type root_module =
-  { name : string
-  ; entries : string list
+type 'name root_module =
+  { name : 'name
+  ; entries : 'name list
   }
 
 type include_subdirs =
@@ -8,10 +8,10 @@ type include_subdirs =
   | Qualified
   | No
 
-type library =
+type 'name library =
   { path : string
-  ; main_module_name : string option
+  ; main_module_name : 'name option
   ; include_subdirs : include_subdirs
-  ; special_builtin_support : string option
-  ; root_module : root_module option
+  ; special_builtin_support : 'name option
+  ; root_module : 'name root_module option
   }

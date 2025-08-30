@@ -31,41 +31,6 @@ let concurrency, verbose, debug, secondary, force_byte_compilation, static, buil
 
 open Types
 
-module Libs = struct
-  let external_libraries = Libs.external_libraries
-
-  let local_libraries =
-    { path = "vendor/re/src"
-    ; main_module_name = Some "Re"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-    :: { path = "vendor/spawn/src"
-       ; main_module_name = Some "Spawn"
-       ; include_subdirs = No
-       ; special_builtin_support = None
-       ; root_module = None
-       }
-    :: Libs.local_libraries
-  ;;
-
-  let main = Libs.main
-end
-
-type task =
-  { target : string * string
-  ; external_libraries : string list
-  ; local_libraries : library list
-  }
-
-let task =
-  { target = "dune", "bin/main.ml"
-  ; external_libraries = Libs.external_libraries
-  ; local_libraries = Libs.local_libraries
-  }
-;;
-
 (** {2 Utility functions} *)
 
 open StdLabels
@@ -693,6 +658,56 @@ module Process = Fiber.Process
 
 (** {2 OCaml tools} *)
 
+module Libs = struct
+  let external_libraries = Libs.external_libraries
+
+  let make_lib lib =
+    let root_module =
+      Option.map lib.root_module ~f:(fun { name; entries } ->
+        let name = Module_name.of_string name in
+        let entries = List.map ~f:Module_name.of_string entries in
+        { name; entries })
+    in
+    let main_module_name = Option.map ~f:Module_name.of_string lib.main_module_name in
+    let special_builtin_support =
+      Option.map ~f:Module_name.of_string lib.special_builtin_support
+    in
+    { lib with root_module; main_module_name; special_builtin_support }
+  ;;
+
+  let local_libraries =
+    { path = "vendor/re/src"
+    ; main_module_name = Some "Re"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+    :: { path = "vendor/spawn/src"
+       ; main_module_name = Some "Spawn"
+       ; include_subdirs = No
+       ; special_builtin_support = None
+       ; root_module = None
+       }
+    :: Libs.local_libraries
+    |> List.map ~f:make_lib
+  ;;
+
+  let main = make_lib Libs.main
+end
+
+type task =
+  { target : string * string
+  ; external_libraries : string list
+  ; local_libraries : Module_name.t library list
+  }
+
+let task =
+  { target = "dune", "bin/main.ml"
+  ; external_libraries = Libs.external_libraries
+  ; local_libraries = Libs.local_libraries
+  }
+;;
+
 module Mode = struct
   type t =
     | Byte
@@ -848,7 +863,7 @@ module Build_info = struct
        | Some v -> sprintf "Some %S" v);
     pr "\n";
     let libs =
-      List.map task.local_libraries ~f:(fun (lib : library) -> lib.path, "version")
+      List.map task.local_libraries ~f:(fun (lib : _ library) -> lib.path, "version")
       @ List.map task.external_libraries ~f:(fun name ->
         name, {|Some "[distributed with OCaml]"|})
       |> List.sort ~cmp:(fun (a, _) (b, _) -> String.compare a b)
@@ -1121,7 +1136,6 @@ module Library = struct
         ~word_size
         ~os_type
     =
-    let namespace = Option.map ~f:Module_name.of_fname namespace in
     let scan_subdirs =
       match include_subdirs with
       | No -> false
@@ -1144,12 +1158,11 @@ module Library = struct
       let modules =
         match build_info_module with
         | None -> modules
-        | Some m -> Module_name.Set.add (Module_name.of_fname m) modules
+        | Some m -> Module_name.Set.add m modules
       in
       match root_module with
       | None -> modules
-      | Some { name; entries = _ } ->
-        Module_name.Set.add (Module_name.of_fname name) modules
+      | Some { name; entries = _ } -> Module_name.Set.add name modules
     in
     let wrapper = Wrapper.make ~namespace ~modules in
     let header =
@@ -1166,23 +1179,18 @@ module Library = struct
            match build_info_module with
            | None -> Fiber.return None
            | Some m ->
-             let m = Module_name.of_string m in
              let+ src, mangled = gen_build_info_module wrapper m in
              Some (src, mangled))
     in
     let root_module =
       Option.map root_module ~f:(fun { name; entries } ->
-        let name = Module_name.of_fname name in
         let src =
           let fn = Module_name.to_fname name ~kind:`Ml in
           { Source.file = fn; kind = Ml { kind = `Ml; name; module_path = [] } }
         in
         let mangled = Wrapper.mangle_filename wrapper src in
         Io.with_file_out (build_dir ^/ mangled) ~f:(fun oc ->
-          List.map entries ~f:(fun entry ->
-            let entry = Module_name.of_string entry in
-            entry, entry)
-          |> gen_module oc);
+          List.map entries ~f:(fun entry -> entry, entry) |> gen_module oc);
         src, mangled)
     in
     let alias_file = Wrapper.generate_wrapper wrapper modules in
@@ -1351,9 +1359,7 @@ let assemble_libraries
   (* In order to assemble all the sources in one place, the executables
        modules are also put in a namespace *)
   local_libraries
-  @ [ (let namespace =
-         String.capitalize_ascii (Filename.chop_extension (Filename.basename main))
-       in
+  @ [ (let namespace = Module_name.of_fname (Filename.basename main) in
        { Libs.main with main_module_name = Some namespace })
     ]
   |> Fiber.parallel_map

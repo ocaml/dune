@@ -167,19 +167,21 @@ let utop_ocamlpath = Memo.Lazy.create (fun () -> Pkg_rules.dev_tool_ocamlpath Ut
    we need to tell findlib where to look for libraries by means of a custom
    findlib.conf file. *)
 let findlib_conf sctx ~dir =
-  let* lock_dir_exists = Memo.Lazy.force utop_dev_tool_lock_dir_exists in
-  match lock_dir_exists with
+  Memo.Lazy.force utop_dev_tool_lock_dir_exists
+  >>= function
   | false ->
     (* If there isn't lockdir don't create the findlib.conf rule. *)
     Memo.return ()
   | true ->
     let path = Path.Build.relative dir utop_findlib_conf in
-    let* ocamlpath = Memo.Lazy.force utop_ocamlpath in
-    let findlib_path =
-      String.concat (ocamlpath |> List.map ~f:Path.to_absolute_filename) ~sep:":"
+    let contents =
+      Memo.Lazy.force utop_ocamlpath
+      >>| List.map ~f:Path.to_absolute_filename
+      >>| String.concat ~sep:":"
+      >>| sprintf "path=\"%s\""
+      |> Action_builder.of_memo
     in
-    let action = Action_builder.write_file path (sprintf "path=\"%s\"" findlib_path) in
-    Super_context.add_rule sctx ~dir action
+    Action_builder.write_file_dyn path contents |> Super_context.add_rule sctx ~dir
 ;;
 
 let lib_db sctx ~dir =

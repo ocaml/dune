@@ -1595,11 +1595,7 @@ let main () =
   let c_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.c_files) libraries in
   let asm_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.asm_files) libraries in
   let* dependencies = get_dependencies libraries in
-  let ocaml_system =
-    match String.Map.find_opt "system" ocaml_config with
-    | None -> assert false
-    | Some s -> s
-  in
+  let ocaml_system = String.Map.find "system" ocaml_config in
   let build_flags = get_flags ocaml_system build_flags in
   let link_flags = get_flags ocaml_system link_flags in
   let c_compiler = String.Map.find "c_compiler" ocaml_config in

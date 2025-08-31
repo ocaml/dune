@@ -1013,13 +1013,15 @@ module Wrapper = struct
         | `Mli -> `Mli
         | _ -> `Ml
       in
-      (match t with
-       | None -> Module_name.to_fname name ~kind
-       | Some t ->
-         if Module_name.equal name t.toplevel_module
-         then Module_name.to_fname name ~kind
-         else
-           Module_name.mangle ~prefix:t.toplevel_module name |> Module_name.to_fname ~kind)
+      let name =
+        match t with
+        | None -> name
+        | Some t ->
+          if Module_name.equal name t.toplevel_module
+          then name
+          else Module_name.mangle ~prefix:t.toplevel_module name
+      in
+      Module_name.to_fname name ~kind
   ;;
 
   let header modules =

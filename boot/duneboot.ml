@@ -1285,24 +1285,24 @@ let convert_dependencies ~all_source_files { Dep.file; deps = dependencies } =
     let filename = String.uncapitalize_ascii module_name in
     if filename = Filename.chop_extension file
     then (* Self-reference *)
-      None
+      []
     else if String.Set.mem (filename ^ ".mli") all_source_files
     then
       if (not is_mli) && String.Set.mem (filename ^ ".ml") all_source_files
       then
         (* We need to build the .ml for inlining info *)
-        Some [ filename ^ ".mli"; filename ^ ".ml" ]
+        [ filename ^ ".mli"; filename ^ ".ml" ]
       else (* .mli files never depend on .ml files *)
-        Some [ filename ^ ".mli" ]
+        [ filename ^ ".mli" ]
     else if String.Set.mem (filename ^ ".ml") all_source_files
     then
       (* If there's no .mli, then we must always depend on the .ml *)
-      Some [ filename ^ ".ml" ]
+      [ filename ^ ".ml" ]
     else (* This is a module coming from an external library *)
-      None
+      []
   in
   let dependencies =
-    let dependencies = List.concat (List.filter_map ~f:convert_module dependencies) in
+    let dependencies = List.concat_map ~f:convert_module dependencies in
     (* .ml depends on .mli, if it exists *)
     if (not is_mli) && String.Set.mem (file ^ "i") all_source_files
     then (file ^ "i") :: dependencies

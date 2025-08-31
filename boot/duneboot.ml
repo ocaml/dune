@@ -1278,6 +1278,7 @@ let ocamldep args =
 ;;
 
 let mk_flags arg l = List.concat_map l ~f:(fun m -> [ arg; m ])
+let ccopt x = [ "-ccopt"; x ]
 
 let convert_dependencies ~all_source_files { Dep.file; deps } =
   let is_mli = Filename.check_suffix file ".mli" in
@@ -1508,7 +1509,7 @@ let build
                   ; external_includes
                   ; build_flags
                   ; [ file ]
-                  ; List.concat_map flags ~f:(fun flag -> [ "-ccopt"; flag ])
+                  ; List.concat_map flags ~f:ccopt
                   ]
                 |> Process.run ~cwd:build_dir Config.compiler
               in
@@ -1548,7 +1549,7 @@ let build
     ; obj_files
     ; args
     ; link_flags
-    ; (if static then [ "-ccopt"; "-static" ] else [])
+    ; (if static then ccopt "-static" else [])
     ; allow_unstable_sources
     ]
   |> Process.run ~cwd:build_dir Config.compiler
@@ -1562,16 +1563,17 @@ let get_flags system xs =
 let windows_system_values = [ "win32"; "win64"; "mingw"; "mingw64" ]
 
 let build_flags =
-  [ windows_system_values, [ "-ccopt"; "-D_UNICODE"; "-ccopt"; "-DUNICODE" ] ]
+  [ windows_system_values, List.concat_map ~f:ccopt [ "-D_UNICODE"; "-DUNICODE" ] ]
 ;;
 
 let link_flags =
+  let cclib x = [ "-cclib"; x ] in
   (* additional link flags keyed by the platform *)
   [ ( [ "macosx" ]
-    , [ "-cclib"; "-framework CoreFoundation"; "-cclib"; "-framework CoreServices" ] )
-  ; ( windows_system_values
-    , [ "-cclib"; "-lshell32"; "-cclib"; "-lole32"; "-cclib"; "-luuid" ] )
-  ; [ "beos" ], [ "-cclib"; "-lbsd" ] (* flags for Haiku *)
+    , List.concat_map ~f:cclib [ "-framework CoreFoundation"; "-framework CoreServices" ]
+    )
+  ; windows_system_values, List.concat_map ~f:cclib [ "-lshell32"; "-lole32"; "-luuid" ]
+  ; [ "beos" ], cclib "-lbsd" (* flags for Haiku *)
   ]
 ;;
 

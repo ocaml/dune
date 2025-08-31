@@ -1585,11 +1585,11 @@ let main () =
     try String.Map.find "ext_obj" ocaml_config with
     | Not_found -> ".o"
   in
-  let ccomp_type = String.Map.find "ccomp_type" ocaml_config in
-  let architecture = String.Map.find "architecture" ocaml_config in
-  let word_size = String.Map.find "word_size" ocaml_config in
-  let os_type = String.Map.find "os_type" ocaml_config in
   let* libraries =
+    let ccomp_type = String.Map.find "ccomp_type" ocaml_config in
+    let word_size = String.Map.find "word_size" ocaml_config in
+    let os_type = String.Map.find "os_type" ocaml_config in
+    let architecture = String.Map.find "architecture" ocaml_config in
     assemble_libraries task ~ext_obj ~ccomp_type ~architecture ~word_size ~os_type
   in
   let c_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.c_files) libraries in

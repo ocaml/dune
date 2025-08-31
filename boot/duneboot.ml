@@ -1215,16 +1215,15 @@ module Library = struct
           if keep_c c ~architecture
           then (
             let extra_flags =
-              if String.starts_with ~prefix:"blake3_" fn
+              if
+                String.starts_with ~prefix:"blake3_" fn
+                && (String.equal os_type "Cygwin" || String.equal word_size "32")
               then
-                if String.equal os_type "Cygwin" || String.equal word_size "32"
-                then
-                  [ "-DBLAKE3_NO_SSE2"
-                  ; "-DBLAKE3_NO_SSE41"
-                  ; "-DBLAKE3_NO_AVX2"
-                  ; "-DBLAKE3_NO_AVX512"
-                  ]
-                else []
+                [ "-DBLAKE3_NO_SSE2"
+                ; "-DBLAKE3_NO_SSE41"
+                ; "-DBLAKE3_NO_AVX2"
+                ; "-DBLAKE3_NO_AVX512"
+                ]
               else []
             in
             `Left { Source.flags = extra_flags @ c.flags; name = fn })

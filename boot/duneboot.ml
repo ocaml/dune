@@ -1250,9 +1250,9 @@ module Library = struct
 end
 
 module Dep = struct
-  type t =
+  type 'dep t =
     { file : string
-    ; deps : string list
+    ; deps : 'dep list
     }
 
   let empty file = { file; deps = [] }
@@ -1267,11 +1267,10 @@ let ocamldep args =
     let modules =
       if colon = String.length line - 1
       then []
-      else (
-        let modules =
-          String.sub line ~pos:(colon + 2) ~len:(String.length line - colon - 2)
-        in
-        String.split_on_char ~sep:' ' modules)
+      else
+        String.sub line ~pos:(colon + 2) ~len:(String.length line - colon - 2)
+        |> String.split_on_char ~sep:' '
+        |> List.map ~f:Module_name.of_string
     in
     { Dep.file = filename; deps = modules })
   >>| List.sort ~cmp:compare
@@ -1279,36 +1278,37 @@ let ocamldep args =
 
 let mk_flags arg l = List.concat_map l ~f:(fun m -> [ arg; m ])
 
-let convert_dependencies ~all_source_files { Dep.file; deps = dependencies } =
+let convert_dependencies ~all_source_files { Dep.file; deps } =
   let is_mli = Filename.check_suffix file ".mli" in
   let convert_module module_name =
-    let filename = String.uncapitalize_ascii module_name in
-    if filename = Filename.chop_extension file
+    let ml = Module_name.to_fname module_name ~kind:`Ml in
+    let mli = Module_name.to_fname module_name ~kind:`Mli in
+    if Filename.chop_extension ml = Filename.chop_extension file
     then (* Self-reference *)
       []
-    else if String.Set.mem (filename ^ ".mli") all_source_files
+    else if String.Set.mem mli all_source_files
     then
-      if (not is_mli) && String.Set.mem (filename ^ ".ml") all_source_files
+      if (not is_mli) && String.Set.mem ml all_source_files
       then
         (* We need to build the .ml for inlining info *)
-        [ filename ^ ".mli"; filename ^ ".ml" ]
+        [ mli; ml ]
       else (* .mli files never depend on .ml files *)
-        [ filename ^ ".mli" ]
-    else if String.Set.mem (filename ^ ".ml") all_source_files
+        [ mli ]
+    else if String.Set.mem ml all_source_files
     then
       (* If there's no .mli, then we must always depend on the .ml *)
-      [ filename ^ ".ml" ]
+      [ ml ]
     else (* This is a module coming from an external library *)
       []
   in
-  let dependencies =
-    let dependencies = List.concat_map ~f:convert_module dependencies in
+  let deps =
+    let deps = List.concat_map ~f:convert_module deps in
     (* .ml depends on .mli, if it exists *)
     if (not is_mli) && String.Set.mem (file ^ "i") all_source_files
-    then (file ^ "i") :: dependencies
-    else dependencies
+    then (file ^ "i") :: deps
+    else deps
   in
-  { Dep.file; deps = dependencies }
+  { Dep.file; deps }
 ;;
 
 let write_args file args =

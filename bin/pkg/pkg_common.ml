@@ -209,7 +209,6 @@ module Lock_dirs_arg = struct
     | Selected [] -> [ default_path ]
     | Selected chosen_lock_dirs ->
       let workspace_lock_dirs_set = Path.Source.Set.of_list workspace_lock_dirs in
-      (* let chosen_lock_dirs = List.map ~f:Path.source chosen_lock_dirs in *)
       let chosen_lock_dirs_set = Path.Source.Set.of_list chosen_lock_dirs in
       if Path.Source.Set.is_subset chosen_lock_dirs_set ~of_:workspace_lock_dirs_set
       then chosen_lock_dirs

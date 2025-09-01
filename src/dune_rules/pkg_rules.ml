@@ -88,6 +88,7 @@ module Package_universe = struct
     match t with
     | Project_dependencies ctx -> Lock_dir.get_path ctx
     | Dev_tool dev_tool ->
+      (* CR-Leonidas-from-XIV: It probably isn't always [Some] *)
       dev_tool |> Lock_dir.dev_tool_lock_dir |> Option.some |> Memo.return
   ;;
 end
@@ -1744,6 +1745,8 @@ let source_rules (pkg : Pkg.t) =
 let source_path_of_files_dir file_dir =
   match Path.Build.explode file_dir with
   | [ _; _; ".lock"; name; dir ] -> Path.Source.L.relative Path.Source.root [ name; dir ]
+  | [ _; _; ".dev-tool-locks"; dev_tool; dir ] ->
+    Path.Source.L.relative (Path.Source.of_string "dev-tool.locks") [ dev_tool; dir ]
   | components ->
     Code_error.raise "Invalid path" [ "components", Dyn.list Dyn.string components ]
 ;;

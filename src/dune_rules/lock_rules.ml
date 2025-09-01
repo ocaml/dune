@@ -29,19 +29,15 @@ module Copy = struct
       List [ encode_target target; Atom (Path.Source.to_string lock_dir); List contents ]
     ;;
 
-    let action { target; lock_dir = _; files } ~ectx:_ ~eenv:_ =
+    let action { target; lock_dir; files } ~ectx:_ ~eenv:_ =
       let open Fiber.O in
       let+ () = Fiber.return () in
       Path.mkdir_p (Path.build target);
       Path.Source.Set.iter files ~f:(fun src ->
-        let dst =
-          match Path.Source.explode src with
-          | [] ->
-            Code_error.raise
-              "Somehow the path is unexpected"
-              [ "src", Path.Source.to_dyn src ]
-          | _ :: components -> Path.Build.L.relative target components
+        let suffix =
+          Path.drop_prefix_exn (Path.source src) ~prefix:(Path.source lock_dir)
         in
+        let dst = Path.Build.append_local target suffix in
         let parent = Path.Build.parent_exn dst in
         (* Printf.eprintf "Source to copy %S => %S (parent %S)\n" (Path.Source.to_string src) (Path.Build.to_string dst) (Path.Build.to_string parent); *)
         Path.mkdir_p (Path.build parent);
@@ -99,13 +95,24 @@ let setup_lock_rules ~dir ~lock_dir =
   setup_copy_rules ~dir ~lock_dir
 ;;
 
+let setup_dev_tool_lock_rules ~dir dev_tool =
+  let package_name = Dune_pkg.Dev_tool.package_name dev_tool in
+  let dev_tool_name = Dune_lang.Package_name.to_string package_name in
+  let dir = Path.Build.relative dir dev_tool_name in
+  let lock_dir = Lock_dir.dev_tool_source_lock_dir dev_tool in
+  setup_copy_rules ~dir ~lock_dir
+;;
+
 let setup_rules ~components ~dir =
   match components with
   | [ ".lock" ] ->
     (* TODO enable other lock dirs too, by reading them from the workspace *)
     setup_lock_rules ~dir ~lock_dir:"dune.lock"
+  | [ ".dev-tool-locks" ] ->
+    (* TODO properly set up copy dev tool lock rules *)
+    setup_dev_tool_lock_rules ~dir Ocamlformat
   | [] ->
-    let sub_dirs = [ ".lock" ] in
+    let sub_dirs = [ ".lock"; ".dev-tool-locks" ] in
     let build_dir_only_sub_dirs =
       Gen_rules.Build_only_sub_dirs.singleton ~dir @@ Subdir_set.of_list sub_dirs
     in

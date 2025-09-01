@@ -464,7 +464,7 @@ module Unescape : sig
   ]
   (** A selection of extra keys on the keyboard. *)
 
-  type button = [ `Left | `Middle | `Right | `Scroll of [ `Up | `Down ] ]
+  type button = [ `Left | `Middle | `Right | `Scroll of [ `Up | `Down | `Left | `Right ] ]
   (** Mouse buttons. *)
 
   type mods = [ `Meta | `Ctrl | `Shift ] list

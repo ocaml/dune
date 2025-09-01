@@ -16,7 +16,6 @@ Demonstrate the files and directories listed in a cram test:
   $ cat test.t
     $ find . | sort
     .
-    ./.cram.test.t
 
   $ ls _build/default | sort
   test.t
@@ -24,14 +23,20 @@ Demonstrate the files and directories listed in a cram test:
 Now repeat the test for a test defined using a directory:
 
   $ mkdir foo.t
-  $ touch foo.t/run.t
-  $ cat >test.t <<EOF
+  $ cat >foo.t/run.t <<EOF
   >   $ find . | sort
   > EOF
 
   $ dune runtest foo.t
+  File "foo.t/run.t", line 1, characters 0-0:
+  Error: Files _build/default/foo.t/run.t and
+  _build/default/foo.t/run.t.corrected differ.
+  [1]
   $ dune promote
+  Promoting _build/default/foo.t/run.t.corrected to foo.t/run.t.
   $ cat foo.t/run.t
+    $ find . | sort
+    .
   $ ( cd _build/default/foo.t && find . | sort )
   .
   ./run.t

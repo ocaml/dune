@@ -233,9 +233,10 @@ end
 module Io = struct
   (* Return a sorted list of entries in [path] as [path/entry] *)
   let readdir path = Sys.readdir path |> Array.to_list |> List.sort ~cmp:String.compare
+  let must_not_exist file = if Sys.file_exists file then fatal "%s already exists" file
 
   let open_out file =
-    if Sys.file_exists file then fatal "%s already exists" file;
+    must_not_exist file;
     open_out file
   ;;
 
@@ -275,7 +276,7 @@ module Io = struct
   ;;
 
   let do_then_copy ~f a b =
-    if Sys.file_exists b then fatal "%s already exists" b;
+    must_not_exist b;
     let s = read_file a in
     with_file_out b ~f:(fun oc ->
       f oc;

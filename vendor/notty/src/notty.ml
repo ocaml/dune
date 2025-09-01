@@ -641,7 +641,7 @@ module Unescape = struct
   | `Function of int
   ]
 
-  type button = [ `Left | `Middle | `Right | `Scroll of [ `Up | `Down ] ]
+  type button = [ `Left | `Middle | `Right | `Scroll of [ `Up | `Down | `Left | `Right ] ]
 
   type mods = [ `Meta | `Ctrl | `Shift ] list
 
@@ -725,9 +725,9 @@ module Unescape = struct
       | 0              -> `Left
       | 1 when bit 6 p -> `Scroll `Down
       | 1              -> `Middle
-      | 2 when bit 6 p -> `ALL (* `Scroll `Left *)
+      | 2 when bit 6 p -> `Scroll `Left
       | 2              -> `Right
-      | 3 when bit 6 p -> `ALL (* `Scroll `Right *)
+      | 3 when bit 6 p -> `Scroll `Right
       | _              -> `ALL
     and drag = bit 5 p
     and mods =

@@ -112,9 +112,9 @@ let with_job_slot f =
     f t.cancel t.config)
 ;;
 
-let wait_for_process t pid =
+let wait_for_process t ~is_process_group_leader pid =
   let ivar = Fiber.Ivar.create () in
-  Process_watcher.register_job t.process_watcher { pid; ivar };
+  Process_watcher.register_job t.process_watcher { pid; is_process_group_leader; ivar };
   Fiber.Ivar.read ivar
 ;;
 
@@ -125,7 +125,7 @@ type termination_reason =
 
 (* We use this version privately in this module whenever we can pass the
    scheduler explicitly *)
-let wait_for_build_process t pid =
+let wait_for_build_process t ~is_process_group_leader pid =
   let+ res, outcome =
     Fiber.Cancel.with_handler
       t.cancel
@@ -133,10 +133,11 @@ let wait_for_build_process t pid =
         Process_watcher.killall t.process_watcher Sys.sigkill;
         Fiber.return ())
       (fun () ->
-         let+ r = wait_for_process t pid in
+         let+ r = wait_for_process t ~is_process_group_leader pid in
          (* [kill_process_group] on Windows only kills the pid and by this
-            time the process should've exited anyway *)
-         if not Sys.win32 then Process_watcher.kill_process_group pid Sys.sigterm;
+           time the process should've exited anyway *)
+         if not Sys.win32
+         then Process_watcher.kill_process_group pid Sys.sigterm ~is_process_group_leader;
          r)
   in
   ( res
@@ -589,11 +590,7 @@ let wait_for_process_with_timeout t pid waiter ~timeout ~is_process_group_leader
       Alarm_clock.await sleep
       >>| function
       | `Finished when Process_watcher.is_running t.process_watcher pid ->
-        let () =
-          if is_process_group_leader
-          then Process_watcher.kill_process_group pid Sys.sigkill
-          else Unix.kill (Pid.to_int pid) Sys.sigkill
-        in
+        Process_watcher.kill_process_group pid Sys.sigkill ~is_process_group_leader;
         Dune_trace.emit Process (fun () ->
           Dune_trace.Event.signal_sent
             Kill
@@ -601,7 +598,7 @@ let wait_for_process_with_timeout t pid waiter ~timeout ~is_process_group_leader
         `Timed_out
       | _ -> `Finished
     and+ res, termination_reason =
-      let+ res = waiter t pid in
+      let+ res = waiter t ~is_process_group_leader pid in
       Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
       res
     in
@@ -611,10 +608,10 @@ let wait_for_process_with_timeout t pid waiter ~timeout ~is_process_group_leader
       | `Finished -> termination_reason ))
 ;;
 
-let wait_for_build_process ?timeout ?(is_process_group_leader = false) pid =
+let wait_for_build_process ?timeout ~is_process_group_leader pid =
   let* t = t () in
   match timeout with
-  | None -> wait_for_build_process t pid
+  | None -> wait_for_build_process t ~is_process_group_leader pid
   | Some timeout ->
     wait_for_process_with_timeout
       t
@@ -624,7 +621,7 @@ let wait_for_build_process ?timeout ?(is_process_group_leader = false) pid =
       ~is_process_group_leader
 ;;
 
-let wait_for_process ?timeout ?(is_process_group_leader = false) pid =
+let wait_for_process ?timeout ~is_process_group_leader pid =
   wait_for_build_process ?timeout ~is_process_group_leader pid >>| fst
 ;;
 

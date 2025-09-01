@@ -56,7 +56,10 @@ let%expect_test "run process with timeout" =
          Spawn.spawn ~prog ~argv:[ prog; "100000" ] () |> Pid.of_int
        in
        let+ (_ : Proc.Process_info.t) =
-         Scheduler.wait_for_process ~timeout:(Time.Span.of_secs 0.1) pid
+         Scheduler.wait_for_process
+           ~timeout:(Time.Span.of_secs 0.1)
+           ~is_process_group_leader:false
+           pid
        in
        print_endline "sleep timed out");
   [%expect

@@ -109,7 +109,12 @@ let run ?env ~prog ~argv () =
   Unix.close stdout_w;
   Unix.close stderr_w;
   ( pid
-  , (let+ proc = Scheduler.wait_for_process ~timeout:(Time.Span.of_secs 3.0) pid in
+  , (let+ proc =
+       Scheduler.wait_for_process
+         ~timeout:(Time.Span.of_secs 3.0)
+         ~is_process_group_leader:false
+         pid
+     in
      if proc.status <> Unix.WEXITED 0
      then (
        let name =

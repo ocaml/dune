@@ -34,7 +34,8 @@ end
 module Ocamlformat = struct
   let dev_tool_lock_dir_exists () =
     let path = Lock_dir.dev_tool_source_lock_dir Ocamlformat in
-    Fs_memo.dir_exists (In_source_dir path)
+    let+ exists = Source_tree.find_dir path >>| Option.is_some in
+    exists
   ;;
 
   (* Config files for ocamlformat. When these are changed, running

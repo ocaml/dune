@@ -104,18 +104,23 @@ let setup_dev_tool_lock_rules ~dir dev_tool =
 ;;
 
 let setup_rules ~components ~dir =
+  let empty = Gen_rules.rules_here Gen_rules.Rules.empty in
   match components with
   | [ ".lock" ] ->
     (* TODO enable other lock dirs too, by reading them from the workspace *)
     setup_lock_rules ~dir ~lock_dir:"dune.lock"
   | [ ".dev-tool-locks" ] ->
-    (* TODO properly set up copy dev tool lock rules *)
-    setup_dev_tool_lock_rules ~dir Ocamlformat
+    Memo.List.fold_left
+      Dune_pkg.Dev_tool.all
+      ~f:(fun rules dev_tool ->
+        let+ dev_tool_rules = setup_dev_tool_lock_rules ~dir dev_tool in
+        Gen_rules.combine rules dev_tool_rules)
+      ~init:empty
   | [] ->
     let sub_dirs = [ ".lock"; ".dev-tool-locks" ] in
     let build_dir_only_sub_dirs =
       Gen_rules.Build_only_sub_dirs.singleton ~dir @@ Subdir_set.of_list sub_dirs
     in
     Memo.return @@ Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
-  | _ -> Memo.return @@ Gen_rules.rules_here Gen_rules.Rules.empty
+  | _ -> Memo.return empty
 ;;

@@ -1,3 +1,19 @@
+3.20.2 (2025-09-02)
+-------------------
+
+## Fixed
+
+- Fix jsoo separate compilation with modules_without_implementation. Regression
+  introduced in #10767. (#12320, fixes #12306 @hhugo)
+
+- Fix `runtest-js` mistakenly using wrong dependencies (#12324,
+  @vouillon)
+
+- Remove empty `.cram.test.t` directory during the running of a cram test.
+  (#12329, fixes #12321, @Alizter)
+
+- Fix Cygwin bootstrap (#12325, fixes #12316, @Alizter)
+
 3.20.1 (2025-08-25)
 -------------------
 

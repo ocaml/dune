@@ -167,7 +167,10 @@ jobs:
       - run: opam exec -- make release
 
       - name: Install deps
+        # CR-soon Alizter: Lwt 5.9.2 breaks on msvc so we pin it here. Remove
+        # this when https://github.com/ocsigen/lwt/issues/1071 is fixed.
         run: |
+          opam pin add lwt 5.9.1 --no-action
           opam install . --deps-only --with-test
           opam exec -- make dev-deps
         if: ${{ matrix.run_tests }}
@@ -238,6 +241,24 @@ jobs:
 
       - name: Run Tests
         run: opam exec -- make test-wasm
+
+  cygwin:
+    name: Cygwin Build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Cygwin
+        uses: cygwin/cygwin-install-action@v6
+        with:
+          packages: ocaml gcc-core make
+      - name: Bootstrap Dune
+        run: make bootstrap
+      ## In order to build dune locally we need to have the re library
+      ## available. Even if we do, it is likely that our vendored blake3 rules
+      ## will miss cygwin support. So for now, we don't enable the rest.
+      
+      # - name: Build Dune
+      # run: _boot/dune build dune.install
 
   create-local-opam-switch:
     name: Create local opam switch

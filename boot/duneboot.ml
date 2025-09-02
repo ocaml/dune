@@ -956,10 +956,15 @@ module Library = struct
     ; asm_files : asm_file list
     }
 
-  let keep_asm { File_kind.syntax; arch; os; assembler = _ } ~ccomp_type ~architecture =
+  let keep_asm
+        { File_kind.syntax; arch; os; assembler = _ }
+        ~ccomp_type
+        ~architecture
+        ~os_type
+    =
     (match os with
-     | Some `Unix -> Sys.os_type = "Unix"
-     | Some `Win -> Sys.os_type = "Win32"
+     | Some `Unix -> String.equal os_type "Unix"
+     | Some `Win -> String.equal os_type "Win32"
      | None -> true)
     && (match syntax, ccomp_type with
         | `Intel, "msvc" -> true
@@ -987,6 +992,8 @@ module Library = struct
         ; special_builtin_support = build_info_module
         }
         ~ocaml_config
+        ~word_size
+        ~os_type
     =
     let files = scan ~dir ~scan_subdirs in
     let modules =
@@ -1064,15 +1071,15 @@ module Library = struct
           then (
             let extra_flags =
               if String.is_prefix ~prefix:"blake3_" fn
-              then (
-                match architecture with
-                | "x86" | "i386" | "i486" | "i586" | "i686" ->
+              then
+                if String.equal os_type "Cygwin" || String.equal word_size "32"
+                then
                   [ "-DBLAKE3_NO_SSE2"
                   ; "-DBLAKE3_NO_SSE41"
                   ; "-DBLAKE3_NO_AVX2"
                   ; "-DBLAKE3_NO_AVX512"
                   ]
-                | _ -> [])
+                else []
               else []
             in
             `Left { flags = extra_flags @ c.flags; name = fn })
@@ -1080,7 +1087,7 @@ module Library = struct
         | Ml | Mli | Mly | Mll -> `Middle fn
         | Header -> `Skip
         | Asm asm ->
-          if keep_asm asm ~ccomp_type ~architecture
+          if keep_asm asm ~ccomp_type ~architecture ~os_type
           then (
             let out_file = Filename.chop_extension fn ^ ext_obj in
             `Right
@@ -1192,7 +1199,12 @@ let get_dependencies libraries =
   deps
 ;;
 
-let assemble_libraries { local_libraries; target = _, main; _ } ~ocaml_config =
+let assemble_libraries
+      { local_libraries; target = _, main; _ }
+      ~ocaml_config
+      ~word_size
+      ~os_type
+  =
   (* In order to assemble all the sources in one place, the executables
        modules are also put in a namespace *)
   let task_lib =
@@ -1206,7 +1218,8 @@ let assemble_libraries { local_libraries; target = _, main; _ } ~ocaml_config =
     ; special_builtin_support = None
     }
   in
-  local_libraries @ [ task_lib ] |> Fiber.parallel_map ~f:(Library.process ~ocaml_config)
+  local_libraries @ [ task_lib ]
+  |> Fiber.parallel_map ~f:(Library.process ~ocaml_config ~word_size ~os_type)
 ;;
 
 type status =
@@ -1404,7 +1417,9 @@ let main () =
    | Unix.Unix_error (Unix.EEXIST, _, _) -> ());
   Config.ocaml_config ()
   >>= fun ocaml_config ->
-  assemble_libraries ~ocaml_config task
+  let word_size = String.Map.find "word_size" ocaml_config in
+  let os_type = String.Map.find "os_type" ocaml_config in
+  assemble_libraries ~ocaml_config ~word_size ~os_type task
   >>= fun libraries ->
   let c_files =
     List.map ~f:(fun (lib : Library.t) -> lib.c_files) libraries |> List.concat

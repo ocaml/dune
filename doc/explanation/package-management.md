@@ -41,7 +41,7 @@ stay installable with opam.
 This section describes what happens in a Dune project using the package
 management feature.
 
-## Dependency Selection
+### Dependency Selection
 
 The first step is to determine which packages need to be installed.
 Traditionally this has been defined in the `depends` field of a project's opam
@@ -64,7 +64,7 @@ Dune will fall back to reading dependencies from `.opam` files when the package
 is not defined in `dune-project`.
 
 
-## Locking
+### Locking
 
 Given the list of the project's dependencies and their version
 constraints, the next steps are:
@@ -105,7 +105,7 @@ The information is stored in a directory (`dune.lock` by default) as separate
 files, to reduce potential merge conflicts and simplify code review. Storing
 additional files like patches is also simpler this way.
 
-### Package Repository Management
+#### Package Repository Management
 
 To find a valid solution that allows a project to be built, it is necessary to
 know what packages exist, what versions of these packages exist, and what other
@@ -148,7 +148,7 @@ Dune uses two repositories by default:
   work within Dune Package Management upstream. Check the
   [compatibility](#compatibility) section for details.
 
-### Solving
+#### Solving
 
 After Dune has read the constraints and loaded set of candidate packages, it is
 necessary to determine which packages and versions should be selected for the
@@ -180,7 +180,7 @@ in the build step.
 :::
 
 (building)=
-## Building
+### Building
 
 When building, Dune will read the information from the lock directory and set
 up rules for the packages. Check {doc}`/explanation/mental-model` for details

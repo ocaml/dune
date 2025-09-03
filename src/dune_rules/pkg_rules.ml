@@ -2026,6 +2026,7 @@ let setup_rules ~components ~dir ctx =
   assert (String.equal Pkg_dev_tool.install_path_base_dir_name ".dev-tool");
   match Context_name.is_default ctx, components with
   | true, [ ".dev-tool"; pkg_name; pkg_dep_name ] ->
+    Printf.eprintf "Dev tool Rules for .dev-tool/%s/%s\n" pkg_name pkg_dep_name;
     setup_package_rules
       ~package_universe:
         (Dev_tool (Package.Name.of_string pkg_name |> Dune_pkg.Dev_tool.of_package_name))

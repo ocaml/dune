@@ -100,6 +100,7 @@ let setup_dev_tool_lock_rules ~dir dev_tool =
   let dev_tool_name = Dune_lang.Package_name.to_string package_name in
   let dir = Path.Build.relative dir dev_tool_name in
   let lock_dir = Lock_dir.dev_tool_source_lock_dir dev_tool in
+  Printf.eprintf "Lock rules on %S (from %S)\n" (Path.Build.to_string dir) (Path.Source.to_string lock_dir);
   setup_copy_rules ~dir ~lock_dir
 ;;
 

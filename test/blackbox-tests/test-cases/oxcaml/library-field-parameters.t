@@ -119,22 +119,27 @@ which lists the parameters on the following indented lines:
   $ alias runtime_parameters="sed -ne '/parameter/,/^[^\t]/{/^\t/p}'"
 
   $ ocamlobjinfo _build/default/lib/.lib.objs/native/lib__Lib_util.cmx | runtime_parameters
+  	Lib__
   	A
   	B
 
   $ ocamlobjinfo _build/default/lib/.lib.objs/byte/lib__Lib_util.cmo | runtime_parameters
+  	Lib__
   	A
   	B
 
 The output of `ocamlobjinfo` is not exactly 1:1 with the flags given to the
 compiler.  It only lists the parameters that are actually used (`A` is not used
-by `Lib`), but also the parameterized module `Lib_util` that `Lib` depends on:
+by `Lib`), but also the parameterized modules that are depended upon,
+`Lib_util` and `Lib__`:
 
   $ ocamlobjinfo _build/default/lib/.lib.objs/native/lib.cmx | runtime_parameters
+  	Lib__
   	Lib__Lib_util
   	B
 
   $ ocamlobjinfo _build/default/lib/.lib.objs/byte/lib.cmo | runtime_parameters
+  	Lib__
   	Lib__Lib_util
   	B
 
@@ -276,13 +281,11 @@ modules:
        (module
         (obj_name lib)
         (visibility public)
-        (source (path Lib) (impl (path lib/lib.ml)))
-        (parameters A B))
+        (source (path Lib) (impl (path lib/lib.ml))))
        (module
         (obj_name lib__Lib_util)
         (visibility public)
-        (source (path Lib_util) (impl (path lib/lib_util.ml)))
-        (parameters A B))))
+        (source (path Lib_util) (impl (path lib/lib_util.ml))))))
      (wrapped true))))
   (library
    (name project.utils)

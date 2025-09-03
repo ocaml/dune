@@ -239,8 +239,10 @@ let build_cm
    in
    let as_parameter_arg = if Module.kind m = Parameter then [ "-as-parameter" ] else [] in
    let parameters =
-     List.concat_map (Module.parameters m) ~f:(fun m ->
-       [ "-parameter"; Module_name.to_string m ])
+     Command.Args.dyn
+       (let open Action_builder.O in
+        Resolve.Memo.read (Compilation_context.parameters cctx)
+        >>| List.concat_map ~f:(fun m -> [ "-parameter"; Module_name.to_string m ]))
    in
    let flags, sandbox =
      let flags =
@@ -295,7 +297,7 @@ let build_cm
                 (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind)
             ; extra_args
             ; As as_parameter_arg
-            ; As parameters
+            ; parameters
             ; S (melange_args cctx cm_kind m)
             ; A "-no-alias-deps"
             ; opaque_arg

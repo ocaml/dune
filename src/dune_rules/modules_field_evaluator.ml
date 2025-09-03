@@ -332,7 +332,6 @@ let check_invalid_module_listing
 
 let eval
       ~expander
-      ~parameters
       ~modules:(all_modules : Module.Source.t Module_trie.t)
       ~stanza_loc
       ~private_modules
@@ -402,7 +401,7 @@ let eval
           else Impl)
         else Intf_only
       in
-      Module.of_source m ~kind ~visibility ~parameters)
+      Module.of_source m ~kind ~visibility)
   in
   match root_module with
   | None -> all_modules
@@ -414,7 +413,6 @@ let eval
 
 let eval
       ~expander
-      ~parameters
       ~modules:(all_modules : Module.Source.t Module_trie.t)
       ~stanza_loc
       ~private_modules
@@ -437,7 +435,6 @@ let eval
   let+ modules =
     eval
       ~expander
-      ~parameters
       ~modules:all_modules
       ~stanza_loc
       ~private_modules

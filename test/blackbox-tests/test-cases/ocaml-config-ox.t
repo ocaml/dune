@@ -9,5 +9,6 @@ check the value of the parameter.
   > (rule
   >   (targets x)
   >     (action (with-stdout-to %{targets} (echo %{ocaml-config:ox}))))
+  > EOF
 
   $ dune build x

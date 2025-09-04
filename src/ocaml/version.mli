@@ -85,8 +85,5 @@ val add_std_cxx_flag : t -> bool
 (* Whether the compiler supports OxCaml *)
 val supports_oxcaml : string -> bool
 
-(* Whether the compiler supports the parametrized library *)
-val supports_parametrized_library : string -> bool
-
 (** Whether the compiler supports the [-cmi-file] flag *)
 val supports_cmi_file : t -> bool

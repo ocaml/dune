@@ -39,9 +39,3 @@ let supports_oxcaml version =
   Stdune.String.is_suffix ~suffix:jst version
   || Stdune.String.is_suffix ~suffix:ox version
 ;;
-
-let supports_parametrized_library version =
-  (* We create the alias to make sure it is easy to distinguish the
-     functionality from the compiler variant. *)
-  supports_oxcaml version
-;;

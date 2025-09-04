@@ -79,14 +79,15 @@ let impl sctx ~(lib : Library.t) ~scope =
          ]
      | Some vlib ->
        let info = Lib.info vlib in
-       if (not (Lib_info.virtual_ info)) && not (Lib_info.is_parameter info)
-       then
-         User_error.raise
-           ~loc:lib.buildable.loc
-           [ Pp.textf
-               "Library %s isn't virtual and cannot be implemented"
-               (Lib_name.to_string implements)
-           ];
+       (match Lib_info.kind info with
+        | Parameter | Virtual -> ()
+        | Dune_file _ ->
+          User_error.raise
+            ~loc:lib.buildable.loc
+            [ Pp.textf
+                "Library %s isn't virtual and cannot be implemented"
+                (Lib_name.to_string implements)
+            ]);
        let+ vlib_modules, vlib_foreign_objects =
          match Lib_info.modules info, Lib_info.foreign_objects info with
          | External modules, External fa ->

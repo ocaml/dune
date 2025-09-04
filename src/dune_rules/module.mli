@@ -51,7 +51,6 @@ val of_source : visibility:Visibility.t -> kind:Kind.t -> Source.t -> t
 
 val name : t -> Module_name.t
 val path : t -> Module_name.Path.t
-val implements : t -> Module_name.t option
 val source : t -> ml_kind:Ml_kind.t -> File.t option
 val pp_flags : t -> (string list Action_builder.t * Sandbox_config.t) option
 val install_as : t -> Path.Local.t option
@@ -63,7 +62,6 @@ val set_obj_name : t -> Module_name.Unique.t -> t
 val set_path : t -> Module_name.Path.t -> t
 val add_file : t -> Ml_kind.t -> File.t -> t
 val set_source : t -> Ml_kind.t -> File.t option -> t
-val set_implements : t -> Module_name.t -> t
 
 (** Set preprocessing flags *)
 val set_pp : t -> (string list Action_builder.t * Sandbox_config.t) option -> t

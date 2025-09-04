@@ -202,7 +202,6 @@ type t =
   ; visibility : Visibility.t
   ; kind : Kind.t
   ; install_as : Path.Local.t option
-  ; implements : Module_name.t option
   }
 
 let name t = Source.name t.source
@@ -210,8 +209,6 @@ let path t = t.source.path
 let kind t = t.kind
 let pp_flags t = t.pp
 let install_as t = t.install_as
-let implements t = t.implements
-let set_implements t name = { t with implements = Some name }
 
 let of_source ~install_as ~obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
   (match kind, visibility with
@@ -248,7 +245,7 @@ let of_source ~install_as ~obj_name ~visibility ~(kind : Kind.t) (source : Sourc
          indication by the caller. *)
       Module_name.Unique.of_path_assuming_needs_no_mangling_allow_invalid file.path
   in
-  { install_as; source; obj_name; pp = None; visibility; kind; implements = None }
+  { install_as; source; obj_name; pp = None; visibility; kind }
 ;;
 
 let has t ~ml_kind =
@@ -388,14 +385,7 @@ let decode ~src_dir =
        | None when Option.is_some source.files.impl -> Impl
        | None -> Intf_only
      in
-     { install_as = None
-     ; source
-     ; obj_name
-     ; pp = None
-     ; kind
-     ; visibility
-     ; implements = None
-     })
+     { install_as = None; source; obj_name; pp = None; kind; visibility })
 ;;
 
 let pped =

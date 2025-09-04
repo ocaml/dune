@@ -87,6 +87,7 @@ type t =
   ; requires_compile : Lib.t list Resolve.Memo.t
   ; requires_hidden : Lib.t list Resolve.Memo.t
   ; requires_link : Lib.t list Resolve.t Memo.Lazy.t
+  ; implements_parameter : (Module_name.t * Module_name.t option Resolve.Memo.t) option
   ; includes : Includes.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
@@ -128,6 +129,12 @@ let context t = Super_context.context t.super_context
 let dep_graphs t = t.modules.dep_graphs
 let ocaml t = t.ocaml
 
+let implements_parameter t m =
+  match t.implements_parameter with
+  | Some (root, implements) when Module_name.equal root (Module.name m) -> implements
+  | _ -> Resolve.Memo.return None
+;;
+
 let create
       ~super_context
       ~scope
@@ -136,6 +143,7 @@ let create
       ~flags
       ~requires_compile
       ~requires_link
+      ?implements_parameter
       ?(preprocessing = Pp_spec.dummy)
       ~opaque
       ?stdlib
@@ -200,6 +208,7 @@ let create
   ; requires_compile = direct_requires
   ; requires_hidden = hidden_requires
   ; requires_link
+  ; implements_parameter
   ; includes =
       Includes.make ~project ~opaque ~direct_requires ~hidden_requires ocaml.lib_config
   ; preprocessing

@@ -85,7 +85,7 @@ limit the parameter to one module now.
   2 |  (public_name multiple_param)
   3 |  (name multiple_param)
   4 |  (modules multiple_param data))
-  Error: a library_parameter can't declare more than one module.
+  Error: a library_parameter must declare exactly one module.
   [1]
 
 We make sure the same happened if multiple modules exists in one directory.
@@ -100,7 +100,7 @@ We make sure the same happened if multiple modules exists in one directory.
   1 | (library_parameter
   2 |  (public_name multiple_param)
   3 |  (name multiple_param))
-  Error: a library_parameter can't declare more than one module.
+  Error: a library_parameter must declare exactly one module.
   [1]
 
 We build the installable version to ensure we have generated the correct

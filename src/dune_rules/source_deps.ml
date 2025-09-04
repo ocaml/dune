@@ -9,7 +9,7 @@ module Map_reduce =
 let files_with_filter dir ~filter =
   let prefix_with, dir =
     match (dir : Path.t) with
-    | In_source_tree dir -> Path.of_string "", dir
+    | In_source_tree dir -> Path.root, dir
     | otherwise -> Path.extract_build_context_dir_exn otherwise
   in
   Source_tree.find_dir dir

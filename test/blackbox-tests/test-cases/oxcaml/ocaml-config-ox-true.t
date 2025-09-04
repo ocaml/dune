@@ -8,6 +8,7 @@ Check that %{ocaml-config:ox} works and returns true
   > (rule
   >   (targets x)
   >     (action (with-stdout-to %{targets} (echo %{ocaml-config:ox}))))
+  > EOF
 
   $ dune build x
   $ cat _build/default/x

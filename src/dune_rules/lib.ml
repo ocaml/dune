@@ -241,8 +241,8 @@ module Error = struct
     make
       ~loc
       [ Pp.textf
-          "Library %S is neither a virtual nor a library nor a library parameter. It \
-           cannot be implemented by %S."
+          "Library %S is neither a virtual library nor a library parameter. It cannot be \
+           implemented by %S."
           (Lib_name.to_string not_vlib)
           (Lib_name.to_string impl)
       ]

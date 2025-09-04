@@ -20,7 +20,7 @@ an appropriate error message.
   File "dune", line 1, characters 21-29:
   1 | (library (implements foodummy) (name bar))
                            ^^^^^^^^
-  Error: Library "foodummy" is not virtual nor a library parameter. It cannot
-  be implemented by "bar".
+  Error: Library "foodummy" is neither a virtual library nor a library
+  parameter. It cannot be implemented by "bar".
   Leaving directory 'test'
   [1]

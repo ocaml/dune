@@ -97,9 +97,10 @@ end = struct
       >>| Modules.With_vlib.modules
       >>| Option.some
     and+ foreign_archives =
-      match Lib_info.virtual_ lib with
-      | false -> Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
-      | true ->
+      match Lib_info.kind lib with
+      | Dune_file _ ->
+        Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
+      | Parameter | Virtual ->
         let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
         let name = Lib_info.name lib in
         let files = Foreign_sources.for_lib foreign_sources ~name in
@@ -837,8 +838,9 @@ end = struct
           let* { Scope.DB.Lib_entry.Set.libraries; _ } = Action_builder.of_memo entries in
           match
             List.find_map libraries ~f:(fun lib ->
-              let info = Lib.Local.info lib in
-              Option.some_if (Lib_info.virtual_ info) lib)
+              match Lib_info.kind (Lib.Local.info lib) with
+              | Parameter | Virtual -> Some lib
+              | Dune_file _ -> None)
           with
           | None -> Action_builder.lines_of meta_template
           | Some vlib ->

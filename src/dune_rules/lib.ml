@@ -725,13 +725,12 @@ end = struct
         let rec loop acc = function
           | [] -> Resolve.Memo.return acc
           | (lib, stack) :: libs ->
-            let is_parameter = Lib_info.is_parameter lib.info in
-            let virtual_ = Lib_info.virtual_ lib.info in
-            (match lib.implements, virtual_ || is_parameter with
-             | None, false -> loop acc libs
-             | Some _, true -> assert false (* can't be virtual and implement *)
-             | None, true -> loop (Map.set acc lib (No_impl stack)) libs
-             | Some vlib, false ->
+            (match lib.implements, Lib_info.kind lib.info with
+             | None, Dune_file _ -> loop acc libs
+             | None, (Parameter | Virtual) -> loop (Map.set acc lib (No_impl stack)) libs
+             | Some _, (Parameter | Virtual) ->
+               assert false (* can't be virtual and implement *)
+             | Some vlib, Dune_file _ ->
                let* vlib = Memo.return vlib in
                (match Map.find acc vlib with
                 | None ->
@@ -948,16 +947,9 @@ end = struct
         let res =
           let open Resolve.Memo.O in
           let* vlib = resolve_forbid_ignore name in
-          let virtual_ = Lib_info.virtual_ vlib.info in
-          let is_parameter = Lib_info.is_parameter vlib.info in
-          match virtual_, is_parameter with
-          | false, false -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
-          | true, false | false, true -> Resolve.Memo.return vlib
-          | true, true ->
-            Code_error.raise
-              "A virtual library can't be a parameter or a parameter can't be a virtual \
-               library by construction"
-              []
+          match Lib_info.kind vlib.info with
+          | Dune_file _ -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
+          | Parameter | Virtual -> Resolve.Memo.return vlib
         in
         Memo.map res ~f:Option.some
     in

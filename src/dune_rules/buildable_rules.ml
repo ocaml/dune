@@ -187,8 +187,7 @@ let modules_rules sctx kind expander ~dir scope modules =
     | Executables _ | Library _ | Melange _ -> Memo.return ()
     | Parameter _ ->
       let* ocaml = Super_context.context sctx |> Context.ocaml in
-      let ocaml_version = Ocaml_config.version_string ocaml.ocaml_config in
-      if Ocaml.Version.supports_parametrized_library ocaml_version
+      if Ocaml_config.parameterised_modules ocaml.ocaml_config
       then Memo.return ()
       else
         User_error.raise

@@ -7,46 +7,7 @@ Test that markdown generation includes all modules following naming conventions.
 
   $ cat > dune << EOF
   > (library
-  >  (public_name mylib)
-  >  (modules main main_sub main_nested main_nested_deep))
-  > EOF
-
-Create separate module files following a naming convention:
-
-  $ cat > main.mli << EOF
-  > (** Main module *)
-  > val x : int
-  > EOF
-
-  $ cat > main.ml << EOF
-  > let x = 42
-  > EOF
-
-  $ cat > main_sub.mli << EOF
-  > (** Main sub module *)
-  > val y : string
-  > EOF
-
-  $ cat > main_sub.ml << EOF
-  > let y = "hello"
-  > EOF
-
-  $ cat > main_nested.mli << EOF
-  > (** Main nested module *)
-  > val z : bool
-  > EOF
-
-  $ cat > main_nested.ml << EOF
-  > let z = true
-  > EOF
-
-  $ cat > main_nested_deep.mli << EOF
-  > (** Main nested deep module *)
-  > val w : float
-  > EOF
-
-  $ cat > main_nested_deep.ml << EOF
-  > let w = 3.14
+  >  (public_name mylib))
   > EOF
 
 Build the library and generate docs:
@@ -67,9 +28,19 @@ Check what markdown files were generated:
 Great! All modules are being generated as separate files.
 Let's verify that the content is correct:
 
-  $ head -5 _build/default/_doc/_markdown/mylib/Mylib-Main_sub.md
+  $ cat _build/default/_doc/_markdown/mylib/Mylib.md
   
-  # Module `Mylib.Main_sub`
+  # Module `Mylib`
   
   ```
-  val y : string
+  module Main : sig ... end
+  ```
+  ```
+  module Main_nested : sig ... end
+  ```
+  ```
+  module Main_nested_deep : sig ... end
+  ```
+  ```
+  module Main_sub : sig ... end
+  ```

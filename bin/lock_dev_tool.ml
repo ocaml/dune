@@ -81,6 +81,7 @@ let solve ~dev_tool ~local_packages =
   in
   (* as we want to write to the source, we're using the source lock dir here *)
   let lock_dir = Dune_rules.Lock_dir.dev_tool_source_lock_dir dev_tool |> Path.source in
+  Printf.printf "Running solver for %S\n" (Path.to_string lock_dir);
   Memo.of_reproducible_fiber
   @@ Lock.solve
        workspace

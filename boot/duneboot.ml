@@ -233,11 +233,13 @@ end
 module Io = struct
   (* Return a sorted list of entries in [path] as [path/entry] *)
   let readdir path = Sys.readdir path |> Array.to_list |> List.sort ~cmp:String.compare
-  let must_not_exist file = if Sys.file_exists file then fatal "%s already exists" file
 
-  let open_out file =
-    must_not_exist file;
-    open_out file
+  let open_out ?(must_overwrite = false) file =
+    let flags =
+      (if must_overwrite then Open_trunc else Open_excl)
+      :: [ Open_wronly; Open_creat; Open_binary ]
+    in
+    open_out_gen flags 0o666 file
   ;;
 
   let input_lines ic =
@@ -263,8 +265,8 @@ module Io = struct
     s
   ;;
 
-  let with_file_out file ~f =
-    let oc = open_out_bin file in
+  let with_file_out ?must_overwrite file ~f =
+    let oc = open_out ?must_overwrite file in
     let res =
       try Ok (f oc) with
       | exn -> Error exn
@@ -276,7 +278,6 @@ module Io = struct
   ;;
 
   let do_then_copy ~f a b =
-    must_not_exist b;
     let s = read_file a in
     with_file_out b ~f:(fun oc ->
       f oc;
@@ -799,7 +800,7 @@ let insert_header fn ~header =
   | "" -> ()
   | h ->
     let s = Io.read_file fn in
-    Io.with_file_out fn ~f:(fun oc ->
+    Io.with_file_out ~must_overwrite:true fn ~f:(fun oc ->
       output_string oc h;
       output_string oc s)
 ;;

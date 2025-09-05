@@ -16,11 +16,12 @@ include (
     let description = "context name"
 
     let of_string_opt name =
-      if name = ""
-         || String.is_prefix name ~prefix:"."
-         || name = "log"
-         || String.contains name '/'
-         || String.contains name '\\'
+      if
+        name = ""
+        || String.is_prefix name ~prefix:"."
+        || name = "log"
+        || String.contains name '/'
+        || String.contains name '\\'
       then None
       else Some name
     ;;

@@ -13,6 +13,7 @@ type t =
   ; locks : Locks.t
   ; package : Package.t option
   ; runtest_alias : (Loc.t * bool) option
+  ; timeout : (Loc.t * float) option
   }
 
 include Stanza.S with type t := t

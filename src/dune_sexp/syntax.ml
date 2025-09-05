@@ -46,8 +46,8 @@ module Version = struct
   ;;
 
   let can_read
-    ~parser_version:(parser_major, parser_minor)
-    ~data_version:(data_major, data_minor)
+        ~parser_version:(parser_major, parser_minor)
+        ~data_version:(data_major, data_minor)
     =
     let open Int.Infix in
     parser_major = data_major && parser_minor >= data_minor
@@ -115,7 +115,7 @@ end = struct
      {[ (Version.t Int.Map.t) Int.Map.t ]} which is a list of major versions
      paired with lists of minor versions paires with a dune_lang version. *)
   let make
-    (versions : (Version.t * [ `Since of Version.t | `Deleted_in of Version.t ]) list)
+        (versions : (Version.t * [ `Since of Version.t | `Deleted_in of Version.t ]) list)
     : t
     =
     let version_map, deleted_in =
@@ -221,6 +221,13 @@ and key =
       { lang : t
       ; dune_lang_ver : Version.t
       }
+
+module Map = Map.Make (struct
+    type nonrec t = t
+
+    let to_dyn = Dyn.opaque
+    let compare (x : t) y = String.compare x.name y.name
+  end)
 
 let to_dyn { name; desc; key = _; supported_versions; experimental } =
   let open Dyn in

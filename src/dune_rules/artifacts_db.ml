@@ -13,7 +13,7 @@ let available_exes ~dir (exes : Executables.t) =
       (* Instead of making the binary unavailable, this will just
          fail when loading artifacts. This is clearly bad but
          "optional" executables shouldn't be used. *)
-      Preprocess.Per_module.with_instrumentation
+      Instrumentation.with_instrumentation
         exes.buildable.preprocess
         ~instrumentation_backend:(Lib.DB.instrumentation_backend libs)
       |> Resolve.Memo.read_memo
@@ -28,6 +28,7 @@ let available_exes ~dir (exes : Executables.t) =
       ~forbidden_libraries:exes.forbidden_libraries
       ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
   in
+  (* CR-someday rgrinberg: what if a preprocessor is unavailable? *)
   let+ available = Lib.Compile.direct_requires compile_info in
   Resolve.is_ok available
 ;;
@@ -59,7 +60,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
       in
       Memo.List.map unexpanded_file_bindings ~f:(fun fb ->
         let+ p =
-          File_binding.Unexpanded.destination_relative_to_install_path
+          File_binding_expand.destination_relative_to_install_path
             fb
             ~section:Bin
             ~expand:expand_str
@@ -73,7 +74,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
         else None)
       >>| List.filter_opt
       >>| Filename.Map.of_list_reduce ~f:(fun _ y ->
-        (* CR-rgrinberg: we shouldn't allow duplicate bindings, but where's the
+        (* CR-someday rgrinberg: we shouldn't allow duplicate bindings, but where's the
            correct place for this validation? *)
         y)
       >>| Filename.Map.map ~f:Appendable_list.singleton

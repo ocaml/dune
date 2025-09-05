@@ -81,12 +81,10 @@ val for_module_generated_at_link_time
 val for_plugin_executable : t -> embed_in_plugin_libraries:(Loc.t * Lib_name.t) list -> t
 val bin_annot : t -> bool
 val without_bin_annot : t -> t
-val root_module_entries : t -> Module_name.t list Action_builder.t
 
 (** The dependency graph for the modules of the library. *)
 val dep_graphs : t -> Dep_graph.t Ml_kind.Dict.t
 
-val ocamldep_modules_data : t -> Ocamldep.Modules_data.t
 val loc : t -> Loc.t option
 val set_obj_dir : t -> Path.Build.t Obj_dir.t -> t
 val set_modes : t -> modes:Lib_mode.Map.Set.t -> t

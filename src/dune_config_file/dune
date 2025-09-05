@@ -15,6 +15,4 @@
   dune_tui
   dune_util
   spawn)
- (synopsis "Internal Dune library, do not use!")
- (instrumentation
-  (backend bisect_ppx)))
+ (synopsis "Internal Dune library, do not use!"))

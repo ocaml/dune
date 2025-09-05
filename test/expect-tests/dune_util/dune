@@ -1,5 +1,6 @@
 (library
  (name flock_tests)
+ (modules flock_tests)
  (inline_tests
   (enabled_if
    (<> %{system} win))
@@ -9,6 +10,31 @@
   dune_util
   dyn
   stdune
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))
+
+(library
+ (name xdg_tests)
+ (modules xdg_tests)
+ (inline_tests)
+ (libraries
+  dune_util
+  ;; Please add any dependenies that you wish to check are forcing XDG
+  stdune
+  dune_console
+  dune_lang
+  dune_vcs
+  dune_engine
+  dune_config_file
+  dune_cache
+  dune_rules
+  dune_pkg
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config

@@ -2,7 +2,6 @@ open Import
 
 val setup_emit_cmj_rules
   :  sctx:Super_context.t
-  -> dir:Path.Build.t
   -> scope:Scope.t
   -> expander:Expander.t
   -> dir_contents:Dir_contents.t

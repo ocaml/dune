@@ -154,7 +154,7 @@ module Run (P : PARAMS) = struct
     and* env = env in
     let+ explain =
       match Option.first_some stanza.Menhir_stanza.explain env.Menhir_env.explain with
-      | None -> Memo.return (stanza.menhir_syntax >= Menhir_stanza.explain_since)
+      | None -> Memo.return (stanza.menhir_syntax >= Dune_lang.Menhir.explain_since)
       | Some explain -> Expander.eval_blang expander explain
     in
     if explain
@@ -207,7 +207,7 @@ module Run (P : PARAMS) = struct
         match String_with_vars.text_only sw with
         | None -> ()
         | Some "--explain" ->
-          if stanza.menhir_syntax >= Menhir_stanza.explain_since
+          if stanza.menhir_syntax >= Dune_lang.Menhir.explain_since
           then
             User_error.raise
               ~loc:(String_with_vars.loc sw)
@@ -216,15 +216,16 @@ module Run (P : PARAMS) = struct
                    should not be explicitly added to the list of Menhir flags."
               ]
         | Some text ->
-          if List.mem
-               ~equal:String.equal
-               [ "--depend"
-               ; "--raw-depend"
-               ; "--infer"
-               ; "--infer-write-query"
-               ; "--infer-read-reply"
-               ]
-               text
+          if
+            List.mem
+              ~equal:String.equal
+              [ "--depend"
+              ; "--raw-depend"
+              ; "--infer"
+              ; "--infer-write-query"
+              ; "--infer-read-reply"
+              ]
+              text
           then
             User_error.raise
               ~loc:(String_with_vars.loc sw)
@@ -257,7 +258,7 @@ module Run (P : PARAMS) = struct
     let mock_module : Module.t =
       let source =
         let impl = Module.File.make Dialect.ocaml (Path.build (mock_ml base)) in
-        Module.Source.make ~impl [ name ]
+        Module.Source.make ~impl:(Some impl) ~intf:None [ name ]
       in
       Module.of_source ~visibility:Public ~kind:Impl source
     in
@@ -273,7 +274,11 @@ module Run (P : PARAMS) = struct
       |> Compilation_context.without_bin_annot
     in
     let* deps =
-      Dep_rules.for_module (Compilation_context.ocamldep_modules_data cctx) mock_module
+      let obj_dir = Compilation_context.obj_dir cctx in
+      let modules = Compilation_context.modules cctx in
+      let vimpl = Compilation_context.vimpl cctx in
+      let dir = Obj_dir.dir obj_dir in
+      Dep_rules.for_module ~obj_dir ~modules ~sandbox ~vimpl ~dir ~sctx mock_module
     in
     let* () =
       Module_compilation.ocamlc_i ~deps cctx mock_module ~output:(inferred_mli base)

@@ -25,13 +25,13 @@ Make a package with a patch
   $ solve with-patch
   Solution for dune.lock:
   - with-patch.0.0.1
-  $ cat >>dune.lock/with-patch.pkg <<EOF
+  $ append_to_lockpkg with-patch <<EOF
   > (source (copy $PWD/source))
   > EOF
 
 The lockfile should contain the patch action. 
 
-  $ cat dune.lock/with-patch.pkg 
+  $ cat ${default_lock_dir}/with-patch.pkg 
   (version 0.0.1)
   
   (build

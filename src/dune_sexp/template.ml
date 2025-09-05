@@ -1,5 +1,4 @@
 open! Stdune
-module Format = Stdlib.Format
 
 module Pform = struct
   module Payload = struct
@@ -8,6 +7,7 @@ module Pform = struct
     let of_string t = t
     let to_string t = t
     let to_dyn = Dyn.string
+    let equal = String.equal
     let compare = String.compare
 
     module Args = struct
@@ -65,25 +65,10 @@ module Pform = struct
 
   let name { name; _ } = name
 
-  let compare_no_loc { name; payload; loc = _ } t =
-    let open Ordering.O in
-    let= () = String.compare name t.name in
-    Option.compare Payload.compare payload t.payload
-  ;;
-
-  let compare { name; payload; loc } t =
-    match String.compare name t.name with
-    | (Lt | Gt) as x -> x
-    | Eq ->
-      (match Option.compare Payload.compare payload t.payload with
-       | (Lt | Gt) as x -> x
-       | Eq -> Loc.compare loc t.loc)
-  ;;
-
-  let full_name t =
-    match t.payload with
-    | None -> t.name
-    | Some v -> t.name ^ ":" ^ Payload.to_string v
+  let equal { name; payload; loc } t =
+    String.equal name t.name
+    && Option.equal Payload.equal payload t.payload
+    && Loc.equal loc t.loc
   ;;
 
   let payload t = t.payload
@@ -116,45 +101,37 @@ module Pform = struct
   ;;
 end
 
-type part =
-  | Text of string
-  | Pform of Pform.t
+module Part = struct
+  type t =
+    | Text of string
+    | Pform of Pform.t
+
+  let equal s1 s2 =
+    match s1, s2 with
+    | Text s1, Text s2 -> String.equal s1 s2
+    | Pform v1, Pform v2 -> Pform.equal v1 v2
+    | _ -> false
+  ;;
+
+  let to_dyn = function
+    | Text s -> Dyn.variant "Text" [ Dyn.string s ]
+    | Pform v -> Dyn.variant "Pform" [ Pform.to_dyn v ]
+  ;;
+
+  let remove_locs = function
+    | Text s -> Text s
+    | Pform v -> Pform { v with loc = Loc.none }
+  ;;
+end
 
 type t =
   { quoted : bool
-  ; parts : part list
+  ; parts : Part.t list
   ; loc : Loc.t
   }
 
-let compare_part_no_loc p1 p2 =
-  match p1, p2 with
-  | Text s1, Text s2 -> String.compare s1 s2
-  | Pform v1, Pform v2 -> Pform.compare_no_loc v1 v2
-  | Text _, Pform _ -> Ordering.Lt
-  | Pform _, Text _ -> Ordering.Gt
-;;
-
-let compare_part p1 p2 =
-  match p1, p2 with
-  | Text s1, Text s2 -> String.compare s1 s2
-  | Pform v1, Pform v2 -> Pform.compare v1 v2
-  | Text _, Pform _ -> Ordering.Lt
-  | Pform _, Text _ -> Ordering.Gt
-;;
-
-let compare_no_loc { quoted; parts; loc = _ } t =
-  let open Ordering.O in
-  let= () = List.compare ~compare:compare_part_no_loc parts t.parts in
-  Bool.compare quoted t.quoted
-;;
-
-let compare { quoted; parts; loc } t =
-  match Bool.compare t.quoted quoted with
-  | (Lt | Gt) as x -> x
-  | Eq ->
-    (match List.compare ~compare:compare_part parts t.parts with
-     | (Lt | Gt) as x -> x
-     | Eq -> Loc.compare loc t.loc)
+let equal { quoted; parts; loc } t =
+  Loc.equal loc t.loc && Bool.equal quoted t.quoted && List.equal Part.equal parts t.parts
 ;;
 
 module Pp : sig
@@ -193,7 +170,7 @@ end = struct
     in
     let rec add_parts acc_text = function
       | [] -> commit_text acc_text
-      | Text s :: rest -> add_parts (if acc_text = "" then s else acc_text ^ s) rest
+      | Part.Text s :: rest -> add_parts (if acc_text = "" then s else acc_text ^ s) rest
       | Pform v :: rest ->
         commit_text acc_text;
         add_pform v;
@@ -208,46 +185,10 @@ end
 let to_string = Pp.to_string
 let pp t = Stdune.Pp.verbatim (Pp.to_string t)
 
-let pp_split_strings ppf (t : t) =
-  if t.quoted
-     || List.exists t.parts ~f:(function
-       | Text s -> String.contains s '\n'
-       | Pform _ -> false)
-  then (
-    List.iter t.parts ~f:(function
-      | Pform s -> Format.pp_print_string ppf (Pform.to_string s)
-      | Text s ->
-        (match String.split s ~on:'\n' with
-         | [] -> assert false
-         | [ s ] -> Format.pp_print_string ppf (Escape.escaped s)
-         | split ->
-           Format.pp_print_list
-             ~pp_sep:(fun ppf () -> Format.fprintf ppf "@,\\n")
-             Format.pp_print_string
-             ppf
-             split));
-    Format.fprintf ppf "@}\"@]")
-  else Format.pp_print_string ppf (Pp.to_string t)
-;;
-
 let remove_locs t =
-  { t with
-    loc = Loc.none
-  ; parts =
-      List.map t.parts ~f:(function
-        | Pform v -> Pform { v with loc = Loc.none }
-        | Text _ as s -> s)
-  }
-;;
-
-let dyn_of_part =
-  let open Dyn in
-  function
-  | Text s -> variant "Text" [ string s ]
-  | Pform v -> variant "Pform" [ Pform.to_dyn v ]
+  { t with loc = Loc.none; parts = List.map t.parts ~f:Part.remove_locs }
 ;;
 
 let to_dyn { quoted; parts; loc = _ } =
-  let open Dyn in
-  record [ "quoted", bool quoted; "parts", list dyn_of_part parts ]
+  Dyn.record [ "quoted", Dyn.bool quoted; "parts", Dyn.list Part.to_dyn parts ]
 ;;

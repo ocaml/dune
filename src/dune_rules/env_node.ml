@@ -20,13 +20,13 @@ let expand_str_lazy expander sw =
 ;;
 
 let make
-  ~dir
-  ~inherit_from
-  ~config_stanza
-  ~profile
-  ~expander
-  ~default_env
-  ~default_artifacts
+      ~dir
+      ~inherit_from
+      ~config_stanza
+      ~profile
+      ~expander
+      ~default_env
+      ~default_artifacts
   =
   let open Memo.O in
   let config = Dune_env.find config_stanza ~profile in
@@ -42,7 +42,7 @@ let make
     Memo.lazy_ (fun () ->
       Memo.parallel_map
         config_binaries
-        ~f:(File_binding.Unexpanded.expand ~dir ~f:(expand_str_lazy expander)))
+        ~f:(File_binding_expand.expand ~dir ~f:(expand_str_lazy expander)))
   in
   let external_env =
     inherited ~field:external_env ~root:default_env (fun env ->

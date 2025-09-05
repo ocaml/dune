@@ -39,7 +39,7 @@ end
 
 type t =
   { names : (Loc.t * string) Nonempty_list.t
-  ; link_flags : Link_flags.Spec.t
+  ; link_flags : Dune_lang.Link_flags.Spec.t
   ; link_deps : Dep_conf.t list
   ; modes : Loc.t Link_mode.Map.t
   ; optional : bool

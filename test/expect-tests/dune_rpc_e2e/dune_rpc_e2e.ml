@@ -9,7 +9,7 @@ module Session = Csexp_rpc.Session
 
 (* enable to debug process stdout/stderr *)
 let debug = false
-let () = if debug then Dune_util.Log.init ~file:(Out_channel stderr) ()
+let () = if debug then Dune_util.Log.init ~file:Stderr ()
 
 let dune_prog =
   lazy
@@ -148,7 +148,7 @@ let dune_build client what =
       what
       (match res with
        | Success -> "succeeded"
-       | Failure -> "failed")
+       | Failure _ -> "failed")
 ;;
 
 let with_dune_watch ?watch_mode_args ?env f =

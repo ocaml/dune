@@ -24,7 +24,7 @@ Configurator allows you to query for the following features:
 
 * Extract compile time information such as ``#define`` variables.
 
-Configurator is designed to be cross-compilation friendly and avoids _running_
+Configurator is designed to be cross-compilation friendly and avoids *running*
 any compiled code to extract any of the information above.
 
 Configurator started as an `independent library
@@ -49,7 +49,7 @@ example:
   let clock_gettime_code = {|
   #include <time.h>
 
-  int main()
+  int main(void)
   {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
@@ -145,6 +145,15 @@ at which the current executable was built is as simple as:
             (match Build_info.V1.version () with
              | None -> "n/a"
              | Some v -> Build_info.V1.Version.to_string v)
+
+You can specify the project version using the ``version`` field in the 
+``dune-project`` file. For example:
+
+.. code:: dune
+
+  (version 1.2.3)   
+
+For more details, refer to :doc:`/reference/dune-project/version`.
 
 For libraries and executables from development repositories that don't
 have version information written directly in the ``dune-project``

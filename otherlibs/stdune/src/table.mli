@@ -40,6 +40,7 @@ val iter : (_, 'v) t -> f:('v -> unit) -> unit
 val filteri_inplace : ('a, 'b) t -> f:(key:'a -> data:'b -> bool) -> unit
 val length : (_, _) t -> int
 val values : (_, 'a) t -> 'a list
+val to_list : ('a, 'b) t -> ('a * 'b) list
 
 module Multi : sig
     type ('k, 'v) t

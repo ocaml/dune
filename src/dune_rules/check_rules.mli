@@ -6,7 +6,11 @@ val add_obj_dir
   -> Lib_mode.t
   -> unit Memo.t
 
-val add_files : Super_context.t -> dir:Path.Build.t -> Path.t list -> unit Memo.t
+val add_files
+  :  Super_context.t
+  -> dir:Path.Build.t
+  -> Path.t list Action_builder.t
+  -> unit Memo.t
 
 val add_cycle_check
   :  Super_context.t

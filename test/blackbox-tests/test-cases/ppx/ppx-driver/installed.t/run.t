@@ -5,7 +5,7 @@ Test using installed drivers
   Leaving directory 'driver'
   $ OCAMLPATH=driver/_build/install/default/lib dune build --root use-external-driver driveruser.cma
   Entering directory 'use-external-driver'
-  .ppx/35d69311d5da258d073875db2b34f33b/ppx.exe
+  .ppx/d1c2c0cf2b61b462226db18f72732070/ppx.exe
   -arg1
   -arg2
   -foo
@@ -28,7 +28,7 @@ Test using installed drivers
   $ OCAMLPATH=driver/_build/install/default/lib dune build --root replaces driveruser.cma
   Entering directory 'replaces'
   replacesdriver
-  .ppx/886937db0da323b743b4366c6d3a795f/ppx.exe
+  .ppx/5c2c5102d9f019e3d5eee93d6abe2029/ppx.exe
   -arg1
   -arg2
   -foo
@@ -54,7 +54,7 @@ Test using installed drivers
   $ OCAMLPATH=driver/_build/install/default/lib:driver-replaces/_build/install/default/lib dune build --root replaces-external driveruser.cma
   Entering directory 'replaces-external'
   replacesdriver
-  .ppx/886937db0da323b743b4366c6d3a795f/ppx.exe
+  .ppx/5c2c5102d9f019e3d5eee93d6abe2029/ppx.exe
   -arg1
   -arg2
   -foo

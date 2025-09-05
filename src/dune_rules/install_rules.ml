@@ -79,8 +79,8 @@ module Stanzas_to_entries : sig
 end = struct
   let lib_ppxs ctx ~scope ~(lib : Library.t) =
     match lib.kind with
-    | Normal | Ppx_deriver _ -> Memo.return []
-    | Ppx_rewriter _ ->
+    | Virtual | Parameter | Dune_file (Normal | Ppx_deriver _) -> Memo.return []
+    | Dune_file (Ppx_rewriter _) ->
       Library.best_name lib
       |> Ppx_driver.ppx_exe ctx ~scope
       |> Resolve.Memo.read_memo
@@ -98,8 +98,8 @@ end = struct
       >>| Option.some
     and+ foreign_archives =
       match Lib_info.virtual_ lib with
-      | None -> Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
-      | Some _ ->
+      | false -> Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
+      | true ->
         let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
         let name = Lib_info.name lib in
         let files = Foreign_sources.for_lib foreign_sources ~name in
@@ -168,13 +168,23 @@ end = struct
       Install.Entry.Sourced.create ~loc entry
   ;;
 
+  let doc_install_files ~loc mld_contents =
+    List.rev_map mld_contents ~f:(fun (mld : Doc_sources.mld) ->
+      Install.Entry.make
+        ~kind:`File
+        ~dst:(sprintf "odoc-pages/%s" (Path.Local.to_string mld.in_doc))
+        Section.Doc
+        mld.path
+      |> Install.Entry.Sourced.create ~loc)
+  ;;
+
   let lib_install_files
-    sctx
-    ~scope
-    ~dir_contents
-    ~dir
-    ~sub_dir:lib_subdir
-    (lib : Library.t)
+        sctx
+        ~scope
+        ~dir_contents
+        ~dir
+        ~sub_dir:lib_subdir
+        (lib : Library.t)
     =
     let loc = lib.buildable.loc in
     let ctx = Super_context.context sctx in
@@ -256,6 +266,7 @@ end = struct
     let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
       Mode_conf.Lib.Set.eval lib.modes ~has_native
     in
+    let is_parameter = Library.is_parameter lib in
     let+ melange_runtime_entries = additional_deps lib.melange_runtime_deps
     and+ public_headers = additional_deps lib.public_headers
     and+ module_files =
@@ -287,16 +298,21 @@ end = struct
         fun m ->
           let cm_file kind = Obj_dir.Module.cm_file obj_dir m ~kind in
           let open Lib_mode.Cm_kind in
-          [ if_ (native || byte) (Ocaml Cmi, cm_file (Ocaml Cmi))
-          ; if_ native (Ocaml Cmx, cm_file (Ocaml Cmx))
-          ; if_ (byte && virtual_library) (Ocaml Cmo, cm_file (Ocaml Cmo))
-          ; if_
-              (native && virtual_library)
-              (Ocaml Cmx, Obj_dir.Module.o_file obj_dir m ~ext_obj)
-          ; if_ melange (Melange Cmi, cm_file (Melange Cmi))
-          ; if_ melange (Melange Cmj, cm_file (Melange Cmj))
-          ]
-          |> List.rev_concat
+          let cmi = if_ (native || byte) (Ocaml Cmi, cm_file (Ocaml Cmi)) in
+          let rest =
+            if is_parameter
+            then []
+            else
+              [ if_ native (Ocaml Cmx, cm_file (Ocaml Cmx))
+              ; if_ (byte && virtual_library) (Ocaml Cmo, cm_file (Ocaml Cmo))
+              ; if_
+                  (native && virtual_library)
+                  (Ocaml Cmx, Obj_dir.Module.o_file obj_dir m ~ext_obj)
+              ; if_ melange (Melange Cmi, cm_file (Melange Cmi))
+              ; if_ melange (Melange Cmj, cm_file (Melange Cmj))
+              ]
+          in
+          cmi :: rest |> List.rev_concat
       in
       let set_dir m = List.rev_map ~f:(fun (cm_kind, p) -> cm_dir m cm_kind, p) in
       let+ modules_impl =
@@ -338,11 +354,16 @@ end = struct
       [ sources
       ; melange_runtime_entries
       ; List.rev_map module_files ~f:(fun (sub_dir, file) -> make_entry ?sub_dir Lib file)
-      ; List.rev_map lib_files ~f:(fun (section, file) -> make_entry section file)
-      ; List.rev_map execs ~f:(make_entry Libexec)
-      ; dll_files
-      ; install_c_headers
-      ; public_headers
+      ; (match is_parameter with
+         | true -> []
+         | false ->
+           List.rev_concat
+             [ List.rev_map lib_files ~f:(fun (section, file) -> make_entry section file)
+             ; List.rev_map execs ~f:(make_entry Libexec)
+             ; dll_files
+             ; install_c_headers
+             ; public_headers
+             ])
       ]
   ;;
 
@@ -382,7 +403,7 @@ end = struct
                  (* This is wrong. If the preprocessors fail to resolve,
                     we shouldn't install the binary rather than failing outright
                  *)
-                 Preprocess.Per_module.with_instrumentation
+                 Instrumentation.with_instrumentation
                    exes.buildable.preprocess
                    ~instrumentation_backend:
                      (Lib.DB.instrumentation_backend (Scope.libs scope))
@@ -486,15 +507,9 @@ end = struct
           lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
         | Coq_stanza.Theory.T coqlib -> Coq_rules.install_rules ~sctx ~dir coqlib
         | Documentation.T stanza ->
-          Dir_contents.get sctx ~dir
-          >>= Dir_contents.mlds ~stanza
-          >>| List.rev_map ~f:(fun mld ->
-            Install.Entry.make
-              ~kind:`File
-              ~dst:(sprintf "odoc-pages/%s" (Path.Build.basename mld))
-              Section.Doc
-              mld
-            |> Install.Entry.Sourced.create ~loc:stanza.loc)
+          let* dir_contents = Dir_contents.get sctx ~dir in
+          let+ mld_contents = Dir_contents.mlds ~stanza dir_contents in
+          doc_install_files ~loc:stanza.loc mld_contents
         | Plugin.T t -> Plugin_rules.install_rules ~sctx ~package_db ~dir t
         | _ -> Memo.return []
       in
@@ -823,7 +838,7 @@ end = struct
           match
             List.find_map libraries ~f:(fun lib ->
               let info = Lib.Local.info lib in
-              Option.some_if (Option.is_some (Lib_info.virtual_ info)) lib)
+              Option.some_if (Lib_info.virtual_ info) lib)
           with
           | None -> Action_builder.lines_of meta_template
           | Some vlib ->
@@ -945,9 +960,9 @@ let symlink_source_dir ~dir ~dst =
 ;;
 
 let symlink_installed_artifacts_to_build_install
-  (ctx : Build_context.t)
-  (entries : Install.Entry.Sourced.t list)
-  ~install_paths
+      (ctx : Build_context.t)
+      (entries : Install.Entry.Sourced.t list)
+      ~install_paths
   =
   let install_dir = Install.Context.dir ~context:ctx.name in
   Memo.parallel_map entries ~f:(fun (s : Install.Entry.Sourced.t) ->
@@ -1094,7 +1109,8 @@ let package_deps (pkg : Package.t) files =
           rules_seen
           (Dep.Facts.paths ~expand_aliases:true res.facts
            |> Path.Set.to_list
-           |> (* if this file isn't in the build dir, it doesn't belong to any
+           |>
+           (* if this file isn't in the build dir, it doesn't belong to any
                  package and it doesn't have dependencies that do *)
            List.filter_map ~f:Path.as_in_build_dir))
   and loop_files rules_seen files =
@@ -1286,10 +1302,11 @@ let gen_package_install_file_rules sctx (package : Package.t) =
       in
       if not (Package.allow_empty package)
       then
-        if List.for_all entries ~f:(fun (e : Install.Entry.Sourced.t) ->
-             match e.source with
-             | Dune -> true
-             | User _ -> false)
+        if
+          List.for_all entries ~f:(fun (e : Install.Entry.Sourced.t) ->
+            match e.source with
+            | Dune -> true
+            | User _ -> false)
         then (
           let is_error = Dune_project.dune_version dune_project >= (3, 0) in
           User_warning.emit
@@ -1330,16 +1347,16 @@ let memo =
         (Package.Name.to_string pkg))
     "install-rules-and-pkg-entries"
     (fun (sctx, pkg) ->
-      Memo.return
-        (Scheme.Approximation
-           ( (let ctx = Super_context.context sctx in
-              Dir_set.subtree (Install.Context.dir ~context:(Context.name ctx)))
-           , Thunk
-               (fun () ->
-                 let+ rules =
-                   symlinked_entries sctx pkg >>| snd >>| Rules.of_rules >>| Rules.to_map
-                 in
-                 Scheme.Finite rules) )))
+       Memo.return
+         (Scheme.Approximation
+            ( (let ctx = Super_context.context sctx in
+               Dir_set.subtree (Install.Context.dir ~context:(Context.name ctx)))
+            , Thunk
+                (fun () ->
+                  let+ rules =
+                    symlinked_entries sctx pkg >>| snd >>| Rules.of_rules >>| Rules.to_map
+                  in
+                  Scheme.Finite rules) )))
 ;;
 
 let scheme sctx pkg = Memo.exec memo (sctx, pkg)
@@ -1349,11 +1366,11 @@ let scheme_per_ctx_memo =
     ~input:(module Super_context.As_memo_key)
     "install-rule-scheme"
     (fun sctx ->
-      Dune_load.packages ()
-      >>| Package.Name.Map.values
-      >>= Memo.parallel_map ~f:(fun pkg -> scheme sctx (Package.name pkg))
-      >>| Scheme.all
-      >>= Scheme.evaluate ~union:Rules.Dir_rules.union)
+       Dune_load.packages ()
+       >>| Package.Name.Map.values
+       >>= Memo.parallel_map ~f:(fun pkg -> scheme sctx (Package.name pkg))
+       >>| Scheme.all
+       >>= Scheme.evaluate ~union:Rules.Dir_rules.union)
 ;;
 
 let symlink_rules sctx ~dir =

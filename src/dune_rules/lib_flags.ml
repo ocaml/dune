@@ -5,10 +5,10 @@ module Link_params = struct
   type t =
     { include_dirs : Path.t list
     ; deps : Path.t list
-        (* List of files that will be read by the compiler at link time and
+      (* List of files that will be read by the compiler at link time and
            appear directly on the command line *)
     ; hidden_deps : Path.t list
-    (* List of files that will be read by the compiler at link time but do
+      (* List of files that will be read by the compiler at link time but do
        not appear on the command line *)
     }
 
@@ -218,14 +218,24 @@ module L = struct
     Command.Args.S [ Dyn local; Hidden_deps external_; Dyn include_flags ]
   ;;
 
-  let toplevel_ld_paths ts =
+  let dll_dir_paths libs =
+    List.fold_left libs ~init:Path.Set.empty ~f:(fun dll_file_paths lib ->
+      List.fold_left
+        (Lib_info.foreign_dll_files (Lib.info lib))
+        ~init:dll_file_paths
+        ~f:(fun dll_file_paths dll_file_path ->
+          let dll_dir_path = Path.parent_exn dll_file_path in
+          Path.Set.add dll_file_paths dll_dir_path))
+  ;;
+
+  let toplevel_ld_paths ts lib_config =
     let with_dlls =
       List.filter ts ~f:(fun t ->
         match Lib_info.foreign_dll_files (Lib.info t) with
         | [] -> false
         | _ -> true)
     in
-    c_include_paths with_dlls
+    Path.Set.union (c_include_paths with_dlls lib_config) (dll_dir_paths with_dlls)
   ;;
 
   let toplevel_include_paths ts lib_config =
@@ -247,38 +257,36 @@ module Lib_and_module = struct
       let open Action_builder.O in
       Command.Args.Dyn
         (let+ l =
-           Action_builder.all
-             (List.map ts ~f:(function
-               | Lib t ->
-                 let+ p =
-                   Action_builder.of_memo (Link_params.get sctx t mode lib_config)
-                 in
-                 Command.Args.S
-                   (Deps p.deps
-                    :: Hidden_deps (Dep.Set.of_files p.hidden_deps)
-                    :: List.map p.include_dirs ~f:(fun dir ->
-                      Command.Args.S [ A "-I"; Path dir ]))
-               | Module (obj_dir, m) ->
-                 Action_builder.return
-                   (Command.Args.S
-                      (Dep
-                         (Obj_dir.Module.cm_file_exn
-                            obj_dir
-                            m
-                            ~kind:(Ocaml (Mode.cm_kind (Link_mode.mode mode))))
-                       ::
-                       (match mode with
-                        | Native ->
-                          [ Command.Args.Hidden_deps
-                              (Dep.Set.of_files
-                                 [ Obj_dir.Module.o_file_exn
-                                     obj_dir
-                                     m
-                                     ~ext_obj:lib_config.ext_obj
-                                 ])
+           Action_builder.List.map ts ~f:(function
+             | Lib t ->
+               let+ { Link_params.hidden_deps; include_dirs; deps } =
+                 Action_builder.of_memo (Link_params.get sctx t mode lib_config)
+               in
+               Command.Args.S
+                 (Deps deps
+                  :: Hidden_deps (Dep.Set.of_files hidden_deps)
+                  :: List.map include_dirs ~f:(fun dir ->
+                    Command.Args.S [ A "-I"; Path dir ]))
+             | Module (obj_dir, m) ->
+               Command.Args.S
+                 (Dep
+                    (Obj_dir.Module.cm_file_exn
+                       obj_dir
+                       m
+                       ~kind:(Ocaml (Mode.cm_kind (Link_mode.mode mode))))
+                  ::
+                  (match mode with
+                   | Byte | Byte_for_jsoo | Byte_with_stubs_statically_linked_in -> []
+                   | Native ->
+                     [ Command.Args.Hidden_deps
+                         ([ Obj_dir.Module.o_file_exn
+                              obj_dir
+                              m
+                              ~ext_obj:lib_config.ext_obj
                           ]
-                        | Byte | Byte_for_jsoo | Byte_with_stubs_statically_linked_in ->
-                          [])))))
+                          |> Dep.Set.of_files)
+                     ]))
+               |> Action_builder.return)
          in
          Command.Args.S l)
     ;;

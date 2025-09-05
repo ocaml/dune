@@ -11,6 +11,7 @@ val set_start : t -> Lexing.position -> t
 val stop : t -> Lexing.position
 val compare : t -> t -> Ordering.t
 val equal : t -> t -> bool
+val hash : t -> int
 val none : t
 val is_none : t -> bool
 val to_dyn : t -> Dyn.t

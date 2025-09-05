@@ -1,6 +1,6 @@
-open Stdune
-open Dune_sexp
+open Import
 open Dune_util.Action
+open Dune_sexp
 
 module Action_plugin = struct
   let syntax =
@@ -70,7 +70,7 @@ end
 
 module Env_update = struct
   module Op = struct
-    type t =
+    type t = OpamParserTypes.env_update_op =
       | Eq
       | PlusEq
       | EqPlus
@@ -115,9 +115,9 @@ module Env_update = struct
   let map t ~f = { t with value = f t.value }
 
   let equal
-    value_equal
-    { op; var; value }
-    { op = other_op; var = other_var; value = other_value }
+        value_equal
+        { op; var; value }
+        { op = other_op; var = other_var; value = other_value }
     =
     Op.equal op other_op
     && Ordering.is_eq (Env.Var.compare var other_var)
@@ -396,7 +396,7 @@ let decode_pkg =
             Withenv (ops, t) )
     ; ( "when"
       , Syntax.since Stanza.syntax (0, 1)
-        >>> let+ condition = Slang.decode_blang
+        >>> let+ condition = Slang.Blang.decode
             and+ action = t in
             When (condition, action) )
     ; ( "run"
@@ -463,7 +463,7 @@ let rec encode =
   | Withenv (ops, t) ->
     List [ atom "withenv"; List (List.map ~f:Env_update.encode ops); encode t ]
   | When (condition, action) ->
-    List [ atom "when"; Slang.encode_blang condition; encode action ]
+    List [ atom "when"; Slang.Blang.encode condition; encode action ]
   | Format_dune_file (src, dst) -> List [ atom "format-dune-file"; sw src; sw dst ]
 ;;
 

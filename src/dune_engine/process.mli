@@ -5,13 +5,21 @@ module Action_output_on_success := Execution_parameters.Action_output_on_success
 module Action_output_limit := Execution_parameters.Action_output_limit
 
 module Failure_mode : sig
-  (** How to handle sub-process failures *)
+  (** How to handle sub-process failures. This type controls the way in which
+      the process we are running can fail. *)
   type ('a, 'b) t =
     | Strict : ('a, 'a) t (** Fail if the process exits with anything else than [0] *)
     | Accept : int Predicate.t -> ('a, ('a, int) result) t
     (** Accept the following non-zero exit codes, and return [Error code] if
         the process exits with one of these codes. *)
     | Return : ('a, 'a * int) t (** Accept any error code and return it. *)
+    | Timeout :
+        { timeout_seconds : float option
+        ; failure_mode : ('a, 'b) t
+        }
+        -> ('a, ('b, [ `Timed_out ]) result) t
+    (** In addition to the [failure_mode], finish early if [timeout_seconds]
+        was reached. *)
 end
 
 module Io : sig
@@ -68,7 +76,7 @@ type metadata =
   { loc : Loc.t option
   ; annots : User_message.Annots.t
   ; name : string option
-  (** name when emitting stats. defaults to the basename of the executable *)
+    (** name when emitting stats. defaults to the basename of the executable *)
   ; categories : string list (** additional categories when emitting stats *)
   ; purpose : purpose
   }
@@ -162,3 +170,20 @@ val run_capture_zero_separated
   -> Path.t
   -> string list
   -> 'a Fiber.t
+
+(** [run_inherit_std_in_out] differs from the other [run] functions in the
+    followings ways:
+
+    - The process group ID is inherited by the parent process rather than
+    creating a new one.
+
+    - The input and output file descriptors are the standard ones.
+
+    This version is intended for running external processes at the end of a
+    build such as the ones spawned with "dune exec". *)
+val run_inherit_std_in_out
+  :  ?dir:Path.t
+  -> ?env:Env.t
+  -> Path.t
+  -> string list
+  -> int Fiber.t

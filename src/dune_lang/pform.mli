@@ -1,8 +1,15 @@
-open Stdune
-open Dune_sexp
+open Import
 module Payload = Template.Pform.Payload
 
 module Var : sig
+  module Os : sig
+    type t =
+      | Os
+      | Os_version
+      | Os_distribution
+      | Os_family
+  end
+
   module Pkg : sig
     module Section : sig
       type t =
@@ -22,10 +29,7 @@ module Var : sig
 
     type t =
       | Switch
-      | Os
-      | Os_version
-      | Os_distribution
-      | Os_family
+      | Os of Os.t
       | Build
       | Prefix
       | User
@@ -70,6 +74,7 @@ module Var : sig
     | Profile
     | Context_name
     | Os_type
+    | Os of Os.t
     | Architecture
     | Arch_sixtyfour
     | System
@@ -85,6 +90,7 @@ module Var : sig
     | Inline_tests
     | Toolchain
     | Pkg of Pkg.t
+    | Oxcaml_supported
 
   val compare : t -> t -> Ordering.t
   val to_dyn : t -> Dyn.t
@@ -183,8 +189,13 @@ module Env : sig
   (** Decoding environment *)
   type t
 
-  val pkg : Syntax.Version.t -> t
-  val initial : Syntax.Version.t -> t
+  val pkg : Syntax.t -> Syntax.Version.t -> t
+
+  val initial
+    :  stanza:Syntax.Version.t
+    -> extensions:(Syntax.t * Syntax.Version.t) list
+    -> t
+
   val add_user_vars : t -> string list -> t
   val parse : t -> Template.Pform.t -> pform
 

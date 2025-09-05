@@ -14,12 +14,13 @@ module Make
     (Target : T)
     (String : T)
     (Extension : T)
-    (Ast : Action_intf.Ast
-           with type program := Program.t
-           with type path := Path.t
-           with type target := Target.t
-           with type string := String.t
-            and type ext := Extension.t) =
+    (Ast :
+       Action_intf.Ast
+       with type program := Program.t
+       with type path := Path.t
+       with type target := Target.t
+       with type string := String.t
+        and type ext := Extension.t) =
 struct
   include Ast
 
@@ -182,7 +183,6 @@ let fold_one_step t ~init:acc ~f =
   | With_accepted_exit_codes (_, t) -> f acc t
   | Progn l | Pipe (_, l) | Concurrent l -> List.fold_left l ~init:acc ~f
   | Run _
-  | Dynamic_run _
   | Echo _
   | Cat _
   | Copy _
@@ -219,7 +219,6 @@ let chdirs =
 let empty = Progn []
 
 let rec is_dynamic = function
-  | Dynamic_run _ -> true
   | Chdir (_, t)
   | Setenv (_, _, t)
   | Redirect_out (_, _, _, t)
@@ -237,8 +236,8 @@ let rec is_dynamic = function
   | Write_file _
   | Rename _
   | Remove_tree _
-  | Mkdir _
-  | Extension _ -> false
+  | Mkdir _ -> false
+  | Extension (module A) -> A.Spec.is_dynamic
 ;;
 
 let maybe_sandbox_path sandbox p =
@@ -288,7 +287,6 @@ let is_useful_to memoize =
     | Remove_tree _ -> false
     | Mkdir _ -> false
     | Run _ -> true
-    | Dynamic_run _ -> true
     | Bash _ -> true
     | Extension (module A) -> A.Spec.is_useful_to ~memoize
   in
@@ -334,11 +332,11 @@ module Full = struct
   include Monoid.Make (T)
 
   let make
-    ?(env = Env.empty)
-    ?(locks = [])
-    ?(can_go_in_shared_cache = !Clflags.can_go_in_shared_cache_default)
-    ?(sandbox = Sandbox_config.default)
-    action
+        ?(env = Env.empty)
+        ?(locks = [])
+        ?(can_go_in_shared_cache = !Clflags.can_go_in_shared_cache_default)
+        ?(sandbox = Sandbox_config.default)
+        action
     =
     { action; env; locks; can_go_in_shared_cache; sandbox }
   ;;

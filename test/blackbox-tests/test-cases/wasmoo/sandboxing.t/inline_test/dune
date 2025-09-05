@@ -1,0 +1,11 @@
+(library
+ (name inline_test)
+ (modules inline_test)
+ (inline_tests
+  (modes wasm)
+  (backend inline_test_backend)))
+
+(library
+ (name inline_test_backend)
+ (modules inline_test_backend)
+ (inline_tests.backend (generate_runner (echo ""))))

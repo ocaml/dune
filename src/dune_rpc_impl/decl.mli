@@ -3,14 +3,6 @@ open Dune_rpc
 
 (** Internal RPC requests *)
 
-module Build_outcome : sig
-  type t = Scheduler.Run.Build_outcome.t =
-    | Success
-    | Failure
-
-  val sexp : (t, Conv.values) Conv.t
-end
-
 module Status : sig
   module Menu : sig
     type t =
@@ -25,5 +17,5 @@ module Status : sig
   val sexp : (t, Conv.values) Conv.t
 end
 
-val build : (string list, Build_outcome.t) Decl.Request.t
+val build : (string list, Dune_rpc.Build_outcome_with_diagnostics.t) Decl.Request.t
 val status : (unit, Status.t) Decl.Request.t

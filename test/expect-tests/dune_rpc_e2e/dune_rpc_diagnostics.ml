@@ -16,7 +16,8 @@ let%expect_test "turn on and shutdown" =
         printfn "shutting down"))
   in
   run test;
-  [%expect {|
+  [%expect
+    {|
     Building .
     Build . succeeded
     shutting down |}]
@@ -122,7 +123,8 @@ let diagnostic_with_build setup target =
 
 let%expect_test "error in dune file" =
   diagnostic_with_build [ "dune", "(library (name foo))" ] "foo.cma";
-  [%expect {|
+  [%expect
+    {|
     Building foo.cma
     Build foo.cma succeeded
     <no diagnostics> |}]
@@ -134,85 +136,85 @@ let%expect_test "related error" =
     "foo.cma";
   [%expect
     {|
-  Building foo.cma
-  Build foo.cma failed
-  [ "Add"
-  ; [ [ "directory"; "$CWD" ]
-    ; [ "id"; "0" ]
-    ; [ "loc"
-      ; [ [ "start"
-          ; [ [ "pos_bol"; "0" ]
-            ; [ "pos_cnum"; "0" ]
-            ; [ "pos_fname"; "$CWD/foo.ml" ]
-            ; [ "pos_lnum"; "1" ]
+    Building foo.cma
+    Build foo.cma failed
+    [ "Add"
+    ; [ [ "directory"; "$CWD" ]
+      ; [ "id"; "0" ]
+      ; [ "loc"
+        ; [ [ "start"
+            ; [ [ "pos_bol"; "0" ]
+              ; [ "pos_cnum"; "0" ]
+              ; [ "pos_fname"; "$CWD/foo.ml" ]
+              ; [ "pos_lnum"; "1" ]
+              ]
             ]
-          ]
-        ; [ "stop"
-          ; [ [ "pos_bol"; "0" ]
-            ; [ "pos_cnum"; "0" ]
-            ; [ "pos_fname"; "$CWD/foo.ml" ]
-            ; [ "pos_lnum"; "1" ]
+          ; [ "stop"
+            ; [ [ "pos_bol"; "0" ]
+              ; [ "pos_cnum"; "0" ]
+              ; [ "pos_fname"; "$CWD/foo.ml" ]
+              ; [ "pos_lnum"; "1" ]
+              ]
             ]
           ]
         ]
-      ]
-    ; [ "message"
-      ; [ "Verbatim"
-        ; "The implementation foo.ml\n\
-           does not match the interface .foo.objs/byte/foo.cmi: \n\
-           Values do not match: val x : bool is not included in val x : int\n\
-           The type bool is not compatible with the type int\n\
-           "
+      ; [ "message"
+        ; [ "Verbatim"
+          ; "The implementation foo.ml does not match the interface foo.mli: \n\
+             Values do not match: val x : bool is not included in val x : int\n\
+             The type bool is not compatible with the type int\n\
+             "
+          ]
         ]
-      ]
-    ; [ "promotion"; [] ]
-    ; [ "related"
-      ; [ [ [ "loc"
-            ; [ [ "start"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "0" ]
-                  ; [ "pos_fname"; "$CWD/foo.mli" ]
-                  ; [ "pos_lnum"; "1" ]
+      ; [ "promotion"; [] ]
+      ; [ "related"
+        ; [ [ [ "loc"
+              ; [ [ "start"
+                  ; [ [ "pos_bol"; "0" ]
+                    ; [ "pos_cnum"; "0" ]
+                    ; [ "pos_fname"; "$CWD/foo.mli" ]
+                    ; [ "pos_lnum"; "1" ]
+                    ]
                   ]
-                ]
-              ; [ "stop"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "11" ]
-                  ; [ "pos_fname"; "$CWD/foo.mli" ]
-                  ; [ "pos_lnum"; "1" ]
+                ; [ "stop"
+                  ; [ [ "pos_bol"; "0" ]
+                    ; [ "pos_cnum"; "11" ]
+                    ; [ "pos_fname"; "$CWD/foo.mli" ]
+                    ; [ "pos_lnum"; "1" ]
+                    ]
                   ]
                 ]
               ]
+            ; [ "message"; [ "Verbatim"; "Expected declaration\n\
+                                          " ] ]
             ]
-          ; [ "message"; [ "Verbatim"; "Expected declaration\n\
-                                        " ] ]
-          ]
-        ; [ [ "loc"
-            ; [ [ "start"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "4" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
+          ; [ [ "loc"
+              ; [ [ "start"
+                  ; [ [ "pos_bol"; "0" ]
+                    ; [ "pos_cnum"; "4" ]
+                    ; [ "pos_fname"; "$CWD/foo.ml" ]
+                    ; [ "pos_lnum"; "1" ]
+                    ]
                   ]
-                ]
-              ; [ "stop"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "5" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
+                ; [ "stop"
+                  ; [ [ "pos_bol"; "0" ]
+                    ; [ "pos_cnum"; "5" ]
+                    ; [ "pos_fname"; "$CWD/foo.ml" ]
+                    ; [ "pos_lnum"; "1" ]
+                    ]
                   ]
                 ]
               ]
+            ; [ "message"; [ "Verbatim"; "Actual declaration\n\
+                                          " ] ]
             ]
-          ; [ "message"; [ "Verbatim"; "Actual declaration\n\
-                                        " ] ]
           ]
         ]
+      ; [ "severity"; "error" ]
+      ; [ "targets"; [] ]
       ]
-    ; [ "severity"; "error" ]
-    ; [ "targets"; [] ]
     ]
-  ] |}];
+    |}];
   diagnostic_with_build
     [ "dune", "(library (name foo)) (executable (name foo))"; "foo.ml", "" ]
     "@check";
@@ -485,89 +487,94 @@ let%expect_test "create and fix error" =
     files [ "dune", "(executable (name foo))"; "foo.ml", "let () = print_endline 123" ];
     let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
     let* () = print_diagnostics poll in
-    [%expect {|
+    [%expect
+      {|
         <no diagnostics> |}];
     let* () = dune_build client "./foo.exe" in
-    [%expect {|
+    [%expect
+      {|
         Building ./foo.exe
         Build ./foo.exe failed |}];
     let* () = print_diagnostics poll in
     [%expect
       {|
-        [ "Add"
-        ; [ [ "directory"; "$CWD" ]
-          ; [ "id"; "0" ]
-          ; [ "loc"
-            ; [ [ "start"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "23" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
-                  ]
+      [ "Add"
+      ; [ [ "directory"; "$CWD" ]
+        ; [ "id"; "0" ]
+        ; [ "loc"
+          ; [ [ "start"
+              ; [ [ "pos_bol"; "0" ]
+                ; [ "pos_cnum"; "23" ]
+                ; [ "pos_fname"; "$CWD/foo.ml" ]
+                ; [ "pos_lnum"; "1" ]
                 ]
-              ; [ "stop"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "26" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
-                  ]
+              ]
+            ; [ "stop"
+              ; [ [ "pos_bol"; "0" ]
+                ; [ "pos_cnum"; "26" ]
+                ; [ "pos_fname"; "$CWD/foo.ml" ]
+                ; [ "pos_lnum"; "1" ]
                 ]
               ]
             ]
-          ; [ "message"
-            ; [ "Verbatim"
-              ; "This expression has type int but an expression was expected of type\n\
-                \  string\n\
-                 "
-              ]
-            ]
-          ; [ "promotion"; [] ]
-          ; [ "related"; [] ]
-          ; [ "severity"; "error" ]
-          ; [ "targets"; [] ]
           ]
-        ] |}];
+        ; [ "message"
+          ; [ "Verbatim"
+            ; "The constant 123 has type int but an expression was expected of type\n\
+              \  string\n\
+               "
+            ]
+          ]
+        ; [ "promotion"; [] ]
+        ; [ "related"; [] ]
+        ; [ "severity"; "error" ]
+        ; [ "targets"; [] ]
+        ]
+      ]
+      |}];
     files [ "foo.ml", "let () = print_endline \"foo\"" ];
     let* () = dune_build client "./foo.exe" in
-    [%expect {|
+    [%expect
+      {|
         Building ./foo.exe
         Build ./foo.exe succeeded |}];
     let+ () = print_diagnostics poll in
     [%expect
       {|
-        [ "Remove"
-        ; [ [ "directory"; "$CWD" ]
-          ; [ "id"; "0" ]
-          ; [ "loc"
-            ; [ [ "start"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "23" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
-                  ]
+      [ "Remove"
+      ; [ [ "directory"; "$CWD" ]
+        ; [ "id"; "0" ]
+        ; [ "loc"
+          ; [ [ "start"
+              ; [ [ "pos_bol"; "0" ]
+                ; [ "pos_cnum"; "23" ]
+                ; [ "pos_fname"; "$CWD/foo.ml" ]
+                ; [ "pos_lnum"; "1" ]
                 ]
-              ; [ "stop"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "26" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
-                  ]
+              ]
+            ; [ "stop"
+              ; [ [ "pos_bol"; "0" ]
+                ; [ "pos_cnum"; "26" ]
+                ; [ "pos_fname"; "$CWD/foo.ml" ]
+                ; [ "pos_lnum"; "1" ]
                 ]
               ]
             ]
-          ; [ "message"
-            ; [ "Verbatim"
-              ; "This expression has type int but an expression was expected of type\n\
-                \  string\n\
-                 "
-              ]
-            ]
-          ; [ "promotion"; [] ]
-          ; [ "related"; [] ]
-          ; [ "severity"; "error" ]
-          ; [ "targets"; [] ]
           ]
-        ] |}]);
+        ; [ "message"
+          ; [ "Verbatim"
+            ; "The constant 123 has type int but an expression was expected of type\n\
+              \  string\n\
+               "
+            ]
+          ]
+        ; [ "promotion"; [] ]
+        ; [ "related"; [] ]
+        ; [ "severity"; "error" ]
+        ; [ "targets"; [] ]
+        ]
+      ]
+      |}]);
   [%expect {| |}]
 ;;
 
@@ -639,7 +646,8 @@ let%expect_test "promoting dune files" =
               promoted )
         ];
       let* () = dune_build client "(alias foo)" in
-      [%expect {|
+      [%expect
+        {|
           Building (alias foo)
           Build (alias foo) failed |}];
       print_endline "attempting to promote";
@@ -684,10 +692,12 @@ let g = A.f
     files [ "dune", "(executable (name foo))"; "foo.ml", source ];
     let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
     let* () = print_diagnostics poll in
-    [%expect {|
+    [%expect
+      {|
         <no diagnostics> |}];
     let* () = dune_build client "./foo.exe" in
-    [%expect {|
+    [%expect
+      {|
         Building ./foo.exe
         Build ./foo.exe failed |}];
     let+ () = print_diagnostics poll in
@@ -804,6 +814,86 @@ let g = A.f
           ; [ "severity"; "error" ]
           ; [ "targets"; [] ]
           ]
-        ] |}]);
-  [%expect {||}]
+        ] |}])
+;;
+
+let%expect_test "cyclic dependency error simple" =
+  setup_diagnostics (fun client ->
+    files
+      [ "dune", "(executable (name foo))"; "foo.ml", "open Bar"; "bar.ml", "open Foo" ];
+    let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
+    let* () = print_diagnostics poll in
+    [%expect
+      {|
+        <no diagnostics> |}];
+    let* () = dune_build client "./foo.exe" in
+    [%expect
+      {|
+        Building ./foo.exe
+        Build ./foo.exe failed |}];
+    let+ () = print_diagnostics poll in
+    [%expect
+      {|
+      [ "Add"
+      ; [ [ "id"; "0" ]
+        ; [ "message"
+          ; [ "Verbatim"
+            ; "Error: dependency cycle between modules in _build/default:\n\
+              \   Foo\n\
+               -> Bar\n\
+               -> Foo\n\
+               "
+            ]
+          ]
+        ; [ "promotion"; [] ]
+        ; [ "related"; [] ]
+        ; [ "severity"; "error" ]
+        ; [ "targets"; [] ]
+        ]
+      ]
+      |}])
+;;
+
+let%expect_test "cyclic dependency error" =
+  setup_diagnostics (fun client ->
+    files
+      [ "dune", "(executable (name foo))"
+      ; "foo.ml", "open Bar open Baz"
+      ; "bar.ml", "open Baz"
+      ; "baz.ml", "open Bar"
+      ];
+    let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
+    let* () = print_diagnostics poll in
+    [%expect
+      {|
+        <no diagnostics> |}];
+    let* () = dune_build client "./foo.exe" in
+    [%expect
+      {|
+        Building ./foo.exe
+        Build ./foo.exe failed |}];
+    let+ () = print_diagnostics poll in
+    let backtrace_regex = Re.str "\\ " |> Re.compile in
+    [%expect.output]
+    |> String.split_lines
+    |> List.filter ~f:(fun s -> not (Re.execp backtrace_regex s))
+    |> String.concat ~sep:"\n"
+    |> print_endline;
+    [%expect
+      {|
+      [ "Add"
+      ; [ [ "id"; "0" ]
+        ; [ "message"
+          ; [ "Verbatim"
+            ; "Cycle_error.E\n\
+               "
+            ]
+          ]
+        ; [ "promotion"; [] ]
+        ; [ "related"; [] ]
+        ; [ "severity"; "error" ]
+        ; [ "targets"; [] ]
+        ]
+      ]
+      |}])
 ;;

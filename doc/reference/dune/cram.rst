@@ -80,3 +80,33 @@ Cram
       When set to ``false``, do not add the tests to the ``runtest`` alias.
       The default is to add every Cram test to ``runtest``, but this is not
       always desired.
+
+   .. describe:: (timeout <float>)
+
+      .. versionadded:: 3.20
+
+      Specify a time limit (in seconds) for each individual Cram test.
+
+      If a test takes longer than the specified timeout, Dune will terminate it
+      and report a timeout error. This can be useful to catch tests that hang
+      or take unexpectedly long.
+
+      The timeout is a floating-point number (e.g., `1.5` for 1.5 seconds).
+      Zero or negative values cause immediate failure when running the cram
+      test.
+
+      If multiple ``cram`` stanzas apply to the same test, the **lowest** of
+      all specified timeouts is used.
+
+      This field is typically used to guard against unresponsive or
+      non-terminating test cases.
+
+      Example:
+
+      .. code:: dune
+
+         (cram
+          (timeout 2.5))
+
+      This limits each selected test to at most 2.5 seconds of execution time.
+

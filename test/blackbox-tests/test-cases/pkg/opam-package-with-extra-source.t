@@ -35,13 +35,13 @@ Make a package with an extra-source field and multiple checksums
   - with-extra-source.0.0.1
   - with-extra-source-md5.0.0.1
   - with-extra-source-multiple-checksums.0.0.1
-  $ cat >>dune.lock/with-extra-source.pkg <<EOF
+  $ append_to_lockpkg with-extra-source <<EOF
   > (source (copy $PWD/source))
   > EOF
 
 The lockfile should contain the fetching of extra sources.
 
-  $ cat dune.lock/with-extra-source.pkg 
+  $ cat ${default_lock_dir}/with-extra-source.pkg 
   (version 0.0.1)
   
   (extra_sources
@@ -55,7 +55,7 @@ The lockfile should contain the fetching of extra sources.
 
 The lockfile should contain the fetching of extra sources with md5 checksums.
 
-  $ cat dune.lock/with-extra-source-md5.pkg 
+  $ cat ${default_lock_dir}/with-extra-source-md5.pkg 
   (version 0.0.1)
   
   (extra_sources
@@ -67,7 +67,7 @@ The lockfile should contain the fetching of extra sources with md5 checksums.
 The lockfile should contain the fetching of extra sources with the first checksum from the
 list of checksums.
 
-  $ cat dune.lock/with-extra-source-multiple-checksums.pkg 
+  $ cat ${default_lock_dir}/with-extra-source-multiple-checksums.pkg 
   (version 0.0.1)
   
   (extra_sources

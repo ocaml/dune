@@ -55,7 +55,7 @@ We echo each package variable.
 Inspecting the lockfile we can see how each opam package variable was translated into a
 corresponding Dune version.
 
-  $ cat dune.lock/testpkg.pkg
+  $ cat ${default_lock_dir}/testpkg.pkg
   (version 0.0.1)
   
   (build

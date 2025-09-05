@@ -23,6 +23,7 @@ val with_lib_deps
 type kind =
   | Executables of Buildable.t * (Loc.t * string) list
   | Library of Buildable.t * Lib_name.Local.t
+  | Parameter of Buildable.t * Lib_name.Local.t
   | Melange of
       { preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
       ; preprocessor_deps : Dep_conf.t list
@@ -44,5 +45,5 @@ val modules_rules
 val ocaml_flags
   :  Super_context.t
   -> dir:Path.Build.t
-  -> Ocaml_flags.Spec.t
+  -> Dune_lang.Ocaml_flags.Spec.t
   -> Ocaml_flags.t Memo.t

@@ -8,7 +8,7 @@ We create a large file and check that it is copied completely.
   > let () = Unix.truncate "file.dat" 0x1_00_00_00_03
   > EOF
   $ touch file.dat
-  $ ocaml unix.cma create.ml
+  $ ocaml -I +unix unix.cma create.ml
   $ rm create.ml
 
   $ dune build file.dat

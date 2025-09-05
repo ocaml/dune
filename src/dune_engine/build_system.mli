@@ -2,8 +2,11 @@
 
 open Import
 
-(** Build a file. *)
+(** Build a target, which may be a file or a directory. *)
 val build_file : Path.t -> unit Memo.t
+
+(** Build a directory. *)
+val build_dir : Path.t -> unit Memo.t
 
 (** Build a file and read its contents with [f]. The execution of [f] is not memoized, so
     call sites should be careful to avoid duplicating [f]'s work. *)
@@ -12,7 +15,7 @@ val with_file : Path.t -> f:(Path.t -> 'a) -> 'a Memo.t
 (** Build a file and read its contents. Like [with_file ~f:Io.read_file] but memoized. *)
 val read_file : Path.t -> string Memo.t
 
-(** Return [true] if a file exists or is buildable *)
+(** Return [true] if a file or directory exists or is buildable. *)
 val file_exists : Path.t -> bool Memo.t
 
 (** Build a set of dependencies and return learned facts about them. *)

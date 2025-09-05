@@ -1,0 +1,4 @@
+(library
+ (public_name fs-io)
+ (name fs_io)
+ (libraries unix))

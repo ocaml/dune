@@ -1,0 +1,234 @@
+(library
+ (name blake3_mini)
+ (libraries unix)
+ (foreign_archives blake3)
+ (foreign_stubs
+  (language c)
+  (names blake3_stubs)
+  (flags :standard -O3)))
+
+; There are 3 configrations for the blake3 rules:
+; 1. Handwritten assembly for x86_64
+; 2. SIMD instructions with neon intrinsics for arm64
+; 3. Portable C implementation
+
+; 1. Handwritten assembly for x86_64
+
+(foreign_library
+ (enabled_if
+  (= %{architecture} "amd64"))
+ (archive_name blake3)
+ (language c)
+ (names blake3 blake3_portable blake3_dispatch)
+ (extra_objects
+  blake3_avx2_x86-64
+  blake3_avx512_x86-64
+  blake3_sse2_x86-64
+  blake3_sse41_x86-64))
+
+; 1.1: Unix assembly for x86_64
+
+(rule
+ (enabled_if
+  (and
+   (= %{architecture} "amd64")
+   (or
+    (= %{system} "linux")
+    (= %{system} "macosx")
+    (= %{system} "beos")
+    (= %{system} "freebsd")
+    (= %{system} "openbsd")
+    (= %{system} "netbsd"))))
+ (deps blake3_avx2_x86-64_unix.S)
+ (targets blake3_avx2_x86-64%{ext_obj})
+ (action
+  (run %{cc} -c %{deps} -o %{targets})))
+
+(rule
+ (enabled_if
+  (and
+   (= %{architecture} "amd64")
+   (or
+    (= %{system} "linux")
+    (= %{system} "macosx")
+    (= %{system} "beos")
+    (= %{system} "freebsd")
+    (= %{system} "openbsd")
+    (= %{system} "netbsd"))))
+ (deps blake3_avx512_x86-64_unix.S)
+ (targets blake3_avx512_x86-64%{ext_obj})
+ (action
+  (run %{cc} -c %{deps} -o %{targets})))
+
+(rule
+ (enabled_if
+  (and
+   (= %{architecture} "amd64")
+   (or
+    (= %{system} "linux")
+    (= %{system} "macosx")
+    (= %{system} "beos")
+    (= %{system} "freebsd")
+    (= %{system} "openbsd")
+    (= %{system} "netbsd"))))
+ (deps blake3_sse2_x86-64_unix.S)
+ (targets blake3_sse2_x86-64%{ext_obj})
+ (action
+  (run %{cc} -c %{deps} -o %{targets})))
+
+(rule
+ (enabled_if
+  (and
+   (= %{architecture} "amd64")
+   (or
+    (= %{system} "linux")
+    (= %{system} "macosx")
+    (= %{system} "beos")
+    (= %{system} "freebsd")
+    (= %{system} "openbsd")
+    (= %{system} "netbsd"))))
+ (deps blake3_sse41_x86-64_unix.S)
+ (targets blake3_sse41_x86-64%{ext_obj})
+ (action
+  (run %{cc} -c %{deps} -o %{targets})))
+
+; 1.2: Windows GNU assembly for x86_64
+
+(rule
+ (enabled_if
+  (and
+   (= %{architecture} "amd64")
+   (= %{os_type} "Win32")
+   (= %{system} "mingw64")
+   (<> %{ocaml-config:ccomp_type} "msvc")))
+ (deps blake3_avx2_x86-64_windows_gnu.S)
+ (targets blake3_avx2_x86-64%{ext_obj})
+ (action
+  (run %{cc} -c %{deps} -o %{targets})))
+
+(rule
+ (enabled_if
+  (and
+   (= %{architecture} "amd64")
+   (= %{os_type} "Win32")
+   (= %{system} "mingw64")
+   (<> %{ocaml-config:ccomp_type} "msvc")))
+ (deps blake3_avx512_x86-64_windows_gnu.S)
+ (targets blake3_avx512_x86-64%{ext_obj})
+ (action
+  (run %{cc} -c %{deps} -o %{targets})))
+
+(rule
+ (enabled_if
+  (and
+   (= %{architecture} "amd64")
+   (= %{os_type} "Win32")
+   (= %{system} "mingw64")
+   (<> %{ocaml-config:ccomp_type} "msvc")))
+ (deps blake3_sse2_x86-64_windows_gnu.S)
+ (targets blake3_sse2_x86-64%{ext_obj})
+ (action
+  (run %{cc} -c %{deps} -o %{targets})))
+
+(rule
+ (enabled_if
+  (and
+   (= %{architecture} "amd64")
+   (= %{os_type} "Win32")
+   (= %{system} "mingw64")
+   (<> %{ocaml-config:ccomp_type} "msvc")))
+ (deps blake3_sse41_x86-64_windows_gnu.S)
+ (targets blake3_sse41_x86-64%{ext_obj})
+ (action
+  (run %{cc} -c %{deps} -o %{targets})))
+
+; 1.3: Windows MSVC assembly for x86_64
+
+; %{ocaml-config:asm} has other flags that we don't want
+
+(rule
+ (enabled_if
+  (and
+   (= %{architecture} "amd64")
+   (= %{os_type} "Win32")
+   (= %{ocaml-config:ccomp_type} "msvc")))
+ (deps blake3_avx2_x86-64_windows_msvc.asm)
+ (targets blake3_avx2_x86-64%{ext_obj})
+ (action
+  (run %{bin:ml64} /nologo /quiet /Fo%{targets} /c %{deps})))
+
+(rule
+ (enabled_if
+  (and
+   (= %{architecture} "amd64")
+   (= %{os_type} "Win32")
+   (= %{ocaml-config:ccomp_type} "msvc")))
+ (deps blake3_avx512_x86-64_windows_msvc.asm)
+ (targets blake3_avx512_x86-64%{ext_obj})
+ (action
+  (run %{bin:ml64} /nologo /quiet /Fo%{targets} /c %{deps})))
+
+(rule
+ (enabled_if
+  (and
+   (= %{architecture} "amd64")
+   (= %{os_type} "Win32")
+   (= %{ocaml-config:ccomp_type} "msvc")))
+ (deps blake3_sse2_x86-64_windows_msvc.asm)
+ (targets blake3_sse2_x86-64%{ext_obj})
+ (action
+  (run %{bin:ml64} /nologo /quiet /Fo%{targets} /c %{deps})))
+
+(rule
+ (enabled_if
+  (and
+   (= %{architecture} "amd64")
+   (= %{os_type} "Win32")
+   (= %{ocaml-config:ccomp_type} "msvc")))
+ (deps blake3_sse41_x86-64_windows_msvc.asm)
+ (targets blake3_sse41_x86-64%{ext_obj})
+ (action
+  (run %{bin:ml64} /nologo /quiet /Fo%{targets} /c %{deps})))
+
+; 2. SIMD instructions with neon intrinsics for arm64
+
+(foreign_library
+ (enabled_if
+  (or
+   (= %{architecture} "arm64")
+   (= %{architecture} "aarch64")))
+ (archive_name blake3)
+ (language c)
+ (names blake3 blake3_portable blake3_dispatch blake3_neon))
+
+; 3. Portable C implementation
+
+(foreign_library
+ (enabled_if
+  (and
+   (not
+    (and
+     (= %{architecture} "amd64")
+     (or
+      (= %{os_type} "Win32")
+      (= %{system} "win64")
+      (= %{system} "mingw64")
+      (= %{system} "linux")
+      (= %{system} "macosx")
+      (= %{system} "beos")
+      (= %{system} "freebsd")
+      (= %{system} "openbsd")
+      (= %{system} "netbsd"))))
+   (not
+    (or
+     (= %{architecture} "arm64")
+     (= %{architecture} "aarch64")))))
+ (archive_name blake3)
+ (language c)
+ (flags
+  :standard
+  "-DBLAKE3_NO_SSE2"
+  "-DBLAKE3_NO_SSE41"
+  "-DBLAKE3_NO_AVX2"
+  "-DBLAKE3_NO_AVX512")
+ (names blake3 blake3_portable blake3_dispatch))

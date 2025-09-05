@@ -28,7 +28,6 @@ module type Ast = sig
   type t =
     | Run of program * string Array.Immutable.t
     | With_accepted_exit_codes of int Predicate_lang.t * t
-    | Dynamic_run of program * string list
     | Chdir of path * t
     | Setenv of string * string * t
     (* It's not possible to use a build path here since jbuild supports
@@ -105,12 +104,15 @@ module Exec = struct
 end
 
 module Ext = struct
+  module Exec = Exec
+
   module type Spec = sig
     type ('path, 'target) t
 
     val name : string
     val version : int
     val is_useful_to : memoize:bool -> bool
+    val is_dynamic : bool
     val encode : ('p, 't) t -> ('p -> Sexp.t) -> ('t -> Sexp.t) -> Sexp.t
     val bimap : ('a, 'b) t -> ('a -> 'x) -> ('b -> 'y) -> ('x, 'y) t
 
@@ -122,7 +124,7 @@ module Ext = struct
             known dependencies. In the future, we may generalize this to return
             an [Action_exec.done_or_more_deps], but that may be trickier to get
             right, and is a bridge we can cross when we get there. *)
-      unit Fiber.t
+      Done_or_more_deps.t Fiber.t
   end
 
   module type Instance = sig

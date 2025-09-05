@@ -33,7 +33,7 @@ Likewise, this should also happen if the location is set via XDG variables.
   Warning: Cache directories could not be created: $REASON: disabling cache
   Hint: Make sure the directory $TESTCASE_ROOT/readonly/xdg-cache-dir/dune/db/temp can be created
 
-  $ HOME=/homeless-shelter
+  $ export HOME=/homeless-shelter
   $ unset XDG_CACHE_HOME
   $ dune build 2>&1 | sed 's/created: .*;/created: $REASON:/'
   Warning: Cache directories could not be created: $REASON: disabling cache

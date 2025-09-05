@@ -1,5 +1,4 @@
 open Stdune
-open Dune_rules
 
 module Kind = struct
   type t =
@@ -18,9 +17,9 @@ module Kind = struct
   let lowest_priority = max_int
 
   let of_dir_contents files =
-    if String.Set.mem files Workspace.filename
+    if String.Set.mem files Source.Workspace.filename
     then Some Dune_workspace
-    else if Filename.Set.mem files Dune_project.filename
+    else if Filename.Set.mem files Dune_lang.Dune_project.filename
     then Some Dune_project
     else None
   ;;
@@ -41,8 +40,10 @@ module Candidate = struct
     }
 end
 
-let find () =
-  let cwd = Sys.getcwd () in
+let find from =
+  let cwd =
+    if Filename.is_relative from then Filename.concat Fpath.initial_cwd from else from
+  in
   let rec loop counter ~(candidate : Candidate.t option) ~to_cwd dir : Candidate.t option =
     match Sys.readdir dir with
     | exception Sys_error msg ->
@@ -82,46 +83,47 @@ let find () =
   loop 0 ~to_cwd:[] cwd ~candidate:None
 ;;
 
-let create ~default_is_cwd ~specified_by_user =
+let create ~from ~default_is_cwd ~specified_by_user () =
   match
     match specified_by_user with
     | Some dn -> Some { Candidate.kind = Explicit; dir = dn; to_cwd = [] }
     | None ->
-      let cwd = { Candidate.kind = Cwd; dir = "."; to_cwd = [] } in
-      if Dune_util.Execution_env.inside_dune
+      let cwd = { Candidate.kind = Cwd; dir = from; to_cwd = [] } in
+      if Execution_env.inside_dune
       then Some cwd
       else (
-        match find () with
+        match find from with
         | Some s -> Some s
         | None -> if default_is_cwd then Some cwd else None)
   with
+  | None -> None
   | Some { Candidate.dir; to_cwd; kind } ->
-    Ok
+    Some
       { kind
       ; dir
       ; to_cwd
       ; reach_from_root_prefix =
           String.concat ~sep:"" (List.map to_cwd ~f:(sprintf "%s/"))
       }
-  | None ->
-    Error
-      User_error.(
-        make
-          [ Pp.text "I cannot find the root of the current workspace/project."
-          ; Pp.text "If you would like to create a new dune project, you can type:"
-          ; Pp.nop
-          ; Pp.verbatim "    dune init project NAME"
-          ; Pp.nop
-          ; Pp.text
-              "Otherwise, please make sure to run dune inside an existing project or \
-               workspace. For more information about how dune identifies the root of the \
-               current workspace/project, please refer to \
-               https://dune.readthedocs.io/en/stable/usage.html#finding-the-root"
-          ])
 ;;
 
-let create_exn ~default_is_cwd ~specified_by_user =
-  match create ~default_is_cwd ~specified_by_user with
-  | Ok x -> x
-  | Error e -> raise (User_error.E e)
+let create_exn ~from ~default_is_cwd ~specified_by_user () =
+  match create ~from ~default_is_cwd ~specified_by_user () with
+  | Some x -> x
+  | None ->
+    raise
+      (User_error.E
+         User_error.(
+           make
+             [ Pp.text "I cannot find the root of the current workspace/project."
+             ; Pp.text "If you would like to create a new dune project, you can type:"
+             ; Pp.nop
+             ; Pp.verbatim "    dune init project NAME"
+             ; Pp.nop
+             ; Pp.text
+                 "Otherwise, please make sure to run dune inside an existing project or \
+                  workspace. For more information about how dune identifies the root of \
+                  the current workspace/project, please refer to \
+                  https://dune.readthedocs.io/en/stable/usage.html#finding-the-root"
+             ]))
 ;;

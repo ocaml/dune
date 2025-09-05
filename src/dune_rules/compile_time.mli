@@ -20,3 +20,6 @@ val pkg_build_progress : Config.Toggle.t Config.t
 
 (** Enable or disable using package management to install dev tools. *)
 val lock_dev_tools : Config.Toggle.t Config.t
+
+val bin_dev_tools : Config.Toggle.t Config.t
+val portable_lock_dir : Config.Toggle.t Config.t

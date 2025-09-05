@@ -6,27 +6,16 @@ module Paths : sig
   val toplevel_index : Context.t -> Path.Build.t
 end
 
-val find_project_by_key : Dune_project.File_key.t -> Dune_project.t Memo.t
-
-module Scope_key : sig
-  val of_string : Context_name.t -> string -> (Lib_name.t * Lib.DB.t) Memo.t
-  val to_string : Lib_name.t -> Dune_project.t -> string
-end
-
 val lib_unique_name : Lib.t -> string
 val odoc_program : Super_context.t -> Path.Build.t -> Action.Prog.t Action_builder.t
-
-val check_mlds_no_dupes
-  :  pkg:Dune_lang.Package_name.t
-  -> mlds:Path.Build.t list
-  -> Path.Build.t String.Map.t
-
 val libs_of_pkg : Context_name.t -> pkg:Package.Name.t -> Lib.Local.t list Memo.t
 
-val entry_modules
+val mlds
   :  Super_context.t
-  -> pkg:Dune_lang.Package_name.t
-  -> Module.t list Lib.Local.Map.t Memo.t
+  -> Dune_lang.Package_name.t
+  -> ((Path.Build.t * string) list * Doc_sources.mld list) Memo.t
+
+val report_warnings : Doc_sources.mld list -> unit
 
 val run_odoc
   :  Super_context.t

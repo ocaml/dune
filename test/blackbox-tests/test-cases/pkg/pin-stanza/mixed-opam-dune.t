@@ -33,14 +33,14 @@ should favor the dune metadata in such a case.
   - bar.dev
   - foo.dev
 
-  $  cat dune.lock/bar.pkg | sed "/source/,//d"
+  $ cat ${default_lock_dir}/bar.pkg | sed "/source/,//d"
   (version dev)
   
   (dune)
   
   
   (dev)
-  $  cat dune.lock/foo.pkg | sed "/source/,//d"
+  $ cat ${default_lock_dir}/foo.pkg | sed "/source/,//d"
   (version dev)
   
   (dune)

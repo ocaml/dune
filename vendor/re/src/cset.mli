@@ -22,42 +22,63 @@
 
 (* Character sets, represented as sorted list of intervals *)
 
-type c = int
+type c [@@immediate]
+
+val equal_c : c -> c -> bool
+val to_int : c -> int
+val of_int : int -> c
+val to_char : c -> char
+val of_char : char -> c
+
 type t
 
-val iter : t -> f:(c -> c -> unit) -> unit
+(** special characters which isn't present in any set (not even in [cany]) *)
+val null_char : c
 
+val equal : t -> t -> bool
+val iter : t -> f:(c -> c -> unit) -> unit
 val union : t -> t -> t
+val union_all : t list -> t
+val intersect_all : t list -> t
 val inter : t -> t -> t
 val diff : t -> t -> t
-val offset : int -> t -> t
-
 val empty : t
 val single : c -> t
-val seq : c -> c -> t
 val add : c -> t -> t
-
 val mem : c -> t -> bool
-
-type hash
-val hash : t -> hash
-
-val pp : Format.formatter -> t -> unit
-
+val case_insens : t -> t
+val cdigit : t
+val calpha : t
+val cword : t
+val notnl : t
+val ascii : t
+val nl : t
+val cseq : char -> char -> t
+val set : string -> t
+val blank : t
+val space : t
+val xdigit : t
+val lower : t
+val upper : t
+val alpha : t
+val alnum : t
+val wordc : t
+val cntrl : t
+val graph : t
+val print : t
+val punct : t
+val pp : t Fmt.t
 val one_char : t -> c option
-
-val fold_right : t -> init:'acc -> f:(c * c -> 'acc ->  'acc) -> 'acc
-
-val hash_rec : t -> int
+val fold_right : t -> init:'acc -> f:(c -> c -> 'acc -> 'acc) -> 'acc
+val hash : t -> int
+val compare : t -> t -> int
 
 module CSetMap : Map.S with type key = int * t
 
 val cany : t
-
 val csingle : char -> t
-
 val is_empty : t -> bool
-
 val prepend : t -> 'a list -> (t * 'a list) list -> (t * 'a list) list
-
 val pick : t -> c
+
+val offset : int -> t -> t

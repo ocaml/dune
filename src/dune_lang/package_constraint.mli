@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 
 module Value : sig
   type t =
@@ -23,9 +23,10 @@ type t =
   (** A binary operator applied to LHS and RHS values *)
   | And of t list (** The conjunction of a list of boolean expressions *)
   | Or of t list (** The disjunction of a list of boolean expressions *)
+  | Not of t (** The negation of a boolean expression *)
 
-val encode : t Dune_sexp.Encoder.t
-val decode : t Dune_sexp.Decoder.t
+val encode : t Encoder.t
+val decode : t Decoder.t
 val to_dyn : t -> Dyn.t
 val equal : t -> t -> bool
 

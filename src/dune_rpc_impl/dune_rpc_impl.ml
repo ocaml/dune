@@ -18,7 +18,7 @@ module Poll_active =
     (struct
       let scandir dir =
         Fiber.return
-          (match Dune_filesystem_stubs.read_directory dir with
+          (match Stdune.Readdir.read_directory dir with
            | Ok s -> Ok s
            | Error (e, _, _) -> Error (Failure (dir ^ ": " ^ Unix.error_message e)))
       ;;

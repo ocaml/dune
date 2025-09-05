@@ -1,10 +1,12 @@
+open Import
+
 (** Module visibility *)
 
 type t =
   | Public
   | Private
 
-include Dune_sexp.Conv.S with type t := t
+include Conv.S with type t := t
 
 val to_dyn : t -> Dyn.t
 

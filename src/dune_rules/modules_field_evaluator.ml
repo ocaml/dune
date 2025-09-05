@@ -16,6 +16,7 @@ type kind =
   | Virtual of Virtual.t
   | Implementation of Implementation.t
   | Exe_or_normal_lib
+  | Parameter
 
 let eval0 =
   let key = function
@@ -100,12 +101,13 @@ type errors =
   }
 
 let find_errors
-  ~modules
-  ~intf_only
-  ~virtual_modules
-  ~private_modules
-  ~existing_virtual_modules
-  ~allow_new_public_modules
+      ~modules
+      ~intf_only
+      ~virtual_modules
+      ~private_modules
+      ~existing_virtual_modules
+      ~allow_new_public_modules
+      ~is_parameter
   =
   let all =
     (* We expect that [modules] is big and all the other ones are small, that's
@@ -148,7 +150,7 @@ let find_errors
            (add_if has_impl Spurious_module_virtual
             ++ add_if !?intf_only Virt_intf_overlap
             ++ add_if !?private_ Private_virt_module
-            ++ add_if (not !?modules) Undeclared_virtual_module)
+            ++ add_if ((not !?modules) && not is_parameter) Undeclared_virtual_module)
       @@ with_property
            modules
            (add_if
@@ -171,16 +173,17 @@ let find_errors
 ;;
 
 let check_invalid_module_listing
-  ~stanza_loc
-  ~modules_without_implementation
-  ~intf_only
-  ~modules
-  ~virtual_modules
-  ~private_modules
-  ~existing_virtual_modules
-  ~allow_new_public_modules
-  ~is_vendored
-  ~version
+      ~stanza_loc
+      ~modules_without_implementation
+      ~intf_only
+      ~modules
+      ~virtual_modules
+      ~private_modules
+      ~existing_virtual_modules
+      ~allow_new_public_modules
+      ~is_vendored
+      ~is_parameter
+      ~version
   =
   let { errors; unimplemented_virt_modules } =
     find_errors
@@ -190,9 +193,11 @@ let check_invalid_module_listing
       ~private_modules
       ~existing_virtual_modules
       ~allow_new_public_modules
+      ~is_parameter
   in
-  if List.is_non_empty errors
-     || not (Module_name.Path.Set.is_empty unimplemented_virt_modules)
+  if
+    List.is_non_empty errors
+    || not (Module_name.Path.Set.is_empty unimplemented_virt_modules)
   then (
     let get kind =
       List.filter_map errors ~f:(fun (k, loc, m) -> Option.some_if (kind = k) (loc, m))
@@ -326,31 +331,31 @@ let check_invalid_module_listing
 ;;
 
 let eval
-  ~expander
-  ~modules:(all_modules : Module.Source.t Module_trie.t)
-  ~stanza_loc
-  ~private_modules
-  ~kind
-  ~src_dir
-  ~is_vendored
-  ~version
-  { Stanza_common.Modules_settings.modules = _
-  ; root_module
-  ; modules_without_implementation
-  }
-  modules
+      ~expander
+      ~modules:(all_modules : Module.Source.t Module_trie.t)
+      ~stanza_loc
+      ~private_modules
+      ~kind
+      ~src_dir
+      ~is_vendored
+      ~version
+      { Stanza_common.Modules_settings.modules = _
+      ; root_module
+      ; modules_without_implementation
+      }
+      modules
   =
   (* Fake modules are modules that do not exist but it doesn't matter because
      they are only removed from a set (for jbuild file compatibility) *)
   let eval = eval0 ~expander ~loc:stanza_loc ~all_modules in
   let allow_new_public_modules =
     match kind with
-    | Exe_or_normal_lib | Virtual _ -> true
+    | Exe_or_normal_lib | Virtual _ | Parameter -> true
     | Implementation { allow_new_public_modules; _ } -> allow_new_public_modules
   in
   let existing_virtual_modules =
     match kind with
-    | Exe_or_normal_lib | Virtual _ -> Module_name.Path.Set.empty
+    | Exe_or_normal_lib | Virtual _ | Parameter -> Module_name.Path.Set.empty
     | Implementation { existing_virtual_modules; _ } -> existing_virtual_modules
   in
   let+ intf_only = eval ~standard:Module_trie.empty modules_without_implementation
@@ -358,7 +363,13 @@ let eval
     match kind with
     | Exe_or_normal_lib | Implementation _ -> Memo.return Module_trie.empty
     | Virtual { virtual_modules } -> eval ~standard:Module_trie.empty virtual_modules
+    | Parameter -> Memo.return (Module_trie.map ~f:(fun v -> stanza_loc, v) all_modules)
   and+ private_modules = eval ~standard:Module_trie.empty private_modules in
+  let is_parameter =
+    match kind with
+    | Parameter -> true
+    | Virtual _ | Exe_or_normal_lib | Implementation _ -> false
+  in
   check_invalid_module_listing
     ~stanza_loc
     ~modules_without_implementation
@@ -369,6 +380,7 @@ let eval
     ~existing_virtual_modules
     ~allow_new_public_modules
     ~is_vendored
+    ~is_parameter
     ~version;
   let all_modules =
     Module_trie.mapi modules ~f:(fun _path (_, m) ->
@@ -377,8 +389,10 @@ let eval
         if Module_trie.mem private_modules name then Visibility.Private else Public
       in
       let kind =
-        if Module_trie.mem virtual_modules name
-        then Module.Kind.Virtual
+        if is_parameter
+        then Module.Kind.Parameter
+        else if Module_trie.mem virtual_modules name
+        then Virtual
         else if Module.Source.has m ~ml_kind:Impl
         then (
           let name = Module.Source.name m in
@@ -398,14 +412,14 @@ let eval
 ;;
 
 let eval
-  ~expander
-  ~modules:(all_modules : Module.Source.t Module_trie.t)
-  ~stanza_loc
-  ~private_modules
-  ~kind
-  ~src_dir
-  ~version
-  (settings : Stanza_common.Modules_settings.t)
+      ~expander
+      ~modules:(all_modules : Module.Source.t Module_trie.t)
+      ~stanza_loc
+      ~private_modules
+      ~kind
+      ~src_dir
+      ~version
+      (settings : Stanza_common.Modules_settings.t)
   =
   Memo.push_stack_frame ~human_readable_description:(fun () ->
     Pp.textf "(modules) field at %s" (Loc.to_file_colon_line stanza_loc))

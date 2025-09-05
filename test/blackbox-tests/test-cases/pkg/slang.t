@@ -1,14 +1,11 @@
   $ . ./helpers.sh
 
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
+  $ make_lockdir
 
 Helper function to create a lockfile with a given install action and then build it, running the action.
   $ test_action() {
   >   dune clean || true
-  >   cat > dune.lock/test.pkg <<EOF
+  >   make_lockpkg test <<EOF
   > (version 0.0.1)
   > (install $1)
   > EOF

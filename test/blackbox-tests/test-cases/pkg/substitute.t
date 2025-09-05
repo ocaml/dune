@@ -7,7 +7,7 @@ The test-source folder has a file to use substitution on.
   > This file will be fed to the substitution mechanism
   > EOF
   $ make_lockdir
-  $ cat >dune.lock/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/test-source))
   > (build
@@ -31,7 +31,7 @@ This should also work with any other filename combination:
   $ cat >test-source/foo.ml.template <<EOF
   > This is using a different file suffix
   > EOF
-  $ cat >dune.lock/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/test-source))
   > (build
@@ -51,7 +51,7 @@ Undefined variables, how do they substitute?
   $ cat >test-source/variables.ml.in <<EOF
   > We substitute this '%%{var}%%' into '%{var}%'
   > EOF
-  $ cat >dune.lock/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/test-source))
   > (build
@@ -81,7 +81,7 @@ Now with variables set
   > %%{with-test}%% is '%{with-test}%'
   > %%{os}%% is '%{os}%'
   > EOF
-  $ cat >dune.lock/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/test-source))
   > (build
@@ -109,11 +109,11 @@ Now with variables set
 It is also possible to use variables of your dependencies:
 
   $ mkdir dependency-source
-  $ cat >dune.lock/dependency.pkg <<EOF
+  $ make_lockpkg dependency <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/dependency-source))
   > EOF
-  $ cat >dune.lock/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/test-source))
   > (depends dependency)

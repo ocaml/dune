@@ -1,0 +1,11 @@
+(library
+ (name action_plugin)
+ (libraries
+  stdune
+  dune_engine
+  dune_targets
+  predicate_lang
+  fiber
+  csexp
+  dune-glob
+  dune_action_plugin))

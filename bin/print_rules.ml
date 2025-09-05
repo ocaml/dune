@@ -47,8 +47,8 @@ let print_rule_makefile ppf (rule : Dune_engine.Reflection.Rule.t) =
        Format.pp_print_string ppf (Path.to_string p)))
     targets
     (fun ppf ->
-      Path.Set.iter rule.expanded_deps ~f:(fun dep ->
-        Format.fprintf ppf "@ %s" (Path.to_string dep)))
+       Path.Set.iter rule.expanded_deps ~f:(fun dep ->
+         Format.fprintf ppf "@ %s" (Path.to_string dep)))
     Pp.to_fmt
     (Action_to_sh.pp action)
 ;;
@@ -71,7 +71,6 @@ let rec encode : Action.For_shell.t -> Dune_lang.t =
       ; Predicate_lang.encode Dune_sexp.Encoder.int pred
       ; encode t
       ]
-  | Dynamic_run (a, xs) -> List (atom "run_dynamic" :: program a :: List.map xs ~f:string)
   | Chdir (a, r) -> List [ atom "chdir"; path a; encode r ]
   | Setenv (k, v, r) -> List [ atom "setenv"; string k; string v; encode r ]
   | Redirect_out (outputs, fn, perm, r) ->
@@ -155,9 +154,9 @@ let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
   let paths ps =
     Dune_sexp.Encoder.list
       (fun p ->
-        Path.Build.relative rule.targets.root p
-        |> Path.Build.to_string
-        |> Dune_sexp.atom_or_quoted_string)
+         Path.Build.relative rule.targets.root p
+         |> Path.Build.to_string
+         |> Dune_sexp.atom_or_quoted_string)
       (Filename.Set.to_list ps)
   in
   let sexp =
@@ -176,7 +175,7 @@ let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
          ; [ "action", sexp_of_action rule.action ]
          ])
   in
-  Format.fprintf ppf "%a@," Dune_lang.Deprecated.pp_split_strings sexp
+  Format.fprintf ppf "%a@," Pp.to_fmt (Dune_lang.pp sexp)
 ;;
 
 module Syntax = struct
@@ -195,8 +194,63 @@ module Syntax = struct
     | Sexp -> print_rule_sexp
   ;;
 
+  type formatter_state =
+    | In_atom
+    | In_makefile_action
+    | In_makefile_stuff
+
+  let prepare_formatter ppf =
+    let state = ref [] in
+    Format.pp_set_mark_tags ppf true;
+    let ofuncs = Format.pp_get_formatter_out_functions ppf () in
+    let tfuncs = Format.pp_get_formatter_stag_functions ppf () in
+    Format.pp_set_formatter_stag_functions
+      ppf
+      { tfuncs with
+        mark_open_stag =
+          (function
+            | Format.String_tag "atom" ->
+              state := In_atom :: !state;
+              ""
+            | Format.String_tag "makefile-action" ->
+              state := In_makefile_action :: !state;
+              ""
+            | Format.String_tag "makefile-stuff" ->
+              state := In_makefile_stuff :: !state;
+              ""
+            | s -> tfuncs.mark_open_stag s)
+      ; mark_close_stag =
+          (function
+            | Format.String_tag "atom"
+            | Format.String_tag "makefile-action"
+            | Format.String_tag "makefile-stuff" ->
+              state := List.tl !state;
+              ""
+            | s -> tfuncs.mark_close_stag s)
+      };
+    Format.pp_set_formatter_out_functions
+      ppf
+      { ofuncs with
+        out_newline =
+          (fun () ->
+            match !state with
+            | [ In_atom; In_makefile_action ] -> ofuncs.out_string "\\\n\t" 0 3
+            | [ In_atom ] -> ofuncs.out_string "\\\n" 0 2
+            | [ In_makefile_action ] -> ofuncs.out_string " \\\n\t" 0 4
+            | [ In_makefile_stuff ] -> ofuncs.out_string " \\\n" 0 3
+            | [] -> ofuncs.out_string "\n" 0 1
+            | _ -> assert false)
+      ; out_spaces =
+          (fun n ->
+            ofuncs.out_spaces
+              (match !state with
+               | In_atom :: _ -> max 0 (n - 2)
+               | _ -> n))
+      }
+  ;;
+
   let print_rules syntax ppf rules =
-    Dune_lang.Deprecated.prepare_formatter ppf;
+    prepare_formatter ppf;
     Format.pp_open_vbox ppf 0;
     Format.pp_print_list (print_rule syntax) ppf rules;
     Format.pp_print_flush ppf ()
@@ -223,7 +277,7 @@ let term =
   and+ targets = Arg.(value & pos_all dep [] & Arg.info [] ~docv:"TARGET") in
   let common, config = Common.init builder in
   let out = Option.map ~f:Path.of_string out in
-  Scheduler.go ~common ~config (fun () ->
+  Scheduler.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in
     build_exn (fun () ->

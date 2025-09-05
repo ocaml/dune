@@ -11,9 +11,7 @@
    (:include flags/flags.sexp)))
  (special_builtin_support
   (configurator
-   (api_version 1)))
- (instrumentation
-  (backend bisect_ppx)))
+   (api_version 1))))
 
 (documentation
  (package dune-configurator))

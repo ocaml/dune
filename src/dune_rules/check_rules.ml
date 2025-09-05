@@ -28,8 +28,9 @@ let add_files sctx ~dir files =
   if Super_context.context sctx |> Context.merlin
   then (
     let alias = Alias.make Alias0.check ~dir in
-    let files = Path.Set.of_list files in
-    Rules.Produce.Alias.add_deps alias (Action_builder.path_set files))
+    (let open Action_builder.O in
+     files >>| Dep.Set.of_files >>= Action_builder.deps)
+    |> Rules.Produce.Alias.add_deps alias)
   else Memo.return ()
 ;;
 

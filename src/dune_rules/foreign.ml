@@ -1,30 +1,5 @@
 open Import
 
-let encode_lang = function
-  | Foreign_language.C -> "c"
-  | Cxx -> "cxx"
-;;
-
-let decode_lang =
-  let open Foreign_language in
-  Dune_lang.Decoder.enum [ encode_lang C, C; encode_lang Cxx, Cxx ]
-;;
-
-let drop_source_extension fn ~dune_version =
-  let open Option.O in
-  let* obj, ext = String.rsplit2 fn ~on:'.' in
-  let* language, version = String.Map.find Foreign_language.source_extensions ext in
-  Option.some_if (dune_version >= version) (obj, language)
-;;
-
-let possible_sources ~language obj ~dune_version =
-  String.Map.to_list Foreign_language.source_extensions
-  |> List.filter_map ~f:(fun (ext, (lang, version)) ->
-    Option.some_if
-      (Foreign_language.equal lang language && dune_version >= version)
-      (obj ^ "." ^ ext))
-;;
-
 let add_mode_suffix mode s =
   match mode with
   | Mode.Select.All -> s
@@ -151,8 +126,8 @@ module Stubs = struct
     ; extra_deps : Dep_conf.t list
     }
 
-  let make ~loc ~language ~names ~mode ~flags =
-    { loc; language; names; mode; flags; include_dirs = []; extra_deps = [] }
+  let make ~loc ~language ~names ~flags =
+    { loc; language; names; flags; include_dirs = []; extra_deps = []; mode = All }
   ;;
 
   let syntax =
@@ -162,6 +137,15 @@ module Stubs = struct
   ;;
 
   let () = Dune_project.Extension.register_simple syntax (Dune_lang.Decoder.return [])
+
+  let decode_lang =
+    let encode_lang = function
+      | Foreign_language.C -> "c"
+      | Cxx -> "cxx"
+    in
+    let open Foreign_language in
+    Dune_lang.Decoder.enum [ encode_lang C, C; encode_lang Cxx, Cxx ]
+  ;;
 
   let decode_stubs ~for_library =
     let open Dune_lang.Decoder in
@@ -248,31 +232,6 @@ module Objects = struct
   ;;
 end
 
-module Library = struct
-  type t =
-    { archive_name : Archive.Name.t
-    ; archive_name_loc : Loc.t
-    ; stubs : Stubs.t
-    ; enabled_if : Blang.t
-    }
-
-  let decode =
-    let open Dune_lang.Decoder in
-    fields
-      (let+ archive_name_loc, archive_name =
-         located (field "archive_name" Archive.Name.decode)
-       and+ stubs = Stubs.decode_stubs ~for_library:true
-       and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (3, 14)) () in
-       { archive_name; archive_name_loc; stubs; enabled_if })
-  ;;
-
-  include Stanza.Make (struct
-      type nonrec t = t
-
-      include Poly
-    end)
-end
-
 module Source = struct
   type kind =
     | Stubs of Stubs.t
@@ -292,6 +251,7 @@ module Source = struct
   ;;
 
   let path t = t.path
+  let kind t = t.kind
 
   let mode t =
     match t.kind with
@@ -310,6 +270,9 @@ end
 module Sources = struct
   type t = (Loc.t * Source.t) String.Map.t
 
+  let to_list_map t ~f = String.Map.to_list_map t ~f
+  let make t = t
+
   let object_files t ~dir ~ext_obj =
     String.Map.to_list_map t ~f:(fun c _ -> Path.Build.relative dir (c ^ ext_obj))
   ;;
@@ -319,25 +282,4 @@ module Sources = struct
       let language = Source.language source in
       Foreign_language.(equal Cxx language))
   ;;
-
-  module Unresolved = struct
-    type t = (Foreign_language.t * Path.Build.t) String.Map.Multi.t
-
-    let to_dyn t =
-      let entry_to_dyn (language, path) =
-        Dyn.Tuple [ Foreign_language.to_dyn language; Path.Build.to_dyn path ]
-      in
-      String.Map.to_dyn (Dyn.list entry_to_dyn) t
-    ;;
-
-    let load ~dune_version ~dir ~files =
-      let init = String.Map.empty in
-      String.Set.fold files ~init ~f:(fun fn acc ->
-        match drop_source_extension fn ~dune_version with
-        | None -> acc
-        | Some (obj, language) ->
-          let path = Path.Build.relative dir fn in
-          String.Map.add_multi acc obj (language, path))
-    ;;
-  end
 end

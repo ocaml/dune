@@ -2,8 +2,244 @@ Unreleased
 ----------
 
 If you're a contributor, please include your CHANGES entry in a file
-`doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
+`doc/changes/$PR_NUMBER.md`. At release time, it will be incoporated into the
 changelog properly.
+
+3.20.1 (2025-08-25)
+-------------------
+
+### Fixed
+
+- Fix `runtest-js` mistakenly depending on `byte` (#12242, fixes #12243,
+  @vouillon and @Alizter)
+
+- Fix the interpretation of paths in `dune runtest` when running from within a
+  subdirectory. (#12251, fixes #12250, @Alizter)
+
+### Changed
+
+- Revert formatting change introduced in 3.20.0 making long lists in
+  s-expressions fill the line instead of formatting them in a vertical way
+  (#12245, reverts #10892, @nojb)
+
+3.20.0 (2025-08-18)
+-------------------
+
+### Fixed
+
+- Stop re-running cram tests after promotion when it's not necessary (#11994,
+  @rgrinberg)
+
+- fix: `$ dune subst` should not fail when adding the version field in opam
+  files (#11801, fixes #11045, @btjorge)
+
+- Kill all processes in the process group after the main process has
+  terminated; in particular this avoids background processes in cram tests to
+  stick around after the test finished (#11841, fixes #11820, @Alizter,
+  @Leonidas-from-XIV)
+
+### Added
+
+- `(tests)` stanzas now generate aliases with the test name. To run
+  `(test (name a))` you can do `dune build @runtest-a`. (#11558, grants part of #10239,
+  @Alizter)
+
+- Inline test libraries now produce aliases `runtest-name_of_lib`
+  allowing users to run specific inline tests as `dune build
+  @runtest-name_of_lib`. (#11109, partially fixes #10239, @Alizter)
+
+- feature: `$ dune subst` use version from `dune-project` when no version
+  control repository has been detected (#11801, @btjorge)
+
+- Allow `dune exec` to run concurrently with another instance of dune in watch
+  mode (#11840, @gridbugs)
+
+- Introduce `%{os}`, `%{os_version}`, `%{os_distribution}`, and `%{os_family}`
+  percent forms. These have the same values as their opam counterparts.
+  (#11863, @rgrinberg)
+
+- Introduce option `(implicit_transitive_deps false-if-hidden-includes-supported)`
+  that is equivalent to `(implicit_transitive_deps false)` when `-H` is
+  supported by the compiler (OCaml >= 5.2) and equivalent to
+  `(implicit_transitive_deps true)` otherwise. (#11866, fixes #11212, @nojb)
+
+- Add `dune describe location` for printing the path to the executable that
+  would be run (#11905, @gridbugs)
+
+- `dune runtest` can now understand absolute paths as well as run tests in
+  specific build contexts (#11936, @Alizter).
+
+- Added 'empty' alias which contains no targets. (#11556 #11952 #11955 #11956,
+  grants #4161, @Alizter and @rgrinberg)
+
+- Allow `dune promote` to properly run while a watch mode server is running
+  (#12010, @ElectreAAS)
+
+- Add `--alias` and `--alias-rec` flags as an alternative to the `@@` and `@`
+  syntax in the command line (#12043, fixes #5775, @rgrinberg)
+
+- Added a `(timeout <float>)` field to the `(cram)` stanza to specify per-test
+  time limits. Tests exceeding the timeout are terminated with an error.
+  (#12041, @Alizter)
+
+### Changed
+
+- Format long lists in s-expressions to fill the line instead of
+  formatting them in a vertical way (#10892, fixes #10860, @nojb)
+
+- Switch from MD5 to BLAKE3 for digesting targets and rules. BLAKE3 is both more
+  performant and difficult to break than MD5 (#11735, @rgrinberg, @Alizter)
+
+- Print a warning when `dune build` runs over RPC (#11833, @gridbugs)
+
+- Stop emitting empty module group wrapper `.js` file in `melange.emit`
+  (#11987, fixes #11986, @anmonteiro)
+
+3.19.1 (2025-06-11)
+------------------
+
+### Fixed
+
+- Revert changes in `dune exec` behaviour introduced in 3.19.0. (#11879, fixes
+  #11870, #11867 and #11881, @Alizter)
+
+3.19.0 (2025-05-21)
+-------------------
+
+### Fixed
+
+- Fixed a bug that was causing cram tests attached to multiple aliases to be run multiple
+  times. (#11547, @Alizter)
+
+- Fix: pass pkg-config (extra) args in all pkgconfig invocations. A missing --personality
+  flag would result in pkgconf not finding libraries in some contexts. (#11619, @MisterDA)
+
+- Fix: Evaluate `enabled_if` when computing the stubs for stanzas such as
+  `foreign_library` (#11707, @Alizter, @rgrinberg)
+
+- Fix $ dune describe pp for libraries in the presence of `(include_subdirs
+  unqualified)` (#11729, fixes #10999, @rgrinberg)
+
+- Fix `$ dune subst` in sub directories of a git repository (#11760, fixes
+  #11045, @Richard-Degenne)
+
+- Fix a crash involving `Path.drop_prefix` when using Melange on Windows
+  (#11767, @nojb)
+
+### Added
+
+- Added detection and warning for common typos in package dependency
+  constraints (#11600, fixes #11575, @kemsguy7)
+
+- Added `(extra_objects)` field to `(foreign_library)` stanza with `(:include)` support.
+  (#11683, @Alizter)
+
+### Changed
+
+- Allow build RPC messages to be handled by dune's RPC server in eager watch
+  mode (#11622, @gridbugs)
+
+- Allow concurrent build with RPC server (#11712, @gridbugs)
+
+3.18.2 (2025-04-29)
+-------------------
+
+### Fixed
+
+- fix compatibility with `ocaml.5.4.0` by avoiding shadowing sigwinch (@nojb,
+  #11639)
+
+3.18.1 (2025-04-15)
+-------------------
+
+### Fixed
+
+- fix: pass pkg-config (extra) args in all `pkg-config` invocations. A missing
+  `--personality` flag would result in pkgconf not finding libraries in some
+  contexts. (#11619, @MisterDA)
+
+3.18.0 (2025-04-03)
+-------------------
+
+### Fixed
+
+- Support HaikuOS: don't call `execve` since it's not allowed if other pthreads
+  have been created. The fact that Haiku can't call `execve` from other threads
+  than the principal thread of a process (a team in haiku jargon), is a
+  discrepancy to POSIX and hence there is a [bug about
+  it](https://dev.haiku-os.org/ticket/18665). (@Sylvain78, #10953)
+
+- Fix flag ordering in generated Merlin configurations (#11503, @voodoos, fixes
+  ocaml/merlin#1900, reported by @vouillon)
+
+### Added
+
+- Add `(format-dune-file <src> <dst>)` action. It provides a replacement to
+  `dune format-dune-file` command.  (#11166, @nojb)
+
+- Allow the `--prefix` flag when configuring dune with `ocaml configure.ml`.
+  This allows to set the prefix just like `$ dune install --prefix`. (#11172,
+  @rgrinberg)
+
+- Allow arguments starting with `+` in preprocessing definitions (starting with
+  `(lang dune 3.18)`). (@amonteiro, #11234)
+
+- Support for opam `(maintenance_intent ...)` in dune-project (#11274, @art-w)
+
+- Validate opam `maintenance_intent` (#11308, @art-w)
+
+- Support `not` in package dependencies constraints (#11404, @art-w, reported
+  by @hannesm)
+
+### Changed
+
+- Warn when failing to discover root due to reads failing. The previous
+  behavior was to abort. (@KoviRobi, #11173)
+
+- Use shorter path for inline-tests artifacts. (@hhugo, #11307)
+
+- Allow dash in `dune init` project name (#11402, @art-w, reported by @saroupille)
+
+- On Windows, under heavy load, file delete operations can sometimes fail due to
+  AV programs, etc. Guard against it by retrying the operation up to 30x with a
+  1s waiting gap (#11437, fixes #11425, @MSoegtropIMC)
+
+- Cache: we now only store the executable permission bit for files (#11541,
+  fixes #11533, @ElectreAAS)
+
+- Display negative error codes on Windows in hex which is the more customary
+  way to display `NTSTATUS` codes (#11504, @MisterDA)
+
+3.17.2 (2025-01-23)
+-------------------
+
+### Fixed
+
+- Fix a crash in the Melange rules that would prevent compiling public library
+implementations of virtual libraries. (@anmonteiro, #11248)
+
+- Pass `melange.emit`'s `compile_flags` to the JS emission phase. (@anmonteiro,
+  #11252)
+
+- Disallow private implementations of public virtual libs in melange mode.
+  (@anmonteiro, #11253)
+
+- Wasm_of_ocaml: fix the execution of tests in a sandbox.  (#11304, @vouillon)
+
+3.17.1 (2024-12-17)
+-------------------
+
+### Fixed
+
+- When a library declares `(no_dynlink)`, then the `.cmxs` file for it
+  is no longer built. (#11176, @nojb)
+
+- Fix bug that could result in corrupted file copies by Dune, for example when
+  using the `copy_files#` stanza or the `copy#` action. (@nojb, #11194, fixes
+  #11193)
+
+- Remove useless error message when running `$ dune subst` in empty projects.
+  (@rgrinberg, #11204, fixes #11200)
 
 3.17.0 (2024-11-27)
 -------------------

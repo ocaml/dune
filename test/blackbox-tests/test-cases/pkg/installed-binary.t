@@ -3,7 +3,7 @@ Test that installed binaries are visible in dependent packages
   $ . ./helpers.sh
 
   $ make_lockdir
-  $ cat >dune.lock/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (build
   >  (system "\| echo "#!/bin/sh\necho from test package" > foo;
@@ -18,7 +18,7 @@ Test that installed binaries are visible in dependent packages
   >  ))
   > EOF
 
-  $ cat >dune.lock/usetest.pkg <<EOF
+  $ make_lockpkg usetest <<EOF
   > (version 0.0.1)
   > (depends test)
   > (build
@@ -43,19 +43,14 @@ Test that installed binaries are visible in dependent packages
   /share/lib_rootxxx
   $ show_pkg_cookie test
   { files =
-      map
-        { LIB :
-            [ In_build_dir "_private/default/.pkg/test/target/lib/test/libxxx"
-            ]
-        ; LIB_ROOT :
-            [ In_build_dir "_private/default/.pkg/test/target/lib/lib_rootxxx"
-            ]
-        ; BIN : [ In_build_dir "_private/default/.pkg/test/target/bin/foo" ]
-        ; SHARE_ROOT :
-            [ In_build_dir
-                "_private/default/.pkg/test/target/share/lib_rootxxx"
-            ]
-        }
+      [ (LIB,
+         [ In_build_dir "_private/default/.pkg/test/target/lib/test/libxxx" ])
+      ; (LIB_ROOT,
+         [ In_build_dir "_private/default/.pkg/test/target/lib/lib_rootxxx" ])
+      ; (BIN, [ In_build_dir "_private/default/.pkg/test/target/bin/foo" ])
+      ; (SHARE_ROOT,
+         [ In_build_dir "_private/default/.pkg/test/target/share/lib_rootxxx" ])
+      ]
   ; variables = []
   }
 

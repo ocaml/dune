@@ -13,9 +13,9 @@ let readdir =
     List.concat
       (List.map
          (fun dir ->
-           List.filter
-             (fun entry -> Sys.file_exists (dir / entry / meta_fn))
-             (Array.to_list (readdir_noexn dir)))
+            List.filter
+              (fun entry -> Sys.file_exists (dir / entry / meta_fn))
+              (Array.to_list (readdir_noexn dir)))
          dirs)
 ;;
 
@@ -273,8 +273,8 @@ let load_gen ~load_requires dirs name =
     List.iter load_requires requires;
     List.iter
       (fun p ->
-        let file = Filename.concat directory p in
-        Dune_site_backend.Linker.load file)
+         let file = Filename.concat directory p in
+         Dune_site_backend.Linker.load file)
       plugins)
 ;;
 

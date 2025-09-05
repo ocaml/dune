@@ -34,7 +34,7 @@ will be installed as a sub-directory.
 
 .. code:: dune
 
-   (lang dune 3.18)
+   (lang dune 3.21)
    (using dune_site 0.1)
    (name mygui)
 
@@ -42,7 +42,7 @@ will be installed as a sub-directory.
     (name mygui)
     (sites (share themes)))
 
-Adding Files to a Site 
+Adding Files to a Site
 ----------------------
 
 Here the package ``mygui`` defines a site named ``themes`` that will be located
@@ -95,8 +95,18 @@ site using the :doc:`generate_sites_module stanza
     (module mysites)
     (sites mygui))
 
-The generated module `mysites` depends on the library `dune-site` provided by
-Dune.
+The generated module ``mysites`` depends on the library ``dune-site`` provided
+by Dune. As such, the the dependency on ``dune-site`` must be specified
+explicitly.
+
+.. note::
+
+   The dependency on ``dune-site`` also needs to be added to the ``depends``
+   field of your project. If left out it might be accidentally captured via
+   transitive dependencies, however this will not work if
+   :doc:`implicit_transitive_deps </reference/dune-project/implicit_transitive_deps>`
+   is set to ``false`` in the ``dune-project`` file. It is always recommended
+   to specify ``dune-site`` as a dependency explicitly.
 
 Then inside ``mygui.ml`` module the locations can be recovered and used:
 
@@ -104,16 +114,16 @@ Then inside ``mygui.ml`` module the locations can be recovered and used:
 
    (** Locations of the site for the themes *)
    let themes_locations : string list = Mysites.Sites.themes
-   
+
    (** Merge the contents of the directories in [dirs] *)
    let lookup_dirs dirs =
      List.filter Sys.file_exists dirs
      |> List.map (fun dir -> Array.to_list (Sys.readdir dir))
      |> List.concat
-   
+
    (** Get the available themes *)
    let find_available_themes () = lookup_dirs themes_locations
-   
+
    (** [lookup_file name dirs] finds the first file called [name] in [dirs] *)
    let lookup_file filename dirs =
      List.find_map
@@ -121,11 +131,11 @@ Then inside ``mygui.ml`` module the locations can be recovered and used:
          let filename' = Filename.concat dir filename in
          if Sys.file_exists filename' then Some filename' else None)
        dirs
-   
+
    (** [lookup_theme_file theme file] get the [file] of the [theme] *)
    let lookup_theme_file file theme =
      lookup_file (Filename.concat theme file) themes_locations
-   
+
    let get_layout_css = lookup_theme_file "layout.css"
    let get_ok_ico = lookup_theme_file "ok.png"
    let get_ko_ico = lookup_theme_file "ko.png"
@@ -235,7 +245,7 @@ Main Executable (C)
 
 .. code:: dune
 
-  (lang dune 3.18)
+  (lang dune 3.21)
   (using dune_site 0.1)
   (name app)
 
@@ -295,7 +305,7 @@ The Plugin "plugin1"
 
 .. code:: dune
 
-  (lang dune 3.18)
+  (lang dune {{latest}})
   (using dune_site 0.1)
 
   (generate_opam_files true)

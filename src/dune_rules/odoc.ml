@@ -4,49 +4,52 @@ module Gen_rules = Build_config.Gen_rules
 
 let ( ++ ) = Path.Build.relative
 
-let find_project_by_key =
-  let memo =
-    let make_map projects =
-      Dune_project.File_key.Map.of_list_map_exn projects ~f:(fun project ->
-        Dune_project.file_key project, project)
-      |> Memo.return
-    in
-    let module Input = struct
-      type t = Dune_project.t list
-
-      let equal = List.equal Dune_project.equal
-      let hash = List.hash Dune_project.hash
-      let to_dyn = Dyn.list Dune_project.to_dyn
-    end
-    in
-    Memo.create "project-by-keys" ~input:(module Input) make_map
-  in
-  fun key ->
-    let* projects = Dune_load.projects () in
-    let+ map = Memo.exec memo projects in
-    Dune_project.File_key.Map.find_exn map key
-;;
-
 module Scope_key : sig
   val of_string : Context_name.t -> string -> (Lib_name.t * Lib.DB.t) Memo.t
   val to_string : Lib_name.t -> Dune_project.t -> string
 end = struct
+  let file_key project =
+    let name = Dune_project.name project in
+    let root = Dune_project.root project in
+    let digest = Digest.generic (name, root) |> Digest.to_string in
+    String.take digest 12
+  ;;
+
+  let find_project_by_key =
+    let memo =
+      let make_map projects =
+        String.Map.of_list_map_exn projects ~f:(fun project -> file_key project, project)
+        |> Memo.return
+      in
+      let module Input = struct
+        type t = Dune_project.t list
+
+        let equal = List.equal Dune_project.equal
+        let hash = List.hash Dune_project.hash
+        let to_dyn = Dyn.list Dune_project.to_dyn
+      end
+      in
+      Memo.create "project-by-keys" ~input:(module Input) make_map
+    in
+    fun key ->
+      let* projects = Dune_load.projects () in
+      let+ map = Memo.exec memo projects in
+      String.Map.find_exn map key
+  ;;
+
   let of_string context s =
     match String.rsplit2 s ~on:'@' with
     | None ->
       let+ public_libs = Scope.DB.public_libs context in
       Lib_name.parse_string_exn (Loc.none, s), public_libs
     | Some (lib, key) ->
-      let+ scope =
-        let key = Dune_project.File_key.of_string key in
-        find_project_by_key key >>= Scope.DB.find_by_project context
-      in
+      let+ scope = find_project_by_key key >>= Scope.DB.find_by_project context in
       Lib_name.parse_string_exn (Loc.none, lib), Scope.libs scope
   ;;
 
   let to_string lib project =
-    let key = Dune_project.file_key project in
-    sprintf "%s@%s" (Lib_name.to_string lib) (Dune_project.File_key.to_string key)
+    let key = file_key project in
+    sprintf "%s@%s" (Lib_name.to_string lib) key
   ;;
 end
 
@@ -218,20 +221,26 @@ let odoc_ext = ".odoc"
 module Mld : sig
   type t
 
-  val create : Path.Build.t -> t
+  val create : path:Path.Build.t -> name:string -> t
   val odoc_file : doc_dir:Path.Build.t -> t -> Path.Build.t
   val odoc_input : t -> Path.Build.t
 end = struct
-  type t = Path.Build.t
+  (** The [(documentation (files ...))] stanza allows with the [as] keyword to
+      distinguish the input file and the path in the documentation. Here we do
+      not support layered hierarchy, but we do support changing the name (hence
+      the two fields) *)
+  type t =
+    { path : Path.Build.t
+    ; name : string (** The name of the mld compilation unit (without extension) *)
+    }
 
-  let create p = p
+  let create ~path ~name = { path; name }
 
-  let odoc_file ~doc_dir t =
-    let t = Filename.remove_extension (Path.Build.basename t) in
-    Path.Build.relative doc_dir (sprintf "page-%s%s" t odoc_ext)
+  let odoc_file ~doc_dir { name; _ } =
+    Path.Build.relative doc_dir (sprintf "page-%s%s" name odoc_ext)
   ;;
 
-  let odoc_input t = t
+  let odoc_input { path; _ } = path
 end
 
 module Flags = struct
@@ -265,7 +274,7 @@ let odoc_base_flags quiet build_dir =
 
 let odoc_dev_tool_lock_dir_exists () =
   let path = Dune_pkg.Lock_dir.dev_tool_lock_dir_path Odoc in
-  Fs_memo.dir_exists (Path.Outside_build_dir.In_source_dir path)
+  Fs_memo.dir_exists (Path.as_outside_build_dir_exn path)
 ;;
 
 let odoc_dev_tool_exe_path_building_if_necessary () =
@@ -322,13 +331,13 @@ let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
 ;;
 
 let compile_module
-  sctx
-  ~obj_dir
-  (m : Module.t)
-  ~includes:(file_deps, iflags)
-  ~dep_graphs
-  ~pkg_or_lnu
-  ~mode
+      sctx
+      ~obj_dir
+      (m : Module.t)
+      ~includes:(file_deps, iflags)
+      ~dep_graphs
+      ~pkg_or_lnu
+      ~mode
   =
   let odoc_file = Obj_dir.Module.odoc obj_dir m in
   let+ () =
@@ -659,9 +668,7 @@ let libs_of_pkg ctx ~pkg =
 ;;
 
 let entry_modules_by_lib sctx lib =
-  Dir_contents.modules_of_local_lib sctx lib
-  >>| Modules.With_vlib.modules
-  >>| Modules.With_vlib.entry_modules
+  Dir_contents.modules_of_local_lib sctx lib >>| Modules.entry_modules
 ;;
 
 let entry_modules sctx ~pkg =
@@ -724,12 +731,11 @@ let create_odoc ctx ~target odoc_file =
 
 let check_mlds_no_dupes ~pkg ~mlds =
   match
-    List.rev_map mlds ~f:(fun mld ->
-      Filename.remove_extension (Path.Build.basename mld), mld)
+    List.rev_map mlds ~f:(fun ((_path, mld_name) as mld) -> mld_name, mld)
     |> Filename.Map.of_list
   with
   | Ok m -> m
-  | Error (_, p1, p2) ->
+  | Error (_, (p1, _name1), (p2, _name2)) ->
     User_error.raise
       [ Pp.textf
           "Package %s has two mld's with the same basename %s, %s"
@@ -739,20 +745,47 @@ let check_mlds_no_dupes ~pkg ~mlds =
       ]
 ;;
 
+let report_warnings warnings =
+  match warnings with
+  | [] -> ()
+  | _ :: _ ->
+    let l =
+      warnings
+      |> List.map ~f:(fun (mld : Doc_sources.mld) -> Path.Local.to_string mld.in_doc)
+      |> List.sort ~compare:String.compare
+      |> String.concat ~sep:", "
+    in
+    User_warning.emit
+      [ Pp.textf
+          "Dune does not yet support building documentation for assets, and mlds in a \
+           non-flat hierarchy. Ignoring %s."
+          l
+      ]
+;;
+
+let mlds sctx pkg =
+  let+ mlds = Packages.mlds sctx pkg in
+  List.partition_map mlds ~f:(fun (mld : Doc_sources.mld) ->
+    match Path.Local.explode mld.in_doc with
+    | [ name ] when String.equal (Filename.extension name) ".mld" ->
+      Left (mld.path, Filename.remove_extension name)
+    | _ -> Right mld)
+;;
+
 let odoc_artefacts sctx target =
   let ctx = Super_context.context sctx in
   let dir = Paths.odocs ctx target in
   match target with
   | Pkg pkg ->
     let+ mlds =
-      let+ mlds = Packages.mlds sctx pkg in
+      let+ mlds, _ = mlds sctx pkg in
       let mlds = check_mlds_no_dupes ~pkg ~mlds in
       Filename.Map.update mlds "index" ~f:(function
-        | None -> Some (Paths.gen_mld_dir ctx pkg ++ "index.mld")
+        | None -> Some (Paths.gen_mld_dir ctx pkg ++ "index.mld", "index")
         | Some _ as s -> s)
     in
-    Filename.Map.to_list_map mlds ~f:(fun _ mld ->
-      Mld.create mld |> Mld.odoc_file ~doc_dir:dir |> create_odoc ctx ~target)
+    Filename.Map.to_list_map mlds ~f:(fun _ (path, name) ->
+      Mld.create ~path ~name |> Mld.odoc_file ~doc_dir:dir |> create_odoc ctx ~target)
   | Lib lib ->
     let info = Lib.Local.info lib in
     let obj_dir = Lib_info.obj_dir info in
@@ -1026,21 +1059,22 @@ let package_mlds =
       "package-mlds"
       ~input:(module Super_context.As_memo_key.And_package_name)
       (fun (sctx, pkg) ->
-        Rules.collect (fun () ->
-          let* mlds = Packages.mlds sctx pkg in
-          let mlds = check_mlds_no_dupes ~pkg ~mlds in
-          let ctx = Super_context.context sctx in
-          if Filename.Map.mem mlds "index"
-          then Memo.return mlds
-          else (
-            let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
-            let* entry_modules = entry_modules sctx ~pkg in
-            let+ () =
-              add_rule
-                sctx
-                (Action_builder.write_file gen_mld (default_index ~pkg entry_modules))
-            in
-            Filename.Map.set mlds "index" gen_mld)))
+         Rules.collect (fun () ->
+           let* mlds, warnings = mlds sctx pkg in
+           report_warnings warnings;
+           let mlds = check_mlds_no_dupes ~pkg ~mlds in
+           let ctx = Super_context.context sctx in
+           if Filename.Map.mem mlds "index"
+           then Memo.return mlds
+           else (
+             let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
+             let* entry_modules = entry_modules sctx ~pkg in
+             let+ () =
+               add_rule
+                 sctx
+                 (Action_builder.write_file gen_mld (default_index ~pkg entry_modules))
+             in
+             Filename.Map.set mlds "index" (gen_mld, "index"))))
   in
   fun sctx ~pkg -> Memo.exec memo (sctx, pkg)
 ;;
@@ -1052,10 +1086,10 @@ let setup_package_odoc_rules sctx ~pkg =
      back to a package name here. Need to try and change that one day. *)
   let* odocs =
     Filename.Map.values mlds
-    |> Memo.parallel_map ~f:(fun mld ->
+    |> Memo.parallel_map ~f:(fun (path, name) ->
       compile_mld
         sctx
-        (Mld.create mld)
+        (Mld.create ~path ~name)
         ~pkg
         ~doc_dir:(Paths.odocs ctx (Pkg pkg))
         ~includes:(Action_builder.return []))

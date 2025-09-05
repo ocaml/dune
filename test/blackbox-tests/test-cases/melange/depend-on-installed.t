@@ -100,6 +100,4 @@ Test dependency on installed package
           melc dist/node_modules/b/b.js
           melc dist/node_modules/b/bar.js
           melc dist/node_modules/b/foo.js
-          melc .dist.mobjs/melange/melange.{cmi,cmj,cmt}
-          melc dist/.dist.mobjs/melange.js
   Leaving directory 'app'

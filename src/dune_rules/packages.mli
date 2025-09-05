@@ -5,4 +5,4 @@ open Import
 
 (** Collect functions keyed by a package *)
 
-val mlds : Super_context.t -> Package.Name.t -> Path.Build.t list Memo.t
+val mlds : Super_context.t -> Package.Name.t -> Doc_sources.mld list Memo.t

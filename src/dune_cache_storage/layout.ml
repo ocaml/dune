@@ -1,23 +1,25 @@
 open Stdune
 open Import
 
-let default_root_dir () =
-  let cache_dir = Xdg.cache_dir (Lazy.force Dune_util.xdg) in
-  Path.L.relative (Path.of_filename_relative_to_initial_cwd cache_dir) [ "dune"; "db" ]
+let default_root_dir =
+  lazy
+    (let cache_dir = Xdg.cache_dir (Lazy.force Dune_util.xdg) in
+     Path.L.relative (Path.of_filename_relative_to_initial_cwd cache_dir) [ "dune"; "db" ])
 ;;
 
 let root_dir =
-  let var = "DUNE_CACHE_ROOT" in
-  match Sys.getenv_opt var with
-  | None -> default_root_dir ()
-  | Some path ->
-    if Filename.is_relative path
-    then failwith (sprintf "%s should be an absolute path, but is %s" var path);
-    Path.of_filename_relative_to_initial_cwd path
+  lazy
+    (let var = "DUNE_CACHE_ROOT" in
+     match Sys.getenv_opt var with
+     | None -> Lazy.force default_root_dir
+     | Some path ->
+       if Filename.is_relative path
+       then failwith (sprintf "%s should be an absolute path, but is %s" var path);
+       Path.of_filename_relative_to_initial_cwd path)
 ;;
 
 let ( / ) = Path.relative
-let temp_dir = root_dir / "temp"
+let temp_dir = lazy (Lazy.force root_dir / "temp")
 
 let cache_path ~dir ~hex =
   let two_first_chars = sprintf "%c%c" hex.[0] hex.[1] in
@@ -49,29 +51,43 @@ let list_entries ~storage =
 ;;
 
 module Versioned = struct
-  let metadata_storage_dir t = root_dir / "meta" / Version.Metadata.to_string t
-  let file_storage_dir t = root_dir / "files" / Version.File.to_string t
-  let value_storage_dir t = root_dir / "values" / Version.Value.to_string t
-
-  let metadata_path t =
-    let dir = metadata_storage_dir t in
-    fun ~rule_or_action_digest ->
-      cache_path ~dir ~hex:(Digest.to_string rule_or_action_digest)
+  let metadata_storage_dir t =
+    lazy (Lazy.force root_dir / "meta" / Version.Metadata.to_string t)
   ;;
 
-  let file_path t =
-    let dir = file_storage_dir t in
-    fun ~file_digest -> cache_path ~dir ~hex:(Digest.to_string file_digest)
+  let file_storage_dir t = lazy (Lazy.force root_dir / "files" / Version.File.to_string t)
+
+  let value_storage_dir t =
+    lazy (Lazy.force root_dir / "values" / Version.Value.to_string t)
   ;;
 
-  let value_path t =
-    let dir = value_storage_dir t in
-    fun ~value_digest -> cache_path ~dir ~hex:(Digest.to_string value_digest)
+  let metadata_path t ~rule_or_action_digest =
+    lazy
+      (let dir = Lazy.force (metadata_storage_dir t) in
+       cache_path ~dir ~hex:(Digest.to_string rule_or_action_digest))
   ;;
 
-  let list_metadata_entries t = list_entries ~storage:(metadata_storage_dir t)
-  let list_file_entries t = list_entries ~storage:(file_storage_dir t)
-  let list_value_entries t = list_entries ~storage:(value_storage_dir t)
+  let file_path t ~file_digest =
+    lazy
+      (let dir = Lazy.force (file_storage_dir t) in
+       cache_path ~dir ~hex:(Digest.to_string file_digest))
+  ;;
+
+  let value_path t ~value_digest =
+    lazy
+      (let dir = Lazy.force (value_storage_dir t) in
+       cache_path ~dir ~hex:(Digest.to_string value_digest))
+  ;;
+
+  let list_metadata_entries t =
+    lazy (list_entries ~storage:(Lazy.force (metadata_storage_dir t)))
+  ;;
+
+  let list_file_entries t = lazy (list_entries ~storage:(Lazy.force (file_storage_dir t)))
+
+  let list_value_entries t =
+    lazy (list_entries ~storage:(Lazy.force (value_storage_dir t)))
+  ;;
 end
 
 let metadata_storage_dir = Versioned.metadata_storage_dir Version.Metadata.current
@@ -82,7 +98,11 @@ let value_storage_dir = Versioned.value_storage_dir Version.Value.current
 let value_path = Versioned.value_path Version.Value.current
 
 let create_cache_directories () =
-  [ temp_dir; metadata_storage_dir; file_storage_dir; value_storage_dir ]
+  [ Lazy.force temp_dir
+  ; Lazy.force metadata_storage_dir
+  ; Lazy.force file_storage_dir
+  ; Lazy.force value_storage_dir
+  ]
   |> Result.List.iter ~f:(fun path ->
     match Fpath.mkdir_p (Path.to_string path) with
     | Already_exists | Created -> Ok ()

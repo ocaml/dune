@@ -4,8 +4,7 @@
     Eventually, these are all desugared into [Action.t], which are actions
     executed by the build system. *)
 
-open Stdune
-open Dune_sexp
+open Import
 open Dune_util.Action
 
 module Action_plugin : sig
@@ -66,7 +65,7 @@ end
 
 module Env_update : sig
   module Op : sig
-    type t =
+    type t = OpamParserTypes.env_update_op =
       | Eq
       | PlusEq
       | EqPlus

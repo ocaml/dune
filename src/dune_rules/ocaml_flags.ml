@@ -1,5 +1,7 @@
 open Import
 open Action_builder.O
+module Ocaml_flags = Dune_lang.Ocaml_flags
+open Ocaml_flags
 
 let default_ocamlc_flags = [ "-g" ]
 let default_ocamlopt_flags = [ "-g" ]
@@ -62,49 +64,11 @@ let default_flags ~dune_version ~profile =
   else [ "-w"; default_warnings ]
 ;;
 
-type 'a t' =
-  { common : 'a
-  ; specific : 'a Lib_mode.Map.t
-  }
-
-let equal f { common; specific } t =
-  f common t.common && Lib_mode.Map.equal f specific t.specific
-;;
-
-module Spec = struct
-  type t = Ordered_set_lang.Unexpanded.t t'
-
-  let equal = equal Ordered_set_lang.Unexpanded.equal
-
-  let standard =
-    { common = Ordered_set_lang.Unexpanded.standard
-    ; specific = Lib_mode.Map.make_all Ordered_set_lang.Unexpanded.standard
-    }
-  ;;
-
-  let make ~common ~specific : t = { common; specific }
-
-  let decode =
-    let open Dune_lang.Decoder in
-    let field_oslu = Ordered_set_lang.Unexpanded.field in
-    let+ common = field_oslu "flags"
-    and+ byte = field_oslu "ocamlc_flags"
-    and+ native = field_oslu "ocamlopt_flags"
-    and+ melange =
-      field_oslu
-        ~check:(Dune_lang.Syntax.since Melange_stanzas.syntax (0, 1))
-        "melange.compile_flags"
-    in
-    let specific = Lib_mode.Map.make ~byte ~native ~melange in
-    { common; specific }
-  ;;
-end
-
-type t = string list Action_builder.t t'
+type t = string list Action_builder.t Dune_lang.Ocaml_flags.t
 
 let empty =
   let build = Action_builder.return [] in
-  { common = build; specific = Lib_mode.Map.make_all build }
+  { Ocaml_flags.common = build; specific = Lib_mode.Map.make_all build }
 ;;
 
 let of_list l = { empty with common = Action_builder.return l }
@@ -121,7 +85,7 @@ let default ~dune_version ~profile =
   }
 ;;
 
-let make ~spec ~default ~eval =
+let make ~(spec : Ocaml_flags.Spec.t) ~default ~eval =
   let f name x standard =
     Action_builder.memoize ~cutoff:(List.equal String.equal) name (eval x ~standard)
   in

@@ -129,6 +129,10 @@ instance, if we make the test fail by replacing ``120`` by ``0`` we get:
 
    FAILED 1 / 1 tests
 
+Every inline test library generates an alias with the library name prefixed by
+`runtest-`. You can build the specific inline test library by running
+``dune build @runtest-foo`` in this case.
+
 Note that in this case Dune knew how to build and run the tests
 without any special configuration. This is because ``ppx_inline_test``
 defines an inline tests backend that's used by the library. Some

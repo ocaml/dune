@@ -1,0 +1,7 @@
+(cram
+ (applies_to :whole_subtree)
+ (enabled_if %{oxcaml_supported}))
+
+(cram
+ (deps helpers.sh)
+ (applies_to :whole_subtree))

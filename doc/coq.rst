@@ -456,7 +456,7 @@ lang<coq-lang>` stanza present:
 
 .. code:: dune
 
-  (lang dune 3.18)
+  (lang dune 3.21)
   (using coq 0.8)
 
 Next we need a :doc:`/reference/dune/index` file with a :ref:`coq-theory`
@@ -687,7 +687,7 @@ the plugin to sit in, otherwise Coq will not be able to find it.
 
 .. code:: dune
 
-  (lang dune 3.18)
+  (lang dune {{latest}})
   (using coq 0.8)
 
   (package
@@ -723,7 +723,7 @@ reference looks like:
 
   DECLARE PLUGIN "my-coq-plugin.plugin"
 
-  VERNAC COMMAND EXTEND CallToC CLASSIFIED AS QUERY
+  VERNAC COMMAND EXTEND Hello CLASSIFIED AS QUERY
   | [ "Hello" ] -> { Feedback.msg_notice Pp.(str Hello_world.hello_world) }
   END
 

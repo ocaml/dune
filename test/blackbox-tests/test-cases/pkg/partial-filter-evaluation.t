@@ -27,7 +27,7 @@ Solve the package using the default solver env:
   $ solve a
   Solution for dune.lock:
   - a.0.0.1
-  $ cat dune.lock/a.pkg
+  $ cat ${default_lock_dir}/a.pkg
   (version 0.0.1)
   
   (build
@@ -43,7 +43,9 @@ Solve the package using the default solver env:
      -j
      %{jobs}
      (when
-      (= %{pkg-self:foo} bar)
+      (catch_undefined_var
+       (= %{pkg-self:foo} bar)
+       false)
       --foobar)
      @install)))
 
@@ -70,7 +72,7 @@ Run the solver using the new env:
   $ solve a
   Solution for dune.lock:
   - a.0.0.1
-  $ cat dune.lock/a.pkg
+  $ cat ${default_lock_dir}/a.pkg
   (version 0.0.1)
   
   (build

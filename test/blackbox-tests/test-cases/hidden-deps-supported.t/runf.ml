@@ -1,1 +1,1 @@
-let a = Bar.y + Foo.v
+let _ = Bar.y + Foo.v

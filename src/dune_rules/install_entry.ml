@@ -112,7 +112,7 @@ module File = struct
            ~f:
              (Memo.List.map
                 ~f:
-                  (File_binding.Unexpanded.expand
+                  (File_binding_expand.expand
                      ~dir
                      ~f:
                        (expand_with_check_for_local_path ~expand:(fun p ->
@@ -174,7 +174,7 @@ module File = struct
       Memo.parallel_iter
         file_bindings_expanded
         ~f:
-          (File_binding.Expanded.validate_for_install_stanza
+          (File_binding_expand.validate_for_install_stanza
              ~relative_dst_path_starts_with_parent_error_when:
                `Deprecation_warning_from_3_11)
     in
@@ -194,10 +194,10 @@ module Dir = struct
   type t = File_binding.Unexpanded.t Recursive_include.t
 
   let to_file_bindings_expanded
-    ts
-    ~expand
-    ~(dir : Path.Build.t)
-    ~relative_dst_path_starts_with_parent_error_when
+        ts
+        ~expand
+        ~(dir : Path.Build.t)
+        ~relative_dst_path_starts_with_parent_error_when
     =
     let* file_bindings_expanded =
       Memo.List.concat_map
@@ -205,7 +205,7 @@ module Dir = struct
         ~f:(Recursive_include.expand_include ~expand ~dir:(Path.build dir))
       >>= Memo.List.map
             ~f:
-              (File_binding.Unexpanded.expand
+              (File_binding_expand.expand
                  ~dir
                  ~f:
                    (expand_with_check_for_local_path ~expand:(fun s ->
@@ -218,7 +218,7 @@ module Dir = struct
       Memo.parallel_iter
         file_bindings_expanded
         ~f:
-          (File_binding.Expanded.validate_for_install_stanza
+          (File_binding_expand.validate_for_install_stanza
              ~relative_dst_path_starts_with_parent_error_when)
     in
     file_bindings_expanded

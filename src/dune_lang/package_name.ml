@@ -1,4 +1,4 @@
-open Stdune
+open Import
 include String
 
 include (
@@ -69,7 +69,7 @@ let is_opam_compatible s = Option.is_some (Opam_compatible.of_string_opt (to_str
 let file t ~dir = Path.Source.relative dir (to_string t ^ opam_ext)
 
 let decode_opam_compatible =
-  Dune_sexp.Decoder.map ~f:Opam_compatible.to_package_name Opam_compatible.decode
+  Decoder.map ~f:Opam_compatible.to_package_name Opam_compatible.decode
 ;;
 
 let of_opam_file_basename basename =

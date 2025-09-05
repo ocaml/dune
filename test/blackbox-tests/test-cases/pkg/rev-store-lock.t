@@ -2,6 +2,7 @@ Testing whether the revision store locks properly.
 
 To start with we create a repository in with a `foo` package.
 
+  $ . ../git-helpers.sh
   $ . ./helpers.sh
   $ mkrepo
   $ mkpkg foo 1.0 <<EOF

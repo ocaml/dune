@@ -2,7 +2,7 @@ open Import
 
 let exec () =
   let open Fiber.O in
-  let where = Rpc_common.active_server () in
+  let where = Rpc_common.active_server_exn () in
   let module Client = Dune_rpc_client.Client in
   let+ errors =
     let* connect = Client.Connection.connect_exn where in

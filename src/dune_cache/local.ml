@@ -35,6 +35,11 @@ module Target = struct
       Path.Build.chmod path ~mode:(Path.Permissions.remove Path.Permissions.write st_perm);
       let executable = Path.Permissions.test Path.Permissions.execute st_perm in
       Some { executable }
+    | { Unix.st_kind = Unix.S_DIR; st_perm; _ } ->
+      (* Adding "executable" permissions to directories mean we can traverse them. *)
+      Path.Build.chmod path ~mode:(Path.Permissions.add Path.Permissions.execute st_perm);
+      (* the value of [executable] here is ignored, but [Some] is meaningful. *)
+      Some { executable = true }
     | (exception Unix.Unix_error _) | _ -> None
   ;;
 end
@@ -58,7 +63,11 @@ end
 let link_even_if_there_are_too_many_links_already ~src ~dst =
   try Path.link src dst with
   | Unix.Unix_error (Unix.EMLINK, _, _) ->
-    Temp.with_temp_file ~dir:temp_dir ~prefix:"dune" ~suffix:"copy" ~f:(function
+    Temp.with_temp_file
+      ~dir:(Lazy.force temp_dir)
+      ~prefix:"dune"
+      ~suffix:"copy"
+      ~f:(function
       | Error e -> raise e
       | Ok temp_file ->
         Io.copy_file ~src ~dst:temp_file ();
@@ -73,18 +82,14 @@ module Artifacts = struct
   include Dune_cache_storage.Artifacts
 
   let store_metadata
-    ~mode
-    ~metadata
-    ~rule_digest
-    (artifacts : Digest.t Targets.Produced.t)
+        ~mode
+        ~metadata
+        ~rule_digest
+        (artifacts : Digest.t Targets.Produced.t)
     =
     let entries =
-      Targets.Produced.foldi artifacts ~init:[] ~f:(fun target file_digest entries ->
-        let entry : Metadata_entry.t =
-          { file_path = Path.Local.to_string target; file_digest }
-        in
-        entry :: entries)
-      |> List.rev
+      Targets.Produced.to_list_map artifacts ~f:(fun target digest ->
+        { Metadata_entry.path = Path.Local.to_string target; digest })
     in
     Metadata_file.store ~mode { metadata; entries } ~rule_digest
   ;;
@@ -103,12 +108,16 @@ module Artifacts = struct
     Result.try_with (fun () ->
       (* CR-someday rleshchinskiy: We recreate the directory structure here but it might be
          simpler to just use file digests instead of file names and no subdirectories. *)
-      Path.Local.Map.iteri targets.dirs ~f:(fun path _ ->
-        Path.mkdir_p (Path.append_local temp_dir path));
-      Targets.Produced.iteri targets ~f:(fun path _ ->
-        let path_in_build_dir = Path.build (Path.Build.append_local targets.root path) in
-        let path_in_temp_dir = Path.append_local temp_dir path in
-        portable_hardlink_or_copy ~src:path_in_build_dir ~dst:path_in_temp_dir))
+      (* The comment above seems outdated wrt. 'no subdirectories'... *)
+      Targets.Produced.iteri
+        targets
+        ~d:(fun dir -> Path.mkdir_p (Path.append_local temp_dir dir))
+        ~f:(fun file _ ->
+          let path_in_build_dir =
+            Path.build (Path.Build.append_local targets.root file)
+          in
+          let path_in_temp_dir = Path.append_local temp_dir file in
+          portable_hardlink_or_copy ~src:path_in_build_dir ~dst:path_in_temp_dir))
   ;;
 
   (* Step II of [store_skipping_metadata].
@@ -133,70 +142,75 @@ module Artifacts = struct
       artifacts
       ~init:Store_result.empty
       ~f:(fun target digest results ->
-        let path_in_temp_dir = Path.append_local temp_dir target in
-        let path_in_cache = file_path ~file_digest:digest in
-        let store_using_hardlinks () =
-          match
-            Dune_cache_storage.Util.Optimistically.link
-              ~src:path_in_temp_dir
-              ~dst:path_in_cache
-          with
-          | exception Unix.Unix_error (Unix.EEXIST, _, _) ->
-            (* We end up here if the cache already contains an entry for this
-               artifact. We deduplicate by keeping only one copy, in the
-               cache. *)
-            let path_in_build_dir =
-              Path.build (Path.Build.append_local artifacts.root target)
-            in
-            (match
-               Path.unlink_no_err path_in_temp_dir;
-               (* At first, we deduplicate the temporary file. Doing this
-                  intermediate step allows us to keep the original target in case
-                  the below link step fails. This might happen if the trimmer has
-                  just deleted [path_in_cache]. In this rare case, this function
-                  fails with an [Error], and so we might end up with some
-                  duplicates in the workspace. *)
-               link_even_if_there_are_too_many_links_already
-                 ~src:path_in_cache
-                 ~dst:path_in_temp_dir;
-               (* Now we can simply rename the temporary file into the target,
-                  knowing that the original target remains in place if the
-                  renaming fails.
+        match digest with
+        | None ->
+          (* No digest means [target] is a directory, simply ignore it. *)
+          results
+        | Some file_digest ->
+          let path_in_temp_dir = Path.append_local temp_dir target in
+          let path_in_cache = Lazy.force (file_path ~file_digest) in
+          let store_using_hardlinks () =
+            match
+              Dune_cache_storage.Util.Optimistically.link
+                ~src:path_in_temp_dir
+                ~dst:path_in_cache
+            with
+            | exception Unix.Unix_error (Unix.EEXIST, _, _) ->
+              (* We end up here if the cache already contains an entry for this
+                 artifact. We deduplicate by keeping only one copy, in the
+                 cache. *)
+              let path_in_build_dir =
+                Path.build (Path.Build.append_local artifacts.root target)
+              in
+              (match
+                 Path.unlink_no_err path_in_temp_dir;
+                 (* At first, we deduplicate the temporary file. Doing this
+                    intermediate step allows us to keep the original target in case
+                    the below link step fails. This might happen if the trimmer has
+                    just deleted [path_in_cache]. In this rare case, this function
+                    fails with an [Error], and so we might end up with some
+                    duplicates in the workspace. *)
+                 link_even_if_there_are_too_many_links_already
+                   ~src:path_in_cache
+                   ~dst:path_in_temp_dir;
+                 (* Now we can simply rename the temporary file into the target,
+                    knowing that the original target remains in place if the
+                    renaming fails.
 
-                  One curious case to think about is if the file in the cache
-                  happens to have the same inode as the file in the workspace. In
-                  that case this deduplication should be a no-op, but the
-                  [rename] operation has a quirk where [path_in_temp_dir] can
-                  remain on disk. This is not a problem because we clean the
-                  temporary directory later. *)
-               Path.rename path_in_temp_dir path_in_build_dir
-             with
-             | exception e -> Store_result.Error e
-             | () -> Already_present)
-          | exception e -> Error e
-          | () -> Stored
-        in
-        let store_using_test_and_rename () =
-          (* CR-someday amokhov: There is a race here. If [path_in_cache] is
-             created after [Path.exists] but before [Path.rename], it will be
-             silently overwritten. Find a good way to avoid this race. *)
-          match Path.exists path_in_cache with
-          | true -> Store_result.Already_present
-          | false ->
-            (match
-               Dune_cache_storage.Util.Optimistically.rename
-                 ~src:path_in_temp_dir
-                 ~dst:path_in_cache
-             with
-             | exception e -> Error e
-             | () -> Stored)
-        in
-        let result =
-          match (mode : Dune_cache_storage.Mode.t) with
-          | Hardlink -> store_using_hardlinks ()
-          | Copy -> store_using_test_and_rename ()
-        in
-        Store_result.combine results result)
+                    One curious case to think about is if the file in the cache
+                    happens to have the same inode as the file in the workspace. In
+                    that case this deduplication should be a no-op, but the
+                    [rename] operation has a quirk where [path_in_temp_dir] can
+                    remain on disk. This is not a problem because we clean the
+                    temporary directory later. *)
+                 Path.rename path_in_temp_dir path_in_build_dir
+               with
+               | exception e -> Store_result.Error e
+               | () -> Already_present)
+            | exception e -> Error e
+            | () -> Stored
+          in
+          let store_using_test_and_rename () =
+            (* CR-someday amokhov: There is a race here. If [path_in_cache] is
+               created after [Path.exists] but before [Path.rename], it will be
+               silently overwritten. Find a good way to avoid this race. *)
+            match Path.exists path_in_cache with
+            | true -> Store_result.Already_present
+            | false ->
+              (match
+                 Dune_cache_storage.Util.Optimistically.rename
+                   ~src:path_in_temp_dir
+                   ~dst:path_in_cache
+               with
+               | exception e -> Error e
+               | () -> Stored)
+          in
+          let result =
+            match (mode : Dune_cache_storage.Mode.t) with
+            | Hardlink -> store_using_hardlinks ()
+            | Copy -> store_using_test_and_rename ()
+          in
+          Store_result.combine results result)
   ;;
 
   let store_skipping_metadata ~mode ~targets ~compute_digest
@@ -258,8 +272,8 @@ module Artifacts = struct
     ;;
 
     let create_all_or_none
-      (mode : Dune_cache_storage.Mode.t)
-      (artifacts : _ Targets.Produced.t)
+          (mode : Dune_cache_storage.Mode.t)
+          (artifacts : _ Targets.Produced.t)
       =
       let unwind = Unwind.make () in
       let rec mk_dir (dir : Path.Local.t) =
@@ -275,16 +289,13 @@ module Artifacts = struct
       let mk_file file file_digest =
         let target = Path.Build.append_local artifacts.root file in
         let dst = Path.build target in
-        let src = file_path ~file_digest in
+        let src = Lazy.force (file_path ~file_digest) in
         (match mode with
          | Hardlink -> hardlink ~src ~dst
          | Copy -> copy ~src ~dst);
         Unwind.push unwind (fun () -> Path.Build.unlink_no_err target)
       in
-      try
-        Path.Local.Map.iteri artifacts.dirs ~f:(fun dir _ -> mk_dir dir);
-        Targets.Produced.iteri artifacts ~f:mk_file
-      with
+      try Targets.Produced.iteri artifacts ~f:mk_file ~d:mk_dir with
       | exn ->
         Unwind.unwind unwind;
         reraise exn
@@ -294,10 +305,8 @@ module Artifacts = struct
   let restore ~mode ~rule_digest ~target_dir =
     Restore_result.bind (list ~rule_digest) ~f:(fun (entries : Metadata_entry.t list) ->
       let artifacts =
-        Path.Local.Map.of_list_map_exn
-          entries
-          ~f:(fun { Metadata_entry.file_path; file_digest } ->
-            Path.Local.of_string file_path, file_digest)
+        Path.Local.Map.of_list_map_exn entries ~f:(fun { Metadata_entry.path; digest } ->
+          Path.Local.of_string path, digest)
         |> Targets.Produced.of_files target_dir
       in
       try

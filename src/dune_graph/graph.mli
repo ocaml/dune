@@ -6,6 +6,7 @@ module File_format : sig
     | Dot
     | Summary
 
+  val equal : t -> t -> bool
   val conv : (string -> (t, [> `Msg of string ]) result) * (Format.formatter -> t -> unit)
 end
 

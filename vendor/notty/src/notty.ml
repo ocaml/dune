@@ -1,6 +1,8 @@
 (* Copyright (c) 2016-2017 David Kaloper Meršinjak. All rights reserved.
    See LICENSE.md. *)
 
+open Dune_uutf
+
 let invalid_arg fmt = Format.kasprintf invalid_arg fmt
 
 let (&.) f g x = f (g x)
@@ -209,11 +211,12 @@ module A = struct
   and b x = x land 0xff
 
   let bold      = 1
-  and italic    = 2
-  and dim       = 3
-  and underline = 4
-  and blink     = 8
-  and reverse   = 16
+  and dim       = 2
+  and faint     = 2
+  and italic    = 4
+  and underline = 8
+  and blink     = 16
+  and reverse   = 32
 
   let empty = { fg = 0; bg = 0; st = 0 }
 
@@ -384,7 +387,12 @@ module I = struct
 
     let create () =
       let img, line, attr = ref empty, ref empty, ref [] in
-      let fmt = formatter_of_out_functions {
+      (* OCaml 5.4 added a new record field so to keep compatibility, get and
+         update the record, even if warning 23 "useless-record-with" is
+         triggered, about all fields being updated in <5.4. *)
+      let formatter_out_functions = get_formatter_out_functions () in
+      let[@warning "-23"] formatter_out_functions = {
+        formatter_out_functions with
           out_flush = (fun () ->
             img := !img <-> !line; line := empty; attr := [])
         ; out_newline = (fun () ->
@@ -394,7 +402,9 @@ module I = struct
         (* Not entirely clear; either or both could be void: *)
         ; out_spaces = (fun w -> line := !line <|> char (top_a attr) ' ' w 1)
         ; out_indent = (fun w -> line := !line <|> char (top_a attr) ' ' w 1)
-      } in
+      }
+      in
+      let fmt = formatter_of_out_functions formatter_out_functions in
       pp_set_formatter_stag_functions fmt {
         (pp_get_formatter_stag_functions fmt ()) with
             mark_open_stag =
@@ -511,7 +521,7 @@ module Cap = struct
 
   let ((<|), (<.), (<!)) = Buffer.(add_string, add_char, add_decimal)
 
-  let sts = [ ";1"; ";3"; ";4"; ";5"; ";7" ]
+  let sts = [ ";1"; ";2"; ";3"; ";4"; ";5"; ";7" ]
 
   let sgr { A.fg; bg; st } buf =
     buf <| "\x1b[0";

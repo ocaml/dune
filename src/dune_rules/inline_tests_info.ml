@@ -1,4 +1,5 @@
 open Import
+module Ocaml_flags = Dune_lang.Ocaml_flags
 
 module Backend = struct
   let name = Sub_system_name.of_string "inline_tests.backend"
@@ -101,8 +102,13 @@ module Mode_conf = struct
   ;;
 
   let decode =
-    enum [ "byte", Byte; "js", Jsoo JS; "native", Native; "best", Best ]
-    <|> sum [ "wasm", Syntax.since Stanza.syntax (3, 17) >>> return (Jsoo Wasm) ]
+    enum'
+      [ "byte", return Byte
+      ; "js", return (Jsoo JS)
+      ; "native", return Native
+      ; "best", return Best
+      ; "wasm", Syntax.since Stanza.syntax (3, 17) >>> return (Jsoo Wasm)
+      ]
   ;;
 
   module O = Comparable.Make (T)
@@ -183,3 +189,9 @@ module Tests = struct
      purposes *)
   let encode _t = assert false
 end
+
+let inline_test_dirname lib_name =
+  sprintf ".%s.inline-tests" (Lib_name.Local.to_string lib_name)
+;;
+
+let inline_test_runner = "inline-test-runner"

@@ -1,11 +1,10 @@
 open! Stdune
 
 include struct
-  open Dune_rules
-  module Dune_project = Dune_project
+  open Source
   module Source_tree = Source_tree
   module Source_dir_status = Source_dir_status
-  module Dune_file0 = Dune_file0
+  module Dune_file = Dune_file
 end
 
 include struct
@@ -19,6 +18,7 @@ end
 include struct
   open Dune_lang
   module Dune_project_name = Dune_project_name
+  module Dune_project = Dune_project
 end
 
 module Console = Dune_console
@@ -274,10 +274,10 @@ module V2 = struct
   ;;
 
   let upgrade_dune_files todo dir =
-    if String.Set.mem (Source_tree.Dir.filenames dir) Dune_file0.fname
+    if String.Set.mem (Source_tree.Dir.filenames dir) Dune_file.fname
     then (
       let path = Source_tree.Dir.path dir in
-      let fn = Path.Source.relative path Dune_file0.fname in
+      let fn = Path.Source.relative path Dune_file.fname in
       if Io.with_lexbuf_from_file (Path.source fn) ~f:Dune_lang.Dune_file_script.is_script
       then
         User_warning.emit
@@ -351,7 +351,7 @@ let detect_project_version project dir =
     then Dune2_project
     else if project_dune_version >= (1, 0)
     then Dune1_project
-    else if in_tree Dune_file0.fname
+    else if in_tree Dune_file.fname
     then Dune1_project
     else Unknown)
 ;;

@@ -53,6 +53,8 @@ The runtime_dep index.txt was copied to the build folder
   
 
 
+
+
 Test depending on non-existing paths
 
   $ mkdir another
@@ -116,7 +118,7 @@ Test depending on paths that "escape" the melange.emit directory
   > let () = Js.log file_content
   > EOF
 
-Need to create the source dir first for the alias to be picked up
+Rules are created for the runtime deps
 
   $ dune rules @mel | grep .txt
   ((deps ((File (In_build_dir _build/default/a/assets/file.txt))))
@@ -162,4 +164,39 @@ External paths are not copied to the target directory
 
   $ ls _build/default/external/external-output/external
   main.js
+
+Test depending on runtime assets inside `(include_subdirs ..)`
+
+  $ mkdir -p incl/sub
+  $ cat > incl/dune <<EOF
+  > (include_subdirs unqualified)
+  > (melange.emit
+  >  (alias mel)
+  >  (target incl-output)
+  >  (emit_stdlib false)
+  >  (libraries melange.node)
+  >  (preprocess (pps melange.ppx))
+  >  (runtime_deps ./file.txt ./sub/file.txt))
+  > EOF
+  $ cat > incl/file.txt <<EOF
+  > hello from sub file
+  > EOF
+  $ cat > incl/sub/file.txt <<EOF
+  > hello from sub file
+  > EOF
+  $ cat > incl/sub/main.ml <<EOF
+  > let dirname = [%mel.raw "__dirname"]
+  > let file_path = "./file.txt"
+  > let file_content = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
+  > let () = Js.log file_content
+  > EOF
+
+  $ dune build @mel --display=short 2>&1 | grep -i main
+           ppx incl/sub/main.pp.ml
+          melc incl/.incl-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
+          melc incl/incl-output/incl/sub/main.js
+
+  $ node _build/default/incl/incl-output/incl/sub/main.js
+  hello from sub file
+  
 

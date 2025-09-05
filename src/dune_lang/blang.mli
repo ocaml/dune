@@ -1,4 +1,4 @@
-open Dune_sexp
+open Import
 
 (* Note that this type is defined separately from [_ Ast.t] so that its
    constructors are scoped within the [Blang] module, allowing us to construct
@@ -26,6 +26,10 @@ module Ast : sig
   val true_ : 'string t
   val false_ : 'string t
   val to_dyn : 'string Dyn.builder -> 'string t -> Dyn.t
+  val equal : ('string -> 'string -> bool) -> 'string t -> 'string t -> bool
+
+  (** [map_string f t] applies [f] to each string value inside [t]. *)
+  val map_string : f:('a -> 'b) -> 'a t -> 'b t
 
   (** The [override_decode_bare_literal] argument is an alternative parser that
       if provided, will be used to parse string literals for the [Expr _]

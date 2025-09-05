@@ -92,7 +92,7 @@ Package which has boolean where string was expected. This should be caught while
   - with-interpolation.0.0.1
   - with-percent-sign.0.0.1
 
-  $ cat dune.lock/standard-dune.pkg
+  $ cat ${default_lock_dir}/standard-dune.pkg
   (version 0.0.1)
   
   (install
@@ -105,7 +105,7 @@ Package which has boolean where string was expected. This should be caught while
      (run dune subst))
     (run dune build -p %{pkg-self:name} -j %{jobs} @install)))
 
-  $ cat dune.lock/with-interpolation.pkg
+  $ cat ${default_lock_dir}/with-interpolation.pkg
   (version 0.0.1)
   
   (install
@@ -116,13 +116,13 @@ Package which has boolean where string was expected. This should be caught while
     (run ./configure --prefix=%{prefix} --docdir=%{doc}/ocaml)
     (run %{make} -j%{jobs})))
 
-  $ cat dune.lock/with-percent-sign.pkg
+  $ cat ${default_lock_dir}/with-percent-sign.pkg
   (version 0.0.1)
   
   (build
    (run printf %d 42))
 
-  $ cat dune.lock/variable-types.pkg
+  $ cat ${default_lock_dir}/variable-types.pkg
   (version 0.0.1)
   
   (build
@@ -144,7 +144,7 @@ Package which has boolean where string was expected. This should be caught while
   Solution for dune.lock:
   - exercise-filters.0.0.1
 
-  $ cat dune.lock/exercise-filters.pkg
+  $ cat ${default_lock_dir}/exercise-filters.pkg
   (version 0.0.1)
   
   (build
@@ -193,7 +193,7 @@ Test that if opam filter translation is disabled the output doesn't contain any 
   $ solve exercise-filters
   Solution for dune.lock:
   - exercise-filters.0.0.1
-  $ cat dune.lock/exercise-filters.pkg
+  $ cat ${default_lock_dir}/exercise-filters.pkg
   (version 0.0.1)
   
   (build
@@ -241,16 +241,20 @@ Test that if opam filter translation is disabled the output doesn't contain any 
   $ solve exercise-term-filters
   Solution for dune.lock:
   - exercise-term-filters.0.0.1
-  $ cat dune.lock/exercise-term-filters.pkg
+  $ cat ${default_lock_dir}/exercise-term-filters.pkg
   (version 0.0.1)
   
   (build
    (run
     echo
     a
-    (when %{pkg-self:foo} b)
     (when
-     (and_absorb_undefined_var %{pkg-self:bar} %{pkg-self:baz})
+     (catch_undefined_var %{pkg-self:foo} false)
+     b)
+    (when
+     (catch_undefined_var
+      (and_absorb_undefined_var %{pkg-self:bar} %{pkg-self:baz})
+      false)
      c)))
 
   $ solve filter-error-bool-where-string-expected
@@ -297,7 +301,7 @@ to a dune if-statement that checks the "enable" variable (rather than the
 It's probably an error for opam packages to use the "enable" in ways that opam
 doesn't desugar but these tests are included so we can check that behaviour is
 preserved between opam and dune.
-  $ cat dune.lock/package-conjunction-and-string-selection.pkg
+  $ cat ${default_lock_dir}/package-conjunction-and-string-selection.pkg
   (version 0.0.1)
   
   (build

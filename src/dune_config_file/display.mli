@@ -9,6 +9,8 @@ type t =
       }
   | Tui
 
+val equal : t -> t -> bool
+
 (** All the supported display modes for setting from the command line. *)
 val all : (string * t) list
 

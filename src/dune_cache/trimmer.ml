@@ -25,7 +25,9 @@ let trim_broken_metadata_entries ~trimmed_so_far =
     Version.Metadata.all
     ~init:trimmed_so_far
     ~f:(fun trimmed_so_far version ->
-      let metadata_entries = Layout.Versioned.list_metadata_entries version in
+      let metadata_entries =
+        Lazy.force (Layout.Versioned.list_metadata_entries version)
+      in
       let file_path =
         Layout.Versioned.file_path (Version.Metadata.file_version version)
       in
@@ -49,11 +51,12 @@ let trim_broken_metadata_entries ~trimmed_so_far =
                     keep them untrimmed for now. *)
                  false
                | Metadata.Artifacts { entries; _ } ->
-                 List.exists
-                   entries
-                   ~f:(fun { Artifacts.Metadata_entry.file_digest; _ } ->
-                     let reference = file_path ~file_digest in
-                     not (Path.exists reference)))
+                 List.exists entries ~f:(function
+                   | { Artifacts.Metadata_entry.digest = Some file_digest; path = _ } ->
+                     let reference = Lazy.force (file_path ~file_digest) in
+                     not (Path.exists reference)
+                     (* no digest means it's a directory. *)
+                   | { digest = None; path = _ } -> false))
           in
           match should_be_removed with
           | true ->
@@ -78,7 +81,7 @@ let garbage_collect () =
 
 let files_in_cache_for_all_supported_versions () =
   List.concat_map Version.File.all ~f:(fun file_version ->
-    Layout.Versioned.list_file_entries file_version)
+    Lazy.force (Layout.Versioned.list_file_entries file_version))
 ;;
 
 (* We call a cached file "unused" if there are currently no hard links to it

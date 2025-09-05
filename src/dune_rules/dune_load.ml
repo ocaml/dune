@@ -35,7 +35,7 @@ module Projects_and_dune_files =
       type t = status * Dune_project.t
     end))
     (Monoid.Appendable_list (struct
-         type t = Path.Source.t * Dune_project.t * Dune_file0.t
+         type t = Path.Source.t * Dune_project.t * Source.Dune_file.t
        end))
 
 module Source_tree_map_reduce =

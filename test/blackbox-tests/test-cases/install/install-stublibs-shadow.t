@@ -74,7 +74,7 @@ And we try to build an executable depending on the (local) `libA` and the (insta
   $ OCAMLPATH=./install/lib dune build exeA.bc
   File "_none_", line 1:
   Error: Error while linking .exeA.eobjs/byte/dune__exe__ExeA.cmo:
-         The external function `dummy2' is not available
+         The external function dummy2 is not available
   [1]
 
 The error comes from passing as flags `-I ./install/lib/pkgA/../stublibs -I

@@ -1,4 +1,5 @@
 open Import
+module Ocaml_flags := Dune_lang.Ocaml_flags
 
 module Backend : sig
   type t =
@@ -52,3 +53,6 @@ module Tests : sig
 
   include Sub_system_info.S with type t := t
 end
+
+val inline_test_dirname : Lib_name.Local.t -> string
+val inline_test_runner : string

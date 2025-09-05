@@ -1,27 +1,29 @@
 open Stdune
 module Console = Dune_console
 
+let () = Dune_tests_common.init ()
+
 (** [dummy_results a b c d] creates a dummy result with [a]/[b] immediate dependencies and
     [c]/[d] transitive dependencies. The total number of dependencies will be [b] + [d]
     of which [a] + [b] will be outdated. *)
 let dummy_results
-  number_of_immediate
-  total_number_of_immediate
-  number_of_transitive
-  total_number_of_transitive
+      number_of_immediate
+      total_number_of_immediate
+      number_of_transitive
+      total_number_of_transitive
   =
   List.init (total_number_of_immediate - number_of_immediate) ~f:(fun _ ->
-    Dune_pkg_outdated.For_tests.package_is_best_candidate)
+    Dune_pkg.Outdated.For_tests.package_is_best_candidate)
   @ List.init number_of_immediate ~f:(fun i ->
-    Dune_pkg_outdated.For_tests.better_candidate
+    Dune_pkg.Outdated.For_tests.better_candidate
       ~is_immediate_dep_of_local_package:true
       ~name:(sprintf "foo%d" i)
       ~newer_version:(Dune_pkg.Package_version.of_string "2.0.0")
       ~outdated_version:(Dune_pkg.Package_version.of_string "1.0.0"))
   @ List.init (total_number_of_transitive - number_of_transitive) ~f:(fun _ ->
-    Dune_pkg_outdated.For_tests.package_is_best_candidate)
+    Dune_pkg.Outdated.For_tests.package_is_best_candidate)
   @ List.init number_of_transitive ~f:(fun i ->
-    Dune_pkg_outdated.For_tests.better_candidate
+    Dune_pkg.Outdated.For_tests.better_candidate
       ~is_immediate_dep_of_local_package:false
       ~name:(sprintf "bar%d" i)
       ~newer_version:(Dune_pkg.Package_version.of_string "2.0.0")
@@ -51,11 +53,11 @@ let show_styles_of_line line =
    outdated. Depending on the value of [transitive] it may output a helper message. It
    will also prefix the lines with the style that has been applied. *)
 let test_message
-  ~transitive
-  number_of_immediate
-  total_number_of_immediate
-  number_of_transitive
-  total_number_of_transitive
+      ~transitive
+      number_of_immediate
+      total_number_of_immediate
+      number_of_transitive
+      total_number_of_transitive
   =
   let results =
     dummy_results
@@ -64,9 +66,9 @@ let test_message
       number_of_transitive
       total_number_of_transitive
   in
-  let lock_dir_path = Stdune.Path.Source.of_string "dune.lock" in
+  let lock_dir_path = Stdune.Path.of_string "dune.lock" in
   let message =
-    Dune_pkg_outdated.For_tests.explain_results ~transitive ~lock_dir_path results
+    Dune_pkg.Outdated.For_tests.explain_results ~transitive ~lock_dir_path results
   in
   Console.print (List.map ~f:show_styles_of_line message)
 ;;
@@ -117,10 +119,10 @@ let%expect_test "transitive helper message" =
    that [transitive] is true which means we will not output a helper message. It will also
    prefix the lines with the style that has been applied. *)
 let test
-  number_of_immediate
-  total_number_of_immediate
-  number_of_transitive
-  total_number_of_transitive
+      number_of_immediate
+      total_number_of_immediate
+      number_of_transitive
+      total_number_of_transitive
   =
   test_message
     ~transitive:true
@@ -272,11 +274,11 @@ let%expect_test "some larger examples" =
 (* [test_entire_output a b c d] prints the message from before and also all the outdated
    packages the command will output. Unlike before we do not print style information. *)
 let test_entire_output
-  ~transitive
-  number_of_immediate
-  total_number_of_immediate
-  number_of_transitive
-  total_number_of_transitive
+      ~transitive
+      number_of_immediate
+      total_number_of_immediate
+      number_of_transitive
+      total_number_of_transitive
   =
   let results =
     dummy_results
@@ -285,8 +287,8 @@ let test_entire_output
       number_of_transitive
       total_number_of_transitive
   in
-  let lock_dir_path = Stdune.Path.Source.of_string "dune.lock" in
-  let message = Dune_pkg_outdated.For_tests.pp ~transitive ~lock_dir_path results in
+  let lock_dir_path = Stdune.Path.of_string "dune.lock" in
+  let message = Dune_pkg.Outdated.For_tests.pp ~transitive ~lock_dir_path results in
   Console.print [ message ]
 ;;
 

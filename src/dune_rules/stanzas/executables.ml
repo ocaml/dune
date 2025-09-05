@@ -1,5 +1,6 @@
 open Import
 open Dune_lang.Decoder
+module Link_flags = Dune_lang.Link_flags
 
 module Names : sig
   type t
@@ -262,8 +263,9 @@ module Link_mode = struct
   let simple_representations_including_wasm = ("wasm", wasm) :: simple_representations
 
   let simple =
-    Dune_lang.Decoder.enum simple_representations
-    <|> sum [ "wasm", Syntax.since Stanza.syntax (3, 17) >>> return wasm ]
+    ("wasm", Syntax.since Stanza.syntax (3, 17) >>> return wasm)
+    :: List.map simple_representations ~f:(fun (x, y) -> x, return y)
+    |> enum'
   ;;
 
   let decode =

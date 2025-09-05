@@ -1,8 +1,5 @@
 (library
  (name dune_util)
- (foreign_stubs
-  (language c)
-  (names dune_flock))
  (libraries
   stdune
   dune_stats
@@ -16,6 +13,4 @@
   dune_sexp
   dune_config
   memo
-  (re_export unix))
- (instrumentation
-  (backend bisect_ppx)))
+  (re_export unix)))

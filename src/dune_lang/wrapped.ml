@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp.Decoder
+open Import
 
 type t =
   | Simple of bool
@@ -8,18 +7,19 @@ type t =
 let equal = Poly.equal
 
 let decode =
+  let open Decoder in
   sum
     [ "true", return (Simple true)
     ; "false", return (Simple false)
     ; ( "transition"
-      , Dune_sexp.Syntax.since Stanza.syntax (1, 2)
+      , Syntax.since Stanza.syntax (1, 2)
         >>> let+ x = string in
             Yes_with_transition x )
     ]
 ;;
 
 let encode =
-  let open Dune_sexp.Encoder in
+  let open Encoder in
   function
   | Simple b -> bool b
   | Yes_with_transition m -> pair string string ("transition", m)

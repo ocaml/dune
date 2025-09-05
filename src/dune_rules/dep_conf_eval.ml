@@ -86,7 +86,8 @@ let expand_include ~dir ~project s =
         Stanza.syntax
         (Active (Dune_project.dune_version project))
         (String_with_vars.set_decoding_env
-           (Pform.Env.initial Stanza.latest_version)
+           (* CR-someday rgrinberg: this environment looks fishy *)
+           (Pform.Env.initial ~stanza:Stanza.latest_version ~extensions:[])
            (Bindings.decode Dep_conf.decode))
     in
     List.concat_map ~f:(Dune_lang.Decoder.parse dep_parser Univ_map.empty) asts
@@ -268,8 +269,8 @@ and named_paths_builder ~expander l =
         (match
            Option.List.all
              (List.map x ~f:(function
-               | Simple x -> Some x
-               | Other _ -> None))
+                | Simple x -> Some x
+                | Other _ -> None))
          with
          | Some x ->
            let open Memo.O in

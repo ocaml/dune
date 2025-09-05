@@ -106,8 +106,8 @@ let of_git_repo loc url =
     let* rev_store = Rev_store.get in
     OpamUrl.resolve url ~loc rev_store
     >>= (function
-           | Error _ as e -> Fiber.return e
-           | Ok s -> OpamUrl.fetch_revision url ~loc s rev_store)
+     | Error _ as e -> Fiber.return e
+     | Ok s -> OpamUrl.fetch_revision url ~loc s rev_store)
     >>| User_error.ok_exn
   in
   let serializable =
@@ -115,7 +115,7 @@ let of_git_repo loc url =
       (sprintf
          "%s#%s"
          (OpamUrl.base_url url)
-         (Rev_store.Object.to_string (Rev_store.At_rev.rev at_rev))
+         (Rev_store.Object.to_hex (Rev_store.At_rev.rev at_rev))
        |> OpamUrl.of_string
        |> OpamUrl.to_string)
   in
@@ -165,7 +165,7 @@ let all_packages_versions_in_dir loc ~dir opam_package_name =
       [ Pp.textf
           "Unable to read package versions from %s: %s"
           (Path.to_string_maybe_quoted dir)
-          (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e)
+          (Unix_error.Detailed.to_string_hum e)
       ]
 ;;
 
@@ -186,39 +186,48 @@ let all_packages_versions_at_rev rev opam_package_name =
     | _ -> None)
 ;;
 
-let all_package_versions t opam_package_name =
+module Key = struct
+  type t =
+    | Directory of OpamPackage.t
+    | Git of Rev_store.File.t * OpamPackage.t * Rev_store.At_rev.t * Path.Local.t
+
+  let opam_package = function
+    | Directory p | Git (_, p, _, _) -> p
+  ;;
+end
+
+let all_package_versions t opam_package_name : Key.t list =
   match t.source with
   | Directory dir ->
     all_packages_versions_in_dir t.loc ~dir opam_package_name
-    |> List.map ~f:(fun pkg -> `Directory pkg)
+    |> List.map ~f:(fun pkg -> Key.Directory pkg)
   | Repo rev ->
     all_packages_versions_at_rev rev opam_package_name
     |> List.map ~f:(fun (file, pkg) ->
       let files_dir = Paths.files_dir pkg in
-      `Git (file, pkg, rev, files_dir))
+      Key.Git (file, pkg, rev, files_dir))
 ;;
 
-let load_all_versions ts opam_package_name =
+let all_packages_versions_map ts opam_package_name =
+  List.concat_map ts ~f:(fun t ->
+    all_package_versions t opam_package_name |> List.rev_map ~f:(fun pkg -> t, pkg))
+  |> List.fold_left ~init:OpamPackage.Version.Map.empty ~f:(fun acc (repo, pkg) ->
+    let version =
+      let pkg = Key.opam_package pkg in
+      OpamPackage.version pkg
+    in
+    if OpamPackage.Version.Map.mem version acc
+    then acc
+    else OpamPackage.Version.Map.add version (repo, pkg) acc)
+;;
+
+let load_all_versions_by_keys ts =
   let from_git, from_dirs =
-    List.concat_map ts ~f:(fun t ->
-      all_package_versions t opam_package_name |> List.rev_map ~f:(fun pkg -> t, pkg))
-    |> List.fold_left ~init:OpamPackage.Version.Map.empty ~f:(fun acc (repo, pkg) ->
-      let version =
-        let pkg =
-          match pkg with
-          | `Directory pkg -> pkg
-          | `Git (_, pkg, _, _) -> pkg
-        in
-        OpamPackage.version pkg
-      in
-      if OpamPackage.Version.Map.mem version acc
-      then acc
-      else OpamPackage.Version.Map.add version (repo, pkg) acc)
-    |> OpamPackage.Version.Map.values
-    |> List.partition_map ~f:(fun (repo, pkg) ->
+    OpamPackage.Version.Map.values ts
+    |> List.partition_map ~f:(fun (repo, (pkg : Key.t)) ->
       match pkg with
-      | `Git (file, pkg, rev, files_dir) -> Left (file, pkg, rev, files_dir)
-      | `Directory pkg -> Right (repo, pkg))
+      | Git (file, pkg, rev, files_dir) -> Left (file, pkg, rev, files_dir)
+      | Directory pkg -> Right (repo, pkg))
   in
   let from_dirs =
     List.filter_map from_dirs ~f:(fun (repo, pkg) ->
@@ -244,6 +253,10 @@ let load_all_versions ts opam_package_name =
   |> List.rev_map ~f:(fun (opam_package, resolved_package) ->
     OpamPackage.version opam_package, resolved_package)
   |> OpamPackage.Version.Map.of_list
+;;
+
+let load_all_versions ts opam_package_name =
+  all_packages_versions_map ts opam_package_name |> load_all_versions_by_keys
 ;;
 
 module Private = struct

@@ -8,7 +8,6 @@
 (*  exception on linking described in the file LICENSE.                   *)
 (*                                                                        *)
 (**************************************************************************)
-module Re = Dune_re
 
 (** Formulas on variables, as used in opam files build scripts
 

@@ -30,6 +30,8 @@ module Run : sig
     | Automatic
     | No_watcher
 
+  val file_watcher_equal : file_watcher -> file_watcher -> bool
+
   module Shutdown : sig
     module Reason : sig
       type t =
@@ -102,6 +104,7 @@ val wait_for_process
 type termination_reason =
   | Normal
   | Cancel
+  | Timeout
 
 val wait_for_build_process
   :  ?timeout_seconds:float

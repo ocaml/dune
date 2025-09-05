@@ -23,7 +23,7 @@ same version of the ocaml compiler as the code that it's analyzing.
   > EOF
 
   $ make_lockdir
-  $ cat > dune.lock/ocaml.pkg <<EOF
+  $ make_lockpkg ocaml <<EOF
   > (version 5.2.0)
   > EOF
 
@@ -43,7 +43,7 @@ We can re-run "dune tools exec ocamllsp" without relocking or rebuilding.
   hello from fake ocamllsp
 
 Change the version of ocaml that the project depends on.
-  $ cat > dune.lock/ocaml.pkg <<EOF
+  $ make_lockpkg ocaml <<EOF
   > (version 5.1.0)
   > EOF
 

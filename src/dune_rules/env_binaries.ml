@@ -22,9 +22,9 @@ let impl dir =
         let* profile = Per_context.profile ctx in
         Dune_file.find_stanzas stanzas Dune_env.key
         >>| (function
-               | [ config ] -> Some config
-               | [] -> None
-               | _ :: _ :: _ -> assert false)
+         | [ config ] -> Some config
+         | [] -> None
+         | _ :: _ :: _ -> assert false)
         >>| (function
          | None -> []
          | Some stanza ->
@@ -37,7 +37,7 @@ let impl dir =
     in
     Memo.parallel_map
       binaries
-      ~f:(File_binding.Unexpanded.expand ~dir ~f:(expand_str_lazy expander))
+      ~f:(File_binding_expand.expand ~dir ~f:(expand_str_lazy expander))
 ;;
 
 let get =

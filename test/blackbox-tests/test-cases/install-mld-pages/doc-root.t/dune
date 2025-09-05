@@ -1,0 +1,4 @@
+(documentation
+ (files
+  (glob_files_rec
+   (doc/* with_prefix .))))

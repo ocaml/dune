@@ -21,7 +21,7 @@ include (
 
 let to_opam_hash v = v
 let of_opam_hash v = v
-let of_dune_digest dune_digest = OpamHash.md5 (Dune_digest.to_string dune_digest)
+let of_md5 md5 = md5 |> Md5.to_hex |> OpamHash.md5
 
 let pp v =
   let s = to_string v in
@@ -29,6 +29,7 @@ let pp v =
 ;;
 
 let equal = OpamHash.equal
+let hash = Poly.hash
 
 include Comparable.Make (struct
     type nonrec t = t

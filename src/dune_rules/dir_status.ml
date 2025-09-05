@@ -28,7 +28,7 @@ end
 
 module T = struct
   type t =
-    | Lock_dir
+    | Lock_dir of Source_tree.Dir.t
     | Generated
     | Source_only of Source_tree.Dir.t
     | (* Directory not part of a multi-directory group *)
@@ -47,7 +47,7 @@ type enclosing_group =
   | Group_root of Path.Build.t
 
 let current_group dir = function
-  | Lock_dir | Generated | Source_only _ | Standalone _ -> No_group
+  | Lock_dir _ | Generated | Source_only _ | Standalone _ -> No_group
   | Group_root _ -> Group_root dir
   | Is_component_of_a_group_but_not_the_root { group_root; _ } -> Group_root group_root
 ;;
@@ -144,9 +144,9 @@ let jsoo_wasm_enabled ~jsoo_enabled ~dir ~(buildable : Buildable.t) =
 ;;
 
 let directory_targets_of_executables
-  ~jsoo_enabled
-  ~dir
-  { Executables.names; modes; enabled_if; buildable; _ }
+      ~jsoo_enabled
+      ~dir
+      { Executables.names; modes; enabled_if; buildable; _ }
   =
   let* directory_targets =
     match Executables.Link_mode.(Map.mem modes wasm) with
@@ -165,9 +165,9 @@ let directory_targets_of_executables
 ;;
 
 let directory_targets_of_library
-  ~jsoo_enabled
-  ~dir
-  { Library.sub_systems; name; enabled_if; buildable; _ }
+      ~jsoo_enabled
+      ~dir
+      { Library.sub_systems; name; enabled_if; buildable; _ }
   =
   let* directory_targets =
     match Sub_system_name.Map.find sub_systems Inline_tests_info.Tests.name with
@@ -175,18 +175,18 @@ let directory_targets_of_library
       when Inline_tests_info.Mode_conf.Set.mem modes (Jsoo Wasm) ->
       jsoo_wasm_enabled ~jsoo_enabled ~dir ~buildable
       >>| (function
-             | false -> Path.Build.Map.empty
-             | true ->
-               let dir_target =
-                 let lib_name = Lib_name.Local.to_string (snd name) in
-                 let name = sprintf "inline_test_runner_%s" lib_name in
-                 let inline_test_dir =
-                   let inline_test_name = sprintf "%s.inline-tests" lib_name in
-                   Path.Build.relative dir ("." ^ inline_test_name)
-                 in
-                 Path.Build.relative inline_test_dir (name ^ Js_of_ocaml.Ext.wasm_dir)
-               in
-               Path.Build.Map.singleton dir_target loc)
+       | false -> Path.Build.Map.empty
+       | true ->
+         let dir_target =
+           let inline_test_dir =
+             let lib_name = snd name in
+             Path.Build.relative dir (Inline_tests_info.inline_test_dirname lib_name)
+           in
+           Path.Build.relative
+             inline_test_dir
+             (Inline_tests_info.inline_test_runner ^ Js_of_ocaml.Ext.wasm_dir)
+         in
+         Path.Build.Map.singleton dir_target loc)
       >>= when_enabled ~dir ~enabled_if
     | _ -> Memo.return Path.Build.Map.empty
   in
@@ -230,7 +230,7 @@ end = struct
     let rec walk st_dir ~dir ~local =
       DB.get ~dir
       >>= function
-      | Lock_dir | Generated | Source_only _ | Standalone _ | Group_root _ ->
+      | Lock_dir _ | Generated | Source_only _ | Standalone _ | Group_root _ ->
         Memo.return Appendable_list.empty
       | Is_component_of_a_group_but_not_the_root { stanzas; group_root = _ } ->
         let* stanzas =
@@ -320,10 +320,10 @@ end = struct
       let src_dir = Source_tree.Dir.path st_dir in
       Pkg_rules.lock_dir_path (Context_name.of_string ctx)
       >>| (function
-             | None -> false
-             | Some of_ -> Path.Source.is_descendant ~of_ src_dir)
+       | None -> false
+       | Some of_ -> Path.is_descendant ~of_ (Path.source src_dir))
       >>= (function
-       | true -> Memo.return Lock_dir
+       | true -> Memo.return (Lock_dir st_dir)
        | false ->
          let build_dir_is_project_root = build_dir_is_project_root st_dir in
          Dune_load.stanzas_in_dir dir
@@ -348,7 +348,7 @@ end
 
 let directory_targets t ~jsoo_enabled ~dir =
   match t with
-  | Lock_dir | Generated | Source_only _ | Is_component_of_a_group_but_not_the_root _ ->
+  | Lock_dir _ | Generated | Source_only _ | Is_component_of_a_group_but_not_the_root _ ->
     Memo.return Path.Build.Map.empty
   | Standalone (_, dune_file) ->
     Dune_file.stanzas dune_file >>= extract_directory_targets ~jsoo_enabled ~dir

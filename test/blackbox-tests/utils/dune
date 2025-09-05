@@ -1,13 +1,7 @@
 (executable
  (name dune_cmd)
  (modules dune_cmd)
- (libraries
-  stdune
-  dune-private-libs.dune_re
-  dune-configurator
-  build_path_prefix_map
-  str
-  unix))
+ (libraries stdune re dune-configurator build_path_prefix_map str unix))
 
 (ocamllex dunepp)
 
@@ -18,7 +12,7 @@
 (executable
  (modules melc_stdlib_prefix)
  (name melc_stdlib_prefix)
- (libraries stdune unix))
+ (libraries stdune fs_io unix))
 
 (executable
  (name refmt)

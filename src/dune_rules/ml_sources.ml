@@ -1,6 +1,5 @@
 open Import
 open Memo.O
-module Modules_group = Modules
 
 module Origin = struct
   type t =
@@ -27,8 +26,8 @@ module Origin = struct
   ;;
 end
 
-module Modules = struct
-  type component = Origin.t * Modules_group.t * Path.Build.t Obj_dir.t
+module Per_stanza = struct
+  type component = Origin.t * Modules.t * Path.Build.t Obj_dir.t
 
   type t =
     { libraries : component Lib_id.Local.Map.t
@@ -51,7 +50,7 @@ module Modules = struct
   type 'stanza group_part =
     { stanza : 'stanza
     ; sources : (Loc.t * Module.Source.t) Module_trie.t
-    ; modules : Modules_group.t
+    ; modules : Modules.t
     ; dir : Path.Build.t
     ; obj_dir : Path.Build.t Obj_dir.t
     }
@@ -68,7 +67,6 @@ module Modules = struct
         libs
         ~init:(Lib_id.Local.Map.empty, Path.Build.Map.empty)
         ~f:(fun (by_id, by_obj_dir) part ->
-          let origin : Origin.t = Library part.stanza in
           let lib_id =
             let src_dir =
               Path.drop_optional_build_context_src_exn (Path.build part.dir)
@@ -76,6 +74,7 @@ module Modules = struct
             Library.to_lib_id ~src_dir part.stanza
           in
           let by_id =
+            let origin : Origin.t = Library part.stanza in
             Lib_id.Local.Map.add_exn by_id lib_id (origin, part.modules, part.obj_dir)
           and by_obj_dir =
             Path.Build.Map.update by_obj_dir (Obj_dir.obj_dir part.obj_dir) ~f:(function
@@ -110,34 +109,31 @@ module Modules = struct
           [ Pp.textf "Target %S appears for the second time in this directory" name ]
     in
     let rev_map =
-      let modules =
-        let by_path (origin : Origin.t * Path.Build.t) trie =
-          Module_trie.fold trie ~init:[] ~f:(fun (_loc, m) acc ->
-            (Module.Source.path m, origin) :: acc)
-        in
-        List.concat
-          [ List.concat_map libs ~f:(fun part ->
-              by_path (Library part.stanza, part.dir) part.sources)
-          ; List.concat_map exes ~f:(fun part ->
-              by_path (Executables part.stanza, part.dir) part.sources)
-          ; List.concat_map emits ~f:(fun part ->
-              by_path (Melange part.stanza, part.dir) part.sources)
-          ]
+      let by_path (origin : Origin.t * Path.Build.t) trie =
+        Module_trie.fold trie ~init:[] ~f:(fun (_loc, m) acc ->
+          (Module.Source.path m, origin) :: acc)
       in
-      List.fold_left
-        modules
-        ~init:Module_name.Path.Map.empty
-        ~f:(fun module_name_map (module_name, origin) ->
-          Module_name.Path.Map.update module_name_map module_name ~f:(function
-            | None -> Some [ origin ]
-            | Some origins -> Some (origin :: origins)))
+      List.rev_concat
+        [ List.rev_concat_map libs ~f:(fun part ->
+            by_path (Library part.stanza, part.dir) part.sources)
+        ; List.rev_concat_map exes ~f:(fun part ->
+            by_path (Executables part.stanza, part.dir) part.sources)
+        ; List.rev_concat_map emits ~f:(fun part ->
+            by_path (Melange part.stanza, part.dir) part.sources)
+        ]
+      |> List.fold_left
+           ~init:Module_name.Path.Map.empty
+           ~f:(fun module_name_map (module_name, origin) ->
+             Module_name.Path.Map.update module_name_map module_name ~f:(function
+               | None -> Some [ origin ]
+               | Some origins -> Some (origin :: origins)))
     in
     { libraries; executables; melange_emits; rev_map; libraries_by_obj_dir }
   ;;
 end
 
 type t =
-  { modules : Modules.t
+  { modules : Per_stanza.t
   ; artifacts : Artifacts_obj.t Memo.Lazy.t
   ; include_subdirs : Include_subdirs.t
   }
@@ -145,7 +141,7 @@ type t =
 let include_subdirs t = t.include_subdirs
 
 let empty =
-  { modules = Modules.empty
+  { modules = Per_stanza.empty
   ; artifacts = Memo.Lazy.of_val Artifacts_obj.empty
   ; include_subdirs = No
   }
@@ -170,8 +166,10 @@ let modules_of_files ~path ~dialects ~dir ~files =
         (match Dialect.DB.find_by_extension dialects ("." ^ ext) with
          | None -> Skip
          | Some (dialect, ml_kind) ->
-           let name = Module_name.of_string_allow_invalid (loc, s) in
-           let module_ = make_module dialect name fn in
+           let module_ =
+             let name = Module_name.of_string_allow_invalid (loc, s) in
+             make_module dialect name fn
+           in
            (match ml_kind with
             | Impl -> Left module_
             | Intf -> Right module_)))
@@ -182,6 +180,7 @@ let modules_of_files ~path ~dialects ~dir ~files =
     | Error (name, f1, f2) ->
       let src_dir = Path.drop_build_context_exn dir in
       User_error.raise
+        ~loc:(Loc.in_dir dir)
         [ Pp.textf
             "Too many files for module %s in %s:"
             (Module_name.to_string name)
@@ -193,7 +192,7 @@ let modules_of_files ~path ~dialects ~dir ~files =
   let impls = parse_one_set impl_files in
   let intfs = parse_one_set intf_files in
   Module_name.Map.merge impls intfs ~f:(fun name impl intf ->
-    Some (Module.Source.make (path @ [ name ]) ?impl ?intf))
+    Some (Module.Source.make (path @ [ name ]) ~impl ~intf))
 ;;
 
 type for_ =
@@ -251,20 +250,18 @@ let find_origin (t : t) ~libs path =
   | None | Some [] -> Memo.return None
   | Some [ (origin, _) ] -> Memo.return (Some origin)
   | Some origins ->
-    let* origins =
-      Memo.List.filter_map origins ~f:(fun (origin, dir) ->
-        match origin with
-        | Executables _ | Melange _ -> Memo.return (Some origin)
-        | Library lib ->
-          let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
-          Lib.DB.available_by_lib_id libs (Local (Library.to_lib_id ~src_dir lib))
-          >>| (function
-           | false -> None
-           | true -> Some origin))
-    in
-    (match origins with
-     | [] -> Memo.return None
-     | [ origin ] -> Memo.return (Some origin)
+    Memo.List.filter_map origins ~f:(fun (origin, dir) ->
+      match origin with
+      | Executables _ | Melange _ -> Memo.return (Some origin)
+      | Library lib ->
+        let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
+        Lib.DB.available_by_lib_id libs (Local (Library.to_lib_id ~src_dir lib))
+        >>| (function
+         | false -> None
+         | true -> Some origin))
+    >>| (function
+     | [] -> None
+     | [ origin ] -> Some origin
      | origins -> raise_module_conflict_error origins ~module_path:path)
 ;;
 
@@ -277,8 +274,7 @@ let modules_and_obj_dir t ~libs ~for_ =
   with
   | Some (Library _, modules, obj_dir) ->
     let* () =
-      Modules_group.fold_user_written modules ~init:[] ~f:(fun m acc ->
-        Module.path m :: acc)
+      Modules.fold_user_written modules ~init:[] ~f:(fun m acc -> Module.path m :: acc)
       |> Memo.List.iter ~f:(fun module_path ->
         let+ (_origin : Origin.t option) = find_origin t ~libs module_path in
         ())
@@ -288,20 +284,17 @@ let modules_and_obj_dir t ~libs ~for_ =
      with
      | [] | [ _ ] -> Memo.return (modules, obj_dir)
      | lib_ids ->
-       let+ lib_ids =
-         Memo.List.filter lib_ids ~f:(fun lib_id ->
-           Lib.DB.available_by_lib_id libs (Local lib_id))
-       in
-       (match lib_ids with
+       Memo.List.filter lib_ids ~f:(fun lib_id ->
+         Lib.DB.available_by_lib_id libs (Local lib_id))
+       >>| (function
         | [] | [ _ ] -> modules, obj_dir
         | lib_ids ->
           let lib_id =
-            let lib_ids =
-              List.sort lib_ids ~compare:(fun a b ->
-                Loc.compare (Lib_id.Local.loc a) (Lib_id.Local.loc b))
-            in
             (* Get the 2nd loc *)
-            lib_ids |> List.tl |> List.hd
+            List.sort lib_ids ~compare:(fun a b ->
+              Loc.compare (Lib_id.Local.loc a) (Lib_id.Local.loc b))
+            |> List.tl
+            |> List.hd
           in
           User_error.raise
             ~loc:(Lib_id.Local.loc lib_id)
@@ -326,33 +319,31 @@ let modules_and_obj_dir t ~libs ~for_ =
 let modules t ~libs ~for_ = modules_and_obj_dir t ~libs ~for_ >>| fst
 
 let virtual_modules ~lookup_vlib ~libs vlib =
-  let info = Lib.info vlib in
   let+ modules =
-    match Option.value_exn (Lib_info.virtual_ info) with
-    | External modules -> Memo.return modules
+    match Lib_info.modules vlib with
+    | External modules ->
+      Option.value_exn modules |> Modules.With_vlib.drop_vlib |> Memo.return
     | Local ->
-      let src_dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
-      let* t = lookup_vlib ~dir:src_dir in
-      modules t ~libs ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
+      let src_dir = Lib_info.src_dir vlib |> Path.as_in_build_dir_exn in
+      lookup_vlib ~dir:src_dir
+      >>= modules ~libs ~for_:(Library (Lib_info.lib_id vlib |> Lib_id.to_local_exn))
   in
-  let existing_virtual_modules = Modules_group.virtual_module_names modules in
-  let allow_new_public_modules =
-    Modules_group.wrapped modules |> Wrapped.to_bool |> not
-  in
+  let existing_virtual_modules = Modules.virtual_module_names modules in
+  let allow_new_public_modules = Modules.wrapped modules |> Wrapped.to_bool |> not in
   { Modules_field_evaluator.Implementation.existing_virtual_modules
   ; allow_new_public_modules
   }
 ;;
 
 let make_lib_modules
-  ~expander
-  ~dir
-  ~libs
-  ~lookup_vlib
-  ~(lib : Library.t)
-  ~modules
-  ~include_subdirs:(loc_include_subdirs, (include_subdirs : Include_subdirs.t))
-  ~version
+      ~expander
+      ~dir
+      ~libs
+      ~lookup_vlib
+      ~(lib : Library.t)
+      ~modules
+      ~include_subdirs:(loc_include_subdirs, (include_subdirs : Include_subdirs.t))
+      ~version
   =
   let open Resolve.Memo.O in
   let* kind, main_module_name, wrapped =
@@ -374,7 +365,7 @@ let make_lib_modules
       in
       let kind : Modules_field_evaluator.kind =
         match lib.virtual_modules with
-        | None -> Exe_or_normal_lib
+        | None -> if Library.is_parameter lib then Parameter else Exe_or_normal_lib
         | Some virtual_modules -> Virtual { virtual_modules }
       in
       Memo.return (Resolve.return (kind, main_module_name, wrapped))
@@ -394,11 +385,13 @@ let make_lib_modules
          is [Some _] and this [lib] variable correspond to the same library. *)
       let* wrapped = Lib.wrapped resolved >>| Option.value_exn in
       let* main_module_name = Lib.main_module_name resolved in
-      let+ impl =
-        let* vlib = Lib.implements resolved |> Option.value_exn in
-        virtual_modules ~lookup_vlib ~libs vlib |> Resolve.Memo.lift_memo
+      let+ kind =
+        let+ impl =
+          let* vlib = Lib.implements resolved |> Option.value_exn >>| Lib.info in
+          virtual_modules ~lookup_vlib ~libs vlib |> Resolve.Memo.lift_memo
+        in
+        Modules_field_evaluator.Implementation impl
       in
-      let kind : Modules_field_evaluator.kind = Implementation impl in
       kind, main_module_name, wrapped
   in
   let open Memo.O in
@@ -433,11 +426,18 @@ let make_lib_modules
       User_error.raise ~annots ~loc:loc_include_subdirs [ main_message ]
     | _, _ -> ()
   in
+  let () =
+    if Library.is_parameter lib && Option.is_none (Module_trie.as_singleton modules)
+    then
+      User_error.raise
+        ~loc:lib.buildable.loc
+        [ Pp.text "a library_parameter can't declare more than one module." ]
+  in
   let implements = Option.is_some lib.implements in
   let _loc, lib_name = lib.name in
   Resolve.Memo.return
     ( sources
-    , Modules_group.lib
+    , Modules.lib
         ~stdlib:lib.stdlib
         ~implements
         ~lib_name
@@ -450,7 +450,7 @@ let make_lib_modules
 let modules_of_stanzas =
   let filter_partition_map =
     let rev_filter_partition =
-      let rec loop l (acc : Modules.groups) =
+      let rec loop l (acc : Per_stanza.groups) =
         match l with
         | [] -> acc
         | x :: l ->
@@ -463,8 +463,8 @@ let modules_of_stanzas =
       fun l -> loop l { libraries = []; executables = []; melange_emits = [] }
     in
     fun l ->
-      let { Modules.libraries; executables; melange_emits } = rev_filter_partition l in
-      { Modules.libraries = List.rev libraries
+      let { Per_stanza.libraries; executables; melange_emits } = rev_filter_partition l in
+      { Per_stanza.libraries = List.rev libraries
       ; executables = List.rev executables
       ; melange_emits = List.rev melange_emits
       }
@@ -488,10 +488,10 @@ let modules_of_stanzas =
     let modules =
       let obj_dir = Obj_dir.obj_dir obj_dir in
       if Dune_project.wrapped_executables project
-      then Modules_group.make_wrapped ~obj_dir ~modules `Exe
-      else Modules_group.exe_unwrapped modules ~obj_dir
+      then Modules.make_wrapped ~obj_dir ~modules `Exe
+      else Modules.exe_unwrapped modules ~obj_dir
     in
-    `Executables { Modules.stanza = exes; sources; modules; obj_dir; dir }
+    `Executables { Per_stanza.stanza = exes; sources; modules; obj_dir; dir }
   in
   fun stanzas ~expander ~project ~dir ~libs ~lookup_vlib ~modules ~include_subdirs ->
     Memo.parallel_map stanzas ~f:(fun stanza ->
@@ -527,44 +527,42 @@ let modules_of_stanzas =
              >>= Resolve.read_memo
            in
            let obj_dir = Library.obj_dir lib ~dir in
-           `Library { Modules.stanza = lib; sources; modules; dir; obj_dir }
+           `Library { Per_stanza.stanza = lib; sources; modules; dir; obj_dir }
          | Executables.T exes -> make_executables ~dir ~expander ~modules ~project exes
          | Tests.T { exes; _ } -> make_executables ~dir ~expander ~modules ~project exes
          | Melange_stanzas.Emit.T mel ->
            let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
            let+ sources, modules =
+             let version = Dune_project.dune_version project in
              Modules_field_evaluator.eval
                ~expander
                ~modules
                ~stanza_loc:mel.loc
                ~kind:Modules_field_evaluator.Exe_or_normal_lib
-               ~version:mel.dune_version
+               ~version
                ~private_modules:Ordered_set_lang.Unexpanded.standard
                ~src_dir:dir
                mel.modules
            in
            let modules =
-             Modules_group.make_wrapped
-               ~obj_dir:(Obj_dir.obj_dir obj_dir)
-               ~modules
-               `Melange
+             Modules.make_wrapped ~obj_dir:(Obj_dir.obj_dir obj_dir) ~modules `Melange
            in
-           `Melange_emit { Modules.stanza = mel; sources; modules; dir; obj_dir }
+           `Melange_emit { Per_stanza.stanza = mel; sources; modules; dir; obj_dir }
          | _ -> Memo.return `Skip))
     >>| filter_partition_map
 ;;
 
 let make
-  dune_file
-  ~expander
-  ~dir
-  ~libs
-  ~project
-  ~lib_config
-  ~loc
-  ~lookup_vlib
-  ~include_subdirs:(loc_include_subdirs, (include_subdirs : Include_subdirs.t))
-  ~dirs
+      dune_file
+      ~expander
+      ~dir
+      ~libs
+      ~project
+      ~lib_config
+      ~loc
+      ~lookup_vlib
+      ~include_subdirs:(loc_include_subdirs, (include_subdirs : Include_subdirs.t))
+      ~dirs
   =
   let+ modules_of_stanzas =
     let modules =
@@ -574,14 +572,17 @@ let make
         List.fold_left
           dirs
           ~init:Module_trie.empty
-          ~f:(fun acc { Source_file_dir.dir; path_to_root; files } ->
-            let path =
-              List.map path_to_root ~f:(fun m ->
-                Module_name.parse_string_exn
-                  (Loc.in_dir (Path.drop_optional_build_context (Path.build dir)), m))
-            in
-            let modules = modules_of_files ~dialects ~dir ~files ~path in
-            match Module_trie.set_map acc path modules with
+          ~f:(fun acc { Source_file_dir.dir; path_to_root; files; source_dir = _ } ->
+            match
+              let path =
+                let loc =
+                  Path.build dir |> Path.drop_optional_build_context |> Loc.in_dir
+                in
+                List.map path_to_root ~f:(fun m -> Module_name.parse_string_exn (loc, m))
+              in
+              let modules = modules_of_files ~dialects ~dir ~files ~path in
+              Module_trie.set_map acc path modules
+            with
             | Ok s -> s
             | Error module_ ->
               let module_ =
@@ -616,7 +617,7 @@ let make
         List.fold_left
           dirs
           ~init:Module_name.Map.empty
-          ~f:(fun acc { Source_file_dir.dir; files; path_to_root = _ } ->
+          ~f:(fun acc { Source_file_dir.dir; files; path_to_root = _; source_dir = _ } ->
             let modules = modules_of_files ~dialects ~dir ~files ~path:[] in
             Module_name.Map.union acc modules ~f:(fun name x y ->
               User_error.raise
@@ -640,16 +641,17 @@ let make
       ~modules
       ~include_subdirs:(loc_include_subdirs, include_subdirs)
   in
-  let modules = Modules.make modules_of_stanzas in
+  let modules = Per_stanza.make modules_of_stanzas in
   let artifacts =
     Memo.lazy_ (fun () ->
       let libs =
-        List.map modules_of_stanzas.libraries ~f:(fun (part : _ Modules.group_part) ->
+        List.map modules_of_stanzas.libraries ~f:(fun (part : _ Per_stanza.group_part) ->
           part.stanza, part.modules, part.obj_dir)
       in
       let exes =
-        List.map modules_of_stanzas.executables ~f:(fun (part : _ Modules.group_part) ->
-          part.modules, part.obj_dir)
+        List.map
+          modules_of_stanzas.executables
+          ~f:(fun (part : _ Per_stanza.group_part) -> part.modules, part.obj_dir)
       in
       Artifacts_obj.make
         ~dir

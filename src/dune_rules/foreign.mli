@@ -1,26 +1,10 @@
 open Import
 
-val drop_source_extension
-  :  string
-  -> dune_version:Dune_lang.Syntax.Version.t
-  -> (string * Foreign_language.t) option
-
-val possible_sources
-  :  language:Foreign_language.t
-  -> string
-  -> dune_version:Dune_lang.Syntax.Version.t
-  -> string list
-
 (* CR-soon cwong: I'd really prefer to keep the convention that these functions
    are spelled [Foreign_language.encode] and [Foreign_language.decode], but due
    to some organizational reasons (see the rant at the top of
    [foreign_language.mli]), these need to be here instead, as they cannot reside
    in the backend. *)
-
-(** The string used to encode a language in Dune files, e.g. "cxx" for [Cxx]. *)
-val encode_lang : Foreign_language.t -> string
-
-val decode_lang : Foreign_language.t Dune_lang.Decoder.t
 
 (** Foreign archives appear in the [(foreign_archives ...)] field of libraries
     and executables, for example [(foreign_archives some/dir/lib)]. When parsing
@@ -121,48 +105,12 @@ module Stubs : sig
     :  loc:Loc.t
     -> language:Foreign_language.t
     -> names:Ordered_set_lang.t
-    -> mode:Mode.Select.t
     -> flags:Ordered_set_lang.Unexpanded.t
     -> t
 
+  val decode_stubs : for_library:bool -> t Dune_lang.Decoder.fields_parser
   val decode : t Dune_lang.Decoder.t
   val is_mode_dependent : t -> bool
-end
-
-(** Foreign libraries.
-
-    This data type represents the contents of the top-level stanza
-    [foreign_library].
-
-    The fields have the following semantics.
-
-    [language] selects the compiler. At the moment, we support only [c] and
-    [cxx] settings, but in future other languages/compilers could be supported,
-    e.g. Rust and Clang.
-
-    [archive_name] determines the names of the resulting [.a] archive files.
-
-    [names] are names of source files. The full paths to the files are
-    determined by scanning package directories. Duplicate file names are
-    disallowed to avoid conflicting object names in the resulting archive file.
-
-    [flags] are passed when compiling source files.
-
-    [include_dirs] are tracked as dependencies and passed to the compiler via
-    the "-I" flag.
-
-    [extra_deps] are tracked as dependencies. *)
-module Library : sig
-  type t =
-    { archive_name : Archive.Name.t
-    ; archive_name_loc : Loc.t
-    ; stubs : Stubs.t
-    ; enabled_if : Blang.t
-    }
-
-  val decode : t Dune_lang.Decoder.t
-
-  include Stanza.S with type t := t
 end
 
 (** A foreign source file that has a [path] and all information of the
@@ -172,11 +120,9 @@ module Source : sig
     | Stubs of Stubs.t
     | Ctypes of Ctypes_field.t
 
-  type t = private
-    { kind : kind
-    ; path : Path.Build.t
-    }
+  type t
 
+  val kind : t -> kind
   val language : t -> Foreign_language.t
   val mode : t -> Mode.Select.t
   val path : t -> Path.Build.t
@@ -195,7 +141,10 @@ end
 
 (** A map from object names to the corresponding sources. *)
 module Sources : sig
-  type t = (Loc.t * Source.t) String.Map.t
+  type t
+
+  val to_list_map : t -> f:(string -> Loc.t * Source.t -> 'b) -> 'b list
+  val make : (Loc.t * Source.t) String.Map.t -> t
 
   val object_files
     :  t
@@ -204,21 +153,6 @@ module Sources : sig
     -> Path.Build.t list
 
   val has_cxx_sources : t -> bool
-
-  (** A map from object names to lists of possible language/path combinations. *)
-  module Unresolved : sig
-    type t = (Foreign_language.t * Path.Build.t) String.Map.Multi.t
-
-    val to_dyn : t -> Dyn.t
-
-    (** [load ~dir ~files] loads foreign sources in [dir] into a map keyed by
-        the object name. *)
-    val load
-      :  dune_version:Dune_lang.Syntax.Version.t
-      -> dir:Path.Build.t
-      -> files:Filename.Set.t
-      -> t
-  end
 end
 
 (** For the [(foreign_objects ...)] field.*)

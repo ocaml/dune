@@ -15,7 +15,7 @@ Set up two build contexts: a default one for linux and another for macos.
   >  (solver_env
   >   (os macos)))
   > (context
-  >  (default)) 
+  >  (default))
   > (context
   >  (default
   >   (name macos)

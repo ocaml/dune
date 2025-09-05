@@ -38,9 +38,6 @@ val global_lock : Toggle.t t
     reduces concurrency *)
 val cutoffs_that_reduce_concurrency_in_watch_mode : Toggle.t t
 
-(** whether dune should optimize file copying on Linux/MacOS *)
-val copy_file : [ `Portable | `Best ] t
-
 (** Execute some actions in background threads. See [Action_exec] for the
     concrete list of actions *)
 val background_actions : Toggle.t t

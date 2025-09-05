@@ -10,7 +10,7 @@ module DB = struct
       type nonrec t = Path.Build.t Path.Build.Table.t
 
       let name = "COPY-LINE-DIRECTIVE-MAP"
-      let version = 1
+      let version = 2
       let to_dyn = Path.Build.Table.to_dyn Path.Build.to_dyn
       let test_example () = Path.Build.Table.create 1
     end)

@@ -95,16 +95,6 @@ let cutoffs_that_reduce_concurrency_in_watch_mode =
     ~default:`Disabled
 ;;
 
-let copy_file =
-  make
-    ~name:"copy_file"
-    ~of_string:(function
-      | "portable" -> Ok `Portable
-      | "fast" -> Ok `Best
-      | _ -> Error (sprintf "only %S and %S are allowed" "fast" "portable"))
-    ~default:`Best
-;;
-
 let background_default =
   match Platform.OS.value with
   | Linux | Windows | Darwin -> `Enabled

@@ -95,14 +95,17 @@ EOF
 EOF
   cat > dune-workspace <<EOF
 (lang dune 3.13)
- (lock_dir
-  (path "dev-tools.locks/ocamlformat")
+
+(lock_dir
+ (path "dev-tools.locks/ocamlformat")
+ (repositories mock))
+
+(lock_dir
   (repositories mock))
-  (lock_dir
-   (repositories mock))
- (repository
-  (name mock)
-  (url "file://$(pwd)/mock-opam-repository"))
+
+(repository
+ (name mock)
+ (url "file://$(pwd)/mock-opam-repository"))
 EOF
 }
 

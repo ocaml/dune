@@ -5,6 +5,13 @@ Solving for post dependencies:
 
   $ mkpkg bar
 
+  $ barfile="bar.file"
+  $ bardir="$mock_packages/bar/bar.0.0.1"
+  $ mkdir -p $bardir/files/dir
+  $ cat >$bardir/files/$barfile <<EOF
+  > foo patch
+  > EOF
+
   $ mkpkg foo <<EOF
   > depends: [ "bar" {post} ]
   > EOF
@@ -15,8 +22,13 @@ We don't need bar, so we skip it
   Solution for dune.lock:
   - foo.0.0.1
 
-  $ cat dune.lock/foo.pkg
+  $ cat ${default_lock_dir}/foo.pkg
   (version 0.0.1)
+
+We should also skip any artifacts that bar references:
+
+  $ [ -d ${default_lock_dir}/bar.files ] && ls -1 -x ${default_lock_dir}/bar.files
+  [1]
 
 Self dependency
 
@@ -28,7 +40,7 @@ Self dependency
   Solution for dune.lock:
   - foo.0.0.1
 
-  $ cat dune.lock/foo.pkg
+  $ cat ${default_lock_dir}/foo.pkg
   (version 0.0.1)
 
 Using post to break cycle:
@@ -46,7 +58,7 @@ Using post to break cycle:
   - bar.0.0.1
   - foo.0.0.1
 
-  $ cat dune.lock/foo.pkg dune.lock/bar.pkg
+  $ cat ${default_lock_dir}/foo.pkg ${default_lock_dir}/bar.pkg
   (version 0.0.1)
   (version 0.0.1)
   
@@ -66,7 +78,7 @@ post "cycle":
   Solution for dune.lock:
   - foo.0.0.1
 
-  $ cat dune.lock/foo.pkg
+  $ cat ${default_lock_dir}/foo.pkg
   (version 0.0.1)
 
 In depopts:

@@ -24,8 +24,8 @@ Allow directories to be installable
   Entering directory 'a'
   Leaving directory 'a'
 
-  $ cat a/_build/install/default/lib/foo/dune-package
-  (lang dune 3.18)
+  $ sed -E 's/lang dune [0-9.]+/lang dune XXX/' a/_build/install/default/lib/foo/dune-package
+  (lang dune XXX)
   (name foo)
   (sections (lib .) (share ../../share/foo))
   (files (lib (META dune-package)) (share ((dir bar) x y)))

@@ -19,10 +19,10 @@ let public_theories context public_libs coq_stanzas =
 ;;
 
 let coq_scopes_by_dir
-  db_by_project_dir
-  projects_by_dir
-  public_theories
-  coq_stanzas_by_project_dir
+      db_by_project_dir
+      projects_by_dir
+      public_theories
+      coq_stanzas_by_project_dir
   =
   let parent = Some public_theories in
   let find_db dir = snd (Find_closest_source_dir.find_by_dir db_by_project_dir ~dir) in

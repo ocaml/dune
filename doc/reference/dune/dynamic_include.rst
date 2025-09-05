@@ -1,3 +1,5 @@
+.. _dynamic_include:
+
 dynamic_include
 ---------------
 

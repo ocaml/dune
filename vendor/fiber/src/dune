@@ -1,6 +1,0 @@
-(library
- (name fiber)
- (libraries stdune dyn)
- (synopsis "Monadic concurrency library")
- (instrumentation
-  (backend bisect_ppx)))

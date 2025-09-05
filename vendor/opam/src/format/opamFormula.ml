@@ -9,8 +9,6 @@
 (*                                                                        *)
 (**************************************************************************)
 
-module Re = Dune_re
-
 type relop = [`Eq|`Neq|`Geq|`Gt|`Leq|`Lt]
 
 let neg_relop = function

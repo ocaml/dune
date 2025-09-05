@@ -3,16 +3,15 @@ Package resolution creating a cycle
   $ . ./helpers.sh
 
   $ make_lockdir
-
-  $ cat >dune.lock/a.pkg <<EOF
+  $ make_lockpkg a <<EOF
   > (version 0.0.1)
   > (depends b)
   > EOF
-  $ cat >dune.lock/b.pkg <<EOF
+  $ make_lockpkg b <<EOF
   > (version 0.0.1)
   > (depends c)
   > EOF
-  $ cat >dune.lock/c.pkg <<EOF
+  $ make_lockpkg c <<EOF
   > (version 0.0.1)
   > (depends a)
   > EOF

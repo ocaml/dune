@@ -9,7 +9,7 @@ Much like in regular projects, to add a library we need to add a dependency to
 it. For simplicity we will use the popular `fmt` library as an example, but any
 package from the [package repository](https://ocaml.org/packages) can be used.
 
-First we update the `dune-project` file to add a dependeny on the opam package.
+First we update the `dune-project` file to add a dependency on the opam package.
 
 ::::{dropdown} `dune-project`
 :icon: file-code

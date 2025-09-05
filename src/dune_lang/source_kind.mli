@@ -1,3 +1,5 @@
+open Import
+
 module Host : sig
   type user_repo =
     { user : string
@@ -18,6 +20,7 @@ module Host : sig
     | Gitlab of gitlab_repo
     | Sourcehut of user_repo
     | Codeberg of user_repo
+    | Tangled of user_repo
 
   val homepage : t -> string
   val bug_reports : t -> string
@@ -29,5 +32,5 @@ type t =
 
 val to_dyn : t Dyn.builder
 val to_string : t -> string
-val decode : t Dune_sexp.Decoder.t
-val encode : t Dune_sexp.Encoder.t
+val decode : t Decoder.t
+val encode : t Encoder.t

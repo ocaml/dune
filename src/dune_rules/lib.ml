@@ -660,16 +660,16 @@ module Vlib : sig
   (** Make sure that for every virtual library in the list there is at most one
       corresponding implementation.
 
-      Additionally, if linking is [true], ensures that every virtual library as
-      an implementation and re-arrange the list so that implementations replaces
-      virtual libraries. *)
+      Additionally, if linking is [true], ensures that every virtual library as an
+      implementation and re-arrange the list so that implementations replaces virtual
+      libraries. *)
   val associate
     :  (t * Dep_stack.t) list
     -> [ `Compile | `Link | `Partial_link ]
     -> t list Resolve.Memo.t
 
   module Unimplemented : sig
-    (** set of unimplemented libraries*)
+    (** set of unimplemented libraries *)
     type t
 
     val empty : t
@@ -688,14 +688,14 @@ end = struct
     let add t lib =
       let virtual_ = Lib_info.virtual_ lib.info in
       match lib.implements, virtual_ with
-      | None, None -> Resolve.Memo.return t
-      | Some _, Some _ -> assert false (* can't be virtual and implement *)
-      | None, Some _ ->
+      | None, false -> Resolve.Memo.return t
+      | Some _, true -> assert false (* can't be virtual and implement *)
+      | None, true ->
         Resolve.Memo.return
           (if Set.mem t.implemented lib
            then t
            else { t with unimplemented = Set.add t.unimplemented lib })
-      | Some vlib, None ->
+      | Some vlib, false ->
         let+ vlib = Memo.return vlib in
         { implemented = Set.add t.implemented vlib
         ; unimplemented = Set.remove t.unimplemented vlib
@@ -726,10 +726,10 @@ end = struct
           | (lib, stack) :: libs ->
             let virtual_ = Lib_info.virtual_ lib.info in
             (match lib.implements, virtual_ with
-             | None, None -> loop acc libs
-             | Some _, Some _ -> assert false (* can't be virtual and implement *)
-             | None, Some _ -> loop (Map.set acc lib (No_impl stack)) libs
-             | Some vlib, None ->
+             | None, false -> loop acc libs
+             | Some _, true -> assert false (* can't be virtual and implement *)
+             | None, true -> loop (Map.set acc lib (No_impl stack)) libs
+             | Some vlib, false ->
                let* vlib = Memo.return vlib in
                (match Map.find acc vlib with
                 | None ->
@@ -920,8 +920,8 @@ end = struct
         User_error.raise
           ~loc
           [ Pp.text
-              "librarys does not exist but is automatically provided. It cannot be used \
-               in this position"
+              "library does not exist but is automatically provided. It cannot be used \
+               in this position."
           ]
     in
     let* resolved =
@@ -931,7 +931,7 @@ end = struct
           instrumentation_backend db.instrument_with resolve_forbid_ignore
         in
         Lib_info.preprocess info
-        |> Preprocess.Per_module.with_instrumentation ~instrumentation_backend
+        |> Instrumentation.with_instrumentation ~instrumentation_backend
         >>| Preprocess.Per_module.pps
       in
       let dune_version = Lib_info.dune_version info in
@@ -948,8 +948,8 @@ end = struct
           let* vlib = resolve_forbid_ignore name in
           let virtual_ = Lib_info.virtual_ vlib.info in
           match virtual_ with
-          | None -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
-          | Some _ -> Resolve.Memo.return vlib
+          | false -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
+          | true -> Resolve.Memo.return vlib
         in
         Memo.map res ~f:Option.some
     in
@@ -1454,7 +1454,7 @@ end = struct
             let open Resolve.O in
             let* lib = lib in
             (match allow_only_ppx_deps, Lib_info.kind lib.info with
-             | true, Normal -> Error.only_ppx_deps_allowed ~loc lib.info
+             | true, Dune_file Normal -> Error.only_ppx_deps_allowed ~loc lib.info
              | _ -> Resolve.return (Some lib)))
         >>= linking_closure_with_overlap_checks None ~forbidden_libraries:Map.empty
       in
@@ -1471,11 +1471,11 @@ end = struct
   ;;
 
   let add_pp_runtime_deps
-    db
-    { Resolved.resolved; selects; re_exports }
-    ~private_deps
-    ~pps
-    ~dune_version
+        db
+        { Resolved.resolved; selects; re_exports }
+        ~private_deps
+        ~pps
+        ~dune_version
     : Resolved.t Memo.t
     =
     let { runtime_deps; pps } = pp_deps db pps ~dune_version ~private_deps in
@@ -1616,8 +1616,7 @@ end = struct
         in
         (* If the library has an implementation according to variants or
            default impl. *)
-        let virtual_ = Lib_info.virtual_ lib.info in
-        if Option.is_none virtual_
+        if not (Lib_info.virtual_ lib.info)
         then R.return ()
         else
           let* impl = R.lift (impl_for lib) in
@@ -1955,6 +1954,18 @@ module DB = struct
           Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.name)
   ;;
 
+  let with_parent t ~parent = { t with parent }
+
+  let of_paths context ~paths =
+    let open Memo.O in
+    let+ ocaml = Context.ocaml context
+    and+ findlib = Findlib.create_with_paths (Context.name context) ~paths in
+    create_from_findlib
+      findlib
+      ~has_bigarray_library:(Ocaml.Version.has_bigarray_library ocaml.version)
+      ~instrument_with:(Context.instrument_with context)
+  ;;
+
   let installed (context : Context.t) =
     let open Memo.O in
     let+ ocaml = Context.ocaml context
@@ -2032,13 +2043,13 @@ module DB = struct
   ;;
 
   let resolve_user_written_deps
-    t
-    targets
-    ~allow_overlaps
-    ~forbidden_libraries
-    deps
-    ~pps
-    ~dune_version
+        t
+        targets
+        ~allow_overlaps
+        ~forbidden_libraries
+        deps
+        ~pps
+        ~dune_version
     =
     let resolved =
       Memo.lazy_ (fun () ->
@@ -2072,10 +2083,10 @@ module DB = struct
         in
         Resolve.Memo.push_stack_frame
           (fun () ->
-            Resolve_names.linking_closure_with_overlap_checks
-              (Option.some_if (not allow_overlaps) t)
-              ~forbidden_libraries
-              res)
+             Resolve_names.linking_closure_with_overlap_checks
+               (Option.some_if (not allow_overlaps) t)
+               ~forbidden_libraries
+               res)
           ~human_readable_description:(fun () ->
             match targets with
             | `Melange_emit name -> Pp.textf "melange target %s" name
@@ -2137,12 +2148,12 @@ module DB = struct
 end
 
 let to_dune_lib
-  ({ info; _ } as lib)
-  ~modules
-  ~foreign_objects
-  ~melange_runtime_deps
-  ~public_headers
-  ~dir
+      ({ info; _ } as lib)
+      ~modules
+      ~foreign_objects
+      ~melange_runtime_deps
+      ~public_headers
+      ~dir
   : Dune_package.Lib.t Resolve.Memo.t
   =
   let loc = Lib_info.loc info in

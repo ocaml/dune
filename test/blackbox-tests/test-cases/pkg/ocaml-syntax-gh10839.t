@@ -27,7 +27,7 @@ Dune file in OCaml syntax and a files directory should work
 
   $ dune build
 
-  $ mkdir dune.lock/ocamlfind.files
-  $ touch dune.lock/ocamlfind.files/foo.patch
+  $ mkdir ${default_lock_dir}/ocamlfind.files
+  $ touch ${default_lock_dir}/ocamlfind.files/foo.patch
 
   $ dune build

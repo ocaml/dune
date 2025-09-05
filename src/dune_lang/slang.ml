@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 open Dune_sexp
 
 type t =
@@ -24,6 +24,59 @@ and form =
   | And_absorb_undefined_var of blang list
   | Or_absorb_undefined_var of blang list
   | Blang of blang
+
+let rec equal a b =
+  let form_equal a b =
+    match a, b with
+    | Concat a, Concat b -> List.equal equal a b
+    | When a, When b -> Tuple.T2.equal blang_equal equal a b
+    | ( If { condition = a_condition; then_ = a_then_; else_ = a_else_ }
+      , If { condition = b_condition; then_ = b_then_; else_ = b_else_ } ) ->
+      blang_equal a_condition b_condition
+      && equal a_then_ b_then_
+      && equal a_else_ b_else_
+    | Has_undefined_var a, Has_undefined_var b -> equal a b
+    | ( Catch_undefined_var { value = a_value; fallback = a_fallback }
+      , Catch_undefined_var { value = b_value; fallback = b_fallback } ) ->
+      equal a_value b_value && equal a_fallback b_fallback
+    | And_absorb_undefined_var a, And_absorb_undefined_var b
+    | Or_absorb_undefined_var a, Or_absorb_undefined_var b -> List.equal blang_equal a b
+    | Blang a, Blang b -> blang_equal a b
+    | _, _ -> false
+  in
+  match a, b with
+  | Nil, Nil -> true
+  | Literal a, Literal b -> String_with_vars.equal a b
+  | Form a, Form b -> Tuple.T2.equal Loc.equal form_equal a b
+  | _, _ -> false
+
+and blang_equal a b = Blang.Ast.equal equal a b
+
+let rec remove_locs t =
+  let form_remove_locs = function
+    | Concat ts -> Concat (List.map ts ~f:remove_locs)
+    | When (blang, t) -> When (blang_remove_locs blang, remove_locs t)
+    | If { condition; then_; else_ } ->
+      If
+        { condition = blang_remove_locs condition
+        ; then_ = remove_locs then_
+        ; else_ = remove_locs else_
+        }
+    | Has_undefined_var t -> Has_undefined_var (remove_locs t)
+    | Catch_undefined_var { value; fallback } ->
+      Catch_undefined_var { value = remove_locs value; fallback = remove_locs fallback }
+    | And_absorb_undefined_var blangs ->
+      And_absorb_undefined_var (List.map blangs ~f:blang_remove_locs)
+    | Or_absorb_undefined_var blangs ->
+      Or_absorb_undefined_var (List.map blangs ~f:blang_remove_locs)
+    | Blang blang -> Blang (blang_remove_locs blang)
+  in
+  match t with
+  | Nil -> Nil
+  | Literal sw -> Literal (String_with_vars.remove_locs sw)
+  | Form (_loc, form) -> Form (Loc.none, form_remove_locs form)
+
+and blang_remove_locs blang = Blang.Ast.map_string ~f:remove_locs blang
 
 let decode_literal =
   let open Decoder in
@@ -84,8 +137,6 @@ let decode =
     Form (loc, Blang x))
 ;;
 
-let decode_blang = Blang.Ast.decode ~override_decode_bare_literal:None decode
-
 let rec encode t =
   let open Encoder in
   match t with
@@ -117,31 +168,25 @@ let rec encode t =
      | Blang b -> Blang.Ast.encode encode b)
 ;;
 
-let encode_blang = Blang.Ast.encode encode
-
 let rec to_dyn = function
   | Nil -> Dyn.variant "Nil" []
   | Literal sw -> Dyn.variant "Literal" [ String_with_vars.to_dyn sw ]
   | Form (_loc, form) ->
     (match form with
      | Concat ts -> Dyn.variant "Concat" (List.map ts ~f:to_dyn)
-     | When (condition, t) ->
-       Dyn.variant "When" [ Blang.Ast.to_dyn to_dyn condition; to_dyn t ]
+     | When (condition, t) -> Dyn.variant "When" [ blang_to_dyn condition; to_dyn t ]
      | If { condition; then_; else_ } ->
        Dyn.variant "If" [ Blang.Ast.to_dyn to_dyn condition; to_dyn then_; to_dyn else_ ]
      | Has_undefined_var t -> Dyn.variant "Has_undefined_var" [ to_dyn t ]
      | Catch_undefined_var { value; fallback } ->
        Dyn.variant "Catch_undefined_var" [ to_dyn value; to_dyn fallback ]
      | And_absorb_undefined_var blangs ->
-       Dyn.variant
-         "And_absorb_undefined_var"
-         (List.map blangs ~f:(Blang.Ast.to_dyn to_dyn))
+       Dyn.variant "And_absorb_undefined_var" (List.map blangs ~f:blang_to_dyn)
      | Or_absorb_undefined_var blangs ->
-       Dyn.variant
-         "Or_absorb_undefined_var"
-         (List.map blangs ~f:(Blang.Ast.to_dyn to_dyn))
-     | Blang b -> Dyn.variant "Blang" [ Blang.Ast.to_dyn to_dyn b ])
-;;
+       Dyn.variant "Or_absorb_undefined_var" (List.map blangs ~f:blang_to_dyn)
+     | Blang b -> Dyn.variant "Blang" [ blang_to_dyn b ])
+
+and blang_to_dyn blang = Blang.Ast.to_dyn to_dyn blang
 
 let loc = function
   | Nil -> Loc.none
@@ -215,8 +260,8 @@ let rec simplify = function
            (* only quote strings when not quoting them would be an error *)
            not
              (List.for_all parts ~f:(function
-               | `Pform _ -> true
-               | `Text s -> Atom.is_valid s))
+                | `Pform _ -> true
+                | `Text s -> Atom.is_valid s))
          in
          let combined_sw = String_with_vars.make ~quoted loc parts in
          Literal combined_sw)
@@ -288,3 +333,15 @@ and simplify_blang = function
     in
     Or (List.map blangs ~f:simplify_blang)
 ;;
+
+module Blang = struct
+  type t = blang
+
+  let equal = blang_equal
+  let to_dyn = blang_to_dyn
+  let remove_locs = blang_remove_locs
+  let true_ = Blang.Const true
+  let false_ = Blang.Const false
+  let decode = Blang.Ast.decode ~override_decode_bare_literal:None decode
+  let encode = Blang.Ast.encode encode
+end

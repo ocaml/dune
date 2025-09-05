@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp
+open Import
 module Name = Package_name
 
 module Id = struct
@@ -83,24 +82,24 @@ let set_inside_opam_dir t ~dir = { t with opam_file = Name.file t.id.name ~dir }
 let set_version_and_info t ~version ~info = { t with version; info }
 
 let encode
-  (name : Name.t)
-  { id = _
-  ; loc = _
-  ; has_opam_file = _
-  ; synopsis
-  ; description
-  ; depends
-  ; conflicts
-  ; depopts
-  ; info
-  ; version
-  ; tags
-  ; deprecated_package_names
-  ; sites
-  ; allow_empty
-  ; opam_file = _
-  ; original_opam_file = _
-  }
+      (name : Name.t)
+      { id = _
+      ; loc = _
+      ; has_opam_file = _
+      ; synopsis
+      ; description
+      ; depends
+      ; conflicts
+      ; depopts
+      ; info
+      ; version
+      ; tags
+      ; deprecated_package_names
+      ; sites
+      ; allow_empty
+      ; opam_file = _
+      ; original_opam_file = _
+      }
   =
   let open Encoder in
   let fields =
@@ -206,23 +205,23 @@ let dyn_of_opam_file =
 ;;
 
 let to_dyn
-  { id
-  ; version
-  ; synopsis
-  ; description
-  ; depends
-  ; conflicts
-  ; depopts
-  ; info
-  ; has_opam_file
-  ; tags
-  ; loc = _
-  ; deprecated_package_names
-  ; sites
-  ; allow_empty
-  ; opam_file = _
-  ; original_opam_file = _
-  }
+      { id
+      ; version
+      ; synopsis
+      ; description
+      ; depends
+      ; conflicts
+      ; depopts
+      ; info
+      ; has_opam_file
+      ; tags
+      ; loc = _
+      ; deprecated_package_names
+      ; sites
+      ; allow_empty
+      ; opam_file = _
+      ; original_opam_file = _
+      }
   =
   let open Dyn in
   record
@@ -249,22 +248,22 @@ let allow_empty t = t.allow_empty
 let map_depends t ~f = { t with depends = f t.depends }
 
 let create
-  ~name
-  ~loc
-  ~version
-  ~conflicts
-  ~depends
-  ~depopts
-  ~info
-  ~has_opam_file
-  ~dir
-  ~sites
-  ~allow_empty
-  ~synopsis
-  ~description
-  ~tags
-  ~original_opam_file
-  ~deprecated_package_names
+      ~name
+      ~loc
+      ~version
+      ~conflicts
+      ~depends
+      ~depopts
+      ~info
+      ~has_opam_file
+      ~dir
+      ~sites
+      ~allow_empty
+      ~synopsis
+      ~description
+      ~tags
+      ~original_opam_file
+      ~deprecated_package_names
   =
   let id = { Id.name; dir } in
   { id

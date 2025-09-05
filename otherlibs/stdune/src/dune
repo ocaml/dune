@@ -6,14 +6,20 @@
  (libraries
   unix
   csexp
+  (re_export top-closure)
   (re_export ordering)
   (re_export dyn)
   (re_export pp)
-  (re_export dune_filesystem_stubs))
+  fs-io)
+ (root_module root)
  (library_flags
   (:include flags/sexp))
  (foreign_stubs
   (language c)
-  (names wait4_stubs platform_stubs copyfile_stubs signal_stubs))
- (instrumentation
-  (backend bisect_ppx)))
+  (names
+   dune_flock
+   readdir
+   wait4_stubs
+   platform_stubs
+   copyfile_stubs
+   signal_stubs)))

@@ -7,7 +7,7 @@ Things should be the same whether dependencies are specified or not.
 If we have a package we depend on
 
   $ mkdir dependency-source
-  $ cat >dune.lock/dependency.pkg <<EOF
+  $ make_lockpkg dependency <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/dependency-source))
   > EOF
@@ -15,7 +15,7 @@ If we have a package we depend on
 And we have a package we want to build
 
   $ mkdir test-source
-  $ cat >dune.lock/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/test-source))
   > (build
@@ -23,9 +23,9 @@ And we have a package we want to build
   > EOF
   $ build_pkg test
 
-Now it fails since adding the dependency modified PATH.
+It should continue to work even if `dependency` modifies `PATH`:
 
-  $ cat >dune.lock/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/test-source))
   > ; adding deps breaks cat

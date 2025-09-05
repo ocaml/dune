@@ -3,7 +3,7 @@ install and build commands.
   $ . ./helpers.sh
 
   $ make_lockdir
-  $ cat >dune.lock/test.pkg <<'EOF'
+  $ make_lockpkg test <<'EOF'
   > (version 0.0.1)
   > (build (run sh -c "echo [build] OCAMLFIND_DESTDIR=$OCAMLFIND_DESTDIR"))
   > (install (run sh -c "echo [install] OCAMLFIND_DESTDIR=$OCAMLFIND_DESTDIR"))

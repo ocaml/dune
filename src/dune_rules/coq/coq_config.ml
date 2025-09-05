@@ -94,7 +94,7 @@ module Version = struct
       }
 
     let make version_string =
-      let open Dune_re in
+      let module Group = Re.Group in
       let regex =
         let open Re in
         seq [ rep digit |> group; char '.'; rep digit |> group; rep any |> group ]

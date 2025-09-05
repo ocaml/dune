@@ -119,30 +119,30 @@ module Event = struct
       }
 
     let to_dyn
-      { must_scan_subdirs
-      ; user_dropped
-      ; kernel_dropped
-      ; event_ids_wrapped
-      ; history_done
-      ; root_changed
-      ; mount
-      ; unmount
-      ; own_event
-      ; item_created
-      ; item_removed
-      ; item_inode_meta_mod
-      ; item_renamed
-      ; item_modified
-      ; item_finder_info_mod
-      ; item_change_owner
-      ; item_xattr_mod
-      ; item_is_file
-      ; item_is_dir
-      ; item_is_symlink
-      ; item_is_hardlink
-      ; item_is_last_hardlink
-      ; item_cloned
-      }
+          { must_scan_subdirs
+          ; user_dropped
+          ; kernel_dropped
+          ; event_ids_wrapped
+          ; history_done
+          ; root_changed
+          ; mount
+          ; unmount
+          ; own_event
+          ; item_created
+          ; item_removed
+          ; item_inode_meta_mod
+          ; item_renamed
+          ; item_modified
+          ; item_finder_info_mod
+          ; item_change_owner
+          ; item_xattr_mod
+          ; item_is_file
+          ; item_is_dir
+          ; item_is_symlink
+          ; item_is_hardlink
+          ; item_is_last_hardlink
+          ; item_cloned
+          }
       =
       let open Dyn in
       record

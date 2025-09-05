@@ -1,10 +1,11 @@
 open Import
 open Memo.O
 
-let alias mode ~dir =
-  match mode with
-  | `js mode -> Jsoo_rules.js_of_ocaml_runtest_alias ~dir ~mode
-  | `exe | `bc -> Memo.return Alias0.runtest
+let runtest_alias mode ~dir =
+  (match mode with
+   | `js mode -> Jsoo_rules.js_of_ocaml_runtest_alias ~dir ~mode
+   | `exe | `bc -> Memo.return Alias0.runtest)
+  >>| Alias.make ~dir
 ;;
 
 let test_kind dir_contents (loc, name, ext) =
@@ -68,8 +69,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
     | false ->
       let loc = Nonempty_list.hd t.exes.names |> fst in
       Memo.parallel_iter runtest_modes ~f:(fun mode ->
-        let* alias_name = alias mode ~dir in
-        let alias = Alias.make alias_name ~dir in
+        let* alias = runtest_alias mode ~dir in
         Simple_rules.Alias_rules.add_empty sctx ~loc ~alias)
     | true ->
       Nonempty_list.to_list t.exes.names
@@ -97,28 +97,46 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
             in
             Pform.Map.singleton test_pform [ Value.Path test_exe_path ]
           in
-          let* runtest_alias = alias runtest_mode ~dir in
+          let* runtest_alias = runtest_alias runtest_mode ~dir in
           let deps =
             (* is this useless? we are going to infer the dependency anyway *)
             match custom_runner with
             | None -> t.deps
             | Some _ ->
               Bindings.Unnamed (Dep_conf.File (String_with_vars.make_text loc test_exe))
-              :: t.deps
+              ::
+              (match runtest_mode with
+               | `js Wasm ->
+                 Bindings.Unnamed
+                   (Dep_conf.File
+                      (String_with_vars.make_text loc (s ^ Js_of_ocaml.Ext.wasm_dir)))
+                 :: t.deps
+               | `js JS | `exe | `bc -> t.deps)
           in
-          let add_alias ~loc ~action =
-            (* CR rgrinberg: why are we going through the stanza api? *)
+          let add_alias =
+            let expander = Expander.add_bindings expander ~bindings:extra_bindings in
             let alias =
-              { Alias_conf.name = runtest_alias
-              ; locks = t.locks
-              ; package = t.package
-              ; deps
-              ; action = Some (loc, action)
-              ; enabled_if = t.enabled_if
-              ; loc
-              }
+              [ Alias.Name.to_string (Alias.name runtest_alias); s ]
+              |> String.concat ~sep:"-"
+              |> Alias.Name.of_string
+              |> Alias.make ~dir
             in
-            Simple_rules.alias sctx ~extra_bindings ~dir ~expander alias
+            fun ~loc ~action ->
+              let action =
+                let chdir = Expander.dir expander in
+                Action_unexpanded.expand_no_targets
+                  action
+                  ~loc
+                  ~expander
+                  ~chdir
+                  ~deps
+                  ~what:"aliases"
+              in
+              Simple_rules.interpret_and_add_locks ~expander t.locks action
+              |> Simple_rules.Alias_rules.add sctx ~loc ~alias
+              >>> (Dep.alias alias
+                   |> Action_builder.dep
+                   |> Rules.Produce.Alias.add_deps runtest_alias)
           in
           match test_kind dir_contents (loc, s, ext) with
           | `Regular -> add_alias ~loc ~action:run_action
@@ -140,9 +158,10 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
             in
             add_alias ~loc ~action:(Diff diff)
             >>> let+ (_ignored_targets : Targets.Validated.t option) =
+                  (* CR-someday rgrinberg: use direct api *)
                   Simple_rules.user_rule sctx rule ~extra_bindings ~dir ~expander
                 in
                 ()))
   in
-  Exe_rules.rules t.exes ~sctx ~dir ~scope ~expander ~dir_contents
+  Exe_rules.rules t.exes ~sctx ~scope ~expander ~dir_contents
 ;;

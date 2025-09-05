@@ -24,6 +24,7 @@ type t =
   | Hardlink
   | Copy
 
+val equal : t -> t -> bool
 val all : (string * t) list
 val to_string : t -> string
 val of_string : string -> (t, string) result

@@ -18,13 +18,14 @@ let keep_generated_files =
       , Arg.Unit ignore
       , " Force bytecode compilation even if ocamlopt is available" )
     ; "--static", Arg.Unit ignore, " Build a static binary"
+    ; "--boot-dir", Arg.String (fun _ -> ()), " set the boot directory"
     ]
     anon
     "Usage: ocaml bootstrap.ml <options>\nOptions are:";
   !keep_generated_files
 ;;
 
-let modules = [ "boot/libs"; "boot/duneboot" ]
+let modules = [ "boot/types"; "boot/libs"; "boot/duneboot" ]
 let duneboot = ".duneboot"
 let prog = duneboot ^ ".exe"
 
@@ -33,13 +34,16 @@ let () =
     Array.iter (Sys.readdir "boot") ~f:(fun fn ->
       let fn = Filename.concat "boot" fn in
       if Filename.check_suffix fn ".cmi" || Filename.check_suffix fn ".cmo"
-      then Sys.remove fn));
+      then (
+        try Sys.remove fn with
+        | Sys_error _ -> ())));
   if not keep_generated_files
   then
     at_exit (fun () ->
       Array.iter (Sys.readdir ".") ~f:(fun fn ->
-        if String.length fn >= String.length duneboot
-           && String.sub fn ~pos:0 ~len:(String.length duneboot) = duneboot
+        if
+          String.length fn >= String.length duneboot
+          && String.sub fn ~pos:0 ~len:(String.length duneboot) = duneboot
         then (
           try Sys.remove fn with
           | Sys_error _ -> ())))
@@ -48,8 +52,8 @@ let () =
 let runf fmt =
   ksprintf
     (fun cmd ->
-      prerr_endline cmd;
-      Sys.command cmd)
+       prerr_endline cmd;
+       Sys.command cmd)
     fmt
 ;;
 
@@ -72,9 +76,10 @@ let () =
     then "ocamlc", None
     else (
       let compiler = "ocamlfind -toolchain secondary ocamlc" in
-      let output_fn = duneboot ^ ".ocamlfind-output" in
+      let output_fn, out = Filename.open_temp_file "duneboot" "ocamlfind-output" in
       let n = runf "%s 2>%s" compiler output_fn in
       let s = read_file output_fn in
+      close_out out;
       prerr_endline s;
       if n <> 0 || s <> ""
       then (
@@ -94,7 +99,7 @@ let () =
   in
   exit_if_non_zero
     (runf
-       "%s %s -w -24 -g -o %s -I boot %sunix.cma %s"
+       "%s %s -intf-suffix .dummy -g -o %s -I boot %sunix.cma %s"
        compiler
        (* Make sure to produce a self-contained binary as dlls tend to cause
           issues *)

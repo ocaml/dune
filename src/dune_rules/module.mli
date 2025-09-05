@@ -7,7 +7,6 @@ module File : sig
 
   val dialect : t -> Dialect.t
   val path : t -> Path.t
-  val original_path : t -> Path.t
   val make : Dialect.t -> Path.t -> t
 end
 
@@ -20,6 +19,7 @@ module Kind : sig
     | Impl_vmodule
     | Wrapped_compat
     | Root
+    | Parameter
 
   include Dune_lang.Conv.S with type t := t
 
@@ -31,7 +31,7 @@ module Source : sig
   type t
 
   val name : t -> Module_name.t
-  val make : ?impl:File.t -> ?intf:File.t -> Module_name.Path.t -> t
+  val make : impl:File.t option -> intf:File.t option -> Module_name.Path.t -> t
   val has : t -> ml_kind:Ml_kind.t -> bool
   val files : t -> File.t list
   val path : t -> Module_name.Path.t
@@ -75,7 +75,6 @@ module Name_map : sig
   val decode : src_dir:Path.t -> t Dune_lang.Decoder.t
   val encode : t -> src_dir:Path.t -> Dune_lang.t list
   val to_dyn : t -> Dyn.t
-  val of_list_exn : module_ list -> t
   val add : t -> module_ -> t
 end
 

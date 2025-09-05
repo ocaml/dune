@@ -7,6 +7,8 @@
  (deps %{bin:ocamlfind}))
 
 (cram
+ (enabled_if
+  (not %{env:INSIDE_NIX=false}))
  (applies_to github4125)
  (deps %{bin:opam}))
 
@@ -19,3 +21,10 @@
  (applies_to implicit-transitive-deps-5.2)
  (enabled_if
   (>= %{ocaml_version} 5.2)))
+
+(cram
+ (applies_to dialect)
+ (enabled_if
+  (not %{env:INSIDE_NIX=false}))
+ (deps %{bin:melc})
+ (alias runtest-melange))

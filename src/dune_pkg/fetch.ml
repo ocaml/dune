@@ -34,7 +34,7 @@ module Curl = struct
   let compressed_supported =
     (* We check if curl supports --compressed by running curl -V and checking if
        the output contains the features we need. *)
-    Fiber_lazy.create (fun () ->
+    Fiber.Lazy.create (fun () ->
       let+ lines, _ =
         let stderr_to =
           Process.Io.make_stderr
@@ -54,7 +54,7 @@ module Curl = struct
   ;;
 
   let run ~url ~temp_dir ~output =
-    let* compressed_supported = Fiber_lazy.force compressed_supported in
+    let* compressed_supported = Fiber.Lazy.force compressed_supported in
     let args =
       List.flatten
         [ [ "-L"
@@ -123,8 +123,8 @@ type failure =
 
 let label = "dune-fetch"
 
-let unpack_tarball ~target ~archive =
-  Tar.extract ~archive ~target
+let unpack_archive ~archive_driver ~target ~archive =
+  Archive_driver.extract archive_driver ~archive ~target
   >>| Result.map_error ~f:(fun () ->
     Pp.textf "unable to extract %S" (Path.to_string archive))
 ;;
@@ -169,7 +169,11 @@ let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
       Path.rename output target;
       Fiber.return @@ Ok ()
     | true ->
-      unpack_tarball ~target ~archive:output
+      unpack_archive
+        ~archive_driver:
+          (Archive_driver.choose_for_filename_default_to_tar (OpamUrl0.to_string url))
+        ~target
+        ~archive:output
       >>| (function
        | Ok () -> Ok ()
        | Error msg ->
@@ -188,8 +192,8 @@ let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
 let fetch_git rev_store ~target ~url:(url_loc, url) =
   OpamUrl.resolve url ~loc:url_loc rev_store
   >>= (function
-         | Error _ as e -> Fiber.return e
-         | Ok r -> OpamUrl.fetch_revision url ~loc:url_loc r rev_store)
+   | Error _ as e -> Fiber.return e
+   | Ok r -> OpamUrl.fetch_revision url ~loc:url_loc r rev_store)
   >>= function
   | Error msg -> Fiber.return @@ Error (Unavailable (Some msg))
   | Ok at_rev ->
@@ -201,14 +205,21 @@ let fetch_local ~checksum ~target (url, url_loc) =
   if not (OpamUrl.is_local url)
   then Code_error.raise "fetch_local: url should be file://" [ "url", OpamUrl.to_dyn url ];
   let path =
-    match OpamUrl.local_or_git_only url url_loc with
+    match OpamUrl.classify url url_loc with
     | `Path p -> p
-    | `Git -> Code_error.raise "fetch_local: not a path" [ "url", OpamUrl.to_dyn url ]
+    | `Git | `Archive ->
+      Code_error.raise "fetch_local: not a path" [ "url", OpamUrl.to_dyn url ]
   in
   match check_checksum checksum path with
   | Error _ as e -> Fiber.return e
   | Ok () ->
-    let+ unpack_result = unpack_tarball ~target ~archive:path in
+    let+ unpack_result =
+      unpack_archive
+        ~archive_driver:
+          (Archive_driver.choose_for_filename_default_to_tar (OpamUrl0.to_string url))
+        ~target
+        ~archive:path
+    in
     Result.map_error unpack_result ~f:(fun pp ->
       Unavailable (Some (User_message.make [ Pp.text "Could not unpack:"; pp ])))
 ;;
@@ -240,18 +251,18 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
       Dune_stats.finish event;
       Fiber.return ())
     (fun () ->
-      match url.backend with
-      | `git ->
-        let* rev_store = Rev_store.get in
-        fetch_git rev_store ~target ~url:(url_loc, url)
-      | `http -> fetch_curl ~unpack ~checksum ~target url
-      | `rsync ->
-        if not unpack
-        then
-          Code_error.raise "fetch_local: unpack is not set" [ "url", OpamUrl.to_dyn url ];
-        fetch_local ~checksum ~target (url, url_loc)
-      | `hg -> unsupported_backend "mercurial"
-      | `darcs -> unsupported_backend "darcs")
+       match url.backend with
+       | `git ->
+         let* rev_store = Rev_store.get in
+         fetch_git rev_store ~target ~url:(url_loc, url)
+       | `http -> fetch_curl ~unpack ~checksum ~target url
+       | `rsync ->
+         if not unpack
+         then
+           Code_error.raise "fetch_local: unpack is not set" [ "url", OpamUrl.to_dyn url ];
+         fetch_local ~checksum ~target (url, url_loc)
+       | `hg -> unsupported_backend "mercurial"
+       | `darcs -> unsupported_backend "darcs")
 ;;
 
 let fetch_without_checksum ~unpack ~target ~url =

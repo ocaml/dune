@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 type t
 
@@ -6,8 +6,8 @@ val to_opam : t -> OpamVariable.t
 val of_opam : OpamVariable.t -> t
 val compare : t -> t -> Ordering.t
 val to_dyn : t -> Dyn.t
-val encode : t Dune_sexp.Encoder.t
-val decode : t Dune_sexp.Decoder.t
+val encode : t Encoder.t
+val decode : t Decoder.t
 val equal : t -> t -> bool
 
 module Map : Map.S with type key = t
@@ -15,6 +15,7 @@ module Set : Set.S with type elt = t and type 'a map = 'a Map.t
 
 val of_string : string -> t
 val to_string : t -> string
+val hash : t -> int
 val arch : t
 val os : t
 val os_version : t
@@ -32,7 +33,11 @@ val build : t
 val dev : t
 val one_of : t -> t list -> bool
 
+(** The set of variable names whose values are expected to differ depending on
+    the current platform. *)
+val platform_specific : Set.t
+
 module Project : sig
-  val encode : t Dune_sexp.Encoder.t
-  val decode : t Dune_sexp.Decoder.t
+  val encode : t Encoder.t
+  val decode : t Decoder.t
 end

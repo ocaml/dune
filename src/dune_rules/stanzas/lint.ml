@@ -1,3 +1,5 @@
+open Import
+
 type t = Preprocess.Without_instrumentation.t Preprocess.Per_module.t
 
 let decode = Preprocess.Per_module.decode

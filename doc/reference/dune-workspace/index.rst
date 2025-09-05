@@ -1,8 +1,13 @@
 dune-workspace
 ==============
 
+A ``dune-workspace`` file (if present) marks the root of the current Dune
+workspace (see :doc:`/explanation/scopes`). It can be used to define compilation contexts
+(see :doc:`/reference/dune-workspace/context`) and specify settings common to
+all Dune projects contained within the workspace.
+
 By default, a workspace has only one build context named ``default`` which
-corresponds to the environment, in which ``dune`` is run. You can define more
+corresponds to the environment in which ``dune`` is run. You can define more
 contexts by writing a ``dune-workspace`` file.
 
 You can point Dune to an explicit ``dune-workspace`` file with the
@@ -21,9 +26,9 @@ The ``dune-workspace`` file uses the S-expression syntax. This is what a typical
 .. code:: dune
 
     (lang dune 3.14)
-    (context (opam (switch 4.07.1)))
     (context (opam (switch 4.08.1)))
     (context (opam (switch 4.11.1)))
+    (context (opam (switch 4.14.2)))
 
 The rest of this section describe the stanzas available.
 
@@ -39,7 +44,7 @@ This allows you to use an empty ``dune-workspace`` file to mark the root of your
 project.
 
 .. toctree::
-   
+
   config
   context
   env

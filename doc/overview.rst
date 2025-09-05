@@ -96,7 +96,7 @@ Terminology
      from this directory. Moreover, scopes are separate from your project's
      dependencies. The scope also determines where private items are visible.
      Private items include libraries or binaries that will not be installed.
-     See :doc:`concepts/scopes` for more details.
+     See :doc:`/explanation/scopes` for more details.
 
    build context
      A specific configuration written in a
@@ -164,7 +164,7 @@ A typical Dune project will have a ``dune-project`` and one or more
 interesting things are: libraries, executables, tests, documents to install,
 etc.
 
-We recommended organising your project to have exactly one library per
+We recommend organising your project to have exactly one library per
 directory. You can have several executables in the same directory, as long as
 they share the same build configuration. If you'd like to have multiple
 executables with different configurations in the same directory, you will have

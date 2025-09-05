@@ -81,6 +81,13 @@ module User_message : sig
       | Success
       | Ansi_styles of Ansi_color.Style.t list
   end
+
+  type t = Stdune.User_message.t
+
+  (** (De)serializer for [User_message.t] which ignores the [annots] field. The
+      [annots] field is non-trivial to serialize and is not necessary for
+      formatting messages, so it's not handled here. *)
+  val sexp_without_annots : t Conv.value
 end
 
 module Diagnostic : sig
@@ -211,4 +218,40 @@ module Job : sig
 
     val sexp : t Conv.value
   end
+end
+
+(** A compound user error defineds an alternative format for error messages that
+    retains more structure. This can be used to display the errors in richer
+    form by RPC clients. *)
+module Compound_user_error : sig
+  type t = private
+    { main : User_message.t
+    ; related : User_message.t list
+    }
+
+  val sexp : t Conv.value
+  val to_dyn : t -> Dyn.t
+  val annot : t list Stdune.User_message.Annots.Key.t
+  val make : main:User_message.t -> related:User_message.t list -> t
+  val parse_output : dir:Stdune.Path.t -> string -> t list
+end
+
+module Build_outcome_with_diagnostics : sig
+  type t =
+    | Success
+    | Failure of Compound_user_error.t list
+
+  val sexp_v1 : t Conv.value
+  val sexp_v2 : t Conv.value
+  val sexp : t Conv.value
+end
+
+(** Describe what files should be promoted. The second argument of [These] is a
+    function that is called on files that cannot be promoted. *)
+module Files_to_promote : sig
+  type t =
+    | All
+    | These of Stdune.Path.Source.t list * (Stdune.Path.Source.t -> unit)
+
+  val sexp : t Conv.value
 end

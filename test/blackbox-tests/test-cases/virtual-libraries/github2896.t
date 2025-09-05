@@ -37,7 +37,6 @@ The implementation impl was built, but it's not usable:
   -> required by library "lib" in _build/default/lib
   -> required by library "impl" in _build/default/impl
   -> required by executable foo in dune:1
-  -> required by _build/default/.foo.eobjs/byte/dune__exe__Foo.cmi
   -> required by _build/default/.foo.eobjs/native/dune__exe__Foo.cmx
   -> required by _build/default/foo.exe
   [1]

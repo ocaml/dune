@@ -13,6 +13,4 @@
   dune_rpc_private
   dune_rpc_server
   dune_engine)
- (synopsis "Dune's rpc server + a usable client")
- (instrumentation
-  (backend bisect_ppx)))
+ (synopsis "Dune's rpc server + a usable client"))

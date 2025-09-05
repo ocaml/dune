@@ -35,3 +35,9 @@ following stanzas:
 - ``library``
 - ``executable(s)``
 - ``test(s)``
+
+.. warning::
+
+   Currently the `(ocamllex)`, `(ocamlyacc)` and `(menhir)` stanzas do not work
+   well in combination with `(include_subdirs qualified)`. See `this issue
+   <https://github.com/ocaml/dune/issues/11119>`_ for more information.

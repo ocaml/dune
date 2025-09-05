@@ -31,8 +31,28 @@ let component_name_parser s =
   Ok atom
 ;;
 
+let project_name_parser s =
+  (* TODO refactor Dune_project_name to be Stringlike *)
+  match Dune_project_name.named Loc.none s with
+  | v -> Ok v
+  | exception User_error.E _ ->
+    User_error.make
+      [ Pp.textf "invalid project name `%s'" s
+      ; Pp.text
+          "Project names must start with a letter and be composed only of letters, \
+           numbers, '-' or '_'"
+      ]
+    |> User_message.to_string
+    |> fun m -> Error (`Msg m)
+;;
+
+let project_name_printer ppf p =
+  Format.pp_print_string ppf (Dune_project_name.to_string_hum p)
+;;
+
 let atom_conv = Arg.conv (atom_parser, atom_printer)
 let component_name_conv = Arg.conv (component_name_parser, atom_printer)
+let project_name_conv = Arg.conv (project_name_parser, project_name_printer)
 
 (** {2 Status reporting} *)
 
@@ -48,22 +68,6 @@ let print_completion kind name =
 
 (** {1 CLI} *)
 
-let common : Component.Options.Common.t Term.t =
-  let+ name =
-    let docv = "NAME" in
-    Arg.(required & pos 0 (some component_name_conv) None & info [] ~docv)
-  and+ libraries =
-    let docv = "LIBRARIES" in
-    let doc = "A comma separated list of libraries on which the component depends" in
-    Arg.(value & opt (list atom_conv) [] & info [ "libs" ] ~docv ~doc)
-  and+ pps =
-    let docv = "PREPROCESSORS" in
-    let doc = "A comma separated list of ppx preprocessors used by the component" in
-    Arg.(value & opt (list atom_conv) [] & info [ "ppx" ] ~docv ~doc)
-  in
-  { Component.Options.Common.name; libraries; pps }
-;;
-
 let path =
   let docv = "PATH" in
   Arg.(value & pos 1 (some string) None & info [] ~docv)
@@ -75,7 +79,7 @@ let context_cwd : Init_context.t Term.t =
   let builder = Common.Builder.set_default_root_is_cwd builder true in
   let common, config = Common.init builder in
   let project_defaults = config.project_defaults in
-  Scheduler.go ~common ~config (fun () ->
+  Scheduler.go_with_rpc_server ~common ~config (fun () ->
     Memo.run (Init_context.make path project_defaults))
 ;;
 
@@ -89,9 +93,9 @@ module Public_name = struct
     | Public_name p -> Public_name.to_string p
   ;;
 
-  let public_name (common : Component.Options.Common.t) = function
+  let public_name default_name = function
     | None -> None
-    | Some Use_name -> Some (Public_name.of_name_exn common.name)
+    | Some Use_name -> Some (Public_name.of_name_exn default_name)
     | Some (Public_name n) -> Some n
   ;;
 
@@ -111,6 +115,18 @@ module Public_name = struct
   ;;
 end
 
+let libraries =
+  let docv = "LIBRARIES" in
+  let doc = "A comma separated list of libraries on which the component depends" in
+  Arg.(value & opt (list atom_conv) [] & info [ "libs" ] ~docv ~doc)
+;;
+
+let pps =
+  let docv = "PREPROCESSORS" in
+  let doc = "A comma separated list of ppx preprocessors used by the component" in
+  Arg.(value & opt (list atom_conv) [] & info [ "ppx" ] ~docv ~doc)
+;;
+
 let public : Public_name.t option Term.t =
   let docv = "PUBLIC_NAME" in
   let doc =
@@ -121,6 +137,38 @@ let public : Public_name.t option Term.t =
     value
     & opt ~vopt:(Some Public_name.Use_name) (some Public_name.conv) None
     & info [ "public" ] ~docv ~doc)
+;;
+
+let common : Component.Options.Common.t Term.t =
+  let+ name =
+    let docv = "NAME" in
+    Arg.(required & pos 0 (some component_name_conv) None & info [] ~docv)
+  and+ public = public
+  and+ libraries = libraries
+  and+ pps = pps in
+  let public = Public_name.public_name name public in
+  { Component.Options.Common.name; public; libraries; pps }
+;;
+
+let project_common : Component.Options.Common.t Term.t =
+  let+ project_name =
+    let docv = "NAME" in
+    Arg.(required & pos 0 (some project_name_conv) None & info [] ~docv)
+  and+ libraries = libraries
+  and+ pps = pps in
+  let public = Dune_project_name.to_string_hum project_name in
+  let name =
+    String.map
+      ~f:(function
+        | '-' -> '_'
+        | c -> c)
+      public
+    |> Dune_lang.Atom.of_string
+  in
+  let public =
+    Some (Dune_lang.Atom.of_string public |> Dune_init.Public_name.of_name_exn)
+  in
+  { Component.Options.Common.name; public; libraries; pps }
 ;;
 
 let inline_tests : bool Term.t =
@@ -140,10 +188,8 @@ let executable =
   let kind = "executable" in
   Cmd.v (Cmd.info kind ~doc ~man)
   @@ let+ context = context_cwd
-     and+ common = common
-     and+ public = public in
-     let public = Public_name.public_name common public in
-     Component.init (Executable { context; common; options = { public } });
+     and+ common = common in
+     Component.init (Executable { context; common; options = () });
      print_completion kind common.name
 ;;
 
@@ -154,10 +200,8 @@ let library =
   Cmd.v (Cmd.info kind ~doc ~man)
   @@ let+ context = context_cwd
      and+ common = common
-     and+ public = public
      and+ inline_tests = inline_tests in
-     let public = Public_name.public_name common public in
-     Component.init (Library { context; common; options = { public; inline_tests } });
+     Component.init (Library { context; common; options = { inline_tests } });
      print_completion kind common.name
 ;;
 
@@ -187,7 +231,7 @@ let project =
   Cmd.v (Cmd.info "project" ~doc ~man)
   @@ let+ common_builder = Builder.term
      and+ path = path
-     and+ common = common
+     and+ common = project_common
      and+ inline_tests = inline_tests
      and+ template =
        let docv = "PROJECT_KIND" in
@@ -215,9 +259,13 @@ let project =
            & opt (some (enum Component.Options.Project.Pkg.commands)) None
            & info [ "pkg" ] ~docv ~doc)
      in
+     let name =
+       match common.public with
+       | None -> Dune_lang.Atom.to_string common.name
+       | Some public -> Dune_init.Public_name.to_string public
+     in
      let context =
        let init_context = Init_context.make path in
-       let name = Dune_lang.Atom.to_string common.name in
        let root =
          match path with
          (* If a path is given, we use that for the root during project
@@ -231,20 +279,21 @@ let project =
        let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p root in
        let common, config = Common.init builder in
        let project_defaults = config.project_defaults in
-       Scheduler.go ~common ~config (fun () -> Memo.run @@ init_context project_defaults)
+       Scheduler.go_with_rpc_server ~common ~config (fun () ->
+         Memo.run @@ init_context project_defaults)
      in
      Component.init
        (Project { context; common; options = { template; inline_tests; pkg } });
-     print_completion "project" common.name
+     print_completion "project" (Dune_lang.Atom.of_string name)
 ;;
 
 let group =
   let doc = "Command group for initializing Dune components." in
   let synopsis =
     Common.command_synopsis
-      [ "init proj NAME [PATH] [OPTION]... "
-      ; "init exec NAME [PATH] [OPTION]... "
-      ; "init lib NAME [PATH] [OPTION]... "
+      [ "init project NAME [PATH] [OPTION]... "
+      ; "init executable NAME [PATH] [OPTION]... "
+      ; "init library NAME [PATH] [OPTION]... "
       ; "init test NAME [PATH] [OPTION]... "
       ]
   in
@@ -272,15 +321,15 @@ let group =
         [ ( {|Generate a project skeleton for an executable named `myproj' in a
             new directory named `myproj', depending on the bos library and
             using inline tests along with ppx_inline_test |}
-          , {|dune init proj myproj --libs bos --ppx ppx_inline_test --inline-tests|} )
+          , {|dune init project myproj --libs bos --ppx ppx_inline_test --inline-tests|} )
         ; ( {|Configure an executable component named `myexe' in a dune file in the
             current directory|}
-          , {|dune init exe myexe|} )
+          , {|dune init executable myexe|} )
         ; ( {|Configure a library component named `mylib' in a dune file in the ./src
             directory depending on the core and cmdliner libraries, the ppx_let
             and ppx_inline_test preprocessors, and declared as using inline
             tests|}
-          , {|dune init lib mylib src --libs core,cmdliner --ppx ppx_let,ppx_inline_test --inline-tests|}
+          , {|dune init library mylib src --libs core,cmdliner --ppx ppx_let,ppx_inline_test --inline-tests|}
           )
         ; ( {|Configure a test component named `mytest' in a dune file in the
             ./test directory that depends on `mylib'|}

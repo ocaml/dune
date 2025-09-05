@@ -5,9 +5,9 @@ module Package_variable_name = Dune_lang.Package_variable_name
 module Variable_value = Dune_pkg.Variable_value
 
 let solver_env
-  ~solver_env_from_current_system
-  ~solver_env_from_context
-  ~unset_solver_vars_from_context
+      ~solver_env_from_current_system
+      ~solver_env_from_context
+      ~unset_solver_vars_from_context
   =
   let solver_env =
     [ solver_env_from_current_system; solver_env_from_context ]
@@ -17,6 +17,45 @@ let solver_env
   match unset_solver_vars_from_context with
   | None -> solver_env
   | Some unset_solver_vars -> Solver_env.unset_multi solver_env unset_solver_vars
+;;
+
+let poll_solver_env_from_current_system () =
+  Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
+  |> Dune_pkg.Sys_poll.solver_env_from_current_system
+;;
+
+let get_lock_dir_from_context ~lock_dir_path =
+  Memo.run
+  @@
+  let open Memo.O in
+  let+ workspace = Workspace.workspace () in
+  Workspace.find_lock_dir workspace lock_dir_path
+;;
+
+let get_solver_env_from_context ~lock_dir_path =
+  let open Fiber.O in
+  let+ lock_dir = get_lock_dir_from_context ~lock_dir_path in
+  Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env)
+;;
+
+let get_unset_solver_vars_from_context ~lock_dir_path =
+  let open Fiber.O in
+  let+ lock_dir = get_lock_dir_from_context ~lock_dir_path in
+  Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.unset_solver_vars)
+;;
+
+let solver_env_from_system_and_context ~lock_dir_path =
+  let open Fiber.O in
+  let+ solver_env_from_current_system =
+    poll_solver_env_from_current_system () >>| Option.some
+  and+ solver_env_from_context = get_solver_env_from_context ~lock_dir_path
+  and+ unset_solver_vars_from_context =
+    get_unset_solver_vars_from_context ~lock_dir_path
+  in
+  solver_env
+    ~solver_env_from_current_system
+    ~solver_env_from_context
+    ~unset_solver_vars_from_context
 ;;
 
 module Version_preference = struct
@@ -58,6 +97,12 @@ let constraints_of_workspace (workspace : Workspace.t) ~lock_dir_path =
   | Some lock_dir -> lock_dir.constraints
 ;;
 
+let depopts_of_workspace (workspace : Workspace.t) ~lock_dir_path =
+  match Workspace.find_lock_dir workspace lock_dir_path with
+  | None -> []
+  | Some lock_dir -> lock_dir.depopts |> List.map ~f:snd
+;;
+
 let repositories_of_lock_dir workspace ~lock_dir_path =
   match Workspace.find_lock_dir workspace lock_dir_path with
   | Some lock_dir -> lock_dir.repositories
@@ -88,9 +133,15 @@ let get_repos repos ~repositories =
     | Some repo ->
       let loc, opam_url = Repository.opam_url repo in
       let module Opam_repo = Dune_pkg.Opam_repo in
-      (match Dune_pkg.OpamUrl.local_or_git_only opam_url loc with
+      (match Dune_pkg.OpamUrl.classify opam_url loc with
        | `Git -> Opam_repo.of_git_repo loc opam_url
-       | `Path path -> Fiber.return @@ Opam_repo.of_opam_repo_dir_path loc path))
+       | `Path path -> Fiber.return @@ Opam_repo.of_opam_repo_dir_path loc path
+       | `Archive ->
+         User_error.raise
+           ~loc
+           [ Pp.textf "Repositories stored in archives (%s) are currently unsupported"
+             @@ OpamUrl.to_string opam_url
+           ]))
 ;;
 
 let find_local_packages =
@@ -99,18 +150,26 @@ let find_local_packages =
   >>| Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
 ;;
 
-let pp_packages packages =
-  Pp.enumerate
-    packages
-    ~f:(fun { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; _ }; _ } ->
-      Pp.verbatim
-        (Package_name.to_string name ^ "." ^ Dune_pkg.Package_version.to_string version))
+let pp_package { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; avoid; _ }; _ } =
+  let warn =
+    if avoid
+    then Pp.tag User_message.Style.Warning (Pp.text " (this version should be avoided)")
+    else Pp.nop
+  in
+  let open Pp.O in
+  Pp.verbatim
+    (Package_name.to_string name ^ "." ^ Dune_pkg.Package_version.to_string version)
+  ++ warn
 ;;
+
+let pp_packages packages = Pp.enumerate packages ~f:pp_package
 
 module Lock_dirs_arg = struct
   type t =
     | All
     | Selected of Path.Source.t list
+
+  let all = All
 
   let term =
     Common.one_of
@@ -137,33 +196,33 @@ module Lock_dirs_arg = struct
   ;;
 
   let lock_dirs_of_workspace t (workspace : Workspace.t) =
+    let default_path = Lazy.force Lock_dir.default_path in
     let workspace_lock_dirs =
-      Lock_dir.default_path
+      default_path
       :: List.map workspace.lock_dirs ~f:(fun (lock_dir : Workspace.Lock_dir.t) ->
-        lock_dir.path)
-      |> Path.Source.Set.of_list
-      |> Path.Source.Set.to_list
+        lock_dir.path |> Path.source)
+      |> Path.Set.of_list
+      |> Path.Set.to_list
     in
     match t with
     | All -> workspace_lock_dirs
-    | Selected [] -> [ Lock_dir.default_path ]
+    | Selected [] -> [ default_path ]
     | Selected chosen_lock_dirs ->
-      let workspace_lock_dirs_set = Path.Source.Set.of_list workspace_lock_dirs in
-      let chosen_lock_dirs_set = Path.Source.Set.of_list chosen_lock_dirs in
-      if Path.Source.Set.is_subset chosen_lock_dirs_set ~of_:workspace_lock_dirs_set
+      let workspace_lock_dirs_set = Path.Set.of_list workspace_lock_dirs in
+      let chosen_lock_dirs = List.map ~f:Path.source chosen_lock_dirs in
+      let chosen_lock_dirs_set = Path.Set.of_list chosen_lock_dirs in
+      if Path.Set.is_subset chosen_lock_dirs_set ~of_:workspace_lock_dirs_set
       then chosen_lock_dirs
       else (
         let unknown_lock_dirs =
-          Path.Source.Set.diff chosen_lock_dirs_set workspace_lock_dirs_set
-          |> Path.Source.Set.to_list
+          Path.Set.diff chosen_lock_dirs_set workspace_lock_dirs_set |> Path.Set.to_list
         in
-        let f x = Path.pp (Path.source x) in
         User_error.raise
           [ Pp.text
               "The following directories are not lock directories in this workspace:"
-          ; Pp.enumerate unknown_lock_dirs ~f
+          ; Pp.enumerate unknown_lock_dirs ~f:Path.pp
           ; Pp.text "This workspace contains the following lock directories:"
-          ; Pp.enumerate workspace_lock_dirs ~f
+          ; Pp.enumerate workspace_lock_dirs ~f:Path.pp
           ])
   ;;
 end

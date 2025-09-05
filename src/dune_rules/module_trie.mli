@@ -3,6 +3,8 @@
     qualified)` where the directory name qualifies the namespace for its
     descendant modules in the file system. *)
 
+open Import
+
 type 'a t = 'a node Module_name.Map.t
 
 and 'a node =

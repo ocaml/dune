@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp
+open Import
 open Decoder
 
 module Glob_files = struct
@@ -8,6 +7,10 @@ module Glob_files = struct
     ; recursive : bool
     }
 
+  let equal t { glob; recursive } =
+    String_with_vars.equal t.glob glob && Bool.equal t.recursive recursive
+  ;;
+
   let to_dyn { glob; recursive } =
     Dyn.record [ "glob", String_with_vars.to_dyn glob; "recursive", Dyn.bool recursive ]
   ;;
@@ -15,6 +18,16 @@ end
 
 module Sandbox_config = struct
   type t = Loc.t * [ `None | `Always | `Preserve_file_kind ] list
+
+  let equal =
+    Tuple.T2.equal
+      Loc.equal
+      (List.equal (fun a b ->
+         match a, b with
+         | `None, `None | `Always, `Always | `Preserve_file_kind, `Preserve_file_kind ->
+           true
+         | _, _ -> false))
+  ;;
 
   let all =
     [ "none", `None; "always", `Always; "preserve_file_kind", `Preserve_file_kind ]
@@ -50,6 +63,21 @@ type t =
   | Env_var of String_with_vars.t
   | Sandbox_config of Sandbox_config.t
   | Include of string
+
+let equal a b =
+  match a, b with
+  | File a, File b
+  | Alias a, Alias b
+  | Alias_rec a, Alias_rec b
+  | Source_tree a, Source_tree b
+  | Package a, Package b
+  | Env_var a, Env_var b -> String_with_vars.equal a b
+  | Glob_files a, Glob_files b -> Glob_files.equal a b
+  | Universe, Universe -> true
+  | Sandbox_config a, Sandbox_config b -> Sandbox_config.equal a b
+  | Include a, Include b -> String.equal a b
+  | _, _ -> false
+;;
 
 let remove_locs = function
   | File sw -> File (String_with_vars.remove_locs sw)

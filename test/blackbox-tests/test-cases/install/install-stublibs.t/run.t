@@ -31,8 +31,8 @@ Begin by installing a library with C stubs.
   Installing install/lib/libA/liblibA_stubs.a
   Installing install/lib/libA/libA.cmxs
   Installing install/lib/stublibs/dlllibA_stubs.so
-  $ cat ./install/lib/libA/dune-package
-  (lang dune 3.18)
+  $ sed -E 's/lang dune [0-9.]+/lang dune XXX/' ./install/lib/libA/dune-package
+  (lang dune XXX)
   (name libA)
   (sections
    (lib

@@ -31,7 +31,7 @@ module Workspace_local = struct
         type nonrec t = t
 
         let name = "INCREMENTAL-DB"
-        let version = 5
+        let version = 6
         let to_dyn = to_dyn
 
         let test_example () =
@@ -139,8 +139,10 @@ module Workspace_local = struct
     | Error error -> Miss (Error_while_collecting_directory_targets error)
     | Ok targets ->
       (match
-         Targets.Produced.map_with_errors targets ~all_errors:false ~f:(fun target () ->
-           Cached_digest.build_file ~allow_dirs:true target)
+         Targets.Produced.map_with_errors
+           ~all_errors:false
+           ~f:(Cached_digest.build_file ~allow_dirs:true)
+           targets
        with
        | Ok produced_targets -> Dune_cache.Hit_or_miss.Hit produced_targets
        | Error _ -> Miss Targets_missing)
@@ -218,12 +220,12 @@ module Shared = struct
   ;;
 
   let examine_targets_and_store
-    ~can_go_in_shared_cache
-    ~loc
-    ~rule_digest
-    ~should_remove_write_permissions_on_generated_files
-    ~action
-    ~produced_targets
+        ~can_go_in_shared_cache
+        ~loc
+        ~rule_digest
+        ~should_remove_write_permissions_on_generated_files
+        ~action
+        ~produced_targets
     =
     let config = Build_config.get () in
     let module Shared_cache = (val config.shared_cache) in

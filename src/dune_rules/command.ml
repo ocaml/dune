@@ -48,42 +48,58 @@ end
 
 open Args0
 
-let rec expand : type a. dir:Path.t -> a t -> string list Action_builder.With_targets.t =
+let rec expand
+  : type a. dir:Path.t -> a t -> string Appendable_list.t Action_builder.With_targets.t
+  =
   fun ~dir t ->
   match t with
-  | A s -> Action_builder.With_targets.return [ s ]
-  | As l -> Action_builder.With_targets.return l
+  | A s -> Appendable_list.singleton s |> Action_builder.With_targets.return
+  | As l -> Appendable_list.of_list l |> Action_builder.With_targets.return
   | Dep fn ->
-    Action_builder.with_no_targets
-      (Action_builder.map (Action_builder.path fn) ~f:(fun () ->
-         [ Path.reach fn ~from:dir ]))
-  | Path fn -> Action_builder.With_targets.return [ Path.reach fn ~from:dir ]
+    Action_builder.path fn
+    |> Action_builder.map ~f:(fun () ->
+      Appendable_list.singleton (Path.reach fn ~from:dir))
+    |> Action_builder.with_no_targets
+  | Path fn ->
+    Path.reach fn ~from:dir
+    |> Appendable_list.singleton
+    |> Action_builder.With_targets.return
   | Deps fns ->
-    Action_builder.with_no_targets
-      (Action_builder.map (Action_builder.paths fns) ~f:(fun () ->
-         List.map fns ~f:(Path.reach ~from:dir)))
+    Action_builder.paths fns
+    |> Action_builder.map ~f:(fun () ->
+      Appendable_list.of_list @@ List.map fns ~f:(Path.reach ~from:dir))
+    |> Action_builder.with_no_targets
   | Paths fns ->
-    Action_builder.With_targets.return (List.map fns ~f:(Path.reach ~from:dir))
+    List.map fns ~f:(Path.reach ~from:dir)
+    |> Appendable_list.of_list
+    |> Action_builder.With_targets.return
   | S ts ->
-    Action_builder.With_targets.map
-      (Action_builder.With_targets.all (List.map ts ~f:(expand ~dir)))
-      ~f:List.concat
+    List.map ts ~f:(expand ~dir)
+    |> Action_builder.With_targets.all
+    |> Action_builder.With_targets.map ~f:Appendable_list.concat
   | Concat (sep, ts) ->
-    Action_builder.With_targets.map (expand ~dir (S ts)) ~f:(fun x ->
-      [ String.concat ~sep x ])
+    expand ~dir (S ts)
+    |> Action_builder.With_targets.map ~f:(fun x ->
+      Appendable_list.to_list x |> String.concat ~sep |> Appendable_list.singleton)
   | Target fn ->
-    Action_builder.with_file_targets
-      ~file_targets:[ fn ]
-      (Action_builder.return [ Path.reach (Path.build fn) ~from:dir ])
+    Path.build fn
+    |> Path.reach ~from:dir
+    |> Appendable_list.singleton
+    |> Action_builder.return
+    |> Action_builder.with_file_targets ~file_targets:[ fn ]
   | Dyn dyn ->
-    Action_builder.with_no_targets
-      (Action_builder.bind dyn ~f:(fun t -> expand_no_targets ~dir t))
+    Action_builder.bind dyn ~f:(expand_no_targets ~dir) |> Action_builder.with_no_targets
   | Hidden_deps deps ->
-    Action_builder.with_no_targets
-      (Action_builder.map (Action_builder.deps deps) ~f:(fun () -> []))
+    Action_builder.deps deps
+    |> Action_builder.map ~f:(fun () -> Appendable_list.empty)
+    |> Action_builder.with_no_targets
   | Hidden_targets fns ->
-    Action_builder.with_file_targets ~file_targets:fns (Action_builder.return [])
-  | Expand f -> Action_builder.with_no_targets (f ~dir)
+    Action_builder.return Appendable_list.empty
+    |> Action_builder.with_file_targets ~file_targets:fns
+  | Expand f ->
+    f ~dir
+    |> Action_builder.map ~f:Appendable_list.of_list
+    |> Action_builder.with_no_targets
 
 and expand_no_targets ~dir (t : without_targets t) =
   let { Action_builder.With_targets.build; targets } = expand ~dir t in
@@ -108,13 +124,13 @@ let run_dyn_prog ~dir ?sandbox ?stdout_to prog args =
        let+ () = dep_prog prog in
        prog
      and+ args = expand ~dir (S args) in
-     let action = Action.run prog args in
      let action =
+       let action = Action.Run (prog, Appendable_list.to_immutable_array args) in
        match stdout_to with
        | None -> action
        | Some path -> Action.with_stdout_to path action
      in
-     Action.Full.make ?sandbox (Action.chdir dir action))
+     Action.chdir dir action |> Action.Full.make ?sandbox)
 ;;
 
 let run ~dir ?sandbox ?stdout_to prog args =
@@ -125,7 +141,9 @@ let run' ~dir prog args =
   let open Action_builder.O in
   let+ () = dep_prog prog
   and+ args = expand_no_targets ~dir (S args) in
-  Action.Full.make (Action.chdir dir (Action.run prog args))
+  Action.Run (prog, Appendable_list.to_immutable_array args)
+  |> Action.chdir dir
+  |> Action.Full.make
 ;;
 
 let quote_args =
@@ -145,7 +163,8 @@ module Args = struct
         "Command.Args.memo"
         ~input:(module Path)
         ~cutoff:(List.equal String.equal)
-        (fun dir -> expand_no_targets ~dir t)
+        (fun dir ->
+           expand_no_targets ~dir t |> Action_builder.map ~f:Appendable_list.to_list)
     in
     Expand (fun ~dir -> Action_builder.exec_memo memo dir)
   ;;
@@ -155,3 +174,11 @@ module Ml_kind = struct
   let flag t = Ml_kind.choose ~impl:(Args.A "-impl") ~intf:(A "-intf") t
   let ppx_driver_flag t = Ml_kind.choose ~impl:(Args.A "--impl") ~intf:(A "--intf") t
 end
+
+let expand ~dir args =
+  expand ~dir args |> Action_builder.With_targets.map ~f:Appendable_list.to_list
+;;
+
+let expand_no_targets ~dir t =
+  expand_no_targets ~dir t |> Action_builder.map ~f:Appendable_list.to_list
+;;

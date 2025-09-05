@@ -6,7 +6,11 @@ let () = init ()
 let print_loc ppf (_ : Loc.t) = Format.pp_print_string ppf "<loc>"
 
 let sexp =
-  lazy (Dune_lang.Parser.parse_string ~fname:"" ~mode:Single {|
+  lazy
+    (Dune_lang.Parser.parse_string
+       ~fname:""
+       ~mode:Single
+       {|
 ((foo 1)
  (foo 2))
 |})
@@ -19,7 +23,8 @@ let print_ast ast =
 
 let%expect_test _ =
   Lazy.force sexp |> print_ast;
-  [%expect {|
+  [%expect
+    {|
 ((foo 1) (foo 2))
 |}]
 ;;
@@ -32,7 +37,8 @@ let of_sexp =
 let%expect_test _ =
   (try ignore (parse of_sexp Univ_map.empty (Lazy.force sexp) : int) with
    | User_error.E msg -> User_message.print { msg with loc = None });
-  [%expect {|
+  [%expect
+    {|
 Error: Field "foo" is present too many times
 |}]
 ;;
@@ -41,7 +47,8 @@ let of_sexp : int list t = enter (fields (multi_field "foo" int))
 
 let%expect_test _ =
   parse of_sexp Univ_map.empty (Lazy.force sexp) |> Dyn.(list int) |> print_dyn;
-  [%expect {|
+  [%expect
+    {|
 [ 1; 2 ]
 |}]
 ;;
@@ -68,168 +75,192 @@ let parse s =
 
 let%expect_test _ =
   parse {| # ## x##y x||y a#b|c#d copy# |};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "#"; "##"; "x##y"; "x||y"; "a#b|c#d"; "copy#" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|x #| comment |# y|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "x"; "#|"; "comment"; "|#"; "y" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|x#|y|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "x#|y" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|x|#y|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "x|#y" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|"\a"|};
-  [%expect {|
+  [%expect
+    {|
 Error "unknown escape sequence"
 |}]
 ;;
 
 let%expect_test _ =
   parse {|"\%{x}"|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "%{x}" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|"$foo"|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "$foo" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|"%foo"|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "%foo" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|"bar%foo"|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "bar%foo" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|"bar$foo"|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "bar$foo" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|"%bar$foo%"|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "%bar$foo%" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|"$bar%foo%"|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "$bar%foo%" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|\${foo}|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "\\${foo}" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|\%{foo}|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ template "\\%{foo}" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|\$bar%foo%|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "\\$bar%foo%" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|\$bar\%foo%|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "\\$bar\\%foo%" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|\$bar\%foo%{bar}|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ template "\\$bar\\%foo%{bar}" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|"bar%{foo}"|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ template "\"bar%{foo}\"" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|"bar\%{foo}"|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "bar%{foo}" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|bar%{foo}|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ template "bar%{foo}" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|"bar%{foo}"|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ template "\"bar%{foo}\"" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|"bar\%foo"|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "bar%foo" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|"\0000"|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "\0000" ]
 |}]
 ;;
 
 let%expect_test _ =
   parse {|"\x000"|};
-  [%expect {|
+  [%expect
+    {|
 Ok [ "\0000" ]
 |}]
 ;;
@@ -263,8 +294,6 @@ let dyn_of_sexp (S (syntax, dlang)) =
     ]
 ;;
 
-let print_sexp ppf (S (_, sexp)) = Dune_lang.Deprecated.pp ppf sexp
-
 type round_trip_result =
   | Round_trip_success
   | Did_not_round_trip of Dune_lang.t
@@ -294,7 +323,8 @@ let test syntax sexp =
 
 let%expect_test _ =
   test Dune (a "toto");
-  [%expect {|
+  [%expect
+    {|
 (S (Dune, "toto"), Round_trip_success)
 |}]
 ;;
@@ -328,14 +358,16 @@ let%expect_test _ =
 let%expect_test _ =
   (* This round trip failure is expected *)
   test Dune (tq [ Text "x%{" ]);
-  [%expect {|
+  [%expect
+    {|
 (S (Dune, template "\"x\\%{\""), Did_not_round_trip "x%{")
 |}]
 ;;
 
 let%expect_test _ =
   test Dune (tq [ Text "x%"; Text "{" ]);
-  [%expect {|
+  [%expect
+    {|
 (S (Dune, template "\"x\\%{\""), Did_not_round_trip "x%{")
 |}]
 ;;

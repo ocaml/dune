@@ -48,19 +48,19 @@ file and the second patches two, one of the files is in a subdirectory.:w
   $ solve with-patch
   Solution for dune.lock:
   - with-patch.0.0.1
-  $ cat >>dune.lock/with-patch.pkg <<EOF
+  $ append_to_lockpkg with-patch <<EOF
   > (source (copy $PWD/source))
   > EOF
 
 Checking that the patch files have been copied to the dune.lock dir
 
-  $ [ -d dune.lock/with-patch.files ] && ls dune.lock/with-patch.files/foo.patch
+  $ [ -d ${default_lock_dir}/with-patch.files ] && ls ${default_lock_dir}/with-patch.files/foo.patch
   dune.lock/with-patch.files/foo.patch
-  $ [ -d dune.lock/with-patch.files/dir ] && ls dune.lock/with-patch.files/dir/bar.patch
+  $ [ -d ${default_lock_dir}/with-patch.files/dir ] && ls ${default_lock_dir}/with-patch.files/dir/bar.patch
   dune.lock/with-patch.files/dir/bar.patch
 
 The lockfile should contain the patch action. 
-  $ cat dune.lock/with-patch.pkg 
+  $ cat ${default_lock_dir}/with-patch.pkg 
   (version 0.0.1)
   
   (build

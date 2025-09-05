@@ -1,6 +1,6 @@
 (tests
  (names a b)
- (modes js))
+ (modes byte js))
 
 (env
  (_

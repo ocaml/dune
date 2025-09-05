@@ -1,5 +1,4 @@
 open Stdune
-module Flock = Dune_util.Flock
 
 let%expect_test "blocking lock" =
   let fd = Unix.openfile "tlc1" [ Unix.O_CREAT ] 0o777 in
@@ -12,7 +11,8 @@ let%expect_test "blocking lock" =
    | Ok () -> print_endline "released lock"
    | Error _ -> assert false);
   Unix.close fd;
-  [%expect {|
+  [%expect
+    {|
     acquiring lock
     acquired lock
     released lock |}]
@@ -60,7 +60,8 @@ let%expect_test "double lock" =
   (match Flock.lock_non_block lock Exclusive with
    | Ok `Success -> print_endline "lock 2 worked"
    | _ -> assert false);
-  [%expect {|
+  [%expect
+    {|
     lock 1 worked
     lock 2 worked |}]
 ;;

@@ -400,8 +400,8 @@ let either =
 ;;
 
 let ( <|> ) x y =
-  let+ res = either x y in
-  match res with
+  either x y
+  >>| function
   | Left x -> x
   | Right x -> x
 ;;
@@ -725,11 +725,11 @@ let fields_mutual_exclusion_violation loc names =
 ;;
 
 let fields_mutually_exclusive
-  ?on_dup
-  ?default
-  fields
-  ((Fields (loc, _, _) : _ context) as ctx)
-  state
+      ?on_dup
+      ?default
+      fields
+      ((Fields (loc, _, _) : _ context) as ctx)
+      state
   =
   let res, state =
     traverse

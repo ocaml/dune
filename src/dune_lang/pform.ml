@@ -1,8 +1,26 @@
-open Stdune
-open Dune_sexp
+open Import
 module Payload = Template.Pform.Payload
 
 module Var = struct
+  module Os = struct
+    type t =
+      | Os
+      | Os_version
+      | Os_distribution
+      | Os_family
+
+    let all = [ Os; Os_version; Os_distribution; Os_family ]
+
+    let to_string = function
+      | Os -> "os"
+      | Os_version -> "os_version"
+      | Os_distribution -> "os_distribution"
+      | Os_family -> "os_family"
+    ;;
+
+    let to_dyn t = Dyn.variant (to_string t) []
+  end
+
   module Pkg = struct
     module Section = struct
       type t =
@@ -43,10 +61,7 @@ module Var = struct
 
     type t =
       | Switch
-      | Os
-      | Os_version
-      | Os_distribution
-      | Os_family
+      | Os of Os.t
       | Build
       | Prefix
       | User
@@ -58,31 +73,9 @@ module Var = struct
 
     let compare = Poly.compare
 
-    let to_dyn t =
-      let open Dyn in
-      match t with
-      | Switch -> variant "Switch" []
-      | Os -> variant "Os" []
-      | Os_version -> variant "Os_version" []
-      | Os_distribution -> variant "Os_distribution" []
-      | Os_family -> variant "Os_family" []
-      | Build -> variant "Build" []
-      | Prefix -> variant "Prefix" []
-      | User -> variant "User" []
-      | Group -> variant "Group" []
-      | Jobs -> variant "Jobs" []
-      | Arch -> variant "Arch" []
-      | Sys_ocaml_version -> variant "Sys_ocaml_version" []
-      | Section_dir section ->
-        variant "Section_dir" [ string (Section.to_string section) ]
-    ;;
-
     let encode_to_latest_dune_lang_version = function
+      | Os s -> Os.to_string s
       | Switch -> "switch"
-      | Os -> "os"
-      | Os_version -> "os_version"
-      | Os_distribution -> "os_distribution"
-      | Os_family -> "os_family"
       | Build -> "build"
       | Prefix -> "prefix"
       | User -> "user"
@@ -92,6 +85,8 @@ module Var = struct
       | Sys_ocaml_version -> "sys_ocaml_version"
       | Section_dir section -> Section.to_string section
     ;;
+
+    let to_dyn t = Dyn.variant (encode_to_latest_dune_lang_version t) []
   end
 
   type t =
@@ -125,6 +120,7 @@ module Var = struct
     | Profile
     | Context_name
     | Os_type
+    | Os of Os.t
     | Architecture
     | Arch_sixtyfour
     | System
@@ -140,6 +136,7 @@ module Var = struct
     | Inline_tests
     | Toolchain
     | Pkg of Pkg.t
+    | Oxcaml_supported
 
   let compare : t -> t -> Ordering.t = Poly.compare
 
@@ -192,7 +189,9 @@ module Var = struct
        | Corrected_suffix -> variant "Corrected_suffix" []
        | Inline_tests -> variant "Inline_tests" []
        | Toolchain -> variant "Toolchain" []
-       | Pkg pkg -> Pkg.to_dyn pkg)
+       | Os os -> Os.to_dyn os
+       | Pkg pkg -> Pkg.to_dyn pkg
+       | Oxcaml_supported -> variant "Oxcaml_supported" [])
   ;;
 
   let of_opam_global_variable_name name =
@@ -202,10 +201,10 @@ module Var = struct
       (match name with
        | "make" -> Some Make
        | "switch" -> Some (Pkg Switch)
-       | "os" -> Some (Pkg Os)
-       | "os-version" -> Some (Pkg Os_version)
-       | "os-distribution" -> Some (Pkg Os_distribution)
-       | "os-family" -> Some (Pkg Os_family)
+       | "os" -> Some (Pkg (Os Os))
+       | "os-version" -> Some (Pkg (Os Os_version))
+       | "os-distribution" -> Some (Pkg (Os Os_distribution))
+       | "os-family" -> Some (Pkg (Os Os_family))
        | "build" -> Some (Pkg Build)
        | "prefix" -> Some (Pkg Prefix)
        | "user" -> Some (Pkg User)
@@ -502,7 +501,9 @@ let encode_to_latest_dune_lang_version t =
        | Corrected_suffix -> Some "corrected-suffix"
        | Inline_tests -> Some "inline_tests"
        | Toolchain -> Some "toolchain"
+       | Os os -> Some (Var.Os.to_string os)
        | Pkg pkg -> Some (Var.Pkg.encode_to_latest_dune_lang_version pkg)
+       | Oxcaml_supported -> Some "oxcaml_supported"
      with
      | None -> Pform_was_deleted
      | Some name -> Success { name; payload = None })
@@ -520,23 +521,23 @@ let describe_kind = function
 module With_versioning_info = struct
   type 'a t =
     | No_info of 'a
-    | Since of 'a * Syntax.Version.t
+    | Since of 'a * Syntax.t * Syntax.Version.t
     | Deleted_in of 'a * Syntax.Version.t * User_message.Style.t Pp.t list
     | Renamed_in of 'a * Syntax.Version.t * string
 
   let get_data = function
-    | No_info x | Since (x, _) | Deleted_in (x, _, _) | Renamed_in (x, _, _) -> x
+    | No_info x | Since (x, _, _) | Deleted_in (x, _, _) | Renamed_in (x, _, _) -> x
   ;;
 
   let renamed_in x ~new_name ~version = Renamed_in (x, version, new_name)
   let deleted_in ~version ?(repl = []) kind = Deleted_in (kind, version, repl)
-  let since ~version v = Since (v, version)
+  let since ?(what = Stanza.syntax) ~version v = Since (v, what, version)
 
   let to_dyn f =
     let open Dyn in
     function
     | No_info x -> variant "No_info" [ f x ]
-    | Since (x, v) -> variant "Since" [ f x; Syntax.Version.to_dyn v ]
+    | Since (x, _, v) -> variant "Since" [ f x; Syntax.Version.to_dyn v ]
     | Deleted_in (x, v, repl) ->
       variant
         "Deleted_in"
@@ -557,7 +558,9 @@ module Env = struct
   type 'a map = 'a With_versioning_info.t String.Map.t
 
   type t =
-    { syntax_version : Syntax.Version.t
+    { extensions : Syntax.Version.t Syntax.Map.t
+    ; syntax_lang : Syntax.t
+    ; syntax_version : Syntax.Version.t
     ; vars : Var.t map
     ; macros : Macro.t map
     }
@@ -572,10 +575,10 @@ module Env = struct
     let vars =
       let pkg =
         [ "switch", Var.Pkg.Switch
-        ; "os", Os
-        ; "os_version", Os_version
-        ; "os_distribution", Os_distribution
-        ; "os_family", Os_family
+        ; "os", Os Os
+        ; "os_version", Os Os_version
+        ; "os_distribution", Os Os_distribution
+        ; "os_family", Os Os_family
         ; "build", Build
         ; "prefix", Prefix
         ; "user", User
@@ -594,7 +597,13 @@ module Env = struct
       in
       String.Map.of_list_exn vars
     in
-    fun syntax_version -> { vars; macros; syntax_version }
+    fun syntax_lang syntax_version ->
+      { vars
+      ; macros
+      ; syntax_lang
+      ; syntax_version
+      ; extensions = Syntax.Map.singleton syntax_lang syntax_version
+      }
   ;;
 
   let initial =
@@ -701,11 +710,21 @@ module Env = struct
         ; "corrected-suffix", No_info Corrected_suffix
         ; "inline_tests", No_info Inline_tests
         ; "toolchains", since ~version:(3, 0) Var.Toolchain
+        ; ( "oxcaml_supported"
+          , since ~what:Oxcaml.syntax ~version:(0, 1) Var.Oxcaml_supported )
         ]
       in
-      String.Map.of_list_exn (List.concat [ lowercased; uppercased; other ])
+      let os =
+        List.map Var.Os.all ~f:(fun v ->
+          Var.Os.to_string v, since ~version:(3, 20) (Var.Os v))
+      in
+      String.Map.of_list_exn (List.concat [ lowercased; uppercased; other; os ])
     in
-    fun syntax_version -> { syntax_version; vars; macros }
+    fun ~stanza:syntax_version ~extensions ->
+      let extensions =
+        Syntax.Map.of_list_exn ((Stanza.syntax, syntax_version) :: extensions)
+      in
+      { syntax_version; syntax_lang = Stanza.syntax; vars; macros; extensions }
   ;;
 
   let lt_renamed_input_file t =
@@ -718,6 +737,24 @@ module Env = struct
     }
   ;;
 
+  let find_extension ~loc ~name defined extension =
+    match Syntax.Map.find defined extension with
+    | Some version -> version
+    | None ->
+      User_error.raise
+        ~loc
+        [ Pp.textf
+            "Can't parse the variable %s without the %s extension"
+            name
+            (Syntax.name extension)
+        ]
+        ~hints:
+          [ Pp.textf
+              "Try enabling the extension with (using %s <version>)"
+              (Syntax.name extension)
+          ]
+  ;;
+
   let parse map syntax_version (pform : Template.Pform.t) =
     let module P = Template.Pform in
     match String.Map.find map pform.name with
@@ -728,16 +765,17 @@ module Env = struct
     | Some v ->
       (match v with
        | No_info v -> v
-       | Since (v, min_version) ->
+       | Since (v, what, min_version) ->
+         let syntax_version =
+           find_extension ~loc:pform.loc ~name:pform.name syntax_version what
+         in
          if syntax_version >= min_version
          then v
-         else
-           Syntax.Error.since
-             (P.loc pform)
-             Stanza.syntax
-             min_version
-             ~what:(P.describe pform)
+         else Syntax.Error.since (P.loc pform) what min_version ~what:(P.describe pform)
        | Renamed_in (v, in_version, new_name) ->
+         let syntax_version =
+           find_extension ~loc:pform.loc ~name:pform.name syntax_version Stanza.syntax
+         in
          if syntax_version < in_version
          then v
          else
@@ -748,6 +786,9 @@ module Env = struct
              ~what:(P.describe pform)
              ~to_:(P.describe { pform with name = new_name })
        | Deleted_in (v, in_version, repl) ->
+         let syntax_version =
+           find_extension ~loc:pform.loc ~name:pform.name syntax_version Stanza.syntax
+         in
          if syntax_version < in_version
          then v
          else
@@ -761,8 +802,8 @@ module Env = struct
 
   let parse t (pform : Template.Pform.t) =
     match pform.payload with
-    | None -> Var (parse t.vars t.syntax_version pform)
-    | Some payload -> Macro { macro = parse t.macros t.syntax_version pform; payload }
+    | None -> Var (parse t.vars t.extensions pform)
+    | Some payload -> Macro { macro = parse t.macros t.extensions pform; payload }
   ;;
 
   let unsafe_parse_without_checking_version map (pform : Template.Pform.t) =
@@ -782,10 +823,10 @@ module Env = struct
       Macro { macro = unsafe_parse_without_checking_version t.macros pform; payload }
   ;;
 
-  let to_dyn { syntax_version; vars; macros } =
+  let to_dyn { syntax_lang = _; syntax_version = _; extensions; vars; macros } =
     let open Dyn in
     record
-      [ "syntax_version", Syntax.Version.to_dyn syntax_version
+      [ "extensions", Syntax.Map.to_dyn Syntax.Version.to_dyn extensions
       ; "vars", String.Map.to_dyn (to_dyn Var.to_dyn) vars
       ; "macros", String.Map.to_dyn (to_dyn Macro.to_dyn) macros
       ]
@@ -800,15 +841,15 @@ module Env = struct
   ;;
 
   type stamp =
-    Syntax.Version.t
+    Syntax.Version.t Syntax.Map.t
     * (string * Var.t With_versioning_info.t) list
     * (string * Macro.t With_versioning_info.t) list
 
-  let to_stamp { syntax_version; vars; macros } : stamp =
-    syntax_version, String.Map.to_list vars, String.Map.to_list macros
+  let to_stamp { extensions; vars; macros; syntax_version = _; syntax_lang = _ } : stamp =
+    extensions, String.Map.to_list vars, String.Map.to_list macros
   ;;
 
-  let all_known { syntax_version = _; vars; macros } =
+  let all_known { vars; macros; extensions = _; syntax_version = _; syntax_lang = _ } =
     String.Map.union
       (String.Map.map vars ~f:(fun x -> Var (With_versioning_info.get_data x)))
       (String.Map.map macros ~f:(fun x ->

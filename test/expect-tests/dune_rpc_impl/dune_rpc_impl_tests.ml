@@ -1,6 +1,5 @@
 open Stdune
 module Dune_rpc = Dune_rpc_private
-module Re = Dune_re
 
 let () =
   Stdune.Path.set_root (Stdune.Path.External.of_filename_relative_to_initial_cwd ".");
@@ -8,9 +7,7 @@ let () =
 ;;
 
 let test ~dir ~f main =
-  let description =
-    `Diagnostic (Dune_engine.Compound_user_error.make ~main ~related:[])
-  in
+  let description = `Diagnostic (Dune_rpc.Compound_user_error.make ~main ~related:[]) in
   Dune_console.printf "---- Original ----";
   f main;
   Dune_console.printf "------- RPC ------";

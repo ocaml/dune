@@ -11,8 +11,6 @@
 
 open OpamStd.Op
 
-module Re = Dune_re
-
 type version_control = [ `git | `darcs | `hg ]
 
 type backend = [ `http | `rsync | version_control ]

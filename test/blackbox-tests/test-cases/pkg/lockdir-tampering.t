@@ -44,7 +44,9 @@ Initially the lockdir will be valid.
   $ dune pkg validate-lockdir
 
 Add a file to the lockdir to cause the parser to fail.
-  $ echo foo > dune.lock/bar.pkg
+  $ make_lockpkg bar <<EOF
+  > foo
+  > EOF
   $ dune pkg validate-lockdir
   Failed to parse lockdir dune.lock:
   File "dune.lock/bar.pkg", line 1, characters 0-3:
@@ -55,8 +57,8 @@ Add a file to the lockdir to cause the parser to fail.
   [1]
 
 Remove the file but corrupt the lockdir metadata file.
-  $ rm dune.lock/bar.pkg
-  $ echo foo >> dune.lock/lock.dune
+  $ rm ${source_lock_dir}/bar.pkg
+  $ echo foo >> ${source_lock_dir}/lock.dune
   $ dune pkg validate-lockdir
   Failed to parse lockdir dune.lock:
   File "dune.lock/lock.dune", line 8, characters 0-3:
@@ -67,7 +69,7 @@ Remove the file but corrupt the lockdir metadata file.
   [1]
 
 Regenerate the lockdir and validate the result.
-  $ rm -r dune.lock
+  $ rm -r ${source_lock_dir}
   $ dune pkg lock
   Solution for dune.lock:
   - a.0.0.1
@@ -78,7 +80,7 @@ Regenerate the lockdir and validate the result.
   $ dune pkg validate-lockdir
 
 Remove a package from the lockdir.
-  $ rm dune.lock/a.pkg
+  $ rm ${source_lock_dir}/a.pkg
 
 This results in an invalid lockdir due to the missing package.
   $ dune pkg validate-lockdir
@@ -103,10 +105,10 @@ Regenerate the lockdir and validate the result.
   - e.0.0.1
   $ dune pkg validate-lockdir
 
-  $ cat dune.lock/b.pkg
+  $ cat ${default_lock_dir}/b.pkg
   (version 0.0.2)
 Change the version of a dependency by modifying its lockfile.
-  $ cat >dune.lock/b.pkg <<EOF
+  $ make_lockpkg b <<EOF
   > (version 0.0.1)
   > EOF
 
@@ -135,7 +137,7 @@ Regenerate the lockdir and validate the result.
   $ dune pkg validate-lockdir
 
 Add a package to the lockdir with the same name as a local package.
-  $ cat >dune.lock/foo.pkg <<EOF
+  $ make_lockpkg foo <<EOF
   > (version 0.0.1)
   > EOF
 
@@ -162,7 +164,7 @@ Regenerate the lockdir and validate the result.
   $ dune pkg validate-lockdir
 
 Add a package to the lockdir which isn't part of the local package dependency hierarchy.
-  $ cat >dune.lock/f.pkg <<EOF
+  $ make_lockpkg f <<EOF
   > (version 0.0.1)
   > EOF
 

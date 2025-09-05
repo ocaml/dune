@@ -64,21 +64,18 @@ let decode ~base_term ~include_keyword ~include_allowed_in_versions ~non_sexp_be
 
 let load_included_file config path ~context =
   let+ contents = Build_system.read_file path in
-  let ast =
-    Dune_lang.Parser.parse_string contents ~mode:Single ~fname:(Path.to_string path)
-  in
   let config = Lazy.force config in
-  let parse = Dune_lang.Decoder.parse config.decode context in
-  match ast with
-  | List (_loc, terms) -> List.map terms ~f:parse
+  match
+    Dune_lang.Parser.parse_string contents ~mode:Single ~fname:(Path.to_string path)
+  with
+  | List (_loc, terms) ->
+    List.map terms ~f:(Dune_lang.Decoder.parse config.decode context)
   | other ->
     (match config.non_sexp_behaviour with
+     | `Parse_as_base_term -> [ Dune_lang.Decoder.parse config.decode context other ]
      | `User_error ->
        let loc = Dune_sexp.Ast.loc other in
-       User_error.raise ~loc [ Pp.textf "Expected list, got:\n%s" contents ]
-     | `Parse_as_base_term ->
-       let term = Dune_lang.Decoder.parse config.decode context other in
-       [ term ])
+       User_error.raise ~loc [ Pp.textf "Expected list, got:"; Pp.verbatim contents ])
 ;;
 
 let expand_include (type a) (t : a t) ~expand ~dir =
@@ -96,8 +93,8 @@ let expand_include (type a) (t : a t) ~expand ~dir =
           ~loc:(String_with_vars.loc path_sw)
           [ Pp.textf "Include loop detected via: %s" (Path.to_string path) ];
       let seen = Path.Set.add seen path in
-      let* contents = load_included_file config path ~context in
-      Memo.List.concat_map contents ~f:(expand_include ~seen)
+      load_included_file config path ~context
+      >>= Memo.List.concat_map ~f:(expand_include ~seen)
   in
   expand_include t ~seen:Path.Set.empty
 ;;

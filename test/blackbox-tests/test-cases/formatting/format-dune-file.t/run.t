@@ -73,8 +73,17 @@ The same file, but in the current version:
   $ echo '(library (name dune) (libraries unix stdune fiber xdg dune_re threads opam_file_format dune_lang ocaml_config which_program) (synopsis "Internal Dune library, do not use!") (preprocess  (action (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))' | dune format-dune-file
   (library
    (name dune)
-   (libraries unix stdune fiber xdg dune_re threads opam_file_format dune_lang
-    ocaml_config which_program)
+   (libraries
+    unix
+    stdune
+    fiber
+    xdg
+    dune_re
+    threads
+    opam_file_format
+    dune_lang
+    ocaml_config
+    which_program)
    (synopsis "Internal Dune library, do not use!")
    (preprocess
     (action
@@ -250,3 +259,67 @@ Behaviour when the dune file is not syntactically valid.
                
   Error: unclosed parenthesis at end of input
   [1]
+
+If one does not specify the --version flag, then the version of the current Dune
+project is used (if any).
+
+  $ cat >test <<EOF
+  > (aaaaaaaaaaa bbbbbbbbbbbbb ccccccccccccccccc dddddddddddddddddd
+  > aaaaaaaaaaa bbbbbbbbbbbbb ccccccccccccccccc dddddddddddddddddd)
+  > EOF
+
+  $ cat >dune-project <<EOF
+  > (lang dune 2.7)
+  > EOF
+
+  $ dune format-dune-file <test
+  (aaaaaaaaaaa bbbbbbbbbbbbb ccccccccccccccccc dddddddddddddddddd aaaaaaaaaaa
+    bbbbbbbbbbbbb ccccccccccccccccc dddddddddddddddddd)
+
+  $ cat >dune-project <<EOF
+  > (lang dune 2.8)
+  > EOF
+
+  $ dune format-dune-file <test
+  (aaaaaaaaaaa
+   bbbbbbbbbbbbb
+   ccccccccccccccccc
+   dddddddddddddddddd
+   aaaaaaaaaaa
+   bbbbbbbbbbbbb
+   ccccccccccccccccc
+   dddddddddddddddddd)
+
+When a file is passed as an argument, the version used is that of the project
+owning the file (if any). Note that the workspace root when invoking Dune from
+within Dune is always the directory directly containing the file.
+
+  $ mkdir -p sub/sub
+  $ cat >sub/dune-project <<EOF
+  > (lang dune 2.8)
+  > EOF
+  $ cat >sub/sub/dune-project <<EOF
+  > (lang dune 2.7)
+  > EOF
+  $ cp test sub/
+  $ cp test sub/sub/
+
+  $ cd sub
+  $ dune format-dune-file sub/test
+  Entering directory 'sub'
+  (aaaaaaaaaaa bbbbbbbbbbbbb ccccccccccccccccc dddddddddddddddddd aaaaaaaaaaa
+    bbbbbbbbbbbbb ccccccccccccccccc dddddddddddddddddd)
+  Leaving directory 'sub'
+
+  $ cd sub
+  $ dune format-dune-file ../test
+  Entering directory '..'
+  (aaaaaaaaaaa
+   bbbbbbbbbbbbb
+   ccccccccccccccccc
+   dddddddddddddddddd
+   aaaaaaaaaaa
+   bbbbbbbbbbbbb
+   ccccccccccccccccc
+   dddddddddddddddddd)
+  Leaving directory '..'

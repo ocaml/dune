@@ -1,17 +1,18 @@
 open! Import
 module Relop = Dune_lang.Relop
 
-let apply_filter env ~with_test (opam_filtered_formula : OpamTypes.filtered_formula)
+let apply_filter env ~with_test ~(formula : OpamTypes.filtered_formula)
   : OpamTypes.formula
   =
   OpamFilter.gen_filter_formula
-    (OpamFormula.partial_eval (function
-      | OpamTypes.Filter flt ->
-        `Formula (Atom (OpamTypes.Filter (OpamFilter.partial_eval env flt)))
-      | Constraint (relop, filter) ->
-        let filter = OpamFilter.partial_eval env filter in
-        `Formula (Atom (Constraint (relop, filter)))))
-    opam_filtered_formula
+    (OpamFormula.partial_eval (fun (form : _ OpamTypes.filter_or_constraint) ->
+       match form with
+       | Filter flt ->
+         `Formula (Atom (OpamTypes.Filter (OpamFilter.partial_eval env flt)))
+       | Constraint (relop, filter) ->
+         let filter = OpamFilter.partial_eval env filter in
+         `Formula (Atom (Constraint (relop, filter)))))
+    formula
   |> OpamFilter.filter_deps
        ~build:true
        ~post:false
@@ -112,7 +113,7 @@ let formula_to_package_names version_by_package_name opam_formula =
            if OpamFormula.check_version_formula version_formula opam_version
            then Ok ()
            else
-             (* CR-rgrinberg: shouldn't we accumulate all these errors? *)
+             (* CR rgrinberg: shouldn't we accumulate all these errors? *)
              Error
                (Unsatisfied_formula_hint.Unsatisfied_version_constraint
                   { package_name
@@ -169,8 +170,8 @@ let override_post post_value env var =
 (* Check that a package version satisfies the version constraint
    associated with a package dependency in an opam file. *)
 let package_version_satisfies_opam_version_constraint_opt
-  package_version
-  opam_version_constraint_opt
+      package_version
+      opam_version_constraint_opt
   =
   match opam_version_constraint_opt with
   | None -> true
@@ -192,9 +193,10 @@ let formula_to_package_names_allow_missing version_by_package_name opam_formula 
       let package_name = Package_name.of_opam_package_name opam_package_name in
       Package_name.Map.find version_by_package_name package_name
       |> Option.bind ~f:(fun version_in_solution ->
-        if package_version_satisfies_opam_version_constraint_opt
-             version_in_solution
-             version_constraint_opt
+        if
+          package_version_satisfies_opam_version_constraint_opt
+            version_in_solution
+            version_constraint_opt
         then Some package_name
         else None)))
 ;;
@@ -204,17 +206,17 @@ type deps =
   ; regular : Package_name.t list
   }
 
-let filtered_formula_to_package_names env ~with_test version_by_package_name formula =
+let filtered_formula_to_package_names ~env ~with_test ~packages formula =
   let open Result.O in
-  let+ all =
-    formula_to_package_names version_by_package_name (apply_filter ~with_test env formula)
+  let+ all = apply_filter ~with_test env ~formula |> formula_to_package_names packages in
+  let regular, post =
+    let regular_set =
+      override_post (Some false) env
+      |> apply_filter ~with_test ~formula
+      |> formula_to_package_names_allow_missing packages
+      |> Package_name.Set.of_list
+    in
+    List.partition all ~f:(Package_name.Set.mem regular_set)
   in
-  let regular_set =
-    formula_to_package_names_allow_missing
-      version_by_package_name
-      (apply_filter ~with_test (override_post (Some false) env) formula)
-    |> Package_name.Set.of_list
-  in
-  let regular, post = List.partition all ~f:(Package_name.Set.mem regular_set) in
   { regular; post }
 ;;

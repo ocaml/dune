@@ -1,0 +1,39 @@
+name: OxCaml (experimental)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  oxcaml:
+    name: Building Dune with OxCaml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ocaml-variants.5.2.0+ox
+          # CR maiste: Update jst to not depend on a working commit anymore. It
+          # prevents non working commits to break the Dune CI
+          opam-repositories: |
+            oxcaml: "git+https://github.com/oxcaml/opam-repository.git"
+            default: "git+https://github.com/ocaml/opam-repository.git"
+
+      - name: Install deps
+        run: |
+          opam install . --deps-only
+          opam install spawn
+
+      - name: Build dune
+        run: opam exec -- make bootstrap
+
+      - name: Run OxCaml tests
+        run: opam exec -- ./dune.exe test ./test/blackbox-tests/test-cases/oxcaml

@@ -1,4 +1,4 @@
-open Stdune
+open Import
 include Dune_section
 
 let compare : t -> t -> Ordering.t = Poly.compare
@@ -27,7 +27,7 @@ let parse_string s =
 ;;
 
 let enum_decoder = Dune_section.all |> List.map ~f:(fun (x, y) -> y, x)
-let decode = Dune_sexp.Decoder.enum enum_decoder
+let decode = Decoder.enum enum_decoder
 
 let encode v =
   let open Dune_sexp.Encoder in

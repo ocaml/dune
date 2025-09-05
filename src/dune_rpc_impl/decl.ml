@@ -1,22 +1,6 @@
 open Import
 open Dune_rpc
 
-module Build_outcome = struct
-  type t = Scheduler.Run.Build_outcome.t =
-    | Success
-    | Failure
-
-  let sexp =
-    let open Conv in
-    let success = constr "Success" unit (fun () -> Success) in
-    let failure = constr "Failure" unit (fun () -> Failure) in
-    let variants = [ econstr success; econstr failure ] in
-    sum variants (function
-      | Success -> case () success
-      | Failure -> case () failure)
-  ;;
-end
-
 module Status = struct
   module Menu = struct
     type t =
@@ -51,11 +35,18 @@ module Build = struct
   let v1 =
     Decl.Request.make_current_gen
       ~req:(Conv.list Conv.string)
-      ~resp:Build_outcome.sexp
+      ~resp:Dune_rpc.Build_outcome_with_diagnostics.sexp_v1
       ~version:1
   ;;
 
-  let decl = Decl.Request.make ~method_:"build" ~generations:[ v1 ]
+  let v2 =
+    Decl.Request.make_current_gen
+      ~req:(Conv.list Conv.string)
+      ~resp:Dune_rpc.Build_outcome_with_diagnostics.sexp_v2
+      ~version:2
+  ;;
+
+  let decl = Decl.Request.make ~method_:"build" ~generations:[ v1; v2 ]
 end
 
 let build = Build.decl

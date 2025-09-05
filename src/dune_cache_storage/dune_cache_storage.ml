@@ -84,7 +84,7 @@ let store_metadata ~mode ~rule_or_action_digest ~metadata ~to_sexp ~matches_exis
   : Store_result.t
   =
   let content = Csexp.to_string (to_sexp metadata) in
-  let path_in_cache = Layout.metadata_path ~rule_or_action_digest in
+  let path_in_cache = Lazy.force (Layout.metadata_path ~rule_or_action_digest) in
   match Util.write_atomically ~mode ~content path_in_cache with
   | Ok -> Stored
   | Error e -> Error e
@@ -124,12 +124,17 @@ let restore_metadata_file file ~of_sexp : _ Restore_result.t =
 (* Read a metadata file corresponding to a given [rule_or_action_digest] from
    the cache and parse it using the supplied [of_sexp] parser. *)
 let restore_metadata ~rule_or_action_digest ~of_sexp : _ Restore_result.t =
-  restore_metadata_file (Layout.metadata_path ~rule_or_action_digest) ~of_sexp
+  restore_metadata_file
+    (Lazy.force (Layout.metadata_path ~rule_or_action_digest))
+    ~of_sexp
 ;;
 
 module Raw_value = struct
   let store_unchecked ~mode ~content ~content_digest =
-    Util.write_atomically ~mode ~content (Layout.value_path ~value_digest:content_digest)
+    Util.write_atomically
+      ~mode
+      ~content
+      (Lazy.force (Layout.value_path ~value_digest:content_digest))
   ;;
 end
 
@@ -208,35 +213,45 @@ module Value = struct
     Restore_result.bind
       (Metadata_file.restore ~action_digest)
       ~f:(fun ({ value_digest; _ } : Metadata_file.t) ->
-        restore_file_content (Layout.value_path ~value_digest))
+        restore_file_content (Lazy.force (Layout.value_path ~value_digest)))
   ;;
 end
 
 module Artifacts = struct
   module Metadata_entry = struct
     type t =
-      { file_path : string
-      ; file_digest : Digest.t
+      { path : string (** Can have more than one component for directory targets *)
+      ; digest : Digest.t option
+        (** This digest is always present in case [file_path] points to a file, and absent when it's a directory. *)
       }
 
     let equal x y =
-      Digest.equal x.file_digest y.file_digest && String.equal x.file_path y.file_path
+      String.equal x.path y.path && Option.equal Digest.equal x.digest y.digest
     ;;
 
-    let to_sexp { file_path; file_digest } =
-      Sexp.List [ Atom file_path; Atom (Digest.to_string file_digest) ]
+    let digest_to_sexp = function
+      | None -> Sexp.Atom "<dir>"
+      | Some digest -> Sexp.Atom (Digest.to_string digest)
     ;;
 
-    let of_sexp = function
-      | Sexp.List [ Atom file_path; Atom file_digest ] ->
-        (match Digest.from_hex file_digest with
-         | Some file_digest -> Ok { file_path; file_digest }
+    let to_sexp { path; digest } = Sexp.List [ Atom path; digest_to_sexp digest ]
+
+    let digest_of_sexp = function
+      | "<dir>" -> Ok None
+      | digest ->
+        (match Digest.from_hex digest with
+         | Some digest -> Ok (Some digest)
          | None ->
            Error
              (Failure
-                (sprintf
-                   "Cannot parse file digest %s in cache metadata entry"
-                   file_digest)))
+                (sprintf "Cannot parse file digest %S in cache metadata entry" digest)))
+    ;;
+
+    let of_sexp = function
+      | Sexp.List [ Atom path; Atom digest ] ->
+        (match digest_of_sexp digest with
+         | Ok digest -> Ok { path; digest }
+         | Error e -> Error e)
       | _ -> Error (Failure "Cannot parse cache metadata entry")
     ;;
   end
@@ -321,7 +336,7 @@ module Metadata = struct
   ;;
 
   let restore ~metadata_path ~rule_or_action_digest =
-    restore_metadata_file (metadata_path ~rule_or_action_digest) ~of_sexp
+    restore_metadata_file (Lazy.force (metadata_path ~rule_or_action_digest)) ~of_sexp
   ;;
 
   module Versioned = struct
@@ -332,11 +347,15 @@ module Metadata = struct
 end
 
 let with_temp_file ?(prefix = "dune") ~suffix f =
-  Fiber_util.Temp.with_temp_file ~dir:Layout.temp_dir ~prefix ~suffix ~f
+  Fiber_util.Temp.with_temp_file ~dir:(Lazy.force Layout.temp_dir) ~prefix ~suffix ~f
 ;;
 
 let with_temp_dir ?(prefix = "dune") ~suffix f =
-  Fiber_util.Temp.with_temp_dir ~parent_dir:Layout.temp_dir ~prefix ~suffix ~f
+  Fiber_util.Temp.with_temp_dir
+    ~parent_dir:(Lazy.force Layout.temp_dir)
+    ~prefix
+    ~suffix
+    ~f
 ;;
 
 let clear () =
@@ -347,15 +366,15 @@ let clear () =
   in
   let rm_rf_all versions dir =
     List.iter versions ~f:(fun version ->
-      let dir = dir version in
+      let dir = Lazy.force (dir version) in
       rm_rf dir;
       Option.iter ~f:rmdir (Path.parent dir))
   in
   rm_rf_all Version.Metadata.all Layout.Versioned.metadata_storage_dir;
   rm_rf_all Version.File.all Layout.Versioned.file_storage_dir;
   rm_rf_all Version.Value.all Layout.Versioned.value_storage_dir;
-  rm_rf Layout.temp_dir;
+  rm_rf (Lazy.force Layout.temp_dir);
   (* Do not catch errors when deleting the root directory so that they are
      reported to the user. *)
-  Path.rmdir Layout.root_dir
+  Path.rmdir (Lazy.force Layout.root_dir)
 ;;

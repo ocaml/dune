@@ -16,6 +16,7 @@
   fiber
   fiber_event_bus
   stdune
+  fs_io
   dune_console
   unix
   install
@@ -32,11 +33,7 @@
   dune_util
   dune_upgrader
   dune_pkg
-  dune_pkg_outdated
   cmdliner
-  threads
-  ; Kept to keep implicit_transitive_deps false working in 4.x
-  threads.posix
   build_info
   dune_config
   dune_config_file
@@ -50,6 +47,7 @@
   dune_rpc_client
   spawn
   opam_format
+  source
   xdg)
  (bootstrap_info bootstrap-info))
 

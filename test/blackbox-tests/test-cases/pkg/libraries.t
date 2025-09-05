@@ -25,12 +25,8 @@ Now we set up a lock file with this package and then attempt to use it:
   > (lang dune 3.11)
   > EOF
 
-  $ mkdir dune.lock
-  $ cat >dune.lock/lock.dune <<EOF
-  > (lang package 0.1)
-  > EOF
-
-  $ cat >dune.lock/mypkg.pkg <<EOF
+  $ make_lockdir
+  $ make_lockpkg mypkg <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/external_sources))
   > (build (run dune build --release --promote-install-file=true . @install))

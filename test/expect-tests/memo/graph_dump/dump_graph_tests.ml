@@ -23,8 +23,8 @@ let b =
     "B"
     ~input:(module Unit)
     (fun () ->
-      let+ () = Memo.exec a () in
-      ())
+       let+ () = Memo.exec a () in
+       ())
 ;;
 
 let c =
@@ -32,8 +32,8 @@ let c =
     "C"
     ~input:(module Unit)
     (fun () ->
-      let+ () = Memo.exec a () in
-      ())
+       let+ () = Memo.exec a () in
+       ())
 ;;
 
 let d =
@@ -41,9 +41,9 @@ let d =
     "D"
     ~input:(module Unit)
     (fun () ->
-      let* () = Memo.exec b () in
-      let+ () = Memo.exec c () in
-      ())
+       let* () = Memo.exec b () in
+       let+ () = Memo.exec c () in
+       ())
 ;;
 
 let e =
@@ -51,8 +51,8 @@ let e =
     "E"
     ~input:(module Unit)
     (fun () ->
-      let* () = Memo.exec d () in
-      failwith "Oops, error!")
+       let* () = Memo.exec d () in
+       failwith "Oops, error!")
 ;;
 
 let () = run_memo e ()

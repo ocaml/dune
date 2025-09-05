@@ -32,7 +32,7 @@ Make another package that depends on that and outputs the exported env vars
   - with-setenv.0.0.1
 The exported env from the first package should be in the lock dir.
 
-  $ cat dune.lock/with-setenv.pkg
+  $ cat ${default_lock_dir}/with-setenv.pkg
   (version 0.0.1)
   
   (exported_env
@@ -41,7 +41,7 @@ The exported env from the first package should be in the lock dir.
    (+= prepend_without_trailing_sep "Prepended without trailing sep")
    (=+ append_without_leading_sep "Appended without leading sep")
    (=: append_with_leading_sep "Appended with leading sep"))
-  $ cat dune.lock/deps-on-with-setenv.pkg
+  $ cat ${default_lock_dir}/deps-on-with-setenv.pkg
   (version 0.0.1)
   
   (build

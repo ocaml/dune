@@ -1,0 +1,6 @@
+(library
+  (name library1)
+  (js_of_ocaml
+    ;; This will be ignored as the library is compiled once for every effect
+    ;; config and then the version needed by each individual executable is used
+    (flags (:standard --effects=double-translation))))

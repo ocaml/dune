@@ -3,15 +3,14 @@ Test that shows what happens when dune.lock is ignored.
   $ . ./helpers.sh
 
   $ make_lockdir
-  $ cat >dune.lock/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (build
   >  (progn
   >   (run touch foo.ml)
   >   (patch foo.patch)))
   > EOF
-  $ mkdir dune.lock/test.files
-  $ cat > dune.lock/test.files/foo.patch <<EOF
+  $ make_lockpkg_file test foo.patch <<EOF
   > diff --git a/foo.ml b/foo.ml
   > index b69a69a5a..ea988f6bd 100644
   > --- a/foo.ml
@@ -47,8 +46,7 @@ Building fails as the patch cannot be found anymore
 
   $ build_pkg test 2>&1 | sed 's|\.sandbox/[a-f0-9]*/|.sandbox/<hash>/|'
   Error:
-  _build/.sandbox/<hash>/_private/default/.pkg/test/source/foo.patch:
-  No such file or directory
+  open(_build/.sandbox/<hash>/_private/default/.pkg/test/source/foo.patch): No such file or directory
   -> required by _build/_private/default/.pkg/test/target
 
 And the backage cannot be shown:

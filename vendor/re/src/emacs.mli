@@ -23,15 +23,15 @@
 (** Emacs-style regular expressions *)
 
 exception Parse_error
-exception Not_supported
+
 (** Errors that can be raised during the parsing of the regular expression *)
+exception Not_supported
 
-val re : ?case:bool -> string -> Core.t
 (** Parsing of an Emacs-style regular expression *)
+val re : ?case:bool -> string -> Core.t
 
-val compile : Core.t -> Core.re
 (** Regular expression compilation *)
+val compile : Core.t -> Core.re
 
-val compile_pat : ?case:bool -> string -> Core.re
 (** Same as [Core.compile] *)
-
+val compile_pat : ?case:bool -> string -> Core.re

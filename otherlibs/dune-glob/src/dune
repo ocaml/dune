@@ -1,11 +1,9 @@
 (library
  (name dune_glob)
  (public_name dune-glob)
- (libraries stdune dune-private-libs.dune_re dyn ordering)
+ (libraries stdune re dyn ordering)
  (flags
   (:standard -w -50))
- (synopsis "The glob language as understood by dune.")
- (instrumentation
-  (backend bisect_ppx)))
+ (synopsis "The glob language as understood by dune."))
 
 (ocamllex lexer)

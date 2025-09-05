@@ -15,7 +15,7 @@ variables can be found in `opam-var-os.t`.
   > solve testpkg
   Solution for dune.lock:
   - testpkg.0.0.1
-  $ cat dune.lock/testpkg.pkg
+  $ cat ${default_lock_dir}/testpkg.pkg
   (version 0.0.1)
   
   (build

@@ -21,7 +21,7 @@ Ensure the alias is not available outside of the package manamgent context:
 
 Create a fake package which echoes information to stdout when build:
   $ make_lockdir
-  $ cat > dune.lock/foo.pkg << EOF
+  $ make_lockpkg foo <<EOF
   > (version 0.0.1)
   > (build
   >  (run echo "Build package foo"))

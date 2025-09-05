@@ -1,16 +1,6 @@
 open Import
 
-let syntax =
-  Dune_lang.Syntax.create
-    ~name:"menhir"
-    ~desc:"the menhir extension"
-    [ (1, 0), `Since (1, 0)
-    ; (1, 1), `Since (1, 4)
-    ; (2, 0), `Since (1, 4)
-    ; (2, 1), `Since (2, 2)
-    ; (3, 0), `Since (3, 13)
-    ]
-;;
+let syntax = Dune_lang.Menhir.syntax
 
 open Dune_lang.Decoder
 
@@ -26,8 +16,6 @@ type t =
   ; menhir_syntax : Syntax.Version.t
   }
 
-let explain_since = 3, 0
-
 let decode =
   fields
     (let+ merge_into = field_o "merge_into" string
@@ -39,7 +27,9 @@ let decode =
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
      and+ loc = loc
      and+ explain =
-       field_o "explain" (Dune_lang.Syntax.since syntax explain_since >>> Blang.decode)
+       field_o
+         "explain"
+         (Dune_lang.Syntax.since syntax Dune_lang.Menhir.explain_since >>> Blang.decode)
      in
      let infer =
        match infer with

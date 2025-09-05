@@ -23,7 +23,7 @@ location to it.
 
    .. describe:: (name <string>)
 
-      The name used to refer to the respository. Names have to be unique.
+      The name used to refer to the repository. Names have to be unique.
 
       This must be specified.
 

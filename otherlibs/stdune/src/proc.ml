@@ -7,11 +7,11 @@ external sys_exit : int -> 'a = "caml_sys_exit"
 
 let restore_cwd_and_execve prog argv ~env =
   let env = Env.to_unix env |> Array.of_list in
-  let argv = Array.of_list argv in
+  let argv = Array.of_list (prog :: argv) in
   (* run at_exit before changing the working directory *)
   Stdlib.do_at_exit ();
   Sys.chdir (Path.External.to_string Path.External.initial_cwd);
-  if Sys.win32
+  if Sys.win32 || Platform.OS.value = Platform.OS.Haiku
   then (
     let pid = Unix.create_process_env prog argv env Unix.stdin Unix.stdout Unix.stderr in
     match snd (Unix.waitpid [] pid) with

@@ -34,7 +34,7 @@ end
 module Ocamlformat = struct
   let dev_tool_lock_dir_exists () =
     let path = Dune_pkg.Lock_dir.dev_tool_lock_dir_path Ocamlformat in
-    Fs_memo.dir_exists (Path.source path |> Path.as_outside_build_dir_exn)
+    path |> Path.as_outside_build_dir_exn |> Fs_memo.dir_exists
   ;;
 
   (* Config files for ocamlformat. When these are changed, running
@@ -118,12 +118,12 @@ let format_action format ~ocamlformat_is_locked ~input ~output ~expander kind =
 ;;
 
 let gen_rules_output
-  sctx
-  (config : Format_config.t)
-  ~version
-  ~dialects
-  ~expander
-  ~output_dir
+      sctx
+      (config : Format_config.t)
+      ~version
+      ~dialects
+      ~expander
+      ~output_dir
   =
   assert (formatted_dir_basename = Path.Build.basename output_dir);
   let loc = Format_config.loc config in
@@ -182,7 +182,7 @@ let gen_rules_output
       Memo.Option.iter source_dir ~f:(fun source_dir ->
         Source_tree.Dir.dune_file source_dir
         |> Memo.Option.iter ~f:(fun f ->
-          Dune_file0.path f
+          Source.Dune_file.path f
           |> Memo.Option.iter ~f:(fun path ->
             let input_basename = Path.Source.basename path in
             let input = Path.build (Path.Build.relative dir input_basename) in
@@ -217,7 +217,7 @@ let with_config ~dir f =
   let* config = format_config ~dir in
   if Format_config.is_empty config
   then
-    (* CR-rgrinberg: this [is_empty] check is weird. We should use [None]
+    (* CR-someday rgrinberg: this [is_empty] check is weird. We should use [None]
        to represent that no settings have been set. *)
     Memo.return ()
   else f config

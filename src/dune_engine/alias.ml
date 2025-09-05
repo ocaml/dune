@@ -3,12 +3,6 @@ open Import
 module Name = struct
   include Dune_util.Alias_name
 
-  let of_string s =
-    match of_string_opt s with
-    | Some s -> s
-    | None -> Code_error.raise "invalid alias name" [ "s", Dyn.string s ]
-  ;;
-
   let default = of_string "default"
 
   let parse_local_path (loc, p) =

@@ -16,8 +16,12 @@ It builds on its own (with a warning) when lang dune is 3.2 or below:
   $ dune printenv --root=inner --field flags
   Entering directory 'inner'
   (flags
-   (-w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence
-    -strict-formats -short-paths -keep-locs))
+   (-w
+    @1..3@5..28@30..39@43@46..47@49..57@61..62-40
+    -strict-sequence
+    -strict-formats
+    -short-paths
+    -keep-locs))
   Leaving directory 'inner'
   $ dune build --root=inner
   Entering directory 'inner'
@@ -37,8 +41,12 @@ Note that in versions of lang dune above 3.2 this warning becomes an error:
   $ dune printenv --root=inner --field flags
   Entering directory 'inner'
   (flags
-   (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence
-    -strict-formats -short-paths -keep-locs))
+   (-w
+    @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
+    -strict-sequence
+    -strict-formats
+    -short-paths
+    -keep-locs))
   Leaving directory 'inner'
   $ dune build --root=inner
   Entering directory 'inner'
@@ -60,8 +68,12 @@ Building the outer project works when lang dune is 3.2 or below:
   $ dune printenv --root=outer --field flags
   Entering directory 'outer'
   (flags
-   (-w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence
-    -strict-formats -short-paths -keep-locs))
+   (-w
+    @1..3@5..28@30..39@43@46..47@49..57@61..62-40
+    -strict-sequence
+    -strict-formats
+    -short-paths
+    -keep-locs))
   Leaving directory 'outer'
 
   $ dune build --root=outer
@@ -77,14 +89,22 @@ But when lang dune is 3.3 or higher the warning becomes an error:
   $ dune printenv --root=outer --field flags
   Entering directory 'outer'
   (flags
-   (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence
-    -strict-formats -short-paths -keep-locs))
+   (-w
+    @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
+    -strict-sequence
+    -strict-formats
+    -short-paths
+    -keep-locs))
   Leaving directory 'outer'
   $ dune printenv outer/vendored/inner --root=outer --field flags
   Entering directory 'outer'
   (flags
-   (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence
-    -strict-formats -short-paths -keep-locs))
+   (-w
+    @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
+    -strict-sequence
+    -strict-formats
+    -short-paths
+    -keep-locs))
   Leaving directory 'outer'
 
   $ dune build --root=outer

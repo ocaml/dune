@@ -11,6 +11,7 @@ val to_list : 'a t -> 'a list
 val to_list_rev : 'a t -> 'a list
 val of_list : 'a list -> 'a t
 val concat : 'a t list -> 'a t
+val to_immutable_array : 'a t -> 'a Array.Immutable.t
 
 (** The current implementation is slow, don't use it on a hot path. *)
 val is_empty : _ t -> bool

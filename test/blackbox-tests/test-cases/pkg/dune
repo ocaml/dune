@@ -8,16 +8,12 @@
    (DUNE_DEBUG_PACKAGE_LOGS 1))))
 
 (cram
- (deps helpers.sh)
+ (deps helpers.sh %{bin:git} ../git-helpers.sh)
  (applies_to :whole_subtree))
 
 (cram
  (deps %{bin:patch})
  (applies_to patch opam-package-with-patch extra-sources))
-
-(cram
- (deps %{bin:git})
- (applies_to :whole_subtree))
 
 (cram
  (applies_to rev-store-lock-linux)
@@ -26,7 +22,7 @@
  (deps %{bin:strace}))
 
 (cram
- (deps %{bin:git} %{bin:awk} %{bin:cmp})
+ (deps %{bin:awk} %{bin:cmp})
  (applies_to git-repo))
 
 (cram
@@ -46,7 +42,9 @@
   ocamlformat-dev-tool
   source-caching
   tarball
-  extra-sources))
+  pin-depends
+  extra-sources
+  broken-symlink-in-dependency))
 
 (cram
  (deps %{bin:md5sum})
@@ -54,15 +52,26 @@
   source-caching
   extra-sources
   ocamlformat-dev-tool
-  dev-tool-conflict-test))
+  dev-tool-conflict-test
+  broken-symlink-in-dependency))
 
 (cram
  (deps %{bin:tar})
- (applies_to source-caching tarball extra-sources))
+ (applies_to
+  source-caching
+  tarball
+  pin-depends
+  extra-sources
+  pkg-extract-fail
+  broken-symlink-in-dependency))
 
 (cram
  (deps %{bin:ocaml_index})
  (applies_to gh10985))
+
+(cram
+ (deps %{bin:unzip})
+ (applies_to pkg-extract-fail))
 
 ;; disabled for flakiness
 

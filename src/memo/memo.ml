@@ -179,7 +179,7 @@ module M = struct
   and Dep_node : sig
     type ('i, 'o) t =
       { id : Id.t
-          (* If [id] is placed first in this data structure, then polymorphic
+        (* If [id] is placed first in this data structure, then polymorphic
              comparison for dep nodes works fine regardless of the other fields.
              At the moment polymorphic comparison is used for [Exn_set], but we
              hope to change that. *)
@@ -433,8 +433,8 @@ module Collect_errors_monoid = struct
     let empty = { exns = Exn_set.empty; reproducible = true }
 
     let combine
-      { exns = exns1; reproducible = reproducible1 }
-      { exns = exns2; reproducible = reproducible2 }
+          { exns = exns1; reproducible = reproducible1 }
+          { exns = exns2; reproducible = reproducible2 }
       =
       { exns = Exn_set.union exns1 exns2; reproducible = reproducible1 && reproducible2 }
     ;;
@@ -602,7 +602,7 @@ module Call_stack = struct
   type t = Stack_frame_with_state.t list
 
   (* The variable holding the call stack for the current context. *)
-  let call_stack_var : t Fiber.Var.t = Fiber.Var.create ()
+  let call_stack_var : t option Fiber.Var.t = Fiber.Var.create None
   let get_call_stack () = Fiber.Var.get call_stack_var >>| Option.value ~default:[]
 
   let get_call_stack_without_state () =
@@ -612,7 +612,7 @@ module Call_stack = struct
   let push_frame (frame : Stack_frame_with_state.t) f =
     let* stack = get_call_stack () in
     let stack = frame :: stack in
-    Fiber.Var.set call_stack_var stack (fun () -> Implicit_output.forbid f)
+    Fiber.Var.set call_stack_var (Some stack) (fun () -> Implicit_output.forbid f)
   ;;
 
   (* Add all edges leading from the root of the call stack to [dag_node] to the cycle
@@ -772,7 +772,7 @@ module Error_handler : sig
 end = struct
   type t = Exn_with_backtrace.t -> unit Fiber.t
 
-  let var : t Fiber.Var.t = Fiber.Var.create ()
+  let var : t option Fiber.Var.t = Fiber.Var.create None
   let is_set = Fiber.map (Fiber.Var.get var) ~f:Option.is_some
   let get_exn = Fiber.Var.get_exn var
 
@@ -815,7 +815,7 @@ end = struct
          errors*)
       let t = deduplicate_errors t in
       Fiber.bind (Fiber.Var.get var) ~f:(function
-        | None -> Fiber.Var.set var t f
+        | None -> Fiber.Var.set var (Some t) f
         | Some _handler ->
           Code_error.raise
             "Memo.run_with_error_handler: an error handler is already installed"
@@ -850,19 +850,19 @@ module Cached_value = struct
     if !Debug.check_invariants
     then
       List.iter deps_rev ~f:(function Dep_node.T dep_node ->
-        (match get_cached_value_in_current_run dep_node with
-         | None ->
-           let reason =
-             match dep_node.state with
-             | Out_of_date _ -> "(out of date)"
-             | Cached_value _ -> "(old run)"
-             | Restoring _ -> "(restoring)"
-             | Computing _ -> "(computing)"
-           in
-           Code_error.raise
-             ("Attempted to create a cached value based on some stale inputs " ^ reason)
-             []
-         | Some _up_to_date_cached_value -> ()));
+          (match get_cached_value_in_current_run dep_node with
+           | None ->
+             let reason =
+               match dep_node.state with
+               | Out_of_date _ -> "(out of date)"
+               | Cached_value _ -> "(old run)"
+               | Restoring _ -> "(restoring)"
+               | Computing _ -> "(computing)"
+             in
+             Code_error.raise
+               ("Attempted to create a cached value based on some stale inputs " ^ reason)
+               []
+           | Some _up_to_date_cached_value -> ()));
     Deps.create ~deps_rev
   ;;
 
@@ -993,13 +993,13 @@ let invalidate_dep_node (dep_node : _ Dep_node.t) =
 let invalidate_store = Store.iter ~f:invalidate_dep_node
 
 let create_with_cache
-  (type i o)
-  name
-  ~cache
-  ~input
-  ~cutoff
-  ~human_readable_description
-  (f : i -> o Fiber.t)
+      (type i o)
+      name
+      ~cache
+      ~input
+      ~cutoff
+      ~human_readable_description
+      (f : i -> o Fiber.t)
   : (i, o) Table.t
   =
   let spec = Spec.create ~name:(Some name) ~input ~cutoff ~human_readable_description f in
@@ -1010,25 +1010,25 @@ let create_with_cache
 ;;
 
 let create_with_store
-  (type i)
-  name
-  ~store:(module S : Store_intf.S with type key = i)
-  ~input
-  ?cutoff
-  ?human_readable_description
-  f
+      (type i)
+      name
+      ~store:(module S : Store_intf.S with type key = i)
+      ~input
+      ?cutoff
+      ?human_readable_description
+      f
   =
   let cache = Store.make (module S) in
   create_with_cache name ~cache ~input ~cutoff ~human_readable_description f
 ;;
 
 let create
-  (type i)
-  name
-  ~input:(module Input : Input with type t = i)
-  ?cutoff
-  ?human_readable_description
-  f
+      (type i)
+      name
+      ~input:(module Input : Input with type t = i)
+      ?cutoff
+      ?human_readable_description
+      f
   =
   (* This mutable table is safe: the implementation tracks all dependencies. *)
   let cache = Store.of_table (Stdune.Table.create (module Input) 2) in
@@ -1145,8 +1145,8 @@ end = struct
        | Cancelled { dependency_cycle } -> Cancelled { dependency_cycle })
 
   and compute
-    : 'i 'o.
-    dep_node:('i, 'o) Dep_node.t
+    :  'i 'o.
+       dep_node:('i, 'o) Dep_node.t
     -> old_value:'o Cached_value.t Option.Unboxed.t
     -> stack_frame:Stack_frame_with_state.t
     -> 'o Cached_value.t Fiber.t
@@ -1172,8 +1172,8 @@ end = struct
         | false -> Cached_value.confirm_old_value ~deps_rev old_cv)
 
   and start_restoring
-    : 'i 'o.
-    dep_node:('i, 'o) Dep_node.t
+    :  'i 'o.
+       dep_node:('i, 'o) Dep_node.t
     -> cached_value:'o Cached_value.t
     -> 'o Cache_lookup.t Fiber.t
     =
@@ -1191,8 +1191,8 @@ end = struct
       restore_result)
 
   and start_computing
-    : 'i 'o.
-    dep_node:('i, 'o) Dep_node.t
+    :  'i 'o.
+       dep_node:('i, 'o) Dep_node.t
     -> old_value:'o Cached_value.t Option.Unboxed.t
     -> 'o Cached_value.t Fiber.t
     =
@@ -1614,8 +1614,7 @@ struct
     create
       name
       ~input:(module Key)
-      (function
-        | Key.T input -> eval input >>| fun v -> Value.T (id input, v))
+      (function Key.T input -> eval input >>| fun v -> Value.T (id input, v))
   ;;
 
   let eval x = exec memo (Key.T x) >>| Value.get ~input_with_matching_id:x
@@ -1694,7 +1693,7 @@ module Var = struct
   type 'a t =
     { cell : (unit, 'a) Cell.t
     ; mutable value : 'a
-        (* We manually cutoff instead of depending on [Cell.t] cutoff mechanism,
+      (* We manually cutoff instead of depending on [Cell.t] cutoff mechanism,
            so that we don't pay for invalidation when the value doesn't change. *)
     ; cutoff : ('a -> 'a -> bool) option
     }

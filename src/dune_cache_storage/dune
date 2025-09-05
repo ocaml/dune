@@ -1,6 +1,4 @@
 (library
  (name dune_cache_storage)
  (synopsis "[Internal] Dune cache storage, used for local and cloud caches")
- (libraries csexp dune_util dune_digest fiber fiber_util stdune xdg unix)
- (instrumentation
-  (backend bisect_ppx)))
+ (libraries csexp dune_util dune_digest fiber fiber_util stdune xdg unix))

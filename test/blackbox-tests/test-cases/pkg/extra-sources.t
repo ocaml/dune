@@ -1,5 +1,6 @@
 Fetch from more than one source
 
+  $ . ../git-helpers.sh
   $ . ./helpers.sh
 
   $ make_lockdir
@@ -12,7 +13,7 @@ Fetch from more than one source
   > this is baz
   > EOF
 
-  $ cat >dune.lock/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/foo))
   > (extra_sources (mybaz (copy $PWD/baz)))
@@ -30,7 +31,7 @@ when building.
 
 First we need a project that will have the patch applied:
 
-  $ mkdir needs-patch 
+  $ mkdir needs-patch
   $ cd needs-patch
   $ git init --quiet
   $ cat > dune-project <<EOF
@@ -112,6 +113,25 @@ url and the extra source.
   $ dune pkg lock
   Solution for dune.lock:
   - needs-patch.0.0.1
+
+  $ sed -E 's/md5=[0-9a-f]+/md5=$HASH/g' ${default_lock_dir}/needs-patch.pkg
+  (version 0.0.1)
+  
+  (build
+   (progn
+    (patch required.patch)
+    (run dune build -p %{pkg-self:name} -j %{jobs})))
+  
+  (source
+   (fetch
+    (url http://localhost:1)
+    (checksum md5=$HASH)))
+  
+  (extra_sources
+   (required.patch
+    (fetch
+     (url http://localhost:2)
+     (checksum md5=$HASH))))
 
 Running the binary should download the tarball & patch, build them and show the
 correct, patched, message:

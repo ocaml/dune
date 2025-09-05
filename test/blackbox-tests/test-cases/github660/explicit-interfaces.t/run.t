@@ -3,6 +3,7 @@ When there are explicit interfaces, modules must be rebuilt.
 
   $ dune runtest
   hello
-  $ echo 'let _x = 1' >> lib_sub.ml
+  $ echo 'let _x = 1;; let () = print_endline "blah"' >> lib_sub.ml
   $ dune runtest
+  blah
   hello

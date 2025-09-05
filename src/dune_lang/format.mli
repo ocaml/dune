@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp
+open Import
 
 type dune_file =
   | OCaml_syntax of Loc.t

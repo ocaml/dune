@@ -1,6 +1,6 @@
 (** Information about a package defined in the workspace *)
 
-open Stdune
+open Import
 
 module Name : sig
   type t = Package_name.t
@@ -28,8 +28,8 @@ val sites : t -> Section.t Site.Map.t
 val name : t -> Name.t
 val dir : t -> Path.Source.t
 val set_inside_opam_dir : t -> dir:Path.Source.t -> t
-val encode : Name.t -> t Dune_sexp.Encoder.t
-val decode : dir:Path.Source.t -> t Dune_sexp.Decoder.t
+val encode : Name.t -> t Encoder.t
+val decode : dir:Path.Source.t -> t Decoder.t
 val opam_file : t -> Path.Source.t
 val to_dyn : t -> Dyn.t
 val hash : t -> int

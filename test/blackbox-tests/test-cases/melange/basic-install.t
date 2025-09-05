@@ -26,8 +26,8 @@ Test that we can install melange mode libraries
     "_build/install/default/lib/foo/melange/foo.cmt" {"melange/foo.cmt"}
   ]
 
-  $ cat ./_build/install/default/lib/foo/dune-package
-  (lang dune 3.18)
+  $ sed -E 's/lang dune [0-9.]+/lang dune XXX/' _build/install/default/lib/foo/dune-package
+  (lang dune XXX)
   (name foo)
   (sections (lib .))
   (files

@@ -8,6 +8,7 @@ module Dune_config : sig
     type t =
       { authors : string list option
       ; maintainers : string list option
+      ; maintenance_intent : string list option
       ; license : string list option
       }
 
@@ -19,6 +20,7 @@ module Dune_config : sig
       | Fixed of int
       | Auto
 
+    val equal : t -> t -> bool
     val of_string : string -> (t, string) result
     val to_string : t -> string
   end
@@ -52,6 +54,10 @@ module Dune_config : sig
     end
   end
 
+  module Pkg_enabled : sig
+    type t = bool
+  end
+
   module Terminal_persistence : sig
     type t =
       | Preserve
@@ -81,6 +87,7 @@ module Dune_config : sig
       ; action_stdout_on_success : Action_output_on_success.t field
       ; action_stderr_on_success : Action_output_on_success.t field
       ; project_defaults : Project_defaults.t field
+      ; pkg_enabled : Pkg_enabled.t field
       ; experimental : (string * (Loc.t * string)) list field
       }
   end
@@ -93,6 +100,7 @@ module Dune_config : sig
     val empty : t
     val superpose : t -> t -> t
     val to_dyn : t -> Dyn.t
+    val equal : t -> t -> bool
   end
 
   (** A standard list of watch exclusions *)
@@ -108,7 +116,7 @@ module Dune_config : sig
 
   val superpose : t -> Partial.t -> t
   val default : t
-  val user_config_file : Path.t
+  val user_config_file : Path.t Lazy.t
 
   (** We return a [Partial.t] here so that the result can easily be merged with
       other sources of configurations. *)

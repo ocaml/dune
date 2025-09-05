@@ -34,7 +34,7 @@ command is currently not respected when the package is pinned.
   - opam-template.dev
   $ build_pkg opam-template
 
-  $ cat dune.lock/opam-template.pkg | sed "/source/,//d"
+  $ cat ${default_lock_dir}/opam-template.pkg | sed "/source/,//d"
   (version dev)
   
   (dune)

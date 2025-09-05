@@ -27,9 +27,14 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     match Obj_dir.to_local vlib_obj_dir with
     | None -> Memo.return ()
     | Some vlib_obj_dir ->
-      let src = Obj_dir.Module.dep vlib_obj_dir (Immediate (m, Impl)) |> Path.build in
-      let dst = Obj_dir.Module.dep impl_obj_dir (Immediate (m, Impl)) in
-      copy_to_obj_dir ~src ~dst
+      (match Obj_dir.Module.dep vlib_obj_dir (Immediate (m, Impl)) with
+       | None -> Memo.return ()
+       | Some src ->
+         let src = Path.build src in
+         let dst =
+           Obj_dir.Module.dep impl_obj_dir (Immediate (m, Impl)) |> Option.value_exn
+         in
+         copy_to_obj_dir ~src ~dst)
   in
   let copy_interface_to_impl ~src kind () =
     let dst = Obj_dir.Module.cm_public_file_exn impl_obj_dir src ~kind in
@@ -43,8 +48,8 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
           (Module.visibility src = Public
            && Obj_dir.need_dedicated_public_dir impl_obj_dir)
           (fun () ->
-            Memo.when_ (byte || native) (copy_interface_to_impl ~src (Ocaml Cmi))
-            >>> Memo.when_ melange (copy_interface_to_impl ~src (Melange Cmi)))
+             Memo.when_ (byte || native) (copy_interface_to_impl ~src (Ocaml Cmi))
+             >>> Memo.when_ melange (copy_interface_to_impl ~src (Melange Cmi)))
     >>> Memo.when_ (Module.has src ~ml_kind:Impl) (fun () ->
       Memo.when_ byte (fun () -> copy_obj_file src (Ocaml Cmo))
       >>> Memo.when_ melange (fun () ->
@@ -74,22 +79,20 @@ let impl sctx ~(lib : Library.t) ~scope =
          ]
      | Some vlib ->
        let info = Lib.info vlib in
-       let virtual_ =
-         match Lib_info.virtual_ info with
-         | Some v -> v
-         | None ->
-           User_error.raise
-             ~loc:lib.buildable.loc
-             [ Pp.textf
-                 "Library %s isn't virtual and cannot be implemented"
-                 (Lib_name.to_string implements)
-             ]
-       in
+       if not (Lib_info.virtual_ info)
+       then
+         User_error.raise
+           ~loc:lib.buildable.loc
+           [ Pp.textf
+               "Library %s isn't virtual and cannot be implemented"
+               (Lib_name.to_string implements)
+           ];
        let+ vlib_modules, vlib_foreign_objects =
-         let foreign_objects = Lib_info.foreign_objects info in
-         match virtual_, foreign_objects with
+         match Lib_info.modules info, Lib_info.foreign_objects info with
+         | External modules, External fa ->
+           let modules = Option.value_exn modules in
+           Memo.return (Modules.With_vlib.drop_vlib modules, fa)
          | External _, Local | Local, External _ -> assert false
-         | External modules, External fa -> Memo.return (modules, fa)
          | Local, Local ->
            let name = Lib.name vlib in
            let vlib = Lib.Local.of_lib_exn vlib in
@@ -103,7 +106,7 @@ let impl sctx ~(lib : Library.t) ~scope =
              let db = Scope.libs scope in
              let* preprocess =
                (* TODO wrong, this should be delayed *)
-               Preprocess.Per_module.with_instrumentation
+               Instrumentation.with_instrumentation
                  lib.buildable.preprocess
                  ~instrumentation_backend:(Lib.DB.instrumentation_backend db)
                |> Resolve.Memo.read_memo

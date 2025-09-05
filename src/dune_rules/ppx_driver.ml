@@ -280,7 +280,8 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
     let& pps = Lib.closure ~linking:true pps in
     Driver.select pps ~loc:(Dot_ppx (target, pp_names))
     >>| Resolve.map ~f:(fun driver -> driver, pps)
-    >>| (* Extend the dependency stack as we don't have locations at this
+    >>|
+    (* Extend the dependency stack as we don't have locations at this
            point *)
     Resolve.push_stack_frame ~human_readable_description:(fun () ->
       Dyn.pp (List [ String "pps"; Dyn.(list Lib_name.to_dyn) pp_names ]))
@@ -368,9 +369,9 @@ let get_cookies ~loc ~expander ~lib_name libs =
     Memo.List.concat_map libs ~f:(fun t ->
       let info = Lib.info t in
       let kind = Lib_info.kind info in
-      match kind with
-      | Normal -> Memo.return []
-      | Ppx_rewriter { cookies } | Ppx_deriver { cookies } ->
+      match (kind : Lib_kind.t) with
+      | Virtual | Parameter | Dune_file Normal -> Memo.return []
+      | Dune_file (Ppx_rewriter { cookies } | Ppx_deriver { cookies }) ->
         Memo.List.map cookies ~f:(fun { Lib_kind.Ppx_args.Cookie.name; value } ->
           let+ value = Expander.No_deps.expand_str expander value in
           name, (value, Lib.name t)))
@@ -403,13 +404,13 @@ let get_cookies ~loc ~expander ~lib_name libs =
 ;;
 
 let ppx_driver_and_flags_internal
-  context
-  ~dune_version
-  ~loc
-  ~expander
-  ~lib_name
-  ~flags
-  libs
+      context
+      ~dune_version
+      ~loc
+      ~expander
+      ~lib_name
+      ~flags
+      libs
   =
   let open Action_builder.O in
   let+ flags =

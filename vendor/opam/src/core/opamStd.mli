@@ -278,7 +278,7 @@ module String : sig
   val for_all: (char -> bool) -> string -> bool
   val contains_char: string -> char -> bool
   val contains: sub:string -> string -> bool
-  val exact_match: Dune_re.re -> string -> bool
+  val exact_match: Re.re -> string -> bool
   val find_from: (char -> bool) -> string -> int -> int
 
   (** Like [String.compare], but with lowercase/uppercase variants ordered next

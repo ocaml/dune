@@ -15,10 +15,12 @@ val is_version_control : t -> bool
 (** [is_file t] is true iff [t] is a url beginning with "file://" *)
 val is_local : t -> bool
 
-(* [local_or_git_only t loc] returns [`Path p] for a URL pointing to a local
-   file system or [`Git] if it's a git repository (remote or otherwise). If
-   it's neither of those cases, it will error out. *)
-val local_or_git_only : t -> Loc.t -> [ `Path of Path.t | `Git ]
+(* [classify t loc] attempts to classify the url [t] by what sort of object it
+   refers to. This function returns [`Path p] for a URL pointing to a local
+   file system or [`Git] if it's a git repository (remote or otherwise) or
+   [`Archive] if it's an archive file served ovef http(s). If it's neither of
+   those cases, it will raise a [User_error]. *)
+val classify : t -> Loc.t -> [ `Path of Path.t | `Git | `Archive ]
 
 module Map : Map.S with type key = t
 module Set : Set.S with type elt = t and type 'a map = 'a Map.t

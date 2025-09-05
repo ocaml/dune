@@ -65,7 +65,12 @@ module External = struct
   ;;
 
   let to_dyn
-    { public_dir; private_dir; public_cmi_ocaml_dir; melange_dir; public_cmi_melange_dir }
+        { public_dir
+        ; private_dir
+        ; public_cmi_ocaml_dir
+        ; melange_dir
+        ; public_cmi_melange_dir
+        }
     =
     let open Dyn in
     record
@@ -89,12 +94,12 @@ module External = struct
   ;;
 
   let encode
-    { public_dir
-    ; private_dir
-    ; public_cmi_ocaml_dir
-    ; public_cmi_melange_dir
-    ; melange_dir = _
-    }
+        { public_dir
+        ; private_dir
+        ; public_cmi_ocaml_dir
+        ; public_cmi_melange_dir
+        ; melange_dir = _
+        }
     =
     let open Dune_lang.Encoder in
     let extract d =
@@ -142,12 +147,12 @@ module External = struct
   let all_obj_dirs t ~mode:_ = [ t.public_dir ]
 
   let all_cmis
-    { public_dir
-    ; melange_dir = _
-    ; private_dir
-    ; public_cmi_ocaml_dir
-    ; public_cmi_melange_dir = _
-    }
+        { public_dir
+        ; melange_dir = _
+        ; private_dir
+        ; public_cmi_ocaml_dir
+        ; public_cmi_melange_dir = _
+        }
     =
     List.filter_opt
       [ Some public_dir
@@ -183,16 +188,16 @@ module Local = struct
   let equal : t -> t -> bool = Poly.equal
 
   let to_dyn
-    { dir
-    ; obj_dir
-    ; native_dir
-    ; byte_dir
-    ; jsoo_dir
-    ; melange_dir
-    ; public_cmi_ocaml_dir
-    ; public_cmi_melange_dir
-    ; private_lib
-    }
+        { dir
+        ; obj_dir
+        ; native_dir
+        ; byte_dir
+        ; jsoo_dir
+        ; melange_dir
+        ; public_cmi_ocaml_dir
+        ; public_cmi_melange_dir
+        ; private_lib
+        }
     =
     let open Dyn in
     record
@@ -209,15 +214,15 @@ module Local = struct
   ;;
 
   let make
-    ~dir
-    ~obj_dir
-    ~native_dir
-    ~byte_dir
-    ~jsoo_dir
-    ~melange_dir
-    ~public_cmi_ocaml_dir
-    ~public_cmi_melange_dir
-    ~private_lib
+        ~dir
+        ~obj_dir
+        ~native_dir
+        ~byte_dir
+        ~jsoo_dir
+        ~melange_dir
+        ~public_cmi_ocaml_dir
+        ~public_cmi_melange_dir
+        ~private_lib
     =
     { dir
     ; obj_dir
@@ -610,9 +615,14 @@ module Module = struct
   end
 
   let dep t dep =
-    let dir = obj_dir t in
-    let name = Dep.basename dep in
-    Path.Build.relative dir name
+    match (dep : Dep.t) with
+    | Immediate (m, _) | Transitive (m, _) ->
+      (match Module.kind m with
+       | Module.Kind.Alias _ | Root -> None
+       | _ ->
+         let dir = obj_dir t in
+         let name = Dep.basename dep in
+         Some (Path.Build.relative dir name))
   ;;
 
   module L = struct

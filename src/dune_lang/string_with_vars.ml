@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp
+open Import
 
 type part =
   | Text of string
@@ -102,7 +101,7 @@ let decode_manually f =
     ; loc
     ; parts =
         List.map parts ~f:(function
-          | Template.Text s -> Text s
+          | Template.Part.Text s -> Text s
           | Pform v ->
             (match f env v with
              | pform -> Pform (v, pform)
@@ -135,10 +134,8 @@ module Mode = struct
   type (_, _) t =
     | Single : (Value.Deferred_concat.t, Value.t) t
     | Many : (Value.Deferred_concat.t list, Value.t list) t
-    | At_least_one
-        : ( Value.Deferred_concat.t * Value.Deferred_concat.t list
-            , Value.t * Value.t list )
-            t
+    | At_least_one :
+        (Value.Deferred_concat.t * Value.Deferred_concat.t list, Value.t * Value.t list) t
 
   let string
     : type deferred_concat value. (deferred_concat, value) t -> string -> deferred_concat
@@ -341,16 +338,16 @@ module Make_expander (A : Applicative) : Expander with type 'a app := 'a A.t = s
       let+ chunks =
         A.all
           (List.map t.parts ~f:(function
-            | Text s -> A.return (Ok (Value.Deferred_concat.singleton (Value.String s)))
-            | Error (_, msg) ->
-              (* The [let+ () = A.return () in ...] is to delay the error until
+             | Text s -> A.return (Ok (Value.Deferred_concat.singleton (Value.String s)))
+             | Error (_, msg) ->
+               (* The [let+ () = A.return () in ...] is to delay the error until
                  the evaluation of the applicative *)
-              let+ () = A.return () in
-              raise (User_error.E msg)
-            | Pform (source, p) ->
-              let+ v = f ~source p in
-              Result.map v ~f:(fun v ->
-                Value.Deferred_concat.concat_values v ~sep:inner_sep)))
+               let+ () = A.return () in
+               raise (User_error.E msg)
+             | Pform (source, p) ->
+               let+ v = f ~source p in
+               Result.map v ~f:(fun v ->
+                 Value.Deferred_concat.concat_values v ~sep:inner_sep)))
       in
       Result.map (Result.List.all chunks) ~f:(fun chunks ->
         Value.Deferred_concat.concat chunks ~sep:None |> Mode.deferred_concat mode)
@@ -443,14 +440,14 @@ let has_pforms t = Option.is_none (text_only t)
 
 let encode t =
   match text_only t with
-  | Some s -> atom_or_quoted_string s
+  | Some s -> Dune_sexp.atom_or_quoted_string s
   | None ->
-    Template
+    Dune_sexp.Template
       { loc = t.loc
       ; quoted = t.quoted
       ; parts =
           List.map t.parts ~f:(function
-            | Text s -> Template.Text s
+            | Text s -> Template.Part.Text s
             | Error (_, msg) -> raise (User_error.E msg)
             | Pform (source, pform) ->
               (match Pform.encode_to_latest_dune_lang_version pform with
@@ -466,7 +463,7 @@ let encode t =
       }
 ;;
 
-let to_dyn t = to_dyn (encode t)
+let to_dyn t = Dune_sexp.to_dyn (encode t)
 
 let remove_locs { quoted; loc = _; parts } =
   { quoted

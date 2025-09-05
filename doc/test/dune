@@ -2,6 +2,7 @@
  (alias check-lang-dune)
  (deps
   (package dune)
+  %{bin:grep}
   (glob_files ../*.rst)))
 
 (alias

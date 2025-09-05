@@ -17,9 +17,9 @@ The syntax is as follows:
 
 ``<optional-fields>`` are:
 
-- ``(target <filename>)`` or ``(targets <filenames>) ``<filenames>`` is a list
-  of filenames (if defined with ``targets``) or exactly one filename (if defined
-  with ``target``). Dune needs to statically know targets of each rule.
+- ``(target <filename>)`` or ``(targets <filenames>)`` is a list of filenames
+  (if defined with ``targets``) or exactly one filename (if defined with
+  ``target``). Dune needs to statically know targets of each rule.
   ``(targets)`` can be omitted if it can be inferred from the action. See
   `inferred rules`_.
 

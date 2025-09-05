@@ -71,7 +71,7 @@ end
 
 type handler = (module Handler)
 
-let current_handler : handler Fiber.Var.t = Fiber.Var.create ()
+let current_handler : handler option Fiber.Var.t = Fiber.Var.create None
 
 let produce' ~union opt v =
   match !opt with
@@ -112,15 +112,16 @@ let collect (type o) (type_ : o t) f =
     Fiber.map
       (Fiber.Var.set
          current_handler
-         (module struct
-           type nonrec o = o
+         (Some
+            (module struct
+              type nonrec o = o
 
-           let type_ = type_
-           let so_far = output
-         end)
+              let type_ = type_
+              let so_far = output
+            end))
          f)
       ~f:(fun res -> res, !output))
 ;;
 
-let forbid f = Fiber.Var.unset current_handler f
+let forbid f = Fiber.Var.set current_handler None f
 let add (type a) (module T : Implicit_output with type t = a) = Witness.create (module T)

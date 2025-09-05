@@ -12,14 +12,14 @@ let remove_locs { url = _loc, url; checksum } =
 ;;
 
 let equal
-  { url = loc, url; checksum }
-  { url = other_loc, other_url; checksum = other_checksum }
+      { url = loc, url; checksum }
+      { url = other_loc, other_url; checksum = other_checksum }
   =
   Loc.equal loc other_loc
   && OpamUrl.equal url other_url
   && Option.equal
        (fun (loc, checksum) (other_loc, other_checksum) ->
-         Loc.equal loc other_loc && Checksum.equal checksum other_checksum)
+          Loc.equal loc other_loc && Checksum.equal checksum other_checksum)
        checksum
        other_checksum
 ;;
@@ -31,41 +31,60 @@ let to_dyn { url = _loc, url; checksum } =
     ]
 ;;
 
-let fetch_and_hash_archive_cached =
+let hash { url; checksum } =
+  Tuple.T2.hash
+    (Tuple.T2.hash Loc.hash OpamUrl.hash)
+    (Option.hash (Tuple.T2.hash Loc.hash Checksum.hash))
+    (url, checksum)
+;;
+
+let fetch_archive_cached =
   let cache = Single_run_file_cache.create () in
   fun (url_loc, url) ->
-    let open Fiber.O in
     Single_run_file_cache.with_ cache ~key:(OpamUrl.to_string url) ~f:(fun target ->
       Fetch.fetch_without_checksum ~unpack:false ~target ~url:(url_loc, url))
-    >>| function
-    | Ok target -> Some (Dune_digest.file target |> Checksum.of_dune_digest)
-    | Error message_opt ->
-      let message =
-        match message_opt with
-        | Some message -> message
-        | None ->
-          User_message.make
-            [ Pp.textf
-                "Failed to retrieve source archive from: %s"
-                (OpamUrl.to_string url)
-            ]
-      in
-      User_warning.emit_message message;
-      None
+;;
+
+let fetch_and_hash_archive_cached (url_loc, url) =
+  let open Fiber.O in
+  fetch_archive_cached (url_loc, url)
+  >>| function
+  | Ok target ->
+    Some
+      (match Md5.file target with
+       | Ok digest -> Checksum.of_md5 digest
+       | Error exn ->
+         User_error.raise
+           ~loc:url_loc
+           [ Pp.textf "failed to fetch %s" (OpamUrl.to_string url); Exn.pp exn ])
+  | Error message_opt ->
+    let message =
+      Option.value
+        ~default:
+          (User_message.make
+             [ Pp.textf
+                 "Failed to retrieve source archive from: %s"
+                 (OpamUrl.to_string url)
+             ])
+        message_opt
+    in
+    User_warning.emit_message message;
+    None
 ;;
 
 let compute_missing_checksum
-  ({ url = url_loc, url; checksum } as fetch)
-  package_name
-  ~pinned
+      ({ url = url_loc, url; checksum } as fetch)
+      package_name
+      ~pinned
   =
   let open Fiber.O in
   match checksum with
   | Some _ -> Fiber.return fetch
   | None when OpamUrl.is_local url || OpamUrl.is_version_control url -> Fiber.return fetch
   | None ->
-    if not pinned
-       (* No point in warning this about pinned packages. The user explicitly
+    if
+      not pinned
+      (* No point in warning this about pinned packages. The user explicitly
           asked for the pins *)
     then
       User_message.print

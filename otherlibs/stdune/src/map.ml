@@ -28,8 +28,8 @@ module Make (Key : Key) : S with type key = Key.t = struct
     try
       Result.Ok
         (update t key ~f:(function
-          | None -> Some v
-          | Some e -> raise_notrace (M.Found e)))
+           | None -> Some v
+           | Some e -> raise_notrace (M.Found e)))
     with
     | M.Found e -> Error e
   ;;

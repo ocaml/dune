@@ -15,7 +15,7 @@ Start with a project with a single package with no dependencies:
   > EOF
   Solution for dune.lock:
   (no dependencies to lock)
-  $ cat dune.lock/lock.dune
+  $ cat ${default_lock_dir}/lock.dune
   (lang package 0.1)
   
   (repositories
@@ -49,7 +49,7 @@ Add a non-local dependency to the package:
   > EOF
   Solution for dune.lock:
   - a.0.0.1
-  $ cat dune.lock/lock.dune
+  $ cat ${default_lock_dir}/lock.dune
   (lang package 0.1)
   
   (dependency_hash 7ba1cacd46bb2609d7b9735909c3b8a5)
@@ -98,7 +98,7 @@ Remove all dependencies from the project:
 
 Exercise handling invalid dependency hashes.
   $ make_lock_metadata_with_hash() {
-  >   cat >dune.lock/lock.dune <<EOF
+  >   cat > ${source_lock_dir}/lock.dune <<EOF
   > (lang package 0.1)
   > (dependency_hash $1)
   > (repositories

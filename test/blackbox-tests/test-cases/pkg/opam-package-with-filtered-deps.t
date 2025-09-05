@@ -26,7 +26,7 @@ Demonstrate the translation of filtered dependencies
 
   $ solve bar 2>/dev/null
 
-  $ cat dune.lock/bar.pkg
+  $ cat ${default_lock_dir}/bar.pkg
   (version 0.0.1)
   
   (depends pkg-build)

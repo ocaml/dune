@@ -1,7 +1,6 @@
 (** OCaml sources *)
 
-(** This module encapsulates the structure of source files in a particular
-    directory. *)
+(** This module encapsulates the structure of source files in a particular directory. *)
 
 open Import
 
@@ -33,7 +32,7 @@ val modules_and_obj_dir
   -> for_:for_
   -> (Modules.t * Path.Build.t Obj_dir.t) Memo.t
 
-(** Modules attached to a library, executable, or melange.emit stanza.*)
+(** Modules attached to a library, executable, or melange.emit stanza. *)
 val modules : t -> libs:Lib.DB.t -> for_:for_ -> Modules.t Memo.t
 
 (** Find out the origin of the stanza for a given module *)
@@ -41,12 +40,12 @@ val find_origin : t -> libs:Lib.DB.t -> Module_name.Path.t -> Origin.t option Me
 
 val empty : t
 
-(** This [lookup_vlib] argument is required for constructing the collection of
-    modules for an implementation of a virtual library.
+(** This [lookup_vlib] argument is required for constructing the collection of modules for
+    an implementation of a virtual library.
 
-    We need to know the contents of the virtual library to: - verify conditions
-    all virtual modules are implemented - make sure that we construct [Module.t]
-    with the correct [kind] *)
+    We need to know the contents of the virtual library to: - verify conditions all
+    virtual modules are implemented - make sure that we construct [Module.t] with the
+    correct [kind] *)
 
 val include_subdirs : t -> Include_subdirs.t
 

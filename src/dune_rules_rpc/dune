@@ -7,9 +7,7 @@
   memo
   dune_lang
   dune_engine
+  source
   dune_rpc_impl
   dune_rpc_private
-  dune_rpc_server
-  dune_rules)
- (instrumentation
-  (backend bisect_ppx)))
+  dune_rpc_server))

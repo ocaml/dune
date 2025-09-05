@@ -1,6 +1,6 @@
 By default, we introduce a constraint on in the build plan that will require
 the dune version to match the version of dune being used to generate the
-constraint. On another hand, we ensure `dune` can be used as a declared 
+constraint. On another hand, we ensure `dune` can be used as a declared
 dependency.
 
   $ . ./helpers.sh
@@ -16,16 +16,15 @@ dependency.
   > solve foo
   > }
 
-  $ test "2.0.0"
+  $ test "2.0.0" 2>&1 | sed -E 's/3.[0-9]+/3.XX/g'
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.lock:
   Couldn't solve the package dependency formula.
   Selected candidates: foo.0.0.1 x.dev
   - dune -> (problem)
-      User requested = 3.18
+      User requested = 3.XX
       Rejected candidates:
-        dune.3.11.0: Incompatible with restriction: = 3.18
-  [1]
+        dune.3.XX.0: Incompatible with restriction: = 3.XX
   $ test "4.0.0"
   Solution for dune.lock:
   - foo.0.0.1

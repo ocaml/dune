@@ -57,8 +57,9 @@ module Message_viewer = struct
   let is_message_hidden = Lwd.var (fun _ -> false)
 
   let message_images =
-    let+ messages = Lwd.get messages in
-    List.map messages ~f:(fun x -> Drawing.pp_to_image (User_message.pp x))
+    let+ messages = Lwd.get messages
+    and+ w, _ = Lwd.get term_size in
+    List.map messages ~f:(fun x -> Drawing.pp_to_image ~w (User_message.pp x))
   ;;
 
   (* We calculate the max message length from all the messages. This is used to keep the
@@ -72,18 +73,29 @@ module Message_viewer = struct
     | Some l -> max l w
   ;;
 
-  (* We approximate the first line of the message. Unfortunately due to the way Notty
-     images work, it is not easy to get the actual width of the first line. Therefore we
-     just chop a third off as an approximation. *)
+  (* Here we crop the message horizontally so that the first line will fit in
+     the synopsis. The only issue here is that we don't know the real width of
+     the first line but only the width of the message as a whole. This means if
+     the second line is longer than the first, there will be some padding in
+     the synopsis. *)
   let message_synopsis ~attr =
     let+ messages = message_images
-    and+ width, _ = Lwd.get term_size in
+    and+ t_width, _ = Lwd.get term_size in
     fun index ->
       match List.nth messages index with
       | None -> I.string attr "..."
       | Some message ->
         let cropped_image = I.vcrop 0 (I.height message - 1) message in
-        I.hcrop 0 (min (I.width cropped_image / 3) (width - 15)) cropped_image
+        let max_width = t_width - 12 in
+        let img_width = I.width cropped_image in
+        if img_width > max_width
+        then (
+          let ellipsis = I.string attr "..." in
+          let trimmed =
+            I.hcrop 0 (img_width - max 0 (max_width - I.width ellipsis)) cropped_image
+          in
+          I.(trimmed <|> ellipsis </> I.char A.empty ' ' max_width 1))
+        else I.(cropped_image </> I.char A.empty ' ' img_width 1)
   ;;
 
   (* This is a line that shows the total number of messages and the message count used
@@ -96,38 +108,37 @@ module Message_viewer = struct
     let index_is_hidden = is_hidden index in
     let status =
       I.hcat
-        [ I.uchar divider_attr Unicode.ogham_reversed_feather_mark 1 1
+        [ I.uchar divider_attr (Uchar.of_char '[') 1 1
         ; I.string user_feedback_attr (string_of_int (index + 1))
         ; I.string divider_attr "/"
         ; I.string user_feedback_attr (string_of_int total)
-        ; I.uchar divider_attr Unicode.ogham_feather_mark 1 1
+        ; I.uchar divider_attr (Uchar.of_char ']') 1 1
         ]
     in
     let toggle_indicator =
       I.hcat
-        [ I.uchar divider_attr Unicode.ogham_reversed_feather_mark 1 1
+        [ I.uchar divider_attr (Uchar.of_char '[') 1 1
         ; (if index_is_hidden then I.string helper_attr "+" else I.string helper_attr "-")
-        ; I.uchar divider_attr Unicode.ogham_feather_mark 1 1
+        ; I.uchar divider_attr (Uchar.of_char ']') 1 1
         ]
     in
     let synopsis =
       if index_is_hidden
       then
         I.hcat
-          [ I.hpad 1 0 @@ I.uchar divider_attr Unicode.ogham_reversed_feather_mark 1 1
+          [ I.hpad 1 0 @@ I.uchar divider_attr (Uchar.of_char '[') 1 1
           ; synopsis
-          ; I.uchar divider_attr Unicode.ogham_feather_mark 1 1
+          ; I.uchar divider_attr (Uchar.of_char ']') 1 1
           ]
       else I.empty
     in
-    let mouse_handler ~x:_ ~y = function
-      | `Left ->
-        if y = 0
-        then (
-          Lwd.set is_message_hidden (fun x ->
-            if x = index then not index_is_hidden else is_hidden x);
-          `Handled)
-        else `Unhandled
+    let toggle_minimize () =
+      Lwd.set is_message_hidden (fun x ->
+        if x = index then not index_is_hidden else is_hidden x);
+      `Handled
+    in
+    let mouse_handler ~x ~y = function
+      | `Left when 0 <= x && x < 3 && y = 0 -> toggle_minimize ()
       | _ -> `Unhandled
     in
     Ui.atom
@@ -218,14 +229,14 @@ let help_box =
 
 (* The status bar shows the build status and includes a help button. *)
 let status_bar =
-  let+ w, _ = Lwd.get term_size
-  and+ help_button =
+  let* w, _ = Lwd.get term_size in
+  let+ help_button =
     let+ { toggle; _ } = help_box in
     let image =
       I.hcat
-        [ I.uchar helper_attr Unicode.ogham_reversed_feather_mark 1 1
+        [ I.uchar helper_attr (Uchar.of_char '[') 1 1
         ; I.char user_feedback_attr '?' 1 1
-        ; I.uchar helper_attr Unicode.ogham_feather_mark 1 1
+        ; I.uchar helper_attr (Uchar.of_char ']') 1 1
         ]
     in
     Button.of_ (Ui.atom image) toggle
@@ -233,16 +244,10 @@ let status_bar =
     Lwd.get status_line
     >>| function
     | None -> I.empty
-    | Some message -> Drawing.pp_to_image message
+    | Some message -> Drawing.pp_to_image ~w message
   in
   let status =
-    I.hcat
-      [ I.uchar helper_attr Unicode.ogham_reversed_feather_mark 1 1
-      ; I.char helper_attr ' ' 1 1
-      ; status
-      ; I.char helper_attr ' ' 1 1
-      ; I.uchar helper_attr Unicode.ogham_feather_mark 1 1
-      ]
+    I.hcat [ I.char helper_attr ' ' 1 1; status; I.char helper_attr ' ' 1 1 ]
   in
   let hsnap_or_leave ~width img =
     if I.width img < width then I.hsnap ~align:`Middle width img else img
@@ -295,10 +300,11 @@ module Console_backend = struct
            Ordering.is_eq (Pp.compare ~compare:User_message.Style.compare x y)))
         status_line
         state.status_line;
-      if let l = Lwd.peek messages in
-         not
-           (List.length l = Queue.length state.messages
-            && List.equal User_message.equal l (Queue.to_list state.messages))
+      if
+        let l = Lwd.peek messages in
+        not
+          (List.length l = Queue.length state.messages
+           && List.equal User_message.equal l (Queue.to_list state.messages))
       then Lwd.set messages (Queue.to_list state.messages)
   ;;
 

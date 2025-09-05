@@ -4,8 +4,8 @@ open OpamParserTypes.FullPos
 type t = opamfile
 
 let loc_of_opam_pos
-  ({ filename; start = start_line, start_column; stop = stop_line, stop_column } :
-    OpamParserTypes.FullPos.pos)
+      ({ filename; start = start_line, start_column; stop = stop_line, stop_column } :
+        OpamParserTypes.FullPos.pos)
   =
   let start =
     { Lexing.pos_fname = filename
@@ -25,10 +25,11 @@ let loc_of_opam_pos
 ;;
 
 let read_from_string_exn ~contents path =
+  let filename = Path.to_absolute_filename path |> OpamFilename.raw in
+  let pos = OpamTypesBase.pos_file filename in
   try
-    OpamFile.OPAM.read_from_string
-      contents
-      ~filename:(Path.to_absolute_filename path |> OpamFilename.raw |> OpamFile.make)
+    let syntax = OpamFile.Syntax.of_string (OpamFile.make filename) contents in
+    OpamPp.parse OpamFile.OPAM.pp_raw_fields ~pos syntax.file_contents
   with
   | OpamPp.Bad_version (_, message) ->
     User_error.raise
@@ -260,6 +261,7 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
   let info =
     Dune_lang.Package_info.create
       ~maintainers:(get_many "maintainer")
+      ~maintenance_intent:(get_many "x-maintenance-intent")
       ~authors:(get_many "authors")
       ~homepage:(get_one "homepage")
       ~bug_reports:(get_one "bug-reports")

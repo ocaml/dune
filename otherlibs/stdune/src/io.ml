@@ -67,15 +67,25 @@ let input_zero_separated =
 
 let copy_channels =
   let buf_len = 65536 in
-  let buf = Bytes.create buf_len in
-  let rec loop ic oc =
+  let global_buf = Bytes.create buf_len in
+  let rec loop buf ic oc =
     match input ic buf 0 buf_len with
     | 0 -> ()
     | n ->
       output oc buf 0 n;
-      loop ic oc
+      loop buf ic oc
   in
-  loop
+  let busy = ref false in
+  fun ic oc ->
+    if !busy
+    then loop (Bytes.create buf_len) ic oc
+    else (
+      busy := true;
+      match loop global_buf ic oc with
+      | () -> busy := false
+      | exception exn ->
+        busy := false;
+        Exn.reraise exn)
 ;;
 
 let setup_copy ?(chmod = Fun.id) ~src ~dst () =
@@ -201,23 +211,13 @@ module Copyfile = struct
       copy_channels ic oc)
   ;;
 
-  let copy_file_best =
+  let copy_file =
     match available with
     | `Sendfile -> sendfile_with_fallback
     | `Copyfile -> copyfile
     | `Nothing -> copy_file_portable
   ;;
-
-  let copy_file_impl = ref `Best
-
-  let copy_file ?chmod ~src ~dst () =
-    match !copy_file_impl with
-    | `Portable -> copy_file_portable ?chmod ~src ~dst ()
-    | `Best -> copy_file_best ?chmod ~src ~dst ()
-  ;;
 end
-
-let set_copy_impl m = Copyfile.copy_file_impl := m
 
 module Make (Path : sig
     type t
@@ -232,7 +232,9 @@ struct
     if binary then Stdlib.open_in_bin fn else Stdlib.open_in fn
   ;;
 
-  let open_out ?(binary = true) ?(perm = 0o666) p =
+  let default_out_perm = 0o666
+
+  let open_out ?(binary = true) ?(perm = default_out_perm) p =
     let fn = Path.to_string p in
     let flags : Stdlib.open_flag list =
       [ Open_wronly; Open_creat; Open_trunc; (if binary then Open_binary else Open_text) ]
@@ -254,87 +256,30 @@ struct
       f lb)
   ;;
 
-  let rec eagerly_input_acc ic s ~pos ~len acc =
-    if len <= 0
-    then acc
-    else (
-      let r = input ic s pos len in
-      if r = 0 then acc else eagerly_input_acc ic s ~pos:(pos + r) ~len:(len - r) (acc + r))
-  ;;
-
-  (* [eagerly_input_string ic len] tries to read [len] chars from the channel.
-     Unlike [really_input_string], if the file ends before [len] characters are
-     found, it returns the characters it was able to read instead of raising an
-     exception.
-
-     This can be detected by checking that the length of the resulting string is
-     less than [len]. *)
-  let eagerly_input_string ic len =
-    let buf = Bytes.create len in
-    let r = eagerly_input_acc ic buf ~pos:0 ~len 0 in
-    if r = len then Bytes.unsafe_to_string buf else Bytes.sub_string buf ~pos:0 ~len:r
-  ;;
-
-  let read_all_unless_large =
-    (* We use 65536 because that is the size of OCaml's IO buffers. *)
-    let chunk_size = 65536 in
-    (* Generic function for channels such that seeking is unsupported or
-       broken *)
-    let read_all_generic t buffer =
-      let rec loop () =
-        Buffer.add_channel buffer t chunk_size;
-        loop ()
-      in
-      try loop () with
-      | End_of_file -> Ok (Buffer.contents buffer)
-    in
-    fun t ->
-      (* Optimisation for regular files: if the channel supports seeking, we
-         compute the length of the file so that we read exactly what we need and
-         avoid an extra memory copy. We expect that most files Dune reads are
-         regular files so this optimizations seems worth it. *)
-      match in_channel_length t with
-      | exception Sys_error _ -> read_all_generic t (Buffer.create chunk_size)
-      | n when n > Sys.max_string_length -> Error ()
-      | n ->
-        (* For some files [in_channel_length] returns an invalid value. For
-           instance for files in /proc it returns [0] and on Windows the
-           returned value is larger than expected (it counts linebreaks as 2
-           chars, even in text mode).
-
-           To be robust in both directions, we: - use [eagerly_input_string]
-           instead of [really_input_string] in case we reach the end of the file
-           early - read one more character to make sure we did indeed reach the
-           end of the file *)
-        let s = eagerly_input_string t n in
-        (match input_char t with
-         | exception End_of_file -> Ok s
-         | c ->
-           (* The [+ chunk_size] is to make sure there is at least [chunk_size]
-              free space so that the first [Buffer.add_channel buffer t
-             chunk_size] in [read_all_generic] does not grow the buffer. *)
-           let buffer = Buffer.create (String.length s + 1 + chunk_size) in
-           Buffer.add_string buffer s;
-           Buffer.add_char buffer c;
-           read_all_generic t buffer)
-  ;;
-
-  let path_to_dyn path = String.to_dyn (Path.to_string path)
-
-  let read_file ?binary fn =
-    match with_file_in fn ~f:read_all_unless_large ?binary with
+  let read_file_chan ?binary fn =
+    match with_file_in fn ~f:Fs_io.read_all_unless_large ?binary with
     | Ok x -> x
-    | Error () ->
-      Code_error.raise
-        "read_file: file is larger than Sys.max_string_length"
-        [ "fn", path_to_dyn fn ]
+    | Error exn -> raise exn
+  ;;
+
+  let read_file ?(binary = true) fn =
+    if binary
+    then Fs_io.read_file (Path.to_string fn) |> Result.ok_exn
+    else read_file_chan ~binary fn
   ;;
 
   let lines_of_file fn = with_file_in fn ~f:input_lines ~binary:false
   let zero_strings_of_file fn = with_file_in fn ~f:input_zero_separated ~binary:true
 
-  let write_file ?binary ?perm fn data =
-    with_file_out ?binary ?perm fn ~f:(fun oc -> output_string oc data)
+  let write_file ?(binary = true) ?perm fn data =
+    if binary
+    then
+      Fs_io.write_file
+        ~perm:(Option.value ~default:default_out_perm perm)
+        ~data
+        ~path:(Path.to_string fn)
+      |> Result.ok_exn
+    else with_file_out ~binary ?perm fn ~f:(fun oc -> output_string oc data)
   ;;
 
   let write_lines ?binary ?perm fn lines =
@@ -486,13 +431,12 @@ let portable_hardlink ~src ~dst =
   | true -> copy_file ~src ~dst ()
   | false ->
     let src =
-      match Path.follow_symlink src with
-      | Ok path -> path
+      match Fpath.follow_symlink (Path.to_string src) with
+      | Ok path -> Path.of_string path
       | Error Not_a_symlink -> src
       | Error Max_depth_exceeded ->
         user_error "Too many indirections; is this a cyclic symbolic link?"
-      | Error (Unix_error error) ->
-        user_error (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum error)
+      | Error (Unix_error error) -> user_error (Unix_error.Detailed.to_string_hum error)
     in
     (try Path.link src dst with
      | Unix.Unix_error (Unix.EEXIST, _, _) ->

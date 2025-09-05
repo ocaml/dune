@@ -4,8 +4,8 @@ module Process = Dune_engine.Process
 
 (* [git diff] doesn't like symlink arguments *)
 let resolve_link_for_git path =
-  match Path.follow_symlink path with
-  | Ok p -> p
+  match Fpath.follow_symlink (Path.to_string path) with
+  | Ok p -> Path.of_string p
   | Error Not_a_symlink -> path
   | Error Max_depth_exceeded ->
     User_error.raise
@@ -96,11 +96,11 @@ let prepare ~skip_trailing_cr annots path1 path2 =
   in
   let loc = Loc.in_file file1 in
   let run
-    ?(dir = dir)
-    ?(metadata = Process.create_metadata ~purpose:Internal_job ~loc ~annots ())
-    prog
-    args
-    ~fallback
+        ?(dir = dir)
+        ?(metadata = Process.create_metadata ~purpose:Internal_job ~loc ~annots ())
+        prog
+        args
+        ~fallback
     =
     With_fallback.run { dir; prog; args; metadata } ~fallback
   in
@@ -151,7 +151,7 @@ let prepare ~skip_trailing_cr annots path1 path2 =
   match !Clflags.diff_command with
   | Some "-" -> fallback
   | Some cmd ->
-    let sh, arg = Prog.system_shell_exn ~needed_to:"print diffs" in
+    let sh, arg = Env_path.system_shell_exn ~needed_to:"print diffs" in
     let cmd =
       sprintf "%s %s %s" cmd (String.quote_for_shell file1) (String.quote_for_shell file2)
     in
@@ -202,8 +202,10 @@ let prepare ~skip_trailing_cr annots path1 path2 =
                     User_message.Annots.has_embedded_location
                     ())
                ())
-          ~fallback:((* Use "diff" if "patdiff" reported no differences *)
-                     normal_diff ()))
+          ~fallback:
+            ((* Use "diff" if "patdiff" reported no differences *)
+             normal_diff
+               ()))
 ;;
 
 let print ?(skip_trailing_cr = Sys.win32) annots path1 path2 =

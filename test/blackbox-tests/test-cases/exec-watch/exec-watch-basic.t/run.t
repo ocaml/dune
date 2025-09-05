@@ -10,17 +10,17 @@ between each change to its code.
   > EOF
 
   $ dune exec --watch ./foo.exe &
-  Success, waiting for filesystem changes...
   foo
   Success, waiting for filesystem changes...
   bar
+  Success, waiting for filesystem changes...
   File "foo.ml", line 1, characters 23-24:
   1 | let () = print_endline "baz
                              ^
   Error: String literal not terminated
   Had 1 error, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
   baz
+  Success, waiting for filesystem changes...
   $ PID=$!
 
 Wait for the $DONE_FLAG file to exist, then delete the file. This file is
@@ -49,3 +49,6 @@ Wait until the error shows up in the log
 
 Prevent the test from leaking the dune process.
   $ kill $PID
+  $ wait $PID
+  [130]
+

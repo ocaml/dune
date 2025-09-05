@@ -85,6 +85,12 @@ module Constraint = struct
               (Value.to_opam_filter lhs, Op.to_relop_pelem op, Value.to_opam_filter rhs)))
     | And conjunction -> OpamFormula.ands (List.map conjunction ~f:to_opam_condition)
     | Or disjunction -> OpamFormula.ors (List.map disjunction ~f:to_opam_condition)
+    | Not constraint_ ->
+      OpamFormula.neg
+        (function
+          | OpamTypes.Constraint (op, v) -> Constraint (OpamFormula.neg_relop op, v)
+          | Filter f -> Filter (FNot f))
+        (to_opam_condition constraint_)
   ;;
 
   let rec of_opam_filter (filter : OpamTypes.filter) =
@@ -104,6 +110,9 @@ module Constraint = struct
       let+ lhs = of_opam_filter lhs
       and+ rhs = of_opam_filter rhs in
       Or [ lhs; rhs ]
+    | FNot constraint_ ->
+      let+ constraint_ = of_opam_filter constraint_ in
+      Not constraint_
     | _ -> Error (Convert_from_opam_error.Can't_convert_opam_filter_to_condition filter)
   ;;
 
@@ -138,6 +147,7 @@ type context =
   | Root
   | Ctx_and
   | Ctx_or
+  | Ctx_not
 
 (* The printer in opam-file-format does not insert parentheses on its own,
    but it is possible to use the [Group] constructor with a singleton to
@@ -165,15 +175,27 @@ let opam_constraint t : OpamParserTypes.FullPos.value =
            ( nopos @@ Constraint.Op.to_opam op
            , Constraint.Value.to_opam x
            , Constraint.Value.to_opam y ))
-    | And cs -> logical_op `And cs ~inner_ctx:Ctx_and ~group_needed:false
+    | And cs ->
+      let group_needed =
+        match context with
+        | Root -> false
+        | Ctx_and -> false
+        | Ctx_or -> false
+        | Ctx_not -> true
+      in
+      logical_op `And cs ~inner_ctx:Ctx_and ~group_needed
     | Or cs ->
       let group_needed =
         match context with
         | Root -> false
         | Ctx_and -> true
         | Ctx_or -> false
+        | Ctx_not -> true
       in
       logical_op `Or cs ~inner_ctx:Ctx_or ~group_needed
+    | Not c ->
+      let _c = opam_constraint Ctx_not c in
+      nopos (Pfxop (nopos `Not, _c))
   and logical_op op cs ~inner_ctx ~group_needed =
     List.map cs ~f:(opam_constraint inner_ctx) |> op_list op |> group_if group_needed
   in
@@ -188,25 +210,20 @@ let opam_depend { name; constraint_ } =
   | Some c -> nopos (OpamParserTypes.FullPos.Option (pkg, nopos [ c ]))
 ;;
 
-let list_to_opam_filtered_formula ts =
-  List.map ts ~f:(fun { name; constraint_ } ->
-    let opam_package_name = Package_name.to_opam_package_name name in
-    let condition =
-      match constraint_ with
-      | None -> OpamTypes.Empty
-      | Some constraint_ -> Constraint.to_opam_condition constraint_
-    in
-    OpamFormula.Atom (opam_package_name, condition))
-  |> OpamFormula.ands
+let to_opam_filtered_formula { name; constraint_ } =
+  let opam_package_name = Package_name.to_opam_package_name name in
+  let condition =
+    match constraint_ with
+    | None -> OpamTypes.Empty
+    | Some constraint_ -> Constraint.to_opam_condition constraint_
+  in
+  OpamFormula.Atom (opam_package_name, condition)
 ;;
 
-let list_of_opam_filtered_formula loc kind filtered_formula =
+let list_of_opam_disjunction loc filtered_formula =
   let exception E of Convert_from_opam_error.t in
   try
-    (match kind with
-     | `And -> OpamFormula.ands_to_list
-     | `Or -> OpamFormula.ors_to_list)
-      filtered_formula
+    OpamFormula.ors_to_list filtered_formula
     |> List.map ~f:(fun (filtered_formula : OpamTypes.filtered_formula) ->
       match filtered_formula with
       | Atom (name, condition) ->
@@ -234,10 +251,8 @@ let list_of_opam_filtered_formula loc kind filtered_formula =
       | Filtered_formula_is_not_the_correct_kind { non_atom } ->
         let formula_string = OpamFilter.string_of_filtered_formula non_atom in
         sprintf
-          "Expected formula to be a %s of atoms but encountered non-atom term '%s'"
-          (match kind with
-           | `And -> "conjunction"
-           | `Or -> "disjunction")
+          "Expected formula to be a disjunction of atoms but encountered non-atom term \
+           '%s'"
           formula_string
     in
     User_error.raise ~loc [ Pp.text message ]

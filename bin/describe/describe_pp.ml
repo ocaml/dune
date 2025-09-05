@@ -114,7 +114,7 @@ let find_module ~sctx file =
   | Some (m, _, _, origin) ->
     (match
        Dune_rules.Ml_sources.Origin.preprocess origin
-       |> Dune_rules.Preprocess.Per_module.find (Dune_rules.Module.name m)
+       |> Dune_lang.Preprocess.Per_module.find (Dune_rules.Module.name m)
      with
      | Pps { staged = true; loc; _ } -> Some (`Staged_pps loc)
      | _ -> Some (`Module m))
@@ -161,7 +161,7 @@ let term =
   and+ _ = Describe_lang_compat.arg
   and+ file = Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"FILE")) in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config
+  Scheduler.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
   let* setup = Import.Main.setup () in

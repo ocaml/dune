@@ -76,7 +76,6 @@ This should be ignored if we are in vendored_dirs
   Error: No implementation found for virtual library "foo" in
   _build/default/src.
   -> required by executable bar in dune:3
-  -> required by _build/default/.bar.eobjs/byte/dune__exe__Bar.cmi
   -> required by _build/default/.bar.eobjs/native/dune__exe__Bar.cmx
   -> required by _build/default/bar.exe
   [1]

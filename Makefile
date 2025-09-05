@@ -12,7 +12,8 @@ DEV_DEPS := \
 core_bench \
 patdiff
 
-TEST_OCAMLVERSION := 5.1.1
+TEST_OCAMLVERSION := 5.3.0
+# When updating this version, don't forget to also bump the number in the docs.
 
 -include Makefile.dev
 
@@ -23,6 +24,14 @@ help:
 .PHONY: bootstrap
 bootstrap:
 	$(MAKE) -B $(BIN)
+
+.PHONY: test-bootstrap
+test-bootstrap:
+	@ocaml boot/bootstrap.ml --boot-dir _test_boot
+
+.PHONY: test-bootstrap-script
+test-bootstrap-script:
+	@ocamlc -i boot/bootstrap.ml
 
 .PHONY: release
 release: $(BIN)
@@ -59,10 +68,6 @@ install-ocamlformat:
 dev-deps:
 	opam install -y . --deps-only --with-dev-setup
 
-.PHONY: coverage-deps
-coverage-deps:
-	opam install -y bisect_ppx
-
 .PHONY: dev-deps-sans-melange
 dev-deps-sans-melange: dev-deps
 
@@ -75,6 +80,7 @@ dev-switch:
 	else \
 		opam switch create -y . $(TEST_OCAMLVERSION) --no-install ; \
 	fi
+	opam pin add -y . -n --with-version=dev
 	opam install -y . --deps-only --with-test --with-dev-setup
 	$(MAKE) install-ocamlformat
 	opam install -y $(DEV_DEPS)
@@ -103,10 +109,6 @@ test-all: $(BIN)
 
 test-all-sans-melange: $(BIN)
 	$(BIN) build @runtest @runtest-js @runtest-coq
-
-test-coverage: $(BIN)
-	- $(BIN) build --instrument-with bisect_ppx --force @runtest
-	bisect-ppx-report send-to Coveralls
 
 .PHONY: check
 check: $(BIN)
@@ -167,7 +169,7 @@ dune-release:
 	dune-release tag
 	dune-release distrib --skip-build --skip-lint --skip-tests
 # See https://github.com/ocamllabs/dune-release/issues/206
-	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish distrib --verbose
+	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish --verbose
 	dune-release opam pkg
 	dune-release opam submit
 

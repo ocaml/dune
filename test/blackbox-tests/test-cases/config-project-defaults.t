@@ -4,10 +4,11 @@ generated 'dune-project' file.
 
   $ touch dune-config 
   $ cat >dune-config <<EOF
-  > (lang dune 3.17)
+  > (lang dune 3.18)
   > (project_defaults
   >  (authors AuthorTest)
   >  (maintainers MaintainerTest)
+  >  (maintenance_intent "(latest)")
   >  (license MIT))
   > EOF
 
@@ -33,11 +34,12 @@ Change the version of the config file to one which does not support the
 
   $ sed -i -e '1s|.*|(lang dune 3.16)|' dune-config
   $ dune init proj test_proj1 --config-file=dune-config
-  File "$TESTCASE_ROOT/dune-config", lines 2-5, characters 0-85:
+  File "$TESTCASE_ROOT/dune-config", lines 2-6, characters 0-118:
   2 | (project_defaults
   3 |  (authors AuthorTest)
   4 |  (maintainers MaintainerTest)
-  5 |  (license MIT))
+  5 |  (maintenance_intent "(latest)")
+  6 |  (license MIT))
   Error: 'project_defaults' is only available since version 3.17 of the dune
   language. Please update your dune config file to have (lang dune 3.17).
   [1]
@@ -47,7 +49,7 @@ Change the version of the config file to one which does not support the
 Check to ensure that the default values are used when optional stanzas are 
 removed/not used.
 
-  $ sed -i -e '3,5c\
+  $ sed -i -e '3,6c\
   > )' dune-config
   $ dune init proj test_proj1 --config-file=dune-config
   Entering directory 'test_proj1'

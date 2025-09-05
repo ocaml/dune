@@ -21,6 +21,9 @@ module Promote : sig
   type t =
     | Automatically
     | Never
+
+  val equal : t -> t -> bool
+  val to_dyn : t -> Dyn.t
 end
 
 (** explicit promotion mode is set *)

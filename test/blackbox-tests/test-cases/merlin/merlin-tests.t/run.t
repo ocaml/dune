@@ -30,8 +30,8 @@ CRAM sanitization
    (S $TESTCASE_ROOT/_findlib/publicfoo)
    (S $TESTCASE_ROOT/exe)
    (S $TESTCASE_ROOT/lib)
-   (FLG (-pp $TESTCASE_ROOT/_build/default/pp/pp.exe))
    (FLG (-w -40 -g))
+   (FLG (-pp $TESTCASE_ROOT/_build/default/pp/pp.exe))
    (UNIT_NAME x))
   X: _build/default/exe/x.ml
   ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
@@ -50,8 +50,8 @@ CRAM sanitization
    (S $TESTCASE_ROOT/_findlib/publicfoo)
    (S $TESTCASE_ROOT/exe)
    (S $TESTCASE_ROOT/lib)
-   (FLG (-pp $TESTCASE_ROOT/_build/default/pp/pp.exe))
    (FLG (-w -40 -g))
+   (FLG (-pp $TESTCASE_ROOT/_build/default/pp/pp.exe))
    (UNIT_NAME x))
 
   $ dune build ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
@@ -70,8 +70,8 @@ CRAM sanitization
    (B $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
    (S $TESTCASE_ROOT/lib)
    (S $TESTCASE_ROOT/lib/subdir)
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="bar"'"))
    (FLG (-w -40 -g))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="bar"'"))
    (UNIT_NAME bar))
   Bar: _build/default/lib/bar.ml-gen
   ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
@@ -87,8 +87,8 @@ CRAM sanitization
    (B $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
    (S $TESTCASE_ROOT/lib)
    (S $TESTCASE_ROOT/lib/subdir)
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="bar"'"))
    (FLG (-w -40 -g))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="bar"'"))
    (UNIT_NAME bar))
   File: _build/default/lib/subdir/file
   ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
@@ -104,9 +104,9 @@ CRAM sanitization
    (B $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
    (S $TESTCASE_ROOT/lib)
    (S $TESTCASE_ROOT/lib/subdir)
-   (FLG (-open Bar))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="bar"'"))
    (FLG (-w -40 -g))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="bar"'"))
+   (FLG (-open Bar))
    (UNIT_NAME bar__File))
   File: _build/default/lib/subdir/file.ml
   ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
@@ -122,9 +122,9 @@ CRAM sanitization
    (B $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
    (S $TESTCASE_ROOT/lib)
    (S $TESTCASE_ROOT/lib/subdir)
-   (FLG (-open Bar))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="bar"'"))
    (FLG (-w -40 -g))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="bar"'"))
+   (FLG (-open Bar))
    (UNIT_NAME bar__File))
   Foo: _build/default/lib/foo
   ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
@@ -142,8 +142,8 @@ CRAM sanitization
    (S $TESTCASE_ROOT/_findlib/publicfoo)
    (S $TESTCASE_ROOT/lib)
    (S $TESTCASE_ROOT/lib/subdir)
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (FLG (-w -40 -g))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (UNIT_NAME foo))
   Foo: _build/default/lib/foo.ml-gen
   ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
@@ -161,8 +161,8 @@ CRAM sanitization
    (S $TESTCASE_ROOT/_findlib/publicfoo)
    (S $TESTCASE_ROOT/lib)
    (S $TESTCASE_ROOT/lib/subdir)
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (FLG (-w -40 -g))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (UNIT_NAME foo))
   Privmod: _build/default/lib/privmod
   ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
@@ -180,9 +180,9 @@ CRAM sanitization
    (S $TESTCASE_ROOT/_findlib/publicfoo)
    (S $TESTCASE_ROOT/lib)
    (S $TESTCASE_ROOT/lib/subdir)
-   (FLG (-open Foo))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (FLG (-w -40 -g))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
+   (FLG (-open Foo))
    (UNIT_NAME foo__Privmod))
   Privmod: _build/default/lib/privmod.ml
   ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
@@ -200,9 +200,9 @@ CRAM sanitization
    (S $TESTCASE_ROOT/_findlib/publicfoo)
    (S $TESTCASE_ROOT/lib)
    (S $TESTCASE_ROOT/lib/subdir)
-   (FLG (-open Foo))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (FLG (-w -40 -g))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
+   (FLG (-open Foo))
    (UNIT_NAME foo__Privmod))
 
 Make sure a ppx directive is generated (if not, the [grep ppx] step fails)
@@ -225,8 +225,8 @@ Make sure pp flag is correct and variables are expanded
    (EXCLUDE_QUERY_DIR)
    (B $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/byte)
    (S $TESTCASE_ROOT/pp-with-expand)
-   (FLG (-pp "$TESTCASE_ROOT/_build/default/pp/pp.exe -nothing"))
    (FLG (-w -40 -g))
+   (FLG (-pp "$TESTCASE_ROOT/_build/default/pp/pp.exe -nothing"))
    (UNIT_NAME foobar))
   Foobar: _build/default/pp-with-expand/foobar.ml
   ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
@@ -241,12 +241,12 @@ Make sure pp flag is correct and variables are expanded
    (EXCLUDE_QUERY_DIR)
    (B $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/byte)
    (S $TESTCASE_ROOT/pp-with-expand)
-   (FLG (-pp "$TESTCASE_ROOT/_build/default/pp/pp.exe -nothing"))
    (FLG (-w -40 -g))
+   (FLG (-pp "$TESTCASE_ROOT/_build/default/pp/pp.exe -nothing"))
    (UNIT_NAME foobar))
 
 Check hash of executables names if more than one
-  $ dune build ./exes/.merlin-conf/exe-x-6562915302827c6dce0630390bfa68b7
+  $ dune build ./exes/.merlin-conf/exe-x-e0b998aff107b214969cbb2e501dd255
   $ dune ocaml merlin dump-config $PWD/exes
   X: _build/default/exes/x
   ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)

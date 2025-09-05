@@ -1,5 +1,4 @@
 open Stdune
-module Re = Dune_re
 
 include struct
   open Dune_engine
@@ -91,9 +90,11 @@ let patches_of_string patch_string =
 
 let prog =
   lazy
-    (match Bin.which ~path:(Env_path.path Env.initial) "patch" with
+    (let path = Env_path.path Env.initial in
+     let bins = [ "gpatch"; "patch" ] in
+     match List.find_map bins ~f:(Bin.which ~path) with
      | Some p -> p
-     | None -> User_error.raise [ Pp.text "patch not found" ])
+     | None -> User_error.raise [ Pp.textf "%s not found." (String.enumerate_and bins) ])
 ;;
 
 let exec display ~patch ~dir ~stderr =

@@ -2,8 +2,12 @@ open Stdune
 module Dep_conf = Dune_lang.Dep_conf
 
 include struct
-  open Dune_rules
+  open Source
   module Source_tree = Source_tree
+end
+
+include struct
+  open Dune_lang
   module Dune_project = Dune_project
 end
 
@@ -48,7 +52,7 @@ let dep_parser =
   Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version) Dep_conf.decode
 ;;
 
-let parse_build s =
+let parse_build_arg s =
   Dune_lang.Decoder.parse
     dep_parser
     (Univ_map.set
@@ -57,6 +61,6 @@ let parse_build s =
        (* CR-someday aalekseyev: hardcoding the version here is not
           ideal, but it will do for now since this command is not
           stable and we're only using it in tests. *)
-       (Pform.Env.initial (3, 0)))
+       (Pform.Env.initial ~stanza:(3, 0) ~extensions:[]))
     (Dune_lang.Parser.parse_string ~fname:"dune rpc" ~mode:Dune_lang.Parser.Mode.Single s)
 ;;

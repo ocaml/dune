@@ -55,7 +55,16 @@ let git, hg =
     lazy
       (match Bin.which ~path:(Env_path.path Env.initial) prog with
        | Some x -> x
-       | None -> Utils.program_not_found prog ~loc:None)
+       | None ->
+         let hint =
+           match prog with
+           | "git" ->
+             Some
+               "Git is required for version information in 'dune subst', build info, and \
+                package management. Install git or add it to your PATH."
+           | _ -> None
+         in
+         Utils.program_not_found prog ~loc:None ?hint)
   in
   get "git", get "hg"
 ;;
@@ -182,8 +191,27 @@ let files =
   in
   let f run args t =
     let open Fiber.O in
-    let+ l = run t args in
-    List.map l ~f:Path.Source.of_string
+    let f =
+      let prefix =
+        Path.to_absolute_filename t.root |> Path.External.of_string |> Path.external_
+      in
+      let source_root =
+        Path.to_absolute_filename (Path.source Path.Source.root)
+        |> Path.External.of_string
+        |> Path.external_
+      in
+      match Path.drop_prefix source_root ~prefix with
+      | None -> fun p -> Some (Path.Source.of_string p)
+      | Some prefix ->
+        fun p ->
+          (match
+             let p = Path.Local.of_string p in
+             Path.Local.descendant p ~of_:prefix
+           with
+           | None -> None
+           | Some p -> Some (Path.Source.of_local p))
+    in
+    run t args >>| List.filter_map ~f
   in
   Staged.unstage
   @@ make_fun

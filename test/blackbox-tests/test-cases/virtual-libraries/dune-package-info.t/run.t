@@ -59,8 +59,7 @@ Include variants and implementation information in dune-package
      (wrapped true))))
   (library
    (name foo.vlib)
-   (kind normal)
-   (virtual)
+   (kind virtual)
    (main_module_name Vlib)
    (modes byte native)
    (modules

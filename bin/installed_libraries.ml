@@ -14,7 +14,7 @@ let term =
           ~doc:"List libraries that are not available and explain why")
   in
   let common, config = Common.init builder in
-  Scheduler.go
+  Scheduler.go_with_rpc_server
     ~common
     ~config
     (let run () =

@@ -12,22 +12,21 @@ let dir_contents (dir : Path.t) =
   let* () = Memo.return () in
   match Path.destruct_build_dir dir with
   | `Outside dir ->
-    Fs_memo.dir_contents dir
-    >>| Result.map ~f:(fun contents ->
-      Fs_cache.Dir_contents.to_list contents |> List.map ~f:fst)
+    Fs_memo.dir_contents dir >>| Result.map ~f:Fs_cache.Dir_contents.to_list
   | `Inside _ ->
-    let* () = Build_system.build_file dir in
-    Memo.return (Path.readdir_unsorted dir)
+    let* already_exists = Build_system.file_exists dir in
+    let+ () = if already_exists then Build_system.build_dir dir else Memo.return () in
+    Path.readdir_unsorted_with_kinds dir
 ;;
 
-let exists file kind =
-  Build_system.file_exists file
+let exists path kind =
+  Build_system.file_exists path
   >>= function
   | false -> Memo.return false
   | true ->
-    let+ () = Build_system.build_file file in
-    (match Path.stat file with
-     | Ok { st_kind; _ } when kind = st_kind -> true
+    let+ () = Build_system.build_file path in
+    (match Path.stat path with
+     | Ok { st_kind; _ } -> kind = st_kind
      | _ -> false)
 ;;
 
@@ -42,10 +41,7 @@ let dir_exists dir =
   let* () = Memo.return () in
   match Path.destruct_build_dir dir with
   | `Outside dir -> Fs_memo.dir_exists dir
-  | `Inside _ ->
-    (* CR-rgrinberg: unfortunately, [Build_system.file_exists] always returns
-       false for directories. *)
-    Memo.return true
+  | `Inside _ -> exists dir Unix.S_DIR
 ;;
 
 let with_lexbuf_from_file file ~f =

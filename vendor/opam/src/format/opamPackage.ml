@@ -16,11 +16,96 @@ let slog = OpamConsole.slog
 
 module Version = struct
 
-  type version = string
+  type version_style =
+    | Triple (* E.g "1.2.3" *)
+    | V_triple (* E.g "v1.2.3" *)
+
+  let version_style_equal a b = match (a, b) with
+  | Triple, Triple | V_triple, V_triple -> true
+  | _ -> false
+
+  (* Alternative reprentation for some common patterns of version number that
+     can be efficiently compared. This is micro-optimized because solving
+     dependencies requires comparing a large number of package versions. *)
+  type version_small =
+    { int : Int64.t
+    ; style : version_style
+    ; has_suffix : [`None | `Tilde | `Some ]
+    }
+
+  type version =
+    { raw : string
+    ; small : version_small option
+    }
+
+  let empty = { raw = "" ; small = None }
 
   type t = version
 
-  let to_string x = x
+  let to_string x = x.raw
+
+  (* CR rgrinberg: get rid of this once we drop 4.08 support *)
+  let rev_concat_map t ~f =
+    let rec aux f acc = function
+      | [] -> acc
+      | x :: l ->
+        let xs = f x in
+        aux f (List.rev_append xs acc) l
+    in
+    aux f [] t
+  ;;
+
+  let concat_map t ~f = List.rev (rev_concat_map t ~f)
+
+  let small_of_string s =
+    let parts =
+      String.split_on_char '+' s
+      |> concat_map ~f:(String.split_on_char '~')
+      |> concat_map ~f:(String.split_on_char '-')
+    in
+    let has_suffix =
+      match parts with
+      | [] -> `None
+      | ["~"] -> `Tilde
+      | _ :: _ -> `Some
+    in
+    match String.split_on_char '.' (List.nth parts 0) with
+    | [] -> None
+    | major :: rest ->
+         let style, major =
+           if String.length major > 0 && major.[0] = 'v'
+           then V_triple, String.sub major 1 (String.length major - 1)
+           else Triple, major
+         in
+         let major_opt = int_of_string_opt major in
+         let minor_opt, patch_opt = match rest with
+         | [] -> Some 0, Some 0
+         | minor :: rest ->
+             let minor_opt = int_of_string_opt minor in
+             let patch_opt = match rest with
+               | [] -> Some 0
+               | [ patch ] -> int_of_string_opt patch
+               | _ ->
+                   None
+             in
+             minor_opt, patch_opt
+         in
+         match major_opt, minor_opt, patch_opt with
+         | Some major, Some minor, Some patch ->
+             let max = 2 lsl 15 - 1 in
+             if major <= max && minor <= max && patch <= max
+             then
+               (* If each part of the version number can fit in a 16-bit
+                  integer pack them into a single 64-bit int so they can be
+                  efficiently compared. *)
+               let int =
+                 (Int64.shift_left (Int64.of_int major) 32)
+                 |> Int64.logor (Int64.shift_left (Int64.of_int minor) 16)
+                 |> Int64.logor (Int64.of_int patch)
+               in
+               Some { style; int; has_suffix }
+             else None
+         | _ -> None
 
   let of_string x =
     if String.length x = 0 then failwith "Package version can't be empty";
@@ -30,11 +115,37 @@ module Version = struct
           failwith
             (Printf.sprintf "Invalid character '%c' in package version %S" c x))
       x;
-    x
+    { raw = x
+    ; small = small_of_string x
+    }
 
-  let default = "dev"
+  let default = of_string "dev"
 
-  let compare = OpamVersionCompare.compare
+  let small_compare a b =
+    if version_style_equal a.style b.style then
+      let c = Int64.compare a.int b.int in
+      if c = 0 then
+        (* Only consider the suffix if the numeric part of both versions is the same. *)
+        match a.has_suffix, b.has_suffix with
+        | `Tilde, `Tilde
+        | `None, `None -> Some 0
+        | `Tilde, `None -> Some (-1)
+        | `None, `Tilde -> Some 1
+        | _ , _ ->
+            (* If both versions have suffixes then run the full comparison. *)
+            None
+      else
+        Some c
+    else
+      None
+
+  let compare a b =
+    match a.small, b.small with
+    | Some small_a, Some small_b -> (
+      match small_compare small_a small_b with
+      | Some c -> c
+      | None -> OpamVersionCompare.compare a.raw b.raw)
+    | _ -> OpamVersionCompare.compare a.raw b.raw
 
   let equal v1 v2 =
     compare v1 v2 = 0
@@ -277,8 +388,8 @@ let names_of_packages nvset =
 
 let package_of_name_aux empty split filter nv n =
   if n = "" then empty else
-  let inf = {name = String.sub n 0 (String.length n - 1); version= ""} in
-  let sup = {name = n^"\000"; version = ""} in
+  let inf = {name = String.sub n 0 (String.length n - 1); version= Version.empty} in
+  let sup = {name = n^"\000"; version = Version.empty} in
   let _, _, nv = split inf nv in
   let nv, _, _ = split sup nv in
   filter nv

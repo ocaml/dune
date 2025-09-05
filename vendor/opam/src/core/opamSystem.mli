@@ -11,18 +11,9 @@
 
 (** Bindings of lots of filesystem and system operations *)
 
-(** Exception raised when subprocess fails *)
-exception Process_error of OpamProcess.result
-
 exception Command_not_found of string
 
 exception Permission_denied of string
-
-(** raise [Process_error] *)
-val process_error: OpamProcess.result -> 'a
-
-(** raise [Process_error] if the process didn't return 0 *)
-val raise_on_process_error: OpamProcess.result -> unit
 
 (** Exception raised when a computation in the current process
     fails. *)
@@ -37,9 +28,6 @@ val with_tmp_dir: (string -> 'a) -> 'a
 
 (** [in_tmp_dir fn] executes [fn] in a temporary directory. *)
 val in_tmp_dir: (unit -> 'a) -> 'a
-
-(** Runs a job with a temp dir that is cleaned up afterwards *)
-val with_tmp_dir_job: (string -> 'a OpamProcess.job) -> 'a OpamProcess.job
 
 (** Returns true if the default verbose level for base commands (cp, mv, etc.)
     is reached *)
@@ -163,89 +151,19 @@ val dir_is_empty: string -> bool
     Links pointing to directory are also returned. *)
 val directories_with_links: string -> string list
 
-(** Make a comman suitable for OpamProcess.Job. if [verbose], is set,
-    command and output will be displayed (at command end for the
-    latter, if concurrent commands are running). [name] is used for
-    naming log files. [text] is what is displayed in the status line
-    for this command. May raise Command_not_found, unless
-    [resolve_path] is set to false (in which case you can end up
-    with a process error instead) *)
-val make_command:
-  ?verbose:bool -> ?env:string array -> ?name:string -> ?text:string ->
-  ?metadata:(string * string) list -> ?allow_stdin:bool -> ?stdout:string ->
-  ?dir:string -> ?resolve_path:bool ->
-  string -> string list -> OpamProcess.command
-
 (** OLD COMMAND API, DEPRECATED *)
 
 (** a command is a list of words *)
 type command = string list
-
-(** Test whether a command exists in the environment, and returns it (resolved
-    if found in PATH) *)
-val resolve_command: ?env:string array -> ?dir:string -> string -> string option
-
-(** Returns a function which should be applied to arguments for a given command
-    by determining if the command is the Cygwin variant of the command. Returns
-    the identity function otherwise. *)
-val get_cygpath_function: command:string -> (string -> string) lazy_t
-
-(** Returns a function which should be applied to a PATH environment variable
-    if in a functioning Cygwin or MSYS2 environment, translating the Windows or a
-    Unix PATH variable into a Unix PATH variable. Returns the identity function
-    otherwise. *)
-val get_cygpath_path_transform: (string -> string) lazy_t
-
-(** [command cmd] executes the command [cmd] in the correct OPAM
-    environment. *)
-val command: ?verbose:bool -> ?env:string array -> ?name:string ->
-  ?metadata:(string * string) list -> ?allow_stdin:bool ->
-  command -> unit
-
-(** [commands cmds] executes the commands [cmds] in the correct OPAM
-    environment. It stops whenever one command fails unless [keep_going] is set
-    to [true]. In this case, the first error is re-raised at the end. *)
-val commands: ?verbose:bool -> ?env:string array -> ?name:string ->
-  ?metadata:(string * string) list -> ?keep_going:bool -> command list -> unit
-
-(** [read_command_output cmd] executes the command [cmd] in the
-    correct OPAM environment and return the lines from output if the command
-    exists normally. If the command does not exist or if the command exited
-    with a non-empty exit-code, throw an error.
-    It returns stdout and stder combiend, unless [ignore_stderr] is st to true.
-    *)
-val read_command_output: ?verbose:bool -> ?env:string array ->
-  ?metadata:(string * string) list ->  ?allow_stdin:bool ->
-  ?ignore_stderr:bool -> command -> string list
 
 (** END *)
 
 (** Test whether the file is an archive, by looking as its extension *)
 val is_archive: string -> bool
 
-(** [extract ~dir:dirname filename] extracts the archive [filename] into
-    [dirname]. [dirname] should not exists and [filename] should
-    contain only one top-level directory.*)
-val extract: dir:string -> string -> unit
-
-(** Same as [extract], but as an OpamProcess.job *)
-val extract_job: dir:string -> string -> exn option OpamProcess.job
-
-(** [extract_in ~dir:dirname filename] extracts the archive [filename] into
-    [dirname]. *)
-val extract_in: dir:string -> string -> unit
-
-(** [extract_in_job] is similar to [extract_in], but as a job *)
-val extract_in_job: dir:string -> string -> exn option OpamProcess.job
-
-val make_tar_gz_job: dir:string -> string -> exn option OpamProcess.job
-
 (** Create a directory. Do not fail if the directory already
     exist. *)
 val mkdir: string -> unit
-
-(** Get the number of active processors on the system *)
-val cpu_count: unit -> int
 
 (** {2 File locking function} *)
 
@@ -294,11 +212,6 @@ val get_lock_flag: lock -> lock_flag
 val get_lock_fd: lock -> Unix.file_descr
 
 (** {2 Misc} *)
-
-(** Apply a patch file in the current directory. If [preprocess] is set to
-    false, there is no CRLF translation. Returns the error if the patch didn't
-    apply. *)
-val patch: ?preprocess:bool -> dir:string -> string -> exn option OpamProcess.job
 
 (** Returns the end-of-line encoding style for the given file. [None] means that
     either the encoding of line endings is mixed, or the file contains no line

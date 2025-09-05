@@ -1,9 +1,7 @@
 Test exec --watch with a program that ignores sigterm.
 
   $ dune exec --watch ./foo.exe &
-  Success, waiting for filesystem changes...
   1: before
-  Success, waiting for filesystem changes...
   2: before
   $ PID=$!
 
@@ -15,3 +13,5 @@ Test exec --watch with a program that ignores sigterm.
 
 Prevent the test from leaking the dune process.
   $ kill $PID
+  $ wait $PID
+

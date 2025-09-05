@@ -17,8 +17,7 @@ let find_module sctx src =
   let src =
     Path.Build.append_source (Context.build_dir (Super_context.context sctx)) src
   in
-  let dir = Path.Build.parent_exn src in
-  let module_name =
+  match
     let open Option.O in
     let* name =
       let fname = Path.Build.basename src in
@@ -26,13 +25,13 @@ let find_module sctx src =
       if String.equal fname name then None else Some name
     in
     Module_name.of_string_opt name
-  in
-  match module_name with
+  with
   | None -> Memo.return None
   | Some module_name ->
+    let dir = Path.Build.parent_exn src in
     let* dir_contents = drop_rules @@ fun () -> Dir_contents.get sctx ~dir in
     let* ocaml = Dir_contents.ocaml dir_contents
-    and* scope = Scope.DB.find_by_dir dir in
+    and* scope = Dir_contents.dir dir_contents |> Scope.DB.find_by_dir in
     Ml_sources.find_origin ocaml ~libs:(Scope.libs scope) [ module_name ]
     >>= (function
      | None -> Memo.return None
@@ -42,17 +41,10 @@ let find_module sctx src =
          drop_rules
          @@ fun () ->
          match origin with
-         | Executables exes ->
-           Exe_rules.rules ~sctx ~dir ~dir_contents ~scope ~expander exes
-         | Library lib -> Lib_rules.rules lib ~sctx ~dir_contents ~dir ~expander ~scope
+         | Executables exes -> Exe_rules.rules ~sctx ~dir_contents ~scope ~expander exes
+         | Library lib -> Lib_rules.rules lib ~sctx ~dir_contents ~expander ~scope
          | Melange mel ->
-           Melange_rules.setup_emit_cmj_rules
-             ~sctx
-             ~dir_contents
-             ~dir
-             ~expander
-             ~scope
-             mel
+           Melange_rules.setup_emit_cmj_rules ~sctx ~dir_contents ~expander ~scope mel
        in
        let module_ =
          let modules = Compilation_context.modules cctx in
@@ -69,37 +61,36 @@ let find_module sctx src =
 ;;
 
 let module_deps cctx module_ =
-  let dep_graph =
-    let dg = Compilation_context.dep_graphs cctx in
-    Ocaml.Ml_kind.Dict.get dg Impl
+  let+ graph, _ =
+    let dep_graph =
+      let dg = Compilation_context.dep_graphs cctx in
+      Ocaml.Ml_kind.Dict.get dg Impl
+    in
+    Dep_graph.deps_of dep_graph module_ |> Action_builder.evaluate_and_collect_facts
   in
-  let action = Dep_graph.deps_of dep_graph module_ in
-  let+ graph, _ = Action_builder.evaluate_and_collect_facts action in
   graph
 ;;
 
 let gen_rules sctx ~dir:rules_dir ~comps =
   let src = Path.Source.L.relative Path.Source.root comps in
-  let* mod_ = find_module sctx src in
-  match mod_ with
+  find_module sctx src
+  >>= function
   | None -> Memo.return ()
   | Some (module_, cctx, _merlin, _) ->
     let module_ = Module.set_source module_ Intf None in
     let* () =
-      let* module_deps = module_deps cctx module_ in
-      let files =
-        let obj_dir = Compilation_context.obj_dir cctx in
-        List.filter_map module_deps ~f:(fun module_ ->
-          Obj_dir.Module.cm_file obj_dir module_ ~kind:(Ocaml Cmi))
-      in
-      Memo.parallel_iter files ~f:(fun file ->
-        let src = Path.build file in
-        let dst = Path.Build.relative rules_dir (Path.Build.basename file) in
-        Super_context.add_rule sctx ~dir:rules_dir (Action_builder.symlink ~src ~dst))
+      (let obj_dir = Compilation_context.obj_dir cctx in
+       module_deps cctx module_
+       >>| List.filter_map ~f:(Obj_dir.Module.cm_file obj_dir ~kind:(Ocaml Cmi)))
+      >>= Memo.parallel_iter ~f:(fun file ->
+        (let src = Path.build file in
+         let dst = Path.Build.relative rules_dir (Path.Build.basename file) in
+         Action_builder.symlink ~src ~dst)
+        |> Super_context.add_rule sctx ~dir:rules_dir)
     in
     let cctx =
-      let obj_dir = private_obj_dir (Super_context.context sctx) src in
-      Compilation_context.set_obj_dir cctx obj_dir
+      private_obj_dir (Super_context.context sctx) src
+      |> Compilation_context.set_obj_dir cctx
       |> Compilation_context.without_bin_annot
       |> Compilation_context.set_modes
            ~modes:

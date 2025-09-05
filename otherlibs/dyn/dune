@@ -1,5 +1,3 @@
 (library
  (public_name dyn)
- (libraries pp ordering)
- (instrumentation
-  (backend bisect_ppx)))
+ (libraries pp ordering))

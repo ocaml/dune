@@ -3,8 +3,10 @@ Some environment variables are automatically exported by packages:
   $ . ./helpers.sh
 
   $ make_lockdir
-  $ echo "(version 0.0.1)" > dune.lock/test.pkg
-  $ cat >dune.lock/usetest.pkg <<'EOF'
+  $ make_lockpkg test <<EOF
+  > (version 0.0.1)
+  > EOF
+  $ make_lockpkg usetest <<'EOF'
   > (version 0.0.1)
   > (depends test)
   > (build

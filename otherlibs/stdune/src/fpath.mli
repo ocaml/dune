@@ -17,7 +17,7 @@ val mkdir_p : ?perms:int -> string -> mkdir_p_result
 type follow_symlink_error =
   | Not_a_symlink
   | Max_depth_exceeded
-  | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
+  | Unix_error of Unix_error.Detailed.t
 
 val follow_symlink : string -> (string, follow_symlink_error) result
 
@@ -57,6 +57,7 @@ val traverse
   -> init:'acc
   -> on_file:(dir:string -> Filename.t -> 'acc -> 'acc)
   -> on_dir:(dir:string -> Filename.t -> 'acc -> 'acc)
+  -> on_broken_symlink:(dir:string -> Filename.t -> 'acc -> 'acc)
   -> 'acc
 
 val traverse_files
@@ -64,3 +65,8 @@ val traverse_files
   -> init:'acc
   -> f:(dir:string -> Filename.t -> 'acc -> 'acc)
   -> 'acc
+
+(** [is_broken_simlink path] returns [true] iff [path] refers to a symlink
+    whose target does not exist.  Returns false if [path] is not a symlink, or
+    is a symlink whose target exists. *)
+val is_broken_symlink : string -> bool

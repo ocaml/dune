@@ -24,9 +24,10 @@ let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
               (* We only drop the build context if it is correct. *)
               match Path.Build.extract_build_context d with
               | Some (dir_context_name, d) ->
-                if Dune_engine.Context_name.equal
-                     context
-                     (Dune_engine.Context_name.of_string dir_context_name)
+                if
+                  Dune_engine.Context_name.equal
+                    context
+                    (Dune_engine.Context_name.of_string dir_context_name)
                 then d
                 else
                   User_error.raise
@@ -81,10 +82,10 @@ let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
     Console.print
       [ Pp.vbox @@ Pp.concat_map ~f:Pp.vbox paragraphs ~sep:(Pp.seq Pp.space Pp.space) ]
   in
-  Scheduler.go ~common ~config
+  Scheduler.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
-  Build_cmd.run_build_system ~common ~request
+  Build.run_build_system ~common ~request
   >>| fun (_ : (unit, [ `Already_reported ]) result) -> ()
 ;;
 

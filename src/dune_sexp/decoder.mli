@@ -234,7 +234,7 @@ val enum : (string * 'a) list -> 'a t
 (** [enum' l] is like [enum] but the values are instead further parsers. *)
 val enum' : (string * 'a t) list -> 'a t
 
-(** Parser that parse a S-expression of the form
+(** Parser that parses a S-expression of the form
     [(<atom> <s-exp1> <s-exp2> ...)] or [<atom>]. [<atom>] is looked up in the
     list and the remaining s-expressions are parsed using the corresponding list
     parser.

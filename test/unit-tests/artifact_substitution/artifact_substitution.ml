@@ -1,6 +1,5 @@
 open Stdune
 open Dune_rules
-module Re = Dune_re
 
 let () =
   Path.set_root (Path.External.cwd ());
@@ -10,8 +9,8 @@ let () =
 let fail fmt =
   Printf.ksprintf
     (fun msg ->
-      prerr_endline msg;
-      exit 1)
+       prerr_endline msg;
+       exit 1)
     fmt
 ;;
 

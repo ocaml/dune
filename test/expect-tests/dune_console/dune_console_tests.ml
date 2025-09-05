@@ -85,7 +85,8 @@ let%expect_test "Status line clearing." =
   Console.Backend.set Console.Backend.dumb;
   test_status_line_clearing (module Console);
   escape [%expect.output];
-  [%expect {|
+  [%expect
+    {|
 Here is a status line
   |}]
 ;;
@@ -107,7 +108,8 @@ let%expect_test "Multi-line status line clearing." =
   Console.Backend.set Console.Backend.dumb;
   test_status_line_clearing_multiline (module Console);
   escape [%expect.output];
-  [%expect {|
+  [%expect
+    {|
 Some
 multiline
 status
@@ -120,7 +122,8 @@ let%expect_test "Status line overwriting." =
   Console.Backend.set Console.Backend.dumb;
   test_status_line_overwrite (module Console);
   escape [%expect.output];
-  [%expect {|
+  [%expect
+    {|
 Here is a status line
 Here is another status line
   |}]
@@ -146,7 +149,8 @@ let%expect_test "Status line clearing." =
   Console.Backend.set Console.Backend.progress;
   test_status_line_clearing (module Console);
   escape [%expect.output];
-  [%expect {|
+  [%expect
+    {|
 Here is a status line\r                     \r
  |}]
 ;;
@@ -170,7 +174,8 @@ let%expect_test "Multi-line status line clearing." =
   Console.Backend.set Console.Backend.progress;
   test_status_line_clearing_multiline (module Console);
   escape [%expect.output];
-  [%expect {|
+  [%expect
+    {|
 Some
 multiline
 status

@@ -696,9 +696,10 @@ module Pkg_config = struct
       match expr with
       | Some e -> e
       | None ->
-        if String.exists package ~f:(function
-             | '=' | '>' | '<' -> true
-             | _ -> false)
+        if
+          String.exists package ~f:(function
+            | '=' | '>' | '<' -> true
+            | _ -> false)
         then
           warn
             "Package name %S contains invalid characters. Use Pkg_config.query_expr to \
@@ -734,7 +735,7 @@ module Pkg_config = struct
     in
     let pc_flags = "--print-errors" in
     let { Process.exit_code; stderr; _ } =
-      Process.run_process c ~dir ?env t.pkg_config [ pc_flags; expr ]
+      Process.run_process c ~dir ?env t.pkg_config (t.pkg_config_args @ [ pc_flags; expr ])
     in
     if exit_code = 0
     then (

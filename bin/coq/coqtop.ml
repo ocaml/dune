@@ -41,8 +41,8 @@ let term =
     Common.init builder
   in
   let coq_file_arg = Common.prefix_target common coq_file_arg |> Path.Local.of_string in
-  let coqtop, argv, env =
-    Scheduler.go ~common ~config
+  let coqtop, args, env =
+    Scheduler.go_with_rpc_server ~common ~config
     @@ fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in
@@ -147,13 +147,13 @@ let term =
       let+ env = Super_context.context_env sctx in
       Path.to_string prog, args, env
     in
-    let argv =
+    let args =
       let topfile = Path.to_absolute_filename (Path.build coq_file_build) in
-      (coqtop :: "-topfile" :: topfile :: args) @ extra_args
+      ("-topfile" :: topfile :: args) @ extra_args
     in
-    Fiber.return (coqtop, argv, env)
+    Fiber.return (coqtop, args, env)
   in
-  restore_cwd_and_execve (Common.root common) coqtop argv env
+  restore_cwd_and_execve (Common.root common) coqtop args env
 ;;
 
 let command = Cmd.v info term

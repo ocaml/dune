@@ -7,50 +7,52 @@ module Includes = struct
   let make ~project ~opaque ~direct_requires ~hidden_requires lib_config
     : _ Lib_mode.Cm_kind.Map.t
     =
-    (* TODO : some of the requires can filtered out using [ocamldep] info *)
+    (* TODO: some of the requires can filtered out using [ocamldep] info *)
     let open Resolve.Memo.O in
     let iflags direct_libs hidden_libs mode =
       Lib_flags.L.include_flags ~project ~direct_libs ~hidden_libs mode lib_config
     in
     let make_includes_args ~mode groups =
-      Command.Args.memo
-        (Resolve.Memo.args
-           (let+ direct_libs = direct_requires
-            and+ hidden_libs = hidden_requires in
-            Command.Args.S
-              [ iflags direct_libs hidden_libs mode
-              ; Hidden_deps (Lib_file_deps.deps (direct_libs @ hidden_libs) ~groups)
-              ]))
+      (let+ direct_libs = direct_requires
+       and+ hidden_libs = hidden_requires in
+       Command.Args.S
+         [ iflags direct_libs hidden_libs mode
+         ; Hidden_deps (Lib_file_deps.deps (direct_libs @ hidden_libs) ~groups)
+         ])
+      |> Resolve.Memo.args
+      |> Command.Args.memo
     in
-    let cmi_includes = make_includes_args ~mode:(Ocaml Byte) [ Ocaml Cmi ] in
-    let cmx_includes =
-      Command.Args.memo
-        (Resolve.Memo.args
-           (let+ direct_libs = direct_requires
-            and+ hidden_libs = hidden_requires in
-            Command.Args.S
-              [ iflags direct_libs hidden_libs (Ocaml Native)
-              ; Hidden_deps
-                  (if opaque
-                   then
-                     List.map (direct_libs @ hidden_libs) ~f:(fun lib ->
-                       ( lib
-                       , if Lib.is_local lib
-                         then [ Lib_file_deps.Group.Ocaml Cmi ]
-                         else [ Ocaml Cmi; Ocaml Cmx ] ))
-                     |> Lib_file_deps.deps_with_exts
-                   else
-                     Lib_file_deps.deps
-                       (direct_libs @ hidden_libs)
-                       ~groups:[ Lib_file_deps.Group.Ocaml Cmi; Ocaml Cmx ])
-              ]))
-    in
-    let melange_cmi_includes = make_includes_args ~mode:Melange [ Melange Cmi ] in
-    let melange_cmj_includes =
-      make_includes_args ~mode:Melange [ Melange Cmi; Melange Cmj ]
-    in
-    { ocaml = { cmi = cmi_includes; cmo = cmi_includes; cmx = cmx_includes }
-    ; melange = { cmi = melange_cmi_includes; cmj = melange_cmj_includes }
+    { ocaml =
+        (let cmi_includes = make_includes_args ~mode:(Ocaml Byte) [ Ocaml Cmi ] in
+         { cmi = cmi_includes
+         ; cmo = cmi_includes
+         ; cmx =
+             (let+ direct_libs = direct_requires
+              and+ hidden_libs = hidden_requires in
+              Command.Args.S
+                [ iflags direct_libs hidden_libs (Ocaml Native)
+                ; Hidden_deps
+                    (let libs = direct_libs @ hidden_libs in
+                     if opaque
+                     then
+                       List.map libs ~f:(fun lib ->
+                         ( lib
+                         , if Lib.is_local lib
+                           then [ Lib_file_deps.Group.Ocaml Cmi ]
+                           else [ Ocaml Cmi; Ocaml Cmx ] ))
+                       |> Lib_file_deps.deps_with_exts
+                     else
+                       Lib_file_deps.deps
+                         libs
+                         ~groups:[ Lib_file_deps.Group.Ocaml Cmi; Ocaml Cmx ])
+                ])
+             |> Resolve.Memo.args
+             |> Command.Args.memo
+         })
+    ; melange =
+        { cmi = make_includes_args ~mode:Melange [ Melange Cmi ]
+        ; cmj = make_includes_args ~mode:Melange [ Melange Cmi; Melange Cmj ]
+        }
     }
   ;;
 
@@ -96,7 +98,6 @@ type t =
   ; melange_package_name : Lib_name.t option
   ; modes : Lib_mode.Map.Set.t
   ; bin_annot : bool
-  ; ocamldep_modules_data : Ocamldep.Modules_data.t
   ; loc : Loc.t option
   ; ocaml : Ocaml_toolchain.t
   }
@@ -124,39 +125,37 @@ let vimpl t = t.vimpl
 let modes t = t.modes
 let bin_annot t = t.bin_annot
 let context t = Super_context.context t.super_context
-let ocamldep_modules_data t = t.ocamldep_modules_data
 let dep_graphs t = t.modules.dep_graphs
 let ocaml t = t.ocaml
 
 let create
-  ~super_context
-  ~scope
-  ~obj_dir
-  ~modules
-  ~flags
-  ~requires_compile
-  ~requires_link
-  ?(preprocessing = Pp_spec.dummy)
-  ~opaque
-  ?stdlib
-  ~js_of_ocaml
-  ~package
-  ~melange_package_name
-  ?vimpl
-  ?modes
-  ?bin_annot
-  ?loc
-  ()
+      ~super_context
+      ~scope
+      ~obj_dir
+      ~modules
+      ~flags
+      ~requires_compile
+      ~requires_link
+      ?(preprocessing = Pp_spec.dummy)
+      ~opaque
+      ?stdlib
+      ~js_of_ocaml
+      ~package
+      ~melange_package_name
+      ?vimpl
+      ?modes
+      ?bin_annot
+      ?loc
+      ()
   =
   let project = Scope.project scope in
   let context = Super_context.context super_context in
   let* ocaml = Context.ocaml context in
   let direct_requires, hidden_requires =
-    if Dune_project.implicit_transitive_deps project
-    then Memo.Lazy.force requires_link, Resolve.Memo.return []
-    else if Version.supports_hidden_includes ocaml.version
-            && Dune_project.dune_version project >= (3, 17)
-    then (
+    match Dune_project.implicit_transitive_deps project ocaml.version with
+    | Enabled -> Memo.Lazy.force requires_link, Resolve.Memo.return []
+    | Disabled -> requires_compile, Resolve.Memo.return []
+    | Disabled_with_hidden_includes ->
       let requires_hidden =
         let open Resolve.Memo.O in
         let+ requires_compile = requires_compile
@@ -165,8 +164,7 @@ let create
         List.iter ~f:(fun lib -> Table.set requires_table lib ()) requires_compile;
         List.filter requires_link ~f:(fun l -> not (Table.mem requires_table l))
       in
-      requires_compile, requires_hidden)
-    else requires_compile, Resolve.Memo.return []
+      requires_compile, requires_hidden
   in
   let sandbox = Sandbox_config.no_special_requirements in
   let modes =
@@ -181,17 +179,14 @@ let create
     let profile = Context.profile context in
     eval_opaque ocaml profile opaque
   in
-  let ocamldep_modules_data : Ocamldep.Modules_data.t =
-    { dir = Obj_dir.dir obj_dir
-    ; sandbox
-    ; obj_dir
-    ; sctx = super_context
-    ; vimpl
-    ; modules
-    ; stdlib
-    }
-  in
-  let+ dep_graphs = Dep_rules.rules ocamldep_modules_data
+  let+ dep_graphs =
+    Dep_rules.rules
+      ~dir:(Obj_dir.dir obj_dir)
+      ~sandbox
+      ~obj_dir
+      ~sctx:super_context
+      ~vimpl
+      ~modules
   and+ bin_annot =
     match bin_annot with
     | Some b -> Memo.return b
@@ -217,7 +212,6 @@ let create
   ; melange_package_name
   ; modes
   ; bin_annot
-  ; ocamldep_modules_data
   ; loc
   ; ocaml
   }
@@ -287,10 +281,10 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
        their implementation must also be compiled with -opaque *)
     Ocaml.Version.supports_opaque_for_mli cctx.ocaml.version
   in
-  let direct_requires = requires in
-  let hidden_requires = Resolve.Memo.return [] in
   let modules = singleton_modules module_ in
   let includes =
+    let hidden_requires = Resolve.Memo.return [] in
+    let direct_requires = requires in
     Includes.make
       ~project:(Scope.project cctx.scope)
       ~opaque
@@ -324,25 +318,5 @@ let for_plugin_executable t ~embed_in_plugin_libraries =
 ;;
 
 let without_bin_annot t = { t with bin_annot = false }
-
-let entry_module_names sctx t =
-  match Lib_info.entry_modules (Lib.info t) with
-  | External d -> Resolve.Memo.of_result d
-  | Local ->
-    let+ modules = Dir_contents.modules_of_lib sctx t in
-    let modules = Option.value_exn modules in
-    Resolve.return (Modules.With_vlib.entry_modules modules |> List.map ~f:Module.name)
-;;
-
-let root_module_entries t =
-  let open Action_builder.O in
-  let* requires = Resolve.Memo.read t.requires_compile in
-  let* l =
-    Action_builder.List.map requires ~f:(fun lib ->
-      Action_builder.of_memo (entry_module_names t.super_context lib) >>= Resolve.read)
-  in
-  Action_builder.return (List.concat l)
-;;
-
 let set_obj_dir t obj_dir = { t with obj_dir }
 let set_modes t ~modes = { t with modes }

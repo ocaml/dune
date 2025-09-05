@@ -7,11 +7,11 @@ In practice, in dune < 2.8 it consists in the concatenation of OCaml's
 merged with (and sometimes replaced by) the flags in the env stanza.
 
   $ O_CC=$(ocamlc -config-var c_compiler)
-  $ O_CCF=$(ocamlc -config-var ocamlc_cflags)
-  $ O_CCPPF=$(ocamlc -config-var ocamlc_cppflags)
-  $ O_CC=$(echo $O_CC | sed -e 's/^[ \t]*//')
-  $ O_CCF=$(echo $O_CCF | sed -e 's/^[ \t]*//')
-  $ O_CCPPF=$(echo $O_CCPPF | sed -e 's/^[ \t]*//')
+  $ O_CFLAGS=$(ocamlc -config-var ocamlc_cflags)
+  $ O_CPPFLAGS=$(ocamlc -config-var ocamlc_cppflags)
+  $ O_CC=$(echo $O_CC | sed -e 's/^[[:blank:]]*//')
+  $ O_CFLAGS=$(echo $O_CFLAGS | sed -e 's/^[[:blank:]]*//')
+  $ O_CPPFLAGS=$(echo $O_CPPFLAGS | sed -e 's/^[[:blank:]]*//')
 
 No env
   $ cat > dune <<'EOF'
@@ -20,7 +20,7 @@ No env
   >   (action (echo %{cc})))
   > EOF
 
-  $ dune build @cc | sed "s,${O_CC} ${O_CCF},OK,"
+  $ dune build @cc | sed "s,${O_CC} ${O_CFLAGS},OK,"
   OK
 
 With added env flags
@@ -28,7 +28,7 @@ With added env flags
   > (env (_ (c_flags :standard -fPIC)))
   > EOF
 
-  $ dune build @cc | sed "s,${O_CC} ${O_CCF} -fPIC,OK,"
+  $ dune build @cc | sed "s,${O_CC} ${O_CFLAGS} -fPIC,OK,"
   OK
 
 With redefining env flags
@@ -51,7 +51,7 @@ No env
   >   (action (echo %{cc})))
   > EOF
 
-  $ dune build @cc28 | sed "s,${O_CC} ${O_CCF} ${O_CCPPF} -fdiagnostics-color=always,OK,"
+  $ dune build @cc28 | sed "s,${O_CC} ${O_CFLAGS} ${O_CPPFLAGS} -Wall -fdiagnostics-color=always,OK,"
   OK
 
 With added env flags
@@ -59,7 +59,7 @@ With added env flags
   > (env (_ (c_flags :standard -fPIC)))
   > EOF
 
-  $ dune build @cc28 | sed "s,${O_CC} ${O_CCF} ${O_CCPPF} -fdiagnostics-color=always -fPIC,OK,"
+  $ dune build @cc28 | sed "s,${O_CC} ${O_CFLAGS} ${O_CPPFLAGS} -Wall -fdiagnostics-color=always -fPIC,OK,"
   OK
 
 With redefining env flags

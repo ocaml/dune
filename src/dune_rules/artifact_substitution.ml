@@ -220,10 +220,10 @@ let eval t ~(conf : Conf.t) =
   | Hardcoded_ocaml_path ->
     conf.hardcoded_ocaml_path
     >>| (function
-           | Relocatable _ -> "relocatable"
-           | Hardcoded l ->
-             let l = List.map l ~f:Path.to_absolute_filename in
-             "hardcoded\000" ^ String.concat ~sep:"\000" l)
+     | Relocatable _ -> "relocatable"
+     | Hardcoded l ->
+       let l = List.map l ~f:Path.to_absolute_filename in
+       "hardcoded\000" ^ String.concat ~sep:"\000" l)
     |> Memo.run
 ;;
 
@@ -288,12 +288,13 @@ let decode s =
   in
   let len = String.length s in
   match
-    if len > max_len
-       || len < 4
-       || s.[0] <> '%'
-       || s.[1] <> '%'
-       || s.[len - 2] <> '%'
-       || s.[len - 1] <> '%'
+    if
+      len > max_len
+      || len < 4
+      || s.[0] <> '%'
+      || s.[1] <> '%'
+      || s.[len - 2] <> '%'
+      || s.[len - 1] <> '%'
     then fail ();
     let dune_placeholder, len', rest =
       match String.split (String.sub s ~pos:2 ~len:(len - 4)) ~on:':' with
@@ -640,7 +641,7 @@ let copy ~conf ~input_file ~input ~output =
 ;;
 
 let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
-  (* CR-rgrinberg: our copying here is slow. If we scan the file and detect no
+  (* CR-someday rgrinberg: our copying here is slow. If we scan the file and detect no
      substitutions, we should go directly to [Io.copy_file] *)
   let open Fiber.O in
   let* ic, oc = Fiber.return (Io.setup_copy ?chmod ~src ~dst ()) in
@@ -689,11 +690,11 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst 
   in
   Fiber.finalize
     (fun () ->
-      let open Fiber.O in
-      Path.parent dst |> Option.iter ~f:Path.mkdir_p;
-      let* has_subst = copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file () in
-      let+ () = Conf.run_sign_hook conf ~has_subst temp_file in
-      replace_if_different ~delete_dst_if_it_is_a_directory ~src:temp_file ~dst)
+       let open Fiber.O in
+       Path.parent dst |> Option.iter ~f:Path.mkdir_p;
+       let* has_subst = copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file () in
+       let+ () = Conf.run_sign_hook conf ~has_subst temp_file in
+       replace_if_different ~delete_dst_if_it_is_a_directory ~src:temp_file ~dst)
     ~finally:(fun () ->
       Path.unlink_no_err temp_file;
       Fiber.return ())

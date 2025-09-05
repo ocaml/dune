@@ -51,11 +51,14 @@ Now we create the toolchain and make sure we actually use it:
 
 We set an undefined toolchain with findlib:
 
-  $ OCAMLFIND_TOOLCHAIN=foobar buildfoo
+  $ export OCAMLFIND_TOOLCHAIN=foobar
+  $ buildfoo
   ocamlfind: [WARNING] Undefined toolchain: foobar
   ocamlfind: [WARNING] Undefined toolchain: foobar
   built foo.cma
-  $ OCAMLFIND_CONF=$PWD/etc/findlib.conf OCAMLFIND_TOOLCHAIN=foobar buildfoo
+  $ unset OCAMLFIND_TOOLCHAIN
+  $ export OCAMLFIND_CONF=$PWD/etc/findlib.conf OCAMLFIND_TOOLCHAIN=foobar
+  $ buildfoo
   from notocamlc-foobar
   from notocamlc-foobar
   from notocamlc-foobar
@@ -77,7 +80,8 @@ Now we set it in the workspace:
   $ buildfoo
   built foo.cma
 
-  $ OCAMLFIND_CONF=$PWD/etc/findlib.conf buildfoo
+  $ export OCAMLFIND_CONF=$PWD/etc/findlib.conf
+  $ buildfoo
   from notocamlc-foobar
   from notocamlc-foobar
   from notocamlc-foobar

@@ -37,7 +37,7 @@ the appropriate location, respecting the DESTDIR variable.
   > EOF
 
 Lockfile for the fake compiler package:
-  $ cat > dune.lock/ocaml-base-compiler.pkg << EOF
+  $ make_lockpkg ocaml-base-compiler << EOF
   > (version 1)
   > 
   > (build

@@ -44,9 +44,9 @@ let ppx_runtime_deps t =
 
 let kind t : Lib_kind.t =
   match Vars.get t.vars "library_kind" Ps.empty with
-  | Some "ppx_rewriter" -> Ppx_rewriter Lib_kind.Ppx_args.empty
-  | Some "ppx_deriver" -> Ppx_deriver Lib_kind.Ppx_args.empty
-  | None | Some _ -> Normal
+  | Some "ppx_rewriter" -> Dune_file (Ppx_rewriter Lib_kind.Ppx_args.empty)
+  | Some "ppx_deriver" -> Dune_file (Ppx_deriver Lib_kind.Ppx_args.empty)
+  | None | Some _ -> Dune_file Normal
 ;;
 
 let archives t = make_archives t "archive" preds

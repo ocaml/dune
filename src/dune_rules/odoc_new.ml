@@ -680,7 +680,7 @@ module Artifact : sig
   val module_name : t -> Module_name.t option
   val name : t -> string
   val make_module : Context.t -> all:bool -> Index.t -> Path.t -> visible:bool -> t
-  val external_mld : Context.t -> Index.t -> Path.t -> t
+  val external_mld : Context.t -> Index.t -> Path.t -> name:string -> t
   val index : Context.t -> all:bool -> Index.t -> t
 end = struct
   type artifact_ty =
@@ -755,30 +755,28 @@ end = struct
     v ~source ~odoc ~html_dir ~html_file:html ~ty:(Module visible)
   ;;
 
-  let int_make_mld ctx ~all index source ~is_index =
-    let basename = Path.basename source |> Filename.remove_extension in
+  let int_make_mld ctx ~all index source ~name ~is_index =
     let odoc =
       (if is_index then Index.obj_dir ctx ~all index else Index.odoc_dir ctx ~all index)
-      ++ ("page-" ^ basename ^ ".odoc")
+      ++ ("page-" ^ name ^ ".odoc")
     in
     let html_dir = Index.html_dir ctx ~all index in
-    let html =
-      html_dir ++ if is_index then "index.html" else sprintf "%s.html" basename
-    in
+    let html = html_dir ++ if is_index then "index.html" else sprintf "%s.html" name in
     v ~source ~odoc ~html_dir ~html_file:html ~ty:Mld
   ;;
 
-  let external_mld ctx index source =
-    int_make_mld ctx ~all:true index source ~is_index:false
+  let external_mld ctx index source ~name =
+    int_make_mld ctx ~all:true index source ~name ~is_index:false
   ;;
 
   let index ctx ~all index =
+    let filename = Index.mld_filename index in
     let source =
-      let filename = Index.mld_filename index in
       let dir = Index.obj_dir ctx ~all index in
       Path.build (dir ++ filename)
     in
-    int_make_mld ctx ~all index source ~is_index:true
+    let name = Filename.remove_extension filename in
+    int_make_mld ctx ~all index source ~name ~is_index:true
   ;;
 end
 
@@ -847,15 +845,15 @@ let index_dep index =
 ;;
 
 let compile_module
-  sctx
-  all
-  ~artifact:a
-  ~quiet
-  ~requires
-  ~package
-  ~module_deps
-  ~parent_opt
-  ~indices
+      sctx
+      all
+      ~artifact:a
+      ~quiet
+      ~requires
+      ~package
+      ~module_deps
+      ~parent_opt
+      ~indices
   =
   let odoc_file = Artifact.odoc_file a in
   let ctx = Super_context.context sctx in
@@ -1173,9 +1171,9 @@ let modules_of_dir d : (Module_name.t * (Path.t * [ `Cmti | `Cmt | `Cmi ])) list
    to be documented - packages, fallback dirs, libraries (both private and those
    in packages) *)
 let fallback_artifacts
-  ctx
-  (location : Dune_package.External_location.t)
-  (libs : Lib.t Lib_name.Map.t)
+      ctx
+      (location : Dune_package.External_location.t)
+      (libs : Lib.t Lib_name.Map.t)
   =
   let* maps = Valid.libs_maps ctx ~all:true in
   match Index.of_external_loc maps location with
@@ -1211,9 +1209,9 @@ let lib_artifacts ctx all index lib modules =
     | Melange -> Melange Cmi
   in
   let obj_dir = Lib_info.obj_dir info in
-  let entry_modules = Modules.With_vlib.entry_modules modules in
+  let modules = Modules.With_vlib.drop_vlib modules in
+  let entry_modules = Modules.entry_modules modules in
   modules
-  |> Modules.With_vlib.drop_vlib
   |> Modules.fold ~init:[] ~f:(fun m acc ->
     let visible =
       let visible =
@@ -1242,12 +1240,12 @@ let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =
         let doc_path = Section.Map.find_exn dpkg.sections Doc in
         Some
           (List.filter_map fs ~f:(function
-            | `File, dst ->
-              let str = Install.Entry.Dst.to_string dst in
-              if Filename.check_suffix str ".mld"
-              then Some (Path.relative doc_path str)
-              else None
-            | _ -> None))
+             | `File, dst ->
+               let str = Install.Entry.Dst.to_string dst in
+               if Filename.check_suffix str ".mld"
+               then Some (Path.relative doc_path str, str)
+               else None
+             | _ -> None))
       | _ -> None)
     |> List.concat
 ;;
@@ -1255,7 +1253,10 @@ let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =
 let pkg_mlds sctx pkg =
   let* pkgs = Dune_load.packages () in
   if Package.Name.Map.mem pkgs pkg
-  then Packages.mlds sctx pkg >>| List.map ~f:Path.build
+  then
+    let+ res, warnings = Odoc.mlds sctx pkg in
+    let () = Odoc.report_warnings warnings in
+    List.map ~f:(fun (p, name) -> Path.build p, name) res
   else (
     let ctx = Super_context.context sctx in
     ext_package_mlds ctx pkg)
@@ -1263,11 +1264,11 @@ let pkg_mlds sctx pkg =
 
 let check_mlds_no_dupes ~pkg ~mlds =
   match
-    List.rev_map mlds ~f:(fun mld -> Filename.remove_extension (Path.basename mld), mld)
+    List.rev_map mlds ~f:(fun ((_path, mld_name) as mld) -> mld_name, mld)
     |> Filename.Map.of_list
   with
   | Ok m -> m
-  | Error (_, p1, p2) ->
+  | Error (_, (p1, _name1), (p2, _name2)) ->
     User_error.raise
       [ Pp.textf
           "Package %s has two mld's with the same basename %s, %s"
@@ -1284,12 +1285,14 @@ let pkg_artifacts sctx index pkg =
     check_mlds_no_dupes ~pkg ~mlds
   in
   let artifacts =
-    let mlds_noindex = String.Map.filteri ~f:(fun i _ -> i <> "index") mlds_map in
+    let mlds_noindex =
+      String.Map.filteri ~f:(fun i _ -> not (String.equal i "index")) mlds_map
+    in
     String.Map.values mlds_noindex
-    |> List.map ~f:(fun mld -> Artifact.external_mld ctx index mld)
+    |> List.map ~f:(fun (path, name) -> Artifact.external_mld ctx index path ~name)
   in
   let index_file = String.Map.find mlds_map "index" in
-  index_file, artifacts
+  Option.map ~f:fst index_file, artifacts
 ;;
 
 module Index_tree = struct
@@ -1721,19 +1724,19 @@ let toplevel_index_contents t =
   output_indices
     "Local Packages"
     (List.filter_map sorted ~f:(function
-      | [ x; Index.Top_dir Local_packages ] -> Some x
-      | _ -> None));
+       | [ x; Index.Top_dir Local_packages ] -> Some x
+       | _ -> None));
   output_indices
     "Switch-installed packages"
     (List.filter_map sorted ~f:(function
-      | [ x; Index.Top_dir (Relative_to_findlib _) ] -> Some x
-      | [ (Index.Top_dir Relative_to_stdlib as x) ] -> Some x
-      | _ -> None));
+       | [ x; Index.Top_dir (Relative_to_findlib _) ] -> Some x
+       | [ (Index.Top_dir Relative_to_stdlib as x) ] -> Some x
+       | _ -> None));
   output_indices
     "Private libraries"
     (List.filter_map sorted ~f:(function
-      | [ (Index.Private_lib _ as x) ] -> Some x
-      | _ -> None));
+       | [ (Index.Private_lib _ as x) ] -> Some x
+       | _ -> None));
   Buffer.contents b
 ;;
 

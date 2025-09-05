@@ -4,6 +4,18 @@ module Console = Dune_console
 module Digest = Dune_digest
 
 include struct
+  open Source
+  module Source_dir_status = Source_dir_status
+  module Include_stanza = Include_stanza
+  module Source_tree = Source_tree
+  module Cram_test = Cram_test
+  module Only_packages = Only_packages
+  module Workspace = Workspace
+  module Opam_switch = Opam_switch
+  module Blang_expand = Blang_expand
+end
+
+include struct
   open Dune_findlib.Findlib
   module Dune_findlib = Dune_findlib.Findlib
   module Findlib_config = Config
@@ -39,7 +51,6 @@ include struct
   module Sandbox_config = Sandbox_config
   module Sandbox_mode = Sandbox_mode
   module Action = Action
-  module Compound_user_error = Compound_user_error
   module Fs_cache = Fs_cache
   module Process = Process
   module Execution_parameters = Execution_parameters
@@ -51,6 +62,8 @@ include struct
   module Subdir_set = Subdir_set
 end
 
+module Compound_user_error = Dune_rpc_private.Compound_user_error
+
 include struct
   open Ocaml
   module Cm_kind = Cm_kind
@@ -60,7 +73,6 @@ include struct
   module Version = Version
 end
 
-module Re = Dune_re
 module Syntax = Dune_sexp.Syntax
 
 include struct
@@ -102,6 +114,23 @@ include struct
   module Dune_project_name = Dune_project_name
   module Package = Package
   module Dialect = Dialect
+  module Lib_mode = Lib_mode
+  module Module_name = Module_name
+  module Preprocess = Preprocess
+  module Dune_project = Dune_project
+  module File_binding = File_binding
+  module Foreign_language = Foreign_language
+  module Coq_env = Coq_env
+  module Menhir_env = Menhir_env
+  module Dune_env = Dune_env
+  module Js_of_ocaml = Js_of_ocaml
+  module Copy_files = Copy_files
+  module Enabled_if = Enabled_if
+  module Rule_mode_decoder = Rule_mode_decoder
+  module Alias_conf = Alias_conf
+  module Stanza_common = Stanza_common
+  module Include_subdirs = Include_subdirs
+  module Mode_conf = Mode_conf
 end
 
 include Dune_engine.No_io
@@ -113,9 +142,9 @@ module Build_config = struct
     module Rules = Rules
 
     let make
-      ?(build_dir_only_sub_dirs = Rules.empty.build_dir_only_sub_dirs)
-      ?(directory_targets = Rules.empty.directory_targets)
-      rules
+          ?(build_dir_only_sub_dirs = Rules.empty.build_dir_only_sub_dirs)
+          ?(directory_targets = Rules.empty.directory_targets)
+          rules
       =
       let rules = { Rules.build_dir_only_sub_dirs; directory_targets; rules } in
       Gen_rules_result.rules_here rules

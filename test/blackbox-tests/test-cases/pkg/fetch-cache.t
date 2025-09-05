@@ -18,7 +18,7 @@ Set up a project that depends on a package that is being downloaded
   $ echo test.tar > fake-curls
   $ SRC_PORT=1
   $ SRC_CHECKSUM=$(md5sum test.tar | cut -f1 -d' ')
-  $ cat >dune.lock/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (source
   >  (fetch

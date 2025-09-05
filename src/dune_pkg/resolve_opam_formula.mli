@@ -4,7 +4,7 @@ open! Import
 val apply_filter
   :  OpamFilter.env
   -> with_test:bool
-  -> OpamTypes.filtered_formula
+  -> formula:OpamTypes.filtered_formula
   -> OpamTypes.formula
 
 module Version_constraint : sig
@@ -54,8 +54,8 @@ type deps =
     list of package names, split into post and regular (ie. non-post)
     dependencies. *)
 val filtered_formula_to_package_names
-  :  OpamFilter.env
+  :  env:OpamFilter.env
   -> with_test:bool
-  -> Package_version.t Package_name.Map.t
+  -> packages:Package_version.t Package_name.Map.t
   -> OpamTypes.filtered_formula
   -> (deps, unsatisfied_formula) result

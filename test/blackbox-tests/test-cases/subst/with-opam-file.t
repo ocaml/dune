@@ -1,3 +1,5 @@
+  $ . ../git-helpers.sh
+
 Project with opam files
 -----------------------
 

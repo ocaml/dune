@@ -24,7 +24,7 @@ changed if desired.
    .. describe:: (repositories <name list>)
 
       The repositories to be used for finding a package solution, specified
-      in priority order. Supports ``:default`` which contains ``upsteam`` and
+      in priority order. Supports ``:standard`` which contains ``upstream`` and
       ``overlay``.
 
       Additional repositories can be defined using the
@@ -71,3 +71,10 @@ changed if desired.
          dependencies and not added to the lockfile. They exist solely to add
          additional constraints if the packages to which the constraint is
          applied are selected and don't do anything otherwise.
+
+   .. describe:: (depopts <name list>)
+
+      .. versionadded:: 3.19
+
+      Defines which optional packages names (``depopts``) the solver should
+      include when attempting to find a solution for the project.

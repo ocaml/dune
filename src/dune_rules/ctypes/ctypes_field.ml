@@ -91,15 +91,16 @@ end
 module Type_description = struct
   type t =
     { functor_ : Module_name.t
+    ; functor_loc : Loc.t
     ; instance : Module_name.t
     }
 
   let decode =
     let open Dune_lang.Decoder in
     fields
-      (let+ functor_ = field "functor" Module_name.decode
+      (let+ functor_loc, functor_ = located @@ field "functor" Module_name.decode
        and+ instance = field "instance" Module_name.decode in
-       { functor_; instance })
+       { functor_; functor_loc; instance })
   ;;
 end
 
@@ -108,6 +109,7 @@ module Function_description = struct
     { concurrency : Concurrency_policy.t
     ; errno_policy : Errno_policy.t
     ; functor_ : Module_name.t
+    ; functor_loc : Loc.t
     ; instance : Module_name.t
     }
 
@@ -116,19 +118,20 @@ module Function_description = struct
     fields
       (let+ concurrency = field_o "concurrency" Concurrency_policy.decode
        and+ errno_policy = field_o "errno_policy" Errno_policy.decode
-       and+ functor_ = field "functor" Module_name.decode
+       and+ functor_loc, functor_ = located @@ field "functor" Module_name.decode
        and+ instance = field "instance" Module_name.decode in
        { concurrency = Option.value concurrency ~default:Concurrency_policy.default
        ; errno_policy = Option.value errno_policy ~default:Errno_policy.default
        ; functor_
+       ; functor_loc
        ; instance
        })
   ;;
 end
 
 let c_generated_functions_cout_c_of_lib
-  ~external_library_name
-  (fd : Function_description.t)
+      ~external_library_name
+      (fd : Function_description.t)
   =
   sprintf
     "%s__c_cout_generated_functions__%s__%s.c"

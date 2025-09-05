@@ -23,31 +23,36 @@ let%expect_test "persistent digests" =
   |> Stdlib.Seq.iter (fun (Persistent.T (desc, example)) -> test desc example);
   [%expect
     {|
-    PROMOTED-TO-DELETE version 2
-    c5e35411975aef719f04a574b4ff5940
+    PROMOTED-TO-DELETE version 3
+    65e543aaf5ccc8148d50a1305aa3622b
     ---
 
-    DIGEST-DB version 6
-    a6df9e528c50debc9264b7a95489392e
+    DIGEST-DB version 7
+    48031a13035ffa6b93b6b79ce277d39c
     ---
 
-    INSTALL-COOKIE version 1
-    b9cd4cde10e1e3e883032dd57f86c54d
+    INSTALL-COOKIE version 3
+    da4ce847dd41df462849adecfe43f4eb
     ---
 
-    TO-PROMOTE version 2
-    eba77c5dce16c91bdb3b54c3d48cb5f8
+    TO-PROMOTE version 3
+    f2d6070d92c27497a6c2d89782d81c99
     ---
 
-    COPY-LINE-DIRECTIVE-MAP version 1
-    7dac5b11f6f654bb6f230392493b363f
+    COPY-LINE-DIRECTIVE-MAP version 2
+    72eb282c39bb084e69d6bd1615b8aaec
     ---
 
-    merlin-conf version 6
-    880477921df9a8915d57c0e8bdfb2fc1
+    CRAM-RESULT version 1
+    65e543aaf5ccc8148d50a1305aa3622b
     ---
 
-    INCREMENTAL-DB version 5
-    1cc656a4502ef88e70adab1f3c9a868e
-    --- |}]
+    merlin-conf version 7
+    a14a4700929a15bb2030e36f71e66d20
+    ---
+
+    INCREMENTAL-DB version 6
+    5d401c8cac2683cee736494457885f1f
+    ---
+    |}]
 ;;

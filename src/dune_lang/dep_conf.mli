@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp
+open Import
 
 module Glob_files : sig
   (** A glob stored in a [String_with_vars.t] and functions for expanding the
@@ -43,6 +42,7 @@ type t =
   | Sandbox_config of Sandbox_config.t
   | Include of string
 
+val equal : t -> t -> bool
 val remove_locs : t -> t
 
 include Conv.S with type t := t

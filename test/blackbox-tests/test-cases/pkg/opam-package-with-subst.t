@@ -12,12 +12,12 @@ Make a package with a substs field
   $ solve with-substs
   Solution for dune.lock:
   - with-substs.0.0.1
-  $ cat >>dune.lock/with-substs.pkg <<EOF
+  $ append_to_lockpkg with-substs <<EOF
   > (source (copy $PWD/source))
   > EOF
 
 The lockfile should contain the substitute action.
-  $ cat dune.lock/with-substs.pkg
+  $ cat ${default_lock_dir}/with-substs.pkg
   (version 0.0.1)
   
   (build

@@ -30,11 +30,13 @@ let%expect_test "cache-check-probability 0.1" =
     ; project_defaults =
         { authors = Some [ "Author Name <author@example.com>" ]
         ; maintainers = Some [ "Maintainer Name <maintainer@example.com>" ]
+        ; maintenance_intent = None
         ; license = Some [ "LICENSE" ]
         }
+    ; pkg_enabled = false
     ; experimental = []
     }
- |}]
+    |}]
 ;;
 
 let%expect_test "cache-storage-mode copy" =
@@ -53,11 +55,13 @@ let%expect_test "cache-storage-mode copy" =
     ; project_defaults =
         { authors = Some [ "Author Name <author@example.com>" ]
         ; maintainers = Some [ "Maintainer Name <maintainer@example.com>" ]
+        ; maintenance_intent = None
         ; license = Some [ "LICENSE" ]
         }
+    ; pkg_enabled = false
     ; experimental = []
     }
- |}]
+    |}]
 ;;
 
 let%expect_test "cache-storage-mode hardlink" =
@@ -76,9 +80,11 @@ let%expect_test "cache-storage-mode hardlink" =
     ; project_defaults =
         { authors = Some [ "Author Name <author@example.com>" ]
         ; maintainers = Some [ "Maintainer Name <maintainer@example.com>" ]
+        ; maintenance_intent = None
         ; license = Some [ "LICENSE" ]
         }
+    ; pkg_enabled = false
     ; experimental = []
     }
- |}]
+    |}]
 ;;

@@ -133,3 +133,5 @@ val set : t -> Key.t -> ('a, 'k) Decoder.parser -> ('a, 'k) Decoder.parser
 val key : t -> Key.t Univ_map.Key.t
 val get_exn : t -> (Version.t, 'k) Decoder.parser
 val experimental : t -> bool
+
+module Map : Map.S with type key = t

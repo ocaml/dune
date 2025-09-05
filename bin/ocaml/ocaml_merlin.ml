@@ -169,8 +169,8 @@ end = struct
   let print_merlin_conf ~selected_context file =
     to_local ~selected_context file
     >>| (function
-           | Error s -> Merlin_conf.make_error s
-           | Ok file -> load_merlin_file file)
+     | Error s -> Merlin_conf.make_error s
+     | Ok file -> load_merlin_file file)
     >>| Merlin_conf.to_stdout
   ;;
 
@@ -227,7 +227,8 @@ module Dump_config = struct
       in
       Common.init builder
     in
-    Scheduler.go ~common ~config (fun () -> Server.dump ~selected_context dir)
+    Scheduler.go_with_rpc_server ~common ~config (fun () ->
+      Server.dump ~selected_context dir)
   ;;
 
   let command = Cmd.v info term
@@ -258,7 +259,7 @@ let start_session_term =
     in
     Common.init builder
   in
-  Scheduler.go ~common ~config (Server.start ~selected_context)
+  Scheduler.go_with_rpc_server ~common ~config (Server.start ~selected_context)
 ;;
 
 let command = Cmd.v (start_session_info "ocaml-merlin") start_session_term
@@ -300,7 +301,7 @@ module Dump_dot_merlin = struct
       in
       Common.init builder
     in
-    Scheduler.go ~common ~config (fun () ->
+    Scheduler.go_with_rpc_server ~common ~config (fun () ->
       match path with
       | Some s -> Server.dump_dot_merlin ~selected_context s
       | None -> Server.dump_dot_merlin ~selected_context ".")

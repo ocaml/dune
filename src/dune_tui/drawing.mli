@@ -4,7 +4,7 @@ open Import
 
 (** [Drawing.pp_to_image pp] converts a [pp] to a [I.t] converting the
     [User_message.Style.t] tags into appropriate Notty [A.t]s. *)
-val pp_to_image : User_message.Style.t Pp.t -> I.t
+val pp_to_image : w:int -> User_message.Style.t Pp.t -> I.t
 
 (** [horizontal_rule ~attr ~w] draws a horizontal line with [attr] of length [w]. *)
 val horizontal_rule : attr:A.t -> w:int -> I.t
@@ -18,12 +18,6 @@ val box_with_title : attr:A.t -> title:string -> title_attr:A.t -> I.t -> I.t
 
 module Unicode : sig
   (** Unicode constants useful for drawing. *)
-
-  (** ᚛ U+169B *)
-  val ogham_feather_mark : Uchar.t
-
-  (** ᚜ U+169C *)
-  val ogham_reversed_feather_mark : Uchar.t
 
   (** ― U+2015 *)
   val horizontal_bar : Uchar.t

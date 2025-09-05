@@ -56,9 +56,6 @@ let mk_tmp_dir () =
 let with_tmp_dir fn =
   OpamSystem.with_tmp_dir (fun dir -> fn (Dir.of_string dir))
 
-let with_tmp_dir_job fjob =
-  OpamSystem.with_tmp_dir_job (fun dir -> fjob (Dir.of_string dir))
-
 let rmdir dirname =
   OpamSystem.remove_dir (Dir.to_string dirname)
 
@@ -100,13 +97,6 @@ let dir_is_empty d =
 let in_dir dirname fn = OpamSystem.in_dir dirname fn
 
 let env_of_list l = Array.of_list (List.rev_map (fun (k,v) -> k^"="^v) l)
-
-let exec dirname ?env ?name ?metadata ?keep_going cmds =
-  let env = match env with
-    | None   -> None
-    | Some l -> Some (env_of_list l) in
-  in_dir dirname
-    (fun () -> OpamSystem.commands ?env ?name ?metadata ?keep_going cmds)
 
 let move_dir ~src ~dst =
   OpamSystem.mv (Dir.to_string src) (Dir.to_string dst)
@@ -357,21 +347,6 @@ let copy_in ?root = process_in ?root copy
 let is_archive filename =
   OpamSystem.is_archive (to_string filename)
 
-let extract filename dirname =
-  OpamSystem.extract (to_string filename) ~dir:(Dir.to_string dirname)
-
-let extract_job filename dirname =
-  OpamSystem.extract_job (to_string filename) ~dir:(Dir.to_string dirname)
-
-let extract_in filename dirname =
-  OpamSystem.extract_in (to_string filename) ~dir:(Dir.to_string dirname)
-
-let extract_in_job filename dirname =
-  OpamSystem.extract_in_job (to_string filename) ~dir:(Dir.to_string dirname)
-
-let make_tar_gz_job filename dirname =
-  OpamSystem.make_tar_gz_job (to_string filename) ~dir:(Dir.to_string dirname)
-
 type generic_file =
   | D of Dir.t
   | F of t
@@ -382,7 +357,6 @@ let extract_generic_file filename dirname =
     log "extracting %a to %a"
       (slog to_string) f
       (slog Dir.to_string) dirname;
-    extract f dirname
   | D d ->
     if d <> dirname then (
       log "copying %a to %a"
@@ -428,9 +402,6 @@ let link ?(relative=false) ~target ~link =
   in
   OpamSystem.link target (to_string link)
 [@@ocaml.warning "-16"]
-
-let patch ?preprocess filename dirname =
-  OpamSystem.patch ?preprocess ~dir:(Dir.to_string dirname) (to_string filename)
 
 let flock flag ?dontblock file = OpamSystem.flock flag ?dontblock (to_string file)
 

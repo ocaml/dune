@@ -26,7 +26,7 @@ Make a project that uses the foo library:
 
 Make dune.lock files with known program "dune".
   $ make_lockdir
-  $ cat > dune.lock/foo.pkg <<EOF
+  $ make_lockpkg foo <<EOF
   > (version 0.0.1)
   > (build
   >  (run dune build))
@@ -48,13 +48,13 @@ error message.
   Error: Invalid first line, expected: (lang <lang> <version>)
   
   Hint: You may want to verify the following depexts are installed:
-  - unzip
   - gnupg
+  - unzip
   [1]
 
 Make dune.lock files with unknown program and unknown package.
   $ make_lockdir
-  $ cat > dune.lock/foo.pkg <<EOF
+  $ make_lockpkg foo <<EOF
   > (version 0.0.1)
   > (build
   >  (run unknown-program))

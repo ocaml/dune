@@ -29,11 +29,13 @@ let is_version_control t =
 ;;
 
 let is_local t = String.equal t.transport "file"
+let is_supported_archive t = Option.is_some (Archive_driver.choose_for_filename t.path)
 
-let local_or_git_only url loc =
+let classify url loc =
   match (url : t).backend with
   | `rsync when is_local url -> `Path (Path.of_string url.path)
   | `git -> `Git
+  | `http when is_supported_archive url -> `Archive
   | `rsync | `http | `darcs | `hg ->
     User_error.raise
       ~loc
@@ -44,7 +46,7 @@ let local_or_git_only url loc =
 
 include Comparable.Make (T)
 
-let remote t ~loc rev_store = Rev_store.remote rev_store ~url:(loc, OpamUrl.base_url t)
+let remote t ~loc rev_store = Rev_store.remote rev_store ~loc ~url:(OpamUrl.base_url t)
 
 type resolve =
   | Resolved of Rev_store.Object.resolved
@@ -103,4 +105,4 @@ let fetch_revision t ~loc resolve rev_store =
      | Some rev -> Ok rev)
 ;;
 
-let set_rev (t : t) rev = { t with hash = Some (Rev_store.Object.to_string rev) }
+let set_rev (t : t) rev = { t with hash = Some (Rev_store.Object.to_hex rev) }

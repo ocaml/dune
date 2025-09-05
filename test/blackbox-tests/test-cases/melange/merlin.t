@@ -66,7 +66,7 @@ Paths to Melange stdlib appear in B and S entries without melange.emit stanza
   $ cat >dune <<EOF
   > (melange.emit
   >  (target "$target")
-  >  (compile_flags :standard -mel-g )
+  >  (compile_flags :standard --mel-noassertfalse)
   >  (emit_stdlib false)
   >  (modules main))
   > EOF
@@ -74,7 +74,9 @@ Paths to Melange stdlib appear in B and S entries without melange.emit stanza
   $ touch main.ml
   $ dune build @check
   $ dune ocaml merlin dump-config $PWD | grep -i "$target"
+  ((INDEX $TESTCASE_ROOT/_build/default/.output.mobjs/cctx.ocaml-index)
    (B $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
+  ((INDEX $TESTCASE_ROOT/_build/default/.output.mobjs/cctx.ocaml-index)
    (B $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
 
 Dump-dot-merlin includes the melange flags
@@ -91,7 +93,8 @@ Dump-dot-merlin includes the melange flags
   S /MELC_STDLIB/__private__/melange_mini_stdlib
   S /MELC_STDLIB
   S $TESTCASE_ROOT
-  # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -mel-g
+  INDEX $TESTCASE_ROOT/_build/default/.output.mobjs/cctx.ocaml-index
+  # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g --mel-noassertfalse
   
 Check for flag directives ordering when another preprocessor is defined
 
@@ -133,9 +136,9 @@ User ppx flags should appear in merlin config
    (STDLIB /MELC_STDLIB/melange)
    (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (FLG (-open Foo))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
+   (FLG (-open Foo))
    (UNIT_NAME foo__Bar))
   Bar: _build/default/bar.ml
   ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
@@ -143,9 +146,9 @@ User ppx flags should appear in merlin config
    (STDLIB /MELC_STDLIB/melange)
    (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (FLG (-open Foo))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
+   (FLG (-open Foo))
    (UNIT_NAME foo__Bar))
   Foo: _build/default/foo
   ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
@@ -153,8 +156,8 @@ User ppx flags should appear in merlin config
    (STDLIB /MELC_STDLIB/melange)
    (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (UNIT_NAME foo))
   Foo: _build/default/foo.ml-gen
   ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
@@ -162,8 +165,8 @@ User ppx flags should appear in merlin config
    (STDLIB /MELC_STDLIB/melange)
    (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (UNIT_NAME foo))
   Fooppx: _build/default/fooppx
   ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)

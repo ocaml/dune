@@ -56,10 +56,14 @@ let add_atomically ~mode ~src ~dst : Write_result.t =
 (* CR-someday amokhov: Switch to [renameat2] to go from two operations to
    one. *)
 let write_atomically ~mode ~content dst : Write_result.t =
-  Temp.with_temp_file ~dir:Layout.temp_dir ~prefix:"dune" ~suffix:"write" ~f:(function
+  Temp.with_temp_file
+    ~dir:(Lazy.force Layout.temp_dir)
+    ~prefix:"dune"
+    ~suffix:"write"
+    ~f:(function
     | Error e -> Write_result.Error e
     | Ok temp_file ->
-      (match Io.write_file ~binary:false temp_file content with
+      (match Io.write_file ~binary:true temp_file content with
        | exception e -> Error e
        | () -> add_atomically ~mode ~src:temp_file ~dst))
 ;;

@@ -9,22 +9,10 @@ type 'a t = 'a one list
 
 let fold t ~f ~init = List.fold_left ~f:(fun acc x -> f x acc) ~init t
 
-let map t ~f =
-  List.map t ~f:(function
-    | Unnamed a -> Unnamed (f a)
-    | Named (s, xs) -> Named (s, List.map ~f xs))
-;;
-
 let to_list =
   List.concat_map ~f:(function
     | Unnamed x -> [ x ]
     | Named (_, xs) -> xs)
-;;
-
-let find t k =
-  List.find_map t ~f:(function
-    | Unnamed _ -> None
-    | Named (k', x) -> Option.some_if (k = k') x)
 ;;
 
 let empty = []
@@ -73,20 +61,13 @@ let decode elem =
 let encode encode bindings =
   Dune_sexp.List
     (List.map bindings ~f:(function
-      | Unnamed a -> encode a
-      | Named (name, bindings) ->
-        Dune_sexp.List (Dune_sexp.atom (":" ^ name) :: List.map ~f:encode bindings)))
+       | Unnamed a -> encode a
+       | Named (name, bindings) ->
+         Dune_sexp.List (Dune_sexp.atom (":" ^ name) :: List.map ~f:encode bindings)))
 ;;
 
 let var_names t =
   List.filter_map t ~f:(function
     | Unnamed _ -> None
     | Named (s, _) -> Some s)
-;;
-
-let to_pform_map t =
-  Pform.Map.of_list_exn
-    (List.filter_map t ~f:(function
-      | Unnamed _ -> None
-      | Named (name, l) -> Some (Pform.Var (User_var name), l)))
 ;;

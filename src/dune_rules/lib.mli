@@ -89,6 +89,13 @@ module DB : sig
   (** A database allow to resolve library names *)
   type t = db
 
+  val with_parent : t -> parent:t option -> t
+
+  (** Create a library database from a specified list of library paths. A
+      library path is a path to a "lib" directory such as those found in the
+      OCAMLPATH variable or the "path" field of findlib.conf. *)
+  val of_paths : Context.t -> paths:Path.t list -> t Memo.t
+
   val installed : Context.t -> t Memo.t
 
   module Resolve_result : sig

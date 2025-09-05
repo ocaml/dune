@@ -29,7 +29,7 @@ end
 type input =
   { targets : Targets.Validated.t option (* Some Jane Street actions use [None] *)
   ; root : Path.t
-  (** [root] should be the root of the current build context, or the root
+    (** [root] should be the root of the current build context, or the root
       of the sandbox if the action is sandboxed. *)
   ; context : Build_context.t option
   ; env : Env.t

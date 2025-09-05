@@ -44,7 +44,7 @@ Let's create a local switch: `cd` to this directory and run the following comman
 This can take a few minutes.
 
 ```sh
-opam switch create ./ 5.1.1
+opam switch create ./ 5.3.0
 ```
 
 This command has created a directory named `_opam` in the current directory.

@@ -1,8 +1,9 @@
 dune
 ====
 
-``dune`` files are the main part of Dune. They are used to describe libraries,
-executables, tests, and everything Dune needs to know about.
+``dune`` files are the main part of Dune. Each ``dune`` file belongs to a Dune
+project (see :doc:`/explanation/scopes`). They are used to describe libraries, executables,
+tests, and everything else Dune needs to know about.
 
 The syntax of ``dune`` files is described in
 :doc:`/reference/lexical-conventions`.
@@ -29,7 +30,7 @@ The following pages describe the available stanzas and their meanings.
     .. toctree::
       :caption: Components
       :maxdepth: 1
-    
+
       executable
       library
       foreign_library
@@ -43,11 +44,11 @@ The following pages describe the available stanzas and their meanings.
       plugin
 
   .. grid-item::
-    
+
     .. toctree::
       :caption: Project structure
       :maxdepth: 1
-    
+
       rule
       alias
       copy_files
@@ -66,16 +67,22 @@ The following pages describe the available stanzas and their meanings.
     .. toctree::
       :caption: Integrations
       :maxdepth: 1
-    
+
       cinaps
       coq_theory
       mdx
       menhir
       ocamllex
       ocamlyacc
-    
+
+    .. toctree::
+      :caption: Experimental
+      :maxdepth: 1
+
+      library_parameter
+
     .. toctree::
       :caption: Deprecated
       :maxdepth: 1
-    
+
       jbuild_version

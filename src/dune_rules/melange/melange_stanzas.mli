@@ -19,7 +19,6 @@ module Emit : sig
     ; compile_flags : Ordered_set_lang.Unexpanded.t
     ; allow_overlapping_dependencies : bool
     ; enabled_if : Blang.t
-    ; dune_version : Dune_lang.Syntax.Version.t
     }
 
   include Stanza.S with type t := t
@@ -28,5 +27,3 @@ module Emit : sig
   val decode : t Dune_lang.Decoder.t
   val target_dir : t -> dir:Path.Build.t -> Path.Build.t
 end
-
-val syntax : Syntax.t

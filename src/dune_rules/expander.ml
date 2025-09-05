@@ -129,7 +129,7 @@ let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
   match
     let name = Package.Name.of_string s in
     let packages =
-      (* CR-rgrinberg: craziness to preserve buggy behavior people are relying
+      (* CR-someday rgrinberg: craziness to preserve buggy behavior people are relying
          on at the moment *)
       Dune_project.including_hidden_packages project
     in
@@ -242,9 +242,9 @@ type nonrec expansion_result =
 let static v = Direct (Without v)
 
 let[@inline never] invalid_use_of_target_variable
-  t
-  ~(source : Dune_lang.Template.Pform.t)
-  ~var_multiplicity
+                     t
+                     ~(source : Dune_lang.Template.Pform.t)
+                     ~var_multiplicity
   =
   match t.expanding_what with
   | Nothing_special | Deps_like_field -> isn't_allowed_in_this_position ~source
@@ -516,6 +516,10 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
     (let+ ocaml = ocaml in
      lib_config_var var ocaml.lib_config)
     |> static
+  | Os v ->
+    static
+      (let+ v = Lock_dir.Sys_vars.(os poll v) in
+       [ Value.String (Option.value v ~default:"") ])
   | Ext_exe
   | Cpp
   | Pa_cpp
@@ -557,6 +561,11 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
   | Inline_tests ->
     (let+ inline_tests = Env_stanza_db.inline_tests ~dir in
      Dune_env.Inline_tests.to_string inline_tests |> string)
+    |> static
+  | Oxcaml_supported ->
+    (let+ ocaml = Context.ocaml context in
+     let ocaml_version = Ocaml_config.version_string ocaml.ocaml_config in
+     [ Value.of_bool (Ocaml.Version.supports_oxcaml ocaml_version) ])
     |> static
 ;;
 
@@ -604,10 +613,10 @@ let env_macro t source macro_invocation =
 ;;
 
 let expand_pform_macro
-  (context : Context.t)
-  ~dir
-  ~source
-  (macro_invocation : Pform.Macro_invocation.t)
+      (context : Context.t)
+      ~dir
+      ~source
+      (macro_invocation : Pform.Macro_invocation.t)
   =
   let s = Pform.Macro_invocation.Args.whole macro_invocation in
   match macro_invocation.macro with
@@ -737,20 +746,20 @@ let describe_source ~source =
 let expand_pform t ~source pform =
   Action_builder.push_stack_frame
     (fun () ->
-      match
-        match
-          expand_pform_gen
-            ~context:t.context
-            ~bindings:t.bindings
-            ~dir:t.dir
-            ~source
-            pform
-        with
-        | Direct v -> v
-        | Need_full_expander f -> f t
-      with
-      | With x -> x
-      | Without x -> Action_builder.of_memo x)
+       match
+         match
+           expand_pform_gen
+             ~context:t.context
+             ~bindings:t.bindings
+             ~dir:t.dir
+             ~source
+             pform
+         with
+         | Direct v -> v
+         | Need_full_expander f -> f t
+       with
+       | With x -> x
+       | Without x -> Action_builder.of_memo x)
     ~human_readable_description:(fun () -> describe_source ~source)
 ;;
 
@@ -770,14 +779,14 @@ let expand_str_partial t template =
 ;;
 
 let make_root
-  ~project
-  ~scope
-  ~scope_host
-  ~(context : Context.t)
-  ~env
-  ~public_libs
-  ~public_libs_host
-  ~artifacts_host
+      ~project
+      ~scope
+      ~scope_host
+      ~(context : Context.t)
+      ~env
+      ~public_libs
+      ~public_libs_host
+      ~artifacts_host
   =
   { dir = Context.build_dir context
   ; env
@@ -817,20 +826,20 @@ module No_deps = struct
   let expand_pform_no_deps t ~source pform =
     Memo.push_stack_frame
       (fun () ->
-        match
-          match
-            expand_pform_gen
-              ~context:t.context
-              ~bindings:t.bindings
-              ~dir:t.dir
-              ~source
-              pform
-          with
-          | Direct v -> v
-          | Need_full_expander f -> f t
-        with
-        | With _ -> isn't_allowed_in_this_position ~source
-        | Without x -> x)
+         match
+           match
+             expand_pform_gen
+               ~context:t.context
+               ~bindings:t.bindings
+               ~dir:t.dir
+               ~source
+               pform
+           with
+           | Direct v -> v
+           | Need_full_expander f -> f t
+         with
+         | With _ -> isn't_allowed_in_this_position ~source
+         | Without x -> x)
       ~human_readable_description:(fun () -> describe_source ~source)
   ;;
 

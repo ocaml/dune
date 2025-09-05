@@ -14,7 +14,6 @@ type install_warning =
   | `Cygwin | `Msys2 | `Tainted of [`Msys2 | `Cygwin] | `Cygwin_libraries ]
 type install_warning_fn = string -> install_warning -> unit
 
-exception Process_error of OpamProcess.result
 exception Internal_error of string
 exception Command_not_found of string
 exception File_not_found of string
@@ -28,13 +27,6 @@ let internal_error fmt =
     log "error: %s" str;
     raise (Internal_error str)
   ) fmt
-
-let process_error r =
-  if r.OpamProcess.r_signal = Some Sys.sigint then raise Sys.Break
-  else raise (Process_error r)
-
-let raise_on_process_error r =
-  if OpamProcess.is_failure r then raise (Process_error r)
 
 let command_not_found cmd =
   raise (Command_not_found cmd)
@@ -365,11 +357,6 @@ let in_tmp_dir fn =
   with_tmp_dir @@ fun dir ->
     in_dir dir fn
 
-let with_tmp_dir_job fjob =
-  let dir = mk_temp_dir () in
-  mkdir dir;
-  OpamProcess.Job.finally (fun () -> remove_dir dir) (fun () -> fjob dir)
-
 let remove file =
   if (try Sys2.is_directory file with Sys_error _ -> false) then
     remove_dir file
@@ -427,145 +414,6 @@ let back_to_forward =
   else
     fun x -> x
 
-(* OCaml 4.05.0 no longer follows the updated PATH to resolve commands. This
-   makes unqualified commands absolute as a workaround. *)
-let t_resolve_command =
-  let is_external_cmd name =
-    let name = forward_to_back name in
-    OpamStd.String.contains_char name Filename.dir_sep.[0]
-  in
-  let check_perms =
-    if Sys.win32 then fun f ->
-      try (Unix.stat f).Unix.st_kind = Unix.S_REG
-      with e -> OpamStd.Exn.fatal e; false
-    else fun f ->
-      try
-        let open Unix in
-        let uid = geteuid () in
-        let groups = OpamStd.IntSet.of_list (getegid () :: Array.to_list (getgroups ())) in
-        let {st_uid; st_gid; st_perm; _} = stat f in
-        let mask =
-          if uid = st_uid then
-            0o100
-          else if OpamStd.IntSet.mem st_gid groups then
-            0o010
-          else
-            0o001
-        in
-        if (st_perm land mask) <> 0 then
-          true
-        else
-          match OpamACL.get_acl_executable_info f st_uid with
-          | None -> false
-          | Some [] -> true
-          | Some gids -> OpamStd.IntSet.(not (is_empty (inter (of_list gids) groups)))
-      with e -> OpamStd.Exn.fatal e; false
-  in
-  let resolve ?dir env name =
-    if not (Filename.is_relative name) then begin
-      (* absolute path *)
-      if not (Sys.file_exists name) then `Not_found
-      else if not (check_perms name) then `Denied
-      else `Cmd name
-    end else if is_external_cmd name then begin
-      (* relative path *)
-      let cmd = match dir with
-        | None -> name
-        | Some d -> Filename.concat d name
-      in
-      if not (Sys.file_exists cmd) then `Not_found
-      else if not (check_perms cmd) then `Denied
-      else `Cmd cmd
-    end else
-    (* bare command, lookup in PATH *)
-    (* Following the shell sematics for looking up PATH, programs with the
-       expected name but not the right permissions are skipped silently.
-       Therefore, only two outcomes are possible in that case, [`Cmd ..] or
-       [`Not_found]. *)
-    let path = OpamStd.Sys.split_path_variable (env_var env "PATH") in
-    let name =
-      if Sys.win32 && not (Filename.check_suffix name ".exe") then
-        name ^ ".exe"
-      else name
-    in
-    let possibles = OpamStd.List.filter_map (fun path ->
-        let candidate = Filename.concat path name in
-        if Sys.file_exists candidate then Some candidate else None) path
-    in
-    match List.find check_perms possibles with
-    | cmdname -> `Cmd cmdname
-    | exception Not_found ->
-      if possibles = [] then
-        `Not_found
-      else
-        `Denied
-  in
-  fun ?env ?dir name ->
-    let env = match env with None -> OpamProcess.default_env () | Some e -> e in
-    resolve env ?dir name
-
-let resolve_command ?env ?dir name =
-  match t_resolve_command ?env ?dir name with
-  | `Cmd cmd -> Some cmd
-  | `Denied | `Not_found -> None
-
-let apply_cygpath name =
-  (* XXX Deeper bug, looking in the cygvoke code (see OpamProcess.create) *)
-  match resolve_command "cygpath" with
-  | Some cygpath ->
-    let r =
-      OpamProcess.run
-        (OpamProcess.command ~name:(temp_file "command")
-           ~allow_stdin:false ~verbose:false cygpath ["--"; name])
-    in
-    OpamProcess.cleanup ~force:true r;
-    if OpamProcess.is_success r then
-      match r.OpamProcess.r_stdout with
-      | l::_ -> l
-      | _ -> ""
-    else
-      OpamConsole.error_and_exit `Internal_error "Could not apply cygpath to %s" name
-  | None ->
-    OpamConsole.error_and_exit `Internal_error "Could not apply cygpath to %s" name
-
-let get_cygpath_function =
-  if Sys.win32 then
-    fun ~command ->
-      lazy (
-        if OpamStd.Option.map_default
-            (OpamStd.Sys.is_cygwin_variant
-               ~cygbin:(OpamCoreConfig.(!r.cygbin)))
-               false
-               (resolve_command command) then
-          apply_cygpath
-        else fun x -> x
-      )
-  else
-    let f = Lazy.from_val (fun x -> x) in
-    fun ~command:_ -> f
-
-let apply_cygpath_path_transform path =
-  let r =
-    OpamProcess.run
-      (OpamProcess.command ~name:(temp_file "command") ~verbose:false "cygpath" ["--path"; "--"; path])
-  in
-  OpamProcess.cleanup ~force:true r;
-  if OpamProcess.is_success r then
-    List.hd r.OpamProcess.r_stdout
-  else
-    OpamConsole.error_and_exit `Internal_error "Could not apply cygpath --path to %s" path
-
-let get_cygpath_path_transform =
-  (* We are running in a functioning Cygwin or MSYS2 environment if and only
-     if `cygpath` is in the PATH. *)
-  if Sys.win32 then
-    lazy (
-      match resolve_command "cygpath" with
-      | Some _ -> apply_cygpath_path_transform
-      | None -> fun x -> x)
-  else
-    Lazy.from_val (fun x -> x)
-
 let runs = ref []
 let print_stats () =
   match !runs with
@@ -575,94 +423,6 @@ let print_stats () =
       (List.length l) (OpamStd.Format.itemize ~bullet:"  " (String.concat " ") l)
 
 let log_file ?dir name = temp_file ?dir (OpamStd.Option.default "log" name)
-
-let make_command
-    ?verbose ?env ?name ?text ?metadata ?allow_stdin ?stdout
-    ?dir ?(resolve_path=true)
-    cmd args =
-  let env = match env with None -> OpamProcess.default_env () | Some e -> e in
-  let name = log_file name in
-  let verbose =
-    OpamStd.Option.default OpamCoreConfig.(!r.verbose_level >= 2) verbose
-  in
-  let full_cmd =
-    if resolve_path then t_resolve_command ~env ?dir cmd
-    else `Cmd cmd
-  in
-  match full_cmd with
-  | `Cmd cmd ->
-    OpamProcess.command
-      ~env ~name ?text ~verbose ?metadata ?allow_stdin ?stdout ?dir
-      cmd args
-  | `Not_found -> command_not_found cmd
-  | `Denied -> permission_denied cmd
-
-let run_process
-    ?verbose ?env ~name ?metadata ?stdout ?allow_stdin command =
-  let env = match env with None -> OpamProcess.default_env () | Some e -> e in
-  let chrono = OpamConsole.timer () in
-  runs := command :: !runs;
-  match command with
-  | []          -> invalid_arg "run_process"
-  | cmd :: args ->
-    match t_resolve_command ~env cmd with
-    | `Cmd full_cmd ->
-      let verbose = match verbose with
-        | None   -> OpamCoreConfig.(!r.verbose_level) >= 2
-        | Some b -> b in
-
-      let r =
-        OpamProcess.run
-          (OpamProcess.command
-             ~env ~name ~verbose ?metadata ?allow_stdin ?stdout
-             full_cmd args)
-      in
-      let str = String.concat " " (cmd :: args) in
-      log ~level:2 "[%a] (in %.3fs) %s"
-        (OpamConsole.slog Filename.basename) name
-        (chrono ()) str;
-      r
-    | `Not_found -> command_not_found cmd
-    | `Denied -> permission_denied cmd
-
-let command ?verbose ?env ?name ?metadata ?allow_stdin cmd =
-  let name = log_file name in
-  let r = run_process ?verbose ?env ~name ?metadata ?allow_stdin cmd in
-  OpamProcess.cleanup r;
-  raise_on_process_error r
-
-let commands ?verbose ?env ?name ?metadata ?(keep_going=false) commands =
-  let name = log_file name in
-  let run = run_process ?verbose ?env ~name ?metadata in
-  let command r0 c =
-    match r0, keep_going with
-    | (`Error _ | `Exception _), false -> r0
-    | _ ->
-      let r1 = try
-          let r = run c in
-          if OpamProcess.is_success r then `Successful r else `Error r
-        with Command_not_found _ as e -> `Exception e
-      in
-      match r0 with `Start | `Successful _ -> r1 | _ -> r0
-  in
-  match List.fold_left command `Start commands with
-  | `Start -> ()
-  | `Successful r -> OpamProcess.cleanup r
-  | `Error e -> process_error e
-  | `Exception e -> raise e
-
-let read_command_output ?verbose ?env ?metadata ?allow_stdin
-    ?(ignore_stderr=false) cmd =
-  let name = log_file None in
-  let stdout = name ^ (if ignore_stderr then ".stdout" else ".out") in
-  let r =
-    run_process ?verbose ?env ~name ?metadata ?allow_stdin
-      ~stdout
-      cmd
-  in
-  OpamProcess.cleanup r;
-  raise_on_process_error r;
-  r.OpamProcess.r_stdout
 
 let verbose_for_base_commands () =
   OpamCoreConfig.(!r.verbose_level) >= 3
@@ -886,22 +646,6 @@ let install ?(warning=default_install_warning) ?exec src dst =
   else
     copy_file_aux ~chmod:(fun _ -> perm) ~src ~dst ()
 
-let cpu_count () =
-  try
-    let ans =
-      let open OpamStd in
-      match Sys.os () with
-      | Sys.Win32 -> [Env.get "NUMBER_OF_PROCESSORS"]
-      | Sys.FreeBSD -> read_command_output ~verbose:(verbose_for_base_commands ())
-                         ["sysctl"; "-n"; "hw.ncpu"]
-      | _ -> read_command_output ~verbose:(verbose_for_base_commands ())
-               ["getconf"; "_NPROCESSORS_ONLN"]
-    in
-    int_of_string (List.hd ans)
-  with Not_found | Process_error _ | Failure _ -> 1
-
-open OpamProcess.Job.Op
-
 module Tar = struct
 
   type extract =
@@ -963,45 +707,11 @@ module Tar = struct
   let is_archive file =
     get_type file <> None
 
-  let check_extract file =
-    OpamStd.Option.Op.(
-      get_type file >>= fun typ ->
-      let cmd = extract_command typ in
-      let res = resolve_command cmd <> None in
-      if not res then
-        Some (Printf.sprintf "Tar needs %s to extract the archive" cmd)
-      else None)
-
   let tar_cmd = lazy (
     match OpamStd.Sys.os () with
     | OpamStd.Sys.OpenBSD -> "gtar"
     | _ -> "tar"
   )
-
-  let cygpath_tar = lazy (
-    Lazy.force (get_cygpath_function ~command:(Lazy.force tar_cmd))
-  )
-
-  let extract_command =
-    fun file ->
-      OpamStd.Option.Op.(
-        get_type file >>| fun typ ->
-        let f = Lazy.force cygpath_tar in
-        let tar_cmd = Lazy.force tar_cmd in
-        let command c dir =
-          make_command tar_cmd [ Printf.sprintf "xf%c" c ; f file; "-C" ; f dir ]
-        in
-        command (extract_option typ))
-
-  let compress_command =
-    fun file dir ->
-      let f = Lazy.force cygpath_tar in
-      let tar_cmd = Lazy.force tar_cmd in
-      make_command tar_cmd [
-        "cfz"; f file;
-        "-C" ; f (Filename.dirname dir);
-        f (Filename.basename dir)
-      ]
 
 end
 
@@ -1022,97 +732,10 @@ module Zip = struct
       with Sys_error _ | End_of_file -> false
     else
       Filename.check_suffix f "zip"
-
-  let extract_command file =
-    Some (fun dir -> make_command "unzip" [ file; "-d"; dir ])
 end
 
 let is_archive file =
   Tar.is_archive file || Zip.is_archive file
-
-let extract_command file =
-  if Zip.is_archive file then Zip.extract_command file
-  else Tar.extract_command file
-
-let make_tar_gz_job ~dir file =
-  let tmpfile = file ^ ".tmp" in
-  remove_file tmpfile;
-  Tar.compress_command tmpfile dir @@> fun r ->
-  OpamProcess.cleanup r;
-  if OpamProcess.is_success r then
-    (mv tmpfile file; Done None)
-  else
-    (remove_file tmpfile; Done (Some (Process_error r)))
-
-let extract_job ~dir file =
-  if not (Sys.file_exists file) then
-    Done (Some (File_not_found file))
-  else
-  with_tmp_dir_job @@ fun tmp_dir ->
-  match extract_command file with
-  | None   ->
-    Done (Some (Failure ("Unknown archive type: "^file)))
-  | Some cmd ->
-    cmd tmp_dir @@> fun r ->
-    if not (OpamProcess.is_success r) then
-      if Zip.is_archive file then
-        Done (Some (Process_error r))
-      else match Tar.check_extract file with
-        | None -> Done (Some (Process_error r))
-        | Some s -> Done (Some (Failure s))
-    else if try not (Sys.is_directory dir) with Sys_error _ -> false then
-      internal_error "Extracting the archive would overwrite %s." dir
-    else
-    let flist =
-      OpamStd.Op.(
-        files_all_not_dir tmp_dir |>
-        List.filter (not @* OpamStd.String.contains ~sub:"pax_global_header"))
-    in
-    match flist with
-    | [] ->
-      begin match directories_strict tmp_dir with
-        | [x] ->
-          (try
-             mkdir (Filename.dirname dir);
-             copy_dir x dir;
-             Done None
-           with e -> OpamStd.Exn.fatal e; Done (Some e))
-        | _ ->
-          internal_error "The archive %S contains multiple root directories."
-            file
-      end
-    | _   ->
-      mkdir (Filename.dirname dir);
-      try copy_dir tmp_dir dir; Done None
-      with e -> OpamStd.Exn.fatal e; Done (Some e)
-
-let extract ~dir file =
-  match OpamProcess.Job.run (extract_job ~dir file) with
-  | Some e -> raise e
-  | None -> ()
-
-let extract_in_job ~dir file =
-  OpamProcess.Job.catch (fun e -> Done (Some e)) @@ fun () ->
-  mkdir dir;
-  match extract_command file with
-  | None -> internal_error "%s is not a valid tar or zip archive." file
-  | Some cmd ->
-    cmd dir @@> fun r ->
-    if not (OpamProcess.is_success r) then
-      if Zip.is_archive file then
-        Done (Some (Process_error r))
-      else match Tar.check_extract file with
-        | None ->
-          Done (Some (Failure
-                        (Printf.sprintf "Failed to extract archive %s: %s" file
-                           (OpamProcess.result_summary r))))
-        | Some s -> Done (Some (Failure s))
-    else Done None
-
-let extract_in ~dir file =
-  match OpamProcess.Job.run (extract_in_job ~dir file) with
-  | Some e -> raise e
-  | None -> ()
 
 let link src dst =
   let fallback () =
@@ -1621,32 +1244,8 @@ let translate_patch ~dir orig corrected =
   end;
   close_in ch
 
-let patch ?(preprocess=true) ~dir p =
-  if not (Sys.file_exists p) then
-    (OpamConsole.error "Patch file %S not found." p;
-     raise Not_found);
-  let p' =
-    if preprocess then
-      let p' = temp_file ~auto_clean:false "processed-patch" in
-      translate_patch ~dir p p';
-      p'
-    else
-      p
-  in
-  let patch_cmd =
-    match OpamStd.Sys.os () with
-    | OpamStd.Sys.OpenBSD
-    | OpamStd.Sys.FreeBSD -> "gpatch"
-    | _ -> "patch"
-  in
-  make_command ~name:"patch" ~dir patch_cmd ["-p1"; "-i"; p'] @@> fun r ->
-    if not (OpamConsole.debug ()) then Sys.remove p';
-    if OpamProcess.is_success r then Done None
-    else Done (Some (Process_error r))
-
 let register_printer () =
   Printexc.register_printer (function
-    | Process_error r     -> Some (OpamProcess.result_summary r)
     | Internal_error m    -> Some m
     | Command_not_found c -> Some (Printf.sprintf "%S: command not found." c)
     | Permission_denied c -> Some (Printf.sprintf "%S: permission denied." c)
@@ -1664,6 +1263,3 @@ let init () =
   Sys.catch_break true;
   try Sys.set_signal Sys.sigpipe (Sys.Signal_handle (fun _ -> ()))
   with Invalid_argument _ -> ()
-
-let () =
-  OpamProcess.set_resolve_command resolve_command

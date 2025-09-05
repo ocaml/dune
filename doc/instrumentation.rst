@@ -96,14 +96,14 @@ To enable an instrumentation backend globally, type the following in your
 
 .. code:: dune
 
-   (lang dune 3.18)
+   (lang dune {{latest}})
    (instrument_with bisect_ppx)
 
 or for each context individually:
 
 .. code:: dune
 
-   (lang dune 3.18)
+   (lang dune {{latest}})
    (context default)
    (context (default (name coverage) (instrument_with bisect_ppx)))
    (context (default (name profiling) (instrument_with landmarks)))

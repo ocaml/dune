@@ -13,7 +13,7 @@ type t =
   ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
   ; modes : Mode_conf.Lib.Set.t
   ; kind : Lib_kind.t
-      (* TODO: It may be worth remaming [c_library_flags] to
+    (* TODO: It may be worth remaming [c_library_flags] to
          [link_time_flags_for_c_compiler] and [library_flags] to
          [link_time_flags_for_ocaml_compiler], both here and in the Dune
          language, to make it easier to understand the purpose of various
@@ -73,6 +73,7 @@ val archive : t -> dir:Path.Build.t -> ext:string -> Path.Build.t
 
 val best_name : t -> Lib_name.t
 val is_virtual : t -> bool
+val is_parameter : t -> bool
 val is_impl : t -> bool
 val obj_dir : dir:Path.Build.t -> t -> Path.Build.t Obj_dir.t
 val main_module_name : t -> Lib_info.Main_module_name.t

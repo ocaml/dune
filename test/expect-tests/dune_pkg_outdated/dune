@@ -4,7 +4,6 @@
  (libraries
   dune_tests_common
   stdune
-  dune_pkg_outdated
   dune_pkg
   dune_console
   ;; This is because of the (implicit_transitive_deps false)

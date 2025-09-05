@@ -16,7 +16,7 @@ let info = Cmd.info "doc" ~doc ~man
 let lock_odoc_if_dev_tool_enabled () =
   match Lazy.force Lock_dev_tool.is_enabled with
   | false -> Action_builder.return ()
-  | true -> Action_builder.of_memo (Lock_dev_tool.lock_odoc ())
+  | true -> Action_builder.of_memo (Lock_dev_tool.lock_dev_tool Odoc)
 ;;
 
 let term =
@@ -52,9 +52,7 @@ let term =
         let path = Env_path.path Env.initial in
         Bin.which ~path cmd_name
       in
-      ( open_command
-      , (* First element of argv is the name of the command. *)
-        (cmd_name :: args) @ [ relative_toplevel_index_path ] )
+      open_command, args @ [ relative_toplevel_index_path ]
     with
     | Some (cmd, args) ->
       Proc.restore_cwd_and_execve (Path.to_absolute_filename cmd) args ~env:Env.initial
@@ -64,7 +62,7 @@ let term =
             "No browser could be found, you will have to open the documentation yourself."
         ]
   in
-  Build_cmd.run_build_command ~common ~config ~request
+  Build.run_build_command ~common ~config ~request
 ;;
 
 let cmd = Cmd.v info term

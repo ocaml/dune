@@ -1,0 +1,18 @@
+(cram
+ (applies_to subprocess)
+ (deps %{bin:ps}))
+
+(cram
+ (applies_to error)
+ (enabled_if false))
+
+;; mac has a different sh error message
+
+(cram
+ (applies_to error)
+ (enabled_if
+  (<> "macosx" %{ocaml-config:system})))
+
+(cram
+ (applies_to hg-access)
+ (enabled_if %{bin-available:hg}))

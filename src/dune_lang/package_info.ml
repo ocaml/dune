@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp
+open Import
 
 type t =
   { source : Source_kind.t option
@@ -9,6 +8,7 @@ type t =
   ; bug_reports : string option
   ; documentation : string option
   ; maintainers : string list option
+  ; maintenance_intent : string list option
   }
 
 let source t = t.source
@@ -29,6 +29,7 @@ let bug_reports t =
 
 let documentation t = t.documentation
 let maintainers t = t.maintainers
+let maintenance_intent t = t.maintenance_intent
 
 let empty =
   { source = None
@@ -38,6 +39,7 @@ let empty =
   ; bug_reports = None
   ; documentation = None
   ; maintainers = None
+  ; maintenance_intent = None
   }
 ;;
 
@@ -54,10 +56,20 @@ let example ~authors ~maintainers ~license =
       (* homepage and bug_reports are inferred from the source *)
   ; homepage = None
   ; bug_reports = None
+  ; maintenance_intent = None
   }
 ;;
 
-let to_dyn { source; license; authors; homepage; bug_reports; documentation; maintainers }
+let to_dyn
+      { source
+      ; license
+      ; authors
+      ; homepage
+      ; bug_reports
+      ; documentation
+      ; maintainers
+      ; maintenance_intent
+      }
   =
   let open Dyn in
   record
@@ -67,23 +79,111 @@ let to_dyn { source; license; authors; homepage; bug_reports; documentation; mai
     ; "documentation", (option string) documentation
     ; "bug_reports", (option string) bug_reports
     ; "maintainers", option (list string) maintainers
+    ; "maintenance_intent", option (list string) maintenance_intent
     ; "authors", option (list string) authors
     ]
 ;;
 
 let encode_fields
-  { source; authors; license; homepage; documentation; bug_reports; maintainers }
+      { source
+      ; authors
+      ; license
+      ; homepage
+      ; documentation
+      ; bug_reports
+      ; maintainers
+      ; maintenance_intent
+      }
   =
   let open Encoder in
   record_fields
     [ field_o "source" Source_kind.encode source
     ; field_l "authors" string (Option.value ~default:[] authors)
     ; field_l "maintainers" string (Option.value ~default:[] maintainers)
+    ; field_l "maintenance_intent" string (Option.value ~default:[] maintenance_intent)
     ; field_l "license" string (Option.value ~default:[] license)
     ; field_o "homepage" string homepage
     ; field_o "documentation" string documentation
     ; field_o "bug_reports" string bug_reports
     ]
+;;
+
+let maintenance_intent_list = [ "any"; "latest"; "none" ]
+
+let rec pp_or_list () = function
+  | [] -> ""
+  | [ x ] -> x
+  | [ x; y ] -> sprintf "%S or %S" x y
+  | x :: xs -> sprintf "%S, %a" x pp_or_list xs
+;;
+
+let valid_maintenance_intent =
+  let open Decoder in
+  map_validate (located string) ~f:(fun (loc, str) ->
+    let rec parse_part i =
+      if i >= String.length str
+      then if i > 0 then Error "version ends with a dot" else Error "empty version"
+      else (
+        match str.[i] with
+        | '(' -> parse_token (i + 1) (i + 1)
+        | '.' -> Error "unexpected dot"
+        | _ -> inside_part (i + 1))
+    and inside_part i =
+      if i >= String.length str
+      then Ok ()
+      else (
+        match str.[i] with
+        | '.' -> parse_part (i + 1)
+        | '(' | ')' -> Error "unexpected parenthesis"
+        | _ -> inside_part (i + 1))
+    and parse_token start i =
+      if i >= String.length str
+      then Error "unclosed parenthesis"
+      else (
+        match str.[i] with
+        | ')' ->
+          let token = String.sub str ~pos:start ~len:(i - start) in
+          if List.mem ~equal:String.equal maintenance_intent_list token
+          then after_token (i + 1)
+          else
+            Error
+              (sprintf
+                 "unknown intent %S, expected %a"
+                 token
+                 pp_or_list
+                 maintenance_intent_list)
+        | '-' ->
+          let token = String.sub str ~pos:start ~len:(i - start) in
+          if String.equal token "latest"
+          then parse_num (i + 1) (i + 1)
+          else Error (sprintf "substraction only allowed for \"latest\", not %S" token)
+        | _ -> parse_token start (i + 1))
+    and parse_num start i =
+      if i >= String.length str
+      then Error "unclosed parenthesis"
+      else (
+        match str.[i] with
+        | ')' when i > start -> after_token (i + 1)
+        | '0' when i > start -> parse_num start (i + 1)
+        | '0' -> parse_num (i + 1) (i + 1)
+        | '1' .. '9' -> parse_num start (i + 1)
+        | _ -> Error "invalid substraction")
+    and after_token i =
+      if i >= String.length str
+      then Ok ()
+      else (
+        match str.[i] with
+        | '.' -> parse_part (i + 1)
+        | _ -> Error "missing dot after intent")
+    in
+    match parse_part 0 with
+    | Ok () -> Ok str
+    | Error msg -> Error (User_error.make ~loc [ Pp.text msg ]))
+;;
+
+let decode_maintenance_intent =
+  let open Decoder in
+  Syntax.since Stanza.syntax (3, 18) >>> repeat valid_maintenance_intent
 ;;
 
 let decode ?since () =
@@ -109,8 +209,16 @@ let decode ?since () =
     field_o "bug_reports" (Syntax.since Stanza.syntax (v (1, 10)) >>> string)
   and+ maintainers =
     field_o "maintainers" (Syntax.since Stanza.syntax (v (1, 10)) >>> repeat string)
-  in
-  { source; authors; license; homepage; documentation; bug_reports; maintainers }
+  and+ maintenance_intent = field_o "maintenance_intent" decode_maintenance_intent in
+  { source
+  ; authors
+  ; license
+  ; homepage
+  ; documentation
+  ; bug_reports
+  ; maintainers
+  ; maintenance_intent
+  }
 ;;
 
 let superpose t1 t2 =
@@ -126,9 +234,27 @@ let superpose t1 t2 =
   ; documentation = f t1.documentation t2.documentation
   ; bug_reports = f t1.bug_reports t2.bug_reports
   ; maintainers = f t1.maintainers t2.maintainers
+  ; maintenance_intent = f t1.maintenance_intent t2.maintenance_intent
   }
 ;;
 
-let create ~maintainers ~authors ~homepage ~bug_reports ~documentation ~license ~source =
-  { maintainers; authors; homepage; bug_reports; documentation; license; source }
+let create
+      ~maintainers
+      ~maintenance_intent
+      ~authors
+      ~homepage
+      ~bug_reports
+      ~documentation
+      ~license
+      ~source
+  =
+  { maintainers
+  ; authors
+  ; homepage
+  ; bug_reports
+  ; documentation
+  ; license
+  ; source
+  ; maintenance_intent
+  }
 ;;

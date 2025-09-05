@@ -1,7 +1,6 @@
-open Stdune
+open Import
 open Dune_config
 module Stringlike = Dune_util.Stringlike
-module Syntax = Dune_sexp.Syntax
 
 module Name = struct
   include String
@@ -22,7 +21,7 @@ type t =
   { name : Name.t
   ; since : Syntax.Version.t (* The version where this warning was introduced. *)
   ; default : Syntax.Version.t -> Config.Toggle.t
-  (* Decide the version where this warning should be enabled. This is
+    (* Decide the version where this warning should be enabled. This is
      needed because some warnings were introduced before this module
      existed *)
   }
@@ -51,13 +50,13 @@ module Settings = struct
   let empty = []
   let to_dyn = Dyn.opaque
 
-  let decode : t Dune_sexp.Decoder.t =
+  let decode : t Decoder.t =
     let all_warnings =
       lazy
         (frozen := true;
          Table.values all)
     in
-    let open Dune_sexp.Decoder in
+    let open Decoder in
     let warning w =
       Syntax.since Stanza.syntax w.since
       >>> string

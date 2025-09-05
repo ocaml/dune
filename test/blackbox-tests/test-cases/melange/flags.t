@@ -119,6 +119,7 @@ Warning 102 (Melange only) is available if explicitly set
   > (melange.emit
   >  (target output)
   >  (modules main)
+  >  (emit_stdlib false)
   >  (compile_flags -w +a-70))
   > EOF
 

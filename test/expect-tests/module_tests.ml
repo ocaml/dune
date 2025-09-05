@@ -3,7 +3,7 @@ module Kind = Dune_rules.Module.Kind
 
 (* See #10264 *)
 let%expect_test "Module.Kind encoding round trip" =
-  let module_name s = Dune_rules.Module_name.of_string s in
+  let module_name s = Dune_lang.Module_name.of_string s in
   let test k =
     let ast = Kind.encode k in
     let sexp = Dune_sexp.Ast.add_loc ~loc:Loc.none ast in
@@ -21,11 +21,11 @@ let%expect_test "Module.Kind encoding round trip" =
     Dune_tests_common.print_dyn dyn
   in
   test Impl;
-  [%expect {| { ast = "impl"; decoded = Ok Impl } |}];
+  [%expect {| { ast = "impl"; decoded = Ok "impl" } |}];
   test (Alias []);
-  [%expect {| { ast = "alias"; decoded = Ok (Alias []) } |}];
+  [%expect {| { ast = "alias"; decoded = Ok "alias" } |}];
   test (Alias [ module_name "A" ]);
-  [%expect {| { ast = "(alias (A))"; decoded = Ok (Alias [ "A" ]) } |}];
+  [%expect {| { ast = "(alias (A))"; decoded = Ok [ "alias"; [ "A" ] ] } |}];
   test (Alias [ module_name "A"; module_name "B" ]);
-  [%expect {| { ast = "(alias (A B))"; decoded = Ok (Alias [ "A"; "B" ]) } |}]
+  [%expect {| { ast = "(alias (A B))"; decoded = Ok [ "alias"; [ "A"; "B" ] ] } |}]
 ;;

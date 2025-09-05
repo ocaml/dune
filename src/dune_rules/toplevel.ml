@@ -50,6 +50,8 @@ module Source = struct
     let include_dirs =
       Dyn.list (fun d -> Dyn.string (Path.to_absolute_filename d)) include_dirs
     in
+    (* CR-soon rgrinberg: This is buggy and needs to use [hidden_include_dirs]
+       when available *)
     Pp.vbox
       ~indent:2
       (Pp.verbatim "Clflags.include_dirs :=" ++ Pp.cut ++ Dyn.pp include_dirs)
@@ -73,21 +75,21 @@ let make ~cctx ~source ~preprocess expander = { cctx; source; preprocess; expand
 let pp_flags t =
   let open Action_builder.O in
   let open Pp.O in
-  let scope = Compilation_context.scope t.cctx in
   match t.preprocess with
   | Pps { loc; pps; flags; staged = _ } ->
-    let+ exe, flags =
-      let ctx = Compilation_context.context t.cctx in
-      Ppx_driver.get_ppx_driver
-        ctx
-        ~loc
-        ~expander:t.expander
-        ~lib_name:None
-        ~flags
-        ~scope
-        pps
-    in
-    let ppx =
+    let+ ppx =
+      let+ exe, flags =
+        let scope = Compilation_context.scope t.cctx in
+        let ctx = Compilation_context.context t.cctx in
+        Ppx_driver.get_ppx_driver
+          ctx
+          ~loc
+          ~expander:t.expander
+          ~lib_name:None
+          ~flags
+          ~scope
+          pps
+      in
       Dyn.list
         Dyn.string
         [ Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
@@ -109,24 +111,28 @@ let pp_flags t =
 ;;
 
 let setup_module_rules t =
-  let dir = Compilation_context.dir t.cctx in
-  let sctx = Compilation_context.super_context t.cctx in
-  let path = Source.source_path t.source in
-  let requires_compile = Compilation_context.requires_compile t.cctx in
   let main_ml =
-    let open Action_builder.O in
-    Action_builder.write_file_dyn
-      path
-      (let* libs = Resolve.Memo.read requires_compile in
-       let lib_config = (Compilation_context.ocaml t.cctx).lib_config in
-       let include_dirs =
-         Path.Set.to_list (Lib_flags.L.include_paths libs (Ocaml Byte) lib_config)
+    (let open Action_builder.O in
+     let+ pp =
+       let* pp_dirs =
+         let+ include_dirs =
+           let lib_config = (Compilation_context.ocaml t.cctx).lib_config in
+           let+ libs =
+             let requires_compile = Compilation_context.requires_compile t.cctx in
+             Resolve.Memo.read requires_compile
+           in
+           Lib_flags.L.include_paths libs (Ocaml Byte) lib_config |> Path.Set.to_list
+         in
+         Source.pp_ml t.source ~include_dirs
        in
-       let* pp_ppx = pp_flags t in
-       let pp_dirs = Source.pp_ml t.source ~include_dirs in
-       let pp = Pp.seq pp_ppx pp_dirs in
-       Action_builder.return (Format.asprintf "%a@." Pp.to_fmt pp))
+       let+ pp_ppx = pp_flags t in
+       Pp.seq pp_ppx pp_dirs
+     in
+     Format.asprintf "%a@." Pp.to_fmt pp)
+    |> Action_builder.write_file_dyn (Source.source_path t.source)
   in
+  let sctx = Compilation_context.super_context t.cctx in
+  let dir = Compilation_context.dir t.cctx in
   Super_context.add_rule sctx ~dir main_ml
 ;;
 
@@ -176,72 +182,72 @@ let print_toplevel_init_file { include_paths; files_to_load; uses; pp; ppx; code
 module Stanza = struct
   let setup ~sctx ~dir ~(toplevel : Toplevel_stanza.t) =
     let source = Source.of_stanza ~dir ~toplevel in
-    let* expander = Super_context.expander sctx ~dir in
-    let* scope = Scope.DB.find_by_dir dir in
-    let dune_version = Scope.project scope |> Dune_project.dune_version in
-    let pps =
-      match toplevel.pps with
-      | Preprocess.Pps pps -> pps.pps
-      | Action _ | Future_syntax _ -> assert false (* Error in parsing *)
-      | No_preprocessing -> []
-    in
-    let* preprocessing =
-      let preprocess = Module_name.Per_item.for_all toplevel.pps in
-      Pp_spec_rules.make
-        sctx
-        ~dir
-        ~expander
-        ~scope
-        ~lib_name:None
-        ~lint:Lint.no_lint
-        ~preprocess
-        ~preprocessor_deps:[]
-        ~instrumentation_deps:[]
-    in
-    let compile_info =
-      let compiler_libs =
-        Lib_name.parse_string_exn (source.loc, "compiler-libs.toplevel")
-      in
-      let names = Nonempty_list.[ source.loc, source.name ] in
-      Lib.DB.resolve_user_written_deps
-        (Scope.libs scope)
-        (`Exe names)
-        ~forbidden_libraries:[]
-        (Lib_dep.Direct (source.loc, compiler_libs)
-         :: List.map toplevel.libraries ~f:(fun d -> Lib_dep.Direct d))
-        ~pps
-        ~dune_version
-        ~allow_overlaps:false
-    in
-    let requires_compile = Lib.Compile.direct_requires compile_info in
-    let requires_link = Lib.Compile.requires_link compile_info in
-    let obj_dir = Source.obj_dir source in
-    let flags =
-      let profile = Super_context.context sctx |> Context.profile in
-      Ocaml_flags.append_common
-        (Ocaml_flags.default ~dune_version ~profile)
-        [ "-w"; "-24" ]
-    in
-    let* modules = Source.modules source preprocessing in
-    let* cctx =
-      Compilation_context.create
-        ()
-        ~super_context:sctx
-        ~scope
-        ~obj_dir
-        ~modules
-        ~opaque:(Explicit false)
-        ~requires_compile
-        ~requires_link
-        ~flags
-        ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
-        ~melange_package_name:None
-        ~package:None
-        ~preprocessing
-    in
-    let resolved = make ~cctx ~source ~preprocess:toplevel.pps expander in
     let* exe =
+      let* scope = Scope.DB.find_by_dir dir in
+      let* expander = Super_context.expander sctx ~dir in
+      let* cctx =
+        let dune_version = Scope.project scope |> Dune_project.dune_version in
+        let* preprocessing =
+          let preprocess = Module_name.Per_item.for_all toplevel.pps in
+          Pp_spec_rules.make
+            sctx
+            ~dir
+            ~expander
+            ~scope
+            ~lib_name:None
+            ~lint:Lint.no_lint
+            ~preprocess
+            ~preprocessor_deps:[]
+            ~instrumentation_deps:[]
+        in
+        let* modules = Source.modules source preprocessing in
+        let compile_info =
+          let compiler_libs =
+            Lib_name.parse_string_exn (source.loc, "compiler-libs.toplevel")
+          in
+          let names = Nonempty_list.[ source.loc, source.name ] in
+          let pps =
+            match toplevel.pps with
+            | Preprocess.Pps pps -> pps.pps
+            | Action _ | Future_syntax _ -> assert false (* Error in parsing *)
+            | No_preprocessing -> []
+          in
+          Lib.DB.resolve_user_written_deps
+            (Scope.libs scope)
+            (`Exe names)
+            ~forbidden_libraries:[]
+            (Lib_dep.Direct (source.loc, compiler_libs)
+             :: List.map toplevel.libraries ~f:(fun d -> Lib_dep.Direct d))
+            ~pps
+            ~dune_version
+            ~allow_overlaps:false
+        in
+        let flags =
+          let profile = Super_context.context sctx |> Context.profile in
+          Ocaml_flags.append_common
+            (Ocaml_flags.default ~dune_version ~profile)
+            [ "-w"; "-24" ]
+        in
+        let requires_compile = Lib.Compile.direct_requires compile_info in
+        let requires_link = Lib.Compile.requires_link compile_info in
+        let obj_dir = Source.obj_dir source in
+        Compilation_context.create
+          ()
+          ~super_context:sctx
+          ~scope
+          ~obj_dir
+          ~modules
+          ~opaque:(Explicit false)
+          ~requires_compile
+          ~requires_link
+          ~flags
+          ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
+          ~melange_package_name:None
+          ~package:None
+          ~preprocessing
+      in
       let linkage = Exe.Linkage.custom (Compilation_context.ocaml cctx).version in
+      let resolved = make ~cctx ~source ~preprocess:toplevel.pps expander in
       setup_rules_and_return_exe_path resolved ~linkage
     in
     let symlink = Path.Build.relative dir (Path.Build.basename exe) in

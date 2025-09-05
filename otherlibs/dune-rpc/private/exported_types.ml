@@ -205,7 +205,72 @@ module Ansi_color = struct
   end
 end
 
+module Pp = struct
+  include Pp
+
+  let sexp (conv_tag : 'a Conv.value) : 'a Pp.t Conv.value =
+    let open Conv in
+    let open Pp.Ast in
+    let nop = constr "Nop" unit (fun () -> Nop) in
+    let verbatim = constr "Verbatim" string (fun s -> Verbatim s) in
+    let char = constr "Char" char (fun c -> Char c) in
+    let newline = constr "Newline" unit (fun () -> Newline) in
+    let t =
+      fixpoint (fun t ->
+        let text = constr "Text" string (fun s -> Text s) in
+        let seq = constr "Seq" (pair t t) (fun (x, y) -> Seq (x, y)) in
+        let concat = constr "Concat" (pair t (list t)) (fun (x, y) -> Concat (x, y)) in
+        let box = constr "Box" (pair int t) (fun (x, y) -> Box (x, y)) in
+        let vbox = constr "Vbox" (pair int t) (fun (x, y) -> Vbox (x, y)) in
+        let hbox = constr "Hbox" t (fun t -> Hbox t) in
+        let hvbox = constr "Hvbox" (pair int t) (fun (x, y) -> Hvbox (x, y)) in
+        let hovbox = constr "Hovbox" (pair int t) (fun (x, y) -> Hovbox (x, y)) in
+        let break =
+          constr
+            "Break"
+            (pair (triple string int string) (triple string int string))
+            (fun (x, y) -> Break (x, y))
+        in
+        let tag = constr "Tag" (pair conv_tag t) (fun (s, t) -> Tag (s, t)) in
+        sum
+          [ econstr nop
+          ; econstr verbatim
+          ; econstr char
+          ; econstr newline
+          ; econstr text
+          ; econstr seq
+          ; econstr concat
+          ; econstr box
+          ; econstr vbox
+          ; econstr hbox
+          ; econstr hvbox
+          ; econstr hovbox
+          ; econstr break
+          ; econstr tag
+          ]
+          (function
+            | Nop -> case () nop
+            | Seq (x, y) -> case (x, y) seq
+            | Concat (x, y) -> case (x, y) concat
+            | Box (i, t) -> case (i, t) box
+            | Vbox (i, t) -> case (i, t) vbox
+            | Hbox t -> case t hbox
+            | Hvbox (i, t) -> case (i, t) hvbox
+            | Hovbox (i, t) -> case (i, t) hovbox
+            | Verbatim s -> case s verbatim
+            | Char c -> case c char
+            | Break (x, y) -> case (x, y) break
+            | Newline -> case () newline
+            | Text s -> case s text
+            | Tag (s, t) -> case (s, t) tag))
+    in
+    iso t Pp.of_ast Pp.to_ast
+  ;;
+end
+
 module User_message = struct
+  include Stdune.User_message
+
   module Style = struct
     type t = Stdune.User_message.Style.t =
       | Loc
@@ -266,6 +331,25 @@ module User_message = struct
           | Ansi_styles l -> case l ansi_styles)
     ;;
   end
+
+  let sexp_without_annots =
+    let open Conv in
+    let sexp_pp = Pp.sexp Style.sexp in
+    let from { loc; paragraphs; hints; annots = _; context; dir } =
+      let loc = Option.map loc ~f:Import.Loc.to_lexbuf_loc in
+      loc, paragraphs, hints, context, dir
+    in
+    let to_ (loc, paragraphs, hints, context, dir) =
+      let loc = Option.map loc ~f:Import.Loc.of_lexbuf_loc in
+      { loc; paragraphs; hints; context; dir; annots = Annots.empty }
+    in
+    let loc = field "loc" (optional Loc.sexp) in
+    let paragraphs = field "paragraphs" (required (list sexp_pp)) in
+    let hints = field "hints" (required (list sexp_pp)) in
+    let context = field "context" (optional string) in
+    let dir = field "dir" (optional string) in
+    iso (record (five loc paragraphs hints context dir)) to_ from
+  ;;
 end
 
 module Target = struct
@@ -406,65 +490,6 @@ module Diagnostic = struct
     ;;
   end
 
-  let sexp_pp (conv_tag : 'a Conv.value) : 'a Pp.t Conv.value =
-    let open Conv in
-    let open Pp.Ast in
-    let nop = constr "Nop" unit (fun () -> Nop) in
-    let verbatim = constr "Verbatim" string (fun s -> Verbatim s) in
-    let char = constr "Char" char (fun c -> Char c) in
-    let newline = constr "Newline" unit (fun () -> Newline) in
-    let t =
-      fixpoint (fun t ->
-        let text = constr "Text" string (fun s -> Text s) in
-        let seq = constr "Seq" (pair t t) (fun (x, y) -> Seq (x, y)) in
-        let concat = constr "Concat" (pair t (list t)) (fun (x, y) -> Concat (x, y)) in
-        let box = constr "Box" (pair int t) (fun (x, y) -> Box (x, y)) in
-        let vbox = constr "Vbox" (pair int t) (fun (x, y) -> Vbox (x, y)) in
-        let hbox = constr "Hbox" t (fun t -> Hbox t) in
-        let hvbox = constr "Hvbox" (pair int t) (fun (x, y) -> Hvbox (x, y)) in
-        let hovbox = constr "Hovbox" (pair int t) (fun (x, y) -> Hovbox (x, y)) in
-        let break =
-          constr
-            "Break"
-            (pair (triple string int string) (triple string int string))
-            (fun (x, y) -> Break (x, y))
-        in
-        let tag = constr "Tag" (pair conv_tag t) (fun (s, t) -> Tag (s, t)) in
-        sum
-          [ econstr nop
-          ; econstr verbatim
-          ; econstr char
-          ; econstr newline
-          ; econstr text
-          ; econstr seq
-          ; econstr concat
-          ; econstr box
-          ; econstr vbox
-          ; econstr hbox
-          ; econstr hvbox
-          ; econstr hovbox
-          ; econstr break
-          ; econstr tag
-          ]
-          (function
-            | Nop -> case () nop
-            | Seq (x, y) -> case (x, y) seq
-            | Concat (x, y) -> case (x, y) concat
-            | Box (i, t) -> case (i, t) box
-            | Vbox (i, t) -> case (i, t) vbox
-            | Hbox t -> case t hbox
-            | Hvbox (i, t) -> case (i, t) hvbox
-            | Hovbox (i, t) -> case (i, t) hovbox
-            | Verbatim s -> case s verbatim
-            | Char c -> case c char
-            | Break (x, y) -> case (x, y) break
-            | Newline -> case () newline
-            | Text s -> case s text
-            | Tag (s, t) -> case (s, t) tag))
-    in
-    iso t Pp.of_ast Pp.to_ast
-  ;;
-
   module Id = struct
     type t = int
 
@@ -487,7 +512,7 @@ module Diagnostic = struct
     let sexp =
       let open Conv in
       let loc = field "loc" (required Loc.sexp) in
-      let message = field "message" (required (sexp_pp User_message.Style.sexp)) in
+      let message = field "message" (required (Pp.sexp User_message.Style.sexp)) in
       let to_ (loc, message) = { loc; message } in
       let from { loc; message } = loc, message in
       iso (record (both loc message)) to_ from
@@ -529,7 +554,7 @@ module Diagnostic = struct
       { targets; message; loc; severity; promotion; directory; id; related }
     in
     let loc = field "loc" (optional Loc.sexp) in
-    let message = field "message" (required (sexp_pp User_message.Style.sexp)) in
+    let message = field "message" (required (Pp.sexp User_message.Style.sexp)) in
     let targets = field "targets" (required (list Target.sexp)) in
     let severity = field "severity" (optional sexp_severity) in
     let directory = field "directory" (optional string) in
@@ -677,4 +702,138 @@ module Job = struct
           | Stop t -> case t stop)
     ;;
   end
+end
+
+module Compound_user_error = struct
+  type t =
+    { main : User_message.t
+    ; related : User_message.t list
+    }
+
+  let create ~main ~related =
+    let () =
+      List.iter related ~f:(fun (related : User_message.t) ->
+        match related.loc with
+        | Some _ -> ()
+        | None ->
+          Code_error.raise
+            "related messages must have locations"
+            [ "related", String (Stdune.User_message.to_string related) ])
+    in
+    { main; related }
+  ;;
+
+  let sexp =
+    let open Conv in
+    let from { main; related } = main, related in
+    let to_ (main, related) = create ~main ~related in
+    let main = field "main" (required User_message.sexp_without_annots) in
+    let related = field "related" (required (list User_message.sexp_without_annots)) in
+    iso (record (both main related)) to_ from
+  ;;
+
+  let to_dyn { main; related } =
+    let open Dyn in
+    record
+      [ "main", string (Stdune.User_message.to_string main)
+      ; "related", (list string) (List.map related ~f:Stdune.User_message.to_string)
+      ]
+  ;;
+
+  let annot =
+    Stdune.User_message.Annots.Key.create ~name:"compound-user-error" (Dyn.list to_dyn)
+  ;;
+
+  let make ~main ~related = create ~main ~related
+
+  let make_loc ~dir { Ocamlc_loc.path; chars; lines } : Stdune.Loc.t =
+    let pos_fname =
+      let dir = Stdune.Path.drop_optional_build_context_maybe_sandboxed dir in
+      Stdune.Path.to_absolute_filename (Stdune.Path.relative dir path)
+    in
+    let pos_lnum_start, pos_lnum_stop =
+      match lines with
+      | Single i -> i, i
+      | Range (i, j) -> i, j
+    in
+    let pos_cnum_start, pos_cnum_stop =
+      match chars with
+      | None -> 0, 0
+      | Some (x, y) -> x, y
+    in
+    let pos = { Lexing.pos_fname; pos_lnum = 0; pos_bol = 0; pos_cnum = 0 } in
+    let start = { pos with pos_lnum = pos_lnum_start; pos_cnum = pos_cnum_start } in
+    let stop = { pos with pos_lnum = pos_lnum_stop; pos_cnum = pos_cnum_stop } in
+    Stdune.Loc.create ~start ~stop
+  ;;
+
+  let parse_output ~dir s =
+    Ocamlc_loc.parse s
+    |> List.map ~f:(fun (report : Ocamlc_loc.report) ->
+      let make_message (loc, message) =
+        let loc = make_loc ~dir loc in
+        let message = Pp.verbatim message in
+        Stdune.User_message.make ~loc [ message ]
+      in
+      let main = make_message (report.loc, report.message) in
+      let related = List.map report.related ~f:make_message in
+      make ~main ~related)
+  ;;
+end
+
+module Build_outcome_with_diagnostics = struct
+  type t =
+    | Success
+    | Failure of Compound_user_error.t list
+
+  let sexp_v1 =
+    let open Conv in
+    let success = constr "Success" unit (fun () -> Success) in
+    let failure = constr "Failure" unit (fun () -> Failure []) in
+    let variants = [ econstr success; econstr failure ] in
+    sum variants (function
+      | Success -> case () success
+      | Failure _ -> case () failure)
+  ;;
+
+  let sexp_v2 =
+    let open Conv in
+    let success = constr "Success" unit (fun () -> Success) in
+    let failure =
+      constr "Failure" (list Compound_user_error.sexp) (fun errors -> Failure errors)
+    in
+    let variants = [ econstr success; econstr failure ] in
+    sum variants (function
+      | Success -> case () success
+      | Failure errors -> case errors failure)
+  ;;
+
+  let sexp = sexp_v2
+end
+
+module Files_to_promote = struct
+  type t =
+    | All
+    | These of Stdune.Path.Source.t list * (Stdune.Path.Source.t -> unit)
+
+  let on_missing fn =
+    Stdune.User_warning.emit
+      [ Pp.paragraphf
+          "Nothing to promote for %s."
+          (Stdune.Path.Source.to_string_maybe_quoted fn)
+      ]
+  ;;
+
+  let sexp =
+    let open Conv in
+    let to_ = function
+      | [] -> All
+      | paths -> These (List.map ~f:Stdune.Path.Source.of_string paths, on_missing)
+    in
+    let from = function
+      | All -> []
+      | These (paths, _) -> List.map ~f:Stdune.Path.Source.to_string paths
+    in
+    iso (list Path.sexp) to_ from
+  ;;
 end

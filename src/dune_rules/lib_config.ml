@@ -43,7 +43,7 @@ let get_for_enabled_if t (pform : Pform.t) =
 let linker_can_create_empty_archives t =
   match t.ccomp_type with
   | Msvc -> false
-  | Other _ -> true
+  | Cc | Other _ -> true
 ;;
 
 let hash = Poly.hash
@@ -53,7 +53,7 @@ let to_dyn = Dyn.opaque
 let cc_g t =
   match t.ccomp_type with
   | Msvc -> []
-  | Other _ -> [ "-g" ]
+  | Cc | Other _ -> [ "-g" ]
 ;;
 
 let create ocaml_config ~ocamlopt =

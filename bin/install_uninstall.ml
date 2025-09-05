@@ -19,9 +19,9 @@ let synopsis =
 let print_line ~(verbosity : Dune_engine.Display.t) fmt =
   Printf.ksprintf
     (fun s ->
-      match verbosity with
-      | Quiet -> ()
-      | _ -> Console.print [ Pp.verbatim s ])
+       match verbosity with
+       | Quiet -> ()
+       | _ -> Console.print [ Pp.verbatim s ])
     fmt
 ;;
 
@@ -293,12 +293,12 @@ module File_ops_real (W : sig
   ;;
 
   let copy_file
-    ~src
-    ~dst
-    ~executable
-    ~kind
-    ~package
-    ~(conf : Artifact_substitution.Conf.t)
+        ~src
+        ~dst
+        ~executable
+        ~kind
+        ~package
+        ~(conf : Artifact_substitution.Conf.t)
     =
     let chmod = if executable then fun _ -> 0o755 else fun _ -> 0o644 in
     let plain_copy () = Io.copy_file ~chmod ~src ~dst () in
@@ -313,14 +313,14 @@ module File_ops_real (W : sig
             Io.close_both (ic, oc);
             Fiber.return ())
           (fun () ->
-            let f =
-              match sf with
-              | META -> process_meta
-              | Dune_package ->
-                process_dune_package
-                  ~get_location:(Artifact_substitution.Conf.get_location conf)
-            in
-            copy_special_file ~src ~package ~ic ~oc ~f)
+             let f =
+               match sf with
+               | META -> process_meta
+               | Dune_package ->
+                 process_dune_package
+                   ~get_location:(Artifact_substitution.Conf.get_location conf)
+             in
+             copy_special_file ~src ~package ~ic ~oc ~f)
       in
       (match status with
        | Done -> ()
@@ -403,13 +403,13 @@ let file_operations ~verbosity ~dry_run ~workspace : (module File_operations) =
   if dry_run
   then
     (module File_ops_dry_run (struct
-        let verbosity = verbosity
-      end))
+         let verbosity = verbosity
+       end))
   else
     (module File_ops_real (struct
-        let workspace = workspace
-        let verbosity = verbosity
-      end))
+         let workspace = workspace
+         let verbosity = verbosity
+       end))
 ;;
 
 let package_is_vendored (pkg : Package.t) =
@@ -432,14 +432,14 @@ let cmd_what = function
 ;;
 
 let install_entry
-  ~ops
-  ~conf
-  ~package
-  ~dir
-  ~create_install_files
-  (entry : Path.t Install.Entry.t)
-  ~dst
-  ~verbosity
+      ~ops
+      ~conf
+      ~package
+      ~dir
+      ~create_install_files
+      (entry : Path.t Install.Entry.t)
+      ~dst
+      ~verbosity
   =
   let module Ops = (val ops : File_operations) in
   let open Fiber.O in
@@ -482,18 +482,18 @@ let install_entry
 ;;
 
 let run
-  what
-  context
-  common
-  pkgs
-  sections
-  (config : Dune_config.t)
-  ~dry_run
-  ~destdir
-  ~relocatable
-  ~create_install_files
-  ~prefix_from_command_line
-  ~(from_command_line : _ Install.Roots.t)
+      what
+      context
+      common
+      pkgs
+      sections
+      (config : Dune_config.t)
+      ~dry_run
+      ~destdir
+      ~relocatable
+      ~create_install_files
+      ~prefix_from_command_line
+      ~(from_command_line : _ Install.Roots.t)
   =
   let open Fiber.O in
   let* workspace = Workspace.get () in
@@ -816,7 +816,7 @@ let make ~what =
     let builder = Common.Builder.forbid_builds builder in
     let builder = Common.Builder.disable_log_file builder in
     let common, config = Common.init builder in
-    Scheduler.go ~common ~config (fun () ->
+    Scheduler.go_with_rpc_server ~common ~config (fun () ->
       let from_command_line =
         { Install.Roots.lib_root = libdir_from_command_line
         ; etc_root = etcdir_from_command_line

@@ -27,9 +27,9 @@ module Gen_rules = struct
     ;;
 
     let create
-      ?(build_dir_only_sub_dirs = empty.build_dir_only_sub_dirs)
-      ?(directory_targets = empty.directory_targets)
-      rules
+          ?(build_dir_only_sub_dirs = empty.build_dir_only_sub_dirs)
+          ?(directory_targets = empty.directory_targets)
+          rules
       =
       { build_dir_only_sub_dirs; directory_targets; rules }
     ;;
@@ -85,18 +85,18 @@ let t : t Fdecl.t = Fdecl.create Dyn.opaque
 let get () = Fdecl.get t
 
 let set
-  ~stats
-  ~contexts
-  ~promote_source
-  ~cache_config
-  ~cache_debug_flags
-  ~sandboxing_preference
-  ~rule_generator
-  ~implicit_default_alias
-  ~execution_parameters
-  ~source_tree
-  ~shared_cache
-  ~write_error_summary
+      ~stats
+      ~contexts
+      ~promote_source
+      ~cache_config
+      ~cache_debug_flags
+      ~sandboxing_preference
+      ~rule_generator
+      ~implicit_default_alias
+      ~execution_parameters
+      ~source_tree
+      ~shared_cache
+      ~write_error_summary
   =
   let contexts =
     Memo.lazy_ ~name:"Build_config.set" (fun () ->

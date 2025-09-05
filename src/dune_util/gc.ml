@@ -1,25 +1,25 @@
 open Stdune
 
 let to_sexp
-  ({ Stdlib.Gc.minor_words
-   ; promoted_words
-   ; major_words
-   ; minor_collections
-   ; major_collections
-   ; heap_words
-   ; heap_chunks
-   ; live_words
-   ; live_blocks
-   ; free_words
-   ; free_blocks
-   ; largest_free
-   ; fragments
-   ; compactions
-   ; top_heap_words
-   ; stack_size
-   ; _
-   } :
-    Stdlib.Gc.stat)
+      ({ Stdlib.Gc.minor_words
+       ; promoted_words
+       ; major_words
+       ; minor_collections
+       ; major_collections
+       ; heap_words
+       ; heap_chunks
+       ; live_words
+       ; live_blocks
+       ; free_words
+       ; free_blocks
+       ; largest_free
+       ; fragments
+       ; compactions
+       ; top_heap_words
+       ; stack_size
+       ; _
+       } :
+        Stdlib.Gc.stat)
   : Sexp.t
   =
   let open Sexp in

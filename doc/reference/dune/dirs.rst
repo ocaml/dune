@@ -27,3 +27,14 @@ Dune will not scan a directory that isn't included in this stanza. Any contained
 ``dune`` (or other special) files won't be interpreted either and will be
 treated as raw data. It is however possible to depend on files inside ignored
 subdirectories.
+
+.. warning::
+
+  Directory names should not contain any trailing slashes.
+
+If you want to exclude a subdirectory, such as `foo/bar`, you need to use the
+:doc:`/reference/dune/subdir` stanza:
+
+.. code:: dune
+
+  (subdir foo (dirs :standard \ bar)) ;; exclude foo/bar

@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp
+open Import
 
 module T = struct
   type t = OpamVariable.t
@@ -29,13 +28,7 @@ include (
   end) :
     Dune_util.Stringlike with type t := t)
 
-let encode t = Encoder.string (to_string t)
-
-let decode =
-  let open Decoder in
-  string >>| of_string
-;;
-
+let hash t = String.hash (to_string t)
 let arch = of_string "arch"
 let os = of_string "os"
 let os_version = of_string "os-version"
@@ -50,14 +43,78 @@ let version = of_string "version"
 let name = of_string "name"
 let build = of_string "build"
 let post = of_string "post"
-let one_of t xs = List.mem xs ~equal t
 let dev = of_string "dev"
+let one_of t xs = List.mem xs ~equal t
+
+let platform_specific =
+  Set.of_list [ arch; os; os_version; os_distribution; os_family; sys_ocaml_version ]
+;;
+
+(* Users are free to refer to arbitrarily-named variables, but these are the
+   common variables that are widely in circulation. *)
+let all_known =
+  [ arch
+  ; os
+  ; os_version
+  ; os_distribution
+  ; os_family
+  ; opam_version
+  ; sys_ocaml_version
+  ; with_test
+  ; with_doc
+  ; with_dev_setup
+  ; version
+  ; name
+  ; build
+  ; post
+  ; dev
+  ]
+;;
+
+let encode t = Encoder.string (to_string t)
+
+let check_typo_underscore_instead_of_dash =
+  let possible_typos =
+    List.filter_map all_known ~f:(fun t ->
+      let t_string = to_string t in
+      if String.contains t_string '-'
+      then Some (String.replace_char t_string ~from:'-' ~to_:'_')
+      else None)
+  in
+  fun loc t ->
+    let string = to_string t in
+    if List.mem possible_typos string ~equal:String.equal
+    then
+      List.iter all_known ~f:(fun v ->
+        (* Many of dune's pform variables use underscores to separate words, but
+           package variables use underscores for compatibility with opam. Thus we
+           expect users to often mistakenly use underscores for package variables,
+           so warn in this case. *)
+        let v_string = to_string v in
+        let possible_typo = String.replace_char v_string ~from:'-' ~to_:'_' in
+        if String.equal string possible_typo
+        then
+          User_warning.emit
+            ~loc
+            [ Pp.textf
+                "The package variable %S looks like a typo. Did you mean %S?"
+                string
+                v_string
+            ])
+;;
+
+let decode =
+  let open Decoder in
+  let+ loc, t = located (string >>| of_string) in
+  check_typo_underscore_instead_of_dash loc t;
+  t
+;;
 
 module Project = struct
-  let encode name = Dune_sexp.Encoder.string (":" ^ to_string name)
+  let encode name = Encoder.string (":" ^ to_string name)
 
   let decode =
-    Dune_sexp.Decoder.atom_matching ~desc:"variable" (fun s ->
+    Decoder.atom_matching ~desc:"variable" (fun s ->
       if String.is_prefix s ~prefix:":" then Some (of_string (String.drop s 1)) else None)
   ;;
 end

@@ -42,7 +42,7 @@ is enabled:
 
 .. code:: dune
 
-  (lang dune 3.18)
+  (lang dune {{latest}})
   (using melange 0.1)
 
 Next, write a :doc:`/reference/dune/index` file with a
@@ -298,3 +298,19 @@ well if you need to override the build rules in one of the packages.
    (vendored_dirs reason-react)
    (dirs reason-react))
 
+
+Design choices
+=====================
+
+Melange support in Dune follows the following design choices:
+
+- :ref:`melange-emit` produces a "total" directory: the artifacts in the
+  ``target`` dir contain all the JavaScript and ``runtime_deps`` assets
+  necessary to run the application either through a JS framework, a bundler, or
+  otherwise a deployment (excluding external dependencies installed via a JS
+  package manager). The structure is designed such that relative paths and
+  dependencies work out of the box relative to their paths in the source tree,
+  before compilation.
+- public libraries are compiled to ``%{target}/node_modules/%{lib_name}`` such
+  that the `resolution algorithm <https://nodejs.org/api/modules.html#all-together>`_
+  works to resolve Melange libraries from compiled JS code.

@@ -188,8 +188,8 @@ let fetch_loop ~(event : Event.t Fiber_event_bus.t) ~client ~f sub =
     let rec loop () =
       Fiber.collect_errors (fun () -> Client.Stream.next poller)
       >>= (function
-             | Ok (Some payload) -> Fiber_event_bus.push event (f payload)
-             | Error _ | Ok None -> Fiber_event_bus.close event >>> Fiber.return `Closed)
+       | Ok (Some payload) -> Fiber_event_bus.push event (f payload)
+       | Error _ | Ok None -> Fiber_event_bus.close event >>> Fiber.return `Closed)
       >>= function
       | `Closed -> Fiber.return ()
       | `Ok -> loop ()
@@ -246,7 +246,7 @@ let monitor ~quit_on_disconnect () =
       Console.Status_line.set
         (Console.Status_line.Live
            (fun () -> Pp.verbatim ("Waiting for RPC server" ^ String.make (i mod 4) '.')));
-      let+ () = Scheduler.sleep ~seconds:0.3 in
+      let+ () = Dune_engine.Scheduler.sleep ~seconds:0.3 in
       Some (i + 1))
 ;;
 
@@ -285,7 +285,7 @@ let command =
         ~print_ctrl_c_warning:true
         ~watch_exclusions:[]
     in
-    Scheduler.Run.go
+    Dune_engine.Scheduler.Run.go
       config
       ~on_event:(fun _ _ -> ())
       ~file_watcher:No_watcher

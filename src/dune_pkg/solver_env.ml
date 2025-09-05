@@ -1,11 +1,32 @@
 open Import
 
-type t = Variable_value.t Package_variable_name.Map.t
+module T = struct
+  type t = Variable_value.t Package_variable_name.Map.t
+
+  let to_dyn = Package_variable_name.Map.to_dyn Variable_value.to_dyn
+  let equal = Package_variable_name.Map.equal ~equal:Variable_value.equal
+  let compare = Package_variable_name.Map.compare ~compare:Variable_value.compare
+end
+
+include T
+include Comparable.Make (T)
+
+let hash t =
+  Package_variable_name.Map.foldi t ~init:0 ~f:(fun key value running_hash ->
+    Tuple.T3.hash
+      Package_variable_name.hash
+      Variable_value.hash
+      Int.hash
+      (key, value, running_hash))
+;;
 
 let empty = Package_variable_name.Map.empty
-let equal = Package_variable_name.Map.equal ~equal:Variable_value.equal
-let to_dyn = Package_variable_name.Map.to_dyn Variable_value.to_dyn
 let is_empty = Package_variable_name.Map.is_empty
+
+let is_subset =
+  Package_variable_name.Map.is_subset ~f:(fun value ~of_ ->
+    Variable_value.equal value of_)
+;;
 
 let validate t ~loc =
   if Package_variable_name.Map.mem t Package_variable_name.with_test
@@ -18,6 +39,12 @@ let validate t ~loc =
           Package_variable_name.(to_string with_test)
           Package_variable_name.(to_string with_test)
       ]
+;;
+
+let encode t =
+  let open Encoder in
+  Package_variable_name.Map.to_list t
+  |> list (pair Package_variable_name.encode Variable_value.encode)
 ;;
 
 let decode =
@@ -48,6 +75,7 @@ let set t variable_name variable_value =
 
 let get = Package_variable_name.Map.find
 let extend a b = Package_variable_name.Map.superpose b a
+let contains = Package_variable_name.Map.mem
 
 let with_defaults =
   [ ( Package_variable_name.opam_version
@@ -77,6 +105,17 @@ let unset_multi t variable_names =
     unset t variable_name)
 ;;
 
+let remove_all_except t variable_names =
+  Package_variable_name.Map.foldi t ~init:t ~f:(fun variable_name _value acc ->
+    if Package_variable_name.Set.mem variable_names variable_name
+    then acc
+    else unset acc variable_name)
+;;
+
+let remove_all_except_platform_specific t =
+  remove_all_except t Package_variable_name.platform_specific
+;;
+
 let to_env t variable =
   match OpamVariable.Full.scope variable with
   | Self | Package _ -> None
@@ -85,4 +124,49 @@ let to_env t variable =
       OpamVariable.Full.variable variable |> Package_variable_name.of_opam
     in
     get t variable_name |> Option.map ~f:Variable_value.to_opam_variable_contents
+;;
+
+let popular_platform_envs =
+  let make ~os ~arch ~os_distribution ~os_family () =
+    let env = empty in
+    let env = set env Package_variable_name.os (Variable_value.string os) in
+    let env =
+      match arch with
+      | Some arch -> set env Package_variable_name.arch (Variable_value.string arch)
+      | None -> env
+    in
+    let env =
+      match os_distribution with
+      | Some os_distribution ->
+        set
+          env
+          Package_variable_name.os_distribution
+          (Variable_value.string os_distribution)
+      | None -> env
+    in
+    let env =
+      match os_family with
+      | Some os_family ->
+        set env Package_variable_name.os_family (Variable_value.string os_family)
+      | None -> env
+    in
+    env
+  in
+  [ make ~os:"linux" ~arch:(Some "x86_64") ~os_distribution:None ~os_family:None ()
+  ; make ~os:"linux" ~arch:(Some "arm64") ~os_distribution:None ~os_family:None ()
+  ; make ~os:"macos" ~arch:(Some "x86_64") ~os_distribution:None ~os_family:None ()
+  ; make ~os:"macos" ~arch:(Some "arm64") ~os_distribution:None ~os_family:None ()
+  ; make ~os:"win32" ~arch:(Some "x86_64") ~os_distribution:None ~os_family:None ()
+  ; make ~os:"win32" ~arch:(Some "arm64") ~os_distribution:None ~os_family:None ()
+  ]
+;;
+
+let add_sentinel_values_for_unset_platform_vars solver_env =
+  Package_variable_name.Set.fold
+    Package_variable_name.platform_specific
+    ~init:solver_env
+    ~f:(fun name acc ->
+      if contains acc name
+      then acc
+      else set acc name (Variable_value.sentinel_value_of_variable_name name))
 ;;

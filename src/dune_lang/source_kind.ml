@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp
+open Import
 
 module Host = struct
   type user_repo =
@@ -21,6 +20,7 @@ module Host = struct
     | Gitlab of gitlab_repo
     | Sourcehut of user_repo
     | Codeberg of user_repo
+    | Tangled of user_repo
 
   let kind_string = function
     | Github _ -> "github"
@@ -28,6 +28,7 @@ module Host = struct
     | Gitlab _ -> "gitlab"
     | Sourcehut _ -> "sourcehut"
     | Codeberg _ -> "codeberg"
+    | Tangled _ -> "tangled"
   ;;
 
   let dyn_of_user_repo kind { user; repo } =
@@ -47,8 +48,11 @@ module Host = struct
     let kind = Dyn.string (kind_string repo) in
     match repo with
     | Gitlab gitlab_repo -> dyn_of_gitlab_repo kind gitlab_repo
-    | Github user_repo | Bitbucket user_repo | Sourcehut user_repo | Codeberg user_repo ->
-      dyn_of_user_repo kind user_repo
+    | Github user_repo
+    | Bitbucket user_repo
+    | Sourcehut user_repo
+    | Codeberg user_repo
+    | Tangled user_repo -> dyn_of_user_repo kind user_repo
   ;;
 
   let host_of_repo = function
@@ -57,6 +61,7 @@ module Host = struct
     | Gitlab _ -> "gitlab.com"
     | Sourcehut _ -> "sr.ht"
     | Codeberg _ -> "codeberg.org"
+    | Tangled _ -> "tangled.sh"
   ;;
 
   let base_uri repo =
@@ -66,6 +71,7 @@ module Host = struct
     | Sourcehut { user; repo } -> sprintf "%s/~%s/%s" host user repo
     | Github { user; repo }
     | Bitbucket { user; repo }
+    | Tangled { user; repo }
     | Gitlab (User_repo { user; repo })
     | Codeberg { user; repo } -> sprintf "%s/%s/%s" host user repo
   ;;
@@ -79,6 +85,7 @@ module Host = struct
     | Gitlab _ as repo -> homepage repo ^ "/-/issues"
     | Sourcehut _ as repo -> add_https ("todo." ^ base_uri repo)
     | Codeberg _ as repo -> homepage repo ^ "/issues"
+    | Tangled _ as repo -> homepage repo ^ "/issues"
   ;;
 
   let enum k =
@@ -89,6 +96,7 @@ module Host = struct
     ; Bitbucket stub_user_repo
     ; Sourcehut stub_user_repo
     ; Codeberg stub_user_repo
+    ; Tangled stub_user_repo
     ; Gitlab (User_repo stub_user_repo)
     ; Gitlab stub_org_repo
     ]
@@ -100,6 +108,7 @@ module Host = struct
         | Bitbucket _, [ user; repo ] -> Bitbucket { user; repo }, Some ((2, 8), name)
         | Sourcehut _, [ user; repo ] -> Sourcehut { user; repo }, Some ((3, 1), name)
         | Codeberg _, [ user; repo ] -> Codeberg { user; repo }, Some ((3, 17), name)
+        | Tangled _, [ user; repo ] -> Tangled { user; repo }, Some ((3, 21), name)
         | Gitlab _, [ user; repo ] ->
           Gitlab (User_repo { user; repo }), Some ((2, 8), name)
         | Gitlab _, [ org; proj; repo ] ->
@@ -140,6 +149,7 @@ module Host = struct
       | Bitbucket { user; repo }
       | Gitlab (User_repo { user; repo })
       | Sourcehut { user; repo }
+      | Tangled { user; repo }
       | Codeberg { user; repo } -> sprintf "%s/%s" user repo
     in
     let open Encoder in
@@ -152,6 +162,7 @@ module Host = struct
       let base = base_uri repo in
       match repo with
       | Sourcehut _ -> "git." ^ base
+      | Tangled _ -> base
       | _ -> base ^ ".git"
     in
     "git+https://" ^ base_uri

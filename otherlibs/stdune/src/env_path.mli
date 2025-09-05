@@ -14,3 +14,5 @@ val path : Env.t -> Path.t list
     which is set to the concatenation of the PATH variables from [a] and [b]
     with the PATH entries from [b] preceding the PATH entries from [a] *)
 val extend_env_concat_path : Env.t -> Env.t -> Env.t
+
+val system_shell_exn : needed_to:string -> Path.t * string

@@ -26,14 +26,8 @@ end
     list of registered files to [_build/.to-promote]. *)
 val finalize : unit -> unit
 
-(** Describe what files should be promoted. The second argument of [These] is a
-    function that is called on files that cannot be promoted. *)
-type files_to_promote =
-  | All
-  | These of Path.Source.t list * (Path.Source.t -> unit)
-
 val load_db : unit -> File.t list
-val filter_db : files_to_promote -> File.t list -> File.t list
+val filter_db : Dune_rpc_private.Files_to_promote.t -> File.t list -> File.t list
 val diff_for_file : File.t -> (Print_diff.Diff.t, User_message.t) result Fiber.t
-val promote_files_registered_in_last_run : files_to_promote -> unit
-val display : files_to_promote -> unit Fiber.t
+val promote_files_registered_in_last_run : Dune_rpc_private.Files_to_promote.t -> unit
+val display : Dune_rpc_private.Files_to_promote.t -> unit Fiber.t

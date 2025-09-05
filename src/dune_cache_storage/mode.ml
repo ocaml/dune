@@ -4,6 +4,12 @@ type t =
   | Hardlink
   | Copy
 
+let equal a b =
+  match a, b with
+  | Hardlink, Hardlink | Copy, Copy -> true
+  | _, _ -> false
+;;
+
 let all = [ "hardlink", Hardlink; "copy", Copy ]
 
 let of_string s =

@@ -105,7 +105,6 @@ module Lib = struct
     let melange_runtime_deps = additional_paths (Lib_info.melange_runtime_deps info) in
     let jsoo_runtime = Lib_info.jsoo_runtime info in
     let wasmoo_runtime = Lib_info.wasmoo_runtime info in
-    let virtual_ = Option.is_some (Lib_info.virtual_ info) in
     let instrumentation_backend = Lib_info.instrumentation_backend info in
     let native_archives =
       match Lib_info.native_archives info with
@@ -124,7 +123,6 @@ module Lib = struct
     record_fields
     @@ [ field "name" Lib_name.encode name
        ; field "kind" Lib_kind.encode kind
-       ; field_b "virtual" virtual_
        ; field_o "synopsis" string synopsis
        ; field_o "orig_src_dir" path orig_src_dir
        ; mode_paths "archives" archives
@@ -192,7 +190,20 @@ module Lib = struct
        let+ synopsis = field_o "synopsis" string
        and+ loc = loc
        and+ modes = field_l "modes" Lib_mode.decode
-       and+ kind = field "kind" Lib_kind.decode
+       and+ kind =
+         let* kind = field "kind" Lib_kind.decode in
+         let+ virtual_ = field_b "virtual" in
+         match kind with
+         | (Dune_file Normal | Virtual) when virtual_ ->
+           (* Backward compatible support for dune-project files
+              that include the [(virtual)] field. *)
+           Lib_kind.Virtual
+         | incompatible_kind when virtual_ ->
+           Code_error.raise
+             "invalid combination of 'kind' and 'virtual' fields in library stanza of \
+              dune-package file"
+             [ "kind", Lib_kind.to_dyn incompatible_kind; "virtual", Dyn.Bool virtual_ ]
+         | otherwise -> otherwise
        and+ archives = mode_paths "archives"
        and+ plugins = mode_paths "plugins"
        and+ foreign_objects = paths "foreign_objects"
@@ -218,7 +229,6 @@ module Lib = struct
        and+ melange_runtime_deps = paths "melange_runtime_deps"
        and+ requires = field_l "requires" (Lib_dep.decode ~allow_re_export:true)
        and+ ppx_runtime_deps = libs "ppx_runtime_deps"
-       and+ virtual_ = field_b "virtual"
        and+ sub_systems = Sub_system_info.record_parser
        and+ orig_src_dir = field_o "orig_src_dir" path
        and+ modules = field "modules" (Modules.decode ~src_dir:base)
@@ -247,13 +257,8 @@ module Lib = struct
          let preprocess = Preprocess.Per_module.no_preprocessing () in
          let virtual_deps = [] in
          let dune_version = None in
-         let virtual_ =
-           if virtual_ then Some (Lib_info.Source.External modules) else None
-         in
+         let entry_modules = Modules.entry_modules modules |> List.map ~f:Module.name in
          let modules = Modules.With_vlib.modules modules in
-         let entry_modules =
-           Modules.With_vlib.entry_modules modules |> List.map ~f:Module.name
-         in
          let wrapped =
            Some (Lib_info.Inherited.This (Modules.With_vlib.wrapped modules))
          in
@@ -289,7 +294,6 @@ module Lib = struct
            ~enabled
            ~virtual_deps
            ~dune_version
-           ~virtual_
            ~entry_modules
            ~implements
            ~default_implementation
@@ -300,6 +304,8 @@ module Lib = struct
            ~exit_module:None
            ~instrumentation_backend
            ~melange_runtime_deps
+           ~root_module:None
+         (* CR-someday rgrinberg: maybe we should add this to installed packages? *)
        in
        let external_location =
          let opam_dir = Path.parent_exn base in
@@ -312,14 +318,6 @@ module Lib = struct
          Some (External_location.Relative_to_findlib (opam_dir, local))
        in
        { info; main_module_name; external_location })
-  ;;
-
-  let main_module_name t = t.main_module_name
-
-  let wrapped t =
-    match Lib_info.modules t.info with
-    | External modules -> Option.map modules ~f:Modules.With_vlib.wrapped
-    | Local -> None
   ;;
 
   let info dp = dp.info
@@ -608,7 +606,7 @@ module Or_meta = struct
     match
       Vfile.parse_contents lexbuf ~f:(fun lang ->
         String_with_vars.set_decoding_env
-          (Pform.Env.initial lang.version)
+          (Pform.Env.initial ~stanza:lang.version ~extensions:[])
           (decode ~lang ~dir))
     with
     | contents -> Ok contents

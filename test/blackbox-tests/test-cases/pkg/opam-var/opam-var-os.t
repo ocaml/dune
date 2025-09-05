@@ -6,6 +6,10 @@ to compare their values.
 
 # arch os os-distribution os-family os-version user group
 
+These variables are usually set to keep tests consistent across different
+platforms but for this test we need to expose the real platform to dune, so
+unset them all.
+  $ unset DUNE_CONFIG__OS DUNE_CONFIG__ARCH DUNE_CONFIG__OS_FAMILY DUNE_CONFIG__OS_DISTRIBUTION DUNE_CONFIG__OS_VERSION DUNE_CONFIG__SYS_OCAML_VERSION
 
   $ mkrepo
   > mkpkg testpkg <<EOF
@@ -20,7 +24,7 @@ to compare their values.
   > solve testpkg
   Solution for dune.lock:
   - testpkg.0.0.1
-  $ cat dune.lock/testpkg.pkg 
+  $ cat ${default_lock_dir}/testpkg.pkg
   (version 0.0.1)
   
   (build

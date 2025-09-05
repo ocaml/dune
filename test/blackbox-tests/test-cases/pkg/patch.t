@@ -4,7 +4,7 @@ Applying patches
 
   $ mkdir test-source
   $ make_lockdir
-  $ cat >dune.lock/test.pkg <<EOF
+  $ make_lockpkg test <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/test-source))
   > (build
@@ -13,8 +13,7 @@ Applying patches
   >   (system "cat foo.ml")))
   > EOF
 
-  $ mkdir dune.lock/test.files
-  $ cat >dune.lock/test.files/foo.patch <<EOF
+  $ make_lockpkg_file test foo.patch <<EOF
   > diff --git a/foo.ml b/foo.ml
   > new file mode 100644
   > index 0000000..557db03

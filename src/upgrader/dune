@@ -4,11 +4,9 @@
   stdune
   dune_console
   memo
+  source
   opam_file_format
   dune_lang
   dune_engine
-  dune_rules
   fiber)
- (synopsis "Internal Dune library, do not use!")
- (instrumentation
-  (backend bisect_ppx)))
+ (synopsis "Internal Dune library, do not use!"))

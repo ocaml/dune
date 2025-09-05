@@ -4,65 +4,58 @@ open Memo.O
 let first_exe (exes : Executables.t) = snd (Nonempty_list.hd exes.names)
 
 let linkages
-  ~dynamically_linked_foreign_archives
-  (ocaml : Ocaml_toolchain.t)
-  ~(exes : Executables.t)
-  ~explicit_js_mode
-  ~jsoo_enabled_modes
-  ~jsoo_is_whole_program
+      ~dynamically_linked_foreign_archives
+      (ocaml : Ocaml_toolchain.t)
+      ~(exes : Executables.t)
+      ~explicit_js_mode
+      ~jsoo_enabled_modes
+      ~jsoo_is_whole_program
   =
   let module L = Executables.Link_mode in
-  let l =
-    let has_native = Result.is_ok ocaml.ocamlopt in
-    let modes =
-      L.Map.to_list exes.modes
-      |> List.filter ~f:(fun (mode, _) ->
-        match (mode : Executables.Link_mode.t) with
-        | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes
-        | Byte_complete | Other _ -> true)
-      |> List.map ~f:(fun (mode, loc) ->
-        Exe.Linkage.of_user_config ocaml ~dynamically_linked_foreign_archives ~loc mode)
-    in
-    let modes =
-      if has_native
-      then modes
-      else List.filter modes ~f:(fun x -> not (Exe.Linkage.is_native x))
-    in
-    let modes =
-      if L.Map.existsi ~f:(fun m _ -> L.is_jsoo m) exes.modes
-      then (
-        let jsoo_bytecode_exe_needed =
-          Js_of_ocaml.Mode.Set.inter jsoo_enabled_modes jsoo_is_whole_program
-        in
-        let bytecode_exe_needed =
-          L.Map.existsi
-            ~f:(fun mode _ ->
-              match (mode : Executables.Link_mode.t) with
-              | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_bytecode_exe_needed
-              | Byte_complete | Other _ -> false)
-            exes.modes
-        in
-        if bytecode_exe_needed then Exe.Linkage.byte_for_jsoo :: modes else modes)
-      else if explicit_js_mode
-      then modes
-      else if L.Map.mem exes.modes L.byte
-      then
-        Exe.Linkage.js
-        ::
-        (if Js_of_ocaml.Mode.Pair.select ~mode:JS jsoo_is_whole_program
-         then Exe.Linkage.byte_for_jsoo :: modes
-         else modes)
-      else modes
-    in
-    modes
-  in
-  (* If bytecode was requested but not native or best version, add custom
+  List.concat
+    [ (let modes =
+         L.Map.to_list exes.modes
+         |> List.filter ~f:(fun (mode, _) ->
+           match (mode : Executables.Link_mode.t) with
+           | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes
+           | Byte_complete | Other _ -> true)
+         |> List.map ~f:(fun (mode, loc) ->
+           Exe.Linkage.of_user_config ocaml ~dynamically_linked_foreign_archives ~loc mode)
+       in
+       if Result.is_ok ocaml.ocamlopt
+       then modes
+       else List.filter modes ~f:(fun x -> not (Exe.Linkage.is_native x)))
+    ; (if L.Map.existsi ~f:(fun m _ -> L.is_jsoo m) exes.modes
+       then (
+         let bytecode_exe_needed =
+           let jsoo_bytecode_exe_needed =
+             Js_of_ocaml.Mode.Set.inter jsoo_enabled_modes jsoo_is_whole_program
+           in
+           L.Map.existsi exes.modes ~f:(fun mode _ ->
+             match (mode : Executables.Link_mode.t) with
+             | Byte_complete | Other _ -> false
+             | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_bytecode_exe_needed)
+         in
+         if bytecode_exe_needed then [ Exe.Linkage.byte_for_jsoo ] else [])
+       else if explicit_js_mode
+       then []
+       else if L.Map.mem exes.modes L.byte
+       then
+         Exe.Linkage.js
+         ::
+         (if Js_of_ocaml.Mode.Pair.select ~mode:JS jsoo_is_whole_program
+          then [ Exe.Linkage.byte_for_jsoo ]
+          else [])
+       else [])
+    ; (if
+         (* If bytecode was requested but not native or best version, add custom
      linking *)
-  if L.Map.mem exes.modes L.byte
-     && (not (L.Map.mem exes.modes L.native))
-     && not (L.Map.mem exes.modes L.exe)
-  then Exe.Linkage.custom ocaml.version :: l
-  else l
+         L.Map.mem exes.modes L.byte
+         && (not (L.Map.mem exes.modes L.native))
+         && not (L.Map.mem exes.modes L.exe)
+       then [ Exe.Linkage.custom ocaml.version ]
+       else [])
+    ]
 ;;
 
 let programs ~modules ~(exes : Executables.t) =
@@ -89,13 +82,13 @@ let programs ~modules ~(exes : Executables.t) =
 ;;
 
 let o_files
-  sctx
-  ~dir
-  ~expander
-  ~(exes : Executables.t)
-  ~linkages
-  ~dir_contents
-  ~requires_compile
+      sctx
+      ~dir
+      ~expander
+      ~(exes : Executables.t)
+      ~linkages
+      ~dir_contents
+      ~requires_compile
   =
   if not (Executables.has_foreign exes)
   then Memo.return @@ Mode.Map.empty
@@ -115,7 +108,7 @@ let o_files
       let first_exe = first_exe exes in
       Foreign_sources.for_exes foreign_sources ~first_exe
     in
-    let* foreign_o_files =
+    let* extra_o_files =
       let+ { Lib_config.ext_obj; _ } =
         let+ ocaml = Super_context.context sctx |> Context.ocaml in
         ocaml.lib_config
@@ -131,19 +124,19 @@ let o_files
         ~dir_contents
         ~foreign_sources
     in
-    (* [foreign_o_files] are not mode-dependent *)
-    Mode.Map.Multi.add_all o_files All foreign_o_files)
+    (* [extra_o_files] are not mode-dependent *)
+    Mode.Map.Multi.add_all o_files All extra_o_files)
 ;;
 
 let executables_rules
-  ~sctx
-  ~dir
-  ~expander
-  ~dir_contents
-  ~scope
-  ~compile_info
-  ~embed_in_plugin_libraries
-  (exes : Executables.t)
+      ~sctx
+      ~dir
+      ~expander
+      ~dir_contents
+      ~scope
+      ~compile_info
+      ~embed_in_plugin_libraries
+      (exes : Executables.t)
   =
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
@@ -192,12 +185,10 @@ let executables_rules
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
     let js_of_ocaml =
-      Js_of_ocaml.Mode.Pair.mapi
-        ~f:(fun mode x ->
-          Option.some_if
-            ((not explicit_js_mode) || List.exists linkages ~f:(Exe.Linkage.is_jsoo ~mode))
-            x)
-        js_of_ocaml
+      Js_of_ocaml.Mode.Pair.mapi js_of_ocaml ~f:(fun mode x ->
+        Option.some_if
+          ((not explicit_js_mode) || List.exists linkages ~f:(Exe.Linkage.is_jsoo ~mode))
+          x)
     in
     Compilation_context.create
       ()
@@ -216,95 +207,99 @@ let executables_rules
       ~package:exes.package
   in
   let lib_config = ocaml.lib_config in
-  let stdlib_dir = lib_config.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in
-  let* requires_hidden = Compilation_context.requires_hidden cctx in
-  let* dep_graphs =
-    (* Building an archive for foreign stubs, we link the corresponding object
+  let* () =
+    let* dep_graphs =
+      (* Building an archive for foreign stubs, we link the corresponding object
        files directly to improve perf. *)
-    let link_deps, sandbox = Dep_conf_eval.unnamed ~expander exes.link_deps in
-    let link_args =
-      let use_standard_cxx_flags =
-        match Dune_project.use_standard_c_and_cxx_flags project with
-        | Some true -> Buildable.has_foreign_cxx exes.buildable
-        | _ -> false
-      in
-      let open Action_builder.O in
-      let link_flags =
-        let* () = link_deps in
-        let* link_flags =
-          Action_builder.of_memo (Ocaml_flags_db.link_flags sctx ~dir exes.link_flags)
-        in
-        Link_flags.get ~use_standard_cxx_flags link_flags
-      in
-      let+ flags = link_flags
-      and+ ctypes_cclib_flags =
-        Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:exes.buildable
-      in
-      Command.Args.S
-        [ As flags
-        ; S
-            (let ext_lib = lib_config.ext_lib in
-             let foreign_archives = exes.buildable.foreign_archives |> List.map ~f:snd in
-             (* XXX: don't these need the msvc hack being done in lib_rules? *)
-             (* XXX: also the Command.quote_args being done in lib_rules? *)
-             List.map foreign_archives ~f:(fun archive ->
-               let lib =
-                 Foreign.Archive.lib_file ~archive ~dir ~ext_lib ~mode:Mode.Select.All
+      let link_deps, sandbox = Dep_conf_eval.unnamed ~expander exes.link_deps in
+      let link_args : Command.Args.without_targets Command.Args.t Action_builder.t =
+        Command.Args.S
+          [ Dyn
+              (let open Action_builder.O in
+               let* () = link_deps in
+               let use_standard_cxx_flags =
+                 match Dune_project.use_standard_c_and_cxx_flags project with
+                 | Some true -> Buildable.has_foreign_cxx exes.buildable
+                 | _ -> false
                in
-               Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
-          (* XXX: don't these need the msvc hack being done in lib_rules? *)
-          (* XXX: also the Command.quote_args being done in lib_rules? *)
-        ; As (List.concat_map ctypes_cclib_flags ~f:(fun f -> [ "-cclib"; f ]))
-        ]
-    in
-    let* o_files =
-      o_files sctx ~dir ~expander ~exes ~linkages ~dir_contents ~requires_compile
-    in
-    let* () = Check_rules.add_files sctx ~dir @@ Mode.Map.Multi.to_flat_list o_files in
-    let buildable = exes.buildable in
-    match buildable.ctypes with
-    | None ->
-      Exe.build_and_link_many
-        cctx
-        ~programs
-        ~linkages
-        ~link_args
-        ~o_files
-        ~promote:exes.promote
-        ~embed_in_plugin_libraries
-        ~sandbox
-    | Some _ ->
-      (* Ctypes stubgen builds utility .exe files that need to share modules
-         with this compilation context. To support that, we extract the one-time
-         run bits from [Exe.build_and_link_many] and run them here, then pass
-         that to the [Exe.link_many] call here as well as the Ctypes_rules. This
-         dance is done to avoid triggering duplicate rule exceptions. *)
-      let+ () =
-        let loc = fst (Nonempty_list.hd exes.names) in
-        Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir
-      and+ () = Module_compilation.build_all cctx
-      and+ link =
-        Exe.link_many
+               Ocaml_flags_db.link_flags sctx ~dir exes.link_flags
+               |> Action_builder.of_memo
+               >>= Link_flags.get ~use_standard_cxx_flags
+               >>| fun s -> Command.Args.As s)
+          ; S
+              ((* XXX: don't these need the msvc hack being done in lib_rules? *)
+               (* XXX: also the Command.quote_args being done in lib_rules? *)
+               exes.buildable.foreign_archives
+               |> List.map ~f:(fun (_, archive) ->
+                 let lib =
+                   let ext_lib = lib_config.ext_lib in
+                   Foreign.Archive.lib_file ~archive ~dir ~ext_lib ~mode:Mode.Select.All
+                 in
+                 Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
+            (* XXX: don't these need the msvc hack being done in lib_rules? *)
+            (* XXX: also the Command.quote_args being done in lib_rules? *)
+          ; Dyn
+              (let open Action_builder.O in
+               let+ args =
+                 Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:exes.buildable
+                 >>| List.concat_map ~f:(fun f -> [ "-cclib"; f ])
+               in
+               Command.Args.As args)
+          ]
+        |> Action_builder.return
+      in
+      let* o_files =
+        o_files sctx ~dir ~expander ~exes ~linkages ~dir_contents ~requires_compile
+      in
+      let* () =
+        Mode.Map.Multi.to_flat_list o_files
+        |> Action_builder.return
+        |> Check_rules.add_files sctx ~dir
+      in
+      let buildable = exes.buildable in
+      match buildable.ctypes with
+      | None ->
+        Exe.build_and_link_many
+          cctx
           ~programs
           ~linkages
           ~link_args
           ~o_files
           ~promote:exes.promote
           ~embed_in_plugin_libraries
-          cctx
           ~sandbox
-      in
-      link
-  in
-  let+ () =
+      | Some _ ->
+        (* Ctypes stubgen builds utility .exe files that need to share modules
+         with this compilation context. To support that, we extract the one-time
+         run bits from [Exe.build_and_link_many] and run them here, then pass
+         that to the [Exe.link_many] call here as well as the Ctypes_rules. This
+         dance is done to avoid triggering duplicate rule exceptions. *)
+        let+ () =
+          let loc = fst (Nonempty_list.hd exes.names) in
+          Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir
+        and+ () = Module_compilation.build_all cctx
+        and+ link =
+          Exe.link_many
+            ~programs
+            ~linkages
+            ~link_args
+            ~o_files
+            ~promote:exes.promote
+            ~embed_in_plugin_libraries
+            cctx
+            ~sandbox
+        in
+        link
+    in
     Memo.parallel_iter dep_graphs.for_exes ~f:(Check_rules.add_cycle_check sctx ~dir)
   in
-  ( cctx
-  , Merlin.make
+  let+ merlin =
+    let+ requires_hidden = Compilation_context.requires_hidden cctx in
+    Merlin.make
       ~requires_compile
       ~requires_hidden
-      ~stdlib_dir
+      ~stdlib_dir:lib_config.stdlib_dir
       ~flags
       ~modules
       ~libname:None
@@ -313,17 +308,19 @@ let executables_rules
         (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names))
-      ~modes:`Exe )
+      ~modes:`Exe
+  in
+  cctx, merlin
 ;;
 
 let compile_info ~scope (exes : Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
     (* TODO resolution should be delayed *)
-    Resolve.Memo.read_memo
-      (Preprocess.Per_module.with_instrumentation
-         exes.buildable.preprocess
-         ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
+    Instrumentation.with_instrumentation
+      exes.buildable.preprocess
+      ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
+    |> Resolve.Memo.read_memo
     >>| Preprocess.Per_module.pps
   in
   Lib.DB.resolve_user_written_deps
@@ -336,7 +333,8 @@ let compile_info ~scope (exes : Executables.t) =
     ~forbidden_libraries:exes.forbidden_libraries
 ;;
 
-let rules ~sctx ~dir ~dir_contents ~scope ~expander (exes : Executables.t) =
+let rules ~sctx ~dir_contents ~scope ~expander (exes : Executables.t) =
+  let dir = Dir_contents.dir dir_contents in
   let* compile_info = compile_info ~scope exes in
   let f () =
     executables_rules
@@ -350,10 +348,7 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander (exes : Executables.t) =
       ~embed_in_plugin_libraries:exes.embed_in_plugin_libraries
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir
-  and* () =
-    let requires_link = Lib.Compile.requires_link compile_info in
-    Bootstrap_info.gen_rules sctx exes ~dir ~requires_link
-  in
+  and* () = Bootstrap_info.gen_rules sctx exes ~dir compile_info dir_contents in
   let merlin_ident = Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names) in
   Buildable_rules.with_lib_deps (Super_context.context sctx) merlin_ident ~dir ~f
 ;;

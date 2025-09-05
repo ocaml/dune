@@ -1,5 +1,6 @@
 Package sources can be set to git and be nested:
 
+  $ . ../../git-helpers.sh
   $ . ../helpers.sh
 
   $ mkrepo

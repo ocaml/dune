@@ -33,6 +33,7 @@ described in :ref:`foreign-sandboxing`, or ask Dune to build it via the
      (language c)
      (enabled_if true)
      (names src4 src5)
+     (extra_objects obj1)
      (include_dir headers))
 
 This asks Dune to compile C source files ``src4`` and ``src5`` with
@@ -47,3 +48,6 @@ to the same archive name from multiple OCaml libraries and executables, so a
 foreign archive is a bit like a foreign library, hence the name of the stanza.
 The ``enabled_if`` field has the same meaning as in the :doc:`dune/library`
 stanza.
+The ``extra_objects`` field specifies additional object files to be included.
+Dune will look for ``obj1.o`` in this case. ``extra_objects`` uses the
+:doc:`/reference/ordered-set-language` and supports ``(:include ...)`` forms.

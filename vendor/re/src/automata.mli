@@ -22,64 +22,85 @@
 
 (* Regular expressions *)
 
-type mark = int
+module Mark : sig
+  type t [@@immediate]
 
-type sem = [ `Longest | `Shortest | `First ]
-type rep_kind = [ `Greedy | `Non_greedy ]
+  val compare : t -> t -> int
+  val start : t
+  val prev : t -> t
+  val next : t -> t
+  val next2 : t -> t
+  val group_count : t -> int
+end
 
-val pp_sem : Format.formatter -> sem -> unit
-val pp_rep_kind : Format.formatter -> rep_kind -> unit
+module Sem : sig
+  type t =
+    [ `Longest
+    | `Shortest
+    | `First
+    ]
+
+  val pp : t Fmt.t
+end
+
+module Rep_kind : sig
+  type t =
+    [ `Greedy
+    | `Non_greedy
+    ]
+
+  val pp : t Fmt.t
+end
 
 type expr
+
 val is_eps : expr -> bool
-val pp : Format.formatter -> expr -> unit
+val pp : expr Fmt.t
 
-type ids
-val create_ids : unit -> ids
+module Ids : sig
+  type t
 
-val cst : ids -> Cset.t -> expr
-val empty : ids -> expr
-val alt : ids -> expr list -> expr
-val seq : ids -> sem -> expr -> expr -> expr
-val eps : ids -> expr
-val rep : ids -> rep_kind -> sem -> expr -> expr
-val mark : ids -> mark -> expr
-val pmark : ids -> Pmark.t -> expr
-val erase : ids -> mark -> mark -> expr
-val before : ids -> Category.t -> expr
-val after : ids -> Category.t -> expr
+  val create : unit -> t
+end
 
-val rename : ids -> expr -> expr
+val cst : Ids.t -> Cset.t -> expr
+val empty : Ids.t -> expr
+val alt : Ids.t -> expr list -> expr
+val seq : Ids.t -> Sem.t -> expr -> expr -> expr
+val eps : Ids.t -> expr
+val rep : Ids.t -> Rep_kind.t -> Sem.t -> expr -> expr
+val mark : Ids.t -> Mark.t -> expr
+val pmark : Ids.t -> Pmark.t -> expr
+val erase : Ids.t -> Mark.t -> Mark.t -> expr
+val before : Ids.t -> Category.t -> expr
+val after : Ids.t -> Category.t -> expr
+val rename : Ids.t -> expr -> expr
 
 (****)
 
 (* States of the automata *)
 
-type idx = int
-module Marks : sig
-  type t =
-    { marks: (mark * idx) list
-    ; pmarks: Pmark.Set.t }
-end
-
-module E : sig
+module Idx : sig
   type t
-  val pp : Format.formatter -> t -> unit
+
+  val to_int : t -> int
 end
 
-type hash
-type mark_infos = int array
-type status = Failed | Match of mark_infos * Pmark.Set.t | Running
+module Status : sig
+  type t =
+    | Failed
+    | Match of Mark_infos.t * Pmark.Set.t
+    | Running
+end
 
 module State : sig
-  type t =
-    { idx: idx
-    ; category: Category.t
-    ; desc: E.t list
-    ; mutable status: status option
-    ; hash: hash }
+  type t
+
   val dummy : t
   val create : Category.t -> expr -> t
+  val idx : t -> Idx.t
+  val status : t -> Status.t
+
   module Table : Hashtbl.S with type key = t
 end
 
@@ -87,15 +108,11 @@ end
 
 (* Computation of the states following a given state *)
 
-type working_area
-val create_working_area : unit -> working_area
-val index_count : working_area -> int
+module Working_area : sig
+  type t
 
-val delta : working_area -> Category.t -> Cset.c -> State.t -> State.t
-val deriv :
-  working_area -> Cset.t -> (Category.t * Cset.t) list -> State.t ->
-  (Cset.t * State.t) list
+  val create : unit -> t
+  val index_count : t -> int
+end
 
-(****)
-
-val status : State.t -> status
+val delta : Working_area.t -> Category.t -> Cset.c -> State.t -> State.t

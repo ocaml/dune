@@ -67,19 +67,20 @@ Set 'cache-check-probability' to 1.0, which should trigger the check
   > EOF
   $ rm -rf _build
   $ dune build --config-file config reproducible non-reproducible
-  Warning: cache store error [eb278f352c7ce69cf4ab45956390a62c]: ((in_cache
-  ((non-reproducible 1c8fc4744d4cef1bd2b8f5e915b36be9))) (computed
-  ((non-reproducible 6cfaa7a90747882bcf4ffe7252c1cf89)))) after executing
+  Warning: cache store error [112e5b212dcbd75e93b87a6d9c49be66]: ((in_cache
+  ((non-reproducible 7378fb2d7d80dc4468d6558d864f0897))) (computed
+  ((non-reproducible 074ebdc1c3853f27c68566d8d183032c)))) after executing
   (echo 'build non-reproducible';cp dep non-reproducible)
   build reproducible
   build non-reproducible
 
 Check that the reported digests make sense
 
-  $ dune_cmd cat $DUNE_CACHE_ROOT/files/v4/1c/1c8fc4744d4cef1bd2b8f5e915b36be9
+  $ dune_cmd cat $DUNE_CACHE_ROOT/files/v4/73/7378fb2d7d80dc4468d6558d864f0897
   old-content
-  $ dune_cmd cat $DUNE_CACHE_ROOT/files/v4/6c/6cfaa7a90747882bcf4ffe7252c1cf89
-  new-content
+  $ dune_cmd cat $DUNE_CACHE_ROOT/files/v4/074/074ebdc1c3853f27c68566d8d183032c
+  Fatal error: exception Unix.Unix_error(Unix.ENOENT, "open", "$TESTCASE_ROOT/.cache/files/v4/074/074ebdc1c3853f27c68566d8d183032c")
+  [2]
 
 Check that probability values less than zero and greater than one are rejected
 
@@ -119,9 +120,9 @@ Test that the environment variable and the command line flag work too
 
   $ rm -rf _build
   $ DUNE_CACHE_CHECK_PROBABILITY=1.0 dune build --cache=enabled reproducible non-reproducible
-  Warning: cache store error [eb278f352c7ce69cf4ab45956390a62c]: ((in_cache
-  ((non-reproducible 1c8fc4744d4cef1bd2b8f5e915b36be9))) (computed
-  ((non-reproducible 6cfaa7a90747882bcf4ffe7252c1cf89)))) after executing
+  Warning: cache store error [112e5b212dcbd75e93b87a6d9c49be66]: ((in_cache
+  ((non-reproducible 7378fb2d7d80dc4468d6558d864f0897))) (computed
+  ((non-reproducible 074ebdc1c3853f27c68566d8d183032c)))) after executing
   (echo 'build non-reproducible';cp dep non-reproducible)
   build reproducible
   build non-reproducible
@@ -131,9 +132,9 @@ Test that the environment variable and the command line flag work too
 
   $ rm -rf _build
   $ dune build --cache=enabled --cache-check-probability=1.0 reproducible non-reproducible
-  Warning: cache store error [eb278f352c7ce69cf4ab45956390a62c]: ((in_cache
-  ((non-reproducible 1c8fc4744d4cef1bd2b8f5e915b36be9))) (computed
-  ((non-reproducible 6cfaa7a90747882bcf4ffe7252c1cf89)))) after executing
+  Warning: cache store error [112e5b212dcbd75e93b87a6d9c49be66]: ((in_cache
+  ((non-reproducible 7378fb2d7d80dc4468d6558d864f0897))) (computed
+  ((non-reproducible 074ebdc1c3853f27c68566d8d183032c)))) after executing
   (echo 'build non-reproducible';cp dep non-reproducible)
   build reproducible
   build non-reproducible

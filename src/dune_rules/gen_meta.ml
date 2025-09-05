@@ -76,8 +76,8 @@ let gen_lib pub_name lib ~version =
   in
   let preds =
     match kind with
-    | Normal -> []
-    | Ppx_rewriter _ | Ppx_deriver _ -> [ Pos "ppx_driver" ]
+    | Virtual | Parameter | Dune_file Normal -> []
+    | Dune_file (Ppx_rewriter _ | Ppx_deriver _) -> [ Pos "ppx_driver" ]
   in
   let name lib =
     let name = Lib.name lib in
@@ -111,10 +111,11 @@ let gen_lib pub_name lib ~version =
   List.concat
     [ version
     ; [ description desc; requires ~preds lib_deps ]
-    ; (if (match Lib.project lib with
-           | None -> true
-           | Some project -> Dune_project.dune_version project < (3, 17))
-          || Lib_name.Set.is_empty lib_re_exports
+    ; (if
+         (match Lib.project lib with
+          | None -> true
+          | Some project -> Dune_project.dune_version project < (3, 17))
+         || Lib_name.Set.is_empty lib_re_exports
        then []
        else [ exports lib_re_exports ])
     ; archives ~preds lib
@@ -126,8 +127,8 @@ let gen_lib pub_name lib ~version =
          ; ppx_runtime_deps ppx_rt_deps
          ])
     ; (match kind with
-       | Normal -> []
-       | Ppx_rewriter _ | Ppx_deriver _ ->
+       | Virtual | Parameter | Dune_file Normal -> []
+       | Dune_file (Ppx_rewriter _ | Ppx_deriver _) ->
          (* Deprecated ppx method support *)
          let no_ppx_driver = Neg "ppx_driver"
          and no_custom_ppx = Neg "custom_ppx" in
@@ -138,12 +139,12 @@ let gen_lib pub_name lib ~version =
              ; requires ~preds:[ no_ppx_driver ] ppx_runtime_deps_for_deprecated_method
              ]
            ; (match kind with
-              | Normal -> assert false
-              | Ppx_rewriter _ ->
+              | Virtual | Parameter | Dune_file Normal -> assert false
+              | Dune_file (Ppx_rewriter _) ->
                 [ rule "ppx" [ no_ppx_driver; no_custom_ppx ] Set "./ppx.exe --as-ppx"
                 ; rule "library_kind" [] Set "ppx_rewriter"
                 ]
-              | Ppx_deriver _ ->
+              | Dune_file (Ppx_deriver _) ->
                 [ rule "requires" [ no_ppx_driver; no_custom_ppx ] Add "ppx_deriving"
                 ; rule
                     "ppxopt"

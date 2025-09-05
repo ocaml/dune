@@ -66,12 +66,37 @@ end
 
 let locked = ref false
 
-let lock_exn ~timeout =
+module Lock_held_by = struct
+  type t =
+    | Pid_from_lockfile of int
+    | Unknown
+
+  let read_lock_file () =
+    match Io.read_file (Path.build lock_file) with
+    | exception _ -> Unknown
+    | pid ->
+      (match int_of_string_opt pid with
+       | Some pid -> Pid_from_lockfile pid
+       | None ->
+         User_error.raise
+           [ Pp.textf
+               "Unexpected contents of build directory global lock file (%s). Expected \
+                an integer PID. Found: %s"
+               (Path.Build.to_string_maybe_quoted lock_file)
+               pid
+           ]
+           ~hints:
+             [ Pp.textf "Try deleting %s" (Path.Build.to_string_maybe_quoted lock_file) ])
+  ;;
+end
+
+let lock ~timeout =
   match Config.(get global_lock) with
-  | `Disabled -> ()
+  | `Disabled -> Ok ()
   | `Enabled ->
-    if not !locked
-    then (
+    if !locked
+    then Ok ()
+    else (
       let res =
         match timeout with
         | None -> Lock.lock ()
@@ -86,17 +111,27 @@ let lock_exn ~timeout =
            | `Success -> `Success)
       in
       match res with
-      | `Success -> locked := true
+      | `Success ->
+        locked := true;
+        Ok ()
       | `Failure ->
-        User_error.raise
-          [ Pp.textf
-              "A running dune%s instance has locked the build directory. If this is not \
-               the case, please delete %s"
-              (match Io.read_file (Path.build lock_file) with
-               | exception _ -> ""
-               | pid -> sprintf " (pid: %s)" pid)
-              (Path.Build.to_string_maybe_quoted lock_file)
-          ])
+        let lock_held_by = Lock_held_by.read_lock_file () in
+        Error lock_held_by)
+;;
+
+let lock_exn ~timeout =
+  match lock ~timeout with
+  | Ok () -> ()
+  | Error lock_held_by ->
+    User_error.raise
+      [ Pp.textf
+          "A running dune%s instance has locked the build directory. If this is not the \
+           case, please delete %S."
+          (match lock_held_by with
+           | Unknown -> ""
+           | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
+          (Path.Build.to_string_maybe_quoted lock_file)
+      ]
 ;;
 
 let unlock () =

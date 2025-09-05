@@ -1,67 +1,49 @@
 open Stdune
 
-type t = string
+module T = struct
+  type t = Blake3_mini.Digest.t
 
-external md5_fd : Unix.file_descr -> string = "dune_md5_fd"
-
-module D = Stdlib.Digest
-module Set = String.Set
-module Map = String.Map
-module Metrics = Dune_metrics
-
-module type Digest_impl = sig
-  val file : string -> t
-  val string : string -> t
+  let to_string = Blake3_mini.Digest.to_hex
+  let to_dyn s = Dyn.variant "digest" [ String (to_string s) ]
+  let compare x y = Ordering.of_int (Blake3_mini.Digest.compare x y)
 end
 
-module Direct_impl : Digest_impl = struct
-  let file file =
-    (* On Windows, if this function is invoked in a background thread,
+include T
+module C = Comparable.Make (T)
+module Set = C.Set
+module Map = C.Map
+module Metrics = Dune_metrics
+
+let file file =
+  (* On Windows, if this function is invoked in a background thread,
        if can happen that the file is not properly closed.
        [O_SHARE_DELETE] ensures that the main thread can delete it even if it
        is still open. See #8243. *)
-    let fd =
-      match Unix.openfile file [ Unix.O_RDONLY; O_SHARE_DELETE; O_CLOEXEC ] 0 with
-      | fd -> fd
-      | exception Unix.Unix_error (Unix.EACCES, _, _) ->
-        raise (Sys_error (sprintf "%s: Permission denied" file))
-      | exception exn -> reraise exn
-    in
-    Exn.protectx fd ~f:md5_fd ~finally:Unix.close
-  ;;
-
-  let string = D.string
-end
-
-module Mutable_impl = struct
-  let file_ref = ref Direct_impl.file
-  let string_ref = ref D.string
-  let file f = !file_ref f
-  let string s = !string_ref s
-end
-
-let override_impl ~file ~string =
-  Mutable_impl.file_ref := file;
-  Mutable_impl.string_ref := string
+  let fd =
+    match Unix.openfile file [ Unix.O_RDONLY; O_SHARE_DELETE; O_CLOEXEC ] 0 with
+    | fd -> fd
+    | exception Unix.Unix_error (Unix.EACCES, _, _) ->
+      raise (Sys_error (sprintf "%s: Permission denied" file))
+    | exception exn -> reraise exn
+  in
+  Exn.protectx fd ~f:Blake3_mini.fd ~finally:Unix.close
 ;;
 
-module Impl : Digest_impl = Mutable_impl
-
+let equal = Blake3_mini.Digest.equal
 let hash = Poly.hash
-let equal = String.equal
-let file p = Impl.file (Path.to_string p)
-let compare x y = Ordering.of_int (D.compare x y)
-let to_string = D.to_hex
-let to_dyn s = Dyn.variant "digest" [ String (to_string s) ]
+let file p = file (Path.to_string p)
+let from_hex s = Blake3_mini.Digest.of_hex s
+let hasher = lazy (Blake3_mini.create ())
 
-let from_hex s =
-  match D.from_hex s with
-  | s -> Some s
-  | exception Invalid_argument _ -> None
+let string s =
+  let hasher = Lazy.force hasher in
+  Blake3_mini.feed_string hasher s ~pos:0 ~len:(String.length s);
+  let res = Blake3_mini.digest hasher in
+  Blake3_mini.reset hasher;
+  res
 ;;
 
-let string = Impl.string
-let to_string_raw s = s
+let to_string_raw s = Blake3_mini.Digest.to_binary s
 
 (* We use [No_sharing] to avoid generating different digests for inputs that
    differ only in how they share internal values. Without [No_sharing], if a
@@ -77,7 +59,7 @@ let generic a =
 let path_with_executable_bit =
   (* We follow the digest scheme used by Jenga. *)
   let string_and_bool ~digest_hex ~bool =
-    Impl.string (digest_hex ^ if bool then "\001" else "\000")
+    string (Blake3_mini.Digest.to_hex digest_hex ^ if bool then "\001" else "\000")
   in
   fun ~executable ~content_digest ->
     string_and_bool ~digest_hex:content_digest ~bool:executable
@@ -91,39 +73,39 @@ let file_with_executable_bit ~executable path =
 module Stats_for_digest = struct
   type t =
     { st_kind : Unix.file_kind
-    ; st_perm : Unix.file_perm
+    ; executable : bool
     }
 
   let of_unix_stats (stats : Unix.stats) =
-    { st_kind = stats.st_kind; st_perm = stats.st_perm }
+    (* Check if any of the +x bits are set, ignore read and write *)
+    let executable = 0o111 land stats.st_perm <> 0 in
+    { st_kind = stats.st_kind; executable }
   ;;
 end
 
 module Path_digest_error = struct
   type nonrec t =
     | Unexpected_kind
-    | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
+    | Unix_error of Unix_error.Detailed.t
 end
 
 exception E of Path_digest_error.t
 
-let directory_digest_version = 2
+let directory_digest_version = 3
 
 let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) =
   let rec loop path (stats : Stats_for_digest.t) =
     match stats.st_kind with
     | S_LNK ->
-      let executable = Path.Permissions.test Path.Permissions.execute stats.st_perm in
-      Dune_filesystem_stubs.Unix_error.Detailed.catch
+      Unix_error.Detailed.catch
         (fun path ->
-          let contents = Unix.readlink (Path.to_string path) in
-          path_with_executable_bit ~executable ~content_digest:contents)
+           let contents = Path.to_string path |> Unix.readlink |> string in
+           path_with_executable_bit ~executable:stats.executable ~content_digest:contents)
         path
       |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
     | S_REG ->
-      let executable = Path.Permissions.test Path.Permissions.execute stats.st_perm in
-      Dune_filesystem_stubs.Unix_error.Detailed.catch
-        (file_with_executable_bit ~executable)
+      Unix_error.Detailed.catch
+        (file_with_executable_bit ~executable:stats.executable)
         path
       |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
     | S_DIR when allow_dirs ->
@@ -150,7 +132,8 @@ let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) =
             |> List.sort ~compare:(fun (x, _) (y, _) -> String.compare x y)
           with
           | exception E e -> Error e
-          | contents -> Ok (generic (directory_digest_version, contents, stats.st_perm))))
+          | contents ->
+            Ok (generic (directory_digest_version, contents, stats.executable))))
     | S_DIR | S_BLK | S_CHR | S_FIFO | S_SOCK -> Error Unexpected_kind
   in
   match stats.st_kind with

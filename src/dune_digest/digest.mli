@@ -1,6 +1,6 @@
 open Stdune
 
-(** Digests (MD5) *)
+(** Digests (BLAKE3) *)
 
 type t
 
@@ -24,7 +24,7 @@ val generic : 'a -> t
 module Stats_for_digest : sig
   type t =
     { st_kind : Unix.file_kind
-    ; st_perm : Unix.file_perm
+    ; executable : bool
     }
 
   val of_unix_stats : Unix.stats -> t
@@ -33,7 +33,7 @@ end
 module Path_digest_error : sig
   type nonrec t =
     | Unexpected_kind
-    | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
+    | Unix_error of Unix_error.Detailed.t
     (** A Unix error, e.g., [(ENOENT, _, _)] if the path doesn't exist. *)
 end
 
@@ -60,13 +60,3 @@ val path_with_stats
 (** Digest a file taking the [executable] bit into account. Should not be called
     on a directory. *)
 val file_with_executable_bit : executable:bool -> Path.t -> t
-
-(** Override the implementations of digest computation. Can be used to record
-    the reverse digest map. *)
-val override_impl : file:(string -> t) -> string:(string -> t) -> unit
-
-(** [Direct_impl] does a plain hashing, with no heed to the overrides given by
-    [override_impl]. *)
-module Direct_impl : sig
-  val string : string -> t
-end

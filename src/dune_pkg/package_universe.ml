@@ -3,6 +3,7 @@ open! Import
 type t =
   { local_packages : Local_package.t Package_name.Map.t
   ; lock_dir : Lock_dir.t
+  ; platform : Solver_env.t
   ; version_by_package_name : Package_version.t Package_name.Map.t
   ; solver_env : Solver_env.t
   }
@@ -18,13 +19,14 @@ let lockdir_regenerate_hints =
   ]
 ;;
 
-let version_by_package_name local_packages (lock_dir : Lock_dir.t) =
+let version_by_package_name ~platform local_packages (lock_dir : Lock_dir.t) =
   let from_local_packages =
     Package_name.Map.map local_packages ~f:(fun (local_package : Local_package.t) ->
-      Option.value local_package.version ~default:Lock_dir.Pkg_info.default_version)
+      local_package.version)
   in
   let from_lock_dir =
-    Package_name.Map.map lock_dir.packages ~f:(fun pkg -> pkg.info.version)
+    Lock_dir.Packages.pkgs_on_platform_by_name ~platform lock_dir.packages
+    |> Package_name.Map.map ~f:(fun (pkg : Lock_dir.Pkg.t) -> pkg.info.version)
   in
   let exception Duplicate_package of Package_name.t in
   try
@@ -48,14 +50,12 @@ let version_by_package_name local_packages (lock_dir : Lock_dir.t) =
 let concrete_dependencies_of_local_package t local_package_name ~with_test =
   let local_package = Package_name.Map.find_exn t.local_packages local_package_name in
   match
-    Local_package.(
-      for_solver local_package
-      |> (fun x -> x.dependencies)
-      |> Dependency_formula.to_filtered_formula)
+    (Local_package.for_solver local_package).dependencies
+    |> Dependency_formula.to_filtered_formula
     |> Resolve_opam_formula.filtered_formula_to_package_names
          ~with_test
-         (Solver_env.to_env t.solver_env)
-         t.version_by_package_name
+         ~env:(Solver_env.to_env t.solver_env)
+         ~packages:t.version_by_package_name
   with
   | Ok { regular; post = _ } -> regular
   | Error (`Formula_could_not_be_satisfied unsatisfied_formula_hints) ->
@@ -87,14 +87,18 @@ let all_non_local_dependencies_of_local_packages t =
 ;;
 
 let check_for_unnecessary_packges_in_lock_dir
-  lock_dir
-  all_non_local_dependencies_of_local_packages
+      ~platform
+      (lock_dir : Lock_dir.t)
+      solver_env
+      all_non_local_dependencies_of_local_packages
   =
+  let packages = Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform in
   let unneeded_packages_in_lock_dir =
     let locked_transitive_closure_of_local_package_dependencies =
       match
         Lock_dir.transitive_dependency_closure
           lock_dir
+          ~platform:solver_env
           all_non_local_dependencies_of_local_packages
       with
       | Ok x -> x
@@ -104,7 +108,7 @@ let check_for_unnecessary_packges_in_lock_dir
           "Missing packages from lockdir after confirming no missing packages in lockdir"
           [ "missing package", Package_name.Set.to_dyn missing_packages ]
     in
-    let all_locked_packages = Package_name.Set.of_keys lock_dir.packages in
+    let all_locked_packages = Package_name.Set.of_keys packages in
     Package_name.Set.diff
       all_locked_packages
       locked_transitive_closure_of_local_package_dependencies
@@ -114,7 +118,7 @@ let check_for_unnecessary_packges_in_lock_dir
   else (
     let packages =
       Package_name.Set.to_list unneeded_packages_in_lock_dir
-      |> List.map ~f:(Package_name.Map.find_exn lock_dir.packages)
+      |> List.map ~f:(Package_name.Map.find_exn packages)
     in
     User_error.raise
       ~hints:lockdir_regenerate_hints
@@ -198,9 +202,10 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
           (Package_name.to_string any_non_local_dependency_name)
       ]
   | Some (loc, lock_dir_dependency_hash), Some non_local_dependency_hash ->
-    if Local_package.Dependency_hash.equal
-         lock_dir_dependency_hash
-         non_local_dependency_hash
+    if
+      Local_package.Dependency_hash.equal
+        lock_dir_dependency_hash
+        non_local_dependency_hash
     then ()
     else
       User_error.raise
@@ -216,23 +221,25 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
         ]
 ;;
 
-let validate t =
+let validate ~platform t =
   validate_dependency_hash
     t.local_packages
     ~saved_dependency_hash:t.lock_dir.dependency_hash;
   all_non_local_dependencies_of_local_packages t
-  |> check_for_unnecessary_packges_in_lock_dir t.lock_dir
+  |> check_for_unnecessary_packges_in_lock_dir ~platform t.lock_dir t.solver_env
 ;;
 
-let create local_packages lock_dir =
+let create ~platform local_packages lock_dir =
   try
-    let version_by_package_name = version_by_package_name local_packages lock_dir in
+    let version_by_package_name =
+      version_by_package_name ~platform local_packages lock_dir
+    in
     let solver_env =
       Solver_stats.Expanded_variable_bindings.to_solver_env
         lock_dir.expanded_solver_variable_bindings
     in
-    let t = { local_packages; lock_dir; version_by_package_name; solver_env } in
-    validate t;
+    let t = { local_packages; lock_dir; platform; version_by_package_name; solver_env } in
+    validate ~platform t;
     Ok t
   with
   | User_error.E e -> Error e
@@ -274,6 +281,7 @@ let transitive_dependency_closure_without_test t start =
     match
       Lock_dir.transitive_dependency_closure
         t.lock_dir
+        ~platform:t.solver_env
         Package_name.Set.(
           union
             non_local_immediate_dependencies_of_local_transitive_dependency_closure
@@ -294,7 +302,10 @@ let transitive_dependency_closure_without_test t start =
 
 let contains_package t package_name =
   let in_local_packages = Package_name.Map.mem t.local_packages package_name in
-  let in_lock_dir = Package_name.Map.mem t.lock_dir.packages package_name in
+  let lock_dir_packages =
+    Lock_dir.Packages.pkgs_on_platform_by_name ~platform:t.platform t.lock_dir.packages
+  in
+  let in_lock_dir = Package_name.Map.mem lock_dir_packages package_name in
   in_local_packages || in_lock_dir
 ;;
 

@@ -188,7 +188,7 @@ index a2f01d179..1787b24b1 100644
 
 EOF
 
-for subpackage in core repository format state
+for subpackage in core format
 do
     PKG=opam/src/$subpackage/
     mkdir -p $PKG

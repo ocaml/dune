@@ -4,11 +4,14 @@
    (DUNE_SANDBOX symlink))))
 
 (cram
+ (applies_to :whole_subtree)
  (deps %{bin:node} %{bin:melc})
  (alias runtest-melange))
 
 (cram
  (deps %{bin:melc_stdlib_prefix})
+ (enabled_if
+  (not %{env:INSIDE_NIX=false}))
  (applies_to merlin))
 
 (cram

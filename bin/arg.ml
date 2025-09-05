@@ -41,6 +41,7 @@ module Dep = struct
 
   type t = Dep_conf.t
 
+  let equal = Dep_conf.equal
   let file s = Dep_conf.File (String_with_vars.make_text Loc.none s)
 
   let make_alias_sw ~dir s =
@@ -71,7 +72,7 @@ module Dep = struct
       Stanza.syntax
       (Active Stanza.latest_version)
       (String_with_vars.set_decoding_env
-         (Pform.Env.initial Stanza.latest_version)
+         (Pform.Env.initial ~stanza:Stanza.latest_version ~extensions:[])
          Dep_conf.decode)
   ;;
 
@@ -115,6 +116,16 @@ module Dep = struct
 
   let conv = conv' (parser, printer)
   let to_string_maybe_quoted t = String.maybe_quoted (Format.asprintf "%a" printer t)
+
+  let alias_arg =
+    let parse x = Ok (Dep_conf.Alias (String_with_vars.make_text Loc.none x)) in
+    conv' (parse, printer)
+  ;;
+
+  let alias_rec_arg =
+    let parse x = Ok (Dep_conf.Alias_rec (String_with_vars.make_text Loc.none x)) in
+    conv' (parse, printer)
+  ;;
 end
 
 let dep = Dep.conv

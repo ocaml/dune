@@ -986,11 +986,36 @@ let setup_pkg_markdown_rules_def =
   let f (sctx, pkg) =
     let ctx = Super_context.context sctx in
     let* libs = Context.name ctx |> libs_of_pkg ~pkg in
+    (* Debug: Print to stderr for immediate visibility *)
+    Printf.eprintf "[DEBUG] Processing package: %s\n%!" (Package.Name.to_string pkg);
+    (* Debug: Log libraries found for the package *)
+    Printf.eprintf
+      "[DEBUG] Libraries found: %s\n%!"
+      (libs
+       |> List.map ~f:(fun lib -> Lib.Local.to_lib lib |> Lib.name |> Lib_name.to_string)
+       |> String.concat ~sep:", ");
     let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
+    (* Debug: Log pkg_odocs *)
+    Printf.eprintf "[DEBUG] Package odocs (%d items):\n%!" (List.length pkg_odocs);
+    List.iter pkg_odocs ~f:(fun odoc ->
+      Printf.eprintf "[DEBUG]   - odoc: %s\n%!" (Path.Build.to_string odoc.odoc_file);
+      Printf.eprintf "[DEBUG]     html: %s\n%!" (Path.Build.to_string odoc.html_file);
+      Printf.eprintf
+        "[DEBUG]     markdown: %s\n%!"
+        (Path.Build.to_string odoc.markdown_file));
     let* lib_odocs =
       Memo.List.concat_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
     in
+    (* Debug: Log lib_odocs *)
+    Printf.eprintf "[DEBUG] Library odocs (%d items):\n%!" (List.length lib_odocs);
+    List.iter lib_odocs ~f:(fun odoc ->
+      Printf.eprintf "[DEBUG]   - odoc: %s\n%!" (Path.Build.to_string odoc.odoc_file);
+      Printf.eprintf "[DEBUG]     html: %s\n%!" (Path.Build.to_string odoc.html_file);
+      Printf.eprintf
+        "[DEBUG]     markdown: %s\n%!"
+        (Path.Build.to_string odoc.markdown_file));
     let all_odocs = pkg_odocs @ lib_odocs in
+    Printf.eprintf "[DEBUG] Total odocs: %d\n%!" (List.length all_odocs);
     let* () = Memo.parallel_iter libs ~f:(setup_lib_markdown_rules sctx) in
     let* () = Memo.parallel_iter pkg_odocs ~f:(setup_generate_markdown sctx) in
     add_format_alias_deps ctx Markdown (Pkg pkg) all_odocs
@@ -999,6 +1024,9 @@ let setup_pkg_markdown_rules_def =
 ;;
 
 let setup_pkg_markdown_rules sctx ~pkg : unit Memo.t =
+  Printf.eprintf
+    "[DEBUG-ENTRY] setup_pkg_markdown_rules called for package: %s\n%!"
+    (Package.Name.to_string pkg);
   Memo.With_implicit_output.exec setup_pkg_markdown_rules_def (sctx, pkg)
 ;;
 

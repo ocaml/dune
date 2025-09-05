@@ -59,7 +59,11 @@ let setup_copy_rules ~dir:target ~lock_dir =
   let+ _deps, file_set = Source_deps.files (Path.source lock_dir) in
   let directory_targets, rules =
     match Path.Set.is_empty file_set with
-    | true -> Path.Build.Map.empty, Memo.return Rules.empty
+    | true ->
+      Printf.eprintf
+        "No copy rules as there's no source at %S\n"
+        (Path.Source.to_string lock_dir);
+      Path.Build.Map.empty, Memo.return Rules.empty
     | false ->
       let directory_targets = Path.Build.Map.singleton target Loc.none in
       let rules =
@@ -100,7 +104,6 @@ let setup_dev_tool_lock_rules ~dir dev_tool =
   let dev_tool_name = Dune_lang.Package_name.to_string package_name in
   let dir = Path.Build.relative dir dev_tool_name in
   let lock_dir = Lock_dir.dev_tool_source_lock_dir dev_tool in
-  Printf.eprintf "Lock rules on %S (from %S)\n" (Path.Build.to_string dir) (Path.Source.to_string lock_dir);
   setup_copy_rules ~dir ~lock_dir
 ;;
 

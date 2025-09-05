@@ -100,12 +100,13 @@ end = struct
       match Lib_info.kind lib with
       | Dune_file _ ->
         Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
-      | Parameter | Virtual ->
+      | Virtual ->
         let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
         let name = Lib_info.name lib in
         let files = Foreign_sources.for_lib foreign_sources ~name in
         let { Lib_config.ext_obj; _ } = lib_config in
         Foreign.Sources.object_files files ~dir ~ext_obj
+      | Parameter -> Memo.return []
     in
     List.rev_append
       (List.rev_concat_map

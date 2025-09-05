@@ -368,7 +368,7 @@ let make_lib_modules
         | Dune_file _, None -> Exe_or_normal_lib
         | Parameter, None -> Parameter
         | Virtual, Some virtual_modules -> Virtual { virtual_modules }
-        | _ -> assert false
+        | (Dune_file _ | Parameter), Some _ | Virtual, None -> assert false
       in
       Memo.return (Resolve.return (kind, main_module_name, wrapped))
     | Some _ ->

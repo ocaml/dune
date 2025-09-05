@@ -507,8 +507,11 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
       let vlib = Vimpl.vlib vimpl in
       (match Lib_info.kind (Lib.info vlib) with
        | Parameter ->
-         let root_module = Module_name.of_local_lib_name lib.name in
-         Some (root_module, Lib.main_module_name vlib)
+         let main_module = Module_name.of_local_lib_name lib.name in
+         Some
+           { Compilation_context.main_module
+           ; implements_parameter = Lib.main_module_name vlib
+           }
        | _ -> None)
   in
   let modules = Vimpl.impl_modules vimpl modules in

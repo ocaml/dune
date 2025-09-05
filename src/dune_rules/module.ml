@@ -288,7 +288,7 @@ let map_files t ~f =
 let src_dir t = Source.src_dir t.source
 let set_pp t pp = { t with pp }
 
-let to_dyn { source; obj_name; pp; visibility; kind; install_as; _ } =
+let to_dyn { source; obj_name; pp; visibility; kind; install_as } =
   Dyn.record
     [ "source", Source.to_dyn source
     ; "obj_name", Module_name.Unique.to_dyn obj_name
@@ -345,10 +345,7 @@ module Obj_map = struct
     end)
 end
 
-let encode
-      ({ source; obj_name; pp = _; visibility; kind; install_as = _; _ } as t)
-      ~src_dir
-  =
+let encode ({ source; obj_name; pp = _; visibility; kind; install_as = _ } as t) ~src_dir =
   let open Dune_lang.Encoder in
   let has_impl = has t ~ml_kind:Impl in
   let kind =

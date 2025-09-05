@@ -18,6 +18,11 @@ type opaque =
   | Explicit of bool (** Set directly by the caller *)
   | Inherit_from_settings (** Determined from the version of OCaml and the profile *)
 
+type implements_parameter =
+  { main_module : Module_name.t
+  ; implements_parameter : Module_name.t option Resolve.Memo.t
+  }
+
 (** Create a compilation context. *)
 val create
   :  super_context:Super_context.t
@@ -27,7 +32,7 @@ val create
   -> flags:Ocaml_flags.t
   -> requires_compile:Lib.t list Resolve.Memo.t
   -> requires_link:Lib.t list Resolve.t Memo.Lazy.t
-  -> ?implements_parameter:Module_name.t * Module_name.t option Resolve.Memo.t
+  -> ?implements_parameter:implements_parameter
   -> ?preprocessing:Pp_spec.t
   -> opaque:opaque
   -> ?stdlib:Ocaml_stdlib.t

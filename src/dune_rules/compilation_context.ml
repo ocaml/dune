@@ -78,6 +78,11 @@ let singleton_modules m =
   { modules = Modules.With_vlib.singleton m; dep_graphs = Dep_graph.Ml_kind.dummy m }
 ;;
 
+type implements_parameter =
+  { main_module : Module_name.t
+  ; implements_parameter : Module_name.t option Resolve.Memo.t
+  }
+
 type t =
   { super_context : Super_context.t
   ; scope : Scope.t
@@ -87,7 +92,7 @@ type t =
   ; requires_compile : Lib.t list Resolve.Memo.t
   ; requires_hidden : Lib.t list Resolve.Memo.t
   ; requires_link : Lib.t list Resolve.t Memo.Lazy.t
-  ; implements_parameter : (Module_name.t * Module_name.t option Resolve.Memo.t) option
+  ; implements_parameter : implements_parameter option
   ; includes : Includes.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
@@ -131,7 +136,8 @@ let ocaml t = t.ocaml
 
 let implements_parameter t m =
   match t.implements_parameter with
-  | Some (root, implements) when Module_name.equal root (Module.name m) -> implements
+  | Some { main_module; implements_parameter }
+    when Module_name.equal main_module (Module.name m) -> implements_parameter
   | _ -> Resolve.Memo.return None
 ;;
 

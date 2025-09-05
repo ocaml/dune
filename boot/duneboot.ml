@@ -1135,25 +1135,22 @@ module Library = struct
   ;;
 
   let process_source_file wrapper ~header ({ Source.file = fn; kind } as source) =
-    let+ mangled =
-      let mangled = Wrapper.mangle_filename wrapper source in
-      let dst = build_dir ^/ mangled in
-      match kind with
-      | Asm _ ->
-        Io.copy fn dst;
-        Fiber.return [ mangled ]
-      | Header | C _ ->
-        Io.copy_with_directive ~directive:"line" fn dst;
-        Fiber.return [ mangled ]
-      | Ml { kind = `Ml | `Mli; _ } ->
-        Io.copy_with_header ~header fn dst;
-        Fiber.return [ mangled ]
-      | Ml { kind = `Mll; _ } -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
-      | Ml { kind = `Mly; _ } ->
-        (* CR rgrinberg: what if the parser already has an mli? *)
-        copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]
-    in
-    List.map mangled ~f:(fun m -> source, m)
+    let mangled = Wrapper.mangle_filename wrapper source in
+    let dst = build_dir ^/ mangled in
+    match kind with
+    | Asm _ ->
+      Io.copy fn dst;
+      Fiber.return [ mangled ]
+    | Header | C _ ->
+      Io.copy_with_directive ~directive:"line" fn dst;
+      Fiber.return [ mangled ]
+    | Ml { kind = `Ml | `Mli; _ } ->
+      Io.copy_with_header ~header fn dst;
+      Fiber.return [ mangled ]
+    | Ml { kind = `Mll; _ } -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
+    | Ml { kind = `Mly; _ } ->
+      (* CR rgrinberg: what if the parser already has an mli? *)
+      copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]
   ;;
 
   let process
@@ -1180,7 +1177,9 @@ module Library = struct
     let+ files, build_info_file =
       Fiber.fork_and_join
         (fun () ->
-           Fiber.parallel_map files ~f:(process_source_file wrapper ~header)
+           Fiber.parallel_map files ~f:(fun source ->
+             process_source_file wrapper ~header source
+             >>| List.map ~f:(fun mangled -> source, mangled))
            >>| List.concat)
         (fun () ->
            match build_info_module with

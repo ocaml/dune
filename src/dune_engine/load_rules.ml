@@ -921,11 +921,15 @@ let get_rule_internal path =
   >>= function
   | External _ | Source _ -> assert false
   | Build { rules_here; _ } ->
+    Printf.eprintf "Build w/ rules here for %S\n" (Path.Build.to_string dir);
+    Path.Build.Map.iteri rules_here.by_file_targets ~f:(fun p _ ->
+      Printf.eprintf "Rules exist for path %S\n" (Path.Build.to_string p));
     Memo.return
       (match Path.Build.Map.find rules_here.by_file_targets path with
        | Some _ as rule -> rule
        | None -> Path.Build.Map.find rules_here.by_directory_targets path)
   | Build_under_directory_target { directory_target_ancestor } ->
+    Printf.eprintf "Build dir target\n";
     load_dir ~dir:(Path.build (Path.Build.parent_exn directory_target_ancestor))
     >>= (function
      | External _ | Source _ | Build_under_directory_target _ -> assert false
@@ -955,6 +959,7 @@ let get_rule_or_source path =
      | Some rule -> Memo.return (Rule (path, rule))
      | None ->
        let* loc = Current_rule_loc.get () in
+       Printf.eprintf "No rule found at %S\n" (Path.Build.to_string path);
        no_rule_found ~loc path)
 ;;
 

@@ -1,7 +1,7 @@
 ARG BASE_IMAGE=debian:13
 FROM ${BASE_IMAGE} AS build
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y adduser build-essential curl ocaml
+RUN apt-get update && apt-get upgrade -y && apt-get install -y adduser build-essential ocaml
 
 RUN addgroup --gid 1000 dune && adduser --uid 1000 --ingroup dune dune
 

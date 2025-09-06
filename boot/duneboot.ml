@@ -293,6 +293,19 @@ module Ccomp = struct
   ;;
 end
 
+module Word_size = struct
+  type t =
+    [ `Thirty_two
+    | `Sixty_four
+    ]
+
+  let of_string : string -> t = function
+    | "32" -> `Thirty_two
+    | "64" -> `Sixty_four
+    | _ -> failwith "invalid word size"
+  ;;
+end
+
 module Module : sig
   module Name : sig
     type t
@@ -1366,7 +1379,7 @@ module Library = struct
     let extra_flags =
       if
         String.starts_with ~prefix:"blake3_" fn
-        && (String.equal os_type "Cygwin" || String.equal word_size "32")
+        && (String.equal os_type "Cygwin" || word_size = `Thirty_two)
       then
         [ "-DBLAKE3_NO_SSE2"
         ; "-DBLAKE3_NO_SSE41"
@@ -1893,7 +1906,7 @@ let main () =
   in
   let* libraries =
     let ccomp_type = String.Map.find "ccomp_type" ocaml_config |> Ccomp.of_string in
-    let word_size = String.Map.find "word_size" ocaml_config in
+    let word_size = String.Map.find "word_size" ocaml_config |> Word_size.of_string in
     let os_type = String.Map.find "os_type" ocaml_config in
     let architecture = String.Map.find "architecture" ocaml_config in
     assemble_libraries task ~ext_obj ~ccomp_type ~architecture ~word_size ~os_type

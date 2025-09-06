@@ -1151,7 +1151,7 @@ module File_kind = struct
       Some (C { arch; flags })
     | ".h" -> Some Header
     | ".defaults.ml" ->
-      let fn' = String.sub fn ~pos:0 ~len:i ^ ".ml" in
+      let fn' = module_fname ^ ".ml" in
       if Sys.file_exists (dn ^/ fn')
       then None
       else

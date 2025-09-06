@@ -1160,6 +1160,17 @@ module Library = struct
       copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]
   ;;
 
+  let make_asm ~ext_obj ~fn (asm : File_kind.asm) =
+    let out_file = Filename.chop_extension fn ^ ext_obj in
+    { Source.flags =
+        (match asm.assembler with
+         | `C_comp -> [ "-c"; fn; "-o"; out_file ]
+         | `Msvc_asm -> [ "/nologo"; "/quiet"; "/Fo" ^ out_file; "/c"; fn ])
+    ; assembler = asm.assembler
+    ; out_file
+    }
+  ;;
+
   let process
         { path = dir
         ; main_module_name = namespace
@@ -1233,16 +1244,7 @@ module Library = struct
         | Header -> `Skip
         | Asm asm ->
           if keep_asm asm ~ccomp_type ~architecture ~os_type
-          then (
-            let out_file = Filename.chop_extension fn ^ ext_obj in
-            `Right
-              { Source.flags =
-                  (match asm.assembler with
-                   | `C_comp -> [ "-c"; fn; "-o"; out_file ]
-                   | `Msvc_asm -> [ "/nologo"; "/quiet"; "/Fo" ^ out_file; "/c"; fn ])
-              ; assembler = asm.assembler
-              ; out_file
-              })
+          then `Right (make_asm ~ext_obj ~fn asm)
           else `Skip)
     in
     { ocaml_files; alias_file; c_files; asm_files }

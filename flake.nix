@@ -192,6 +192,7 @@
                 odoc
                 lwt
                 patdiff
+                uutf
               ] ++ (extraBuildInputs pkgs'));
               inherit INSIDE_NIX;
             };
@@ -218,6 +219,7 @@
               buildInputs = with pkgs.ocamlPackages; [
                 re
                 spawn
+                uutf
                 findlib
               ];
               meta.description = ''
@@ -264,6 +266,7 @@
               buildInputs = with pkgs; [
                 ocaml-ng.ocamlPackages_4_14.re
                 ocaml-ng.ocamlPackages_4_14.spawn
+                ocaml-ng.ocamlPackages_4_14.uutf
                 coq_8_16_native
                 coq_8_16_native.ocamlPackages.findlib
               ];

@@ -365,3 +365,25 @@ let directory_targets t ~jsoo_enabled ~dir =
     >>= Memo.List.fold_left ~init ~f:(fun acc { Group_component.dir; stanzas; _ } ->
       f ~dir stanzas acc)
 ;;
+
+let find_directory_target_ancestor =
+  let rec find_directory_target_ancestor ~dir ~jsoo_enabled src =
+    DB.get ~dir
+    >>= function
+    | Lock_dir _ -> Memo.return None
+    | Generated ->
+      let parent = Path.Build.parent_exn dir in
+      find_directory_target_ancestor ~dir:parent ~jsoo_enabled src
+    | ( Group_root _
+      | Is_component_of_a_group_but_not_the_root _
+      | Source_only _
+      | Standalone _ ) as dir_status ->
+      let+ directory_targets = directory_targets dir_status ~jsoo_enabled ~dir in
+      Path.Build.Map.find_key directory_targets ~f:(fun dir_target ->
+        Path.Build.is_descendant ~of_:dir_target src)
+  in
+  fun src ~jsoo_enabled ->
+    match Path.Build.parent src with
+    | None -> Memo.return None
+    | Some dir -> find_directory_target_ancestor ~dir ~jsoo_enabled src
+;;

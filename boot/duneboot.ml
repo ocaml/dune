@@ -1129,6 +1129,22 @@ module Library = struct
     | Some `X86 -> architecture = "amd64" || architecture = "x86_64"
   ;;
 
+  let make_c (c : File_kind.c) ~fn ~os_type ~word_size =
+    let extra_flags =
+      if
+        String.starts_with ~prefix:"blake3_" fn
+        && (String.equal os_type "Cygwin" || String.equal word_size "32")
+      then
+        [ "-DBLAKE3_NO_SSE2"
+        ; "-DBLAKE3_NO_SSE41"
+        ; "-DBLAKE3_NO_AVX2"
+        ; "-DBLAKE3_NO_AVX512"
+        ]
+      else []
+    in
+    { Source.flags = extra_flags @ c.flags; name = fn }
+  ;;
+
   let gen_build_info_module wrapper m =
     let src =
       let fn = Module_name.to_fname m ~kind:`Ml in
@@ -1225,20 +1241,7 @@ module Library = struct
         match src.kind with
         | C c ->
           if keep_c c ~architecture
-          then (
-            let extra_flags =
-              if
-                String.starts_with ~prefix:"blake3_" fn
-                && (String.equal os_type "Cygwin" || String.equal word_size "32")
-              then
-                [ "-DBLAKE3_NO_SSE2"
-                ; "-DBLAKE3_NO_SSE41"
-                ; "-DBLAKE3_NO_AVX2"
-                ; "-DBLAKE3_NO_AVX512"
-                ]
-              else []
-            in
-            `Left { Source.flags = extra_flags @ c.flags; name = fn })
+          then `Left (make_c c ~fn ~os_type ~word_size)
           else `Skip
         | Ml _ -> `Middle fn
         | Header -> `Skip

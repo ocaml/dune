@@ -28,7 +28,7 @@ order to declare a multi-directory library, you need to use the
 
 ``<optional-fields>`` are:
 
-.. describe:: (public_name <name>)
+.. confval:: (public_name <name>)
 
    The name under which the library can be referred as a dependency when it's
    not part of the current workspace, i.e., when it's installed. Without a
@@ -38,19 +38,19 @@ order to declare a multi-directory library, you need to use the
    be one of the packages that Dune knows about, as determined by the logic
    described in :doc:`/reference/packages`.
 
-.. describe:: (package <package>)
+.. confval:: (package <package>)
 
    Installs a private library under the specified package. Such a library is
    now usable by public libraries defined in the same project. The Findlib name
    for this library will be ``<package>.__private__.<name>``; however, the
    library's interface will be hidden from consumers outside the project.
 
-.. describe:: (synopsis <string>)
+.. confval:: (synopsis <string>)
 
    A one-line description of the library. This is used by tools that list
    installed libraries.
 
-.. describe:: (modules <modules>)
+.. confval:: (modules <modules>)
 
    Specifies what modules are part of the library. By default, Dune will use
    all the ``.ml/.re`` files in the same directory as the ``dune`` file. This
@@ -67,13 +67,13 @@ order to declare a multi-directory library, you need to use the
    the list of modules using Dune rules. The dependencies introduced in this
    way *must live in a different directory that the stanza making use of them*.
 
-.. describe:: (libraries <library-dependencies>)
+.. confval:: (libraries <library-dependencies>)
 
    Specifies the library's dependencies.
 
    See :doc:`/reference/library-dependencies` for more details.
 
-.. describe:: (wrapped <boolean>)
+.. confval:: (wrapped <boolean>)
 
    Specifies whether the library modules should be available only through the
    top-level library module, or if they should all be exposed at the top level.
@@ -87,7 +87,7 @@ order to declare a multi-directory library, you need to use the
    modules by the library name and to ease porting of existing projects to
    Dune.
 
-.. describe:: (wrapped (transition <message>))
+.. confval:: (wrapped (transition <message>))
 
    This is the same as ``(wrapped true)``, except it will also generate
    unwrapped (not prefixed by the library name) modules to preserve
@@ -97,14 +97,14 @@ order to declare a multi-directory library, you need to use the
    false)`` to ``(wrapped true)`` without breaking compatibility for users. The
    deprecation notices for the unwrapped modules will include ``<message>``.
 
-.. describe:: (preprocess <preprocess-spec>)
+.. confval:: (preprocess <preprocess-spec>)
 
    Specifies how to preprocess files when needed.
 
    The default is ``no_preprocessing``, and other options are described
    in :doc:`/reference/preprocessing-spec`.
 
-.. describe:: (preprocessor_deps (<deps-conf list>))
+.. confval:: (preprocessor_deps (<deps-conf list>))
 
    Specifies extra preprocessor dependencies preprocessor, i.e., if the
    preprocessor reads a generated file.
@@ -112,7 +112,7 @@ order to declare a multi-directory library, you need to use the
    The specification of dependencies is described in
    :doc:`/concepts/dependency-spec`.
 
-.. describe:: (optional)
+.. confval:: (optional)
 
    If present, it indicates that the library should only be built and installed
    if all the dependencies are available, either in the workspace or in the
@@ -121,7 +121,7 @@ order to declare a multi-directory library, you need to use the
    Use this to provide extra features without adding hard dependencies to your
    project.
 
-.. describe:: (foreign_stubs <foreign-stubs-spec>)
+.. confval:: (foreign_stubs <foreign-stubs-spec>)
 
    Specifies foreign source files, e.g., C or C++ stubs, to be compiled and
    packaged together with the library.
@@ -131,21 +131,21 @@ order to declare a multi-directory library, you need to use the
    This field replaces the now-deleted fields ``c_names``, ``c_flags``,
    ``cxx_names``, and ``cxx_flags``.
 
-.. describe:: (foreign_archives <foreign-archives-list>)
+.. confval:: (foreign_archives <foreign-archives-list>)
 
    Specifies archives of foreign object files to be packaged with the library.
 
    See the section :doc:`/reference/foreign-archives` for more details. This
    field replaces the now-deleted field ``self_build_stubs_archive``.
 
-.. describe:: (install_c_headers (<names>))
+.. confval:: (install_c_headers (<names>))
 
    If your library has public C header files that must be installed, you must
    list them in this field, without the ``.h`` extension.
 
    You should favor the ``public_headers`` field starting from 3.8.
 
-.. describe:: (public_headers (<files>))
+.. confval:: (public_headers (<files>))
 
    If your library has public C header files that must be installed, you must
    list them in this field. This field accepts globs in the form of
@@ -157,7 +157,7 @@ order to declare a multi-directory library, you need to use the
    Additionally, it allows to specify the extensions of the header files, which
    allows alternative extensions such as ``.hh`` or ``.hpp``.
 
-.. describe:: (modes <modes>)
+.. confval:: (modes <modes>)
 
    List modes which should be built by default.
 
@@ -167,14 +167,14 @@ order to declare a multi-directory library, you need to use the
    The following modes are available: ``byte``, ``native`` and ``best``.
    ``best`` is ``native`` or ``byte`` when native compilation isn't available.
 
-.. describe:: (no_dynlink)
+.. confval:: (no_dynlink)
 
    Disables (native) dynamic linking of the library. This means that the
    ``.cmxs`` archive of the library will neither be built nor installed.
 
    This is for advanced use only. By default, you shouldn't set this option.
 
-.. describe:: (kind <kind>)
+.. confval:: (kind <kind>)
 
    Sets the type of library.
 
@@ -193,14 +193,14 @@ order to declare a multi-directory library, you need to use the
    libraries that share cookies with the same name should agree on their
    expanded value).
 
-.. describe:: (ppx_runtime_libraries (<library-names>))
+.. confval:: (ppx_runtime_libraries (<library-names>))
 
    This field is for when the library is a ``ppx rewriter`` or a ``[@@deriving
    ...]`` plugin, and has runtime dependencies.
 
    You need to specify these runtime dependencies here.
 
-.. describe:: (virtual_deps (<opam-packages>))
+.. confval:: (virtual_deps (<opam-packages>))
 
    Sometimes opam packages enable a specific feature only if another package is
    installed. For instance, the case of ``ctypes`` will only install
@@ -210,27 +210,27 @@ order to declare a multi-directory library, you need to use the
    unless you use Dune to synthesize the ``depends`` and ``depopts`` sections
    of your opam file.
 
-.. describe:: (js_of_ocaml ...)
+.. confval:: (js_of_ocaml ...)
 
    Sets options for JavaScript compilation, see :ref:`jsoo-field`.
 
-.. describe:: (wasm_of_ocaml ...)
+.. confval:: (wasm_of_ocaml ...)
 
    Sets options for JavaScript compilation, see :ref:`wasmoo-field`.
 
-.. describe:: (flags ...)
+.. confval:: (flags ...)
 
    See :doc:`/concepts/ocaml-flags`.
 
-.. describe:: (ocamlc_flags ...)
+.. confval:: (ocamlc_flags ...)
 
    See :doc:`/concepts/ocaml-flags`.
 
-.. describe:: (ocamlopt_flags ...)
+.. confval:: (ocamlopt_flags ...)
 
    See :doc:`/concepts/ocaml-flags`.
 
-.. describe:: (library_flags (<flags>))
+.. confval:: (library_flags (<flags>))
 
    A list of flags passed to ``ocamlc`` and ``ocamlopt`` when building the
    library archive files.
@@ -239,7 +239,7 @@ order to declare a multi-directory library, you need to use the
 
    ``<flags>`` is a list of strings supporting :doc:`/concepts/variables`.
 
-.. describe:: (c_library_flags <flags>)
+.. confval:: (c_library_flags <flags>)
 
    Specifies the flags passed to the C compiler when constructing the library
    archive file for the C stubs.
@@ -251,7 +251,7 @@ order to declare a multi-directory library, you need to use the
    write ``-lbar`` here, or whatever flags are necessary to link against this
    library.
 
-.. describe:: (modules_without_implementation <modules>)
+.. confval:: (modules_without_implementation <modules>)
 
    Specifies a list of modules that have only a ``.mli`` or ``.rei`` but no ``.ml`` or ``.re`` file.
 
@@ -267,7 +267,7 @@ order to declare a multi-directory library, you need to use the
    directory has more than one stanza, and thus a ``modules`` field must be
    specified, ``<modules>`` still needs to be added in ``modules``.
 
-.. describe:: (private_modules <modules>)
+.. confval:: (private_modules <modules>)
 
    Specifies a list of modules that will be marked as private.
 
@@ -279,12 +279,12 @@ order to declare a multi-directory library, you need to use the
    than one stanza and thus a ``modules`` field must be specified,
    ``<modules>`` still need to be added in ``modules``.
 
-.. describe:: (allow_overlapping_dependencies)
+.. confval:: (allow_overlapping_dependencies)
 
    Allows external dependencies to overlap with libraries that are present in
    the workspace.
 
-.. describe:: (enabled_if <blang expression>)
+.. confval:: (enabled_if <blang expression>)
 
    Conditionally disables a library.
 
@@ -295,7 +295,7 @@ order to declare a multi-directory library, you need to use the
    type of OS being targeted by the current build. Its value is the same as the
    value of the ``os_type`` parameter in the output of ``ocamlc -config``.
 
-.. describe:: (inline_tests)
+.. confval:: (inline_tests)
 
    Enables inline tests for this library.
 
@@ -303,7 +303,7 @@ order to declare a multi-directory library, you need to use the
 
    See :ref:`inline_tests` for a reference of corresponding options.
 
-.. describe:: (root_module <module>)
+.. confval:: (root_module <module>)
 
    This field instructs Dune to generate a module that will contain module
    aliases for every library specified in dependencies.
@@ -311,7 +311,7 @@ order to declare a multi-directory library, you need to use the
    This is useful whenever a library is shadowed by a local module. The library
    may then still be accessible via this root module.
 
-.. describe:: (ctypes <ctypes field>)
+.. confval:: (ctypes <ctypes field>)
 
    Instructs Dune to use ctypes stubgen to process your type and function
    descriptions for binding system libraries, vendored libraries, or other
@@ -321,7 +321,7 @@ order to declare a multi-directory library, you need to use the
 
    This field is available since the 3.0 version of the Dune language.
 
-.. describe:: (empty_module_interface_if_absent)
+.. confval:: (empty_module_interface_if_absent)
 
    Causes the generation of empty interfaces for every module that does not
    have an interface file already.

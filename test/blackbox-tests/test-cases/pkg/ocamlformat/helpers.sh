@@ -94,7 +94,7 @@ EOF
  (public_name foo))
 EOF
   cat > dune-workspace <<EOF
-(lang dune 3.13)
+(lang dune 3.20)
 
 (lock_dir
  (path "dev-tools.locks/ocamlformat")
@@ -106,6 +106,8 @@ EOF
 (repository
  (name mock)
  (url "file://$(pwd)/mock-opam-repository"))
+
+(pkg enabled)
 EOF
 }
 

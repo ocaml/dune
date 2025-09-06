@@ -27,7 +27,10 @@ let to_library t =
   ; library_flags = Ordered_set_lang.Unexpanded.standard
   ; c_library_flags = Ordered_set_lang.Unexpanded.standard
   ; virtual_deps = []
-  ; wrapped = This (Simple false)
+  ; wrapped =
+      This (Simple true)
+      (* We set it as Simple true because, otherwise, we can't extract the
+         Singleton main module name. *)
   ; buildable = t.buildable
   ; dynlink = Dynlink_supported.of_bool false
   ; project = t.project

@@ -241,7 +241,8 @@ module Error = struct
     make
       ~loc
       [ Pp.textf
-          "Library %S is not virtual. It cannot be implemented by %S."
+          "Library %S is neither a virtual library nor a library parameter. It cannot be \
+           implemented by %S."
           (Lib_name.to_string not_vlib)
           (Lib_name.to_string impl)
       ]
@@ -724,12 +725,12 @@ end = struct
         let rec loop acc = function
           | [] -> Resolve.Memo.return acc
           | (lib, stack) :: libs ->
-            let virtual_ = Lib_info.virtual_ lib.info in
-            (match lib.implements, virtual_ with
-             | None, false -> loop acc libs
-             | Some _, true -> assert false (* can't be virtual and implement *)
-             | None, true -> loop (Map.set acc lib (No_impl stack)) libs
-             | Some vlib, false ->
+            (match lib.implements, Lib_info.kind lib.info with
+             | None, Dune_file _ -> loop acc libs
+             | None, (Parameter | Virtual) -> loop (Map.set acc lib (No_impl stack)) libs
+             | Some _, (Parameter | Virtual) ->
+               assert false (* can't be virtual and implement *)
+             | Some vlib, Dune_file _ ->
                let* vlib = Memo.return vlib in
                (match Map.find acc vlib with
                 | None ->
@@ -946,10 +947,9 @@ end = struct
         let res =
           let open Resolve.Memo.O in
           let* vlib = resolve_forbid_ignore name in
-          let virtual_ = Lib_info.virtual_ vlib.info in
-          match virtual_ with
-          | false -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
-          | true -> Resolve.Memo.return vlib
+          match Lib_info.kind vlib.info with
+          | Dune_file _ -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
+          | Parameter | Virtual -> Resolve.Memo.return vlib
         in
         Memo.map res ~f:Option.some
     in

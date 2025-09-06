@@ -4,6 +4,7 @@ appropriate error message.
   File "impl/dune", line 3, characters 13-16:
   3 |  (implements lib))
                    ^^^
-  Error: Library "lib" is not virtual. It cannot be implemented by "impl".
+  Error: Library "lib" is neither a virtual library nor a library parameter. It
+  cannot be implemented by "impl".
   -> required by alias default in dune:1
   [1]

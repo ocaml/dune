@@ -885,7 +885,7 @@ end = struct
             |> Action_builder.of_memo
           in
           let pp =
-            Pp.concat_map template ~sep:Pp.newline ~f:(fun s ->
+            Pp.concat_map template ~sep:Pp.cut ~f:(fun s ->
               if String.is_prefix s ~prefix:"#"
               then (
                 match String.extract_blank_separated_words (String.drop s 1) with

@@ -1,8 +1,6 @@
 (* Copyright (c) 2016-2017 David Kaloper Meršinjak. All rights reserved.
    See LICENSE.md. *)
 
-open Dune_uutf
-
 let invalid_arg fmt = Format.kasprintf invalid_arg fmt
 
 let (&.) f g x = f (g x)

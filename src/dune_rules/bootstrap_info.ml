@@ -118,7 +118,8 @@ let rule sctx ~requires_link ~main =
   in
   let externals =
     let available =
-      [ "threads.posix"; "re"; "spawn"; "seq" ] |> List.rev_map ~f:Lib_name.of_string
+      [ "threads.posix"; "re"; "spawn"; "seq"; "uutf" ]
+      |> List.rev_map ~f:Lib_name.of_string
     in
     List.filter_map externals ~f:(fun lib ->
       let name = Lib.name lib in

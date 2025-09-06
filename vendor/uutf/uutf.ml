@@ -1,6 +1,6 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2012 The uutf programmers. All rights reserved.
-   Distributed under the ISC license, see terms at the end of the file.
+   SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
 let io_buffer_size = 65536                           (* IO_BUFFER_SIZE 4.0.0 *)
@@ -766,57 +766,7 @@ module String = struct
 end
 
 module Buffer = struct
-  let add_utf_8 b u =
-    let u = Uchar.to_int u in
-    let w byte = Buffer.add_char b (unsafe_chr byte) in          (* inlined. *)
-    if u <= 0x007F then
-    (w u)
-    else if u <= 0x07FF then
-    (w (0xC0 lor (u lsr 6));
-     w (0x80 lor (u land 0x3F)))
-    else if u <= 0xFFFF then
-    (w (0xE0 lor (u lsr 12));
-     w (0x80 lor ((u lsr 6) land 0x3F));
-     w (0x80 lor (u land 0x3F)))
-    else
-    (w (0xF0 lor (u lsr 18));
-     w (0x80 lor ((u lsr 12) land 0x3F));
-     w (0x80 lor ((u lsr 6) land 0x3F));
-     w (0x80 lor (u land 0x3F)))
-
-  let add_utf_16be b u =
-    let u = Uchar.to_int u in
-    let w byte = Buffer.add_char b (unsafe_chr byte) in          (* inlined. *)
-    if u < 0x10000 then (w (u lsr 8); w (u land 0xFF)) else
-    let u' = u - 0x10000 in
-    let hi = (0xD800 lor (u' lsr 10)) in
-    let lo = (0xDC00 lor (u' land 0x3FF)) in
-    w (hi lsr 8); w (hi land 0xFF);
-    w (lo lsr 8); w (lo land 0xFF)
-
-  let add_utf_16le b u =                            (* swapped add_utf_16be. *)
-    let u = Uchar.to_int u in
-    let w byte = Buffer.add_char b (unsafe_chr byte) in          (* inlined. *)
-    if u < 0x10000 then (w (u land 0xFF); w (u lsr 8)) else
-    let u' = u - 0x10000 in
-    let hi = (0xD800 lor (u' lsr 10)) in
-    let lo = (0xDC00 lor (u' land 0x3FF)) in
-    w (hi land 0xFF); w (hi lsr 8);
-    w (lo land 0xFF); w (lo lsr 8)
+  let add_utf_8 = Buffer.add_utf_8_uchar
+  let add_utf_16be = Buffer.add_utf_16be_uchar
+  let add_utf_16le = Buffer.add_utf_16le_uchar
 end
-
-(*---------------------------------------------------------------------------
-   Copyright (c) 2012 The uutf programmers
-
-   Permission to use, copy, modify, and/or distribute this software for any
-   purpose with or without fee is hereby granted, provided that the above
-   copyright notice and this permission notice appear in all copies.
-
-   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-  ---------------------------------------------------------------------------*)

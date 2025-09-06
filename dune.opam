@@ -63,4 +63,5 @@ depends: [
   "ctypes" { with-dev-setup & os != "win32" }
   "utop" { with-dev-setup & >= "2.6.0" & os != "win32" }
   "melange" { with-dev-setup & >= "5.1.0-51" & os != "win32" }
+  "uutf" { with-dev-setup }
 ]

@@ -69,9 +69,10 @@ let exe_path_components_within_package t = [ "bin"; exe_name t ]
 
 let needs_to_build_with_same_compiler_as_project = function
   | Ocamlformat -> false
-  | Odoc -> true
-  | Ocamllsp -> true
-  | Utop -> false
-  | Ocamlearlybird -> false
-  | Odig -> false
+  | Ocamlearlybird ->
+    (* CR-someday rgrinberg: I have my doubts that this is true given that
+       the debugger is expected to print identifiers. In any case,
+       ocamlearlybird isn't going to work well due to relocation issues *)
+    false
+  | Utop | Odoc | Ocamllsp | Odig -> true
 ;;

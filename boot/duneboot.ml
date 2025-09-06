@@ -936,19 +936,26 @@ module Libs = struct
   ;;
 
   let local_libraries =
-    { path = "vendor/re/src"
-    ; main_module_name = Some "Re"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-    :: { path = "vendor/spawn/src"
-       ; main_module_name = Some "Spawn"
-       ; include_subdirs = No
-       ; special_builtin_support = None
-       ; root_module = None
-       }
-    :: Libs.local_libraries
+    [ { path = "vendor/re/src"
+      ; main_module_name = Some "Re"
+      ; include_subdirs = No
+      ; special_builtin_support = None
+      ; root_module = None
+      }
+    ; { path = "vendor/spawn/src"
+      ; main_module_name = Some "Spawn"
+      ; include_subdirs = No
+      ; special_builtin_support = None
+      ; root_module = None
+      }
+    ; { path = "vendor/uutf"
+      ; main_module_name = Some "Uutf"
+      ; include_subdirs = No
+      ; special_builtin_support = None
+      ; root_module = None
+      }
+    ]
+    @ Libs.local_libraries
     |> List.map ~f:make_lib
   ;;
 
@@ -1731,7 +1738,7 @@ let resolve_externals external_libraries =
     let convert = function
       | "threads" -> Some ("threads" ^ Config.ocaml_archive_ext, [ "-I"; "+threads" ])
       | "unix" -> Some ("unix" ^ Config.ocaml_archive_ext, Config.unix_library_flags)
-      | "seq" | "re" | "spawn" -> None
+      | "seq" | "re" | "spawn" | "uutf" -> None
       | s -> fatal "unhandled external library %s" s
     in
     List.filter_map ~f:convert external_libraries |> List.split

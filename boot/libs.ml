@@ -1,5 +1,5 @@
 open Types
-let external_libraries = [ "unix"; "threads"; "spawn" ]
+let external_libraries = [ "unix"; "threads" ]
 
 let local_libraries =
   [ { path = "otherlibs/top-closure"
@@ -143,12 +143,6 @@ let local_libraries =
     }
   ; { path = "vendor/build_path_prefix_map/src"
     ; main_module_name = Some "Build_path_prefix_map"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "vendor/uutf"
-    ; main_module_name = Some "Dune_uutf"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None

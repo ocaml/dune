@@ -170,6 +170,12 @@ module List = struct
     List.(rev l, rev m, rev r)
   ;;
 
+  let cons_opt x t =
+    match x with
+    | None -> t
+    | Some x -> x :: t
+  ;;
+
   [@@@ocaml.warning "-32"]
 
   (* Some list functions are introduced in later OCaml versions. There are also
@@ -1202,17 +1208,9 @@ module Library = struct
     in
     let alias_file = Wrapper.generate_wrapper wrapper modules in
     let c_files, ocaml_files, asm_files =
-      let files =
-        let files =
-          match build_info_file with
-          | None -> files
-          | Some fn -> fn :: files
-        in
-        match root_module with
-        | None -> files
-        | Some fn -> fn :: files
-      in
-      List.partition_map_skip files ~f:(fun (src, fn) ->
+      List.cons_opt build_info_file files
+      |> List.cons_opt root_module
+      |> List.partition_map_skip ~f:(fun ((src : Source.t), fn) ->
         match src.kind with
         | C c ->
           if keep_c c ~architecture
@@ -1324,9 +1322,7 @@ let get_dependencies libraries =
   let+ deps =
     let alias_files =
       List.fold_left libraries ~init:[] ~f:(fun acc (lib : Library.t) ->
-        match lib.alias_file with
-        | None -> acc
-        | Some fn -> fn :: acc)
+        List.cons_opt lib.alias_file acc)
     in
     let all_source_files =
       List.concat_map libraries ~f:(fun (lib : Library.t) -> lib.ocaml_files)

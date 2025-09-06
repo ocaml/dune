@@ -321,6 +321,22 @@ module Os_type = struct
   ;;
 end
 
+module Arch = struct
+  type t =
+    [ `arm64
+    | `amd64
+    | `x86_64
+    | `other
+    ]
+
+  let of_string : string -> t = function
+    | "arm64" -> `arm64
+    | "amd64" -> `amd64
+    | "x86_64" -> `x86_64
+    | _ -> `other
+  ;;
+end
+
 module Module : sig
   module Name : sig
     type t
@@ -1379,15 +1395,15 @@ module Library = struct
     &&
     match arch, architecture with
     | None, _ -> true
-    | Some `Amd64, "amd64" -> true
+    | Some `Amd64, `amd64 -> true
     | Some `Amd64, _ -> false
   ;;
 
   let keep_c { File_kind.arch; flags = _ } ~architecture =
     match arch with
     | None -> true
-    | Some `Arm64 -> architecture = "arm64"
-    | Some `X86 -> architecture = "amd64" || architecture = "x86_64"
+    | Some `Arm64 -> architecture = `arm64
+    | Some `X86 -> architecture = `amd64 || architecture = `x86_64
   ;;
 
   let make_c (c : File_kind.c) ~fn ~os_type ~word_size =
@@ -1923,7 +1939,7 @@ let main () =
     let ccomp_type = String.Map.find "ccomp_type" ocaml_config |> Ccomp.of_string in
     let word_size = String.Map.find "word_size" ocaml_config |> Word_size.of_string in
     let os_type = String.Map.find "os_type" ocaml_config |> Os_type.of_string in
-    let architecture = String.Map.find "architecture" ocaml_config in
+    let architecture = String.Map.find "architecture" ocaml_config |> Arch.of_string in
     assemble_libraries task ~ext_obj ~ccomp_type ~architecture ~word_size ~os_type
   in
   let c_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.c_files) libraries in

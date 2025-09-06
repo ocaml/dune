@@ -615,6 +615,7 @@ module Client = struct
       Builder.declare_request t Procedures.Public.diagnostics;
       Builder.declare_request t Procedures.Poll.(poll running_jobs);
       Builder.declare_notification t Procedures.Public.shutdown;
+      Builder.declare_request t Procedures.Public.format;
       Builder.declare_request t Procedures.Public.format_dune_file;
       Builder.declare_request t Procedures.Public.promote;
       Builder.declare_request t Procedures.Public.promote_many;

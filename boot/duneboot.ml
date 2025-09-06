@@ -306,6 +306,21 @@ module Word_size = struct
   ;;
 end
 
+module Os_type = struct
+  type t =
+    [ `Unix
+    | `Win32
+    | `Cygwin
+    ]
+
+  let of_string : string -> t = function
+    | "Unix" -> `Unix
+    | "Win32" -> `Win32
+    | "Cygwin" -> `Cygwin
+    | _ -> failwith "invalid os_type"
+  ;;
+end
+
 module Module : sig
   module Name : sig
     type t
@@ -1353,8 +1368,8 @@ module Library = struct
         ~os_type
     =
     (match os with
-     | Some `Unix -> String.equal os_type "Unix"
-     | Some `Win -> String.equal os_type "Win32"
+     | Some `Unix -> os_type = `Unix
+     | Some `Win -> os_type = `Win32
      | None -> true)
     && (match syntax, ccomp_type with
         | `Intel, `Msvc -> true
@@ -1379,7 +1394,7 @@ module Library = struct
     let extra_flags =
       if
         String.starts_with ~prefix:"blake3_" fn
-        && (String.equal os_type "Cygwin" || word_size = `Thirty_two)
+        && (os_type = `Cygwin || word_size = `Thirty_two)
       then
         [ "-DBLAKE3_NO_SSE2"
         ; "-DBLAKE3_NO_SSE41"
@@ -1907,7 +1922,7 @@ let main () =
   let* libraries =
     let ccomp_type = String.Map.find "ccomp_type" ocaml_config |> Ccomp.of_string in
     let word_size = String.Map.find "word_size" ocaml_config |> Word_size.of_string in
-    let os_type = String.Map.find "os_type" ocaml_config in
+    let os_type = String.Map.find "os_type" ocaml_config |> Os_type.of_string in
     let architecture = String.Map.find "architecture" ocaml_config in
     assemble_libraries task ~ext_obj ~ccomp_type ~architecture ~word_size ~os_type
   in

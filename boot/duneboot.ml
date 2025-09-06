@@ -1102,19 +1102,23 @@ module File_kind = struct
     | Ml of ml
 
   let analyse module_path dn fn =
-    let i =
-      try String.index fn '.' with
-      | Not_found -> String.length fn
+    let fname, ext =
+      let i =
+        try String.index fn '.' with
+        | Not_found -> String.length fn
+      in
+      let fname = String.sub fn ~pos:0 ~len:i in
+      let ext = String.sub fn ~pos:i ~len:(String.length fn - i) in
+      fname, ext
     in
-    let module_fname = String.sub fn ~pos:0 ~len:i in
-    let name = lazy (Module.Name.of_fname module_fname) in
+    let name = lazy (Module.Name.of_fname fname) in
     let module_path =
       lazy
-        (let path = module_fname :: module_path in
+        (let path = fname :: module_path in
          List.map ~f:Module.Name.of_fname path |> Module.Path.of_list)
     in
-    match String.sub fn ~pos:i ~len:(String.length fn - i) with
-    | (".S" | ".asm") as ext ->
+    match ext with
+    | ".S" | ".asm" ->
       let syntax = if ext = ".S" then `Gas else `Intel in
       let os, arch, assembler =
         let fn = Filename.remove_extension fn in
@@ -1151,7 +1155,7 @@ module File_kind = struct
       Some (C { arch; flags })
     | ".h" -> Some Header
     | ".defaults.ml" ->
-      let fn' = module_fname ^ ".ml" in
+      let fn' = fname ^ ".ml" in
       if Sys.file_exists (dn ^/ fn')
       then None
       else

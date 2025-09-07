@@ -1860,6 +1860,19 @@ let build
     in
     write_args "compiled_ml_files" compiled_ml_files
   in
+  let () =
+    let unused = ref [] in
+    Hashtbl.iter table ~f:(fun ~key ~data ->
+      match data with
+      | Not_started _ -> unused := key :: !unused
+      | _ -> ());
+    match !unused with
+    | [] -> ()
+    | xs ->
+      Format.eprintf "unused modules:@.";
+      List.iter xs ~f:(fun m -> Format.eprintf "- %s@." m);
+      failwith "unused modules found"
+  in
   List.concat
     [ common_build_args name ~external_includes ~external_libraries
     ; obj_files

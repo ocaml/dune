@@ -1782,6 +1782,11 @@ let build
   in
   let build ~file ~deps m =
     match Hashtbl.find table m with
+    | exception Not_found -> fatal "file not found: %s" m
+    | Initializing ->
+      let deps = String.concat ~sep:", " deps in
+      fatal "dependency cycle compiling %s\ndependencies: %s" file deps
+    | Started fut -> Fiber.Future.wait fut
     | Not_started f ->
       let* fut =
         Hashtbl.replace table ~key:m ~data:Initializing;
@@ -1790,11 +1795,6 @@ let build
       Hashtbl.replace table ~key:m ~data:(Started fut);
       let+ () = Fiber.Future.wait fut in
       incr Status_line.num_jobs_finished
-    | Initializing ->
-      let deps = String.concat ~sep:", " deps in
-      fatal "dependency cycle compiling %s\ndependencies: %s" file deps
-    | Started fut -> Fiber.Future.wait fut
-    | exception Not_found -> fatal "file not found: %s" m
   in
   let external_libraries, external_includes = resolve_externals external_libraries in
   List.iter dependencies ~f:(fun { Dep.file; deps } ->

@@ -18,6 +18,8 @@ Testing the bootstrap of an unwrapped include subdirs qualified.
   > let () = Printf.printf "Hello from unwrapped a/b/c/c.ml\n"
   > EOF
 
+  $ make_module src/lib/root.ml
+
   $ cat > src/lib/dune <<EOF
   > (library
   >  (name lib)
@@ -26,6 +28,7 @@ Testing the bootstrap of an unwrapped include subdirs qualified.
   > EOF
 
   $ create_dune lib <<EOF
+  > module Root = Root
   > module M1 = X
   > module M2 = B
   > module M3 = B.C

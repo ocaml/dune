@@ -33,10 +33,10 @@ Currently doesn't work because it is not implemented.
   > EOF
   ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/types.ml boot/libs.ml boot/duneboot.ml
   ./.duneboot.exe
-  cd _boot && /OCAMLOPT -c -g -no-alias-deps -w -49-23-53 -alert -unstable main.ml
-  File "main.ml", line 3, characters 5-6:
-  3 | open B
+  cd _boot && /OCAMLOPT -c -g -no-alias-deps -w -49-23-53 -alert -unstable dune_exe__Main.ml
+  File "dune_exe__Main.ml", line 4, characters 5-6:
+  4 | open C
            ^
-  Error: Unbound module B
+  Error: Unbound module C
   [2]
 

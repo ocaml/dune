@@ -1,0 +1,11 @@
+(cram
+ (deps
+  helpers.sh
+  %{project_root}/boot/types.ml
+  %{project_root}/boot/duneboot.ml
+  %{bin:bootstrap.exe}))
+
+(env
+ (_
+  (binaries
+   (%{project_root}/boot/bootstrap.exe as bootstrap.exe))))

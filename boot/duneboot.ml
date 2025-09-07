@@ -1812,16 +1812,18 @@ let build
     Hashtbl.create num_dependencies
   in
   let external_libraries, external_includes = resolve_externals external_libraries in
-  let rec build m =
+  let rec build ~stack m =
     match Hashtbl.find table m with
     | exception Not_found -> fatal "file not found: %s" m
-    | Initializing -> fatal "dependency cycle compiling %s" m
+    | Initializing ->
+      List.iter stack ~f:(Format.eprintf "- %s@.");
+      fatal "dependency cycle compiling %s" m
     | Started fut -> Fiber.Future.wait fut
     | Not_started { deps } ->
       let* fut =
         Hashtbl.replace table ~key:m ~data:Initializing;
         Fiber.fork (fun () ->
-          let* () = Fiber.parallel_iter deps ~f:build in
+          let* () = Fiber.parallel_iter deps ~f:(build ~stack:(m :: stack)) in
           List.concat
             [ [ "-c"; "-g"; "-no-alias-deps" ]
             ; ocaml_warnings
@@ -1839,7 +1841,7 @@ let build
     Hashtbl.add table ~key:file ~data:(Not_started { deps }));
   let* obj_files =
     Fiber.fork_and_join_unit
-      (fun () -> build (Filename.basename main))
+      (fun () -> build ~stack:[] (Filename.basename main))
       (fun () ->
          (Fiber.fork_and_join (fun () ->
             Fiber.parallel_map c_files ~f:(fun { Source.name = file; flags } ->

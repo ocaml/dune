@@ -988,9 +988,19 @@ module Config : sig
   val ocamlyacc : string
   val mode : Mode.t
   val ocaml_archive_ext : string
-  val ocaml_config : unit -> string String.Map.t Fiber.t
   val output_complete_obj_arg : string
   val unix_library_flags : string list
+
+  type t
+
+  val ocaml_config : unit -> t Fiber.t
+  val ext_obj : t -> string
+  val ccomp_type : t -> Ccomp.t
+  val word_size : t -> Word_size.t
+  val os_type : t -> Os_type.t
+  val architecture : t -> Arch.t
+  val system : t -> string
+  val c_compiler : t -> string
 end = struct
   let ocaml_version = Scanf.sscanf Sys.ocaml_version "%d.%d" (fun a b -> a, b)
   let prog_not_found prog = fatal "Program %s not found in PATH" prog
@@ -1043,6 +1053,14 @@ end = struct
     | false, Some path -> path, Mode.Native, ".cmxa"
   ;;
 
+  let output_complete_obj_arg =
+    if ocaml_version < (4, 10) then "-custom" else "-output-complete-exe"
+  ;;
+
+  let unix_library_flags = if ocaml_version >= (5, 0) then [ "-I"; "+unix" ] else []
+
+  type t = string String.Map.t
+
   let ocaml_config () =
     Process.run_and_capture ocamlc [ "-config" ]
     >>| String.split_lines
@@ -1053,11 +1071,17 @@ end = struct
         fatal "invalid line in output of 'ocamlc -config': %s" (String.escaped line))
   ;;
 
-  let output_complete_obj_arg =
-    if ocaml_version < (4, 10) then "-custom" else "-output-complete-exe"
+  let ext_obj t =
+    try String.Map.find "ext_obj" t with
+    | Not_found -> ".o"
   ;;
 
-  let unix_library_flags = if ocaml_version >= (5, 0) then [ "-I"; "+unix" ] else []
+  let ccomp_type t = String.Map.find "ccomp_type" t |> Ccomp.of_string
+  let word_size t = String.Map.find "word_size" t |> Word_size.of_string
+  let os_type t = String.Map.find "os_type" t |> Os_type.of_string
+  let architecture t = String.Map.find "architecture" t |> Arch.of_string
+  let system t = String.Map.find "system" t
+  let c_compiler t = String.Map.find "c_compiler" t
 end
 
 let insert_header fn ~header =
@@ -1933,24 +1957,21 @@ let main () =
   (try Unix.mkdir build_dir 0o777 with
    | Unix.Unix_error (Unix.EEXIST, _, _) -> ());
   let* ocaml_config = Config.ocaml_config () in
-  let ext_obj =
-    try String.Map.find "ext_obj" ocaml_config with
-    | Not_found -> ".o"
-  in
+  let ext_obj = Config.ext_obj ocaml_config in
   let* libraries =
-    let ccomp_type = String.Map.find "ccomp_type" ocaml_config |> Ccomp.of_string in
-    let word_size = String.Map.find "word_size" ocaml_config |> Word_size.of_string in
-    let os_type = String.Map.find "os_type" ocaml_config |> Os_type.of_string in
-    let architecture = String.Map.find "architecture" ocaml_config |> Arch.of_string in
+    let ccomp_type = Config.ccomp_type ocaml_config in
+    let word_size = Config.word_size ocaml_config in
+    let os_type = Config.os_type ocaml_config in
+    let architecture = Config.architecture ocaml_config in
     assemble_libraries task ~ext_obj ~ccomp_type ~architecture ~word_size ~os_type
   in
   let c_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.c_files) libraries in
   let asm_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.asm_files) libraries in
   let* dependencies = get_dependencies libraries in
-  let ocaml_system = String.Map.find "system" ocaml_config in
+  let ocaml_system = Config.system ocaml_config in
   let build_flags = get_flags ocaml_system build_flags in
   let link_flags = get_flags ocaml_system link_flags in
-  let c_compiler = String.Map.find "c_compiler" ocaml_config in
+  let c_compiler = Config.c_compiler ocaml_config in
   build
     ~ext_obj
     ~c_compiler

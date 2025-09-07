@@ -1722,7 +1722,7 @@ let assemble_libraries
 ;;
 
 type status =
-  | Not_started of (unit -> unit Fiber.t)
+  | Not_started of { deps : string list }
   | Initializing
   | Started of unit Fiber.Future.t
 
@@ -1811,37 +1811,32 @@ let build
     Status_line.num_jobs := num_dependencies;
     Hashtbl.create num_dependencies
   in
-  let build m =
+  let external_libraries, external_includes = resolve_externals external_libraries in
+  let rec build m =
     match Hashtbl.find table m with
     | exception Not_found -> fatal "file not found: %s" m
     | Initializing -> fatal "dependency cycle compiling %s" m
     | Started fut -> Fiber.Future.wait fut
-    | Not_started f ->
+    | Not_started { deps } ->
       let* fut =
         Hashtbl.replace table ~key:m ~data:Initializing;
-        Fiber.fork f
+        Fiber.fork (fun () ->
+          let* () = Fiber.parallel_iter deps ~f:build in
+          List.concat
+            [ [ "-c"; "-g"; "-no-alias-deps" ]
+            ; ocaml_warnings
+            ; allow_unstable_sources
+            ; external_includes
+            ; [ m ]
+            ]
+          |> Process.run ~cwd:build_dir Config.compiler)
       in
       Hashtbl.replace table ~key:m ~data:(Started fut);
       let+ () = Fiber.Future.wait fut in
       incr Status_line.num_jobs_finished
   in
-  let external_libraries, external_includes = resolve_externals external_libraries in
   List.iter dependencies ~f:(fun { Dep.file; deps } ->
-    Hashtbl.add
-      table
-      ~key:file
-      ~data:
-        (Not_started
-           (fun () ->
-             let* () = Fiber.parallel_iter deps ~f:build in
-             List.concat
-               [ [ "-c"; "-g"; "-no-alias-deps" ]
-               ; ocaml_warnings
-               ; allow_unstable_sources
-               ; external_includes
-               ; [ file ]
-               ]
-             |> Process.run ~cwd:build_dir Config.compiler)));
+    Hashtbl.add table ~key:file ~data:(Not_started { deps }));
   let* obj_files =
     Fiber.fork_and_join_unit
       (fun () -> build (Filename.basename main))

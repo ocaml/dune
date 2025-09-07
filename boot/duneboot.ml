@@ -281,6 +281,18 @@ module Ml_kind = struct
   ;;
 end
 
+module Ccomp = struct
+  type t =
+    [ `Msvc
+    | `Other
+    ]
+
+  let of_string : string -> t = function
+    | "msvc" -> `Msvc
+    | _ -> `Other
+  ;;
+end
+
 module Module : sig
   module Name : sig
     type t
@@ -1332,8 +1344,8 @@ module Library = struct
      | Some `Win -> String.equal os_type "Win32"
      | None -> true)
     && (match syntax, ccomp_type with
-        | `Intel, "msvc" -> true
-        | `Gas, "msvc" -> false
+        | `Intel, `Msvc -> true
+        | `Gas, `Msvc -> false
         | `Gas, _ -> true
         | `Intel, _ -> false)
     &&
@@ -1880,7 +1892,7 @@ let main () =
     | Not_found -> ".o"
   in
   let* libraries =
-    let ccomp_type = String.Map.find "ccomp_type" ocaml_config in
+    let ccomp_type = String.Map.find "ccomp_type" ocaml_config |> Ccomp.of_string in
     let word_size = String.Map.find "word_size" ocaml_config in
     let os_type = String.Map.find "os_type" ocaml_config in
     let architecture = String.Map.find "architecture" ocaml_config in

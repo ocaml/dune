@@ -1795,12 +1795,10 @@ let build
     Status_line.num_jobs := num_dependencies;
     Hashtbl.create num_dependencies
   in
-  let build ~file ~deps m =
+  let build m =
     match Hashtbl.find table m with
     | exception Not_found -> fatal "file not found: %s" m
-    | Initializing ->
-      let deps = String.concat ~sep:", " deps in
-      fatal "dependency cycle compiling %s\ndependencies: %s" file deps
+    | Initializing -> fatal "dependency cycle compiling %s" m
     | Started fut -> Fiber.Future.wait fut
     | Not_started f ->
       let* fut =
@@ -1819,7 +1817,7 @@ let build
       ~data:
         (Not_started
            (fun () ->
-             let* () = Fiber.parallel_iter deps ~f:(build ~file ~deps) in
+             let* () = Fiber.parallel_iter deps ~f:build in
              List.concat
                [ [ "-c"; "-g"; "-no-alias-deps" ]
                ; ocaml_warnings
@@ -1830,7 +1828,7 @@ let build
              |> Process.run ~cwd:build_dir Config.compiler)));
   let* obj_files =
     Fiber.fork_and_join_unit
-      (fun () -> build ~file:main ~deps:[] (Filename.basename main))
+      (fun () -> build (Filename.basename main))
       (fun () ->
          (Fiber.fork_and_join (fun () ->
             Fiber.parallel_map c_files ~f:(fun { Source.name = file; flags } ->

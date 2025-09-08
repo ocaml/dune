@@ -420,7 +420,11 @@ end = struct
       ;;
     end
 
-    let alias_suffix t = "" :: t
+    let alias_suffix = function
+      | [] -> failwith "alias_suffix: invalid module path"
+      | x :: xs -> (x ^ Name.double_underscore) :: xs
+    ;;
+
     let to_name t = List.rev t |> String.concat ~sep:Name.double_underscore
     let of_name t = [ t ]
     let of_list x = x

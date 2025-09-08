@@ -131,7 +131,7 @@ let rec deps_of
           ~obj_dir
           ~modules
           ~sandbox
-          ~vimpl
+          ~impl
           ~dir
           ~sctx
           ~ml_kind
@@ -156,14 +156,14 @@ let rec deps_of
     in
     match m with
     | Imported_from_vlib _ ->
-      let vimpl = Option.value_exn vimpl in
+      let vimpl = Virtual_rules.vimpl_exn impl in
       skip_if_source_absent (deps_of_vlib_module ~obj_dir ~vimpl ~dir ~sctx ~ml_kind) m
     | Normal m ->
       skip_if_source_absent
         (deps_of_module ~modules ~sandbox ~sctx ~dir ~obj_dir ~ml_kind)
         m
     | Impl_of_virtual_module impl_or_vlib ->
-      deps_of ~obj_dir ~modules ~sandbox ~vimpl ~dir ~sctx ~ml_kind
+      deps_of ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~ml_kind
       @@
       let m = Ml_kind.Dict.get impl_or_vlib ml_kind in
       (match ml_kind with
@@ -198,12 +198,12 @@ let dict_of_func_concurrently f =
   Ml_kind.Dict.make ~impl ~intf
 ;;
 
-let for_module ~obj_dir ~modules ~sandbox ~vimpl ~dir ~sctx module_ =
+let for_module ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx module_ =
   dict_of_func_concurrently
-    (deps_of ~obj_dir ~modules ~sandbox ~vimpl ~dir ~sctx (Normal module_))
+    (deps_of ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx (Normal module_))
 ;;
 
-let rules ~obj_dir ~modules ~sandbox ~vimpl ~sctx ~dir =
+let rules ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir =
   match Modules.With_vlib.as_singleton modules with
   | Some m -> Memo.return (Dep_graph.Ml_kind.dummy m)
   | None ->
@@ -211,7 +211,7 @@ let rules ~obj_dir ~modules ~sandbox ~vimpl ~sctx ~dir =
       let+ per_module =
         Modules.With_vlib.obj_map modules
         |> Parallel_map.parallel_map ~f:(fun _obj_name m ->
-          deps_of ~obj_dir ~modules ~sandbox ~vimpl ~sctx ~dir ~ml_kind m)
+          deps_of ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir ~ml_kind m)
       in
       Dep_graph.make ~dir ~per_module)
 ;;

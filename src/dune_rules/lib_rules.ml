@@ -489,7 +489,7 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
 
 let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_info =
   let* flags = Buildable_rules.ocaml_flags sctx ~dir lib.buildable.flags
-  and* vimpl = Virtual_rules.impl sctx ~lib ~scope in
+  and* implements = Virtual_rules.impl sctx ~lib ~scope in
   let obj_dir = Library.obj_dir ~dir lib in
   let* modules, pp =
     Buildable_rules.modules_rules
@@ -500,21 +500,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
       scope
       source_modules
   in
-  let implements_parameter =
-    match vimpl with
-    | None -> None
-    | Some vimpl ->
-      let vlib = Vimpl.vlib vimpl in
-      (match Lib_info.kind (Lib.info vlib) with
-       | Parameter ->
-         let main_module = Module_name.of_local_lib_name lib.name in
-         Some
-           { Compilation_context.main_module
-           ; implements_parameter = Lib.main_module_name vlib
-           }
-       | _ -> None)
-  in
-  let modules = Vimpl.impl_modules vimpl modules in
+  let modules = Virtual_rules.impl_modules implements modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let requires_link = Lib.Compile.requires_link compile_info in
   let* modes =
@@ -547,13 +533,12 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
     ~flags
     ~requires_compile
     ~requires_link
-    ?implements_parameter
+    ~implements
     ~preprocessing:pp
     ~opaque:Inherit_from_settings
     ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.map ~f:Option.some js_of_ocaml)
     ?stdlib:lib.stdlib
     ~package
-    ?vimpl
     ~melange_package_name
     ~modes
 ;;
@@ -569,7 +554,7 @@ let library_rules
   =
   let modules = Compilation_context.modules cctx in
   let obj_dir = Compilation_context.obj_dir cctx in
-  let vimpl = Compilation_context.vimpl cctx in
+  let implements = Compilation_context.implements cctx in
   let sctx = Compilation_context.super_context cctx in
   let dir = Compilation_context.dir cctx in
   let scope = Compilation_context.scope cctx in
@@ -581,9 +566,7 @@ let library_rules
       (Compilation_context.dep_graphs cctx).impl
       impl_only
   in
-  let* () =
-    Memo.Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir)
-  in
+  let* () = Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir implements in
   let* expander = Super_context.expander sctx ~dir in
   let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
   let* () = gen_wrapped_compat_modules lib cctx
@@ -608,7 +591,7 @@ let library_rules
       (not (Library.is_virtual lib))
       (fun () -> setup_build_archives lib ~lib_info ~top_sorted_modules ~cctx ~expander)
   and+ () =
-    let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
+    let vlib_stubs_o_files = Virtual_rules.stubs_o_files implements in
     Memo.when_
       (Library.has_foreign lib || List.is_non_empty vlib_stubs_o_files)
       (fun () ->

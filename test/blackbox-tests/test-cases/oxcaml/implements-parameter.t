@@ -110,8 +110,8 @@ interface:
   $ dune build
   File "foo_impl/foo_impl.ml", line 1:
   Error: The argument module foo_impl/foo_impl.ml
-         does not match the parameter signature foo_impl/.foo_impl.objs/byte/foo.cmi:
-          The value f is required but not provided
+         does not match the parameter signature foo/.foo.objs/byte/foo.cmi: 
+         The value f is required but not provided
          File "foo/foo.mli", line 2, characters 0-17: Expected declaration
   [1]
 

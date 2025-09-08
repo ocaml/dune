@@ -241,9 +241,8 @@ let build_cm
    let as_argument_for =
      Command.Args.dyn
        (let open Action_builder.O in
-        let+ argument =
-          Resolve.Memo.read @@ Compilation_context.implements_parameter cctx m
-        in
+        let impl = Compilation_context.implements cctx in
+        let+ argument = Resolve.Memo.read @@ Virtual_rules.implements_parameter impl m in
         match argument with
         | None -> []
         | Some parameter -> [ "-as-argument-for"; Module_name.to_string parameter ])

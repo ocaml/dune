@@ -78,11 +78,6 @@ let singleton_modules m =
   { modules = Modules.With_vlib.singleton m; dep_graphs = Dep_graph.Ml_kind.dummy m }
 ;;
 
-type implements_parameter =
-  { main_module : Module_name.t
-  ; implements_parameter : Module_name.t option Resolve.Memo.t
-  }
-
 type t =
   { super_context : Super_context.t
   ; scope : Scope.t
@@ -92,7 +87,7 @@ type t =
   ; requires_compile : Lib.t list Resolve.Memo.t
   ; requires_hidden : Lib.t list Resolve.Memo.t
   ; requires_link : Lib.t list Resolve.t Memo.Lazy.t
-  ; implements_parameter : implements_parameter option
+  ; implements : Virtual_rules.t
   ; includes : Includes.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
@@ -100,7 +95,6 @@ type t =
   ; js_of_ocaml : Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
   ; sandbox : Sandbox_config.t
   ; package : Package.t option
-  ; vimpl : Vimpl.t option
   ; melange_package_name : Lib_name.t option
   ; modes : Lib_mode.Map.Set.t
   ; bin_annot : bool
@@ -127,19 +121,12 @@ let sandbox t = t.sandbox
 let set_sandbox t sandbox = { t with sandbox }
 let package t = t.package
 let melange_package_name t = t.melange_package_name
-let vimpl t = t.vimpl
+let implements t = t.implements
 let modes t = t.modes
 let bin_annot t = t.bin_annot
 let context t = Super_context.context t.super_context
 let dep_graphs t = t.modules.dep_graphs
 let ocaml t = t.ocaml
-
-let implements_parameter t m =
-  match t.implements_parameter with
-  | Some { main_module; implements_parameter }
-    when Module_name.equal main_module (Module.name m) -> implements_parameter
-  | _ -> Resolve.Memo.return None
-;;
 
 let create
       ~super_context
@@ -149,14 +136,13 @@ let create
       ~flags
       ~requires_compile
       ~requires_link
-      ?implements_parameter
       ?(preprocessing = Pp_spec.dummy)
       ~opaque
       ?stdlib
       ~js_of_ocaml
       ~package
       ~melange_package_name
-      ?vimpl
+      ?(implements = Virtual_rules.no_implements)
       ?modes
       ?bin_annot
       ?loc
@@ -199,7 +185,7 @@ let create
       ~sandbox
       ~obj_dir
       ~sctx:super_context
-      ~vimpl
+      ~impl:implements
       ~modules
   and+ bin_annot =
     match bin_annot with
@@ -214,7 +200,7 @@ let create
   ; requires_compile = direct_requires
   ; requires_hidden = hidden_requires
   ; requires_link
-  ; implements_parameter
+  ; implements
   ; includes =
       Includes.make ~project ~opaque ~direct_requires ~hidden_requires ocaml.lib_config
   ; preprocessing
@@ -223,7 +209,6 @@ let create
   ; js_of_ocaml
   ; sandbox
   ; package
-  ; vimpl
   ; melange_package_name
   ; modes
   ; bin_annot

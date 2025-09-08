@@ -235,16 +235,16 @@ module Error = struct
       ]
   ;;
 
-  let not_virtual_lib ~loc ~impl ~not_vlib =
-    let impl = Lib_info.name impl in
-    let not_vlib = Lib_info.name not_vlib in
+  let not_implementable ~loc ~lib ~not_impl =
+    let lib = Lib_info.name lib in
+    let not_impl = Lib_info.name not_impl in
     make
       ~loc
       [ Pp.textf
           "Library %S is neither a virtual library nor a library parameter. It cannot be \
            implemented by %S."
-          (Lib_name.to_string not_vlib)
-          (Lib_name.to_string impl)
+          (Lib_name.to_string not_impl)
+          (Lib_name.to_string lib)
       ]
   ;;
 end
@@ -946,10 +946,11 @@ end = struct
       | Some ((loc, _) as name) ->
         let res =
           let open Resolve.Memo.O in
-          let* vlib = resolve_forbid_ignore name in
-          match Lib_info.kind vlib.info with
-          | Dune_file _ -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
-          | Parameter | Virtual -> Resolve.Memo.return vlib
+          let* implements = resolve_forbid_ignore name in
+          match Lib_info.kind implements.info with
+          | Dune_file _ ->
+            Error.not_implementable ~loc ~lib:info ~not_impl:implements.info
+          | Parameter | Virtual -> Resolve.Memo.return implements
         in
         Memo.map res ~f:Option.some
     in

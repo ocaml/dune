@@ -1,3 +1,20 @@
+module Promote = struct
+  type t =
+    | Automatically
+    | Never
+
+  let equal a b =
+    match a, b with
+    | Automatically, Automatically | Never, Never -> true
+    | _, _ -> false
+  ;;
+
+  let to_dyn = function
+    | Automatically -> Dyn.variant "Automatically" []
+    | Never -> Dyn.variant "Never" []
+  ;;
+end
+
 let report_errors_config = ref Report_errors_config.default
 let stop_on_first_error = ref false
 let debug_fs_cache = ref false

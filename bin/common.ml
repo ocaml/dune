@@ -598,7 +598,7 @@ module Builder = struct
     ; only_packages : Only_packages.Clflags.t
     ; capture_outputs : bool
     ; diff_command : string option
-    ; promote : Dune_rpc_private.Promote_flag.t option
+    ; promote : Dune_engine.Clflags.Promote.t option
     ; ignore_promoted_rules : bool
     ; force : bool
     ; no_print_directory : bool
@@ -739,13 +739,13 @@ module Builder = struct
                    "Automatically promote files. This is similar to running $(b,dune \
                     promote) after the build.")
          in
-         Option.some_if auto Dune_rpc_private.Promote_flag.Automatically)
+         Option.some_if auto Dune_engine.Clflags.Promote.Automatically)
         (let+ disable =
            let doc = "Disable all promotion rules" in
            let env = Cmd.Env.info ~doc "DUNE_DISABLE_PROMOTION" in
            Arg.(value & flag & info [ "disable-promotion" ] ~docs ~env ~doc)
          in
-         Option.some_if disable Dune_rpc_private.Promote_flag.Never)
+         Option.some_if disable Dune_engine.Clflags.Promote.Never)
     and+ force =
       Arg.(
         value
@@ -1114,7 +1114,7 @@ module Builder = struct
     && Only_packages.Clflags.equal t.only_packages only_packages
     && Bool.equal t.capture_outputs capture_outputs
     && Option.equal String.equal t.diff_command diff_command
-    && Option.equal Dune_rpc_private.Promote_flag.equal t.promote promote
+    && Option.equal Dune_engine.Clflags.Promote.equal t.promote promote
     && Bool.equal t.ignore_promoted_rules ignore_promoted_rules
     && Bool.equal t.force force
     && Bool.equal t.no_print_directory no_print_directory

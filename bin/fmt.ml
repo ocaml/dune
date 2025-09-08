@@ -78,7 +78,7 @@ let command =
                This takes precedence over auto-promote as that flag is assumed for this \
                command.")
     in
-    let promote = if preview then Dune_rpc.Promote_flag.Never else Automatically in
+    let promote = if preview then Dune_engine.Clflags.Promote.Never else Automatically in
     let builder = Common.Builder.set_promote builder promote in
     run_fmt_command builder preview
   in

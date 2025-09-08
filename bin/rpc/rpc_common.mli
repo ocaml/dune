@@ -39,6 +39,7 @@ val wrap_build_outcome_exn
   -> unit
   -> unit Fiber.t
 
+(** Warn the user that since a RPC server is running, some arguments are ignored. *)
 val warn_ignore_arguments : Dune_util.Global_lock.Lock_held_by.t -> unit
 
 (**  Schedule a fiber to run via RPC, wrapping any errors. *)

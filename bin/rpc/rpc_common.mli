@@ -39,6 +39,8 @@ val wrap_build_outcome_exn
   -> unit
   -> unit Fiber.t
 
+val warn_ignore_arguments : Dune_util.Global_lock.Lock_held_by.t -> unit
+
 (**  Schedule a fiber to run via RPC, wrapping any errors. *)
 val run_via_rpc
   :  builder:Common.Builder.t

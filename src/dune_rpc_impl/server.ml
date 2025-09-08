@@ -340,7 +340,7 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
     Handler.implement_request rpc Decl.build f
   in
   let () =
-    let f _ promote =
+    let f _ () =
       let server = Fdecl.get t in
       let outcome = Fiber.Ivar.create () in
       let target =
@@ -348,10 +348,10 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
       in
       let* () = Job_queue.write server.pending_build_jobs ([ target ], outcome) in
       let+ build_outcome = Fiber.Ivar.read outcome in
-      match build_outcome, promote with
+      match build_outcome with
       (* A 'successful' formatting means there is nothing to promote. *)
-      | Success, _ | _, Dune_rpc.Promote_flag.Never -> ()
-      | Failure, Automatically ->
+      | Success -> ()
+      | Failure ->
         Promote.Diff_promotion.promote_files_registered_in_last_run
           Dune_rpc.Files_to_promote.All
     in

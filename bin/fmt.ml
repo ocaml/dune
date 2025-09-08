@@ -26,9 +26,8 @@ let lock_ocamlformat () =
   else Fiber.return ()
 ;;
 
-let run_fmt_command builder preview =
+let run_fmt_command ~common ~config ~preview =
   let open Fiber.O in
-  let common, config = Common.init builder in
   let once () =
     let* () = lock_ocamlformat () in
     let request (setup : Import.Main.build_system) =
@@ -78,9 +77,11 @@ let command =
                This takes precedence over auto-promote as that flag is assumed for this \
                command.")
     in
-    let promote = if preview then Dune_engine.Clflags.Promote.Never else Automatically in
-    let builder = Common.Builder.set_promote builder promote in
-    run_fmt_command builder preview
+    let builder =
+      Common.Builder.set_promote builder (if preview then Never else Automatically)
+    in
+    let common, config = Common.init builder in
+    run_fmt_command ~common ~config ~preview
   in
   Cmd.v (Cmd.info "fmt" ~doc ~man ~envs:Common.envs) term
 ;;

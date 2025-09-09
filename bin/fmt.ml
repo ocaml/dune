@@ -26,7 +26,7 @@ let lock_ocamlformat () =
   else Fiber.return ()
 ;;
 
-let run_fmt_command ~(common : Common.t) ~config =
+let run_fmt_command ~common ~config ~preview =
   let open Fiber.O in
   let once () =
     let* () = lock_ocamlformat () in
@@ -40,13 +40,33 @@ let run_fmt_command ~(common : Common.t) ~config =
     | Ok () -> ()
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
   in
-  Scheduler.go_with_rpc_server ~common ~config once
+  match Dune_util.Global_lock.lock ~timeout:None with
+  | Ok () -> Scheduler.go_with_rpc_server ~common ~config once
+  | Error lock_held_by ->
+    (* The --preview flag is being ignored by the RPC server, warn the user. *)
+    if preview then Rpc_common.warn_ignore_arguments lock_held_by;
+    let response =
+      Scheduler.go_without_rpc_server ~common ~config (fun () ->
+        Rpc_common.fire_request
+          ~name:"format"
+          ~wait:true
+          Dune_rpc.Procedures.Public.format
+          ())
+    in
+    (match response with
+     | Ok () -> ()
+     | Error error ->
+       User_error.raise
+         [ Pp.paragraphf
+             "Error: %s\n%!"
+             (Dyn.to_string (Dune_rpc.Response.Error.to_dyn error))
+         ])
 ;;
 
 let command =
   let term =
     let+ builder = Common.Builder.term
-    and+ no_promote =
+    and+ preview =
       Arg.(
         value
         & flag
@@ -58,10 +78,10 @@ let command =
                command.")
     in
     let builder =
-      Common.Builder.set_promote builder (if no_promote then Never else Automatically)
+      Common.Builder.set_promote builder (if preview then Never else Automatically)
     in
     let common, config = Common.init builder in
-    run_fmt_command ~common ~config
+    run_fmt_command ~common ~config ~preview
   in
   Cmd.v (Cmd.info "fmt" ~doc ~man ~envs:Common.envs) term
 ;;

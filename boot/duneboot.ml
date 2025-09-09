@@ -484,8 +484,12 @@ module Status_line = struct
       displayed := new_displayed)
   ;;
 
-  let clear () = Printf.printf "\r*s\r%!"
-  let () = at_exit (fun () -> Printf.printf "\r%*s\r" (String.length !displayed) "")
+  let clear () = if display_status_line then Printf.printf "\r*s\r%!"
+
+  let () =
+    at_exit (fun () ->
+      if display_status_line then Printf.printf "\r%*s\r" (String.length !displayed) "")
+  ;;
 end
 
 module Io = struct
@@ -1847,6 +1851,7 @@ let build
     match Hashtbl.find table m with
     | exception Not_found -> fatal "file not found: %s" m
     | Initializing ->
+      Format.eprintf "cycle:@.";
       List.iter stack ~f:(Format.eprintf "- %s@.");
       fatal "dependency cycle compiling %s" m
     | Started fut -> Fiber.Future.wait fut

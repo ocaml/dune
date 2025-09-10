@@ -174,6 +174,10 @@ Note that when using the ``--root`` option, targets given on the command line
 will be interpreted relative to the given root, not relative to the current
 directory, as this is normally the case.
 
+Alternatively, you can set the environment variable ``DUNE_ROOT``.
+The ``--root`` option has a higher priority than ``DUNE_ROOT`` environment
+variable.
+
 Interpretation of Targets
 =========================
 

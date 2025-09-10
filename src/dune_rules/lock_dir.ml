@@ -186,13 +186,18 @@ let of_dev_tool dev_tool =
 ;;
 
 let lock_dir_active ctx =
+  let open Memo.O in
   if !Clflags.ignore_lock_dir
   then Memo.return false
   else
-    get_path ctx
-    >>= function
-    | None -> Memo.return false
-    | Some path -> Fs_memo.dir_exists (Path.as_outside_build_dir_exn path)
+    let* workspace = Workspace.workspace () in
+    match workspace.config.pkg_enabled with
+    | Set (_, `Disabled) -> Memo.return false
+    | Set (_, `Enabled) | Unset ->
+      get_path ctx
+      >>= (function
+       | None -> Memo.return false
+       | Some path -> Fs_memo.dir_exists (Path.as_outside_build_dir_exn path))
 ;;
 
 let source_kind (source : Dune_pkg.Source.t) =

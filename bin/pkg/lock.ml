@@ -362,6 +362,9 @@ let term =
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
   Scheduler.go_with_rpc_server ~common ~config (fun () ->
+    let open Fiber.O in
+    Pkg_common.check_pkg_management_enabled ()
+    >>>
     let portable_lock_dir =
       match Config.get Dune_rules.Compile_time.portable_lock_dir with
       | `Enabled -> true

@@ -62,7 +62,7 @@ add_mock_repo_if_needed() {
   if [ ! -e dune-workspace ]
   then
       cat >dune-workspace <<EOF
-(lang dune 3.10)
+(lang dune 3.20)
 (lock_dir
  (repositories mock))
 (repository
@@ -92,6 +92,19 @@ EOF
   
     fi
   fi
+}
+
+create_mock_repo() {
+  # Always create a fresh workspace with mock repository configuration
+  repo="${1:-file://$(pwd)/mock-opam-repository}"
+  cat >dune-workspace <<EOF
+(lang dune 3.20)
+(lock_dir
+ (repositories mock))
+(repository
+ (name mock)
+ (url "${repo}"))
+EOF
 }
 
 make_lockpkg() {
@@ -128,7 +141,7 @@ EOF
 
 make_project() {
   cat <<EOF
-(lang dune 3.11)
+(lang dune 3.20)
  (package
   (name x)
   (allow_empty)

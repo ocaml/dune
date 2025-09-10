@@ -89,7 +89,11 @@ module Package_universe = struct
     | Project_dependencies ctx -> Lock_dir.get_path ctx
     | Dev_tool dev_tool ->
       (* CR-Leonidas-from-XIV: It probably isn't always [Some] *)
-      dev_tool |> Lock_dir.dev_tool_lock_dir |> Option.some |> Memo.return
+      dev_tool
+      |> Lock_dir.dev_tool_source_lock_dir
+      |> Path.source
+      |> Option.some
+      |> Memo.return
   ;;
 end
 
@@ -1745,8 +1749,8 @@ let source_rules (pkg : Pkg.t) =
 let source_path_of_files_dir file_dir =
   match Path.Build.explode file_dir with
   | [ _; _; ".lock"; name; dir ] -> Path.Source.L.relative Path.Source.root [ name; dir ]
-  | [ _; _; ".dev-tool-locks"; dev_tool; dir ] ->
-    Path.Source.L.relative (Path.Source.of_string "dev-tool.locks") [ dev_tool; dir ]
+  | [ _; _; ".dev-tool-locks"; dev_tool; dir ] | [ _; "dev-tools.locks"; dev_tool; dir ]
+    -> Path.Source.L.relative (Path.Source.of_string "dev-tool.locks") [ dev_tool; dir ]
   | components ->
     Code_error.raise "Invalid path" [ "components", Dyn.list Dyn.string components ]
 ;;
@@ -2026,7 +2030,6 @@ let setup_rules ~components ~dir ctx =
   assert (String.equal Pkg_dev_tool.install_path_base_dir_name ".dev-tool");
   match Context_name.is_default ctx, components with
   | true, [ ".dev-tool"; pkg_name; pkg_dep_name ] ->
-    Printf.eprintf "Dev tool Rules for .dev-tool/%s/%s\n" pkg_name pkg_dep_name;
     setup_package_rules
       ~package_universe:
         (Dev_tool (Package.Name.of_string pkg_name |> Dune_pkg.Dev_tool.of_package_name))

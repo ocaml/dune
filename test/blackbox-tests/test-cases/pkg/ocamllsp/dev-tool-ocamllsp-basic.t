@@ -30,4 +30,3 @@ a lockdir containing an "ocaml" lockfile.
   - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'
   hello from fake ocamllsp
-  $ tree dev-tools.locks

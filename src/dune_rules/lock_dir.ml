@@ -226,17 +226,7 @@ let get_exn ctx = get ctx >>| User_error.ok_exn
 
 let of_dev_tool dev_tool =
   let source_path = dev_tool_source_lock_dir dev_tool in
-  Source_tree.find_dir source_path
-  >>= function
-  | Some _ ->
-    (* if it exists, load it from the build location by triggering the
-         copy rules before loading it *)
-    let lock_dir_path = dev_tool_lock_dir dev_tool in
-    let* () = Build_system.build_dir lock_dir_path in
-    Load.load_exn lock_dir_path
-  | None ->
-    User_error.raise
-      [ Pp.textf "%s does not exist" (Path.Source.to_string_maybe_quoted source_path) ]
+  Load.load_exn (Path.source source_path)
 ;;
 
 let lock_dir_active ctx =

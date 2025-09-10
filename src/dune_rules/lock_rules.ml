@@ -56,24 +56,10 @@ let copy_lock_dir ~target ~lock_dir ~files =
 ;;
 
 let setup_copy_rules ~dir:target ~lock_dir =
-  let* _deps, file_set = Source_deps.files (Path.source lock_dir) in
-  (* debug *)
-  let+ exi = Fs_memo.dir_exists (Path.Outside_build_dir.In_source_dir lock_dir) in
-  Printf.eprintf "Fs_memo says it %S exists? %B; Source_deps.files has files? %B\n" (Path.Source.to_string lock_dir) exi (not @@ Path.Set.is_empty file_set);
-  (let d = Readdir.read_directory (Path.Source.to_string lock_dir) in
-   match d with
-   | Error _ -> Printf.eprintf "Can't read dir, it really doesn't exist\n"
-   | Ok v ->
-     Printf.eprintf "Found entries in %S:\n" (Path.Source.to_string lock_dir);
-     List.iter v ~f:(Printf.eprintf "entry %S\n"));
-  (* /debug *)
+  let+ _deps, file_set = Source_deps.files (Path.source lock_dir) in
   let directory_targets, rules =
     match Path.Set.is_empty file_set with
-    | true ->
-      Printf.eprintf
-        "No copy rules as there's no source at %S\n"
-        (Path.Source.to_string lock_dir);
-      Path.Build.Map.empty, Memo.return Rules.empty
+    | true -> Path.Build.Map.empty, Memo.return Rules.empty
     | false ->
       let directory_targets = Path.Build.Map.singleton target Loc.none in
       let rules =

@@ -2,16 +2,21 @@ Dune is an community orientated open source project. It was originally developed
 at [Jane Street][js] and is now maintained by Jane Street and [Tarides][tarides]
 together with several developers from the OCaml community.
 
-Filing issues
-=============
+Sharing feedback
+================
 
-The easiest way to contribute is to share your input on [issues][issues].
-Feedback on bug reports, feature requests, and documentation is welcome and
-appreciated. If you don't find a preexisting issue discussing your topic, then
-please [file a new issue][file an issue].
+The easiest way to contribute is to share feedback. 
+
+We discuss *bugs reports* and *feature requests* via our [issues][issues].  If
+you don't find a preexisting issue discussing your topic, then please [file a
+new issue][file an issue].
+
+For other kinds of support, feedback, or questions, please contribute to our
+[discussions][discussions].
 
 [file an issue]: https://github.com/ocaml/dune/issues/new/choose
 [issues]: https://github.com/ocaml/dune/issues
+[discussions]: https://github.com/ocaml/dune/discussions
 
 Developing Dune
 ===============

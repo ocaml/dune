@@ -10,7 +10,6 @@ type t =
   ; enabled_if : Blang.t
   ; optional : bool
   ; synopsis : string option
-  ; loc : Loc.t
   ; dune_version : Dune_lang.Syntax.Version.t
   }
 
@@ -130,7 +129,6 @@ let decode =
        ; enabled_if
        ; optional
        ; synopsis
-       ; loc = stanza_loc
        ; dune_version
        })
 ;;

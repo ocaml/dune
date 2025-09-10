@@ -1,2 +1,2 @@
-include Dune_uutf
+include Uutf
 include Stdune

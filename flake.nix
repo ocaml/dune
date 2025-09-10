@@ -178,20 +178,21 @@
                 ++ [ duneScript ];
               inputsFrom = [ pkgs'.ocamlPackages.dune_3 ];
               buildInputs = testBuildInputs ++ (with pkgs'.ocamlPackages; [
-                re
-                ocaml-lsp
+                ctypes
+                cinaps
+                integers
+                lwt
+                mdx
+                menhir
                 merlin
                 ocaml-index
-                ppx_expect
-                spawn
-                ctypes
-                integers
-                mdx
-                cinaps
-                menhir
+                ocaml-lsp
                 odoc
-                lwt
                 patdiff
+                ppx_expect
+                re
+                spawn
+                uutf
               ] ++ (extraBuildInputs pkgs'));
               inherit INSIDE_NIX;
             };
@@ -218,6 +219,7 @@
               buildInputs = with pkgs.ocamlPackages; [
                 re
                 spawn
+                uutf
                 findlib
               ];
               meta.description = ''
@@ -264,6 +266,7 @@
               buildInputs = with pkgs; [
                 ocaml-ng.ocamlPackages_4_14.re
                 ocaml-ng.ocamlPackages_4_14.spawn
+                ocaml-ng.ocamlPackages_4_14.uutf
                 coq_8_16_native
                 coq_8_16_native.ocamlPackages.findlib
               ];
@@ -317,19 +320,19 @@
                 # dev tools
                 ccls
                 # test dependencies
-                git
-                which
+                binaryen
                 curl
+                git
                 procps
+                which
               ]) ++ (with pkgs.ocamlPackages; [
-                pkgs.ocamlPackages.ocaml-lsp
-                pkgs.ocamlPackages.melange
-                js_of_ocaml-compiler
-                js_of_ocaml
-                pkgs.binaryen
-                wasm_of_ocaml-compiler
-                utop
                 core_bench
+                js_of_ocaml
+                js_of_ocaml-compiler
+                ocaml-lsp
+                pkgs.ocamlPackages.melange
+                utop
+                wasm_of_ocaml-compiler
               ]);
               meta.description = ''
                 Provides a shell environment where `dune` is provided and built

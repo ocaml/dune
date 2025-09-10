@@ -443,9 +443,9 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
     Lib_info.eval_native_archives_exn lib_info ~modules:(Some modules)
   in
   let* () =
-    if Library.is_parameter lib
-    then Memo.return ()
-    else (
+    match lib.kind with
+    | Parameter -> Memo.return ()
+    | Virtual | Dune_file _ ->
       let cm_files =
         let excluded_modules =
           (* ctypes type_gen and function_gen scripts should not be included in the
@@ -457,7 +457,7 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
         Cm_files.make ~excluded_modules ~obj_dir ~ext_obj ~modules ~top_sorted_modules ()
       in
       iter_modes_concurrently modes.ocaml ~f:(fun mode ->
-        build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode ~cm_files))
+        build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode ~cm_files)
   and* () =
     (* Build *.cma.js / *.wasma *)
     Memo.when_ modes.ocaml.byte (fun () ->
@@ -489,7 +489,7 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
 
 let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_info =
   let* flags = Buildable_rules.ocaml_flags sctx ~dir lib.buildable.flags
-  and* vimpl = Virtual_rules.impl sctx ~lib ~scope in
+  and* implements = Virtual_rules.impl sctx ~lib ~scope in
   let obj_dir = Library.obj_dir ~dir lib in
   let* modules, pp =
     Buildable_rules.modules_rules
@@ -500,7 +500,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
       scope
       source_modules
   in
-  let modules = Vimpl.impl_modules vimpl modules in
+  let modules = Virtual_rules.impl_modules implements modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let requires_link = Lib.Compile.requires_link compile_info in
   let* modes =
@@ -533,12 +533,12 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
     ~flags
     ~requires_compile
     ~requires_link
+    ~implements
     ~preprocessing:pp
     ~opaque:Inherit_from_settings
     ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.map ~f:Option.some js_of_ocaml)
     ?stdlib:lib.stdlib
     ~package
-    ?vimpl
     ~melange_package_name
     ~modes
 ;;
@@ -554,7 +554,7 @@ let library_rules
   =
   let modules = Compilation_context.modules cctx in
   let obj_dir = Compilation_context.obj_dir cctx in
-  let vimpl = Compilation_context.vimpl cctx in
+  let implements = Compilation_context.implements cctx in
   let sctx = Compilation_context.super_context cctx in
   let dir = Compilation_context.dir cctx in
   let scope = Compilation_context.scope cctx in
@@ -566,9 +566,7 @@ let library_rules
       (Compilation_context.dep_graphs cctx).impl
       impl_only
   in
-  let* () =
-    Memo.Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir)
-  in
+  let* () = Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir implements in
   let* expander = Super_context.expander sctx ~dir in
   let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
   let* () = gen_wrapped_compat_modules lib cctx
@@ -593,7 +591,7 @@ let library_rules
       (not (Library.is_virtual lib))
       (fun () -> setup_build_archives lib ~lib_info ~top_sorted_modules ~cctx ~expander)
   and+ () =
-    let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
+    let vlib_stubs_o_files = Virtual_rules.stubs_o_files implements in
     Memo.when_
       (Library.has_foreign lib || List.is_non_empty vlib_stubs_o_files)
       (fun () ->

@@ -276,7 +276,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: latest
 
@@ -298,7 +298,7 @@ jobs:
         run: opam install --fake binaryen-bin
 
       - name: Install Wasm_of_ocaml
-        run: opam install "wasm_of_ocaml-compiler>=6.1" re spawn
+        run: opam install "wasm_of_ocaml-compiler>=6.1" re spawn uutf
 
       - name: Set Git User
         run: |

@@ -33,14 +33,192 @@ open Types
 
 (** {2 Utility functions} *)
 
+include struct
+  [@@@ocaml.warning "-32-34-37"]
+
+  module Either = struct
+    type ('l, 'r) t =
+      | Left of 'l
+      | Right of 'r
+  end
+end
+
+open Stdlib
 open StdLabels
 open MoreLabels
 open Printf
 
+module Option = struct
+  include Option
+
+  let iter t ~f = Option.iter f t
+  let map t ~f = Option.map f t
+  let bind t ~f = Option.bind t f
+end
+
+module Map = struct
+  module type S = sig
+    include Map.S
+
+    val of_list : (key * 'a) list -> 'a t
+  end
+
+  module Make (S : Map.OrderedType) = struct
+    module M = Map.Make (S)
+    open M
+
+    [@@@ocaml.warning "-32"]
+
+    let of_list xs = List.to_seq xs |> of_seq
+
+    include M
+  end
+end
+
+module List = struct
+  let partition_map_skip t ~f =
+    let rec loop l m r = function
+      | [] -> l, m, r
+      | x :: xs ->
+        (match f x with
+         | `Skip -> loop l m r xs
+         | `Left x -> loop (x :: l) m r xs
+         | `Middle x -> loop l (x :: m) r xs
+         | `Right x -> loop l m (x :: r) xs)
+    in
+    let l, m, r = loop [] [] [] t in
+    List.(rev l, rev m, rev r)
+  ;;
+
+  let cons_opt x t =
+    match x with
+    | None -> t
+    | Some x -> x :: t
+  ;;
+
+  [@@@ocaml.warning "-32"]
+
+  let rec compare a b ~cmp =
+    match a, b with
+    | [], [] -> 0
+    | [], _ :: _ -> -1
+    | _ :: _, [] -> 1
+    | x :: a, y :: b ->
+      (match cmp x y with
+       | 0 -> compare a b ~cmp
+       | ne -> ne)
+  ;;
+
+  (* Some list functions are introduced in later OCaml versions. There are also
+     improvements to performance in some of these. We introduce fallback
+     versions allowing compatability >= 4.08 which will get shadowed when the
+     stdlib version is available. *)
+
+  (* Introduced in 4.10 *)
+  let rec find_map l ~f =
+    match l with
+    | [] -> None
+    | x :: l ->
+      (match f x with
+       | None -> find_map l ~f
+       | Some _ as x -> x)
+  ;;
+
+  (* Introduced in 4.14 *)
+  let concat_map l ~f = List.map l ~f |> List.concat
+
+  let partition_map t ~f =
+    let rec loop l r = function
+      | [] -> l, r
+      | x :: xs ->
+        (match f x with
+         | Either.Left x -> loop (x :: l) r xs
+         | Right x -> loop l (x :: r) xs)
+    in
+    let l, r = loop [] [] t in
+    List.(rev l, rev r)
+  ;;
+
+  include List
+end
+
+module Trie = struct
+  module type S = sig
+    module Map : Map.S
+
+    type 'a t = 'a node Map.t
+
+    and 'a node =
+      | Node of 'a
+      | Tree of 'a t
+
+    val empty : 'a t
+    val map : 'a t -> f:('a -> 'b) -> 'b t
+    val fold : 'a t -> f:('a -> 'acc -> 'acc) -> init:'acc -> 'acc
+    val to_list : 'a t -> 'a list
+    val add_exn : 'a t -> Map.key list -> 'a -> 'a t
+  end
+
+  module Make (Map : Map.S) : S with module Map = Map = struct
+    module Map = Map
+
+    type 'a t = 'a node Map.t
+
+    and 'a node =
+      | Node of 'a
+      | Tree of 'a t
+
+    let empty = Map.empty
+
+    let rec map t ~f =
+      Map.map t ~f:(function
+        | Node a -> Node (f a)
+        | Tree t -> Tree (map t ~f))
+    ;;
+
+    let rec fold t ~f ~init =
+      Map.fold t ~init ~f:(fun ~key:_ ~data acc ->
+        match data with
+        | Node n -> f n acc
+        | Tree t -> fold t ~f ~init:acc)
+    ;;
+
+    let to_list t = fold t ~init:[] ~f:List.cons
+
+    let add_exn : 'a t -> Map.key list -> 'a -> 'a t =
+      fun t key v ->
+      let rec loop t = function
+        | [] -> t
+        | [ key ] ->
+          Map.update t ~key ~f:(function
+            | None -> Some (Node v)
+            | Some _ -> failwith "already set: overriding a final node")
+        | key :: xs ->
+          Map.update t ~key ~f:(function
+            | Some (Node _) -> failwith "already set: overriding intermediate"
+            | None -> Some (Tree (loop Map.empty xs))
+            | Some (Tree t) -> Some (Tree (loop t xs)))
+      in
+      loop t key
+    ;;
+  end
+end
+
 module String = struct
   include String
   module Set = Set.Make (String)
-  module Map = Map.Make (String)
+
+  module Map = struct
+    include Map.Make (String)
+
+    let find x map =
+      match find_opt x map with
+      | None -> failwith (sprintf "failed to find %S" x)
+      | Some s -> s
+    ;;
+  end
+
+  module Trie = Trie.Make (Map)
 
   let split_lines s =
     let rec loop ~last_is_cr ~acc i j =
@@ -103,94 +281,174 @@ module Ml_kind = struct
   ;;
 end
 
-module Module_name : sig
-  type t
+module Ccomp = struct
+  type t =
+    [ `Msvc
+    | `Other
+    ]
 
-  val equal : t -> t -> bool
-  val of_fname : string -> t
-  val to_fname : t -> kind:Ml_kind.t -> string
-  val of_string : string -> t
-  val alias_suffix : t -> t
-  val to_string : t -> string
-  val mangle : t -> prefix:t -> t
+  let of_string : string -> t = function
+    | "msvc" -> `Msvc
+    | _ -> `Other
+  ;;
+end
 
-  module Set : Set.S with type elt = t
+module Word_size = struct
+  type t =
+    [ `Thirty_two
+    | `Sixty_four
+    ]
+
+  let of_string : string -> t = function
+    | "32" -> `Thirty_two
+    | "64" -> `Sixty_four
+    | _ -> failwith "invalid word size"
+  ;;
+end
+
+module Os_type = struct
+  type t =
+    [ `Unix
+    | `Win32
+    | `Cygwin
+    ]
+
+  let of_string : string -> t = function
+    | "Unix" -> `Unix
+    | "Win32" -> `Win32
+    | "Cygwin" -> `Cygwin
+    | _ -> failwith "invalid os_type"
+  ;;
+end
+
+module Arch = struct
+  type t =
+    [ `arm64
+    | `amd64
+    | `x86_64
+    | `other
+    ]
+
+  let of_string : string -> t = function
+    | "arm64" -> `arm64
+    | "amd64" -> `amd64
+    | "x86_64" -> `x86_64
+    | _ -> `other
+  ;;
+end
+
+module Module : sig
+  module Name : sig
+    type t
+
+    val equal : t -> t -> bool
+    val of_fname : string -> t
+    val to_fname : t -> kind:Ml_kind.t -> string
+    val of_string : string -> t
+    val to_string : t -> string
+    val mangle : t -> prefix:t -> t
+
+    module Set : Set.S with type elt = t
+    module Map : Map.S with type key = t
+    module Trie : Trie.S with module Map = Map
+  end
+
+  module Path : sig
+    type t
+
+    val is_intf_module : t -> Name.t -> bool
+    val alias_suffix : t -> t
+    val to_name : t -> Name.t
+    val parent : t -> t
+    val parents : t -> t list
+    val of_list : Name.t list -> t
+    val to_list : t -> Name.t list
+    val of_name : Name.t -> t
+    val head : t -> Name.t option
+    val namespace : t -> prefix:Name.t -> t
+
+    module Map : Map.S with type key = t
+  end
 end = struct
-  include String
+  module Name = struct
+    include String
 
-  let mangle t ~prefix = prefix ^ "__" ^ t
-  let to_string s = s
+    let double_underscore = "__"
+    let mangle t ~prefix = prefix ^ double_underscore ^ t
+    let to_string s = s
 
-  let of_string s =
-    assert (s <> "");
-    (match s.[0] with
-     | 'A' .. 'Z' -> ()
-     | _ -> failwith ("invalid module " ^ s));
-    for i = 1 to String.length s - 1 do
-      match s.[i] with
-      | 'A' .. 'Z' | 'a' .. 'z' | '_' | '0' .. '9' -> ()
-      | _ -> failwith ("invalid module " ^ s)
-    done;
-    s
-  ;;
+    let of_string s =
+      assert (s <> "");
+      (match s.[0] with
+       | 'A' .. 'Z' -> ()
+       | _ -> failwith ("invalid module " ^ s));
+      for i = 1 to String.length s - 1 do
+        match s.[i] with
+        | 'A' .. 'Z' | 'a' .. 'z' | '_' | '0' .. '9' -> ()
+        | _ -> failwith ("invalid module " ^ s)
+      done;
+      s
+    ;;
 
-  let to_fname t ~kind = String.uncapitalize_ascii t ^ Ml_kind.ext kind
+    let to_fname t ~kind = String.uncapitalize_ascii t ^ Ml_kind.ext kind
 
-  let of_fname x =
-    (match String.index_opt x '.' with
-     | None -> x
-     | Some len -> String.sub x ~pos:0 ~len)
-    |> String.capitalize_ascii
-    |> of_string
-  ;;
+    let of_fname x =
+      (match String.index_opt x '.' with
+       | None -> x
+       | Some len -> String.sub x ~pos:0 ~len)
+      |> String.capitalize_ascii
+      |> of_string
+    ;;
+  end
 
-  let alias_suffix s = s ^ "__"
-end
+  module Path = struct
+    module T = struct
+      type t = Name.t list
 
-module Option = struct
-  include Option
+      let compare = List.compare ~cmp:Name.compare
+    end
 
-  let iter t ~f = Option.iter f t
-  let map t ~f = Option.map f t
-  let bind t ~f = Option.bind t f
-end
+    include T
 
-module List = struct
-  let partition_map_skip t ~f =
-    let rec loop l m r = function
-      | [] -> l, m, r
-      | x :: xs ->
-        (match f x with
-         | `Skip -> loop l m r xs
-         | `Left x -> loop (x :: l) m r xs
-         | `Middle x -> loop l (x :: m) r xs
-         | `Right x -> loop l m (x :: r) xs)
-    in
-    let l, m, r = loop [] [] [] t in
-    List.(rev l, rev m, rev r)
-  ;;
+    module Map = struct
+      include Map.Make (T)
 
-  [@@@ocaml.warning "-32"]
+      let find x map =
+        match find_opt x map with
+        | None -> failwith (sprintf "failed to find [%s]" (String.concat ~sep:";" x))
+        | Some s -> s
+      ;;
+    end
 
-  (* Some list functions are introduced in later OCaml versions. There are also
-     improvements to performance in some of these. We introduce fallback
-     versions allowing compatability >= 4.08 which will get shadowed when the
-     stdlib version is available. *)
+    let alias_suffix t = "" :: t
+    let to_name t = List.rev t |> String.concat ~sep:Name.double_underscore
+    let of_name t = [ t ]
+    let of_list x = x
+    let to_list x = x
 
-  (* Introduced in 4.10 *)
-  let rec find_map l ~f =
-    match l with
-    | [] -> None
-    | x :: l ->
-      (match f x with
-       | None -> find_map l ~f
-       | Some _ as x -> x)
-  ;;
+    let parent = function
+      | [] -> assert false
+      | _ :: x -> x
+    ;;
 
-  (* Introduced in 4.14 *)
-  let concat_map l ~f = List.map l ~f |> List.concat
+    let rec parents = function
+      | [] -> []
+      | _ :: xs as t -> t :: parents xs
+    ;;
 
-  include List
+    let namespace t ~prefix = t @ [ prefix ]
+
+    let is_intf_module t name =
+      match t with
+      | [] -> true
+      | x :: _ -> Name.equal name x
+    ;;
+
+    let head = function
+      | [] -> None
+      | x :: _ -> Some x
+    ;;
+  end
 end
 
 let ( ^/ ) = Filename.concat
@@ -226,17 +484,24 @@ module Status_line = struct
       displayed := new_displayed)
   ;;
 
-  let clear () = Printf.printf "\r*s\r%!"
-  let () = at_exit (fun () -> Printf.printf "\r%*s\r" (String.length !displayed) "")
+  let clear () = if display_status_line then Printf.printf "\r*s\r%!"
+
+  let () =
+    at_exit (fun () ->
+      if display_status_line then Printf.printf "\r%*s\r" (String.length !displayed) "")
+  ;;
 end
 
 module Io = struct
   (* Return a sorted list of entries in [path] as [path/entry] *)
   let readdir path = Sys.readdir path |> Array.to_list |> List.sort ~cmp:String.compare
 
-  let open_out file =
-    if Sys.file_exists file then fatal "%s already exists" file;
-    open_out file
+  let open_out ?(must_overwrite = false) file =
+    let flags =
+      (if must_overwrite then Open_trunc else Open_excl)
+      :: [ Open_wronly; Open_creat; Open_binary ]
+    in
+    open_out_gen flags 0o666 file
   ;;
 
   let input_lines ic =
@@ -262,8 +527,8 @@ module Io = struct
     s
   ;;
 
-  let with_file_out file ~f =
-    let oc = open_out_bin file in
+  let with_file_out ?must_overwrite file ~f =
+    let oc = open_out ?must_overwrite file in
     let res =
       try Ok (f oc) with
       | exn -> Error exn
@@ -275,7 +540,6 @@ module Io = struct
   ;;
 
   let do_then_copy ~f a b =
-    if Sys.file_exists b then fatal "%s already exists" b;
     let s = read_file a in
     with_file_out b ~f:(fun oc ->
       f oc;
@@ -664,31 +928,38 @@ module Libs = struct
   let make_lib lib =
     let root_module =
       Option.map lib.root_module ~f:(fun { name; entries } ->
-        let name = Module_name.of_string name in
-        let entries = List.map ~f:Module_name.of_string entries in
+        let name = Module.Name.of_string name in
+        let entries = List.map ~f:Module.Name.of_string entries in
         { name; entries })
     in
-    let main_module_name = Option.map ~f:Module_name.of_string lib.main_module_name in
+    let main_module_name = Option.map ~f:Module.Name.of_string lib.main_module_name in
     let special_builtin_support =
-      Option.map ~f:Module_name.of_string lib.special_builtin_support
+      Option.map ~f:Module.Name.of_string lib.special_builtin_support
     in
     { lib with root_module; main_module_name; special_builtin_support }
   ;;
 
   let local_libraries =
-    { path = "vendor/re/src"
-    ; main_module_name = Some "Re"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-    :: { path = "vendor/spawn/src"
-       ; main_module_name = Some "Spawn"
-       ; include_subdirs = No
-       ; special_builtin_support = None
-       ; root_module = None
-       }
-    :: Libs.local_libraries
+    [ { path = "vendor/re/src"
+      ; main_module_name = Some "Re"
+      ; include_subdirs = No
+      ; special_builtin_support = None
+      ; root_module = None
+      }
+    ; { path = "vendor/spawn/src"
+      ; main_module_name = Some "Spawn"
+      ; include_subdirs = No
+      ; special_builtin_support = None
+      ; root_module = None
+      }
+    ; { path = "vendor/uutf"
+      ; main_module_name = Some "Uutf"
+      ; include_subdirs = No
+      ; special_builtin_support = None
+      ; root_module = None
+      }
+    ]
+    @ Libs.local_libraries
     |> List.map ~f:make_lib
   ;;
 
@@ -698,7 +969,7 @@ end
 type task =
   { target : string * string
   ; external_libraries : string list
-  ; local_libraries : Module_name.t library list
+  ; local_libraries : Module.Name.t library list
   }
 
 let task =
@@ -721,9 +992,19 @@ module Config : sig
   val ocamlyacc : string
   val mode : Mode.t
   val ocaml_archive_ext : string
-  val ocaml_config : unit -> string String.Map.t Fiber.t
   val output_complete_obj_arg : string
   val unix_library_flags : string list
+
+  type t
+
+  val ocaml_config : unit -> t Fiber.t
+  val ext_obj : t -> string
+  val ccomp_type : t -> Ccomp.t
+  val word_size : t -> Word_size.t
+  val os_type : t -> Os_type.t
+  val architecture : t -> Arch.t
+  val system : t -> string
+  val c_compiler : t -> string
 end = struct
   let ocaml_version = Scanf.sscanf Sys.ocaml_version "%d.%d" (fun a b -> a, b)
   let prog_not_found prog = fatal "Program %s not found in PATH" prog
@@ -776,6 +1057,14 @@ end = struct
     | false, Some path -> path, Mode.Native, ".cmxa"
   ;;
 
+  let output_complete_obj_arg =
+    if ocaml_version < (4, 10) then "-custom" else "-output-complete-exe"
+  ;;
+
+  let unix_library_flags = if ocaml_version >= (5, 0) then [ "-I"; "+unix" ] else []
+
+  type t = string String.Map.t
+
   let ocaml_config () =
     Process.run_and_capture ocamlc [ "-config" ]
     >>| String.split_lines
@@ -786,11 +1075,17 @@ end = struct
         fatal "invalid line in output of 'ocamlc -config': %s" (String.escaped line))
   ;;
 
-  let output_complete_obj_arg =
-    if ocaml_version < (4, 10) then "-custom" else "-output-complete-exe"
+  let ext_obj t =
+    try String.Map.find "ext_obj" t with
+    | Not_found -> ".o"
   ;;
 
-  let unix_library_flags = if ocaml_version >= (5, 0) then [ "-I"; "+unix" ] else []
+  let ccomp_type t = String.Map.find "ccomp_type" t |> Ccomp.of_string
+  let word_size t = String.Map.find "word_size" t |> Word_size.of_string
+  let os_type t = String.Map.find "os_type" t |> Os_type.of_string
+  let architecture t = String.Map.find "architecture" t |> Arch.of_string
+  let system t = String.Map.find "system" t
+  let c_compiler t = String.Map.find "c_compiler" t
 end
 
 let insert_header fn ~header =
@@ -798,7 +1093,7 @@ let insert_header fn ~header =
   | "" -> ()
   | h ->
     let s = Io.read_file fn in
-    Io.with_file_out fn ~f:(fun oc ->
+    Io.with_file_out ~must_overwrite:true fn ~f:(fun oc ->
       output_string oc h;
       output_string oc s)
 ;;
@@ -887,8 +1182,8 @@ module File_kind = struct
 
   type ml =
     { kind : [ `Ml | `Mli | `Mll | `Mly ]
-    ; name : Module_name.t
-    ; module_path : Module_name.t list
+    ; name : Module.Name.t
+    ; module_path : Module.Path.t
     }
 
   type t =
@@ -897,22 +1192,24 @@ module File_kind = struct
     | Asm of asm
     | Ml of ml
 
-  let analyse ~include_subdirs module_path dn fn =
-    let i =
-      try String.index fn '.' with
-      | Not_found -> String.length fn
+  let analyse module_path dn fn =
+    let fname, ext =
+      let i =
+        try String.index fn '.' with
+        | Not_found -> String.length fn
+      in
+      let fname = String.sub fn ~pos:0 ~len:i in
+      let ext = String.sub fn ~pos:i ~len:(String.length fn - i) in
+      fname, ext
     in
-    let module_name = String.sub fn ~pos:0 ~len:i in
-    let name = lazy (Module_name.of_fname module_name) in
+    let name = lazy (Module.Name.of_fname fname) in
     let module_path =
       lazy
-        (let (lazy name) = name in
-         match include_subdirs with
-         | Qualified -> List.rev (name :: List.map ~f:Module_name.of_fname module_path)
-         | No | Unqualified -> [ name ])
+        (let path = fname :: module_path in
+         List.map ~f:Module.Name.of_fname path |> Module.Path.of_list)
     in
-    match String.sub fn ~pos:i ~len:(String.length fn - i) with
-    | (".S" | ".asm") as ext ->
+    match ext with
+    | ".S" | ".asm" ->
       let syntax = if ext = ".S" then `Gas else `Intel in
       let os, arch, assembler =
         let fn = Filename.remove_extension fn in
@@ -949,7 +1246,7 @@ module File_kind = struct
       Some (C { arch; flags })
     | ".h" -> Some Header
     | ".defaults.ml" ->
-      let fn' = String.sub fn ~pos:0 ~len:i ^ ".ml" in
+      let fn' = fname ^ ".ml" in
       if Sys.file_exists (dn ^/ fn')
       then None
       else
@@ -963,9 +1260,9 @@ module File_kind = struct
 end
 
 module Source = struct
-  type t =
+  type 'a t =
     { file : string
-    ; kind : File_kind.t
+    ; kind : 'a
     }
 
   type c_file =
@@ -982,112 +1279,135 @@ end
 
 let gen_module oc bindings =
   List.iter bindings ~f:(fun (lhs, rhs) ->
-    fprintf oc "module %s = %s\n" (Module_name.to_string lhs) (Module_name.to_string rhs))
+    fprintf oc "module %s = %s\n" (Module.Name.to_string lhs) (Module.Name.to_string rhs))
 ;;
 
 module Wrapper = struct
   type t =
-    { toplevel_module : Module_name.t
-    ; alias_module : Module_name.t
+    { toplevel_module : Module.Path.t
+    ; alias_module : Module.Path.t
+    ; group : Module.Name.Set.t
     }
 
-  let make ~namespace ~modules =
-    Option.bind namespace ~f:(fun namespace ->
-      if Module_name.Set.equal modules (Module_name.Set.singleton namespace)
+  let make ~(path : Module.Path.t) ~group =
+    match Module.Path.to_list path with
+    | [] -> None
+    | head :: _ ->
+      if Module.Name.Set.equal group (Module.Name.Set.singleton head)
       then None
-      else if Module_name.Set.mem namespace modules
+      else if Module.Name.Set.mem head group
       then
         Some
-          { toplevel_module = namespace
-          ; alias_module = Module_name.alias_suffix namespace
-          }
-      else Some { toplevel_module = namespace; alias_module = namespace })
+          { toplevel_module = path; alias_module = Module.Path.alias_suffix path; group }
+      else Some { toplevel_module = path; alias_module = path; group }
   ;;
 
-  let mangle_filename t ({ Source.file; kind } : Source.t) =
+  let mangle_filename ({ Source.file; kind } : File_kind.t Source.t) =
     match kind with
     | Asm _ | C _ | Header -> Filename.basename file
-    | Ml { kind; name; module_path = _ } ->
+    | Ml { kind; name = _; module_path } ->
       let kind =
         match kind with
         | `Mli -> `Mli
         | _ -> `Ml
       in
-      let name =
-        match t with
-        | None -> name
-        | Some t ->
-          if Module_name.equal name t.toplevel_module
-          then name
-          else Module_name.mangle ~prefix:t.toplevel_module name
+      let path =
+        match Module.Path.to_list module_path with
+        | [] -> assert false
+        | [ _ ] -> module_path
+        | x :: y :: rest ->
+          if Module.Name.equal x y then Module.Path.of_list (y :: rest) else module_path
       in
-      Module_name.to_fname name ~kind
+      Module.Path.to_name path |> Module.Name.to_fname ~kind
   ;;
 
   let header modules =
-    List.map modules ~f:(fun m -> Module_name.to_string m |> sprintf "open! %s\n")
+    List.map modules ~f:(fun m -> Module.Name.to_string m |> sprintf "open! %s\n")
     |> String.concat ~sep:""
   ;;
 
-  let generate_wrapper t modules =
-    Option.map t ~f:(fun t ->
-      let fn = Module_name.to_fname t.alias_module ~kind:`Ml in
-      Io.with_file_out (build_dir ^/ fn) ~f:(fun oc ->
-        Module_name.Set.remove t.toplevel_module modules
-        |> Module_name.Set.elements
-        |> List.map ~f:(fun name ->
-          let obj = Module_name.mangle ~prefix:t.toplevel_module name in
-          name, obj)
-        |> gen_module oc);
-      fn)
+  let generate_wrapper t =
+    let alias_module = Module.Path.to_name t.alias_module in
+    let toplevel_full = Module.Path.to_name t.toplevel_module in
+    let toplevel_module = Module.Path.to_list t.toplevel_module |> List.hd in
+    let fn = Module.Name.to_fname alias_module ~kind:`Ml in
+    Io.with_file_out (build_dir ^/ fn) ~f:(fun oc ->
+      Module.Name.Set.remove toplevel_module t.group
+      |> Module.Name.Set.elements
+      |> List.map ~f:(fun name ->
+        let obj = Module.Name.mangle ~prefix:toplevel_full name in
+        name, obj)
+      |> gen_module oc);
+    fn
   ;;
 end
 
 module Library = struct
   (* Collect source files *)
-  let scan ~dir ~include_subdirs =
-    let rec iter_paths dir module_path paths acc =
-      List.fold_left paths ~init:acc ~f:(fun acc fn ->
-        let path = Filename.concat dir fn in
-        if Sys.is_directory path
-        then (
-          match include_subdirs with
-          | No -> acc
-          | Unqualified | Qualified -> iter_dir path (fn :: module_path) acc)
-        else (
-          match File_kind.analyse ~include_subdirs module_path dir fn with
-          | None -> acc
-          | Some kind -> { Source.file = path; kind } :: acc))
-    and iter_dir dir module_path acc =
-      let paths = Io.readdir dir in
-      iter_paths dir module_path paths acc
+  let scan ~module_path ~dir ~include_subdirs =
+    let rec collect dir module_path =
+      let dirs, files =
+        let paths = Io.readdir dir in
+        List.partition_map paths ~f:(fun fn ->
+          let path = Filename.concat dir fn in
+          let module_path =
+            match include_subdirs with
+            | Qualified -> fn :: module_path
+            | No | Unqualified -> module_path
+          in
+          let arg = path, fn, module_path in
+          if Sys.is_directory path then Left arg else Right arg)
+      in
+      let files =
+        List.filter_map files ~f:(fun (path, fn, module_path) ->
+          File_kind.analyse module_path dir fn
+          |> Option.map ~f:(fun kind -> fn, String.Trie.Node { Source.file = path; kind }))
+        |> String.Map.of_list
+      in
+      let dirs =
+        match include_subdirs with
+        | No -> String.Trie.empty
+        | Unqualified | Qualified ->
+          List.map dirs ~f:(fun (dir, fn, module_path) ->
+            fn, String.Trie.Tree (collect dir module_path))
+          |> String.Map.of_list
+      in
+      String.Map.union files dirs ~f:(fun _ _ _ -> assert false)
     in
-    iter_dir dir [] []
+    collect dir module_path
   ;;
 
   let modules files ~build_info_module ~root_module =
-    let modules =
-      List.fold_left
-        files
-        ~init:Module_name.Set.empty
-        ~f:(fun acc { Source.file = _; kind } ->
-          match (kind : File_kind.t) with
-          | Asm _ | Header | C _ -> acc
-          | Ml { kind = _; name; module_path = _ } -> Module_name.Set.add name acc)
-    in
-    let modules =
-      match build_info_module with
-      | None -> modules
-      | Some m -> Module_name.Set.add m modules
-    in
-    match root_module with
-    | None -> modules
-    | Some { name; entries = _ } -> Module_name.Set.add name modules
+    List.filter_map files ~f:(fun { Source.file = _; kind } ->
+      match (kind : File_kind.t) with
+      | Asm _ | Header | C _ -> None
+      | Ml module_ -> Some module_)
+    |> List.cons_opt build_info_module
+    |> List.cons_opt root_module
+  ;;
+
+  type node =
+    | Group of Module.Name.Set.t
+    | Singleton of Module.Name.t
+
+  let by_group modules =
+    List.fold_left modules ~init:Module.Path.Map.empty ~f:(fun acc (s : File_kind.ml) ->
+      let key = Module.Path.parent s.module_path in
+      Module.Path.Map.update ~key acc ~f:(fun x ->
+        Some
+          (match x with
+           | None -> Module.Name.Set.singleton s.name
+           | Some set -> Module.Name.Set.add s.name set)))
+    |> Module.Path.Map.mapi ~f:(fun group set ->
+      let first = Module.Name.Set.choose set in
+      if Module.Name.Set.cardinal set = 1 && Module.Path.is_intf_module group first
+      then Singleton first
+      else Group set)
   ;;
 
   type t =
     { ocaml_files : string list
-    ; alias_file : string option
+    ; alias_files : string list
     ; c_files : Source.c_file list
     ; asm_files : Source.asm_file list
     }
@@ -1099,60 +1419,121 @@ module Library = struct
         ~os_type
     =
     (match os with
-     | Some `Unix -> String.equal os_type "Unix"
-     | Some `Win -> String.equal os_type "Win32"
+     | Some `Unix -> os_type = `Unix
+     | Some `Win -> os_type = `Win32
      | None -> true)
     && (match syntax, ccomp_type with
-        | `Intel, "msvc" -> true
-        | `Gas, "msvc" -> false
+        | `Intel, `Msvc -> true
+        | `Gas, `Msvc -> false
         | `Gas, _ -> true
         | `Intel, _ -> false)
     &&
     match arch, architecture with
     | None, _ -> true
-    | Some `Amd64, "amd64" -> true
+    | Some `Amd64, `amd64 -> true
     | Some `Amd64, _ -> false
   ;;
 
   let keep_c { File_kind.arch; flags = _ } ~architecture =
     match arch with
     | None -> true
-    | Some `Arm64 -> architecture = "arm64"
-    | Some `X86 -> architecture = "amd64" || architecture = "x86_64"
+    | Some `Arm64 -> architecture = `arm64
+    | Some `X86 -> architecture = `amd64 || architecture = `x86_64
   ;;
 
-  let gen_build_info_module wrapper m =
-    let src =
-      let fn = Module_name.to_fname m ~kind:`Ml in
-      { Source.file = fn; kind = Ml { kind = `Ml; name = m; module_path = [ m ] } }
+  let make_c (c : File_kind.c) ~fn ~os_type ~word_size =
+    let extra_flags =
+      if
+        String.starts_with ~prefix:"blake3_" fn
+        && (os_type = `Cygwin || word_size = `Thirty_two)
+      then
+        [ "-DBLAKE3_NO_SSE2"
+        ; "-DBLAKE3_NO_SSE41"
+        ; "-DBLAKE3_NO_AVX2"
+        ; "-DBLAKE3_NO_AVX512"
+        ]
+      else []
     in
-    let mangled = Wrapper.mangle_filename wrapper src in
+    { Source.flags = extra_flags @ c.flags; name = fn }
+  ;;
+
+  let gen_build_info_module (ml : File_kind.ml) =
+    let src =
+      let fn = Module.Name.to_fname ml.name ~kind:`Ml in
+      { Source.file = fn; kind = File_kind.Ml ml }
+    in
+    let mangled = Wrapper.mangle_filename src in
     let oc = Io.open_out (build_dir ^/ mangled) in
     let+ () = Build_info.gen_data_module oc in
     close_out oc;
     src, mangled
   ;;
 
-  let process_source_file wrapper ~header ({ Source.file = fn; kind } as source) =
-    let+ mangled =
-      let mangled = Wrapper.mangle_filename wrapper source in
-      let dst = build_dir ^/ mangled in
-      match kind with
-      | Asm _ ->
-        Io.copy fn dst;
-        Fiber.return [ mangled ]
-      | Header | C _ ->
-        Io.copy_with_directive ~directive:"line" fn dst;
-        Fiber.return [ mangled ]
-      | Ml { kind = `Ml | `Mli; _ } ->
-        Io.copy_with_header ~header fn dst;
-        Fiber.return [ mangled ]
-      | Ml { kind = `Mll; _ } -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
-      | Ml { kind = `Mly; _ } ->
-        (* CR rgrinberg: what if the parser already has an mli? *)
-        copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]
+  let process_source_file ~header ({ Source.file = fn; kind } as source) =
+    let mangled = Wrapper.mangle_filename source in
+    let dst = build_dir ^/ mangled in
+    match kind with
+    | Asm _ ->
+      Io.copy fn dst;
+      Fiber.return [ mangled ]
+    | Header | C _ ->
+      Io.copy_with_directive ~directive:"line" fn dst;
+      Fiber.return [ mangled ]
+    | Ml { kind = `Ml | `Mli; _ } ->
+      Io.copy_with_header ~header fn dst;
+      Fiber.return [ mangled ]
+    | Ml { kind = `Mll; _ } -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
+    | Ml { kind = `Mly; _ } ->
+      (* CR rgrinberg: what if the parser already has an mli? *)
+      copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]
+  ;;
+
+  let make_asm ~ext_obj ~fn (asm : File_kind.asm) =
+    let out_file = Filename.chop_extension fn ^ ext_obj in
+    { Source.flags =
+        (match asm.assembler with
+         | `C_comp -> [ "-c"; fn; "-o"; out_file ]
+         | `Msvc_asm -> [ "/nologo"; "/quiet"; "/Fo" ^ out_file; "/c"; fn ])
+    ; assembler = asm.assembler
+    ; out_file
+    }
+  ;;
+
+  let with_namespace ~namespace path =
+    match namespace with
+    | None -> path
+    | Some prefix -> Module.Path.namespace path ~prefix
+  ;;
+
+  let header_by_file modules =
+    let opens_by_path =
+      let alias_path =
+        Module.Path.Map.mapi modules ~f:(fun group (modules : node) ->
+          match modules with
+          | Singleton _ -> None
+          | Group modules ->
+            let lib_interface =
+              match Module.Path.head group with
+              | None -> false
+              | Some x -> Module.Name.Set.mem x modules
+            in
+            let name =
+              Module.Path.to_name
+                (if lib_interface then Module.Path.alias_suffix group else group)
+            in
+            Some name)
+      in
+      Module.Path.Map.mapi alias_path ~f:(fun path _ ->
+        Module.Path.parents path
+        |> List.filter_map ~f:(fun parent -> Module.Path.Map.find parent alias_path)
+        |> List.rev)
     in
-    List.map mangled ~f:(fun m -> source, m)
+    fun (source : _ Source.t) ->
+      match source.kind with
+      | File_kind.Ml m ->
+        let module_path = Module.Path.parent m.module_path in
+        Module.Path.Map.find module_path opens_by_path |> Wrapper.header
+      | _ -> ""
   ;;
 
   let process
@@ -1168,85 +1549,90 @@ module Library = struct
         ~word_size
         ~os_type
     =
-    let files = scan ~dir ~include_subdirs in
-    let modules = modules files ~build_info_module ~root_module in
-    let wrapper = Wrapper.make ~namespace ~modules in
-    let header =
-      Option.map wrapper ~f:(fun (m : Wrapper.t) -> m.alias_module)
-      |> Option.to_list
-      |> Wrapper.header
+    let with_namespace = with_namespace ~namespace in
+    let build_info_module =
+      Option.map build_info_module ~f:(fun name ->
+        { File_kind.kind = `Ml
+        ; name
+        ; module_path = with_namespace (Module.Path.of_name name)
+        })
+    in
+    let root_module =
+      Option.map root_module ~f:(fun { name; entries } ->
+        ( { File_kind.kind = `Ml
+          ; name
+          ; module_path = with_namespace (Module.Path.of_name name)
+          }
+        , entries ))
+    in
+    let files =
+      let module_path =
+        match namespace with
+        | None -> []
+        | Some x -> [ Module.Name.to_string x ]
+      in
+      scan ~module_path ~dir ~include_subdirs |> String.Trie.to_list
+    in
+    let modules =
+      let root_module = Option.map root_module ~f:fst in
+      modules files ~build_info_module ~root_module |> by_group
     in
     let+ files, build_info_file =
+      let files =
+        List.rev_map files ~f:(fun (f : _ Source.t) -> f.file, f) |> String.Map.of_list
+      in
+      let header_by_file = header_by_file modules in
       Fiber.fork_and_join
         (fun () ->
-           Fiber.parallel_map files ~f:(process_source_file wrapper ~header)
+           String.Map.bindings files
+           |> List.map ~f:snd
+           |> Fiber.parallel_map ~f:(fun file ->
+             let header = header_by_file file in
+             process_source_file ~header file >>| List.map ~f:(fun x -> file, x))
            >>| List.concat)
         (fun () ->
            match build_info_module with
            | None -> Fiber.return None
            | Some m ->
-             let+ src, mangled = gen_build_info_module wrapper m in
+             let+ src, mangled = gen_build_info_module m in
              Some (src, mangled))
     in
     let root_module =
-      Option.map root_module ~f:(fun { name; entries } ->
+      Option.map root_module ~f:(fun (m, entries) ->
         let src =
-          let fn = Module_name.to_fname name ~kind:`Ml in
-          { Source.file = fn; kind = Ml { kind = `Ml; name; module_path = [ name ] } }
+          let fn = Module.Name.to_fname m.name ~kind:`Ml in
+          { Source.file = fn; kind = File_kind.Ml m }
         in
-        let mangled = Wrapper.mangle_filename wrapper src in
+        let mangled = Wrapper.mangle_filename src in
         Io.with_file_out (build_dir ^/ mangled) ~f:(fun oc ->
           List.map entries ~f:(fun entry -> entry, entry) |> gen_module oc);
         src, mangled)
     in
-    let alias_file = Wrapper.generate_wrapper wrapper modules in
+    let alias_files =
+      Module.Path.Map.bindings modules
+      |> List.filter_map ~f:(fun (path, group) ->
+        match group with
+        | Singleton _ -> None
+        | Group group -> Wrapper.make ~path ~group)
+      |> List.map ~f:Wrapper.generate_wrapper
+    in
     let c_files, ocaml_files, asm_files =
-      let files =
-        let files =
-          match build_info_file with
-          | None -> files
-          | Some fn -> fn :: files
-        in
-        match root_module with
-        | None -> files
-        | Some fn -> fn :: files
-      in
-      List.partition_map_skip files ~f:(fun (src, fn) ->
+      List.cons_opt build_info_file files
+      |> List.cons_opt root_module
+      |> List.partition_map_skip ~f:(fun ((src : File_kind.t Source.t), fn) ->
         match src.kind with
         | C c ->
           if keep_c c ~architecture
-          then (
-            let extra_flags =
-              if
-                String.starts_with ~prefix:"blake3_" fn
-                && (String.equal os_type "Cygwin" || String.equal word_size "32")
-              then
-                [ "-DBLAKE3_NO_SSE2"
-                ; "-DBLAKE3_NO_SSE41"
-                ; "-DBLAKE3_NO_AVX2"
-                ; "-DBLAKE3_NO_AVX512"
-                ]
-              else []
-            in
-            `Left { Source.flags = extra_flags @ c.flags; name = fn })
+          then `Left (make_c c ~fn ~os_type ~word_size)
           else `Skip
         | Ml _ -> `Middle fn
         | Header -> `Skip
         | Asm asm ->
           if keep_asm asm ~ccomp_type ~architecture ~os_type
-          then (
-            let out_file = Filename.chop_extension fn ^ ext_obj in
-            `Right
-              { Source.flags =
-                  (match asm.assembler with
-                   | `C_comp -> [ "-c"; fn; "-o"; out_file ]
-                   | `Msvc_asm -> [ "/nologo"; "/quiet"; "/Fo" ^ out_file; "/c"; fn ])
-              ; assembler = asm.assembler
-              ; out_file
-              })
+          then `Right (make_asm ~ext_obj ~fn asm)
           else `Skip)
     in
-    { ocaml_files; alias_file; c_files; asm_files }
+    { ocaml_files; alias_files; c_files; asm_files }
   ;;
 end
 
@@ -1271,19 +1657,20 @@ let ocamldep args =
       else
         String.sub line ~pos:(colon + 2) ~len:(String.length line - colon - 2)
         |> String.split_on_char ~sep:' '
-        |> List.map ~f:Module_name.of_string
+        |> List.map ~f:Module.Name.of_string
     in
     { Dep.file = filename; deps = modules })
   >>| List.sort ~cmp:compare
 ;;
 
 let mk_flags arg l = List.concat_map l ~f:(fun m -> [ arg; m ])
+let ccopt x = [ "-ccopt"; x ]
 
 let convert_dependencies ~all_source_files { Dep.file; deps } =
   let is_mli = Filename.check_suffix file ".mli" in
   let convert_module module_name =
-    let ml = Module_name.to_fname module_name ~kind:`Ml in
-    let mli = Module_name.to_fname module_name ~kind:`Mli in
+    let ml = Module.Name.to_fname module_name ~kind:`Ml in
+    let mli = Module.Name.to_fname module_name ~kind:`Mli in
     if Filename.chop_extension ml = Filename.chop_extension file
     then (* Self-reference *)
       []
@@ -1321,10 +1708,7 @@ let write_args file args =
 let get_dependencies libraries =
   let+ deps =
     let alias_files =
-      List.fold_left libraries ~init:[] ~f:(fun acc (lib : Library.t) ->
-        match lib.alias_file with
-        | None -> acc
-        | Some fn -> fn :: acc)
+      List.concat_map libraries ~f:(fun (lib : Library.t) -> lib.alias_files)
     in
     let all_source_files =
       List.concat_map libraries ~f:(fun (lib : Library.t) -> lib.ocaml_files)
@@ -1333,18 +1717,17 @@ let get_dependencies libraries =
       let args = write_args "source_files" all_source_files in
       ocamldep (mk_flags "-map" alias_files @ args)
     in
-    List.rev_append
-      ((* Alias files have no dependencies *)
-       List.rev_map
-         alias_files
-         ~f:Dep.empty)
-      (let all_source_files =
-         List.fold_left
-           alias_files
-           ~init:(String.Set.of_list all_source_files)
-           ~f:(fun acc fn -> String.Set.add fn acc)
-       in
-       List.rev_map dependencies ~f:(convert_dependencies ~all_source_files))
+    List.concat
+      [ (* Alias files have no dependencies *)
+        List.rev_map alias_files ~f:Dep.empty
+      ; (let all_source_files =
+           List.fold_left
+             alias_files
+             ~init:(String.Set.of_list all_source_files)
+             ~f:(fun acc fn -> String.Set.add fn acc)
+         in
+         List.rev_map dependencies ~f:(convert_dependencies ~all_source_files))
+      ]
   in
   if debug
   then (
@@ -1366,7 +1749,7 @@ let assemble_libraries
   (* In order to assemble all the sources in one place, the executables
        modules are also put in a namespace *)
   local_libraries
-  @ [ (let namespace = Module_name.of_fname (Filename.basename main) in
+  @ [ (let namespace = Module.Name.of_fname (Filename.basename main) in
        { Libs.main with main_module_name = Some namespace })
     ]
   |> Fiber.parallel_map
@@ -1374,7 +1757,7 @@ let assemble_libraries
 ;;
 
 type status =
-  | Not_started of (unit -> unit Fiber.t)
+  | Not_started of { deps : string list }
   | Initializing
   | Started of unit Fiber.Future.t
 
@@ -1383,7 +1766,7 @@ let resolve_externals external_libraries =
     let convert = function
       | "threads" -> Some ("threads" ^ Config.ocaml_archive_ext, [ "-I"; "+threads" ])
       | "unix" -> Some ("unix" ^ Config.ocaml_archive_ext, Config.unix_library_flags)
-      | "seq" | "re" | "spawn" -> None
+      | "seq" | "re" | "spawn" | "uutf" -> None
       | s -> fatal "unhandled external library %s" s
     in
     List.filter_map ~f:convert external_libraries |> List.split
@@ -1463,42 +1846,38 @@ let build
     Status_line.num_jobs := num_dependencies;
     Hashtbl.create num_dependencies
   in
-  let build ~file ~deps m =
+  let external_libraries, external_includes = resolve_externals external_libraries in
+  let rec build ~stack m =
     match Hashtbl.find table m with
-    | Not_started f ->
+    | exception Not_found -> fatal "file not found: %s" m
+    | Initializing ->
+      Format.eprintf "cycle:@.";
+      List.iter stack ~f:(Format.eprintf "- %s@.");
+      fatal "dependency cycle compiling %s" m
+    | Started fut -> Fiber.Future.wait fut
+    | Not_started { deps } ->
       let* fut =
         Hashtbl.replace table ~key:m ~data:Initializing;
-        Fiber.fork f
+        Fiber.fork (fun () ->
+          let* () = Fiber.parallel_iter deps ~f:(build ~stack:(m :: stack)) in
+          List.concat
+            [ [ "-c"; "-g"; "-no-alias-deps" ]
+            ; ocaml_warnings
+            ; allow_unstable_sources
+            ; external_includes
+            ; [ m ]
+            ]
+          |> Process.run ~cwd:build_dir Config.compiler)
       in
       Hashtbl.replace table ~key:m ~data:(Started fut);
       let+ () = Fiber.Future.wait fut in
       incr Status_line.num_jobs_finished
-    | Initializing ->
-      let deps = String.concat ~sep:", " deps in
-      fatal "dependency cycle compiling %s\ndependencies: %s" file deps
-    | Started fut -> Fiber.Future.wait fut
-    | exception Not_found -> fatal "file not found: %s" m
   in
-  let external_libraries, external_includes = resolve_externals external_libraries in
   List.iter dependencies ~f:(fun { Dep.file; deps } ->
-    Hashtbl.add
-      table
-      ~key:file
-      ~data:
-        (Not_started
-           (fun () ->
-             let* () = Fiber.parallel_iter deps ~f:(build ~file ~deps) in
-             List.concat
-               [ [ "-c"; "-g"; "-no-alias-deps" ]
-               ; ocaml_warnings
-               ; allow_unstable_sources
-               ; external_includes
-               ; [ file ]
-               ]
-             |> Process.run ~cwd:build_dir Config.compiler)));
+    Hashtbl.add table ~key:file ~data:(Not_started { deps }));
   let* obj_files =
     Fiber.fork_and_join_unit
-      (fun () -> build ~file:main ~deps:[] (Filename.basename main))
+      (fun () -> build ~stack:[] (Filename.basename main))
       (fun () ->
          (Fiber.fork_and_join (fun () ->
             Fiber.parallel_map c_files ~f:(fun { Source.name = file; flags } ->
@@ -1508,7 +1887,7 @@ let build
                   ; external_includes
                   ; build_flags
                   ; [ file ]
-                  ; List.concat_map flags ~f:(fun flag -> [ "-ccopt"; flag ])
+                  ; List.concat_map flags ~f:ccopt
                   ]
                 |> Process.run ~cwd:build_dir Config.compiler
               in
@@ -1548,7 +1927,7 @@ let build
     ; obj_files
     ; args
     ; link_flags
-    ; (if static then [ "-ccopt"; "-static" ] else [])
+    ; (if static then ccopt "-static" else [])
     ; allow_unstable_sources
     ]
   |> Process.run ~cwd:build_dir Config.compiler
@@ -1562,16 +1941,17 @@ let get_flags system xs =
 let windows_system_values = [ "win32"; "win64"; "mingw"; "mingw64" ]
 
 let build_flags =
-  [ windows_system_values, [ "-ccopt"; "-D_UNICODE"; "-ccopt"; "-DUNICODE" ] ]
+  [ windows_system_values, List.concat_map ~f:ccopt [ "-D_UNICODE"; "-DUNICODE" ] ]
 ;;
 
 let link_flags =
+  let cclib x = [ "-cclib"; x ] in
   (* additional link flags keyed by the platform *)
   [ ( [ "macosx" ]
-    , [ "-cclib"; "-framework CoreFoundation"; "-cclib"; "-framework CoreServices" ] )
-  ; ( windows_system_values
-    , [ "-cclib"; "-lshell32"; "-cclib"; "-lole32"; "-cclib"; "-luuid" ] )
-  ; [ "beos" ], [ "-cclib"; "-lbsd" ] (* flags for Haiku *)
+    , List.concat_map ~f:cclib [ "-framework CoreFoundation"; "-framework CoreServices" ]
+    )
+  ; windows_system_values, List.concat_map ~f:cclib [ "-lshell32"; "-lole32"; "-luuid" ]
+  ; [ "beos" ], cclib "-lbsd" (* flags for Haiku *)
   ]
 ;;
 
@@ -1582,24 +1962,21 @@ let main () =
   (try Unix.mkdir build_dir 0o777 with
    | Unix.Unix_error (Unix.EEXIST, _, _) -> ());
   let* ocaml_config = Config.ocaml_config () in
-  let ext_obj =
-    try String.Map.find "ext_obj" ocaml_config with
-    | Not_found -> ".o"
-  in
+  let ext_obj = Config.ext_obj ocaml_config in
   let* libraries =
-    let ccomp_type = String.Map.find "ccomp_type" ocaml_config in
-    let word_size = String.Map.find "word_size" ocaml_config in
-    let os_type = String.Map.find "os_type" ocaml_config in
-    let architecture = String.Map.find "architecture" ocaml_config in
+    let ccomp_type = Config.ccomp_type ocaml_config in
+    let word_size = Config.word_size ocaml_config in
+    let os_type = Config.os_type ocaml_config in
+    let architecture = Config.architecture ocaml_config in
     assemble_libraries task ~ext_obj ~ccomp_type ~architecture ~word_size ~os_type
   in
   let c_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.c_files) libraries in
   let asm_files = List.concat_map ~f:(fun (lib : Library.t) -> lib.asm_files) libraries in
   let* dependencies = get_dependencies libraries in
-  let ocaml_system = String.Map.find "system" ocaml_config in
+  let ocaml_system = Config.system ocaml_config in
   let build_flags = get_flags ocaml_system build_flags in
   let link_flags = get_flags ocaml_system link_flags in
-  let c_compiler = String.Map.find "c_compiler" ocaml_config in
+  let c_compiler = Config.c_compiler ocaml_config in
   build
     ~ext_obj
     ~c_compiler

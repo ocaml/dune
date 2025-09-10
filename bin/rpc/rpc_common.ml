@@ -109,17 +109,20 @@ let wrap_build_outcome_exn ~print_on_success f args () =
       ]
 ;;
 
+let warn_ignore_arguments lock_held_by =
+  User_warning.emit
+    [ Pp.textf
+        "Your build request is being forwarded to a running Dune instance%s. Note that \
+         certain command line arguments may be ignored."
+        (match lock_held_by with
+         | Dune_util.Global_lock.Lock_held_by.Unknown -> ""
+         | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
+    ]
+;;
+
 let run_via_rpc ~builder ~common ~config lock_held_by f args =
   if not (Common.Builder.equal builder Common.Builder.default)
-  then
-    User_warning.emit
-      [ Pp.textf
-          "Your build request is being forwarded to a running Dune instance%s. Note that \
-           certain command line arguments may be ignored."
-          (match lock_held_by with
-           | Dune_util.Global_lock.Lock_held_by.Unknown -> ""
-           | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
-      ];
+  then warn_ignore_arguments lock_held_by;
   Scheduler.go_without_rpc_server
     ~common
     ~config

@@ -26,7 +26,7 @@ include struct
 end
 
 module Run = struct
-  module Registry = Dune_rpc_private.Registry
+  module Registry = Dune_rpc.Registry
 
   module Server = Dune_rpc_server.Make (struct
       include Csexp_rpc.Session
@@ -230,9 +230,7 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
     t.clients <- Clients.remove_session t.clients session;
     Fiber.return ()
   in
-  let rpc =
-    Handler.create ~on_terminate ~on_init ~version:Dune_rpc_private.Version.latest ()
-  in
+  let rpc = Handler.create ~on_terminate ~on_init ~version:Dune_rpc.Version.latest () in
   let () =
     let module Error = Build_system_error in
     let diff ~last ~(now : Error.Set.t) =
@@ -329,17 +327,35 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
   in
   let () = Handler.implement_request rpc Procedures.Public.ping (fun _ -> Fiber.return) in
   let () =
-    let build _session targets =
+    let f _ targets =
       let server = Fdecl.get t in
       let ivar = Fiber.Ivar.create () in
       let targets = List.map targets ~f:server.parse_build_arg in
       let* () = Job_queue.write server.pending_build_jobs (targets, ivar) in
       let+ build_outcome = Fiber.Ivar.read ivar in
       match (build_outcome : Build_outcome.t) with
-      | Success -> Dune_rpc_private.Build_outcome_with_diagnostics.Success
+      | Success -> Dune_rpc.Build_outcome_with_diagnostics.Success
       | Failure -> Failure (get_current_diagnostic_errors ())
     in
-    Handler.implement_request rpc Decl.build build
+    Handler.implement_request rpc Decl.build f
+  in
+  let () =
+    let f _ () =
+      let server = Fdecl.get t in
+      let outcome = Fiber.Ivar.create () in
+      let target =
+        Dune_lang.Dep_conf.Alias_rec (Dune_lang.String_with_vars.make_text Loc.none "fmt")
+      in
+      let* () = Job_queue.write server.pending_build_jobs ([ target ], outcome) in
+      let+ build_outcome = Fiber.Ivar.read outcome in
+      match build_outcome with
+      (* A 'successful' formatting means there is nothing to promote. *)
+      | Success -> ()
+      | Failure ->
+        Promote.Diff_promotion.promote_files_registered_in_last_run
+          Dune_rpc.Files_to_promote.All
+    in
+    Handler.implement_request rpc Procedures.Public.format f
   in
   let () =
     let rec cancel_pending_jobs () =
@@ -391,9 +407,9 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
   let () =
     let f _ files =
       Promote.Diff_promotion.promote_files_registered_in_last_run files;
-      Fiber.return Dune_rpc_private.Build_outcome_with_diagnostics.Success
+      Fiber.return Dune_rpc.Build_outcome_with_diagnostics.Success
     in
-    Handler.implement_request rpc Dune_rpc.Procedures.Public.promote_many f
+    Handler.implement_request rpc Procedures.Public.promote_many f
   in
   let () =
     let f _ path =
@@ -402,7 +418,7 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
         (These ([ files ], ignore));
       Fiber.return ()
     in
-    Handler.implement_request rpc Dune_rpc_private.Procedures.Public.promote f
+    Handler.implement_request rpc Procedures.Public.promote f
   in
   let () =
     let f _ () = Fiber.return Path.Build.(to_string root) in

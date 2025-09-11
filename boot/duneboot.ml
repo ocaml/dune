@@ -1666,7 +1666,7 @@ let ocamldep args =
 let mk_flags arg l = List.concat_map l ~f:(fun m -> [ arg; m ])
 let ccopt x = [ "-ccopt"; x ]
 
-let convert_dependencies ~all_source_files { Dep.file; deps } =
+let convert_dependencies ~alias_modules ~all_source_files { Dep.file; deps } =
   let is_mli = Filename.check_suffix file ".mli" in
   let convert_module module_name =
     let ml = Module.Name.to_fname module_name ~kind:`Ml in
@@ -1690,11 +1690,13 @@ let convert_dependencies ~all_source_files { Dep.file; deps } =
       []
   in
   let deps =
-    let deps = List.concat_map ~f:convert_module deps in
-    (* .ml depends on .mli, if it exists *)
-    if (not is_mli) && String.Set.mem (file ^ "i") all_source_files
-    then (file ^ "i") :: deps
-    else deps
+    List.concat
+      [ List.concat_map ~f:convert_module deps
+      ; String.Map.find_opt file alias_modules |> Option.value ~default:[]
+      ; (if (not is_mli) && String.Set.mem (file ^ "i") all_source_files
+         then [ file ^ "i" ]
+         else [])
+      ]
   in
   { Dep.file; deps }
 ;;
@@ -1713,6 +1715,11 @@ let get_dependencies libraries =
     let all_source_files =
       List.concat_map libraries ~f:(fun (lib : Library.t) -> lib.ocaml_files)
     in
+    let alias_files_by_sources =
+      List.concat_map libraries ~f:(fun (lib : Library.t) ->
+        List.rev_map lib.ocaml_files ~f:(fun ml -> ml, lib.alias_files))
+      |> String.Map.of_list
+    in
     let+ dependencies =
       let args = write_args "source_files" all_source_files in
       ocamldep (mk_flags "-map" alias_files @ args)
@@ -1726,7 +1733,12 @@ let get_dependencies libraries =
              ~init:(String.Set.of_list all_source_files)
              ~f:(fun acc fn -> String.Set.add fn acc)
          in
-         List.rev_map dependencies ~f:(convert_dependencies ~all_source_files))
+         List.rev_map
+           dependencies
+           ~f:
+             (convert_dependencies
+                ~alias_modules:alias_files_by_sources
+                ~all_source_files))
       ]
   in
   if debug

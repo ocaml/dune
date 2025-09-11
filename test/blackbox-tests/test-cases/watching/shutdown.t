@@ -17,17 +17,16 @@ a client.
   Server appears to be responding normally
 
   $ dune build --alias runtest &
-  Error: { payload = Some [ [ "id"; [ "auto"; "0" ] ] ]
-  ; message =
-      "connection terminated. this request will never receive a response"
-  ; kind = Connection_dead
-  }
+  Error: Server returned error: 
+  Connection terminated. This request will never receive a response. (error
+  kind: Connection_dead)
   $ PID=$!
 
   $ dune rpc ping
   Server appears to be responding normally
   $ dune shutdown
 
-This allows us to observe the exit code. Currently this is [0] which is wrong.
+This allows us to observe the exit code which should be non-zero.
   $ wait $PID
+  [1]
 

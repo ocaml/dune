@@ -220,7 +220,7 @@ module Job : sig
   end
 end
 
-(** A compound user error defineds an alternative format for error messages that
+(** A compound user error defines an alternative format for error messages that
     retains more structure. This can be used to display the errors in richer
     form by RPC clients. *)
 module Compound_user_error : sig

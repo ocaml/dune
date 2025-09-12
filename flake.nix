@@ -58,7 +58,7 @@
       );
       dune-static-overlay = _: super: {
         ocamlPackages = super.ocaml-ng.ocamlPackages_5_3.overrideScope (
-          oself: osuper: {
+          _: osuper: {
             dune_3 = osuper.dune_3.overrideAttrs (a: {
               src = ./.;
               preBuild = "ocaml boot/bootstrap.ml --static";
@@ -109,6 +109,7 @@
         in
         {
           default = self.packages.${system}.dune;
+
           dune = pkgs.stdenv.mkDerivation {
             pname = "dune";
             version = "3.x-n/a";
@@ -168,9 +169,9 @@
           ocamlformat = builtins.getAttr ("ocamlformat_" + ocamlformat_version) pkgs;
 
           testNativeBuildInputs =
-            pkgs:
+            p:
             [ ocamlformat ]
-            ++ (with pkgs; [
+            ++ (with p; [
               nodejs-slim
               pkg-config
               opam
@@ -186,9 +187,9 @@
               pkgs' =
                 if duneFromScope then
                   pkgs.extend (
-                    pself: psuper: {
+                    _: psuper: {
                       ocamlPackages = psuper.ocamlPackages.overrideScope (
-                        oself: osuper: {
+                        _: _: {
                           dune_3 = self.packages.${system}.default;
                         }
                       );
@@ -197,31 +198,29 @@
                 else
                   pkgs;
 
-              inherit (pkgs') writeScriptBin stdenv;
-
-              duneScript = writeScriptBin "dune" ''
-                #!${stdenv.shell}
+              duneScript = pkgs.writeScriptBin "dune" ''
+                #!${pkgs.stdenv.shell}
                 "$DUNE_SOURCE_ROOT"/_boot/dune.exe $@
               '';
             in
 
-            pkgs'.mkShell {
+            pkgs.mkShell {
               shellHook = ''
                 export DUNE_SOURCE_ROOT=$PWD
               '';
+              inherit INSIDE_NIX;
               inherit meta;
-              nativeBuildInputs = (testNativeBuildInputs pkgs') ++ [ duneScript ];
+              nativeBuildInputs = [ duneScript ] ++ (testNativeBuildInputs pkgs');
               inputsFrom = [
                 pkgs'.ocamlPackages.dune_3
                 self.devShells.${system}.doc
               ];
               buildInputs =
-                with pkgs;
-                [
+                (with pkgs; [
                   file
                   mercurial
                   unzip
-                ]
+                ])
                 ++ (with pkgs'.ocamlPackages; [
                   ctypes
                   cinaps
@@ -240,8 +239,7 @@
                   uutf
                 ])
                 ++ (extraBuildInputs pkgs')
-                ++ lib.optionals stdenv.isLinux [ strace ];
-              inherit INSIDE_NIX;
+                ++ lib.optionals pkgs.stdenv.isLinux [ pkgs.strace ];
             };
         in
         {
@@ -303,9 +301,7 @@
           };
 
           slim-melange = makeDuneDevShell {
-            extraBuildInputs = pkgs: [
-              pkgs.ocamlPackages.melange
-            ];
+            extraBuildInputs = p: [ p.ocamlPackages.melange ];
             meta.description = ''
               Provides a minimal shell environment built purely from nixpkgs
               that can run the testsuite (except the coq tests).
@@ -357,8 +353,8 @@
           };
 
           microbench = makeDuneDevShell {
-            extraBuildInputs = pkgs: [
-              pkgs.ocamlPackages.core_bench
+            extraBuildInputs = p: [
+              p.ocamlPackages.core_bench
             ];
             meta.description = ''
               Provides a minimal shell environment that can build the

@@ -115,7 +115,7 @@
         ];
       in
       {
-        formatter = pkgs.nixpkgs-fmt;
+        formatter = pkgs.nixfmt;
 
         packages = {
           default =

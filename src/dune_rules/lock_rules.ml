@@ -6,6 +6,15 @@ let rule ?loc { Action_builder.With_targets.build; targets } =
   Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
 ;;
 
+let action_builder_with_dir_targets ~directory_targets =
+  let targets =
+    Targets.create
+      ~files:Path.Build.Set.empty
+      ~dirs:(Path.Build.Set.of_list directory_targets)
+  in
+  Action_builder.with_targets ~targets
+;;
+
 let copy_lock_dir ~target ~lock_dir ~deps ~files =
   let open Action_builder.O in
   Action_builder.deps deps
@@ -17,8 +26,7 @@ let copy_lock_dir ~target ~lock_dir ~deps ~files =
        |> Action.concurrent
        |> Action.Full.make
        |> Action_builder.return)
-  |> Action_builder.with_no_targets
-  |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
+  |> action_builder_with_dir_targets ~directory_targets:[ target ]
 ;;
 
 let setup_copy_rules ~dir:target ~lock_dir =

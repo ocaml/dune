@@ -15,7 +15,6 @@
  (applies_to
   exec-watch-server
   exec-watch-ignore-sigterm
-  exec-signal
   exec-watch-basic)
  (enabled_if false))
 

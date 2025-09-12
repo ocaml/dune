@@ -1,9 +1,10 @@
-Here we test what happens if there is a signal for the program to terminate when we are
-running with dune exec. Signals are dispatched from the operating system. It is usually
-impossible for a program to recover after recieving such a signal.
+Here we test what happens if there is a signal for the program to terminate
+when we are running with dune exec. Signals are dispatched from the operating
+system. It is usually impossible for a program to recover after recieving such
+a signal.
 
-For dune exec -w, we are indifferent to what the process we are running is actually doing
-since it shouldn't affect dune's other functions.
+For dune exec -w, we are indifferent to what the process we are running is
+actually doing since it should not affect the other functions of dune.
 
   $ DONE_FLAG=_build/done_flag
 
@@ -24,13 +25,13 @@ since it shouldn't affect dune's other functions.
   > ;;
   > EOF
 
-This first program will signal itself with a KILL signal.:
+This first program will signal itself with a SEGV signal.:
   $ cat > foo.ml <<EOF
   > let () =
   >   Touch.touch "$DONE_FLAG";
   >   print_endline "about to be killed";
   >   let pid = Unix.getpid () in
-  >   Unix.kill pid Sys.sigkill
+  >   Unix.kill pid Sys.sigsegv
   > ;;
   > EOF
 
@@ -38,23 +39,20 @@ This first program will signal itself with a KILL signal.:
   $ mkdir _build
 
 When reaching a signal like SEGV dune exec -w will exit.
-  $ dune exec -w ./foo.exe 2> >(tee "$LOG_FILE" >&2) &
+  $ dune exec -w ./foo.exe 2> $LOG_FILE &
   about to be killed
-  Command got signal KILL.
-  Had 1 error, waiting for filesystem changes...
   fixed signal
-  Success, waiting for filesystem changes...
   $ PID=$!
   $ ./wait-for-file.sh $DONE_FLAG
 
-Waiting for KILL signal...
+Waiting for SEGV signal...
   $ tail -f "$LOG_FILE" | while read line; do
-  >   echo "$line" | grep 'KILL' && break
+  >   echo "$line" | grep 'SEGV' && break
   > done
-  Command got signal KILL.
+  Command got signal SEGV.
 
-We can now start a new build by modifying the original program and removing the segfault.
-This rebuilds successfully as indicated by the above output.
+We can now start a new build by modifying the original program and removing the
+segfault. This rebuilds successfully as indicated by the above output.
   $ cat > foo.ml <<EOF
   > let () =
   >   Touch.touch "$DONE_FLAG";
@@ -64,6 +62,9 @@ This rebuilds successfully as indicated by the above output.
 
   $ ./wait-for-file.sh $DONE_FLAG
 
-  $ kill $PID
-  $ wait $PID
-  [130]
+Here is what dune exec -w was outputting.
+  $ cat $LOG_FILE
+  Command got signal SEGV.
+  Had 1 error, waiting for filesystem changes...
+  Success, waiting for filesystem changes...
+

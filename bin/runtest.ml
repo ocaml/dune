@@ -33,129 +33,55 @@ let runtest_info =
   Cmd.info "runtest" ~doc ~man ~envs:Common.envs
 ;;
 
-let find_cram_test path ~parent_dir =
-  let open Memo.O in
-  Source_tree.find_dir parent_dir
-  >>= function
-  | None -> Memo.return None
-  | Some dir ->
-    Dune_rules.Cram_rules.cram_tests dir
-    >>| List.find_map ~f:(function
-      | Ok cram_test when Path.Source.equal path (Source.Cram_test.path cram_test) ->
-        Some cram_test
-      (* We raise any error we encounter when looking for our test specifically. *)
-      | Error (Dune_rules.Cram_rules.Missing_run_t cram_test)
-        when Path.Source.equal path (Source.Cram_test.path cram_test) ->
-        Dune_rules.Cram_rules.missing_run_t cram_test
-      (* Any errors or successes unrelated to our test are discarded. *)
-      | Error (Dune_rules.Cram_rules.Missing_run_t _) | Ok _ -> None)
-;;
-
-let explain_unsuccessful_search path ~parent_dir =
-  let open Memo.O in
-  (* If the user misspelled the test name, we give them a hint. *)
-  let+ hints =
-    (* We search for all files and directories in the parent directory and
-       suggest them as possible candidates. *)
-    let+ candidates =
-      let+ file_candidates =
-        let+ files = Source_tree.files_of parent_dir in
-        Path.Source.Set.to_list_map files ~f:Path.Source.to_string
-      and+ dir_candidates =
-        let* parent_source_dir = Source_tree.find_dir parent_dir in
-        match parent_source_dir with
-        | None -> Memo.return []
-        | Some parent_source_dir ->
-          let dirs = Source_tree.Dir.sub_dirs parent_source_dir in
-          String.Map.to_list dirs
-          |> Memo.List.map ~f:(fun (_candidate, candidate_path) ->
-            Source_tree.Dir.sub_dir_as_t candidate_path
-            >>| Source_tree.Dir.path
-            >>| Path.Source.to_string)
-      in
-      List.concat [ file_candidates; dir_candidates ]
-    in
-    User_message.did_you_mean (Path.Source.to_string path) ~candidates
-  in
-  User_error.raise
-    ~hints
-    [ Pp.textf "%S does not match any known test." (Path.Source.to_string path) ]
-;;
-
-(* [disambiguate_test_name path] is a function that takes in a
-   directory [path] and classifies it as either a cram test or a directory to
-   run tests in. *)
-let disambiguate_test_name path =
-  match Path.Source.parent path with
-  | None -> Memo.return @@ `Runtest (Path.source Path.Source.root)
-  | Some parent_dir ->
-    let open Memo.O in
-    find_cram_test path ~parent_dir
-    >>= (function
-     | Some test ->
-       (* If we find the cram test, then we request that is run. *)
-       Memo.return (`Cram (parent_dir, test))
-     | None ->
-       (* If we don't find it, then we assume the user intended a directory for
-          @runtest to be used. *)
-       Source_tree.find_dir path
-       >>= (function
-        (* We need to make sure that this directory or file exists. *)
-        | Some _ -> Memo.return (`Runtest (Path.source path))
-        | None -> explain_unsuccessful_search path ~parent_dir))
+let runtest_via_rpc_server ~dir_or_cram_test_paths =
+  let open Fiber.O in
+  let+ response = Rpc.Runtest_rpc.runtest ~wait:true ~dir_or_cram_test_paths in
+  match response with
+  | Error (error : Dune_rpc_private.Response.Error.t) ->
+    Printf.eprintf
+      "Error: %s\n%!"
+      (Dyn.to_string (Dune_rpc_private.Response.Error.to_dyn error))
+  | Ok Success ->
+    Console.print_user_message
+      (User_message.make [ Pp.text "Success" |> Pp.tag User_message.Style.Success ])
+  | Ok (Failure errors) ->
+    List.iter errors ~f:(fun { Dune_rpc.Compound_user_error.main; _ } ->
+      Console.print_user_message main);
+    User_error.raise
+      [ (match List.length errors with
+         | 0 ->
+           Code_error.raise
+             "Runtest via RPC failed, but the RPC server did not send an error message."
+             []
+         | 1 -> Pp.textf "Build failed with 1 error."
+         | n -> Pp.textf "Build failed with %d errors." n)
+      ]
 ;;
 
 let runtest_term =
   let name = Arg.info [] ~docv:"TEST" in
   let+ builder = Common.Builder.term
-  and+ dirs = Arg.(value & pos_all string [ "." ] name) in
+  and+ dir_or_cram_test_paths = Arg.(value & pos_all string [ "." ] name) in
   let common, config = Common.init builder in
-  let request (setup : Import.Main.build_system) =
-    let contexts = setup.contexts in
-    List.map dirs ~f:(fun dir ->
-      let dir = Path.of_string dir |> Path.Expert.try_localize_external in
-      let open Action_builder.O in
-      let* contexts, alias_kind =
-        match (Util.check_path contexts dir : Util.checked) with
-        | In_build_dir (context, dir) ->
-          let+ res = Action_builder.of_memo (disambiguate_test_name dir) in
-          [ context ], res
-        | In_source_dir dir ->
-          (* We need to adjust the path here to make up for the current working directory. *)
-          let { Workspace_root.to_cwd; _ } = Common.root common in
-          let dir =
-            Path.Source.L.relative Path.Source.root (to_cwd @ Path.Source.explode dir)
-          in
-          let+ res = Action_builder.of_memo (disambiguate_test_name dir) in
-          contexts, res
-        | In_private_context _ | In_install_dir _ ->
-          User_error.raise
-            [ Pp.textf
-                "This path is internal to dune: %s"
-                (Path.to_string_maybe_quoted dir)
-            ]
-        | External _ ->
-          User_error.raise
-            [ Pp.textf
-                "This path is outside the workspace: %s"
-                (Path.to_string_maybe_quoted dir)
-            ]
-      in
-      Alias.request
-      @@
-      match alias_kind with
-      | `Cram (dir, cram) ->
-        let alias_name = Source.Cram_test.name cram in
-        Alias.in_dir
-          ~name:(Dune_engine.Alias.Name.of_string alias_name)
-          ~recursive:false
-          ~contexts
-          (Path.source dir)
-      | `Runtest dir ->
-        Alias.in_dir ~name:Dune_rules.Alias.runtest ~recursive:true ~contexts dir)
-    |> Action_builder.all_unit
-  in
-  Build.run_build_command ~common ~config ~request
+  match Dune_util.Global_lock.lock ~timeout:None with
+  | Error lock_held_by ->
+    Scheduler.go_without_rpc_server ~common ~config (fun () ->
+      if not (Common.Builder.equal builder Common.Builder.default)
+      then
+        User_warning.emit
+          [ Pp.textf
+              "Your build request is being forwarded to a running Dune instance%s so \
+               most command-line arguments will be ignored."
+              (match (lock_held_by : Dune_util.Global_lock.Lock_held_by.t) with
+               | Unknown -> ""
+               | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
+          ];
+      runtest_via_rpc_server ~dir_or_cram_test_paths)
+  | Ok () ->
+    Build.run_build_command
+      ~common
+      ~config
+      ~request:(Runtest_common.make_request ~dir_or_cram_test_paths)
 ;;
 
 let commands =

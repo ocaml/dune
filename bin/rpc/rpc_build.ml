@@ -1,5 +1,10 @@
 open Import
 
+(* TODO: remove comment?
+Sends a request to build [targets] to the RPC server at [where]. The targets
+   are specified as strings containing sexp-encoded targets that are passed to
+   this command as arguments on the command line. *)
+
 let build ~wait targets =
   let targets =
     List.map targets ~f:(fun target ->

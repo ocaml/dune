@@ -351,7 +351,8 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
       Build targets)
   in
   let () =
-    implement_request_pending_action Decl.runtest ~f:(fun paths -> Runtest paths)
+    implement_request_pending_action Procedures.Public.runtest ~f:(fun paths ->
+      Runtest paths)
   in
   let () =
     let f _ () =

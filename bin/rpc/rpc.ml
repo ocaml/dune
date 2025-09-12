@@ -14,4 +14,3 @@ let info =
 let group = Cmd.group info [ Rpc_status.cmd; Rpc_build.cmd; Rpc_ping.cmd ]
 
 module Build = Rpc_build
-module Runtest_rpc = Runtest_rpc

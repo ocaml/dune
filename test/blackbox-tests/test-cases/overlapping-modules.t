@@ -17,10 +17,14 @@ case.
 Currently this check is missing for overlapping executable(s) stanzas.
 
   $ dune build @check
-  File "bar.ml", line 1:
-  Error: Could not find the .cmi file for interface bar.mli.
-  File "baz.ml", line 1:
-  Error: Could not find the .cmi file for interface baz.mli.
+  File "dune", line 1, characters 0-0:
+  Error: Module "Baz" is used in several stanzas:
+  - dune:1
+  - dune:3
+  To fix this error, you must specify an explicit "modules" field in every
+  library, executable, and executables stanzas in this dune file. Note that
+  each module cannot appear in more than one "modules" field - it must belong
+  to a single library or executable.
   [1]
 
 Overlapping executable and library:

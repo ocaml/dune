@@ -65,8 +65,15 @@ let setup_rules ~components ~dir =
   let empty = Gen_rules.rules_here Gen_rules.Rules.empty in
   match components with
   | [ ".lock" ] ->
-    (* TODO enable other lock dirs too, by reading them from the workspace *)
-    setup_lock_rules ~dir ~lock_dir:"dune.lock"
+    let* workspace = Workspace.workspace () in
+    workspace.lock_dirs
+    |> Memo.List.fold_left
+         ~f:(fun rules (lock_dir : Workspace.Lock_dir.t) ->
+           let lock_dir_path = lock_dir.path in
+           let lock_dir = Path.Source.to_string lock_dir_path in
+           let+ lock_rule = setup_lock_rules ~dir ~lock_dir in
+           Gen_rules.combine rules lock_rule)
+         ~init:empty
   | [ ".dev-tool-locks" ] ->
     Memo.List.fold_left
       Dune_pkg.Dev_tool.all

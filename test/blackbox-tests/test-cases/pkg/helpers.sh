@@ -62,7 +62,8 @@ add_mock_repo_if_needed() {
   if [ ! -e dune-workspace ]
   then
       cat >dune-workspace <<EOF
-(lang dune 3.10)
+(lang dune 3.20)
+(pkg enabled)
 (lock_dir
  (repositories mock))
 (repository

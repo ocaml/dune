@@ -43,11 +43,11 @@ Make a fake ocamlformat
   > (version 5.2.0)
   > EOF
 
-  $ dune tools install ocamlformat
+  $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune tools install ocamlformat
   Solution for dev-tools.locks/ocamlformat:
   - ocamlformat.0.0.1
 
-  $ dune tools exec ocamllsp
+  $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune tools exec ocamllsp
   Solution for dev-tools.locks/ocaml-lsp-server:
   - ocaml.5.2.0
   - ocaml-lsp-server.0.0.1

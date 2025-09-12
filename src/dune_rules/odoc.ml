@@ -254,11 +254,6 @@ let odoc_base_flags quiet build_dir =
   | Nonfatal -> S []
 ;;
 
-(* let odoc_dev_tool_lock_dir_exists () = *)
-(*   let path = Lock_dir.dev_tool_source_lock_dir Odoc in *)
-(*   Fs_memo.dir_exists (In_source_dir path) *)
-(* ;; *)
-
 let odoc_dev_tool_exe_path_building_if_necessary () =
   let open Action_builder.O in
   let path = Path.build (Pkg_dev_tool.exe_path Odoc) in
@@ -267,11 +262,11 @@ let odoc_dev_tool_exe_path_building_if_necessary () =
 ;;
 
 let odoc_program sctx dir =
-  (* let open Action_builder.O in *)
-  (* let* odoc_dev_tool_lock_dir_exists = *)
-  (*   Action_builder.of_memo (odoc_dev_tool_lock_dir_exists ()) *)
-  (* in *)
-  let odoc_dev_tool_lock_dir_exists = true in
+  let odoc_dev_tool_lock_dir_exists =
+    match Config.get Compile_time.lock_dev_tools with
+    | `Enabled -> true
+    | `Disabled -> false
+  in
   match odoc_dev_tool_lock_dir_exists with
   | true -> odoc_dev_tool_exe_path_building_if_necessary ()
   | false ->

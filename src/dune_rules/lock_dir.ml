@@ -131,13 +131,13 @@ let select_lock_dir lock_dir_selection =
   Workspace.Lock_dir_selection.eval lock_dir_selection ~dir:workspace.dir ~f:expander
 ;;
 
-let default_path =
-  (* TODO remove ctx_name *)
+(* location where project lock dirs are stored *)
+let path_prefix =
   let ctx_name = "default" in
-  Path.Build.L.relative Private_context.t.build_dir [ ctx_name; ".lock"; "dune.lock" ]
-  |> Path.build
+  Path.Build.L.relative Private_context.t.build_dir [ ctx_name; ".lock" ]
 ;;
 
+let default_path = Path.Build.relative path_prefix "dune.lock" |> Path.build
 let default_source_path = Path.Source.(relative root "dune.lock")
 
 let dev_tool_to_path_segment dev_tool =
@@ -161,6 +161,11 @@ let dev_tool_lock_dir dev_tool =
   Path.build lock_dir
 ;;
 
+let lock_dir_of_source p =
+  let local = Path.Source.to_local p in
+  Path.Build.append_local path_prefix local |> Path.build
+;;
+
 let get_path ctx_name =
   (* TODO check if lock dir was ignored *)
   let* workspace = Workspace.workspace () in
@@ -176,7 +181,7 @@ let get_path ctx_name =
       Memo.return (Some (default_source_path, default_path))
     | Some (Default { lock_dir = Some lock_dir_selection; _ }) ->
       let+ source_lock_dir = select_lock_dir lock_dir_selection in
-      Some (source_lock_dir, Path.of_string "TODO")
+      Some (source_lock_dir, lock_dir_of_source source_lock_dir)
     | Some (Opam _) -> Memo.return None
   in
   match lock_dir_paths with

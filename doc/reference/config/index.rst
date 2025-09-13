@@ -22,6 +22,7 @@ The ``config`` file can contain the following stanzas:
   cache_storage_mode
   display
   jobs
+  pkg
   project_defaults
   sandboxing_preference
   terminal_persistence

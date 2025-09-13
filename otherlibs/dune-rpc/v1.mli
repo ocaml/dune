@@ -477,9 +477,11 @@ module Client : sig
       (Chan : sig
          type t
 
-         (* [write t x] writes the s-expression when [x] is [Some _], and closes
-            the session if [x = None] *)
-         val write : t -> Csexp.t list option -> unit Fiber.t
+         (* [write t x] writes the s-expression*)
+         val write : t -> Csexp.t list -> unit Fiber.t
+
+         (*  closes the session  *)
+         val close : t -> unit Fiber.t
 
          (* [read t] attempts to read from [t]. If an s-expression is read, it is
             returned as [Some sexp], otherwise [None] is returned and the session

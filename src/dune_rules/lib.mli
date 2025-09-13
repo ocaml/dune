@@ -12,6 +12,7 @@ val to_dyn : t -> Dyn.t
 val name : t -> Lib_name.t
 
 val implements : t -> t Resolve.Memo.t option
+val parameters : t -> t list Resolve.Memo.t
 
 (** [is_local t] returns [true] whenever [t] is defined in the local workspace *)
 val is_local : t -> bool

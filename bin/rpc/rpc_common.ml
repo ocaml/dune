@@ -88,11 +88,7 @@ let wrap_build_outcome_exn ~print_on_success f args () =
   let open Fiber.O in
   let+ response = f args in
   match response with
-  | Error (error : Rpc_error.t) ->
-    Console.print
-      [ Pp.paragraphf "Error: %s" (Dyn.to_string (Rpc_error.to_dyn error))
-        |> Pp.tag User_message.Style.Error
-      ]
+  | Error (error : Rpc_error.t) -> raise_rpc_error error
   | Ok Dune_rpc.Build_outcome_with_diagnostics.Success ->
     if print_on_success
     then Console.print [ Pp.text "Success" |> Pp.tag User_message.Style.Success ]

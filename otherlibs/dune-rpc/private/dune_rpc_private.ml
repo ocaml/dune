@@ -455,7 +455,7 @@ module Client = struct
           Response.Error.create
             ~kind:Connection_dead
             ~payload
-            ~message:"connection terminated. this request will never receive a response"
+            ~message:"Connection terminated. This request will never receive a response."
             ()
         in
         Error error

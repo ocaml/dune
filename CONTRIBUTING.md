@@ -37,10 +37,11 @@ Our development process is as follows:
   recording the what and why of our work in the persistent record of GitHub.
 - Changes are submitted via GitHub pull requests against the `main` branch.
 
-If you are looking to get started, check our [issues tagged with good first
-issue][good first issue].
+If you are looking to get started, check our issues tagged with [good first
+issue][good first issue] or [help wanted][help wanted].
 
 [good first issue]: https://github.com/ocaml/dune/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22
+[help wanted]: https://github.com/ocaml/dune/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22help%20wanted%22
 
 Developer documentation
 -----------------------

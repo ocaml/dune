@@ -19,6 +19,11 @@ touch vendor/uutf/uutf.ml
 
 mkdir bin
 
+ocamlopt="$(which ocamlopt.opt)"
+export BUILD_PATH_PREFIX_MAP="/OCAMLOPT=$ocamlopt:$BUILD_PATH_PREFIX_MAP"
+ocamlc="$(which ocamlc.opt)"
+export BUILD_PATH_PREFIX_MAP="/OCAMLC=$ocamlc:$BUILD_PATH_PREFIX_MAP"
+
 # Creates a fake dune executable that depends on [$1] and emits bootstrap info
 # which is then used to bootstrap the fake dune.
 create_dune() {

@@ -226,3 +226,21 @@ module Lock_dirs_arg = struct
           ])
   ;;
 end
+
+let check_pkg_management_enabled () =
+  Memo.run
+  @@
+  let open Memo.O in
+  let+ workspace = Workspace.workspace () in
+  match workspace.config.pkg_enabled with
+  | Set (_, `Enabled) | Unset -> ()
+  | Set (loc, `Disabled) ->
+    User_error.raise
+      ~loc
+      [ Pp.text "Package management is disabled in workspace configuration." ]
+      ~hints:
+        [ Pp.text
+            "To enable package management, remove the explicit (pkg disabled) setting \
+             from your dune-workspace file."
+        ]
+;;

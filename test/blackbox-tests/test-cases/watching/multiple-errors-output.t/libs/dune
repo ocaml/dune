@@ -1,0 +1,7 @@
+(library
+ (name bar)
+ (modules bar))
+
+(library
+ (name baz)
+ (modules baz))

@@ -29,6 +29,13 @@ module Toggle = struct
 
   let all : (string * t) list = [ "enabled", `Enabled; "disabled", `Disabled ]
 
+  let equal x y =
+    match x, y with
+    | `Enabled, `Enabled -> true
+    | `Enabled, _ | _, `Enabled -> false
+    | `Disabled, `Disabled -> true
+  ;;
+
   let to_string t =
     List.find_map all ~f:(fun (k, v) -> if Poly.equal v t then Some k else None)
     |> Option.value_exn

@@ -87,3 +87,7 @@ end
 (** [pp_packages lock_dir] returns a list of pretty-printed packages occurring in
     [lock_dir]. *)
 val pp_packages : Dune_pkg.Lock_dir.Pkg.t list -> User_message.Style.t Pp.t
+
+(** [check_pkg_management_enabled ()] checks if package management is enabled in the
+    workspace configuration. Raises a user error if it is explicitly disabled. *)
+val check_pkg_management_enabled : unit -> unit Fiber.t

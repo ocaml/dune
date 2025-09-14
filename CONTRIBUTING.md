@@ -32,10 +32,9 @@ Our development process is as follows:
   - This design should be reviewed by at least one other party.
   - Github issues are an appropriate venue for most design discussions, but more
     involved design work may warrant an RFC or ADR.
-- Design decisions agreed upon in dev meeting or online chats should also be
-  documented and reviewed in issues or design docs. This encourages us to think
-  through the problems thoroughly and ensures we leave a lasting record of the
-  decision and their rationale.
+- Github is the preferred venue for discussing architectural and design decisions.
+  Exchanges in meetings and chat are valuable, but we insist on deliberating and
+  recording the what and why of our work in the persistent record of GitHub.
 - Changes are submitted via GitHub pull requests against the `main` branch.
 
 If you are looking to get started, check our [issues tagged with good first

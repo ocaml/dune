@@ -316,7 +316,11 @@ jobs:
       - name: Setup Cygwin
         uses: cygwin/cygwin-install-action@v6
         with:
-          packages: ocaml gcc-core make
+          packages: ocaml gcc-core make #cygwin
+      - name: Check Cygwin version
+        run: |
+          uname -a
+          cygcheck -c cygwin
       - name: Bootstrap Dune
         run: make bootstrap
       ## In order to build dune locally we need to have the re library

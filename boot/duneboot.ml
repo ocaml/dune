@@ -1350,13 +1350,18 @@ module Library = struct
         let paths = Io.readdir dir in
         List.partition_map paths ~f:(fun fn ->
           let path = Filename.concat dir fn in
+          let is_dir = Sys.is_directory path in
           let module_path =
-            match include_subdirs with
-            | Qualified -> fn :: module_path
-            | No | Unqualified -> module_path
+            match
+              match include_subdirs with
+              | No | Unqualified -> false
+              | Qualified -> is_dir
+            with
+            | true -> fn :: module_path
+            | false -> module_path
           in
           let arg = path, fn, module_path in
-          if Sys.is_directory path then Left arg else Right arg)
+          if is_dir then Left arg else Right arg)
       in
       let files =
         List.filter_map files ~f:(fun (path, fn, module_path) ->

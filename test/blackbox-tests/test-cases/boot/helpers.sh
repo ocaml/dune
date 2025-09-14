@@ -31,7 +31,6 @@ create_dune() {
 EOF
   dune build bin/bootstrap-info
   cp _build/default/bin/bootstrap-info boot/libs.ml
-  bootstrap.exe || return $?
-  _boot/dune.exe
+  bootstrap.exe && _boot/dune.exe
 }
 

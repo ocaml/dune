@@ -25,7 +25,7 @@ Contributions to the Dune code base are welcome!
 
 Our development process is as follows:
 
-- Non-trivial submissions should be proceeded by an issue communicating the
+- Non-trivial submissions should be preceded by an issue communicating the
   rationale for the intended change.
 - Substantial changes should be preceded by upfront design and planning,
   proportional to the scope and impact of the intended change.

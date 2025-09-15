@@ -484,12 +484,11 @@ module Status_line = struct
       displayed := new_displayed)
   ;;
 
-  let clear () = if display_status_line then Printf.printf "\r*s\r%!"
-
-  let () =
-    at_exit (fun () ->
-      if display_status_line then Printf.printf "\r%*s\r" (String.length !displayed) "")
+  let clear () =
+    if display_status_line then Printf.printf "\r%*s\r%!" (String.length !displayed) ""
   ;;
+
+  let () = at_exit clear
 end
 
 module Io = struct

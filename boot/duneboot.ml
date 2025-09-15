@@ -325,14 +325,12 @@ module Arch = struct
   type t =
     [ `arm64
     | `amd64
-    | `x86_64
     | `other
     ]
 
   let of_string : string -> t = function
     | "arm64" -> `arm64
-    | "amd64" -> `amd64
-    | "x86_64" -> `x86_64
+    | "x86_64" | "amd64" -> `amd64
     | _ -> `other
   ;;
 end
@@ -1443,7 +1441,7 @@ module Library = struct
     match arch with
     | None -> true
     | Some `Arm64 -> architecture = `arm64
-    | Some `X86 -> architecture = `amd64 || architecture = `x86_64
+    | Some `X86 -> architecture = `amd64
   ;;
 
   let make_c (c : File_kind.c) ~fn ~os_type ~word_size =

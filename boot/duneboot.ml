@@ -13,7 +13,6 @@ let concurrency, verbose, debug, secondary, force_byte_compilation, static, buil
   Arg.parse
     [ "-j", Int (fun n -> concurrency := Some n), "JOBS Concurrency"
     ; "--verbose", Set verbose, " Set the display mode"
-    ; "--keep-generated-files", Unit ignore, " Keep generated files"
     ; "--debug", Set debug, " Enable various debugging options"
     ; "--secondary", Set secondary, " Use the secondary compiler installation"
     ; ( "--force-byte-compilation"

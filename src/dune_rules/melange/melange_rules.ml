@@ -127,9 +127,14 @@ let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
           ]
       | true -> ()
     in
-    ( modules
-    , (Modules.With_vlib.split_by_lib modules).impl
-      |> List.filter ~f:(Module.has ~ml_kind:Impl) )
+    let impl_only =
+      Modules.With_vlib.fold_no_vlib_with_aliases
+        modules
+        ~init:[]
+        ~normal:(fun m acc -> if Module.has m ~ml_kind:Impl then m :: acc else acc)
+        ~alias:(fun _m acc -> acc)
+    in
+    modules, impl_only
 ;;
 
 let cmj_includes =
@@ -183,13 +188,15 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
 let js_targets_of_modules modules ~module_systems ~output =
   List.map module_systems ~f:(fun (_, js_ext) ->
     modules
-    |> Modules.With_vlib.drop_vlib
-    |> Modules.fold_user_available ~init:Path.Set.empty ~f:(fun m acc ->
-      if Module.has m ~ml_kind:Impl
-      then (
-        let target = Path.build @@ make_js_name ~js_ext ~output m in
-        Path.Set.add acc target)
-      else acc))
+    |> Modules.With_vlib.fold_no_vlib_with_aliases
+         ~init:Path.Set.empty
+         ~alias:(fun _m acc -> acc)
+         ~normal:(fun m acc ->
+           if Module.has m ~ml_kind:Impl
+           then (
+             let target = Path.build @@ make_js_name ~js_ext ~output m in
+             Path.Set.add acc target)
+           else acc))
   |> Path.Set.union_all
 ;;
 

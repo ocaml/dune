@@ -1075,11 +1075,7 @@ end = struct
         fatal "invalid line in output of 'ocamlc -config': %s" (String.escaped line))
   ;;
 
-  let ext_obj t =
-    try String.Map.find "ext_obj" t with
-    | Not_found -> ".o"
-  ;;
-
+  let ext_obj t = String.Map.find_opt "ext_obj" t |> Option.value ~default:".o"
   let ccomp_type t = String.Map.find "ccomp_type" t |> Ccomp.of_string
   let word_size t = String.Map.find "word_size" t |> Word_size.of_string
   let os_type t = String.Map.find "os_type" t |> Os_type.of_string

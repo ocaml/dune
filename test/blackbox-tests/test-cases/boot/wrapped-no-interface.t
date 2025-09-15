@@ -20,6 +20,10 @@ Testing the bootstrap of wrapped libraries without interface moodule.
   > EOF
   ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/types.ml boot/libs.ml boot/duneboot.ml
   ./.duneboot.exe
-  Hello from wrapped non-interface module a/b.ml
-  Hello from bootstrapped binary!
+  cd _boot && /OCAMLOPT -c -g -no-alias-deps -w -49-23-53 -alert -unstable dune_exe__Main.ml
+  File "dune_exe__Main.ml", line 1, characters 5-6:
+  1 | open A
+           ^
+  Error: Unbound module A
+  [2]
 

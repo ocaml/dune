@@ -24,7 +24,7 @@ Testing cycle detection in bootstrap.
   cycle:
   - a__B.ml
   - a.ml
-  - main.ml
+  - dune_exe__Main.ml
   dependency cycle compiling a.ml
   [2]
 

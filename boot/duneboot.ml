@@ -337,6 +337,39 @@ module Arch = struct
   ;;
 end
 
+module Cpu_feature = struct
+  type t =
+    [ `SSE2
+    | `SSE41
+    | `AVX2
+    | `AVX512
+    | `NEON
+    ]
+
+  let by_suffix fn =
+    if String.ends_with fn ~suffix:"_sse2"
+    then Some `SSE2
+    else if String.ends_with fn ~suffix:"_sse41"
+    then Some `SSE41
+    else if String.ends_with fn ~suffix:"_avx2"
+    then Some `AVX2
+    else if String.ends_with fn ~suffix:"_avx512"
+    then Some `AVX512
+    else if String.ends_with fn ~suffix:"_neon"
+    then Some `NEON
+    else None
+  ;;
+
+  let is_supported ~architecture (f : t option) =
+    match f, architecture with
+    | Some `NEON, `arm64 -> true
+    | Some `NEON, _ -> false
+    | Some (`SSE2 | `SSE41 | `AVX2 | `AVX512), `amd64 -> true
+    | Some (`SSE2 | `SSE41 | `AVX2 | `AVX512), _ -> false
+    | None, _ -> true
+  ;;
+end
+
 module Module : sig
   module Name : sig
     type t
@@ -1175,10 +1208,7 @@ module File_kind = struct
     ; assembler : [ `C_comp | `Msvc_asm ]
     }
 
-  type c =
-    { arch : [ `Arm64 | `X86 ] option
-    ; flags : string list
-    }
+  type c = { cpu_feature : Cpu_feature.t option }
 
   type ml =
     { kind : [ `Ml | `Mli | `Mll | `Mly ]
@@ -1223,27 +1253,7 @@ module File_kind = struct
         else None, None, `C_comp
       in
       Some (Asm { syntax; arch; os; assembler })
-    | ".c" ->
-      let arch, flags =
-        let fn = Filename.remove_extension fn in
-        let check suffix = String.ends_with fn ~suffix in
-        let x86 gnu _msvc =
-          (* CR rgrinberg: select msvc flags on windows *)
-          Some `X86, gnu
-        in
-        if check "_sse2"
-        then x86 [ "-msse2" ] [ "/arch:SSE2" ]
-        else if check "_sse41"
-        then x86 [ "-msse4.1" ] [ "/arch:AVX" ]
-        else if check "_avx2"
-        then x86 [ "-mavx2" ] [ "/arch:AVX2" ]
-        else if check "_avx512"
-        then x86 [ "-mavx512f"; "-mavx512vl"; "-mavx512bw" ] [ "/arch:AVX512" ]
-        else if String.ends_with fn ~suffix:"_neon"
-        then Some `Arm64, []
-        else None, []
-      in
-      Some (C { arch; flags })
+    | ".c" -> Some C
     | ".h" -> Some Header
     | ".defaults.ml" ->
       let fn' = fname ^ ".ml" in
@@ -1439,14 +1449,7 @@ module Library = struct
     | Some `Amd64, _ -> false
   ;;
 
-  let keep_c { File_kind.arch; flags = _ } ~architecture =
-    match arch with
-    | None -> true
-    | Some `Arm64 -> architecture = `arm64
-    | Some `X86 -> architecture = `amd64 || architecture = `x86_64
-  ;;
-
-  let make_c (c : File_kind.c) ~fn ~os_type ~word_size =
+  let make_c ~fn ~os_type ~word_size ~ccomp_type ~cpu_feature =
     let extra_flags =
       if
         String.starts_with ~prefix:"blake3_" fn
@@ -1459,7 +1462,25 @@ module Library = struct
         ]
       else []
     in
-    { Source.flags = extra_flags @ c.flags; name = fn }
+    let cpu_feature_flags =
+      match ccomp_type, cpu_feature with
+      (* gcc / clang / mingw *)
+      | `Other, None -> []
+      | `Other, Some `SSE2 -> [ "-msse2" ]
+      | `Other, Some `SSE41 -> [ "-msse4.1" ]
+      | `Other, Some `AVX2 -> [ "-mavx2" ]
+      | `Other, Some `AVX512 -> [ "-mavx512f"; "-mavx512vl"; "-mavx512bw" ]
+      | `Other, Some `NEON -> []
+      (* MSVC *)
+      | `Msvc, None -> []
+      | `Msvc, Some `SSE2 -> [ "/arch:SSE2" ]
+      (* msvc doesn't have sse41 support so blake3 uses the avx flag instead. *)
+      | `Msvc, Some `SSE41 -> [ "/arch:AVX" ]
+      | `Msvc, Some `AVX2 -> [ "/arch:AVX2" ]
+      | `Msvc, Some `AVX512 -> [ "/arch:AVX512" ]
+      | `Msvc, Some `NEON -> []
+    in
+    { Source.flags = extra_flags @ cpu_feature_flags; name = fn }
   ;;
 
   let gen_build_info_module (ml : File_kind.ml) =
@@ -1627,8 +1648,8 @@ module Library = struct
       |> List.partition_map_skip ~f:(fun ((src : File_kind.t Source.t), fn) ->
         match src.kind with
         | C c ->
-          if keep_c c ~architecture
-          then `Left (make_c c ~fn ~os_type ~word_size)
+          if Cpu_feature.is_supported c.cpu_feature ~architecture
+          then `Left (make_c c ~fn ~os_type ~word_size ~ccomp_type)
           else `Skip
         | Ml _ -> `Middle fn
         | Header -> `Skip

@@ -369,8 +369,9 @@ module Processed = struct
         in
         Pp.hvbox
           (Pp.textf "%s: %s" (Module_name.to_string name) (Path.Build.to_string source))
-        ++ Pp.newline
+        ++ Pp.cut
         ++ Pp.vbox (Sexp.pp sexp)
+        |> Pp.vbox
       in
       let pp =
         Path.Build.Map.to_list per_file_config

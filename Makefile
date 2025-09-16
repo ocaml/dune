@@ -129,6 +129,10 @@ check: $(BIN)
 fmt: $(BIN)
 	@$(BIN) fmt
 
+.PHONY: vendor-lint
+vendor-lint: $(BIN)
+	@$(BIN) exec -- vendor/vendor_updater.exe lint
+
 .PHONY: promote
 promote: $(BIN)
 	@$(BIN) promote

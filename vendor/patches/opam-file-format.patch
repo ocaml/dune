@@ -1,0 +1,50 @@
+diff --git a/vendor/opam-file-format/opamLexer.mll b/vendor/opam-file-format/opamLexer.mll
+--- a/vendor/opam-file-format/opamLexer.mll
++++ b/vendor/opam-file-format/opamLexer.mll
+@@ -82,18 +82,25 @@ let char_for_hexadecimal_code lexbuf i =
+   Char.chr (val1 * 16 + val2)
+ 
+ (* Some hash-consing for strings *)
+-module HS =
+-  Weak.Make(struct include String let hash = Hashtbl.hash let equal = (=) end)
++module HS = Weak.Make(struct
++  include struct
++    [@@@ocaml.warning "-32"]
++    let hash = Hashtbl.hash
++  end
++  include String
++end)
+ let hm = HS.create 317
+ 
++let buf = Buffer.create 64
+ 
+ let buffer_rule r lb =
+   let pos = lb.Lexing.lex_start_p in
+-  let b = Buffer.create 64 in
+-  r b lb ;
++  Buffer.clear buf;
++  r buf lb;
+   (* buffer start position, instead of last lexem position *)
+   lb.Lexing.lex_start_p <- pos;
+-  HS.merge hm (Buffer.contents b)
++  let contents = Buffer.contents buf in
++  HS.merge hm contents
+ }
+ 
+ let eol = '\r'? '\n'
+@@ -150,6 +157,7 @@ rule token = parse
+ 
+ and string b = parse
+ | '\"'    { () }
++| [^ '\\' '"' '\r' '\n']+ as s { Buffer.add_string b s; string b lexbuf }
+ | eol     { newline lexbuf ;
+             Buffer.add_char b '\n'            ; string b lexbuf }
+ | '\\'    { (match escape lexbuf with
+@@ -161,6 +169,7 @@ and string b = parse
+ 
+ and string_triple b = parse
+ | "\"\"\""    { () }
++| [^ '\\' '"' '\r' '\n']+ as s { Buffer.add_string b s; string_triple b lexbuf }
+ | eol     { newline lexbuf ;
+             Buffer.add_char b '\n'            ; string_triple b lexbuf }
+ | '\\'    { (match escape lexbuf with

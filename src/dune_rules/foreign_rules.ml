@@ -8,8 +8,8 @@ module Source_tree_map_reduce =
          type t = Command.Args.without_targets Command.Args.t
        end))
 
-let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
-  let cflags = Ocaml_config.ocamlc_cflags ocaml_config in
+let default_context_flags (ctx : Build_context.t) (ocaml : Ocaml_toolchain.t) ~project =
+  let cflags = Ocaml_config.ocamlc_cflags ocaml.ocaml_config in
   let c, cxx =
     let cxxflags =
       List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
@@ -20,15 +20,17 @@ let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
       let cc_vendor = Cc_flags.cc_vendor ctx in
       let fdiagnostics_color = Action_builder.map ~f:Cc_flags.fdiagnostics_color cc_vendor
       and warnings = Action_builder.map ~f:Cc_flags.warnings cc_vendor in
+      let ccg = Lib_config.cc_g ocaml.lib_config in
       let open Action_builder.O in
       let c =
         let+ fdiagnostics_color = fdiagnostics_color
         and+ warnings = warnings in
         List.concat
           [ cflags
-          ; Ocaml_config.ocamlc_cppflags ocaml_config
+          ; Ocaml_config.ocamlc_cppflags ocaml.ocaml_config
           ; warnings
           ; fdiagnostics_color
+          ; ccg
           ]
       in
       let cxx =
@@ -36,10 +38,10 @@ let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
         and+ warnings = warnings
         and+ db_flags =
           Cc_flags.get_flags
-            ~for_:(Compile (Ocaml.Version.make (Ocaml_config.version ocaml_config)))
+            ~for_:(Compile (Ocaml.Version.make (Ocaml_config.version ocaml.ocaml_config)))
             ctx
         in
-        List.concat [ db_flags; cxxflags; warnings; fdiagnostics_color ]
+        List.concat [ db_flags; cxxflags; warnings; fdiagnostics_color; ccg ]
       in
       c, cxx
   in
@@ -53,7 +55,7 @@ let foreign_flags_env =
       ~root:(fun ctx project ->
         let* context = Context.DB.get ctx in
         let+ ocaml = Context.ocaml context in
-        default_context_flags (Context.build_context context) ocaml.ocaml_config ~project)
+        default_context_flags (Context.build_context context) ocaml ~project)
       ~f:(fun ~parent expander (env : Dune_env.config) ->
         let+ parent = parent in
         let foreign_flags lang =
@@ -77,29 +79,15 @@ let default_foreign_flags ~dir ~language =
   |> Action_builder.of_memo_join
 ;;
 
-let foreign_flags t ~dir ~expander ~flags ~language =
-  let flags =
-    let open Action_builder.O in
-    let* ccg =
-      Action_builder.of_memo
-        (let open Memo.O in
-         let+ ocaml =
-           let context = Super_context.context t in
-           Context.ocaml context
-         in
-         Lib_config.cc_g ocaml.lib_config)
-    in
-    let+ l =
-      let standard = default_foreign_flags ~dir ~language in
-      Expander.expand_and_eval_set expander flags ~standard
-    in
-    l @ ccg
-  in
+let foreign_flags ~dir ~expander ~flags ~language =
   Action_builder.memoize
     ~cutoff:(List.equal String.equal)
     (let name = Foreign_language.proper_name language in
      sprintf "%s flags" name)
-    flags
+  @@ Expander.expand_and_eval_set
+       expander
+       flags
+       ~standard:(default_foreign_flags ~dir ~language)
 ;;
 
 (* Compute command line flags for the [include_dirs] field of [Foreign.Stubs.t]
@@ -245,7 +233,7 @@ let build_c
       @@
         (match field.build_flags_resolver with
         | Vendored { c_flags; c_library_flags = _ } ->
-          foreign_flags sctx ~dir ~expander ~flags:c_flags ~language:C
+          foreign_flags ~dir ~expander ~flags:c_flags ~language:C
         | Pkg_config ->
           let open Action_builder.O in
           let+ default_flags =
@@ -286,7 +274,7 @@ let build_c
                adding c-flags to the compiler arguments which is the new recommended \
                behaviour."
           ];
-      foreign_flags sctx ~dir ~expander ~flags ~language:kind
+      foreign_flags ~dir ~expander ~flags ~language:kind
   in
   let output_param =
     match ocaml.lib_config.ccomp_type with

@@ -94,11 +94,11 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
     ~get_build_request:
       (let+ pending_action = Dune_rpc_impl.Server.pending_action rpc in
        let request setup =
+         let root = Common.root common in
          match pending_action.kind with
-         | Build targets ->
-           Target.interpret_targets (Common.root common) config setup targets
+         | Build targets -> Target.interpret_targets root config setup targets
          | Runtest dir_or_cram_test_paths ->
-           Runtest_common.make_request ~dir_or_cram_test_paths setup
+           Runtest_common.make_request ~dir_or_cram_test_paths ~to_cwd:root.to_cwd setup
        in
        run_build_system ~common ~request, pending_action.outcome)
 ;;

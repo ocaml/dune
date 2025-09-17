@@ -43,7 +43,10 @@ let runtest_term =
     Build.run_build_command
       ~common
       ~config
-      ~request:(Runtest_common.make_request ~dir_or_cram_test_paths)
+      ~request:
+        (Runtest_common.make_request
+           ~dir_or_cram_test_paths
+           ~to_cwd:(Common.root common).to_cwd)
   | Error lock_held_by ->
     Rpc_common.run_via_rpc
       ~builder

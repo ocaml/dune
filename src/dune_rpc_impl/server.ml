@@ -351,8 +351,16 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
       Build targets)
   in
   let () =
-    implement_request_pending_action Procedures.Public.runtest ~f:(fun paths ->
-      Runtest paths)
+    let f _ paths =
+      let server = Fdecl.get t in
+      let outcome = Fiber.Ivar.create () in
+      let* () = Job_queue.write server.pending_jobs { kind = Runtest paths; outcome } in
+      let+ build_outcome = Fiber.Ivar.read outcome in
+      match build_outcome with
+      | Success -> Dune_rpc.Build_outcome_with_diagnostics.Success
+      | Failure -> Failure (get_current_diagnostic_errors ())
+    in
+    Handler.implement_request rpc Procedures.Public.runtest f
   in
   let () =
     let f _ () =

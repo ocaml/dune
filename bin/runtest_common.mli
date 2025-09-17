@@ -5,5 +5,6 @@ open! Import
     to by the elements of [dir_or_cram_test_paths]. *)
 val make_request
   :  dir_or_cram_test_paths:string list
+  -> to_cwd:string list
   -> Dune_rules.Main.build_system
   -> unit Action_builder.t

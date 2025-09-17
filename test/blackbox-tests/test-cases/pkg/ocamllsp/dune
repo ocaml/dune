@@ -7,3 +7,12 @@
 (cram
  (applies_to dev-tool-ocamllsp-install-concurrent-with-watch-server)
  (enabled_if false))
+
+;; issues with dev tool lock dirs in source
+
+(cram
+ (applies_to
+  dev-tool-ocamllsp-ocamlformat
+  dev-tool-ocamllsp-no-lock-dir
+  dev-tool-ocamllsp-no-ocaml-lockfile)
+ (enabled_if false))

@@ -62,6 +62,7 @@ let setup_dev_tool_lock_rules ~dir dev_tool =
 ;;
 
 let lock_dirs_of_workspace (workspace : Workspace.t) =
+  let module Set = Path.Source.Set in
   let+ lock_dirs_from_ctx =
     Memo.List.map workspace.contexts ~f:(function
       | Opam _ | Default { lock_dir = None; _ } -> Memo.return None
@@ -71,13 +72,13 @@ let lock_dirs_of_workspace (workspace : Workspace.t) =
     >>| List.filter_opt
   in
   match lock_dirs_from_ctx, workspace.lock_dirs with
-  | [], [] -> [ Lock_dir.default_source_path ]
+  | [], [] -> Set.singleton Lock_dir.default_source_path
   | lock_dirs_from_ctx, lock_dirs_from_toplevel ->
     let lock_paths_from_toplevel =
       List.map lock_dirs_from_toplevel ~f:(fun (lock_dir : Workspace.Lock_dir.t) ->
         lock_dir.path)
     in
-    lock_paths_from_toplevel @ lock_dirs_from_ctx
+    Set.union (Set.of_list lock_paths_from_toplevel) (Set.of_list lock_dirs_from_ctx)
 ;;
 
 let setup_rules ~components ~dir =
@@ -87,6 +88,7 @@ let setup_rules ~components ~dir =
     let* workspace = Workspace.workspace () in
     let* lock_dir_paths = lock_dirs_of_workspace workspace in
     lock_dir_paths
+    |> Path.Source.Set.to_list
     |> Memo.List.fold_left
          ~f:(fun rules lock_dir_path ->
            let lock_dir = Path.Source.to_string lock_dir_path in

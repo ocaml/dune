@@ -1543,17 +1543,22 @@ module Library = struct
     =
     let sources =
       let sources =
+        let cons_opt (what : File_kind.ml option) trie =
+          match what with
+          | None -> trie
+          | Some x -> String.Trie.add_exn trie [ Module.Name.to_fname x.name ~kind:`Ml ] x
+        in
         String.Trie.filter_map sources ~f:(fun { Source.file = _; kind } ->
           match (kind : File_kind.t) with
           | Asm _ | Header | C _ -> None
           | Ml module_ -> Some module_)
+        |> cons_opt build_info_module
+        |> cons_opt root_module
       in
       match include_subdirs with
       | Qualified -> Conv.conv sources ~node:(fun x -> Some x) ~key:Module.Name.of_fname
       | No | Unqualified ->
         String.Trie.to_list sources
-        |> List.cons_opt build_info_module
-        |> List.cons_opt root_module
         |> List.rev_map ~f:(fun (m : File_kind.ml) -> m.name, Module.Name.Trie.Node m)
         |> Module.Name.Map.of_list_reduce ~f:(fun x _ -> x)
     in

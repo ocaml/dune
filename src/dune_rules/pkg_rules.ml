@@ -356,7 +356,7 @@ module Pkg = struct
     ; info : Pkg_info.t
     ; paths : Path.t Paths.t
     ; write_paths : Path.Build.t Paths.t
-    ; files_dir : Path.Build.t
+    ; files_dir : Path.Build.t option
     ; mutable exported_env : string Env_update.t list
     }
 
@@ -1195,6 +1195,7 @@ end = struct
           Package_universe.lock_dir_path package_universe >>| Option.value_exn
         in
         let+ files_dir =
+          let module Pkg = Dune_pkg.Lock_dir.Pkg in
           (* TODO(steve): simplify this once portable lockdirs become the
              default. This logic currently handles both the cases where
              lockdirs are non-portable (the files dir won't have a version
@@ -1203,34 +1204,44 @@ end = struct
              necessitating version numbers in files dirs to prevent
              collisions). *)
           let path_with_version =
-            Dune_pkg.Lock_dir.Pkg.source_files_dir info.name info.version ~lock_dir
+            Pkg.source_files_dir info.name (Some info.version) ~lock_dir
           in
-          let+ path_with_version_exists =
+          let* path_with_version_exists =
             Fs_memo.dir_exists (Path.Outside_build_dir.In_source_dir path_with_version)
           in
           match path_with_version_exists with
           | true ->
-            Dune_pkg.Lock_dir.Pkg.files_dir info.name (Some info.version) ~lock_dir
-          | false -> Dune_pkg.Lock_dir.Pkg.files_dir info.name None ~lock_dir
+            Memo.return @@ Some (Pkg.files_dir info.name (Some info.version) ~lock_dir)
+          | false ->
+            let path_without_version = Pkg.source_files_dir info.name None ~lock_dir in
+            let+ path_without_version_exists =
+              Fs_memo.dir_exists
+                (Path.Outside_build_dir.In_source_dir path_without_version)
+            in
+            (match path_without_version_exists with
+             | true -> Some (Pkg.files_dir info.name None ~lock_dir)
+             | false -> None)
         in
-        match files_dir with
-        | External e ->
-          Code_error.raise
-            "Package files directory is external source directory, this is unsupported"
-            [ "dir", Path.External.to_dyn e ]
-        | In_source_tree s ->
-          (match Path.Source.explode s with
-           | [ "dev-tools.locks"; dev_tool; files_dir ] ->
-             Path.Build.L.relative
-               Private_context.t.build_dir
-               [ "default"; ".dev-tool-locks"; dev_tool; files_dir ]
-           | otherwise ->
-             Code_error.raise
-               "Unexpected files_dir path"
-               [ "components", (Dyn.list Dyn.string) otherwise ])
-        | In_build_dir b ->
-          (* it's already a build path, no need to do anything *)
-          b
+        files_dir
+        |> Option.map ~f:(fun (p : Path.t) ->
+          match p with
+          | External e ->
+            Code_error.raise
+              "Package files directory is external source directory, this is unsupported"
+              [ "dir", Path.External.to_dyn e ]
+          | In_source_tree s ->
+            (match Path.Source.explode s with
+             | [ "dev-tools.locks"; dev_tool; files_dir ] ->
+               Path.Build.L.relative
+                 Private_context.t.build_dir
+                 [ "default"; ".dev-tool-locks"; dev_tool; files_dir ]
+             | otherwise ->
+               Code_error.raise
+                 "Unexpected files_dir path"
+                 [ "components", (Dyn.list Dyn.string) otherwise ])
+          | In_build_dir b ->
+            (* it's already a build path, no need to do anything *)
+            b)
       in
       let id = Pkg.Id.gen () in
       let write_paths = Paths.make package_universe name ~relative:Path.Build.relative in
@@ -1811,18 +1822,22 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
           let+ () = Memo.return () in
           let open Action_builder.O in
           [ Action_builder.with_no_targets
-            @@ (Action_builder.path (Path.build pkg.files_dir)
+            @@ ((match pkg.files_dir with
+                 | Some files_dir -> Action_builder.path (Path.build files_dir)
+                 | None -> Action_builder.return ())
                 >>> Action_builder.of_memo
                       (Memo.of_thunk (fun () ->
-                         let deps, source_deps = files pkg.files_dir in
-                         Memo.return (source_deps, deps)))
+                         match pkg.files_dir with
+                         | None -> Memo.return (Path.Set.empty, Dep.Set.empty)
+                         | Some files_dir ->
+                           let deps, source_deps = files files_dir in
+                           Memo.return (source_deps, deps)))
                 |> Action_builder.dyn_deps
                 >>= fun source_deps ->
                 Path.Set.to_list_map source_deps ~f:(fun src ->
                   let dst =
-                    let local_path =
-                      Path.drop_prefix_exn src ~prefix:(Path.build pkg.files_dir)
-                    in
+                    let prefix = pkg.files_dir |> Option.value_exn |> Path.build in
+                    let local_path = Path.drop_prefix_exn src ~prefix in
                     Path.Build.append_local pkg.write_paths.source_dir local_path
                   in
                   Action.progn

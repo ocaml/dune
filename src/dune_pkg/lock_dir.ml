@@ -887,32 +887,15 @@ module Pkg = struct
         [ "path", Path.External.to_dyn e ]
   ;;
 
-  (* TODO: deduplicate this function *)
-  let source_path_of_lock_dir_path path =
-    match (path : Path.t) with
-    | In_source_tree s -> s
-    | In_build_dir b ->
-      (match Path.Build.explode b with
-       | [ _; _; ".lock"; lock_dir ] -> Path.Source.of_string lock_dir
-       | [ _; _; ".dev-tool-locks"; dev_tool ] ->
-         (* TODO nicer *)
-         Path.Source.(relative (of_string "dev-tools.locks") dev_tool)
-       | _ -> Code_error.raise "Unsupported build path" [ "dir", Path.Build.to_dyn b ])
-    | External e ->
-      Code_error.raise
-        "External lock dir path is unsupported"
-        [ "dir", Path.External.to_dyn e ]
-  ;;
-
-  let source_files_dir package_name package_version ~lock_dir =
-    let source = source_path_of_lock_dir_path lock_dir in
-    let extension = ".files" in
-    Path.Source.relative
-      source
-      (Package_name.to_string package_name
-       ^ "."
-       ^ Package_version.to_string package_version
-       ^ extension)
+  let source_files_dir package_name maybe_package_version ~lock_dir =
+    let source = in_source_tree lock_dir in
+    let package_name = Package_name.to_string package_name in
+    match maybe_package_version with
+    | Some package_version ->
+      Path.Source.relative
+        source
+        (sprintf "%s.%s.files" package_name (Package_version.to_string package_version))
+    | None -> Path.Source.relative source (sprintf "%s.files" package_name)
   ;;
 
   (* Combine the platform-specific parts of a pair of [t]s, raising a code

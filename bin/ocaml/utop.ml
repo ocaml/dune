@@ -82,7 +82,7 @@ let term =
             Dune_rules.Lib_flags.L.toplevel_ld_paths requires lib_config
             |> Path.Set.fold
                  ~f:(fun dir env ->
-                   Env_path.cons ~var:Ocaml.Env.caml_ld_library_path env ~dir)
+                   Env_path.cons ~var:Root.Ocaml.Env.caml_ld_library_path env ~dir)
                  ~init:env
           in
           let env =

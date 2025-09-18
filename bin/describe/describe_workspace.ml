@@ -336,14 +336,14 @@ module Crawl = struct
   let immediate_deps_of_module ~options ~obj_dir ~modules unit =
     match (options : Options.t) with
     | { with_deps = false; _ } ->
-      Action_builder.return { Ocaml.Ml_kind.Dict.intf = []; impl = [] }
+      Action_builder.return { Root.Ocaml.Ml_kind.Dict.intf = []; impl = [] }
     | { with_deps = true; _ } ->
       let deps ml_kind =
         Dune_rules.Dep_rules.immediate_deps_of unit modules ~obj_dir ~ml_kind
       in
       let open Action_builder.O in
       let+ intf, impl = Action_builder.both (deps Intf) (deps Impl) in
-      { Ocaml.Ml_kind.Dict.intf; impl }
+      { Root.Ocaml.Ml_kind.Dict.intf; impl }
   ;;
 
   (* Builds the description of a module from a module and its object directory *)
@@ -377,7 +377,7 @@ module Crawl = struct
     |> Modules.fold ~init:(Memo.return []) ~f:(fun m macc ->
       let* acc = macc in
       let deps = deps_of m in
-      let+ { Ocaml.Ml_kind.Dict.intf = deps_for_intf; impl = deps_for_impl }, _ =
+      let+ { Root.Ocaml.Ml_kind.Dict.intf = deps_for_intf; impl = deps_for_impl }, _ =
         Dune_engine.Action_builder.evaluate_and_collect_facts deps
       in
       module_ ~obj_dir ~deps_for_intf ~deps_for_impl m :: acc)

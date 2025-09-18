@@ -62,12 +62,12 @@ module Apply = struct
         let+ () = Fiber.return () in
         Diff_promotion.promote_files_registered_in_last_run files_to_promote)
     | Error lock_held_by ->
-      Rpc_common.run_via_rpc
+      Rpc.Rpc_common.run_via_rpc
         ~builder
         ~common
         ~config
         lock_held_by
-        (Rpc_common.fire_request
+        (Rpc.Rpc_common.fire_request
            ~name:"promote_many"
            ~wait:true
            Dune_rpc_private.Procedures.Public.promote_many)

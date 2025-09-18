@@ -1213,15 +1213,21 @@ end = struct
             Dune_pkg.Lock_dir.Pkg.files_dir info.name (Some info.version) ~lock_dir
           | false -> Dune_pkg.Lock_dir.Pkg.files_dir info.name None ~lock_dir
         in
-        let build_path =
-          Context_name.build_dir (Package_universe.context_name package_universe)
-        in
         match files_dir with
         | External e ->
           Code_error.raise
             "Package files directory is external source directory, this is unsupported"
             [ "dir", Path.External.to_dyn e ]
-        | In_source_tree s -> Path.Build.append_source build_path s
+        | In_source_tree s ->
+          (match Path.Source.explode s with
+           | [ "dev-tools.locks"; dev_tool; files_dir ] ->
+             Path.Build.L.relative
+               Private_context.t.build_dir
+               [ "default"; ".dev-tool-locks"; dev_tool; files_dir ]
+           | otherwise ->
+             Code_error.raise
+               "Unexpected files_dir path"
+               [ "components", (Dyn.list Dyn.string) otherwise ])
         | In_build_dir b ->
           (* it's already a build path, no need to do anything *)
           b
@@ -1754,15 +1760,6 @@ let source_rules (pkg : Pkg.t) =
   source_deps, Memo.parallel_iter copy_rules ~f:(fun (loc, copy) -> rule ~loc copy)
 ;;
 
-let source_path_of_files_dir file_dir =
-  match Path.Build.explode file_dir with
-  | [ _; _; ".lock"; name; dir ] -> Path.Source.L.relative Path.Source.root [ name; dir ]
-  | [ _; _; ".dev-tool-locks"; dev_tool; dir ] | [ _; "dev-tools.locks"; dev_tool; dir ]
-    -> Path.Source.L.relative (Path.Source.of_string "dev-tool.locks") [ dev_tool; dir ]
-  | components ->
-    Code_error.raise "Invalid path" [ "components", Dyn.list Dyn.string components ]
-;;
-
 let rec scan_contents p =
   let module P = Path.Build in
   let dir_contents =
@@ -1793,16 +1790,16 @@ let rec scan_contents p =
           [ "path", P.to_dyn p; "file_kind", File_kind.to_dyn otherwise ])
 ;;
 
-let files p =
-  let files, empty_directories = scan_contents p in
-  let tp s =
+let files path =
+  let files, empty_directories = scan_contents path in
+  let to_path_set set =
     Path.Build.Set.fold
-      s
+      set
       ~f:(fun e acc -> Path.Set.add acc (Path.build e))
       ~init:Path.Set.empty
   in
-  let files = tp files in
-  let empty_directories = tp empty_directories in
+  let files = to_path_set files in
+  let empty_directories = to_path_set empty_directories in
   Dep.Set.of_source_files ~files ~empty_directories, files
 ;;
 
@@ -1811,31 +1808,29 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
     let+ copy_action, build_action, install_action =
       let+ copy_action =
         let+ copy_action =
-          let path_in_source = source_path_of_files_dir pkg.files_dir in
-          Fs_memo.dir_exists (In_source_dir path_in_source)
-          >>= function
-          | false -> Memo.return []
-          | true ->
-            let+ () = Memo.return () in
-            let deps, source_deps = files pkg.files_dir in
-            let open Action_builder.O in
-            [ Action_builder.with_no_targets
-              @@ (Action_builder.deps deps
-                  >>> (Path.Set.to_list_map source_deps ~f:(fun src ->
-                         let dst =
-                           let local_path =
-                             Path.drop_prefix_exn src ~prefix:(Path.build pkg.files_dir)
-                           in
-                           Path.Build.append_local pkg.write_paths.source_dir local_path
-                         in
-                         Action.progn
-                           [ Action.mkdir (Path.Build.parent_exn dst)
-                           ; Action.copy src dst
-                           ])
-                       |> Action.concurrent
-                       |> Action.Full.make
-                       |> Action_builder.return))
-            ]
+          let+ () = Memo.return () in
+          let open Action_builder.O in
+          [ Action_builder.with_no_targets
+            @@ (Action_builder.path (Path.build pkg.files_dir)
+                >>> Action_builder.of_memo
+                      (Memo.of_thunk (fun () ->
+                         let deps, source_deps = files pkg.files_dir in
+                         Memo.return (source_deps, deps)))
+                |> Action_builder.dyn_deps
+                >>= fun source_deps ->
+                Path.Set.to_list_map source_deps ~f:(fun src ->
+                  let dst =
+                    let local_path =
+                      Path.drop_prefix_exn src ~prefix:(Path.build pkg.files_dir)
+                    in
+                    Path.Build.append_local pkg.write_paths.source_dir local_path
+                  in
+                  Action.progn
+                    [ Action.mkdir (Path.Build.parent_exn dst); Action.copy src dst ])
+                |> Action.concurrent
+                |> Action.Full.make
+                |> Action_builder.return)
+          ]
         in
         copy_action
         @ List.map pkg.info.extra_sources ~f:(fun (local, _) ->

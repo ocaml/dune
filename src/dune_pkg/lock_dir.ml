@@ -846,15 +846,15 @@ module Pkg = struct
         [ "dir", Path.External.to_dyn e ]
   ;;
 
-  let source_files_dir package_name package_version ~lock_dir =
+  let source_files_dir package_name maybe_package_version ~lock_dir =
     let source = source_path_of_lock_dir_path lock_dir in
-    let extension = ".files" in
-    Path.Source.relative
-      source
-      (Package_name.to_string package_name
-       ^ "."
-       ^ Package_version.to_string package_version
-       ^ extension)
+    let package_name = Package_name.to_string package_name in
+    match maybe_package_version with
+    | Some package_version ->
+      Path.Source.relative
+        source
+        (sprintf "%s.%s.files" package_name (Package_version.to_string package_version))
+    | None -> Path.Source.relative source (sprintf "%s.files" package_name)
   ;;
 
   (* Combine the platform-specific parts of a pair of [t]s, raising a code

@@ -483,7 +483,7 @@ let main_module_name t =
 ;;
 
 module Parameterized = struct
-  let check ~loc ~parameters lib =
+  let validate_required_parameters ~loc ~parameters lib =
     let open Resolve.O in
     let* lib = lib in
     let* required_parameters = lib.parameters in
@@ -1475,7 +1475,7 @@ end = struct
       resolve_dep db (loc, lib) ~private_deps
       >>| function
       | None -> None
-      | Some dep -> Some (Parameterized.check ~loc ~parameters dep)
+      | Some dep -> Some (Parameterized.validate_required_parameters ~loc ~parameters dep)
     in
     Memo.List.fold_left ~init:Resolved.Builder.empty deps ~f:(fun acc (dep : Lib_dep.t) ->
       match dep with
@@ -1563,7 +1563,7 @@ end = struct
       let open Resolve.Memo.O in
       let* resolved = Memo.return resolved in
       let* runtime_deps = runtime_deps in
-      re_exports_closure (resolved @ runtime_deps @ parameters)
+      re_exports_closure (List.concat [ resolved; runtime_deps; parameters ])
     and+ pps = pps in
     { Resolved.requires; pps; selects; re_exports }
   ;;

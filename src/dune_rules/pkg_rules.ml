@@ -796,6 +796,10 @@ module Action_expander = struct
     ;;
 
     let eval_slangs_located t slangs =
+      let slangs =
+        List.map slangs ~f:(fun slang ->
+          Slang.map_loc slang ~f:Dune_pkg.Lock_dir.loc_in_source_tree)
+      in
       Slang_expand.eval_multi_located slangs ~dir:t.paths.source_dir ~f:(slang_expander t)
     ;;
 

@@ -1162,22 +1162,21 @@ end = struct
       let previous_loc = String_with_vars.loc sw in
       let loc =
         Loc.map_pos previous_loc ~f:(fun ({ pos_fname; _ } as pos) ->
-          match
-            pos_fname
-            |> Path.of_string
-            |> Path.drop_build_context_exn
-            |> Path.Source.explode
-          with
-          | "default" :: ".lock" :: components ->
-            let pos_fname =
-              components
-              |> Path.Source.L.relative Path.Source.root
-              |> Path.Source.to_string
-            in
-            { pos with pos_fname }
-          | _ ->
-            (* not a lockdir path, no need to map back *)
-            pos)
+          let path = Path.of_string pos_fname in
+          match Path.drop_build_context path with
+          | None -> pos
+          | Some path ->
+            (match Path.Source.explode path with
+             | "default" :: ".lock" :: components ->
+               let pos_fname =
+                 components
+                 |> Path.Source.L.relative Path.Source.root
+                 |> Path.Source.to_string
+               in
+               { pos with pos_fname }
+             | _ ->
+               (* not a lockdir path, no need to map back *)
+               pos))
       in
       String_with_vars.with_loc sw ~loc)
   ;;

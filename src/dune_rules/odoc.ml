@@ -702,7 +702,7 @@ let create_odoc ctx ~target odoc_file =
         html_dir ++ "index"
         |> Path.Build.extend_basename ~suffix:(Output_format.extension output)
       | Markdown ->
-        markdown_base ++ basename
+        markdown_base ++ Stdune.String.capitalize basename
         |> Path.Build.extend_basename ~suffix:(Output_format.extension output)
     in
     { odoc_file

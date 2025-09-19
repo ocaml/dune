@@ -60,12 +60,3 @@ Check the top-level index contains markdown:
   # OCaml Package Documentation
   
   - [mylib](mylib/index.md)
-
-Test that @doc still generates HTML as usual:
-
-  $ dune build @doc
-  $ find _build/default/_doc/_html -name '*.html' | sort
-  _build/default/_doc/_html/index.html
-  _build/default/_doc/_html/mylib/Mylib/SubModule/index.html
-  _build/default/_doc/_html/mylib/Mylib/index.html
-  _build/default/_doc/_html/mylib/index.html

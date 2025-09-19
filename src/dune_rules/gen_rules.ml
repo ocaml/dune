@@ -680,25 +680,7 @@ let raise_on_lock_dir_out_of_sync =
         with
         | `Valid -> ()
         | `Invalid ->
-          let source_path =
-            match path with
-            | In_source_tree s -> s
-            | In_build_dir b ->
-              let in_source = Path.drop_build_context_exn path in
-              (match Path.Source.explode in_source with
-               | "default" :: ".lock" :: components ->
-                 Path.Source.L.relative Path.Source.root components
-               | _otherwise ->
-                 Code_error.raise
-                   "Unexpected location of lock directory in build directory"
-                   [ "path", Path.Build.to_dyn b
-                   ; "in_source", Path.Source.to_dyn in_source
-                   ])
-            | External e ->
-              Code_error.raise
-                "External path returned when loading a lock dir"
-                [ "path", Path.External.to_dyn e ]
-          in
+          let source_path = Dune_pkg.Lock_dir.in_source_tree path in
           let loc_path = Path.source source_path in
           let loc = Loc.in_file (Path.relative loc_path "lock.dune") in
           let hints = Pp.[ text "run dune pkg lock" ] in

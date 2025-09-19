@@ -1744,3 +1744,30 @@ let packages_on_platform t ~platform =
   check_if_solved_for_platform t ~platform;
   Packages.pkgs_on_platform_by_name t.packages ~platform
 ;;
+
+let in_source_tree path =
+  match (path : Path.t) with
+  | In_source_tree s -> s
+  | In_build_dir b ->
+    let in_source = Path.drop_build_context_exn path in
+    (match Path.Source.explode in_source with
+     | "default" :: ".lock" :: components ->
+       Path.Source.L.relative Path.Source.root components
+     | _otherwise ->
+       Code_error.raise
+         "Unexpected location of lock directory in build directory"
+         [ "path", Path.Build.to_dyn b; "in_source", Path.Source.to_dyn in_source ])
+  | External e ->
+    Code_error.raise
+      "External path returned when loading a lock dir"
+      [ "path", Path.External.to_dyn e ]
+;;
+
+let loc_in_source_tree loc =
+  loc
+  |> Loc.map_pos ~f:(fun ({ pos_fname; _ } as pos) ->
+    let path = Path.of_string pos_fname in
+    let new_path = in_source_tree path in
+    let pos_fname = Path.Source.to_string new_path in
+    { pos with pos_fname })
+;;

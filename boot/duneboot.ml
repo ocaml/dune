@@ -1,5 +1,7 @@
 (** {2 Command line} *)
 
+let () = Printexc.record_backtrace true
+
 let concurrency, verbose, debug, secondary, force_byte_compilation, static, build_dir =
   let build_dir = ref "_boot" in
   let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in

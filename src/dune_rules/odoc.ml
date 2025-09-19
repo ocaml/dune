@@ -902,6 +902,30 @@ let add_format_alias_deps ctx format target odocs =
     (Action_builder.paths paths)
 ;;
 
+let setup_lib_markdown_rules_def =
+  let module Input = struct
+    module Super_context = Super_context.As_memo_key
+
+    type t = Super_context.t * Lib.Local.t
+
+    let equal (sc1, l1) (sc2, l2) = Super_context.equal sc1 sc2 && Lib.Local.equal l1 l2
+    let hash = Tuple.T2.hash Super_context.hash Lib.Local.hash
+    let to_dyn _ = Dyn.Opaque
+  end
+  in
+  let f (sctx, lib) =
+    let ctx = Super_context.context sctx in
+    let target = Lib lib in
+    let* odocs = odoc_artefacts sctx target in
+    add_format_alias_deps ctx Markdown target odocs;
+  in
+  Memo.With_implicit_output.create
+    "setup-library-markdown-rules"
+    ~implicit_output:Rules.implicit_output
+    ~input:(module Input)
+    f
+;;
+
 let setup_lib_html_rules_def =
   let module Input = struct
     module Super_context = Super_context.As_memo_key
@@ -979,7 +1003,8 @@ let setup_lib_markdown_rules sctx lib =
   let target = Lib lib in
   let* odocs = odoc_artefacts sctx target in
   let* () = Memo.parallel_iter odocs ~f:(fun odoc -> setup_generate_markdown sctx odoc) in
-  add_format_alias_deps ctx Markdown target odocs
+  let* () = add_format_alias_deps ctx Markdown target odocs in
+  Memo.With_implicit_output.exec setup_lib_markdown_rules_def (sctx, lib)
 ;;
 
 let setup_pkg_markdown_rules_def =

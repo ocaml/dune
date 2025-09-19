@@ -139,6 +139,7 @@ module Spec = struct
            ~loc:loc_url
            [ Pp.text "No checksum provided. It should be:"; Checksum.pp actual_checksum ]
        | Some (loc, _) ->
+         let loc = Dune_pkg.Lock_dir.loc_in_source_tree loc in
          User_error.raise
            ~loc
            [ Pp.text "Invalid checksum, got"; Dune_pkg.Checksum.pp actual_checksum ])
@@ -226,6 +227,7 @@ let find_checksum, find_url =
 ;;
 
 let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
+  let loc_url = Dune_pkg.Lock_dir.loc_in_source_tree loc_url in
   let checksum_or_url =
     match checksum with
     | Some (_, checksum) -> `Checksum checksum

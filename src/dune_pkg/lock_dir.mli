@@ -182,3 +182,11 @@ val merge_conditionals : t -> t -> t
     the lockdir does not contain a solution compatible with the given platform
     then a [User_error] is raised. *)
 val packages_on_platform : t -> platform:Solver_env.t -> Pkg.t Package_name.Map.t
+
+(** Returns the path that the lock dir would be in the source. Might return
+    paths that don't exist, if the lock dir wasn't copied from there. *)
+val in_source_tree : Path.t -> Path.Source.t
+
+(** Returns a [Loc.t] which refers to the source tree lock dir path instead of
+    the build dir lock dir path. *)
+val loc_in_source_tree : Loc.t -> Loc.t

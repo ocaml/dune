@@ -1740,6 +1740,15 @@ let merge_conditionals a b =
   { a with packages; solved_for_platforms }
 ;;
 
+let loc_in_source_tree loc =
+  loc
+  |> Loc.map_pos ~f:(fun ({ pos_fname; _ } as pos) ->
+    let path = Path.of_string pos_fname in
+    let new_path = in_source_tree path in
+    let pos_fname = Path.Source.to_string new_path in
+    { pos with pos_fname })
+;;
+
 let check_if_solved_for_platform { solved_for_platforms; _ } ~platform =
   let loc, solved_for_platforms = solved_for_platforms in
   if List.is_empty solved_for_platforms
@@ -1751,6 +1760,7 @@ let check_if_solved_for_platform { solved_for_platforms; _ } ~platform =
     match Solver_env_disjunction.matches_platform solved_for_platforms ~platform with
     | true -> ()
     | false ->
+      let loc = loc_in_source_tree loc in
       User_error.raise
         ~loc
         [ Pp.text

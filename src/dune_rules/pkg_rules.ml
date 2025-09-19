@@ -1157,6 +1157,37 @@ end = struct
     let to_dyn = Dyn.opaque
   end
 
+  let relocate action =
+    Dune_lang.Action.map_string_with_vars action ~f:(fun sw ->
+      let previous_loc = String_with_vars.loc sw in
+      let loc =
+        Loc.map_pos previous_loc ~f:(fun ({ pos_fname; _ } as pos) ->
+          match
+            pos_fname
+            |> Path.of_string
+            |> Path.drop_build_context_exn
+            |> Path.Source.explode
+          with
+          | "default" :: ".lock" :: components ->
+            let pos_fname =
+              components
+              |> Path.Source.L.relative Path.Source.root
+              |> Path.Source.to_string
+            in
+            { pos with pos_fname }
+          | _ ->
+            (* not a lockdir path, no need to map back *)
+            pos)
+      in
+      String_with_vars.with_loc sw ~loc)
+  ;;
+
+  let relocate_build b =
+    match (b : Build_command.t) with
+    | Dune -> Build_command.Dune
+    | Action a -> Build_command.Action (relocate a)
+  ;;
+
   let resolve_impl { Input.db; package = name; universe = package_universe } =
     match Package.Name.Map.find db.all name with
     | None -> Memo.return None
@@ -1238,7 +1269,9 @@ end = struct
       let id = Pkg.Id.gen () in
       let write_paths = Paths.make package_universe name ~relative:Path.Build.relative in
       let install_command = choose_for_current_platform install_command in
+      let install_command = Option.map install_command ~f:relocate in
       let build_command = choose_for_current_platform build_command in
+      let build_command = Option.map build_command ~f:relocate_build in
       let paths =
         let paths = Paths.map_path write_paths ~f:Path.build in
         match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name with

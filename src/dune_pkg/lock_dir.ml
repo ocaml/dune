@@ -1699,6 +1699,33 @@ let merge_conditionals a b =
   { a with packages; solved_for_platforms }
 ;;
 
+let in_source_tree path =
+  match (path : Path.t) with
+  | In_source_tree s -> s
+  | In_build_dir b ->
+    let in_source = Path.drop_build_context_exn path in
+    (match Path.Source.explode in_source with
+     | "default" :: ".lock" :: components ->
+       Path.Source.L.relative Path.Source.root components
+     | _otherwise ->
+       Code_error.raise
+         "Unexpected location of lock directory in build directory"
+         [ "path", Path.Build.to_dyn b; "in_source", Path.Source.to_dyn in_source ])
+  | External e ->
+    Code_error.raise
+      "External path returned when loading a lock dir"
+      [ "path", Path.External.to_dyn e ]
+;;
+
+let loc_in_source_tree loc =
+  loc
+  |> Loc.map_pos ~f:(fun ({ pos_fname; _ } as pos) ->
+    let path = Path.of_string pos_fname in
+    let new_path = in_source_tree path in
+    let pos_fname = Path.Source.to_string new_path in
+    { pos with pos_fname })
+;;
+
 let check_if_solved_for_platform { solved_for_platforms; _ } ~platform =
   let loc, solved_for_platforms = solved_for_platforms in
   if List.is_empty solved_for_platforms
@@ -1710,6 +1737,7 @@ let check_if_solved_for_platform { solved_for_platforms; _ } ~platform =
     match Solver_env_disjunction.matches_platform solved_for_platforms ~platform with
     | true -> ()
     | false ->
+      let loc = loc_in_source_tree loc in
       User_error.raise
         ~loc
         [ Pp.text

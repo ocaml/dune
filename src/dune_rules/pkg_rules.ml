@@ -796,6 +796,10 @@ module Action_expander = struct
     ;;
 
     let eval_slangs_located t slangs =
+      let slangs =
+        List.map slangs ~f:(fun slang ->
+          Slang.map_loc slang ~f:Dune_pkg.Lock_dir.loc_in_source_tree)
+      in
       Slang_expand.eval_multi_located slangs ~dir:t.paths.source_dir ~f:(slang_expander t)
     ;;
 
@@ -1157,6 +1161,18 @@ end = struct
     let to_dyn = Dyn.opaque
   end
 
+  let relocate action =
+    Dune_lang.Action.map_string_with_vars action ~f:(fun sw ->
+      let loc = sw |> String_with_vars.loc |> Dune_pkg.Lock_dir.loc_in_source_tree in
+      String_with_vars.with_loc sw ~loc)
+  ;;
+
+  let relocate_build b =
+    match (b : Build_command.t) with
+    | Dune -> Build_command.Dune
+    | Action a -> Build_command.Action (relocate a)
+  ;;
+
   let resolve_impl { Input.db; package = name; universe = package_universe } =
     match Package.Name.Map.find db.all name with
     | None -> Memo.return None
@@ -1238,7 +1254,9 @@ end = struct
       let id = Pkg.Id.gen () in
       let write_paths = Paths.make package_universe name ~relative:Path.Build.relative in
       let install_command = choose_for_current_platform install_command in
+      let install_command = Option.map install_command ~f:relocate in
       let build_command = choose_for_current_platform build_command in
+      let build_command = Option.map build_command ~f:relocate_build in
       let paths =
         let paths = Paths.map_path write_paths ~f:Path.build in
         match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name with

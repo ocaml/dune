@@ -518,8 +518,6 @@ let setup_generate sctx ~search_db odoc_file out =
   add_rule sctx run_odoc
 ;;
 
-(* let setup_generate_all sctx ~search_db odoc_file =
-   Output_format.iter ~f:(setup_generate sctx ~search_db:(Some search_db) odoc_file) *)
 let setup_generate_html_and_json sctx ~search_db odoc_file =
   let* () = setup_generate sctx ~search_db:(Some search_db) odoc_file Html in
   setup_generate sctx ~search_db:(Some search_db) odoc_file Json

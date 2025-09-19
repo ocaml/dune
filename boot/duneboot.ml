@@ -250,7 +250,7 @@ module Trie = struct
         | Tree a ->
           let a = conv a ~node ~key in
           if To.is_empty a then None else Some (key k, To.Tree a))
-      |> To.Map.of_list
+      |> To.Map.of_list_reduce ~f:(fun _ a -> a)
     ;;
   end
 end

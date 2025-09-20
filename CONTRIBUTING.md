@@ -1,24 +1,74 @@
-Dune is an community orientated open source project. It was originally
-developed at [Jane Street][js] and is now maintained by Jane Street,
-[Tarides][tarides] as well as several developers from the OCaml
-community.
+Dune is an community orientated open source project. It was originally developed
+at [Jane Street][js] and is now maintained by Jane Street and [Tarides][tarides]
+together with several developers from the OCaml community.
 
-Contributions to Dune are welcome and should be submitted via GitHub
-pull requests against the `main` branch. See [./doc/hacking.rst][hack]
-for a guide to getting started on the code base.
+Sharing feedback
+================
 
-Dune is distributed under the MIT license and contributors are
-required to sign their work in order to certify that they have the
-right to submit it under this license. See the following section for
-more details.
+The easiest way to contribute is to share feedback. 
+
+We discuss *bugs reports* and *feature requests* via our [issues][issues].  If
+you don't find a preexisting issue discussing your topic, then please [file a
+new issue][file an issue].
+
+For other kinds of support, feedback, or questions, please contribute to our
+[discussions][discussions].
+
+[file an issue]: https://github.com/ocaml/dune/issues/new/choose
+[issues]: https://github.com/ocaml/dune/issues
+[discussions]: https://github.com/ocaml/dune/discussions
+
+Developing Dune
+===============
+
+Contributions to the Dune code base are welcome!
+
+Our development process is as follows:
+
+- Non-trivial submissions should be preceded by an issue communicating the
+  rationale for the intended change.
+- Substantial changes should be preceded by upfront design and planning,
+  proportional to the scope and impact of the intended change.
+  - This design should be reviewed by at least one other party.
+  - Github issues are an appropriate venue for most design discussions, but more
+    involved design work may warrant an RFC or ADR.
+- Github is the preferred venue for discussing architectural and design decisions.
+  Exchanges in meetings and chat are valuable, but we insist on deliberating and
+  recording the what and why of our work in the persistent record of GitHub.
+- Changes are submitted via GitHub pull requests against the `main` branch.
+
+If you are looking to get started, check our issues tagged with [good first
+issue][good first issue] or [help wanted][help wanted].
+
+[good first issue]: https://github.com/ocaml/dune/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22
+[help wanted]: https://github.com/ocaml/dune/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22help%20wanted%22
+
+Developer documentation
+-----------------------
+
+See our developer documentation at [./doc/hacking.rst][hack] or
+[online][devdocs] for technical guidance about contributing to the code base.
+
+[devdocs]: https://dune.readthedocs.io/en/stable/hacking.html
+
+Developer meetings
+------------------
+
+See our [developer wiki][developer wiki] for the latest information about our
+recurring developer meetings. All interested attendees are welcome.
+
+[developer wiki]: https://github.com/ocaml/dune/wiki/
 
 Signing contributions
 ---------------------
 
-We require that you sign your contributions. Your signature certifies
-that you wrote the patch or otherwise have the right to pass it on as
-an open-source patch. The rules are pretty simple: if you can certify
-the below (from [developercertificate.org][dco]):
+Dune is distributed under the MIT license and contributors are required to sign
+their work in order to certify that they have the right to submit it under this
+license.
+
+Your signature certifies that you wrote the patch or otherwise have the right to
+pass it on as an open-source patch. The rules are pretty simple: if you can
+certify the below (from [developercertificate.org][dco]):
 
 ```
 Developer Certificate of Origin
@@ -81,9 +131,3 @@ you have the rights to submit this work under the same open source license.
 [js]: https://www.janestreet.com/
 [tarides]: https://tarides.com/
 [hack]: ./doc/hacking.rst
-
-Coding style
-------------
-
-- wrap lines at 80 characters,
-- use `[Ss]nake_case` over `[Pp]ascalCase`.

@@ -11,11 +11,11 @@ Currently doesn't work because it is not implemented.
   > EOF
 
   $ cat > src/a/b/b.ml <<EOF
-  > let () = Printf.printf "Hello form wrapped a/b/b.ml\n"
+  > let () = Printf.printf "Hello from wrapped a/b/b.ml\n"
   > EOF
 
   $ cat > src/a/b/c/c.ml <<EOF
-  > let () = Printf.printf "Hello form wrapped a/b/c/c.ml\n"
+  > let () = Printf.printf "Hello from wrapped a/b/c/c.ml\n"
   > EOF
 
   $ cat > src/a/dune <<EOF

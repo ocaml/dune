@@ -9,11 +9,11 @@ Testing the bootstrap of an unwrapped include subdirs unqualified.
   > EOF
 
   $ cat > src/a/b/b.ml <<EOF
-  > let () = Printf.printf "Hello form unwrapped a/b/b.ml\n"
+  > let () = Printf.printf "Hello from unwrapped a/b/b.ml\n"
   > EOF
 
   $ cat > src/a/b/c/c.ml <<EOF
-  > let () = Printf.printf "Hello form unwrapped a/b/c/c.ml\n"
+  > let () = Printf.printf "Hello from unwrapped a/b/c/c.ml\n"
   > EOF
 
   $ cat > src/a/dune <<EOF
@@ -31,8 +31,8 @@ Testing the bootstrap of an unwrapped include subdirs unqualified.
   > EOF
   ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/types.ml boot/libs.ml boot/duneboot.ml
   ./.duneboot.exe
-  Hello form unwrapped a/b/b.ml
-  Hello form unwrapped a/b/c/c.ml
+  Hello from unwrapped a/b/b.ml
+  Hello from unwrapped a/b/c/c.ml
   Hello from unwrapped a/x.ml
   Hello from bootstrapped binary!
 

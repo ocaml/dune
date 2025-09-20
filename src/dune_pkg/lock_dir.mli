@@ -74,6 +74,14 @@ module Pkg : sig
         Decoder.t
 
   val files_dir : Package_name.t -> Package_version.t option -> lock_dir:Path.t -> Path.t
+
+  (** [source_files_dir p v l] returns the path of expected files dir. Might return
+      a path that does not exist. *)
+  val source_files_dir
+    :  Package_name.t
+    -> Package_version.t option
+    -> lock_dir:Path.t
+    -> Path.Source.t
 end
 
 module Repositories : sig
@@ -122,12 +130,6 @@ val create_latest_version
        (* TODO: make this non-optional when portable lockdirs becomes the default *)
   -> t
 
-val default_path : Path.t Lazy.t
-
-(** Returns the path to the lockdir that will be used to lock the
-    given dev tool *)
-val dev_tool_lock_dir_path : Dev_tool.t -> Path.t
-
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit
 
 val metadata_filename : Filename.t
@@ -155,7 +157,6 @@ module Make_load (Io : sig
     val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
     val readdir_with_kinds : Path.t -> (Filename.t * Unix.file_kind) list t
     val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
-    val stats_kind : Path.t -> (File_kind.t, Unix_error.Detailed.t) result t
   end) : sig
   val load : Path.t -> (t, User_message.t) result Io.t
   val load_exn : Path.t -> t Io.t
@@ -185,3 +186,9 @@ val merge_conditionals : t -> t -> t
     the lockdir does not contain a solution compatible with the given platform
     then a [User_error] is raised. *)
 val packages_on_platform : t -> platform:Solver_env.t -> Pkg.t Package_name.Map.t
+
+(** Returns the path that the lock dir would be in the source. Might return
+    paths that don't exist, if the lock dir wasn't copied from there. *)
+val in_source_tree : Path.t -> Path.Source.t
+
+val loc_in_source_tree : Loc.t -> Loc.t

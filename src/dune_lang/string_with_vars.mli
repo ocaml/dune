@@ -16,6 +16,9 @@ val equal_no_loc : t -> t -> bool
 (** [loc t] returns the location of [t] — typically, in the [dune] file. *)
 val loc : t -> Loc.t
 
+(** [with_loc t ~loc] returns a new value with the new location set. *)
+val with_loc : t -> loc:Loc.t -> t
+
 val to_dyn : t Dyn.builder
 
 include Conv.S with type t := t

@@ -124,6 +124,9 @@ val encode : t Encoder.t
 val decode_dune_file : t Decoder.t
 val decode_pkg : t Decoder.t
 
+(** Transform the string in the action *)
+val map_string_with_vars : t -> f:(String_with_vars.t -> String_with_vars.t) -> t
+
 (** Raises User_error on invalid action. *)
 val validate : loc:Loc.t -> t -> unit
 

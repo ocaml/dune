@@ -11,6 +11,7 @@ Currently doesn't work because it is not implemented.
   > EOF
 
   $ cat > src/a/b/b.ml <<EOF
+  > module C = C
   > let () = Printf.printf "Hello from wrapped a/b/b.ml\n"
   > EOF
 
@@ -25,18 +26,16 @@ Currently doesn't work because it is not implemented.
   > EOF
 
   $ create_dune a <<EOF
-  > open A
-  > open X
-  > open B
-  > open C
+  > module M1 = A
+  > module M2 = A.X
+  > module M3 = A.B
+  > module M4 = A.B.C
   > let () = Printf.printf "Hello from bootstrapped binary!"
   > EOF
   ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/types.ml boot/libs.ml boot/duneboot.ml
   ./.duneboot.exe
-  cd _boot && /OCAMLOPT -c -g -no-alias-deps -w -49-23-53 -alert -unstable dune_exe__Main.ml
-  File "dune_exe__Main.ml", line 4, characters 5-6:
-  4 | open C
-           ^
-  Error: Unbound module C
-  [2]
+  Hello from unwrapped a/x.ml
+  Hello from wrapped a/b/c/c.ml
+  Hello from wrapped a/b/b.ml
+  Hello from bootstrapped binary!
 

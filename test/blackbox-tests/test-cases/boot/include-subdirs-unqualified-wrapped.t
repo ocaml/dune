@@ -23,10 +23,10 @@ Testing the bootstrap of a wrapped include subdirs unqualified.
   > EOF
 
   $ create_dune a <<EOF
-  > open A
-  > open X
-  > open B
-  > open C
+  > module M1 = A
+  > module M2 = A.X
+  > module M3 = A.B
+  > module M4 = A.C
   > let () = Printf.printf "Hello from bootstrapped binary!"
   > EOF
   ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/types.ml boot/libs.ml boot/duneboot.ml

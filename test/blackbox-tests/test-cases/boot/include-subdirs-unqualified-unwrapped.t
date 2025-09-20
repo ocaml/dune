@@ -24,9 +24,9 @@ Testing the bootstrap of an unwrapped include subdirs unqualified.
   > EOF
 
   $ create_dune a <<EOF
-  > open X
-  > open B
-  > open C
+  > module M1 = X
+  > module M2 = B
+  > module M3 = C
   > let () = Printf.printf "Hello from bootstrapped binary!"
   > EOF
   ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/types.ml boot/libs.ml boot/duneboot.ml

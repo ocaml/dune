@@ -69,8 +69,18 @@ module Map = struct
   end
 
   module Make (S : Map.OrderedType) : S with type key = S.t = struct
-    module M = Map.Make (S)
-    open M
+    include Map.Make (S)
+
+    let of_list_reduce xs ~f =
+      List.fold_left xs ~init:empty ~f:(fun acc (key, v) ->
+        update acc ~key ~f:(function
+          | None -> Some v
+          | Some v' -> Some (f v' v)))
+    ;;
+
+    let of_list xs =
+      of_list_reduce xs ~f:(fun _ _ -> failwith "of_list: key already exists")
+    ;;
 
     [@@@ocaml.warning "-32"]
 
@@ -86,19 +96,6 @@ module Map = struct
         | None -> assert false
         | Some v -> v)
     ;;
-
-    let of_list_reduce xs ~f =
-      List.fold_left xs ~init:empty ~f:(fun acc (key, v) ->
-        update acc ~key ~f:(function
-          | None -> Some v
-          | Some v' -> Some (f v' v)))
-    ;;
-
-    let of_list xs =
-      of_list_reduce xs ~f:(fun _ _ -> failwith "of_list: key already exists")
-    ;;
-
-    include M
   end
 end
 

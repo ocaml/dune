@@ -21,10 +21,6 @@ val to_dyn : t -> Dyn.t
 (** Get the revision store and initialise if it hasn't been already. *)
 val get : t Fiber.t
 
-(* CR-soon Alizter: Remove this when we are able to set the XDG_HOME
-   directories in the tests. *)
-val load_or_create : dir:Path.t -> t Fiber.t
-
 module Object : sig
   (** A git object that can exist in storage. *)
   type t
@@ -116,3 +112,8 @@ val fetch_object : t -> Remote.t -> Object.t -> At_rev.t option Fiber.t
 (** Fetch the file contents of the repository at the given revision into the
     store and return the repository view. *)
 val fetch_resolved : t -> Remote.t -> Object.resolved -> At_rev.t Fiber.t
+
+module Debug : sig
+  val files_and_submodules_cache : bool ref
+  val content_of_files_cache : bool ref
+end

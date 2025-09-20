@@ -1,7 +1,12 @@
 (library
  (name dune_pkg_unit_tests)
  (inline_tests
-  (deps tar-inputs/plaintext.md tarball.tar.gz %{bin:git} %{bin:curl}))
+  (deps
+   tar-inputs/plaintext.md
+   tarball.tar.gz
+   %{bin:git}
+   %{bin:curl}
+   (env_var DUNE_CONFIG__REV_STORE_CACHE)))
  (libraries
   dune_tests_common
   stdune
@@ -10,11 +15,14 @@
   dune_util
   dune_lang
   dune_vcs
+  dune_console
+  dune_config
   fiber
   http
   opam_core
   threads.posix
   unix
+  xdg
   base
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
@@ -35,3 +43,8 @@
  (name pkg)
  (deps
   (alias runtest)))
+
+(env
+ (_
+  (env-vars
+   (DUNE_CONFIG__REV_STORE_CACHE enabled))))

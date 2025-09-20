@@ -620,6 +620,7 @@ module Client = struct
       Builder.declare_request t Procedures.Public.promote;
       Builder.declare_request t Procedures.Public.promote_many;
       Builder.declare_request t Procedures.Public.build_dir;
+      Builder.declare_request t Procedures.Public.runtest;
       Builder.implement_notification t Procedures.Server_side.abort (fun () ->
         handler.abort);
       Builder.implement_notification t Procedures.Server_side.log (fun () -> handler.log);

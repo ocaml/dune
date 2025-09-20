@@ -1388,7 +1388,8 @@ module Group = struct
     { alias : Module.Obj.t
     ; modules : node Module.Name.Map.t
     ; path : Module.Path.t
-    ; aliased : Module.Obj.t Module.Name.Map.t
+    ; aliased : node Module.Name.Map.t
+    ; intf : [ `Alias | `Node of node ]
     }
 
   and node =
@@ -1414,11 +1415,18 @@ module Group = struct
   let find_groups t p = find_groups t (List.rev (Module.Path.to_list p)) [ t ]
   let singleton name obj : singleton = { name; obj }
 
-  let generate_alias { modules = _; path = _; alias; aliased } =
+  let generate_alias { modules = _; path = _; alias; aliased; intf = _ } =
     let fn = Module.Obj.to_fname ~kind:`Ml alias in
     Io.with_file_out (build_dir ^/ fn) ~f:(fun oc ->
       Module.Name.Map.to_list aliased
-      |> List.rev_map ~f:(fun (name, m) -> name, Module.Obj.to_name m)
+      |> List.rev_map ~f:(fun (name, m) ->
+        let obj =
+          match m with
+          | Singleton { obj; name = _ } -> obj
+          | Wrapped { alias = _; modules = _; path; aliased = _; intf = _ } ->
+            Module.Path.to_obj path
+        in
+        name, Module.Obj.to_name obj)
       |> gen_module oc);
     fn
   ;;
@@ -1452,16 +1460,17 @@ module Group = struct
   let rec make names (modules : File_kind.ml Module.Name.Trie.t) : node =
     let name = List.hd names in
     let path = Module.Path.of_list names in
-    if Module.Name.Map.cardinal modules = 1 && Module.Path.is_intf_module path name
-    then (
-      let name, first = Module.Name.Map.choose modules in
-      let obj =
+    match
+      if Module.Name.Map.cardinal modules = 1
+      then (
+        let name, first = Module.Name.Map.choose modules in
         match first with
-        | Node m -> m.obj
-        | Tree _ -> assert false
-      in
-      Singleton (singleton name obj))
-    else (
+        | Node m when Module.Path.is_intf_module path name -> Some (singleton name m.obj)
+        | _ -> None)
+      else None
+    with
+    | Some m -> Singleton m
+    | None ->
       let modules : node Module.Name.Map.t =
         Module.Name.Map.mapi modules ~f:(fun name (node : _ Module.Name.Trie.node) ->
           match node with
@@ -1474,13 +1483,13 @@ module Group = struct
         (if Module.Name.Map.mem name modules then Module.Path.alias_suffix path else path)
         |> Module.Path.to_obj
       in
-      let aliased =
-        Module.Name.Map.remove name modules
-        |> Module.Name.Map.map ~f:(function
-          | Singleton m -> m.obj
-          | Wrapped w -> Module.Path.to_obj w.path)
+      let intf =
+        match Module.Name.Map.find_opt name modules with
+        | None -> `Alias
+        | Some s -> `Node s
       in
-      Wrapped { alias; modules; path; aliased })
+      let aliased = Module.Name.Map.remove name modules in
+      Wrapped { alias; modules; path; aliased; intf }
   ;;
 
   let make (modules : File_kind.ml Module.Name.Trie.t) : t =
@@ -1833,6 +1842,23 @@ let ocamldep args =
 
 let ccopt x = [ "-ccopt"; x ]
 
+let rec dep_of_node path (n : Group.node) =
+  match n with
+  | Singleton s -> [ s.obj ]
+  | Wrapped w -> dep_of_wrapped path w
+
+and dep_of_wrapped path (w : Group.wrapped) =
+  if Module.Path.is_prefix path ~prefix:w.path
+  then []
+  else (
+    match w.intf with
+    | `Node n -> dep_of_node path n
+    | `Alias ->
+      w.alias
+      :: (Module.Name.Map.to_list w.aliased
+          |> List.concat_map ~f:(fun (_, (m : Group.node)) -> dep_of_node path m)))
+;;
+
 let convert_dependencies ~alias_modules ~all_source_files ~groups ~path { Dep.file; deps }
   =
   let is_mli = Filename.check_suffix file ".mli" in
@@ -1840,15 +1866,7 @@ let convert_dependencies ~alias_modules ~all_source_files ~groups ~path { Dep.fi
     List.find_map groups ~f:(fun (g : Group.t) ->
       match Module.Name.Map.find_opt module_name g with
       | None -> None
-      | Some (Singleton s) -> Some [ s.obj ]
-      | Some (Wrapped w) ->
-        (match Module.Name.Map.find_opt module_name w.modules with
-         | None ->
-           if Module.Path.is_prefix path ~prefix:w.path
-           then None
-           else Some (Module.Name.Map.to_list w.aliased |> List.rev_map ~f:snd)
-         | Some (Singleton s) -> Some [ s.obj ]
-         | Some (Wrapped _) -> assert false))
+      | Some n -> Some (dep_of_node path n))
     |> Option.value ~default:[]
     |> List.concat_map ~f:(fun obj_name ->
       let ml = Module.Obj.to_fname obj_name ~kind:`Ml in

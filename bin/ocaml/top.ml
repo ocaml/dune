@@ -34,7 +34,7 @@ let files_to_load_of_requires sctx requires =
   let+ () = Memo.parallel_iter files ~f:Build_system.build_file in
   List.filter files ~f:(fun p ->
     let ext = Path.extension p in
-    ext = Ocaml.Mode.compiled_lib_ext Byte || ext = Ocaml.Cm_kind.ext Cmo)
+    ext = Root.Ocaml.Mode.compiled_lib_ext Byte || ext = Root.Ocaml.Cm_kind.ext Cmo)
 ;;
 
 let term =

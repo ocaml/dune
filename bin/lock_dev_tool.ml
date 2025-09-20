@@ -69,7 +69,7 @@ let make_local_package_wrapping_dev_tool ~dev_tool ~dev_tool_version ~extra_depe
 let solve ~dev_tool ~local_packages =
   let open Memo.O in
   let* solver_env_from_current_system =
-    Pkg_common.poll_solver_env_from_current_system ()
+    Pkg.Pkg_common.poll_solver_env_from_current_system ()
     |> Memo.of_reproducible_fiber
     >>| Option.some
   and* workspace =
@@ -81,7 +81,7 @@ let solve ~dev_tool ~local_packages =
   in
   let lock_dir = Lock_dir.dev_tool_lock_dir_path dev_tool in
   Memo.of_reproducible_fiber
-  @@ Lock.solve
+  @@ Pkg.Lock.solve
        workspace
        ~local_packages
        ~project_pins:Pin.DB.empty
@@ -115,7 +115,7 @@ let locked_ocaml_compiler_version () =
   in
   let* result = Dune_rules.Lock_dir.get context
   and* platform =
-    Pkg_common.poll_solver_env_from_current_system () |> Memo.of_reproducible_fiber
+    Pkg.Pkg_common.poll_solver_env_from_current_system () |> Memo.of_reproducible_fiber
   in
   match result with
   | Error _ ->
@@ -181,7 +181,8 @@ let lockdir_status dev_tool =
      | false -> Memo.return `Lockdir_ok
      | true ->
        let* platform =
-         Pkg_common.poll_solver_env_from_current_system () |> Memo.of_reproducible_fiber
+         Pkg.Pkg_common.poll_solver_env_from_current_system ()
+         |> Memo.of_reproducible_fiber
        in
        let packages = Lock_dir.Packages.pkgs_on_platform_by_name packages ~platform in
        (match Package_name.Map.find packages compiler_package_name with

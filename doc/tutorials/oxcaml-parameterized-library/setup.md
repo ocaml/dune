@@ -1,17 +1,18 @@
 # Setting Up The Project Structure
 
-Parameterized libraries only works with a compiler supporting parameterized
+Parameterized libraries only work with a compiler supporting parameterized
 libraries. Currently, only OxCaml supports this feature. Follow [the
-instruction](https://oxcaml.org/get-oxcaml/) to get the OxCaml version of the
+instructions](https://oxcaml.org/get-oxcaml/) to get the OxCaml version of the
 compiler.
 
-Now, it is done, we will create a simple project structure we will grow during
-the tutorial.
+Once that is done, we will create a simple project structure that we will grow
+during the tutorial.
 
 ## Setting a Simple Project
 
-We create a `dune-project` file using the `3.20` version (or any higher
-version) of the language:
+We create a `dune-project` file using the `3.20` version (or a higher version)
+of the language, as OxCaml support is available only from version `3.20`
+onwards:
 
 :::{literalinclude} setup/dune-project
 :language: dune
@@ -36,7 +37,7 @@ First, we create a test directory to store our tests:
 mkdir test
 ```
 
-Inside our `test/` directory, we add our `dune` with all the information
+Inside our `test/` directory, we add our `dune` file with all the information
 required to build the directory:
 
 :::{literalinclude} setup/test/dune
@@ -66,9 +67,9 @@ echo "$?"
 
 ## Conclusion
 
-In this part we have seen how to create a project where we active the support
-for OxCaml. We have also learnt how to create a simple test suite, only run
-when OxCaml is available.
+In this part of the tutorial, we have seen how to create a project where we
+enable support for OxCaml. We have also learnt how to create a simple test
+suite, and only run it when OxCaml is available.
 
 Your directory should be in the following state after the tutorial.
 
@@ -101,4 +102,5 @@ Your directory should be in the following state after the tutorial.
 ::::
 
 
-In the next part, we are going to explore how to write a `library_parameter`.
+In the next part of the tutorial, we are going to explore how to write a
+`library_parameter`.

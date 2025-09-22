@@ -19,8 +19,8 @@ Test the error cases for invalid opam repositories
   > }
 
   $ lock
-  File "dune-workspace", line 6, characters X-X:
-  6 |  (url ..))
+  File "dune-workspace", line 7, characters X-X:
+  7 |  (url ..))
   Error:
   $TESTCASE_ROOT/directory-that-does-not-exist
   does not exist
@@ -30,8 +30,8 @@ Test the error cases for invalid opam repositories
   $ rm dune-workspace
   $ add_mock_repo_if_needed "file://$(pwd)/empty"
   $ lock
-  File "dune-workspace", line 6, characters X-X:
-  6 |  (url ..))
+  File "dune-workspace", line 7, characters X-X:
+  7 |  (url ..))
   Error:
   $TESTCASE_ROOT/empty
   is not a directory
@@ -40,8 +40,8 @@ Test the error cases for invalid opam repositories
   $ rm dune-workspace
   $ add_mock_repo_if_needed "file://$(pwd)/no-packages-dir"
   $ lock
-  File "dune-workspace", line 6, characters X-X:
-  6 |  (url ..))
+  File "dune-workspace", line 7, characters X-X:
+  7 |  (url ..))
   Error:
   $TESTCASE_ROOT/no-packages-dir
   doesn't look like a path to an opam repository as it lacks a subdirectory

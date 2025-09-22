@@ -55,6 +55,27 @@ mkpkg() {
   cat >>$mock_packages/$name/$name.$version/opam
 }
 
+set_pkg_to () {
+  local value="${1}"
+  if grep "(pkg .*)" dune-workspace > /dev/null; then
+    sed -i'' "s/(pkg .*)/(pkg ${value})/" dune-workspace
+  else
+    echo "(pkg ${value})" >> dune-workspace
+  fi
+}
+
+enable_pkg() {
+  set_pkg_to "enabled"
+}
+
+disable_pkg() {
+  set_pkg_to "disabled"
+}
+
+unset_pkg() {
+  sed -i'' "/(pkg/d" dune-workspace
+}
+
 add_mock_repo_if_needed() {
   # default, but can be overridden, e.g. if git is required
   repo="${1:-file://$(pwd)/mock-opam-repository}"
@@ -63,6 +84,7 @@ add_mock_repo_if_needed() {
   then
       cat >dune-workspace <<EOF
 (lang dune 3.20)
+(pkg enabled)
 (lock_dir
  (repositories mock))
 (repository
@@ -99,6 +121,7 @@ create_mock_repo() {
   repo="${1:-file://$(pwd)/mock-opam-repository}"
   cat >dune-workspace <<EOF
 (lang dune 3.20)
+(pkg enabled)
 (lock_dir
  (repositories mock))
 (repository

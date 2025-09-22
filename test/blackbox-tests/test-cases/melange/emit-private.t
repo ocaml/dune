@@ -47,7 +47,6 @@ Test dependency on a private library in the same package as melange.emit
   > EOF
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build @dist --display=short 2>&1 | grep -v melange
-          melc b/dist/node_modules/pkg.__private__.a/a.js
           melc b/dist/node_modules/pkg.__private__.a/foo.js
           melc b/dist/b/bar.js
 

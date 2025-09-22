@@ -7,12 +7,26 @@ module Curl = struct
       (match Bin.which ~path:(Env_path.path Env.initial) "curl" with
        | Some p -> p
        | None ->
+         let curl = User_message.command "curl" in
+         let sep = Pp.space in
          User_error.raise
-           ~hints:[ Pp.text "Install curl with your system package manager." ]
-           [ Pp.text
-               "The program \"curl\" does not appear to be installed. Dune uses curl to \
-                download packages. Dune requires that the \"curl\" executable be located \
-                in one of the directories listed in the PATH variable."
+           ~hints:
+             [ Pp.concat
+                 ~sep
+                 [ Pp.text "Install"; curl; Pp.text "with your system package manager." ]
+             ]
+           [ Pp.concat
+               ~sep
+               [ Pp.text "The program"
+               ; curl
+               ; Pp.text "does not appear to be installed. Dune uses"
+               ; curl
+               ; Pp.text "to download packages. Dune requires that the"
+               ; curl
+               ; Pp.text
+                   "executable be located in one of the directories listed in the PATH \
+                    variable."
+               ]
            ])
   ;;
 
@@ -96,7 +110,13 @@ module Curl = struct
       in
       Error
         (User_message.make
-           ([ Pp.textf "curl returned an invalid error code %d" exit_code ] @ stderr)))
+           ([ Pp.concat
+                ~sep:Pp.space
+                [ User_message.command "curl"
+                ; Pp.textf "returned an invalid error code %d" exit_code
+                ]
+            ]
+            @ stderr)))
     else (
       Path.unlink_no_err stderr;
       match
@@ -108,7 +128,12 @@ module Curl = struct
       | None ->
         Error
           (User_message.make
-             [ Pp.textf "curl returned an HTTP code we don't understand: %S" http_code ])
+             [ Pp.concat
+                 ~sep:Pp.space
+                 [ User_message.command "curl"
+                 ; Pp.textf "returned an HTTP code we don't understand: %S" http_code
+                 ]
+             ])
       | Some http_code ->
         if http_code = 200
         then Ok ()

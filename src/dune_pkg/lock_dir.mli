@@ -68,11 +68,6 @@ module Pkg : sig
   val equal : t -> t -> bool
   val hash : t -> int
   val to_dyn : t -> Dyn.t
-
-  val decode
-    : (lock_dir:Path.t -> solved_for_platforms:Solver_env.t list -> Package_name.t -> t)
-        Decoder.t
-
   val files_dir : Package_name.t -> Package_version.t option -> lock_dir:Path.t -> Path.t
 end
 

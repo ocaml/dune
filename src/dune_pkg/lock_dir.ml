@@ -375,13 +375,15 @@ module Build_command = struct
          ]
   ;;
 
-  let decode_fields_backwards_compatible =
+  let decode_fields ~portable_lock_dir =
     let open Decoder in
     let parse_action =
-      (let+ action = Action.decode_pkg in
-       Conditional_choice_or_all_platforms.Choice
-         (Conditional_choice.singleton_all_platforms (Action action)))
-      <|> Conditional_choice_or_all_platforms.decode decode_portable
+      if portable_lock_dir
+      then Conditional_choice_or_all_platforms.decode decode_portable
+      else
+        let+ action = Action.decode_pkg in
+        Conditional_choice_or_all_platforms.Choice
+          (Conditional_choice.singleton_all_platforms (Action action))
     in
     fields_mutually_exclusive
       ~default:None
@@ -617,38 +619,40 @@ module Pkg = struct
     let enabled_on_platforms = "enabled_on_platforms"
   end
 
-  let decode =
+  let decode ~portable_lock_dir =
     let open Decoder in
-    let parse_install_command_backwards_compatible =
-      (let+ action = Action.decode_pkg in
-       Conditional_choice_or_all_platforms.Choice
-         (Conditional_choice.singleton_all_platforms action))
-      <|> Conditional_choice_or_all_platforms.decode Action.decode_pkg
+    let parse_install_command =
+      if portable_lock_dir
+      then Conditional_choice_or_all_platforms.decode Action.decode_pkg
+      else
+        let+ action = Action.decode_pkg in
+        Conditional_choice_or_all_platforms.Choice
+          (Conditional_choice.singleton_all_platforms action)
     in
-    let parse_depends_backwards_compatible =
-      (let+ depends = repeat Dependency.decode in
-       Conditional_choice_or_all_platforms.Choice
-         (Conditional_choice.singleton_all_platforms depends))
-      <|> Conditional_choice_or_all_platforms.decode (enter @@ repeat Dependency.decode)
+    let parse_depends =
+      if portable_lock_dir
+      then Conditional_choice_or_all_platforms.decode (enter @@ repeat Dependency.decode)
+      else
+        let+ depends = repeat Dependency.decode in
+        Conditional_choice_or_all_platforms.Choice
+          (Conditional_choice.singleton_all_platforms depends)
     in
-    let parse_depexts_backwards_compatible =
-      (let+ external_package_names = repeat string in
-       [ { Depexts.external_package_names; enabled_if = `Always } ])
-      <|> repeat Depexts.decode
+    let parse_depexts =
+      if portable_lock_dir
+      then repeat Depexts.decode
+      else
+        let+ external_package_names = repeat string in
+        [ { Depexts.external_package_names; enabled_if = `Always } ]
     in
     let empty_choice = Conditional_choice_or_all_platforms.Choice [] in
     enter
     @@ fields
     @@ let+ version = field Fields.version Package_version.decode
        and+ install_command =
-         field
-           ~default:empty_choice
-           Fields.install
-           parse_install_command_backwards_compatible
-       and+ build_command = Build_command.decode_fields_backwards_compatible
-       and+ depends =
-         field ~default:empty_choice Fields.depends parse_depends_backwards_compatible
-       and+ depexts = field ~default:[] Fields.depexts parse_depexts_backwards_compatible
+         field ~default:empty_choice Fields.install parse_install_command
+       and+ build_command = Build_command.decode_fields ~portable_lock_dir
+       and+ depends = field ~default:empty_choice Fields.depends parse_depends
+       and+ depexts = field ~default:[] Fields.depexts parse_depexts
        and+ source = field_o Fields.source Source.decode
        and+ dev = field_b Fields.dev
        and+ avoid = field_b Fields.avoid
@@ -1198,10 +1202,7 @@ let decode_metadata =
          ~default:Solver_stats.Expanded_variable_bindings.empty
          Solver_stats.Expanded_variable_bindings.decode
      and+ solved_for_platforms =
-       field
-         "solved_for_platforms"
-         ~default:(Loc.none, [])
-         (located (repeat (enter Solver_env.decode)))
+       field_o "solved_for_platforms" (located (repeat (enter Solver_env.decode)))
      in
      ( ocaml
      , dependency_hash
@@ -1464,6 +1465,7 @@ struct
   ;;
 
   let load_pkg
+        ~portable_lock_dir
         ~version
         ~lock_dir_path
         ~solved_for_platforms
@@ -1482,7 +1484,7 @@ struct
     let parser =
       let env = Pform.Env.pkg Dune_lang.Pkg.syntax version in
       let decode =
-        Syntax.set Dune_lang.Pkg.syntax (Active version) Pkg.decode
+        Syntax.set Dune_lang.Pkg.syntax (Active version) (Pkg.decode ~portable_lock_dir)
         |> Syntax.set Dune_lang.Stanza.syntax (Active Dune_lang.Stanza.latest_version)
       in
       String_with_vars.set_decoding_env env decode
@@ -1572,6 +1574,11 @@ struct
         =
         load_metadata (Path.relative lock_dir_path metadata_filename)
       in
+      let portable_lock_dir, solved_for_platforms =
+        match solved_for_platforms with
+        | Some x -> true, x
+        | None -> false, (Loc.none, [])
+      in
       let+ packages =
         Io.readdir_with_kinds lock_dir_path
         >>| List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
@@ -1584,6 +1591,7 @@ struct
           let _loc, solved_for_platforms = solved_for_platforms in
           let+ pkg =
             load_pkg
+              ~portable_lock_dir
               ~version
               ~lock_dir_path
               ~solved_for_platforms

@@ -5,11 +5,11 @@ In this section, we are going to learn how to write a
 
 ## Declaring a parameter
 
-We can either declare our parameter private or public in Dune. In our case, we
-are going to declare it as public. Indeed, Dune doesn't build unecessary
-targets. It means it won't build anything that is not needed. In our case, it
-would mean our parameter wouldn't get build until we use it. Making it public
-informs Dune it is mandatory to build the target.
+We can either declare our parameter as private or public in Dune. In our case,
+we are going to declare it as a public parameter. Indeed, Dune doesn't build
+unecessary targets. It means it won't build anything that is not needed. In our
+case, it would mean our parameter wouldn't get built until we use it. Making it
+public informs Dune it is mandatory to build the target.
 
 To build our parameter we are going to use the
 {doc}`/reference/dune/library_parameter` stanza.
@@ -17,7 +17,7 @@ To build our parameter we are going to use the
 First, we need to create the directory where we are going to host our
 parameter. At the root of our project, we create a `lib/` directory where we
 are going to host the code. Inside the `lib/` directory, we create a `param/`
-directory to host our parameter. We do this in one command to save
+directory to host our parameter. We do this in a single command to save
 instructions.
 
 ```{code-block} shell
@@ -32,7 +32,7 @@ In `lib/param/`, we create a new `dune` file:
 ::::
 
 The `library_parameter` stanza takes care of the parameter generation under the
-hood. It calls the OxCaml compiler with the correct options and flags.
+hood. It calls the OxCaml compiler with the correct compiler options and flags.
 
 Still in `lib/param/`, we create the interface for our future libraries in `param.mli`:
 

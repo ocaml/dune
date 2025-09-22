@@ -103,7 +103,7 @@ module Curl = struct
           [ Pp.text s ]
         | exception s ->
           [ Pp.textf
-              "failed to read stderr form file %s"
+              "Failed to read stderr from file %s"
               (Path.to_string_maybe_quoted stderr)
           ; Exn.pp s
           ]
@@ -138,7 +138,7 @@ module Curl = struct
         if http_code = 200
         then Ok ()
         else
-          Error (User_message.make [ Pp.textf "download failed with code %d" http_code ]))
+          Error (User_message.make [ Pp.textf "Download failed with code %d" http_code ]))
   ;;
 end
 
@@ -151,7 +151,7 @@ let label = "dune-fetch"
 let unpack_archive ~archive_driver ~target ~archive =
   Archive_driver.extract archive_driver ~archive ~target
   >>| Result.map_error ~f:(fun () ->
-    Pp.textf "unable to extract %S" (Path.to_string archive))
+    Pp.textf "Unable to extract %s" (Path.to_string_maybe_quoted archive))
 ;;
 
 let check_checksum checksum path =
@@ -205,9 +205,9 @@ let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
          let exn =
            User_message.make
              [ Pp.textf
-                 "failed to unpack archive downloaded from %s"
+                 "Failed to unpack archive downloaded from %s"
                  (OpamUrl.to_string url)
-             ; Pp.text "reason:"
+             ; Pp.text "Reason:"
              ; msg
              ]
          in

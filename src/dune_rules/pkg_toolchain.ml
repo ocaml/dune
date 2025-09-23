@@ -27,13 +27,13 @@ let pkg_dir (pkg : Dune_pkg.Lock_dir.Pkg.t) =
      way). *)
   let dir_name =
     (* TODO should include resolved deps *)
-    let pkg_hash = Digest.generic (Lock_dir.Pkg.remove_locs pkg) in
+    let pkg_hash = Lock_dir.Pkg.hash (Lock_dir.Pkg.remove_locs pkg) in
     (* A hash of the fields of a package that affect its installed artifacts *)
     sprintf
-      "%s.%s-%s"
+      "%s.%s-%d"
       (Package.Name.to_string pkg.info.name)
       (Package_version.to_string pkg.info.version)
-      (Digest.to_string pkg_hash)
+      pkg_hash
   in
   Path.Outside_build_dir.relative (base_dir ()) dir_name
 ;;

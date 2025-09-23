@@ -4,6 +4,33 @@ open Stdune
 
 type t
 
+module Feed : sig
+  type digest := t
+  type hasher
+
+  (** Type for incrementally building up the computation of a hash. A ['a t]
+      can consume a value of type ['a] and incorporate it into a hash value. *)
+  type 'a t = hasher -> 'a -> unit
+
+  (** Consume any value. The result is based on the in-memory representation of
+      the value, so this is unsafe to perform on types who may have different
+      in-memory representation for values which are conceptually equal, such as
+      sets and maps. *)
+  val generic : _ t
+
+  val contramap : 'a t -> f:('b -> 'a) -> 'b t
+  val string : string t
+  val bool : bool t
+  val int : int t
+  val list : 'a t -> 'a list t
+  val option : 'a t -> 'a option t
+  val tuple2 : 'a t -> 'b t -> ('a * 'b) t
+  val tuple3 : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
+
+  (** Compute the digest of a value given a feed for the type of that value. *)
+  val digest : 'a t -> 'a -> digest
+end
+
 include Comparable_intf.S with type key := t
 
 val to_dyn : t -> Dyn.t

@@ -1,4 +1,5 @@
 open Import
+module Digest_feed = Dune_digest.Feed
 
 module Solver_env_disjunction = struct
   (* A disjunction of solver envs consisting of only platform-specific solver variables. *)
@@ -20,6 +21,7 @@ module Solver_env_disjunction = struct
   ;;
 
   let hash t = List.hash Solver_env.hash t
+  let digest_feed = Digest_feed.list Solver_env.digest_feed
 
   let encode t =
     let open Encoder in
@@ -53,6 +55,11 @@ module Conditional = struct
 
   let hash { condition; value } ~f =
     Tuple.T2.hash Solver_env_disjunction.hash f (condition, value)
+  ;;
+
+  let digest_feed feed_value =
+    Digest_feed.tuple2 Solver_env_disjunction.digest_feed feed_value
+    |> Digest_feed.contramap ~f:(fun { condition; value } -> condition, value)
   ;;
 
   let to_dyn value_to_dyn { condition; value } =
@@ -95,6 +102,7 @@ module Conditional_choice = struct
   let singleton_all_platforms value = singleton Solver_env.empty value
   let equal value_equal = List.equal (Conditional.equal value_equal)
   let hash t ~f = List.hash (Conditional.hash ~f) t
+  let digest_feed feed_value = Digest_feed.list (Conditional.digest_feed feed_value)
   let map ~f = List.map ~f:(Conditional.map ~f)
   let to_dyn value_to_dyn = Dyn.list (Conditional.to_dyn value_to_dyn)
 
@@ -189,6 +197,18 @@ module Pkg_info = struct
       , Bool.hash avoid
       , Option.hash Source.hash source
       , List.hash (Tuple.T2.hash Path.Local.hash Source.hash) extra_sources )
+  ;;
+
+  let digest_feed hasher { name; version; dev; avoid; source; extra_sources } =
+    Package_name.digest_feed hasher name;
+    Package_version.digest_feed hasher version;
+    Digest_feed.bool hasher dev;
+    Digest_feed.bool hasher avoid;
+    Digest_feed.option Source.digest_feed hasher source;
+    Digest_feed.list
+      (Digest_feed.tuple2 Digest_feed.generic Source.digest_feed)
+      hasher
+      extra_sources
   ;;
 
   let remove_locs t =
@@ -549,6 +569,26 @@ module Pkg = struct
       , Pkg_info.hash info
       , exported_env
       , Solver_env_disjunction.hash enabled_on_platforms )
+  ;;
+
+  let digest_feed
+        hasher
+        { build_command
+        ; install_command
+        ; depends
+        ; depexts
+        ; info
+        ; exported_env
+        ; enabled_on_platforms
+        }
+    =
+    Conditional_choice.digest_feed Digest_feed.generic hasher build_command;
+    Conditional_choice.digest_feed Digest_feed.generic hasher install_command;
+    Conditional_choice.digest_feed Digest_feed.generic hasher depends;
+    Digest_feed.generic hasher depexts;
+    Pkg_info.digest_feed hasher info;
+    Digest_feed.generic hasher exported_env;
+    Solver_env_disjunction.digest_feed hasher enabled_on_platforms
   ;;
 
   let remove_locs

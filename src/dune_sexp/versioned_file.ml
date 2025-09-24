@@ -57,12 +57,6 @@ struct
 
     let parse first_line : Instance.t =
       let { First_line.lang = name_loc, name; version = ver_loc, ver } = first_line in
-      let dune_lang_ver =
-        Decoder.parse
-          Syntax.Version.decode
-          Univ_map.empty
-          (Atom (ver_loc, Atom.of_string ver))
-      in
       match Table.find langs name with
       | None ->
         User_error.raise
@@ -70,8 +64,17 @@ struct
           [ Pp.textf "Unknown language %S." name ]
           ~hints:(User_message.did_you_mean name ~candidates:(Table.keys langs))
       | Some t ->
-        Syntax.check_supported ~dune_lang_ver t.syntax (ver_loc, dune_lang_ver);
-        { syntax = t.syntax; data = t.data; version = dune_lang_ver }
+        let version =
+          Decoder.parse
+            Syntax.Version.decode
+            Univ_map.empty
+            (Atom (ver_loc, Atom.of_string ver))
+        in
+        Syntax.check_supported
+          ~dune_lang_ver:(Syntax.greatest_supported_version_exn t.syntax)
+          t.syntax
+          (ver_loc, version);
+        { syntax = t.syntax; data = t.data; version }
     ;;
 
     (* TODO get_exn is only called with "dune" so far, but

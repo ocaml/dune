@@ -25,10 +25,10 @@ But the toggle only exists in Dune 3.5
   File "dune-project", line 2, characters 27-30:
   2 | (using mode_specific_stubs 0.1)
                                  ^^^
-  Error: Version 0.1 of syntax extension for mode-specific foreign stubs is not
-  supported until version 3.5 of the dune language.
-  There are no supported versions of this extension in version 3.1 of the dune
-  language.
+  Error: Version 0.1 of the mode_specific_stubs extension is not supported
+  until version 3.5 of the dune language.
+  There are no supported versions of the mode_specific_stubs extension in
+  version 3.1 of the dune language.
   
   [1]
 

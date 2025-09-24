@@ -48,7 +48,7 @@ cache, it will fail, as the source is 404 now:
   File "dune.lock/test.pkg", line 4, characters 7-25:
   4 |   (url http://localhost:1)
              ^^^^^^^^^^^^^^^^^^
-  Error: download failed with code 404
+  Error: Download failed with code 404
          
   [1]
 

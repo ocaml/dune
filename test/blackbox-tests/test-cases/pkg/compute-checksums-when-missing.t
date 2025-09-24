@@ -51,7 +51,7 @@ Recreate the foo package with a fake port number to signal that the file will
   Package "foo" has source archive which lacks a checksum.
   The source archive will be downloaded from: http://0.0.0.0:9000
   Dune will compute its own checksum for this source archive.
-  Warning: download failed with code 404
+  Warning: Download failed with code 404
   Solution for dune.lock:
   - foo.0.0.1
   $ cat ${default_lock_dir}/foo.pkg

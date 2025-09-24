@@ -1,4 +1,4 @@
-(include_subdirs unqualified)
+(include_subdirs qualified)
 
 (executable
  (name main)
@@ -6,6 +6,7 @@
  (package dune)
  (enabled_if
   (<> %{profile} dune-bootstrap))
+ (root_module root)
  (libraries
   memo
   promote

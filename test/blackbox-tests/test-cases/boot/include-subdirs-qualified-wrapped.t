@@ -34,8 +34,8 @@ Currently doesn't work because it is not implemented.
   > EOF
   ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/types.ml boot/libs.ml boot/duneboot.ml
   ./.duneboot.exe
-  Hello from unwrapped a/x.ml
   Hello from wrapped a/b/c/c.ml
   Hello from wrapped a/b/b.ml
+  Hello from unwrapped a/x.ml
   Hello from bootstrapped binary!
 

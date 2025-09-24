@@ -16,17 +16,12 @@ Currently doesn't work because it is not implemented.
   > EOF
 
   $ create_dune a <<EOF
-  > module M1 = A.B.X
+  > module M1 = A.B
+  > module M2 = A.B.X
   > let () = Printf.printf "Hello from bootstrapped binary!"
   > EOF
   ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/types.ml boot/libs.ml boot/duneboot.ml
   ./.duneboot.exe
-  Fatal error: exception File "boot/duneboot.ml", line 1461, characters 20-26: Assertion failed
-  Called from unknown location
-  Called from unknown location
-  Called from unknown location
-  Called from unknown location
-  Called from unknown location
-  Called from unknown location
-  [2]
+  Hello from wrapped a/b/x.ml
+  Hello from bootstrapped binary!
 

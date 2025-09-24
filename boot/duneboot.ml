@@ -658,6 +658,18 @@ module Bin = struct
   ;;
 
   let exe = if Sys.win32 then ".exe" else ""
+
+  let or_exe file =
+    let files =
+      let base = [ file ] in
+      let with_exe = file ^ exe in
+      if with_exe = file then base else with_exe :: base
+    in
+    List.find_opt files ~f:(fun s ->
+      match Unix.stat s with
+      | exception Unix.Unix_error (_, _, _) -> false
+      | s -> s.st_kind = S_REG)
+  ;;
 end
 
 (** {2 Concurrency level} *)
@@ -1204,11 +1216,18 @@ module Build_info = struct
     | None ->
       if not (Sys.file_exists ".git")
       then Fiber.return None
-      else
-        Process.try_run_and_capture
-          "git"
-          [ "describe"; "--always"; "--dirty"; "--abbrev=7" ]
-        >>| Option.map ~f:String.trim
+      else (
+        match
+          Bin.find_prog ~f:(fun dir ->
+            let git = Filename.concat dir "git" in
+            Bin.or_exe git)
+        with
+        | None -> Fiber.return None
+        | Some (_, git) ->
+          Process.try_run_and_capture
+            git
+            [ "describe"; "--always"; "--dirty"; "--abbrev=7" ]
+          >>| Option.map ~f:String.trim)
   ;;
 
   let gen_data_module oc =

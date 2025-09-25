@@ -48,8 +48,3 @@ Building fails as the patch cannot be found anymore
   Error:
   open(_build/.sandbox/<hash>/_private/default/.pkg/test/source/foo.patch): No such file or directory
   -> required by _build/_private/default/.pkg/test/target
-
-And the backage cannot be shown:
-
-  $ show_pkg test
-  

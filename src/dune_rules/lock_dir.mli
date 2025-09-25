@@ -10,6 +10,9 @@ val of_dev_tool : Dune_pkg.Dev_tool.t -> t Memo.t
 val lock_dir_active : Context_name.t -> bool Memo.t
 val get_path : Context_name.t -> Path.t option Memo.t
 
+(** The default filesystem location where the lock dir is going to get created *)
+val default_path : Path.t Lazy.t
+
 (** The default path where the lock dir will be written to manually *)
 val default_source_path : Path.Source.t
 

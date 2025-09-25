@@ -1124,7 +1124,6 @@ let dev_tool_lock_dir_path dev_tool =
   Path.relative dev_tools_path (Package_name.to_string (Dev_tool.package_name dev_tool))
 ;;
 
-let default_path = lazy Path.(relative root "dune.lock")
 let metadata_filename = "lock.dune"
 
 module Metadata = Dune_sexp.Versioned_file.Make (Unit)

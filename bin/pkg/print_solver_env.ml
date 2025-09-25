@@ -30,9 +30,9 @@ let print_solver_env ~lock_dirs_arg =
     >>| Option.some
   in
   let lock_dirs = Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace in
-  List.iter
-    lock_dirs
-    ~f:(print_solver_env_for_lock_dir workspace ~solver_env_from_current_system)
+  List.iter lock_dirs ~f:(fun lock_dir ->
+    let lock_dir = Path.source lock_dir in
+    print_solver_env_for_lock_dir workspace ~solver_env_from_current_system lock_dir)
 ;;
 
 let term =

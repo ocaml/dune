@@ -136,6 +136,8 @@ let select_lock_dir lock_dir_selection =
   Workspace.Lock_dir_selection.eval lock_dir_selection ~dir:workspace.dir ~f:expander
 ;;
 
+let default_source_path = Path.Source.(relative root "dune.lock")
+
 let get_path ctx =
   let* workspace = Workspace.workspace () in
   match

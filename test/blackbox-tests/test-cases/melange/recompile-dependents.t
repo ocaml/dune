@@ -43,11 +43,6 @@ Now change `foo.ml`, but keep `foo.mli` intact
 
 Build again, noting that x.ml could have been skipped?
 
-  $ dune build --display short
-          melc lib/.foo.objs/melange/foo.{cmj,cmt}
-          melc .out.mobjs/melange/melange__X.{cmi,cmj,cmt}
-          melc out/lib/foo.js
-          melc out/x.js
-
+  $ dune build
   $ node ./_build/default/out/x.js
   hi

@@ -26,8 +26,8 @@ let scrollbar_wheel_step = 8 (* Wheel event scrolls 1/8th of the screen *)
 let scroll visible offset ~set ~dir =
   let dir =
     match dir with
-    | `Down -> 1
-    | `Up -> -1
+    | `Down | `Right -> 1
+    | `Up | `Left -> -1
   in
   set (offset + (dir * max 1 (visible / scrollbar_wheel_step)))
 ;;
@@ -153,12 +153,14 @@ let make (state_var : State.t Lwd.var) t =
   and+ size = Lwd.get state_var in
   (* Render final box *)
   let box, vscroll, hscroll = compose_bars ui size in
-  let hscroll ~dir =
-    hscroll
-      ~dir:
-        (match dir with
-         | `Right -> `Down
-         | `Left -> `Up)
+  let mouse_handler ~x:_ ~y:_ = function
+    | `Scroll ((`Up | `Down) as dir) ->
+      vscroll ~dir;
+      `Handled
+    | `Scroll ((`Left | `Right) as dir) ->
+      hscroll ~dir;
+      `Handled
+    | _ -> `Unhandled
   in
-  { ui = measure_size box; vscroll; hscroll }
+  { ui = measure_size box |> Ui.mouse_area mouse_handler; vscroll; hscroll }
 ;;

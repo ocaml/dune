@@ -10,6 +10,8 @@ path
   >   $ dune runtest
   > EOF
 
+  $ dune rpc ping --wait
+
   $ DUNE_BUILD_DIR=$PWD/tmp dune runtest --auto-promote
   File "foo.t", line 1, characters 0-0:
   Error: Files

@@ -247,6 +247,12 @@ let build_cm
         | None -> []
         | Some parameter -> [ "-as-argument-for"; Module_name.to_string parameter ])
    in
+   let parameters =
+     Command.Args.dyn
+       (let open Action_builder.O in
+        Resolve.Memo.read (Compilation_context.parameters cctx)
+        >>| List.concat_map ~f:(fun m -> [ "-parameter"; Module_name.to_string m ]))
+   in
    let flags, sandbox =
      let flags =
        Command.Args.dyn (Ocaml_flags.get (Compilation_context.flags cctx) mode)
@@ -301,6 +307,7 @@ let build_cm
             ; extra_args
             ; As as_parameter_arg
             ; as_argument_for
+            ; parameters
             ; S (melange_args cctx cm_kind m)
             ; A "-no-alias-deps"
             ; opaque_arg

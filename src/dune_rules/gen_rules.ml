@@ -648,7 +648,10 @@ let private_context ~dir components _ctx =
   analyze_private_context_path components
   >>= function
   | `Invalid_context -> Memo.return Gen_rules.unknown_context
-  | `Valid (ctx, components) -> Pkg_rules.setup_rules ctx ~dir ~components
+  | `Valid (ctx, components) ->
+    let+ lock_rules = Lock_rules.setup_rules ~dir ~components
+    and+ pkg_rules = Pkg_rules.setup_rules ctx ~dir ~components in
+    Gen_rules.combine lock_rules pkg_rules
   | `Root ->
     let+ contexts = Per_context.list () in
     let build_dir_only_sub_dirs =
@@ -677,7 +680,9 @@ let raise_on_lock_dir_out_of_sync =
         with
         | `Valid -> ()
         | `Invalid ->
-          let loc = Loc.in_file (Path.relative path "lock.dune") in
+          let source_path = Dune_pkg.Lock_dir.in_source_tree path in
+          let loc_path = Path.source source_path in
+          let loc = Loc.in_file (Path.relative loc_path "lock.dune") in
           let hints = Pp.[ text "run dune pkg lock" ] in
           User_error.raise
             ~loc

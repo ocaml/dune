@@ -194,6 +194,16 @@ let loc = function
   | Form (loc, _form) -> loc
 ;;
 
+let map_loc ~f = function
+  | Nil -> Nil
+  | Literal sw ->
+    let loc = f (String_with_vars.loc sw) in
+    Literal (String_with_vars.with_loc ~loc sw)
+  | Form (loc, form) ->
+    let loc = f loc in
+    Form (loc, form)
+;;
+
 let concat ?(loc = Loc.none) ts = Form (loc, Concat ts)
 let when_ ?(loc = Loc.none) condition t = Form (loc, When (condition, t))
 

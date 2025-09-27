@@ -113,6 +113,7 @@ let decode_manually f =
 
 let decode = decode_manually Pform.Env.parse
 let loc t = t.loc
+let with_loc t ~loc = { t with loc }
 
 let virt_pform ?quoted pos pform =
   let loc = Loc.of_pos pos in

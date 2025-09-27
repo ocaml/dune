@@ -265,20 +265,25 @@ let find_origin (t : t) ~libs path =
      | origins -> raise_module_conflict_error origins ~module_path:path)
 ;;
 
-let modules_and_obj_dir t ~libs ~for_ =
-  match
-    match for_ with
-    | Library lib_id -> Lib_id.Local.Map.find t.modules.libraries lib_id
-    | Exe { first_exe } -> String.Map.find t.modules.executables first_exe
-    | Melange { target } -> String.Map.find t.modules.melange_emits target
-  with
-  | Some (Library _, modules, obj_dir) ->
-    let* () =
+let find_and_validate_modules t ~libs ~for_ =
+  (match for_ with
+   | Library lib_id -> Lib_id.Local.Map.find t.modules.libraries lib_id
+   | Exe { first_exe } -> String.Map.find t.modules.executables first_exe
+   | Melange { target } -> String.Map.find t.modules.melange_emits target)
+  |> Memo.Option.map ~f:(fun (origin, modules, obj_dir) ->
+    let+ () =
       Modules.fold_user_written modules ~init:[] ~f:(fun m acc -> Module.path m :: acc)
       |> Memo.List.iter ~f:(fun module_path ->
         let+ (_origin : Origin.t option) = find_origin t ~libs module_path in
         ())
     in
+    origin, modules, obj_dir)
+;;
+
+let modules_and_obj_dir t ~libs ~for_ =
+  find_and_validate_modules t ~libs ~for_
+  >>= function
+  | Some (Library _, modules, obj_dir) ->
     (match
        Path.Build.Map.find_exn t.modules.libraries_by_obj_dir (Obj_dir.obj_dir obj_dir)
      with

@@ -58,7 +58,8 @@ mkpkg() {
 set_pkg_to () {
   local value="${1}"
   if grep "(pkg .*)" dune-workspace > /dev/null; then
-    sed -i'' "s/(pkg .*)/(pkg ${value})/" dune-workspace
+    awk "{sub(/\(pkg .*\)/,\"(pkg ${value})\")}1" < dune-workspace > dune-workspace-tmp
+    mv dune-workspace-tmp dune-workspace
   else
     echo "(pkg ${value})" >> dune-workspace
   fi
@@ -73,7 +74,8 @@ disable_pkg() {
 }
 
 unset_pkg() {
-  sed -i'' "/(pkg/d" dune-workspace
+  grep -v "(pkg .*)" dune-workspace > dune-workspace-tmp
+  mv dune-workspace-tmp dune-workspace
 }
 
 add_mock_repo_if_needed() {

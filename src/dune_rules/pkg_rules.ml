@@ -1106,18 +1106,11 @@ module DB = struct
     && Package.Name.Set.equal t.system_provided system_provided
   ;;
 
-  let hash { all; system_provided } =
-    let hash_all =
-      Package.Name.Map.foldi all ~init:0 ~f:(fun key value running_hash ->
-        Tuple.T3.hash
-          Package.Name.hash
-          Lock_dir.Pkg.hash
-          Int.hash
-          (key, value, running_hash))
-    in
-    Package.Name.Set.fold system_provided ~init:hash_all ~f:(fun name running_hash ->
-      Tuple.T2.hash Package.Name.hash Int.hash (name, running_hash))
-  ;;
+  let hash = `Do_not_hash
+  let _ = hash
+  (* Because t is large, hashing is expensive, so much so that hashing the db in Input.t
+     below slowed down the dune call in the test repo described in #12248 from 1s to
+     2s. *)
 
   let get =
     let memo =
@@ -1160,7 +1153,8 @@ end = struct
     ;;
 
     let hash { db; package; universe } =
-      Tuple.T3.hash DB.hash Package.Name.hash Package_universe.hash (db, package, universe)
+      let _ = db in
+      Tuple.T2.hash Package.Name.hash Package_universe.hash (package, universe)
     ;;
 
     let to_dyn = Dyn.opaque

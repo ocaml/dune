@@ -524,13 +524,13 @@ let validate ~loc t = ensure_at_most_one_dynamic_run ~loc t
 let rec blang_map_string_with_vars ~f = function
   | Blang.Const _ as c -> c
   | Not blang -> Not (blang_map_string_with_vars ~f blang)
-  | Expr sw -> Expr (f sw)
+  | Expr sw -> Expr (slang_map_string_with_vars ~f sw)
   | And blangs -> And (List.map blangs ~f:(blang_map_string_with_vars ~f))
   | Or blangs -> Or (List.map blangs ~f:(blang_map_string_with_vars ~f))
-  | Compare (op, a, b) -> Compare (op, f a, f b)
-;;
+  | Compare (op, a, b) ->
+    Compare (op, slang_map_string_with_vars ~f a, slang_map_string_with_vars ~f b)
 
-let rec slang_map_string_with_vars ~f = function
+and slang_map_string_with_vars ~f = function
   | Slang.Nil -> Slang.Nil
   | Literal sw -> Literal (f sw)
   | Form (loc, form) ->
@@ -538,13 +538,10 @@ let rec slang_map_string_with_vars ~f = function
       match form with
       | Slang.Concat ts -> Slang.Concat (List.map ts ~f:(slang_map_string_with_vars ~f))
       | When (condition, t) ->
-        When
-          ( blang_map_string_with_vars condition ~f:(slang_map_string_with_vars ~f)
-          , slang_map_string_with_vars t ~f )
+        When (blang_map_string_with_vars condition ~f, slang_map_string_with_vars t ~f)
       | If { condition; then_; else_ } ->
         If
-          { condition =
-              blang_map_string_with_vars condition ~f:(slang_map_string_with_vars ~f)
+          { condition = blang_map_string_with_vars condition ~f
           ; then_ = slang_map_string_with_vars then_ ~f
           ; else_ = slang_map_string_with_vars else_ ~f
           }
@@ -555,60 +552,72 @@ let rec slang_map_string_with_vars ~f = function
           ; fallback = slang_map_string_with_vars fallback ~f
           }
       | And_absorb_undefined_var blangs ->
-        And_absorb_undefined_var
-          (List.map
-             blangs
-             ~f:(blang_map_string_with_vars ~f:(slang_map_string_with_vars ~f)))
+        And_absorb_undefined_var (List.map blangs ~f:(blang_map_string_with_vars ~f))
       | Or_absorb_undefined_var blangs ->
-        Or_absorb_undefined_var
-          (List.map
-             blangs
-             ~f:(blang_map_string_with_vars ~f:(slang_map_string_with_vars ~f)))
-      | Blang b -> Blang (blang_map_string_with_vars b ~f:(slang_map_string_with_vars ~f))
+        Or_absorb_undefined_var (List.map blangs ~f:(blang_map_string_with_vars ~f))
+      | Blang b -> Blang (blang_map_string_with_vars b ~f)
     in
     Form (loc, form)
 ;;
 
-let rec map_string_with_vars t ~f =
+let rec map t ~string_with_vars ~slang ~blang =
   match t with
-  | Run xs -> Run (List.map ~f:(slang_map_string_with_vars ~f) xs)
+  | Run xs ->
+    Run
+      (List.map
+         ~f:(fun slang_ -> slang slang_ |> slang_map_string_with_vars ~f:string_with_vars)
+         xs)
   | With_accepted_exit_codes (lang, t) ->
-    With_accepted_exit_codes (lang, map_string_with_vars t ~f)
-  | Dynamic_run (sw, sws) -> Dynamic_run (f sw, List.map sws ~f)
-  | Chdir (sw, t) -> Chdir (f sw, map_string_with_vars ~f t)
-  | Setenv (sw1, sw2, t) -> Setenv (f sw1, f sw2, map_string_with_vars t ~f)
-  | Redirect_out (o, sw, p, t) -> Redirect_out (o, f sw, p, map_string_with_vars t ~f)
-  | Redirect_in (i, sw, t) -> Redirect_in (i, f sw, t)
-  | Ignore (o, t) -> Ignore (o, map_string_with_vars t ~f)
-  | Progn xs -> Progn (List.map xs ~f:(map_string_with_vars ~f))
-  | Concurrent xs -> Concurrent (List.map xs ~f:(map_string_with_vars ~f))
-  | Echo xs -> Echo (List.map ~f xs)
-  | Cat xs -> Cat (List.map ~f xs)
-  | Copy (sw1, sw2) -> Copy (f sw1, f sw2)
-  | Symlink (sw1, sw2) -> Symlink (f sw1, f sw2)
-  | Copy_and_add_line_directive (sw1, sw2) -> Copy_and_add_line_directive (f sw1, f sw2)
-  | System sw -> System (f sw)
-  | Bash sw -> Bash (f sw)
-  | Write_file (sw1, perm, sw2) -> Write_file (f sw1, perm, f sw2)
-  | Mkdir sw -> Mkdir (f sw)
-  | Diff diff -> Diff (Diff.map diff ~path:f ~target:f)
-  | No_infer t -> No_infer (map_string_with_vars t ~f)
-  | Pipe (o, ts) -> Pipe (o, List.map ts ~f:(map_string_with_vars ~f))
-  | Cram sw -> Cram (f sw)
-  | Patch i -> Patch (f i)
-  | Substitute (i, o) -> Substitute (f i, f o)
+    With_accepted_exit_codes (lang, map t ~string_with_vars ~slang ~blang)
+  | Dynamic_run (sw, sws) ->
+    Dynamic_run (string_with_vars sw, List.map sws ~f:string_with_vars)
+  | Chdir (sw, t) -> Chdir (string_with_vars sw, map ~string_with_vars ~slang ~blang t)
+  | Setenv (sw1, sw2, t) ->
+    Setenv
+      (string_with_vars sw1, string_with_vars sw2, map t ~string_with_vars ~slang ~blang)
+  | Redirect_out (o, sw, p, t) ->
+    Redirect_out (o, string_with_vars sw, p, map t ~string_with_vars ~slang ~blang)
+  | Redirect_in (i, sw, t) -> Redirect_in (i, string_with_vars sw, t)
+  | Ignore (o, t) -> Ignore (o, map t ~string_with_vars ~slang ~blang)
+  | Progn xs -> Progn (List.map xs ~f:(map ~string_with_vars ~slang ~blang))
+  | Concurrent xs -> Concurrent (List.map xs ~f:(map ~string_with_vars ~slang ~blang))
+  | Echo xs -> Echo (List.map ~f:string_with_vars xs)
+  | Cat xs -> Cat (List.map ~f:string_with_vars xs)
+  | Copy (sw1, sw2) -> Copy (string_with_vars sw1, string_with_vars sw2)
+  | Symlink (sw1, sw2) -> Symlink (string_with_vars sw1, string_with_vars sw2)
+  | Copy_and_add_line_directive (sw1, sw2) ->
+    Copy_and_add_line_directive (string_with_vars sw1, string_with_vars sw2)
+  | System sw -> System (string_with_vars sw)
+  | Bash sw -> Bash (string_with_vars sw)
+  | Write_file (sw1, perm, sw2) ->
+    Write_file (string_with_vars sw1, perm, string_with_vars sw2)
+  | Mkdir sw -> Mkdir (string_with_vars sw)
+  | Diff diff -> Diff (Diff.map diff ~path:string_with_vars ~target:string_with_vars)
+  | No_infer t -> No_infer (map t ~string_with_vars ~slang ~blang)
+  | Pipe (o, ts) -> Pipe (o, List.map ts ~f:(map ~string_with_vars ~slang ~blang))
+  | Cram sw -> Cram (string_with_vars sw)
+  | Patch i -> Patch (string_with_vars i)
+  | Substitute (i, o) -> Substitute (string_with_vars i, string_with_vars o)
   | Withenv (ops, t) ->
     Withenv
-      ( List.map ops ~f:(fun (op : _ Env_update.t) -> { op with value = f op.value })
-      , map_string_with_vars t ~f )
+      ( List.map ops ~f:(fun (op : _ Env_update.t) ->
+          { op with value = string_with_vars op.value })
+      , map t ~string_with_vars ~slang ~blang )
   | When (condition, t) ->
     When
-      ( blang_map_string_with_vars condition ~f:(slang_map_string_with_vars ~f)
-      , map_string_with_vars t ~f )
-  | Format_dune_file (src, dst) -> Format_dune_file (f src, f dst)
+      ( blang condition |> blang_map_string_with_vars ~f:string_with_vars
+      , map t ~string_with_vars ~slang ~blang )
+  | Format_dune_file (src, dst) ->
+    Format_dune_file (string_with_vars src, string_with_vars dst)
 ;;
 
-let remove_locs = map_string_with_vars ~f:String_with_vars.remove_locs
+let remove_locs =
+  map
+    ~string_with_vars:String_with_vars.remove_locs
+    ~slang:Slang.remove_locs
+    ~blang:Slang.Blang.remove_locs
+;;
+
 let compare_no_locs t1 t2 = Poly.compare (remove_locs t1) (remove_locs t2)
 let equal_no_locs t1 t2 = Ordering.is_eq (compare_no_locs t1 t2)
 

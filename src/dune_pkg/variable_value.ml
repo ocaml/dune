@@ -18,6 +18,7 @@ let false_ = "false"
 let string = Fun.id
 let equal = String.equal
 let hash = String.hash
+let digest_feed = Dune_digest.Feed.string
 let compare = String.compare
 let to_dyn = Dyn.string
 let to_string = Fun.id

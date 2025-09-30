@@ -167,20 +167,40 @@ module Glob = struct
   module Glob = Dune_glob.V1
 
   module Element = struct
+    module Proxy = struct
+      type t =
+        { repr : string
+        ; hash : int
+        }
+
+      let equal (x : t) (y : t) = x == y
+      let hash t = t.hash
+      let to_dyn = Dyn.opaque
+      let table = Table.create (module String) 10
+
+      let of_string =
+        let create repr = { repr; hash = String.hash repr } in
+        fun s -> Table.find_or_add table s ~f:create
+      ;;
+    end
+
+    let table = Table.create (module Proxy) 10
+    let unproxy = Table.find_or_add table ~f:(fun x -> Glob.of_string x.repr)
+
     type t =
-      | Glob of Glob.t
+      | Glob of Proxy.t
       | Literal of string
 
     let to_dyn = function
       | Literal s -> Dyn.variant "Literal" [ Dyn.string s ]
-      | Glob g -> Dyn.variant "Glob" [ Glob.to_dyn g ]
+      | Glob g -> Dyn.variant "Glob" [ Glob.to_dyn (unproxy g) ]
     ;;
 
     (* CR-someday amokhov: The [_exn] suffix is here because [Glob.to_string] can actually
        raise. We should clean this all up, at least use the [_exn] suffix consistently. *)
     let digest_exn = function
       | Literal s -> Dune_digest.generic (0, s)
-      | Glob g -> Dune_digest.generic (1, Glob.to_string g)
+      | Glob g -> Dune_digest.generic (1, Glob.to_string (unproxy g))
     ;;
 
     let encode t =
@@ -188,12 +208,12 @@ module Glob = struct
       @@
       match t with
       | Literal s -> s
-      | Glob g -> Glob.to_string g
+      | Glob g -> Glob.to_string (unproxy g)
     ;;
 
     let compare x y =
       match x, y with
-      | Glob x, Glob y -> Glob.compare x y
+      | Glob x, Glob y -> Glob.compare (unproxy x) (unproxy y)
       | Glob _, _ -> Lt
       | _, Glob _ -> Gt
       | Literal x, Literal y -> String.compare x y
@@ -202,12 +222,22 @@ module Glob = struct
     let test t s =
       match t with
       | Literal s' -> String.equal s s'
-      | Glob g -> Glob.test g s
+      | Glob g -> Glob.test (unproxy g) s
     ;;
 
     let decode =
       let open Dune_sexp.Decoder in
-      let+ glob = Decoder.plain_string (fun ~loc x -> Glob.of_string_exn loc x) in
+      let+ glob =
+        Decoder.plain_string (fun ~loc x ->
+          let proxy = Proxy.of_string x in
+          let (_ : Glob.t) =
+            try unproxy proxy with
+            | _ ->
+              let (_ : Glob.t) = Glob.of_string_exn loc x in
+              assert false
+          in
+          proxy)
+      in
       Glob glob
     ;;
   end
@@ -216,7 +246,15 @@ module Glob = struct
 
   let to_dyn t = to_dyn Element.to_dyn t
   let test (t : t) ~standard elem = test t ~standard ~test:Element.test elem
-  let of_glob g = Element (Element.Glob g)
+
+  let of_glob g =
+    let proxy =
+      let repr = Dune_glob.V1.to_string g in
+      Element.Proxy.of_string repr
+    in
+    Element (Element.Glob proxy)
+  ;;
+
   let of_string_list s = Or (List.rev_map s ~f:(fun x -> Element (Element.Literal x)))
 
   let of_string_set s =

@@ -11,6 +11,5 @@ We don't need to run ocamldep on ther alias module
 
   $ dune build foo.cma
 
-  $ find _build -iname "*.d" -o -iname "*.all-deps" | sort
-  _build/default/.foo.objs/foo__Bar.impl.all-deps
+  $ find _build -iname "*.d" | sort
   _build/default/.foo.objs/foo__Bar.impl.d

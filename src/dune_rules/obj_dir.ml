@@ -616,9 +616,7 @@ module Module = struct
   ;;
 
   module Dep = struct
-    type t =
-      | Immediate of Module.t * Ml_kind.t
-      | Transitive of Module.t * Ml_kind.t
+    type t = Immediate of Module.t * Ml_kind.t
 
     let make_name m kind ext =
       let ext =
@@ -631,13 +629,12 @@ module Module = struct
 
     let basename = function
       | Immediate (m, kind) -> make_name m kind Filename.Extension.d
-      | Transitive (m, kind) -> make_name m kind Filename.Extension.all_deps
     ;;
   end
 
   let dep t dep ~for_ =
     match (dep : Dep.t) with
-    | Immediate (m, _) | Transitive (m, _) ->
+    | Immediate (m, _) ->
       (match Module.kind m with
        | Module.Kind.Alias _ | Root -> None
        | _ ->

@@ -19,10 +19,16 @@
   > EOF
 
   $ dune build @check
-  Error: Dependency cycle between:
-     _build/default/.output.mobjs/melange__Main.impl.all-deps
-  -> _build/default/.output.mobjs/melange__Hello.impl.all-deps
-  -> _build/default/.output.mobjs/melange__Main.impl.all-deps
+  Error: dependency cycle involving module Hello:
+     Main
+  -> Hello
+  -> Main
+  -> required by _build/default/.output.mobjs/melange/melange__Hello.cmi
+  -> required by alias check
+  Error: dependency cycle involving module Main:
+     Hello
+  -> Main
+  -> Hello
   -> required by _build/default/.output.mobjs/melange/melange__Main.cmi
   -> required by alias check
   [1]

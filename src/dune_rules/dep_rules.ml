@@ -2,13 +2,6 @@ open Import
 open Memo.O
 module Parallel_map = Memo.Make_parallel_map (Module_name.Unique.Map)
 
-let transitive_deps_contents modules =
-  List.map modules ~f:(fun m ->
-    (* TODO use object names *)
-    Modules.Sourced_module.to_module m |> Module.name |> Module_name.to_string)
-  |> String.concat ~sep:"\n"
-;;
-
 let ooi_deps
       ~vimpl
       ~sctx
@@ -21,6 +14,7 @@ let ooi_deps
       (sourced_module : Modules.Sourced_module.t)
   =
   let m = Modules.Sourced_module.to_module sourced_module in
+  let (_ : Compilation_mode.t) = for_ in
   let* read =
     let unit =
       let cm_kind =
@@ -42,27 +36,16 @@ let ooi_deps
       | [ x ] -> x
       | [] | _ :: _ -> assert false)
   in
-  let add_rule = Super_context.add_rule sctx ~dir in
-  let read =
-    Action_builder.memoize
-      "ocamlobjinfo"
-      (let open Action_builder.O in
-       let+ (ooi : Ocamlobjinfo.t) = read in
-       Module_name.Unique.Set.to_list ooi.intf
-       |> List.filter_map ~f:(fun dep ->
-         if Module.obj_name m = dep
-         then None
-         else Module_name.Unique.Map.find vlib_obj_map dep))
-  in
-  let+ () =
-    add_rule
-      (let target =
-         Obj_dir.Module.dep obj_dir ~for_ (Transitive (m, ml_kind)) |> Option.value_exn
-       in
-       Action_builder.map read ~f:transitive_deps_contents
-       |> Action_builder.write_file_dyn target)
-  in
-  read
+  Memo.return
+    (Action_builder.memoize
+       "ocamlobjinfo"
+       (let open Action_builder.O in
+        let+ (ooi : Ocamlobjinfo.t) = read in
+        Module_name.Unique.Set.to_list ooi.intf
+        |> List.filter_map ~f:(fun dep ->
+          if Module.obj_name m = dep
+          then None
+          else Module_name.Unique.Map.find vlib_obj_map dep)))
 ;;
 
 let deps_of_module ~modules ~sandbox ~sctx ~dir ~obj_dir ~ml_kind ~for_ m =
@@ -116,19 +99,8 @@ let deps_of_vlib_module ~obj_dir ~vimpl ~dir ~sctx ~ml_kind ~for_ sourced_module
       Lib_info.obj_dir info
     in
     let m = Modules.Sourced_module.to_module sourced_module in
-    let+ () =
-      let src =
-        Obj_dir.Module.dep vlib_obj_dir ~for_ (Transitive (m, ml_kind))
-        |> Option.value_exn
-        |> Path.build
-      in
-      let dst =
-        Obj_dir.Module.dep obj_dir ~for_ (Transitive (m, ml_kind)) |> Option.value_exn
-      in
-      Super_context.add_rule sctx ~dir (Action_builder.symlink ~src ~dst)
-    in
     let modules = Vimpl.vlib_modules vimpl |> Modules.With_vlib.modules in
-    Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind ~for_ m
+    Memo.return (Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind ~for_ m)
 ;;
 
 (** Tests whether a set of modules is a singleton *)
@@ -181,8 +153,7 @@ let rec deps_of
        | Impl -> Normal m))
 ;;
 
-let read_deps_of_module ~modules ~obj_dir dep ~for_ =
-  let (Obj_dir.Module.Dep.Immediate (unit, _) | Transitive (unit, _)) = dep in
+let read_deps_of_module ~modules ~obj_dir ~ml_kind ~unit ~for_ ~kind =
   match Module.kind unit with
   | Root | Alias _ -> Action_builder.return []
   | Wrapped_compat ->
@@ -198,10 +169,10 @@ let read_deps_of_module ~modules ~obj_dir dep ~for_ =
     if has_single_file modules
     then Action_builder.return []
     else (
-      match dep with
-      | Immediate (unit, ml_kind) ->
+      match kind with
+      | `Immediate ->
         Ocamldep.read_immediate_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit
-      | Transitive (unit, ml_kind) ->
+      | `Transitive ->
         let open Action_builder.O in
         let+ deps = Ocamldep.read_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit in
         (match Modules.With_vlib.alias_for modules unit with
@@ -210,12 +181,12 @@ let read_deps_of_module ~modules ~obj_dir dep ~for_ =
 ;;
 
 let read_immediate_deps_of ~obj_dir ~modules ~ml_kind ~for_ m =
-  read_deps_of_module ~modules ~obj_dir (Immediate (m, ml_kind)) ~for_
+  read_deps_of_module ~modules ~obj_dir ~ml_kind ~unit:m ~for_ ~kind:`Immediate
 ;;
 
 let read_deps_of ~obj_dir ~modules ~ml_kind ~for_ m =
   if Module.has m ~ml_kind
-  then read_deps_of_module ~modules ~obj_dir (Transitive (m, ml_kind)) ~for_
+  then read_deps_of_module ~modules ~obj_dir ~ml_kind ~unit:m ~for_ ~kind:`Transitive
   else Action_builder.return []
 ;;
 

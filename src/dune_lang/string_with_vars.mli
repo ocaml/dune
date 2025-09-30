@@ -16,8 +16,8 @@ val equal_no_loc : t -> t -> bool
 (** [loc t] returns the location of [t] — typically, in the [dune] file. *)
 val loc : t -> Loc.t
 
-(** [with_loc t ~f] transforms the value to update the location. *)
-val with_loc : t -> f:(Loc.t -> Loc.t) -> t
+(** [map_loc t ~f] transforms the value to update the location. *)
+val map_loc : t -> f:(Loc.t -> Loc.t) -> t
 
 val to_dyn : t Dyn.builder
 

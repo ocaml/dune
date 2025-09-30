@@ -198,9 +198,7 @@ let blang_map = Blang.Ast.map_string
 
 let rec map_loc ~f = function
   | Nil -> Nil
-  | Literal sw ->
-    let loc = f (String_with_vars.loc sw) in
-    Literal (String_with_vars.with_loc ~loc sw)
+  | Literal sw -> Literal (String_with_vars.map_loc ~f sw)
   | Form (loc, form) ->
     let loc = f loc in
     let form = map_form_loc ~f form in

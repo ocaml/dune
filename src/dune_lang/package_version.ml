@@ -13,3 +13,5 @@ include (
     let of_string_opt s = if s = "" then None else Some s
   end) :
     Dune_util.Stringlike with type t := t)
+
+let digest_feed = Dune_digest.Feed.string

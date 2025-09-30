@@ -8,6 +8,7 @@ val of_string_user_error : Loc.t * string -> (t, User_message.t) result
 val to_string : t -> string
 val equal : t -> t -> bool
 val hash : t -> int
+val digest_feed : t Dune_digest.Feed.t
 val to_dyn : t -> Dyn.t
 val encode : t Encoder.t
 val decode : t Decoder.t

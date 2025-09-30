@@ -38,6 +38,8 @@ let hash { url; checksum } =
     (url, checksum)
 ;;
 
+let digest_feed = Dune_digest.Feed.generic
+
 let fetch_archive_cached =
   let cache = Single_run_file_cache.create () in
   fun (url_loc, url) ->

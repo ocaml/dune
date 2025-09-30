@@ -20,6 +20,12 @@ let hash t =
       (key, value, running_hash))
 ;;
 
+let digest_feed hasher t =
+  Package_variable_name.Map.iteri t ~f:(fun key value ->
+    Package_variable_name.digest_feed hasher key;
+    Variable_value.digest_feed hasher value)
+;;
+
 let empty = Package_variable_name.Map.empty
 let is_empty = Package_variable_name.Map.is_empty
 

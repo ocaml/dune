@@ -67,6 +67,7 @@ module Pkg : sig
   val remove_locs : t -> t
   val equal : t -> t -> bool
   val hash : t -> int
+  val digest_feed : t Dune_digest.Feed.t
   val to_dyn : t -> Dyn.t
   val files_dir : Package_name.t -> Package_version.t option -> lock_dir:Path.t -> Path.t
 end

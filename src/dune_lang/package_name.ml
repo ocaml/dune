@@ -77,3 +77,5 @@ let of_opam_file_basename basename =
   let* name = String.drop_suffix basename ~suffix:opam_ext in
   of_string_opt name
 ;;
+
+let digest_feed = Dune_digest.Feed.string

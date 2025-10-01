@@ -13,3 +13,4 @@ val lock_build_and_run_dev_tool
 val which_command : Dune_pkg.Dev_tool.t -> unit Cmd.t
 val install_command : Dune_pkg.Dev_tool.t -> unit Cmd.t
 val exec_command : Dune_pkg.Dev_tool.t -> unit Cmd.t
+val env_command : unit Cmd.t

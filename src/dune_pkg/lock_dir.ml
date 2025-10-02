@@ -516,6 +516,24 @@ module Depexts = struct
   let remove_locs t = { t with enabled_if = Enabled_if.remove_locs t.enabled_if }
 end
 
+let in_source_tree path =
+  match (path : Path.t) with
+  | In_source_tree s -> s
+  | In_build_dir b ->
+    let in_source = Path.drop_build_context_exn path in
+    (match Path.Source.explode in_source with
+     | "default" :: ".lock" :: components ->
+       Path.Source.L.relative Path.Source.root components
+     | _otherwise ->
+       Code_error.raise
+         "Unexpected location of lock directory in build directory"
+         [ "path", Path.Build.to_dyn b; "in_source", Path.Source.to_dyn in_source ])
+  | External e ->
+    Code_error.raise
+      "External path returned when loading a lock dir"
+      [ "path", Path.External.to_dyn e ]
+;;
+
 module Pkg = struct
   type t =
     { build_command : Build_command.t Conditional_choice.t
@@ -862,8 +880,22 @@ module Pkg = struct
   let files_dir package_name maybe_package_version ~lock_dir =
     match files_dir_generic package_name maybe_package_version ~lock_dir with
     | In_source_tree _ as path -> path
-    | other ->
-      Code_error.raise "file_dir is not a source path" [ "path", Path.to_dyn other ]
+    | In_build_dir _ as path -> path
+    | External e ->
+      Code_error.raise
+        "file_dir is an external path, this is unsupported"
+        [ "path", Path.External.to_dyn e ]
+  ;;
+
+  let source_files_dir package_name maybe_package_version ~lock_dir =
+    let source = in_source_tree lock_dir in
+    let package_name = Package_name.to_string package_name in
+    match maybe_package_version with
+    | Some package_version ->
+      Path.Source.relative
+        source
+        (sprintf "%s.%s.files" package_name (Package_version.to_string package_version))
+    | None -> Path.Source.relative source (sprintf "%s.files" package_name)
   ;;
 
   (* Combine the platform-specific parts of a pair of [t]s, raising a code
@@ -1159,11 +1191,6 @@ let create_latest_version
   }
 ;;
 
-let dev_tool_lock_dir_path dev_tool =
-  let dev_tools_path = Path.(relative root "dev-tools.locks") in
-  Path.relative dev_tools_path (Package_name.to_string (Dev_tool.package_name dev_tool))
-;;
-
 let metadata_filename = "lock.dune"
 
 module Metadata = Dune_sexp.Versioned_file.Make (Unit)
@@ -1451,7 +1478,6 @@ module Make_load (Io : sig
     val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
     val readdir_with_kinds : Path.t -> (Filename.t * Unix.file_kind) list t
     val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
-    val stats_kind : Path.t -> (File_kind.t, Unix_error.Detailed.t) result t
   end) =
 struct
   let load_metadata metadata_file_path =
@@ -1534,36 +1560,6 @@ struct
       package_name
   ;;
 
-  let check_path lock_dir_path =
-    let open Io.O in
-    Io.stats_kind lock_dir_path
-    >>| function
-    | Ok S_DIR -> Ok ()
-    | Error (Unix.ENOENT, _, _) ->
-      Error
-        (User_error.make
-           ~hints:
-             [ Pp.concat
-                 ~sep:Pp.space
-                 [ Pp.text "Run"
-                 ; User_message.command "dune pkg lock"
-                 ; Pp.text "to generate it."
-                 ]
-               |> Pp.hovbox
-             ]
-           [ Pp.textf "%s does not exist." (Path.to_string lock_dir_path) ])
-    | Error e ->
-      Error
-        (User_error.make
-           [ Pp.textf "%s is not accessible" (Path.to_string lock_dir_path)
-           ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum e)
-           ])
-    | _ ->
-      Error
-        (User_error.make
-           [ Pp.textf "%s is not a directory." (Path.to_string lock_dir_path) ])
-  ;;
-
   let check_packages packages ~lock_dir_path =
     match validate_packages packages with
     | Ok () -> Ok ()
@@ -1600,56 +1596,52 @@ struct
 
   let load lock_dir_path =
     let open Io.O in
-    let* result = check_path lock_dir_path in
-    match result with
-    | Error e -> Io.return (Error e)
-    | Ok () ->
-      let* ( version
-           , dependency_hash
-           , ocaml
-           , repos
-           , expanded_solver_variable_bindings
-           , solved_for_platforms )
-        =
-        load_metadata (Path.relative lock_dir_path metadata_filename)
-      in
-      let portable_lock_dir, solved_for_platforms =
-        match solved_for_platforms with
-        | Some x -> true, x
-        | None -> false, (Loc.none, [])
-      in
-      let+ packages =
-        Io.readdir_with_kinds lock_dir_path
-        >>| List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
-          match kind with
-          | S_REG -> Package_filename.to_package_name_and_version name |> Result.to_option
-          | _ ->
-            (* TODO *)
-            None)
-        >>= Io.parallel_map ~f:(fun (package_name, maybe_package_version) ->
-          let _loc, solved_for_platforms = solved_for_platforms in
-          let+ pkg =
-            load_pkg
-              ~portable_lock_dir
-              ~version
-              ~lock_dir_path
-              ~solved_for_platforms
-              package_name
-              maybe_package_version
-          in
-          pkg)
-        >>| Packages.of_pkg_list
-      in
-      check_packages packages ~lock_dir_path
-      |> Result.map ~f:(fun () ->
-        { version
-        ; dependency_hash
-        ; packages
-        ; ocaml
-        ; repos
-        ; expanded_solver_variable_bindings
-        ; solved_for_platforms
-        })
+    let* ( version
+         , dependency_hash
+         , ocaml
+         , repos
+         , expanded_solver_variable_bindings
+         , solved_for_platforms )
+      =
+      load_metadata (Path.relative lock_dir_path metadata_filename)
+    in
+    let portable_lock_dir, solved_for_platforms =
+      match solved_for_platforms with
+      | Some x -> true, x
+      | None -> false, (Loc.none, [])
+    in
+    let+ packages =
+      Io.readdir_with_kinds lock_dir_path
+      >>| List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
+        match kind with
+        | S_REG -> Package_filename.to_package_name_and_version name |> Result.to_option
+        | _ ->
+          (* TODO *)
+          None)
+      >>= Io.parallel_map ~f:(fun (package_name, maybe_package_version) ->
+        let _loc, solved_for_platforms = solved_for_platforms in
+        let+ pkg =
+          load_pkg
+            ~portable_lock_dir
+            ~version
+            ~lock_dir_path
+            ~solved_for_platforms
+            package_name
+            maybe_package_version
+        in
+        pkg)
+      >>| Packages.of_pkg_list
+    in
+    check_packages packages ~lock_dir_path
+    |> Result.map ~f:(fun () ->
+      { version
+      ; dependency_hash
+      ; packages
+      ; ocaml
+      ; repos
+      ; expanded_solver_variable_bindings
+      ; solved_for_platforms
+      })
   ;;
 
   let load_exn lock_dir_path =
@@ -1660,10 +1652,6 @@ end
 
 module Load_immediate = Make_load (struct
     include Monad.Id
-
-    let stats_kind file =
-      file |> Path.stat |> Result.map ~f:(fun { Unix.st_kind; _ } -> st_kind)
-    ;;
 
     let parallel_map xs ~f = List.map xs ~f
 
@@ -1752,6 +1740,15 @@ let merge_conditionals a b =
   { a with packages; solved_for_platforms }
 ;;
 
+let loc_in_source_tree loc =
+  loc
+  |> Loc.map_pos ~f:(fun ({ pos_fname; _ } as pos) ->
+    let path = Path.of_string pos_fname in
+    let new_path = in_source_tree path in
+    let pos_fname = Path.Source.to_string new_path in
+    { pos with pos_fname })
+;;
+
 let check_if_solved_for_platform { solved_for_platforms; _ } ~platform =
   let loc, solved_for_platforms = solved_for_platforms in
   if List.is_empty solved_for_platforms
@@ -1763,6 +1760,7 @@ let check_if_solved_for_platform { solved_for_platforms; _ } ~platform =
     match Solver_env_disjunction.matches_platform solved_for_platforms ~platform with
     | true -> ()
     | false ->
+      let loc = loc_in_source_tree loc in
       User_error.raise
         ~loc
         [ Pp.text

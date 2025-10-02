@@ -124,6 +124,13 @@ val encode : t Encoder.t
 val decode_dune_file : t Decoder.t
 val decode_pkg : t Decoder.t
 
+val map
+  :  t
+  -> string_with_vars:(String_with_vars.t -> String_with_vars.t)
+  -> slang:(Slang.t -> Slang.t)
+  -> blang:(Slang.Blang.t -> Slang.Blang.t)
+  -> t
+
 (** Raises User_error on invalid action. *)
 val validate : loc:Loc.t -> t -> unit
 

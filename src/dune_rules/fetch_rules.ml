@@ -139,6 +139,7 @@ module Spec = struct
            ~loc:loc_url
            [ Pp.text "No checksum provided. It should be:"; Checksum.pp actual_checksum ]
        | Some (loc, _) ->
+         let loc = Dune_pkg.Lock_dir.loc_in_source_tree loc in
          User_error.raise
            ~loc
            [ Pp.text "Invalid checksum, got"; Dune_pkg.Checksum.pp actual_checksum ])
@@ -188,15 +189,24 @@ let find_checksum, find_url =
           Dune_pkg.Dev_tool.all
           ~init:(Checksum.Map.empty, Digest.Map.empty)
           ~f:(fun acc dev_tool ->
-            Fs_memo.dir_exists
-              (Path.as_outside_build_dir_exn
-                 (Dune_pkg.Lock_dir.dev_tool_lock_dir_path dev_tool))
+            Source_tree.find_dir (Lock_dir.dev_tool_source_lock_dir dev_tool)
             >>= function
-            | false -> Memo.return acc
-            | true -> Lock_dir.of_dev_tool dev_tool >>| add_checksums_and_urls acc)
+            | None -> Memo.return acc
+            | Some _ -> Lock_dir.of_dev_tool dev_tool >>| add_checksums_and_urls acc)
       in
       Per_context.list ()
-      >>= Memo.parallel_map ~f:Lock_dir.get
+      >>= Memo.parallel_map ~f:(fun ctx_name ->
+        let* active = Lock_dir.lock_dir_active ctx_name in
+        match active with
+        | true -> Lock_dir.get ctx_name
+        | false ->
+          Memo.return
+          @@ Error
+               (User_message.make
+                  [ Pp.textf
+                      "Context %S has no lock dir"
+                      (Context_name.to_string ctx_name)
+                  ]))
       >>| List.filter_map ~f:Result.to_option
       >>| List.fold_left ~init ~f:add_checksums_and_urls)
   in
@@ -217,6 +227,7 @@ let find_checksum, find_url =
 ;;
 
 let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
+  let loc_url = Dune_pkg.Lock_dir.loc_in_source_tree loc_url in
   let checksum_or_url =
     match checksum with
     | Some (_, checksum) -> `Checksum checksum

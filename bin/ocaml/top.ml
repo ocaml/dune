@@ -10,7 +10,10 @@ let man =
       {|Print a list of toplevel directives for including directories and loading cma files.|}
   ; `P
       {|The output of $(b,dune ocaml top) should be evaluated in a toplevel
-          to make a library available there.|}
+        to make the libraries available there.|}
+  ; `P
+      {|In many toplevels this can be achieved by using the $(b,#use_output) command,
+        e.g. $(b,#use_output "dune ocaml top").|}
   ; `Blocks Common.help_secs
   ]
 ;;

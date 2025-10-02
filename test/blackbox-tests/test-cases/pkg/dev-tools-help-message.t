@@ -17,6 +17,12 @@ Output the help text:
          dune tools exec COMMAND …
   
   COMMANDS
+         dune-release [OPTION]… [ARGS]…
+             Wrapper for running dune-release intended to be run automatically
+             by a text editor. All positional arguments will be passed to the
+             dune-release executable (pass flags to dune-release after the '--'
+             argument, such as 'dune tools exec dune-release -- --help').
+  
          ocamlearlybird [OPTION]… [ARGS]…
              Wrapper for running ocamlearlybird intended to be run
              automatically by a text editor. All positional arguments will be
@@ -41,6 +47,12 @@ Output the help text:
              text editor. All positional arguments will be passed to the odig
              executable (pass flags to odig after the '--' argument, such as
              'dune tools exec odig -- --help').
+  
+         opam-publish [OPTION]… [ARGS]…
+             Wrapper for running opam-publish intended to be run automatically
+             by a text editor. All positional arguments will be passed to the
+             opam-publish executable (pass flags to opam-publish after the '--'
+             argument, such as 'dune tools exec opam-publish -- --help').
   
   COMMON OPTIONS
          --help[=FMT] (default=auto)

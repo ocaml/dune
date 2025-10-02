@@ -151,5 +151,5 @@ discussions page][discussions] or [open a ticket on GitHub][issues].
 [discuss-ocaml-badge]: https://img.shields.io/discourse/topics?server=https%3A%2F%2Fdiscuss.ocaml.org%2F
 [discord]: https://discord.com/invite/cCYQbqN
 [discord-badge]: https://img.shields.io/discord/436568060288172042?logo=discord
-[twitter]: https://x.com/ocaml_org
+[twitter-url]: https://x.com/ocaml_org
 [twitter-badge]: https://img.shields.io/twitter/follow/ocaml_org

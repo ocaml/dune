@@ -40,6 +40,7 @@ val decode : t Decoder.t
 val encode : t Encoder.t
 val to_dyn : t -> Dyn.t
 val loc : t -> Loc.t
+val map_loc : f:(Loc.t -> Loc.t) -> t -> t
 val concat : ?loc:Loc.t -> t list -> t
 val when_ : ?loc:Loc.t -> blang -> t -> t
 val if_ : ?loc:Loc.t -> blang -> then_:t -> else_:t -> t
@@ -66,7 +67,8 @@ module Blang : sig
   val equal : t -> t -> bool
 
   val to_dyn : t -> Dyn.t
-  val remove_locs : blang -> blang
+  val remove_locs : t -> t
+  val map_loc : f:(Loc.t -> Loc.t) -> t -> t
   val true_ : t
   val false_ : t
   val decode : t Decoder.t

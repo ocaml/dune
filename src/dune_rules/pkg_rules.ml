@@ -71,6 +71,8 @@ module Package_universe = struct
     | Dev_tool dev_tool -> Tuple.T2.hash Int.hash Dune_pkg.Dev_tool.hash (1, dev_tool)
   ;;
 
+  let to_dyn = Dyn.opaque
+
   let context_name = function
     | Project_dependencies context_name -> context_name
     | Dev_tool _ ->
@@ -1096,30 +1098,35 @@ module DB = struct
     ; system_provided : Package.Name.Set.t
     }
 
-  let equal t { all; system_provided } =
+  let equal t t2 =
+    phys_equal t t2
+    ||
+    let { all; system_provided } = t2 in
     Package.Name.Map.equal ~equal:Lock_dir.Pkg.equal t.all all
     && Package.Name.Set.equal t.system_provided system_provided
   ;;
 
-  let hash { all; system_provided } =
-    let hash_all =
-      Package.Name.Map.foldi all ~init:0 ~f:(fun key value running_hash ->
-        Tuple.T3.hash
-          Package.Name.hash
-          Lock_dir.Pkg.hash
-          Int.hash
-          (key, value, running_hash))
-    in
-    Package.Name.Set.fold system_provided ~init:hash_all ~f:(fun name running_hash ->
-      Tuple.T2.hash Package.Name.hash Int.hash (name, running_hash))
-  ;;
+  let hash = `Do_not_hash
+  let _ = hash
+  (* Because t is large, hashing is expensive, so much so that hashing the db in Input.t
+     below slowed down the dune call in the test repo described in #12248 from 1s to
+     2s. *)
 
-  let get package_universe =
-    let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
-    let+ lock_dir = Package_universe.lock_dir package_universe
-    and+ solver_env = Lock_dir.Sys_vars.solver_env () in
-    let all = Dune_pkg.Lock_dir.packages_on_platform lock_dir ~platform:solver_env in
-    { all; system_provided = dune }
+  let get =
+    let memo =
+      Memo.create
+        "DB.get"
+        ~input:(module Package_universe)
+        (fun package_universe ->
+           let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
+           let+ lock_dir = Package_universe.lock_dir package_universe
+           and+ solver_env = Lock_dir.Sys_vars.solver_env () in
+           let all =
+             Dune_pkg.Lock_dir.packages_on_platform lock_dir ~platform:solver_env
+           in
+           { all; system_provided = dune })
+    in
+    fun packages_universe -> Memo.exec memo packages_universe
   ;;
 end
 
@@ -1140,13 +1147,14 @@ end = struct
       }
 
     let equal { db; package; universe } t =
-      DB.equal db t.db
-      && Package.Name.equal package t.package
+      Package.Name.equal package t.package
       && Package_universe.equal universe t.universe
+      && DB.equal db t.db
     ;;
 
     let hash { db; package; universe } =
-      Tuple.T3.hash DB.hash Package.Name.hash Package_universe.hash (db, package, universe)
+      let _ = db in
+      Tuple.T2.hash Package.Name.hash Package_universe.hash (package, universe)
     ;;
 
     let to_dyn = Dyn.opaque

@@ -8,7 +8,7 @@ module Exec = struct
     Cmd.group
       info
       (List.map
-         [ Ocamlformat; Ocamllsp; Ocamlearlybird; Odig ]
+         [ Ocamlformat; Ocamllsp; Ocamlearlybird; Odig; Opam_publish; Dune_release ]
          ~f:Tools_common.exec_command)
   ;;
 end

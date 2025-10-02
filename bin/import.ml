@@ -51,8 +51,8 @@ include struct
 
     let default_exits = List.map ~f:Exit_code.info Exit_code.all
 
-    let info ?docs ?doc ?man ?envs ?version name =
-      info ?docs ?doc ?man ?envs ?version ~exits:default_exits name
+    let info ?docs ?doc ?man_xrefs ?man ?envs ?version name =
+      info ?docs ?doc ?man_xrefs ?man ?envs ?version ~exits:default_exits name
     ;;
   end
 end

@@ -10,7 +10,8 @@ let man =
   ]
 ;;
 
-let info = Cmd.info "utop" ~doc ~man
+let man_xrefs = [ `Cmd "top" ]
+let info = Cmd.info "utop" ~man_xrefs ~doc ~man
 
 let lock_utop_if_dev_tool_enabled () =
   match Lazy.force Lock_dev_tool.is_enabled with

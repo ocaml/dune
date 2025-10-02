@@ -138,6 +138,7 @@ at compilation time.
 [![Discussions][discussions-badge]][discussions]
 [![Discuss OCaml][discuss-ocaml-badge]][discuss-ocaml]
 [![Discord][discord-badge]][discord]
+[![Twitter][twitter-badge]][twitter-url]
 
 If you have questions or issues about Dune, you can ask in [our GitHub
 discussions page][discussions] or [open a ticket on GitHub][issues].
@@ -150,3 +151,5 @@ discussions page][discussions] or [open a ticket on GitHub][issues].
 [discuss-ocaml-badge]: https://img.shields.io/discourse/topics?server=https%3A%2F%2Fdiscuss.ocaml.org%2F
 [discord]: https://discord.com/invite/cCYQbqN
 [discord-badge]: https://img.shields.io/discord/436568060288172042?logo=discord
+[twitter]: https://x.com/ocaml_org
+[twitter-badge]: https://img.shields.io/twitter/follow/ocaml_org

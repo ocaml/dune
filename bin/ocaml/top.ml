@@ -9,7 +9,7 @@ let man =
   ; `P
       {|Print a list of toplevel directives for including directories and loading cma files.|}
   ; `P
-      {|The output of $(b,dune top) should be evaluated in a toplevel
+      {|The output of $(b,dune ocaml top) should be evaluated in a toplevel
           to make a library available there.|}
   ; `Blocks Common.help_secs
   ]
@@ -91,7 +91,7 @@ module Module = struct
         "The module's source is evaluated in the toplevel without being sealed by the \
          mli."
     ; `P
-        {|The output of $(b,dune top) should be evaluated in a toplevel
+        {|The output of $(b,dune ocaml top) should be evaluated in a toplevel
           to make the module available there.|}
     ; `Blocks Common.help_secs
     ]

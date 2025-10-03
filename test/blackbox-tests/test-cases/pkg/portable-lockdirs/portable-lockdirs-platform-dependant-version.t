@@ -59,14 +59,16 @@ Define a package bar which conditionally depends on different versions of foo:
   - foo.2
 
 Build the project as if we were on linux and confirm that version 1 of foo was built:
-  $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=arm64 DUNE_CONFIG__OS_FAMILY=debian DUNE_CONFIG__OS_DISTRIBUTION=ubuntu DUNE_CONFIG__OS_VERSION=24.11 dune build
-  $ cat $pkg_root/foo/target/share/version
+  $ export DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=arm64 DUNE_CONFIG__OS_FAMILY=debian DUNE_CONFIG__OS_DISTRIBUTION=ubuntu DUNE_CONFIG__OS_VERSION=24.11
+  $ dune build
+  $ cat $pkg_root/$(dune pkg print-digest foo)/target/share/version
   1
 
   $ dune clean
 
 Build the project as if we were on macos and confirm that version 2 of foo was built:
-  $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=x86_64 DUNE_CONFIG__OS_FAMILY=homebrew DUNE_CONFIG__OS_DISTRIBUTION=homebrew DUNE_CONFIG__OS_VERSION=15.3.1 dune build
-  $ cat $pkg_root/foo/target/share/version
+  $ export DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=x86_64 DUNE_CONFIG__OS_FAMILY=homebrew DUNE_CONFIG__OS_DISTRIBUTION=homebrew DUNE_CONFIG__OS_VERSION=15.3.1
+  $ dune build
+  $ cat $pkg_root/$(dune pkg print-digest foo)/target/share/version
   2
 

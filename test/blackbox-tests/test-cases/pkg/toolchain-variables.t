@@ -84,5 +84,5 @@ We try to build the dependency to show that it echoes the wong path. Until we
 fix the problem, it shows the sandbox path
 
   $ XDG_CACHE_HOME=$PWD/fake-cache dune build @pkg-install 2>&1 | sed -E 's#[[:alnum:]]{32}#<hash>#g' | sed 's#[^ ]*_build#$TESTCASE_ROOT/_build#g'
-  $TESTCASE_ROOT/_build/.sandbox/<hash>/_private/default/.pkg/ocaml-base-compiler/target/share/ocaml-base-compiler
+  $TESTCASE_ROOT/_build/.sandbox/<hash>/_private/default/.pkg/ocaml-base-compiler.1-<hash>/target/share/ocaml-base-compiler
 

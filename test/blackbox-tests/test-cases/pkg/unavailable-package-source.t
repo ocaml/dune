@@ -21,7 +21,7 @@ Local file system
   does not exist
 
 Git
-  $ runtest "(fetch (url \"git+file://$PWD/dummy\"))" 2>&1 | sed "s#$(pwd)#PWD#"
+  $ runtest "(fetch (url \"git+file://$PWD/dummy\"))" 2>&1 | sed "s#$(pwd)#PWD#" | sanitize_pkg_digest foo.dev
   fatal: 'PWD/dummy' does not appear to be a git repository
   fatal: Could not read from remote repository.
   
@@ -29,8 +29,10 @@ Git
   and the repository exists.
   Error: Failed to run external command:
   'git ls-remote "file://PWD/dummy"'
-  -> required by _build/_private/default/.pkg/foo/source
-  -> required by _build/_private/default/.pkg/foo/target
+  -> required by
+     _build/_private/default/.pkg/foo.dev-DIGEST_HASH/source
+  -> required by
+     _build/_private/default/.pkg/foo.dev-DIGEST_HASH/target
   Hint: Check that this Git URL in the project configuration is correct:
   "file://PWD/dummy"
 

@@ -33,3 +33,14 @@ val setup_pkg_install_alias
   :  dir:Path.Build.t
   -> Context_name.t
   -> Build_config.Gen_rules.t
+
+module Pkg_digest : sig
+  type t
+
+  val to_string : t -> string
+end
+
+val pkg_digest_of_project_dependency
+  :  Context_name.t
+  -> Package.Name.t
+  -> Pkg_digest.t option Memo.t

@@ -17,7 +17,7 @@ The command will fail because the dev tool is not installed:
   [1]
 
   $ dune tools which ocamlformat --allow-not-installed
-  _build/_private/default/.dev-tool/ocamlformat/ocamlformat/target/bin/ocamlformat
+  _build/_private/default/.dev-tool/ocamlformat/target/bin/ocamlformat
 
 Install the dev tool:
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune tools exec ocamlformat
@@ -28,7 +28,7 @@ Install the dev tool:
 
 Now the command will succeed because the tool has been installed:
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune tools which ocamlformat
-  _build/_private/default/.dev-tool/ocamlformat/ocamlformat/target/bin/ocamlformat
+  _build/_private/default/.dev-tool/ocamlformat/target/bin/ocamlformat
 
 Make sure the file is actually there:
   $ test -f $(dune tools which ocamlformat)

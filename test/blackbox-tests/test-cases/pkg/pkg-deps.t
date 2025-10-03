@@ -27,9 +27,9 @@ We should be able to specify (package ..) deps on locally built packages.
   >  (deps (package foo)))
   > EOF
 
-  $ dune build @foo
-  $TESTCASE_ROOT/_build/_private/default/.pkg/foo/target/bin/foo
-  ../_private/default/.pkg/foo/target/bin/foo
+  $ dune build @foo 2>&1 | sanitize_pkg_digest foo.0.0.1
+  $TESTCASE_ROOT/_build/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/target/bin/foo
+  ../_private/default/.pkg/foo.0.0.1-DIGEST_HASH/target/bin/foo
 
 Now we define the external package using a dune project:
 
@@ -51,6 +51,6 @@ Now we define the external package using a dune project:
   > (source (copy $PWD/external_sources))
   > (build (run dune build @install --promote-install-files))
   > EOF
-  $ dune build @foo
-  $TESTCASE_ROOT/_build/_private/default/.pkg/foo/target/bin/foo
-  ../_private/default/.pkg/foo/target/bin/foo
+  $ dune build @foo 2>&1 | sanitize_pkg_digest foo.0.0.1
+  $TESTCASE_ROOT/_build/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/target/bin/foo
+  ../_private/default/.pkg/foo.0.0.1-DIGEST_HASH/target/bin/foo

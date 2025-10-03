@@ -16,12 +16,30 @@ pkg_root="_build/_private/default/.pkg"
 default_lock_dir="dune.lock"
 source_lock_dir="${default_lock_dir}"
 
+# Prints the directory containing the package target and source dirs within the
+# _build directory.
+get_build_pkg_dir() {
+  package_name=$1
+  slug=$($dune pkg print-slug $package_name)
+  if [ "$?" == "0" ]; then
+    echo "$pkg_root/$slug"
+  else
+    return 1
+  fi
+}
+
 build_pkg() {
-  $dune build $pkg_root/$1/target/
+  prefix=$(get_build_pkg_dir $1)
+  if [ "$?" == "0" ]; then
+    $dune build "$prefix/target"
+  else
+    return 1
+  fi
 }
 
 show_pkg() {
-  find $pkg_root/$1 | sort | sed "s#$pkg_root/$1##"
+  prefix="$(get_build_pkg_dir $1)"
+  find "$prefix" | sort | sed "s#$prefix##"
 }
 
 strip_sandbox() {
@@ -29,11 +47,12 @@ strip_sandbox() {
 }
 
 show_pkg_targets() {
-  find $pkg_root/$1/target | sort | sed "s#$pkg_root/$1/target##"
+  prefix="$(get_build_pkg_dir $1)/target"
+  find "$prefix" | sort | sed "s#$prefix##"
 }
 
 show_pkg_cookie() {
-  $dune internal dump $pkg_root/$1/target/cookie
+  $dune internal dump "$(get_build_pkg_dir $1)/target/cookie"
 }
 
 mock_packages="mock-opam-repository/packages"

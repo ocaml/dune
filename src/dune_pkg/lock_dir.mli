@@ -53,6 +53,23 @@ module Depexts : sig
     }
 end
 
+module Pkg_slug : sig
+  (** Information about a package which can be serialized and deserialized via
+      a filename. Includes a hash of a package's metadat and its transitive
+      dependency closure. If two packages have the same slug it is safe to use
+      the interchangeably, even if they reside in different lockdirs. *)
+  type t
+
+  val to_dyn : t -> Dyn.t
+  val equal : t -> t -> bool
+  val hash : t -> int
+  val to_string : t -> string
+  val of_string : string -> t
+  val name : t -> Package_name.t
+
+  include Comparable_intf.S with type key := t
+end
+
 module Pkg : sig
   type t =
     { build_command : Build_command.t Conditional_choice.t
@@ -62,6 +79,15 @@ module Pkg : sig
     ; info : Pkg_info.t
     ; exported_env : String_with_vars.t Action.Env_update.t list
     ; enabled_on_platforms : Solver_env.t list
+    ; slug : Pkg_slug.t Lazy.t option
+      (** [slug] contains a hash of this package's (other) fields as well as all
+          packages in this package's transitive dependency closure. While
+          computing this lazy value, the [slug] field of all package's in the
+          dependency closuer are also computed. This field is optional and is
+          only [Some _] if this package is part of a lockdir loaded from disk, as
+          all packages in this package's dependency closure will contribute to
+          this value.
+        *)
     }
 
   val remove_locs : t -> t
@@ -78,6 +104,11 @@ module Pkg : sig
     -> Package_version.t option
     -> lock_dir:Path.t
     -> Path.Source.t
+
+  (** This will raise an exception unless this package is part of a lockdir
+      that was loaded from the filesystem because it relies on information from
+      the dependency closure of this package. *)
+  val slug : t -> Pkg_slug.t
 end
 
 module Repositories : sig

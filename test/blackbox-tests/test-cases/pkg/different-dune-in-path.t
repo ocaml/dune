@@ -76,7 +76,7 @@ Make a fake dune exe:
   $ dune clean
 Try building in an environment where `dune` refers to the fake dune.
   $ DUNE=$(which dune)  # otherwise we would start by running the wrong dune
-  $ PATH=$PWD/bin:$PATH $DUNE build $pkg_root/foo/target/
+  $ PATH=$PWD/bin:$PATH $DUNE build $pkg_root/$($dune pkg print-slug foo)/target/
   Fake dune! (args: build -p foo @install)
-  $ PATH=$PWD/bin:$PATH $DUNE build $pkg_root/bar/target/
+  $ PATH=$PWD/bin:$PATH $DUNE build $pkg_root/$($dune pkg print-slug bar)/target/
   Fake dune! (args: build -p bar @install)

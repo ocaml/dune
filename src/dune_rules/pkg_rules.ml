@@ -10,6 +10,7 @@ include struct
   module Build_command = Lock_dir.Build_command
   module Display = Dune_engine.Display
   module Pkg_info = Lock_dir.Pkg_info
+  module Pkg_slug = Lock_dir.Pkg_slug
   module Depexts = Lock_dir.Depexts
 end
 
@@ -48,33 +49,33 @@ module Variable = struct
 end
 
 module Package_universe = struct
-  (* A type of group of packages that are co-installed. Different
-     package universes are unaware of each other. For example the
-     dependencies of the project and the dependencies of one of the dev
-     tools don't need to be mutually co-installable as they are in
-     different universes. *)
+  (* A type of group of packages that are co-installed. Multiple different
+     versions of a package may be co-installed into the same universe.
+
+     Note that a dev tool universe just contains the package for the dev tool
+     itself and not its dependencies, which are installed into the
+     [Dependencies _] universe for the default context so they may be
+     shared with the project's dependencies. *)
   type t =
-    | Project_dependencies of Context_name.t
+    | Dependencies of Context_name.t
     | Dev_tool of Dune_pkg.Dev_tool.t
 
   let equal a b =
     match a, b with
-    | Project_dependencies a, Project_dependencies b -> Context_name.equal a b
+    | Dependencies a, Dependencies b -> Context_name.equal a b
     | Dev_tool a, Dev_tool b -> Dune_pkg.Dev_tool.equal a b
     | _ -> false
   ;;
 
   let hash t =
     match t with
-    | Project_dependencies context_name ->
+    | Dependencies context_name ->
       Tuple.T2.hash Int.hash Context_name.hash (0, context_name)
     | Dev_tool dev_tool -> Tuple.T2.hash Int.hash Dune_pkg.Dev_tool.hash (1, dev_tool)
   ;;
 
-  let to_dyn = Dyn.opaque
-
   let context_name = function
-    | Project_dependencies context_name -> context_name
+    | Dependencies context_name -> context_name
     | Dev_tool _ ->
       (* Dev tools can only be built in the default context. *)
       Context_name.default
@@ -82,13 +83,13 @@ module Package_universe = struct
 
   let lock_dir t =
     match t with
-    | Project_dependencies ctx -> Lock_dir.get_exn ctx
+    | Dependencies ctx -> Lock_dir.get_exn ctx
     | Dev_tool dev_tool -> Lock_dir.of_dev_tool dev_tool
   ;;
 
   let lock_dir_path t =
     match t with
-    | Project_dependencies ctx -> Lock_dir.get_path ctx
+    | Dependencies ctx -> Lock_dir.get_path ctx
     | Dev_tool dev_tool ->
       (* CR-Leonidas-from-XIV: It probably isn't always [Some] *)
       dev_tool
@@ -96,6 +97,11 @@ module Package_universe = struct
       |> Path.source
       |> Option.some
       |> Memo.return
+  ;;
+
+  let to_dyn = function
+    | Dependencies ctx -> Dyn.variant "Dependencies" [ Context_name.to_dyn ctx ]
+    | Dev_tool dev_tool -> Dyn.variant "Dev_tool" [ Dune_pkg.Dev_tool.to_dyn dev_tool ]
   ;;
 end
 
@@ -151,20 +157,20 @@ module Paths = struct
     Path.Build.append_local t.extra_sources extra_source
   ;;
 
-  let make package_universe name =
-    let universe_root =
-      match (package_universe : Package_universe.t) with
+  let make slug universe =
+    let root =
+      match (universe : Package_universe.t) with
+      | Dependencies ctx ->
+        Path.Build.relative
+          (Path.Build.relative
+             (Path.Build.relative
+                Private_context.t.build_dir
+                (Context_name.to_string ctx))
+             ".pkg")
+          (Pkg_slug.to_string slug)
       | Dev_tool dev_tool -> Pkg_dev_tool.universe_install_path dev_tool
-      | Project_dependencies _ ->
-        let build_dir =
-          Path.Build.relative
-            Private_context.t.build_dir
-            (Context_name.to_string (Package_universe.context_name package_universe))
-        in
-        Path.Build.relative build_dir ".pkg"
     in
-    let root = Path.Build.relative universe_root (Package.Name.to_string name) in
-    of_root name ~root
+    of_root (Pkg_slug.name slug) ~root
   ;;
 
   let make_install_cookie target_dir ~relative = relative target_dir "cookie"
@@ -357,6 +363,7 @@ module Pkg = struct
     ; paths : Path.t Paths.t
     ; write_paths : Path.Build.t Paths.t
     ; files_dir : Path.Build.t option
+    ; slug : Pkg_slug.t
     ; mutable exported_env : string Env_update.t list
     }
 
@@ -499,7 +506,7 @@ end
 module Pkg_installed = struct
   type t = { cookie : Install_cookie.t Action_builder.t }
 
-  let of_paths (paths : _ Paths.t) =
+  let of_paths (paths : Path.t Paths.t) =
     let cookie =
       let open Action_builder.O in
       let path = Paths.install_cookie paths in
@@ -1102,16 +1109,153 @@ module Action_expander = struct
 end
 
 module DB = struct
+  module Pkg = Lock_dir.Pkg
+
+  module Pkgs_by_name = struct
+    type t = Pkg.t Package.Name.Map.t
+
+    let of_lock_dir (lock_dir : Dune_pkg.Lock_dir.t) ~platform : t =
+      Dune_pkg.Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform
+    ;;
+
+    let pkg_of_package_name t package_name = Package.Name.Map.find_exn t package_name
+
+    let slug_of_package_name t package_name =
+      let pkg = pkg_of_package_name t package_name in
+      Pkg.slug pkg
+    ;;
+  end
+
+  module Slug_table = struct
+    type dep =
+      { dep_pkg : Pkg.t
+      ; dep_loc : Loc.t
+      }
+
+    type entry =
+      { pkg : Pkg.t
+      ; deps : dep list
+      }
+
+    (* Associate each package's slug with the package and its dependencies.
+       The artifacts built from a package are stored in directories named after
+       the package's slug, so this association lets us map from the target name
+       (which includes the slug) to the package that must be built. The logic
+       for building packages takes a package slug to distinguish between
+       different versions of the same package. The package metadata in a
+       [Pkg.t] only include the names of dependencies, however building a
+       package's dependencies requires knowing the _slugs_ of its dependencies.
+       For this reason, each package's dependencies are stored alongside the
+       packages in the entries of a slug table. *)
+    type t = entry Pkg_slug.Map.t
+
+    let equal a b =
+      Pkg_slug.Map.equal a b ~equal:(fun (entry : entry) { pkg; deps } ->
+        Pkg.equal entry.pkg pkg
+        && List.equal
+             (fun (dep : dep) { dep_pkg; dep_loc } ->
+                Pkg.equal dep.dep_pkg dep_pkg && Loc.equal dep.dep_loc dep_loc)
+             entry.deps
+             deps)
+    ;;
+
+    let of_lock_dir (lock_dir : Dune_pkg.Lock_dir.t) ~platform =
+      let pkgs_by_name = Pkgs_by_name.of_lock_dir lock_dir ~platform in
+      let result =
+        Package.Name.Map.values pkgs_by_name
+        |> Pkg_slug.Map.of_list_map ~f:(fun (pkg : Pkg.t) ->
+          let slug = Pkg.slug pkg in
+          let deps =
+            Dune_pkg.Lock_dir.Conditional_choice.choose_for_platform pkg.depends ~platform
+            |> Option.value ~default:[]
+            |> List.filter_map ~f:(fun { Dune_pkg.Lock_dir.Dependency.name; loc } ->
+              if Package.Name.equal name Dune_pkg.Dune_dep.name
+              then None
+              else
+                Some
+                  { dep_pkg = Package.Name.Map.find_exn pkgs_by_name name; dep_loc = loc })
+          in
+          slug, { pkg; deps })
+      in
+      match result with
+      | Ok t -> t
+      | Error (_, _, pkg) ->
+        User_error.raise
+          [ Pp.textf
+              "Package %S appears multiple times in in lockdir"
+              (Package.Name.to_string pkg.info.name)
+          ]
+    ;;
+
+    (* Helper which is called when both tables have an entry with the same
+       slug. This happens when two lockdirs have a package in common and the
+       transitive dependency closure of the package is identical in both
+       lockdirs. Here we assert that the packages and their immediate
+       dependencies are identical as a sanity check. *)
+    let union_check
+          slug
+          ({ pkg = pkg_a; deps = deps_a } as entry)
+          { pkg = pkg_b; deps = deps_b }
+      =
+      if not (Pkg.equal (Pkg.remove_locs pkg_a) (Pkg.remove_locs pkg_b))
+      then
+        Code_error.raise
+          "Two packages with the same slug differ in their fields"
+          [ "slug", Pkg_slug.to_dyn slug
+          ; "pkg_a", Pkg.to_dyn pkg_a
+          ; "pkg_b", Pkg.to_dyn pkg_b
+          ];
+      List.combine deps_a deps_b
+      |> List.iter ~f:(fun (dep_a, dep_b) ->
+        if not (Pkg.equal (Pkg.remove_locs dep_a.dep_pkg) (Pkg.remove_locs dep_b.dep_pkg))
+        then
+          Code_error.raise
+            "Two packages with the same slug differ in their dependencies"
+            [ "slug", Pkg_slug.to_dyn slug
+            ; "pkg_a", Pkg.to_dyn pkg_a
+            ; "pkg_b", Pkg.to_dyn pkg_b
+            ; "dep_of_a", Pkg.to_dyn dep_a.dep_pkg
+            ; "dep_of_b", Pkg.to_dyn dep_b.dep_pkg
+            ]);
+      Some entry
+    ;;
+
+    let union = Pkg_slug.Map.union ~f:union_check
+    let union_all = Pkg_slug.Map.union_all ~f:union_check
+
+    let of_dev_tool_deps_if_lock_dir_exists dev_tool ~platform =
+      let+ lock_dir_opt = Lock_dir.of_dev_tool_if_lockdir_exists dev_tool in
+      Option.map lock_dir_opt ~f:(of_lock_dir ~platform)
+    ;;
+
+    let all_existing_dev_tools =
+      Memo.Lazy.create
+        ~name:"pkg-slug-table-all-existing-dev-tools"
+        ~human_readable_description:(fun () ->
+          Pp.text
+            "A map associating package slugs with package metadata with entries for all \
+             dev tools with lockdirs in the current project.")
+        (fun () ->
+           let* platform = Lock_dir.Sys_vars.solver_env () in
+           let+ xs =
+             Memo.List.map
+               Pkg_dev_tool.all
+               ~f:(of_dev_tool_deps_if_lock_dir_exists ~platform)
+           in
+           List.filter_opt xs |> union_all)
+    ;;
+  end
+
   type t =
-    { all : Lock_dir.Pkg.t Package.Name.Map.t
+    { slug_table : Slug_table.t
     ; system_provided : Package.Name.Set.t
     }
 
   let equal t t2 =
     phys_equal t t2
     ||
-    let { all; system_provided } = t2 in
-    Package.Name.Map.equal ~equal:Lock_dir.Pkg.equal t.all all
+    let { slug_table; system_provided } = t2 in
+    Slug_table.equal t.slug_table slug_table
     && Package.Name.Set.equal t.system_provided system_provided
   ;;
 
@@ -1121,7 +1265,8 @@ module DB = struct
      below slowed down the dune call in the test repo described in #12248 from 1s to
      2s. *)
 
-  let get =
+  (*
+     let get =
     let memo =
       Memo.create
         "DB.get"
@@ -1136,34 +1281,77 @@ module DB = struct
            { all; system_provided = dune })
     in
     fun packages_universe -> Memo.exec memo packages_universe
+  *)
+
+  let create ctx lock_dir platform =
+    let slug_table = Slug_table.of_lock_dir lock_dir ~platform in
+    let+ slug_table =
+      if Context_name.is_default ctx
+      then
+        (* Dev tools are built in the default context, so allow their
+           dependencies to be shared with the project's if it too is being
+           built in the default context. *)
+        let+ dev_tools_slug_table = Memo.Lazy.force Slug_table.all_existing_dev_tools in
+        Slug_table.union slug_table dev_tools_slug_table
+      else Memo.return slug_table
+    in
+    let system_provided = Package.Name.Set.singleton Dune_pkg.Dune_dep.name in
+    { slug_table; system_provided }
   ;;
+
+  let of_ctx ctx =
+    let* lock_dir = Lock_dir.get_exn ctx
+    and* platform = Lock_dir.Sys_vars.solver_env () in
+    create ctx lock_dir platform
+  ;;
+
+  (* Returns the db for the given context and the slug of the given package
+     within that context. *)
+  let of_project_pkg ctx pkg_name =
+    let* lock_dir = Lock_dir.get_exn ctx
+    and* platform = Lock_dir.Sys_vars.solver_env () in
+    let+ t = create ctx lock_dir platform in
+    let pkgs_by_name = Pkgs_by_name.of_lock_dir lock_dir ~platform in
+    let pkg_slug = Pkgs_by_name.slug_of_package_name pkgs_by_name pkg_name in
+    t, pkg_slug
+  ;;
+
+  (* Returns the db for the given dev tool and the slug for the dev tool's
+     package. *)
+  let of_dev_tool dev_tool =
+    let* lock_dir = Lock_dir.of_dev_tool dev_tool
+    and* platform = Lock_dir.Sys_vars.solver_env () in
+    let+ t = create Context_name.default lock_dir platform in
+    let pkgs_by_name = Pkgs_by_name.of_lock_dir lock_dir ~platform in
+    let pkg_name = Pkg_dev_tool.package_name dev_tool in
+    let pkg_slug = Pkgs_by_name.slug_of_package_name pkgs_by_name pkg_name in
+    t, pkg_slug
+  ;;
+
+  let find_by_slug t slug = Pkg_slug.Map.find t.slug_table slug
 end
 
 module rec Resolve : sig
-  val resolve
-    :  DB.t
-    -> Loc.t * Package.Name.t
-    -> Package_universe.t
-    -> [ `Inside_lock_dir of Pkg.t | `System_provided ] Memo.t
+  val resolve : DB.t -> Loc.t -> Pkg_slug.t -> Package_universe.t -> Pkg.t Memo.t
 end = struct
   open Resolve
 
   module Input = struct
     type t =
       { db : DB.t
-      ; package : Package.Name.t
+      ; slug : Pkg_slug.t
       ; universe : Package_universe.t
       }
 
-    let equal { db; package; universe } t =
-      Package.Name.equal package t.package
+    let equal { db; slug; universe } t =
+      Pkg_slug.equal slug t.slug
       && Package_universe.equal universe t.universe
       && DB.equal db t.db
     ;;
 
-    let hash { db; package; universe } =
+    let hash { db; slug; universe } =
       let _ = db in
-      Tuple.T2.hash Package.Name.hash Package_universe.hash (package, universe)
+      Tuple.T2.hash Pkg_slug.hash Package_universe.hash (slug, universe)
     ;;
 
     let to_dyn = Dyn.opaque
@@ -1184,31 +1372,40 @@ end = struct
     | Action a -> Build_command.Action (relocate a)
   ;;
 
-  let resolve_impl { Input.db; package = name; universe = package_universe } =
-    match Package.Name.Map.find db.all name with
+  let resolve_impl { Input.db; slug; universe = package_universe } =
+    match DB.find_by_slug db slug with
     | None -> Memo.return None
     | Some
-        ({ Lock_dir.Pkg.build_command
-         ; install_command
-         ; depends
-         ; info
-         ; exported_env
-         ; depexts
-         ; enabled_on_platforms = _
-         } as pkg) ->
-      assert (Package.Name.equal name info.name);
+        { pkg =
+            { Lock_dir.Pkg.build_command
+            ; install_command
+            ; depends = _
+            ; info
+            ; exported_env
+            ; depexts
+            ; enabled_on_platforms = _
+            ; slug = _
+            } as pkg
+        ; deps
+        } ->
+      assert (Package.Name.equal (Pkg_slug.name slug) info.name);
       let* platform = Lock_dir.Sys_vars.solver_env () in
       let choose_for_current_platform field =
         Dune_pkg.Lock_dir.Conditional_choice.choose_for_platform field ~platform
       in
-      let depends = choose_for_current_platform depends |> Option.value ~default:[] in
       let* depends =
-        Memo.parallel_map depends ~f:(fun dependency ->
-          resolve db (dependency.loc, dependency.name) package_universe
-          >>| function
-          | `Inside_lock_dir pkg -> Some pkg
-          | `System_provided -> None)
-        >>| List.filter_opt
+        Memo.parallel_map deps ~f:(fun { DB.Slug_table.dep_pkg; dep_loc } ->
+          let dep_slug = Lock_dir.Pkg.slug dep_pkg in
+          let package_universe =
+            match package_universe with
+            | Dev_tool _ ->
+              (* The dependencies of dev tools are installed into the default
+                 context so they may be shared with the project's
+                 dependencies. *)
+              Package_universe.Dependencies Context_name.default
+            | _ -> package_universe
+          in
+          resolve db dep_loc dep_slug package_universe)
       and+ files_dir =
         let* lock_dir =
           Package_universe.lock_dir_path package_universe >>| Option.value_exn
@@ -1263,7 +1460,7 @@ end = struct
             b)
       in
       let id = Pkg.Id.gen () in
-      let write_paths = Paths.make package_universe name ~relative:Path.Build.relative in
+      let write_paths = Paths.make slug package_universe ~relative:Path.Build.relative in
       let install_command = choose_for_current_platform install_command in
       let install_command = Option.map install_command ~f:relocate in
       let build_command = choose_for_current_platform build_command in
@@ -1304,6 +1501,7 @@ end = struct
         ; write_paths
         ; info
         ; files_dir
+        ; slug
         ; exported_env = []
         }
       in
@@ -1323,20 +1521,21 @@ end = struct
         "pkg-resolve"
         ~input:(module Input)
         ~human_readable_description:(fun t ->
-          Pp.textf "- package %s" (Package.Name.to_string t.package))
+          Pp.textf "- package %s" (Package.Name.to_string (Pkg_slug.name t.slug)))
         resolve_impl
     in
-    fun (db : DB.t) (loc, name) package_universe ->
-      if Package.Name.Set.mem db.system_provided name
-      then Memo.return `System_provided
-      else
-        Memo.exec memo { db; package = name; universe = package_universe }
-        >>| function
-        | Some s -> `Inside_lock_dir s
-        | None ->
-          User_error.raise
-            ~loc
-            [ Pp.textf "Unknown package %S" (Package.Name.to_string name) ]
+    fun (db : DB.t) loc slug package_universe ->
+      Memo.exec memo { db; slug; universe = package_universe }
+      >>| function
+      | Some s -> s
+      | None ->
+        User_error.raise
+          ~loc
+          [ Pp.textf
+              "Unknown package %S (looked in %s)"
+              (Package.Name.to_string (Pkg_slug.name slug))
+              (Package_universe.to_dyn package_universe |> Dyn.to_string)
+          ]
   ;;
 end
 
@@ -1985,7 +2184,7 @@ let setup_pkg_install_alias =
     (* Fetching the package target implies that we will also fetch the extra
        sources. *)
     let open Action_builder.O in
-    let project_deps : Package_universe.t = Project_dependencies ctx_name in
+    let project_deps : Package_universe.t = Dependencies ctx_name in
     let* packages =
       Action_builder.of_memo
         (let open Memo.O in
@@ -1993,9 +2192,12 @@ let setup_pkg_install_alias =
          and+ platform = Lock_dir.Sys_vars.solver_env () in
          Dune_pkg.Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform)
     in
-    Dune_lang.Package_name.Map.keys packages
+    Dune_lang.Package_name.Map.values packages
     |> List.map ~f:(fun pkg ->
-      Paths.make ~relative:Path.Build.relative project_deps pkg
+      Paths.make
+        ~relative:Path.Build.relative
+        (Lock_dir.Pkg.slug pkg)
+        (Dependencies ctx_name)
       |> Paths.target_dir
       |> Path.build)
     |> Action_builder.paths
@@ -2023,22 +2225,9 @@ let setup_pkg_install_alias =
     |> Gen_rules.rules_here
 ;;
 
-let setup_package_rules ~package_universe ~dir ~pkg_name : Gen_rules.result Memo.t =
-  let name = User_error.ok_exn (Package.Name.of_string_user_error (Loc.none, pkg_name)) in
-  let* db = DB.get package_universe in
-  let* pkg =
-    Resolve.resolve db (Loc.none, name) package_universe
-    >>| function
-    | `Inside_lock_dir pkg -> pkg
-    | `System_provided ->
-      User_error.raise
-        (* TODO loc *)
-        [ Pp.textf
-            "There are no rules for %S because it's set as provided by the system"
-            (Package.Name.to_string name)
-        ]
-  in
-  let paths = Paths.make package_universe name ~relative:Path.Build.relative in
+let setup_package_rules db ~package_universe ~dir ~slug : Gen_rules.result Memo.t =
+  let* pkg = Resolve.resolve db Loc.none slug package_universe in
+  let paths = Paths.make pkg.slug package_universe ~relative:Path.Build.relative in
   let+ directory_targets =
     let map =
       let target_dir = paths.target_dir in
@@ -2068,15 +2257,14 @@ let setup_rules ~components ~dir ctx =
      the value of [Pkg_dev_tool.install_path_base_dir_name]. *)
   assert (String.equal Pkg_dev_tool.install_path_base_dir_name ".dev-tool");
   match Context_name.is_default ctx, components with
-  | true, [ ".dev-tool"; pkg_name; pkg_dep_name ] ->
+  | true, [ ".dev-tool"; dev_tool_package_name ] ->
     (* only generate rules if dev-tools should be enabled *)
     (match Config.get Compile_time.lock_dev_tools with
      | `Enabled ->
-       setup_package_rules
-         ~package_universe:
-           (Dev_tool (Package.Name.of_string pkg_name |> Dune_pkg.Dev_tool.of_package_name))
-         ~dir
-         ~pkg_name:pkg_dep_name
+       let pkg_name = Package.Name.of_string dev_tool_package_name in
+       let dev_tool = Pkg_dev_tool.of_package_name pkg_name in
+       let* db, slug = DB.of_dev_tool (Dune_pkg.Dev_tool.of_package_name pkg_name) in
+       setup_package_rules db ~package_universe:(Dev_tool dev_tool) ~dir ~slug
      | `Disabled -> Memo.return @@ Gen_rules.make (Memo.return Rules.empty))
   | true, [ ".dev-tool" ] ->
     Gen_rules.make
@@ -2090,13 +2278,15 @@ let setup_rules ~components ~dir ctx =
         (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
       (Memo.return Rules.empty)
     |> Memo.return
-  | _, [ ".pkg"; pkg_name ] ->
+  | _, [ ".pkg"; slug_string ] ->
     (* Only generate pkg rules if there is a lock dir for that context *)
     let* lock_dir_active = Lock_dir.lock_dir_active ctx in
     (match lock_dir_active with
      | false -> Memo.return @@ Gen_rules.make (Memo.return Rules.empty)
      | true ->
-       setup_package_rules ~package_universe:(Project_dependencies ctx) ~dir ~pkg_name)
+       let slug = Pkg_slug.of_string slug_string in
+       let* db = DB.of_ctx ctx in
+       setup_package_rules db ~package_universe:(Dependencies ctx) ~dir ~slug)
   | _, ".pkg" :: _ :: _ ->
     Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
   | true, ".dev-tool" :: _ :: _ :: _ ->
@@ -2110,11 +2300,9 @@ let setup_rules ~components ~dir ctx =
   | _ -> Memo.return @@ Gen_rules.rules_here Gen_rules.Rules.empty
 ;;
 
-let db_project context = DB.get (Project_dependencies context)
-
-let resolve_pkg_project context pkg =
-  let* db = db_project context in
-  Resolve.resolve db pkg (Project_dependencies context)
+let resolve_pkg_project context (loc, package_name) =
+  let* db, slug = DB.of_project_pkg context package_name in
+  Resolve.resolve db loc slug (Dependencies context)
 ;;
 
 let ocaml_toolchain context =
@@ -2123,13 +2311,11 @@ let ocaml_toolchain context =
       "Loading OCaml toolchain from Lock directory for context %S"
       (Context_name.to_string context))
   @@ fun () ->
-  (let* lock_dir = Lock_dir.get_exn context in
-   match lock_dir.ocaml with
-   | None -> Memo.return `System_provided
-   | Some ocaml -> resolve_pkg_project context ocaml)
-  >>| function
-  | `System_provided -> None
-  | `Inside_lock_dir pkg ->
+  let* lock_dir = Lock_dir.get_exn context in
+  match lock_dir.ocaml with
+  | None -> Memo.return None
+  | Some ocaml ->
+    let+ pkg = resolve_pkg_project context ocaml in
     let toolchain =
       let open Action_builder.O in
       let transitive_deps = pkg :: Pkg.deps_closure pkg in
@@ -2155,19 +2341,18 @@ let ocaml_toolchain context =
 ;;
 
 let all_deps universe =
-  let* db = DB.get universe in
-  Dune_lang.Package_name.Map.values db.all
-  |> Memo.parallel_map ~f:(fun (package : Lock_dir.Pkg.t) ->
-    let package = package.info.name in
-    Resolve.resolve db (Loc.none, package) universe
-    >>| function
-    | `Inside_lock_dir pkg -> Some pkg
-    | `System_provided -> None)
-  >>| List.filter_opt
+  let* lock_dir = Package_universe.lock_dir universe
+  and* db = DB.of_ctx (Package_universe.context_name universe)
+  and* platform = Lock_dir.Sys_vars.solver_env () in
+  Dune_pkg.Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform
+  |> Dune_lang.Package_name.Map.values
+  |> Memo.parallel_map ~f:(fun pkg ->
+    let slug = Lock_dir.Pkg.slug pkg in
+    Resolve.resolve db Loc.none slug universe)
   >>| Pkg.top_closure
 ;;
 
-let all_project_deps context = all_deps (Project_dependencies context)
+let all_project_deps context = all_deps (Dependencies context)
 
 let which context =
   let artifacts_and_deps =
@@ -2197,7 +2382,7 @@ let ocamlpath universe =
     | String s -> Path.of_filename_relative_to_initial_cwd s)
 ;;
 
-let project_ocamlpath context = ocamlpath (Project_dependencies context)
+let project_ocamlpath context = ocamlpath (Dependencies context)
 let dev_tool_ocamlpath dev_tool = ocamlpath (Dev_tool dev_tool)
 let lock_dir_active = Lock_dir.lock_dir_active
 let lock_dir_path = Lock_dir.get_path
@@ -2209,12 +2394,9 @@ let dev_tool_env tool =
       "lock directory environment for dev tools %S"
       (Package.Name.to_string package_name))
   @@ fun () ->
-  let universe : Package_universe.t = Dev_tool tool in
-  let* db = DB.get universe in
-  Resolve.resolve db (Loc.none, package_name) universe
-  >>| function
-  | `System_provided -> assert false
-  | `Inside_lock_dir pkg -> Pkg.exported_env pkg
+  let* db, slug = DB.of_dev_tool tool in
+  let+ pkg = Resolve.resolve db Loc.none slug (Dev_tool tool) in
+  Pkg.exported_env pkg
 ;;
 
 let exported_env context =
@@ -2232,14 +2414,11 @@ let find_package ctx pkg =
   >>= function
   | false -> Memo.return None
   | true ->
-    resolve_pkg_project ctx (Loc.none, pkg)
-    >>| (function
-     | `System_provided -> Action_builder.return ()
-     | `Inside_lock_dir pkg ->
-       let open Action_builder.O in
+    let+ pkg = resolve_pkg_project ctx (Loc.none, pkg) in
+    Some
+      (let open Action_builder.O in
        let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
        ())
-    >>| Option.some
 ;;
 
 let all_filtered_depexts context =

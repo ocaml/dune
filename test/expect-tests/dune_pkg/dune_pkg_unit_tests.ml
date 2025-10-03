@@ -146,6 +146,7 @@ let empty_package name ~version =
       }
   ; exported_env = []
   ; enabled_on_platforms = []
+  ; slug = None
   }
 ;;
 
@@ -196,6 +197,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
                         }
                     ; exported_env = []
                     ; enabled_on_platforms = []
+                    ; slug = Some <opaque>
                     }
                 }
           ; "foo" :
@@ -215,6 +217,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
                         }
                     ; exported_env = []
                     ; enabled_on_platforms = []
+                    ; slug = Some <opaque>
                     }
                 }
           }
@@ -368,6 +371,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                         }
                     ; exported_env = [ { op = "="; var = "foo"; value = "bar" } ]
                     ; enabled_on_platforms = []
+                    ; slug = Some <opaque>
                     }
                 }
           ; "b" :
@@ -399,6 +403,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                         }
                     ; exported_env = []
                     ; enabled_on_platforms = []
+                    ; slug = Some <opaque>
                     }
                 }
           ; "c" :
@@ -429,6 +434,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                         }
                     ; exported_env = []
                     ; enabled_on_platforms = []
+                    ; slug = Some <opaque>
                     }
                 }
           }
@@ -506,6 +512,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
                         }
                     ; exported_env = []
                     ; enabled_on_platforms = []
+                    ; slug = Some <opaque>
                     }
                 }
           ; "b" :
@@ -525,6 +532,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
                         }
                     ; exported_env = []
                     ; enabled_on_platforms = []
+                    ; slug = Some <opaque>
                     }
                 }
           ; "c" :
@@ -544,6 +552,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
                         }
                     ; exported_env = []
                     ; enabled_on_platforms = []
+                    ; slug = Some <opaque>
                     }
                 }
           }

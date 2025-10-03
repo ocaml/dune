@@ -7,7 +7,15 @@ val get_with_path : Context_name.t -> (Path.t * t, User_message.t) result Memo.t
 val get : Context_name.t -> (t, User_message.t) result Memo.t
 val get_exn : Context_name.t -> t Memo.t
 val of_dev_tool : Dune_pkg.Dev_tool.t -> t Memo.t
+
+(** Returns [None] if the lockdir for the specified dev tool does not exist. *)
+val of_dev_tool_if_lockdir_exists : Dune_pkg.Dev_tool.t -> t option Memo.t
+
 val lock_dir_active : Context_name.t -> bool Memo.t
+
+(** Returns the path to the lockdir within the source tree (if any). *)
+val get_path_source : Context_name.t -> Path.Source.t option Memo.t
+
 val get_path : Context_name.t -> Path.t option Memo.t
 
 (** The default filesystem location where the lock dir is going to get created *)

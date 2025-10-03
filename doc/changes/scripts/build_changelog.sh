@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # Script name: build_changelog.sh
-# Description: this script generates the CHANGES.md file from the changes
-# directory. It removes the added files.
+# Description: this script updates the CHANGES.md file from the the files in
+# the changes directory, removing the files as it goes.
 # Author(s): The Dune team
 # Date: 2025-09-29
 #
@@ -36,7 +36,7 @@ generate_version_header() {
   add_newline
 }
 
-cat_files_in_dir_if_not_empty() {
+append_files_in_dir_if_not_empty() {
   subheader="$1"
   category="$2"
   dir="$doc_dir/$category"
@@ -72,9 +72,9 @@ touch "$output"
 generate_version_header
 
 # Extract the information from the changes/**/*.md files
-cat_files_in_dir_if_not_empty "Fixed" "fixed"
-cat_files_in_dir_if_not_empty "Added" "added"
-cat_files_in_dir_if_not_empty "Changed" "changed"
+append_files_in_dir_if_not_empty "Fixed" "fixed"
+append_files_in_dir_if_not_empty "Added" "added"
+append_files_in_dir_if_not_empty "Changed" "changed"
 
 # We remove the unreleased header and add the previous changelog to the new
 # changelog

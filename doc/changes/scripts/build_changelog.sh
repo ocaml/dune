@@ -46,19 +46,19 @@ append_files_in_dir_if_not_empty() {
     exit 1
   fi
 
-  list_of_files=$(find "$dir" -maxdepth 1 -type f -not -name ".*")
-  number_of_files=$(cat $list_of_files | wc -l)
+  list_of_files=$(find "$dir" -maxdepth 1 -type f -not -name '.*' -name '*.md')
 
-  if [ "$number_of_files" -ne 0 ]; then
-    echo "## $subheader" >> "$output"
-    add_newline
-
-    for file in $list_of_files; do
-        cat "$file" >> "$output"
-        add_newline
-        rm "$file"
-    done
+  if [ -z "$list_of_files" ] ; then
+    return 0
   fi
+
+  echo "## $subheader" >> "$output"
+  add_newline
+  for file in $list_of_files; do
+      cat "$file" >> "$output"
+      add_newline
+      rm "$file"
+  done
 }
 
 # Move to the Dune root directory

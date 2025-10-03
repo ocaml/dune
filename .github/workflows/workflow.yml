@@ -177,7 +177,7 @@ jobs:
             run_tests: true
           ## macos (x86)
           - ocaml-compiler: 5.3.x
-            os: macos-13
+            os: macos-15-intel
           ## MSVC
           - ocaml-compiler: ocaml-compiler.5.3.0,system-msvc
             os: windows-latest

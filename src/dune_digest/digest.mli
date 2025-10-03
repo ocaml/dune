@@ -27,8 +27,15 @@ module Feed : sig
   val tuple2 : 'a t -> 'b t -> ('a * 'b) t
   val tuple3 : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
 
+  (** Feed a digest into a hasher. *)
+  val digest : digest t
+
   (** Compute the digest of a value given a feed for the type of that value. *)
-  val digest : 'a t -> 'a -> digest
+  val compute_digest : 'a t -> 'a -> digest
+
+  (** Takes a function which feeds values into a hasher and returns a digest of
+      all the values fed in this way. *)
+  val compute_digest_with_hasher : (hasher -> unit) -> digest
 end
 
 include Comparable_intf.S with type key := t

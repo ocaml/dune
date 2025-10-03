@@ -146,6 +146,7 @@ let empty_package name ~version =
       }
   ; exported_env = []
   ; enabled_on_platforms = []
+  ; slug = None
   }
 ;;
 

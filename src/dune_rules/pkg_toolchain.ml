@@ -25,18 +25,7 @@ let pkg_dir (pkg : Dune_pkg.Lock_dir.Pkg.t) =
      modified package won't be used in other projects (unless the
      corresponding lockfile in those projects is modified in the same
      way). *)
-  let dir_name =
-    (* TODO should include resolved deps *)
-    let pkg_digest =
-      Dune_digest.Feed.digest Lock_dir.Pkg.digest_feed (Lock_dir.Pkg.remove_locs pkg)
-    in
-    (* A hash of the fields of a package that affect its installed artifacts *)
-    sprintf
-      "%s.%s-%s"
-      (Package.Name.to_string pkg.info.name)
-      (Package_version.to_string pkg.info.version)
-      (Dune_digest.to_string pkg_digest)
-  in
+  let dir_name = Lock_dir.Pkg.slug pkg |> Dune_pkg.Lock_dir.Pkg_slug.to_string in
   Path.Outside_build_dir.relative (base_dir ()) dir_name
 ;;
 

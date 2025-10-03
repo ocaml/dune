@@ -184,10 +184,17 @@ let of_dev_tool dev_tool =
   let path = Dune_pkg.Lock_dir.dev_tool_lock_dir_path dev_tool in
   Fs_memo.dir_exists (Path.as_outside_build_dir_exn path)
   >>= function
-  | true -> Load.load_exn path
+  | true ->
+    let+ lock_dir = Load.load_exn path in
+    Ok lock_dir
   | false ->
-    User_error.raise [ Pp.textf "%s does not exist" (Path.to_string_maybe_quoted path) ]
+    Memo.return
+      (Error
+         (User_message.make
+            [ Pp.textf "%s does not exist" (Path.to_string_maybe_quoted path) ]))
 ;;
+
+let of_dev_tool_exn dev_tool = of_dev_tool dev_tool >>| User_error.ok_exn
 
 let lock_dir_active ctx =
   let open Memo.O in

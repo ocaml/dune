@@ -138,12 +138,36 @@ you have the rights to submit this work under the same open source license.
 Updating the Changelog
 ----------------------
 
-In Dune, the Changelog is in `CHANGES.md`. As they are many contributions at
-the same time and to prevent an infinite cycle of rebase, the `CHANGES.md` file
-is only updated when releasing Dune. To keep track of the changes, they must be
-recorded inside `doc/changes/`. The name of the file is `<PR number>.md`.
-Depending on the nature of the change, it can live inside three categories:
-`added`, `changed`, `fixed`, where:
-- `added` records every new feature or behaviour inside of Dune
+In Dune, the Changelog is in `CHANGES.md`. As there are many contributions at
+the same time and to prevent an infinite cycle of rebases, the `CHANGES.md`
+file is only updated when releasing Dune. Unreleased changes are recorded
+inside `doc/changes/`. The name of the file is `<PR number>.md`. Depending on
+the nature of the change, it can live inside three categories: `added`,
+`changed`, `fixed`, where:
+- `added` records every new feature or behaviour visible to users
 - `changed` records a difference of behaviour with the previous version
 - `fixed` records any change that restores the behaviour as expected
+
+An entry follows this format where `fixes` is optional if it is not linked to
+any issue:
+
+```markdown
+- A small description about what this entry is doing and what this changes
+  brings to the users. Try to imagine what people will understand when reading
+  the changelog. (#<PR number>, fixes #<issue number>, @author1, @author2)
+```
+
+The entry must fit in 80 columns of text. Most of the editors allows formatting
+the size of the text using a column size.
+
+In Dune, we try to avoid breaking changes by versioning our features with a
+`(lang dune <version>)` system. However, if the change you introduce is a
+breaking change, the entry must start with **BREAKING CHANGE:**. The entry
+would be:
+
+```markdown
+- BREAKING CHANGE: A small description about what this entry is doing and what
+  this changes brings to the users. Try to imagine what people will understand
+  when reading the changelog. (#<PR number>, fixes #<issue number>, @author1,
+  @author2)
+```

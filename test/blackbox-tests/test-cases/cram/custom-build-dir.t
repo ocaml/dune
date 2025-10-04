@@ -21,7 +21,10 @@ path
     $TESTCASE_ROOT/tmp/default/foo.t.corrected
     to foo.t.
   [1]
-  $ sed -E '/\(pid: [0-9]+\)/{s//(pid: ###)/; s/instance.*/.../g; q;}' foo.t
+  $ sed -E 's/[0-9]+\)/###)/g' foo.t
     $ echo "  $ echo bar" >bar.t
     $ dune runtest
-    Error: A running dune (pid: ###) ...
+    Error: A running dune (pid: ###) instance has locked the build directory.
+    If this is not the case, please delete
+    "$TESTCASE_ROOT/tmp/.lock".
+    [1]

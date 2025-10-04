@@ -19,3 +19,4 @@ val lock_exn : timeout:float option -> unit
 val unlock : unit -> unit
 
 val write_pid : Unix.file_descr -> unit
+val raise_other_dune_locked : Lock_held_by.t -> 'a

@@ -119,19 +119,22 @@ let lock ~timeout =
         Error lock_held_by)
 ;;
 
+let raise_other_dune_locked lock_held_by =
+  User_error.raise
+    [ Pp.textf
+        "A running dune%s instance has locked the build directory. If this is not the \
+         case, please delete %S."
+        (match lock_held_by with
+         | Lock_held_by.Unknown -> ""
+         | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
+        (Path.Build.to_string_maybe_quoted lock_file)
+    ]
+;;
+
 let lock_exn ~timeout =
   match lock ~timeout with
   | Ok () -> ()
-  | Error lock_held_by ->
-    User_error.raise
-      [ Pp.textf
-          "A running dune%s instance has locked the build directory. If this is not the \
-           case, please delete %S."
-          (match lock_held_by with
-           | Unknown -> ""
-           | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
-          (Path.Build.to_string_maybe_quoted lock_file)
-      ]
+  | Error lock_held_by -> raise_other_dune_locked lock_held_by
 ;;
 
 let unlock () =

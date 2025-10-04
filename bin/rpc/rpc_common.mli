@@ -7,49 +7,35 @@ val active_server_exn : unit -> Dune_rpc.Where.t
 (** Raise an RPC response error. *)
 val raise_rpc_error : Dune_rpc.Response.Error.t -> 'a
 
-(** Make a request and raise an exception if the preparation for the request
-    fails in any way. Returns an [Error] if the response errors. *)
-val request_exn
-  :  Dune_rpc_client.Client.t
-  -> ('a, 'b) Dune_rpc.Decl.request
-  -> 'a
-  -> ('b, Dune_rpc.Response.Error.t) result Fiber.t
-
 (** Cmdliner term for a generic RPC client. *)
 val client_term : Common.Builder.t -> (unit -> 'a Fiber.t) -> 'a
 
 (** Cmdliner argument for a wait flag. *)
 val wait_term : bool Cmdliner.Term.t
 
+type (_, _) message_kind =
+  | Request : ('a, 'b) Dune_rpc.Decl.Request.witness -> ('a, 'b) message_kind
+  | Notification : 'a Dune_rpc.Decl.Notification.witness -> ('a, unit) message_kind
+
 (** Send a request to the RPC server. If [wait], it will poll forever until a server is listening.
-    Should be scheduled by a scheduler that does not come with a RPC server on its own. *)
-val fire_request
+    Should be scheduled by a scheduler that does not come with a RPC server on its own.
+
+    [warn_forwarding] defaults to true, warns the user that since a RPC server is running, some arguments are ignored. 
+    [lock_held_by] default to [Unknown], is only used to allow error messages to print the PID. *)
+val fire_message
   :  name:string
   -> wait:bool
-  -> ('a, 'b) Dune_rpc.Decl.request
+  -> ?warn_forwarding:bool
+  -> ?lock_held_by:Dune_util.Global_lock.Lock_held_by.t
+  -> Common.Builder.t
+  -> ('a, 'b) message_kind
   -> 'a
-  -> ('b, Dune_rpc.Response.Error.t) result Fiber.t
+  -> 'b Fiber.t
 
 val wrap_build_outcome_exn
   :  print_on_success:bool
-  -> ('a
-      -> (Dune_rpc.Build_outcome_with_diagnostics.t, Dune_rpc.Response.Error.t) result
-           Fiber.t)
-  -> 'a
+  -> Dune_rpc.Build_outcome_with_diagnostics.t
   -> unit
-  -> unit Fiber.t
 
 (** Warn the user that since a RPC server is running, some arguments are ignored. *)
 val warn_ignore_arguments : Dune_util.Global_lock.Lock_held_by.t -> unit
-
-(**  Schedule a fiber to run via RPC, wrapping any errors. *)
-val run_via_rpc
-  :  builder:Common.Builder.t
-  -> common:Common.t
-  -> config:Dune_config_file.Dune_config.t
-  -> Dune_util.Global_lock.Lock_held_by.t
-  -> ('a
-      -> (Dune_rpc.Build_outcome_with_diagnostics.t, Dune_rpc.Response.Error.t) result
-           Fiber.t)
-  -> 'a
-  -> unit

@@ -1,12 +1,9 @@
 open Import
 
-let build ~wait targets =
-  let targets =
-    List.map targets ~f:(fun target ->
-      let sexp = Dune_lang.Dep_conf.encode target in
-      Dune_lang.to_string sexp)
-  in
-  Rpc_common.fire_request ~name:"build" ~wait Dune_rpc_impl.Decl.build targets
+let prepare_targets targets =
+  List.map targets ~f:(fun target ->
+    let sexp = Dune_lang.Dep_conf.encode target in
+    Dune_lang.to_string sexp)
 ;;
 
 let term =
@@ -17,14 +14,18 @@ let term =
   Rpc_common.client_term builder
   @@ fun () ->
   let open Fiber.O in
-  let+ response =
-    Rpc_common.fire_request ~name:"build" ~wait Dune_rpc_impl.Decl.build targets
+  let+ build_outcome =
+    Rpc_common.fire_message
+      ~name:"build"
+      ~wait
+      builder
+      (Rpc_common.Request (Dune_rpc.Decl.Request.witness Dune_rpc_impl.Decl.build))
+      targets
   in
-  match response with
-  | Error (error : Dune_rpc.Response.Error.t) ->
-    Printf.eprintf "Error: %s\n%!" (Dyn.to_string (Dune_rpc.Response.Error.to_dyn error))
-  | Ok Success -> print_endline "Success"
-  | Ok (Failure _) -> print_endline "Failure"
+  match build_outcome with
+  (* This is the only output that the client will see, details are in the server. *)
+  | Success -> print_endline "Success"
+  | Failure _ -> print_endline "Failure"
 ;;
 
 let info =

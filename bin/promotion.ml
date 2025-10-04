@@ -62,16 +62,20 @@ module Apply = struct
         let+ () = Fiber.return () in
         Diff_promotion.promote_files_registered_in_last_run files_to_promote)
     | Error lock_held_by ->
-      Rpc.Rpc_common.run_via_rpc
-        ~builder
-        ~common
-        ~config
-        lock_held_by
-        (Rpc.Rpc_common.fire_request
-           ~name:"promote_many"
-           ~wait:true
-           Dune_rpc_private.Procedures.Public.promote_many)
-        files_to_promote
+      Scheduler.go_without_rpc_server ~common ~config (fun () ->
+        let open Fiber.O in
+        let+ build_outcome =
+          Rpc.Rpc_common.fire_message
+            ~name:"promote_many"
+            ~wait:false
+            ~lock_held_by
+            builder
+            (Rpc.Rpc_common.Request
+               (Dune_rpc.Decl.Request.witness
+                  Dune_rpc_private.Procedures.Public.promote_many))
+            files_to_promote
+        in
+        Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:true build_outcome)
   ;;
 
   let command = Cmd.v info term

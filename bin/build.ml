@@ -92,11 +92,15 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
   in
   Dune_engine.Scheduler.Run.poll_passive
     ~get_build_request:
-      (let+ (Build (targets, ivar)) = Dune_rpc_impl.Server.pending_build_action rpc in
+      (let+ pending_action = Dune_rpc_impl.Server.pending_action rpc in
        let request setup =
-         Target.interpret_targets (Common.root common) config setup targets
+         let root = Common.root common in
+         match pending_action.kind with
+         | Build targets -> Target.interpret_targets root config setup targets
+         | Runtest dir_or_cram_test_paths ->
+           Runtest_common.make_request ~dir_or_cram_test_paths ~to_cwd:root.to_cwd setup
        in
-       run_build_system ~common ~request, ivar)
+       run_build_system ~common ~request, pending_action.outcome)
 ;;
 
 let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
@@ -136,14 +140,6 @@ let run_build_command ~(common : Common.t) ~config ~request =
     ~common
     ~config
     ~request
-;;
-
-let build_via_rpc_server ~print_on_success ~targets =
-  Rpc.Rpc_common.wrap_build_outcome_exn
-    ~print_on_success
-    (Rpc.Group.Build.build ~wait:true)
-    targets
-    ()
 ;;
 
 let build =
@@ -198,13 +194,20 @@ let build =
          an RPC server in the background to schedule the fiber which will
          perform the RPC call.
       *)
-      Rpc.Rpc_common.run_via_rpc
-        ~builder
-        ~common
-        ~config
-        lock_held_by
-        (Rpc.Group.Build.build ~wait:true)
-        targets
+      Scheduler.go_without_rpc_server ~common ~config (fun () ->
+        let open Fiber.O in
+        let targets = Rpc.Group.Build.prepare_targets targets in
+        let+ build_outcome =
+          Rpc.Rpc_common.fire_message
+            ~name:"build"
+            ~wait:false
+            ~lock_held_by
+            builder
+            (Rpc.Rpc_common.Request
+               (Dune_rpc.Decl.Request.witness Dune_rpc_impl.Decl.build))
+            targets
+        in
+        Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:true build_outcome)
     | Ok () ->
       let request setup =
         Target.interpret_targets (Common.root common) config setup targets

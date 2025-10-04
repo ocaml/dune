@@ -153,7 +153,15 @@ let subst_file path ~map opam_package_files =
       | None, Some x -> Some x
       | Some x, Some y -> Some (x ^ "\n" ^ y)
     in
-    Option.iter contents ~f:(Io.write_file path)
+    (match contents with
+     | None -> ()
+     | Some contents ->
+       (try Io.write_file path contents with
+        | Unix.Unix_error (Unix.EACCES, _, _) ->
+          let Unix.{ st_perm; _ } = Path.stat_exn path in
+          Path.chmod path ~mode:(Path.Permissions.add Path.Permissions.write st_perm);
+          Io.write_file path contents;
+          Path.chmod path ~mode:st_perm))
 ;;
 
 (* Extending the Dune_project APIs, but adding capability to modify *)

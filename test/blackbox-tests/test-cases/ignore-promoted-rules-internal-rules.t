@@ -11,6 +11,9 @@ Reported in #8417
   > EOF
 
   $ dune build foo.opam
+  $ dune_cmd stat permissions foo.opam
+  444
+  $ chmod +w foo.opam
   $ echo foobar_extra >> foo.opam
   $ grep foobar_extra foo.opam
   foobar_extra

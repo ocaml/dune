@@ -30,6 +30,7 @@ type t =
   ; dune_version : Dune_lang.Syntax.Version.t
   ; virtual_modules : Ordered_set_lang.Unexpanded.t option
   ; implements : (Loc.t * Lib_name.t) option
+  ; parameters : (Loc.t * Lib_name.t) list
   ; default_implementation : (Loc.t * Lib_name.t) option
   ; private_modules : Ordered_set_lang.Unexpanded.t option
   ; stdlib : Ocaml_stdlib.t option

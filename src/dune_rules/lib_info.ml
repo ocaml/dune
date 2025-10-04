@@ -318,6 +318,7 @@ type 'path t =
   ; jsoo_runtime : 'path list
   ; wasmoo_runtime : 'path list
   ; requires : Lib_dep.t list
+  ; parameters : (Loc.t * Lib_name.t) list
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
   ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
   ; enabled : Enabled_status.t Memo.t
@@ -345,6 +346,7 @@ let version t = t.version
 let dune_version t = t.dune_version
 let loc t = t.loc
 let requires t = t.requires
+let parameters t = t.parameters
 let preprocess t = t.preprocess
 let ppx_runtime_deps t = t.ppx_runtime_deps
 let sub_systems t = t.sub_systems
@@ -404,6 +406,7 @@ let create
       ~main_module_name
       ~sub_systems
       ~requires
+      ~parameters
       ~foreign_objects
       ~public_headers
       ~plugins
@@ -441,6 +444,7 @@ let create
   ; version
   ; synopsis
   ; requires
+  ; parameters
   ; main_module_name
   ; foreign_objects
   ; public_headers
@@ -537,6 +541,7 @@ let to_dyn
       ; version
       ; synopsis
       ; requires
+      ; parameters
       ; main_module_name
       ; foreign_objects
       ; public_headers
@@ -589,6 +594,7 @@ let to_dyn
     ; "jsoo_runtime", list path jsoo_runtime
     ; "wasmoo_runtime", list path wasmoo_runtime
     ; "requires", list Lib_dep.to_dyn requires
+    ; "parameters", list (snd Lib_name.to_dyn) parameters
     ; "ppx_runtime_deps", list (snd Lib_name.to_dyn) ppx_runtime_deps
     ; "virtual_deps", list (snd Lib_name.to_dyn) virtual_deps
     ; "dune_version", option Dune_lang.Syntax.Version.to_dyn dune_version
@@ -627,6 +633,7 @@ let for_dune_package
       ~foreign_objects
       ~obj_dir
       ~implements
+      ~parameters
       ~default_implementation
       ~sub_systems
       ~melange_runtime_deps
@@ -658,6 +665,7 @@ let for_dune_package
   ; foreign_objects
   ; obj_dir
   ; implements
+  ; parameters
   ; default_implementation
   ; sub_systems
   ; orig_src_dir

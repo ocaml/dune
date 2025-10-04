@@ -128,6 +128,7 @@ let select_lock_dir lock_dir_selection =
         ]
     | Some variable_value -> [ Value.String variable_value ]
   in
+  (* TODO unclear whether this is the right directory *)
   Workspace.Lock_dir_selection.eval lock_dir_selection ~dir:workspace.dir ~f:expander
 ;;
 
@@ -167,6 +168,25 @@ let dev_tool_lock_dir dev_tool =
 let lock_dir_of_source p =
   let local = Path.Source.to_local p in
   Path.Build.append_local path_prefix local |> Path.build
+;;
+
+let dev_tool_lock_dir_path dev_tool =
+  let tool = dev_tool |> Dev_tool.package_name |> Package_name.to_string in
+  let ctx_name = Context_name.default in
+  Path.Build.L.relative
+    Private_context.t.build_dir
+    [ Context_name.to_string ctx_name; ".dev-tool-lock"; tool; "content" ]
+  |> Path.build
+;;
+
+let enabled =
+  match !Clflags.ignore_lock_dir with
+  | true -> Memo.return false
+  | false ->
+    let+ workspace = Workspace.workspace () in
+    (match workspace.config.pkg_enabled with
+     | Set (_, `Enabled) -> true
+     | Set (_, `Disabled) | Unset -> false)
 ;;
 
 let get_path ctx_name =
@@ -232,19 +252,19 @@ let get ctx = get_with_path ctx >>| Result.map ~f:snd
 let get_exn ctx = get ctx >>| User_error.ok_exn
 
 let of_dev_tool dev_tool =
-  let source_path = dev_tool_source_lock_dir dev_tool in
-  Load.load_exn (Path.source source_path)
+  let path = dev_tool_lock_dir_path dev_tool in
+  Load.load_exn path
 ;;
 
 let lock_dir_active ctx =
-  let open Memo.O in
-  if !Clflags.ignore_lock_dir
-  then Memo.return false
-  else
-    let* workspace = Workspace.workspace () in
-    match workspace.config.pkg_enabled with
-    | Set (_, `Disabled) -> Memo.return false
-    | Set (_, `Enabled) | Unset -> get_path ctx >>| Option.is_some
+  let* enabled = enabled in
+  match enabled with
+  | false -> Memo.return false
+  | true ->
+    get_path ctx
+    >>| (function
+     | None -> false
+     | Some _path -> true)
 ;;
 
 let source_kind (source : Dune_pkg.Source.t) =

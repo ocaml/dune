@@ -9,6 +9,11 @@ val get_exn : Context_name.t -> t Memo.t
 val of_dev_tool : Dune_pkg.Dev_tool.t -> t Memo.t
 val lock_dir_active : Context_name.t -> bool Memo.t
 val get_path : Context_name.t -> Path.t option Memo.t
+val enabled : bool Memo.t
+
+(** Returns the path to the lockdir that will be used to lock the
+    given dev tool *)
+val dev_tool_lock_dir_path : Dune_pkg.Dev_tool.t -> Path.t
 
 (** The default filesystem location where the lock dir is going to get created *)
 val default_path : Path.t

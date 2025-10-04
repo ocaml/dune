@@ -48,8 +48,9 @@ the logic which stores solver vars in lockdir metadata in this case.
   > }
 
 Make a workspace file which sets some of the variables.
-  $ cat >dune-workspace <<EOF
-  > (lang dune 3.8)
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (lock_dir
   >  (path dune.lock)
   >  (repositories mock)

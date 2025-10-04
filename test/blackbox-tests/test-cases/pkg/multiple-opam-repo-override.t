@@ -26,7 +26,8 @@ Multiple opam repositories that define the same package:
   > `
 
   $ cat >dune-workspace <<EOF
-  > (lang dune 3.11)
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (lock_dir
   >  (repositories repo1 repo2))
   > $repos12

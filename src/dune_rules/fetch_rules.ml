@@ -189,10 +189,7 @@ let find_checksum, find_url =
           Dune_pkg.Dev_tool.all
           ~init:(Checksum.Map.empty, Digest.Map.empty)
           ~f:(fun acc dev_tool ->
-            Source_tree.find_dir (Lock_dir.dev_tool_source_lock_dir dev_tool)
-            >>= function
-            | None -> Memo.return acc
-            | Some _ -> Lock_dir.of_dev_tool dev_tool >>| add_checksums_and_urls acc)
+            Lock_dir.of_dev_tool dev_tool >>| add_checksums_and_urls acc)
       in
       Per_context.list ()
       >>= Memo.parallel_map ~f:(fun ctx_name ->

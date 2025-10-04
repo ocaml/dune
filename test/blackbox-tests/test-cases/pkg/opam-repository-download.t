@@ -45,7 +45,7 @@ Make sure lock.dune contains the repo hash:
 Now try it with an a path. Given it is not a git URL, it can't be reproduced on
 other systems and thus shouldn't be included.
 
-  $ rm -r ${default_lock_dir} dune-workspace
+  $ rm -r dune-workspace
   $ add_mock_repo_if_needed "file://$(pwd)/mock-opam-repository"
   $ dune pkg lock
   Solution for dune.lock:
@@ -67,7 +67,7 @@ in the repo and make sure it locks the older version.
   $ NEW_REPO_HASH=$(git rev-parse HEAD)
   $ cd ..
 
-  $ rm -r ${default_lock_dir} dune-workspace
+  $ rm -r dune-workspace
   $ add_mock_repo_if_needed "git+file://$(pwd)/mock-opam-repository#${REPO_HASH}"
   $ dune pkg lock
   Solution for dune.lock:

@@ -20,7 +20,7 @@ let ooi_deps
       (sourced_module : Modules.Sourced_module.t)
   =
   let m = Modules.Sourced_module.to_module sourced_module in
-  let* write, read =
+  let* read =
     let unit =
       let cm_kind =
         match ml_kind with
@@ -50,8 +50,7 @@ let ooi_deps
          then None
          else Module_name.Unique.Map.find vlib_obj_map dep))
   in
-  let+ () = add_rule write
-  and+ () =
+  let+ () =
     add_rule
       (let target =
          Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) |> Option.value_exn

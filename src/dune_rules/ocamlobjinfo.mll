@@ -39,10 +39,6 @@ and impls acc = parse
 let parse s = ocamlobjinfo empty (Lexing.from_string s)
 
 let rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~unit =
-  let output =
-    Path.Build.relative dir (Path.basename unit)
-    |> Path.Build.extend_basename ~suffix:".ooi-deps"
-  in
   let no_approx =
     if Ocaml.Version.ooi_supports_no_approx ocaml.version then
       [Command.Args.A "-no-approx"]
@@ -55,14 +51,26 @@ let rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~unit =
     else
       []
   in
-  ( Command.run ?sandbox
+  let observing_facts =
+    Dep.Facts.singleton (Dep.file unit) (Dep.Fact.nothing)
+  in
+  let open Action_builder.O in
+  let* action =
+    Command.run' ?sandbox
       ~dir:(Path.build dir) ocaml.ocamlobjinfo
       (List.concat
          [ no_approx
          ; no_code
          ; [ Dep unit ]
          ])
-      ~stdout_to:output
-  , Action_builder.map ~f:parse (Action_builder.contents (Path.build output))
-  )
+  in
+  (Dune_engine.Build_system.execute_action_stdout
+    ~observing_facts
+    { Rule.Anonymous_action.action
+    ; loc = Loc.none
+    ; dir
+    ; alias = None
+    }
+  |> Action_builder.of_memo)
+  >>| parse
 }

@@ -42,10 +42,13 @@ Transitive deps file includes the alias module
   > let hello = "hello from sub"
   > EOF
 
-  $ DUNE_SANDBOX=none dune build
   $ DUNE_SANDBOX=symlink dune build
-  File "lib/bar.ml", line 1, characters 12-27:
-  1 | let hello = Sub.Hello.hello ^ Sub.world
-                  ^^^^^^^^^^^^^^^
-  Error: The module Sub.Hello is an alias for module Foo__Sub__.Hello, which is missing
-  [1]
+
+  $ cat _build/default/lib/.foo.objs/foo__Bar.impl.d
+  lib/bar.ml: Sub
+  $ cat _build/default/lib/.foo.objs/foo__Bar.impl.all-deps
+  foo__Sub
+  foo__Sub__
+  foo__Sub__Hello
+
+

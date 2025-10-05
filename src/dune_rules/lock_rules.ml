@@ -2,10 +2,6 @@ open Import
 open Memo.O
 module Gen_rules = Build_config.Gen_rules
 
-let rule ?loc { Action_builder.With_targets.build; targets } =
-  Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
-;;
-
 let action_builder_with_dir_targets ~directory_targets =
   let targets =
     Targets.create
@@ -33,23 +29,21 @@ let setup_copy_rules ~dir:target ~lock_dir =
   let+ deps, files = Source_deps.files (Path.source lock_dir) in
   let directory_targets, rules =
     match Path.Set.is_empty files with
-    | true -> Path.Build.Map.empty, Memo.return Rules.empty
+    | true -> Path.Build.Map.empty, Rules.empty
     | false ->
       let directory_targets = Path.Build.Map.singleton target Loc.none in
-      let rules =
-        Rules.collect_unit (fun () ->
-          let copy_rule = copy_lock_dir ~target ~lock_dir ~deps ~files in
-          rule ~loc:Loc.none copy_rule)
+      let { Action_builder.With_targets.build; targets } =
+        copy_lock_dir ~target ~lock_dir ~deps ~files
       in
-      directory_targets, rules
+      let rule = Rule.make ~targets build in
+      directory_targets, Rules.of_rules [ rule ]
   in
-  Gen_rules.make ~directory_targets rules
+  Gen_rules.make ~directory_targets (Memo.return rules)
 ;;
 
-let setup_lock_rules ~dir ~lock_dir =
-  let* workspace = Workspace.workspace () in
-  let dir = Path.Build.relative dir lock_dir in
-  let lock_dir = Path.Source.relative workspace.dir lock_dir in
+let setup_lock_rules (workspace : Workspace.t) ~dir ~lock_dir =
+  let dir = Path.Build.append_local dir lock_dir in
+  let lock_dir = Path.Source.append_local workspace.dir lock_dir in
   setup_copy_rules ~dir ~lock_dir
 ;;
 
@@ -86,22 +80,16 @@ let setup_rules ~components ~dir =
   match components with
   | [ ".lock" ] ->
     let* workspace = Workspace.workspace () in
-    let* lock_dir_paths = lock_dirs_of_workspace workspace in
-    lock_dir_paths
-    |> Path.Source.Set.to_list
-    |> Memo.List.fold_left
-         ~f:(fun rules lock_dir_path ->
-           let lock_dir = Path.Source.to_string lock_dir_path in
-           let+ lock_rule = setup_lock_rules ~dir ~lock_dir in
-           Gen_rules.combine rules lock_rule)
-         ~init:empty
+    lock_dirs_of_workspace workspace
+    >>| Path.Source.Set.to_list
+    >>= Memo.List.fold_left ~init:empty ~f:(fun rules lock_dir_path ->
+      let lock_dir = Path.Source.to_local lock_dir_path in
+      let+ lock_rule = setup_lock_rules workspace ~dir ~lock_dir in
+      Gen_rules.combine rules lock_rule)
   | [ ".dev-tool-locks" ] ->
-    Memo.List.fold_left
-      Dune_pkg.Dev_tool.all
-      ~f:(fun rules dev_tool ->
-        let+ dev_tool_rules = setup_dev_tool_lock_rules ~dir dev_tool in
-        Gen_rules.combine rules dev_tool_rules)
-      ~init:empty
+    Memo.List.fold_left Dune_pkg.Dev_tool.all ~init:empty ~f:(fun rules dev_tool ->
+      let+ dev_tool_rules = setup_dev_tool_lock_rules ~dir dev_tool in
+      Gen_rules.combine rules dev_tool_rules)
   | [] ->
     let sub_dirs = [ ".lock"; ".dev-tool-locks" ] in
     let build_dir_only_sub_dirs =

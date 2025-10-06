@@ -88,6 +88,7 @@ type t =
   ; requires_hidden : Lib.t list Resolve.Memo.t
   ; requires_link : Lib.t list Resolve.t Memo.Lazy.t
   ; implements : Virtual_rules.t
+  ; parameters : Module_name.t list Resolve.Memo.t
   ; includes : Includes.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
@@ -112,6 +113,7 @@ let flags t = t.flags
 let requires_compile t = t.requires_compile
 let requires_hidden t = t.requires_hidden
 let requires_link t = Memo.Lazy.force t.requires_link
+let parameters t = t.parameters
 let includes t = t.includes
 let preprocessing t = t.preprocessing
 let opaque t = t.opaque
@@ -128,6 +130,19 @@ let context t = Super_context.context t.super_context
 let dep_graphs t = t.modules.dep_graphs
 let ocaml t = t.ocaml
 
+let parameters_main_modules parameters =
+  let open Resolve.Memo.O in
+  let* parameters = parameters in
+  Resolve.Memo.List.map parameters ~f:(fun param ->
+    let+ main = Lib.main_module_name param in
+    match main with
+    | Some main -> main
+    | None ->
+      Code_error.raise
+        "Expected library parameter to have a main module"
+        [ "param", Lib.to_dyn param ])
+;;
+
 let create
       ~super_context
       ~scope
@@ -143,6 +158,7 @@ let create
       ~package
       ~melange_package_name
       ?(implements = Virtual_rules.no_implements)
+      ?parameters
       ?modes
       ?bin_annot
       ?loc
@@ -165,6 +181,11 @@ let create
         List.filter requires_link ~f:(fun l -> not (Table.mem requires_table l))
       in
       requires_compile, requires_hidden
+  in
+  let parameters =
+    match parameters with
+    | None -> Resolve.Memo.return []
+    | Some parameters -> parameters_main_modules parameters
   in
   let sandbox = Sandbox_config.no_special_requirements in
   let modes =
@@ -201,6 +222,7 @@ let create
   ; requires_hidden = hidden_requires
   ; requires_link
   ; implements
+  ; parameters
   ; includes =
       Includes.make ~project ~opaque ~direct_requires ~hidden_requires ocaml.lib_config
   ; preprocessing

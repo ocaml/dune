@@ -487,7 +487,16 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
     (fun () -> build_shared ~native_archives ~sctx lib ~dir ~flags)
 ;;
 
-let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_info =
+let cctx
+      (lib : Library.t)
+      ~sctx
+      ~source_modules
+      ~dir
+      ~expander
+      ~scope
+      ~parameters
+      ~compile_info
+  =
   let* flags = Buildable_rules.ocaml_flags sctx ~dir lib.buildable.flags
   and* implements = Virtual_rules.impl sctx ~lib ~scope in
   let obj_dir = Library.obj_dir ~dir lib in
@@ -534,6 +543,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
     ~requires_compile
     ~requires_link
     ~implements
+    ~parameters
     ~preprocessing:pp
     ~opaque:Inherit_from_settings
     ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.map ~f:Option.some js_of_ocaml)
@@ -648,7 +658,10 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
     let* source_modules =
       Dir_contents.ocaml dir_contents >>= Ml_sources.modules ~libs ~for_:(Library lib_id)
     in
-    let* cctx = cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~compile_info in
+    let parameters = Lib.parameters local_lib in
+    let* cctx =
+      cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~parameters ~compile_info
+    in
     let* () =
       match buildable.ctypes with
       | None -> Memo.return ()

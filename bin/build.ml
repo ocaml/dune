@@ -92,11 +92,16 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
   in
   Dune_engine.Scheduler.Run.poll_passive
     ~get_build_request:
-      (let+ (Build (targets, ivar)) = Dune_rpc_impl.Server.pending_build_action rpc in
+      (let+ { kind; outcome } = Dune_rpc_impl.Server.pending_action rpc in
        let request setup =
-         Target.interpret_targets (Common.root common) config setup targets
+         let root = Common.root common in
+         match kind with
+         | Build targets ->
+           Target.interpret_targets (Common.root common) config setup targets
+         | Runtest dir_or_cram_test_paths ->
+           Runtest_common.make_request ~dir_or_cram_test_paths ~to_cwd:root.to_cwd setup
        in
-       run_build_system ~common ~request, ivar)
+       run_build_system ~common ~request, outcome)
 ;;
 
 let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =

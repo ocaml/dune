@@ -26,7 +26,7 @@ let lock_ocamlformat () =
   else Fiber.return ()
 ;;
 
-let run_fmt_command ~common ~config ~preview =
+let run_fmt_command ~common ~config ~preview builder =
   let open Fiber.O in
   let once () =
     let* () = lock_ocamlformat () in
@@ -50,6 +50,9 @@ let run_fmt_command ~common ~config ~preview =
         Rpc.Rpc_common.fire_request
           ~name:"format"
           ~wait:true
+          ~warn_forwarding:false
+          ~lock_held_by
+          builder
           Dune_rpc.Procedures.Public.format
           ())
     in
@@ -81,7 +84,7 @@ let command =
       Common.Builder.set_promote builder (if preview then Never else Automatically)
     in
     let common, config = Common.init builder in
-    run_fmt_command ~common ~config ~preview
+    run_fmt_command ~common ~config ~preview builder
   in
   Cmd.v (Cmd.info "fmt" ~doc ~man ~envs:Common.envs) term
 ;;

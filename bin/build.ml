@@ -143,10 +143,10 @@ let run_build_command ~(common : Common.t) ~config ~request =
     ~request
 ;;
 
-let build_via_rpc_server ~print_on_success ~targets =
+let build_via_rpc_server ~print_on_success ~targets builder lock_held_by =
   Rpc.Rpc_common.wrap_build_outcome_exn
     ~print_on_success
-    (Rpc.Group.Build.build ~wait:true)
+    (Rpc.Group.Build.build ~wait:true builder lock_held_by)
     targets
     ()
 ;;
@@ -204,11 +204,9 @@ let build =
          perform the RPC call.
       *)
       Rpc.Rpc_common.run_via_rpc
-        ~builder
         ~common
         ~config
-        lock_held_by
-        (Rpc.Group.Build.build ~wait:true)
+        (Rpc.Group.Build.build ~wait:true builder lock_held_by)
         targets
     | Ok () ->
       let request setup =

@@ -51,9 +51,9 @@ let runtest_term =
     Scheduler.go_without_rpc_server
       ~common
       ~config
-      (Rpc.Rpc_common.wrap_build_outcome_exn
+      (Rpc.Common.wrap_build_outcome_exn
          ~print_on_success:true
-         (Rpc.Rpc_common.fire_request
+         (Rpc.Common.fire_request
             ~name:"runtest"
             ~wait:false
             ~lock_held_by

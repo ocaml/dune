@@ -144,9 +144,9 @@ let run_build_command ~(common : Common.t) ~config ~request =
 ;;
 
 let build_via_rpc_server ~print_on_success ~targets builder lock_held_by =
-  Rpc.Rpc_common.wrap_build_outcome_exn
+  Rpc.Common.wrap_build_outcome_exn
     ~print_on_success
-    (Rpc.Group.Build.build ~wait:true builder lock_held_by)
+    (Rpc.Build.build ~wait:true builder lock_held_by)
     targets
     ()
 ;;
@@ -203,10 +203,10 @@ let build =
          an RPC server in the background to schedule the fiber which will
          perform the RPC call.
       *)
-      Rpc.Rpc_common.run_via_rpc
+      Rpc.Common.run_via_rpc
         ~common
         ~config
-        (Rpc.Group.Build.build ~wait:true builder lock_held_by)
+        (Rpc.Build.build ~wait:true builder lock_held_by)
         targets
     | Ok () ->
       let request setup =

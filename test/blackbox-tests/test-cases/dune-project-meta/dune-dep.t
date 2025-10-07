@@ -72,6 +72,7 @@ when calling dune subst:
       "@doc" {with-doc}
     ]
   ]
+  $ dune build -p foo @install
 
 When the version of the language >= 2.7, odoc is automatically added to
 the doc dependencies:
@@ -191,13 +192,16 @@ the doc dependencies:
     ]
     ["dune" "install" "-p" name "--create-install-files" name]
   ]
+  $ dune subst
+  $ dune build -p foo --promote-install-files=false @install
+  $ dune install -p foo --create-install-files foo
 
   $ cat > dune-project <<EOF
   > (lang dune 3.0)
   > (name foo)
   > (generate_opam_files true)
   > (subst disabled)
-  > (package (name foo) (depends (odoc :with-test) something))
+  > (package (name foo) (depends (odoc :with-test) something) (allow_empty))
   > EOF
 
   $ dune build foo.opam
@@ -215,13 +219,14 @@ the doc dependencies:
       "@doc" {with-doc}
     ]
   ]
+  $ dune build -p foo @install
 
   $ cat > dune-project <<EOF
   > (lang dune 3.0)
   > (name foo)
   > (generate_opam_files true)
   > (subst enabled)
-  > (package (name foo) (depends (odoc :with-test) something))
+  > (package (name foo) (depends (odoc :with-test) something) (allow_empty))
   > EOF
 
   $ dune build foo.opam
@@ -240,3 +245,5 @@ the doc dependencies:
       "@doc" {with-doc}
     ]
   ]
+  $ dune subst
+  $ dune build -p foo @install

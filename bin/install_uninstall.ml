@@ -680,7 +680,14 @@ let run
                 ~findlib_toolchain:(Context.findlib_toolchain context)
                 package
             in
-            Install.Entry.gen_install_file entries |> Io.write_file (Path.source fn))))
+            let contents = Install.Entry.gen_install_file entries in
+            let path = Path.source fn in
+            try Io.write_file path contents with
+            | Unix.Unix_error (Unix.EACCES, _, _) ->
+              let Unix.{ st_perm; _ } = Path.stat_exn path in
+              Path.chmod path ~mode:(Path.Permissions.add Path.Permissions.write st_perm);
+              Io.write_file path contents;
+              Path.chmod path ~mode:st_perm)))
   in
   Path.Set.to_list !files_deleted_in
   (* This [List.rev] is to ensure we process children directories before

@@ -2,7 +2,7 @@ open Import
 
 let exec () =
   let open Fiber.O in
-  let where = Rpc.Rpc_common.active_server_exn () in
+  let where = Rpc.Common.active_server_exn () in
   let module Client = Dune_rpc_client.Client in
   let+ errors =
     let* connect = Client.Connection.connect_exn where in
@@ -22,7 +22,7 @@ let exec () =
   | Ok errors ->
     List.iter errors ~f:(fun err ->
       Console.print_user_message (Dune_rpc.Diagnostic.to_user_message err))
-  | Error e -> Rpc.Rpc_common.raise_rpc_error e
+  | Error e -> Rpc.Common.raise_rpc_error e
 ;;
 
 let info =
@@ -32,7 +32,7 @@ let info =
 
 let term =
   let+ (builder : Common.Builder.t) = Common.Builder.term in
-  Rpc.Rpc_common.client_term builder exec
+  Rpc.Common.client_term builder exec
 ;;
 
 let command = Cmd.v info term

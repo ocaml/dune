@@ -7,7 +7,8 @@ Test that the ocamllsp dev tool can see the ocamlformat dev tool.
   $ mkpkg ocaml 5.2.0
 
   $ cat > dune-workspace <<EOF
-  > (lang dune 3.16)
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (lock_dir
   >  (path "dev-tools.locks/ocaml-lsp-server")
   >  (repositories mock))

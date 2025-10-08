@@ -3,6 +3,7 @@ a mock compiler package using dune's toolchain mechanism.
 
   $ . ./helpers.sh
   $ make_lockdir
+  $ add_mock_repo_if_needed
 
 We create a fake compiler by creating a configure file.
 

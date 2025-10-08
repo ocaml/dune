@@ -105,8 +105,8 @@ module Pkg_digest = struct
       { name : Package.Name.t
       ; version : Package_version.t
       ; lockfile_and_dependency_digest : Dune_digest.t
-        (* A hash of the package's lockfile as well as of all lockfiles of the
-           dependency closure of the package. *)
+        (* A hash of the package's lockfile as well as of the digests of all
+           the package's dependencies. *)
       }
 
     let equal { name; version; lockfile_and_dependency_digest } t =

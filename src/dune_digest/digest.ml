@@ -93,7 +93,6 @@ module Feed = struct
 
   let digest hasher digest = contramap string ~f:to_string hasher digest
   let compute_digest t x = Hasher.with_singleton (fun hasher -> t hasher x)
-  let compute_digest_with_hasher = Hasher.with_singleton
 end
 
 let string s = Feed.compute_digest Feed.string s

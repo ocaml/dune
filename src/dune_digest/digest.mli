@@ -32,10 +32,6 @@ module Feed : sig
 
   (** Compute the digest of a value given a feed for the type of that value. *)
   val compute_digest : 'a t -> 'a -> digest
-
-  (** Takes a function which feeds values into a hasher and returns a digest of
-      all the values fed in this way. *)
-  val compute_digest_with_hasher : (hasher -> unit) -> digest
 end
 
 include Comparable_intf.S with type key := t

@@ -236,7 +236,7 @@ let of_dev_tool dev_tool =
   Load.load_exn (Path.source source_path)
 ;;
 
-let of_dev_tool_if_lockdir_exists dev_tool =
+let of_dev_tool_if_lock_dir_exists dev_tool =
   let source_path = dev_tool_source_lock_dir dev_tool in
   let* exists = Fs_memo.dir_exists (Path.Outside_build_dir.In_source_dir source_path) in
   if exists

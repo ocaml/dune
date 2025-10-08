@@ -156,19 +156,19 @@ module Pkg_digest = struct
       User_error.raise [ Pp.textf "Failed to parse %S as a package pkg digest." s; msg ]
     in
     match String.lsplit2 s ~on:'.' with
+    | None -> parse_error (Pp.text "Missing '.' between name and version.")
     | Some (name, rest) ->
       (match String.rsplit2 rest ~on:'-' with
+       | None -> parse_error (Pp.text "Missing '-' between version and lockfile digest.")
        | Some (version, lockfile_and_dependency_digest) ->
          (match Dune_digest.from_hex lockfile_and_dependency_digest with
+          | None ->
+            parse_error
+              (Pp.textf "Failed to parse %S as digest" lockfile_and_dependency_digest)
           | Some lockfile_and_dependency_digest ->
             let name = Package.Name.of_string name in
             let version = Package_version.of_string version in
-            { name; version; lockfile_and_dependency_digest }
-          | None ->
-            parse_error
-              (Pp.textf "Failed to parse %S as digest" lockfile_and_dependency_digest))
-       | None -> parse_error (Pp.text "Missing '-' between version and lockfile digest."))
-    | None -> parse_error (Pp.text "Missing '.' between name and version.")
+            { name; version; lockfile_and_dependency_digest }))
   ;;
 
   let digest_feed =
@@ -1282,9 +1282,9 @@ module DB = struct
     ;;
 
     (* Helper which is called when both tables have an entry with the same
-       digest. This happens when two lockdirs have a package in common and the
-       transitive dependency closure of the package is identical in both
-       lockdirs. Here we assert that the packages and their immediate
+       digest. This happens when two lock directories have a package in common
+       and the transitive dependency closure of the package is identical in both
+       lock directories. Here we assert that the packages and their immediate
        dependencies are identical as a sanity check. *)
     let union_check
           pkg_digest
@@ -1318,7 +1318,7 @@ module DB = struct
     let union_all = Pkg_digest.Map.union_all ~f:union_check
 
     let of_dev_tool_deps_if_lock_dir_exists dev_tool ~platform =
-      let+ lock_dir_opt = Lock_dir.of_dev_tool_if_lockdir_exists dev_tool in
+      let+ lock_dir_opt = Lock_dir.of_dev_tool_if_lock_dir_exists dev_tool in
       Option.map lock_dir_opt ~f:(of_lock_dir ~platform)
     ;;
 
@@ -1328,7 +1328,7 @@ module DB = struct
         ~human_readable_description:(fun () ->
           Pp.text
             "A map associating pkg digests with package metadata with entries for all \
-             dev tools with lockdirs in the current project.")
+             dev tools with lock directories in the current project.")
         (fun () ->
            let* platform = Lock_dir.Sys_vars.solver_env () in
            let+ xs =

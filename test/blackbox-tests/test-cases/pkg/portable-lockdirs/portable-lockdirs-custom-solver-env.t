@@ -7,8 +7,9 @@ environment that affects the solution.
 
 Create a workspace that defines a lockdir with a custom solver environment,
 setting the variable "sys-ocaml-version":
-  $ cat >dune-workspace <<EOF
-  > (lang dune 3.8)
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (repository
   >  (name mock)
   >  (url "file://$(pwd)/mock-opam-repository"))

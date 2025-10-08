@@ -50,8 +50,9 @@ Solve the package using the default solver env:
      @install)))
 
 Make a custom solver env:
-  $ cat >dune-workspace <<EOF
-  > (lang dune 3.8)
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (lock_dir
   >  (path dune.lock)
   >  (repositories mock)

@@ -169,7 +169,7 @@ let lock_dir_of_source p =
   Path.Build.append_local path_prefix local |> Path.build
 ;;
 
-let get_paths ctx_name =
+let get_path ctx_name =
   let* workspace = Workspace.workspace () in
   let ctx =
     List.find_map workspace.contexts ~f:(fun ctx ->
@@ -191,16 +191,8 @@ let get_paths ctx_name =
   | Some (source_path, lock_dir_path) ->
     let* in_source_tree = Source_tree.find_dir source_path in
     (match in_source_tree with
-     | Some _ -> Memo.return (Some (`In_source source_path, `In_build lock_dir_path))
+     | Some _ -> Memo.return (Some lock_dir_path)
      | None -> Memo.return None)
-;;
-
-let get_path_source ctx_name =
-  get_paths ctx_name >>| Option.map ~f:(fun (`In_source path, _) -> path)
-;;
-
-let get_path ctx_name =
-  get_paths ctx_name >>| Option.map ~f:(fun (_, `In_build path) -> path)
 ;;
 
 let get_workspace_lock_dir ctx =

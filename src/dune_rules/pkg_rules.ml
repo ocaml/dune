@@ -2512,3 +2512,10 @@ let all_filtered_depexts context =
   >>| List.concat
   >>| List.sort_uniq ~compare:String.compare
 ;;
+
+let pkg_digest_of_project_dependency ctx package_name =
+  let+ db = DB.of_ctx ctx ~allow_sharing:false in
+  Pkg_digest.Map.keys db.pkg_digest_table
+  |> List.find ~f:(fun (pkg_digest : Pkg_digest.t) ->
+    Package.Name.equal pkg_digest.name package_name)
+;;

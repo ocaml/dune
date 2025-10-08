@@ -33,4 +33,7 @@ end
 
 let doc = "Command group for wrapped tools."
 let info = Cmd.info ~doc "tools"
-let group = Cmd.group info [ Exec.group; Install.group; Which.group ]
+
+let group =
+  Cmd.group info [ Exec.group; Install.group; Which.group; Tools_common.env_command ]
+;;

@@ -1620,13 +1620,16 @@ struct
           None)
       >>= Io.parallel_map ~f:(fun (package_name, maybe_package_version) ->
         let _loc, solved_for_platforms = solved_for_platforms in
-        load_pkg
-          ~portable_lock_dir
-          ~version
-          ~lock_dir_path
-          ~solved_for_platforms
-          package_name
-          maybe_package_version)
+        let+ pkg =
+          load_pkg
+            ~portable_lock_dir
+            ~version
+            ~lock_dir_path
+            ~solved_for_platforms
+            package_name
+            maybe_package_version
+        in
+        pkg)
       >>| Packages.of_pkg_list
     in
     check_packages packages ~lock_dir_path

@@ -31,3 +31,5 @@ val file : t -> dir:Path.Source.t -> Path.Source.t
 val decode_opam_compatible : t Decoder.t
 val opam_fn : t -> Filename.t
 val of_opam_file_basename : Filename.t -> t option
+
+module Table : Hashtbl.S with type key = t

@@ -542,6 +542,5 @@ let opam_package_to_lock_file_pkg
   ; info
   ; exported_env
   ; enabled_on_platforms
-  ; slug = None
   }
 ;;

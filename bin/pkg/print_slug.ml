@@ -29,9 +29,7 @@ let term =
        | None ->
          User_error.raise
            [ Pp.textf "No such package: %s" (Package_name.to_string package_name) ]
-       | Some package ->
-         let slug = Dune_pkg.Lock_dir.Pkg.slug package in
-         print_endline (Dune_pkg.Lock_dir.Pkg_slug.to_string slug)))
+       | Some _package -> failwith "todo"))
 ;;
 
 let info =

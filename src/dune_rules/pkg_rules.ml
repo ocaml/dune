@@ -1222,11 +1222,13 @@ module DB = struct
         then
           User_error.raise
             [ Pp.textf "Dependency cycle between packages:"
-            ; Pp.chain seen_list ~f:(fun (pkg : Pkg.t) ->
-                Pp.textf
-                  "%s.%s"
-                  (Package.Name.to_string pkg.info.name)
-                  (Package_version.to_string pkg.info.version))
+            ; Pp.chain
+                (List.rev (pkg :: seen_list))
+                ~f:(fun (pkg : Pkg.t) ->
+                  Pp.textf
+                    "%s.%s"
+                    (Package.Name.to_string pkg.info.name)
+                    (Package_version.to_string pkg.info.version))
             ];
         Package.Name.Table.find_or_add cache pkg.info.name ~f:(fun name ->
           let seen_set = Package.Name.Set.add seen_set name in

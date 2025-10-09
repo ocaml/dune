@@ -20,9 +20,9 @@ source_lock_dir="${default_lock_dir}"
 # _build directory.
 get_build_pkg_dir() {
   package_name=$1
-  slug=$($dune pkg print-slug $package_name)
+  digest=$($dune pkg print-digest $package_name)
   if [ "$?" == "0" ]; then
-    echo "$pkg_root/$slug"
+    echo "$pkg_root/$digest"
   else
     return 1
   fi

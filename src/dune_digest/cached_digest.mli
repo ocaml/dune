@@ -8,6 +8,7 @@ module Digest_result : sig
       | No_such_file
       | Broken_symlink
       | Cyclic_symlink
+      | Symlink_escapes_target of Path.t
       | Unexpected_kind of File_kind.t
       | Unix_error of Unix_error.Detailed.t (** Can't be [ENOENT]. *)
       | Unrecognized of exn
@@ -31,10 +32,14 @@ val build_file : allow_dirs:bool -> Path.Build.t -> Digest_result.t
 (** Same as [build_file], but forces the digest of the file to be re-computed.
 
     If [remove_write_permissions] is true, also remove write permissions on the
-    file. *)
+    file.
+    
+    If [dir_target_root] is provided, symlinks that escape the given directory
+    will result in [Symlink_escapes_target] error. *)
 val refresh
   :  allow_dirs:bool
   -> remove_write_permissions:bool
+  -> dir_target_root:Path.t option
   -> Path.Build.t
   -> Digest_result.t
 

@@ -23,21 +23,6 @@ symlinks, and directory symlinks.
   > EOF
 
   $ dune build d
-  File "dune", lines 1-11, characters 0-285:
-   1 | (rule
-   2 |  (target (dir d))
-   3 |  (action
-   4 |   (progn
-   5 |    (run mkdir -p d/regular_dir)
-   6 |    (system "echo '' > d/regular_file.txt")
-   7 |    (system "echo '' > d/regular_dir/nested.txt")
-   8 |    (chdir d
-   9 |     (progn
-  10 |      (run ln -s regular_file.txt file_symlink.txt)
-  11 |      (run ln -s regular_dir dir_symlink))))))
-  Error: Error trying to read targets after a rule was run:
-  - d/dir_symlink: Unexpected file kind "S_DIR" (directory)
-  [1]
 
   $ ls _build/default/d
   dir_symlink

@@ -193,6 +193,7 @@ struct
       Cached_digest.refresh
         ~allow_dirs:true
         ~remove_write_permissions:should_remove_write_permissions_on_generated_files
+        ~dir_target_root:None
     in
     match
       Targets.Produced.map_with_errors ~f:compute_digest ~all_errors:true produced_targets
@@ -208,6 +209,14 @@ struct
             Right (target, error)
           | Cyclic_symlink ->
             let error = Pp.verbatim "Cyclic symbolic link" in
+            Right (target, error)
+          | Symlink_escapes_target path ->
+            let error =
+              Pp.verbatim
+                (sprintf
+                   "Symbolic link escapes directory target: %s"
+                   (Path.to_string path))
+            in
             Right (target, error)
           | Unexpected_kind file_kind ->
             let error =

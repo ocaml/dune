@@ -164,6 +164,7 @@ module Build : sig
 
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
+    val relative_result : t -> string list -> (t, [ `Outside_the_workspace ]) Result.t
   end
 
   val split_first_component : t -> (Filename.t * Local.t) option

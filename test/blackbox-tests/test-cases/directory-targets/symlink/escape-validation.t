@@ -38,8 +38,7 @@ Symlinks escaping to sibling directories are now forbidden:
   13 |    (run mkdir -p d)
   14 |    (chdir d
   15 |     (run ln -s ../sibling escape)))))
-  Error: Error trying to read targets after a rule was run:
-  - d/escape: Unexpected file kind "S_DIR" (directory)
+  Error: Symbolic link "d/escape" escapes the directory target
   [1]
 
 Symlinks escaping to source tree are also forbidden:
@@ -68,8 +67,7 @@ Symlinks escaping to source tree are also forbidden:
   6 |    (run mkdir -p d3)
   7 |    (chdir d3
   8 |     (run ln -s ../../../source_dir escape_to_source)))))
-  Error: Error trying to read targets after a rule was run:
-  - d3/escape_to_source: Unexpected file kind "S_DIR" (directory)
+  Error: Symbolic link "d3/escape_to_source" escapes the directory target
   [1]
 
 Symlinks escaping to other build targets are also forbidden:
@@ -104,8 +102,7 @@ Create a directory target to link to:
   13 |    (run mkdir -p d_outside)
   14 |    (chdir d_outside
   15 |     (run ln -s ../outside_dir link_to_outside)))))
-  Error: Error trying to read targets after a rule was run:
-  - d_outside/link_to_outside: Unexpected file kind "S_DIR" (directory)
+  Error: Symbolic link "d_outside/link_to_outside" escapes the directory target
   [1]
 
 Absolute path symlinks are also forbidden:
@@ -129,7 +126,5 @@ Test absolute symlink to directory inside the project:
   > EOF
 
   $ dune build d_abs1 2>&1 | tail -2
-  Error: Error trying to read targets after a rule was run:
-  - d_abs1/abs_symlink: Unexpected file kind "S_DIR" (directory)
-
-
+  Error: Symbolic link "d_abs1/abs_symlink" points to an absolute directory and
+  is not supported

@@ -186,6 +186,7 @@ module Digest_result = struct
       | No_such_file
       | Broken_symlink
       | Cyclic_symlink
+      | Symlink_escapes_target of Path.t
       | Unexpected_kind of File_kind.t
       | Unix_error of Unix_error.Detailed.t
       | Unrecognized of exn
@@ -198,6 +199,8 @@ module Digest_result = struct
       | Broken_symlink, _ | _, Broken_symlink -> false
       | Cyclic_symlink, Cyclic_symlink -> true
       | Cyclic_symlink, _ | _, Cyclic_symlink -> false
+      | Symlink_escapes_target x, Symlink_escapes_target y -> Path.equal x y
+      | Symlink_escapes_target _, _ | _, Symlink_escapes_target _ -> false
       | Unexpected_kind x, Unexpected_kind y -> File_kind.equal x y
       | Unexpected_kind _, _ | _, Unexpected_kind _ -> false
       | Unix_error x, Unix_error y ->
@@ -216,6 +219,8 @@ module Digest_result = struct
       | No_such_file -> Variant ("No_such_file", [])
       | Broken_symlink -> Variant ("Broken_symlink", [])
       | Cyclic_symlink -> Variant ("Cyclic_symlink", [])
+      | Symlink_escapes_target path ->
+        Variant ("Symlink_escapes_target", [ Path.to_dyn path ])
       | Unexpected_kind kind -> Variant ("Unexpected_kind", [ File_kind.to_dyn kind ])
       | Unix_error error -> Variant ("Unix_error", [ Unix_error.Detailed.to_dyn error ])
       | Unrecognized exn -> Variant ("Unrecognized", [ String (Printexc.to_string exn) ])
@@ -275,17 +280,25 @@ let refresh_without_removing_write_permissions ~allow_dirs path =
    be outside of the build directory and not under out control. It seems like it
    should be possible to avoid paying for two system calls ([lstat] and [stat])
    here, e.g., by telling the subsequent [chmod] to not follow symlinks. *)
-let refresh_and_remove_write_permissions ~allow_dirs path =
+let refresh_and_remove_write_permissions ~allow_dirs ~dir_target_root path =
   catch_fs_errors (fun () ->
     match Path.lstat_exn path with
     | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
     | stats ->
       (match stats.st_kind with
        | S_LNK ->
-         (match Path.stat_exn path with
-          | stats -> refresh stats ~allow_dirs:false path
-          | exception Unix.Unix_error (ELOOP, _, _) -> Error Cyclic_symlink
-          | exception Unix.Unix_error (ENOENT, _, _) -> Error Broken_symlink)
+         (* Check if symlink escapes the directory target *)
+         (match dir_target_root with
+          | Some root
+            when not
+                   (Path.is_descendant
+                      (Path.of_string (Unix.readlink (Path.to_string path)))
+                      ~of_:root) -> Error (Symlink_escapes_target path)
+          | None | Some _ ->
+            (match Path.stat_exn path with
+             | stats -> refresh stats ~allow_dirs path
+             | exception Unix.Unix_error (ELOOP, _, _) -> Error Cyclic_symlink
+             | exception Unix.Unix_error (ENOENT, _, _) -> Error Broken_symlink))
        | S_REG ->
          let perm = Path.Permissions.remove Path.Permissions.write stats.st_perm in
          Path.chmod ~mode:perm path;
@@ -297,11 +310,11 @@ let refresh_and_remove_write_permissions ~allow_dirs path =
          refresh ~allow_dirs stats path))
 ;;
 
-let refresh ~allow_dirs ~remove_write_permissions path =
+let refresh ~allow_dirs ~remove_write_permissions ~dir_target_root path =
   let path = Path.build path in
   match remove_write_permissions with
   | false -> refresh_without_removing_write_permissions ~allow_dirs path
-  | true -> refresh_and_remove_write_permissions ~allow_dirs path
+  | true -> refresh_and_remove_write_permissions ~allow_dirs ~dir_target_root path
 ;;
 
 let peek_file ~allow_dirs path =

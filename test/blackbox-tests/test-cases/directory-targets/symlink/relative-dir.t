@@ -20,18 +20,6 @@ within the same directory target.
   > EOF
 
   $ dune build d
-  File "dune", lines 1-8, characters 0-176:
-  1 | (rule
-  2 |  (target (dir d))
-  3 |  (action
-  4 |   (progn
-  5 |    (run mkdir -p d/actual_dir)
-  6 |    (system "echo '' > d/actual_dir/file.txt")
-  7 |    (chdir d
-  8 |     (run ln -s actual_dir symlink_to_dir)))))
-  Error: Error trying to read targets after a rule was run:
-  - d/symlink_to_dir: Unexpected file kind "S_DIR" (directory)
-  [1]
 
   $ ls _build/default/d
   actual_dir

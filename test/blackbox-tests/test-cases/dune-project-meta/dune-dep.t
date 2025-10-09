@@ -194,7 +194,7 @@ the doc dependencies:
   ]
   $ dune subst
   $ dune build -p foo --promote-install-files=false @install
-  $ dune install -p foo --create-install-files foo
+  $ dune install -p foo --create-install-files foo --prefix=$PWD/local
 
   $ cat > dune-project <<EOF
   > (lang dune 3.0)

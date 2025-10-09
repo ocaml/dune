@@ -248,13 +248,9 @@ module Paths = struct
     let root =
       match (universe : Package_universe.t) with
       | Dependencies ctx ->
-        Path.Build.relative
-          (Path.Build.relative
-             (Path.Build.relative
-                Private_context.t.build_dir
-                (Context_name.to_string ctx))
-             ".pkg")
-          (Pkg_digest.to_string pkg_digest)
+        Path.Build.L.relative
+          Private_context.t.build_dir
+          [ Context_name.to_string ctx; ".pkg"; Pkg_digest.to_string pkg_digest ]
       | Dev_tool dev_tool -> Pkg_dev_tool.universe_install_path dev_tool
     in
     of_root pkg_digest.name ~root
@@ -1196,6 +1192,8 @@ module Action_expander = struct
 end
 
 module DB = struct
+  let default_system_provided = Package.Name.Set.singleton Dune_pkg.Dune_dep.name
+
   module Pkg_table = struct
     module Pkg = Lock_dir.Pkg
 
@@ -1211,7 +1209,7 @@ module DB = struct
       ; pkg_digest : Pkg_digest.t
       }
 
-    let entries_of_lock_dir (lock_dir : Dune_pkg.Lock_dir.t) ~platform =
+    let entries_of_lock_dir (lock_dir : Dune_pkg.Lock_dir.t) ~platform ~system_provided =
       let pkgs_by_name =
         Dune_pkg.Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform
       in
@@ -1230,17 +1228,15 @@ module DB = struct
                   (Package.Name.to_string pkg.info.name)
                   (Package_version.to_string pkg.info.version))
             ];
-        match Package.Name.Table.find cache pkg.info.name with
-        | Some entry -> entry
-        | None ->
-          let seen_set = Package.Name.Set.add seen_set pkg.info.name in
+        Package.Name.Table.find_or_add cache pkg.info.name ~f:(fun name ->
+          let seen_set = Package.Name.Set.add seen_set name in
           let seen_list = pkg :: seen_list in
           let deps =
             Dune_pkg.Lock_dir.Conditional_choice.choose_for_platform pkg.depends ~platform
             |> Option.value ~default:[]
             |> List.filter_map
                  ~f:(fun { Dune_pkg.Lock_dir.Dependency.name; loc = dep_loc } ->
-                   if Package.Name.equal name Dune_pkg.Dune_dep.name
+                   if Package.Name.Set.mem system_provided name
                    then None
                    else (
                      let dep_pkg = Package.Name.Map.find_exn pkgs_by_name name in
@@ -1252,9 +1248,7 @@ module DB = struct
               pkg
               (List.map deps ~f:(fun { dep_pkg_digest; _ } -> dep_pkg_digest))
           in
-          let entry = { pkg; deps; pkg_digest } in
-          Package.Name.Table.add_exn cache pkg.info.name entry;
-          entry
+          { pkg; deps; pkg_digest })
       in
       Package.Name.Map.values pkgs_by_name
       |> List.map ~f:(compute_entry ~seen_set:Package.Name.Set.empty ~seen_list:[])
@@ -1276,8 +1270,8 @@ module DB = struct
         && Pkg_digest.equal entry.pkg_digest pkg_digest)
     ;;
 
-    let of_lock_dir lock_dir ~platform =
-      entries_of_lock_dir lock_dir ~platform
+    let of_lock_dir lock_dir ~platform ~system_provided =
+      entries_of_lock_dir lock_dir ~platform ~system_provided
       |> Pkg_digest.Map.of_list_map_exn ~f:(fun entry -> entry.pkg_digest, entry)
     ;;
 
@@ -1317,9 +1311,9 @@ module DB = struct
     let union = Pkg_digest.Map.union ~f:union_check
     let union_all = Pkg_digest.Map.union_all ~f:union_check
 
-    let of_dev_tool_deps_if_lock_dir_exists dev_tool ~platform =
+    let of_dev_tool_deps_if_lock_dir_exists dev_tool ~platform ~system_provided =
       let+ lock_dir_opt = Lock_dir.of_dev_tool_if_lock_dir_exists dev_tool in
-      Option.map lock_dir_opt ~f:(of_lock_dir ~platform)
+      Option.map lock_dir_opt ~f:(of_lock_dir ~platform ~system_provided)
     ;;
 
     let all_existing_dev_tools =
@@ -1334,7 +1328,10 @@ module DB = struct
            let+ xs =
              Memo.List.map
                Pkg_dev_tool.all
-               ~f:(of_dev_tool_deps_if_lock_dir_exists ~platform)
+               ~f:
+                 (of_dev_tool_deps_if_lock_dir_exists
+                    ~platform
+                    ~system_provided:default_system_provided)
            in
            List.filter_opt xs |> union_all)
     ;;
@@ -1359,9 +1356,9 @@ module DB = struct
      below slowed down the dune call in the test repo described in #12248 from 1s to
      2s. *)
 
-  let pkg_digest_of_name lock_dir platform pkg_name =
+  let pkg_digest_of_name lock_dir platform pkg_name ~system_provided =
     let entry =
-      Pkg_table.entries_of_lock_dir lock_dir ~platform
+      Pkg_table.entries_of_lock_dir lock_dir ~platform ~system_provided
       |> List.find_exn ~f:(fun { Pkg_table.pkg; _ } ->
         Package.Name.equal pkg.info.name pkg_name)
     in
@@ -1369,9 +1366,10 @@ module DB = struct
   ;;
 
   let of_ctx ctx ~allow_sharing =
+    let system_provided = default_system_provided in
     let* lock_dir = Lock_dir.get_exn ctx
     and* platform = Lock_dir.Sys_vars.solver_env () in
-    let pkg_digest_table = Pkg_table.of_lock_dir lock_dir ~platform in
+    let pkg_digest_table = Pkg_table.of_lock_dir lock_dir ~platform ~system_provided in
     let+ pkg_digest_table =
       if allow_sharing && Context_name.is_default ctx
       then
@@ -1384,7 +1382,6 @@ module DB = struct
         Pkg_table.union pkg_digest_table dev_tools_pkg_digest_table
       else Memo.return pkg_digest_table
     in
-    let system_provided = Package.Name.Set.singleton Dune_pkg.Dune_dep.name in
     { pkg_digest_table; system_provided }
   ;;
 
@@ -1394,7 +1391,7 @@ module DB = struct
     let* lock_dir = Lock_dir.get_exn ctx
     and* platform = Lock_dir.Sys_vars.solver_env () in
     let+ t = of_ctx ctx ~allow_sharing:true in
-    t, pkg_digest_of_name lock_dir platform pkg_name
+    t, pkg_digest_of_name lock_dir platform pkg_name ~system_provided:t.system_provided
   ;;
 
   (* Returns the db for all dev tools combined with the default context, and
@@ -1410,7 +1407,11 @@ module DB = struct
       Pkg_table.union pkg_digest_table_default_ctx pkg_digest_table_all_dev_tools
     in
     ( { pkg_digest_table; system_provided }
-    , pkg_digest_of_name lock_dir platform (Pkg_dev_tool.package_name dev_tool) )
+    , pkg_digest_of_name
+        lock_dir
+        platform
+        (Pkg_dev_tool.package_name dev_tool)
+        ~system_provided )
   ;;
 end
 

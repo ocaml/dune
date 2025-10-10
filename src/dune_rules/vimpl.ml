@@ -92,19 +92,6 @@ let setup_copy_rules ~sctx ~dir vimpl =
     let dst = Obj_dir.Module.cm_file_exn impl_obj_dir m ~kind in
     copy_to_obj_dir ~src ~dst
   in
-  let copy_ocamldep_file m =
-    match Obj_dir.to_local vlib_obj_dir with
-    | None -> Memo.return ()
-    | Some vlib_obj_dir ->
-      (match Obj_dir.Module.dep vlib_obj_dir (Immediate (m, Impl)) with
-       | None -> Memo.return ()
-       | Some src ->
-         let src = Path.build src in
-         let dst =
-           Obj_dir.Module.dep impl_obj_dir (Immediate (m, Impl)) |> Option.value_exn
-         in
-         copy_to_obj_dir ~src ~dst)
-  in
   let copy_interface_to_impl ~src kind () =
     let dst = Obj_dir.Module.cm_public_file_exn impl_obj_dir src ~kind in
     let src = Obj_dir.Module.cm_public_file_exn vlib_obj_dir src ~kind in
@@ -121,8 +108,7 @@ let setup_copy_rules ~sctx ~dir vimpl =
              >>> Memo.when_ melange (copy_interface_to_impl ~src (Melange Cmi)))
     >>> Memo.when_ (Module.has src ~ml_kind:Impl) (fun () ->
       Memo.when_ byte (fun () -> copy_obj_file src (Ocaml Cmo))
-      >>> Memo.when_ melange (fun () ->
-        copy_obj_file src (Melange Cmj) >>> copy_ocamldep_file src)
+      >>> Memo.when_ melange (fun () -> copy_obj_file src (Melange Cmj))
       >>> Memo.when_ native (fun () ->
         copy_obj_file src (Ocaml Cmx)
         >>>

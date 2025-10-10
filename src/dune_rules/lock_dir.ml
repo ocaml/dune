@@ -210,7 +210,7 @@ let get_with_path ctx =
     | Some p -> p
     | None ->
       Code_error.raise
-        "No lock dir path for context availabled"
+        "No lock dir path for context available"
         [ "context", Context_name.to_dyn ctx ]
   in
   let* () = Build_system.build_dir path in
@@ -234,6 +234,20 @@ let get_exn ctx = get ctx >>| User_error.ok_exn
 let of_dev_tool dev_tool =
   let source_path = dev_tool_source_lock_dir dev_tool in
   Load.load_exn (Path.source source_path)
+;;
+
+let of_dev_tool_if_lock_dir_exists dev_tool =
+  let source_path = dev_tool_source_lock_dir dev_tool in
+  let exists =
+    (* Note we use [Path.Untracked] here rather than [Fs_memo] because a tool's
+       lockdir may be generated part way through a build. *)
+    Path.Untracked.exists (Path.source source_path)
+  in
+  if exists
+  then
+    let+ t = Load.load_exn (Path.source source_path) in
+    Some t
+  else Memo.return None
 ;;
 
 let lock_dir_active ctx =

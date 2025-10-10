@@ -44,12 +44,21 @@ Test that installed binaries are visible in dependent packages
   $ show_pkg_cookie test
   { files =
       [ (LIB,
-         [ In_build_dir "_private/default/.pkg/test/target/lib/test/libxxx" ])
+         [ In_build_dir
+             "_private/default/.pkg/test.0.0.1-8240dbfd7c93ea3e976f855df6946a09/target/lib/test/libxxx"
+         ])
       ; (LIB_ROOT,
-         [ In_build_dir "_private/default/.pkg/test/target/lib/lib_rootxxx" ])
-      ; (BIN, [ In_build_dir "_private/default/.pkg/test/target/bin/foo" ])
+         [ In_build_dir
+             "_private/default/.pkg/test.0.0.1-8240dbfd7c93ea3e976f855df6946a09/target/lib/lib_rootxxx"
+         ])
+      ; (BIN,
+         [ In_build_dir
+             "_private/default/.pkg/test.0.0.1-8240dbfd7c93ea3e976f855df6946a09/target/bin/foo"
+         ])
       ; (SHARE_ROOT,
-         [ In_build_dir "_private/default/.pkg/test/target/share/lib_rootxxx" ])
+         [ In_build_dir
+             "_private/default/.pkg/test.0.0.1-8240dbfd7c93ea3e976f855df6946a09/target/share/lib_rootxxx"
+         ])
       ]
   ; variables = []
   }

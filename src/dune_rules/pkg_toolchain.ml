@@ -28,7 +28,9 @@ let pkg_dir (pkg : Dune_pkg.Lock_dir.Pkg.t) =
   let dir_name =
     (* TODO should include resolved deps *)
     let pkg_digest =
-      Dune_digest.Feed.digest Lock_dir.Pkg.digest_feed (Lock_dir.Pkg.remove_locs pkg)
+      Dune_digest.Feed.compute_digest
+        Lock_dir.Pkg.digest_feed
+        (Lock_dir.Pkg.remove_locs pkg)
     in
     (* A hash of the fields of a package that affect its installed artifacts *)
     sprintf

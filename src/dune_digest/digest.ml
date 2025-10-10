@@ -91,14 +91,15 @@ module Feed = struct
     feed_c hasher c
   ;;
 
-  let digest t x = Hasher.with_singleton (fun hasher -> t hasher x)
+  let digest hasher digest = contramap string ~f:to_string hasher digest
+  let compute_digest t x = Hasher.with_singleton (fun hasher -> t hasher x)
 end
 
-let string s = Feed.digest Feed.string s
+let string s = Feed.compute_digest Feed.string s
 let to_string_raw s = Blake3_mini.Digest.to_binary s
 
 let generic a =
-  Metrics.Timer.record "generic_digest" ~f:(fun () -> Feed.digest Feed.generic a)
+  Metrics.Timer.record "generic_digest" ~f:(fun () -> Feed.compute_digest Feed.generic a)
 ;;
 
 let path_with_executable_bit =

@@ -33,7 +33,10 @@ Testing install actions
 
   $ show_pkg_cookie test
   { files =
-      [ (LIB_ROOT, [ In_build_dir "_private/default/.pkg/test/target/lib/xxx" ])
+      [ (LIB_ROOT,
+         [ In_build_dir
+             "_private/default/.pkg/test.0.0.1-f6ed2ec1b5272dd0b899919ab4533208/target/lib/xxx"
+         ])
       ]
   ; variables = []
   }

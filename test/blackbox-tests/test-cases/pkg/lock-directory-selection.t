@@ -76,36 +76,36 @@ Generate all lockdirs:
 Demonstrate that the correct lockdir is being chosen by building packages that
 are only dependent on on certain systems.
 
-Build macos package on macos:
+Build macos package on macos arm64:
   $ dune clean
-  $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=arm64 dune build _build/_private/default/.pkg/macos-only/target/
+  $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=arm64 build_pkg macos-only
   macos-only
 
-Build macos package on macos:
+Build macos package on macos amd64:
   $ dune clean
-  $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=amd64 dune build _build/_private/default/.pkg/macos-only/target/
+  $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=amd64 build_pkg macos-only
   macos-only
 
 Build linux package on macos (will fail):
   $ dune clean
-  $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=amd64 dune build _build/_private/default/.pkg/linux-only/target/
-  Error: Unknown package "linux-only"
+  $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=amd64 build_pkg linux-only
+  Error: The project does not depend on the package "linux-only".
   [1]
 
 Build macos package on linux (will fail):
   $ dune clean
-  $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=amd64 dune build _build/_private/default/.pkg/macos-only/target/
-  Error: Unknown package "macos-only"
+  $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=amd64 build_pkg macos-only
+  Error: The project does not depend on the package "macos-only".
   [1]
 
 Build linux package on linux:
   $ dune clean
-  $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=amd64 dune build _build/_private/default/.pkg/linux-only/target/
+  $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=amd64 build_pkg linux-only
   linux-only
 
 Try setting the os to one which doesn't have a corresponding lockdir:
   $ dune clean
-  $ DUNE_CONFIG__OS=windows dune build _build/_private/default/.pkg/linux-only/target/
+  $ DUNE_CONFIG__OS=windows build_pkg linux-only
   File "dune-workspace", lines 28-32, characters 3-172:
   28 |    ((and
   29 |      (= %{architecture} arm64)
@@ -138,5 +138,5 @@ Test that cond statements can have a default value:
   Solution for dune.lock:
   - linux-only.0.0.1
   $ dune clean
-  $ dune build _build/_private/default/.pkg/linux-only/target/
+  $ build_pkg linux-only
   linux-only

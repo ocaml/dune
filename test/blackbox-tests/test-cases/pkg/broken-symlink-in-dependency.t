@@ -66,9 +66,9 @@ Build the packages.
   $ build_pkg baz
 
 All files were copied except for the broken symlinks:
-  $ ls _build/_private/default/.pkg/foo/source
+  $ ls _build/_private/default/.pkg/foo.*/source
   a.txt
-  $ ls _build/_private/default/.pkg/bar/source
+  $ ls _build/_private/default/.pkg/bar.*/source
   a.txt
-  $ ls _build/_private/default/.pkg/baz/source
+  $ ls _build/_private/default/.pkg/baz.*/source
   a.txt

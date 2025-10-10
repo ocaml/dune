@@ -48,7 +48,7 @@ Test that executables from dependencies are located correctly:
   > EOF
 
   $ dune describe location bar
-  _build/_private/default/.pkg/bar/target/bin/bar
+  _build/_private/default/.pkg/bar.0.1-71f2fd5a20f2956e48a2965b20666f1e/target/bin/bar
 
 Test that executables from PATH are located correctly:
   $ mkdir bin

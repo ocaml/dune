@@ -24,10 +24,9 @@ let build_dev_tool_directly common dev_tool =
   let+ result =
     Build.run_build_system ~common ~request:(fun _build_system ->
       let open Action_builder.O in
-      dev_tool
-      |> Lock_dev_tool.lock_dev_tool
-      |> Action_builder.of_memo
-      >>> Action_builder.path (dev_tool_exe_path dev_tool))
+      let* () = dev_tool |> Lock_dev_tool.lock_dev_tool |> Action_builder.of_memo in
+      (* Make sure the tool's lockdir is generated before building the tool. *)
+      Action_builder.path (dev_tool_exe_path dev_tool))
   in
   match result with
   | Error `Already_reported -> raise Dune_util.Report_error.Already_reported

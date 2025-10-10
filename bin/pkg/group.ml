@@ -14,6 +14,7 @@ let subcommands =
   ; Validate_lock_dir.command
   ; Pkg_enabled.command
   ; Print_digest.command
+  ; Search.command
   ]
 ;;
 

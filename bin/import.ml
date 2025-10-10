@@ -76,6 +76,14 @@ include struct
   module Dune_project = Dune_project
 end
 
+include struct
+  open Dune_pkg
+  module Opam_repo = Opam_repo
+  module Lock_dir = Lock_dir
+  module Rev_store = Rev_store
+  module Resolved_package = Resolved_package
+end
+
 module Log = Dune_util.Log
 module Dune_rpc = Dune_rpc_private
 module Graph = Dune_graph.Graph

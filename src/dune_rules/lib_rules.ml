@@ -622,7 +622,8 @@ let library_rules
     Sub_system.gen_rules
       { super_context = sctx; dir; stanza = lib; scope; source_modules; compile_info }
   and+ merlin =
-    let+ requires_hidden = Compilation_context.requires_hidden cctx in
+    let+ requires_hidden = Compilation_context.requires_hidden cctx
+    and+ parameters = Compilation_context.parameters cctx in
     let flags = Compilation_context.flags cctx in
     Merlin.make
       ~requires_compile
@@ -636,6 +637,7 @@ let library_rules
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Merlin_ident.for_lib (Library.best_name lib))
       ~modes:(`Lib (Lib_info.modes lib_info))
+      ~parameters (* ["-parameter"; "A"; "-parameter"; "B"] *)
   in
   merlin
 ;;

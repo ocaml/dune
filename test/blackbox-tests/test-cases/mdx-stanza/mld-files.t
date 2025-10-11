@@ -90,9 +90,10 @@ the stanza version.
   File "dune-project", line 2, characters 11-14:
   2 | (using mdx 0.4)
                  ^^^
-  Error: Version 0.4 of mdx extension to verify code blocks in .md files is not
-  supported until version 3.8 of the dune language.
-  Supported versions of this extension in version 3.7 of the dune language:
+  Error: Version 0.4 of the mdx extension is not supported until version 3.8 of
+  the dune language.
+  Supported versions of the mdx extension in version 3.7 of the dune language
+  are:
   - 0.1 to 0.3
   [1]
 

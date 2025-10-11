@@ -110,3 +110,11 @@ Cram
 
       This limits each selected test to at most 2.5 seconds of execution time.
 
+   .. describe:: (conflict <ignore|error>)
+
+      .. versionadded:: 3.21
+
+      Determines how conflict markers inserted by version control systems are
+      inserted. The default behavior is to ``ignore`` them. Setting ``error``
+      will make the test runner reject such conflicts and refuse to run the
+      test.

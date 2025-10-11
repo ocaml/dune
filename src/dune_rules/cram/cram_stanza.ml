@@ -20,6 +20,20 @@ let decode_applies_to =
   subtree <|> predicate
 ;;
 
+module Conflict = struct
+  type t =
+    | Error
+    | Ignore
+
+  let to_string = function
+    | Error -> "error"
+    | Ignore -> "ignore"
+  ;;
+
+  let all = [ Error; Ignore ]
+  let decode = enum (List.map all ~f:(fun x -> to_string x, x))
+end
+
 type t =
   { loc : Loc.t
   ; applies_to : applies_to
@@ -27,6 +41,7 @@ type t =
   ; deps : Dep_conf.t Bindings.t option
   ; enabled_if : Blang.t
   ; locks : Locks.t
+  ; conflict : Conflict.t option
   ; package : Package.t option
   ; runtest_alias : (Loc.t * bool) option
   ; timeout : (Loc.t * float) option
@@ -80,8 +95,22 @@ let decode =
             User_error.raise
               ~loc
               [ Pp.text "Timeout value must be a non-negative float." ])
+     and+ conflict =
+       field_o
+         "conflict"
+         (Dune_lang.Syntax.since Stanza.syntax (3, 21) >>> Conflict.decode)
      in
-     { loc; alias; deps; enabled_if; locks; applies_to; package; runtest_alias; timeout })
+     { loc
+     ; alias
+     ; deps
+     ; enabled_if
+     ; locks
+     ; applies_to
+     ; package
+     ; runtest_alias
+     ; timeout
+     ; conflict
+     })
 ;;
 
 let stanza =

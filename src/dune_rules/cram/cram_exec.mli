@@ -1,7 +1,11 @@
 open Import
 
 (** Produces the script containing only the commands to run *)
-val make_script : src:Path.t -> script:Path.Build.t -> Action.t
+val make_script
+  :  src:Path.t
+  -> script:Path.Build.t
+  -> conflict:Cram_stanza.Conflict.t
+  -> Action.t
 
 (** Runs the script created in [make_script] *)
 val run

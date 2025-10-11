@@ -680,7 +680,7 @@ let run
                 ~findlib_toolchain:(Context.findlib_toolchain context)
                 package
             in
-            Install.Entry.gen_install_file entries |> Io.write_file (Path.source fn))))
+            Install.Entry.gen_install_file entries |> Io.overwrite_file (Path.source fn))))
   in
   Path.Set.to_list !files_deleted_in
   (* This [List.rev] is to ensure we process children directories before

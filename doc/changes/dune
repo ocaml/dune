@@ -1,0 +1,8 @@
+(rule
+ (alias runtest)
+ (deps
+  ./forbid-files.sh
+  (:md
+   (glob_files *.md)))
+ (action
+  (run bash ./forbid-files.sh %{md})))

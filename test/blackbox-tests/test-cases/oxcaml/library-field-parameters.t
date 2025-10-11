@@ -1,3 +1,7 @@
+Set up path masking
+
+  $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$(ocamlc -where)":$BUILD_PATH_PREFIX_MAP
+
 Testing the `parameters` field in library stanzas.
 
   $ cat >> dune-project <<EOF
@@ -382,7 +386,7 @@ A library can have more parameters than its dependencies:
   $ dune build
   $ dune ocaml dump-dot-merlin lib2
   EXCLUDE_QUERY_DIR
-  STDLIB /home/sudha/.opam/oxcaml2/lib/ocaml
+  STDLIB /OCAMLC_WHERE
   SOURCE_ROOT $TESTCASE_ROOT
   B $TESTCASE_ROOT/_build/default/a/.a.objs/byte
   B $TESTCASE_ROOT/_build/default/b/.b.objs/byte
@@ -413,7 +417,7 @@ A library can have more parameters than its dependencies:
    (INDEX $TESTCASE_ROOT/_build/default/lib/.lib.objs/cctx.ocaml-index)
    (INDEX $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/cctx.ocaml-index)
    (INDEX $TESTCASE_ROOT/_build/default/utils/.utils.objs/cctx.ocaml-index)
-   (STDLIB /home/sudha/.opam/oxcaml2/lib/ocaml)
+   (STDLIB /OCAMLC_WHERE)
    (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B $TESTCASE_ROOT/_build/default/a/.a.objs/byte)
@@ -438,7 +442,7 @@ A library can have more parameters than its dependencies:
    (INDEX $TESTCASE_ROOT/_build/default/lib/.lib.objs/cctx.ocaml-index)
    (INDEX $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/cctx.ocaml-index)
    (INDEX $TESTCASE_ROOT/_build/default/utils/.utils.objs/cctx.ocaml-index)
-   (STDLIB /home/sudha/.opam/oxcaml2/lib/ocaml)
+   (STDLIB /OCAMLC_WHERE)
    (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B $TESTCASE_ROOT/_build/default/a/.a.objs/byte)

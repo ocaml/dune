@@ -26,4 +26,3 @@ There should only be one execution here:
   foo
 
   $ makeProject false
-  foo

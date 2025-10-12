@@ -126,6 +126,9 @@ let deps_of_vlib_module ~obj_dir ~vimpl ~dir ~sctx ~ml_kind sourced_module =
     Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind m
 ;;
 
+(** Tests whether a set of modules is a singleton *)
+let has_single_file modules = Option.is_some @@ Modules.With_vlib.as_singleton modules
+
 let rec deps_of
           ~obj_dir
           ~modules
@@ -144,7 +147,7 @@ let rec deps_of
        | Root | Alias _ -> true
        | _ -> false)
   in
-  if is_alias_or_root
+  if is_alias_or_root || has_single_file modules
   then Memo.return (Action_builder.return [])
   else (
     let skip_if_source_absent f sourced_module =
@@ -169,9 +172,6 @@ let rec deps_of
        | Intf -> Imported_from_vlib m
        | Impl -> Normal m))
 ;;
-
-(** Tests whether a set of modules is a singleton *)
-let has_single_file modules = Option.is_some @@ Modules.With_vlib.as_singleton modules
 
 let immediate_deps_of unit modules ~obj_dir ~ml_kind =
   match Module.kind unit with

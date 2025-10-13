@@ -356,6 +356,21 @@ let repo_state workspace lock_dir =
   Memo.of_non_reproducible_fiber (get_repos available_repos ~repositories)
 ;;
 
+let env (lock_dir : Workspace.Lock_dir.t option) =
+  let solver_env_from_context, unset_solver_vars_from_context =
+    match lock_dir with
+    | None -> None, None
+    | Some lock_dir -> lock_dir.solver_env, lock_dir.unset_solver_vars
+  in
+  let+ solver_env_from_current_system =
+    Memo.of_reproducible_fiber (poll_solver_env_from_current_system ()) >>| Option.some
+  in
+  solver_env
+    ~solver_env_from_context
+    ~solver_env_from_current_system
+    ~unset_solver_vars_from_context
+;;
+
 let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
   let target = Path.Build.append_local dir lock_dir in
   let rules =
@@ -365,26 +380,18 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
     in
     let* workspace = Workspace.workspace () in
     let lock_dir_path = Path.of_local lock_dir in
+    let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
     let constraints, selected_depopts =
       ( constraints_of_workspace ~lock_dir_path workspace
       , depopts_of_workspace ~lock_dir_path workspace )
     in
     let* repos = repo_state workspace lock_dir_path in
-    let* solver_env_from_current_system =
-      Memo.of_reproducible_fiber (poll_solver_env_from_current_system ()) >>| Option.some
-    in
-    let env =
-      (* TODO read context and other stuff *)
-      solver_env
-        ~solver_env_from_context:None
-        ~solver_env_from_current_system
-        ~unset_solver_vars_from_context:None
-    in
+    let* env = env lock_dir in
     let* project_pins = project_pins in
     let+ pins = Memo.of_reproducible_fiber (resolve_project_pins project_pins) in
     let version_preference =
       (let open Option.O in
-       let* lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
+       let* lock_dir = lock_dir in
        lock_dir.version_preference)
       |> Option.value ~default:Dune_pkg.Version_preference.default
     in
@@ -392,7 +399,7 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
       lock
         ~packages
         ~target
-        ~lock_dir:(Path.Local.to_string lock_dir)
+        ~lock_dir:(Path.to_string lock_dir_path)
         ~repos
         ~env
         ~constraints

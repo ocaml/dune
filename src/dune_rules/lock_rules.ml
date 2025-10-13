@@ -564,15 +564,9 @@ let lock_dev_tool_at_version ~target dev_tool version =
   let selected_depopts = [] in
   let pins = Package_name.Map.empty in
   let version_preference = Dune_pkg.Version_preference.default in
-  let+ solver_env_from_current_system =
-    Memo.of_reproducible_fiber (poll_solver_env_from_current_system ()) >>| Option.some
-  in
-  let env =
-    (* TODO read context and other stuff *)
-    solver_env
-      ~solver_env_from_context:None
-      ~solver_env_from_current_system
-      ~unset_solver_vars_from_context:None
+  let+ env =
+    let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
+    env lock_dir
   in
   let { Action_builder.With_targets.build; targets } =
     lock

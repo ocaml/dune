@@ -680,12 +680,15 @@ let _raise_on_lock_dir_out_of_sync =
         with
         | `Valid -> ()
         | `Invalid ->
-          let source_path = Dune_pkg.Lock_dir.in_source_tree path in
-          let loc_path = Path.source source_path in
-          let loc = Loc.in_file (Path.relative loc_path "lock.dune") in
+          let loc =
+            let open Option.O in
+            let+ source_path = Dune_pkg.Lock_dir.in_source_tree path in
+            let loc_path = Path.source source_path in
+            Loc.in_file (Path.relative loc_path "lock.dune")
+          in
           let hints = Pp.[ text "run dune pkg lock" ] in
           User_error.raise
-            ~loc
+            ?loc
             ~hints
             [ Pp.text "The lock dir is not sync with your dune-project" ]
       else Memo.return ())

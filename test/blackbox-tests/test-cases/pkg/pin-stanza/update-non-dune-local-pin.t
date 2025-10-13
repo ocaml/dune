@@ -41,7 +41,7 @@ Attempt to build the package the first time:
   echo aaa
   aaa
   false
-  File "dune.lock/foo.pkg", line 4, characters 6-13:
+  File "_build/_private/default/.lock/dune.lock/foo.pkg", line 4, characters 6-13:
   4 |  (run %{make}))
             ^^^^^^^
   Error: Logs for package foo
@@ -59,7 +59,7 @@ The change to the package is picked up:
   echo bbb
   bbb
   false
-  File "dune.lock/foo.pkg", line 4, characters 6-13:
+  File "_build/_private/default/.lock/dune.lock/foo.pkg", line 4, characters 6-13:
   4 |  (run %{make}))
             ^^^^^^^
   Error: Logs for package foo

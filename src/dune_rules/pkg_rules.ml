@@ -1494,10 +1494,10 @@ end = struct
             in
             resolve db dep_loc dep_pkg_digest package_universe)
       and+ files_dir =
-        let* lock_dir =
+        let+ lock_dir =
           Package_universe.lock_dir_path package_universe >>| Option.value_exn
         in
-        let+ files_dir =
+        let files_dir =
           let module Pkg = Dune_pkg.Lock_dir.Pkg in
           (* TODO(steve): simplify this once portable lockdirs become the
              default. This logic currently handles both the cases where
@@ -1509,21 +1509,14 @@ end = struct
           let path_with_version =
             Pkg.source_files_dir info.name (Some info.version) ~lock_dir
           in
-          let* path_with_version_exists =
-            Fs_memo.dir_exists (Path.Outside_build_dir.In_source_dir path_with_version)
-          in
-          match path_with_version_exists with
-          | true ->
-            Memo.return @@ Some (Pkg.files_dir info.name (Some info.version) ~lock_dir)
-          | false ->
+          match path_with_version with
+          | Some _path_with_version ->
+            Some (Pkg.files_dir info.name (Some info.version) ~lock_dir)
+          | None ->
             let path_without_version = Pkg.source_files_dir info.name None ~lock_dir in
-            let+ path_without_version_exists =
-              Fs_memo.dir_exists
-                (Path.Outside_build_dir.In_source_dir path_without_version)
-            in
-            (match path_without_version_exists with
-             | true -> Some (Pkg.files_dir info.name None ~lock_dir)
-             | false -> None)
+            (match path_without_version with
+             | Some _ -> Some (Pkg.files_dir info.name None ~lock_dir)
+             | None -> None)
         in
         files_dir
         |> Option.map ~f:(fun (p : Path.t) ->

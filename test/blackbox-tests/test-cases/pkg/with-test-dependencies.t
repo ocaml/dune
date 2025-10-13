@@ -34,8 +34,8 @@ Regular dependencies are resolved transitively:
   $ solve depends-on-foo
   Solution for dune.lock:
   - depends-on-foo.0.0.1
-  - foo.0.0.1
   - foo-dependency.0.0.1
+  - foo.0.0.1
 
 Transitive test dependencies are not included:
   $ solve depends-on-foo-with-test
@@ -45,8 +45,8 @@ Transitive test dependencies are not included:
 Test dependencies of the project are included:
   $ solve "(foo :with-test)"
   Solution for dune.lock:
-  - foo.0.0.1
   - foo-dependency.0.0.1
+  - foo.0.0.1
 
 Test dependencies of test dependencies are excluded:
   $ solve "(depends-on-foo-with-test :with-test)"

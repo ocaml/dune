@@ -637,7 +637,7 @@ let library_rules
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Merlin_ident.for_lib (Library.best_name lib))
       ~modes:(`Lib (Lib_info.modes lib_info))
-      ~parameters (* ["-parameter"; "A"; "-parameter"; "B"] *)
+      ~parameters
   in
   merlin
 ;;

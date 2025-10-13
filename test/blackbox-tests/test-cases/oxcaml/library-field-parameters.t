@@ -383,6 +383,10 @@ A library can have more parameters than its dependencies:
   > (library (name lib2) (parameters a b c) (libraries lib))
   > EOF
 
+  $ ocamlc_where="$(ocamlc -where)"
+  $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
+  $ melc_compiler="$(which melc)" &> /dev/null
+  $ export BUILD_PATH_PREFIX_MAP="/MELC_COMPILER=$melc_compiler:$BUILD_PATH_PREFIX_MAP"
   $ dune build
   $ dune ocaml dump-dot-merlin lib2
   EXCLUDE_QUERY_DIR
@@ -410,7 +414,7 @@ A library can have more parameters than its dependencies:
   # FLG -parameter A -parameter B -parameter C
   
   $ dune ocaml merlin dump-config lib2
-  Lib2: _build/default/lib2/lib2
+  Lib2: _build/MELC_COMPILER/default/lib2/lib2
   ((INDEX $TESTCASE_ROOT/_build/default/a/.a.objs/cctx.ocaml-index)
    (INDEX $TESTCASE_ROOT/_build/default/b/.b.objs/cctx.ocaml-index)
    (INDEX $TESTCASE_ROOT/_build/default/c/.c.objs/cctx.ocaml-index)
@@ -435,7 +439,7 @@ A library can have more parameters than its dependencies:
    (FLG (-w @1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
    (FLG (-parameter A -parameter B -parameter C))
    (UNIT_NAME lib2))
-  Lib2: _build/default/lib2/lib2.ml
+  Lib2: _build/MELC_COMPILER/default/lib2/lib2.ml
   ((INDEX $TESTCASE_ROOT/_build/default/a/.a.objs/cctx.ocaml-index)
    (INDEX $TESTCASE_ROOT/_build/default/b/.b.objs/cctx.ocaml-index)
    (INDEX $TESTCASE_ROOT/_build/default/c/.c.objs/cctx.ocaml-index)

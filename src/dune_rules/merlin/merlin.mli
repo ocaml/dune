@@ -53,6 +53,9 @@ val make
   -> ident:Merlin_ident.t
   -> modes:[ `Lib of Lib_mode.Map.Set.t | `Exe | `Melange_emit ]
   -> parameters:Module_name.t list Resolve.t
+       (** The `parameters` argument takes the list of parameters from the
+       compilation context and stores it in the form of `["-parameter"; "P1";
+       "-parameter"; "P2"]` where P1 and P2 are the parameters. *)
   -> t
 
 val more_src_dirs : Dir_contents.t -> source_dirs:Path.Source.t list -> Path.Source.t list

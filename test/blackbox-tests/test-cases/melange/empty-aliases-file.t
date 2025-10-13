@@ -115,7 +115,7 @@ file, and it's not present
   > let x = "foo"
   > EOF
 
-  $ DUNE_SANDBOX=none dune build @melange
+  $ dune build @melange
 
 `foo.js` was manually written, therefore it's present. `sub.js` is an alias
 file, and it's not present

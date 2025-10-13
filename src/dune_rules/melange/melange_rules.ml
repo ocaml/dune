@@ -320,13 +320,29 @@ let build_js
           ; Dep src
           ]
       in
-      With_targets.map_build command ~f:(fun command ->
-        let open Action_builder.O in
-        match local_modules_and_obj_dir with
-        | Some (modules, obj_dir) ->
+      match local_modules_and_obj_dir with
+      | Some (modules, obj_dir) ->
+        With_targets.map_build command ~f:(fun command ->
+          let open Action_builder.O in
           let paths =
             let+ module_deps =
-              Dep_rules.immediate_deps_of m modules ~obj_dir ~ml_kind:Impl
+              let deps =
+                let open Memo.O in
+                let+ deps, _ =
+                  Memo.Implicit_output.collect Rules.implicit_output (fun () ->
+                    Dep_rules.deps_of
+                      ~obj_dir
+                      ~modules
+                      ~sandbox:Sandbox_config.default
+                      ~impl:Virtual_rules.no_implements
+                      ~dir
+                      ~sctx
+                      ~ml_kind:Impl
+                      m)
+                in
+                deps
+              in
+              Action_builder.of_memo_join deps
             in
             List.fold_left module_deps ~init:[] ~f:(fun acc dep_m ->
               if Module.has dep_m ~ml_kind:Impl
@@ -338,8 +354,8 @@ let build_js
                 cmj_file :: acc)
               else acc)
           in
-          Action_builder.dyn_paths_unit paths >>> command
-        | None -> command)
+          Action_builder.dyn_paths_unit paths >>> command)
+      | None -> command
     in
     Super_context.add_rule sctx ~dir ~loc ~mode build)
 ;;

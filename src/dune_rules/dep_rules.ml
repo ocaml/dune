@@ -214,3 +214,7 @@ let rules ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir =
       in
       Dep_graph.make ~dir ~per_module)
 ;;
+
+let deps_of ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx module_ =
+  deps_of ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx (Normal module_)
+;;

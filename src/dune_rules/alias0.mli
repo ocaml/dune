@@ -15,9 +15,6 @@ val ocaml_index : Name.t
 val install : Name.t
 val pkg_install : Name.t
 val pkg_lock : Name.t
-
-(* TODO remove, just for debug *)
-val pkg_tmp_ocamlformat_lock : Name.t
 val runtest : Name.t
 val empty : Name.t
 val all : Name.t

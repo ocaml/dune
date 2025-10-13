@@ -687,23 +687,3 @@ let setup_lock_alias ~dir =
   Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
   |> Gen_rules.rules_here
 ;;
-
-(* TODO remove this, just for debug purposes *)
-let setup_tmp_ocamlformat_alias =
-  fun ~dir ctx_name ->
-  let alias = Alias.make ~dir Alias0.pkg_tmp_ocamlformat_lock in
-  let rule =
-    Rules.collect_unit (fun () ->
-      (* careful, need to point to a file that will be created by the rule *)
-      let path =
-        (* TODO get lock dir name instead of hardcoding `dune.lock` *)
-        Path.Build.L.relative
-          Private_context.t.build_dir
-          [ Context_name.to_string ctx_name; ".dev-tool-lock"; "ocamlformat" ]
-      in
-      let deps = Action_builder.path (Path.build path) in
-      Rules.Produce.Alias.add_deps alias deps)
-  in
-  Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
-  |> Gen_rules.rules_here
-;;

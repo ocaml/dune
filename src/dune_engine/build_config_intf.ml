@@ -132,7 +132,8 @@ module type Build_config = sig
     -> sandboxing_preference:Sandbox_mode.t list
     -> rule_generator:(module Gen_rules.Rule_generator)
     -> implicit_default_alias:(Path.Build.t -> unit Action_builder.t option Memo.t)
-    -> execution_parameters:(dir:Path.Build.t -> Execution_parameters.t Memo.t)
+    -> execution_parameters:
+         (Context_name.t -> dir:Path.Build.t -> Execution_parameters.t Memo.t)
     -> source_tree:(module Source_tree)
     -> shared_cache:(module Dune_cache.Shared.S)
     -> write_error_summary:(Build_system_error.Set.t -> unit Fiber.t)
@@ -152,7 +153,8 @@ module type Build_config = sig
     ; cache_config : Dune_cache.Config.t
     ; cache_debug_flags : Cache_debug_flags.t
     ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t
-    ; execution_parameters : dir:Path.Build.t -> Execution_parameters.t Memo.t
+    ; execution_parameters :
+        Context_name.t -> dir:Path.Build.t -> Execution_parameters.t Memo.t
     ; source_tree : (module Source_tree)
     ; shared_cache : (module Dune_cache.Shared.S)
     ; write_error_summary : Build_system_error.Set.t -> unit Fiber.t

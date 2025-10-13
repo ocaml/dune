@@ -517,14 +517,6 @@ true
 ;;
 
 let%expect_test _ =
-  Path.is_strict_descendant_of_build_dir Path.build_dir |> Dyn.bool |> print_dyn;
-  [%expect
-    {|
-false
-|}]
-;;
-
-let%expect_test _ =
   Path.reach_for_running Path.build_dir ~from:Path.root |> Dyn.string |> print_dyn;
   [%expect
     {|

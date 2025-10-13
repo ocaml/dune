@@ -1038,11 +1038,6 @@ let parent_exn t =
   | None -> Code_error.raise "Path.parent:exn t is root" [ "t", to_dyn t ]
 ;;
 
-let is_strict_descendant_of_build_dir = function
-  | In_build_dir p -> not (Local.is_root p)
-  | In_source_tree _ | External _ -> false
-;;
-
 let is_in_build_dir = function
   | In_build_dir _ -> true
   | In_source_tree _ | External _ -> false
@@ -1314,7 +1309,6 @@ module Set = struct
   let of_listing ~dir ~filenames = of_list_map filenames ~f:(fun f -> relative dir f)
 end
 
-let in_source s = in_source_tree (Local.of_string s)
 let source s = in_source_tree s
 let build s = in_build_dir s
 
@@ -1425,13 +1419,6 @@ module Source = struct
   let to_local t = t
 end
 
-let set_of_source_paths set = Source.Set.to_list set |> Set.of_list_map ~f:source
-
-let set_of_build_paths_list =
-  List.fold_left ~init:Set.empty ~f:(fun acc e -> Set.add acc (build e))
-;;
-
-let set_of_external_paths set = External.Set.to_list set |> Set.of_list_map ~f:external_
 let rename old_path new_path = Unix.rename (to_string old_path) (to_string new_path)
 let chmod t ~mode = Unix.chmod (to_string t) mode
 

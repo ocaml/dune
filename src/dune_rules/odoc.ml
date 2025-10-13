@@ -984,7 +984,7 @@ let setup_package_odoc_rules sctx ~pkg =
         ~doc_dir:(Paths.odocs ctx (Pkg pkg))
         ~includes:(Action_builder.return []))
   in
-  Dep.setup_deps ctx (Pkg pkg) (Path.set_of_build_paths_list odocs)
+  Path.Set.of_list_map ~f:Path.build odocs |> Dep.setup_deps ctx (Pkg pkg)
 ;;
 
 let gen_project_rules sctx project =

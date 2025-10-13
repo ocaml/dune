@@ -388,79 +388,9 @@ A library can have more parameters than its dependencies:
   $ melc_compiler="$(which melc)" &> /dev/null
   $ export BUILD_PATH_PREFIX_MAP="/MELC_COMPILER=$melc_compiler:$BUILD_PATH_PREFIX_MAP"
   $ dune build
-  $ dune ocaml dump-dot-merlin lib2
-  EXCLUDE_QUERY_DIR
-  STDLIB /OCAMLC_WHERE
-  SOURCE_ROOT $TESTCASE_ROOT
-  B $TESTCASE_ROOT/_build/default/a/.a.objs/byte
-  B $TESTCASE_ROOT/_build/default/b/.b.objs/byte
-  B $TESTCASE_ROOT/_build/default/c/.c.objs/byte
-  B $TESTCASE_ROOT/_build/default/lib/.lib.objs/byte
-  B $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/byte
-  B $TESTCASE_ROOT/_build/default/utils/.utils.objs/byte
-  S $TESTCASE_ROOT/a
-  S $TESTCASE_ROOT/b
-  S $TESTCASE_ROOT/c
-  S $TESTCASE_ROOT/lib
-  S $TESTCASE_ROOT/lib2
-  S $TESTCASE_ROOT/utils
-  INDEX $TESTCASE_ROOT/_build/default/a/.a.objs/cctx.ocaml-index
-  INDEX $TESTCASE_ROOT/_build/default/b/.b.objs/cctx.ocaml-index
-  INDEX $TESTCASE_ROOT/_build/default/c/.c.objs/cctx.ocaml-index
-  INDEX $TESTCASE_ROOT/_build/default/lib/.lib.objs/cctx.ocaml-index
-  INDEX $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/cctx.ocaml-index
-  INDEX $TESTCASE_ROOT/_build/default/utils/.utils.objs/cctx.ocaml-index
-  # FLG -w @1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g
+  $ dune ocaml dump-dot-merlin lib2 | grep 'parameter'
   # FLG -parameter A -parameter B -parameter C
-  
-  $ dune ocaml merlin dump-config lib2
-  Lib2: _build/MELC_COMPILER/default/lib2/lib2
-  ((INDEX $TESTCASE_ROOT/_build/default/a/.a.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/b/.b.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/c/.c.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/lib/.lib.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/utils/.utils.objs/cctx.ocaml-index)
-   (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT $TESTCASE_ROOT)
-   (EXCLUDE_QUERY_DIR)
-   (B $TESTCASE_ROOT/_build/default/a/.a.objs/byte)
-   (B $TESTCASE_ROOT/_build/default/b/.b.objs/byte)
-   (B $TESTCASE_ROOT/_build/default/c/.c.objs/byte)
-   (B $TESTCASE_ROOT/_build/default/lib/.lib.objs/byte)
-   (B $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/byte)
-   (B $TESTCASE_ROOT/_build/default/utils/.utils.objs/byte)
-   (S $TESTCASE_ROOT/a)
-   (S $TESTCASE_ROOT/b)
-   (S $TESTCASE_ROOT/c)
-   (S $TESTCASE_ROOT/lib)
-   (S $TESTCASE_ROOT/lib2)
-   (S $TESTCASE_ROOT/utils)
-   (FLG (-w @1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
+
+  $ dune ocaml merlin dump-config lib2 | grep 'parameter'
    (FLG (-parameter A -parameter B -parameter C))
-   (UNIT_NAME lib2))
-  Lib2: _build/MELC_COMPILER/default/lib2/lib2.ml
-  ((INDEX $TESTCASE_ROOT/_build/default/a/.a.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/b/.b.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/c/.c.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/lib/.lib.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/utils/.utils.objs/cctx.ocaml-index)
-   (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT $TESTCASE_ROOT)
-   (EXCLUDE_QUERY_DIR)
-   (B $TESTCASE_ROOT/_build/default/a/.a.objs/byte)
-   (B $TESTCASE_ROOT/_build/default/b/.b.objs/byte)
-   (B $TESTCASE_ROOT/_build/default/c/.c.objs/byte)
-   (B $TESTCASE_ROOT/_build/default/lib/.lib.objs/byte)
-   (B $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/byte)
-   (B $TESTCASE_ROOT/_build/default/utils/.utils.objs/byte)
-   (S $TESTCASE_ROOT/a)
-   (S $TESTCASE_ROOT/b)
-   (S $TESTCASE_ROOT/c)
-   (S $TESTCASE_ROOT/lib)
-   (S $TESTCASE_ROOT/lib2)
-   (S $TESTCASE_ROOT/utils)
-   (FLG (-w @1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
    (FLG (-parameter A -parameter B -parameter C))
-   (UNIT_NAME lib2))

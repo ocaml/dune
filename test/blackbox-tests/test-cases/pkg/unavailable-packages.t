@@ -3,7 +3,8 @@
 
 Set up two build contexts: a default one for linux and another for macos.
   $ cat >dune-workspace <<EOF
-  > (lang dune 3.8)
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (lock_dir
   >  (path dune.lock)
   >  (repositories mock)
@@ -26,12 +27,6 @@ Set up two build contexts: a default one for linux and another for macos.
   > EOF
 
 Helper shell function to generate a dune-project file and generate lockdir for both contexts:
-
-  $ solve_project() {
-  >   cat >dune-project
-  >   dune pkg lock dune.lock
-  >   dune pkg lock dune.macos.lock
-  > }
 
 A package which is only available on linux:
   $ mkpkg linux-only 0.0.1 <<EOF

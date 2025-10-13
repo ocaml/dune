@@ -236,10 +236,10 @@ module Session = struct
 
   external send : Unix.file_descr -> Bytes.t -> int -> int -> int = "dune_send"
 
-  let write =
+  let write t b =
     match Platform.OS.value with
-    | Linux -> send
-    | _ -> Unix.single_write
+    | Linux -> send t b
+    | _ -> Unix.single_write t b
   ;;
 
   let rec csexp_write_loop fd out_buf token =

@@ -24,11 +24,3 @@
 (cram
  (applies_to what-dune-watches)
  (deps %{bin:strace}))
-
-;; These tests sometimes get stuck and time out:
-
-(cram
- (applies_to
-  watching-eager-concurrent-build-command
-  watching-eager-concurrent-exec-command)
- (enabled_if false))

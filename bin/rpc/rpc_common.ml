@@ -125,7 +125,7 @@ let wrap_build_outcome_exn ~print_on_success f args () =
     in
     List.iter errors ~f:(fun { Dune_rpc.Compound_user_error.main; _ } ->
       Console.print_user_message main);
-    Console.print [ error_msg |> Pp.tag User_message.Style.Error ]
+    User_error.raise [ error_msg |> Pp.tag User_message.Style.Error ]
 ;;
 
 let run_via_rpc ~common ~config f args =

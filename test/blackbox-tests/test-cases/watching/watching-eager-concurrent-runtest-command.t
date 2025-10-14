@@ -26,11 +26,8 @@ mode:
 
 Test that passing extra arguments to `dune runtest` prints a warning when
 running concurrently with another instance of dune in watch mode:
-  $ dune runtest --auto-promote 2>&1 | sed 's/[0-9]*)/PID)/g'
-  Warning:
-  Your build request is being forwarded to a running Dune instance (pid:
-  PID). Note that certain command line arguments may be ignored.
-  Success
+  $ dune runtest --auto-promote 2>&1 | tr '\n' ' ' | sed 's/(pid: [0-9]*)/(pid: PID)/'
+  Warning: Your build request is being forwarded to a running Dune instance (pid: PID). Note that certain command line arguments may be ignored. Success 
 
   $ dune shutdown
   $ wait

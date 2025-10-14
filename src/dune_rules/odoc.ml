@@ -1174,9 +1174,11 @@ let gen_rules sctx ~dir rest =
        >>> setup_toplevel_index_rule sctx Json)
   | [ "_markdown" ] -> has_rules (setup_toplevel_index_rule sctx Markdown)
   | [ "_markdown"; lib_unique_name_or_pkg ] ->
+    let ctx = Super_context.context sctx in
+    let directory_targets = Path.Build.Map.singleton dir Loc.none in
     has_rules
-      (let ctx = Super_context.context sctx in
-       let* lib, lib_db = Scope_key.of_string (Context.name ctx) lib_unique_name_or_pkg in
+      ~directory_targets
+      (let* lib, lib_db = Scope_key.of_string (Context.name ctx) lib_unique_name_or_pkg in
        let* lib =
          let+ lib = Lib.DB.find lib_db lib in
          Option.bind ~f:Lib.Local.of_lib lib

@@ -417,10 +417,11 @@ let odoc_include_flags ctx pkg requires =
 let link_odoc_rules sctx (odoc_file : odoc_artefact) ~pkg ~requires =
   let ctx = Super_context.context sctx in
   let deps = Dep.deps ctx pkg requires in
+  let dir = Path.build (Path.Build.parent_exn odoc_file.odocl_file) in
   let run_odoc =
     run_odoc
       sctx
-      ~dir:(Path.build (Paths.html_root ctx))
+      ~dir
       "link"
       ~quiet:false
       ~flags_for:(Some odoc_file.odoc_file)
@@ -896,30 +897,6 @@ let add_format_alias_deps ctx format target odocs =
     (Action_builder.paths paths)
 ;;
 
-let setup_lib_markdown_rules_def =
-  let module Input = struct
-    module Super_context = Super_context.As_memo_key
-
-    type t = Super_context.t * Lib.Local.t
-
-    let equal (sc1, l1) (sc2, l2) = Super_context.equal sc1 sc2 && Lib.Local.equal l1 l2
-    let hash = Tuple.T2.hash Super_context.hash Lib.Local.hash
-    let to_dyn _ = Dyn.Opaque
-  end
-  in
-  let f (sctx, lib) =
-    let ctx = Super_context.context sctx in
-    let target = Lib lib in
-    let* odocs = odoc_artefacts sctx target in
-    add_format_alias_deps ctx Markdown target odocs;
-  in
-  Memo.With_implicit_output.create
-    "setup-library-markdown-rules"
-    ~implicit_output:Rules.implicit_output
-    ~input:(module Input)
-    f
-;;
-
 let setup_lib_html_rules_def =
   let module Input = struct
     module Super_context = Super_context.As_memo_key
@@ -940,6 +917,30 @@ let setup_lib_html_rules_def =
   in
   Memo.With_implicit_output.create
     "setup-library-html-rules"
+    ~implicit_output:Rules.implicit_output
+    ~input:(module Input)
+    f
+;;
+
+let setup_lib_markdown_rules_def =
+  let module Input = struct
+    module Super_context = Super_context.As_memo_key
+
+    type t = Super_context.t * Lib.Local.t
+
+    let equal (sc1, l1) (sc2, l2) = Super_context.equal sc1 sc2 && Lib.Local.equal l1 l2
+    let hash = Tuple.T2.hash Super_context.hash Lib.Local.hash
+    let to_dyn _ = Dyn.Opaque
+  end
+  in
+  let f (sctx, lib) =
+    let ctx = Super_context.context sctx in
+    let target = Lib lib in
+    let* odocs = odoc_artefacts sctx target in
+    add_format_alias_deps ctx Markdown target odocs
+  in
+  Memo.With_implicit_output.create
+    "setup-library-markdown-rules"
     ~implicit_output:Rules.implicit_output
     ~input:(module Input)
     f
@@ -993,11 +994,9 @@ let setup_pkg_html_rules sctx ~pkg : unit Memo.t =
 ;;
 
 let setup_lib_markdown_rules sctx lib =
-  let ctx = Super_context.context sctx in
   let target = Lib lib in
   let* odocs = odoc_artefacts sctx target in
   let* () = Memo.parallel_iter odocs ~f:(fun odoc -> setup_generate_markdown sctx odoc) in
-  let* () = add_format_alias_deps ctx Markdown target odocs in
   Memo.With_implicit_output.exec setup_lib_markdown_rules_def (sctx, lib)
 ;;
 
@@ -1174,11 +1173,10 @@ let gen_rules sctx ~dir rest =
        >>> setup_toplevel_index_rule sctx Json)
   | [ "_markdown" ] -> has_rules (setup_toplevel_index_rule sctx Markdown)
   | [ "_markdown"; lib_unique_name_or_pkg ] ->
-    let ctx = Super_context.context sctx in
-    let directory_targets = Path.Build.Map.singleton dir Loc.none in
     has_rules
-      ~directory_targets
-      (let* lib, lib_db = Scope_key.of_string (Context.name ctx) lib_unique_name_or_pkg in
+      (
+       let ctx = Super_context.context sctx in
+       let* lib, lib_db = Scope_key.of_string (Context.name ctx) lib_unique_name_or_pkg in
        let* lib =
          let+ lib = Lib.DB.find lib_db lib in
          Option.bind ~f:Lib.Local.of_lib lib

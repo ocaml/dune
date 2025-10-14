@@ -92,11 +92,16 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
   in
   Dune_engine.Scheduler.Run.poll_passive
     ~get_build_request:
-      (let+ (Build (targets, ivar)) = Dune_rpc_impl.Server.pending_build_action rpc in
+      (let+ { kind; outcome } = Dune_rpc_impl.Server.pending_action rpc in
        let request setup =
-         Target.interpret_targets (Common.root common) config setup targets
+         let root = Common.root common in
+         match kind with
+         | Build targets ->
+           Target.interpret_targets (Common.root common) config setup targets
+         | Runtest dir_or_cram_test_paths ->
+           Runtest_common.make_request ~dir_or_cram_test_paths ~to_cwd:root.to_cwd setup
        in
-       run_build_system ~common ~request, ivar)
+       run_build_system ~common ~request, outcome)
 ;;
 
 let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
@@ -138,10 +143,10 @@ let run_build_command ~(common : Common.t) ~config ~request =
     ~request
 ;;
 
-let build_via_rpc_server ~print_on_success ~targets =
+let build_via_rpc_server ~print_on_success ~targets builder lock_held_by =
   Rpc.Rpc_common.wrap_build_outcome_exn
     ~print_on_success
-    (Rpc.Group.Build.build ~wait:true)
+    (Rpc.Group.Build.build ~wait:true builder lock_held_by)
     targets
     ()
 ;;
@@ -199,11 +204,9 @@ let build =
          perform the RPC call.
       *)
       Rpc.Rpc_common.run_via_rpc
-        ~builder
         ~common
         ~config
-        lock_held_by
-        (Rpc.Group.Build.build ~wait:true)
+        (Rpc.Group.Build.build ~wait:true builder lock_held_by)
         targets
     | Ok () ->
       let request setup =

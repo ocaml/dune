@@ -22,10 +22,16 @@ val client_term : Common.Builder.t -> (unit -> 'a Fiber.t) -> 'a
 val wait_term : bool Cmdliner.Term.t
 
 (** Send a request to the RPC server. If [wait], it will poll forever until a server is listening.
-    Should be scheduled by a scheduler that does not come with a RPC server on its own. *)
+    Should be scheduled by a scheduler that does not come with a RPC server on its own.
+
+    [warn_forwarding] defaults to true, warns the user that since a RPC server is running, some arguments are ignored.
+    [lock_held_by] defaults to [Unknown], is only used to allow error messages to print the PID. *)
 val fire_request
   :  name:string
   -> wait:bool
+  -> ?warn_forwarding:bool
+  -> ?lock_held_by:Dune_util.Global_lock.Lock_held_by.t
+  -> Common.Builder.t
   -> ('a, 'b) Dune_rpc.Decl.request
   -> 'a
   -> ('b, Dune_rpc.Response.Error.t) result Fiber.t
@@ -44,10 +50,8 @@ val warn_ignore_arguments : Dune_util.Global_lock.Lock_held_by.t -> unit
 
 (**  Schedule a fiber to run via RPC, wrapping any errors. *)
 val run_via_rpc
-  :  builder:Common.Builder.t
-  -> common:Common.t
+  :  common:Common.t
   -> config:Dune_config_file.Dune_config.t
-  -> Dune_util.Global_lock.Lock_held_by.t
   -> ('a
       -> (Dune_rpc.Build_outcome_with_diagnostics.t, Dune_rpc.Response.Error.t) result
            Fiber.t)

@@ -187,7 +187,7 @@ let step ~prog ~args ~common ~no_rebuild ~context ~on_exit () =
    directory lock.
 
    Returns the absolute path to the executable. *)
-let build_prog_via_rpc_if_necessary ~dir ~no_rebuild prog =
+let build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog =
   match Filename.analyze_program_name prog with
   | In_path ->
     (* This case is reached if [dune exec] is passed the name of an
@@ -225,7 +225,11 @@ let build_prog_via_rpc_if_necessary ~dir ~no_rebuild prog =
           Dune_lang.Dep_conf.File
             (Dune_lang.String_with_vars.make_text Loc.none (Path.to_string path))
         in
-        Build.build_via_rpc_server ~print_on_success:false ~targets:[ target ])
+        Build.build_via_rpc_server
+          ~print_on_success:false
+          ~targets:[ target ]
+          builder
+          lock_held_by)
     in
     Path.to_absolute_filename path
   | Absolute ->
@@ -234,7 +238,7 @@ let build_prog_via_rpc_if_necessary ~dir ~no_rebuild prog =
     else not_found ~hints:[] ~prog
 ;;
 
-let exec_building_via_rpc_server ~common ~prog ~args ~no_rebuild =
+let exec_building_via_rpc_server ~common ~prog ~args ~no_rebuild builder lock_held_by =
   let open Fiber.O in
   let ensure_terminal v =
     match (v : Cmd_arg.t) with
@@ -252,7 +256,9 @@ let exec_building_via_rpc_server ~common ~prog ~args ~no_rebuild =
   let dir = Context_name.build_dir context in
   let prog = ensure_terminal prog in
   let args = List.map args ~f:ensure_terminal in
-  let+ prog = build_prog_via_rpc_if_necessary ~dir ~no_rebuild prog in
+  let+ prog =
+    build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog
+  in
   restore_cwd_and_execve (Common.root common) prog args Env.initial
 ;;
 
@@ -311,18 +317,9 @@ let term : unit Term.t =
               | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
          ]
      | No ->
-       if not (Common.Builder.equal builder Common.Builder.default)
-       then
-         User_warning.emit
-           [ Pp.textf
-               "Your build request is being forwarded to a running Dune instance%s. Note \
-                that certain command line arguments may be ignored."
-               (match lock_held_by with
-                | Unknown -> ""
-                | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
-           ];
        Scheduler.go_without_rpc_server ~common ~config
-       @@ fun () -> exec_building_via_rpc_server ~common ~prog ~args ~no_rebuild)
+       @@ fun () ->
+       exec_building_via_rpc_server ~common ~prog ~args ~no_rebuild builder lock_held_by)
   | Ok () -> exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild
 ;;
 

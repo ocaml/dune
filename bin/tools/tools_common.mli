@@ -6,6 +6,7 @@ open! Import
 val lock_build_and_run_dev_tool
   :  common:Common.t
   -> config:Dune_config_file.Dune_config.t
+  -> Common.Builder.t
   -> Dune_pkg.Dev_tool.t
   -> args:string list
   -> 'a

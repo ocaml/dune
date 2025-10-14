@@ -948,7 +948,40 @@ let step1 clflags =
        in
        let defined_names = ref Context_name.Set.empty in
        let env = Lazy.force env in
-       let repos = default_repositories @ List.map ~f:Lazy.force repos in
+       let repos =
+         let user_defined_repos = List.map ~f:Lazy.force repos in
+         (* First, make sure we aren't overriding any default repos *)
+         List.iter user_defined_repos ~f:(fun repo ->
+           let name = Repository.name repo in
+           if
+             Repository.Name.Set.mem
+               (Repository.Name.Set.of_list_map default_repositories ~f:Repository.name)
+               name
+           then
+             User_error.raise
+               ~loc:(fst (Repository.opam_url repo))
+               [ Pp.textf
+                   "Repository %S is a default repository and cannot be redefined."
+                   (Repository.Name.to_string name)
+               ]);
+         (* Secondly, make sure defined repos are unique by name *)
+         (match
+            Repository.Name.Map.of_list_map user_defined_repos ~f:(fun repo ->
+              Repository.name repo, repo)
+          with
+          | Ok _ -> ()
+          | Error (name, repo1, repo2) ->
+            User_error.raise
+              ~loc:(fst (Repository.opam_url repo2))
+              [ Pp.textf
+                  "Repository %S is defined multiple times:"
+                  (Repository.Name.to_string name)
+              ; Pp.enumerate
+                  ~f:Loc.pp_file_colon_line
+                  [ fst (Repository.opam_url repo1); fst (Repository.opam_url repo2) ]
+              ]);
+         default_repositories @ user_defined_repos
+       in
        let merlin_context =
          List.fold_left contexts ~init:None ~f:(fun acc ctx ->
            let name = Context.name ctx in

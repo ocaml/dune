@@ -189,34 +189,6 @@ module Spec = struct
 end
 
 module A = Action_ext.Make (Spec)
-
-let lock
-      ~packages
-      ~target
-      ~lock_dir
-      ~repos
-      ~env
-      ~constraints
-      ~selected_depopts
-      ~pins
-      ~version_preference
-  =
-  A.action
-    { Spec.target
-    ; lock_dir
-    ; packages
-    ; repos
-    ; env
-    ; constraints
-    ; selected_depopts
-    ; pins
-    ; version_preference
-    }
-  |> Action.Full.make ~can_go_in_shared_cache:false
-  |> Action_builder.With_targets.return
-  |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
-;;
-
 module Gen_rules = Build_config.Gen_rules
 
 let action_builder_with_dir_targets ~directory_targets =
@@ -373,39 +345,62 @@ let env (lock_dir : Workspace.Lock_dir.t option) =
 
 let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
   let target = Path.Build.append_local dir lock_dir in
+  let lock_dir_param = lock_dir in
   let rules =
-    let* packages =
-      Dune_load.packages ()
-      >>| Dune_lang.Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
-    in
-    let* workspace = Workspace.workspace () in
-    let lock_dir_path = Path.of_local lock_dir in
+    let+ workspace = Workspace.workspace () in
+    let lock_dir_path = Path.of_local lock_dir_param in
     let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
-    let constraints, selected_depopts =
-      ( constraints_of_workspace ~lock_dir_path workspace
-      , depopts_of_workspace ~lock_dir_path workspace )
-    in
-    let* repos = repo_state workspace lock_dir_path in
-    let* env = env lock_dir in
-    let* project_pins = project_pins in
-    let+ pins = Memo.of_reproducible_fiber (resolve_project_pins project_pins) in
-    let version_preference =
-      (let open Option.O in
-       let* lock_dir = lock_dir in
-       lock_dir.version_preference)
-      |> Option.value ~default:Dune_pkg.Version_preference.default
-    in
+    let constraints = constraints_of_workspace ~lock_dir_path workspace in
+    let selected_depopts = depopts_of_workspace ~lock_dir_path workspace in
     let { Action_builder.With_targets.build; targets } =
-      lock
-        ~packages
-        ~target
-        ~lock_dir:(Path.to_string lock_dir_path)
-        ~repos
-        ~env
-        ~constraints
-        ~selected_depopts
-        ~pins
-        ~version_preference
+      (let open Action_builder.O in
+       let+ packages =
+         let open Memo.O in
+         Dune_load.packages ()
+         >>| Dune_lang.Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
+         |> Action_builder.of_memo
+       and+ repos =
+         Action_builder.of_memo
+           (Memo.of_thunk (fun () ->
+              let open Memo.O in
+              let* workspace = Workspace.workspace () in
+              let lock_dir_path = Path.of_local lock_dir_param in
+              repo_state workspace lock_dir_path))
+       and+ env =
+         Action_builder.of_memo
+           (Memo.of_thunk (fun () ->
+              let open Memo.O in
+              let* workspace = Workspace.workspace () in
+              let lock_dir_path = Path.of_local lock_dir_param in
+              let lock_dir_ws = Workspace.find_lock_dir workspace lock_dir_path in
+              env lock_dir_ws))
+       and+ pins =
+         let open Memo.O in
+         project_pins
+         >>| resolve_project_pins
+         >>= Memo.of_reproducible_fiber
+         |> Action_builder.of_memo
+       in
+       let version_preference =
+         (let open Option.O in
+          let* lock_dir = lock_dir in
+          lock_dir.version_preference)
+         |> Option.value ~default:Dune_pkg.Version_preference.default
+       in
+       A.action
+         { Spec.target
+         ; lock_dir = Path.to_string lock_dir_path
+         ; packages
+         ; repos
+         ; env
+         ; constraints
+         ; selected_depopts
+         ; pins
+         ; version_preference
+         }
+       |> Action.Full.make ~can_go_in_shared_cache:false)
+      |> Action_builder.with_no_targets
+      |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
     in
     let rule = Rule.make ~targets build in
     Rules.of_rules [ rule ]
@@ -547,41 +542,61 @@ let make_local_package_wrapping_dev_tool ~dev_tool ~dev_tool_version ~extra_depe
    the tool will be chosen by the solver. Otherwise the solver is free to
    choose the appropriate version of the tool to install. *)
 let lock_dev_tool_at_version ~target dev_tool version =
-  let open Memo.O in
-  let* extra_dependencies = extra_dependencies dev_tool in
-  let local_pkg =
-    make_local_package_wrapping_dev_tool
-      ~dev_tool
-      ~dev_tool_version:version
-      ~extra_dependencies
-  in
-  let packages = Package_name.Map.singleton local_pkg.name local_pkg in
-  let constraints = [] in
   let lock_dir = sprintf "dev-tools.locks/%s" (Dune_pkg.Dev_tool.to_string dev_tool) in
-  let* workspace = Workspace.workspace () in
-  let lock_dir_path = Path.of_string lock_dir in
-  let* repos = repo_state workspace lock_dir_path in
-  let selected_depopts = [] in
-  let pins = Package_name.Map.empty in
-  let version_preference = Dune_pkg.Version_preference.default in
-  let+ env =
-    let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
-    env lock_dir
+  let rules =
+    Workspace.workspace ()
+    >>| fun _workspace ->
+    let constraints = [] in
+    let selected_depopts = [] in
+    let { Action_builder.With_targets.build; targets } =
+      (let open Action_builder.O in
+       let+ extra_dependencies =
+         Action_builder.of_memo (Memo.of_thunk (fun () -> extra_dependencies dev_tool))
+       and+ repos =
+         Action_builder.of_memo
+           (Memo.of_thunk (fun () ->
+              let open Memo.O in
+              let* workspace = Workspace.workspace () in
+              let lock_dir_path = Path.of_string lock_dir in
+              repo_state workspace lock_dir_path))
+       and+ env =
+         Action_builder.of_memo
+           (Memo.of_thunk (fun () ->
+              let open Memo.O in
+              let* workspace = Workspace.workspace () in
+              let lock_dir_path = Path.of_string lock_dir in
+              let lock_dir_workspace = Workspace.find_lock_dir workspace lock_dir_path in
+              env lock_dir_workspace))
+       in
+       let local_pkg =
+         make_local_package_wrapping_dev_tool
+           ~dev_tool
+           ~dev_tool_version:version
+           ~extra_dependencies
+       in
+       let packages = Package_name.Map.singleton local_pkg.name local_pkg in
+       let pins = Package_name.Map.empty in
+       let version_preference = Dune_pkg.Version_preference.default in
+       A.action
+         { Spec.target
+         ; lock_dir
+         ; packages
+         ; repos
+         ; env
+         ; constraints
+         ; selected_depopts
+         ; pins
+         ; version_preference
+         }
+       |> Action.Full.make ~can_go_in_shared_cache:false)
+      |> Action_builder.with_no_targets
+      |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
+    in
+    let rule = Rule.make ~targets build in
+    Rules.of_rules [ rule ]
   in
-  let { Action_builder.With_targets.build; targets } =
-    lock
-      ~packages
-      ~target
-      ~lock_dir
-      ~constraints
-      ~repos
-      ~env
-      ~selected_depopts
-      ~pins
-      ~version_preference
-  in
-  let rule = Rule.make ~targets build in
-  Rules.of_rules [ rule ]
+  let directory_targets = Path.Build.Map.singleton target Loc.none in
+  Gen_rules.make ~directory_targets rules
 ;;
 
 let lock_ocamlformat ~target =
@@ -593,13 +608,9 @@ let setup_dev_tool_lock_rules ~dir dev_tool : Gen_rules.result =
   let package_name = Dune_pkg.Dev_tool.package_name dev_tool in
   let dev_tool_name = Dune_lang.Package_name.to_string package_name in
   let target = Path.Build.relative dir dev_tool_name in
-  let directory_targets = Path.Build.Map.singleton target Loc.none in
-  let rules =
-    match (dev_tool : Dune_pkg.Dev_tool.t) with
-    | Ocamlformat -> lock_ocamlformat ~target
-    | other -> lock_dev_tool_at_version ~target other None
-  in
-  Gen_rules.make ~directory_targets rules
+  match (dev_tool : Dune_pkg.Dev_tool.t) with
+  | Ocamlformat -> lock_ocamlformat ~target
+  | other -> lock_dev_tool_at_version ~target other None
 ;;
 
 let setup_dev_tool_copy_rules ~dir dev_tool =

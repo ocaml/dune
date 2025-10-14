@@ -1,3 +1,7 @@
+Set up path masking
+
+  $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$(ocamlc -where)":$BUILD_PATH_PREFIX_MAP
+
 Testing the `parameters` field in library stanzas.
 
   $ cat >> dune-project <<EOF
@@ -379,4 +383,14 @@ A library can have more parameters than its dependencies:
   > (library (name lib2) (parameters a b c) (libraries lib))
   > EOF
 
+  $ ocamlc_where="$(ocamlc -where)"
+  $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
+  $ melc_compiler="$(which melc)" &> /dev/null
+  $ export BUILD_PATH_PREFIX_MAP="/MELC_COMPILER=$melc_compiler:$BUILD_PATH_PREFIX_MAP"
   $ dune build
+  $ dune ocaml dump-dot-merlin lib2 | grep 'parameter'
+  # FLG -parameter A -parameter B -parameter C
+
+  $ dune ocaml merlin dump-config lib2 | grep 'parameter'
+   (FLG (-parameter A -parameter B -parameter C))
+   (FLG (-parameter A -parameter B -parameter C))

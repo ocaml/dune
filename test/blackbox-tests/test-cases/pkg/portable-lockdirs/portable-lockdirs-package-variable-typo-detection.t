@@ -6,7 +6,7 @@ Detect common typos with package variables when describing platforms to solve fo
 
 Create a workspace with some typos in package variable names
   $ cat > dune-workspace <<EOF
-  > (lang dune 3.18)
+  > (lang dune 3.20)
   > (repository
   >  (name mock)
   >  (url "file://$(pwd)/mock-opam-repository"))
@@ -17,6 +17,7 @@ Create a workspace with some typos in package variable names
   >    (os linux)
   >    (os_distribution debian)
   >    (os_family debian))))
+  > (pkg enabled)
   > EOF
 
   $ cat > dune-project <<EOF

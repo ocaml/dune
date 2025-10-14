@@ -1,4 +1,5 @@
 open Import
+module Digest_feed = Dune_digest.Feed
 
 module Solver_env_disjunction = struct
   (* A disjunction of solver envs consisting of only platform-specific solver variables. *)
@@ -20,6 +21,7 @@ module Solver_env_disjunction = struct
   ;;
 
   let hash t = List.hash Solver_env.hash t
+  let digest_feed = Digest_feed.list Solver_env.digest_feed
 
   let encode t =
     let open Encoder in
@@ -53,6 +55,11 @@ module Conditional = struct
 
   let hash { condition; value } ~f =
     Tuple.T2.hash Solver_env_disjunction.hash f (condition, value)
+  ;;
+
+  let digest_feed feed_value =
+    Digest_feed.tuple2 Solver_env_disjunction.digest_feed feed_value
+    |> Digest_feed.contramap ~f:(fun { condition; value } -> condition, value)
   ;;
 
   let to_dyn value_to_dyn { condition; value } =
@@ -95,6 +102,7 @@ module Conditional_choice = struct
   let singleton_all_platforms value = singleton Solver_env.empty value
   let equal value_equal = List.equal (Conditional.equal value_equal)
   let hash t ~f = List.hash (Conditional.hash ~f) t
+  let digest_feed feed_value = Digest_feed.list (Conditional.digest_feed feed_value)
   let map ~f = List.map ~f:(Conditional.map ~f)
   let to_dyn value_to_dyn = Dyn.list (Conditional.to_dyn value_to_dyn)
 
@@ -189,6 +197,18 @@ module Pkg_info = struct
       , Bool.hash avoid
       , Option.hash Source.hash source
       , List.hash (Tuple.T2.hash Path.Local.hash Source.hash) extra_sources )
+  ;;
+
+  let digest_feed hasher { name; version; dev; avoid; source; extra_sources } =
+    Package_name.digest_feed hasher name;
+    Package_version.digest_feed hasher version;
+    Digest_feed.bool hasher dev;
+    Digest_feed.bool hasher avoid;
+    Digest_feed.option Source.digest_feed hasher source;
+    Digest_feed.list
+      (Digest_feed.tuple2 Digest_feed.generic Source.digest_feed)
+      hasher
+      extra_sources
   ;;
 
   let remove_locs t =
@@ -375,13 +395,15 @@ module Build_command = struct
          ]
   ;;
 
-  let decode_fields_backwards_compatible =
+  let decode_fields ~portable_lock_dir =
     let open Decoder in
     let parse_action =
-      (let+ action = Action.decode_pkg in
-       Conditional_choice_or_all_platforms.Choice
-         (Conditional_choice.singleton_all_platforms (Action action)))
-      <|> Conditional_choice_or_all_platforms.decode decode_portable
+      if portable_lock_dir
+      then Conditional_choice_or_all_platforms.decode decode_portable
+      else
+        let+ action = Action.decode_pkg in
+        Conditional_choice_or_all_platforms.Choice
+          (Conditional_choice.singleton_all_platforms (Action action))
     in
     fields_mutually_exclusive
       ~default:None
@@ -494,6 +516,24 @@ module Depexts = struct
   let remove_locs t = { t with enabled_if = Enabled_if.remove_locs t.enabled_if }
 end
 
+let in_source_tree path =
+  match (path : Path.t) with
+  | In_source_tree s -> s
+  | In_build_dir b ->
+    let in_source = Path.drop_build_context_exn path in
+    (match Path.Source.explode in_source with
+     | "default" :: ".lock" :: components ->
+       Path.Source.L.relative Path.Source.root components
+     | _otherwise ->
+       Code_error.raise
+         "Unexpected location of lock directory in build directory"
+         [ "path", Path.Build.to_dyn b; "in_source", Path.Source.to_dyn in_source ])
+  | External e ->
+    Code_error.raise
+      "External path returned when loading a lock dir"
+      [ "path", Path.External.to_dyn e ]
+;;
+
 module Pkg = struct
   type t =
     { build_command : Build_command.t Conditional_choice.t
@@ -547,6 +587,26 @@ module Pkg = struct
       , Pkg_info.hash info
       , exported_env
       , Solver_env_disjunction.hash enabled_on_platforms )
+  ;;
+
+  let digest_feed
+        hasher
+        { build_command
+        ; install_command
+        ; depends
+        ; depexts
+        ; info
+        ; exported_env
+        ; enabled_on_platforms
+        }
+    =
+    Conditional_choice.digest_feed Digest_feed.generic hasher build_command;
+    Conditional_choice.digest_feed Digest_feed.generic hasher install_command;
+    Conditional_choice.digest_feed Digest_feed.generic hasher depends;
+    Digest_feed.generic hasher depexts;
+    Pkg_info.digest_feed hasher info;
+    Digest_feed.generic hasher exported_env;
+    Solver_env_disjunction.digest_feed hasher enabled_on_platforms
   ;;
 
   let remove_locs
@@ -617,38 +677,40 @@ module Pkg = struct
     let enabled_on_platforms = "enabled_on_platforms"
   end
 
-  let decode =
+  let decode ~portable_lock_dir =
     let open Decoder in
-    let parse_install_command_backwards_compatible =
-      (let+ action = Action.decode_pkg in
-       Conditional_choice_or_all_platforms.Choice
-         (Conditional_choice.singleton_all_platforms action))
-      <|> Conditional_choice_or_all_platforms.decode Action.decode_pkg
+    let parse_install_command =
+      if portable_lock_dir
+      then Conditional_choice_or_all_platforms.decode Action.decode_pkg
+      else
+        let+ action = Action.decode_pkg in
+        Conditional_choice_or_all_platforms.Choice
+          (Conditional_choice.singleton_all_platforms action)
     in
-    let parse_depends_backwards_compatible =
-      (let+ depends = repeat Dependency.decode in
-       Conditional_choice_or_all_platforms.Choice
-         (Conditional_choice.singleton_all_platforms depends))
-      <|> Conditional_choice_or_all_platforms.decode (enter @@ repeat Dependency.decode)
+    let parse_depends =
+      if portable_lock_dir
+      then Conditional_choice_or_all_platforms.decode (enter @@ repeat Dependency.decode)
+      else
+        let+ depends = repeat Dependency.decode in
+        Conditional_choice_or_all_platforms.Choice
+          (Conditional_choice.singleton_all_platforms depends)
     in
-    let parse_depexts_backwards_compatible =
-      (let+ external_package_names = repeat string in
-       [ { Depexts.external_package_names; enabled_if = `Always } ])
-      <|> repeat Depexts.decode
+    let parse_depexts =
+      if portable_lock_dir
+      then repeat Depexts.decode
+      else
+        let+ external_package_names = repeat string in
+        [ { Depexts.external_package_names; enabled_if = `Always } ]
     in
     let empty_choice = Conditional_choice_or_all_platforms.Choice [] in
     enter
     @@ fields
     @@ let+ version = field Fields.version Package_version.decode
        and+ install_command =
-         field
-           ~default:empty_choice
-           Fields.install
-           parse_install_command_backwards_compatible
-       and+ build_command = Build_command.decode_fields_backwards_compatible
-       and+ depends =
-         field ~default:empty_choice Fields.depends parse_depends_backwards_compatible
-       and+ depexts = field ~default:[] Fields.depexts parse_depexts_backwards_compatible
+         field ~default:empty_choice Fields.install parse_install_command
+       and+ build_command = Build_command.decode_fields ~portable_lock_dir
+       and+ depends = field ~default:empty_choice Fields.depends parse_depends
+       and+ depexts = field ~default:[] Fields.depexts parse_depexts
        and+ source = field_o Fields.source Source.decode
        and+ dev = field_b Fields.dev
        and+ avoid = field_b Fields.avoid
@@ -818,8 +880,22 @@ module Pkg = struct
   let files_dir package_name maybe_package_version ~lock_dir =
     match files_dir_generic package_name maybe_package_version ~lock_dir with
     | In_source_tree _ as path -> path
-    | other ->
-      Code_error.raise "file_dir is not a source path" [ "path", Path.to_dyn other ]
+    | In_build_dir _ as path -> path
+    | External e ->
+      Code_error.raise
+        "file_dir is an external path, this is unsupported"
+        [ "path", Path.External.to_dyn e ]
+  ;;
+
+  let source_files_dir package_name maybe_package_version ~lock_dir =
+    let source = in_source_tree lock_dir in
+    let package_name = Package_name.to_string package_name in
+    match maybe_package_version with
+    | Some package_version ->
+      Path.Source.relative
+        source
+        (sprintf "%s.%s.files" package_name (Package_version.to_string package_version))
+    | None -> Path.Source.relative source (sprintf "%s.files" package_name)
   ;;
 
   (* Combine the platform-specific parts of a pair of [t]s, raising a code
@@ -1115,12 +1191,6 @@ let create_latest_version
   }
 ;;
 
-let dev_tool_lock_dir_path dev_tool =
-  let dev_tools_path = Path.(relative root "dev-tools.locks") in
-  Path.relative dev_tools_path (Package_name.to_string (Dev_tool.package_name dev_tool))
-;;
-
-let default_path = lazy Path.(relative root "dune.lock")
 let metadata_filename = "lock.dune"
 
 module Metadata = Dune_sexp.Versioned_file.Make (Unit)
@@ -1198,10 +1268,7 @@ let decode_metadata =
          ~default:Solver_stats.Expanded_variable_bindings.empty
          Solver_stats.Expanded_variable_bindings.decode
      and+ solved_for_platforms =
-       field
-         "solved_for_platforms"
-         ~default:(Loc.none, [])
-         (located (repeat (enter Solver_env.decode)))
+       field_o "solved_for_platforms" (located (repeat (enter Solver_env.decode)))
      in
      ( ocaml
      , dependency_hash
@@ -1411,7 +1478,6 @@ module Make_load (Io : sig
     val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
     val readdir_with_kinds : Path.t -> (Filename.t * Unix.file_kind) list t
     val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
-    val stats_kind : Path.t -> (File_kind.t, Unix_error.Detailed.t) result t
   end) =
 struct
   let load_metadata metadata_file_path =
@@ -1464,6 +1530,7 @@ struct
   ;;
 
   let load_pkg
+        ~portable_lock_dir
         ~version
         ~lock_dir_path
         ~solved_for_platforms
@@ -1482,7 +1549,7 @@ struct
     let parser =
       let env = Pform.Env.pkg Dune_lang.Pkg.syntax version in
       let decode =
-        Syntax.set Dune_lang.Pkg.syntax (Active version) Pkg.decode
+        Syntax.set Dune_lang.Pkg.syntax (Active version) (Pkg.decode ~portable_lock_dir)
         |> Syntax.set Dune_lang.Stanza.syntax (Active Dune_lang.Stanza.latest_version)
       in
       String_with_vars.set_decoding_env env decode
@@ -1491,36 +1558,6 @@ struct
       ~lock_dir:lock_dir_path
       ~solved_for_platforms
       package_name
-  ;;
-
-  let check_path lock_dir_path =
-    let open Io.O in
-    Io.stats_kind lock_dir_path
-    >>| function
-    | Ok S_DIR -> Ok ()
-    | Error (Unix.ENOENT, _, _) ->
-      Error
-        (User_error.make
-           ~hints:
-             [ Pp.concat
-                 ~sep:Pp.space
-                 [ Pp.text "Run"
-                 ; User_message.command "dune pkg lock"
-                 ; Pp.text "to generate it."
-                 ]
-               |> Pp.hovbox
-             ]
-           [ Pp.textf "%s does not exist." (Path.to_string lock_dir_path) ])
-    | Error e ->
-      Error
-        (User_error.make
-           [ Pp.textf "%s is not accessible" (Path.to_string lock_dir_path)
-           ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum e)
-           ])
-    | _ ->
-      Error
-        (User_error.make
-           [ Pp.textf "%s is not a directory." (Path.to_string lock_dir_path) ])
   ;;
 
   let check_packages packages ~lock_dir_path =
@@ -1559,50 +1596,52 @@ struct
 
   let load lock_dir_path =
     let open Io.O in
-    let* result = check_path lock_dir_path in
-    match result with
-    | Error e -> Io.return (Error e)
-    | Ok () ->
-      let* ( version
-           , dependency_hash
-           , ocaml
-           , repos
-           , expanded_solver_variable_bindings
-           , solved_for_platforms )
-        =
-        load_metadata (Path.relative lock_dir_path metadata_filename)
-      in
-      let+ packages =
-        Io.readdir_with_kinds lock_dir_path
-        >>| List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
-          match kind with
-          | S_REG -> Package_filename.to_package_name_and_version name |> Result.to_option
-          | _ ->
-            (* TODO *)
-            None)
-        >>= Io.parallel_map ~f:(fun (package_name, maybe_package_version) ->
-          let _loc, solved_for_platforms = solved_for_platforms in
-          let+ pkg =
-            load_pkg
-              ~version
-              ~lock_dir_path
-              ~solved_for_platforms
-              package_name
-              maybe_package_version
-          in
-          pkg)
-        >>| Packages.of_pkg_list
-      in
-      check_packages packages ~lock_dir_path
-      |> Result.map ~f:(fun () ->
-        { version
-        ; dependency_hash
-        ; packages
-        ; ocaml
-        ; repos
-        ; expanded_solver_variable_bindings
-        ; solved_for_platforms
-        })
+    let* ( version
+         , dependency_hash
+         , ocaml
+         , repos
+         , expanded_solver_variable_bindings
+         , solved_for_platforms )
+      =
+      load_metadata (Path.relative lock_dir_path metadata_filename)
+    in
+    let portable_lock_dir, solved_for_platforms =
+      match solved_for_platforms with
+      | Some x -> true, x
+      | None -> false, (Loc.none, [])
+    in
+    let+ packages =
+      Io.readdir_with_kinds lock_dir_path
+      >>| List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
+        match kind with
+        | S_REG -> Package_filename.to_package_name_and_version name |> Result.to_option
+        | _ ->
+          (* TODO *)
+          None)
+      >>= Io.parallel_map ~f:(fun (package_name, maybe_package_version) ->
+        let _loc, solved_for_platforms = solved_for_platforms in
+        let+ pkg =
+          load_pkg
+            ~portable_lock_dir
+            ~version
+            ~lock_dir_path
+            ~solved_for_platforms
+            package_name
+            maybe_package_version
+        in
+        pkg)
+      >>| Packages.of_pkg_list
+    in
+    check_packages packages ~lock_dir_path
+    |> Result.map ~f:(fun () ->
+      { version
+      ; dependency_hash
+      ; packages
+      ; ocaml
+      ; repos
+      ; expanded_solver_variable_bindings
+      ; solved_for_platforms
+      })
   ;;
 
   let load_exn lock_dir_path =
@@ -1613,10 +1652,6 @@ end
 
 module Load_immediate = Make_load (struct
     include Monad.Id
-
-    let stats_kind file =
-      file |> Path.stat |> Result.map ~f:(fun { Unix.st_kind; _ } -> st_kind)
-    ;;
 
     let parallel_map xs ~f = List.map xs ~f
 
@@ -1705,6 +1740,15 @@ let merge_conditionals a b =
   { a with packages; solved_for_platforms }
 ;;
 
+let loc_in_source_tree loc =
+  loc
+  |> Loc.map_pos ~f:(fun ({ pos_fname; _ } as pos) ->
+    let path = Path.of_string pos_fname in
+    let new_path = in_source_tree path in
+    let pos_fname = Path.Source.to_string new_path in
+    { pos with pos_fname })
+;;
+
 let check_if_solved_for_platform { solved_for_platforms; _ } ~platform =
   let loc, solved_for_platforms = solved_for_platforms in
   if List.is_empty solved_for_platforms
@@ -1716,6 +1760,7 @@ let check_if_solved_for_platform { solved_for_platforms; _ } ~platform =
     match Solver_env_disjunction.matches_platform solved_for_platforms ~platform with
     | true -> ()
     | false ->
+      let loc = loc_in_source_tree loc in
       User_error.raise
         ~loc
         [ Pp.text

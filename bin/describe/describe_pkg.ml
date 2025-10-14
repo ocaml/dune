@@ -7,10 +7,11 @@ module Show_lock = struct
     let open Fiber.O in
     let* lock_dir_paths =
       Memo.run (Workspace.workspace ())
-      >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dir_arg
+      >>| Pkg.Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dir_arg
     in
     Fiber.parallel_map lock_dir_paths ~f:(fun lock_dir_path ->
-      let+ platform = Pkg_common.solver_env_from_system_and_context ~lock_dir_path in
+      let lock_dir_path = Path.source lock_dir_path in
+      let+ platform = Pkg.Pkg_common.solver_env_from_system_and_context ~lock_dir_path in
       let lock_dir = Lock_dir.read_disk_exn lock_dir_path in
       let packages =
         Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform
@@ -20,7 +21,7 @@ module Show_lock = struct
         ~sep:Pp.space
         [ Pp.hovbox
           @@ Pp.textf "Contents of %s:" (Path.to_string_maybe_quoted lock_dir_path)
-        ; Pkg_common.pp_packages packages
+        ; Pkg.Pkg_common.pp_packages packages
         ]
       |> Pp.vbox)
     >>| Console.print
@@ -28,7 +29,7 @@ module Show_lock = struct
 
   let term =
     let+ builder = Common.Builder.term
-    and+ lock_dir_arg = Pkg_common.Lock_dirs_arg.term in
+    and+ lock_dir_arg = Pkg.Pkg_common.Lock_dirs_arg.term in
     let builder = Common.Builder.forbid_builds builder in
     let common, config = Common.init builder in
     Scheduler.go_with_rpc_server ~common ~config @@ print_lock lock_dir_arg
@@ -45,7 +46,7 @@ module Dependency_hash = struct
   let print_local_packages_hash () =
     let open Fiber.O in
     let+ local_packages =
-      Pkg_common.find_local_packages
+      Pkg.Pkg_common.find_local_packages
       |> Memo.run
       >>| Package_name.Map.values
       >>| List.map ~f:Local_package.for_solver
@@ -121,16 +122,19 @@ module List_locked_dependencies = struct
   ;;
 
   let enumerate_lock_dirs_by_path workspace ~lock_dirs =
-    let lock_dirs = Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs workspace in
+    let lock_dirs =
+      Pkg.Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs workspace
+    in
     List.filter_map lock_dirs ~f:(fun lock_dir_path ->
-      if Path.exists lock_dir_path
+      if Path.exists (Path.source lock_dir_path)
       then (
-        try Some (lock_dir_path, Lock_dir.read_disk_exn lock_dir_path) with
-        | User_error.E e ->
+        match Lock_dir.read_disk_exn (Path.source lock_dir_path) with
+        | lock_dir -> Some (lock_dir_path, lock_dir)
+        | exception User_error.E e ->
           User_warning.emit
             [ Pp.textf
                 "Failed to parse lockdir %s:"
-                (Path.to_string_maybe_quoted lock_dir_path)
+                (Path.Source.to_string_maybe_quoted lock_dir_path)
             ; User_message.pp e
             ];
           None)
@@ -143,12 +147,15 @@ module List_locked_dependencies = struct
       let open Memo.O in
       Memo.both
         (Workspace.workspace () >>| enumerate_lock_dirs_by_path ~lock_dirs)
-        Pkg_common.find_local_packages
+        Pkg.Pkg_common.find_local_packages
       |> Memo.run
     in
     let+ pp =
       Fiber.parallel_map lock_dirs_by_path ~f:(fun (lock_dir_path, lock_dir) ->
-        let+ platform = Pkg_common.solver_env_from_system_and_context ~lock_dir_path in
+        let lock_dir_path = Path.source lock_dir_path in
+        let+ platform =
+          Pkg.Pkg_common.solver_env_from_system_and_context ~lock_dir_path
+        in
         let package_universe =
           Package_universe.create ~platform local_packages lock_dir |> User_error.ok_exn
         in
@@ -181,7 +188,7 @@ module List_locked_dependencies = struct
             ~doc:
               "Display transitive dependencies (by default only immediate dependencies \
                are displayed)")
-    and+ lock_dirs = Pkg_common.Lock_dirs_arg.term in
+    and+ lock_dirs = Pkg.Pkg_common.Lock_dirs_arg.term in
     let builder = Common.Builder.forbid_builds builder in
     let common, config = Common.init builder in
     Scheduler.go_with_rpc_server ~common ~config

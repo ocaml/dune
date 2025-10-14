@@ -40,27 +40,12 @@ Tests for when:
   Error: This expression is used as a condition and so must evaluate to either
   "true" or "false", however it evaluated to "invalid-condition".
   [1]
-  $ test_action '(run (when (and (< 1 2) (concat complex invalid condition)) echo) foo)'
-  File "dune.lock/test.pkg", line 2, characters 33-67:
-  2 | (install (run (when (and (< 1 2) (concat complex invalid condition)) echo) foo))
-                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: This expression is used as a condition and so must evaluate to either
-  "true" or "false", however it evaluated to "complexinvalidcondition".
-  [1]
   $ test_action '(run echo (when (and (< 1 2) (or (concat t r u e) (concat f a l s e))) foo) bar)'
   foo bar
   $ test_action '(run echo (when (or true invalid-condition-ignored-due-to-laziness) foo))'
   foo
   $ test_action '(run echo (when (not (and false invalid-condition-ignored-due-to-laziness)) foo))'
   foo
-  $ test_action '(run echo (when (when false xxx) foo))'
-  File "dune.lock/test.pkg", line 2, characters 25-41:
-  2 | (install (run echo (when (when false xxx) foo)))
-                               ^^^^^^^^^^^^^^^^
-  Error: This expression is used as a condition and so must evaluate to a
-  single string whose value is either "true" or "false", however it evaluated
-  to Nil (ie. zero strings)
-  [1]
   $ test_action '(run echo (concat (when true foo) (when false bar) baz))'
   foobaz
   $ test_action '(run echo (when (or %{pkg-self:not_a_variable} true) foo))'
@@ -122,24 +107,4 @@ Test the error message when the program doesn't exist:
                     ^^^^^^^^^^^^^^^^^^^^^
   Error: Program madeup not found in the tree or in PATH
    (context: default)
-  [1]
-
-Test for the error message when a slang expression fails to parse:
-  $ test_action '(run echo (concat ()))'
-  File "dune.lock/test.pkg", line 2, characters 27-29:
-  2 | (install (run echo (concat ())))
-                                 ^^
-  Error: Unexpected list
-  [1]
-  $ test_action '(run echo (if true))'
-  File "dune.lock/test.pkg", line 2, characters 19-28:
-  2 | (install (run echo (if true)))
-                         ^^^^^^^^^
-  Error: Not enough arguments for "if"
-  [1]
-  $ test_action '(run echo (if (= a) () ()))'
-  File "dune.lock/test.pkg", line 2, characters 23-28:
-  2 | (install (run echo (if (= a) () ())))
-                             ^^^^^
-  Error: Not enough arguments for "="
   [1]

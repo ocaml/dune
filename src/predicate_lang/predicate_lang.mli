@@ -23,9 +23,7 @@ val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
 
 module Glob : sig
   module Element : sig
-    type t =
-      | Glob of Dune_glob.V1.t
-      | Literal of string
+    type t
   end
 
   type nonrec t = Element.t t

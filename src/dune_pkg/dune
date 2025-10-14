@@ -6,6 +6,8 @@
   (language c))
  (libraries
   stdune
+  lmdb
+  bigstringaf
   fiber
   fiber_util
   chrome_trace
@@ -14,6 +16,7 @@
   dune_stats
   dune_lang
   dune_console
+  dune_digest
   re
   dune_vcs
   dune_config

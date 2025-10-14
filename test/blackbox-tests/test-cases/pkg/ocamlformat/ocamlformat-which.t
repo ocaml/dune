@@ -12,23 +12,23 @@ Update ".ocamlformat" file with unknown version of OCamlFormat.
   > EOF
 
 The command will fail because the dev tool is not installed:
-  $ dune tools which ocamlformat
+  $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune tools which ocamlformat
   Error: ocamlformat is not installed as a dev tool
   [1]
 
   $ dune tools which ocamlformat --allow-not-installed
-  _build/_private/default/.dev-tool/ocamlformat/ocamlformat/target/bin/ocamlformat
+  _build/_private/default/.dev-tool/ocamlformat/target/bin/ocamlformat
 
 Install the dev tool:
-  $ dune tools exec ocamlformat
+  $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune tools exec ocamlformat
   Solution for dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.2
        Running 'ocamlformat'
   formatted with version 0.26.2
 
 Now the command will succeed because the tool has been installed:
-  $ dune tools which ocamlformat
-  _build/_private/default/.dev-tool/ocamlformat/ocamlformat/target/bin/ocamlformat
+  $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune tools which ocamlformat
+  _build/_private/default/.dev-tool/ocamlformat/target/bin/ocamlformat
 
 Make sure the file is actually there:
   $ test -f $(dune tools which ocamlformat)

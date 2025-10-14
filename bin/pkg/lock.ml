@@ -342,6 +342,7 @@ let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir
   in
   let lock_dirs =
     Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
+    |> List.map ~f:Path.source
   in
   solve
     workspace
@@ -362,6 +363,9 @@ let term =
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
   Scheduler.go_with_rpc_server ~common ~config (fun () ->
+    let open Fiber.O in
+    Pkg_common.check_pkg_management_enabled ()
+    >>>
     let portable_lock_dir =
       match Config.get Dune_rules.Compile_time.portable_lock_dir with
       | `Enabled -> true

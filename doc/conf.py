@@ -125,12 +125,21 @@ html_theme = 'furo'
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-html_theme_options = {}
+html_theme_options = {
+    "top_of_page_buttons": ["edit", "view"],
+
+    "source_repository": "https://github.com/ocaml/dune/",
+    "source_branch": "main",
+    "source_directory": "doc/",
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ['_static']
+html_static_path = ['_static']
+html_css_files = [
+    'css/custom.css'
+]
 
 
 # -- Options for HTMLHelp output ------------------------------------------
@@ -188,11 +197,3 @@ texinfo_documents = [
      author, 'dune', 'One line description of project.',
      'Miscellaneous'),
 ]
-
-html_context = {
-    'display_github': True,
-    'github_user': 'ocaml',
-    'github_repo': 'dune',
-    'github_version': 'main',
-    'conf_py_path': '/doc/',
-}

@@ -16,7 +16,7 @@ Create a package that writes a different value to some files depending on the os
 
 Create a custom dune-workspace to solve for openbsd.
   $ cat > dune-workspace <<EOF
-  > (lang dune 3.18)
+  > (lang dune 3.20)
   > (repository
   >  (name mock)
   >  (url "file://$(pwd)/mock-opam-repository"))
@@ -25,6 +25,7 @@ Create a custom dune-workspace to solve for openbsd.
   >  (solve_for_platforms
   >   ((arch x86_64)
   >    (os openbsd))))
+  > (pkg enabled)
   > EOF
 
   $ cat > dune-project <<EOF
@@ -62,9 +63,11 @@ Create a custom dune-workspace to solve for openbsd.
     (os openbsd)))
 
 Build as though we were on openbsd.
-  $ DUNE_CONFIG__OS=openbsd DUNE_CONFIG__ARCH=x86_64 dune build
-  $ cat $pkg_root/foo/target/share/kernel
+  $ export DUNE_CONFIG__OS=openbsd DUNE_CONFIG__ARCH=x86_64
+  $ dune build
+  $ cat $pkg_root/$(dune pkg print-digest foo)/target/share/kernel
   OpenBSD
+  $ unset DUNE_CONFIG__OS DUNE_CONFIG__ARCH
 
 Now building on linux won't work:
   $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=x86_64 DUNE_CONFIG__OS_FAMILY=debian DUNE_CONFIG__OS_DISTRIBUTION=ubuntu DUNE_CONFIG__OS_VERSION=24.11 dune build
@@ -84,8 +87,6 @@ Now building on linux won't work:
   Hint: (lock_dir (solve_for_platforms ((arch x86_64) (os linux))))
   Hint: ...and then rerun 'dune pkg lock'
   [1]
-  $ cat $pkg_root/foo/target/share/kernel
-  OpenBSD
 
 Update dune-workspace again, this time listing no platforms to demonstrate the
 error case.

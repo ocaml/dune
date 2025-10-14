@@ -1,5 +1,5 @@
 open Types
-let external_libraries = [ "unix"; "threads"; "spawn" ]
+let external_libraries = [ "unix"; "threads" ]
 
 let local_libraries =
   [ { path = "otherlibs/top-closure"
@@ -143,12 +143,6 @@ let local_libraries =
     }
   ; { path = "vendor/build_path_prefix_map/src"
     ; main_module_name = Some "Build_path_prefix_map"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "vendor/uutf"
-    ; main_module_name = Some "Dune_uutf"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -363,6 +357,18 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
+  ; { path = "vendor/bigstringaf"
+    ; main_module_name = Some "Bigstringaf"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "vendor/ocaml-lmdb"
+    ; main_module_name = Some "Lmdb"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
   ; { path = "src/dune_vcs"
     ; main_module_name = Some "Dune_vcs"
     ; include_subdirs = No
@@ -506,8 +512,110 @@ let local_libraries =
 let main =
   { path = "bin"
   ; main_module_name = None
-  ; include_subdirs = Unqualified
+  ; include_subdirs = Qualified
   ; special_builtin_support = None
-  ; root_module = None
+  ; root_module =
+      Some
+        { name = "Root"
+        ; entries =
+            [ "Memo"
+            ; "Promote"
+            ; "Ocaml"
+            ; "Ocaml_config"
+            ; "Dune_sexp"
+            ; "Dune_lang"
+            ; "Predicate_lang"
+            ; "Fiber"
+            ; "Fiber_event_bus"
+            ; "Top_closure"
+            ; "Ordering"
+            ; "Dyn"
+            ; "Pp"
+            ; "Stdune"
+            ; "Fs_io"
+            ; "Dune_console"
+            ; "Unix"
+            ; "UnixLabels"
+            ; "Install"
+            ; "Dune_findlib"
+            ; "Dune_metrics"
+            ; "Dune_digest"
+            ; "Dune_cache"
+            ; "Dune_cache_storage"
+            ; "Dune_graph"
+            ; "Dune_rules"
+            ; "Dune_vcs"
+            ; "Dune_engine"
+            ; "Dune_targets"
+            ; "Dune_util"
+            ; "Dune_upgrader"
+            ; "Dune_pkg"
+            ; "Cmdliner"
+            ; "Cmdliner_arg"
+            ; "Cmdliner_base"
+            ; "Cmdliner_cline"
+            ; "Cmdliner_cmd"
+            ; "Cmdliner_docgen"
+            ; "Cmdliner_eval"
+            ; "Cmdliner_info"
+            ; "Cmdliner_manpage"
+            ; "Cmdliner_msg"
+            ; "Cmdliner_term"
+            ; "Cmdliner_term_deprecated"
+            ; "Cmdliner_trie"
+            ; "Build_info"
+            ; "Dune_config"
+            ; "Dune_config_file"
+            ; "Chrome_trace"
+            ; "Dune_stats"
+            ; "Csexp"
+            ; "Csexp_rpc"
+            ; "Dune_rpc_impl"
+            ; "Dune_rules_rpc"
+            ; "Dune_rpc_private"
+            ; "Dune_rpc_client"
+            ; "Spawn"
+            ; "OpamCompat"
+            ; "OpamConsole"
+            ; "OpamCoreConfig"
+            ; "OpamCoreConfigDeveloper"
+            ; "OpamDirTrack"
+            ; "OpamFilename"
+            ; "OpamHash"
+            ; "OpamJson"
+            ; "OpamSHA"
+            ; "OpamSWHID"
+            ; "OpamStd"
+            ; "OpamStubs"
+            ; "OpamStubsTypes"
+            ; "OpamSystem"
+            ; "OpamUrl"
+            ; "OpamVersion"
+            ; "OpamVersionCompare"
+            ; "OpamVersionInfo"
+            ; "OpamBaseParser"
+            ; "OpamLexer"
+            ; "OpamParser"
+            ; "OpamParserTypes"
+            ; "OpamPrinter"
+            ; "OpamFile"
+            ; "OpamFilter"
+            ; "OpamFormat"
+            ; "OpamFormatConfig"
+            ; "OpamFormula"
+            ; "OpamInterpLexer"
+            ; "OpamLineLexer"
+            ; "OpamPackage"
+            ; "OpamPp"
+            ; "OpamRepositoryName"
+            ; "OpamSwitch"
+            ; "OpamSysPkg"
+            ; "OpamTypes"
+            ; "OpamTypesBase"
+            ; "OpamVariable"
+            ; "Source"
+            ; "Xdg"
+            ]
+        }
   }
 

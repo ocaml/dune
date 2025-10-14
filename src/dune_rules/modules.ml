@@ -457,7 +457,7 @@ module Group = struct
           Module_name.Map.values g.modules |> List.concat_map ~f:closure_node
         in
         lib_interface :: closure
-      | _ -> [ lib_interface ]
+      | _ -> [ g.alias; lib_interface ]
 
     and closure_node = function
       | Module m -> [ m ]

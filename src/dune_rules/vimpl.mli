@@ -6,11 +6,12 @@ open Import
 type t
 
 val make
-  :  vlib:Lib.t
-  -> impl:Library.t
-  -> vlib_modules:Modules.t
-  -> vlib_foreign_objects:Path.t list
-  -> t
+  :  sctx:Super_context.t
+  -> scope:Scope.t
+  -> lib:Library.t
+  -> info:Path.t Lib_info.t
+  -> vlib:Lib.t
+  -> t Memo.t
 
 val impl : t -> Library.t
 
@@ -18,12 +19,12 @@ val impl : t -> Library.t
     setting up the copying rules *)
 val vlib_modules : t -> Modules.t
 
-val impl_modules : t option -> Modules.t -> Modules.With_vlib.t
 val vlib : t -> Lib.t
 
 (** Return the combined list of .o files for stubs consisting of .o files from
     the implementation and virtual library.*)
-val vlib_stubs_o_files : t option -> Path.t list
+val vlib_stubs_o_files : t -> Path.t list
 
 val impl_cm_kind : t -> Cm_kind.t
 val vlib_obj_map : t -> Modules.Sourced_module.t Module_name.Unique.Map.t
+val setup_copy_rules : sctx:Super_context.t -> dir:Path.Build.t -> t -> unit Memo.t

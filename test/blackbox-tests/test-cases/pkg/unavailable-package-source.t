@@ -14,14 +14,14 @@ Demonstrate what happens when we try to fetch from a source that doesn't exist:
   > }
 
 Local file system
-  $ runtest "(copy \"$PWD/dummy\")" 2>&1 | sed "s#$(pwd)#PWD#" | sed '/ *^\^*$/d' | sed '\#^File "dune.lock/foo.pkg", line 2, characters#d'
+  $ runtest "(copy \"$PWD/dummy\")" 2>&1 | sed "s#$(pwd)#PWD#" | sed '/ *^\^*$/d' | sed '\#^File ".*dune.lock/foo.pkg", line 2, characters#d'
   2 | (source (copy "PWD/dummy"))
   Error:
   PWD/dummy
   does not exist
 
 Git
-  $ runtest "(fetch (url \"git+file://$PWD/dummy\"))" 2>&1 | sed "s#$(pwd)#PWD#"
+  $ runtest "(fetch (url \"git+file://$PWD/dummy\"))" 2>&1 | sed "s#$(pwd)#PWD#" | sanitize_pkg_digest foo.dev
   fatal: 'PWD/dummy' does not appear to be a git repository
   fatal: Could not read from remote repository.
   
@@ -29,8 +29,10 @@ Git
   and the repository exists.
   Error: Failed to run external command:
   'git ls-remote "file://PWD/dummy"'
-  -> required by _build/_private/default/.pkg/foo/source
-  -> required by _build/_private/default/.pkg/foo/target
+  -> required by
+     _build/_private/default/.pkg/foo.dev-DIGEST_HASH/source
+  -> required by
+     _build/_private/default/.pkg/foo.dev-DIGEST_HASH/target
   Hint: Check that this Git URL in the project configuration is correct:
   "file://PWD/dummy"
 

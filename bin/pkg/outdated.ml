@@ -7,6 +7,7 @@ let find_outdated_packages ~transitive ~lock_dirs_arg () =
     let* workspace = Memo.run (Workspace.workspace ()) in
     Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
     |> Fiber.parallel_map ~f:(fun lock_dir_path ->
+      let lock_dir_path = Path.source lock_dir_path in
       (* updating makes sense when checking for outdated packages *)
       let* repos =
         get_repos
@@ -75,8 +76,10 @@ let term =
   and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config
-  @@ find_outdated_packages ~transitive ~lock_dirs_arg
+  Scheduler.go_with_rpc_server ~common ~config (fun () ->
+    let open Fiber.O in
+    Pkg_common.check_pkg_management_enabled ()
+    >>> find_outdated_packages ~transitive ~lock_dirs_arg ())
 ;;
 
 let info =

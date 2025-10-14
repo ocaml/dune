@@ -765,7 +765,7 @@ let%test_module "finalization" =
         | Response.E
         |   { payload = Some [ [ "id"; [ "initialize" ] ] ]
         |   ; message =
-        |       "connection terminated. this request will never receive a response"
+        |       "Connection terminated. This request will never receive a response."
         |   ; kind = Connection_dead
         |   }
         \-----------------------------------------------------------------------
@@ -781,7 +781,7 @@ let%test_module "finalization" =
         | Response.E
         |   { payload = Some [ [ "id"; [ "initialize" ] ] ]
         |   ; message =
-        |       "connection terminated. this request will never receive a response"
+        |       "Connection terminated. This request will never receive a response."
         |   ; kind = Connection_dead
         |   }
         \-----------------------------------------------------------------------
@@ -807,7 +807,8 @@ let%test_module "finalization" =
         \-----------------------------------------------------------------------
 
 
-        --------------- |}]
+        ---------------
+        |}]
     ;;
   end)
 ;;

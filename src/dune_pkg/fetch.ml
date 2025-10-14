@@ -7,12 +7,26 @@ module Curl = struct
       (match Bin.which ~path:(Env_path.path Env.initial) "curl" with
        | Some p -> p
        | None ->
+         let curl = User_message.command "curl" in
+         let sep = Pp.space in
          User_error.raise
-           ~hints:[ Pp.text "Install curl with your system package manager." ]
-           [ Pp.text
-               "The program \"curl\" does not appear to be installed. Dune uses curl to \
-                download packages. Dune requires that the \"curl\" executable be located \
-                in one of the directories listed in the PATH variable."
+           ~hints:
+             [ Pp.concat
+                 ~sep
+                 [ Pp.text "Install"; curl; Pp.text "with your system package manager." ]
+             ]
+           [ Pp.concat
+               ~sep
+               [ Pp.text "The program"
+               ; curl
+               ; Pp.text "does not appear to be installed. Dune uses"
+               ; curl
+               ; Pp.text "to download packages. Dune requires that the"
+               ; curl
+               ; Pp.text
+                   "executable be located in one of the directories listed in the PATH \
+                    variable."
+               ]
            ])
   ;;
 
@@ -89,14 +103,20 @@ module Curl = struct
           [ Pp.text s ]
         | exception s ->
           [ Pp.textf
-              "failed to read stderr form file %s"
+              "Failed to read stderr from file %s"
               (Path.to_string_maybe_quoted stderr)
           ; Exn.pp s
           ]
       in
       Error
         (User_message.make
-           ([ Pp.textf "curl returned an invalid error code %d" exit_code ] @ stderr)))
+           ([ Pp.concat
+                ~sep:Pp.space
+                [ User_message.command "curl"
+                ; Pp.textf "returned an invalid error code %d" exit_code
+                ]
+            ]
+            @ stderr)))
     else (
       Path.unlink_no_err stderr;
       match
@@ -108,12 +128,17 @@ module Curl = struct
       | None ->
         Error
           (User_message.make
-             [ Pp.textf "curl returned an HTTP code we don't understand: %S" http_code ])
+             [ Pp.concat
+                 ~sep:Pp.space
+                 [ User_message.command "curl"
+                 ; Pp.textf "returned an HTTP code we don't understand: %S" http_code
+                 ]
+             ])
       | Some http_code ->
         if http_code = 200
         then Ok ()
         else
-          Error (User_message.make [ Pp.textf "download failed with code %d" http_code ]))
+          Error (User_message.make [ Pp.textf "Download failed with code %d" http_code ]))
   ;;
 end
 
@@ -126,7 +151,7 @@ let label = "dune-fetch"
 let unpack_archive ~archive_driver ~target ~archive =
   Archive_driver.extract archive_driver ~archive ~target
   >>| Result.map_error ~f:(fun () ->
-    Pp.textf "unable to extract %S" (Path.to_string archive))
+    Pp.textf "Unable to extract %s" (Path.to_string_maybe_quoted archive))
 ;;
 
 let check_checksum checksum path =
@@ -180,9 +205,9 @@ let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
          let exn =
            User_message.make
              [ Pp.textf
-                 "failed to unpack archive downloaded from %s"
+                 "Failed to unpack archive downloaded from %s"
                  (OpamUrl.to_string url)
-             ; Pp.text "reason:"
+             ; Pp.text "Reason:"
              ; msg
              ]
          in

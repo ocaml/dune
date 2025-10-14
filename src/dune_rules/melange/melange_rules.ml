@@ -127,9 +127,14 @@ let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
           ]
       | true -> ()
     in
-    ( modules
-    , (Modules.With_vlib.split_by_lib modules).impl
-      |> List.filter ~f:(Module.has ~ml_kind:Impl) )
+    let impl_only =
+      Modules.With_vlib.fold_no_vlib_with_aliases
+        modules
+        ~init:[]
+        ~normal:(fun m acc -> if Module.has m ~ml_kind:Impl then m :: acc else acc)
+        ~alias:(fun _m acc -> acc)
+    in
+    modules, impl_only
 ;;
 
 let cmj_includes =
@@ -183,13 +188,15 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
 let js_targets_of_modules modules ~module_systems ~output =
   List.map module_systems ~f:(fun (_, js_ext) ->
     modules
-    |> Modules.With_vlib.drop_vlib
-    |> Modules.fold_user_available ~init:Path.Set.empty ~f:(fun m acc ->
-      if Module.has m ~ml_kind:Impl
-      then (
-        let target = Path.build @@ make_js_name ~js_ext ~output m in
-        Path.Set.add acc target)
-      else acc))
+    |> Modules.With_vlib.fold_no_vlib_with_aliases
+         ~init:Path.Set.empty
+         ~alias:(fun _m acc -> acc)
+         ~normal:(fun m acc ->
+           if Module.has m ~ml_kind:Impl
+           then (
+             let target = Path.build @@ make_js_name ~js_ext ~output m in
+             Path.Set.add acc target)
+           else acc))
   |> Path.Set.union_all
 ;;
 
@@ -313,13 +320,29 @@ let build_js
           ; Dep src
           ]
       in
-      With_targets.map_build command ~f:(fun command ->
-        let open Action_builder.O in
-        match local_modules_and_obj_dir with
-        | Some (modules, obj_dir) ->
+      match local_modules_and_obj_dir with
+      | Some (modules, obj_dir) ->
+        With_targets.map_build command ~f:(fun command ->
+          let open Action_builder.O in
           let paths =
             let+ module_deps =
-              Dep_rules.immediate_deps_of m modules ~obj_dir ~ml_kind:Impl
+              let deps =
+                let open Memo.O in
+                let+ deps, _ =
+                  Memo.Implicit_output.collect Rules.implicit_output (fun () ->
+                    Dep_rules.deps_of
+                      ~obj_dir
+                      ~modules
+                      ~sandbox:Sandbox_config.default
+                      ~impl:Virtual_rules.no_implements
+                      ~dir
+                      ~sctx
+                      ~ml_kind:Impl
+                      m)
+                in
+                deps
+              in
+              Action_builder.of_memo_join deps
             in
             List.fold_left module_deps ~init:[] ~f:(fun acc dep_m ->
               if Module.has dep_m ~ml_kind:Impl
@@ -331,8 +354,8 @@ let build_js
                 cmj_file :: acc)
               else acc)
           in
-          Action_builder.dyn_paths_unit paths >>> command
-        | None -> command)
+          Action_builder.dyn_paths_unit paths >>> command)
+      | None -> command
     in
     Super_context.add_rule sctx ~dir ~loc ~mode build)
 ;;
@@ -459,7 +482,8 @@ let setup_emit_cmj_rules
         ~obj_dir
         ~ident:merlin_ident
         ~dialects:(Dune_project.dialects (Scope.project scope))
-        ~modes:`Melange_emit )
+        ~modes:`Melange_emit
+        ~parameters:(Resolve.return []) )
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
   Buildable_rules.with_lib_deps ctx merlin_ident ~dir ~f
@@ -530,30 +554,7 @@ end
 
 let setup_runtime_assets_rules =
   let find_directory_target_ancestor =
-    let rec find_directory_target_ancestor ~dir src =
-      Dir_status.DB.get ~dir
-      >>= function
-      | Lock_dir _ -> Memo.return None
-      | Generated ->
-        let parent = Path.Build.parent_exn dir in
-        find_directory_target_ancestor ~dir:parent src
-      | ( Group_root _
-        | Is_component_of_a_group_but_not_the_root _
-        | Source_only _
-        | Standalone _ ) as dir_status ->
-        let+ directory_targets =
-          Dir_status.directory_targets
-            dir_status
-            ~jsoo_enabled:Jsoo_rules.jsoo_enabled
-            ~dir
-        in
-        Path.Build.Map.find_key directory_targets ~f:(fun dir_target ->
-          Path.Build.is_descendant ~of_:dir_target src)
-    in
-    fun src ->
-      match Path.Build.parent src with
-      | None -> Memo.return None
-      | Some dir -> find_directory_target_ancestor ~dir src
+    Dir_status.find_directory_target_ancestor ~jsoo_enabled:Jsoo_rules.jsoo_enabled
   in
   fun sctx ~scope ~dir ~target_dir ~mode ~promote_in_source ~output ~for_ mel ->
     let* { Runtime_deps.copy; deps } = Runtime_deps.targets sctx ~dir ~output ~for_ mel in

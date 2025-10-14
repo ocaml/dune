@@ -23,10 +23,12 @@ help:
 
 .PHONY: bootstrap
 bootstrap:
+	rm -rf _boot
 	$(MAKE) -B $(BIN)
 
 .PHONY: test-bootstrap
 test-bootstrap:
+	rm -rf _test_boot
 	@ocaml boot/bootstrap.ml --boot-dir _test_boot
 
 .PHONY: test-bootstrap-script

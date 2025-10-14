@@ -33,7 +33,7 @@ let%expect_test "cache-check-probability 0.1" =
         ; maintenance_intent = None
         ; license = Some [ "LICENSE" ]
         }
-    ; pkg_enabled = false
+    ; pkg_enabled = Unset
     ; experimental = []
     }
     |}]
@@ -58,7 +58,7 @@ let%expect_test "cache-storage-mode copy" =
         ; maintenance_intent = None
         ; license = Some [ "LICENSE" ]
         }
-    ; pkg_enabled = false
+    ; pkg_enabled = Unset
     ; experimental = []
     }
     |}]
@@ -83,7 +83,7 @@ let%expect_test "cache-storage-mode hardlink" =
         ; maintenance_intent = None
         ; license = Some [ "LICENSE" ]
         }
-    ; pkg_enabled = false
+    ; pkg_enabled = Unset
     ; experimental = []
     }
     |}]

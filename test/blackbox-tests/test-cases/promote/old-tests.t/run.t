@@ -125,6 +125,9 @@ Dune restores only1 if it's modified in the source tree
 
   $ cat only1
   0
+  $ dune_cmd stat permissions only1
+  444
+  $ chmod +w only1
   $ echo 1 > only1
   $ dune build only2
   $ cat only1

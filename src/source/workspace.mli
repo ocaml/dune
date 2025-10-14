@@ -24,7 +24,7 @@ module Lock_dir : sig
 end
 
 module Lock_dir_selection : sig
-  (** A dsl for selecting a lockdir either by literally naming it or using a
+  (** A DSL for selecting a lockdir either by literally naming it or using a
       cond expression to select a lockdir based on blangs *)
   type t
 
@@ -32,7 +32,7 @@ module Lock_dir_selection : sig
     :  t
     -> dir:Path.Source.t
     -> f:Value.t list Memo.t String_with_vars.expander
-    -> Path.t Memo.t
+    -> Path.Source.t Memo.t
 end
 
 module Context : sig

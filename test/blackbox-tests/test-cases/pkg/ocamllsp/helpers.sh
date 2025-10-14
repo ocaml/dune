@@ -2,7 +2,7 @@
 # project and the ocamllsp lockdir.
 setup_ocamllsp_workspace() {
   cat > dune-workspace <<EOF
-(lang dune 3.16)
+(lang dune 3.20)
 (lock_dir
  (path "dev-tools.locks/ocaml-lsp-server")
  (repositories mock))
@@ -11,6 +11,7 @@ setup_ocamllsp_workspace() {
 (repository
  (name mock)
  (url "file://$(pwd)/mock-opam-repository"))
+(pkg enabled)
 EOF
 }
 

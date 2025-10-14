@@ -81,9 +81,13 @@ module Lock_dirs_arg : sig
 
       A user error is raised if the list of positional arguments used when
       creating [t] is not a subset of the lock directories of the workspace. *)
-  val lock_dirs_of_workspace : t -> Workspace.t -> Path.t list
+  val lock_dirs_of_workspace : t -> Workspace.t -> Path.Source.t list
 end
 
 (** [pp_packages lock_dir] returns a list of pretty-printed packages occurring in
     [lock_dir]. *)
 val pp_packages : Dune_pkg.Lock_dir.Pkg.t list -> User_message.Style.t Pp.t
+
+(** [check_pkg_management_enabled ()] checks if package management is enabled in the
+    workspace configuration. Raises a user error if it is explicitly disabled. *)
+val check_pkg_management_enabled : unit -> unit Fiber.t

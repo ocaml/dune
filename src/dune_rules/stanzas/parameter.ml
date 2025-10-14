@@ -10,7 +10,6 @@ type t =
   ; enabled_if : Blang.t
   ; optional : bool
   ; synopsis : string option
-  ; loc : Loc.t
   ; dune_version : Dune_lang.Syntax.Version.t
   }
 
@@ -27,7 +26,10 @@ let to_library t =
   ; library_flags = Ordered_set_lang.Unexpanded.standard
   ; c_library_flags = Ordered_set_lang.Unexpanded.standard
   ; virtual_deps = []
-  ; wrapped = This (Simple false)
+  ; wrapped =
+      This (Simple true)
+      (* We set it as Simple true because, otherwise, we can't extract the
+         Singleton main module name. *)
   ; buildable = t.buildable
   ; dynlink = Dynlink_supported.of_bool false
   ; project = t.project
@@ -35,6 +37,7 @@ let to_library t =
   ; dune_version = t.dune_version
   ; virtual_modules = None
   ; implements = None
+  ; parameters = []
   ; default_implementation = None
   ; private_modules = None
   ; stdlib = t.stdlib
@@ -127,7 +130,6 @@ let decode =
        ; enabled_if
        ; optional
        ; synopsis
-       ; loc = stanza_loc
        ; dune_version
        })
 ;;

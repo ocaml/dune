@@ -29,7 +29,8 @@ Create a new mock repo, with a different foo package
 We have to define both repositories in the workspace, but will only use `new`.
 
   $ cat > dune-workspace <<EOF
-  > (lang dune 3.10)
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (lock_dir
   >  (repositories new))
   > (repository
@@ -61,7 +62,8 @@ If we just use `old` we should get the older `foo` package in our lockfile
 solution:
 
   $ cat > dune-workspace <<EOF
-  > (lang dune 3.10)
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (lock_dir
   >  (repositories old))
   > (repository
@@ -84,7 +86,8 @@ If we specify both repositories to be used, we should still get the new foo
 package:
 
   $ cat > dune-workspace <<EOF
-  > (lang dune 3.10)
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (lock_dir
   >  (repositories old new))
   > (repository
@@ -108,7 +111,8 @@ set, we should get a solution that only has `old` and will thus include the
 older version of foo:
 
   $ cat > dune-workspace <<EOF
-  > (lang dune 3.10)
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (repository
   >  (name new)
   >  (url "git+file://$(pwd)/mock-opam-repository"))

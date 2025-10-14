@@ -153,7 +153,7 @@ let subst_file path ~map opam_package_files =
       | None, Some x -> Some x
       | Some x, Some y -> Some (x ^ "\n" ^ y)
     in
-    Option.iter contents ~f:(Io.write_file path)
+    Option.iter ~f:(Io.overwrite_file path) contents
 ;;
 
 (* Extending the Dune_project APIs, but adding capability to modify *)

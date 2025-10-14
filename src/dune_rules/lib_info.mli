@@ -141,7 +141,6 @@ val wasmoo_runtime : 'path t -> 'path list
 val melange_runtime_deps : 'path t -> 'path File_deps.t
 val obj_dir : 'path t -> 'path Obj_dir.t
 val virtual_ : _ t -> bool
-val is_parameter : _ t -> bool
 val entry_modules : _ t -> (Module_name.t list, User_message.t) result Source.t
 val main_module_name : _ t -> Main_module_name.t
 val wrapped : _ t -> Wrapped.t Inherited.t option
@@ -150,6 +149,7 @@ val modes : _ t -> Lib_mode.Map.Set.t
 val modules : _ t -> Modules.With_vlib.t option Source.t
 val implements : _ t -> (Loc.t * Lib_name.t) option
 val requires : _ t -> Lib_dep.t list
+val parameters : _ t -> (Loc.t * Lib_name.t) list
 val ppx_runtime_deps : _ t -> (Loc.t * Lib_name.t) list
 val preprocess : _ t -> Preprocess.With_instrumentation.t Preprocess.Per_module.t
 val sub_systems : _ t -> Sub_system_info.t Sub_system_name.Map.t
@@ -178,6 +178,7 @@ val for_dune_package
   -> foreign_objects:Path.t list
   -> obj_dir:Path.t Obj_dir.t
   -> implements:(Loc.t * Lib_name.t) option
+  -> parameters:(Loc.t * Lib_name.t) list
   -> default_implementation:(Loc.t * Lib_name.t) option
   -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
   -> melange_runtime_deps:Path.t list
@@ -204,6 +205,7 @@ val create
   -> main_module_name:Main_module_name.t
   -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
   -> requires:Lib_dep.t list
+  -> parameters:(Loc.t * Lib_name.t) list
   -> foreign_objects:'a list Source.t
   -> public_headers:'a File_deps.t
   -> plugins:'a list Mode.Dict.t

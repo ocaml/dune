@@ -86,7 +86,7 @@ let print_pped_file =
     Path.set_extension
       pp_file
       ~ext:
-        (match (ml_kind : Ocaml.Ml_kind.t) with
+        (match (ml_kind : Root.Ocaml.Ml_kind.t) with
          | Intf -> ".cmi.dump"
          | Impl -> ".cmo.dump")
     |> Path.as_in_build_dir_exn

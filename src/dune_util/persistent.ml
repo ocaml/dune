@@ -73,7 +73,10 @@ module Make (D : Desc) = struct
     let dump file v =
       Io.with_file_out file ~f:(fun oc ->
         output_string oc magic;
-        Marshal.to_channel oc v [])
+        match Marshal.to_channel oc v [] with
+        | s -> s
+        | exception Invalid_argument s ->
+          raise (Invalid_argument (sprintf "%s (%s)" s D.name)))
     in
     let dump =
       lazy

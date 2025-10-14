@@ -8,6 +8,7 @@
   dune_glob
   dune_rpc_private
   dune_config
+  dune_digest
   opam_format
   opam_core
   ocaml

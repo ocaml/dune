@@ -9,8 +9,11 @@ let man =
   ; `P
       {|Print a list of toplevel directives for including directories and loading cma files.|}
   ; `P
-      {|The output of $(b,dune top) should be evaluated in a toplevel
-          to make a library available there.|}
+      {|The output of $(b,dune ocaml top) should be evaluated in a toplevel
+        to make the libraries available there.|}
+  ; `P
+      {|In many toplevels this can be achieved by using the $(b,#use_output) command,
+        e.g. $(b,#use_output "dune ocaml top").|}
   ; `Blocks Common.help_secs
   ]
 ;;
@@ -34,13 +37,13 @@ let files_to_load_of_requires sctx requires =
   let+ () = Memo.parallel_iter files ~f:Build_system.build_file in
   List.filter files ~f:(fun p ->
     let ext = Path.extension p in
-    ext = Ocaml.Mode.compiled_lib_ext Byte || ext = Ocaml.Cm_kind.ext Cmo)
+    ext = Root.Ocaml.Mode.compiled_lib_ext Byte || ext = Root.Ocaml.Cm_kind.ext Cmo)
 ;;
 
 let term =
   let+ builder = Common.Builder.term
   and+ dir = Arg.(value & pos 0 string "" & Arg.info [] ~docv:"DIR")
-  and+ ctx_name = Common.context_arg ~doc:{|Select context where to build/run utop.|} in
+  and+ ctx_name = Common.context_arg ~doc:{|Select context where to build/run top.|} in
   let common, config = Common.init builder in
   Scheduler.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
@@ -91,7 +94,7 @@ module Module = struct
         "The module's source is evaluated in the toplevel without being sealed by the \
          mli."
     ; `P
-        {|The output of $(b,dune top) should be evaluated in a toplevel
+        {|The output of $(b,dune ocaml top) should be evaluated in a toplevel
           to make the module available there.|}
     ; `Blocks Common.help_secs
     ]
@@ -211,7 +214,7 @@ module Module = struct
         required
         & pos 0 (some string) None
         & Arg.info [] ~docv:"MODULE" ~doc:"Path to an OCaml module.")
-    and+ ctx_name = Common.context_arg ~doc:{|Select context where to build/run utop.|} in
+    and+ ctx_name = Common.context_arg ~doc:{|Select context where to build/run top.|} in
     let common, config = Common.init builder in
     Scheduler.go_with_rpc_server ~common ~config (fun () ->
       let open Fiber.O in

@@ -7,8 +7,9 @@ environment that affects the solution.
 
 Create a workspace that defines a lockdir with a custom solver environment,
 setting the variable "sys-ocaml-version":
-  $ cat >dune-workspace <<EOF
-  > (lang dune 3.8)
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (repository
   >  (name mock)
   >  (url "file://$(pwd)/mock-opam-repository"))
@@ -70,6 +71,7 @@ platform config and custom solver env, while at build-time variables are taken
 from the current system. For platform variables like sys-ocaml-version, an
 environment variable can be used to override the value that would otherwise be
 read from the current system.
-  $ DUNE_CONFIG__SYS_OCAML_VERSION=5.4.0+solver-env-version-override dune build
-  $ cat _build/_private/default/.pkg/foo/target/share/sys-ocaml-version
+  $ export DUNE_CONFIG__SYS_OCAML_VERSION=5.4.0+solver-env-version-override
+  $ dune build
+  $ cat _build/_private/default/.pkg/$(dune pkg print-digest foo)/target/share/sys-ocaml-version
   5.4.0+solver-env-version-override

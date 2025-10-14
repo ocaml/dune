@@ -198,17 +198,15 @@ module Options_implied_by_dash_p = struct
 
   let options =
     let+ root =
+      let doc =
+        "Use this directory as workspace root instead of guessing it. Note that this \
+         option doesn't change the interpretation of targets given on the command line. \
+         It is only intended for scripts."
+      in
       Arg.(
         value
         & opt (some dir) None
-        & info
-            [ "root" ]
-            ~docs
-            ~docv:"DIR"
-            ~doc:
-              "Use this directory as workspace root instead of guessing it. Note that \
-               this option doesn't change the interpretation of targets given on the \
-               command line. It is only intended for scripts.")
+        & info [ "root" ] ~docs ~docv:"DIR" ~doc ~env:(Cmd.Env.info ~doc "DUNE_ROOT"))
     and+ ignore_promoted_rules =
       Arg.(
         value

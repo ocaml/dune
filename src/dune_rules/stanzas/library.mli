@@ -30,6 +30,7 @@ type t =
   ; dune_version : Dune_lang.Syntax.Version.t
   ; virtual_modules : Ordered_set_lang.Unexpanded.t option
   ; implements : (Loc.t * Lib_name.t) option
+  ; parameters : (Loc.t * Lib_name.t) list
   ; default_implementation : (Loc.t * Lib_name.t) option
   ; private_modules : Ordered_set_lang.Unexpanded.t option
   ; stdlib : Ocaml_stdlib.t option
@@ -73,7 +74,6 @@ val archive : t -> dir:Path.Build.t -> ext:string -> Path.Build.t
 
 val best_name : t -> Lib_name.t
 val is_virtual : t -> bool
-val is_parameter : t -> bool
 val is_impl : t -> bool
 val obj_dir : dir:Path.Build.t -> t -> Path.Build.t Obj_dir.t
 val main_module_name : t -> Lib_info.Main_module_name.t

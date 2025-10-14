@@ -107,13 +107,13 @@ Create a package that writes a different value to some files depending on the os
         (run sh -c "echo arm64 > %{share}/machine")))))))
 
   $ DUNE_CONFIG__ARCH=arm64 dune build
-  $ cat $pkg_root/foo/target/share/kernel
+  $ cat $pkg_root/$(dune pkg print-digest foo)/target/share/kernel
   Linux
-  $ cat $pkg_root/foo/target/share/machine
+  $ cat $pkg_root/$(dune pkg print-digest foo)/target/share/machine
   arm64
 
   $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=x86_64 DUNE_CONFIG__OS_FAMILY=homebrew DUNE_CONFIG__OS_DISTRIBUTION=homebrew DUNE_CONFIG__OS_VERSION=15.3.1 dune build
-  $ cat $pkg_root/foo/target/share/kernel
+  $ cat $pkg_root/$(dune pkg print-digest foo)/target/share/kernel
   Darwin
-  $ cat $pkg_root/foo/target/share/machine
+  $ cat $pkg_root/$(dune pkg print-digest foo)/target/share/machine
   x86_64

@@ -33,7 +33,8 @@ val create
   -> js_of_ocaml:Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
   -> package:Package.t option
   -> melange_package_name:Lib_name.t option
-  -> ?vimpl:Vimpl.t
+  -> ?implements:Virtual_rules.t
+  -> ?parameters:Lib.t list Resolve.Memo.t
   -> ?modes:Mode_conf.Set.Details.t Lib_mode.Map.t
   -> ?bin_annot:bool
   -> ?loc:Loc.t
@@ -57,6 +58,7 @@ val flags : t -> Ocaml_flags.t
 val requires_link : t -> Lib.t list Resolve.Memo.t
 val requires_hidden : t -> Lib.t list Resolve.Memo.t
 val requires_compile : t -> Lib.t list Resolve.Memo.t
+val parameters : t -> Module_name.t list Resolve.Memo.t
 val includes : t -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 val preprocessing : t -> Pp_spec.t
 val opaque : t -> bool
@@ -65,7 +67,7 @@ val js_of_ocaml : t -> Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
 val sandbox : t -> Sandbox_config.t
 val set_sandbox : t -> Sandbox_config.t -> t
 val package : t -> Package.t option
-val vimpl : t -> Vimpl.t option
+val implements : t -> Virtual_rules.t
 val melange_package_name : t -> Lib_name.t option
 val modes : t -> Lib_mode.Map.Set.t
 val for_wrapped_compat : t -> t

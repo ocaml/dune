@@ -11,13 +11,13 @@ We create a dummy package that will output the value of the opam make variable:
   > mkpkg testpkg << EOF
   > build: [ "echo" make ]
   > EOF
-  > solve testpkg 2> /dev/null
+  $ solve testpkg 2> /dev/null
 
 We now create dummy versions of make and gmake.
   $ cat > make; cat > gmake
 We add the current directory to PATH. Dune will expand %{make} and should prefer make over
 gmake.
   $ PATH=.:$PATH
-  > build_pkg testpkg
+  $ build_pkg testpkg
   $TESTCASE_ROOT/gmake
 

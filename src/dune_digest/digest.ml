@@ -33,27 +33,73 @@ let equal = Blake3_mini.Digest.equal
 let hash = Poly.hash
 let file p = file (Path.to_string p)
 let from_hex s = Blake3_mini.Digest.of_hex s
-let hasher = lazy (Blake3_mini.create ())
 
-let string s =
-  let hasher = Lazy.force hasher in
-  Blake3_mini.feed_string hasher s ~pos:0 ~len:(String.length s);
-  let res = Blake3_mini.digest hasher in
-  Blake3_mini.reset hasher;
-  res
-;;
+module Hasher = struct
+  type t = Blake3_mini.t
 
+  let with_singleton =
+    let singleton = lazy (Blake3_mini.create ()) in
+    let in_use = ref false in
+    fun f ->
+      if !in_use
+      then
+        Code_error.raise
+          "[Hasher.with_singleton] called within argument function to \
+           [Hasher.with_singleton], which is not allowed."
+          []
+      else (
+        in_use := true;
+        let hasher = Lazy.force singleton in
+        f hasher;
+        let digest = Blake3_mini.digest hasher in
+        Blake3_mini.reset hasher;
+        in_use := false;
+        digest)
+  ;;
+end
+
+module Feed = struct
+  type hasher = Hasher.t
+  type 'a t = hasher -> 'a -> unit
+
+  let contramap a ~f hasher b = a hasher (f b)
+  let string hasher s = Blake3_mini.feed_string hasher s ~pos:0 ~len:(String.length s)
+  let bool = contramap string ~f:Bool.to_string
+  let int = contramap string ~f:Int.to_string
+
+  (* We use [No_sharing] to avoid generating different digests for inputs that
+       differ only in how they share internal values. Without [No_sharing], if a
+       command line contains duplicate flags, such as multiple occurrences of the
+       flag [-I], then [Marshal.to_string] will produce different digests depending
+       on whether the corresponding strings ["-I"] point to the same memory location
+       or to different memory locations. *)
+  let generic hasher x =
+    contramap string ~f:(fun x -> Marshal.to_string x [ No_sharing ]) hasher x
+  ;;
+
+  let list feed_x hasher xs = List.iter xs ~f:(feed_x hasher)
+  let option feed_x hasher option_x = Option.iter option_x ~f:(feed_x hasher)
+
+  let tuple2 feed_a feed_b hasher (a, b) =
+    feed_a hasher a;
+    feed_b hasher b
+  ;;
+
+  let tuple3 feed_a feed_b feed_c hasher (a, b, c) =
+    feed_a hasher a;
+    feed_b hasher b;
+    feed_c hasher c
+  ;;
+
+  let digest hasher digest = contramap string ~f:to_string hasher digest
+  let compute_digest t x = Hasher.with_singleton (fun hasher -> t hasher x)
+end
+
+let string s = Feed.compute_digest Feed.string s
 let to_string_raw s = Blake3_mini.Digest.to_binary s
 
-(* We use [No_sharing] to avoid generating different digests for inputs that
-   differ only in how they share internal values. Without [No_sharing], if a
-   command line contains duplicate flags, such as multiple occurrences of the
-   flag [-I], then [Marshal.to_string] will produce different digests depending
-   on whether the corresponding strings ["-I"] point to the same memory location
-   or to different memory locations. *)
 let generic a =
-  Metrics.Timer.record "generic_digest" ~f:(fun () ->
-    string (Marshal.to_string a [ No_sharing ]))
+  Metrics.Timer.record "generic_digest" ~f:(fun () -> Feed.compute_digest Feed.generic a)
 ;;
 
 let path_with_executable_bit =

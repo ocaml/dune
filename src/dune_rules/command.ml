@@ -137,13 +137,13 @@ let run ~dir ?sandbox ?stdout_to prog args =
   run_dyn_prog ~dir ?sandbox ?stdout_to (Action_builder.return prog) args
 ;;
 
-let run' ~dir prog args =
+let run' ?sandbox ~dir prog args =
   let open Action_builder.O in
   let+ () = dep_prog prog
   and+ args = expand_no_targets ~dir (S args) in
   Action.Run (prog, Appendable_list.to_immutable_array args)
   |> Action.chdir dir
-  |> Action.Full.make
+  |> Action.Full.make ?sandbox
 ;;
 
 let quote_args =

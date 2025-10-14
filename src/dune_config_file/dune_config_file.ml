@@ -52,11 +52,29 @@ module Dune_config = struct
   end
 
   module Pkg_enabled = struct
-    type t = bool
+    type t =
+      | Set of Loc.t * Dune_config.Config.Toggle.t
+      | Unset
 
-    let decode = enum' [ "enabled", return true; "disabled", return false ]
-    let equal = Bool.equal
-    let to_dyn = Dyn.bool
+    let decode =
+      let open Dune_lang.Decoder in
+      let+ loc, value = located (enum [ "enabled", `Enabled; "disabled", `Disabled ]) in
+      Set (loc, value)
+    ;;
+
+    let equal x y =
+      match x, y with
+      | Set (x_loc, x_toggle), Set (y_loc, y_toggle) ->
+        Loc.equal x_loc y_loc && Dune_config.Config.Toggle.equal x_toggle y_toggle
+      | Set _, _ | _, Set _ -> false
+      | Unset, Unset -> true
+    ;;
+
+    let to_dyn = function
+      | Set (loc, toggle) ->
+        Dyn.variant "Set" [ Loc.to_dyn loc; Config.Toggle.to_dyn toggle ]
+      | Unset -> Dyn.variant "Unset" []
+    ;;
   end
 
   module Terminal_persistence = struct
@@ -480,7 +498,7 @@ module Dune_config = struct
         ; maintenance_intent = None
         ; license = Some [ "LICENSE" ]
         }
-    ; pkg_enabled = false
+    ; pkg_enabled = Unset
     ; experimental = []
     }
   ;;

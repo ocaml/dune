@@ -7,7 +7,7 @@ Exercise running the ocamlformat wrapper command.
   $ make_ocamlformat_opam_pkg "0.26.2"
   $ make_project_with_dev_tool_lockdir
 
-  $ dune tools exec ocamlformat
+  $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune tools exec ocamlformat
   Solution for dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.2
        Running 'ocamlformat'

@@ -97,14 +97,16 @@ end = struct
       >>| Modules.With_vlib.modules
       >>| Option.some
     and+ foreign_archives =
-      match Lib_info.virtual_ lib with
-      | false -> Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
-      | true ->
+      match Lib_info.kind lib with
+      | Dune_file _ ->
+        Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
+      | Virtual ->
         let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
         let name = Lib_info.name lib in
         let files = Foreign_sources.for_lib foreign_sources ~name in
         let { Lib_config.ext_obj; _ } = lib_config in
         Foreign.Sources.object_files files ~dir ~ext_obj
+      | Parameter -> Memo.return []
     in
     List.rev_append
       (List.rev_concat_map
@@ -209,7 +211,7 @@ end = struct
               ~libs:(Scope.libs scope)
               ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
       and+ impl = Virtual_rules.impl sctx ~lib ~scope in
-      Vimpl.impl_modules impl modules |> Modules.With_vlib.split_by_lib
+      Virtual_rules.impl_modules impl modules |> Modules.With_vlib.split_by_lib
     in
     let lib_src_dir = Lib_info.src_dir info in
     let sources =
@@ -243,30 +245,39 @@ end = struct
           in
           make_entry ?sub_dir Lib source ?dst))
     in
-    let additional_deps (loc, deps) =
-      Lib_file_deps.eval deps ~expander ~loc ~paths:(Disallow_external lib_name)
-      >>| Path.Set.to_list_map ~f:(fun path ->
-        let path =
-          let path = path |> Path.as_in_build_dir_exn in
-          check_runtime_deps_relative_path ~lib_info:info ~loc (Path.Build.local path);
-          path
-        in
-        let sub_dir =
-          let src_dir = Path.Build.parent_exn path in
-          match Path.Build.equal lib_src_dir src_dir with
-          | true -> None
-          | false ->
-            Path.Build.local src_dir
-            |> Path.Local.descendant ~of_:(Path.Build.local lib_src_dir)
-            |> Option.map ~f:Path.Local.to_string
-        in
-        make_entry ?sub_dir Lib path)
+    let additional_deps =
+      let find_directory_target_ancestor =
+        Dir_status.find_directory_target_ancestor ~jsoo_enabled:Jsoo_rules.jsoo_enabled
+      in
+      fun (loc, deps) ->
+        Lib_file_deps.eval deps ~expander ~loc ~paths:(Disallow_external lib_name)
+        >>| Path.Set.to_list
+        >>= Memo.parallel_map ~f:(fun path ->
+          let path =
+            let path = path |> Path.as_in_build_dir_exn in
+            check_runtime_deps_relative_path ~lib_info:info ~loc (Path.Build.local path);
+            path
+          in
+          let sub_dir =
+            let src_dir = Path.Build.parent_exn path in
+            match Path.Build.equal lib_src_dir src_dir with
+            | true -> None
+            | false ->
+              Path.Build.local src_dir
+              |> Path.Local.descendant ~of_:(Path.Build.local lib_src_dir)
+              |> Option.map ~f:Path.Local.to_string
+          in
+          find_directory_target_ancestor path
+          >>| function
+          | None -> make_entry ?sub_dir Lib path
+          | Some dir_target_path ->
+            let dep = make_entry ?sub_dir Lib dir_target_path in
+            { dep with entry = Install.Entry.set_kind dep.entry `Directory })
     in
     let { Lib_config.has_native; ext_obj; _ } = lib_config in
     let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
       Mode_conf.Lib.Set.eval lib.modes ~has_native
     in
-    let is_parameter = Library.is_parameter lib in
     let+ melange_runtime_entries = additional_deps lib.melange_runtime_deps
     and+ public_headers = additional_deps lib.public_headers
     and+ module_files =
@@ -293,26 +304,27 @@ end = struct
           | Some f -> [ cm_kind, f ])
         else []
       in
-      let common =
-        let virtual_library = Library.is_virtual lib in
-        fun m ->
-          let cm_file kind = Obj_dir.Module.cm_file obj_dir m ~kind in
-          let open Lib_mode.Cm_kind in
-          let cmi = if_ (native || byte) (Ocaml Cmi, cm_file (Ocaml Cmi)) in
-          let rest =
-            if is_parameter
-            then []
-            else
-              [ if_ native (Ocaml Cmx, cm_file (Ocaml Cmx))
-              ; if_ (byte && virtual_library) (Ocaml Cmo, cm_file (Ocaml Cmo))
-              ; if_
-                  (native && virtual_library)
-                  (Ocaml Cmx, Obj_dir.Module.o_file obj_dir m ~ext_obj)
-              ; if_ melange (Melange Cmi, cm_file (Melange Cmi))
-              ; if_ melange (Melange Cmj, cm_file (Melange Cmj))
+      let common m =
+        let cm_file kind = Obj_dir.Module.cm_file obj_dir m ~kind in
+        let open Lib_mode.Cm_kind in
+        let cmi = if_ (native || byte) (Ocaml Cmi, cm_file (Ocaml Cmi)) in
+        let common_module_impls virtual_only =
+          (if_ native (Ocaml Cmx, cm_file (Ocaml Cmx)) :: virtual_only)
+          @ [ if_ melange (Melange Cmi, cm_file (Melange Cmi))
+            ; if_ melange (Melange Cmj, cm_file (Melange Cmj))
+            ]
+        in
+        let rest =
+          match (lib.kind : Lib_kind.t) with
+          | Parameter -> []
+          | Virtual ->
+            common_module_impls
+              [ if_ byte (Ocaml Cmo, cm_file (Ocaml Cmo))
+              ; if_ native (Ocaml Cmx, Obj_dir.Module.o_file obj_dir m ~ext_obj)
               ]
-          in
-          cmi :: rest |> List.rev_concat
+          | _ -> common_module_impls []
+        in
+        cmi :: rest |> List.rev_concat
       in
       let set_dir m = List.rev_map ~f:(fun (cm_kind, p) -> cm_dir m cm_kind, p) in
       let+ modules_impl =
@@ -354,9 +366,9 @@ end = struct
       [ sources
       ; melange_runtime_entries
       ; List.rev_map module_files ~f:(fun (sub_dir, file) -> make_entry ?sub_dir Lib file)
-      ; (match is_parameter with
-         | true -> []
-         | false ->
+      ; (match lib.kind with
+         | Parameter -> []
+         | Virtual | Dune_file _ ->
            List.rev_concat
              [ List.rev_map lib_files ~f:(fun (section, file) -> make_entry section file)
              ; List.rev_map execs ~f:(make_entry Libexec)
@@ -837,8 +849,9 @@ end = struct
           let* { Scope.DB.Lib_entry.Set.libraries; _ } = Action_builder.of_memo entries in
           match
             List.find_map libraries ~f:(fun lib ->
-              let info = Lib.Local.info lib in
-              Option.some_if (Lib_info.virtual_ info) lib)
+              match Lib_info.kind (Lib.Local.info lib) with
+              | Parameter | Virtual -> Some lib
+              | Dune_file _ -> None)
           with
           | None -> Action_builder.lines_of meta_template
           | Some vlib ->

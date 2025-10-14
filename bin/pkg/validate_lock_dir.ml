@@ -21,9 +21,9 @@ let enumerate_lock_dirs_by_path ~lock_dirs () =
     Workspace.workspace () >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs
   in
   List.filter_map per_contexts ~f:(fun lock_dir_path ->
-    if Path.exists lock_dir_path
+    if Path.exists (Path.source lock_dir_path)
     then (
-      match Lock_dir.read_disk_exn lock_dir_path with
+      match Lock_dir.read_disk_exn (Path.source lock_dir_path) with
       | lock_dir -> Some (Ok (lock_dir_path, lock_dir))
       | exception User_error.E e -> Some (Error (lock_dir_path, `Parse_error e)))
     else None)
@@ -42,8 +42,9 @@ let validate_lock_dirs ~lock_dirs () =
   else
     let+ universes =
       Fiber.parallel_map lock_dirs_by_path ~f:(function
-        | Error e -> Fiber.return (Some e)
+        | Error (p, e) -> Fiber.return (Some (Path.source p, e))
         | Ok (lock_dir_path, lock_dir) ->
+          let lock_dir_path = Path.source lock_dir_path in
           let+ platform = solver_env_from_system_and_context ~lock_dir_path in
           (match Package_universe.create ~platform local_packages lock_dir with
            | Ok _ -> None
@@ -80,7 +81,9 @@ let term =
   and+ lock_dirs = Pkg_common.Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config @@ validate_lock_dirs ~lock_dirs
+  Scheduler.go_with_rpc_server ~common ~config (fun () ->
+    let open Fiber.O in
+    Pkg_common.check_pkg_management_enabled () >>> validate_lock_dirs ~lock_dirs ())
 ;;
 
 let command = Cmd.v info term

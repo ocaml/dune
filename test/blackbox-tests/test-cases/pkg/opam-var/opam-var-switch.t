@@ -49,15 +49,15 @@ opam-var-unsupported.t
 
   $ build_pkg testpkg 2>&1 | sed -E 's#.*.sandbox/[^/]+#.sandbox/$SANDBOX#g'
   dune
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/source
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/lib
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/lib
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/bin
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/sbin
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/share
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/doc
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/etc
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/man
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/lib/toplevel
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/lib/stublibs
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-756c784cf1572138b72ad6859ef7f811/source
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-756c784cf1572138b72ad6859ef7f811/target
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-756c784cf1572138b72ad6859ef7f811/target/lib
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-756c784cf1572138b72ad6859ef7f811/target/lib
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-756c784cf1572138b72ad6859ef7f811/target/bin
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-756c784cf1572138b72ad6859ef7f811/target/sbin
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-756c784cf1572138b72ad6859ef7f811/target/share
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-756c784cf1572138b72ad6859ef7f811/target/doc
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-756c784cf1572138b72ad6859ef7f811/target/etc
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-756c784cf1572138b72ad6859ef7f811/target/man
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-756c784cf1572138b72ad6859ef7f811/target/lib/toplevel
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-756c784cf1572138b72ad6859ef7f811/target/lib/stublibs

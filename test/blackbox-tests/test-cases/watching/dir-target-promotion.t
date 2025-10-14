@@ -50,6 +50,9 @@ Remove a directory and rebuild.
 
 Modify a file and rebuild.
 
+  $ dune_cmd stat permissions d1/b
+  444
+  $ chmod +w d1/b
   $ echo -n "*" > d1/b
   $ cat d1/a d1/b d1/d2/c
   +*+

@@ -7,6 +7,8 @@ type t =
   | Utop
   | Ocamlearlybird
   | Odig
+  | Opam_publish
+  | Dune_release
 
 val to_dyn : t -> Dyn.t
 val all : t list

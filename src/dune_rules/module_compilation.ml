@@ -238,6 +238,21 @@ let build_cm
      else Command.Args.empty
    in
    let as_parameter_arg = if Module.kind m = Parameter then [ "-as-parameter" ] else [] in
+   let as_argument_for =
+     Command.Args.dyn
+       (let open Action_builder.O in
+        let impl = Compilation_context.implements cctx in
+        let+ argument = Resolve.Memo.read @@ Virtual_rules.implements_parameter impl m in
+        match argument with
+        | None -> []
+        | Some parameter -> [ "-as-argument-for"; Module_name.to_string parameter ])
+   in
+   let parameters =
+     Command.Args.dyn
+       (let open Action_builder.O in
+        Resolve.Memo.read (Compilation_context.parameters cctx)
+        >>| List.concat_map ~f:(fun m -> [ "-parameter"; Module_name.to_string m ]))
+   in
    let flags, sandbox =
      let flags =
        Command.Args.dyn (Ocaml_flags.get (Compilation_context.flags cctx) mode)
@@ -291,6 +306,8 @@ let build_cm
                 (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind)
             ; extra_args
             ; As as_parameter_arg
+            ; as_argument_for
+            ; parameters
             ; S (melange_args cctx cm_kind m)
             ; A "-no-alias-deps"
             ; opaque_arg

@@ -113,7 +113,7 @@ add_mock_repo_if_needed() {
  (url "${repo}"))
 EOF
   else
-    if ! grep '(name mock)' > /dev/null dune-workspace
+    if ! grep '(name mock)' dune-workspace > /dev/null
     then
       # add the repo definition
       cat >>dune-workspace <<EOF
@@ -122,11 +122,9 @@ EOF
  (url "${repo}"))
 EOF
  
-      # reference the repo
-      if grep -s '(repositories'
+      # reference the repo - only add lock_dir if no existing lock_dir references mock
+      if ! grep '(repositories' dune-workspace | grep 'mock' > /dev/null
       then
-        sed -i '' -e 's/(repositories \(.*\))/(repositories mock \1)/' dune-workspace
-      else
         cat >>dune-workspace <<EOF
 (lock_dir
  (repositories mock))

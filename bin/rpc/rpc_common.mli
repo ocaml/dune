@@ -13,7 +13,7 @@ val request_exn
   :  Dune_rpc_client.Client.t
   -> ('a, 'b) Dune_rpc.Decl.request
   -> 'a
-  -> ('b, Dune_rpc.Response.Error.t) result Fiber.t
+  -> 'b Fiber.t
 
 (** Cmdliner term for a generic RPC client. *)
 val client_term : Common.Builder.t -> (unit -> 'a Fiber.t) -> 'a
@@ -38,26 +38,12 @@ val fire_request
   -> Common.Builder.t
   -> ('a, 'b) Dune_rpc.Decl.request
   -> 'a
-  -> ('b, Dune_rpc.Response.Error.t) result Fiber.t
+  -> 'b Fiber.t
 
 val wrap_build_outcome_exn
   :  print_on_success:bool
-  -> ('a
-      -> (Dune_rpc.Build_outcome_with_diagnostics.t, Dune_rpc.Response.Error.t) result
-           Fiber.t)
-  -> 'a
+  -> Dune_rpc.Build_outcome_with_diagnostics.t
   -> unit
-  -> unit Fiber.t
 
 (** Warn the user that since a RPC server is running, some arguments are ignored. *)
 val warn_ignore_arguments : Dune_util.Global_lock.Lock_held_by.t -> unit
-
-(**  Schedule a fiber to run via RPC, wrapping any errors. *)
-val run_via_rpc
-  :  common:Common.t
-  -> config:Dune_config_file.Dune_config.t
-  -> ('a
-      -> (Dune_rpc.Build_outcome_with_diagnostics.t, Dune_rpc.Response.Error.t) result
-           Fiber.t)
-  -> 'a
-  -> unit

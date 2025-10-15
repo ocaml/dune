@@ -21,17 +21,22 @@ let raise_rpc_error (e : Rpc_error.t) =
   User_error.raise
     [ Pp.paragraph "Server returned error: "
     ; Pp.paragraphf "%s (error kind: %s)" e.message (interpret_kind e.kind)
+      (* CR-soon ElectreAAS: Should we be printing the payload? *)
     ]
 ;;
 
-let request_exn client request n =
+let request_exn client request arg =
   let open Fiber.O in
   let* decl =
     Client.Versioned.prepare_request client (Dune_rpc.Decl.Request.witness request)
   in
   match decl with
+  | Ok decl ->
+    Client.request client decl arg
+    >>| (function
+     | Ok response -> response
+     | Error e -> raise_rpc_error e)
   | Error e -> raise (Dune_rpc.Version_error.E e)
-  | Ok decl -> Client.request client decl n
 ;;
 
 let client_term builder f =
@@ -111,15 +116,12 @@ let fire_request
     ~f:(fun client -> request_exn client request arg)
 ;;
 
-let wrap_build_outcome_exn ~print_on_success f args () =
-  let open Fiber.O in
-  let+ response = f args in
-  match response with
-  | Error (error : Rpc_error.t) -> raise_rpc_error error
-  | Ok Dune_rpc.Build_outcome_with_diagnostics.Success ->
+let wrap_build_outcome_exn ~print_on_success build_outcome =
+  match build_outcome with
+  | Dune_rpc.Build_outcome_with_diagnostics.Success ->
     if print_on_success
     then Console.print [ Pp.text "Success" |> Pp.tag User_message.Style.Success ]
-  | Ok (Failure errors) ->
+  | Failure errors ->
     let error_msg =
       match List.length errors with
       | 0 ->
@@ -132,11 +134,4 @@ let wrap_build_outcome_exn ~print_on_success f args () =
     List.iter errors ~f:(fun { Dune_rpc.Compound_user_error.main; _ } ->
       Console.print_user_message main);
     User_error.raise [ error_msg |> Pp.tag User_message.Style.Error ]
-;;
-
-let run_via_rpc ~common ~config f args =
-  Scheduler.go_without_rpc_server
-    ~common
-    ~config
-    (wrap_build_outcome_exn ~print_on_success:true f args)
 ;;

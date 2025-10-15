@@ -294,13 +294,13 @@ module Version = struct
     | n -> n
   ;;
 
-  let supports_doc_markdown version =
+  let higher_than_310 version =
     match version with
     | None -> false
     | Some v ->
       (match compare v (3, 1, 0) with
-       | Ordering.Lt | Ordering.Eq -> false
-       | Ordering.Gt -> true)
+       | Ordering.Lt -> false
+       | Ordering.Eq | Ordering.Gt -> true)
   ;;
 end
 
@@ -347,6 +347,35 @@ let get_odoc_version odoc_path =
     match output with
     | [ version_line ] -> Version.of_string version_line
     | _ -> None)
+;;
+
+let odoc_path_memo sctx =
+  let odoc_dev_tool_lock_dir_exists =
+    match Config.get Compile_time.lock_dev_tools with
+    | `Enabled -> true
+    | `Disabled -> false
+  in
+  match odoc_dev_tool_lock_dir_exists with
+  | true ->
+    let path = Path.build (Pkg_dev_tool.exe_path Odoc) in
+    Memo.return (Ok path)
+  | false ->
+    let ctx = Super_context.context sctx in
+    Super_context.resolve_program_memo
+      sctx
+      ~dir:(Context.build_dir ctx)
+      ~where:Original_path
+      "odoc"
+      ~loc:None
+;;
+
+let supports_doc_markdown sctx =
+  let* odoc_prog = odoc_path_memo sctx in
+  match odoc_prog with
+  | Error _ -> Memo.return false
+  | Ok odoc_path ->
+    let* version = get_odoc_version odoc_path in
+    Memo.return (Version.higher_than_310 version)
 ;;
 
 let odoc_dev_tool_exe_path_building_if_necessary () =
@@ -1076,59 +1105,31 @@ let setup_pkg_html_rules sctx ~pkg : unit Memo.t =
 ;;
 
 let setup_lib_markdown_rules sctx lib =
-  let ctx = Super_context.context sctx in
-  let* odoc_prog =
-    Super_context.resolve_program_memo
-      sctx
-      ~dir:(Context.build_dir ctx)
-      ~where:Original_path
-      "odoc"
-      ~loc:None
-  in
-  match odoc_prog with
-  | Error _ ->
-    (* odoc not found, skip markdown generation *)
-    Memo.return ()
-  | Ok odoc_path ->
-    let* version = get_odoc_version odoc_path in
-    if not (Version.supports_doc_markdown version)
-    then Memo.return ()
-    else (
-      let target = Lib lib in
-      let* odocs = odoc_artefacts sctx target in
-      let* () =
-        (* because libraries with a package are handled in the package-level rule with the system shell script for all directory target, we skip packages *)
-        match Lib_info.package (Lib.Local.info lib) with
-        | Some _ -> Memo.return ()
-        | None ->
-          (* when there's no package, we still need have rules for each odoc file *)
-          Memo.parallel_iter odocs ~f:(fun odoc -> setup_generate_markdown sctx odoc)
-      in
-      Memo.With_implicit_output.exec setup_lib_markdown_rules_def (sctx, lib))
+  let* markdown_supported = supports_doc_markdown sctx in
+  if not markdown_supported
+  then Memo.return ()
+  else (
+    let target = Lib lib in
+    let* odocs = odoc_artefacts sctx target in
+    let* () =
+      (* because libraries with a package are handled in the package-level rule with the system shell script for all directory target, we skip packages *)
+      match Lib_info.package (Lib.Local.info lib) with
+      | Some _ -> Memo.return ()
+      | None ->
+        (* when there's no package, we still need have rules for each odoc file *)
+        Memo.parallel_iter odocs ~f:(fun odoc -> setup_generate_markdown sctx odoc)
+    in
+    Memo.With_implicit_output.exec setup_lib_markdown_rules_def (sctx, lib))
 ;;
 
 let setup_pkg_markdown_rules_def =
   let f (sctx, pkg) =
     let ctx = Super_context.context sctx in
-    (* Check if odoc version supports markdown generation *)
-    let* odoc_prog =
-      Super_context.resolve_program_memo
-        sctx
-        ~dir:(Context.build_dir ctx)
-        ~where:Original_path
-        "odoc"
-        ~loc:None
-    in
-    match odoc_prog with
-    | Error _ ->
-      (* odoc not found, skip markdown generation *)
-      Memo.return ()
-    | Ok odoc_path ->
-      let* version = get_odoc_version odoc_path in
-      if not (Version.supports_doc_markdown version)
-      then Memo.return ()
-      else
-        let* libs = Context.name ctx |> libs_of_pkg ~pkg in
+    let* markdown_supported = supports_doc_markdown sctx in
+    if not markdown_supported
+    then Memo.return ()
+    else
+      let* libs = Context.name ctx |> libs_of_pkg ~pkg in
         let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
         let* lib_odocs =
           Memo.List.concat_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
@@ -1191,31 +1192,44 @@ let setup_pkg_markdown_rules sctx ~pkg : unit Memo.t =
 
 let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.t) =
   let ctx = Super_context.context sctx in
-  let name = Package.name pkg in
-  let alias =
-    let pkg_dir = Package.dir pkg in
-    let dir = Path.Build.append_source (Context.build_dir ctx) pkg_dir in
-    Output_format.alias output ~dir
-  in
-  let* libs =
-    Context.name ctx |> libs_of_pkg ~pkg:name >>| List.map ~f:(fun lib -> Lib lib)
-  in
-  let deps =
-    match (output : Output_format.t) with
-    | Markdown ->
+  match (output : Output_format.t) with
+  | Markdown ->
+    let* is_markdown_supported = supports_doc_markdown sctx in
+    if not is_markdown_supported
+    then Memo.return ()
+    else (
+      let name = Package.name pkg in
+      let alias =
+        let pkg_dir = Package.dir pkg in
+        let dir = Path.Build.append_source (Context.build_dir ctx) pkg_dir in
+        Output_format.alias output ~dir
+      in
       let directory_target = Paths.markdown ctx (Pkg name) in
       let toplevel_index = Paths.markdown_index ctx in
-      let open Action_builder.O in
-      let+ () = Action_builder.path (Path.build directory_target)
-      and+ () = Action_builder.path (Path.build toplevel_index) in
-      ()
-    | Html | Json ->
+      let deps =
+        let open Action_builder.O in
+        let+ () = Action_builder.path (Path.build directory_target)
+        and+ () = Action_builder.path (Path.build toplevel_index) in
+        ()
+      in
+      Rules.Produce.Alias.add_deps alias deps)
+  | Html | Json ->
+    let name = Package.name pkg in
+    let alias =
+      let pkg_dir = Package.dir pkg in
+      let dir = Path.Build.append_source (Context.build_dir ctx) pkg_dir in
+      Output_format.alias output ~dir
+    in
+    let* libs =
+      Context.name ctx |> libs_of_pkg ~pkg:name >>| List.map ~f:(fun lib -> Lib lib)
+    in
+    let deps =
       Pkg name :: libs
       |> List.map ~f:(Dep.format_alias output ctx)
       |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
       |> Action_builder.deps
-  in
-  Rules.Produce.Alias.add_deps alias deps
+    in
+    Rules.Produce.Alias.add_deps alias deps
 ;;
 
 let setup_package_aliases sctx (pkg : Package.t) =
@@ -1354,23 +1368,28 @@ let gen_rules sctx ~dir rest =
   | [ "_markdown" ] ->
     let* packages = Dune_load.packages () in
     let ctx = Super_context.context sctx in
-    let all_package_dirs =
-      Package.Name.Map.to_list packages
-      |> List.map ~f:(fun (_, (pkg : Package.t)) ->
-        let pkg_name = Package.name pkg in
-        Paths.markdown ctx (Pkg pkg_name))
-    in
-    let directory_targets =
-      List.fold_left all_package_dirs ~init:Path.Build.Map.empty ~f:(fun acc dir ->
-        Path.Build.Map.set acc dir Loc.none)
-    in
-    has_rules
-      ~directory_targets
-      (let* () = setup_toplevel_index_rule sctx Markdown in
-       Package.Name.Map.to_seq packages
-       |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
-         let pkg_name = Package.name pkg in
-         setup_pkg_markdown_rules sctx ~pkg:pkg_name))
+    let* is_markdown_supported = supports_doc_markdown sctx in
+    if not is_markdown_supported
+    then
+      Memo.return Gen_rules.no_rules
+    else
+      let all_package_dirs =
+        Package.Name.Map.to_list packages
+        |> List.map ~f:(fun (_, (pkg : Package.t)) ->
+          let pkg_name = Package.name pkg in
+          Paths.markdown ctx (Pkg pkg_name))
+      in
+      let directory_targets =
+        List.fold_left all_package_dirs ~init:Path.Build.Map.empty ~f:(fun acc dir ->
+          Path.Build.Map.set acc dir Loc.none)
+      in
+      has_rules
+        ~directory_targets
+        (let* () = setup_toplevel_index_rule sctx Markdown in
+         Package.Name.Map.to_seq packages
+         |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
+           let pkg_name = Package.name pkg in
+           setup_pkg_markdown_rules sctx ~pkg:pkg_name))
   | [ "_markdown"; _lib_unique_name_or_pkg ] ->
     (* package directories are directory targets *)
     Memo.return Gen_rules.no_rules

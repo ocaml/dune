@@ -10,11 +10,11 @@ let term =
   Rpc.Common.client_term builder (fun () ->
     let open Fiber.O in
     let+ errors =
-      Rpc.Common.fire_request
+      Rpc.Common.fire_message
         ~name:"diagnostics_cmd"
         ~wait:false
         builder
-        Dune_rpc_private.Procedures.Public.diagnostics
+        (Rpc.Common.Request Dune_rpc_private.Procedures.Public.diagnostics)
         ()
     in
     List.iter errors ~f:(fun err ->

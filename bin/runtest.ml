@@ -51,12 +51,12 @@ let runtest_term =
     Scheduler.go_without_rpc_server ~common ~config (fun () ->
       let open Fiber.O in
       let+ build_outcome =
-        Rpc.Common.fire_request
+        Rpc.Common.fire_message
           ~name:"runtest"
           ~wait:false
           ~lock_held_by
           builder
-          Dune_rpc.Procedures.Public.runtest
+          (Rpc.Common.Request Dune_rpc.Procedures.Public.runtest)
           dir_or_cram_test_paths
       in
       Rpc.Common.wrap_build_outcome_exn ~print_on_success:true build_outcome)

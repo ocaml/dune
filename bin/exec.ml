@@ -228,12 +228,12 @@ let build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog =
         let targets = Rpc.Rpc_common.prepare_targets [ target ] in
         let open Fiber.O in
         let+ build_outcome =
-          Rpc.Rpc_common.fire_request
+          Rpc.Rpc_common.fire_message
             ~name:"build"
             ~wait:true
             ~lock_held_by
             builder
-            Dune_rpc_impl.Decl.build
+            (Rpc.Rpc_common.Request Dune_rpc_impl.Decl.build)
             targets
         in
         Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:false build_outcome)

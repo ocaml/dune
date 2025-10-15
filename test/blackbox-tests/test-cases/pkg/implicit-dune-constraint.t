@@ -6,9 +6,6 @@ dependency.
   $ . ./helpers.sh
   $ mkrepo
 
-  $ mkpkg dune 3.11.0 <<EOF
-  > EOF
-
   $ test() {
   > mkpkg foo <<EOF
   > depends: [ "dune" {<= "$1"} ]
@@ -26,6 +23,10 @@ dependency.
       Rejected candidates:
         dune.3.XX.0: Incompatible with restriction: = 3.XX
   $ test "4.0.0"
+  Solution for dune.lock:
+  - foo.0.0.1
+
+  $ test "4.0.0" 2>&1 | sed -E 's/3.[0-9]+/3.XX/g'
   Solution for dune.lock:
   - foo.0.0.1
 

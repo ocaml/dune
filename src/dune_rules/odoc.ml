@@ -1116,10 +1116,24 @@ let setup_package_odoc_rules sctx ~pkg =
 ;;
 
 let gen_project_rules sctx project =
+  let () =
+    User_message.print
+      (User_message.make
+         [ Pp.textf "Odoc.gen_project_rules called for project: %s"
+             (Dune_project.name project |> Dune_project_name.to_string_hum)
+         ])
+  in
   Dune_project.packages project
   |> Dune_lang.Package_name.Map.to_seq
   |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
     (* setup @doc to build the correct html for the package *)
+    let () =
+      User_message.print
+        (User_message.make
+           [ Pp.textf "Setting up package aliases for: %s"
+               (Package.name pkg |> Package.Name.to_string)
+           ])
+    in
     setup_package_aliases sctx pkg)
 ;;
 

@@ -736,12 +736,22 @@ let hash { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins } 
     , Pin_stanza.Workspace.hash pins )
 ;;
 
+let unflatten =
+  let pattern = Re.compile (Re.str "-SLASH-") in
+  fun component ->
+    let subdirs = Re.split pattern component in
+    Path.Source.L.relative Path.Source.root subdirs
+;;
+
 let source_path_of_lock_dir_path path =
   match (path : Path.t) with
-  | In_source_tree s -> s
+  | In_source_tree s ->
+    (match Path.Source.explode s with
+     | [ lock_dir ] -> unflatten lock_dir
+     | _ -> s)
   | In_build_dir b ->
     (match Path.Build.explode b with
-     | [ _; _; ".lock"; lock_dir ] -> Path.Source.of_string lock_dir
+     | [ _; _; ".lock"; lock_dir ] -> unflatten lock_dir
      | _ -> Code_error.raise "Unsupported build path" [ "dir", Path.Build.to_dyn b ])
   | External e ->
     Code_error.raise

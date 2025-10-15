@@ -646,6 +646,10 @@ let setup_lock_rules workspace ~dir ~lock_dir =
   | `Generated -> Memo.return (setup_lock_rules ~dir ~lock_dir)
 ;;
 
+let flatten_source_path path =
+  path |> Path.Source.explode |> String.concat ~sep:"-SLASH-" |> Path.Local.of_string
+;;
+
 let setup_rules ~components ~dir =
   let empty = Gen_rules.rules_here Gen_rules.Rules.empty in
   match components with
@@ -655,7 +659,7 @@ let setup_rules ~components ~dir =
     |> Lock_dir.lock_dirs_of_workspace
     >>| Path.Source.Set.to_list
     >>= Memo.List.fold_left ~init:empty ~f:(fun rules lock_dir_path ->
-      let lock_dir = Path.Source.to_local lock_dir_path in
+      let lock_dir = flatten_source_path lock_dir_path in
       let+ lock_rule = setup_lock_rules workspace ~dir ~lock_dir in
       Gen_rules.combine rules lock_rule)
   | [ ".dev-tool-locks" ] ->
@@ -688,7 +692,7 @@ let setup_lock_alias ~dir =
         |> Lock_dir.lock_dirs_of_workspace
         >>| Path.Source.Set.fold ~init:Path.Set.empty ~f:(fun lock_dir_path paths ->
           lock_dir_path
-          |> Path.Source.to_local
+          |> flatten_source_path
           |> Path.Build.append_local build_prefix
           |> Path.build
           |> Path.Set.add paths)

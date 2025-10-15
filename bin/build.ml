@@ -199,12 +199,12 @@ let build =
       Scheduler.go_without_rpc_server ~common ~config (fun () ->
         let open Fiber.O in
         let+ build_outcome =
-          Rpc.Common.fire_request
+          Rpc.Common.fire_message
             ~name:"build"
             ~wait:true
             ~lock_held_by
             builder
-            Dune_rpc_impl.Decl.build
+            (Rpc.Common.Request Dune_rpc_impl.Decl.build)
             targets
         in
         Rpc.Common.wrap_build_outcome_exn ~print_on_success:true build_outcome)

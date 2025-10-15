@@ -784,21 +784,7 @@ let odoc_artefacts sctx target =
   | Lib lib ->
     let info = Lib.Local.info lib in
     let obj_dir = Lib_info.obj_dir info in
-    let+ modules =
-      let+ modules = Dir_contents.modules_of_local_lib sctx lib in
-      Modules.fold modules ~init:[] ~f:(fun m acc ->
-        (* Only include modules that:
-           1. Have public visibility
-           2. Are not wrapped library implementation modules (those with __ in the name) *)
-        if Module.visibility m = Public
-           && (Module.obj_name m
-               |> Module_name.Unique.to_name ~loc:Loc.none
-               |> Module_name.to_string
-               |> String.contains_double_underscore
-               |> not)
-        then m :: acc
-        else acc)
-    in
+    let+ modules = entry_modules_by_lib sctx lib in
     List.map modules ~f:(fun m ->
       let odoc_file = Obj_dir.Module.odoc obj_dir m in
       create_odoc ctx ~target odoc_file)
@@ -905,10 +891,15 @@ let out_files ctx (output : Output_format.t) odocs =
 ;;
 
 let add_format_alias_deps ctx format target odocs =
-  let paths = out_files ctx format odocs in
-  Rules.Produce.Alias.add_deps
-    (Dep.format_alias format ctx target)
-    (Action_builder.paths paths)
+  match (format : Output_format.t) with
+  | Markdown ->
+    (* skip intermediate aliases since package directories are directory targets *)
+    Memo.return ()
+  | Html | Json ->
+    let paths = out_files ctx format odocs in
+    Rules.Produce.Alias.add_deps
+      (Dep.format_alias format ctx target)
+      (Action_builder.paths paths)
 ;;
 
 let setup_lib_html_rules_def =
@@ -1010,7 +1001,15 @@ let setup_pkg_html_rules sctx ~pkg : unit Memo.t =
 let setup_lib_markdown_rules sctx lib =
   let target = Lib lib in
   let* odocs = odoc_artefacts sctx target in
-  let* () = Memo.parallel_iter odocs ~f:(fun odoc -> setup_generate_markdown sctx odoc) in
+  (* For libraries WITH a package, generation happens in the package-level rule.
+     Only generate for libraries WITHOUT a package. *)
+  let* () =
+    match Lib_info.package (Lib.Local.info lib) with
+    | Some _ -> Memo.return () (* Package-level rule handles it *)
+    | None ->
+      (* No package, so we need individual rules *)
+      Memo.parallel_iter odocs ~f:(fun odoc -> setup_generate_markdown sctx odoc)
+  in
   Memo.With_implicit_output.exec setup_lib_markdown_rules_def (sctx, lib)
 ;;
 
@@ -1023,8 +1022,45 @@ let setup_pkg_markdown_rules_def =
       Memo.List.concat_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
     in
     let all_odocs = pkg_odocs @ lib_odocs in
+    (* Generate ALL markdown for this package in ONE rule with directory target.
+       Since odoc generates unpredictable files (Belt.md, Belt-Array.md, Belt-List.md, etc.)
+       from nested submodules, we must use a directory target and batch all odoc commands. *)
+    let* () =
+      if List.is_empty all_odocs
+      then Memo.return ()
+      else
+        let pkg_markdown_dir = Paths.markdown ctx (Pkg pkg) in
+        let markdown_root = Paths.markdown_root ctx in
+        let rule =
+          let bash_cmd_args =
+            let open Action_builder.O in
+            let* odoc_prog = odoc_program sctx (Context.build_dir ctx) in
+            let odoc_path = Action.Prog.ok_exn odoc_prog |> Path.to_string in
+            let bash_cmd =
+              List.map all_odocs ~f:(fun odoc ->
+                let odocl_rel = Path.reach (Path.build odoc.odocl_file) ~from:(Path.build markdown_root) in
+                Printf.sprintf "%s markdown-generate -o . %s" odoc_path odocl_rel)
+              |> String.concat ~sep:" && "
+            in
+            let* () =
+              List.map all_odocs ~f:(fun odoc -> Action_builder.path (Path.build odoc.odocl_file))
+              |> Action_builder.all
+              >>| ignore
+            in
+            Action_builder.return (Command.Args.S [ A "-c"; A bash_cmd ])
+          in
+          let deps = Action_builder.env_var "ODOC_SYNTAX" in
+          let open Action_builder.With_targets.O in
+          Action_builder.with_no_targets deps
+          >>> Command.run
+            ~dir:(Path.build markdown_root)
+            (Ok (Path.of_string "/bin/bash"))
+            [ Dyn bash_cmd_args ]
+          |> Action_builder.With_targets.add_directories ~directory_targets:[ pkg_markdown_dir ]
+        in
+        add_rule sctx rule
+    in
     let* () = Memo.parallel_iter libs ~f:(setup_lib_markdown_rules sctx) in
-    let* () = Memo.parallel_iter pkg_odocs ~f:(setup_generate_markdown sctx) in
     add_format_alias_deps ctx Markdown (Pkg pkg) all_odocs
   in
   setup_pkg_rules_def "setup-package-markdown-rules" f
@@ -1045,11 +1081,22 @@ let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.
   let* libs =
     Context.name ctx |> libs_of_pkg ~pkg:name >>| List.map ~f:(fun lib -> Lib lib)
   in
-  Pkg name :: libs
-  |> List.map ~f:(Dep.format_alias output ctx)
-  |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
-  |> Action_builder.deps
-  |> Rules.Produce.Alias.add_deps alias
+  let deps =
+    match (output : Output_format.t) with
+    | Markdown ->
+      let directory_target = Paths.markdown ctx (Pkg name) in
+      let toplevel_index = Paths.markdown_index ctx in
+      let open Action_builder.O in
+      let+ () = Action_builder.path (Path.build directory_target)
+      and+ () = Action_builder.path (Path.build toplevel_index) in
+      ()
+    | Html | Json ->
+      Pkg name :: libs
+      |> List.map ~f:(Dep.format_alias output ctx)
+      |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
+      |> Action_builder.deps
+  in
+  Rules.Produce.Alias.add_deps alias deps
 ;;
 
 let setup_package_aliases sctx (pkg : Package.t) =
@@ -1185,36 +1232,29 @@ let gen_rules sctx ~dir rest =
        >>> setup_css_rule sctx
        >>> setup_toplevel_index_rule sctx Html
        >>> setup_toplevel_index_rule sctx Json)
-  | [ "_markdown" ] -> has_rules (setup_toplevel_index_rule sctx Markdown)
-  | [ "_markdown"; lib_unique_name_or_pkg ] ->
+  | [ "_markdown" ] ->
+    let* packages = Dune_load.packages () in
+    let ctx = Super_context.context sctx in
+    let all_package_dirs =
+      Package.Name.Map.to_list packages
+      |> List.map ~f:(fun (_, (pkg : Package.t)) ->
+        let pkg_name = Package.name pkg in
+        Paths.markdown ctx (Pkg pkg_name))
+    in
+    let directory_targets =
+      List.fold_left all_package_dirs ~init:Path.Build.Map.empty ~f:(fun acc dir ->
+        Path.Build.Map.set acc dir Loc.none)
+    in
     has_rules
-      (
-       let ctx = Super_context.context sctx in
-       let* lib, lib_db = Scope_key.of_string (Context.name ctx) lib_unique_name_or_pkg in
-       let* lib =
-         let+ lib = Lib.DB.find lib_db lib in
-         Option.bind ~f:Lib.Local.of_lib lib
-       in
-       let+ () =
-         match lib with
-         | None -> Memo.return ()
-         | Some lib ->
-           (match Lib_info.package (Lib.Local.info lib) with
-            | None ->
-              (* lib with no package above it *)
-              setup_lib_markdown_rules sctx lib
-            | Some pkg -> setup_pkg_markdown_rules sctx ~pkg)
-       and+ () =
-         let* packages = Dune_load.packages () in
-         match
-           Package.Name.Map.find packages (Package.Name.of_string lib_unique_name_or_pkg)
-         with
-         | None -> Memo.return ()
-         | Some pkg ->
-           let name = Package.name pkg in
-           setup_pkg_markdown_rules sctx ~pkg:name
-       in
-       ())
+      ~directory_targets
+      (let* () = setup_toplevel_index_rule sctx Markdown in
+       Package.Name.Map.to_seq packages
+       |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
+         let pkg_name = Package.name pkg in
+         setup_pkg_markdown_rules sctx ~pkg:pkg_name))
+  | [ "_markdown"; _lib_unique_name_or_pkg ] ->
+    (* package directories are directory targets *)
+    Memo.return Gen_rules.no_rules
   | [ "_mlds"; pkg ] ->
     with_package pkg ~f:(fun pkg ->
       let pkg = Package.name pkg in

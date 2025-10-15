@@ -12,7 +12,14 @@ module Show_lock = struct
     Fiber.parallel_map lock_dir_paths ~f:(fun lock_dir_path ->
       let lock_dir_path = Path.source lock_dir_path in
       let+ platform = Pkg.Pkg_common.solver_env_from_system_and_context ~lock_dir_path in
-      let lock_dir = Lock_dir.read_disk_exn lock_dir_path in
+      let build_lock_dir =
+        Path.Build.L.relative
+          Dune_rules.Private_context.t.build_dir
+          [ Context_name.to_string Context_name.default; ".lock" ]
+      in
+      let source_local = Path.local_part lock_dir_path in
+      let build_lock_dir_path = Path.Build.append_local build_lock_dir source_local in
+      let lock_dir = Lock_dir.read_disk_exn (Path.build build_lock_dir_path) in
       let packages =
         Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform
         |> Package_name.Map.values

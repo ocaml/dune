@@ -1,5 +1,6 @@
 (cram
  (alias pkg)
+ (timeout 5)
  (applies_to :whole_subtree))
 
 (env

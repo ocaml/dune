@@ -372,10 +372,20 @@ let odoc_path_memo sctx =
 let supports_doc_markdown sctx =
   let* odoc_prog = odoc_path_memo sctx in
   match odoc_prog with
-  | Error _ -> Memo.return false
+  | Error _ ->
+    let () = Console.print_user_message (User_message.make [ Pp.text "[DEBUG] odoc not found, markdown not supported" ]) in
+    Memo.return false
   | Ok odoc_path ->
     let* version = get_odoc_version odoc_path in
-    Memo.return (Version.higher_than_310 version)
+    let supported = Version.higher_than_310 version in
+    let version_str = match version with
+      | None -> "unknown"
+      | Some (major, minor, patch) -> Printf.sprintf "%d.%d.%d" major minor patch
+    in
+    let () = Console.print_user_message (User_message.make [
+      Pp.text (Printf.sprintf "[DEBUG] odoc version: %s, markdown supported: %b" version_str supported)
+    ]) in
+    Memo.return supported
 ;;
 
 let odoc_dev_tool_exe_path_building_if_necessary () =
@@ -1125,63 +1135,96 @@ let setup_lib_markdown_rules sctx lib =
 let setup_pkg_markdown_rules_def =
   let f (sctx, pkg) =
     let ctx = Super_context.context sctx in
+    let () = Console.print_user_message (User_message.make [
+      Pp.text (Printf.sprintf "[DEBUG] setup_pkg_markdown_rules called for package: %s" (Package.Name.to_string pkg))
+    ]) in
     let* markdown_supported = supports_doc_markdown sctx in
     if not markdown_supported
-    then Memo.return ()
-    else
+    then (
+      let () = Console.print_user_message (User_message.make [
+        Pp.text (Printf.sprintf "[DEBUG] Markdown not supported, skipping rules for package: %s" (Package.Name.to_string pkg))
+      ]) in
+      Memo.return ()
+    )
+    else (
+      let () = Console.print_user_message (User_message.make [
+        Pp.text (Printf.sprintf "[DEBUG] Markdown supported, generating rules for package: %s" (Package.Name.to_string pkg))
+      ]) in
       let* libs = Context.name ctx |> libs_of_pkg ~pkg in
       let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
       let* lib_odocs =
         Memo.List.concat_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
       in
-      let all_odocs = pkg_odocs @ lib_odocs in
-      (* odoc generates all markdown files on the same level for the package so we use one rule with directory target and batch all odoc commands. *)
-      let* () =
-        if List.is_empty all_odocs
-        then Memo.return ()
-        else (
-          let pkg_markdown_dir = Paths.markdown ctx (Pkg pkg) in
-          let markdown_root = Paths.markdown_root ctx in
-          let rule =
+        let all_odocs = pkg_odocs @ lib_odocs in
+        let () = Console.print_user_message (User_message.make [
+          Pp.text (Printf.sprintf "[DEBUG] Package %s has %d odoc files to generate markdown from"
+            (Package.Name.to_string pkg) (List.length all_odocs))
+        ]) in
+        (* odoc generates all markdown files on the same level for the package so we use one rule with directory target and batch all odoc commands. *)
+        let* () =
+          if List.is_empty all_odocs
+          then Memo.return ()
+          else (
+            let () = Console.print_user_message (User_message.make [
+              Pp.text (Printf.sprintf "[DEBUG] Creating batched markdown generation rule for package: %s" (Package.Name.to_string pkg))
+            ]) in
+            let pkg_markdown_dir = Paths.markdown ctx (Pkg pkg) in
+            let markdown_root = Paths.markdown_root ctx in
+            let rule =
             let prog, shell_arg =
               Env_path.system_shell_exn ~needed_to:"generate markdown documentation"
             in
-            let system_shell_cmd_args =
-              let open Action_builder.O in
-              let* odoc_prog = odoc_program sctx (Context.build_dir ctx) in
-              let odoc_path = Action.Prog.ok_exn odoc_prog |> Path.to_string in
-              let shell_cmd =
-                List.map all_odocs ~f:(fun odoc ->
-                  let odocl_rel =
-                    Path.reach
-                      (Path.build odoc.odocl_file)
-                      ~from:(Path.build markdown_root)
-                  in
-                  Printf.sprintf "%s markdown-generate -o . %s" odoc_path odocl_rel)
-                |> String.concat ~sep:" && "
-              in
+              let system_shell_cmd_args =
+                let open Action_builder.O in
+                let* odoc_prog = odoc_program sctx (Context.build_dir ctx) in
+                let odoc_path = Action.Prog.ok_exn odoc_prog |> Path.to_string in
+                let shell_cmd =
+                  List.map all_odocs ~f:(fun odoc ->
+                    let odocl_rel =
+                      Path.reach
+                        (Path.build odoc.odocl_file)
+                        ~from:(Path.build markdown_root)
+                    in
+                    let expected_output = Path.Build.to_string odoc.markdown_file in
+                    Printf.sprintf
+                      "(echo '[DEBUG] Generating markdown for %s -> %s' >&2 && %s markdown-generate -o . %s && echo '[DEBUG] Success: %s' >&2) || (echo '[DEBUG] FAILED to generate markdown for %s' >&2 && exit 1)"
+                      odocl_rel expected_output odoc_path odocl_rel odocl_rel odocl_rel)
+                  |> String.concat ~sep:" && "
+                in
               let* () =
                 List.map all_odocs ~f:(fun odoc ->
                   Action_builder.path (Path.build odoc.odocl_file))
                 |> Action_builder.all
                 >>| ignore
+                in
+                let* () =
+                  Action_builder.return ()
+                  >>| fun () ->
+                    Console.print_user_message (User_message.make [
+                      Pp.text (Printf.sprintf "[DEBUG] About to run markdown generation shell script for package: %s" (Package.Name.to_string pkg))
+                    ])
+                in
+                Action_builder.return (Command.Args.S [ A shell_arg; A shell_cmd ])
               in
-              Action_builder.return (Command.Args.S [ A shell_arg; A shell_cmd ])
+              let deps = Action_builder.env_var "ODOC_SYNTAX" in
+              let open Action_builder.With_targets.O in
+              Action_builder.with_no_targets deps
+              >>> Command.run
+                    ~dir:(Path.build markdown_root)
+                    (Ok prog)
+                    [ Dyn system_shell_cmd_args ]
+              |> Action_builder.With_targets.add_directories
+                   ~directory_targets:[ pkg_markdown_dir ]
             in
-            let deps = Action_builder.env_var "ODOC_SYNTAX" in
-            let open Action_builder.With_targets.O in
-            Action_builder.with_no_targets deps
-            >>> Command.run
-                  ~dir:(Path.build markdown_root)
-                  (Ok prog)
-                  [ Dyn system_shell_cmd_args ]
-            |> Action_builder.With_targets.add_directories
-                 ~directory_targets:[ pkg_markdown_dir ]
-          in
-          add_rule sctx rule)
+            let () = Console.print_user_message (User_message.make [
+              Pp.text (Printf.sprintf "[DEBUG] Adding markdown generation rule for package: %s, target dir: %s"
+                (Package.Name.to_string pkg) (Path.Build.to_string pkg_markdown_dir))
+            ]) in
+            add_rule sctx rule)
       in
       let* () = Memo.parallel_iter libs ~f:(setup_lib_markdown_rules sctx) in
       add_format_alias_deps ctx Markdown (Pkg pkg) all_odocs
+    )
   in
   setup_pkg_rules_def "setup-package-markdown-rules" f
 ;;
@@ -1194,10 +1237,21 @@ let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.
   let ctx = Super_context.context sctx in
   match (output : Output_format.t) with
   | Markdown ->
+    let () = Console.print_user_message (User_message.make [
+      Pp.text (Printf.sprintf "[DEBUG] setup_package_aliases_format called for Markdown, package: %s" (Package.Name.to_string (Package.name pkg)))
+    ]) in
     let* is_markdown_supported = supports_doc_markdown sctx in
     if not is_markdown_supported
-    then Memo.return ()
+    then (
+      let () = Console.print_user_message (User_message.make [
+        Pp.text (Printf.sprintf "[DEBUG] Markdown not supported, skipping alias for package: %s" (Package.Name.to_string (Package.name pkg)))
+      ]) in
+      Memo.return ()
+    )
     else (
+      let () = Console.print_user_message (User_message.make [
+        Pp.text (Printf.sprintf "[DEBUG] Markdown supported, creating alias for package: %s" (Package.Name.to_string (Package.name pkg)))
+      ]) in
       let name = Package.name pkg in
       let alias =
         let pkg_dir = Package.dir pkg in
@@ -1366,12 +1420,23 @@ let gen_rules sctx ~dir rest =
        >>> setup_toplevel_index_rule sctx Html
        >>> setup_toplevel_index_rule sctx Json)
   | [ "_markdown" ] ->
+    let () = Console.print_user_message (User_message.make [
+      Pp.text "[DEBUG] gen_rules called for _markdown directory"
+    ]) in
     let* packages = Dune_load.packages () in
     let ctx = Super_context.context sctx in
     let* is_markdown_supported = supports_doc_markdown sctx in
     if not is_markdown_supported
-    then Memo.return Gen_rules.no_rules
+    then (
+      let () = Console.print_user_message (User_message.make [
+        Pp.text "[DEBUG] Markdown not supported, returning no_rules for _markdown"
+      ]) in
+      Memo.return Gen_rules.no_rules
+    )
     else (
+      let () = Console.print_user_message (User_message.make [
+        Pp.text "[DEBUG] Markdown supported, setting up markdown rules for all packages"
+      ]) in
       let all_package_dirs =
         Package.Name.Map.to_list packages
         |> List.map ~f:(fun (_, (pkg : Package.t)) ->

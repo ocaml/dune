@@ -5,5 +5,4 @@
 ;; issues with dev tool lock dirs in source
 
 (cram
- (applies_to dev-tool-odoc-no-lock-dir)
  (enabled_if false))

@@ -16,11 +16,11 @@ let term =
   @@ fun () ->
   let open Fiber.O in
   let+ () =
-    Rpc_common.fire_request
+    Rpc_common.fire_message
       ~name:"ping_cmd"
       ~wait
       builder
-      Dune_rpc_private.Procedures.Public.ping
+      (Rpc_common.Request Dune_rpc_private.Procedures.Public.ping)
       ()
   in
   Console.print [ Pp.text "Server appears to be responding normally" ]

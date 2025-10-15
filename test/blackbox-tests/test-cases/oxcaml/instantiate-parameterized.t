@@ -495,7 +495,7 @@ The `dune-package` should list the different instantiations in the dependencies:
    (archives (byte a_of_b/a_of_b.cma) (native a_of_b/a_of_b.cmxa))
    (plugins (byte a_of_b/a_of_b.cma) (native a_of_b/a_of_b.cmxs))
    (native_archives a_of_b/a_of_b.a)
-   (requires project.a project.b project.b)
+   (requires project.a project.b)
    (parameters project.b)
    (implements project.a)
    (main_module_name A_of_b)
@@ -592,7 +592,7 @@ The `dune-package` should list the different instantiations in the dependencies:
    (archives (byte lib_ab/lib_ab.cma) (native lib_ab/lib_ab.cmxa))
    (plugins (byte lib_ab/lib_ab.cma) (native lib_ab/lib_ab.cmxs))
    (native_archives lib_ab/lib_ab.a)
-   (requires (project.a_of_b) project.a project.b project.a project.b)
+   (requires project.a (project.a_of_b) project.b)
    (parameters project.a project.b)
    (main_module_name Lib_ab)
    (modes byte native)
@@ -609,14 +609,13 @@ The `dune-package` should list the different instantiations in the dependencies:
    (native_archives lib_apply/lib_apply.a)
    (requires
     project.a_impl
-    (project.lib_ab project.a_impl)
-    project.b_impl
-    (project.lib_ab project.a_impl project.b_impl)
     (project.a_of_b)
-    (project.lib_ab project.a_of_b)
-    (project.lib_ab project.a_of_b project.b_impl)
     project.b
-    project.b)
+    project.b_impl
+    (project.lib_ab project.a_impl)
+    (project.lib_ab project.a_impl project.b_impl)
+    (project.lib_ab project.a_of_b)
+    (project.lib_ab project.a_of_b project.b_impl))
    (parameters project.b)
    (main_module_name Lib_apply)
    (modes byte native)

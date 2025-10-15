@@ -273,20 +273,6 @@ let enabled =
          Option.is_some found))
 ;;
 
-let of_dev_tool_if_lock_dir_exists dev_tool =
-  let source_path = dev_tool_source_lock_dir dev_tool in
-  let exists =
-    (* Note we use [Path.Untracked] here rather than [Fs_memo] because a tool's
-       lockdir may be generated part way through a build. *)
-    Path.Untracked.exists (Path.source source_path)
-  in
-  if exists
-  then
-    let+ t = Load.load_exn (Path.source source_path) in
-    Some t
-  else Memo.return None
-;;
-
 let lock_dir_active ctx =
   let* enabled = enabled in
   match enabled with

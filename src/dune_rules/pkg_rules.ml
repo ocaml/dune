@@ -1312,23 +1312,18 @@ module DB = struct
     let union = Pkg_digest.Map.union ~f:union_check
     let union_all = Pkg_digest.Map.union_all ~f:union_check
 
-    let of_dev_tool_deps_if_lock_dir_exists dev_tool ~platform ~system_provided =
-      let+ lock_dir_opt = Lock_dir.of_dev_tool_if_lock_dir_exists dev_tool in
-      Option.map lock_dir_opt ~f:(of_lock_dir ~platform ~system_provided)
+    let of_dev_tool ~platform ~system_provided dev_tool =
+      let+ lock_dir = Lock_dir.of_dev_tool dev_tool in
+      of_lock_dir ~platform ~system_provided lock_dir
     ;;
 
     let all_existing_dev_tools =
       Memo.lazy_ (fun () ->
         let* platform = Lock_dir.Sys_vars.solver_env () in
-        let+ xs =
-          Memo.List.map
-            Pkg_dev_tool.all
-            ~f:
-              (of_dev_tool_deps_if_lock_dir_exists
-                 ~platform
-                 ~system_provided:default_system_provided)
-        in
-        List.filter_opt xs |> union_all)
+        Memo.List.map
+          Pkg_dev_tool.all
+          ~f:(of_dev_tool ~platform ~system_provided:default_system_provided)
+        >>| union_all)
     ;;
   end
 

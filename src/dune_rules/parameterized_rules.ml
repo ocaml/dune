@@ -174,8 +174,7 @@ let apply_module_name module_ args =
   Parameterized_name.to_module_name { name; args }
 ;;
 
-let build_modules ~sctx ~obj_dir ~modules_obj_dir ~dep_graphs ~mode ~requires ~lib modules
-  =
+let build_modules ~sctx ~obj_dir ~modules_obj_dir ~dep_graph ~mode ~requires ~lib modules =
   let kind = Lib_mode.Cm_kind.Ocaml (Mode.cm_kind mode) in
   let ext = Lib_mode.Cm_kind.ext kind in
   let cm_args = Lib.Parameterized.arguments lib |> Resolve.List.map ~f:(get_cm ~kind) in
@@ -213,7 +212,7 @@ let build_modules ~sctx ~obj_dir ~modules_obj_dir ~dep_graphs ~mode ~requires ~l
       let hidden_deps =
         let open Action_builder.O in
         let+ lib_hidden_deps = lib_hidden_deps
-        and+ module_deps = Dep_graph.deps_of dep_graphs module_ in
+        and+ module_deps = Dep_graph.deps_of dep_graph module_ in
         let deps =
           List.map module_deps ~f:(fun module_ ->
             apply_module_name module_ args |> obj_file ~obj_dir ~kind |> Path.build)
@@ -240,7 +239,32 @@ let iter_modes_concurrently ~(f : Ocaml.Mode.t -> unit Memo.t) =
   ()
 ;;
 
-let instantiate ~sctx lib =
+let dep_graph ~obj_dir ~modules impl_only =
+  let per_module =
+    List.fold_left impl_only ~init:Module_name.Unique.Map.empty ~f:(fun acc module_ ->
+      let module_name_unique = Module.obj_name module_ in
+      let deps =
+        let open Action_builder.O in
+        let+ deps =
+          Dep_rules.read_immediate_deps_of module_ ~modules ~obj_dir ~ml_kind:Impl
+        in
+        let local_open = Modules.With_vlib.alias_for modules module_ in
+        local_open @ deps
+      in
+      Module_name.Unique.Map.add_exn acc module_name_unique deps)
+  in
+  Dep_graph.make ~dir:(Obj_dir.dir obj_dir) ~per_module
+;;
+
+let obj_dir_for_dep_rules dir =
+  Obj_dir.make_lib
+    ~dir
+    ~has_private_modules:false
+    ~private_lib:false
+    (Lib_name.Local.of_string "deps")
+;;
+
+let instantiate ~sctx ~dir lib =
   let ctx = Super_context.context sctx in
   let build_dir = Context.build_dir ctx in
   let* { Lib_config.ext_lib; _ } =
@@ -248,16 +272,19 @@ let instantiate ~sctx lib =
     ocaml.lib_config
   in
   let lib_info = Lib.info lib in
-  let modules_obj_dir = Lib_info.obj_dir lib_info in
-  let* modules =
+  let* modules_obj_dir, modules =
     match Lib_info.modules lib_info with
-    | External (Some modules) -> Memo.return modules
-    | External None -> failwith "external None"
+    | External None -> Code_error.raise "library has no modules" [ "lib", Lib.to_dyn lib ]
+    | External (Some modules) ->
+      Memo.return (obj_dir_for_dep_rules (Path.Build.parent_exn dir), modules)
     | Local ->
       let local_lib = Lib.Local.of_lib_exn lib in
       let+ modules = Dir_contents.modules_of_local_lib sctx local_lib in
-      Modules.With_vlib.modules modules
+      let modules_obj_dir = Lib_info.obj_dir (Lib.Local.info local_lib) in
+      modules_obj_dir, Modules.With_vlib.modules modules
   in
+  let impl_only = Modules.With_vlib.impl_only modules in
+  let dep_graph = dep_graph ~obj_dir:modules_obj_dir ~modules impl_only in
   let* requires =
     Lib.closure ~linking:true [ lib ]
     |> Resolve.Memo.map
@@ -265,42 +292,20 @@ let instantiate ~sctx lib =
   in
   let lib = Lib.Parameterized.for_instance ~build_dir ~ext_lib lib in
   let obj_dir = Lib_info.obj_dir (Lib.info lib) |> Obj_dir.as_local_exn in
-  let* dep_graphs =
-    let+ dg =
-      (* TODO art-w: If the lib is local, then don't recompute. If the lib is
-         global, then compute only once not once-per-instantiation. *)
-      Dep_rules.rules
-        ~dir:(Obj_dir.dir obj_dir)
-        ~sandbox:Sandbox_config.no_special_requirements
-        ~obj_dir
-        ~sctx
-        ~impl:Virtual_rules.no_implements
-        ~modules
-    in
-    dg.impl
-  in
-  let impl_only = Modules.With_vlib.impl_only modules in
-  let top_sorted_modules = Dep_graph.top_closed_implementations dep_graphs impl_only in
+  let top_sorted_modules = Dep_graph.top_closed_implementations dep_graph impl_only in
   iter_modes_concurrently ~f:(fun mode ->
     let* modules =
       build_modules
         ~sctx
         ~obj_dir
-        ~modules_obj_dir
-        ~dep_graphs
+        ~modules_obj_dir:(Obj_dir.of_local modules_obj_dir)
+        ~dep_graph
         ~mode
         ~requires
         ~lib
         impl_only
     in
     build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules)
-;;
-
-let has_rules fn =
-  Memo.return
-    (Build_config.Gen_rules.make
-       ~directory_targets:Path.Build.Map.empty
-       (Rules.collect_unit fn))
 ;;
 
 let resolve_instantiation scope str =
@@ -322,6 +327,36 @@ let resolve_instantiation scope str =
   go (Parameterized_name.of_string str) |> Resolve.Memo.read_memo
 ;;
 
+let external_dep_rules ~sctx ~dir ~scope lib_name =
+  let* lib =
+    Lib.DB.find (Scope.libs scope) (Lib_name.of_string lib_name)
+    >>| function
+    | None -> Code_error.raise "not found" [ "lib", Dyn.string lib_name ]
+    | Some lib -> lib
+  in
+  match Lib_info.modules (Lib.info lib) with
+  | Local -> Memo.return ()
+  | External None -> Code_error.raise "library has no modules" [ "lib", Lib.to_dyn lib ]
+  | External (Some modules) ->
+    let+ _ =
+      Dep_rules.rules
+        ~sctx
+        ~sandbox:Sandbox_config.no_special_requirements
+        ~dir
+        ~obj_dir:(obj_dir_for_dep_rules dir)
+        ~impl:Virtual_rules.no_implements
+        ~modules
+    in
+    ()
+;;
+
+let has_rules fn =
+  Memo.return
+    (Build_config.Gen_rules.make
+       ~directory_targets:Path.Build.Map.empty
+       (Rules.collect_unit fn))
+;;
+
 let gen_rules ~sctx ~dir ~scope rest =
   match rest with
   | [] ->
@@ -330,11 +365,12 @@ let gen_rules ~sctx ~dir ~scope rest =
          ~build_dir_only_sub_dirs:
            (Build_config.Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
          (Memo.return Rules.empty))
-  | [ folder ] ->
+  | [ lib_name ] -> has_rules @@ fun () -> external_dep_rules ~sctx ~dir ~scope lib_name
+  | [ _lib_name; instance_name ] when not (String.equal instance_name ".deps.objs") ->
     has_rules
     @@ fun () ->
-    let* lib = resolve_instantiation scope folder in
-    instantiate ~sctx lib
+    let* lib = resolve_instantiation scope instance_name in
+    instantiate ~sctx ~dir lib
   | _ ->
     Memo.return
       (Build_config.Gen_rules.redirect_to_parent Build_config.Gen_rules.Rules.empty)

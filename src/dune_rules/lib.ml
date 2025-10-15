@@ -1284,33 +1284,35 @@ end = struct
     in
     let* requires =
       let open Resolve.Memo.O in
-      let* requires =
-        Memo.return
-        @@
-        let open Resolve.O in
-        let* resolved = resolved
-        and* resolved_params = parameters in
-        let+ requires = resolved.requires in
-        requires @ resolved_params
-      in
-      match implements with
-      | None -> Resolve.Memo.return requires
-      | Some impl ->
-        let* () =
+      let* resolved = Memo.return resolved in
+      let* requires = Memo.return resolved.requires in
+      let+ requires_params = Memo.return parameters
+      and+ requires_implements =
+        match implements with
+        | None -> Resolve.Memo.return []
+        | Some impl ->
           let* impl = Memo.return impl in
-          match Lib_info.kind impl.info with
-          | Parameter -> Resolve.Memo.return ()
-          | Virtual ->
-            let requires_for_closure_check =
-              List.filter requires ~f:(fun lib -> not (Ordering.is_eq (compare lib impl)))
-            in
-            check_forbidden
-              requires_for_closure_check
-              ~forbidden_libraries:(Map.singleton impl Loc.none)
-          | Dune_file _ ->
-            Code_error.raise "expected Virtual or Parameter" [ "implements", to_dyn impl ]
-        in
-        Resolve.Memo.return requires
+          (match Lib_info.kind impl.info with
+           | Parameter -> Resolve.Memo.return [ impl ]
+           | Virtual ->
+             let requires_for_closure_check =
+               List.filter requires ~f:(fun lib ->
+                 not (Ordering.is_eq (compare lib impl)))
+             in
+             let+ () =
+               check_forbidden
+                 requires_for_closure_check
+                 ~forbidden_libraries:(Map.singleton impl Loc.none)
+             in
+             []
+           | Dune_file _ ->
+             Code_error.raise
+               "expected Virtual or Parameter"
+               [ "implements", to_dyn impl ])
+      in
+      List.concat [ requires_implements; requires_params; requires ]
+      |> Set.of_list
+      |> Set.to_list
     in
     let resolve_impl impl_name =
       let open Resolve.Memo.O in
@@ -1356,16 +1358,6 @@ end = struct
                        (Package.Name.to_string p)
                        (Package.Name.to_string p')
                    ])))
-    in
-    let* requires =
-      Memo.return
-        (let open Resolve.O in
-         let* requires = requires in
-         match implements with
-         | None -> Resolve.return requires
-         | Some impl ->
-           let+ impl = impl in
-           impl :: requires)
     in
     let* ppx_runtime_deps =
       Lib_info.ppx_runtime_deps info |> resolve_simple_deps db ~private_deps

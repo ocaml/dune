@@ -340,7 +340,8 @@ required parameters.
   -> required by _build/default/bin/bin.exe
   -> required by alias bin/all
   -> required by alias default
-  Hint: Add (parameters project.a)
+  Hint: Pass an argument implementing project.a to the dependency, or add
+  (parameters project.a)
   [1]
 
   $ rm -r bin
@@ -362,7 +363,8 @@ Same for libraries:
   -> required by _build/default/lib2/lib2.a
   -> required by alias lib2/all
   -> required by alias default
-  Hint: Add (parameters project.a)
+  Hint: Pass an argument implementing project.a to the dependency, or add
+  (parameters project.a)
   [1]
 
 It works if `lib2` is itself parameterized with the same parameters as `lib`:

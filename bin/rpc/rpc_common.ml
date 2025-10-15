@@ -75,6 +75,12 @@ let establish_client_session ~wait =
   if wait then establish_connection_with_retry () else establish_connection_exn ()
 ;;
 
+let prepare_targets targets =
+  List.map targets ~f:(fun target ->
+    let sexp = Dune_lang.Dep_conf.encode target in
+    Dune_lang.to_string sexp)
+;;
+
 let warn_ignore_arguments lock_held_by =
   User_warning.emit
     [ Pp.paragraphf

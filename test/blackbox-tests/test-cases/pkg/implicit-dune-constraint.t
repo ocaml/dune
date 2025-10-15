@@ -17,19 +17,19 @@ dependency.
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.lock:
   Couldn't solve the package dependency formula.
-  The following packages couldn't be found: dune
+  Selected candidates: foo.0.0.1 x.dev
+  - dune -> (problem)
+      User requested = 3.XX
+      foo 0.0.1 requires <= 2.0.0
+      Rejected candidates:
+        dune.3.XX: Incompatible with restriction: <= 2.0.0
   $ test "4.0.0"
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
-  Couldn't solve the package dependency formula.
-  The following packages couldn't be found: dune
-  [1]
+  Solution for dune.lock:
+  - foo.0.0.1
 
   $ test "4.0.0" 2>&1 | sed -E 's/3.[0-9]+/3.XX/g'
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
-  Couldn't solve the package dependency formula.
-  The following packages couldn't be found: dune
+  Solution for dune.lock:
+  - foo.0.0.1
 
 Create a fake project and ensure `dune` can be used as a dependency:
   $ cat > dune-project <<EOF
@@ -40,8 +40,5 @@ Create a fake project and ensure `dune` can be used as a dependency:
   >  (depends dune))
   > EOF
   $ dune pkg lock
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
-  Couldn't solve the package dependency formula.
-  The following packages couldn't be found: dune
-  [1]
+  Solution for dune.lock:
+  (no dependencies to lock)

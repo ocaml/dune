@@ -348,6 +348,8 @@ module Context = struct
   let user_restrictions : t -> OpamPackage.Name.t -> OpamFormula.version_constraint option
     =
     fun t pkg ->
+    (* This isn't really needed because we already pin dune, but it seems to
+       help the error messages *)
     if Package_name.equal Dune_dep.name (Package_name.of_opam_package_name pkg)
     then Some (`Eq, t.dune_version)
     else None
@@ -1658,6 +1660,18 @@ let solve_lock_dir
       ~selected_depopts
       ~portable_lock_dir
   =
+  let pinned_packages =
+    Package_name.Map.update pinned_packages Dune_dep.name ~f:(function
+      | None -> Some Resolved_package.dune
+      | Some p ->
+        let loc = Resolved_package.loc p in
+        User_error.raise
+          ~loc
+          [ Pp.text
+              "Dune cannot be pinned. The currently running version is the only one that \
+               may be used"
+          ])
+  in
   let pinned_package_names = Package_name.Set.of_keys pinned_packages in
   let stats_updater = Solver_stats.Updater.init () in
   let context =

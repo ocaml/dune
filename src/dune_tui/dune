@@ -9,7 +9,9 @@
   dune_notty_unix
   dune_config
   dune_console
+  dune_spawn
   dune_threaded_console
+  ocamlc_loc
   threads.posix))
 
 (include_subdirs unqualified)

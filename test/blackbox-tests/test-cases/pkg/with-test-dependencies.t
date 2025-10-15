@@ -55,9 +55,8 @@ Test dependencies of test dependencies are excluded:
 
 Conflicting packages can't be co-installed:
   $ solve foo conflicts-with-foo
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
-  Couldn't solve the package dependency formula.
+  File "default/.lock/_unknown_", line 1, characters 0-0:
+  Error: Couldn't solve the package dependency formula.
   Selected candidates: foo.0.0.1 foo-dependency.0.0.1 x.dev
   - conflicts-with-foo -> (problem)
       Rejected candidates:
@@ -66,9 +65,8 @@ Conflicting packages can't be co-installed:
 
 Conflicting packages in transitive dependencies can't be co-installed:
   $ solve depends-on-foo conflicts-with-foo
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
-  Couldn't solve the package dependency formula.
+  File "default/.lock/_unknown_", line 1, characters 0-0:
+  Error: Couldn't solve the package dependency formula.
   Selected candidates: depends-on-foo.0.0.1 foo.0.0.1 foo-dependency.0.0.1
                        x.dev
   - conflicts-with-foo -> (problem)

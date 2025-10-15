@@ -38,11 +38,13 @@ detect it and not descend into an infinite loop.
   > }
 
   $ runtest a
+  File "default/.lock/_unknown_", line 1, characters 0-0:
   Error: Dune does not support packages outside the workspace depending on
   packages in the workspace. The package "b" is not in the workspace but it
   depends on the package "a" which is in the workspace.
   [1]
   $ runtest b
+  File "default/.lock/_unknown_", line 1, characters 0-0:
   Error: Dune does not support packages outside the workspace depending on
   packages in the workspace. The package "a" is not in the workspace but it
   depends on the package "b" which is in the workspace.

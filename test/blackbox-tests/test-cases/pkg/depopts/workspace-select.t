@@ -84,8 +84,7 @@ Select garbage
   > EOF
 
   $ dune pkg lock
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
-  Couldn't solve the package dependency formula.
+  File "default/.lock/_unknown_", line 1, characters 0-0:
+  Error: Couldn't solve the package dependency formula.
   The following packages couldn't be found: z
   [1]

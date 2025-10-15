@@ -1,18 +1,9 @@
 open Import
 
-let build ~wait builder lock_held_by targets =
-  let targets =
-    List.map targets ~f:(fun target ->
-      let sexp = Dune_lang.Dep_conf.encode target in
-      Dune_lang.to_string sexp)
-  in
-  Rpc_common.fire_request
-    ~name:"build"
-    ~wait
-    ~lock_held_by
-    builder
-    Dune_rpc_impl.Decl.build
-    targets
+let prepare_targets targets =
+  List.map targets ~f:(fun target ->
+    let sexp = Dune_lang.Dep_conf.encode target in
+    Dune_lang.to_string sexp)
 ;;
 
 let term =

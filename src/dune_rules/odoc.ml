@@ -1001,13 +1001,12 @@ let setup_pkg_html_rules sctx ~pkg : unit Memo.t =
 let setup_lib_markdown_rules sctx lib =
   let target = Lib lib in
   let* odocs = odoc_artefacts sctx target in
-  (* For libraries WITH a package, generation happens in the package-level rule.
-     Only generate for libraries WITHOUT a package. *)
   let* () =
+    (* because libraries with a package are handled in the package-level rule with the bash script for all directory target, we skip packages *)
     match Lib_info.package (Lib.Local.info lib) with
-    | Some _ -> Memo.return () (* Package-level rule handles it *)
+    | Some _ -> Memo.return ()
     | None ->
-      (* No package, so we need individual rules *)
+      (* when there's no package, we still need have rules for each odoc file *)
       Memo.parallel_iter odocs ~f:(fun odoc -> setup_generate_markdown sctx odoc)
   in
   Memo.With_implicit_output.exec setup_lib_markdown_rules_def (sctx, lib)
@@ -1022,9 +1021,7 @@ let setup_pkg_markdown_rules_def =
       Memo.List.concat_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
     in
     let all_odocs = pkg_odocs @ lib_odocs in
-    (* Generate ALL markdown for this package in ONE rule with directory target.
-       Since odoc generates unpredictable files (Belt.md, Belt-Array.md, Belt-List.md, etc.)
-       from nested submodules, we must use a directory target and batch all odoc commands. *)
+    (* odoc generates all markdown files on the same level for the package so we use one rule with directory target and batch all odoc commands. *)
     let* () =
       if List.is_empty all_odocs
       then Memo.return ()

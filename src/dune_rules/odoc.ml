@@ -1130,58 +1130,58 @@ let setup_pkg_markdown_rules_def =
     then Memo.return ()
     else
       let* libs = Context.name ctx |> libs_of_pkg ~pkg in
-        let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
-        let* lib_odocs =
-          Memo.List.concat_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
-        in
-        let all_odocs = pkg_odocs @ lib_odocs in
-        (* odoc generates all markdown files on the same level for the package so we use one rule with directory target and batch all odoc commands. *)
-        let* () =
-          if List.is_empty all_odocs
-          then Memo.return ()
-          else (
-            let pkg_markdown_dir = Paths.markdown ctx (Pkg pkg) in
-            let markdown_root = Paths.markdown_root ctx in
-            let rule =
-              let prog, shell_arg =
-                Env_path.system_shell_exn ~needed_to:"generate markdown documentation"
-              in
-              let system_shell_cmd_args =
-                let open Action_builder.O in
-                let* odoc_prog = odoc_program sctx (Context.build_dir ctx) in
-                let odoc_path = Action.Prog.ok_exn odoc_prog |> Path.to_string in
-                let shell_cmd =
-                  List.map all_odocs ~f:(fun odoc ->
-                    let odocl_rel =
-                      Path.reach
-                        (Path.build odoc.odocl_file)
-                        ~from:(Path.build markdown_root)
-                    in
-                    Printf.sprintf "%s markdown-generate -o . %s" odoc_path odocl_rel)
-                  |> String.concat ~sep:" && "
-                in
-                let* () =
-                  List.map all_odocs ~f:(fun odoc ->
-                    Action_builder.path (Path.build odoc.odocl_file))
-                  |> Action_builder.all
-                  >>| ignore
-                in
-                Action_builder.return (Command.Args.S [ A shell_arg; A shell_cmd ])
-              in
-              let deps = Action_builder.env_var "ODOC_SYNTAX" in
-              let open Action_builder.With_targets.O in
-              Action_builder.with_no_targets deps
-              >>> Command.run
-                    ~dir:(Path.build markdown_root)
-                    (Ok prog)
-                    [ Dyn system_shell_cmd_args ]
-              |> Action_builder.With_targets.add_directories
-                   ~directory_targets:[ pkg_markdown_dir ]
+      let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
+      let* lib_odocs =
+        Memo.List.concat_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
+      in
+      let all_odocs = pkg_odocs @ lib_odocs in
+      (* odoc generates all markdown files on the same level for the package so we use one rule with directory target and batch all odoc commands. *)
+      let* () =
+        if List.is_empty all_odocs
+        then Memo.return ()
+        else (
+          let pkg_markdown_dir = Paths.markdown ctx (Pkg pkg) in
+          let markdown_root = Paths.markdown_root ctx in
+          let rule =
+            let prog, shell_arg =
+              Env_path.system_shell_exn ~needed_to:"generate markdown documentation"
             in
-            add_rule sctx rule)
-        in
-        let* () = Memo.parallel_iter libs ~f:(setup_lib_markdown_rules sctx) in
-        add_format_alias_deps ctx Markdown (Pkg pkg) all_odocs
+            let system_shell_cmd_args =
+              let open Action_builder.O in
+              let* odoc_prog = odoc_program sctx (Context.build_dir ctx) in
+              let odoc_path = Action.Prog.ok_exn odoc_prog |> Path.to_string in
+              let shell_cmd =
+                List.map all_odocs ~f:(fun odoc ->
+                  let odocl_rel =
+                    Path.reach
+                      (Path.build odoc.odocl_file)
+                      ~from:(Path.build markdown_root)
+                  in
+                  Printf.sprintf "%s markdown-generate -o . %s" odoc_path odocl_rel)
+                |> String.concat ~sep:" && "
+              in
+              let* () =
+                List.map all_odocs ~f:(fun odoc ->
+                  Action_builder.path (Path.build odoc.odocl_file))
+                |> Action_builder.all
+                >>| ignore
+              in
+              Action_builder.return (Command.Args.S [ A shell_arg; A shell_cmd ])
+            in
+            let deps = Action_builder.env_var "ODOC_SYNTAX" in
+            let open Action_builder.With_targets.O in
+            Action_builder.with_no_targets deps
+            >>> Command.run
+                  ~dir:(Path.build markdown_root)
+                  (Ok prog)
+                  [ Dyn system_shell_cmd_args ]
+            |> Action_builder.With_targets.add_directories
+                 ~directory_targets:[ pkg_markdown_dir ]
+          in
+          add_rule sctx rule)
+      in
+      let* () = Memo.parallel_iter libs ~f:(setup_lib_markdown_rules sctx) in
+      add_format_alias_deps ctx Markdown (Pkg pkg) all_odocs
   in
   setup_pkg_rules_def "setup-package-markdown-rules" f
 ;;
@@ -1370,9 +1370,8 @@ let gen_rules sctx ~dir rest =
     let ctx = Super_context.context sctx in
     let* is_markdown_supported = supports_doc_markdown sctx in
     if not is_markdown_supported
-    then
-      Memo.return Gen_rules.no_rules
-    else
+    then Memo.return Gen_rules.no_rules
+    else (
       let all_package_dirs =
         Package.Name.Map.to_list packages
         |> List.map ~f:(fun (_, (pkg : Package.t)) ->
@@ -1389,7 +1388,7 @@ let gen_rules sctx ~dir rest =
          Package.Name.Map.to_seq packages
          |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
            let pkg_name = Package.name pkg in
-           setup_pkg_markdown_rules sctx ~pkg:pkg_name))
+           setup_pkg_markdown_rules sctx ~pkg:pkg_name)))
   | [ "_markdown"; _lib_unique_name_or_pkg ] ->
     (* package directories are directory targets *)
     Memo.return Gen_rules.no_rules

@@ -1120,15 +1120,6 @@ let setup_lib_markdown_rules sctx lib =
     Memo.With_implicit_output.exec setup_lib_markdown_rules_def (sctx, lib))
 ;;
 
-let markdown_shell_command odoc_path all_odocs ~markdown_root =
-  List.map all_odocs ~f:(fun odoc ->
-    let odocl_rel =
-      Path.reach (Path.build odoc.odocl_file) ~from:(Path.build markdown_root)
-    in
-    Printf.sprintf "%s markdown-generate -o . %s" odoc_path odocl_rel)
-  |> String.concat ~sep:" && "
-;;
-
 let setup_pkg_markdown_rules_def =
   let f (sctx, pkg) =
     let ctx = Super_context.context sctx in
@@ -1150,29 +1141,16 @@ let setup_pkg_markdown_rules_def =
             let pkg_markdown_dir = Paths.markdown ctx (Pkg pkg) in
             let markdown_root = Paths.markdown_root ctx in
             let rule =
-            let prog, shell_arg =
-              Env_path.system_shell_exn ~needed_to:"generate markdown documentation"
-            in
-              let system_shell_cmd_args =
-                let open Action_builder.O in
-                let* odoc_prog = odoc_program sctx (Context.build_dir ctx) in
-                let odoc_path = Action.Prog.ok_exn odoc_prog |> Path.to_string in
-                let shell_cmd = markdown_shell_command odoc_path all_odocs ~markdown_root in
-                let* () =
-                  List.map all_odocs ~f:(fun odoc ->
-                    Action_builder.path (Path.build odoc.odocl_file))
-                  |> Action_builder.all
-                  >>| ignore
-                in
-                Action_builder.return (Command.Args.S [ A shell_arg; A shell_cmd ])
-              in
-              let deps = Action_builder.env_var "ODOC_SYNTAX" in
-              let open Action_builder.With_targets.O in
-              Action_builder.with_no_targets deps
-              >>> Command.run
-                    ~dir:(Path.build markdown_root)
-                    (Ok prog)
-                    [ Dyn system_shell_cmd_args ]
+              run_odoc
+                sctx
+                ~dir:(Path.build markdown_root)
+                "markdown-generate"
+                ~quiet:false
+                ~flags_for:None
+                (Command.Args.A "-o"
+                 :: Command.Args.Path (Path.build markdown_root)
+                 :: List.map all_odocs ~f:(fun odoc ->
+                   Command.Args.Dep (Path.build odoc.odocl_file)))
               |> Action_builder.With_targets.add_directories
                    ~directory_targets:[ pkg_markdown_dir ]
             in

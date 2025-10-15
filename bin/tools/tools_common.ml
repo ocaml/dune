@@ -36,16 +36,17 @@ let build_dev_tool_directly common dev_tool =
 let build_dev_tool_via_rpc builder lock_held_by dev_tool =
   let target = dev_tool_build_target dev_tool in
   let targets = Rpc.Group.Build.prepare_targets [ target ] in
-  Rpc.Common.wrap_build_outcome_exn
-    ~print_on_success:false
-    (Rpc.Common.fire_request
-       ~name:"build"
-       ~wait:true
-       ~lock_held_by
-       builder
-       Dune_rpc_impl.Decl.build)
-    targets
-    ()
+  let open Fiber.O in
+  let+ build_outcome =
+    Rpc.Common.fire_request
+      ~name:"build"
+      ~wait:true
+      ~lock_held_by
+      builder
+      Dune_rpc_impl.Decl.build
+      targets
+  in
+  Rpc.Common.wrap_build_outcome_exn ~print_on_success:false build_outcome
 ;;
 
 let lock_and_build_dev_tool ~common ~config builder dev_tool =

@@ -10,6 +10,14 @@
       url = "github:nix-ocaml/nix-overlays";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    oxcaml = {
+      url = "github:oxcaml/oxcaml";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    oxcaml-opam-repository = {
+      url = "github:oxcaml/opam-repository";
+      flake = false;
+    };
   };
   outputs =
     {
@@ -18,6 +26,8 @@
       nixpkgs,
       melange,
       ocaml-overlays,
+      oxcaml,
+      oxcaml-opam-repository,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -46,6 +56,13 @@
             });
           })
         ];
+        
+        applyOxcamlPatches = import ./nix/ox-patches.nix { 
+          inherit pkgs; 
+          lib = pkgs.lib; 
+          oxcamlOpamRepo = oxcaml-opam-repository;
+        };
+        
         dune-static-overlay = self: super: {
           ocamlPackages = super.ocaml-ng.ocamlPackages_5_3.overrideScope (
             oself: osuper: {
@@ -174,10 +191,29 @@
                 extraBuildInputs ? (pkgs: [ ]),
                 meta ? null,
                 duneFromScope ? false,
+                includeTestDeps ? true,
+                packageOverrides ? (oself: osuper: { }),
               }:
               let
+                hasOcamlOverride = (packageOverrides { } { ocaml = null; }) ? ocaml;
+                
                 pkgs' =
-                  if duneFromScope then
+                  if hasOcamlOverride then
+                    pkgs.extend (
+                      pself: psuper: {
+                        ocamlPackages = psuper.ocamlPackages.overrideScope (
+                          oself: osuper:
+                            (pkgs.lib.mapAttrs
+                              (name: pkg:
+                                if pkgs.lib.isDerivation pkg && pkg ? overrideAttrs
+                                then pkg.overrideAttrs (old: { doCheck = false; })
+                                else pkg)
+                              osuper)
+                            // (packageOverrides oself osuper)
+                        );
+                      }
+                    )
+                  else if duneFromScope then
                     pkgs.extend (
                       pself: psuper: {
                         ocamlPackages = psuper.ocamlPackages.overrideScope (
@@ -196,6 +232,29 @@
                   #!${stdenv.shell}
                   "$DUNE_SOURCE_ROOT"/_boot/dune.exe $@
                 '';
+
+                baseInputs = if includeTestDeps then (testNativeBuildInputs pkgs') ++ docInputs else [ ];
+                
+                ocamlLibs = if includeTestDeps then
+                  (with pkgs'.ocamlPackages; [
+                    ctypes
+                    cinaps
+                    integers
+                    lwt
+                    mdx
+                    menhir
+                    merlin
+                    ocaml-index
+                    ocaml-lsp
+                    odoc
+                    patdiff
+                    ppx_expect
+                    re
+                    spawn
+                    uutf
+                  ])
+                else
+                  [ ];
               in
 
               pkgs'.mkShell {
@@ -203,32 +262,15 @@
                   export DUNE_SOURCE_ROOT=$PWD
                 '';
                 inherit meta;
-                nativeBuildInputs = (testNativeBuildInputs pkgs') ++ docInputs ++ [ duneScript ];
-                inputsFrom = [ pkgs'.ocamlPackages.dune_3 ];
+                nativeBuildInputs = baseInputs ++ [ duneScript ] ++ (if hasOcamlOverride then [ pkgs'.ocamlPackages.ocaml ] else [ ]);
+                inputsFrom = if hasOcamlOverride then [ ] else [ pkgs'.ocamlPackages.dune_3 ];
                 buildInputs =
-                  testBuildInputs
-                  ++ (
-                    with pkgs'.ocamlPackages;
-                    [
-                      ctypes
-                      cinaps
-                      integers
-                      lwt
-                      mdx
-                      menhir
-                      merlin
-                      ocaml-index
-                      ocaml-lsp
-                      odoc
-                      patdiff
-                      ppx_expect
-                      re
-                      spawn
-                      uutf
-                    ]
-                    ++ (extraBuildInputs pkgs')
-                  );
+                  (if includeTestDeps then testBuildInputs else [ ])
+                  ++ ocamlLibs
+                  ++ (extraBuildInputs pkgs')
+                  ++ (if hasOcamlOverride then [ pkgs'.ocamlPackages.findlib ] else [ ]);
                 inherit INSIDE_NIX;
+                dontDetectOcamlConflicts = hasOcamlOverride;
               };
           in
           {
@@ -330,6 +372,56 @@
               meta.description = ''
                 Provides a minimal shell environment with OCaml 4.08 in order
                 to test the bootstrapping script.
+              '';
+            };
+
+            bootstrap-ox = pkgs.mkShell {
+              inherit INSIDE_NIX;
+              buildInputs = [
+                pkgs.gnumake
+                oxcaml.packages.${system}.default
+              ];
+              meta.description = ''
+                Provides a minimal shell environment with OxCaml in order to
+                test the bootstrapping script.
+              '';
+            };
+
+            ox-minimal = makeDuneDevShell {
+              includeTestDeps = false;
+              packageOverrides = oself: osuper:
+                (applyOxcamlPatches oself osuper) // {
+                  # dune_3 = self.packages.${system}.default;
+                  ocaml = oxcaml.packages.${system}.default.overrideAttrs (old: {
+                    passthru = (old.passthru or { }) // pkgs.ocamlPackages.ocaml.passthru;
+                    meta = (old.meta or { }) // pkgs.ocamlPackages.ocaml.meta;
+                  });
+                  spawn = osuper.spawn.overrideAttrs (old: { doCheck = false; });
+                };
+              extraBuildInputs = pkgs: with pkgs.ocamlPackages; [
+                re
+                spawn
+                uutf
+                findlib
+              ];
+              meta.description = ''
+                Provides a minimal shell environment with OxCaml in order to
+                run the OxCaml tests.
+              '';
+            };
+
+            ox = makeDuneDevShell {
+              packageOverrides = oself: osuper:
+                (applyOxcamlPatches oself osuper) // {
+                  dune_3 = self.packages.${system}.default;
+                  ocaml = oxcaml.packages.${system}.default.overrideAttrs (old: {
+                    passthru = (old.passthru or { }) // pkgs.ocamlPackages.ocaml.passthru;
+                    meta = (old.meta or { }) // pkgs.ocamlPackages.ocaml.meta;
+                  });
+                };
+              meta.description = ''
+                Provides a full shell environment with the OxCaml compiler to
+                develop with Dune. Warning: does not work.
               '';
             };
 

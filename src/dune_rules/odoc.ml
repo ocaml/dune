@@ -162,6 +162,12 @@ module Output_format = struct
   ;;
 end
 
+let output_dir_for_format ctx format target =
+  match (format : Output_format.t) with
+  | Html | Json -> Paths.html ctx target
+  | Markdown -> Paths.markdown ctx target
+;;
+
 module Dep : sig
   (** [format_alias output ctx target] returns the alias that depends on all
       targets produced by odoc for [target] in output format [output]. *)
@@ -180,15 +186,7 @@ module Dep : sig
     These dependencies may be used using the [deps] function *)
   val setup_deps : Context.t -> target -> Path.Set.t -> unit Memo.t
 end = struct
-  let format_alias f ctx m =
-    let dir =
-      match (f : Output_format.t) with
-      | Html | Json -> Paths.html ctx m
-      | Markdown -> Paths.markdown ctx m
-    in
-    Output_format.alias f ~dir
-  ;;
-
+  let format_alias f ctx m = Output_format.alias f ~dir:(output_dir_for_format ctx f m)
   let alias = Alias.make (Alias.Name.of_string ".odoc-all")
 
   let deps ctx pkg requires =
@@ -1122,6 +1120,15 @@ let setup_lib_markdown_rules sctx lib =
     Memo.With_implicit_output.exec setup_lib_markdown_rules_def (sctx, lib))
 ;;
 
+let markdown_shell_command odoc_path all_odocs ~markdown_root =
+  List.map all_odocs ~f:(fun odoc ->
+    let odocl_rel =
+      Path.reach (Path.build odoc.odocl_file) ~from:(Path.build markdown_root)
+    in
+    Printf.sprintf "%s markdown-generate -o . %s" odoc_path odocl_rel)
+  |> String.concat ~sep:" && "
+;;
+
 let setup_pkg_markdown_rules_def =
   let f (sctx, pkg) =
     let ctx = Super_context.context sctx in
@@ -1150,16 +1157,7 @@ let setup_pkg_markdown_rules_def =
                 let open Action_builder.O in
                 let* odoc_prog = odoc_program sctx (Context.build_dir ctx) in
                 let odoc_path = Action.Prog.ok_exn odoc_prog |> Path.to_string in
-                let shell_cmd =
-                  List.map all_odocs ~f:(fun odoc ->
-                    let odocl_rel =
-                      Path.reach
-                        (Path.build odoc.odocl_file)
-                        ~from:(Path.build markdown_root)
-                    in
-                    Printf.sprintf "%s markdown-generate -o . %s" odoc_path odocl_rel)
-                  |> String.concat ~sep:" && "
-                in
+                let shell_cmd = markdown_shell_command odoc_path all_odocs ~markdown_root in
                 let* () =
                   List.map all_odocs ~f:(fun odoc ->
                     Action_builder.path (Path.build odoc.odocl_file))

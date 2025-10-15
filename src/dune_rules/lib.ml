@@ -715,9 +715,11 @@ module Parameterized = struct
     match status t with
     | Not_parameterized | Partial -> None
     | Complete ->
-      let parameterized_dir = Path.Build.relative build_dir ".parameterized" in
-      let subdir = parameterized_name t in
-      let dir = Path.Build.relative parameterized_dir subdir in
+      let parameterized_dir = Path.Build.(relative build_dir ".parameterized") in
+      let parameterized_dir =
+        Path.Build.relative parameterized_dir (Lib_name.to_string (name t))
+      in
+      let dir = Path.Build.relative parameterized_dir (parameterized_name t) in
       Some (Lib_info.for_instance ~dir ~ext_lib t.info)
   ;;
 

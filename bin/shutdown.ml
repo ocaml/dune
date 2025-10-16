@@ -9,11 +9,11 @@ let term =
   let+ builder = Common.Builder.term in
   Rpc.Rpc_common.client_term
     builder
-    (Rpc.Rpc_common.fire_message
+    (Rpc.Rpc_common.fire_notification
        ~name:"shutdown_cmd"
        ~wait:false
        builder
-       (Rpc.Rpc_common.Notification Dune_rpc_private.Procedures.Public.shutdown))
+       Dune_rpc_private.Procedures.Public.shutdown)
 ;;
 
 let command = Cmd.v info term

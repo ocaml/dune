@@ -25,10 +25,6 @@ let raise_rpc_error (e : Rpc_error.t) =
     ]
 ;;
 
-type ('a, 'b) message_kind =
-  | Request : ('a, 'b) Dune_rpc.Decl.request -> ('a, 'b) message_kind
-  | Notification : 'a Dune_rpc.Decl.notification -> ('a, unit) message_kind
-
 let request_exn client request arg =
   let* decl =
     Client.Versioned.prepare_request client (Dune_rpc.Decl.Request.witness request)
@@ -47,18 +43,6 @@ let notify_exn client notification arg =
   match res with
   | Ok decl -> Client.notification client decl arg
   | Error e -> raise (Dune_rpc.Version_error.E e)
-;;
-
-let prepare_message_and_send : type b. Client.t -> ('a, b) message_kind -> 'a -> b Fiber.t
-  =
-  fun client message arg ->
-  match message with
-  | Notification witness -> notify_exn client witness arg
-  | Request witness ->
-    let+ res = request_exn client witness arg in
-    (match res with
-     | Ok (result : b) -> result
-     | Error e -> raise_rpc_error e)
 ;;
 
 let client_term builder f =
@@ -115,22 +99,47 @@ let warn_ignore_arguments lock_held_by =
     ]
 ;;
 
-let fire_message
+let should_warn ~warn_forwarding builder =
+  warn_forwarding && not (Common.Builder.equal builder Common.Builder.default)
+;;
+
+let send_request ~f connection name =
+  Dune_rpc_impl.Client.client
+    connection
+    (Dune_rpc.Initialize.Request.create ~id:(Dune_rpc.Id.make (Sexp.Atom name)))
+    ~f
+;;
+
+let fire_request
       ~name
       ~wait
       ?(warn_forwarding = true)
       ?(lock_held_by = Dune_util.Global_lock.Lock_held_by.Unknown)
       builder
-      message
+      request
       arg
   =
   let* connection = establish_client_session ~wait in
-  if warn_forwarding && not (Common.Builder.equal builder Common.Builder.default)
-  then warn_ignore_arguments lock_held_by;
-  Dune_rpc_impl.Client.client
-    connection
-    (Dune_rpc.Initialize.Request.create ~id:(Dune_rpc.Id.make (Sexp.Atom name)))
-    ~f:(fun client -> prepare_message_and_send client message arg)
+  if should_warn ~warn_forwarding builder then warn_ignore_arguments lock_held_by;
+  send_request connection name ~f:(fun client ->
+    let+ res = request_exn client request arg in
+    match res with
+    | Ok result -> result
+    | Error e -> raise_rpc_error e)
+;;
+
+let fire_notification
+      ~name
+      ~wait
+      ?(warn_forwarding = true)
+      ?(lock_held_by = Dune_util.Global_lock.Lock_held_by.Unknown)
+      builder
+      notification
+      arg
+  =
+  let* connection = establish_client_session ~wait in
+  if should_warn ~warn_forwarding builder then warn_ignore_arguments lock_held_by;
+  send_request connection name ~f:(fun client -> notify_exn client notification arg)
 ;;
 
 let wrap_build_outcome_exn ~print_on_success build_outcome =

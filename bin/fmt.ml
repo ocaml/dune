@@ -48,13 +48,13 @@ let run_fmt_command ~common ~config ~preview builder =
     Scheduler.go_without_rpc_server
       ~common
       ~config
-      (Rpc.Rpc_common.fire_message
+      (Rpc.Rpc_common.fire_request
          ~name:"format"
          ~wait:true
          ~warn_forwarding:false
          ~lock_held_by
          builder
-         (Rpc.Rpc_common.Request Dune_rpc.Procedures.Public.format))
+         Dune_rpc.Procedures.Public.format)
 ;;
 
 let command =

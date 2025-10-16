@@ -194,14 +194,51 @@ It's an error to provide a non-required parameter:
   Hint: Remove the extra argument
   [1]
 
-Given another implementation of a parameter, we can instantiate the same
-library multiple times by giving it different names:
+Given another implementation of a parameter,
 
   $ mkdir b_impl2
   $ echo 'let b = "b2"' > b_impl2/b_impl2.ml
   $ cat >b_impl2/dune <<EOF
   > (library (public_name project.b_impl2) (name b_impl2) (implements b))
   > EOF
+
+It's an error to instantiate a library with arguments that
+implement the same parameter `b`, because it would be ambiguous
+which one to use:
+
+  $ cat >bin/dune <<EOF
+  > (executable
+  >   (public_name project.bin) (name bin)
+  >   (libraries
+  >     (lib_apply b_impl b_impl2)))
+  > EOF
+  $ dune exec project.bin
+  File "bin/dune", line 4, characters 22-29:
+  4 |     (lib_apply b_impl b_impl2)))
+                            ^^^^^^^
+  Error: Unexpected argument "project.b_impl2"
+  -> required by _build/install/default/bin/project.bin
+  Hint: Remove the extra argument
+  [1]
+
+Same error if the argument is repeated:
+
+  $ cat >bin/dune <<EOF
+  > (executable
+  >   (public_name project.bin) (name bin)
+  >   (libraries
+  >     (lib_apply b_impl b_impl)))
+  > EOF
+  $ dune exec project.bin
+  File "bin/dune", line 4, characters 22-28:
+  4 |     (lib_apply b_impl b_impl)))
+                            ^^^^^^
+  Error: Unexpected argument "project.b_impl"
+  -> required by _build/install/default/bin/project.bin
+  Hint: Remove the extra argument
+  [1]
+
+We can instantiate the same library multiple times by giving it different names:
 
   $ cat >bin/dune <<EOF
   > (executable

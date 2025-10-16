@@ -17,7 +17,8 @@ let default_repositories = [ Repository.overlay; Repository.upstream ]
 
 module Lock_dir = struct
   type t =
-    { path : Path.Source.t
+    { loc : Loc.t
+    ; path : Path.Source.t
     ; version_preference : Dune_pkg.Version_preference.t option
     ; solver_env : Solver_env.t option
     ; unset_solver_vars : Package_variable_name.Set.t option
@@ -29,7 +30,8 @@ module Lock_dir = struct
     }
 
   let to_dyn
-        { path
+        { loc
+        ; path
         ; version_preference
         ; solver_env
         ; unset_solver_vars
@@ -41,7 +43,8 @@ module Lock_dir = struct
         }
     =
     Dyn.record
-      [ "path", Path.Source.to_dyn path
+      [ "loc", Loc.to_dyn loc
+      ; "path", Path.Source.to_dyn path
       ; ( "version_preference"
         , Dyn.option Dune_pkg.Version_preference.to_dyn version_preference )
       ; "solver_env", Dyn.option Solver_env.to_dyn solver_env
@@ -58,7 +61,8 @@ module Lock_dir = struct
   ;;
 
   let hash
-        { path
+        { loc
+        ; path
         ; version_preference
         ; solver_env
         ; unset_solver_vars
@@ -70,7 +74,8 @@ module Lock_dir = struct
         }
     =
     Poly.hash
-      ( path
+      ( loc
+      , path
       , version_preference
       , solver_env
       , unset_solver_vars
@@ -82,7 +87,8 @@ module Lock_dir = struct
   ;;
 
   let equal
-        { path
+        { loc
+        ; path
         ; version_preference
         ; solver_env
         ; unset_solver_vars
@@ -94,7 +100,8 @@ module Lock_dir = struct
         }
         t
     =
-    Path.Source.equal path t.path
+    Loc.equal loc t.loc
+    && Path.Source.equal path t.path
     && Option.equal
          Dune_pkg.Version_preference.equal
          version_preference
@@ -122,7 +129,8 @@ module Lock_dir = struct
           (List.map default_repositories ~f:(fun d -> Loc.none, Repository.name d))
     in
     let decode =
-      let+ path =
+      let+ loc = loc
+      and+ path =
         let+ path = field ~default:"dune.lock" "path" string in
         Path.Source.relative dir path
       and+ solver_env = field_o "solver_env" Solver_env.decode
@@ -173,7 +181,8 @@ module Lock_dir = struct
         Option.map unset_solver_vars ~f:(fun x ->
           List.map x ~f:snd |> Package_variable_name.Set.of_list)
       in
-      { path
+      { loc
+      ; path
       ; solver_env
       ; unset_solver_vars
       ; version_preference
@@ -882,6 +891,56 @@ module Step1 = struct
     }
 end
 
+let check_repos_no_dupes repos =
+  match
+    Repository.Name.Map.of_list_map repos ~f:(fun repo -> Repository.name repo, repo)
+  with
+  | Ok _ -> ()
+  | Error (name, repo1, repo2) ->
+    let loc1, _ = Repository.opam_url repo1 in
+    let loc2, _ = Repository.opam_url repo2 in
+    User_error.raise
+      ~loc:loc2
+      [ Pp.textf
+          "Repository %S is defined multiple times:"
+          (Repository.Name.to_string name)
+      ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
+      ]
+;;
+
+let check_no_default_repo_redefinition user_defined_repos =
+  let default_repo_names =
+    Repository.Name.Set.of_list_map default_repositories ~f:Repository.name
+  in
+  List.iter user_defined_repos ~f:(fun repo ->
+    let name = Repository.name repo in
+    if Repository.Name.Set.mem default_repo_names name
+    then (
+      let loc, _ = Repository.opam_url repo in
+      User_error.raise
+        ~loc
+        [ Pp.textf
+            "Repository %S is a default repository and cannot be redefined."
+            (Repository.Name.to_string name)
+        ]))
+;;
+
+let check_lock_dirs_no_dupes lock_dirs =
+  match
+    Path.Source.Map.of_list_map lock_dirs ~f:(fun ({ Lock_dir.path; _ } as ld) ->
+      path, ld)
+  with
+  | Ok _ -> ()
+  | Error (path, { Lock_dir.loc = loc1; _ }, { Lock_dir.loc = loc2; _ }) ->
+    User_error.raise
+      ~loc:loc2
+      [ Pp.textf
+          "Lock directory %S is defined multiple times:"
+          (Path.Source.to_string path)
+      ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
+      ]
+;;
+
 let step1 clflags =
   let { Clflags.x
       ; profile = cl_profile
@@ -948,7 +1007,12 @@ let step1 clflags =
        in
        let defined_names = ref Context_name.Set.empty in
        let env = Lazy.force env in
-       let repos = default_repositories @ List.map ~f:Lazy.force repos in
+       let repos =
+         let user_defined_repos = List.map ~f:Lazy.force repos in
+         check_no_default_repo_redefinition user_defined_repos;
+         check_repos_no_dupes user_defined_repos;
+         default_repositories @ user_defined_repos
+       in
        let merlin_context =
          List.fold_left contexts ~init:None ~f:(fun acc ctx ->
            let name = Context.name ctx in
@@ -993,6 +1057,7 @@ let step1 clflags =
            then Some Context_name.default
            else None
        in
+       check_lock_dirs_no_dupes lock_dirs;
        { merlin_context
        ; contexts = top_sort (List.rev contexts)
        ; env

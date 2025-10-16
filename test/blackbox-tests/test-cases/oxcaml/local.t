@@ -5,7 +5,8 @@ The test ensures we are able to run OxCaml tests for Dune.
   > EOF
 
   $ cat > main.ml << EOF
-  > let i @ local = 42
+  > let fst_local ((x, _) @ local) = x
+  > let () = print_int (fst_local (stack_ (1, 2)))
   > EOF
 
   $ cat > dune << EOF
@@ -13,14 +14,12 @@ The test ensures we are able to run OxCaml tests for Dune.
   >  (name main))
   > EOF
 
-The test fails with an OxCaml error to demonstrate it compiled the ml file with
-the correct compiler.
-  $ dune build ./main.exe
-  File "main.ml", line 1, characters 4-5:
-  1 | let i @ local = 42
-          ^
-  Error: This value is local, but expected to be global because it is inside a module.
-  [1]
+The test succeeds to demonstrate it compiled the ml file with the correct
+OxCaml compiler (since OCaml wouldn't recognize `@ local` or `stack_`
+allocations).
+
+  $ dune exec ./main.exe
+  1
 
 Demonstrate what happens when the extension isn't enabled:
 

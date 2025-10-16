@@ -28,7 +28,7 @@ same version of the ocaml compiler as the code that it's analyzing.
   > EOF
 
 Initially ocamllsp will be depend on ocaml.5.2.0 to match the project.
-  $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune tools exec ocamllsp
+  $ dune tools exec ocamllsp
   Solution for dev-tools.locks/ocaml-lsp-server:
   - ocaml.5.2.0
   - ocaml-lsp-server.0.0.1
@@ -38,7 +38,7 @@ Initially ocamllsp will be depend on ocaml.5.2.0 to match the project.
   (version 5.2.0)
 
 We can re-run "dune tools exec ocamllsp" without relocking or rebuilding.
-  $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune tools exec ocamllsp
+  $ dune tools exec ocamllsp
        Running 'ocamllsp'
   hello from fake ocamllsp
 

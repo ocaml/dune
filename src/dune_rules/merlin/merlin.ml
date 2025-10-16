@@ -61,6 +61,7 @@ module Processed = struct
     ; flags : string list
     ; extensions : string option Ml_kind.Dict.t list
     ; indexes : Path.t list
+    ; parameters : Module_name.t list
     }
 
   let dyn_of_config
@@ -73,6 +74,7 @@ module Processed = struct
         ; flags
         ; extensions
         ; indexes
+        ; parameters
         }
     =
     let open Dyn in
@@ -86,6 +88,7 @@ module Processed = struct
       ; "flags", list string flags
       ; "extensions", list (Ml_kind.Dict.to_dyn (Dyn.option string)) extensions
       ; "indexes", list Path.to_dyn indexes
+      ; "parameters", list Module_name.to_dyn parameters
       ]
   ;;
 
@@ -124,7 +127,7 @@ module Processed = struct
     type nonrec t = t
 
     let name = "merlin-conf"
-    let version = 7
+    let version = 8
     let to_dyn _ = Dyn.String "Use [dune ocaml dump-dot-merlin] instead"
 
     let test_example () =
@@ -138,6 +141,7 @@ module Processed = struct
           ; flags = [ "-x" ]
           ; extensions = [ { Ml_kind.Dict.intf = None; impl = Some "ext" } ]
           ; indexes = []
+          ; parameters = []
           }
       ; per_file_config = Path.Build.Map.empty
       ; pp_config =
@@ -191,6 +195,7 @@ module Processed = struct
         ; flags
         ; extensions
         ; indexes
+        ; parameters
         }
     =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
@@ -217,30 +222,35 @@ module Processed = struct
       (* Order matters here. The flags should be communicated to Merlin in the
          same order that they are passed to the compiler: user flags, pp flags
          and then opens *)
+      let flag_directive flags =
+        let flags = List.map flags ~f:(fun s -> Sexp.Atom s) in
+        make_directive "FLG" (Sexp.List flags)
+      in
       let base_flags =
         match flags with
         | [] -> None
-        | flags ->
-          Some
-            (make_directive "FLG" (Sexp.List (List.map ~f:(fun s -> Sexp.Atom s) flags)))
+        | flags -> Some (flag_directive flags)
       in
       let pp_flags =
         match pp with
         | None -> None
-        | Some { flag; args } ->
-          Some
-            (make_directive "FLG" (Sexp.List [ Atom (Pp_kind.to_flag flag); Atom args ]))
+        | Some { flag; args } -> Some (flag_directive [ Pp_kind.to_flag flag; args ])
       in
       let open_flags =
         match opens with
         | [] -> None
-        | opens ->
-          let open_flags =
-            Ocaml_flags.open_flags opens |> List.map ~f:(fun x -> Sexp.Atom x)
-          in
-          Some (make_directive "FLG" (Sexp.List open_flags))
+        | opens -> Some (flag_directive (Ocaml_flags.open_flags opens))
       in
-      List.filter_opt [ base_flags; pp_flags; open_flags ]
+      let parameter_flags =
+        match parameters with
+        | [] -> None
+        | params ->
+          Some
+            (flag_directive
+               (List.concat_map params ~f:(fun m ->
+                  [ "-parameter"; Module_name.to_string m ])))
+      in
+      List.filter_opt [ base_flags; pp_flags; open_flags; parameter_flags ]
     in
     let unit_name = [ make_directive "UNIT_NAME" (Sexp.Atom unit_name) ] in
     let suffixes =
@@ -297,6 +307,7 @@ module Processed = struct
         hidden_src_dirs
         extensions
         indexes
+        parameters
     =
     let b = Buffer.create 256 in
     let printf = Printf.bprintf b in
@@ -327,6 +338,14 @@ module Processed = struct
         print "# FLG";
         List.iter flags ~f:(fun f -> printf " %s" (quote_for_dot_merlin f));
         print "\n");
+    let () =
+      match parameters with
+      | [] -> ()
+      | params ->
+        print "# FLG";
+        List.iter params ~f:(fun f -> printf " -parameter %s" (Module_name.to_string f));
+        print "\n"
+    in
     Buffer.contents b
   ;;
 
@@ -428,6 +447,7 @@ module Processed = struct
                   ; flags
                   ; extensions
                   ; indexes
+                  ; parameters = _
                   }
               }
             ->
@@ -452,7 +472,8 @@ module Processed = struct
            hidden_obj_dirs
            hidden_src_dirs
            extensions
-           indexes)
+           indexes
+           init.config.parameters)
   ;;
 end
 
@@ -482,6 +503,7 @@ module Unprocessed = struct
     ; extensions : string option Ml_kind.Dict.t list
     ; readers : string list String.Map.t
     ; mode : Lib_mode.t
+    ; parameters : Module_name.t list Resolve.t
     }
 
   type t =
@@ -502,6 +524,7 @@ module Unprocessed = struct
         ~dialects
         ~ident
         ~modes
+        ~parameters
     =
     (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
     let mode =
@@ -526,6 +549,7 @@ module Unprocessed = struct
       ; objs_dirs
       ; extensions
       ; readers
+      ; parameters
       }
     in
     { ident; config; modules }
@@ -654,6 +678,7 @@ module Unprocessed = struct
              ; preprocess = _
              ; libname = _
              ; mode
+             ; parameters
              }
          } as t)
         sctx
@@ -713,6 +738,7 @@ module Unprocessed = struct
         let requires_hidden = Resolve.peek requires_hidden |> Result.value ~default:[] in
         add_lib_dirs sctx mode requires_hidden
       in
+      let parameters = Resolve.peek parameters |> Result.value ~default:[] in
       let src_dirs =
         Path.Set.of_list_map ~f:Path.source more_src_dirs |> Path.Set.union deps_src_dirs
       in
@@ -727,6 +753,7 @@ module Unprocessed = struct
       ; flags
       ; extensions
       ; indexes
+      ; parameters
       }
     and+ pp_config = pp_config t (Super_context.context sctx) ~expander in
     let per_file_config =

@@ -17,7 +17,8 @@ We test the output of the watch mode client when we have multiple errors
   1 | let y = "unknown variable" ^ what
                                    ^^^^
   Unbound value what
-  Build failed with 2 errors.
+  Error: Build failed with 2 errors.
+  [1]
 
   $ stop_dune
   File "libs/bar.ml", line 1, characters 8-20:

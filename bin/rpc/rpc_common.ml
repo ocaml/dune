@@ -75,9 +75,30 @@ let establish_client_session ~wait =
   if wait then establish_connection_with_retry () else establish_connection_exn ()
 ;;
 
-let fire_request ~name ~wait request arg =
+let warn_ignore_arguments lock_held_by =
+  User_warning.emit
+    [ Pp.paragraphf
+        "Your build request is being forwarded to a running Dune instance%s. Note that \
+         certain command line arguments may be ignored."
+        (match lock_held_by with
+         | Dune_util.Global_lock.Lock_held_by.Unknown -> ""
+         | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
+    ]
+;;
+
+let fire_request
+      ~name
+      ~wait
+      ?(warn_forwarding = true)
+      ?(lock_held_by = Dune_util.Global_lock.Lock_held_by.Unknown)
+      builder
+      request
+      arg
+  =
   let open Fiber.O in
   let* connection = establish_client_session ~wait in
+  if warn_forwarding && not (Common.Builder.equal builder Common.Builder.default)
+  then warn_ignore_arguments lock_held_by;
   Dune_rpc_impl.Client.client
     connection
     (Dune_rpc.Initialize.Request.create ~id:(Dune_rpc.Id.make (Sexp.Atom name)))
@@ -104,23 +125,10 @@ let wrap_build_outcome_exn ~print_on_success f args () =
     in
     List.iter errors ~f:(fun { Dune_rpc.Compound_user_error.main; _ } ->
       Console.print_user_message main);
-    Console.print [ error_msg |> Pp.tag User_message.Style.Error ]
+    User_error.raise [ error_msg |> Pp.tag User_message.Style.Error ]
 ;;
 
-let warn_ignore_arguments lock_held_by =
-  User_warning.emit
-    [ Pp.paragraphf
-        "Your build request is being forwarded to a running Dune instance%s. Note that \
-         certain command line arguments may be ignored."
-        (match lock_held_by with
-         | Dune_util.Global_lock.Lock_held_by.Unknown -> ""
-         | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
-    ]
-;;
-
-let run_via_rpc ~builder ~common ~config lock_held_by f args =
-  if not (Common.Builder.equal builder Common.Builder.default)
-  then warn_ignore_arguments lock_held_by;
+let run_via_rpc ~common ~config f args =
   Scheduler.go_without_rpc_server
     ~common
     ~config

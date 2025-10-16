@@ -497,7 +497,24 @@ let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
     Dune_project_name.named loc (Package.Name.to_string name)
 ;;
 
-let make_exclusive_dir_packages _packages = Path.Source.Map.empty
+let make_exclusive_dir_packages packages =
+  match
+    Package.Name.Map.values packages
+    |> List.filter_map ~f:(fun package ->
+      Package.exclusive_dir package
+      |> Option.map ~f:(fun (loc, dir) -> loc, dir, Package.id package))
+    |> Path.Source.Map.of_list_map ~f:(fun (_loc, dir, id) -> dir, id)
+  with
+  | Ok s -> s
+  | Error (dir, (loc, _, _), (_, _, id)) ->
+    User_error.raise
+      ~loc
+      [ Pp.textf
+          "package %s is already defined in %S"
+          (Path.Source.to_string_maybe_quoted dir)
+          (Package.Name.to_string id.name)
+      ]
+;;
 
 let infer ~dir info packages =
   let lang = get_dune_lang () in

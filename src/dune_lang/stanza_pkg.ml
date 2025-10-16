@@ -46,16 +46,20 @@ let default_exn ~loc project stanza =
   | Error msg -> raise (User_error.E { msg with loc = Some loc })
 ;;
 
-let resolve (project : Dune_project.t) name =
+let resolve (project : Dune_project.t) mask (loc, name) =
   let packages = Dune_project.including_hidden_packages project in
   match Package.Name.Map.find packages name with
-  | Some pkg -> Ok pkg
+  | Some pkg ->
+    (match Package_mask.validate mask ~loc (Package.id pkg) with
+     | Ok () -> Ok pkg
+     | Error e -> Error e)
   | None ->
     let name_s = Package.Name.to_string name in
     if Package.Name.Map.is_empty packages
     then
       Error
         (User_error.make
+           ~loc
            [ Pp.text
                "You cannot declare items to be installed without adding a <package>.opam \
                 file at the root of your project."
@@ -71,6 +75,7 @@ let resolve (project : Dune_project.t) name =
     else
       Error
         (User_error.make
+           ~loc
            [ Pp.textf "The current scope doesn't define package %S." name_s
            ; Pp.text
                "The only packages for which you can declare elements to be installed in \
@@ -87,22 +92,24 @@ let resolve (project : Dune_project.t) name =
 let decode =
   let open Decoder in
   let+ p = Dune_project.get_exn ()
+  and+ mask = Package_mask.decode ()
   and+ loc, name = located Package.Name.decode in
-  match resolve p name with
+  match resolve p mask (loc, name) with
   | Ok x -> x
-  | Error e -> raise (User_error.E { e with loc = Some loc })
+  | Error e -> raise (User_error.E e)
 ;;
 
 let field ~stanza =
   let open Decoder in
+  let* mask = Package_mask.decode () in
   map_validate
     (let+ p = Dune_project.get_exn ()
-     and+ pkg = field_o "package" Package.Name.decode in
+     and+ pkg = field_o "package" (located Package.Name.decode) in
      p, pkg)
     ~f:(fun (p, pkg) ->
       match pkg with
       | None -> default p stanza
-      | Some name -> resolve p name)
+      | Some name -> resolve p mask name)
 ;;
 
 let field_opt ?check () =
@@ -113,12 +120,13 @@ let field_opt ?check () =
     | None -> decode
     | Some check -> check >>> decode
   in
+  let* mask = Package_mask.decode () in
   map_validate
     (let+ p = Dune_project.get_exn ()
-     and+ pkg = field_o "package" decode in
+     and+ pkg = field_o "package" (located decode) in
      p, pkg)
     ~f:(fun (p, pkg) ->
       match pkg with
       | None -> Ok None
-      | Some name -> resolve p name |> Result.map ~f:Option.some)
+      | Some name -> resolve p mask name |> Result.map ~f:Option.some)
 ;;

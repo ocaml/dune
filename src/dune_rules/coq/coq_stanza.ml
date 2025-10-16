@@ -175,6 +175,7 @@ module Theory = struct
     }
 
   let coq_public_decode =
+    let* mask = Dune_lang.Package_mask.decode () in
     map_validate
       (let+ project = Dune_project.get_exn ()
        and+ loc_name =
@@ -196,7 +197,8 @@ module Theory = struct
             | None -> Package.Name.of_string name
             | Some (pkg, _) -> Package.Name.of_string pkg
           in
-          Stanza_pkg.resolve project pkg |> Result.map ~f:(fun pkg -> Some (loc, pkg)))
+          Stanza_pkg.resolve project mask (loc, pkg)
+          |> Result.map ~f:(fun pkg -> Some (loc, pkg)))
   ;;
 
   let merge_package_public ~package ~public =

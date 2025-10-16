@@ -125,16 +125,22 @@ let of_ast (project : Dune_project.t) ~dir sexp =
 ;;
 
 let stanza_package stanza =
-  (match Stanza.repr stanza with
-   | Library.T lib -> Library.package lib
-   | Alias_conf.T { package = Some package; _ }
-   | Rule_conf.T { package = Some package; _ }
-   | Install_conf.T { package; _ }
-   | Plugin.T { package; _ }
-   | Executables.T { install_conf = Some { package; _ }; _ }
-   | Documentation.T { package; _ }
-   | Tests.T { package = Some package; _ } -> Some package
-   | Coq_stanza.Theory.T { package = Some package; _ } -> Some package
-   | _ -> None)
-  |> Option.map ~f:Package.id
+  match
+    (* Not clear if this check is even necessary. Shouldn't this always match
+       [Stanza.package] anyway? *)
+    (match Stanza.repr stanza with
+     | Library.T lib -> Library.package lib
+     | Alias_conf.T { package = Some package; _ }
+     | Rule_conf.T { package = Some package; _ }
+     | Install_conf.T { package; _ }
+     | Plugin.T { package; _ }
+     | Executables.T { install_conf = Some { package; _ }; _ }
+     | Documentation.T { package; _ }
+     | Tests.T { package = Some package; _ } -> Some package
+     | Coq_stanza.Theory.T { package = Some package; _ } -> Some package
+     | _ -> None)
+    |> Option.map ~f:Package.id
+  with
+  | Some _ as s -> s
+  | None -> Stanza.package stanza
 ;;

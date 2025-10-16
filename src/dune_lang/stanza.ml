@@ -16,6 +16,8 @@ end
 
 type t = E : 'a * Package_id.t option * (module T with type t = 'a) -> t
 
+let package (E (_, p, _)) = p
+
 module Key = struct
   type stanza = t
   type nonrec 'a t = t -> 'a option

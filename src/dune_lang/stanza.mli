@@ -5,6 +5,7 @@ open Import
 type repr = ..
 type t
 
+val package : t -> Package_id.t option
 val repr : t -> repr
 
 module Key : sig

@@ -430,6 +430,7 @@ module Component = struct
                 ; constraint_ = None
                 }
               ]
+            ~contents_basename:None
         in
         let packages = Package.Name.Map.singleton (Package.name package) package in
         let info =

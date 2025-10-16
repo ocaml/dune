@@ -20,6 +20,7 @@ val deprecated_package_names : t -> Loc.t Name.Map.t
 val sites : t -> Section.t Site.Map.t
 val name : t -> Name.t
 val dir : t -> Path.Source.t
+val exclusive_dir : t -> (Loc.t * Path.Source.t) option
 val set_inside_opam_dir : t -> dir:Path.Source.t -> t
 val encode : Name.t -> t Encoder.t
 val decode : dir:Path.Source.t -> t Decoder.t
@@ -69,6 +70,7 @@ val create
   -> tags:string list
   -> original_opam_file:original_opam_file option
   -> deprecated_package_names:Loc.t Name.Map.t
+  -> contents_basename:(Loc.t * Filename.t) option
   -> t
 
 val original_opam_file : t -> original_opam_file option

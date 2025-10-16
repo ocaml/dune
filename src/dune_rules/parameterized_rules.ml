@@ -264,7 +264,7 @@ let obj_dir_for_dep_rules dir =
     (Lib_name.Local.of_string "deps")
 ;;
 
-let instantiate ~sctx ~dir lib =
+let instantiate ~sctx lib =
   let ctx = Super_context.context sctx in
   let build_dir = Context.build_dir ctx in
   let* { Lib_config.ext_lib; _ } =
@@ -272,11 +272,14 @@ let instantiate ~sctx ~dir lib =
     ocaml.lib_config
   in
   let lib_info = Lib.info lib in
-  let* modules_obj_dir, modules =
+  let modules_obj_dir = Lib_info.obj_dir lib_info in
+  let* deps_obj_dir, modules =
     match Lib_info.modules lib_info with
     | External None -> Code_error.raise "library has no modules" [ "lib", Lib.to_dyn lib ]
     | External (Some modules) ->
-      Memo.return (obj_dir_for_dep_rules (Path.Build.parent_exn dir), modules)
+      let dir = Path.Build.relative build_dir ".parameterized" in
+      let dir = Path.Build.relative dir (Lib_name.to_string (Lib.name lib)) in
+      Memo.return (obj_dir_for_dep_rules dir, modules)
     | Local ->
       let local_lib = Lib.Local.of_lib_exn lib in
       let+ modules = Dir_contents.modules_of_local_lib sctx local_lib in
@@ -284,7 +287,7 @@ let instantiate ~sctx ~dir lib =
       modules_obj_dir, Modules.With_vlib.modules modules
   in
   let impl_only = Modules.With_vlib.impl_only modules in
-  let dep_graph = dep_graph ~obj_dir:modules_obj_dir ~modules impl_only in
+  let dep_graph = dep_graph ~obj_dir:deps_obj_dir ~modules impl_only in
   let* requires =
     Lib.closure ~linking:true [ lib ]
     |> Resolve.Memo.map
@@ -298,7 +301,7 @@ let instantiate ~sctx ~dir lib =
       build_modules
         ~sctx
         ~obj_dir
-        ~modules_obj_dir:(Obj_dir.of_local modules_obj_dir)
+        ~modules_obj_dir
         ~dep_graph
         ~mode
         ~requires
@@ -370,7 +373,7 @@ let gen_rules ~sctx ~dir ~scope rest =
     has_rules
     @@ fun () ->
     let* lib = resolve_instantiation scope instance_name in
-    instantiate ~sctx ~dir lib
+    instantiate ~sctx lib
   | _ ->
     Memo.return
       (Build_config.Gen_rules.redirect_to_parent Build_config.Gen_rules.Rules.empty)

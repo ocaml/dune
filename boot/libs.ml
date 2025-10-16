@@ -1,5 +1,5 @@
 open Types
-let external_libraries = [ "unix"; "threads" ]
+let external_libraries = [ "unix"; "threads"; "spawn"; "uutf" ]
 
 let local_libraries =
   [ { path = "otherlibs/top-closure"

@@ -1,0 +1,4 @@
+(library
+ (public_name external.impl2)
+ (name impl2)
+ (implements param))

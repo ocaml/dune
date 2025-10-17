@@ -1,19 +1,12 @@
 (** Information about a package defined in the workspace *)
 
 open Import
+module Id : module type of Package_id with type t = Package_id.t
 
 module Name : sig
   type t = Package_name.t
 
   include module type of Package_name with type t := t
-end
-
-module Id : sig
-  type t
-
-  val name : t -> Name.t
-
-  include Comparable_intf.S with type key := t
 end
 
 type opam_file =

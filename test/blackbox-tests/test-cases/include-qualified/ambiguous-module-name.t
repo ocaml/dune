@@ -1,6 +1,6 @@
 There is ambiguity between the two different foo modules.
-The behaviour is correct in the bootstrap process, but not in dune.
-It picks up the wrong one.
+The behaviour is now correct both in the bootstrap process, and in dune.
+It picks up the closest one.
 
   $ echo "(lang dune 3.21)" > dune-project
   $ cat > dune << EOF
@@ -14,7 +14,7 @@ It picks up the wrong one.
   > EOF
 
   $ cat > foo.ml << EOF
-  > let msg = "No"
+  > let msg = "Failure"
   > EOF
 
   $ mkdir bar
@@ -26,10 +26,6 @@ It picks up the wrong one.
   > let exported = Foo.msg ^ "!"
   > EOF
 
-This is wrong, it should pick the closest module named foo.
+This is now fixed.
   $ dune exec ./main.exe
-  File "bar/baz.ml", line 1, characters 15-22:
-  1 | let exported = Foo.msg ^ "!"
-                     ^^^^^^^
-  Error: The module Foo is an alias for module Dune__exe__Foo, which is missing
-  [1]
+  Success!

@@ -405,7 +405,7 @@ module Group = struct
            (* TODO this happens with "side" modules like menhir mock modules *)
            acc
          | Some (Module _) -> acc
-         | Some (Group g) -> loop (g :: acc) g.modules ps)
+         | Some (Group g) -> loop (acc @ [ g ]) g.modules ps)
     in
     fun acc modules m -> loop acc modules (Module.path m)
   ;;

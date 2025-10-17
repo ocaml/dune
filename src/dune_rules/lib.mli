@@ -41,12 +41,6 @@ module Parameterized : sig
     -> (Loc.t * t Resolve.t) list
     -> parent_parameters:t list
     -> t Resolve.t
-
-  type instance = private
-    { new_name : Module_name.t
-    ; lib_name : Module_name.t
-    ; args : (Module_name.t * Module_name.t) list
-    }
 end
 
 (** [is_local t] returns [true] whenever [t] is defined in the local workspace *)
@@ -98,8 +92,6 @@ module Compile : sig
 
   (** Dependencies listed by the user + runtime dependencies from ppx *)
   val direct_requires : t -> lib list Resolve.Memo.t
-
-  val instances : t -> Parameterized.instance list Resolve.Memo.t
 
   module Resolved_select : sig
     type t =

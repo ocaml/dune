@@ -368,12 +368,6 @@ end = struct
   module Top_closure = Top_closure.Make (Set) (Resolve.Memo)
 end
 
-type instance =
-  { new_name : Module_name.t
-  ; lib_name : Module_name.t
-  ; args : (Module_name.t * Module_name.t) list
-  }
-
 module T = struct
   type t =
     { info : Lib_info.external_
@@ -388,7 +382,6 @@ module T = struct
     ; resolved_selects : Resolved_select.t list Resolve.t
     ; parameters : t list Resolve.t
     ; arguments : argument option list
-    ; instances : instance list Resolve.t
     ; implements : t Resolve.t option
     ; project : Dune_project.t option
     ; (* these fields cannot be forced until the library is instantiated *)
@@ -539,12 +532,6 @@ module Parameterized = struct
     ; loc : Loc.t
     }
 
-  type nonrec instance = instance =
-    { new_name : Module_name.t
-    ; lib_name : Module_name.t
-    ; args : (Module_name.t * Module_name.t) list
-    }
-
   type status =
     | Not_parameterized
     | Partial
@@ -595,33 +582,6 @@ module Parameterized = struct
     let+ arguments = go [] t_arguments new_arguments in
     let arguments = List.map ~f:snd arguments in
     { t with arguments }
-  ;;
-
-  let make_instance lib ~new_name =
-    let open Resolve.O in
-    let* lib = lib in
-    let* lib_name = resolve_main_module_name lib in
-    let lib_name = Option.value_exn lib_name in
-    let new_name =
-      match new_name with
-      | None -> lib_name
-      | Some m -> m
-    in
-    let+ arguments =
-      let* lib_arguments = parameterized_arguments lib in
-      Resolve.List.filter_map lib_arguments ~f:(function
-        | _, None -> Resolve.return None
-        | param, Some { arg; _ } ->
-          let+ param_name = resolve_main_module_name param
-          and+ arg_name = resolve_main_module_name arg in
-          (match param_name, arg_name with
-           | Some param_name, Some arg_name -> Some (param_name, arg_name)
-           | _ ->
-             Code_error.raise
-               "expected argument to have a main module name"
-               [ "arg", to_dyn arg ]))
-    in
-    { new_name; lib_name; args = arguments }
   ;;
 
   let make_argument (loc, arg) =
@@ -1154,7 +1114,6 @@ module rec Resolve_names : sig
       ; pps : lib list Resolve.t
       ; selects : Resolved_select.t list
       ; re_exports : lib list Resolve.t
-      ; instances : Parameterized.instance list Resolve.t
       }
   end
 
@@ -1386,7 +1345,6 @@ end = struct
          let resolved_selects = resolved >>| fun r -> r.selects in
          let pps = resolved >>= fun r -> r.pps in
          let re_exports = resolved >>= fun r -> r.re_exports in
-         let instances = resolved >>= fun r -> r.instances in
          { info
          ; name
          ; unique_id
@@ -1395,7 +1353,6 @@ end = struct
          ; pps
          ; resolved_selects
          ; re_exports
-         ; instances
          ; implements
          ; parameters
          ; arguments = List.map ~f:(fun _ -> None) (Lib_info.parameters info)
@@ -1634,7 +1591,6 @@ end = struct
       { resolved : t list Resolve.t
       ; selects : Resolved_select.t list
       ; re_exports : t list Resolve.t
-      ; instances : Parameterized.instance list Resolve.t
       }
 
     type t =
@@ -1642,7 +1598,6 @@ end = struct
       ; pps : lib list Resolve.t
       ; selects : Resolved_select.t list
       ; re_exports : lib list Resolve.t
-      ; instances : Parameterized.instance list Resolve.t
       }
 
     module Builder : sig
@@ -1652,7 +1607,6 @@ end = struct
       val add_resolved : t -> lib Resolve.t -> t
       val add_re_exports : t -> lib Resolve.t -> t
       val add_select : t -> lib list Resolve.t -> Resolved_select.t -> t
-      val add_instance : t -> Parameterized.instance Resolve.t -> t
       val value : t -> deps
     end = struct
       open Resolve.O
@@ -1660,11 +1614,7 @@ end = struct
       type nonrec t = deps
 
       let empty =
-        { resolved = Resolve.return []
-        ; selects = []
-        ; re_exports = Resolve.return []
-        ; instances = Resolve.return []
-        }
+        { resolved = Resolve.return []; selects = []; re_exports = Resolve.return [] }
       ;;
 
       let add_resolved_list t resolved =
@@ -1696,16 +1646,7 @@ end = struct
         add_resolved { t with re_exports } lib
       ;;
 
-      let add_instance (t : t) instance =
-        let instances =
-          let+ instance = instance
-          and+ instances = t.instances in
-          instance :: instances
-        in
-        { t with instances }
-      ;;
-
-      let value { resolved; selects; re_exports; instances } =
+      let value { resolved; selects; re_exports } =
         let resolved =
           let+ resolved = resolved in
           List.rev resolved
@@ -1714,7 +1655,7 @@ end = struct
           let+ re_exports = re_exports in
           List.rev re_exports
         in
-        { resolved; selects; re_exports; instances }
+        { resolved; selects; re_exports }
       ;;
     end
   end
@@ -1770,7 +1711,7 @@ end = struct
       | Select select ->
         let+ resolved, select = resolve_select db ~private_deps select in
         Resolved.Builder.add_select acc resolved select
-      | Instantiate { loc; new_name; lib; arguments; _ } ->
+      | Instantiate { loc; lib; arguments; new_name = _ } ->
         let* arguments =
           Memo.List.filter_map arguments ~f:(fun (loc, dep) ->
             resolve_parameterized_dep (loc, dep) ~arguments:[]
@@ -1783,9 +1724,7 @@ end = struct
         resolve_parameterized_dep (loc, lib) ~arguments
         >>| (function
          | None -> acc
-         | Some lib ->
-           let acc = Resolved.Builder.add_resolved acc lib in
-           Resolved.Builder.add_instance acc (Parameterized.make_instance lib ~new_name)))
+         | Some lib -> Resolved.Builder.add_resolved acc lib))
     |> Memo.map ~f:Resolved.Builder.value
   ;;
 
@@ -1844,7 +1783,7 @@ end = struct
 
   let add_pp_runtime_deps
         db
-        { Resolved.resolved; selects; re_exports; instances }
+        { Resolved.resolved; selects; re_exports }
         ~private_deps
         ~parameters
         ~pps
@@ -1859,7 +1798,7 @@ end = struct
       let* runtime_deps = runtime_deps in
       re_exports_closure (List.concat [ resolved; runtime_deps; parameters ])
     and+ pps = pps in
-    { Resolved.requires; pps; selects; re_exports; instances }
+    { Resolved.requires; pps; selects; re_exports }
   ;;
 
   let resolve_deps_and_add_runtime_deps
@@ -2202,7 +2141,6 @@ module Compile = struct
 
   type nonrec t =
     { direct_requires : t list Resolve.Memo.t
-    ; instances : Parameterized.instance list Resolve.Memo.t
     ; requires_link : t list Resolve.t Memo.Lazy.t
     ; pps : t list Resolve.Memo.t
     ; resolved_selects : Resolved_select.t list Resolve.Memo.t
@@ -2231,7 +2169,6 @@ module Compile = struct
               ~forbidden_libraries:Map.empty)
     in
     { direct_requires = requires
-    ; instances = Memo.return t.instances
     ; requires_link
     ; resolved_selects = Memo.return t.resolved_selects
     ; pps = Memo.return t.pps
@@ -2240,7 +2177,6 @@ module Compile = struct
   ;;
 
   let direct_requires t = t.direct_requires
-  let instances t = t.instances
   let requires_link t = t.requires_link
   let resolved_selects t = t.resolved_selects
   let pps t = t.pps
@@ -2503,13 +2439,7 @@ module DB = struct
       let+ resolved = Memo.Lazy.force resolved in
       resolved.selects
     in
-    let instances =
-      let open Memo.O in
-      let+ resolved = Memo.Lazy.force resolved in
-      resolved.instances
-    in
     { Compile.direct_requires
-    ; instances
     ; requires_link
     ; pps
     ; resolved_selects = resolved_selects |> Memo.map ~f:Resolve.return

@@ -89,7 +89,7 @@ type t =
   ; requires_link : Lib.t list Resolve.t Memo.Lazy.t
   ; implements : Virtual_rules.t
   ; parameters : Module_name.t list Resolve.Memo.t
-  ; instances : Lib.Parameterized.instance list Resolve.Memo.t
+  ; instances : Parameterized_rules.instances list Resolve.Memo.t
   ; includes : Includes.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool

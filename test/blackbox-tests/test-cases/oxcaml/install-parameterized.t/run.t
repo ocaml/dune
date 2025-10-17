@@ -48,6 +48,8 @@ and local implementations:
   >   print_endline Paramlib_impl.v ;
   >   print_endline Paramlib_otherext.v ;
   >   print_endline (Lib.test ()) ;
+  >   print_endline (Unwrapped_a.a ^ "," ^ Unwrapped_b.b) ;
+  >   print_endline (Rewrap.Unwrapped_a.a ^ "," ^ Rewrap.Unwrapped_b.b) ;
   >   print_endline Other_ext.v
   > EOF
   $ cat > bin/dune <<EOF
@@ -55,7 +57,9 @@ and local implementations:
   >   (libraries
   >     (external.paramlib external.impl :as paramlib_impl)
   >     (external.paramlib other_ext :as paramlib_otherext)
-  >     external.lib ; has instances
+  >     external.lib ; has instances internally
+  >     (external.unwrapped_lib external.impl)
+  >     (external.unwrapped_lib other_ext :as rewrap)
   >     other_ext))
   > EOF
 
@@ -63,4 +67,6 @@ and local implementations:
   paramlib(helper(external.impl))
   paramlib(helper(compose(other(external.impl))))
   PARAMLIB(HELPER(EXTERNAL.IMPL)) PARAMLIB(HELPER(EXTERNAL.IMPL2))
+  unwrapped_a:external.impl,unwrapped_b:external.impl
+  unwrapped_a:compose(other(external.impl)),unwrapped_b:compose(other(external.impl))
   compose(other(external.impl))

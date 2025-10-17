@@ -8,14 +8,3 @@ module Pkg : sig
   val field_opt : ?check:unit t -> unit -> Package.t option fields_parser
   val default_exn : loc:Loc.t -> Dune_project.t -> string -> Package.t
 end
-
-module Modules_settings : sig
-  type t =
-    { root_module : (Loc.t * Module_name.t) option
-    ; modules_without_implementation : Ordered_set_lang.Unexpanded.t
-    ; modules : Ordered_set_lang.Unexpanded.t
-    }
-
-  val since_expanded : Syntax.Version.t
-  val decode : t Decoder.fields_parser
-end

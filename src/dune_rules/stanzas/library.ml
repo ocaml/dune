@@ -123,7 +123,7 @@ let decode =
        let* virtual_modules =
          Ordered_set_lang.Unexpanded.field_o
            ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 7))
-           ~since_expanded:Stanza_common.Modules_settings.since_expanded
+           ~since_expanded:Modules_settings.since_expanded
            "virtual_modules"
        in
        let+ dune_file_kind =
@@ -184,7 +184,7 @@ let decode =
      and+ private_modules =
        Ordered_set_lang.Unexpanded.field_o
          ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 2))
-         ~since_expanded:Stanza_common.Modules_settings.since_expanded
+         ~since_expanded:Modules_settings.since_expanded
          "private_modules"
      and+ stdlib =
        field_o

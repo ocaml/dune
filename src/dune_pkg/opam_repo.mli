@@ -32,6 +32,8 @@ module Key : sig
   val opam_package : t -> OpamPackage.t
 end
 
+val packages_in_repo : t -> OpamPackage.Name.t list
+
 val all_packages_versions_map
   :  t list
   -> OpamPackage.Name.t

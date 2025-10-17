@@ -117,15 +117,16 @@ let of_ast (project : Dune_project.t) sexp =
 ;;
 
 let stanza_package stanza =
-  match Stanza.repr stanza with
-  | Library.T lib -> Library.package lib
-  | Alias_conf.T { package = Some package; _ }
-  | Rule_conf.T { package = Some package; _ }
-  | Install_conf.T { package; _ }
-  | Plugin.T { package; _ }
-  | Executables.T { install_conf = Some { package; _ }; _ }
-  | Documentation.T { package; _ }
-  | Tests.T { package = Some package; _ } -> Some package
-  | Coq_stanza.Theory.T { package = Some package; _ } -> Some package
-  | _ -> None
+  (match Stanza.repr stanza with
+   | Library.T lib -> Library.package lib
+   | Alias_conf.T { package = Some package; _ }
+   | Rule_conf.T { package = Some package; _ }
+   | Install_conf.T { package; _ }
+   | Plugin.T { package; _ }
+   | Executables.T { install_conf = Some { package; _ }; _ }
+   | Documentation.T { package; _ }
+   | Tests.T { package = Some package; _ } -> Some package
+   | Coq_stanza.Theory.T { package = Some package; _ } -> Some package
+   | _ -> None)
+  |> Option.map ~f:Package.id
 ;;

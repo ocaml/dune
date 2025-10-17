@@ -54,7 +54,7 @@ module Mask = struct
           match Stanzas.stanza_package stanza with
           | None -> true
           | Some package ->
-            let name = Package.name package in
+            let name = Package.Id.name package in
             Package.Name.Map.mem visible_pkgs name)
   ;;
 

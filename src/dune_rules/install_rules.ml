@@ -525,7 +525,7 @@ end = struct
         | Plugin.T t -> Plugin_rules.install_rules ~sctx ~package_db ~dir t
         | _ -> Memo.return []
       in
-      let name = Package.name package in
+      let name = Package.Id.name package in
       Some (name, entries)
   ;;
 

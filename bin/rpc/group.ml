@@ -11,4 +11,4 @@ let info =
   Cmd.info "rpc" ~doc ~man
 ;;
 
-let group = Cmd.group info [ Status.cmd; Rpc_build.cmd; Ping.cmd ]
+let group = Cmd.group info [ Status.cmd; Build.cmd; Ping.cmd ]

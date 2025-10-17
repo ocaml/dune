@@ -431,7 +431,8 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
       let open Command.Args in
       S
         (Lib_flags.L.include_paths libs_to_include (Ocaml mode) lib_config
-         |> Path.Set.to_list_map ~f:(fun p -> S [ A "--directory"; Path p ]))
+         |> Lib_flags.L.include_only
+         |> List.map ~f:(fun p -> S [ A "--directory"; Path p ]))
     in
     let open Command.Args in
     let prelude_args = S (List.concat_map t.preludes ~f:(Prelude.to_args ~dir)) in

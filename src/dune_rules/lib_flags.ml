@@ -92,7 +92,25 @@ module L = struct
   ;;
 
   let to_iflags dir = to_flags "-I" dir
-  let to_hflags dir = to_flags "-H" dir
+
+  let to_flags dirs =
+    Command.Args.S
+      (Path.Map.foldi dirs ~init:[] ~f:(fun dir flag acc ->
+         let flag =
+           match flag with
+           | `Include -> "-I"
+           | `Hidden -> "-H"
+         in
+         Command.Args.Path dir :: A flag :: acc)
+       |> List.rev)
+  ;;
+
+  let include_only =
+    Path.Map.foldi ~init:[] ~f:(fun path flag acc ->
+      match flag with
+      | `Include -> path :: acc
+      | `Hidden -> acc)
+  ;;
 
   let remove_stdlib dirs (lib_config : Lib_config.t) =
     Path.Set.remove dirs lib_config.stdlib_dir
@@ -103,10 +121,36 @@ module L = struct
     ; melange_emit : bool
     }
 
+  let combine_flags x y =
+    match x, y with
+    | `Include, _ | _, `Include -> `Include
+    | `Hidden, `Hidden -> `Hidden
+  ;;
+
+  let add_flag flags path x =
+    Path.Map.update flags path ~f:(fun y ->
+      Some
+        (match y with
+         | None -> x
+         | Some y -> combine_flags x y))
+  ;;
+
   let include_paths =
-    let add_public_dir ~visible_cmi obj_dir acc mode =
+    let add_public_dir ocaml ~visible_cmi obj_dir acc mode =
+      let use_hidden =
+        Ocaml.Version.supports_hidden_includes ocaml
+        &&
+        match mode.lib_mode with
+        | Ocaml _ -> true
+        | Melange -> false
+      in
       match visible_cmi with
-      | false -> acc
+      | false ->
+        if use_hidden
+        then
+          Obj_dir.all_cmis obj_dir
+          |> List.fold_left ~init:acc ~f:(fun acc dir -> add_flag acc dir `Hidden)
+        else acc
       | true ->
         let public_cmi_dirs =
           List.map
@@ -121,9 +165,14 @@ module L = struct
                   `import` information *)
                [ Obj_dir.melange_dir; Obj_dir.public_cmi_melange_dir ])
         in
-        List.fold_left public_cmi_dirs ~init:acc ~f:Path.Set.add
+        let acc =
+          List.fold_left public_cmi_dirs ~init:acc ~f:(fun acc dir ->
+            add_flag acc dir `Include)
+        in
+        if use_hidden then add_flag acc (Obj_dir.byte_dir obj_dir) `Hidden else acc
     in
-    fun ?project ts mode lib_config ->
+    fun ?project ts mode (lib_config : Lib_config.t) ->
+      let ocaml = lib_config.ocaml_version in
       let visible_cmi =
         match project with
         | None -> fun _ -> true
@@ -139,33 +188,33 @@ module L = struct
              | _ -> true)
       in
       let dirs =
-        List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
+        List.fold_left ts ~init:Path.Map.empty ~f:(fun acc t ->
           let obj_dir = Lib_info.obj_dir (Lib.info t) in
           let visible_cmi = visible_cmi t in
           match mode.lib_mode with
-          | Melange -> add_public_dir ~visible_cmi obj_dir acc mode
+          | Melange -> add_public_dir ocaml ~visible_cmi obj_dir acc mode
           | Ocaml ocaml_mode ->
-            let acc = add_public_dir ~visible_cmi obj_dir acc mode in
+            let acc = add_public_dir ocaml ~visible_cmi obj_dir acc mode in
             (match ocaml_mode with
              | Byte -> acc
              | Native ->
                let native_dir = Obj_dir.native_dir obj_dir in
-               Path.Set.add acc native_dir))
+               add_flag acc native_dir `Include))
       in
-      remove_stdlib dirs lib_config
+      Path.Map.remove dirs lib_config.stdlib_dir
   ;;
 
   let include_flags ?project ~direct_libs ~hidden_libs mode lib_config =
     let include_paths ts =
       include_paths ?project ts { lib_mode = mode; melange_emit = false }
     in
-    let hidden_includes = to_hflags (include_paths hidden_libs lib_config) in
-    let direct_includes = to_iflags (include_paths direct_libs lib_config) in
+    let hidden_includes = to_flags (include_paths hidden_libs lib_config) in
+    let direct_includes = to_flags (include_paths direct_libs lib_config) in
     Command.Args.S [ direct_includes; hidden_includes ]
   ;;
 
   let melange_emission_include_flags ?project ts lib_config =
-    to_iflags
+    to_flags
       (include_paths ?project ts { lib_mode = Melange; melange_emit = true } lib_config)
   ;;
 
@@ -239,9 +288,12 @@ module L = struct
   ;;
 
   let toplevel_include_paths ts lib_config =
-    Path.Set.union
+    Path.Map.union
+      ~f:(fun _ x y -> Some (combine_flags x y))
       (include_paths ts (Lib_mode.Ocaml Byte) lib_config)
-      (toplevel_ld_paths ts lib_config)
+      (toplevel_ld_paths ts lib_config
+       |> Path.Set.to_list_map ~f:(fun p -> p, `Include)
+       |> Path.Map.of_list_exn)
   ;;
 end
 

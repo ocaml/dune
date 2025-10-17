@@ -7,13 +7,13 @@ let info =
 
 let term =
   let+ builder = Common.Builder.term in
-  Rpc.Common.client_term
+  Rpc.Rpc_common.client_term
     builder
-    (Rpc.Common.fire_message
+    (Rpc.Rpc_common.fire_message
        ~name:"shutdown_cmd"
        ~wait:false
        builder
-       (Rpc.Common.Notification Dune_rpc_private.Procedures.Public.shutdown))
+       (Rpc.Rpc_common.Notification Dune_rpc_private.Procedures.Public.shutdown))
 ;;
 
 let command = Cmd.v info term

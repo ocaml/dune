@@ -126,7 +126,7 @@ let load =
 
 let find_project ~dir =
   let+ { projects_by_root; _ } = load () in
-  Find_closest_source_dir.find_by_dir projects_by_root ~dir
+  Find_closest_source_dir.find_by_dir_exn projects_by_root ~dir
 ;;
 
 let stanzas_in_dir dir =

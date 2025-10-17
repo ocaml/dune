@@ -66,39 +66,38 @@ let resolve_package { Local_package.loc; url = loc_url, url; name; version; orig
       (Package_name.to_opam_package_name name)
       (Package_version.to_opam_package_version version)
   in
-  let+ resolved_package =
-    let* mount = Mount.of_opam_url loc_url url in
-    let* opam_file_path, files_dir = discover_layout loc name mount in
-    match Mount.backend mount with
-    | Path dir ->
-      Resolved_package.local_fs package ~dir ~opam_file_path ~files_dir |> Fiber.return
-    | Git rev ->
-      let+ opam_file_contents =
-        (* CR-rgrinberg: not efficient to make such individual calls *)
-        Mount.read mount opam_file_path
-        >>| function
-        | Some p -> p
-        | None ->
-          let files =
-            match Path.Local.parent opam_file_path with
-            | None -> []
-            | Some parent ->
-              Rev_store.At_rev.directory_entries rev parent ~recursive:false
-              |> Rev_store.File.Set.to_list_map ~f:Rev_store.File.path
-          in
-          Code_error.raise
-            ~loc
-            "unable to find file"
-            [ "opam_file_path", Path.Local.to_dyn opam_file_path
-            ; "files", Dyn.list Path.Local.to_dyn files
-            ]
-      in
-      Resolved_package.git_repo
-        package
-        ~opam_file:opam_file_path
-        ~opam_file_contents
-        rev
-        ~files_dir
-  in
-  Resolved_package.set_url resolved_package url
+  let* mount = Mount.of_opam_url loc_url url in
+  let* opam_file_path, files_dir = discover_layout loc name mount in
+  match Mount.backend mount with
+  | Path dir ->
+    Resolved_package.local_fs package ~dir ~opam_file_path ~files_dir ~url:(Some url)
+    |> Fiber.return
+  | Git rev ->
+    let+ opam_file_contents =
+      (* CR-rgrinberg: not efficient to make such individual calls *)
+      Mount.read mount opam_file_path
+      >>| function
+      | Some p -> p
+      | None ->
+        let files =
+          match Path.Local.parent opam_file_path with
+          | None -> []
+          | Some parent ->
+            Rev_store.At_rev.directory_entries rev parent ~recursive:false
+            |> Rev_store.File.Set.to_list_map ~f:Rev_store.File.path
+        in
+        Code_error.raise
+          ~loc
+          "unable to find file"
+          [ "opam_file_path", Path.Local.to_dyn opam_file_path
+          ; "files", Dyn.list Path.Local.to_dyn files
+          ]
+    in
+    Resolved_package.git_repo
+      package
+      ~opam_file:opam_file_path
+      ~opam_file_contents
+      rev
+      ~files_dir
+      ~url:(Some url)
 ;;

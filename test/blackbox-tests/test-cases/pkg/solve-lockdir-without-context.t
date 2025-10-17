@@ -9,7 +9,8 @@ specify it in the context.
   > EOF
 
   $ cat > dune-workspace <<EOF
-  > (lang dune 3.12)
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (lock_dir
   >  (path foo.lock)
   >  (repositories mock))
@@ -25,9 +26,9 @@ specify it in the context.
   >  (depends a b))
   > EOF
 
-Specifying the directory to the lock command should work:
+Locking should work even if no context is attached:
 
-  $ dune pkg lock foo.lock
+  $ dune pkg lock
   Solution for foo.lock:
   - a.0.0.1
   - b.0.0.1

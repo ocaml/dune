@@ -13,24 +13,15 @@ let man =
   ]
 ;;
 
-let lock_ocamlformat () =
-  if Lazy.force Lock_dev_tool.is_enabled
-  then
-    (* Note that generating the ocamlformat lockdir here means
-       that it will be created when a user runs `dune fmt` but not
-       when a user runs `dune build @fmt`. It's important that
-       this logic remain outside of `dune build`, as `dune
-       build` is intended to only build targets, and generating
-       a lockdir is not building a target. *)
-    Lock_dev_tool.lock_dev_tool Ocamlformat |> Memo.run
-  else Fiber.return ()
-;;
-
 let run_fmt_command ~common ~config ~preview builder =
   let open Fiber.O in
   let once () =
-    let* () = lock_ocamlformat () in
     let request (setup : Import.Main.build_system) =
+      let open Action_builder.O in
+      let* () =
+        Action_builder.of_memo
+          (Ocaml.Dev_tool_lock.lock_dir Dune_pkg.Dev_tool.Ocamlformat)
+      in
       let dir = Path.(relative root) (Common.prefix_target common ".") in
       Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts:setup.contexts dir
       |> Alias.request

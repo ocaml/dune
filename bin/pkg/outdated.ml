@@ -7,25 +7,34 @@ let find_outdated_packages ~transitive ~lock_dirs_arg () =
     let* workspace = Memo.run (Workspace.workspace ()) in
     Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
     |> Fiber.parallel_map ~f:(fun lock_dir_path ->
-      let lock_dir_path = Path.source lock_dir_path in
-      (* updating makes sense when checking for outdated packages *)
-      let* repos =
-        get_repos
-          (repositories_of_workspace workspace)
-          ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
-      and+ local_packages = Memo.run find_local_packages
-      and+ platform = solver_env_from_system_and_context ~lock_dir_path in
-      let lock_dir = Dune_pkg.Lock_dir.read_disk_exn lock_dir_path in
-      let packages =
-        Dune_pkg.Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform
-      in
-      let+ results = Dune_pkg.Outdated.find ~repos ~local_packages packages in
-      ( Dune_pkg.Outdated.pp ~transitive ~lock_dir_path results
-      , ( Dune_pkg.Outdated.packages_that_were_not_found results
-          |> Package_name.Set.of_list
-          |> Package_name.Set.to_list
-        , lock_dir_path
-        , repos ) ))
+      let* exists_in_source = Memo.run (Source_tree.find_dir lock_dir_path) in
+      match exists_in_source with
+      | None ->
+        Fiber.return
+          ( Pp.textf
+              "%s does not exist in source, skipping"
+              (Path.Source.to_string_maybe_quoted lock_dir_path)
+          , ([], Path.source lock_dir_path, []) )
+      | Some _ ->
+        let lock_dir_path = Path.source lock_dir_path in
+        (* updating makes sense when checking for outdated packages *)
+        let* repos =
+          get_repos
+            (repositories_of_workspace workspace)
+            ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
+        and+ local_packages = Memo.run find_local_packages
+        and+ platform = solver_env_from_system_and_context ~lock_dir_path in
+        let lock_dir = Dune_pkg.Lock_dir.read_disk_exn lock_dir_path in
+        let packages =
+          Dune_pkg.Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform
+        in
+        let+ results = Dune_pkg.Outdated.find ~repos ~local_packages packages in
+        ( Dune_pkg.Outdated.pp ~transitive ~lock_dir_path results
+        , ( Dune_pkg.Outdated.packages_that_were_not_found results
+            |> Package_name.Set.of_list
+            |> Package_name.Set.to_list
+          , lock_dir_path
+          , repos ) ))
     >>| List.split
   in
   (match pps with

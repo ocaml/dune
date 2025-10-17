@@ -71,13 +71,12 @@ module Pkg : sig
   val to_dyn : t -> Dyn.t
   val files_dir : Package_name.t -> Package_version.t option -> lock_dir:Path.t -> Path.t
 
-  (** [source_files_dir p v l] returns the path of expected files dir. Might return
-      a path that does not exist. *)
+  (** [source_files_dir p v l] returns the path of expected files dir. *)
   val source_files_dir
     :  Package_name.t
     -> Package_version.t option
     -> lock_dir:Path.t
-    -> Path.Source.t
+    -> Path.Source.t option
 end
 
 module Repositories : sig
@@ -183,9 +182,8 @@ val merge_conditionals : t -> t -> t
     then a [User_error] is raised. *)
 val packages_on_platform : t -> platform:Solver_env.t -> Pkg.t Package_name.Map.t
 
-(** Returns the path that the lock dir would be in the source. Might return
-    paths that don't exist, if the lock dir wasn't copied from there. *)
-val in_source_tree : Path.t -> Path.Source.t
+(** Returns the path that the lock dir would be in the source. *)
+val in_source_tree : Path.t -> Path.Source.t option
 
 (** Returns a [Loc.t] which refers to the source tree lock dir path instead of
     the build dir lock dir path. *)

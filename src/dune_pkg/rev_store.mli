@@ -31,6 +31,7 @@ module Object : sig
 
   val of_sha1 : string -> t option
   val to_hex : t -> string
+  val digest : t -> Dune_digest.t
 end
 
 module File : sig

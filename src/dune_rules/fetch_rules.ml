@@ -189,15 +189,7 @@ let find_checksum, find_url =
           Dune_pkg.Dev_tool.all
           ~init:(Checksum.Map.empty, Digest.Map.empty)
           ~f:(fun acc dev_tool ->
-            let dir = Lock_dir.dev_tool_source_lock_dir dev_tool in
-            let exists =
-              (* Note we use [Path.Untracked] here rather than [Fs_memo] because a tool's
-                 lockdir may be generated part way through a build. *)
-              Path.Untracked.exists (Path.source dir)
-            in
-            match exists with
-            | false -> Memo.return acc
-            | true -> Lock_dir.of_dev_tool dev_tool >>| add_checksums_and_urls acc)
+            Lock_dir.of_dev_tool dev_tool >>| add_checksums_and_urls acc)
       in
       Per_context.list ()
       >>= Memo.parallel_map ~f:(fun ctx_name ->

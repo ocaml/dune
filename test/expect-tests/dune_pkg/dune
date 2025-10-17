@@ -12,6 +12,7 @@
   stdune
   dune_pkg
   dune_engine
+  dune_rules
   dune_util
   dune_lang
   dune_vcs

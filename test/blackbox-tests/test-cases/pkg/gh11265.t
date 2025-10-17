@@ -13,9 +13,8 @@ A package which depends on a single package and also conflicts with the same pac
   >  (depends bar)
   >  (conflicts bar))
   > EOF
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
-  Couldn't solve the package dependency formula.
+  File "default/.lock/_unknown_", line 1, characters 0-0:
+  Error: Couldn't solve the package dependency formula.
   Selected candidates: foo.dev
   - bar -> (problem)
       No usable implementations:
@@ -31,9 +30,8 @@ Now add an additional conflict on a non-existant package "baz". Dune should cont
   >  (depends bar)
   >  (conflicts bar baz))
   > EOF
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
-  Couldn't solve the package dependency formula.
+  File "default/.lock/_unknown_", line 1, characters 0-0:
+  Error: Couldn't solve the package dependency formula.
   Selected candidates: foo.dev
   - bar -> (problem)
       No usable implementations:

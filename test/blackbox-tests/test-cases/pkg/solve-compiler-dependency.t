@@ -30,8 +30,8 @@ When the latest version of all packages is the same, the ocaml-base-compiler
 package is chosen, which is what we want.
   $ solve ocaml
   Solution for dune.lock:
-  - ocaml.5.2.0
   - ocaml-base-compiler.5.2.0
+  - ocaml.5.2.0
 
 Now pretend that there was an alpha release of the current version of the
 compiler also in the repo.
@@ -44,8 +44,8 @@ solver respects the avoid-version flag between multiple versions of
 the same package.
   $ solve ocaml
   Solution for dune.lock:
-  - ocaml.5.2.0
   - ocaml-base-compiler.5.2.0
+  - ocaml.5.2.0
 
 Now release a new version of ocaml-variants and a new version of ocaml that
 uses it. The dependency specification for ocaml is based on how the package is
@@ -68,8 +68,8 @@ version of ocaml-base-compiler without the avoid-version flag is
 unstable.
   $ solve ocaml
   Solution for dune.lock:
-  - ocaml.5.2.0
   - ocaml-base-compiler.5.2.0
+  - ocaml.5.2.0
 
 A package can still force an unstable version of the compiler by leaving no
 other choices:
@@ -80,8 +80,8 @@ other choices:
   $ solve edgy
   Solution for dune.lock:
   - edgy.1.0
-  - ocaml.5.3.0
   - ocaml-variants.5.3.0+trunk (this version should be avoided)
+  - ocaml.5.3.0
 
   $ mkpkg edgy 1.0 << EOF
   > depends: [ "ocaml" "ocaml-base-compiler" {> "$CURRENT" } ]
@@ -89,5 +89,5 @@ other choices:
   $ solve edgy
   Solution for dune.lock:
   - edgy.1.0
-  - ocaml.5.2.0
   - ocaml-base-compiler.5.2.0+alpha1 (this version should be avoided)
+  - ocaml.5.2.0

@@ -34,9 +34,8 @@ A few packages here so the errors could get large.
   > EOF
 
   $ dune pkg lock
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
-  Couldn't solve the package dependency formula.
+  File "default/.lock/_unknown_", line 1, characters 0-0:
+  Error: Couldn't solve the package dependency formula.
   The following packages couldn't be found: foobar
   [1]
 We only report about non-existent packages.

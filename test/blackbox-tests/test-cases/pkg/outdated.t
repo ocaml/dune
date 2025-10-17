@@ -41,6 +41,15 @@
   - bar.0.0.1
   - foo.0.0.1
 
+Outdated should not run when there is no lock dirs in source
+
+  $ outdated
+  dune.lock does not exist in source, skipping
+
+Copying the lock files to source should make it work.
+
+  $ cp -r _build/_private/default/.lock/* .
+
 No package should be outdated after a fresh lock.
 
 Default behaviour is to check the default lock file.

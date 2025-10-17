@@ -97,7 +97,8 @@ Now we repeat the tests but with a git repo:
 
   $ mkworkspace() {
   > cat >dune-workspace <<EOF
-  > (lang dune 3.11)
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (lock_dir
   >  (repositories $@))
   > $repos12

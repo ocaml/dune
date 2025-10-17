@@ -31,8 +31,22 @@ Without a lockdir this command prints a hint but exits successfully.
   $ dune pkg validate-lockdir
   No lockdirs to validate.
 
+Some helper functions
+
+  $ promote() {
+  >  cp -r "${default_lock_dir}" "${source_lock_dir}"
+  >  chmod -R u+w "${source_lock_dir}"
+  > }
+
+  $ lock_in_source() {
+  >   rm -rf "${source_lock_dir}"
+  >   dune pkg lock
+  >   promote
+  > }
+
 Make the lockdir.
-  $ dune pkg lock
+
+  $ lock_in_source
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2
@@ -41,9 +55,11 @@ Make the lockdir.
   - e.0.0.1
 
 Initially the lockdir will be valid.
+
   $ dune pkg validate-lockdir
 
 Add a file to the lockdir to cause the parser to fail.
+
   $ make_lockpkg bar <<EOF
   > foo
   > EOF
@@ -57,6 +73,7 @@ Add a file to the lockdir to cause the parser to fail.
   [1]
 
 Remove the file but corrupt the lockdir metadata file.
+
   $ rm ${source_lock_dir}/bar.pkg
   $ echo foo >> ${source_lock_dir}/lock.dune
   $ dune pkg validate-lockdir
@@ -69,8 +86,8 @@ Remove the file but corrupt the lockdir metadata file.
   [1]
 
 Regenerate the lockdir and validate the result.
-  $ rm -r ${source_lock_dir}
-  $ dune pkg lock
+
+  $ lock_in_source
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2
@@ -80,9 +97,11 @@ Regenerate the lockdir and validate the result.
   $ dune pkg validate-lockdir
 
 Remove a package from the lockdir.
+
   $ rm ${source_lock_dir}/a.pkg
 
 This results in an invalid lockdir due to the missing package.
+
   $ dune pkg validate-lockdir
   Lockdir dune.lock does not contain a solution for local packages:
   File "dune-project", line 2, characters 0-47:
@@ -96,7 +115,8 @@ This results in an invalid lockdir due to the missing package.
   [1]
 
 Regenerate the lockdir and validate the result.
-  $ dune pkg lock
+
+  $ lock_in_source
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2
@@ -107,12 +127,15 @@ Regenerate the lockdir and validate the result.
 
   $ cat ${default_lock_dir}/b.pkg
   (version 0.0.2)
+
 Change the version of a dependency by modifying its lockfile.
+
   $ make_lockpkg b <<EOF
   > (version 0.0.1)
   > EOF
 
 Now the lockdir is invalid as it doesn't contain the right version of "b".
+
   $ dune pkg validate-lockdir
   Lockdir dune.lock does not contain a solution for local packages:
   File "dune-project", line 2, characters 0-47:
@@ -127,7 +150,8 @@ Now the lockdir is invalid as it doesn't contain the right version of "b".
   [1]
 
 Regenerate the lockdir and validate the result.
-  $ dune pkg lock
+
+  $ lock_in_source
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2
@@ -137,11 +161,13 @@ Regenerate the lockdir and validate the result.
   $ dune pkg validate-lockdir
 
 Add a package to the lockdir with the same name as a local package.
+
   $ make_lockpkg foo <<EOF
   > (version 0.0.1)
   > EOF
 
 The lockdir is invalid as the package "b" is now defined both locally and in the lockdir.
+
   $ dune pkg validate-lockdir
   Lockdir dune.lock does not contain a solution for local packages:
   File "dune-project", line 2, characters 0-47:
@@ -154,7 +180,8 @@ The lockdir is invalid as the package "b" is now defined both locally and in the
   [1]
 
 Regenerate the lockdir and validate the result.
-  $ dune pkg lock
+
+  $ lock_in_source
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2
@@ -164,11 +191,13 @@ Regenerate the lockdir and validate the result.
   $ dune pkg validate-lockdir
 
 Add a package to the lockdir which isn't part of the local package dependency hierarchy.
+
   $ make_lockpkg f <<EOF
   > (version 0.0.1)
   > EOF
 
 The lockdir is invalid as it contains unnecessary packages.
+
   $ dune pkg validate-lockdir
   Lockdir dune.lock does not contain a solution for local packages:
   Error: The lockdir contains packages which are not among the transitive
@@ -180,8 +209,9 @@ The lockdir is invalid as it contains unnecessary packages.
   - dune.lock
   [1]
 
-Regenerate the lockdir and validate the result.
-  $ dune pkg lock
+Regenerate the lockdir and validate the result:
+
+  $ lock_in_source
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2

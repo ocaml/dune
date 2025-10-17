@@ -13,10 +13,9 @@ Create a lock directory that didn't originally exist
   > EOF
   $ add_mock_repo_if_needed
 
-  $ dune pkg lock "dev/dune.lock"
+  $ dune pkg lock
   Solution for dev/dune.lock:
   (no dependencies to lock)
-  $ dune pkg lock
   Solution for dune.lock:
   (no dependencies to lock)
   $ cat ${default_lock_dir}/lock.dune

@@ -103,7 +103,7 @@ let term =
             "Show all running Dune instances together with their root, pids and number \
              of clients.")
   in
-  Rpc_common.client_term builder
+  Common.client_term builder
   @@ fun () ->
   let open Fiber.O in
   if all
@@ -112,7 +112,7 @@ let term =
     let+ statuses = Fiber.parallel_map ~f:get_status dunes in
     print_statuses statuses
   else (
-    let where = Rpc_common.active_server_exn () in
+    let where = Common.active_server_exn () in
     Console.print
       [ Pp.textf "Server is listening on %s" (Dune_rpc.Where.to_string where)
       ; Pp.text "Connected clients (including this one):"

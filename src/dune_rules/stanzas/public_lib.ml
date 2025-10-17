@@ -30,7 +30,7 @@ let make ~allow_deprecated_names project ((_, s) as loc_name) =
   with
   | Some x -> Ok x
   | None ->
-    Stanza_common.Pkg.resolve project pkg
+    Stanza_pkg.resolve project pkg
     |> Result.map ~f:(fun pkg ->
       { package = pkg
       ; sub_dir = (if rest = [] then None else Some (String.concat rest ~sep:"/"))

@@ -196,8 +196,7 @@ module Theory = struct
             | None -> Package.Name.of_string name
             | Some (pkg, _) -> Package.Name.of_string pkg
           in
-          Stanza_common.Pkg.resolve project pkg
-          |> Result.map ~f:(fun pkg -> Some (loc, pkg)))
+          Stanza_pkg.resolve project pkg |> Result.map ~f:(fun pkg -> Some (loc, pkg)))
   ;;
 
   let merge_package_public ~package ~public =
@@ -239,7 +238,7 @@ module Theory = struct
   let decode =
     fields
       (let+ name = field "name" Coq_lib_name.decode
-       and+ package = field_o "package" Stanza_common.Pkg.decode
+       and+ package = field_o "package" Stanza_pkg.decode
        and+ project = Dune_project.get_exn ()
        and+ public = coq_public_decode
        and+ synopsis = field_o "synopsis" string

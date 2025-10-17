@@ -236,7 +236,7 @@ let decode =
        field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.standard
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (2, 9)) ()
      and+ package =
-       Stanza_common.Pkg.field_opt () ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9))
+       Stanza_pkg.field_opt () ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9))
      and+ packages =
        field
          ~default:[]

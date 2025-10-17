@@ -147,9 +147,7 @@ let build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules =
     |> Super_context.add_rule ~dir sctx)
 ;;
 
-let lib_hidden_deps ~kind lib requires =
-  Action_builder.of_memo
-  @@
+let lib_hidden_deps ~sctx ~kind lib requires =
   let* requires = Resolve.read_memo requires in
   Memo.List.concat_map requires ~f:(fun dep ->
     match Lib.compare lib dep with
@@ -164,8 +162,27 @@ let lib_hidden_deps ~kind lib requires =
            "unexpected partial application"
            [ "lib", Lib.to_dyn lib; "dep", Lib.to_dyn dep ]
        | Not_parameterized ->
-         let+ cmi = Resolve.read_memo (get_cm ~kind:(Ocaml Cmi) dep) in
-         [ cmi ]))
+         let lib = dep in
+         let lib_info = Lib.info dep in
+         let obj_dir = Lib_info.obj_dir lib_info in
+         let+ modules =
+           match Lib_info.modules lib_info with
+           | External None ->
+             Code_error.raise "dependency has no modules" [ "lib", Lib.to_dyn dep ]
+           | External (Some modules) -> Memo.return modules
+           | Local ->
+             let local_lib = Lib.Local.of_lib_exn lib in
+             let+ modules = Dir_contents.modules_of_local_lib sctx local_lib in
+             Modules.With_vlib.modules modules
+         in
+         Modules.With_vlib.fold_no_vlib_with_aliases
+           modules
+           ~init:[]
+           ~normal:(fun module_ acc ->
+             match Obj_dir.Module.cm_file obj_dir module_ ~kind:(Ocaml Cmi) with
+             | None -> acc
+             | Some cmi -> cmi :: acc)
+           ~alias:(fun _group acc -> acc)))
   >>| Dep.Set.of_files
 ;;
 
@@ -182,7 +199,7 @@ let build_modules ~sctx ~obj_dir ~modules_obj_dir ~dep_graph ~mode ~requires ~li
     let+ ocaml = Super_context.context sctx |> Context.ocaml in
     ocaml.lib_config
   in
-  let lib_hidden_deps = lib_hidden_deps ~kind lib requires in
+  let* lib_hidden_deps = lib_hidden_deps ~sctx ~kind lib requires in
   let* args =
     (* The main module names of applied arguments is required
        because it's used in the instantiated filenames.
@@ -211,8 +228,7 @@ let build_modules ~sctx ~obj_dir ~modules_obj_dir ~dep_graph ~mode ~requires ~li
       in
       let hidden_deps =
         let open Action_builder.O in
-        let+ lib_hidden_deps = lib_hidden_deps
-        and+ module_deps = Dep_graph.deps_of dep_graph module_ in
+        let+ module_deps = Dep_graph.deps_of dep_graph module_ in
         let deps =
           List.map module_deps ~f:(fun module_ ->
             apply_module_name module_ args |> obj_file ~obj_dir ~kind |> Path.build)
@@ -377,4 +393,84 @@ let gen_rules ~sctx ~dir ~scope rest =
   | _ ->
     Memo.return
       (Build_config.Gen_rules.redirect_to_parent Build_config.Gen_rules.Rules.empty)
+;;
+
+type instance =
+  { new_name : Module_name.t
+  ; lib_name : Module_name.t
+  ; args : (Module_name.t * Module_name.t) list
+  }
+
+type instances =
+  | Simple of instance
+  | Wrapped of Module_name.t * instance list
+
+let instances ~sctx ~db (deps : Lib_dep.t list) =
+  let open Resolve.Memo.O in
+  Resolve.Memo.List.concat_map deps ~f:(function
+    | Lib_dep.Direct _ | Lib_dep.Re_export _ | Lib_dep.Select _ -> Resolve.Memo.return []
+    | Lib_dep.Instantiate { loc = _; lib; arguments; new_name } ->
+      let+ entry_names =
+        let* lib = Resolve.Memo.lift_memo @@ Lib.DB.find db lib in
+        match lib with
+        | None -> Resolve.Memo.return []
+        | Some lib -> Root_module.entry_module_names sctx lib
+      and+ args =
+        Resolve.Memo.List.filter_map arguments ~f:(fun (_loc, arg_name) ->
+          let* arg = Resolve.Memo.lift_memo @@ Lib.DB.find db arg_name in
+          match arg with
+          | None -> Resolve.Memo.return None
+          | Some arg ->
+            (match Lib.implements arg with
+             | None -> Resolve.Memo.return None
+             | Some param ->
+               let* param = param in
+               let+ param_name = Lib.main_module_name param
+               and+ arg_name = Lib.main_module_name arg in
+               (match param_name, arg_name with
+                | Some param_name, Some arg_name -> Some (param_name, arg_name)
+                | _ -> None)))
+      in
+      (match entry_names with
+       | [] -> []
+       | [ entry_name ] ->
+         let new_name =
+           match new_name with
+           | None -> entry_name
+           | Some new_name -> new_name
+         in
+         [ Simple { new_name; lib_name = entry_name; args } ]
+       | _ :: _ :: _ ->
+         let instances =
+           List.map entry_names ~f:(fun name ->
+             { new_name = name; lib_name = name; args })
+         in
+         (match new_name with
+          | None -> List.map ~f:(fun i -> Simple i) instances
+          | Some new_name -> [ Wrapped (new_name, instances) ])))
+;;
+
+let print_instance b indent instance =
+  Printf.bprintf
+    b
+    "\n%smodule %s = %s%s [@jane.non_erasable.instances]"
+    indent
+    (Module_name.to_string instance.new_name)
+    (Module_name.to_string instance.lib_name)
+    (String.concat ~sep:""
+     @@ List.map instance.args ~f:(fun (param_name, arg_name) ->
+       Printf.sprintf
+         "(%s)(%s)"
+         (Module_name.to_string param_name)
+         (Module_name.to_string arg_name)))
+;;
+
+let print_instances b instances =
+  List.iter instances ~f:(fun instances ->
+    match instances with
+    | Simple instance -> print_instance b "" instance
+    | Wrapped (new_name, instances) ->
+      Printf.bprintf b "\nmodule %s = struct" (Module_name.to_string new_name);
+      List.iter instances ~f:(print_instance b "  ");
+      Printf.bprintf b "\nend\n")
 ;;

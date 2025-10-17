@@ -402,6 +402,8 @@ let make_lib_modules
       in
       kind, main_module_name, wrapped
   in
+  let has_instances = has_instances lib.buildable in
+  let wrapped = if has_instances then Wrapped.Simple true else wrapped in
   let open Memo.O in
   let* sources, modules =
     let { Buildable.loc = stanza_loc; modules = modules_settings; _ } = lib.buildable in
@@ -444,7 +446,6 @@ let make_lib_modules
   in
   let implements = Option.is_some lib.implements in
   let _loc, lib_name = lib.name in
-  let has_instances = has_instances lib.buildable in
   Resolve.Memo.return
     ( sources
     , Modules.lib

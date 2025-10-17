@@ -38,7 +38,7 @@ val create
   -> ?modes:Mode_conf.Set.Details.t Lib_mode.Map.t
   -> ?bin_annot:bool
   -> ?loc:Loc.t
-  -> ?instances:Lib.Parameterized.instance list Resolve.Memo.t
+  -> ?instances:Parameterized_rules.instances list Resolve.Memo.t
   -> unit
   -> t Memo.t
 
@@ -91,4 +91,4 @@ val dep_graphs : t -> Dep_graph.t Ml_kind.Dict.t
 val loc : t -> Loc.t option
 val set_obj_dir : t -> Path.Build.t Obj_dir.t -> t
 val set_modes : t -> modes:Lib_mode.Map.Set.t -> t
-val instances : t -> Lib.Parameterized.instance list Resolve.Memo.t
+val instances : t -> Parameterized_rules.instances list Resolve.Memo.t

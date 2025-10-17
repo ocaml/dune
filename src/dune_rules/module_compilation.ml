@@ -456,7 +456,7 @@ module Alias_module = struct
   type t =
     { aliases : alias list
     ; shadowed : Module_name.t list
-    ; instances : Lib.Parameterized.instance list
+    ; instances : Parameterized_rules.instances list
     }
 
   let to_ml { aliases; shadowed; instances } =
@@ -477,18 +477,7 @@ module Alias_module = struct
         b
         "\nmodule %s = struct end\n[@@deprecated \"this module is shadowed\"]\n"
         (Module_name.to_string shadowed));
-    List.iter instances ~f:(fun (instance : Lib.Parameterized.instance) ->
-      Printf.bprintf
-        b
-        "\nmodule %s = %s%s [@jane.non_erasable.instances]"
-        (Module_name.to_string instance.new_name)
-        (Module_name.to_string instance.lib_name)
-        (String.concat ~sep:""
-         @@ List.map instance.args ~f:(fun (param_name, arg_name) ->
-           Printf.sprintf
-             "(%s)(%s)"
-             (Module_name.to_string param_name)
-             (Module_name.to_string arg_name))));
+    Parameterized_rules.print_instances b instances;
     Buffer.contents b
   ;;
 

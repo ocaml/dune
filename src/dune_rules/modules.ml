@@ -802,7 +802,6 @@ let lib
       ~has_instances
       ~modules
   =
-  (* TODO art-w: if [has_instances] is true, then we always need an alias file *)
   let make_wrapped main_module_name =
     Wrapped
       (Wrapped.make ~obj_dir ~lib_name ~implements ~modules ~main_module_name ~wrapped)

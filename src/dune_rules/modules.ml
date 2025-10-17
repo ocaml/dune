@@ -410,7 +410,9 @@ module Group = struct
     fun acc modules m -> loop acc modules (Module.path m)
   ;;
 
-  let parents (t : t) m = parents_modules [ t ] t.modules m
+  (* [parents acc modules m] returns [acc] followed by all parent groups of 
+     module [m], ordered from innermost to outermost parent. *)
+  let parents (t : t) m = parents_modules [ t ] t.modules m |> List.rev
 
   module Memo_traversals = struct
     let rec parallel_map ({ alias; modules; name = _ } as t) ~f =
@@ -485,7 +487,10 @@ module Group = struct
       Ok (if Module_name.equal name (Module.name li) then [ li ] else [])
     | _ ->
       (* TODO don't recompute this *)
-      let parents = parents t of_ |> List.map ~f:(fun g -> g.modules, Some g.name) in
+      let parents =
+        parents_modules [ t ] t.modules of_
+        |> List.map ~f:(fun g -> g.modules, Some g.name)
+      in
       Find_dep.find_dep_of_parents parents name
   ;;
 

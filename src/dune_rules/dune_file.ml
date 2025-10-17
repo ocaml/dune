@@ -41,7 +41,7 @@ module Mask = struct
         | Library.T l ->
           (match Library_redirect.Local.of_private_lib l with
            | None -> Drop
-           | Some p -> Convert (Library_redirect.Local.make_stanza p))
+           | Some p -> Convert (Library_redirect.Local.make_stanza p None))
         | _ -> Drop)
   ;;
 
@@ -116,7 +116,8 @@ let parse_stanzas ~file ~(eval : eval) sexps =
         Path.Source.relative eval.dir Source.Dune_file.fname
     in
     let stanza_parser =
-      Dune_project.stanza_parser eval.project |> Warning_emit.Bag.set warnings
+      Dune_project.stanza_parser ~dir:eval.dir eval.project
+      |> Warning_emit.Bag.set warnings
     in
     parse_file_includes ~stanza_parser ~context sexps
   in

@@ -39,11 +39,19 @@ module Dynamic_include = struct
 end
 
 let with_redirect decode =
-  let+ x = decode in
-  let base = [ Library.make_stanza x ] in
+  let+ (x : Library.t) = decode in
+  let base =
+    let package =
+      (* CR rgrinberg: we need to check this *)
+      match x.visibility with
+      | Public p -> Some (Package.id p.package)
+      | Private p -> Option.map p ~f:Package.id
+    in
+    [ Library.make_stanza x package ]
+  in
   match Library_redirect.Local.of_lib x with
   | None -> base
-  | Some r -> Library_redirect.Local.make_stanza r :: base
+  | Some r -> Library_redirect.Local.make_stanza r None :: base
 ;;
 
 let stanzas : Stanza.Parser.t list =
@@ -111,8 +119,8 @@ let stanzas : Stanza.Parser.t list =
 let () = Dune_project.Lang.register Stanza.syntax stanzas
 let parse parser = Dune_lang.Decoder.parse parser Univ_map.empty
 
-let of_ast (project : Dune_project.t) sexp =
-  let parser = Dune_project.stanza_parser project in
+let of_ast (project : Dune_project.t) ~dir sexp =
+  let parser = Dune_project.stanza_parser project ~dir in
   parse parser sexp
 ;;
 

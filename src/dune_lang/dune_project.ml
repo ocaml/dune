@@ -73,6 +73,7 @@ type t =
   ; dune_version : Syntax.Version.t
   ; info : Package_info.t
   ; packages : Package.t Package.Name.Map.t
+  ; exclusive_dir_packages : Package_id.t Path.Source.Map.t
   ; stanza_parser : Stanza.t list Decoder.t
   ; project_file : Path.Source.t option
   ; extension_args : Univ_map.t
@@ -114,7 +115,13 @@ let packages t = t.packages
 let name t = t.name
 let version t = t.version
 let root t = t.root
-let stanza_parser t = Decoder.set key t t.stanza_parser
+
+let stanza_parser t ~dir =
+  let mask = Package_mask.package_env ~dir ~packages:t.exclusive_dir_packages in
+  let parser = Decoder.set key t t.stanza_parser in
+  Decoder.set Package_mask.key mask parser
+;;
+
 let file t = t.project_file
 
 let implicit_transitive_deps t ocaml_version =
@@ -162,6 +169,7 @@ let to_dyn
       ; expand_aliases_in_sandbox
       ; opam_file_location
       ; including_hidden_packages = _
+      ; exclusive_dir_packages = _
       }
   =
   let open Dyn in
@@ -489,6 +497,8 @@ let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
     Dune_project_name.named loc (Package.Name.to_string name)
 ;;
 
+let make_exclusive_dir_packages _packages = Path.Source.Map.empty
+
 let infer ~dir info packages =
   let lang = get_dune_lang () in
   let name = default_name ~dir ~packages in
@@ -534,6 +544,7 @@ let infer ~dir info packages =
   ; expand_aliases_in_sandbox
   ; opam_file_location
   ; including_hidden_packages = packages
+  ; exclusive_dir_packages = make_exclusive_dir_packages packages
   }
 ;;
 
@@ -576,6 +587,7 @@ let encode : t -> Dune_sexp.t list =
       ; expand_aliases_in_sandbox
       ; opam_file_location = _
       ; including_hidden_packages = _
+      ; exclusive_dir_packages = _
       } ->
   let open Encoder in
   let lang = Lang.get_exn "dune" in
@@ -1030,6 +1042,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        ; expand_aliases_in_sandbox
        ; opam_file_location
        ; including_hidden_packages = packages
+       ; exclusive_dir_packages = make_exclusive_dir_packages packages
        }
 ;;
 

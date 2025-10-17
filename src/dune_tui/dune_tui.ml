@@ -203,13 +203,7 @@ module Message_viewer = struct
         `Handled
       | _ -> `Unhandled
     in
-    let mouse_handler ~x:_ ~y:_ = function
-      | `Scroll dir ->
-        vscroll ~dir;
-        `Handled
-      | _ -> `Unhandled
-    in
-    ui |> Ui.keyboard_area keyboard_handler |> Ui.mouse_area mouse_handler
+    ui |> Ui.keyboard_area keyboard_handler
   ;;
 end
 

@@ -464,7 +464,7 @@ module Unescape : sig
   ]
   (** A selection of extra keys on the keyboard. *)
 
-  type button = [ `Left | `Middle | `Right | `Scroll of [ `Up | `Down ] ]
+  type button = [ `Left | `Middle | `Right | `Scroll of [ `Up | `Down | `Left | `Right ] ]
   (** Mouse buttons. *)
 
   type mods = [ `Meta | `Ctrl | `Shift ] list
@@ -510,7 +510,8 @@ module Unescape : sig
 
          {b Note} Every [`Press (`Left|`Middle|`Right)] generates a corresponding
          [`Release], but there is no portable way to detect which button was
-         released. [`Scroll (`Up|`Down)] presses are not followed by releases.
+         released. [`Scroll (`Up|`Down|`Left|`Right)] presses are not followed
+         by releases.
 
          }
       {- [`Paste (`Start|`End)] are {e bracketed paste} events, signalling the

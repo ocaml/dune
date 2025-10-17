@@ -225,11 +225,18 @@ let build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog =
           Dune_lang.Dep_conf.File
             (Dune_lang.String_with_vars.make_text Loc.none (Path.to_string path))
         in
-        Build.build_via_rpc_server
-          ~print_on_success:false
-          ~targets:[ target ]
-          builder
-          lock_held_by)
+        let targets = Rpc.Group.Build.prepare_targets [ target ] in
+        let open Fiber.O in
+        let+ build_outcome =
+          Rpc.Rpc_common.fire_message
+            ~name:"build"
+            ~wait:true
+            ~lock_held_by
+            builder
+            (Rpc.Rpc_common.Request Dune_rpc_impl.Decl.build)
+            targets
+        in
+        Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:false build_outcome)
     in
     Path.to_absolute_filename path
   | Absolute ->

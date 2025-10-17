@@ -1,6 +1,7 @@
 open Import
 module Client = Dune_rpc_client.Client
 module Rpc_error = Dune_rpc.Response.Error
+open Fiber.O
 
 let active_server () =
   match Dune_rpc_impl.Where.get () with
@@ -24,14 +25,40 @@ let raise_rpc_error (e : Rpc_error.t) =
     ]
 ;;
 
-let request_exn client request n =
-  let open Fiber.O in
+type ('a, 'b) message_kind =
+  | Request : ('a, 'b) Dune_rpc.Decl.request -> ('a, 'b) message_kind
+  | Notification : 'a Dune_rpc.Decl.notification -> ('a, unit) message_kind
+
+let request_exn client request arg =
   let* decl =
     Client.Versioned.prepare_request client (Dune_rpc.Decl.Request.witness request)
   in
   match decl with
+  | Ok decl -> Client.request client decl arg
   | Error e -> raise (Dune_rpc.Version_error.E e)
-  | Ok decl -> Client.request client decl n
+;;
+
+let notify_exn client notification arg =
+  let* res =
+    Client.Versioned.prepare_notification
+      client
+      (Dune_rpc.Decl.Notification.witness notification)
+  in
+  match res with
+  | Ok decl -> Client.notification client decl arg
+  | Error e -> raise (Dune_rpc.Version_error.E e)
+;;
+
+let prepare_message_and_send : type b. Client.t -> ('a, b) message_kind -> 'a -> b Fiber.t
+  =
+  fun client message arg ->
+  match message with
+  | Notification witness -> notify_exn client witness arg
+  | Request witness ->
+    let+ res = request_exn client witness arg in
+    (match res with
+     | Ok (result : b) -> result
+     | Error e -> raise_rpc_error e)
 ;;
 
 let client_term builder f =
@@ -52,13 +79,9 @@ let establish_connection () =
   | Ok where -> Client.Connection.connect where
 ;;
 
-let establish_connection_exn () =
-  let open Fiber.O in
-  establish_connection () >>| User_error.ok_exn
-;;
+let establish_connection_exn () = establish_connection () >>| User_error.ok_exn
 
 let establish_connection_with_retry () =
-  let open Fiber.O in
   let pause_between_retries_s = 0.2 in
   let rec loop () =
     establish_connection ()
@@ -86,34 +109,30 @@ let warn_ignore_arguments lock_held_by =
     ]
 ;;
 
-let fire_request
+let fire_message
       ~name
       ~wait
       ?(warn_forwarding = true)
       ?(lock_held_by = Dune_util.Global_lock.Lock_held_by.Unknown)
       builder
-      request
+      message
       arg
   =
-  let open Fiber.O in
   let* connection = establish_client_session ~wait in
   if warn_forwarding && not (Common.Builder.equal builder Common.Builder.default)
   then warn_ignore_arguments lock_held_by;
   Dune_rpc_impl.Client.client
     connection
     (Dune_rpc.Initialize.Request.create ~id:(Dune_rpc.Id.make (Sexp.Atom name)))
-    ~f:(fun client -> request_exn client request arg)
+    ~f:(fun client -> prepare_message_and_send client message arg)
 ;;
 
-let wrap_build_outcome_exn ~print_on_success f args () =
-  let open Fiber.O in
-  let+ response = f args in
-  match response with
-  | Error (error : Rpc_error.t) -> raise_rpc_error error
-  | Ok Dune_rpc.Build_outcome_with_diagnostics.Success ->
+let wrap_build_outcome_exn ~print_on_success build_outcome =
+  match build_outcome with
+  | Dune_rpc.Build_outcome_with_diagnostics.Success ->
     if print_on_success
     then Console.print [ Pp.text "Success" |> Pp.tag User_message.Style.Success ]
-  | Ok (Failure errors) ->
+  | Failure errors ->
     let error_msg =
       match List.length errors with
       | 0 ->
@@ -126,11 +145,4 @@ let wrap_build_outcome_exn ~print_on_success f args () =
     List.iter errors ~f:(fun { Dune_rpc.Compound_user_error.main; _ } ->
       Console.print_user_message main);
     User_error.raise [ error_msg |> Pp.tag User_message.Style.Error ]
-;;
-
-let run_via_rpc ~common ~config f args =
-  Scheduler.go_without_rpc_server
-    ~common
-    ~config
-    (wrap_build_outcome_exn ~print_on_success:true f args)
 ;;

@@ -85,10 +85,10 @@ module V1 = struct
           loop 0 Stack.Empty
         ;;
 
-        let write (_, o) = function
-          | None -> Lwt_io.close o
-          | Some csexps ->
-            Lwt_list.iter_s (fun sexp -> Lwt_io.write o (Csexp.to_string sexp)) csexps
+        let close (_, o) = Lwt_io.close o
+
+        let write (_, o) csexps =
+          Lwt_list.iter_s (fun sexp -> Lwt_io.write o (Csexp.to_string sexp)) csexps
         ;;
       end)
 

@@ -67,11 +67,11 @@ let atom_table =
     ]
 ;;
 
-let short_form =
-  let+ loc, action = located Dune_lang.Action.decode_dune_file in
+let short_form ~loc =
+  let+ action = located Dune_lang.Action.decode_dune_file in
   { targets = Infer
   ; deps = Bindings.empty
-  ; action = loc, action
+  ; action
   ; mode = Standard
   ; locks = []
   ; loc
@@ -92,7 +92,9 @@ let directory_targets_extension =
   Dune_project.Extension.register syntax (Dune_lang.Decoder.return ((), [])) Dyn.unit
 ;;
 
-let long_form =
+let long_form ~loc =
+  fields
+  @@
   let* deps = field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty in
   let* project = Dune_project.get_exn () in
   let allow_directory_targets =
@@ -100,8 +102,7 @@ let long_form =
   in
   String_with_vars.add_user_vars_to_decoding_env
     (Bindings.var_names deps)
-    (let+ loc = loc
-     and+ action_o = field_o "action" (located Dune_lang.Action.decode_dune_file)
+    (let+ action_o = field_o "action" (located Dune_lang.Action.decode_dune_file)
      and+ targets = Targets_spec.field ~allow_directory_targets
      and+ locks = Locks.field ()
      and+ () =
@@ -151,13 +152,14 @@ let long_form =
 ;;
 
 let decode =
-  let rec interpret atom = function
-    | Field -> fields long_form
-    | Action -> short_form
+  let rec interpret ~loc atom = function
+    | Field -> long_form ~loc
+    | Action -> short_form ~loc
     | Since (version, inner) ->
       let what = Printf.sprintf "'%s' in short-form 'rule'" atom in
-      Dune_lang.Syntax.since ~what Stanza.syntax version >>> interpret atom inner
+      Dune_lang.Syntax.since ~what Stanza.syntax version >>> interpret ~loc atom inner
   in
+  let* stanza_loc = loc in
   peek_exn
   >>= function
   | List (_, Atom (loc, A s) :: _) ->
@@ -167,7 +169,7 @@ let decode =
          ~loc
          [ Pp.text "Unknown action or rule field." ]
          ~hints:(User_message.did_you_mean s ~candidates:(String.Map.keys atom_table))
-     | Some w -> interpret s w)
+     | Some w -> interpret ~loc:stanza_loc s w)
   | sexp ->
     User_error.raise
       ~loc:(Dune_lang.Ast.loc sexp)
@@ -175,24 +177,13 @@ let decode =
 ;;
 
 type lex_or_yacc =
-  { modules : string list
+  { loc : Loc.t
+  ; modules : string list
   ; mode : Rule.Mode.t
   ; enabled_if : Blang.t
   }
 
-let ocamllex =
-  (let+ modules = repeat string in
-   { modules; mode = Standard; enabled_if = Blang.true_ })
-  <|> fields
-        (let+ modules = field "modules" (repeat string)
-         and+ mode = Mode.field
-         and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) () in
-         { modules; mode; enabled_if })
-;;
-
-let ocamlyacc = ocamllex
-
-let ocamllex_to_rule loc { modules; mode; enabled_if } =
+let ocamllex_to_rule { loc; modules; mode; enabled_if } =
   let module S = String_with_vars in
   List.map modules ~f:(fun name ->
     let src = name ^ ".mll" in
@@ -223,7 +214,7 @@ let ocamllex_to_rule loc { modules; mode; enabled_if } =
     })
 ;;
 
-let ocamlyacc_to_rule loc { modules; mode; enabled_if } =
+let ocamlyacc_to_rule { loc; modules; mode; enabled_if } =
   let module S = String_with_vars in
   List.map modules ~f:(fun name ->
     let src = name ^ ".mly" in
@@ -251,3 +242,18 @@ let ocamlyacc_to_rule loc { modules; mode; enabled_if } =
     ; package = None
     })
 ;;
+
+let lex_or_yacc =
+  (let+ loc = loc
+   and+ modules = repeat string in
+   { loc; modules; mode = Standard; enabled_if = Blang.true_ })
+  <|> fields
+        (let+ loc = loc
+         and+ modules = field "modules" (repeat string)
+         and+ mode = Mode.field
+         and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) () in
+         { loc; modules; mode; enabled_if })
+;;
+
+let ocamllex = lex_or_yacc >>| ocamllex_to_rule
+let ocamlyacc = lex_or_yacc >>| ocamlyacc_to_rule

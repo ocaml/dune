@@ -43,7 +43,7 @@ let build_dev_tool_via_rpc builder lock_held_by dev_tool =
       ~wait:true
       ~lock_held_by
       builder
-      (Rpc.Common.Request Dune_rpc_impl.Decl.build)
+      (Rpc.Rpc_common.Request Dune_rpc_impl.Decl.build)
       targets
   in
   Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:false build_outcome

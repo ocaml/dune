@@ -65,15 +65,15 @@ module Apply = struct
       Scheduler.go_without_rpc_server ~common ~config (fun () ->
         let open Fiber.O in
         let+ build_outcome =
-          Rpc.Common.fire_message
+          Rpc.Rpc_common.fire_message
             ~name:"promote_many"
             ~wait:true
             ~lock_held_by
             builder
-            (Rpc.Common.Request Dune_rpc_private.Procedures.Public.promote_many)
+            (Rpc.Rpc_common.Request Dune_rpc_private.Procedures.Public.promote_many)
             files_to_promote
         in
-        Rpc.Common.wrap_build_outcome_exn ~print_on_success:true build_outcome)
+        Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:true build_outcome)
   ;;
 
   let command = Cmd.v info term

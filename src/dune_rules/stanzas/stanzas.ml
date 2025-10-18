@@ -117,13 +117,15 @@ let stanzas : constructors =
       , let+ x = Dune_env.decode in
         [ Dune_env.make_stanza x ] )
     ; ( "include_subdirs"
-      , let* project = Dune_project.get_exn () in
-        let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
-        and+ t =
-          let enable_qualified = Dune_project.is_extension_set project Coq_stanza.key in
-          Include_subdirs.decode ~enable_qualified
-        and+ loc = loc in
-        [ Include_subdirs.make_stanza (loc, t) ] )
+      , let+ t =
+          Include_subdirs.decode
+            ~qualified:
+              (let* project = Dune_project.get_exn () in
+               if Dune_project.is_extension_set project Coq_stanza.key
+               then return ()
+               else Syntax.since Stanza.syntax (3, 7))
+        in
+        [ Include_subdirs.make_stanza t ] )
     ; ( "toplevel"
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 7)
         and+ t = Toplevel_stanza.decode in

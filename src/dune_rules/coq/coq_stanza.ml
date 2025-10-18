@@ -67,7 +67,7 @@ module Coqpp = struct
       include Poly
     end)
 
-  let p = "coq.pp", decode >>| fun x -> [ make_stanza x ]
+  let p = "coq.pp", decode_stanza decode
 end
 
 module Buildable = struct
@@ -156,7 +156,7 @@ module Extraction = struct
       include Poly
     end)
 
-  let p = "coq.extraction", decode >>| fun x -> [ make_stanza x ]
+  let p = "coq.extraction", decode_stanza decode
 end
 
 module Theory = struct
@@ -292,8 +292,8 @@ module Theory = struct
     x
   ;;
 
-  let coqlib_p = "coqlib", decode >>| fun x -> [ make_stanza (coqlib_warn x) ]
-  let p = "coq.theory", decode >>| fun x -> [ make_stanza x ]
+  let coqlib_p = "coqlib", decode_stanza (decode >>| coqlib_warn)
+  let p = "coq.theory", decode_stanza decode
 end
 
 let unit_stanzas =

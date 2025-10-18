@@ -29,6 +29,8 @@ module type S = sig
   type repr += T of t
 
   val make_stanza : t -> stanza
+  val decode_stanza : t Decoder.t -> stanza list Decoder.t
+  val decode_stanzas : t list Decoder.t -> stanza list Decoder.t
   val key : t Key.t
 end
 
@@ -53,6 +55,8 @@ struct
   end
 
   let make_stanza (a : S.t) = E (a, (module T))
+  let decode_stanza d = Decoder.map d ~f:(fun x -> [ make_stanza x ])
+  let decode_stanzas d = Decoder.map d ~f:(List.map ~f:make_stanza)
 
   let key : S.t Key.t =
     fun t ->

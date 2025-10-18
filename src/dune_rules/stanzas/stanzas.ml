@@ -47,9 +47,7 @@ let with_redirect decode =
 ;;
 
 let stanzas : Stanza.Parser.t list =
-  [ Site_stanzas.all
-  ; Cram_stanza.stanza
-  ; List.map Source.Dune_file.statically_evaluated_stanzas ~f:(fun stanza ->
+  [ List.map Source.Dune_file.statically_evaluated_stanzas ~f:(fun stanza ->
       ( stanza
       , let* loc = loc in
         User_error.raise
@@ -67,6 +65,7 @@ let stanzas : Stanza.Parser.t list =
       , Foreign_library.decode_stanza
           (let* () = Dune_lang.Syntax.since Stanza.syntax (2, 0) in
            Foreign_library.decode) )
+    ; ("cram", Cram_stanza.(decode_stanza decode))
     ; ("executable", Executables.(decode_stanza single))
     ; ("executables", Executables.(decode_stanza multi))
     ; ("rule", Rule_conf.(decode_stanza Rule_conf.decode))
@@ -118,6 +117,8 @@ let stanzas : Stanza.Parser.t list =
       , Dynamic_include.decode_stanza
           (let* () = Dune_lang.Syntax.since Stanza.syntax (3, 14) in
            Include.decode) )
+    ; ("generate_sites_module", Generate_sites_module_stanza.(decode_stanza decode))
+    ; ("plugin", Plugin.(decode_stanza Plugin.decode))
     ]
   ]
   |> List.concat

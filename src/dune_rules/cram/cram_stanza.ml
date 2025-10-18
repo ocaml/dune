@@ -112,5 +112,3 @@ let decode =
      ; conflict
      })
 ;;
-
-let stanza = [ "cram", decode_stanza decode ]

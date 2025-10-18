@@ -85,7 +85,7 @@ end = struct
       field_o
         "package"
         (let+ loc = loc
-         and+ pkg = Stanza_common.Pkg.decode in
+         and+ pkg = Stanza_pkg.decode in
          loc, pkg)
     and+ project = Dune_project.get_exn () in
     let names, public_names = names in
@@ -159,7 +159,7 @@ end = struct
           Some
             { public_names
             ; package =
-                Stanza_common.Pkg.default_exn ~loc project (pluralize "executable" ~multi)
+                Stanza_pkg.default_exn ~loc project (pluralize "executable" ~multi)
             }
       | Some (loc, _), None ->
         User_error.raise

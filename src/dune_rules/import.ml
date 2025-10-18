@@ -128,7 +128,7 @@ include struct
   module Enabled_if = Enabled_if
   module Rule_mode_decoder = Rule_mode_decoder
   module Alias_conf = Alias_conf
-  module Stanza_common = Stanza_common
+  module Stanza_pkg = Stanza_pkg
   module Include_subdirs = Include_subdirs
   module Mode_conf = Mode_conf
   module Modules_settings = Modules_settings

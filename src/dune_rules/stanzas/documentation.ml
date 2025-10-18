@@ -16,7 +16,7 @@ include Stanza.Make (struct
 let decode =
   let open Dune_lang.Decoder in
   fields
-    (let+ package = Stanza_common.Pkg.field ~stanza:"documentation"
+    (let+ package = Stanza_pkg.field ~stanza:"documentation"
      and+ mld_files = Ordered_set_lang.field "mld_files"
      and+ files = field_o "files" (repeat Install_entry.File.decode)
      and+ loc = loc in

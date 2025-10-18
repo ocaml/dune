@@ -215,7 +215,7 @@ let decode =
      and+ package =
        field_o
          "package"
-         (Dune_lang.Syntax.since Stanza.syntax (2, 8) >>> located Stanza_common.Pkg.decode)
+         (Dune_lang.Syntax.since Stanza.syntax (2, 8) >>> located Stanza_pkg.decode)
      and+ melange_runtime_deps =
        field
          "melange.runtime_deps"

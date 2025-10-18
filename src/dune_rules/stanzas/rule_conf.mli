@@ -16,13 +16,7 @@ include Stanza.S with type t := t
 
 val decode : t Dune_sexp.Decoder.t
 
-type lex_or_yacc =
-  { modules : string list
-  ; mode : Rule.Mode.t
-  ; enabled_if : Blang.t
-  }
+type lex_or_yacc
 
-val ocamlyacc : lex_or_yacc Dune_lang.Decoder.t
-val ocamllex : lex_or_yacc Dune_lang.Decoder.t
-val ocamllex_to_rule : Loc.t -> lex_or_yacc -> t list
-val ocamlyacc_to_rule : Loc.t -> lex_or_yacc -> t list
+val ocamlyacc : t list Dune_lang.Decoder.t
+val ocamllex : t list Dune_lang.Decoder.t

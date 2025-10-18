@@ -76,17 +76,10 @@ let stanzas : constructors =
     ; "executable", Executables.single >>| execs
     ; "executables", Executables.multi >>| execs
     ; ( "rule"
-      , let+ loc = loc
-        and+ x = Rule_conf.decode in
-        [ Rule_conf.make_stanza { x with loc } ] )
-    ; ( "ocamllex"
-      , let+ loc = loc
-        and+ x = Rule_conf.ocamllex in
-        rules (Rule_conf.ocamllex_to_rule loc x) )
-    ; ( "ocamlyacc"
-      , let+ loc = loc
-        and+ x = Rule_conf.ocamlyacc in
-        rules (Rule_conf.ocamlyacc_to_rule loc x) )
+      , let+ x = Rule_conf.decode in
+        [ Rule_conf.make_stanza x ] )
+    ; "ocamllex", Rule_conf.ocamllex >>| rules
+    ; "ocamlyacc", Rule_conf.ocamlyacc >>| rules
     ; ( "install"
       , let+ x = Install_conf.decode in
         [ Install_conf.make_stanza x ] )
@@ -100,9 +93,8 @@ let stanzas : constructors =
       , let+ x = Copy_files.decode in
         [ Copy_files.make_stanza { x with add_line_directive = true } ] )
     ; ( "include"
-      , let+ loc = loc
-        and+ fn = relative_file in
-        [ Include.make_stanza (loc, fn) ] )
+      , let+ x = Include.decode in
+        [ Include.make_stanza x ] )
     ; ( "documentation"
       , let+ d = Documentation.decode in
         [ Documentation.make_stanza d ] )

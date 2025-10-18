@@ -7,7 +7,7 @@ module Emit = struct
     ; target : string
     ; alias : Alias.Name.t option
     ; module_systems : (Melange.Module_system.t * Filename.Extension.t) list
-    ; modules : Stanza_common.Modules_settings.t
+    ; modules : Modules_settings.t
     ; emit_stdlib : bool
     ; libraries : Lib_dep.t list
     ; package : Package.t option
@@ -125,7 +125,7 @@ module Emit = struct
        and+ compile_flags = Ordered_set_lang.Unexpanded.field "compile_flags"
        and+ allow_overlapping_dependencies = field_b "allow_overlapping_dependencies"
        and+ emit_stdlib = field "emit_stdlib" bool ~default:true
-       and+ modules = Stanza_common.Modules_settings.decode
+       and+ modules = Modules_settings.decode
        and+ enabled_if =
          let open Enabled_if in
          let allowed_vars = Any in

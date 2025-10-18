@@ -131,6 +131,7 @@ include struct
   module Stanza_common = Stanza_common
   module Include_subdirs = Include_subdirs
   module Mode_conf = Mode_conf
+  module Modules_settings = Modules_settings
 end
 
 include Dune_engine.No_io

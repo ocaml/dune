@@ -339,10 +339,7 @@ let eval
       ~src_dir
       ~is_vendored
       ~version
-      { Stanza_common.Modules_settings.modules = _
-      ; root_module
-      ; modules_without_implementation
-      }
+      { Modules_settings.modules = _; root_module; modules_without_implementation }
       modules
   =
   (* Fake modules are modules that do not exist but it doesn't matter because
@@ -419,7 +416,7 @@ let eval
       ~kind
       ~src_dir
       ~version
-      (settings : Stanza_common.Modules_settings.t)
+      (settings : Modules_settings.t)
   =
   Memo.push_stack_frame ~human_readable_description:(fun () ->
     Pp.textf "(modules) field at %s" (Loc.to_file_colon_line stanza_loc))

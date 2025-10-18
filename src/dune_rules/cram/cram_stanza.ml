@@ -113,9 +113,4 @@ let decode =
      })
 ;;
 
-let stanza =
-  [ ( "cram"
-    , let+ t = decode in
-      List.singleton (make_stanza t) )
-  ]
-;;
+let stanza = [ "cram", decode_stanza decode ]

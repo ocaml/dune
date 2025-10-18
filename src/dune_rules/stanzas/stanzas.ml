@@ -43,6 +43,14 @@ let execs exe = [ Executables.make_stanza exe ]
 
 type constructors = Stanza.Parser.t list
 
+let with_redirect decode =
+  let+ x = decode in
+  let base = [ Library.make_stanza x ] in
+  match Library_redirect.Local.of_lib x with
+  | None -> base
+  | Some r -> Library_redirect.Local.make_stanza r :: base
+;;
+
 let stanzas : constructors =
   [ Site_stanzas.all
   ; Cram_stanza.stanza
@@ -56,19 +64,10 @@ let stanzas : constructors =
                syntax dune files"
               stanza
           ] ))
-  ; [ ( "library"
-      , let+ x = Library.decode in
-        let base = [ Library.make_stanza x ] in
-        match Library_redirect.Local.of_lib x with
-        | None -> base
-        | Some r -> Library_redirect.Local.make_stanza r :: base )
+  ; [ "library", with_redirect Library.decode
     ; ( "library_parameter"
-      , let+ () = Dune_lang.Syntax.since Dune_lang.Oxcaml.syntax (0, 1)
-        and+ x = Parameter.decode in
-        let base = [ Library.make_stanza x ] in
-        match Library_redirect.Local.of_lib x with
-        | None -> base
-        | Some r -> Library_redirect.Local.make_stanza r :: base )
+      , with_redirect
+          (Dune_lang.Syntax.since Dune_lang.Oxcaml.syntax (0, 1) >>> Parameter.decode) )
     ; ( "foreign_library"
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
         and+ x = Foreign_library.decode in

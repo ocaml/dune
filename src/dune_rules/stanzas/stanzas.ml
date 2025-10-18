@@ -58,13 +58,8 @@ let stanzas : Stanza.Parser.t list =
               stanza
           ] ))
   ; [ "library", with_redirect Library.decode
-    ; ( "library_parameter"
-      , with_redirect
-          (Dune_lang.Syntax.since Dune_lang.Oxcaml.syntax (0, 1) >>> Parameter.decode) )
-    ; ( "foreign_library"
-      , Foreign_library.decode_stanza
-          (let* () = Dune_lang.Syntax.since Stanza.syntax (2, 0) in
-           Foreign_library.decode) )
+    ; "library_parameter", with_redirect Parameter.decode
+    ; "foreign_library", Foreign_library.decode_stanza Foreign_library.decode
     ; ("cram", Cram_stanza.(decode_stanza decode))
     ; ("executable", Executables.(decode_stanza single))
     ; ("executables", Executables.(decode_stanza multi))
@@ -84,14 +79,8 @@ let stanzas : Stanza.Parser.t list =
       , let+ () = Dune_lang.Syntax.deleted_in Stanza.syntax (1, 0)
         and+ _ = Jbuild_version.decode in
         [] )
-    ; ( "tests"
-      , Tests.decode_stanza
-          (let* () = Dune_lang.Syntax.since Stanza.syntax (1, 0) in
-           Tests.multi) )
-    ; ( "test"
-      , Tests.decode_stanza
-          (let* () = Dune_lang.Syntax.since Stanza.syntax (1, 0) in
-           Tests.single) )
+    ; "tests", Tests.decode_stanza Tests.multi
+    ; "test", Tests.decode_stanza Tests.single
     ; ( "external_variant"
       , let+ () = Dune_lang.Syntax.deleted_in Stanza.syntax (2, 6) in
         [] )
@@ -105,14 +94,9 @@ let stanzas : Stanza.Parser.t list =
                   if Dune_project.is_extension_set project Coq_stanza.key
                   then return ()
                   else Syntax.since Stanza.syntax (3, 7))) )
-    ; ( "toplevel"
-      , Toplevel_stanza.decode_stanza
-          (let* () = Dune_lang.Syntax.since Stanza.syntax (1, 7) in
-           Toplevel_stanza.decode) )
+    ; "toplevel", Toplevel_stanza.decode_stanza Toplevel_stanza.decode
     ; ( "deprecated_library_name"
-      , Deprecated_library_name.decode_stanza
-          (let* () = Dune_lang.Syntax.since Stanza.syntax (2, 0) in
-           Deprecated_library_name.decode) )
+      , Deprecated_library_name.decode_stanza Deprecated_library_name.decode )
     ; ( "dynamic_include"
       , Dynamic_include.decode_stanza
           (let* () = Dune_lang.Syntax.since Stanza.syntax (3, 14) in

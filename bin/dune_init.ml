@@ -60,7 +60,10 @@ module File = struct
     ;;
 
     let csts_conflict project ~dir (a : Cst.t) (b : Cst.t) =
-      let of_ast = Dune_rules.Stanzas.of_ast project ~dir in
+      let of_ast sexp =
+        let parser = Dune_project.stanza_parser project ~dir in
+        Dune_lang.Decoder.parse parser Univ_map.empty sexp
+      in
       (let open Option.O in
        let* a_ast = Cst.abstract a in
        let+ b_ast = Cst.abstract b in

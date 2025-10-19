@@ -117,12 +117,6 @@ let stanzas : Stanza.Parser.t list =
 ;;
 
 let () = Dune_project.Lang.register Stanza.syntax stanzas
-let parse parser = Dune_lang.Decoder.parse parser Univ_map.empty
-
-let of_ast (project : Dune_project.t) ~dir sexp =
-  let parser = Dune_project.stanza_parser project ~dir in
-  parse parser sexp
-;;
 
 let stanza_package stanza =
   match

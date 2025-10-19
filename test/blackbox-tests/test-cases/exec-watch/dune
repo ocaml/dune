@@ -19,6 +19,7 @@
 
 (cram
  (applies_to
+  exec-stdin
   exec-watch-server
   exec-watch-ignore-sigterm
   exec-signal

@@ -694,7 +694,6 @@ let set_parsing_context t parser =
 ;;
 
 let wrapped_executables t = t.wrapped_executables
-let map_workspace_root t = t.map_workspace_root
 let executables_implicit_empty_intf t = t.executables_implicit_empty_intf
 let accept_alternative_dune_file_name t = t.accept_alternative_dune_file_name
 let () = Extension.register_simple Action.Action_plugin.syntax (Decoder.return [])

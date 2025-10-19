@@ -8,13 +8,13 @@ module Cst = Dune_lang.Cst
 (** Abstractions around the kinds of files handled during initialization *)
 module File = struct
   type dune =
-    { path : Path.t
+    { dir : Path.t
     ; name : string
     ; content : Cst.t list
     }
 
   type text =
-    { path : Path.t
+    { dir : Path.t
     ; name : string
     ; content : string
     }
@@ -23,10 +23,10 @@ module File = struct
     | Dune of dune
     | Text of text
 
-  let make_text path name content = Text { path; name; content }
+  let make_text ~dir name content = Text { dir; name; content }
 
   let full_path = function
-    | Dune { path; name; _ } | Text { path; name; _ } -> Path.relative path name
+    | Dune { dir; name; _ } | Text { dir; name; _ } -> Path.relative dir name
   ;;
 
   (** Inspection and manipulation of stanzas in a file *)
@@ -112,9 +112,9 @@ module File = struct
         ]
   ;;
 
-  let load_dune_file ~path =
+  let load_dune_file ~dir =
     let name = "dune" in
-    let full_path = Path.relative path name in
+    let full_path = Path.relative dir name in
     let content =
       if not (Path.exists full_path)
       then []
@@ -135,11 +135,11 @@ module File = struct
                 (Path.to_string_maybe_quoted full_path)
             ])
     in
-    Dune { path; name; content }
+    Dune { dir; name; content }
   ;;
 
   let write_dune_file (dune_file : dune) =
-    let path = Path.relative dune_file.path dune_file.name in
+    let path = Path.relative dune_file.dir dune_file.name in
     let version =
       Dune_lang.Syntax.greatest_supported_version_exn Dune_lang.Stanza.syntax
     in
@@ -443,7 +443,7 @@ module Component = struct
 
   (* TODO Support for merging in changes to an existing stanza *)
   let add_stanza_to_dune_file ~(project : Dune_project.t) ~dir stanza =
-    File.load_dune_file ~path:dir |> File.Stanza.add project stanza
+    File.load_dune_file ~dir |> File.Stanza.add project stanza
   ;;
 
   (* Functions to make the various components, represented as lists of files *)
@@ -457,7 +457,7 @@ module Component = struct
       let bin_ml =
         let name = sprintf "%s.ml" (Dune_lang.Atom.to_string common.name) in
         let content = sprintf "let () = print_endline \"Hello, World!\"\n" in
-        File.make_text dir name content
+        File.make_text ~dir name content
       in
       let files = [ bin_dune; bin_ml ] in
       [ { dir; files } ]
@@ -483,13 +483,15 @@ module Component = struct
       let test_ml =
         let name = sprintf "%s.ml" (Dune_lang.Atom.to_string common.name) in
         let content = "" in
-        File.make_text dir name content
+        File.make_text ~dir name content
       in
       let files = [ test_dune; test_ml ] in
       [ { dir; files } ]
     ;;
 
-    let dune_project_file dir ({ context; common; options } : Options.Project.t Options.t)
+    let dune_project_file
+          ~dir
+          ({ context; common; options } : Options.Project.t Options.t)
       =
       let opam_file_gen =
         match options.pkg with
@@ -503,7 +505,7 @@ module Component = struct
           Path.(as_in_source_tree_exn context.dir)
           common
       in
-      File.Dune { path = dir; content; name = "dune-project" }
+      File.Dune { dir; content; name = "dune-project" }
     ;;
 
     let proj_exec dir ({ context; common; options } : Options.Project.t Options.t) =
@@ -562,11 +564,12 @@ module Component = struct
           | Opam ->
             let name = Options.Common.package_name common in
             let opam_file = Path.source @@ Package_name.file name ~dir in
-            [ File.make_text (Path.parent_exn opam_file) (Path.basename opam_file) "" ]
-          | Esy -> [ File.make_text (Path.source dir) "package.json" "" ]
+            [ File.make_text ~dir:(Path.parent_exn opam_file) (Path.basename opam_file) ""
+            ]
+          | Esy -> [ File.make_text ~dir:(Path.source dir) "package.json" "" ]
         in
         let dir = Path.source dir in
-        { dir; files = dune_project_file dir opts :: package_files }
+        { dir; files = dune_project_file ~dir opts :: package_files }
       in
       let component_targets =
         (match (template : Options.Project.Template.t) with

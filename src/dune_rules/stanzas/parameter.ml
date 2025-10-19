@@ -50,6 +50,7 @@ let to_library t =
 ;;
 
 let decode =
+  let* () = Dune_lang.Syntax.since Dune_lang.Oxcaml.syntax (0, 1) in
   fields
     (let* stanza_loc = loc in
      let* project = Dune_project.get_exn () in

@@ -112,10 +112,3 @@ let decode =
      ; conflict
      })
 ;;
-
-let stanza =
-  [ ( "cram"
-    , let+ t = decode in
-      List.singleton (make_stanza t) )
-  ]
-;;

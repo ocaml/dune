@@ -17,6 +17,7 @@ include Stanza.Make (struct
   end)
 
 let gen_parse names =
+  let* () = Dune_lang.Syntax.since Stanza.syntax (1, 0) in
   fields
     (let* deps = field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty in
      String_with_vars.add_user_vars_to_decoding_env

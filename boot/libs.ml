@@ -615,6 +615,7 @@ let main =
             ; "OpamVariable"
             ; "Source"
             ; "Xdg"
+            ; "Re"
             ]
         }
   }

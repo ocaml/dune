@@ -20,6 +20,8 @@ module type S = sig
   type repr += T of t
 
   val make_stanza : t -> stanza
+  val decode_stanza : t Decoder.t -> stanza list Decoder.t
+  val decode_stanzas : t list Decoder.t -> stanza list Decoder.t
   val key : t Key.t
 end
 

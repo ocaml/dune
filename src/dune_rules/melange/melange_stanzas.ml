@@ -163,9 +163,5 @@ end
 let () =
   Dune_project.Extension.register_simple
     Dune_lang.Melange.syntax
-    (return
-       [ ( "melange.emit"
-         , let+ stanza = Emit.decode in
-           [ Emit.make_stanza stanza ] )
-       ])
+    (return [ ("melange.emit", Emit.(decode_stanza decode)) ])
 ;;

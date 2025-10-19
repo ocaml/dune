@@ -33,6 +33,7 @@ include Stanza.Make (struct
 let old_public_name (t : t) = Public_lib.name (fst t.old_name)
 
 let decode =
+  let* () = Dune_lang.Syntax.since Stanza.syntax (2, 0) in
   fields
     (let+ loc = loc
      and+ project = Dune_project.get_exn ()

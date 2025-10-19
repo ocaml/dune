@@ -285,7 +285,7 @@ unnecessary folders in ``node_modules``, it is recommended to explicitly
 include only the folders that are relevant for Melange builds.
 
 This can be accomplished by combining :doc:`/reference/dune/subdir` and
-:doc:`/reference/dune/subdir` stanzas in a ``dune`` file next to the
+:doc:`/reference/dune/dirs` stanzas in a ``dune`` file next to the
 ``node_modules`` folder. The :doc:`/reference/dune/vendored_dirs` stanza
 can be used to avoid warnings in Melange libraries during the application
 build. The :doc:`/reference/dune/data_only_dirs` stanza can be useful as

@@ -24,12 +24,12 @@ let diagnostic_of_error : Build_system_error.t -> Dune_rpc_private.Diagnostic.t 
     let dir = Option.value ~default:Path.root dir in
     absolutize_paths ~dir loc
   in
-  let message, related =
+  let message, related, severity =
     match Build_system_error.description m with
     | `Exn e ->
-      (* CR-someday jeremiedimino: Use [Report_error.get_user_message] here. *)
-      User_message.make [ Pp.text (Printexc.to_string e.exn) ], []
-    | `Diagnostic { Compound_user_error.main = message; related } -> message, related
+      User_message.make [ Pp.text (Printexc.to_string e.exn) ], [], Some Diagnostic.Error
+    | `Diagnostic { Compound_user_error.main = message; related; severity } ->
+      message, related, Some severity
   in
   let loc = Option.map message.loc ~f:make_loc in
   let id =
@@ -65,7 +65,7 @@ let diagnostic_of_error : Build_system_error.t -> Dune_rpc_private.Diagnostic.t 
     in
     List.map paragraphs ~f:Pp.box |> Pp.concat ~sep:Pp.cut |> Pp.vbox
   in
-  { Dune_rpc_private.Diagnostic.severity = Some Dune_rpc_private.Diagnostic.Error
+  { Dune_rpc_private.Diagnostic.severity
   ; id
   ; targets = []
   ; message

@@ -156,16 +156,44 @@ let wrap_build_outcome_exn ~print_on_success build_outcome =
     if print_on_success
     then Console.print [ Pp.text "Success" |> Pp.tag User_message.Style.Success ]
   | Failure errors ->
-    let error_msg =
-      match List.length errors with
-      | 0 ->
-        Code_error.raise
-          "Build via RPC failed, but the RPC server did not send an error message."
-          []
-      | 1 -> Pp.paragraph "Build failed with 1 error."
-      | n -> Pp.paragraphf "Build failed with %d errors." n
+    let nb_errors, nb_warnings =
+      List.fold_left
+        errors
+        ~init:(0, 0)
+        ~f:
+          (fun
+            (nb_errors, nb_warnings) { Dune_rpc.Compound_user_error.main; severity; _ } ->
+          match severity with
+          | Error ->
+            Console.print_user_message main;
+            nb_errors + 1, nb_warnings
+          | Warning ->
+            User_warning.emit_message main;
+            nb_errors, nb_warnings + 1)
     in
-    List.iter errors ~f:(fun { Dune_rpc.Compound_user_error.main; _ } ->
-      Console.print_user_message main);
-    User_error.raise [ error_msg |> Pp.tag User_message.Style.Error ]
+    (match nb_errors, nb_warnings with
+     | 0, 0 ->
+       Code_error.raise
+         "Build via RPC failed, but the RPC server did not send an error message."
+         []
+     | 0, n ->
+       User_warning.emit
+         [ Pp.paragraphf
+             "Build completed with %d warning%s."
+             n
+             (if n = 1 then "" else "s")
+           |> Pp.tag User_message.Style.Warning
+         ]
+     | n, m ->
+       User_error.raise
+         [ Pp.paragraphf
+             "Build failed with %d error%s%s."
+             n
+             (if n = 1 then "" else "s")
+             (match m with
+              | 0 -> ""
+              | 1 -> "and 1 warning"
+              | m -> "and " ^ string_of_int m ^ " warnings")
+           |> Pp.tag User_message.Style.Error
+         ])
 ;;

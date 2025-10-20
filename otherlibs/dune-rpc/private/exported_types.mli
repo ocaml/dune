@@ -227,12 +227,19 @@ module Compound_user_error : sig
   type t = private
     { main : User_message.t
     ; related : User_message.t list
+    ; severity : Diagnostic.severity
     }
 
   val sexp : t Conv.value
   val to_dyn : t -> Dyn.t
   val annot : t list Stdune.User_message.Annots.Key.t
-  val make : main:User_message.t -> related:User_message.t list -> t
+
+  val make
+    :  main:User_message.t
+    -> related:User_message.t list
+    -> severity:Diagnostic.severity
+    -> t
+
   val parse_output : dir:Stdune.Path.t -> string -> t list
 end
 
@@ -246,12 +253,11 @@ module Build_outcome_with_diagnostics : sig
   val sexp : t Conv.value
 end
 
-(** Describe what files should be promoted. The second argument of [These] is a
-    function that is called on files that cannot be promoted. *)
+(** Describe what files should be promoted. *)
 module Files_to_promote : sig
   type t =
     | All
-    | These of Stdune.Path.Source.t list * (Stdune.Path.Source.t -> unit)
+    | These of Stdune.Path.Source.t list
 
   val sexp : t Conv.value
 end

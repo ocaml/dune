@@ -7,7 +7,9 @@ let () =
 ;;
 
 let test ~dir ~f main =
-  let description = `Diagnostic (Dune_rpc.Compound_user_error.make ~main ~related:[]) in
+  let description =
+    `Diagnostic (Dune_rpc.Compound_user_error.make ~main ~related:[] ~severity:Error)
+  in
   Dune_console.printf "---- Original ----";
   f main;
   Dune_console.printf "------- RPC ------";

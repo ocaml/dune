@@ -230,7 +230,7 @@ let raise_module_conflict_error ~module_path origins =
     in
     User_message.Annots.singleton
       Compound_user_error.annot
-      [ Compound_user_error.make ~main ~related ]
+      [ Compound_user_error.make ~main ~related ~severity:Error ]
   in
   User_error.raise
     ~annots
@@ -430,7 +430,7 @@ let make_lib_modules
         in
         User_message.Annots.singleton
           Compound_user_error.annot
-          [ Compound_user_error.make ~main ~related ]
+          [ Compound_user_error.make ~main ~related ~severity:Error ]
       in
       User_error.raise ~annots ~loc:loc_include_subdirs [ main_message ]
     | _, _ -> ()

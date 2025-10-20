@@ -77,12 +77,13 @@ let establish_client_session ~wait =
 
 let warn_ignore_arguments lock_held_by =
   User_warning.emit
-    [ Pp.paragraphf
-        "Your build request is being forwarded to a running Dune instance%s. Note that \
-         certain command line arguments may be ignored."
-        (match lock_held_by with
-         | Dune_util.Global_lock.Lock_held_by.Unknown -> ""
-         | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
+    [ Pp.tag User_message.Style.Warning
+      @@ Pp.paragraphf
+           "Your build request is being forwarded to a running Dune instance%s. Note \
+            that certain command line arguments may be ignored."
+           (match lock_held_by with
+            | Dune_util.Global_lock.Lock_held_by.Unknown -> ""
+            | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
     ]
 ;;
 
@@ -113,6 +114,19 @@ let wrap_build_outcome_exn ~print_on_success f args () =
   | Ok Dune_rpc.Build_outcome_with_diagnostics.Success ->
     if print_on_success
     then Console.print [ Pp.text "Success" |> Pp.tag User_message.Style.Success ]
+  | Ok (Warn warnings) ->
+    let warn_msg =
+      match List.length warnings with
+      | 0 ->
+        Code_error.raise
+          "Build via RPC failed as mixed, but the RPC server did not send any warnings."
+          []
+      | 1 -> Pp.paragraph "Build completed with 1 warning."
+      | n -> Pp.paragraphf "Build completed with %d warnings." n
+    in
+    List.iter warnings ~f:(fun { Dune_rpc.Compound_user_error.main; _ } ->
+      Console.print_user_message main);
+    User_warning.emit [ Pp.tag User_message.Style.Warning warn_msg ]
   | Ok (Failure errors) ->
     let error_msg =
       match List.length errors with
@@ -125,7 +139,7 @@ let wrap_build_outcome_exn ~print_on_success f args () =
     in
     List.iter errors ~f:(fun { Dune_rpc.Compound_user_error.main; _ } ->
       Console.print_user_message main);
-    User_error.raise [ error_msg |> Pp.tag User_message.Style.Error ]
+    User_error.raise [ Pp.tag User_message.Style.Error error_msg ]
 ;;
 
 let run_via_rpc ~common ~config f args =

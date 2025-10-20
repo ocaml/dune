@@ -148,6 +148,7 @@ let dune_build client what =
       what
       (match res with
        | Success -> "succeeded"
+       | Warn _ -> "warned"
        | Failure _ -> "failed")
 ;;
 

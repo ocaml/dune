@@ -239,6 +239,7 @@ end
 module Build_outcome_with_diagnostics : sig
   type t =
     | Success
+    | Warn of Compound_user_error.t list
     | Failure of Compound_user_error.t list
 
   val sexp_v1 : t Conv.value
@@ -246,12 +247,11 @@ module Build_outcome_with_diagnostics : sig
   val sexp : t Conv.value
 end
 
-(** Describe what files should be promoted. The second argument of [These] is a
-    function that is called on files that cannot be promoted. *)
+(** Describe what files should be promoted. *)
 module Files_to_promote : sig
   type t =
     | All
-    | These of Stdune.Path.Source.t list * (Stdune.Path.Source.t -> unit)
+    | These of Stdune.Path.Source.t list
 
   val sexp : t Conv.value
 end

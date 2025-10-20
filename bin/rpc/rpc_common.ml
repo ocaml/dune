@@ -1,7 +1,6 @@
 open Import
 module Client = Dune_rpc_client.Client
 module Rpc_error = Dune_rpc.Response.Error
-open Fiber.O
 
 let active_server () =
   match Dune_rpc_impl.Where.get () with
@@ -26,6 +25,7 @@ let raise_rpc_error (e : Rpc_error.t) =
 ;;
 
 let request_exn client request arg =
+  let open Fiber.O in
   let* decl =
     Client.Versioned.prepare_request client (Dune_rpc.Decl.Request.witness request)
   in
@@ -35,6 +35,7 @@ let request_exn client request arg =
 ;;
 
 let notify_exn client notification arg =
+  let open Fiber.O in
   let* res =
     Client.Versioned.prepare_notification
       client
@@ -63,11 +64,15 @@ let establish_connection () =
   | Ok where -> Client.Connection.connect where
 ;;
 
-let establish_connection_exn () = establish_connection () >>| User_error.ok_exn
+let establish_connection_exn () =
+  let open Fiber.O in
+  establish_connection () >>| User_error.ok_exn
+;;
 
 let establish_connection_with_retry () =
   let pause_between_retries_s = 0.2 in
   let rec loop () =
+    let open Fiber.O in
     establish_connection ()
     >>= function
     | Ok x -> Fiber.return x
@@ -119,6 +124,7 @@ let fire_request
       request
       arg
   =
+  let open Fiber.O in
   let* connection = establish_client_session ~wait in
   if should_warn ~warn_forwarding builder then warn_ignore_arguments lock_held_by;
   send_request connection name ~f:(fun client ->
@@ -137,6 +143,7 @@ let fire_notification
       notification
       arg
   =
+  let open Fiber.O in
   let* connection = establish_client_session ~wait in
   if should_warn ~warn_forwarding builder then warn_ignore_arguments lock_held_by;
   send_request connection name ~f:(fun client -> notify_exn client notification arg)

@@ -128,6 +128,29 @@ let revision t =
   | Directory _ -> Code_error.raise "not a git repo" []
 ;;
 
+let content_digest t =
+  match t.source with
+  | Repo repo ->
+    let revision = Rev_store.At_rev.rev repo in
+    Rev_store.Object.digest revision
+  | Directory path ->
+    (match Path.lstat path with
+     | Error _ -> User_error.raise [ Pp.textf "Can't stat path %s" (Path.to_string path) ]
+     | Ok stats ->
+       let stats_for_digest = Dune_digest.Stats_for_digest.of_unix_stats stats in
+       (match Dune_digest.path_with_stats ~allow_dirs:true path stats_for_digest with
+        | Ok digest -> digest
+        | Error path_digest_error ->
+          Code_error.raise
+            "Couldn't digest path"
+            [ "path", Path.to_dyn path
+            ; ( "error"
+              , match path_digest_error with
+                | Unix_error e -> Unix_error.Detailed.to_dyn e
+                | Unexpected_kind -> Dyn.string "Unexpected_kind" )
+            ]))
+;;
+
 let load_opam_package_from_dir ~(dir : Path.t) package =
   let opam_file_path = Paths.opam_file package in
   match Path.exists (Path.append_local dir opam_file_path) with

@@ -105,7 +105,7 @@ Generate a mock opam repository
   $ build_single_package error1
   Solution for dune.lock:
   - error1.0.0.1
-  File "dune.lock/error1.pkg", line 6, characters 3-16:
+  File "_build/_private/default/.lock/dune.lock/error1.pkg", line 6, characters 3-16:
   6 |    %{pkg-self:a}
          ^^^^^^^^^^^^^
   Error: Undefined package variable "a"
@@ -113,7 +113,7 @@ Generate a mock opam repository
   $ build_single_package error2
   Solution for dune.lock:
   - error2.0.0.1
-  File "dune.lock/error2.pkg", line 6, characters 3-16:
+  File "_build/_private/default/.lock/dune.lock/error2.pkg", line 6, characters 3-16:
   6 |    %{pkg-self:a}
          ^^^^^^^^^^^^^
   Error: Undefined package variable "a"
@@ -121,7 +121,7 @@ Generate a mock opam repository
   $ build_single_package error3
   Solution for dune.lock:
   - error3.0.0.1
-  File "dune.lock/error3.pkg", line 4, characters 6-19:
+  File "_build/_private/default/.lock/dune.lock/error3.pkg", line 4, characters 6-19:
   4 |  (run not-a-program echo hello))
             ^^^^^^^^^^^^^
   Error: Program not-a-program not found in the tree or in PATH
@@ -130,7 +130,7 @@ Generate a mock opam repository
   $ build_single_package error4
   Solution for dune.lock:
   - error4.0.0.1
-  File "dune.lock/error4.pkg", line 4, characters 6-36:
+  File "_build/_private/default/.lock/dune.lock/error4.pkg", line 4, characters 6-36:
   4 |  (run not-a-program-%{pkg-self:name} echo hello))
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Program not-a-program-error4 not found in the tree or in PATH

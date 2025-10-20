@@ -17,9 +17,8 @@ dependency.
   > }
 
   $ test "2.0.0" 2>&1 | sed -E 's/3.[0-9]+/3.XX/g'
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
-  Couldn't solve the package dependency formula.
+  File "default/.lock/_unknown_", line 1, characters 0-0:
+  Error: Couldn't solve the package dependency formula.
   Selected candidates: foo.0.0.1 x.dev
   - dune -> (problem)
       User requested = 3.XX

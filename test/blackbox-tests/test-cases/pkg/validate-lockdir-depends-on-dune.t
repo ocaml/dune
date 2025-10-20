@@ -7,7 +7,7 @@ Reproduce internal error with dune pkg validate-lockdir in #11188.
   > EOF
   $ mkpkg dune
 
-  $ solve_project<<EOF
+  $ solve_project <<EOF
   > (lang dune 3.20)
   > (package
   >  (name vscode)
@@ -17,5 +17,10 @@ Reproduce internal error with dune pkg validate-lockdir in #11188.
   Solution for dune.lock:
   - a.0.0.1
 
+Promote the lock dir to the source:
+
+  $ cp -r "${default_lock_dir}" "${source_lock_dir}"
+
 Dune is able to verify this lock directory correctly:
+
   $ dune pkg validate-lockdir

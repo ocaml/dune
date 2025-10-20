@@ -26,18 +26,23 @@ should be used.
   > EOF
 
 When no lockdir is present pkg is not enabled:
-  $ dune pkg enabled
-  [1]
+
+  $ dune pkg enabled || echo "Package management is disabled"
+  Package management is disabled
 
 When the default lockdir is present pkg is enabled:
-  $ dune pkg lock > /dev/null 2> /dev/null
 
-  $ dune pkg enabled
+  $ enable_pkg
+  $ dune build @pkg-lock
+  $ mv _build/_private/default/.lock/* .
+  $ unset_pkg
 
-  $ rm -r ${default_lock_dir}
+  $ dune pkg enabled && echo "Package management is enabled"
+  Package management is enabled
 
-When a non-default lockdir is present, pkg is still enabled:
-  $ dune pkg lock dune.other.lock > /dev/null 2> /dev/null
+When just the non-default lockdir is present, pkg is still enabled:
+
+  $ rm -r dune.lock
   $ dune pkg enabled
 
 Remove the other lock dir and make sure the status didn't latch to be always

@@ -662,7 +662,7 @@ let private_context ~dir components _ctx =
     Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
 ;;
 
-let raise_on_lock_dir_out_of_sync =
+let _raise_on_lock_dir_out_of_sync =
   Per_context.create_by_name ~name:"check-lock-dir" (fun ctx ->
     Memo.lazy_ (fun () ->
       let* lock_dir_available = Lock_dir.lock_dir_active ctx in
@@ -680,12 +680,15 @@ let raise_on_lock_dir_out_of_sync =
         with
         | `Valid -> ()
         | `Invalid ->
-          let source_path = Dune_pkg.Lock_dir.in_source_tree path in
-          let loc_path = Path.source source_path in
-          let loc = Loc.in_file (Path.relative loc_path "lock.dune") in
+          let loc =
+            let open Option.O in
+            let+ source_path = Dune_pkg.Lock_dir.in_source_tree path in
+            let loc_path = Path.source source_path in
+            Loc.in_file (Path.relative loc_path "lock.dune")
+          in
           let hints = Pp.[ text "run dune pkg lock" ] in
           User_error.raise
-            ~loc
+            ?loc
             ~hints
             [ Pp.text "The lock dir is not sync with your dune-project" ]
       else Memo.return ())
@@ -721,9 +724,16 @@ let gen_rules ctx ~dir components =
   then private_context ~dir components ctx
   else if Context_name.equal ctx Fetch_rules.context.name
   then Fetch_rules.gen_rules ~dir ~components
-  else
-    let* () = raise_on_lock_dir_out_of_sync ctx in
+  else (
+    (* TODO enable when autolocking is not enabled *)
+    (* let* () = raise_on_lock_dir_out_of_sync ctx in *)
     let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in
-    let+ sctx_rules = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
-    Gen_rules.combine sctx_rules gen_pkg_alias_rule
+    let* sctx_rules = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
+    let sctx_rules = Gen_rules.combine sctx_rules gen_pkg_alias_rule in
+    let+ lock_dir_enabled = Lock_dir.enabled in
+    match lock_dir_enabled with
+    | false -> sctx_rules
+    | true ->
+      let gen_lock_rule = Lock_rules.setup_lock_alias ~dir in
+      Gen_rules.combine sctx_rules gen_lock_rule)
 ;;

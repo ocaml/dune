@@ -8,6 +8,7 @@ Dummy opam repo so we can generate lockdirs
   > EOF
 
 Start with a project with a single package with no dependencies:
+
   $ solve_project <<EOF
   > (lang dune 3.11)
   > (package
@@ -21,9 +22,17 @@ Start with a project with a single package with no dependencies:
   (repositories
    (complete false)
    (used))
+
+  $ promote() {
+  >  cp -r "${default_lock_dir}" "${source_lock_dir}"
+  >  chmod -R u+w "${source_lock_dir}"
+  > }
+
+  $ promote
   $ dune pkg validate-lockdir
 
 Add a dependency to the project:
+
   $ cat >dune-project <<EOF
   > (lang dune 3.11)
   > (package
@@ -41,6 +50,8 @@ Add a dependency to the project:
   [1]
 
 Add a non-local dependency to the package:
+
+  $ rm -r ${source_lock_dir}
   $ solve_project <<EOF
   > (lang dune 3.11)
   > (package
@@ -57,6 +68,8 @@ Add a non-local dependency to the package:
   (repositories
    (complete false)
    (used))
+
+  $ promote
   $ dune pkg validate-lockdir
 
 Add a second dependency to the project:

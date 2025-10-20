@@ -1312,23 +1312,18 @@ module DB = struct
     let union = Pkg_digest.Map.union ~f:union_check
     let union_all = Pkg_digest.Map.union_all ~f:union_check
 
-    let of_dev_tool_deps_if_lock_dir_exists dev_tool ~platform ~system_provided =
-      let+ lock_dir_opt = Lock_dir.of_dev_tool_if_lock_dir_exists dev_tool in
-      Option.map lock_dir_opt ~f:(of_lock_dir ~platform ~system_provided)
+    let of_dev_tool ~platform ~system_provided dev_tool =
+      let+ lock_dir = Lock_dir.of_dev_tool dev_tool in
+      of_lock_dir ~platform ~system_provided lock_dir
     ;;
 
     let all_existing_dev_tools =
       Memo.lazy_ (fun () ->
         let* platform = Lock_dir.Sys_vars.solver_env () in
-        let+ xs =
-          Memo.List.map
-            Pkg_dev_tool.all
-            ~f:
-              (of_dev_tool_deps_if_lock_dir_exists
-                 ~platform
-                 ~system_provided:default_system_provided)
-        in
-        List.filter_opt xs |> union_all)
+        Memo.List.map
+          Pkg_dev_tool.all
+          ~f:(of_dev_tool ~platform ~system_provided:default_system_provided)
+        >>| union_all)
     ;;
   end
 
@@ -1494,10 +1489,10 @@ end = struct
             in
             resolve db dep_loc dep_pkg_digest package_universe)
       and+ files_dir =
-        let* lock_dir =
+        let+ lock_dir =
           Package_universe.lock_dir_path package_universe >>| Option.value_exn
         in
-        let+ files_dir =
+        let files_dir =
           let module Pkg = Dune_pkg.Lock_dir.Pkg in
           (* TODO(steve): simplify this once portable lockdirs become the
              default. This logic currently handles both the cases where
@@ -1509,21 +1504,14 @@ end = struct
           let path_with_version =
             Pkg.source_files_dir info.name (Some info.version) ~lock_dir
           in
-          let* path_with_version_exists =
-            Fs_memo.dir_exists (Path.Outside_build_dir.In_source_dir path_with_version)
-          in
-          match path_with_version_exists with
-          | true ->
-            Memo.return @@ Some (Pkg.files_dir info.name (Some info.version) ~lock_dir)
-          | false ->
+          match path_with_version with
+          | Some _path_with_version ->
+            Some (Pkg.files_dir info.name (Some info.version) ~lock_dir)
+          | None ->
             let path_without_version = Pkg.source_files_dir info.name None ~lock_dir in
-            let+ path_without_version_exists =
-              Fs_memo.dir_exists
-                (Path.Outside_build_dir.In_source_dir path_without_version)
-            in
-            (match path_without_version_exists with
-             | true -> Some (Pkg.files_dir info.name None ~lock_dir)
-             | false -> None)
+            (match path_without_version with
+             | Some _ -> Some (Pkg.files_dir info.name None ~lock_dir)
+             | None -> None)
         in
         files_dir
         |> Option.map ~f:(fun (p : Path.t) ->

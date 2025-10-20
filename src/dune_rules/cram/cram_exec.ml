@@ -75,7 +75,8 @@ module For_tests = struct
 
   let dyn_of_block = function
     | Cram_lexer.Comment lines -> Dyn.variant "Comment" [ Dyn.list Dyn.string lines ]
-    | Command lines -> Dyn.variant "Command" [ Dyn.list Dyn.string lines ]
+    | Command (loc, lines) ->
+      Dyn.variant "Command" [ Loc.to_dyn loc; Dyn.list Dyn.string lines ]
   ;;
 end
 
@@ -199,10 +200,10 @@ let read_and_attach_exit_codes (sh_script : sh_script)
     | [], [] -> List.rev acc
     | (Cram_lexer.Comment _ as comment) :: blocks, _ ->
       loop (comment :: acc) entries blocks
-    | Command block_result :: blocks, metadata_entry :: entries ->
-      loop (Command (block_result, Present metadata_entry) :: acc) entries blocks
-    | Cram_lexer.Command block_result :: blocks, [] ->
-      loop (Command (block_result, Missing_unreachable) :: acc) entries blocks
+    | Command (loc, block_result) :: blocks, metadata_entry :: entries ->
+      loop (Command (loc, (block_result, Present metadata_entry)) :: acc) entries blocks
+    | Cram_lexer.Command (loc, block_result) :: blocks, [] ->
+      loop (Command (loc, (block_result, Missing_unreachable)) :: acc) entries blocks
     | [], _ :: _ -> Code_error.raise "more blocks than metadata" []
   in
   loop [] metadata_entries sh_script.cram_to_output
@@ -259,7 +260,7 @@ let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
   List.map cram_to_output ~f:(fun (t : (block_result * _) Cram_lexer.block) ->
     match t with
     | Cram_lexer.Comment t -> Cram_lexer.Comment t
-    | Command (block_result, metadata) ->
+    | Command (loc, (block_result, metadata)) ->
       let output =
         match metadata with
         | Missing_unreachable -> "***** UNREACHABLE *****"
@@ -271,7 +272,7 @@ let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
                ~command_script:block_result.script
                build_path_prefix_map
       in
-      Command { command = block_result.command; metadata; output })
+      Command (loc, { command = block_result.command; metadata; output }))
 ;;
 
 (* Compose user written cram stanzas to output *)
@@ -288,7 +289,7 @@ let compose_cram_output (cram_to_output : _ Cram_lexer.block list) =
   List.iter cram_to_output ~f:(fun block ->
     match (block : _ Cram_lexer.block) with
     | Comment lines -> List.iter lines ~f:add_line
-    | Command { command; metadata; output } ->
+    | Command (_loc, { command; metadata; output }) ->
       List.iteri command ~f:(fun i line ->
         let line = sprintf "%c %s" (if i = 0 then '$' else '>') line in
         add_line_prefixed_with_two_space line);
@@ -335,7 +336,7 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
   let loop block =
     match (block : _ Cram_lexer.block) with
     | Comment _ as comment -> Fiber.return comment
-    | Command lines ->
+    | Command (loc, lines) ->
       incr i;
       let i = !i in
       let file ~ext = file (sprintf "%d%s" i ext) in
@@ -361,10 +362,11 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
         Dune_util.Build_path_prefix_map._BUILD_PATH_PREFIX_MAP
         metadata_file_sh_path;
       Cram_lexer.Command
-        { command = lines
-        ; output_file = user_shell_code_output_file
-        ; script = user_shell_code_file
-        }
+        ( loc
+        , { command = lines
+          ; output_file = user_shell_code_output_file
+          ; script = user_shell_code_file
+          } )
   in
   fprln oc "trap 'exit 0' EXIT";
   let+ cram_to_output = Fiber.sequential_map ~f:loop cram_stanzas in
@@ -454,7 +456,7 @@ let run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout =
         let command_blocks_only =
           List.filter_map sh_script.cram_to_output ~f:(function
             | Cram_lexer.Comment _ -> None
-            | Cram_lexer.Command block_result -> Some block_result)
+            | Cram_lexer.Command (_, block_result) -> Some block_result)
         in
         let total_commands = List.length command_blocks_only in
         if completed_count < total_commands
@@ -507,7 +509,7 @@ let run_and_produce_output ~conflict ~src ~env ~dir:cwd ~script ~dst ~timeout =
   let+ commands =
     run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout
     >>| List.filter_map ~f:(function
-      | Cram_lexer.Command c -> Some c
+      | Cram_lexer.Command (_, c) -> Some c
       | Comment _ -> None)
   in
   let dst = Path.build dst in
@@ -594,7 +596,7 @@ module Make_script = struct
         |> cram_stanzas ~conflict
         |> List.filter_map ~f:(function
           | Cram_lexer.Comment _ -> None
-          | Command s -> Some s)
+          | Command (_, s) -> Some s)
         |> cram_commmands
       in
       Io.write_file ~binary:false (Path.build dst) commands;
@@ -641,10 +643,11 @@ module Diff = struct
           | [] -> acc
           | Cram_lexer.Comment x :: current ->
             loop (Cram_lexer.Comment x :: acc) current expected
-          | Command _ :: current ->
+          | Command (loc, _) :: current ->
             (match expected with
              | [] -> acc
-             | out :: expected -> loop (Cram_lexer.Command out :: acc) current expected)
+             | out :: expected ->
+               loop (Cram_lexer.Command (loc, out) :: acc) current expected)
         in
         loop [] current_stanzas out |> List.rev
       in

@@ -369,8 +369,15 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
       (* A 'successful' formatting means there is nothing to promote. *)
       | Success -> ()
       | Failure ->
-        Promote.Diff_promotion.promote_files_registered_in_last_run
-          Dune_rpc.Files_to_promote.All
+        (match
+           Promote.Diff_promotion.promote_files_registered_in_last_run
+             Dune_rpc.Files_to_promote.All
+         with
+         | [] -> ()
+         | (_non_empty : Path.Source.t list) ->
+           Code_error.raise
+             "promote_files_registered_in_last_run All should always return an empty list"
+             [])
     in
     Handler.implement_request rpc Procedures.Public.format f
   in
@@ -423,16 +430,31 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
   in
   let () =
     let f _ files =
-      Promote.Diff_promotion.promote_files_registered_in_last_run files;
-      Fiber.return Dune_rpc.Build_outcome_with_diagnostics.Success
+      match Promote.Diff_promotion.promote_files_registered_in_last_run files with
+      | [] -> Fiber.return Dune_rpc.Build_outcome_with_diagnostics.Success
+      | missing ->
+        let warnings =
+          List.map missing ~f:(fun fn ->
+            Dune_rpc.Compound_user_error.make_with_severity
+              ~main:
+                (User_message.make
+                   [ Pp.paragraphf
+                       "Nothing to promote for %s."
+                       (Path.Source.to_string_maybe_quoted fn)
+                   ])
+              ~related:[]
+              ~severity:Dune_rpc.Diagnostic.Warning)
+        in
+        Fiber.return (Dune_rpc.Build_outcome_with_diagnostics.Failure warnings)
     in
     Handler.implement_request rpc Procedures.Public.promote_many f
   in
   let () =
     let f _ path =
       let files = For_handlers.source_path_of_string path in
-      Promote.Diff_promotion.promote_files_registered_in_last_run
-        (These ([ files ], ignore));
+      let _ignored : Path.Source.t list =
+        Promote.Diff_promotion.promote_files_registered_in_last_run (These [ files ])
+      in
       Fiber.return ()
     in
     Handler.implement_request rpc Procedures.Public.promote f

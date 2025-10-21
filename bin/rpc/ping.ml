@@ -11,11 +11,11 @@ let info =
 
 let term =
   let+ (builder : Common.Builder.t) = Common.Builder.term
-  and+ wait = Rpc_common.wait_term in
-  Rpc_common.client_term builder
+  and+ wait = Common.wait_term in
+  Common.client_term builder
   @@ fun () ->
   let open Fiber.O in
-  Rpc_common.fire_request
+  Common.fire_request
     ~name:"ping_cmd"
     ~wait
     builder
@@ -23,7 +23,7 @@ let term =
     ()
   >>| function
   | Ok () -> Console.print [ Pp.text "Server appears to be responding normally" ]
-  | Error e -> Rpc_common.raise_rpc_error e
+  | Error e -> Common.raise_rpc_error e
 ;;
 
 let cmd = Cmd.v info term

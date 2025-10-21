@@ -6,7 +6,7 @@ let build ~wait builder lock_held_by targets =
       let sexp = Dune_lang.Dep_conf.encode target in
       Dune_lang.to_string sexp)
   in
-  Rpc_common.fire_request
+  Common.fire_request
     ~name:"build"
     ~wait
     ~lock_held_by
@@ -18,13 +18,13 @@ let build ~wait builder lock_held_by targets =
 let term =
   let name_ = Arg.info [] ~docv:"TARGET" in
   let+ (builder : Common.Builder.t) = Common.Builder.term
-  and+ wait = Rpc_common.wait_term
+  and+ wait = Common.wait_term
   and+ targets = Arg.(value & pos_all string [] name_) in
-  Rpc_common.client_term builder
+  Common.client_term builder
   @@ fun () ->
   let open Fiber.O in
   let+ response =
-    Rpc_common.fire_request ~name:"build" ~wait builder Dune_rpc_impl.Decl.build targets
+    Common.fire_request ~name:"build" ~wait builder Dune_rpc_impl.Decl.build targets
   in
   match response with
   | Error (error : Dune_rpc.Response.Error.t) ->

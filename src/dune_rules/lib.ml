@@ -608,9 +608,9 @@ module Parameterized = struct
     List.sort arguments ~compare:(fun (param, _) (param', _) -> compare param param')
   ;;
 
-  let instantiate ~loc named_lib args ~parent_parameters =
+  let instantiate ~loc lib args ~parent_parameters =
     let open Resolve.O in
-    let* lib = named_lib
+    let* lib = lib
     and* args = make_arguments args in
     let* lib = apply_arguments ~ignore_extra:false lib args in
     let+ () =

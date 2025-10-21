@@ -48,7 +48,7 @@ and local implementations:
   >   print_endline Paramlib_impl.v ;
   >   print_endline Paramlib_otherext.v ;
   >   print_endline (Lib.test ()) ;
-  >   print_endline (Unwrapped_a.a ^ "," ^ Unwrapped_b.b) ;
+  >   print_endline Unwrap_lib.(Unwrapped_a.a ^ "," ^ Unwrapped_b.b) ;
   >   print_endline (Rewrap.Unwrapped_a.a ^ "," ^ Rewrap.Unwrapped_b.b) ;
   >   print_endline Other_ext.v
   > EOF
@@ -58,7 +58,7 @@ and local implementations:
   >     (external.paramlib external.impl :as paramlib_impl)
   >     (external.paramlib other_ext :as paramlib_otherext)
   >     external.lib ; has instances internally
-  >     (external.unwrapped_lib external.impl)
+  >     (external.unwrapped_lib external.impl :as unwrap_lib)
   >     (external.unwrapped_lib other_ext :as rewrap)
   >     other_ext))
   > EOF

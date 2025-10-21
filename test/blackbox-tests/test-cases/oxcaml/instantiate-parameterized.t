@@ -71,6 +71,7 @@ It's an error for the binary to partially instantiate `lib_ab`:
   3 |   (libraries (lib_ab b_impl))) ; missing a_impl
                     ^^^^^^
   Error: Parameter "project.a" is missing.
+  -> required by _build/default/bin/bin.exe
   -> required by _build/install/default/bin/project.bin
   Hint: Pass an argument implementing project.a to the dependency, or add
   (parameters project.a)
@@ -91,11 +92,11 @@ overlapping modules)
   > EOF
 
   $ dune exec project.bin
-  File "bin/.bin.eobjs/dune__exe.ml-gen", line 7, characters 0-75:
-  7 | module Lib_ab = Lib_ab(A)(A_impl)(B)(B_impl) [@jane.non_erasable.instances]
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Multiple definition of the module name Lib_ab.
-         Names must be unique in a given structure or signature.
+  File "bin/dune", line 7, characters 5-11:
+  7 |     (lib_ab a_impl b_impl)))
+           ^^^^^^
+  Error: The instance name Lib_ab is already used.
+  -> required by _build/install/default/bin/project.bin
   [1]
 
 We add another way to implement the parameter `b` from the parameter `a`:
@@ -126,10 +127,9 @@ dependencies, because its parameter `b` is missing:
   File "bin/dune", line 6, characters 19-25:
   6 |     (lib_ab a_impl a_of_b)))
                          ^^^^^^
-  Error: Parameter "project.b" is missing.
+  Error: Duplicate arguments project.a_impl and project.a_of_b for parameter
+  project.a.
   -> required by _build/install/default/bin/project.bin
-  Hint: Pass an argument implementing project.b to the dependency, or add
-  (parameters project.b)
   [1]
 
 However `lib_ab` can depend on `a_of_b`, such that the parameter `b` will be
@@ -189,9 +189,9 @@ It's an error to provide a non-required parameter:
   File "bin/dune", line 4, characters 15-21:
   4 |     (lib_apply a_impl b_impl :as lib_ab)))
                      ^^^^^^
-  Error: Unexpected argument "project.a_impl"
+  Error: Argument project.a implements unexpected parameter project.a_impl
   -> required by _build/install/default/bin/project.bin
-  Hint: Remove the extra argument
+  Hint: Remove this argument
   [1]
 
 Given another implementation of a parameter,
@@ -216,9 +216,9 @@ which one to use:
   File "bin/dune", line 4, characters 22-29:
   4 |     (lib_apply b_impl b_impl2)))
                             ^^^^^^^
-  Error: Unexpected argument "project.b_impl2"
+  Error: Duplicate arguments project.b_impl and project.b_impl2 for parameter
+  project.b.
   -> required by _build/install/default/bin/project.bin
-  Hint: Remove the extra argument
   [1]
 
 Same error if the argument is repeated:
@@ -233,9 +233,9 @@ Same error if the argument is repeated:
   File "bin/dune", line 4, characters 22-28:
   4 |     (lib_apply b_impl b_impl)))
                             ^^^^^^
-  Error: Unexpected argument "project.b_impl"
+  Error: Duplicate arguments project.b_impl and project.b_impl for parameter
+  project.b.
   -> required by _build/install/default/bin/project.bin
-  Hint: Remove the extra argument
   [1]
 
 We can instantiate the same library multiple times by giving it different names:

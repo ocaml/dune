@@ -217,7 +217,7 @@ jobs:
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: |
-          opam pin -n . --with-version=3.20
+          opam pin -n .
           opam install ./dune.opam --deps-only
 
       - name: Install system deps on macOS
@@ -347,7 +347,9 @@ jobs:
       - name: Create an empty switch
         run: opam switch create . --empty
       - name: Pin local packages to local dependencies
-        run: opam pin add . -n --with-version=dev
+        run: opam pin add . -n --with-version=3.21.0
+        #                                     ^^^^^^
+        # When updating dune lang, update this too
       - name: Install external dependencies
         run: opam install .
 

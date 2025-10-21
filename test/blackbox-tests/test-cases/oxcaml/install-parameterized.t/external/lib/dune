@@ -2,5 +2,5 @@
  (public_name external.lib)
  (name lib)
  (libraries
-  (paramlib impl)
+  (paramlib impl :as paramlib1)
   (paramlib impl2 :as paramlib2)))

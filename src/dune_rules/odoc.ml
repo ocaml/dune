@@ -1132,29 +1132,29 @@ let setup_pkg_markdown_rules_def =
       let* lib_odocs =
         Memo.List.concat_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
       in
-        let all_odocs = pkg_odocs @ lib_odocs in
-        (* odoc generates all markdown files on the same level for the package so we use one rule with directory target and batch all odoc commands. *)
-        let* () =
-          if List.is_empty all_odocs
-          then Memo.return ()
-          else (
-            let pkg_markdown_dir = Paths.markdown ctx (Pkg pkg) in
-            let markdown_root = Paths.markdown_root ctx in
-            let rule =
-              run_odoc
-                sctx
-                ~dir:(Path.build markdown_root)
-                "markdown-generate"
-                ~quiet:false
-                ~flags_for:None
-                (Command.Args.A "-o"
-                 :: Command.Args.Path (Path.build markdown_root)
-                 :: List.map all_odocs ~f:(fun odoc ->
-                   Command.Args.Dep (Path.build odoc.odocl_file)))
-              |> Action_builder.With_targets.add_directories
-                   ~directory_targets:[ pkg_markdown_dir ]
-            in
-            add_rule sctx rule)
+      let all_odocs = pkg_odocs @ lib_odocs in
+      (* odoc generates all markdown files on the same level for the package so we use one rule with directory target and batch all odoc commands. *)
+      let* () =
+        if List.is_empty all_odocs
+        then Memo.return ()
+        else (
+          let pkg_markdown_dir = Paths.markdown ctx (Pkg pkg) in
+          let markdown_root = Paths.markdown_root ctx in
+          let rule =
+            run_odoc
+              sctx
+              ~dir:(Path.build markdown_root)
+              "markdown-generate"
+              ~quiet:false
+              ~flags_for:None
+              (Command.Args.A "-o"
+               :: Command.Args.Path (Path.build markdown_root)
+               :: List.map all_odocs ~f:(fun odoc ->
+                 Command.Args.Dep (Path.build odoc.odocl_file)))
+            |> Action_builder.With_targets.add_directories
+                 ~directory_targets:[ pkg_markdown_dir ]
+          in
+          add_rule sctx rule)
       in
       let* () = Memo.parallel_iter libs ~f:(setup_lib_markdown_rules sctx) in
       add_format_alias_deps ctx Markdown (Pkg pkg) all_odocs

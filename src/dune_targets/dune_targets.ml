@@ -194,6 +194,8 @@ module Produced = struct
       | Empty_dir of Path.Build.t
       | Unreadable_dir of Path.Build.t * Unix_error.Detailed.t
       | Unsupported_file of Path.Build.t * File_kind.t
+      | Symlink_escapes_target of Path.Build.t
+      | Absolute_symlink of Path.Build.t
 
     let message = function
       | Missing_dir dir ->
@@ -225,6 +227,18 @@ module Produced = struct
              |> Path.Source.to_string_maybe_quoted)
             (File_kind.to_string kind)
         ]
+      | Symlink_escapes_target symlink ->
+        [ Pp.textf
+            "Symbolic link %S escapes the directory target"
+            (Path.Build.drop_build_context_maybe_sandboxed_exn symlink
+             |> Path.Source.to_string_maybe_quoted)
+        ]
+      | Absolute_symlink symlink ->
+        [ Pp.textf
+            "Symbolic link %S points to an absolute directory and is not supported"
+            (Path.Build.drop_build_context_maybe_sandboxed_exn symlink
+             |> Path.Source.to_string_maybe_quoted)
+        ]
     ;;
 
     let to_string_hum = function
@@ -232,6 +246,8 @@ module Produced = struct
       | Empty_dir _ -> "empty directory"
       | Unreadable_dir (_, unix_error) -> Unix_error.Detailed.to_string_hum unix_error
       | Unsupported_file _ -> "unsupported file kind"
+      | Symlink_escapes_target _ -> "symlink escapes target"
+      | Absolute_symlink _ -> "symlink is absolute"
     ;;
   end
 
@@ -239,7 +255,8 @@ module Produced = struct
 
   (** The call sites ensure that [dir = Path.Build.append_local validated.root local].
       No need for [local] actually... *)
-  let rec contents_of_dir ~file_f (dir : Path.Build.t) : ('a dir_contents, Error.t) result
+  let rec contents_of_dir ~file_f ~dir_target (dir : Path.Build.t)
+    : ('a dir_contents, Error.t) result
     =
     let open Result.O in
     let init = empty in
@@ -249,21 +266,45 @@ module Produced = struct
     | Ok dir_contents ->
       Result.List.fold_left dir_contents ~init ~f:(fun dir_contents (name, kind) ->
         match (kind : File_kind.t) with
-        | S_LNK | S_REG ->
+        | S_REG ->
           let files =
             match file_f (Path.Local.relative (Path.Build.local dir) name) with
             | Some payload -> Filename.Map.add_exn dir_contents.files name payload
             | None -> dir_contents.files
           in
           Ok { dir_contents with files }
+        | S_LNK ->
+          (* For symlinks, check if they escape the directory target *)
+          let symlink_path = Path.Build.relative dir name in
+          let target = Path.Build.to_string symlink_path |> Unix.readlink in
+          if Filename.is_relative target
+          then (
+            match target |> String.split ~on:'/' |> Path.Build.L.relative_result dir with
+            | Ok resolved when Path.Build.is_descendant resolved ~of_:dir_target ->
+              let files =
+                match file_f (Path.Local.relative (Path.Build.local dir) name) with
+                | Some payload -> Filename.Map.add_exn dir_contents.files name payload
+                | None -> dir_contents.files
+              in
+              Ok { dir_contents with files }
+            | Ok _ -> Error (Error.Symlink_escapes_target symlink_path)
+            | Error `Outside_the_workspace ->
+              (* The more immediate issue here is that we've escaped the
+                 directory target and not the workspace. *)
+              Error (Error.Symlink_escapes_target symlink_path))
+          else
+            (* CR-somday Alizter: We could check if the absolute directory
+               lands within a sensible spot in the workplace, but it doesn't
+               seem to be worth the trouble of doing so. *)
+            Error (Error.Absolute_symlink symlink_path)
         | S_DIR ->
           let+ subdirs_contents =
-            contents_of_dir ~file_f (Path.Build.relative dir name)
+            contents_of_dir ~file_f ~dir_target (Path.Build.relative dir name)
           in
           { dir_contents with
             subdirs = Filename.Map.add_exn dir_contents.subdirs name subdirs_contents
           }
-        | _ -> Error (Unsupported_file (Path.Build.relative dir name, kind)))
+        | _ -> Error (Error.Unsupported_file (Path.Build.relative dir name, kind)))
   ;;
 
   let of_validated (validated : Validated.t) =
@@ -271,7 +312,9 @@ module Produced = struct
     (* We assume here that [dir_name] is either a child of [root], or that we're ok with having [root/a/b] but not [root/a]. *)
     let aggregate_dir { root; contents } dir_name =
       let dir = Path.Build.relative root dir_name in
-      let* new_contents = contents_of_dir ~file_f:(fun _ -> Some ()) dir in
+      let* new_contents =
+        contents_of_dir ~file_f:(fun _ -> Some ()) ~dir_target:dir dir
+      in
       if is_empty_dir_conts new_contents
       then Error (Empty_dir dir)
       else (

@@ -2,4 +2,5 @@ sphinx >= 6
 furo
 sphinx-copybutton >= 0.5.0
 sphinx-design
+sphinx-reredirects
 myst-parser

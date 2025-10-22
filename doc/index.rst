@@ -10,9 +10,9 @@ libraries, run tests, and much more.
    overview
    core-concepts/index
    first-steps-with-dune/index
-   dune-package-management/index
    practical-examples
    command-line-interface
+   dune-package-management/index
    howto/index
    reference/index
    explanation/index

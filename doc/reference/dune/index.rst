@@ -2,7 +2,7 @@ dune
 ====
 
 ``dune`` files are the main part of Dune. Each ``dune`` file belongs to a Dune
-project (see :doc:`/explanation/scopes`). They are used to describe libraries, executables,
+project (see :doc:`/core-concepts/scopes`). They are used to describe libraries, executables,
 tests, and everything else Dune needs to know about.
 
 The syntax of ``dune`` files is described in

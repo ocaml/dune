@@ -2,7 +2,7 @@ dune-project
 ============
 
 Each ``dune-project`` file marks the root of a Dune projects within the current
-Dune workspace (see :doc:`/explanation/scopes`). It can also specify project-wide
+Dune workspace (see :doc:`/core-concepts/scopes`). It can also specify project-wide
 parameters.
 
 The first line of ``dune-project`` must be a ``lang`` stanza with no extra

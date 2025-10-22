@@ -17,6 +17,8 @@ dependencies.
 
 To get started you only need Dune. Head to {doc}`setup` to begin the setup.
 
+In case you are dealing with an existing OCaml project using `opam`, or you want to use `opam` to manage your project's dependencies, see {doc}`/howto/opam-file-generation`.
+
 :::{toctree}
 :hidden:
 :maxdepth: 1

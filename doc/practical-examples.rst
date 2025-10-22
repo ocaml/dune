@@ -1,6 +1,6 @@
-**********
-Quickstart
-**********
+******************
+Practical Examples
+******************
 
 .. TODO(diataxis)
 

@@ -7,9 +7,13 @@ libraries, run tests, and much more.
 .. toctree::
    :maxdepth: 2
 
-   getting-started/index
-   tutorials/index
+   overview
+   first-steps-with-dune/index
+   dune-package-management/index
+   core-concepts/index
+   command-line-interface
    howto/index
+   practical-examples
    reference/index
    explanation/index
    advanced/index

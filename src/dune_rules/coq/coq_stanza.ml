@@ -67,7 +67,7 @@ module Coqpp = struct
       include Poly
     end)
 
-  let p = "coq.pp", decode >>| fun x -> [ make_stanza x ]
+  let p = "coq.pp", decode_stanza decode
 end
 
 module Buildable = struct
@@ -156,7 +156,7 @@ module Extraction = struct
       include Poly
     end)
 
-  let p = "coq.extraction", decode >>| fun x -> [ make_stanza x ]
+  let p = "coq.extraction", decode_stanza decode
 end
 
 module Theory = struct
@@ -196,8 +196,7 @@ module Theory = struct
             | None -> Package.Name.of_string name
             | Some (pkg, _) -> Package.Name.of_string pkg
           in
-          Stanza_common.Pkg.resolve project pkg
-          |> Result.map ~f:(fun pkg -> Some (loc, pkg)))
+          Stanza_pkg.resolve project pkg |> Result.map ~f:(fun pkg -> Some (loc, pkg)))
   ;;
 
   let merge_package_public ~package ~public =
@@ -239,7 +238,7 @@ module Theory = struct
   let decode =
     fields
       (let+ name = field "name" Coq_lib_name.decode
-       and+ package = field_o "package" Stanza_common.Pkg.decode
+       and+ package = field_o "package" Stanza_pkg.decode
        and+ project = Dune_project.get_exn ()
        and+ public = coq_public_decode
        and+ synopsis = field_o "synopsis" string
@@ -293,8 +292,8 @@ module Theory = struct
     x
   ;;
 
-  let coqlib_p = "coqlib", decode >>| fun x -> [ make_stanza (coqlib_warn x) ]
-  let p = "coq.theory", decode >>| fun x -> [ make_stanza x ]
+  let coqlib_p = "coqlib", decode_stanza (decode >>| coqlib_warn)
+  let p = "coq.theory", decode_stanza decode
 end
 
 let unit_stanzas =

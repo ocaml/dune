@@ -173,7 +173,8 @@ let rec deps_of
        | Impl -> Normal m))
 ;;
 
-let immediate_deps_of unit modules ~obj_dir ~ml_kind =
+let read_deps_of_module ~modules ~obj_dir dep =
+  let (Obj_dir.Module.Dep.Immediate (unit, _) | Transitive (unit, _)) = dep in
   match Module.kind unit with
   | Root | Alias _ -> Action_builder.return []
   | Wrapped_compat ->
@@ -188,7 +189,26 @@ let immediate_deps_of unit modules ~obj_dir ~ml_kind =
   | _ ->
     if has_single_file modules
     then Action_builder.return []
-    else Ocamldep.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit
+    else (
+      match dep with
+      | Immediate (unit, ml_kind) ->
+        Ocamldep.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit
+      | Transitive (unit, ml_kind) ->
+        let open Action_builder.O in
+        let+ deps = Ocamldep.read_deps_of ~obj_dir ~modules ~ml_kind unit in
+        (match Modules.With_vlib.alias_for modules unit with
+         | [] -> deps
+         | aliases -> aliases @ deps))
+;;
+
+let read_immediate_deps_of ~obj_dir ~modules ~ml_kind m =
+  read_deps_of_module ~modules ~obj_dir (Immediate (m, ml_kind))
+;;
+
+let read_deps_of ~obj_dir ~modules ~ml_kind m =
+  if Module.has m ~ml_kind
+  then read_deps_of_module ~modules ~obj_dir (Transitive (m, ml_kind))
+  else Action_builder.return []
 ;;
 
 let dict_of_func_concurrently f =
@@ -213,8 +233,4 @@ let rules ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir =
           deps_of ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir ~ml_kind m)
       in
       Dep_graph.make ~dir ~per_module)
-;;
-
-let deps_of ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx module_ =
-  deps_of ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx (Normal module_)
 ;;

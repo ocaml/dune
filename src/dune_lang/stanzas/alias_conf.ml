@@ -23,7 +23,7 @@ let decode =
      String_with_vars.add_user_vars_to_decoding_env
        (Bindings.var_names deps)
        (let+ name = field "name" Alias.decode
-        and+ package = field_o "package" Stanza_common.Pkg.decode
+        and+ package = field_o "package" Stanza_pkg.decode
         and+ action =
           field_o
             "action"

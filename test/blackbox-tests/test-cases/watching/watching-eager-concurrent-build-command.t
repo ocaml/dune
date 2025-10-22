@@ -4,8 +4,6 @@ Demonstrate running "dune build" concurrently with an eager rpc server.
   $ echo '(executable (name foo))' > dune
   $ echo 'let () = print_endline "Hello, World!"' > foo.ml
 
-Build the project once before starting the watch server so the watch server starts immediately.
-  $ dune build
   $ dune build --watch &
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
@@ -23,16 +21,18 @@ Build the project once before starting the watch server so the watch server star
   Hint: Did you mean print_endline?
   Had 1 error, waiting for filesystem changes...
 
+Make sure the RPC server is properly started:
+  $ dune rpc ping --wait
+  Server appears to be responding normally
+
 Demonstrate that we can run "dune build" while the watch server is running.
   $ dune build
   Success
 
 Demonstrate that a warning is displayed when extra arguments are passed to
 "dune build", since those arguments will be ignored.
-  $ dune build --auto-promote 2>&1 | sed 's/pid: [0-9]*/pid: PID/g'
-  Warning: Your build request is being forwarded to a running Dune instance
-  (pid: PID) so most command-line arguments will be ignored.
-  Success
+  $ dune build --auto-promote 2>&1 | tr '\n' ' ' | sed 's/(pid: [0-9]*)/(pid: PID)/'
+  Warning: Your build request is being forwarded to a running Dune instance (pid: PID). Note that certain command line arguments may be ignored. Success 
 
 Demonstrate that error messages are still printed by "dune build" when it's
 acting as an RPC client while running concurrently with an RPC server.

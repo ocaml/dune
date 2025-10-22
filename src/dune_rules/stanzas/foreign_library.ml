@@ -10,6 +10,7 @@ type t =
 
 let decode =
   let open Dune_lang.Decoder in
+  let* () = Dune_lang.Syntax.since Stanza.syntax (2, 0) in
   fields
     (let+ archive_name_loc, archive_name =
        located (field "archive_name" Foreign.Archive.Name.decode)

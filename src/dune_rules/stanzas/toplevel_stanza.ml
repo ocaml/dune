@@ -15,6 +15,7 @@ include Stanza.Make (struct
 
 let decode =
   let open Dune_lang.Decoder in
+  let* () = Dune_lang.Syntax.since Stanza.syntax (1, 7) in
   fields
     (let+ loc = loc
      and+ name = field "name" string

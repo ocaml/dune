@@ -11,6 +11,7 @@ module Request = struct
   let promote = Procedures.Public.promote.decl
   let promote_many = Procedures.Public.promote_many.decl
   let build_dir = Procedures.Public.build_dir.decl
+  let runtest = Procedures.Public.runtest.decl
 end
 
 module Notification = struct

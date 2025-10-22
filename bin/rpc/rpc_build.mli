@@ -6,6 +6,8 @@ open! Import
     running then raise a [User_error].  *)
 val build
   :  wait:bool
+  -> Common.Builder.t
+  -> Dune_util.Global_lock.Lock_held_by.t
   -> Dune_lang.Dep_conf.t list
   -> (Dune_rpc.Build_outcome_with_diagnostics.t, Dune_rpc.Response.Error.t) result Fiber.t
 

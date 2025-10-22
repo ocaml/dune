@@ -236,7 +236,7 @@ let decode =
        field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.standard
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (2, 9)) ()
      and+ package =
-       Stanza_common.Pkg.field_opt () ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9))
+       Stanza_pkg.field_opt () ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9))
      and+ packages =
        field
          ~default:[]
@@ -271,13 +271,7 @@ let decode =
 let () =
   let open Dune_lang.Decoder in
   let decode = Dune_lang.Syntax.since Stanza.syntax (2, 4) >>> decode in
-  Dune_project.Extension.register_simple
-    syntax
-    (return
-       [ ( "mdx"
-         , let+ stanza = decode in
-           [ make_stanza stanza ] )
-       ])
+  Dune_project.Extension.register_simple syntax (return [ "mdx", decode_stanza decode ])
 ;;
 
 (** Returns the list of files (in _build) to be passed to mdx for the given

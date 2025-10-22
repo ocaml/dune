@@ -17,6 +17,7 @@ include Stanza.Make (struct
   end)
 
 let gen_parse names =
+  let* () = Dune_lang.Syntax.since Stanza.syntax (1, 0) in
   fields
     (let* deps = field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty in
      String_with_vars.add_user_vars_to_decoding_env
@@ -25,7 +26,7 @@ let gen_parse names =
         let+ buildable = Buildable.decode Executable
         and+ link_flags = Dune_lang.Link_flags.Spec.decode ~check:None
         and+ names = names
-        and+ package = field_o "package" Stanza_common.Pkg.decode
+        and+ package = field_o "package" Stanza_pkg.decode
         and+ locks = Locks.field ()
         and+ modes =
           field

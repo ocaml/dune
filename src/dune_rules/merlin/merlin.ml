@@ -222,41 +222,33 @@ module Processed = struct
       (* Order matters here. The flags should be communicated to Merlin in the
          same order that they are passed to the compiler: user flags, pp flags
          and then opens *)
+      let flag_directive flags =
+        let flags = List.map flags ~f:(fun s -> Sexp.Atom s) in
+        make_directive "FLG" (Sexp.List flags)
+      in
       let base_flags =
         match flags with
         | [] -> None
-        | flags ->
-          Some
-            (make_directive "FLG" (Sexp.List (List.map ~f:(fun s -> Sexp.Atom s) flags)))
+        | flags -> Some (flag_directive flags)
       in
       let pp_flags =
         match pp with
         | None -> None
-        | Some { flag; args } ->
-          Some
-            (make_directive "FLG" (Sexp.List [ Atom (Pp_kind.to_flag flag); Atom args ]))
+        | Some { flag; args } -> Some (flag_directive [ Pp_kind.to_flag flag; args ])
       in
       let open_flags =
         match opens with
         | [] -> None
-        | opens ->
-          let open_flags =
-            Ocaml_flags.open_flags opens |> List.map ~f:(fun x -> Sexp.Atom x)
-          in
-          Some (make_directive "FLG" (Sexp.List open_flags))
+        | opens -> Some (flag_directive (Ocaml_flags.open_flags opens))
       in
       let parameter_flags =
         match parameters with
         | [] -> None
         | params ->
           Some
-            (make_directive
-               "FLG"
-               (Sexp.List
-                  (List.concat_map
-                     ~f:(fun m ->
-                       [ Sexp.Atom "-parameter"; Sexp.Atom (Module_name.to_string m) ])
-                     params)))
+            (flag_directive
+               (List.concat_map params ~f:(fun m ->
+                  [ "-parameter"; Module_name.to_string m ])))
       in
       List.filter_opt [ base_flags; pp_flags; open_flags; parameter_flags ]
     in

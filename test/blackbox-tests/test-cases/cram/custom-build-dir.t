@@ -21,7 +21,8 @@ path
     $TESTCASE_ROOT/tmp/default/foo.t.corrected
     to foo.t.
   [1]
-  $ sed -E '/\(pid: [0-9]+\)/{s//(pid: ###)/; s/instance.*/.../g; q;}' foo.t
+  $ cat foo.t
     $ echo "  $ echo bar" >bar.t
     $ dune runtest
-    Error: A running dune (pid: ###) ...
+    Error: RPC server not running.
+    [1]

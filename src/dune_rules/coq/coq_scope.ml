@@ -25,7 +25,9 @@ let coq_scopes_by_dir
       coq_stanzas_by_project_dir
   =
   let parent = Some public_theories in
-  let find_db dir = snd (Find_closest_source_dir.find_by_dir db_by_project_dir ~dir) in
+  let find_db dir =
+    snd (Find_closest_source_dir.find_by_dir_exn db_by_project_dir ~dir)
+  in
   Path.Source.Map.merge
     projects_by_dir
     coq_stanzas_by_project_dir

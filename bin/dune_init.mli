@@ -7,7 +7,7 @@ module Init_context : sig
   open Dune_config_file
 
   type t =
-    { dir : Path.t
+    { dir : Path.Source.t
     ; project : Dune_project.t
     ; defaults : Dune_config.Project_defaults.t
     }

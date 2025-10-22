@@ -7,7 +7,7 @@ type for_ =
 
 type t =
   { loc : Loc.t
-  ; modules : Stanza_common.Modules_settings.t
+  ; modules : Modules_settings.t
   ; empty_module_interface_if_absent : bool
   ; libraries : Lib_dep.t list
   ; foreign_archives : (Loc.t * Foreign.Archive.t) list
@@ -45,7 +45,7 @@ val decode_preprocess
 val decode_ocaml_flags : Ocaml_flags.Spec.t Dune_lang.Decoder.fields_parser
 
 (* Parser for the modules field *)
-val decode_modules : Stanza_common.Modules_settings.t Dune_lang.Decoder.fields_parser
+val decode_modules : Modules_settings.t Dune_lang.Decoder.fields_parser
 
 (* Parser for the lint field *)
 val decode_lint

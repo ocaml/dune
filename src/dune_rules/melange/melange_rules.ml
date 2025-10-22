@@ -325,34 +325,10 @@ let build_js
         With_targets.map_build command ~f:(fun command ->
           let open Action_builder.O in
           let paths =
-            let+ module_deps =
-              let deps =
-                let open Memo.O in
-                let+ deps, _ =
-                  Memo.Implicit_output.collect Rules.implicit_output (fun () ->
-                    Dep_rules.deps_of
-                      ~obj_dir
-                      ~modules
-                      ~sandbox:Sandbox_config.default
-                      ~impl:Virtual_rules.no_implements
-                      ~dir
-                      ~sctx
-                      ~ml_kind:Impl
-                      m)
-                in
-                deps
-              in
-              Action_builder.of_memo_join deps
-            in
-            List.fold_left module_deps ~init:[] ~f:(fun acc dep_m ->
-              if Module.has dep_m ~ml_kind:Impl
-              then (
-                let cmj_file =
-                  let kind : Lib_mode.Cm_kind.t = Melange Cmj in
-                  Obj_dir.Module.cm_file_exn obj_dir dep_m ~kind |> Path.build
-                in
-                cmj_file :: acc)
-              else acc)
+            let+ module_deps = Dep_rules.read_deps_of ~obj_dir ~modules ~ml_kind:Impl m in
+            List.filter_map module_deps ~f:(fun dep_m ->
+              let kind : Lib_mode.Cm_kind.t = Melange Cmj in
+              Obj_dir.Module.cm_file obj_dir dep_m ~kind |> Option.map ~f:Path.build)
           in
           Action_builder.dyn_paths_unit paths >>> command)
       | None -> command

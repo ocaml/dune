@@ -18,6 +18,7 @@ let term =
   Rpc_common.fire_request
     ~name:"ping_cmd"
     ~wait
+    builder
     Dune_rpc_private.Procedures.Public.ping
     ()
   >>| function

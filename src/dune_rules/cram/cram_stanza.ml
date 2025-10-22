@@ -78,7 +78,7 @@ let decode =
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
      and+ locks = Locks.field ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9)) ()
      and+ package =
-       Stanza_common.Pkg.field_opt ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8)) ()
+       Stanza_pkg.field_opt ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8)) ()
      and+ runtest_alias =
        field_o
          "runtest_alias"
@@ -111,11 +111,4 @@ let decode =
      ; timeout
      ; conflict
      })
-;;
-
-let stanza =
-  [ ( "cram"
-    , let+ t = decode in
-      List.singleton (make_stanza t) )
-  ]
 ;;

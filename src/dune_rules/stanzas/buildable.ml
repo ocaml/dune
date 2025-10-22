@@ -8,7 +8,7 @@ type for_ =
 
 type t =
   { loc : Loc.t
-  ; modules : Stanza_common.Modules_settings.t
+  ; modules : Modules_settings.t
   ; empty_module_interface_if_absent : bool
   ; libraries : Lib_dep.t list
   ; foreign_archives : (Loc.t * Foreign.Archive.t) list
@@ -39,7 +39,7 @@ let decode_preprocess =
 ;;
 
 let decode_ocaml_flags = Ocaml_flags.Spec.decode
-let decode_modules = Stanza_common.Modules_settings.decode
+let decode_modules = Modules_settings.decode
 let decode_lint = field "lint" Lint.decode ~default:Lint.default
 let decode_allow_overlapping = field_b "allow_overlapping_dependencies"
 

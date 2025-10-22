@@ -17,7 +17,7 @@ module DB = struct
   type scope = t
   type t = { by_dir : scope Path.Source.Map.t }
 
-  let find_by_dir t dir = Find_closest_source_dir.find_by_dir t.by_dir ~dir
+  let find_by_dir t dir = Find_closest_source_dir.find_by_dir_exn t.by_dir ~dir
 
   let find_by_project t project =
     Path.Source.Map.find_exn t.by_dir (Dune_project.root project)

@@ -7,7 +7,7 @@ module Emit = struct
     ; target : string
     ; alias : Alias.Name.t option
     ; module_systems : (Melange.Module_system.t * Filename.Extension.t) list
-    ; modules : Stanza_common.Modules_settings.t
+    ; modules : Modules_settings.t
     ; emit_stdlib : bool
     ; libraries : Lib_dep.t list
     ; package : Package.t option
@@ -112,7 +112,7 @@ module Emit = struct
          field "module_systems" module_systems ~default:[ Melange.Module_system.default ]
        and+ libraries =
          field "libraries" (Lib_dep.L.decode ~allow_re_export:false) ~default:[]
-       and+ package = field_o "package" Stanza_common.Pkg.decode
+       and+ package = field_o "package" Stanza_pkg.decode
        and+ runtime_deps =
          field
            "runtime_deps"
@@ -125,7 +125,7 @@ module Emit = struct
        and+ compile_flags = Ordered_set_lang.Unexpanded.field "compile_flags"
        and+ allow_overlapping_dependencies = field_b "allow_overlapping_dependencies"
        and+ emit_stdlib = field "emit_stdlib" bool ~default:true
-       and+ modules = Stanza_common.Modules_settings.decode
+       and+ modules = Modules_settings.decode
        and+ enabled_if =
          let open Enabled_if in
          let allowed_vars = Any in
@@ -163,9 +163,5 @@ end
 let () =
   Dune_project.Extension.register_simple
     Dune_lang.Melange.syntax
-    (return
-       [ ( "melange.emit"
-         , let+ stanza = Emit.decode in
-           [ Emit.make_stanza stanza ] )
-       ])
+    (return [ ("melange.emit", Emit.(decode_stanza decode)) ])
 ;;

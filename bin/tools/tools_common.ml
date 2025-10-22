@@ -33,18 +33,22 @@ let build_dev_tool_directly common dev_tool =
   | Ok () -> ()
 ;;
 
-let build_dev_tool_via_rpc dev_tool =
+let build_dev_tool_via_rpc builder lock_held_by dev_tool =
   let target = dev_tool_build_target dev_tool in
-  Build.build_via_rpc_server ~print_on_success:false ~targets:[ target ]
+  Build.build_via_rpc_server
+    ~print_on_success:false
+    ~targets:[ target ]
+    builder
+    lock_held_by
 ;;
 
-let lock_and_build_dev_tool ~common ~config dev_tool =
+let lock_and_build_dev_tool ~common ~config builder dev_tool =
   let open Fiber.O in
   match Dune_util.Global_lock.lock ~timeout:None with
-  | Error _lock_held_by ->
+  | Error lock_held_by ->
     Scheduler.go_without_rpc_server ~common ~config (fun () ->
       let* () = Lock_dev_tool.lock_dev_tool dev_tool |> Memo.run in
-      build_dev_tool_via_rpc dev_tool)
+      build_dev_tool_via_rpc builder lock_held_by dev_tool)
   | Ok () ->
     Scheduler.go_with_rpc_server ~common ~config (fun () ->
       build_dev_tool_directly common dev_tool)
@@ -62,8 +66,8 @@ let run_dev_tool workspace_root dev_tool ~args =
   restore_cwd_and_execve workspace_root exe_path_string args env
 ;;
 
-let lock_build_and_run_dev_tool ~common ~config dev_tool ~args =
-  lock_and_build_dev_tool ~common ~config dev_tool;
+let lock_build_and_run_dev_tool ~common ~config builder dev_tool ~args =
+  lock_and_build_dev_tool ~common ~config builder dev_tool;
   run_dev_tool (Common.root common) dev_tool ~args
 ;;
 
@@ -106,7 +110,7 @@ let install_command dev_tool =
   let term =
     let+ builder = Common.Builder.term in
     let common, config = Common.init builder in
-    lock_and_build_dev_tool ~common ~config dev_tool
+    lock_and_build_dev_tool ~common ~config builder dev_tool
   in
   let info =
     let doc = sprintf "Install %s as a dev tool" exe_name in
@@ -121,7 +125,7 @@ let exec_command dev_tool =
     let+ builder = Common.Builder.term
     and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS")) in
     let common, config = Common.init builder in
-    lock_build_and_run_dev_tool ~common ~config dev_tool ~args
+    lock_build_and_run_dev_tool ~common ~config builder dev_tool ~args
   in
   let info =
     let doc =

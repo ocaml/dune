@@ -8,6 +8,8 @@ open Import
 val build_via_rpc_server
   :  print_on_success:bool
   -> targets:Dune_lang.Dep_conf.t list
+  -> Common.Builder.t
+  -> Dune_util.Global_lock.Lock_held_by.t
   -> unit Fiber.t
 
 val run_build_system

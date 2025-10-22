@@ -2338,16 +2338,10 @@ let setup_rules ~components ~dir ctx =
   assert (String.equal Pkg_dev_tool.install_path_base_dir_name ".dev-tool");
   match Context_name.is_default ctx, components with
   | true, [ ".dev-tool"; dev_tool_package_name ] ->
-    (* only generate rules if dev-tools should be enabled *)
-    (match Config.get Compile_time.lock_dev_tools with
-     | `Enabled ->
-       let pkg_name = Package.Name.of_string dev_tool_package_name in
-       let dev_tool = Pkg_dev_tool.of_package_name pkg_name in
-       let* db, pkg_digest =
-         DB.of_dev_tool (Dune_pkg.Dev_tool.of_package_name pkg_name)
-       in
-       setup_package_rules db ~package_universe:(Dev_tool dev_tool) ~dir ~pkg_digest
-     | `Disabled -> Memo.return @@ Gen_rules.make (Memo.return Rules.empty))
+    let pkg_name = Package.Name.of_string dev_tool_package_name in
+    let dev_tool = Pkg_dev_tool.of_package_name pkg_name in
+    let* db, pkg_digest = DB.of_dev_tool (Dune_pkg.Dev_tool.of_package_name pkg_name) in
+    setup_package_rules db ~package_universe:(Dev_tool dev_tool) ~dir ~pkg_digest
   | true, [ ".dev-tool" ] ->
     Gen_rules.make
       ~build_dir_only_sub_dirs:

@@ -29,7 +29,7 @@ let decode =
        field_o
          "source_trees"
          (Dune_lang.Syntax.since Stanza.syntax (3, 11) >>> repeat Install_entry.Dir.decode)
-     and+ package = Stanza_common.Pkg.field ~stanza:"install"
+     and+ package = Stanza_pkg.field ~stanza:"install"
      and+ enabled_if =
        let allowed_vars = Enabled_if.common_vars ~since:(2, 6) in
        Enabled_if.decode ~allowed_vars ~since:(Some (2, 6)) ()

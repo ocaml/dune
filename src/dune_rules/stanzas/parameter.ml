@@ -50,6 +50,7 @@ let to_library t =
 ;;
 
 let decode =
+  let* () = Dune_lang.Syntax.since Dune_lang.Oxcaml.syntax (0, 1) in
   fields
     (let* stanza_loc = loc in
      let* project = Dune_project.get_exn () in
@@ -82,7 +83,7 @@ let decode =
        }
      and+ name = field_o "name" Lib_name.Local.decode_loc
      and+ public = field_o "public_name" (Public_lib.decode ~allow_deprecated_names:false)
-     and+ package = field_o "package" (located Stanza_common.Pkg.decode)
+     and+ package = field_o "package" (located Stanza_pkg.decode)
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
      and+ synopsis = field_o "synopsis" string
      and+ optional = field_b "optional" in

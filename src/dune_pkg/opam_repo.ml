@@ -154,24 +154,32 @@ let load_packages_from_git rev_store opam_packages =
         ~files_dir:(Some files_dir))
 ;;
 
-let all_packages_versions_in_dir loc ~dir opam_package_name =
-  let dir = Path.append_local dir (Paths.package_root opam_package_name) in
+let all_packages_in_dir_at_path ~dir ~path loc =
+  let dir = Path.append_local dir path in
   match Path.readdir_unsorted dir with
-  | Ok version_dirs -> List.map version_dirs ~f:OpamPackage.of_string
+  | Ok version_dirs -> version_dirs
   | Error (Unix.ENOENT, _, _) -> []
   | Error e ->
+    let err =
+      if Path.Local.(path <> Paths.packages) then "package versions" else "packages"
+    in
     User_error.raise
       ~loc
       [ Pp.textf
-          "Unable to read package versions from %s: %s"
+          "Unable to read %s from %s: %s"
+          err
           (Path.to_string_maybe_quoted dir)
           (Unix_error.Detailed.to_string_hum e)
       ]
 ;;
 
-let all_packages_versions_at_rev rev opam_package_name =
-  Paths.package_root opam_package_name
-  |> Rev_store.At_rev.directory_entries rev ~recursive:true
+let all_packages_versions_in_dir loc ~dir opam_package_name =
+  let path = Paths.package_root opam_package_name in
+  all_packages_in_dir_at_path ~dir ~path loc |> List.map ~f:OpamPackage.of_string
+;;
+
+let all_packages_versions_at_rev_at_path ~path rev =
+  Rev_store.At_rev.directory_entries rev ~recursive:true path
   |> Rev_store.File.Set.to_list
   |> List.filter_map ~f:(fun file ->
     let path = Rev_store.File.path file in
@@ -184,6 +192,11 @@ let all_packages_versions_at_rev rev opam_package_name =
       in
       file, package
     | _ -> None)
+;;
+
+let all_packages_versions_at_rev rev opam_package_name =
+  let path = Paths.package_root opam_package_name in
+  all_packages_versions_at_rev_at_path ~path rev
 ;;
 
 module Key = struct
@@ -257,6 +270,19 @@ let load_all_versions_by_keys ts =
 
 let load_all_versions ts opam_package_name =
   all_packages_versions_map ts opam_package_name |> load_all_versions_by_keys
+;;
+
+let packages_in_repo repo =
+  let path = Paths.packages in
+  match repo.source with
+  | Repo rev ->
+    all_packages_versions_at_rev_at_path ~path rev
+    |> List.map ~f:(fun (_opam_file, pkg) -> OpamPackage.name pkg)
+    |> OpamPackage.Name.Set.of_list
+    |> OpamPackage.Name.Set.elements
+  | Directory dir ->
+    all_packages_in_dir_at_path ~path ~dir repo.loc
+    |> List.map ~f:OpamPackage.Name.of_string
 ;;
 
 module Private = struct

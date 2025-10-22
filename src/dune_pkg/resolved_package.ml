@@ -4,7 +4,7 @@ type extra_files =
   | Inside_files_dir of Path.t option
   | Git_files of Path.Local.t option * Rev_store.At_rev.t
 
-type nonrec t =
+type rest =
   { opam_file : OpamFile.OPAM.t
   ; package : OpamPackage.t
   ; extra_files : extra_files
@@ -12,14 +12,30 @@ type nonrec t =
   ; dune_build : bool
   }
 
-let dune_build t = t.dune_build
-let loc t = t.loc
-let package t = t.package
-let opam_file t = t.opam_file
+type nonrec t =
+  | Dune
+  | Rest of rest
 
-let set_url t url =
-  let opam_file = OpamFile.OPAM.with_url (OpamFile.URL.create url) t.opam_file in
-  { t with opam_file }
+let dune = Dune
+
+let dune_build = function
+  | Dune -> false
+  | Rest t -> t.dune_build
+;;
+
+let loc = function
+  | Dune -> Loc.none
+  | Rest t -> t.loc
+;;
+
+let package = function
+  | Dune -> Dune_dep.package
+  | Rest t -> t.package
+;;
+
+let opam_file = function
+  | Dune -> Dune_dep.opam_file
+  | Rest t -> t.opam_file
 ;;
 
 let add_opam_package_to_opam_file package opam_file =
@@ -28,37 +44,44 @@ let add_opam_package_to_opam_file package opam_file =
   |> OpamFile.OPAM.with_name (OpamPackage.name package)
 ;;
 
-let read_opam_file package ~opam_file_path ~opam_file_contents =
-  Opam_file.read_from_string_exn ~contents:opam_file_contents opam_file_path
-  |> add_opam_package_to_opam_file package
+let read_opam_file package ~opam_file_path ~opam_file_contents ~url =
+  let opam_file =
+    Opam_file.read_from_string_exn ~contents:opam_file_contents opam_file_path
+    |> add_opam_package_to_opam_file package
+  in
+  match url with
+  | None -> opam_file
+  | Some url -> OpamFile.OPAM.with_url (OpamFile.URL.create url) opam_file
 ;;
 
-let git_repo package ~opam_file ~opam_file_contents rev ~files_dir =
+let git_repo package ~opam_file ~opam_file_contents rev ~files_dir ~url =
   let opam_file_path = Path.of_local opam_file in
-  let opam_file = read_opam_file package ~opam_file_path ~opam_file_contents in
+  let opam_file = read_opam_file package ~opam_file_path ~opam_file_contents ~url in
   let loc = Loc.in_file opam_file_path in
-  { dune_build = false
-  ; loc
-  ; package
-  ; opam_file
-  ; extra_files = Git_files (files_dir, rev)
-  }
+  Rest
+    { dune_build = false
+    ; loc
+    ; package
+    ; opam_file
+    ; extra_files = Git_files (files_dir, rev)
+    }
 ;;
 
-let local_fs package ~dir ~opam_file_path ~files_dir =
+let local_fs package ~dir ~opam_file_path ~files_dir ~url =
   let opam_file_path = Path.append_local dir opam_file_path in
   let files_dir = Option.map files_dir ~f:(Path.append_local dir) in
   let opam_file =
     let opam_file_contents = Io.read_file ~binary:true opam_file_path in
-    read_opam_file package ~opam_file_path ~opam_file_contents
+    read_opam_file package ~opam_file_path ~opam_file_contents ~url
   in
   let loc = Loc.in_file opam_file_path in
-  { dune_build = false
-  ; loc
-  ; package
-  ; extra_files = Inside_files_dir files_dir
-  ; opam_file
-  }
+  Rest
+    { dune_build = false
+    ; loc
+    ; package
+    ; extra_files = Inside_files_dir files_dir
+    ; opam_file
+    }
 ;;
 
 (* Scan a path recursively down retrieving a list of all files together with their
@@ -92,7 +115,7 @@ let local_package ~command_source loc opam_file opam_package =
   in
   let opam_file = add_opam_package_to_opam_file opam_package opam_file in
   let package = OpamFile.OPAM.package opam_file in
-  { dune_build; opam_file; package; loc; extra_files = Inside_files_dir None }
+  Rest { dune_build; opam_file; package; loc; extra_files = Inside_files_dir None }
 ;;
 
 open Fiber.O
@@ -100,10 +123,18 @@ open Fiber.O
 let get_opam_package_files resolved_packages =
   let indexed = List.mapi resolved_packages ~f:(fun i w -> i, w) |> Int.Map.of_list_exn in
   let from_dirs, from_git =
-    Int.Map.partition_map indexed ~f:(fun (resolved_package : t) ->
-      match resolved_package.extra_files with
-      | Git_files (files_dir, rev) -> Right (files_dir, rev)
-      | Inside_files_dir dir -> Left dir)
+    let _dune, without_dune =
+      Int.Map.partition_map indexed ~f:(function
+        | Dune -> Left ()
+        | Rest t -> Right t)
+    in
+    let dirs, git =
+      Int.Map.partition_map without_dune ~f:(fun (resolved_package : rest) ->
+        match resolved_package.extra_files with
+        | Git_files (files_dir, rev) -> Right (files_dir, rev)
+        | Inside_files_dir dir -> Left dir)
+    in
+    dirs, git
   in
   let+ from_git =
     if Int.Map.is_empty from_git

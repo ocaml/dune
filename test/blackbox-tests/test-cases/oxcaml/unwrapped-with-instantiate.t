@@ -135,3 +135,29 @@ Testing that it also works with another layer of library:
   $ dune exec ./bin/bin.exe
   lib:helper:IMPL
   lib2:lib:helper:IMPL helper:IMPL
+
+TODO: An unwrapped library currently has to instantiate the functors manually,
+because we don't have a file where to put the instantiations:
+
+  $ mkdir unwrap_lib
+  $ cat > unwrap_lib/unwrap_a.ml <<EOF
+  > module Lib = Lib(Param)(Impl) [@jane.non_erasable.instances]
+  > let a () = "a:" ^ Lib.v ()
+  > EOF
+  $ echo 'let b () = "b:" ^ Unwrap_a.a ()' > unwrap_lib/unwrap_b.ml
+  $ cat > unwrap_lib/dune <<EOF
+  > (library
+  >   (name unwrap_lib)
+  >   (wrapped false)
+  >   (flags "-w" "-53") ; ignore misplaced-attribute warning
+  >   (libraries (lib impl)))
+  > EOF
+
+  $ echo 'let () = print_endline (Unwrap_a.a () ^ "," ^ Unwrap_b.b ())' > bin/bin.ml
+  $ cat > bin/dune <<EOF
+  > (executable (name bin) (libraries unwrap_lib))
+  > EOF
+
+  $ dune exec ./bin/bin.exe
+  a:lib:helper:IMPL,b:a:lib:helper:IMPL
+

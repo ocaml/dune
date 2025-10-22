@@ -1,5 +1,5 @@
 ******************
-Practical Examples
+Dune by Example
 ******************
 
 .. TODO(diataxis)

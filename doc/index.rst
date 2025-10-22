@@ -8,12 +8,12 @@ libraries, run tests, and much more.
    :maxdepth: 2
 
    overview
+   core-concepts/index
    first-steps-with-dune/index
    dune-package-management/index
-   core-concepts/index
+   practical-examples
    command-line-interface
    howto/index
-   practical-examples
    reference/index
    explanation/index
    advanced/index

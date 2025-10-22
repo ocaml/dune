@@ -784,27 +784,34 @@ end
 module Build_outcome_with_diagnostics = struct
   type t =
     | Success
+    | Warn of Compound_user_error.t list
     | Failure of Compound_user_error.t list
 
   let sexp_v1 =
     let open Conv in
     let success = constr "Success" unit (fun () -> Success) in
+    let warn = constr "Warn" unit (fun () -> Warn []) in
     let failure = constr "Failure" unit (fun () -> Failure []) in
-    let variants = [ econstr success; econstr failure ] in
+    let variants = [ econstr success; econstr warn; econstr failure ] in
     sum variants (function
       | Success -> case () success
+      | Warn _ -> case () warn
       | Failure _ -> case () failure)
   ;;
 
   let sexp_v2 =
     let open Conv in
     let success = constr "Success" unit (fun () -> Success) in
+    let warn =
+      constr "Warn" (list Compound_user_error.sexp) (fun warnings -> Warn warnings)
+    in
     let failure =
       constr "Failure" (list Compound_user_error.sexp) (fun errors -> Failure errors)
     in
-    let variants = [ econstr success; econstr failure ] in
+    let variants = [ econstr success; econstr warn; econstr failure ] in
     sum variants (function
       | Success -> case () success
+      | Warn warnings -> case warnings warn
       | Failure errors -> case errors failure)
   ;;
 
@@ -814,25 +821,17 @@ end
 module Files_to_promote = struct
   type t =
     | All
-    | These of Stdune.Path.Source.t list * (Stdune.Path.Source.t -> unit)
-
-  let on_missing fn =
-    Stdune.User_warning.emit
-      [ Pp.paragraphf
-          "Nothing to promote for %s."
-          (Stdune.Path.Source.to_string_maybe_quoted fn)
-      ]
-  ;;
+    | These of Stdune.Path.Source.t list
 
   let sexp =
     let open Conv in
     let to_ = function
       | [] -> All
-      | paths -> These (List.map ~f:Stdune.Path.Source.of_string paths, on_missing)
+      | paths -> These (List.map ~f:Stdune.Path.Source.of_string paths)
     in
     let from = function
       | All -> []
-      | These (paths, _) -> List.map ~f:Stdune.Path.Source.to_string paths
+      | These paths -> List.map ~f:Stdune.Path.Source.to_string paths
     in
     iso (list Path.sexp) to_ from
   ;;

@@ -27,7 +27,17 @@ end
 val finalize : unit -> unit
 
 val load_db : unit -> File.t list
-val filter_db : Dune_rpc_private.Files_to_promote.t -> File.t list -> File.t list
-val diff_for_file : File.t -> (Print_diff.Diff.t, User_message.t) result Fiber.t
-val promote_files_registered_in_last_run : Dune_rpc_private.Files_to_promote.t -> unit
-val display : Dune_rpc_private.Files_to_promote.t -> unit Fiber.t
+
+val promote_files_registered_in_last_run
+  :  Dune_rpc_private.Files_to_promote.t
+  -> Path.Source.t list
+
+val display_diffs
+  :  on_missing:(Path.Source.t -> unit)
+  -> Dune_rpc_private.Files_to_promote.t
+  -> unit Fiber.t
+
+val display_files
+  :  on_missing:(Path.Source.t -> unit)
+  -> Dune_rpc_private.Files_to_promote.t
+  -> unit Fiber.t

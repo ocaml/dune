@@ -41,11 +41,17 @@ let quote_for_sh fn =
 ;;
 
 let cram_stanzas =
+  let is_conflict_marker line =
+    match line with
+    | "=======" | "%%%%%%%" | "+++++++" | "-------" | "|||||||" -> true
+    | _ -> false
+  in
   let find_conflict state line =
     match state with
-    | `No_conflict when line = "<<<<<<<" -> `Start
-    | `Start when line = "=======" -> `Split
-    | `Split when line = ">>>>>>>" ->
+    | `No_conflict when line = "<<<<<<<" -> `Started
+    | `Started when is_conflict_marker line -> `Has_markers
+    | `Has_markers when is_conflict_marker line -> `Has_markers
+    | `Has_markers when line = ">>>>>>>" ->
       (* CR-someday rgrinberg for alizter: insert a location spanning the
          entire once we start extracting it *)
       User_error.raise

@@ -27,12 +27,12 @@ test.
 
 This should fail initially but not with the "Unable to resolve symlink" error.
   $ dune build @bench
-  File "dune", lines 4-7, characters 0-55:
-  4 | (rule
-  5 |  (alias bench)
-  6 |  (action
-  7 |   (diff promoted x.gen)))
-  Error: Unable to resolve symlink _build/default/promoted
+  File "promoted", line 1, characters 0-0:
+  ------ /dev/null
+  ++++++ x.gen
+  File "/dev/null", line 1, characters 0-1:
+  +|toto
+  No newline at the end of x.gen
   [1]
 
 Promotion should work

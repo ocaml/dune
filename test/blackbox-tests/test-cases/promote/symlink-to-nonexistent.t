@@ -21,7 +21,7 @@ Unset INSIDE_DUNE and explicitly pass --root from now on.
 
 This should fail initially but not with the "Unable to resolve symlink" error.
   $ dune build @bench --root . 2>&1 | grep "Error"
-  Error: Unable to resolve symlink _build/default/promoted
+  [1]
 
 Promotion should work
   $ dune promote --root .

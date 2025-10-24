@@ -523,7 +523,7 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
                   ; ".ppx"
                   ; ".dune"
                   ; ".topmod"
-                  ; ".parameterized"
+                  ; ".parameterised"
                   ]
             in
             Filename.Set.union automatic toplevel
@@ -612,10 +612,10 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
       ~dir
       (Subdir_set.of_set (Filename.Set.of_list [ "cc_vendor" ]))
       (fun () -> Configurator_rules.gen_rules ctx)
-  | ".parameterized" :: rest ->
+  | ".parameterised" :: rest ->
     let* sctx = sctx
     and* scope = Scope.DB.find_by_dir dir in
-    Parameterized_rules.gen_rules ~sctx ~scope ~dir rest
+    Parameterised_rules.gen_rules ~sctx ~scope ~dir rest
   | _ -> gen_rules_regular_directory sctx ~src_dir ~components ~dir
 ;;
 

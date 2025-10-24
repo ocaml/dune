@@ -1,4 +1,4 @@
-Test that unwrapped libraries can use instantation of parameterized libraries.
+Test that unwrapped libraries can use instantation of parameterised libraries.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.20)
@@ -46,7 +46,7 @@ exactly implement the parameter signature (a single mli):
   > (library (name impl) (implements param))
   > EOF
 
-A parameterized library:
+A parameterised library:
 
   $ mkdir lib
   $ echo 'let v () = "helper:" ^ String.uppercase_ascii Param.v' > lib/helper.ml

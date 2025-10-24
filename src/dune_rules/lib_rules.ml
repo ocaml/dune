@@ -513,7 +513,7 @@ let cctx
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let requires_link = Lib.Compile.requires_link compile_info in
   let instances =
-    Parameterized_rules.instances ~sctx ~db:(Scope.libs scope) lib.buildable.libraries
+    Parameterised_rules.instances ~sctx ~db:(Scope.libs scope) lib.buildable.libraries
   in
   let* modes =
     let+ ocaml =

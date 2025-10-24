@@ -517,7 +517,7 @@ let resolve_main_module_name t =
 
 let main_module_name t = Memo.return (resolve_main_module_name t)
 
-module Parameterized = struct
+module Parameterised = struct
   type nonrec argument = argument =
     { arg : t
     ; param_name : Module_name.t
@@ -526,13 +526,13 @@ module Parameterized = struct
     }
 
   type status =
-    | Not_parameterized
+    | Not_parameterised
     | Partial
     | Complete
 
   let status t =
     if List.for_all t.arguments ~f:Option.is_none
-    then Not_parameterized
+    then Not_parameterised
     else (
       let rec check_instantiate lib =
         List.for_all lib.arguments ~f:(function
@@ -548,7 +548,7 @@ module Parameterized = struct
       | Some { arg; _ } -> arg)
   ;;
 
-  let parameterized_arguments t =
+  let parameterised_arguments t =
     let open Resolve.O in
     let+ parameters = t.parameters in
     List.combine parameters t.arguments
@@ -568,7 +568,7 @@ module Parameterized = struct
          | Gt -> go acc existing' given)
       | ((_, None) as keep) :: existing, [] -> go (keep :: acc) existing []
     in
-    let* t_arguments = parameterized_arguments t in
+    let* t_arguments = parameterised_arguments t in
     let+ arguments = go [] t_arguments new_arguments in
     let arguments = List.map ~f:snd arguments in
     { t with arguments }
@@ -604,7 +604,7 @@ module Parameterized = struct
     and* args = make_arguments args in
     let* lib = apply_arguments lib args in
     let+ () =
-      let* all_args = parameterized_arguments lib in
+      let* all_args = parameterised_arguments lib in
       Resolve.List.iter all_args ~f:(function
         | param, None when not (List.exists parent_parameters ~f:(equal param)) ->
           Error.missing_parameter ~loc param.info
@@ -615,7 +615,7 @@ module Parameterized = struct
 
   let complement_arguments ~parent dep =
     let open Resolve.O in
-    let* parent_arguments = parameterized_arguments parent in
+    let* parent_arguments = parameterised_arguments parent in
     let parent_arguments =
       List.filter_map parent_arguments ~f:(fun (param, opt_arg) ->
         Option.map opt_arg ~f:(fun arg -> param, arg))
@@ -653,23 +653,23 @@ module Parameterized = struct
     Resolve.return deps
   ;;
 
-  let parameterized_name t =
-    let rec parameterized_name t =
-      let args = arguments t |> List.map ~f:parameterized_name in
-      { Parameterized_name.name = Lib_name.to_string (name t); args }
+  let parameterised_name t =
+    let rec parameterised_name t =
+      let args = arguments t |> List.map ~f:parameterised_name in
+      { Parameterised_name.name = Lib_name.to_string (name t); args }
     in
-    Parameterized_name.to_string (parameterized_name t)
+    Parameterised_name.to_string (parameterised_name t)
   ;;
 
   let info ~build_dir ~ext_lib t =
     match status t with
-    | Not_parameterized | Partial -> None
+    | Not_parameterised | Partial -> None
     | Complete ->
-      let parameterized_dir = Path.Build.(relative build_dir ".parameterized") in
-      let parameterized_dir =
-        Path.Build.relative parameterized_dir (Lib_name.to_string (name t))
+      let parameterised_dir = Path.Build.(relative build_dir ".parameterised") in
+      let parameterised_dir =
+        Path.Build.relative parameterised_dir (Lib_name.to_string (name t))
       in
-      let dir = Path.Build.relative parameterized_dir (parameterized_name t) in
+      let dir = Path.Build.relative parameterised_dir (parameterised_name t) in
       Some (Lib_info.for_instance ~dir ~ext_lib t.info)
   ;;
 
@@ -692,7 +692,7 @@ module Parameterized = struct
     let+ name = resolve_main_module_name t
     and+ args = applied_modules t in
     match name with
-    | Some name -> { Parameterized_name.name = Module_name.to_string name; args }
+    | Some name -> { Parameterised_name.name = Module_name.to_string name; args }
     | None -> Code_error.raise "library missing main module name" [ "lib", to_dyn t ]
   ;;
 end
@@ -1036,7 +1036,7 @@ end = struct
         then R.return ()
         else
           let* () = R.set (res, Set.add visited t) in
-          let* deps = R.lift (Resolve.Memo.lift (Parameterized.requires t)) in
+          let* deps = R.lift (Resolve.Memo.lift (Parameterised.requires t)) in
           let* () = many deps in
           R.modify (fun (res, visited) -> t :: res, visited)
       and many deps = R.List.iter deps ~f:loop in
@@ -1679,22 +1679,22 @@ end = struct
 
   let resolve_complex_deps db deps ~private_deps ~parameters =
     let open Memo.O in
-    let resolve_parameterized_dep (loc, lib) ~arguments =
+    let resolve_parameterised_dep (loc, lib) ~arguments =
       resolve_dep db (loc, lib) ~private_deps
       >>| function
       | None -> None
       | Some dep ->
-        Some (Parameterized.instantiate ~loc dep arguments ~parent_parameters:parameters)
+        Some (Parameterised.instantiate ~loc dep arguments ~parent_parameters:parameters)
     in
     Memo.List.fold_left ~init:Resolved.Builder.empty deps ~f:(fun acc (dep : Lib_dep.t) ->
       match dep with
       | Re_export lib ->
-        resolve_parameterized_dep lib ~arguments:[]
+        resolve_parameterised_dep lib ~arguments:[]
         >>| (function
          | None -> acc
          | Some lib -> Resolved.Builder.add_re_exports acc lib)
       | Direct lib ->
-        resolve_parameterized_dep lib ~arguments:[]
+        resolve_parameterised_dep lib ~arguments:[]
         >>| (function
          | None -> acc
          | Some lib -> Resolved.Builder.add_resolved acc lib)
@@ -1704,14 +1704,14 @@ end = struct
       | Instantiate { loc; lib; arguments; new_name = _ } ->
         let* arguments =
           Memo.List.filter_map arguments ~f:(fun (loc, dep) ->
-            resolve_parameterized_dep (loc, dep) ~arguments:[]
+            resolve_parameterised_dep (loc, dep) ~arguments:[]
             >>| Option.map ~f:(fun dep -> loc, dep))
         in
         let acc =
           List.fold_left arguments ~init:acc ~f:(fun acc (_loc, dep) ->
             Resolved.Builder.add_resolved acc dep)
         in
-        resolve_parameterized_dep (loc, lib) ~arguments
+        resolve_parameterised_dep (loc, lib) ~arguments
         >>| (function
          | None -> acc
          | Some lib -> Resolved.Builder.add_resolved acc lib))
@@ -2024,16 +2024,16 @@ end = struct
           in
           let* new_stack = R.lift (Dep_stack.push stack ~implements_via lib) in
           let* (deps : lib list) =
-            R.lift (Resolve.Memo.lift (Parameterized.requires lib))
+            R.lift (Resolve.Memo.lift (Parameterised.requires lib))
           in
           let* unimplemented' = R.lift (Vlib.Unimplemented.add state.unimplemented lib) in
           let* () =
             R.modify (fun state -> { state with unimplemented = unimplemented' })
           in
           let* () = R.List.iter deps ~f:(fun l -> visit t (None, l) ~stack:new_stack) in
-          (match Parameterized.status lib with
+          (match Parameterised.status lib with
            | Partial -> R.return ()
-           | Not_parameterized | Complete ->
+           | Not_parameterised | Complete ->
              R.modify (fun state -> { state with result = (lib, stack) :: state.result })))
     ;;
   end

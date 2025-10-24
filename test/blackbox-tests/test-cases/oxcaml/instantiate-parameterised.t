@@ -1,4 +1,4 @@
-Testing the instantiation of parameterized libraries. This feature requires oxcaml:
+Testing the instantiation of parameterised libraries. This feature requires oxcaml:
 
   $ cat >> dune-project <<EOF
   > (lang dune 3.20)
@@ -35,7 +35,7 @@ And two implementations, one with a singleton module and the other with more:
   > (library (public_name project.b_impl) (name b_impl) (implements b))
   > EOF
 
-And a parameterized library:
+And a parameterised library:
 
   $ mkdir lib_ab
   $ echo 'let ab = A.a ^ B.b' > lib_ab/lib_ab.ml

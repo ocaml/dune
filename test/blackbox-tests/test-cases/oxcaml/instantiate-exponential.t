@@ -1,4 +1,4 @@
-The parameterized libraries can themselves implement a parameter, leading to
+The parameterised libraries can themselves implement a parameter, leading to
 this exponential sequence of instantiations:
 
   $ cat >dune-project <<EOF
@@ -28,7 +28,7 @@ And a final binary:
 
   $ echo 'let () = print_endline J.v' > bin.ml
 
-Each implementation of `x` is itself parameterized by `x`, with a dependency on
+Each implementation of `x` is itself parameterised by `x`, with a dependency on
 the previous implementation with `(lib lib)` which causes this exponential
 doubling:
 
@@ -52,9 +52,9 @@ instantiated library names. For dune folders, the number of exclamation points
 indicates the level of application nesting, i.e. `f!g!!x = f(g(x))` and `f!g!x
 = f(g)(x)`.
 
-The instantiated libraries are collected in .parameterized:
+The instantiated libraries are collected in .parameterised:
 
-  $ ls _build/default/.parameterized
+  $ ls _build/default/.parameterised
   f
   g
   h
@@ -63,7 +63,7 @@ The instantiated libraries are collected in .parameterized:
 
 With each lib folder containing the list of its instances:
 
-  $ ls _build/default/.parameterized/g
+  $ ls _build/default/.parameterised/g
   g!g!!h!!!i!!!!x_impl
   g!g!!h!!!x_impl
   g!g!!i!!!x_impl
@@ -75,7 +75,7 @@ With each lib folder containing the list of its instances:
 
 For modules instantiated by the compiler, a dash is used:
 
-  $ ls _build/default/.parameterized/f/f!f!!g!!!h!!!!i!!!!!x_impl/.instance.objs/native
+  $ ls _build/default/.parameterised/f/f!f!!g!!!h!!!!i!!!!!x_impl/.instance.objs/native
   f-F--G---H----I-----X_impl.cmx
   f-F--G---H----I-----X_impl.o
   f__f__-F--G---H----I-----X_impl.cmx

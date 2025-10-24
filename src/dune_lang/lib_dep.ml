@@ -229,7 +229,7 @@ module L = struct
            User_error.raise
              ~loc
              [ Pp.textf
-                 "parameterized library %S is present in multiple forms"
+                 "parameterised library %S is present in multiple forms"
                  (Lib_name.to_string name)
              ])
     in

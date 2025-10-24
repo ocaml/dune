@@ -12,8 +12,8 @@ let obj_file ~obj_dir ~kind ?ext unique_name =
 
 let get_cm ~kind lib =
   let open Resolve.O in
-  let+ name = Lib.Parameterized.applied_name lib in
-  let unique_name = Parameterized_name.to_module_name name in
+  let+ name = Lib.Parameterised.applied_name lib in
+  let unique_name = Parameterised_name.to_module_name name in
   let obj_dir = Lib_info.obj_dir (Lib.info lib) in
   obj_file ~obj_dir ~kind unique_name
 ;;
@@ -153,7 +153,7 @@ let lib_hidden_deps ~sctx ~kind lib requires =
     match Lib.compare lib dep with
     | Eq -> Memo.return []
     | Lt | Gt ->
-      (match Lib.Parameterized.status dep with
+      (match Lib.Parameterised.status dep with
        | Complete ->
          let+ cm = Resolve.read_memo (get_cm ~kind dep) in
          [ cm ]
@@ -161,7 +161,7 @@ let lib_hidden_deps ~sctx ~kind lib requires =
          Code_error.raise
            "unexpected partial application"
            [ "lib", Lib.to_dyn lib; "dep", Lib.to_dyn dep ]
-       | Not_parameterized ->
+       | Not_parameterised ->
          let lib = dep in
          let lib_info = Lib.info dep in
          let obj_dir = Lib_info.obj_dir lib_info in
@@ -188,13 +188,13 @@ let lib_hidden_deps ~sctx ~kind lib requires =
 
 let apply_module_name module_ args =
   let name = Module_name.Unique.to_string (Module.obj_name module_) in
-  Parameterized_name.to_module_name { name; args }
+  Parameterised_name.to_module_name { name; args }
 ;;
 
 let build_modules ~sctx ~obj_dir ~modules_obj_dir ~dep_graph ~mode ~requires ~lib modules =
   let kind = Lib_mode.Cm_kind.Ocaml (Mode.cm_kind mode) in
   let ext = Lib_mode.Cm_kind.ext kind in
-  let cm_args = Lib.Parameterized.arguments lib |> Resolve.List.map ~f:(get_cm ~kind) in
+  let cm_args = Lib.Parameterised.arguments lib |> Resolve.List.map ~f:(get_cm ~kind) in
   let* { Lib_config.ext_obj; _ } =
     let+ ocaml = Super_context.context sctx |> Context.ocaml in
     ocaml.lib_config
@@ -206,7 +206,7 @@ let build_modules ~sctx ~obj_dir ~modules_obj_dir ~dep_graph ~mode ~requires ~li
        If we are instantiating a library, then the existence
        of these module names has already been checked and the
        resolve can't fail. *)
-    Resolve.read_memo @@ Lib.Parameterized.applied_modules lib
+    Resolve.read_memo @@ Lib.Parameterised.applied_modules lib
   in
   Memo.List.fold_left modules ~init:Module_name.Map.empty ~f:(fun acc module_ ->
     let instance =
@@ -293,7 +293,7 @@ let instantiate ~sctx lib =
     match Lib_info.modules lib_info with
     | External None -> Code_error.raise "library has no modules" [ "lib", Lib.to_dyn lib ]
     | External (Some modules) ->
-      let dir = Path.Build.relative build_dir ".parameterized" in
+      let dir = Path.Build.relative build_dir ".parameterised" in
       let dir = Path.Build.relative dir (Lib_name.to_string (Lib.name lib)) in
       Memo.return (obj_dir_for_dep_rules dir, modules)
     | Local ->
@@ -307,9 +307,9 @@ let instantiate ~sctx lib =
   let* requires =
     Lib.closure ~linking:true [ lib ]
     |> Resolve.Memo.map
-         ~f:(List.map ~f:(Lib.Parameterized.for_instance ~build_dir ~ext_lib))
+         ~f:(List.map ~f:(Lib.Parameterised.for_instance ~build_dir ~ext_lib))
   in
-  let lib = Lib.Parameterized.for_instance ~build_dir ~ext_lib lib in
+  let lib = Lib.Parameterised.for_instance ~build_dir ~ext_lib lib in
   let obj_dir = Lib_info.obj_dir (Lib.info lib) |> Obj_dir.as_local_exn in
   let top_sorted_modules = Dep_graph.top_closed_implementations dep_graph impl_only in
   iter_modes_concurrently ~f:(fun mode ->
@@ -329,7 +329,7 @@ let instantiate ~sctx lib =
 
 let resolve_instantiation scope str =
   let db = Scope.libs scope in
-  let rec go { Parameterized_name.name; args } =
+  let rec go { Parameterised_name.name; args } =
     let name = Lib_name.of_string name in
     let+ lib = Lib.DB.find db name
     and+ args = Memo.List.map ~f:go args in
@@ -337,13 +337,13 @@ let resolve_instantiation scope str =
     | None -> Code_error.raise "library not found" []
     | Some lib ->
       let args = List.map args ~f:(fun arg -> Loc.none, arg) in
-      Lib.Parameterized.instantiate
+      Lib.Parameterised.instantiate
         ~loc:Loc.none
         (Resolve.return lib)
         args
         ~parent_parameters:[]
   in
-  go (Parameterized_name.of_string str) |> Resolve.Memo.read_memo
+  go (Parameterised_name.of_string str) |> Resolve.Memo.read_memo
 ;;
 
 let external_dep_rules ~sctx ~dir ~scope lib_name =

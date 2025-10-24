@@ -1,4 +1,4 @@
-Test that an external definition of parameters and parameterized libraries can be used.
+Test that an external definition of parameters and parameterised libraries can be used.
 
 First we "install" the external library:
 
@@ -17,7 +17,7 @@ Then we test the installation:
   > (using oxcaml 0.1)
   > EOF
 
-We test that a library can be parameterized by an external `library_parameter`
+We test that a library can be parameterised by an external `library_parameter`
 definition, and can implement an external parameter too:
 
   $ mkdir other_impl

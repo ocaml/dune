@@ -14,9 +14,9 @@ val name : t -> Lib_name.t
 val implements : t -> t Resolve.Memo.t option
 val parameters : t -> t list Resolve.Memo.t
 
-module Parameterized : sig
+module Parameterised : sig
   type status =
-    | Not_parameterized
+    | Not_parameterised
     | Partial
     | Complete
 
@@ -30,8 +30,8 @@ module Parameterized : sig
     }
 
   val arguments : t -> t list
-  val applied_modules : t -> Parameterized_name.t list Resolve.t
-  val applied_name : t -> Parameterized_name.t Resolve.t
+  val applied_modules : t -> Parameterised_name.t list Resolve.t
+  val applied_name : t -> Parameterised_name.t Resolve.t
   val requires : t -> t list Resolve.t
   val for_instance : build_dir:Path.Build.t -> ext_lib:string -> t -> t
 

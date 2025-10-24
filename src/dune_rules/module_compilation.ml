@@ -465,7 +465,7 @@ module Alias_module = struct
   type t =
     { aliases : alias list
     ; shadowed : Module_name.t list
-    ; instances : Parameterized_rules.instances list
+    ; instances : Parameterised_rules.instances list
     }
 
   let to_ml { aliases; shadowed; instances } =
@@ -486,7 +486,7 @@ module Alias_module = struct
         b
         "\nmodule %s = struct end\n[@@deprecated \"this module is shadowed\"]\n"
         (Module_name.to_string shadowed));
-    Parameterized_rules.print_instances b instances;
+    Parameterised_rules.print_instances b instances;
     Buffer.contents b
   ;;
 

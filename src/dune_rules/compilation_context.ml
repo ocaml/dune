@@ -89,7 +89,7 @@ type t =
   ; requires_link : Lib.t list Resolve.t Memo.Lazy.t
   ; implements : Virtual_rules.t
   ; parameters : Module_name.t list Resolve.Memo.t
-  ; instances : Parameterized_rules.instances list Resolve.Memo.t option
+  ; instances : Parameterised_rules.instances list Resolve.Memo.t option
   ; includes : Includes.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
@@ -263,7 +263,7 @@ let for_alias_module t alias_module =
     match t.instances with
     | None -> flags
     | Some _ ->
-      (* If the alias file instantiates parameterized libraries,
+      (* If the alias file instantiates parameterised libraries,
          the [misplace-attribute] warning is currently raised on
          [@jane.non_erasable.instances] *)
       Ocaml_flags.append_common flags [ "-w"; "-53" ]

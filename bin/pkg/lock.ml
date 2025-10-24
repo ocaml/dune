@@ -133,6 +133,78 @@ let solve_multiple_platforms
     else `Partial (merged_solver_result, errors)
 ;;
 
+let summary_message
+      ~portable_lock_dir
+      ~lock_dir_path
+      ~(lock_dir : Lock_dir.t)
+      ~maybe_perf_stats
+      ~maybe_unsolved_platforms_message
+  =
+  if portable_lock_dir
+  then (
+    let pkgs_by_platform = Lock_dir.Packages.pkgs_by_platform lock_dir.packages in
+    let all_platforms = Dune_pkg.Solver_env.Map.keys pkgs_by_platform in
+    let opam_package_sets_by_platform =
+      Dune_pkg.Solver_env.Map.map pkgs_by_platform ~f:(fun pkgs ->
+        List.map pkgs ~f:(fun (pkg : Dune_pkg.Lock_dir.Pkg.t) ->
+          OpamPackage.create
+            (Dune_pkg.Package_name.to_opam_package_name pkg.info.name)
+            (Dune_pkg.Package_version.to_opam_package_version pkg.info.version))
+        |> OpamPackage.Set.of_list)
+    in
+    let common_packages =
+      Dune_pkg.Solver_env.Map.values opam_package_sets_by_platform
+      |> List.reduce ~f:OpamPackage.Set.inter
+      |> Option.value ~default:OpamPackage.Set.empty
+    in
+    let pp_package_set package_set =
+      if OpamPackage.Set.is_empty package_set
+      then Pp.tag User_message.Style.Warning @@ Pp.text "(none)"
+      else
+        Pp.enumerate (OpamPackage.Set.to_list package_set) ~f:(fun opam_package ->
+          Pp.text (OpamPackage.to_string opam_package))
+    in
+    let uncommon_packages_by_platform =
+      Dune_pkg.Solver_env.Map.map opam_package_sets_by_platform ~f:(fun package_set ->
+        OpamPackage.Set.diff package_set common_packages)
+      |> Dune_pkg.Solver_env.Map.filteri ~f:(fun _ package_set ->
+        not (OpamPackage.Set.is_empty package_set))
+    in
+    let maybe_uncommon_packages =
+      if Dune_pkg.Solver_env.Map.is_empty uncommon_packages_by_platform
+      then []
+      else
+        Pp.nop
+        :: Pp.text "Additionally, some packages will only be built on specific platforms."
+        :: (Dune_pkg.Solver_env.Map.to_list uncommon_packages_by_platform
+            |> List.concat_map ~f:(fun (platform, packages) ->
+              [ Pp.nop
+              ; Pp.concat [ Dune_pkg.Solver_env.pp_oneline platform; Pp.text ":" ]
+              ; pp_package_set packages
+              ]))
+    in
+    (Pp.tag
+       User_message.Style.Success
+       (Pp.textf "Solution for %s" (Path.to_string_maybe_quoted lock_dir_path))
+     :: Pp.nop
+     :: Pp.text "This solution is supports the following platforms:"
+     :: Pp.enumerate all_platforms ~f:Dune_pkg.Solver_env.pp_oneline
+     :: Pp.nop
+     :: Pp.text "Dependencies on all supported platforms:"
+     :: pp_package_set common_packages
+     :: (maybe_uncommon_packages @ maybe_perf_stats))
+    @ maybe_unsolved_platforms_message)
+  else
+    (Pp.tag
+       User_message.Style.Success
+       (Pp.textf "Solution for %s:" (Path.to_string_maybe_quoted lock_dir_path))
+     :: (match Lock_dir.Packages.to_pkg_list lock_dir.packages with
+         | [] -> Pp.tag User_message.Style.Warning @@ Pp.text "(no dependencies to lock)"
+         | packages -> pp_packages packages)
+     :: maybe_perf_stats)
+    @ maybe_unsolved_platforms_message
+;;
+
 let solve_lock_dir
       workspace
       ~local_packages
@@ -245,15 +317,12 @@ let solve_lock_dir
     in
     let summary_message =
       User_message.make
-        ((Pp.tag
-            User_message.Style.Success
-            (Pp.textf "Solution for %s:" (Path.to_string_maybe_quoted lock_dir_path))
-          :: (match Lock_dir.Packages.to_pkg_list lock_dir.packages with
-              | [] ->
-                Pp.tag User_message.Style.Warning @@ Pp.text "(no dependencies to lock)"
-              | packages -> pp_packages packages)
-          :: maybe_perf_stats)
-         @ maybe_unsolved_platforms_message)
+        (summary_message
+           ~portable_lock_dir
+           ~lock_dir_path
+           ~lock_dir
+           ~maybe_perf_stats
+           ~maybe_unsolved_platforms_message)
     in
     progress_state := None;
     let+ lock_dir = Lock_dir.compute_missing_checksums ~pinned_packages lock_dir in

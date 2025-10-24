@@ -66,6 +66,7 @@ Adding an OCaml library will introduce OCaml specific aliases:
   fmt
   ocaml-index
   pkg-install
+  unused-libs
 
 Adding a cram test will introduce an alias with the name of the test and also
 introduce the runtest alias:

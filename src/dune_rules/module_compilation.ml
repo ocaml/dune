@@ -512,9 +512,14 @@ module Alias_module = struct
 end
 
 let build_alias_module cctx group =
-  let* instances = Resolve.Memo.read_memo (Compilation_context.instances cctx) in
-  let has_instances = instances <> [] in
-  let alias_file () =
+  let alias_file =
+    let+ instances =
+      Resolve.Memo.read_memo
+      @@
+      match Compilation_context.instances cctx with
+      | None -> Resolve.Memo.return []
+      | Some instances -> instances
+    in
     let project = Compilation_context.scope cctx |> Scope.project in
     let modules = Compilation_context.modules cctx in
     Alias_module.of_modules project modules group instances |> Alias_module.to_ml
@@ -528,10 +533,10 @@ let build_alias_module cctx group =
       ~loc:Loc.none
       sctx
       ~dir
-      (Action_builder.delayed alias_file
+      (Action_builder.of_memo alias_file
        |> Action_builder.write_file_dyn (Path.as_in_build_dir_exn file))
   in
-  let cctx = Compilation_context.for_alias_module ~has_instances cctx alias_module in
+  let cctx = Compilation_context.for_alias_module cctx alias_module in
   build_module cctx alias_module
 ;;
 
@@ -593,7 +598,7 @@ let build_all cctx =
              then
                (* XXX it would probably be simpler if the flags were just for this
                   module in the definition of the stanza *)
-               Compilation_context.for_alias_module ~has_instances:false cctx m
+               Compilation_context.for_alias_module cctx m
              else cctx
            in
            build_module cctx m))

@@ -283,13 +283,6 @@ module Error = struct
       ~loc
       [ Pp.textf "Library %S does not implement a library parameter." name ]
   ;;
-
-  let too_many_arguments ?loc p =
-    make_resolve
-      ?loc
-      [ Pp.textf "Unexpected argument %S" (Lib_name.to_string (Lib_info.name p)) ]
-      ~hints:[ Pp.text "Remove the extra argument" ]
-  ;;
 end
 
 (* Types *)
@@ -561,21 +554,18 @@ module Parameterized = struct
     List.combine parameters t.arguments
   ;;
 
-  let apply_arguments ~ignore_extra t new_arguments =
+  let apply_arguments t new_arguments =
     let open Resolve.O in
     let rec go acc existing' given' =
       match existing', given' with
       | (param_intf, Some arg) :: existing, _ ->
         go ((param_intf, Some arg) :: acc) existing given'
-      | [], [] -> Resolve.return (List.rev acc)
-      | [], _ when ignore_extra -> Resolve.return (List.rev acc)
-      | [], (_, extra) :: _ -> Error.too_many_arguments ~loc:extra.loc extra.arg.info
+      | [], _ -> Resolve.return (List.rev acc)
       | ((param_intf, None) as keep) :: existing, (param_intf', arg) :: given ->
         (match compare param_intf param_intf' with
          | Eq -> go ((param_intf, Some arg) :: acc) existing given
          | Lt -> go (keep :: acc) existing given'
-         | Gt when ignore_extra -> go acc existing' given
-         | Gt -> Error.too_many_arguments ~loc:arg.loc arg.arg.info)
+         | Gt -> go acc existing' given)
       | ((_, None) as keep) :: existing, [] -> go (keep :: acc) existing []
     in
     let* t_arguments = parameterized_arguments t in
@@ -612,7 +602,7 @@ module Parameterized = struct
     let open Resolve.O in
     let* lib = lib
     and* args = make_arguments args in
-    let* lib = apply_arguments ~ignore_extra:false lib args in
+    let* lib = apply_arguments lib args in
     let+ () =
       let* all_args = parameterized_arguments lib in
       Resolve.List.iter all_args ~f:(function
@@ -635,10 +625,10 @@ module Parameterized = struct
         match opt_arg with
         | None -> Resolve.return None
         | Some argument ->
-          let+ arg = apply_arguments ~ignore_extra:true argument.arg parent_arguments in
+          let+ arg = apply_arguments argument.arg parent_arguments in
           Some { argument with arg })
     in
-    apply_arguments ~ignore_extra:true { dep with arguments } parent_arguments
+    apply_arguments { dep with arguments } parent_arguments
   ;;
 
   let remove_arguments lib = { lib with parameters = Resolve.return []; arguments = [] }

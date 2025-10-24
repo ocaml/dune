@@ -96,6 +96,10 @@ overlapping modules)
   7 |     (lib_ab a_impl b_impl)))
            ^^^^^^
   Error: The instance name Lib_ab is already used.
+  -> required by _build/default/bin/.bin.eobjs/dune__exe.ml-gen
+  -> required by _build/default/bin/.bin.eobjs/byte/dune__exe.cmi
+  -> required by _build/default/bin/.bin.eobjs/native/dune__exe.cmx
+  -> required by _build/default/bin/bin.exe
   -> required by _build/install/default/bin/project.bin
   [1]
 
@@ -129,7 +133,20 @@ dependencies, because its parameter `b` is missing:
                          ^^^^^^
   Error: Duplicate arguments project.a_impl and project.a_of_b for parameter
   project.a.
+  -> required by _build/default/bin/.bin.eobjs/dune__exe.ml-gen
+  -> required by _build/default/bin/.bin.eobjs/byte/dune__exe.cmi
+  -> required by _build/default/bin/.bin.eobjs/native/dune__exe.cmx
+  -> required by _build/default/bin/bin.exe
   -> required by _build/install/default/bin/project.bin
+  File "bin/dune", line 6, characters 19-25:
+  6 |     (lib_ab a_impl a_of_b)))
+                         ^^^^^^
+  Error: Parameter "project.b" is missing.
+  -> required by _build/default/bin/.bin.eobjs/native/dune__exe__Bin.cmx
+  -> required by _build/default/bin/bin.exe
+  -> required by _build/install/default/bin/project.bin
+  Hint: Pass an argument implementing project.b to the dependency, or add
+  (parameters project.b)
   [1]
 
 However `lib_ab` can depend on `a_of_b`, such that the parameter `b` will be
@@ -190,6 +207,10 @@ It's an error to provide a non-required parameter:
   4 |     (lib_apply a_impl b_impl :as lib_ab)))
                      ^^^^^^
   Error: Argument project.a implements unexpected parameter project.a_impl
+  -> required by _build/default/bin/.bin.eobjs/dune__exe.ml-gen
+  -> required by _build/default/bin/.bin.eobjs/byte/dune__exe.cmi
+  -> required by _build/default/bin/.bin.eobjs/native/dune__exe.cmx
+  -> required by _build/default/bin/bin.exe
   -> required by _build/install/default/bin/project.bin
   Hint: Remove this argument
   [1]
@@ -218,6 +239,10 @@ which one to use:
                             ^^^^^^^
   Error: Duplicate arguments project.b_impl and project.b_impl2 for parameter
   project.b.
+  -> required by _build/default/bin/.bin.eobjs/dune__exe.ml-gen
+  -> required by _build/default/bin/.bin.eobjs/byte/dune__exe.cmi
+  -> required by _build/default/bin/.bin.eobjs/native/dune__exe.cmx
+  -> required by _build/default/bin/bin.exe
   -> required by _build/install/default/bin/project.bin
   [1]
 
@@ -235,6 +260,10 @@ Same error if the argument is repeated:
                             ^^^^^^
   Error: Duplicate arguments project.b_impl and project.b_impl for parameter
   project.b.
+  -> required by _build/default/bin/.bin.eobjs/dune__exe.ml-gen
+  -> required by _build/default/bin/.bin.eobjs/byte/dune__exe.cmi
+  -> required by _build/default/bin/.bin.eobjs/native/dune__exe.cmx
+  -> required by _build/default/bin/bin.exe
   -> required by _build/install/default/bin/project.bin
   [1]
 

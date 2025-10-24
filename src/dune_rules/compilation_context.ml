@@ -89,7 +89,7 @@ type t =
   ; requires_link : Lib.t list Resolve.t Memo.Lazy.t
   ; implements : Virtual_rules.t
   ; parameters : Module_name.t list Resolve.Memo.t
-  ; instances : Parameterized_rules.instances list Resolve.Memo.t
+  ; instances : Parameterized_rules.instances list Resolve.Memo.t option
   ; includes : Includes.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
@@ -189,11 +189,6 @@ let create
     | None -> Resolve.Memo.return []
     | Some parameters -> parameters_main_modules parameters
   in
-  let instances =
-    match instances with
-    | None -> Resolve.Memo.return []
-    | Some instances -> instances
-  in
   let sandbox = Sandbox_config.no_special_requirements in
   let modes =
     let default =
@@ -252,7 +247,7 @@ let alias_and_root_module_flags =
   fun base -> Ocaml_flags.append_common base extra
 ;;
 
-let for_alias_module ~has_instances t alias_module =
+let for_alias_module t alias_module =
   let keep_flags = Modules.With_vlib.is_stdlib_alias (modules t) alias_module in
   let flags =
     if keep_flags
@@ -265,13 +260,13 @@ let for_alias_module ~has_instances t alias_module =
       Ocaml_flags.default ~dune_version ~profile)
   in
   let flags =
-    if has_instances
-    then
+    match t.instances with
+    | None -> flags
+    | Some _ ->
       (* If the alias file instantiates parameterized libraries,
          the [misplace-attribute] warning is currently raised on
          [@jane.non_erasable.instances] *)
       Ocaml_flags.append_common flags [ "-w"; "-53" ]
-    else flags
   in
   let sandbox =
     (* If the compiler reads the cmi for module alias even with [-w -49

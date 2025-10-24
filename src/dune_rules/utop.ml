@@ -83,6 +83,7 @@ let add_stanza db ~dir (acc, pps) stanza =
           db
           (`Exe exes.names)
           exes.buildable.libraries
+          ~allow_unused_libraries:exes.buildable.allow_unused_libraries
           ~pps
           ~dune_version
           ~allow_overlaps:exes.buildable.allow_overlapping_dependencies

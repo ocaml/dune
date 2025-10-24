@@ -219,6 +219,7 @@ module Stanza = struct
             ~forbidden_libraries:[]
             (Lib_dep.Direct (source.loc, compiler_libs)
              :: List.map toplevel.libraries ~f:(fun d -> Lib_dep.Direct d))
+            ~allow_unused_libraries:[]
             ~pps
             ~dune_version
             ~allow_overlaps:false

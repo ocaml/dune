@@ -79,6 +79,7 @@ let decode =
            ; wasm = Js_of_ocaml.In_buildable.default
            }
        ; allow_overlapping_dependencies
+       ; allow_unused_libraries = []
        ; ctypes = None
        }
      and+ name = field_o "name" Lib_name.Local.decode_loc

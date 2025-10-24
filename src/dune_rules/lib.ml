@@ -362,6 +362,7 @@ module T = struct
     ; pps : t list Resolve.t
     ; resolved_selects : Resolved_select.t list Resolve.t
     ; parameters : t list Resolve.t
+    ; allow_unused_libraries : t list Resolve.t
     ; implements : t Resolve.t option
     ; project : Dune_project.t option
     ; (* these fields cannot be forced until the library is instantiated *)
@@ -1106,6 +1107,9 @@ end = struct
     let* ppx_runtime_deps =
       Lib_info.ppx_runtime_deps info |> resolve_simple_deps db ~private_deps
     in
+    let* allow_unused_libraries =
+      Lib_info.allow_unused_libraries info |> resolve_simple_deps db ~private_deps
+    in
     let src_dir = Lib_info.src_dir info in
     let map_error x =
       Resolve.push_stack_frame x ~human_readable_description:(fun () ->
@@ -1138,6 +1142,7 @@ end = struct
          ; re_exports
          ; implements
          ; parameters
+         ; allow_unused_libraries
          ; default_implementation
          ; project
          ; sub_systems =
@@ -1906,6 +1911,7 @@ module Compile = struct
     ; requires_link : t list Resolve.t Memo.Lazy.t
     ; pps : t list Resolve.Memo.t
     ; resolved_selects : Resolved_select.t list Resolve.Memo.t
+    ; allow_unused_libraries : t list Resolve.Memo.t
     ; sub_systems : Sub_system0.Instance.t Memo.Lazy.t Sub_system_name.Map.t
     }
 
@@ -1934,6 +1940,7 @@ module Compile = struct
     ; requires_link
     ; resolved_selects = Memo.return t.resolved_selects
     ; pps = Memo.return t.pps
+    ; allow_unused_libraries = Memo.return t.allow_unused_libraries
     ; sub_systems = t.sub_systems
     }
   ;;
@@ -1942,6 +1949,7 @@ module Compile = struct
   let requires_link t = t.requires_link
   let resolved_selects t = t.resolved_selects
   let pps t = t.pps
+  let allow_unused_libraries t = t.allow_unused_libraries
 
   let sub_systems t =
     Sub_system_name.Map.values t.sub_systems
@@ -2134,6 +2142,7 @@ module DB = struct
         ~allow_overlaps
         ~forbidden_libraries
         deps
+        ~allow_unused_libraries
         ~pps
         ~dune_version
     =
@@ -2201,10 +2210,14 @@ module DB = struct
       let+ resolved = Memo.Lazy.force resolved in
       resolved.selects
     in
+    let allow_unused_libraries =
+      Resolve_names.resolve_simple_deps t ~private_deps:Allow_all allow_unused_libraries
+    in
     { Compile.direct_requires
     ; requires_link
     ; pps
     ; resolved_selects = resolved_selects |> Memo.map ~f:Resolve.return
+    ; allow_unused_libraries
     ; sub_systems = Sub_system_name.Map.empty
     }
   ;;

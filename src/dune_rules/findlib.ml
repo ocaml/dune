@@ -260,6 +260,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
       ~plugins
       ~archives
       ~ppx_runtime_deps
+      ~allow_unused_libraries:[]
       ~foreign_archives
       ~native_archives:(Files native_archives)
       ~foreign_dll_files:[]

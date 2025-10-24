@@ -77,6 +77,9 @@ module Compile : sig
   (** Transitive closure of all used ppx rewriters *)
   val pps : t -> lib list Resolve.Memo.t
 
+  (** Libraries allowed to be unused *)
+  val allow_unused_libraries : t -> lib list Resolve.Memo.t
+
   (** Sub-systems used in this compilation context *)
   val sub_systems : t -> sub_system list Memo.t
 end
@@ -155,6 +158,7 @@ module DB : sig
     -> allow_overlaps:bool
     -> forbidden_libraries:(Loc.t * Lib_name.t) list
     -> Lib_dep.t list
+    -> allow_unused_libraries:(Loc.t * Lib_name.t) list
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t
     -> Compile.t

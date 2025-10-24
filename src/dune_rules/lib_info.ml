@@ -320,6 +320,7 @@ type 'path t =
   ; requires : Lib_dep.t list
   ; parameters : (Loc.t * Lib_name.t) list
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
+  ; allow_unused_libraries : (Loc.t * Lib_name.t) list
   ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
   ; enabled : Enabled_status.t Memo.t
   ; virtual_deps : (Loc.t * Lib_name.t) list
@@ -349,6 +350,7 @@ let requires t = t.requires
 let parameters t = t.parameters
 let preprocess t = t.preprocess
 let ppx_runtime_deps t = t.ppx_runtime_deps
+let allow_unused_libraries t = t.allow_unused_libraries
 let sub_systems t = t.sub_systems
 let modes t = t.modes
 let modules t = t.modules
@@ -412,6 +414,7 @@ let create
       ~plugins
       ~archives
       ~ppx_runtime_deps
+      ~allow_unused_libraries
       ~foreign_archives
       ~native_archives
       ~foreign_dll_files
@@ -451,6 +454,7 @@ let create
   ; plugins
   ; archives
   ; ppx_runtime_deps
+  ; allow_unused_libraries
   ; foreign_archives
   ; native_archives
   ; foreign_dll_files
@@ -548,6 +552,7 @@ let to_dyn
       ; plugins
       ; archives
       ; ppx_runtime_deps
+      ; allow_unused_libraries = _
       ; foreign_archives
       ; native_archives
       ; foreign_dll_files

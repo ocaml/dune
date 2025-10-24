@@ -280,16 +280,16 @@ module Lib_and_module = struct
                        ~kind:(Ocaml (Mode.cm_kind (Link_mode.mode mode))))
                   ::
                   (match mode with
+                   | Byte | Byte_for_jsoo | Byte_with_stubs_statically_linked_in -> []
                    | Native ->
                      [ Command.Args.Hidden_deps
-                         (Dep.Set.of_files
-                            [ Obj_dir.Module.o_file_exn
-                                obj_dir
-                                m
-                                ~ext_obj:lib_config.ext_obj
-                            ])
-                     ]
-                   | Byte | Byte_for_jsoo | Byte_with_stubs_statically_linked_in -> []))
+                         ([ Obj_dir.Module.o_file_exn
+                              obj_dir
+                              m
+                              ~ext_obj:lib_config.ext_obj
+                          ]
+                          |> Dep.Set.of_files)
+                     ]))
                |> Action_builder.return)
          in
          Command.Args.S l)

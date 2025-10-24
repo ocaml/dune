@@ -357,7 +357,7 @@ let external_dep_rules ~sctx ~dir ~scope lib_name =
   | Local -> Memo.return ()
   | External None -> Code_error.raise "library has no modules" [ "lib", Lib.to_dyn lib ]
   | External (Some modules) ->
-    let+ _ =
+    let+ (_ : Dep_graph.Ml_kind.t) =
       Dep_rules.rules
         ~sctx
         ~sandbox:Sandbox_config.no_special_requirements
@@ -573,7 +573,7 @@ let check_instances instances =
 let instances ~sctx ~db deps =
   let open Resolve.Memo.O in
   let* instances = instances ~sctx ~db deps in
-  let+ _ = check_instances instances in
+  let+ (_ : Module_name.Set.t) = check_instances instances in
   instances
 ;;
 

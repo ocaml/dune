@@ -644,7 +644,7 @@ module Parameterized = struct
         | None -> None
         | Some arg -> Some arg.arg)
     in
-    let deps = List.rev_append lib_arguments deps in
+    let deps = lib_arguments @ deps in
     let deps =
       match lib_arguments with
       | [] -> deps

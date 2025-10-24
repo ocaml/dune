@@ -20,6 +20,7 @@ val package : t -> Package.t
 val make
   :  allow_deprecated_names:bool
   -> Dune_project.t
+  -> Dune_lang.Package_mask.t
   -> Loc.t * Lib_name.t
   -> (t, User_message.t) result
 

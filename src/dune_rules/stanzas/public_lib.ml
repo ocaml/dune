@@ -14,7 +14,7 @@ let package t = t.package
 
 (** if [~allow_deprecated_names] is set, then we allow the package name to be
     attached to one of the deprecated packages *)
-let make ~allow_deprecated_names project ((_, s) as loc_name) =
+let make ~allow_deprecated_names project mask ((loc, s) as loc_name) =
   let pkg, rest = Lib_name.split s in
   match
     match allow_deprecated_names with
@@ -30,7 +30,7 @@ let make ~allow_deprecated_names project ((_, s) as loc_name) =
   with
   | Some x -> Ok x
   | None ->
-    Stanza_pkg.resolve project pkg
+    Stanza_pkg.resolve project mask (loc, pkg)
     |> Result.map ~f:(fun pkg ->
       { package = pkg
       ; sub_dir = (if rest = [] then None else Some (String.concat rest ~sep:"/"))
@@ -39,9 +39,10 @@ let make ~allow_deprecated_names project ((_, s) as loc_name) =
 ;;
 
 let decode ~allow_deprecated_names =
+  let* mask = Dune_lang.Package_mask.decode () in
   map_validate
     (let+ project = Dune_project.get_exn ()
      and+ loc_name = located Lib_name.decode in
      project, loc_name)
-    ~f:(fun (project, loc_name) -> make ~allow_deprecated_names project loc_name)
+    ~f:(fun (project, loc_name) -> make ~allow_deprecated_names project mask loc_name)
 ;;

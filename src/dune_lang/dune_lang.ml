@@ -62,6 +62,7 @@ module Mode_conf = Mode_conf
 module Oxcaml = Oxcaml
 module Modules_settings = Modules_settings
 module Stanza_pkg = Stanza_pkg
+module Package_mask = Package_mask
 
 (* CR-someday rgrinberg: perhaps wrap these under [Stanzas]? *)
 module Copy_files = Copy_files

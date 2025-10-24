@@ -39,11 +39,19 @@ module Dynamic_include = struct
 end
 
 let with_redirect decode =
-  let+ x = decode in
-  let base = [ Library.make_stanza x ] in
+  let+ (x : Library.t) = decode in
+  let base =
+    let package =
+      (* CR rgrinberg: we need to check this *)
+      match x.visibility with
+      | Public p -> Some (Package.id p.package)
+      | Private p -> Option.map p ~f:Package.id
+    in
+    [ Library.make_stanza x package ]
+  in
   match Library_redirect.Local.of_lib x with
   | None -> base
-  | Some r -> Library_redirect.Local.make_stanza r :: base
+  | Some r -> Library_redirect.Local.make_stanza r None :: base
 ;;
 
 let stanzas : Stanza.Parser.t list =
@@ -111,21 +119,28 @@ let stanzas : Stanza.Parser.t list =
 let () = Dune_project.Lang.register Stanza.syntax stanzas
 let parse parser = Dune_lang.Decoder.parse parser Univ_map.empty
 
-let of_ast (project : Dune_project.t) sexp =
-  let parser = Dune_project.stanza_parser project in
+let of_ast (project : Dune_project.t) ~dir sexp =
+  let parser = Dune_project.stanza_parser project ~dir in
   parse parser sexp
 ;;
 
 let stanza_package stanza =
-  match Stanza.repr stanza with
-  | Library.T lib -> Library.package lib
-  | Alias_conf.T { package = Some package; _ }
-  | Rule_conf.T { package = Some package; _ }
-  | Install_conf.T { package; _ }
-  | Plugin.T { package; _ }
-  | Executables.T { install_conf = Some { package; _ }; _ }
-  | Documentation.T { package; _ }
-  | Tests.T { package = Some package; _ } -> Some package
-  | Coq_stanza.Theory.T { package = Some package; _ } -> Some package
-  | _ -> None
+  match
+    (* Not clear if this check is even necessary. Shouldn't this always match
+       [Stanza.package] anyway? *)
+    (match Stanza.repr stanza with
+     | Library.T lib -> Library.package lib
+     | Alias_conf.T { package = Some package; _ }
+     | Rule_conf.T { package = Some package; _ }
+     | Install_conf.T { package; _ }
+     | Plugin.T { package; _ }
+     | Executables.T { install_conf = Some { package; _ }; _ }
+     | Documentation.T { package; _ }
+     | Tests.T { package = Some package; _ } -> Some package
+     | Coq_stanza.Theory.T { package = Some package; _ } -> Some package
+     | _ -> None)
+    |> Option.map ~f:Package.id
+  with
+  | Some _ as s -> s
+  | None -> Stanza.package stanza
 ;;

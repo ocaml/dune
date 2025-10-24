@@ -3,8 +3,8 @@
   (env-vars
    (DUNE_CONFIG__BACKGROUND_SANDBOXES disabled)
    (DUNE_CONFIG__BACKGROUND_DIGESTS disabled)
-   ; We set ocaml to always be colored since it changes the output of
-   ; ocamlc error messages. See https://github.com/ocaml/ocaml/issues/14144
+   ;; We set ocaml to always be colored since it changes the output of
+   ;; ocamlc error messages. See https://github.com/ocaml/ocaml/issues/14144
    (OCAML_COLOR always))
   (binaries
    ../utils/dune_cmd.exe
@@ -25,7 +25,9 @@
   (env_var OCAML_COLOR)
   %{bin:dune_cmd}
   (package dune))
- ; Tests shouldn't take longer than 60s
+ ;; We don't allow conflict markers in tests
+ (conflict error)
+ ;; Tests shouldn't take longer than 60s
  (timeout 60))
 
 (cram

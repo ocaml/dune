@@ -17,4 +17,9 @@ Melange compilation is added to `@all`
 
   $ dune build @all
   $ find _build/default | grep '\.cm'
-  [1]
+  _build/default/lib/.mlib.objs/melange/mlib__Hello.cmj
+  _build/default/lib/.mlib.objs/melange/mlib.cmj
+  _build/default/lib/.mlib.objs/melange/mlib__Hello.cmt
+  _build/default/lib/.mlib.objs/melange/mlib.cmt
+  _build/default/lib/.mlib.objs/melange/mlib.cmi
+  _build/default/lib/.mlib.objs/melange/mlib__Hello.cmi

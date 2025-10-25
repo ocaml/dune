@@ -38,3 +38,10 @@ module Alias_rec (_ : sig
       in at least one directory, and [Not_defined] otherwise. *)
   val dep_on_alias_rec : Alias.Name.t -> Path.Build.t -> Alias_status.t Action_builder.t
 end
+
+val define_all_alias
+  :  ?predicate_dir:Path.Build.t
+  -> project:Dune_project.t
+  -> js_targets:Path.Build.t list
+  -> Path.Build.t
+  -> unit Memo.t

@@ -16,10 +16,10 @@ Melange compilation is added to `@all`
   > EOF
 
   $ dune build @all
-  $ find _build/default | grep '\.cm'
-  _build/default/lib/.mlib.objs/melange/mlib__Hello.cmj
-  _build/default/lib/.mlib.objs/melange/mlib.cmj
-  _build/default/lib/.mlib.objs/melange/mlib__Hello.cmt
-  _build/default/lib/.mlib.objs/melange/mlib.cmt
+  $ find _build/default | grep '\.cm' | sort
   _build/default/lib/.mlib.objs/melange/mlib.cmi
+  _build/default/lib/.mlib.objs/melange/mlib.cmj
+  _build/default/lib/.mlib.objs/melange/mlib.cmt
   _build/default/lib/.mlib.objs/melange/mlib__Hello.cmi
+  _build/default/lib/.mlib.objs/melange/mlib__Hello.cmj
+  _build/default/lib/.mlib.objs/melange/mlib__Hello.cmt

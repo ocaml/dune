@@ -383,9 +383,12 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
             Super_context.add_rule sctx ~dir action_with_targets)))
   in
   Memo.when_ melange (fun () ->
-    let* () = build_cm ~cm_kind:(Melange Cmj) ~phase:None in
-    Memo.when_ (not precompiled_cmi) (fun () ->
-      build_cm ~cm_kind:(Melange Cmi) ~phase:None))
+    let+ () = build_cm ~cm_kind:(Melange Cmj) ~phase:None
+    and+ () =
+      Memo.when_ (not precompiled_cmi) (fun () ->
+        build_cm ~cm_kind:(Melange Cmi) ~phase:None)
+    in
+    ())
 ;;
 
 let ocamlc_i ~deps cctx (m : Module.t) ~output =

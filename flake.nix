@@ -56,13 +56,13 @@
             });
           })
         ];
-        
-        applyOxcamlPatches = import ./nix/ox-patches.nix { 
-          inherit pkgs; 
-          lib = pkgs.lib; 
+
+        applyOxcamlPatches = import ./nix/ox-patches.nix {
+          inherit pkgs;
+          lib = pkgs.lib;
           oxcamlOpamRepo = oxcaml-opam-repository;
         };
-        
+
         dune-static-overlay = self: super: {
           ocamlPackages = super.ocaml-ng.ocamlPackages_5_3.overrideScope (
             oself: osuper: {
@@ -196,20 +196,23 @@
               }:
               let
                 hasOcamlOverride = (packageOverrides { } { ocaml = null; }) ? ocaml;
-                
+
                 pkgs' =
                   if hasOcamlOverride then
                     pkgs.extend (
                       pself: psuper: {
                         ocamlPackages = psuper.ocamlPackages.overrideScope (
                           oself: osuper:
-                            (pkgs.lib.mapAttrs
-                              (name: pkg:
-                                if pkgs.lib.isDerivation pkg && pkg ? overrideAttrs
-                                then pkg.overrideAttrs (old: { doCheck = false; })
-                                else pkg)
-                              osuper)
-                            // (packageOverrides oself osuper)
+                          (pkgs.lib.mapAttrs (
+                            name: pkg:
+                            if pkgs.lib.isDerivation pkg && pkg ? overrideAttrs then
+                              pkg.overrideAttrs (old: {
+                                doCheck = false;
+                              })
+                            else
+                              pkg
+                          ) osuper)
+                          // (packageOverrides oself osuper)
                         );
                       }
                     )
@@ -234,27 +237,28 @@
                 '';
 
                 baseInputs = if includeTestDeps then (testNativeBuildInputs pkgs') ++ docInputs else [ ];
-                
-                ocamlLibs = if includeTestDeps then
-                  (with pkgs'.ocamlPackages; [
-                    ctypes
-                    cinaps
-                    integers
-                    lwt
-                    mdx
-                    menhir
-                    merlin
-                    ocaml-index
-                    ocaml-lsp
-                    odoc
-                    patdiff
-                    ppx_expect
-                    re
-                    spawn
-                    uutf
-                  ])
-                else
-                  [ ];
+
+                ocamlLibs =
+                  if includeTestDeps then
+                    (with pkgs'.ocamlPackages; [
+                      ctypes
+                      cinaps
+                      integers
+                      lwt
+                      mdx
+                      menhir
+                      merlin
+                      ocaml-index
+                      ocaml-lsp
+                      odoc
+                      patdiff
+                      ppx_expect
+                      re
+                      spawn
+                      uutf
+                    ])
+                  else
+                    [ ];
               in
 
               pkgs'.mkShell {
@@ -262,7 +266,8 @@
                   export DUNE_SOURCE_ROOT=$PWD
                 '';
                 inherit meta;
-                nativeBuildInputs = baseInputs ++ [ duneScript ] ++ (if hasOcamlOverride then [ pkgs'.ocamlPackages.ocaml ] else [ ]);
+                nativeBuildInputs =
+                  baseInputs ++ [ duneScript ] ++ (if hasOcamlOverride then [ pkgs'.ocamlPackages.ocaml ] else [ ]);
                 inputsFrom = if hasOcamlOverride then [ ] else [ pkgs'.ocamlPackages.dune_3 ];
                 buildInputs =
                   (if includeTestDeps then testBuildInputs else [ ])
@@ -389,21 +394,26 @@
 
             ox-minimal = makeDuneDevShell {
               includeTestDeps = false;
-              packageOverrides = oself: osuper:
-                (applyOxcamlPatches oself osuper) // {
+              packageOverrides =
+                oself: osuper:
+                (applyOxcamlPatches oself osuper)
+                // {
                   # dune_3 = self.packages.${system}.default;
                   ocaml = oxcaml.packages.${system}.default.overrideAttrs (old: {
                     passthru = (old.passthru or { }) // pkgs.ocamlPackages.ocaml.passthru;
                     meta = (old.meta or { }) // pkgs.ocamlPackages.ocaml.meta;
                   });
-                  spawn = osuper.spawn.overrideAttrs (old: { doCheck = false; });
+                  spawn = osuper.spawn.overrideAttrs (old: {
+                    doCheck = false;
+                  });
                 };
-              extraBuildInputs = pkgs: with pkgs.ocamlPackages; [
-                re
-                spawn
-                uutf
-                findlib
-              ];
+              extraBuildInputs =
+                pkgs: with pkgs.ocamlPackages; [
+                  re
+                  spawn
+                  uutf
+                  findlib
+                ];
               meta.description = ''
                 Provides a minimal shell environment with OxCaml in order to
                 run the OxCaml tests.
@@ -411,8 +421,10 @@
             };
 
             ox = makeDuneDevShell {
-              packageOverrides = oself: osuper:
-                (applyOxcamlPatches oself osuper) // {
+              packageOverrides =
+                oself: osuper:
+                (applyOxcamlPatches oself osuper)
+                // {
                   dune_3 = self.packages.${system}.default;
                   ocaml = oxcaml.packages.${system}.default.overrideAttrs (old: {
                     passthru = (old.passthru or { }) // pkgs.ocamlPackages.ocaml.passthru;

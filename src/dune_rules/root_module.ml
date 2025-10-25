@@ -16,5 +16,5 @@ let entries sctx ~requires_compile =
     Action_builder.List.map requires ~f:(fun lib ->
       Action_builder.of_memo (entry_module_names sctx lib) >>= Resolve.read)
   in
-  Action_builder.return (List.concat l)
+  Action_builder.return (List.concat l |> List.sort_uniq ~compare:Module_name.compare)
 ;;

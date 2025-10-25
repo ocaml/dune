@@ -38,11 +38,12 @@ val create
   -> ?modes:Mode_conf.Set.Details.t Lib_mode.Map.t
   -> ?bin_annot:bool
   -> ?loc:Loc.t
+  -> ?instances:Parameterized_rules.instances list Resolve.Memo.t
   -> unit
   -> t Memo.t
 
 (** Return a compilation context suitable for compiling the alias module. *)
-val for_alias_module : t -> Module.t -> t
+val for_alias_module : has_instances:bool -> t -> Module.t -> t
 
 val super_context : t -> Super_context.t
 val context : t -> Context.t
@@ -90,3 +91,4 @@ val dep_graphs : t -> Dep_graph.t Ml_kind.Dict.t
 val loc : t -> Loc.t option
 val set_obj_dir : t -> Path.Build.t Obj_dir.t -> t
 val set_modes : t -> modes:Lib_mode.Map.Set.t -> t
+val instances : t -> Parameterized_rules.instances list Resolve.Memo.t

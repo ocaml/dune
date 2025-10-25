@@ -89,30 +89,7 @@ let resolve (project : Dune_project.t) mask (loc, name) =
                   (Package.Name.Map.keys packages |> List.map ~f:Package.Name.to_string)))
 ;;
 
-let decode =
-  let open Decoder in
-  let+ p = Dune_project.get_exn ()
-  and+ mask = Package_mask.decode ()
-  and+ loc, name = located Package.Name.decode in
-  match resolve p mask (loc, name) with
-  | Ok x -> x
-  | Error e -> raise (User_error.E e)
-;;
-
-let field ~stanza =
-  let open Decoder in
-  let* mask = Package_mask.decode () in
-  map_validate
-    (let+ p = Dune_project.get_exn ()
-     and+ pkg = field_o "package" (located Package.Name.decode) in
-     p, pkg)
-    ~f:(fun (p, pkg) ->
-      match pkg with
-      | None -> default p stanza
-      | Some name -> resolve p mask name)
-;;
-
-let field_opt ?check () =
+let field_opt ?check project =
   let open Decoder in
   let decode =
     let decode = Package.Name.decode in
@@ -122,11 +99,24 @@ let field_opt ?check () =
   in
   let* mask = Package_mask.decode () in
   map_validate
-    (let+ p = Dune_project.get_exn ()
-     and+ pkg = field_o "package" (located decode) in
-     p, pkg)
-    ~f:(fun (p, pkg) ->
+    (field_o "package" (located decode))
+    ~f:(fun pkg ->
       match pkg with
       | None -> Ok None
-      | Some name -> resolve p mask name |> Result.map ~f:Option.some)
+      | Some ((loc, _name) as name) ->
+        resolve project mask name |> Result.map ~f:(fun p -> Some (loc, p)))
+;;
+
+let field ~stanza =
+  let open Decoder in
+  let* project = Dune_project.get_exn () in
+  map_validate (field_opt project) ~f:(function
+    | None -> default project stanza
+    | Some (_, p) -> Ok p)
+;;
+
+let field_opt ?check () =
+  let open Decoder in
+  let* project = Dune_project.get_exn () in
+  field_opt ?check project
 ;;

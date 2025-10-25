@@ -26,7 +26,7 @@ let gen_parse names =
         let+ buildable = Buildable.decode Executable
         and+ link_flags = Dune_lang.Link_flags.Spec.decode ~check:None
         and+ names = names
-        and+ package = field_o "package" Stanza_pkg.decode
+        and+ package = Stanza_pkg.field_opt () >>| Option.map ~f:snd
         and+ locks = Locks.field ()
         and+ modes =
           field

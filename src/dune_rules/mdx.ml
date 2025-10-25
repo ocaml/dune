@@ -237,6 +237,7 @@ let decode =
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (2, 9)) ()
      and+ package =
        Stanza_pkg.field_opt () ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9))
+       >>| Option.map ~f:snd
      and+ packages =
        field
          ~default:[]

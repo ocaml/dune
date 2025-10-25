@@ -81,12 +81,7 @@ end = struct
     let+ names = if multi then multi_fields else single_fields
     and+ loc = loc
     and+ dune_syntax = Dune_lang.Syntax.get_exn Stanza.syntax
-    and+ package =
-      field_o
-        "package"
-        (let+ loc = loc
-         and+ pkg = Stanza_pkg.decode in
-         loc, pkg)
+    and+ package = Stanza_pkg.field_opt ()
     and+ project = Dune_project.get_exn () in
     let names, public_names = names in
     let names =

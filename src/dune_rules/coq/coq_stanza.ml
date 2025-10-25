@@ -240,7 +240,7 @@ module Theory = struct
   let decode =
     fields
       (let+ name = field "name" Coq_lib_name.decode
-       and+ package = field_o "package" Stanza_pkg.decode
+       and+ package = Stanza_pkg.field_opt () >>| Option.map ~f:snd
        and+ project = Dune_project.get_exn ()
        and+ public = coq_public_decode
        and+ synopsis = field_o "synopsis" string

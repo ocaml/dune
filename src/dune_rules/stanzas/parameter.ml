@@ -83,7 +83,7 @@ let decode =
        }
      and+ name = field_o "name" Lib_name.Local.decode_loc
      and+ public = field_o "public_name" (Public_lib.decode ~allow_deprecated_names:false)
-     and+ package = field_o "package" (located Stanza_pkg.decode)
+     and+ package = Stanza_pkg.field_opt ()
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
      and+ synopsis = field_o "synopsis" string
      and+ optional = field_b "optional" in

@@ -213,9 +213,7 @@ let decode =
          (Dune_lang.Syntax.since Stanza.syntax (2, 7)
           >>> fields (field "ppx" (located Lib_name.decode)))
      and+ package =
-       field_o
-         "package"
-         (Dune_lang.Syntax.since Stanza.syntax (2, 8) >>> located Stanza_pkg.decode)
+       Stanza_pkg.field_opt ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8)) ()
      and+ melange_runtime_deps =
        field
          "melange.runtime_deps"

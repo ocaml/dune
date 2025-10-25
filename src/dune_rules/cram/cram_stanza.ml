@@ -79,6 +79,7 @@ let decode =
      and+ locks = Locks.field ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9)) ()
      and+ package =
        Stanza_pkg.field_opt ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8)) ()
+       >>| Option.map ~f:snd
      and+ runtest_alias =
        field_o
          "runtest_alias"

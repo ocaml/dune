@@ -16,8 +16,8 @@ there is no "public_name"/"public_names" field used to not parse the
 argument of "package".
 
   $ (cd package-without-pub-name && dune build -p foo)
-  File "dune", line 3, characters 1-14:
+  File "dune", line 3, characters 10-13:
   3 |  (package foo))
-       ^^^^^^^^^^^^^
+                ^^^
   Error: This field is useless without a (public_name ...) field.
   [1]

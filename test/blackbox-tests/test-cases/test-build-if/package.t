@@ -35,8 +35,8 @@ If we try to split it we get an error:
   > EOF
 
   $ dune runtest
-  File "dune", line 3, characters 1-12:
+  File "dune", line 3, characters 10-11:
   3 |  (package a)
-       ^^^^^^^^^^^
+                ^
   Error: This field is useless without a (public_name ...) field.
   [1]

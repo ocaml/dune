@@ -75,9 +75,8 @@ let disambiguate_test_name path =
         | None -> explain_unsuccessful_search path ~parent_dir))
 ;;
 
-let make_request ~dir_or_cram_test_paths ~to_cwd (setup : Import.Main.build_system) =
-  let contexts = setup.contexts in
-  List.map dir_or_cram_test_paths ~f:(fun dir ->
+let make_request ~contexts ~to_cwd ~test_paths =
+  List.map test_paths ~f:(fun dir ->
     let dir = Path.of_string dir |> Path.Expert.try_localize_external in
     let open Action_builder.O in
     let* contexts, alias_kind =

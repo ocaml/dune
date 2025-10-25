@@ -36,17 +36,15 @@ let runtest_info =
 let runtest_term =
   let name = Arg.info [] ~docv:"TEST" in
   let+ builder = Common.Builder.term
-  and+ dir_or_cram_test_paths = Arg.(value & pos_all string [ "." ] name) in
+  and+ test_paths = Arg.(value & pos_all string [ "." ] name) in
   let common, config = Common.init builder in
   match Dune_util.Global_lock.lock ~timeout:None with
   | Ok () ->
-    Build.run_build_command
-      ~common
-      ~config
-      ~request:
-        (Runtest_common.make_request
-           ~dir_or_cram_test_paths
-           ~to_cwd:(Common.root common).to_cwd)
+    Build.run_build_command ~common ~config ~request:(fun setup ->
+      Runtest_common.make_request
+        ~contexts:setup.contexts
+        ~to_cwd:(Common.root common).to_cwd
+        ~test_paths)
   | Error lock_held_by ->
     Scheduler.go_without_rpc_server ~common ~config (fun () ->
       let open Fiber.O in
@@ -56,7 +54,7 @@ let runtest_term =
         ~lock_held_by
         builder
         Dune_rpc.Procedures.Public.runtest
-        dir_or_cram_test_paths
+        test_paths
       >>| Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:true)
 ;;
 

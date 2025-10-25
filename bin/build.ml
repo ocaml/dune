@@ -98,8 +98,11 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
          match kind with
          | Build targets ->
            Target.interpret_targets (Common.root common) config setup targets
-         | Runtest dir_or_cram_test_paths ->
-           Runtest_common.make_request ~dir_or_cram_test_paths ~to_cwd:root.to_cwd setup
+         | Runtest test_paths ->
+           Runtest_common.make_request
+             ~contexts:setup.contexts
+             ~to_cwd:root.to_cwd
+             ~test_paths
        in
        run_build_system ~common ~request, outcome)
 ;;

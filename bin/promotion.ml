@@ -30,6 +30,24 @@ let display_files files_to_promote =
     Console.printf "%s" (Diff_promotion.File.source file |> Path.Source.to_string))
 ;;
 
+let show_corrected_contents files_to_promote =
+  let open Fiber.O in
+  let files = Diff_promotion.load_db () |> Diff_promotion.filter_db files_to_promote in
+  Fiber.parallel_iter files ~f:(fun file ->
+    let correction_file = Diff_promotion.File.correction_file file in
+    let+ () = Fiber.return () in
+    if Path.exists correction_file
+    then (
+      let contents = Io.read_file correction_file in
+      Console.printf "%s" contents)
+    else
+      User_warning.emit
+        [ Pp.textf
+            "Corrected file does not exist for %s."
+            (Diff_promotion.File.source file |> Path.Source.to_string_maybe_quoted)
+        ])
+;;
+
 module Apply = struct
   let info =
     let doc = "Promote files from the last run" in
@@ -116,11 +134,26 @@ module Files = struct
   let command = Cmd.v info term
 end
 
+module Show = struct
+  let info = Cmd.info ~doc:"Display contents of a corrected file" "show"
+  
+  let term =
+    let+ builder = Common.Builder.term
+    and+ files = Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE") in
+    let common, config = Common.init builder in
+    let files_to_promote = files_to_promote ~common files in
+    Scheduler.go_with_rpc_server ~common ~config (fun () ->
+      show_corrected_contents files_to_promote)
+  ;;
+  
+  let command = Cmd.v info term
+end
+
 let info =
   Cmd.info ~doc:"Control how changes are propagated back to source code." "promotion"
 ;;
 
-let group = Cmd.group info [ Files.command; Apply.command; Diff.command ]
+let group = Cmd.group info [ Files.command; Apply.command; Diff.command; Show.command ]
 
 let promote =
   command_alias ~orig_name:"promotion apply" Apply.command Apply.term "promote"

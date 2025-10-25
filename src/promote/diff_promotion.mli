@@ -7,6 +7,7 @@ module File : sig
   val in_staging_area : Path.Source.t -> Path.Build.t
   val compare : t -> t -> ordering
   val source : t -> Path.Source.t
+  val correction_file : t -> Path.t 
 
   (** Register an intermediate file to promote. The build path may point to the
       sandbox and the file will be moved to the staging area. *)

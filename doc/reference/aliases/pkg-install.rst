@@ -2,7 +2,7 @@
 ============
 
 This alias is only relevant when using Dune with *package management* (see
-:doc:`/tutorials/dune-package-management/index`). Running ``dune build
+:doc:`/dune-package-management/index`). Running ``dune build
 @pkg-install`` will fetch the dependencies described in the ``depends`` field
 of your ``dune-project`` (see :doc:`/reference/dune-project/package`) and build
 them. It will not build your project.

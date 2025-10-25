@@ -66,6 +66,7 @@ def setup(app: Sphinx):
 extensions = [
     'sphinx_copybutton',
     'sphinx_design',
+    'sphinx_reredirects',
     'myst_parser',
 ]
 
@@ -197,3 +198,42 @@ texinfo_documents = [
      author, 'dune', 'One line description of project.',
      'Miscellaneous'),
 ]
+
+redirects = {
+#  rename doc/{usage.rst => command-line-interface.rst} (98%)
+#  rename doc/{explanation => core-concepts}/mental-model.rst (100%)
+#  rename doc/{explanation => core-concepts}/scopes.rst (100%)
+    "usage": "command-line-interface.html",
+    "explanation/mental-model": "../core-concepts/mental-model.html",
+    "explanation/scopes": "../core-concepts/scopes.html",
+    
+#  rename doc/{tutorials => }/dune-package-management/dependencies.md (100%)
+#  rename doc/{tutorials => }/dune-package-management/index.md (78%)
+#  rename doc/{tutorials => }/dune-package-management/pinning.md (100%)
+#  rename doc/{tutorials => }/dune-package-management/repos.md (100%)
+#  rename doc/{tutorials => }/dune-package-management/setup.md (100%)
+    "tutorials/dune-package-management": "../../dune-package-management.html",
+    "tutorials/dune-package-management/dependencies/constraints": "../../dune-package-management/dependencies/constraints.html",
+    "tutorials/dune-package-management/dependencies": "../../dune-package-management/dependencies.html",
+    "tutorials/dune-package-management/index": "../../dune-package-management/index.html",
+    "tutorials/dune-package-management/pinning": "../../dune-package-management/pinning.html",
+    "tutorials/dune-package-management/repos": "../../dune-package-management/repos.html",
+    "tutorials/dune-package-management/setup": "../../dune-package-management/setup.html",
+
+#  rename doc/{tutorials/developing-with-dune => first-steps-with-dune}/conclusion.md (100%)
+#  rename doc/{tutorials/developing-with-dune => first-steps-with-dune}/development-cycle.md (100%)
+#  rename doc/{tutorials/developing-with-dune => first-steps-with-dune}/index.md (96%)
+#  rename doc/{tutorials/developing-with-dune => first-steps-with-dune}/interfacing-with-c.md (100%)
+#  rename doc/{tutorials/developing-with-dune => first-steps-with-dune}/introduction.md (100%)
+#  rename doc/{tutorials/developing-with-dune => first-steps-with-dune}/structure.md (100%)
+#  rename doc/{tutorials/developing-with-dune => first-steps-with-dune}/unit-tests.md (100%)
+#  rename doc/{tutorials/developing-with-dune => first-steps-with-dune}/using-ppx.md (100%)
+    "tutorials/developing-with-dune/conclusion": "../../first-steps-with-dune/conclusion.html",
+    "tutorials/developing-with-dune/development-cycle": "../../first-steps-with-dune/development-cycle.html",
+    "tutorials/developing-with-dune/index": "../../first-steps-with-dune/index.html",
+    "tutorials/developing-with-dune/interfacing-with-c": "../../first-steps-with-dune/interfacing-with-c.html",
+    "tutorials/developing-with-dune/introduction": "../../first-steps-with-dune/introduction.html",
+    "tutorials/developing-with-dune/structure": "../../first-steps-with-dune/structure.html",
+    "tutorials/developing-with-dune/unit-tests": "../../first-steps-with-dune/unit-tests.html",
+    "tutorials/developing-with-dune/using-ppx": "../../first-steps-with-dune/using-ppx.html",
+}

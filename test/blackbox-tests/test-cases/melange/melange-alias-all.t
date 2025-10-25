@@ -11,10 +11,10 @@ Melange compilation is added to `@all`
   >  (name mlib)
   >  (modes melange))
   > EOF
-  $ cat > hello.ml <<EOF
+  $ cat > lib/hello.ml <<EOF
   > let x = "hello"
   > EOF
 
-  $ dune build @all --display=short
+  $ dune build @all
   $ find _build/default | grep '\.cm'
   [1]

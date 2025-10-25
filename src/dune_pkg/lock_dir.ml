@@ -1022,6 +1022,13 @@ module Packages = struct
       |> List.find ~f:(Pkg.is_enabled_on_platform ~platform))
   ;;
 
+  let pkgs_by_platform t =
+    to_pkg_list t
+    |> List.fold_left ~init:Solver_env.Map.empty ~f:(fun acc (pkg : Pkg.t) ->
+      List.fold_left pkg.enabled_on_platforms ~init:acc ~f:(fun acc platform ->
+        Solver_env.Map.add_multi acc platform pkg))
+  ;;
+
   let merge a b =
     Package_name.Map.merge a b ~f:(fun _ a b ->
       match a, b with

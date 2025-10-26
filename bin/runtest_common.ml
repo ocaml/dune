@@ -1,21 +1,23 @@
 open Import
 
-let find_cram_test path ~parent_dir =
+let cram_tests_of_dir parent_dir =
   let open Memo.O in
   Source_tree.find_dir parent_dir
   >>= function
-  | None -> Memo.return None
-  | Some dir ->
-    Dune_rules.Cram_rules.cram_tests dir
-    >>| List.find_map ~f:(function
-      | Ok cram_test when Path.Source.equal path (Source.Cram_test.path cram_test) ->
-        Some cram_test
-      (* We raise any error we encounter when looking for our test specifically. *)
-      | Error (Dune_rules.Cram_rules.Missing_run_t cram_test)
-        when Path.Source.equal path (Source.Cram_test.path cram_test) ->
-        Dune_rules.Cram_rules.missing_run_t cram_test
-        (* Any errors or successes unrelated to our test are discarded. *)
-      | Error (Dune_rules.Cram_rules.Missing_run_t _) | Ok _ -> None)
+  | None -> Memo.return []
+  | Some dir -> Dune_rules.Cram_rules.cram_tests dir
+;;
+
+let find_cram_test cram_tests path =
+  List.find_map cram_tests ~f:(function
+    | Ok cram_test when Path.Source.equal path (Source.Cram_test.path cram_test) ->
+      Some cram_test
+    (* We raise any error we encounter when looking for our test specifically. *)
+    | Error (Dune_rules.Cram_rules.Missing_run_t cram_test)
+      when Path.Source.equal path (Source.Cram_test.path cram_test) ->
+      Dune_rules.Cram_rules.missing_run_t cram_test
+      (* Any errors or successes unrelated to our test are discarded. *)
+    | Error (Dune_rules.Cram_rules.Missing_run_t _) | Ok _ -> None)
 ;;
 
 let explain_unsuccessful_search path ~parent_dir =
@@ -57,8 +59,8 @@ let disambiguate_test_name path =
   | None -> Memo.return @@ `Runtest (Path.source Path.Source.root)
   | Some parent_dir ->
     let open Memo.O in
-    find_cram_test path ~parent_dir
-    >>= (function
+    let* cram_tests = cram_tests_of_dir parent_dir in
+    (match find_cram_test cram_tests path with
      | Some test ->
        (* If we find the cram test, then we request that is run. *)
        Memo.return (`Cram (parent_dir, test))

@@ -13,7 +13,7 @@ Test the "did you mean" hints for dune runtest command.
 
   $ dune test dip.t
   Error: "dip.t" does not match any known test.
-  Hint: did you mean dir.t or dir.t?
+  Hint: did you mean dir.t?
   [1]
 
   $ dune test other_dip

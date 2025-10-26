@@ -40,6 +40,8 @@ let all_tests_of_dir parent_dir =
         >>| Path.Source.to_string)
   in
   List.concat [ cram_candidates; dir_candidates ]
+  |> String.Set.of_list
+  |> String.Set.to_list
 ;;
 
 let explain_unsuccessful_search path ~parent_dir =

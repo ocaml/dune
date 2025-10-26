@@ -27,9 +27,12 @@ let explain_unsuccessful_search path ~parent_dir =
     (* We search for all files and directories in the parent directory and
        suggest them as possible candidates. *)
     let+ candidates =
-      let+ file_candidates =
-        let+ files = Source_tree.files_of parent_dir in
-        Path.Source.Set.to_list_map files ~f:Path.Source.to_string
+      let+ cram_candidates =
+        let+ cram_tests = cram_tests_of_dir parent_dir in
+        List.filter_map cram_tests ~f:(fun res ->
+          Result.to_option res
+          |> Option.map ~f:(fun test ->
+            Source.Cram_test.path test |> Path.Source.to_string))
       and+ dir_candidates =
         let* parent_source_dir = Source_tree.find_dir parent_dir in
         match parent_source_dir with
@@ -42,7 +45,7 @@ let explain_unsuccessful_search path ~parent_dir =
             >>| Source_tree.Dir.path
             >>| Path.Source.to_string)
       in
-      List.concat [ file_candidates; dir_candidates ]
+      List.concat [ cram_candidates; dir_candidates ]
     in
     User_message.did_you_mean (Path.Source.to_string path) ~candidates
   in

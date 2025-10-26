@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 
 module Constraint : sig
   module Op : sig

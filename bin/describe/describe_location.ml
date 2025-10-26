@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 let doc =
   "Print the path to the executable using the same resolution logic as [dune exec]."

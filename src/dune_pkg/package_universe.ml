@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 type t =
   { local_packages : Local_package.t Package_name.Map.t

@@ -1,6 +1,6 @@
 (** Scheduling *)
 
-open! Import
+open Import
 
 module Config : sig
   type t =

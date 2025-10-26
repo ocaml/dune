@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 
 type ('k, 'v) t = (module Store_intf.Instance with type key = 'k and type value = 'v)
 

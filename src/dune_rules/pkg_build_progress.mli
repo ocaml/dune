@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 (** Formats a message in the style of a progress message. The text of
     the message will be "<verb> <object_>" with the verb colored to match

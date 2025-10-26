@@ -1,6 +1,4 @@
 {
-open! Stdune
-
 open Stdune
 
 module Token = struct

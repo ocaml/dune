@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 type t =
   | Ocamlformat

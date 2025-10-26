@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 open Result.O
 
 module Prog_and_args = struct

@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 type t =
   { modules_before_stdlib : Module_name.Set.t

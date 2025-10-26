@@ -1,4 +1,4 @@
-open! Import
+open Import
 open Memo.O
 
 module Include_term = struct

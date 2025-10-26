@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 
 (** A type of memoized computations that can be recomputed incrementally when
     their dependencies change. *)

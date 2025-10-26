@@ -1,4 +1,4 @@
-open! Import
+open Import
 open Memo.O
 
 let eval (cond : Dune_lang.Cond.t) ~dir ~f =

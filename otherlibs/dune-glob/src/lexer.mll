@@ -1,5 +1,5 @@
 {
-open! Stdune
+open Stdune
 open Re
 
 type t =

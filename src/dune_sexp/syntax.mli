@@ -1,6 +1,6 @@
 (** Management of syntaxes *)
 
-open! Stdune
+open Stdune
 
 module Version : sig
   (** A syntax version.

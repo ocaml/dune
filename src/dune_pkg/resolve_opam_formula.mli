@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 (** Evaluate the filters in a filtered formula returning the resulting formula. *)
 val apply_filter

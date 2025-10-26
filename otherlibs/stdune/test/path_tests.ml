@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 open Path
 open Dune_tests_common
 

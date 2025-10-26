@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 
 module Version = struct
   module T = struct

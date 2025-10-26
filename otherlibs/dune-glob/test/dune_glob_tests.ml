@@ -1,4 +1,3 @@
-open! Stdune
 module Glob = Dune_glob.V1
 
 let printf = Printf.printf

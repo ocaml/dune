@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 
 module Pform = struct
   module Payload = struct

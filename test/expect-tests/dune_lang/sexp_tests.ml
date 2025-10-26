@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 open Dune_lang.Decoder
 open Dune_tests_common
 

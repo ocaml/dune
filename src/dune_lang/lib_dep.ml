@@ -140,10 +140,7 @@ let decode ~allow_re_export =
              Select select )
          ]
        <|> enter
-             ((* TODO art-w: oxcaml extension is not recognized by installed
-                 libraries, which are missing a `(using oxcaml 0.1)`
-              let+ () = Syntax.since Oxcaml.syntax (0, 1) *)
-              let+ () = Syntax.since Stanza.syntax (3, 20)
+             (let+ () = Syntax.since Oxcaml.syntax (0, 1)
               and+ loc, lib = located Lib_name.decode
               and+ arguments, new_name =
                 until_keyword

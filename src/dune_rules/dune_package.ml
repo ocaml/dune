@@ -609,11 +609,16 @@ module Or_meta = struct
 
   let parse file lexbuf =
     let dir = Path.parent_exn file in
+    let extensions = [ Dune_lang.Oxcaml.(syntax, latest_version) ] in
+    let with_extensions decoder =
+      List.fold_left extensions ~init:decoder ~f:(fun decoder (ext, version) ->
+        Syntax.set ext (Active version) decoder)
+    in
     match
       Vfile.parse_contents lexbuf ~f:(fun lang ->
         String_with_vars.set_decoding_env
-          (Pform.Env.initial ~stanza:lang.version ~extensions:[])
-          (decode ~lang ~dir))
+          (Pform.Env.initial ~stanza:lang.version ~extensions)
+          (with_extensions (decode ~lang ~dir)))
     with
     | contents -> Ok contents
     | exception User_error.E message -> Error message

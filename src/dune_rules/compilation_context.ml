@@ -48,6 +48,8 @@ module Includes = struct
                 ])
              |> Resolve.Memo.args
              |> Command.Args.memo
+         ; cmt = cmi_includes
+         ; cmti = cmi_includes
          })
     ; melange =
         { cmi = make_includes_args ~mode:Melange [ Melange Cmi ]

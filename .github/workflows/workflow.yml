@@ -369,3 +369,22 @@ jobs:
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
           gc-max-store-size-linux: 5G
       - run: nix develop .#microbench -c make dune build bench/micro
+
+  oxcaml-test:
+    name: OxCaml
+    needs: nix-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
+      - uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: |
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
+          gc-max-store-size-linux: 2G
+      - run: |
+          nix develop .#ox-minimal -c ocaml --version
+          nix develop .#ox-minimal -c make test-ox

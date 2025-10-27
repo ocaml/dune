@@ -150,39 +150,39 @@ let build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules =
 let lib_hidden_deps ~sctx ~kind lib requires =
   let* requires = Resolve.read_memo requires in
   Memo.List.concat_map requires ~f:(fun dep ->
-    match Lib.compare lib dep with
-    | Eq -> Memo.return []
-    | Lt | Gt ->
-      (match Lib.Parameterised.status dep with
-       | Complete ->
-         let+ cm = Resolve.read_memo (get_cm ~kind dep) in
-         [ cm ]
-       | Partial ->
-         Code_error.raise
-           "unexpected partial application"
-           [ "lib", Lib.to_dyn lib; "dep", Lib.to_dyn dep ]
-       | Not_parameterised ->
-         let lib = dep in
-         let lib_info = Lib.info dep in
-         let obj_dir = Lib_info.obj_dir lib_info in
-         let+ modules =
-           match Lib_info.modules lib_info with
-           | External None ->
-             Code_error.raise "dependency has no modules" [ "lib", Lib.to_dyn dep ]
-           | External (Some modules) -> Memo.return modules
-           | Local ->
-             let local_lib = Lib.Local.of_lib_exn lib in
-             let+ modules = Dir_contents.modules_of_local_lib sctx local_lib in
-             Modules.With_vlib.modules modules
-         in
-         Modules.With_vlib.fold_no_vlib_with_aliases
-           modules
-           ~init:[]
-           ~normal:(fun module_ acc ->
-             match Obj_dir.Module.cm_file obj_dir module_ ~kind:(Ocaml Cmi) with
-             | None -> acc
-             | Some cmi -> cmi :: acc)
-           ~alias:(fun _group acc -> acc)))
+    if Lib.equal lib dep
+    then Memo.return []
+    else (
+      match Lib.Parameterised.status dep with
+      | Complete ->
+        let+ cm = Resolve.read_memo (get_cm ~kind dep) in
+        [ cm ]
+      | Partial ->
+        Code_error.raise
+          "unexpected partial application"
+          [ "lib", Lib.to_dyn lib; "dep", Lib.to_dyn dep ]
+      | Not_parameterised ->
+        let lib = dep in
+        let lib_info = Lib.info dep in
+        let obj_dir = Lib_info.obj_dir lib_info in
+        let+ modules =
+          match Lib_info.modules lib_info with
+          | External None ->
+            Code_error.raise "dependency has no modules" [ "lib", Lib.to_dyn dep ]
+          | External (Some modules) -> Memo.return modules
+          | Local ->
+            let local_lib = Lib.Local.of_lib_exn lib in
+            let+ modules = Dir_contents.modules_of_local_lib sctx local_lib in
+            Modules.With_vlib.modules modules
+        in
+        Modules.With_vlib.fold_no_vlib_with_aliases
+          modules
+          ~init:[]
+          ~normal:(fun module_ acc ->
+            match Obj_dir.Module.cm_file obj_dir module_ ~kind:(Ocaml Cmi) with
+            | None -> acc
+            | Some cmi -> cmi :: acc)
+          ~alias:(fun _group acc -> acc)))
   >>| Dep.Set.of_files
 ;;
 

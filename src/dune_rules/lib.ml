@@ -714,7 +714,7 @@ let wrapped t =
 ;;
 
 (* We can't write a structural equality because of all the lazy fields *)
-let equal : t -> t -> bool = phys_equal
+let equal a b = Ordering.is_eq (compare a b)
 let hash = Poly.hash
 
 include Comparable.Make (T)
@@ -972,8 +972,7 @@ end = struct
           | [] -> Resolve.Memo.return acc
           | (lib, stack) :: libs ->
             (match lib.implements, Lib_info.kind lib.info with
-             | None, Dune_file _ -> loop acc libs
-             | None, Parameter -> loop acc libs
+             | None, (Dune_file _ | Parameter) -> loop acc libs
              | None, Virtual -> loop (Map.set acc lib (No_impl stack)) libs
              | Some _, (Parameter | Virtual) ->
                assert false (* can't be virtual and implement *)
@@ -1251,15 +1250,14 @@ end = struct
            | Parameter -> Resolve.Memo.return [ impl ]
            | Virtual ->
              let requires_for_closure_check =
-               List.filter requires ~f:(fun lib ->
-                 not (Ordering.is_eq (compare lib impl)))
+               List.filter requires ~f:(fun lib -> not (equal lib impl))
              in
              let+ () =
                check_forbidden
                  requires_for_closure_check
                  ~forbidden_libraries:(Map.singleton impl Loc.none)
              in
-             []
+             [ impl ]
            | Dune_file _ ->
              Code_error.raise
                "expected Virtual or Parameter"
@@ -2014,7 +2012,7 @@ end = struct
                     find_internal db lib.name
                     >>= function
                     | Status.Found lib' ->
-                      if Ordering.is_eq (Id.compare lib.unique_id lib'.unique_id)
+                      if Id.equal lib.unique_id lib'.unique_id
                       then Resolve.Memo.return ()
                       else (
                         let req_by = Dep_stack.to_required_by stack in

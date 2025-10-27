@@ -20,4 +20,5 @@ Executables using the same name, defined in the same folder.
   1 | (executable
   2 |  (name foo))
   Error: Executable "foo" appears for the second time in this directory
+  Already defined at dune:3
   [1]

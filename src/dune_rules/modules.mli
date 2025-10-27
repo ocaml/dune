@@ -101,10 +101,6 @@ module With_vlib : sig
   (** Returns all the compatibility modules. *)
   val wrapped_compat : t -> Module.Name_map.t
 
-  (** Returns the main module name if it exists. It exist for libraries with
-      [(wrapped true)] or one module libraries. *)
-  val main_module_name : t -> Module_name.t option
-
   val version_installed : t -> src_root:Path.t -> install_dir:Path.t -> t
   val alias_for : t -> Module.t -> Module.t list
   val local_open : t -> Module.t -> Module_name.t list

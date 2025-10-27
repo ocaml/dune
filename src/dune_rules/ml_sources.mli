@@ -39,6 +39,9 @@ val modules : t -> libs:Lib.DB.t -> for_:for_ -> Modules.t Memo.t
 (** Find out the origin of the stanza for a given module *)
 val find_origin : t -> libs:Lib.DB.t -> Module_name.Path.t -> Origin.t option Memo.t
 
+(** Returns the entry point names for all Tests stanzas in this directory *)
+val test_entry_points : t -> string list
+
 val empty : t
 
 (** This [lookup_vlib] argument is required for constructing the collection of modules for

@@ -282,6 +282,18 @@ let find_origin (t : t) ~libs path =
      | origins -> raise_module_conflict_error origins ~module_path:path)
 ;;
 
+let test_entry_points t =
+  String.Map.fold
+    t.modules.executables
+    ~init:[]
+    ~f:(fun (origin, _modules, _obj_dir) acc ->
+      match origin with
+      | Origin.Tests tests ->
+        let names = Nonempty_list.to_list tests.exes.names |> List.map ~f:snd in
+        names @ acc
+      | Origin.Library _ | Origin.Executables _ | Origin.Melange _ -> acc)
+;;
+
 let modules_and_obj_dir t ~libs ~for_ =
   match
     match for_ with

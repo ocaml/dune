@@ -100,7 +100,7 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
            Target.interpret_targets (Common.root common) config setup targets
          | Runtest test_paths ->
            Runtest_common.make_request
-             ~contexts:setup.contexts
+             ~scontexts:setup.scontexts
              ~to_cwd:root.to_cwd
              ~test_paths
        in

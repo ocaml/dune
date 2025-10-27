@@ -39,6 +39,7 @@ include struct
   module Library = Library
   module Melange = Melange
   module Executables = Executables
+  module Dir_contents = Dir_contents
 end
 
 include struct

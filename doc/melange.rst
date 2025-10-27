@@ -15,20 +15,20 @@ be installed with opam:
 
    $ opam install melange
 
-Dune can build projects using Melange, and it allows the user to produce
-JavaScript files by defining a :ref:`melange-emit` stanza. Dune libraries can be
-used with Melange by adding ``melange`` to ``(modes ...)`` in the
-:doc:`/reference/dune/library` stanza.
+Dune can build Melange projects, and produces JavaScript files by defining a
+:ref:`melange-emit` stanza. Dune libraries may also define Melange libraries by
+adding ``melange`` to ``(modes ...)`` in the :doc:`/reference/dune/library`
+stanza.
 
-Melange support is still experimental in Dune and needs to be enabled in the
-:doc:`/reference/dune-project/index` file:
+Melange support must be enabled in the :doc:`/reference/dune-project/index`
+file:
 
 .. code:: dune
 
-    (using melange 0.1)
+    (using melange 1.0)
 
 Once that's in place, you can use the Melange mode in
-:doc:`/reference/dune/library` stanzas ``melange.emit`` stanzas.
+:doc:`/reference/dune/library` and ``melange.emit`` stanzas.
 
 Simple Project
 ==============
@@ -37,13 +37,13 @@ Let's start by looking at a simple project with Melange and Dune. Subsequent
 sections explain the different concepts used here in further detail.
 
 First, make sure that the :doc:`/reference/dune-project/index` file
-specifies at least version 3.8 of the Dune language, and the Melange extension
+specifies at least version 3.20 of the Dune language, and the Melange extension
 is enabled:
 
 .. code:: dune
 
   (lang dune {{latest}})
-  (using melange 0.1)
+  (using melange 1.0)
 
 Next, write a :doc:`/reference/dune/index` file with a
 :ref:`melange-emit` stanza:
@@ -100,10 +100,10 @@ melange.emit
 
 .. versionadded:: 3.8
 
-The ``melange.emit`` stanza allows the user to produce JavaScript files
-from Melange libraries and entry-point modules. It's similar to the OCaml
-:doc:`/reference/dune/executable` stanza, with the exception that there
-is no linking step.
+The ``melange.emit`` stanza produces JavaScript files from Melange libraries or
+entry-point modules. It's similar to the OCaml
+:doc:`/reference/dune/executable` stanza, with the exception that there is no
+linking step.
 
 .. code:: dune
 
@@ -111,12 +111,18 @@ is no linking step.
      (target <target>)
      <optional-fields>)
 
-``<target>`` is the name of the folder where resulting JavaScript artifacts will
-be placed. In particular, the folder will be placed under
-``_build/default/$path-to-directory-of-melange-emit-stanza``.
+.. _target:
 
-The result of building a  ``melange.emit`` stanza will match the file structure
-of the source tree. For example, given the following source tree:
+- ``<target>`` is the name of the folder inside the build directory where Dune
+  will compile the resulting JavaScript. In particular, the folder will be
+  placed under ``_build/default/$path-to-directory-of-melange-emit-stanza``.
+
+    **Note:** when using `promotion`_, Dune will additionally copy the
+    resulting JavaScript back to the source tree, next to the original source 
+    files.
+
+``$path-to-directory-of-melange-emit-stanza`` matches the file structure of the
+source tree. For example, given the following source tree:
 
 .. code::
 
@@ -209,12 +215,15 @@ The resulting layout in ``_build/default/output`` will be as follows:
   default is ``true``. If this option is ``false``, the Melange standard library
   and runtime JavaScript files won't be produced in the target directory.
 
+.. _melange_promote:
+
 - ``(promote <options>)`` promotes the generated ``.js`` files to the
   source tree. The options are the same as for the
   :ref:`rule promote mode <promote>`.
   Adding ``(promote (until-clean))`` to a ``melange.emit`` stanza will cause
   Dune to copy the ``.js`` files to the source tree and ``dune clean`` to
   delete them.
+  Check `Promotion`_ for more details.
 
 - ``(preprocess <preprocess-spec>)`` specifies how to preprocess files when
   needed. The default is ``no_preprocessing``. Additional options are described
@@ -298,19 +307,40 @@ well if you need to override the build rules in one of the packages.
    (vendored_dirs reason-react)
    (dirs reason-react))
 
+Promotion
+=====================
+
+Compiling and promoting Melange output in Dune is slightly different than
+compiling OCaml:
+
+- Limitations in Dune `rule production
+  <https://github.com/ocaml/dune/blob/main/doc/dev/rule-streaming.md>`_ require
+  a :ref:`target directory <target>` in :ref:`melange-emit`.
+
+  - The target directory is :ref:`total <total>`: it can be exported as is from
+    the Dune build directory
+- Many popular tools and frameworks in the JavaScript ecosystem today rely on
+  convention over configuration, especially as it relates to folder structure.
+  When using :ref:`promotion <melange_promote>`
+
+
 
 Design choices
 =====================
 
 Melange support in Dune follows the following design choices:
 
+.. _total:
+
 - :ref:`melange-emit` produces a "total" directory: the artifacts in the
-  ``target`` dir contain all the JavaScript and ``runtime_deps`` assets
+  ``target`` directory contain all the JavaScript and ``runtime_deps`` assets
   necessary to run the application either through a JS framework, a bundler, or
   otherwise a deployment (excluding external dependencies installed via a JS
   package manager). The structure is designed such that relative paths and
   dependencies work out of the box relative to their paths in the source tree,
   before compilation.
 - public libraries are compiled to ``%{target}/node_modules/%{lib_name}`` such
-  that the `resolution algorithm <https://nodejs.org/api/modules.html#all-together>`_
-  works to resolve Melange libraries from compiled JS code.
+  that the `resolution algorithm
+  <https://nodejs.org/api/modules.html#all-together>`_ works to resolve Melange
+  libraries from compiled JS code.
+- JavaScript output is promoted to the source tree 

@@ -52,9 +52,31 @@ A package that conditionally depends on packages depending on the OS:
   > EOF
 
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
-  Solution for dune.lock:
+  Solution for dune.lock
+  
+  This solution supports the following platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  - arch = x86_64; os = win32
+  - arch = arm64; os = win32
+  
+  Dependencies on all supported platforms:
   - foo.0.0.1
+  
+  Additionally, some packages will only be built on specific platforms.
+  
+  arch = arm64; os = linux:
   - linux-only.0.0.1
+  
+  arch = arm64; os = macos:
+  - macos-only.0.0.1
+  
+  arch = x86_64; os = linux:
+  - linux-only.0.0.1
+  
+  arch = x86_64; os = macos:
   - macos-only.0.0.1
 
 Build the project as if we were on linux and confirm that only the linux-specific dependency is installed:

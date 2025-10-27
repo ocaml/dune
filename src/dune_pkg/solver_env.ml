@@ -104,6 +104,19 @@ let pp t =
         (String.maybe_quoted (Variable_value.to_string value)))
 ;;
 
+let pp_oneline t =
+  if Package_variable_name.Map.is_empty t
+  then Pp.text "(empty)"
+  else
+    Pp.concat
+      ~sep:(Pp.text "; ")
+      (List.map (Package_variable_name.Map.to_list t) ~f:(fun (variable, value) ->
+         Pp.textf
+           "%s = %s"
+           (Package_variable_name.to_string variable)
+           (String.maybe_quoted (Variable_value.to_string value))))
+;;
+
 let unset = Package_variable_name.Map.remove
 
 let unset_multi t variable_names =

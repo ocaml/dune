@@ -52,7 +52,14 @@ correct depext names can be chosen for the current distro at build time.
   > EOF
 
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
-  Solution for dune.lock:
+  Solution for dune.lock
+  
+  This solution supports the following platforms:
+  - arch = x86_64; os = macos; os-distribution = homebrew; os-family = homebrew
+  - arch = x86_64; os = linux
+  - arch = x86_64; os = win32; os-distribution = cygwin; os-family = windows
+  
+  Dependencies on all supported platforms:
   - conf-pkg-config.0.0.1
 
 Print the name of the depext on a variety of os/distro/versions:

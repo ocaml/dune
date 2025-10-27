@@ -69,9 +69,31 @@ Define a project with a package depending on bar:
 
 Solve the project. The solution will contain extra files for both versions of foo:
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
-  Solution for dune.lock:
+  Solution for dune.lock
+  
+  This solution supports the following platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  - arch = x86_64; os = win32
+  - arch = arm64; os = win32
+  
+  Dependencies on all supported platforms:
   - bar.0.0.1
+  
+  Additionally, some packages will only be built on specific platforms.
+  
+  arch = arm64; os = linux:
   - foo.1
+  
+  arch = arm64; os = macos:
+  - foo.2
+  
+  arch = x86_64; os = linux:
+  - foo.1
+  
+  arch = x86_64; os = macos:
   - foo.2
 
 Verify the contents of the extra files for each version of foo:

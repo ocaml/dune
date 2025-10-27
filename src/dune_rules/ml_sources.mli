@@ -8,6 +8,7 @@ module Origin : sig
   type t =
     | Library of Library.t
     | Executables of Executables.t
+    | Tests of Tests.t
     | Melange of Melange_stanzas.Emit.t
 
   val preprocess : t -> Preprocess.With_instrumentation.t Preprocess.Per_module.t

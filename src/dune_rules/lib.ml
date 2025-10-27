@@ -661,14 +661,18 @@ module Parameterised = struct
     Parameterised_name.to_string (parameterised_name t)
   ;;
 
+  let dir ~build_dir t =
+    let parameterised_dir =
+      Path.Build.(relative build_dir Dune_lang.Oxcaml.parameterised_dir)
+    in
+    Path.Build.relative parameterised_dir (Lib_name.to_string (name t))
+  ;;
+
   let info ~build_dir ~ext_lib t =
     match status t with
     | Not_parameterised | Partial -> None
     | Complete ->
-      let parameterised_dir = Path.Build.(relative build_dir ".parameterised") in
-      let parameterised_dir =
-        Path.Build.relative parameterised_dir (Lib_name.to_string (name t))
-      in
+      let parameterised_dir = dir ~build_dir t in
       let dir = Path.Build.relative parameterised_dir (parameterised_name t) in
       Some (Lib_info.for_instance ~dir ~ext_lib t.info)
   ;;

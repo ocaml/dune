@@ -34,6 +34,7 @@ module Parameterised : sig
   val applied_name : t -> Parameterised_name.t Resolve.t
   val requires : t -> t list Resolve.t
   val for_instance : build_dir:Path.Build.t -> ext_lib:string -> t -> t
+  val dir : build_dir:Path.Build.t -> t -> Path.Build.t
 
   val instantiate
     :  loc:Loc.t

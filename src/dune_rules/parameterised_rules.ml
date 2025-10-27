@@ -293,8 +293,7 @@ let instantiate ~sctx lib =
     match Lib_info.modules lib_info with
     | External None -> Code_error.raise "library has no modules" [ "lib", Lib.to_dyn lib ]
     | External (Some modules) ->
-      let dir = Path.Build.relative build_dir ".parameterised" in
-      let dir = Path.Build.relative dir (Lib_name.to_string (Lib.name lib)) in
+      let dir = Lib.Parameterised.dir ~build_dir lib in
       Memo.return (obj_dir_for_dep_rules dir, modules)
     | Local ->
       let local_lib = Lib.Local.of_lib_exn lib in

@@ -7,3 +7,5 @@ let syntax =
     ~experimental:true
     [ (0, 1), `Since (3, 20) ]
 ;;
+
+let parameterised_dir = ".parameterised"

@@ -610,7 +610,13 @@ module Env = struct
     let macros =
       let macro (x : Macro.t) = No_info x in
       let artifact x =
-        String.drop (Artifact.ext x) 1, since ~version:(2, 0) (Macro.Artifact x)
+        let name = String.drop (Artifact.ext x) 1 in
+        let version =
+          match x with
+          | Mod Cmt | Mod Cmti -> 3, 21
+          | _ -> 2, 0
+        in
+        name, since ~version (Macro.Artifact x)
       in
       String.Map.of_list_exn
         ([ "exe", macro Exe

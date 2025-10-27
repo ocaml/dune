@@ -15,11 +15,6 @@ let choose t ~impl ~intf =
 let to_string = choose ~impl:"impl" ~intf:"intf"
 let to_dyn t = Dyn.String (to_string t)
 
-let cmt_ext = function
-  | Impl -> ".cmt"
-  | Intf -> ".cmti"
-;;
-
 module Dict = struct
   type 'a t =
     { impl : 'a

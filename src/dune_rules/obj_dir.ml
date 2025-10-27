@@ -90,7 +90,7 @@ module External = struct
     | Ocaml Cmi, Public, _ -> public_cmi_ocaml_dir t
     | Melange Cmi, Public, _ -> public_cmi_melange_dir t
     | Melange Cmj, _, _ -> t.melange_dir
-    | Ocaml (Cmo | Cmx), _, _ -> t.public_dir
+    | Ocaml (Cmo | Cmx | Cmt | Cmti), _, _ -> t.public_dir
   ;;
 
   let encode
@@ -165,7 +165,7 @@ module External = struct
   let cm_public_dir t (cm_kind : Lib_mode.Cm_kind.t) =
     match cm_kind with
     | Ocaml Cmx -> native_dir t
-    | Ocaml Cmo -> byte_dir t
+    | Ocaml (Cmo | Cmt | Cmti) -> byte_dir t
     | Ocaml Cmi -> public_cmi_ocaml_dir t
     | Melange Cmj -> melange_dir t
     | Melange Cmi -> public_cmi_melange_dir t
@@ -321,14 +321,14 @@ module Local = struct
   let cm_dir t (cm_kind : Lib_mode.Cm_kind.t) _ =
     match cm_kind with
     | Ocaml Cmx -> native_dir t
-    | Ocaml (Cmo | Cmi) -> byte_dir t
+    | Ocaml (Cmo | Cmi | Cmt | Cmti) -> byte_dir t
     | Melange (Cmj | Cmi) -> melange_dir t
   ;;
 
   let cm_public_dir t (cm_kind : Lib_mode.Cm_kind.t) =
     match cm_kind with
     | Ocaml Cmx -> native_dir t
-    | Ocaml Cmo -> byte_dir t
+    | Ocaml (Cmo | Cmt | Cmti) -> byte_dir t
     | Ocaml Cmi -> public_cmi_ocaml_dir t
     | Melange Cmj -> melange_dir t
     | Melange Cmi -> public_cmi_melange_dir t
@@ -513,7 +513,8 @@ module Module = struct
 
   let has_impl_if_needed m ~(kind : Lib_mode.Cm_kind.t) =
     match kind with
-    | Ocaml (Cmo | Cmx) | Melange Cmj -> Module.has m ~ml_kind:Impl
+    | Ocaml (Cmo | Cmx | Cmt) | Melange Cmj -> Module.has m ~ml_kind:Impl
+    | Ocaml Cmti -> Module.has m ~ml_kind:Intf
     | Ocaml Cmi | Melange Cmi -> true
   ;;
 
@@ -575,17 +576,20 @@ module Module = struct
 
   let cmt_file t m ~(ml_kind : Ml_kind.t) ~cm_kind =
     let file = Module.file m ~ml_kind in
-    let ext = Ml_kind.cmt_ext ml_kind in
+    let ext =
+      match ml_kind with
+      | Impl -> Cm_kind.ext Cmt
+      | Intf -> Cm_kind.ext Cmti
+    in
     let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
     Option.map file ~f:(fun _ -> obj_file t m ~kind:cmi_kind ~ext)
   ;;
 
   let cmti_file t m ~cm_kind =
     let ext =
-      Ml_kind.cmt_ext
-        (match Module.file m ~ml_kind:Intf with
-         | None -> Impl
-         | Some _ -> Intf)
+      match Module.file m ~ml_kind:Intf with
+      | None -> Cm_kind.ext Cmt
+      | Some _ -> Cm_kind.ext Cmti
     in
     let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
     obj_file t m ~kind:cmi_kind ~ext

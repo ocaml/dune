@@ -8,7 +8,6 @@ val all : t list
 val choose : t -> impl:'a -> intf:'a -> 'a
 val to_string : t -> string
 val to_dyn : t -> Dyn.t
-val cmt_ext : t -> string
 
 module Dict : sig
   type kind := t

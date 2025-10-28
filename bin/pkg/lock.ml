@@ -84,6 +84,33 @@ let resolve_project_pins project_pins =
   Pin.resolve project_pins ~scan_project
 ;;
 
+module Platforms_by_message = struct
+  module Message_map = Map.Make (struct
+      type t = User_message.Style.t Pp.t
+
+      let to_dyn = Pp.to_dyn User_message.Style.to_dyn
+      let compare = Pp.compare ~compare:User_message.Style.compare
+    end)
+
+  (* Map messages to the list of platforms for which those messages are
+     relevant. If a dependency problem has no solution on any platform, it's
+     likely that the error from the solver will be identical across all
+     platforms. We don't want to print the same error message once for each
+     platform, so this type collects messages and the platforms for which they
+     are relevant, deduplicating common messages. *)
+  type t = Solver_env.t list Message_map.t
+
+  let singleton message platform : t = Message_map.singleton message [ platform ]
+
+  let to_list (t : t) : (User_message.Style.t Pp.t * Solver_env.t list) list =
+    Message_map.to_list t
+  ;;
+
+  let union_all ts : t = Message_map.union_all ts ~f:(fun _ a b -> Some (a @ b))
+  let all_platforms (t : t) = Message_map.values t |> List.concat
+  let all_messages (t : t) = Message_map.keys t
+end
+
 let solve_multiple_platforms
       base_solver_env
       version_preference
@@ -117,7 +144,7 @@ let solve_multiple_platforms
       let solver_env = Solver_env.extend portable_solver_env platform_env in
       let+ solver_result = solve_for_env solver_env in
       Result.map_error solver_result ~f:(fun (`Diagnostic_message message) ->
-        platform_env, message))
+        Platforms_by_message.singleton message platform_env))
   in
   let solver_results, errors =
     List.partition_map results ~f:(function
@@ -126,14 +153,14 @@ let solve_multiple_platforms
   in
   match solver_results, errors with
   | [], [] -> Code_error.raise "Solver did not run for any platforms." []
-  | [], errors -> `All_error errors
+  | [], errors -> `All_error (Platforms_by_message.union_all errors)
   | x :: xs, errors ->
     let merged_solver_result =
       List.fold_left xs ~init:x ~f:Dune_pkg.Opam_solver.Solver_result.merge
     in
     if List.is_empty errors
     then `All_ok merged_solver_result
-    else `Partial (merged_solver_result, errors)
+    else `Partial (merged_solver_result, Platforms_by_message.union_all errors)
 ;;
 
 let summary_message
@@ -205,6 +232,23 @@ let summary_message
          | packages -> pp_packages packages)
      :: maybe_perf_stats)
     @ maybe_unsolved_platforms_message
+;;
+
+let pp_solve_errors_by_platforms platforms_by_message =
+  Platforms_by_message.to_list platforms_by_message
+  |> List.map ~f:(fun (solver_error, platforms) ->
+    Pp.concat
+      ~sep:Pp.cut
+      [ Pp.nop
+      ; Pp.box
+        @@ Pp.text
+             "The dependency solver failed to find a solution for the following \
+              platforms:"
+      ; Pp.enumerate platforms ~f:Solver_env.pp_oneline
+      ; Pp.box @@ Pp.text "...with this error:"
+      ; solver_error
+      ]
+    |> Pp.vbox)
 ;;
 
 let solve_lock_dir
@@ -285,14 +329,7 @@ let solve_lock_dir
     | `All_error messages -> Error messages
     | `All_ok solver_result -> Ok (solver_result, [])
     | `Partial (solver_result, errors) ->
-      Log.info
-      @@ List.map errors ~f:(fun (platform, solver_error) ->
-        Pp.concat
-          ~sep:Pp.newline
-          [ Pp.box @@ Pp.text "Failed to find package solution for platform:"
-          ; Solver_env.pp platform
-          ; solver_error
-          ]);
+      Log.info @@ pp_solve_errors_by_platforms errors;
       Ok
         ( solver_result
         , [ Pp.nop
@@ -303,8 +340,9 @@ let solve_lock_dir
                    @@ Pp.text "No package solution was found for some requsted platforms."
                  ; Pp.nop
                  ; Pp.box @@ Pp.text "Platforms with no solution:"
-                 ; Pp.enumerate errors ~f:(fun (platform, _) ->
-                     Solver_env.pp_oneline platform)
+                 ; Pp.enumerate
+                     (Platforms_by_message.all_platforms errors)
+                     ~f:Solver_env.pp_oneline
                  ; Pp.nop
                  ; Pp.box
                    @@ Pp.text
@@ -395,13 +433,24 @@ let solve
    | _ -> Error errors)
   >>| function
   | Error errors ->
-    User_error.raise
-      ([ Pp.text "Unable to solve dependencies for the following lock directories:" ]
-       @ List.concat_map errors ~f:(fun (path, messages_by_platform) ->
-         let messages = List.map messages_by_platform ~f:snd in
-         [ Pp.textf "Lock directory %s:" (Path.to_string_maybe_quoted path)
-         ; Pp.hovbox (Pp.concat ~sep:Pp.newline messages)
-         ]))
+    if portable_lock_dir
+    then
+      User_error.raise
+        (List.concat_map errors ~f:(fun (path, errors) ->
+           [ Pp.box
+             @@ Pp.textf
+                  "Unable to solve dependencies while generating lock directory: %s"
+                  (Path.to_string_maybe_quoted path)
+           ; Pp.vbox (Pp.concat ~sep:Pp.cut (pp_solve_errors_by_platforms errors))
+           ]))
+    else
+      User_error.raise
+        ([ Pp.text "Unable to solve dependencies for the following lock directories:" ]
+         @ List.concat_map errors ~f:(fun (path, errors) ->
+           let messages = Platforms_by_message.all_messages errors in
+           [ Pp.textf "Lock directory %s:" (Path.to_string_maybe_quoted path)
+           ; Pp.vbox (Pp.concat ~sep:Pp.cut messages)
+           ]))
   | Ok write_disks_with_summaries ->
     let write_disk_list, summary_messages = List.split write_disks_with_summaries in
     List.iter summary_messages ~f:Console.print_user_message;

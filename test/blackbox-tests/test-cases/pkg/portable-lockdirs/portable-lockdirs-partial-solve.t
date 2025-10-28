@@ -53,23 +53,12 @@ to solve for macos, linux, and windows by default.
   solve for in the dune-workspace file.
 
 The log file will contain errors about the package being unavailable.
-  $ sed -n -e "/Couldn't solve the package dependency formula./,\$p" _build/log
-  # Couldn't solve the package dependency formula.
-  # Selected candidates: x.dev
-  # - foo -> (problem)
-  #     No usable implementations:
-  #       foo.0.0.1: Availability condition not satisfied
-  # Failed to find package solution for platform:
-  # - arch = arm64
-  # - os = linux
-  # Couldn't solve the package dependency formula.
-  # Selected candidates: x.dev
-  # - foo -> (problem)
-  #     No usable implementations:
-  #       foo.0.0.1: Availability condition not satisfied
-  # Failed to find package solution for platform:
-  # - arch = x86_64
-  # - os = win32
+  $ sed -n -e "/The dependency solver failed to find a solution for the following platforms:/,\$p" _build/log
+  # The dependency solver failed to find a solution for the following platforms:
+  # - arch = x86_64; os = linux
+  # - arch = arm64; os = linux
+  # - arch = x86_64; os = win32
+  # ...with this error:
   # Couldn't solve the package dependency formula.
   # Selected candidates: x.dev
   # - foo -> (problem)

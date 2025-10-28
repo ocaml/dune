@@ -99,6 +99,11 @@ end = struct
   let load_merlin_file file =
     (* We search for an appropriate merlin configuration in the current
        directory and its parents *)
+    let get_file_config_at_path p =
+      match Merlin.Processed.load_file p with
+      | Error msg -> Some (Merlin_conf.make_error msg)
+      | Ok config -> Merlin.Processed.get config ~file
+    in
     let basename = Path.Build.set_extension file ~ext:"" |> Path.Build.basename in
     let good_names =
       List.map
@@ -118,18 +123,14 @@ end = struct
       with
       | Some p ->
         (* Found exact match: we are done *)
-        (match Merlin.Processed.load_file p with
-         | Error msg -> Some (Merlin_conf.make_error msg)
-         | Ok config -> Merlin.Processed.get config ~file)
+        get_file_config_at_path p
       | None ->
         (* looking for approximate match *)
         (match
            List.find_map merlin_paths ~f:(fun file_path ->
              (* FIXME we are racing against the build system writing these
              files here *)
-             match Merlin.Processed.load_file file_path with
-             | Error msg -> Some (Merlin_conf.make_error msg)
-             | Ok config -> Merlin.Processed.get config ~file)
+             get_file_config_at_path file_path)
          with
          | Some p -> Some p
          | None ->

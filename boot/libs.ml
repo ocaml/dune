@@ -1,5 +1,5 @@
 open Types
-let external_libraries = [ "unix"; "threads" ]
+let external_libraries = [ "pp"; "unix"; "csexp"; "threads" ]
 
 let local_libraries =
   [ { path = "otherlibs/top-closure"
@@ -14,20 +14,8 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "vendor/pp/src"
-    ; main_module_name = Some "Pp"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "otherlibs/dyn"
     ; main_module_name = Some "Dyn"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "vendor/csexp/src"
-    ; main_module_name = Some "Csexp"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None

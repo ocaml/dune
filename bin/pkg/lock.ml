@@ -6,6 +6,7 @@ module Opam_repo = Dune_pkg.Opam_repo
 module Lock_dir = Dune_pkg.Lock_dir
 module Pin_stanza = Dune_lang.Pin_stanza
 module Pin = Dune_pkg.Pin
+module Solver_env = Dune_pkg.Solver_env
 
 module Progress_indicator = struct
   module Per_lockdir = struct
@@ -107,13 +108,13 @@ let solve_multiple_platforms
       ~portable_lock_dir
   in
   let portable_solver_env =
-    Dune_pkg.Solver_env.unset_multi
+    Solver_env.unset_multi
       base_solver_env
       Dune_lang.Package_variable_name.platform_specific
   in
   let+ results =
     Fiber.parallel_map solve_for_platforms ~f:(fun platform_env ->
-      let solver_env = Dune_pkg.Solver_env.extend portable_solver_env platform_env in
+      let solver_env = Solver_env.extend portable_solver_env platform_env in
       let+ solver_result = solve_for_env solver_env in
       Result.map_error solver_result ~f:(fun (`Diagnostic_message message) ->
         platform_env, message))
@@ -146,7 +147,7 @@ let summary_message
   then (
     let pkgs_by_platform = Lock_dir.Packages.pkgs_by_platform lock_dir.packages in
     let opam_package_sets_by_platform =
-      Dune_pkg.Solver_env.Map.map pkgs_by_platform ~f:(fun pkgs ->
+      Solver_env.Map.map pkgs_by_platform ~f:(fun pkgs ->
         List.map pkgs ~f:(fun (pkg : Dune_pkg.Lock_dir.Pkg.t) ->
           OpamPackage.create
             (Dune_pkg.Package_name.to_opam_package_name pkg.info.name)
@@ -154,7 +155,7 @@ let summary_message
         |> OpamPackage.Set.of_list)
     in
     let common_packages =
-      Dune_pkg.Solver_env.Map.values opam_package_sets_by_platform
+      Solver_env.Map.values opam_package_sets_by_platform
       |> List.reduce ~f:OpamPackage.Set.inter
       |> Option.value ~default:OpamPackage.Set.empty
     in
@@ -166,21 +167,21 @@ let summary_message
           Pp.text (OpamPackage.to_string opam_package))
     in
     let uncommon_packages_by_platform =
-      Dune_pkg.Solver_env.Map.map opam_package_sets_by_platform ~f:(fun package_set ->
+      Solver_env.Map.map opam_package_sets_by_platform ~f:(fun package_set ->
         OpamPackage.Set.diff package_set common_packages)
-      |> Dune_pkg.Solver_env.Map.filteri ~f:(fun _ package_set ->
+      |> Solver_env.Map.filteri ~f:(fun _ package_set ->
         not (OpamPackage.Set.is_empty package_set))
     in
     let maybe_uncommon_packages =
-      if Dune_pkg.Solver_env.Map.is_empty uncommon_packages_by_platform
+      if Solver_env.Map.is_empty uncommon_packages_by_platform
       then []
       else
         Pp.nop
         :: Pp.text "Additionally, some packages will only be built on specific platforms."
-        :: (Dune_pkg.Solver_env.Map.to_list uncommon_packages_by_platform
+        :: (Solver_env.Map.to_list uncommon_packages_by_platform
             |> List.concat_map ~f:(fun (platform, packages) ->
               [ Pp.nop
-              ; Pp.concat [ Dune_pkg.Solver_env.pp_oneline platform; Pp.text ":" ]
+              ; Pp.concat [ Solver_env.pp_oneline platform; Pp.text ":" ]
               ; pp_package_set packages
               ]))
     in
@@ -189,7 +190,7 @@ let summary_message
        (Pp.textf "Solution for %s" (Path.to_string_maybe_quoted lock_dir_path))
      :: Pp.nop
      :: Pp.text "This solution supports the following platforms:"
-     :: Pp.enumerate (snd lock_dir.solved_for_platforms) ~f:Dune_pkg.Solver_env.pp_oneline
+     :: Pp.enumerate (snd lock_dir.solved_for_platforms) ~f:Solver_env.pp_oneline
      :: Pp.nop
      :: Pp.text "Dependencies on all supported platforms:"
      :: pp_package_set common_packages
@@ -221,7 +222,7 @@ let solve_lock_dir
   let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
   let project_pins, solve_for_platforms =
     match lock_dir with
-    | None -> project_pins, Dune_pkg.Solver_env.popular_platform_envs
+    | None -> project_pins, Solver_env.popular_platform_envs
     | Some lock_dir ->
       let workspace =
         Pin.DB.Workspace.of_stanza workspace.pins
@@ -245,7 +246,7 @@ let solve_lock_dir
       (match solver_env_from_context with
        | Some solver_env_from_context ->
          List.map solve_for_platforms ~f:(fun platform_env ->
-           Dune_pkg.Solver_env.extend solver_env_from_context platform_env)
+           Solver_env.extend solver_env_from_context platform_env)
        | None -> solve_for_platforms)
     | false -> [ solver_env ]
   in
@@ -289,7 +290,7 @@ let solve_lock_dir
         Pp.concat
           ~sep:Pp.newline
           [ Pp.box @@ Pp.text "Failed to find package solution for platform:"
-          ; Dune_pkg.Solver_env.pp platform
+          ; Solver_env.pp platform
           ; solver_error
           ]);
       Ok
@@ -303,7 +304,7 @@ let solve_lock_dir
                  ; Pp.nop
                  ; Pp.box @@ Pp.text "Platforms with no solution:"
                  ; Pp.enumerate errors ~f:(fun (platform, _) ->
-                     Dune_pkg.Solver_env.pp_oneline platform)
+                     Solver_env.pp_oneline platform)
                  ; Pp.nop
                  ; Pp.box
                    @@ Pp.text

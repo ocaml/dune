@@ -61,7 +61,6 @@ Define a package bar which conditionally depends on different versions of foo:
   - arch = x86_64; os = macos
   - arch = arm64; os = macos
   - arch = x86_64; os = win32
-  - arch = arm64; os = win32
   
   Dependencies on all supported platforms:
   - bar.0.0.1

@@ -30,7 +30,6 @@ Demonstrate various cases representing depexts in lockfiles.
   - arch = x86_64; os = macos
   - arch = arm64; os = macos
   - arch = x86_64; os = win32
-  - arch = arm64; os = win32
   
   Dependencies on all supported platforms:
   - foo.0.0.1

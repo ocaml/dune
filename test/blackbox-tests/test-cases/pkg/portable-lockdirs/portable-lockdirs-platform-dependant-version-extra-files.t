@@ -77,7 +77,6 @@ Solve the project. The solution will contain extra files for both versions of fo
   - arch = x86_64; os = macos
   - arch = arm64; os = macos
   - arch = x86_64; os = win32
-  - arch = arm64; os = win32
   
   Dependencies on all supported platforms:
   - bar.0.0.1

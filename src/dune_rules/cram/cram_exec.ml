@@ -335,7 +335,7 @@ let cram_commmands commands =
   Buffer.contents buf
 ;;
 
-let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
+let create_sh_script cram_stanzas ~temp_dir ~setup_scripts : sh_script Fiber.t =
   let script = Path.relative temp_dir "main.sh" in
   let oc = Io.open_out ~binary:true script in
   Fiber.finalize ~finally:(fun () -> Fiber.return @@ close_out oc)
@@ -384,6 +384,15 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
         }
   in
   fprln oc "trap 'exit 0' EXIT";
+  let* () =
+    Fiber.sequential_iter setup_scripts ~f:(fun (script_path : Path.t) ->
+      let+ script_sh_path = sh_path script_path in
+      fprln oc ". %s" script_sh_path;
+      match script_path with
+      | In_source_tree _ -> assert false
+      | External _ -> ()
+      | In_build_dir _ -> fprln oc "rm -f %s" script_sh_path)
+  in
   let+ cram_to_output = Fiber.sequential_map ~f:loop cram_stanzas in
   let command_count = !i in
   let metadata_file = Option.some_if (command_count > 0) metadata_file in
@@ -423,9 +432,9 @@ let make_temp_dir ~script =
   temp_dir
 ;;
 
-let run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout =
+let run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout ~setup_scripts =
   let open Fiber.O in
-  let* sh_script = create_sh_script cram_stanzas ~temp_dir in
+  let* sh_script = create_sh_script cram_stanzas ~temp_dir ~setup_scripts in
   let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
   let sh =
@@ -493,13 +502,21 @@ let run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout =
       (timeout_msg @ [ timeout_set_message ])
 ;;
 
-let run_produce_correction ~conflict_markers ~src ~env ~script ~timeout lexbuf =
+let run_produce_correction
+      ~conflict_markers
+      ~src
+      ~env
+      ~script
+      ~timeout
+      ~setup_scripts
+      lexbuf
+  =
   let temp_dir = make_temp_dir ~script in
   let cram_stanzas = cram_stanzas lexbuf ~conflict_markers |> List.map ~f:snd in
   let cwd = Path.parent_exn script in
   let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
-  run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout
+  run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout ~setup_scripts
   >>| compose_cram_output
 ;;
 
@@ -512,7 +529,16 @@ module Script = Persistent.Make (struct
     let test_example () = []
   end)
 
-let run_and_produce_output ~conflict_markers ~src ~env ~dir:cwd ~script ~dst ~timeout =
+let run_and_produce_output
+      ~conflict_markers
+      ~src
+      ~env
+      ~dir:cwd
+      ~script
+      ~dst
+      ~timeout
+      ~setup_scripts
+  =
   let script_contents = Io.read_file ~binary:false script in
   let lexbuf = Lexbuf.from_string script_contents ~fname:(Path.to_string script) in
   let temp_dir = make_temp_dir ~script in
@@ -522,7 +548,7 @@ let run_and_produce_output ~conflict_markers ~src ~env ~dir:cwd ~script ~dst ~ti
   let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
   let+ commands =
-    run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout
+    run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout ~setup_scripts
     >>| List.filter_map ~f:(function
       | Cram_lexer.Command c -> Some c
       | Comment _ -> None)
@@ -540,28 +566,42 @@ module Run = struct
       ; script : 'path
       ; output : 'target
       ; timeout : (Loc.t * float) option
+      ; setup_scripts : 'path list
       }
 
     let name = "cram-run"
-    let version = 2
+    let version = 3
 
-    let bimap ({ src = _; dir; script; output; timeout } as t) f g =
-      { t with dir = f dir; script = f script; output = g output; timeout }
+    let bimap ({ src = _; dir; script; output; timeout; setup_scripts } as t) f g =
+      { t with
+        dir = f dir
+      ; script = f script
+      ; output = g output
+      ; timeout
+      ; setup_scripts = List.map ~f setup_scripts
+      }
     ;;
 
     let is_useful_to ~memoize:_ = true
 
-    let encode { src = _; dir; script; output; timeout } path target : Sexp.t =
+    let encode { src = _; dir; script; output; timeout; setup_scripts } path target
+      : Sexp.t
+      =
       List
         [ path dir
         ; path script
         ; target output
         ; Dune_sexp.Encoder.(option float (Option.map ~f:snd timeout))
           |> Dune_sexp.to_sexp
+        ; List (List.map ~f:path setup_scripts)
         ]
     ;;
 
-    let action { src; dir; script; output; timeout } ~ectx:_ ~(eenv : Action.env) =
+    let action
+          { src; dir; script; output; timeout; setup_scripts }
+          ~ectx:_
+          ~(eenv : Action.env)
+      =
       run_and_produce_output
         ~conflict_markers:Ignore
         ~src
@@ -570,14 +610,15 @@ module Run = struct
         ~script
         ~dst:output
         ~timeout
+        ~setup_scripts
     ;;
   end
 
   include Action_ext.Make (Spec)
 end
 
-let run ~src ~dir ~script ~output ~timeout =
-  Run.action { src; dir; script; output; timeout }
+let run ~src ~dir ~script ~output ~timeout ~setup_scripts =
+  Run.action { src; dir; script; output; timeout; setup_scripts }
 ;;
 
 module Make_script = struct
@@ -700,7 +741,8 @@ module Action = struct
              ~src:script
              ~env:eenv.env
              ~script
-             ~timeout:None)
+             ~timeout:None
+             ~setup_scripts:[])
     ;;
   end
 

@@ -16,18 +16,21 @@ Make a package with a build-env field
   - with-build-env.0.0.1
 The lockfile should contain a setenv action.
 
-  $ cat ${default_lock_dir}/with-build-env.pkg 
+  $ cat ${default_lock_dir}/with-build-env.0.0.1.pkg 
   (version 0.0.1)
   
   (install
-   (withenv
-    ((= MY_ENV_VAR "Hello from env var!"))
-    (run sh -c "echo $MY_ENV_VAR")))
+   (all_platforms
+    (withenv
+     ((= MY_ENV_VAR "Hello from env var!"))
+     (run sh -c "echo $MY_ENV_VAR"))))
   
   (build
-   (withenv
-    ((= MY_ENV_VAR "Hello from env var!"))
-    (run sh -c "echo $MY_ENV_VAR")))
+   (all_platforms
+    ((action
+      (withenv
+       ((= MY_ENV_VAR "Hello from env var!"))
+       (run sh -c "echo $MY_ENV_VAR"))))))
 
 This should print the value given in the build-env field.
 

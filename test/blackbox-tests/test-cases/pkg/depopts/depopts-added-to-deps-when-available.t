@@ -19,10 +19,11 @@ The optional dependency on "b" is not included in foo's dependencies because
   Solution for dune.lock:
   - a.0.0.1
   - foo.0.0.1
-  $ cat ${default_lock_dir}/foo.pkg
+  $ cat ${default_lock_dir}/foo.0.0.1.pkg
   (version 0.0.1)
   
-  (depends a)
+  (depends
+   (all_platforms (a)))
 
 Another package which has a regular dependency on "b":
   $ mkpkg bar <<EOF
@@ -37,7 +38,9 @@ the dependencies of "foo", since "b" is part of the package solution:
   - b.0.0.1
   - bar.0.0.1
   - foo.0.0.1
-  $ cat ${default_lock_dir}/foo.pkg
+  $ cat ${default_lock_dir}/foo.0.0.1.pkg
   (version 0.0.1)
   
-  (depends a b)
+  (depends
+   (all_platforms
+    (a b)))

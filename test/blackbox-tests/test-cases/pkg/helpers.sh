@@ -165,10 +165,25 @@ make_lockpkg_file() {
   cat > "${source_lock_dir}/${pkg}.files/${filename}"
 }
 
+dune_pkg_lock_normalized() {
+  if dune pkg lock $@ 2> solve-stderr.txt; then
+    if [ "$DUNE_CONFIG__PORTABLE_LOCK_DIR" = "disabled" ]; then
+      cat solve-stderr.txt
+    else
+      cat solve-stderr.txt \
+        | awk '/Solution/{printf"%s:\n",$0;f=0};f{print};/Dependencies.*:/{f=1}' \
+        | sed 's/(none)/(no dependencies to lock)/'
+    fi
+  else
+    cat solve-stderr.txt | sed '/The dependency solver failed to find a solution for the following platforms:/,/\.\.\.with this error:/d'
+    return 1
+  fi
+}
+
 solve_project() {
   cat >dune-project
   add_mock_repo_if_needed
-  dune pkg lock $@
+  dune_pkg_lock_normalized $@
 }
 
 make_lockdir() {

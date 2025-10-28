@@ -13,10 +13,10 @@ Create a lock directory that didn't originally exist
   > EOF
   $ add_mock_repo_if_needed
 
-  $ dune pkg lock "dev/dune.lock"
+  $ dune_pkg_lock_normalized "dev/dune.lock"
   Solution for dev/dune.lock:
   (no dependencies to lock)
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   (no dependencies to lock)
   $ cat ${default_lock_dir}/lock.dune
@@ -25,9 +25,19 @@ Create a lock directory that didn't originally exist
   (repositories
    (complete false)
    (used))
+  
+  (solved_for_platforms
+   ((arch x86_64)
+    (os linux))
+   ((arch arm64)
+    (os linux))
+   ((arch x86_64)
+    (os macos))
+   ((arch arm64)
+    (os macos)))
 
 Re-create a lock directory in the newly created lock dir
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   (no dependencies to lock)
   $ cat ${default_lock_dir}/lock.dune
@@ -36,12 +46,22 @@ Re-create a lock directory in the newly created lock dir
   (repositories
    (complete false)
    (used))
+  
+  (solved_for_platforms
+   ((arch x86_64)
+    (os linux))
+   ((arch arm64)
+    (os linux))
+   ((arch x86_64)
+    (os macos))
+   ((arch arm64)
+    (os macos)))
 
 Attempt to create a lock directory inside an existing directory without a lock.dune file
 
   $ rm -rf ${default_lock_dir}
   $ cp -r dir-without-metadata ${default_lock_dir}
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Error: Refusing to regenerate lock directory dune.lock
   Specified lock dir lacks metadata file (lock.dune)
   [1]
@@ -50,7 +70,7 @@ Attempt to create a lock directory inside an existing directory with an invalid 
 
   $ rm -rf ${default_lock_dir}
   $ cp -r dir-with-invalid-metadata ${default_lock_dir}
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Error: Refusing to regenerate lock directory dune.lock
   Unable to parse lock directory metadata file (dune.lock/lock.dune):
   File "dune.lock/lock.dune", line 1, characters 0-12:
@@ -62,7 +82,7 @@ Attempt to create a lock directory with the same name as an existing regular fil
 
   $ rm -rf ${default_lock_dir}
   $ touch ${default_lock_dir}
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Error: Refusing to regenerate lock directory dune.lock
   Specified lock dir path (dune.lock) is not a directory
   [1]

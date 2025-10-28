@@ -48,26 +48,28 @@ file and the second patches two, one of the files is in a subdirectory.:w
   $ solve with-patch
   Solution for dune.lock:
   - with-patch.0.0.1
-  $ append_to_lockpkg with-patch <<EOF
+  $ append_to_lockpkg with-patch.0.0.1 <<EOF
   > (source (copy $PWD/source))
   > EOF
 
 Checking that the patch files have been copied to the dune.lock dir
 
-  $ [ -d ${default_lock_dir}/with-patch.files ] && ls ${default_lock_dir}/with-patch.files/foo.patch
-  dune.lock/with-patch.files/foo.patch
-  $ [ -d ${default_lock_dir}/with-patch.files/dir ] && ls ${default_lock_dir}/with-patch.files/dir/bar.patch
-  dune.lock/with-patch.files/dir/bar.patch
+  $ [ -d ${default_lock_dir}/with-patch.0.0.1.files ] && ls ${default_lock_dir}/with-patch.0.0.1.files/foo.patch
+  dune.lock/with-patch.0.0.1.files/foo.patch
+  $ [ -d ${default_lock_dir}/with-patch.0.0.1.files/dir ] && ls ${default_lock_dir}/with-patch.0.0.1.files/dir/bar.patch
+  dune.lock/with-patch.0.0.1.files/dir/bar.patch
 
 The lockfile should contain the patch action. 
-  $ cat ${default_lock_dir}/with-patch.pkg 
+  $ cat ${default_lock_dir}/with-patch.0.0.1.pkg 
   (version 0.0.1)
   
   (build
-   (progn
-    (patch foo.patch)
-    (patch dir/bar.patch)
-    (run cat foo.ml bar.ml dir/baz.ml)))
+   (all_platforms
+    ((action
+      (progn
+       (patch foo.patch)
+       (patch dir/bar.patch)
+       (run cat foo.ml bar.ml dir/baz.ml))))))
   (source (copy $TESTCASE_ROOT/source))
 
   $ mkdir -p source/dir

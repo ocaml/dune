@@ -74,7 +74,7 @@ Test that dune pkg enabled reports disabled:
 
 Test that pkg commands fail when disabled:
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   File "dune-workspace", line 7, characters 5-13:
   7 | (pkg disabled)
            ^^^^^^^^
@@ -102,7 +102,7 @@ create the lock file:
   $ create_mock_repo
   $ enable_pkg
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - testlib.0.0.1
 

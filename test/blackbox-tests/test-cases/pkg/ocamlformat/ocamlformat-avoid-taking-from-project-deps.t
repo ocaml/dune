@@ -27,7 +27,7 @@ Update dune-project to add the dependency on OCamlFormat.
   > EOF
 
 Lock and build the project to make OCamlFormat from the project dependencies available.
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - ocamlformat.0.26.2
 

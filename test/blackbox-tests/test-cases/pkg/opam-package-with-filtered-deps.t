@@ -25,8 +25,12 @@ Demonstrate the translation of filtered dependencies
   > EOF
 
   $ solve bar 2>/dev/null
+  Solution for dune.lock:
+  - bar.0.0.1
+  - pkg-build.0.0.1
 
-  $ cat ${default_lock_dir}/bar.pkg
+  $ cat ${default_lock_dir}/bar.0.0.1.pkg
   (version 0.0.1)
   
-  (depends pkg-build)
+  (depends
+   (all_platforms (pkg-build)))

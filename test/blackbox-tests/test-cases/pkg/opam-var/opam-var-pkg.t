@@ -55,95 +55,92 @@ We echo each package variable.
 Inspecting the lockfile we can see how each opam package variable was translated into a
 corresponding Dune version.
 
-  $ cat ${default_lock_dir}/testpkg.pkg
+  $ cat ${default_lock_dir}/testpkg.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (progn
-    (run echo 1 %{pkg-self:name})
-    (run echo 2 %{pkg-self:name})
-    (run echo 3 %{pkg:foo:name})
-    (run echo 4 %{pkg-self:version})
-    (run echo 5 %{pkg-self:version})
-    (run echo 6 %{pkg:foo:version})
-    (run echo 9 %{pkg-self:installed})
-    (run echo 10 %{pkg:foo:installed})
-    (run
-     echo
-     11
-     (if
-      (catch_undefined_var %{pkg-self:installed} false)
-      enable
-      disable))
-    (run
-     echo
-     12
-     (if
-      (catch_undefined_var %{pkg:foo:installed} false)
-      enable
-      disable))
-    (run echo 13 %{pkg-self:pinned})
-    (run echo 14 %{pkg:foo:pinned})
-    (run echo 15 %{pkg-self:bin})
-    (run echo 16 %{pkg:foo:bin})
-    (run echo 17 %{pkg-self:sbin})
-    (run echo 18 %{pkg:foo:sbin})
-    (run echo 19 %{pkg-self:lib})
-    (run echo 20 %{pkg:foo:lib})
-    (run echo 21 %{pkg-self:man})
-    (run echo 22 %{pkg:foo:man})
-    (run echo 23 %{pkg-self:doc})
-    (run echo 24 %{pkg:foo:doc})
-    (run echo 25 %{pkg-self:share})
-    (run echo 26 %{pkg:foo:share})
-    (run echo 27 %{pkg-self:etc})
-    (run echo 28 %{pkg:foo:etc})
-    (run echo 31 %{pkg-self:dev})
-    (run echo 32 %{pkg:foo:dev})
-    (run echo 35 %{pkg-self:with-test})
-    (run echo 36 %{pkg-self:with-test})
-    (run echo 37 %{pkg:foo:with-test})
-    (run echo 38 %{pkg-self:with-doc})
-    (run echo 39 %{pkg-self:with-doc})
-    (run echo 40 %{pkg:foo:with-doc})
-    (run echo 41 %{pkg-self:with-dev-setup})
-    (run echo 42 %{pkg:foo:with-dev-setup})))
+   (all_platforms
+    ((action
+      (progn
+       (run echo 1 %{pkg-self:name})
+       (run echo 2 %{pkg-self:name})
+       (run echo 3 %{pkg:foo:name})
+       (run echo 4 %{pkg-self:version})
+       (run echo 5 %{pkg-self:version})
+       (run echo 6 %{pkg:foo:version})
+       (run echo 9 %{pkg-self:installed})
+       (run echo 10 %{pkg:foo:installed})
+       (run
+        echo
+        11
+        (if (catch_undefined_var %{pkg-self:installed} false) enable disable))
+       (run
+        echo
+        12
+        (if (catch_undefined_var %{pkg:foo:installed} false) enable disable))
+       (run echo 13 %{pkg-self:pinned})
+       (run echo 14 %{pkg:foo:pinned})
+       (run echo 15 %{pkg-self:bin})
+       (run echo 16 %{pkg:foo:bin})
+       (run echo 17 %{pkg-self:sbin})
+       (run echo 18 %{pkg:foo:sbin})
+       (run echo 19 %{pkg-self:lib})
+       (run echo 20 %{pkg:foo:lib})
+       (run echo 21 %{pkg-self:man})
+       (run echo 22 %{pkg:foo:man})
+       (run echo 23 %{pkg-self:doc})
+       (run echo 24 %{pkg:foo:doc})
+       (run echo 25 %{pkg-self:share})
+       (run echo 26 %{pkg:foo:share})
+       (run echo 27 %{pkg-self:etc})
+       (run echo 28 %{pkg:foo:etc})
+       (run echo 31 %{pkg-self:dev})
+       (run echo 32 %{pkg:foo:dev})
+       (run echo 35 %{pkg-self:with-test})
+       (run echo 36 %{pkg-self:with-test})
+       (run echo 37 %{pkg:foo:with-test})
+       (run echo 38 %{pkg-self:with-doc})
+       (run echo 39 %{pkg-self:with-doc})
+       (run echo 40 %{pkg:foo:with-doc})
+       (run echo 41 %{pkg-self:with-dev-setup})
+       (run echo 42 %{pkg:foo:with-dev-setup}))))))
   
-  (depends foo)
+  (depends
+   (all_platforms (foo)))
 
 The values here are not important, but Dune should be able to interpret the variables.
 
   $ build_pkg testpkg
-  File "dune.lock/testpkg.pkg", line 45, characters 15-36:
-  45 |   (run echo 35 %{pkg-self:with-test})
-                      ^^^^^^^^^^^^^^^^^^^^^
+  File "dune.lock/testpkg.0.0.1.pkg", line 41, characters 18-39:
+  41 |      (run echo 35 %{pkg-self:with-test})
+                         ^^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-test"
-  File "dune.lock/testpkg.pkg", line 46, characters 15-36:
-  46 |   (run echo 36 %{pkg-self:with-test})
-                      ^^^^^^^^^^^^^^^^^^^^^
+  File "dune.lock/testpkg.0.0.1.pkg", line 42, characters 18-39:
+  42 |      (run echo 36 %{pkg-self:with-test})
+                         ^^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-test"
-  File "dune.lock/testpkg.pkg", line 47, characters 15-35:
-  47 |   (run echo 37 %{pkg:foo:with-test})
-                      ^^^^^^^^^^^^^^^^^^^^
+  File "dune.lock/testpkg.0.0.1.pkg", line 43, characters 18-38:
+  43 |      (run echo 37 %{pkg:foo:with-test})
+                         ^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-test"
-  File "dune.lock/testpkg.pkg", line 48, characters 15-35:
-  48 |   (run echo 38 %{pkg-self:with-doc})
-                      ^^^^^^^^^^^^^^^^^^^^
+  File "dune.lock/testpkg.0.0.1.pkg", line 44, characters 18-38:
+  44 |      (run echo 38 %{pkg-self:with-doc})
+                         ^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-doc"
-  File "dune.lock/testpkg.pkg", line 49, characters 15-35:
-  49 |   (run echo 39 %{pkg-self:with-doc})
-                      ^^^^^^^^^^^^^^^^^^^^
+  File "dune.lock/testpkg.0.0.1.pkg", line 45, characters 18-38:
+  45 |      (run echo 39 %{pkg-self:with-doc})
+                         ^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-doc"
-  File "dune.lock/testpkg.pkg", line 50, characters 15-34:
-  50 |   (run echo 40 %{pkg:foo:with-doc})
-                      ^^^^^^^^^^^^^^^^^^^
+  File "dune.lock/testpkg.0.0.1.pkg", line 46, characters 18-37:
+  46 |      (run echo 40 %{pkg:foo:with-doc})
+                         ^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-doc"
-  File "dune.lock/testpkg.pkg", line 51, characters 15-41:
-  51 |   (run echo 41 %{pkg-self:with-dev-setup})
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "dune.lock/testpkg.0.0.1.pkg", line 47, characters 18-44:
+  47 |      (run echo 41 %{pkg-self:with-dev-setup})
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-dev-setup"
-  File "dune.lock/testpkg.pkg", line 52, characters 15-40:
-  52 |   (run echo 42 %{pkg:foo:with-dev-setup})))
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "dune.lock/testpkg.0.0.1.pkg", line 48, characters 18-43:
+  48 |      (run echo 42 %{pkg:foo:with-dev-setup}))))))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-dev-setup"
   [1]

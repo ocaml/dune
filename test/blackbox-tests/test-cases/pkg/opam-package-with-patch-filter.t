@@ -24,21 +24,19 @@ Make a package with a patch behind a filter
   $ solve with-patch-filter
   Solution for dune.lock:
   - with-patch-filter.0.0.1
-  $ append_to_lockpkg with-patch-filter <<EOF
+  $ append_to_lockpkg with-patch-filter.0.0.1 <<EOF
   > (source (copy $PWD/source))
   > EOF
 
 The lockfile should contain the patch action with the appropriate filter. 
 
-  $ cat ${default_lock_dir}/with-patch-filter.pkg 
+  $ cat ${default_lock_dir}/with-patch-filter.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (progn
-    (when
-     (= %{switch} foobar)
-     (patch foo.patch))
-    (run cat foo.ml)))
+   (all_platforms
+    ((action
+      (progn (when (= %{switch} foobar) (patch foo.patch)) (run cat foo.ml))))))
   (source (copy $TESTCASE_ROOT/source))
 
   $ mkdir source

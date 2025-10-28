@@ -150,7 +150,7 @@ We should observe the same behaviour that when running test above.
   >   (run app)))
   > EOF
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - app.0.0.1
   - plugin1.0.0.1

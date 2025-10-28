@@ -16,5 +16,5 @@ Make a package with a build-env field and no build or install step
 When there is no build or install step the build environment does not appear in the lock
 file.
 
-  $ cat ${default_lock_dir}/with-build-env.pkg 
+  $ cat ${default_lock_dir}/with-build-env.0.0.1.pkg
   (version 0.0.1)

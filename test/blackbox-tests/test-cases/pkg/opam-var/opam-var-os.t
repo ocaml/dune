@@ -24,16 +24,18 @@ unset them all.
   $ solve testpkg
   Solution for dune.lock:
   - testpkg.0.0.1
-  $ cat ${default_lock_dir}/testpkg.pkg
+  $ cat ${default_lock_dir}/testpkg.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (progn
-    (run echo %{arch})
-    (run echo %{os})
-    (run echo %{os_distribution})
-    (run echo %{os_family})
-    (run echo %{os_version})))
+   (all_platforms
+    ((action
+      (progn
+       (run echo %{arch})
+       (run echo %{os})
+       (run echo %{os_distribution})
+       (run echo %{os_family})
+       (run echo %{os_version}))))))
 
 We write all the dune values to a file and then diff them with the output of opam var.
 

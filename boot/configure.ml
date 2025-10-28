@@ -21,7 +21,7 @@ let default_toggles : (string * [ `Disabled | `Enabled ]) list =
   [ "toolchains", `Enabled
   ; "lock_dev_tool", `Disabled
   ; "bin_dev_tools", `Disabled
-  ; "portable_lock_dir", `Disabled
+  ; "portable_lock_dir", `Enabled
   ]
 ;;
 

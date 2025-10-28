@@ -15,4 +15,4 @@ let prefix : string option = None
 let toolchains = `Enabled
 let lock_dev_tool = `Disabled
 let bin_dev_tools = `Disabled
-let portable_lock_dir = `Disabled
+let portable_lock_dir = `Enabled

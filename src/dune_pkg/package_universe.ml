@@ -5,7 +5,6 @@ type t =
   ; lock_dir : Lock_dir.t
   ; platform : Solver_env.t
   ; version_by_package_name : Package_version.t Package_name.Map.t
-  ; solver_env : Solver_env.t
   }
 
 let lockdir_regenerate_hints =
@@ -54,7 +53,10 @@ let concrete_dependencies_of_local_package t local_package_name ~with_test =
     |> Dependency_formula.to_filtered_formula
     |> Resolve_opam_formula.filtered_formula_to_package_names
          ~with_test
-         ~env:(Solver_env.to_env t.solver_env)
+         ~env:
+           (Solver_stats.Expanded_variable_bindings.to_solver_env
+              t.lock_dir.expanded_solver_variable_bindings
+            |> Solver_env.to_env)
          ~packages:t.version_by_package_name
   with
   | Ok { regular; post = _ } -> regular
@@ -89,7 +91,6 @@ let all_non_local_dependencies_of_local_packages t =
 let check_for_unnecessary_packges_in_lock_dir
       ~platform
       (lock_dir : Lock_dir.t)
-      solver_env
       all_non_local_dependencies_of_local_packages
   =
   let packages = Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform in
@@ -98,7 +99,7 @@ let check_for_unnecessary_packges_in_lock_dir
       match
         Lock_dir.transitive_dependency_closure
           lock_dir
-          ~platform:solver_env
+          ~platform
           all_non_local_dependencies_of_local_packages
       with
       | Ok x -> x
@@ -221,12 +222,12 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
         ]
 ;;
 
-let validate ~platform t =
+let validate t =
   validate_dependency_hash
     t.local_packages
     ~saved_dependency_hash:t.lock_dir.dependency_hash;
   all_non_local_dependencies_of_local_packages t
-  |> check_for_unnecessary_packges_in_lock_dir ~platform t.lock_dir t.solver_env
+  |> check_for_unnecessary_packges_in_lock_dir ~platform:t.platform t.lock_dir
 ;;
 
 let create ~platform local_packages lock_dir =
@@ -234,12 +235,8 @@ let create ~platform local_packages lock_dir =
     let version_by_package_name =
       version_by_package_name ~platform local_packages lock_dir
     in
-    let solver_env =
-      Solver_stats.Expanded_variable_bindings.to_solver_env
-        lock_dir.expanded_solver_variable_bindings
-    in
-    let t = { local_packages; lock_dir; platform; version_by_package_name; solver_env } in
-    validate ~platform t;
+    let t = { local_packages; lock_dir; platform; version_by_package_name } in
+    validate t;
     Ok t
   with
   | User_error.E e -> Error e
@@ -281,7 +278,7 @@ let transitive_dependency_closure_without_test t start =
     match
       Lock_dir.transitive_dependency_closure
         t.lock_dir
-        ~platform:t.solver_env
+        ~platform:t.platform
         Package_name.Set.(
           union
             non_local_immediate_dependencies_of_local_transitive_dependency_closure

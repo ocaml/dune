@@ -68,10 +68,10 @@ Test a generated 'tangled' user repo
 
   $ sed -i -e '4s|.*|(source (tangled @user.domain/repo))|' dune-project
   $ dune build
-  $ cat foo.opam | grep -i tangled.sh
-  homepage: "https://tangled.sh/@user.domain/repo"
-  bug-reports: "https://tangled.sh/@user.domain/repo/issues"
-  dev-repo: "git+https://tangled.sh/@user.domain/repo"
+  $ cat foo.opam | grep -i tangled.org
+  homepage: "https://tangled.org/@user.domain/repo"
+  bug-reports: "https://tangled.org/@user.domain/repo/issues"
+  dev-repo: "git+https://tangled.org/@user.domain/repo"
 
 Test that the creation of a source stanza of the form 'org/project/repo' is
 disallowed by any forge type other than gitlab and that associated error

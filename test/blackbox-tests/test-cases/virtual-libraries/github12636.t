@@ -21,6 +21,5 @@ Test for issue https://github.com/ocaml/dune/issues/12636
 First, test that regular build works:
   $ dune build
 
-Now test @check which should work but crashes:
-  $ dune build @check 2>&1 | grep "Internal"
-  Internal error, please report upstream including the contents of _build/log.
+Now test @check which should work without crashing:
+  $ dune build @check

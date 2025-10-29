@@ -110,7 +110,7 @@ Cram
 
       This limits each selected test to at most 2.5 seconds of execution time.
 
-   .. describe:: (conflict <ignore|error>)
+   .. describe:: (conflict_markers <ignore|error>)
 
       .. versionadded:: 3.21
 

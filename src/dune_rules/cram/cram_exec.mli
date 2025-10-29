@@ -4,7 +4,7 @@ open Import
 val make_script
   :  src:Path.t
   -> script:Path.Build.t
-  -> conflict:Cram_stanza.Conflict.t
+  -> conflict_markers:Cram_stanza.Conflict_markers.t
   -> Action.t
 
 (** Runs the script created in [make_script] *)

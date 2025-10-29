@@ -4,7 +4,7 @@ type applies_to =
   | Whole_subtree
   | Files_matching_in_this_dir of Predicate_lang.Glob.t
 
-module Conflict : sig
+module Conflict_markers : sig
   type t =
     | Error
     | Ignore
@@ -19,7 +19,7 @@ type t =
   ; deps : Dep_conf.t Bindings.t option
   ; enabled_if : Blang.t
   ; locks : Locks.t
-  ; conflict : Conflict.t option
+  ; conflict_markers : Conflict_markers.t option
   ; package : Package.t option
   ; runtest_alias : (Loc.t * bool) option
   ; timeout : (Loc.t * float) option

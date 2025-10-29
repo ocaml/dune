@@ -21,6 +21,9 @@ val state_dir : t -> string
 val runtime_dir : t -> string option
 
 (** Constructor of type {!t}. [~win32] (default: {!Sys.win32}) determines
-    whether to use Win32-specific APIs. [~env] is the function to get
+    whether to use Win32-specific APIs. [~macos] (default: [false]) determines
+    whether to use macOS-specific directories. [~env] is the function to get
     environment variables, typically {!Sys.getenv_opt}. *)
-val create : ?win32:bool -> env:(string -> string option) -> unit -> t
+val create :
+  ?win32:bool -> ?macos:bool ->
+  env:(string -> string option) -> unit -> t

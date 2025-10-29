@@ -1,4 +1,5 @@
-Demonstrate bug where the RPC promotion doesn't print a warning where the normal promotion does.
+Preventing regression about the RPC promotion which didn't print a warning where the normal promotion did.
+They should now be the same.
 
   $ . ./helpers.sh
 

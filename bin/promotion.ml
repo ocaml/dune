@@ -49,7 +49,7 @@ module Apply = struct
         let missing =
           Diff_promotion.promote_files_registered_in_last_run files_to_promote
         in
-        List.iter missing ~f:on_missing)
+        List.iter ~f:on_missing missing)
     | Error lock_held_by ->
       Rpc.Rpc_common.run_via_rpc
         ~common
@@ -75,7 +75,11 @@ module Diff = struct
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
     Scheduler.go_with_rpc_server ~common ~config (fun () ->
-      Diff_promotion.display_diffs ~on_missing files_to_promote)
+      let open Fiber.O in
+      let db = Diff_promotion.load_db () in
+      let* missing = Diff_promotion.missing ~db files_to_promote in
+      List.iter ~f:on_missing missing;
+      Diff_promotion.display_diffs ~db files_to_promote)
   ;;
 
   let command = Cmd.v info term
@@ -90,7 +94,11 @@ module Files = struct
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
     Scheduler.go_with_rpc_server ~common ~config (fun () ->
-      Diff_promotion.display_files ~on_missing files_to_promote)
+      let open Fiber.O in
+      let db = Diff_promotion.load_db () in
+      let* missing = Diff_promotion.missing ~db files_to_promote in
+      List.iter ~f:on_missing missing;
+      Diff_promotion.display_files ~db files_to_promote)
   ;;
 
   let command = Cmd.v info term

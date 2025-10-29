@@ -32,12 +32,16 @@ val promote_files_registered_in_last_run
   :  Dune_rpc_private.Files_to_promote.t
   -> Path.Source.t list
 
-val display_diffs
-  :  on_missing:(Path.Source.t -> unit)
+(** [missing ~db files] returns the list of files in [files] but not in [db]. *)
+val missing
+  :  db:File.t list
   -> Dune_rpc_private.Files_to_promote.t
-  -> unit Fiber.t
+  -> Path.Source.t list Fiber.t
 
-val display_files
-  :  on_missing:(Path.Source.t -> unit)
-  -> Dune_rpc_private.Files_to_promote.t
-  -> unit Fiber.t
+(** [display_diffs ~db files] will only print the diffs of files that are both
+    in [files] and in [db]. *)
+val display_diffs : db:File.t list -> Dune_rpc_private.Files_to_promote.t -> unit Fiber.t
+
+(** [display_files ~db files] will only print the filenames of files that are
+    both in [files] and in [db]. *)
+val display_files : db:File.t list -> Dune_rpc_private.Files_to_promote.t -> unit Fiber.t

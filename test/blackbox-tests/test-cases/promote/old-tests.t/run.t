@@ -78,8 +78,8 @@ Test single file promotion
   $ cat y
   titi
   $ dune promote x y
-  Warning: Nothing to promote for y.
   Warning: Nothing to promote for x.
+  Warning: Nothing to promote for y.
 
 Reproduction case for #1772
 ---------------------------

@@ -26,8 +26,8 @@ Promoting A at this point does nothing, and we print a warning.
 
 This should be a warning for both A and B.
   $ dune promote a.t b.t
-  Nothing to promote for b.t.
   Nothing to promote for a.t.
+  Nothing to promote for b.t.
   Warning: Build completed with 2 warnings.
 
 

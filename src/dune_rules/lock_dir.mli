@@ -29,6 +29,9 @@ val dev_tool_lock_dir : Dune_pkg.Dev_tool.t -> Path.t
 
 val select_lock_dir : Workspace.Lock_dir_selection.t -> Path.Source.t Memo.t
 
+(** Returns the lock directories present in the given workspace. *)
+val lock_dirs_of_workspace : Workspace.t -> Path.Source.Set.t Memo.t
+
 module Sys_vars : sig
   type t =
     { os : string option Memo.Lazy.t

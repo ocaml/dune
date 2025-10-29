@@ -38,6 +38,11 @@ let opam_file = function
   | Rest t -> t.opam_file
 ;;
 
+let extra_files = function
+  | Dune -> None
+  | Rest t -> Some t.extra_files
+;;
+
 let add_opam_package_to_opam_file package opam_file =
   opam_file
   |> OpamFile.OPAM.with_version (OpamPackage.version package)
@@ -187,4 +192,51 @@ let get_opam_package_files resolved_packages =
     | None -> assert false
     | Some _ -> Some (Option.value files ~default:[]))
   |> Int.Map.values
+;;
+
+let digest_extra_files : extra_files -> Dune_digest.t = function
+  | Inside_files_dir path_opt ->
+    (match path_opt with
+     | None ->
+       Sexp.List [ Atom "inside_files_dir"; Atom "none" ]
+       |> Sexp.to_string
+       |> Dune_digest.string
+     | Some path -> Path_digest.digest_with_lstat path)
+  | Git_files (path_opt, rev) ->
+    let path_str =
+      match path_opt with
+      | None -> "None"
+      | Some p -> sprintf "Some %s" (Path.Local.to_string p)
+    in
+    Sexp.List
+      [ Atom "git_files"
+      ; Atom path_str
+      ; Atom (Rev_store.At_rev.rev rev |> Rev_store.Object.to_hex)
+      ]
+    |> Sexp.to_string
+    |> Dune_digest.string
+;;
+
+let digest res_pkg =
+  (* We are explicitly ignoring [loc] here because we don't need to take into
+     account the location of the opam file. *)
+  Sexp.record
+    [ "opam_file", Atom (OpamFile.OPAM.write_to_string (opam_file res_pkg))
+    ; ( "package"
+      , let opam_pkg = package res_pkg in
+        Sexp.record
+          [ "name", Atom (OpamPackage.name opam_pkg |> OpamPackage.Name.to_string)
+          ; "version", Atom (OpamPackage.version opam_pkg |> OpamPackage.Version.to_string)
+          ] )
+    ; "dune_build", Atom (dune_build res_pkg |> Bool.to_string)
+    ; ( "extra_files"
+      , Atom
+          (extra_files res_pkg
+           |> Option.map ~f:digest_extra_files
+           |> Dune_digest.Feed.compute_digest
+                (Dune_digest.Feed.option Dune_digest.Feed.digest)
+           |> Dune_digest.to_string) )
+    ]
+  |> Sexp.to_string
+  |> Dune_digest.string
 ;;

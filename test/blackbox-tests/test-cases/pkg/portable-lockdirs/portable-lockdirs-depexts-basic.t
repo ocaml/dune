@@ -22,7 +22,16 @@ Demonstrate various cases representing depexts in lockfiles.
   > EOF
 
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
-  Solution for dune.lock:
+  Solution for dune.lock
+  
+  This solution supports the following platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  - arch = x86_64; os = win32
+  
+  Dependencies on all supported platforms:
   - foo.0.0.1
 
   $ cat ${default_lock_dir}/foo.0.0.1.pkg

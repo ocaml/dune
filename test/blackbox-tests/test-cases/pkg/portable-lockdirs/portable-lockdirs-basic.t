@@ -34,7 +34,16 @@ Create a package that writes a different value to some files depending on the os
   > EOF
 
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
-  Solution for dune.lock:
+  Solution for dune.lock
+  
+  This solution supports the following platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  - arch = x86_64; os = win32
+  
+  Dependencies on all supported platforms:
   - foo.0.0.1
 
   $ cat ${default_lock_dir}/lock.dune
@@ -56,8 +65,6 @@ Create a package that writes a different value to some files depending on the os
    ((arch arm64)
     (os macos))
    ((arch x86_64)
-    (os win32))
-   ((arch arm64)
     (os win32)))
 
   $ cat ${default_lock_dir}/foo.0.0.1.pkg
@@ -98,13 +105,7 @@ Create a package that writes a different value to some files depending on the os
        (progn
         (run mkdir -p %{share} %{lib}/%{pkg-self:name})
         (run touch %{lib}/%{pkg-self:name}/META)
-        (run sh -c "echo x86_64 > %{share}/machine")))))
-    ((((arch arm64) (os win32)))
-     ((action
-       (progn
-        (run mkdir -p %{share} %{lib}/%{pkg-self:name})
-        (run touch %{lib}/%{pkg-self:name}/META)
-        (run sh -c "echo arm64 > %{share}/machine")))))))
+        (run sh -c "echo x86_64 > %{share}/machine")))))))
 
   $ DUNE_CONFIG__ARCH=arm64 dune build
   $ cat $pkg_root/$(dune pkg print-digest foo)/target/share/kernel

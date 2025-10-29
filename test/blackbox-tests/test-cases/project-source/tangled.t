@@ -11,10 +11,10 @@ Test the tangled source type in project files.
   > EOF
 
   $ dune build
-  $ cat foo.opam | grep -i tangled.sh
-  homepage: "https://tangled.sh/@anil.recoil.org/foo"
-  bug-reports: "https://tangled.sh/@anil.recoil.org/foo/issues"
-  dev-repo: "git+https://tangled.sh/@anil.recoil.org/foo"
+  $ cat foo.opam | grep -i tangled.org
+  homepage: "https://tangled.org/@anil.recoil.org/foo"
+  bug-reports: "https://tangled.org/@anil.recoil.org/foo/issues"
+  dev-repo: "git+https://tangled.org/@anil.recoil.org/foo"
 
 The 'tangled' source kind is only supported in Dune lang >=3.21; check that
 Dune errors as expected with earlier Dune lang versions.

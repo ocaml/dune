@@ -383,10 +383,8 @@ A library can have more parameters than its dependencies:
   > (library (name lib2) (parameters a b c) (libraries lib))
   > EOF
 
-  $ ocamlc_where="$(ocamlc -where)"
-  $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
-  $ melc_compiler="$(which melc)" &> /dev/null
-  $ export BUILD_PATH_PREFIX_MAP="/MELC_COMPILER=$melc_compiler:$BUILD_PATH_PREFIX_MAP"
+We expect to see the parameter flag in the merlin config:
+
   $ dune build
   $ dune ocaml dump-dot-merlin lib2 | grep 'parameter'
   # FLG -parameter A -parameter B -parameter C

@@ -104,6 +104,19 @@ let pp t =
         (String.maybe_quoted (Variable_value.to_string value)))
 ;;
 
+let pp_oneline t =
+  if Package_variable_name.Map.is_empty t
+  then Pp.text "(empty)"
+  else
+    Pp.concat
+      ~sep:(Pp.text "; ")
+      (List.map (Package_variable_name.Map.to_list t) ~f:(fun (variable, value) ->
+         Pp.textf
+           "%s = %s"
+           (Package_variable_name.to_string variable)
+           (String.maybe_quoted (Variable_value.to_string value))))
+;;
+
 let unset = Package_variable_name.Map.remove
 
 let unset_multi t variable_names =
@@ -163,7 +176,6 @@ let popular_platform_envs =
   ; make ~os:"macos" ~arch:(Some "x86_64") ~os_distribution:None ~os_family:None ()
   ; make ~os:"macos" ~arch:(Some "arm64") ~os_distribution:None ~os_family:None ()
   ; make ~os:"win32" ~arch:(Some "x86_64") ~os_distribution:None ~os_family:None ()
-  ; make ~os:"win32" ~arch:(Some "arm64") ~os_distribution:None ~os_family:None ()
   ]
 ;;
 

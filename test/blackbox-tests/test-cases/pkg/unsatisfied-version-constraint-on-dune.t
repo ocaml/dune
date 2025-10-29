@@ -23,7 +23,7 @@ project:
 Solve the dependencies:
   $ dune pkg lock 2>&1 | sed -E 's/"3.[0-9]+"/"3.XX"/'
   Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Lock directory .dune-solution-cache:
   Couldn't solve the package dependency formula.
   Selected candidates: foo.dev
   - dune -> (problem)

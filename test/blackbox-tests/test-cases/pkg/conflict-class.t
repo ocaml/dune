@@ -31,7 +31,7 @@ Local conflict class defined in a local package:
 
   $ dune pkg lock
   Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Lock directory .dune-solution-cache:
   Couldn't solve the package dependency formula.
   Selected candidates: foo.dev x.dev foo&x
   - bar -> (problem)
@@ -50,7 +50,7 @@ Now the conflict class comes from the opam repository
 
   $ dune pkg lock
   Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Lock directory .dune-solution-cache:
   Couldn't solve the package dependency formula.
   Selected candidates: foo.0.0.1 x.dev
   - bar -> (problem)

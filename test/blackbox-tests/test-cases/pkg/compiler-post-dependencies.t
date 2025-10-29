@@ -7,7 +7,7 @@ Exercise dune resolving the post dependencies found in compiler packages.
   > (lang dune 3.20)
   > (pkg enabled)
   > (lock_dir
-  >  (path dune.lock)
+  >  (path .dune-solution-cache)
   >  (repositories mock)
   >  (solver_env
   >   (os linux)))
@@ -44,7 +44,7 @@ lists to prevent circular dependencies at package build time.
   > EOF
 
   $ solve ocaml-base-compiler 
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - ocaml-base-compiler.0.0.1
 
 Ensure that packages can be resolved at build time. This checks that

@@ -15,7 +15,7 @@ dependency.
 
   $ test "2.0.0" 2>&1 | sed -E 's/3.[0-9]+/3.XX/g'
   Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Lock directory .dune-solution-cache:
   Couldn't solve the package dependency formula.
   Selected candidates: foo.0.0.1 x.dev
   - dune -> (problem)
@@ -24,11 +24,11 @@ dependency.
       Rejected candidates:
         dune.3.XX: Incompatible with restriction: <= 2.0.0
   $ test "4.0.0"
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1
 
   $ test "4.0.0" 2>&1 | sed -E 's/3.[0-9]+/3.XX/g'
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1
 
 Create a fake project and ensure `dune` can be used as a dependency:
@@ -40,5 +40,5 @@ Create a fake project and ensure `dune` can be used as a dependency:
   >  (depends dune))
   > EOF
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   (no dependencies to lock)

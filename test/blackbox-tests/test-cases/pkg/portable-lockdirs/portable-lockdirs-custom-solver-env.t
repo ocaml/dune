@@ -14,7 +14,7 @@ setting the variable "sys-ocaml-version":
   >  (name mock)
   >  (url "file://$(pwd)/mock-opam-repository"))
   > (lock_dir
-  >  (path dune.lock)
+  >  (path .dune-solution-cache)
   >  (repositories mock)
   >  (solver_env
   >   (sys-ocaml-version 5.4.0+solver-env-version-override)))
@@ -49,7 +49,7 @@ Set up a project that depends on the package:
 
 Solve the project:
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
-  Solution for dune.lock
+  Solution for .dune-solution-cache
   
   This solution supports the following platforms:
   - arch = x86_64; os = linux; sys-ocaml-version =

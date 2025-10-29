@@ -14,7 +14,7 @@ Reproduce internal error with dune pkg validate-lockdir in #11188.
   >  (depends
   >   a))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - a.0.0.1
 
 Dune is able to verify this lock directory correctly:

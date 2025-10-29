@@ -25,7 +25,7 @@ Declare a package which refers to some variables:
 
 Solve the package using the default solver env:
   $ solve a
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - a.0.0.1
   $ cat ${default_lock_dir}/a.pkg
   (version 0.0.1)
@@ -54,7 +54,7 @@ Make a custom solver env:
   > (lang dune 3.20)
   > (pkg enabled)
   > (lock_dir
-  >  (path dune.lock)
+  >  (path .dune-solution-cache)
   >  (repositories mock)
   >  (solver_env
   >   (dev false)
@@ -63,7 +63,7 @@ Make a custom solver env:
   > (context
   >  (default
   >   (name default)
-  >   (lock_dir dune.lock)))
+  >   (lock_dir .dune-solution-cache)))
   > (repository
   >  (name mock)
   >  (url "file://$(pwd)/mock-opam-repository"))
@@ -71,7 +71,7 @@ Make a custom solver env:
 
 Run the solver using the new env:
   $ solve a
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - a.0.0.1
   $ cat ${default_lock_dir}/a.pkg
   (version 0.0.1)

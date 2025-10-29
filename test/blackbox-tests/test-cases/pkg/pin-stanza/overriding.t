@@ -36,6 +36,6 @@ We can override the sources set by packages we're fetching:
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.dev
   - foo.dev

@@ -21,23 +21,23 @@ Handling of more than one depopt:
   $ runtest <<'EOF'
   > depopts: [ "a" "b" "c" ]
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.0.1
 
   $ runtest <<'EOF'
   > depopts: [ "a" "b" "c" "d" ]
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.0.1
 
   $ runtest <<'EOF'
   > depopts: [ ("a" | "b") "c" "d" ]
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.0.1
 
   $ runtest <<'EOF'
   > depopts: [ (("e" | "a") | ("d" | "f")) "b" "c" ]
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.0.1

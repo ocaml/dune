@@ -33,7 +33,7 @@ Make a package that is only available on macos.
 Solving will still succeed, but there'll be a warning because dune will attempt
 to solve for macos, linux, and windows by default.
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
-  Solution for dune.lock
+  Solution for .dune-solution-cache
   
   This solution supports the following platforms:
   - arch = x86_64; os = macos
@@ -97,7 +97,7 @@ No errors when you try to build the platform on macos.
 
 Building on linux fails because the lockdir doesn't contain a compatible solution.
   $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=arm64 DUNE_CONFIG__OS_FAMILY=debian DUNE_CONFIG__OS_DISTRIBUTION=ubuntu DUNE_CONFIG__OS_VERSION=24.11 dune build
-  File "dune.lock/lock.dune", lines 10-13, characters 1-58:
+  File ".dune-solution-cache/lock.dune", lines 10-13, characters 1-58:
   10 |  ((arch x86_64)
   11 |   (os macos))
   12 |  ((arch arm64)

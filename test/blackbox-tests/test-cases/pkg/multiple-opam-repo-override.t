@@ -44,7 +44,7 @@ Define 1.0.0 in repo1 and 2.0.0 in repo2 for the same package:
 
   $ mkpkg repo1 1.0.0
   $ runtest
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.1.0.0
   (version 1.0.0)
   
@@ -53,7 +53,7 @@ Define 1.0.0 in repo1 and 2.0.0 in repo2 for the same package:
 
   $ mkpkg repo2 2.0.0
   $ runtest
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.2.0.0
   (version 2.0.0)
   
@@ -66,7 +66,7 @@ should take priority
 
   $ mkpkg repo1 2.0.0
   $ runtest
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.2.0.0
   (version 2.0.0)
   
@@ -78,7 +78,7 @@ be selected:
 
   $ mkpkg repo2 3.0.0
   $ runtest
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.3.0.0
   (version 3.0.0)
   
@@ -109,7 +109,7 @@ Now we repeat the tests but with a git repo:
 
   $ mkworkspace "repo1 repo2 git-repo"
   $ runtest
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.3.0.0
   (version 3.0.0)
   
@@ -118,7 +118,7 @@ Now we repeat the tests but with a git repo:
 
   $ mkworkspace "git-repo repo1 repo2"
   $ runtest
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.3.0.0
   (version 3.0.0)
   

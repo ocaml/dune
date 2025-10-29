@@ -33,5 +33,5 @@ Creating a lock should thus work.
 
   $ mkdir dune-workspace-cache
   $ XDG_CACHE_HOME=$(pwd)/fake-xdg-cache dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.1.0

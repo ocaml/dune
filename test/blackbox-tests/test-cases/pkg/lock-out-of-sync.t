@@ -23,7 +23,7 @@ Create a fake project and lock it:
   > EOF
   $ add_mock_repo_if_needed
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1
 
 As the lock file is syncronised with `dune-pkg`, the build succeeds:
@@ -41,14 +41,14 @@ We add the bar dependency to the test package
 
 It fails as we have not regenerated the lock:
   $ dune build
-  File "dune.lock/lock.dune", line 1, characters 0-0:
+  File ".dune-solution-cache/lock.dune", line 1, characters 0-0:
   Error: The lock dir is not sync with your dune-project
   Hint: run dune pkg lock
   [1]
 
 We fix it and the build succeeds again:
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.0.1
   - foo.0.0.1
   $ build_pkg foo

@@ -26,7 +26,7 @@ opam-var-unsupported.t
   > ]
   > EOF
   > solve testpkg
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - testpkg.0.0.1
   $ cat ${default_lock_dir}/testpkg.pkg
   (version 0.0.1)

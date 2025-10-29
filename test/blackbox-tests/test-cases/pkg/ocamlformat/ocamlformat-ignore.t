@@ -28,7 +28,7 @@ Create ".ocamlformat-ignore"
 
 Check with the feature when ".ocamlformat-ignore" file exists.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt --preview
-  Solution for dev-tools.locks/ocamlformat:
+  Solution for .dune-tools-solution-cache/ocamlformat:
   - ocamlformat.0.26.2
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
@@ -42,7 +42,7 @@ Check with the feature when ".ocamlformat-ignore" file exists.
 
 An important cleaning here, "dune fmt" takes the dev-tool when the lock directory
 exists even if the dev-tool feature is disabled.
-  $ rm -r dev-tools.locks/ocamlformat
+  $ rm -r .dune-tools-solution-cache/ocamlformat
 
 Check without the feature when ".ocamlformat-ignore" file exists.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=disabled dune fmt

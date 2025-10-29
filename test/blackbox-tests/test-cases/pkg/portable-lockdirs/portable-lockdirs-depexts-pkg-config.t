@@ -52,7 +52,7 @@ correct depext names can be chosen for the current distro at build time.
   > EOF
 
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
-  Solution for dune.lock
+  Solution for .dune-solution-cache
   
   This solution supports the following platforms:
   - arch = x86_64; os = macos; os-distribution = homebrew; os-family = homebrew

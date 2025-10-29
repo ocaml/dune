@@ -53,7 +53,7 @@ Define a package bar which conditionally depends on different versions of foo:
   > EOF
 
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
-  Solution for dune.lock
+  Solution for .dune-solution-cache
   
   This solution supports the following platforms:
   - arch = x86_64; os = linux

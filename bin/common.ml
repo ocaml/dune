@@ -246,7 +246,7 @@ module Options_implied_by_dash_p = struct
         & opt_all ~vopt:true bool [ false ]
         & info [ "require-dune-project-file" ] ~docs ~doc)
     and+ ignore_lock_dir =
-      let doc = "Ignore dune.lock/ directory." in
+      let doc = "Ignore .dune-solution-cache/ directory." in
       Arg.(value & flag & info [ "ignore-lock-dir" ] ~docs ~doc)
     in
     { root

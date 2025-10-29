@@ -29,7 +29,7 @@ should favor the dune metadata in such a case.
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.dev
   - foo.dev
 

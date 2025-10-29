@@ -69,7 +69,7 @@ Define a project with a package depending on bar:
 
 Solve the project. The solution will contain extra files for both versions of foo:
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
-  Solution for dune.lock
+  Solution for .dune-solution-cache
   
   This solution supports the following platforms:
   - arch = x86_64; os = linux

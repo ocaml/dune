@@ -24,7 +24,7 @@ Regular dependencies
   > EOF
 
   $ solve testpkg
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1
   - testpkg.1
 
@@ -33,7 +33,7 @@ Regular dependencies
   > EOF
 
   $ solve testpkg
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - testpkg.2
 
 Depopts. We don't have proper support for depopts yet, so these don't work.
@@ -45,7 +45,7 @@ the same way as depends
   > EOF
 
   $ solve testpkg
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - testpkg.2
 
   $ mkpkg "testpkg" 2 <<'EOF' 
@@ -53,5 +53,5 @@ the same way as depends
   > EOF
 
   $ solve testpkg
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - testpkg.2

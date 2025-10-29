@@ -19,7 +19,7 @@ val debug_artifact_substitution : bool ref
 (** Print package output when building with package management *)
 val debug_package_logs : bool ref
 
-(** Whether we are ignoring "dune.lock/". *)
+(** Whether we are ignoring ".dune-solution-cache/". *)
 val ignore_lock_dir : bool ref
 
 val concurrency : int ref

@@ -14,7 +14,7 @@ Demonstrate how depopts can be forced in the workspace
   >  (name x)
   >  (depopts foo bar))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   (no dependencies to lock)
 
 Select just foo
@@ -30,7 +30,7 @@ Select just foo
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1
 
 Select both foo and bar
@@ -46,7 +46,7 @@ Select both foo and bar
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.0.1
   - foo.0.0.1
 
@@ -63,7 +63,7 @@ Select a package that is not listed as depopt
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   (no dependencies to lock)
 
 
@@ -81,7 +81,7 @@ Select garbage
 
   $ dune pkg lock
   Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Lock directory .dune-solution-cache:
   Couldn't solve the package dependency formula.
   The following packages couldn't be found: z
   [1]

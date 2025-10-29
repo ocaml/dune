@@ -40,5 +40,5 @@ Note that sources in the projects are overriden by the workspace
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.dev

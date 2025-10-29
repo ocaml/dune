@@ -19,7 +19,7 @@ Solving for post dependencies:
 We don't need bar, so we skip it
 
   $ solve foo
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1
 
   $ cat ${default_lock_dir}/foo.pkg
@@ -37,7 +37,7 @@ Self dependency
   > EOF
 
   $ solve foo
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1
 
   $ cat ${default_lock_dir}/foo.pkg
@@ -54,7 +54,7 @@ Using post to break cycle:
   > EOF
 
   $ solve bar
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.0.1
   - foo.0.0.1
 
@@ -75,7 +75,7 @@ post "cycle":
   > EOF
 
   $ solve foo
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1
 
   $ cat ${default_lock_dir}/foo.pkg
@@ -90,5 +90,5 @@ In depopts:
   $ mkpkg bar
 
   $ solve foo
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1

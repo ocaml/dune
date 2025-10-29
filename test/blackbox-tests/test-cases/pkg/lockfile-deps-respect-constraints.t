@@ -27,7 +27,7 @@ rather than "a.0.0.1".
   >  (name foo)
   >  (depends c d))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - a.0.0.2
   - b.0.0.1
   - c.0.0.1

@@ -13,7 +13,7 @@ dune="dune"
 
 pkg_root="_build/_private/default/.pkg"
 
-default_lock_dir="dune.lock"
+default_lock_dir=".dune-solution-cache"
 source_lock_dir="${default_lock_dir}"
 
 # Prints the directory containing the package target and source dirs within the

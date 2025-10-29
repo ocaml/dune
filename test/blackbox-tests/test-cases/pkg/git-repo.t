@@ -30,7 +30,7 @@ Locking should produce the newest package from the repo
 
   $ mkdir dune-cache
   $ XDG_CACHE_HOME=$PWD/dune-cache dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.1.0
 
 Now let's assume a new version of foo is released.
@@ -46,7 +46,7 @@ Locking should update the git repo in our cache folder and give us the newer
 version in the lock file
 
   $ XDG_CACHE_HOME=$PWD/dune-cache dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.1.1
 
 If the package selected has some additional files that are supposed to be
@@ -74,15 +74,15 @@ should also be included.
 Locking should be successful and it should include the additional file
 
   $ XDG_CACHE_HOME=$PWD/dune-cache dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.1.2
 
   $ find ${default_lock_dir} | sort
-  dune.lock
-  dune.lock/foo.files
-  dune.lock/foo.files/hello.txt
-  dune.lock/foo.pkg
-  dune.lock/lock.dune
+  .dune-solution-cache
+  .dune-solution-cache/foo.files
+  .dune-solution-cache/foo.files/hello.txt
+  .dune-solution-cache/foo.pkg
+  .dune-solution-cache/lock.dune
 
 The extra-file should have the same content as the original file, we determine
 that by hashing with the checksum that we expected in the OPAM file

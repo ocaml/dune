@@ -11,10 +11,10 @@ Reproduce internal error with dune pkg outdated in #11188.
   >  (name foo)
   >  (depends a (b :with-dev-setup)))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - a.0.0.1
 
 dune pkg outdated is able to handle :with-dev-setup correctly.
   $ dune pkg outdated
-  dune.lock is up to date.
+  .dune-solution-cache is up to date.
 

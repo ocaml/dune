@@ -66,7 +66,7 @@ let test_message
       number_of_transitive
       total_number_of_transitive
   in
-  let lock_dir_path = Stdune.Path.of_string "dune.lock" in
+  let lock_dir_path = Stdune.Path.of_string ".dune-solution-cache" in
   let message =
     Dune_pkg.Outdated.For_tests.explain_results ~transitive ~lock_dir_path results
   in
@@ -101,17 +101,17 @@ let test_message
 let%expect_test "transitive helper message" =
   (* Transitive dependencies, helper message in the transitive = true case. *)
   test_message ~transitive:true 0 0 10 20;
-  [%expect {| [Warning]  10/20 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  10/20 packages in .dune-solution-cache are outdated. |}];
   test_message ~transitive:false 0 0 10 20;
   [%expect
     {|
-    [Warning]  10/20 packages in dune.lock are outdated.
+    [Warning]  10/20 packages in .dune-solution-cache are outdated.
     [no style] Showing immediate dependencies, use --transitive to see the rest. |}];
   (* No transitive dependencies, no helper message in both cases. *)
   test_message ~transitive:true 10 20 0 0;
-  [%expect {| [Warning]  10/20 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  10/20 packages in .dune-solution-cache are outdated. |}];
   test_message ~transitive:false 10 20 0 0;
-  [%expect {| [Warning]  10/20 packages in dune.lock are outdated. |}]
+  [%expect {| [Warning]  10/20 packages in .dune-solution-cache are outdated. |}]
 ;;
 
 (* [test a b c d] prints a message saying that out of [b] immediate dependencies [a] were
@@ -137,34 +137,34 @@ let test
 (* We should always report an empty lock file as up to date. *)
 let%expect_test "no packages" =
   test 0 0 0 0;
-  [%expect {| [Success]  dune.lock is up to date. |}]
+  [%expect {| [Success]  .dune-solution-cache is up to date. |}]
 ;;
 
 let%expect_test "single immediate package" =
   test 0 1 0 0;
-  [%expect {| [Success]  dune.lock is up to date. |}];
+  [%expect {| [Success]  .dune-solution-cache is up to date. |}];
   test 1 1 0 0;
-  [%expect {| [Warning]  1/1 packages in dune.lock are outdated. |}]
+  [%expect {| [Warning]  1/1 packages in .dune-solution-cache are outdated. |}]
 ;;
 
 let%expect_test "two immediate packages" =
   test 0 2 0 0;
-  [%expect {| [Success]  dune.lock is up to date. |}];
+  [%expect {| [Success]  .dune-solution-cache is up to date. |}];
   test 1 2 0 0;
-  [%expect {| [Warning]  1/2 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  1/2 packages in .dune-solution-cache are outdated. |}];
   test 2 2 0 0;
-  [%expect {| [Warning]  2/2 packages in dune.lock are outdated. |}]
+  [%expect {| [Warning]  2/2 packages in .dune-solution-cache are outdated. |}]
 ;;
 
 let%expect_test "three immediate packages" =
   test 0 3 0 0;
-  [%expect {| [Success]  dune.lock is up to date. |}];
+  [%expect {| [Success]  .dune-solution-cache is up to date. |}];
   test 1 3 0 0;
-  [%expect {| [Warning]  1/3 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  1/3 packages in .dune-solution-cache are outdated. |}];
   test 2 3 0 0;
-  [%expect {| [Warning]  2/3 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  2/3 packages in .dune-solution-cache are outdated. |}];
   test 3 3 0 0;
-  [%expect {| [Warning]  3/3 packages in dune.lock are outdated. |}]
+  [%expect {| [Warning]  3/3 packages in .dune-solution-cache are outdated. |}]
 ;;
 
 (* This case will never happen as having at least a single transitive dependency means
@@ -172,31 +172,31 @@ let%expect_test "three immediate packages" =
    this however, so for consistency we include what it would say. *)
 let%expect_test "single transitive package" =
   test 0 0 0 1;
-  [%expect {| [Success]  dune.lock is up to date. |}];
+  [%expect {| [Success]  .dune-solution-cache is up to date. |}];
   test 0 0 1 1;
-  [%expect {| [Warning]  1/1 packages in dune.lock are outdated. |}]
+  [%expect {| [Warning]  1/1 packages in .dune-solution-cache are outdated. |}]
 ;;
 
 (* Same as above. *)
 let%expect_test "two transitives packages" =
   test 0 0 0 2;
-  [%expect {| [Success]  dune.lock is up to date. |}];
+  [%expect {| [Success]  .dune-solution-cache is up to date. |}];
   test 0 0 1 2;
-  [%expect {| [Warning]  1/2 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  1/2 packages in .dune-solution-cache are outdated. |}];
   test 0 0 2 2;
-  [%expect {| [Warning]  2/2 packages in dune.lock are outdated. |}]
+  [%expect {| [Warning]  2/2 packages in .dune-solution-cache are outdated. |}]
 ;;
 
 (* Same as above. *)
 let%expect_test "three transitive packages" =
   test 0 0 0 3;
-  [%expect {| [Success]  dune.lock is up to date. |}];
+  [%expect {| [Success]  .dune-solution-cache is up to date. |}];
   test 0 0 1 3;
-  [%expect {| [Warning]  1/3 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  1/3 packages in .dune-solution-cache are outdated. |}];
   test 0 0 2 3;
-  [%expect {| [Warning]  2/3 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  2/3 packages in .dune-solution-cache are outdated. |}];
   test 0 0 3 3;
-  [%expect {| [Warning]  3/3 packages in dune.lock are outdated. |}]
+  [%expect {| [Warning]  3/3 packages in .dune-solution-cache are outdated. |}]
 ;;
 
 (* A lockfile with two packages, one an immediate dependency and one a transitive
@@ -204,71 +204,71 @@ let%expect_test "three transitive packages" =
    outdated. Since we only show the *)
 let%expect_test "one immediate and one transitive" =
   test 0 1 0 1;
-  [%expect {| [Success]  dune.lock is up to date. |}];
+  [%expect {| [Success]  .dune-solution-cache is up to date. |}];
   test 1 1 0 1;
-  [%expect {| [Warning]  1/2 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  1/2 packages in .dune-solution-cache are outdated. |}];
   test 0 1 1 1;
-  [%expect {| [Warning]  1/2 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  1/2 packages in .dune-solution-cache are outdated. |}];
   test 1 1 1 1;
-  [%expect {| [Warning]  2/2 packages in dune.lock are outdated. |}]
+  [%expect {| [Warning]  2/2 packages in .dune-solution-cache are outdated. |}]
 ;;
 
 let%expect_test "one immediate and two transitive" =
   test 0 1 0 2;
-  [%expect {| [Success]  dune.lock is up to date. |}];
+  [%expect {| [Success]  .dune-solution-cache is up to date. |}];
   test 1 1 0 2;
-  [%expect {| [Warning]  1/3 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  1/3 packages in .dune-solution-cache are outdated. |}];
   test 0 1 1 2;
-  [%expect {| [Warning]  1/3 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  1/3 packages in .dune-solution-cache are outdated. |}];
   test 1 1 1 2;
-  [%expect {| [Warning]  2/3 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  2/3 packages in .dune-solution-cache are outdated. |}];
   test 0 1 2 2;
-  [%expect {| [Warning]  2/3 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  2/3 packages in .dune-solution-cache are outdated. |}];
   test 1 1 2 2;
-  [%expect {| [Warning]  3/3 packages in dune.lock are outdated. |}]
+  [%expect {| [Warning]  3/3 packages in .dune-solution-cache are outdated. |}]
 ;;
 
 let%expect_test "two immediate and one transitive" =
   test 0 2 0 1;
-  [%expect {| [Success]  dune.lock is up to date. |}];
+  [%expect {| [Success]  .dune-solution-cache is up to date. |}];
   test 1 2 0 1;
-  [%expect {| [Warning]  1/3 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  1/3 packages in .dune-solution-cache are outdated. |}];
   test 2 2 0 1;
-  [%expect {| [Warning]  2/3 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  2/3 packages in .dune-solution-cache are outdated. |}];
   test 0 2 1 1;
-  [%expect {| [Warning]  1/3 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  1/3 packages in .dune-solution-cache are outdated. |}];
   test 1 2 1 1;
-  [%expect {| [Warning]  2/3 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  2/3 packages in .dune-solution-cache are outdated. |}];
   test 2 2 1 1;
-  [%expect {| [Warning]  3/3 packages in dune.lock are outdated. |}]
+  [%expect {| [Warning]  3/3 packages in .dune-solution-cache are outdated. |}]
 ;;
 
 let%expect_test "two immediate and two transitive" =
   test 0 2 0 2;
-  [%expect {| [Success]  dune.lock is up to date. |}];
+  [%expect {| [Success]  .dune-solution-cache is up to date. |}];
   test 1 2 0 2;
-  [%expect {| [Warning]  1/4 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  1/4 packages in .dune-solution-cache are outdated. |}];
   test 2 2 0 2;
-  [%expect {| [Warning]  2/4 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  2/4 packages in .dune-solution-cache are outdated. |}];
   test 0 2 1 2;
-  [%expect {| [Warning]  1/4 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  1/4 packages in .dune-solution-cache are outdated. |}];
   test 1 2 1 2;
-  [%expect {| [Warning]  2/4 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  2/4 packages in .dune-solution-cache are outdated. |}];
   test 2 2 1 2;
-  [%expect {| [Warning]  3/4 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  3/4 packages in .dune-solution-cache are outdated. |}];
   test 0 2 2 2;
-  [%expect {| [Warning]  2/4 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  2/4 packages in .dune-solution-cache are outdated. |}];
   test 1 2 2 2;
-  [%expect {| [Warning]  3/4 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  3/4 packages in .dune-solution-cache are outdated. |}];
   test 2 2 2 2;
-  [%expect {| [Warning]  4/4 packages in dune.lock are outdated. |}]
+  [%expect {| [Warning]  4/4 packages in .dune-solution-cache are outdated. |}]
 ;;
 
 let%expect_test "some larger examples" =
   test 0 0 10 100;
-  [%expect {| [Warning]  10/100 packages in dune.lock are outdated. |}];
+  [%expect {| [Warning]  10/100 packages in .dune-solution-cache are outdated. |}];
   test 12 34 56 78;
-  [%expect {| [Warning]  68/112 packages in dune.lock are outdated. |}]
+  [%expect {| [Warning]  68/112 packages in .dune-solution-cache are outdated. |}]
 ;;
 
 (* [test_entire_output a b c d] prints the message from before and also all the outdated
@@ -287,7 +287,7 @@ let test_entire_output
       number_of_transitive
       total_number_of_transitive
   in
-  let lock_dir_path = Stdune.Path.of_string "dune.lock" in
+  let lock_dir_path = Stdune.Path.of_string ".dune-solution-cache" in
   let message = Dune_pkg.Outdated.For_tests.pp ~transitive ~lock_dir_path results in
   Console.print [ message ]
 ;;
@@ -297,7 +297,7 @@ let%expect_test "testing entire output" =
   test_entire_output ~transitive:false 2 3 2 3;
   [%expect
     {|
-4/6 packages in dune.lock are outdated.
+4/6 packages in .dune-solution-cache are outdated.
 Showing immediate dependencies, use --transitive to see the rest.
 - foo0 1.0.0 < 2.0.0
 - foo1 1.0.0 < 2.0.0
@@ -305,7 +305,7 @@ Showing immediate dependencies, use --transitive to see the rest.
   test_entire_output ~transitive:true 2 3 2 3;
   [%expect
     {|
-4/6 packages in dune.lock are outdated.
+4/6 packages in .dune-solution-cache are outdated.
 - foo0 1.0.0 < 2.0.0
 - foo1 1.0.0 < 2.0.0
 - bar0 1.0.0 < 2.0.0

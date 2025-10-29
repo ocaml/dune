@@ -101,7 +101,7 @@ archives to download (since there is no central location for all archives), the
 build instructions (since each package can use its own way of building), and
 additional metadata like the system packages it depends upon.
 
-The information is stored in a directory (`dune.lock` by default) as separate
+The information is stored in a directory (`.dune-solution-cache` by default) as separate
 files, to reduce potential merge conflicts and simplify code review. Storing
 additional files like patches is also simpler this way.
 

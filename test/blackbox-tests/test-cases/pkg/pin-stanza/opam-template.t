@@ -30,7 +30,7 @@ command is currently not respected when the package is pinned.
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - opam-template.dev
   $ build_pkg opam-template
 

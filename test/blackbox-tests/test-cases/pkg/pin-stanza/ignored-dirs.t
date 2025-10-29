@@ -35,5 +35,5 @@ should be ignored.
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.dev

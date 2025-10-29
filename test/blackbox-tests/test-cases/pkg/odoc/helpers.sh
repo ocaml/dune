@@ -5,7 +5,7 @@ setup_odoc_workspace() {
 (lang dune 3.20)
 (pkg enabled)
 (lock_dir
- (path "dev-tools.locks/odoc")
+ (path ".dune-tools-solution-cache/odoc")
  (repositories mock))
  (lock_dir
   (repositories mock))

@@ -31,6 +31,6 @@ respect the pin-depends
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.1.0.0
   - foo.dev

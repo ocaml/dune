@@ -35,7 +35,7 @@ dependencies changes accordingly:
 
 ```
 $ dune pkg lock
-Solution for dune.lock:
+Solution for .dune-solution-cache:
 - base-unix.base
 - fmt.0.9.0
 - ocaml.5.0.0

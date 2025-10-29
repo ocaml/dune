@@ -86,7 +86,7 @@ Package which has boolean where string was expected. This should be caught while
   > EOF
 
   $ solve standard-dune with-interpolation with-percent-sign variable-types
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - standard-dune.0.0.1
   - variable-types.0.0.1
   - with-interpolation.0.0.1
@@ -141,7 +141,7 @@ Package which has boolean where string was expected. This should be caught while
   [1]
 
   $ solve exercise-filters
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - exercise-filters.0.0.1
 
   $ cat ${default_lock_dir}/exercise-filters.pkg
@@ -191,7 +191,7 @@ Package which has boolean where string was expected. This should be caught while
 
 Test that if opam filter translation is disabled the output doesn't contain any translated filters:
   $ solve exercise-filters
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - exercise-filters.0.0.1
   $ cat ${default_lock_dir}/exercise-filters.pkg
   (version 0.0.1)
@@ -239,7 +239,7 @@ Test that if opam filter translation is disabled the output doesn't contain any 
      (run echo m))))
 
   $ solve exercise-term-filters
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - exercise-term-filters.0.0.1
   $ cat ${default_lock_dir}/exercise-term-filters.pkg
   (version 0.0.1)
@@ -286,7 +286,7 @@ Package with package conjunction and string selections inside variable interpola
   > (lang dune 3.8)
   > (package (name x) (depends package-conjunction-and-string-selection))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - package-conjunction-and-string-selection.0.0.1
 Note that "enable" is not a true opam variable. Opam desugars occurrences of
 "pkg:enable" into "pkg:enable?enable:disable" but if the explicit package scope

@@ -12,5 +12,5 @@ Selecting depopts
   >  (depends foo)
   >  (depopts bar))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1

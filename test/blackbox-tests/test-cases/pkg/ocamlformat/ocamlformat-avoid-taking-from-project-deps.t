@@ -28,7 +28,7 @@ Update dune-project to add the dependency on OCamlFormat.
 
 Lock and build the project to make OCamlFormat from the project dependencies available.
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - ocamlformat.0.26.2
 
 Run "dune fmt" without the dev-tools feature enabled. This should invoke the ocamlformat
@@ -45,7 +45,7 @@ Format using the dev-tools feature, it does not invoke the OCamlFormat binary fr
 the project dependencies (0.26.2) but instead builds and runs the OCamlFormat binary as a
 dev-tool (0.26.3).
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
-  Solution for dev-tools.locks/ocamlformat:
+  Solution for .dune-tools-solution-cache/ocamlformat:
   - ocamlformat.0.26.3
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
@@ -59,7 +59,7 @@ Retry, without dev-tools feature and without cleaning. This time it uses the OCa
 binary from the project dependencies rather than the dev-tool. This exercises the
 behavior when OCamlFormat is installed simultaneously as both a dev-tool and as a
 regular package dependency.
-  $ rm -rf dev-tools.locks/ocamlformat
+  $ rm -rf .dune-tools-solution-cache/ocamlformat
   $ dune fmt --preview
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml

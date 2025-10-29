@@ -25,7 +25,7 @@ in any repository
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.1.0.0
 
 

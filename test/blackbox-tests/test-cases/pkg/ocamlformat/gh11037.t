@@ -40,7 +40,7 @@ attempt to build the package "foo".
   $ cat foo.ml
   let () = print_endline "Hello, world"
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
-  Solution for dev-tools.locks/ocamlformat:
+  Solution for .dune-tools-solution-cache/ocamlformat:
   - ocamlformat.0.0.1
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
@@ -62,7 +62,7 @@ Create a lockdir and define the package "bar". Note its install command is
 Now run `dune fmt` again. It attempts to build the project and its
 dependencies, and fails to install the dependency "bar".
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
-  File "dune.lock/bar.pkg", line 2, characters 14-19:
+  File ".dune-solution-cache/bar.pkg", line 2, characters 14-19:
   2 | (install (run false))
                     ^^^^^
   Error: Logs for package bar

@@ -111,7 +111,7 @@ url and the extra source.
 
   $ add_mock_repo_if_needed
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - needs-patch.0.0.1
 
   $ sed -E 's/md5=[0-9a-f]+/md5=$HASH/g' ${default_lock_dir}/needs-patch.pkg
@@ -169,7 +169,7 @@ application order of them mattering:
 Lock the project to use that new package
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - needs-patch.0.0.2
 
 Running the binary should work and output the double patched message:

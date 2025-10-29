@@ -5,7 +5,7 @@ Set up two build contexts: a default one for linux and another for macos.
   $ cat >dune-workspace <<EOF
   > (lang dune 3.8)
   > (lock_dir
-  >  (path dune.lock)
+  >  (path .dune-solution-cache)
   >  (repositories mock)
   >  (solver_env
   >   (os linux)))
@@ -29,7 +29,7 @@ Helper shell function to generate a dune-project file and generate lockdir for b
 
   $ solve_project() {
   >   cat >dune-project
-  >   dune pkg lock dune.lock
+  >   dune pkg lock .dune-solution-cache
   >   dune pkg lock dune.macos.lock
   > }
 
@@ -81,7 +81,7 @@ A package whose oldest and newest version is only available if with-test is fals
 No solution will be available on macos as all versions of this package are only
 available on linux.
   $ solve linux-only
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - linux-only.0.0.2
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.macos.lock:
@@ -96,7 +96,7 @@ available on linux.
 The latest version of the package will be chosen on linux but the middle
 version will be chosen on macos as that's the only version available on macos.
   $ solve macos-sometimes
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - macos-sometimes.0.0.3
   Solution for dune.macos.lock:
   - macos-sometimes.0.0.2
@@ -105,7 +105,7 @@ A warning will be printed as the undefined-var.0.0.1 package has an undefined
 variable in its `available` filter. The undefined-var.0.0.2 package has a valid
 `available` filter but is only available on linux.
   $ solve undefined-var
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - undefined-var.0.0.2
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.macos.lock:
@@ -121,7 +121,7 @@ Warnings will be printed and no solution will be found as the availability
 filter resolves to a string instead of to a boolean.
   $ solve availability-string
   Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Lock directory .dune-solution-cache:
   Couldn't solve the package dependency formula.
   Selected candidates: x.dev
   - availability-string -> (problem)
@@ -142,7 +142,7 @@ The middle version will be picked as this is the only one available if
 with-test is set. This exercises that we can handle flags in the available
 filter.
   $ solve with-test-check
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - with-test-check.0.0.2
   Solution for dune.macos.lock:
   - with-test-check.0.0.2

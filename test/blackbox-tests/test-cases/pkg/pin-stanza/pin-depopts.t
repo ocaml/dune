@@ -27,5 +27,5 @@ package with depopts.
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - pkg-with-depopts.5.2.0

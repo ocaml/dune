@@ -33,7 +33,7 @@ Here we demonstrate that projects override their sub projects:
   > (package (name bar))
   > EOF
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.dev
 
   $ print_source "bar"

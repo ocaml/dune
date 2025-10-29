@@ -10,10 +10,10 @@ Test that the ocamllsp dev tool can see the ocamlformat dev tool.
   > (lang dune 3.20)
   > (pkg enabled)
   > (lock_dir
-  >  (path "dev-tools.locks/ocaml-lsp-server")
+  >  (path ".dune-tools-solution-cache/ocaml-lsp-server")
   >  (repositories mock))
   > (lock_dir
-  >  (path "dev-tools.locks/ocamlformat")
+  >  (path ".dune-tools-solution-cache/ocamlformat")
   >  (repositories mock))
   > (lock_dir
   >   (repositories mock))
@@ -45,11 +45,11 @@ Make a fake ocamlformat
   > EOF
 
   $ dune tools install ocamlformat
-  Solution for dev-tools.locks/ocamlformat:
+  Solution for .dune-tools-solution-cache/ocamlformat:
   - ocamlformat.0.0.1
 
   $ dune tools exec ocamllsp
-  Solution for dev-tools.locks/ocaml-lsp-server:
+  Solution for .dune-tools-solution-cache/ocaml-lsp-server:
   - ocaml.5.2.0
   - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'

@@ -24,7 +24,7 @@ of the disjunction to be picked for a solution:
   > ]
   > EOF
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - a.0.0.1
 
 With the right filters, the other side of the disjunction should get picked:
@@ -36,7 +36,7 @@ With the right filters, the other side of the disjunction should get picked:
   > ]
   > EOF
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - b.0.0.1
 
 Unreachable packages should not be included. In the next test, "b" should not
@@ -50,5 +50,5 @@ necessary during solving.
   > ]
   > EOF
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   (no dependencies to lock)

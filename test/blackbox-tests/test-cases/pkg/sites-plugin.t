@@ -151,7 +151,7 @@ We should observe the same behaviour that when running test above.
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - app.0.0.1
   - plugin1.0.0.1
   $ dune build @runtest 2>&1 | dune_cmd sanitize

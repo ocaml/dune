@@ -1,5 +1,5 @@
 In this test we test the translation of a package with a build-env field and no build or
-install step into a dune lock file.
+install step into a .dune-solution-cache file.
 
   $ . ./helpers.sh
   $ mkrepo
@@ -10,7 +10,7 @@ Make a package with a build-env field and no build or install step
   > EOF
 
   $ solve with-build-env
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - with-build-env.0.0.1
 
 When there is no build or install step the build environment does not appear in the lock

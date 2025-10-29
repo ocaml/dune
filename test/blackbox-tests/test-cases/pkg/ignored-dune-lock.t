@@ -1,4 +1,4 @@
-Test that shows what happens when dune.lock is ignored.
+Test that shows what happens when .dune-solution-cache is ignored.
 
   $ . ./helpers.sh
 
@@ -31,12 +31,12 @@ Test that shows what happens when dune.lock is ignored.
   > (lang dune 3.16)
   > EOF
 
-Building test works when the dune.lock is visible to dune.
+Building test works when the .dune-solution-cache is visible to dune.
 
   $ build_pkg test
 
 Now the project is changed to only include src (which effectively ignores
-dune.lock):
+.dune-solution-cache):
 
   $ cat > dune <<EOF
   > (dirs src)

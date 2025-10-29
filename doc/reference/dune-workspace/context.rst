@@ -17,7 +17,7 @@ the description of an opam switch, as follows:
 
 -  ``(lock_dir <path>)`` specifies the lock directory that will be used for
    building this context (if any). If no lock directory is specified
-   ``dune.lock`` will be used. See the
+   ``.dune-solution-cache`` will be used. See the
    :doc:`/reference/dune-workspace/lock_dir` stanza for lock directory
    configuration options.
 

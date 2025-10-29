@@ -12,7 +12,7 @@ A lock directory which does not exist in the source tree:
 
   $ cat >dune-workspace <<EOF
   > (lang dune 3.13)
-  > (lock_dir (path $PWD/dune.lock))
+  > (lock_dir (path $PWD/.dune-solution-cache))
   > EOF
 
   $ build_pkg foo 2>&1 | awk '/Internal error/,/Raised/'
@@ -21,6 +21,6 @@ A lock directory which does not exist in the source tree:
     ("Local.relative: received absolute path",
      { t = "."
      ; path =
-         "$TESTCASE_ROOT/dune.lock"
+         "$TESTCASE_ROOT/.dune-solution-cache"
      })
   Raised at Stdune__Code_error.raise in file

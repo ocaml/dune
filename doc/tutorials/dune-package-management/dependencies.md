@@ -26,7 +26,7 @@ to update our lock directory with the new packages.
 
 ```
 $ dune pkg lock
-Solution for dune.lock:
+Solution for .dune-solution-cache:
 - base-unix.base
 - fmt.0.9.0
 - ocaml.5.2.0
@@ -112,7 +112,7 @@ package is locked:
 
 ```
 $ dune pkg lock
-Solution for dune.lock:
+Solution for .dune-solution-cache:
 - base-unix.base
 - fmt.0.9.0
 - ocaml.5.2.0

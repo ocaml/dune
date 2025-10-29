@@ -16,7 +16,7 @@ prefer if any:
 We don't currently support depopts so they are both omitted.
 
   $ solve bar baz
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.0.1
   - baz.0.0.1
 

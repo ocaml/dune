@@ -19,7 +19,7 @@ changed if desired.
    .. describe:: (path <string>)
 
       The location in the source tree where the lock directory will be
-      created or read from. If not specified defaults to ``dune.lock``.
+      created or read from. If not specified defaults to ``.dune-solution-cache``.
 
    .. describe:: (repositories <name list>)
 

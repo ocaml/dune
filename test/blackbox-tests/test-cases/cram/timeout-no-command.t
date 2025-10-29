@@ -23,9 +23,10 @@ Run the test and verify that the timeout error doesn't mention
 which specific command caused the timeout:
 
   $ dune test test.t
-  File "test.t", line 1, characters 0-0:
-  Error: Cram test timed out while running command:
-    $ echo "This is the problematic command" && sleep 2
+  File "test.t", line 2, characters 2-53:
+  2 |   $ echo "This is the problematic command" && sleep 2
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Cram test timed out
   A time limit of 0.10s has been set in dune:2
   [1]
 

@@ -26,6 +26,13 @@ val of_git_repo : Loc.t -> OpamUrl.t -> t Fiber.t
 val revision : t -> Rev_store.At_rev.t
 val serializable : t -> Serializable.t option
 
+(** Provides a digest of the contents the opam repository is pointing at.
+
+    In the case of a Git repository that is the commit hash of the revision it
+    is pointing at. In the context of a directory that is a hashed
+    representation of its contents. *)
+val content_digest : t -> Dune_digest.t
+
 module Key : sig
   type t
 

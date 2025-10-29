@@ -131,6 +131,14 @@ val create_latest_version
 
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit
 
+(** [file_contents_by_path ~portable_lock_dir t] returns a list of (filename, sexp list)
+    pairs representing the serialized lock directory contents. This is used to generate
+    the files that make up a lock directory. *)
+val file_contents_by_path
+  :  portable_lock_dir:bool
+  -> t
+  -> (string * Dune_sexp.t list) list
+
 val metadata_filename : Filename.t
 
 module Write_disk : sig

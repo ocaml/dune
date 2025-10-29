@@ -47,7 +47,6 @@ to solve for macos, linux, and windows by default.
   Platforms with no solution:
   - arch = x86_64; os = linux
   - arch = arm64; os = linux
-  - arch = x86_64; os = win32
   
   See the log or run with --verbose for more details. Configure platforms to
   solve for in the dune-workspace file.
@@ -57,7 +56,6 @@ The log file will contain errors about the package being unavailable.
   # The dependency solver failed to find a solution for the following platforms:
   # - arch = x86_64; os = linux
   # - arch = arm64; os = linux
-  # - arch = x86_64; os = win32
   # ...with this error:
   # Couldn't solve the package dependency formula.
   # Selected candidates: x.dev

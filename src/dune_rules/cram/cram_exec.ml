@@ -55,10 +55,12 @@ let cram_stanzas =
       (* CR-someday rgrinberg for alizter: insert a location spanning the
          entire once we start extracting it *)
       User_error.raise
-        [ Pp.text "Conflict found. Please remove it or set (conflict allow)" ]
+        [ Pp.text
+            "Conflict marker found. Please remove it or set (conflict_markers allow)"
+        ]
     | _ -> state
   in
-  fun ~(conflict : Cram_stanza.Conflict.t) lexbuf ->
+  fun ~(conflict_markers : Cram_stanza.Conflict_markers.t) lexbuf ->
     let rec loop acc conflict_state =
       match Cram_lexer.block lexbuf with
       | None -> List.rev acc
@@ -67,7 +69,7 @@ let cram_stanzas =
           match s with
           | Command _ -> conflict_state
           | Comment lines ->
-            (match conflict with
+            (match conflict_markers with
              | Ignore -> conflict_state
              | Error -> List.fold_left lines ~init:conflict_state ~f:find_conflict)
         in
@@ -77,7 +79,7 @@ let cram_stanzas =
 ;;
 
 module For_tests = struct
-  let cram_stanzas lexbuf = cram_stanzas lexbuf ~conflict:Ignore
+  let cram_stanzas lexbuf = cram_stanzas lexbuf ~conflict_markers:Ignore
 
   let dyn_of_block = function
     | Cram_lexer.Comment lines -> Dyn.variant "Comment" [ Dyn.list Dyn.string lines ]
@@ -482,9 +484,9 @@ let run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout =
       (timeout_msg @ [ timeout_set_message ])
 ;;
 
-let run_produce_correction ~conflict ~src ~env ~script ~timeout lexbuf =
+let run_produce_correction ~conflict_markers ~src ~env ~script ~timeout lexbuf =
   let temp_dir = make_temp_dir ~script in
-  let cram_stanzas = cram_stanzas lexbuf ~conflict in
+  let cram_stanzas = cram_stanzas lexbuf ~conflict_markers in
   let cwd = Path.parent_exn script in
   let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
@@ -501,11 +503,11 @@ module Script = Persistent.Make (struct
     let test_example () = []
   end)
 
-let run_and_produce_output ~conflict ~src ~env ~dir:cwd ~script ~dst ~timeout =
+let run_and_produce_output ~conflict_markers ~src ~env ~dir:cwd ~script ~dst ~timeout =
   let script_contents = Io.read_file ~binary:false script in
   let lexbuf = Lexbuf.from_string script_contents ~fname:(Path.to_string script) in
   let temp_dir = make_temp_dir ~script in
-  let cram_stanzas = cram_stanzas lexbuf ~conflict in
+  let cram_stanzas = cram_stanzas lexbuf ~conflict_markers in
   (* We don't want the ".cram.run.t" dir around when executing the script. *)
   Path.rm_rf (Path.parent_exn script);
   let env = make_run_env env ~temp_dir ~cwd in
@@ -552,7 +554,7 @@ module Run = struct
 
     let action { src; dir; script; output; timeout } ~ectx:_ ~(eenv : Action.env) =
       run_and_produce_output
-        ~conflict:Ignore
+        ~conflict_markers:Ignore
         ~src
         ~env:eenv.env
         ~dir
@@ -574,7 +576,7 @@ module Make_script = struct
     type ('path, 'target) t =
       { script : 'path
       ; target : 'target
-      ; conflict : Cram_stanza.Conflict.t
+      ; conflict_markers : Cram_stanza.Conflict_markers.t
       }
 
     let name = "cram-generate"
@@ -582,22 +584,22 @@ module Make_script = struct
     let bimap t f g = { t with script = f t.script; target = g t.target }
     let is_useful_to ~memoize:_ = true
 
-    let encode { script = src; target = dst; conflict } path target : Sexp.t =
+    let encode { script = src; target = dst; conflict_markers } path target : Sexp.t =
       List
         [ path src
         ; target dst
         ; Atom
-            (match conflict with
+            (match conflict_markers with
              | Error -> "error"
              | Ignore -> "ignore")
         ]
     ;;
 
-    let action { script = src; target = dst; conflict } ~ectx:_ ~eenv:_ =
+    let action { script = src; target = dst; conflict_markers } ~ectx:_ ~eenv:_ =
       let commands =
         Io.read_file ~binary:false src
         |> Lexbuf.from_string ~fname:(Path.to_string src)
-        |> cram_stanzas ~conflict
+        |> cram_stanzas ~conflict_markers
         |> List.filter_map ~f:(function
           | Cram_lexer.Comment _ -> None
           | Command s -> Some s)
@@ -611,8 +613,8 @@ module Make_script = struct
   include Action_ext.Make (Spec)
 end
 
-let make_script ~src ~script ~conflict =
-  Make_script.action { script = src; target = script; conflict }
+let make_script ~src ~script ~conflict_markers =
+  Make_script.action { script = src; target = script; conflict_markers }
 ;;
 
 module Diff = struct
@@ -640,7 +642,7 @@ module Diff = struct
         in
         let current_stanzas =
           Lexbuf.from_string ~fname:(Path.to_string script) current
-          |> cram_stanzas ~conflict:Ignore
+          |> cram_stanzas ~conflict_markers:Ignore
         in
         let rec loop acc current expected =
           match current with
@@ -683,7 +685,7 @@ module Action = struct
         script
         ~f:
           (run_produce_correction
-             ~conflict:Ignore
+             ~conflict_markers:Ignore
              ~src:script
              ~env:eenv.env
              ~script

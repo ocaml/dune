@@ -75,8 +75,8 @@ Test that dune pkg enabled reports disabled:
 Test that pkg commands fail when disabled:
 
   $ dune pkg lock
-  File "dune-workspace", line 2, characters 5-13:
-  2 | (pkg disabled)
+  File "dune-workspace", line 7, characters 5-13:
+  7 | (pkg disabled)
            ^^^^^^^^
   Error: Package management is disabled in workspace configuration.
   Hint: To enable package management, remove the explicit (pkg disabled)

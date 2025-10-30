@@ -106,8 +106,6 @@ EOF
 (repository
  (name mock)
  (url "file://$(pwd)/mock-opam-repository"))
-
-(pkg enabled)
 EOF
 }
 

@@ -42,16 +42,15 @@ let quote_for_sh fn =
 
 let cram_stanzas =
   let is_conflict_marker line =
-    match line with
-    | "=======" | "%%%%%%%" | "+++++++" | "-------" | "|||||||" -> true
-    | _ -> false
+    [ "======="; "%%%%%%%"; "+++++++"; "-------"; "|||||||" ]
+    |> List.exists ~f:(fun prefix -> String.is_prefix line ~prefix)
   in
   let find_conflict state line =
     match state with
-    | `No_conflict when line = "<<<<<<<" -> `Started
+    | `No_conflict when String.is_prefix ~prefix:"<<<<<<<" line -> `Started
     | `Started when is_conflict_marker line -> `Has_markers
     | `Has_markers when is_conflict_marker line -> `Has_markers
-    | `Has_markers when line = ">>>>>>>" ->
+    | `Has_markers when String.is_prefix ~prefix:">>>>>>>" line ->
       (* CR-someday rgrinberg for alizter: insert a location spanning the
          entire once we start extracting it *)
       User_error.raise

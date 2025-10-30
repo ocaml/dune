@@ -11,11 +11,11 @@ Cram tests can forbid jujutsu conflicts:
 Full jujutsu conflict without command and output interleaving:
 
   $ cat >test.t <<EOF
-  > <<<<<<<
+  > <<<<<<< Conflict 1 of 2
   > A Small
   > %%%%%%%
   > Conflict
-  > >>>>>>>
+  > >>>>>>> Conflict 1 of 2 ends
   > $ echo tada
   > EOF
 
@@ -30,11 +30,11 @@ Full jujutsu conflict without command and output interleaving:
 Full jujutsu conflict with command and output interleaving:
 
   $ cat >test.t <<EOF
-  > <<<<<<<
+  > <<<<<<< Conflict 2 of 2
   >   $ foo
   > %%%%%%%
   >   > bar
-  > >>>>>>>
+  > >>>>>>> Conflict 2 of 2 ends
   > $ echo tada
   > EOF
 
@@ -49,14 +49,14 @@ Full jujutsu conflict with command and output interleaving:
 Jujutsu default style conflict (diff + snapshot):
 
   $ cat >test.t <<EOF
-  > <<<<<<<
-  > %%%%%%%
+  > <<<<<<< Conflict 1 of 1
+  > %%%%%%% Changes from base to side #1
   > -apple
   > +grapefruit
-  > +++++++
+  > +++++++ Contents of side #2
   > APPLE
   > GRAPE
-  > >>>>>>>
+  > >>>>>>> Conflict 1 of 1 ends
   > $ echo tada
   > EOF
 
@@ -71,14 +71,14 @@ Jujutsu default style conflict (diff + snapshot):
 Jujutsu snapshot style conflict:
 
   $ cat >test.t <<EOF
-  > <<<<<<<
-  > +++++++
+  > <<<<<<< Conflict 1 of 1
+  > +++++++ Contents of side #1
   > Left side
-  > -------
+  > ------- Contents of base
   > Original
-  > +++++++
+  > +++++++ Contents of side #2
   > Right side
-  > >>>>>>>
+  > >>>>>>> Conflict 1 of 1 ends
   > $ echo tada
   > EOF
 

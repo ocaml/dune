@@ -231,7 +231,9 @@ let build_modules ~sctx ~obj_dir ~modules_obj_dir ~dep_graph ~mode ~requires ~li
         let+ module_deps = Dep_graph.deps_of dep_graph module_ in
         let deps =
           List.map module_deps ~f:(fun module_ ->
-            apply_module_name module_ args |> obj_file ~obj_dir ~kind |> Path.build)
+            apply_module_name module_ args
+            |> obj_file ~obj_dir ~kind ?ext:None
+            |> Path.build)
         in
         Dep.Set.union lib_hidden_deps (Dep.Set.of_files (module_cmi :: deps))
       in

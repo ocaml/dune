@@ -706,11 +706,19 @@ let wrapped t =
   | None -> Resolve.Memo.return None
   | Some (This wrapped) -> Resolve.Memo.return (Some wrapped)
   | Some (From _) ->
-    let+ vlib = Memo.return (Option.value_exn t.implements) in
-    (match Lib_info.wrapped vlib.info with
-     | Some (From _) (* can't inherit this value in virtual libs *) | None ->
-       assert false (* will always be specified in dune package *)
-     | Some (This x) -> Some x)
+    let+ impl = Memo.return (Option.value_exn t.implements) in
+    (match Lib_info.kind impl.info with
+     | Parameter ->
+       (* A parameter is an unwrapped Singleton, but its implementation
+          should be wrapped. *)
+       Some (Wrapped.Simple true)
+     | Virtual ->
+       (match Lib_info.wrapped impl.info with
+        | Some (From _) (* can't inherit this value in virtual libs *) | None ->
+          assert false (* will always be specified in dune package *)
+        | Some (This x) -> Some x)
+     | Dune_file _ ->
+       Code_error.raise "expected Parameter or Virtual for implements" [ "lib", to_dyn t ])
 ;;
 
 (* We can't write a structural equality because of all the lazy fields *)

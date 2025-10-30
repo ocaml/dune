@@ -5,7 +5,7 @@ Cram tests can forbid conflicts:
   > EOF
 
   $ cat >dune <<EOF
-  > (cram (conflict error))
+  > (cram (conflict_markers error))
   > EOF
 
 Full conflict without command and output interleaving:
@@ -20,7 +20,8 @@ Full conflict without command and output interleaving:
   > EOF
 
   $ dune runtest test.t
-  Error: Conflict found. Please remove it or set (conflict allow)
+  Error: Conflict marker found. Please remove it or set (conflict_markers
+  allow)
   -> required by _build/default/.cram.test.t/cram.sh
   -> required by _build/default/.cram.test.t/cram.out
   -> required by alias test
@@ -38,7 +39,8 @@ Full conflict with command and output interleaving:
   > EOF
 
   $ dune runtest test.t
-  Error: Conflict found. Please remove it or set (conflict allow)
+  Error: Conflict marker found. Please remove it or set (conflict_markers
+  allow)
   -> required by _build/default/.cram.test.t/cram.sh
   -> required by _build/default/.cram.test.t/cram.out
   -> required by alias test

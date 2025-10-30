@@ -105,7 +105,6 @@ add_mock_repo_if_needed() {
   then
       cat >dune-workspace <<EOF
 (lang dune 3.20)
-(pkg enabled)
 (lock_dir
  (repositories mock))
 (repository
@@ -140,7 +139,6 @@ create_mock_repo() {
   repo="${1:-file://$(pwd)/mock-opam-repository}"
   cat >dune-workspace <<EOF
 (lang dune 3.20)
-(pkg enabled)
 (lock_dir
  (repositories mock))
 (repository

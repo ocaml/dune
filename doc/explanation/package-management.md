@@ -6,7 +6,7 @@ builds packages. Thus it is aimed at people who want to understand how the
 feature works, not how it is used.
 
 For a tour on how to apply package management to a project, refer to the
-{doc}`/tutorials/dune-package-management/index` tutorial.
+{doc}`/dune-package-management/index` tutorial.
 
 ## Motivation
 
@@ -183,7 +183,7 @@ in the build step.
 ### Building
 
 When building, Dune will read the information from the lock directory and set
-up rules for the packages. Check {doc}`/explanation/mental-model` for details
+up rules for the packages. Check {doc}`/core-concepts/mental-model` for details
 about rules.
 
 The rules that the package management sets up include:

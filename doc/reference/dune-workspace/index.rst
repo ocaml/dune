@@ -2,7 +2,7 @@ dune-workspace
 ==============
 
 A ``dune-workspace`` file (if present) marks the root of the current Dune
-workspace (see :doc:`/explanation/scopes`). It can be used to define compilation contexts
+workspace (see :doc:`/core-concepts/scopes`). It can be used to define compilation contexts
 (see :doc:`/reference/dune-workspace/context`) and specify settings common to
 all Dune projects contained within the workspace.
 

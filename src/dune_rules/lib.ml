@@ -555,18 +555,32 @@ module Parameterised = struct
   ;;
 
   let apply_arguments t new_arguments =
+    (* The [new_arguments] are expected to be sorted in the same [parameter]
+       order as the existing arguments of [t], such that a linear in-order
+       traversal allow filling any unset parameter to the new argument. *)
     let open Resolve.O in
     let rec go acc existing' given' =
       match existing', given' with
+      | [], _ ->
+        (* Ignore remaining arguments *)
+        Resolve.return (List.rev acc)
+      | keep, [] ->
+        (* Keep the remaining existing parameters *)
+        Resolve.return (List.rev_append acc keep)
       | (param_intf, Some arg) :: existing, _ ->
+        (* Keep already applied parameter *)
         go ((param_intf, Some arg) :: acc) existing given'
-      | [], _ -> Resolve.return (List.rev acc)
       | ((param_intf, None) as keep) :: existing, (param_intf', arg) :: given ->
         (match compare param_intf param_intf' with
-         | Eq -> go ((param_intf, Some arg) :: acc) existing given
-         | Lt -> go (keep :: acc) existing given'
-         | Gt -> go acc existing' given)
-      | ((_, None) as keep) :: existing, [] -> go (keep :: acc) existing []
+         | Eq ->
+           (* Apply the argument to the unset parameter *)
+           go ((param_intf, Some arg) :: acc) existing given
+         | Lt ->
+           (* Keep the existing parameter as being unknown *)
+           go (keep :: acc) existing given'
+         | Gt ->
+           (* Skip unwanted argument *)
+           go acc existing' given)
     in
     let* t_arguments = parameterised_arguments t in
     let+ arguments = go [] t_arguments new_arguments in

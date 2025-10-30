@@ -40,20 +40,29 @@ let quote_for_sh fn =
     Buffer.contents buf
 ;;
 
+let map_loc_to_source_path loc =
+  Loc.map_pos loc ~f:(fun (pos : Lexing.position) ->
+    { pos with
+      pos_fname =
+        Path.of_string pos.pos_fname
+        |> Path.drop_optional_build_context_maybe_sandboxed
+        |> Path.to_string
+    })
+;;
+
 let cram_stanzas =
   let is_conflict_marker line =
     [ "======="; "%%%%%%%"; "+++++++"; "-------"; "|||||||" ]
     |> List.exists ~f:(fun prefix -> String.is_prefix line ~prefix)
   in
-  let find_conflict state line =
+  let find_conflict ~loc state line =
     match state with
-    | `No_conflict when String.is_prefix ~prefix:"<<<<<<<" line -> `Started
-    | `Started when is_conflict_marker line -> `Has_markers
-    | `Has_markers when is_conflict_marker line -> `Has_markers
-    | `Has_markers when String.is_prefix ~prefix:">>>>>>>" line ->
-      (* CR-someday rgrinberg for alizter: insert a location spanning the
-         entire once we start extracting it *)
+    | `No_conflict when String.is_prefix ~prefix:"<<<<<<<" line -> `Started loc
+    | `Started loc when is_conflict_marker line -> `Has_markers loc
+    | `Has_markers loc when is_conflict_marker line -> `Has_markers loc
+    | `Has_markers start_loc when String.is_prefix ~prefix:">>>>>>>" line ->
       User_error.raise
+        ~loc:(Loc.span start_loc loc)
         [ Pp.text
             "Conflict marker found. Please remove it or set (conflict_markers allow)"
         ]
@@ -64,13 +73,14 @@ let cram_stanzas =
       match Cram_lexer.block lexbuf with
       | None -> List.rev acc
       | Some (loc, block) ->
+        let loc = map_loc_to_source_path loc in
         let conflict_state =
           match block with
           | Command _ -> conflict_state
           | Comment lines ->
             (match conflict_markers with
              | Ignore -> conflict_state
-             | Error -> List.fold_left lines ~init:conflict_state ~f:find_conflict)
+             | Error -> List.fold_left lines ~init:conflict_state ~f:(find_conflict ~loc))
         in
         loop ((loc, block) :: acc) conflict_state
     in

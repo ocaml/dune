@@ -1,0 +1,3 @@
+(cram
+ (deps %{bin:git})
+ (applies_to symlink-to-nonexistent))

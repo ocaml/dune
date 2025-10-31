@@ -323,6 +323,9 @@ let file_digest_exn ?loc path =
   | Error No_such_file -> report_user_error []
   | Error Broken_symlink -> report_user_error [ Pp.text "Broken symbolic link" ]
   | Error Cyclic_symlink -> report_user_error [ Pp.text "Cyclic symbolic link" ]
+  | Error (Symlink_escapes_target path) ->
+    report_user_error
+      [ Pp.textf "Symbolic link escapes directory target: %s" (Path.to_string path) ]
   | Error (Unexpected_kind st_kind) ->
     report_user_error
       [ Pp.textf "This is not a regular file (%s)" (File_kind.to_string st_kind) ]

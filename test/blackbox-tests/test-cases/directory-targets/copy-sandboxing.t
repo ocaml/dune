@@ -107,14 +107,10 @@ Now we demonstrate that symlinks aren't supported:
   $ runtest "touch foo && ln -s foo bar"
   test
 
+Symlinks to directories within the same target now work:
+
   $ runtest "mkdir bar && touch bar/somefileinbar && ln -s bar symlinktobar"
-  File "sub/dune", lines 1-3, characters 0-151:
-  1 | (rule
-  2 |  (target (dir targetdir))
-  3 |  (action (system "mkdir targetdir && cd targetdir && mkdir bar && touch bar/somefileinbar && ln -s bar symlinktobar")))
-  Error: Error trying to read targets after a rule was run:
-  - sub/targetdir/symlinktobar: Unexpected file kind "S_DIR" (directory)
-  [1]
+  test
 
 Now we try a broken symlink:
 

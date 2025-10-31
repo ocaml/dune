@@ -91,6 +91,12 @@ let one_of term1 term2 =
        `Error (true, sprintf "Cannot use %s and %s simultaneously" arg1 arg2)
 ;;
 
+let alias_flags_term =
+  let+ aliases_rec = Arg.(value & opt_all Arg.Dep.alias_rec_arg [] & info [ "alias-rec" ])
+  and+ aliases = Arg.(value & opt_all Arg.Dep.alias_arg [] & info [ "alias" ]) in
+  List.concat [ aliases; aliases_rec ]
+;;
+
 let build_info =
   let+ build_info =
     Arg.(

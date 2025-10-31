@@ -91,3 +91,5 @@ end
 (** [one_of term1 term2] allows options from [term1] or exclusively options from
     [term2]. If the user passes options from both terms, an error is reported. *)
 val one_of : 'a Cmdliner.Term.t -> 'a Cmdliner.Term.t -> 'a Cmdliner.Term.t
+
+val alias_flags_term : Arg.Dep.t list Cmdliner.Term.t

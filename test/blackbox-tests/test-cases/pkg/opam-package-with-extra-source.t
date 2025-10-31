@@ -31,7 +31,7 @@ Make a package with an extra-source field and multiple checksums
   > EOF
 
   $ solve with-extra-source with-extra-source-md5 with-extra-source-multiple-checksums
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - with-extra-source.0.0.1
   - with-extra-source-md5.0.0.1
   - with-extra-source-multiple-checksums.0.0.1

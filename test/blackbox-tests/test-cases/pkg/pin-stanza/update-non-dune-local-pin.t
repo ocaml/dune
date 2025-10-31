@@ -32,7 +32,7 @@ Make a package "foo" whose build will fail after printing a message:
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.dev
 
 Attempt to build the package the first time:
@@ -41,7 +41,7 @@ Attempt to build the package the first time:
   echo aaa
   aaa
   false
-  File "dune.lock/foo.pkg", line 4, characters 6-13:
+  File ".dune-solution-cache/foo.pkg", line 4, characters 6-13:
   4 |  (run %{make}))
             ^^^^^^^
   Error: Logs for package foo
@@ -59,7 +59,7 @@ The change to the package is picked up:
   echo bbb
   bbb
   false
-  File "dune.lock/foo.pkg", line 4, characters 6-13:
+  File ".dune-solution-cache/foo.pkg", line 4, characters 6-13:
   4 |  (run %{make}))
             ^^^^^^^
   Error: Logs for package foo

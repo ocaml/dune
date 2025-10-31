@@ -1,4 +1,4 @@
-We test how opam files with depopts fields are translated into dune.lock files:
+We test how opam files with depopts fields are translated into .dune-solution-cache files:
 
   $ . ../helpers.sh
   $ mkrepo
@@ -10,7 +10,7 @@ Make a package with a depopts field
   $ mkpkg foo
 
   $ solve with-depopts
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - with-depopts.0.0.1
 
 When depopts are supported and selected, the above lock should change and we
@@ -31,7 +31,7 @@ Depopts should not be selected if they conflict with other constraints:
   > EOF
 
   $ solve no-foo
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - no-foo.0.0.1
   - with-depopts.0.0.1
 

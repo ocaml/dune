@@ -22,7 +22,7 @@ We try to pull an opam package that isn't a dune project
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.dev
   $ pkg="${default_lock_dir}/foo.pkg"
   $ grep version $pkg

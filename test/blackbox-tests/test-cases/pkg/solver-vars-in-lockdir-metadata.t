@@ -52,7 +52,7 @@ Make a workspace file which sets some of the variables.
   > (lang dune 3.20)
   > (pkg enabled)
   > (lock_dir
-  >  (path dune.lock)
+  >  (path .dune-solution-cache)
   >  (repositories mock)
   >  (solver_env
   >   (os linux)
@@ -69,7 +69,7 @@ Make a workspace file which sets some of the variables.
 
 Solve the packages again, this time with the variables set.
   $ solve_all
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - no-deps-a.1.0
   - no-deps-b.1.0
   - static-deps.1.0
@@ -80,7 +80,7 @@ Solve the packages again, this time with the variables set.
   (repositories
    (complete false)
    (used))
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - dynamic-deps.1.0
   - no-deps-a.1.0
   - no-deps-b.1.0
@@ -96,7 +96,7 @@ Solve the packages again, this time with the variables set.
    (variable_values
     (os linux)
     (arch arm)))
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - dynamic-deps-lazy.1.0
   - no-deps-a.1.0
   - no-deps-b.1.0
@@ -134,7 +134,7 @@ stored in the lockdir metadata:
   >  (name foo)
   >  (depends filtered-commands))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - filtered-commands.0.0.1
 
   $ cat ${default_lock_dir}/filtered-commands.pkg

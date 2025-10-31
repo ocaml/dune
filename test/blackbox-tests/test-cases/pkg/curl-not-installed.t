@@ -16,7 +16,7 @@ Test the error message when curl is needed but not installed.
 
 Build the package in an environment without curl.
   $ PATH=$(dirname $(which dune)) build_pkg foo
-  File "dune.lock/foo.pkg", line 3, characters 7-28:
+  File ".dune-solution-cache/foo.pkg", line 3, characters 7-28:
   3 |   (url "http://0.0.0.0:8000")))
              ^^^^^^^^^^^^^^^^^^^^^
   Error: The program 'curl' does not appear to be installed. Dune uses 'curl'

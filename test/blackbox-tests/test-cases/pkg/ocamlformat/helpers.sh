@@ -97,7 +97,7 @@ EOF
 (lang dune 3.20)
 
 (lock_dir
- (path "dev-tools.locks/ocamlformat")
+ (path ".dune-tools-solution-cache/ocamlformat")
  (repositories mock))
 
 (lock_dir

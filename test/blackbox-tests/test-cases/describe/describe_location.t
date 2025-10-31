@@ -26,7 +26,7 @@ An executable from the current project:
 
 Test that executables from dependencies are located correctly:
 
-  $ source_lock_dir="dune.lock"
+  $ source_lock_dir=".dune-solution-cache"
   $ mkdir -p "${source_lock_dir}"
   $ cat > "${source_lock_dir}"/lock.dune <<EOF
   > (lang package 0.1)

@@ -181,7 +181,8 @@ module Lock_dirs_arg = struct
                []
                ~docv:"LOCKDIRS"
                ~doc:
-                 "Lock directories to check for outdated packages. Defaults to dune.lock.")
+                 "Lock directories to check for outdated packages. Defaults to \
+                  .dune-solution-cache.")
        in
        Selected (List.map arg ~f:Path.Source.of_string))
       (let+ _all =

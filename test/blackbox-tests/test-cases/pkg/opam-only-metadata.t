@@ -35,13 +35,13 @@ Test that we can read package metadata from opam files.
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - a.0.1
   - b.0.6
   - d.0.0.1
 
   $ dune describe pkg list-locked-dependencies
-  Dependencies of local packages locked in dune.lock
+  Dependencies of local packages locked in .dune-solution-cache
   - Immediate dependencies of local package bar.dev
     - d.0.0.1
     - foo.dev
@@ -64,14 +64,14 @@ Test that we can read package metadata from opam files.
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - a.0.1
   - b.0.6
   - c.0.1
   - d.0.0.1
 
   $ dune describe pkg list-locked-dependencies
-  Dependencies of local packages locked in dune.lock
+  Dependencies of local packages locked in .dune-solution-cache
   - Immediate dependencies of local package bar.dev
     - d.0.0.1
     - foo.dev

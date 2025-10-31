@@ -54,7 +54,7 @@ first checksum to the lockfile for this package.
   > EOF
 
   $ solve with-md5 with-sha256 with-sha512 with-all
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - with-all.0.0.1
   - with-md5.0.0.1
   - with-sha256.0.0.1

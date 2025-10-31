@@ -131,11 +131,11 @@ Test that cond statements can have a default value:
   >   (lock_dir
   >    (cond
   >     (false non-existant)
-  >     (default dune.lock)))))
+  >     (default .dune-solution-cache)))))
   > EOF
 
-  $ dune pkg lock dune.lock
-  Solution for dune.lock:
+  $ dune pkg lock .dune-solution-cache
+  Solution for .dune-solution-cache:
   - linux-only.0.0.1
   $ dune clean
   $ build_pkg linux-only

@@ -17,7 +17,7 @@ Build a package that uses the archive as its source:
   > EOF
   $ add_mock_repo_if_needed
   $ solve foo
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1
   $ build_pkg foo
   $ cat _build/_private/default/.pkg/$($dune pkg print-digest foo)/source/*
@@ -34,7 +34,7 @@ Build a package that uses the src directory as its source:
   > EOF
   $ add_mock_repo_if_needed
   $ solve foo
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1
   $ build_pkg foo
   $ cat _build/_private/default/.pkg/$($dune pkg print-digest foo)/source/*

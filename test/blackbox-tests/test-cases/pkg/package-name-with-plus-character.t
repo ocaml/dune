@@ -21,5 +21,5 @@ This is based on the build command of mingw-w64-shims.0.2.0
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1

@@ -1,5 +1,5 @@
 This test checks that the files in the files/ directory inside a package in an opam
-repository are copied correctly to the dune.lock file.
+repository are copied correctly to the .dune-solution-cache file.
 
   $ . ./helpers.sh
   $ mkrepo
@@ -20,7 +20,7 @@ Make a package with a patch
   > EOF
 
   $ solve with-patch
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - with-patch.0.0.1
 
 We expect that the files in the files directory of the opam repository get copied to the

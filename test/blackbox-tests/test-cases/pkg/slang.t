@@ -34,7 +34,7 @@ Tests for when:
   $ test_action '(run (when (= a b) xxx) (when (and (< 41 42) (<> foo bar)) echo) foo)'
   foo
   $ test_action '(run (when invalid-condition echo) foo)'
-  File "dune.lock/test.pkg", line 2, characters 20-37:
+  File ".dune-solution-cache/test.pkg", line 2, characters 20-37:
   2 | (install (run (when invalid-condition echo) foo))
                           ^^^^^^^^^^^^^^^^^
   Error: This expression is used as a condition and so must evaluate to either
@@ -49,7 +49,7 @@ Tests for when:
   $ test_action '(run echo (concat (when true foo) (when false bar) baz))'
   foobaz
   $ test_action '(run echo (when (or %{pkg-self:not_a_variable} true) foo))'
-  File "dune.lock/test.pkg", line 2, characters 29-55:
+  File ".dune-solution-cache/test.pkg", line 2, characters 29-55:
   2 | (install (run echo (when (or %{pkg-self:not_a_variable} true) foo)))
                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "not_a_variable"
@@ -63,7 +63,7 @@ Tests for if:
   $ test_action '(run echo (if (if true true false) (concat foo bar) (concat baz qux)))'
   foobar
   $ test_action '(run echo (if invalid-condition foo bar))'
-  File "dune.lock/test.pkg", line 2, characters 23-40:
+  File ".dune-solution-cache/test.pkg", line 2, characters 23-40:
   2 | (install (run echo (if invalid-condition foo bar)))
                              ^^^^^^^^^^^^^^^^^
   Error: This expression is used as a condition and so must evaluate to either
@@ -86,7 +86,7 @@ Test conversion from blang to string:
 
 Test the error message when the program doesn't exist:
   $ test_action '(run madeup)'
-  File "dune.lock/test.pkg", line 2, characters 14-20:
+  File ".dune-solution-cache/test.pkg", line 2, characters 14-20:
   2 | (install (run madeup))
                     ^^^^^^
   Error: Program madeup not found in the tree or in PATH
@@ -95,14 +95,14 @@ Test the error message when the program doesn't exist:
   $ test_action '(run (concat e c h o) hello)'
   hello
   $ test_action '(run (concat m a d e u p) hello)'
-  File "dune.lock/test.pkg", line 2, characters 14-34:
+  File ".dune-solution-cache/test.pkg", line 2, characters 14-34:
   2 | (install (run (concat m a d e u p) hello))
                     ^^^^^^^^^^^^^^^^^^^^
   Error: Program madeup not found in the tree or in PATH
    (context: default)
   [1]
   $ test_action '(run (if true madeup echo) hello)'
-  File "dune.lock/test.pkg", line 2, characters 14-35:
+  File ".dune-solution-cache/test.pkg", line 2, characters 14-35:
   2 | (install (run (if true madeup echo) hello))
                     ^^^^^^^^^^^^^^^^^^^^^
   Error: Program madeup not found in the tree or in PATH

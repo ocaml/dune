@@ -13,7 +13,7 @@ constraints.
   > EOF
 
   $ solve foo
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - a.0.0.1
   - foo.0.0.1
 

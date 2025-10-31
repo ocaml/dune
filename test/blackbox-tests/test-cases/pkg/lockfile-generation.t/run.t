@@ -33,7 +33,7 @@ Generate a `dune-project` file.
 Run the solver and generate a lock directory.
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.5.0
   - baz.0.1.0
   - foo.0.0.1
@@ -44,21 +44,21 @@ Helper to the name and contents of each file in the lock directory separated by
 
 Print the contents of each file in the lockdir:
   $ print_all
-  dune.lock/bar.pkg:
+  .dune-solution-cache/bar.pkg:
   
   (version 0.5.0)
   
   
   ---
   
-  dune.lock/baz.pkg:
+  .dune-solution-cache/baz.pkg:
   
   (version 0.1.0)
   
   
   ---
   
-  dune.lock/foo.pkg:
+  .dune-solution-cache/foo.pkg:
   
   (version 0.0.1)
   
@@ -67,7 +67,7 @@ Print the contents of each file in the lockdir:
   
   ---
   
-  dune.lock/lock.dune:
+  .dune-solution-cache/lock.dune:
   
   (lang package 0.1)
   
@@ -83,27 +83,27 @@ Print the contents of each file in the lockdir:
 
 Run the solver again preferring oldest versions of dependencies:
   $ dune pkg lock --version-preference=oldest
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.4.0
   - baz.0.1.0
   - foo.0.0.1
 
   $ print_all
-  dune.lock/bar.pkg:
+  .dune-solution-cache/bar.pkg:
   
   (version 0.4.0)
   
   
   ---
   
-  dune.lock/baz.pkg:
+  .dune-solution-cache/baz.pkg:
   
   (version 0.1.0)
   
   
   ---
   
-  dune.lock/foo.pkg:
+  .dune-solution-cache/foo.pkg:
   
   (version 0.0.1)
   
@@ -112,7 +112,7 @@ Run the solver again preferring oldest versions of dependencies:
   
   ---
   
-  dune.lock/lock.dune:
+  .dune-solution-cache/lock.dune:
   
   (lang package 0.1)
   
@@ -139,7 +139,7 @@ Regenerate the `dune-project` file introducing an unsatisfiable constraint.
 Run the solver again. This time it will fail.
   $ dune pkg lock
   Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Lock directory .dune-solution-cache:
   Couldn't solve the package dependency formula.
   Selected candidates: baz.0.1.0 foo.0.0.1 lockfile_generation_test.dev
   - bar -> (problem)
@@ -173,7 +173,7 @@ After running this we expact a solution that has either `bar` or `baz` but not
 both.
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.5.0
   - bar-or-baz.0.0.1
 Top level or is simple, but does nested or work? nested-r defines nested or
@@ -197,7 +197,7 @@ After runninng we expect the solution to have quux and either baz or quz as
 well as bar or qux.
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.5.0
   - baz.0.1.0
   - nested-or.0.0.1
@@ -217,7 +217,7 @@ in between.
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.5.0
   - priorities.0.0.1
   - quux.0.0.1
@@ -244,6 +244,6 @@ With versions 1 and 3 negated and version 4 removed via version constraint,
 we'd expect version 2 to be chosen:
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - negation.0.0.1
   - pkg.2

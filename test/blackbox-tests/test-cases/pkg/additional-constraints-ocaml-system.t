@@ -35,7 +35,7 @@ A package that depends on ocaml:
 Try solving without additional constraints:
   $ add_mock_repo_if_needed
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - ocaml.0.0.1
   - ocaml-base-compiler.0.0.1
 
@@ -52,6 +52,6 @@ Now make a workspace file adding the constarint on ocaml-system:
 
 Solve again. This time ocaml-system is chosen.
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - ocaml.0.0.1
   - ocaml-system.0.0.1

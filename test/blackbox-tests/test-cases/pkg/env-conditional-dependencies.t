@@ -39,7 +39,7 @@ Create a workspace config that defines separate build contexts for macos and lin
   >  (solver_env
   >   (os macos)))
   > (lock_dir
-  >  (path dune.lock)
+  >  (path .dune-solution-cache)
   >  (repositories mock))
   > (context
   >  (default
@@ -58,7 +58,7 @@ Now the os-specific dependencies are included on their respective systems.
   $ dune pkg lock --all
   Solution for dune.linux.lock:
   (no dependencies to lock)
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   (no dependencies to lock)
   Solution for dune.macos.lock:
   (no dependencies to lock)

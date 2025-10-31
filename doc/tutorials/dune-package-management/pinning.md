@@ -31,7 +31,7 @@ the information from the selected package repositories.
 
 ```
 $ dune pkg lock
-Solution for dune.lock:
+Solution for .dune-solution-cache:
 - base-unix.base
 - fmt.dev
 - ocaml.5.0.0

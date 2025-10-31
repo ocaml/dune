@@ -35,7 +35,7 @@ A few packages here so the errors could get large.
 
   $ dune pkg lock
   Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Lock directory .dune-solution-cache:
   Couldn't solve the package dependency formula.
   The following packages couldn't be found: foobar
   [1]

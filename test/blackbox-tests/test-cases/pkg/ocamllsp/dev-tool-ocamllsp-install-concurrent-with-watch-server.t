@@ -34,7 +34,7 @@ Test that ocamllsp can be installed while dune is running in watch mode.
   Success, waiting for filesystem changes...
 
   $ dune tools exec ocamllsp
-  Solution for dev-tools.locks/ocaml-lsp-server:
+  Solution for .dune-tools-solution-cache/ocaml-lsp-server:
   - ocaml.5.2.0
   - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'

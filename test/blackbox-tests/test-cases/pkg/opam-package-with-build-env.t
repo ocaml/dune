@@ -1,4 +1,4 @@
-In this test we test the translation of a package with a build-env field into a dune lock
+In this test we test the translation of a package with a build-env field into a .dune-solution-cache
 file.
 
   $ . ./helpers.sh
@@ -12,7 +12,7 @@ Make a package with a build-env field
   > EOF
 
   $ solve with-build-env
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - with-build-env.0.0.1
 The lockfile should contain a setenv action.
 

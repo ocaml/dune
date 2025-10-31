@@ -14,7 +14,7 @@ A package which depends on a single package and also conflicts with the same pac
   >  (conflicts bar))
   > EOF
   Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Lock directory .dune-solution-cache:
   Couldn't solve the package dependency formula.
   Selected candidates: foo.dev
   - bar -> (problem)
@@ -32,7 +32,7 @@ Now add an additional conflict on a non-existant package "baz". Dune should cont
   >  (conflicts bar baz))
   > EOF
   Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Lock directory .dune-solution-cache:
   Couldn't solve the package dependency formula.
   Selected candidates: foo.dev
   - bar -> (problem)

@@ -27,5 +27,5 @@ Reproduce the bug in #11698
   >  (name x)
   >  (depends dep))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - dep.1.0.0

@@ -8,7 +8,7 @@ should be used.
   $ cat >dune-workspace <<EOF
   > (lang dune 3.20)
   > (lock_dir
-  >  (path dune.lock)
+  >  (path .dune-solution-cache)
   >  (repositories mock))
   > (lock_dir
   >  (path dune.other.lock)

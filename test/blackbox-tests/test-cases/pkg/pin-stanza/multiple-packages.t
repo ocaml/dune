@@ -25,6 +25,6 @@ We can pull multiple packages from a single source
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.dev
   - foo.dev

@@ -23,7 +23,7 @@ Make a package with a patch
   > EOF
 
   $ solve with-patch
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - with-patch.0.0.1
   $ append_to_lockpkg with-patch <<EOF
   > (source (copy $PWD/source))

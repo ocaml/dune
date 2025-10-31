@@ -45,7 +45,7 @@ With this project set up, lets depend on it.
   >  (name foo)
   >  (depends nondune))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - nondune.dev
   $ cat > dune <<EOF
   > (executable

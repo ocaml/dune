@@ -13,7 +13,7 @@ variables can be found in `opam-var-os.t`.
   > ]
   > EOF
   > solve testpkg
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - testpkg.0.0.1
   $ cat ${default_lock_dir}/testpkg.pkg
   (version 0.0.1)
@@ -38,7 +38,7 @@ Therefore we modify the lockfile here to remove these from the opam file:
   > ]
   > EOF
   > solve testpkg
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - testpkg.0.0.1
 The value for "jobs" should always be 1.
 

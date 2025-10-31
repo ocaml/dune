@@ -4,7 +4,7 @@ setup_ocamllsp_workspace() {
   cat > dune-workspace <<EOF
 (lang dune 3.20)
 (lock_dir
- (path "dev-tools.locks/ocaml-lsp-server")
+ (path ".dune-tools-solution-cache/ocaml-lsp-server")
  (repositories mock))
  (lock_dir
   (repositories mock))

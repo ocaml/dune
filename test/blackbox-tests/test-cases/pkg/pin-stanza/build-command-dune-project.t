@@ -55,7 +55,7 @@ Demonstrate the build command we construct for different types of projects:
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - dune-only.dev
   - mixed.dev
   - opam-only.dev

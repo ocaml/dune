@@ -93,7 +93,7 @@ let info =
     ; `P "For example:"
     ; `Pre "    \\$ dune pkg outdated"
     ; `Noblank
-    ; `Pre "    1/2 packages in dune.lock are outdated."
+    ; `Pre "    1/2 packages in .dune-solution-cache are outdated."
     ; `Noblank
     ; `Pre "    - ocaml 4.14.1 < 5.1.0"
     ; `Noblank

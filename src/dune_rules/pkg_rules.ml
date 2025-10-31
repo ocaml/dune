@@ -1534,7 +1534,7 @@ end = struct
               [ "dir", Path.External.to_dyn e ]
           | In_source_tree s ->
             (match Path.Source.explode s with
-             | [ "dev-tools.locks"; dev_tool; files_dir ] ->
+             | [ ".dune-tools-solution-cache"; dev_tool; files_dir ] ->
                Path.Build.L.relative
                  Private_context.t.build_dir
                  [ "default"; ".dev-tool-locks"; dev_tool; files_dir ]

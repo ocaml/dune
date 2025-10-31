@@ -5,13 +5,13 @@ Add a workspace that attempts to set the "with-test" variable:
   $ cat >dune-workspace <<EOF
   > (lang dune 3.8)
   > (lock_dir
-  >  (path dune.lock)
+  >  (path .dune-solution-cache)
   >  (solver_env
   >   (with-test false)))
   > (context
   >  (default
   >   (name default)
-  >   (lock dune.lock)))
+  >   (lock .dune-solution-cache)))
   > EOF
 
   $ dune pkg print-solver-env

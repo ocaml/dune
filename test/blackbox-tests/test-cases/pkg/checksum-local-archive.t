@@ -15,7 +15,7 @@ Make sure that we verify archives of local archives
   > EOF
 
   $ build_pkg foo
-  File "dune.lock/foo.pkg", line 4, characters 12-48:
+  File ".dune-solution-cache/foo.pkg", line 4, characters 12-48:
   4 |   (checksum md5=069aa55d40e548280f92af693f6c625a)
                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Invalid checksum, got

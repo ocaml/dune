@@ -1,4 +1,4 @@
-We test how opam files with substs fields are translated into the dune.lock file.
+We test how opam files with substs fields are translated into the .dune-solution-cache file.
  
   $ . ./helpers.sh
   $ mkrepo
@@ -10,7 +10,7 @@ Make a package with a substs field
   > EOF
 
   $ solve with-substs
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - with-substs.0.0.1
   $ append_to_lockpkg with-substs <<EOF
   > (source (copy $PWD/source))

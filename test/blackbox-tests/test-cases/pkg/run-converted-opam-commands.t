@@ -79,7 +79,7 @@ Generate a mock opam repository
   > }
 
   $ build_single_package foo
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1
   package: foo.0.0.1
   enable: enable
@@ -88,7 +88,7 @@ Generate a mock opam repository
   package conjunction: false
   package conjunction string selection: bar
   $ build_single_package bar
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.0.1
   installed
   installed or pinned
@@ -96,41 +96,41 @@ Generate a mock opam repository
   disjunction with some undefined vars
   conjunction with some undefined vars
   $ build_single_package baz
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - baz.0.0.1
   installed
   not madeup:installed
   hello
   
   $ build_single_package error1
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - error1.0.0.1
-  File "dune.lock/error1.pkg", line 6, characters 3-16:
+  File ".dune-solution-cache/error1.pkg", line 6, characters 3-16:
   6 |    %{pkg-self:a}
          ^^^^^^^^^^^^^
   Error: Undefined package variable "a"
   [1]
   $ build_single_package error2
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - error2.0.0.1
-  File "dune.lock/error2.pkg", line 6, characters 3-16:
+  File ".dune-solution-cache/error2.pkg", line 6, characters 3-16:
   6 |    %{pkg-self:a}
          ^^^^^^^^^^^^^
   Error: Undefined package variable "a"
   [1]
   $ build_single_package error3
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - error3.0.0.1
-  File "dune.lock/error3.pkg", line 4, characters 6-19:
+  File ".dune-solution-cache/error3.pkg", line 4, characters 6-19:
   4 |  (run not-a-program echo hello))
             ^^^^^^^^^^^^^
   Error: Program not-a-program not found in the tree or in PATH
    (context: default)
   [1]
   $ build_single_package error4
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - error4.0.0.1
-  File "dune.lock/error4.pkg", line 4, characters 6-36:
+  File ".dune-solution-cache/error4.pkg", line 4, characters 6-36:
   4 |  (run not-a-program-%{pkg-self:name} echo hello))
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Program not-a-program-error4 not found in the tree or in PATH

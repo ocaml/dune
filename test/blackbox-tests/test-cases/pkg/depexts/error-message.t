@@ -24,7 +24,7 @@ Make a project that uses the foo library:
   >  (libraries foo))
   > EOF
 
-Make dune.lock files with known program "dune".
+Make .dune-solution-cache files with known program "dune".
   $ make_lockdir
   $ make_lockpkg foo <<EOF
   > (version 0.0.1)
@@ -40,7 +40,7 @@ Make dune.lock files with known program "dune".
 Build the project, when it fails building 'foo' package, it shows the depexts
 error message.
   $ dune build
-  File "dune.lock/foo.pkg", line 3, characters 6-10:
+  File ".dune-solution-cache/foo.pkg", line 3, characters 6-10:
   3 |  (run dune build))
             ^^^^
   Error: Logs for package foo
@@ -52,7 +52,7 @@ error message.
   - unzip
   [1]
 
-Make dune.lock files with unknown program and unknown package.
+Make .dune-solution-cache files with unknown program and unknown package.
   $ make_lockdir
   $ make_lockpkg foo <<EOF
   > (version 0.0.1)
@@ -68,7 +68,7 @@ Make dune.lock files with unknown program and unknown package.
 Running the same build. It is supposed to show the depexts message at the end,
 when the program is not found.
   $ dune build
-  File "dune.lock/foo.pkg", line 3, characters 6-21:
+  File ".dune-solution-cache/foo.pkg", line 3, characters 6-21:
   3 |  (run unknown-program))
             ^^^^^^^^^^^^^^^
   Error: Program unknown-program not found in the tree or in PATH

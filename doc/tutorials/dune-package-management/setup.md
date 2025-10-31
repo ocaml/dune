@@ -63,7 +63,7 @@ This is easily done with a new Dune command:
 
 ```
 $ dune pkg lock
-Solution for dune.lock:
+Solution for .dune-solution-cache:
 - ocaml.5.2.0
 - ocaml-base-compiler.5.2.0
 - ocaml-config.3

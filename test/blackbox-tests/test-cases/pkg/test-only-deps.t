@@ -37,7 +37,7 @@ Test that we can identify the test-only locked dependencies of a package
   >   baz
   >   (qux :with-test)))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - a.0.0.2
   - b.0.0.1
   - bar.0.0.1
@@ -47,7 +47,7 @@ Test that we can identify the test-only locked dependencies of a package
   - qux.0.0.1
 List immediate dependencies in the lockdir. This should mirror the information in dune-project.
   $ dune describe pkg list-locked-dependencies
-  Dependencies of local packages locked in dune.lock
+  Dependencies of local packages locked in .dune-solution-cache
   - Immediate dependencies of local package local_1.dev
     - local_2.dev
     
@@ -58,7 +58,7 @@ List transitive dependencies. Note that only immediate test-only dependencies
 and their dependencies are included (not test-only dependencies of test-only
 dependencies).
   $ dune describe pkg list-locked-dependencies --transitive
-  Dependencies of local packages locked in dune.lock
+  Dependencies of local packages locked in .dune-solution-cache
   - Transitive dependencies of local package local_1.dev
     - b.0.0.1
     - bar.0.0.1
@@ -85,7 +85,7 @@ is run with with-test=true so the dependency won't even be in the lockdir.
   >   (foo (= :with-test false))
   >   bar))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - b.0.0.1
   - bar.0.0.1
   - c.0.0.1
@@ -112,7 +112,7 @@ incompatible version of the dependency will be in the lockdir.
   >   (a (or (= 0.0.1) (and :with-test (= 0.0.2))))
   >   bar))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - a.0.0.2
   - b.0.0.1
   - bar.0.0.1

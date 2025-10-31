@@ -18,7 +18,7 @@ The solver should say no solution rather than just ignoring the conflict.
   >  (depends bar))
   > EOF
   Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Lock directory .dune-solution-cache:
   Couldn't solve the package dependency formula.
   Selected candidates: bar.0.0.1 x.dev
   - foo -> (problem)
@@ -43,7 +43,7 @@ There could be more than one conflict and they can have version constraints:
   >  (depends bar bar2))
   > EOF
   Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Lock directory .dune-solution-cache:
   Couldn't solve the package dependency formula.
   Selected candidates: bar.0.0.1 bar2.0.0.1 x.dev
   - foo -> (problem)
@@ -70,7 +70,7 @@ disjunction, either package is problematic:
   $ mkpkg dune 3.11
   $ echo '(lang dune 3.11)' | solve_project 2>&1 | sed -E 's/3.[0-9]+/3.XX/'
   Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Lock directory .dune-solution-cache:
   Couldn't solve the package dependency formula.
   Selected candidates: bar.0.0.1 bar2.0.0.1 x.dev
   - dune -> dune.3.XX
@@ -87,7 +87,7 @@ Adding a new version of `foo` only resolves one conflict:
   $ mkpkg foo 0.2
   $ echo '(lang dune 3.11)' | solve_project 2>&1 | sed -E 's/3.[0-9]+/3.XX/'
   Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Lock directory .dune-solution-cache:
   Couldn't solve the package dependency formula.
   Selected candidates: bar.0.0.1 bar2.0.0.1 foo.0.2 x.dev
   - dune -> dune.3.XX
@@ -102,7 +102,7 @@ Addition of `foo2` to solve the last remaining conflict:
   $ solve_project <<EOF
   > (lang dune 3.11)
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.0.1
   - bar2.0.0.1
   - foo.0.2
@@ -120,7 +120,7 @@ due to the version constraints conflicts:
   >  (conflicts (foo (>= 0.2)) (foo2 (>= 0.2)))
   >  (depends bar bar2))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.0.1
   - bar2.0.0.1
   - foo.0.0.1

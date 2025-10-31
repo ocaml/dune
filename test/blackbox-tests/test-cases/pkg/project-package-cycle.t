@@ -16,5 +16,5 @@ Demonstrate how dune handles project dependency cycles in the same project
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   (no dependencies to lock)

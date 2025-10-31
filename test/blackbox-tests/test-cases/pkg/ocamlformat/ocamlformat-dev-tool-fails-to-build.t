@@ -13,9 +13,9 @@ Make dune-project that uses the mocked dev-tool opam-reposiotry.
 
 It fails during the build because of missing OCamlFormat module.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
-  Solution for dev-tools.locks/ocamlformat:
+  Solution for .dune-tools-solution-cache/ocamlformat:
   - ocamlformat.0.26.4
-  File "dev-tools.locks/ocamlformat/ocamlformat.pkg", line 4, characters 6-10:
+  File ".dune-tools-solution-cache/ocamlformat/ocamlformat.pkg", line 4, characters 6-10:
   4 |  (run dune build -p %{pkg-self:name} @install))
             ^^^^
   Error: Logs for package ocamlformat

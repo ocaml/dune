@@ -48,7 +48,7 @@ Helper function that creates a workspace file with a given solver env.
   >  (name foo)
   >  (depends bar))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - b.0.0.1
   - bar.0.0.1
 

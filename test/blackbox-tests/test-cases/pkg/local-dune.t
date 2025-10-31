@@ -21,6 +21,6 @@ Dune is defined in the workspace where we're solving
   >  (name foo)
   >  (depends bar))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.0.0.1
   - test-dep.0.0.1

@@ -27,7 +27,7 @@ Notice that the constraints field doesn't introduce additional packages. The
   >  (name x)
   >  (depends foo bar))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.1.0.0
   - foo.1.0.0
 
@@ -52,7 +52,7 @@ There are no valid version of foo at the moment:
   >  (depends foo bar))
   > EOF
   Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Lock directory .dune-solution-cache:
   Couldn't solve the package dependency formula.
   Selected candidates: bar.1.9.1 x.dev
   - foo -> (problem)
@@ -70,6 +70,6 @@ If we add one:
   >  (name x)
   >  (depends foo bar))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.1.9.1
   - foo.0.9.0

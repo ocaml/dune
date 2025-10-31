@@ -38,7 +38,7 @@ Here is the output of solving for multiple contexts:
   >  (name x)
   >  (depends A B C))
   > EOF
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - A.1.2.0
   - B.2.1+rc1
   - C.81.0.4044.138
@@ -52,7 +52,7 @@ Here is the output of solving for multiple contexts:
   - E.3.0~alpha1
 Here is the output of dune describe pkg lock:
   $ dune describe pkg lock
-  Contents of dune.lock:
+  Contents of .dune-solution-cache:
   - A.1.2.0
   - B.2.1+rc1
   - C.81.0.4044.138
@@ -60,8 +60,8 @@ Here is the output of dune describe pkg lock:
   - E.3.0~alpha1
 
 The names of the lockfiles can also be provided:
-  $ dune describe pkg lock dune.lock foo.lock 
-  Contents of dune.lock:
+  $ dune describe pkg lock .dune-solution-cache foo.lock 
+  Contents of .dune-solution-cache:
   - A.1.2.0
   - B.2.1+rc1
   - C.81.0.4044.138

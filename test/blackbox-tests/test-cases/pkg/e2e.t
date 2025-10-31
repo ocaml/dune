@@ -73,7 +73,7 @@ Make a project that uses the library:
 Lock, build, and run the executable in the project:
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1
   $ dune exec bar
   Hello, World!

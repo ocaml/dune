@@ -34,7 +34,7 @@ Local pinned source.
   > opam-version: "2.0"
   > EOF
   $ runtest "file://$PWD/$dir"
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.1.0.0
   (version 1.0.0)
   (dev)
@@ -48,7 +48,7 @@ Local pinned source.
   > opam-version: "2.0"
   > EOF
   $ runtest "file://$PWD/$dir"
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.1.0.0
   (version 1.0.0)
   (dev)
@@ -62,7 +62,7 @@ Local pinned source.
   > opam-version: "2.0"
   > EOF
   $ runtest "file://$PWD/$dir"
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.1.0.0
   (version 1.0.0)
   (dev)
@@ -76,7 +76,7 @@ Local pinned source.
   > opam-version: "2.0"
   > EOF
   $ runtest "file://$PWD/$dir"
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.1.0.0
   (version 1.0.0)
   (dev)
@@ -95,7 +95,7 @@ Git pinned source:
   $ git commit --quiet -m "Initial commit"
   $ cd ..
   $ runtest "git+file://$PWD/$dir"
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.1.0.0
   (version 1.0.0)
   (dev)
@@ -114,7 +114,7 @@ Git pinned source with toplevel opam file:
   $ git commit --quiet -m "Initial commit"
   $ cd ..
   $ runtest "git+file://$PWD/$dir"
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.1.0.0
   (version 1.0.0)
   (dev)
@@ -134,7 +134,7 @@ Git pinned source with toplevel opam dir 1
   $ git commit --quiet -m "Initial commit"
   $ cd ..
   $ runtest "git+file://$PWD/$dir"
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.1.0.0
   (version 1.0.0)
   (dev)
@@ -187,7 +187,7 @@ Pin to an HTTP archive work
   $ echo tarball.tar > fake-curls
   $ PORT=1
   $ runtest "http://0.0.0.0:$PORT/tarball.tar" > output
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.1.0.0
   $ grep "md5=$MD5_CHECKSUM" output 2>&1 > /dev/null && echo "Checksum matches"
   Checksum matches
@@ -202,7 +202,7 @@ Pin to an HTTP archive detects wrong hash
   $ sed -i.tmp "s/$MD5_CHECKSUM/92449184682b45b5f07e811fdd61d35f/g" ${default_lock_dir}/bar.pkg
   $ rm -rf already-served
   $ dune build 2>&1 | grep -v "md5"
-  File "dune.lock/bar.pkg", line 6, characters 12-48:
+  File ".dune-solution-cache/bar.pkg", line 6, characters 12-48:
                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Invalid checksum, got
 
@@ -215,7 +215,7 @@ of the target again
   $ MD5_CHECKSUM=$(md5sum tarball.tar  | cut -f1 -d' ')
   $ echo tarball.tar > fake-curls
   $ runtest "http://0.0.0.0:$PORT/tarball.tar" > output
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.1.0.0
   $ grep "md5=$MD5_CHECKSUM" output 2>&1 > /dev/null && echo "Checksum matches"
   Checksum matches

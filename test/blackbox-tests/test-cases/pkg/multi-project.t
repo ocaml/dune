@@ -20,7 +20,7 @@ Multiple projects support
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   (no dependencies to lock)
 
 This should work without any toplevel projects as well:
@@ -28,5 +28,5 @@ This should work without any toplevel projects as well:
   $ mkdir b
   $ mv dune-project b
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   (no dependencies to lock)

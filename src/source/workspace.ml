@@ -131,7 +131,7 @@ module Lock_dir = struct
     let decode =
       let+ loc = loc
       and+ path =
-        let+ path = field ~default:"dune.lock" "path" string in
+        let+ path = field ~default:".dune-solution-cache" "path" string in
         Path.Source.relative dir path
       and+ solver_env = field_o "solver_env" Solver_env.decode
       and+ unset_solver_vars =

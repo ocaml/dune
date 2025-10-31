@@ -19,7 +19,7 @@ Make a project that uses the foo library:
 
 locking would add the opam 'depext' field to foo.pkg
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1
   $ cat ${default_lock_dir}/foo.pkg
   (version 0.0.1)

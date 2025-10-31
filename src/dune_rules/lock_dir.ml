@@ -131,7 +131,7 @@ let select_lock_dir lock_dir_selection =
   Workspace.Lock_dir_selection.eval lock_dir_selection ~dir:workspace.dir ~f:expander
 ;;
 
-let default_dir = "dune.lock"
+let default_dir = ".dune-solution-cache"
 
 (* location where project lock dirs are stored *)
 let path_prefix =
@@ -148,7 +148,7 @@ let dev_tool_to_path_segment dev_tool =
 ;;
 
 let dev_tool_source_lock_dir dev_tool =
-  let dev_tools_path = Path.Source.(relative root "dev-tools.locks") in
+  let dev_tools_path = Path.Source.(relative root ".dune-tools-solution-cache") in
   let dev_tool_segment = dev_tool_to_path_segment dev_tool in
   Path.Source.append_local dev_tools_path dev_tool_segment
 ;;

@@ -103,7 +103,7 @@ create the lock file:
   $ enable_pkg
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - testlib.0.0.1
 
 Now disable pkg again:

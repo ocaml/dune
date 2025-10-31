@@ -1,4 +1,4 @@
-Testing the translation of the setenv field of an opam file into the dune lock dir.
+Testing the translation of the setenv field of an opam file into the .dune-solution-cache dir.
 
   $ . ./helpers.sh
   $ mkrepo
@@ -27,7 +27,7 @@ Make another package that depends on that and outputs the exported env vars
   > ]
   > EOF
   > solve deps-on-with-setenv
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - deps-on-with-setenv.0.0.1
   - with-setenv.0.0.1
 The exported env from the first package should be in the lock dir.
@@ -101,7 +101,7 @@ difference between a propagated export_env versus the initial env.
   > ]
   > EOF
   > solve deps-on-with-setenv-2
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - deps-on-with-setenv-2.0.0.1
   - with-setenv.0.0.1
   - with-setenv-2.0.0.1

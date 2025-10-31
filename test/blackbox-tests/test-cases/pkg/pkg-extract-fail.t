@@ -15,7 +15,7 @@ build this package and check for sufficient error handling
 
   $ add_mock_repo_if_needed
   $ solve foo
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1
   $ build_pkg foo 2>&1 |  sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | sed "s/'[0-9]*'/X/"
   Error: failed to extract 'corrupted.tar'
@@ -33,7 +33,7 @@ captured
   > EOF
 
   $ solve foo
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1
 
   $ build_pkg foo 2>&1 |  sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | sed "s/'[0-9]*'/X/"
@@ -54,7 +54,7 @@ unzip error message a bit less clear
 
   $ add_mock_repo_if_needed
   $ solve foo
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.0.0.1
 
   $ build_pkg foo 2>&1 | sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | sed "s/'[0-9]*'/X/"

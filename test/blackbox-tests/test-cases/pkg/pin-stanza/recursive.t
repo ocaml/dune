@@ -33,6 +33,6 @@ Sources are traversed recursively (unlike pins)
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - bar.dev
   - foo.dev

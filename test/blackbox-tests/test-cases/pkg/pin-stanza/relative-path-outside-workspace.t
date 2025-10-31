@@ -46,7 +46,7 @@ Make a second package depending on the first via a pin:
 
 Lock and build the second package to demonstrate that everything works so far:
   $ dune pkg lock
-  Solution for dune.lock:
+  Solution for .dune-solution-cache:
   - foo.dev
   $ dune exec ./bar.exe
   foo

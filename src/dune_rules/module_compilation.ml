@@ -62,7 +62,7 @@ let copy_interface ~sctx ~dir ~obj_dir ~cm_kind m =
 
 let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) module_ =
   match cm_kind with
-  | Ocaml (Cmi | Cmo | Cmx) | Melange Cmi -> []
+  | Ocaml (Cmi | Cmo | Cmx | Cmt | Cmti) | Melange Cmi -> []
   | Melange Cmj ->
     let melange_extension_version =
       let scope = Compilation_context.scope cctx in
@@ -188,15 +188,15 @@ let build_cm
               Command.Args.Hidden_targets
                 [ Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind ]
           | (Ocaml Cmo | Melange Cmj), None, true
-          | (Ocaml (Cmo | Cmx) | Melange Cmj), _, _ ->
+          | (Ocaml (Cmo | Cmx | Cmt) | Melange Cmj), _, _ ->
             Memo.return (force_read_cmi ~obj_dir ~version:ocaml.version ~cm_kind ~src m)
-          | (Ocaml Cmi | Melange Cmi), _, _ ->
+          | (Ocaml (Cmi | Cmti) | Melange Cmi), _, _ ->
             let+ () = copy_interface ~dir ~obj_dir ~sctx ~cm_kind m in
             Command.Args.empty))
    in
    let other_targets =
      match cm_kind with
-     | Ocaml (Cmi | Cmo) | Melange (Cmi | Cmj) -> Command.Args.empty
+     | Ocaml (Cmi | Cmo | Cmt | Cmti) | Melange (Cmi | Cmj) -> Command.Args.empty
      | Ocaml Cmx ->
        (match phase with
         | Some Compile ->
@@ -215,6 +215,7 @@ let build_cm
    let cmt_args =
      match cm_kind with
      | Ocaml Cmx -> Command.Args.empty
+     | Ocaml (Cmt | Cmti) -> As [ "-bin-annot" ]
      | Ocaml (Cmi | Cmo) | Melange (Cmi | Cmj) ->
        if Compilation_context.bin_annot cctx
        then (

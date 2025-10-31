@@ -23,10 +23,18 @@ interpreted relative to the current directory:
   ``<path>`` should be the name of a module as specified in a ``(modules)``
   field.
 
-- ``cma:<path>`` and ``cmxa:<path>`` expands to the corresponding 
-  artifact's path for the library specified by ``<path>``. The basename of ``<path>``
+- ``cma:<path>`` and ``cmxa:<path>`` expands to the corresponding artifact's
+  path for the library specified by ``<path>``. The basename of ``<path>``
   should be the name of the library as specified in the ``(name)`` field of a
   ``library`` stanza (*not* its public name).
+
+- ``cmt:<path>`` and ``cmti:<path>`` expand to the corresponding compiled
+  annotation files for the module specified by ``<path>``. These files contain
+  the typed abstract syntax tree with precise location information and type
+  annotations, generated with the ``-bin-annot`` flag. They are particularly
+  useful for IDE tools to provide tooltips and type information.
+
+  .. versionadded:: 3.21
 
 In each case, the expansion of the variable is a path pointing inside the build
 context (i.e., ``_build/<context>``).

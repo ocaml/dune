@@ -20,11 +20,15 @@ Full jujutsu conflict without command and output interleaving:
   > EOF
 
   $ dune runtest test.t
+  File "test.t", lines 1-6, characters 0-89:
+  1 | <<<<<<< Conflict 1 of 2
+  2 | A Small
+  3 | %%%%%%%
+  4 | Conflict
+  5 | >>>>>>> Conflict 1 of 2 ends
+  6 | $ echo tada
   Error: Conflict marker found. Please remove it or set (conflict_markers
   allow)
-  -> required by _build/default/.cram.test.t/cram.sh
-  -> required by _build/default/.cram.test.t/cram.out
-  -> required by alias test
   [1]
 
 Full jujutsu conflict with command and output interleaving:
@@ -39,11 +43,15 @@ Full jujutsu conflict with command and output interleaving:
   > EOF
 
   $ dune runtest test.t
+  File "test.t", lines 1-6, characters 0-88:
+  1 | <<<<<<< Conflict 2 of 2
+  2 |   $ foo
+  3 | %%%%%%%
+  4 |   > bar
+  5 | >>>>>>> Conflict 2 of 2 ends
+  6 | $ echo tada
   Error: Conflict marker found. Please remove it or set (conflict_markers
   allow)
-  -> required by _build/default/.cram.test.t/cram.sh
-  -> required by _build/default/.cram.test.t/cram.out
-  -> required by alias test
   [1]
 
 Jujutsu default style conflict (diff + snapshot):
@@ -61,11 +69,18 @@ Jujutsu default style conflict (diff + snapshot):
   > EOF
 
   $ dune runtest test.t
+  File "test.t", lines 1-9, characters 0-160:
+  1 | <<<<<<< Conflict 1 of 1
+  2 | %%%%%%% Changes from base to side #1
+  3 | -apple
+  4 | +grapefruit
+  5 | +++++++ Contents of side #2
+  6 | APPLE
+  7 | GRAPE
+  8 | >>>>>>> Conflict 1 of 1 ends
+  9 | $ echo tada
   Error: Conflict marker found. Please remove it or set (conflict_markers
   allow)
-  -> required by _build/default/.cram.test.t/cram.sh
-  -> required by _build/default/.cram.test.t/cram.out
-  -> required by alias test
   [1]
 
 Jujutsu snapshot style conflict:
@@ -83,11 +98,18 @@ Jujutsu snapshot style conflict:
   > EOF
 
   $ dune runtest test.t
+  File "test.t", lines 1-9, characters 0-175:
+  1 | <<<<<<< Conflict 1 of 1
+  2 | +++++++ Contents of side #1
+  3 | Left side
+  4 | ------- Contents of base
+  5 | Original
+  6 | +++++++ Contents of side #2
+  7 | Right side
+  8 | >>>>>>> Conflict 1 of 1 ends
+  9 | $ echo tada
   Error: Conflict marker found. Please remove it or set (conflict_markers
   allow)
-  -> required by _build/default/.cram.test.t/cram.sh
-  -> required by _build/default/.cram.test.t/cram.out
-  -> required by alias test
   [1]
 
 Partial jujutsu conflicts are ignored:
@@ -117,3 +139,48 @@ Partial jujutsu conflicts are ignored:
   Error: Files _build/default/test.t and _build/default/test.t.corrected
   differ.
   [1]
+<<<<<<< Conflict 1 of 1
++++++++ Contents of side #1
+%%%%%%% Changes from base to side #2
+ 
+ Real jujutsu conflict with command output containing conflict markers:
+ 
+   $ cat >test.t <<EOF
+   > <<<<<<< Conflict 1 of 4
+   > %%%%%%% Changes from base to side #1
+   > -  Error: Conflict found. Please remove it or set (conflict allow)
+   > +  Error: Conflict marker found. Please remove it or set (conflict_markers
+   > +  allow)
+   >    -> required by _build/default/.cram.test.t/cram.sh
+   >    -> required by _build/default/.cram.test.t/cram.out
+   >    -> required by alias test
+   > +++++++ Contents of side #2
+   >   File "_build/default/test.t", lines 1-6, characters 0-52:
+   >   1 | <<<<<<<
+   >   2 | A Small
+   >   3 | %%%%%%%
+   >   4 | Conflict
+   >   5 | >>>>>>>
+   >   6 | $ echo tada
+   >   Error: Conflict found. Please remove it or set (conflict allow)
+   > >>>>>>> Conflict 1 of 4 ends
+   >   [1]
+   > EOF
+ 
+   $ dune runtest test.t
++  File "test.t", lines 1-18, characters 0-622:
++   1 | <<<<<<< Conflict 1 of 4
++   2 | %%%%%%% Changes from base to side #1
++   3 | -  Error: Conflict found. Please remove it or set (conflict allow)
++  ....
++  16 |   6 | $ echo tada
++  17 |   Error: Conflict found. Please remove it or set (conflict allow)
++  18 | >>>>>>> Conflict 1 of 4 ends
+   Error: Conflict marker found. Please remove it or set (conflict_markers
+   allow)
+-  -> required by _build/default/.cram.test.t/cram.sh
+-  -> required by _build/default/.cram.test.t/cram.out
+-  -> required by alias test
+   [1]
+ 
+>>>>>>> Conflict 1 of 1 ends

@@ -22,11 +22,17 @@ Full diff3 conflict without command and output interleaving:
   > EOF
 
   $ dune runtest test.t
+  File "test.t", lines 1-8, characters 0-73:
+  1 | <<<<<<<
+  2 | Left side
+  3 | |||||||
+  4 | Original
+  5 | =======
+  6 | Right side
+  7 | >>>>>>>
+  8 | $ echo tada
   Error: Conflict marker found. Please remove it or set (conflict_markers
   allow)
-  -> required by _build/default/.cram.test.t/cram.sh
-  -> required by _build/default/.cram.test.t/cram.out
-  -> required by alias test
   [1]
 
 Full diff3 conflict with command and output interleaving:
@@ -43,11 +49,17 @@ Full diff3 conflict with command and output interleaving:
   > EOF
 
   $ dune runtest test.t
+  File "test.t", lines 1-8, characters 0-87:
+  1 | <<<<<<<
+  2 |   $ foo left
+  3 | |||||||
+  4 |   $ foo original
+  5 | =======
+  6 |   > bar right
+  7 | >>>>>>>
+  8 | $ echo tada
   Error: Conflict marker found. Please remove it or set (conflict_markers
   allow)
-  -> required by _build/default/.cram.test.t/cram.sh
-  -> required by _build/default/.cram.test.t/cram.out
-  -> required by alias test
   [1]
 
 Partial diff3 conflicts are ignored:

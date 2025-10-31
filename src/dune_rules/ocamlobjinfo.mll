@@ -22,23 +22,34 @@ let ws = [' ' '\t']+
 let hash = ['0'-'9' 'a'-'z' '-']+
 let name = ['A'-'Z'] ['A'-'Z' 'a'-'z' '0'-'9' '_']*
 
-rule ocamlobjinfo acc = parse
-  | "Interfaces imported:" newline { intfs acc lexbuf }
-  | "Implementations imported:" newline { impls acc lexbuf }
-  | _ { ocamlobjinfo acc lexbuf }
+rule ocamlobjinfo acc_units acc = parse
+  | "Interfaces imported:" newline { intfs acc_units acc lexbuf }
+  | "Implementations imported:" newline { impls acc_units acc lexbuf }
+  | _ { ocamlobjinfo acc_units acc lexbuf }
+  | eof { acc :: acc_units }
+and intfs acc_units acc = parse
+  | ws hash ws (name as name) newline { intfs acc_units (add_intf acc name) lexbuf }
+  | "Implementations imported:" newline { impls acc_units acc lexbuf }
+  | "File " [^ '\n']+ newline { ocamlobjinfo (acc :: acc_units) empty lexbuf }
+  | _ | eof { acc :: acc_units }
+and impls acc_units acc = parse
+  | ws hash ws (name as name) newline { impls acc_units (add_impl acc name) lexbuf }
+  | "File " [^ '\n']+ newline { ocamlobjinfo (acc :: acc_units) empty lexbuf }
+  | _ | eof { acc :: acc_units }
+
+and archive acc = parse
+  | "Unit name:" ws (name as name) { archive (Module_name.Unique.Set.add acc (Module_name.Unique.of_string name)) lexbuf }
+  | _ { archive acc lexbuf }
   | eof { acc }
-and intfs acc = parse
-  | ws hash ws (name as name) newline { intfs (add_intf acc name) lexbuf }
-  | "Implementations imported:" newline { impls acc lexbuf }
-  | _ | eof { acc }
-and impls acc = parse
-  | ws hash ws (name as name) newline { impls (add_impl acc name) lexbuf }
-  | _ | eof { acc }
 
 {
-let parse s = ocamlobjinfo empty (Lexing.from_string s)
+let parse s = Lexing.from_string s |> ocamlobjinfo [] empty  |> List.rev
 
-let rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~unit =
+let parse_archive s =
+  Lexing.from_string s
+  |> archive Module_name.Unique.Set.empty
+
+let rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~units =
   let no_approx =
     if Ocaml.Version.ooi_supports_no_approx ocaml.version then
       [Command.Args.A "-no-approx"]
@@ -52,7 +63,9 @@ let rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~unit =
       []
   in
   let observing_facts =
-    Dep.Facts.singleton (Dep.file unit) (Dep.Fact.nothing)
+    List.map units ~f:(fun unit ->
+      Dep.Facts.singleton (Dep.file unit) (Dep.Fact.nothing))
+    |> Dep.Facts.union_all
   in
   let open Action_builder.O in
   let* action =
@@ -61,7 +74,7 @@ let rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~unit =
       (List.concat
          [ no_approx
          ; no_code
-         ; [ Dep unit ]
+         ; [ Deps units ]
          ])
   in
   (Dune_engine.Build_system.execute_action_stdout
@@ -73,4 +86,24 @@ let rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~unit =
     }
   |> Action_builder.of_memo)
   >>| parse
+
+let archive_rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~archive =
+  let observing_facts =
+    Dep.Facts.singleton (Dep.file archive) (Dep.Fact.nothing)
+  in
+  let open Action_builder.O in
+  let* action =
+    Command.run' ?sandbox
+      ~dir:(Path.build dir) ocaml.ocamlobjinfo
+      [ Dep archive ]
+  in
+  (Dune_engine.Build_system.execute_action_stdout
+    ~observing_facts
+    { Rule.Anonymous_action.action
+    ; loc = Loc.none
+    ; dir
+    ; alias = None
+    }
+  |> Action_builder.of_memo)
+  >>| parse_archive
 }

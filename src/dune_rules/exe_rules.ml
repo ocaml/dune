@@ -209,6 +209,18 @@ let executables_rules
   let lib_config = ocaml.lib_config in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let* () =
+    let toolchain = Compilation_context.ocaml cctx in
+    let direct_requires = Lib.Compile.direct_requires compile_info in
+    Unused_libs_rules.gen_rules
+      sctx
+      toolchain
+      exes.buildable.loc
+      ~obj_dir
+      ~modules
+      ~dir
+      ~direct_requires
+  in
+  let* () =
     let* dep_graphs =
       (* Building an archive for foreign stubs, we link the corresponding object
        files directly to improve perf. *)

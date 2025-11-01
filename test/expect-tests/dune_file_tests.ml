@@ -1,5 +1,5 @@
 open Dune_rules
-open! Stdune
+open Stdune
 open Dune_tests_common
 
 let () = init ()

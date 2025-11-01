@@ -1,6 +1,6 @@
 (** OCaml flags *)
 
-open! Import
+open Import
 
 type 'a t =
   { common : 'a

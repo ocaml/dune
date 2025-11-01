@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 let find_cram_test path ~parent_dir =
   let open Memo.O in

@@ -1,5 +1,4 @@
 {
-open! Stdune
 }
 
 rule is_script = parse

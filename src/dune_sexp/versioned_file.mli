@@ -1,6 +1,6 @@
 (** Implementation of versioned files *)
 
-open! Stdune
+open Stdune
 module First_line = Versioned_file_first_line
 
 module type S = sig

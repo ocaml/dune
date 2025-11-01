@@ -1,3 +1,3 @@
-open! Import
+open Import
 
 val command : unit Cmd.t

@@ -1,4 +1,4 @@
-open! Import
+open Import
 include Dune_pkg.Dev_tool
 
 let install_path_base_dir_name = ".dev-tool"

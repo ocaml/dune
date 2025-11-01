@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 open Fiber.O
 module Counter = Metrics.Counter
 

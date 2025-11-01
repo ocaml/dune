@@ -1,5 +1,4 @@
-open! Import
-open! Stdune
+open Stdune
 
 (** A cache that stores an association between files and string keys that will
     be deleted when dune terminates. For example this could be used to cache

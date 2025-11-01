@@ -4,7 +4,7 @@
     {{:https://en.wikipedia.org/wiki/Structured_concurrency} "structured
     concurrency"}. *)
 
-open! Stdune
+open Stdune
 
 (** {1 Generals} *)
 

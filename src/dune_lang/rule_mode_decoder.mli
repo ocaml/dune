@@ -1,4 +1,4 @@
-open! Import
+open Import
 module Rule := Dune_engine.Rule
 
 module Promote : sig

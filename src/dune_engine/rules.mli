@@ -1,6 +1,6 @@
 (** A collection of rules across a known finite set of directories *)
 
-open! Import
+open Import
 
 (** Represent a set of rules producing files in a given directory *)
 module Dir_rules : sig

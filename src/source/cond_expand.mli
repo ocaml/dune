@@ -1,5 +1,4 @@
-open! Stdune
-open! Import
+open Import
 
 (** Evaluate a cond statement, choosing the first value whose condition was met
     or [None] if none of the conditions were met. *)

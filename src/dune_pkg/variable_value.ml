@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 (* Currently only string values can be represented. Opam silently converts
    between strings to booleans when appropriate so this doesn't prevent boolean

@@ -1,4 +1,4 @@
-open! Import
+open Import
 module Pkg_dev_tool = Dune_rules.Pkg_dev_tool
 
 let dev_tool_bin_dirs =

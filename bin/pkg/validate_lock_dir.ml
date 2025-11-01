@@ -1,4 +1,4 @@
-open! Import
+open Import
 open Pkg_common
 module Package_universe = Dune_pkg.Package_universe
 module Lock_dir = Dune_pkg.Lock_dir

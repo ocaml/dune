@@ -1,5 +1,5 @@
 open Import
-open! Dune_lang.Decoder
+open Dune_lang.Decoder
 
 type t =
   { name : Loc.t * Lib_name.Local.t

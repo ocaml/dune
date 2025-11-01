@@ -89,6 +89,7 @@ type t =
   ; requires_link : Lib.t list Resolve.t Memo.Lazy.t
   ; implements : Virtual_rules.t
   ; parameters : Module_name.t list Resolve.Memo.t
+  ; instances : Parameterised_rules.instances list Resolve.Memo.t option
   ; includes : Includes.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
@@ -162,6 +163,7 @@ let create
       ?modes
       ?bin_annot
       ?loc
+      ?instances
       ()
   =
   let project = Scope.project scope in
@@ -236,6 +238,7 @@ let create
   ; bin_annot
   ; loc
   ; ocaml
+  ; instances
   }
 ;;
 
@@ -255,6 +258,15 @@ let for_alias_module t alias_module =
       let dune_version = Dune_project.dune_version project in
       let profile = Super_context.context t.super_context |> Context.profile in
       Ocaml_flags.default ~dune_version ~profile)
+  in
+  let flags =
+    match t.instances with
+    | None -> flags
+    | Some _ ->
+      (* If the alias file instantiates parameterised libraries,
+         the [misplace-attribute] warning is currently raised on
+         [@jane.non_erasable.instances] *)
+      Ocaml_flags.append_common flags [ "-w"; "-53" ]
   in
   let sandbox =
     (* If the compiler reads the cmi for module alias even with [-w -49
@@ -342,3 +354,4 @@ let for_plugin_executable t ~embed_in_plugin_libraries =
 let without_bin_annot t = { t with bin_annot = false }
 let set_obj_dir t obj_dir = { t with obj_dir }
 let set_modes t ~modes = { t with modes }
+let instances t = t.instances

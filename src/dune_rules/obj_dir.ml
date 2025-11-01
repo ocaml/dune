@@ -504,11 +504,14 @@ module Module = struct
     | External _ -> dir
   ;;
 
-  let obj_file (type path) (t : path t) m ~kind ~ext : path =
-    let visibility = Module.visibility m in
-    let obj_name = Module_name.Unique.artifact_filename (Module.obj_name m) ~ext in
+  let obj_file_of_name (type path) (t : path t) m ~kind ~ext ~visibility : path =
+    let obj_name = Module_name.Unique.artifact_filename m ~ext in
     let dir = cm_dir t kind visibility in
     relative t dir obj_name
+  ;;
+
+  let obj_file (type path) (t : path t) m ~kind ~ext : path =
+    obj_file_of_name t (Module.obj_name m) ~kind ~ext ~visibility:(Module.visibility m)
   ;;
 
   let has_impl_if_needed m ~(kind : Lib_mode.Cm_kind.t) =

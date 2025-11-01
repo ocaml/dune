@@ -134,7 +134,7 @@ which lists the parameters on the following indented lines:
 
 The output of `ocamlobjinfo` is not exactly 1:1 with the flags given to the
 compiler.  It only lists the parameters that are actually used (`A` is not used
-by `Lib`), but also the parameterized modules that are depended upon,
+by `Lib`), but also the parameterised modules that are depended upon,
 `Lib_util` and `Lib__`:
 
   $ ocamlobjinfo _build/default/lib/.lib.objs/native/lib.cmx | runtime_parameters
@@ -197,7 +197,7 @@ attempt to build:
   $ dune build
 
 We check that the opam installation will preserve the parameters metadata, both
-at the level of the library `project.lib` and for each of its parameterized
+at the level of the library `project.lib` and for each of its parameterised
 modules:
 
   $ dune build @install
@@ -324,7 +324,7 @@ It's not possible to use the `parameters` fields in other stanzas than
   Error: Unknown field "parameters"
   [1]
 
-It's incorrect to depend on a parameterized library without providing the
+It's incorrect to depend on a parameterised library without providing the
 required parameters.
 
   $ cat > bin/dune <<EOF
@@ -340,7 +340,8 @@ required parameters.
   -> required by _build/default/bin/bin.exe
   -> required by alias bin/all
   -> required by alias default
-  Hint: Add (parameters project.a)
+  Hint: Pass an argument implementing project.a to the dependency, or add
+  (parameters project.a)
   [1]
 
   $ rm -r bin
@@ -362,10 +363,11 @@ Same for libraries:
   -> required by _build/default/lib2/lib2.a
   -> required by alias lib2/all
   -> required by alias default
-  Hint: Add (parameters project.a)
+  Hint: Pass an argument implementing project.a to the dependency, or add
+  (parameters project.a)
   [1]
 
-It works if `lib2` is itself parameterized with the same parameters as `lib`:
+It works if `lib2` is itself parameterised with the same parameters as `lib`:
 
   $ cat > lib2/dune <<EOF
   > (library (name lib2) (parameters a b) (libraries lib))

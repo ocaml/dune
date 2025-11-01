@@ -188,11 +188,7 @@ let get_path ctx_name =
   in
   match lock_dir_paths with
   | None -> Memo.return None
-  | Some (source_path, lock_dir_path) ->
-    let* in_source_tree = Source_tree.find_dir source_path in
-    (match in_source_tree with
-     | Some _ -> Memo.return (Some lock_dir_path)
-     | None -> Memo.return None)
+  | Some (_source_path, lock_dir_path) -> Memo.return (Some lock_dir_path)
 ;;
 
 let get_workspace_lock_dir ctx =
@@ -250,6 +246,67 @@ let of_dev_tool_if_lock_dir_exists dev_tool =
   else Memo.return None
 ;;
 
+let lock_dirs_of_workspace (workspace : Workspace.t) =
+  let module Set = Path.Source.Set in
+  let+ lock_dirs_from_ctx =
+    Memo.List.map workspace.contexts ~f:(function
+      | Opam _ | Default { lock_dir = None; _ } -> Memo.return None
+      | Default { lock_dir = Some selection; _ } ->
+        let+ path = select_lock_dir selection in
+        Some path)
+    >>| List.filter_opt
+  in
+  match lock_dirs_from_ctx, workspace.lock_dirs with
+  | [], [] -> Set.singleton default_source_path
+  | lock_dirs_from_ctx, lock_dirs_from_toplevel ->
+    let lock_paths_from_toplevel =
+      List.map lock_dirs_from_toplevel ~f:(fun (lock_dir : Workspace.Lock_dir.t) ->
+        lock_dir.path)
+    in
+    Set.union (Set.of_list lock_paths_from_toplevel) (Set.of_list lock_dirs_from_ctx)
+;;
+
+let enabled () =
+  match !Clflags.ignore_lock_dir with
+  | true -> Memo.return false
+  | false ->
+    let* workspace = Workspace.workspace () in
+    (match workspace.config.pkg_enabled with
+     | Set (_, `Enabled) -> Memo.return true
+     | Set (_, `Disabled) -> Memo.return false
+     | Unset ->
+       let* lock_dirs = lock_dirs_of_workspace workspace in
+       Path.Source.Set.to_list lock_dirs
+       |> Memo.List.exists ~f:(fun lock_dir ->
+         Fs_memo.dir_exists (Path.Outside_build_dir.In_source_dir lock_dir)))
+;;
+
+let get_path_if_source_exists ctx_name =
+  let* workspace = Workspace.workspace () in
+  let ctx =
+    List.find_map workspace.contexts ~f:(fun ctx ->
+      match Context_name.equal (Workspace.Context.name ctx) ctx_name with
+      | false -> None
+      | true -> Some ctx)
+  in
+  let* lock_dir_paths =
+    match ctx with
+    | None | Some (Default { lock_dir = None; _ }) ->
+      Memo.return (Some (default_source_path, default_path))
+    | Some (Default { lock_dir = Some lock_dir_selection; _ }) ->
+      let+ source_lock_dir = select_lock_dir lock_dir_selection in
+      Some (source_lock_dir, lock_dir_of_source source_lock_dir)
+    | Some (Opam _) -> Memo.return None
+  in
+  match lock_dir_paths with
+  | None -> Memo.return None
+  | Some (source_path, lock_dir_path) ->
+    let* in_source_tree = Source_tree.find_dir source_path in
+    (match in_source_tree with
+     | Some _ -> Memo.return (Some lock_dir_path)
+     | None -> Memo.return None)
+;;
+
 let lock_dir_active ctx =
   let open Memo.O in
   if !Clflags.ignore_lock_dir
@@ -257,8 +314,9 @@ let lock_dir_active ctx =
   else
     let* workspace = Workspace.workspace () in
     match workspace.config.pkg_enabled with
+    | Set (_, `Enabled) -> Memo.return true
     | Set (_, `Disabled) -> Memo.return false
-    | Set (_, `Enabled) | Unset -> get_path ctx >>| Option.is_some
+    | Unset -> get_path_if_source_exists ctx >>| Option.is_some
 ;;
 
 let source_kind (source : Dune_pkg.Source.t) =

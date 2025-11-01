@@ -19,6 +19,7 @@ module Object : sig
   type resolved = t
 
   val of_sha1 : string -> resolved option
+  val digest : t -> Dune_digest.t
 end = struct
   type t = Sha1 of string
 
@@ -40,6 +41,8 @@ end = struct
     then Some (Sha1 (String.lowercase_ascii s))
     else None
   ;;
+
+  let digest (Sha1 s) = Dune_digest.string s
 end
 
 module Commit = struct

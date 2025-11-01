@@ -29,6 +29,11 @@ val dev_tool_lock_dir : Dune_pkg.Dev_tool.t -> Path.t
 
 val select_lock_dir : Workspace.Lock_dir_selection.t -> Path.Source.t Memo.t
 
+(** Returns true if lock dir functionality is active, be it via explicitely
+    opting in via [(pkg enabled)] or inferred through the existence of lock
+    directories *)
+val enabled : unit -> bool Memo.t
+
 module Sys_vars : sig
   type t =
     { os : string option Memo.Lazy.t

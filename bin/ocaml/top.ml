@@ -76,6 +76,8 @@ let term =
       in
       let include_paths =
         Dune_rules.Lib_flags.L.toplevel_include_paths requires lib_config
+        |> Dune_rules.Lib_flags.L.include_only
+        |> Path.Set.of_list
       in
       let+ files_to_load = files_to_load_of_requires sctx requires in
       Dune_rules.Toplevel.print_toplevel_init_file
@@ -134,7 +136,9 @@ module Module = struct
           let lib_config = (Compilation_context.ocaml cctx).lib_config in
           Dune_rules.Lib_flags.L.toplevel_include_paths requires lib_config
         in
-        Path.Set.add libs (Path.build (Obj_dir.byte_dir private_obj_dir))
+        Path.Map.set libs (Path.build (Obj_dir.byte_dir private_obj_dir)) Include
+        |> Dune_rules.Lib_flags.L.include_only
+        |> Path.Set.of_list
       in
       let files_to_load () =
         let+ libs, modules =

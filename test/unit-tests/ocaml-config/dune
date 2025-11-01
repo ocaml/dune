@@ -1,5 +1,4 @@
 (test
  (name gh637)
- (package dune-private-libs)
  (libraries stdune ocaml_config)
  (deps Makefile.config))

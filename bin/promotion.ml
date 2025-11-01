@@ -8,26 +8,12 @@ let files_to_promote ~common files : Dune_rpc.Files_to_promote.t =
     let files =
       List.map files ~f:(fun fn -> Path.Source.of_string (Common.prefix_target common fn))
     in
-    let on_missing fn =
-      User_warning.emit
-        [ Pp.textf "Nothing to promote for %s." (Path.Source.to_string_maybe_quoted fn) ]
-    in
-    These (files, on_missing)
+    These files
 ;;
 
-let display_files files_to_promote =
-  let open Fiber.O in
-  Diff_promotion.load_db ()
-  |> Diff_promotion.filter_db files_to_promote
-  |> Fiber.parallel_map ~f:(fun file ->
-    Diff_promotion.diff_for_file file
-    >>| function
-    | Ok _ -> Some file
-    | Error _ -> None)
-  >>| List.filter_opt
-  >>| List.sort ~compare:(fun file file' -> Diff_promotion.File.compare file file')
-  >>| List.iter ~f:(fun (file : Diff_promotion.File.t) ->
-    Console.printf "%s" (Diff_promotion.File.source file |> Path.Source.to_string))
+let on_missing fn =
+  User_warning.emit
+    [ Pp.paragraphf "Nothing to promote for %s." (Path.Source.to_string_maybe_quoted fn) ]
 ;;
 
 module Apply = struct
@@ -60,7 +46,10 @@ module Apply = struct
       Scheduler.go_with_rpc_server ~common ~config (fun () ->
         let open Fiber.O in
         let+ () = Fiber.return () in
-        Diff_promotion.promote_files_registered_in_last_run files_to_promote)
+        let missing =
+          Diff_promotion.promote_files_registered_in_last_run files_to_promote
+        in
+        List.iter ~f:on_missing missing)
     | Error lock_held_by ->
       Rpc.Rpc_common.run_via_rpc
         ~common
@@ -86,7 +75,11 @@ module Diff = struct
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
     Scheduler.go_with_rpc_server ~common ~config (fun () ->
-      Diff_promotion.display files_to_promote)
+      let open Fiber.O in
+      let db = Diff_promotion.load_db () in
+      let* missing = Diff_promotion.missing ~db files_to_promote in
+      List.iter ~f:on_missing missing;
+      Diff_promotion.display_diffs ~db files_to_promote)
   ;;
 
   let command = Cmd.v info term
@@ -101,7 +94,11 @@ module Files = struct
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
     Scheduler.go_with_rpc_server ~common ~config (fun () ->
-      display_files files_to_promote)
+      let open Fiber.O in
+      let db = Diff_promotion.load_db () in
+      let* missing = Diff_promotion.missing ~db files_to_promote in
+      List.iter ~f:on_missing missing;
+      Diff_promotion.display_files ~db files_to_promote)
   ;;
 
   let command = Cmd.v info term

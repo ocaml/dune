@@ -5,6 +5,7 @@ module Test_kind = struct
     | Runtest of Path.t
     | Cram of Path.t * Source.Cram_test.t
     | Test_executable of Path.t * string (* dir, executable name *)
+    | Inline_tests of Path.t * string (* dir, library name *)
 
   let alias ~contexts = function
     | Cram (dir, cram) ->
@@ -14,6 +15,10 @@ module Test_kind = struct
       (* CR-someday Alizter: get the proper alias, also check js_of_ocaml
          runtst aliases? *)
       let name = Dune_engine.Alias.Name.of_string ("runtest-" ^ exe_name) in
+      Alias.in_dir ~name ~recursive:false ~contexts dir
+    | Inline_tests (dir, lib_name) ->
+      (* CR-someday Alizter: get the proper alias where it is defined. *)
+      let name = Dune_engine.Alias.Name.of_string ("runtest-" ^ lib_name) in
       Alias.in_dir ~name ~recursive:false ~contexts dir
     | Runtest dir ->
       Alias.in_dir ~name:Dune_rules.Alias.runtest ~recursive:true ~contexts dir
@@ -40,7 +45,13 @@ let find_cram_test cram_tests path =
     | Error (Dune_rules.Cram_rules.Missing_run_t _) | Ok _ -> None)
 ;;
 
-let find_test_executable ~sctx ~dir ~ml_file =
+let has_inline_tests (lib : Dune_rules.Library.t) =
+  Dune_rules.Sub_system_name.Map.mem
+    lib.sub_systems
+    Dune_rules.Inline_tests_info.Tests.name
+;;
+
+let classify_ml_test ~sctx ~dir ~ml_file =
   let open Memo.O in
   let module_name = Filename.remove_extension ml_file in
   match Dune_lang.Module_name.of_string_opt module_name with
@@ -57,14 +68,17 @@ let find_test_executable ~sctx ~dir ~ml_file =
       ~libs:(Dune_rules.Scope.libs scope)
       [ module_name ]
     >>| (function
+     | Some (Library lib) when has_inline_tests lib ->
+       let lib_name = snd lib.name |> Lib_name.Local.to_string in
+       Ok (`Inline_tests_library lib_name)
      | Some (Library _ | Executables _ | Melange _) | None -> Error `Not_a_test
      | Some (Tests ({ exes; _ } as _test)) ->
        let exe_names = Nonempty_list.to_list exes.names |> List.map ~f:snd in
        if List.mem exe_names (Filename.remove_extension ml_file) ~equal:String.equal
-       then Ok (Filename.remove_extension ml_file)
+       then Ok (`Test_executable (Filename.remove_extension ml_file))
        else (
          match exe_names with
-         | [ single_exe ] -> Ok single_exe
+         | [ single_exe ] -> Ok (`Test_executable single_exe)
          | [] | _ :: _ -> Error `Not_an_entry_point))
 ;;
 
@@ -84,7 +98,7 @@ let all_tests_of_dir ~sctx parent_dir =
       |> Filename.Set.to_list
       |> List.filter ~f:(fun f -> String.is_suffix f ~suffix:".ml")
       |> Memo.List.filter ~f:(fun ml_file ->
-        find_test_executable ~sctx ~dir:parent_dir ~ml_file >>| Result.is_ok)
+        classify_ml_test ~sctx ~dir:parent_dir ~ml_file >>| Result.is_ok)
   and+ dir_candidates =
     let* parent_source_dir = Source_tree.find_dir parent_dir in
     match parent_source_dir with
@@ -126,22 +140,26 @@ let disambiguate_test_name ~sctx path =
      | None ->
        (* Check for test executables *)
        let filename = Path.Source.basename path in
-       let* test_exe_opt =
-         find_test_executable ~sctx ~dir:parent_dir ~ml_file:filename
+       let* test_kind_opt =
+         classify_ml_test ~sctx ~dir:parent_dir ~ml_file:filename
          >>| function
-         | Ok exe_name -> Some exe_name
-         | Error `Not_an_entry_point ->
-           User_error.raise
-             [ Pp.textf
-                 "%S is used by multiple test executables and cannot be run directly."
-                 filename
-             ]
-         | Error `Not_a_test -> None
+        | Ok (`Test_executable exe_name) -> Some (`Test_exe exe_name)
+        | Ok (`Inline_tests_library lib_name) -> Some (`Inline_tests lib_name)
+        | Error `Not_an_entry_point ->
+          User_error.raise
+            [ Pp.textf
+                "%S is used by multiple test executables and cannot be run directly."
+                filename
+            ]
+        | Error `Not_a_test -> None
        in
-       (match test_exe_opt with
-        | Some exe_name ->
+       (match test_kind_opt with
+        | Some (`Test_exe exe_name) ->
           (* Found a test executable for this ML file *)
           Memo.return (Test_kind.Test_executable (Path.source parent_dir, exe_name))
+        | Some (`Inline_tests lib_name) ->
+          (* Found an inline tests library for this ML file *)
+          Memo.return (Test_kind.Inline_tests (Path.source parent_dir, lib_name))
         | None ->
           (* If we don't find it, then we assume the user intended a directory for
              @runtest to be used. *)

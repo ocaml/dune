@@ -41,6 +41,8 @@ include struct
   module Executables = Executables
   module Dune_load = Dune_load
   module Dir_contents = Dir_contents
+  module Sub_system_name = Sub_system_name
+  module Inline_tests_info = Inline_tests_info
 end
 
 include struct

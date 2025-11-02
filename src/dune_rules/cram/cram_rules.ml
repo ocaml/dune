@@ -12,7 +12,7 @@ module Spec = struct
     ; locks : Path.Set.t Action_builder.t
     ; packages : Package.Name.Set.t
     ; timeout : (Loc.t * float) option
-    ; conflict : Cram_stanza.Conflict.t
+    ; conflict_markers : Cram_stanza.Conflict_markers.t
     }
 
   let make_empty ~test_name_alias =
@@ -25,7 +25,7 @@ module Spec = struct
     ; sandbox = Sandbox_config.needs_sandboxing
     ; packages = Package.Name.Set.empty
     ; timeout = None
-    ; conflict = Ignore
+    ; conflict_markers = Ignore
     }
   ;;
 end
@@ -60,7 +60,7 @@ let test_rule
        ; sandbox
        ; packages = _
        ; timeout
-       ; conflict
+       ; conflict_markers
        } :
         Spec.t)
       (test : (Cram_test.t, error) result)
@@ -110,7 +110,10 @@ let test_rule
        let* () =
          (let open Action_builder.O in
           let+ () = Action_builder.path (Path.build script) in
-          Cram_exec.make_script ~src:(Path.build script) ~script:script_sh ~conflict
+          Cram_exec.make_script
+            ~src:(Path.build script)
+            ~script:script_sh
+            ~conflict_markers
           |> Action.Full.make)
          |> Action_builder.with_file_targets ~file_targets:[ script_sh ]
          |> Super_context.add_rule sctx ~dir ~loc
@@ -291,7 +294,9 @@ let rules ~sctx ~dir tests =
                   stanza.timeout
                   ~f:(Ordering.min (fun x y -> Float.compare (snd x) (snd y)))
               in
-              let conflict = Option.value ~default:acc.conflict stanza.conflict in
+              let conflict_markers =
+                Option.value ~default:acc.conflict_markers stanza.conflict_markers
+              in
               ( runtest_alias
               , { acc with
                   enabled_if
@@ -302,7 +307,7 @@ let rules ~sctx ~dir tests =
                 ; packages
                 ; sandbox
                 ; timeout
-                ; conflict
+                ; conflict_markers
                 } ))
       in
       let extra_aliases =

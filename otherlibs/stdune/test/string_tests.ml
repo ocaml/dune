@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 open Dyn
 open Dune_tests_common
 

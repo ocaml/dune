@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 (** Generate a lockdir for a dev tool, build the dev tool, then run the dev
     tool. If a step is unnecessary then it is skipped. This function does not

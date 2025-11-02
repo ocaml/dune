@@ -52,7 +52,7 @@ let top_closed_implementations t modules =
           in
           List.filter_map ~f:(fun m ->
             match Module.kind m with
-            | Virtual -> Some (Module.Obj_map.find_exn obj_map m)
+            | Virtual -> Module.Obj_map.find obj_map m
             | Intf_only -> None
             | _ -> Some m))
   |> Action_builder.memoize "top sorted implementations"

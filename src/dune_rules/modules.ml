@@ -1029,19 +1029,6 @@ module With_vlib = struct
     | Impl { impl = _; vlib; _ } -> lib_interface vlib
   ;;
 
-  let main_module_name =
-    let main_module_name t =
-      match t.modules with
-      | Singleton m -> Some (Module.name m)
-      | Unwrapped _ -> None
-      | Wrapped w -> Some w.group.name
-      | Stdlib w -> Some w.main_module_name
-    in
-    function
-    | Modules t -> main_module_name t
-    | Impl { vlib; impl = _; _ } -> main_module_name vlib
-  ;;
-
   let impl =
     let empty = lazy Module_name.Unique.Map.empty in
     fun impl ~vlib ->

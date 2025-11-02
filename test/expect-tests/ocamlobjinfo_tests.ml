@@ -1,4 +1,3 @@
-open! Stdune
 open Dune_tests_common
 module Ocamlobjinfo = Dune_rules.For_tests.Ocamlobjinfo
 

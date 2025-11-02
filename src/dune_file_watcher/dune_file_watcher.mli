@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 module Inotify_lib := Async_inotify_for_dune.Async_inotify
 
 type t

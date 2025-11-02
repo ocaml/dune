@@ -26,7 +26,7 @@
   %{bin:dune_cmd}
   (package dune))
  ;; We don't allow conflict markers in tests
- (conflict error)
+ (conflict_markers error)
  ;; Tests shouldn't take longer than 60s
  (timeout 60))
 

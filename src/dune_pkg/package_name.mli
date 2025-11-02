@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 
 type t = Dune_lang.Package_name.t
 

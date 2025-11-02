@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 module Exec = struct
   let doc = "Command group for running wrapped tools."

@@ -89,6 +89,9 @@ module Packages : sig
 
   val to_pkg_list : t -> Pkg.t list
   val pkgs_on_platform_by_name : t -> platform:Solver_env.t -> Pkg.t Package_name.Map.t
+
+  (** All the packages grouped by the platforms where they are enabled. *)
+  val pkgs_by_platform : t -> Pkg.t list Solver_env.Map.t
 end
 
 type t = private

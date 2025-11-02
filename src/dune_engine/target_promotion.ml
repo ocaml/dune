@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 (* [To_delete] is used mostly to implement [dune clean]. It is an imperfect
    heuristic, in particular it can go wrong if:

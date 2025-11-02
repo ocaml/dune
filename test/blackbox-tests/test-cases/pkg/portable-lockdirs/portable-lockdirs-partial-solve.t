@@ -33,29 +33,32 @@ Make a package that is only available on macos.
 Solving will still succeed, but there'll be a warning because dune will attempt
 to solve for macos, linux, and windows by default.
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
-  Solution for dune.lock:
+  Solution for dune.lock
+  
+  This solution supports the following platforms:
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  
+  Dependencies on all supported platforms:
   - foo.0.0.1
   
-  No solution was found for some platforms. See the log or run with --verbose
-  for more details.
+  No package solution was found for some requsted platforms.
+  
+  Platforms with no solution:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = win32
+  
+  See the log or run with --verbose for more details. Configure platforms to
+  solve for in the dune-workspace file.
 
 The log file will contain errors about the package being unavailable.
-  $ sed -n -e "/Couldn't solve the package dependency formula./,\$p" _build/log
-  # Couldn't solve the package dependency formula.
-  # Selected candidates: x.dev
-  # - foo -> (problem)
-  #     No usable implementations:
-  #       foo.0.0.1: Availability condition not satisfied
-  # Couldn't solve the package dependency formula.
-  # Selected candidates: x.dev
-  # - foo -> (problem)
-  #     No usable implementations:
-  #       foo.0.0.1: Availability condition not satisfied
-  # Couldn't solve the package dependency formula.
-  # Selected candidates: x.dev
-  # - foo -> (problem)
-  #     No usable implementations:
-  #       foo.0.0.1: Availability condition not satisfied
+  $ sed -n -e "/The dependency solver failed to find a solution for the following platforms:/,\$p" _build/log
+  # The dependency solver failed to find a solution for the following platforms:
+  # - arch = x86_64; os = linux
+  # - arch = arm64; os = linux
+  # - arch = x86_64; os = win32
+  # ...with this error:
   # Couldn't solve the package dependency formula.
   # Selected candidates: x.dev
   # - foo -> (problem)

@@ -112,6 +112,9 @@ test-all: $(BIN)
 test-all-sans-melange: $(BIN)
 	$(BIN) build @runtest @runtest-js @runtest-coq
 
+test-ox: $(BIN)
+	$(BIN) runtest test/blackbox-tests/test-cases/oxcaml
+
 .PHONY: check
 check: $(BIN)
 	@$(BIN) build @check

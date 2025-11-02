@@ -53,9 +53,30 @@ Define a package bar which conditionally depends on different versions of foo:
   > EOF
 
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
-  Solution for dune.lock:
+  Solution for dune.lock
+  
+  This solution supports the following platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  - arch = x86_64; os = win32
+  
+  Dependencies on all supported platforms:
   - bar.0.0.1
+  
+  Additionally, some packages will only be built on specific platforms.
+  
+  arch = arm64; os = linux:
   - foo.1
+  
+  arch = arm64; os = macos:
+  - foo.2
+  
+  arch = x86_64; os = linux:
+  - foo.1
+  
+  arch = x86_64; os = macos:
   - foo.2
 
 Build the project as if we were on linux and confirm that version 1 of foo was built:

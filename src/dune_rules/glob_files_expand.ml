@@ -1,4 +1,4 @@
-open! Import
+open Import
 open Memo.O
 
 (* Returns a list containing all descendant directories of the directory whose

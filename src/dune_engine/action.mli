@@ -4,7 +4,7 @@
     execute. These usually, but not necessarily correspond to actions written by
     the user in [Dune_lang.Action.t] *)
 
-open! Import
+open Import
 open Dune_util.Action
 
 module Inputs : sig

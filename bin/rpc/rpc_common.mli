@@ -21,6 +21,10 @@ val client_term : Common.Builder.t -> (unit -> 'a Fiber.t) -> 'a
 (** Cmdliner argument for a wait flag. *)
 val wait_term : bool Cmdliner.Term.t
 
+(** Encode the targets as [Dune_lang.t], and then as strings suitable to
+    be sent via RPC. *)
+val prepare_targets : Dune_lang.Dep_conf.t list -> string list
+
 (** Send a request to the RPC server. If [wait], it will poll forever until a server is listening.
     Should be scheduled by a scheduler that does not come with a RPC server on its own.
 

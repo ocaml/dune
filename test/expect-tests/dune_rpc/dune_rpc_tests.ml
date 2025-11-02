@@ -1,5 +1,5 @@
-open! Stdune
-open! Fiber.O
+open Stdune
+open Fiber.O
 module Dune_rpc = Dune_rpc_private
 open Dune_rpc
 open Dune_rpc_server

@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 
 let paths =
   let paths = ref [] in

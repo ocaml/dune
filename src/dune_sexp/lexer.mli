@@ -1,5 +1,3 @@
-open! Stdune
-
 module Token : sig
   type t =
     | Atom of Atom.t

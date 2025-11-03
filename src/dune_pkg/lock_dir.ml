@@ -1389,11 +1389,42 @@ module Write_disk = struct
     | Error e -> raise_user_error_on_check_existance path e
   ;;
 
+  let rec safely_copy_lock_dir_when_dst_non_existant ~dst src =
+    match check_existing_lock_dir src with
+    | Error e -> raise_user_error_on_check_existance src e
+    | Ok `Non_existant -> ()
+    | Ok `Is_existing_lock_dir ->
+      (match Path.readdir_unsorted_with_kinds src with
+       | Error e ->
+         User_error.raise
+           [ Pp.textf "Failed to list %s with error:" (Path.to_string_maybe_quoted src)
+           ; Unix_error.Detailed.pp e
+           ]
+       | Ok children ->
+         List.iter children ~f:(fun (name, kind) ->
+           let child_src = Path.relative src name in
+           let child_dst = Path.relative dst name in
+           match kind with
+           | Unix.S_DIR ->
+             Path.mkdir_p child_dst;
+             safely_copy_lock_dir_when_dst_non_existant ~dst:child_dst child_src
+           | Unix.S_REG ->
+             Path.mkdir_p dst;
+             Io.copy_file ~src:child_src ~dst:child_dst ()
+           | _ -> assert false))
+  ;;
+
   (* Does the same checks as [safely_remove_lock_dir_if_exists_thunk] but it raises an
      error if the lock dir already exists. [dst] is the new file name *)
   let safely_rename_lock_dir_thunk ~dst src =
     match check_existing_lock_dir src, check_existing_lock_dir dst with
-    | Ok `Is_existing_lock_dir, Ok `Non_existant -> fun () -> Path.rename src dst
+    | Ok `Is_existing_lock_dir, Ok `Non_existant ->
+      fun () ->
+        (match Path.rename src dst with
+         | () -> ()
+         | exception Unix.Unix_error (Unix.EXDEV, _, _) ->
+           safely_copy_lock_dir_when_dst_non_existant ~dst src;
+           Path.rm_rf src)
     | Ok `Non_existant, Ok `Non_existant -> Fun.const ()
     | _, Ok `Is_existing_lock_dir ->
       let error_reason_pp =

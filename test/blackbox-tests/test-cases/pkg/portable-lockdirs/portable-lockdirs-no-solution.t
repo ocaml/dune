@@ -37,7 +37,6 @@ Solver error when solving fails with the same error on all platforms:
   - arch = arm64; os = linux
   - arch = x86_64; os = macos
   - arch = arm64; os = macos
-  - arch = x86_64; os = win32
   ...with this error:
   Couldn't solve the package dependency formula.
   Selected candidates: a.0.0.1 b.0.0.1 foo.dev
@@ -75,7 +74,6 @@ with the platforms where they are relevant:
   The dependency solver failed to find a solution for the following platforms:
   - arch = x86_64; os = macos
   - arch = arm64; os = macos
-  - arch = x86_64; os = win32
   ...with this error:
   Couldn't solve the package dependency formula.
   Selected candidates: a.0.0.1 b.0.0.1 foo.dev

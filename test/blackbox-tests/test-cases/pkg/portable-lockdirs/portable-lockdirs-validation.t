@@ -36,7 +36,6 @@ Solve dependencies:
   - arch = arm64; os = linux
   - arch = x86_64; os = macos
   - arch = arm64; os = macos
-  - arch = x86_64; os = win32
   
   Dependencies on all supported platforms:
   - a.0.0.1

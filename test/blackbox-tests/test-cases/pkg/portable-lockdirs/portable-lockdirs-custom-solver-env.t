@@ -60,8 +60,6 @@ Solve the project:
     5.4.0+solver-env-version-override
   - arch = arm64; os = macos; sys-ocaml-version =
     5.4.0+solver-env-version-override
-  - arch = x86_64; os = win32; sys-ocaml-version =
-    5.4.0+solver-env-version-override
   
   Dependencies on all supported platforms:
   - foo.0.0.1

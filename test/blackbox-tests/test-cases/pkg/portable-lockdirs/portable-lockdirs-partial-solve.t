@@ -45,8 +45,8 @@ to solve for macos, linux, and windows by default.
   No package solution was found for some requsted platforms.
   
   Platforms with no solution:
-  - arch = x86_64; os = linux
   - arch = arm64; os = linux
+  - arch = x86_64; os = linux
   
   See the log or run with --verbose for more details. Configure platforms to
   solve for in the dune-workspace file.

@@ -24,6 +24,7 @@ module O : sig
   val ( let* ) : ('a, 'error) t -> ('a -> ('b, 'error) t) -> ('b, 'error) t
   val ( and+ ) : ('a, 'error) t -> ('b, 'error) t -> ('a * 'b, 'error) t
   val ( let+ ) : ('a, 'error) t -> ('a -> 'b) -> ('b, 'error) t
+  val ( and* ) : ('a, 'error) t -> ('b, 'error) t -> ('a * 'b, 'error) t
 end
 
 val map : ('a, 'error) t -> f:('a -> 'b) -> ('b, 'error) t
@@ -35,6 +36,8 @@ val to_dyn : 'a Dyn.builder -> 'error Dyn.builder -> ('a, 'error) t Dyn.builder
 
 (** Produce [Error <message>] *)
 val errorf : ('a, unit, string, (_, string) t) format4 -> 'a
+
+val both : ('a, 'e) t -> ('b, 'e) t -> ('a * 'b, 'e) t
 
 (** For compatibility with some other code *)
 type ('a, 'error) result = ('a, 'error) t

@@ -28,5 +28,8 @@ val solve_lock_dir
            handling both portable and non-portable lockdirs with the same code.
            Once portable lockdirs are enabled unconditionally, remove this
            argument. *)
-  -> (Solver_result.t, [ `Diagnostic_message of User_message.Style.t Pp.t ]) result
+  -> ( Solver_result.t
+       , [ `Solve_error of User_message.Style.t Pp.t | `Manifest_error of User_message.t ]
+       )
+       result
        Fiber.t

@@ -1455,13 +1455,16 @@ let solve_package_list packages ~context =
   | Ok packages -> Fiber.return @@ Ok (Solver.packages_of_result packages)
   | Error (`Diagnostics e) ->
     let+ diagnostics = Solver.diagnostics context e in
-    Error (`Diagnostic_message diagnostics)
+    Error (`Solve_error diagnostics)
   | Error (`Exn exn) ->
     (match exn.exn with
      | OpamPp.(Bad_format _ | Bad_format_list _ | Bad_version _) as bad_format ->
        (* CR-rgrinberg: needs to include locations *)
-       User_error.raise [ Pp.text (OpamPp.string_of_bad_format bad_format) ]
-     | User_error.E _ -> Exn_with_backtrace.reraise exn
+       Fiber.return
+       @@ Error
+            (`Manifest_error
+                (User_error.make [ Pp.text (OpamPp.string_of_bad_format bad_format) ]))
+     | User_error.E message -> Fiber.return @@ Error (`Manifest_error message)
      | _ ->
        Code_error.raise
          "Unexpected exception raised while solving dependencies"
@@ -1617,11 +1620,13 @@ let reject_unreachable_packages =
 ;;
 
 let files resolved_packages =
-  Resolved_package.get_opam_package_files resolved_packages
-  >>| List.map2 resolved_packages ~f:(fun resolved_package entries ->
+  let+ files = Resolved_package.get_opam_package_files resolved_packages in
+  let open Result.O in
+  let+ files = files in
+  List.map2 resolved_packages files ~f:(fun resolved_package entries ->
     let package = Resolved_package.package resolved_package in
     package, entries)
-  >>| List.filter_map ~f:(fun (package, entries) ->
+  |> List.filter_map ~f:(fun (package, entries) ->
     if List.is_empty entries
     then None
     else (
@@ -1630,7 +1635,7 @@ let files resolved_packages =
         OpamPackage.version package |> Package_version.of_opam_package_version
       in
       Some (package_name, Package_version.Map.singleton package_version entries)))
-  >>| Package_name.Map.of_list_exn
+  |> Package_name.Map.of_list_exn
 ;;
 
 let package_kind =
@@ -1725,7 +1730,8 @@ let solve_lock_dir
       |> OpamPackage.Version.Map.find version
     in
     let pkgs_by_name =
-      let pkgs =
+      let open Result.O in
+      let+ pkgs =
         let version_by_package_name =
           Package_name.Map.of_list_map_exn solution ~f:(fun (package : OpamPackage.t) ->
             ( Package_name.of_opam_package_name (OpamPackage.name package)
@@ -1744,6 +1750,7 @@ let solve_lock_dir
             ~pinned:(Package_name.Set.mem pinned_package_names name)
             resolved_package
             ~portable_lock_dir)
+        |> Result.List.all
       in
       match Package_name.Map.of_list_map pkgs ~f:(fun pkg -> pkg.info.name, pkg) with
       | Error (name, _pkg1, _pkg2) ->
@@ -1762,6 +1769,8 @@ let solve_lock_dir
           Package_name.Set.mem reachable name)
     in
     let ocaml =
+      let open Result.O in
+      let+ pkgs_by_name = pkgs_by_name in
       (* This doesn't allow the compiler to live in the source tree. Oh
          well, it's not possible now anyway. *)
       match
@@ -1783,23 +1792,39 @@ let solve_lock_dir
           ~hints:[ Pp.text "add a conflict" ]
     in
     let lock_dir =
-      Package_name.Map.iter
-        pkgs_by_name
-        ~f:(fun { Lock_dir.Pkg.depends; info = { name; _ }; _ } ->
-          Lock_dir.Conditional_choice.choose_for_platform depends ~platform:solver_env
-          |> Option.iter ~f:(fun depends ->
-            List.iter depends ~f:(fun { Lock_dir.Dependency.name = dep_name; loc } ->
-              if (not (is_dune dep_name)) && Package_name.Map.mem local_packages dep_name
-              then
-                User_error.raise
-                  ~loc
-                  [ Pp.textf
-                      "Dune does not support packages outside the workspace depending on \
-                       packages in the workspace. The package %S is not in the workspace \
-                       but it depends on the package %S which is in the workspace."
-                      (Package_name.to_string name)
-                      (Package_name.to_string dep_name)
-                  ])));
+      let open Result.O in
+      let* pkgs_by_name = pkgs_by_name
+      and* ocaml = ocaml in
+      let+ () =
+        Package_name.Map.values pkgs_by_name
+        |> Result.List.map ~f:(fun { Lock_dir.Pkg.depends; info = { name; _ }; _ } ->
+          match
+            Lock_dir.Conditional_choice.choose_for_platform depends ~platform:solver_env
+          with
+          | None -> Ok ()
+          | Some depends ->
+            Result.List.map
+              depends
+              ~f:(fun { Lock_dir.Dependency.name = dep_name; loc } ->
+                match
+                  (not (is_dune dep_name)) && Package_name.Map.mem local_packages dep_name
+                with
+                | false -> Ok ()
+                | true ->
+                  Error
+                    (User_error.make
+                       ~loc
+                       [ Pp.textf
+                           "Dune does not support packages outside the workspace \
+                            depending on packages in the workspace. The package %S is \
+                            not in the workspace but it depends on the package %S which \
+                            is in the workspace."
+                           (Package_name.to_string name)
+                           (Package_name.to_string dep_name)
+                       ]))
+            |> Result.map ~f:(fun (_ : unit list) -> ()))
+        |> Result.map ~f:(fun (_ : unit list) -> ())
+      in
       let expanded_solver_variable_bindings =
         let stats = Solver_stats.Updater.snapshot stats_updater in
         Solver_stats.Expanded_variable_bindings.of_variable_set
@@ -1815,15 +1840,26 @@ let solve_lock_dir
         ~solved_for_platform:(Some solver_env)
     in
     let+ files =
-      Package_name.Map.to_list_map pkgs_by_name ~f:(fun name (package : Lock_dir.Pkg.t) ->
-        Package_version.to_opam_package_version package.info.version
-        |> resolve_package name)
-      |> files
+      match pkgs_by_name with
+      | Error e -> Fiber.return (Error e)
+      | Ok pkgs_by_name ->
+        let+ files =
+          Package_name.Map.to_list_map
+            pkgs_by_name
+            ~f:(fun name (package : Lock_dir.Pkg.t) ->
+              Package_version.to_opam_package_version package.info.version
+              |> resolve_package name)
+          |> files
+        in
+        files
     in
-    Ok
-      { Solver_result.lock_dir
-      ; files
-      ; pinned_packages = pinned_package_names
-      ; num_expanded_packages = Context.count_expanded_packages context
-      }
+    (match Result.both lock_dir files with
+     | Error e -> Error (`Manifest_error e)
+     | Ok (lock_dir, files) ->
+       Ok
+         { Solver_result.lock_dir
+         ; files
+         ; pinned_packages = pinned_package_names
+         ; num_expanded_packages = Context.count_expanded_packages context
+         })
 ;;

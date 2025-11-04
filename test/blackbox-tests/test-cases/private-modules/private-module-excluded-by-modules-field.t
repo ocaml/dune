@@ -31,9 +31,9 @@ X is warned about:
   Warning: These modules appear in the private_modules field:
   - X
   They must also appear in the modules field.
-  File "src/y.ml", line 1, characters 9-14:
+  File "src/y.ml", line 1, characters 9-10:
   1 | let () = X.foo ()
-               ^^^^^
+               ^
   Error: Unbound module X
   [1]
 
@@ -63,8 +63,8 @@ This warning should be ignored if we are in vendored_dirs
   $ cat > bar.ml
 
   $ dune build ./bar.exe
-  File "src/y.ml", line 1, characters 9-14:
+  File "src/y.ml", line 1, characters 9-10:
   1 | let () = X.foo ()
-               ^^^^^
+               ^
   Error: Unbound module X
   [1]

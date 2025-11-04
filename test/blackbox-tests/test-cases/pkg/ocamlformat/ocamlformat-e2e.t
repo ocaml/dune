@@ -25,7 +25,7 @@ Make dune-project that uses the mocked dev-tool opam-reposiotry.
 Without a ".ocamlformat" file, "dune fmt" takes the latest version of
 OCamlFormat.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt --preview
-  Solution for dev-tools.locks/ocamlformat:
+  Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.3
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
@@ -46,7 +46,7 @@ An important cleaning here, "dune fmt" will relock and build the new version(0.2
 With a ".ocamlformat" file, "dune fmt" takes the version mentioned inside ".ocamlformat"
 file.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt --preview
-  Solution for dev-tools.locks/ocamlformat:
+  Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.2
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
@@ -68,7 +68,7 @@ When the lock dir is removed, the solving/lock is renewed:
 
   $ rm -r "${dev_tool_lock_dir}"
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt --preview
-  Solution for dev-tools.locks/ocamlformat:
+  Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.2
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml

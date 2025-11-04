@@ -28,7 +28,7 @@ Initial file:
 This should choose the 0.24+foo version:
   $ echo "version=0.24" > .ocamlformat
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
-  Solution for dev-tools.locks/ocamlformat:
+  Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.24+foo
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
@@ -43,7 +43,7 @@ This should choose the 0.24+bar version:
   $ echo "version=0.25" > .ocamlformat
   $ rm -r "${dev_tool_lock_dir}"
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
-  Solution for dev-tools.locks/ocamlformat:
+  Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.25+bar
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
@@ -60,7 +60,7 @@ This should fail as there is no version matching 0.24.1:
   $ rm -r "${dev_tool_lock_dir}"
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
   Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dev-tools.locks/ocamlformat:
+  Lock directory _build/.dev-tools.locks/ocamlformat:
   Couldn't solve the package dependency formula.
   Selected candidates: ocamlformat_dev_tool_wrapper.dev
   - ocamlformat -> (problem)

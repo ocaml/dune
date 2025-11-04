@@ -1495,10 +1495,10 @@ end = struct
             in
             resolve db dep_loc dep_pkg_digest package_universe)
       and+ files_dir =
-        let* lock_dir =
+        let+ lock_dir =
           Package_universe.lock_dir_path package_universe >>| Option.value_exn
         in
-        let+ files_dir =
+        let files_dir =
           let module Pkg = Dune_pkg.Lock_dir.Pkg in
           (* TODO(steve): simplify this once portable lockdirs become the
              default. This logic currently handles both the cases where
@@ -1510,17 +1510,15 @@ end = struct
           let path_with_version =
             Pkg.source_files_dir info.name (Some info.version) ~lock_dir
           in
-          let* path_with_version_exists =
-            Fs_memo.dir_exists (Path.Outside_build_dir.In_source_dir path_with_version)
+          let path_with_version_exists =
+            Path.Untracked.exists (Path.source path_with_version)
           in
           match path_with_version_exists with
-          | true ->
-            Memo.return @@ Some (Pkg.files_dir info.name (Some info.version) ~lock_dir)
+          | true -> Some (Pkg.files_dir info.name (Some info.version) ~lock_dir)
           | false ->
             let path_without_version = Pkg.source_files_dir info.name None ~lock_dir in
-            let+ path_without_version_exists =
-              Fs_memo.dir_exists
-                (Path.Outside_build_dir.In_source_dir path_without_version)
+            let path_without_version_exists =
+              Path.Untracked.exists (Path.source path_without_version)
             in
             (match path_without_version_exists with
              | true -> Some (Pkg.files_dir info.name None ~lock_dir)
@@ -1534,18 +1532,14 @@ end = struct
               "Package files directory is external source directory, this is unsupported"
               [ "dir", Path.External.to_dyn e ]
           | In_source_tree s ->
-            (match Path.Source.explode s with
-             | [ "dev-tools.locks"; dev_tool; files_dir ] ->
+            Code_error.raise "Unexpected files_dir path" [ "dir", Path.Source.to_dyn s ]
+          | In_build_dir b ->
+            (match Path.Build.explode b with
+             | [ ".dev-tools.locks"; dev_tool; files_dir ] ->
                Path.Build.L.relative
                  Private_context.t.build_dir
                  [ "default"; ".dev-tool-locks"; dev_tool; files_dir ]
-             | otherwise ->
-               Code_error.raise
-                 "Unexpected files_dir path"
-                 [ "components", (Dyn.list Dyn.string) otherwise ])
-          | In_build_dir b ->
-            (* it's already a build path, no need to do anything *)
-            b)
+             | _otherwise -> b))
       in
       let id = Pkg.Id.gen () in
       let write_paths =

@@ -148,7 +148,9 @@ let dev_tool_to_path_segment dev_tool =
 ;;
 
 let dev_tool_source_lock_dir dev_tool =
-  let dev_tools_path = Path.Source.(relative root "dev-tools.locks") in
+  let dev_tools_path =
+    Path.Source.L.relative Path.Source.root [ "_build"; ".dev-tools.locks" ]
+  in
   let dev_tool_segment = dev_tool_to_path_segment dev_tool in
   Path.Source.append_local dev_tools_path dev_tool_segment
 ;;

@@ -1163,8 +1163,8 @@ let resolve_revision t (remote : Remote.t) ~revision =
 let fetch_object t (remote : Remote.t) revision =
   fetch_allow_failure t ~url:remote.url revision
   >>= function
-  | `Not_found _ -> Fiber.return None
-  | `Fetched -> At_rev.of_rev t ~revision >>| Option.some
+  | `Not_found git_output -> Fiber.return (Error git_output)
+  | `Fetched -> At_rev.of_rev t ~revision >>| Result.ok
 ;;
 
 let content_of_files t files =

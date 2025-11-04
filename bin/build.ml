@@ -196,16 +196,16 @@ let build =
          perform the RPC call.
       *)
       let targets = Rpc.Rpc_common.prepare_targets targets in
-      Rpc.Rpc_common.run_via_rpc
-        ~common
-        ~config
-        (Rpc.Rpc_common.fire_request
-           ~name:"build"
-           ~wait:true
-           ~lock_held_by
-           builder
-           Dune_rpc_impl.Decl.build)
-        targets
+      Scheduler.go_without_rpc_server ~common ~config (fun () ->
+        let open Fiber.O in
+        Rpc.Rpc_common.fire_request
+          ~name:"build"
+          ~wait:true
+          ~lock_held_by
+          builder
+          Dune_rpc_impl.Decl.build
+          targets
+        >>| Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:true)
     | Ok () ->
       let request setup =
         Target.interpret_targets (Common.root common) config setup targets

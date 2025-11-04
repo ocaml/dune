@@ -15,15 +15,15 @@ let term =
   Rpc_common.client_term builder
   @@ fun () ->
   let open Fiber.O in
-  Rpc_common.fire_request
-    ~name:"ping_cmd"
-    ~wait
-    builder
-    Dune_rpc_private.Procedures.Public.ping
-    ()
-  >>| function
-  | Ok () -> Console.print [ Pp.text "Server appears to be responding normally" ]
-  | Error e -> Rpc_common.raise_rpc_error e
+  let+ () =
+    Rpc_common.fire_request
+      ~name:"ping_cmd"
+      ~wait
+      builder
+      Dune_rpc_private.Procedures.Public.ping
+      ()
+  in
+  Console.print [ Pp.text "Server appears to be responding normally" ]
 ;;
 
 let cmd = Cmd.v info term

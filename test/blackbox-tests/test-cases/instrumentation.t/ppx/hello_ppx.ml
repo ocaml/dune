@@ -1,8 +1,6 @@
 open Ast_helper
-open Longident
 
 let place = ref None
-
 let file = ref None
 
 let read_file () =
@@ -10,32 +8,41 @@ let read_file () =
   | None -> "<none>"
   | Some s ->
     let ic = open_in s in
-    begin match input_line ic with
-    | exception End_of_file ->
-      close_in ic;
-      "<none>"
-    | s ->
-      close_in ic;
-      s
-    end
+    (match input_line ic with
+     | exception End_of_file ->
+       close_in ic;
+       "<none>"
+     | s ->
+       close_in ic;
+       s)
+;;
 
 let impl str =
   let arg =
     match !place with
-    | None -> Exp.ident (Location.mknoloc (Lident "__MODULE__"))
+    | None -> Exp.ident (Location.mknoloc (Longident.Lident "__MODULE__"))
     | Some s -> Exp.constant (Const.string (Printf.sprintf "%s (%s)" s (read_file ())))
   in
   Str.eval
-    (Exp.apply (Exp.ident (Location.mknoloc (Ldot (Lident "Hello", "hello"))))
-       [Nolabel, arg]) :: str
-
-open Ppxlib
+    (Exp.apply
+       (Exp.ident
+          (Location.mknoloc
+             (Longident.Ldot
+                ( { txt = Longident.Lident "Hello"; loc = Location.none }
+                , { txt = "hello"; loc = Location.none } ))))
+       [ Nolabel, arg ])
+  :: str
+;;
 
 let () =
-  Driver.add_arg "-place" (Arg.String (fun s -> place := Some s))
+  Ppxlib.Driver.add_arg
+    "-place"
+    (Arg.String (fun s -> place := Some s))
     ~doc:"PLACE where to say hello from";
-  Driver.add_arg "-file" (Arg.String (fun s -> file := Some s))
+  Ppxlib.Driver.add_arg
+    "-file"
+    (Arg.String (fun s -> file := Some s))
     ~doc:"Add info from file"
+;;
 
-let () =
-  Driver.register_transformation_using_ocaml_current_ast ~impl "hello"
+let () = Ppxlib.Driver.register_transformation_using_ocaml_current_ast ~impl "hello"

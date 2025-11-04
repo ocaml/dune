@@ -34,9 +34,9 @@ This check doesn't apply to single module libraries:
   > let x = Foo.x
   > EOF
   $ dune build @all
-  File "lib/foo.ml", line 1, characters 8-13:
+  File "lib/foo.ml", line 1, characters 8-11:
   1 | let x = Foo.x
-              ^^^^^
+              ^^^
   Error: Unbound module Foo
   [1]
   $ rm lib/foo.ml
@@ -64,9 +64,9 @@ Although we get slightly different behavior if wrapping is on or off:
   > (wrapped_executables false)
   > EOF
   $ dune exec ./exe/foo.exe
-  File "exe/foo.ml", line 1, characters 0-11:
+  File "exe/foo.ml", line 1, characters 0-3:
   1 | Foo.Bar.run ();;
-      ^^^^^^^^^^^
+      ^^^
   Error: Unbound module Foo
   [1]
 

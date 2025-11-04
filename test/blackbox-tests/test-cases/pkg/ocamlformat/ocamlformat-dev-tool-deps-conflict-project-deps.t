@@ -141,9 +141,9 @@ dev-tools don't leak into the project.
 
 There is no leak here. It is not taking Printer module from the printer of dev-tools dependency.
   $ dune exec -- foo
-  File "foo.ml", line 1, characters 9-22:
+  File "foo.ml", line 1, characters 9-16:
   1 | let () = Printer.print ()
-               ^^^^^^^^^^^^^
+               ^^^^^^^
   Error: Unbound module Printer
-  Hint: Did you mean Printexc or Printf?
+  Hint:    Did you mean Printexc or Printf?
   [1]

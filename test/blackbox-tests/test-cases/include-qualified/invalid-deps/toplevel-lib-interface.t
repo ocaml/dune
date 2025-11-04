@@ -17,8 +17,8 @@ We should forbid lib interfaces modules from depending on themselves:
   $ touch bar.ml
 
   $ dune build @check
-  File "foo.ml", line 1, characters 9-14:
+  File "foo.ml", line 1, characters 9-12:
   1 | let () = Foo.f ()
-               ^^^^^
+               ^^^
   Error: Unbound module Foo
   [1]

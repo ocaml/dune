@@ -136,7 +136,7 @@ end
 
 module Show = struct
   let info = Cmd.info ~doc:"Display contents of a corrected file" "show"
-  
+
   let term =
     let+ builder = Common.Builder.term
     and+ files = Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE") in
@@ -145,7 +145,7 @@ module Show = struct
     Scheduler.go_with_rpc_server ~common ~config (fun () ->
       show_corrected_contents files_to_promote)
   ;;
-  
+
   let command = Cmd.v info term
 end
 

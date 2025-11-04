@@ -1789,9 +1789,18 @@ let loc_in_source_tree loc =
   loc
   |> Loc.map_pos ~f:(fun ({ pos_fname; _ } as pos) ->
     let path = Path.of_string pos_fname in
-    let new_path = in_source_tree path in
-    let pos_fname = Path.Source.to_string new_path in
-    { pos with pos_fname })
+    match Path.of_string pos_fname with
+    | External _ | In_source_tree _ -> pos
+    | In_build_dir b ->
+      (match Path.Build.explode b with
+       | ".dev-tools.locks" :: _ ->
+         (* we're excluding the hidden dev-tools.locks folders in the build folder
+          from rewriting  *)
+         pos
+       | _otherwise ->
+         let new_path = in_source_tree path in
+         let pos_fname = Path.Source.to_string new_path in
+         { pos with pos_fname }))
 ;;
 
 let check_if_solved_for_platform { solved_for_platforms; _ } ~platform =

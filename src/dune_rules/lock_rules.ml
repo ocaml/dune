@@ -425,12 +425,60 @@ let copy_lock_dir ~target ~lock_dir ~deps ~files =
             ~dirs:(Path.Build.Set.singleton target))
 ;;
 
-let setup_copy_rules ~dir:target ~lock_dir =
-  let+ deps, files = Source_deps.files (Path.source lock_dir) in
+let files dir =
+  let rec recurse dir =
+    match Path.Untracked.readdir_unsorted_with_kinds dir with
+    | Ok entries ->
+      entries
+      |> List.fold_left
+           ~init:(Path.Set.empty, Path.Set.empty)
+           ~f:(fun (files, empty_directories) (entry, kind) ->
+             let path = Path.relative dir entry in
+             match (kind : Unix.file_kind) with
+             | S_REG ->
+               let files = Path.Set.add files path in
+               files, empty_directories
+             | S_DIR ->
+               let files', empty_directories' = recurse path in
+               (match Path.Set.is_empty files', Path.Set.is_empty empty_directories' with
+                | true, true ->
+                  let empty_directories = Path.Set.add empty_directories path in
+                  files, empty_directories
+                | _, _ ->
+                  let files = Path.Set.union files files' in
+                  let empty_directories =
+                    Path.Set.union empty_directories empty_directories'
+                  in
+                  files, empty_directories)
+             | otherwise ->
+               Code_error.raise
+                 "unsupported kind of file in folder"
+                 [ "path", Path.to_dyn path; "kind", File_kind.to_dyn otherwise ])
+    | Error (ENOENT, _, _) -> Path.Set.empty, Path.Set.empty
+    | Error unix_error ->
+      User_error.raise
+        [ Pp.textf
+            "Failed to read lock dir files of %s:"
+            (Path.to_string_maybe_quoted dir)
+        ; Pp.text (Unix_error.Detailed.to_string_hum unix_error)
+        ]
+  in
+  let files, empty_directories = recurse dir in
+  Dep.Set.of_source_files ~files ~empty_directories, files
+;;
+
+let setup_copy_rules ~dir:target ~assume_src_exists ~lock_dir =
+  let+ () = Memo.return () in
+  let deps, files = files (Path.source lock_dir) in
   let directory_targets, rules =
     match Path.Set.is_empty files with
     | true -> Path.Build.Map.empty, Rules.empty
     | false ->
+      let deps =
+        match assume_src_exists with
+        | false -> deps
+        | true -> Dep.Set.empty
+      in
       let directory_targets = Path.Build.Map.singleton target Loc.none in
       let { Action_builder.With_targets.build; targets } =
         copy_lock_dir ~target ~lock_dir ~deps ~files
@@ -452,7 +500,7 @@ let setup_lock_rules_with_source (workspace : Workspace.t) ~dir ~lock_dir =
   match source with
   | `Source_tree lock_dir ->
     let dir = Path.Build.append_source dir lock_dir in
-    setup_copy_rules ~dir ~lock_dir
+    setup_copy_rules ~assume_src_exists:false ~dir ~lock_dir
   | `Generated -> Memo.return (setup_lock_rules ~dir ~lock_dir)
 ;;
 
@@ -461,7 +509,9 @@ let setup_dev_tool_lock_rules ~dir dev_tool =
   let dev_tool_name = Dune_lang.Package_name.to_string package_name in
   let dir = Path.Build.relative dir dev_tool_name in
   let lock_dir = Lock_dir.dev_tool_source_lock_dir dev_tool in
-  setup_copy_rules ~dir ~lock_dir
+  (* dev tool lock files are created in _build outside of the build system
+     so we have to tell the build system not to try to create them *)
+  setup_copy_rules ~dir ~assume_src_exists:true ~lock_dir
 ;;
 
 let setup_rules ~components ~dir =

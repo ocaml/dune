@@ -8,7 +8,7 @@ Test `dune tools which ocamlformat`:
 
 Install ocamlformat as a dev tool:
   $ dune tools install ocamlformat
-  Solution for dev-tools.locks/ocamlformat:
+  Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.2
 
 Verify that ocamlformat is installed:

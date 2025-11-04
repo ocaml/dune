@@ -1,7 +1,7 @@
-'dune fmt' produce lock files inside "dev-tools.locks/ocamlformat" before it starts building
+'dune fmt' produces lock files inside the dev tool lock directory before it starts building
 ocamlformat and its dependencies during the same run of the "dune fmt" command. The source tree is
 loaded before the lock files are produced, this is why any 'patch' file inside
-'dev-tools.locks/ocmalformat' is not copied inside the 'build' directory when a rule depends on it.
+the dev tool lock dir is not copied inside the 'build' directory when a rule depends on it.
 
 The issue was that there is a rule that depends on an 'patch' file in order to copy the file
 inside '_private/default/..' directory, since the file could not be copied, the rule is not activated.
@@ -61,7 +61,7 @@ Make a project that uses the fake ocamlformat:
 
 First run of 'dune fmt' is supposed to format the fail.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
-  Solution for dev-tools.locks/ocamlformat:
+  Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.2
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml

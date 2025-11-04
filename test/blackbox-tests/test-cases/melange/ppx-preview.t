@@ -25,6 +25,8 @@ Show PPX snippet preview is shown in Dune
   $ export DUNE_SANDBOX=symlink
   $ dune build @melange
   File "lib/the_lib.ml", line 1, characters 7-11:
+  1 | let x: nope = "hello"
+             ^^^^
   Error: Unbound type constructor nope
   [1]
 

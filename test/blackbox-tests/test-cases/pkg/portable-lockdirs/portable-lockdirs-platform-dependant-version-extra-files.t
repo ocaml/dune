@@ -68,7 +68,7 @@ Define a project with a package depending on bar:
   > EOF
 
 Solve the project. The solution will contain extra files for both versions of foo:
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   Solution for dune.lock
   
   Dependencies common to all supported platforms:

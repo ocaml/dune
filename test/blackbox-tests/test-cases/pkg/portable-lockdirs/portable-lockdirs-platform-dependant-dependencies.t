@@ -51,7 +51,7 @@ A package that conditionally depends on packages depending on the OS:
   >  (libraries foo))
   > EOF
 
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   Solution for dune.lock
   
   Dependencies common to all supported platforms:

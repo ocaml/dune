@@ -52,7 +52,7 @@ Define a package bar which conditionally depends on different versions of foo:
   >  (libraries foo))
   > EOF
 
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   Solution for dune.lock
   
   Dependencies common to all supported platforms:

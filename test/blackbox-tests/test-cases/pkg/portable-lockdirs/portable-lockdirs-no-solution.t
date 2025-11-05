@@ -28,7 +28,7 @@ Depend on a pair of packages which can't be coinstalled:
   > EOF
 
 Solver error when solving fails with the same error on all platforms:
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
@@ -56,7 +56,7 @@ Modify the "a" package so the solver error is different on different platforms:
 
 This time there will be two different solver errors. Both will be printed along
 with the platforms where they are relevant:
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   

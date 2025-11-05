@@ -24,7 +24,7 @@ Create the package "foo" with an invalid opam file:
   > invalid opam file
   > EOF
 
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   File "$TESTCASE_ROOT/mock-opam-repository/packages/foo/foo.0.0.1/opam", line 2, characters 8-12:
   2 | invalid opam file
               ^^^^
@@ -37,7 +37,7 @@ Create the package "foo" with an opam file that creates a circular dep with the 
   > depends: [ "x" ]
   > EOF
 
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   Error: Dune does not support packages outside the workspace depending on
   packages in the workspace. The package "foo" is not in the workspace but it
   depends on the package "x" which is in the workspace.
@@ -48,7 +48,7 @@ Create the package "foo" with an invalid variable interpolation:
   > build: [ "./configure" "--prefix=%{prefix" ]
   > EOF
 
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   File "$TESTCASE_ROOT/mock-opam-repository/packages/foo/foo.0.0.1/opam", line 1, characters 0-0:
   Error: Encountered malformed variable interpolation while processing commands
   for package foo.0.0.1.
@@ -97,7 +97,7 @@ Add a file to the package but change its permission to not be readable:
 Make sure to undo the permission change on exit.
   $ trap "chmod +r $pkg_dir/files" EXIT
   $ chmod -r $pkg_dir/files
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   Warning: Unable to read directory
   mock-opam-repository/packages/foo/foo.0.0.1/files. Ignoring.
   Remove this message by ignoring by adding:

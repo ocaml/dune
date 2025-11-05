@@ -1,51 +1,54 @@
 open Import
 
-let find_cram_test path ~parent_dir =
+let cram_tests_of_dir parent_dir =
   let open Memo.O in
   Source_tree.find_dir parent_dir
   >>= function
-  | None -> Memo.return None
-  | Some dir ->
-    Dune_rules.Cram_rules.cram_tests dir
-    >>| List.find_map ~f:(function
-      | Ok cram_test when Path.Source.equal path (Source.Cram_test.path cram_test) ->
-        Some cram_test
-      (* We raise any error we encounter when looking for our test specifically. *)
-      | Error (Dune_rules.Cram_rules.Missing_run_t cram_test)
-        when Path.Source.equal path (Source.Cram_test.path cram_test) ->
-        Dune_rules.Cram_rules.missing_run_t cram_test
-        (* Any errors or successes unrelated to our test are discarded. *)
-      | Error (Dune_rules.Cram_rules.Missing_run_t _) | Ok _ -> None)
+  | None -> Memo.return []
+  | Some dir -> Dune_rules.Cram_rules.cram_tests dir
+;;
+
+let find_cram_test cram_tests path =
+  List.find_map cram_tests ~f:(function
+    | Ok cram_test when Path.Source.equal path (Source.Cram_test.path cram_test) ->
+      Some cram_test
+    (* We raise any error we encounter when looking for our test specifically. *)
+    | Error (Dune_rules.Cram_rules.Missing_run_t cram_test)
+      when Path.Source.equal path (Source.Cram_test.path cram_test) ->
+      Dune_rules.Cram_rules.missing_run_t cram_test
+      (* Any errors or successes unrelated to our test are discarded. *)
+    | Error (Dune_rules.Cram_rules.Missing_run_t _) | Ok _ -> None)
+;;
+
+let all_tests_of_dir parent_dir =
+  let open Memo.O in
+  let+ cram_candidates =
+    cram_tests_of_dir parent_dir
+    >>| List.filter_map ~f:(fun res ->
+      Result.to_option res
+      |> Option.map ~f:(fun test -> Source.Cram_test.path test |> Path.Source.to_string))
+  and+ dir_candidates =
+    let* parent_source_dir = Source_tree.find_dir parent_dir in
+    match parent_source_dir with
+    | None -> Memo.return []
+    | Some parent_source_dir ->
+      let dirs = Source_tree.Dir.sub_dirs parent_source_dir in
+      String.Map.to_list dirs
+      |> Memo.List.map ~f:(fun (_candidate, candidate_path) ->
+        Source_tree.Dir.sub_dir_as_t candidate_path
+        >>| Source_tree.Dir.path
+        >>| Path.Source.to_string)
+  in
+  List.concat [ cram_candidates; dir_candidates ]
+  |> String.Set.of_list
+  |> String.Set.to_list
 ;;
 
 let explain_unsuccessful_search path ~parent_dir =
   let open Memo.O in
-  (* If the user misspelled the test name, we give them a hint. *)
-  let+ hints =
-    (* We search for all files and directories in the parent directory and
-       suggest them as possible candidates. *)
-    let+ candidates =
-      let+ file_candidates =
-        let+ files = Source_tree.files_of parent_dir in
-        Path.Source.Set.to_list_map files ~f:Path.Source.to_string
-      and+ dir_candidates =
-        let* parent_source_dir = Source_tree.find_dir parent_dir in
-        match parent_source_dir with
-        | None -> Memo.return []
-        | Some parent_source_dir ->
-          let dirs = Source_tree.Dir.sub_dirs parent_source_dir in
-          String.Map.to_list dirs
-          |> Memo.List.map ~f:(fun (_candidate, candidate_path) ->
-            Source_tree.Dir.sub_dir_as_t candidate_path
-            >>| Source_tree.Dir.path
-            >>| Path.Source.to_string)
-      in
-      List.concat [ file_candidates; dir_candidates ]
-    in
-    User_message.did_you_mean (Path.Source.to_string path) ~candidates
-  in
+  let+ candidates = all_tests_of_dir parent_dir in
   User_error.raise
-    ~hints
+    ~hints:(User_message.did_you_mean (Path.Source.to_string path) ~candidates)
     [ Pp.textf "%S does not match any known test." (Path.Source.to_string path) ]
 ;;
 
@@ -57,8 +60,8 @@ let disambiguate_test_name path =
   | None -> Memo.return @@ `Runtest (Path.source Path.Source.root)
   | Some parent_dir ->
     let open Memo.O in
-    find_cram_test path ~parent_dir
-    >>= (function
+    let* cram_tests = cram_tests_of_dir parent_dir in
+    (match find_cram_test cram_tests path with
      | Some test ->
        (* If we find the cram test, then we request that is run. *)
        Memo.return (`Cram (parent_dir, test))

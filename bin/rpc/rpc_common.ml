@@ -39,6 +39,18 @@ let request_exn client request arg =
   | Error e -> raise (Dune_rpc.Version_error.E e)
 ;;
 
+let notify_exn client notification arg =
+  let open Fiber.O in
+  let* res =
+    Client.Versioned.prepare_notification
+      client
+      (Dune_rpc.Decl.Notification.witness notification)
+  in
+  match res with
+  | Ok decl -> Client.notification client decl arg
+  | Error e -> raise (Dune_rpc.Version_error.E e)
+;;
+
 let client_term builder f =
   let builder = Common.Builder.forbid_builds builder in
   let builder = Common.Builder.disable_log_file builder in
@@ -97,6 +109,17 @@ let warn_ignore_arguments lock_held_by =
     ]
 ;;
 
+let should_warn ~warn_forwarding builder =
+  warn_forwarding && not (Common.Builder.equal builder Common.Builder.default)
+;;
+
+let send_request ~f connection name =
+  Dune_rpc_impl.Client.client
+    connection
+    (Dune_rpc.Initialize.Request.create ~id:(Dune_rpc.Id.make (Sexp.Atom name)))
+    ~f
+;;
+
 let fire_request
       ~name
       ~wait
@@ -108,12 +131,23 @@ let fire_request
   =
   let open Fiber.O in
   let* connection = establish_client_session ~wait in
-  if warn_forwarding && not (Common.Builder.equal builder Common.Builder.default)
-  then warn_ignore_arguments lock_held_by;
-  Dune_rpc_impl.Client.client
-    connection
-    (Dune_rpc.Initialize.Request.create ~id:(Dune_rpc.Id.make (Sexp.Atom name)))
-    ~f:(fun client -> request_exn client request arg)
+  if should_warn ~warn_forwarding builder then warn_ignore_arguments lock_held_by;
+  send_request connection name ~f:(fun client -> request_exn client request arg)
+;;
+
+let fire_notification
+      ~name
+      ~wait
+      ?(warn_forwarding = true)
+      ?(lock_held_by = Dune_util.Global_lock.Lock_held_by.Unknown)
+      builder
+      notification
+      arg
+  =
+  let open Fiber.O in
+  let* connection = establish_client_session ~wait in
+  if should_warn ~warn_forwarding builder then warn_ignore_arguments lock_held_by;
+  send_request connection name ~f:(fun client -> notify_exn client notification arg)
 ;;
 
 let wrap_build_outcome_exn ~print_on_success build_outcome =

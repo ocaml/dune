@@ -248,12 +248,19 @@ let build_modules ~sctx ~obj_dir ~modules_obj_dir ~dep_graph ~mode ~requires ~li
     Module_name.Map.add_exn acc (Module.name module_) instance)
 ;;
 
-let dep_graph ~obj_dir ~modules impl_only =
+let dep_graph ~ocaml_version ~preprocess ~obj_dir ~modules impl_only =
+  let pp_map =
+    Staged.unstage
+    @@ Pp_spec.pped_modules_map
+         (Dune_lang.Preprocess.Per_module.without_instrumentation preprocess)
+         ocaml_version
+  in
   let per_module =
     List.fold_left impl_only ~init:Module_name.Unique.Map.empty ~f:(fun acc module_ ->
       let module_name_unique = Module.obj_name module_ in
       let deps =
         let open Action_builder.O in
+        let module_ = pp_map module_ in
         let+ deps =
           Dep_rules.read_immediate_deps_of module_ ~modules ~obj_dir ~ml_kind:Impl
         in
@@ -276,10 +283,8 @@ let obj_dir_for_dep_rules dir =
 let instantiate ~sctx lib =
   let ctx = Super_context.context sctx in
   let build_dir = Context.build_dir ctx in
-  let* { Lib_config.ext_lib; _ } =
-    let+ ocaml = ctx |> Context.ocaml in
-    ocaml.lib_config
-  in
+  let* ocaml = Context.ocaml ctx in
+  let ext_lib = ocaml.lib_config.ext_lib in
   let lib_info = Lib.info lib in
   let modules_obj_dir = Lib_info.obj_dir lib_info in
   let* deps_obj_dir, modules =
@@ -295,7 +300,14 @@ let instantiate ~sctx lib =
       modules_obj_dir, Modules.With_vlib.modules modules
   in
   let impl_only = Modules.With_vlib.impl_only modules in
-  let dep_graph = dep_graph ~obj_dir:deps_obj_dir ~modules impl_only in
+  let dep_graph =
+    dep_graph
+      ~ocaml_version:ocaml.version
+      ~preprocess:(Lib_info.preprocess lib_info)
+      ~obj_dir:deps_obj_dir
+      ~modules
+      impl_only
+  in
   let* requires =
     Lib.closure ~linking:true [ lib ]
     |> Resolve.Memo.map

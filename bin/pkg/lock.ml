@@ -207,13 +207,22 @@ let summary_message
   if portable_lock_dir
   then (
     let pkgs_by_platform = Lock_dir.Packages.pkgs_by_platform lock_dir.packages in
+    let opam_package_of_pkg (pkg : Lock_dir.Pkg.t) =
+      OpamPackage.create
+        (Dune_pkg.Package_name.to_opam_package_name pkg.info.name)
+        (Dune_pkg.Package_version.to_opam_package_version pkg.info.version)
+    in
+    let pkgs_by_opam_package =
+      Lock_dir.Packages.to_pkg_list lock_dir.packages
+      |> List.map ~f:(fun pkg -> opam_package_of_pkg pkg, pkg)
+      |> OpamPackage.Map.of_list
+    in
+    let opam_package_to_pkg opam_package =
+      OpamPackage.Map.find opam_package pkgs_by_opam_package
+    in
     let opam_package_sets_by_platform =
       Solver_env.Map.map pkgs_by_platform ~f:(fun pkgs ->
-        List.map pkgs ~f:(fun (pkg : Dune_pkg.Lock_dir.Pkg.t) ->
-          OpamPackage.create
-            (Dune_pkg.Package_name.to_opam_package_name pkg.info.name)
-            (Dune_pkg.Package_version.to_opam_package_version pkg.info.version))
-        |> OpamPackage.Set.of_list)
+        List.map pkgs ~f:opam_package_of_pkg |> OpamPackage.Set.of_list)
     in
     let common_packages =
       Solver_env.Map.values opam_package_sets_by_platform
@@ -223,9 +232,11 @@ let summary_message
     let pp_package_set package_set =
       if OpamPackage.Set.is_empty package_set
       then Pp.tag User_message.Style.Warning @@ Pp.text "(none)"
-      else
-        Pp.enumerate (OpamPackage.Set.elements package_set) ~f:(fun opam_package ->
-          Pp.text (OpamPackage.to_string opam_package))
+      else (
+        let pkgs =
+          OpamPackage.Set.elements package_set |> List.map ~f:opam_package_to_pkg
+        in
+        Pkg_common.pp_packages pkgs)
     in
     let uncommon_packages_by_platform =
       Solver_env.Map.map opam_package_sets_by_platform ~f:(fun package_set ->

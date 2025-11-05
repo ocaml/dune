@@ -10,7 +10,7 @@ module Command = struct
 end
 
 type t =
-  { command : Command.t Lazy.t
+  { command : Command.t Fiber.t Lazy.t
   ; suffixes : string list
   }
 
@@ -32,32 +32,56 @@ let tar =
             and both work equally well for tarballs. *)
          List.find_map [ "tar"; "bsdtar" ] ~f:which
        with
-       | Some bin -> { Command.bin; make_args = make_tar_args }
+       | Some bin -> Fiber.return { Command.bin; make_args = make_tar_args }
        | None -> Dune_engine.Utils.program_not_found "tar" ~loc:None)
   in
   { command; suffixes = [ ".tar"; ".tar.gz"; ".tgz"; ".tar.bz2"; ".tbz" ] }
+;;
+
+let which_bsdtar (bin_name : string) =
+  let contains s sub =
+    let len_s = String.length s in
+    let len_sub = String.length sub in
+    let rec aux i =
+      if i + len_sub > len_s
+      then false
+      else if String.sub s ~pos:i ~len:len_sub = sub
+      then true
+      else aux (i + 1)
+    in
+    aux 0
+  in
+  let bin_path =
+    match which bin_name with
+    | Some bin -> bin
+    | None -> Dune_engine.Utils.program_not_found "unzip" ~loc:None
+  in
+  let+ output, _error =
+    Process.run_capture_lines ~display:Quiet Return bin_path [ "--version" ]
+  in
+  let output_str = String.concat ~sep:"\n" output in
+  if contains output_str "bsdtar" then Some bin_path else None
 ;;
 
 let zip =
   let command =
     lazy
       (match which "unzip" with
-       | Some bin -> { Command.bin; make_args = make_zip_args }
+       | Some bin -> Fiber.return { Command.bin; make_args = make_zip_args }
        | None ->
-         (* Fall back to using tar to extract zip archives, which is possible in some cases. *)
-         (match
-            (* Test for bsdtar before tar, as if bsdtar is installed then it's
-               likely that the tar binary is GNU tar which can't extract zip
-               archives, whereas bsdtar can. If bsdtar is absent, try using the
-               tar command anyway, as on MacOS, Windows, and some BSD systems,
-               the tar command can extract zip archives. *)
-            List.find_map [ "bsdtar"; "tar" ] ~f:which
-          with
-          | Some bin -> { Command.bin; make_args = make_tar_args }
-          | None ->
-            (* Still reference unzip in the error message, as installing it
-               is the simplest way to fix the problem. *)
-            Dune_engine.Utils.program_not_found "unzip" ~loc:None))
+         let rec find_tar programs =
+           match programs with
+           | [] -> Fiber.return None
+           | x :: xs ->
+             let* res = which_bsdtar x in
+             (match res with
+              | Some _ -> Fiber.return res
+              | None -> find_tar xs)
+         in
+         let* program = find_tar [ "bsdtar"; "tar" ] in
+         (match program with
+          | Some bin -> Fiber.return { Command.bin; make_args = make_tar_args }
+          | None -> Fiber.return @@ Dune_engine.Utils.program_not_found "unzip" ~loc:None))
   in
   { command; suffixes = [ ".zip" ] }
 ;;
@@ -73,7 +97,7 @@ let choose_for_filename_default_to_tar filename =
 
 let extract t ~archive ~target =
   let* () = Fiber.return () in
-  let command = Lazy.force t.command in
+  let* command = Lazy.force t.command in
   let prefix = Path.basename target in
   let target_in_temp =
     let suffix = Path.basename archive in

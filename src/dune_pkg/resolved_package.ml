@@ -88,23 +88,25 @@ let local_fs package ~dir ~opam_file_path ~files_dir ~url =
    relative path. *)
 let scan_files_entries path =
   match Path.stat path with
-  | Error (Unix.ENOENT, _, _) -> []
+  | Error (Unix.ENOENT, _, _) -> Ok []
   | Error e -> Unix_error.Detailed.raise e
   | _ ->
     (try
-       Fpath.traverse_files
-         ~dir:(Path.to_string path)
-         ~init:[]
-         ~f:(fun ~dir filename acc ->
-           let local_path = Path.Local.relative (Path.Local.of_string dir) filename in
-           local_path :: acc)
+       Ok
+         (Fpath.traverse_files
+            ~dir:(Path.to_string path)
+            ~init:[]
+            ~f:(fun ~dir filename acc ->
+              let local_path = Path.Local.relative (Path.Local.of_string dir) filename in
+              local_path :: acc))
      with
      | Unix.Unix_error (err, a, e) ->
-       User_error.raise
-         ~loc:(Loc.in_file path)
-         [ Pp.text "Unable to read file in opam repository:"
-         ; Unix_error.Detailed.pp (err, a, e)
-         ])
+       Error
+         (User_error.make
+            ~loc:(Loc.in_file path)
+            [ Pp.text "Unable to read file in opam repository:"
+            ; Unix_error.Detailed.pp (err, a, e)
+            ]))
 ;;
 
 let local_package ~command_source loc opam_file opam_package =
@@ -164,14 +166,15 @@ let get_opam_package_files resolved_packages =
         in
         idx, entry))
   in
-  let from_dirs =
+  let open Result.O in
+  let+ from_dirs =
     Int.Map.to_list from_dirs
-    |> List.concat_map ~f:(fun (idx, files_dir) ->
+    |> Result.List.concat_map ~f:(fun (idx, files_dir) ->
       match files_dir with
-      | None -> []
+      | None -> Ok []
       | Some files_dir ->
-        scan_files_entries files_dir
-        |> List.map ~f:(fun local_file ->
+        let+ local_files = scan_files_entries files_dir in
+        List.map local_files ~f:(fun local_file ->
           ( idx
           , { File_entry.original = Path (Path.append_local files_dir local_file)
             ; local_file

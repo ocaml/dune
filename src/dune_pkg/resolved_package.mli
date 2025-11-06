@@ -32,4 +32,6 @@ val local_package
   -> OpamPackage.t
   -> t
 
-val get_opam_package_files : t list -> File_entry.t list list Fiber.t
+val get_opam_package_files
+  :  t list
+  -> (File_entry.t list list, User_message.t) result Fiber.t

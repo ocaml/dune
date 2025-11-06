@@ -1,10 +1,7 @@
 open Import
 
-(** [make_request ~dir_or_cram_test_paths ~to_cwd] returns a function suitable
-    for passing to [Build_cmd.run_build_system] which runs the tests referred
-    to by the elements of [dir_or_cram_test_paths]. *)
 val make_request
-  :  dir_or_cram_test_paths:string list
+  :  contexts:Context.t list
   -> to_cwd:string list
-  -> Dune_rules.Main.build_system
+  -> test_paths:string list
   -> unit Action_builder.t

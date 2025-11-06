@@ -56,8 +56,41 @@ Create the package "foo" with an invalid variable interpolation:
   %{prefix
   [1]
 
-Add a file to the package but change its permission to not be readable:
+Revert foo to a valid package:
   $ mkpkg foo
+
+Update dune-package to pin the dune package:
+  $ mkdir dune-to-pin
+  $ cat > dune-to-pin/dune-project <<EOF
+  > (lang dune 3.20)
+  > (package (name dune))
+  > EOF
+  $ cat > dune-project <<EOF
+  > (lang dune 3.18)
+  > (pin
+  >  (url "file://$PWD/dune-to-pin")
+  >  (package (name dune)))
+  > (package
+  >  (name x)
+  >  (depends foo))
+  > EOF
+  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  File "dune-project", line 4, characters 1-22:
+  4 |  (package (name dune)))
+       ^^^^^^^^^^^^^^^^^^^^^
+  Error: Dune cannot be pinned. The currently running version is the only one
+  that may be used
+  [1]
+
+Revert dune-project to be valid:
+  $ cat > dune-project <<EOF
+  > (lang dune 3.18)
+  > (package
+  >  (name x)
+  >  (depends foo))
+  > EOF
+
+Add a file to the package but change its permission to not be readable:
   $ pkg_dir=$mock_packages/foo/foo.0.0.1
   $ mkdir -p $pkg_dir/files
   $ touch $pkg_dir/files/foo.txt

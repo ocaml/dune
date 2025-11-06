@@ -10,7 +10,7 @@ module Command = struct
 end
 
 type t =
-  { command : Command.t Fiber.t Lazy.t
+  { command : Command.t Fiber.Lazy.t
   ; suffixes : string list
   }
 
@@ -26,8 +26,8 @@ let make_zip_args ~archive ~target_in_temp =
 
 let tar =
   let command =
-    lazy
-      (match
+    Fiber.Lazy.create
+      (fun () -> match
          (* Test for tar before bsdtar as tar is more likely to be installed
             and both work equally well for tarballs. *)
          List.find_map [ "tar"; "bsdtar" ] ~f:which
@@ -39,34 +39,22 @@ let tar =
 ;;
 
 let which_bsdtar (bin_name : string) =
-  let contains s sub =
-    let len_s = String.length s in
-    let len_sub = String.length sub in
-    let rec aux i =
-      if i + len_sub > len_s
-      then false
-      else if String.sub s ~pos:i ~len:len_sub = sub
-      then true
-      else aux (i + 1)
-    in
-    aux 0
-  in
   let bin_path =
     match which bin_name with
     | Some bin -> bin
     | None -> Dune_engine.Utils.program_not_found "unzip" ~loc:None
   in
   let+ output, _error =
-    Process.run_capture_lines ~display:Quiet Return bin_path [ "--version" ]
+    Process.run_capture ~display:Quiet Return bin_path [ "--version" ]
   in
-  let output_str = String.concat ~sep:"\n" output in
-  if contains output_str "bsdtar" then Some bin_path else None
+  let re = Re.compile (Re.str "bsdtar") in
+  if Re.execp re output then Some bin_path else None
 ;;
 
 let zip =
   let command =
-    lazy
-      (match which "unzip" with
+    Fiber.Lazy.create
+      (fun () -> match which "unzip" with
        | Some bin -> Fiber.return { Command.bin; make_args = make_zip_args }
        | None ->
          let rec find_tar programs =
@@ -97,7 +85,7 @@ let choose_for_filename_default_to_tar filename =
 
 let extract t ~archive ~target =
   let* () = Fiber.return () in
-  let* command = Lazy.force t.command in
+  let* command = Fiber.Lazy.force t.command in
   let prefix = Path.basename target in
   let target_in_temp =
     let suffix = Path.basename archive in

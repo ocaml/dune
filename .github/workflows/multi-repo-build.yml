@@ -33,9 +33,6 @@ jobs:
           - ubuntu-latest
           - macos-latest
     runs-on: ${{ matrix.os }}
-    env:
-      # TODO: Remove
-      DUNE_CONFIG__PKG_BUILD_PROGRESS: enabled
     steps:
       - name: Checkout Dune
         uses: actions/checkout@v5

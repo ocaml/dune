@@ -82,8 +82,6 @@
           pkg:
           pkg.overrideAttrs {
             configureFlags = [
-              "--pkg-build-progress"
-              "enable"
               "--lock-dev-tool"
               "enable"
               "--portable-lock-dir"

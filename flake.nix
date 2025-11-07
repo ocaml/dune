@@ -164,9 +164,6 @@
                 ocaml
                 findlib
               ];
-              buildInputs = lib.optionals stdenv.isDarwin [
-                darwin.apple_sdk.frameworks.CoreServices
-              ];
               strictDeps = true;
               buildFlags = [ "release" ];
               dontAddPrefix = true;
@@ -327,9 +324,6 @@
               mkShell {
                 inherit INSIDE_NIX;
                 nativeBuildInputs = lib.remove pkgs.ocamlformat (testNativeBuildInputs pkgs);
-                buildInputs = lib.optionals stdenv.isDarwin [
-                  darwin.apple_sdk.frameworks.CoreServices
-                ];
                 meta.description = ''
                   provides a shell with just `opam` and minimal (external)
                   dependencies to run the testsuite.";

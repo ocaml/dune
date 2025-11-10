@@ -131,6 +131,9 @@ In addition, ``(action ...)`` fields support the following special variables:
   file.
 - ``read-strings:<path>`` expands to the list of lines in the given
   file, unescaped using OCaml lexical convention.
+- ``ppx:lib1+..+libn`` expands to the ppx executable with ppx libraries
+  ``lib1`` to ``libn`` linked in. This form also introduces a dependency on
+  this executable.
 
 The ``%{<kind>:...}`` forms are what allows you to write custom rules that work
 transparently, whether things are installed or not.

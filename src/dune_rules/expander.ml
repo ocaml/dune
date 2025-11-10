@@ -702,6 +702,23 @@ let expand_pform_macro
           (let open Memo.O in
            let* artifacts_host = t.artifacts_host in
            Coq_config.expand source macro_invocation artifacts_host))
+  | Ppx ->
+    Need_full_expander
+      (fun t ->
+        With
+          (let open Action_builder.O in
+           let+ exe =
+             let* scope = Action_builder.of_memo t.scope in
+             Pform.Macro_invocation.Args.whole macro_invocation
+             |> String.split ~on:'+'
+             |> List.map ~f:(fun name ->
+               let loc = Dune_lang.Template.Pform.loc source in
+               let name = Lib_name.parse_string_exn (loc, name) in
+               loc, name)
+             |> Ppx_exe.get_ppx_exe context ~scope
+             |> Resolve.Memo.read
+           in
+           [ Value.Path (Path.build exe) ]))
 ;;
 
 let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pform.t)

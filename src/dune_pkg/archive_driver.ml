@@ -26,14 +26,14 @@ let make_zip_args ~archive ~target_in_temp =
 
 let tar =
   let command =
-    Fiber.Lazy.create
-      (fun () -> match
-         (* Test for tar before bsdtar as tar is more likely to be installed
+    Fiber.Lazy.create (fun () ->
+      match
+        (* Test for tar before bsdtar as tar is more likely to be installed
             and both work equally well for tarballs. *)
-         List.find_map [ "tar"; "bsdtar" ] ~f:which
-       with
-       | Some bin -> Fiber.return { Command.bin; make_args = make_tar_args }
-       | None -> Dune_engine.Utils.program_not_found "tar" ~loc:None)
+        List.find_map [ "tar"; "bsdtar" ] ~f:which
+      with
+      | Some bin -> Fiber.return { Command.bin; make_args = make_tar_args }
+      | None -> Dune_engine.Utils.program_not_found "tar" ~loc:None)
   in
   { command; suffixes = [ ".tar"; ".tar.gz"; ".tgz"; ".tar.bz2"; ".tbz" ] }
 ;;
@@ -53,23 +53,23 @@ let which_bsdtar (bin_name : string) =
 
 let zip =
   let command =
-    Fiber.Lazy.create
-      (fun () -> match which "unzip" with
-       | Some bin -> Fiber.return { Command.bin; make_args = make_zip_args }
-       | None ->
-         let rec find_tar programs =
-           match programs with
-           | [] -> Fiber.return None
-           | x :: xs ->
-             let* res = which_bsdtar x in
-             (match res with
-              | Some _ -> Fiber.return res
-              | None -> find_tar xs)
-         in
-         let* program = find_tar [ "bsdtar"; "tar" ] in
-         (match program with
-          | Some bin -> Fiber.return { Command.bin; make_args = make_tar_args }
-          | None -> Fiber.return @@ Dune_engine.Utils.program_not_found "unzip" ~loc:None))
+    Fiber.Lazy.create (fun () ->
+      match which "unzip" with
+      | Some bin -> Fiber.return { Command.bin; make_args = make_zip_args }
+      | None ->
+        let rec find_tar programs =
+          match programs with
+          | [] -> Fiber.return None
+          | x :: xs ->
+            let* res = which_bsdtar x in
+            (match res with
+             | Some _ -> Fiber.return res
+             | None -> find_tar xs)
+        in
+        let* program = find_tar [ "bsdtar"; "tar" ] in
+        (match program with
+         | Some bin -> Fiber.return { Command.bin; make_args = make_tar_args }
+         | None -> Fiber.return @@ Dune_engine.Utils.program_not_found "unzip" ~loc:None))
   in
   { command; suffixes = [ ".zip" ] }
 ;;

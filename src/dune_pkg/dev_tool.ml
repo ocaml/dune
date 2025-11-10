@@ -9,6 +9,7 @@ type t =
   | Odig
   | Opam_publish
   | Dune_release
+  | Ocaml_index
 
 let to_dyn = function
   | Ocamlformat -> Dyn.variant "Ocamlformat" []
@@ -19,10 +20,20 @@ let to_dyn = function
   | Odig -> Dyn.variant "Odig" []
   | Opam_publish -> Dyn.variant "Opam_publish" []
   | Dune_release -> Dyn.variant "Dune_release" []
+  | Ocaml_index -> Dyn.variant "Ocaml_index" []
 ;;
 
 let all =
-  [ Ocamlformat; Odoc; Ocamllsp; Utop; Ocamlearlybird; Odig; Opam_publish; Dune_release ]
+  [ Ocamlformat
+  ; Odoc
+  ; Ocamllsp
+  ; Utop
+  ; Ocamlearlybird
+  ; Odig
+  ; Opam_publish
+  ; Dune_release
+  ; Ocaml_index
+  ]
 ;;
 
 let equal a b =
@@ -43,6 +54,9 @@ let equal a b =
   | Opam_publish, _ -> false
   | _, Opam_publish -> false
   | Dune_release, Dune_release -> true
+  | Dune_release, _ -> false
+  | _, Dune_release -> false
+  | Ocaml_index, Ocaml_index -> true
 ;;
 
 let hash = Poly.hash
@@ -56,6 +70,7 @@ let package_name = function
   | Odig -> Package_name.of_string "odig"
   | Opam_publish -> Package_name.of_string "opam-publish"
   | Dune_release -> Package_name.of_string "dune-release"
+  | Ocaml_index -> Package_name.of_string "ocaml-index"
 ;;
 
 let of_package_name package_name =
@@ -68,6 +83,7 @@ let of_package_name package_name =
   | "odig" -> Odig
   | "opam-publish" -> Opam_publish
   | "dune-release" -> Dune_release
+  | "ocaml-index" -> Ocaml_index
   | other -> User_error.raise [ Pp.textf "No such dev tool: %s" other ]
 ;;
 
@@ -80,6 +96,7 @@ let exe_name = function
   | Odig -> "odig"
   | Opam_publish -> "opam-publish"
   | Dune_release -> "dune-release"
+  | Ocaml_index -> "ocaml-index"
 ;;
 
 let exe_path_components_within_package t = [ "bin"; exe_name t ]
@@ -93,5 +110,5 @@ let needs_to_build_with_same_compiler_as_project = function
     false
   | Opam_publish -> false
   | Dune_release -> false
-  | Utop | Odoc | Ocamllsp | Odig -> true
+  | Utop | Odoc | Ocamllsp | Ocaml_index | Odig -> true
 ;;

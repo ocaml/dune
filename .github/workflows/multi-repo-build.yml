@@ -1,0 +1,96 @@
+name: Multi-Repo Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      repos:
+        description: 'Space-separated list of GitHub repos (e.g., "ocaml-dune/notty ocaml/ocaml-re")'
+        required: true
+        type: string
+      depext_linux:
+        description: 'Space-separated apt packages for Linux (optional)'
+        required: false
+        type: string
+        default: ''
+      depext_macos:
+        description: 'Space-separated brew packages for macOS (optional)'
+        required: false
+        type: string
+        default: ''
+
+env:
+  EXTRA_NIX_CONFIG: |
+    extra-substituters = https://anmonteiro.nix-cache.workers.dev
+    extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
+
+jobs:
+  build:
+    name: Build repos with Dune
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    env:
+      # TODO: Remove
+      DUNE_CONFIG__PKG_BUILD_PROGRESS: enabled
+    steps:
+      - name: Checkout Dune
+        uses: actions/checkout@v5
+
+      - name: Set up Nix
+        uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
+
+      - name: Cache Nix store
+        uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: nix-${{ runner.os }}-nix-build-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-nix-build-
+          save: false
+
+      - name: Build Dune
+        run: nix build
+
+      - name: Set up workspace directory
+        run: mkdir workspace
+
+      - name: Clone repositories
+        run: |
+          cd workspace
+          for repo in ${{ inputs.repos }}; do
+            echo "Cloning $repo..."
+            repo_name=$(echo $repo | sed 's/.*\///')
+            git clone https://github.com/$repo.git $repo_name
+          done
+
+      - name: Generate dune-workspace
+        run: |
+          cd workspace
+          cat > dune-workspace <<EOF
+          (lang dune 3.21)
+          (pkg enabled)
+          EOF
+
+          echo "Generated dune-workspace:"
+          cat dune-workspace
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux' && inputs.depext_linux != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ inputs.depext_linux }}
+
+      - name: Install system dependencies (macOS)
+        if: runner.os == 'macOS' && inputs.depext_macos != ''
+        run: |
+          brew install ${{ inputs.depext_macos }}
+
+      - name: Lock dependencies
+        run: cd workspace && nix run .. -- pkg lock
+
+      - name: Build
+        run: cd workspace && nix run .. -- build

@@ -61,8 +61,8 @@ let term =
             [ Pp.textf "no library is defined in %s" (String.maybe_quoted dir) ]
         | true ->
           let* () = Build_system.build_file utop_exe in
-          let* utop_dev_tool_lock_dir_exists =
-            Memo.Lazy.force Utop.utop_dev_tool_lock_dir_exists
+          let utop_dev_tool_lock_dir_exists =
+            Lazy.force Utop.utop_dev_tool_lock_dir_exists
           in
           let* () =
             if utop_dev_tool_lock_dir_exists

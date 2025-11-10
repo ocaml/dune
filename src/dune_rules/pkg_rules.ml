@@ -86,11 +86,7 @@ module Package_universe = struct
     | Dependencies ctx -> Lock_dir.get_path ctx
     | Dev_tool dev_tool ->
       (* CR-Leonidas-from-XIV: It probably isn't always [Some] *)
-      dev_tool
-      |> Lock_dir.dev_tool_source_lock_dir
-      |> Path.source
-      |> Option.some
-      |> Memo.return
+      dev_tool |> Lock_dir.dev_tool_untracked_lock_dir |> Option.some |> Memo.return
   ;;
 end
 

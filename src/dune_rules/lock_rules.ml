@@ -410,11 +410,10 @@ let copy_lock_dir ~target ~lock_dir ~deps ~files =
   let open Action_builder.O in
   Action_builder.deps deps
   >>> (Path.Set.to_list_map files ~f:(fun src ->
-         let dst =
-           Path.drop_prefix_exn src ~prefix:(Path.source lock_dir)
-           |> Path.Build.append_local target
-         in
-         Action.progn [ Action.mkdir (Path.Build.parent_exn dst); Action.copy src dst ])
+         let suffix = Path.drop_prefix_exn src ~prefix:lock_dir in
+         let dst = Path.Build.append_local target suffix in
+         let parent = Path.Build.parent_exn dst in
+         Action.progn [ Action.mkdir parent; Action.copy src dst ])
        |> Action.concurrent
        |> Action.Full.make
        |> Action_builder.return)
@@ -469,7 +468,7 @@ let files dir =
 
 let setup_copy_rules ~dir:target ~assume_src_exists ~lock_dir =
   let+ () = Memo.return () in
-  let deps, files = files (Path.source lock_dir) in
+  let deps, files = files lock_dir in
   let directory_targets, rules =
     match Path.Set.is_empty files with
     | true -> Path.Build.Map.empty, Rules.empty
@@ -500,7 +499,7 @@ let setup_lock_rules_with_source (workspace : Workspace.t) ~dir ~lock_dir =
   match source with
   | `Source_tree lock_dir ->
     let dir = Path.Build.append_source dir lock_dir in
-    setup_copy_rules ~assume_src_exists:false ~dir ~lock_dir
+    setup_copy_rules ~assume_src_exists:false ~dir ~lock_dir:(Path.source lock_dir)
   | `Generated -> Memo.return (setup_lock_rules ~dir ~lock_dir)
 ;;
 
@@ -508,7 +507,7 @@ let setup_dev_tool_lock_rules ~dir dev_tool =
   let package_name = Dev_tool.package_name dev_tool in
   let dev_tool_name = Dune_lang.Package_name.to_string package_name in
   let dir = Path.Build.relative dir dev_tool_name in
-  let lock_dir = Lock_dir.dev_tool_source_lock_dir dev_tool in
+  let lock_dir = Lock_dir.dev_tool_untracked_lock_dir dev_tool in
   (* dev tool lock files are created in _build outside of the build system
      so we have to tell the build system not to try to create them *)
   setup_copy_rules ~dir ~assume_src_exists:true ~lock_dir

@@ -524,10 +524,20 @@ let in_source_tree path =
     (match Path.Source.explode in_source with
      | "default" :: ".lock" :: components ->
        Path.Source.L.relative Path.Source.root components
-     | _otherwise ->
-       Code_error.raise
-         "Unexpected location of lock directory in build directory"
-         [ "path", Path.Build.to_dyn b; "in_source", Path.Source.to_dyn in_source ])
+     | source_components ->
+       (match Path.Build.explode b with
+        | ".dev-tools.locks" :: dev_tool :: components ->
+          Path.Source.L.relative
+            Path.Source.root
+            ([ "_build"; ".dev-tools.locks"; dev_tool ] @ components)
+        | build_components ->
+          Code_error.raise
+            "Unexpected location of lock directory in build directory"
+            [ "path", Path.Build.to_dyn b
+            ; "in_source", Path.Source.to_dyn in_source
+            ; "source_components", Dyn.(list string) source_components
+            ; "build_components", Dyn.(list string) build_components
+            ]))
   | External e ->
     Code_error.raise
       "External path returned when loading a lock dir"
@@ -1789,7 +1799,7 @@ let loc_in_source_tree loc =
   loc
   |> Loc.map_pos ~f:(fun ({ pos_fname; _ } as pos) ->
     let path = Path.of_string pos_fname in
-    match Path.of_string pos_fname with
+    match path with
     | External _ | In_source_tree _ -> pos
     | In_build_dir b ->
       (match Path.Build.explode b with

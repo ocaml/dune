@@ -9,13 +9,11 @@ cat > dune-project <<EOF
 EOF
 
 # These libraries are hardcoded and expected to exist:
+mkdir -p vendor/csexp/src
+mkdir -p vendor/pp/src
 mkdir -p vendor/re/src
 mkdir -p vendor/spawn/src
 mkdir -p vendor/uutf
-
-touch vendor/re/src/re.ml
-touch vendor/spawn/src/spawn.ml
-touch vendor/uutf/uutf.ml
 
 mkdir bin
 

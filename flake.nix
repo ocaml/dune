@@ -249,6 +249,7 @@
                       ocaml-lsp
                       odoc
                       patdiff
+                      pp
                       ppx_expect
                       re
                       spawn
@@ -293,6 +294,8 @@
                 pkgs.dune_3
               ];
               buildInputs = with pkgs.ocamlPackages; [
+                csexp
+                pp
                 re
                 spawn
                 uutf
@@ -338,6 +341,8 @@
                 pkgs.ocaml-ng.ocamlPackages_4_14.dune_3
               ];
               buildInputs = with pkgs; [
+                ocaml-ng.ocamlPackages_4_14.csexp
+                ocaml-ng.ocamlPackages_4_14.pp
                 ocaml-ng.ocamlPackages_4_14.re
                 ocaml-ng.ocamlPackages_4_14.spawn
                 ocaml-ng.ocamlPackages_4_14.uutf
@@ -400,9 +405,17 @@
                   spawn = osuper.spawn.overrideAttrs (old: {
                     doCheck = false;
                   });
+                  csexp = osuper.csexp.overrideAttrs (old: {
+                    doCheck = false;
+                  });
+                  pp = osuper.pp.overrideAttrs (old: {
+                    doCheck = false;
+                  });
                 };
               extraBuildInputs =
                 pkgs: with pkgs.ocamlPackages; [
+                  csexp
+                  pp
                   re
                   spawn
                   uutf

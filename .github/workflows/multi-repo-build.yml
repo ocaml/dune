@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       repos:
-        description: 'Space-separated list of GitHub repos (e.g., "ocaml/opam owner/repo2")'
+        description: 'Space-separated list of GitHub repos (e.g., "ocaml-dune/notty ocaml/ocaml-re")'
         required: true
         type: string
       depext_linux:
@@ -34,6 +34,7 @@ jobs:
           - macos-latest
     runs-on: ${{ matrix.os }}
     env:
+      # TODO: Remove
       DUNE_CONFIG__PKG_BUILD_PROGRESS: enabled
     steps:
       - name: Checkout Dune
@@ -47,6 +48,7 @@ jobs:
       - name: Cache Nix store
         uses: nix-community/cache-nix-action@v6
         with:
+          primary-key: nix-${{ runner.os }}-nix-build-${{ hashFiles('**/*.nix', '**/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-nix-build-
           save: false
 

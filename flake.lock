@@ -44,16 +44,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1742771785,
-        "narHash": "sha256-Ihd2b1B/GnRTd0yk63kQ3ryLhgT3hp+Md0BYwOKP+YA=",
+        "lastModified": 1762666707,
+        "narHash": "sha256-USvFyipdEedaBan3H8X1NxfuQi0IDYal5PdsCwmN2Q4=",
         "owner": "melange-re",
         "repo": "melange",
-        "rev": "2432b02d9c1990ae62fd44fad8bb53ea35b1e6b0",
+        "rev": "7b51f143b537076f1ad694464ca2a1102cd23287",
         "type": "github"
       },
       "original": {
         "owner": "melange-re",
-        "ref": "refs/tags/5.1.0-53",
+        "ref": "refs/tags/6.0.0-54",
         "repo": "melange",
         "type": "github"
       }
@@ -66,15 +66,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1742165088,
-        "narHash": "sha256-N5IZA13/RAd6uYJEn12UlfPpPxyBOuVw4am0qadtUms=",
+        "lastModified": 1760240634,
+        "narHash": "sha256-cmPZs92Vva6X06E8MreMVn6Yu5gqZtAYLJRweTEWwRY=",
         "owner": "melange-re",
         "repo": "melange-compiler-libs",
-        "rev": "e914cab0ec7d53130d5f1e283283628c98a3583c",
+        "rev": "b8d6659bfe3045938afa83f37b7c357c052d10c7",
         "type": "github"
       },
       "original": {
         "owner": "melange-re",
+        "ref": "5.4",
         "repo": "melange-compiler-libs",
         "type": "github"
       }
@@ -102,17 +103,33 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1752012998,
-        "narHash": "sha256-Q82Ms+FQmgOBkdoSVm+FBpuFoeUAffNerR5yVV7SgT8=",
+        "lastModified": 1762156382,
+        "narHash": "sha256-Yg7Ag7ov5+36jEFC1DaZh/12SEXo6OO3/8rqADRxiqs=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "2a2130494ad647f953593c4e84ea4df839fbd68c",
+        "rev": "7241bcbb4f099a66aafca120d37c65e8dda32717",
         "type": "github"
       },
       "original": {
         "owner": "nixos",
         "ref": "nixpkgs-unstable",
         "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs-old": {
+      "locked": {
+        "lastModified": 1746662029,
+        "narHash": "sha256-2lFR2IQHaaUA5X2JMzQ3SGkj5IXFU/ztqpKD4I6vWCw=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "7f50d4b33363d3948543f6a02b90a2c66852a453",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "7f50d4b33363d3948543f6a02b90a2c66852a453",
         "type": "github"
       }
     },
@@ -123,11 +140,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1752292614,
-        "narHash": "sha256-PwW/5J+SslGqkaCEad/1fvbTgPw2eI2UJkjStmGSChI=",
+        "lastModified": 1762273825,
+        "narHash": "sha256-jn3EGl4vV/fvBkEmeqsrArZX6PA/uyOhJSKw+Y9rj7I=",
         "owner": "nix-ocaml",
         "repo": "nix-overlays",
-        "rev": "fbbcd2e563cf33e4a4fdbac4395e7276a506ef09",
+        "rev": "e0ec05d668a5d5463b0ca981aa481545af494eb1",
         "type": "github"
       },
       "original": {
@@ -145,11 +162,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1760541218,
-        "narHash": "sha256-eZ2Nx8eXmiTurtJVBlC+MU45N6qFF76LDAa/aum4ZTk=",
+        "lastModified": 1762278632,
+        "narHash": "sha256-bnGCcvEF9ZEsgDSCEgXeHGl/TDL4oxxb+G8/bWp7FNI=",
         "owner": "oxcaml",
         "repo": "oxcaml",
-        "rev": "eea9697287f10719188cfd82d667caaeba346e87",
+        "rev": "10dd7883b15da7a0b3ea9729e95af3fbc360fa0d",
         "type": "github"
       },
       "original": {
@@ -161,11 +178,11 @@
     "oxcaml-opam-repository": {
       "flake": false,
       "locked": {
-        "lastModified": 1760195033,
-        "narHash": "sha256-qWWJ4WiV3hnOw4dFUq363BVejLwkxTk6OaZHUSkHylg=",
+        "lastModified": 1761753924,
+        "narHash": "sha256-g7wbVoC4f2B6khTQn3S6AORitobXt9OnDAI+vIQioLU=",
         "owner": "oxcaml",
         "repo": "opam-repository",
-        "rev": "eeedfd918e54a8741d26af1a4ff2991b21c1045f",
+        "rev": "a1ea0d33dd5662b89183f751c3fec566d7860b75",
         "type": "github"
       },
       "original": {
@@ -179,6 +196,7 @@
         "flake-utils": "flake-utils",
         "melange": "melange",
         "nixpkgs": "nixpkgs",
+        "nixpkgs-old": "nixpkgs-old",
         "ocaml-overlays": "ocaml-overlays",
         "oxcaml": "oxcaml",
         "oxcaml-opam-repository": "oxcaml-opam-repository"

@@ -80,7 +80,7 @@ let solve ~dev_tool ~local_packages =
     | `Disabled -> workspace
   in
   (* as we want to write to the source, we're using the source lock dir here *)
-  let lock_dir = Dune_rules.Lock_dir.dev_tool_source_lock_dir dev_tool |> Path.source in
+  let lock_dir = Dune_rules.Lock_dir.dev_tool_untracked_lock_dir dev_tool in
   Memo.of_reproducible_fiber
   @@ Pkg.Lock.solve
        workspace
@@ -174,14 +174,11 @@ let extra_dependencies dev_tool =
 
 let lockdir_status dev_tool =
   let open Memo.O in
-  let dev_tool_lock_dir = Dune_rules.Lock_dir.dev_tool_source_lock_dir dev_tool in
-  let* lock_dir_exists =
-    Dune_engine.Fs_memo.dir_exists (In_source_dir dev_tool_lock_dir)
-  in
+  let dev_tool_lock_dir = Dune_rules.Lock_dir.dev_tool_untracked_lock_dir dev_tool in
+  let lock_dir_exists = Path.exists dev_tool_lock_dir in
   match lock_dir_exists with
   | false -> Memo.return `No_lockdir
   | true ->
-    let dev_tool_lock_dir = Path.source dev_tool_lock_dir in
     (match Lock_dir.read_disk dev_tool_lock_dir with
      | Error _ -> Memo.return `No_lockdir
      | Ok { packages; _ } ->

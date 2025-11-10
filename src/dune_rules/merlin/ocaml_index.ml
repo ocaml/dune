@@ -9,7 +9,7 @@ let ocaml_index_dev_tool_exe_path_building_if_necessary () =
 ;;
 
 let ocaml_index_dev_tool_exists () =
-  Lock_dir.dev_tool_source_lock_dir Ocaml_index |> Path.source |> Path.Untracked.exists
+  Lock_dir.dev_tool_untracked_lock_dir Ocaml_index |> Path.Untracked.exists
 ;;
 
 let ocaml_index sctx ~dir =

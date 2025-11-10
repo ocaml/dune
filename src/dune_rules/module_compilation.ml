@@ -304,7 +304,15 @@ let build_cm
             ; cmt_args
             ; Command.Args.S obj_dirs
             ; Command.Args.as_any
-                (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind)
+                (let includes = Compilation_context.includes cctx in
+                 match cm_kind with
+                 | Lib_mode.Cm_kind.Ocaml Cmi -> includes.ocaml.cmi
+                 | Ocaml Cmo -> includes.ocaml.cmo
+                 | Ocaml Cmx -> includes.ocaml.cmx
+                 | Ocaml (Cmt | Cmti) ->
+                   Code_error.raise "module_compilation doesn't support Cmt/Cmti" []
+                 | Melange Cmi -> includes.melange.cmi
+                 | Melange Cmj -> includes.melange.cmj)
             ; extra_args
             ; As as_parameter_arg
             ; as_argument_for
@@ -429,10 +437,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
               [ Command.Args.dyn ocaml_flags
               ; A "-I"
               ; Path (Path.build (Obj_dir.byte_dir obj_dir))
-              ; Command.Args.as_any
-                  (Lib_mode.Cm_kind.Map.get
-                     (Compilation_context.includes cctx)
-                     (Ocaml Cmo))
+              ; Command.Args.as_any (Compilation_context.includes cctx).ocaml.cmo
               ; opens modules m
               ; A "-short-paths"
               ; A "-i"

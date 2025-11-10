@@ -7,6 +7,7 @@ type t =
   | Odig
   | Opam_publish
   | Dune_release
+  | Ocaml_index
 
 val to_dyn : t -> Dyn.t
 val all : t list

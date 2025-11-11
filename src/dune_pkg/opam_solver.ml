@@ -1850,6 +1850,7 @@ let solve_lock_dir
            ~repos:(Some repos)
            ~expanded_solver_variable_bindings
            ~solved_for_platform:(Some solver_env)
+           ~portable_lock_dir
        in
        let+ files =
          match pkgs_by_name with

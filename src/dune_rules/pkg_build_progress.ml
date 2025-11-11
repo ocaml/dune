@@ -36,9 +36,9 @@ module Message = struct
   ;;
 
   let display t =
-    match Config.get Compile_time.pkg_build_progress with
-    | `Enabled -> Console.print_user_message (user_message t)
-    | `Disabled -> ()
+    match !Dune_engine.Clflags.display with
+    | Quiet -> ()
+    | Short | Verbose -> Console.print_user_message (user_message t)
   ;;
 
   let encode { package_name; package_version; status } =

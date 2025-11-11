@@ -11,7 +11,6 @@ val library_path : string list
 val roots : string option Install.Roots.t
 
 val toolchains : Dune_config.Config.Toggle.t
-val pkg_build_progress : Dune_config.Config.Toggle.t
 val lock_dev_tool : Dune_config.Config.Toggle.t
 val bin_dev_tools : Dune_config.Config.Toggle.t
 val portable_lock_dir : Dune_config.Config.Toggle.t

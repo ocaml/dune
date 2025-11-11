@@ -14,10 +14,6 @@ open Import
     For more detail, see src/dune_rules/pkg_toolchains.mli *)
 val toolchains : Config.Toggle.t Config.t
 
-(** Enable or disable the displaying of package build progress.
-    For more detail, see src/dune_rules/pkg_build_progress.mli *)
-val pkg_build_progress : Config.Toggle.t Config.t
-
 (** Enable or disable using package management to install dev tools. *)
 val lock_dev_tools : Config.Toggle.t Config.t
 

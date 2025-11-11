@@ -55,13 +55,7 @@ Define a package bar which conditionally depends on different versions of foo:
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
   Solution for dune.lock
   
-  This solution supports the following platforms:
-  - arch = x86_64; os = linux
-  - arch = arm64; os = linux
-  - arch = x86_64; os = macos
-  - arch = arm64; os = macos
-  
-  Dependencies on all supported platforms:
+  Dependencies common to all supported platforms:
   - bar.0.0.1
   
   Additionally, some packages will only be built on specific platforms.

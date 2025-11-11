@@ -72,6 +72,16 @@ let choose_for_filename_default_to_tar filename =
 ;;
 
 let extract t ~archive ~target =
+  let open Dune_stats.Fiber.O in
+  let& () =
+    { Dune_stats.name = "extract"
+    ; cat = [ "fetch" ]
+    ; args =
+        [ "archive", `String (Path.to_string archive)
+        ; "target", `String (Path.to_string target)
+        ]
+    }
+  in
   let* () = Fiber.return () in
   let command = Lazy.force t.command in
   let prefix = Path.basename target in

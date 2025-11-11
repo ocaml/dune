@@ -243,6 +243,13 @@ let all_packages_versions_map ts opam_package_name =
 ;;
 
 let load_all_versions_by_keys ts =
+  let open Dune_stats.Fiber.O in
+  let& () =
+    { Dune_stats.name = "load_all_versions_by_keys"
+    ; cat = [ "opam_repo" ]
+    ; args = [ "version_count", `Int (OpamPackage.Version.Map.cardinal ts) ]
+    }
+  in
   let from_git, from_dirs =
     OpamPackage.Version.Map.values ts
     |> List.partition_map ~f:(fun (repo, (pkg : Key.t)) ->

@@ -253,19 +253,17 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
   let event =
     Dune_stats.(
       start (global ()) (fun () ->
-        { cat = None
+        { cat = [ "fetch" ]
         ; name = label
         ; args =
-            (let args =
-               [ "url", `String (OpamUrl.to_string url)
-               ; "target", `String (Path.to_string target)
-               ]
-             in
-             Some
-               (match checksum with
-                | None -> args
-                | Some checksum ->
-                  ("checksum", `String (Checksum.to_string checksum)) :: args))
+            List.concat
+              [ Option.map checksum ~f:(fun checksum ->
+                  "checksum", `String (Checksum.to_string checksum))
+                |> Option.to_list
+              ; [ "url", `String (OpamUrl.to_string url)
+                ; "target", `String (Path.to_string target)
+                ]
+              ]
         }))
   in
   let unsupported_backend s =

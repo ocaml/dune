@@ -1,5 +1,0 @@
-(library
- (name csexp)
- ;; note that this library is deleted in release mode so that the one from opam
- ;; is used
- (public_name stdune.csexp))

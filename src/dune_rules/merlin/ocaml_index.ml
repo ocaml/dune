@@ -1,8 +1,27 @@
 open Import
 open Memo.O
 
+let ocaml_index_dev_tool_exe_path_building_if_necessary () =
+  let open Action_builder.O in
+  let path = Path.build (Pkg_dev_tool.exe_path Ocaml_index) in
+  let+ () = Action_builder.path path in
+  Ok path
+;;
+
+let ocaml_index_dev_tool_exists () =
+  Lock_dir.dev_tool_source_lock_dir Ocaml_index |> Path.source |> Path.Untracked.exists
+;;
+
 let ocaml_index sctx ~dir =
-  Super_context.resolve_program ~loc:None ~dir sctx "ocaml-index"
+  match ocaml_index_dev_tool_exists () with
+  | true -> ocaml_index_dev_tool_exe_path_building_if_necessary ()
+  | false ->
+    Super_context.resolve_program
+      sctx
+      ~dir
+      "ocaml-index"
+      ~loc:None
+      ~hint:"opam install ocaml-index"
 ;;
 
 let index_file_name = "cctx.ocaml-index"

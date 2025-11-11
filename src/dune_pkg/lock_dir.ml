@@ -1154,6 +1154,7 @@ let create_latest_version
       ~repos
       ~expanded_solver_variable_bindings
       ~solved_for_platform
+      ~portable_lock_dir
   =
   let packages =
     Package_name.Map.map packages ~f:(fun (pkg : Pkg.t) ->
@@ -1186,6 +1187,15 @@ let create_latest_version
   in
   let solved_for_platform_platform_specific_only =
     Option.map solved_for_platform ~f:Solver_env.remove_all_except_platform_specific
+  in
+  let expanded_solver_variable_bindings =
+    match portable_lock_dir with
+    | false -> expanded_solver_variable_bindings
+    | true ->
+      (* To make a portable lockdir, only include solver variables which are
+         not platform-specific. *)
+      Solver_stats.Expanded_variable_bindings.remove_platform_specific
+        expanded_solver_variable_bindings
   in
   { version
   ; dependency_hash
@@ -1238,10 +1248,7 @@ let encode_metadata
      | None -> []
      | Some ocaml -> [ list sexp [ string "ocaml"; Package_name.encode (snd ocaml) ] ])
   @ [ list sexp (string "repositories" :: Repositories.encode repos) ]
-  @ (if
-       portable_lock_dir
-       || Solver_stats.Expanded_variable_bindings.is_empty
-            expanded_solver_variable_bindings
+  @ (if Solver_stats.Expanded_variable_bindings.is_empty expanded_solver_variable_bindings
      then []
      else
        [ list

@@ -126,7 +126,9 @@ val create_latest_version
   -> repos:Opam_repo.t list option
   -> expanded_solver_variable_bindings:Solver_stats.Expanded_variable_bindings.t
   -> solved_for_platform:Solver_env.t option
-       (* TODO: make this non-optional when portable lockdirs becomes the default *)
+       (* TODO: make the [solved_for_platform] argument non-optional when
+          portable lockdirs becomes the default *)
+  -> portable_lock_dir:bool
   -> t
 
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit

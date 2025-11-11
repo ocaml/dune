@@ -47,9 +47,9 @@ let test_status_line_clearing_multiline (module Console : New_console) =
   let open Console in
   Status_line.set
     (Status_line.Constant
-       (Pp.hovbox
+       (Pp.vbox
         @@ Pp.concat
-             ~sep:Pp.newline
+             ~sep:Pp.cut
              [ Pp.verbatim "Some"
              ; Pp.verbatim "multiline"
              ; Pp.verbatim "status"

@@ -16,6 +16,3 @@ val program_not_found_message
   -> loc:Loc.t option
   -> string
   -> User_message.t
-
-(** Pretty-printer for suggesting a given shell command to the user *)
-val pp_command_hint : string -> _ Pp.t

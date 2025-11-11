@@ -1,5 +1,19 @@
 open Import
 
+module Test_kind = struct
+  type t =
+    | Runtest of Path.t
+    | Cram of Path.t * Source.Cram_test.t
+
+  let alias ~contexts = function
+    | Cram (dir, cram) ->
+      let name = Dune_engine.Alias.Name.of_string (Source.Cram_test.name cram) in
+      Alias.in_dir ~name ~recursive:false ~contexts dir
+    | Runtest dir ->
+      Alias.in_dir ~name:Dune_rules.Alias.runtest ~recursive:true ~contexts dir
+  ;;
+end
+
 let cram_tests_of_dir parent_dir =
   let open Memo.O in
   Source_tree.find_dir parent_dir
@@ -57,40 +71,36 @@ let explain_unsuccessful_search path ~parent_dir =
    run tests in. *)
 let disambiguate_test_name path =
   match Path.Source.parent path with
-  | None -> Memo.return @@ `Runtest (Path.source Path.Source.root)
+  | None -> Memo.return @@ Test_kind.Runtest (Path.source Path.Source.root)
   | Some parent_dir ->
     let open Memo.O in
     let* cram_tests = cram_tests_of_dir parent_dir in
     (match find_cram_test cram_tests path with
      | Some test ->
        (* If we find the cram test, then we request that is run. *)
-       Memo.return (`Cram (parent_dir, test))
+       Memo.return (Test_kind.Cram (Path.source parent_dir, test))
      | None ->
        (* If we don't find it, then we assume the user intended a directory for
           @runtest to be used. *)
        Source_tree.find_dir path
        >>= (function
         (* We need to make sure that this directory or file exists. *)
-        | Some _ -> Memo.return (`Runtest (Path.source path))
+        | Some _ -> Memo.return (Test_kind.Runtest (Path.source path))
         | None -> explain_unsuccessful_search path ~parent_dir))
 ;;
 
 let make_request ~contexts ~to_cwd ~test_paths =
   List.map test_paths ~f:(fun dir ->
     let dir = Path.of_string dir |> Path.Expert.try_localize_external in
-    let open Action_builder.O in
-    let* contexts, alias_kind =
+    let contexts, src_dir =
       match (Util.check_path contexts dir : Util.checked) with
-      | In_build_dir (context, dir) ->
-        let+ res = Action_builder.of_memo (disambiguate_test_name dir) in
-        [ context ], res
+      | In_build_dir (context, dir) -> [ context ], dir
       | In_source_dir dir ->
         (* We need to adjust the path here to make up for the current working directory. *)
         let dir =
           Path.Source.L.relative Path.Source.root (to_cwd @ Path.Source.explode dir)
         in
-        let+ res = Action_builder.of_memo (disambiguate_test_name dir) in
-        contexts, res
+        contexts, dir
       | In_private_context _ | In_install_dir _ ->
         User_error.raise
           [ Pp.textf "This path is internal to dune: %s" (Path.to_string_maybe_quoted dir)
@@ -102,17 +112,9 @@ let make_request ~contexts ~to_cwd ~test_paths =
               (Path.to_string_maybe_quoted dir)
           ]
     in
-    Alias.request
-    @@
-    match alias_kind with
-    | `Cram (dir, cram) ->
-      let alias_name = Source.Cram_test.name cram in
-      Alias.in_dir
-        ~name:(Dune_engine.Alias.Name.of_string alias_name)
-        ~recursive:false
-        ~contexts
-        (Path.source dir)
-    | `Runtest dir ->
-      Alias.in_dir ~name:Dune_rules.Alias.runtest ~recursive:true ~contexts dir)
+    let open Action_builder.O in
+    Action_builder.of_memo (disambiguate_test_name src_dir)
+    >>| Test_kind.alias ~contexts
+    >>= Alias.request)
   |> Action_builder.all_unit
 ;;

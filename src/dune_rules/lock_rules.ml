@@ -28,6 +28,8 @@ let project_and_package_pins project =
   Pin.DB.add_opam_pins (Pin.DB.of_stanza ~dir pins) packages
 ;;
 
+(* CR-soon Alizter: This function is duplicated in bin/pkg/lock.ml. We should
+   factor out pin handling logic into a shared module in dune_pkg. *)
 let resolve_project_pins project_pins =
   let scan_project ~read ~files =
     let read file = Memo.of_reproducible_fiber (read file) in
@@ -46,6 +48,8 @@ let resolve_project_pins project_pins =
   Pin.resolve project_pins ~scan_project
 ;;
 
+(* CR-soon Alizter: This function is duplicated in bin/pkg/lock.ml. We should
+   factor out pin handling logic into a shared module in dune_pkg. *)
 let project_pins =
   Dune_load.projects ()
   >>| List.fold_left ~init:Pin.DB.empty ~f:(fun acc project ->
@@ -78,6 +82,9 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
          >>| Dune_lang.Package.Name.Map.map ~f:Local_package.of_package
          |> Action_builder.of_memo
        and+ repos =
+         (* CR-soon Alizter: This repository handling logic is duplicated in
+            bin/pkg/pkg_common.ml:get_repos. The OpamUrl.classify pattern
+            matching and repository resolution could be shared. *)
          Action_builder.of_memo
            (Memo.of_thunk (fun () ->
               let repositories =
@@ -123,6 +130,10 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
                        ]))
               |> Memo.of_non_reproducible_fiber))
        and+ pins =
+         (* CR-soon Alizter: This pin logic (extracting workspace pins,
+            combining with project pins) is duplicated in bin/pkg/lock.ml. The
+            pattern of Pin.DB.Workspace.extract and Pin.DB.combine_exn could be
+            factored into a shared helper. *)
          Action_builder.of_memo
            (Memo.of_thunk (fun () ->
               let open Memo.O in

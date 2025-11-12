@@ -130,6 +130,10 @@ module Spec = struct
     (* Whether or not the lock directory we are creating is portable or not
        doesn't concern us. We therefore set it as non-portable. *)
     let portable_lock_dir = false in
+    (* CR-soon Alizter: This solver environment construction pattern (combining
+       solver_env_from_current_system with solver_env_from_context, then
+       unsetting vars) is similar to logic in bin/pkg/pkg_common.ml:solver_env
+       and bin/pkg/lock.ml. Consider sharing this pattern. *)
     let* solver_env =
       let open Fiber.O in
       let+ solver_env_from_current_system =

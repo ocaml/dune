@@ -742,6 +742,8 @@ let source_path_of_lock_dir_path path =
   | In_build_dir b ->
     (match Path.Build.explode b with
      | [ _; _; ".lock"; lock_dir ] -> Path.Source.of_string lock_dir
+     | [ ".dev-tools.locks"; dev_tool ] ->
+       Path.Source.L.relative Path.Source.root [ "_build"; ".dev-tools.locks"; dev_tool ]
      | components ->
        Code_error.raise
          "Unsupported build path"

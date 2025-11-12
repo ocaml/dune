@@ -35,3 +35,12 @@ val local_package
 val get_opam_package_files
   :  t list
   -> (File_entry.t list list, User_message.t) result Fiber.t
+
+(** [digest t] computes a digest of the resolved package contents, excluding the
+    source location. For directory-based extra files, the digest of the
+    directory contents is included. For git-based extra files, the commit SHA is
+    included.
+
+    Raises [User_error] if extra files in a directory cannot be accessed or
+    digested due to permission errors, filesystem errors. *)
+val digest : t -> Dune_digest.t

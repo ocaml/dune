@@ -26,6 +26,15 @@ val of_git_repo : Loc.t -> OpamUrl.t -> t Fiber.t
 val revision : t -> Rev_store.At_rev.t
 val serializable : t -> Serializable.t option
 
+(** [content_digest t] digests the contents of an opam repository. For a Git
+    repository, this is a digest of the commit SHA. For a directory-based
+    repository, this is a digest of the directory's contents.
+
+    Raises [User_error] in the directory case if the path cannot be accessed or
+    digested due to permission errors, the directory being deleted or modified
+    between stat and digest, or other filesystem errors. *)
+val content_digest : t -> Dune_digest.t
+
 module Key : sig
   type t
 

@@ -128,6 +128,13 @@ let revision t =
   | Directory _ -> Code_error.raise "not a git repo" []
 ;;
 
+let content_digest t =
+  match t.source with
+  | Repo repo ->
+    Rev_store.At_rev.rev repo |> Rev_store.Object.to_hex |> Dune_digest.string
+  | Directory path -> Path_digest.digest_with_lstat path
+;;
+
 let load_opam_package_from_dir ~(dir : Path.t) package =
   let opam_file_path = Paths.opam_file package in
   match Path.exists (Path.append_local dir opam_file_path) with

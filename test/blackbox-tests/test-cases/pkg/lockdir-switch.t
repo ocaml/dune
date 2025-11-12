@@ -43,12 +43,7 @@ Now change the workspace to use a custom lock directory:
   > EOF
 
   $ dune exec -- bar
-  Error: No rule found for default/.lock/dune.lock (context _private)
-  -> required by lock directory environment for context "default"
-  -> required by base environment for context "default"
-  -> required by loading findlib for context "default"
-  -> required by creating installed environment for "default"
-  [1]
+  hello from bar
 
 Now try with a context stanza that references the custom lock directory with a
 context stanza:

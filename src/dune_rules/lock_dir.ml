@@ -177,11 +177,23 @@ let get_source_path_for_context ctx_name =
       | false -> None
       | true -> Some ctx)
   with
-  | None | Some (Default { lock_dir = None; _ }) -> Memo.return (Some default_source_path)
   | Some (Default { lock_dir = Some lock_dir_selection; _ }) ->
     let+ source_lock_dir = select_lock_dir lock_dir_selection in
     Some source_lock_dir
   | Some (Opam _) -> Memo.return None
+  | None | Some (Default { lock_dir = None; _ }) ->
+    (* CR-someday Alizter: The logic here is hard to follow. Improve the lock
+       directory selection logic so that it is harder to make a mistake. This
+       can be done by enforcing invariants about contexts and their lock
+       directories slightly earlier. *)
+    Memo.return
+    @@
+    (* Context doesn't specify a lock_dir, check if there's a top-level one *)
+    (match workspace.lock_dirs with
+      | [ lock_dir ] -> Some lock_dir.path
+      | [] | _ :: _ :: _ ->
+        (* No clear choice, fall back to default *)
+        Some default_source_path)
 ;;
 
 let get_path ctx_name =

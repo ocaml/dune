@@ -538,10 +538,7 @@ let in_source_tree path =
             ; "source_components", Dyn.(list string) source_components
             ; "build_components", Dyn.(list string) build_components
             ]))
-  | External e ->
-    Code_error.raise
-      "External path returned when loading a lock dir"
-      [ "path", Path.External.to_dyn e ]
+  | External e -> Workspace.dev_tool_path_to_source_dir e
 ;;
 
 module Pkg = struct
@@ -887,14 +884,9 @@ module Pkg = struct
          ^ extension)
   ;;
 
+  (* TODO remove *)
   let files_dir package_name maybe_package_version ~lock_dir =
-    match files_dir_generic package_name maybe_package_version ~lock_dir with
-    | In_source_tree _ as path -> path
-    | In_build_dir _ as path -> path
-    | External e ->
-      Code_error.raise
-        "file_dir is an external path, this is unsupported"
-        [ "path", Path.External.to_dyn e ]
+    files_dir_generic package_name maybe_package_version ~lock_dir
   ;;
 
   let source_files_dir package_name maybe_package_version ~lock_dir =
@@ -1402,7 +1394,11 @@ module Write_disk = struct
   let safely_remove_lock_dir_if_exists_thunk path =
     match check_existing_lock_dir path with
     | Ok `Non_existant -> Fun.const ()
-    | Ok `Is_existing_lock_dir -> fun () -> Path.rm_rf path
+    | Ok `Is_existing_lock_dir ->
+      fun () ->
+        (* dev-tool lock dirs are external paths despite living in _build, they're
+           safe to remove *)
+        Path.rm_rf ~allow_external:true path
     | Error e -> raise_user_error_on_check_existance path e
   ;;
 

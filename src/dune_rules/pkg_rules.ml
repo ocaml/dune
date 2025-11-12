@@ -86,7 +86,11 @@ module Package_universe = struct
     | Dependencies ctx -> Lock_dir.get_path ctx
     | Dev_tool dev_tool ->
       (* CR-Leonidas-from-XIV: It probably isn't always [Some] *)
-      dev_tool |> Lock_dir.dev_tool_untracked_lock_dir |> Option.some |> Memo.return
+      dev_tool
+      |> Lock_dir.dev_tool_external_lock_dir
+      |> Path.external_
+      |> Option.some
+      |> Memo.return
   ;;
 end
 
@@ -1524,18 +1528,23 @@ end = struct
         |> Option.map ~f:(fun (p : Path.t) ->
           match p with
           | External e ->
-            Code_error.raise
-              "Package files directory is external source directory, this is unsupported"
-              [ "dir", Path.External.to_dyn e ]
-          | In_source_tree s ->
-            Code_error.raise "Unexpected files_dir path" [ "dir", Path.Source.to_dyn s ]
-          | In_build_dir b ->
-            (match Path.Build.explode b with
-             | [ ".dev-tools.locks"; dev_tool; files_dir ] ->
+            let source_path = Dune_pkg.Pkg_workspace.dev_tool_path_to_source_dir e in
+            (match Path.Source.explode source_path with
+             | [ "_build"; ".dev-tools.locks"; dev_tool; files_dir ] ->
                Path.Build.L.relative
                  Private_context.t.build_dir
                  [ "default"; ".dev-tool-locks"; dev_tool; files_dir ]
-             | _otherwise -> b))
+             | components ->
+               Code_error.raise
+                 "Package files directory is external source directory, this is \
+                  unsupported"
+                 [ "external", Path.External.to_dyn e
+                 ; "source", Path.Source.to_dyn source_path
+                 ; "components", Dyn.(list string) components
+                 ])
+          | In_source_tree s ->
+            Code_error.raise "Unexpected files_dir path" [ "dir", Path.Source.to_dyn s ]
+          | In_build_dir b -> b)
       in
       let id = Pkg.Id.gen () in
       let write_paths =

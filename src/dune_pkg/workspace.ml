@@ -70,3 +70,37 @@ module Repository = struct
 
   let opam_url { name = _; url } = url
 end
+
+let dev_tool_path_to_source_dir path =
+  let of_ =
+    Path.Build.relative Path.Build.root ".dev-tools.locks"
+    |> Path.build
+    |> Path.to_absolute_filename
+    |> Path.External.of_string
+  in
+  let in_dev_tool_dir = Path.External.is_descendant ~of_ path in
+  match in_dev_tool_dir with
+  | false ->
+    Code_error.raise
+      "External lock dir path is unsupported"
+      [ "dir", Path.External.to_dyn path ]
+  | true ->
+    let prefix = Path.External.to_string of_ in
+    let as_string = Path.External.to_string path in
+    let relative =
+      String.sub
+        as_string
+        ~pos:(String.length prefix)
+        ~len:(String.length as_string - String.length prefix)
+    in
+    let exploded = String.split ~on:'/' relative in
+    (match exploded with
+     | "" :: dev_tool_name :: components ->
+       Path.Source.L.relative
+         Path.Source.root
+         ([ "_build"; ".dev-tools.locks"; dev_tool_name ] @ components)
+     | components ->
+       Code_error.raise
+         "Unexpected external path"
+         [ "dir", Path.External.to_dyn path; "components", Dyn.(list string) components ])
+;;

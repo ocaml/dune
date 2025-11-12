@@ -33,7 +33,9 @@ end
 
 module Ocamlformat = struct
   let dev_tool_lock_dir_exists () =
-    Lock_dir.dev_tool_untracked_lock_dir Ocamlformat |> Path.Untracked.exists
+    Lock_dir.dev_tool_external_lock_dir Ocamlformat
+    |> Path.external_
+    |> Path.Untracked.exists
   ;;
 
   (* Config files for ocamlformat. When these are changed, running

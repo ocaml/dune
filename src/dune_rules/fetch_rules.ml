@@ -189,11 +189,11 @@ let find_checksum, find_url =
           Dune_pkg.Dev_tool.all
           ~init:(Checksum.Map.empty, Digest.Map.empty)
           ~f:(fun acc dev_tool ->
-            let dir = Lock_dir.dev_tool_untracked_lock_dir dev_tool in
+            let dir = Lock_dir.dev_tool_external_lock_dir dev_tool in
             let exists =
               (* Note we use [Path.Untracked] here rather than [Fs_memo] because a tool's
                  lockdir may be generated part way through a build. *)
-              Path.Untracked.exists dir
+              Path.Untracked.exists (Path.external_ dir)
             in
             match exists with
             | false -> Memo.return acc

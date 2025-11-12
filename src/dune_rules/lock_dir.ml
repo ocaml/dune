@@ -148,10 +148,13 @@ let dev_tool_to_path_segment dev_tool =
 ;;
 
 (* This function returns the lock dir that is created outside the build system. *)
-let dev_tool_untracked_lock_dir dev_tool =
-  let dev_tools_path = Path.Build.relative Path.Build.root ".dev-tools.locks" in
+let dev_tool_external_lock_dir dev_tool =
+  let external_root =
+    Path.Build.root |> Path.build |> Path.to_absolute_filename |> Path.External.of_string
+  in
+  let dev_tools_path = Path.External.relative external_root ".dev-tools.locks" in
   let dev_tool_segment = dev_tool_to_path_segment dev_tool in
-  Path.Build.append_local dev_tools_path dev_tool_segment |> Path.build
+  Path.External.append_local dev_tools_path dev_tool_segment
 ;;
 
 (* This function returns the lock dir location where the build system can create
@@ -243,12 +246,12 @@ let get ctx = get_with_path ctx >>| Result.map ~f:snd
 let get_exn ctx = get ctx >>| User_error.ok_exn
 
 let of_dev_tool dev_tool =
-  let path = dev_tool_untracked_lock_dir dev_tool in
+  let path = dev_tool |> dev_tool_external_lock_dir |> Path.external_ in
   Load.load_exn path
 ;;
 
 let of_dev_tool_if_lock_dir_exists dev_tool =
-  let path = dev_tool_untracked_lock_dir dev_tool in
+  let path = dev_tool |> dev_tool_external_lock_dir |> Path.external_ in
   let exists =
     (* Note we use [Path.Untracked] here rather than [Fs_memo] because a tool's
        lockdir may be generated part way through a build. *)

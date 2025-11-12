@@ -869,7 +869,7 @@ module Pkg = struct
   ;;
 
   (* More general version of [files_dir] which works on generic paths *)
-  let files_dir_generic package_name maybe_package_version ~lock_dir =
+  let files_dir package_name maybe_package_version ~lock_dir =
     (* TODO(steve): Once portable lockdirs are enabled by default, make the
        package version non-optional *)
     let extension = ".files" in
@@ -882,11 +882,6 @@ module Pkg = struct
          ^ "."
          ^ Package_version.to_string package_version
          ^ extension)
-  ;;
-
-  (* TODO remove *)
-  let files_dir package_name maybe_package_version ~lock_dir =
-    files_dir_generic package_name maybe_package_version ~lock_dir
   ;;
 
   let source_files_dir package_name maybe_package_version ~lock_dir =
@@ -1494,10 +1489,7 @@ module Write_disk = struct
               let maybe_package_version =
                 if portable_lock_dir then Some package_version else None
               in
-              Pkg.files_dir_generic
-                package_name
-                maybe_package_version
-                ~lock_dir:lock_dir_path
+              Pkg.files_dir package_name maybe_package_version ~lock_dir:lock_dir_path
             in
             Path.mkdir_p files_dir;
             List.iter files ~f:(fun { File_entry.original; local_file } ->

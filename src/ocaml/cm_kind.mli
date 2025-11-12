@@ -4,8 +4,6 @@ type t =
   | Cmi
   | Cmo
   | Cmx
-  | Cmt
-  | Cmti
 
 val compare : t -> t -> Ordering.t
 val all : t list

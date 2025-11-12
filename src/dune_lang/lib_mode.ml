@@ -71,7 +71,7 @@ module Cm_kind = struct
 end
 
 let of_cm_kind : Cm_kind.t -> t = function
-  | Ocaml (Cmi | Cmo | Cmt | Cmti) -> Ocaml Byte
+  | Ocaml (Cmi | Cmo) -> Ocaml Byte
   | Ocaml Cmx -> Ocaml Native
   | Melange (Cmi | Cmj) -> Melange
 ;;

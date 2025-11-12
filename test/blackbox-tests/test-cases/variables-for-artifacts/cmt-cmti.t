@@ -77,9 +77,7 @@ Test with a module that has only implementation (no interface):
   impl-only cmt: .mylib.objs/byte/mylib__Only_impl.cmt
 
   $ dune build @show-impl-only-cmti
-  Error: No rule found for .
-  -> required by alias show-impl-only-cmti in dune:21
-  [1]
+  impl-only cmti: .mylib.objs/byte/mylib__Only_impl.cmt
 
 Test with a module that has only interface (no implementation):
 

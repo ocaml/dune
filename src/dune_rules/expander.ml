@@ -191,7 +191,12 @@ let expand_artifact ~source t artifact arg =
     (match Artifacts_obj.lookup_module artifacts name with
      | None -> does_not_exist ~what:"Module" (Module_name.to_string name)
      | Some (t, m) ->
-       (match Obj_dir.Module.cm_file t m ~kind:(Ocaml kind) with
+       (match
+          match kind with
+          | Cm_kind kind -> Obj_dir.Module.cm_file t m ~kind:(Ocaml kind)
+          | Cmt -> Obj_dir.Module.cmt_file t m ~cm_kind:(Ocaml Cmi) ~ml_kind:Impl
+          | Cmti -> Some (Obj_dir.Module.cmti_file t m ~cm_kind:(Ocaml Cmi))
+        with
         | None -> Action_builder.return [ Value.String "" ]
         | Some path -> dep (Path.build path)))
   | Lib mode ->

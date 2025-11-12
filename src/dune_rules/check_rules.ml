@@ -1,7 +1,7 @@
 open Import
 
 let dev_files =
-  [ Cm_kind.ext Cmt; Cm_kind.ext Cmti; Cm_kind.ext Cmi ]
+  [ Ml_kind.cmt_ext Impl; Ml_kind.cmt_ext Intf; Cm_kind.ext Cmi ]
   |> List.map ~f:(String.drop_prefix_if_exists ~prefix:".")
   |> Glob.matching_extensions
 ;;

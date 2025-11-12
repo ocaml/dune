@@ -51,17 +51,7 @@ Solve the project:
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
   Solution for dune.lock
   
-  This solution supports the following platforms:
-  - arch = x86_64; os = linux; sys-ocaml-version =
-    5.4.0+solver-env-version-override
-  - arch = arm64; os = linux; sys-ocaml-version =
-    5.4.0+solver-env-version-override
-  - arch = x86_64; os = macos; sys-ocaml-version =
-    5.4.0+solver-env-version-override
-  - arch = arm64; os = macos; sys-ocaml-version =
-    5.4.0+solver-env-version-override
-  
-  Dependencies on all supported platforms:
+  Dependencies common to all supported platforms:
   - foo.0.0.1
 
 Confirming that the build action creates the conditional file:

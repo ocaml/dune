@@ -261,10 +261,7 @@ let summary_message
        User_message.Style.Success
        (Pp.textf "Solution for %s" (Path.to_string_maybe_quoted lock_dir_path))
      :: Pp.nop
-     :: Pp.text "This solution supports the following platforms:"
-     :: Pp.enumerate (snd lock_dir.solved_for_platforms) ~f:Solver_env.pp_oneline
-     :: Pp.nop
-     :: Pp.text "Dependencies on all supported platforms:"
+     :: Pp.text "Dependencies common to all supported platforms:"
      :: pp_package_set common_packages
      :: (maybe_uncommon_packages @ maybe_perf_stats))
     @ maybe_unsolved_platforms_message)

@@ -36,13 +36,7 @@ Create a package that writes a different value to some files depending on the os
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
   Solution for dune.lock
   
-  This solution supports the following platforms:
-  - arch = x86_64; os = linux
-  - arch = arm64; os = linux
-  - arch = x86_64; os = macos
-  - arch = arm64; os = macos
-  
-  Dependencies on all supported platforms:
+  Dependencies common to all supported platforms:
   - foo.0.0.1
 
   $ cat ${default_lock_dir}/lock.dune

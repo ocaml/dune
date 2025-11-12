@@ -486,9 +486,7 @@ let run_with_exit_code { dir; _ } ~allow_codes ~display args =
              minimum supported version is Git 2.29."
         ]
         ~hints:[ User_message.command "Please update your git version." ]
-    | _ ->
-      Console.print [ Pp.verbatim stderr ];
-      Error { Git_error.dir; args; exit_code; output = [] })
+    | _ -> Error { Git_error.dir; args; exit_code; output = [ stderr ] })
 ;;
 
 let run t ~display args =

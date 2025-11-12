@@ -507,7 +507,7 @@ let setup_dev_tool_lock_rules ~dir dev_tool =
   let package_name = Dev_tool.package_name dev_tool in
   let dev_tool_name = Dune_lang.Package_name.to_string package_name in
   let dir = Path.Build.relative dir dev_tool_name in
-  let lock_dir = Lock_dir.dev_tool_untracked_lock_dir dev_tool in
+  let lock_dir = dev_tool |> Lock_dir.dev_tool_external_lock_dir |> Path.external_ in
   (* dev tool lock files are created in _build outside of the build system
      so we have to tell the build system not to try to create them *)
   setup_copy_rules ~dir ~assume_src_exists:true ~lock_dir

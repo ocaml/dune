@@ -147,9 +147,9 @@ let requires ~loc ~db ~libs =
 ;;
 
 let utop_dev_tool_lock_dir_exists =
-  lazy
-    (let path = Lock_dir.dev_tool_untracked_lock_dir Utop in
-     Path.Untracked.exists path)
+  Memo.Lazy.create (fun () ->
+    let path = Lock_dir.dev_tool_external_lock_dir Utop in
+    Fs_memo.dir_exists (Path.Outside_build_dir.External path))
 ;;
 
 let utop_findlib_conf = Filename.concat utop_dir_basename "findlib.conf"
@@ -168,8 +168,8 @@ let utop_ocamlpath = Memo.Lazy.create (fun () -> Pkg_rules.dev_tool_ocamlpath Ut
    we need to tell findlib where to look for libraries by means of a custom
    findlib.conf file. *)
 let findlib_conf sctx ~dir =
-  Lazy.force utop_dev_tool_lock_dir_exists
-  |> function
+  Memo.Lazy.force utop_dev_tool_lock_dir_exists
+  >>= function
   | false ->
     (* If there isn't lockdir don't create the findlib.conf rule. *)
     Memo.return ()
@@ -187,7 +187,7 @@ let findlib_conf sctx ~dir =
 
 let lib_db sctx ~dir =
   let* scope = Scope.DB.find_by_dir dir in
-  let lock_dir_exists = Lazy.force utop_dev_tool_lock_dir_exists in
+  let* lock_dir_exists = Memo.Lazy.force utop_dev_tool_lock_dir_exists in
   match lock_dir_exists with
   | false -> Memo.return (Scope.libs scope)
   | true ->

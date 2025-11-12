@@ -8,7 +8,7 @@ val utop_exe : Filename.t
 
 val utop_dir_basename : Filename.t
 val utop_findlib_conf : Filename.t
-val utop_dev_tool_lock_dir_exists : bool Lazy.t
+val utop_dev_tool_lock_dir_exists : bool Memo.Lazy.t
 val libs_under_dir : Super_context.t -> db:Lib.DB.t -> dir:Path.t -> Lib.t list Memo.t
 val setup : Super_context.t -> dir:Path.Build.t -> unit Memo.t
 

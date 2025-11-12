@@ -742,18 +742,11 @@ let source_path_of_lock_dir_path path =
   | In_build_dir b ->
     (match Path.Build.explode b with
      | [ _; _; ".lock"; lock_dir ] -> Path.Source.of_string lock_dir
-     | [ ".dev-tools.locks"; dev_tool_name ] ->
-       Path.Source.L.relative
-         Path.Source.root
-         [ "_build"; ".dev-tools.locks"; dev_tool_name ]
      | components ->
        Code_error.raise
          "Unsupported build path"
          [ "dir", Path.Build.to_dyn b; "components", Dyn.(list string) components ])
-  | External e ->
-    Code_error.raise
-      "External lock dir path is unsupported"
-      [ "dir", Path.External.to_dyn e ]
+  | External e -> Dune_pkg.Pkg_workspace.dev_tool_path_to_source_dir e
 ;;
 
 let find_lock_dir t path =

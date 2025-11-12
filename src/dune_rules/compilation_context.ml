@@ -2,18 +2,11 @@ open Import
 open Memo.O
 
 module Includes = struct
-  type ocaml =
-    { cmi : Command.Args.without_targets Command.Args.t
-    ; cmo : Command.Args.without_targets Command.Args.t
-    ; cmx : Command.Args.without_targets Command.Args.t
-    }
+  type t = Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
-  type t =
-    { ocaml : ocaml
-    ; melange : Command.Args.without_targets Command.Args.t Melange.Cm_kind.Map.t
-    }
-
-  let make ~project ~opaque ~direct_requires ~hidden_requires lib_config : t =
+  let make ~project ~opaque ~direct_requires ~hidden_requires lib_config
+    : _ Lib_mode.Cm_kind.Map.t
+    =
     (* TODO: some of the requires can filtered out using [ocamldep] info *)
     let open Resolve.Memo.O in
     let iflags direct_libs hidden_libs mode =
@@ -63,12 +56,7 @@ module Includes = struct
     }
   ;;
 
-  let empty =
-    { ocaml =
-        { cmi = Command.Args.empty; cmo = Command.Args.empty; cmx = Command.Args.empty }
-    ; melange = Melange.Cm_kind.Map.make_all Command.Args.empty
-    }
-  ;;
+  let empty = Lib_mode.Cm_kind.Map.make_all Command.Args.empty
 end
 
 type opaque =

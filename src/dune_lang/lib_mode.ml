@@ -49,6 +49,25 @@ module Cm_kind = struct
     | Ocaml k -> variant "ocaml" [ Ocaml.Cm_kind.to_dyn k ]
     | Melange k -> variant "melange" [ Melange.Cm_kind.to_dyn k ]
   ;;
+
+  module Map = struct
+    type 'a t =
+      { ocaml : 'a Ocaml.Cm_kind.Dict.t
+      ; melange : 'a Melange.Cm_kind.Map.t
+      }
+
+    let get t = function
+      | Ocaml k -> Ocaml.Cm_kind.Dict.get t.ocaml k
+      | Melange k ->
+        (match k with
+         | Cmi -> t.melange.cmi
+         | Cmj -> t.melange.cmj)
+    ;;
+
+    let make_all x =
+      { ocaml = Ocaml.Cm_kind.Dict.make_all x; melange = Melange.Cm_kind.Map.make_all x }
+    ;;
+  end
 end
 
 let of_cm_kind : Cm_kind.t -> t = function

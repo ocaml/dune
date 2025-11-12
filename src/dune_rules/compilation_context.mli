@@ -59,21 +59,7 @@ val requires_link : t -> Lib.t list Resolve.Memo.t
 val requires_hidden : t -> Lib.t list Resolve.Memo.t
 val requires_compile : t -> Lib.t list Resolve.Memo.t
 val parameters : t -> Module_name.t list Resolve.Memo.t
-
-module Includes : sig
-  type ocaml =
-    { cmi : Command.Args.without_targets Command.Args.t
-    ; cmo : Command.Args.without_targets Command.Args.t
-    ; cmx : Command.Args.without_targets Command.Args.t
-    }
-
-  type t =
-    { ocaml : ocaml
-    ; melange : Command.Args.without_targets Command.Args.t Melange.Cm_kind.Map.t
-    }
-end
-
-val includes : t -> Includes.t
+val includes : t -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 val preprocessing : t -> Pp_spec.t
 val opaque : t -> bool
 val stdlib : t -> Ocaml_stdlib.t option

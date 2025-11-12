@@ -46,3 +46,24 @@ let to_dyn =
   | Cmt -> variant "cmt" []
   | Cmti -> variant "cmti" []
 ;;
+
+module Dict = struct
+  type 'a t =
+    { cmi : 'a
+    ; cmo : 'a
+    ; cmx : 'a
+    }
+
+  let get t = function
+    | Cmi -> t.cmi
+    | Cmo -> t.cmo
+    | Cmx -> t.cmx
+    | (Cmt | Cmti) as cm_kind ->
+      Code_error.raise
+        "Cm_kind.Dict.get doesnt support this case"
+        [ "cm_kind", to_dyn cm_kind ]
+  ;;
+
+  let of_func f = { cmi = f ~cm_kind:Cmi; cmo = f ~cm_kind:Cmo; cmx = f ~cm_kind:Cmx }
+  let make_all x = { cmi = x; cmo = x; cmx = x }
+end

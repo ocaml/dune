@@ -117,8 +117,9 @@ let%expect_test "fetching an object twice from the store" =
       Rev_store.Object.of_sha1 remote_revision
       |> Option.value_exn
       |> Rev_store.fetch_object rev_store remote
-      >>| Option.value_exn
+      >>| Result.to_option
     in
+    let at_rev = Option.value_exn at_rev in
     Rev_store.At_rev.directory_entries at_rev ~recursive:true Path.Local.root
     |> Rev_store.File.Set.find ~f:(fun f ->
       Path.Local.equal (Rev_store.File.path f) (Path.Local.of_string file))

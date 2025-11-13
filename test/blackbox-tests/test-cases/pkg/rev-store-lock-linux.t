@@ -29,8 +29,8 @@ We set the project up to depend on `foo`
 There should be some kind of error message if getting the revision store lock
 fails (simulated here with a failing flock(2) call):
 
-  $ DUNE_CACHE_ROOT=$(pwd)/dune-workspace-cache strace -e inject=flock:error=EBADFD -o /dev/null dune pkg lock
+  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache strace -e inject=flock:error=EBADFD -o /dev/null dune pkg lock
   Error: Failed to get a lock for the revision store at
-  $TESTCASE_ROOT/dune-workspace-cache/rev-store.lock:
+  $TESTCASE_ROOT/dune-workspace-cache/dune/rev-store.lock:
   File descriptor in bad state
   [1]

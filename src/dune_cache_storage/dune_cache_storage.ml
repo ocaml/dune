@@ -376,5 +376,5 @@ let clear () =
   rm_rf (Lazy.force Layout.temp_dir);
   (* Do not catch errors when deleting the root directory so that they are
      reported to the user. *)
-  Path.rmdir (Lazy.force Layout.root_dir)
+  Path.rmdir (Lazy.force Layout.build_cache_dir)
 ;;

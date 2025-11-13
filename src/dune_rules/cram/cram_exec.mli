@@ -23,6 +23,6 @@ val diff : src:Path.t -> output:Path.t -> Action.t
 val action : Path.t -> Action.t
 
 module For_tests : sig
-  val cram_stanzas : Lexing.lexbuf -> string list Cram_lexer.block list
+  val cram_stanzas : Lexing.lexbuf -> (Loc.t * string list Cram_lexer.block) list
   val dyn_of_block : string list Cram_lexer.block -> Dyn.t
 end

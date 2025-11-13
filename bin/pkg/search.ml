@@ -36,8 +36,8 @@ let search_packages ~query () =
     | None -> get_default_lock_dir_path ()
   in
   let* repos =
-    Pkg_common.get_repos
-      (Pkg_common.repositories_of_workspace workspace)
+    Dune_pkg.Opam_repo.resolve_repositories
+      ~available_repos:(Pkg_common.repositories_of_workspace workspace)
       ~repositories:(Pkg_common.repositories_of_lock_dir workspace ~lock_dir_path)
   in
   let re = Option.map ~f:(fun q -> Re.str q |> Re.no_case |> Re.compile) query in

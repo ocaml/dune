@@ -312,9 +312,6 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
          >>| Dune_lang.Package.Name.Map.map ~f:Local_package.of_package
          |> Action_builder.of_memo
        and+ repos =
-         (* CR-soon Alizter: This repository handling logic is duplicated in
-            bin/pkg/pkg_common.ml:get_repos. The OpamUrl.classify pattern
-            matching and repository resolution could be shared. *)
          Action_builder.of_memo
            (Memo.of_thunk (fun () ->
               let repositories =
@@ -334,30 +331,7 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
                   Pkg_workspace.Repository.name repo, repo)
                 |> Pkg_workspace.Repository.Name.Map.of_list_exn
               in
-              let module Repository = Pkg_workspace.Repository in
-              repositories
-              |> Fiber.parallel_map ~f:(fun (loc, name) ->
-                match Repository.Name.Map.find available_repos name with
-                | None ->
-                  User_error.raise
-                    ~loc
-                    [ Pp.textf "Repository '%s' is not a known repository"
-                      @@ Repository.Name.to_string name
-                    ]
-                | Some repo ->
-                  let loc, opam_url = Repository.opam_url repo in
-                  (match OpamUrl.classify opam_url loc with
-                   | `Git -> Opam_repo.of_git_repo loc opam_url
-                   | `Path path ->
-                     Fiber.return @@ Opam_repo.of_opam_repo_dir_path loc path
-                   | `Archive ->
-                     User_error.raise
-                       ~loc
-                       [ Pp.textf
-                           "Repositories stored in archives (%s) are currently \
-                            unsupported"
-                         @@ OpamUrl.to_string opam_url
-                       ]))
+              Opam_repo.resolve_repositories ~available_repos ~repositories
               |> Memo.of_non_reproducible_fiber))
        and+ pins =
          (* CR-soon Alizter: This pin logic (extracting workspace pins,

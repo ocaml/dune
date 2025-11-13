@@ -122,6 +122,31 @@ let of_git_repo loc url =
   { source = Repo at_rev; serializable; loc }
 ;;
 
+let resolve_repositories ~available_repos ~repositories =
+  repositories
+  |> Fiber.parallel_map ~f:(fun (loc, name) ->
+    match Workspace.Repository.Name.Map.find available_repos name with
+    | None ->
+      User_error.raise
+        ~loc
+        [ Pp.textf
+            "Repository '%s' is not a known repository"
+            (Workspace.Repository.Name.to_string name)
+        ]
+    | Some repo ->
+      let loc, opam_url = Workspace.Repository.opam_url repo in
+      (match OpamUrl.classify opam_url loc with
+       | `Git -> of_git_repo loc opam_url
+       | `Path path -> Fiber.return @@ of_opam_repo_dir_path loc path
+       | `Archive ->
+         User_error.raise
+           ~loc
+           [ Pp.textf
+               "Repositories stored in archives (%s) are currently unsupported"
+               (OpamUrl.to_string opam_url)
+           ]))
+;;
+
 let revision t =
   match t.source with
   | Repo r -> r

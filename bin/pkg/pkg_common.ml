@@ -119,31 +119,6 @@ let unset_solver_vars_of_workspace workspace ~lock_dir_path =
   lock_dir.unset_solver_vars
 ;;
 
-let get_repos repos ~repositories =
-  let module Repository = Dune_pkg.Pkg_workspace.Repository in
-  repositories
-  |> Fiber.parallel_map ~f:(fun (loc, name) ->
-    match Repository.Name.Map.find repos name with
-    | None ->
-      User_error.raise
-        ~loc
-        [ Pp.textf "Repository '%s' is not a known repository"
-          @@ Repository.Name.to_string name
-        ]
-    | Some repo ->
-      let loc, opam_url = Repository.opam_url repo in
-      let module Opam_repo = Dune_pkg.Opam_repo in
-      (match Dune_pkg.OpamUrl.classify opam_url loc with
-       | `Git -> Opam_repo.of_git_repo loc opam_url
-       | `Path path -> Fiber.return @@ Opam_repo.of_opam_repo_dir_path loc path
-       | `Archive ->
-         User_error.raise
-           ~loc
-           [ Pp.textf "Repositories stored in archives (%s) are currently unsupported"
-             @@ OpamUrl.to_string opam_url
-           ]))
-;;
-
 let find_local_packages =
   let open Memo.O in
   Dune_rules.Dune_load.packages ()

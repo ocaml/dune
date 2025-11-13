@@ -1,6 +1,7 @@
-Test the error message when curl is needed but not installed.
+Test the error message when unzip is needed but not installed.
 
   $ . ./helpers.sh
+
   $ make_lockdir
   $ echo "random" >> test.txt
   $ zip bar.zip test.txt >> /dev/null
@@ -16,8 +17,19 @@ Test the error message when curl is needed but not installed.
 
   $ makepkg foo
 
-Build the package in an environment without curl.
-  $ PATH=$(dirname $(which dune)) build_pkg foo &> error.txt
-  $ cat error.txt | grep "^Error: Program unzip not found in the tree or in PATH"
-  [1]
+Build the package in an environment without unzip, or tar, or bsdtar.
+  $ PATH=$(dirname $(which dune)) build_pkg foo 2>&1 | grep '^Error:'
+  Error: Program unzip not found in the tree or in PATH
 
+Build with only tar, not bsdtar or unzip, it should still fail to build
+
+  $ PATH=$(dirname $(which dune)):$(dirname $(which tar)) build_pkg foo 2>&1 | grep '^Error:'
+  Error: Program unzip not found in the tree or in PATH
+
+Build the package with bsdtar and tar, tar doesn't help but bsdtar should
+
+  $ PATH=$(dirname $(which dune)):$(dirname $(which tar)):$(dirname $(which bsdtar)) build_pkg foo
+
+Build with unzip
+
+  $ PATH=$(dirname $(which dune)):$(dirname $(which unzip)) build_pkg foo

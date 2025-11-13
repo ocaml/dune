@@ -39,16 +39,12 @@ let tar =
 ;;
 
 let which_bsdtar (bin_name : string) =
-  let bin_path =
-    match which bin_name with
-    | Some bin -> bin
-    | None -> Dune_engine.Utils.program_not_found "unzip" ~loc:None
-  in
-  let+ output, _error =
-    Process.run_capture ~display:Quiet Return bin_path [ "--version" ]
-  in
-  let re = Re.compile (Re.str "bsdtar") in
-  if Re.execp re output then Some bin_path else None
+  match which bin_name with
+  | Some bin ->
+    let+ output, _error = Process.run_capture ~display:Quiet Return bin [ "--version" ] in
+    let re = Re.compile (Re.str "bsdtar") in
+    if Re.execp re output then Some bin else None
+  | None -> Fiber.return None
 ;;
 
 let zip =
@@ -69,7 +65,14 @@ let zip =
         let* program = find_tar [ "bsdtar"; "tar" ] in
         (match program with
          | Some bin -> Fiber.return { Command.bin; make_args = make_tar_args }
-         | None -> Fiber.return @@ Dune_engine.Utils.program_not_found "unzip" ~loc:None))
+         | None ->
+           Fiber.return
+           @@ User_error.raise
+                [ Pp.textf "No program found to extract zip file. Tried"
+                ; Pp.text "unzip"
+                ; Pp.text "bsdtar"
+                ; Pp.text "tar"
+                ]))
   in
   { command; suffixes = [ ".zip" ] }
 ;;

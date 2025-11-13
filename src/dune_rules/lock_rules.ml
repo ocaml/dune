@@ -377,9 +377,7 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
          ~selected_depopts
          ~pins
          ~version_preference
-       |> Action.Full.make
-            ~can_go_in_shared_cache:false (* TODO: probably ok this allow this? *)
-            ~sandbox:Sandbox_config.needs_sandboxing)
+       |> Action.Full.make ~sandbox:Sandbox_config.needs_sandboxing)
       |> Action_builder.with_no_targets
       |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
     in

@@ -27,27 +27,23 @@ Solve the package using the default solver env:
   $ solve a
   Solution for dune.lock:
   - a.0.0.1
-  $ cat ${default_lock_dir}/a.pkg
+  $ cat ${default_lock_dir}/a.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (progn
-    (when
-     %{pkg-self:dev}
-     (run dune subst))
-    (run
-     dune
-     build
-     -p
-     %{pkg-self:name}
-     -j
-     %{jobs}
-     (when
-      (catch_undefined_var
-       (= %{pkg-self:foo} bar)
-       false)
-      --foobar)
-     @install)))
+   (all_platforms
+    ((action
+      (progn
+       (when %{pkg-self:dev} (run dune subst))
+       (run
+        dune
+        build
+        -p
+        %{pkg-self:name}
+        -j
+        %{jobs}
+        (when (catch_undefined_var (= %{pkg-self:foo} bar) false) --foobar)
+        @install))))))
 
 Make a custom solver env:
   $ cat > dune-workspace <<EOF
@@ -73,8 +69,10 @@ Run the solver using the new env:
   $ solve a
   Solution for dune.lock:
   - a.0.0.1
-  $ cat ${default_lock_dir}/a.pkg
+  $ cat ${default_lock_dir}/a.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (run dune build -p %{pkg-self:name} -j %{jobs} --foobar @install @doc))
+   (all_platforms
+    ((action
+      (run dune build -p %{pkg-self:name} -j %{jobs} --foobar @install @doc)))))

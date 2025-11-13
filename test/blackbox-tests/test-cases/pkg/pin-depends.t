@@ -16,11 +16,11 @@ Demonstrate our support for pin-depends.
   >   depends: [ "bar" ]
   >   pin-depends: [ "bar.1.0.0" "$1" ]
   > EOF
-  >   dune pkg lock && {
-  >     local pkg="${default_lock_dir}/bar.pkg"
+  >   dune_pkg_lock_normalized && {
+  >     local pkg="${default_lock_dir}/bar.1.0.0.pkg"
   >     grep version $pkg
   >     grep dev $pkg
-  >     print_source "bar"
+  >     print_source "bar.1.0.0"
   >   } 
   > }
 
@@ -187,8 +187,6 @@ Pin to an HTTP archive work
   $ echo tarball.tar > fake-curls
   $ PORT=1
   $ runtest "http://0.0.0.0:$PORT/tarball.tar" > output
-  Solution for dune.lock:
-  - bar.1.0.0
   $ grep "md5=$MD5_CHECKSUM" output 2>&1 > /dev/null && echo "Checksum matches"
   Checksum matches
 
@@ -199,14 +197,14 @@ Pin to an HTTP archive detects wrong hash
   >  (name foo)
   >  (libraries bar))
   > EOF
-  $ sed -i.tmp "s/$MD5_CHECKSUM/92449184682b45b5f07e811fdd61d35f/g" ${default_lock_dir}/bar.pkg
+  $ sed -i.tmp "s/$MD5_CHECKSUM/92449184682b45b5f07e811fdd61d35f/g" ${default_lock_dir}/bar.1.0.0.pkg
   $ rm -rf already-served
   $ dune build 2>&1 | grep -v "md5"
-  File "dune.lock/bar.pkg", line 6, characters 12-48:
+  File "dune.lock/bar.1.0.0.pkg", line 6, characters 12-48:
                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Invalid checksum, got
 
-Pin to an HTTP archive needs `dune pkg lock` to download and compute the hash
+Pin to an HTTP archive needs `dune_pkg_lock_normalized` to download and compute the hash
 of the target again
 
   $ rm tarball.tar already-served
@@ -215,8 +213,6 @@ of the target again
   $ MD5_CHECKSUM=$(md5sum tarball.tar  | cut -f1 -d' ')
   $ echo tarball.tar > fake-curls
   $ runtest "http://0.0.0.0:$PORT/tarball.tar" > output
-  Solution for dune.lock:
-  - bar.1.0.0
   $ grep "md5=$MD5_CHECKSUM" output 2>&1 > /dev/null && echo "Checksum matches"
   Checksum matches
 

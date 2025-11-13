@@ -83,7 +83,7 @@ Add ".ocamlformat" file.
   > EOF
 
 Lock the to trigger package management
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - printer.2.0
 
@@ -116,7 +116,7 @@ dependencies of the project are isolated from one another.
   > EOF
 
 Relock the project.
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   (no dependencies to lock)
 

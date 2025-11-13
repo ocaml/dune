@@ -36,54 +36,55 @@ Multiple opam repositories that define the same package:
   $ make_project foo | cat >dune-project
 
   $ runtest () {
-  >   dune pkg lock
-  >   cat ${default_lock_dir}/foo.pkg
+  >   version=$1
+  >   dune_pkg_lock_normalized
+  >   cat ${default_lock_dir}/foo.$version.pkg
   > }
 
 Define 1.0.0 in repo1 and 2.0.0 in repo2 for the same package:
 
   $ mkpkg repo1 1.0.0
-  $ runtest
+  $ runtest 1.0.0
   Solution for dune.lock:
   - foo.1.0.0
   (version 1.0.0)
   
   (build
-   (run echo repo1))
+   (all_platforms ((action (run echo repo1)))))
 
   $ mkpkg repo2 2.0.0
-  $ runtest
+  $ runtest 2.0.0
   Solution for dune.lock:
   - foo.2.0.0
   (version 2.0.0)
   
   (build
-   (run echo repo2))
+   (all_platforms ((action (run echo repo2)))))
 
 
 We define 2.0.0 in both repo1 and repo2, but repo1 is listed first, so it
 should take priority
 
   $ mkpkg repo1 2.0.0
-  $ runtest
+  $ runtest 2.0.0
   Solution for dune.lock:
   - foo.2.0.0
   (version 2.0.0)
   
   (build
-   (run echo repo1))
+   (all_platforms ((action (run echo repo1)))))
 
 Even though repo2 is of lesser priority, it has the best version so it should
 be selected:
 
   $ mkpkg repo2 3.0.0
-  $ runtest
+  $ runtest 3.0.0
   Solution for dune.lock:
   - foo.3.0.0
   (version 3.0.0)
   
   (build
-   (run echo repo2))
+   (all_platforms ((action (run echo repo2)))))
 
 Now we repeat the tests but with a git repo:
 
@@ -108,19 +109,19 @@ Now we repeat the tests but with a git repo:
   > }
 
   $ mkworkspace "repo1 repo2 git-repo"
-  $ runtest
+  $ runtest 3.0.0
   Solution for dune.lock:
   - foo.3.0.0
   (version 3.0.0)
   
   (build
-   (run echo repo2))
+   (all_platforms ((action (run echo repo2)))))
 
   $ mkworkspace "git-repo repo1 repo2"
-  $ runtest
+  $ runtest 3.0.0
   Solution for dune.lock:
   - foo.3.0.0
   (version 3.0.0)
   
   (build
-   (run echo git-repo))
+   (all_platforms ((action (run echo git-repo)))))

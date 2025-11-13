@@ -33,9 +33,10 @@ A few packages here so the errors could get large.
   >    foobar))
   > EOF
 
-  $ dune pkg lock
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  $ dune_pkg_lock_normalized
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.lock
+  
   Couldn't solve the package dependency formula.
   The following packages couldn't be found: foobar
   [1]

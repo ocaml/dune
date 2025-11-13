@@ -29,7 +29,7 @@ We depend on the foo package
 Locking should produce the newest package from the repo
 
   $ mkdir dune-cache
-  $ XDG_CACHE_HOME=$PWD/dune-cache dune pkg lock
+  $ XDG_CACHE_HOME=$PWD/dune-cache dune_pkg_lock_normalized
   Solution for dune.lock:
   - foo.1.0
 
@@ -45,7 +45,7 @@ Now let's assume a new version of foo is released.
 Locking should update the git repo in our cache folder and give us the newer
 version in the lock file
 
-  $ XDG_CACHE_HOME=$PWD/dune-cache dune pkg lock
+  $ XDG_CACHE_HOME=$PWD/dune-cache dune_pkg_lock_normalized
   Solution for dune.lock:
   - foo.1.1
 
@@ -73,21 +73,21 @@ should also be included.
 
 Locking should be successful and it should include the additional file
 
-  $ XDG_CACHE_HOME=$PWD/dune-cache dune pkg lock
+  $ XDG_CACHE_HOME=$PWD/dune-cache dune_pkg_lock_normalized
   Solution for dune.lock:
   - foo.1.2
 
   $ find ${default_lock_dir} | sort
   dune.lock
-  dune.lock/foo.files
-  dune.lock/foo.files/hello.txt
-  dune.lock/foo.pkg
+  dune.lock/foo.1.2.files
+  dune.lock/foo.1.2.files/hello.txt
+  dune.lock/foo.1.2.pkg
   dune.lock/lock.dune
 
 The extra-file should have the same content as the original file, we determine
 that by hashing with the checksum that we expected in the OPAM file
 
-  $ cmp -s ${default_lock_dir}/foo.files/$FILES_NAME "$FILES_FOLDER/$FILES_NAME" && echo "The contents match"
+  $ cmp -s ${default_lock_dir}/foo.1.2.files/$FILES_NAME "$FILES_FOLDER/$FILES_NAME" && echo "The contents match"
   The contents match
 
 The git repos support repo should also be able to handle unusual objects in our
@@ -124,5 +124,5 @@ Thus ls-tree should now also contain a commit object:
 With this set up in place, locking should still work as the commit is not
 relevant
 
-  $ XDG_CACHE_HOME=$PWD/dune-cache dune pkg lock 2> /dev/null && echo "Solution found"
+  $ XDG_CACHE_HOME=$PWD/dune-cache dune_pkg_lock_normalized > /dev/null && echo "Solution found"
   Solution found

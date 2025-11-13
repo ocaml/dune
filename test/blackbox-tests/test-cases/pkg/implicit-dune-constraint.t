@@ -14,8 +14,9 @@ dependency.
   > }
 
   $ test "2.0.0" 2>&1 | sed -E 's/3.[0-9]+/3.XX/g'
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.lock
+  
   Couldn't solve the package dependency formula.
   Selected candidates: foo.0.0.1 x.dev
   - dune -> (problem)
@@ -39,6 +40,6 @@ Create a fake project and ensure `dune` can be used as a dependency:
   >  (allow_empty)
   >  (depends dune))
   > EOF
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   (no dependencies to lock)

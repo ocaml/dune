@@ -21,6 +21,16 @@ Start with a project with a single package with no dependencies:
   (repositories
    (complete false)
    (used))
+  
+  (solved_for_platforms
+   ((arch x86_64)
+    (os linux))
+   ((arch arm64)
+    (os linux))
+   ((arch x86_64)
+    (os macos))
+   ((arch arm64)
+    (os macos)))
   $ dune pkg validate-lockdir
 
 Add a dependency to the project:
@@ -57,6 +67,16 @@ Add a non-local dependency to the package:
   (repositories
    (complete false)
    (used))
+  
+  (solved_for_platforms
+   ((arch x86_64)
+    (os linux))
+   ((arch arm64)
+    (os linux))
+   ((arch x86_64)
+    (os macos))
+   ((arch arm64)
+    (os macos)))
   $ dune pkg validate-lockdir
 
 Add a second dependency to the project:

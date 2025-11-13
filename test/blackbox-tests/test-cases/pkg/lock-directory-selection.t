@@ -1,5 +1,11 @@
 Test that dune can dynamically select a lockdir with a cond statement 
 
+Disable portable lockdirs, as there's no need to generate platform-specific
+lockdirs if each lockdir is portable across different platforms. The feature
+for generating platform-specific lockdirs should be removed in favour of making
+all lockdirs portable.
+  $ export DUNE_CONFIG__PORTABLE_LOCK_DIR=disabled
+
   $ . ./helpers.sh
 
   $ mkrepo

@@ -1,3 +1,13 @@
+Test that dune records platform information used by the solver in the lockdir.
+This information allows dune to later check that a build plan is compatible
+with the machine it is being built on.
+
+This is only relevant when not using portable lockdirs, since platform
+information is stored in the lockdir in a different way when using portable
+lockdirs. The analogous cases for portable lockdirs is tested in
+"portable-lockdirs-custom-solver-env" (setting non-platform variables in dune-workspace)
+and "portable-lockdirs-custom-platforms" (setting platform variables in dune-workspace).
+  $ export DUNE_CONFIG__PORTABLE_LOCK_DIR=disabled
 
   $ . ./helpers.sh
   $ mkrepo

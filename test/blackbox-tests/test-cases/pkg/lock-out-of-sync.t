@@ -1,5 +1,5 @@
 Trying to build a package after updating the dependencies in dune-project but
-without running `dune pkg lock` must raise an error in the context of Dune
+without running `dune_pkg_lock_normalized` must raise an error in the context of Dune
 Package Managemenet. 
 
   $ . ./helpers.sh
@@ -22,7 +22,7 @@ Create a fake project and lock it:
   >  (depends foo))
   > EOF
   $ add_mock_repo_if_needed
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - foo.0.0.1
 
@@ -47,7 +47,7 @@ It fails as we have not regenerated the lock:
   [1]
 
 We fix it and the build succeeds again:
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.0.1

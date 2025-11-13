@@ -32,7 +32,7 @@ Without a lockdir this command prints a hint but exits successfully.
   No lockdirs to validate.
 
 Make the lockdir.
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2
@@ -61,7 +61,7 @@ Remove the file but corrupt the lockdir metadata file.
   $ echo foo >> ${source_lock_dir}/lock.dune
   $ dune pkg validate-lockdir
   Failed to parse lockdir dune.lock:
-  File "dune.lock/lock.dune", line 8, characters 0-3:
+  File "dune.lock/lock.dune", line 18, characters 0-3:
   Error: S-expression of the form (<name> <values>...) expected
   
   Error: Some lockdirs do not contain solutions for local packages:
@@ -70,7 +70,7 @@ Remove the file but corrupt the lockdir metadata file.
 
 Regenerate the lockdir and validate the result.
   $ rm -r ${source_lock_dir}
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2
@@ -80,7 +80,7 @@ Regenerate the lockdir and validate the result.
   $ dune pkg validate-lockdir
 
 Remove a package from the lockdir.
-  $ rm ${source_lock_dir}/a.pkg
+  $ rm ${source_lock_dir}/a.0.0.1.pkg
 
 This results in an invalid lockdir due to the missing package.
   $ dune pkg validate-lockdir
@@ -96,7 +96,7 @@ This results in an invalid lockdir due to the missing package.
   [1]
 
 Regenerate the lockdir and validate the result.
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2
@@ -105,7 +105,7 @@ Regenerate the lockdir and validate the result.
   - e.0.0.1
   $ dune pkg validate-lockdir
 
-  $ cat ${default_lock_dir}/b.pkg
+  $ cat ${default_lock_dir}/b.0.0.2.pkg
   (version 0.0.2)
 Change the version of a dependency by modifying its lockfile.
   $ make_lockpkg b <<EOF
@@ -127,7 +127,7 @@ Now the lockdir is invalid as it doesn't contain the right version of "b".
   [1]
 
 Regenerate the lockdir and validate the result.
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2
@@ -154,7 +154,7 @@ The lockdir is invalid as the package "b" is now defined both locally and in the
   [1]
 
 Regenerate the lockdir and validate the result.
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2
@@ -181,7 +181,7 @@ The lockdir is invalid as it contains unnecessary packages.
   [1]
 
 Regenerate the lockdir and validate the result.
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2

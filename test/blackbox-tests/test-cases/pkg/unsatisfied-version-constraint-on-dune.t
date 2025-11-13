@@ -21,9 +21,10 @@ project:
   $ mkpkg dune 2.0.0
 
 Solve the dependencies:
-  $ dune pkg lock 2>&1 | sed -E 's/"3.[0-9]+"/"3.XX"/'
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  $ dune_pkg_lock_normalized | sed -E 's/"3.[0-9]+"/"3.XX"/'
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.lock
+  
   Couldn't solve the package dependency formula.
   Selected candidates: foo.dev
   - dune -> (problem)

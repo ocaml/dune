@@ -16,7 +16,7 @@ Test conversion of opam sources into lock dir package specifications
   - testpkg.0.0.1
 
   $ showpkg() {
-  >   local f="${default_lock_dir}"/testpkg.pkg
+  >   local f="${default_lock_dir}"/testpkg.0.0.1.pkg
   >   [ -e $f ] && cat $f
   > }
  

@@ -32,11 +32,11 @@ Here we demonstrate that projects override their sub projects:
   > (lang dune 3.13)
   > (package (name bar))
   > EOF
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - bar.dev
 
-  $ print_source "bar"
+  $ print_source "bar.dev"
   (source (fetch (url file://PWD/_bar))) (dev) 
 
   $ cd ..
@@ -65,7 +65,7 @@ select a priority:
   >  (package (name bar)))
   > EOF
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   File "prj1/dune-project", line 4, characters 1-21:
   4 |  (package (name bar)))
        ^^^^^^^^^^^^^^^^^^^^

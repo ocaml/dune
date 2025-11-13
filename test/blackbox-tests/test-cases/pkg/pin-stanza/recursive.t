@@ -32,7 +32,7 @@ Sources are traversed recursively (unlike pins)
   >  (depends foo))
   > EOF
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - bar.dev
   - foo.dev

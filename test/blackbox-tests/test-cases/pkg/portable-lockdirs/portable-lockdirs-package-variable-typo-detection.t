@@ -27,7 +27,7 @@ Create a workspace with some typos in package variable names
   >  (allow_empty))
   > EOF
 
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   File "dune-workspace", line 10, characters 4-19:
   10 |    (os_distribution debian)
            ^^^^^^^^^^^^^^^

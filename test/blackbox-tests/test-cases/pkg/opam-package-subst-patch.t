@@ -17,20 +17,22 @@ Make a package with a substs and patches field field
   $ solve with-substs-and-patches
   Solution for dune.lock:
   - with-substs-and-patches.0.0.1
-  $ append_to_lockpkg with-substs-and-patches <<EOF
+  $ append_to_lockpkg with-substs-and-patches.0.0.1 <<EOF
   > (source (copy $PWD/source))
   > EOF
 
 The lockfile should contain the substitute and patch actions.
 
-  $ cat ${default_lock_dir}/with-substs-and-patches.pkg 
+  $ cat ${default_lock_dir}/with-substs-and-patches.0.0.1.pkg 
   (version 0.0.1)
   
   (build
-   (progn
-    (substitute foo.patch.in foo.patch)
-    (patch foo.patch)
-    (run sh -c "[ -e foo.ml ] && cat foo.ml")))
+   (all_platforms
+    ((action
+      (progn
+       (substitute foo.patch.in foo.patch)
+       (patch foo.patch)
+       (run sh -c "[ -e foo.ml ] && cat foo.ml"))))))
   (source (copy $TESTCASE_ROOT/source))
 
   $ mkdir source

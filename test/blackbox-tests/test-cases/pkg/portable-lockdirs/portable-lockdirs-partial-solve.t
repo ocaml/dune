@@ -32,7 +32,7 @@ Make a package that is only available on macos.
 
 Solving will still succeed, but there'll be a warning because dune will attempt
 to solve for macos, linux, and windows by default.
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   Solution for dune.lock
   
   Dependencies common to all supported platforms:

@@ -15,15 +15,17 @@ variables can be found in `opam-var-os.t`.
   > solve testpkg
   Solution for dune.lock:
   - testpkg.0.0.1
-  $ cat ${default_lock_dir}/testpkg.pkg
+  $ cat ${default_lock_dir}/testpkg.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (progn
-    (run echo %{jobs})
-    (run echo %{make})
-    (run echo %{user})
-    (run echo %{group})))
+   (all_platforms
+    ((action
+      (progn
+       (run echo %{jobs})
+       (run echo %{make})
+       (run echo %{user})
+       (run echo %{group}))))))
 
 
 - The implementation of %{user} uses Unix.getlogin which doesn't work in our Linux CI job.

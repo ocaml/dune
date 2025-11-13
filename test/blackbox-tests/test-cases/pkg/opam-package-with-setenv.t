@@ -32,7 +32,7 @@ Make another package that depends on that and outputs the exported env vars
   - with-setenv.0.0.1
 The exported env from the first package should be in the lock dir.
 
-  $ cat ${default_lock_dir}/with-setenv.pkg
+  $ cat ${default_lock_dir}/with-setenv.0.0.1.pkg
   (version 0.0.1)
   
   (exported_env
@@ -41,18 +41,21 @@ The exported env from the first package should be in the lock dir.
    (+= prepend_without_trailing_sep "Prepended without trailing sep")
    (=+ append_without_leading_sep "Appended without leading sep")
    (=: append_with_leading_sep "Appended with leading sep"))
-  $ cat ${default_lock_dir}/deps-on-with-setenv.pkg
+  $ cat ${default_lock_dir}/deps-on-with-setenv.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (progn
-    (run sh -c "echo $EXPORTED_ENV_VAR")
-    (run sh -c "echo $prepend_without_trailing_sep")
-    (run sh -c "echo $prepend_with_trailing_sep")
-    (run sh -c "echo $append_without_leading_sep")
-    (run sh -c "echo $append_with_leading_sep")))
+   (all_platforms
+    ((action
+      (progn
+       (run sh -c "echo $EXPORTED_ENV_VAR")
+       (run sh -c "echo $prepend_without_trailing_sep")
+       (run sh -c "echo $prepend_with_trailing_sep")
+       (run sh -c "echo $append_without_leading_sep")
+       (run sh -c "echo $append_with_leading_sep"))))))
   
-  (depends with-setenv)
+  (depends
+   (all_platforms (with-setenv)))
 
 When building the second package the exported env vars from the first package should be
 available and all the env updates should be applied correctly.

@@ -20,10 +20,11 @@ Demonstrate the generation of the lock directory in the presence of "|"
   - b.0.0.1
 Only a1 or a2 should appear but not both.
 
-  $ cat ${default_lock_dir}/b.pkg
+  $ cat ${default_lock_dir}/b.0.0.1.pkg
   (version 0.0.1)
   
-  (depends a1)
+  (depends
+   (all_platforms (a1)))
 
 Release a new version of the second package in the disjunction to
 demonstrate that relative version numbers don't affect the

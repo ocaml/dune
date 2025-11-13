@@ -141,7 +141,10 @@ module Cache = struct
        versioning to the cache it will be safe to enable by default. 
 
        When we do this we should check [Int.equal Sys.word_size 64] since
-       32-bit platforms won't handle our cache size well. *)
+       32-bit platforms won't handle our cache size well.
+
+       When updating the default, don't forget to update the docs
+       @doc/reference/caches.rst *)
     Dune_config.Config.make_toggle ~name:"rev_store_cache" ~default:`Disabled
   ;;
 

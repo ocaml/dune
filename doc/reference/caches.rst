@@ -1,15 +1,49 @@
-**********
-Dune Cache
-**********
+Dune Caches
+===========
 
-.. TODO(diataxis) This is reference material with some explanation.
+Dune implements several different caches:
 
-Dune implements a cache of build results that is shared across different
-workspaces. Before executing a build rule, Dune looks it up in the shared
-cache, and if it finds a matching entry, Dune skips the rule's execution and
-restores the results in the current build directory. This can greatly speed up
-builds when different workspaces share code, as well as when switching branches
-or simply undoing some changes within the same workspace.
+- The build cache contains build artifacts that are shared across different
+  workspaces. This is the main cache, interacted with via the ``dune cache``
+  command.
+- The toolchains cache contains the compiler (and compiler variants) when they
+  can't be installed like regular packages, due to them not being relocatable.
+- The revision store is a git repository containing all revisions fetched via
+  git.
+- The LMDB cache is a subcache of the revision store, caching expensive
+  git lookup operations.
+
+Their location is as follows:
+
++------------------+----------------+------------------------------------+-----------------------------------+
+| Name             | Default status | Default location on Unix           | Alternate location (has priority) |
++==================+================+====================================+===================================+
+| Build cache      | Enabled        | ``XDG_CACHE_HOME/dune/db``         | ``DUNE_CACHE_ROOT/db``            |
++------------------+----------------+------------------------------------+-----------------------------------+
+| Toolchains cache | Enabled        | ``XDG_CACHE_HOME/dune/toolchains`` | ``DUNE_CACHE_ROOT/toolchains``    |
++------------------+----------------+------------------------------------+-----------------------------------+
+| Revision store   | Enabled        | ``XDG_CACHE_HOME/dune/git-repo``   | ``DUNE_CACHE_ROOT/git-repo``      |
++------------------+----------------+------------------------------------+-----------------------------------+
+| LMDB cache       | Disabled       | ``XDG_CACHE_HOME/dune/rev_store``  | ``DUNE_CACHE_ROOT/rev_store``     |
++------------------+----------------+------------------------------------+-----------------------------------+
+
+.. note::
+
+   On Windows, you can replace ``XDG_CACHE_HOME`` by ``%LOCALAPPDATA%\Microsoft\Windows\Temporary Internet Files``
+
+.. note::
+   It is in fact ``git-repo`` (with a dash) and ``rev_store`` (with an underline)
+
+.. TODO(diataxis) Above is reference material, below is explanation.
+
+How Caching Works
+=================
+
+Before executing a build rule, Dune hashes the rule and looks up that hash in
+the shared cache, and if it finds a matching entry, Dune skips the rule's
+execution and restores the results in the current build directory. This can
+greatly speed up builds when different workspaces share code, as well as when
+switching branches or simply undoing some changes within the same workspace.
 
 
 Configuration
@@ -108,4 +142,4 @@ Some build rules are inherently not reproducible because they involve running
 non-deterministic commands that, for example, depend on the current time or
 download files from the Internet. To prevent Dune from caching such rules, mark
 them as non-reproducible by using ``(deps (universe))``. Please see
-:doc:`concepts/dependency-spec`.
+:doc:`/concepts/dependency-spec` for more details.

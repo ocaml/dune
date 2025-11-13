@@ -82,20 +82,20 @@ Also test that XDG_CACHE_HOME is respected.
   $ XDG_CACHE_HOME=$PWD/fake-cache DUNE_CONFIG__TOOLCHAINS=enabled build_pkg ocaml-base-compiler 2>&1 | remove_hash
 
 Enumerate the contents of the fake toolchains directory:
-  $ find fake-cache/dune/db/toolchains/ | sort | remove_hash
-  fake-cache/dune/db/toolchains/
-  fake-cache/dune/db/toolchains/ocaml-base-compiler.1-HASH
-  fake-cache/dune/db/toolchains/ocaml-base-compiler.1-HASH/target
-  fake-cache/dune/db/toolchains/ocaml-base-compiler.1-HASH/target/bin
-  fake-cache/dune/db/toolchains/ocaml-base-compiler.1-HASH/target/bin/ocamlc
+  $ find fake-cache/dune/toolchains | sort | remove_hash
+  fake-cache/dune/toolchains
+  fake-cache/dune/toolchains/ocaml-base-compiler.1-HASH
+  fake-cache/dune/toolchains/ocaml-base-compiler.1-HASH/target
+  fake-cache/dune/toolchains/ocaml-base-compiler.1-HASH/target/bin
+  fake-cache/dune/toolchains/ocaml-base-compiler.1-HASH/target/bin/ocamlc
 
-Also test that DUNE_CACHE_ROOT is respected.
-  $ DUNE_CACHE_ROOT=$PWD/fake-cache DUNE_CONFIG__TOOLCHAINS=enabled build_pkg ocaml-base-compiler 2>&1 | remove_hash
+Also test that DUNE_CACHE_HOME is respected.
+  $ DUNE_CACHE_HOME=$PWD/other-fake-cache DUNE_CONFIG__TOOLCHAINS=enabled build_pkg ocaml-base-compiler 2>&1 | remove_hash
 
 Enumerate the contents of the fake toolchains directory:
-  $ find fake-cache/toolchains/ | sort | remove_hash
-  fake-cache/toolchains/
-  fake-cache/toolchains/ocaml-base-compiler.1-HASH
-  fake-cache/toolchains/ocaml-base-compiler.1-HASH/target
-  fake-cache/toolchains/ocaml-base-compiler.1-HASH/target/bin
-  fake-cache/toolchains/ocaml-base-compiler.1-HASH/target/bin/ocamlc
+  $ find other-fake-cache/toolchains/ | sort | remove_hash
+  other-fake-cache/toolchains/
+  other-fake-cache/toolchains/ocaml-base-compiler.1-HASH
+  other-fake-cache/toolchains/ocaml-base-compiler.1-HASH/target
+  other-fake-cache/toolchains/ocaml-base-compiler.1-HASH/target/bin
+  other-fake-cache/toolchains/ocaml-base-compiler.1-HASH/target/bin/ocamlc

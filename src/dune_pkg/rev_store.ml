@@ -1221,9 +1221,7 @@ let content_of_files t files =
 
 let get =
   Fiber.Lazy.create (fun () ->
-    let dir =
-      Path.L.relative (Lazy.force Dune_cache_storage.Layout.root_dir) [ "git-repo" ]
-    in
+    let dir = Lazy.force Dune_cache_storage.Layout.rev_store in
     load_or_create ~dir)
   |> Fiber.Lazy.force
 ;;

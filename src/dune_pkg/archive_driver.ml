@@ -68,10 +68,13 @@ let zip =
          | None ->
            Fiber.return
            @@ User_error.raise
-                [ Pp.textf "No program found to extract zip file. Tried"
-                ; Pp.text "unzip"
-                ; Pp.text "bsdtar"
-                ; Pp.text "tar"
+                [ Pp.enumerate
+                    [ "No program found to extract zip file. Tried"
+                    ; "unzip"
+                    ; "bsdtar"
+                    ; "tar"
+                    ]
+                    ~f:(fun a -> Pp.text a)
                 ]))
   in
   { command; suffixes = [ ".zip" ] }

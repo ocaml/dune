@@ -2,16 +2,15 @@ open Import
 
 let base_dir () =
   let cache_dir =
-    Lazy.force Dune_cache_storage.Layout.root_dir |> Path.as_outside_build_dir_exn
+    Lazy.force Dune_cache_storage.Layout.toolchains_dir |> Path.as_outside_build_dir_exn
   in
-  let path = Path.Outside_build_dir.relative cache_dir "toolchains" in
-  (let path = Path.outside_build_dir path in
+  (let path = Path.outside_build_dir cache_dir in
    if not (Path.Untracked.exists path) then Path.mkdir_p path;
    if not (Path.Untracked.is_directory path)
    then
      User_error.raise
        [ Pp.textf "Expected %s to be a directory but it is not." (Path.to_string path) ]);
-  path
+  cache_dir
 ;;
 
 let pkg_dir (pkg : Dune_pkg.Lock_dir.Pkg.t) =

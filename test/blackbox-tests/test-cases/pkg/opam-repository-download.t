@@ -3,7 +3,6 @@ Helper shell function that generates an opam file for a package:
   $ . ../git-helpers.sh
   $ . ./helpers.sh
   $ mkrepo
-  $ export DUNE_CACHE_ROOT=$(pwd)/.cache
 
 Make a mock repo tarball that will get used by dune to download the package
 
@@ -36,8 +35,8 @@ Make a mock repo tarball that will get used by dune to download the package
 
 Our cache folder should be populated with a revision store:
 
-  $ find $DUNE_CACHE_ROOT | grep HEAD | sort
-  $TESTCASE_ROOT/.cache/git-repo/HEAD
+  $ find $XDG_CACHE_HOME | grep HEAD | sort
+  $TESTCASE_ROOT/.cache/dune/git-repo/HEAD
 
 Make sure lock.dune contains the repo hash:
 

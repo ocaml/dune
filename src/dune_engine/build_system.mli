@@ -2,6 +2,13 @@
 
 open Import
 
+(** Fiber-local variable holding the current build session *)
+val current_session : Build_session.t option Fiber.Var.t
+
+(** Get the current build session from fiber-local storage.
+    Raises if no session is set (only valid during a build). *)
+val get_current_session_exn : unit -> Build_session.t Fiber.t
+
 (** Build a target, which may be a file or a directory. *)
 val build_file : Path.t -> unit Memo.t
 
@@ -54,10 +61,13 @@ val dep_on_alias_definition : Rules.Dir_rules.Alias_spec.item -> unit Action_bui
 
 (** {2 Running the build system} *)
 
-val run : (unit -> 'a Memo.t) -> ('a, [ `Already_reported ]) Result.t Fiber.t
+val run
+  :  Build_session.t
+  -> (unit -> 'a Memo.t)
+  -> ('a, [ `Already_reported ]) Result.t Fiber.t
 
 (** A variant of [run] that raises an [Already_reported] exception on error. *)
-val run_exn : (unit -> 'a Memo.t) -> 'a Fiber.t
+val run_exn : Build_session.t -> (unit -> 'a Memo.t) -> 'a Fiber.t
 
 (** {2 Misc} *)
 

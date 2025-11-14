@@ -155,17 +155,33 @@ let command_alias ?orig_name cmd term name =
   Cmd.v (Cmd.info name ~docs:"COMMAND ALIASES" ~doc ~man) term
 ;;
 
-(* The build system has some global state which makes it unsafe for
-   multiple instances of it to be executed concurrently, so we ensure
-   serialization by holding this mutex while running the build system. *)
-let build_system_mutex = Fiber.Mutex.create ()
+(* Global build coordinator enables true concurrent builds.
+
+   RPC and watch mode builds can now execute simultaneously by using
+   per-build sessions (Build_session.t) managed by the coordinator.
+
+   Key changes from mutex-based serialization:
+   1. Each build gets its own session with isolated state
+   2. Multiple builds can run concurrently
+   3. Hooks are per-build (attached to session)
+   4. Progress and errors are tracked per-build
+
+   Path locks remain global (correct - prevents file conflicts). *)
+let build_coordinator = lazy (Dune_engine.Build_coordinator.create ())
 
 let build f =
-  Hooks.End_of_build.once Promote.Diff_promotion.finalize;
-  Fiber.Mutex.with_lock build_system_mutex ~f:(fun () -> Build_system.run f)
+  Dune_engine.Build_coordinator.submit (Lazy.force build_coordinator) ~f:(fun ctx ->
+    (* Register finalize hook for THIS build *)
+    Dune_engine.Build_session.add_finalize_hook ctx Promote.Diff_promotion.finalize;
+    (* Run build with this build's context - finalize hooks will run
+       inside Build_system.run before the session scope ends *)
+    Build_system.run ctx f)
 ;;
 
 let build_exn f =
-  Hooks.End_of_build.once Promote.Diff_promotion.finalize;
-  Fiber.Mutex.with_lock build_system_mutex ~f:(fun () -> Build_system.run_exn f)
+  let open Fiber.O in
+  let+ res = build f in
+  match res with
+  | Ok res -> res
+  | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
 ;;

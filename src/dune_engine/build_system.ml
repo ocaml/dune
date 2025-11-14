@@ -2,6 +2,11 @@ open Import
 open Memo.O
 module Error = Build_system_error
 
+(* Per-build session stored in fiber-local storage.
+   This allows multiple concurrent builds while maintaining isolated state. *)
+let current_session : Build_session.t option Fiber.Var.t = Fiber.Var.create None
+let get_current_session_exn () = Fiber.Var.get_exn current_session
+
 module Progress = struct
   type t =
     { number_of_rules_discovered : int
@@ -44,7 +49,10 @@ module State = struct
     | Build_succeeded__now_waiting_for_changes
     | Build_failed__now_waiting_for_changes
 
-  let to_dyn = function
+  let to_dyn
+    =
+    (* Kept for potential debugging use *)
+    function
     | Initializing -> Dyn.variant "Initializing" []
     | Building progress -> Dyn.variant "Building" [ Progress.to_dyn progress ]
     | Restarting_current_build -> Dyn.variant "Restarting_current_build" []
@@ -53,6 +61,8 @@ module State = struct
     | Build_failed__now_waiting_for_changes ->
       Dyn.variant "Build_failed__now_waiting_for_changes" []
   ;;
+
+  let _ = to_dyn
 
   let equal x y =
     match x, y with
@@ -68,13 +78,21 @@ module State = struct
     | Build_failed__now_waiting_for_changes, _ -> false
   ;;
 
-  let t = Fiber.Svar.create Initializing
+  (* Global state aggregated from all concurrent builds for status line/RPC/Chrome trace.
+     Protected by mutex to prevent corruption when multiple builds update simultaneously. *)
+  let t = Svar.create Initializing
+  let errors = Svar.create Error.Set.empty
+  let state_mutex = Fiber.Mutex.create ()
+
+  (* Track number of active builds to prevent premature state transitions.
+     Only reset to idle states when the last build completes. *)
+  let active_builds = ref 0
+  let increment_active_builds () = active_builds := !active_builds + 1
+  let decrement_active_builds () = active_builds := !active_builds - 1
+  let get_active_builds () = !active_builds
 
   (* This mutable table is safe: it maps paths to lazily created mutexes. *)
   let locks : (Path.t, Fiber.Mutex.t) Table.t = Table.create (module Path) 32
-
-  (* This mutex ensures that at most one [run] is running in parallel. *)
-  let build_mutex = Fiber.Mutex.create ()
   let reset_progress () = Svar.write t (Building Progress.init)
   let set what = Svar.write t what
 
@@ -89,26 +107,44 @@ module State = struct
   ;;
 
   let incr_rule_done_exn () =
-    update_build_progress_exn ~f:(fun p ->
-      { p with number_of_rules_executed = p.number_of_rules_executed + 1 })
+    let open Fiber.O in
+    (* Update per-build session *)
+    let* session = get_current_session_exn () in
+    let* () = Build_session.incr_rules_executed session in
+    (* Also update global state (synchronized) for status line/Chrome trace *)
+    Fiber.Mutex.with_lock state_mutex ~f:(fun () ->
+      update_build_progress_exn ~f:(fun p ->
+        { p with number_of_rules_executed = p.number_of_rules_executed + 1 }))
   ;;
 
   let start_rule_exn () =
-    update_build_progress_exn ~f:(fun p ->
-      { p with number_of_rules_discovered = p.number_of_rules_discovered + 1 })
+    let open Fiber.O in
+    (* Update per-build session *)
+    let* session = get_current_session_exn () in
+    let* () = Build_session.incr_rules_discovered session in
+    (* Also update global state (synchronized) for status line/Chrome trace *)
+    Fiber.Mutex.with_lock state_mutex ~f:(fun () ->
+      update_build_progress_exn ~f:(fun p ->
+        { p with number_of_rules_discovered = p.number_of_rules_discovered + 1 }))
   ;;
 
-  let errors = Svar.create Error.Set.empty
   let reset_errors () = Svar.write errors Error.Set.empty
 
   let add_errors error_list =
     let open Fiber.O in
-    let* () =
-      update_build_progress_exn ~f:(fun p ->
-        { p with number_of_rules_failed = p.number_of_rules_failed + 1 })
-    in
-    List.fold_left error_list ~init:(Svar.read errors) ~f:Error.Set.add
-    |> Svar.write errors
+    (* Update per-build session *)
+    let* session = get_current_session_exn () in
+    let* () = Build_session.add_errors session error_list in
+    let* () = Build_session.incr_rules_failed session in
+    (* Also update global state (synchronized) for status line *)
+    Fiber.Mutex.with_lock state_mutex ~f:(fun () ->
+      let open Fiber.O in
+      let* () =
+        update_build_progress_exn ~f:(fun p ->
+          { p with number_of_rules_failed = p.number_of_rules_failed + 1 })
+      in
+      List.fold_left error_list ~init:(Svar.read errors) ~f:Error.Set.add
+      |> Svar.write errors)
   ;;
 end
 
@@ -121,20 +157,21 @@ let rec with_locks ~f = function
 ;;
 
 module Pending_targets = struct
-  (* All file and directory targets of non-sandboxed actions that are currently
-     being executed. On exit, we need to delete them as they might contain
-     garbage. *)
+  (* Per-build pending targets are now tracked in Build_session.
+     These functions update the current session's pending targets. *)
 
-  let t = ref Targets.empty
-  let remove targets = t := Targets.diff !t (Targets.Validated.unvalidate targets)
-  let add targets = t := Targets.combine !t (Targets.Validated.unvalidate targets)
+  let remove targets =
+    let open Fiber.O in
+    let* session = get_current_session_exn () in
+    Build_session.remove_pending_targets session (Targets.Validated.unvalidate targets);
+    Fiber.return ()
+  ;;
 
-  let () =
-    Hooks.End_of_build.always (fun () ->
-      let targets = !t in
-      t := Targets.empty;
-      Targets.iter targets ~file:Path.Build.unlink_no_err ~dir:(fun p ->
-        Path.rm_rf (Path.build p)))
+  let add targets =
+    let open Fiber.O in
+    let* session = get_current_session_exn () in
+    Build_session.add_pending_targets session (Targets.Validated.unvalidate targets);
+    Fiber.return ()
   ;;
 end
 
@@ -385,7 +422,8 @@ end = struct
       | None ->
         (* If the action is not sandboxed, we use [pending_file_targets] to
            clean up the build directory if the action is interrupted. *)
-        Pending_targets.add targets;
+        let open Fiber.O in
+        let* () = Pending_targets.add targets in
         Fiber.return None
     in
     let action =
@@ -426,9 +464,7 @@ end = struct
       ~finally:(fun () ->
         match sandbox with
         | Some sandbox -> Sandbox.destroy sandbox
-        | None ->
-          Pending_targets.remove targets;
-          Fiber.return ())
+        | None -> Pending_targets.remove targets)
       (fun () ->
          with_locks locks ~f:(fun () ->
            let* action_exec_result =
@@ -1149,36 +1185,69 @@ let handle_final_exns exns =
     List.iter exns ~f:report
 ;;
 
-let run f =
+let run session f =
   let open Fiber.O in
-  let* () = State.reset_progress () in
-  let* () = State.reset_errors () in
-  let f () =
+  (* Set the current session in fiber-local storage for the duration of this build *)
+  Fiber.Var.set current_session (Some session) (fun () ->
+    (* Register this build and initialize global state if first build. *)
+    let* () =
+      Fiber.Mutex.with_lock State.state_mutex ~f:(fun () ->
+        let open Fiber.O in
+        let was_idle = State.get_active_builds () = 0 in
+        State.increment_active_builds ();
+        let current_state = Fiber.Svar.read State.t in
+        (* Only reset when transitioning from idle states *)
+        if was_idle
+        then (
+          match current_state with
+          | Initializing
+          | Build_succeeded__now_waiting_for_changes
+          | Build_failed__now_waiting_for_changes
+          | Restarting_current_build ->
+            let* () = State.reset_progress () in
+            State.reset_errors ()
+          | Building _ ->
+            (* Should not happen: counter was 0 but state is Building *)
+            Fiber.return ())
+        else Fiber.return ())
+    in
+    let* () = Build_session.reset_errors session in
     let* res =
       Fiber.collect_errors (fun () ->
         Memo.run_with_error_handler f ~handle_error_no_raise:report_early_exn)
     in
-    let* () = (Build_config.get ()).write_error_summary (Fiber.Svar.read State.errors) in
+    let* errors = Build_session.get_errors session in
+    let* () = (Build_config.get ()).write_error_summary errors in
+    (* Cleanup pending targets for this session *)
+    Build_session.cleanup_pending_targets session;
+    (* Update global state: only transition to final state if this is the last build *)
+    let* () =
+      Fiber.Mutex.with_lock State.state_mutex ~f:(fun () ->
+        State.decrement_active_builds ();
+        if State.get_active_builds () = 0
+        then (
+          (* Last build finishing - transition to final state *)
+          let final_status =
+            match res with
+            | Ok _ -> State.Build_succeeded__now_waiting_for_changes
+            | Error exns ->
+              if List.exists exns ~f:caused_by_cancellation
+              then State.Restarting_current_build
+              else State.Build_failed__now_waiting_for_changes
+          in
+          State.set final_status)
+        else Fiber.return ())
+    in
     match res with
-    | Ok res ->
-      let+ () = State.set Build_succeeded__now_waiting_for_changes in
-      Ok res
+    | Ok res -> Fiber.return (Ok res)
     | Error exns ->
       handle_final_exns exns;
-      let final_status =
-        if List.exists exns ~f:caused_by_cancellation
-        then State.Restarting_current_build
-        else Build_failed__now_waiting_for_changes
-      in
-      let+ () = State.set final_status in
-      Error `Already_reported
-  in
-  Fiber.Mutex.with_lock State.build_mutex ~f
+      Fiber.return (Error `Already_reported))
 ;;
 
-let run_exn f =
+let run_exn session f =
   let open Fiber.O in
-  let+ res = run f in
+  let+ res = run session f in
   match res with
   | Ok res -> res
   | Error `Already_reported -> raise Dune_util.Report_error.Already_reported

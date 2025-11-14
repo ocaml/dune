@@ -67,6 +67,7 @@ The Coq theory stanza is very similar in form to the OCaml
      (plugins <ocaml_plugins>)
      (flags <coq_flags>)
      (modules_flags <flags_map>)
+     (generate_project_file)
      (coqdep_flags <coqdep_flags>)
      (coqdoc_flags <coqdoc_flags>)
      (coqdoc_header <coqdoc_header>)
@@ -190,8 +191,16 @@ The semantics of the fields are:
 - If the ``(mode vos)`` field is present, only Coq compiled interface files
   ``.vos`` will be produced for the theory. This is mainly useful in conjunction
   with ``dune coq top``, since this makes the compilation of dependencies much
-  faster, at the cost of skipping proof checking. (Appeared in :ref:`Coq lang
-  0.8<coq-lang>`).
+  faster, at the cost of skipping proof checking.
+  (Appeared in :ref:`Coq lang 0.8<coq-lang>`)
+
+- If the ``(generate_project_file)`` is present, a ``_CoqProject`` file is
+  generated in the Coq theory's directory (it is promoted to the source tree).
+  This file should be suitable for editor compatibility, and it provides an
+  alternative to using ``dune coq top``. It is however limited in two ways: it
+  is incompatible with the ``(modules_flags ...)`` field, and it cannot be
+  used for two Coq theories declared in the same directory.
+  (Appeared in :ref:`Coq lang 0.11<coq-lang>`)
 
 Coq Dependencies
 ~~~~~~~~~~~~~~~~
@@ -369,9 +378,9 @@ The Coq lang can be modified by adding the following to a
 The supported Coq language versions (not the version of Coq) are:
 
 - ``0.11``: Support for the ``(coqdoc_header ...)`` and ``(coqdoc_footer ...)``
-  fields.
+  fields, and for ``_CoqProject`` file generation.
 - ``0.10``: Support for the ``(coqdep_flags ...)`` field.
-- ``0.9``: Support for per-module flags with the ``(module_flags ...)``` field.
+- ``0.9``: Support for per-module flags with the ``(modules_flags ...)``` field.
 - ``0.8``: Support for composition with installed Coq theories;
   support for ``vos`` builds.
 

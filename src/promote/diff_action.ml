@@ -65,17 +65,25 @@ let exec ~rule_loc ({ Diff.optional; file1; file2; mode } as diff) =
              (Path.build file2)
              ~skip_trailing_cr:(mode = Text && Sys.win32))
       ~finally:(fun () ->
-        (match optional with
-         | false ->
-           (* Promote if in the source tree or not a target. The second case
-              means that the diffing have been done with the empty file *)
-           if in_source_or_target && not (is_copied_from_source_tree (Path.build file2))
-           then Diff_promotion.File.register_dep ~source_file ~correction_file:file2
-         | true ->
-           if in_source_or_target
-           then
-             Diff_promotion.File.register_intermediate ~source_file ~correction_file:file2
-           else remove_intermediate_file ());
+        let open Fiber.O in
+        let* () =
+          match optional with
+          | false ->
+            (* Promote if in the source tree or not a target. The second case
+               means that the diffing have been done with the empty file *)
+            if in_source_or_target && not (is_copied_from_source_tree (Path.build file2))
+            then Diff_promotion.File.register_dep ~source_file ~correction_file:file2
+            else Fiber.return ()
+          | true ->
+            if in_source_or_target
+            then
+              Diff_promotion.File.register_intermediate
+                ~source_file
+                ~correction_file:file2
+            else (
+              remove_intermediate_file ();
+              Fiber.return ())
+        in
         Fiber.return ()))
 ;;
 

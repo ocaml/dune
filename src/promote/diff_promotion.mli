@@ -13,18 +13,25 @@ module File : sig
   val register_intermediate
     :  source_file:Path.Source.t
     -> correction_file:Path.Build.t
-    -> unit
+    -> unit Fiber.t
 
   (** Register file to promote where the correction file is a dependency of the
       current action (rather than an intermediate file). [correction_file]
       refers to a path in the build dir, not in the sandbox (it can point to the
       sandbox, but the sandbox root will be stripped). *)
-  val register_dep : source_file:Path.Source.t -> correction_file:Path.Build.t -> unit
+  val register_dep
+    :  source_file:Path.Source.t
+    -> correction_file:Path.Build.t
+    -> unit Fiber.t
 end
 
 (** Promote all registered files if [!Clflags.auto_promote]. Otherwise dump the
     list of registered files to [_build/.to-promote]. *)
-val finalize : unit -> unit
+val finalize : unit -> unit Fiber.t
+
+(** Clear the promotion database. Called when starting a build with no other
+    active builds to ensure sequential builds work like the old implementation. *)
+val clear_db_if_idle : unit -> unit Fiber.t
 
 val load_db : unit -> File.t list
 val filter_db : Dune_rpc_private.Files_to_promote.t -> File.t list -> File.t list

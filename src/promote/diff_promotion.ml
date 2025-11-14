@@ -30,23 +30,40 @@ module File = struct
       ]
   ;;
 
-  let db : t list ref = ref []
+  (* Per-session promotion databases to avoid races with concurrent builds.
+     Each build session has its own DB that is accessed via fiber-local storage. *)
+  let dbs : (Dune_engine.Build_id.t, t list ref) Table.t =
+    Table.create (module Dune_engine.Build_id) 16
+  ;;
+
+  let get_current_db () =
+    let open Fiber.O in
+    let* session = Dune_engine.Build_system.get_current_session_exn () in
+    let build_id = Dune_engine.Build_session.id session in
+    Fiber.return (Table.find_or_add dbs build_id ~f:(fun _ -> ref []))
+  ;;
 
   let register_dep ~source_file ~correction_file =
+    let open Fiber.O in
+    let* db = get_current_db () in
     db
     := { src = snd (Path.Build.split_sandbox_root correction_file)
        ; staging = None
        ; dst = source_file
        }
-       :: !db
+       :: !db;
+    Fiber.return ()
   ;;
 
   let register_intermediate ~source_file ~correction_file =
+    let open Fiber.O in
     let staging = in_staging_area source_file in
     Path.mkdir_p (Path.build (Option.value_exn (Path.Build.parent staging)));
     Unix.rename (Path.Build.to_string correction_file) (Path.Build.to_string staging);
     let src = snd (Path.Build.split_sandbox_root correction_file) in
-    db := { src; staging = Some staging; dst = source_file } :: !db
+    let* db = get_current_db () in
+    db := { src; staging = Some staging; dst = source_file } :: !db;
+    Fiber.return ()
   ;;
 
   let do_promote ~correction_file ~dst =
@@ -66,33 +83,44 @@ module File = struct
   let promote ({ src; staging; dst } as file) =
     let correction_file = correction_file file in
     let correction_exists = Path.exists correction_file in
-    Console.print
-      [ Pp.box
-          ~indent:2
-          (if correction_exists
-           then
-             Pp.textf
-               "Promoting %s to %s."
-               (Path.to_string_maybe_quoted (Path.build src))
-               (Path.Source.to_string_maybe_quoted dst)
-           else
-             Pp.textf
-               "Skipping promotion of %s to %s as the %s is missing."
-               (Path.to_string_maybe_quoted (Path.build src))
-               (Path.Source.to_string_maybe_quoted dst)
-               (match staging with
-                | None -> "file"
-                | Some staging ->
-                  Format.sprintf
-                    "staging file (%s)"
-                    (Path.to_string_maybe_quoted (Path.build staging))))
-      ];
+    let dst_is_directory = Path.is_directory (Path.source dst) in
+    (* Only print promotion message if the destination is not a directory.
+       If dst is a directory, the promotion will fail but we should not
+       print a success message before the failure. *)
+    if not dst_is_directory
+    then
+      Console.print
+        [ Pp.box
+            ~indent:2
+            (if correction_exists
+             then
+               Pp.textf
+                 "Promoting %s to %s."
+                 (Path.to_string_maybe_quoted (Path.build src))
+                 (Path.Source.to_string_maybe_quoted dst)
+             else
+               Pp.textf
+                 "Skipping promotion of %s to %s as the %s is missing."
+                 (Path.to_string_maybe_quoted (Path.build src))
+                 (Path.Source.to_string_maybe_quoted dst)
+                 (match staging with
+                  | None -> "file"
+                  | Some staging ->
+                    Format.sprintf
+                      "staging file (%s)"
+                      (Path.to_string_maybe_quoted (Path.build staging))))
+        ];
     if correction_exists then do_promote ~correction_file ~dst
   ;;
 end
 
-let clear_cache () = File.db := []
-let () = Hooks.End_of_build.always clear_cache
+let clear_cache_for_session build_id =
+  match Table.find File.dbs build_id with
+  | Some db ->
+    db := [];
+    Table.remove File.dbs build_id
+  | None -> ()
+;;
 
 module P = Persistent.Make (struct
     type t = File.t list
@@ -121,6 +149,33 @@ let dump_db db =
 ;;
 
 let load_db () = Option.value ~default:[] (P.load db_file)
+
+(* Mutex to protect concurrent updates to the promotion database file *)
+let db_mutex = Fiber.Mutex.create ()
+
+(* Clear the promotion database. Called when starting a build with no other
+   active builds, ensuring sequential builds behave like the old implementation
+   where the database was cleared between builds. *)
+let clear_db_if_idle () =
+  Fiber.Mutex.with_lock db_mutex ~f:(fun () ->
+    dump_db [];
+    Fiber.return ())
+;;
+
+(* Merge new entries into existing database, removing duplicates *)
+let merge_db_entries ~existing ~new_entries =
+  (* Build a set of existing entries for deduplication *)
+  let existing_set =
+    List.fold_left existing ~init:[] ~f:(fun acc entry ->
+      if List.exists acc ~f:(fun e -> File.compare e entry = Eq)
+      then acc
+      else entry :: acc)
+  in
+  (* Add new entries that aren't already present *)
+  List.fold_left new_entries ~init:existing_set ~f:(fun acc entry ->
+    if List.exists acc ~f:(fun e -> File.compare e entry = Eq) then acc else entry :: acc)
+  |> List.rev
+;;
 
 let group_by_targets db =
   List.map db ~f:(fun { File.src; staging; dst } -> dst, (src, staging))
@@ -178,12 +233,27 @@ let do_promote db files_to_promote =
 ;;
 
 let finalize () =
-  let db =
+  let open Fiber.O in
+  let* current_db = File.get_current_db () in
+  let* session = Dune_engine.Build_system.get_current_session_exn () in
+  let build_id = Dune_engine.Build_session.id session in
+  let session_entries =
     match !Dune_engine.Clflags.promote with
-    | Some Automatically -> do_promote !File.db All
-    | Some Never | None -> !File.db
+    | Some Automatically -> do_promote !current_db All
+    | Some Never | None -> !current_db
   in
-  dump_db db
+  (* Merge this session's entries with existing database atomically *)
+  let* () =
+    Fiber.Mutex.with_lock db_mutex ~f:(fun () ->
+      let existing_db = load_db () in
+      let merged_db =
+        merge_db_entries ~existing:existing_db ~new_entries:session_entries
+      in
+      dump_db merged_db;
+      Fiber.return ())
+  in
+  clear_cache_for_session build_id;
+  Fiber.return ()
 ;;
 
 let promote_files_registered_in_last_run files_to_promote =

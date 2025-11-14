@@ -170,12 +170,29 @@ let command_alias ?orig_name cmd term name =
 let build_coordinator = lazy (Dune_engine.Build_coordinator.create ())
 
 let build f =
-  Dune_engine.Build_coordinator.submit (Lazy.force build_coordinator) ~f:(fun ctx ->
-    (* Register finalize hook for THIS build *)
-    Dune_engine.Build_session.add_finalize_hook ctx Promote.Diff_promotion.finalize;
-    (* Run build with this build's context - finalize hooks will run
-       inside Build_system.run before the session scope ends *)
-    Build_system.run ctx f)
+  let open Fiber.O in
+  let coordinator = Lazy.force build_coordinator in
+  (* Clear promotion database if no builds are active. This ensures sequential
+     builds behave like the old implementation where the database was cleared
+     between builds, while concurrent builds can safely merge their entries. *)
+  let* has_active = Dune_engine.Build_coordinator.has_active_builds coordinator in
+  let* () =
+    if has_active then Fiber.return () else Promote.Diff_promotion.clear_db_if_idle ()
+  in
+  Dune_engine.Build_coordinator.submit coordinator ~f:(fun ctx ->
+    (* Register finalize hook for THIS build - capture session in closure
+       so finalize can run outside the Fiber.Var.set scope *)
+    Dune_engine.Build_session.add_finalize_hook ctx (fun () ->
+      Fiber.Var.set
+        Dune_engine.Build_system.current_session
+        (Some ctx)
+        Promote.Diff_promotion.finalize);
+    (* Run build with this build's context *)
+    Fiber.finalize
+      (fun () -> Build_system.run ctx f)
+      ~finally:(fun () ->
+        (* Run finalize hooks after build completes and errors are reported *)
+        Dune_engine.Build_session.run_finalize_hooks ctx))
 ;;
 
 let build_exn f =

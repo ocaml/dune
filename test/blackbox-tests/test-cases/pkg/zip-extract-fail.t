@@ -28,10 +28,10 @@ Test the error message when unzip is needed but not installed.
 Build the package in an environment without unzip, or tar, or bsdtar.
 
   $ PATH=fakebin:$(dirname $(which dune)) build_pkg foo 2>&1 | grep '^Error:' -A 3
-  Error: - No program found to extract zip file. Tried:
-         - unzip
-         - bsdtar
-         - tar
+  Error: No program found to extract zip file. Tried:
+  - unzip
+  - bsdtar
+  - tar
 
 Build with only tar, not bsdtar or unzip, it should still fail to build
 
@@ -41,10 +41,10 @@ Build with only tar, not bsdtar or unzip, it should still fail to build
   > EOF
   $ chmod +x fakebin/tar
   $ PATH=fakebin:$(dirname $(which dune)) build_pkg foo 2>&1 | grep '^Error:' -A 3
-  Error: - No program found to extract zip file. Tried:
-         - unzip
-         - bsdtar
-         - tar
+  Error: No program found to extract zip file. Tried:
+  - unzip
+  - bsdtar
+  - tar
 
 Build the package with bsdtar and tar, tar doesn't help but bsdtar should. Note
 that however since we're aliasing bsdtar to cp, it will fail. This is because it
@@ -58,10 +58,10 @@ binary.
   > EOF
   $ chmod +x fakebin/bsdtar
   $ PATH=fakebin:$(dirname $(which dune)) build_pkg foo 2>&1 | grep '^Error:' -A 3
-  Error: - No program found to extract zip file. Tried:
-         - unzip
-         - bsdtar
-         - tar
+  Error: No program found to extract zip file. Tried:
+  - unzip
+  - bsdtar
+  - tar
 
 Build with unzip. Same failure expected as above.
 

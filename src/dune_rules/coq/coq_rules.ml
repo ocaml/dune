@@ -1175,19 +1175,22 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
     | m :: _ -> Bootstrap.make ~scope ~use_stdlib ~wrapper_name ~coq_lang_version m
   in
   let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
-  setup_coqproject_for_theory_rule
-    ~scope
-    ~sctx
-    ~dir
-    ~loc
-    ~theories_deps
-    ~wrapper_name
-    ~use_stdlib
-    ~ml_flags
-    ~coq_lang_version
-    ~stanza_flags
-    ~theory_dirs
-    coq_modules
+  (if not (snd s.generate_project_file)
+   then Memo.return ()
+   else
+     setup_coqproject_for_theory_rule
+       ~scope
+       ~sctx
+       ~dir
+       ~loc
+       ~theories_deps
+       ~wrapper_name
+       ~use_stdlib
+       ~ml_flags
+       ~coq_lang_version
+       ~stanza_flags
+       ~theory_dirs
+       coq_modules)
   >>> setup_coqdep_for_theory_rule
         ~sctx
         ~dir

@@ -169,6 +169,7 @@ module Theory = struct
     ; modules : Ordered_set_lang.t
     ; modules_flags : (Coq_module.Name.t * Ordered_set_lang.Unexpanded.t) list option
     ; boot : bool
+    ; generate_project_file : Loc.t * bool
     ; enabled_if : Blang.t
     ; buildable : Buildable.t
     ; coqdep_flags : Ordered_set_lang.Unexpanded.t
@@ -230,6 +231,18 @@ module Theory = struct
       | (loc, _) :: _ -> boot_has_deps loc)
   ;;
 
+  let check_generate_project_file (loc, generate_project_file) modules_flags =
+    if generate_project_file
+    then (
+      match modules_flags with
+      | None -> ()
+      | Some _ ->
+        User_error.raise
+          ~loc
+          [ Pp.textf "(generate_project_file) is not compatible with (modules_flags ...)"
+          ])
+  ;;
+
   module Per_file = struct
     let decode_pair =
       let+ mod_ = Coq_module.Name.decode
@@ -248,6 +261,11 @@ module Theory = struct
        and+ public = coq_public_decode
        and+ synopsis = field_o "synopsis" string
        and+ boot = field_b "boot" ~check:(Dune_lang.Syntax.since coq_syntax (0, 2))
+       and+ generate_project_file =
+         located
+         @@ field_b
+              "generate_project_file"
+              ~check:(Dune_lang.Syntax.since coq_syntax (0, 11))
        and+ modules = Ordered_set_lang.field "modules"
        and+ modules_flags =
          field_o
@@ -274,6 +292,8 @@ module Theory = struct
        in
        (* boot libraries cannot depend on other theories *)
        check_boot_has_no_deps boot buildable;
+       (* project files can only be generated when no per-module flags are configured. *)
+       check_generate_project_file generate_project_file modules_flags;
        let package = merge_package_public ~package ~public in
        { name
        ; package
@@ -282,6 +302,7 @@ module Theory = struct
        ; modules
        ; modules_flags
        ; boot
+       ; generate_project_file
        ; buildable
        ; enabled_if
        ; coqdep_flags

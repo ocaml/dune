@@ -72,7 +72,7 @@ let term =
       & flag
       & info
           [ "transitive" ]
-          ~doc:"Check for outdated packages in transitive dependencies")
+          ~doc:(Some "Check for outdated packages in transitive dependencies"))
   and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in

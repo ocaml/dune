@@ -691,7 +691,8 @@ let run
 
 let make ~what =
   let doc = Format.asprintf "%a packages defined in the workspace." pp_what what in
-  let name_ = Arg.info [] ~docv:"PACKAGE" in
+  (* CR-someday Alizter: document this option *)
+  let name_ = Arg.info [] ~docv:"PACKAGE" ~doc:None in
   let absolute_path =
     Arg.conv'
       ( (fun path ->
@@ -711,8 +712,9 @@ let make ~what =
             ~env:(Cmd.Env.info "DUNE_INSTALL_PREFIX")
             ~docv:"PREFIX"
             ~doc:
-              "Directory where files are copied. For instance binaries are copied into \
-               $(i,\\$prefix/bin), library files into $(i,\\$prefix/lib), etc...")
+              (Some
+                 "Directory where files are copied. For instance binaries are copied \
+                  into $(i,\\$prefix/bin), library files into $(i,\\$prefix/lib), etc..."))
     and+ destdir =
       Arg.(
         value
@@ -721,7 +723,7 @@ let make ~what =
             [ "destdir" ]
             ~env:(Cmd.Env.info "DESTDIR")
             ~docv:"PATH"
-            ~doc:"This directory is prepended to all installed paths.")
+            ~doc:(Some "This directory is prepended to all installed paths."))
     and+ libdir_from_command_line =
       Arg.(
         value
@@ -730,59 +732,80 @@ let make ~what =
             [ "libdir" ]
             ~docv:"PATH"
             ~doc:
-              "Directory where library files are copied, relative to $(b,prefix) or \
-               absolute. If $(b,--prefix) is specified the default is \
-               $(i,\\$prefix/lib). Only absolute path accepted.")
+              (Some
+                 "Directory where library files are copied, relative to $(b,prefix) or \
+                  absolute. If $(b,--prefix) is specified the default is \
+                  $(i,\\$prefix/lib). Only absolute path accepted."))
     and+ mandir_from_command_line =
       let doc =
         "Manually override the directory to install man pages. Only absolute path \
          accepted."
       in
-      Arg.(value & opt (some absolute_path) None & info [ "mandir" ] ~docv:"PATH" ~doc)
+      Arg.(
+        value
+        & opt (some absolute_path) None
+        & info [ "mandir" ] ~docv:"PATH" ~doc:(Some doc))
     and+ docdir_from_command_line =
       let doc =
         "Manually override the directory to install documentation files. Only absolute \
          path accepted."
       in
-      Arg.(value & opt (some absolute_path) None & info [ "docdir" ] ~docv:"PATH" ~doc)
+      Arg.(
+        value
+        & opt (some absolute_path) None
+        & info [ "docdir" ] ~docv:"PATH" ~doc:(Some doc))
     and+ etcdir_from_command_line =
       let doc =
         "Manually override the directory to install configuration files. Only absolute \
          path accepted."
       in
-      Arg.(value & opt (some absolute_path) None & info [ "etcdir" ] ~docv:"PATH" ~doc)
+      Arg.(
+        value
+        & opt (some absolute_path) None
+        & info [ "etcdir" ] ~docv:"PATH" ~doc:(Some doc))
     and+ bindir_from_command_line =
       let doc =
         "Manually override the directory to install public binaries. Only absolute path \
          accepted."
       in
-      Arg.(value & opt (some absolute_path) None & info [ "bindir" ] ~docv:"PATH" ~doc)
+      Arg.(
+        value
+        & opt (some absolute_path) None
+        & info [ "bindir" ] ~docv:"PATH" ~doc:(Some doc))
     and+ sbindir_from_command_line =
       let doc =
         "Manually override the directory to install files from sbin section. Only \
          absolute path accepted."
       in
-      Arg.(value & opt (some absolute_path) None & info [ "sbindir" ] ~docv:"PATH" ~doc)
+      Arg.(
+        value
+        & opt (some absolute_path) None
+        & info [ "sbindir" ] ~docv:"PATH" ~doc:(Some doc))
     and+ datadir_from_command_line =
       let doc =
         "Manually override the directory to install files from share section. Only \
          absolute path accepted."
       in
-      Arg.(value & opt (some absolute_path) None & info [ "datadir" ] ~docv:"PATH" ~doc)
+      Arg.(
+        value
+        & opt (some absolute_path) None
+        & info [ "datadir" ] ~docv:"PATH" ~doc:(Some doc))
     and+ libexecdir_from_command_line =
       let doc =
         "Manually override the directory to install executable library files. Only \
          absolute path accepted."
       in
       Arg.(
-        value & opt (some absolute_path) None & info [ "libexecdir" ] ~docv:"PATH" ~doc)
+        value
+        & opt (some absolute_path) None
+        & info [ "libexecdir" ] ~docv:"PATH" ~doc:(Some doc))
     and+ dry_run =
       Arg.(
         value
         & flag
         & info
             [ "dry-run" ]
-            ~doc:"Only display the file operations that would be performed.")
+            ~doc:(Some "Only display the file operations that would be performed."))
     and+ relocatable =
       Arg.(
         value
@@ -790,8 +813,9 @@ let make ~what =
         & info
             [ "relocatable" ]
             ~doc:
-              "Make the binaries relocatable (the installation directory can be moved). \
-               The installation directory must be specified with --prefix")
+              (Some
+                 "Make the binaries relocatable (the installation directory can be \
+                  moved). The installation directory must be specified with --prefix"))
     and+ create_install_files =
       Arg.(
         value
@@ -799,8 +823,10 @@ let make ~what =
         & info
             [ "create-install-files" ]
             ~doc:
-              "Do not directly install, but create install files in the root directory \
-               and create substituted files if needed in destdir (_destdir by default).")
+              (Some
+                 "Do not directly install, but create install files in the root \
+                  directory and create substituted files if needed in destdir (_destdir \
+                  by default)."))
     and+ pkgs = Arg.(value & pos_all package_name [] name_)
     and+ context =
       Arg.(
@@ -810,8 +836,9 @@ let make ~what =
             [ "context" ]
             ~docv:"CONTEXT"
             ~doc:
-              "Select context to install from. By default, install files from all \
-               defined contexts.")
+              (Some
+                 "Select context to install from. By default, install files from all \
+                  defined contexts."))
     and+ sections = Sections.term in
     let builder = Common.Builder.forbid_builds builder in
     let builder = Common.Builder.disable_log_file builder in

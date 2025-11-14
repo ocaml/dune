@@ -272,7 +272,7 @@ let command =
         & flag
         & info
             [ "quit-on-disconnect" ]
-            ~doc:"Quit if the connection to the server is lost.")
+            ~doc:(Some "Quit if the connection to the server is lost."))
     in
     let builder = Common.Builder.forbid_builds builder in
     let builder = Common.Builder.disable_log_file builder in

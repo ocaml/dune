@@ -162,7 +162,8 @@ let build =
         ]
     ]
   in
-  let name_ = Arg.info [] ~docv:"TARGET" in
+  (* CR-someday Alizter: document this option *)
+  let name_ = Arg.info [] ~docv:"TARGET" ~doc:None in
   let term =
     let+ builder = Common.Builder.term
     and+ targets = Arg.(value & pos_all dep [] name_)
@@ -174,10 +175,11 @@ let build =
             [ "alias-rec" ]
             ~docv:"ALIAS"
             ~doc:
-              "Build the alias $(docv) in its parent directory and all subdirectories. \
-               Equivalent to the build target $(b,@)$(docv). Example: $(b,--alias-rec \
-               dir/foo) builds the $(b,foo) alias in $(b,dir/) and all its \
-               subdirectories. Repeatable.")
+              (Some
+                 "Build the alias $(docv) in its parent directory and all \
+                  subdirectories. Equivalent to the build target $(b,@)$(docv). Example: \
+                  $(b,--alias-rec dir/foo) builds the $(b,foo) alias in $(b,dir/) and \
+                  all its subdirectories. Repeatable."))
     and+ aliases =
       Arg.(
         value
@@ -186,9 +188,10 @@ let build =
             [ "alias" ]
             ~docv:"ALIAS"
             ~doc:
-              "Build $(docv) in its parent directory only. Equivalent to the build \
-               target $(b,@@)$(docv). Example: $(b,--alias dir/foo) builds the $(b,foo) \
-               alias in $(b,dir/) only. Repeatable.")
+              (Some
+                 "Build $(docv) in its parent directory only. Equivalent to the build \
+                  target $(b,@@)$(docv). Example: $(b,--alias dir/foo) builds the \
+                  $(b,foo) alias in $(b,dir/) only. Repeatable."))
     in
     let targets = List.concat [ targets; aliases; aliases_rec ] in
     let targets =

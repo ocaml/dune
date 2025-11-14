@@ -107,7 +107,8 @@ let search_packages ~query () =
 
 let term =
   let+ builder = Common.Builder.term
-  and+ query = Arg.(value & pos 0 (some string) None & info [] ~docv:"QUERY") in
+  (* CR-someday Alizter: document this option *)
+  and+ query = Arg.(value & pos 0 (some string) None & info [] ~docv:"QUERY" ~doc:None) in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
   Scheduler.go_with_rpc_server ~common ~config (fun () ->

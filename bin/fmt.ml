@@ -66,9 +66,10 @@ let command =
         & info
             [ "preview" ]
             ~doc:
-              "Just print the changes that would be made without actually applying them. \
-               This takes precedence over auto-promote as that flag is assumed for this \
-               command.")
+              (Some
+                 "Just print the changes that would be made without actually applying \
+                  them. This takes precedence over auto-promote as that flag is assumed \
+                  for this command."))
     in
     let builder =
       Common.Builder.set_promote builder (if preview then Never else Automatically)

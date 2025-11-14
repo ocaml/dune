@@ -69,7 +69,7 @@ let zip =
            Fiber.return
            @@ User_error.raise
                 [ Pp.enumerate
-                    [ "No program found to extract zip file. Tried"
+                    [ "No program found to extract zip file. Tried:"
                     ; "unzip"
                     ; "bsdtar"
                     ; "tar"

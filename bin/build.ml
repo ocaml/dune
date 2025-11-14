@@ -166,8 +166,30 @@ let build =
   let term =
     let+ builder = Common.Builder.term
     and+ targets = Arg.(value & pos_all dep [] name_)
-    and+ aliases_rec = Arg.(value & opt_all Dep.alias_rec_arg [] & info [ "alias-rec" ])
-    and+ aliases = Arg.(value & opt_all Dep.alias_arg [] & info [ "alias" ]) in
+    and+ aliases_rec =
+      Arg.(
+        value
+        & opt_all Dep.alias_rec_arg []
+        & info
+            [ "alias-rec" ]
+            ~docv:"ALIAS"
+            ~doc:
+              "Build the alias $(docv) in its parent directory and all subdirectories. \
+               Equivalent to the build target $(b,@)$(docv). Example: $(b,--alias-rec \
+               dir/foo) builds the $(b,foo) alias in $(b,dir/) and all its \
+               subdirectories. Repeatable.")
+    and+ aliases =
+      Arg.(
+        value
+        & opt_all Dep.alias_arg []
+        & info
+            [ "alias" ]
+            ~docv:"ALIAS"
+            ~doc:
+              "Build $(docv) in its parent directory only. Equivalent to the build \
+               target $(b,@@)$(docv). Example: $(b,--alias dir/foo) builds the $(b,foo) \
+               alias in $(b,dir/) only. Repeatable.")
+    in
     let targets = List.concat [ targets; aliases; aliases_rec ] in
     let targets =
       match targets with

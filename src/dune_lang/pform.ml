@@ -219,32 +219,60 @@ end
 module Artifact = struct
   open Ocaml
 
+  type mod_ =
+    | Cm_kind of Ocaml.Cm_kind.t
+    | Cmt
+    | Cmti
+
+  let dyn_of_mod_ =
+    let open Dyn in
+    function
+    | Cm_kind x -> Ocaml.Cm_kind.to_dyn x
+    | Cmt -> variant "Cmt" []
+    | Cmti -> variant "Cmti" []
+  ;;
+
   type t =
-    | Mod of Cm_kind.t
+    | Mod of mod_
     | Lib of Mode.t
+
+  let compare_mod x y =
+    match x, y with
+    | Cm_kind x, Cm_kind y -> Ocaml.Cm_kind.compare x y
+    | Cm_kind _, _ -> Lt
+    | _, Cm_kind _ -> Gt
+    | Cmt, Cmt -> Eq
+    | Cmt, _ -> Lt
+    | _, Cmt -> Gt
+    | Cmti, Cmti -> Eq
+  ;;
 
   let compare x y =
     match x, y with
-    | Mod x, Mod y -> Cm_kind.compare x y
+    | Mod x, Mod y -> compare_mod x y
     | Mod _, _ -> Lt
     | _, Mod _ -> Gt
     | Lib x, Lib y -> Mode.compare x y
   ;;
 
   let ext = function
-    | Mod cm_kind -> Cm_kind.ext cm_kind
+    | Mod Cmt -> ".cmt"
+    | Mod Cmti -> ".cmti"
+    | Mod (Cm_kind cm_kind) -> Cm_kind.ext cm_kind
     | Lib mode -> Mode.compiled_lib_ext mode
   ;;
 
   let all =
-    List.map ~f:(fun kind -> Mod kind) Cm_kind.all
-    @ List.map ~f:(fun mode -> Lib mode) Mode.all
+    Mod Cmt
+    :: Mod Cmti
+    :: (List.map ~f:(fun kind -> Mod (Cm_kind kind)) Cm_kind.all
+        @ List.map ~f:(fun mode -> Lib mode) Mode.all)
   ;;
 
   let to_dyn a =
     let open Dyn in
     match a with
-    | Mod cm_kind -> variant "Mod" [ Cm_kind.to_dyn cm_kind ]
+    | Mod cm_kind -> variant "Mod" [ dyn_of_mod_ cm_kind ]
     | Lib mode -> variant "Lib" [ Mode.to_dyn mode ]
   ;;
 end
@@ -610,7 +638,13 @@ module Env = struct
     let macros =
       let macro (x : Macro.t) = No_info x in
       let artifact x =
-        String.drop (Artifact.ext x) 1, since ~version:(2, 0) (Macro.Artifact x)
+        let name = String.drop (Artifact.ext x) 1 in
+        let version =
+          match x with
+          | Mod Cmt | Mod Cmti -> 3, 21
+          | _ -> 2, 0
+        in
+        name, since ~version (Macro.Artifact x)
       in
       String.Map.of_list_exn
         ([ "exe", macro Exe

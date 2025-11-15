@@ -181,6 +181,7 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
     ~allow_overlaps:mel.allow_overlapping_dependencies
     ~forbidden_libraries:[]
     libraries
+    ~allow_unused_libraries:[]
     ~pps
     ~dune_version
 ;;

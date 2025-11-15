@@ -289,6 +289,7 @@ module Lib = struct
            ~plugins
            ~archives
            ~ppx_runtime_deps
+           ~allow_unused_libraries:[]
            ~foreign_archives
            ~native_archives:(Files native_archives)
            ~foreign_dll_files

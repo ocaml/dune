@@ -20,6 +20,7 @@ type t =
   ; flags : Ocaml_flags.Spec.t
   ; js_of_ocaml : Js_of_ocaml.In_buildable.t Js_of_ocaml.Mode.Pair.t
   ; allow_overlapping_dependencies : bool
+  ; allow_unused_libraries : (Loc.t * Lib_name.t) list
   ; ctypes : Ctypes_field.t option
   }
 
@@ -42,6 +43,22 @@ let decode_ocaml_flags = Ocaml_flags.Spec.decode
 let decode_modules = Modules_settings.decode
 let decode_lint = field "lint" Lint.decode ~default:Lint.default
 let decode_allow_overlapping = field_b "allow_overlapping_dependencies"
+
+let decode_allow_unused_libraries =
+  let config =
+    Config.make
+      ~name:"ALLOW_UNUSED_LIBRARIES"
+      ~of_string:Config.Toggle.of_string
+      ~default:`Disabled
+  in
+  field
+    "allow_unused_libraries"
+    (let* () = return () in
+     match Config.get config with
+     | `Disabled -> User_error.raise [ Pp.text "this field is disabled by default" ]
+     | `Enabled -> repeat (located Lib_name.decode))
+    ~default:[]
+;;
 
 let decode (for_ : for_) =
   let use_foreign =
@@ -119,6 +136,7 @@ let decode (for_ : for_) =
        >>> Js_of_ocaml.In_buildable.decode ~in_library ~mode:Wasm)
       ~default:Js_of_ocaml.In_buildable.default
   and+ allow_overlapping_dependencies = decode_allow_overlapping
+  and+ allow_unused_libraries = decode_allow_unused_libraries
   and+ version = Dune_lang.Syntax.get_exn Stanza.syntax
   and+ ctypes =
     field_o
@@ -182,6 +200,7 @@ let decode (for_ : for_) =
   ; flags
   ; js_of_ocaml = { js = js_of_ocaml; wasm = wasm_of_ocaml }
   ; allow_overlapping_dependencies
+  ; allow_unused_libraries
   ; ctypes
   }
 ;;

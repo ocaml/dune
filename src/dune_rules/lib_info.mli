@@ -151,6 +151,7 @@ val implements : _ t -> (Loc.t * Lib_name.t) option
 val requires : _ t -> Lib_dep.t list
 val parameters : _ t -> (Loc.t * Lib_name.t) list
 val ppx_runtime_deps : _ t -> (Loc.t * Lib_name.t) list
+val allow_unused_libraries : _ t -> (Loc.t * Lib_name.t) list
 val preprocess : _ t -> Preprocess.With_instrumentation.t Preprocess.Per_module.t
 val sub_systems : _ t -> Sub_system_info.t Sub_system_name.Map.t
 val enabled : _ t -> Enabled_status.t Memo.t
@@ -211,6 +212,7 @@ val create
   -> plugins:'a list Mode.Dict.t
   -> archives:'a list Mode.Dict.t
   -> ppx_runtime_deps:(Loc.t * Lib_name.t) list
+  -> allow_unused_libraries:(Loc.t * Lib_name.t) list
   -> foreign_archives:'a Mode.Map.Multi.t
   -> native_archives:'a native_archives
   -> foreign_dll_files:'a list

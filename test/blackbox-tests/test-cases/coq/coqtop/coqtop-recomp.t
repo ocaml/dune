@@ -29,27 +29,27 @@ https://github.com/ocaml/dune/pull/5457#issuecomment-1084161587).
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
   -native-compiler ondemand
-  -I lib/coq/../coq-core/plugins/btauto
-  -I lib/coq/../coq-core/plugins/cc
-  -I lib/coq/../coq-core/plugins/derive
-  -I lib/coq/../coq-core/plugins/extraction
-  -I lib/coq/../coq-core/plugins/firstorder
-  -I lib/coq/../coq-core/plugins/funind
-  -I lib/coq/../coq-core/plugins/ltac
-  -I lib/coq/../coq-core/plugins/ltac2
-  -I lib/coq/../coq-core/plugins/micromega
-  -I lib/coq/../coq-core/plugins/nsatz
-  -I lib/coq/../coq-core/plugins/number_string_notation
-  -I lib/coq/../coq-core/plugins/ring
-  -I lib/coq/../coq-core/plugins/rtauto
-  -I lib/coq/../coq-core/plugins/ssreflect
-  -I lib/coq/../coq-core/plugins/ssrmatching
-  -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial/p0
-  -I lib/coq/../coq-core/plugins/tutorial/p1
-  -I lib/coq/../coq-core/plugins/tutorial/p2
-  -I lib/coq/../coq-core/plugins/tutorial/p3
-  -I lib/coq/../coq-core/plugins/zify
+  -I .../plugins/btauto
+  -I .../plugins/cc
+  -I .../plugins/derive
+  -I .../plugins/extraction
+  -I .../plugins/firstorder
+  -I .../plugins/funind
+  -I .../plugins/ltac
+  -I .../plugins/ltac2
+  -I .../plugins/micromega
+  -I .../plugins/nsatz
+  -I .../plugins/number_string_notation
+  -I .../plugins/ring
+  -I .../plugins/rtauto
+  -I .../plugins/ssreflect
+  -I .../plugins/ssrmatching
+  -I .../plugins/tauto
+  -I .../plugins/tutorial/p0
+  -I .../plugins/tutorial/p1
+  -I .../plugins/tutorial/p2
+  -I .../plugins/tutorial/p3
+  -I .../plugins/zify
   -R coq/theories Coq
   -R $TESTCASE_ROOT/_build/default/dir basic
   $ dune coq top --display short --toplevel echo dir/bar.v | ../scrub_coq_args.sh
@@ -61,27 +61,27 @@ https://github.com/ocaml/dune/pull/5457#issuecomment-1084161587).
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
   -native-compiler ondemand
-  -I lib/coq/../coq-core/plugins/btauto
-  -I lib/coq/../coq-core/plugins/cc
-  -I lib/coq/../coq-core/plugins/derive
-  -I lib/coq/../coq-core/plugins/extraction
-  -I lib/coq/../coq-core/plugins/firstorder
-  -I lib/coq/../coq-core/plugins/funind
-  -I lib/coq/../coq-core/plugins/ltac
-  -I lib/coq/../coq-core/plugins/ltac2
-  -I lib/coq/../coq-core/plugins/micromega
-  -I lib/coq/../coq-core/plugins/nsatz
-  -I lib/coq/../coq-core/plugins/number_string_notation
-  -I lib/coq/../coq-core/plugins/ring
-  -I lib/coq/../coq-core/plugins/rtauto
-  -I lib/coq/../coq-core/plugins/ssreflect
-  -I lib/coq/../coq-core/plugins/ssrmatching
-  -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial/p0
-  -I lib/coq/../coq-core/plugins/tutorial/p1
-  -I lib/coq/../coq-core/plugins/tutorial/p2
-  -I lib/coq/../coq-core/plugins/tutorial/p3
-  -I lib/coq/../coq-core/plugins/zify
+  -I .../plugins/btauto
+  -I .../plugins/cc
+  -I .../plugins/derive
+  -I .../plugins/extraction
+  -I .../plugins/firstorder
+  -I .../plugins/funind
+  -I .../plugins/ltac
+  -I .../plugins/ltac2
+  -I .../plugins/micromega
+  -I .../plugins/nsatz
+  -I .../plugins/number_string_notation
+  -I .../plugins/ring
+  -I .../plugins/rtauto
+  -I .../plugins/ssreflect
+  -I .../plugins/ssrmatching
+  -I .../plugins/tauto
+  -I .../plugins/tutorial/p0
+  -I .../plugins/tutorial/p1
+  -I .../plugins/tutorial/p2
+  -I .../plugins/tutorial/p3
+  -I .../plugins/zify
   -R coq/theories Coq
   -R $TESTCASE_ROOT/_build/default/dir basic
   $ dune clean
@@ -98,27 +98,27 @@ https://github.com/ocaml/dune/pull/5457#issuecomment-1084161587).
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
   -native-compiler ondemand
-  -I lib/coq/../coq-core/plugins/btauto
-  -I lib/coq/../coq-core/plugins/cc
-  -I lib/coq/../coq-core/plugins/derive
-  -I lib/coq/../coq-core/plugins/extraction
-  -I lib/coq/../coq-core/plugins/firstorder
-  -I lib/coq/../coq-core/plugins/funind
-  -I lib/coq/../coq-core/plugins/ltac
-  -I lib/coq/../coq-core/plugins/ltac2
-  -I lib/coq/../coq-core/plugins/micromega
-  -I lib/coq/../coq-core/plugins/nsatz
-  -I lib/coq/../coq-core/plugins/number_string_notation
-  -I lib/coq/../coq-core/plugins/ring
-  -I lib/coq/../coq-core/plugins/rtauto
-  -I lib/coq/../coq-core/plugins/ssreflect
-  -I lib/coq/../coq-core/plugins/ssrmatching
-  -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial/p0
-  -I lib/coq/../coq-core/plugins/tutorial/p1
-  -I lib/coq/../coq-core/plugins/tutorial/p2
-  -I lib/coq/../coq-core/plugins/tutorial/p3
-  -I lib/coq/../coq-core/plugins/zify
+  -I .../plugins/btauto
+  -I .../plugins/cc
+  -I .../plugins/derive
+  -I .../plugins/extraction
+  -I .../plugins/firstorder
+  -I .../plugins/funind
+  -I .../plugins/ltac
+  -I .../plugins/ltac2
+  -I .../plugins/micromega
+  -I .../plugins/nsatz
+  -I .../plugins/number_string_notation
+  -I .../plugins/ring
+  -I .../plugins/rtauto
+  -I .../plugins/ssreflect
+  -I .../plugins/ssrmatching
+  -I .../plugins/tauto
+  -I .../plugins/tutorial/p0
+  -I .../plugins/tutorial/p1
+  -I .../plugins/tutorial/p2
+  -I .../plugins/tutorial/p3
+  -I .../plugins/zify
   -R coq/theories Coq
   -R $TESTCASE_ROOT/_build/default/dir basic
   $ (cd dir && dune coq top --root .. --display short --toplevel echo dir/bar.v) | ../scrub_coq_args.sh
@@ -132,27 +132,27 @@ https://github.com/ocaml/dune/pull/5457#issuecomment-1084161587).
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
   -native-compiler ondemand
-  -I lib/coq/../coq-core/plugins/btauto
-  -I lib/coq/../coq-core/plugins/cc
-  -I lib/coq/../coq-core/plugins/derive
-  -I lib/coq/../coq-core/plugins/extraction
-  -I lib/coq/../coq-core/plugins/firstorder
-  -I lib/coq/../coq-core/plugins/funind
-  -I lib/coq/../coq-core/plugins/ltac
-  -I lib/coq/../coq-core/plugins/ltac2
-  -I lib/coq/../coq-core/plugins/micromega
-  -I lib/coq/../coq-core/plugins/nsatz
-  -I lib/coq/../coq-core/plugins/number_string_notation
-  -I lib/coq/../coq-core/plugins/ring
-  -I lib/coq/../coq-core/plugins/rtauto
-  -I lib/coq/../coq-core/plugins/ssreflect
-  -I lib/coq/../coq-core/plugins/ssrmatching
-  -I lib/coq/../coq-core/plugins/tauto
-  -I lib/coq/../coq-core/plugins/tutorial/p0
-  -I lib/coq/../coq-core/plugins/tutorial/p1
-  -I lib/coq/../coq-core/plugins/tutorial/p2
-  -I lib/coq/../coq-core/plugins/tutorial/p3
-  -I lib/coq/../coq-core/plugins/zify
+  -I .../plugins/btauto
+  -I .../plugins/cc
+  -I .../plugins/derive
+  -I .../plugins/extraction
+  -I .../plugins/firstorder
+  -I .../plugins/funind
+  -I .../plugins/ltac
+  -I .../plugins/ltac2
+  -I .../plugins/micromega
+  -I .../plugins/nsatz
+  -I .../plugins/number_string_notation
+  -I .../plugins/ring
+  -I .../plugins/rtauto
+  -I .../plugins/ssreflect
+  -I .../plugins/ssrmatching
+  -I .../plugins/tauto
+  -I .../plugins/tutorial/p0
+  -I .../plugins/tutorial/p1
+  -I .../plugins/tutorial/p2
+  -I .../plugins/tutorial/p3
+  -I .../plugins/zify
   -R coq/theories Coq
   -R $TESTCASE_ROOT/_build/default/dir basic
 

@@ -250,7 +250,8 @@ module Theory = struct
       mod_, flags
     ;;
 
-    let decode = enter (repeat decode_pair)
+    let decode = repeat (enter decode_pair)
+    let broken_decode = enter (repeat decode_pair)
   end
 
   let decode =
@@ -268,9 +269,13 @@ module Theory = struct
               ~check:(Dune_lang.Syntax.since coq_syntax (0, 11))
        and+ modules = Ordered_set_lang.field "modules"
        and+ modules_flags =
-         field_o
-           "modules_flags"
-           (Dune_lang.Syntax.since coq_syntax (0, 9) >>> Per_file.decode)
+         let* version = Dune_lang.Syntax.get_exn coq_syntax in
+         if version >= (0, 11)
+         then field_o "modules_flags" Per_file.decode
+         else
+           field_o
+             "modules_flags"
+             (Dune_lang.Syntax.since coq_syntax (0, 9) >>> Per_file.broken_decode)
        and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
        and+ buildable = Buildable.decode
        and+ coqdep_flags =

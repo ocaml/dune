@@ -378,9 +378,11 @@ The Coq lang can be modified by adding the following to a
 The supported Coq language versions (not the version of Coq) are:
 
 - ``0.11``: Support for the ``(coqdoc_header ...)`` and ``(coqdoc_footer ...)``
-  fields, and for ``_CoqProject`` file generation.
+  fields, for ``_CoqProject`` file generation, and multiple modules in
+  ``(modules_flags ...)``.
 - ``0.10``: Support for the ``(coqdep_flags ...)`` field.
-- ``0.9``: Support for per-module flags with the ``(modules_flags ...)``` field.
+- ``0.9``: Support for per-module flags with the ``(modules_flags ...)`` field,
+  limited to a single module due to a bug.
 - ``0.8``: Support for composition with installed Coq theories;
   support for ``vos`` builds.
 

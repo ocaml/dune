@@ -300,6 +300,7 @@ module Macro = struct
     | Artifact of Artifact.t
     | Pkg
     | Pkg_self
+    | Ppx
 
   let compare x y =
     match x, y with
@@ -357,6 +358,9 @@ module Macro = struct
     | Pkg_self, Pkg_self -> Eq
     | Pkg_self, _ -> Lt
     | _, Pkg_self -> Gt
+    | Ppx, Ppx -> Eq
+    | Ppx, _ -> Lt
+    | _, Ppx -> Gt
     | Artifact x, Artifact y -> Artifact.compare x y
   ;;
 
@@ -384,6 +388,7 @@ module Macro = struct
     | Artifact ext -> variant "Artifact" [ Artifact.to_dyn ext ]
     | Pkg -> variant "Pkg" []
     | Pkg_self -> variant "Pkg_self" []
+    | Ppx -> string "Ppx"
   ;;
 
   let encode = function
@@ -407,6 +412,7 @@ module Macro = struct
     | Env -> Ok "env"
     | Pkg -> Ok "pkg"
     | Pkg_self -> Ok "pkg-self"
+    | Ppx -> Ok "ppx"
     | Artifact a -> Ok (String.drop (Artifact.ext a) 1)
   ;;
 end
@@ -672,6 +678,7 @@ module Env = struct
          ; "path-no-dep", deleted_in ~version:(1, 0) Macro.Path_no_dep
          ; "ocaml-config", macro Ocaml_config
          ; "env", since ~version:(1, 4) Macro.Env
+         ; "ppx", since ~version:(3, 21) Macro.Ppx
          ; "coq", macro Coq_config
          ]
          @ List.map ~f:artifact Artifact.all)

@@ -8,7 +8,7 @@ let term =
     let doc =
       "Print opam filenames, each on their own line. This ignores the --format argument."
     in
-    Arg.(value & flag & info [ "files" ] ~doc)
+    Arg.(value & flag & info [ "files" ] ~doc:(Some doc))
   in
   let common, config = Common.init builder in
   Scheduler.go_with_rpc_server ~common ~config

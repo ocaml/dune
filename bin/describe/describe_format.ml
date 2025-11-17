@@ -8,7 +8,7 @@ let all = [ "sexp", Sexp; "csexp", Csexp ]
 
 let arg =
   let doc = Printf.sprintf "$(docv) must be %s" (Arg.doc_alts_enum all) in
-  Arg.(value & opt (enum all) Sexp & info [ "format" ] ~docv:"FORMAT" ~doc)
+  Arg.(value & opt (enum all) Sexp & info [ "format" ] ~docv:"FORMAT" ~doc:(Some doc))
 ;;
 
 let print_as_sexp dyn =

@@ -15,7 +15,10 @@ let info = Cmd.info "dump" ~doc ~man
 
 let term =
   let+ builder = Common.Builder.term
-  and+ file = Arg.(required & pos 0 (some Arg.path) None & Arg.info [] ~docv:"FILE") in
+  and+ file =
+    (* CR-someday Alizter: document this option *)
+    Arg.(required & pos 0 (some Arg.path) None & Arg.info [] ~docv:"FILE" ~doc:None)
+  in
   let _common, _config = Common.init builder in
   let (Persistent.T ((module D), data)) = Persistent.load_exn (Arg.Path.path file) in
   Console.print [ Dyn.pp (D.to_dyn data) ]

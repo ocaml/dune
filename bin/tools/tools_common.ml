@@ -88,10 +88,11 @@ let which_command dev_tool =
         & info
             [ "allow-not-installed" ]
             ~doc:
-              (sprintf
-                 "If %s is not installed as a dev tool, still print where it would be \
-                  installed."
-                 exe_name))
+              (Some
+                 (sprintf
+                    "If %s is not installed as a dev tool, still print where it would be \
+                     installed."
+                    exe_name)))
     in
     let _ : Common.t * Dune_config_file.Dune_config.t = Common.init builder in
     if allow_not_installed || Path.exists exe_path
@@ -128,7 +129,8 @@ let exec_command dev_tool =
   let exe_name = Pkg_dev_tool.exe_name dev_tool in
   let term =
     let+ builder = Common.Builder.term
-    and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS")) in
+    (* CR-someday Alizter: document this option *)
+    and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS" ~doc:None)) in
     let common, config = Common.init builder in
     lock_build_and_run_dev_tool ~common ~config builder dev_tool ~args
   in
@@ -156,7 +158,9 @@ let env_command =
       Arg.(
         value
         & flag
-        & info [ "fish" ] ~doc:"Print command for the fish shell rather than POSIX shells")
+        & info
+            [ "fish" ]
+            ~doc:(Some "Print command for the fish shell rather than POSIX shells"))
     in
     let _ : Common.t * Dune_config.t = Common.init builder in
     if fish

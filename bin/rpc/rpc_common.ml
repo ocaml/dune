@@ -60,7 +60,7 @@ let client_term builder f =
 
 let wait_term =
   let doc = "Poll until server starts listening and then establish connection." in
-  Arg.(value & flag & info [ "wait" ] ~doc)
+  Arg.(value & flag & info [ "wait" ] ~doc:(Some doc))
 ;;
 
 let establish_connection () =

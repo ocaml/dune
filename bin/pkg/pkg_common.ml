@@ -74,7 +74,7 @@ module Version_preference = struct
     Arg.(
       value
       & opt (some (enum all_by_string)) None
-      & info [ "version-preference" ] ~doc ~docv)
+      & info [ "version-preference" ] ~doc:(Some doc) ~docv)
   ;;
 
   let choose ~from_arg ~from_context =
@@ -181,7 +181,9 @@ module Lock_dirs_arg = struct
                []
                ~docv:"LOCKDIRS"
                ~doc:
-                 "Lock directories to check for outdated packages. Defaults to dune.lock.")
+                 (Some
+                    "Lock directories to check for outdated packages. Defaults to \
+                     dune.lock."))
        in
        Selected (List.map arg ~f:Path.Source.of_string))
       (let+ _all =
@@ -190,7 +192,9 @@ module Lock_dirs_arg = struct
            & flag
            & info
                [ "all" ]
-               ~doc:"Check all lock directories in the workspace for outdated packages.")
+               ~doc:
+                 (Some
+                    "Check all lock directories in the workspace for outdated packages."))
        in
        All)
   ;;

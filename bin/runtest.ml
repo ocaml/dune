@@ -34,7 +34,8 @@ let runtest_info =
 ;;
 
 let runtest_term =
-  let name = Arg.info [] ~docv:"TEST" in
+  (* CR-someday Alizter: document this option *)
+  let name = Arg.info [] ~docv:"TEST" ~doc:None in
   let+ builder = Common.Builder.term
   and+ test_paths = Arg.(value & pos_all string [ "." ] name) in
   let common, config = Common.init builder in

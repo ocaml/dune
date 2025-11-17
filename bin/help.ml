@@ -107,7 +107,9 @@ let info = Cmd.info "help" ~doc ~man ~envs:Common.envs
 let term =
   Term.ret
   @@ let+ man_format = Arg.man_format
-     and+ what = Arg.(value & pos 0 (some (enum commands)) None & info [] ~docv:"TOPIC")
+     and+ what =
+       (* CR-someday Alizter: document this option *)
+       Arg.(value & pos 0 (some (enum commands)) None & info [] ~docv:"TOPIC" ~doc:None)
      and+ () = Common.build_info in
      match what with
      | None -> `Help (man_format, Some "help")

@@ -541,7 +541,8 @@ let term =
   let+ builder = Common.Builder.term
   and+ version_preference = Version_preference.term
   and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term
-  and+ print_perf_stats = Arg.(value & flag & info [ "print-perf-stats" ]) in
+  (* CR-someday Alizter: document this option *)
+  and+ print_perf_stats = Arg.(value & flag & info [ "print-perf-stats" ] ~doc:None) in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
   Scheduler.go_with_rpc_server ~common ~config (fun () ->

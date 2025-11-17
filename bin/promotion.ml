@@ -52,7 +52,10 @@ module Apply = struct
 
   let term =
     let+ builder = Common.Builder.term
-    and+ files = Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE") in
+    and+ files =
+      (* CR-someday Alizter: document this option *)
+      Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
+    in
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
     match Dune_util.Global_lock.lock ~timeout:None with
@@ -82,7 +85,10 @@ module Diff = struct
 
   let term =
     let+ builder = Common.Builder.term
-    and+ files = Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE") in
+    and+ files =
+      (* CR-someday Alizter: document this option *)
+      Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
+    in
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
     Scheduler.go_with_rpc_server ~common ~config (fun () ->
@@ -97,7 +103,10 @@ module Files = struct
 
   let term =
     let+ builder = Common.Builder.term
-    and+ files = Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE") in
+    and+ files =
+      (* CR-someday Alizter: document this option *)
+      Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
+    in
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
     Scheduler.go_with_rpc_server ~common ~config (fun () ->

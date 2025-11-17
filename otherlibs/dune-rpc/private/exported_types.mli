@@ -234,7 +234,10 @@ module Compound_user_error : sig
   val to_dyn : t -> Dyn.t
   val annot : t list Stdune.User_message.Annots.Key.t
 
-  val make
+  (** Make a [t] with severity as [Error]. *)
+  val make : main:User_message.t -> related:User_message.t list -> t
+
+  val make_with_severity
     :  main:User_message.t
     -> related:User_message.t list
     -> severity:Diagnostic.severity

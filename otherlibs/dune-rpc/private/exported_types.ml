@@ -752,7 +752,8 @@ module Compound_user_error = struct
     Stdune.User_message.Annots.Key.create ~name:"compound-user-error" (Dyn.list to_dyn)
   ;;
 
-  let make ~main ~related ~severity = create ~main ~related ~severity
+  let make ~main ~related = create ~main ~related ~severity:Error
+  let make_with_severity ~main ~related ~severity = create ~main ~related ~severity
 
   let make_loc ~dir { Ocamlc_loc.path; chars; lines } : Stdune.Loc.t =
     let pos_fname =
@@ -793,7 +794,7 @@ module Compound_user_error = struct
           (* FIXME: tests expect this, but it's unclear if that should change. *)
           Error
       in
-      make ~main ~related ~severity)
+      make_with_severity ~main ~related ~severity)
   ;;
 end
 

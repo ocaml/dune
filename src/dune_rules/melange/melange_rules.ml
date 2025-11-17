@@ -960,7 +960,7 @@ let gen_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
          in
          User_message.Annots.singleton
            Compound_user_error.annot
-           [ Compound_user_error.make ~main ~related ~severity:Error ]
+           [ Compound_user_error.make ~main ~related ]
        in
        User_error.raise
          ~loc:stanza.loc

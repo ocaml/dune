@@ -260,7 +260,7 @@ let make stanzas ~(sources : Unresolved.t) ~dune_version =
         in
         User_message.Annots.singleton
           Compound_user_error.annot
-          [ Compound_user_error.make ~main ~related ~severity:Error ]
+          [ Compound_user_error.make ~main ~related ]
       in
       User_error.raise
         ~loc
@@ -318,7 +318,7 @@ let make stanzas ~(sources : Unresolved.t) ~dune_version =
           in
           User_message.Annots.singleton
             Compound_user_error.annot
-            [ Compound_user_error.make ~main ~related ~severity:Error ]
+            [ Compound_user_error.make ~main ~related ]
         in
         User_error.raise
           ~annots

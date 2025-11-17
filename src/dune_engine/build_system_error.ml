@@ -34,11 +34,7 @@ let of_exn (exn : Exn_with_backtrace.t) =
        [ Diagnostic
            { dir
            ; id = Id.gen ()
-           ; diagnostic =
-               Compound_user_error.make
-                 ~main
-                 ~related:[]
-                 ~severity:Dune_rpc_private.Diagnostic.Error
+           ; diagnostic = Compound_user_error.make ~main ~related:[]
            ; promotion
            }
        ]

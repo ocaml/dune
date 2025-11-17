@@ -215,7 +215,7 @@ module Objects = struct
         let related = [ User_message.make ~loc:loc' [ Pp.text "" ] ] in
         User_message.Annots.singleton
           Compound_user_error.annot
-          [ Compound_user_error.make ~main ~related ~severity:Error ]
+          [ Compound_user_error.make ~main ~related ]
       in
       User_error.raise
         ~loc

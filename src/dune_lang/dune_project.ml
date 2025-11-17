@@ -788,11 +788,7 @@ let make_packages
        let related = [ message loc1; message loc2 ] in
        User_message.Annots.singleton
          Compound_user_error.annot
-         [ Compound_user_error.make
-             ~main:(User_message.make main_message)
-             ~related
-             ~severity:Dune_rpc_private.Diagnostic.Error
-         ]
+         [ Compound_user_error.make ~main:(User_message.make main_message) ~related ]
      in
      User_error.raise
        ~annots

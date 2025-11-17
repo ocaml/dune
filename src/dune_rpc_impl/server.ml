@@ -436,7 +436,7 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
       | missing ->
         let warnings =
           List.map missing ~f:(fun fn ->
-            Dune_rpc.Compound_user_error.make
+            Dune_rpc.Compound_user_error.make_with_severity
               ~main:
                 (User_message.make
                    [ Pp.paragraphf

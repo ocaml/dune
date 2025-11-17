@@ -1,5 +1,5 @@
 open Types
-let external_libraries = [ "pp"; "unix"; "csexp"; "threads" ]
+let external_libraries = [ "unix"; "threads" ]
 
 let local_libraries =
   [ { path = "otherlibs/top-closure"

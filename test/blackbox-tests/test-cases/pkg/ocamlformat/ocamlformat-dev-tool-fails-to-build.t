@@ -15,7 +15,7 @@ It fails during the build because of missing OCamlFormat module.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
   Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.4
-  File "$TESTCASE_ROOT/_build/.dev-tools.locks/ocamlformat/ocamlformat.pkg", line 4, characters 6-10:
+  File "_build/.dev-tools.locks/ocamlformat/ocamlformat.pkg", line 4, characters 6-10:
   4 |  (run dune build -p %{pkg-self:name} @install))
             ^^^^
   Error: Logs for package ocamlformat
@@ -24,9 +24,4 @@ It fails during the build because of missing OCamlFormat module.
                     ^^^^^^^^^^^
   Error: Module "Ocamlformat" doesn't exist.
   
-  -> required by
-     _build/_private/default/.dev-tool/ocamlformat/target/bin/ocamlformat
-  -> required by _build/default/.formatted/foo.ml
-  -> required by alias .formatted/fmt
-  -> required by alias fmt
   [1]

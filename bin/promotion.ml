@@ -139,7 +139,9 @@ module Show = struct
 
   let term =
     let+ builder = Common.Builder.term
-    and+ files = Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE") in
+    and+ files =
+      Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
+    in
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
     Scheduler.go_with_rpc_server ~common ~config (fun () ->

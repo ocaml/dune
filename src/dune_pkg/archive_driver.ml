@@ -33,18 +33,23 @@ let tar =
         List.find_map [ "tar"; "bsdtar" ] ~f:which
       with
       | Some bin -> Fiber.return { Command.bin; make_args = make_tar_args }
-      | None -> Dune_engine.Utils.program_not_found "tar" ~loc:None)
+      | None ->
+        Fiber.return
+        @@ User_error.raise
+             [ Pp.text "No program found to extract tar file. Tried:"
+             ; Pp.enumerate [ "tar"; "bsdtar" ] ~f:Pp.verbatim
+             ])
   in
   { command; suffixes = [ ".tar"; ".tar.gz"; ".tgz"; ".tar.bz2"; ".tbz" ] }
 ;;
 
 let which_bsdtar (bin_name : string) =
   match which bin_name with
+  | None -> Fiber.return None
   | Some bin ->
     let+ output, _error = Process.run_capture ~display:Quiet Return bin [ "--version" ] in
     let re = Re.compile (Re.str "bsdtar") in
     if Re.execp re output then Some bin else None
-  | None -> Fiber.return None
 ;;
 
 let zip =

@@ -50,6 +50,9 @@ Build with only tar that doesn't work, not bsdtar or unzip, it should still fail
 
 Build with only tar that works, not bsdtar or unzip, it should work
 
+(NOTE: We wrap `(PATH=.fakebin foo)` in parens, otherwise the value of the PATH
+variable can escape to subseqent shell invocations on MacOS.)
+
   $ cat > .fakebin/tar << 'EOF'
   > #!/usr/bin/env sh
   > case $1 in
@@ -61,7 +64,7 @@ Build with only tar that works, not bsdtar or unzip, it should work
   > esac
   > EOF
   $ chmod +x .fakebin/tar
-  $ PATH=.fakebin build_pkg foo
+  $ (PATH=.fakebin build_pkg foo)
 
 Build the package with bsdtar and tar. Now our fake bsdtar will get picked up
 and built.
@@ -76,8 +79,8 @@ and built.
   >    cp "$2" "$4/$(basename "${2%.zip}")"
   > esac
   > EOF
-  > chmod +x .fakebin/bsdtar
-  $ PATH=.fakebin build_pkg foo
+  $ chmod +x .fakebin/bsdtar
+  $ (PATH=.fakebin build_pkg foo)
 
 Build with unzip
 
@@ -92,4 +95,4 @@ Build with unzip
   > esac
   > EOF
   $ chmod +x .fakebin/unzip
-  $ PATH=fakebin:$(dirname $(which dune)) build_pkg foo
+  $ (PATH=.fakebin build_pkg foo)

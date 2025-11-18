@@ -1391,9 +1391,14 @@ module Write_disk = struct
     | Ok `Non_existant -> Fun.const ()
     | Ok `Is_existing_lock_dir ->
       fun () ->
-        (* dev-tool lock dirs are external paths despite living in _build, they're
-           safe to remove *)
-        Path.rm_rf ~allow_external:true path
+        let path =
+          match path with
+          | In_source_tree _ | In_build_dir _ -> path
+          | External e ->
+            (* it might be a dev-tool path, try to convert *)
+            Workspace.dev_tool_path_to_source_dir e |> Path.source
+        in
+        Path.rm_rf path
     | Error e -> raise_user_error_on_check_existance path e
   ;;
 

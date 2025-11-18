@@ -526,10 +526,11 @@ let in_source_tree path =
        Path.Source.L.relative Path.Source.root components
      | source_components ->
        (match Path.Build.explode b with
-        | ".dev-tools.locks" :: dev_tool :: components ->
-          Path.Source.L.relative
-            Path.Source.root
-            ([ "_build"; ".dev-tools.locks"; dev_tool ] @ components)
+        | (".dev-tools.locks" as prefix) :: dev_tool :: components ->
+          let build_as_source =
+            Path.build_dir |> Path.to_string |> Path.Source.of_string
+          in
+          Path.Source.L.relative build_as_source (prefix :: dev_tool :: components)
         | build_components ->
           Code_error.raise
             "Unexpected location of lock directory in build directory"

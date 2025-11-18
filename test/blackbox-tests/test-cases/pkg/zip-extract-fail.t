@@ -73,7 +73,6 @@ and built.
   >    echo "bsdtar"
   >  ;;
   >  *)
-  >    echo "I am faketar"
   >    cp "$2" "$4/$(basename "${2%.zip}")"
   > esac
   > EOF
@@ -86,10 +85,9 @@ Build with unzip
   > #!/usr/bin/env sh
   > case $1 in
   >  --version)
-  >    echo "bsdtar"
+  >    echo "unzip"
   >  ;;
   >  *)
-  >    echo "I am faketar"
   >    cp "$2" "$4/$(basename "${2%.zip}")"
   > esac
   > EOF

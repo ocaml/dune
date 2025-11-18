@@ -410,10 +410,10 @@ let copy_lock_dir ~target ~lock_dir ~deps ~files =
   let open Action_builder.O in
   Action_builder.deps deps
   >>> (Path.Set.to_list_map files ~f:(fun src ->
-         let suffix = Path.drop_prefix_exn src ~prefix:lock_dir in
-         let dst = Path.Build.append_local target suffix in
-         let parent = Path.Build.parent_exn dst in
-         Action.progn [ Action.mkdir parent; Action.copy src dst ])
+         let dst =
+           Path.drop_prefix_exn src ~prefix:lock_dir |> Path.Build.append_local target
+         in
+         Action.progn [ Action.mkdir (Path.Build.parent_exn dst); Action.copy src dst ])
        |> Action.concurrent
        |> Action.Full.make
        |> Action_builder.return)

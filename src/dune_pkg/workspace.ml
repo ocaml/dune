@@ -72,33 +72,19 @@ module Repository = struct
 end
 
 let dev_tool_path_to_source_dir path =
-  let lock_dir_location =
-    Path.Build.relative Path.Build.root ".dev-tools.locks" |> Path.build
-  in
-  let absolute = Path.to_absolute_filename lock_dir_location in
-  match Path.External.is_descendant ~of_:(Path.External.of_string absolute) path with
-  | false ->
+  match Path.Expert.try_localize_external (Path.external_ path) with
+  | External _ | In_source_tree _ ->
     Code_error.raise
       "External path is not pointing to lock dir location"
-      [ "external", Path.External.to_dyn path
-      ; "dev tool lock dir location", Path.to_dyn lock_dir_location
-      ]
-  | true ->
-    let as_string = Path.External.to_string path in
-    (match String.drop_prefix ~prefix:absolute as_string with
-     | None ->
-       (* we checked for descendants before, thus it has to match the prefix *)
-       assert false
-     | Some suffix ->
-       (match String.split ~on:'/' suffix with
-        | "" :: dev_tool_name :: components ->
-          Path.Source.L.relative
-            Path.Source.root
-            ([ "_build"; ".dev-tools.locks"; dev_tool_name ] @ components)
-        | components ->
-          Code_error.raise
-            "Unexpected external path"
-            [ "dir", Path.External.to_dyn path
-            ; "components", Dyn.(list string) components
-            ]))
+      [ "external", Path.External.to_dyn path ]
+  | In_build_dir b ->
+    (match Path.Build.explode b with
+     | ".dev-tools.locks" :: dev_tool_name :: components ->
+       Path.Source.L.relative
+         Path.Source.root
+         ([ "_build"; ".dev-tools.locks"; dev_tool_name ] @ components)
+     | components ->
+       Code_error.raise
+         "Unexpected external path"
+         [ "dir", Path.External.to_dyn path; "components", Dyn.(list string) components ])
 ;;

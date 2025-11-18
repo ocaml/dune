@@ -206,7 +206,7 @@ module Ansi_color = struct
 end
 
 module Pp = struct
-  include Pp
+  include Stdune.Pp
 
   let sexp (conv_tag : 'a Conv.value) : 'a Pp.t Conv.value =
     let open Conv in
@@ -470,6 +470,7 @@ module Diagnostic = struct
   type severity =
     | Error
     | Warning
+    | Alert
 
   module Promotion = struct
     type t =
@@ -542,12 +543,13 @@ module Diagnostic = struct
 
   let sexp_severity =
     let open Conv in
-    enum [ "error", Error; "warning", Warning ]
+    enum [ "error", Error; "warning", Warning; "alert", Alert ]
   ;;
 
   let severity_to_dyn = function
     | Error -> Dyn.string "error"
     | Warning -> Dyn.string "warning"
+    | Alert -> Dyn.string "alert"
   ;;
 
   let sexp =
@@ -790,9 +792,7 @@ module Compound_user_error = struct
         match report.severity with
         | Error _ -> Error
         | Warning _ -> Warning
-        | Alert _ ->
-          (* FIXME: tests expect this, but it's unclear if that should change. *)
-          Error
+        | Alert _ -> Alert
       in
       make_with_severity ~main ~related ~severity)
   ;;

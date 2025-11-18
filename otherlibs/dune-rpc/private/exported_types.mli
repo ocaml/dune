@@ -1,5 +1,11 @@
 (** Types exposed to end-user consumers of [dune_rpc.mli]. *)
 
+module Pp : sig
+  include module type of Stdune.Pp
+
+  val sexp : 'a Conv.value -> 'a t Conv.value
+end
+
 module Loc : sig
   type t = Stdune.Lexbuf.Loc.t =
     { start : Lexing.position
@@ -80,6 +86,8 @@ module User_message : sig
       | Debug
       | Success
       | Ansi_styles of Ansi_color.Style.t list
+
+    val sexp : t Conv.value
   end
 
   type t = Stdune.User_message.t
@@ -94,6 +102,7 @@ module Diagnostic : sig
   type severity =
     | Error
     | Warning
+    | Alert
 
   module Promotion : sig
     type t =

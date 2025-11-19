@@ -570,6 +570,7 @@ let to_lib_info
   in
   let requires = conf.buildable.libraries in
   let parameters = conf.parameters in
+  let allow_unused_libraries = conf.buildable.allow_unused_libraries in
   let loc = conf.buildable.loc in
   let kind = conf.kind in
   let src_dir = dir in
@@ -615,6 +616,7 @@ let to_lib_info
     ~plugins
     ~archives
     ~ppx_runtime_deps
+    ~allow_unused_libraries
     ~foreign_archives
     ~native_archives
     ~foreign_dll_files

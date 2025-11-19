@@ -19,7 +19,7 @@ module Options = struct
     & flag
     & info
         [ "with-deps" ]
-        ~doc:"Whether the dependencies between modules should be printed."
+        ~doc:(Some "Whether the dependencies between modules should be printed.")
   ;;
 
   let arg_with_pps =
@@ -29,8 +29,9 @@ module Options = struct
     & info
         [ "with-pps" ]
         ~doc:
-          "Whether the dependencies towards ppx-rewriters (that are called at compile \
-           time) should be taken into account."
+          (Some
+             "Whether the dependencies towards ppx-rewriters (that are called at compile \
+              time) should be taken into account.")
   ;;
 
   let arg_sanitize_for_tests =
@@ -40,8 +41,9 @@ module Options = struct
     & info
         [ "sanitize-for-tests" ]
         ~doc:
-          "Sanitize the absolute paths in workspace items, and the associated UIDs, so \
-           that the output is reproducible."
+          (Some
+             "Sanitize the absolute paths in workspace items, and the associated UIDs, \
+              so that the output is reproducible.")
   ;;
 
   let arg : t Term.t =
@@ -245,7 +247,7 @@ module Lang = struct
            & info
                [ "lang" ]
                ~docv:"VERSION"
-               ~doc:"Behave the same as this version of Dune.")
+               ~doc:(Some "Behave the same as this version of Dune."))
        in
        if v = (0, 1)
        then `Ok v
@@ -625,9 +627,11 @@ let term : unit Term.t =
           []
           ~docv:"DIRS"
           ~doc:
-            "prints a description of the workspace's structure. If some directories DIRS \
-             are provided, then only those directories of the workspace are considered.")
-  and+ context_name = Common.context_arg ~doc:"Build context to use."
+            (Some
+               "prints a description of the workspace's structure. If some directories \
+                DIRS are provided, then only those directories of the workspace are \
+                considered."))
+  and+ context_name = Common.context_arg ~doc:(Some "Build context to use.")
   and+ format = Describe_format.arg
   and+ lang = Lang.arg
   and+ options = Options.arg in

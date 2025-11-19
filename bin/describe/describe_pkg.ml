@@ -186,8 +186,9 @@ module List_locked_dependencies = struct
         & info
             [ "transitive" ]
             ~doc:
-              "Display transitive dependencies (by default only immediate dependencies \
-               are displayed)")
+              (Some
+                 "Display transitive dependencies (by default only immediate \
+                  dependencies are displayed)"))
     and+ lock_dirs = Pkg.Pkg_common.Lock_dirs_arg.term in
     let builder = Common.Builder.forbid_builds builder in
     let common, config = Common.init builder in

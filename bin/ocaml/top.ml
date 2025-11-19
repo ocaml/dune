@@ -42,8 +42,11 @@ let files_to_load_of_requires sctx requires =
 
 let term =
   let+ builder = Common.Builder.term
-  and+ dir = Arg.(value & pos 0 string "" & Arg.info [] ~docv:"DIR")
-  and+ ctx_name = Common.context_arg ~doc:{|Select context where to build/run top.|} in
+  (* CR-someday Alizter: document this option *)
+  and+ dir = Arg.(value & pos 0 string "" & Arg.info [] ~docv:"DIR" ~doc:None)
+  and+ ctx_name =
+    Common.context_arg ~doc:(Some {|Select context where to build/run top.|})
+  in
   let common, config = Common.init builder in
   Scheduler.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
@@ -217,8 +220,10 @@ module Module = struct
       Arg.(
         required
         & pos 0 (some string) None
-        & Arg.info [] ~docv:"MODULE" ~doc:"Path to an OCaml module.")
-    and+ ctx_name = Common.context_arg ~doc:{|Select context where to build/run top.|} in
+        & Arg.info [] ~docv:"MODULE" ~doc:(Some "Path to an OCaml module."))
+    and+ ctx_name =
+      Common.context_arg ~doc:(Some {|Select context where to build/run top.|})
+    in
     let common, config = Common.init builder in
     Scheduler.go_with_rpc_server ~common ~config (fun () ->
       let open Fiber.O in

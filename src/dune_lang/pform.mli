@@ -101,8 +101,13 @@ module Var : sig
 end
 
 module Artifact : sig
+  type mod_ =
+    | Cm_kind of Ocaml.Cm_kind.t
+    | Cmt
+    | Cmti
+
   type t =
-    | Mod of Ocaml.Cm_kind.t
+    | Mod of mod_
     | Lib of Ocaml.Mode.t
 
   val compare : t -> t -> Ordering.t
@@ -136,6 +141,7 @@ module Macro : sig
     | Artifact of Artifact.t
     | Pkg
     | Pkg_self
+    | Ppx
 
   val compare : t -> t -> Ordering.t
   val to_dyn : t -> Dyn.t

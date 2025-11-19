@@ -621,6 +621,19 @@ let library_rules
     in
     Sub_system.gen_rules
       { super_context = sctx; dir; stanza = lib; scope; source_modules; compile_info }
+  and+ () =
+    let toolchain = Compilation_context.ocaml cctx in
+    let direct_requires = Lib.Compile.direct_requires compile_info in
+    let allow_unused_libraries = Lib.Compile.allow_unused_libraries compile_info in
+    Unused_libs_rules.gen_rules
+      sctx
+      toolchain
+      lib.buildable.loc
+      ~obj_dir
+      ~modules
+      ~dir
+      ~direct_requires
+      ~allow_unused_libraries
   and+ merlin =
     let+ requires_hidden = Compilation_context.requires_hidden cctx
     and+ parameters = Compilation_context.parameters cctx in

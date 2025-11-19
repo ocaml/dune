@@ -1,7 +1,8 @@
 open Import
 
 let term =
-  let name_ = Arg.info [] ~docv:"TARGET" in
+  (* CR-someday Alizter: document this option *)
+  let name_ = Arg.info [] ~docv:"TARGET" ~doc:None in
   let+ (builder : Common.Builder.t) = Common.Builder.term
   and+ wait = Rpc_common.wait_term
   and+ targets = Arg.(value & pos_all string [] name_) in

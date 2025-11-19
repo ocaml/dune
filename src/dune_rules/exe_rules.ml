@@ -209,6 +209,20 @@ let executables_rules
   let lib_config = ocaml.lib_config in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let* () =
+    let toolchain = Compilation_context.ocaml cctx in
+    let direct_requires = Lib.Compile.direct_requires compile_info in
+    let allow_unused_libraries = Lib.Compile.allow_unused_libraries compile_info in
+    Unused_libs_rules.gen_rules
+      sctx
+      toolchain
+      exes.buildable.loc
+      ~obj_dir
+      ~modules
+      ~dir
+      ~direct_requires
+      ~allow_unused_libraries
+  in
+  let* () =
     let* dep_graphs =
       (* Building an archive for foreign stubs, we link the corresponding object
        files directly to improve perf. *)
@@ -328,6 +342,7 @@ let compile_info ~scope (exes : Executables.t) =
     (Scope.libs scope)
     (`Exe exes.names)
     exes.buildable.libraries
+    ~allow_unused_libraries:exes.buildable.allow_unused_libraries
     ~pps
     ~dune_version
     ~allow_overlaps:exes.buildable.allow_overlapping_dependencies

@@ -20,11 +20,15 @@ Full conflict without command and output interleaving:
   > EOF
 
   $ dune runtest test.t
+  File "test.t", lines 1-6, characters 0-52:
+  1 | <<<<<<<
+  2 | A Small
+  3 | =======
+  4 | Conflict
+  5 | >>>>>>>
+  6 | $ echo tada
   Error: Conflict marker found. Please remove it or set (conflict_markers
   allow)
-  -> required by _build/default/.cram.test.t/cram.sh
-  -> required by _build/default/.cram.test.t/cram.out
-  -> required by alias test
   [1]
 
 Full conflict with command and output interleaving:
@@ -39,11 +43,15 @@ Full conflict with command and output interleaving:
   > EOF
 
   $ dune runtest test.t
+  File "test.t", lines 1-6, characters 0-51:
+  1 | <<<<<<<
+  2 |   $ foo
+  3 | =======
+  4 |   > bar
+  5 | >>>>>>>
+  6 | $ echo tada
   Error: Conflict marker found. Please remove it or set (conflict_markers
   allow)
-  -> required by _build/default/.cram.test.t/cram.sh
-  -> required by _build/default/.cram.test.t/cram.out
-  -> required by alias test
   [1]
 
 Partial conflicts are ignored:

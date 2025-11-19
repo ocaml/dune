@@ -17,7 +17,8 @@ module Selected_context = struct
       & info
           [ "context" ]
           ~docv:"CONTEXT"
-          ~doc:"Select the Dune build context that will be used to return information")
+          ~doc:
+            (Some "Select the Dune build context that will be used to return information"))
   ;;
 end
 
@@ -218,7 +219,8 @@ module Dump_config = struct
 
   let term =
     let+ builder = Common.Builder.term
-    and+ dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH")
+    (* CR-someday Alizter: document this option *)
+    and+ dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH" ~doc:None)
     and+ selected_context = Selected_context.arg in
     let common, config =
       let builder =
@@ -291,8 +293,9 @@ module Dump_dot_merlin = struct
             []
             ~docv:"PATH"
             ~doc:
-              "The path to the folder of which the configuration should be printed. \
-               Defaults to the current directory.")
+              (Some
+                 "The path to the folder of which the configuration should be printed. \
+                  Defaults to the current directory."))
     and+ selected_context = Selected_context.arg in
     let common, config =
       let builder =

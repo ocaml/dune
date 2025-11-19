@@ -33,10 +33,13 @@ module Theory : sig
     ; modules : Ordered_set_lang.t
     ; modules_flags : (Coq_module.Name.t * Ordered_set_lang.Unexpanded.t) list option
     ; boot : bool
+    ; generate_project_file : Loc.t * bool
     ; enabled_if : Blang.t
     ; buildable : Buildable.t
     ; coqdep_flags : Ordered_set_lang.Unexpanded.t
     ; coqdoc_flags : Ordered_set_lang.Unexpanded.t
+    ; coqdoc_header : String_with_vars.t option
+    ; coqdoc_footer : String_with_vars.t option
     }
 
   include Stanza.S with type t := t

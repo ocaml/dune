@@ -344,7 +344,9 @@ let solve_lock_dir
     in
     progress_state
     := Some (Progress_indicator.Per_lockdir.State.Updating_repos repo_names);
-    get_repos repo_map ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
+    Dune_pkg.Opam_repo.resolve_repositories
+      ~available_repos:repo_map
+      ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
   in
   let* pins = resolve_project_pins project_pins in
   let time_solve_start = Unix.gettimeofday () in
@@ -541,7 +543,8 @@ let term =
   let+ builder = Common.Builder.term
   and+ version_preference = Version_preference.term
   and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term
-  and+ print_perf_stats = Arg.(value & flag & info [ "print-perf-stats" ]) in
+  (* CR-someday Alizter: document this option *)
+  and+ print_perf_stats = Arg.(value & flag & info [ "print-perf-stats" ] ~doc:None) in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
   Scheduler.go_with_rpc_server ~common ~config (fun () ->

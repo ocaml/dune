@@ -26,7 +26,9 @@ let dump sctx ~dir =
     Dune_rules.Menhir_rules.menhir_env ~dir
     |> Action_builder.of_memo
     >>= Dune_lang.Menhir_env.dump
-  and+ coq_dump = Dune_rules.Coq.Coq_rules.coq_env ~dir >>| Dune_rules.Coq.Coq_flags.dump
+  and+ coq_dump =
+    Dune_rules.Coq.Coq_rules.coq_env ~dir
+    >>| Dune_rules.Coq.Coq_flags.dump ~dir:(Path.build dir)
   and+ jsoo_js_dump =
     let module Js_of_ocaml = Dune_lang.Js_of_ocaml in
     let* jsoo = Action_builder.of_memo (Dune_rules.Jsoo_rules.jsoo_env ~dir ~mode:JS) in
@@ -72,7 +74,8 @@ let pp ppf ~fields sexps =
 
 let term =
   let+ builder = Common.Builder.term
-  and+ dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH")
+  (* CR-someday Alizter: document this option *)
+  and+ dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH" ~doc:None)
   and+ fields =
     Arg.(
       value
@@ -81,8 +84,9 @@ let term =
           [ "field" ]
           ~docv:"FIELD"
           ~doc:
-            "Only print this field. This option can be repeated multiple times to print \
-             multiple fields.")
+            (Some
+               "Only print this field. This option can be repeated multiple times to \
+                print multiple fields."))
   in
   let common, config = Common.init builder in
   Scheduler.go_with_rpc_server ~common ~config (fun () ->

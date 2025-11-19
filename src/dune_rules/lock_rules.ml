@@ -135,9 +135,11 @@ module Spec = struct
     let open Fiber.O in
     let* () = Fiber.return () in
     let local_packages = Package.Name.Map.map packages ~f:Local_package.for_solver in
-    (* Whether or not the lock directory we are creating is portable or not
-       doesn't concern us. We therefore set it as non-portable. *)
-    let portable_lock_dir = false in
+    let portable_lock_dir =
+      match Config.get Compile_time.portable_lock_dir with
+      | `Enabled -> true
+      | `Disabled -> false
+    in
     let* solver_env =
       (* CR-soon Alizter: This solver environment construction pattern (combining
        solver_env_from_current_system with solver_env_from_context, then
@@ -154,15 +156,55 @@ module Spec = struct
       Solver_env.unset_multi solver_env unset_solver_vars
     in
     let* solver_result =
-      Opam_solver.solve_lock_dir
-        solver_env
-        version_preference
-        repos
-        ~pins
-        ~local_packages
-        ~constraints
-        ~selected_depopts
-        ~portable_lock_dir
+      if portable_lock_dir
+      then (
+        (* CR-someday Alizter: This multi-platform solving logic is duplicated
+           from bin/pkg/lock.ml:solve_multiple_platforms. The logic for
+           removing platform-specific variables, solving for multiple platforms
+           in parallel, merging results, and error handling should be shared
+           between autolocking and manual locking. Consider extracting this
+           into a shared function in Dune_pkg.Opam_solver. *)
+        let portable_solver_env =
+          Solver_env.unset_multi
+            solver_env
+            Dune_lang.Package_variable_name.platform_specific
+        in
+        let solve_for_platforms = Solver_env.popular_platform_envs in
+        let+ results =
+          Fiber.parallel_map solve_for_platforms ~f:(fun platform_env ->
+            let solver_env_for_platform =
+              Solver_env.extend portable_solver_env platform_env
+            in
+            Opam_solver.solve_lock_dir
+              solver_env_for_platform
+              version_preference
+              repos
+              ~pins
+              ~local_packages
+              ~constraints
+              ~selected_depopts
+              ~portable_lock_dir)
+        in
+        let solver_results, errors =
+          List.partition_map results ~f:(function
+            | Ok result -> Left result
+            | Error e -> Right e)
+        in
+        match solver_results, errors with
+        | [], [] -> Code_error.raise "Solver did not run for any platforms." []
+        | [], `Manifest_error diagnostic :: _ -> Error (`Manifest_error diagnostic)
+        | [], `Solve_error diagnostic :: _ -> Error (`Solve_error diagnostic)
+        | x :: xs, _ -> Ok (List.fold_left xs ~init:x ~f:Opam_solver.Solver_result.merge))
+      else
+        Opam_solver.solve_lock_dir
+          solver_env
+          version_preference
+          repos
+          ~pins
+          ~local_packages
+          ~constraints
+          ~selected_depopts
+          ~portable_lock_dir
     in
     match solver_result with
     | Error (`Manifest_error diagnostic) -> raise (User_error.E diagnostic)
@@ -270,9 +312,6 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
          >>| Dune_lang.Package.Name.Map.map ~f:Local_package.of_package
          |> Action_builder.of_memo
        and+ repos =
-         (* CR-soon Alizter: This repository handling logic is duplicated in
-            bin/pkg/pkg_common.ml:get_repos. The OpamUrl.classify pattern
-            matching and repository resolution could be shared. *)
          Action_builder.of_memo
            (Memo.of_thunk (fun () ->
               let repositories =
@@ -292,30 +331,7 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
                   Pkg_workspace.Repository.name repo, repo)
                 |> Pkg_workspace.Repository.Name.Map.of_list_exn
               in
-              let module Repository = Pkg_workspace.Repository in
-              repositories
-              |> Fiber.parallel_map ~f:(fun (loc, name) ->
-                match Repository.Name.Map.find available_repos name with
-                | None ->
-                  User_error.raise
-                    ~loc
-                    [ Pp.textf "Repository '%s' is not a known repository"
-                      @@ Repository.Name.to_string name
-                    ]
-                | Some repo ->
-                  let loc, opam_url = Repository.opam_url repo in
-                  (match OpamUrl.classify opam_url loc with
-                   | `Git -> Opam_repo.of_git_repo loc opam_url
-                   | `Path path ->
-                     Fiber.return @@ Opam_repo.of_opam_repo_dir_path loc path
-                   | `Archive ->
-                     User_error.raise
-                       ~loc
-                       [ Pp.textf
-                           "Repositories stored in archives (%s) are currently \
-                            unsupported"
-                         @@ OpamUrl.to_string opam_url
-                       ]))
+              Opam_repo.resolve_repositories ~available_repos ~repositories
               |> Memo.of_non_reproducible_fiber))
        and+ pins =
          (* CR-soon Alizter: This pin logic (extracting workspace pins,

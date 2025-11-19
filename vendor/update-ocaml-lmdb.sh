@@ -49,5 +49,6 @@ sed -i.bak '/^#ifndef MDB_USE_ROBUST/i\
 ' ocaml-lmdb/mdb.c && rm ocaml-lmdb/mdb.c.bak
 
 git checkout ocaml-lmdb/dune
+git checkout ocaml-lmdb/flags
 git add -A .
 

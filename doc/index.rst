@@ -18,3 +18,4 @@ libraries, run tests, and much more.
    explanation/index
    advanced/index
    misc/index
+   faq

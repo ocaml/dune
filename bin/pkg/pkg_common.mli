@@ -45,12 +45,6 @@ val constraints_of_workspace
   -> Dune_lang.Package_dependency.t list
 
 val depopts_of_workspace : Workspace.t -> lock_dir_path:Path.t -> Package_name.t list
-
-val get_repos
-  :  Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t
-  -> repositories:(Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
-  -> Dune_pkg.Opam_repo.t list Fiber.t
-
 val find_local_packages : Dune_pkg.Local_package.t Package_name.Map.t Memo.t
 
 module Lock_dirs_arg : sig

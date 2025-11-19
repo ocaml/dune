@@ -344,7 +344,9 @@ let solve_lock_dir
     in
     progress_state
     := Some (Progress_indicator.Per_lockdir.State.Updating_repos repo_names);
-    get_repos repo_map ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
+    Dune_pkg.Opam_repo.resolve_repositories
+      ~available_repos:repo_map
+      ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
   in
   let* pins = resolve_project_pins project_pins in
   let time_solve_start = Unix.gettimeofday () in

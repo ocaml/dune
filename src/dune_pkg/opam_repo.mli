@@ -23,6 +23,16 @@ val of_opam_repo_dir_path : Loc.t -> Path.t -> t
     supports. *)
 val of_git_repo : Loc.t -> OpamUrl.t -> t Fiber.t
 
+(** [resolve_repositories ~available_repos ~repositories] resolves a list of
+    repository references by looking them up in [available_repos] and creating
+    appropriate [t] instances based on their URL types (git, local path, or
+    archive). Raises [User_error] if a repository is not found or if an archive
+    URL is encountered (not supported). *)
+val resolve_repositories
+  :  available_repos:Workspace.Repository.t Workspace.Repository.Name.Map.t
+  -> repositories:(Loc.t * Workspace.Repository.Name.t) list
+  -> t list Fiber.t
+
 val revision : t -> Rev_store.At_rev.t
 val serializable : t -> Serializable.t option
 

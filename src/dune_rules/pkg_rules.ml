@@ -2418,9 +2418,12 @@ let ocaml_toolchain context =
 
 let all_deps universe =
   let* db =
-    (* Disallow sharing so that the only packages in the DB are the ones from
-       the universe's respective lock directory. *)
-    DB.of_ctx (Package_universe.context_name universe) ~allow_sharing:false
+    match (universe : Package_universe.t) with
+    | Dependencies ctx ->
+      (* Disallow sharing so that the only packages in the DB are the ones from
+         the universe's respective lock directory. *)
+      DB.of_ctx ctx ~allow_sharing:false
+    | Dev_tool tool -> DB.of_dev_tool tool >>| fst
   in
   Pkg_digest.Map.values db.pkg_digest_table
   |> Memo.parallel_map ~f:(fun { DB.Pkg_table.pkg_digest; _ } ->

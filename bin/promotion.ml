@@ -33,9 +33,9 @@ let display_files files_to_promote =
 let show_corrected_contents files_to_promote =
   let open Fiber.O in
   let files = Diff_promotion.load_db () |> Diff_promotion.filter_db files_to_promote in
-  Fiber.parallel_iter files ~f:(fun file ->
+  let+ () = Fiber.return () in
+  List.iter files ~f:(fun file ->
     let correction_file = Diff_promotion.File.correction_file file in
-    let+ () = Fiber.return () in
     if Path.exists correction_file
     then (
       let contents = Io.read_file correction_file in

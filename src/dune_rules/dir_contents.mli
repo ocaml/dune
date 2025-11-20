@@ -28,6 +28,7 @@ val ocaml : t -> Ml_sources.t Memo.t
 val mlds : t -> stanza:Documentation.t -> Doc_sources.mld list Memo.t
 
 val coq : t -> Coq_sources.t Memo.t
+val rocq : t -> Rocq_sources.t Memo.t
 
 (** Get the directory contents of the given directory. *)
 val get : Super_context.t -> dir:Path.Build.t -> t Memo.t

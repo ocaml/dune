@@ -1,0 +1,3 @@
+(rocq.theory
+ (name A)
+ (theories Corelib B))

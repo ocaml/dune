@@ -100,6 +100,7 @@ let stanzas : Stanza.Parser.t list =
                ~qualified:
                  (let* project = Dune_project.get_exn () in
                   if Dune_project.is_extension_set project Coq_stanza.key
+            || Dune_project.is_extension_set project Rocq_stanza.key
                   then return ()
                   else Syntax.since Stanza.syntax (3, 7))) )
     ; "toplevel", Toplevel_stanza.decode_stanza Toplevel_stanza.decode
@@ -132,7 +133,8 @@ let stanza_package stanza =
      | Documentation.T { package; _ }
      | Tests.T { package = Some package; _ } -> Some package
      | Coq_stanza.Theory.T { package = Some package; _ } -> Some package
-     | _ -> None)
+    | Rocq_stanza.Theory.T { package = Some package; _ } -> Some package
+    | _ -> None)
     |> Option.map ~f:Package.id
   with
   | Some _ as s -> s

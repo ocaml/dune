@@ -137,6 +137,7 @@ module Macro : sig
     | Path_no_dep
     | Ocaml_config
     | Coq_config
+    | Rocq_config
     | Env
     | Artifact of Artifact.t
     | Pkg

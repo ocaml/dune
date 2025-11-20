@@ -61,7 +61,7 @@ to fix this currently.
   - Coq at B/Coq/dune:2
   - Coq at Coq/dune:1
   Error: Multiple rules generated for
-  _build/install/default/lib/coq/theories/Init/Prelude.vo:
+  _build/install/default/lib/coq/theories/rocq-package:
   - Coq/dune:1
   - B/Coq/dune:2
   -> required by _build/default/B/Foo.install

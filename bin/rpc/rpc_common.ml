@@ -95,7 +95,7 @@ let establish_connection_with_retry () =
         in
         User_warning.emit
           [ Pp.textf
-              "Another dune instance%s is currently running. Waiting for it to finish..."
+              "Another dune instance%s is currently running. Waiting connect to it..."
               pid_suffix
           ; Pp.textf
               "If you're certain no other dune process is running, you can resolve this by \

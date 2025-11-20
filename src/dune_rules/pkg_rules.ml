@@ -1257,19 +1257,6 @@ module DB = struct
     (* Associate each package's digest with the package and its dependencies. *)
     type t = entry Pkg_digest.Map.t
 
-    let equal a b =
-      Pkg_digest.Map.equal a b ~equal:(fun (entry : entry) { pkg; deps; pkg_digest } ->
-        Pkg.equal entry.pkg pkg
-        && List.equal
-             (fun (dep : dep) { dep_pkg; dep_loc; dep_pkg_digest } ->
-                Pkg.equal dep.dep_pkg dep_pkg
-                && Loc.equal dep.dep_loc dep_loc
-                && Pkg_digest.equal dep.dep_pkg_digest dep_pkg_digest)
-             entry.deps
-             deps
-        && Pkg_digest.equal entry.pkg_digest pkg_digest)
-    ;;
-
     let of_lock_dir lock_dir ~platform ~system_provided =
       entries_by_name_of_lock_dir lock_dir ~platform ~system_provided
       |> Package.Name.Map.values
@@ -1336,14 +1323,6 @@ module DB = struct
     { pkg_digest_table : Pkg_table.t
     ; system_provided : Package.Name.Set.t
     }
-
-  let equal t t2 =
-    phys_equal t t2
-    ||
-    let { pkg_digest_table; system_provided } = t2 in
-    Pkg_table.equal t.pkg_digest_table pkg_digest_table
-    && Package.Name.Set.equal t.system_provided system_provided
-  ;;
 
   let hash = `Do_not_hash
   let _ = hash
@@ -1429,10 +1408,9 @@ end = struct
       ; universe : Package_universe.t
       }
 
-    let equal { db; pkg_digest; universe } t =
+    let equal { db = _; pkg_digest; universe } t =
       Pkg_digest.equal pkg_digest t.pkg_digest
       && Package_universe.equal universe t.universe
-      && DB.equal db t.db
     ;;
 
     let hash { db; pkg_digest; universe } =

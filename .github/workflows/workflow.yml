@@ -271,20 +271,22 @@ jobs:
           DUNE_CACHE: disabled
 
   rocq:
-    name: Rocq Language (Rocq 9.0.0)
+    name: Rocq Language (Rocq 9.1.0)
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
+          # Keep packages and OCaml version in sync with the version
+          # in the makefile; rocq-stdlib should be easy to remove
           - ocaml-compiler: 5.3
-            opam-packages: rocq-prover.9.0.0 coq.9.0.0
+            opam-packages: rocq-core.9.1.0 rocq-stdlib.9.0.0 csexp re spawn pp uutf
             test-target: test-rocq
           - ocaml-compiler: 4.14
-            opam-packages: rocq-native rocq-prover.9.0.0 coq.9.0.0
+            opam-packages: rocq-core.9.1.0 rocq-stdlib.9.0.0 csexp re spawn pp uutf rocq-native
             test-target: test-rocq-native
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup OCaml
         uses: ocaml/setup-ocaml@v3
         with:

@@ -388,3 +388,30 @@ jobs:
       - run: |
           nix develop .#ox-minimal -c ocaml --version
           nix develop .#ox-minimal -c make test-ox
+
+  utop-dev-tool-test:
+    name: Test that the utop dev tool can be built and run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
+      - uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: |
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
+          gc-max-store-size-linux: 2G
+      - name: Set up a project, install utop as a dev tool, and run it
+        shell: nix shell -c bash -e {0}
+        run: |
+          cd $(mktemp -d)
+          dune init project foo
+          cd foo
+          echo 'let message = "Hello, World!"' > lib/foo.ml
+          echo 'print_endline Foo.message' > script.ml
+          dune pkg lock
+          dune tools install utop
+          dune utop . script.ml
+

@@ -197,29 +197,42 @@ let get_workspace_lock_dir ctx =
   Workspace.find_lock_dir workspace path
 ;;
 
-let get_with_path ctx =
-  let* path =
-    get_path ctx
-    >>| function
-    | Some p -> p
-    | None ->
-      Code_error.raise
-        "No lock dir path for context available"
-        [ "context", Context_name.to_dyn ctx ]
+let get_with_path =
+  let read_lockdir =
+    Memo.exec
+      (Memo.create
+         ~human_readable_description:(fun p ->
+           Pp.textf "read lock directory %s" (Path.to_string_maybe_quoted p))
+         "read-lock-dir"
+         ~input:(module Path)
+         Load.load)
   in
-  let* () = Build_system.build_dir path in
-  Load.load path
-  >>= function
-  | Error e -> Memo.return (Error e)
-  | Ok lock_dir ->
-    let+ workspace_lock_dir = get_workspace_lock_dir ctx in
-    (match workspace_lock_dir with
-     | None -> ()
-     | Some workspace_lock_dir ->
-       Solver_stats.Expanded_variable_bindings.validate_against_solver_env
-         lock_dir.expanded_solver_variable_bindings
-         (workspace_lock_dir.solver_env |> Option.value ~default:Solver_env.empty));
-    Ok (path, lock_dir)
+  Per_context.create_by_name ~name:"lock-dir-get" (fun ctx ->
+    Memo.lazy_ (fun () ->
+      let* path =
+        get_path ctx
+        >>| function
+        | Some p -> p
+        | None ->
+          Code_error.raise
+            "No lock dir path for context available"
+            [ "context", Context_name.to_dyn ctx ]
+      in
+      let* () = Build_system.build_dir path in
+      read_lockdir path
+      >>= function
+      | Error e -> Memo.return (Error e)
+      | Ok lock_dir ->
+        let+ workspace_lock_dir = get_workspace_lock_dir ctx in
+        (match workspace_lock_dir with
+         | None -> ()
+         | Some workspace_lock_dir ->
+           Solver_stats.Expanded_variable_bindings.validate_against_solver_env
+             lock_dir.expanded_solver_variable_bindings
+             (workspace_lock_dir.solver_env |> Option.value ~default:Solver_env.empty));
+        Ok (path, lock_dir))
+    |> Memo.Lazy.force)
+  |> Staged.unstage
 ;;
 
 let get ctx = get_with_path ctx >>| Result.map ~f:snd

@@ -77,11 +77,31 @@ let establish_connection_exn () =
 let establish_connection_with_retry () =
   let open Fiber.O in
   let pause_between_retries_s = 0.2 in
+  let warned = ref false in
   let rec loop () =
     establish_connection ()
     >>= function
     | Ok x -> Fiber.return x
     | Error _ ->
+      if not !warned
+      then (
+        warned := true;
+        let lock_file = Path.Build.(relative root ".lock") in
+        let lock_held_by = Dune_util.Global_lock.Lock_held_by.read_lock_file () in
+        let pid_suffix =
+          match lock_held_by with
+          | Dune_util.Global_lock.Lock_held_by.Unknown -> ""
+          | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid
+        in
+        User_warning.emit
+          [ Pp.textf
+              "Another dune instance%s is currently running. Waiting for it to finish..."
+              pid_suffix
+          ; Pp.textf
+              "If you're certain no other dune process is running, you can resolve this by \
+               deleting: %s"
+              (Path.Build.to_string lock_file)
+          ]);
       let* () = Dune_engine.Scheduler.sleep ~seconds:pause_between_retries_s in
       loop ()
   in

@@ -29,14 +29,14 @@ module Version : sig
   (** Data of a Rocq version. *)
   type t
 
-  (** [make ~coqc] runs coqc --print-version and returns the version of Rocq
+  (** [make ~rocq] runs rocq --print-version and returns the version of Rocq
       and the version of OCaml used to build Rocq.
       Exceptionally, one of the following will happen:
 
-      - Return [Error message] if coqc --print-version exits with a non-zero code.
-      - Throw a user error if coqc --print-version is not parsable.
-      - Throw an [Action.Prog.Not_found] exception if the coqc binary is not found. *)
-  val make : coqc:Action.Prog.t -> (t, User_message.Style.t Pp.t) result Memo.t
+      - Return [Error message] if rocq --print-version exits with a non-zero code.
+      - Throw a user error if rocq --print-version is not parsable.
+      - Throw an [Action.Prog.Not_found] exception if the rocq binary is not found. *)
+  val make : rocq:Action.Prog.t -> (t, User_message.Style.t Pp.t) result Memo.t
 
   (** [by_name t name] returns the value of the field [name] in the Rocq
       version [t]. If the value is not available then [None] is returned.
@@ -56,13 +56,13 @@ end
 (** Data of a Rocq configuration. *)
 type t
 
-(** [make ~coqc] runs coqc --config and returns the configuration data. Exceptionally, one
+(** [make ~rocq] runs rocq --config and returns the configuration data. Exceptionally, one
     of the following will happen:
 
-    - Return [Error message] if coqc --config exits with a non-zero code.
-    - Throw a user error if coqc --config is not parsable.
-    - Throw an [Action.Prog.Not_found] exception if the coqc binary is not found. *)
-val make : coqc:Action.Prog.t -> (t, User_message.Style.t Pp.t) result Memo.t
+    - Return [Error message] if rocq --config exits with a non-zero code.
+    - Throw a user error if rocq --config is not parsable.
+    - Throw an [Action.Prog.Not_found] exception if the rocq binary is not found. *)
+val make : rocq:Action.Prog.t -> (t, User_message.Style.t Pp.t) result Memo.t
 
 (** [by_name t name] returns the value of the option [name] in the Rocq
     configuration [t]. If the value is not available then [None] is returned.

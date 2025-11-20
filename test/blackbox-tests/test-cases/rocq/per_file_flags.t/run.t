@@ -1,11 +1,11 @@
   $ dune build --display short @all
-        coqdep .basic.theory.d
-          coqc foo.{glob,vo}
+          rocq .basic.theory.d
+          rocq foo.{glob,vo}
   File "./foo.v", line 4, characters 0-19:
   Warning: Use of "Variable" or "Hypothesis" outside sections behaves as
   "#[local] Parameter" or "#[local] Axiom".
   [declaration-outside-section,vernacular,default]
-          coqc bar.{glob,vo}
+          rocq bar.{glob,vo}
 
   $ dune build --debug-dependency-path @default
   lib: [

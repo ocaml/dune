@@ -19,8 +19,8 @@ Testing the coqdoc flags field of the env stanza.
 
   $ dune build @doc
 
-  $ tail _build/log -n 1 | ./scrub_coq_args.sh | sed 's/.*coq/coq/' 
-  coqdoc
-  coq/theories Corelib
+  $ tail _build/log -n 1 | ./scrub_coq_args.sh | sed 's/.*rocq/rocq/'
+  rocq doc
+  -R coq/theories Corelib
   -R . a --toc -toc-depth 2 --html -d a.html
   foo.v

@@ -1,9 +1,9 @@
   $ dune build --display short --debug-dependency-path @all
-        coqdep .rec_module.theory.d
-          coqc b/Nrec_module_b_foo.{cmi,cmxs},b/foo.{glob,vo}
-          coqc c/Nrec_module_c_ooo.{cmi,cmxs},c/ooo.{glob,vo}
-          coqc c/d/Nrec_module_c_d_bar.{cmi,cmxs},c/d/bar.{glob,vo}
-          coqc a/Nrec_module_a_bar.{cmi,cmxs},a/bar.{glob,vo}
+          rocq .rec_module.theory.d
+          rocq b/Nrec_module_b_foo.{cmi,cmxs},b/foo.{glob,vo}
+          rocq c/Nrec_module_c_ooo.{cmi,cmxs},c/ooo.{glob,vo}
+          rocq c/d/Nrec_module_c_d_bar.{cmi,cmxs},c/d/bar.{glob,vo}
+          rocq a/Nrec_module_a_bar.{cmi,cmxs},a/bar.{glob,vo}
 
   $ dune build --debug-dependency-path @default
   lib: [

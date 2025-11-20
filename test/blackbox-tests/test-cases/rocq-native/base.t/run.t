@@ -1,7 +1,7 @@
   $ dune build --display short --debug-dependency-path @all --always-show-command-line
-        coqdep .basic.theory.d
-          coqc Nbasic_foo.{cmi,cmxs},foo.{glob,vo}
-          coqc Nbasic_bar.{cmi,cmxs},bar.{glob,vo}
+          rocq .basic.theory.d
+          rocq Nbasic_foo.{cmi,cmxs},foo.{glob,vo}
+          rocq Nbasic_bar.{cmi,cmxs},bar.{glob,vo}
 
   $ dune build --debug-dependency-path @default
   lib: [

@@ -9,6 +9,8 @@
 sed 's/$ (cd .*coqc/coqc/' $1 | # cleanup coqc
 sed 's/$ (cd .*coqdep/coqdep/' | # cleanup coqdep
 sed 's/$ (cd .*coqdoc/coqdoc/' | # cleanup coqdoc
+sed 's/$ (cd .*rocq compile/rocq compile/' $1 | # cleanup coqc
+sed 's/$ (cd .*rocq dep/rocq dep/' $1 | # cleanup coqc
 sed 's/)//' | # remove trailing )
 sed 's/ -I/\f-I/g' | # new line for each -I
 sed 's/ -nI/\f-nI/g' | # new line for each -nI

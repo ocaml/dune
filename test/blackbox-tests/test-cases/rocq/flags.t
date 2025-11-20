@@ -17,7 +17,7 @@ Test case: default flags
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  coqc -q
+  rocq compile -q
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
   -native-compiler ondemand
@@ -36,7 +36,7 @@ TC: :standard
 
   $ rm _build/default/foo.vo
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  coqc -q
+  rocq compile -q
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
   -native-compiler ondemand
@@ -54,7 +54,7 @@ TC: override :standard
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  coqc
+  rocq compile
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
   -native-compiler ondemand
@@ -72,7 +72,7 @@ TC: add to :standard
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  coqc -q -type-in-type
+  rocq compile -q -type-in-type
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
   -native-compiler ondemand
@@ -95,7 +95,7 @@ TC: extend in workspace + override standard
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  coqc -type-in-type
+  rocq compile -type-in-type
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
   -native-compiler ondemand
@@ -112,7 +112,7 @@ TC: extend in workspace + override standard
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  coqc -q -type-in-type
+  rocq compile -q -type-in-type
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
   -native-compiler ondemand
@@ -131,7 +131,7 @@ TC: extend in dune (env) + override standard
 
   $ rm -rf _build/default/foo.vo
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  coqc -type-in-type
+  rocq compile -type-in-type
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
   -native-compiler ondemand
@@ -150,7 +150,7 @@ TC: extend in dune (env) + standard
 
   $ rm -rf _build/default/foo.vo
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  coqc -q -type-in-type -type-in-type
+  rocq compile -q -type-in-type -type-in-type
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
   -native-compiler ondemand
@@ -174,7 +174,7 @@ TC: extend in dune (env) + workspace + standard
 
   $ rm -rf _build/default/foo.vo
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  coqc -q -type-in-type -bt
+  rocq compile -q -type-in-type -bt
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
   -native-compiler ondemand

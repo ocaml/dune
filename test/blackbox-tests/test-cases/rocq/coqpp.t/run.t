@@ -6,7 +6,7 @@ Testing the coqpp stanza
   > (library
   >  (name foo)
   >  (flags -rectypes)
-  >  (libraries coq-core.vernac))
+  >  (libraries rocq-runtime.vernac))
   > EOF
 
   $ ls
@@ -33,7 +33,7 @@ Testing the :standard field with a .mlg file depending on another .mlg file
   > (library
   >  (name foo)
   >  (flags -rectypes)
-  >  (libraries coq-core.vernac))
+  >  (libraries rocq-runtime.vernac))
   > EOF
 
   $ ls
@@ -63,7 +63,7 @@ Same again but with one .mlg file removed
   > (library
   >  (name foo)
   >  (flags -rectypes)
-  >  (libraries coq-core.vernac))
+  >  (libraries rocq-runtime.vernac))
   > EOF
 
   $ dune build

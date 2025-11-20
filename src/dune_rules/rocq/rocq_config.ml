@@ -78,8 +78,8 @@ end = struct
   ;;
 end
 
-let get_output_from_config_or_version ~(coqc : Action.Prog.t) ~what memo =
-  match coqc with
+let get_output_from_config_or_version ~(rocq : Action.Prog.t) ~what memo =
+  match rocq with
   | Ok coqc_path ->
     let open Memo.O in
     let+ output, exit_code = Memo.exec memo coqc_path in
@@ -170,10 +170,10 @@ module Version = struct
 
   let version_memo = Memo.create "coq-and-ocaml-version" ~input:(module Path) impl_version
 
-  let make ~(coqc : Action.Prog.t) =
+  let make ~(rocq : Action.Prog.t) =
     let open Memo.O in
     let+ version_output =
-      get_output_from_config_or_version ~coqc ~what:"--print-version" version_memo
+      get_output_from_config_or_version ~rocq ~what:"--print-version" version_memo
     in
     let open Result.O in
     let* version_output = version_output in
@@ -227,23 +227,23 @@ let impl_config bin =
 
 let config_memo = Memo.create "rocq-config" ~input:(module Path) impl_config
 
-let make ~(coqc : Action.Prog.t) =
+let make ~(rocq : Action.Prog.t) =
   let open Memo.O in
   let+ config_output =
-    get_output_from_config_or_version ~coqc ~what:"--config" config_memo
+    get_output_from_config_or_version ~rocq ~what:"--config" config_memo
   in
   let open Result.O in
   let* config_output = config_output in
   match Vars.of_lines config_output with
   | Ok vars ->
     (* EJGA: Note, this is still COQLIB and
-       COQ_NATIVE_COMPILER_DEFAULT in both [coqc --config] and [rocq c
+       COQ_NATIVE_COMPILER_DEFAULT in both [rocq --config] and [rocq c
        --config] ; so BEWARE ! *)
     let rocqlib = Vars.get_path vars "COQLIB" in
     let rocq_native_compiler_default = Vars.get_opt vars "COQ_NATIVE_COMPILER_DEFAULT" in
     Ok { rocqlib; rocq_native_compiler_default }
   | Error msg ->
-    User_error.raise Pp.[ textf "Cannot parse output of coqc --config:"; msg ]
+    User_error.raise Pp.[ textf "Cannot parse output of rocq --config:"; msg ]
 ;;
 
 let by_name { rocqlib; rocq_native_compiler_default } name =
@@ -260,14 +260,14 @@ let by_name { rocqlib; rocq_native_compiler_default } name =
 let expand source macro artifacts_host =
   let s = Pform.Macro_invocation.Args.whole macro in
   let open Memo.O in
-  let* coqc = Artifacts.binary artifacts_host ~where:Original_path ~loc:None "coqc" in
+  let* rocq = Artifacts.binary artifacts_host ~where:Original_path ~loc:None "rocq" in
   let expand m k s =
-    let+ t = m ~coqc in
+    let+ t = m ~rocq in
     match t with
     | Error msg ->
       User_error.raise
         ~loc:(Dune_lang.Template.Pform.loc source)
-        [ Pp.textf "Could not expand %%{rocq:%s} as running coqc failed." s; msg ]
+        [ Pp.textf "Could not expand %%{rocq:%s} as running rocq failed." s; msg ]
     | Ok t ->
       (match k t s with
        | None ->

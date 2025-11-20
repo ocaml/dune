@@ -19,7 +19,7 @@ We also need to set up a fake Coq install.
 
 We need to manually compile the prelude.
 
-  $ coqc -boot -noinit -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler no -R lib/coq/theories/ Corelib lib/coq/theories/Init/Prelude.v
+  $ rocq compile -boot -noinit -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler no -R lib/coq/theories/ Corelib lib/coq/theories/Init/Prelude.v
 
 We also setup some plugins
 
@@ -51,13 +51,13 @@ Next we go into our Dune project and build it.
 Now we check the flags that were passed to coqdep and coqc:
 
   $ tail -4 A/_build/log | head -2 | ../scrub_coq_args.sh
-  coqdep
+  rocq dep
   -boot
   -R coq/theories Corelib
   -Q $TESTCASE_ROOT/lib/coq/user-contrib/B B
   -R . A -dyndep opt -vos a.v >
   _build/default/.A.theory.d
-  coqc -q
+  rocq compile -q
   -w -deprecated-native-compiler-option -native-output-dir .
   -native-compiler on
   -nI lib/rocq-runtime/kernel

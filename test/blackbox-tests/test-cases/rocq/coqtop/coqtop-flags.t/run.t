@@ -2,7 +2,7 @@ Testing that the correct flags are being passed to dune rocq top
 
 The flags passed to coqc:
   $ dune build && tail -1 _build/log | ../../scrub_coq_args.sh
-  coqc
+  rocq compile
   -w -notation-overridden
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled

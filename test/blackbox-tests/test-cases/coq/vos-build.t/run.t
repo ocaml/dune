@@ -8,9 +8,9 @@
           coqc foo.vos
           coqc bar.vos
 
-  $ cat foo.v | dune coq top -- foo.v 2>/dev/null | sed '/^Welcome to Coq/d'
+  $ cat foo.v | dune coq top -- foo.v 2>/dev/null | sed '/^Welcome/d'
   mynat is defined
-  $ cat bar.v | dune coq top -- bar.v 2>/dev/null | sed '/^Welcome to Coq/d'
+  $ cat bar.v | dune coq top -- bar.v 2>/dev/null | sed '/^Welcome/d'
   mynum is defined
 
   $ dune clean

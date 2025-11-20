@@ -55,6 +55,14 @@
               ];
             });
           })
+          (self: super: {
+            coq_9_1_native = super.coq_9_1.overrideAttrs (a: {
+              configureFlags = [
+                "-native-compiler"
+                "yes"
+              ];
+            });
+          })
         ];
 
         applyOxcamlPatches = import ./nix/ox-patches.nix {
@@ -350,6 +358,28 @@
               meta.description = ''
                 Provides a minimal shell environment built purely from nixpkgs
                 that can build Dune and the Coq testsuite.
+              '';
+            };
+
+            rocq = pkgs.mkShell {
+              inherit INSIDE_NIX;
+              nativeBuildInputs = (testNativeBuildInputs pkgs);
+              # Coq requires OCaml 4.x
+              inputsFrom = [
+                pkgs.ocaml-ng.ocamlPackages_4_14.dune_3
+              ];
+              buildInputs = with pkgs; [
+                ocaml-ng.ocamlPackages_4_14.csexp
+                ocaml-ng.ocamlPackages_4_14.pp
+                ocaml-ng.ocamlPackages_4_14.re
+                ocaml-ng.ocamlPackages_4_14.spawn
+                ocaml-ng.ocamlPackages_4_14.uutf
+                coq_9_1_native
+                coq_9_1_native.ocamlPackages.findlib
+              ];
+              meta.description = ''
+                Provides a minimal shell environment built purely from nixpkgs
+                that can build Dune and the Rocq testsuite.
               '';
             };
 

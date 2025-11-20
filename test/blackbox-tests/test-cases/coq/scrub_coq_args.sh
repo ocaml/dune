@@ -19,9 +19,13 @@ sed 's/ -boot/\f-boot/g' | # new line for each -boot
 sed 's/ -native-compiler /\f-native-compiler /g' | # new line for each -native-compiler
 sed 's/-R [^[:space:]]*coq /-R coq /g' | # scrub -R with coq
 sed 's#-R [^[:space:]]*coq/theories #-R coq/theories #g' | # scrub -R with coq/theories
-sed 's/-I [-A-Za-z0-9\/_\.]*lib\//-I lib\//g' | # scrub -I with lib/
-sed 's/-nI [-A-Za-z0-9\/_\.]*lib\//-nI lib\//g' | # scrub -nI with lib/
+sed 's/-I [-A-Za-z0-9\/_\.+]*lib\//-I lib\//g' | # scrub -I with lib/
+sed 's/-nI [-A-Za-z0-9\/_\.+]*lib\//-nI lib\//g' | # scrub -nI with lib/
 sed 's/\(-R [^\f]* [^\f]*\) \(.*\)/\1\f\2/g' | # new line after each -R
 sed 's/\(-I lib\/findlib\)\f\(.*\)/\2\f\1/g' | # move lib/findlib to the end
 sed 's/\(-I lib\/zarith\)\f\(.*\)/\2\f\1/g' | # move lib/zarith to the end
+sed 's/lib\/coq\/[^[:space:]]*\/plugins\//...\/plugins\//g' | # normalize plugins -I
+sed 's/\f-I \.\.\.\/plugins\/[a-z]*_core\>//g' | # remove rocq-9-only plugin -I
+sed 's/\f-I \.\.\.\/plugins\/ltac2_ltac1\>//g' | # remove rocq-9-only plugin -I
+sed 's/\f-I \.\.\.\/plugins\/tutorial\/p4\>//g' | # remove rocq-9-only plugin -I
 tr '\f' '\n' # replace form feed with new line

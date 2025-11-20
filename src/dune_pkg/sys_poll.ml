@@ -226,6 +226,8 @@ let sys_ocaml_version ~path =
 let make_lazy f = Fiber.Lazy.create f |> Fiber.Lazy.force
 
 let make ~path =
+  let open Dune_stats.Not_a_fiber.O in
+  let& () = { Dune_stats.name = "make"; cat = [ "sys_poll" ]; args = [] } in
   let arch = make_lazy (fun () -> arch ~path) in
   let os = make_lazy (fun () -> os ~path) in
   let os_release_fields = lazy (os_release_fields ()) in

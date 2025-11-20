@@ -178,8 +178,8 @@ let printf t format_string =
 let emit t event = printf t "%s" (Json.to_string (Event.to_json event))
 
 type event_data =
-  { args : Chrome_trace.Event.args option
-  ; cat : string list option
+  { args : Chrome_trace.Event.args
+  ; cat : string list
   ; name : string
   }
 
@@ -206,12 +206,69 @@ let finish event =
       let stop = Unix.gettimeofday () in
       Timestamp.of_float_seconds (stop -. start)
     in
+    let cat =
+      match cat with
+      | [] -> None
+      | cat -> Some cat
+    in
+    let args =
+      match args with
+      | [] -> None
+      | args -> Some args
+    in
     let common =
       Event.common_fields ?cat ~name ~ts:(Timestamp.of_float_seconds start) ()
     in
     let event = Event.complete ?args common ~dur in
     emit t event
 ;;
+
+let trace_fiber ~cat ~name ~args f =
+  let event = start (global ()) (fun () -> { args; cat; name }) in
+  Fiber.finalize
+    ~finally:(fun () ->
+      let open Fiber.O in
+      let+ () = Fiber.return (finish event) in
+      ())
+    f
+;;
+
+let trace_sync ~cat ~name ~args f =
+  let event = start (global ()) (fun () -> { args; cat; name }) in
+  Exn.protectx () ~f ~finally:(fun () -> finish event)
+;;
+
+let trace_memo ~cat ~name ~args f =
+  let open Memo.O in
+  let event = start (global ()) (fun () -> { args; cat; name }) in
+  let+ res = f () in
+  finish event;
+  res
+;;
+
+module Not_a_fiber = struct
+  module O = struct
+    let ( let& ) config f =
+      trace_sync ~cat:config.cat ~name:config.name ~args:config.args f
+    ;;
+  end
+end
+
+module Fiber = struct
+  module O = struct
+    let ( let& ) config f =
+      trace_fiber ~cat:config.cat ~name:config.name ~args:config.args f
+    ;;
+  end
+end
+
+module Memo = struct
+  module O = struct
+    let ( let& ) config f =
+      trace_memo ~cat:config.cat ~name:config.name ~args:config.args f
+    ;;
+  end
+end
 
 module Fd_count = struct
   type t =

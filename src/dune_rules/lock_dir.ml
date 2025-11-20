@@ -208,8 +208,17 @@ let get_with_path ctx =
         [ "context", Context_name.to_dyn ctx ]
   in
   let* () = Build_system.build_dir path in
-  Load.load path
-  >>= function
+  let* lock_dir =
+    let open Dune_stats.Memo.O in
+    let& () =
+      { Dune_stats.name = "load_lock_dir"
+      ; cat = [ "lock_dir" ]
+      ; args = [ "lock_dir", `String (Path.to_string path) ]
+      }
+    in
+    Load.load path
+  in
+  match lock_dir with
   | Error e -> Memo.return (Error e)
   | Ok lock_dir ->
     let+ workspace_lock_dir = get_workspace_lock_dir ctx in

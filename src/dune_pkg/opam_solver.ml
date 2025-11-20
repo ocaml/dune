@@ -290,8 +290,15 @@ module Context = struct
        | Found p -> Some p)
   ;;
 
-  let repo_candidate t name =
-    let versions = Opam_repo.all_packages_versions_map t.repos name in
+  let repo_candidate t package_name =
+    let open Dune_stats.Fiber.O in
+    let& () =
+      { Dune_stats.name = "repo_candidate"
+      ; cat = [ "solver" ]
+      ; args = [ "package", `String (OpamPackage.Name.to_string package_name) ]
+      }
+    in
+    let versions = Opam_repo.all_packages_versions_map t.repos package_name in
     let rejected, available =
       OpamPackage.Version.Map.fold
         (fun version (repo, key) (rejected, available) ->
@@ -305,7 +312,7 @@ module Context = struct
     let+ resolved = Opam_repo.load_all_versions_by_keys available in
     Table.add_exn
       t.expanded_packages
-      (Package_name.of_opam_package_name name)
+      (Package_name.of_opam_package_name package_name)
       (OpamPackage.Version.Map.cardinal resolved);
     let available =
       OpamPackage.Version.Map.values resolved
@@ -786,6 +793,8 @@ module Solver = struct
     (* Starting from [root_req], explore all the feeds and implementations we
        might need, adding all of them to [sat_problem]. *)
     let build_problem context root_req sat ~max_avoids ~dummy_impl =
+      let open Dune_stats.Fiber.O in
+      let& () = { Dune_stats.cat = [ "solver" ]; name = "build_problem"; args = [] } in
       (* For each (iface, source) we have a list of implementations. *)
       let impl_cache = Fiber_cache.create (module Input.Role) in
       let conflict_classes = Conflict_classes.create () in
@@ -955,6 +964,10 @@ module Solver = struct
     ;;
 
     let do_solve context ~closest_match root_req =
+      let open Dune_stats.Fiber.O in
+      let& () =
+        { Dune_stats.name = "do_solve_with_retries"; cat = [ "solver" ]; args = [] }
+      in
       do_solve context ~closest_match ~max_avoids:(Some 0) root_req
       >>= function
       | Some sels ->
@@ -1436,6 +1449,13 @@ module Solver = struct
 end
 
 let solve_package_list packages ~context =
+  let open Dune_stats.Fiber.O in
+  let& () =
+    { Dune_stats.name = "solve_package_list"
+    ; cat = [ "solver" ]
+    ; args = [ "package_count", `Int (List.length packages) ]
+    }
+  in
   Fiber.collect_errors (fun () ->
     (* [Solver.solve] returns [Error] when it's unable to find a solution to
        the dependencies, but can also raise exceptions, for example if opam

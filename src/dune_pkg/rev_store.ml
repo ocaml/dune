@@ -717,6 +717,13 @@ module Entry = struct
 end
 
 let fetch_allow_failure repo ~url obj =
+  let open Dune_stats.Fiber.O in
+  let& () =
+    { Dune_stats.name = "fetch"
+    ; cat = [ "rev_store" ]
+    ; args = [ "url", `String url; "object", `String (Object.to_hex obj) ]
+    }
+  in
   with_mutex repo obj ~f:(fun () ->
     object_exists repo obj
     >>= function
@@ -922,6 +929,13 @@ module At_rev = struct
   ;;
 
   let rec of_rev repo ~revision =
+    let open Dune_stats.Fiber.O in
+    let& () =
+      { Dune_stats.name = "of_rev"
+      ; cat = [ "rev_store" ]
+      ; args = [ "revision", `String (Object.to_hex revision) ]
+      }
+    in
     let* files, submodules = files_and_submodules repo revision in
     let commit_paths = path_commit_map submodules in
     let+ files =
@@ -1021,6 +1035,16 @@ module At_rev = struct
         }
         ~target
     =
+    let open Dune_stats.Fiber.O in
+    let& () =
+      { Dune_stats.name = "check_out"
+      ; cat = [ "rev_store" ]
+      ; args =
+          [ "revision", `String (Object.to_hex revision)
+          ; "target", `String (Path.to_string target)
+          ]
+      }
+    in
     let git = Lazy.force Vcs.git in
     let temp_dir =
       Temp_dir.dir_for_target ~target ~prefix:"rev-store" ~suffix:(Object.to_hex revision)

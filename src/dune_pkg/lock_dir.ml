@@ -1457,6 +1457,16 @@ module Write_disk = struct
         ~(files : File_entry.t Package_version.Map.Multi.t Package_name.Map.t)
         lock_dir
     =
+    let open Dune_stats.Not_a_fiber.O in
+    let& () =
+      { cat = [ "lock_dir" ]
+      ; name = "write_lock_dir"
+      ; args =
+          [ "lock_dir", `String (Path.to_string lock_dir_path_external)
+          ; "package_count", `Int (Package_name.Map.cardinal files)
+          ]
+      }
+    in
     let lock_dir_hidden =
       (* The original lockdir path with the lockdir renamed to begin with a ".". *)
       let hidden_basename = sprintf ".%s" (Path.basename lock_dir_path_external) in
@@ -1710,7 +1720,17 @@ module Load_immediate = Make_load (struct
   end)
 
 let read_disk = Load_immediate.load
-let read_disk_exn = Load_immediate.load_exn
+
+let read_disk_exn path =
+  let open Dune_stats.Not_a_fiber.O in
+  let& () =
+    { Dune_stats.name = "load_lock_dir"
+    ; cat = [ "lock_dir" ]
+    ; args = [ "lock_dir", `String (Path.to_string path) ]
+    }
+  in
+  Load_immediate.load_exn path
+;;
 
 let transitive_dependency_closure t ~platform start =
   let missing_packages =

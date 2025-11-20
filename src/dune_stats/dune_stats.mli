@@ -23,14 +23,34 @@ val extended_build_job_info : t -> bool
 type event
 
 type event_data =
-  { args : Chrome_trace.Event.args option
-  ; cat : string list option
+  { args : Chrome_trace.Event.args
+  ; cat : string list
   ; name : string
   }
 
 val start : t option -> (unit -> event_data) -> event option
 val finish : event option -> unit
 val flush : t -> unit
+
+module Not_a_fiber : sig
+  (** Please make sure what you are wrapping is not a fiber. *)
+
+  module O : sig
+    val ( let& ) : event_data -> (unit -> 'a) -> 'a
+  end
+end
+
+module Fiber : sig
+  module O : sig
+    val ( let& ) : event_data -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+  end
+end
+
+module Memo : sig
+  module O : sig
+    val ( let& ) : event_data -> (unit -> 'a Memo.t) -> 'a Memo.t
+  end
+end
 
 module Private : sig
   module Fd_count : sig

@@ -1,4 +1,4 @@
   $ dune build --display short --profile unsound --debug-dependency-path @all
-        coqdep .basic.theory.d
-          coqc foo.{glob,vo}
-          coqc bar.{glob,vo}
+          rocq .basic.theory.d
+          rocq foo.{glob,vo}
+          rocq bar.{glob,vo}

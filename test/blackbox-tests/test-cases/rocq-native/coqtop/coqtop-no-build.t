@@ -32,8 +32,8 @@ On a fresh build, this should do nothing but should pass the correct flags:
 And for comparison normally a build would happen:
 
   $ dune rocq top --display short --toplevel echo dir/bar.v | ../scrub_coq_args.sh
-        coqdep dir/.basic.theory.d
-          coqc dir/Nbasic_foo.{cmi,cmxs},dir/foo.{glob,vo}
+          rocq dir/.basic.theory.d
+          rocq dir/Nbasic_foo.{cmi,cmxs},dir/foo.{glob,vo}
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v
   -w -deprecated-native-compiler-option -native-output-dir .
   -native-compiler on

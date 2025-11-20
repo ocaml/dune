@@ -64,22 +64,22 @@ end = struct
   ;;
 end
 
-let coqc ~loc ~dir ~sctx =
+let rocq ~loc ~dir ~sctx =
   Super_context.resolve_program_memo
     sctx
-    "coqc"
+    "rocq"
     ~where:Original_path
     ~dir
     ~loc:(Some loc)
-    ~hint:"opam install coq"
+    ~hint:"opam install rocq-runtime"
 ;;
 
 let select_native_mode ~sctx ~dir (buildable : Rocq_stanza.Buildable.t) =
   match buildable.mode with
   | Some x -> Memo.return x
   | None ->
-    let* coqc = coqc ~sctx ~dir ~loc:buildable.loc in
-    let+ config = Rocq_config.make ~coqc in
+    let* rocq = rocq ~sctx ~dir ~loc:buildable.loc in
+    let+ config = Rocq_config.make ~rocq in
     (match config with
      | Error _ -> Rocq_mode.VoOnly
      | Ok config ->
@@ -606,18 +606,13 @@ let setup_rocqdep_for_theory_rule
     rocqdep_flags ~dir ~stanza_rocqdep_flags ~expander
   in
   let rocqdep_flags =
-    Command.Args.Dyn boot_flags :: Command.Args.dyn extra_rocqdep_flags :: file_flags
+    Command.Args.A "dep"
+    :: Command.Args.Dyn boot_flags
+    :: Command.Args.dyn extra_rocqdep_flags
+    :: file_flags
   in
   let stdout_to = dep_theory_file ~dir ~wrapper_name in
-  let* coqdep =
-    Super_context.resolve_program_memo
-      sctx
-      "coqdep"
-      ~dir
-      ~where:Original_path
-      ~loc:(Some loc)
-      ~hint:"opam install coq"
-  in
+  let* rocq = rocq ~loc ~sctx ~dir in
   (* Rocqdep has to be called in the stanza's directory *)
   Super_context.add_rule
     ~loc
@@ -626,7 +621,7 @@ let setup_rocqdep_for_theory_rule
     (let open Action_builder.With_targets.O in
      Action_builder.with_no_targets mlpack_rule
      >>> Action_builder.(with_no_targets (goal source_rule))
-     >>> Command.run ~dir:(Path.build dir) ~stdout_to coqdep rocqdep_flags)
+     >>> Command.run ~dir:(Path.build dir) ~stdout_to rocq rocqdep_flags)
 ;;
 
 module Dep_map = Stdune.Map.Make (Path)
@@ -826,7 +821,7 @@ let setup_rocqc_rule
   let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
   (* TODO: merge with boot_type *)
   let per_file_flags = Per_file.match_ modules_flags rocq_module in
-  let* coqc = coqc ~loc ~dir ~sctx in
+  let* rocq = rocq ~loc ~dir ~sctx in
   let obj_files =
     Rocq_module.obj_files
       ~wrapper_name
@@ -853,6 +848,7 @@ let setup_rocqc_rule
       rocq_module
   in
   let deps_of = deps_of ~dir ~boot_type ~wrapper_name ~mode rocq_module in
+  let cflag = Command.Args.A "compile" in
   let open Action_builder.With_targets.O in
   Super_context.add_rule
     ~loc
@@ -860,7 +856,10 @@ let setup_rocqc_rule
     sctx
     (Action_builder.with_no_targets deps_of
      >>> Action_builder.With_targets.add ~file_targets
-         @@ Command.run ~dir:(Path.build rocqc_dir) coqc (target_obj_files :: args)
+         @@ Command.run
+              ~dir:(Path.build rocqc_dir)
+              rocq
+              (cflag :: target_obj_files :: args)
      (* The way we handle the transitive dependencies of .vo files is not safe for
         sandboxing *)
      >>| Action.Full.add_sandbox Sandbox_config.no_sandboxing)
@@ -902,15 +901,7 @@ let setup_rocqdoc_rules ~sctx ~dir ~theories_deps (s : Rocq_stanza.Theory.t) roc
     in
     fun mode ->
       let* () =
-        let* rocqdoc =
-          Super_context.resolve_program_memo
-            sctx
-            "coqdoc"
-            ~dir
-            ~where:Original_path
-            ~loc:(Some loc)
-            ~hint:"opam install coq"
-        in
+        let* rocq = rocq ~loc ~sctx ~dir in
         (let doc_dir = Rocq_doc.rocqdoc_directory ~mode ~obj_dir:dir ~name in
          let file_flags =
            let globs =
@@ -969,7 +960,8 @@ let setup_rocqdoc_rules ~sctx ~dir ~theories_deps (s : Rocq_stanza.Theory.t) roc
              | `Html -> Command.Args.Dyn dyn
              | `Latex -> Command.Args.empty
            in
-           [ Command.Args.S file_flags
+           [ Command.Args.A "doc"
+           ; Command.Args.S file_flags
            ; Command.Args.dyn extra_rocqdoc_flags
            ; when_html header
            ; when_html footer
@@ -987,7 +979,7 @@ let setup_rocqdoc_rules ~sctx ~dir ~theories_deps (s : Rocq_stanza.Theory.t) roc
          Command.run
            ~sandbox:Sandbox_config.needs_sandboxing
            ~dir:(Path.build dir)
-           rocqdoc
+           rocq
            file_flags
          |> Action_builder.With_targets.map
               ~f:
@@ -1237,21 +1229,14 @@ let install_rules ~sctx ~dir s =
 ;;
 
 let setup_rocqpp_rules ~sctx ~dir ({ loc; modules } : Rocq_stanza.Rocqpp.t) =
-  let* coqpp =
-    Super_context.resolve_program_memo
-      sctx
-      "coqpp"
-      ~where:Original_path
-      ~dir
-      ~loc:(Some loc)
-      ~hint:"opam install coq"
+  let* rocq = rocq ~loc ~sctx ~dir
   and* mlg_files = Rocq_sources.mlg_files ~sctx ~dir ~modules in
   let mlg_rule m =
     let source = Path.build m in
     let target = Path.Build.set_extension m ~ext:".ml" in
-    let args = [ Command.Args.Dep source; Hidden_targets [ target ] ] in
+    let args = [ Command.Args.A "pp-mlg"; Dep source; Hidden_targets [ target ] ] in
     let build_dir = Super_context.context sctx |> Context.build_dir in
-    Command.run ~dir:(Path.build build_dir) coqpp args
+    Command.run ~dir:(Path.build build_dir) rocq args
   in
   List.rev_map ~f:mlg_rule mlg_files |> Super_context.add_rules ~loc ~dir sctx
 ;;

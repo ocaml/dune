@@ -1,9 +1,9 @@
   $ dune build --profile=release --display short --debug-dependency-path @all
-        coqdep bar/.bar.theory.d
-        coqdep foo/.foo.theory.d
-          coqc foo/Nfoo_foo.{cmi,cmxs},foo/foo.{glob,vo}
-          coqc foo/a/Nfoo_a_a.{cmi,cmxs},foo/a/a.{glob,vo}
-          coqc bar/Nbar_baz_bar.{cmi,cmxs},bar/bar.{glob,vo}
+          rocq bar/.bar.theory.d
+          rocq foo/.foo.theory.d
+          rocq foo/Nfoo_foo.{cmi,cmxs},foo/foo.{glob,vo}
+          rocq foo/a/Nfoo_a_a.{cmi,cmxs},foo/a/a.{glob,vo}
+          rocq bar/Nbar_baz_bar.{cmi,cmxs},bar/bar.{glob,vo}
 
   $ dune build --profile=release --debug-dependency-path @default
   lib: [

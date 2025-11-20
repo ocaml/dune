@@ -1,12 +1,12 @@
   $ dune build --display short foo.vos
-        coqdep .basic.theory.d
-          coqc foo.vos
+          rocq .basic.theory.d
+          rocq foo.vos
 
   $ dune clean
   $ dune build --display short bar.vos
-        coqdep .basic.theory.d
-          coqc foo.vos
-          coqc bar.vos
+          rocq .basic.theory.d
+          rocq foo.vos
+          rocq bar.vos
 
   $ cat foo.v | dune rocq top -- foo.v 2>/dev/null | sed '/^Welcome to Rocq/d'
   mynat is defined
@@ -15,9 +15,9 @@
 
   $ dune clean
   $ dune build --display short --debug-dependency-path @all
-        coqdep .basic.theory.d
-          coqc foo.vos
-          coqc bar.vos
+          rocq .basic.theory.d
+          rocq foo.vos
+          rocq bar.vos
   $ dune build --debug-dependency-path @default
   lib: [
     "_build/install/default/lib/base/META"
@@ -35,8 +35,8 @@ Checking that we can go back to vo mode (without cleaning).
 
   $ mv dune-vo dune
   $ dune build --display short --debug-dependency-path @all
-          coqc foo.{glob,vo}
-          coqc bar.{glob,vo}
+          rocq foo.{glob,vo}
+          rocq bar.{glob,vo}
   $ dune build --debug-dependency-path @default
   lib: [
     "_build/install/default/lib/base/META"

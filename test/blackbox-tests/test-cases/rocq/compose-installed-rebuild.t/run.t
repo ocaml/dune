@@ -12,7 +12,7 @@ We test that installed Coq theories, when updated, prompt Dune to rebuild
 
 We need to manually compile the prelude.
 
-  $ coqc -boot -noinit -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler no -R lib/coq/theories/ Corelib lib/coq/theories/Init/Prelude.v
+  $ rocq compile -boot -noinit -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler no -R lib/coq/theories/ Corelib lib/coq/theories/Init/Prelude.v
 
 We also setup some plugins
 

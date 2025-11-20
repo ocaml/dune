@@ -7,5 +7,5 @@ Testing the composition of the installed stdlib
   > EOF
 
   $ dune build test.vo --display=short --always-show-command-line
-        coqdep .test.theory.d
-          coqc test.{glob,vo}
+          rocq .test.theory.d
+          rocq test.{glob,vo}

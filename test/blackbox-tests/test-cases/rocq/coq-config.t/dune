@@ -17,7 +17,7 @@
    (progn
     (pipe-outputs
      ; We need to scrub ignored config values
-     (run %{bin:coqc} --config)
+     (run %{bin:rocq} --config)
      (run sed "/^COQCORELIB=/d")
      (run sed "/^DOCDIR=/d")
      (run sed "/^OCAMLFIND=/d")
@@ -25,5 +25,5 @@
      (run sed "/^WARN=/d")
      (run sed "/^HASNATDYNLINK=/d")
      (run sed "/^COQ_SRC_SUBDIRS=/d"))
-    (run %{bin:coqc} -print-version)
-    (run %{bin:coqc} -print-version)))))
+    (run %{bin:rocq} -print-version)
+    (run %{bin:rocq} -print-version)))))

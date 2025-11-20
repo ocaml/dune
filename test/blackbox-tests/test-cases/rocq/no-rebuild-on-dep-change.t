@@ -13,5 +13,5 @@ coqdep is changed.
 
 This is as expected:
   $ dune build --display=short
-        coqdep .bug.theory.d
-          coqc leaf.{glob,vo}
+          rocq .bug.theory.d
+          rocq leaf.{glob,vo}

@@ -36,11 +36,11 @@ let config_path_exn rocq_config key =
        (* This should never happen *)
        Code_error.raise "key is not a path" [ key, Rocq_config.Value.to_dyn path ])
   | None ->
-    (* This happens if the output of coqc --config doesn't include the key *)
+    (* This happens if the output of rocq --config doesn't include the key *)
     User_error.raise
       [ Pp.concat
           ~sep:Pp.space
-          [ Pp.text "key not found from"; User_message.command "coqc --config" ]
+          [ Pp.text "key not found from"; User_message.command "rocq --config" ]
         |> Pp.hovbox
       ; Pp.text key
       ]
@@ -135,16 +135,16 @@ let scan_vo root_path =
   scan_path ~f ~acc ~prefix:() root_path
 ;;
 
-let of_rocq_install coqc =
+let of_rocq_install rocq =
   let open Memo.O in
-  let* rocq_config = Rocq_config.make ~coqc:(Ok coqc) in
+  let* rocq_config = Rocq_config.make ~rocq:(Ok rocq) in
   match rocq_config with
   | Error msg ->
     User_warning.emit
       [ Pp.concat
           ~sep:Pp.space
           [ Pp.text "Skipping installed theories due to"
-          ; User_message.command "coqc --config"
+          ; User_message.command "rocq --config"
           ; Pp.text "failure:"
           ]
         |> Pp.hovbox
@@ -154,7 +154,7 @@ let of_rocq_install coqc =
         [ Pp.concat
             ~sep:Pp.space
             [ Pp.text "Try running"
-            ; User_message.command "coqc --config"
+            ; User_message.command "rocq --config"
             ; Pp.text "manually to see the error."
             ]
           |> Pp.hovbox
@@ -178,18 +178,18 @@ let of_rocq_install coqc =
     Memo.return (corelib :: user_contrib)
 ;;
 
-let of_rocq_install coqc =
-  (* If coqc was found in the _build directory then we must be composing
-     with Coq and therefore cannot have any installed libs *)
-  if Path.is_in_build_dir coqc then Memo.return [] else of_rocq_install coqc
+let of_rocq_install rocq =
+  (* If rocq was found in the _build directory then we must be composing
+     with Rocq and therefore cannot have any installed libs *)
+  if Path.is_in_build_dir rocq then Memo.return [] else of_rocq_install rocq
 ;;
 
 let of_rocq_install context =
   let open Memo.O in
-  let* coqc = Context.which context "coqc" in
-  match coqc with
+  let* rocq = Context.which context "rocq" in
+  match rocq with
   | None -> Memo.return []
-  | Some coqc -> of_rocq_install coqc
+  | Some rocq -> of_rocq_install rocq
 ;;
 
 let of_env env =

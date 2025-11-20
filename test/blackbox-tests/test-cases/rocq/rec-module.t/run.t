@@ -1,9 +1,9 @@
   $ dune build --display short --debug-dependency-path @all
-        coqdep .rec_module.theory.d
-          coqc b/foo.{glob,vo}
-          coqc c/ooo.{glob,vo}
-          coqc c/d/bar.{glob,vo}
-          coqc a/bar.{glob,vo}
+          rocq .rec_module.theory.d
+          rocq b/foo.{glob,vo}
+          rocq c/ooo.{glob,vo}
+          rocq c/d/bar.{glob,vo}
+          rocq a/bar.{glob,vo}
 
   $ dune build --debug-dependency-path @default
   lib: [

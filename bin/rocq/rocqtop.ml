@@ -37,7 +37,7 @@ let term =
     Common.context_arg ~doc
   and+ rocqtop =
     let doc = Some "Run the given toplevel command instead of the default." in
-    Arg.(value & opt string "coqtop" & info [ "toplevel" ] ~docv:"CMD" ~doc)
+    Arg.(value & opt string "rocq" & info [ "toplevel" ] ~docv:"CMD" ~doc)
   and+ rocq_file_arg =
     Arg.(required & pos 0 (some string) None (Arg.info [] ~doc:None ~docv:"ROCQFILE"))
   and+ extra_args =
@@ -72,7 +72,7 @@ let term =
        | Some dir -> dir)
       |> Path.Build.append_local (Context.build_dir context)
     in
-    let* rocqtop, args, env =
+    let* rocqtop, rocq_arg, args, env =
       build_exn
       @@ fun () ->
       let open Memo.O in
@@ -145,6 +145,12 @@ let term =
         in
         Action_builder.evaluate_and_collect_facts deps_of
       in
+      let real_binary, rocq_arg =
+        if String.equal "rocq" rocqtop then "rocq", [ "top" ] else rocqtop, []
+      in
+      let* prog = Super_context.resolve_program_memo sctx ~dir ~loc:None real_binary in
+      let prog = Action.Prog.ok_exn prog in
+      let* () = Build_system.build_file prog in
       (* Get args *)
       let* (args, _) : string list * Dep.Fact.t Dep.Map.t =
         let* args = args in
@@ -152,15 +158,13 @@ let term =
         let args = Dune_rules.Command.expand ~dir (S args) in
         Action_builder.evaluate_and_collect_facts args.build
       in
-      let* prog = Super_context.resolve_program_memo sctx ~dir ~loc:None rocqtop in
-      let prog = Action.Prog.ok_exn prog in
-      let* () = Build_system.build_file prog in
       let+ env = Super_context.context_env sctx in
-      Path.to_string prog, args, env
+      Path.to_string prog, rocq_arg, args, env
     in
+    (* Careful about the first argument to "rocq" *)
     let args =
       let topfile = Path.to_absolute_filename (Path.build rocq_file_build) in
-      ("-topfile" :: topfile :: args) @ extra_args
+      rocq_arg @ ("-topfile" :: topfile :: args) @ extra_args
     in
     Fiber.return (rocqtop, args, env)
   in

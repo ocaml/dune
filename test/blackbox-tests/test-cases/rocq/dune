@@ -3,7 +3,7 @@
 
 (cram
  (applies_to :whole_subtree)
- (deps %{bin:coqc} %{bin:coqdep} scrub_coq_args.sh)
+ (deps %{bin:rocq} scrub_coq_args.sh)
  (alias runtest-rocq)
  (enabled_if
   (= %{env:DUNE_ROCQ_TEST=disable} enable)))

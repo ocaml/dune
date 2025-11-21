@@ -206,7 +206,7 @@ module Ansi_color = struct
 end
 
 module Pp = struct
-  include Pp
+  include Stdune.Pp
 
   let sexp (conv_tag : 'a Conv.value) : 'a Pp.t Conv.value =
     let open Conv in
@@ -470,6 +470,7 @@ module Diagnostic = struct
   type severity =
     | Error
     | Warning
+    | Alert
 
   module Promotion = struct
     type t =
@@ -542,7 +543,13 @@ module Diagnostic = struct
 
   let sexp_severity =
     let open Conv in
-    enum [ "error", Error; "warning", Warning ]
+    enum [ "error", Error; "warning", Warning; "alert", Alert ]
+  ;;
+
+  let severity_to_dyn = function
+    | Error -> Dyn.string "error"
+    | Warning -> Dyn.string "warning"
+    | Alert -> Dyn.string "alert"
   ;;
 
   let sexp =
@@ -708,9 +715,10 @@ module Compound_user_error = struct
   type t =
     { main : User_message.t
     ; related : User_message.t list
+    ; severity : Diagnostic.severity
     }
 
-  let create ~main ~related =
+  let create ~main ~related ~severity =
     let () =
       List.iter related ~f:(fun (related : User_message.t) ->
         match related.loc with
@@ -720,23 +728,25 @@ module Compound_user_error = struct
             "related messages must have locations"
             [ "related", String (Stdune.User_message.to_string related) ])
     in
-    { main; related }
+    { main; related; severity }
   ;;
 
   let sexp =
     let open Conv in
-    let from { main; related } = main, related in
-    let to_ (main, related) = create ~main ~related in
+    let from { main; related; severity } = main, related, severity in
+    let to_ (main, related, severity) = create ~main ~related ~severity in
     let main = field "main" (required User_message.sexp_without_annots) in
     let related = field "related" (required (list User_message.sexp_without_annots)) in
-    iso (record (both main related)) to_ from
+    let severity = field "severity" (required Diagnostic.sexp_severity) in
+    iso (record (three main related severity)) to_ from
   ;;
 
-  let to_dyn { main; related } =
+  let to_dyn { main; related; severity } =
     let open Dyn in
     record
       [ "main", string (Stdune.User_message.to_string main)
       ; "related", (list string) (List.map related ~f:Stdune.User_message.to_string)
+      ; "severity", Diagnostic.severity_to_dyn severity
       ]
   ;;
 
@@ -744,7 +754,8 @@ module Compound_user_error = struct
     Stdune.User_message.Annots.Key.create ~name:"compound-user-error" (Dyn.list to_dyn)
   ;;
 
-  let make ~main ~related = create ~main ~related
+  let make ~main ~related = create ~main ~related ~severity:Error
+  let make_with_severity ~main ~related ~severity = create ~main ~related ~severity
 
   let make_loc ~dir { Ocamlc_loc.path; chars; lines } : Stdune.Loc.t =
     let pos_fname =
@@ -777,7 +788,13 @@ module Compound_user_error = struct
       in
       let main = make_message (report.loc, report.message) in
       let related = List.map report.related ~f:make_message in
-      make ~main ~related)
+      let severity : Diagnostic.severity =
+        match report.severity with
+        | Error _ -> Error
+        | Warning _ -> Warning
+        | Alert _ -> Alert
+      in
+      make_with_severity ~main ~related ~severity)
   ;;
 end
 
@@ -814,25 +831,17 @@ end
 module Files_to_promote = struct
   type t =
     | All
-    | These of Stdune.Path.Source.t list * (Stdune.Path.Source.t -> unit)
-
-  let on_missing fn =
-    Stdune.User_warning.emit
-      [ Pp.paragraphf
-          "Nothing to promote for %s."
-          (Stdune.Path.Source.to_string_maybe_quoted fn)
-      ]
-  ;;
+    | These of Stdune.Path.Source.t list
 
   let sexp =
     let open Conv in
     let to_ = function
       | [] -> All
-      | paths -> These (List.map ~f:Stdune.Path.Source.of_string paths, on_missing)
+      | paths -> These (List.map ~f:Stdune.Path.Source.of_string paths)
     in
     let from = function
       | All -> []
-      | These (paths, _) -> List.map ~f:Stdune.Path.Source.to_string paths
+      | These paths -> List.map ~f:Stdune.Path.Source.to_string paths
     in
     iso (list Path.sexp) to_ from
   ;;

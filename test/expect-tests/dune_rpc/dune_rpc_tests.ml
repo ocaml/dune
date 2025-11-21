@@ -890,6 +890,9 @@ let%expect_test "print digests for all public RPCs" =
     Version 2:
       Request: Unit
       Response: 0d4442e0c36d6727a9acf9aabce6a6ad
+    Version 3:
+      Request: Unit
+      Response: 76dbee17207380c4a728fff5875b2fda
     |}];
   Decl.Notification.print_generations Procedures.Public.shutdown;
   [%expect {| Version 1: Unit |}];
@@ -937,6 +940,9 @@ let%expect_test "print digests for all public RPCs" =
     Version 2:
       Request: Sexp
       Response: 12995aa06697c01ef35c0339bd2fa29e
+    Version 3:
+      Request: Sexp
+      Response: 274830a542b2a8af4ff618db0a4e5e5f
     |}];
   Decl.Request.print_generations (Procedures.Poll.poll Procedures.Poll.running_jobs);
   [%expect

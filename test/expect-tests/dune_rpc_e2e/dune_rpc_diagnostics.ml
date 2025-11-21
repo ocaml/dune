@@ -388,10 +388,38 @@ let%expect_test "optional promotion" =
     ] |}]
 ;;
 
-let%expect_test "warning detection" =
+(* Non-fatal warnings aren't transferred to the RPC client. *)
+let%expect_test "warning non-detection" =
   diagnostic_with_build
-    [ "dune", "(executable (flags -w +26) (name foo))"
+    [ "dune", "(executable (flags (-w +26)) (name foo))"
     ; "foo.ml", "let () = let x = 10 in ()"
+    ]
+    "./foo.exe";
+  [%expect
+    {|  
+    Building ./foo.exe
+    Build ./foo.exe succeeded
+    <no diagnostics> |}]
+;;
+
+(* Alerts aren't transferred to the RPC client. *)
+let%expect_test "alert non-detection" =
+  diagnostic_with_build
+    [ "dune", "(executable (name foo))"
+    ; ( "foo.ml"
+      , {|
+module A : sig
+
+  val f : unit
+  [@@alert foo "foobar"]
+
+end = struct
+  let f = ()
+end
+
+let () = A.f
+|}
+      )
     ]
     "./foo.exe";
   [%expect
@@ -672,7 +700,7 @@ let%expect_test "promoting dune files" =
   [%expect {| |}]
 ;;
 
-let%expect_test "multiple errors in one file" =
+let%expect_test "multiple alerts in one file" =
   let source =
     {|
 module A : sig
@@ -703,118 +731,119 @@ let g = A.f
     let+ () = print_diagnostics poll in
     [%expect
       {|
-        [ "Add"
-        ; [ [ "directory"; "$CWD" ]
-          ; [ "id"; "0" ]
-          ; [ "loc"
-            ; [ [ "start"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "8" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "11" ]
-                  ]
+      [ "Add"
+      ; [ [ "directory"; "$CWD" ]
+        ; [ "id"; "0" ]
+        ; [ "loc"
+          ; [ [ "start"
+              ; [ [ "pos_bol"; "0" ]
+                ; [ "pos_cnum"; "8" ]
+                ; [ "pos_fname"; "$CWD/foo.ml" ]
+                ; [ "pos_lnum"; "11" ]
                 ]
-              ; [ "stop"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "11" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "11" ]
-                  ]
+              ]
+            ; [ "stop"
+              ; [ [ "pos_bol"; "0" ]
+                ; [ "pos_cnum"; "11" ]
+                ; [ "pos_fname"; "$CWD/foo.ml" ]
+                ; [ "pos_lnum"; "11" ]
                 ]
               ]
             ]
-          ; [ "message"; [ "Verbatim"; "foobar\n\
-                                        " ] ]
-          ; [ "promotion"; [] ]
-          ; [ "related"; [] ]
-          ; [ "severity"; "error" ]
-          ; [ "targets"; [] ]
           ]
+        ; [ "message"; [ "Verbatim"; "foobar\n\
+                                      " ] ]
+        ; [ "promotion"; [] ]
+        ; [ "related"; [] ]
+        ; [ "severity"; "alert" ]
+        ; [ "targets"; [] ]
         ]
-        [ "Add"
-        ; [ [ "directory"; "$CWD" ]
-          ; [ "id"; "1" ]
-          ; [ "loc"
-            ; [ [ "start"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "8" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "12" ]
-                  ]
+      ]
+      [ "Add"
+      ; [ [ "directory"; "$CWD" ]
+        ; [ "id"; "1" ]
+        ; [ "loc"
+          ; [ [ "start"
+              ; [ [ "pos_bol"; "0" ]
+                ; [ "pos_cnum"; "8" ]
+                ; [ "pos_fname"; "$CWD/foo.ml" ]
+                ; [ "pos_lnum"; "12" ]
                 ]
-              ; [ "stop"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "11" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "12" ]
-                  ]
+              ]
+            ; [ "stop"
+              ; [ [ "pos_bol"; "0" ]
+                ; [ "pos_cnum"; "11" ]
+                ; [ "pos_fname"; "$CWD/foo.ml" ]
+                ; [ "pos_lnum"; "12" ]
                 ]
               ]
             ]
-          ; [ "message"; [ "Verbatim"; "foobar\n\
-                                        " ] ]
-          ; [ "promotion"; [] ]
-          ; [ "related"; [] ]
-          ; [ "severity"; "error" ]
-          ; [ "targets"; [] ]
           ]
+        ; [ "message"; [ "Verbatim"; "foobar\n\
+                                      " ] ]
+        ; [ "promotion"; [] ]
+        ; [ "related"; [] ]
+        ; [ "severity"; "alert" ]
+        ; [ "targets"; [] ]
         ]
-        [ "Add"
-        ; [ [ "directory"; "$CWD" ]
-          ; [ "id"; "2" ]
-          ; [ "loc"
-            ; [ [ "start"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "4" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "11" ]
-                  ]
+      ]
+      [ "Add"
+      ; [ [ "directory"; "$CWD" ]
+        ; [ "id"; "2" ]
+        ; [ "loc"
+          ; [ [ "start"
+              ; [ [ "pos_bol"; "0" ]
+                ; [ "pos_cnum"; "4" ]
+                ; [ "pos_fname"; "$CWD/foo.ml" ]
+                ; [ "pos_lnum"; "11" ]
                 ]
-              ; [ "stop"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "5" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "11" ]
-                  ]
+              ]
+            ; [ "stop"
+              ; [ [ "pos_bol"; "0" ]
+                ; [ "pos_cnum"; "5" ]
+                ; [ "pos_fname"; "$CWD/foo.ml" ]
+                ; [ "pos_lnum"; "11" ]
                 ]
               ]
             ]
-          ; [ "message"; [ "Verbatim"; "unused value f.\n\
-                                        " ] ]
-          ; [ "promotion"; [] ]
-          ; [ "related"; [] ]
-          ; [ "severity"; "error" ]
-          ; [ "targets"; [] ]
           ]
+        ; [ "message"; [ "Verbatim"; "unused value f.\n\
+                                      " ] ]
+        ; [ "promotion"; [] ]
+        ; [ "related"; [] ]
+        ; [ "severity"; "error" ]
+        ; [ "targets"; [] ]
         ]
-        [ "Add"
-        ; [ [ "directory"; "$CWD" ]
-          ; [ "id"; "3" ]
-          ; [ "loc"
-            ; [ [ "start"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "4" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "12" ]
-                  ]
+      ]
+      [ "Add"
+      ; [ [ "directory"; "$CWD" ]
+        ; [ "id"; "3" ]
+        ; [ "loc"
+          ; [ [ "start"
+              ; [ [ "pos_bol"; "0" ]
+                ; [ "pos_cnum"; "4" ]
+                ; [ "pos_fname"; "$CWD/foo.ml" ]
+                ; [ "pos_lnum"; "12" ]
                 ]
-              ; [ "stop"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "5" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "12" ]
-                  ]
+              ]
+            ; [ "stop"
+              ; [ [ "pos_bol"; "0" ]
+                ; [ "pos_cnum"; "5" ]
+                ; [ "pos_fname"; "$CWD/foo.ml" ]
+                ; [ "pos_lnum"; "12" ]
                 ]
               ]
             ]
-          ; [ "message"; [ "Verbatim"; "unused value g.\n\
-                                        " ] ]
-          ; [ "promotion"; [] ]
-          ; [ "related"; [] ]
-          ; [ "severity"; "error" ]
-          ; [ "targets"; [] ]
           ]
-        ] |}])
+        ; [ "message"; [ "Verbatim"; "unused value g.\n\
+                                      " ] ]
+        ; [ "promotion"; [] ]
+        ; [ "related"; [] ]
+        ; [ "severity"; "error" ]
+        ; [ "targets"; [] ]
+        ]
+      ]
+      |}])
 ;;
 
 let%expect_test "cyclic dependency error simple" =

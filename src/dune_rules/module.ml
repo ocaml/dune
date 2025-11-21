@@ -379,11 +379,12 @@ let encode ({ source; obj_name; pp = _; visibility; kind; install_as = _ } as t)
 ;;
 
 let decode ~src_dir =
+  let module K = Kind in
   let open Dune_lang.Decoder in
   fields
     (let+ obj_name = field "obj_name" Module_name.Unique.decode
      and+ visibility = field "visibility" Visibility.decode
-     and+ kind = field_o "kind" Kind.decode
+     and+ kind = field_o "kind" K.decode
      and+ source = field "source" (Source.decode ~dir:src_dir) in
      let kind =
        match kind with

@@ -106,6 +106,7 @@ module In_context : sig
 
   val make : dir:Path.Build.t -> In_buildable.t Mode.Pair.t -> t Mode.Pair.t
   val default : t
+  val force_whole_program_compilation : t Mode.Pair.t -> t Mode.Pair.t
 end
 
 module Ext : sig

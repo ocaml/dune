@@ -572,6 +572,15 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
      let ocaml_version = Ocaml_config.version_string ocaml.ocaml_config in
      [ Value.of_bool (Ocaml.Version.supports_oxcaml ocaml_version) ])
     |> static
+  | Dune_warnings ->
+    Need_full_expander
+      (fun { scope; _ } ->
+        Deps.Without
+          (let open Memo.O in
+           let+ scope = scope in
+           let dune_version = Dune_project.dune_version (Scope.project scope) in
+           let profile = Context.profile context in
+           Value.L.strings (Ocaml_flags.dune_warnings ~dune_version ~profile)))
 ;;
 
 let ocaml_config_macro source macro_invocation context =

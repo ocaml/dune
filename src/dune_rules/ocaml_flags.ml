@@ -51,17 +51,23 @@ let vendored_warnings = [ "-w"; "-a" ]
 let vendored_alerts = [ "-alert"; "-all" ]
 let default_warnings = "-40"
 
-let default_flags ~dune_version ~profile =
+let dune_warnings ~dune_version ~profile =
   if Profile.is_dev profile
   then
     [ "-w"
     ; dev_mode_warnings ~dune_version ^ default_warnings
     ; "-strict-sequence"
     ; "-strict-formats"
-    ; "-short-paths"
-    ; "-keep-locs"
     ]
   else [ "-w"; default_warnings ]
+;;
+
+let default_flags ~dune_version ~profile =
+  if dune_version < (3, 21)
+  then dune_warnings ~dune_version ~profile
+  else if Profile.is_dev profile
+  then [ "-short-paths"; "-keep-locs"; "-warn-error"; "+a" ]
+  else []
 ;;
 
 type t = string list Action_builder.t Dune_lang.Ocaml_flags.t

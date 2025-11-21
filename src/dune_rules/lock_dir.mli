@@ -21,7 +21,7 @@ val default_path : Path.t
 val default_source_path : Path.Source.t
 
 (** The location in the source tree where a dev tool lock dir is expected *)
-val dev_tool_source_lock_dir : Dune_pkg.Dev_tool.t -> Path.Source.t
+val dev_tool_external_lock_dir : Dune_pkg.Dev_tool.t -> Path.External.t
 
 (** Returns the path to the lock_dir that will be used to lock the
     given dev tool *)

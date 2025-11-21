@@ -411,8 +411,7 @@ let copy_lock_dir ~target ~lock_dir ~deps ~files =
   Action_builder.deps deps
   >>> (Path.Set.to_list_map files ~f:(fun src ->
          let dst =
-           Path.drop_prefix_exn src ~prefix:(Path.source lock_dir)
-           |> Path.Build.append_local target
+           Path.drop_prefix_exn src ~prefix:lock_dir |> Path.Build.append_local target
          in
          Action.progn [ Action.mkdir (Path.Build.parent_exn dst); Action.copy src dst ])
        |> Action.concurrent
@@ -425,8 +424,40 @@ let copy_lock_dir ~target ~lock_dir ~deps ~files =
             ~dirs:(Path.Build.Set.singleton target))
 ;;
 
+let scan_lock_directory =
+  let rec scan dir =
+    let open Memo.O in
+    Fs_memo.dir_contents (Path.as_outside_build_dir_exn dir)
+    >>= function
+    | Error (ENOENT, _, _) -> Memo.return Path.Set.empty
+    | Error unix_error ->
+      User_error.raise
+        [ Pp.textf "Failed to read directory %s:" (Path.to_string_maybe_quoted dir)
+        ; Unix_error.Detailed.pp unix_error
+        ]
+    | Ok entries ->
+      Fs_cache.Dir_contents.to_list entries
+      |> Memo.parallel_map ~f:(fun (entry, kind) ->
+        let path = Path.relative dir entry in
+        match (kind : File_kind.t) with
+        | S_REG -> Memo.return (Path.Set.singleton path)
+        | S_DIR -> scan path
+        | kind ->
+          User_error.raise
+            [ Pp.textf
+                "Lock directory contains file %S with unsupported kind %S"
+                (Path.to_string_maybe_quoted path)
+                (File_kind.to_string kind)
+            ])
+      >>| Path.Set.union_all
+  in
+  fun lock_dir_path ->
+    let+ files = scan lock_dir_path in
+    Dep.Set.of_source_files ~files ~empty_directories:Path.Set.empty, files
+;;
+
 let setup_copy_rules ~dir:target ~lock_dir =
-  let+ deps, files = Source_deps.files (Path.source lock_dir) in
+  let+ deps, files = scan_lock_directory lock_dir in
   let directory_targets, rules =
     match Path.Set.is_empty files with
     | true -> Path.Build.Map.empty, Rules.empty
@@ -452,7 +483,7 @@ let setup_lock_rules_with_source (workspace : Workspace.t) ~dir ~lock_dir =
   match source with
   | `Source_tree lock_dir ->
     let dir = Path.Build.append_source dir lock_dir in
-    setup_copy_rules ~dir ~lock_dir
+    setup_copy_rules ~dir ~lock_dir:(Path.source lock_dir)
   | `Generated -> Memo.return (setup_lock_rules ~dir ~lock_dir)
 ;;
 
@@ -460,7 +491,7 @@ let setup_dev_tool_lock_rules ~dir dev_tool =
   let package_name = Dev_tool.package_name dev_tool in
   let dev_tool_name = Dune_lang.Package_name.to_string package_name in
   let dir = Path.Build.relative dir dev_tool_name in
-  let lock_dir = Lock_dir.dev_tool_source_lock_dir dev_tool in
+  let lock_dir = dev_tool |> Lock_dir.dev_tool_external_lock_dir |> Path.external_ in
   setup_copy_rules ~dir ~lock_dir
 ;;
 

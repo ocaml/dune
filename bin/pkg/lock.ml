@@ -197,6 +197,13 @@ let solve_multiple_platforms
           |> Platforms_by_message.all_solver_errors_raising_if_any_manifest_errors )
 ;;
 
+let user_lock_dir_path path =
+  match (path : Path.t) with
+  | In_source_tree _ -> path
+  | In_build_dir _ -> path
+  | External e -> Dune_pkg.Pkg_workspace.dev_tool_path_to_source_dir e |> Path.source
+;;
+
 let summary_message
       ~portable_lock_dir
       ~lock_dir_path
@@ -259,7 +266,9 @@ let summary_message
     in
     (Pp.tag
        User_message.Style.Success
-       (Pp.textf "Solution for %s" (Path.to_string_maybe_quoted lock_dir_path))
+       (Pp.textf
+          "Solution for %s"
+          (Path.to_string_maybe_quoted (user_lock_dir_path lock_dir_path)))
      :: Pp.nop
      :: Pp.text "Dependencies common to all supported platforms:"
      :: pp_package_set common_packages
@@ -268,7 +277,9 @@ let summary_message
   else
     (Pp.tag
        User_message.Style.Success
-       (Pp.textf "Solution for %s:" (Path.to_string_maybe_quoted lock_dir_path))
+       (Pp.textf
+          "Solution for %s:"
+          (Path.to_string_maybe_quoted (user_lock_dir_path lock_dir_path)))
      :: (match Lock_dir.Packages.to_pkg_list lock_dir.packages with
          | [] -> Pp.tag User_message.Style.Warning @@ Pp.text "(no dependencies to lock)"
          | packages -> pp_packages packages)
@@ -493,7 +504,9 @@ let solve
         ([ Pp.text "Unable to solve dependencies for the following lock directories:" ]
          @ List.concat_map errors ~f:(fun (path, errors) ->
            let messages = List.map errors ~f:fst in
-           [ Pp.textf "Lock directory %s:" (Path.to_string_maybe_quoted path)
+           [ Pp.textf
+               "Lock directory %s:"
+               (Path.to_string_maybe_quoted (user_lock_dir_path path))
            ; Pp.vbox (Pp.concat ~sep:Pp.cut messages)
            ]))
   | Ok write_disks_with_summaries ->

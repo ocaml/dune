@@ -524,14 +524,22 @@ let in_source_tree path =
     (match Path.Source.explode in_source with
      | "default" :: ".lock" :: components ->
        Path.Source.L.relative Path.Source.root components
-     | _otherwise ->
-       Code_error.raise
-         "Unexpected location of lock directory in build directory"
-         [ "path", Path.Build.to_dyn b; "in_source", Path.Source.to_dyn in_source ])
-  | External e ->
-    Code_error.raise
-      "External path returned when loading a lock dir"
-      [ "path", Path.External.to_dyn e ]
+     | source_components ->
+       (match Path.Build.explode b with
+        | (".dev-tools.locks" as prefix) :: dev_tool :: components ->
+          let build_as_source =
+            Path.build_dir |> Path.to_string |> Path.Source.of_string
+          in
+          Path.Source.L.relative build_as_source (prefix :: dev_tool :: components)
+        | build_components ->
+          Code_error.raise
+            "Unexpected location of lock directory in build directory"
+            [ "path", Path.Build.to_dyn b
+            ; "in_source", Path.Source.to_dyn in_source
+            ; "source_components", Dyn.(list string) source_components
+            ; "build_components", Dyn.(list string) build_components
+            ]))
+  | External e -> Workspace.dev_tool_path_to_source_dir e
 ;;
 
 module Pkg = struct
@@ -862,7 +870,7 @@ module Pkg = struct
   ;;
 
   (* More general version of [files_dir] which works on generic paths *)
-  let files_dir_generic package_name maybe_package_version ~lock_dir =
+  let files_dir package_name maybe_package_version ~lock_dir =
     (* TODO(steve): Once portable lockdirs are enabled by default, make the
        package version non-optional *)
     let extension = ".files" in
@@ -875,16 +883,6 @@ module Pkg = struct
          ^ "."
          ^ Package_version.to_string package_version
          ^ extension)
-  ;;
-
-  let files_dir package_name maybe_package_version ~lock_dir =
-    match files_dir_generic package_name maybe_package_version ~lock_dir with
-    | In_source_tree _ as path -> path
-    | In_build_dir _ as path -> path
-    | External e ->
-      Code_error.raise
-        "file_dir is an external path, this is unsupported"
-        [ "path", Path.External.to_dyn e ]
   ;;
 
   let source_files_dir package_name maybe_package_version ~lock_dir =
@@ -1392,7 +1390,16 @@ module Write_disk = struct
   let safely_remove_lock_dir_if_exists_thunk path =
     match check_existing_lock_dir path with
     | Ok `Non_existant -> Fun.const ()
-    | Ok `Is_existing_lock_dir -> fun () -> Path.rm_rf path
+    | Ok `Is_existing_lock_dir ->
+      fun () ->
+        let path =
+          match path with
+          | In_source_tree _ | In_build_dir _ -> path
+          | External e ->
+            (* it might be a dev-tool path, try to convert *)
+            Workspace.dev_tool_path_to_source_dir e |> Path.source
+        in
+        Path.rm_rf path
     | Error e -> raise_user_error_on_check_existance path e
   ;;
 
@@ -1488,10 +1495,7 @@ module Write_disk = struct
               let maybe_package_version =
                 if portable_lock_dir then Some package_version else None
               in
-              Pkg.files_dir_generic
-                package_name
-                maybe_package_version
-                ~lock_dir:lock_dir_path
+              Pkg.files_dir package_name maybe_package_version ~lock_dir:lock_dir_path
             in
             Path.mkdir_p files_dir;
             List.iter files ~f:(fun { File_entry.original; local_file } ->

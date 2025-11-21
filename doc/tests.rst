@@ -288,6 +288,21 @@ a ``deps`` field the ``inline_tests`` field. The argument of this
     (inline_tests (deps data.txt))
     (preprocess (pps ppx_expect)))
 
+Specifying Inline Test arguments for Parameterised Libraries
+------------------------------------------------------------
+
+If your library is parameterised (see
+:doc:`/reference/dune/library_parameter`), you must specify which
+implementation of the parameters to use with the ``arguments`` field:
+
+.. code:: ocaml
+
+   (library
+    (name foo)
+    (parameters a_param b_param)
+    (inline_tests
+      (arguments a_impl b_impl)))
+
 
 Passing Special Arguments to the Test Runner
 --------------------------------------------

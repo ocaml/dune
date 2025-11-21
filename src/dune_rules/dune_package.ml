@@ -254,6 +254,7 @@ module Lib = struct
            | Public (_, _) -> Lib_info.Status.Installed
          in
          let version = None in
+         let local_main_module_name = main_module_name in
          let main_module_name = Lib_info.Inherited.This main_module_name in
          let foreign_objects = Lib_info.Source.External foreign_objects in
          let public_headers = Lib_info.File_deps.External public_headers in
@@ -281,6 +282,7 @@ module Lib = struct
            ~version
            ~synopsis
            ~main_module_name
+           ~local_main_module_name
            ~sub_systems
            ~requires
            ~parameters
@@ -608,11 +610,16 @@ module Or_meta = struct
 
   let parse file lexbuf =
     let dir = Path.parent_exn file in
+    let extensions = [ Dune_lang.Oxcaml.(syntax, latest_version) ] in
+    let with_extensions decoder =
+      List.fold_left extensions ~init:decoder ~f:(fun decoder (ext, version) ->
+        Syntax.set ext (Active version) decoder)
+    in
     match
       Vfile.parse_contents lexbuf ~f:(fun lang ->
         String_with_vars.set_decoding_env
-          (Pform.Env.initial ~stanza:lang.version ~extensions:[])
-          (decode ~lang ~dir))
+          (Pform.Env.initial ~stanza:lang.version ~extensions)
+          (with_extensions (decode ~lang ~dir)))
     with
     | contents -> Ok contents
     | exception User_error.E message -> Error message

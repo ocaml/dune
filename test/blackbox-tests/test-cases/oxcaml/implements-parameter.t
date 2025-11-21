@@ -1,5 +1,5 @@
 This test ensures the `implements` field is working in the context of
-parameterized libraries.
+parameterised libraries.
 
   $ . ./helpers.sh
 

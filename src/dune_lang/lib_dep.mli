@@ -22,6 +22,12 @@ type t =
   | Direct of (Loc.t * Lib_name.t)
   | Re_export of (Loc.t * Lib_name.t)
   | Select of Select.t
+  | Instantiate of
+      { loc : Loc.t
+      ; lib : Lib_name.t
+      ; arguments : (Loc.t * Lib_name.t) list
+      ; new_name : Module_name.t option
+      }
 
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t

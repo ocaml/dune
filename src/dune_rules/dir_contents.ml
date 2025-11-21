@@ -129,7 +129,7 @@ end = struct
        dependencies *)
     List.filter_map libraries ~f:(fun dep ->
       match (dep : Lib_dep.t) with
-      | Re_export _ | Direct _ -> None
+      | Re_export _ | Direct _ | Instantiate _ -> None
       | Select s -> Some s.result_fn)
   ;;
 

@@ -14,6 +14,28 @@ val name : t -> Lib_name.t
 val implements : t -> t Resolve.Memo.t option
 val parameters : t -> t list Resolve.Memo.t
 
+module Parameterised : sig
+  type status =
+    | Not_parameterised
+    | Partial
+    | Complete
+
+  val status : t -> status
+  val arguments : t -> t list
+  val applied_modules : t -> Module_name.t Parameterised_name.t list Resolve.t
+  val applied_name : t -> Module_name.t Parameterised_name.t Resolve.t
+  val requires : t -> t list Resolve.t
+  val for_instance : build_dir:Path.Build.t -> ext_lib:string -> t -> t
+  val dir : build_dir:Path.Build.t -> t -> Path.Build.t
+
+  val instantiate
+    :  loc:Loc.t
+    -> t Resolve.t
+    -> (Loc.t * t Resolve.t) list
+    -> parent_parameters:t list
+    -> t Resolve.t
+end
+
 (** [is_local t] returns [true] whenever [t] is defined in the local workspace *)
 val is_local : t -> bool
 
@@ -42,6 +64,8 @@ module L : sig
     -> key:('a -> t)
     -> deps:('a -> 'a list Resolve.Memo.t)
     -> ('a list, 'a list) Result.t Resolve.Memo.t
+
+  val project_root : t list -> Path.Source.t option
 end
 
 (** {1 Compilation contexts} *)

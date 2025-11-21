@@ -512,6 +512,9 @@ let cctx
   let modules = Virtual_rules.impl_modules implements modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let requires_link = Lib.Compile.requires_link compile_info in
+  let instances =
+    Parameterised_rules.instances ~sctx ~db:(Scope.libs scope) lib.buildable.libraries
+  in
   let* modes =
     let+ ocaml =
       let ctx = Super_context.context sctx in
@@ -551,6 +554,7 @@ let cctx
     ~package
     ~melange_package_name
     ~modes
+    ~instances
 ;;
 
 let library_rules

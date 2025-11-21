@@ -222,7 +222,7 @@ order to declare a multi-directory library, you need to use the
    List the library parameters used by the library and its dependencies.
 
    This feature is experimental and requires the compiler you are using to
-   support parameterized libraries.
+   support parameterised libraries.
    See :doc:`/reference/dune/library_parameter`.
 
 .. describe:: (js_of_ocaml ...)

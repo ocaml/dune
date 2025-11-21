@@ -335,6 +335,12 @@ let virtual_modules ~lookup_vlib ~libs vlib =
   }
 ;;
 
+let has_instances (lib : Buildable.t) =
+  List.exists lib.libraries ~f:(function
+    | Lib_dep.Instantiate _ -> true
+    | Direct _ | Re_export _ | Select _ -> false)
+;;
+
 let make_lib_modules
       ~expander
       ~dir
@@ -396,6 +402,7 @@ let make_lib_modules
       in
       kind, main_module_name, wrapped
   in
+  let has_instances = has_instances lib.buildable in
   let open Memo.O in
   let* sources, modules =
     let { Buildable.loc = stanza_loc; modules = modules_settings; _ } = lib.buildable in
@@ -443,6 +450,7 @@ let make_lib_modules
     , Modules.lib
         ~stdlib:lib.stdlib
         ~implements
+        ~has_instances
         ~lib_name
         ~obj_dir:dir
         ~modules
@@ -488,10 +496,11 @@ let modules_of_stanzas =
         ~version:exes.dune_version
         modules_settings
     in
+    let has_instances = has_instances exes.buildable in
     let modules =
       let obj_dir = Obj_dir.obj_dir obj_dir in
       if Dune_project.wrapped_executables project
-      then Modules.make_wrapped ~obj_dir ~modules `Exe
+      then Modules.make_wrapped ~obj_dir ~modules ~has_instances `Exe
       else Modules.exe_unwrapped modules ~obj_dir
     in
     `Executables { Per_stanza.stanza = exes; sources; modules; obj_dir; dir }
@@ -548,7 +557,11 @@ let modules_of_stanzas =
                mel.modules
            in
            let modules =
-             Modules.make_wrapped ~obj_dir:(Obj_dir.obj_dir obj_dir) ~modules `Melange
+             Modules.make_wrapped
+               ~obj_dir:(Obj_dir.obj_dir obj_dir)
+               ~modules
+               ~has_instances:false
+               `Melange
            in
            `Melange_emit { Per_stanza.stanza = mel; sources; modules; dir; obj_dir }
          | _ -> Memo.return `Skip))

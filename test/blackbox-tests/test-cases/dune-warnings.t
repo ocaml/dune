@@ -16,7 +16,7 @@ enabled by default in the dev profile in Dune version 3.20 but not in 3.21.
   > (executable (name main))
   > EOF
 
-  $ dune build 
+  $ dune build
   File "main.ml", line 1, characters 4-10:
   1 | let unused = 42
           ^^^^^^

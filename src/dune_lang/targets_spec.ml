@@ -44,10 +44,11 @@ type 'a t =
   | Infer
 
 let decode_target ~allow_directory_targets =
+  let module K = Kind in
   let open Dune_sexp.Decoder in
   let file =
     let+ file = String_with_vars.decode in
-    file, Kind.File
+    file, K.File
   in
   let dir =
     let+ dir = sum ~force_parens:true [ "dir", String_with_vars.decode ] in
@@ -56,18 +57,19 @@ let decode_target ~allow_directory_targets =
       User_error.raise
         ~loc:(String_with_vars.loc dir)
         [ Pp.text "Directory targets require the 'directory-targets' extension" ];
-    dir, Kind.Directory
+    dir, K.Directory
   in
   file <|> dir
 ;;
 
 let decode_static ~allow_directory_targets =
+  let module K = Kind in
   let open Dune_sexp.Decoder in
   let+ syntax_version = Syntax.get_exn Stanza.syntax
   and+ targets = repeat (decode_target ~allow_directory_targets) in
   if syntax_version < (1, 3)
   then
-    List.iter targets ~f:(fun (target, (_ : Kind.t)) ->
+    List.iter targets ~f:(fun (target, (_ : K.t)) ->
       if String_with_vars.has_pforms target
       then
         Syntax.Error.since

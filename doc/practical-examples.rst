@@ -1,6 +1,6 @@
-**********
-Quickstart
-**********
+******************
+Dune by Example
+******************
 
 .. TODO(diataxis)
 

@@ -2,7 +2,7 @@
 author: Etienne Millon
 ---
 
-Developing with Dune
+Your First Steps with Dune
 ====================
 
 :::{warning}

@@ -7,8 +7,6 @@ the rest of the OCaml ecosystem.
 .. toctree::
    :maxdepth: 1
 
-   mental-model
-   scopes
    preprocessing
    ocaml-ecosystem
    package-management

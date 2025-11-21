@@ -5,3 +5,7 @@
 (cram
  (deps helpers.sh)
  (applies_to :whole_subtree))
+
+(cram
+ (deps %{bin:node} %{bin:js_of_ocaml} %{bin:wasm_of_ocaml})
+ (applies_to parameterised-jsoo))

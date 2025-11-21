@@ -1,0 +1,1 @@
+Definition t := Type.

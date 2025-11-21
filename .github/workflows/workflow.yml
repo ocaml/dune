@@ -270,6 +270,36 @@ jobs:
           # We disable the Dune cache when running the tests
           DUNE_CACHE: disabled
 
+  rocq:
+    name: Rocq Language (Rocq 9.1.0)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # Keep packages and OCaml version in sync with the version
+          # in the makefile; rocq-stdlib should be easy to remove
+          - ocaml-compiler: 5.3
+            opam-packages: rocq-core.9.1.0 rocq-stdlib.9.0.0 csexp re spawn pp uutf
+            test-target: test-rocq
+          - ocaml-compiler: 4.14
+            opam-packages: rocq-core.9.1.0 rocq-stdlib.9.0.0 csexp re spawn pp uutf rocq-native
+            test-target: test-rocq-native
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v5
+      - name: Setup OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+          dune-cache: true
+      - name: install Rocq Prover
+        run: opam install -y ${{ matrix.opam-packages }}
+      - name: test Rocq Prover Build Language
+        run: opam exec -- make ${{ matrix.test-target }}
+        env:
+          # We disable the Dune cache when running the tests
+          DUNE_CACHE: disabled
+
   wasm:
     name: Wasm_of_ocaml
     needs: nix-build

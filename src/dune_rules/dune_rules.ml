@@ -96,3 +96,13 @@ module Coq = struct
   module Coq_lib = Coq_lib
   module Coq_flags = Coq_flags
 end
+
+module Rocq = struct
+  module Rocq_mode = Rocq_mode
+  module Rocq_rules = Rocq_rules
+  module Rocq_module = Rocq_module
+  module Rocq_sources = Rocq_sources
+  module Rocq_lib_name = Rocq_lib_name
+  module Rocq_lib = Rocq_lib
+  module Rocq_flags = Rocq_flags
+end

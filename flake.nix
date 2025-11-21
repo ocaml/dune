@@ -78,17 +78,6 @@
           dune-static-overlay
         ];
 
-        add-experimental-configure-flags =
-          pkg:
-          pkg.overrideAttrs {
-            configureFlags = [
-              "--lock-dev-tool"
-              "enable"
-              "--portable-lock-dir"
-              "enable"
-            ];
-          };
-
         ocamlformat =
           let
             ocamlformat_version =
@@ -174,8 +163,6 @@
             };
           dune = self.packages.${system}.default;
           dune-static = pkgs-static.pkgsCross.musl64.ocamlPackages.dune;
-          dune-experimental = add-experimental-configure-flags self.packages.${system}.dune;
-          dune-static-experimental = add-experimental-configure-flags self.packages.${system}.dune-static;
         };
 
         devShells =

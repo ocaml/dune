@@ -5,23 +5,27 @@ module Origin = struct
   type t =
     | Library of Library.t
     | Executables of Executables.t
+    | Tests of Tests.t
     | Melange of Melange_stanzas.Emit.t
 
   let loc = function
     | Library l -> l.buildable.loc
     | Executables e -> e.buildable.loc
+    | Tests t -> t.exes.buildable.loc
     | Melange mel -> mel.loc
   ;;
 
   let preprocess = function
     | Library l -> l.buildable.preprocess
     | Executables e -> e.buildable.preprocess
+    | Tests t -> t.exes.buildable.preprocess
     | Melange mel -> mel.preprocess
   ;;
 
   let to_dyn = function
     | Library _ -> Dyn.variant "Library" [ Dyn.Opaque ]
     | Executables _ -> Dyn.variant "Executables" [ Dyn.Opaque ]
+    | Tests _ -> Dyn.variant "Tests" [ Dyn.Opaque ]
     | Melange _ -> Dyn.variant "Melange" [ Dyn.Opaque ]
   ;;
 end
@@ -58,10 +62,11 @@ module Per_stanza = struct
   type groups =
     { libraries : Library.t group_part list
     ; executables : Executables.t group_part list
+    ; tests : Tests.t group_part list
     ; melange_emits : Melange_stanzas.Emit.t group_part list
     }
 
-  let make { libraries = libs; executables = exes; melange_emits = emits } =
+  let make { libraries = libs; executables = exes; tests; melange_emits = emits } =
     let libraries, libraries_by_obj_dir =
       List.fold_left
         libs
@@ -84,17 +89,29 @@ module Per_stanza = struct
           by_id, by_obj_dir)
     in
     let executables =
-      match
-        String.Map.of_list_map exes ~f:(fun (part : Executables.t group_part) ->
-          let first_exe = snd (Nonempty_list.hd part.stanza.names) in
-          let origin : Origin.t = Executables part.stanza in
-          first_exe, (origin, part.modules, part.obj_dir))
-      with
-      | Ok x -> x
-      | Error (name, _, part) ->
+      let entries =
+        List.concat
+          [ List.map exes ~f:(fun (part : Executables.t group_part) ->
+              let first_exe = snd (Nonempty_list.hd part.stanza.names) in
+              let origin : Origin.t = Executables part.stanza in
+              first_exe, (origin, part.modules, part.obj_dir, part.stanza.buildable.loc))
+          ; List.map tests ~f:(fun (part : Tests.t group_part) ->
+              let first_exe = snd (Nonempty_list.hd part.stanza.exes.names) in
+              let origin : Origin.t = Tests part.stanza in
+              ( first_exe
+              , (origin, part.modules, part.obj_dir, part.stanza.exes.buildable.loc) ))
+          ]
+      in
+      match String.Map.of_list entries with
+      | Ok map ->
+        String.Map.map map ~f:(fun (origin, modules, obj_dir, _loc) ->
+          origin, modules, obj_dir)
+      | Error (name, (_, _, _, loc1), (_, _, _, loc2)) ->
         User_error.raise
-          ~loc:part.stanza.buildable.loc
-          [ Pp.textf "Executable %S appears for the second time in this directory" name ]
+          ~loc:loc1
+          [ Pp.textf "Executable %S appears for the second time in this directory" name
+          ; Pp.textf "Already defined at %s" (Loc.to_file_colon_line loc2)
+          ]
     in
     let melange_emits =
       match
@@ -118,6 +135,8 @@ module Per_stanza = struct
             by_path (Library part.stanza, part.dir) part.sources)
         ; List.rev_concat_map exes ~f:(fun part ->
             by_path (Executables part.stanza, part.dir) part.sources)
+        ; List.rev_concat_map tests ~f:(fun part ->
+            by_path (Tests part.stanza, part.dir) part.sources)
         ; List.rev_concat_map emits ~f:(fun part ->
             by_path (Melange part.stanza, part.dir) part.sources)
         ]
@@ -252,7 +271,7 @@ let find_origin (t : t) ~libs path =
   | Some origins ->
     Memo.List.filter_map origins ~f:(fun (origin, dir) ->
       match origin with
-      | Executables _ | Melange _ -> Memo.return (Some origin)
+      | Executables _ | Tests _ | Melange _ -> Memo.return (Some origin)
       | Library lib ->
         let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
         Lib.DB.available_by_lib_id libs (Local (Library.to_lib_id ~src_dir lib))
@@ -461,14 +480,18 @@ let modules_of_stanzas =
            | `Skip -> loop l acc
            | `Library y -> loop l { acc with libraries = y :: acc.libraries }
            | `Executables y -> loop l { acc with executables = y :: acc.executables }
+           | `Tests y -> loop l { acc with tests = y :: acc.tests }
            | `Melange_emit y -> loop l { acc with melange_emits = y :: acc.melange_emits })
       in
-      fun l -> loop l { libraries = []; executables = []; melange_emits = [] }
+      fun l -> loop l { libraries = []; executables = []; tests = []; melange_emits = [] }
     in
     fun l ->
-      let { Per_stanza.libraries; executables; melange_emits } = rev_filter_partition l in
+      let { Per_stanza.libraries; executables; tests; melange_emits } =
+        rev_filter_partition l
+      in
       { Per_stanza.libraries = List.rev libraries
       ; executables = List.rev executables
+      ; tests = List.rev tests
       ; melange_emits = List.rev melange_emits
       }
   in
@@ -495,6 +518,12 @@ let modules_of_stanzas =
       else Modules.exe_unwrapped modules ~obj_dir
     in
     `Executables { Per_stanza.stanza = exes; sources; modules; obj_dir; dir }
+  in
+  let make_tests ~dir ~expander ~modules ~project tests =
+    let+ result = make_executables ~dir ~expander ~modules ~project tests.Tests.exes in
+    match result with
+    | `Executables group_part -> `Tests { group_part with stanza = tests }
+    | _ -> assert false
   in
   fun stanzas ~expander ~project ~dir ~libs ~lookup_vlib ~modules ~include_subdirs ->
     Memo.parallel_map stanzas ~f:(fun stanza ->
@@ -532,7 +561,7 @@ let modules_of_stanzas =
            let obj_dir = Library.obj_dir lib ~dir in
            `Library { Per_stanza.stanza = lib; sources; modules; dir; obj_dir }
          | Executables.T exes -> make_executables ~dir ~expander ~modules ~project exes
-         | Tests.T { exes; _ } -> make_executables ~dir ~expander ~modules ~project exes
+         | Tests.T tests -> make_tests ~dir ~expander ~modules ~project tests
          | Melange_stanzas.Emit.T mel ->
            let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
            let+ sources, modules =
@@ -652,9 +681,14 @@ let make
           part.stanza, part.modules, part.obj_dir)
       in
       let exes =
-        List.map
-          modules_of_stanzas.executables
-          ~f:(fun (part : _ Per_stanza.group_part) -> part.modules, part.obj_dir)
+        List.concat
+          [ List.map
+              modules_of_stanzas.executables
+              ~f:(fun { Per_stanza.modules; obj_dir; _ } -> modules, obj_dir)
+          ; List.map
+              modules_of_stanzas.tests
+              ~f:(fun { Per_stanza.modules; obj_dir; _ } -> modules, obj_dir)
+          ]
       in
       Artifacts_obj.make
         ~dir

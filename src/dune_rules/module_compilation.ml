@@ -513,12 +513,11 @@ end
 
 let build_alias_module cctx group =
   let alias_file =
+    let open Action_builder.O in
     let+ instances =
-      Resolve.Memo.read_memo
-      @@
       match Compilation_context.instances cctx with
-      | None -> Resolve.Memo.return []
-      | Some instances -> instances
+      | None -> Action_builder.return []
+      | Some instances -> Resolve.Memo.read instances
     in
     let project = Compilation_context.scope cctx |> Scope.project in
     let modules = Compilation_context.modules cctx in
@@ -533,8 +532,7 @@ let build_alias_module cctx group =
       ~loc:Loc.none
       sctx
       ~dir
-      (Action_builder.of_memo alias_file
-       |> Action_builder.write_file_dyn (Path.as_in_build_dir_exn file))
+      (Action_builder.write_file_dyn (Path.as_in_build_dir_exn file) alias_file)
   in
   let cctx = Compilation_context.for_alias_module cctx alias_module in
   build_module cctx alias_module

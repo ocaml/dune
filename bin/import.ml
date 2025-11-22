@@ -71,6 +71,7 @@ include struct
   module Package_version = Package_version
   module Source_kind = Source_kind
   module Package_info = Package_info
+  module Documentation = Documentation
   module Section = Section
   module Dune_project_name = Dune_project_name
   module Dune_project = Dune_project

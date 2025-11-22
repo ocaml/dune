@@ -31,10 +31,12 @@ and intfs acc_units acc = parse
   | ws hash ws (name as name) newline { intfs acc_units (add_intf acc name) lexbuf }
   | "Implementations imported:" newline { impls acc_units acc lexbuf }
   | "File " [^ '\n']+ newline { ocamlobjinfo (acc :: acc_units) empty lexbuf }
+  | [^ '\n' ]* newline { intfs acc_units acc lexbuf }
   | _ | eof { acc :: acc_units }
 and impls acc_units acc = parse
   | ws hash ws (name as name) newline { impls acc_units (add_impl acc name) lexbuf }
   | "File " [^ '\n']+ newline { ocamlobjinfo (acc :: acc_units) empty lexbuf }
+  | [^ '\n' ]* newline {  impls acc_units acc lexbuf }
   | _ | eof { acc :: acc_units }
 
 and archive acc = parse

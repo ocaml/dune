@@ -225,3 +225,33 @@ let%expect_test "parse_archive extracts unit names" =
     set { "bar"; "foo"; "helper" }
     |}]
 ;;
+
+let%expect_test "regression test" =
+  parse
+    {fixture|
+File foo/bar.cmo
+Unit name: Bar
+Interfaces imported:
+	03e897aee435213573adf13c80fcb505	M1
+	863a7f5288599b181f046f0f55277b0f	M2
+Required globals:
+	X
+Uses unsafe features: no
+Force link: no
+File foo/baz.cmo
+Unit name: Baz
+Interfaces imported:
+	1b835c1e0367d04fd16979463a84a7cd	M3
+	6b06eead182e9e338552e756d414f9e8	M4
+Required globals:
+	Y
+Uses unsafe features: no
+Force link: no
+|fixture};
+  [%expect
+    {|
+    [ { impl = set {}; intf = set { "m1"; "m2" } }
+    ; { impl = set {}; intf = set { "m3"; "m4" } }
+    ]
+    |}]
+;;

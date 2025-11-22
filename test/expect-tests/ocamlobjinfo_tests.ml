@@ -248,5 +248,10 @@ Required globals:
 Uses unsafe features: no
 Force link: no
 |fixture};
-  [%expect {| [ { impl = set {}; intf = set { "m1"; "m2" } } ] |}]
+  [%expect
+    {|
+    [ { impl = set {}; intf = set { "m1"; "m2" } }
+    ; { impl = set {}; intf = set { "m3"; "m4" } }
+    ]
+    |}]
 ;;

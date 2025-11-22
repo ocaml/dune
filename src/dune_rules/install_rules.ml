@@ -893,10 +893,8 @@ end = struct
         (let open Action_builder.O in
          (let+ template = template
           and+ (meta : Meta.t) =
-            let open Memo.O in
-            meta_entries
+            Action_builder.of_memo meta_entries
             >>= Gen_meta.gen ~package:pkg ~add_directory_entry:true
-            |> Action_builder.of_memo
           in
           let pp =
             Pp.concat_map template ~sep:Pp.newline ~f:(fun s ->
@@ -945,7 +943,6 @@ end = struct
                 |> List.map ~f:(fun deprecated ->
                   Scope.DB.Lib_entry.Deprecated_library_name deprecated)
                 |> Gen_meta.gen ~package:pkg ~add_directory_entry:false
-                |> Action_builder.of_memo
               in
               let open Pp.O in
               Pp.vbox (Meta.pp meta.entries ++ Pp.cut)

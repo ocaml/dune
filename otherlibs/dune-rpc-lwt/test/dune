@@ -7,9 +7,7 @@
    (package dune)))
  (libraries
   dune_rpc
-  csexp_rpc
   unix
-  dune_engine
   csexp
   stdune
   lwt

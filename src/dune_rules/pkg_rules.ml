@@ -331,8 +331,11 @@ module Value_list_env = struct
      string (in the style of the PATH variable). *)
   type t = Value.t list Env.Map.t
 
-  let parse_strings s = Bin.parse s |> List.map ~f:(fun s -> Value.String s)
-  let of_env env : t = Env.to_map env |> Env.Map.map ~f:parse_strings
+  let global : t Lazy.t =
+    let parse_strings s = Bin.parse s |> List.map ~f:(fun s -> Value.String s) in
+    let of_env env : t = Env.to_map env |> Env.Map.map ~f:parse_strings in
+    lazy (of_env (Global.env ()))
+  ;;
 
   (* Concatenate a list of values in the style of lists found in
      environment variables, such as PATH *)
@@ -575,7 +578,7 @@ module Pkg = struct
        for build actions to run successfully, such as $PATH on systems where the
        shell's default $PATH variable doesn't include the location of standard
        programs or build tools (e.g. NixOS). *)
-    Value_list_env.extend_concat_path (Value_list_env.of_env (Global.env ())) package_env
+    Value_list_env.extend_concat_path (Lazy.force Value_list_env.global) package_env
   ;;
 
   let exported_env t = Value_list_env.to_env @@ exported_value_env t

@@ -63,10 +63,13 @@ let dune_warnings ~dune_version ~profile =
 ;;
 
 let default_flags ~dune_version ~profile =
-  if dune_version < (3, 21)
-  then dune_warnings ~dune_version ~profile
-  else if Profile.is_dev profile
-  then [ "-short-paths"; "-keep-locs"; "-warn-error"; "+a" ]
+  (if dune_version < (3, 21) then dune_warnings ~dune_version ~profile else [])
+  @
+  if Profile.is_dev profile
+  then
+    "-short-paths"
+    :: "-keep-locs"
+    :: (if dune_version >= (3, 21) then [ "-warn-error"; "+a" ] else [])
   else []
 ;;
 

@@ -38,6 +38,12 @@
  (applies_to windows-diff github6644)
  (alias runtest-windows))
 
+(cram
+ (applies_to windows-artifacts-duplicate-install)
+ (alias runtest-windows)
+ (enabled_if
+  (= %{os_type} "Win32")))
+
 ;; DISABLED TESTS
 
 (subdir

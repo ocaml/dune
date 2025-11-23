@@ -32,11 +32,9 @@ Test that the unused-libs alias exists and can be built
   > EOF
 
   $ dune build @unused-libs
-  File "dune", lines 9-12, characters 0-73:
-   9 | (library
-  10 |  (name mylib)
-  11 |  (modules mylib)
+  File "dune", line 12, characters 21-31:
   12 |  (libraries used_lib unused_lib))
+                            ^^^^^^^^^^
   Error: Unused libraries:
   - unused_lib
   [1]

@@ -2,10 +2,10 @@ open Import
 open Memo.O
 
 let classify_libs sctx libs =
-  Memo.parallel_map libs ~f:(fun lib ->
+  Memo.parallel_map libs ~f:(fun (loc, lib) ->
     let+ modules = Dir_contents.modules_of_lib sctx lib in
-    lib, modules)
-  >>| List.partition_map ~f:(fun (lib, modules) ->
+    loc, lib, modules)
+  >>| List.partition_map ~f:(fun (loc, lib, modules) ->
     match modules with
     | Some modules ->
       let module_set =
@@ -13,14 +13,14 @@ let classify_libs sctx libs =
         |> Module_name.Unique.Map.keys
         |> Module_name.Unique.Set.of_list
       in
-      Left (lib, module_set)
+      Left (lib, (loc, module_set))
     | None ->
       (match
          let archives = Lib.info lib |> Lib_info.archives in
          Mode.Dict.get archives Byte
        with
-       | [] -> Left (lib, Module_name.Unique.Set.empty)
-       | archive :: _ -> Right (lib, archive)))
+       | [] -> Left (lib, (loc, Module_name.Unique.Set.empty))
+       | archive :: _ -> Right (lib, (loc, archive))))
 ;;
 
 let gen_rules
@@ -58,7 +58,7 @@ let gen_rules
           ~sandbox:(Some Sandbox_config.needs_sandboxing)
           ~units
       and* external_modules =
-        List.map external_lib_archives ~f:(fun (lib, archive) ->
+        List.map external_lib_archives ~f:(fun (lib, (loc, archive)) ->
           let+ modules =
             Ocamlobjinfo.archive_rules
               toolchain
@@ -66,7 +66,7 @@ let gen_rules
               ~sandbox:(Some Sandbox_config.needs_sandboxing)
               ~archive
           in
-          lib, modules)
+          lib, (loc, modules))
         |> Action_builder.all
       in
       let* allowed_libs = Resolve.Memo.read allow_unused_libraries in
@@ -82,7 +82,7 @@ let gen_rules
         in
         external_modules @ local_modules
         |> Lib.Map.of_list_exn
-        |> Lib.Map.foldi ~init:[] ~f:(fun lib lib_modules acc ->
+        |> Lib.Map.foldi ~init:[] ~f:(fun lib (dep_loc, lib_modules) acc ->
           (* Skip libraries with no modules *)
           if Module_name.Unique.Set.is_empty lib_modules
           then acc
@@ -94,21 +94,19 @@ let gen_rules
             in
             (* Check if library is in the allow list *)
             let is_allowed = Lib.Set.mem allowed_set lib in
-            if is_used then acc else if is_allowed then acc else lib :: acc))
+            if is_used then acc else if is_allowed then acc else (dep_loc, lib) :: acc))
       in
       match unused_libs with
       | [] -> Action_builder.return (Action.progn [])
-      | libs ->
+      | (loc, _) :: _ ->
         Action_builder.fail
           { fail =
               (fun () ->
-                (* CR-someday rgrinberg: ideally, we'd use the locations of the
-                   unused libraries, but they've already been discarded. *)
                 User_error.raise
                   ~loc
                   [ Pp.text "Unused libraries:"
-                  ; Pp.enumerate libs ~f:(fun lib ->
-                      Lib.name lib |> Lib_name.to_string |> Pp.verbatim)
+                  ; Pp.enumerate unused_libs ~f:(fun (_, lib) ->
+                      Pp.textf "%s" (Lib.name lib |> Lib_name.to_string))
                   ])
           }
     in

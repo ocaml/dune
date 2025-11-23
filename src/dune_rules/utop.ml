@@ -89,7 +89,9 @@ let add_stanza db ~dir (acc, pps) stanza =
           ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
           ~forbidden_libraries:exes.forbidden_libraries
       in
-      let+ available = Lib.Compile.direct_requires compile_info in
+      let+ available =
+        Lib.Compile.direct_requires compile_info |> Resolve.Memo.map ~f:Loc.L.drop
+      in
       Resolve.peek available
     in
     (match libs with

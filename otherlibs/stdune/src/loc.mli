@@ -27,3 +27,11 @@ val on_same_line : t -> t -> bool
 val compare : t -> t -> Ordering.t
 val span : t -> t -> t
 val set_start_to_stop : t -> t
+
+module L : sig
+  type loc := t
+  type 'a t := (loc * 'a) list
+
+  val drop : 'a t -> 'a list
+  val add_none : 'a list -> 'a t
+end

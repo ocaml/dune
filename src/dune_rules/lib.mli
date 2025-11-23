@@ -85,8 +85,9 @@ module Compile : sig
   (** Return the list of dependencies needed for linking this library/exe *)
   val requires_link : t -> lib list Resolve.t Memo.Lazy.t
 
-  (** Dependencies listed by the user + runtime dependencies from ppx *)
-  val direct_requires : t -> lib list Resolve.Memo.t
+  (** Dependencies listed by the user + runtime dependencies from ppx.
+      Each dependency includes its location from the dune file. *)
+  val direct_requires : t -> (Loc.t * lib) list Resolve.Memo.t
 
   module Resolved_select : sig
     type t =

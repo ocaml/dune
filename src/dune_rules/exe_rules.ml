@@ -182,7 +182,9 @@ let executables_rules
   in
   let programs = programs ~modules ~exes in
   let* cctx =
-    let requires_compile = Lib.Compile.direct_requires compile_info in
+    let requires_compile =
+      Lib.Compile.direct_requires compile_info |> Resolve.Memo.map ~f:Loc.L.drop
+    in
     let requires_link = Lib.Compile.requires_link compile_info in
     let instances =
       Parameterised_rules.instances ~sctx ~db:(Scope.libs scope) exes.buildable.libraries

@@ -461,7 +461,8 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
         ~pps:[]
         ~dune_version
     in
-    let requires_compile = Lib.Compile.direct_requires compile_info
+    let requires_compile =
+      Lib.Compile.direct_requires compile_info |> Resolve.Memo.map ~f:Loc.L.drop
     and requires_link = Lib.Compile.requires_link compile_info in
     let obj_dir = Obj_dir.make_exe ~dir ~name in
     let modules =

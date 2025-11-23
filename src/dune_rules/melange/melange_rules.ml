@@ -395,7 +395,9 @@ let setup_emit_cmj_rules
     let requires_link = Lib.Compile.requires_link compile_info in
     let* flags = melange_compile_flags ~sctx ~dir mel in
     let* cctx =
-      let direct_requires = Lib.Compile.direct_requires compile_info in
+      let direct_requires =
+        Lib.Compile.direct_requires compile_info |> Resolve.Memo.map ~f:Loc.L.drop
+      in
       Compilation_context.create
         ()
         ~loc:mel.loc

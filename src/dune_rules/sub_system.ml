@@ -135,7 +135,9 @@ module Register_end_point (M : End_point) = struct
   let gen info (c : Library_compilation_context.t) =
     let* backends =
       let ( let& ) t f = Resolve.Memo.bind t ~f in
-      let& deps = Lib.Compile.direct_requires c.compile_info in
+      let& deps =
+        Lib.Compile.direct_requires c.compile_info |> Resolve.Memo.map ~f:Loc.L.drop
+      in
       let& pps = Lib.Compile.pps c.compile_info in
       let& written_by_user =
         match M.Info.backends info with

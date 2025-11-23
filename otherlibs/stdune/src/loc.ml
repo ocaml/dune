@@ -159,3 +159,8 @@ let rec render ppf pp =
   Pp.to_fmt_with_tags ppf pp ~tag_handler:(fun ppf Loc pp ->
     Format.fprintf ppf "@{<loc>%a@}" render pp)
 ;;
+
+module L = struct
+  let drop x = List.map ~f:snd x
+  let add_none x = List.map ~f:(fun x -> none, x) x
+end

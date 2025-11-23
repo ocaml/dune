@@ -163,7 +163,9 @@ let gen_rules sctx t ~dir ~scope =
         in
         Pp_spec.pp_module preprocess module_ >>| Modules.With_vlib.singleton_exe
       in
-      let requires_compile = Lib.Compile.direct_requires compile_info in
+      let requires_compile =
+        Lib.Compile.direct_requires compile_info |> Resolve.Memo.map ~f:Loc.L.drop
+      in
       let requires_link = Lib.Compile.requires_link compile_info in
       let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name in
       Compilation_context.create

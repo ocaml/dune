@@ -53,12 +53,9 @@ Create three libraries - one will be used, two won't be used:
 Build the unused-libs alias - should only error on unused_not_allowed:
 
   $ dune build @unused-libs
-  File "dune", lines 13-17, characters 0-138:
-  13 | (executable
-  14 |  (name main)
-  15 |  (modules main)
+  File "dune", line 16, characters 36-54:
   16 |  (libraries used_lib unused_allowed unused_not_allowed)
-  17 |  (allow_unused_libraries unused_allowed))
+                                           ^^^^^^^^^^^^^^^^^^
   Error: Unused libraries:
   - unused_not_allowed
   [1]
@@ -134,11 +131,9 @@ Build - dep_lib should not error on base_lib, but top_lib should error on
 unused_dep:
 
   $ dune build @unused-libs
-  File "dune", lines 15-18, characters 0-76:
-  15 | (library
-  16 |  (name top_lib)
-  17 |  (modules top_lib)
+  File "dune", line 18, characters 20-30:
   18 |  (libraries dep_lib unused_dep))
+                           ^^^^^^^^^^
   Error: Unused libraries:
   - unused_dep
   [1]

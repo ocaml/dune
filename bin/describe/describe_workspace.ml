@@ -428,7 +428,9 @@ module Crawl = struct
       let+ requires =
         let* compile_info = Exe_rules.compile_info ~scope exes in
         let open Resolve.Memo.O in
-        let* requires = Lib.Compile.direct_requires compile_info in
+        let* requires =
+          Lib.Compile.direct_requires compile_info |> Resolve.Memo.map ~f:Loc.L.drop
+        in
         if options.with_pps
         then
           let+ pps = Lib.Compile.pps compile_info in

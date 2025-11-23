@@ -230,7 +230,9 @@ module Stanza = struct
             (Ocaml_flags.default ~dune_version ~profile)
             [ "-w"; "-24" ]
         in
-        let requires_compile = Lib.Compile.direct_requires compile_info in
+        let requires_compile =
+          Lib.Compile.direct_requires compile_info |> Resolve.Memo.map ~f:Loc.L.drop
+        in
         let requires_link = Lib.Compile.requires_link compile_info in
         let obj_dir = Source.obj_dir source in
         Compilation_context.create

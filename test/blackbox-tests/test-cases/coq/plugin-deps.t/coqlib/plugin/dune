@@ -1,0 +1,4 @@
+(library
+ (name coqlib_plugin)
+ (public_name coqlib-plugin.plugin)
+ (libraries somelib))

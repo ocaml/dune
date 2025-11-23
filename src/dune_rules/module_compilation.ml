@@ -512,27 +512,27 @@ module Alias_module = struct
 end
 
 let build_alias_module cctx group =
-  let alias_file =
-    let open Action_builder.O in
-    let+ instances =
-      match Compilation_context.instances cctx with
-      | None -> Action_builder.return []
-      | Some instances -> Resolve.Memo.read instances
-    in
-    let project = Compilation_context.scope cctx |> Scope.project in
-    let modules = Compilation_context.modules cctx in
-    Alias_module.of_modules project modules group instances |> Alias_module.to_ml
-  in
   let alias_module = Modules.Group.alias group in
-  let sctx = Compilation_context.super_context cctx in
-  let file = Option.value_exn (Module.file alias_module ~ml_kind:Impl) in
-  let dir = Compilation_context.dir cctx in
   let* () =
+    let alias_file =
+      let open Action_builder.O in
+      let+ instances =
+        match Compilation_context.instances cctx with
+        | None -> Action_builder.return []
+        | Some instances -> Resolve.Memo.read instances
+      in
+      let project = Compilation_context.scope cctx |> Scope.project in
+      let modules = Compilation_context.modules cctx in
+      Alias_module.of_modules project modules group instances |> Alias_module.to_ml
+    in
+    let dir = Compilation_context.dir cctx in
+    let sctx = Compilation_context.super_context cctx in
     Super_context.add_rule
       ~loc:Loc.none
       sctx
       ~dir
-      (Action_builder.write_file_dyn (Path.as_in_build_dir_exn file) alias_file)
+      (let file = Option.value_exn (Module.file alias_module ~ml_kind:Impl) in
+       Action_builder.write_file_dyn (Path.as_in_build_dir_exn file) alias_file)
   in
   let cctx = Compilation_context.for_alias_module cctx alias_module in
   build_module cctx alias_module

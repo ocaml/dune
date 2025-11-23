@@ -62,7 +62,6 @@
   dune_rpc_e2e
   dune_engine
   dune_rpc_impl
-  spawn
   stdune
   fiber
   xdg

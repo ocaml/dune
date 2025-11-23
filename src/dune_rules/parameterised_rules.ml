@@ -28,10 +28,12 @@ type t =
   ; hidden_deps : Dep.Set.t Action_builder.t
   }
 
-let build_instance ~sctx ~obj_dir ~mode instance =
-  let { module_; args; requires; target; o_target = _; hidden_targets; hidden_deps } =
-    instance
-  in
+let build_instance
+      ~sctx
+      ~obj_dir
+      ~mode
+      { module_; args; requires; target; o_target = _; hidden_targets; hidden_deps }
+  =
   let ctx = Super_context.context sctx in
   let* ocaml = Context.ocaml ctx in
   let include_flags =
@@ -146,14 +148,15 @@ let build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules =
 ;;
 
 let lib_hidden_deps ~sctx ~kind lib requires =
-  let* requires = Resolve.read_memo requires in
-  Memo.List.concat_map requires ~f:(fun dep ->
+  let open Action_builder.O in
+  let* requires = Resolve.read requires in
+  Action_builder.List.concat_map requires ~f:(fun dep ->
     if Lib.equal lib dep
-    then Memo.return []
+    then Action_builder.return []
     else (
       match Lib.Parameterised.status dep with
       | Complete ->
-        let+ cm = Resolve.read_memo (get_cm ~kind dep) in
+        let+ cm = Resolve.read (get_cm ~kind dep) in
         [ cm ]
       | Partial ->
         Code_error.raise
@@ -167,10 +170,12 @@ let lib_hidden_deps ~sctx ~kind lib requires =
           match Lib_info.modules lib_info with
           | External None ->
             Code_error.raise "dependency has no modules" [ "lib", Lib.to_dyn dep ]
-          | External (Some modules) -> Memo.return modules
+          | External (Some modules) -> Action_builder.return modules
           | Local ->
             let local_lib = Lib.Local.of_lib_exn lib in
-            let+ modules = Dir_contents.modules_of_local_lib sctx local_lib in
+            let+ modules =
+              Action_builder.of_memo (Dir_contents.modules_of_local_lib sctx local_lib)
+            in
             Modules.With_vlib.modules modules
         in
         Modules.With_vlib.fold_no_vlib_with_aliases
@@ -197,7 +202,9 @@ let build_modules ~sctx ~obj_dir ~modules_obj_dir ~dep_graph ~mode ~requires ~li
     let+ ocaml = Super_context.context sctx |> Context.ocaml in
     ocaml.lib_config
   in
-  let* lib_hidden_deps = lib_hidden_deps ~sctx ~kind lib requires in
+  let lib_hidden_deps =
+    Action_builder.memoize "lib-hidden-deps" (lib_hidden_deps ~sctx ~kind lib requires)
+  in
   let* args =
     (* The main module names of applied arguments is required
        because it's used in the instantiated filenames.
@@ -226,8 +233,9 @@ let build_modules ~sctx ~obj_dir ~modules_obj_dir ~dep_graph ~mode ~requires ~li
       in
       let hidden_deps =
         let open Action_builder.O in
-        let+ module_deps = Dep_graph.deps_of dep_graph module_ in
-        let deps =
+        let* lib_hidden_deps = lib_hidden_deps in
+        let+ deps =
+          let+ module_deps = Dep_graph.deps_of dep_graph module_ in
           List.map module_deps ~f:(fun module_ ->
             apply_module_name module_ args
             |> obj_file ~obj_dir ~kind ?ext:None

@@ -14,6 +14,12 @@ val make
   -> t
 
 val allow_only_melange : t -> t
+
+val dune_warnings
+  :  dune_version:Dune_lang.Syntax.Version.t
+  -> profile:Profile.t
+  -> string list
+
 val default : dune_version:Dune_lang.Syntax.Version.t -> profile:Profile.t -> t
 val empty : t
 val of_list : string list -> t

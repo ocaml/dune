@@ -91,6 +91,7 @@ module Var : sig
     | Toolchain
     | Pkg of Pkg.t
     | Oxcaml_supported
+    | Dune_warnings
 
   val compare : t -> t -> Ordering.t
   val to_dyn : t -> Dyn.t

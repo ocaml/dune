@@ -69,6 +69,15 @@ Dune supports the following variables:
 - ``ignoring_promoted_rules`` is ``true`` if
   ``--ignore-promoted-rules`` was passed on the command line and
   ``false`` otherwise.
+- ``dune-warnings`` is the list of OCaml warnings that Dune used by default up
+  until version 3.20 of the Dune language when building in the ``dev`` profile.
+  This was a larger set of warnings than the default one used by the OCaml
+  compiler, and in version 3.21 of the Dune language the set of warnings used by
+  the ``dev`` profile was reverted to the default one used by the compiler. This
+  variable is made available for those users who would like to keep using Dune's
+  stricter warning set. The old behaviour of Dune can be recovered by using the
+  following stanza in a top-level ``dune`` file: ``(env (dev (flags :standard
+  %{dune-warnings})))``.
 - ``<ext>:<path>`` where ``<ext>`` is one of ``cmo``, ``cmi``, ``cma``,
   ``cmx``, or ``cmxa``. See :ref:`variables-for-artifacts`.
 - ``env:<var>=<default`` expands to the value of the environment

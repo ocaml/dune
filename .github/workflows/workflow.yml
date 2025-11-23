@@ -43,7 +43,7 @@ jobs:
       - uses: nix-community/cache-nix-action@v6
         with:
           primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('/**/*.nix') }}-${{ hashFiles('**/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
           gc-max-store-size-linux: 2G
           gc-max-store-size-macos: 2G
@@ -65,7 +65,7 @@ jobs:
       - uses: nix-community/cache-nix-action@v6
         with:
           primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('/**/*.nix') }}-${{ hashFiles('**/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
           gc-max-store-size-linux: 10G
       - run: nix develop -i -c make test
@@ -81,7 +81,7 @@ jobs:
       - uses: nix-community/cache-nix-action@v6
         with:
           primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('/**/*.nix') }}-${{ hashFiles('**/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
           gc-max-store-size-linux: 2G
       - run: nix develop .#fmt -c make fmt
@@ -97,7 +97,7 @@ jobs:
       - uses: nix-community/cache-nix-action@v6
         with:
           primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('/**/*.nix') }}-${{ hashFiles('**/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
           gc-max-store-size-linux: 2G
       - run: nix develop .#doc -c make doc
@@ -120,7 +120,7 @@ jobs:
       - uses: nix-community/cache-nix-action@v6
         with:
           primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('/**/*.nix') }}-${{ hashFiles('**/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
           gc-max-store-size-linux: 2G
       - run: nix develop -i .#bootstrap-check -c make test-bootstrap-script
@@ -141,10 +141,10 @@ jobs:
       - uses: nix-community/cache-nix-action@v6
         with:
           primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('/**/*.nix') }}-${{ hashFiles('**/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
           gc-max-store-size-linux: 2G
-      - run: nix develop -i .#bootstrap-check_4_08 -c make release 
+      - run: nix develop -i .#bootstrap-check_4_08 -c make release
 
 #
 # Stage 2
@@ -262,7 +262,7 @@ jobs:
       - uses: nix-community/cache-nix-action@v6
         with:
           primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('/**/*.nix') }}-${{ hashFiles('**/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
           gc-max-store-size-linux: 5G
       - run: nix develop .#coq -c make test-coq
@@ -365,7 +365,7 @@ jobs:
       - uses: nix-community/cache-nix-action@v6
         with:
           primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('/**/*.nix') }}-${{ hashFiles('**/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
           gc-max-store-size-linux: 5G
       - run: nix develop .#microbench -c make dune build bench/micro
@@ -382,7 +382,7 @@ jobs:
       - uses: nix-community/cache-nix-action@v6
         with:
           primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('/**/*.nix') }}-${{ hashFiles('**/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
           gc-max-store-size-linux: 2G
       - run: |
@@ -400,7 +400,7 @@ jobs:
       - uses: nix-community/cache-nix-action@v6
         with:
           primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+            nix-${{ runner.os }}-${{ github.job }}-${{ hashFiles('/**/*.nix') }}-${{ hashFiles('**/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
           gc-max-store-size-linux: 2G
       - name: Set up a project, install utop as a dev tool, and run it

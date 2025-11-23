@@ -30,7 +30,7 @@ module Parameterised : sig
 
   val instantiate
     :  loc:Loc.t
-    -> t Resolve.t
+    -> t
     -> (Loc.t * t Resolve.t) list
     -> parent_parameters:t list
     -> t Resolve.t

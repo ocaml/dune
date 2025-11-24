@@ -40,7 +40,7 @@ Initially odoc will be depend on ocaml.5.2.0 to match the project.
   Error: Rule failed to generate the following targets:
   - _doc/_odoc/pkg/foo/page-index.odoc
   [1]
-  $ cat dev-tools.locks/odoc/ocaml.pkg
+  $ cat "${dev_tool_lock_dir}"/ocaml.pkg
   (version 5.2.0)
 
 We can re-run "dune ocaml doc" without relocking or rebuilding.

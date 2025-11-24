@@ -3,47 +3,26 @@ open Import
 
 let ( / ) = Path.relative
 
-(** The default directory of all caches. Defaults to [$XDG_CACHE_HOME/dune].
-    Not to be used directly, add a layer beforehand. *)
-let default_cache_dir =
-  lazy
-    (let cache_dir = Xdg.cache_dir (Lazy.force Dune_util.xdg) in
-     Path.of_filename_relative_to_initial_cwd cache_dir / "dune")
-;;
-
-let check_absolute var path =
-  if Filename.is_relative path
-  then
-    User_error.raise
-      [ Pp.paragraphf "$%s should be an absolute path, but is %S" var path ]
-;;
-
-(** The home directory for all the caches. Defaults to [default_cache_dir],
-    or uses [$DUNE_CACHE_HOME] if set. *)
-let home_dir =
-  lazy
-    (let var = "DUNE_CACHE_HOME" in
-     match Sys.getenv_opt var with
-     | None -> Lazy.force default_cache_dir
-     | Some path ->
-       check_absolute var path;
-       Path.external_ (Path.External.of_string path))
-;;
-
-(** The directory of the build cache. Defaults to [home_dir/db],
-    or uses [$DUNE_CACHE_ROOT] if set. *)
+(** The directory containing the build cache.
+    Uses [$DUNE_CACHE_ROOT] if set, or
+    [$DUNE_CACHE_HOME/db] if set, or
+    [Dune_util.default_cache_dir/db] otherwise. *)
 let build_cache_dir =
   lazy
-    (let var = "DUNE_CACHE_ROOT" in
-     match Sys.getenv_opt var with
-     | None -> Lazy.force home_dir / "db"
+    (let high_priority_var = "DUNE_CACHE_ROOT" in
+     match Sys.getenv_opt high_priority_var with
      | Some path ->
-       check_absolute var path;
-       Path.external_ (Path.External.of_string path))
+       Dune_util.check_absolute ~var:high_priority_var ~path;
+       Path.external_ (Path.External.of_string path)
+     | None ->
+       let low_priority_var = "DUNE_CACHE_HOME" in
+       (match Sys.getenv_opt low_priority_var with
+        | Some path ->
+          Dune_util.check_absolute ~var:low_priority_var ~path;
+          Path.external_ (Path.External.of_string path) / "db"
+        | None -> Lazy.force Dune_util.default_cache_dir / "db"))
 ;;
 
-let rev_store = lazy (Lazy.force home_dir / "git-repo")
-let toolchains_dir = lazy (Lazy.force home_dir / "toolchains")
 let temp_dir = lazy (Lazy.force build_cache_dir / "temp")
 
 let cache_path ~dir ~hex =

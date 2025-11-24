@@ -1222,7 +1222,7 @@ let content_of_files t files =
 
 let get =
   Fiber.Lazy.create (fun () ->
-    let dir = Lazy.force Dune_cache_storage.Layout.rev_store in
+    let dir = Lazy.force Dune_util.rev_store in
     load_or_create ~dir)
   |> Fiber.Lazy.force
 ;;

@@ -8,19 +8,11 @@
 open Stdune
 open Import
 
-(** The home directory of all the caches.
-    Uses [$DUNE_CACHE_HOME] if set. *)
-val home_dir : Path.t Lazy.t
-
-(** The directory of the build cache. Defaults to [home_dir/db], or
-    uses [$DUNE_CACHE_ROOT] if set. *)
+(** The directory containing the build cache.
+    Uses [$DUNE_CACHE_ROOT] if set, or
+    [$DUNE_CACHE_HOME/db] if set, or
+    [Dune_util.default_cache_dir/db] otherwise. *)
 val build_cache_dir : Path.t Lazy.t
-
-(** The cache for the git repository. Is set to [home_dir/git-repo]. *)
-val rev_store : Path.t Lazy.t
-
-(** The cache for the toolchains. Is set to [home_dir/toolchains]. *)
-val toolchains_dir : Path.t Lazy.t
 
 (** Create a few subdirectories in [root_dir]. We expose this function because
     we don't want to modify the file system when the cache is disabled.

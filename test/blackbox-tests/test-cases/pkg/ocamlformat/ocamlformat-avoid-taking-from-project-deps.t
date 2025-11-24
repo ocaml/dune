@@ -59,7 +59,7 @@ Retry, without dev-tools feature and without cleaning. This time it uses the OCa
 binary from the project dependencies rather than the dev-tool. This exercises the
 behavior when OCamlFormat is installed simultaneously as both a dev-tool and as a
 regular package dependency.
-  $ rm -rf dev-tools.locks/ocamlformat
+  $ rm -r "${dev_tool_lock_dir}"
   $ dune fmt --preview
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml

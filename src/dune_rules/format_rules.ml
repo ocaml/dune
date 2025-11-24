@@ -33,9 +33,12 @@ end
 
 module Ocamlformat = struct
   let dev_tool_lock_dir_exists () =
-    Lock_dir.dev_tool_external_lock_dir Ocamlformat
-    |> Path.external_
-    |> Path.Untracked.exists
+    (* we assume that if lock_dev_tools is set, then the lock dir was created
+       via locking and can expect it to exist. If it doesn't, it's a bug
+    *)
+    match Config.get Compile_time.lock_dev_tools with
+    | `Enabled -> true
+    | `Disabled -> false
   ;;
 
   (* Config files for ocamlformat. When these are changed, running

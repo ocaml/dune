@@ -40,7 +40,7 @@ Create .ocamlformat file
   > EOF
 
 An important cleaning here, "dune fmt" will relock and build the new version(0.26.2) of OCamlFormat.
-  $ rm -r dev-tools.locks/ocamlformat
+  $ rm -r "${dev_tool_lock_dir}"
   $ dune clean
 
 With a ".ocamlformat" file, "dune fmt" takes the version mentioned inside ".ocamlformat"
@@ -64,8 +64,9 @@ Formating a second time would not trigger the lock/solve.
   $ cat _build/default/.formatted/foo.ml
   formatted with version 0.26.2
 
-When "dev-tools.locks" is removed, the solving/lock is renewed
-  $ rm -r dev-tools.locks/ocamlformat
+When the lock dir is removed, the solving/lock is renewed:
+
+  $ rm -r "${dev_tool_lock_dir}"
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt --preview
   Solution for dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.2

@@ -42,7 +42,7 @@ Check with the feature when ".ocamlformat-ignore" file exists.
 
 An important cleaning here, "dune fmt" takes the dev-tool when the lock directory
 exists even if the dev-tool feature is disabled.
-  $ rm -r dev-tools.locks/ocamlformat
+  $ rm -r "${dev_tool_lock_dir}"
 
 Check without the feature when ".ocamlformat-ignore" file exists.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=disabled dune fmt

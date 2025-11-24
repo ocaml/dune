@@ -25,9 +25,9 @@ module Dune_config = struct
 
     let equal t { authors; maintainers; maintenance_intent; license } =
       Option.equal (List.equal String.equal) t.authors authors
-      && Option.equal (List.equal String.equal) t.authors maintainers
-      && Option.equal (List.equal String.equal) t.authors maintenance_intent
-      && Option.equal (List.equal String.equal) t.authors license
+      && Option.equal (List.equal String.equal) t.maintainers maintainers
+      && Option.equal (List.equal String.equal) t.maintenance_intent maintenance_intent
+      && Option.equal (List.equal String.equal) t.license license
     ;;
 
     let decode =

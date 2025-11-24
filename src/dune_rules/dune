@@ -19,7 +19,6 @@
   dune_findlib
   dune_glob
   dune_lang
-  dune_meta_parser
   dune_patch
   dune_pkg
   re

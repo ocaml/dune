@@ -1,5 +1,7 @@
 . ../helpers.sh
 
+dev_tool_lock_dir="dev-tools.locks/ocamlformat"
+
 make_fake_ocamlformat() {
   version=$1
   if [ "$#" -eq "1" ]
@@ -97,7 +99,7 @@ EOF
 (lang dune 3.20)
 
 (lock_dir
- (path "dev-tools.locks/ocamlformat")
+ (path "${dev_tool_lock_dir}")
  (repositories mock))
 
 (lock_dir

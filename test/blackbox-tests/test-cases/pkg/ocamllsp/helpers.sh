@@ -1,10 +1,12 @@
+dev_tool_lock_dir="dev-tools.locks/ocaml-lsp-server"
+
 # Create a dune-workspace file with mock repos set up for the main
 # project and the ocamllsp lockdir.
 setup_ocamllsp_workspace() {
   cat > dune-workspace <<EOF
 (lang dune 3.20)
 (lock_dir
- (path "dev-tools.locks/ocaml-lsp-server")
+ (path "${dev_tool_lock_dir}")
  (repositories mock))
  (lock_dir
   (repositories mock))

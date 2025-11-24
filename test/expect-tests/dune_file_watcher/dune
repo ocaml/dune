@@ -1,7 +1,7 @@
 (library
  (name dune_file_watcher_tests_lib)
  (modules dune_file_watcher_tests_lib)
- (libraries dune_file_watcher base stdune threads.posix stdio spawn unix))
+ (libraries dune_file_watcher base stdune threads.posix stdio unix))
 
 (library
  (name dune_file_watcher_tests_macos)
@@ -23,8 +23,7 @@
   stdune
   ppx_inline_test.config
   threads.posix
-  stdio
-  spawn)
+  stdio)
  (preprocess
   (pps ppx_expect)))
 
@@ -46,7 +45,6 @@
   ppx_inline_test.config
   threads.posix
   stdio
-  spawn
   unix)
  (preprocess
   (pps ppx_expect)))

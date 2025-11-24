@@ -10,7 +10,6 @@
   threads.posix
   fiber
   dune_async_io
-  dune_tests_common
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config

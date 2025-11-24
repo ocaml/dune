@@ -41,7 +41,7 @@ This should choose the 0.24+foo version:
 
 This should choose the 0.24+bar version:
   $ echo "version=0.25" > .ocamlformat
-  $ rm -rf dev-tools.locks
+  $ rm -r "${dev_tool_lock_dir}"
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
   Solution for dev-tools.locks/ocamlformat:
   - ocamlformat.0.25+bar
@@ -57,7 +57,7 @@ This should choose the 0.24+bar version:
 
 This should fail as there is no version matching 0.24.1:
   $ echo "version=0.24.1" > .ocamlformat
-  $ rm -rf dev-tools.locks
+  $ rm -r "${dev_tool_lock_dir}"
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dev-tools.locks/ocamlformat:

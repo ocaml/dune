@@ -2,10 +2,8 @@
  (name dune_fiber_tests)
  (inline_tests)
  (libraries
-  dune_tests_common
   stdune
   fiber
-  fiber_util
   test_scheduler
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project

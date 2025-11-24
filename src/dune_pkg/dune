@@ -10,7 +10,6 @@
   fiber
   fiber_util
   dune_engine
-  dune_cache_storage
   dune_util
   dune_trace
   dune_lang

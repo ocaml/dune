@@ -1,9 +1,7 @@
 open Import
 
 let base_dir () =
-  let cache_dir =
-    Lazy.force Dune_cache_storage.Layout.toolchains_dir |> Path.as_outside_build_dir_exn
-  in
+  let cache_dir = Lazy.force Dune_util.toolchains_dir |> Path.as_outside_build_dir_exn in
   (let path = Path.outside_build_dir cache_dir in
    if not (Path.Untracked.exists path) then Path.mkdir_p path;
    if not (Path.Untracked.is_directory path)

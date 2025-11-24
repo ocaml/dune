@@ -21,7 +21,7 @@ val is_compiler_and_toolchains_enabled : Package.Name.t -> bool
 
 (** Returns the path to the directory containing the given package within the
     toolchain directory. This will be something like
-    [Layout.toolchains_dir/ocaml-base-compiler.5.2.1.XXXXXXXX] where
+    [Dune_util.toolchains_dir/ocaml-base-compiler.5.2.1.XXXXXXXX] where
     XXXXXXXX is a hash of the package's lockfile. *)
 val installation_prefix : Lock_dir.Pkg.t -> Path.Outside_build_dir.t
 

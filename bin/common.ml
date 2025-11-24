@@ -1383,12 +1383,12 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   Log.info
     [ Pp.textf
         "Toolchains cache location: %s"
-        (Path.to_string (Lazy.force Dune_cache_storage.Layout.toolchains_dir))
+        (Path.to_string (Lazy.force Dune_util.toolchains_dir))
     ];
   Log.info
     [ Pp.textf
         "Revivision store cache location: %s"
-        (Path.to_string (Lazy.force Dune_cache_storage.Layout.rev_store))
+        (Path.to_string (Lazy.force Dune_util.rev_store))
     ];
   Dune_rules.Main.init
     ~stats:c.stats

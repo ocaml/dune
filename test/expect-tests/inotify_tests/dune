@@ -14,8 +14,6 @@
   stdune
   ppx_inline_test.config
   threads.posix
-  stdio
-  spawn
   unix)
  (preprocess
   (pps ppx_expect)))

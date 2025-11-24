@@ -7,7 +7,6 @@
  (libraries
   stdune
   lmdb
-  bigstringaf
   fiber
   fiber_util
   chrome_trace

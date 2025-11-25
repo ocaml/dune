@@ -1,14 +1,21 @@
 open Import
 
+let base_dir =
+  lazy
+    (let dir = Path.relative (Lazy.force Dune_util.cache_home_dir) "toolchains" in
+     Dune_util.Log.info [ Pp.textf "Toolchains cache location: %s" (Path.to_string dir) ];
+     Path.as_outside_build_dir_exn dir)
+;;
+
 let base_dir () =
-  let cache_dir = Lazy.force Dune_util.toolchains_dir |> Path.as_outside_build_dir_exn in
-  (let path = Path.outside_build_dir cache_dir in
-   if not (Path.Untracked.exists path) then Path.mkdir_p path;
-   if not (Path.Untracked.is_directory path)
-   then
-     User_error.raise
-       [ Pp.textf "Expected %s to be a directory but it is not." (Path.to_string path) ]);
-  cache_dir
+  let base_dir = Lazy.force base_dir in
+  let path = Path.outside_build_dir base_dir in
+  if not (Path.Untracked.exists path) then Path.mkdir_p path;
+  if not (Path.Untracked.is_directory path)
+  then
+    User_error.raise
+      [ Pp.textf "Expected %s to be a directory but it is not." (Path.to_string path) ];
+  base_dir
 ;;
 
 let pkg_dir (pkg : Dune_pkg.Lock_dir.Pkg.t) =

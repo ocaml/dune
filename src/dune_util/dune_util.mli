@@ -15,21 +15,9 @@ open Stdune
 val xdg : Xdg.t Lazy.t
 val override_xdg : Xdg.t -> unit
 
-(** The default directory of all caches (build and others), used when
-    environment variables are unset.
-    Set to [$XDG_CACHE_HOME/dune]. *)
-val default_cache_dir : Path.t Lazy.t
-
-val check_absolute : var:string -> path:string -> unit
-
-(** The cache for the git repository.
-    Uses [$DUNE_CACHE_HOME/git-repo] if set, or
-    [default_cache_dir/git-repo] otherwise. *)
-val rev_store : Path.t Lazy.t
-
-(** The cache for the toolchains.
-    Uses [$DUNE_CACHE_HOME/toolchains] if set, or
-    [default_cache_dir/toolchains] otherwise. *)
-val toolchains_dir : Path.t Lazy.t
+(** The directory containing all caches (build and others).
+    Set to [$DUNE_CACHE_HOME] if it exists, or
+    [$XDG_CACHE_HOME/dune] otherwise. *)
+val cache_home_dir : Path.t Lazy.t
 
 val frames_per_second : unit -> int

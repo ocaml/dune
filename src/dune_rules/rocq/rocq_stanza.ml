@@ -211,7 +211,7 @@ module Theory = struct
       mod_, flags
     ;;
 
-    let decode = enter (repeat decode_pair)
+    let decode = repeat (enter decode_pair)
   end
 
   let decode =

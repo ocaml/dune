@@ -1,0 +1,7 @@
+(library
+ (public_name ml_lib.ml_plugin_a)
+ (name ml_plugin_a)
+ (flags :standard -rectypes)
+ (libraries rocq-runtime.plugins.ltac))
+
+(rocq.pp (modules gram))

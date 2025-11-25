@@ -194,6 +194,10 @@ We have the following shells for specific tasks:
 - For running the Coq tests, you can use ``nix develop .#coq``. NB: Coq native
   is not currently installed; this will cause some of the tests to fail. It's
   currently better to fallback to opam in this case.
+- We don't have yet a Nix setup for running the Rocq tests, as of
+  today, there are two classes of tests:
+  + ``make test-rocq``: these work well on a regular Dune opam dev switch
+  + ``make test-rocq-native``: these require the Rocq native compiler to run, and thus need OCaml 4.x
 
 Releasing Dune
 ==============

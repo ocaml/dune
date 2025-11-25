@@ -216,6 +216,15 @@
  (files   dune-promotion.1))
 
 (rule
+ (with-stdout-to dune-rocq.1
+  (run dune rocq --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-rocq.1))
+
+(rule
  (with-stdout-to dune-rpc.1
   (run dune rpc --help=groff)))
 

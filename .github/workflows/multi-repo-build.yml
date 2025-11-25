@@ -35,7 +35,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Dune
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Nix
         uses: nixbuild/nix-quick-install-action@v34

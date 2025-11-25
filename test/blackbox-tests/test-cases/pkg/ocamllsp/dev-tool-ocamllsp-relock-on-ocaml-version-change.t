@@ -29,7 +29,7 @@ same version of the ocaml compiler as the code that it's analyzing.
 
 Initially ocamllsp will be depend on ocaml.5.2.0 to match the project.
   $ dune tools exec ocamllsp
-  Solution for dev-tools.locks/ocaml-lsp-server:
+  Solution for _build/.dev-tools.locks/ocaml-lsp-server:
   - ocaml.5.2.0
   - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'
@@ -54,7 +54,7 @@ before running. Ocamllsp now depends on ocaml.5.1.0.
   changed to 5.1.0 (formerly the compiler version was 5.2.0). The dev-tool
   "ocaml-lsp-server" will be re-locked and rebuilt with this version of the
   compiler.
-  Solution for dev-tools.locks/ocaml-lsp-server:
+  Solution for _build/.dev-tools.locks/ocaml-lsp-server:
   - ocaml.5.1.0
   - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'

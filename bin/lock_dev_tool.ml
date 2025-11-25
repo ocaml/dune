@@ -66,7 +66,7 @@ let make_local_package_wrapping_dev_tool ~dev_tool ~dev_tool_version ~extra_depe
   }
 ;;
 
-let solve ~dev_tool ~local_packages =
+let solve ~dev_tool ~local_packages network_cap =
   let open Memo.O in
   let* solver_env_from_current_system =
     Pkg.Pkg_common.poll_solver_env_from_current_system ()
@@ -91,6 +91,7 @@ let solve ~dev_tool ~local_packages =
        ~lock_dirs:[ lock_dir ]
        ~print_perf_stats:false
        ~portable_lock_dir:false
+       network_cap
 ;;
 
 let compiler_package_name = Package_name.of_string "ocaml"
@@ -236,7 +237,7 @@ let lockdir_status dev_tool =
    dev tool [dev_tool]. If [version] is [Some v] then version [v] of the tool
    will be chosen by the solver. Otherwise the solver is free to choose the
    appropriate version of the tool to install. *)
-let lock_dev_tool_at_version dev_tool version =
+let lock_dev_tool_at_version dev_tool version network_cap =
   let open Memo.O in
   let* need_to_solve =
     lockdir_status dev_tool
@@ -289,7 +290,7 @@ let lock_dev_tool_at_version dev_tool version =
         ~extra_dependencies
     in
     let local_packages = Package_name.Map.singleton local_pkg.name local_pkg in
-    solve ~dev_tool ~local_packages
+    solve ~dev_tool ~local_packages network_cap
   else Memo.return ()
 ;;
 

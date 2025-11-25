@@ -36,4 +36,5 @@ end
 val resolve
   :  DB.t
   -> scan_project:Scan_project.t
+  -> Network_cap.t
   -> Resolved_package.t Package_name.Map.t Fiber.t

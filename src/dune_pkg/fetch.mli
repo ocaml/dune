@@ -17,16 +17,19 @@ val fetch
   -> checksum:Checksum.t option
   -> target:Path.t
   -> url:Loc.t * OpamUrl.t
+  -> Network_cap.t
   -> (unit, failure) result Fiber.t
 
 val fetch_without_checksum
   :  unpack:bool
   -> target:Path.t
   -> url:Loc.t * OpamUrl.t
+  -> Network_cap.t
   -> (unit, User_message.t option) result Fiber.t
 
 val fetch_git
   :  Rev_store.t
   -> target:Path.t
   -> url:Loc.t * OpamUrl.t
+  -> Network_cap.t
   -> (unit, failure) result Fiber.t

@@ -21,7 +21,7 @@ val of_opam_repo_dir_path : Loc.t -> Path.t -> t
 (** [of_git_repo git source] loads the opam repository located
     at [source] from git. [source] can be any URL that [git remote add]
     supports. *)
-val of_git_repo : Loc.t -> OpamUrl.t -> t Fiber.t
+val of_git_repo : Loc.t -> OpamUrl.t -> Network_cap.t -> t Fiber.t
 
 (** [resolve_repositories ~available_repos ~repositories] resolves a list of
     repository references by looking them up in [available_repos] and creating
@@ -31,6 +31,7 @@ val of_git_repo : Loc.t -> OpamUrl.t -> t Fiber.t
 val resolve_repositories
   :  available_repos:Workspace.Repository.t Workspace.Repository.Name.Map.t
   -> repositories:(Loc.t * Workspace.Repository.Name.t) list
+  -> Network_cap.t
   -> t list Fiber.t
 
 val revision : t -> Rev_store.At_rev.t

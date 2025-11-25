@@ -302,6 +302,7 @@ let solve_lock_dir
       solver_env_from_current_system
       lock_dir_path
       progress_state
+      network_cap
   =
   let open Fiber.O in
   let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
@@ -347,8 +348,9 @@ let solve_lock_dir
     Dune_pkg.Opam_repo.resolve_repositories
       ~available_repos:repo_map
       ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
+      network_cap
   in
-  let* pins = resolve_project_pins project_pins in
+  let* pins = resolve_project_pins project_pins network_cap in
   let time_solve_start = Unix.gettimeofday () in
   progress_state := Some Progress_indicator.Per_lockdir.State.Solving;
   let* result =
@@ -428,7 +430,9 @@ let solve_lock_dir
            ~maybe_unsolved_platforms_message)
     in
     progress_state := None;
-    let+ lock_dir = Lock_dir.compute_missing_checksums ~pinned_packages lock_dir in
+    let+ lock_dir =
+      Lock_dir.compute_missing_checksums ~pinned_packages lock_dir network_cap
+    in
     Ok
       ( Lock_dir.Write_disk.prepare ~portable_lock_dir ~lock_dir_path ~files lock_dir
       , summary_message )
@@ -443,6 +447,7 @@ let solve
       ~lock_dirs
       ~print_perf_stats
       ~portable_lock_dir
+      network_cap
   =
   let open Fiber.O in
   (* a list of thunks that will perform all the file IO side
@@ -469,7 +474,8 @@ let solve
                 version_preference
                 solver_env_from_current_system
                 lockdir_path
-                state))
+                state
+                network_cap))
      in
      List.partition_map result ~f:Result.to_either
    in
@@ -511,7 +517,13 @@ let project_pins =
     Pin.DB.combine_exn acc pins)
 ;;
 
-let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir =
+let lock
+      ~version_preference
+      ~lock_dirs_arg
+      ~print_perf_stats
+      ~portable_lock_dir
+      network_cap
+  =
   let open Fiber.O in
   let* solver_env_from_current_system =
     poll_solver_env_from_current_system () >>| Option.some
@@ -537,6 +549,7 @@ let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir
     ~lock_dirs
     ~print_perf_stats
     ~portable_lock_dir
+    network_cap
 ;;
 
 let term =
@@ -547,6 +560,12 @@ let term =
   and+ print_perf_stats = Arg.(value & flag & info [ "print-perf-stats" ] ~doc:None) in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
+  let network_cap =
+    Dune_pkg.Network_cap.create
+      ~reason_for_network_access:
+        "Locking dependencies requires network access because it needs to download \
+         package repositories containing metadata in order to solve dependencies."
+  in
   Scheduler.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
     Pkg_common.check_pkg_management_enabled ()
@@ -556,7 +575,12 @@ let term =
       | `Enabled -> true
       | `Disabled -> false
     in
-    lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir)
+    lock
+      ~version_preference
+      ~lock_dirs_arg
+      ~print_perf_stats
+      ~portable_lock_dir
+      network_cap)
 ;;
 
 let info =

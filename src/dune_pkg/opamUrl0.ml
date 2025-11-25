@@ -65,7 +65,7 @@ let not_found ~loc ~git_output t =
        ])
 ;;
 
-let resolve t ~loc rev_store =
+let resolve t ~loc rev_store network_cap =
   let open Fiber.O in
   let remote = remote t ~loc rev_store in
   match
@@ -89,19 +89,19 @@ let resolve t ~loc rev_store =
             ]))
   | `Object obj -> Fiber.return (Ok (Unresolved obj))
   | `Ref revision ->
-    Rev_store.resolve_revision rev_store remote ~revision
+    Rev_store.resolve_revision rev_store remote ~revision network_cap
     >>| (function
      | None -> not_found ~loc ~git_output:[] t
      | Some o -> Ok (Resolved o))
 ;;
 
-let fetch_revision t ~loc resolve rev_store =
+let fetch_revision t ~loc resolve rev_store network_cap =
   let remote = remote t ~loc rev_store in
   let open Fiber.O in
   match resolve with
-  | Resolved o -> Rev_store.fetch_resolved rev_store remote o >>| Result.ok
+  | Resolved o -> Rev_store.fetch_resolved rev_store remote o network_cap >>| Result.ok
   | Unresolved o ->
-    Rev_store.fetch_object rev_store remote o
+    Rev_store.fetch_object rev_store remote o network_cap
     >>| (function
      | Error git_output -> not_found ~loc ~git_output t
      | Ok rev -> Ok rev)

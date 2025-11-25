@@ -716,12 +716,13 @@ module Entry = struct
   ;;
 end
 
-let fetch_allow_failure repo ~url obj =
+let fetch_allow_failure repo ~url obj network_cap =
   with_mutex repo obj ~f:(fun () ->
     object_exists repo obj
     >>= function
     | true -> Fiber.return `Fetched
     | false ->
+      Network_cap.log network_cap;
       run_with_exit_code
         ~allow_codes:(Int.equal 0)
         repo
@@ -737,8 +738,8 @@ let fetch_allow_failure repo ~url obj =
        | _ -> assert false))
 ;;
 
-let fetch repo ~url obj =
-  fetch_allow_failure repo ~url obj
+let fetch repo ~url obj network_cap =
+  fetch_allow_failure repo ~url obj network_cap
   >>| function
   | `Fetched -> ()
   | `Not_found output ->
@@ -921,7 +922,7 @@ module At_rev = struct
             ])
   ;;
 
-  let rec of_rev repo ~revision =
+  let rec of_rev repo ~revision network_cap =
     let* files, submodules = files_and_submodules repo revision in
     let commit_paths = path_commit_map submodules in
     let+ files =
@@ -943,8 +944,8 @@ module At_rev = struct
                 (Path.Local.to_string path)
             ]
         | Some revision ->
-          let* () = fetch repo ~url:source revision in
-          let+ at_rev = of_rev repo ~revision in
+          let* () = fetch repo ~url:source revision network_cap in
+          let+ at_rev = of_rev repo ~revision network_cap in
           File.Set.map at_rev.files ~f:(fun file ->
             let path = Path.Local.append path (File.path file) in
             File.Redirect { path; to_ = file }))
@@ -1115,12 +1116,12 @@ let remote =
     Table.find_or_add t.remotes ~f url
 ;;
 
-let fetch_resolved t (remote : Remote.t) revision =
-  let* () = fetch t ~url:remote.url revision in
-  At_rev.of_rev t ~revision
+let fetch_resolved t (remote : Remote.t) revision network_cap =
+  let* () = fetch t ~url:remote.url revision network_cap in
+  At_rev.of_rev t ~revision network_cap
 ;;
 
-let resolve_revision t (remote : Remote.t) ~revision =
+let resolve_revision t (remote : Remote.t) ~revision network_cap =
   let* refs = remote.refs in
   let obj =
     match String.Map.find refs revision with
@@ -1149,7 +1150,7 @@ let resolve_revision t (remote : Remote.t) ~revision =
   in
   match obj with
   | Some obj as s ->
-    let+ () = fetch t ~url:remote.url obj in
+    let+ () = fetch t ~url:remote.url obj network_cap in
     s
   | None ->
     rev_parse t revision
@@ -1158,11 +1159,11 @@ let resolve_revision t (remote : Remote.t) ~revision =
      | Some obj -> resolve_object t obj)
 ;;
 
-let fetch_object t (remote : Remote.t) revision =
-  fetch_allow_failure t ~url:remote.url revision
+let fetch_object t (remote : Remote.t) revision network_cap =
+  fetch_allow_failure t ~url:remote.url revision network_cap
   >>= function
   | `Not_found git_output -> Fiber.return (Error git_output)
-  | `Fetched -> At_rev.of_rev t ~revision >>| Result.ok
+  | `Fetched -> At_rev.of_rev t ~revision network_cap >>| Result.ok
 ;;
 
 let content_of_files t files =

@@ -9,6 +9,7 @@ val fetch
   :  target:Path.Build.t
   -> [ `File | `Directory ]
   -> Dune_pkg.Source.t
+  -> Dune_pkg.Network_cap.t
   -> Action.Full.t With_targets.t
 
 val gen_rules

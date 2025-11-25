@@ -177,7 +177,11 @@ val transitive_dependency_closure
 
 (** Attempt to download and compute checksums for packages that have source
     archive urls but no checksum. *)
-val compute_missing_checksums : t -> pinned_packages:Package_name.Set.t -> t Fiber.t
+val compute_missing_checksums
+  :  t
+  -> pinned_packages:Package_name.Set.t
+  -> Network_cap.t
+  -> t Fiber.t
 
 (** Combine the platform-specific parts of a pair of lockdirs, throwing a code
     error if the lockdirs differ in a non-platform-specific way. *)

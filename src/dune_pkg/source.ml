@@ -42,14 +42,14 @@ let digest_feed = Dune_digest.Feed.generic
 
 let fetch_archive_cached =
   let cache = Single_run_file_cache.create () in
-  fun (url_loc, url) ->
+  fun (url_loc, url) network_cap ->
     Single_run_file_cache.with_ cache ~key:(OpamUrl.to_string url) ~f:(fun target ->
-      Fetch.fetch_without_checksum ~unpack:false ~target ~url:(url_loc, url))
+      Fetch.fetch_without_checksum ~unpack:false ~target ~url:(url_loc, url) network_cap)
 ;;
 
-let fetch_and_hash_archive_cached (url_loc, url) =
+let fetch_and_hash_archive_cached (url_loc, url) network_cap =
   let open Fiber.O in
-  fetch_archive_cached (url_loc, url)
+  fetch_archive_cached (url_loc, url) network_cap
   >>| function
   | Ok target ->
     Some
@@ -78,6 +78,7 @@ let compute_missing_checksum
       ({ url = url_loc, url; checksum } as fetch)
       package_name
       ~pinned
+      network_cap
   =
   let open Fiber.O in
   match checksum with
@@ -99,7 +100,7 @@ let compute_missing_checksum
                (OpamUrl.to_string url)
            ; Pp.text "Dune will compute its own checksum for this source archive."
            ]);
-    fetch_and_hash_archive_cached (url_loc, url)
+    fetch_and_hash_archive_cached (url_loc, url) network_cap
     >>| Option.map ~f:(fun checksum ->
       { url = url_loc, url; checksum = Some (Loc.none, checksum) })
     >>| Option.value ~default:fetch

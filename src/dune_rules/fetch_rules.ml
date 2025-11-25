@@ -35,7 +35,7 @@ type kind =
   | `Directory
   ]
 
-let resolve_url =
+let resolve_url network_cap =
   (* Before we fetch any git repo, we make sure to convert the URL to fetch the
      git object directly. The object is used to compute the fetch action digest
      which is helpful to avoid refetching the same objects. *)
@@ -45,7 +45,7 @@ let resolve_url =
     let open Fiber.O in
     let+ git_object =
       let* rev_store = Rev_store.get in
-      OpamUrl.resolve url ~loc:Loc.none rev_store
+      OpamUrl.resolve url ~loc:Loc.none rev_store network_cap
       >>| function
       | Ok (Resolved r) -> (r :> Rev_store.Object.t)
       | Ok (Unresolved r) -> r
@@ -71,6 +71,7 @@ module Spec = struct
     ; url : Loc.t * OpamUrl.t
     ; checksum : (Loc.t * Checksum.t) option
     ; kind : kind
+    ; network_cap : Dune_pkg.Network_cap.t
     }
 
   let name = "source-fetch"
@@ -78,7 +79,9 @@ module Spec = struct
   let bimap t _ g = { t with target = g t.target }
   let is_useful_to ~memoize = memoize
 
-  let encode { target; url = _, url; checksum; kind } _ encode_target : Sexp.t =
+  let encode { target; url = _, url; checksum; kind; network_cap = _ } _ encode_target
+    : Sexp.t
+    =
     List
       ([ encode_target target
        ; Sexp.Atom (OpamUrl.to_string url)
@@ -96,7 +99,7 @@ module Spec = struct
        | Some (_, checksum) -> [ Atom (Checksum.to_string checksum) ])
   ;;
 
-  let action { target; url = loc_url, url; checksum; kind } ~ectx:_ ~eenv:_ =
+  let action { target; url = loc_url, url; checksum; kind; network_cap } ~ectx:_ ~eenv:_ =
     let open Fiber.O in
     let* () = Fiber.return () in
     let target = Path.build target in
@@ -108,7 +111,8 @@ module Spec = struct
           | `Directory -> true)
        ~checksum
        ~target
-       ~url:(loc_url, url))
+       ~url:(loc_url, url)
+       network_cap)
     >>= function
     | Ok () ->
       (match kind with
@@ -153,7 +157,9 @@ end
 
 module A = Action_ext.Make (Spec)
 
-let action ~url ~checksum ~target ~kind = A.action { Spec.target; checksum; url; kind }
+let action ~url ~checksum ~target ~kind network_cap =
+  A.action { Spec.target; checksum; url; kind; network_cap }
+;;
 
 let extract_checksums_and_urls (lockdir : Dune_pkg.Lock_dir.t) =
   Dune_pkg.Lock_dir.Packages.to_pkg_list lockdir.packages
@@ -231,7 +237,7 @@ let find_checksum, find_url =
   find_checksum, find_url
 ;;
 
-let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
+let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum network_cap =
   let loc_url = Dune_pkg.Lock_dir.loc_in_source_tree loc_url in
   let checksum_or_url =
     match checksum with
@@ -245,7 +251,7 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
   let rules =
     Rules.collect_unit
     @@ fun () ->
-    let* url = resolve_url url in
+    let* url = resolve_url network_cap url in
     (* CR-someday rgrinberg: it's possible to share the downloading step between the
        directory and file actions. Though it's unlikely to be of any use in real
        world situations. *)
@@ -256,7 +262,7 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
     in
     let make_target = make_target checksum_or_url in
     let action ~target ~kind =
-      action ~url:(loc_url, url) ~checksum ~target ~kind
+      action ~url:(loc_url, url) ~checksum ~target ~kind network_cap
       |> Action.Full.make ~can_go_in_shared_cache:true
       |> Action_builder.return
       |> Action_builder.with_no_targets
@@ -279,6 +285,10 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
 ;;
 
 let gen_rules ~dir ~components =
+  let network_cap =
+    Dune_pkg.Network_cap.create
+      ~reason_for_network_access:"The rules for downloading files require network access."
+  in
   match components with
   | [] ->
     Memo.return Rules.empty
@@ -297,14 +307,14 @@ let gen_rules ~dir ~components =
   | [ "checksum"; checksum ] ->
     let checksum = Dune_pkg.Checksum.parse_string_exn (Loc.none, checksum) in
     let+ url, checksum = find_checksum checksum in
-    gen_rules_for_checksum_or_url url (Some checksum)
+    gen_rules_for_checksum_or_url url (Some checksum) network_cap
   | [ "url"; digest ] ->
     let+ url =
       match Digest.from_hex digest with
       | Some s -> find_url s
       | None -> User_error.raise [ Pp.textf "invalid digest %s" digest ]
     in
-    gen_rules_for_checksum_or_url url None
+    gen_rules_for_checksum_or_url url None network_cap
   | _ -> Memo.return Gen_rules.no_rules
 ;;
 
@@ -347,7 +357,7 @@ module Copy = struct
   let action ~src_dir ~dst_dir = A.action { Spec.dst_dir; src_dir }
 end
 
-let fetch ~target kind (source : Source.t) =
+let fetch ~target kind (source : Source.t) network_cap =
   let source_kind = Source.kind source in
   let src =
     match source_kind with
@@ -376,7 +386,7 @@ let fetch ~target kind (source : Source.t) =
       | `Directory_or_archive _ ->
         (* For local sources, we don't need an intermediate step copying to the
            .fetch context. This would just add pointless additional overhead. *)
-        action ~url:source.url ~checksum:source.checksum ~target ~kind
+        action ~url:source.url ~checksum:source.checksum ~target ~kind network_cap
     in
     Action.Full.make ~can_go_in_shared_cache:true action
     |> Action_builder.With_targets.return

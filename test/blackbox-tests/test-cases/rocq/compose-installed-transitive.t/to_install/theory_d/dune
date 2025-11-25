@@ -1,4 +1,4 @@
-(coq.theory
+(rocq.theory
  (name T_d)
  (package global)
  (theories T_b T_c))

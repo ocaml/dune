@@ -2,11 +2,11 @@ Testing the _CoqProject generation.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.21)
-  > (using coq 0.11)
+  > (using rocq 0.11)
   > EOF
 
   $ cat > dune <<EOF
-  > (coq.theory
+  > (rocq.theory
   >  (name a)
   >  (modules_flags (foo (:standard -flag)))
   >  (generate_project_file))

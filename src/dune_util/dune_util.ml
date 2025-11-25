@@ -48,25 +48,18 @@ let default_cache_dir =
      Path.of_filename_relative_to_initial_cwd cache_dir / "dune")
 ;;
 
-let check_absolute ~var ~path =
-  if Filename.is_relative path
-  then
-    User_error.raise
-      [ Pp.paragraphf "$%s should be an absolute path, but is %S" var path ]
-;;
-
 let cache_home_dir =
   lazy
     (let var = "DUNE_CACHE_HOME" in
      match Sys.getenv_opt var with
      | Some path ->
-       check_absolute ~var ~path;
+       if Filename.is_relative path
+       then
+         User_error.raise
+           [ Pp.paragraphf "$%s should be an absolute path, but is %S" var path ];
        Path.external_ (Path.External.of_string path)
      | None -> Lazy.force default_cache_dir)
 ;;
-
-let rev_store = lazy (Lazy.force cache_home_dir / "git-repo")
-let toolchains_dir = lazy (Lazy.force cache_home_dir / "toolchains")
 
 let frames_per_second () =
   match Dune_config.Config.(get threaded_console_frames_per_second) with

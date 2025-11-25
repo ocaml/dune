@@ -3,24 +3,17 @@ open Import
 
 let ( / ) = Path.relative
 
-(** The directory containing the build cache.
-    Uses [$DUNE_CACHE_ROOT] if set, or
-    [$DUNE_CACHE_HOME/db] if set, or
-    [Dune_util.default_cache_dir/db] otherwise. *)
 let build_cache_dir =
   lazy
-    (let high_priority_var = "DUNE_CACHE_ROOT" in
-     match Sys.getenv_opt high_priority_var with
+    (let var = "DUNE_CACHE_ROOT" in
+     match Sys.getenv_opt var with
      | Some path ->
-       Dune_util.check_absolute ~var:high_priority_var ~path;
+       if Filename.is_relative path
+       then
+         User_error.raise
+           [ Pp.paragraphf "$%s should be an absolute path, but is %S" var path ];
        Path.external_ (Path.External.of_string path)
-     | None ->
-       let low_priority_var = "DUNE_CACHE_HOME" in
-       (match Sys.getenv_opt low_priority_var with
-        | Some path ->
-          Dune_util.check_absolute ~var:low_priority_var ~path;
-          Path.external_ (Path.External.of_string path) / "db"
-        | None -> Lazy.force Dune_util.default_cache_dir / "db"))
+     | None -> Lazy.force Dune_util.cache_home_dir / "db")
 ;;
 
 let temp_dir = lazy (Lazy.force build_cache_dir / "temp")

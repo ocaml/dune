@@ -50,6 +50,8 @@ module Theory : sig
     ; buildable : Buildable.t
     ; rocqdep_flags : Ordered_set_lang.Unexpanded.t
     ; rocqdoc_flags : Ordered_set_lang.Unexpanded.t
+    ; rocqdoc_header : String_with_vars.t option
+    ; rocqdoc_footer : String_with_vars.t option
     }
 
   include Stanza.S with type t := t

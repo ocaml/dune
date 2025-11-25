@@ -20,6 +20,8 @@ Workspaces also allow you to set the env for a context:
   (rocq_flags (-q))
   (rocqdep_flags ())
   (rocqdoc_flags (--toc))
+  (rocqdoc_header ())
+  (rocqdoc_footer ())
   (js_of_ocaml_flags ())
   (js_of_ocaml_build_runtime_flags ())
   (js_of_ocaml_link_flags ())

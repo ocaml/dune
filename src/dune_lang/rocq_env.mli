@@ -30,5 +30,11 @@ val rocqdep_flags : t -> Ordered_set_lang.Unexpanded.t
 (** Flags for rocqdoc *)
 val rocqdoc_flags : t -> Ordered_set_lang.Unexpanded.t
 
+(** Rocqdoc header config. *)
+val rocqdoc_header : t -> String_with_vars.t option
+
+(** Rocqdoc footer config. *)
+val rocqdoc_footer : t -> String_with_vars.t option
+
 (** Parser for env stanza. *)
 val decode : t Decoder.fields_parser

@@ -10,12 +10,15 @@
 (* Written by: Rudi Grinberg                   *)
 (* Written by: Rodolphe Lepigre                *)
 (***********************************************)
+open Import
 
 type t =
   { rocq_flags : string list
   ; rocqdep_flags : string list
   ; rocqdoc_flags : string list
+  ; rocqdoc_header : Path.t option
+  ; rocqdoc_footer : Path.t option
   }
 
 val default : t
-val dump : t -> Dune_lang.t list
+val dump : dir:Path.t -> t -> Dune_lang.t list

@@ -70,6 +70,8 @@ The Rocq theory stanza is very similar in form to the OCaml
      (modules_flags <flags_map>)
      (rocqdep_flags <rocqdep_flags>)
      (rocqdoc_flags <rocqdoc_flags>)
+     (rocqdoc_header <rocqdoc_header>)
+     (rocqdoc_footer <rocqdoc_footer>)
      (stdlib <stdlib_included>)
      (mode <rocq_native_mode>)
      (theories <rocq_theories>))
@@ -145,6 +147,12 @@ The semantics of the fields are:
   flags are passed separately depending on which mode is target. See the section
   on :ref:`documentation using rocqdoc<rocqdoc>` for more information.
 
+- ``<rocqdoc_header>`` is a file passed to ``rocqdoc`` using the ``--with-header``
+  option, to configure a custom HTML header for the generated HTML pages.
+
+- ``<rocqdoc_footer>`` is a file passed to ``rocqdoc`` using the ``--with-footer``
+  option, to configure a custom HTML footer for the generated HTML pages.
+
 - ``<stdlib_included>`` can either be ``yes`` or ``no``, currently defaulting to
   ``yes``. When set to ``no``, Rocq's standard library won't be visible from this
   theory, which means the ``Rocq`` prefix won't be bound, and
@@ -201,6 +209,10 @@ Further flags can also be configured using the ``(rocqdoc_flags)`` field in the
 ``rocq.theory`` stanza. These will be passed to ``rocqdoc`` and the default value
 is ``:standard`` which is ``--toc``. Extra flags can therefore be passed by
 writing ``(rocqdoc_flags :standard --body-only)`` for example.
+
+When building the HTML documentation, flags ``(rocqdoc_header)`` and
+``(rocqdoc_footer)`` can also be used to configure a custom HTML header or
+footer respectively.
 
 .. _include-subdirs-rocq:
 
@@ -807,3 +819,9 @@ with the following values for ``<rocq_fields>``:
 - ``(rocqdoc_flags <flags>)``: The default flags passed to ``rocqdoc``. The default
   value is ``--toc``. Values set here become the ``:standard`` value in the
   ``(rocq.theory (rocqdoc_flags <flags>))`` field.
+- ``(rocqdoc_header <file>)``: The default HTML header passed to ``rocqdoc`` via
+  the ``--with-header`` flag. Values set here become the ``:standard`` value in the
+  ``(rocq.theory (rocqdoc_header <file>))`` field.
+- ``(rocqdoc_footer <file>)``: The default HTML footer passed to ``rocqdoc`` via
+  the ``--with-footer`` flag. Values set here become the ``:standard`` value in the
+  ``(rocq.theory (rocqdoc_footer <file>))`` field.

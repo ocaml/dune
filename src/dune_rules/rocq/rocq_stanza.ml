@@ -147,6 +147,8 @@ module Theory = struct
     ; buildable : Buildable.t
     ; rocqdep_flags : Ordered_set_lang.Unexpanded.t
     ; rocqdoc_flags : Ordered_set_lang.Unexpanded.t
+    ; rocqdoc_header : String_with_vars.t option
+    ; rocqdoc_footer : String_with_vars.t option
     }
 
   let coq_public_decode =
@@ -235,8 +237,16 @@ module Theory = struct
          Ordered_set_lang.Unexpanded.field
            "rocqdoc_flags"
            ~check:(Dune_lang.Syntax.since rocq_syntax (0, 8))
+       and+ rocqdoc_header =
+         field_o
+           "rocqdoc_header"
+           (Dune_lang.Syntax.since rocq_syntax (0, 11) >>> String_with_vars.decode)
+       and+ rocqdoc_footer =
+         field_o
+           "rocqdoc_footer"
+           (Dune_lang.Syntax.since rocq_syntax (0, 11) >>> String_with_vars.decode)
+         (* boot libraries cannot depend on other theories *)
        in
-       (* boot libraries cannot depend on other theories *)
        check_boot_has_no_deps boot buildable;
        let package = merge_package_public ~package ~public in
        { name
@@ -250,6 +260,8 @@ module Theory = struct
        ; enabled_if
        ; rocqdep_flags
        ; rocqdoc_flags
+       ; rocqdoc_header
+       ; rocqdoc_footer
        })
   ;;
 

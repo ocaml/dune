@@ -166,8 +166,29 @@ let rocq_env =
             expander
             (Rocq_env.rocqdoc_flags config.rocq)
             ~standard
+        and+ rocqdoc_header =
+          match Rocq_env.rocqdoc_header config.rocq with
+          | None ->
+            let+ x = Action_builder.of_memo_join parent in
+            x.rocqdoc_header
+          | Some s ->
+            let+ path = Expander.expand_path expander s in
+            Some path
+        and+ rocqdoc_footer =
+          match Rocq_env.rocqdoc_footer config.rocq with
+          | None ->
+            let+ x = Action_builder.of_memo_join parent in
+            x.rocqdoc_footer
+          | Some s ->
+            let+ path = Expander.expand_path expander s in
+            Some path
         in
-        { Rocq_flags.rocq_flags; rocqdep_flags; rocqdoc_flags })
+        { Rocq_flags.rocq_flags
+        ; rocqdep_flags
+        ; rocqdoc_flags
+        ; rocqdoc_header
+        ; rocqdoc_footer
+        })
   in
   fun ~dir ->
     (let* () = Memo.return () in
@@ -212,6 +233,24 @@ let rocqdoc_flags ~dir ~stanza_rocqdoc_flags ~expander =
       (Action_builder.map
          ~f:(fun { Rocq_flags.rocqdoc_flags; _ } -> rocqdoc_flags)
          (rocq_env ~dir))
+;;
+
+let rocqdoc_header ~dir ~stanza_rocqdoc_header ~expander =
+  match stanza_rocqdoc_header with
+  | None ->
+    Action_builder.map
+      ~f:(fun { Rocq_flags.rocqdoc_header; _ } -> rocqdoc_header)
+      (rocq_env ~dir)
+  | Some s -> Action_builder.map ~f:Option.some (Expander.expand_path expander s)
+;;
+
+let rocqdoc_footer ~dir ~stanza_rocqdoc_footer ~expander =
+  match stanza_rocqdoc_footer with
+  | None ->
+    Action_builder.map
+      ~f:(fun { Rocq_flags.rocqdoc_footer; _ } -> rocqdoc_footer)
+      (rocq_env ~dir)
+  | Some s -> Action_builder.map ~f:Option.some (Expander.expand_path expander s)
 ;;
 
 let theory_rocqc_flag lib =
@@ -863,8 +902,35 @@ let setup_rocqdoc_rules ~sctx ~dir ~theories_deps (s : Rocq_stanza.Theory.t) roc
              in
              Expander.expand_and_eval_set expander s.rocqdoc_flags ~standard
            in
+           let header =
+             let open Action_builder.O in
+             let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
+             let+ header =
+               rocqdoc_header ~dir ~stanza_rocqdoc_header:s.rocqdoc_header ~expander
+             in
+             match header with
+             | None -> Command.Args.empty
+             | Some path -> Command.Args.S [ A "--with-header"; Dep path ]
+           in
+           let footer =
+             let open Action_builder.O in
+             let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
+             let+ footer =
+               rocqdoc_footer ~dir ~stanza_rocqdoc_footer:s.rocqdoc_footer ~expander
+             in
+             match footer with
+             | None -> Command.Args.empty
+             | Some path -> Command.Args.S [ A "--with-footer"; Dep path ]
+           in
+           let when_html dyn =
+             match mode with
+             | `Html -> Command.Args.Dyn dyn
+             | `Latex -> Command.Args.empty
+           in
            [ Command.Args.S file_flags
            ; Command.Args.dyn extra_rocqdoc_flags
+           ; when_html header
+           ; when_html footer
            ; A mode_flag
            ; A "-d"
            ; Path (Path.build doc_dir)

@@ -145,32 +145,26 @@ module Cache = struct
     Dune_config.Config.make_toggle ~name:"rev_store_cache" ~default:`Disabled
   ;;
 
-  let cache_dir =
+  let revision_store_dir =
     lazy
-      (let path =
-         Path.L.relative
-           (Lazy.force Dune_util.xdg
-            |> Xdg.cache_dir
-            |> Path.Outside_build_dir.of_string
-            |> Path.outside_build_dir)
-           [ "dune"; "rev_store" ]
-       in
+      (let path = Path.relative (Lazy.force Dune_util.cache_home_dir) "rev_store" in
        let rev_store_cache = Dune_config.Config.get rev_store_cache in
        Log.info
          [ Pp.textf
              "Revision store cache: %s"
              (Dune_config.Config.Toggle.to_string rev_store_cache)
          ];
-       match rev_store_cache, Path.mkdir_p path with
-       | `Enabled, () ->
+       match rev_store_cache with
+       | `Enabled ->
+         Path.mkdir_p path;
          Log.info [ Pp.textf "Revision store cache location: %s" (Path.to_string path) ];
          Some path
-       | `Disabled, () -> None)
+       | `Disabled -> None)
   ;;
 
   let db =
     lazy
-      (Lazy.force cache_dir
+      (Lazy.force revision_store_dir
        |> Option.map ~f:(fun path ->
          Lmdb.Env.create
            ~map_size:(Int64.to_int 5_000_000_000L) (* 5 GB *)
@@ -1219,9 +1213,14 @@ let content_of_files t files =
       | None -> Cache.Key.Map.find_exn to_write key)
 ;;
 
+let git_repo_dir =
+  lazy
+    (let dir = Path.relative (Lazy.force Dune_util.cache_home_dir) "git-repo" in
+     Log.info [ Pp.textf "Git repository cache location: %s" (Path.to_string dir) ];
+     dir)
+;;
+
 let get =
-  Fiber.Lazy.create (fun () ->
-    let dir = Lazy.force Dune_util.rev_store in
-    load_or_create ~dir)
+  Fiber.Lazy.create (fun () -> load_or_create ~dir:(Lazy.force git_repo_dir))
   |> Fiber.Lazy.force
 ;;

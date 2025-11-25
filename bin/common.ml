@@ -1380,16 +1380,6 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
         "Shared build cache location: %s"
         (Path.to_string (Lazy.force Dune_cache_storage.Layout.build_cache_dir))
     ];
-  Log.info
-    [ Pp.textf
-        "Toolchains cache location: %s"
-        (Path.to_string (Lazy.force Dune_util.toolchains_dir))
-    ];
-  Log.info
-    [ Pp.textf
-        "Revivision store cache location: %s"
-        (Path.to_string (Lazy.force Dune_util.rev_store))
-    ];
   Dune_rules.Main.init
     ~stats:c.stats
     ~sandboxing_preference:config.sandboxing_preference

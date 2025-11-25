@@ -408,6 +408,10 @@ let shared_with_config_file =
         ( (fun s -> Result.map_error (Concurrency.of_string s) ~f:(fun s -> `Msg s))
         , fun pp x -> Format.pp_print_string pp (Concurrency.to_string x) )
     in
+    let doc =
+      "Run no more than $(i,JOBS) commands simultaneously. $(i,JOBS) must be a positive \
+       integer or $(b,auto) to auto-detect the number of cores (the default)."
+    in
     Arg.(
       value
       & opt (some arg) None
@@ -415,7 +419,8 @@ let shared_with_config_file =
           [ "j" ]
           ~docs
           ~docv:"JOBS"
-          ~doc:(Some "Run no more than $(i,JOBS) commands simultaneously."))
+          ~env:(Cmd.Env.info ~doc "DUNE_JOBS")
+          ~doc:(Some doc))
   and+ sandboxing_preference =
     let all =
       List.map Dune_engine.Sandbox_mode.all_except_patch_back_source_tree ~f:(fun s ->

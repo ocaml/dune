@@ -44,9 +44,9 @@ Trying to build triggers both warnings
   1 | let t = "\e\n" in
                ^^
   Error (warning 14 [illegal-backslash]): illegal backslash escape in string.
-  Hint: Single backslashes \ are reserved for escape sequences
-  (\n, \r, ...). Did you check the list of OCaml escape sequences?
-  To get a backslash character, escape it with a second backslash: \\.
+    Hint: Single backslashes \ are reserved for escape sequences (\n, \r, ...).
+    Did you check the list of OCaml escape sequences?
+    To get a backslash character, escape it with a second backslash: \\.
   File "main.ml", line 1, characters 4-5:
   1 | let t = "\e\n" in
           ^
@@ -83,9 +83,9 @@ Can also pass flags from the env stanza. Let's go back to failing state:
   1 | let t = "\e\n" in
                ^^
   Error (warning 14 [illegal-backslash]): illegal backslash escape in string.
-  Hint: Single backslashes \ are reserved for escape sequences
-  (\n, \r, ...). Did you check the list of OCaml escape sequences?
-  To get a backslash character, escape it with a second backslash: \\.
+    Hint: Single backslashes \ are reserved for escape sequences (\n, \r, ...).
+    Did you check the list of OCaml escape sequences?
+    To get a backslash character, escape it with a second backslash: \\.
   File "main.ml", line 1, characters 4-5:
   1 | let t = "\e\n" in
           ^

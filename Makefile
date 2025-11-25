@@ -12,7 +12,7 @@ DEV_DEPS := \
 core_bench \
 patdiff
 
-TEST_OCAMLVERSION := 5.3.0
+TEST_OCAMLVERSION := 5.4.0
 # When updating this version, don't forget to also bump the number in the docs.
 
 -include Makefile.dev
@@ -108,9 +108,6 @@ test-melange: $(BIN)
 
 test-all: $(BIN)
 	$(BIN) build @runtest @runtest-js @runtest-coq @runtest-melange
-
-test-all-sans-melange: $(BIN)
-	$(BIN) build @runtest @runtest-js @runtest-coq
 
 test-ox: $(BIN)
 	$(BIN) runtest test/blackbox-tests/test-cases/oxcaml

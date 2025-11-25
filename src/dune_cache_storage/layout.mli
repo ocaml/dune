@@ -9,9 +9,8 @@ open Stdune
 open Import
 
 (** The directory containing the build cache.
-    Uses [$DUNE_CACHE_ROOT] if set, or
-    [$DUNE_CACHE_HOME/db] if set, or
-    [Dune_util.default_cache_dir/db] otherwise. *)
+    Set to [$DUNE_CACHE_ROOT] if it exists, or
+    [Dune_util.cache_home_dir/db] otherwise. *)
 val build_cache_dir : Path.t Lazy.t
 
 (** Create a few subdirectories in [root_dir]. We expose this function because

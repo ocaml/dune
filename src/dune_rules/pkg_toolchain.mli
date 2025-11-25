@@ -1,7 +1,8 @@
 open Import
 
 (** The path to the directory that will contain all toolchain
-    versions. Creates the directory if it doesn't already exist. *)
+    versions. Creates the directory if it doesn't already exist.
+    Set to [Dune_util.cache_home_dir/toolchains]. *)
 val base_dir : unit -> Path.Outside_build_dir.t
 
 (** Dune will download and build the ocaml-base-compiler and
@@ -21,7 +22,7 @@ val is_compiler_and_toolchains_enabled : Package.Name.t -> bool
 
 (** Returns the path to the directory containing the given package within the
     toolchain directory. This will be something like
-    [Dune_util.toolchains_dir/ocaml-base-compiler.5.2.1.XXXXXXXX] where
+    [base_dir/ocaml-base-compiler.5.2.1.XXXXXXXX] where
     XXXXXXXX is a hash of the package's lockfile. *)
 val installation_prefix : Lock_dir.Pkg.t -> Path.Outside_build_dir.t
 

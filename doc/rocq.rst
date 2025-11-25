@@ -68,6 +68,7 @@ The Rocq theory stanza is very similar in form to the OCaml
      (plugins <ocaml_plugins>)
      (flags <rocq_flags>)
      (modules_flags <flags_map>)
+     (generate_project_file)
      (rocqdep_flags <rocqdep_flags>)
      (rocqdoc_flags <rocqdoc_flags>)
      (rocqdoc_header <rocqdoc_header>)
@@ -180,6 +181,13 @@ The semantics of the fields are:
   ``.vos`` will be produced for the theory. This is mainly useful in conjunction
   with ``dune rocq top``, since this makes the compilation of dependencies much
   faster, at the cost of skipping proof checking.
+
+- If the ``(generate_project_file)`` is present, a ``_RocqProject`` file is
+  generated in the Rocq theory's directory (it is promoted to the source tree).
+  This file should be suitable for editor compatibility, and it provides an
+  alternative to using ``dune rocq top``. It is however limited in two ways: it
+  is incompatible with the ``(modules_flags ...)`` field, and it cannot be
+  used for two Rocq theories declared in the same directory.
 
 Rocq Dependencies
 ~~~~~~~~~~~~~~~~~

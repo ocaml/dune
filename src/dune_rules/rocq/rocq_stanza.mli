@@ -46,6 +46,7 @@ module Theory : sig
     ; modules : Ordered_set_lang.t
     ; modules_flags : (Rocq_module.Name.t * Ordered_set_lang.Unexpanded.t) list option
     ; boot : bool
+    ; generate_project_file : Loc.t * bool
     ; enabled_if : Blang.t
     ; buildable : Buildable.t
     ; rocqdep_flags : Ordered_set_lang.Unexpanded.t

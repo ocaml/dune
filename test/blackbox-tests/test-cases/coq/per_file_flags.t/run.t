@@ -1,4 +1,8 @@
   $ dune build --display short @all
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
         coqdep .basic.theory.d
           coqc Nbasic_foo.{cmi,cmxs},foo.{glob,vo}
   File "./foo.v", line 4, characters 0-19:
@@ -8,6 +12,10 @@
           coqc Nbasic_bar.{cmi,cmxs},bar.{glob,vo}
 
   $ dune build --debug-dependency-path @default
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   lib: [
     "_build/install/default/lib/base/META"
     "_build/install/default/lib/base/dune-package"

@@ -352,6 +352,7 @@ module Macro = struct
     | Coq_config, Coq_config -> Eq
     | Coq_config, _ -> Lt
     | _, Coq_config -> Gt
+    | Rocq_config, Rocq_config -> Eq
     | Rocq_config, _ -> Lt
     | _, Rocq_config -> Gt
     | Env, Env -> Eq

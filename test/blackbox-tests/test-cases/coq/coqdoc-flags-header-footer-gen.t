@@ -21,6 +21,10 @@ Testing the coqdoc_header and coqdoc_footer field of the env stanza.
   > EOF
 
   $ dune build @doc
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   $ find _build/default/a.html -type f -name '*.html' | sort | xargs grep HEADER
   _build/default/a.html/a.foo.html:HEADER
   _build/default/a.html/index.html:HEADER

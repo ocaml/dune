@@ -14,10 +14,10 @@
   > Definition doo := a.foo.
   > EOF
   $ dune build --display short --debug-dependency-path
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
+  (warnings (deprecated_coq_lang disabled))
         coqdep a/.a.theory.d
         coqdep b/.b.theory.d
           coqc a/Na_a.{cmi,cmxs},a/a.{glob,vo}
@@ -29,9 +29,9 @@
   > Definition zoo := 4.
   > EOF
   $ dune build --display short --debug-dependency-path
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
+  (warnings (deprecated_coq_lang disabled))
         coqdep b/.b.theory.d
           coqc b/Nb_b.{cmi,cmxs},b/b.{glob,vo}

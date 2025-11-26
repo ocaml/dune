@@ -133,8 +133,8 @@ Terminology
      files. The following profiles are standard:
 
      -  ``release`` which is the profile used for opam releases
-     -  ``dev`` which is the default profile when none is set explicitly, it has
-        stricter warnings than the ``release`` one
+     -  ``dev`` which is the default profile when none is set explicitly, and
+        which has warnings-as-errors turned on.
 
    dialect
      An alternative frontend to OCaml (such as ReasonML). It is described

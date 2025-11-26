@@ -1,0 +1,29 @@
+(rule
+ (action
+  (with-outputs-to
+   config.output
+   (progn
+    (echo "COQLIB=%{rocq:rocqlib}\n")
+    (echo "COQ_NATIVE_COMPILER_DEFAULT=%{rocq:rocq_native_compiler_default}\n")
+    (echo "")
+    (echo "%{rocq:version} %{rocq:ocaml-version}\n")
+    (echo
+     "%{rocq:version.major}.%{rocq:version.minor}%{rocq:version.suffix} %{rocq:ocaml-version}\n")))))
+
+(rule
+ (action
+  (with-outputs-to
+   config.expected
+   (progn
+    (pipe-outputs
+     ; We need to scrub ignored config values
+     (run %{bin:rocq} --config)
+     (run sed "/^COQCORELIB=/d")
+     (run sed "/^DOCDIR=/d")
+     (run sed "/^OCAMLFIND=/d")
+     (run sed "/^CAMLFLAGS=/d")
+     (run sed "/^WARN=/d")
+     (run sed "/^HASNATDYNLINK=/d")
+     (run sed "/^COQ_SRC_SUBDIRS=/d"))
+    (run %{bin:rocq} -print-version)
+    (run %{bin:rocq} -print-version)))))

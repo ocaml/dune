@@ -29,6 +29,9 @@ let dump sctx ~dir =
   and+ coq_dump =
     Dune_rules.Coq.Coq_rules.coq_env ~dir
     >>| Dune_rules.Coq.Coq_flags.dump ~dir:(Path.build dir)
+  and+ rocq_dump =
+    Dune_rules.Rocq.Rocq_rules.rocq_env ~dir
+    >>| Dune_rules.Rocq.Rocq_flags.dump ~dir:(Path.build dir)
   and+ jsoo_js_dump =
     let module Js_of_ocaml = Dune_lang.Js_of_ocaml in
     let* jsoo = Action_builder.of_memo (Dune_rules.Jsoo_rules.jsoo_env ~dir ~mode:JS) in
@@ -45,6 +48,7 @@ let dump sctx ~dir =
       ; link_flags_dump
       ; menhir_dump
       ; coq_dump
+      ; rocq_dump
       ; jsoo_js_dump
       ; jsoo_wasm_dump
       ]

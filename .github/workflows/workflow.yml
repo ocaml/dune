@@ -36,7 +36,7 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
@@ -58,7 +58,7 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
@@ -74,7 +74,7 @@ jobs:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
@@ -90,7 +90,7 @@ jobs:
     name: Documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
@@ -113,7 +113,7 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
@@ -134,7 +134,7 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
@@ -202,7 +202,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       # The 32 bit gcc/g++ packages are by default out-of-date so we need to
       # manually update our package listing.
@@ -255,7 +255,7 @@ jobs:
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
@@ -266,6 +266,36 @@ jobs:
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-
           gc-max-store-size-linux: 5G
       - run: nix develop .#coq -c make test-coq
+        env:
+          # We disable the Dune cache when running the tests
+          DUNE_CACHE: disabled
+
+  rocq:
+    name: Rocq Language (Rocq 9.1.0)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # Keep packages and OCaml version in sync with the version
+          # in the makefile; rocq-stdlib should be easy to remove
+          - ocaml-compiler: 5.3
+            opam-packages: rocq-core.9.1.0 rocq-stdlib.9.0.0 csexp re spawn pp uutf
+            test-target: test-rocq
+          - ocaml-compiler: 4.14
+            opam-packages: rocq-core.9.1.0 rocq-stdlib.9.0.0 csexp re spawn pp uutf rocq-native
+            test-target: test-rocq-native
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v5
+      - name: Setup OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+          dune-cache: true
+      - name: install Rocq Prover
+        run: opam install -y ${{ matrix.opam-packages }}
+      - name: test Rocq Prover Build Language
+        run: opam exec -- make ${{ matrix.test-target }}
         env:
           # We disable the Dune cache when running the tests
           DUNE_CACHE: disabled
@@ -286,7 +316,7 @@ jobs:
           token: ${{ github.token }}
 
       - name: Checkout Code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Use OCaml 5.2.x
         uses: ocaml/setup-ocaml@v3
@@ -312,7 +342,7 @@ jobs:
     name: Cygwin Build
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Setup Cygwin
         uses: cygwin/cygwin-install-action@v6
         with:
@@ -331,7 +361,7 @@ jobs:
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install OCaml
         uses: ocaml/setup-ocaml@v3
@@ -371,7 +401,7 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Create an empty switch
         run: opam switch create . --empty
       - name: Pin local packages to local dependencies
@@ -386,7 +416,7 @@ jobs:
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
@@ -402,7 +432,7 @@ jobs:
     name: Test that the utop dev tool can be built and run
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}

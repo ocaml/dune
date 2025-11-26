@@ -1,0 +1,3 @@
+(library
+ (name plugin)
+ (public_name global.plugin))

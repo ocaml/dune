@@ -33,8 +33,12 @@ end
 
 module Ocamlformat = struct
   let dev_tool_lock_dir_exists () =
-    let path = Lock_dir.dev_tool_source_lock_dir Ocamlformat in
-    Source_tree.find_dir path >>| Option.is_some
+    (* we assume that if lock_dev_tools is set, then the lock dir was created
+       via locking and can expect it to exist. If it doesn't, it's a bug
+    *)
+    match Config.get Compile_time.lock_dev_tools with
+    | `Enabled -> true
+    | `Disabled -> false
   ;;
 
   (* Config files for ocamlformat. When these are changed, running
@@ -129,7 +133,7 @@ let gen_rules_output
   let loc = Format_config.loc config in
   let dir = Path.Build.parent_exn output_dir in
   let alias_formatted = Alias.fmt ~dir:output_dir in
-  let* ocamlformat_is_locked = Ocamlformat.dev_tool_lock_dir_exists () in
+  let ocamlformat_is_locked = Ocamlformat.dev_tool_lock_dir_exists () in
   let setup_formatting file =
     (let input_basename = Path.Source.basename file in
      let input = Path.Build.relative dir input_basename in

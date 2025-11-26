@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Clone caldav
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         repository: roburio/caldav
         ref: 51f0d150542348dc259b7c9f7bc70ee592243f7f

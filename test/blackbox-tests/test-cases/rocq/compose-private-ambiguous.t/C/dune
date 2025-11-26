@@ -1,0 +1,6 @@
+(rocq.theory
+ (name C)
+ (package C)
+ (theories A))
+
+

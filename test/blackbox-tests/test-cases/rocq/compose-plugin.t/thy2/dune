@@ -1,0 +1,6 @@
+(rocq.theory
+ (name thy2)
+ (package cplugin)
+ (synopsis "Test Plugin")
+ (theories thy1))
+

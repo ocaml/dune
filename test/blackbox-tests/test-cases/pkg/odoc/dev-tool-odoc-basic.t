@@ -25,7 +25,7 @@ a lockdir containing an "ocaml" lockfile.
   > EOF
 
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune ocaml doc
-  Solution for dev-tools.locks/odoc:
+  Solution for _build/.dev-tools.locks/odoc:
   - ocaml.5.2.0
   - odoc.0.0.1
   hello from fake odoc

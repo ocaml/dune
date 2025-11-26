@@ -40,7 +40,7 @@ attempt to build the package "foo".
   $ cat foo.ml
   let () = print_endline "Hello, world"
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
-  Solution for dev-tools.locks/ocamlformat:
+  Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.0.1
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml

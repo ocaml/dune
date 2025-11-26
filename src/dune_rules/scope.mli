@@ -12,7 +12,10 @@ val project : t -> Dune_project.t
 (** Return the library database associated to this scope *)
 val libs : t -> Lib.DB.t
 
+(** Return the Rocq library database associated to this scope *)
 val coq_libs : t -> Coq_lib.DB.t Memo.t
+
+val rocq_libs : t -> Rocq_lib.DB.t Memo.t
 
 (** Scope databases *)
 module DB : sig

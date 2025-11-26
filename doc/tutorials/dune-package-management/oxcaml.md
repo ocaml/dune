@@ -1,7 +1,7 @@
 # Setting up an OxCaml project
 
 As an example of how to add custom repositories and pin dependencies in projects
-using `dune pkg`, let's look at setting up a basic OxCaml project.
+using Dune Package Management, let's look at setting up a basic OxCaml project.
 [OxCaml](https://oxcaml.org/) is a compiler branch with fast moving set of
 extensions to OCaml. Some tweaks are required to set up a project that compiles
 with OxCaml when using dune package management.

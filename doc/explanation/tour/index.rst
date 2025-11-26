@@ -10,7 +10,7 @@ A Tour of the Dune Codebase
 
 Let's start with a very high level tour of how ``dune build`` operates.
 
-As explained in :doc:`/explanation/mental-model`, ``dune build`` will interpret
+As explained in :doc:`/core-concepts/mental-model`, ``dune build`` will interpret
 the targets listed on the command line, interpret the ``dune`` files in the
 workspace as rules, and execute the rules relevant to the requested targets.
 

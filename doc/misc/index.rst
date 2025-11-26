@@ -7,6 +7,5 @@ information about the project itself.
 .. toctree::
    :maxdepth: 2
 
-   ../faq
    ../goals
    ../hacking

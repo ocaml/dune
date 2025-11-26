@@ -2,7 +2,7 @@
 author: Marek Kubica
 ---
 
-OCaml Package Management With Dune
+Package Management With Dune
 ==================================
 
 :::{warning}
@@ -11,11 +11,13 @@ change.
 :::
 
 In this tutorial we will be looking at how to use Dune for managing project
-dependencies. This enables users to install the compiler as well as third-party
+dependencies for OCaml projects. This enables users to install the compiler as well as third-party
 dependencies using a single tool which takes care of building code and
 dependencies.
 
 To get started you only need Dune. Head to {doc}`setup` to begin the setup.
+
+In case you are dealing with an existing OCaml project using `opam`, or you want to use `opam` to manage your project's dependencies, see {doc}`/howto/opam-file-generation`.
 
 :::{toctree}
 :hidden:

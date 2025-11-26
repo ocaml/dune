@@ -1,6 +1,6 @@
-**********************
-Command-Line Interface
-**********************
+********************************************
+How to Use Dune's Command-Line Interface
+********************************************
 
 .. TODO(diataxis)
 
@@ -11,7 +11,7 @@ Command-Line Interface
    - reference info about the CLI
    - how-to info about overriding what ``dune build`` does
 
-This section describes using ``dune`` from the shell.
+This guide describes using ``dune`` from the shell.
 
 .. _initializing_components:
 
@@ -216,7 +216,7 @@ targets upon starting:
     - _build/4.04.0/bin/prog.exe
 
 If a target starts with the ``@`` sign, it is interpreted as an :term:`alias`.
-See :doc:`reference/aliases`.
+See :doc:`/reference/aliases`.
 
 Variables for Artifacts
 -----------------------

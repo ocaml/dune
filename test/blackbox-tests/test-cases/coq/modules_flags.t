@@ -16,8 +16,16 @@ Reproducing test case for https://github.com/ocaml/dune/issues/12638.
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh | grep deprecated-since
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   -w -deprecated-since-8.15
   $ dune build bar.vo && tail -n 1 _build/log | ./scrub_coq_args.sh | grep deprecated-since
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   -w -deprecated-since-8.16
   $ dune clean
 
@@ -41,6 +49,14 @@ Reproducing test case for https://github.com/ocaml/dune/issues/12638.
   > EOF
 
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh | grep deprecated-since
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   [1]
   $ dune build bar.vo && tail -n 1 _build/log | ./scrub_coq_args.sh | grep deprecated-since
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   -w -deprecated-since-8.16

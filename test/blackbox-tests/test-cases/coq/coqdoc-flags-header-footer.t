@@ -25,6 +25,10 @@ Testing the coqdoc_header and coqdoc_footer field of the env stanza.
   > EOF
 
   $ dune build @doc
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
 
   $ tail _build/log -n 1 | ./scrub_coq_args.sh | sed 's/.*coq/coq/'
   coqdoc
@@ -33,6 +37,10 @@ Testing the coqdoc_header and coqdoc_footer field of the env stanza.
   foo.v
 
   $ dune build @doc-latex
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
 
   $ tail _build/log -n 1 | ./scrub_coq_args.sh | sed 's/.*coq/coq/'
   coqdoc

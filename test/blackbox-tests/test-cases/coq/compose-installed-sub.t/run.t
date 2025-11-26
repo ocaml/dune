@@ -36,6 +36,10 @@ so this also tests that it won't be a problem.
 
   $ dune build --root global @install
   Entering directory 'global'
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   Leaving directory 'global'
   $ dune install --root global --prefix=$PWD --display=short
   Installing $TESTCASE_ROOT/lib/global/META
@@ -55,6 +59,10 @@ so this also tests that it won't be a problem.
 Next we go into our Dune project and build it.
   $ dune build --root user
   Entering directory 'user'
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   Inductive hello_alg : Set :=
       I : hello_alg
     | am : hello_alg
@@ -111,6 +119,10 @@ As expected, Dune can no longer build A:
 
   $ dune build --root user
   Entering directory 'user'
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   File "dune", line 3, characters 11-23:
   3 |  (theories global.field global.algebra))
                  ^^^^^^^^^^^^
@@ -132,6 +144,10 @@ all the directories found in COQPATH.
 
   $ dune build --root user
   Entering directory 'user'
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   Inductive hello_alg : Set :=
       I : hello_alg
     | am : hello_alg
@@ -152,6 +168,10 @@ We test if having global in the workspace and in user-contrib will cause Dune
 any problems. It shouldn't do, as the workspace should take precedence.
 
   $ dune build user
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   Inductive hello_alg : Set :=
       I : hello_alg
     | am : hello_alg
@@ -176,6 +196,10 @@ We test updating the dune file for user to use the super-theory works:
   > EOF
   $ dune build --root user
   Entering directory 'user'
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   Inductive hello_alg : Set :=
       I : hello_alg
     | am : hello_alg
@@ -212,4 +236,8 @@ with the loadpath semantics of Coq.
 
   $ dune build --root user
   Entering directory 'user'
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   Leaving directory 'user'

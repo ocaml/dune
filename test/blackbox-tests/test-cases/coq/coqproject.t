@@ -14,4 +14,8 @@ Testing the _CoqProject generation.
   $ touch foo.v
 
   $ dune build
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   $ [ -f _CoqProject ]

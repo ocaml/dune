@@ -15,7 +15,8 @@ Introduction
 ------------
 
 **Note**: the Dune Coq mode has been replaced by Dune's :ref:`Rocq
-mode<rocq>`, following the renaming of Coq into Rocq. We strongly
+mode<rocq>`, following the renaming of Coq into Rocq. The Dune Coq
+mode is deprecated, and will be removed in Dune 3.24. We strongly
 recommend all users to migrate to this mode.
 
 Dune can build Coq theories and plugins with additional support for extraction

@@ -52,6 +52,10 @@ Should fail: first warning that installed theories are being skipped due to the
 failure, then, as the library requires the stdlib, it fails:
   $ FAIL_CONFIG=1 \
   > dune build
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   Warning: Skipping installed theories due to 'coqc --config' failure:
   - $TESTCASE_ROOT/bin/coqc --config failed with exit code 1.
   Hint: Try running 'coqc --config' manually to see the error.
@@ -82,14 +86,26 @@ Should succeed, warning that installed theories are being skipped due to the
 failure (c.f. #8958):
   $ FAIL_CONFIG=1 \
   > dune build
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   Warning: Skipping installed theories due to 'coqc --config' failure:
   - $TESTCASE_ROOT/bin/coqc --config failed with exit code 1.
   Hint: Try running 'coqc --config' manually to see the error.
 
   $ FAIL_VERSION=1 \
   > dune build
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
 
   $ dune build
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
 
 Here we query the version of Coq. Due to the expansion of %{coq:_} macros we need coq
 --config. A failing --print-version or --config will block this value from being realised.

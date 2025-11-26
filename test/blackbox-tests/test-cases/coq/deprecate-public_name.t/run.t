@@ -11,10 +11,10 @@ public_name field is deprecated
        ^^^^^^^^^^^^^^^^^
   Warning: 'public_name' was deprecated in version 0.5 of the Coq language.
   Please use 'package' instead.
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
+  (warnings (deprecated_coq_lang disabled))
 
 both package and public_name field is an error
   $ cat > dune << EOF
@@ -30,10 +30,10 @@ both package and public_name field is an error
        ^^^^^^^^^^^^^^^^^
   Warning: 'public_name' was deprecated in version 0.5 of the Coq language.
   Please use 'package' instead.
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
+  (warnings (deprecated_coq_lang disabled))
   File "dune", line 3, characters 14-17:
   3 |  (public_name Foo)
                     ^^^

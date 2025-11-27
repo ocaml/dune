@@ -3,7 +3,7 @@ private plugin B and the public package C will pick up.
 
 B will pick up the private one:
   $ dune build B
-  message = "I am the the private A "
+  message = "I am the private A "
        : string
 
 C picks up the private one too:

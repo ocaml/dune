@@ -216,7 +216,7 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
         ~hints:regenerate_lock_dir_hints
         [ Pp.text
             "Dependency hash in lockdir does not match the hash of non-local \
-             dependencies of this project. The lockdir expects the the non-local \
+             dependencies of this project. The lockdir expects the non-local \
              dependencies to hash to:"
         ; Pp.text (Local_package.Dependency_hash.to_string lock_dir_dependency_hash)
         ; Pp.text "...but the non-local dependencies of this project hash to:"

@@ -19,7 +19,7 @@ Example 1
 ---------
 
 In this example, we have a rule (attached to alias "default") which
-cats the contents of two files `y` and `z`. Both of the the rules for
+cats the contents of two files `y` and `z`. Both of the rules for
 these two files are failing. What is more, the filename `z` is
 accessed via an indirection. In the end, since the path to reach `z`
 is independent of the path to reach `y`, both errors could be reported

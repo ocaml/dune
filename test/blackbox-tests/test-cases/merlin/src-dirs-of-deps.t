@@ -1,5 +1,5 @@
-We create two libraries where one depends on the the other. The dependency
-library also has more than one src dir.
+We create two libraries where one depends on the other. The dependency library
+also has more than one src dir.
 
   $ echo "(lang dune 2.0)" > dune-project
   $ mkdir -p lib1/sub

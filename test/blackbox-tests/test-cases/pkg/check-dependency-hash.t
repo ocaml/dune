@@ -90,8 +90,8 @@ Add a second dependency to the project:
   Lockdir dune.lock does not contain a solution for local packages:
   File "dune.lock/lock.dune", line 3, characters 17-49:
   Error: Dependency hash in lockdir does not match the hash of non-local
-  dependencies of this project. The lockdir expects the the non-local
-  dependencies to hash to:
+  dependencies of this project. The lockdir expects the non-local dependencies
+  to hash to:
   7ba1cacd46bb2609d7b9735909c3b8a5
   ...but the non-local dependencies of this project hash to:
   d18946fdd9833ae312d309f654f11c1b
@@ -149,7 +149,7 @@ Case where the label is not "md5":
   - dune.lock
   [1]
 
-Case where the the hash is not a valid md5 hash:
+Case where the hash is not a valid md5 hash:
   $ make_lock_metadata_with_hash md5=badhash
   $ dune pkg validate-lockdir
   Failed to parse lockdir dune.lock:

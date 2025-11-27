@@ -7,7 +7,7 @@ B will pick up the private one:
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
   (warnings (deprecated_coq_lang disabled))
-  message = "I am the the private A "
+  message = "I am the private A "
        : string
 
 C picks up the private one too:

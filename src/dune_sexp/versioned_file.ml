@@ -57,11 +57,13 @@ struct
 
     let parse first_line : Instance.t =
       let { First_line.lang = name_loc, name; version = ver_loc, ver } = first_line in
+      let ver_atom =
+        match Atom.parse ver with
+        | Some atom -> atom
+        | None -> User_error.raise ~loc:ver_loc [ Pp.text "Invalid version string" ]
+      in
       let dune_lang_ver =
-        Decoder.parse
-          Syntax.Version.decode
-          Univ_map.empty
-          (Atom (ver_loc, Atom.of_string ver))
+        Decoder.parse Syntax.Version.decode Univ_map.empty (Atom (ver_loc, ver_atom))
       in
       match Table.find langs name with
       | None ->

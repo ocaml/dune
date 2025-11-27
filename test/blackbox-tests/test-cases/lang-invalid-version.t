@@ -19,6 +19,9 @@ Invalid version number:
 
 Test with various non-ASCII characters:
 
+CR-someday benodiwal: The version_loc is greedy and captures the closing
+parenthesis.
+
   $ test_invalid_version "è"
   File "dune-project", line 1, characters 11-13:
   1 | (lang dune è)
@@ -50,6 +53,9 @@ Test with various non-ASCII characters:
   Error: Invalid version. Version must be two numbers separated by a dot.
   Hint: lang dune 3.21
   [1]
+
+CR-someday benodiwal: Unicode string lengths are miscomputed in location
+excerpts for East Asian characters.
 
   $ test_invalid_version "中3.16文"
   File "dune-project", line 1, characters 11-21:

@@ -140,7 +140,7 @@ module Flags : sig
 end
 
 (** [which t prog] seek [prog] in the PATH and return the name of the program
-    prefixed with the first path where it is found. Return [None] the the
+    prefixed with the first path where it is found. Return [None] if the
     program is not found. *)
 val which : t -> string -> string option
 

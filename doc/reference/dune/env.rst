@@ -46,7 +46,7 @@ Fields supported in ``<settings>`` are:
   ``separate``.
 
 - ``(js_of_ocaml (sourcemap <mode>))`` controls whether to generate sourcemap
-  or not where ``<mode>`` is either ``no``, ``file`` (to generate sourcemap in a ``.map`` file next the the generated javascript file) or ``inline`` (to inline the sourcemap at the end of the generated JavaScript file).
+  or not where ``<mode>`` is either ``no``, ``file`` (to generate sourcemap in a ``.map`` file next to the generated javascript file) or ``inline`` (to inline the sourcemap at the end of the generated JavaScript file).
 
 - ``(js_of_ocaml (runtest_alias <alias-name>))`` specifies the alias under which
   :ref:`inline_tests` and tests (:ref:`tests-stanza`) run for the ``js`` mode.
@@ -61,7 +61,7 @@ Fields supported in ``<settings>`` are:
   ``separate``.
 
 - ``(wasm_of_ocaml (sourcemap <mode>))`` controls whether to generate sourcemap
-  or not where ``<mode>`` is either ``no``, ``file`` (to generate sourcemap in a ``.map`` file next the the generated javascript file) or ``inline`` (to inline the sourcemap at the end of the generated JavaScript file).
+  or not where ``<mode>`` is either ``no``, ``file`` (to generate sourcemap in a ``.map`` file next to the generated javascript file) or ``inline`` (to inline the sourcemap at the end of the generated JavaScript file).
 
 - ``(wasm_of_ocaml (runtest_alias <alias-name>))`` specifies the alias under which
   :ref:`inline_tests` and tests (:ref:`tests-stanza`) run for the ``wasm`` mode.

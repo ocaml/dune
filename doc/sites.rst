@@ -96,8 +96,7 @@ site using the :doc:`generate_sites_module stanza
     (sites mygui))
 
 The generated module ``mysites`` depends on the library ``dune-site`` provided
-by Dune. As such, the the dependency on ``dune-site`` must be specified
-explicitly.
+by Dune. As such, the dependency on ``dune-site`` must be specified explicitly.
 
 .. note::
 

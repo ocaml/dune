@@ -34,7 +34,7 @@ type unsatisfied_formula =
 (** Given a map associating package names with the version of that package in a
     solution, this function evaluates an [OpamFormula.t] to a concrete list of
     package names all contained in the solution with versions which satisfy the
-    formula, or an error if the the version constraints or packages in the
+    formula, or an error if the version constraints or packages in the
     formula can't be satisfied with the packages in the solution. If the
     formula contains disjunctions (the `|` operator in opam) then there may be
     multiple sets of packages that satisfy the formula. In this case the choice

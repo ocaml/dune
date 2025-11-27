@@ -34,7 +34,7 @@ swallow tests
 must-be-empty tests
 ----------------------
 
-In the two above tests, we ask Dune to enforce that the the stdout
+In the two above tests, we ask Dune to enforce that the stdout
 (resp. stderr) of actions is empty via the must-be-empty setting.
 Since the first rule has a non-empty stdout and the second has a
 non-empty stderr, we observe that in each case the build fails

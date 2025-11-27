@@ -61,7 +61,7 @@ struct
         match Atom.parse ver with
         | Some atom -> atom
         | None ->
-          let hint =
+          let hints =
             match Table.find langs name with
             | None -> []
             | Some lang ->
@@ -70,7 +70,7 @@ struct
           in
           User_error.raise
             ~loc:ver_loc
-            ~hints:hint
+            ~hints
             [ Pp.text "Invalid version. Version must be two numbers separated by a dot." ]
       in
       let dune_lang_ver =

@@ -5,7 +5,7 @@ such situations provide a clear error.
   >   cat > dune-project <<EOF
   > (lang dune $1)
   > EOF
-  >   dune build 2>&1 | grep "Internal error"
+  >   dune build 2>&1 | grep "Invalid version string"
   > }
 
 Invalid version number:
@@ -16,16 +16,16 @@ Invalid version number:
 Test with various non-ASCII characters:
 
   $ test_invalid_version "è"
-  Internal error, please report upstream including the contents of _build/log.
+  Error: Invalid version string
 
   $ test_invalid_version "π3.14"
-  Internal error, please report upstream including the contents of _build/log.
+  Error: Invalid version string
 
   $ test_invalid_version "α"
-  Internal error, please report upstream including the contents of _build/log.
+  Error: Invalid version string
 
   $ test_invalid_version "😀"
-  Internal error, please report upstream including the contents of _build/log.
+  Error: Invalid version string
 
   $ test_invalid_version "中3.16文"
-  Internal error, please report upstream including the contents of _build/log.
+  Error: Invalid version string

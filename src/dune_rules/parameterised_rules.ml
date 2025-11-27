@@ -350,6 +350,7 @@ let resolve_instantiation scope instance_name =
       Memo.List.map ~f:go args
       >>| List.map ~f:(fun arg -> Loc.none, arg)
       >>| Lib.Parameterised.instantiate
+            ~from:`depends
             ~loc:Loc.none
             (Resolve.return lib)
             ~parent_parameters:[]

@@ -373,10 +373,10 @@ jobs:
           opam-pin: false
 
       - name: Pin deps
-        run: opam pin add -n . --with-version=3.20.2+ox
+        run: opam pin add -n . --with-version=3.21.0
 
       - name: Install deps
-        run: opam install csexp pp re spawn uutf ./dune.opam
+        run: opam install csexp pp re spawn uutf ppx_inline_test ./dune.opam
 
       - name: Build dune
         run: opam exec -- make bootstrap

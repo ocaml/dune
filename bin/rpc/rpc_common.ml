@@ -150,70 +150,25 @@ let fire_notification
   send_request connection name ~f:(fun client -> notify_exn client notification arg)
 ;;
 
-let print_err_warn_alert =
-  let plural x = if x = 1 then "" else "s" in
-  function
-  | 0, 0, 0 ->
-    Code_error.raise
-      "Build via RPC failed, but the RPC server did not send an error message."
-      []
-  | 0, 0, a ->
-    User_warning.emit
-      [ Pp.paragraphf "Build completed with %d alert%s." a (plural a)
-        |> Pp.tag User_message.Style.Warning
-      ]
-  | 0, w, 0 ->
-    User_warning.emit
-      [ Pp.paragraphf "Build completed with %d warning%s." w (plural w)
-        |> Pp.tag User_message.Style.Warning
-      ]
-  | 0, w, a ->
-    User_warning.emit
-      [ Pp.paragraphf
-          "Build completed with %d warning%s and %d alert%s."
-          w
-          (plural w)
-          a
-          (plural a)
-        |> Pp.tag User_message.Style.Warning
-      ]
-  | e, 0, 0 ->
-    User_error.raise
-      [ Pp.paragraphf "Build failed with %d error%s." e (plural e)
-        |> Pp.tag User_message.Style.Error
-      ]
-  | e, 0, a ->
-    User_error.raise
-      [ Pp.paragraphf
-          "Build failed with %d error%s and %d alert%s."
-          e
-          (plural e)
-          a
-          (plural a)
-        |> Pp.tag User_message.Style.Error
-      ]
-  | e, w, 0 ->
-    User_error.raise
-      [ Pp.paragraphf
-          "Build failed with %d error%s and %d warning%s."
-          e
-          (plural e)
-          w
-          (plural w)
-        |> Pp.tag User_message.Style.Error
-      ]
-  | e, w, a ->
-    User_error.raise
-      [ Pp.paragraphf
-          "Build failed with %d error%s, %d warning%s, and %d alert%s."
-          e
-          (plural e)
-          w
-          (plural w)
-          a
-          (plural a)
-        |> Pp.tag User_message.Style.Error
-      ]
+let print_err_warn_alert (nb_errors, nb_warns, nb_alerts) =
+  let enumeration =
+    let report_one what count =
+      if count = 0
+      then []
+      else (
+        let plural = if count = 1 then "" else "s" in
+        [ sprintf "%d %s%s" count what plural ])
+    in
+    [ report_one "error" nb_errors
+    ; report_one "warning" nb_warns
+    ; report_one "alert" nb_alerts
+    ]
+    |> List.concat
+    |> String.enumerate_and
+  in
+  if nb_errors >= 1
+  then User_error.raise [ Pp.textf "Build failed with %s." enumeration ]
+  else User_warning.emit [ Pp.textf "Build completed with %s." enumeration ]
 ;;
 
 let wrap_build_outcome_exn ~print_on_success build_outcome =
@@ -222,7 +177,7 @@ let wrap_build_outcome_exn ~print_on_success build_outcome =
     if print_on_success
     then Console.print [ Pp.text "Success" |> Pp.tag User_message.Style.Success ]
   | Failure errors ->
-    let nb_errors, nb_warnings, nb_alerts =
+    let counts =
       List.fold_left
         errors
         ~init:(0, 0, 0)
@@ -242,5 +197,10 @@ let wrap_build_outcome_exn ~print_on_success build_outcome =
             Console.print_user_message main;
             nb_errors, nb_warnings, nb_alerts + 1)
     in
-    print_err_warn_alert (nb_errors, nb_warnings, nb_alerts)
+    if counts == (0, 0, 0)
+    then
+      Code_error.raise
+        "Build via RPC failed, but the RPC server did not send an error message."
+        [];
+    print_err_warn_alert counts
 ;;

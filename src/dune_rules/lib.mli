@@ -30,9 +30,10 @@ module Parameterised : sig
 
   val instantiate
     :  loc:Loc.t
+    -> from:[ `depends | `inline_tests ]
     -> t
     -> (Loc.t * t Resolve.t) list
-    -> parent_parameters:t list
+    -> parent_parameters:(Loc.t * t) list
     -> t Resolve.t
 end
 

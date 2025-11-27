@@ -264,17 +264,32 @@ module Error = struct
       ]
   ;;
 
-  let missing_parameter ~loc p =
+  let missing_parameter_inline_tests ~loc p =
     let name = Lib_name.to_string (Lib_info.name p) in
     make_resolve
       ~loc
-      [ Pp.textf "Parameter %S is missing." name ]
+      [ Pp.textf "To run the inline tests, please provide the missing parameter %S." name
+      ]
       ~hints:
         [ Pp.textf
-            "Pass an argument implementing %s to the dependency, or add (parameters %s)"
-            name
+            "Add (arguments ...) to the inline_tests to specify which implementation of \
+             the parameter %S to use."
             name
         ]
+  ;;
+
+  let missing_parameter_depends ~loc p =
+    let name = Lib_name.to_string (Lib_info.name p) in
+    make_resolve
+      ~loc
+      [ Pp.textf "Missing argument for parameter %S." name ]
+      ~hints:[ Pp.textf "Pass an argument implementing %S to the dependency." name ]
+  ;;
+
+  let missing_parameter ~from ~loc ~loc_param p =
+    match from with
+    | `depends -> missing_parameter_depends ~loc p
+    | `inline_tests -> missing_parameter_inline_tests ~loc:loc_param p
   ;;
 
   let missing_implements ~loc p =
@@ -377,7 +392,7 @@ module T = struct
     ; pps : t list Resolve.t
     ; resolved_selects : Resolved_select.t list Resolve.t
     ; allow_unused_libraries : t list Resolve.t
-    ; parameters : t list Resolve.t
+    ; parameters : (Loc.t * t) list Resolve.t
     ; arguments : t option list
     ; implements : t Resolve.t option
     ; project : Dune_project.t option
@@ -479,7 +494,7 @@ let name t = t.name
 let info t = t.info
 let project t = t.project
 let implements t = Option.map ~f:Memo.return t.implements
-let parameters t = Resolve.Memo.lift t.parameters
+let parameters t = Resolve.Memo.lift (Resolve.map ~f:(List.map ~f:snd) t.parameters)
 let requires t = Memo.return t.requires
 let re_exports t = Memo.return t.re_exports
 let ppx_runtime_deps t = Memo.return t.ppx_runtime_deps
@@ -560,7 +575,7 @@ module Parameterised = struct
   let parameterised_arguments t =
     let open Resolve.O in
     let+ parameters = t.parameters in
-    List.combine parameters t.arguments
+    List.map2 ~f:(fun (loc, param) arg -> loc, param, arg) parameters t.arguments
   ;;
 
   let apply_arguments t new_arguments =
@@ -576,27 +591,26 @@ module Parameterised = struct
         | [], _ ->
           (* Ignore remaining arguments *)
           Resolve.return (List.rev acc)
-        | keep, [] ->
-          (* Keep the remaining existing parameters *)
-          Resolve.return (List.rev_append acc keep)
-        | (param_intf, Some arg) :: existing, _ ->
+        | (_, _, None) :: existing, [] ->
+          (* Keep required parameter which are still unspecifed *)
+          go (None :: acc) existing []
+        | (_, _, Some arg) :: existing, _ ->
           (* Keep already applied parameter *)
-          go ((param_intf, Some arg) :: acc) existing given'
-        | ((param_intf, None) as keep) :: existing, (param_intf', arg) :: given ->
+          go (Some arg :: acc) existing given'
+        | (_, param_intf, None) :: existing, (param_intf', arg) :: given ->
           (match compare param_intf param_intf' with
            | Eq ->
              (* Apply the argument to the unset parameter *)
-             go ((param_intf, Some arg) :: acc) existing given
+             go (Some arg :: acc) existing given
            | Lt ->
              (* Keep the existing parameter as being unknown *)
-             go (keep :: acc) existing given'
+             go (None :: acc) existing given'
            | Gt ->
              (* Skip unwanted argument *)
              go acc existing' given)
       in
       let* t_arguments = parameterised_arguments t in
       let+ arguments = go [] t_arguments new_arguments in
-      let arguments = List.map ~f:snd arguments in
       { t with arguments }
   ;;
 
@@ -617,15 +631,19 @@ module Parameterised = struct
     List.sort arguments ~compare:(fun (param, _) (param', _) -> compare param param')
   ;;
 
-  let instantiate ~loc lib args ~parent_parameters =
+  let instantiate ~loc ~from lib args ~parent_parameters =
     let open Resolve.O in
     let* args = make_arguments args in
     let* lib = apply_arguments lib args in
     let+ () =
       let* all_args = parameterised_arguments lib in
+      let is_inherited param =
+        List.exists parent_parameters ~f:(fun (_, parent_param) ->
+          equal param parent_param)
+      in
       Resolve.List.iter all_args ~f:(function
-        | param, None when not (List.exists parent_parameters ~f:(equal param)) ->
-          Error.missing_parameter ~loc param.info
+        | loc_param, param, None when not (is_inherited param) ->
+          Error.missing_parameter ~from ~loc ~loc_param param.info
         | _ -> Resolve.return ())
     in
     lib
@@ -638,7 +656,7 @@ module Parameterised = struct
       let open Resolve.O in
       let* parent_arguments = parameterised_arguments parent in
       let parent_arguments =
-        List.filter_map parent_arguments ~f:(fun (param, opt_arg) ->
+        List.filter_map parent_arguments ~f:(fun (_loc, param, opt_arg) ->
           Option.map opt_arg ~f:(fun arg -> param, arg))
       in
       let* arguments =
@@ -1144,14 +1162,14 @@ module rec Resolve_names : sig
     :  db
     -> Lib_dep.t list
     -> private_deps:private_deps
-    -> parameters:lib list
+    -> parameters:(Loc.t * lib) list
     -> Resolved.deps Memo.t
 
   val resolve_deps_and_add_runtime_deps
     :  db
     -> Lib_dep.t list
     -> private_deps:private_deps
-    -> parameters:t list
+    -> parameters:(Loc.t * t) list
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t option
     -> Resolved.t Memo.t
@@ -1212,7 +1230,7 @@ end = struct
       | _ :: ps -> check_duplicates ps
     in
     let+ () = check_duplicates parameters in
-    List.map parameters ~f:(fun (_, _, param) -> param)
+    List.map parameters ~f:(fun (loc, _, param) -> loc, param)
   ;;
 
   let instantiate_impl db (name, info, hidden) =
@@ -1300,6 +1318,7 @@ end = struct
                "expected Virtual or Parameter"
                [ "implements", to_dyn impl ])
       in
+      let requires_params = List.map ~f:snd requires_params in
       let requires = List.concat [ requires_implements; requires_params; requires ] in
       let (_ : Set.t), requires =
         List.fold_left requires ~init:(Set.empty, []) ~f:(fun (seen, lst) lib ->
@@ -1749,7 +1768,12 @@ end = struct
       >>| Option.map ~f:(fun dep ->
         let open Resolve.O in
         let* dep = dep in
-        Parameterised.instantiate ~loc dep arguments ~parent_parameters:parameters)
+        Parameterised.instantiate
+          ~loc
+          ~from:`depends
+          dep
+          arguments
+          ~parent_parameters:parameters)
     in
     Memo.List.fold_left ~init:Resolved.Builder.empty deps ~f:(fun acc (dep : Lib_dep.t) ->
       match dep with
@@ -1855,6 +1879,7 @@ end = struct
       let open Resolve.Memo.O in
       let* resolved = Memo.return resolved in
       let* runtime_deps = runtime_deps in
+      let parameters = List.map ~f:snd parameters in
       re_exports_closure (List.concat [ resolved; runtime_deps; parameters ])
     and+ pps = pps in
     { Resolved.requires; pps; selects; re_exports }
@@ -2596,9 +2621,7 @@ let to_dune_lib
       ~lib_field:(Option.map ~f:Memo.return lib.implements)
   and+ parameters =
     let+ lib_parameters = Resolve.Memo.lift lib.parameters in
-    List.map
-      (List.combine (Lib_info.parameters info) lib_parameters)
-      ~f:(fun ((loc, _), param) -> loc, mangled_name param)
+    List.map lib_parameters ~f:(fun (loc, param) -> loc, mangled_name param)
   and+ default_implementation =
     use_public_name
       ~info_field:(Lib_info.default_implementation info)

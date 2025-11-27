@@ -264,7 +264,23 @@ include Sub_system.Register_end_point (struct
             Resolve.Memo.List.concat_map backends ~f:(fun (backend : Backend.t) ->
               backend.runner_libraries)
           in
-          let* lib = Lib.DB.resolve lib_db (loc, Library.best_name lib) in
+          let* arguments =
+            Resolve.Memo.lift_memo
+            @@ Memo.List.map info.arguments ~f:(fun (loc, dep) ->
+              let open Memo.O in
+              let+ dep = Lib.DB.resolve lib_db (loc, dep) in
+              loc, dep)
+          in
+          let* lib =
+            let* lib = Lib.DB.resolve lib_db (loc, Library.best_name lib) in
+            Resolve.Memo.lift
+            @@ Lib.Parameterised.instantiate
+                 ~from:`inline_tests
+                 ~loc
+                 lib
+                 arguments
+                 ~parent_parameters:[]
+          in
           let* more_libs =
             Resolve.Memo.List.map info.libraries ~f:(Lib.DB.resolve lib_db)
           in

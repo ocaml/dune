@@ -953,7 +953,21 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
          "warnings"
          ~default:Warning.Settings.empty
          (Syntax.since Stanza.syntax (3, 11) >>> Warning.Settings.decode)
+     and+ pkg_field =
+       field_o
+         "pkg"
+         (let+ loc = loc
+          and+ () = junk_everything in
+          loc)
      in
+     (match pkg_field with
+      | Some loc ->
+        User_error.raise
+          ~loc
+          [ Pp.text "(pkg ...) belongs in dune-workspace, not dune-project"
+          ; Pp.text "Hint: move this stanza to your dune-workspace file"
+          ]
+      | None -> ());
      fun (opam_packages : (Loc.t * Package.t Memo.t) Package.Name.Map.t) ->
        let opam_file_location =
          Option.value opam_file_location ~default:(opam_file_location_default ~lang)

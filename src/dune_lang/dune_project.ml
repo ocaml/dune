@@ -956,17 +956,17 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
      and+ pkg_field =
        field_o
          "pkg"
-         (let+ loc = loc
-          and+ () = junk_everything in
-          loc)
+         (Syntax.since Stanza.syntax (3, 21)
+          >>> let+ loc = loc
+              and+ () = junk_everything in
+              loc)
      in
      (match pkg_field with
       | Some loc ->
         User_error.raise
           ~loc
-          [ Pp.text "(pkg ...) belongs in dune-workspace, not dune-project"
-          ; Pp.text "Hint: move this stanza to your dune-workspace file"
-          ]
+          ~hints:[ Pp.text "move this stanza to your dune-workspace file" ]
+          [ Pp.text "(pkg ...) belongs in dune-workspace, not dune-project" ]
       | None -> ());
      fun (opam_packages : (Loc.t * Package.t Memo.t) Package.Name.Map.t) ->
        let opam_file_location =

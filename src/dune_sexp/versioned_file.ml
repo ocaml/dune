@@ -66,7 +66,7 @@ struct
             | None -> []
             | Some lang ->
               let latest = Syntax.greatest_supported_version_exn lang.syntax in
-              [ Pp.textf "try %s" (Syntax.Version.to_string latest) ]
+              [ Pp.textf "lang dune %s" (Syntax.Version.to_string latest) ]
           in
           User_error.raise
             ~loc:ver_loc

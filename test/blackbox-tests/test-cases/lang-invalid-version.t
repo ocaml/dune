@@ -24,7 +24,7 @@ Test with various non-ASCII characters:
   1 | (lang dune è)
                  ^^
   Error: Invalid version. Version must be two numbers separated by a dot.
-  Hint: try 3.21
+  Hint: lang dune 3.21
   [1]
 
   $ test_invalid_version "π3.14"
@@ -32,7 +32,7 @@ Test with various non-ASCII characters:
   1 | (lang dune π3.14)
                  ^^^^^^
   Error: Invalid version. Version must be two numbers separated by a dot.
-  Hint: try 3.21
+  Hint: lang dune 3.21
   [1]
 
   $ test_invalid_version "α"
@@ -40,7 +40,7 @@ Test with various non-ASCII characters:
   1 | (lang dune α)
                  ^^
   Error: Invalid version. Version must be two numbers separated by a dot.
-  Hint: try 3.21
+  Hint: lang dune 3.21
   [1]
 
   $ test_invalid_version "😀"
@@ -48,7 +48,7 @@ Test with various non-ASCII characters:
   1 | (lang dune 😀)
                  ^^^^
   Error: Invalid version. Version must be two numbers separated by a dot.
-  Hint: try 3.21
+  Hint: lang dune 3.21
   [1]
 
   $ test_invalid_version "中3.16文"
@@ -56,5 +56,5 @@ Test with various non-ASCII characters:
   1 | (lang dune 中3.16文)
                  ^^^^^^^^^^
   Error: Invalid version. Version must be two numbers separated by a dot.
-  Hint: try 3.21
+  Hint: lang dune 3.21
   [1]

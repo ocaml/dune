@@ -14,9 +14,13 @@ Test that the unused-libs alias exists and can be built
   >  (modules unused_lib))
   > 
   > (library
+  >  (name unused_lib2)
+  >  (modules unused_lib2))
+  > 
+  > (library
   >  (name mylib)
   >  (modules mylib)
-  >  (libraries used_lib unused_lib))
+  >  (libraries used_lib unused_lib unused_lib2))
   > EOF
 
   $ cat > used_lib.ml <<EOF
@@ -27,16 +31,19 @@ Test that the unused-libs alias exists and can be built
   > let unused_helper x = x * 2
   > EOF
 
+  $ cat > unused_lib2.ml <<EOF
+  > let unused_helper x = x * 3
+  > EOF
+
   $ cat > mylib.ml <<EOF
   > let compute x = Used_lib.helper x
   > EOF
 
   $ dune build @unused-libs
-  File "dune", lines 9-12, characters 0-73:
-   9 | (library
-  10 |  (name mylib)
-  11 |  (modules mylib)
-  12 |  (libraries used_lib unused_lib))
+  File "dune", line 16, characters 32-43:
+  16 |  (libraries used_lib unused_lib unused_lib2))
+                                       ^^^^^^^^^^^
   Error: Unused libraries:
+  - unused_lib2
   - unused_lib
   [1]

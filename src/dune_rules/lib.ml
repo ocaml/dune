@@ -370,6 +370,7 @@ module T = struct
     ; (* [requires] is contains all required libraries, including the ones
          mentioned in [re_exports]. *)
       requires : t list Resolve.t
+    ; user_written_requires : (Loc.t * t) list Resolve.Memo.t
     ; ppx_runtime_deps : t list Resolve.t
     ; pps : t list Resolve.t
     ; resolved_selects : Resolved_select.t list Resolve.t
@@ -1132,13 +1133,28 @@ module rec Resolve_names : sig
     -> t list Resolve.Memo.t
 
   module Resolved : sig
+    type deps =
+      { resolved : (Loc.t * t) list Resolve.t
+      ; selects : Resolved_select.t list
+      ; re_exports : (Loc.t * t) list Resolve.t
+      }
+
     type t =
       { requires : lib list Resolve.t
       ; pps : lib list Resolve.t
       ; selects : Resolved_select.t list
       ; re_exports : lib list Resolve.t
       }
+
+    val user_written : deps -> (Loc.t * lib) list Resolve.t
   end
+
+  val resolve_complex_deps
+    :  db
+    -> Lib_dep.t list
+    -> private_deps:private_deps
+    -> parameters:lib list
+    -> Resolved.deps Memo.t
 
   val resolve_deps_and_add_runtime_deps
     :  db
@@ -1348,6 +1364,12 @@ end = struct
     let* ppx_runtime_deps =
       Lib_info.ppx_runtime_deps info |> resolve_simple_deps db ~private_deps
     in
+    let user_written_requires =
+      let+ complex =
+        Lib_info.requires info |> resolve_complex_deps db ~private_deps ~parameters:[]
+      in
+      Resolve_names.Resolved.user_written complex
+    in
     let* allow_unused_libraries =
       Lib_info.allow_unused_libraries info |> resolve_simple_deps db ~private_deps
     in
@@ -1377,6 +1399,7 @@ end = struct
          ; name
          ; unique_id
          ; requires
+         ; user_written_requires
          ; ppx_runtime_deps
          ; pps
          ; resolved_selects
@@ -1617,9 +1640,9 @@ end = struct
 
   module Resolved = struct
     type deps =
-      { resolved : t list Resolve.t
+      { resolved : (Loc.t * t) list Resolve.t
       ; selects : Resolved_select.t list
-      ; re_exports : t list Resolve.t
+      ; re_exports : (Loc.t * t) list Resolve.t
       }
 
     type t =
@@ -1629,13 +1652,25 @@ end = struct
       ; re_exports : lib list Resolve.t
       }
 
+    let user_written { resolved; selects = _; re_exports } =
+      let open Resolve.O in
+      let+ resolved = resolved
+      and+ re_exports = re_exports in
+      resolved @ re_exports
+      |> List.map ~f:(fun (loc, lib) -> lib, loc)
+      |> Map.of_list_multi
+      |> Map.to_list_map ~f:(fun lib locs ->
+        let loc = List.hd locs in
+        loc, lib)
+    ;;
+
     module Builder : sig
       type t
 
       val empty : t
-      val add_resolved : t -> lib Resolve.t -> t
-      val add_re_exports : t -> lib Resolve.t -> t
-      val add_select : t -> lib list Resolve.t -> Resolved_select.t -> t
+      val add_resolved : t -> Loc.t -> lib Resolve.t -> t
+      val add_re_exports : t -> Loc.t -> lib Resolve.t -> t
+      val add_select : t -> (Loc.t * lib) list Resolve.t -> Resolved_select.t -> t
       val value : t -> deps
     end = struct
       open Resolve.O
@@ -1659,20 +1694,20 @@ end = struct
         add_resolved_list { t with selects = select :: t.selects } resolved
       ;;
 
-      let add_resolved t resolved =
+      let add_resolved t loc resolved =
         add_resolved_list
           t
           (let+ resolved = resolved in
-           [ resolved ])
+           [ loc, resolved ])
       ;;
 
-      let add_re_exports (t : t) lib =
+      let add_re_exports (t : t) loc lib =
         let re_exports =
           let+ hd = lib
           and+ tl = t.re_exports in
-          hd :: tl
+          (loc, hd) :: tl
         in
-        add_resolved { t with re_exports } lib
+        add_resolved { t with re_exports } loc lib
       ;;
 
       let value { resolved; selects; re_exports } =
@@ -1703,7 +1738,7 @@ end = struct
             |> resolve_simple_deps ~private_deps db
             |> Resolve.Memo.peek
             >>| (function
-             | Ok ts -> Some (ts, file)
+             | Ok ts -> Some (List.map ts ~f:(fun lib -> loc, lib), file)
              | Error () -> None))
       in
       let get which =
@@ -1728,15 +1763,17 @@ end = struct
     Memo.List.fold_left ~init:Resolved.Builder.empty deps ~f:(fun acc (dep : Lib_dep.t) ->
       match dep with
       | Re_export lib ->
+        let loc = fst lib in
         resolve_parameterised_dep lib ~arguments:[]
         >>| (function
          | None -> acc
-         | Some lib -> Resolved.Builder.add_re_exports acc lib)
+         | Some lib -> Resolved.Builder.add_re_exports acc loc lib)
       | Direct lib ->
+        let loc = fst lib in
         resolve_parameterised_dep lib ~arguments:[]
         >>| (function
          | None -> acc
-         | Some lib -> Resolved.Builder.add_resolved acc lib)
+         | Some lib -> Resolved.Builder.add_resolved acc loc lib)
       | Select select ->
         let+ resolved, select = resolve_select db ~private_deps select in
         Resolved.Builder.add_select acc resolved select
@@ -1748,12 +1785,12 @@ end = struct
         in
         let acc =
           List.fold_left arguments ~init:acc ~f:(fun acc (_loc, dep) ->
-            Resolved.Builder.add_resolved acc dep)
+            Resolved.Builder.add_resolved acc loc dep)
         in
         resolve_parameterised_dep (loc, lib) ~arguments
         >>| (function
          | None -> acc
-         | Some lib -> Resolved.Builder.add_resolved acc lib))
+         | Some lib -> Resolved.Builder.add_resolved acc loc lib))
     |> Memo.map ~f:Resolved.Builder.value
   ;;
 
@@ -1821,6 +1858,8 @@ end = struct
     =
     let { runtime_deps; pps } = pp_deps db pps ~dune_version ~private_deps in
     let open Memo.O in
+    let resolved = Resolve.map ~f:(List.map ~f:snd) resolved in
+    let re_exports = Resolve.map ~f:(List.map ~f:snd) re_exports in
     let+ requires =
       let open Resolve.Memo.O in
       let* resolved = Memo.return resolved in
@@ -2170,6 +2209,7 @@ module Compile = struct
 
   type nonrec t =
     { direct_requires : t list Resolve.Memo.t
+    ; user_written_requires : (Loc.t * t) list Resolve.Memo.t
     ; requires_link : t list Resolve.t Memo.Lazy.t
     ; pps : t list Resolve.Memo.t
     ; resolved_selects : Resolved_select.t list Resolve.Memo.t
@@ -2199,6 +2239,7 @@ module Compile = struct
               ~forbidden_libraries:Map.empty)
     in
     { direct_requires = requires
+    ; user_written_requires = t.user_written_requires
     ; requires_link
     ; resolved_selects = Memo.return t.resolved_selects
     ; pps = Memo.return t.pps
@@ -2208,6 +2249,7 @@ module Compile = struct
   ;;
 
   let direct_requires t = t.direct_requires
+  let user_written_requires t = t.user_written_requires
   let requires_link t = t.requires_link
   let resolved_selects t = t.resolved_selects
   let pps t = t.pps
@@ -2475,7 +2517,14 @@ module DB = struct
     let allow_unused_libraries =
       Resolve_names.resolve_simple_deps t ~private_deps:Allow_all allow_unused_libraries
     in
+    let user_written_requires =
+      Memo.lazy_ (fun () ->
+        Resolve_names.resolve_complex_deps t ~private_deps:Allow_all deps ~parameters:[]
+        |> Memo.map ~f:Resolve_names.Resolved.user_written)
+      |> Memo.Lazy.force
+    in
     { Compile.direct_requires
+    ; user_written_requires
     ; requires_link
     ; pps
     ; resolved_selects = resolved_selects |> Memo.map ~f:Resolve.return

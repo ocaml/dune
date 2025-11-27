@@ -58,10 +58,9 @@ Create a dune project that uses these external libraries:
 Build the unused-libs alias:
 
   $ OCAMLPATH=$PWD/findlib dune build @unused-libs
-  File "dune", lines 1-3, characters 0-56:
-  1 | (library
-  2 |  (name mylib)
+  File "dune", line 3, characters 21-31:
   3 |  (libraries ext_used ext_unused))
+                           ^^^^^^^^^^
   Error: Unused libraries:
   - ext_unused
   [1]

@@ -31,10 +31,3 @@ Demonstrate that re_exports is incorrectly triggering the unused library check:
   > EOF
 
   $ dune build @use/unused-libs
-  File "use/dune", lines 1-3, characters 0-41:
-  1 | (executable
-  2 |  (libraries bar)
-  3 |  (name use))
-  Error: Unused libraries:
-  - foo
-  [1]

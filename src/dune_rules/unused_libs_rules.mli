@@ -7,6 +7,6 @@ val gen_rules
   -> obj_dir:Path.Build.t Obj_dir.t
   -> modules:Modules.With_vlib.t
   -> dir:Path.Build.t
-  -> direct_requires:Lib.t list Resolve.Memo.t
+  -> user_written_requires:(Loc.t * Lib.t) list Resolve.Memo.t
   -> allow_unused_libraries:Lib.t list Resolve.Memo.t
   -> unit Memo.t

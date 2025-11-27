@@ -214,7 +214,7 @@ let executables_rules
   let* requires_compile = Compilation_context.requires_compile cctx in
   let* () =
     let toolchain = Compilation_context.ocaml cctx in
-    let direct_requires = Lib.Compile.direct_requires compile_info in
+    let user_written_requires = Lib.Compile.user_written_requires compile_info in
     let allow_unused_libraries = Lib.Compile.allow_unused_libraries compile_info in
     Unused_libs_rules.gen_rules
       sctx
@@ -223,7 +223,7 @@ let executables_rules
       ~obj_dir
       ~modules
       ~dir
-      ~direct_requires
+      ~user_written_requires
       ~allow_unused_libraries
   in
   let* () =

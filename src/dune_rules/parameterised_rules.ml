@@ -350,6 +350,7 @@ let resolve_instantiation scope str =
     | Some lib ->
       let args = List.map args ~f:(fun arg -> Loc.none, arg) in
       Lib.Parameterised.instantiate
+        ~from:`depends
         ~loc:Loc.none
         (Resolve.return lib)
         args

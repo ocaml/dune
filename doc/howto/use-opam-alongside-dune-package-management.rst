@@ -11,10 +11,10 @@ project's dependencies. By setting an environment variable or passing an extra
 argument to commands like ``dune build`` you'll be able to toggle between an
 Opam-based workflow and a purely Dune-based workflow.
 
-Create a file named ``dune-workspace`` at the root of your project, with the following
-contents:
+Create a file named ``dune-workspace`` at the root of your project, with the
+following contents:
 
-.. code:: scheme
+.. code:: dune
 
    (lang dune 3.20)
 
@@ -29,7 +29,7 @@ name of this file isn't important, but conventionally alternative workspace
 files begin with the ``dune-workspace.`` prefix. Add the following to this new
 file:
 
-.. code:: scheme
+.. code:: dune
 
    (lang dune 3.20)
 

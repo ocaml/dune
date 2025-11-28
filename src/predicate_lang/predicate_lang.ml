@@ -196,9 +196,7 @@ module Glob = struct
       | Glob g -> Dyn.variant "Glob" [ Glob.to_dyn (unproxy g) ]
     ;;
 
-    (* CR-someday amokhov: The [_exn] suffix is here because [Glob.to_string] can actually
-       raise. We should clean this all up, at least use the [_exn] suffix consistently. *)
-    let digest_exn = function
+    let digest = function
       | Literal s -> Dune_digest.generic (0, s)
       | Glob g -> Dune_digest.generic (1, Glob.to_string (unproxy g))
     ;;
@@ -266,5 +264,5 @@ module Glob = struct
   let hash t = Poly.hash t
   let decode = decode Element.decode
   let encode t = encode Element.encode t
-  let digest_exn t = map t ~f:Element.digest_exn |> Dune_digest.generic
+  let digest t = map t ~f:Element.digest |> Dune_digest.generic
 end

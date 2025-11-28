@@ -953,28 +953,25 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
          "warnings"
          ~default:Warning.Settings.empty
          (Syntax.since Stanza.syntax (3, 11) >>> Warning.Settings.decode)
-     and+ pkg_field =
+     and+ () =
        field_o
          "pkg"
-         (Syntax.since Stanza.syntax (3, 21)
-          >>> let+ loc = loc
-              and+ () = junk_everything in
-              loc)
+         (let+ loc = loc
+          and+ () = junk_everything in
+          loc)
+       >>| Option.iter ~f:(fun loc ->
+         User_error.raise
+           ~loc
+           ~hints:
+             [ Pp.text
+                 "Add this configuration to your dune-workspace file (create one in your \
+                  workspace root if you don't have one)."
+             ]
+           [ Pp.text
+               "The (pkg ...) configuration is only valid in dune-workspace, not a \
+                dune-project."
+           ])
      in
-     (match pkg_field with
-      | Some loc ->
-        User_error.raise
-          ~loc
-          ~hints:
-            [ Pp.text
-                "Add this configuration to your dune-workspace file (create one in your \
-                 workspace root if you don't have one)."
-            ]
-          [ Pp.text
-              "The (pkg ...) configuration is only valid in dune-workspace, not a \
-               dune-project."
-          ]
-      | None -> ());
      fun (opam_packages : (Loc.t * Package.t Memo.t) Package.Name.Map.t) ->
        let opam_file_location =
          Option.value opam_file_location ~default:(opam_file_location_default ~lang)

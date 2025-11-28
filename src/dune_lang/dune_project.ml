@@ -965,8 +965,15 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
       | Some loc ->
         User_error.raise
           ~loc
-          ~hints:[ Pp.text "move this stanza to your dune-workspace file" ]
-          [ Pp.text "(pkg ...) belongs in dune-workspace, not dune-project" ]
+          ~hints:
+            [ Pp.text
+                "Add this configuration to your dune-workspace file (create one in your \
+                 workspace root if you don't have one)."
+            ]
+          [ Pp.text
+              "The (pkg ...) configuration is only valid in dune-workspace, not a \
+               dune-project."
+          ]
       | None -> ());
      fun (opam_packages : (Loc.t * Package.t Memo.t) Package.Name.Map.t) ->
        let opam_file_location =

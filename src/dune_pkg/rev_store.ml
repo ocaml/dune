@@ -147,7 +147,7 @@ module Cache = struct
 
   let revision_store_dir =
     lazy
-      (let path = Path.relative (Lazy.force Dune_util.cache_home_dir) "rev_store" in
+      (let path = Path.relative (Lazy.force Dune_util.cache_root_dir) "rev_store" in
        let rev_store_cache = Dune_config.Config.get rev_store_cache in
        Log.info
          [ Pp.textf
@@ -1215,7 +1215,7 @@ let content_of_files t files =
 
 let git_repo_dir =
   lazy
-    (let dir = Path.relative (Lazy.force Dune_util.cache_home_dir) "git-repo" in
+    (let dir = Path.relative (Lazy.force Dune_util.cache_root_dir) "git-repo" in
      Log.info [ Pp.textf "Git repository cache location: %s" (Path.to_string dir) ];
      dir)
 ;;

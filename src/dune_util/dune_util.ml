@@ -40,7 +40,7 @@ let override_xdg : Xdg.t -> unit =
 let ( / ) = Path.relative
 
 (** The default directory of all caches (build and others), used when
-    environment variables are unset.
+    [$DUNE_CACHE_ROOT] is unset.
     Set to [$XDG_CACHE_HOME/dune]. *)
 let default_cache_dir =
   lazy
@@ -48,9 +48,9 @@ let default_cache_dir =
      Path.of_filename_relative_to_initial_cwd cache_dir / "dune")
 ;;
 
-let cache_home_dir =
+let cache_root_dir =
   lazy
-    (let var = "DUNE_CACHE_HOME" in
+    (let var = "DUNE_CACHE_ROOT" in
      match Sys.getenv_opt var with
      | Some path ->
        if Filename.is_relative path

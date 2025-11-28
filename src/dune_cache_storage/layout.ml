@@ -2,20 +2,7 @@ open Stdune
 open Import
 
 let ( / ) = Path.relative
-
-let build_cache_dir =
-  lazy
-    (let var = "DUNE_CACHE_ROOT" in
-     match Sys.getenv_opt var with
-     | Some path ->
-       if Filename.is_relative path
-       then
-         User_error.raise
-           [ Pp.paragraphf "$%s should be an absolute path, but is %S" var path ];
-       Path.external_ (Path.External.of_string path)
-     | None -> Lazy.force Dune_util.cache_home_dir / "db")
-;;
-
+let build_cache_dir = lazy (Lazy.force Dune_util.cache_root_dir / "db")
 let temp_dir = lazy (Lazy.force build_cache_dir / "temp")
 
 let cache_path ~dir ~hex =

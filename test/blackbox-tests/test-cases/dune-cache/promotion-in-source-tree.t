@@ -20,9 +20,9 @@ Reproduction case for #3026
 Run Dune a first time to fill the cache, then delete the promoted file and run
 Dune again. At the end of the first run, the file [_build/default/file] should
 get deduplicated and so become read-only. As a result, on the second run the
-promoted file will be copied from a read-only file. We don't want the user to be
-able to edit this file even if it is in the source tree, as Dune will always
-overwrite it, so Dune should ensure the file isn't writable.
+promoted file will be copied from a read-only file. However, we still want the
+user to be able to edit this file given that it is in the source tree, so Dune
+should change the permission of this file.
 
 We check that Dune does change the permission by echoing something into the file
 after the second run.
@@ -40,5 +40,4 @@ after the second run.
   $ cat file
   Hello, world!
 
-  $ dune_cmd stat permissions file
-  444
+  $ echo plop > file

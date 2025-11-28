@@ -40,11 +40,9 @@ Create two libraries - one that will be used and one that won't:
 Build the unused-libs alias:
 
   $ dune build @unused-libs
-  File "dune", lines 9-12, characters 0-74:
-   9 | (executable
-  10 |  (name main)
-  11 |  (modules main)
+  File "dune", line 12, characters 21-31:
   12 |  (libraries used_lib unused_lib))
+                            ^^^^^^^^^^
   Error: Unused libraries:
   - unused_lib
   [1]

@@ -30,10 +30,3 @@ Demonstrate ppx_runtime_deps issues
   > EOF
 
   $ dune build @use/unused-libs
-  File "use/dune", lines 1-3, characters 0-48:
-  1 | (executable
-  2 |  (name use)
-  3 |  (preprocess (pps foo)))
-  Error: Unused libraries:
-  - runtime
-  [1]

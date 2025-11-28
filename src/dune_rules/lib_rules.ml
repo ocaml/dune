@@ -627,7 +627,7 @@ let library_rules
       { super_context = sctx; dir; stanza = lib; scope; source_modules; compile_info }
   and+ () =
     let toolchain = Compilation_context.ocaml cctx in
-    let direct_requires = Lib.Compile.direct_requires compile_info in
+    let user_written_requires = Lib.Compile.user_written_requires compile_info in
     let allow_unused_libraries = Lib.Compile.allow_unused_libraries compile_info in
     Unused_libs_rules.gen_rules
       sctx
@@ -636,7 +636,7 @@ let library_rules
       ~obj_dir
       ~modules
       ~dir
-      ~direct_requires
+      ~user_written_requires
       ~allow_unused_libraries
   and+ merlin =
     let+ requires_hidden = Compilation_context.requires_hidden cctx

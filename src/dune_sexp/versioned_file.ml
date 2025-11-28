@@ -57,11 +57,24 @@ struct
 
     let parse first_line : Instance.t =
       let { First_line.lang = name_loc, name; version = ver_loc, ver } = first_line in
+      let ver_atom =
+        match Atom.parse ver with
+        | Some atom -> atom
+        | None ->
+          let hints =
+            match Table.find langs name with
+            | None -> []
+            | Some lang ->
+              let latest = Syntax.greatest_supported_version_exn lang.syntax in
+              [ Pp.textf "lang dune %s" (Syntax.Version.to_string latest) ]
+          in
+          User_error.raise
+            ~loc:ver_loc
+            ~hints
+            [ Pp.text "Invalid version. Version must be two numbers separated by a dot." ]
+      in
       let dune_lang_ver =
-        Decoder.parse
-          Syntax.Version.decode
-          Univ_map.empty
-          (Atom (ver_loc, Atom.of_string ver))
+        Decoder.parse Syntax.Version.decode Univ_map.empty (Atom (ver_loc, ver_atom))
       in
       match Table.find langs name with
       | None ->

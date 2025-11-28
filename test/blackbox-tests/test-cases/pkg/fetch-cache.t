@@ -37,7 +37,7 @@ disabling the download of the source a second time.
 
 Make sure that the file that was fetched is in the cache:
 
-  $ find $DUNE_CACHE_ROOT/files -type f -exec md5sum {} \; | grep --quiet $CONTENT_CHECKSUM
+  $ find $DUNE_CACHE_ROOT/db/files -type f -exec md5sum {} \; | grep --quiet $CONTENT_CHECKSUM
 
 Cleaning the project to force rebuilding. If we attempt to build without the
 cache, it will fail, as the source is 404 now:

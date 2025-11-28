@@ -15,8 +15,8 @@ val xdg : Xdg.t Lazy.t
 val override_xdg : Xdg.t -> unit
 
 (** The directory containing all caches (build and others).
-    Set to [$DUNE_CACHE_HOME] if it exists, or
+    Set to [$DUNE_CACHE_ROOT] if it exists, or
     [$XDG_CACHE_HOME/dune] otherwise. *)
-val cache_home_dir : Path.t Lazy.t
+val cache_root_dir : Path.t Lazy.t
 
 val frames_per_second : unit -> int

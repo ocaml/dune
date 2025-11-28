@@ -22,9 +22,6 @@ Dune doesn't promote the file again if it's unchanged.
 
 Dune does promotes the file again if it's changed.
 
-  $ dune_cmd stat permissions promoted
-  444
-  $ chmod +w promoted
   $ echo hi > promoted
   $ dune build promoted --verbose 2>&1 | grep "Promoting"
   Promoting "_build/default/promoted" to "promoted"

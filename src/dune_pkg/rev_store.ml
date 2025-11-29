@@ -1052,7 +1052,7 @@ module At_rev = struct
          easiest thing to do *)
       Fiber.sequential_iter archives ~f:(fun (path, archive) ->
         let target_in_temp_dir = Path.append_local target_in_temp_dir path in
-        Archive_driver.extract Archive_driver.tar ~archive ~target:target_in_temp_dir
+        Archive.extract ~archive ~target:target_in_temp_dir
         >>| function
         | Error () ->
           User_error.raise [ Pp.text "failed to untar archive created by git" ]

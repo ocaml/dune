@@ -29,13 +29,12 @@ let is_version_control t =
 ;;
 
 let is_local t = String.equal t.transport "file"
-let is_supported_archive t = Option.is_some (Archive_driver.choose_for_filename t.path)
 
 let classify url loc =
   match (url : t).backend with
   | `rsync when is_local url -> `Path (Path.of_string url.path)
   | `git -> `Git
-  | `http when is_supported_archive url -> `Archive
+  | `http when Archive.is_supported url.path -> `Archive
   | `rsync | `http | `darcs | `hg ->
     User_error.raise
       ~loc

@@ -50,17 +50,8 @@ let of_opam_url loc url =
          let file_digest = Digest.file achive_path_string |> Digest.to_hex in
          Path.relative dir file_digest
        in
-       let archive_driver =
-         Archive_driver.choose_for_filename_default_to_tar achive_path_string
-       in
-       let+ path =
-         Archive_driver.extract archive_driver ~archive ~target
-         >>| function
-         | Error () ->
-           User_error.raise [ Pp.textf "unable to extract %S" (Path.to_string target) ]
-         | Ok () -> target
-       in
-       Path path)
+       let+ () = Archive.extract_exn ~archive ~target in
+       Path target)
 ;;
 
 let read t file =

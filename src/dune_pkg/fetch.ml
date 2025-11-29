@@ -146,12 +146,6 @@ type failure =
   | Checksum_mismatch of Checksum.t
   | Unavailable of User_message.t option
 
-let unpack_archive ~archive_driver ~target ~archive =
-  Archive_driver.extract archive_driver ~archive ~target
-  >>| Result.map_error ~f:(fun () ->
-    Pp.textf "Unable to extract %s" (Path.to_string_maybe_quoted archive))
-;;
-
 let check_checksum checksum path =
   let checksum_error =
     match checksum with
@@ -192,24 +186,10 @@ let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
       Path.rename output target;
       Fiber.return @@ Ok ()
     | true ->
-      unpack_archive
-        ~archive_driver:
-          (Archive_driver.choose_for_filename_default_to_tar (OpamUrl0.to_string url))
-        ~target
-        ~archive:output
+      Archive.extract ~archive:output ~target
       >>| (function
        | Ok () -> Ok ()
-       | Error msg ->
-         let exn =
-           User_message.make
-             [ Pp.textf
-                 "Failed to unpack archive downloaded from %s"
-                 (OpamUrl.to_string url)
-             ; Pp.text "Reason:"
-             ; msg
-             ]
-         in
-         Error (Unavailable (Some exn))))
+       | Error e -> User_error.raise (Archive.Error.message e)))
 ;;
 
 let fetch_git rev_store ~target ~url:(url_loc, url) =
@@ -236,15 +216,10 @@ let fetch_local ~checksum ~target (url, url_loc) =
   match check_checksum checksum path with
   | Error _ as e -> Fiber.return e
   | Ok () ->
-    let+ unpack_result =
-      unpack_archive
-        ~archive_driver:
-          (Archive_driver.choose_for_filename_default_to_tar (OpamUrl0.to_string url))
-        ~target
-        ~archive:path
-    in
-    Result.map_error unpack_result ~f:(fun pp ->
-      Unavailable (Some (User_message.make [ Pp.text "Could not unpack:"; pp ])))
+    Archive.extract ~archive:path ~target
+    >>| (function
+     | Ok () -> Ok ()
+     | Error e -> User_error.raise (Archive.Error.message e))
 ;;
 
 let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =

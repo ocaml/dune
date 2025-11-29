@@ -15,7 +15,17 @@ expected location:
   >    echo "tar"
   >  ;;
   >  *)
-  >    cp "$2" "$4/$(basename "${2%.zip}")"
+  >    # Parse -x [-z] -f archive -C target
+  >    archive=""
+  >    target=""
+  >    while [ $# -gt 0 ]; do
+  >      case "$1" in
+  >        -f) archive="$2"; shift 2 ;;
+  >        -C) target="$2"; shift 2 ;;
+  >        *) shift ;;
+  >      esac
+  >    done
+  >    cp "$archive" "$target/$(basename "${archive%.zip}")"
   > esac
   > EOF
   $ chmod +x .binaries/gnutar
@@ -26,13 +36,24 @@ expected location:
   >    echo "bsdtar"
   >  ;;
   >  *)
-  >    cp "$2" "$4/$(basename "${2%.zip}")"
+  >    # Parse -x [-z] -f archive -C target
+  >    archive=""
+  >    target=""
+  >    while [ $# -gt 0 ]; do
+  >      case "$1" in
+  >        -f) archive="$2"; shift 2 ;;
+  >        -C) target="$2"; shift 2 ;;
+  >        *) shift ;;
+  >      esac
+  >    done
+  >    cp "$archive" "$target/$(basename "${archive%.zip}")"
   > esac
   > EOF
   $ chmod +x .binaries/bsdtar
   $ cat > .binaries/unzip << 'EOF'
   > #!/usr/bin/env sh
-  > cp "$2" "$4/$(basename "${2%.zip}")"
+  > # unzip archive -d target
+  > cp "$1" "$3/$(basename "${1%.zip}")"
   > EOF
   $ chmod +x .binaries/unzip
 
@@ -42,6 +63,7 @@ Set up a folder that we will inject as fake PATH:
   $ ln -s $(which dune) .fakebin/dune
   $ ln -s $(which sh) .fakebin/sh
   $ ln -s $(which cp) .fakebin/cp
+  $ ln -s $(which basename) .fakebin/basename
   $ show_path() {
   >   ls .fakebin | sort | xargs
   > }
@@ -68,30 +90,34 @@ Build the package in an environment without unzip, or tar, or bsdtar.
 variable can escape to subseqent shell invocations on MacOS.)
 
   $ show_path
-  cp dune sh
-  $ (PATH=.fakebin build_pkg foo 2>&1 | grep '^Error:' -A 3)
-  Error: No program found to extract zip file. Tried:
-  - unzip
+  basename cp dune sh
+  $ (PATH=.fakebin build_pkg foo 2>&1 | grep '^Error:' -A 5)
+  Error: No program found to extract .zip files. Tried:
   - bsdtar
   - tar
+  - gtar
+  - tar.exe
+  - unzip
 
 Build with only GNU tar that can't extract ZIP archives:
 
   $ ln -s .binaries/gnutar .fakebin/tar
   $ show_path
-  cp dune sh tar
-  $ (PATH=.fakebin build_pkg foo 2>&1 | grep '^Error:' -A 3)
-  Error: No program found to extract zip file. Tried:
-  - unzip
+  basename cp dune sh tar
+  $ (PATH=.fakebin build_pkg foo 2>&1 | grep '^Error:' -A 5)
+  Error: No program found to extract .zip files. Tried:
   - bsdtar
   - tar
+  - gtar
+  - tar.exe
+  - unzip
 
 Build with bsdtar that can extract ZIP archives, without unzip. It should work:
 
   $ rm .fakebin/tar
   $ cp .binaries/bsdtar .fakebin/tar
   $ show_path
-  cp dune sh tar
+  basename cp dune sh tar
   $ (PATH=.fakebin build_pkg foo)
 
 Build the package with bsdtar and tar. Now our fake bsdtar will get picked up
@@ -101,7 +127,7 @@ and used to extract:
   $ ln -s .binaries/gnutar .fakebin/tar
   $ ln -s .binaries/bsdtar .fakebin/bsdtar
   $ show_path
-  bsdtar cp dune sh tar
+  basename bsdtar cp dune sh tar
   $ (PATH=.fakebin build_pkg foo)
 
 Build with unzip only:
@@ -109,5 +135,5 @@ Build with unzip only:
   $ ln -s .binaries/unzip .fakebin/unzip
   $ rm .fakebin/bsdtar .fakebin/tar
   $ show_path
-  cp dune sh unzip
+  basename cp dune sh unzip
   $ (PATH=.fakebin build_pkg foo)

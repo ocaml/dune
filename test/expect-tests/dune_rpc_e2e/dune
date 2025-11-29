@@ -21,7 +21,6 @@
   csexp_rpc
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
-  ppx_expect.config
   ppx_expect.config_types
   base
   ppx_inline_test.config)
@@ -41,7 +40,6 @@
   dune_rpc_client
   dune_rpc_e2e
   dune_rpc_private
-  dune_rpc_impl
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config
@@ -89,7 +87,6 @@
   dune_rpc_client
   dune_rpc_e2e
   dune_rpc_private
-  dune_rpc_impl
   unix
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project

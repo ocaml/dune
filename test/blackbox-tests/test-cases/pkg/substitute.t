@@ -150,4 +150,3 @@ Modifying this variable should not trigger a rebuild:
 
   $ export FOOBAR=1
   $ build_pkg test 2>&1
-  running

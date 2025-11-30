@@ -363,6 +363,13 @@ In particular, the `dune-project` file has the expected content:
   
   ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html
 
+And the test has a dependency on the library
+
+  $ cat new_exec_proj/test/dune
+  (test
+   (name test_new_exec_proj)
+   (libraries new_exec_proj))
+
 We can build the project:
 
   $ dune build --root new_exec_proj
@@ -473,6 +480,13 @@ In particular, the `dune-project` file has the expected content:
     ("add topics" "to describe" your project)))
   
   ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html
+
+And the test has a dependency on the library
+
+  $ cat new_lib_proj/test/dune
+  (test
+   (name test_new_lib_proj)
+   (libraries new_lib_proj))
 
 We can build and install the project:
 

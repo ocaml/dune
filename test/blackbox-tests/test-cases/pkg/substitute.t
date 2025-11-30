@@ -129,3 +129,25 @@ It is also possible to use variables of your dependencies:
   $ build_pkg test 2>&1 | sanitize_pkg_digest dependency.0.0.1
   There is also some paths set:
   '%{dependency:lib}%' is '../../dependency.0.0.1-DIGEST_HASH/target/lib/dependency'
+
+The substitute action should not observe the environment:
+
+  $ make_lockpkg test <<EOF
+  > (version 0.0.1)
+  > (source (copy $PWD/test-source))
+  > (depends dependency)
+  > (build
+  >  (progn
+  >   (system "echo running")
+  >   (substitute foo.in foo)))
+  > EOF
+  $ touch test-source/foo.in
+  $ build_pkg test 2>&1
+  running
+  $ build_pkg test 2>&1
+
+Modifying this variable should not trigger a rebuild:
+
+  $ export FOOBAR=1
+  $ build_pkg test 2>&1
+  running

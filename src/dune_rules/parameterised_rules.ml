@@ -327,22 +327,21 @@ let instantiate ~sctx lib =
     build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules)
 ;;
 
-let resolve_instantiation scope str =
+let resolve_instantiation scope instance_name =
   let db = Scope.libs scope in
   let rec go { Parameterised_name.name; args } =
-    let+ lib = Lib.DB.find db name
-    and+ args = Memo.List.map ~f:go args in
-    match lib with
+    Lib.DB.find db name
+    >>= function
     | None -> Code_error.raise "library not found" []
     | Some lib ->
-      let args = List.map args ~f:(fun arg -> Loc.none, arg) in
-      Lib.Parameterised.instantiate
-        ~loc:Loc.none
-        (Resolve.return lib)
-        args
-        ~parent_parameters:[]
+      Memo.List.map ~f:go args
+      >>| List.map ~f:(fun arg -> Loc.none, arg)
+      >>| Lib.Parameterised.instantiate
+            ~loc:Loc.none
+            (Resolve.return lib)
+            ~parent_parameters:[]
   in
-  go (Parameterised_name.of_string str) |> Resolve.Memo.read_memo
+  go (Parameterised_name.of_string instance_name) |> Resolve.Memo.read_memo
 ;;
 
 let external_dep_rules ~sctx ~dir ~scope lib_name =

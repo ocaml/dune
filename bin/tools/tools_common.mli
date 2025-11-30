@@ -9,6 +9,7 @@ val lock_build_and_run_dev_tool
   -> Common.Builder.t
   -> Dune_pkg.Dev_tool.t
   -> args:string list
+  -> Dune_pkg.Network_cap.t
   -> 'a
 
 val which_command : Dune_pkg.Dev_tool.t -> unit Cmd.t

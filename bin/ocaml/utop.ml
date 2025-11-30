@@ -13,10 +13,10 @@ let man =
 let man_xrefs = [ `Cmd "top" ]
 let info = Cmd.info "utop" ~man_xrefs ~doc ~man
 
-let lock_utop_if_dev_tool_enabled () =
+let lock_utop_if_dev_tool_enabled network_cap =
   match Lazy.force Lock_dev_tool.is_enabled with
   | false -> Memo.return ()
-  | true -> Lock_dev_tool.lock_dev_tool Utop
+  | true -> Lock_dev_tool.lock_dev_tool Utop network_cap
 ;;
 
 let term =
@@ -47,12 +47,17 @@ let term =
         in
         let utop_exe = utop_target_path Utop.utop_exe in
         let utop_findlib_conf = utop_target_path Utop.utop_findlib_conf in
+        let network_cap =
+          Dune_pkg.Network_cap.create
+            ~reason_for_network_access:
+              "Need to download package repositories to solve dependecies of utop."
+        in
         let* () =
           (* Calling [Build_system.file_exists] has the side effect of checking
              and memoizing whether or not the utop dev tool lockdir exists.
              thus if we generate the lockdir any later than this point, dune
              will not observe the fact that it now exists. *)
-          lock_utop_if_dev_tool_enabled ()
+          lock_utop_if_dev_tool_enabled network_cap
         in
         Build_system.file_exists utop_exe
         >>= function

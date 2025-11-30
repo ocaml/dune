@@ -13,7 +13,7 @@ let man =
   ]
 ;;
 
-let lock_ocamlformat () =
+let lock_ocamlformat network_cap =
   if Lazy.force Lock_dev_tool.is_enabled
   then
     (* Note that generating the ocamlformat lockdir here means
@@ -22,14 +22,19 @@ let lock_ocamlformat () =
        this logic remain outside of `dune build`, as `dune
        build` is intended to only build targets, and generating
        a lockdir is not building a target. *)
-    Lock_dev_tool.lock_dev_tool Ocamlformat |> Memo.run
+    Lock_dev_tool.lock_dev_tool Ocamlformat network_cap |> Memo.run
   else Fiber.return ()
 ;;
 
 let run_fmt_command ~common ~config ~preview builder =
   let open Fiber.O in
   let once () =
-    let* () = lock_ocamlformat () in
+    let network_cap =
+      Dune_pkg.Network_cap.create
+        ~reason_for_network_access:
+          "Need to download package repositories to solve dependecies of ocamlformat."
+    in
+    let* () = lock_ocamlformat network_cap in
     let request (setup : Import.Main.build_system) =
       let dir = Path.(relative root) (Common.prefix_target common ".") in
       Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts:setup.contexts dir

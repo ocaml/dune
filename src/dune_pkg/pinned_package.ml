@@ -60,13 +60,16 @@ let discover_layout loc name mount =
            | `Absent_or_unrecognized -> abort ())))
 ;;
 
-let resolve_package { Local_package.loc; url = loc_url, url; name; version; origin = _ } =
+let resolve_package
+      { Local_package.loc; url = loc_url, url; name; version; origin = _ }
+      network_cap
+  =
   let package =
     OpamPackage.create
       (Package_name.to_opam_package_name name)
       (Package_version.to_opam_package_version version)
   in
-  let* mount = Mount.of_opam_url loc_url url in
+  let* mount = Mount.of_opam_url loc_url url network_cap in
   let* opam_file_path, files_dir = discover_layout loc name mount in
   match Mount.backend mount with
   | Path dir ->

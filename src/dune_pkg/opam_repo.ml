@@ -101,13 +101,13 @@ let of_opam_repo_dir_path loc opam_repo_dir_path =
   { source = Directory opam_repo_dir_path; serializable = None; loc }
 ;;
 
-let of_git_repo loc url =
+let of_git_repo loc url network_cap =
   let+ at_rev =
     let* rev_store = Rev_store.get in
-    OpamUrl.resolve url ~loc rev_store
+    OpamUrl.resolve url ~loc rev_store network_cap
     >>= (function
      | Error _ as e -> Fiber.return e
-     | Ok s -> OpamUrl.fetch_revision url ~loc s rev_store)
+     | Ok s -> OpamUrl.fetch_revision url ~loc s rev_store network_cap)
     >>| User_error.ok_exn
   in
   let serializable =
@@ -122,7 +122,7 @@ let of_git_repo loc url =
   { source = Repo at_rev; serializable; loc }
 ;;
 
-let resolve_repositories ~available_repos ~repositories =
+let resolve_repositories ~available_repos ~repositories network_cap =
   repositories
   |> Fiber.parallel_map ~f:(fun (loc, name) ->
     match Workspace.Repository.Name.Map.find available_repos name with
@@ -136,7 +136,7 @@ let resolve_repositories ~available_repos ~repositories =
     | Some repo ->
       let loc, opam_url = Workspace.Repository.opam_url repo in
       (match OpamUrl.classify opam_url loc with
-       | `Git -> of_git_repo loc opam_url
+       | `Git -> of_git_repo loc opam_url network_cap
        | `Path path -> Fiber.return @@ of_opam_repo_dir_path loc path
        | `Archive ->
          User_error.raise

@@ -26,7 +26,7 @@ let packages_in_repo ~query repo =
     Fiber.return (name, OpamPackage.Version.Map.max_binding_opt versions))
 ;;
 
-let search_packages ~query () =
+let search_packages ~query network_cap () =
   let open Fiber.O in
   let* workspace = Memo.run (Workspace.workspace ()) in
   let* lock_dir_path = Dune_rules.Lock_dir.get_path Context_name.default |> Memo.run in
@@ -39,6 +39,7 @@ let search_packages ~query () =
     Dune_pkg.Opam_repo.resolve_repositories
       ~available_repos:(Pkg_common.repositories_of_workspace workspace)
       ~repositories:(Pkg_common.repositories_of_lock_dir workspace ~lock_dir_path)
+      network_cap
   in
   let re = Option.map ~f:(fun q -> Re.str q |> Re.no_case |> Re.compile) query in
   let* filtered = Fiber.parallel_map ~f:(packages_in_repo ~query:re) repos in
@@ -111,9 +112,14 @@ let term =
   and+ query = Arg.(value & pos 0 (some string) None & info [] ~docv:"QUERY" ~doc:None) in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
+  let network_cap =
+    Dune_pkg.Network_cap.create
+      ~reason_for_network_access:
+        "Package repositories need to be downloaded in order to search them."
+  in
   Scheduler.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
-    Pkg_common.check_pkg_management_enabled () >>> search_packages ~query ())
+    Pkg_common.check_pkg_management_enabled () >>> search_packages ~query network_cap ())
 ;;
 
 let info =

@@ -45,8 +45,9 @@ let serve_once ~filename =
 
 let download ?(reproducible = true) ~unpack ~port ~filename ~target ?checksum () =
   let open Fiber.O in
+  let network_cap = Dune_pkg.Network_cap.for_unit_test in
   let url = url ~port ~filename in
-  let* res = Fetch.fetch ~unpack ~checksum ~target ~url:(Loc.none, url) in
+  let* res = Fetch.fetch ~unpack ~checksum ~target ~url:(Loc.none, url) network_cap in
   match res with
   | Error (Unavailable None) ->
     let errs = [ Pp.text "Failure while downloading" ] in
@@ -209,8 +210,9 @@ let%expect_test "downloading, tarball with no checksum match" =
 
 let download_git rev_store url ~target =
   let open Fiber.O in
+  let network_cap = Dune_pkg.Network_cap.for_unit_test in
   Rev_store_tests.git_init_and_config_user (Path.of_string ".")
-  >>> Fetch.fetch_git rev_store ~target ~url:(Loc.none, url)
+  >>> Fetch.fetch_git rev_store ~target ~url:(Loc.none, url) network_cap
   >>| function
   | Error _ ->
     let errs = [ Pp.text "Failure while downloading" ] in

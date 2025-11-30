@@ -1,7 +1,7 @@
 open Import
 open Pkg_common
 
-let find_outdated_packages ~transitive ~lock_dirs_arg () =
+let find_outdated_packages ~transitive ~lock_dirs_arg network_cap () =
   let open Fiber.O in
   let+ pps, not_founds =
     let* workspace = Memo.run (Workspace.workspace ()) in
@@ -13,6 +13,7 @@ let find_outdated_packages ~transitive ~lock_dirs_arg () =
         Dune_pkg.Opam_repo.resolve_repositories
           ~available_repos:(repositories_of_workspace workspace)
           ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
+          network_cap
       and+ local_packages = Memo.run find_local_packages
       and+ platform = solver_env_from_system_and_context ~lock_dir_path in
       let lock_dir = Dune_pkg.Lock_dir.read_disk_exn lock_dir_path in
@@ -76,10 +77,16 @@ let term =
   and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
+  let network_cap =
+    Dune_pkg.Network_cap.create
+      ~reason_for_network_access:
+        "Need to download package repositories to check whether the current package \
+         solution is out of date."
+  in
   Scheduler.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
     Pkg_common.check_pkg_management_enabled ()
-    >>> find_outdated_packages ~transitive ~lock_dirs_arg ())
+    >>> find_outdated_packages ~transitive ~lock_dirs_arg network_cap ())
 ;;
 
 let info =

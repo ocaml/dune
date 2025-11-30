@@ -67,7 +67,8 @@ module Curl = struct
       | None -> false)
   ;;
 
-  let run ~url ~temp_dir ~output =
+  let run ~url ~temp_dir ~output network_cap =
+    Network_cap.log network_cap;
     let* compressed_supported = Fiber.Lazy.force compressed_supported in
     let args =
       List.flatten
@@ -166,7 +167,7 @@ let check_checksum checksum path =
   | None -> Ok ()
 ;;
 
-let with_download url checksum ~target ~f =
+let with_download url checksum ~target ~f network_cap =
   let url = OpamUrl.to_string url in
   let temp_dir =
     let prefix = "dune" in
@@ -178,7 +179,7 @@ let with_download url checksum ~target ~f =
     Temp.destroy Dir temp_dir;
     Fiber.return ())
   @@ fun () ->
-  Curl.run ~temp_dir ~url ~output
+  Curl.run ~temp_dir ~url ~output network_cap
   >>= function
   | Error message -> Fiber.return @@ Error (Unavailable (Some message))
   | Ok () ->
@@ -214,11 +215,11 @@ let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
          Error (Unavailable (Some exn))))
 ;;
 
-let fetch_git rev_store ~target ~url:(url_loc, url) =
-  OpamUrl.resolve url ~loc:url_loc rev_store
+let fetch_git rev_store ~target ~url:(url_loc, url) network_cap =
+  OpamUrl.resolve url ~loc:url_loc rev_store network_cap
   >>= (function
    | Error _ as e -> Fiber.return e
-   | Ok r -> OpamUrl.fetch_revision url ~loc:url_loc r rev_store)
+   | Ok r -> OpamUrl.fetch_revision url ~loc:url_loc r rev_store network_cap)
   >>= function
   | Error msg -> Fiber.return @@ Error (Unavailable (Some msg))
   | Ok at_rev ->
@@ -249,7 +250,7 @@ let fetch_local ~checksum ~target (url, url_loc) =
       Unavailable (Some (User_message.make [ Pp.text "Could not unpack:"; pp ])))
 ;;
 
-let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
+let fetch ~unpack ~checksum ~target ~url:(url_loc, url) network_cap =
   let event =
     Dune_stats.(
       start (global ()) (fun () ->
@@ -279,8 +280,8 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
        match url.backend with
        | `git ->
          let* rev_store = Rev_store.get in
-         fetch_git rev_store ~target ~url:(url_loc, url)
-       | `http -> fetch_curl ~unpack ~checksum ~target url
+         fetch_git rev_store ~target ~url:(url_loc, url) network_cap
+       | `http -> fetch_curl ~unpack ~checksum ~target url network_cap
        | `rsync ->
          if not unpack
          then
@@ -290,8 +291,8 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
        | `darcs -> unsupported_backend "darcs")
 ;;
 
-let fetch_without_checksum ~unpack ~target ~url =
-  fetch ~unpack ~checksum:None ~url ~target
+let fetch_without_checksum ~unpack ~target ~url network_cap =
+  fetch ~unpack ~checksum:None ~url ~target network_cap
   >>| function
   | Ok () -> Ok ()
   | Error (Checksum_mismatch _) -> assert false

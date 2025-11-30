@@ -69,16 +69,17 @@ let create_repo_at dir =
 
 let%expect_test "adding remotes" =
   let dir = Temp.create Dir ~prefix:"git-repo-" ~suffix:"" in
+  let network_cap = Dune_pkg.Network_cap.for_unit_test in
   run (fun () ->
     let* rev_store = Rev_store.get in
     let* _head = create_repo_at dir in
     let opam_url = Path.to_string dir |> OpamUrl.parse in
-    Dune_pkg.OpamUrl.resolve opam_url ~loc:Loc.none rev_store
+    Dune_pkg.OpamUrl.resolve opam_url ~loc:Loc.none rev_store network_cap
     >>= function
     | Error _ -> Fiber.return @@ print_endline "Unable to find revision"
     | Ok r ->
       print_endline "Successfully found remote";
-      Dune_pkg.OpamUrl.fetch_revision opam_url ~loc:Loc.none r rev_store
+      Dune_pkg.OpamUrl.fetch_revision opam_url ~loc:Loc.none r rev_store network_cap
       >>| (function
        | Error _ -> print_endline "Unable to fetch revision"
        | Ok _ -> print_endline "successfully fetched revision"));
@@ -93,6 +94,7 @@ let%expect_test "fetching an object twice from the store" =
   Rev_store.Debug.files_and_submodules_cache := true;
   Rev_store.Debug.content_of_files_cache := true;
   let dir = Temp.create Dir ~prefix:"git-repo-" ~suffix:"" in
+  let network_cap = Dune_pkg.Network_cap.for_unit_test in
   let write dir file content = Io.write_lines (Path.relative dir file) content in
   (* Initialise revision store *)
   let rev_store = run (fun () -> Rev_store.get) in
@@ -114,10 +116,8 @@ let%expect_test "fetching an object twice from the store" =
   in
   let get_file remote_revision file expected_file_content =
     let* at_rev =
-      Rev_store.Object.of_sha1 remote_revision
-      |> Option.value_exn
-      |> Rev_store.fetch_object rev_store remote
-      >>| Result.to_option
+      let obj = Rev_store.Object.of_sha1 remote_revision |> Option.value_exn in
+      Rev_store.fetch_object rev_store remote obj network_cap >>| Result.to_option
     in
     let at_rev = Option.value_exn at_rev in
     Rev_store.At_rev.directory_entries at_rev ~recursive:true Path.Local.root

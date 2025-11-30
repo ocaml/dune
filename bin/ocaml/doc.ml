@@ -13,10 +13,10 @@ let man =
 
 let info = Cmd.info "doc" ~doc ~man
 
-let lock_odoc_if_dev_tool_enabled () =
+let lock_odoc_if_dev_tool_enabled network_cap =
   match Lazy.force Lock_dev_tool.is_enabled with
   | false -> Action_builder.return ()
-  | true -> Action_builder.of_memo (Lock_dev_tool.lock_dev_tool Odoc)
+  | true -> Action_builder.of_memo (Lock_dev_tool.lock_dev_tool Odoc network_cap)
 ;;
 
 let term =
@@ -25,7 +25,12 @@ let term =
   let request (setup : Main.build_system) =
     let dir = Path.(relative root) (Common.prefix_target common ".") in
     let open Action_builder.O in
-    let* () = lock_odoc_if_dev_tool_enabled () in
+    let network_cap =
+      Dune_pkg.Network_cap.create
+        ~reason_for_network_access:
+          "Need to download package repositories to solve dependecies of odoc."
+    in
+    let* () = lock_odoc_if_dev_tool_enabled network_cap in
     let+ () =
       Alias.in_dir ~name:Dune_rules.Alias.doc ~recursive:true ~contexts:setup.contexts dir
       |> Alias.request

@@ -137,10 +137,10 @@ module Scan_project = struct
 
   let make_state () = { traversed = Fiber_cache.create (module OpamUrl) }
 
-  let eval_url t state (loc, url) =
+  let eval_url t state (loc, url) network_cap =
     Fiber_cache.find_or_add state.traversed url ~f:(fun () ->
       let open Fiber.O in
-      let* mount = Mount.of_opam_url loc url in
+      let* mount = Mount.of_opam_url loc url network_cap in
       let* files =
         Mount.readdir mount Path.Local.root
         >>| Filename.Map.filter ~f:(function
@@ -203,7 +203,7 @@ end = struct
   ;;
 end
 
-let resolve (t : DB.t) ~(scan_project : Scan_project.t)
+let resolve (t : DB.t) ~(scan_project : Scan_project.t) network_cap
   : Resolved_package.t Package_name.Map.t Fiber.t
   =
   let open Fiber.O in
@@ -246,7 +246,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
           ]
   in
   let opam_package stack (package : Local_package.pin) =
-    let* resolved_package = Pinned_package.resolve_package package in
+    let* resolved_package = Pinned_package.resolve_package package network_cap in
     resolve package.name resolved_package;
     Resolved_package.opam_file resolved_package
     |> OpamFile.OPAM.pin_depends
@@ -268,7 +268,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
       | `Skip -> None
       | `Continue -> Some package)
     |> Fiber.parallel_iter ~f:(fun package ->
-      Pinned_package.resolve_package package >>| resolve package.name)
+      Pinned_package.resolve_package package network_cap >>| resolve package.name)
   in
   let dune_package packages (package : Local_package.pin) =
     match Package_name.Map.find packages package.name with
@@ -317,7 +317,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
       match package.origin with
       | `Opam -> opam_package stack package
       | `Dune ->
-        eval_url package.url
+        eval_url package.url network_cap
         >>= (function
          | None -> opam_package stack package
          | Some (more_sources, packages) ->

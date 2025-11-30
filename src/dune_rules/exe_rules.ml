@@ -128,6 +128,25 @@ let o_files
     Mode.Map.Multi.add_all o_files All extra_o_files)
 ;;
 
+let js_of_ocaml_context ~dir js_of_ocaml compile_info =
+  let js_of_ocaml = Js_of_ocaml.In_context.make ~dir js_of_ocaml in
+  let+ has_parameterised_instances =
+    let+ requires_link = Memo.Lazy.force (Lib.Compile.requires_link compile_info) in
+    match Resolve.to_result requires_link with
+    | Error _ -> false
+    | Ok requires_link ->
+      List.exists requires_link ~f:(fun lib ->
+        match Lib.Parameterised.status lib with
+        | Not_parameterised -> false
+        | Complete | Partial -> true)
+  in
+  (* jsoo supports only whole program compilation of parameterised instances,
+     not separated compilation. *)
+  if has_parameterised_instances
+  then Js_of_ocaml.In_context.force_whole_program_compilation js_of_ocaml
+  else js_of_ocaml
+;;
+
 let executables_rules
       ~sctx
       ~dir
@@ -150,7 +169,7 @@ let executables_rules
   let* ocaml = Context.ocaml ctx in
   let project = Scope.project scope in
   let explicit_js_mode = Dune_project.explicit_js_mode project in
-  let js_of_ocaml = Js_of_ocaml.In_context.make ~dir exes.buildable.js_of_ocaml in
+  let* js_of_ocaml = js_of_ocaml_context ~dir exes.buildable.js_of_ocaml compile_info in
   let* linkages =
     let+ jsoo_enabled_modes =
       Jsoo_rules.jsoo_enabled_modes ~expander ~dir ~in_context:js_of_ocaml

@@ -658,8 +658,7 @@ module Substitute = struct
         , String.Map.to_list artifacts
         , Package.Name.Map.to_list_map depends ~f:(fun _ (m, p) -> m, paths p)
         , expander.version
-        , expander.context
-        , Env.Map.to_list expander.env |> Digest.generic |> Digest.to_string_raw )
+        , expander.context )
         |> Digest.generic
         |> Digest.to_string_raw
       in

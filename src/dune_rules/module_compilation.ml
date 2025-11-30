@@ -325,7 +325,10 @@ let build_cm
             ; A "-c"
             ; Command.Ml_kind.flag ml_kind
             ; Dep src
-            ; Hidden_deps (Dep.Set.of_files (Option.to_list original))
+            ; (* We add a hidden dependency on the original, pre-PPX source
+                 file, which the compiler wants to find to display error
+                 location snippets. *)
+              Hidden_deps (Dep.Set.of_files (Option.to_list original))
             ; other_targets
             ]
       >>| Action.Full.add_sandbox sandbox))

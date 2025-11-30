@@ -17,6 +17,7 @@
     "_build/install/default/lib/coq/user-contrib/bar/baz/bar.glob" {"coq/user-contrib/bar/baz/bar.glob"}
     "_build/install/default/lib/coq/user-contrib/bar/baz/bar.v" {"coq/user-contrib/bar/baz/bar.v"}
     "_build/install/default/lib/coq/user-contrib/bar/baz/bar.vo" {"coq/user-contrib/bar/baz/bar.vo"}
+    "_build/install/default/lib/coq/user-contrib/bar/baz/rocq-package" {"coq/user-contrib/bar/baz/rocq-package"}
     "_build/install/default/lib/coq/user-contrib/foo/.coq-native/Nfoo_foo.cmi" {"coq/user-contrib/foo/.coq-native/Nfoo_foo.cmi"}
     "_build/install/default/lib/coq/user-contrib/foo/.coq-native/Nfoo_foo.cmxs" {"coq/user-contrib/foo/.coq-native/Nfoo_foo.cmxs"}
     "_build/install/default/lib/coq/user-contrib/foo/a/.coq-native/Nfoo_a_a.cmi" {"coq/user-contrib/foo/a/.coq-native/Nfoo_a_a.cmi"}
@@ -27,4 +28,5 @@
     "_build/install/default/lib/coq/user-contrib/foo/foo.glob" {"coq/user-contrib/foo/foo.glob"}
     "_build/install/default/lib/coq/user-contrib/foo/foo.v" {"coq/user-contrib/foo/foo.v"}
     "_build/install/default/lib/coq/user-contrib/foo/foo.vo" {"coq/user-contrib/foo/foo.vo"}
+    "_build/install/default/lib/coq/user-contrib/foo/rocq-package" {"coq/user-contrib/foo/rocq-package"}
   ]

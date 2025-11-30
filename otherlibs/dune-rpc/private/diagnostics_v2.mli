@@ -1,19 +1,8 @@
-(** V1 of the diagnostics module. *)
-
-type severity =
-  | Error
-  | Warning
-
-module Related : sig
-  type t
-
-  val to_diagnostic_related : t -> Exported_types.Diagnostic.Related.t
-  val of_diagnostic_related : Exported_types.Diagnostic.Related.t -> t
-end
+(** V2 of the diagnostics module. *)
 
 type t
 
-val sexp : t Conv.value
+val sexp : (t, Conv.values) Conv.t
 val to_diagnostic : t -> Exported_types.Diagnostic.t
 val of_diagnostic : Exported_types.Diagnostic.t -> t
 

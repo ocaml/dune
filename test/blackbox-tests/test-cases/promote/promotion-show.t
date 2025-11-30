@@ -253,5 +253,5 @@ This 'diff?' rule also doesn't create a promotion entry.
 When multiple files have no promotions available, each gets a warning.
 
   $ dune promotion show multi.expected empty.expected
-  Warning: Nothing to promote for multi.expected.
   Warning: Nothing to promote for empty.expected.
+  Warning: Nothing to promote for multi.expected.

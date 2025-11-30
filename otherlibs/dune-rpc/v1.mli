@@ -194,6 +194,7 @@ module Diagnostic : sig
   type severity =
     | Error
     | Warning
+    | Alert
 
   module Promotion : sig
     type t

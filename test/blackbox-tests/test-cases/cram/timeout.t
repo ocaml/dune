@@ -40,8 +40,9 @@ fails earlier by passing a timeout command in front of dune. Our expected
 behaviour is for dune to kill the cram test immediately.
 
   $ timeout 1 dune test test.t 2>&1 | sed 's/echo hi/command/' | sed 's/sleep 2/command/'
-  File "test.t", line 1, characters 0-0:
-  Error: Cram test timed out while running command:
-    $ command
+  File "test.t", line 1, characters 2-11:
+  1 |   $ command
+        ^^^^^^^^^
+  Error: Cram test timed out
   A time limit of 0.00s has been set in dune:2
 

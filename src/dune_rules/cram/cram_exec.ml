@@ -350,9 +350,9 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
   let* metadata_file_sh_path = sh_path metadata_file in
   let i = ref 0 in
   let loop block =
-    match (block : _ Cram_lexer.block) with
+    match (block : (Loc.t * string list) Cram_lexer.block) with
     | Comment _ as comment -> Fiber.return comment
-    | Command lines ->
+    | Command (_, lines) ->
       incr i;
       let i = !i in
       let file ~ext = file (sprintf "%d%s" i ext) in
@@ -456,46 +456,46 @@ let run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout =
   | Ok () -> read_and_attach_exit_codes sh_script |> sanitize ~parent_script:script
   | Error `Timed_out ->
     let timeout_loc, timeout = Option.value_exn timeout in
-    let timeout_set_message =
-      [ Pp.textf "A time limit of %.2fs has been set in " timeout
-      ; Pp.tag User_message.Style.Loc @@ Loc.pp_file_colon_line timeout_loc
-      ]
-      |> Pp.concat
-      |> Pp.hovbox
-    in
-    let timeout_msg =
+    let loc =
       match
         let completed_count =
           read_exit_codes_and_prefix_maps sh_script.metadata_file |> List.length
         in
-        let command_blocks_only =
-          List.filter_map sh_script.cram_to_output ~f:(function
+        let original_command_locs =
+          List.filter_map cram_stanzas ~f:(function
             | Cram_lexer.Comment _ -> None
-            | Cram_lexer.Command block_result -> Some block_result)
+            | Cram_lexer.Command (loc, _) -> Some loc)
         in
-        let total_commands = List.length command_blocks_only in
+        let total_commands = List.length original_command_locs in
         if completed_count < total_commands
-        then (
+        then
           (* Find the command that got stuck - it's the one at index completed_count *)
-          match List.nth command_blocks_only completed_count with
-          | Some { command; _ } -> Some (String.concat ~sep:" " command)
-          | None -> None)
+          List.nth original_command_locs completed_count
         else None
       with
-      | None -> [ Pp.text "Cram test timed out" ]
-      | Some cmd ->
-        [ Pp.textf "Cram test timed out while running command:"
-        ; Pp.verbatimf "  $ %s" cmd
-        ]
+      | None -> Loc.in_file (Path.drop_optional_build_context_maybe_sandboxed src)
+      | Some loc -> loc
     in
     User_error.raise
-      ~loc:(Loc.in_file (Path.drop_optional_build_context_maybe_sandboxed src))
-      (timeout_msg @ [ timeout_set_message ])
+      ~loc
+      [ Pp.text "Cram test timed out"
+      ; [ Pp.textf "A time limit of %.2fs has been set in " timeout
+        ; Pp.tag User_message.Style.Loc @@ Loc.pp_file_colon_line timeout_loc
+        ]
+        |> Pp.concat
+        |> Pp.hovbox
+      ]
 ;;
 
 let run_produce_correction ~conflict_markers ~src ~env ~script ~timeout lexbuf =
   let temp_dir = make_temp_dir ~script in
-  let cram_stanzas = cram_stanzas lexbuf ~conflict_markers |> List.map ~f:snd in
+  let cram_stanzas =
+    cram_stanzas lexbuf ~conflict_markers
+    |> List.map ~f:(fun (loc, block) ->
+      match block with
+      | Cram_lexer.Comment lines -> Cram_lexer.Comment lines
+      | Cram_lexer.Command lines -> Cram_lexer.Command (loc, lines))
+  in
   let cwd = Path.parent_exn script in
   let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
@@ -513,10 +513,17 @@ module Script = Persistent.Make (struct
   end)
 
 let run_and_produce_output ~conflict_markers ~src ~env ~dir:cwd ~script ~dst ~timeout =
-  let script_contents = Io.read_file ~binary:false script in
-  let lexbuf = Lexbuf.from_string script_contents ~fname:(Path.to_string script) in
+  let script_contents = Io.read_file ~binary:false src in
+  let clean_src_name = Path.Source.to_string (Path.drop_build_context_exn src) in
+  let lexbuf = Lexbuf.from_string script_contents ~fname:clean_src_name in
   let temp_dir = make_temp_dir ~script in
-  let cram_stanzas = cram_stanzas lexbuf ~conflict_markers |> List.map ~f:snd in
+  let cram_stanzas =
+    cram_stanzas lexbuf ~conflict_markers
+    |> List.map ~f:(fun (loc, block) ->
+      match block with
+      | Cram_lexer.Comment lines -> Cram_lexer.Comment lines
+      | Cram_lexer.Command lines -> Cram_lexer.Command (loc, lines))
+  in
   (* We don't want the ".cram.run.t" dir around when executing the script. *)
   Path.rm_rf (Path.parent_exn script);
   let env = make_run_env env ~temp_dir ~cwd in

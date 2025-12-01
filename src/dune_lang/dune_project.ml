@@ -953,6 +953,21 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
          "warnings"
          ~default:Warning.Settings.empty
          (Syntax.since Stanza.syntax (3, 11) >>> Warning.Settings.decode)
+     and+ () =
+       field_o
+         "pkg"
+         (let+ loc = loc
+          and+ () = junk_everything in
+          loc)
+       >>| Option.iter ~f:(fun loc ->
+         User_error.raise
+           ~loc
+           ~hints:
+             [ Pp.text
+                 "Move this stanza to your dune-workspace file. If you don't have one, \
+                  create one in your workspace root."
+             ]
+           [ Pp.text "The (pkg ...) stanza is only valid in dune-workspace files." ])
      in
      fun (opam_packages : (Loc.t * Package.t Memo.t) Package.Name.Map.t) ->
        let opam_file_location =

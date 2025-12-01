@@ -492,7 +492,6 @@ module Component = struct
     ;;
 
     let test ({ context; common; options } : Options.Test.t Options.t) =
-      (* Marking the current absence of test-specific options *)
       let dir = context.dir in
       let test_dune =
         Stanza_cst.test common options
@@ -526,6 +525,16 @@ module Component = struct
       File.Dune { dir; content; name = "dune-project" }
     ;;
 
+    (* Convert a libname to a dune atom that can be used to declare a library as
+       a dependency  *)
+    let lib_name_to_atom lib : Dune_lang.Atom.t =
+      Lib_name.to_string lib
+      |> String.map ~f:(function
+        | '-' -> '_' (* in case the lib_name is public, containing a `-` *)
+        | c -> c)
+      |> Dune_lang.Atom.of_string
+    ;;
+
     let proj_exec dir ({ context; common; options } : Options.Project.t Options.t) =
       let lib_target =
         src
@@ -536,10 +545,15 @@ module Component = struct
       in
       let test_target =
         let test_name = "test_" ^ Dune_lang.Atom.to_string common.name in
+        let libraries =
+          match common.public with
+          | None -> []
+          | Some lib -> [ lib_name_to_atom lib ]
+        in
         test
           { context = { context with dir = Path.Source.relative dir "test" }
           ; options = ()
-          ; common = { common with name = Dune_lang.Atom.of_string test_name }
+          ; common = { common with name = Dune_lang.Atom.of_string test_name; libraries }
           }
       in
       let bin_target =
@@ -564,10 +578,15 @@ module Component = struct
       in
       let test_target =
         let test_name = "test_" ^ Dune_lang.Atom.to_string common.name in
+        let libraries =
+          match common.public with
+          | None -> []
+          | Some lib -> [ lib_name_to_atom lib ]
+        in
         test
           { context = { context with dir = Path.Source.relative dir "test" }
           ; options = ()
-          ; common = { common with name = Dune_lang.Atom.of_string test_name }
+          ; common = { common with name = Dune_lang.Atom.of_string test_name; libraries }
           }
       in
       lib_target @ test_target

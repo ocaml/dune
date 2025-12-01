@@ -14,7 +14,7 @@ Invalid version number:
   File "dune-project", line 1, characters 11-14:
   1 | (lang dune Ali)
                  ^^^
-  Error: Atom of the form NNN.NNN expected
+  Error: Invalid version. Version must be two numbers separated by a dot.
   [1]
 
 Test with various non-ASCII characters:

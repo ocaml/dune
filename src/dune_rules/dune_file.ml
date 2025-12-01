@@ -60,7 +60,7 @@ module Mask = struct
 
   let is_promoted_rule =
     let is_promoted_mode version = function
-      | Rule.Mode.Promote { only = None; lifetime; _ } ->
+      | Rule_mode.Promote { only = None; lifetime; _ } ->
         if version >= (3, 5)
         then (
           match lifetime with

@@ -118,13 +118,10 @@ Promote dir can't be outside the workspace
   File "app/dune", line 5, characters 16-25:
   5 |  (promote (into ../../foo))
                       ^^^^^^^^^
-  Error: path outside the workspace: ../../../../../foo/other from
-  app/dist/app/other
-  File "app/dune", line 5, characters 16-25:
-  5 |  (promote (into ../../foo))
-                      ^^^^^^^^^
-  Error: path outside the workspace: ../../../../foo from app/dist/app
+  Error: path cannot escape the context root
   [1]
+
+  $ dune clean
 
 It's possible to recover the behavior of emitting in the dist folder with
 `(promote (into ..))`

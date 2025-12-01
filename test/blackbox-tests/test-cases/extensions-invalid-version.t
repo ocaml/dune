@@ -20,6 +20,11 @@ Invalid version number:
 
 Test with various non-ASCII characters:
 
+CR-someday benodiwal: Non-ASCII characters in extension versions fail at the
+s-expression parsing level, showing a generic "Invalid dune-project file" error
+instead of the specific version validation error with hints. This would require
+changes to the s-expression parser to handle properly.
+
   $ test_invalid_version "è"
   File "dune-project", line 2, characters 14-14:
   2 | (using menhir è)

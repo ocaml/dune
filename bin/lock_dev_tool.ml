@@ -165,13 +165,63 @@ let locked_ocaml_compiler_constraint () =
   { Package_dependency.name = compiler_package_name; constraint_ }
 ;;
 
+let extra_compiler_names = [ Package_name.of_string "ocaml-base-compiler"
+      ; Package_name.of_string "ocaml-variants"
+      ; Package_name.of_string "ocaml-compiler"
+        (* The [ocaml-compiler] package is required to include all the
+           packages that might install a compiler, starting from ocaml.5.3.0.
+        *)
+      ]
+;;
+
+let extra_compiler_constraints () =
+  let extract_info package =
+    (*Get the package version*)
+    let open Memo.O in
+  let context =
+    (* Dev tools are only ever built with the default context. *)
+    Context_name.default
+  in
+  let* result = Dune_rules.Lock_dir.get context
+  and* platform =
+    Pkg.Pkg_common.poll_solver_env_from_current_system () |> Memo.of_reproducible_fiber
+  in
+  match result with
+  | Error _ ->
+    User_error.raise
+      [ Pp.text "Unable to load the lockdir for the default build context." ]
+      ~hints:
+        [ Pp.concat
+            ~sep:Pp.space
+            [ Pp.text "Try running"; User_message.command "dune pkg lock" ]
+        ]
+  | Ok { packages; _ } ->
+    let packages = Lock_dir.Packages.pkgs_on_platform_by_name packages ~platform in
+    (match Package_name.Map.find packages package with
+    | Some pkg ->
+      let open Dune_lang in
+      let version = pkg.info.version in
+      let constraint_ =
+        Some
+          (Package_constraint.Uop
+            (Eq, String_literal (Package_version.to_string version)))
+      in
+      Memo.return [{Package_dependency.name = package; constraint_}]
+    | None -> Memo.return []
+    )
+    in
+    let open Memo.O in
+    let* vals = Memo.List.concat_map ~f:extract_info extra_compiler_names in
+    Memo.return vals
+
 let extra_dependencies dev_tool =
   let open Memo.O in
   match Dune_pkg.Dev_tool.needs_to_build_with_same_compiler_as_project dev_tool with
   | false -> Memo.return []
   | true ->
+    let* more_compiler_packages = extra_compiler_constraints () in
     let+ constraint_ = locked_ocaml_compiler_constraint () in
-    [ constraint_ ]
+    constraint_ :: more_compiler_packages
 ;;
 
 let lockdir_status dev_tool =

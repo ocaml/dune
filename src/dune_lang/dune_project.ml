@@ -288,6 +288,14 @@ module Extension = struct
     ()
   ;;
 
+  let find name = Table.find extensions name
+
+  let get_syntax = function
+    | Extension (Packed e) -> e.syntax
+    | Deleted_in _ ->
+      Code_error.raise "Extension.get_syntax called on deleted extension" []
+  ;;
+
   let instantiate ~dune_lang_ver ~loc ~parse_args (name_loc, name) (ver_loc, ver) =
     match Table.find extensions name with
     | None ->
@@ -1078,13 +1086,41 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        }
 ;;
 
+let validate_using_declarations contents fname =
+  (* Scan and validate (using ...) declarations before s-expression parsing *)
+  let using_decls = Using_declaration_parser.scan contents fname in
+  List.iter using_decls ~f:(fun { Using_declaration_parser.name; version } ->
+    let _name_loc, name_str = name in
+    let ver_loc, ver_str = version in
+    (* Check if version contains non-ASCII or is invalid format *)
+    let has_non_ascii = String.exists ver_str ~f:(fun c -> Char.code c > 127) in
+    let is_valid_format =
+      match Scanf.sscanf ver_str "%u.%u%!" (fun a b -> a, b) with
+      | _ -> true
+      | exception _ -> false
+    in
+    if has_non_ascii || not is_valid_format
+    then (
+      let hints =
+        match Extension.find name_str with
+        | None -> []
+        | Some ext ->
+          let latest = Syntax.greatest_supported_version_exn (Extension.get_syntax ext) in
+          [ Pp.textf "using %s %s" name_str (Syntax.Version.to_string latest) ]
+      in
+      User_error.raise
+        ~loc:ver_loc
+        ~hints
+        [ Pp.text "Invalid version. Version must be two numbers separated by a dot." ]))
+;;
+
 let load_dune_project ~read ~dir opam_packages : t Memo.t =
   let file = Path.Source.relative dir filename in
   let open Memo.O in
-  let* lexbuf =
-    let+ contents = read file in
-    Lexbuf.from_string contents ~fname:(Path.Source.to_string file)
-  in
+  let* contents = read file in
+  let fname = Path.Source.to_string file in
+  validate_using_declarations contents fname;
+  let lexbuf = Lexbuf.from_string contents ~fname in
   parse_contents lexbuf ~f:(fun lang -> parse ~dir ~lang ~file) opam_packages
 ;;
 

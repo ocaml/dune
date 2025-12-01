@@ -22,4 +22,4 @@
   dune_section
   (re_export dune_sexp)))
 
-(ocamllex dune_file_script)
+(ocamllex dune_file_script using_declaration_parser)

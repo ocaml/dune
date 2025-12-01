@@ -63,7 +63,7 @@ val link_many
   -> ?sandbox:Sandbox_config.t
   -> programs:Program.t list
   -> linkages:Linkage.t list
-  -> promote:Rule.Promote.t option
+  -> promote:Rule_mode.Promote.t option
   -> Compilation_context.t
   -> dep_graphs Memo.t
 
@@ -74,7 +74,7 @@ val build_and_link
   -> ?sandbox:Sandbox_config.t
   -> program:Program.t
   -> linkages:Linkage.t list
-  -> promote:Rule.Promote.t option
+  -> promote:Rule_mode.Promote.t option
   -> Compilation_context.t
   -> dep_graphs Memo.t
 
@@ -85,7 +85,7 @@ val build_and_link_many
   -> ?sandbox:Sandbox_config.t
   -> programs:Program.t list
   -> linkages:Linkage.t list
-  -> promote:Rule.Promote.t option
+  -> promote:Rule_mode.Promote.t option
   -> Compilation_context.t
   -> dep_graphs Memo.t
 

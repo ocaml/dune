@@ -127,6 +127,7 @@ include struct
   module Js_of_ocaml = Js_of_ocaml
   module Copy_files = Copy_files
   module Enabled_if = Enabled_if
+  module Rule_mode = Rule_mode
   module Rule_mode_decoder = Rule_mode_decoder
   module Alias_conf = Alias_conf
   module Stanza_pkg = Stanza_pkg

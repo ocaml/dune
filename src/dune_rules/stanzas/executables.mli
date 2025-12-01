@@ -45,7 +45,7 @@ type t =
   ; optional : bool
   ; buildable : Buildable.t
   ; package : Package.t option
-  ; promote : Rule.Promote.t option
+  ; promote : Rule_mode.Promote.t option
   ; install_conf : Install_conf.t option
   ; embed_in_plugin_libraries : (Loc.t * Lib_name.t) list
   ; forbidden_libraries : (Loc.t * Lib_name.t) list

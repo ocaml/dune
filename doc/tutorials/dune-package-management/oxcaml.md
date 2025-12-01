@@ -1,18 +1,21 @@
 # Setting up an OxCaml project
 
 As an example of how to add custom repositories and pin dependencies in projects
-using Dune Package Management, let's look at setting up a basic OxCaml project.
-[OxCaml](https://oxcaml.org/) is a compiler branch with fast moving set of
-extensions to OCaml. Some tweaks are required to set up a project that compiles
-with OxCaml when using dune package management.
+using Dune Package Management, let's look at setting up a basic
+[OxCaml](https://oxcaml.org/) project. OxCaml is a compiler branch with fast
+moving set of extensions to OCaml. Some tweaks are required to set up a project
+that compiles with OxCaml when using Dune package management.
 
 ## Setting up the `dune-workspace`
 
 OxCaml has a custom `opam-repository` that provides compatible dependencies.
-This is specified in the `dune-workspace`.
+Dune can use packages from this repositories by configuring it in the
+dune-workspace file using the {doc}`repositories stanza
+</reference/dune-workspace/repository>` and {doc}`lock_dir stanza
+</reference/dune-workspace/lock_dir>`.
 
 ```{code-block} dune
-(lang dune 3.20)
+(lang dune 3.21)
 
 (pkg enabled)
 
@@ -24,12 +27,13 @@ This is specified in the `dune-workspace`.
  (repositories overlay oxcaml upstream))
 ```
 
-In the `dune-project`, we also need to add a constraint to depend on the OxCaml
-compiler. Otherwise, the solver may pick up the latest upstream compiler, which
-does not support the OxCaml extensions.
+We would like dune to pick the OxCaml compiler rather than the latest upstream
+one. This can be achieved by manually adding a constraint on the compiler that
+is picked in the {doc}`package stanza </reference/packages>` in
+the dune-project.
 
 ```{code-block} dune
-(lang dune 3.20)
+(lang dune 3.21)
 
 (package
  (name hello-oxcaml)
@@ -58,7 +62,9 @@ And to build it, we add a `dune` file.
 
 ## Building the project
 
-As usual, let's build the project with:
+Let's compiler and execute the project. Note that when you run `dune build` the
+very first time, Dune pulls in and builds all the dependencies before building
+the project itself. It is expected to take a considerable amount of time.
 
 ```
 $ dune exec ./main.exe
@@ -78,7 +84,7 @@ For `ocamlformat` it would look something like this:
 
 ```{code-block} dune
 
-(lang dune 3.20)
+(lang dune 3.21)
 
 (pkg enabled)
 
@@ -105,7 +111,7 @@ For `ocamlformat` it would look something like this:
  (repositories :standard oxcaml))
 
 (lock_dir
- (path "dev-tools.locks/ocamlformat")
+ (path "_build/.dev-tools.locks/ocamlformat")
  (pins ocamlbuild)
  (constraints
    (ocaml-lsp-server (= 1.19.0+ox))

@@ -964,8 +964,8 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
            ~loc
            ~hints:
              [ Pp.text
-                 "Move this stanza to your dune-workspace file. If you don't have one,\n\
-                 \                 create one in your workspace root."
+                 "Move this stanza to your dune-workspace file. If you don't have one, \
+                  create one in your workspace root."
              ]
            [ Pp.text "The (pkg ...) stanza is only valid in dune-workspace files." ])
      in

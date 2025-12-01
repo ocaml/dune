@@ -12,5 +12,5 @@ gives a helpful error message.
       ^^^^^^^^^^^^^
   Error: The (pkg ...) stanza is only valid in dune-workspace files.
   Hint: Move this stanza to your dune-workspace file. If you don't have one,
-                   create one in your workspace root.
+  create one in your workspace root.
   [1]

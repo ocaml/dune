@@ -235,11 +235,7 @@ module Fact = struct
   let file fn digest = File (fn, digest)
 
   let file_selector fs facts =
-    (* CR-someday amokhov: We used to call [File_selector.to_dyn] here that raises under
-       the same conditions that [File_selector.digest_exn] is raising, namely, when
-       the underlying glob is not serialisable. We should make all globs serialisable
-       or use stronger types to statically rule out the possibility of raising here. *)
-    File_selector { file_selector_digest = File_selector.digest_exn fs; facts }
+    File_selector { file_selector_digest = File_selector.digest fs; facts }
   ;;
 
   let alias _alias files = Alias files
@@ -272,12 +268,7 @@ module Set = struct
       | Env var -> Env var :: acc
       | Universe -> Universe :: acc
       | File p -> File (Path.to_string p |> Digest.string) :: acc
-      | File_selector fs ->
-        (* CR-someday amokhov: We used to call [File_selector.to_dyn] here that raises under
-           the same conditions that [File_selector.digest_exn] is raising, namely, when
-           the underlying glob is not serialisable. We should make all globs serialisable
-           or use stronger types to statically rule out the possibility of raising here. *)
-        File_selector (File_selector.digest_exn fs) :: acc
+      | File_selector fs -> File_selector (File_selector.digest fs) :: acc
       | Alias a ->
         Alias
           { dir = Path.Build.to_string (Alias.dir a)

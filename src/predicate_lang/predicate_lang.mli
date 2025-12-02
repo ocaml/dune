@@ -45,7 +45,5 @@ module Glob : sig
   val hash : t -> int
   val decode : t Dune_sexp.Decoder.t
   val encode : t -> Dune_sexp.t
-
-  (** Raises on non-serialisable globs, just like most other functions above. *)
-  val digest_exn : t -> Dune_digest.t
+  val digest : t -> Dune_digest.t
 end

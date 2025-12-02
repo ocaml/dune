@@ -29,13 +29,19 @@ type resolve =
   | Resolved of Rev_store.Object.resolved
   | Unresolved of Rev_store.Object.t
 
-val resolve : t -> loc:Loc.t -> Rev_store.t -> (resolve, User_message.t) result Fiber.t
+val resolve
+  :  t
+  -> loc:Loc.t
+  -> Rev_store.t
+  -> Network_cap.t
+  -> (resolve, User_message.t) result Fiber.t
 
 val fetch_revision
   :  t
   -> loc:Loc.t
   -> resolve
   -> Rev_store.t
+  -> Network_cap.t
   -> (Rev_store.At_rev.t, User_message.t) result Fiber.t
 
 val set_rev : t -> Rev_store.Object.t -> t

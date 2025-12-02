@@ -9,17 +9,17 @@ type t = backend
 
 let backend t = t
 
-let of_opam_url loc url =
+let of_opam_url loc url network_cap =
   let* () = Fiber.return () in
   match OpamUrl.classify url loc with
   | `Path dir -> Fiber.return (Path dir)
   | `Git ->
     let+ rev =
       let* rev_store = Rev_store.get in
-      OpamUrl.resolve url ~loc rev_store
+      OpamUrl.resolve url ~loc rev_store network_cap
       >>= (function
        | Error _ as e -> Fiber.return e
-       | Ok s -> OpamUrl.fetch_revision url ~loc s rev_store)
+       | Ok s -> OpamUrl.fetch_revision url ~loc s rev_store network_cap)
       >>| User_error.ok_exn
     in
     Git rev
@@ -30,7 +30,7 @@ let of_opam_url loc url =
        CR-someday maiste: downloading and extracting should be cached to be
        reused by the `dune build` command. *)
     let dir = Temp.(create Dir ~prefix:"dune" ~suffix:"fetch-pinning") in
-    Source.fetch_archive_cached (loc, url)
+    Source.fetch_archive_cached (loc, url) network_cap
     >>= (function
      | Error message_opt ->
        let message =

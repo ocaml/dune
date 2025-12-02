@@ -33,6 +33,7 @@ module Spec = struct
     ; selected_depopts : Package.Name.t list
     ; pins : Resolved_package.t Package.Name.Map.t
     ; version_preference : Version_preference.t
+    ; network_cap : Dune_pkg.Network_cap.t
     }
 
   let name = "lock"
@@ -51,6 +52,7 @@ module Spec = struct
         ; selected_depopts
         ; pins
         ; version_preference
+        ; network_cap = _
         }
         encode_path
         encode_target
@@ -128,6 +130,7 @@ module Spec = struct
         ; selected_depopts
         ; pins
         ; version_preference
+        ; network_cap
         }
         ~ectx:_
         ~eenv:{ Action.Ext.Exec.env; _ }
@@ -212,7 +215,7 @@ module Spec = struct
     | Ok { pinned_packages; files; lock_dir; _ } ->
       let lock_dir_path = Path.build target in
       let+ lock_dir =
-        Dune_pkg.Lock_dir.compute_missing_checksums ~pinned_packages lock_dir
+        Dune_pkg.Lock_dir.compute_missing_checksums ~pinned_packages lock_dir network_cap
       in
       Dune_pkg.Lock_dir.Write_disk.prepare
         ~portable_lock_dir
@@ -236,6 +239,7 @@ let lock_action
       ~selected_depopts
       ~pins
       ~version_preference
+      network_cap
   =
   A.action
     { Spec.target
@@ -248,6 +252,7 @@ let lock_action
     ; selected_depopts
     ; pins
     ; version_preference
+    ; network_cap
     }
 ;;
 
@@ -288,6 +293,11 @@ let project_pins =
 ;;
 
 let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
+  let network_cap =
+    Dune_pkg.Network_cap.create
+      ~reason_for_network_access:
+        "Need to download package repositories to solve dependencies."
+  in
   let target = Path.Build.append_local dir lock_dir in
   let lock_dir_param = lock_dir in
   let rules =
@@ -331,7 +341,7 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
                   Pkg_workspace.Repository.name repo, repo)
                 |> Pkg_workspace.Repository.Name.Map.of_list_exn
               in
-              Opam_repo.resolve_repositories ~available_repos ~repositories
+              Opam_repo.resolve_repositories ~available_repos ~repositories network_cap
               |> Memo.of_non_reproducible_fiber))
        and+ pins =
          (* CR-soon Alizter: This pin logic (extracting workspace pins,
@@ -359,9 +369,7 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
                 Pin.DB.Workspace.extract workspace_pins ~names:all_pin_names
               in
               let combined_pins = Pin.DB.combine_exn workspace_pins_db project_pins_db in
-              Memo.return combined_pins
-              >>| resolve_project_pins
-              >>= Memo.of_reproducible_fiber))
+              resolve_project_pins combined_pins network_cap |> Memo.of_reproducible_fiber))
        in
        let version_preference =
          match lock_dir with
@@ -393,6 +401,7 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
          ~selected_depopts
          ~pins
          ~version_preference
+         network_cap
        |> Action.Full.make
             ~can_go_in_shared_cache:false (* TODO: probably ok this allow this? *)
             ~sandbox:Sandbox_config.needs_sandboxing)

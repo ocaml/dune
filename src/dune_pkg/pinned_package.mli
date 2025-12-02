@@ -8,4 +8,4 @@
     opam files they correspond to *)
 
 val collect : Local_package.t Package_name.Map.t -> Local_package.pin Package_name.Map.t
-val resolve_package : Local_package.pin -> Resolved_package.t Fiber.t
+val resolve_package : Local_package.pin -> Network_cap.t -> Resolved_package.t Fiber.t

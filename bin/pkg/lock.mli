@@ -9,6 +9,7 @@ val solve
   -> lock_dirs:Path.t list
   -> print_perf_stats:bool
   -> portable_lock_dir:bool
+  -> Dune_pkg.Network_cap.t
   -> unit Fiber.t
 
 (** Command to create lock directory *)

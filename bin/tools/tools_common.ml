@@ -19,12 +19,14 @@ let dev_tool_build_target dev_tool =
        (Path.to_string (dev_tool_exe_path dev_tool)))
 ;;
 
-let build_dev_tool_directly common dev_tool =
+let build_dev_tool_directly common dev_tool network_cap =
   let open Fiber.O in
   let+ result =
     Build.run_build_system ~common ~request:(fun _build_system ->
       let open Action_builder.O in
-      let* () = dev_tool |> Lock_dev_tool.lock_dev_tool |> Action_builder.of_memo in
+      let* () =
+        Lock_dev_tool.lock_dev_tool dev_tool network_cap |> Action_builder.of_memo
+      in
       (* Make sure the tool's lockdir is generated before building the tool. *)
       Action_builder.path (dev_tool_exe_path dev_tool))
   in
@@ -47,16 +49,16 @@ let build_dev_tool_via_rpc builder lock_held_by dev_tool =
   >>| Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:false
 ;;
 
-let lock_and_build_dev_tool ~common ~config builder dev_tool =
+let lock_and_build_dev_tool ~common ~config builder dev_tool network_cap =
   let open Fiber.O in
   match Dune_util.Global_lock.lock ~timeout:None with
   | Error lock_held_by ->
     Scheduler.go_without_rpc_server ~common ~config (fun () ->
-      let* () = Lock_dev_tool.lock_dev_tool dev_tool |> Memo.run in
+      let* () = Lock_dev_tool.lock_dev_tool dev_tool network_cap |> Memo.run in
       build_dev_tool_via_rpc builder lock_held_by dev_tool)
   | Ok () ->
     Scheduler.go_with_rpc_server ~common ~config (fun () ->
-      build_dev_tool_directly common dev_tool)
+      build_dev_tool_directly common dev_tool network_cap)
 ;;
 
 let run_dev_tool workspace_root dev_tool ~args =
@@ -71,8 +73,8 @@ let run_dev_tool workspace_root dev_tool ~args =
   restore_cwd_and_execve workspace_root exe_path_string args env
 ;;
 
-let lock_build_and_run_dev_tool ~common ~config builder dev_tool ~args =
-  lock_and_build_dev_tool ~common ~config builder dev_tool;
+let lock_build_and_run_dev_tool ~common ~config builder dev_tool ~args network_cap =
+  lock_and_build_dev_tool ~common ~config builder dev_tool network_cap;
   run_dev_tool (Common.root common) dev_tool ~args
 ;;
 
@@ -113,10 +115,18 @@ let which_command dev_tool =
 
 let install_command dev_tool =
   let exe_name = Pkg_dev_tool.exe_name dev_tool in
+  let network_cap =
+    Dune_pkg.Network_cap.create
+      ~reason_for_network_access:
+        (sprintf
+           "Fetching package metadata to solve dependencies and downloading dependencies \
+            of %s."
+           exe_name)
+  in
   let term =
     let+ builder = Common.Builder.term in
     let common, config = Common.init builder in
-    lock_and_build_dev_tool ~common ~config builder dev_tool
+    lock_and_build_dev_tool ~common ~config builder dev_tool network_cap
   in
   let info =
     let doc = sprintf "Install %s as a dev tool" exe_name in
@@ -127,12 +137,20 @@ let install_command dev_tool =
 
 let exec_command dev_tool =
   let exe_name = Pkg_dev_tool.exe_name dev_tool in
+  let network_cap =
+    Dune_pkg.Network_cap.create
+      ~reason_for_network_access:
+        (sprintf
+           "Fetching package metadata to solve dependencies and downloading dependencies \
+            of %s."
+           exe_name)
+  in
   let term =
     let+ builder = Common.Builder.term
     (* CR-someday Alizter: document this option *)
     and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS" ~doc:None)) in
     let common, config = Common.init builder in
-    lock_build_and_run_dev_tool ~common ~config builder dev_tool ~args
+    lock_build_and_run_dev_tool ~common ~config builder dev_tool ~args network_cap
   in
   let info =
     let doc =

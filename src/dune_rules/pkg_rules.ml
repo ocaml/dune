@@ -2009,6 +2009,12 @@ let rule ?loc { Action_builder.With_targets.build; targets } =
 ;;
 
 let source_rules (pkg : Pkg.t) =
+  let network_cap =
+    Dune_pkg.Network_cap.create
+      ~reason_for_network_access:
+        "If the source of a package isn't already present locally, network access is \
+         needed to download it."
+  in
   let+ source_deps, copy_rules =
     match pkg.info.source with
     | None -> Memo.return (Dep.Set.empty, [])
@@ -2018,7 +2024,11 @@ let source_rules (pkg : Pkg.t) =
       >>= (function
        | `Local (`File, _) | `Fetch ->
          let fetch =
-           Fetch_rules.fetch ~target:pkg.write_paths.source_dir `Directory source
+           Fetch_rules.fetch
+             ~target:pkg.write_paths.source_dir
+             `Directory
+             source
+             network_cap
            |> With_targets.map
                 ~f:
                   (Action.Full.map ~f:(fun action ->
@@ -2065,7 +2075,7 @@ let source_rules (pkg : Pkg.t) =
         | `Directory_or_archive src ->
           loc, Action_builder.copy ~src:(Path.external_ src) ~dst:extra_source
         | `Fetch ->
-          let rule = Fetch_rules.fetch ~target:extra_source `File fetch in
+          let rule = Fetch_rules.fetch ~target:extra_source `File fetch network_cap in
           loc, rule
       in
       Path.build extra_source, rule)

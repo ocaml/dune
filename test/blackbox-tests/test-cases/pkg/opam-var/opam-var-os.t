@@ -1,8 +1,25 @@
+# Technically, this test should depend on something that comes from the OS so
+# that it re-runs after an update. That's a little hard to express however, and
+# one must remember to manually force to re-run it after an upgrade.
+
   $ . ../helpers.sh
 
 Here we test global opam variables that are system specific. Since these values change
 between systems, we can't hardcode them in the test. Instead, we use the opam var command
 to compare their values.
+
+  $ export OPAMROOT=$(mktemp -d)
+  $ mkdir -p $OPAMROOT/default/.opam-switch/
+  $ cat >$OPAMROOT/default/.opam-switch/switch-config <<EOF
+  > opam-version: "2.0"
+  > EOF
+  $ cat >$OPAMROOT/config <<EOF
+  > opam-version: "2.0"
+  > switch: "default"
+  > installed-switches: ["default"]
+  > EOF
+  $ v() { opam --cli 2.1 var $1; }
+  $ { v arch ; v os ; v os-distribution ; v os-family ; v os-version ; } > opam-vars
 
 # arch os os-distribution os-family os-version user group
 

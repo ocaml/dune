@@ -37,8 +37,12 @@ module Ocamlformat = struct
        via locking and can expect it to exist. If it doesn't, it's a bug
     *)
     match Config.get Compile_time.lock_dev_tools with
-    | `Enabled -> true
-    | `Disabled -> false
+    | `Enabled -> Memo.return true
+    | `Disabled ->
+      (* even if lock_dev_tools might be disabled, there might be a lock dir
+         created by `dune tools install` *)
+      let path = Lock_dir.dev_tool_external_lock_dir Ocamlformat in
+      Fs_memo.dir_exists (Path.Outside_build_dir.External path)
   ;;
 
   (* Config files for ocamlformat. When these are changed, running
@@ -133,7 +137,7 @@ let gen_rules_output
   let loc = Format_config.loc config in
   let dir = Path.Build.parent_exn output_dir in
   let alias_formatted = Alias.fmt ~dir:output_dir in
-  let ocamlformat_is_locked = Ocamlformat.dev_tool_lock_dir_exists () in
+  let* ocamlformat_is_locked = Ocamlformat.dev_tool_lock_dir_exists () in
   let setup_formatting file =
     (let input_basename = Path.Source.basename file in
      let input = Path.Build.relative dir input_basename in

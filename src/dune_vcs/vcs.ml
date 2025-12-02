@@ -141,8 +141,14 @@ let make_fun name ~git ~hg =
   Staged.stage (Memo.exec memo)
 ;;
 
+let env_or_unstage name =
+  match Sys.getenv_opt name with
+  | None -> Staged.unstage
+  | Some x -> fun _ _ -> Memo.return @@ Some x
+;;
+
 let describe =
-  Staged.unstage
+  env_or_unstage "DUNE_VCS_DESCRIBE"
   @@ make_fun
        "vcs-describe"
        ~git:(fun t -> run_git t [ "describe"; "--always"; "--dirty"; "--abbrev=7" ])
@@ -153,7 +159,7 @@ let describe =
 ;;
 
 let commit_id =
-  Staged.unstage
+  env_or_unstage "DUNE_VCS_COMMIT_ID"
   @@ make_fun
        "vcs-commit-id"
        ~git:(fun t -> run_git t [ "rev-parse"; "HEAD" ])
@@ -161,6 +167,15 @@ let commit_id =
          let open Fiber.O in
          let+ res = run t [ "id"; "-i" ] in
          Some res)
+;;
+
+let env_or_unstage_paths name =
+  match Sys.getenv_opt name with
+  | None -> Staged.unstage
+  | Some x ->
+    fun _ _ ->
+      let l = Io.zero_strings_of_file @@ Path.of_string x in
+      Memo.return @@ List.map l ~f:Path.Source.of_string
 ;;
 
 let files =
@@ -213,7 +228,7 @@ let files =
     in
     run t args >>| List.filter_map ~f
   in
-  Staged.unstage
+  env_or_unstage_paths "DUNE_VCS_FILES"
   @@ make_fun
        "vcs-files"
        ~git:(f run_zero_separated_git [ "ls-tree"; "-z"; "-r"; "--name-only"; "HEAD" ])

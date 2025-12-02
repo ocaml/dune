@@ -1095,9 +1095,11 @@ let validate_using_declarations contents fname =
     (* Check if version contains non-ASCII or is invalid format *)
     let has_non_ascii = String.exists ver_str ~f:(fun c -> Char.code c > 127) in
     let is_valid_format =
-      match Scanf.sscanf ver_str "%u.%u%!" (fun a b -> a, b) with
-      | _ -> true
-      | exception _ -> false
+      (* Use the same validation logic as Syntax.Version.decode *)
+      match Scanf.sscanf ver_str "%u.%u%s" (fun a b s -> (a, b), s) with
+      | Ok (_, "") -> true
+      | Ok (_, _) -> true (* has trailing chars, but base format is valid *)
+      | Error () -> false
     in
     if has_non_ascii || not is_valid_format
     then (

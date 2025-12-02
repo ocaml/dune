@@ -16,6 +16,7 @@ Invalid version number:
   2 | (using menhir Ali)
                     ^^^
   Error: Invalid version. Version must be two numbers separated by a dot.
+  Hint: using menhir 3.0
   [1]
 
 Test with various non-ASCII characters:

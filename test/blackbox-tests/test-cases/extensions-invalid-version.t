@@ -64,3 +64,72 @@ Test with various non-ASCII characters:
   Error: Invalid version. Version must be two numbers separated by a dot.
   Hint: using menhir 3.0
   [1]
+
+Test with multiple extensions:
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.21)
+  > (using menhir 3.0)
+  > (using melange 0.1)
+  > EOF
+  $ dune build
+
+Multiple extensions with one invalid (ASCII):
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.21)
+  > (using menhir 3.0)
+  > (using melange invalid)
+  > EOF
+  $ dune build
+  File "dune-project", line 3, characters 15-22:
+  3 | (using melange invalid)
+                     ^^^^^^^
+  Error: Invalid version. Version must be two numbers separated by a dot.
+  Hint: using melange 1.0
+  [1]
+
+Multiple extensions with one invalid (non-ASCII):
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.21)
+  > (using menhir 3.0)
+  > (using melange 😀)
+  > EOF
+  $ dune build
+  File "dune-project", line 3, characters 15-19:
+  3 | (using melange 😀)
+                     ^^^^
+  Error: Invalid version. Version must be two numbers separated by a dot.
+  Hint: using melange 1.0
+  [1]
+
+Multiple extensions with first one invalid:
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.21)
+  > (using menhir bad)
+  > (using melange 0.1)
+  > EOF
+  $ dune build
+  File "dune-project", line 2, characters 14-17:
+  2 | (using menhir bad)
+                    ^^^
+  Error: Invalid version. Version must be two numbers separated by a dot.
+  Hint: using menhir 3.0
+  [1]
+
+Multiple extensions both invalid:
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.21)
+  > (using menhir abc)
+  > (using melange xyz)
+  > EOF
+  $ dune build
+  File "dune-project", line 2, characters 14-17:
+  2 | (using menhir abc)
+                    ^^^
+  Error: Invalid version. Version must be two numbers separated by a dot.
+  Hint: using menhir 3.0
+  [1]

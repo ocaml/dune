@@ -21,6 +21,9 @@ Invalid version number:
 
 Test with various non-ASCII characters:
 
+CR-someday benodiwal: The version_loc is greedy and captures the closing
+parenthesis.
+
   $ test_invalid_version "è"
   File "dune-project", line 2, characters 14-16:
   2 | (using menhir è)
@@ -56,6 +59,8 @@ Test with various non-ASCII characters:
   Hint: using menhir 3.0
   [1]
 
+CR-someday benodiwal: Unicode string lengths are miscomputed in location
+excerpts for East Asian characters.
 
   $ test_invalid_version "中3.16文"
   File "dune-project", line 2, characters 14-24:

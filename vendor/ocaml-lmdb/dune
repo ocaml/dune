@@ -4,5 +4,9 @@
  (libraries unix bigstringaf)
  (foreign_stubs
   (language c)
-  (flags :standard -I .)
+  (flags
+   :standard
+   -I
+   .
+   (:include flags/c_flags.sexp))
   (names lmdb_stubs mdb midl)))

@@ -1,5 +1,24 @@
+(rule
+ (enabled_if
+  (= %{ocaml-config:ccomp_type} "msvc"))
+ (target c_flags.sexp)
+ (action
+  (write-file %{target} "()")))
+
+(rule
+ (enabled_if
+  (<> %{ocaml-config:ccomp_type} "msvc"))
+ (target c_flags.sexp)
+ (action
+  (write-file %{target} "(-Wno-unused-variable)")))
+
 (library
  (name ocaml_inotify)
- (wrapped   true)
- (foreign_stubs (language c) (names inotify_stubs))
- (flags     (-w -3-6-27-32-33-35-50)))
+ (foreign_stubs
+  (language c)
+  (flags
+   :standard
+   (:include c_flags.sexp))
+  (names inotify_stubs))
+ (flags
+  (-w -3-6-27-32-33-35-50)))

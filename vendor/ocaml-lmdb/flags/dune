@@ -1,0 +1,4 @@
+(rule
+ (with-stdout-to
+  c_flags.sexp
+  (run %{ocaml} %{dep:gen_c_flags.ml} %{ocaml-config:ccomp_type})))

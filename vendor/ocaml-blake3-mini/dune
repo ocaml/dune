@@ -4,8 +4,7 @@
  (foreign_archives blake3)
  (foreign_stubs
   (language c)
-  (names blake3_stubs)
-  (flags :standard -O3)))
+  (names blake3_stubs)))
 
 ; There are 3 configrations for the blake3 rules:
 ; 1. Handwritten assembly for x86_64

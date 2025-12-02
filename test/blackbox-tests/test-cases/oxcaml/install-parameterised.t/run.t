@@ -36,7 +36,7 @@ the external parameter:
   $ cat > other_ext/dune <<EOF
   > (library (name other_ext)
   >   (implements external.param)
-  >   (libraries (other_impl external.impl)))
+  >   (libraries (instantiate other_impl external.impl)))
   > EOF
 
 We test that a binary can instantiate external libraries, with either external
@@ -55,11 +55,11 @@ and local implementations:
   $ cat > bin/dune <<EOF
   > (executable (name bin)
   >   (libraries
-  >     (external.paramlib external.impl :as paramlib_impl)
-  >     (external.paramlib other_ext :as paramlib_otherext)
+  >     (instantiate external.paramlib external.impl :as paramlib_impl)
+  >     (instantiate external.paramlib other_ext :as paramlib_otherext)
   >     external.lib ; has instances internally
-  >     (external.unwrapped_lib external.impl :as unwrap_lib)
-  >     (external.unwrapped_lib other_ext :as rewrap)
+  >     (instantiate external.unwrapped_lib external.impl :as unwrap_lib)
+  >     (instantiate external.unwrapped_lib other_ext :as rewrap)
   >     other_ext))
   > EOF
 

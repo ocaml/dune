@@ -138,17 +138,17 @@ let decode ~allow_re_export =
          ; ( "select"
            , let+ select = Select.decode in
              Select select )
+         ; ( "instantiate"
+           , let+ () = Syntax.since Oxcaml.syntax (0, 1)
+             and+ loc, lib = located Lib_name.decode
+             and+ arguments, new_name =
+               until_keyword
+                 ":as"
+                 ~before:(located Lib_name.decode)
+                 ~after:Module_name.decode
+             in
+             Instantiate { loc; lib; arguments; new_name } )
          ]
-       <|> enter
-             (let+ () = Syntax.since Oxcaml.syntax (0, 1)
-              and+ loc, lib = located Lib_name.decode
-              and+ arguments, new_name =
-                until_keyword
-                  ":as"
-                  ~before:(located Lib_name.decode)
-                  ~after:Module_name.decode
-              in
-              Instantiate { loc; lib; arguments; new_name })
        <|> let+ loc, name = located Lib_name.decode in
            Direct (loc, name))
   in
@@ -173,10 +173,10 @@ let encode =
       | None -> []
       | Some new_name -> [ string ":as"; Module_name.encode new_name ]
     in
-    list
-      sexp
-      ((Lib_name.encode lib :: List.map arguments ~f:(fun (_, arg) -> Lib_name.encode arg))
-       @ as_name)
+    List
+      (string "instantiate"
+       :: Lib_name.encode lib
+       :: (List.map arguments ~f:(fun (_, arg) -> Lib_name.encode arg) @ as_name))
 ;;
 
 module L = struct

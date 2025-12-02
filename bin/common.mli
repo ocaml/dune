@@ -17,7 +17,7 @@ val rpc
      ]
 
 val watch_exclusions : t -> string list
-val stats : t -> Dune_stats.t option
+val stats : t -> Dune_trace.t option
 val print_metrics : t -> bool
 val dump_memo_graph_file : t -> Path.External.t option
 val dump_memo_graph_format : t -> Dune_graph.Graph.File_format.t

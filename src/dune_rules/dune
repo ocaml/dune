@@ -25,7 +25,7 @@
   dune_rpc_private
   dune_section
   dune_site_private
-  dune_stats
+  dune_trace
   dune_targets
   dune_util
   dune_vcs

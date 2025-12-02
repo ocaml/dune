@@ -319,7 +319,7 @@ end = struct
         let common = Event.common_fields ~name:"evaluated_rules" ~ts () in
         Event.counter common args
       in
-      Dune_stats.emit stats event)
+      Dune_trace.emit stats event)
   ;;
 
   module Exec_result = struct

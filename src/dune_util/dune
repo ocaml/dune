@@ -2,7 +2,7 @@
  (name dune_util)
  (libraries
   stdune
-  dune_stats
+  dune_trace
   chrome_trace
   xdg
   dyn

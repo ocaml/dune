@@ -9,7 +9,7 @@ end
 
 module Json = struct
   include Chrome_trace.Json
-  include Dune_stats.Json
+  include Dune_trace.Json
 end
 
 module Output = struct

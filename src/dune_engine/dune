@@ -19,7 +19,7 @@
   dune_glob
   dune_targets
   chrome_trace
-  dune_stats
+  dune_trace
   dune_action_plugin
   dune_util
   build_path_prefix_map

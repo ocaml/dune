@@ -2,7 +2,7 @@
  (name bench)
  (modules bench metrics)
  (libraries
-  dune_stats
+  dune_trace
   dune_console
   chrome_trace
   stdune

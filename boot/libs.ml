@@ -117,8 +117,8 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_stats"
-    ; main_module_name = Some "Dune_stats"
+  ; { path = "src/dune_trace"
+    ; main_module_name = Some "Dune_trace"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -555,7 +555,7 @@ let main =
             ; "Dune_config"
             ; "Dune_config_file"
             ; "Chrome_trace"
-            ; "Dune_stats"
+            ; "Dune_trace"
             ; "Csexp"
             ; "Csexp_rpc"
             ; "Dune_rpc_impl"

@@ -6,7 +6,7 @@ open Dune_async_io
 module Config = struct
   type t =
     { concurrency : int
-    ; stats : Dune_stats.t option
+    ; stats : Dune_trace.t option
     ; print_ctrl_c_warning : bool
     ; watch_exclusions : string list
     }
@@ -122,7 +122,7 @@ module Event : sig
     type event := t
     type t
 
-    val create : Dune_stats.t option -> t
+    val create : Dune_trace.t option -> t
 
     (** Return the next event. File changes event are always flattened and
         returned first. *)
@@ -187,7 +187,7 @@ end = struct
       ; mutable pending_worker_tasks : int
       ; worker_tasks_completed : Fiber.fill Queue.t
       ; timers : Fiber.fill Queue.t
-      ; stats : Dune_stats.t option
+      ; stats : Dune_trace.t option
       ; mutable got_event : bool
       ; mutable yield : unit Fiber.Ivar.t option
       }
@@ -343,7 +343,7 @@ end = struct
     end
 
     let next q =
-      Option.iter q.stats ~f:Dune_stats.record_gc_and_fd;
+      Option.iter q.stats ~f:Dune_trace.record_gc_and_fd;
       Mutex.lock q.mutex;
       let rec loop () =
         match
@@ -1191,8 +1191,8 @@ module Run = struct
            different iterations of the watch mode in the event viewer *)
         Chrome_trace.Event.instant ~scope:Global fields
       in
-      Dune_stats.emit stats event;
-      Dune_stats.flush stats)
+      Dune_trace.emit stats event;
+      Dune_trace.flush stats)
   ;;
 
   let poll step =

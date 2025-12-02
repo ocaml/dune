@@ -9,7 +9,7 @@ val create
   -> root:string
   -> handle:(unit Dune_rpc_server.Handler.t -> unit)
        (** register additional requests or notifications *)
-  -> Dune_stats.t option
+  -> Dune_trace.t option
   -> parse_build_arg:(string -> Dune_lang.Dep_conf.t)
   -> Dune_lang.Dep_conf.t t
 

@@ -8,7 +8,7 @@
 
 #define MAX_FDS 1024 // should be enough for anybody
 
-CAMLprim value dune_stats_open_fds(value v_pid) {
+CAMLprim value dune_trace_open_fds(value v_pid) {
   CAMLparam1(v_pid);
   pid_t pid = Int_val(v_pid);
   int size = PROC_PIDLISTFD_SIZE * MAX_FDS;
@@ -25,19 +25,19 @@ CAMLprim value dune_stats_open_fds(value v_pid) {
   CAMLreturn(Val_int(fds));
 }
 
-CAMLprim value dune_stats_available(value unit) {
+CAMLprim value dune_trace_available(value unit) {
   CAMLparam1(unit);
   CAMLreturn(Val_true);
 }
 
 #else
 
-CAMLprim value dune_stats_available(value unit) {
+CAMLprim value dune_trace_available(value unit) {
   CAMLparam1(unit);
   CAMLreturn(Val_false);
 }
 
-CAMLprim value dune_stats_open_fds(value v_pid) {
+CAMLprim value dune_trace_open_fds(value v_pid) {
   (void)v_pid;
   caml_failwith("function is available only on macos");
 }

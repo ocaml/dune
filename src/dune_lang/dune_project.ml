@@ -1088,20 +1088,11 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
 
 let validate_using_declarations contents fname =
   (* Scan and validate (using ...) declarations before s-expression parsing *)
-  let using_decls = Using_declaration_parser.scan contents fname in
-  List.iter using_decls ~f:(fun { Using_declaration_parser.name; version } ->
+  let using_decls = Using_declaration.scan contents fname in
+  List.iter using_decls ~f:(fun { Using_declaration.name; version } ->
     let _name_loc, name_str = name in
     let ver_loc, ver_str = version in
-    (* Check if version contains non-ASCII or is invalid format *)
-    let has_non_ascii = String.exists ver_str ~f:(fun c -> Char.code c > 127) in
-    let is_valid_format =
-      (* Use the same validation logic as Syntax.Version.decode *)
-      match Scanf.sscanf ver_str "%u.%u%s" (fun a b s -> (a, b), s) with
-      | Ok (_, "") -> true
-      | Ok (_, _) -> true (* has trailing chars, but base format is valid *)
-      | Error () -> false
-    in
-    if has_non_ascii || not is_valid_format
+    if Using_declaration.is_invalid_version ver_str
     then (
       let hints =
         match Extension.find name_str with

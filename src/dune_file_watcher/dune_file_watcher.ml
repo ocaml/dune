@@ -271,7 +271,7 @@ end = struct
     let id = Sync_id.gen () in
     let fn = id |> Sync_id.to_int |> string_of_int in
     let path = Filename.concat (Lazy.force special_dir) fn in
-    Unix.close (Unix.openfile path [ O_WRONLY; O_CREAT; O_TRUNC ] 0o666);
+    Unix.close (Unix.openfile path [ O_WRONLY; O_CREAT; O_TRUNC; O_CLOEXEC ] 0o666);
     Table.set t.sync_table fn id;
     id
   ;;

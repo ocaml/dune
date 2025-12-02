@@ -52,7 +52,7 @@ Finally the binary can instantiate `lib_ab` by providing all its parameters:
   $ cat >bin/dune <<EOF
   > (executable
   >   (public_name project.bin) (name bin)
-  >   (libraries (lib_ab b_impl a_impl)))
+  >   (libraries (instantiate lib_ab b_impl a_impl)))
   > EOF
 
   $ dune exec project.bin
@@ -63,13 +63,13 @@ It's an error for the binary to partially instantiate `lib_ab`:
   $ cat >bin/dune <<EOF
   > (executable
   >   (public_name project.bin) (name bin)
-  >   (libraries (lib_ab b_impl))) ; missing a_impl
+  >   (libraries (instantiate lib_ab b_impl))) ; missing a_impl
   > EOF
 
   $ dune exec project.bin
-  File "bin/dune", line 3, characters 14-20:
-  3 |   (libraries (lib_ab b_impl))) ; missing a_impl
-                    ^^^^^^
+  File "bin/dune", line 3, characters 26-32:
+  3 |   (libraries (instantiate lib_ab b_impl))) ; missing a_impl
+                                ^^^^^^
   Error: Parameter "project.a" is missing.
   -> required by _build/default/bin/bin.exe
   -> required by _build/install/default/bin/project.bin
@@ -87,14 +87,14 @@ overlapping modules)
   >   (libraries
   >     a_impl
   >     project.a_impl
-  >     (lib_ab a_impl b_impl)
-  >     (lib_ab a_impl b_impl)))
+  >     (instantiate lib_ab a_impl b_impl)
+  >     (instantiate lib_ab a_impl b_impl)))
   > EOF
 
   $ dune exec project.bin
-  File "bin/dune", line 7, characters 5-11:
-  7 |     (lib_ab a_impl b_impl)))
-           ^^^^^^
+  File "bin/dune", line 7, characters 17-23:
+  7 |     (instantiate lib_ab a_impl b_impl)))
+                       ^^^^^^
   Error: The instance name Lib_ab is already used.
   -> required by _build/default/bin/.bin.eobjs/dune__exe.ml-gen
   -> required by _build/default/bin/.bin.eobjs/byte/dune__exe.cmi
@@ -124,13 +124,13 @@ dependencies, because its parameter `b` is missing:
   >   (libraries
   >     a_impl
   >     project.a_impl
-  >     (lib_ab a_impl a_of_b)))
+  >     (instantiate lib_ab a_impl a_of_b)))
   > EOF
 
   $ dune exec project.bin
-  File "bin/dune", line 6, characters 19-25:
-  6 |     (lib_ab a_impl a_of_b)))
-                         ^^^^^^
+  File "bin/dune", line 6, characters 31-37:
+  6 |     (instantiate lib_ab a_impl a_of_b)))
+                                     ^^^^^^
   Error: Duplicate arguments project.a_impl and project.a_of_b for parameter
   project.a.
   -> required by _build/default/bin/.bin.eobjs/dune__exe.ml-gen
@@ -138,9 +138,9 @@ dependencies, because its parameter `b` is missing:
   -> required by _build/default/bin/.bin.eobjs/native/dune__exe.cmx
   -> required by _build/default/bin/bin.exe
   -> required by _build/install/default/bin/project.bin
-  File "bin/dune", line 6, characters 19-25:
-  6 |     (lib_ab a_impl a_of_b)))
-                         ^^^^^^
+  File "bin/dune", line 6, characters 31-37:
+  6 |     (instantiate lib_ab a_impl a_of_b)))
+                                     ^^^^^^
   Error: Parameter "project.b" is missing.
   -> required by _build/default/bin/.bin.eobjs/native/dune__exe__Bin.cmx
   -> required by _build/default/bin/bin.exe
@@ -163,7 +163,7 @@ implicitly passed to it:
   > (executable
   >   (public_name project.bin) (name bin)
   >   (libraries
-  >     (lib_ab a_impl b_impl)))
+  >     (instantiate lib_ab a_impl b_impl)))
   > EOF
 
   $ dune exec project.bin
@@ -178,7 +178,7 @@ We can also do a partial application of `lib_ab`:
   >   (public_name project.lib_apply)
   >   (name lib_apply)
   >   (parameters b)
-  >   (libraries (lib_ab a_impl)))
+  >   (libraries (instantiate lib_ab a_impl)))
   > EOF
 
 And use renaming with `:as` in the executable:
@@ -187,7 +187,7 @@ And use renaming with `:as` in the executable:
   > (executable
   >   (public_name project.bin) (name bin)
   >   (libraries
-  >     (lib_apply b_impl :as lib_ab)))
+  >     (instantiate lib_apply b_impl :as lib_ab)))
   > EOF
 
   $ dune exec project.bin
@@ -199,13 +199,13 @@ It's an error to provide a non-required parameter:
   > (executable
   >   (public_name project.bin) (name bin)
   >   (libraries
-  >     (lib_apply a_impl b_impl :as lib_ab)))
+  >     (instantiate lib_apply a_impl b_impl :as lib_ab)))
   > EOF
 
   $ dune exec project.bin
-  File "bin/dune", line 4, characters 15-21:
-  4 |     (lib_apply a_impl b_impl :as lib_ab)))
-                     ^^^^^^
+  File "bin/dune", line 4, characters 27-33:
+  4 |     (instantiate lib_apply a_impl b_impl :as lib_ab)))
+                                 ^^^^^^
   Error: Argument project.a implements unexpected parameter project.a_impl
   -> required by _build/default/bin/.bin.eobjs/dune__exe.ml-gen
   -> required by _build/default/bin/.bin.eobjs/byte/dune__exe.cmi
@@ -231,12 +231,12 @@ which one to use:
   > (executable
   >   (public_name project.bin) (name bin)
   >   (libraries
-  >     (lib_apply b_impl b_impl2)))
+  >     (instantiate lib_apply b_impl b_impl2)))
   > EOF
   $ dune exec project.bin
-  File "bin/dune", line 4, characters 22-29:
-  4 |     (lib_apply b_impl b_impl2)))
-                            ^^^^^^^
+  File "bin/dune", line 4, characters 34-41:
+  4 |     (instantiate lib_apply b_impl b_impl2)))
+                                        ^^^^^^^
   Error: Duplicate arguments project.b_impl and project.b_impl2 for parameter
   project.b.
   -> required by _build/default/bin/.bin.eobjs/dune__exe.ml-gen
@@ -252,12 +252,12 @@ Same error if the argument is repeated:
   > (executable
   >   (public_name project.bin) (name bin)
   >   (libraries
-  >     (lib_apply b_impl b_impl)))
+  >     (instantiate lib_apply b_impl b_impl)))
   > EOF
   $ dune exec project.bin
-  File "bin/dune", line 4, characters 22-28:
-  4 |     (lib_apply b_impl b_impl)))
-                            ^^^^^^
+  File "bin/dune", line 4, characters 34-40:
+  4 |     (instantiate lib_apply b_impl b_impl)))
+                                        ^^^^^^
   Error: Duplicate arguments project.b_impl and project.b_impl for parameter
   project.b.
   -> required by _build/default/bin/.bin.eobjs/dune__exe.ml-gen
@@ -273,8 +273,8 @@ We can instantiate the same library multiple times by giving it different names:
   > (executable
   >   (public_name project.bin) (name bin)
   >   (libraries
-  >     (lib_apply b_impl  :as applied_b)
-  >     (lib_apply b_impl2 :as applied_b2)))
+  >     (instantiate lib_apply b_impl  :as applied_b)
+  >     (instantiate lib_apply b_impl2 :as applied_b2)))
   > EOF
 
   $ echo 'let () = print_endline Applied_b.ab'  >  bin/bin.ml
@@ -296,10 +296,10 @@ We can also instantiate multiple times at the level of libraries:
   > (library (public_name project.lib_apply) (name lib_apply)
   >   (parameters b)
   >   (libraries
-  >     (lib_ab a_impl        :as lib_a_)     ; partial application
-  >     (lib_ab a_impl b_impl :as lib_a_b)    ; full application
-  >     (lib_ab a_of_b        :as lib_aofb_)  ; double partial application
-  >     (lib_ab a_of_b b_impl :as lib_aofb_b) ; partial application on first argument
+  >     (instantiate lib_ab a_impl        :as lib_a_)     ; partial application
+  >     (instantiate lib_ab a_impl b_impl :as lib_a_b)    ; full application
+  >     (instantiate lib_ab a_of_b        :as lib_aofb_)  ; double partial application
+  >     (instantiate lib_ab a_of_b b_impl :as lib_aofb_b) ; partial application on first argument
   > ))
   > EOF
 
@@ -327,8 +327,8 @@ The same compilation also works in bytecode:
   >   (public_name project.bin) (name bin)
   >   (modes byte)
   >   (libraries
-  >     (lib_apply b_impl :as applied_b)
-  >     (lib_apply b_impl2 :as applied_b2)))
+  >     (instantiate lib_apply b_impl :as applied_b)
+  >     (instantiate lib_apply b_impl2 :as applied_b2)))
   > EOF
   $ dune exec project.bin
   lib_ab[a,?](a,a_of_b(b),b) lib_ab[a,b](a,a_of_b(b),b) lib_ab[a_of_b[?],?](a_of_b(b),a_of_b(b),b) lib_ab[a_of_b[?],b](a_of_b(b),a_of_b(b),b)
@@ -658,7 +658,7 @@ The `dune-package` should list the different instantiations in the dependencies:
    (archives (byte lib_ab/lib_ab.cma) (native lib_ab/lib_ab.cmxa))
    (plugins (byte lib_ab/lib_ab.cma) (native lib_ab/lib_ab.cmxs))
    (native_archives lib_ab/lib_ab.a)
-   (requires project.a project.b (project.a_of_b))
+   (requires project.a project.b (instantiate project.a_of_b))
    (parameters project.a project.b)
    (main_module_name Lib_ab)
    (modes byte native)
@@ -676,12 +676,12 @@ The `dune-package` should list the different instantiations in the dependencies:
    (requires
     project.b
     project.a_impl
-    (project.lib_ab project.a_impl)
+    (instantiate project.lib_ab project.a_impl)
     project.b_impl
-    (project.lib_ab project.a_impl project.b_impl)
-    (project.a_of_b)
-    (project.lib_ab project.a_of_b)
-    (project.lib_ab project.a_of_b project.b_impl))
+    (instantiate project.lib_ab project.a_impl project.b_impl)
+    (instantiate project.a_of_b)
+    (instantiate project.lib_ab project.a_of_b)
+    (instantiate project.lib_ab project.a_of_b project.b_impl))
    (parameters project.b)
    (main_module_name Lib_apply)
    (modes byte native)

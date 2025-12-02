@@ -79,7 +79,7 @@ A parameterised dependency ``foo`` can be instantiated with the arguments
 
 .. code:: dune
 
-   (foo bar qux)
+   (instantiate foo bar qux)
 
 For example:
 
@@ -87,7 +87,7 @@ For example:
 
    (library
     (name test)
-    (libraries (foo bar qux)))
+    (libraries (instantiate foo bar qux)))
 
 The library ``foo`` must have declared the set of parameters it expects, and
 the arguments given to the instantiation must implement a subset of these
@@ -105,8 +105,8 @@ example:
    (library
     (name test)
     (libraries
-     (foo a   b   :as foo_a_b)
-     (foo bar qux :as foo_bar_qux)))
+     (instantiate foo a   b   :as foo_a_b)
+     (instantiate foo bar qux :as foo_bar_qux)))
 
 Then the instantiations will be available under the names ``Foo_a_b`` and
 ``Foo_bar_qux``.
@@ -121,13 +121,14 @@ parameters ``p`` and ``q``:
     (name test)
     (parameters p q)
     (libraries
-     (foo :as foo_implicit)
-     (foo an_implementation_of_q :as foo_q)
-     (foo bar qux :as foo_bar_qux)
+     (instantiate foo :as foo_implicit)
+     (instantiate foo an_implementation_of_q :as foo_q)
+     (instantiate foo bar qux :as foo_bar_qux)
      other_foo))
 
-Then ``foo_implicit`` is implicitly ``(foo p q)``,
-while ``(foo an_implementation_of_q)`` will only inherit the parameter ``p``.
+Then ``foo_implicit`` is implicitly ``(instantiate foo p q)``, while
+``(instantiate foo an_implementation_of_q)`` will only inherit the parameter
+``p``.
 
 If ``other_foo``, which is not explicitly instantiated here, is also
 parameterised by the parameters ``p`` (and) or ``q``, it will also inherit
@@ -138,9 +139,9 @@ and are not listed in the parent library parameters.
 For unwrapped libaries, the instantiation of parameterised libraries is not
 currently generated. This is subject to change soon, but in the mean time,
 you'll need to manually declare the instantiations: If you depend on the
-instantiation ``(foo bar qux :as new_name)`` with ``bar`` an implementation of
-the parameter ``param_bar`` and ``qux`` an implementation of ``param_qux``,
-then you'll need to write the following:
+instantiation ``(instantiate foo bar qux :as new_name)`` with ``bar`` an
+implementation of the parameter ``param_bar`` and ``qux`` an implementation of
+``param_qux``, then you'll need to write the following:
 
 .. code:: ocaml
 

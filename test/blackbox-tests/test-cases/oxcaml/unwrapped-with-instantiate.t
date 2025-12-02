@@ -62,7 +62,7 @@ And an executable:
   $ echo 'let util () = print_endline (Lib.v ())' > bin/util.ml
   $ echo 'let () = A.a ()' > bin/bin.ml
   $ cat > bin/dune <<EOF
-  > (executable (name bin) (libraries (lib impl)))
+  > (executable (name bin) (libraries (instantiate lib impl)))
   > EOF
 
   $ dune exec ./bin/bin.exe
@@ -91,8 +91,8 @@ the result is wrapped:
   $ cat > bin/dune <<EOF
   > (executable (name bin)
   >   (libraries
-  >     (lib impl :as lib1)
-  >     (lib impl :as lib2)))
+  >     (instantiate lib impl :as lib1)
+  >     (instantiate lib impl :as lib2)))
   > EOF
   $ dune exec ./bin/bin.exe
   lib:helper:IMPL helper:IMPL
@@ -124,12 +124,12 @@ Testing that it also works with another layer of library:
   $ mkdir lib2
   $ echo 'let v2 () = "lib2:" ^ Lib.v () ^ " " ^ Helper.v ()' > lib2/lib2.ml
   $ cat > lib2/dune <<EOF
-  > (library (name lib2) (libraries (lib impl)))
+  > (library (name lib2) (libraries (instantiate lib impl)))
   > EOF
 
   $ echo 'let () = A.a (); print_endline (Lib2.v2 ())' > bin/bin.ml
   $ cat > bin/dune <<EOF
-  > (executable (name bin) (libraries (lib impl) lib2))
+  > (executable (name bin) (libraries (instantiate lib impl) lib2))
   > EOF
 
   $ dune exec ./bin/bin.exe
@@ -150,7 +150,7 @@ because we don't have a file where to put the instantiations:
   >   (name unwrap_lib)
   >   (wrapped false)
   >   (flags "-w" "-53") ; ignore misplaced-attribute warning
-  >   (libraries (lib impl)))
+  >   (libraries (instantiate lib impl)))
   > EOF
 
   $ echo 'let () = print_endline (Unwrap_a.a () ^ "," ^ Unwrap_b.b ())' > bin/bin.ml

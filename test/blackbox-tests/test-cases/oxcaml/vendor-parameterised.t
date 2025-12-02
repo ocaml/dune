@@ -56,7 +56,7 @@ non-public executable:
   >   (name vendored_lib)
   >   (modules vendored_lib)
   >   (libraries
-  >     (lib_param param_impl)))
+  >     (instantiate lib_param param_impl)))
   > 
   > (executable
   >   (name vendored_bin)
@@ -124,7 +124,7 @@ But the vendored binary could use private libraries:
   >   (name vendored_lib)
   >   (modules vendored_lib)
   >   (libraries
-  >     (lib_param param_impl)))
+  >     (instantiate lib_param param_impl)))
   > 
   > (executable
   >   (name vendored_bin)
@@ -165,7 +165,7 @@ being public:
   >   (name vendored_lib)
   >   (modules vendored_lib)
   >   (libraries
-  >     (lib_param param_impl)))
+  >     (instantiate lib_param param_impl)))
   > 
   > (executable
   >   (name vendored_bin)
@@ -204,7 +204,7 @@ Or only the parameter being public:
   >   (name vendored_lib)
   >   (modules vendored_lib)
   >   (libraries
-  >     (lib_param param_impl)))
+  >     (instantiate lib_param param_impl)))
   > 
   > (executable
   >   (name vendored_bin)
@@ -257,7 +257,7 @@ But only if there are no public stanza depending on it:
   >   (name vendored_lib)
   >   (modules vendored_lib)
   >   (libraries
-  >     (lib_param param_impl)))
+  >     (instantiate lib_param param_impl)))
   > 
   > (executable
   >   (name vendored_bin)

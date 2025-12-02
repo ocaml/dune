@@ -35,11 +35,11 @@ doubling:
   $ cat > dune <<EOF
   > (library (name x_impl) (modules x_impl) (implements x))
   > (library (name f) (modules f) (parameters x) (implements x))
-  > (library (name g) (modules g) (parameters x) (implements x) (libraries (f f)))
-  > (library (name h) (modules h) (parameters x) (implements x) (libraries (g g)))
-  > (library (name i) (modules i) (parameters x) (implements x) (libraries (h h)))
-  > (library (name j) (modules j) (parameters x) (implements x) (libraries (i i)))
-  > (executable (name bin) (modules bin) (libraries (j x_impl)))
+  > (library (name g) (modules g) (parameters x) (implements x) (libraries (instantiate f f)))
+  > (library (name h) (modules h) (parameters x) (implements x) (libraries (instantiate g g)))
+  > (library (name i) (modules i) (parameters x) (implements x) (libraries (instantiate h h)))
+  > (library (name j) (modules j) (parameters x) (implements x) (libraries (instantiate i i)))
+  > (executable (name bin) (modules bin) (libraries (instantiate j x_impl)))
   > EOF
 
 The final result doubles for each layer:

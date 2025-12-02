@@ -76,9 +76,4 @@ Then an executable:
 Finally run it:
 
   $ dune exec ./bin/bin.exe
-  Error: ocamldep returned unexpected output for _build/default/lib/util.ml:
-  > lib/util.pp.ml: Param
-  -> required by
-     _build/default/.parameterised/dc92a2af50ca3cf185f22c258336dc33/lib/lib!impl/archive.cmxa
-  -> required by _build/default/bin/bin.exe
-  [1]
+  impl, impl/impl.ml, lib/util.ml, lib/lib.ml

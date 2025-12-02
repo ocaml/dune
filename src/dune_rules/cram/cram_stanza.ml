@@ -45,6 +45,7 @@ type t =
   ; package : Package.t option
   ; runtest_alias : (Loc.t * bool) option
   ; timeout : (Loc.t * float) option
+  ; setup_scripts : (Loc.t * string) list
   }
 
 include Stanza.Make (struct
@@ -100,6 +101,13 @@ let decode =
        field_o
          "conflict_markers"
          (Dune_lang.Syntax.since Stanza.syntax (3, 21) >>> Conflict_markers.decode)
+     and+ setup_scripts =
+       let+ scripts =
+         field_o
+           "setup_scripts"
+           (Dune_lang.Syntax.since Stanza.syntax (3, 21) >>> repeat (located string))
+       in
+       Option.value scripts ~default:[]
      in
      { loc
      ; alias
@@ -111,5 +119,6 @@ let decode =
      ; runtest_alias
      ; timeout
      ; conflict_markers
+     ; setup_scripts
      })
 ;;

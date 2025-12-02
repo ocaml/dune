@@ -14,6 +14,7 @@ val run
   -> script:Path.t
   -> output:Path.Build.t
   -> timeout:(Loc.t * float) option
+  -> setup_scripts:Path.t list
   -> Action.t
 
 (** Produces a diff if [src] needs to be updated *)

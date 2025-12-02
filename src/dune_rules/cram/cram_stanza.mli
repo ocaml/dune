@@ -23,6 +23,7 @@ type t =
   ; package : Package.t option
   ; runtest_alias : (Loc.t * bool) option
   ; timeout : (Loc.t * float) option
+  ; setup_scripts : (Loc.t * string) list
   }
 
 val decode : t Dune_lang.Decoder.t

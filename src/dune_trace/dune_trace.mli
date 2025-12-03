@@ -1,6 +1,8 @@
 type t
 
 module Json : sig
+  type t = Chrome_trace.Json.t
+
   val to_string : Chrome_trace.Json.t -> string
 end
 
@@ -22,12 +24,13 @@ val extended_build_job_info : t -> bool
 
 module Event : sig
   type t
+  type data
 
-  type data =
-    { args : Chrome_trace.Event.args option
-    ; cat : string list option
-    ; name : string
-    }
+  val data
+    :  args:(string * Json.t) list option
+    -> cat:string list option
+    -> name:string
+    -> data
 end
 
 val start : t option -> (unit -> Event.data) -> Event.t option

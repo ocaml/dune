@@ -95,6 +95,8 @@ module Event = struct
     ; event_data : data
     ; start : float
     }
+
+  let data ~args ~cat ~name = { args; cat; name }
 end
 
 let start t k : Event.t option =

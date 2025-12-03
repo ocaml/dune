@@ -9,7 +9,8 @@ Much like in regular projects, to add a library we need to add a dependency to
 it. For simplicity we will use the popular `fmt` library as an example, but any
 package from the [package repository](https://ocaml.org/packages) can be used.
 
-First we update the `dune-project` file to add a dependency on the opam package.
+To do so we update the `dune-project` file to add a dependency on the opam
+package.
 
 ::::{dropdown} `dune-project`
 :icon: file-code
@@ -21,28 +22,6 @@ First we update the `dune-project` file to add a dependency on the opam package.
 
 ::::
 
-After this change to our project dependencies, we need to relock dependencies
-to update our lock directory with the new packages.
-
-```
-$ dune pkg lock
-Solution for dune.lock:
-- base-unix.base
-- fmt.0.9.0
-- ocaml.5.2.0
-- ocaml-base-compiler.5.2.0
-- ocaml-config.3
-- ocamlbuild.0.15.0+dune
-- ocamlfind.1.9.6+dune
-- topkg.1.0.7
-```
-
-You can see a lot of new dependencies, among these `fmt`.
-
-:::{note}
-The list of packages being output includes all dependencies of your project,
-including transitive dependencies.
-:::
 
 This will take care of installing the dependencies, but we still need to add it to
 our build as a library as usual:
@@ -80,8 +59,10 @@ To build it we just call `build` again.
 $ dune build
 ```
 
-which will download and install the new dependencies and build our project as
-before.
+This will recongnize that the project depends on new packages. Thus it will
+re-run the internal dependency solver to find a solution for the set of
+packages to use. It will then use this new solution to download, build and
+install these dependencies automatically.
 
 As we see, the code works and uses `fmt` to do the pretty-printing:
 
@@ -106,35 +87,24 @@ used for opam dependencies in the `dune-project` file.
 
 ::::
 
-This ensures the `fmt` package to install will be compatible with
-our request. These constraints will be taken into account the next time the
-package is locked:
+This ensures the `fmt` package to install will be compatible with our request.
+These constraints will be taken into account the next time the build system is
+ran.
 
+```sh
+dune build
 ```
-$ dune pkg lock
-Solution for dune.lock:
-- base-unix.base
-- fmt.0.9.0
-- ocaml.5.2.0
-- ocaml-base-compiler.5.2.0
-- ocaml-config.3
-- ocamlbuild.0.15.0+dune
-- ocamlfind.1.9.6+dune
-- topkg.1.0.7
-```
-
-The version of `fmt` picked is indeed between `0.6` and `1.0`.
 
 ## Removing Dependencies
 
 Given all dependencies are defined in the `dune-project` file, removing a
-dependency means to remove the dependency from the `depends` field of your
-`dune-project` and relocking the project.
+dependency just means to remove the dependency from the `depends` field of your
+`dune-project`.
 
-The new lock directory will not depend on the package anymore, and in future
-builds, the package will not be accessible as `library` anymore.
+From then on the project will not depend on the package anymore, and in future
+builds the package will not be accessible as `library` anymore.
 
 :::{note}
-The removed dependency might still be part of the lock directory if some other
-dependency of your project depends on it.
+The removed dependency might still be accessible if some other dependency of
+your project depends on it, thus if it is a transitive dependency.
 :::

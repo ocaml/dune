@@ -24,4 +24,5 @@ setup
 dependencies
 pinning
 repos
+locking
 :::

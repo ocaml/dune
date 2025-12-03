@@ -15,6 +15,7 @@ Invalid version number:
   1 | (lang dune Ali)
                  ^^^
   Error: Invalid version. Version must be two numbers separated by a dot.
+  Hint: lang dune 3.21
   [1]
 
 Test with various non-ASCII characters:

@@ -288,6 +288,42 @@ module Extension = struct
     ()
   ;;
 
+  (* Decode an extension version with hints on error *)
+  let decode_version_with_hints extension_name : Syntax.Version.t Decoder.t =
+    let open Decoder in
+    raw
+    >>= fun sexp ->
+    match sexp with
+    | Atom (loc, A s) ->
+      (* Check if version has invalid format (non-ASCII or not X.Y pattern) *)
+      let has_invalid_format =
+        String.exists s ~f:(fun c -> Char.code c > 127)
+        ||
+        match Scanf.sscanf s "%u.%u%s" (fun a b s -> (a, b), s) with
+        | Ok (_, "") -> false
+        | Ok (_, _) -> false (* has trailing chars, but base format is valid *)
+        | Error () -> true
+      in
+      if has_invalid_format
+      then (
+        let hints =
+          match Table.find extensions extension_name with
+          | None -> []
+          | Some (Extension (Packed e)) ->
+            (match Syntax.greatest_supported_version e.syntax with
+             | Some latest ->
+               [ Pp.textf "using %s %s" extension_name (Syntax.Version.to_string latest) ]
+             | None -> [])
+          | Some (Deleted_in _) -> []
+        in
+        User_error.raise
+          ~loc
+          ~hints
+          [ Pp.text "Invalid version. Version must be two numbers separated by a dot." ])
+      else Syntax.Version.decode
+    | _ -> Syntax.Version.decode
+  ;;
+
   let instantiate ~dune_lang_ver ~loc ~parse_args (name_loc, name) (ver_loc, ver) =
     match Table.find extensions name with
     | None ->
@@ -894,9 +930,9 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
      and+ explicit_extensions =
        multi_field
          "using"
-         (let+ loc = loc
-          and+ name = located string
-          and+ ver = located Syntax.Version.decode
+         (let* name = located string in
+          let+ loc = loc
+          and+ ver = located (Extension.decode_version_with_hints (snd name))
           and+ parse_args = capture in
           (* We don't parse the arguments quite yet as we want to set the
              version of extensions before parsing them. *)

@@ -139,7 +139,7 @@ let blank     = [' ' '\t' '\012']
 let digit     = ['0'-'9']
 let hexdigit  = ['0'-'9' 'a'-'f' 'A'-'F']
 
-let atom_char = [^ ';' '(' ')' '"' '\000'-'\032' '\127'-'\255']
+let atom_char = [^ ';' '(' ')' '"' '\000'-'\032' '\127']
 let varname_char = atom_char # [ ':' '%' '{' '}' ]
 
 rule token with_comments = parse

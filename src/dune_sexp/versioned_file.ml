@@ -57,10 +57,18 @@ struct
 
     let parse first_line : Instance.t =
       let { First_line.lang = name_loc, name; version = ver_loc, ver } = first_line in
+      (* Check if version has invalid format (non-ASCII or not X.Y pattern) *)
+      let has_invalid_format =
+        String.exists ver ~f:(fun c -> Char.code c > 127)
+        ||
+        match Scanf.sscanf ver "%u.%u%s" (fun a b s -> (a, b), s) with
+        | Ok (_, "") -> false
+        | Ok (_, _) -> false (* has trailing chars, but base format is valid *)
+        | Error () -> true
+      in
       let ver_atom =
-        match Atom.parse ver with
-        | Some atom -> atom
-        | None ->
+        if has_invalid_format
+        then (
           let hints =
             match Table.find langs name with
             | None -> []
@@ -71,7 +79,14 @@ struct
           User_error.raise
             ~loc:ver_loc
             ~hints
-            [ Pp.text "Invalid version. Version must be two numbers separated by a dot." ]
+            [ Pp.text "Invalid version. Version must be two numbers separated by a dot." ])
+        else (
+          match Atom.parse ver with
+          | Some atom -> atom
+          | None ->
+            Code_error.raise
+              "Atom.parse failed for version that passed validation"
+              [ "version", String ver ])
       in
       let dune_lang_ver =
         Decoder.parse Syntax.Version.decode Univ_map.empty (Atom (ver_loc, ver_atom))

@@ -26,28 +26,37 @@ dependencies.
 
 ::::
 
-The next time the package is locked, Dune will use this repository instead of
-the information from the selected package repositories.
+The next time the project is built, Dune will use this repository instead of
+the information from the selected package repositories. Thus the `fmt` package
+will be built from the source in the specified Git repository rather than from
+the source tarball released in the `opam-repository`.
+
+```sh
+dune build
+```
+
+will find a new solution, quoting `_build/log`:
 
 ```
-$ dune pkg lock
-Solution for dune.lock:
-- base-unix.base
-- fmt.dev
-- ocaml.5.0.0
-- ocaml-base-compiler.5.0.0
-- ocaml-config.3
-- ocamlbuild.0.15.0+dune
-- ocamlfind.1.9.6+dune
-- topkg.1.0.7
+...
+
+# Dependency solution for
+# _build/.sandbox/<sandbox-hash>/_private/default/.lock/dune.lock:
+# - base-unix.base
+# - fmt.dev
+# - ocaml.5.4.0
+# - ocaml-base-compiler.5.4.0
+# - ocaml-compiler.5.4.0
+# - ocaml-config.3
+# - ocamlbuild.0.16.1+dune
+# - ocamlfind.1.9.8+dune
+# - topkg.1.1.1
+...
 ```
 
 Unlike previously, the version of the `fmt` library that is picked is `dev`, to
 signify a development version.
 
-The next time the project is built, the `fmt` package will be built from the
-source in the specified Git repository rather than from the source tarball
-released in the `opam-repository`.
 
 ```
 $ dune exec ./test.exe

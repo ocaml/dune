@@ -1372,34 +1372,30 @@ module DB = struct
             let hash = Tuple.T2.hash Context_name.hash Bool.hash
             let equal = Tuple.T2.equal Context_name.equal Bool.equal
           end)
-      @@ fun (ctx, allow_sharing) ->
-      Memo.lazy_ (fun () ->
-        Per_context.valid ctx
-        >>= function
-        | false ->
-          Code_error.raise "invalid context" [ "context", Context_name.to_dyn ctx ]
-        | true ->
-          let system_provided = default_system_provided in
-          let* lock_dir = Lock_dir.get_exn ctx
-          and* platform = Lock_dir.Sys_vars.solver_env () in
-          let+ pkg_digest_table =
-            (if allow_sharing && Context_name.is_default ctx
-             then
-               (* Dev tools are built in the default context, so allow their
-               dependencies to be shared with the project's if it too is being
-               built in the default context. *)
-               let+ dev_tools_pkg_digest_table =
-                 Memo.Lazy.force Pkg_table.all_existing_dev_tools
-               in
-               dev_tools_pkg_digest_table
-             else Memo.return Pkg_table.empty)
-            >>| Pkg_table.union
-                  (Pkg_table.of_lock_dir lock_dir ~platform ~system_provided)
-          in
-          { pkg_digest_table; system_provided })
-      |> Memo.Lazy.force
+        (fun (ctx, allow_sharing) ->
+           (* Is this value anything other than [default_system_provided]? *)
+           let system_provided = default_system_provided in
+           let+ pkg_digest_table =
+             let* lock_dir = Lock_dir.get_exn ctx
+             and* platform = Lock_dir.Sys_vars.solver_env () in
+             (if allow_sharing
+              then Memo.Lazy.force Pkg_table.all_existing_dev_tools
+              else Memo.return Pkg_table.empty)
+             >>| Pkg_table.union
+                   (Pkg_table.of_lock_dir lock_dir ~platform ~system_provided)
+           in
+           { pkg_digest_table; system_provided })
     in
-    fun ctx ~allow_sharing -> Memo.exec of_ctx_memo (ctx, allow_sharing)
+    fun ctx ~allow_sharing ->
+      Per_context.valid ctx
+      >>= function
+      | false -> Code_error.raise "invalid context" [ "context", Context_name.to_dyn ctx ]
+      | true ->
+        (* Dev tools are built in the default context, so allow their
+           dependencies to be shared with the project's if it too is being
+           built in the default context. *)
+        let allow_sharing = allow_sharing && Context_name.is_default ctx in
+        Memo.exec of_ctx_memo (ctx, allow_sharing)
   ;;
 
   (* Returns the db for the given context and the digest of the given package

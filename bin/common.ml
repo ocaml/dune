@@ -1423,14 +1423,9 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   Dune_console.separate_messages c.builder.separate_error_messages;
   Option.iter c.stats ~f:(fun stats ->
     if Dune_trace.extended_build_job_info stats
-    then
-      (* Communicate config settings as an instant event here. *)
-      let open Chrome_trace in
-      let args = [ "build_dir", `String (Path.Build.to_string Path.Build.root) ] in
-      let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
-      let common = Event.common_fields ~cat:[ "config" ] ~name:"config" ~ts () in
-      let event = Event.instant ~args common in
-      Dune_trace.emit stats event);
+    then (
+      let event = Dune_trace.Event.config () in
+      Dune_trace.emit stats event));
   (* Setup hook for printing GC stats to a file *)
   at_exit (fun () ->
     match c.builder.dump_gc_stats with

@@ -1182,15 +1182,7 @@ module Run = struct
        But we don't care because the user enabled this manually with
        [--trace-file] *)
     Option.iter stats ~f:(fun stats ->
-      let event =
-        let fields =
-          let ts = Chrome_trace.Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
-          Chrome_trace.Event.common_fields ~name:"watch mode iteration" ~ts ()
-        in
-        (* the instant event allows us to separate build commands from
-           different iterations of the watch mode in the event viewer *)
-        Chrome_trace.Event.instant ~scope:Global fields
-      in
+      let event = Dune_trace.Event.scheduler_idle () in
       Dune_trace.emit stats event;
       Dune_trace.flush stats)
   ;;

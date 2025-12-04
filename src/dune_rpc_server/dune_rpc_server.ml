@@ -270,52 +270,30 @@ type message_kind =
   | Request of Dune_rpc_private.Id.t
   | Notification
 
-type stage =
-  | Start
-  | Stop
-
 module Event = struct
   module Event = Chrome_trace.Event
 
-  let async_kind_of_stage = function
-    | Start -> Event.Start
-    | Stop -> Event.End
-  ;;
-
   type t =
-    | Session of stage
+    | Session of Dune_trace.Event.Rpc.stage
     | Message of
         { kind : message_kind
         ; meth_ : string
-        ; stage : stage
+        ; stage : Dune_trace.Event.Rpc.stage
         }
 
   let emit t stats id =
     Option.iter stats ~f:(fun stats ->
       let event =
-        let kind, name, args =
-          match t with
-          | Session stage -> async_kind_of_stage stage, "rpc_session", None
-          | Message { kind; meth_; stage } ->
-            let args =
-              match kind with
-              | Notification -> None
-              | Request id ->
-                let id = Dune_rpc_private.Id.to_sexp id in
-                let rec to_json : Sexp.t -> Chrome_trace.Json.t = function
-                  | Atom s -> `String s
-                  | List s -> `List (List.map s ~f:to_json)
-                in
-                Some [ "request_id", to_json id ]
-            in
-            async_kind_of_stage stage, meth_, args
-        in
-        let common =
-          let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
-          Event.common_fields ~ts ~name ()
-        in
-        let id = Chrome_trace.Id.create (`Int (Session.Id.to_int id)) in
-        Event.async ?args id kind common
+        let id = Session_id.to_int id in
+        match t with
+        | Session stage -> Dune_trace.Event.Rpc.session ~id stage
+        | Message { kind; meth_; stage } ->
+          let kind =
+            match kind with
+            | Request id -> `Request (Dune_rpc_private.Id.to_sexp id)
+            | Notification -> `Notification
+          in
+          Dune_trace.Event.Rpc.message kind ~meth_ ~id stage
       in
       Dune_trace.emit stats event)
   ;;
@@ -351,7 +329,10 @@ module H = struct
 
   let dispatch_notification (type a) (t : a t) stats (session : a Session.t) meth_ n =
     let kind = Notification in
-    Event.emit (Message { kind; meth_; stage = Start }) stats (Session.id session);
+    Event.emit
+      (Message { kind; meth_; stage = Dune_trace.Event.Rpc.Start })
+      stats
+      (Session.id session);
     let+ result = V.Handler.handle_notification t.handler session n in
     let () =
       match result with

@@ -280,14 +280,6 @@ let command_line ~prog ~args ~dir ~stdout_to ~stderr_to ~stdin_from =
   prefix ^ String.quote_list_for_shell (prog :: args) ^ suffix
 ;;
 
-module Exit_status = struct
-  type error =
-    | Failed of int
-    | Signaled of Signal.t
-
-  type t = (int, error) result
-end
-
 module Fancy = struct
   let split_prog s =
     let len = String.length s in
@@ -371,6 +363,8 @@ module Fancy = struct
     Pp.verbatim prefix ++ pp ++ Pp.verbatim suffix
   ;;
 end
+
+module Exit_status = Dune_trace.Event.Exit_status
 
 (* Implemt the rendering for [--display short] *)
 module Short_display : sig
@@ -822,58 +816,29 @@ let report_process_finished
       ~stderr
       (times : Proc.Times.t)
   =
-  let common =
-    let name =
-      match metadata.name with
-      | Some n -> n
-      | None -> Filename.basename prog
-    in
-    let ts = Timestamp.of_float_seconds started_at in
-    Event.common_fields ~cat:("process" :: metadata.categories) ~name ~ts ()
+  let targets =
+    match metadata.purpose with
+    | Internal_job -> []
+    | Build_job None -> []
+    | Build_job (Some targets) -> Targets.Validated.to_trace_args targets
   in
-  let always =
-    [ "process_args", `List (List.map args ~f:(fun arg -> `String arg))
-    ; "pid", `Int (Pid.to_int pid)
-    ]
+  let stdout = Result.Out.get stdout in
+  let stderr = Result.Out.get stderr in
+  let event =
+    Dune_trace.Event.process
+      ~name:metadata.name
+      ~started_at
+      ~targets
+      ~categories:metadata.categories
+      ~pid
+      ~exit:exit_status
+      ~prog
+      ~process_args:args
+      ~dir
+      ~stdout
+      ~stderr
+      ~times:(times : Proc.Times.t)
   in
-  let extended =
-    if not (Dune_trace.extended_build_job_info stats)
-    then []
-    else (
-      let targets =
-        match metadata.purpose with
-        | Internal_job -> []
-        | Build_job None -> []
-        | Build_job (Some targets) -> Targets.Validated.to_trace_args targets
-      in
-      let exit =
-        match exit_status with
-        | Ok n -> [ "exit", `Int n ]
-        | Error (Exit_status.Failed n) ->
-          [ "exit", `Int n; "error", `String (sprintf "exited with code %d" n) ]
-        | Error (Signaled s) ->
-          [ "exit", `Int (Signal.to_int s)
-          ; "error", `String (sprintf "got signal %s" (Signal.name s))
-          ]
-      in
-      let output name s =
-        match Result.Out.get s with
-        | "" -> []
-        | s -> [ name, `String s ]
-      in
-      List.concat
-        [ [ "prog", `String prog
-          ; "dir", `String (Option.map ~f:Path.to_string dir |> Option.value ~default:".")
-          ]
-        ; targets
-        ; exit
-        ; output "stdout" stdout
-        ; output "stderr" stderr
-        ])
-  in
-  let args = always @ extended in
-  let dur = Event.Timestamp.of_float_seconds times.elapsed_time in
-  let event = Event.complete ~args ~dur common in
   Dune_trace.emit stats event
 ;;
 

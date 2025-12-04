@@ -126,3 +126,7 @@
  (applies_to hidden-deps-unsupported)
  (enabled_if
   (< %{ocaml_version} 5.2.0)))
+
+(cram
+ (applies_to trace-file)
+ (deps %{bin:perl}))

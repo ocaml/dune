@@ -1,3 +1,5 @@
+open Stdune
+
 type t
 
 module Json : sig
@@ -17,7 +19,6 @@ type dst =
 val global : unit -> t option
 val set_global : t -> unit
 val create : extended_build_job_info:bool -> dst -> t
-val emit : t -> Chrome_trace.Event.t -> unit
 val record_gc_and_fd : t -> unit
 val close : t -> unit
 val extended_build_job_info : t -> bool
@@ -33,8 +34,63 @@ module Event : sig
       -> name:string
       -> data
   end
+
+  type t
+
+  val evalauted_rules : rule_total:int -> t
+
+  module Exit_status : sig
+    type error =
+      | Failed of int
+      | Signaled of Signal.t
+
+    type t = (int, error) result
+  end
+
+  val process
+    :  name:string option
+    -> started_at:float
+    -> targets:(string * Json.t) list
+    -> categories:string list
+    -> pid:Pid.t
+    -> exit:Exit_status.t
+    -> prog:string
+    -> process_args:string list
+    -> dir:Path.t option
+    -> stdout:string
+    -> stderr:string
+    -> times:Proc.Times.t
+    -> t
+
+  val persistent
+    :  file:Path.t
+    -> module_:string
+    -> [ `Save | `Load ]
+    -> start:float
+    -> stop:float
+    -> t
+
+  val scan_source : name:string -> start:float -> stop:float -> dir:Path.Source.t -> t
+  val scheduler_idle : unit -> t
+  val config : unit -> t
+
+  module Rpc : sig
+    type stage =
+      | Start
+      | Stop
+
+    val session : id:int -> stage -> t
+
+    val message
+      :  [ `Request of Sexp.t | `Notification ]
+      -> meth_:string
+      -> id:int
+      -> stage
+      -> t
+  end
 end
 
+val emit : t -> Event.t -> unit
 val start : t option -> (unit -> Event.Async.data) -> Event.Async.t option
 val finish : Event.Async.t option -> unit
 val flush : t -> unit

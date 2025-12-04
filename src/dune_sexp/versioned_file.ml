@@ -61,20 +61,10 @@ struct
         match Atom.parse ver with
         | Some atom -> atom
         | None ->
-          (* Atom.parse failed - likely due to non-ASCII characters *)
           let has_non_ascii = String.exists ver ~f:(fun c -> Char.code c >= 128) in
           if has_non_ascii
-          then
-            User_error.raise
-              ~loc:ver_loc
-              [ Pp.text
-                  "Invalid atom: contains non-ASCII character(s). Atoms must only \
-                   contain ASCII characters."
-              ]
-          else
-            Code_error.raise
-              "Atom.parse failed for unexpected reason"
-              [ "version", String ver ]
+          then User_error.raise ~loc:ver_loc [ Pp.text Atom.non_ascii_error_message ]
+          else User_error.raise ~loc:ver_loc [ Pp.textf "Invalid atom: %S" ver ]
       in
       let dune_lang_ver =
         Decoder.parse Syntax.Version.decode Univ_map.empty (Atom (ver_loc, ver_atom))

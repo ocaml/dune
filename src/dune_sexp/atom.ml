@@ -9,6 +9,11 @@ let to_dyn (A s) =
 
 let equal (A a) (A b) = String.equal a b
 
+let non_ascii_error_message =
+  "Invalid atom: contains non-ASCII character(s). Atoms must only contain ASCII \
+   characters."
+;;
+
 let is_valid =
   let rec loop s i len =
     i = len

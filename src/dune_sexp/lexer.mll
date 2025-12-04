@@ -183,7 +183,7 @@ and atom acc start = parse
   | "%"
     { atom (Template.add_text acc "%") start lexbuf }
   | ['\127'-'\255']
-    { error lexbuf "Invalid atom: contains non-ASCII character(s). Atoms must only contain ASCII characters." }
+    { error lexbuf Atom.non_ascii_error_message }
   | ""
     { Template.token acc ~quoted:false ~start lexbuf }
 

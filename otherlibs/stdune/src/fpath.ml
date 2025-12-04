@@ -128,7 +128,7 @@ let win32_unlink fn =
        retry_loop 30)
 ;;
 
-let unlink_exn = if Stdlib.Sys.win32 then win32_unlink else Unix.unlink
+let unlink_exn = if Stdlib.Sys.win32 then win32_unlink else fun t -> Unix.unlink t
 
 type unlink_status =
   | Success

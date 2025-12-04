@@ -1,0 +1,6 @@
+(lang dune 3.0)
+(name test-pkg)
+(package
+ (name test-pkg)
+ (allow_empty)
+ (depends ocaml ocaml))

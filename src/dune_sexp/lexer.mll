@@ -139,7 +139,7 @@ let blank     = [' ' '\t' '\012']
 let digit     = ['0'-'9']
 let hexdigit  = ['0'-'9' 'a'-'f' 'A'-'F']
 
-let atom_char = [^ ';' '(' ')' '"' '\000'-'\032' '\127']
+let atom_char = [^ ';' '(' ')' '"' '\000'-'\032' '\127'-'\255']
 let varname_char = atom_char # [ ':' '%' '{' '}' ]
 
 rule token with_comments = parse
@@ -182,6 +182,8 @@ and atom acc start = parse
     { atom ((template_variable lexbuf) :: acc) start lexbuf }
   | "%"
     { atom (Template.add_text acc "%") start lexbuf }
+  | ['\127'-'\255']
+    { error lexbuf "Invalid atom: contains non-ASCII character(s). Atoms must only contain ASCII characters." }
   | ""
     { Template.token acc ~quoted:false ~start lexbuf }
 

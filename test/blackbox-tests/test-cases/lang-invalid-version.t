@@ -15,7 +15,6 @@ Invalid version number:
   1 | (lang dune Ali)
                  ^^^
   Error: Invalid version. Version must be two numbers separated by a dot.
-  Hint: lang dune 3.21
   [1]
 
 Test with various non-ASCII characters:
@@ -27,32 +26,32 @@ parenthesis.
   File "dune-project", line 1, characters 11-13:
   1 | (lang dune è)
                  ^^
-  Error: Invalid version. Version must be two numbers separated by a dot.
-  Hint: lang dune 3.21
+  Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
+  ASCII characters.
   [1]
 
   $ test_invalid_version "π3.14"
   File "dune-project", line 1, characters 11-17:
   1 | (lang dune π3.14)
                  ^^^^^^
-  Error: Invalid version. Version must be two numbers separated by a dot.
-  Hint: lang dune 3.21
+  Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
+  ASCII characters.
   [1]
 
   $ test_invalid_version "α"
   File "dune-project", line 1, characters 11-13:
   1 | (lang dune α)
                  ^^
-  Error: Invalid version. Version must be two numbers separated by a dot.
-  Hint: lang dune 3.21
+  Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
+  ASCII characters.
   [1]
 
   $ test_invalid_version "😀"
   File "dune-project", line 1, characters 11-15:
   1 | (lang dune 😀)
                  ^^^^
-  Error: Invalid version. Version must be two numbers separated by a dot.
-  Hint: lang dune 3.21
+  Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
+  ASCII characters.
   [1]
 
 CR-someday benodiwal: Unicode string lengths are miscomputed in location
@@ -62,6 +61,6 @@ excerpts for East Asian characters.
   File "dune-project", line 1, characters 11-21:
   1 | (lang dune 中3.16文)
                  ^^^^^^^^^^
-  Error: Invalid version. Version must be two numbers separated by a dot.
-  Hint: lang dune 3.21
+  Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
+  ASCII characters.
   [1]

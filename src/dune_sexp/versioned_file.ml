@@ -57,36 +57,24 @@ struct
 
     let parse first_line : Instance.t =
       let { First_line.lang = name_loc, name; version = ver_loc, ver } = first_line in
-      (* Check if version has invalid format (non-ASCII or not X.Y pattern) *)
-      let has_invalid_format =
-        String.exists ver ~f:(fun c -> Char.code c > 127)
-        ||
-        match Scanf.sscanf ver "%u.%u%s" (fun a b s -> (a, b), s) with
-        | Ok (_, "") -> false
-        | Ok (_, _) -> false (* has trailing chars, but base format is valid *)
-        | Error () -> true
-      in
       let ver_atom =
-        if has_invalid_format
-        then (
-          let hints =
-            match Table.find langs name with
-            | None -> []
-            | Some lang ->
-              let latest = Syntax.greatest_supported_version_exn lang.syntax in
-              [ Pp.textf "lang dune %s" (Syntax.Version.to_string latest) ]
-          in
-          User_error.raise
-            ~loc:ver_loc
-            ~hints
-            [ Pp.text "Invalid version. Version must be two numbers separated by a dot." ])
-        else (
-          match Atom.parse ver with
-          | Some atom -> atom
-          | None ->
+        match Atom.parse ver with
+        | Some atom -> atom
+        | None ->
+          (* Atom.parse failed - likely due to non-ASCII characters *)
+          let has_non_ascii = String.exists ver ~f:(fun c -> Char.code c >= 128) in
+          if has_non_ascii
+          then
+            User_error.raise
+              ~loc:ver_loc
+              [ Pp.text
+                  "Invalid atom: contains non-ASCII character(s). Atoms must only \
+                   contain ASCII characters."
+              ]
+          else
             Code_error.raise
-              "Atom.parse failed for version that passed validation"
-              [ "version", String ver ])
+              "Atom.parse failed for unexpected reason"
+              [ "version", String ver ]
       in
       let dune_lang_ver =
         Decoder.parse Syntax.Version.decode Univ_map.empty (Atom (ver_loc, ver_atom))

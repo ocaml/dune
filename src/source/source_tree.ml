@@ -350,7 +350,7 @@ module Dir = struct
       in
       let impl =
         lazy
-          (match Dune_stats.global () with
+          (match Dune_trace.global () with
            | None -> map_reduce
            | Some stats ->
              fun t ~traverse ~trace_event_name ~f ->
@@ -370,7 +370,7 @@ module Dir = struct
                  let args = [ "dir", `String (Path.Source.to_string t.path) ] in
                  Event.complete common ~args ~dur
                in
-               Dune_stats.emit stats event;
+               Dune_trace.emit stats event;
                res)
       in
       fun t ~traverse ~trace_event_name ~f ->

@@ -12,7 +12,7 @@
   chrome_trace
   dune_engine
   dune_util
-  dune_stats
+  dune_trace
   dune_lang
   dune_console
   dune_digest

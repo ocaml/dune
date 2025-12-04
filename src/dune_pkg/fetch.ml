@@ -251,7 +251,7 @@ let fetch_local ~checksum ~target (url, url_loc) =
 
 let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
   let event =
-    Dune_stats.(
+    Dune_trace.(
       start (global ()) (fun () ->
         { cat = None
         ; name = label
@@ -273,7 +273,7 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
   in
   Fiber.finalize
     ~finally:(fun () ->
-      Dune_stats.finish event;
+      Dune_trace.finish event;
       Fiber.return ())
     (fun () ->
        match url.backend with

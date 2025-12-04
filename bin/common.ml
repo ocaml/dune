@@ -1186,7 +1186,7 @@ type t =
   ; root : Workspace_root.t
   ; rpc :
       [ `Allow of Dune_lang.Dep_conf.t Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
-  ; stats : Dune_stats.t option
+  ; stats : Dune_trace.t option
   }
 
 let capture_outputs t = t.builder.capture_outputs
@@ -1279,11 +1279,11 @@ let build (root : Workspace_root.t) (builder : Builder.t) =
   let stats =
     Option.map builder.stats_trace_file ~f:(fun f ->
       let stats =
-        Dune_stats.create
+        Dune_trace.create
           ~extended_build_job_info:builder.stats_trace_extended
           (Out (open_out f))
       in
-      Dune_stats.set_global stats;
+      Dune_trace.set_global stats;
       stats)
   in
   let rpc =
@@ -1422,7 +1422,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
     ];
   Dune_console.separate_messages c.builder.separate_error_messages;
   Option.iter c.stats ~f:(fun stats ->
-    if Dune_stats.extended_build_job_info stats
+    if Dune_trace.extended_build_job_info stats
     then
       (* Communicate config settings as an instant event here. *)
       let open Chrome_trace in
@@ -1430,7 +1430,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
       let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
       let common = Event.common_fields ~cat:[ "config" ] ~name:"config" ~ts () in
       let event = Event.instant ~args common in
-      Dune_stats.emit stats event);
+      Dune_trace.emit stats event);
   (* Setup hook for printing GC stats to a file *)
   at_exit (fun () ->
     match c.builder.dump_gc_stats with

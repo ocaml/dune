@@ -39,7 +39,7 @@
   dune_config
   dune_config_file
   chrome_trace
-  dune_stats
+  dune_trace
   csexp
   csexp_rpc
   dune_rpc_impl

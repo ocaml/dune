@@ -3,8 +3,8 @@ module Timestamp = Chrome_trace.Event.Timestamp
 module Event = Chrome_trace.Event
 
 module Mac = struct
-  external open_fds : pid:int -> int = "dune_stats_open_fds"
-  external available : unit -> bool = "dune_stats_available"
+  external open_fds : pid:int -> int = "dune_trace_open_fds"
+  external available : unit -> bool = "dune_trace_available"
 end
 
 module Json = struct

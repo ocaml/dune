@@ -20,16 +20,18 @@ val record_gc_and_fd : t -> unit
 val close : t -> unit
 val extended_build_job_info : t -> bool
 
-type event
+module Event : sig
+  type t
 
-type event_data =
-  { args : Chrome_trace.Event.args option
-  ; cat : string list option
-  ; name : string
-  }
+  type data =
+    { args : Chrome_trace.Event.args option
+    ; cat : string list option
+    ; name : string
+    }
+end
 
-val start : t option -> (unit -> event_data) -> event option
-val finish : event option -> unit
+val start : t option -> (unit -> Event.data) -> Event.t option
+val finish : Event.t option -> unit
 val flush : t -> unit
 
 module Private : sig

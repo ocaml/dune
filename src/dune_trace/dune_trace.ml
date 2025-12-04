@@ -1,6 +1,5 @@
 open Stdune
 module Timestamp = Chrome_trace.Event.Timestamp
-module Event = Chrome_trace.Event
 module Json = Json
 
 module Mac = struct
@@ -82,21 +81,23 @@ let printf t format_string =
   Printf.ksprintf t.print ("%c" ^^ format_string ^^ "\n") c
 ;;
 
-let emit t event = printf t "%s" (Json.to_string (Event.to_json event))
+let emit t event = printf t "%s" (Json.to_string (Chrome_trace.Event.to_json event))
 
-type event_data =
-  { args : Chrome_trace.Event.args option
-  ; cat : string list option
-  ; name : string
-  }
+module Event = struct
+  type data =
+    { args : Chrome_trace.Event.args option
+    ; cat : string list option
+    ; name : string
+    }
 
-type event =
-  { t : t
-  ; event_data : event_data
-  ; start : float
-  }
+  type nonrec t =
+    { t : t
+    ; event_data : data
+    ; start : float
+    }
+end
 
-let start t k : event option =
+let start t k : Event.t option =
   match t with
   | None -> None
   | Some t ->
@@ -108,15 +109,19 @@ let start t k : event option =
 let finish event =
   match event with
   | None -> ()
-  | Some { t; start; event_data = { args; cat; name } } ->
+  | Some { Event.t; start; event_data = { args; cat; name } } ->
     let dur =
       let stop = Unix.gettimeofday () in
       Timestamp.of_float_seconds (stop -. start)
     in
     let common =
-      Event.common_fields ?cat ~name ~ts:(Timestamp.of_float_seconds start) ()
+      Chrome_trace.Event.common_fields
+        ?cat
+        ~name
+        ~ts:(Timestamp.of_float_seconds start)
+        ()
     in
-    let event = Event.complete ?args common ~dur in
+    let event = Chrome_trace.Event.complete ?args common ~dur in
     emit t event
 ;;
 

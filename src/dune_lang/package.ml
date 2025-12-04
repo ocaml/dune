@@ -121,6 +121,28 @@ let decode =
         ; Pp.textf "- %s" (print_value loc2)
         ]
   in
+  let check_duplicate_deps deps field_name =
+    let rec check_dups seen = function
+      | [] -> ()
+      | (loc, dep) :: rest ->
+        (match
+           List.find_opt
+             ~f:(fun (_, seen_dep) -> Package_dependency.equal dep seen_dep)
+             seen
+         with
+         | Some _ ->
+           let dep_sexp = Package_dependency.encode dep in
+           let dep_string = Dune_sexp.to_string dep_sexp in
+           User_warning.emit
+             ~loc
+             [ Pp.textf "Duplicate dependency %s in '%s' field." dep_string field_name
+             ; Pp.text "Hint: Remove one of the duplicate entries."
+             ]
+         | None -> ());
+        check_dups ((loc, dep) :: seen) rest
+    in
+    check_dups [] deps
+  in
   fun ~dir ->
     fields
     @@ let* version = Syntax.get_exn Stanza.syntax in
@@ -130,9 +152,12 @@ let decode =
        and+ description = field_o "description" string
        and+ version =
          field_o "version" (Syntax.since Stanza.syntax (2, 5) >>> Package_version.decode)
-       and+ depends = field ~default:[] "depends" (repeat Package_dependency.decode)
-       and+ conflicts = field ~default:[] "conflicts" (repeat Package_dependency.decode)
-       and+ depopts = field ~default:[] "depopts" (repeat Package_dependency.decode)
+       and+ depends_with_locs =
+         field ~default:[] "depends" (repeat (located Package_dependency.decode))
+       and+ conflicts_with_locs =
+         field ~default:[] "conflicts" (repeat (located Package_dependency.decode))
+       and+ depopts_with_locs =
+         field ~default:[] "depopts" (repeat (located Package_dependency.decode))
        and+ info = Package_info.decode ~since:(2, 0) ()
        and+ tags = field "tags" (enter (repeat string)) ~default:[]
        and+ exclusive_dir =
@@ -161,6 +186,12 @@ let decode =
        and+ allow_empty = field_b "allow_empty" ~check:(Syntax.since Stanza.syntax (3, 0))
        and+ lang_version = Syntax.get_exn Stanza.syntax in
        let allow_empty = lang_version < (3, 0) || allow_empty in
+       check_duplicate_deps depends_with_locs "depends";
+       check_duplicate_deps conflicts_with_locs "conflicts";
+       check_duplicate_deps depopts_with_locs "depopts";
+       let depends = List.map ~f:snd depends_with_locs in
+       let conflicts = List.map ~f:snd conflicts_with_locs in
+       let depopts = List.map ~f:snd depopts_with_locs in
        let id = Id.create ~name ~dir in
        let opam_file = Name.file id.name ~dir:id.dir in
        { id

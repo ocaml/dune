@@ -253,7 +253,7 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
   let event =
     Dune_trace.(
       start (global ()) (fun () ->
-        Dune_trace.Event.data
+        Dune_trace.Event.Async.data
           ~cat:None
           ~name:label
           ~args:

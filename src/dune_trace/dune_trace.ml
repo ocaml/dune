@@ -84,22 +84,24 @@ let printf t format_string =
 let emit t event = printf t "%s" (Json.to_string (Chrome_trace.Event.to_json event))
 
 module Event = struct
-  type data =
-    { args : Chrome_trace.Event.args option
-    ; cat : string list option
-    ; name : string
-    }
+  module Async = struct
+    type data =
+      { args : Chrome_trace.Event.args option
+      ; cat : string list option
+      ; name : string
+      }
 
-  type nonrec t =
-    { t : t
-    ; event_data : data
-    ; start : float
-    }
+    type nonrec t =
+      { t : t
+      ; event_data : data
+      ; start : float
+      }
 
-  let data ~args ~cat ~name = { args; cat; name }
+    let data ~args ~cat ~name = { args; cat; name }
+  end
 end
 
-let start t k : Event.t option =
+let start t k : Event.Async.t option =
   match t with
   | None -> None
   | Some t ->
@@ -111,7 +113,7 @@ let start t k : Event.t option =
 let finish event =
   match event with
   | None -> ()
-  | Some { Event.t; start; event_data = { args; cat; name } } ->
+  | Some { Event.Async.t; start; event_data = { args; cat; name } } ->
     let dur =
       let stop = Unix.gettimeofday () in
       Timestamp.of_float_seconds (stop -. start)

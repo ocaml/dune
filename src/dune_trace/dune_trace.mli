@@ -23,18 +23,20 @@ val close : t -> unit
 val extended_build_job_info : t -> bool
 
 module Event : sig
-  type t
-  type data
+  module Async : sig
+    type t
+    type data
 
-  val data
-    :  args:(string * Json.t) list option
-    -> cat:string list option
-    -> name:string
-    -> data
+    val data
+      :  args:(string * Json.t) list option
+      -> cat:string list option
+      -> name:string
+      -> data
+  end
 end
 
-val start : t option -> (unit -> Event.data) -> Event.t option
-val finish : Event.t option -> unit
+val start : t option -> (unit -> Event.Async.data) -> Event.Async.t option
+val finish : Event.Async.t option -> unit
 val flush : t -> unit
 
 module Private : sig

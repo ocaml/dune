@@ -1,8 +1,8 @@
-Test duplicate dependencies detection
-======================================
+Duplicate dependencies detection
+=================================
 
-Test 1: Exact duplicate without constraints (should warn)
-----------------------------------------------------------
+Exact duplicate without constraints should warn
+------------------------------------------------
 
   $ cat >dune-project <<EOF
   > (lang dune 3.0)
@@ -20,8 +20,8 @@ Test 1: Exact duplicate without constraints (should warn)
   Warning: Duplicate dependency ocaml in 'depends' field.
   Hint: Remove one of the duplicate entries.
 
-Test 2: Exact duplicate with same constraint (should warn)
------------------------------------------------------------
+Exact duplicate with same constraint should warn
+-------------------------------------------------
 
   $ cat >dune-project <<EOF
   > (lang dune 3.0)
@@ -39,8 +39,10 @@ Test 2: Exact duplicate with same constraint (should warn)
   Warning: Duplicate dependency (ocaml (>= 4.08)) in 'depends' field.
   Hint: Remove one of the duplicate entries.
 
-Test 3: Same package with different constraints (should NOT warn - this is valid)
-----------------------------------------------------------------------------------
+Same package with different constraints is allowed
+---------------------------------------------------
+
+This is valid opam syntax for specifying version ranges.
 
   $ cat >dune-project <<EOF
   > (lang dune 3.0)
@@ -53,8 +55,8 @@ Test 3: Same package with different constraints (should NOT warn - this is valid
 
   $ dune build
 
-Test 4: Multiple duplicates in depends field
----------------------------------------------
+Multiple duplicates in the same field
+--------------------------------------
 
   $ cat >dune-project <<EOF
   > (lang dune 3.0)
@@ -77,8 +79,8 @@ Test 4: Multiple duplicates in depends field
   Warning: Duplicate dependency dune in 'depends' field.
   Hint: Remove one of the duplicate entries.
 
-Test 5: Duplicates in conflicts field
---------------------------------------
+Duplicates in conflicts field
+------------------------------
 
   $ cat >dune-project <<EOF
   > (lang dune 3.0)
@@ -96,8 +98,8 @@ Test 5: Duplicates in conflicts field
   Warning: Duplicate dependency base in 'conflicts' field.
   Hint: Remove one of the duplicate entries.
 
-Test 6: Duplicates in depopts field
-------------------------------------
+Duplicates in depopts field
+----------------------------
 
   $ cat >dune-project <<EOF
   > (lang dune 3.0)
@@ -115,8 +117,10 @@ Test 6: Duplicates in depopts field
   Warning: Duplicate dependency lwt in 'depopts' field.
   Hint: Remove one of the duplicate entries.
 
-Test 7: Mix of valid and invalid duplicates
---------------------------------------------
+Mix of valid and invalid duplicates
+------------------------------------
+
+Different constraints on the same package are valid, but exact duplicates are not.
 
   $ cat >dune-project <<EOF
   > (lang dune 3.0)
@@ -138,8 +142,10 @@ Test 7: Mix of valid and invalid duplicates
   Warning: Duplicate dependency (dune (>= 2.0)) in 'depends' field.
   Hint: Remove one of the duplicate entries.
 
-Test 8: Triple duplicate (same dependency three times)
-------------------------------------------------------
+Triple duplicate
+----------------
+
+When the same dependency appears three times, each duplicate is reported.
 
   $ cat >dune-project <<EOF
   > (lang dune 3.0)
@@ -162,8 +168,8 @@ Test 8: Triple duplicate (same dependency three times)
   Warning: Duplicate dependency ocaml in 'depends' field.
   Hint: Remove one of the duplicate entries.
 
-Test 9: Duplicate with :with-test constraint (exact match)
------------------------------------------------------------
+Duplicate with filter constraint
+---------------------------------
 
   $ cat >dune-project <<EOF
   > (lang dune 3.0)

@@ -2,7 +2,7 @@
 
 As an example of how to add custom repositories and pin dependencies in projects
 using Dune Package Management, let's look at setting up a basic
-[OxCaml](https://oxcaml.org/) project. OxCaml is a compiler branch with fast
+[OxCaml](https://oxcaml.org/) project. OxCaml is a compiler branch with a fast
 moving set of extensions to OCaml. Some tweaks are required to set up a project
 that compiles with OxCaml when using Dune package management.
 
@@ -80,43 +80,5 @@ Note that OxCaml provides its own forks of the developer tools
 tools in the `dune-workspace` if you intend to use them for your development
 workflows.
 
-For `ocamlformat` it would look something like this:
-
-```{code-block} dune
-
-(lang dune 3.21)
-
-(pkg enabled)
-
-(repository
- (name oxcaml)
- (url "git+https://github.com/oxcaml/opam-repository"))
-
-(pin
- (name ocamlbuild)
- (url "git+https://github.com/Sudha247/ocamlbuild#oxcaml+dune")
- (package
-   (name ocamlbuild)
-   (version 0.15.0+ox)))
-
-(pin
- (name odoc-parser)
- (url "git+https://github.com/Sudha247/odoc#replace-symlinks")
- (package
-   (name odoc-parser)
-   (version 3.1.0+ox)))
-
-(lock_dir
- (path "dune.lock")
- (repositories :standard oxcaml))
-
-(lock_dir
- (path "_build/.dev-tools.locks/ocamlformat")
- (pins ocamlbuild)
- (constraints
-   (ocaml-lsp-server (= 1.19.0+ox))
-   (ocaml-variants (= 5.2.0+ox)))
- (repositories overlay oxcaml upstream))
-```
-
-Observe that this includes pins to dependencies `ocamlbuild` and `odoc-parser` as they are required by the OxCaml version of `ocamlformat`.
+Please see {doc}`/howto/customize-dev-tools-lock-directories` for details about
+configuring your workspace for developer tools.

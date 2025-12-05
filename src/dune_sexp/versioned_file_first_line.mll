@@ -32,7 +32,15 @@ and atom start = parse
     { atom start lexbuf
     }
   | atom_char+ as s
-    { (Loc.of_lexbuf lexbuf, s)
+    { let atom_start = Lexing.lexeme_start_p lexbuf in
+      let has_non_ascii = String.exists s ~f:(fun c -> Char.code c >= 128) in
+      let length = if has_non_ascii then 1 else String.length s in
+      let atom_end =
+        { atom_start with
+          pos_cnum = atom_start.pos_cnum + length
+        }
+      in
+      (Loc.create ~start:atom_start ~stop:atom_end, s)
     }
   | _ | eof
     { to_eol lexbuf;

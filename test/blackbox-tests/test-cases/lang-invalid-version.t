@@ -24,48 +24,42 @@ atoms without needing validation in every decoder.
 
 Test with various non-ASCII characters:
 
-CR-someday benodiwal: The version_loc is greedy and captures the closing
-parenthesis.
-
   $ test_invalid_version "è"
-  File "dune-project", line 1, characters 11-13:
+  File "dune-project", line 1, characters 11-12:
   1 | (lang dune è)
-                 ^^
+                 ^
   Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
   ASCII characters.
   [1]
 
   $ test_invalid_version "π3.14"
-  File "dune-project", line 1, characters 11-17:
+  File "dune-project", line 1, characters 11-12:
   1 | (lang dune π3.14)
-                 ^^^^^^
+                 ^
   Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
   ASCII characters.
   [1]
 
   $ test_invalid_version "α"
-  File "dune-project", line 1, characters 11-13:
+  File "dune-project", line 1, characters 11-12:
   1 | (lang dune α)
-                 ^^
+                 ^
   Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
   ASCII characters.
   [1]
 
   $ test_invalid_version "😀"
-  File "dune-project", line 1, characters 11-15:
+  File "dune-project", line 1, characters 11-12:
   1 | (lang dune 😀)
-                 ^^^^
+                 ^
   Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
   ASCII characters.
   [1]
 
-CR-someday benodiwal: Unicode string lengths are miscomputed in location
-excerpts for East Asian characters.
-
   $ test_invalid_version "中3.16文"
-  File "dune-project", line 1, characters 11-21:
+  File "dune-project", line 1, characters 11-12:
   1 | (lang dune 中3.16文)
-                 ^^^^^^^^^^
+                 ^
   Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
   ASCII characters.
   [1]

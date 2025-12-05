@@ -348,12 +348,14 @@ let get_odoc_version odoc_path =
 ;;
 
 let odoc_path_memo sctx =
-  let odoc_dev_tool_lock_dir_exists =
+  let* odoc_is_locked =
     match Config.get Compile_time.lock_dev_tools with
-    | `Enabled -> true
-    | `Disabled -> false
+    | `Disabled -> Memo.return false
+    | `Enabled ->
+      let+ lock_dir = Lock_dir.of_dev_tool_if_lock_dir_exists Odoc in
+      Option.is_some lock_dir
   in
-  match odoc_dev_tool_lock_dir_exists with
+  match odoc_is_locked with
   | true ->
     let path = Path.build (Pkg_dev_tool.exe_path Odoc) in
     Memo.return (Ok path)

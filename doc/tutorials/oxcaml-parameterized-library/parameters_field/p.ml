@@ -1,1 +1,0 @@
-let test () = print_endline A.foo

@@ -29,10 +29,11 @@ module Parameterised : sig
   val dir : build_dir:Path.Build.t -> t -> Path.Build.t
 
   val instantiate
-    :  loc:Loc.t
+    :  from:[ `depends | `inline_tests ]
+    -> loc:Loc.t
     -> t Resolve.t
     -> (Loc.t * t Resolve.t) list
-    -> parent_parameters:t list
+    -> parent_parameters:(Loc.t * t) list
     -> t Resolve.t
 end
 

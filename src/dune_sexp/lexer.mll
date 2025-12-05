@@ -182,6 +182,8 @@ and atom acc start = parse
     { atom ((template_variable lexbuf) :: acc) start lexbuf }
   | "%"
     { atom (Template.add_text acc "%") start lexbuf }
+  | ['\128'-'\255']
+    { error lexbuf Atom.non_ascii_error_message }
   | ""
     { Template.token acc ~quoted:false ~start lexbuf }
 

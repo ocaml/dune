@@ -25,8 +25,9 @@ Utf8 characters are handled for now, this is also related to the issue #9728
   $ dune format-dune-file <<EOF
   > (Écho "hello")
   > EOF
-  File "", line 1, characters 1-1:
-  Error: Invalid . file
+  File "", line 1, characters 1-2:
+  Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
+  ASCII characters.
   [1]
 
   $ bash -c "printf '(echo \"%b\")' '\xc0'"| dune format-dune-file

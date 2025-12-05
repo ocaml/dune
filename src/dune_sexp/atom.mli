@@ -1,6 +1,10 @@
 type t = private A of string [@@unboxed]
 
 val equal : t -> t -> bool
+
+(** Error message for atoms containing non-ASCII characters *)
+val non_ascii_error_message : string
+
 val is_valid : string -> bool
 val of_string : string -> t
 val to_string : t -> string

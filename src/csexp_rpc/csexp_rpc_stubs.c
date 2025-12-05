@@ -9,6 +9,7 @@
 
 #if defined(__APPLE__)
 
+#include <errno.h>
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/syscall.h>
@@ -44,7 +45,12 @@ CAMLprim value dune_set_nosigpipe(value v_socket) {
   int socket = Int_val(v_socket);
   int opt = 1;
   int ret = setsockopt(socket, SOL_SOCKET, SO_NOSIGPIPE, &opt, sizeof(int));
-  if (ret < 0) {
+  if (ret < 0 && errno != EINVAL) {
+    // EINVAL can occur due to a race condition where the peer disconnects
+    // between accept() and setsockopt(). We can safely ignore it which seems to
+    // be the standard way of dealing with this issue on macOS/BSD. See issue
+    // https://github.com/ocaml/dune/issues/12660 for an example of this coming
+    // up in practice.
     uerror("setsockopt", Nothing);
   }
   CAMLreturn(Val_unit);

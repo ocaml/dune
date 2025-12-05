@@ -122,16 +122,18 @@ val keyword : string -> unit t
     [after] to parse the rest. *)
 val until_keyword : string -> before:'a t -> after:'b t -> ('a list * 'b option) t
 
-(** What is currently being parsed. The second argument is the atom at the
-    beginning of the list when inside a [sum ...] or [field ...]. *)
-type kind =
-  | Values of Loc.t * string option
-  | Fields of Loc.t * string option
+module Kind : sig
+  (** What is currently being parsed. The second argument is the atom at the
+      beginning of the list when inside a [sum ...] or [field ...]. *)
+  type t =
+    | Values of Loc.t * string option
+    | Fields of Loc.t * string option
+end
 
 (** [kind] returns the current kind of the parser, whether it is parsing a list
     of values or a list of fields, together with the atom at the beginning of
     a list when inside [sum ...] or [field ...]. *)
-val kind : (kind, _) parser
+val kind : (Kind.t, _) parser
 
 (** [repeat t] uses [t] to consume all remaining elements of the input until the
     end of sequence is reached. *)

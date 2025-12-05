@@ -9,11 +9,18 @@ let invalid_lang_line start lexbuf =
   lexbuf.Lexing.lex_start_p <- start;
   User_error.raise ~loc:(Loc.of_lexbuf lexbuf)
     [ Pp.text "Invalid first line, expected: (lang <lang> <version>)" ]
+
+let rec find_first_non_ascii s i =
+  if i >= String.length s then None
+  else if Char.code s.[i] >= 128 then Some i
+  else find_first_non_ascii s (i + 1)
 }
 
 let newline   = '\r'? '\n'
 let blank     = [' ' '\t']
-let atom_char = [^';' '(' ')' '"' '#' '|' '\000'-'\032']
+let ascii = [ '\000' - '\127' ]
+let atom_char = [^ ';' '(' ')' '"' '\000'-'\032' '\127'-'\255']
+let atom_char_with_junk = [^';' '(' ')' '"' '#' '|' '\000'-'\032'] | [ '\127'-'\255' ]
 
 rule lex_opt = parse
   | '(' blank* "lang"
@@ -32,25 +39,21 @@ and atom start = parse
     { atom start lexbuf
     }
   | atom_char+ as s
+    { (Loc.of_lexbuf lexbuf, s)
+    }
+  | atom_char_with_junk+ as s
     { let atom_start = Lexing.lexeme_start_p lexbuf in
       (* CR-someday benodiwal: Consider using Uuseg for more accurate grapheme
          cluster detection instead of the simple byte-based check. This would
          better handle complex Unicode like emoji sequences, though terminal
          rendering inconsistencies would still cause display issues. *)
-      let rec find_first_non_ascii i =
-        if i >= String.length s then None
-        else if Char.code s.[i] >= 128 then Some i
-        else find_first_non_ascii (i + 1)
-      in
       let loc_start, loc_end =
-        match find_first_non_ascii 0 with
+        match find_first_non_ascii s 0 with
+        | None -> assert false
         | Some offset ->
           let error_start = { atom_start with pos_cnum = atom_start.pos_cnum + offset } in
           let error_end = { error_start with pos_cnum = error_start.pos_cnum + 1 } in
           error_start, error_end
-        | None ->
-          let atom_end = { atom_start with pos_cnum = atom_start.pos_cnum + String.length s } in
-          atom_start, atom_end
       in
       (Loc.create ~start:loc_start ~stop:loc_end, s)
     }

@@ -214,17 +214,6 @@ module Spec = struct
       let+ lock_dir =
         Dune_pkg.Lock_dir.compute_missing_checksums ~pinned_packages lock_dir
       in
-      Log.log (fun () ->
-        let pkgs =
-          lock_dir.packages
-          |> Dune_pkg.Lock_dir.Packages.to_pkg_list
-          |> List.map ~f:(fun (pkg : Lock_dir.Pkg.t) ->
-            let name = pkg.info.name |> Package_name.to_string in
-            let version = pkg.info.version |> Package_version.to_string in
-            sprintf "%s.%s" name version)
-        in
-        let pp_pkgs = List.map pkgs ~f:Pp.text in
-        [ Pp.text "Dependency solution:"; Pp.concat ~sep:Pp.space pp_pkgs ]);
       Dune_pkg.Lock_dir.Write_disk.prepare
         ~portable_lock_dir
         ~lock_dir_path

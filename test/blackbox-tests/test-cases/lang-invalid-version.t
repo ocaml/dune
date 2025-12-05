@@ -10,6 +10,11 @@ such situations provide a clear error.
 
 Invalid version number:
 
+CR-someday benodiwal: Consider adding context-specific hints for ASCII invalid
+versions (e.g., "Hint: lang dune 3.21"). The current lexer-level approach
+trades hints for simplicity and robustness - it works uniformly across all
+atoms without needing validation in every decoder.
+
   $ test_invalid_version "Ali"
   File "dune-project", line 1, characters 11-14:
   1 | (lang dune Ali)

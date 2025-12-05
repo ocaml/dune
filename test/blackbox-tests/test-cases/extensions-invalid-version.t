@@ -11,6 +11,11 @@ such situations provide a clear error.
 
 Invalid version number:
 
+CR-someday benodiwal: Consider adding context-specific hints for ASCII invalid
+versions (e.g., "Hint: using menhir 3.0"). The current lexer-level approach
+trades hints for simplicity and robustness - it works uniformly across all
+atoms without needing validation in every decoder.
+
   $ test_invalid_version "Ali"
   File "dune-project", line 2, characters 14-17:
   2 | (using menhir Ali)
@@ -19,9 +24,6 @@ Invalid version number:
   [1]
 
 Test with various non-ASCII characters:
-
-CR-someday benodiwal: The version_loc is greedy and captures the closing
-parenthesis.
 
   $ test_invalid_version "è"
   File "dune-project", line 2, characters 14-15:
@@ -57,9 +59,6 @@ parenthesis.
   Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
   ASCII characters.
   [1]
-
-CR-someday benodiwal: Unicode string lengths are miscomputed in location
-excerpts for East Asian characters.
 
   $ test_invalid_version "中3.16文"
   File "dune-project", line 2, characters 14-15:

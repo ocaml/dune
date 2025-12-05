@@ -1168,34 +1168,24 @@ let setup_pkg_markdown_rules sctx ~pkg : unit Memo.t =
 
 let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.t) =
   let ctx = Super_context.context sctx in
+  let name = Package.name pkg in
+  let alias =
+    let pkg_dir = Package.dir pkg in
+    let dir = Path.Build.append_source (Context.build_dir ctx) pkg_dir in
+    Output_format.alias output ~dir
+  in
   match (output : Output_format.t) with
   | Markdown ->
-    let* is_markdown_supported = supports_doc_markdown sctx in
-    if not is_markdown_supported
-    then Memo.return ()
-    else (
-      let name = Package.name pkg in
-      let alias =
-        let pkg_dir = Package.dir pkg in
-        let dir = Path.Build.append_source (Context.build_dir ctx) pkg_dir in
-        Output_format.alias output ~dir
-      in
-      let directory_target = Paths.markdown ctx (Pkg name) in
-      let toplevel_index = Paths.markdown_index ctx in
-      let deps =
-        let open Action_builder.O in
-        let+ () = Action_builder.path (Path.build directory_target)
-        and+ () = Action_builder.path (Path.build toplevel_index) in
-        ()
-      in
-      Rules.Produce.Alias.add_deps alias deps)
-  | Html | Json ->
-    let name = Package.name pkg in
-    let alias =
-      let pkg_dir = Package.dir pkg in
-      let dir = Path.Build.append_source (Context.build_dir ctx) pkg_dir in
-      Output_format.alias output ~dir
+    let directory_target = Paths.markdown ctx (Pkg name) in
+    let toplevel_index = Paths.markdown_index ctx in
+    let deps =
+      let open Action_builder.O in
+      let+ () = Action_builder.path (Path.build directory_target)
+      and+ () = Action_builder.path (Path.build toplevel_index) in
+      ()
     in
+    Rules.Produce.Alias.add_deps alias deps
+  | Html | Json ->
     let* libs =
       Context.name ctx |> libs_of_pkg ~pkg:name >>| List.map ~f:(fun lib -> Lib lib)
     in

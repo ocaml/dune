@@ -23,6 +23,7 @@ Create a simple project with odoc documentation:
   > (** The answer to everything *)
   > EOF
 
+Create a simple bash script that mocks odoc 2.0.0
   $ cat > odoc << 'EOF'
   > #!/bin/bash
   > case "$1" in
@@ -76,10 +77,18 @@ Create a simple project with odoc documentation:
   > esac
   > EOF
   $ chmod +x odoc
-  $ PATH=.:$PATH dune build @doc-markdown
-  $ ls _build/default/_doc/_markdown 2>/dev/null || echo "No markdown directory created (expected for odoc 2.0.0)"
-  No markdown directory created (expected for odoc 2.0.0)
 
+  $ PATH=.:$PATH dune build @doc-markdown
+  Error: No rule found for _doc/_markdown/foo
+  -> required by alias doc-markdown
+  Error: No rule found for _doc/_markdown/index.md
+  -> required by alias doc-markdown
+  [1]
+  $ ls _build/default/_doc/_markdown
+  ls: _build/default/_doc/_markdown: No such file or directory
+  [1]
+
+Change the odoc script to mock odoc 3.1.0
   $ cat > odoc << 'EOF'
   > #!/bin/bash
   > case "$1" in
@@ -149,9 +158,8 @@ Create a simple project with odoc documentation:
   $ chmod +x odoc
 
   $ PATH=.:$PATH dune build @doc-markdown
-  $ ls _build/default/_doc/_markdown/foo/index.md 2>/dev/null && echo "Markdown files created (expected for odoc 3.1.0)"
+  $ ls _build/default/_doc/_markdown/foo/index.md
   _build/default/_doc/_markdown/foo/index.md
-  Markdown files created (expected for odoc 3.1.0)
 
   $ rm -rf _build
   $ cat > odoc << 'EOF'
@@ -209,6 +217,11 @@ Create a simple project with odoc documentation:
   $ chmod +x odoc
 
   $ PATH=.:$PATH dune build @doc-markdown
+  Error: No rule found for _doc/_markdown/foo
+  -> required by alias doc-markdown
+  Error: No rule found for _doc/_markdown/index.md
+  -> required by alias doc-markdown
+  [1]
   $ ls _build/default/_doc/_markdown
   ls: _build/default/_doc/_markdown: No such file or directory
   [1]

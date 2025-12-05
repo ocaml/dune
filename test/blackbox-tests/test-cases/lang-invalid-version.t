@@ -63,3 +63,39 @@ Test with various non-ASCII characters:
   Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
   ASCII characters.
   [1]
+
+Test where non-ASCII character is not the first character:
+
+  $ test_invalid_version "3.14è"
+  File "dune-project", line 1, characters 15-16:
+  1 | (lang dune 3.14è)
+                     ^
+  Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
+  ASCII characters.
+  [1]
+
+  $ test_invalid_version "2è3"
+  File "dune-project", line 1, characters 12-13:
+  1 | (lang dune 2è3)
+                  ^
+  Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
+  ASCII characters.
+  [1]
+
+  $ test_invalid_version "abc😀def"
+  File "dune-project", line 1, characters 14-15:
+  1 | (lang dune abc😀def)
+                    ^
+  Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
+  ASCII characters.
+  [1]
+
+Test with multiple non-ASCII characters (caret points to first one):
+
+  $ test_invalid_version "aè😀"
+  File "dune-project", line 1, characters 12-13:
+  1 | (lang dune aè😀)
+                  ^
+  Error: Invalid atom: contains non-ASCII character(s). Atoms must only contain
+  ASCII characters.
+  [1]

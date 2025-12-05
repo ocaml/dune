@@ -37,14 +37,22 @@ and atom start = parse
          cluster detection instead of the simple byte-based check. This would
          better handle complex Unicode like emoji sequences, though terminal
          rendering inconsistencies would still cause display issues. *)
-      let has_non_ascii = String.exists s ~f:(fun c -> Char.code c >= 128) in
-      let length = if has_non_ascii then 1 else String.length s in
-      let atom_end =
-        { atom_start with
-          pos_cnum = atom_start.pos_cnum + length
-        }
+      let rec find_first_non_ascii i =
+        if i >= String.length s then None
+        else if Char.code s.[i] >= 128 then Some i
+        else find_first_non_ascii (i + 1)
       in
-      (Loc.create ~start:atom_start ~stop:atom_end, s)
+      let loc_start, loc_end =
+        match find_first_non_ascii 0 with
+        | Some offset ->
+          let error_start = { atom_start with pos_cnum = atom_start.pos_cnum + offset } in
+          let error_end = { error_start with pos_cnum = error_start.pos_cnum + 1 } in
+          error_start, error_end
+        | None ->
+          let atom_end = { atom_start with pos_cnum = atom_start.pos_cnum + String.length s } in
+          atom_start, atom_end
+      in
+      (Loc.create ~start:loc_start ~stop:loc_end, s)
     }
   | _ | eof
     { to_eol lexbuf;

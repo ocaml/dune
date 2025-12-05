@@ -33,6 +33,10 @@ and atom start = parse
     }
   | atom_char+ as s
     { let atom_start = Lexing.lexeme_start_p lexbuf in
+      (* CR-someday benodiwal: Consider using Uuseg for more accurate grapheme
+         cluster detection instead of the simple byte-based check. This would
+         better handle complex Unicode like emoji sequences, though terminal
+         rendering inconsistencies would still cause display issues. *)
       let has_non_ascii = String.exists s ~f:(fun c -> Char.code c >= 128) in
       let length = if has_non_ascii then 1 else String.length s in
       let atom_end =

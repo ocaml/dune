@@ -617,8 +617,7 @@ module Parameterised = struct
 
   let instantiate ~loc lib args ~parent_parameters =
     let open Resolve.O in
-    let* lib = lib
-    and* args = make_arguments args in
+    let* args = make_arguments args in
     let* lib = apply_arguments lib args in
     let+ () =
       let* all_args = parameterised_arguments lib in
@@ -1755,10 +1754,10 @@ end = struct
     let open Memo.O in
     let resolve_parameterised_dep (loc, lib) ~arguments =
       resolve_dep db (loc, lib) ~private_deps
-      >>| function
-      | None -> None
-      | Some dep ->
-        Some (Parameterised.instantiate ~loc dep arguments ~parent_parameters:parameters)
+      >>| Option.map ~f:(fun dep ->
+        let open Resolve.O in
+        let* dep = dep in
+        Parameterised.instantiate ~loc dep arguments ~parent_parameters:parameters)
     in
     Memo.List.fold_left ~init:Resolved.Builder.empty deps ~f:(fun acc (dep : Lib_dep.t) ->
       match dep with

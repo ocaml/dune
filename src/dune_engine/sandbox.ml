@@ -185,8 +185,7 @@ let create ~mode ~dune_stats ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
     Dune_trace.start dune_stats (fun () ->
       let cat = Some [ "create-sandbox" ] in
       let name = Loc.to_file_colon_line rule_loc in
-      let args = None in
-      { cat; name; args })
+      Dune_trace.Event.data ~cat ~name ~args:None)
   in
   init ();
   let sandbox_dir =

@@ -253,9 +253,10 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
   let event =
     Dune_trace.(
       start (global ()) (fun () ->
-        { cat = None
-        ; name = label
-        ; args =
+        Dune_trace.Event.data
+          ~cat:None
+          ~name:label
+          ~args:
             (let args =
                [ "url", `String (OpamUrl.to_string url)
                ; "target", `String (Path.to_string target)
@@ -265,8 +266,7 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
                (match checksum with
                 | None -> args
                 | Some checksum ->
-                  ("checksum", `String (Checksum.to_string checksum)) :: args))
-        }))
+                  ("checksum", `String (Checksum.to_string checksum)) :: args))))
   in
   let unsupported_backend s =
     User_error.raise ~loc:url_loc [ Pp.textf "Unsupported backend: %s" s ]

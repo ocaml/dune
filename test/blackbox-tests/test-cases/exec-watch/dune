@@ -23,5 +23,6 @@
   exec-watch-server
   exec-watch-ignore-sigterm
   exec-signal
+  exec-watch-fail
   exec-watch-basic)
  (enabled_if false))

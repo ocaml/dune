@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 module Module_system : sig
   type t =

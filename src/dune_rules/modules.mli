@@ -13,6 +13,7 @@ val lib
   -> stdlib:Ocaml_stdlib.t option
   -> lib_name:Lib_name.Local.t
   -> implements:bool
+  -> has_instances:bool
   -> modules:Module.t Module_trie.t
   -> t
 
@@ -32,6 +33,7 @@ val exe_unwrapped : Module.t Module_trie.t -> obj_dir:Path.Build.t -> t
 val make_wrapped
   :  obj_dir:Path.Build.t
   -> modules:Module.t Module_trie.t
+  -> has_instances:bool
   -> [ `Exe | `Melange ]
   -> t
 
@@ -100,10 +102,6 @@ module With_vlib : sig
 
   (** Returns all the compatibility modules. *)
   val wrapped_compat : t -> Module.Name_map.t
-
-  (** Returns the main module name if it exists. It exist for libraries with
-      [(wrapped true)] or one module libraries. *)
-  val main_module_name : t -> Module_name.t option
 
   val version_installed : t -> src_root:Path.t -> install_dir:Path.t -> t
   val alias_for : t -> Module.t -> Module.t list

@@ -110,17 +110,19 @@ Lock the dependency, it should generate an a lock dir that references both the
 url and the extra source.
 
   $ add_mock_repo_if_needed
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - needs-patch.0.0.1
 
-  $ sed -E 's/md5=[0-9a-f]+/md5=$HASH/g' ${default_lock_dir}/needs-patch.pkg
+  $ sed -E 's/md5=[0-9a-f]+/md5=$HASH/g' ${default_lock_dir}/needs-patch.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (progn
-    (patch required.patch)
-    (run dune build -p %{pkg-self:name} -j %{jobs})))
+   (all_platforms
+    ((action
+      (progn
+       (patch required.patch)
+       (run dune build -p %{pkg-self:name} -j %{jobs}))))))
   
   (source
    (fetch
@@ -168,7 +170,7 @@ application order of them mattering:
 
 Lock the project to use that new package
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - needs-patch.0.0.2
 

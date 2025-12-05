@@ -120,9 +120,8 @@ let long_form ~loc =
      and+ mode = Mode.field
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
      and+ package =
-       field_o
-         "package"
-         (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Stanza_pkg.decode)
+       Stanza_pkg.field_opt ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 0)) ()
+       >>| Option.map ~f:snd
      and+ aliases =
        let open Dune_sexp.Decoder in
        fields_mutually_exclusive

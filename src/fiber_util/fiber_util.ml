@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 
 module Temp = Temp.Monad (struct
     type 'a t = 'a Fiber.t

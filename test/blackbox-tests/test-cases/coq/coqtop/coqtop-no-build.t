@@ -20,6 +20,10 @@ Testing the -no-build option of dune coq top:
 On a fresh build, this should do nothing but should pass the correct flags:
 
   $ dune coq top --no-build --display short --toplevel echo dir/bar.v | ../scrub_coq_args.sh
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v
   -w -deprecated-native-compiler-option -native-output-dir .
   -native-compiler on
@@ -53,6 +57,10 @@ On a fresh build, this should do nothing but should pass the correct flags:
 And for comparison normally a build would happen:
 
   $ dune coq top --display short --toplevel echo dir/bar.v | ../scrub_coq_args.sh
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
         coqdep dir/.basic.theory.d
           coqc dir/Nbasic_foo.{cmi,cmxs},dir/foo.{glob,vo}
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v

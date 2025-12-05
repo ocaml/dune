@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 
 let pwd = Sys.getcwd ()
 

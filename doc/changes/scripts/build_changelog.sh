@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Script name: build_changelog.sh
-# Description: this script updates the CHANGES.md file from the the files in
+# Description: this script updates the CHANGES.md file from the files in
 # the changes directory, removing the files as it goes.
 # Author(s): The Dune team
 # Date: 2025-09-29

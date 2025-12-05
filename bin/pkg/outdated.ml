@@ -10,8 +10,8 @@ let find_outdated_packages ~transitive ~lock_dirs_arg () =
       let lock_dir_path = Path.source lock_dir_path in
       (* updating makes sense when checking for outdated packages *)
       let* repos =
-        get_repos
-          (repositories_of_workspace workspace)
+        Dune_pkg.Opam_repo.resolve_repositories
+          ~available_repos:(repositories_of_workspace workspace)
           ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
       and+ local_packages = Memo.run find_local_packages
       and+ platform = solver_env_from_system_and_context ~lock_dir_path in
@@ -72,7 +72,7 @@ let term =
       & flag
       & info
           [ "transitive" ]
-          ~doc:"Check for outdated packages in transitive dependencies")
+          ~doc:(Some "Check for outdated packages in transitive dependencies"))
   and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in

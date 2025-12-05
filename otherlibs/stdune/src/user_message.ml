@@ -1,5 +1,3 @@
-open! Import
-
 module Style = struct
   type t =
     | Loc

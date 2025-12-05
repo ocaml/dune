@@ -1,11 +1,10 @@
-open! Import
+open Import
 
 type t =
   { local_packages : Local_package.t Package_name.Map.t
   ; lock_dir : Lock_dir.t
   ; platform : Solver_env.t
   ; version_by_package_name : Package_version.t Package_name.Map.t
-  ; solver_env : Solver_env.t
   }
 
 let lockdir_regenerate_hints =
@@ -54,7 +53,10 @@ let concrete_dependencies_of_local_package t local_package_name ~with_test =
     |> Dependency_formula.to_filtered_formula
     |> Resolve_opam_formula.filtered_formula_to_package_names
          ~with_test
-         ~env:(Solver_env.to_env t.solver_env)
+         ~env:
+           (Solver_stats.Expanded_variable_bindings.to_solver_env
+              t.lock_dir.expanded_solver_variable_bindings
+            |> Solver_env.to_env)
          ~packages:t.version_by_package_name
   with
   | Ok { regular; post = _ } -> regular
@@ -89,7 +91,6 @@ let all_non_local_dependencies_of_local_packages t =
 let check_for_unnecessary_packges_in_lock_dir
       ~platform
       (lock_dir : Lock_dir.t)
-      solver_env
       all_non_local_dependencies_of_local_packages
   =
   let packages = Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform in
@@ -98,7 +99,7 @@ let check_for_unnecessary_packges_in_lock_dir
       match
         Lock_dir.transitive_dependency_closure
           lock_dir
-          ~platform:solver_env
+          ~platform
           all_non_local_dependencies_of_local_packages
       with
       | Ok x -> x
@@ -133,14 +134,16 @@ let check_for_unnecessary_packges_in_lock_dir
       ])
 ;;
 
-let up_to_date local_packages ~dependency_hash:saved_dependency_hash =
+let dependency_digest local_packages =
   let local_packages =
     Package_name.Map.values local_packages |> List.map ~f:Local_package.for_solver
   in
-  let dependency_hash =
-    Local_package.For_solver.non_local_dependencies local_packages
-    |> Local_package.Dependency_hash.of_dependency_formula
-  in
+  Local_package.For_solver.non_local_dependencies local_packages
+  |> Local_package.Dependency_hash.of_dependency_formula
+;;
+
+let up_to_date local_packages ~dependency_hash:saved_dependency_hash =
+  let dependency_hash = dependency_digest local_packages in
   match saved_dependency_hash, dependency_hash with
   | None, None -> `Valid
   | Some lock_dir_dependency_hash, Some non_local_dependencies_hash
@@ -213,7 +216,7 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
         ~hints:regenerate_lock_dir_hints
         [ Pp.text
             "Dependency hash in lockdir does not match the hash of non-local \
-             dependencies of this project. The lockdir expects the the non-local \
+             dependencies of this project. The lockdir expects the non-local \
              dependencies to hash to:"
         ; Pp.text (Local_package.Dependency_hash.to_string lock_dir_dependency_hash)
         ; Pp.text "...but the non-local dependencies of this project hash to:"
@@ -221,12 +224,12 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
         ]
 ;;
 
-let validate ~platform t =
+let validate t =
   validate_dependency_hash
     t.local_packages
     ~saved_dependency_hash:t.lock_dir.dependency_hash;
   all_non_local_dependencies_of_local_packages t
-  |> check_for_unnecessary_packges_in_lock_dir ~platform t.lock_dir t.solver_env
+  |> check_for_unnecessary_packges_in_lock_dir ~platform:t.platform t.lock_dir
 ;;
 
 let create ~platform local_packages lock_dir =
@@ -234,12 +237,8 @@ let create ~platform local_packages lock_dir =
     let version_by_package_name =
       version_by_package_name ~platform local_packages lock_dir
     in
-    let solver_env =
-      Solver_stats.Expanded_variable_bindings.to_solver_env
-        lock_dir.expanded_solver_variable_bindings
-    in
-    let t = { local_packages; lock_dir; platform; version_by_package_name; solver_env } in
-    validate ~platform t;
+    let t = { local_packages; lock_dir; platform; version_by_package_name } in
+    validate t;
     Ok t
   with
   | User_error.E e -> Error e
@@ -281,7 +280,7 @@ let transitive_dependency_closure_without_test t start =
     match
       Lock_dir.transitive_dependency_closure
         t.lock_dir
-        ~platform:t.solver_env
+        ~platform:t.platform
         Package_name.Set.(
           union
             non_local_immediate_dependencies_of_local_transitive_dependency_closure

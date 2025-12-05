@@ -1,10 +1,4 @@
-(executable
+(test
  (name sexp_tests)
  (modules sexp_tests)
  (libraries stdune dune_lang))
-
-(rule
- (alias runtest)
- (package dune-private-libs)
- (action
-  (run ./sexp_tests.exe)))

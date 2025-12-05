@@ -14,7 +14,9 @@ module type T = sig
   val hash : t -> int
 end
 
-type t = E : 'a * (module T with type t = 'a) -> t
+type t = E : 'a * Package_id.t option * (module T with type t = 'a) -> t
+
+let package (E (_, p, _)) = p
 
 module Key = struct
   type stanza = t
@@ -28,13 +30,13 @@ module type S = sig
   type t
   type repr += T of t
 
-  val make_stanza : t -> stanza
+  val make_stanza : t -> Package_id.t option -> stanza
   val decode_stanza : t Decoder.t -> stanza list Decoder.t
   val decode_stanzas : t list Decoder.t -> stanza list Decoder.t
   val key : t Key.t
 end
 
-let repr (E (a, (module T))) = T.repr a
+let repr (E (a, _id, (module T))) = T.repr a
 
 module Make (S : sig
     type t
@@ -54,9 +56,21 @@ struct
     type _ witness += W : t witness
   end
 
-  let make_stanza (a : S.t) = E (a, (module T))
-  let decode_stanza d = Decoder.map d ~f:(fun x -> [ make_stanza x ])
-  let decode_stanzas d = Decoder.map d ~f:(List.map ~f:make_stanza)
+  let make_stanza (a : S.t) pkg = E (a, pkg, (module T))
+
+  let decode_stanza d =
+    let open Decoder in
+    let* mask = Decoder.get Package_mask.key in
+    let+ d = d in
+    let package =
+      match mask with
+      | Some (Forbidden_packages _) | None -> None
+      | Some (Inside_package id) -> Some id
+    in
+    [ make_stanza d package ]
+  ;;
+
+  let decode_stanzas d = Decoder.map d ~f:(List.map ~f:(fun s -> make_stanza s None))
 
   let key : S.t Key.t =
     fun t ->
@@ -68,13 +82,16 @@ struct
   include T
 end
 
-let compare (E (x, (module X))) (E (y, (module Y))) =
+let compare (E (x, px, (module X))) (E (y, py, (module Y))) =
   match X.W with
-  | Y.W -> X.compare x y
+  | Y.W -> Tuple.T2.compare X.compare (Option.compare Package_id.compare) (x, px) (y, py)
   | _ -> Id.compare X.id Y.id
 ;;
 
-let hash (E (t, (module T))) = Tuple.T2.hash Id.hash T.hash (T.id, t)
+let hash (E (t, p, (module T))) =
+  Tuple.T3.hash Id.hash (Option.hash Package_id.hash) T.hash (T.id, p, t)
+;;
+
 let equal x y = Ordering.is_eq (compare x y)
 
 module Parser = struct

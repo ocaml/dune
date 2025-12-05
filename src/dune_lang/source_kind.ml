@@ -61,7 +61,7 @@ module Host = struct
     | Gitlab _ -> "gitlab.com"
     | Sourcehut _ -> "sr.ht"
     | Codeberg _ -> "codeberg.org"
-    | Tangled _ -> "tangled.sh"
+    | Tangled _ -> "tangled.org"
   ;;
 
   let base_uri repo =

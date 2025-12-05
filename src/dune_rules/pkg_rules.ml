@@ -87,8 +87,8 @@ module Package_universe = struct
     | Dev_tool dev_tool ->
       (* CR-Leonidas-from-XIV: It probably isn't always [Some] *)
       dev_tool
-      |> Lock_dir.dev_tool_source_lock_dir
-      |> Path.source
+      |> Lock_dir.dev_tool_external_lock_dir
+      |> Path.external_
       |> Option.some
       |> Memo.return
   ;;
@@ -331,8 +331,11 @@ module Value_list_env = struct
      string (in the style of the PATH variable). *)
   type t = Value.t list Env.Map.t
 
-  let parse_strings s = Bin.parse s |> List.map ~f:(fun s -> Value.String s)
-  let of_env env : t = Env.to_map env |> Env.Map.map ~f:parse_strings
+  let global : t Lazy.t =
+    let parse_strings s = Bin.parse s |> List.map ~f:(fun s -> Value.String s) in
+    let of_env env : t = Env.to_map env |> Env.Map.map ~f:parse_strings in
+    lazy (of_env (Global.env ()))
+  ;;
 
   (* Concatenate a list of values in the style of lists found in
      environment variables, such as PATH *)
@@ -575,7 +578,7 @@ module Pkg = struct
        for build actions to run successfully, such as $PATH on systems where the
        shell's default $PATH variable doesn't include the location of standard
        programs or build tools (e.g. NixOS). *)
-    Value_list_env.extend_concat_path (Value_list_env.of_env (Global.env ())) package_env
+    Value_list_env.extend_concat_path (Lazy.force Value_list_env.global) package_env
   ;;
 
   let exported_env t = Value_list_env.to_env @@ exported_value_env t
@@ -654,9 +657,7 @@ module Substitute = struct
         ( paths expander.paths
         , String.Map.to_list artifacts
         , Package.Name.Map.to_list_map depends ~f:(fun _ (m, p) -> m, paths p)
-        , expander.version
-        , expander.context
-        , Env.Map.to_list expander.env |> Digest.generic |> Digest.to_string_raw )
+        , expander.version )
         |> Digest.generic
         |> Digest.to_string_raw
       in
@@ -1198,11 +1199,23 @@ module DB = struct
       ; dep_pkg_digest : Pkg_digest.t
       }
 
+    let dep_equal (dep : dep) { dep_pkg; dep_loc; dep_pkg_digest } =
+      Pkg.equal dep.dep_pkg dep_pkg
+      && Loc.equal dep.dep_loc dep_loc
+      && Pkg_digest.equal dep.dep_pkg_digest dep_pkg_digest
+    ;;
+
     type entry =
       { pkg : Pkg.t
       ; deps : dep list
       ; pkg_digest : Pkg_digest.t
       }
+
+    let entry_equal (entry : entry) { pkg; deps; pkg_digest } =
+      Pkg.equal entry.pkg pkg
+      && List.equal dep_equal entry.deps deps
+      && Pkg_digest.equal entry.pkg_digest pkg_digest
+    ;;
 
     let entries_by_name_of_lock_dir
           (lock_dir : Dune_pkg.Lock_dir.t)
@@ -1257,18 +1270,7 @@ module DB = struct
     (* Associate each package's digest with the package and its dependencies. *)
     type t = entry Pkg_digest.Map.t
 
-    let equal a b =
-      Pkg_digest.Map.equal a b ~equal:(fun (entry : entry) { pkg; deps; pkg_digest } ->
-        Pkg.equal entry.pkg pkg
-        && List.equal
-             (fun (dep : dep) { dep_pkg; dep_loc; dep_pkg_digest } ->
-                Pkg.equal dep.dep_pkg dep_pkg
-                && Loc.equal dep.dep_loc dep_loc
-                && Pkg_digest.equal dep.dep_pkg_digest dep_pkg_digest)
-             entry.deps
-             deps
-        && Pkg_digest.equal entry.pkg_digest pkg_digest)
-    ;;
+    let equal = Pkg_digest.Map.equal ~equal:entry_equal
 
     let of_lock_dir lock_dir ~platform ~system_provided =
       entries_by_name_of_lock_dir lock_dir ~platform ~system_provided
@@ -1309,6 +1311,7 @@ module DB = struct
       Some entry
     ;;
 
+    let empty = Pkg_digest.Map.empty
     let union = Pkg_digest.Map.union ~f:union_check
     let union_all = Pkg_digest.Map.union_all ~f:union_check
 
@@ -1337,12 +1340,10 @@ module DB = struct
     ; system_provided : Package.Name.Set.t
     }
 
-  let equal t t2 =
-    phys_equal t t2
-    ||
-    let { pkg_digest_table; system_provided } = t2 in
-    Pkg_table.equal t.pkg_digest_table pkg_digest_table
-    && Package.Name.Set.equal t.system_provided system_provided
+  let equal t ({ pkg_digest_table; system_provided } as t') =
+    phys_equal t t'
+    || (Pkg_table.equal t.pkg_digest_table pkg_digest_table
+        && Package.Name.Set.equal t.system_provided system_provided)
   ;;
 
   let hash = `Do_not_hash
@@ -1359,24 +1360,42 @@ module DB = struct
     entry.pkg_digest
   ;;
 
-  let of_ctx ctx ~allow_sharing =
-    let system_provided = default_system_provided in
-    let* lock_dir = Lock_dir.get_exn ctx
-    and* platform = Lock_dir.Sys_vars.solver_env () in
-    let pkg_digest_table = Pkg_table.of_lock_dir lock_dir ~platform ~system_provided in
-    let+ pkg_digest_table =
-      if allow_sharing && Context_name.is_default ctx
-      then
-        (* Dev tools are built in the default context, so allow their
-           dependencies to be shared with the project's if it too is being
-           built in the default context. *)
-        let+ dev_tools_pkg_digest_table =
-          Memo.Lazy.force Pkg_table.all_existing_dev_tools
-        in
-        Pkg_table.union pkg_digest_table dev_tools_pkg_digest_table
-      else Memo.return pkg_digest_table
+  let of_ctx =
+    let of_ctx_memo =
+      Memo.create
+        "pkg-db"
+        ~input:
+          (module struct
+            type t = Context_name.t * bool
+
+            let to_dyn = Tuple.T2.to_dyn Context_name.to_dyn Dyn.bool
+            let hash = Tuple.T2.hash Context_name.hash Bool.hash
+            let equal = Tuple.T2.equal Context_name.equal Bool.equal
+          end)
+        (fun (ctx, allow_sharing) ->
+           Per_context.valid ctx
+           >>= function
+           | false ->
+             Code_error.raise "invalid context" [ "context", Context_name.to_dyn ctx ]
+           | true ->
+             (* Dev tools are built in the default context, so allow their
+                dependencies to be shared with the project's if it too is being
+                built in the default context. *)
+             let allow_sharing = allow_sharing && Context_name.is_default ctx in
+             (* Is this value anything other than [default_system_provided]? *)
+             let system_provided = default_system_provided in
+             let+ pkg_digest_table =
+               let* lock_dir = Lock_dir.get_exn ctx
+               and* platform = Lock_dir.Sys_vars.solver_env () in
+               (if allow_sharing
+                then Memo.Lazy.force Pkg_table.all_existing_dev_tools
+                else Memo.return Pkg_table.empty)
+               >>| Pkg_table.union
+                     (Pkg_table.of_lock_dir lock_dir ~platform ~system_provided)
+             in
+             { pkg_digest_table; system_provided })
     in
-    { pkg_digest_table; system_provided }
+    fun ctx ~allow_sharing -> Memo.exec of_ctx_memo (ctx, allow_sharing)
   ;;
 
   (* Returns the db for the given context and the digest of the given package
@@ -1435,8 +1454,7 @@ end = struct
       && DB.equal db t.db
     ;;
 
-    let hash { db; pkg_digest; universe } =
-      let _ = db in
+    let hash { db = _; pkg_digest; universe } =
       Tuple.T2.hash Pkg_digest.hash Package_universe.hash (pkg_digest, universe)
     ;;
 
@@ -1529,22 +1547,23 @@ end = struct
         |> Option.map ~f:(fun (p : Path.t) ->
           match p with
           | External e ->
-            Code_error.raise
-              "Package files directory is external source directory, this is unsupported"
-              [ "dir", Path.External.to_dyn e ]
-          | In_source_tree s ->
-            (match Path.Source.explode s with
-             | [ "dev-tools.locks"; dev_tool; files_dir ] ->
+            let source_path = Dune_pkg.Pkg_workspace.dev_tool_path_to_source_dir e in
+            (match Path.Source.explode source_path with
+             | [ "_build"; ".dev-tools.locks"; dev_tool; files_dir ] ->
                Path.Build.L.relative
                  Private_context.t.build_dir
                  [ "default"; ".dev-tool-locks"; dev_tool; files_dir ]
-             | otherwise ->
+             | components ->
                Code_error.raise
-                 "Unexpected files_dir path"
-                 [ "components", (Dyn.list Dyn.string) otherwise ])
-          | In_build_dir b ->
-            (* it's already a build path, no need to do anything *)
-            b)
+                 "Package files directory is external source directory, this is \
+                  unsupported"
+                 [ "external", Path.External.to_dyn e
+                 ; "source", Path.Source.to_dyn source_path
+                 ; "components", Dyn.(list string) components
+                 ])
+          | In_source_tree s ->
+            Code_error.raise "Unexpected files_dir path" [ "dir", Path.Source.to_dyn s ]
+          | In_build_dir b -> b)
       in
       let id = Pkg.Id.gen () in
       let write_paths =
@@ -2418,9 +2437,12 @@ let ocaml_toolchain context =
 
 let all_deps universe =
   let* db =
-    (* Disallow sharing so that the only packages in the DB are the ones from
-       the universe's respective lock directory. *)
-    DB.of_ctx (Package_universe.context_name universe) ~allow_sharing:false
+    match (universe : Package_universe.t) with
+    | Dependencies ctx ->
+      (* Disallow sharing so that the only packages in the DB are the ones from
+         the universe's respective lock directory. *)
+      DB.of_ctx ctx ~allow_sharing:false
+    | Dev_tool tool -> DB.of_dev_tool tool >>| fst
   in
   Pkg_digest.Map.values db.pkg_digest_table
   |> Memo.parallel_map ~f:(fun { DB.Pkg_table.pkg_digest; _ } ->

@@ -213,9 +213,7 @@ let decode =
          (Dune_lang.Syntax.since Stanza.syntax (2, 7)
           >>> fields (field "ppx" (located Lib_name.decode)))
      and+ package =
-       field_o
-         "package"
-         (Dune_lang.Syntax.since Stanza.syntax (2, 8) >>> located Stanza_pkg.decode)
+       Stanza_pkg.field_opt ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8)) ()
      and+ melange_runtime_deps =
        field
          "melange.runtime_deps"
@@ -432,6 +430,8 @@ let obj_dir ~dir t =
     (snd t.name)
 ;;
 
+let local_main_module_name t = Some (Module_name.of_local_lib_name t.name)
+
 let main_module_name t : Lib_info.Main_module_name.t =
   match t.implements, t.wrapped with
   | Some x, From _ -> From x
@@ -532,6 +532,7 @@ let to_lib_info
       in
       archives_for_mode ~f_ext:Mode.compiled_lib_ext, plugins)
   in
+  let local_main_module_name = local_main_module_name conf in
   let main_module_name = main_module_name conf in
   let name = best_name conf in
   let lib_id =
@@ -572,6 +573,7 @@ let to_lib_info
   in
   let requires = conf.buildable.libraries in
   let parameters = conf.parameters in
+  let allow_unused_libraries = conf.buildable.allow_unused_libraries in
   let loc = conf.buildable.loc in
   let kind = conf.kind in
   let src_dir = dir in
@@ -609,6 +611,7 @@ let to_lib_info
     ~version
     ~synopsis
     ~main_module_name
+    ~local_main_module_name
     ~sub_systems
     ~requires
     ~parameters
@@ -617,6 +620,7 @@ let to_lib_info
     ~plugins
     ~archives
     ~ppx_runtime_deps
+    ~allow_unused_libraries
     ~foreign_archives
     ~native_archives
     ~foreign_dll_files

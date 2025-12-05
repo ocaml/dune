@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 include Dag_intf
 
 module Make (Value : Value) () : S with type value := Value.t = struct

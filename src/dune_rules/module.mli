@@ -88,6 +88,7 @@ end
 
 val sources : t -> Path.t list
 val sources_without_pp : t -> Path.t list
+val source_without_pp : ml_kind:Ml_kind.t -> t -> Path.t option
 val visibility : t -> Visibility.t
 val encode : t -> src_dir:Path.t -> Dune_lang.t list
 val decode : src_dir:Path.t -> t Dune_lang.Decoder.t

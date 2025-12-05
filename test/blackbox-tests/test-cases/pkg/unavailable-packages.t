@@ -1,5 +1,14 @@
+Test that the solver environment associate with lockdirs is respected by the
+solver.
+
   $ . ./helpers.sh
   $ mkrepo
+
+This test is specialized to non-portable lockdirs. For an analogous test of
+portable-lockdirs where different packages or packgae versions are available on
+different platforms, see the tests "portable-lockdirs-partial-solve" and
+"portable-lockdirs-platform-dependant-version".
+  $ export DUNE_CONFIG__PORTABLE_LOCK_DIR=disabled
 
 Set up two build contexts: a default one for linux and another for macos.
   $ cat >dune-workspace <<EOF

@@ -152,7 +152,7 @@ module Dune_config : sig
   val for_scheduler
     :  t
     -> watch_exclusions:string list
-    -> Dune_stats.t option
+    -> Dune_trace.t option
     -> print_ctrl_c_warning:bool
     -> Dune_engine.Scheduler.Config.t
 end

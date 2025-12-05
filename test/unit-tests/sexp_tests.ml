@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 
 let () = Printexc.record_backtrace true
 

@@ -25,10 +25,6 @@ module type S = sig
   val write_lines : ?binary:bool -> ?perm:int -> path -> string list -> unit
   val copy_file : ?chmod:(int -> int) -> src:path -> dst:path -> unit -> unit
 
-  (** Try to write the file. On failure, temporarily set the write
-      permission, and retry writing once. *)
-  val overwrite_file : ?binary:bool -> path -> string -> unit
-
   val setup_copy
     :  ?chmod:(int -> int)
     -> src:path

@@ -23,6 +23,7 @@ let available_exes ~dir (exes : Executables.t) =
       libs
       (`Exe exes.names)
       exes.buildable.libraries
+      ~allow_unused_libraries:exes.buildable.allow_unused_libraries
       ~pps
       ~dune_version
       ~forbidden_libraries:exes.forbidden_libraries

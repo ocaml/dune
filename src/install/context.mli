@@ -4,7 +4,7 @@
     installation layout by creating symlinks to artifacts in the build
     directory. *)
 
-open! Import
+open Import
 
 val install_context : Dune_engine.Build_context.t
 

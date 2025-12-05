@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 type ('k, 'v) t =
   { (* The cache stores results so that if an exception was raised while

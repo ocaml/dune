@@ -1,4 +1,4 @@
-open! Import
+open Import
 module Map = Module_name.Map
 
 type key = Module_name.Path.t

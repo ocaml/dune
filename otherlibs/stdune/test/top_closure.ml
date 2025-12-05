@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 
 let deps_of_list list dep = List.assoc_opt dep list |> Option.value ~default:[]
 

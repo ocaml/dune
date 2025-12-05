@@ -71,7 +71,7 @@ be incoporated into the changelog properly.
 
 - Introduce `%{os}`, `%{os_version}`, `%{os_distribution}`, and `%{os_family}`
   percent forms. These have the same values as their opam counterparts.
-  (#11863, @rgrinberg)
+  (#11863, fixes #838, @rgrinberg)
 
 - Introduce option `(implicit_transitive_deps false-if-hidden-includes-supported)`
   that is equivalent to `(implicit_transitive_deps false)` when `-H` is

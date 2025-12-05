@@ -1,3 +1,5 @@
+open Stdune
+
 (** Add values for expanding [%{name}] for a package *)
 val add_self_to_filter_env
   :  OpamPackage.t
@@ -15,4 +17,4 @@ val opam_package_to_lock_file_pkg
   -> pinned:bool
   -> Resolved_package.t
   -> portable_lock_dir:bool
-  -> Lock_dir.Pkg.t
+  -> (Lock_dir.Pkg.t, User_message.t) result

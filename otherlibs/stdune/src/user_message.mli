@@ -1,5 +1,3 @@
-open! Import
-
 (** A message for the user *)
 
 (** User messages are styled document that can be printed to the console or in

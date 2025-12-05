@@ -1,0 +1,22 @@
+This used to be a reproduction case for #3624, where dune created a dune-project
+with an incorrect using line. Since we dropped support for automatically
+creating the dune-project file, this is now testing that the error message is
+good when the coq extension is not enabled.
+
+  $ cat >dune <<EOF
+  > (rocq.theory
+  >  (name foo))
+  > EOF
+  $ dune build
+  File ".", line 1, characters 0-0:
+  Warning: No dune-project file has been found in directory ".". A default one
+  is assumed but the project might break when dune is upgraded. Please create a
+  dune-project file.
+  Hint: generate the project file with: $ dune init project <name>
+  File "dune", lines 1-2, characters 0-25:
+  1 | (rocq.theory
+  2 |  (name foo))
+  Error: 'rocq.theory' is available only when rocq is enabled in the
+  dune-project file. You must enable it using (using rocq 0.11) in your
+  dune-project file.
+  [1]

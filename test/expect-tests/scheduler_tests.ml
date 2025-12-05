@@ -1,5 +1,5 @@
 open Stdune
-open! Dune_tests_common
+open Dune_tests_common
 open Dune_engine
 open Fiber.O
 

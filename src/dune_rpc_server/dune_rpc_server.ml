@@ -317,7 +317,7 @@ module Event = struct
         let id = Chrome_trace.Id.create (`Int (Session.Id.to_int id)) in
         Event.async ?args id kind common
       in
-      Dune_stats.emit stats event)
+      Dune_trace.emit stats event)
   ;;
 end
 

@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 module Expanded : sig
   type t

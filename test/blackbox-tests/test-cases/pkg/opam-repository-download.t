@@ -28,7 +28,7 @@ Make a mock repo tarball that will get used by dune to download the package
   > EOF
   $ add_mock_repo_if_needed "git+file://$(pwd)/mock-opam-repository"
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.0.1
@@ -47,7 +47,7 @@ other systems and thus shouldn't be included.
 
   $ rm -r ${default_lock_dir} dune-workspace
   $ add_mock_repo_if_needed "file://$(pwd)/mock-opam-repository"
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.0.1
@@ -69,7 +69,7 @@ in the repo and make sure it locks the older version.
 
   $ rm -r ${default_lock_dir} dune-workspace
   $ add_mock_repo_if_needed "git+file://$(pwd)/mock-opam-repository#${REPO_HASH}"
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.0.1
@@ -80,7 +80,7 @@ repository and thus the new foo package.
 
   $ rm dune-workspace
   $ add_mock_repo_if_needed "git+file://$(pwd)/mock-opam-repository"
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.1.0
@@ -110,7 +110,7 @@ To be safe it doesn't access the repo, we make sure to move the mock-repo away
 So now the test should work as it can't access the repo:
 
   $ rm -r ${default_lock_dir}
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.1.0
@@ -122,7 +122,7 @@ restored the repo to where it was before)
   $ add_mock_repo_if_needed "git+file://$(pwd)/mock-opam-repository#${NEWEST_REPO_HASH}"
   $ mv elsewhere mock-opam-repository
   $ rm -r ${default_lock_dir}
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - bar.1.0.0
   - foo.0.1.0
@@ -147,7 +147,7 @@ sure that the default branch differs from `bar-2`).
 Locking that branch should work and pick `bar.2.0.0`:
 
   $ rm -r ${default_lock_dir}
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - bar.2.0.0
   - foo.0.1.0
@@ -173,7 +173,7 @@ The repo should be using the `1.0` tag, as we don't want `bar.3.0.0`.
 So we should get `bar.1.0.0` when locking.
 
   $ rm -r ${default_lock_dir}
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - bar.1.0.0
   - foo.0.1.0

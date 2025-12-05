@@ -21,18 +21,21 @@ let term =
   let+ default_builder = Common.Builder.term
   and+ context =
     let doc = "Run the Coq toplevel in this build context." in
-    Common.context_arg ~doc
+    Common.context_arg ~doc:(Some doc)
   and+ coqtop =
     let doc = "Run the given toplevel command instead of the default." in
-    Arg.(value & opt string "coqtop" & info [ "toplevel" ] ~docv:"CMD" ~doc)
+    Arg.(value & opt string "coqtop" & info [ "toplevel" ] ~docv:"CMD" ~doc:(Some doc))
   and+ coq_file_arg =
-    Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"COQFILE"))
-  and+ extra_args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
+    (* CR-someday Alizter: document this option *)
+    Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"COQFILE" ~doc:None))
+  and+ extra_args =
+    (* CR-someday Alizter: document this option *)
+    Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS" ~doc:None))
   and+ no_rebuild =
     Arg.(
       value
       & flag
-      & info [ "no-build" ] ~doc:"Don't rebuild dependencies before executing.")
+      & info [ "no-build" ] ~doc:(Some "Don't rebuild dependencies before executing."))
   in
   let common, config =
     let builder =

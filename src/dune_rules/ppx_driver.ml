@@ -51,20 +51,8 @@ end = struct
          List.sort libs ~compare)
         |> List.map ~f:Lib.name
       in
-      let project =
-        List.fold_left libs ~init:None ~f:(fun acc lib ->
-          let scope_for_key =
-            let info = Lib.info lib in
-            let status = Lib_info.status info in
-            match status with
-            | Private (scope_name, _) -> Some scope_name
-            | Installed_private | Public _ | Installed -> None
-          in
-          Option.merge acc scope_for_key ~f:(fun a b ->
-            assert (Dune_project.equal a b);
-            a))
-      in
-      { pps; project_root = Option.map project ~f:Dune_project.root }
+      let project_root = Lib.L.project_root libs in
+      { pps; project_root }
     ;;
   end
 
@@ -281,8 +269,7 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
     Driver.select pps ~loc:(Dot_ppx (target, pp_names))
     >>| Resolve.map ~f:(fun driver -> driver, pps)
     >>|
-    (* Extend the dependency stack as we don't have locations at this
-           point *)
+    (* Extend the dependency stack as we don't have locations at this point *)
     Resolve.push_stack_frame ~human_readable_description:(fun () ->
       Dyn.pp (List [ String "pps"; Dyn.(list Lib_name.to_dyn) pp_names ]))
   in

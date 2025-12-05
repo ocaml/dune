@@ -23,6 +23,12 @@ Output the help text:
              dune-release executable (pass flags to dune-release after the '--'
              argument, such as 'dune tools exec dune-release -- --help').
   
+         ocaml-index [OPTION]… [ARGS]…
+             Wrapper for running ocaml-index intended to be run automatically
+             by a text editor. All positional arguments will be passed to the
+             ocaml-index executable (pass flags to ocaml-index after the '--'
+             argument, such as 'dune tools exec ocaml-index -- --help').
+  
          ocamlearlybird [OPTION]… [ARGS]…
              Wrapper for running ocamlearlybird intended to be run
              automatically by a text editor. All positional arguments will be

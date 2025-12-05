@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 open Csexp_rpc
 open Fiber.O
 module Scheduler = Dune_engine.Scheduler

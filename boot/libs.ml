@@ -14,20 +14,8 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "vendor/pp/src"
-    ; main_module_name = Some "Pp"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "otherlibs/dyn"
     ; main_module_name = Some "Dyn"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "vendor/csexp/src"
-    ; main_module_name = Some "Csexp"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -129,8 +117,8 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_stats"
-    ; main_module_name = Some "Dune_stats"
+  ; { path = "src/dune_trace"
+    ; main_module_name = Some "Dune_trace"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -567,7 +555,7 @@ let main =
             ; "Dune_config"
             ; "Dune_config_file"
             ; "Chrome_trace"
-            ; "Dune_stats"
+            ; "Dune_trace"
             ; "Csexp"
             ; "Csexp_rpc"
             ; "Dune_rpc_impl"

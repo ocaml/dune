@@ -1,0 +1,14 @@
+(executable
+ (name my_prog))
+
+(rule
+ (target my_coq_file.ml)
+ (deps extraction/my_coq_file.ml)
+ (action
+  (with-stdout-to %{target}
+  ; here you patch stuff
+   (cat %{deps}))))
+
+(copy_files extraction/Datatypes.ml)
+(copy_files extraction/Datatypes.mli)
+(copy_files extraction/my_coq_file.mli)

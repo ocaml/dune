@@ -46,7 +46,7 @@
 
 (env
  (_
-  (flags :standard -alert -unstable)
+  (flags :standard %{dune-warnings} -alert -unstable)
   (env-vars
    ; Workaround for #6607
    (CLICOLOR_FORCE 0))))

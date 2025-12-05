@@ -28,7 +28,7 @@ let trim =
          & info
              ~docv:"BYTES"
              [ "trimmed-size" ]
-             ~doc:"Size to trim from the cache. $(docv) is the same as for --size.")
+             ~doc:(Some "Size to trim from the cache. $(docv) is the same as for --size."))
      and+ size =
        Arg.(
          value
@@ -37,13 +37,14 @@ let trim =
              ~docv:"BYTES"
              [ "size" ]
              ~doc:
-               (sprintf
-                  "Size to trim the cache to. $(docv) is the number of bytes followed by \
-                   a unit. Byte units can be one of %s."
-                  (String.enumerate_or
-                     (List.map
-                        ~f:(fun (units, _) -> List.hd units)
-                        Bytes_unit.conversion_table))))
+               (Some
+                  (sprintf
+                     "Size to trim the cache to. $(docv) is the number of bytes followed \
+                      by a unit. Byte units can be one of %s."
+                     (String.enumerate_or
+                        (List.map
+                           ~f:(fun (units, _) -> List.hd units)
+                           Bytes_unit.conversion_table)))))
      in
      Log.init_disabled ();
      let open Result.O in
@@ -84,7 +85,9 @@ let size =
        Arg.(
          value
          & flag
-         & info [ "machine-readable" ] ~doc:"Outputs size as a plain number of bytes.")
+         & info
+             [ "machine-readable" ]
+             ~doc:(Some "Outputs size as a plain number of bytes."))
      in
      let size = Dune_cache.Trimmer.overhead_size () in
      if machine_readable

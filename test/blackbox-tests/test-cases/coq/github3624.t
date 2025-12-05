@@ -17,5 +17,5 @@ good when the coq extension is not enabled.
   1 | (coq.theory
   2 |  (name foo))
   Error: 'coq.theory' is available only when coq is enabled in the dune-project
-  file. You must enable it using (using coq 0.10) in your dune-project file.
+  file. You must enable it using (using coq 0.11) in your dune-project file.
   [1]

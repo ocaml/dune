@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 include String
 
 let make s = s

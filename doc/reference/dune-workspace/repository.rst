@@ -35,4 +35,21 @@ location to it.
       extensive control of the version by specifying an exact revision, tag or
       branch.
 
+      The URL scheme for Git locations need to specify the backend as git in
+      the scheme part of the url, for instance:
+
+          git+https://github.com/oxcaml/opam-repository.git
+
+      You can also use the SSH based URLs as follows:
+
+          git+ssh://git@github.com/oxcaml/opam-repository
+
+      NOTE that the SSH URLs provided in the GitHub UI use a ``:`` to separate
+      the repository owner and name from the hostname, but this needs to be
+      replaced with a ``/`` to work correctly. ``github.com:<username>/<repo>``
+      needs to be changed to ``github.com/<username>/<repo>``.
+
+      If the Git URLs need authentication, the user needs to set it up locally
+      so ``git`` can authenticate and access these repositories.
+
       This must be specified.

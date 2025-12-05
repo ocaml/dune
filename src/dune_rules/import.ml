@@ -121,6 +121,7 @@ include struct
   module File_binding = File_binding
   module Foreign_language = Foreign_language
   module Coq_env = Coq_env
+  module Rocq_env = Rocq_env
   module Menhir_env = Menhir_env
   module Dune_env = Dune_env
   module Js_of_ocaml = Js_of_ocaml

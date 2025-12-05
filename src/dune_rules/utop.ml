@@ -83,6 +83,7 @@ let add_stanza db ~dir (acc, pps) stanza =
           db
           (`Exe exes.names)
           exes.buildable.libraries
+          ~allow_unused_libraries:exes.buildable.allow_unused_libraries
           ~pps
           ~dune_version
           ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
@@ -147,8 +148,8 @@ let requires ~loc ~db ~libs =
 
 let utop_dev_tool_lock_dir_exists =
   Memo.Lazy.create (fun () ->
-    let path = Lock_dir.dev_tool_source_lock_dir Utop in
-    Fs_memo.dir_exists (In_source_dir path))
+    let path = Lock_dir.dev_tool_external_lock_dir Utop in
+    Fs_memo.dir_exists (Path.Outside_build_dir.External path))
 ;;
 
 let utop_findlib_conf = Filename.concat utop_dir_basename "findlib.conf"

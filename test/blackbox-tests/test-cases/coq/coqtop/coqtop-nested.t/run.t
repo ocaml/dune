@@ -1,20 +1,20 @@
 Checking that we compute the directory and file for dune coq top correctly
 
   $ dune build theories/c.vo
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
+  (warnings (deprecated_coq_lang disabled))
   $ dune build theories/b/b.vo
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
+  (warnings (deprecated_coq_lang disabled))
   $ dune coq top --toplevel=echo theories/c.v | ../../scrub_coq_args.sh
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
+  (warnings (deprecated_coq_lang disabled))
   -topfile $TESTCASE_ROOT/_build/default/theories/c.v
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
@@ -44,10 +44,10 @@ Checking that we compute the directory and file for dune coq top correctly
   -R $TESTCASE_ROOT/_build/default/theories foo
 
   $ dune coq top --toplevel=echo theories/b/b.v | ../../scrub_coq_args.sh
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
+  (warnings (deprecated_coq_lang disabled))
   -topfile $TESTCASE_ROOT/_build/default/theories/b/b.v
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled

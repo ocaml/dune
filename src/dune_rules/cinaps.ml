@@ -140,6 +140,7 @@ let gen_rules sctx t ~dir ~scope =
       (Scope.libs scope)
       (`Exe names)
       (Lib_dep.Direct (loc, Lib_name.of_string "cinaps.runtime") :: t.libraries)
+      ~allow_unused_libraries:[]
       ~pps:(Preprocess.Per_module.pps t.preprocess)
       ~dune_version
       ~allow_overlaps:false

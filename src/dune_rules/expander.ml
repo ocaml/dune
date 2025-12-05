@@ -191,7 +191,12 @@ let expand_artifact ~source t artifact arg =
     (match Artifacts_obj.lookup_module artifacts name with
      | None -> does_not_exist ~what:"Module" (Module_name.to_string name)
      | Some (t, m) ->
-       (match Obj_dir.Module.cm_file t m ~kind:(Ocaml kind) with
+       (match
+          match kind with
+          | Cm_kind kind -> Obj_dir.Module.cm_file t m ~kind:(Ocaml kind)
+          | Cmt -> Obj_dir.Module.cmt_file t m ~cm_kind:(Ocaml Cmi) ~ml_kind:Impl
+          | Cmti -> Some (Obj_dir.Module.cmti_file t m ~cm_kind:(Ocaml Cmi))
+        with
         | None -> Action_builder.return [ Value.String "" ]
         | Some path -> dep (Path.build path)))
   | Lib mode ->
@@ -567,6 +572,14 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
      let ocaml_version = Ocaml_config.version_string ocaml.ocaml_config in
      [ Value.of_bool (Ocaml.Version.supports_oxcaml ocaml_version) ])
     |> static
+  | Dune_warnings ->
+    Need_full_expander
+      (fun { scope; _ } ->
+        Deps.Without
+          (let open Memo.O in
+           let+ scope = scope in
+           let dune_version = Dune_project.dune_version (Scope.project scope) in
+           Value.L.strings (Ocaml_flags.dune_warnings ~dune_version ~profile:Dev)))
 ;;
 
 let ocaml_config_macro source macro_invocation context =
@@ -702,6 +715,30 @@ let expand_pform_macro
           (let open Memo.O in
            let* artifacts_host = t.artifacts_host in
            Coq_config.expand source macro_invocation artifacts_host))
+  | Ppx ->
+    Need_full_expander
+      (fun t ->
+        With
+          (let open Action_builder.O in
+           let+ exe =
+             let* scope = Action_builder.of_memo t.scope in
+             Pform.Macro_invocation.Args.whole macro_invocation
+             |> String.split ~on:'+'
+             |> List.map ~f:(fun name ->
+               let loc = Dune_lang.Template.Pform.loc source in
+               let name = Lib_name.parse_string_exn (loc, name) in
+               loc, name)
+             |> Ppx_exe.get_ppx_exe context ~scope
+             |> Resolve.Memo.read
+           in
+           [ Value.Path (Path.build exe) ]))
+  | Rocq_config ->
+    Need_full_expander
+      (fun t ->
+        Without
+          (let open Memo.O in
+           let* artifacts_host = t.artifacts_host in
+           Rocq_config.expand source macro_invocation artifacts_host))
 ;;
 
 let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pform.t)

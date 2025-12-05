@@ -1,6 +1,6 @@
 (** Utilities for working with the Fiber library. *)
 
-open! Stdune
+open Stdune
 
 (** [Temp.Monad] instantiated to the Fiber monad. *)
 module Temp : sig

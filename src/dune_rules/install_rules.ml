@@ -427,6 +427,7 @@ end = struct
                  ~forbidden_libraries:[]
                  (`Exe exes.names)
                  exes.buildable.libraries
+                 ~allow_unused_libraries:exes.buildable.allow_unused_libraries
                  ~pps
                  ~dune_version
                  ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
@@ -434,6 +435,7 @@ end = struct
              let+ requires = Lib.Compile.direct_requires compile_info in
              Resolve.is_ok requires)
       | Coq_stanza.Theory.T d -> Memo.return (Option.is_some d.package)
+      | Rocq_stanza.Theory.T d -> Memo.return (Option.is_some d.package)
       | _ -> Memo.return false
     in
     Option.some_if keep stanza
@@ -518,6 +520,7 @@ end = struct
           let* dir_contents = Dir_contents.get sctx ~dir in
           lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
         | Coq_stanza.Theory.T coqlib -> Coq_rules.install_rules ~sctx ~dir coqlib
+        | Rocq_stanza.Theory.T theory -> Rocq_rules.install_rules ~sctx ~dir theory
         | Documentation.T stanza ->
           let* dir_contents = Dir_contents.get sctx ~dir in
           let+ mld_contents = Dir_contents.mlds ~stanza dir_contents in
@@ -525,7 +528,7 @@ end = struct
         | Plugin.T t -> Plugin_rules.install_rules ~sctx ~package_db ~dir t
         | _ -> Memo.return []
       in
-      let name = Package.name package in
+      let name = Package.Id.name package in
       Some (name, entries)
   ;;
 
@@ -892,10 +895,8 @@ end = struct
         (let open Action_builder.O in
          (let+ template = template
           and+ (meta : Meta.t) =
-            let open Memo.O in
-            meta_entries
+            Action_builder.of_memo meta_entries
             >>= Gen_meta.gen ~package:pkg ~add_directory_entry:true
-            |> Action_builder.of_memo
           in
           let pp =
             Pp.concat_map template ~sep:Pp.newline ~f:(fun s ->
@@ -944,7 +945,6 @@ end = struct
                 |> List.map ~f:(fun deprecated ->
                   Scope.DB.Lib_entry.Deprecated_library_name deprecated)
                 |> Gen_meta.gen ~package:pkg ~add_directory_entry:false
-                |> Action_builder.of_memo
               in
               let open Pp.O in
               Pp.vbox (Meta.pp meta.entries ++ Pp.cut)

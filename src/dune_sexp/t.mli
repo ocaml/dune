@@ -1,7 +1,7 @@
 (** Parsing of s-expressions.
 
     This library is internal to dune and guarantees no API stability.*)
-open! Stdune
+open Stdune
 
 (** The S-expression type *)
 type t =

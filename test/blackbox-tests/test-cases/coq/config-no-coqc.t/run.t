@@ -3,7 +3,15 @@ Testing for https://github.com/ocaml/dune/issues/9818
 We first test the package builds as normal, when both are in scope:
 
   $ dune build -p example-ocaml
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   $ dune build -p example-coq
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   $ cat example-ocaml.install
   lib: [
     "_build/install/default/lib/example-ocaml/META"
@@ -72,6 +80,10 @@ We now test that the ocaml package still builds even when Coq rules can't be set
   $ ln -s $(command -v ocamldep) _path/
 
   $ (unset INSIDE_DUNE; PATH=_path dune build -p example-ocaml)
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   $ cat example-ocaml.install
   lib: [
     "_build/install/default/lib/example-ocaml/META"
@@ -112,6 +124,10 @@ We now test that the ocaml package still builds even when Coq rules can't be set
 Coq package should fail:
 
   $ (unset INSIDE_DUNE; PATH=_path dune build -p example-coq)
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   Couldn't find Coq standard library, and theory is not using (stdlib no)
   -> required by _build/default/coq/Common/Foo.glob
   -> required by _build/install/default/lib/coq/user-contrib/Common/Foo.glob

@@ -1,6 +1,6 @@
 (** Detection of cycles in dynamic dags *)
 
-open! Stdune
+open Stdune
 
 module type Value = sig
   type t

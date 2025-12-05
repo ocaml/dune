@@ -31,4 +31,7 @@ module Expanded_variable_bindings : sig
       common between [t] and [solver_env] is assigned the same value, and that
       all the unset variables in [t] are not assigned a value in [solver_env]. *)
   val validate_against_solver_env : t -> Solver_env.t -> unit
+
+  (** Remove all mention of platform-specific variables. *)
+  val remove_platform_specific : t -> t
 end

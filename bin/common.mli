@@ -17,7 +17,7 @@ val rpc
      ]
 
 val watch_exclusions : t -> string list
-val stats : t -> Dune_stats.t option
+val stats : t -> Dune_trace.t option
 val print_metrics : t -> bool
 val dump_memo_graph_file : t -> Path.External.t option
 val dump_memo_graph_format : t -> Dune_graph.Graph.File_format.t
@@ -75,7 +75,7 @@ val envs : Cmdliner.Cmd.Env.info list
 val debug_backtraces : bool Cmdliner.Term.t
 val config_from_config_file : Dune_config.Partial.t Cmdliner.Term.t
 val display_term : Dune_config.Display.t option Cmdliner.Term.t
-val context_arg : doc:string -> Dune_engine.Context_name.t Cmdliner.Term.t
+val context_arg : doc:string option -> Dune_engine.Context_name.t Cmdliner.Term.t
 
 (** A [--build-info] command line argument that print build information
     (included in [term]) *)

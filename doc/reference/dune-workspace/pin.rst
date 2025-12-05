@@ -40,7 +40,7 @@ project and used for building dependencies.
 
    .. describe:: (package ...)
 
-      Specifies the the packages to assign this pin to.
+      Specifies the packages to assign this pin to.
 
       .. describe:: (name <string>)
 

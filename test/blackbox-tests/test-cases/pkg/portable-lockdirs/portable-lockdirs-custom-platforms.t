@@ -45,8 +45,10 @@ Create a custom dune-workspace to solve for openbsd.
   >  (libraries foo))
   > EOF
 
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
-  Solution for dune.lock:
+  $ dune pkg lock
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
   - foo.0.0.1
 
   $ cat ${default_lock_dir}/lock.dune
@@ -100,7 +102,7 @@ error case.
   >  (solve_for_platforms))
   > EOF
 
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   File "dune-workspace", line 7, characters 1-22:
   7 |  (solve_for_platforms))
        ^^^^^^^^^^^^^^^^^^^^^

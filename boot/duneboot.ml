@@ -1024,7 +1024,19 @@ module Libs = struct
   ;;
 
   let local_libraries =
-    [ { path = "vendor/re/src"
+    [ { path = "vendor/csexp/src"
+      ; main_module_name = Some "Csexp"
+      ; include_subdirs = No
+      ; special_builtin_support = None
+      ; root_module = None
+      }
+    ; { path = "vendor/pp/src"
+      ; main_module_name = Some "Pp"
+      ; include_subdirs = No
+      ; special_builtin_support = None
+      ; root_module = None
+      }
+    ; { path = "vendor/re/src"
       ; main_module_name = Some "Re"
       ; include_subdirs = No
       ; special_builtin_support = None
@@ -1633,20 +1645,21 @@ module Library = struct
     | Some `X86 -> architecture = `amd64 || architecture = `x86_64
   ;;
 
-  let make_c (c : File_kind.c) ~fn ~os_type ~word_size =
+  let make_c (c : File_kind.c) ~fn ~os_type ~word_size ~ccomp_type =
     let extra_flags =
-      if
-        String.starts_with ~prefix:"blake3_" fn
-        && (os_type = `Cygwin || word_size = `Thirty_two)
-      then
+      match fn, ccomp_type, os_type, word_size with
+      | (fn, _, `Cygwin, _ | fn, _, _, `Thirty_two)
+        when String.starts_with ~prefix:"blake3_" fn ->
         [ "-DBLAKE3_NO_SSE2"
         ; "-DBLAKE3_NO_SSE41"
         ; "-DBLAKE3_NO_AVX2"
         ; "-DBLAKE3_NO_AVX512"
         ]
-      else if String.equal "lmdb_stubs.c" fn
-      then [ "-I ." ]
-      else []
+      | "lmdb_stubs.c", `Msvc, `Win32, _ -> [ "-I ."; "/wd5287" ]
+      | "lmdb_stubs.c", _, _, _ -> [ "-I ." ]
+      | "mdb.c", `Msvc, `Win32, _ -> [ "/wd4333"; "/wd4172" ]
+      | "mdb.c", `Other, `Win32, _ -> [ "-Wno-return-local-addr" ]
+      | _, _, _, _ -> []
     in
     { Source.flags = extra_flags @ c.flags; name = fn }
   ;;
@@ -1813,7 +1826,7 @@ module Library = struct
         match src.kind with
         | C c ->
           if keep_c c ~architecture
-          then `Left (make_c c ~fn ~os_type ~word_size)
+          then `Left (make_c c ~fn ~os_type ~word_size ~ccomp_type)
           else `Skip
         | Ml _ -> `Middle fn
         | Header -> `Skip
@@ -2017,7 +2030,7 @@ let resolve_externals external_libraries =
     let convert = function
       | "threads" -> Some ("threads" ^ Config.ocaml_archive_ext, [ "-I"; "+threads" ])
       | "unix" -> Some ("unix" ^ Config.ocaml_archive_ext, Config.unix_library_flags)
-      | "seq" | "re" | "spawn" | "uutf" -> None
+      | "csexp" | "pp" | "re" | "seq" | "spawn" | "uutf" -> None
       | s -> fatal "unhandled external library %s" s
     in
     List.filter_map ~f:convert external_libraries |> List.split

@@ -225,11 +225,16 @@ let build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog =
           Dune_lang.Dep_conf.File
             (Dune_lang.String_with_vars.make_text Loc.none (Path.to_string path))
         in
-        Build.build_via_rpc_server
-          ~print_on_success:false
-          ~targets:[ target ]
+        let targets = Rpc.Rpc_common.prepare_targets [ target ] in
+        let open Fiber.O in
+        Rpc.Rpc_common.fire_request
+          ~name:"build"
+          ~wait:true
+          ~lock_held_by
           builder
-          lock_held_by)
+          Dune_rpc_impl.Decl.build
+          targets
+        >>| Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:false)
     in
     Path.to_absolute_filename path
   | Absolute ->
@@ -295,11 +300,19 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
 
 let term : unit Term.t =
   let+ builder = Common.Builder.term
-  and+ context = Common.context_arg ~doc:{|Run the command in this build context.|}
-  and+ prog = Arg.(required & pos 0 (some Cmd_arg.conv) None (Arg.info [] ~docv:"PROG"))
+  and+ context = Common.context_arg ~doc:(Some {|Run the command in this build context.|})
+  and+ prog =
+    (* CR-someday Alizter: document this option *)
+    Arg.(required & pos 0 (some Cmd_arg.conv) None (Arg.info [] ~docv:"PROG" ~doc:None))
   and+ no_rebuild =
-    Arg.(value & flag & info [ "no-build" ] ~doc:"don't rebuild target before executing")
-  and+ args = Arg.(value & pos_right 0 Cmd_arg.conv [] (Arg.info [] ~docv:"ARGS")) in
+    Arg.(
+      value
+      & flag
+      & info [ "no-build" ] ~doc:(Some "don't rebuild target before executing"))
+  and+ args =
+    (* CR-someday Alizter: document this option *)
+    Arg.(value & pos_right 0 Cmd_arg.conv [] (Arg.info [] ~docv:"ARGS" ~doc:None))
+  in
   (* TODO we should make sure to finalize the current backend before exiting dune.
      For watch mode, we should finalize the backend and then restart it in between
      runs. *)

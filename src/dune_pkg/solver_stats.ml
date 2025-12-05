@@ -145,4 +145,15 @@ module Expanded_variable_bindings = struct
           ]
           ~hints))
   ;;
+
+  let remove_platform_specific { variable_values; unset_variables } =
+    let is_platform_specific variable_name =
+      Package_variable_name.Set.mem Package_variable_name.platform_specific variable_name
+    in
+    { variable_values =
+        List.filter variable_values ~f:(fun (variable_name, _) ->
+          not (is_platform_specific variable_name))
+    ; unset_variables = List.filter unset_variables ~f:(Fun.negate is_platform_specific)
+    }
+  ;;
 end

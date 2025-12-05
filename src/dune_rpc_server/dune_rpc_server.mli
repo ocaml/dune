@@ -159,5 +159,5 @@ module Make (S : sig
     val name : t -> string
   end) : sig
   (** [serve sessions handler] serve all [sessions] using [handler] *)
-  val serve : S.t Fiber.Stream.In.t -> Dune_stats.t option -> t -> unit Fiber.t
+  val serve : S.t Fiber.Stream.In.t -> Dune_trace.t option -> t -> unit Fiber.t
 end

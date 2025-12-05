@@ -50,9 +50,6 @@ Now try deleting the promoted file.
 
 Now try replacing its content.
 
-  $ dune_cmd stat permissions promoted
-  444
-  $ chmod +w promoted
   $ echo hi > promoted
   $ build result
   Success

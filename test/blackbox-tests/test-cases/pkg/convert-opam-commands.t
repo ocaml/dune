@@ -92,45 +92,51 @@ Package which has boolean where string was expected. This should be caught while
   - with-interpolation.0.0.1
   - with-percent-sign.0.0.1
 
-  $ cat ${default_lock_dir}/standard-dune.pkg
+  $ cat ${default_lock_dir}/standard-dune.0.0.1.pkg
   (version 0.0.1)
   
   (install
-   (run %{make} install))
+   (all_platforms
+    (run %{make} install)))
   
   (build
-   (progn
-    (when
-     %{pkg-self:dev}
-     (run dune subst))
-    (run dune build -p %{pkg-self:name} -j %{jobs} @install)))
+   (all_platforms
+    ((action
+      (progn
+       (when %{pkg-self:dev} (run dune subst))
+       (run dune build -p %{pkg-self:name} -j %{jobs} @install))))))
 
-  $ cat ${default_lock_dir}/with-interpolation.pkg
+  $ cat ${default_lock_dir}/with-interpolation.0.0.1.pkg
   (version 0.0.1)
   
   (install
-   (run %{make} install))
+   (all_platforms
+    (run %{make} install)))
   
   (build
-   (progn
-    (run ./configure --prefix=%{prefix} --docdir=%{doc}/ocaml)
-    (run %{make} -j%{jobs})))
+   (all_platforms
+    ((action
+      (progn
+       (run ./configure --prefix=%{prefix} --docdir=%{doc}/ocaml)
+       (run %{make} -j%{jobs}))))))
 
-  $ cat ${default_lock_dir}/with-percent-sign.pkg
+  $ cat ${default_lock_dir}/with-percent-sign.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (run printf %d 42))
+   (all_platforms ((action (run printf %d 42)))))
 
-  $ cat ${default_lock_dir}/variable-types.pkg
+  $ cat ${default_lock_dir}/variable-types.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (progn
-    (run echo %{pkg-self:local_var})
-    (run echo %{pkg-self:explicit_local_var})
-    (run echo %{pkg:foo:package_var})
-    (run echo %{os_family})))
+   (all_platforms
+    ((action
+      (progn
+       (run echo %{pkg-self:local_var})
+       (run echo %{pkg-self:explicit_local_var})
+       (run echo %{pkg:foo:package_var})
+       (run echo %{os_family}))))))
 
   $ solve with-malformed-interpolation
   File "$TESTCASE_ROOT/mock-opam-repository/packages/with-malformed-interpolation/with-malformed-interpolation.0.0.1/opam", line 1, characters 0-0:
@@ -144,118 +150,108 @@ Package which has boolean where string was expected. This should be caught while
   Solution for dune.lock:
   - exercise-filters.0.0.1
 
-  $ cat ${default_lock_dir}/exercise-filters.pkg
+  $ cat ${default_lock_dir}/exercise-filters.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (progn
-    (when
-     %{pkg-self:foo}
-     (run echo a))
-    (when
-     (and_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
-     (run echo b))
-    (when
-     (and_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar} %{pkg-self:baz})
-     (run echo c))
-    (when
-     (or_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
-     (run echo d))
-    (when
-     (or_absorb_undefined_var
-      %{pkg-self:foo}
-      (and_absorb_undefined_var %{pkg-self:bar} %{pkg-self:baz}))
-     (run echo e))
-    (when
-     (and_absorb_undefined_var
-      (or_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
-      %{pkg-self:baz})
-     (run echo f))
-    (when
-     (= %{pkg-self:foo} %{pkg-self:bar})
-     (run echo b))
-    (when
-     (< %{pkg-self:version} 1.0)
-     (run echo g))
-    (run echo i)
-    (run echo j)
-    (when
-     %{pkg:foo:installed}
-     (run echo k))
-    (when
-     (< %{pkg:foo:version} 0.4)
-     (run echo l))
-    (when
-     (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg:baz:installed})
-     (run echo m))))
+   (all_platforms
+    ((action
+      (progn
+       (when %{pkg-self:foo} (run echo a))
+       (when
+        (and_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
+        (run echo b))
+       (when
+        (and_absorb_undefined_var
+         %{pkg-self:foo}
+         %{pkg-self:bar}
+         %{pkg-self:baz})
+        (run echo c))
+       (when
+        (or_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
+        (run echo d))
+       (when
+        (or_absorb_undefined_var
+         %{pkg-self:foo}
+         (and_absorb_undefined_var %{pkg-self:bar} %{pkg-self:baz}))
+        (run echo e))
+       (when
+        (and_absorb_undefined_var
+         (or_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
+         %{pkg-self:baz})
+        (run echo f))
+       (when (= %{pkg-self:foo} %{pkg-self:bar}) (run echo b))
+       (when (< %{pkg-self:version} 1.0) (run echo g))
+       (run echo i)
+       (run echo j)
+       (when %{pkg:foo:installed} (run echo k))
+       (when (< %{pkg:foo:version} 0.4) (run echo l))
+       (when
+        (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg:baz:installed})
+        (run echo m)))))))
 
 Test that if opam filter translation is disabled the output doesn't contain any translated filters:
   $ solve exercise-filters
   Solution for dune.lock:
   - exercise-filters.0.0.1
-  $ cat ${default_lock_dir}/exercise-filters.pkg
+  $ cat ${default_lock_dir}/exercise-filters.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (progn
-    (when
-     %{pkg-self:foo}
-     (run echo a))
-    (when
-     (and_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
-     (run echo b))
-    (when
-     (and_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar} %{pkg-self:baz})
-     (run echo c))
-    (when
-     (or_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
-     (run echo d))
-    (when
-     (or_absorb_undefined_var
-      %{pkg-self:foo}
-      (and_absorb_undefined_var %{pkg-self:bar} %{pkg-self:baz}))
-     (run echo e))
-    (when
-     (and_absorb_undefined_var
-      (or_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
-      %{pkg-self:baz})
-     (run echo f))
-    (when
-     (= %{pkg-self:foo} %{pkg-self:bar})
-     (run echo b))
-    (when
-     (< %{pkg-self:version} 1.0)
-     (run echo g))
-    (run echo i)
-    (run echo j)
-    (when
-     %{pkg:foo:installed}
-     (run echo k))
-    (when
-     (< %{pkg:foo:version} 0.4)
-     (run echo l))
-    (when
-     (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg:baz:installed})
-     (run echo m))))
+   (all_platforms
+    ((action
+      (progn
+       (when %{pkg-self:foo} (run echo a))
+       (when
+        (and_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
+        (run echo b))
+       (when
+        (and_absorb_undefined_var
+         %{pkg-self:foo}
+         %{pkg-self:bar}
+         %{pkg-self:baz})
+        (run echo c))
+       (when
+        (or_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
+        (run echo d))
+       (when
+        (or_absorb_undefined_var
+         %{pkg-self:foo}
+         (and_absorb_undefined_var %{pkg-self:bar} %{pkg-self:baz}))
+        (run echo e))
+       (when
+        (and_absorb_undefined_var
+         (or_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
+         %{pkg-self:baz})
+        (run echo f))
+       (when (= %{pkg-self:foo} %{pkg-self:bar}) (run echo b))
+       (when (< %{pkg-self:version} 1.0) (run echo g))
+       (run echo i)
+       (run echo j)
+       (when %{pkg:foo:installed} (run echo k))
+       (when (< %{pkg:foo:version} 0.4) (run echo l))
+       (when
+        (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg:baz:installed})
+        (run echo m)))))))
 
   $ solve exercise-term-filters
   Solution for dune.lock:
   - exercise-term-filters.0.0.1
-  $ cat ${default_lock_dir}/exercise-term-filters.pkg
+  $ cat ${default_lock_dir}/exercise-term-filters.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (run
-    echo
-    a
-    (when
-     (catch_undefined_var %{pkg-self:foo} false)
-     b)
-    (when
-     (catch_undefined_var
-      (and_absorb_undefined_var %{pkg-self:bar} %{pkg-self:baz})
-      false)
-     c)))
+   (all_platforms
+    ((action
+      (run
+       echo
+       a
+       (when (catch_undefined_var %{pkg-self:foo} false) b)
+       (when
+        (catch_undefined_var
+         (and_absorb_undefined_var %{pkg-self:bar} %{pkg-self:baz})
+         false)
+        c))))))
 
   $ solve filter-error-bool-where-string-expected
   File "$TESTCASE_ROOT/mock-opam-repository/packages/filter-error-bool-where-string-expected/filter-error-bool-where-string-expected.0.0.1/opam", line 3, characters 33-34:
@@ -301,70 +297,61 @@ to a dune if-statement that checks the "enable" variable (rather than the
 It's probably an error for opam packages to use the "enable" in ways that opam
 doesn't desugar but these tests are included so we can check that behaviour is
 preserved between opam and dune.
-  $ cat ${default_lock_dir}/package-conjunction-and-string-selection.pkg
+  $ cat ${default_lock_dir}/package-conjunction-and-string-selection.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (progn
-    (run echo "a %{pkg-self:installed} b")
-    (run
-     echo
-     (concat
-      "c "
-      (if
-       (catch_undefined_var %{pkg-self:installed} false)
-       x
-       y)
-      " d"))
-    (run
-     echo
-     (concat
-      "e "
-      (if
-       (catch_undefined_var %{pkg:foo:installed} false)
-       x
-       y)
-      " f"))
-    (run
-     echo
-     (concat
-      "g "
-      (if
-       (catch_undefined_var
-        (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg-self:installed})
-        false)
-       x
-       y)
-      " h"))
-    (run echo --%{pkg-self:enable}-feature)
-    (run
-     echo
-     (concat
-      --
-      (if
-       (catch_undefined_var %{pkg-self:installed} false)
-       enable
-       disable)
-      -feature))
-    (run
-     echo
-     (concat
-      --
-      (if
-       (catch_undefined_var
-        (and %{pkg:foo:installed} %{pkg:bar:installed})
-        false)
-       enable
-       disable)
-      -feature))
-    (run
-     echo
-     (concat
-      --
-      (if
-       (catch_undefined_var
-        (and %{pkg:foo:enable} %{pkg:bar:enable})
-        false)
-       x
-       y)
-      -feature))))
+   (all_platforms
+    ((action
+      (progn
+       (run echo "a %{pkg-self:installed} b")
+       (run
+        echo
+        (concat
+         "c "
+         (if (catch_undefined_var %{pkg-self:installed} false) x y)
+         " d"))
+       (run
+        echo
+        (concat
+         "e "
+         (if (catch_undefined_var %{pkg:foo:installed} false) x y)
+         " f"))
+       (run
+        echo
+        (concat
+         "g "
+         (if
+          (catch_undefined_var
+           (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg-self:installed})
+           false)
+          x
+          y)
+         " h"))
+       (run echo --%{pkg-self:enable}-feature)
+       (run
+        echo
+        (concat
+         --
+         (if (catch_undefined_var %{pkg-self:installed} false) enable disable)
+         -feature))
+       (run
+        echo
+        (concat
+         --
+         (if
+          (catch_undefined_var
+           (and %{pkg:foo:installed} %{pkg:bar:installed})
+           false)
+          enable
+          disable)
+         -feature))
+       (run
+        echo
+        (concat
+         --
+         (if
+          (catch_undefined_var (and %{pkg:foo:enable} %{pkg:bar:enable}) false)
+          x
+          y)
+         -feature)))))))

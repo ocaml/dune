@@ -512,6 +512,9 @@ let cctx
   let modules = Virtual_rules.impl_modules implements modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let requires_link = Lib.Compile.requires_link compile_info in
+  let instances =
+    Parameterised_rules.instances ~sctx ~db:(Scope.libs scope) lib.buildable.libraries
+  in
   let* modes =
     let+ ocaml =
       let ctx = Super_context.context sctx in
@@ -551,6 +554,7 @@ let cctx
     ~package
     ~melange_package_name
     ~modes
+    ~instances
 ;;
 
 let library_rules
@@ -621,6 +625,19 @@ let library_rules
     in
     Sub_system.gen_rules
       { super_context = sctx; dir; stanza = lib; scope; source_modules; compile_info }
+  and+ () =
+    let toolchain = Compilation_context.ocaml cctx in
+    let user_written_requires = Lib.Compile.user_written_requires compile_info in
+    let allow_unused_libraries = Lib.Compile.allow_unused_libraries compile_info in
+    Unused_libs_rules.gen_rules
+      sctx
+      toolchain
+      lib.buildable.loc
+      ~obj_dir
+      ~modules
+      ~dir
+      ~user_written_requires
+      ~allow_unused_libraries
   and+ merlin =
     let+ requires_hidden = Compilation_context.requires_hidden cctx
     and+ parameters = Compilation_context.parameters cctx in

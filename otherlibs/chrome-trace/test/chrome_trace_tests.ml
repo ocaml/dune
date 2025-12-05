@@ -8,7 +8,7 @@ let c =
   let write s = Buffer.add_string buf s in
   let close () = () in
   let flush () = () in
-  Dune_stats.create (Custom { write; close; flush }) ~extended_build_job_info:false
+  Dune_trace.create (Custom { write; close; flush }) ~extended_build_job_info:false
 ;;
 
 let () =
@@ -30,8 +30,8 @@ let () =
         ~args:[ "foo", `Int 100 ]
     ]
   in
-  List.iter events ~f:(Dune_stats.emit c);
-  Dune_stats.close c
+  List.iter events ~f:(Dune_trace.emit c);
+  Dune_trace.close c
 ;;
 
 let buffer_lines () = String.split_lines (Buffer.contents buf)

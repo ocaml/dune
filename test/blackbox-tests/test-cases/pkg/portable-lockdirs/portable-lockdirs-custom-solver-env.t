@@ -48,8 +48,10 @@ Set up a project that depends on the package:
   > EOF
 
 Solve the project:
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
-  Solution for dune.lock:
+  $ dune pkg lock
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
   - foo.0.0.1
 
 Confirming that the build action creates the conditional file:

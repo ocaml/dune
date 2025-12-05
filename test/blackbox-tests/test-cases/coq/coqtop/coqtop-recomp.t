@@ -19,10 +19,10 @@ https://github.com/ocaml/dune/pull/5457#issuecomment-1084161587).
   > (using coq 0.3)
   > EOF
   $ dune coq top --display short --toplevel echo dir/bar.v | ../scrub_coq_args.sh
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
+  (warnings (deprecated_coq_lang disabled))
         coqdep dir/.basic.theory.d
           coqc dir/foo.{glob,vo}
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v
@@ -53,10 +53,10 @@ https://github.com/ocaml/dune/pull/5457#issuecomment-1084161587).
   -R coq/theories Coq
   -R $TESTCASE_ROOT/_build/default/dir basic
   $ dune coq top --display short --toplevel echo dir/bar.v | ../scrub_coq_args.sh
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
+  (warnings (deprecated_coq_lang disabled))
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
@@ -87,10 +87,10 @@ https://github.com/ocaml/dune/pull/5457#issuecomment-1084161587).
   $ dune clean
   $ (cd dir && dune coq top --root .. --display short --toplevel echo dir/bar.v) | ../scrub_coq_args.sh
   Entering directory '..'
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
+  (warnings (deprecated_coq_lang disabled))
         coqdep dir/.basic.theory.d
           coqc dir/foo.{glob,vo}
   Leaving directory '..'
@@ -123,10 +123,10 @@ https://github.com/ocaml/dune/pull/5457#issuecomment-1084161587).
   -R $TESTCASE_ROOT/_build/default/dir basic
   $ (cd dir && dune coq top --root .. --display short --toplevel echo dir/bar.v) | ../scrub_coq_args.sh
   Entering directory '..'
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
+  (warnings (deprecated_coq_lang disabled))
   Leaving directory '..'
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v
   -w -deprecated-native-compiler-option

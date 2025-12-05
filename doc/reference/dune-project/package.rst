@@ -108,6 +108,17 @@ is used when generating OPAM files (see :doc:`generate_opam_files`).
       ``(sites (<section> <name>) ...)`` defines a site named ``<name>`` in the
       section ``<section>``.
 
+   .. describe:: (allow_empty)
+
+      .. versionadded:: 3.0
+
+      Allows packages that have no user-defined stanzas attached to them.
+
+      By default, starting from Dune 3.0, packages must contain at least one
+      user-defined stanza (such as a ``library``, ``executable``, or
+      ``install`` stanza). If a package is intentionally empty, add
+      ``(allow_empty)`` to suppress the error.
+
 Adding libraries to different packages is done via the ``public_name`` and
 ``package`` fields. See :doc:`../dune/library` section for details.
 

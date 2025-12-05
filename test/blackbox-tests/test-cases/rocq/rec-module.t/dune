@@ -1,0 +1,11 @@
+(rocq.theory
+ (name rec_module)
+ (package rec)
+ (modules :standard)
+ (synopsis "Test Coq library"))
+
+(include_subdirs qualified)
+
+(rule
+ (alias default)
+ (action (echo "%{read:rec.install}")))

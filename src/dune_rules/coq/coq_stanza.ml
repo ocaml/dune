@@ -15,36 +15,42 @@ let coq_syntax =
     ; (0, 8), `Since (3, 8)
     ; (0, 9), `Since (3, 16)
     ; (0, 10), `Since (3, 17)
+    ; (0, 11), `Since (3, 21)
     ]
 ;;
 
 let already_warned = ref false
 
-let deprecated_coq_lang_lt_08 =
+(* We register it so users disabling it don't break *)
+let _deprecated_coq_lang_lt_08 =
   Warning.make
     ~default:(fun _version -> `Enabled)
     ~name:"deprecated_coq_lang_lt_08"
     ~since:(3, 8)
 ;;
 
-let deprecated_coq_lang_lt_08_msg =
+let deprecated_coq_lang =
+  Warning.make
+    ~default:(fun _version -> `Enabled)
+    ~name:"deprecated_coq_lang"
+    ~since:(3, 21)
+;;
+
+let deprecated_coq_lang_msg =
   User_message.make
     [ Pp.text
-        "Coq Language Versions lower than 0.8 have been deprecated in Dune 3.8 and will \
-         be removed in an upcoming Dune version."
+        "Dune's Coq Build Language is deprecated, and will be removed in Dune 3.24. \
+         Please upgrade to the new Rocq Build Language."
     ]
 ;;
 
 let get_coq_syntax () =
   let* version = Dune_lang.Syntax.get_exn coq_syntax in
   let* project = Dune_project.get_exn () in
-  if version < (0, 8) && not !already_warned
+  if not !already_warned
   then (
     already_warned := true;
-    Warning_emit.emit_project
-      deprecated_coq_lang_lt_08
-      project
-      deprecated_coq_lang_lt_08_msg);
+    Warning_emit.emit_project deprecated_coq_lang project deprecated_coq_lang_msg);
   return version
 ;;
 
@@ -168,13 +174,17 @@ module Theory = struct
     ; modules : Ordered_set_lang.t
     ; modules_flags : (Coq_module.Name.t * Ordered_set_lang.Unexpanded.t) list option
     ; boot : bool
+    ; generate_project_file : Loc.t * bool
     ; enabled_if : Blang.t
     ; buildable : Buildable.t
     ; coqdep_flags : Ordered_set_lang.Unexpanded.t
     ; coqdoc_flags : Ordered_set_lang.Unexpanded.t
+    ; coqdoc_header : String_with_vars.t option
+    ; coqdoc_footer : String_with_vars.t option
     }
 
   let coq_public_decode =
+    let* mask = Dune_lang.Package_mask.decode () in
     map_validate
       (let+ project = Dune_project.get_exn ()
        and+ loc_name =
@@ -196,7 +206,8 @@ module Theory = struct
             | None -> Package.Name.of_string name
             | Some (pkg, _) -> Package.Name.of_string pkg
           in
-          Stanza_pkg.resolve project pkg |> Result.map ~f:(fun pkg -> Some (loc, pkg)))
+          Stanza_pkg.resolve project mask (loc, pkg)
+          |> Result.map ~f:(fun pkg -> Some (loc, pkg)))
   ;;
 
   let merge_package_public ~package ~public =
@@ -225,6 +236,18 @@ module Theory = struct
       | (loc, _) :: _ -> boot_has_deps loc)
   ;;
 
+  let check_generate_project_file (loc, generate_project_file) modules_flags =
+    if generate_project_file
+    then (
+      match modules_flags with
+      | None -> ()
+      | Some _ ->
+        User_error.raise
+          ~loc
+          [ Pp.textf "(generate_project_file) is not compatible with (modules_flags ...)"
+          ])
+  ;;
+
   module Per_file = struct
     let decode_pair =
       let+ mod_ = Coq_module.Name.decode
@@ -232,22 +255,32 @@ module Theory = struct
       mod_, flags
     ;;
 
-    let decode = enter (repeat decode_pair)
+    let decode = repeat (enter decode_pair)
+    let broken_decode = enter (repeat decode_pair)
   end
 
   let decode =
     fields
       (let+ name = field "name" Coq_lib_name.decode
-       and+ package = field_o "package" Stanza_pkg.decode
+       and+ package = Stanza_pkg.field_opt () >>| Option.map ~f:snd
        and+ project = Dune_project.get_exn ()
        and+ public = coq_public_decode
        and+ synopsis = field_o "synopsis" string
        and+ boot = field_b "boot" ~check:(Dune_lang.Syntax.since coq_syntax (0, 2))
+       and+ generate_project_file =
+         located
+         @@ field_b
+              "generate_project_file"
+              ~check:(Dune_lang.Syntax.since coq_syntax (0, 11))
        and+ modules = Ordered_set_lang.field "modules"
        and+ modules_flags =
-         field_o
-           "modules_flags"
-           (Dune_lang.Syntax.since coq_syntax (0, 9) >>> Per_file.decode)
+         let* version = Dune_lang.Syntax.get_exn coq_syntax in
+         if version >= (0, 11)
+         then field_o "modules_flags" Per_file.decode
+         else
+           field_o
+             "modules_flags"
+             (Dune_lang.Syntax.since coq_syntax (0, 9) >>> Per_file.broken_decode)
        and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
        and+ buildable = Buildable.decode
        and+ coqdep_flags =
@@ -258,9 +291,19 @@ module Theory = struct
          Ordered_set_lang.Unexpanded.field
            "coqdoc_flags"
            ~check:(Dune_lang.Syntax.since coq_syntax (0, 8))
+       and+ coqdoc_header =
+         field_o
+           "coqdoc_header"
+           (Dune_lang.Syntax.since coq_syntax (0, 11) >>> String_with_vars.decode)
+       and+ coqdoc_footer =
+         field_o
+           "coqdoc_footer"
+           (Dune_lang.Syntax.since coq_syntax (0, 11) >>> String_with_vars.decode)
        in
        (* boot libraries cannot depend on other theories *)
        check_boot_has_no_deps boot buildable;
+       (* project files can only be generated when no per-module flags are configured. *)
+       check_generate_project_file generate_project_file modules_flags;
        let package = merge_package_public ~package ~public in
        { name
        ; package
@@ -269,10 +312,13 @@ module Theory = struct
        ; modules
        ; modules_flags
        ; boot
+       ; generate_project_file
        ; buildable
        ; enabled_if
        ; coqdep_flags
        ; coqdoc_flags
+       ; coqdoc_header
+       ; coqdoc_footer
        })
   ;;
 

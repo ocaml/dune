@@ -54,7 +54,7 @@ We have to define both repositories in the workspace, but will only use `new`.
 Locking should produce the newest package from `new`
 
   $ mkdir dune-workspace-cache
-  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
+  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune_pkg_lock_normalized
   Solution for dune.lock:
   - foo.2.0
 
@@ -78,7 +78,7 @@ solution:
   > EOF
  
   $ rm -r dune-workspace-cache && mkdir dune-workspace-cache
-  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
+  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune_pkg_lock_normalized
   Solution for dune.lock:
   - foo.1.0
 
@@ -102,7 +102,7 @@ package:
   > EOF
 
   $ rm -r dune-workspace-cache && mkdir dune-workspace-cache
-  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
+  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune_pkg_lock_normalized
   Solution for dune.lock:
   - foo.2.0
 
@@ -127,6 +127,6 @@ older version of foo:
   > EOF
 
   $ rm -r dune-workspace-cache && mkdir dune-workspace-cache
-  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
+  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune_pkg_lock_normalized
   Solution for dune.lock:
   - foo.1.0

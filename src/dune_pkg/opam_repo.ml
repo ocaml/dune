@@ -122,10 +122,42 @@ let of_git_repo loc url =
   { source = Repo at_rev; serializable; loc }
 ;;
 
+let resolve_repositories ~available_repos ~repositories =
+  repositories
+  |> Fiber.parallel_map ~f:(fun (loc, name) ->
+    match Workspace.Repository.Name.Map.find available_repos name with
+    | None ->
+      User_error.raise
+        ~loc
+        [ Pp.textf
+            "Repository '%s' is not a known repository"
+            (Workspace.Repository.Name.to_string name)
+        ]
+    | Some repo ->
+      let loc, opam_url = Workspace.Repository.opam_url repo in
+      (match OpamUrl.classify opam_url loc with
+       | `Git -> of_git_repo loc opam_url
+       | `Path path -> Fiber.return @@ of_opam_repo_dir_path loc path
+       | `Archive ->
+         User_error.raise
+           ~loc
+           [ Pp.textf
+               "Repositories stored in archives (%s) are currently unsupported"
+               (OpamUrl.to_string opam_url)
+           ]))
+;;
+
 let revision t =
   match t.source with
   | Repo r -> r
   | Directory _ -> Code_error.raise "not a git repo" []
+;;
+
+let content_digest t =
+  match t.source with
+  | Repo repo ->
+    Rev_store.At_rev.rev repo |> Rev_store.Object.to_hex |> Dune_digest.string
+  | Directory path -> Path_digest.digest_with_lstat path
 ;;
 
 let load_opam_package_from_dir ~(dir : Path.t) package =
@@ -134,7 +166,7 @@ let load_opam_package_from_dir ~(dir : Path.t) package =
   | false -> None
   | true ->
     let files_dir = Some (Paths.files_dir package) in
-    Some (Resolved_package.local_fs package ~dir ~opam_file_path ~files_dir)
+    Some (Resolved_package.local_fs package ~dir ~opam_file_path ~files_dir ~url:None)
 ;;
 
 let load_packages_from_git rev_store opam_packages =
@@ -151,7 +183,8 @@ let load_packages_from_git rev_store opam_packages =
         ~opam_file:(Rev_store.File.path opam_file)
         ~opam_file_contents
         rev
-        ~files_dir:(Some files_dir))
+        ~files_dir:(Some files_dir)
+        ~url:None)
 ;;
 
 let all_packages_in_dir_at_path ~dir ~path loc =

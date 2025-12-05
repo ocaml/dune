@@ -8,10 +8,10 @@ When composing with a (boot) library, every library must have -boot passed to
 coqdep and coqc.
 
   $ dune build A
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
+  (warnings (deprecated_coq_lang disabled))
   Module
   Prelude
   := Struct Inductive BootType : Set :=  boot : BootType | type : BootType. End
@@ -30,10 +30,10 @@ private boot library will be loaded implicitly.
   > EOF
 
   $ dune build B
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
+  (warnings (deprecated_coq_lang disabled))
   private_boot
        : PrivateBootType
 
@@ -53,10 +53,10 @@ message together. This is some extra noise for the user, but we are not sure how
 to fix this currently.
 
   $ dune build B
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
+  (warnings (deprecated_coq_lang disabled))
   Error: Cannot have more than one boot theory in scope:
   - Coq at B/Coq/dune:2
   - Coq at Coq/dune:1

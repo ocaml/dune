@@ -89,6 +89,9 @@ module Packages : sig
 
   val to_pkg_list : t -> Pkg.t list
   val pkgs_on_platform_by_name : t -> platform:Solver_env.t -> Pkg.t Package_name.Map.t
+
+  (** All the packages grouped by the platforms where they are enabled. *)
+  val pkgs_by_platform : t -> Pkg.t list Solver_env.Map.t
 end
 
 type t = private
@@ -123,7 +126,9 @@ val create_latest_version
   -> repos:Opam_repo.t list option
   -> expanded_solver_variable_bindings:Solver_stats.Expanded_variable_bindings.t
   -> solved_for_platform:Solver_env.t option
-       (* TODO: make this non-optional when portable lockdirs becomes the default *)
+       (* TODO: make the [solved_for_platform] argument non-optional when
+          portable lockdirs becomes the default *)
+  -> portable_lock_dir:bool
   -> t
 
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit

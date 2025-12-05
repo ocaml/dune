@@ -59,8 +59,11 @@ module File = struct
       | _ -> false
     ;;
 
-    let csts_conflict project (a : Cst.t) (b : Cst.t) =
-      let of_ast = Dune_rules.Stanzas.of_ast project in
+    let csts_conflict project ~dir (a : Cst.t) (b : Cst.t) =
+      let of_ast sexp =
+        let parser = Dune_project.stanza_parser project ~dir in
+        Dune_lang.Decoder.parse parser Univ_map.empty sexp
+      in
       (let open Option.O in
        let* a_ast = Cst.abstract a in
        let+ b_ast = Cst.abstract b in
@@ -71,19 +74,19 @@ module File = struct
     ;;
 
     (* TODO(shonfeder): replace with stanza merging *)
-    let find_conflicting project new_stanzas existing_stanzas =
+    let find_conflicting project ~dir new_stanzas existing_stanzas =
       let conflicting_stanza stanza =
-        match List.find ~f:(csts_conflict project stanza) existing_stanzas with
+        match List.find ~f:(csts_conflict ~dir project stanza) existing_stanzas with
         | Some conflict -> Some (stanza, conflict)
         | None -> None
       in
       List.find_map ~f:conflicting_stanza new_stanzas
     ;;
 
-    let add (project : Dune_project.t) stanzas = function
+    let add (project : Dune_project.t) ~dir stanzas = function
       | Text f -> Text f (* Adding a stanza to a text file isn't meaningful *)
       | Dune f ->
-        (match find_conflicting project stanzas f.content with
+        (match find_conflicting project ~dir stanzas f.content with
          | None -> Dune { f with content = f.content @ stanzas }
          | Some (a, b) ->
            User_error.raise
@@ -430,6 +433,7 @@ module Component = struct
                 ; constraint_ = None
                 }
               ]
+            ~contents_basename:None
         in
         let packages = Package.Name.Map.singleton (Package.name package) package in
         let info =
@@ -457,7 +461,7 @@ module Component = struct
 
   (* TODO Support for merging in changes to an existing stanza *)
   let add_stanza_to_dune_file ~(project : Dune_project.t) ~dir stanza =
-    File.load_dune_file ~dir |> File.Stanza.add project stanza
+    File.load_dune_file ~dir |> File.Stanza.add ~dir project stanza
   ;;
 
   (* Functions to make the various components, represented as lists of files *)
@@ -466,7 +470,7 @@ module Component = struct
       let dir = context.dir in
       let bin_dune =
         Stanza_cst.executable common options
-        |> add_stanza_to_dune_file ~project:context.project ~dir
+        |> add_stanza_to_dune_file ~dir ~project:context.project
       in
       let bin_ml =
         let name = sprintf "%s.ml" (Dune_lang.Atom.to_string common.name) in
@@ -488,7 +492,6 @@ module Component = struct
     ;;
 
     let test ({ context; common; options } : Options.Test.t Options.t) =
-      (* Marking the current absence of test-specific options *)
       let dir = context.dir in
       let test_dune =
         Stanza_cst.test common options
@@ -522,6 +525,16 @@ module Component = struct
       File.Dune { dir; content; name = "dune-project" }
     ;;
 
+    (* Convert a libname to a dune atom that can be used to declare a library as
+       a dependency  *)
+    let lib_name_to_atom lib : Dune_lang.Atom.t =
+      Lib_name.to_string lib
+      |> String.map ~f:(function
+        | '-' -> '_' (* in case the lib_name is public, containing a `-` *)
+        | c -> c)
+      |> Dune_lang.Atom.of_string
+    ;;
+
     let proj_exec dir ({ context; common; options } : Options.Project.t Options.t) =
       let lib_target =
         src
@@ -532,10 +545,15 @@ module Component = struct
       in
       let test_target =
         let test_name = "test_" ^ Dune_lang.Atom.to_string common.name in
+        let libraries =
+          match common.public with
+          | None -> []
+          | Some lib -> [ lib_name_to_atom lib ]
+        in
         test
           { context = { context with dir = Path.Source.relative dir "test" }
           ; options = ()
-          ; common = { common with name = Dune_lang.Atom.of_string test_name }
+          ; common = { common with name = Dune_lang.Atom.of_string test_name; libraries }
           }
       in
       let bin_target =
@@ -560,10 +578,15 @@ module Component = struct
       in
       let test_target =
         let test_name = "test_" ^ Dune_lang.Atom.to_string common.name in
+        let libraries =
+          match common.public with
+          | None -> []
+          | Some lib -> [ lib_name_to_atom lib ]
+        in
         test
           { context = { context with dir = Path.Source.relative dir "test" }
           ; options = ()
-          ; common = { common with name = Dune_lang.Atom.of_string test_name }
+          ; common = { common with name = Dune_lang.Atom.of_string test_name; libraries }
           }
       in
       lib_target @ test_target

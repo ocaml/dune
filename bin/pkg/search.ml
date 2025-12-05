@@ -36,8 +36,8 @@ let search_packages ~query () =
     | None -> get_default_lock_dir_path ()
   in
   let* repos =
-    Pkg_common.get_repos
-      (Pkg_common.repositories_of_workspace workspace)
+    Dune_pkg.Opam_repo.resolve_repositories
+      ~available_repos:(Pkg_common.repositories_of_workspace workspace)
       ~repositories:(Pkg_common.repositories_of_lock_dir workspace ~lock_dir_path)
   in
   let re = Option.map ~f:(fun q -> Re.str q |> Re.no_case |> Re.compile) query in
@@ -107,7 +107,8 @@ let search_packages ~query () =
 
 let term =
   let+ builder = Common.Builder.term
-  and+ query = Arg.(value & pos 0 (some string) None & info [] ~docv:"QUERY") in
+  (* CR-someday Alizter: document this option *)
+  and+ query = Arg.(value & pos 0 (some string) None & info [] ~docv:"QUERY" ~doc:None) in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
   Scheduler.go_with_rpc_server ~common ~config (fun () ->

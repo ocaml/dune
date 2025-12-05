@@ -27,4 +27,5 @@ cp -v "$SRC"/lib/*.{ml,mli,c} "$lib_name"/src
 cp -v "$SRC"/lib/dune "$lib_name"/src
 cp -v "$SRC"/LICENSE.txt "$lib_name"/
 
+git checkout "$lib_name"/src/dune
 git add -A .

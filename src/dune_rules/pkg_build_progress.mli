@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 (** Formats a message in the style of a progress message. The text of
     the message will be "<verb> <object_>" with the verb colored to match
@@ -18,9 +18,8 @@ val format_user_message
     the console so users can be informed about which of their
     project's dependencies are currently being installed.
 
-    The message will only print if the
-    DUNE_CONFIG__PKG_BUILD_PROGRESS config variable is "enabled"
-    (it's "disabled" by default). *)
+    The action respects the display setting and will not print anything
+    when the display setting is quiet. *)
 val progress_action
   :  Package.Name.t
   -> Package_version.t

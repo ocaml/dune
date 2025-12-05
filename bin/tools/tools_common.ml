@@ -1,4 +1,4 @@
-open! Import
+open Import
 module Pkg_dev_tool = Dune_rules.Pkg_dev_tool
 
 let dev_tool_bin_dirs =
@@ -35,11 +35,16 @@ let build_dev_tool_directly common dev_tool =
 
 let build_dev_tool_via_rpc builder lock_held_by dev_tool =
   let target = dev_tool_build_target dev_tool in
-  Build.build_via_rpc_server
-    ~print_on_success:false
-    ~targets:[ target ]
+  let targets = Rpc.Rpc_common.prepare_targets [ target ] in
+  let open Fiber.O in
+  Rpc.Rpc_common.fire_request
+    ~name:"build"
+    ~wait:true
+    ~lock_held_by
     builder
-    lock_held_by
+    Dune_rpc_impl.Decl.build
+    targets
+  >>| Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:false
 ;;
 
 let lock_and_build_dev_tool ~common ~config builder dev_tool =
@@ -83,10 +88,11 @@ let which_command dev_tool =
         & info
             [ "allow-not-installed" ]
             ~doc:
-              (sprintf
-                 "If %s is not installed as a dev tool, still print where it would be \
-                  installed."
-                 exe_name))
+              (Some
+                 (sprintf
+                    "If %s is not installed as a dev tool, still print where it would be \
+                     installed."
+                    exe_name)))
     in
     let _ : Common.t * Dune_config_file.Dune_config.t = Common.init builder in
     if allow_not_installed || Path.exists exe_path
@@ -123,7 +129,8 @@ let exec_command dev_tool =
   let exe_name = Pkg_dev_tool.exe_name dev_tool in
   let term =
     let+ builder = Common.Builder.term
-    and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS")) in
+    (* CR-someday Alizter: document this option *)
+    and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS" ~doc:None)) in
     let common, config = Common.init builder in
     lock_build_and_run_dev_tool ~common ~config builder dev_tool ~args
   in
@@ -151,7 +158,9 @@ let env_command =
       Arg.(
         value
         & flag
-        & info [ "fish" ] ~doc:"Print command for the fish shell rather than POSIX shells")
+        & info
+            [ "fish" ]
+            ~doc:(Some "Print command for the fish shell rather than POSIX shells"))
     in
     let _ : Common.t * Dune_config.t = Common.init builder in
     if fish

@@ -19,14 +19,13 @@
   dune_findlib
   dune_glob
   dune_lang
-  dune_meta_parser
   dune_patch
   dune_pkg
   re
   dune_rpc_private
   dune_section
   dune_site_private
-  dune_stats
+  dune_trace
   dune_targets
   dune_util
   dune_vcs

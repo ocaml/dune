@@ -32,7 +32,7 @@ Generate a `dune-project` file.
 
 Run the solver and generate a lock directory.
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - bar.0.5.0
   - baz.0.1.0
@@ -44,25 +44,27 @@ Helper to the name and contents of each file in the lock directory separated by
 
 Print the contents of each file in the lockdir:
   $ print_all
-  dune.lock/bar.pkg:
+  dune.lock/bar.0.5.0.pkg:
   
   (version 0.5.0)
   
   
   ---
   
-  dune.lock/baz.pkg:
+  dune.lock/baz.0.1.0.pkg:
   
   (version 0.1.0)
   
   
   ---
   
-  dune.lock/foo.pkg:
+  dune.lock/foo.0.0.1.pkg:
   
   (version 0.0.1)
   
-  (depends baz bar)
+  (depends
+   (all_platforms
+    (baz bar)))
   
   
   ---
@@ -76,38 +78,50 @@ Print the contents of each file in the lockdir:
   (repositories
    (complete false)
    (used))
+  
+  (solved_for_platforms
+   ((arch x86_64)
+    (os linux))
+   ((arch arm64)
+    (os linux))
+   ((arch x86_64)
+    (os macos))
+   ((arch arm64)
+    (os macos)))
   
   
   ---
   
 
 Run the solver again preferring oldest versions of dependencies:
-  $ dune pkg lock --version-preference=oldest
+  $ dune_pkg_lock_normalized --version-preference=oldest
   Solution for dune.lock:
   - bar.0.4.0
   - baz.0.1.0
   - foo.0.0.1
 
   $ print_all
-  dune.lock/bar.pkg:
+  dune.lock/bar.0.4.0.pkg:
   
   (version 0.4.0)
   
   
   ---
   
-  dune.lock/baz.pkg:
+  dune.lock/baz.0.1.0.pkg:
   
   (version 0.1.0)
   
   
   ---
   
-  dune.lock/foo.pkg:
+  dune.lock/foo.0.0.1.pkg:
   
   (version 0.0.1)
   
-  (depends baz bar)
+  (depends
+   (all_platforms
+    (baz bar)))
   
   
   ---
@@ -121,6 +135,16 @@ Run the solver again preferring oldest versions of dependencies:
   (repositories
    (complete false)
    (used))
+  
+  (solved_for_platforms
+   ((arch x86_64)
+    (os linux))
+   ((arch arm64)
+    (os linux))
+   ((arch x86_64)
+    (os macos))
+   ((arch arm64)
+    (os macos)))
   
   
   ---
@@ -137,9 +161,10 @@ Regenerate the `dune-project` file introducing an unsatisfiable constraint.
   > EOF
 
 Run the solver again. This time it will fail.
-  $ dune pkg lock
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  $ dune_pkg_lock_normalized
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.lock
+  
   Couldn't solve the package dependency formula.
   Selected candidates: baz.0.1.0 foo.0.0.1 lockfile_generation_test.dev
   - bar -> (problem)
@@ -172,7 +197,7 @@ should pick one of them.
 After running this we expact a solution that has either `bar` or `baz` but not
 both.
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - bar.0.5.0
   - bar-or-baz.0.0.1
@@ -196,7 +221,7 @@ patterns that can't be simplified
 After runninng we expect the solution to have quux and either baz or quz as
 well as bar or qux.
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - bar.0.5.0
   - baz.0.1.0
@@ -216,7 +241,7 @@ in between.
   > depends: [ ("bar" & "quux") | "baz" ]
   > EOF
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - bar.0.5.0
   - priorities.0.0.1
@@ -243,7 +268,7 @@ versions 1 or 3, as well as making sure it doesn't pick the newest version.
 With versions 1 and 3 negated and version 4 removed via version constraint,
 we'd expect version 2 to be chosen:
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - negation.0.0.1
   - pkg.2

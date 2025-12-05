@@ -29,13 +29,14 @@ command is currently not respected when the package is pinned.
   > build: [ "echo" "run" "this" ]
   > EOF
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - opam-template.dev
   $ build_pkg opam-template
 
-  $ cat ${default_lock_dir}/opam-template.pkg | sed "/source/,//d"
+  $ cat ${default_lock_dir}/opam-template.dev.pkg | sed "/source/,//d"
   (version dev)
   
-  (dune)
+  (build
+   (all_platforms ((dune))))
   

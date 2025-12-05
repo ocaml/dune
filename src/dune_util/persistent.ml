@@ -65,7 +65,7 @@ module Make (D : Desc) = struct
       let args = [ "path", `String (Path.to_string file); "module", `String D.name ] in
       Event.complete common ~args ~dur
     in
-    Dune_stats.emit stats event;
+    Dune_trace.emit stats event;
     Result.ok_exn res
   ;;
 
@@ -80,7 +80,7 @@ module Make (D : Desc) = struct
     in
     let dump =
       lazy
-        (match Dune_stats.global () with
+        (match Dune_trace.global () with
          | None -> dump
          | Some stats ->
            fun file v ->
@@ -115,7 +115,7 @@ module Make (D : Desc) = struct
     in
     let read_file =
       lazy
-        (match Dune_stats.global () with
+        (match Dune_trace.global () with
          | None -> read_file
          | Some stats ->
            fun file ->

@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 module Format = Stdlib.Format
 
 type t =

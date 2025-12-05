@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 
 let cwd () = Path.external_ (Path.External.cwd ())
 

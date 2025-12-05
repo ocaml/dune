@@ -837,7 +837,7 @@ let report_process_finished
     ]
   in
   let extended =
-    if not (Dune_stats.extended_build_job_info stats)
+    if not (Dune_trace.extended_build_job_info stats)
     then []
     else (
       let targets =
@@ -874,7 +874,7 @@ let report_process_finished
   let args = always @ extended in
   let dur = Event.Timestamp.of_float_seconds times.elapsed_time in
   let event = Event.complete ~args ~dur common in
-  Dune_stats.emit stats event
+  Dune_trace.emit stats event
 ;;
 
 let set_temp_dir_when_running_actions = ref true

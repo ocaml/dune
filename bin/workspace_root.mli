@@ -1,5 +1,3 @@
-open! Stdune
-
 (** Finding the root of the workspace *)
 
 module Kind : sig

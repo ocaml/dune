@@ -20,7 +20,7 @@ let decode_applies_to =
   subtree <|> predicate
 ;;
 
-module Conflict = struct
+module Conflict_markers = struct
   type t =
     | Error
     | Ignore
@@ -41,10 +41,11 @@ type t =
   ; deps : Dep_conf.t Bindings.t option
   ; enabled_if : Blang.t
   ; locks : Locks.t
-  ; conflict : Conflict.t option
+  ; conflict_markers : Conflict_markers.t option
   ; package : Package.t option
   ; runtest_alias : (Loc.t * bool) option
   ; timeout : (Loc.t * float) option
+  ; setup_scripts : (Loc.t * string) list
   }
 
 include Stanza.Make (struct
@@ -79,6 +80,7 @@ let decode =
      and+ locks = Locks.field ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9)) ()
      and+ package =
        Stanza_pkg.field_opt ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8)) ()
+       >>| Option.map ~f:snd
      and+ runtest_alias =
        field_o
          "runtest_alias"
@@ -95,10 +97,17 @@ let decode =
             User_error.raise
               ~loc
               [ Pp.text "Timeout value must be a non-negative float." ])
-     and+ conflict =
+     and+ conflict_markers =
        field_o
-         "conflict"
-         (Dune_lang.Syntax.since Stanza.syntax (3, 21) >>> Conflict.decode)
+         "conflict_markers"
+         (Dune_lang.Syntax.since Stanza.syntax (3, 21) >>> Conflict_markers.decode)
+     and+ setup_scripts =
+       let+ scripts =
+         field_o
+           "setup_scripts"
+           (Dune_lang.Syntax.since Stanza.syntax (3, 21) >>> repeat (located string))
+       in
+       Option.value scripts ~default:[]
      in
      { loc
      ; alias
@@ -109,6 +118,7 @@ let decode =
      ; package
      ; runtest_alias
      ; timeout
-     ; conflict
+     ; conflict_markers
+     ; setup_scripts
      })
 ;;

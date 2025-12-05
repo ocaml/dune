@@ -282,18 +282,6 @@ struct
     else with_file_out ~binary ?perm fn ~f:(fun oc -> output_string oc data)
   ;;
 
-  let overwrite_file ?binary fn data =
-    let path = Path.to_string fn in
-    try write_file ?binary fn data with
-    | Unix.Unix_error (Unix.EACCES, _, _) ->
-      let Unix.{ st_perm; _ } = Unix.stat path in
-      let user_write = 0o200 in
-      Unix.chmod path (st_perm lor user_write);
-      Fun.protect
-        ~finally:(fun () -> Unix.chmod path st_perm)
-        (fun () -> write_file ?binary fn data)
-  ;;
-
   let write_lines ?binary ?perm fn lines =
     with_file_out ?binary ?perm fn ~f:(fun oc ->
       List.iter

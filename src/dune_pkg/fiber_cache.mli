@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 (** Associates asynchronously-computed values of type ['v] with keys of type ['k] *)
 type ('k, 'v) t

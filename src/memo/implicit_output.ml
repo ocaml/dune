@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 open Fiber.O
 
 module type Implicit_output = sig

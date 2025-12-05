@@ -21,6 +21,6 @@ Demonstrate how dune handles project dependency cycles in the same project
   >  (depends a))
   > EOF
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   (no dependencies to lock)

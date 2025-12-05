@@ -8,7 +8,7 @@
   dune_rpc_client
   dune_rpc_private
   dune_rpc_server
-  dune_stats
+  dune_trace
   dune_util
   fiber
   promote

@@ -1,5 +1,5 @@
 (** Link mode of OCaml programs *)
-open! Import
+open Import
 
 type t =
   | Byte

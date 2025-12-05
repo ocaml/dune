@@ -1,5 +1,5 @@
 open Import
-open! Dune_lang.Decoder
+open Dune_lang.Decoder
 
 type t =
   { name : Loc.t * Lib_name.Local.t
@@ -79,11 +79,12 @@ let decode =
            ; wasm = Js_of_ocaml.In_buildable.default
            }
        ; allow_overlapping_dependencies
+       ; allow_unused_libraries = []
        ; ctypes = None
        }
      and+ name = field_o "name" Lib_name.Local.decode_loc
      and+ public = field_o "public_name" (Public_lib.decode ~allow_deprecated_names:false)
-     and+ package = field_o "package" (located Stanza_pkg.decode)
+     and+ package = Stanza_pkg.field_opt ()
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
      and+ synopsis = field_o "synopsis" string
      and+ optional = field_b "optional" in

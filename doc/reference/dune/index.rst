@@ -69,6 +69,7 @@ The following pages describe the available stanzas and their meanings.
       :maxdepth: 1
 
       cinaps
+      rocq_theory
       coq_theory
       mdx
       menhir

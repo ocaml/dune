@@ -42,8 +42,11 @@ let files_to_load_of_requires sctx requires =
 
 let term =
   let+ builder = Common.Builder.term
-  and+ dir = Arg.(value & pos 0 string "" & Arg.info [] ~docv:"DIR")
-  and+ ctx_name = Common.context_arg ~doc:{|Select context where to build/run top.|} in
+  (* CR-someday Alizter: document this option *)
+  and+ dir = Arg.(value & pos 0 string "" & Arg.info [] ~docv:"DIR" ~doc:None)
+  and+ ctx_name =
+    Common.context_arg ~doc:(Some {|Select context where to build/run top.|})
+  in
   let common, config = Common.init builder in
   Scheduler.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
@@ -76,6 +79,8 @@ let term =
       in
       let include_paths =
         Dune_rules.Lib_flags.L.toplevel_include_paths requires lib_config
+        |> Dune_rules.Lib_flags.L.include_only
+        |> Path.Set.of_list
       in
       let+ files_to_load = files_to_load_of_requires sctx requires in
       Dune_rules.Toplevel.print_toplevel_init_file
@@ -134,7 +139,9 @@ module Module = struct
           let lib_config = (Compilation_context.ocaml cctx).lib_config in
           Dune_rules.Lib_flags.L.toplevel_include_paths requires lib_config
         in
-        Path.Set.add libs (Path.build (Obj_dir.byte_dir private_obj_dir))
+        Path.Map.set libs (Path.build (Obj_dir.byte_dir private_obj_dir)) Include
+        |> Dune_rules.Lib_flags.L.include_only
+        |> Path.Set.of_list
       in
       let files_to_load () =
         let+ libs, modules =
@@ -213,8 +220,10 @@ module Module = struct
       Arg.(
         required
         & pos 0 (some string) None
-        & Arg.info [] ~docv:"MODULE" ~doc:"Path to an OCaml module.")
-    and+ ctx_name = Common.context_arg ~doc:{|Select context where to build/run top.|} in
+        & Arg.info [] ~docv:"MODULE" ~doc:(Some "Path to an OCaml module."))
+    and+ ctx_name =
+      Common.context_arg ~doc:(Some {|Select context where to build/run top.|})
+    in
     let common, config = Common.init builder in
     Scheduler.go_with_rpc_server ~common ~config (fun () ->
       let open Fiber.O in

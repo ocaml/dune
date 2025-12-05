@@ -182,7 +182,7 @@ let snapshot t =
 
 let create ~mode ~dune_stats ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
   let event =
-    Dune_stats.start dune_stats (fun () ->
+    Dune_trace.start dune_stats (fun () ->
       let cat = Some [ "create-sandbox" ] in
       let name = Loc.to_file_colon_line rule_loc in
       let args = None in
@@ -203,7 +203,7 @@ let create ~mode ~dune_stats ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
          targets produced dynamically will be unavailable. *)
       link_deps t ~mode ~deps)
   in
-  Dune_stats.finish event;
+  Dune_trace.finish event;
   match mode with
   | Patch_back_source_tree ->
     (* Only supported on Linux because we rely on the mtime changing to detect

@@ -20,6 +20,6 @@ This is based on the build command of mingw-w64-shims.0.2.0
   >  (depends foo))
   > EOF
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - foo.0.0.1

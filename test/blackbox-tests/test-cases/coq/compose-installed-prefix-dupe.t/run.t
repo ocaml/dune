@@ -4,7 +4,15 @@ is a duplicate theory.
 First we install our two theories with the conflicting name prefix.
 
   $ (cd B && dune build @install && dune install --prefix .)
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   $ (cd C && dune build @install && dune install --prefix .)
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
 
 We add these to COQPATH
 
@@ -32,5 +40,9 @@ Now we create a theory that depends on both
   > EOF
 
   $ dune build a.vo
+  Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
+  3.24. Please upgrade to the new Rocq Build Language.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang disabled))
   Inductive b : Prop :=  .
  

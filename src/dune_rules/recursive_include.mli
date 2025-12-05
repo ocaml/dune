@@ -6,7 +6,7 @@
     the result of parsing the file. Supports chains of recursively included
     files, and detects include loops. *)
 
-open! Import
+open Import
 
 (** The type of terms in the configuration language obtained by adding (include
     ...) statements to the base language *)

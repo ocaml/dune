@@ -1,7 +1,7 @@
 open Stdune
 
 let%expect_test "fd counting" =
-  let module Fd_count = Dune_stats.Private.Fd_count in
+  let module Fd_count = Dune_trace.Private.Fd_count in
   let get () =
     match Fd_count.get () with
     | This n -> n

@@ -14,6 +14,13 @@ Coq
 Introduction
 ------------
 
+.. note::
+
+   The Dune Coq mode has been replaced by Dune's :ref:`Rocq mode<rocq>`,
+   following the renaming of Coq into Rocq. The Dune Coq mode is deprecated,
+   and will be removed in Dune 3.24. We strongly recommend all users to migrate
+   to this mode.
+
 Dune can build Coq theories and plugins with additional support for extraction
 and ``.mlg`` file preprocessing.
 
@@ -67,8 +74,11 @@ The Coq theory stanza is very similar in form to the OCaml
      (plugins <ocaml_plugins>)
      (flags <coq_flags>)
      (modules_flags <flags_map>)
+     (generate_project_file)
      (coqdep_flags <coqdep_flags>)
      (coqdoc_flags <coqdoc_flags>)
+     (coqdoc_header <coqdoc_header>)
+     (coqdoc_footer <coqdoc_footer>)
      (stdlib <stdlib_included>)
      (mode <coq_native_mode>)
      (theories <coq_theories>))
@@ -90,11 +100,12 @@ The semantics of the fields are:
   same theory don't see the ``foo.Bar`` prefix in the same way that OCaml
   ``wrapped`` libraries do.
 
-  For compatibility, :ref:`Coq lang 1.0<coq-lang-1.0>` installs a theory named
-  ``foo.Bar`` under ``foo/Bar``. Also note that Coq supports composing a module
-  path from different theories, thus you can name a theory ``foo.Bar`` and a
-  second one ``foo.Baz``, and Dune composes these properly. See an example of
-  :ref:`a multi-theory<example-multi-theory>` Coq project for this.
+  For compatibility, we install a theory named ``foo.Bar`` under
+  ``foo/Bar``. Also note that Coq supports composing a module path
+  from different theories, thus you can name a theory ``foo.Bar`` and
+  a second one ``foo.Baz``, and Dune composes these properly. See an
+  example of :ref:`a multi-theory<example-multi-theory>` Coq project
+  for this.
 
 - The ``modules`` field allows one to constrain the set of modules included in
   the theory, similar to its OCaml counterpart. Modules are specified in Coq
@@ -103,10 +114,10 @@ The semantics of the fields are:
 - If the ``package`` field is present, Dune generates install rules for the
   ``.vo`` files of the theory. ``pkg_name`` must be a valid package name.
 
-  Note that :ref:`Coq lang 1.0<coq-lang-1.0>` will use the Coq legacy install
-  setup, where all packages share a common root namespace and install directory,
-  ``lib/coq/user-contrib/<module_prefix>``, as is customary in the Make-based
-  Coq package ecosystem.
+  Note that we use the Coq install setup, where all packages share a
+  common root namespace and install directory,
+  ``lib/coq/user-contrib/<module_prefix>``, as is customary in the
+  Make-based Coq package ecosystem.
 
   For compatibility, Dune also installs, under the ``user-contrib`` prefix, the
   ``.cmxs`` files that appear in ``<ocaml_plugins>``. This will be dropped in
@@ -146,6 +157,14 @@ The semantics of the fields are:
   flags are passed separately depending on which mode is target. See the section
   on :ref:`documentation using coqdoc<coqdoc>` for more information.
 
+- ``<coqdoc_header>`` is a file passed to ``coqdoc`` using the ``--with-header``
+  option, to configure a custom HTML header for the generated HTML pages.
+  (Appeared in :ref:`Coq lang 0.10<coq-lang>`)
+
+- ``<coqdoc_footer>`` is a file passed to ``coqdoc`` using the ``--with-footer``
+  option, to configure a custom HTML footer for the generated HTML pages.
+  (Appeared in :ref:`Coq lang 0.10<coq-lang>`)
+
 - ``<stdlib_included>`` can either be ``yes`` or ``no``, currently defaulting to
   ``yes``. When set to ``no``, Coq's standard library won't be visible from this
   theory, which means the ``Coq`` prefix won't be bound, and
@@ -180,8 +199,16 @@ The semantics of the fields are:
 - If the ``(mode vos)`` field is present, only Coq compiled interface files
   ``.vos`` will be produced for the theory. This is mainly useful in conjunction
   with ``dune coq top``, since this makes the compilation of dependencies much
-  faster, at the cost of skipping proof checking. (Appeared in :ref:`Coq lang
-  0.8<coq-lang>`).
+  faster, at the cost of skipping proof checking.
+  (Appeared in :ref:`Coq lang 0.8<coq-lang>`)
+
+- If the ``(generate_project_file)`` is present, a ``_CoqProject`` file is
+  generated in the Coq theory's directory (it is promoted to the source tree).
+  This file should be suitable for editor compatibility, and it provides an
+  alternative to using ``dune coq top``. It is however limited in two ways: it
+  is incompatible with the ``(modules_flags ...)`` field, and it cannot be
+  used for two Coq theories declared in the same directory.
+  (Appeared in :ref:`Coq lang 0.11<coq-lang>`)
 
 Coq Dependencies
 ~~~~~~~~~~~~~~~~
@@ -211,6 +238,10 @@ Further flags can also be configured using the ``(coqdoc_flags)`` field in the
 ``coq.theory`` stanza. These will be passed to ``coqdoc`` and the default value
 is ``:standard`` which is ``--toc``. Extra flags can therefore be passed by
 writing ``(coqdoc_flags :standard --body-only)`` for example.
+
+When building the HTML documentation, flags ``(coqdoc_header)`` and
+``(coqdoc_footer)`` can also be used to configure a custom HTML header or
+footer respectively.
 
 .. _include-subdirs-coq:
 
@@ -354,8 +385,13 @@ The Coq lang can be modified by adding the following to a
 
 The supported Coq language versions (not the version of Coq) are:
 
+- ``0.11``: Rocq mode. Support for the ``(coqdoc_header ...)`` and
+  ``(coqdoc_footer ...)`` fields, for ``_CoqProject`` file generation,
+  and multiple modules in ``(modules_flags ...)``.
+  See Rocq mode manual for more details
 - ``0.10``: Support for the ``(coqdep_flags ...)`` field.
-- ``0.9``: Support for per-module flags with the ``(module_flags ...)``` field.
+- ``0.9``: Support for per-module flags with the ``(modules_flags ...)`` field,
+  limited to a single module due to a bug.
 - ``0.8``: Support for composition with installed Coq theories;
   support for ``vos`` builds.
 
@@ -373,17 +409,6 @@ Deprecated experimental Coq language versions are:
 - ``0.7``: ``(mode )`` is automatically detected from the configuration of Coq
   and ``(mode native)`` is deprecated. The ``dev`` profile also no longer
   disables native compilation.
-
-.. _coq-lang-1.0:
-
-Coq Language Version 1.0
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Guarantees with respect to stability are not yet provided, but we
-intend that the ``(0.8)`` version of the language becomes ``1.0``.
-The ``1.0`` version of Coq lang will commit to a stable set of
-functionality. All the features below are expected to reach ``1.0``
-unchanged or minimally modified.
 
 .. _coq-extraction:
 
@@ -849,3 +874,9 @@ with the following values for ``<coq_fields>``:
 - ``(coqdoc_flags <flags>)``: The default flags passed to ``coqdoc``. The default
   value is ``--toc``. Values set here become the ``:standard`` value in the
   ``(coq.theory (coqdoc_flags <flags>))`` field.
+- ``(coqdoc_header <file>)``: The default HTML header passed to ``coqdoc`` via
+  the ``--with-header`` flag. Values set here become the ``:standard`` value in the
+  ``(coq.theory (coqdoc_header <file>))`` field.
+- ``(coqdoc_footer <file>)``: The default HTML footer passed to ``coqdoc`` via
+  the ``--with-footer`` flag. Values set here become the ``:standard`` value in the
+  ``(coq.theory (coqdoc_footer <file>))`` field.

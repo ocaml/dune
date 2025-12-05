@@ -2,7 +2,7 @@ open Import
 
 let term =
   let+ builder = Common.Builder.term
-  and+ context_name = Common.context_arg ~doc:"Build context to use."
+  and+ context_name = Common.context_arg ~doc:(Some "Build context to use.")
   and+ format = Describe_format.arg in
   let common, config = Common.init builder in
   Scheduler.go_with_rpc_server ~common ~config

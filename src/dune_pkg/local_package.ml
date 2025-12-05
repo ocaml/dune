@@ -1,4 +1,4 @@
-open! Import
+open Import
 module Package_constraint = Dune_lang.Package_constraint
 
 type pin =

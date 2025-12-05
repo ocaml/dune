@@ -269,7 +269,19 @@ module Error = struct
     make_resolve
       ~loc
       [ Pp.textf "Parameter %S is missing." name ]
-      ~hints:[ Pp.textf "Add (parameters %s)" name ]
+      ~hints:
+        [ Pp.textf
+            "Pass an argument implementing %s to the dependency, or add (parameters %s)"
+            name
+            name
+        ]
+  ;;
+
+  let missing_implements ~loc p =
+    let name = Lib_name.to_string (Lib_info.name p) in
+    make_resolve
+      ~loc
+      [ Pp.textf "Library %S does not implement a library parameter." name ]
   ;;
 end
 
@@ -358,10 +370,13 @@ module T = struct
     ; (* [requires] is contains all required libraries, including the ones
          mentioned in [re_exports]. *)
       requires : t list Resolve.t
+    ; user_written_requires : (Loc.t * t) list Resolve.Memo.t
     ; ppx_runtime_deps : t list Resolve.t
     ; pps : t list Resolve.t
     ; resolved_selects : Resolved_select.t list Resolve.t
+    ; allow_unused_libraries : t list Resolve.t
     ; parameters : t list Resolve.t
+    ; arguments : t option list
     ; implements : t Resolve.t option
     ; project : Dune_project.t option
     ; (* these fields cannot be forced until the library is instantiated *)
@@ -369,7 +384,14 @@ module T = struct
     ; sub_systems : Sub_system0.Instance.t Memo.Lazy.t Sub_system_name.Map.t
     }
 
-  let compare (x : t) (y : t) = Id.compare x.unique_id y.unique_id
+  let rec compare (x : t) (y : t) =
+    match Id.compare x.unique_id y.unique_id with
+    | (Lt | Gt) as cmp -> cmp
+    | Eq -> compare_arguments x y
+
+  and compare_arguments a b =
+    List.compare a.arguments b.arguments ~compare:(Option.compare compare)
+  ;;
 
   let to_dyn t =
     Dyn.record
@@ -472,28 +494,239 @@ let is_local t =
        not (Context_name.equal (Context_name.of_string name) Private_context.t.name))
 ;;
 
-let main_module_name t =
+let resolve_main_module_name t =
+  let open Resolve.O in
   match Lib_info.main_module_name t.info with
-  | This mmn -> Resolve.Memo.return mmn
+  | This mmn -> Resolve.return mmn
   | From _ ->
-    let+ vlib = Memo.return (Option.value_exn t.implements) in
-    (match Lib_info.main_module_name vlib.info with
-     | This x -> x
-     | From _ -> assert false)
+    let+ impl = Option.value_exn t.implements in
+    (match Lib_info.kind impl.info with
+     | Parameter -> Lib_info.local_main_module_name t.info
+     | Virtual ->
+       (match Lib_info.main_module_name impl.info with
+        | This x -> x
+        | From _ -> assert false)
+     | Dune_file _ -> Code_error.raise "expected implementation" [ "lib", to_dyn t ])
 ;;
 
-module Parameterized = struct
-  let validate_required_parameters ~loc ~parameters lib =
+let main_module_name t = Memo.return (resolve_main_module_name t)
+
+module L = struct
+  let top_closure l ~key ~deps =
+    Id.Top_closure.top_closure l ~key:(fun t -> (key t).unique_id) ~deps
+  ;;
+
+  let project_root libs =
+    Option.map ~f:Dune_project.root
+    @@ List.fold_left libs ~init:None ~f:(fun acc lib ->
+      let scope =
+        let status = Lib_info.status lib.info in
+        match status with
+        | Private (scope_name, _) -> Some scope_name
+        | Installed_private | Public _ | Installed -> None
+      in
+      Option.merge acc scope ~f:(fun a b ->
+        assert (Dune_project.equal a b);
+        a))
+  ;;
+end
+
+module Parameterised = struct
+  type status =
+    | Not_parameterised
+    | Partial
+    | Complete
+
+  let status t =
+    match t.arguments with
+    | [] -> Not_parameterised
+    | _ ->
+      let rec check_instantiate lib =
+        List.for_all lib.arguments ~f:(function
+          | None -> false
+          | Some arg -> check_instantiate arg)
+      in
+      if check_instantiate t then Complete else Partial
+  ;;
+
+  let arguments t =
+    List.map t.arguments ~f:(function
+      | None -> Code_error.raise "expected complete application" [ "lib", to_dyn t ]
+      | Some arg -> arg)
+  ;;
+
+  let parameterised_arguments t =
     let open Resolve.O in
-    let* lib = lib in
-    let* required_parameters = lib.parameters in
+    let+ parameters = t.parameters in
+    List.combine parameters t.arguments
+  ;;
+
+  let apply_arguments t new_arguments =
+    (* The [new_arguments] are expected to be sorted in the same [parameter]
+       order as the existing arguments of [t], such that a linear in-order
+       traversal allow filling any unset parameter to the new argument. *)
+    match t.arguments with
+    | [] -> Resolve.return t
+    | _ ->
+      let open Resolve.O in
+      let rec go acc existing' given' =
+        match existing', given' with
+        | [], _ ->
+          (* Ignore remaining arguments *)
+          Resolve.return (List.rev acc)
+        | keep, [] ->
+          (* Keep the remaining existing parameters *)
+          Resolve.return (List.rev_append acc keep)
+        | (param_intf, Some arg) :: existing, _ ->
+          (* Keep already applied parameter *)
+          go ((param_intf, Some arg) :: acc) existing given'
+        | ((param_intf, None) as keep) :: existing, (param_intf', arg) :: given ->
+          (match compare param_intf param_intf' with
+           | Eq ->
+             (* Apply the argument to the unset parameter *)
+             go ((param_intf, Some arg) :: acc) existing given
+           | Lt ->
+             (* Keep the existing parameter as being unknown *)
+             go (keep :: acc) existing given'
+           | Gt ->
+             (* Skip unwanted argument *)
+             go acc existing' given)
+      in
+      let* t_arguments = parameterised_arguments t in
+      let+ arguments = go [] t_arguments new_arguments in
+      let arguments = List.map ~f:snd arguments in
+      { t with arguments }
+  ;;
+
+  let make_argument (loc, arg) =
+    let open Resolve.O in
+    let* arg = arg in
+    let+ param =
+      match arg.implements with
+      | Some param -> param
+      | None -> Error.missing_implements ~loc arg.info
+    in
+    param, arg
+  ;;
+
+  let make_arguments arguments =
+    let open Resolve.O in
+    let+ arguments = Resolve.List.map arguments ~f:make_argument in
+    List.sort arguments ~compare:(fun (param, _) (param', _) -> compare param param')
+  ;;
+
+  let instantiate ~loc lib args ~parent_parameters =
+    let open Resolve.O in
+    let* lib = lib
+    and* args = make_arguments args in
+    let* lib = apply_arguments lib args in
     let+ () =
-      Resolve.List.iter required_parameters ~f:(function
-        | param when not (List.exists parameters ~f:(equal param)) ->
+      let* all_args = parameterised_arguments lib in
+      Resolve.List.iter all_args ~f:(function
+        | param, None when not (List.exists parent_parameters ~f:(equal param)) ->
           Error.missing_parameter ~loc param.info
         | _ -> Resolve.return ())
     in
     lib
+  ;;
+
+  let complement_arguments ~parent dep =
+    match dep.arguments with
+    | [] -> Resolve.return dep
+    | _ ->
+      let open Resolve.O in
+      let* parent_arguments = parameterised_arguments parent in
+      let parent_arguments =
+        List.filter_map parent_arguments ~f:(fun (param, opt_arg) ->
+          Option.map opt_arg ~f:(fun arg -> param, arg))
+      in
+      let* arguments =
+        Resolve.List.map dep.arguments ~f:(fun opt_arg ->
+          match opt_arg with
+          | None -> Resolve.return None
+          | Some arg ->
+            let+ arg = apply_arguments arg parent_arguments in
+            Some arg)
+      in
+      apply_arguments { dep with arguments } parent_arguments
+  ;;
+
+  let remove_arguments lib = { lib with parameters = Resolve.return []; arguments = [] }
+
+  let requires lib =
+    let open Resolve.O in
+    let* (deps : lib list) = lib.requires in
+    let* deps =
+      Resolve.List.map deps ~f:(fun dep -> complement_arguments ~parent:lib dep)
+    in
+    let lib_arguments =
+      List.filter_map lib.arguments ~f:(function
+        | None -> None
+        | Some arg -> Some arg)
+    in
+    let deps = lib_arguments @ deps in
+    let deps =
+      match lib.arguments with
+      | [] -> deps
+      | _ -> remove_arguments lib :: deps
+    in
+    Resolve.return deps
+  ;;
+
+  let scope t =
+    let rec all t =
+      let args = arguments t |> List.concat_map ~f:all in
+      t :: args
+    in
+    L.project_root (all t) |> Parameterised_name.Scope.encode
+  ;;
+
+  let parameterised_name t =
+    let rec parameterised_name t =
+      let args = arguments t |> List.map ~f:parameterised_name in
+      { Parameterised_name.name = name t; args }
+    in
+    Parameterised_name.to_string (parameterised_name t)
+  ;;
+
+  let dir ~build_dir t =
+    let parameterised_dir =
+      Path.Build.(relative build_dir Dune_lang.Oxcaml.parameterised_dir)
+    in
+    let scoped_dir = Path.Build.relative parameterised_dir (scope t) in
+    Path.Build.relative scoped_dir (Lib_name.to_string (name t))
+  ;;
+
+  let info ~build_dir ~ext_lib t =
+    match status t with
+    | Not_parameterised | Partial -> None
+    | Complete ->
+      let parameterised_dir = dir ~build_dir t in
+      let dir = Path.Build.relative parameterised_dir (parameterised_name t) in
+      Some (Lib_info.for_instance ~dir ~ext_lib t.info)
+  ;;
+
+  let rec for_instance ~build_dir ~ext_lib t =
+    match info ~build_dir ~ext_lib t with
+    | None -> remove_arguments t
+    | Some info ->
+      let arguments =
+        List.map t.arguments ~f:(function
+          | None -> None
+          | Some arg -> Some (for_instance ~build_dir ~ext_lib arg))
+      in
+      { t with info = Lib_info.of_local info; arguments }
+  ;;
+
+  let rec applied_modules t = arguments t |> Resolve.List.map ~f:applied_name
+
+  and applied_name t =
+    let open Resolve.O in
+    let+ name = resolve_main_module_name t
+    and+ args = applied_modules t in
+    match name with
+    | Some name -> { Parameterised_name.name; args }
+    | None -> Code_error.raise "library missing main module name" [ "lib", to_dyn t ]
   ;;
 end
 
@@ -502,24 +735,26 @@ let wrapped t =
   | None -> Resolve.Memo.return None
   | Some (This wrapped) -> Resolve.Memo.return (Some wrapped)
   | Some (From _) ->
-    let+ vlib = Memo.return (Option.value_exn t.implements) in
-    (match Lib_info.wrapped vlib.info with
-     | Some (From _) (* can't inherit this value in virtual libs *) | None ->
-       assert false (* will always be specified in dune package *)
-     | Some (This x) -> Some x)
+    let+ impl = Memo.return (Option.value_exn t.implements) in
+    (match Lib_info.kind impl.info with
+     | Parameter ->
+       (* A parameter is an unwrapped Singleton, but its implementation
+          should be wrapped. *)
+       Some (Wrapped.Simple true)
+     | Virtual ->
+       (match Lib_info.wrapped impl.info with
+        | Some (From _) (* can't inherit this value in virtual libs *) | None ->
+          assert false (* will always be specified in dune package *)
+        | Some (This x) -> Some x)
+     | Dune_file _ ->
+       Code_error.raise "expected Parameter or Virtual for implements" [ "lib", to_dyn t ])
 ;;
 
 (* We can't write a structural equality because of all the lazy fields *)
-let equal : t -> t -> bool = phys_equal
+let equal a b = Ordering.is_eq (compare a b)
 let hash = Poly.hash
 
 include Comparable.Make (T)
-
-module L = struct
-  let top_closure l ~key ~deps =
-    Id.Top_closure.top_closure l ~key:(fun t -> (key t).unique_id) ~deps
-  ;;
-end
 
 (* Sub-systems *)
 
@@ -628,7 +863,7 @@ module Dep_stack : sig
     type t = Default_for of Id.t
   end
 
-  val push : t -> implements_via:Implements_via.t option -> Id.t -> t Resolve.Memo.t
+  val push : t -> implements_via:Implements_via.t option -> lib -> t Resolve.Memo.t
 end = struct
   module Implements_via = struct
     type t = Default_for of Id.t
@@ -642,10 +877,10 @@ end = struct
   type t =
     { stack : Id.t list
     ; implements_via : Implements_via.t Id.Map.t
-    ; seen : Id.Set.t
+    ; seen : Set.t
     }
 
-  let empty = { stack = []; seen = Id.Set.empty; implements_via = Id.Map.empty }
+  let empty = { stack = []; seen = Set.empty; implements_via = Id.Map.empty }
 
   let to_required_by t =
     List.map t.stack ~f:(fun ({ Id.path; name; _ } as id) ->
@@ -657,8 +892,9 @@ end = struct
       { Dep_path.Entry.lib = { path; name }; implements_via })
   ;;
 
-  let dependency_cycle t (last : Id.t) =
-    assert (Id.Set.mem t.seen last);
+  let dependency_cycle t (last : lib) =
+    assert (Set.mem t.seen last);
+    let last = last.unique_id in
     let rec build_loop acc stack =
       match stack with
       | [] -> assert false
@@ -670,17 +906,17 @@ end = struct
     Error.dependency_cycle loop
   ;;
 
-  let push (t : t) ~implements_via (x : Id.t) =
-    if Id.Set.mem t.seen x
+  let push (t : t) ~implements_via (x : lib) =
+    if Set.mem t.seen x
     then dependency_cycle t x
     else (
       let implements_via =
         match implements_via with
         | None -> t.implements_via
-        | Some via -> Id.Map.add_exn t.implements_via x via
+        | Some via -> Id.Map.add_exn t.implements_via x.unique_id via
       in
       Resolve.Memo.return
-        { stack = x :: t.stack; seen = Id.Set.add t.seen x; implements_via })
+        { stack = x.unique_id :: t.stack; seen = Set.add t.seen x; implements_via })
   ;;
 end
 
@@ -767,25 +1003,32 @@ end = struct
           | [] -> Resolve.Memo.return acc
           | (lib, stack) :: libs ->
             (match lib.implements, Lib_info.kind lib.info with
-             | None, Dune_file _ -> loop acc libs
-             | None, (Parameter | Virtual) -> loop (Map.set acc lib (No_impl stack)) libs
+             | None, (Dune_file _ | Parameter) -> loop acc libs
+             | None, Virtual -> loop (Map.set acc lib (No_impl stack)) libs
              | Some _, (Parameter | Virtual) ->
                assert false (* can't be virtual and implement *)
-             | Some vlib, Dune_file _ ->
-               let* vlib = Memo.return vlib in
-               (match Map.find acc vlib with
-                | None ->
-                  (* we've already traversed the virtual library because it must
-                     have occurred earlier in the closure *)
-                  assert false
-                | Some (No_impl _) -> loop (Map.set acc vlib (Impl (lib, stack))) libs
-                | Some (Impl (lib', stack')) ->
-                  let req_by' = Dep_stack.to_required_by stack' in
-                  let req_by = Dep_stack.to_required_by stack in
-                  Error.double_implementation
-                    (lib'.info, req_by')
-                    (lib.info, req_by)
-                    ~vlib:vlib.info))
+             | Some impl, Dune_file _ ->
+               let* impl = Memo.return impl in
+               (match Lib_info.kind impl.info with
+                | Parameter -> loop acc libs
+                | Virtual ->
+                  (match Map.find acc impl with
+                   | None ->
+                     (* we've already traversed the virtual library because it must
+                        have occurred earlier in the closure *)
+                     assert false
+                   | Some (No_impl _) -> loop (Map.set acc impl (Impl (lib, stack))) libs
+                   | Some (Impl (lib', stack')) ->
+                     let req_by' = Dep_stack.to_required_by stack' in
+                     let req_by = Dep_stack.to_required_by stack in
+                     Error.double_implementation
+                       (lib'.info, req_by')
+                       (lib.info, req_by)
+                       ~vlib:impl.info)
+                | Dune_file _ ->
+                  Code_error.raise
+                    "implements expected Virtual or Parameter"
+                    [ "lib", to_dyn lib ]))
         in
         loop Map.empty closure
       ;;
@@ -810,7 +1053,7 @@ end = struct
       module M =
         State.Make
           (struct
-            type t = lib list * Id.Set.t
+            type t = lib list * Set.t
           end)
           (Resolve.Memo)
 
@@ -823,16 +1066,16 @@ end = struct
       let rec loop t =
         let t = Option.value ~default:t (Map.find impls t) in
         let* res, visited = R.get in
-        if Id.Set.mem visited t.unique_id
+        if Set.mem visited t
         then R.return ()
         else
-          let* () = R.set (res, Id.Set.add visited t.unique_id) in
-          let* deps = R.lift (Memo.return t.requires) in
+          let* () = R.set (res, Set.add visited t) in
+          let* deps = R.lift (Resolve.Memo.lift (Parameterised.requires t)) in
           let* () = many deps in
           R.modify (fun (res, visited) -> t :: res, visited)
       and many deps = R.List.iter deps ~f:loop in
       let open Resolve.Memo.O in
-      let+ (res, _visited), () = R.run (many ts) ([], Id.Set.empty) in
+      let+ (res, _visited), () = R.run (many ts) ([], Set.empty) in
       List.rev res
   ;;
 
@@ -890,13 +1133,28 @@ module rec Resolve_names : sig
     -> t list Resolve.Memo.t
 
   module Resolved : sig
+    type deps =
+      { resolved : (Loc.t * t) list Resolve.t
+      ; selects : Resolved_select.t list
+      ; re_exports : (Loc.t * t) list Resolve.t
+      }
+
     type t =
       { requires : lib list Resolve.t
       ; pps : lib list Resolve.t
       ; selects : Resolved_select.t list
       ; re_exports : lib list Resolve.t
       }
+
+    val user_written : deps -> (Loc.t * lib) list Resolve.t
   end
+
+  val resolve_complex_deps
+    :  db
+    -> Lib_dep.t list
+    -> private_deps:private_deps
+    -> parameters:lib list
+    -> Resolved.deps Memo.t
 
   val resolve_deps_and_add_runtime_deps
     :  db
@@ -951,7 +1209,7 @@ end = struct
           let* lib = Resolve.Memo.lift lib in
           (match Lib_info.kind lib.info with
            | Parameter -> Resolve.Memo.return (Some (loc, name, lib))
-           | _ -> Error.expected_parameter ~loc ~name))
+           | Virtual | Dune_file _ -> Error.expected_parameter ~loc ~name))
     in
     let parameters =
       List.stable_sort parameters ~compare:(fun (_, _, a) (_, _, b) -> compare a b)
@@ -1025,28 +1283,38 @@ end = struct
         Memo.map res ~f:Option.some
     in
     let* requires =
-      let requires =
-        let open Resolve.O in
-        let* resolved = resolved in
-        resolved.requires
+      let open Resolve.Memo.O in
+      let* resolved = Memo.return resolved in
+      let* requires = Memo.return resolved.requires in
+      let+ requires_params = Memo.return parameters
+      and+ requires_implements =
+        match implements with
+        | None -> Resolve.Memo.return []
+        | Some impl ->
+          let* impl = Memo.return impl in
+          (match Lib_info.kind impl.info with
+           | Parameter -> Resolve.Memo.return [ impl ]
+           | Virtual ->
+             let requires_for_closure_check =
+               List.filter requires ~f:(fun lib -> not (equal lib impl))
+             in
+             let+ () =
+               check_forbidden
+                 requires_for_closure_check
+                 ~forbidden_libraries:(Map.singleton impl Loc.none)
+             in
+             [ impl ]
+           | Dune_file _ ->
+             Code_error.raise
+               "expected Virtual or Parameter"
+               [ "implements", to_dyn impl ])
       in
-      match implements with
-      | None -> Memo.return requires
-      | Some vlib ->
-        let open Resolve.Memo.O in
-        let* () =
-          let* vlib = Memo.return vlib in
-          let* requires_for_closure_check =
-            Memo.return
-              (let open Resolve.O in
-               let+ requires = requires in
-               List.filter requires ~f:(fun lib -> not (equal lib vlib)))
-          in
-          check_forbidden
-            requires_for_closure_check
-            ~forbidden_libraries:(Map.singleton vlib Loc.none)
-        in
-        Memo.return requires
+      let requires = List.concat [ requires_implements; requires_params; requires ] in
+      let _, requires =
+        List.fold_left requires ~init:(Set.empty, []) ~f:(fun (seen, lst) lib ->
+          if Set.mem seen lib then seen, lst else Set.add seen lib, lib :: lst)
+      in
+      List.rev requires
     in
     let resolve_impl impl_name =
       let open Resolve.Memo.O in
@@ -1093,18 +1361,17 @@ end = struct
                        (Package.Name.to_string p')
                    ])))
     in
-    let* requires =
-      Memo.return
-        (let open Resolve.O in
-         let* requires = requires in
-         match implements with
-         | None -> Resolve.return requires
-         | Some impl ->
-           let+ impl = impl in
-           impl :: requires)
-    in
     let* ppx_runtime_deps =
       Lib_info.ppx_runtime_deps info |> resolve_simple_deps db ~private_deps
+    in
+    let user_written_requires =
+      let+ complex =
+        Lib_info.requires info |> resolve_complex_deps db ~private_deps ~parameters:[]
+      in
+      Resolve_names.Resolved.user_written complex
+    in
+    let* allow_unused_libraries =
+      Lib_info.allow_unused_libraries info |> resolve_simple_deps db ~private_deps
     in
     let src_dir = Lib_info.src_dir info in
     let map_error x =
@@ -1132,12 +1399,15 @@ end = struct
          ; name
          ; unique_id
          ; requires
+         ; user_written_requires
          ; ppx_runtime_deps
          ; pps
          ; resolved_selects
          ; re_exports
          ; implements
          ; parameters
+         ; arguments = List.map ~f:(fun _ -> None) (Lib_info.parameters info)
+         ; allow_unused_libraries
          ; default_implementation
          ; project
          ; sub_systems =
@@ -1370,9 +1640,9 @@ end = struct
 
   module Resolved = struct
     type deps =
-      { resolved : t list Resolve.t
+      { resolved : (Loc.t * t) list Resolve.t
       ; selects : Resolved_select.t list
-      ; re_exports : t list Resolve.t
+      ; re_exports : (Loc.t * t) list Resolve.t
       }
 
     type t =
@@ -1382,13 +1652,25 @@ end = struct
       ; re_exports : lib list Resolve.t
       }
 
+    let user_written { resolved; selects = _; re_exports } =
+      let open Resolve.O in
+      let+ resolved = resolved
+      and+ re_exports = re_exports in
+      resolved @ re_exports
+      |> List.map ~f:(fun (loc, lib) -> lib, loc)
+      |> Map.of_list_multi
+      |> Map.to_list_map ~f:(fun lib locs ->
+        let loc = List.hd locs in
+        loc, lib)
+    ;;
+
     module Builder : sig
       type t
 
       val empty : t
-      val add_resolved : t -> lib Resolve.t -> t
-      val add_re_exports : t -> lib Resolve.t -> t
-      val add_select : t -> lib list Resolve.t -> Resolved_select.t -> t
+      val add_resolved : t -> Loc.t -> lib Resolve.t -> t
+      val add_re_exports : t -> Loc.t -> lib Resolve.t -> t
+      val add_select : t -> (Loc.t * lib) list Resolve.t -> Resolved_select.t -> t
       val value : t -> deps
     end = struct
       open Resolve.O
@@ -1412,20 +1694,20 @@ end = struct
         add_resolved_list { t with selects = select :: t.selects } resolved
       ;;
 
-      let add_resolved t resolved =
+      let add_resolved t loc resolved =
         add_resolved_list
           t
           (let+ resolved = resolved in
-           [ resolved ])
+           [ loc, resolved ])
       ;;
 
-      let add_re_exports (t : t) lib =
+      let add_re_exports (t : t) loc lib =
         let re_exports =
           let+ hd = lib
           and+ tl = t.re_exports in
-          hd :: tl
+          (loc, hd) :: tl
         in
-        add_resolved { t with re_exports } lib
+        add_resolved { t with re_exports } loc lib
       ;;
 
       let value { resolved; selects; re_exports } =
@@ -1456,7 +1738,7 @@ end = struct
             |> resolve_simple_deps ~private_deps db
             |> Resolve.Memo.peek
             >>| (function
-             | Ok ts -> Some (ts, file)
+             | Ok ts -> Some (List.map ts ~f:(fun lib -> loc, lib), file)
              | Error () -> None))
       in
       let get which =
@@ -1469,29 +1751,46 @@ end = struct
     res, { Resolved_select.src_fn; dst_fn = result_fn }
   ;;
 
-  let resolve_complex_deps db deps ~private_deps ~parameters : Resolved.deps Memo.t =
+  let resolve_complex_deps db deps ~private_deps ~parameters =
     let open Memo.O in
-    let resolve_parameterized_dep (loc, lib) =
+    let resolve_parameterised_dep (loc, lib) ~arguments =
       resolve_dep db (loc, lib) ~private_deps
       >>| function
       | None -> None
-      | Some dep -> Some (Parameterized.validate_required_parameters ~loc ~parameters dep)
+      | Some dep ->
+        Some (Parameterised.instantiate ~loc dep arguments ~parent_parameters:parameters)
     in
     Memo.List.fold_left ~init:Resolved.Builder.empty deps ~f:(fun acc (dep : Lib_dep.t) ->
       match dep with
       | Re_export lib ->
-        resolve_parameterized_dep lib
+        let loc = fst lib in
+        resolve_parameterised_dep lib ~arguments:[]
         >>| (function
          | None -> acc
-         | Some lib -> Resolved.Builder.add_re_exports acc lib)
+         | Some lib -> Resolved.Builder.add_re_exports acc loc lib)
       | Direct lib ->
-        resolve_parameterized_dep lib
+        let loc = fst lib in
+        resolve_parameterised_dep lib ~arguments:[]
         >>| (function
          | None -> acc
-         | Some lib -> Resolved.Builder.add_resolved acc lib)
+         | Some lib -> Resolved.Builder.add_resolved acc loc lib)
       | Select select ->
         let+ resolved, select = resolve_select db ~private_deps select in
-        Resolved.Builder.add_select acc resolved select)
+        Resolved.Builder.add_select acc resolved select
+      | Instantiate { loc; lib; arguments; new_name = _ } ->
+        let* arguments =
+          Memo.List.filter_map arguments ~f:(fun (loc, dep) ->
+            resolve_parameterised_dep (loc, dep) ~arguments:[]
+            >>| Option.map ~f:(fun dep -> loc, dep))
+        in
+        let acc =
+          List.fold_left arguments ~init:acc ~f:(fun acc (_loc, dep) ->
+            Resolved.Builder.add_resolved acc loc dep)
+        in
+        resolve_parameterised_dep (loc, lib) ~arguments
+        >>| (function
+         | None -> acc
+         | Some lib -> Resolved.Builder.add_resolved acc loc lib))
     |> Memo.map ~f:Resolved.Builder.value
   ;;
 
@@ -1559,6 +1858,8 @@ end = struct
     =
     let { runtime_deps; pps } = pp_deps db pps ~dune_version ~private_deps in
     let open Memo.O in
+    let resolved = Resolve.map ~f:(List.map ~f:snd) resolved in
+    let re_exports = Resolve.map ~f:(List.map ~f:snd) re_exports in
     let+ requires =
       let open Resolve.Memo.O in
       let* resolved = Memo.return resolved in
@@ -1702,13 +2003,13 @@ end = struct
         in
         (* If the library has an implementation according to variants or
            default impl. *)
-        if not (Lib_info.virtual_ lib.info)
-        then R.return ()
-        else
+        match Lib_info.kind lib.info with
+        | Dune_file _ -> R.return ()
+        | Parameter | Virtual ->
           let* impl = R.lift (impl_for lib) in
-          match impl with
-          | None -> R.return ()
-          | Some impl -> visit ~stack:(lib.info :: stack) (Some lib) impl)
+          (match impl with
+           | None -> R.return ()
+           | Some impl -> visit ~stack:(lib.info :: stack) (Some lib) impl))
     in
     (* For each virtual library we know which vlibs will be implemented when
        enabling its default implementation. *)
@@ -1758,7 +2059,7 @@ end = struct
       Vlib.associate (List.rev state.result) kind
     ;;
 
-    let rec visit (t : t) ~stack (implements_via, lib) =
+    let rec visit (t : t) ~stack (implements_via, (lib : lib)) =
       let open R.O in
       let* state = R.get in
       if Set.mem state.visited lib
@@ -1787,7 +2088,7 @@ end = struct
                     find_internal db lib.name
                     >>= function
                     | Status.Found lib' ->
-                      if lib = lib'
+                      if Id.equal lib.unique_id lib'.unique_id
                       then Resolve.Memo.return ()
                       else (
                         let req_by = Dep_stack.to_required_by stack in
@@ -1799,14 +2100,19 @@ end = struct
                         ; "lib.name", Lib_name.to_dyn lib.name
                         ]))
           in
-          let* new_stack = R.lift (Dep_stack.push stack ~implements_via lib.unique_id) in
-          let* deps = R.lift (Memo.return lib.requires) in
+          let* new_stack = R.lift (Dep_stack.push stack ~implements_via lib) in
+          let* (deps : lib list) =
+            R.lift (Resolve.Memo.lift (Parameterised.requires lib))
+          in
           let* unimplemented' = R.lift (Vlib.Unimplemented.add state.unimplemented lib) in
           let* () =
             R.modify (fun state -> { state with unimplemented = unimplemented' })
           in
           let* () = R.List.iter deps ~f:(fun l -> visit t (None, l) ~stack:new_stack) in
-          R.modify (fun state -> { state with result = (lib, stack) :: state.result }))
+          (match Parameterised.status lib with
+           | Partial -> R.return ()
+           | Not_parameterised | Complete ->
+             R.modify (fun state -> { state with result = (lib, stack) :: state.result })))
     ;;
   end
 
@@ -1903,9 +2209,11 @@ module Compile = struct
 
   type nonrec t =
     { direct_requires : t list Resolve.Memo.t
+    ; user_written_requires : (Loc.t * t) list Resolve.Memo.t
     ; requires_link : t list Resolve.t Memo.Lazy.t
     ; pps : t list Resolve.Memo.t
     ; resolved_selects : Resolved_select.t list Resolve.Memo.t
+    ; allow_unused_libraries : t list Resolve.Memo.t
     ; sub_systems : Sub_system0.Instance.t Memo.Lazy.t Sub_system_name.Map.t
     }
 
@@ -1931,17 +2239,21 @@ module Compile = struct
               ~forbidden_libraries:Map.empty)
     in
     { direct_requires = requires
+    ; user_written_requires = t.user_written_requires
     ; requires_link
     ; resolved_selects = Memo.return t.resolved_selects
     ; pps = Memo.return t.pps
+    ; allow_unused_libraries = Memo.return t.allow_unused_libraries
     ; sub_systems = t.sub_systems
     }
   ;;
 
   let direct_requires t = t.direct_requires
+  let user_written_requires t = t.user_written_requires
   let requires_link t = t.requires_link
   let resolved_selects t = t.resolved_selects
   let pps t = t.pps
+  let allow_unused_libraries t = t.allow_unused_libraries
 
   let sub_systems t =
     Sub_system_name.Map.values t.sub_systems
@@ -2134,6 +2446,7 @@ module DB = struct
         ~allow_overlaps
         ~forbidden_libraries
         deps
+        ~allow_unused_libraries
         ~pps
         ~dune_version
     =
@@ -2201,10 +2514,21 @@ module DB = struct
       let+ resolved = Memo.Lazy.force resolved in
       resolved.selects
     in
+    let allow_unused_libraries =
+      Resolve_names.resolve_simple_deps t ~private_deps:Allow_all allow_unused_libraries
+    in
+    let user_written_requires =
+      Memo.lazy_ (fun () ->
+        Resolve_names.resolve_complex_deps t ~private_deps:Allow_all deps ~parameters:[]
+        |> Memo.map ~f:Resolve_names.Resolved.user_written)
+      |> Memo.Lazy.force
+    in
     { Compile.direct_requires
+    ; user_written_requires
     ; requires_link
     ; pps
     ; resolved_selects = resolved_selects |> Memo.map ~f:Resolve.return
+    ; allow_unused_libraries
     ; sub_systems = Sub_system_name.Map.empty
     }
   ;;
@@ -2296,7 +2620,19 @@ let to_dune_lib
     List.map requires ~f:(fun lib ->
       if List.exists re_exports ~f:(fun r -> r = lib)
       then Lib_dep.Re_export (loc, mangled_name lib)
-      else Direct (loc, mangled_name lib))
+      else (
+        match lib.arguments with
+        | [] -> Direct (loc, mangled_name lib)
+        | args ->
+          Instantiate
+            { loc
+            ; lib = mangled_name lib
+            ; arguments =
+                List.filter_map args ~f:(function
+                  | None -> None
+                  | Some arg -> Some (Loc.none, mangled_name arg))
+            ; new_name = None
+            }))
   in
   let name = mangled_name lib in
   let remove_public_dep_prefix paths =

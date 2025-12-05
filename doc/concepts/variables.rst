@@ -69,13 +69,23 @@ Dune supports the following variables:
 - ``ignoring_promoted_rules`` is ``true`` if
   ``--ignore-promoted-rules`` was passed on the command line and
   ``false`` otherwise.
+- ``dune-warnings`` is the list of OCaml warnings that Dune used by default up
+  until version 3.20 of the Dune language when building in the ``dev`` profile.
+  This was a larger set of warnings than the default one used by the OCaml
+  compiler, and in version 3.21 of the Dune language the set of warnings used by
+  the ``dev`` profile was reverted to the default one used by the compiler. This
+  variable is made available for those users who would like to keep using Dune's
+  stricter warning set. The old behaviour of Dune can be recovered by using the
+  following stanza in a top-level ``dune`` file: ``(env (dev (flags :standard
+  %{dune-warnings})))``.
 - ``<ext>:<path>`` where ``<ext>`` is one of ``cmo``, ``cmi``, ``cma``,
   ``cmx``, or ``cmxa``. See :ref:`variables-for-artifacts`.
 - ``env:<var>=<default`` expands to the value of the environment
   variable ``<var>``, or ``<default>`` if it does not exist.
   For example, ``%{env:BIN=/usr/bin}``.
   Available since Dune 1.4.0.
-- There are some Coq-specific variables detailed in :ref:`coq-variables`.
+- There are some Rocq-specific and Coq-specific variables detailed in
+  :ref:`rocq-variables` and :ref:`coq-variables`.
 
 In addition, ``(action ...)`` fields support the following special variables:
 
@@ -131,6 +141,9 @@ In addition, ``(action ...)`` fields support the following special variables:
   file.
 - ``read-strings:<path>`` expands to the list of lines in the given
   file, unescaped using OCaml lexical convention.
+- ``ppx:lib1+..+libn`` expands to the ppx executable with ppx libraries
+  ``lib1`` to ``libn`` linked in. This form also introduces a dependency on
+  this executable.
 
 The ``%{<kind>:...}`` forms are what allows you to write custom rules that work
 transparently, whether things are installed or not.

@@ -486,9 +486,7 @@ let run_with_exit_code { dir; _ } ~allow_codes ~display args =
              minimum supported version is Git 2.29."
         ]
         ~hints:[ User_message.command "Please update your git version." ]
-    | _ ->
-      Console.print [ Pp.verbatim stderr ];
-      Error { Git_error.dir; args; exit_code; output = [] })
+    | _ -> Error { Git_error.dir; args; exit_code; output = [ stderr ] })
 ;;
 
 let run t ~display args =
@@ -725,15 +723,16 @@ let fetch_allow_failure repo ~url obj =
     | true -> Fiber.return `Fetched
     | false ->
       run_with_exit_code
-        ~allow_codes:(fun x -> x = 0 || x = 128)
+        ~allow_codes:(Int.equal 0)
         repo
         ~display:!Dune_engine.Clflags.display
         [ "fetch"; "--no-write-fetch-head"; url; Object.to_hex obj ]
       >>| (function
-       | Ok 128 -> `Not_found
        | Ok 0 ->
          Table.set repo.present_objects obj ();
          `Fetched
+       | Error { Git_error.exit_code; output; _ } when exit_code = 128 ->
+         `Not_found output
        | Error git_error -> Git_error.raise_code_error git_error
        | _ -> assert false))
 ;;
@@ -742,8 +741,14 @@ let fetch repo ~url obj =
   fetch_allow_failure repo ~url obj
   >>| function
   | `Fetched -> ()
-  | `Not_found ->
-    User_error.raise [ Pp.textf "unable to fetch %S from %S" (Object.to_hex obj) url ]
+  | `Not_found output ->
+    User_error.raise
+      ([ Pp.textf
+           "Dune was unable to fetch %S from %S due to the following git fetch error:"
+           (Object.to_hex obj)
+           url
+       ]
+       @ List.map ~f:Pp.verbatim output)
 ;;
 
 module Debug = struct
@@ -1156,8 +1161,8 @@ let resolve_revision t (remote : Remote.t) ~revision =
 let fetch_object t (remote : Remote.t) revision =
   fetch_allow_failure t ~url:remote.url revision
   >>= function
-  | `Not_found -> Fiber.return None
-  | `Fetched -> At_rev.of_rev t ~revision >>| Option.some
+  | `Not_found git_output -> Fiber.return (Error git_output)
+  | `Fetched -> At_rev.of_rev t ~revision >>| Result.ok
 ;;
 
 let content_of_files t files =

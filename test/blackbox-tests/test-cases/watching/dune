@@ -24,3 +24,9 @@
 (cram
  (applies_to what-dune-watches)
  (deps %{bin:strace}))
+
+;; Disabled due to timeouts
+
+(cram
+ (enabled_if false)
+ (applies_to watching-eager-concurrent-build-command))

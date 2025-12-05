@@ -1,5 +1,4 @@
 open Import
-open! Action_builder.O
 
 (* This module interprets [(menhir ...)] stanzas -- that is, it provides build
    rules for Menhir parsers. *)

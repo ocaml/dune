@@ -44,9 +44,9 @@ Now we use another form instead of a library
   > EOF
 
   $ dune build @install
-  File "dune", line 4, characters 1-14:
+  File "dune", line 4, characters 10-13:
   4 |  (package foo))
-       ^^^^^^^^^^^^^
+                ^^^
   Error: The current scope doesn't define package "foo".
   The only packages for which you can declare elements to be installed in this
   directory are:
@@ -59,9 +59,9 @@ Same thing but without packages in the project
   > (lang dune 3.13)
   > EOF
   $ dune build @install
-  File "dune", line 4, characters 1-14:
+  File "dune", line 4, characters 10-13:
   4 |  (package foo))
-       ^^^^^^^^^^^^^
+                ^^^
   Error: You cannot declare items to be installed without adding a
   <package>.opam file at the root of your project.
   To declare elements to be installed as part of package "foo", add a

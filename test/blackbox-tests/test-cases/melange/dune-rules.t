@@ -19,6 +19,7 @@ Test dune rules
 Calling dune rules with the 'all' alias works fine
 
   $ dune rules @all | grep In_build_dir
+     (File (In_build_dir _build/default/main.ml))))
       (In_build_dir _build/default/.output.mobjs/melange/melange__Main.cmj))))
 
 Calling dune rules with the alias works fine

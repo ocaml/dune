@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 open Fiber.O
 module Graph = Dune_graph.Graph
 module Console = Dune_console

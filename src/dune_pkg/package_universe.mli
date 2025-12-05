@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 (** all of the packages in a dune project under the constraints of a given
     platform, including local packages and packages in a lockdir. the lockdir
@@ -13,6 +13,10 @@ val create
   -> Local_package.t Package_name.Map.t
   -> Lock_dir.t
   -> (t, User_message.t) result
+
+val dependency_digest
+  :  Local_package.t Package_name.Map.t
+  -> Local_package.Dependency_hash.t option
 
 (** Verifies if the dependencies described in the project file are still
     synchronized with the dependencies selected in the lock directroy. If it is

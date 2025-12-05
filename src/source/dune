@@ -12,7 +12,7 @@
   dune_pkg
   re
   dune_rpc_private
-  dune_stats
+  dune_trace
   dune_util
   dune_vcs
   memo

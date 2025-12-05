@@ -4,7 +4,7 @@ library_parameter
 .. warning::
 
    This feature is experimental and requires the compiler you are using to
-   support parameterized libraries.
+   support parameterised libraries.
 
 The ``library_parameter`` stanza describes a parameter interface defined in a single ``.mli`` file. To enable this feature,
 you need to add ``(using oxcaml 0.1)`` :doc:`extension

@@ -34,12 +34,13 @@ rather than "a.0.0.1".
   - d.0.0.1
 
 Confirm that we locked "a.0.0.2".
-  $ cat ${default_lock_dir}/a.pkg
+  $ cat ${default_lock_dir}/a.0.0.2.pkg
   (version 0.0.2)
 
 The deps in the lockfile for "c" shouldn't contain "a" since the only version
 of "a" that "c" could depend on is "a.0.0.1" which isn't part of the solution.
-  $ cat ${default_lock_dir}/c.pkg
+  $ cat ${default_lock_dir}/c.0.0.1.pkg
   (version 0.0.1)
   
-  (depends b)
+  (depends
+   (all_platforms (b)))

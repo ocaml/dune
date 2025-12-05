@@ -724,7 +724,7 @@ module Toplevel_index = struct
   (** This format is public API. *)
   let to_json items = `Assoc [ "packages", list_to_json items ~f:item_to_json ]
 
-  let json t = Dune_stats.Json.to_string (to_json t)
+  let json t = Dune_trace.Json.to_string (to_json t)
 
   let markdown t =
     let b = Buffer.create 256 in

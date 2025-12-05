@@ -26,6 +26,6 @@ package with depopts.
   >  (depends pkg-with-depopts))
   > EOF
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - pkg-with-depopts.5.2.0

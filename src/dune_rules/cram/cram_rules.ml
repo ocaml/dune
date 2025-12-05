@@ -12,7 +12,8 @@ module Spec = struct
     ; locks : Path.Set.t Action_builder.t
     ; packages : Package.Name.Set.t
     ; timeout : (Loc.t * float) option
-    ; conflict : Cram_stanza.Conflict.t
+    ; conflict_markers : Cram_stanza.Conflict_markers.t
+    ; setup_scripts : Path.t list
     }
 
   let make_empty ~test_name_alias =
@@ -25,7 +26,8 @@ module Spec = struct
     ; sandbox = Sandbox_config.needs_sandboxing
     ; packages = Package.Name.Set.empty
     ; timeout = None
-    ; conflict = Ignore
+    ; conflict_markers = Ignore
+    ; setup_scripts = []
     }
   ;;
 end
@@ -60,7 +62,8 @@ let test_rule
        ; sandbox
        ; packages = _
        ; timeout
-       ; conflict
+       ; conflict_markers
+       ; setup_scripts
        } :
         Spec.t)
       (test : (Cram_test.t, error) result)
@@ -110,7 +113,10 @@ let test_rule
        let* () =
          (let open Action_builder.O in
           let+ () = Action_builder.path (Path.build script) in
-          Cram_exec.make_script ~src:(Path.build script) ~script:script_sh ~conflict
+          Cram_exec.make_script
+            ~src:(Path.build script)
+            ~script:script_sh
+            ~conflict_markers
           |> Action.Full.make)
          |> Action_builder.with_file_targets ~file_targets:[ script_sh ]
          |> Super_context.add_rule sctx ~dir ~loc
@@ -132,6 +138,7 @@ let test_rule
               in
               let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
               ()
+          and+ () = Action_builder.paths setup_scripts
           and+ locks = locks >>| Path.Set.to_list in
           Cram_exec.run
             ~src:(Path.build script)
@@ -143,6 +150,7 @@ let test_rule
             ~script:(Path.build script_sh)
             ~output
             ~timeout
+            ~setup_scripts
           |> Action.Full.make ~locks ~sandbox)
          |> Action_builder.with_file_targets ~file_targets:[ output ]
          |> Super_context.add_rule sctx ~dir ~loc
@@ -291,7 +299,23 @@ let rules ~sctx ~dir tests =
                   stanza.timeout
                   ~f:(Ordering.min (fun x y -> Float.compare (snd x) (snd y)))
               in
-              let conflict = Option.value ~default:acc.conflict stanza.conflict in
+              let conflict_markers =
+                Option.value ~default:acc.conflict_markers stanza.conflict_markers
+              in
+              let setup_scripts =
+                let more_current_scripts =
+                  List.map stanza.setup_scripts ~f:(fun (_loc, script) ->
+                    (* Handle both relative and absolute paths *)
+                    if Filename.is_relative script
+                    then Path.build (Path.Build.relative dir script)
+                    else Path.external_ (Path.External.of_string script))
+                in
+                (* This is a silly way to dedupe, but we aim to preserve the
+                   order as much as possible. *)
+                more_current_scripts
+                @ List.filter acc.setup_scripts ~f:(fun x ->
+                  not (List.mem more_current_scripts x ~equal:Path.equal))
+              in
               ( runtest_alias
               , { acc with
                   enabled_if
@@ -302,7 +326,8 @@ let rules ~sctx ~dir tests =
                 ; packages
                 ; sandbox
                 ; timeout
-                ; conflict
+                ; conflict_markers
+                ; setup_scripts
                 } ))
       in
       let extra_aliases =

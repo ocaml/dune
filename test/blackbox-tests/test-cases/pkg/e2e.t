@@ -72,7 +72,7 @@ Make a project that uses the library:
 
 Lock, build, and run the executable in the project:
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - foo.0.0.1
   $ dune exec bar

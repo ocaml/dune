@@ -36,7 +36,10 @@ let ooi_deps
       let ctx = Super_context.context sctx in
       Context.ocaml ctx
     in
-    Ocamlobjinfo.rules ocaml ~sandbox ~dir ~unit
+    Ocamlobjinfo.rules ocaml ~sandbox ~dir ~units:[ unit ]
+    |> Action_builder.map ~f:(function
+      | [ x ] -> x
+      | [] | _ :: _ -> assert false)
   in
   let add_rule = Super_context.add_rule sctx ~dir in
   let read =

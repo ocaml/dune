@@ -524,14 +524,22 @@ let in_source_tree path =
     (match Path.Source.explode in_source with
      | "default" :: ".lock" :: components ->
        Path.Source.L.relative Path.Source.root components
-     | _otherwise ->
-       Code_error.raise
-         "Unexpected location of lock directory in build directory"
-         [ "path", Path.Build.to_dyn b; "in_source", Path.Source.to_dyn in_source ])
-  | External e ->
-    Code_error.raise
-      "External path returned when loading a lock dir"
-      [ "path", Path.External.to_dyn e ]
+     | source_components ->
+       (match Path.Build.explode b with
+        | (".dev-tools.locks" as prefix) :: dev_tool :: components ->
+          let build_as_source =
+            Path.build_dir |> Path.to_string |> Path.Source.of_string
+          in
+          Path.Source.L.relative build_as_source (prefix :: dev_tool :: components)
+        | build_components ->
+          Code_error.raise
+            "Unexpected location of lock directory in build directory"
+            [ "path", Path.Build.to_dyn b
+            ; "in_source", Path.Source.to_dyn in_source
+            ; "source_components", Dyn.(list string) source_components
+            ; "build_components", Dyn.(list string) build_components
+            ]))
+  | External e -> Workspace.dev_tool_path_to_source_dir e
 ;;
 
 module Pkg = struct
@@ -862,7 +870,7 @@ module Pkg = struct
   ;;
 
   (* More general version of [files_dir] which works on generic paths *)
-  let files_dir_generic package_name maybe_package_version ~lock_dir =
+  let files_dir package_name maybe_package_version ~lock_dir =
     (* TODO(steve): Once portable lockdirs are enabled by default, make the
        package version non-optional *)
     let extension = ".files" in
@@ -875,16 +883,6 @@ module Pkg = struct
          ^ "."
          ^ Package_version.to_string package_version
          ^ extension)
-  ;;
-
-  let files_dir package_name maybe_package_version ~lock_dir =
-    match files_dir_generic package_name maybe_package_version ~lock_dir with
-    | In_source_tree _ as path -> path
-    | In_build_dir _ as path -> path
-    | External e ->
-      Code_error.raise
-        "file_dir is an external path, this is unsupported"
-        [ "path", Path.External.to_dyn e ]
   ;;
 
   let source_files_dir package_name maybe_package_version ~lock_dir =
@@ -1022,6 +1020,13 @@ module Packages = struct
       |> List.find ~f:(Pkg.is_enabled_on_platform ~platform))
   ;;
 
+  let pkgs_by_platform t =
+    to_pkg_list t
+    |> List.fold_left ~init:Solver_env.Map.empty ~f:(fun acc (pkg : Pkg.t) ->
+      List.fold_left pkg.enabled_on_platforms ~init:acc ~f:(fun acc platform ->
+        Solver_env.Map.add_multi acc platform pkg))
+  ;;
+
   let merge a b =
     Package_name.Map.merge a b ~f:(fun _ a b ->
       match a, b with
@@ -1147,6 +1152,7 @@ let create_latest_version
       ~repos
       ~expanded_solver_variable_bindings
       ~solved_for_platform
+      ~portable_lock_dir
   =
   let packages =
     Package_name.Map.map packages ~f:(fun (pkg : Pkg.t) ->
@@ -1179,6 +1185,15 @@ let create_latest_version
   in
   let solved_for_platform_platform_specific_only =
     Option.map solved_for_platform ~f:Solver_env.remove_all_except_platform_specific
+  in
+  let expanded_solver_variable_bindings =
+    match portable_lock_dir with
+    | false -> expanded_solver_variable_bindings
+    | true ->
+      (* To make a portable lockdir, only include solver variables which are
+         not platform-specific. *)
+      Solver_stats.Expanded_variable_bindings.remove_platform_specific
+        expanded_solver_variable_bindings
   in
   { version
   ; dependency_hash
@@ -1231,10 +1246,7 @@ let encode_metadata
      | None -> []
      | Some ocaml -> [ list sexp [ string "ocaml"; Package_name.encode (snd ocaml) ] ])
   @ [ list sexp (string "repositories" :: Repositories.encode repos) ]
-  @ (if
-       portable_lock_dir
-       || Solver_stats.Expanded_variable_bindings.is_empty
-            expanded_solver_variable_bindings
+  @ (if Solver_stats.Expanded_variable_bindings.is_empty expanded_solver_variable_bindings
      then []
      else
        [ list
@@ -1378,15 +1390,55 @@ module Write_disk = struct
   let safely_remove_lock_dir_if_exists_thunk path =
     match check_existing_lock_dir path with
     | Ok `Non_existant -> Fun.const ()
-    | Ok `Is_existing_lock_dir -> fun () -> Path.rm_rf path
+    | Ok `Is_existing_lock_dir ->
+      fun () ->
+        let path =
+          match path with
+          | In_source_tree _ | In_build_dir _ -> path
+          | External e ->
+            (* it might be a dev-tool path, try to convert *)
+            Workspace.dev_tool_path_to_source_dir e |> Path.source
+        in
+        Path.rm_rf path
     | Error e -> raise_user_error_on_check_existance path e
+  ;;
+
+  let rec safely_copy_lock_dir_when_dst_non_existant ~dst src =
+    match check_existing_lock_dir src with
+    | Error e -> raise_user_error_on_check_existance src e
+    | Ok `Non_existant -> ()
+    | Ok `Is_existing_lock_dir ->
+      (match Path.readdir_unsorted_with_kinds src with
+       | Error e ->
+         User_error.raise
+           [ Pp.textf "Failed to list %s with error:" (Path.to_string_maybe_quoted src)
+           ; Unix_error.Detailed.pp e
+           ]
+       | Ok children ->
+         List.iter children ~f:(fun (name, kind) ->
+           let child_src = Path.relative src name in
+           let child_dst = Path.relative dst name in
+           match kind with
+           | Unix.S_DIR ->
+             Path.mkdir_p child_dst;
+             safely_copy_lock_dir_when_dst_non_existant ~dst:child_dst child_src
+           | Unix.S_REG ->
+             Path.mkdir_p dst;
+             Io.copy_file ~src:child_src ~dst:child_dst ()
+           | _ -> assert false))
   ;;
 
   (* Does the same checks as [safely_remove_lock_dir_if_exists_thunk] but it raises an
      error if the lock dir already exists. [dst] is the new file name *)
   let safely_rename_lock_dir_thunk ~dst src =
     match check_existing_lock_dir src, check_existing_lock_dir dst with
-    | Ok `Is_existing_lock_dir, Ok `Non_existant -> fun () -> Path.rename src dst
+    | Ok `Is_existing_lock_dir, Ok `Non_existant ->
+      fun () ->
+        (match Path.rename src dst with
+         | () -> ()
+         | exception Unix.Unix_error (Unix.EXDEV, _, _) ->
+           safely_copy_lock_dir_when_dst_non_existant ~dst src;
+           Path.rm_rf src)
     | Ok `Non_existant, Ok `Non_existant -> Fun.const ()
     | _, Ok `Is_existing_lock_dir ->
       let error_reason_pp =
@@ -1443,10 +1495,7 @@ module Write_disk = struct
               let maybe_package_version =
                 if portable_lock_dir then Some package_version else None
               in
-              Pkg.files_dir_generic
-                package_name
-                maybe_package_version
-                ~lock_dir:lock_dir_path
+              Pkg.files_dir package_name maybe_package_version ~lock_dir:lock_dir_path
             in
             Path.mkdir_p files_dir;
             List.iter files ~f:(fun { File_entry.original; local_file } ->

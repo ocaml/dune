@@ -41,11 +41,11 @@ let term =
   let+ path_opt =
     let docv = "FILE" in
     let doc = "Path to the dune file to parse." in
-    Arg.(value & pos 0 (some file) None & info [] ~docv ~doc)
+    Arg.(value & pos 0 (some file) None & info [] ~docv ~doc:(Some doc))
   and+ version =
     let docv = "VERSION" in
     let doc = "Which version of Dune language to use." in
-    Arg.(value & opt (some version) None & info [ "dune-version" ] ~docv ~doc)
+    Arg.(value & opt (some version) None & info [ "dune-version" ] ~docv ~doc:(Some doc))
   and+ builder = Common.Builder.term in
   let version =
     match version with

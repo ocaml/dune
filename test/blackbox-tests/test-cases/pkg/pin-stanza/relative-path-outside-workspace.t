@@ -45,7 +45,7 @@ Make a second package depending on the first via a pin:
   > EOF
 
 Lock and build the second package to demonstrate that everything works so far:
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - foo.dev
   $ dune exec ./bar.exe
@@ -64,7 +64,7 @@ Now change the pin to use a relative path:
 
 Solving the project now results in an error, though it's still possible to build the project:
   $ dune clean
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Error: path outside the workspace: ../foo from .
   [1]
   $ dune exec ./bar.exe

@@ -1,4 +1,4 @@
-open! Import
+open Import
 include module type of Dune_pkg.Dev_tool
 
 val install_path_base_dir_name : string

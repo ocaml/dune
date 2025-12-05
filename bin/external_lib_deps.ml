@@ -18,10 +18,11 @@ let info = Cmd.info "external-lib-deps" ~doc ~man
 let term =
   Term.ret
   @@ let+ _ = Common.Builder.term
-     and+ _ = Arg.(value & flag & info [ "missing" ] ~doc:{|unused|})
-     and+ _ = Arg.(value & pos_all dep [] & Arg.info [] ~docv:"TARGET")
-     and+ _ = Arg.(value & flag & info [ "unstable-by-dir" ] ~doc:{|unused|})
-     and+ _ = Arg.(value & flag & info [ "sexp" ] ~doc:{|unused|}) in
+     and+ _ = Arg.(value & flag & info [ "missing" ] ~doc:(Some {|unused|}))
+     (* CR-someday Alizter: document this option *)
+     and+ _ = Arg.(value & pos_all dep [] & Arg.info [] ~docv:"TARGET" ~doc:None)
+     and+ _ = Arg.(value & flag & info [ "unstable-by-dir" ] ~doc:(Some {|unused|}))
+     and+ _ = Arg.(value & flag & info [ "sexp" ] ~doc:(Some {|unused|})) in
      `Error (false, "This subcommand has been moved to dune describe external-lib-deps.")
 ;;
 

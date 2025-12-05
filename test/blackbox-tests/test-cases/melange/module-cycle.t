@@ -18,10 +18,7 @@
   > let x = Hello.x
   > EOF
 
-  $ dune build @check --display=short
-          melc .output.mobjs/melange/melange.{cmi,cmj,cmt}
-      ocamldep .output.mobjs/melange__Hello.impl.d
-      ocamldep .output.mobjs/melange__Main.impl.d
+  $ dune build @check
   Error: Dependency cycle between:
      _build/default/.output.mobjs/melange__Main.impl.all-deps
   -> _build/default/.output.mobjs/melange__Hello.impl.all-deps

@@ -41,7 +41,7 @@ module Mask = struct
         | Library.T l ->
           (match Library_redirect.Local.of_private_lib l with
            | None -> Drop
-           | Some p -> Convert (Library_redirect.Local.make_stanza p))
+           | Some p -> Convert (Library_redirect.Local.make_stanza p None))
         | _ -> Drop)
   ;;
 
@@ -54,7 +54,7 @@ module Mask = struct
           match Stanzas.stanza_package stanza with
           | None -> true
           | Some package ->
-            let name = Package.name package in
+            let name = Package.Id.name package in
             Package.Name.Map.mem visible_pkgs name)
   ;;
 
@@ -116,7 +116,8 @@ let parse_stanzas ~file ~(eval : eval) sexps =
         Path.Source.relative eval.dir Source.Dune_file.fname
     in
     let stanza_parser =
-      Dune_project.stanza_parser eval.project |> Warning_emit.Bag.set warnings
+      Dune_project.stanza_parser ~dir:eval.dir eval.project
+      |> Warning_emit.Bag.set warnings
     in
     parse_file_includes ~stanza_parser ~context sexps
   in
@@ -363,6 +364,7 @@ let check_dynamic_stanza =
     | Install_conf.T { section = loc, Section Bin; _ } ->
       User_error.raise ~loc [ Pp.text "binary section cannot be generated dynamically" ]
     | Coq_stanza.Theory.T { buildable = { Coq_stanza.Buildable.loc; _ }; _ }
+    | Rocq_stanza.Theory.T { buildable = { Rocq_stanza.Buildable.loc; _ }; _ }
     | Library.T { buildable = { loc; _ }; _ }
     | Install_conf.T { section = _, Site { loc; _ }; _ }
     | Executables.T

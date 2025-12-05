@@ -68,6 +68,16 @@ first checksum to the lockfile for this package.
   (repositories
    (complete false)
    (used))
+  
+  (solved_for_platforms
+   ((arch x86_64)
+    (os linux))
+   ((arch arm64)
+    (os linux))
+   ((arch x86_64)
+    (os macos))
+   ((arch arm64)
+    (os macos)))
   (version 0.0.1)
   
   (source

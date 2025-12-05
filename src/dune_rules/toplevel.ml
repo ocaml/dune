@@ -121,7 +121,8 @@ let setup_module_rules t =
              let requires_compile = Compilation_context.requires_compile t.cctx in
              Resolve.Memo.read requires_compile
            in
-           Lib_flags.L.include_paths libs (Ocaml Byte) lib_config |> Path.Set.to_list
+           Lib_flags.L.include_paths libs (Ocaml Byte) lib_config
+           |> Lib_flags.L.include_only
          in
          Source.pp_ml t.source ~include_dirs
        in
@@ -218,6 +219,7 @@ module Stanza = struct
             ~forbidden_libraries:[]
             (Lib_dep.Direct (source.loc, compiler_libs)
              :: List.map toplevel.libraries ~f:(fun d -> Lib_dep.Direct d))
+            ~allow_unused_libraries:[]
             ~pps
             ~dune_version
             ~allow_overlaps:false

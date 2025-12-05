@@ -273,7 +273,7 @@ Sandboxed actions can observe external dependencies as symbolic links.
   $ cat _build/default/t
   hi
 
-Now let's see what happens if the the symbolic link is produced by a rule.
+Now let's see what happens if the symbolic link is produced by a rule.
 
   $ cat > dune <<EOF
   > (rule

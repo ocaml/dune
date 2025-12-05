@@ -34,6 +34,6 @@ should be ignored.
   > should not be parsed because it's ignored by the stanza above
   > EOF
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - foo.dev

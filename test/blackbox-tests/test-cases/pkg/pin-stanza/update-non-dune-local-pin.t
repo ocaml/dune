@@ -31,7 +31,7 @@ Make a package "foo" whose build will fail after printing a message:
   > 	false
   > EOF
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - foo.dev
 
@@ -41,9 +41,9 @@ Attempt to build the package the first time:
   echo aaa
   aaa
   false
-  File "dune.lock/foo.pkg", line 4, characters 6-13:
-  4 |  (run %{make}))
-            ^^^^^^^
+  File "dune.lock/foo.dev.pkg", line 4, characters 30-37:
+  4 |  (all_platforms ((action (run %{make})))))
+                                    ^^^^^^^
   Error: Logs for package foo
   
 
@@ -59,8 +59,8 @@ The change to the package is picked up:
   echo bbb
   bbb
   false
-  File "dune.lock/foo.pkg", line 4, characters 6-13:
-  4 |  (run %{make}))
-            ^^^^^^^
+  File "dune.lock/foo.dev.pkg", line 4, characters 30-37:
+  4 |  (all_platforms ((action (run %{make})))))
+                                    ^^^^^^^
   Error: Logs for package foo
   

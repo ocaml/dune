@@ -44,14 +44,14 @@ Add some build contexts with different environments
   - with-dev-setup = false
   - with-doc = false
   Solver environment for lock directory dune.linux.lock:
-  - opam-version = 2.2.0~alpha-vendored
+  - opam-version = 2.2.0
   - os = linux
   - post = true
   - with-dev-setup = false
   - with-doc = false
   Solver environment for lock directory dune.linux.no-doc.lock:
   - arch = x86_64
-  - opam-version = 2.2.0~alpha-vendored
+  - opam-version = 2.2.0
   - os = linux
   - os-distribution = ubuntu
   - os-family = ubuntu
@@ -61,7 +61,7 @@ Add some build contexts with different environments
   - with-dev-setup = false
   - with-doc = false
   Solver environment for lock directory dune.lock:
-  - opam-version = 2.2.0~alpha-vendored
+  - opam-version = 2.2.0
   - post = true
   - with-dev-setup = false
   - with-doc = false

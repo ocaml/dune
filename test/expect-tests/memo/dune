@@ -4,7 +4,6 @@
  (libraries
   dune_tests_common
   stdune
-  dune_lang
   fiber
   memo
   test_scheduler

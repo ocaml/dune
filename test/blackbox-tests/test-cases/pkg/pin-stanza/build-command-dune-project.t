@@ -54,19 +54,19 @@ Demonstrate the build command we construct for different types of projects:
   >  (depends dune-only mixed template opam-only))
   > EOF
 
-  $ dune pkg lock
+  $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - dune-only.dev
   - mixed.dev
   - opam-only.dev
   - template.dev
   $ build_command() {
-  > grep "$1" "${default_lock_dir}/$2.pkg"
+  > grep "$1" "${default_lock_dir}/$2.dev.pkg"
   > }
   $ build_command "(dune)" dune-only
-  (dune)
+   (all_platforms ((dune))))
   $ build_command "(dune)" template
-  (dune)
+   (all_platforms ((dune))))
   $ build_command "(build" mixed
   (build
   $ build_command "(build" opam-only

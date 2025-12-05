@@ -1,4 +1,4 @@
-open! Stdune
+open Stdune
 
 module Counter = struct
   type t = int ref

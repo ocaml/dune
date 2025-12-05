@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 (** Merlin identifiers allow the unique identification of a merlin file attached
     to a specific [library] or [executable] stanza. *)

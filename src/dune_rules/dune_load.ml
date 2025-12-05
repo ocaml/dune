@@ -69,7 +69,7 @@ let load () =
       ~f
   in
   let projects = Appendable_list.to_list_rev projects in
-  let packages, vendored_packages =
+  let all_packages, vendored_packages =
     List.fold_left
       projects
       ~init:(Package.Name.Map.empty, Package.Name.Set.empty)
@@ -93,12 +93,35 @@ let load () =
         in
         acc_packages, vendored)
   in
-  let mask = Only_packages.mask packages ~vendored:vendored_packages in
-  let packages = Only_packages.filter_packages mask packages in
+  let mask = Only_packages.mask all_packages ~vendored:vendored_packages in
+  let packages = Only_packages.filter_packages mask all_packages in
   let projects = List.rev_map projects ~f:snd in
   let dune_files =
     let without_ctx =
-      Memo.lazy_ ~name:"dune-files-eval" (fun () -> Dune_file.eval dune_files mask)
+      Memo.lazy_ ~name:"dune-files-eval" (fun () ->
+        let (_ : Package.Name.t Path.Source.Map.t) =
+          match
+            Package.Name.Map.values all_packages
+            |> List.filter_map ~f:(fun pkg ->
+              match Package.exclusive_dir pkg with
+              | None -> None
+              | Some d -> Some (d, pkg))
+            |> Path.Source.Map.of_list_map ~f:(fun ((_loc, d), pkg) ->
+              d, Package.name pkg)
+          with
+          | Ok s -> s
+          | Error (dir, ((loc, _), p1), (_, p2)) ->
+            let name p = Package.Name.to_string (Package.name p) in
+            User_error.raise
+              ~loc
+              [ Pp.textf
+                  "Directory %s cannot belong to package %s"
+                  (Path.Source.to_string_maybe_quoted dir)
+                  (name p1)
+              ; Pp.textf "It already belongs to package %s" (name p2)
+              ]
+        in
+        Dune_file.eval dune_files mask)
     in
     Per_context.create_by_name ~name:"dune-files" (fun ctx ->
       Memo.Lazy.create (fun () ->

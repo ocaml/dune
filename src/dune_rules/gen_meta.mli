@@ -9,4 +9,4 @@ val gen
   :  package:Package.t
   -> add_directory_entry:bool
   -> Scope.DB.Lib_entry.t list
-  -> Meta.t Memo.t
+  -> Meta.t Action_builder.t

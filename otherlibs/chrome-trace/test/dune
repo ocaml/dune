@@ -4,7 +4,7 @@
  (libraries
   dune_tests_common
   stdune
-  dune_stats
+  dune_trace
   chrome_trace
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project

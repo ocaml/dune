@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 type 'error t =
   { temp_dir : Path.t lazy_t

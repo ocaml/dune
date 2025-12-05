@@ -1,6 +1,10 @@
 open Stdune
 include Cmdliner.Arg
 
+let info ?deprecated ?absent ?docs ?docv ~doc ?env names =
+  Cmdliner.Arg.info ?deprecated ?absent ?docs ?docv ?doc ?env names
+;;
+
 include struct
   open Dune_lang
   module Stanza = Stanza

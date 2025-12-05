@@ -45,25 +45,15 @@ let run_fmt_command ~common ~config ~preview builder =
   | Error lock_held_by ->
     (* The --preview flag is being ignored by the RPC server, warn the user. *)
     if preview then Rpc.Rpc_common.warn_ignore_arguments lock_held_by;
-    let response =
-      Scheduler.go_without_rpc_server ~common ~config (fun () ->
-        Rpc.Rpc_common.fire_request
-          ~name:"format"
-          ~wait:true
-          ~warn_forwarding:false
-          ~lock_held_by
-          builder
-          Dune_rpc.Procedures.Public.format
-          ())
-    in
-    (match response with
-     | Ok () -> ()
-     | Error error ->
-       User_error.raise
-         [ Pp.paragraphf
-             "Error: %s\n%!"
-             (Dyn.to_string (Dune_rpc.Response.Error.to_dyn error))
-         ])
+    Scheduler.go_without_rpc_server ~common ~config (fun () ->
+      Rpc.Rpc_common.fire_request
+        ~name:"format"
+        ~wait:true
+        ~warn_forwarding:false
+        ~lock_held_by
+        builder
+        Dune_rpc.Procedures.Public.format
+        ())
 ;;
 
 let command =
@@ -76,9 +66,10 @@ let command =
         & info
             [ "preview" ]
             ~doc:
-              "Just print the changes that would be made without actually applying them. \
-               This takes precedence over auto-promote as that flag is assumed for this \
-               command.")
+              (Some
+                 "Just print the changes that would be made without actually applying \
+                  them. This takes precedence over auto-promote as that flag is assumed \
+                  for this command."))
     in
     let builder =
       Common.Builder.set_promote builder (if preview then Never else Automatically)

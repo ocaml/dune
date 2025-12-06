@@ -273,6 +273,10 @@ module In_context = struct
     ; sourcemap = None
     }
   ;;
+
+  let force_whole_program_compilation x =
+    Mode.Pair.map ~f:(fun x -> { x with compilation_mode = Some Whole_program }) x
+  ;;
 end
 
 module Ext = struct

@@ -372,11 +372,16 @@ jobs:
             default: "git+https://github.com/ocaml/opam-repository.git"
           opam-pin: false
 
+      - name: Install Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: latest
+
       - name: Pin deps
         run: opam pin add -n . --with-version=3.20.2+ox
 
       - name: Install deps
-        run: opam install csexp pp re spawn uutf ./dune.opam
+        run: opam install csexp pp re spawn uutf wasm_of_ocaml-compiler ./dune.opam
 
       - name: Build dune
         run: opam exec -- make bootstrap

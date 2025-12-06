@@ -652,24 +652,13 @@ module Parameterised = struct
 
   let remove_arguments lib = { lib with parameters = Resolve.return []; arguments = [] }
 
-  let requires lib =
+  let requires (lib : lib) =
     let open Resolve.O in
-    let* (deps : lib list) = lib.requires in
-    let* deps =
-      Resolve.List.map deps ~f:(fun dep -> complement_arguments ~parent:lib dep)
-    in
-    let lib_arguments =
-      List.filter_map lib.arguments ~f:(function
-        | None -> None
-        | Some arg -> Some arg)
-    in
-    let deps = lib_arguments @ deps in
-    let deps =
-      match lib.arguments with
-      | [] -> deps
-      | _ -> remove_arguments lib :: deps
-    in
-    Resolve.return deps
+    let+ deps = lib.requires >>= Resolve.List.map ~f:(complement_arguments ~parent:lib) in
+    let deps = List.filter_opt lib.arguments @ deps in
+    match lib.arguments with
+    | [] -> deps
+    | _ -> remove_arguments lib :: deps
   ;;
 
   let scope t =

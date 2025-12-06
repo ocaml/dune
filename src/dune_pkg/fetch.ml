@@ -146,8 +146,6 @@ type failure =
   | Checksum_mismatch of Checksum.t
   | Unavailable of User_message.t option
 
-let label = "dune-fetch"
-
 let unpack_archive ~archive_driver ~target ~archive =
   Archive_driver.extract archive_driver ~archive ~target
   >>| Result.map_error ~f:(fun () ->
@@ -253,20 +251,10 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
   let event =
     Dune_trace.(
       start (global ()) (fun () ->
-        Dune_trace.Event.Async.data
-          ~cat:None
-          ~name:label
-          ~args:
-            (let args =
-               [ "url", `String (OpamUrl.to_string url)
-               ; "target", `String (Path.to_string target)
-               ]
-             in
-             Some
-               (match checksum with
-                | None -> args
-                | Some checksum ->
-                  ("checksum", `String (Checksum.to_string checksum)) :: args))))
+        Dune_trace.Event.Async.fetch
+          ~url:(OpamUrl.to_string url)
+          ~target
+          ~checksum:(Option.map ~f:Checksum.to_string checksum)))
   in
   let unsupported_backend s =
     User_error.raise ~loc:url_loc [ Pp.textf "Unsupported backend: %s" s ]

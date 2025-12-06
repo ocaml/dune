@@ -95,7 +95,22 @@ module Event = struct
       ; start : float
       }
 
-    let data ~args ~cat ~name = { args; cat; name }
+    let create_sandbox ~loc =
+      { args = Some [ "loc", `String (Loc.to_file_colon_line loc) ]
+      ; name = "create-sandbox"
+      ; cat = Some [ "sandbox" ]
+      }
+    ;;
+
+    let fetch ~url ~target ~checksum =
+      let args = [ "url", `String url; "target", `String (Path.to_string target) ] in
+      let args =
+        match checksum with
+        | None -> args
+        | Some c -> ("checksum", `String c) :: args
+      in
+      { args = Some args; cat = Some [ "pkg" ]; name = "fetch" }
+    ;;
   end
 
   type t = Chrome_trace.Event.t

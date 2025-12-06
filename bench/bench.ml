@@ -7,11 +7,6 @@ module Console = struct
   let printf fmt = printf ("[Bench] " ^^ fmt)
 end
 
-module Json = struct
-  include Chrome_trace.Json
-  include Dune_trace.Json
-end
-
 module Output = struct
   type measurement =
     [ `Int of int

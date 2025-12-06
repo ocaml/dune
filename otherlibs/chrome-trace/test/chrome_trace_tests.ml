@@ -20,7 +20,7 @@ let%expect_test _ =
     ]
   in
   List.iter events ~f:(fun event ->
-    Chrome_trace.Event.to_json event |> Dune_trace.Json.to_string |> print_endline);
+    Chrome_trace.Event.to_json event |> Json.to_string |> print_endline);
   [%expect
     {|
     {"args":{"foo":"bar"},"ph":"X","dur":1000000,"name":"foo","cat":"","ts":500000,"pid":0,"tid":0}

@@ -3,4 +3,4 @@
  (foreign_stubs
   (language c)
   (names dune_trace_stubs))
- (libraries stdune chrome_trace spawn unix))
+ (libraries stdune json chrome_trace spawn unix))

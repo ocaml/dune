@@ -579,7 +579,7 @@ module Toplevel_index = struct
   (** This format is public API. *)
   let to_json items = `Assoc [ "packages", list_to_json items ~f:item_to_json ]
 
-  let json t = Dune_trace.Json.to_string (to_json t)
+  let json t = Json.to_string (to_json t)
 
   let content (output : Output_format.t) t =
     match output with

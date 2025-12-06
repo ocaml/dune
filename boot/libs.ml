@@ -117,6 +117,12 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
+  ; { path = "src/json"
+    ; main_module_name = Some "Json"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
   ; { path = "src/dune_trace"
     ; main_module_name = Some "Dune_trace"
     ; include_subdirs = No

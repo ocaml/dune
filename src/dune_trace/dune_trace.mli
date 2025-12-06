@@ -4,8 +4,6 @@ type t
 
 module Json : sig
   type t = Chrome_trace.Json.t
-
-  val to_string : Chrome_trace.Json.t -> string
 end
 
 type dst =

@@ -92,9 +92,7 @@ module Per_item = struct
   open Decoder
 
   let decode ~default a =
-    peek_exn
-    >>= function
-    | List (loc, Atom (_, A "per_module") :: _) ->
+    let item =
       sum
         [ ( "per_module"
           , let+ x =
@@ -102,14 +100,19 @@ module Per_item = struct
                 (let+ pp, names = pair a (repeat decode) in
                  names, pp)
             in
-            of_mapping x ~default
-            |> function
-            | Ok t -> t
-            | Error (name, _, _) ->
-              User_error.raise
-                ~loc
-                [ Pp.textf "module %s present in two different sets" (to_string name) ] )
+            of_mapping x ~default )
         ]
+    in
+    peek_exn
+    >>= function
+    | List (loc, Atom (_, A "per_module") :: _) ->
+      item
+      >>| (function
+       | Ok t -> t
+       | Error (name, _, _) ->
+         User_error.raise
+           ~loc
+           [ Pp.textf "module %s present in two different sets" (to_string name) ])
     | _ -> a >>| for_all
   ;;
 end

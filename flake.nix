@@ -10,6 +10,10 @@
       url = "github:nix-ocaml/nix-overlays";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    odoc-src = {
+      url = "github:ocaml/odoc";
+      flake = false;
+    };
     oxcaml = {
       url = "github:oxcaml/oxcaml";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -26,6 +30,7 @@
       nixpkgs,
       melange,
       ocaml-overlays,
+      odoc-src,
       oxcaml,
       oxcaml-opam-repository,
     }:
@@ -43,6 +48,14 @@
                 utop = osuper.utop.overrideAttrs {
                   dontGzipMan = true;
                 };
+                odoc-parser = osuper.odoc-parser.overrideAttrs (old: {
+                  version = "dev";
+                  src = odoc-src;
+                });
+                odoc = osuper.odoc.overrideAttrs (old: {
+                  version = "dev";
+                  src = odoc-src;
+                });
               }
             );
           })

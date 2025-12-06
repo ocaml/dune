@@ -282,6 +282,7 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
     ~conflicts:[]
     ~depends:[]
     ~depopts:[]
+    ~enabled_if:None (* CR-someday rgrinberg: would be nice to interpret this *)
     ~info
     ~synopsis:(get_one "synopsis")
     ~description:(get_one "description")

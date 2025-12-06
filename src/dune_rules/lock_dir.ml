@@ -42,6 +42,11 @@ module Sys_vars = struct
     }
   ;;
 
+  let os_values t v =
+    let+ v = os t v in
+    [ Value.String (Option.value v ~default:"") ]
+  ;;
+
   (* A pform expander for expanding a subset of the variables in "lang dune" (ie. the
      same variables available in dune files) based on the OPAM variables polled
      by this module. OPAM variables are converted to their equivalent dune

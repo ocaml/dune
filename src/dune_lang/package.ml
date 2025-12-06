@@ -22,6 +22,7 @@ type t =
   ; depends : Package_dependency.t list
   ; conflicts : Package_dependency.t list
   ; depopts : Package_dependency.t list
+  ; enabled_if : Blang.t option
   ; info : Package_info.t
   ; version : Package_version.t option
   ; has_opam_file : opam_file
@@ -55,6 +56,7 @@ let original_opam_file t = t.original_opam_file
 let set_inside_opam_dir t ~dir = { t with opam_file = Name.file t.id.name ~dir }
 let set_version_and_info t ~version ~info = { t with version; info }
 let exclusive_dir t = t.exclusive_dir
+let enabled_if t = t.enabled_if
 
 let encode
       (name : Name.t)
@@ -75,6 +77,7 @@ let encode
       ; opam_file = _
       ; original_opam_file = _
       ; exclusive_dir
+      ; enabled_if
       }
   =
   let open Encoder in
@@ -87,6 +90,7 @@ let encode
         ; field_l "depends" Package_dependency.encode depends
         ; field_l "conflicts" Package_dependency.encode conflicts
         ; field_l "depopts" Package_dependency.encode depopts
+        ; field_o "enabled_if" Blang.encode enabled_if
         ; field_o "version" Package_version.encode version
         ; field "tags" (list string) ~default:[] tags
         ; field_l
@@ -109,6 +113,11 @@ let decode_name ~version =
 ;;
 
 let decode =
+  let enabled_if =
+    String_with_vars.set_decoding_env
+      Pform.Env.package_enabled_if
+      (Blang.Ast.decode ~override_decode_bare_literal:None String_with_vars.decode)
+  in
   let open Decoder in
   let name_map syntax of_list_map to_string name decode print_value error_msg =
     let+ names = field ~default:[] name (syntax >>> repeat decode) in
@@ -133,6 +142,9 @@ let decode =
        and+ depends = field ~default:[] "depends" (repeat Package_dependency.decode)
        and+ conflicts = field ~default:[] "conflicts" (repeat Package_dependency.decode)
        and+ depopts = field ~default:[] "depopts" (repeat Package_dependency.decode)
+       and+ enabled_if =
+         (* CR rgrinberg: limit this to variables from [Sys_poll] *)
+         field_o "enabled_if" (Syntax.since Stanza.syntax (3, 21) >>> enabled_if)
        and+ info = Package_info.decode ~since:(2, 0) ()
        and+ tags = field "tags" (enter (repeat string)) ~default:[]
        and+ exclusive_dir =
@@ -180,6 +192,7 @@ let decode =
        ; opam_file
        ; original_opam_file = None
        ; exclusive_dir
+       ; enabled_if
        }
 ;;
 
@@ -208,6 +221,7 @@ let to_dyn
       ; opam_file = _
       ; original_opam_file = _
       ; exclusive_dir = _
+      ; enabled_if
       }
   =
   let open Dyn in
@@ -225,6 +239,7 @@ let to_dyn
     ; "deprecated_package_names", Name.Map.to_dyn Loc.to_dyn_hum deprecated_package_names
     ; "sites", Site.Map.to_dyn Section.to_dyn sites
     ; "allow_empty", Bool allow_empty
+    ; "enabled_if", (option Blang.to_dyn) enabled_if
     ]
 ;;
 
@@ -241,6 +256,7 @@ let create
       ~conflicts
       ~depends
       ~depopts
+      ~enabled_if
       ~info
       ~has_opam_file
       ~dir
@@ -272,5 +288,6 @@ let create
   ; original_opam_file
   ; exclusive_dir =
       Option.map contents_basename ~f:(fun (loc, s) -> loc, Path.Source.relative dir s)
+  ; enabled_if
   }
 ;;

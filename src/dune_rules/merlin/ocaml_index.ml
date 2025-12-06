@@ -118,6 +118,8 @@ let cctx_rules cctx =
 ;;
 
 let context_indexes sctx =
+  Action_builder.of_memo
+  @@
   let ctx = Super_context.context sctx in
   Context.name ctx
   |> Dune_load.dune_files
@@ -150,6 +152,8 @@ let project_rule sctx project =
     in
     Alias.make Alias0.ocaml_index ~dir
   in
-  let* indexes = context_indexes sctx in
-  Rules.Produce.Alias.add_deps ocaml_index_alias (Action_builder.paths_existing @@ indexes)
+  Rules.Produce.Alias.add_deps
+    ocaml_index_alias
+    (let open Action_builder.O in
+     context_indexes sctx >>= Action_builder.paths_existing)
 ;;

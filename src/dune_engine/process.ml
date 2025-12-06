@@ -818,9 +818,10 @@ let report_process_finished
   =
   let targets =
     match metadata.purpose with
-    | Internal_job -> []
-    | Build_job None -> []
-    | Build_job (Some targets) -> Targets.Validated.to_trace_args targets
+    | Internal_job -> None
+    | Build_job None -> None
+    | Build_job (Some { dirs; files; root }) ->
+      Some { Dune_trace.Event.root; dirs; files }
   in
   let stdout = Result.Out.get stdout in
   let stderr = Result.Out.get stderr in

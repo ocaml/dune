@@ -38,10 +38,16 @@ module Event : sig
     type t = (int, error) result
   end
 
+  type targets =
+    { root : Path.Build.t
+    ; files : Filename.Set.t
+    ; dirs : Filename.Set.t
+    }
+
   val process
     :  name:string option
     -> started_at:float
-    -> targets:(string * Json.t) list
+    -> targets:targets option
     -> categories:string list
     -> pid:Pid.t
     -> exit:Exit_status.t

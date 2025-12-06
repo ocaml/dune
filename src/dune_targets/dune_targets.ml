@@ -102,20 +102,6 @@ module Validated = struct
       ; "dirs", Filename.Set.to_dyn dirs
       ]
   ;;
-
-  let to_trace_args { root; files; dirs } =
-    let mkset s xs =
-      if Filename.Set.is_empty xs
-      then []
-      else
-        [ ( s
-          , `List
-              (Filename.Set.to_list_map xs ~f:(fun x ->
-                 `String (Path.Build.relative root x |> Path.Build.to_string))) )
-        ]
-    in
-    mkset "target_files" files @ mkset "target_dirs" dirs
-  ;;
 end
 
 module Validation_result = struct

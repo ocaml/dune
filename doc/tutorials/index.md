@@ -8,4 +8,5 @@ These tutorials are hands-on lessons to learn about Dune.
 
 developing-with-dune/index
 dune-package-management/index
+oxcaml-parameterized-library/index
 :::

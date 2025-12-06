@@ -29,19 +29,6 @@ dependencies.
 The next time the package is locked, Dune will use this repository instead of
 the information from the selected package repositories.
 
-```
-$ dune pkg lock
-Solution for dune.lock:
-- base-unix.base
-- fmt.dev
-- ocaml.5.0.0
-- ocaml-base-compiler.5.0.0
-- ocaml-config.3
-- ocamlbuild.0.15.0+dune
-- ocamlfind.1.9.6+dune
-- topkg.1.0.7
-```
-
 Unlike previously, the version of the `fmt` library that is picked is `dev`, to
 signify a development version.
 

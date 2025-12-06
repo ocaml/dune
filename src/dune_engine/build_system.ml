@@ -307,17 +307,13 @@ end = struct
 
   let report_evaluated_rule_exn (t : Build_config.t) =
     Option.iter t.stats ~f:(fun stats ->
-      let module Event = Chrome_trace.Event in
       let event =
         let rule_total =
           match Fiber.Svar.read State.t with
           | Building progress -> progress.number_of_rules_discovered
           | _ -> assert false
         in
-        let args = [ "value", `Int rule_total ] in
-        let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
-        let common = Event.common_fields ~name:"evaluated_rules" ~ts () in
-        Event.counter common args
+        Dune_trace.Event.evalauted_rules ~rule_total
       in
       Dune_trace.emit stats event)
   ;;

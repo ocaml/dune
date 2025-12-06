@@ -81,25 +81,205 @@ let printf t format_string =
   Printf.ksprintf t.print ("%c" ^^ format_string ^^ "\n") c
 ;;
 
-let emit t event = printf t "%s" (Json.to_string (Chrome_trace.Event.to_json event))
-
 module Event = struct
-  type data =
-    { args : Chrome_trace.Event.args option
-    ; cat : string list option
-    ; name : string
-    }
+  module Async = struct
+    type data =
+      { args : Chrome_trace.Event.args option
+      ; cat : string list option
+      ; name : string
+      }
 
-  type nonrec t =
-    { t : t
-    ; event_data : data
-    ; start : float
-    }
+    type nonrec t =
+      { t : t
+      ; event_data : data
+      ; start : float
+      }
 
-  let data ~args ~cat ~name = { args; cat; name }
+    let data ~args ~cat ~name = { args; cat; name }
+  end
+
+  type t = Chrome_trace.Event.t
+
+  let scan_source ~name ~start ~stop ~dir =
+    let module Event = Chrome_trace.Event in
+    let module Timestamp = Event.Timestamp in
+    let dur = Timestamp.of_float_seconds (stop -. start) in
+    let common =
+      Event.common_fields
+        ~name:(name ^ ": " ^ Path.Source.to_string dir)
+        ~ts:(Timestamp.of_float_seconds start)
+        ()
+    in
+    let args = [ "dir", `String (Path.Source.to_string dir) ] in
+    Event.complete common ~args ~dur
+  ;;
+
+  let evalauted_rules ~rule_total =
+    let open Chrome_trace in
+    let args = [ "value", `Int rule_total ] in
+    let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
+    let common = Event.common_fields ~name:"evaluated_rules" ~ts () in
+    Event.counter common args
+  ;;
+
+  let config () =
+    let open Chrome_trace in
+    let args = [ "build_dir", `String (Path.Build.to_string Path.Build.root) ] in
+    let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
+    let common = Event.common_fields ~cat:[ "config" ] ~name:"config" ~ts () in
+    Event.instant ~args common
+  ;;
+
+  let scheduler_idle () =
+    let fields =
+      let ts = Chrome_trace.Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
+      Chrome_trace.Event.common_fields ~name:"watch mode iteration" ~ts ()
+    in
+    (* the instant event allows us to separate build commands from
+       different iterations of the watch mode in the event viewer *)
+    Chrome_trace.Event.instant ~scope:Global fields
+  ;;
+
+  module Exit_status = struct
+    type error =
+      | Failed of int
+      | Signaled of Signal.t
+
+    type t = (int, error) result
+  end
+
+  let process
+        ~name
+        ~started_at
+        ~targets
+        ~categories
+        ~pid
+        ~exit
+        ~prog
+        ~process_args
+        ~dir
+        ~stdout
+        ~stderr
+        ~(times : Proc.Times.t)
+    =
+    let open Chrome_trace in
+    let common =
+      let name =
+        match name with
+        | Some n -> n
+        | None -> Filename.basename prog
+      in
+      let ts = Timestamp.of_float_seconds started_at in
+      Event.common_fields ~cat:("process" :: categories) ~name ~ts ()
+    in
+    let always =
+      [ "process_args", `List (List.map process_args ~f:(fun arg -> `String arg))
+      ; "pid", `Int (Pid.to_int pid)
+      ]
+    in
+    let extended =
+      let exit =
+        match exit with
+        | Ok n -> [ "exit", `Int n ]
+        | Error (Exit_status.Failed n) ->
+          [ "exit", `Int n; "error", `String (sprintf "exited with code %d" n) ]
+        | Error (Signaled s) ->
+          [ "exit", `Int (Signal.to_int s)
+          ; "error", `String (sprintf "got signal %s" (Signal.name s))
+          ]
+      in
+      let output name s =
+        match s with
+        | "" -> []
+        | s -> [ name, `String s ]
+      in
+      List.concat
+        [ [ "prog", `String prog
+          ; "dir", `String (Option.map ~f:Path.to_string dir |> Option.value ~default:".")
+          ]
+        ; targets
+        ; exit
+        ; output "stdout" stdout
+        ; output "stderr" stderr
+        ]
+    in
+    let args = always @ extended in
+    let dur = Event.Timestamp.of_float_seconds times.elapsed_time in
+    Event.complete ~args ~dur common
+  ;;
+
+  let persistent ~file ~module_ what ~start ~stop =
+    let module Event = Chrome_trace.Event in
+    let module Timestamp = Event.Timestamp in
+    let dur = Timestamp.of_float_seconds (stop -. start) in
+    let common =
+      Event.common_fields ~name:"db" ~ts:(Timestamp.of_float_seconds start) ()
+    in
+    let args =
+      [ "path", `String (Path.to_string file)
+      ; "module", `String module_
+      ; ( "operation"
+        , `String
+            (match what with
+             | `Save -> "save"
+             | `Load -> "load") )
+      ]
+    in
+    Event.complete common ~args ~dur
+  ;;
+
+  module Rpc = struct
+    type stage =
+      | Start
+      | Stop
+
+    let async_kind_of_stage = function
+      | Start -> Chrome_trace.Event.Start
+      | Stop -> End
+    ;;
+
+    let session ~id stage =
+      let open Chrome_trace in
+      let common =
+        let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
+        Event.common_fields ~ts ~name:"rpc_session" ()
+      in
+      let id = Chrome_trace.Id.create (`Int id) in
+      Event.async id (async_kind_of_stage stage) common
+    ;;
+
+    let rec to_json : Sexp.t -> Chrome_trace.Json.t = function
+      | Atom s -> `String s
+      | List s -> `List (List.map s ~f:to_json)
+    ;;
+
+    let message what ~meth_ ~id stage =
+      let open Chrome_trace in
+      let name =
+        match what with
+        | `Notification -> "notification"
+        | `Request _ -> "request"
+      in
+      let args = [ "meth", `String meth_ ] in
+      let args =
+        match what with
+        | `Notification -> args
+        | `Request id -> ("request_id", to_json id) :: args
+      in
+      let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
+      let common = Event.common_fields ~cat:[ "rpc" ] ~ts ~name () in
+      Event.async
+        (Chrome_trace.Id.create (`Int id))
+        ~args
+        (async_kind_of_stage stage)
+        common
+    ;;
+  end
 end
 
-let start t k : Event.t option =
+let emit t event = printf t "%s" (Json.to_string (Chrome_trace.Event.to_json event))
+
+let start t k : Event.Async.t option =
   match t with
   | None -> None
   | Some t ->
@@ -111,7 +291,7 @@ let start t k : Event.t option =
 let finish event =
   match event with
   | None -> ()
-  | Some { Event.t; start; event_data = { args; cat; name } } ->
+  | Some { Event.Async.t; start; event_data = { args; cat; name } } ->
     let dur =
       let stop = Unix.gettimeofday () in
       Timestamp.of_float_seconds (stop -. start)

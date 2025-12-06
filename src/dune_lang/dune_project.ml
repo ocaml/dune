@@ -888,7 +888,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
   @@ fields
   @@ let+ name = field_o "name" Dune_project_name.decode
      and+ version = field_o "version" Package_version.decode
-     and+ info = Package_info.decode ()
+     and+ info = Package_info.decode ~toplevel:true ()
      and+ packages = multi_field "package" (Package.decode ~dir)
      and+ pins = Pin_stanza.Project.decode
      and+ explicit_extensions =

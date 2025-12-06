@@ -685,8 +685,9 @@ and keyword : string -> values context -> values -> unit * values =
 ;;
 
 let repeat1 p =
+  let xs = repeat p in
   let+ x = p
-  and+ xs = repeat p in
+  and+ xs = xs in
   x :: xs
 ;;
 

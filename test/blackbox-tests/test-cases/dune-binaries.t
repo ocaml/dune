@@ -14,7 +14,7 @@
   > EOF
 
   $ cat >test.sh <<EOF
-  > #!/bin/bash
+  > #!/usr/bin/env bash
   > 
   > echo "This is only a test."
   > EOF

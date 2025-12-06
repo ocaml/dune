@@ -12,5 +12,6 @@ We now build the normal theory, and should work
   $ OCAMLPATH=$PWD/lib/:$OCAMLPATH
   $ ROCQPATH=$PWD/lib/coq/user-contrib dune build --root user @all
   Entering directory 'user'
+  TEST: $TESTCASE_ROOT/lib/coq/user-contrib/Bar
   Hello
   Leaving directory 'user'

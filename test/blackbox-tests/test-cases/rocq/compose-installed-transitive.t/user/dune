@@ -1,0 +1,4 @@
+(rocq.theory
+ (name User)
+ (package local)
+ (theories T_d))

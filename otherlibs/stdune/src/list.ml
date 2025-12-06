@@ -273,3 +273,11 @@ let rec partition_three xs ~f =
      | `Middle y -> xs, y :: ys, zs
      | `Right z -> xs, ys, z :: zs)
 ;;
+
+module Assoc = struct
+  let rec find_exn xs x ~equal =
+    match xs with
+    | [] -> raise Not_found
+    | (x', y) :: xs -> if equal x x' then y else find_exn xs x ~equal
+  ;;
+end

@@ -74,3 +74,7 @@ val to_seq : 'a t -> 'a Seq.t
 (** [list_intersperse t ~sep] returns [t] with [sep] inserted between each pair
     of consecutive values. *)
 val intersperse : 'a t -> sep:'a -> 'a t
+
+module Assoc : sig
+  val find_exn : ('a * 'b) list -> 'a -> equal:('a -> 'a -> bool) -> 'b
+end

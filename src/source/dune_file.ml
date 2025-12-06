@@ -41,40 +41,64 @@ let dyn_of_kind = function
 
 module Dir_map = struct
   module Per_dir = struct
+    let no_dupes =
+      Option.merge ~f:(fun (loc, _) (loc2, _) ->
+        let main_message = Pp.text "This stanza was already specified at:" in
+        let annots =
+          let main = User_message.make ~loc [ main_message ] in
+          let related =
+            [ User_message.make ~loc:loc2 [ Pp.text "Already defined here" ] ]
+          in
+          User_message.Annots.singleton
+            Compound_user_error.annot
+            [ Compound_user_error.make ~main ~related ]
+        in
+        User_error.raise
+          ~loc
+          ~annots
+          [ main_message; Pp.verbatim (Loc.to_file_colon_line loc2) ])
+    ;;
+
+    module Files = struct
+      type t = Predicate_lang.Glob.t
+
+      let default = Predicate_lang.true_
+
+      let create = function
+        | None -> default
+        | Some (_loc, glob) -> glob
+      ;;
+
+      let eval glob ~files =
+        Filename.Set.filter files ~f:(fun filename ->
+          Predicate_lang.Glob.test glob ~standard:default filename)
+      ;;
+    end
+
     type t =
       { sexps : Dune_lang.Ast.t list
       ; subdir_status : Source_dir_status.Spec.input
+      ; files : (Loc.t * Predicate_lang.Glob.t) option
       }
 
-    let to_dyn { sexps; subdir_status = _ } =
+    let to_dyn { sexps; subdir_status = _; files = _ } =
       let open Dyn in
       record
         [ "sexps", list Dune_lang.to_dyn (List.map ~f:Dune_lang.Ast.remove_locs sexps) ]
     ;;
 
     let empty =
-      { sexps = []; subdir_status = Source_dir_status.Map.init ~f:(fun _ -> None) }
+      { sexps = []
+      ; subdir_status = Source_dir_status.Map.init ~f:(fun _ -> None)
+      ; files = None
+      }
     ;;
 
     let merge d1 d2 =
       { sexps = d1.sexps @ d2.sexps
       ; subdir_status =
-          Source_dir_status.Map.merge d1.subdir_status d2.subdir_status ~f:(fun l r ->
-            Option.merge l r ~f:(fun (loc, _) (loc2, _) ->
-              let main_message = Pp.text "This stanza stanza was already specified at:" in
-              let annots =
-                let main = User_message.make ~loc [ main_message ] in
-                let related =
-                  [ User_message.make ~loc:loc2 [ Pp.text "Already defined here" ] ]
-                in
-                User_message.Annots.singleton
-                  Compound_user_error.annot
-                  [ Compound_user_error.make ~main ~related ]
-              in
-              User_error.raise
-                ~loc
-                ~annots
-                [ main_message; Pp.verbatim (Loc.to_file_colon_line loc2) ]))
+          Source_dir_status.Map.merge d1.subdir_status d2.subdir_status ~f:no_dupes
+      ; files = no_dupes d1.files d2.files
       }
     ;;
   end
@@ -113,12 +137,15 @@ module Dir_map = struct
   let merge_all = List.fold_left ~f:merge ~init:empty
 end
 
+module Files = Dir_map.Per_dir.Files
+
 module Ast = struct
   type t =
     | Ignored_sub_dirs of Loc.t * Predicate_lang.Glob.t
     | Data_only_dirs of Loc.t * Predicate_lang.Glob.t
     | Vendored_dirs of Loc.t * Predicate_lang.Glob.Element.t Predicate_lang.t
     | Dirs of Loc.t * Predicate_lang.Glob.t
+    | Files of Loc.t * Predicate_lang.Glob.t
     | Subdir of Path.Local.t * t list
     | Include of
         { loc : Loc.t
@@ -212,6 +239,15 @@ module Ast = struct
     Dirs (loc, dirs)
   ;;
 
+  let files =
+    let+ loc, files =
+      Dune_lang.Syntax.since Stanza.syntax (3, 21)
+      >>> Predicate_lang.Glob.decode
+      |> located
+    in
+    Files (loc, files)
+  ;;
+
   let data_only_dirs =
     let+ loc, glob =
       located
@@ -257,6 +293,7 @@ module Ast = struct
     @@
     let+ subdirs = multi_field "subdir" (subdir ~inside_include)
     and+ dirs = field_o "dirs" dirs
+    and+ files = field_o "files" files
     and+ ignored_sub_dirs =
       multi_field "ignored_subdirs" (ignored_sub_dirs ~inside_subdir)
     and+ vendored_dirs = field_o "vendored_dirs" vendored_dirs
@@ -266,6 +303,7 @@ module Ast = struct
     let ast =
       List.concat
         [ Option.to_list dirs
+        ; Option.to_list files
         ; Option.to_list vendored_dirs
         ; subdirs
         ; ignored_sub_dirs
@@ -281,7 +319,7 @@ module Ast = struct
   let statically_evaluated_stanzas =
     (* This list must be kept in sync with [decode]
        [include] is excluded b/c it's also a normal stanza *)
-    [ "data_only_dirs"; "vendored_dirs"; "ignored_sub_dirs"; "subdir"; "dirs" ]
+    [ "data_only_dirs"; "vendored_dirs"; "ignored_sub_dirs"; "subdir"; "dirs"; "files" ]
   ;;
 
   let decode ~inside_subdir ~inside_include =
@@ -340,6 +378,7 @@ module Group = struct
     ; data_only_dirs : (Loc.t * Predicate_lang.Glob.t) option
     ; vendored_dirs : (Loc.t * Predicate_lang.Glob.Element.t Predicate_lang.t) option
     ; dirs : (Loc.t * Predicate_lang.Glob.t) option
+    ; files : (Loc.t * Predicate_lang.Glob.t) option
     ; leftovers : Dune_lang.Ast.t list
     ; subdirs : (Path.Local.t * Ast.t list) list
     }
@@ -349,6 +388,7 @@ module Group = struct
     ; data_only_dirs = None
     ; vendored_dirs = None
     ; dirs = None
+    ; files = None
     ; subdirs = []
     ; leftovers = []
     }
@@ -385,6 +425,7 @@ module Group = struct
     | Vendored_dirs (loc, glob) ->
       { t with vendored_dirs = Some (no_dupes "vendored_dirs" loc t.vendored_dirs glob) }
     | Dirs (loc, glob) -> { t with dirs = Some (no_dupes "dirs" loc t.dirs glob) }
+    | Files (loc, glob) -> { t with files = Some (no_dupes "files" loc t.files glob) }
     | Subdir (path, stanzas) -> { t with subdirs = (path, stanzas) :: t.subdirs }
     | Leftovers stanzas -> { t with leftovers = List.rev_append stanzas t.leftovers }
     | Include _ -> assert false
@@ -412,7 +453,8 @@ let rec to_dir_map ast =
   let group = Group.of_ast ast in
   let node =
     let subdir_status = Group.subdir_status group in
-    Dir_map.singleton { Dir_map.Per_dir.sexps = group.leftovers; subdir_status }
+    let files = group.files in
+    Dir_map.singleton { Dir_map.Per_dir.sexps = group.leftovers; subdir_status; files }
   in
   let subdirs =
     List.map group.subdirs ~f:(fun (path, stanzas) ->
@@ -463,6 +505,7 @@ let get_static_sexp t = (Dir_map.root t.plain).sexps
 let kind t = t.kind
 let path t = t.path
 let sub_dir_status t = Source_dir_status.Spec.create (Dir_map.root t.plain).subdir_status
+let files t = Files.create (Dir_map.root t.plain).files
 
 let load_plain sexps ~file ~from_parent ~project =
   let+ parsed =

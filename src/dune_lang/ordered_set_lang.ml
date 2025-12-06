@@ -98,15 +98,15 @@ module Parse = struct
     many []
   ;;
 
-  let with_include ~elt =
-    generic
-      ~elt
-      ~inc:
-        (sum
-           [ ( ":include"
-             , let+ s = String_with_vars.decode in
-               Include s )
-           ])
+  let with_include =
+    let inc =
+      sum
+        [ ( ":include"
+          , let+ s = String_with_vars.decode in
+            Include s )
+        ]
+    in
+    fun ~elt -> generic ~elt ~inc
   ;;
 
   let without_include ~elt =

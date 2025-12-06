@@ -194,6 +194,14 @@ and contents
   =
   let files = Dir_contents.files readdir in
   let+ dune_file = Dune_file.load ~dir:path dir_status project ~files ~parent:dune_file in
+  let files =
+    let predicate =
+      match dune_file with
+      | None -> Dune_file.Files.default
+      | Some dune_file -> Dune_file.files dune_file
+    in
+    Dune_file.Files.eval predicate ~files
+  in
   let vcs = Dir0.Vcs.get_vcs ~default:default_vcs ~readdir ~path in
   let sub_dirs =
     let sub_dirs =

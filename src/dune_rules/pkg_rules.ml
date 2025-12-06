@@ -1335,22 +1335,29 @@ module DB = struct
     ;;
   end
 
-  type t =
-    { pkg_digest_table : Pkg_table.t
-    ; system_provided : Package.Name.Set.t
-    }
+  module T = struct
+    type t =
+      { pkg_digest_table : Pkg_table.t
+      ; system_provided : Package.Name.Set.t
+      }
 
-  let equal t ({ pkg_digest_table; system_provided } as t') =
-    phys_equal t t'
-    || (Pkg_table.equal t.pkg_digest_table pkg_digest_table
-        && Package.Name.Set.equal t.system_provided system_provided)
+    let equal t ({ pkg_digest_table; system_provided } as t') =
+      phys_equal t t'
+      || (Pkg_table.equal t.pkg_digest_table pkg_digest_table
+          && Package.Name.Set.equal t.system_provided system_provided)
+    ;;
+
+    let hash { pkg_digest_table = _; system_provided = _ } = 0
+    let to_dyn = Dyn.opaque
+  end
+
+  include T
+
+  let memo_table = lazy (Memo.create "pkg-db-create" ~input:(module T) Memo.return)
+
+  let create ~pkg_digest_table ~system_provided =
+    Memo.exec (Lazy.force memo_table) { pkg_digest_table; system_provided }
   ;;
-
-  let hash = `Do_not_hash
-  let _ = hash
-  (* Because t is large, hashing is expensive, so much so that hashing the db in Input.t
-     below slowed down the dune call in the test repo described in #12248 from 1s to
-     2s. *)
 
   let pkg_digest_of_name lock_dir platform pkg_name ~system_provided =
     let entries_by_name =
@@ -1384,7 +1391,7 @@ module DB = struct
              let allow_sharing = allow_sharing && Context_name.is_default ctx in
              (* Is this value anything other than [default_system_provided]? *)
              let system_provided = default_system_provided in
-             let+ pkg_digest_table =
+             let* pkg_digest_table =
                let* lock_dir = Lock_dir.get_exn ctx
                and* platform = Lock_dir.Sys_vars.solver_env () in
                (if allow_sharing
@@ -1393,7 +1400,7 @@ module DB = struct
                >>| Pkg_table.union
                      (Pkg_table.of_lock_dir lock_dir ~platform ~system_provided)
              in
-             { pkg_digest_table; system_provided })
+             create ~pkg_digest_table ~system_provided)
     in
     fun ctx ~allow_sharing -> Memo.exec of_ctx_memo (ctx, allow_sharing)
   ;;
@@ -1416,7 +1423,7 @@ module DB = struct
     and* lock_dir_active_for_default_ctx =
       Lock_dir.lock_dir_active Context_name.default
     in
-    let+ pkg_digest_table =
+    let* pkg_digest_table =
       match lock_dir_active_for_default_ctx with
       | false -> Memo.Lazy.force Pkg_table.all_existing_dev_tools
       | true ->
@@ -1427,7 +1434,8 @@ module DB = struct
         in
         Pkg_table.union pkg_digest_table_default_ctx pkg_digest_table_all_dev_tools
     in
-    ( { pkg_digest_table; system_provided }
+    let+ db = create ~pkg_digest_table ~system_provided in
+    ( db
     , pkg_digest_of_name
         lock_dir
         platform

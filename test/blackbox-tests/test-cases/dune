@@ -3,6 +3,7 @@
   (env-vars
    (DUNE_CONFIG__BACKGROUND_SANDBOXES disabled)
    (DUNE_CONFIG__BACKGROUND_DIGESTS disabled)
+   (DUNE_JOBS 1)
    ;; We set ocaml to always be colored since it changes the output of
    ;; ocamlc error messages. See https://github.com/ocaml/ocaml/issues/14144
    (OCAML_COLOR always))
@@ -23,6 +24,7 @@
  (applies_to :whole_subtree)
  (deps
   (env_var OCAML_COLOR)
+  (env_var DUNE_JOBS)
   %{bin:dune_cmd}
   (package dune))
  ;; We don't allow conflict markers in tests

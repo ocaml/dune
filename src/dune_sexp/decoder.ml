@@ -590,9 +590,9 @@ and find_cstr
   : type a. (string * a t) list -> Loc.t -> string -> values context -> values -> a
   =
   fun cstrs loc name ctx values ->
-  match List.assoc cstrs name with
-  | Some t -> result ctx (eval t ctx values)
-  | None ->
+  match List.Assoc.find_exn cstrs name ~equal:String.equal with
+  | t -> result ctx (eval t ctx values)
+  | exception Not_found ->
     User_error.raise
       ~loc
       ~hints:(User_message.did_you_mean name ~candidates:(List.map cstrs ~f:fst))

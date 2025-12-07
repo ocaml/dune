@@ -127,7 +127,10 @@ let decode =
       | (loc, dep) :: rest ->
         (match
            List.find_opt
-             ~f:(fun (_, seen_dep) -> Package_dependency.equal dep seen_dep)
+             ~f:(fun (_, seen_dep) ->
+               Package_name.equal
+                 dep.Package_dependency.name
+                 seen_dep.Package_dependency.name)
              seen
          with
          | Some _ ->
@@ -135,8 +138,13 @@ let decode =
            let dep_string = Dune_sexp.to_string dep_sexp in
            User_warning.emit
              ~loc
-             [ Pp.textf "Duplicate dependency %s in '%s' field." dep_string field_name
-             ; Pp.text "Hint: Remove one of the duplicate entries."
+             [ Pp.textf
+                 "Duplicate dependency on package %s in '%s' field."
+                 dep_string
+                 field_name
+             ; Pp.text
+                 "Hint: Duplicate dependencies on the same package are redundant. If you \
+                  want to specify multiple constraints, combine them using (and ...)."
              ]
          | None -> ());
         check_dups ((loc, dep) :: seen) rest

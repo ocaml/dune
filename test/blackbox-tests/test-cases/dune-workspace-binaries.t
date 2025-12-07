@@ -6,7 +6,7 @@ a dune-workspace file:
   > 
   > (env
   >  (_
-  >   (binaries (test.sh as test))
+  >   (binaries (test.sh as foobar))
   >   (flags :standard)))
   > EOF
 
@@ -17,7 +17,7 @@ a dune-workspace file:
   $ cat >dune <<EOF
   > (rule
   >  (target message.txt)
-  >  (action (with-stdout-to %{target} (run test))))
+  >  (action (with-stdout-to %{target} (run foobar))))
   > EOF
 
   $ cat >test.sh <<EOF
@@ -26,10 +26,10 @@ a dune-workspace file:
   > EOF
 
   $ chmod +x test.sh
-  $ dune build
-  File "dune", lines 1-3, characters 0-76:
+  $ dune build ./message.txt
+  File "dune", lines 1-3, characters 0-78:
   1 | (rule
   2 |  (target message.txt)
-  3 |  (action (with-stdout-to %{target} (run test))))
-  Error: No rule found for .bin/test
+  3 |  (action (with-stdout-to %{target} (run foobar))))
+  Error: No rule found for .bin/foobar
   [1]

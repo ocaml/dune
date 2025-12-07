@@ -1309,7 +1309,7 @@ end = struct
                [ "implements", to_dyn impl ])
       in
       let requires = List.concat [ requires_implements; requires_params; requires ] in
-      let _, requires =
+      let (_ : Set.t), requires =
         List.fold_left requires ~init:(Set.empty, []) ~f:(fun (seen, lst) lib ->
           if Set.mem seen lib then seen, lst else Set.add seen lib, lib :: lst)
       in
@@ -2123,7 +2123,7 @@ end = struct
   ;;
 
   let compile_closure_with_overlap_checks db ts ~forbidden_libraries =
-    let _closure, state = step1_closure db ts ~forbidden_libraries in
+    let (_ : Closure.t), state = step1_closure db ts ~forbidden_libraries in
     Closure.result state `Compile
   ;;
 
@@ -2154,7 +2154,7 @@ end = struct
   ;;
 
   let check_forbidden ts ~forbidden_libraries =
-    let _closure, state = step1_closure None ts ~forbidden_libraries in
+    let (_ : Closure.t), state = step1_closure None ts ~forbidden_libraries in
     let+ (_ : lib list) = Closure.result state `Partial_link in
     ()
   ;;

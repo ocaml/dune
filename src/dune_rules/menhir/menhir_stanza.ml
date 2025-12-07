@@ -8,7 +8,7 @@ type t =
   { merge_into : string option
   ; flags : Ordered_set_lang.Unexpanded.t
   ; modules : string list
-  ; mode : Rule.Mode.t
+  ; mode : Rule_mode.t
   ; loc : Loc.t
   ; infer : bool
   ; enabled_if : Blang.t

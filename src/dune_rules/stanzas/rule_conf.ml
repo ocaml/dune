@@ -10,7 +10,7 @@ type t =
   { targets : String_with_vars.t Targets_spec.t
   ; deps : Dep_conf.t Bindings.t
   ; action : Loc.t * Dune_lang.Action.t
-  ; mode : Rule.Mode.t
+  ; mode : Rule_mode.t
   ; locks : Locks.t
   ; loc : Loc.t
   ; enabled_if : Blang.t
@@ -178,7 +178,7 @@ let decode =
 type lex_or_yacc =
   { loc : Loc.t
   ; modules : string list
-  ; mode : Rule.Mode.t
+  ; mode : Rule_mode.t
   ; enabled_if : Blang.t
   }
 

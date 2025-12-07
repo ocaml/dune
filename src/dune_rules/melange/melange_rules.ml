@@ -219,42 +219,50 @@ let js_targets_of_libs ~sctx ~scope ~module_systems ~target_dir libs =
         List.rev_append for_vlib base))
 ;;
 
-let compute_promote_in_source ~dune_project ~dir ~mode ~output ~src ~dst =
-  match mode with
-  | Rule.Mode.Standard | Fallback | Ignore_source_files -> mode
-  | Promote p ->
-    let new_into_dir =
-      let dir = Path.build dir in
-      let src_dir = Path.parent_exn src in
-      let dst_dir = Path.Build.parent_exn dst |> Path.build in
-      match output with
-      | Output_kind.Private_library_or_emit _ ->
-        let into_dir =
-          let into_dir =
-            (* interpret `(into ...)` relative to the dune file, not the `target_dir` *)
-            Option.map p.into ~f:(fun into -> Path.relative dir into.dir)
-            |> Option.value ~default:dir
-          in
-          let segment =
-            Path.descendant src_dir ~of_:dir
-            |> Option.value_exn
-            |> Path.as_in_source_tree_exn
-          in
-          Path.append_source into_dir segment
-        in
-        Path.reach ~from:dst_dir into_dir
-      | Public_library { lib_dir; output_dir; target_dir = _ } ->
-        let into_dir =
-          let root = Dune_project.root dune_project in
-          let into_dir = Path.Source.append_local root output_dir in
-          let segment = Path.drop_prefix_exn src_dir ~prefix:lib_dir in
-          Path.Source.append_local into_dir segment
-        in
-        let from = Path.drop_build_context_exn dst_dir |> Path.source in
-        Path.reach ~from (Path.source into_dir)
-    in
-    let loc = Option.map p.into ~f:(fun x -> x.loc) |> Option.value ~default:Loc.none in
-    Promote { p with into = Some { loc; dir = new_into_dir } }
+let compute_promote_in_source ~promote_in_source ~project ~dir ~mode ~output ~src ~dst =
+  match promote_in_source with
+  | false -> mode
+  | true ->
+    (match mode with
+     | Rule.Mode.Standard | Fallback | Ignore_source_files -> mode
+     | Promote p ->
+       let new_into_dir =
+         let dir = Path.build dir in
+         let src_dir = Path.parent_exn src in
+         let dst_dir = Path.Build.parent_exn dst |> Path.build in
+         match output with
+         | Output_kind.Private_library_or_emit _ ->
+           let into_dir =
+             let into_dir =
+               (* interpret `(into ...)` relative to the dune file, not the `target_dir` *)
+               Option.map p.into ~f:(fun into -> Path.relative dir into.dir)
+               |> Option.value ~default:dir
+             in
+             let segment =
+               Path.descendant src_dir ~of_:dir
+               |> Option.value_exn
+               |> Path.as_in_source_tree_exn
+             in
+             Path.append_source into_dir segment
+           in
+           Path.reach ~from:dst_dir into_dir
+         | Public_library { lib_dir; output_dir; target_dir = _ } ->
+           let into_dir =
+             let root = Dune_project.root project in
+             let into_dir = Path.Source.append_local root output_dir in
+             let segment = Path.drop_prefix_exn src_dir ~prefix:lib_dir in
+             Path.Source.append_local into_dir segment
+           in
+           let from = Path.drop_build_context_exn dst_dir |> Path.source in
+           Path.reach ~from (Path.source into_dir)
+       in
+       let into =
+         let loc =
+           Option.map p.into ~f:(fun x -> x.loc) |> Option.value ~default:Loc.none
+         in
+         Some { Rule.Promote.Into.loc; dir = new_into_dir }
+       in
+       Promote { p with into })
 ;;
 
 let build_js
@@ -273,8 +281,8 @@ let build_js
       ~local_modules_and_obj_dir
       m
   =
+  let project = Scope.project scope in
   let melange_extension_version =
-    let project = Scope.project scope in
     Dune_project.find_extension_version project Dune_lang.Melange.syntax
     |> Option.value_exn
   in
@@ -282,12 +290,15 @@ let build_js
   Memo.parallel_iter module_systems ~f:(fun (module_system, js_ext) ->
     let js_output = make_js_name ~output ~js_ext m in
     let mode =
-      if promote_in_source
-      then (
-        let dune_project = Scope.project scope in
-        let src = Module.file m ~ml_kind:Impl |> Option.value_exn in
-        compute_promote_in_source ~dune_project ~dir ~output ~mode ~src ~dst:js_output)
-      else mode
+      let src = Module.file m ~ml_kind:Impl |> Option.value_exn in
+      compute_promote_in_source
+        ~promote_in_source
+        ~project
+        ~dir
+        ~output
+        ~mode
+        ~src
+        ~dst:js_output
     in
     let build =
       let command =
@@ -547,11 +558,14 @@ let setup_runtime_assets_rules =
       let+ dirs =
         Memo.parallel_map copy ~f:(fun (src, dst) ->
           let mode =
-            if promote_in_source
-            then (
-              let dune_project = Scope.project scope in
-              compute_promote_in_source ~dune_project ~dir ~output ~mode ~src ~dst)
-            else mode
+            compute_promote_in_source
+              ~promote_in_source
+              ~project:(Scope.project scope)
+              ~dir
+              ~output
+              ~mode
+              ~src
+              ~dst
           in
           Memo.Option.bind (Path.as_in_build_dir src) ~f:find_directory_target_ancestor
           >>= function
@@ -840,10 +854,16 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
     let dir = Dir_contents.dir dir_contents in
     Melange_stanzas.Emit.target_dir ~dir mel
   in
-  let mode =
-    match mel.promote with
-    | None -> Rule.Mode.Standard
-    | Some p -> Promote p
+  let* mode =
+    let* expander = Super_context.expander sctx ~dir in
+    let mode =
+      match mel.promote with
+      | None -> Rule_mode.Standard
+      | Some p -> Promote p
+    in
+    match should_promote_in_source scope with
+    | true -> Rule_mode_expand.expand_path ~expander ~dir mode
+    | false -> Rule_mode_expand.expand_str ~expander mode
   in
   let* compile_info = compile_info ~scope mel in
   let* requires_link_resolve =

@@ -9,7 +9,7 @@ type origin =
 type t =
   { add_line_directive : bool
   ; alias : Alias_name.t option
-  ; mode : Rule.Mode.t
+  ; mode : Rule_mode.t
   ; enabled_if : Blang.t
   ; files : String_with_vars.t
   ; only_sources : Blang.t
@@ -32,7 +32,7 @@ let decode_only_sources =
 let long_form =
   let check = Syntax.since Stanza.syntax (2, 7) in
   let+ alias = field_o "alias" (check >>> Alias.decode)
-  and+ mode = field "mode" ~default:Rule.Mode.Standard (check >>> Rule_mode_decoder.decode)
+  and+ mode = field "mode" ~default:Rule_mode.Standard (check >>> Rule_mode_decoder.decode)
   and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (2, 8)) ()
   and+ files = field "files" (check >>> String_with_vars.decode)
   and+ only_sources =

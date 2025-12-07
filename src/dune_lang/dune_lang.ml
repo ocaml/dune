@@ -58,6 +58,7 @@ module Menhir_env = Menhir_env
 module Dune_env = Dune_env
 module Js_of_ocaml = Js_of_ocaml
 module Menhir = Menhir
+module Rule_mode = Rule_mode
 module Rule_mode_decoder = Rule_mode_decoder
 module Mode_conf = Mode_conf
 module Oxcaml = Oxcaml

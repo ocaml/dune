@@ -721,11 +721,12 @@ module Parameterised = struct
 
   and applied_name t =
     let open Resolve.O in
-    let+ name = resolve_main_module_name t
-    and+ args = applied_modules t in
-    match name with
-    | Some name -> { Parameterised_name.name; args }
+    resolve_main_module_name t
+    >>= function
     | None -> Code_error.raise "library missing main module name" [ "lib", to_dyn t ]
+    | Some name ->
+      let+ args = applied_modules t in
+      { Parameterised_name.name; args }
   ;;
 end
 

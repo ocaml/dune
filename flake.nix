@@ -4,7 +4,7 @@
     nixpkgs-old.url = "github:nixos/nixpkgs/7f50d4b33363d3948543f6a02b90a2c66852a453";
     flake-utils.url = "github:numtide/flake-utils";
     melange = {
-      url = "github:melange-re/melange/refs/tags/6.0.0-54";
+      url = "github:melange-re/melange/v6-54";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     ocaml-overlays = {

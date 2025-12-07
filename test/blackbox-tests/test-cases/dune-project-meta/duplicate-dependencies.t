@@ -17,8 +17,9 @@ Exact duplicate without constraints should warn
   File "dune-project", line 6, characters 16-21:
   6 |  (depends ocaml ocaml))
                       ^^^^^
-  Warning: Duplicate dependency ocaml in 'depends' field.
-  Hint: Remove one of the duplicate entries.
+  Warning: Duplicate dependency on package ocaml in 'depends' field.
+  Hint: Duplicate dependencies on the same package are redundant. If you want
+  to specify multiple constraints, combine them using (and ...).
 
 Exact duplicate with same constraint should warn
 -------------------------------------------------
@@ -36,13 +37,15 @@ Exact duplicate with same constraint should warn
   File "dune-project", line 6, characters 28-45:
   6 |  (depends (ocaml (>= 4.08)) (ocaml (>= 4.08))))
                                   ^^^^^^^^^^^^^^^^^
-  Warning: Duplicate dependency (ocaml (>= 4.08)) in 'depends' field.
-  Hint: Remove one of the duplicate entries.
+  Warning: Duplicate dependency on package (ocaml (>= 4.08)) in 'depends'
+  field.
+  Hint: Duplicate dependencies on the same package are redundant. If you want
+  to specify multiple constraints, combine them using (and ...).
 
-Same package with different constraints is allowed
----------------------------------------------------
+Same package with different constraints should warn
+----------------------------------------------------
 
-This is valid opam syntax for specifying version ranges.
+Multiple constraints on the same package should be combined using (and ...).
 
   $ cat >dune-project <<EOF
   > (lang dune 3.0)
@@ -54,6 +57,12 @@ This is valid opam syntax for specifying version ranges.
   > EOF
 
   $ dune build
+  File "dune-project", line 6, characters 28-43:
+  6 |  (depends (ocaml (>= 4.08)) (ocaml (< 5.0))))
+                                  ^^^^^^^^^^^^^^^
+  Warning: Duplicate dependency on package (ocaml (< 5.0)) in 'depends' field.
+  Hint: Duplicate dependencies on the same package are redundant. If you want
+  to specify multiple constraints, combine them using (and ...).
 
 Multiple duplicates in the same field
 --------------------------------------
@@ -71,13 +80,15 @@ Multiple duplicates in the same field
   File "dune-project", line 6, characters 16-21:
   6 |  (depends ocaml ocaml dune dune))
                       ^^^^^
-  Warning: Duplicate dependency ocaml in 'depends' field.
-  Hint: Remove one of the duplicate entries.
+  Warning: Duplicate dependency on package ocaml in 'depends' field.
+  Hint: Duplicate dependencies on the same package are redundant. If you want
+  to specify multiple constraints, combine them using (and ...).
   File "dune-project", line 6, characters 27-31:
   6 |  (depends ocaml ocaml dune dune))
                                  ^^^^
-  Warning: Duplicate dependency dune in 'depends' field.
-  Hint: Remove one of the duplicate entries.
+  Warning: Duplicate dependency on package dune in 'depends' field.
+  Hint: Duplicate dependencies on the same package are redundant. If you want
+  to specify multiple constraints, combine them using (and ...).
 
 Duplicates in conflicts field
 ------------------------------
@@ -95,8 +106,9 @@ Duplicates in conflicts field
   File "dune-project", line 6, characters 17-21:
   6 |  (conflicts base base))
                        ^^^^
-  Warning: Duplicate dependency base in 'conflicts' field.
-  Hint: Remove one of the duplicate entries.
+  Warning: Duplicate dependency on package base in 'conflicts' field.
+  Hint: Duplicate dependencies on the same package are redundant. If you want
+  to specify multiple constraints, combine them using (and ...).
 
 Duplicates in depopts field
 ----------------------------
@@ -114,13 +126,14 @@ Duplicates in depopts field
   File "dune-project", line 6, characters 14-17:
   6 |  (depopts lwt lwt))
                     ^^^
-  Warning: Duplicate dependency lwt in 'depopts' field.
-  Hint: Remove one of the duplicate entries.
+  Warning: Duplicate dependency on package lwt in 'depopts' field.
+  Hint: Duplicate dependencies on the same package are redundant. If you want
+  to specify multiple constraints, combine them using (and ...).
 
 Mix of valid and invalid duplicates
 ------------------------------------
 
-Different constraints on the same package are valid, but exact duplicates are not.
+Even different constraints on the same package are now warned about.
 
   $ cat >dune-project <<EOF
   > (lang dune 3.0)
@@ -136,11 +149,18 @@ Different constraints on the same package are valid, but exact duplicates are no
   > EOF
 
   $ dune build
+  File "dune-project", line 8, characters 2-17:
+  8 |   (ocaml (< 5.0))
+        ^^^^^^^^^^^^^^^
+  Warning: Duplicate dependency on package (ocaml (< 5.0)) in 'depends' field.
+  Hint: Duplicate dependencies on the same package are redundant. If you want
+  to specify multiple constraints, combine them using (and ...).
   File "dune-project", line 10, characters 2-17:
   10 |   (dune (>= 2.0))))
          ^^^^^^^^^^^^^^^
-  Warning: Duplicate dependency (dune (>= 2.0)) in 'depends' field.
-  Hint: Remove one of the duplicate entries.
+  Warning: Duplicate dependency on package (dune (>= 2.0)) in 'depends' field.
+  Hint: Duplicate dependencies on the same package are redundant. If you want
+  to specify multiple constraints, combine them using (and ...).
 
 Triple duplicate
 ----------------
@@ -160,13 +180,15 @@ When the same dependency appears three times, each duplicate is reported.
   File "dune-project", line 6, characters 16-21:
   6 |  (depends ocaml ocaml ocaml))
                       ^^^^^
-  Warning: Duplicate dependency ocaml in 'depends' field.
-  Hint: Remove one of the duplicate entries.
+  Warning: Duplicate dependency on package ocaml in 'depends' field.
+  Hint: Duplicate dependencies on the same package are redundant. If you want
+  to specify multiple constraints, combine them using (and ...).
   File "dune-project", line 6, characters 22-27:
   6 |  (depends ocaml ocaml ocaml))
                             ^^^^^
-  Warning: Duplicate dependency ocaml in 'depends' field.
-  Hint: Remove one of the duplicate entries.
+  Warning: Duplicate dependency on package ocaml in 'depends' field.
+  Hint: Duplicate dependencies on the same package are redundant. If you want
+  to specify multiple constraints, combine them using (and ...).
 
 Duplicate with filter constraint
 ---------------------------------
@@ -184,5 +206,7 @@ Duplicate with filter constraint
   File "dune-project", line 6, characters 32-53:
   6 |  (depends (alcotest :with-test) (alcotest :with-test)))
                                       ^^^^^^^^^^^^^^^^^^^^^
-  Warning: Duplicate dependency (alcotest :with-test) in 'depends' field.
-  Hint: Remove one of the duplicate entries.
+  Warning: Duplicate dependency on package (alcotest :with-test) in 'depends'
+  field.
+  Hint: Duplicate dependencies on the same package are redundant. If you want
+  to specify multiple constraints, combine them using (and ...).

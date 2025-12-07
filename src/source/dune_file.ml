@@ -60,25 +60,23 @@ module Dir_map = struct
     ;;
 
     module Files = struct
-      type t = Predicate_lang.Glob.t
+      type t = (Loc.t * Predicate_lang.Glob.t) option
 
-      let default = Predicate_lang.true_
+      let default = None
 
-      let create = function
-        | None -> default
-        | Some (_loc, glob) -> glob
-      ;;
-
-      let eval glob ~files =
-        Filename.Set.filter files ~f:(fun filename ->
-          Predicate_lang.Glob.test glob ~standard:default filename)
+      let eval t ~files =
+        match t with
+        | None -> files
+        | Some (_, glob) ->
+          Filename.Set.filter files ~f:(fun filename ->
+            Predicate_lang.Glob.test glob ~standard:Predicate_lang.true_ filename)
       ;;
     end
 
     type t =
       { sexps : Dune_lang.Ast.t list
       ; subdir_status : Source_dir_status.Spec.input
-      ; files : (Loc.t * Predicate_lang.Glob.t) option
+      ; files : Files.t
       }
 
     let to_dyn { sexps; subdir_status = _; files = _ } =
@@ -505,7 +503,7 @@ let get_static_sexp t = (Dir_map.root t.plain).sexps
 let kind t = t.kind
 let path t = t.path
 let sub_dir_status t = Source_dir_status.Spec.create (Dir_map.root t.plain).subdir_status
-let files t = Files.create (Dir_map.root t.plain).files
+let files t = (Dir_map.root t.plain).files
 
 let load_plain sexps ~file ~from_parent ~project =
   let+ parsed =

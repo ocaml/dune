@@ -38,7 +38,7 @@ dir.
   File "bar/dune", line 1, characters 16-19:
   1 | (data_only_dirs foo)
                       ^^^
-  Error: This stanza stanza was already specified at:
+  Error: This stanza was already specified at:
   dune:1
   [1]
 

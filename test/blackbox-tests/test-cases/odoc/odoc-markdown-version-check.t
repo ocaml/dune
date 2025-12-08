@@ -77,12 +77,14 @@ Create a simple bash script that mocks odoc 2.0.0
   > EOF
   $ chmod +x odoc
 
-  $ PATH=.:$PATH dune build @doc-markdown
-  Error: No rule found for _doc/_markdown/foo
-  -> required by alias doc-markdown
-  Error: No rule found for _doc/_markdown/index.md
-  -> required by alias doc-markdown
+Without verbose, no warning is shown:
+  $ PATH=.:$PATH dune build @doc-markdown 2>&1 | grep -i "warning"
   [1]
+
+With --display verbose, the warning is shown:
+  $ PATH=.:$PATH dune build @doc-markdown --display verbose 2>&1 | grep -i "warning\|version 3.1.0"
+  Warning: odoc version 2.0.0 is installed, but markdown documentation requires
+  version 3.1.0 or higher.
   $ test -d _build/default/_doc/_markdown
   [1]
 
@@ -214,11 +216,13 @@ Change the odoc script to mock odoc 3.1.0
   > EOF
   $ chmod +x odoc
 
-  $ PATH=.:$PATH dune build @doc-markdown
-  Error: No rule found for _doc/_markdown/foo
-  -> required by alias doc-markdown
-  Error: No rule found for _doc/_markdown/index.md
-  -> required by alias doc-markdown
+Without verbose, no warning is shown:
+  $ PATH=.:$PATH dune build @doc-markdown 2>&1 | grep -i "warning"
   [1]
+
+With --display verbose, the warning is shown:
+  $ PATH=.:$PATH dune build @doc-markdown --display verbose 2>&1 | grep -i "warning\|version 3.1.0"
+  Warning: Could not determine odoc version. Markdown documentation requires
+  odoc version 3.1.0 or higher.
   $ test -d _build/default/_doc/_markdown
   [1]

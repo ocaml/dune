@@ -10,6 +10,10 @@
       url = "github:nix-ocaml/nix-overlays";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    odoc-src = {
+      url = "github:ocaml/odoc/d8460cdaa2b91a03434a9a045d673703b7fabfb2";
+      flake = false;
+    };
     oxcaml = {
       url = "github:oxcaml/oxcaml";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -26,6 +30,7 @@
       nixpkgs,
       melange,
       ocaml-overlays,
+      odoc-src,
       oxcaml,
       oxcaml-opam-repository,
     }:
@@ -43,6 +48,24 @@
                 utop = osuper.utop.overrideAttrs {
                   dontGzipMan = true;
                 };
+                odoc-parser = osuper.odoc-parser.overrideAttrs (old: {
+                  version = "3.1.0";
+                  src = odoc-src;
+                  patches = [ ];
+                  postPatch = ''
+                    # Substitute version placeholder since we're building from source
+                    find . -type f -name "*.ml" -exec sed -i 's/%%VERSION%%/3.1.0/g' {} +
+                  '';
+                });
+                odoc = osuper.odoc.overrideAttrs (old: {
+                  version = "3.1.0";
+                  src = odoc-src;
+                  patches = [ ];
+                  postPatch = ''
+                    # Substitute version placeholder since we're building from source
+                    find . -type f -name "*.ml" -exec sed -i 's/%%VERSION%%/3.1.0/g' {} +
+                  '';
+                });
               }
             );
           })

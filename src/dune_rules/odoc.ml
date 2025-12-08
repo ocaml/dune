@@ -300,6 +300,8 @@ module Version = struct
        | Ordering.Lt -> false
        | Ordering.Eq | Ordering.Gt -> true)
   ;;
+
+  let to_string (major, minor, patch) = Printf.sprintf "%d.%d.%d" major minor patch
 end
 
 let odoc_base_flags quiet build_dir =
@@ -368,6 +370,39 @@ let supports_doc_markdown sctx =
   | Ok odoc_path ->
     let+ version = get_odoc_version odoc_path in
     Version.higher_than_310 version
+;;
+
+let warn_if_markdown_not_supported sctx =
+  match !Clflags.display with
+  | Quiet | Short -> Memo.return ()
+  | Verbose ->
+    let* odoc_prog = program sctx in
+    (match odoc_prog with
+     | Error _ ->
+       User_warning.emit
+         [ Pp.textf
+             "odoc could not be found. Markdown documentation requires odoc version \
+              3.1.0 or higher."
+         ];
+       Memo.return ()
+     | Ok odoc_path ->
+       let+ version = get_odoc_version odoc_path in
+       (match version with
+        | None ->
+          User_warning.emit
+            [ Pp.textf
+                "Could not determine odoc version. Markdown documentation requires odoc \
+                 version 3.1.0 or higher."
+            ]
+        | Some v ->
+          if not (Version.higher_than_310 (Some v))
+          then
+            User_warning.emit
+              [ Pp.textf
+                  "odoc version %s is installed, but markdown documentation requires \
+                   version 3.1.0 or higher."
+                  (Version.to_string v)
+              ]))
 ;;
 
 let odoc_dev_tool_exe_path_building_if_necessary () =
@@ -1344,7 +1379,9 @@ let gen_rules sctx ~dir rest =
     let ctx = Super_context.context sctx in
     let* is_markdown_supported = supports_doc_markdown sctx in
     if not is_markdown_supported
-    then Memo.return Gen_rules.no_rules
+    then
+      let+ () = warn_if_markdown_not_supported sctx in
+      Gen_rules.no_rules
     else (
       let all_package_dirs =
         Package.Name.Map.to_list packages

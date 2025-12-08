@@ -14,6 +14,7 @@ end
 
 type job =
   { pid : Pid.t
+  ; is_process_group_leader : bool
   ; ivar : Proc.Process_info.t Fiber.Ivar.t
   }
 
@@ -424,9 +425,9 @@ end = struct
   end
 end
 
-let kill_process_group pid signal =
-  match Sys.win32 with
-  | false ->
+let kill_process_group pid signal ~is_process_group_leader =
+  match (not Sys.win32) && is_process_group_leader with
+  | true ->
     (* Send to the entire process group so that any child processes created by
        the job are also terminated.
 
@@ -444,10 +445,15 @@ let kill_process_group pid signal =
        we call [wait] in parallel with [kill]. *)
     (try Unix.kill (-Pid.to_int pid) signal with
      | Unix.Unix_error _ -> ())
-  | true ->
+  | false ->
     (* Process groups are not supported on Windows (or even if they are, [spawn]
        does not know how to use them), so we're only sending the signal to the
-       job itself. *)
+       job itself.
+
+       There can also be other situations where [Spawn] explicitly does not
+       have a process group id that we know about. This happens when
+       [is_process_group_leader] is [false]. In those cases, it doesn't
+       make sense to pretend the pid corresponds to the correct process group. *)
     (try Unix.kill (Pid.to_int pid) signal with
      | Unix.Unix_error _ -> ())
 ;;
@@ -534,7 +540,8 @@ end = struct
 
   let killall t signal =
     Mutex.lock t.mutex;
-    Process_table.iter t ~f:(fun job -> kill_process_group job.pid signal);
+    Process_table.iter t ~f:(fun { pid; is_process_group_leader; _ } ->
+      kill_process_group pid signal ~is_process_group_leader);
     Mutex.unlock t.mutex
   ;;
 
@@ -868,9 +875,9 @@ let with_job_slot f =
     f t.cancel t.config)
 ;;
 
-let wait_for_process t pid =
+let wait_for_process t pid ~is_process_group_leader =
   let ivar = Fiber.Ivar.create () in
-  Process_watcher.register_job t.process_watcher { pid; ivar };
+  Process_watcher.register_job t.process_watcher { pid; is_process_group_leader; ivar };
   Fiber.Ivar.read ivar
 ;;
 
@@ -881,7 +888,7 @@ type termination_reason =
 
 (* We use this version privately in this module whenever we can pass the
    scheduler explicitly *)
-let wait_for_build_process t pid =
+let wait_for_build_process t pid ~is_process_group_leader =
   let+ res, outcome =
     Fiber.Cancel.with_handler
       t.cancel
@@ -889,10 +896,8 @@ let wait_for_build_process t pid =
         Process_watcher.killall t.process_watcher Sys.sigkill;
         Fiber.return ())
       (fun () ->
-         let+ r = wait_for_process t pid in
-         (* [kill_process_group] on Windows only kills the pid and by this
-            time the process should've exited anyway *)
-         if not Sys.win32 then kill_process_group pid Sys.sigterm;
+         let+ r = wait_for_process t pid ~is_process_group_leader in
+         kill_process_group pid Sys.sigterm ~is_process_group_leader;
          r)
   in
   ( res
@@ -1290,7 +1295,7 @@ module Run = struct
       | `Kill pid ->
         (* XXX this can't be right because if we ignore the fiber,
            we will not wait for the process *)
-        ignore (wait_for_build_process t pid : _ Fiber.t)
+        ignore (wait_for_build_process t pid ~is_process_group_leader:false : _ Fiber.t)
       | `Thunk f -> f ()
       | `No_op -> ());
     ignore (kill_and_wait_for_all_processes t : saw_shutdown);
@@ -1330,9 +1335,7 @@ let wait_for_process_with_timeout t pid waiter ~timeout_seconds ~is_process_grou
       Alarm_clock.await sleep
       >>| function
       | `Finished when Process_watcher.is_running t.process_watcher pid ->
-        if is_process_group_leader
-        then kill_process_group pid Sys.sigkill
-        else Unix.kill (Pid.to_int pid) Sys.sigkill;
+        kill_process_group pid Sys.sigkill ~is_process_group_leader;
         `Timed_out
       | _ -> `Finished
     and+ res, termination_reason =
@@ -1349,12 +1352,12 @@ let wait_for_process_with_timeout t pid waiter ~timeout_seconds ~is_process_grou
 let wait_for_build_process ?timeout_seconds ?(is_process_group_leader = false) pid =
   let* t = t () in
   match timeout_seconds with
-  | None -> wait_for_build_process t pid
+  | None -> wait_for_build_process t pid ~is_process_group_leader
   | Some timeout_seconds ->
     wait_for_process_with_timeout
       t
       pid
-      wait_for_build_process
+      (wait_for_build_process ~is_process_group_leader)
       ~timeout_seconds
       ~is_process_group_leader
 ;;

@@ -695,6 +695,7 @@ end
 type t =
   { started_at : float
   ; pid : Pid.t
+  ; is_process_group_leader : bool
   ; response_file : Path.t option
   ; stdout : Path.t option
   ; stderr : Path.t option
@@ -879,9 +880,9 @@ let report_process_finished
 
 let set_temp_dir_when_running_actions = ref true
 
-let await ~timeout_seconds { response_file; pid; _ } =
+let await ~timeout_seconds { response_file; pid; is_process_group_leader; _ } =
   let+ process_info, termination_reason =
-    Scheduler.wait_for_build_process ?timeout_seconds pid ~is_process_group_leader:true
+    Scheduler.wait_for_build_process ?timeout_seconds pid ~is_process_group_leader
   in
   Option.iter response_file ~f:Path.unlink_exn;
   process_info, termination_reason
@@ -990,6 +991,7 @@ let spawn
   Io.release stderr;
   { started_at
   ; pid
+  ; is_process_group_leader = Option.is_some setpgid
   ; response_file
   ; stdout = stdout_capture
   ; stderr = stderr_capture

@@ -1,17 +1,6 @@
 open Stdune
-open Dune_tests_common
 
-let () = init ()
-let buf = Buffer.create 0
-
-let c =
-  let write s = Buffer.add_string buf s in
-  let close () = () in
-  let flush () = () in
-  Dune_trace.create (Custom { write; close; flush }) ~extended_build_job_info:false
-;;
-
-let () =
+let%expect_test _ =
   let module Event = Chrome_trace.Event in
   let module Id = Chrome_trace.Id in
   let module Timestamp = Event.Timestamp in
@@ -30,22 +19,12 @@ let () =
         ~args:[ "foo", `Int 100 ]
     ]
   in
-  List.iter events ~f:(Dune_trace.emit c);
-  Dune_trace.close c
-;;
-
-let buffer_lines () = String.split_lines (Buffer.contents buf)
-
-let%expect_test _ =
-  Format.printf
-    "%a@."
-    Pp.to_fmt
-    (Pp.vbox (Pp.concat_map (buffer_lines ()) ~sep:Pp.cut ~f:Pp.verbatim));
+  List.iter events ~f:(fun event ->
+    Chrome_trace.Event.to_json event |> Dune_trace.Json.to_string |> print_endline);
   [%expect
     {|
-[{"args":{"foo":"bar"},"ph":"X","dur":1000000,"name":"foo","cat":"","ts":500000,"pid":0,"tid":0}
-,{"ph":"C","args":{"bar":250},"name":"cnt","cat":"","ts":500000,"pid":0,"tid":0}
-,{"args":{"foo":100},"ph":"b","id":"foo","name":"async","cat":"","ts":500000,"pid":0,"tid":0}
-]
-|}]
+    {"args":{"foo":"bar"},"ph":"X","dur":1000000,"name":"foo","cat":"","ts":500000,"pid":0,"tid":0}
+    {"ph":"C","args":{"bar":250},"name":"cnt","cat":"","ts":500000,"pid":0,"tid":0}
+    {"args":{"foo":100},"ph":"b","id":"foo","name":"async","cat":"","ts":500000,"pid":0,"tid":0}
+    |}]
 ;;

@@ -364,19 +364,13 @@ module Dir = struct
              fun t ~traverse ~trace_event_name ~f ->
                let start = Unix.gettimeofday () in
                let+ res = map_reduce t ~traverse ~trace_event_name ~f in
+               let stop = Unix.gettimeofday () in
                let event =
-                 let stop = Unix.gettimeofday () in
-                 let module Event = Chrome_trace.Event in
-                 let module Timestamp = Event.Timestamp in
-                 let dur = Timestamp.of_float_seconds (stop -. start) in
-                 let common =
-                   Event.common_fields
-                     ~name:(trace_event_name ^ ": " ^ Path.Source.to_string t.path)
-                     ~ts:(Timestamp.of_float_seconds start)
-                     ()
-                 in
-                 let args = [ "dir", `String (Path.Source.to_string t.path) ] in
-                 Event.complete common ~args ~dur
+                 Dune_trace.Event.scan_source
+                   ~name:trace_event_name
+                   ~start
+                   ~stop
+                   ~dir:t.path
                in
                Dune_trace.emit stats event;
                res)

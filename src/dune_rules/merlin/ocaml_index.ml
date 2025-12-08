@@ -44,6 +44,7 @@ let cctx_rules cctx =
     let obj_dir = Compilation_context.obj_dir cctx in
     let target = index_path_in_obj_dir obj_dir in
     let additional_libs =
+      let* () = Memo.return () in
       let scope = Compilation_context.scope cctx in
       if Dune_project.dune_version (Scope.project scope) >= (3, 17)
       then
@@ -85,6 +86,10 @@ let cctx_rules cctx =
     in
     (* Indexation also depends on the current stanza's modules *)
     let modules_deps =
+      Action_builder.memoize "index-module-deps"
+      @@
+      let open Action_builder.O in
+      let+ () = Action_builder.return () in
       let modes = Compilation_context.modes cctx in
       let cm_kind =
         if modes.ocaml.native || modes.ocaml.byte
@@ -92,16 +97,19 @@ let cctx_rules cctx =
         else Lib_mode.Cm_kind.(Melange Cmi)
       in
       (* We only index occurrences in user-written modules *)
-      Compilation_context.modules cctx
-      |> Modules.With_vlib.drop_vlib
-      |> Modules.fold_user_written ~init:[] ~f:(fun module_ acc ->
-        let cmts =
-          [ Ml_kind.Intf; Impl ]
-          |> List.filter_map ~f:(fun ml_kind ->
-            Obj_dir.Module.cmt_file obj_dir ~ml_kind ~cm_kind module_
-            |> Option.map ~f:Path.build)
-        in
-        List.rev_append cmts acc)
+      let paths =
+        Compilation_context.modules cctx
+        |> Modules.With_vlib.drop_vlib
+        |> Modules.fold_user_written ~init:[] ~f:(fun module_ acc ->
+          let cmts =
+            [ Ml_kind.Intf; Impl ]
+            |> List.filter_map ~f:(fun ml_kind ->
+              Obj_dir.Module.cmt_file obj_dir ~ml_kind ~cm_kind module_
+              |> Option.map ~f:Path.build)
+          in
+          List.rev_append cmts acc)
+      in
+      Command.Args.Deps paths
     in
     Command.run_dyn_prog
       ~dir:context_dir
@@ -109,7 +117,7 @@ let cctx_rules cctx =
       [ A "aggregate"
       ; A "-o"
       ; Target target
-      ; Deps modules_deps
+      ; Dyn modules_deps
       ; Dyn (Resolve.Memo.read additional_libs)
       ; Dyn (Resolve.Memo.read other_indexes_deps)
       ]

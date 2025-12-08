@@ -37,6 +37,19 @@ end
 
 type t = Package.t Package.Name.Map.t option
 
+let enumerate = function
+  | None -> `All
+  | Some m -> `Set (Package.Name.Set.of_keys m)
+;;
+
+let mem_all = Option.is_none
+
+let mem t name =
+  match t with
+  | None -> true
+  | Some map -> Package.Name.Map.mem map name
+;;
+
 let mask packages ~vendored : t =
   match Clflags.t () with
   | No_restriction -> None

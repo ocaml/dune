@@ -201,10 +201,10 @@ let rules ~sctx ~dir tests =
   let* stanzas = collect_stanzas ~dir
   and* with_package_mask =
     Dune_load.mask ()
+    >>| Only_packages.enumerate
     >>| function
-    | None -> fun _packages f -> f ()
-    | Some only ->
-      let only = Package.Name.Set.of_keys only in
+    | `All -> fun _packages f -> f ()
+    | `Set only ->
       fun packages f ->
         Memo.when_
           (Package.Name.Set.is_empty packages

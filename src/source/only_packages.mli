@@ -17,8 +17,11 @@ module Clflags : sig
   val set : t -> unit
 end
 
-type t = Package.t Package.Name.Map.t option
+type t
 
+val enumerate : t -> [ `Set of Package.Name.Set.t | `All ]
+val mem : t -> Package.Name.t -> bool
+val mem_all : t -> bool
 val mask : Package.t Package.Name.Map.t -> vendored:Package.Name.Set.t -> t
 val filter_packages : t -> Package.t Package.Name.Map.t -> Package.t Package.Name.Map.t
 val filter_packages_in_project : vendored:bool -> Dune_project.t -> Dune_project.t

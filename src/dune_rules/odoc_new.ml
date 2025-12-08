@@ -398,10 +398,7 @@ module Valid = struct
   let valid_libs_and_packages =
     let run (ctx, all, projects) =
       let* libs_and_pkgs =
-        let* mask =
-          let+ mask = Dune_load.mask () in
-          Option.map ~f:Package.Name.Map.keys mask
-        in
+        let* mask = Dune_load.mask () in
         Scope.DB.with_all ctx ~f:(fun find ->
           Memo.List.fold_left projects ~init:([], []) ~f:(fun (libs_acc, pkg_acc) proj ->
             let* vendored = Source_tree.is_vendored (Dune_project.root proj) in
@@ -415,13 +412,13 @@ module Valid = struct
               let+ libs_acc =
                 let+ libs = Lib.DB.all lib_db in
                 let libs =
-                  match mask with
-                  | None -> libs
-                  | Some mask ->
+                  if Only_packages.mem_all mask
+                  then libs
+                  else
                     Lib.Set.filter libs ~f:(fun lib ->
                       let info = Lib.info lib in
                       match Lib_info.package info with
-                      | Some p -> List.mem ~equal:Package.Name.equal mask p
+                      | Some p -> Only_packages.mem mask p
                       | None -> false)
                 in
                 (proj, lib_db, libs) :: libs_acc
@@ -429,10 +426,9 @@ module Valid = struct
               let pkg_acc =
                 let pkgs =
                   let proj_pkgs = Dune_project.packages proj |> Package.Name.Map.keys in
-                  match mask with
-                  | None -> proj_pkgs
-                  | Some m ->
-                    List.filter ~f:(List.mem ~equal:Package.Name.equal m) proj_pkgs
+                  if Only_packages.mem_all mask
+                  then proj_pkgs
+                  else List.filter ~f:(Only_packages.mem mask) proj_pkgs
                 in
                 pkgs @ pkg_acc
               in

@@ -1511,6 +1511,21 @@ module Write_disk = struct
     match Path.parent lock_dir_path_external with
     | Some parent_dir ->
       fun () ->
+        Log.log (fun () ->
+          let pkgs =
+            lock_dir.packages
+            |> Packages.to_pkg_list
+            |> List.map ~f:(fun (pkg : Pkg.t) ->
+              let name = pkg.info.name |> Package_name.to_string in
+              let version = pkg.info.version |> Package_version.to_string in
+              sprintf "%s.%s" name version)
+          in
+          let pp_pkgs = List.map pkgs ~f:Pp.text in
+          [ Pp.textf
+              "Dependency solution for %s:"
+              (Path.to_string_maybe_quoted lock_dir_path_external)
+          ; Pp.concat ~sep:Pp.space pp_pkgs
+          ]);
         Path.mkdir_p parent_dir;
         Temp.with_temp_dir ~parent_dir ~prefix:"dune" ~suffix:"lock" ~f:build
     | None ->

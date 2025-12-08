@@ -321,6 +321,7 @@ module Id : sig
 
   val to_dep_path_lib : t -> Dep_path.Entry.Lib.t
   val compare : t -> t -> Ordering.t
+  val hash : t -> int
 
   include Comparator.OPS with type t := t
 
@@ -351,6 +352,7 @@ end = struct
 
   include T
 
+  let hash = Poly.hash
   let to_dep_path_lib { path; name } = { Dep_path.Entry.Lib.path; name }
 
   include (Comparator.Operators (T) : Comparator.OPS with type t := T.t)
@@ -741,7 +743,7 @@ let wrapped t =
 
 (* We can't write a structural equality because of all the lazy fields *)
 let equal a b = Ordering.is_eq (compare a b)
-let hash = Poly.hash
+let hash x = Id.hash x.unique_id
 
 include Comparable.Make (T)
 

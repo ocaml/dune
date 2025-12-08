@@ -243,6 +243,49 @@ module Flags = struct
   ;;
 end
 
+module Version = struct
+  type t = int * int * int (* major * minor * patch *)
+
+  let of_string s : t option =
+    (* strip any suffix *)
+    let s =
+      match
+        String.findi s ~f:(function
+          | '+' | '-' | '~' -> true
+          | _ -> false)
+      with
+      | None -> s
+      | Some i -> String.take s i
+    in
+    try
+      match String.split s ~on:'.' with
+      | [ major; minor; patch ] ->
+        Some (int_of_string major, int_of_string minor, int_of_string patch)
+      | [ major; minor ] -> Some (int_of_string major, int_of_string minor, 0)
+      | _ -> None
+    with
+    | _ -> None
+  ;;
+
+  let compare (ma1, mi1, pa1) (ma2, mi2, pa2) =
+    match Int.compare ma1 ma2 with
+    | Ordering.Eq ->
+      (match Int.compare mi1 mi2 with
+       | Ordering.Eq -> Int.compare pa1 pa2
+       | n -> n)
+    | n -> n
+  ;;
+
+  let higher_than_310 version =
+    match version with
+    | None -> false
+    | Some v ->
+      (match compare v (3, 1, 0) with
+       | Ordering.Lt -> false
+       | Ordering.Eq | Ordering.Gt -> true)
+  ;;
+end
+
 let odoc_base_flags quiet build_dir =
   let open Action_builder.O in
   let+ conf = Flags.get ~dir:build_dir in
@@ -252,6 +295,63 @@ let odoc_base_flags quiet build_dir =
        artifact (e.g. stdlib.cmti) - so no point in warn-error *)
     if quiet then Command.Args.S [] else A "--warn-error"
   | Nonfatal -> S []
+;;
+
+let get_odoc_version_impl bin =
+  let* () =
+    match Path.as_in_build_dir bin with
+    | Some p -> Build_system.build_file (Path.build p)
+    | None -> Memo.return ()
+  in
+  Memo.of_reproducible_fiber
+  @@
+  let open Fiber.O in
+  let+ output, exit_code =
+    Process.run_capture_lines
+      ~display:Quiet
+      ~stderr_to:
+        (Process.Io.make_stderr
+           ~output_on_success:Swallow
+           ~output_limit:Execution_parameters.Action_output_limit.default)
+      Return
+      bin
+      [ "--version" ]
+  in
+  output, exit_code
+;;
+
+let odoc_version_memo =
+  Memo.create "odoc-version" ~input:(module Path) get_odoc_version_impl
+;;
+
+let get_odoc_version odoc_path =
+  let open Memo.O in
+  let+ output, exit_code = Memo.exec odoc_version_memo odoc_path in
+  if exit_code <> 0
+  then None
+  else (
+    match output with
+    | [ version_line ] -> Version.of_string version_line
+    | _ -> None)
+;;
+
+let program sctx =
+  let ctx = Super_context.context sctx in
+  Super_context.resolve_program_memo
+    sctx
+    ~dir:(Context.build_dir ctx)
+    ~where:Original_path
+    "odoc"
+    ~loc:None
+;;
+
+let supports_doc_markdown sctx =
+  let* odoc_prog = program sctx in
+  match odoc_prog with
+  | Error _ -> Memo.return false
+  | Ok odoc_path ->
+    let+ version = get_odoc_version odoc_path in
+    Version.higher_than_310 version
 ;;
 
 let odoc_dev_tool_exe_path_building_if_necessary () =

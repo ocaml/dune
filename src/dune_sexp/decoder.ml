@@ -249,6 +249,7 @@ let capture = Capture
 let field_o name ?on_dup t = Field_opt { name; on_dup; t }
 let fields t = Fields_parser t
 let traverse l ~f = Traverse (l, f)
+let raw = Next Fun.id
 
 let end_of_list : type a. values context -> a =
   fun (Values (loc, cstr, _)) ->
@@ -480,8 +481,7 @@ and eval : type a k. (a, k) parser -> k context -> k -> a * k =
        | Values (loc, cstr, _) -> Kind.Values (loc, cstr)
        | Fields (loc, cstr, _) -> Fields (loc, cstr))
     , state )
-  | Leftover_fields ->
-    leftover_fields (Name.Map.keys state.unparsed) (Next Fun.id) ctx state
+  | Leftover_fields -> leftover_fields (Name.Map.keys state.unparsed) raw ctx state
   | Fields_mutually_exclusive { on_dup; default; fields } ->
     fields_mutually_exclusive ~on_dup ~default ~fields ctx state
   | Lazy p -> eval (Lazy.force p) ctx state
@@ -774,7 +774,6 @@ let ( <|> ) x y =
 
 let fix f = Fix f
 let located t = Located t
-let raw = next Fun.id
 
 let basic_loc desc f =
   next (function

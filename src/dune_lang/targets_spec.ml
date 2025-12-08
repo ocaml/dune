@@ -43,23 +43,25 @@ type 'a t =
   | Static of 'a Static.t
   | Infer
 
-let decode_target ~allow_directory_targets =
+let decode_target =
   let module K = Kind in
   let open Dune_sexp.Decoder in
-  let file =
-    let+ file = String_with_vars.decode in
-    file, K.File
-  in
-  let dir =
-    let+ dir = sum ~force_parens:true [ "dir", String_with_vars.decode ] in
-    if not allow_directory_targets
-    then
-      User_error.raise
-        ~loc:(String_with_vars.loc dir)
-        [ Pp.text "Directory targets require the 'directory-targets' extension" ];
-    dir, K.Directory
-  in
-  file <|> dir
+  let dir = sum ~force_parens:true [ "dir", String_with_vars.decode ] in
+  fun ~allow_directory_targets ->
+    let file =
+      let+ file = String_with_vars.decode in
+      file, K.File
+    in
+    let dir =
+      let+ dir = dir in
+      if not allow_directory_targets
+      then
+        User_error.raise
+          ~loc:(String_with_vars.loc dir)
+          [ Pp.text "Directory targets require the 'directory-targets' extension" ];
+      dir, K.Directory
+    in
+    file <|> dir
 ;;
 
 let decode_static ~allow_directory_targets =

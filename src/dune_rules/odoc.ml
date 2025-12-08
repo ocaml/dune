@@ -78,6 +78,7 @@ type odoc_artefact =
   ; odocl_file : Path.Build.t
   ; html_file : Path.Build.t
   ; json_file : Path.Build.t
+  ; markdown_file : Path.Build.t
   }
 
 let add_rule sctx =
@@ -97,6 +98,7 @@ module Paths = struct
   ;;
 
   let html_root ctx = root ctx ++ "_html"
+  let markdown_root ctx = root ctx ++ "_markdown"
   let odocl_root ctx = root ctx ++ "_odocls"
 
   let add_pkg_lnu base m =
@@ -108,40 +110,47 @@ module Paths = struct
   ;;
 
   let html ctx m = add_pkg_lnu (html_root ctx) m
+  let markdown ctx m = add_pkg_lnu (markdown_root ctx) m
   let odocl ctx m = add_pkg_lnu (odocl_root ctx) m
   let gen_mld_dir ctx pkg = root ctx ++ "_mlds" ++ Package.Name.to_string pkg
   let odoc_support ctx = html_root ctx ++ odoc_support_dirname
   let toplevel_index ctx = html_root ctx ++ "index.html"
+  let markdown_index ctx = markdown_root ctx ++ "index.md"
 end
 
 module Output_format = struct
   type t =
     | Html
     | Json
+    | Markdown
 
-  let all = [ Html; Json ]
+  let all = [ Html; Json; Markdown ]
   let iter ~f = Memo.parallel_iter all ~f
 
   let extension = function
     | Html -> ".html"
     | Json -> ".html.json"
+    | Markdown -> ".md"
   ;;
 
   let args = function
     | Html -> Command.Args.empty
     | Json -> A "--as-json"
+    | Markdown -> Command.Args.empty
   ;;
 
   let target t odoc_file =
     match t with
     | Html -> odoc_file.html_file
     | Json -> odoc_file.json_file
+    | Markdown -> odoc_file.markdown_file
   ;;
 
   let alias t ~dir =
     match t with
     | Html -> Alias.make Alias0.doc ~dir
     | Json -> Alias.make Alias0.doc_json ~dir
+    | Markdown -> Alias.make Alias0.doc_markdown ~dir
   ;;
 
   let toplevel_index_path format ctx =
@@ -149,8 +158,15 @@ module Output_format = struct
     match format with
     | Html -> base
     | Json -> Path.Build.extend_basename base ~suffix:".json"
+    | Markdown -> Paths.markdown_index ctx
   ;;
 end
+
+let output_dir_for_format ctx format target =
+  match (format : Output_format.t) with
+  | Html | Json -> Paths.html ctx target
+  | Markdown -> Paths.markdown ctx target
+;;
 
 module Dep : sig
   (** [format_alias output ctx target] returns the alias that depends on all
@@ -170,7 +186,7 @@ module Dep : sig
     These dependencies may be used using the [deps] function *)
   val setup_deps : Context.t -> target -> Path.Set.t -> unit Memo.t
 end = struct
-  let format_alias f ctx m = Output_format.alias f ~dir:(Paths.html ctx m)
+  let format_alias f ctx m = Output_format.alias f ~dir:(output_dir_for_format ctx f m)
   let alias = Alias.make (Alias.Name.of_string ".odoc-all")
 
   let deps ctx pkg requires =
@@ -739,23 +755,44 @@ let entry_modules sctx ~pkg =
 
 let create_odoc ctx ~target odoc_file =
   let html_base = Paths.html ctx target in
+  let markdown_base = Paths.markdown ctx target in
   let odocl_base = Paths.odocl ctx target in
   let basename = Path.Build.basename odoc_file |> Filename.remove_extension in
   let odocl_file = odocl_base ++ (basename ^ ".odocl") in
   match target with
   | Lib _ ->
     let html_dir = html_base ++ Stdune.String.capitalize basename in
+    let markdown_dir = markdown_base ++ Stdune.String.capitalize basename in
     let file output =
-      html_dir ++ "index"
-      |> Path.Build.extend_basename ~suffix:(Output_format.extension output)
+      let dir =
+        match (output : Output_format.t) with
+        | Html | Json -> html_dir
+        | Markdown -> markdown_dir
+      in
+      dir ++ "index" |> Path.Build.extend_basename ~suffix:(Output_format.extension output)
     in
-    { odoc_file; odocl_file; html_file = file Html; json_file = file Json }
+    { odoc_file
+    ; odocl_file
+    ; html_file = file Html
+    ; json_file = file Json
+    ; markdown_file = file Markdown
+    }
   | Pkg _ ->
     let file output =
-      html_base ++ (basename |> String.drop_prefix ~prefix:"page-" |> Option.value_exn)
+      let base =
+        match (output : Output_format.t) with
+        | Html | Json -> html_base
+        | Markdown -> markdown_base
+      in
+      base ++ (basename |> String.drop_prefix ~prefix:"page-" |> Option.value_exn)
       |> Path.Build.extend_basename ~suffix:(Output_format.extension output)
     in
-    { odoc_file; odocl_file; html_file = file Html; json_file = file Json }
+    { odoc_file
+    ; odocl_file
+    ; html_file = file Html
+    ; json_file = file Json
+    ; markdown_file = file Markdown
+    }
 ;;
 
 let check_mlds_no_dupes ~pkg ~mlds =
@@ -913,6 +950,7 @@ let out_file (output : Output_format.t) odoc =
   match output with
   | Html -> odoc.html_file
   | Json -> odoc.json_file
+  | Markdown -> odoc.markdown_file
 ;;
 
 let out_files ctx (output : Output_format.t) odocs =
@@ -920,6 +958,7 @@ let out_files ctx (output : Output_format.t) odocs =
     match output with
     | Html -> [ Path.build (Paths.odoc_support ctx) ]
     | Json -> []
+    | Markdown -> []
   in
   Path.build (Output_format.toplevel_index_path output ctx)
   :: List.rev_append

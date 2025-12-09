@@ -371,7 +371,7 @@ let js_of_ocaml_rule
     Action_builder.map flags ~f:(fun flags ->
       match config with
       | None -> flags
-      | Some _ -> Config.remove_config_flags flags)
+      | Some (_ : Config.t Action_builder.t) -> Config.remove_config_flags flags)
   in
   Command.run_dyn_prog
     ~dir:(Path.build dir)
@@ -400,8 +400,8 @@ let js_of_ocaml_rule
               Action_builder.of_memo (Version.jsoo_version jsoo)
             in
             Command.Args.S
-              (List.map (Config.to_flags ~jsoo_version config) ~f:(fun x ->
-                 Command.Args.A x))))
+              (Config.to_flags ~jsoo_version config
+               |> List.map ~f:(fun x -> Command.Args.A x))))
     ; A "-o"
     ; Target target
     ; spec
@@ -617,18 +617,29 @@ let link_rule
     ~sourcemap
 ;;
 
-let build_cm' sctx ~dir ~in_context ~mode ~src ~target ~config ~shapes ~sourcemap =
+let build_cm'
+      sctx
+      ~dir
+      ~(in_context : Js_of_ocaml.In_context.t)
+      ~mode
+      ~src
+      ~target
+      ~config
+      ~shapes
+      ~sourcemap
+  =
   let spec =
     Command.Args.(
       S
         [ Dep src
         ; Dyn
             (let open Action_builder.O in
-             let* jsoo_version =
-               let* jsoo = jsoo ~dir sctx in
-               Action_builder.of_memo @@ Version.jsoo_version jsoo
-             in
+             let* () = Action_builder.return () in
              let+ shapes =
+               let* jsoo_version =
+                 let* jsoo = jsoo ~dir sctx in
+                 Action_builder.of_memo @@ Version.jsoo_version jsoo
+               in
                match jsoo_has_shapes jsoo_version with
                | false -> Action_builder.return []
                | true -> shapes
@@ -636,13 +647,12 @@ let build_cm' sctx ~dir ~in_context ~mode ~src ~target ~config ~shapes ~sourcema
              S (List.map shapes ~f:(fun s -> S [ A "--load-shape"; Dep s ])))
         ])
   in
-  let flags = in_context.Js_of_ocaml.In_context.flags in
   js_of_ocaml_rule
     sctx
     ~mode
     ~sub_command:Compile
     ~dir
-    ~flags
+    ~flags:in_context.flags
     ~spec
     ~target
     ~directory_targets:[]
@@ -650,23 +660,33 @@ let build_cm' sctx ~dir ~in_context ~mode ~src ~target ~config ~shapes ~sourcema
     ~sourcemap
 ;;
 
-let build_cm cctx ~dir ~in_context ~mode ~src ~obj_dir ~deps ~config:config_opt =
-  let name = with_js_ext ~mode (Path.basename src) in
-  let target = in_obj_dir ~obj_dir ~config:config_opt [ name ] in
+let build_cm
+      cctx
+      ~dir
+      ~(in_context : Js_of_ocaml.In_context.t)
+      ~mode
+      ~src
+      ~obj_dir
+      ~deps
+      ~config:config_opt
+  =
+  let target =
+    let name = with_js_ext ~mode (Path.basename src) in
+    in_obj_dir ~obj_dir ~config:config_opt [ name ]
+  in
   let sctx = Compilation_context.super_context cctx in
-  let ctx = Super_context.context sctx |> Context.build_context in
   let shapes =
+    let ctx = Super_context.context sctx |> Context.build_context in
     let open Action_builder.O in
     let+ libs = Resolve.Memo.read (Compilation_context.requires_link cctx)
     and+ deps = deps
     and+ config =
       match config_opt with
+      | Some config -> Action_builder.return config
       | None ->
-        let flags = in_context.Js_of_ocaml.In_context.flags in
-        js_of_ocaml_flags sctx ~dir ~mode flags
+        js_of_ocaml_flags sctx ~dir ~mode in_context.flags
         |> Action_builder.bind ~f:(fun (x : _ Js_of_ocaml.Flags.t) -> x.compile)
         |> Action_builder.map ~f:Config.of_flags
-      | Some config -> Action_builder.return config
     in
     let deps = List.filter deps ~f:(fun m -> Module.has m ~ml_kind:Impl) in
     (Path.build (in_build_dir ctx ~config [ "stdlib"; with_js_ext ~mode "stdlib.cma" ])
@@ -890,7 +910,7 @@ let build_exe
         ~runtime_files
         ~target:standalone_runtime
         ~flags
-        ~sourcemap:Js_of_ocaml.Sourcemap.Inline
+        ~sourcemap:Inline
       |> Super_context.add_rule ~loc sctx ~dir
     and+ () =
       link_rule

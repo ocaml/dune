@@ -1,3 +1,0 @@
-(library
- (name json)
- (libraries chrome_trace stdune))

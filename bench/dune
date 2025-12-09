@@ -4,7 +4,6 @@
  (libraries
   dune_trace
   dune_console
-  json
   stdune
   fiber
   dune_lang

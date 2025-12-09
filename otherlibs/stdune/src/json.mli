@@ -1,4 +1,12 @@
-type t = Chrome_trace.Json.t
+type t =
+  [ `Int of int
+  | `Float of float
+  | `String of string
+  | `List of t list
+  | `Bool of bool
+  | `Assoc of (string * t) list
+  | `Null
+  ]
 
 val to_string : t -> string
 val string : string -> t

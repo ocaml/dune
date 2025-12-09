@@ -453,6 +453,15 @@ let%expect_test "single-space comment after output" =
     ; start = { pos_lnum = 1; pos_bol = 0; pos_cnum = 2 }
     ; stop = { pos_lnum = 1; pos_bol = 0; pos_cnum = 8 }
     }
+    File "test.t", line 2, characters 0-8:
+    2 |   output
+        ^^^^^^^^
+
+    Comment [ " But local theme" ]
+    { pos_fname = "test.t"
+    ; start = { pos_lnum = 2; pos_bol = 9; pos_cnum = 9 }
+    ; stop = { pos_lnum = 2; pos_bol = 9; pos_cnum = 17 }
+    }
     File "test.t", line 4, characters 2-8:
     4 |   $ cmd2
           ^^^^^^

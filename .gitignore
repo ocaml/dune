@@ -30,3 +30,7 @@ nix/profiles/
 start/dune
 
 .claude/
+
+perf.data
+perf.data.old
+profile.json.gz

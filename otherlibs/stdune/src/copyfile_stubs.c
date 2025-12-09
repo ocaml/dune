@@ -64,10 +64,10 @@ CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
 
 #include <sys/sendfile.h>
 #include <sys/utsname.h>
-#include <linux/version.h>
 #include <dlfcn.h>
 #include <stdio.h>
 
+#define KERNEL_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
 #define FD_val(value) Int_val(value)
 
 CAMLprim value stdune_copyfile(value v_from, value v_to) {

@@ -437,3 +437,30 @@ let%expect_test "stray command continuation is a comment" =
     }
     |}]
 ;;
+
+(* Test for https://github.com/ocaml/dune/issues/12899: single-space comment
+   after output *)
+let%expect_test "single-space comment after output" =
+  test "  $ cmd1\n  output\n But local theme\n  $ cmd2";
+  [%expect
+    {|
+    File "test.t", line 1, characters 2-8:
+    1 |   $ cmd1
+          ^^^^^^
+
+    Command [ "cmd1" ]
+    { pos_fname = "test.t"
+    ; start = { pos_lnum = 1; pos_bol = 0; pos_cnum = 2 }
+    ; stop = { pos_lnum = 1; pos_bol = 0; pos_cnum = 8 }
+    }
+    File "test.t", line 4, characters 2-8:
+    4 |   $ cmd2
+          ^^^^^^
+
+    Command [ "cmd2" ]
+    { pos_fname = "test.t"
+    ; start = { pos_lnum = 4; pos_bol = 35; pos_cnum = 37 }
+    ; stop = { pos_lnum = 4; pos_bol = 35; pos_cnum = 43 }
+    }
+    |}]
+;;

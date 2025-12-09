@@ -74,8 +74,30 @@ Make a fake dune exe:
   $ chmod a+x bin/dune
 
   $ dune clean
+
 Try building in an environment where `dune` refers to the fake dune.
+
+Remember the path to the dune under test:
+
   $ DUNE=$(which dune)  # otherwise we would start by running the wrong dune
-  $ PATH=$PWD/bin:$PATH $DUNE build $pkg_root/$($dune pkg print-digest foo)/target/
-  $ PATH=$PWD/bin:$PATH $DUNE build $pkg_root/$($dune pkg print-digest bar)/target/
+
+Remember the digests, to not to have to call nested Dunes:
+
+  $ foo_digest=$(dune pkg print-digest foo)
+  $ bar_digest=$(dune pkg print-digest bar)
+
+Call Dune with an absolute PATH as argv[0]:
+
+  $ PATH=$PWD/bin:$PATH $DUNE build $pkg_root/$foo_digest/target/
+  $ PATH=$PWD/bin:$PATH $DUNE build $pkg_root/$bar_digest/target/
   Fake dune! (args: build -p bar @install)
+
+Call Dune with argv[0] set to a relative PATH. Make sure "dune" in PATH refers
+to the fake dune:
+
+  $ (PATH=$PWD/bin:$PATH exec -a "dune" sh -c "which dune")
+  $TESTCASE_ROOT/bin/dune
+
+Make sure that fake dune is not picked up when dune is called with argv[0] = "dune":
+
+  $ (PATH=$PWD/bin:$PATH exec -a "dune" $DUNE build $pkg_root/$foo_digest/target/)

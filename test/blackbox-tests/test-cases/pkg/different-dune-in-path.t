@@ -90,11 +90,9 @@ Remember the digests, to not to have to call nested Dunes:
 Call Dune with an absolute PATH as argv[0]:
 
   $ PATH=$fakepath $DUNE build "$pkg_root/$foo_digest/target/"
-  Fake dune! (args: build -p foo @install)
   $ PATH=$fakepath $DUNE build "$pkg_root/$bar_digest/target/"
 
 Make sure that fake dune is not picked up when dune is called with argv[0] = "dune":
 
   $ dune clean
   $ PATH=$fakepath dune_cmd exec-a "dune" $DUNE build "$pkg_root/$foo_digest/target/"
-  Fake dune! (args: build -p foo @install)

@@ -687,6 +687,7 @@ module Unprocessed = struct
         ~expander
     =
     let open Action_builder.O in
+    let context = Super_context.context sctx in
     let+ config =
       let* stdlib_dir =
         Action_builder.of_memo
@@ -717,7 +718,7 @@ module Unprocessed = struct
              | Some lib ->
                let+ libs =
                  let* linking =
-                   let+ ocaml = Context.ocaml (Super_context.context sctx) in
+                   let+ ocaml = Context.ocaml context in
                    Dune_project.implicit_transitive_deps
                      (Scope.project scope)
                      ocaml.version
@@ -732,7 +733,7 @@ module Unprocessed = struct
                List.concat [ requires_compile; libs ])
       in
       let+ flags = flags
-      and+ indexes = Ocaml_index.context_indexes sctx
+      and+ indexes = Ocaml_index.context_indexes context
       and+ deps_src_dirs, deps_obj_dirs = add_lib_dirs sctx mode requires_compile
       and+ hidden_src_dirs, hidden_obj_dirs =
         let requires_hidden = Resolve.peek requires_hidden |> Result.value ~default:[] in
@@ -755,7 +756,7 @@ module Unprocessed = struct
       ; indexes
       ; parameters
       }
-    and+ pp_config = pp_config t (Super_context.context sctx) ~expander in
+    and+ pp_config = pp_config t context ~expander in
     let per_file_config =
       (* And copy for each module the resulting pp flags *)
       modules

@@ -125,10 +125,7 @@ let cctx_rules cctx =
   Super_context.add_rule sctx ~dir aggregate
 ;;
 
-let context_indexes sctx =
-  Action_builder.of_memo
-  @@
-  let ctx = Super_context.context sctx in
+let context_indexes ctx =
   Context.name ctx
   |> Dune_load.dune_files
   >>| Dune_file.fold_static_stanzas ~init:[] ~f:(fun dune_file stanza acc ->
@@ -147,6 +144,7 @@ let context_indexes sctx =
     match obj with
     | None -> acc
     | Some obj_dir -> Path.build (index_path_in_obj_dir obj_dir) :: acc)
+  |> Action_builder.of_memo
 ;;
 
 let project_rule sctx project =
@@ -163,5 +161,5 @@ let project_rule sctx project =
   Rules.Produce.Alias.add_deps
     ocaml_index_alias
     (let open Action_builder.O in
-     context_indexes sctx >>= Action_builder.paths_existing)
+     Super_context.context sctx |> context_indexes >>= Action_builder.paths_existing)
 ;;

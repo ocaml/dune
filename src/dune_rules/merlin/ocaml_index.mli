@@ -17,7 +17,7 @@ val cctx_rules : Compilation_context.t -> unit Memo.t
 
 (** [context_indexes] lists all the available cctx.ocaml-index files in the
     given context *)
-val context_indexes : Super_context.t -> Path.t list Action_builder.t
+val context_indexes : Context.t -> Path.t list Action_builder.t
 
 (** [project_rule] adds a rule that will aggregate all the generated indexes
     into one global, project-wide, index *)

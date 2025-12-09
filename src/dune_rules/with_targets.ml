@@ -26,14 +26,17 @@ let add t ~file_targets =
 ;;
 
 let add_directories t ~directory_targets =
-  { build = t.build
-  ; targets =
-      Targets.combine
-        t.targets
-        (Targets.create
-           ~dirs:(Path.Build.Set.of_list directory_targets)
-           ~files:Path.Build.Set.empty)
-  }
+  match directory_targets with
+  | [] -> t
+  | directory_targets ->
+    { build = t.build
+    ; targets =
+        Targets.combine
+          t.targets
+          (Targets.create
+             ~dirs:(Path.Build.Set.of_list directory_targets)
+             ~files:Path.Build.Set.empty)
+    }
 ;;
 
 let map { build; targets } ~f = { build = map build ~f; targets }

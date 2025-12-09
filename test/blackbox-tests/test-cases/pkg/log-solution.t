@@ -41,3 +41,33 @@ We should be seeing that it has created a lock dir solution depending on foo.0.0
   # Dependency solution for
   # _build/.sandbox/$HASH/_private/default/.lock/dune.lock:
   # foo.0.0.2
+
+Show the order and formatting of packages
+
+  $ mkpkg aaaaaaa
+  $ mkpkg bbbbbbb
+  $ mkpkg ccccccc
+  $ mkpkg ddddddd
+  $ mkpkg eeeeeee
+  $ mkpkg fffffff
+  $ mkpkg ggggggg
+
+Depend on these new packages in a random order
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.21)
+  > (package
+  >  (name bar)
+  >  (depends ddddddd bbbbbbb ggggggg foo fffffff aaaaaaa ccccccc eeeeeee)
+  >  (allow_empty))
+  > EOF
+
+  $ dune build
+
+The order should of dependencies should be non-random:
+
+  $ sed -n -e "/Dependency solution for/,\$p" _build/log | grep '^#' | sed 's#.sandbox/[a-f0-9]*#.sandbox/$HASH#'
+  # Dependency solution for
+  # _build/.sandbox/$HASH/_private/default/.lock/dune.lock:
+  # aaaaaaa.0.0.1 bbbbbbb.0.0.1 ccccccc.0.0.1 ddddddd.0.0.1 eeeeeee.0.0.1
+  # fffffff.0.0.1 foo.0.0.2 ggggggg.0.0.1

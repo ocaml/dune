@@ -4,7 +4,7 @@
  (libraries
   dune_trace
   dune_console
-  chrome_trace
+  json
   stdune
   fiber
   dune_lang

@@ -95,7 +95,22 @@ module Event = struct
       ; start : float
       }
 
-    let data ~args ~cat ~name = { args; cat; name }
+    let create_sandbox ~loc =
+      { args = Some [ "loc", `String (Loc.to_file_colon_line loc) ]
+      ; name = "create-sandbox"
+      ; cat = Some [ "sandbox" ]
+      }
+    ;;
+
+    let fetch ~url ~target ~checksum =
+      let args = [ "url", `String url; "target", `String (Path.to_string target) ] in
+      let args =
+        match checksum with
+        | None -> args
+        | Some c -> ("checksum", `String c) :: args
+      in
+      { args = Some args; cat = Some [ "pkg" ]; name = "fetch" }
+    ;;
   end
 
   type t = Chrome_trace.Event.t
@@ -148,6 +163,27 @@ module Event = struct
     type t = (int, error) result
   end
 
+  type targets =
+    { root : Path.Build.t
+    ; files : Filename.Set.t
+    ; dirs : Filename.Set.t
+    }
+
+  let args_of_targets =
+    let paths root name set =
+      if Filename.Set.is_empty set
+      then []
+      else
+        [ ( name
+          , `List
+              (Filename.Set.to_list_map set ~f:(fun x ->
+                 `String (Path.Build.relative root x |> Path.Build.to_string))) )
+        ]
+    in
+    fun { root; files; dirs } ->
+      paths root "target_files" files @ paths root "target_dirs" dirs
+  ;;
+
   let process
         ~name
         ~started_at
@@ -197,8 +233,10 @@ module Event = struct
         [ [ "prog", `String prog
           ; "dir", `String (Option.map ~f:Path.to_string dir |> Option.value ~default:".")
           ]
-        ; targets
         ; exit
+        ; (match targets with
+           | None -> []
+           | Some targets -> args_of_targets targets)
         ; output "stdout" stdout
         ; output "stderr" stderr
         ]

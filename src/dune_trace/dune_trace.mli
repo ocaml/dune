@@ -2,12 +2,6 @@ open Stdune
 
 type t
 
-module Json : sig
-  type t = Chrome_trace.Json.t
-
-  val to_string : Chrome_trace.Json.t -> string
-end
-
 type dst =
   | Out of out_channel
   | Custom of
@@ -28,11 +22,8 @@ module Event : sig
     type t
     type data
 
-    val data
-      :  args:(string * Json.t) list option
-      -> cat:string list option
-      -> name:string
-      -> data
+    val create_sandbox : loc:Loc.t -> data
+    val fetch : url:string -> target:Path.t -> checksum:string option -> data
   end
 
   type t
@@ -47,10 +38,16 @@ module Event : sig
     type t = (int, error) result
   end
 
+  type targets =
+    { root : Path.Build.t
+    ; files : Filename.Set.t
+    ; dirs : Filename.Set.t
+    }
+
   val process
     :  name:string option
     -> started_at:float
-    -> targets:(string * Json.t) list
+    -> targets:targets option
     -> categories:string list
     -> pid:Pid.t
     -> exit:Exit_status.t

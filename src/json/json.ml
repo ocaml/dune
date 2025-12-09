@@ -89,3 +89,9 @@ let to_string t =
   to_buf t buf;
   Buffer.contents buf
 ;;
+
+let string s : t = `String s
+let assoc (xs : (string * t) list) : t = `Assoc xs
+let list (xs : t list) : t = `List xs
+let int (x : int) : t = `Int x
+let float (x : float) : t = `Float x

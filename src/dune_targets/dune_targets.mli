@@ -55,7 +55,6 @@ module Validated : sig
 
   val to_dyn : t -> Dyn.t
   val unvalidate : t -> unvalidated
-  val to_trace_args : t -> (string * Chrome_trace.Json.t) list
 end
 
 module Validation_result : sig

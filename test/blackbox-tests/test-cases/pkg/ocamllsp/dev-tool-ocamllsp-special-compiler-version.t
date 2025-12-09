@@ -15,17 +15,15 @@ Test the special compiler version is picked up by ocamllsp.
   > 
   > (package
   >  (name foo)
-  >  (allow_empty))
+  >  (allow_empty)
+  >  (depends
+  >    (ocaml (= 5.2.0))
+  >    (ocaml-variants (= 5.2.0+ox))))
   > EOF
 
-  $ make_lockdir
-  $ make_lockpkg ocaml-variants <<EOF
-  > (version 5.2.0+ox)
-  > EOF
-  $ make_lockpkg ocaml <<EOF
-  > (version 5.2.0)
-  > EOF
+  $ dune build
 
+Here `ocamllsp` will pickup the compiler dependency on 5.2.0+ox
   $ dune tools exec ocamllsp
   Solution for _build/.dev-tools.locks/ocaml-lsp-server:
   - ocaml.5.2.0

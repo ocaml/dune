@@ -120,3 +120,14 @@ let needs_to_build_with_same_compiler_as_project = function
   | Dune_release -> false
   | Utop | Odoc | Ocamllsp | Ocaml_index | Odig | Merlin -> true
 ;;
+
+let compiler_package_names =
+  (* TODO don't hardcode these names here *)
+  [ Package_name.of_string "ocaml-base-compiler"
+  ; Package_name.of_string "ocaml-variants"
+  ; Package_name.of_string "ocaml-compiler"
+    (* The [ocaml-compiler] package is required to include all the
+           packages that might install a compiler, starting from ocaml.5.3.0.
+    *)
+  ]
+;;

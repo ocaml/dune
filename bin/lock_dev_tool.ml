@@ -122,7 +122,7 @@ let load_packages () =
       ~hints:
         [ Pp.concat
             ~sep:Pp.space
-            [ Pp.text "Try running"; User_message.command "dune pkg lock" ]
+            [ Pp.text "Try running"; User_message.command "dune build" ]
         ]
   | Ok { packages; _ } ->
     Memo.return (Lock_dir.Packages.pkgs_on_platform_by_name packages ~platform)
@@ -144,7 +144,7 @@ let lookup_package_exn packages pkg_name =
                 "Add a dependency on %S to one of the packages in dune-project and then \
                  run"
                 (Package_name.to_string pkg_name)
-            ; User_message.command "dune pkg lock"
+            ; User_message.command "dune build"
             ]
         ]
 ;;
@@ -153,31 +153,17 @@ let lookup_package_opt packages pkg_name = Package_name.Map.find packages pkg_na
 
 let locked_ocaml_compiler_version () =
   let open Memo.O in
-  let* packages = load_packages () in
+  let+ packages = load_packages () in
   let pkg = lookup_package_exn packages compiler_package_name in
-  Memo.return pkg.info.version
+  pkg.info.version
 ;;
 
-(* Returns a dependency constraint on the version of the ocaml
-   compiler in the lockdir associated with the default context. *)
-let locked_ocaml_compiler_constraint () =
-  let open Dune_lang in
-  let open Memo.O in
-  let+ ocaml_compiler_version = locked_ocaml_compiler_version () in
-  let constraint_ =
-    Some
-      (Package_constraint.Uop
-         (Eq, String_literal (Package_version.to_string ocaml_compiler_version)))
-  in
-  { Package_dependency.name = compiler_package_name; constraint_ }
-;;
-
-let extra_compilers = Dune_rules.Pkg_toolchain.compiler_package_names
+let compiler_packages = compiler_package_name::Dune_pkg.Dev_tool.compiler_package_names
 
 let extra_compiler_constraints () =
   let open Memo.O in
   let* packages = load_packages () in
-  let extact_package package =
+  let extract_package package =
     match lookup_package_opt packages package with
     | None -> Memo.return []
     | Some pkg ->
@@ -189,7 +175,7 @@ let extra_compiler_constraints () =
       in
       Memo.return [ { Package_dependency.name = package; constraint_ } ]
   in
-  Memo.List.concat_map ~f:extact_package extra_compilers
+  Memo.List.concat_map ~f:extract_package compiler_packages
 ;;
 
 let extra_dependencies dev_tool =
@@ -197,9 +183,8 @@ let extra_dependencies dev_tool =
   match Dune_pkg.Dev_tool.needs_to_build_with_same_compiler_as_project dev_tool with
   | false -> Memo.return []
   | true ->
-    let* more_compiler_packages = extra_compiler_constraints () in
-    let+ constraint_ = locked_ocaml_compiler_constraint () in
-    constraint_ :: more_compiler_packages
+    let+ compiler_dependencies = extra_compiler_constraints () in
+    compiler_dependencies
 ;;
 
 let lockdir_status dev_tool =

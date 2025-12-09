@@ -23,3 +23,7 @@ val exe_name : t -> string
 val exe_path_components_within_package : t -> string list
 
 val needs_to_build_with_same_compiler_as_project : t -> bool
+
+(** Contains a list of compiler packages used to detect the compiler and
+  determine its version *)
+val compiler_package_names : Package_name.t list

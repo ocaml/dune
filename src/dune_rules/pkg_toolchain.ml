@@ -47,19 +47,8 @@ let installation_prefix pkg =
   Path.Outside_build_dir.relative pkg_dir "target"
 ;;
 
-let compiler_package_names =
-  let module Package_name = Dune_pkg.Package_name in
-  (* TODO don't hardcode these names here *)
-  [ Package_name.of_string "ocaml-base-compiler"
-  ; Package_name.of_string "ocaml-variants"
-  ; Package_name.of_string "ocaml-compiler"
-    (* The [ocaml-compiler] package is required to include all the
-           packages that might install a compiler, starting from ocaml.5.3.0.
-    *)
-  ]
-;;
-
 let is_compiler_and_toolchains_enabled name =
+  let compiler_package_names = Dune_pkg.Dev_tool.compiler_package_names in
   match Config.get Compile_time.toolchains with
   | `Enabled ->
     let module Package_name = Dune_pkg.Package_name in

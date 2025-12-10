@@ -76,24 +76,22 @@ module Sys_vars = struct
            ])
   ;;
 
-  let solver_env () =
-    let open Memo.O in
-    let module V = Package_variable_name in
-    let { os; os_version; os_distribution; os_family; arch; sys_ocaml_version } = poll in
-    let+ var_value_pairs =
-      [ V.os, os
-      ; V.os_version, os_version
-      ; V.os_distribution, os_distribution
-      ; V.os_family, os_family
-      ; V.arch, arch
-      ; V.sys_ocaml_version, sys_ocaml_version
-      ]
+  let solver_env =
+    Memo.Lazy.create ~name:"solver-env" (fun () ->
+      let open Memo.O in
+      List.combine
+        Package_variable_name.
+          [ os; os_version; os_distribution; os_family; arch; sys_ocaml_version ]
+        (let { os; os_version; os_distribution; os_family; arch; sys_ocaml_version } =
+           poll
+         in
+         [ os; os_version; os_distribution; os_family; arch; sys_ocaml_version ])
       |> Memo.List.filter_map ~f:(fun (var, value) ->
-        let+ value = Memo.Lazy.force value in
-        Option.map value ~f:(fun value -> var, Variable_value.string value))
-    in
-    List.fold_left var_value_pairs ~init:Solver_env.empty ~f:(fun acc (var, value) ->
-      Solver_env.set acc var value)
+        Memo.Lazy.force value
+        >>| Option.map ~f:(fun value -> var, Variable_value.string value))
+      >>| List.fold_left ~init:Solver_env.empty ~f:(fun acc (var, value) ->
+        Solver_env.set acc var value))
+    |> Memo.Lazy.force
   ;;
 end
 

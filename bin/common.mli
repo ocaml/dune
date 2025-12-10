@@ -36,7 +36,7 @@ module Builder : sig
   val forbid_builds : t -> t
   val default_root_is_cwd : t -> bool
   val set_default_root_is_cwd : t -> bool -> t
-  val set_log_file : t -> Dune_util.Log.File.t -> t
+  val set_log_file : t -> Log.File.t -> t
   val disable_log_file : t -> t
   val set_promote : t -> Dune_engine.Clflags.Promote.t -> t
   val default_target : t -> Arg.Dep.t

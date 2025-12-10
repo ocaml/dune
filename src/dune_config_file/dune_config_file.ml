@@ -8,7 +8,6 @@ module Dune_config = struct
   module Stanza = Dune_lang.Stanza
   module String_with_vars = Dune_lang.String_with_vars
   module Pform = Dune_lang.Pform
-  module Log = Dune_util.Log
   module Config = Dune_config.Config
 
   (* the configuration file use the same version numbers as dune-project files for

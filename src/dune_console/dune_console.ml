@@ -170,3 +170,4 @@ module Status_line = struct
 end
 
 let () = User_warning.set_reporter print_user_message
+let () = Log.set_forward_verbose print_user_message

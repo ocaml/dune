@@ -6,7 +6,7 @@ open Dune_rpc_server
 module Scheduler = Test_scheduler
 
 let () = Printexc.record_backtrace false
-let () = Dune_util.Log.init_disabled ()
+let () = Log.init_disabled ()
 let print pp = Format.printf "%a@." Pp.to_fmt pp
 let print_dyn dyn = print (Dyn.pp dyn)
 

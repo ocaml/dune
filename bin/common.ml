@@ -644,7 +644,7 @@ module Builder = struct
     ; stats_trace_file : string option
     ; allow_builds : bool
     ; default_root_is_cwd : bool
-    ; log_file : Dune_util.Log.File.t
+    ; log_file : Log.File.t
     }
 
   let root t = t.root

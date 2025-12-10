@@ -3,7 +3,6 @@ module Digest = Dune_digest.Digest
 module Cached_digest = Dune_digest.Cached_digest
 module Console = Dune_console
 module Metrics = Dune_metrics
-module Log = Dune_util.Log
 module Compound_user_error = Dune_rpc_private.Compound_user_error
 module Stringlike = Dune_util.Stringlike
 

@@ -1,4 +1,3 @@
-module Log = Log
 module Persistent = Persistent
 module Report_error = Report_error
 module Stringlike = Stringlike

@@ -1,6 +1,3 @@
-open Stdune
-module Console = Dune_console
-
 module File = struct
   type t =
     | Default
@@ -57,12 +54,15 @@ let log msg =
     Option.iter oc ~f:(fun oc -> User_message.make (msg ()) |> log_oc oc)
 ;;
 
+let forward_verbose = Fdecl.create Dyn.opaque
+let set_forward_verbose = Fdecl.set forward_verbose
+
 let info_user_message msg =
   match t () with
   | None -> ()
   | Some { oc; _ } ->
     Option.iter oc ~f:(fun oc -> log_oc oc msg);
-    if !verbose then Console.print_user_message msg
+    if !verbose then (Fdecl.get forward_verbose) msg
 ;;
 
 let info paragraphs = info_user_message (User_message.make paragraphs)

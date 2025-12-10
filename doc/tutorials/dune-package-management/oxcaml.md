@@ -62,11 +62,29 @@ And to build it, we add a `dune` file.
 
 ## Building the project
 
-Let's compiler and execute the project. Note that when you run `dune build` the
-very first time, Dune pulls in and builds all the dependencies before building
-the project itself. It is expected to take a considerable amount of time.
+Let's compile and execute the project. Note that when you run `dune pkg lock`
+or `dune build` the very first time, Dune pulls in and builds all the
+dependencies before building the project itself. It is expected to take a
+considerable amount of time.
+
+Note: With autolocking enabled one doesn't need to explicitly run `dune pkg
+lock` to generate a lock directory. However, a known issue,
+[dune#12851](https://github.com/ocaml/dune/issues/12851) currently prevents us
+from using autolocking.
+
+<!-- TODO: Update this after 12851 is fixed. -->
 
 ```
+$ dune pkg lock
+Solution for dune.lock
+
+Dependencies common to all supported platforms:
+- conf-autoconf.0.2
+- conf-which.1
+- ocaml.5.2.0
+- ocaml-config.3
+- ocaml-variants.5.2.0+ox
+
 $ dune exec ./main.exe
 ...
 43

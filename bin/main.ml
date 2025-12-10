@@ -40,6 +40,7 @@ let all : _ Cmdliner.Cmd.t list =
     ; Pkg.Group.group
     ; Pkg.Group.Alias.group
     ; Tools.Group.group
+    ; Trace.group
     ]
   in
   terms @ groups

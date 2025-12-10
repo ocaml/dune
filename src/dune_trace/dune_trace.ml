@@ -1,6 +1,5 @@
 open Stdune
 module Timestamp = Chrome_trace.Event.Timestamp
-module Json = Json
 
 module Mac = struct
   external open_fds : pid:int -> int = "dune_trace_open_fds"
@@ -135,9 +134,19 @@ module Event = struct
     Event.counter common args
   ;;
 
-  let config () =
+  let config ~version =
+    let args =
+      let args =
+        [ "build_dir", `String (Path.Build.to_string Path.Build.root)
+        ; "argv", `List (Array.to_list Sys.argv |> List.map ~f:Json.string)
+        ; "env", `List (Unix.environment () |> Array.to_list |> List.map ~f:Json.string)
+        ]
+      in
+      match version with
+      | None -> args
+      | Some v -> ("version", Stdune.Json.string v) :: args
+    in
     let open Chrome_trace in
-    let args = [ "build_dir", `String (Path.Build.to_string Path.Build.root) ] in
     let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
     let common = Event.common_fields ~cat:[ "config" ] ~name:"config" ~ts () in
     Event.instant ~args common

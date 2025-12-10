@@ -1404,7 +1404,11 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
     ];
   Dune_console.separate_messages c.builder.separate_error_messages;
   Option.iter c.stats ~f:(fun stats ->
-    let event = Dune_trace.Event.config () in
+    let event =
+      Dune_trace.Event.config
+        ~version:
+          (Build_info.V1.version () |> Option.map ~f:Build_info.V1.Version.to_string)
+    in
     Dune_trace.emit stats event);
   (* Setup hook for printing GC stats to a file *)
   at_exit (fun () ->

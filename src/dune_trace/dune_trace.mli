@@ -68,7 +68,7 @@ module Event : sig
 
   val scan_source : name:string -> start:float -> stop:float -> dir:Path.Source.t -> t
   val scheduler_idle : unit -> t
-  val config : unit -> t
+  val config : version:string option -> t
 
   module Rpc : sig
     type stage =

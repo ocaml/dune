@@ -1406,12 +1406,10 @@ module DB = struct
         match lock_dir_active_for_default_ctx with
         | false -> Memo.Lazy.force Pkg_table.all_existing_dev_tools
         | true ->
-          let+ pkg_digest_table_all_dev_tools =
-            Memo.Lazy.force Pkg_table.all_existing_dev_tools
-          and+ { pkg_digest_table = pkg_digest_table_default_ctx; _ } =
+          let+ { pkg_digest_table = pkg_digest_table_default_ctx; _ } =
             of_ctx Context_name.default ~allow_sharing:true
           in
-          Pkg_table.union pkg_digest_table_default_ctx pkg_digest_table_all_dev_tools
+          pkg_digest_table_default_ctx
       in
       ( create ~pkg_digest_table ~system_provided
       , pkg_digest_of_name

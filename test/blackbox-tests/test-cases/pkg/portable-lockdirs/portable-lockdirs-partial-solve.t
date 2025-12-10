@@ -59,7 +59,7 @@ The log file will contain errors about the package being unavailable.
   #     No usable implementations:
   #       foo.0.0.1: Availability condition not satisfied
   # Dependency solution for dune.lock:
-  # foo.0.0.1
+  # - foo.0.0.1
 
 The lockdir will contain a list of the platforms where solving succeeded.
   $ cat ${default_lock_dir}/lock.dune

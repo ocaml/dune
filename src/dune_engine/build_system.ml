@@ -591,11 +591,10 @@ end = struct
                      in anyway. *)
                   remove_target_dir path
                 | Error exn ->
-                  Log.info
-                    [ Pp.textf
-                        "Error while removing target %s: %s"
-                        (Path.Build.to_string path)
-                        (Printexc.to_string exn)
+                  Log.warn
+                    "Error while removing target"
+                    [ "path", Dyn.string (Path.Build.to_string path)
+                    ; "error", Dyn.string (Printexc.to_string exn)
                     ]
               in
               Targets.Validated.iter

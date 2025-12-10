@@ -905,17 +905,17 @@ let wait_for_build_process t pid =
 ;;
 
 let got_shutdown reason =
-  if !Log.verbose
-  then (
+  let msg =
     match (reason : Shutdown.Reason.t) with
-    | Timeout -> Log.info [ Pp.text "Timeout." ]
-    | Requested -> Log.info [ Pp.text "Shutting down." ]
-    | Signal signal ->
-      Log.info [ Pp.textf "Got signal %s, exiting." (Signal.name signal) ])
+    | Timeout -> "Timeout"
+    | Requested -> "Shutting down"
+    | Signal signal -> sprintf "Got signal %s, exiting." (Signal.name signal)
+  in
+  Log.verbose_message msg []
 ;;
 
 let filesystem_watcher_terminated () =
-  Log.info [ Pp.textf "Filesystem watcher terminated, exiting." ]
+  Log.info "Filesystem watcher terminated, exiting." []
 ;;
 
 type saw_shutdown =

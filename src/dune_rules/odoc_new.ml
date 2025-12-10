@@ -182,9 +182,7 @@ module Index = struct
       of_external_loc maps loc
     with
     | Some loc -> loc
-    | None ->
-      Log.info [ Pp.textf "Argh lib ex loc: %s" (Lib_name.to_string name) ];
-      [ Sub_dir (Lib_name.to_string (Lib.name lib)); Top_dir Other ]
+    | None -> [ Sub_dir (Lib_name.to_string (Lib.name lib)); Top_dir Other ]
   ;;
 
   let of_pkg maps pkg =
@@ -239,7 +237,7 @@ let libs_maps_def =
         match Path.Map.add acc path i with
         | Ok acc -> i + 1, acc
         | Error _ ->
-          Log.info [ Pp.textf "Error adding findlib path to map" ];
+          Log.warn "Error adding findlib path to map" [];
           i + 1, acc)
       |> snd
     in
@@ -257,9 +255,10 @@ let libs_maps_def =
         (match Dune_package.Lib.external_location l with
          | None ->
            Log.info
-             [ Pp.textf
-                 "No location for lib %s"
-                 (Dune_package.Lib.info l |> Lib_info.name |> Lib_name.to_string)
+             "No location for lib"
+             [ ( "lib"
+               , Dyn.string
+                   (Dune_package.Lib.info l |> Lib_info.name |> Lib_name.to_string) )
              ];
            Memo.return maps
          | Some location ->
@@ -275,11 +274,9 @@ let libs_maps_def =
                 | Ok l -> l
                 | Error _ ->
                   (* I don't expect this should ever happen *)
-                  Log.info
-                    [ Pp.textf
-                        "Error adding lib %s to loc_of_lib map"
-                        (Lib_name.to_string name)
-                    ];
+                  Log.warn
+                    "Error adding lib to loc_of_lib map"
+                    [ "lib", Dyn.string (Lib_name.to_string name) ];
                   maps.loc_of_lib
               in
               let loc_of_pkg =
@@ -298,11 +295,9 @@ let libs_maps_def =
                   (match Lib_name.Map.add libs name (l, lib) with
                    | Ok libs -> Some libs
                    | Error _ ->
-                     Log.info
-                       [ Pp.textf
-                           "Error adding lib %s to libs_of_loc map"
-                           (Lib_name.to_string name)
-                       ];
+                     Log.warn
+                       "Error adding lib to libs_of_loc map"
+                       [ "lib", Dyn.string (Lib_name.to_string name) ];
                      Some libs)
               in
               let libs_of_loc =
@@ -360,11 +355,9 @@ module Classify = struct
   let classify_location maps location =
     match Ext_loc_map.find maps.libs_of_loc location with
     | None ->
-      Log.info
-        [ Pp.textf
-            "classify_local_dir: No lib at this location: %s"
-            (Dyn.to_string (Dune_package.External_location.to_dyn location))
-        ];
+      Log.warn
+        "classify_local_dir: No lib at this location"
+        [ "location", Dune_package.External_location.to_dyn location ];
       Memo.return Nothing
     | Some libs ->
       (try
@@ -539,11 +532,9 @@ module Valid = struct
             match Lib_name.Map.add cats.local (Lib.name (llib :> Lib.t)) llib with
             | Ok l -> l
             | Error _ ->
-              Log.info
-                [ Pp.textf
-                    "Error adding local library %s to categorized map"
-                    (Lib.name (llib :> Lib.t) |> Lib_name.to_string)
-                ];
+              Log.warn
+                "Error adding local library to categorized map"
+                [ "lib", Dyn.string (Lib.name (llib :> Lib.t) |> Lib_name.to_string) ];
               cats.local
           in
           Memo.return { cats with local }
@@ -552,7 +543,8 @@ module Valid = struct
           (match Lib_name.Map.find maps.loc_of_lib (Lib.name lib) with
            | None ->
              Log.info
-               [ Pp.textf "No location for lib: %s" (Lib.name lib |> Lib_name.to_string) ];
+               "No location for lib"
+               [ "lib", Dyn.string (Lib.name lib |> Lib_name.to_string) ];
              Memo.return cats
            | Some location ->
              let* classification = Classify.classify_location maps location in
@@ -565,11 +557,9 @@ module Valid = struct
                  let loc_str =
                    Dyn.to_string (Dune_package.External_location.to_dyn location)
                  in
-                 Log.info
-                   [ Pp.textf
-                       "Duplicate 'Dune_with_modules' library found in location %s"
-                       loc_str
-                   ];
+                 Log.warn
+                   "Duplicate 'Dune_with_modules' library found in location"
+                   [ "location", Dyn.string loc_str ];
                  old
              in
              let externals = Ext_loc_map.update cats.externals location ~f in
@@ -1481,11 +1471,9 @@ let index_info_of_lib_def =
       | None ->
         (* Note this shouldn't happen as we've filtered out libs
            without a [Modules.t] in the classification stage. *)
-        Log.info
-          [ Pp.textf
-              "Expecting modules info for library %s"
-              (Lib.name lib |> Lib_name.to_string)
-          ];
+        Log.warn
+          "Expecting modules info for library"
+          [ "lib", Dyn.string (Lib.name lib |> Lib_name.to_string) ];
         []
     in
     let libs =

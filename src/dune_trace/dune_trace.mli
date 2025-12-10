@@ -17,6 +17,7 @@ module Category : sig
     | Config
     | File_watcher
     | Diagnostics
+    | Log
 
   val of_string : string -> t option
 end
@@ -87,6 +88,7 @@ module Event : sig
 
   val resolve_targets : Path.t list -> alias list -> t
   val load_dir : Path.t -> t
+  val log : Log.Message.t -> t
 
   val file_watcher
     :  [ `File of Path.t * [ `Created | `Deleted | `File_changed | `Unknown ]

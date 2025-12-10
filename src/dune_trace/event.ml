@@ -413,3 +413,17 @@ let error loc kind exn backtrace memo_stack =
   in
   Event.instant ~name ~args now Diagnostics
 ;;
+
+let log { Log.Message.level; message; args } =
+  let now = Time.now () in
+  let name =
+    match level with
+    | `Warn -> "warn"
+    | `Info -> "info"
+    | `Verbose -> "verbose"
+  in
+  let args =
+    ("message", `String message) :: List.map args ~f:(fun (name, v) -> name, Arg.dyn v)
+  in
+  Event.instant ~args ~name now Log
+;;

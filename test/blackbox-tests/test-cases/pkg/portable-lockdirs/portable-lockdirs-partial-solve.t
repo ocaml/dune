@@ -31,7 +31,7 @@ Make a package that is only available on macos.
 
 Solving will still succeed, but there'll be a warning because dune will attempt
 to solve for macos, linux, and windows by default.
-  $ dune pkg lock
+  $ dune pkg lock --trace-file trace.json
   Solution for dune.lock
   
   Dependencies common to all supported platforms:
@@ -43,22 +43,32 @@ to solve for macos, linux, and windows by default.
   - arch = arm64; os = linux
   - arch = x86_64; os = linux
   
-  See the log or run with --verbose for more details. Configure platforms to
+  See the trace file with --trace-file for more details. Configure platforms to
   solve for in the dune-workspace file.
 
 The log file will contain errors about the package being unavailable.
-  $ dune_cmd print-from "The dependency solver failed to find a solution for the following platforms:" < _build/log
-  # The dependency solver failed to find a solution for the following platforms:
-  # - arch = x86_64; os = linux
-  # - arch = arm64; os = linux
-  # ...with this error:
-  # Couldn't solve the package dependency formula.
-  # Selected candidates: x.dev
-  # - foo -> (problem)
-  #     No usable implementations:
-  #       foo.0.0.1: Availability condition not satisfied
-  # Dependency solution for dune.lock:
-  # - foo.0.0.1
+  $ jqScript=$(mktemp)
+  $ cat >$jqScript <<EOF
+  > .[] |
+  > select(.cat == "log" and .args.message != "ocamlparam" and (.args.message | contains("Shared cache") | not)) |
+  > .args
+  > EOF
+  $ jq -f $jqScript trace.json
+  {
+    "message": "Workspace root",
+    "root": "$TESTCASE_ROOT"
+  }
+  {
+    "message": "Solver found partial solution",
+    "error_count": "1"
+  }
+  {
+    "message": "Dependency solution",
+    "lock_dir": "dune.lock",
+    "packages": [
+      "foo.0.0.1"
+    ]
+  }
 
 The lockdir will contain a list of the platforms where solving succeeded.
   $ cat ${default_lock_dir}/lock.dune

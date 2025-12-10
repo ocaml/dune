@@ -14,6 +14,10 @@ Delete last 10 chars of the .db file to corrupt it
 
 Dune log the corrupted file and recover
 
-  $ dune build a
-  $ grep "truncated object" _build/log
-  # Failed to load corrupted file _build/.db: input_value: truncated object
+  $ dune build --trace-file trace.json a
+  $ jq '.[] | select(.cat == "log" and (.args.message | contains("corrupt"))) | .args' trace.json
+  {
+    "message": "Warning: Failed to load corrupted file",
+    "file": "_build/.db",
+    "error": "input_value: truncated object"
+  }

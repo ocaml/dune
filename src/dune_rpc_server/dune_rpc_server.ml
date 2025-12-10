@@ -662,13 +662,12 @@ struct
             (match exn.exn with
              | Dune_util.Report_error.Already_reported -> ()
              | _ ->
-               Log.info
-                 [ Pp.textf
-                     "encountered error serving rpc client (id %d)"
-                     (Session.Id.to_int id)
-                 ; Exn_with_backtrace.pp exn
-                 ]);
-            Dune_util.Report_error.report exn;
+               Log.warn
+                 "encountered error serving rpc client"
+                 [ "id", Dyn.int (Session.Id.to_int id)
+                 ; "error", Exn_with_backtrace.to_dyn exn
+                 ];
+               Dune_util.Report_error.report exn);
             session#close)
       in
       Event.emit (Session `Stop) id;

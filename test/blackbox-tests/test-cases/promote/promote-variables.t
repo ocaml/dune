@@ -22,4 +22,3 @@ Test expanding variables in `(promote (into ..))`
 
   $ cat another/promoted
   Hello, world!
-

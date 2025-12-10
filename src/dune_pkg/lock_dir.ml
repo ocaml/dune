@@ -1520,11 +1520,12 @@ module Write_disk = struct
               let version = pkg.info.version |> Package_version.to_string in
               sprintf "%s.%s" name version)
           in
-          [ Pp.textf
-              "Dependency solution for %s:"
-              (Path.to_string_maybe_quoted lock_dir_path_external)
-          ; Pp.enumerate ~f:Pp.text pkgs
-          ]);
+          Log.Message.create
+            `Info
+            "Dependency solution"
+            [ "lock_dir", Dyn.string (Path.to_string_maybe_quoted lock_dir_path_external)
+            ; "packages", Dyn.list Dyn.string pkgs
+            ]);
         Path.mkdir_p parent_dir;
         Temp.with_temp_dir ~parent_dir ~prefix:"dune" ~suffix:"lock" ~f:build
     | None ->

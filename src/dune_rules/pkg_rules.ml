@@ -1402,23 +1402,22 @@ module DB = struct
     let of_dev_tool_memo =
       Memo.create "pkg-db-dev-tool" ~input:(module Dune_pkg.Dev_tool)
       @@ fun dev_tool ->
+      let+ lock_dir = Lock_dir.of_dev_tool dev_tool
+      and+ platform = Lock_dir.Sys_vars.solver_env in
+      pkg_digest_of_name
+        lock_dir
+        platform
+        (Pkg_dev_tool.package_name dev_tool)
+        ~system_provided
+    in
+    fun dev_tool ->
       let+ db =
         Lock_dir.lock_dir_active Context_name.default
         >>= function
         | false -> Memo.Lazy.force inactive_lockdir
         | true -> of_ctx Context_name.default ~allow_sharing:true
-      and+ pkg_digest =
-        let+ lock_dir = Lock_dir.of_dev_tool dev_tool
-        and+ platform = Lock_dir.Sys_vars.solver_env in
-        pkg_digest_of_name
-          lock_dir
-          platform
-          (Pkg_dev_tool.package_name dev_tool)
-          ~system_provided
-      in
+      and+ pkg_digest = Memo.exec of_dev_tool_memo dev_tool in
       db, pkg_digest
-    in
-    fun dev_tool -> Memo.exec of_dev_tool_memo dev_tool
   ;;
 end
 

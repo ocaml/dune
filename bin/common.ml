@@ -642,7 +642,6 @@ module Builder = struct
     ; build_dir : string
     ; root : string option
     ; stats_trace_file : string option
-    ; stats_trace_extended : bool
     ; allow_builds : bool
     ; default_root_is_cwd : bool
     ; log_file : Dune_util.Log.File.t
@@ -910,14 +909,6 @@ module Builder = struct
               (Some
                  "Output trace data in catapult format (compatible with \
                   chrome://tracing)."))
-    and+ stats_trace_extended =
-      Arg.(
-        value
-        & flag
-        & info
-            [ "trace-extended" ]
-            ~docs
-            ~doc:(Some "Output extended trace data (requires trace-file)."))
     and+ no_print_directory =
       Arg.(
         value
@@ -1034,8 +1025,6 @@ module Builder = struct
             [ "stop-on-first-error" ]
             ~doc:(Some "Stop the build as soon as an error is encountered."))
     in
-    if Option.is_none stats_trace_file && stats_trace_extended
-    then User_error.raise [ Pp.text "--trace-extended can only be used with --trace" ];
     { debug_dep_path
     ; debug_backtraces
     ; debug_artifact_substitution
@@ -1085,7 +1074,6 @@ module Builder = struct
     ; build_dir = Option.value ~default:default_build_dir build_dir
     ; root
     ; stats_trace_file
-    ; stats_trace_extended
     ; allow_builds = true
     ; default_root_is_cwd = false
     ; log_file = Default
@@ -1132,7 +1120,6 @@ module Builder = struct
         ; build_dir
         ; root
         ; stats_trace_file
-        ; stats_trace_extended
         ; allow_builds
         ; default_root_is_cwd
         ; log_file
@@ -1174,7 +1161,6 @@ module Builder = struct
     && String.equal t.build_dir build_dir
     && Option.equal String.equal t.root root
     && Option.equal String.equal t.stats_trace_file stats_trace_file
-    && Bool.equal t.stats_trace_extended stats_trace_extended
     && Bool.equal t.allow_builds allow_builds
     && Bool.equal t.default_root_is_cwd default_root_is_cwd
     && Log.File.equal t.log_file log_file
@@ -1278,11 +1264,7 @@ let print_entering_message c =
 let build (root : Workspace_root.t) (builder : Builder.t) =
   let stats =
     Option.map builder.stats_trace_file ~f:(fun f ->
-      let stats =
-        Dune_trace.create
-          ~extended_build_job_info:builder.stats_trace_extended
-          (Out (open_out f))
-      in
+      let stats = Dune_trace.create (Out (open_out f)) in
       Dune_trace.set_global stats;
       stats)
   in
@@ -1422,10 +1404,8 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
     ];
   Dune_console.separate_messages c.builder.separate_error_messages;
   Option.iter c.stats ~f:(fun stats ->
-    if Dune_trace.extended_build_job_info stats
-    then (
-      let event = Dune_trace.Event.config () in
-      Dune_trace.emit stats event));
+    let event = Dune_trace.Event.config () in
+    Dune_trace.emit stats event);
   (* Setup hook for printing GC stats to a file *)
   at_exit (fun () ->
     match c.builder.dump_gc_stats with

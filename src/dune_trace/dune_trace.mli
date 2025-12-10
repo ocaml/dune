@@ -12,10 +12,9 @@ type dst =
 
 val global : unit -> t option
 val set_global : t -> unit
-val create : extended_build_job_info:bool -> dst -> t
+val create : dst -> t
 val record_gc_and_fd : t -> unit
 val close : t -> unit
-val extended_build_job_info : t -> bool
 
 module Event : sig
   module Async : sig

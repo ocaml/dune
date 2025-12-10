@@ -83,9 +83,9 @@ Test that the project can be built normally.
 Make a fake dune exe:
 
   $ mkdir .bin
-  $ cat > .bin/dune <<EOF
+  $ cat > .bin/dune << 'EOF'
   > #!/bin/sh
-  > echo "Fake dune! (args: \$@)"
+  > echo "Fake dune! (args: $@)"
   > EOF
   $ chmod a+x .bin/dune
 

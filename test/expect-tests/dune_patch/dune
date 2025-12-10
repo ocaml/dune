@@ -9,6 +9,7 @@
   dune_patch
   dune_engine
   dune_util
+  unix
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   base

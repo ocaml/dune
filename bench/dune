@@ -8,7 +8,8 @@
   fiber
   dune_lang
   dune_engine
-  dune_util))
+  dune_util
+  unix))
 
 (rule
  (alias bench)

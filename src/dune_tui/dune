@@ -10,6 +10,7 @@
   dune_config
   dune_console
   dune_threaded_console
-  threads.posix))
+  threads.posix
+  unix))
 
 (include_subdirs unqualified)

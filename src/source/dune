@@ -18,5 +18,6 @@
   memo
   ocaml_config
   predicate_lang
-  stdune)
+  stdune
+  unix)
  (synopsis "Internal Dune library, do not use!"))

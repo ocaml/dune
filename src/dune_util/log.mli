@@ -5,7 +5,6 @@ module File : sig
   type t =
     | Default
     | No_log_file
-    | This of Path.t
     | Stderr
 
   val equal : t -> t -> bool

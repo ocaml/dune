@@ -73,13 +73,13 @@ let make ~frames_per_second (module Base : S) : (module Dune_console.Backend) =
       let cleanup exn =
         state.finished <- true;
         Option.iter exn ~f:(fun exn ->
-          Dune_util.Log.info [ Pp.text "Console failed"; Exn_with_backtrace.pp exn ]);
+          Log.info [ Pp.text "Console failed"; Exn_with_backtrace.pp exn ]);
         (match Exn_with_backtrace.try_with Base.finish with
          | Ok () -> ()
          | Error exn ->
            (* we can't log to console because we are cleaning it up and we
               borked it *)
-           Dune_util.Log.log (fun () ->
+           Log.log (fun () ->
              [ Pp.text "Error cleaning up console"; Exn_with_backtrace.pp exn ]));
         Condition.broadcast finish_cv;
         Mutex.unlock mutex

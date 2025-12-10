@@ -156,15 +156,14 @@ module Cache = struct
            [ "dune"; "rev_store" ]
        in
        let rev_store_cache = Dune_config.Config.get rev_store_cache in
-       Dune_util.Log.info
+       Log.info
          [ Pp.textf
              "Revision store cache: %s"
              (Dune_config.Config.Toggle.to_string rev_store_cache)
          ];
        match rev_store_cache, Path.mkdir_p path with
        | `Enabled, () ->
-         Dune_util.Log.info
-           [ Pp.textf "Revision store cache location: %s" (Path.to_string path) ];
+         Log.info [ Pp.textf "Revision store cache location: %s" (Path.to_string path) ];
          Some path
        | `Disabled, () -> None)
   ;;

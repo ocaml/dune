@@ -9,7 +9,6 @@
   lmdb
   fiber
   fiber_util
-  chrome_trace
   dune_engine
   dune_util
   dune_trace

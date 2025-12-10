@@ -668,7 +668,7 @@ struct
             (match exn.exn with
              | Dune_util.Report_error.Already_reported -> ()
              | _ ->
-               Dune_util.Log.info
+               Log.info
                  [ Pp.textf
                      "encountered error serving rpc client (id %d)"
                      (Session.Id.to_int id)

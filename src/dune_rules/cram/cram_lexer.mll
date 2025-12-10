@@ -108,7 +108,7 @@ and output loc maybe_comment = parse
   | "  $ " ([^'\n']* as str)
     { eol_then_command_or_finish (loc_of_dollar lexbuf) str lexbuf }
   | ' ' ((nonspace not_nl*) as rest)
-    { check_eol_for_output loc ((" " ^ rest) :: maybe_comment) lexbuf }
+    { after_comment_line_in_output loc ((" " ^ rest) :: maybe_comment) lexbuf }
   | ' ' '\n'
     { Lexing.new_line lexbuf;
       output loc (" " :: maybe_comment) lexbuf }
@@ -125,8 +125,8 @@ and after_output_line_in_output loc maybe_comment = parse
   | '\n' { Lexing.new_line lexbuf; output loc maybe_comment lexbuf }
   | eof  { output loc maybe_comment lexbuf }
 
-and check_eol_for_output loc maybe_comment = parse
-  | '\n' { Lexing.new_line lexbuf; output loc maybe_comment lexbuf }
+and after_comment_line_in_output loc maybe_comment = parse
+  | '\n' { Lexing.new_line lexbuf; comment loc maybe_comment lexbuf }
   | eof  {
     let loc = Loc.set_stop loc (Lexing.lexeme_start_p lexbuf) in
     Some (loc, Comment (List.rev maybe_comment)) }

@@ -6,7 +6,6 @@
   action_ext
   build_path_prefix_map
   chrome_trace
-  json
   csexp
   action_plugin
   dune_action_plugin

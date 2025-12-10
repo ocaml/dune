@@ -5,7 +5,6 @@
   dune_tests_common
   stdune
   dune_trace
-  json
   chrome_trace
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project

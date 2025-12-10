@@ -72,6 +72,7 @@ module Scanf = Scanf
 module Sys = Sys
 module Pid = Pid
 module Applicative = Applicative
+module Json = Json
 
 module type Top_closure = Top_closure.Top_closure
 

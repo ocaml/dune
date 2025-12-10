@@ -1,5 +1,12 @@
-open Stdune
-include Chrome_trace.Json
+type t =
+  [ `Int of int
+  | `Float of float
+  | `String of string
+  | `List of t list
+  | `Bool of bool
+  | `Assoc of (string * t) list
+  | `Null
+  ]
 
 let copy_substring s buf start pos =
   if pos > start then Buffer.add_substring buf s start (pos - start)
@@ -18,7 +25,8 @@ let rec quote_characters_to_buf s buf n start pos =
     | '\r' -> escape s buf n start pos "\\r"
     | '\\' -> escape s buf n start pos "\\\\"
     | '"' -> escape s buf n start pos "\\\""
-    | '\000' .. '\031' as c -> escape s buf n start pos (sprintf "\\u%04x" (Char.code c))
+    | '\000' .. '\031' as c ->
+      escape s buf n start pos (Printf.sprintf "\\u%04x" (Char.code c))
     | '\032' .. '\127' -> quote_characters_to_buf s buf n start (pos + 1)
     (* Check for valid UTF-8 *)
     | '\xc0' .. '\xdf' when is_cb (pos + 1) ->

@@ -1393,16 +1393,19 @@ module DB = struct
   (* Returns the db for all dev tools combined with the default context, and
      the digest for the dev tool's package. *)
   let of_dev_tool =
+    let system_provided = default_system_provided in
+    let inactive_lockdir =
+      Memo.lazy_ (fun () ->
+        let+ pkg_digest_table = Memo.Lazy.force Pkg_table.all_existing_dev_tools in
+        create ~pkg_digest_table ~system_provided)
+    in
     let of_dev_tool_memo =
       Memo.create "pkg-db-dev-tool" ~input:(module Dune_pkg.Dev_tool)
       @@ fun dev_tool ->
-      let system_provided = default_system_provided in
       let+ db =
         Lock_dir.lock_dir_active Context_name.default
         >>= function
-        | false ->
-          let+ pkg_digest_table = Memo.Lazy.force Pkg_table.all_existing_dev_tools in
-          create ~pkg_digest_table ~system_provided
+        | false -> Memo.Lazy.force inactive_lockdir
         | true -> of_ctx Context_name.default ~allow_sharing:true
       and+ pkg_digest =
         let+ lock_dir = Lock_dir.of_dev_tool dev_tool

@@ -22,4 +22,5 @@
   opam_format
   build_info
   sat
+  unix
   xdg))

@@ -13,4 +13,4 @@
   dune_sexp
   dune_config
   memo
-  (re_export unix)))
+  unix))

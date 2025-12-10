@@ -5,13 +5,11 @@ module File = struct
   type t =
     | Default
     | No_log_file
-    | This of Path.t
     | Stderr
 
   let equal a b =
     match a, b with
     | Default, Default | No_log_file, No_log_file | Stderr, Stderr -> true
-    | This a, This b -> Path.equal a b
     | _, _ -> false
   ;;
 end
@@ -26,9 +24,6 @@ let init ?(file = File.Default) () =
     match file with
     | No_log_file -> None
     | Stderr -> Some stderr
-    | This path ->
-      Path.mkdir_p (Path.parent_exn path);
-      Some (Io.open_out path)
     | Default ->
       Path.ensure_build_dir_exists ();
       Some (Io.open_out (Path.relative Path.build_dir "log"))

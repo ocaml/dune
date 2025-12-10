@@ -84,6 +84,5 @@ Warnings are still fatal in dev mode.
   1 | let f = function 0 -> 1
               ^^^^^^^^^^^^^^^
   Error (warning 8 [partial-match]): this pattern-matching is not exhaustive.
-  Here is an example of a case that is not matched:
-  1
+    Here is an example of a case that is not matched: 1
   [1]

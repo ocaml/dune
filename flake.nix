@@ -1,9 +1,10 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    nixpkgs-old.url = "github:nixos/nixpkgs/7f50d4b33363d3948543f6a02b90a2c66852a453";
     flake-utils.url = "github:numtide/flake-utils";
     melange = {
-      url = "github:melange-re/melange/refs/tags/5.1.0-53";
+      url = "github:melange-re/melange/v6-54";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     ocaml-overlays = {
@@ -24,6 +25,7 @@
       self,
       flake-utils,
       nixpkgs,
+      nixpkgs-old,
       melange,
       ocaml-overlays,
       oxcaml,
@@ -35,7 +37,7 @@
         pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
           ocaml-overlays.overlays.default
           (self: super: {
-            ocamlPackages = super.ocaml-ng.ocamlPackages_5_3.overrideScope (
+            ocamlPackages = super.ocaml-ng.ocamlPackages_5_4.overrideScope (
               oself: osuper: {
                 mdx = osuper.mdx.override {
                   logs = oself.logs;
@@ -63,8 +65,13 @@
           oxcamlOpamRepo = oxcaml-opam-repository;
         };
 
+        # Older nixpkgs for OCaml 4.02 support
+        pkgs-old = nixpkgs-old.legacyPackages.${system}.appendOverlays [
+          ocaml-overlays.overlays.default
+        ];
+
         dune-static-overlay = self: super: {
-          ocamlPackages = super.ocaml-ng.ocamlPackages_5_3.overrideScope (
+          ocamlPackages = super.ocaml-ng.ocamlPackages_5_4.overrideScope (
             oself: osuper: {
               dune_3 = osuper.dune_3.overrideAttrs (a: {
                 src = ./.;
@@ -80,19 +87,16 @@
 
         ocamlformat =
           let
-            ocamlformat_version =
-              let
-                lists = pkgs.lib.lists;
-                strings = pkgs.lib.strings;
-                ocamlformat_config = strings.splitString "\n" (builtins.readFile ./.ocamlformat);
-                prefix = "version=";
-                ocamlformat_version_pred = line: strings.hasPrefix prefix line;
-                version_line = lists.findFirst ocamlformat_version_pred "not_found" ocamlformat_config;
-                version = strings.removePrefix prefix version_line;
-              in
-              builtins.replaceStrings [ "." ] [ "_" ] version;
+            lists = pkgs.lib.lists;
+            strings = pkgs.lib.strings;
+            ocamlformat_config = strings.splitString "\n" (builtins.readFile ./.ocamlformat);
+            prefix = "version=";
+            ocamlformat_version_pred = line: strings.hasPrefix prefix line;
+            version_line = lists.findFirst ocamlformat_version_pred "not_found" ocamlformat_config;
+            version_string = strings.removePrefix prefix version_line;
+            ocamlformat_attr = builtins.replaceStrings [ "." ] [ "_" ] version_string;
           in
-          builtins.getAttr ("ocamlformat_" + ocamlformat_version) pkgs;
+          builtins.getAttr ("ocamlformat_" + ocamlformat_attr) nixpkgs.legacyPackages.${system};
 
         testBuildInputs =
           with pkgs;
@@ -275,13 +279,13 @@
             fmt = pkgs.mkShell {
               inherit INSIDE_NIX;
               nativeBuildInputs = [ ocamlformat ];
-              # re shouldn't be needed. this is an issue with the fmt rules
               inputsFrom = [
                 pkgs.dune_3
               ];
               buildInputs = with pkgs.ocamlPackages; [
                 csexp
                 pp
+                # re shouldn't be needed. this is an issue with the fmt rules
                 re
                 spawn
                 uutf
@@ -343,9 +347,9 @@
 
             bootstrap-check = pkgs.mkShell {
               inherit INSIDE_NIX;
-              buildInputs = with pkgs; [
-                gnumake
-                ocaml-ng.ocamlPackages_4_02.ocaml
+              buildInputs = [
+                pkgs.gnumake
+                pkgs-old.ocaml-ng.ocamlPackages_4_02.ocaml
               ];
               meta.description = ''
                 Provides a minimal shell environment with OCaml 4.02 in order
@@ -355,9 +359,9 @@
 
             bootstrap-check_4_08 = pkgs.mkShell {
               inherit INSIDE_NIX;
-              buildInputs = with pkgs; [
-                gnumake
-                ocaml-ng.ocamlPackages_4_08.ocaml
+              buildInputs = [
+                pkgs.gnumake
+                pkgs-old.ocaml-ng.ocamlPackages_4_08.ocaml
               ];
               meta.description = ''
                 Provides a minimal shell environment with OCaml 4.08 in order

@@ -591,10 +591,10 @@ let setup_coqproject_for_theory_rule
   let contents : string With_targets.t =
     let open With_targets.O in
     let dir = Path.build dir in
-    let+ args_bld = Command.expand ~dir (Command.Args.S args)
+    let+ args_bld = Command.expand ~dir (Command.Args.S args) >>| Appendable_list.to_list
     and+ args_src =
       let dir = Path.source (Path.drop_build_context_exn dir) in
-      Command.expand ~dir (Command.Args.S args)
+      Command.expand ~dir (Command.Args.S args) >>| Appendable_list.to_list
     in
     let contents = Buffer.create 73 in
     let rec add_args args_bld args_src =

@@ -155,7 +155,10 @@ let term =
       let* (args, _) : string list * Dep.Fact.t Dep.Map.t =
         let* args = args in
         let dir = Path.external_ Path.External.initial_cwd in
-        let args = Dune_rules.Command.expand ~dir (S args) in
+        let args =
+          Dune_rules.Command.expand ~dir (S args)
+          |> Action_builder.With_targets.map ~f:Appendable_list.to_list
+        in
         Action_builder.evaluate_and_collect_facts args.build
       in
       let+ env = Super_context.context_env sctx in

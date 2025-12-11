@@ -269,7 +269,7 @@ let link_js
       let+ l =
         Command.expand_no_targets ~dir:(Path.build (Compilation_context.dir cctx)) cmd
       in
-      List.exists l ~f:(String.equal "-linkall"))
+      Appendable_list.exists l ~f:(String.equal "-linkall"))
   in
   Jsoo_rules.build_exe
     cctx

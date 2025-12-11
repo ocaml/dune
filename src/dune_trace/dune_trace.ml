@@ -362,6 +362,39 @@ module Event = struct
       Event.instant ~args common
     ;;
   end
+
+  let gc () =
+    let module Event = Chrome_trace.Event in
+    let module Json = Chrome_trace.Json in
+    let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
+    let common = Event.common_fields ~name:"gc" ~ts () in
+    let args =
+      let stat = Gc.quick_stat () in
+      [ "stack_size", `Int stat.stack_size
+      ; "heap_words", `Int stat.heap_words
+      ; "top_heap_words", `Int stat.top_heap_words
+      ; "minor_words", `Float stat.minor_words
+      ; "major_words", `Float stat.major_words
+      ; "promoted_words", `Float stat.promoted_words
+      ; "compactions", `Int stat.compactions
+      ; "major_collections", `Int stat.major_collections
+      ; "minor_collections", `Int stat.minor_collections
+      ]
+    in
+    Event.counter common args
+  ;;
+
+  let fd_count () =
+    let module Event = Chrome_trace.Event in
+    let module Json = Chrome_trace.Json in
+    let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
+    match Fd_count.get () with
+    | Unknown -> None
+    | This fds ->
+      let args = [ "value", `Int fds ] in
+      let common = Event.common_fields ~name:"fds" ~ts () in
+      Some (Event.counter common args)
+  ;;
 end
 
 let emit t event = printf t "%s" (Json.to_string (Chrome_trace.Event.to_json event))
@@ -392,39 +425,6 @@ let finish event =
     in
     let event = Chrome_trace.Event.complete ?args common ~dur in
     emit t event
-;;
-
-let record_gc_and_fd stats =
-  let module Event = Chrome_trace.Event in
-  let module Json = Chrome_trace.Json in
-  let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
-  let () =
-    let common = Event.common_fields ~name:"gc" ~ts () in
-    let args =
-      let stat = Gc.quick_stat () in
-      [ "stack_size", `Int stat.stack_size
-      ; "heap_words", `Int stat.heap_words
-      ; "top_heap_words", `Int stat.top_heap_words
-      ; "minor_words", `Float stat.minor_words
-      ; "major_words", `Float stat.major_words
-      ; "promoted_words", `Float stat.promoted_words
-      ; "compactions", `Int stat.compactions
-      ; "major_collections", `Int stat.major_collections
-      ; "minor_collections", `Int stat.minor_collections
-      ]
-    in
-    let event = Event.counter common args in
-    emit stats event
-  in
-  match Fd_count.get () with
-  | Unknown -> ()
-  | This fds ->
-    let event =
-      let args = [ "value", `Int fds ] in
-      let common = Event.common_fields ~name:"fds" ~ts () in
-      Event.counter common args
-    in
-    emit stats event
 ;;
 
 module Private = struct

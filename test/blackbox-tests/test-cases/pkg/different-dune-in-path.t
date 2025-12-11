@@ -75,9 +75,11 @@ Make a fake dune exe:
 
 Try building in an environment where `dune` refers to the fake dune.
 
-Remember the path to the dune under test:
+Remember the path to the dune under test, otherwise we would launch the wrong
+Dune and add our fake `dune` to the PATH.
 
-  $ DUNE=$(which dune)  # otherwise we would start by running the wrong dune
+  $ DUNE=$(which dune)
+  $ fakepath=$PWD/.bin:$PATH
 
 Remember the digests, to not to have to call nested Dunes:
 
@@ -86,19 +88,19 @@ Remember the digests, to not to have to call nested Dunes:
 
 Call Dune with an absolute PATH as argv[0]:
 
-  $ PATH=$PWD/.bin:$PATH $DUNE build "$pkg_root/$foo_digest/target/"
+  $ PATH=$fakepath $DUNE build "$pkg_root/$foo_digest/target/"
   Fake dune! (args: build -p foo @install)
-  $ PATH=$PWD/.bin:$PATH $DUNE build "$pkg_root/$bar_digest/target/"
+  $ PATH=$fakepath $DUNE build "$pkg_root/$bar_digest/target/"
   Fake dune! (args: build -p bar @install)
 
 Call Dune with argv[0] set to a relative PATH. Make sure "dune" in PATH refers
 to the fake dune:
 
-  $ PATH=$PWD/.bin:$PATH dune_cmd exec-a "dune" sh -c "which dune"
+  $ PATH=$fakepath dune_cmd exec-a "dune" sh -c "which dune"
   $TESTCASE_ROOT/.bin/dune
 
 Make sure that fake dune is not picked up when dune is called with argv[0] = "dune":
 
   $ dune clean
-  $ PATH=$PWD/.bin:$PATH dune_cmd exec-a "dune" $DUNE build "$pkg_root/$foo_digest/target/"
+  $ PATH=$fakepath dune_cmd exec-a "dune" $DUNE build "$pkg_root/$foo_digest/target/"
   Fake dune! (args: build -p foo @install)

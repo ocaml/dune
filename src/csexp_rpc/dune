@@ -6,6 +6,7 @@
   dyn
   dune_util
   dune_console
+  dune_trace
   csexp
   fiber
   dune_async_io

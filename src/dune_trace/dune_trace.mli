@@ -83,6 +83,11 @@ module Event : sig
       -> id:int
       -> stage
       -> t
+
+    val packet_read : id:int -> success:bool -> error:string option -> t
+    val packet_write : id:int -> count:int -> t
+    val accept : success:bool -> error:string option -> t
+    val close : id:int -> t
   end
 end
 

@@ -75,8 +75,6 @@ module Socket = struct
   let maybe_set_nosigpipe fd = if is_osx () then Mac.set_nosigpipe fd
 end
 
-let debug = Option.is_some (Env.get Env.initial "DUNE_RPC_DEBUG")
-
 module Session = struct
   module Id = Session_id
 
@@ -103,7 +101,9 @@ module Session = struct
   let create fd =
     Unix.set_nonblock fd;
     let id = Id.gen () in
-    if debug then Log.info [ Pp.textf "RPC created new session %d" (Id.to_int id) ];
+    Option.iter (Dune_trace.global ()) ~f:(fun trace ->
+      let event = Dune_trace.Event.Rpc.session ~id:(Id.to_int id) Start in
+      Dune_trace.emit trace event);
     let state =
       let size = 8192 in
       Open
@@ -116,11 +116,6 @@ module Session = struct
         }
     in
     { id; state }
-  ;;
-
-  let string_of_packet = function
-    | None -> "EOF"
-    | Some csexp -> Dyn.to_string (Sexp.to_dyn csexp)
   ;;
 
   let close t =
@@ -138,99 +133,117 @@ module Session = struct
   let min_read = 8192
 
   let read =
-    let debug id res =
-      if debug
-      then
-        Log.info
-          [ Pp.verbatim (sprintf "RPC (%d) <<" (Id.to_int id))
-          ; Pp.seq (Pp.verbatim "<< ") (Pp.verbatim (string_of_packet res))
-          ; Pp.text "<<"
-          ]
-    in
     fun t ->
-      let* () = Fiber.return () in
-      match t.state with
-      | Closed ->
-        debug t.id None;
-        Fiber.return None
-      | Open ({ fd; in_buf; read_mutex; _ } as open_) ->
-        let lexer = Lexer.create () in
-        let buf = Buffer.create 16 in
-        let rec refill () =
-          if Io_buffer.length in_buf > 0
-          then Fiber.return (Ok `Continue)
-          else if open_.read_eof
-          then Fiber.return (Ok `Eof)
-          else
-            let* task =
-              Async_io.ready fd `Read ~f:(fun () ->
-                let () = Io_buffer.maybe_resize_to_fit in_buf min_read in
-                let pos = Io_buffer.write_pos in_buf in
-                let len = Io_buffer.max_write_len in_buf in
-                match Unix.read fd (Io_buffer.bytes in_buf) pos len with
-                | exception Unix.Unix_error ((EAGAIN | EINTR | EWOULDBLOCK), _, _) ->
-                  `Refill
-                | (exception Unix.Unix_error (ECONNRESET, _, _)) | 0 ->
-                  open_.read_eof <- true;
-                  `Eof
-                | len ->
-                  Io_buffer.commit_write in_buf ~len;
-                  `Continue)
-            in
-            Async_io.Task.await task
-            >>= function
-            | Error (`Exn e) -> Fiber.return (Error e)
-            | Error `Cancelled | Ok `Eof -> Fiber.return @@ Ok `Eof
-            | Ok `Continue -> Fiber.return @@ Ok `Continue
-            | Ok `Refill -> refill ()
-        and read parser =
-          let* res = refill () in
-          match res with
+    let* () = Fiber.return () in
+    match t.state with
+    | Closed ->
+      Option.iter (Dune_trace.global ()) ~f:(fun trace ->
+        let event =
+          Dune_trace.Event.Rpc.packet_read ~id:(Id.to_int t.id) ~success:true ~error:None
+        in
+        Dune_trace.emit trace event);
+      Fiber.return None
+    | Open ({ fd; in_buf; read_mutex; _ } as open_) ->
+      let lexer = Lexer.create () in
+      let buf = Buffer.create 16 in
+      let rec refill () =
+        if Io_buffer.length in_buf > 0
+        then Fiber.return (Ok `Continue)
+        else if open_.read_eof
+        then Fiber.return (Ok `Eof)
+        else
+          let* task =
+            Async_io.ready fd `Read ~f:(fun () ->
+              let () = Io_buffer.maybe_resize_to_fit in_buf min_read in
+              let pos = Io_buffer.write_pos in_buf in
+              let len = Io_buffer.max_write_len in_buf in
+              match Unix.read fd (Io_buffer.bytes in_buf) pos len with
+              | exception Unix.Unix_error ((EAGAIN | EINTR | EWOULDBLOCK), _, _) ->
+                `Refill
+              | (exception Unix.Unix_error (ECONNRESET, _, _)) | 0 ->
+                open_.read_eof <- true;
+                `Eof
+              | len ->
+                Io_buffer.commit_write in_buf ~len;
+                `Continue)
+          in
+          Async_io.Task.await task
+          >>= function
+          | Error (`Exn e) -> Fiber.return (Error e)
+          | Error `Cancelled | Ok `Eof -> Fiber.return @@ Ok `Eof
+          | Ok `Continue -> Fiber.return @@ Ok `Continue
+          | Ok `Refill -> refill ()
+      and read parser =
+        let* res = refill () in
+        match res with
+        | Error _ as e -> Fiber.return e
+        | Ok `Eof -> Fiber.return (Ok None)
+        | Ok `Continue ->
+          let char = Io_buffer.read_char_exn in_buf in
+          let token = Lexer.feed lexer char in
+          (match token with
+           | Atom n ->
+             Buffer.clear buf;
+             atom parser n
+           | (Lparen | Rparen | Await) as token ->
+             let parser = Stack.add_token token parser in
+             (match parser with
+              | Sexp (sexp, Empty) -> Fiber.return (Ok (Some sexp))
+              | parser -> read parser))
+      and atom parser n =
+        if n = 0
+        then (
+          let atom = Buffer.contents buf in
+          match Stack.add_atom atom parser with
+          | Sexp (sexp, Empty) -> Fiber.return (Ok (Some sexp))
+          | parser -> read parser)
+        else
+          refill ()
+          >>= function
           | Error _ as e -> Fiber.return e
           | Ok `Eof -> Fiber.return (Ok None)
           | Ok `Continue ->
-            let char = Io_buffer.read_char_exn in_buf in
-            let token = Lexer.feed lexer char in
-            (match token with
-             | Atom n ->
-               Buffer.clear buf;
-               atom parser n
-             | (Lparen | Rparen | Await) as token ->
-               let parser = Stack.add_token token parser in
-               (match parser with
-                | Sexp (sexp, Empty) -> Fiber.return (Ok (Some sexp))
-                | parser -> read parser))
-        and atom parser n =
-          if n = 0
-          then (
-            let atom = Buffer.contents buf in
-            match Stack.add_atom atom parser with
-            | Sexp (sexp, Empty) -> Fiber.return (Ok (Some sexp))
-            | parser -> read parser)
-          else
-            refill ()
-            >>= function
-            | Error _ as e -> Fiber.return e
-            | Ok `Eof -> Fiber.return (Ok None)
-            | Ok `Continue ->
-              let n' = Io_buffer.read_into_buffer in_buf buf ~max_len:n in
-              atom parser (n - n')
-        in
-        let+ res =
-          let* res = Fiber.Mutex.with_lock read_mutex ~f:(fun () -> read Stack.Empty) in
-          match res with
-          | Error exn ->
-            Log.info [ Pp.textf "Unable to read (%d)" (Id.to_int t.id); Exn.pp exn ];
-            Dune_util.Report_error.report_exception exn;
-            let+ () = close t in
-            None
-          | Ok None ->
-            let+ () = close t in
-            None
-          | Ok (Some sexp) -> Fiber.return @@ Some sexp
-        in
-        debug t.id res;
-        res
+            let n' = Io_buffer.read_into_buffer in_buf buf ~max_len:n in
+            atom parser (n - n')
+      in
+      let+ res =
+        let* res = Fiber.Mutex.with_lock read_mutex ~f:(fun () -> read Stack.Empty) in
+        match res with
+        | Error exn ->
+          Option.iter (Dune_trace.global ()) ~f:(fun trace ->
+            let event =
+              Dune_trace.Event.Rpc.packet_read
+                ~id:(Id.to_int t.id)
+                ~success:false
+                ~error:(Some (Printexc.to_string exn))
+            in
+            Dune_trace.emit trace event);
+          Dune_util.Report_error.report_exception exn;
+          let+ () = close t in
+          None
+        | Ok None ->
+          Option.iter (Dune_trace.global ()) ~f:(fun trace ->
+            let event =
+              Dune_trace.Event.Rpc.packet_read
+                ~id:(Id.to_int t.id)
+                ~success:true
+                ~error:None
+            in
+            Dune_trace.emit trace event);
+          let+ () = close t in
+          None
+        | Ok (Some sexp) ->
+          Option.iter (Dune_trace.global ()) ~f:(fun trace ->
+            let event =
+              Dune_trace.Event.Rpc.packet_read
+                ~id:(Id.to_int t.id)
+                ~success:true
+                ~error:None
+            in
+            Dune_trace.emit trace event);
+          Fiber.return @@ Some sexp
+      in
+      res
   ;;
 
   external send : Unix.file_descr -> Bytes.t -> int -> int -> int = "dune_send"
@@ -274,14 +287,11 @@ module Session = struct
 
   let write t sexps =
     let* () = Fiber.return () in
-    if debug
-    then
-      Log.info
-        [ Pp.verbatim (sprintf "RPC (%id) >>" (Id.to_int t.id))
-        ; Pp.concat_map sexps ~f:(fun sexp ->
-            Pp.seq (Pp.verbatim ">> ") (Pp.verbatim (Sexp.to_string sexp)))
-        ; Pp.text ">>"
-        ];
+    Option.iter (Dune_trace.global ()) ~f:(fun trace ->
+      let event =
+        Dune_trace.Event.Rpc.packet_write ~id:(Id.to_int t.id) ~count:(List.length sexps)
+      in
+      Dune_trace.emit trace event);
     match t.state with
     | Closed -> Fiber.return (Error `Closed)
     | Open { fd; out_buf; write_mutex; _ } ->
@@ -304,8 +314,9 @@ module Session = struct
 
   let close t =
     let* () = Fiber.return () in
-    if debug
-    then Log.info [ Pp.verbatim (sprintf "RPC (%id) >> closing" (Id.to_int t.id)) ];
+    Option.iter (Dune_trace.global ()) ~f:(fun trace ->
+      let event = Dune_trace.Event.Rpc.close ~id:(Id.to_int t.id) in
+      Dune_trace.emit trace event);
     match t.state with
     | Closed -> Fiber.return ()
     | Open { fd; _ } ->
@@ -419,17 +430,28 @@ module Server = struct
       let loop () =
         let+ accept = Transport.accept transport in
         match accept with
-        | Error exn ->
-          Log.info
-            [ Pp.text "RPC accept failed. Server will not accept new clients"
-            ; Exn_with_backtrace.pp exn
-            ];
+        | Error _exn ->
+          Option.iter (Dune_trace.global ()) ~f:(fun trace ->
+            let event =
+              Dune_trace.Event.Rpc.accept
+                ~success:false
+                ~error:(Some "RPC accept failed. Server will not accept new clients")
+            in
+            Dune_trace.emit trace event);
           None
         | Ok None ->
-          Log.info
-            [ Pp.text "RPC accepted the last client. No more clients will be accepted." ];
+          Option.iter (Dune_trace.global ()) ~f:(fun trace ->
+            let event =
+              Dune_trace.Event.Rpc.accept
+                ~success:false
+                ~error:(Some "No more clients will be accepted")
+            in
+            Dune_trace.emit trace event);
           None
         | Ok (Some fd) ->
+          Option.iter (Dune_trace.global ()) ~f:(fun trace ->
+            let event = Dune_trace.Event.Rpc.accept ~success:true ~error:None in
+            Dune_trace.emit trace event);
           let session = Session.create fd in
           Some session
       in

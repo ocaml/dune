@@ -319,6 +319,52 @@ module Event = struct
         (async_kind_of_stage stage)
         common
     ;;
+
+    let packet_read ~id ~success ~error =
+      let open Chrome_trace in
+      let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
+      let args =
+        let base = [ "id", `Int id; "success", `Bool success ] in
+        match error with
+        | None -> base
+        | Some err -> ("error", `String err) :: base
+      in
+      let common =
+        Event.common_fields ~cat:[ "rpc"; "packet" ] ~name:"packet_read" ~ts ()
+      in
+      Event.instant ~args common
+    ;;
+
+    let packet_write ~id ~count =
+      let open Chrome_trace in
+      let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
+      let args = [ "id", `Int id; "count", `Int count ] in
+      let common =
+        Event.common_fields ~cat:[ "rpc"; "packet" ] ~name:"packet_write" ~ts ()
+      in
+      Event.instant ~args common
+    ;;
+
+    let accept ~success ~error =
+      let open Chrome_trace in
+      let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
+      let args =
+        let base = [ "success", `Bool success ] in
+        match error with
+        | None -> base
+        | Some err -> ("error", `String err) :: base
+      in
+      let common = Event.common_fields ~cat:[ "rpc"; "accept" ] ~name:"accept" ~ts () in
+      Event.instant ~args common
+    ;;
+
+    let close ~id =
+      let open Chrome_trace in
+      let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
+      let args = [ "id", `Int id ] in
+      let common = Event.common_fields ~cat:[ "rpc"; "session" ] ~name:"close" ~ts () in
+      Event.instant ~args common
+    ;;
   end
 end
 

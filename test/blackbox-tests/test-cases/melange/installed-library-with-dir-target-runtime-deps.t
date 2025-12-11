@@ -39,3 +39,34 @@ Test `melange.runtime_deps` in a library that has been installed
   Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmt
   Installing $TESTCASE_ROOT/prefix/lib/foo/some_dir/inside-dir-target.txt
 
+  $ rm -rf $PWD/prefix
+  $ dune clean
+  $ cat > lib/dune <<EOF
+  > (rule (target (dir some_dir))
+  >  (action
+  >   (progn (system "mkdir %{target}")
+  >    (system "echo hello from file inside dir target > %{target}/inside-dir-target.txt"))))
+  > (library
+  >  (public_name foo)
+  >  (modes melange)
+  >  (libraries melange.node)
+  >  (preprocess (pps melange.ppx))
+  >  (melange.runtime_deps ./some_dir/inside-dir-target.txt ./some_dir ./file.txt))
+  > EOF
+
+  $ dune build
+  File "lib/dune", lines 5-10, characters 0-182:
+   5 | (library
+   6 |  (public_name foo)
+   7 |  (modes melange)
+   8 |  (libraries melange.node)
+   9 |  (preprocess (pps melange.ppx))
+  10 |  (melange.runtime_deps ./some_dir/inside-dir-target.txt ./some_dir ./file.txt))
+  Error: This rule defines a target "some_dir" whose name conflicts with an
+  internal directory used by Dune. Please use a different name.
+  [1]
+  $ dune install --prefix $PWD/prefix --display short
+  Error: The following <package>.install are missing:
+  - _build/default/lib/foo.install
+  Hint: try running 'dune build [-p <pkg>] @install'
+  [1]

@@ -39,6 +39,9 @@
           (self: super: {
             ocamlPackages = super.ocaml-ng.ocamlPackages_5_4.overrideScope (
               oself: osuper: {
+                ocaml = osuper.ocaml.override {
+                  framePointerSupport = true;
+                };
                 mdx = osuper.mdx.override {
                   logs = oself.logs;
                 };
@@ -49,6 +52,15 @@
             );
           })
           melange.overlays.default
+          (self: super: {
+            ocamlPackages = super.ocamlPackages.overrideScope (
+              oself: osuper: {
+                ocaml = osuper.ocaml.override {
+                  flambdaSupport = false;
+                };
+              }
+            );
+          })
           (self: super: {
             coq_8_16_native = super.coq_8_16.overrideAttrs (a: {
               configureFlags = [

@@ -99,4 +99,6 @@ tools in the `dune-workspace` if you intend to use them for your development
 workflows.
 
 Please see {doc}`/howto/customize-dev-tools-lock-directories` for details about
-configuring your workspace for developer tools.
+configuring your workspace for developer tools. Please be aware that there are
+known issues in the current Dune release that may prevent this functionality
+from working reliably.

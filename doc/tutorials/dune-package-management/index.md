@@ -25,4 +25,5 @@ dependencies
 pinning
 repos
 locking
+oxcaml
 :::

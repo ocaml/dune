@@ -44,7 +44,7 @@ module Sys_vars : sig
 
   val os : t -> Dune_lang.Pform.Var.Os.t -> string option Memo.t
   val poll : t
-  val solver_env : unit -> Dune_pkg.Solver_env.t Memo.t
+  val solver_env : Dune_pkg.Solver_env.t Memo.t
 end
 
 val source_kind

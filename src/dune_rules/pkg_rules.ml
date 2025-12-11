@@ -1322,7 +1322,7 @@ module DB = struct
 
     let all_existing_dev_tools =
       Memo.lazy_ (fun () ->
-        let* platform = Lock_dir.Sys_vars.solver_env () in
+        let* platform = Lock_dir.Sys_vars.solver_env in
         let+ xs =
           Memo.List.map
             Pkg_dev_tool.all
@@ -1386,7 +1386,7 @@ module DB = struct
              let system_provided = default_system_provided in
              let+ pkg_digest_table =
                let* lock_dir = Lock_dir.get_exn ctx
-               and* platform = Lock_dir.Sys_vars.solver_env () in
+               and* platform = Lock_dir.Sys_vars.solver_env in
                (if allow_sharing
                 then Memo.Lazy.force Pkg_table.all_existing_dev_tools
                 else Memo.return Pkg_table.empty)
@@ -1402,7 +1402,7 @@ module DB = struct
      within that context. *)
   let of_project_pkg ctx pkg_name =
     let* lock_dir = Lock_dir.get_exn ctx
-    and* platform = Lock_dir.Sys_vars.solver_env () in
+    and* platform = Lock_dir.Sys_vars.solver_env in
     let+ t = of_ctx ctx ~allow_sharing:true in
     t, pkg_digest_of_name lock_dir platform pkg_name ~system_provided:t.system_provided
   ;;
@@ -1412,7 +1412,7 @@ module DB = struct
   let of_dev_tool dev_tool =
     let system_provided = default_system_provided in
     let* lock_dir = Lock_dir.of_dev_tool dev_tool
-    and* platform = Lock_dir.Sys_vars.solver_env ()
+    and* platform = Lock_dir.Sys_vars.solver_env
     and* lock_dir_active_for_default_ctx =
       Lock_dir.lock_dir_active Context_name.default
     in
@@ -1493,7 +1493,7 @@ end = struct
         ; pkg_digest = _
         } ->
       assert (Package.Name.equal pkg_digest.name info.name);
-      let* platform = Lock_dir.Sys_vars.solver_env () in
+      let* platform = Lock_dir.Sys_vars.solver_env in
       let choose_for_current_platform field =
         Dune_pkg.Lock_dir.Conditional_choice.choose_for_platform field ~platform
       in

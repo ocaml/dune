@@ -47,7 +47,7 @@ let global () = !global
 let create dst =
   let print =
     match dst with
-    | Out out -> Stdlib.output_string out
+    | Out out -> fun str -> Stdlib.output_string out str
     | Custom c -> c.write
   in
   let close =

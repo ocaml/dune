@@ -162,11 +162,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1764950604,
-        "narHash": "sha256-ihghtDwL4ioBLg9yphaK2RXoZjJYPvoKgLWGR6GGwPk=",
+        "lastModified": 1765456638,
+        "narHash": "sha256-Q/BaBegWD0FlxIndp4roXfPSWxHEQF/+PeLHmg3AbHs=",
         "owner": "oxcaml",
         "repo": "oxcaml",
-        "rev": "847bf56d6bd9fa8744546a96db820466c4a6ead2",
+        "rev": "8e7b3655a43711d05419647a3bcda4a6b0374f93",
         "type": "github"
       },
       "original": {

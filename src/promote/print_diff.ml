@@ -13,8 +13,12 @@ let resolve_link_for_git path =
           "Unable to resolve symlink %s. Max recursion depth exceeded"
           (Path.to_string path)
       ]
-  | Error (Unix_error _) ->
-    User_error.raise [ Pp.textf "Unable to resolve symlink %s" (Path.to_string path) ]
+  | Error (Unix_error (ENOENT, _, _)) -> path
+  | Error (Unix_error err) ->
+    User_error.raise
+      [ Pp.textf "Unable to resolve symlink %s" (Path.to_string path)
+      ; Unix_error.Detailed.pp err
+      ]
 ;;
 
 module Diff = struct

@@ -1,0 +1,3 @@
+(cram
+ (applies_to symlink-to-nonexistent)
+ (deps %{bin:git} ../git-helpers.sh))

@@ -1,0 +1,7 @@
+(library
+ (name liba)
+ (public_name pkga.lib))
+
+(documentation
+ (package pkga)
+ (mld_files index))

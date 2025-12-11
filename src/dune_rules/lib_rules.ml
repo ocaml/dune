@@ -559,7 +559,7 @@ let cctx
 
 let library_rules
       (lib : Library.t)
-      ~local_lib
+      ~local_lib:_
       ~cctx
       ~source_modules
       ~dir_contents
@@ -618,7 +618,6 @@ let library_rules
            ~dir_contents
            ~vlib_stubs_o_files)
   and+ () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
-  and+ () = Odoc.setup_library_odoc_rules cctx local_lib
   and+ () =
     let source_modules =
       Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)

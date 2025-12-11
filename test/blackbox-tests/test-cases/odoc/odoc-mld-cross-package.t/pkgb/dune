@@ -1,0 +1,3 @@
+(library
+ (name libb)
+ (public_name pkgb.lib))

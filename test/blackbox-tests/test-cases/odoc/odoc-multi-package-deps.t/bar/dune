@@ -1,0 +1,4 @@
+(library
+ (name barlib)
+ (public_name bar.lib)
+ (libraries foo.lib))

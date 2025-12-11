@@ -34,7 +34,8 @@ let term =
       let toplevel_index_path =
         let is_default ctx = ctx |> Context.name |> Dune_engine.Context_name.is_default in
         let doc_ctx = List.find_exn setup.contexts ~f:is_default in
-        Dune_rules.Odoc.Paths.toplevel_index doc_ctx
+        let build_dir = Context.build_dir doc_ctx in
+        Path.Build.relative build_dir "_doc/_html/index.html"
       in
       Path.(toplevel_index_path |> build |> to_string_maybe_quoted)
     in

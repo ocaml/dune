@@ -1,0 +1,10 @@
+{0 My Package}
+
+This is the main package page. This is a link to a 
+page in a {{!//tutorial/page-"getting-started"}subpage}.
+An alternative link is {{!/mypkg/tutorial/page-"getting-started"}this}.
+Also {{!tutorial/page-"getting-started"}this} ought to work.
+This one {{!page-"getting-started"}shouldn't work}.
+
+
+

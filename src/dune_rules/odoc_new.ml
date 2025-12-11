@@ -127,6 +127,11 @@ module Index = struct
     List.fold_right ~f:(fun x acc -> acc ++ subdir x) ~init m
   ;;
 
+  let classify_dir ctx ~all (m : t) =
+    let init = Paths.root ctx ~all ++ "classify" in
+    List.fold_right ~f:(fun x acc -> acc ++ subdir x) ~init m
+  ;;
+
   let mld_name_ty : ty -> string = subdir
 
   let mld_name : t -> string = function
@@ -142,10 +147,10 @@ module Index = struct
       let info = Lib.Local.info lib in
       Lib_info.package info
     with
-    | None -> [ Private_lib (Odoc.lib_unique_name (lib :> Lib.t)) ]
+    | None -> [ Private_lib (Odoc_scope.lib_unique_name lib) ]
     | Some _pkg ->
       (match Lib_name.analyze (Lib.name (lib :> Lib.t)) with
-       | Private (_, _) -> [ Private_lib (Odoc.lib_unique_name (lib :> Lib.t)) ]
+       | Private (_, _) -> [ Private_lib (Odoc_scope.lib_unique_name lib) ]
        | Public (pkg, rest) ->
          List.fold_left
            ~f:(fun acc s -> Sub_dir s :: acc)
@@ -868,7 +873,7 @@ let compile_module
         in
         Odoc.run_odoc
           sctx
-          ~dir:doc_dir
+          ~dir:(Paths.root ctx ~all)
           "compile"
           ~flags_for:(Some odoc_file)
           ~quiet
@@ -923,12 +928,12 @@ let link_requires stdlib_opt libs =
 
 let compile_mld sctx a ~parent_opt ~quiet ~is_index ~children =
   assert (Artifact.artifact_ty a = Artifact.Mld);
+  let ctx = Super_context.context sctx in
   let odoc_file = Artifact.odoc_file a in
   let run_odoc =
     let quiet_arg =
       if quiet then Command.Args.A "--print-warnings=false" else Command.Args.empty
     in
-    let doc_dir = Path.Build.parent_exn (Artifact.odoc_file a) in
     let odoc_input = Artifact.source_file a in
     let parent_args =
       match parent_opt with
@@ -946,7 +951,7 @@ let compile_mld sctx a ~parent_opt ~quiet ~is_index ~children =
     in
     Odoc.run_odoc
       sctx
-      ~dir:(Path.build doc_dir)
+      ~dir:(Paths.root ctx ~all:true)
       "compile"
       ~flags_for:(Some odoc_file)
       ~quiet
@@ -984,7 +989,7 @@ let link_odoc_rules sctx ~all (artifacts : Artifact.t list) ~quiet ~package ~lib
     let run_odoc =
       Odoc.run_odoc
         sctx
-        ~dir:(Path.parent_exn (Path.build (Artifact.odocl_file a)))
+        ~dir:(Paths.root ctx ~all:true)
         "link"
         ~quiet
         ~flags_for:(Some (Artifact.odoc_file a))
@@ -1006,27 +1011,35 @@ let link_odoc_rules sctx ~all (artifacts : Artifact.t list) ~quiet ~package ~lib
 let html_generate sctx all ~search_db (a : Artifact.t) =
   let ctx = Super_context.context sctx in
   let html_output = Paths.html_root ctx ~all in
-  let support_relative =
+  let doc_root = Paths.root ctx ~all in
+  (* Compute relative paths from doc_root since run_odoc runs from there *)
+  let html_output_rel = Path.reach (Path.build html_output) ~from:(Path.build doc_root) in
+  (* Compute URIs relative to html_output (since URIs are relative to -o argument) *)
+  let support_uri =
     let odoc_support_path = Paths.odoc_support ctx ~all in
     Path.reach (Path.build odoc_support_path) ~from:(Path.build html_output)
   in
   let search_args =
-    Sherlodoc.odoc_args sctx ~search_db ~dir_sherlodoc_dot_js:(Index.html_dir ctx ~all [])
+    Sherlodoc.odoc_args
+      sctx
+      ~search_db
+      ~dir_sherlodoc_dot_js:(Index.html_dir ctx ~all [])
+      ~html_root:html_output
   in
   let run_odoc =
     Odoc.run_odoc
       sctx
-      ~quiet:false
-      ~dir:(Path.build html_output)
+      ~dir:(Paths.root ctx ~all:true)
       "html-generate"
+      ~quiet:false
       ~flags_for:None
       [ Command.Args.A "-o"
-      ; Path (Path.build html_output)
+      ; A html_output_rel
       ; search_args
       ; A "--support-uri"
-      ; A support_relative
+      ; A support_uri
       ; A "--theme-uri"
-      ; A support_relative
+      ; A support_uri
       ; Dep (Path.build (Artifact.odocl_file a))
       ]
   in
@@ -1042,6 +1055,38 @@ let html_generate sctx all ~search_db (a : Artifact.t) =
   in
   let+ () = add_rule sctx rule in
   result
+;;
+
+(* |> Dune_engine.Dep.file
+      |> Dune_engine.Dep.Set.singleton *)
+let classify_rule sctx ~all modules_dir dir =
+  let ctx = Super_context.context sctx in
+  let dir = Index.classify_dir ctx ~all dir in
+  let file = dir ++ "classify" in
+  Log.info [ Pp.textf "Classifying %s" (Path.Build.to_string dir) ];
+  let odoc = Odoc.odoc_program sctx (Paths.root ctx ~all) in
+  let* deps = Fs_memo.dir_contents (Path.as_outside_build_dir_exn modules_dir) in
+  let deps =
+    match deps with
+    | Ok x ->
+      Fs_cache.Dir_contents.to_list x
+      |> List.filter_map ~f:(function
+        | x, Unix.S_REG -> Some (Path.append_local modules_dir (Path.Local.of_string x))
+        | _ -> None)
+    | Error _ -> []
+  in
+  let deps = Dune_engine.Dep.Set.of_files deps in
+  let+ () =
+    Super_context.add_rule
+      sctx
+      ~dir:(Paths.root ctx ~all)
+      (Command.run_dyn_prog
+         odoc
+         ~dir:(Path.parent_exn (Path.build file))
+         ~stdout_to:file
+         [ A "classify"; A (Path.to_string modules_dir); Hidden_deps deps ])
+  in
+  file
 ;;
 
 (* Intra-library module dependencies have to be found out for
@@ -1250,9 +1295,11 @@ let pkg_mlds sctx pkg =
   let* pkgs = Dune_load.packages () in
   if Package.Name.Map.mem pkgs pkg
   then
-    let+ res, warnings = Odoc.mlds sctx pkg in
-    let () = Odoc.report_warnings warnings in
-    List.map ~f:(fun (p, name) -> Path.build p, name) res
+    let+ mlds_list = Packages.mlds sctx pkg in
+    List.map mlds_list ~f:(fun (mld : Doc_sources.mld) ->
+      let in_doc_str = Path.Local.to_string mld.in_doc in
+      let name = Filename.remove_extension in_doc_str in
+      Path.build mld.path, name)
   else (
     let ctx = Super_context.context sctx in
     ext_package_mlds ctx pkg)
@@ -1913,9 +1960,9 @@ let setup_css_rule sctx ~all =
     let cmd =
       Odoc.run_odoc
         sctx
-        ~quiet:false
-        ~dir:(Path.build (Context.build_dir ctx))
+        ~dir:(Paths.root ctx ~all:true)
         "support-files"
+        ~quiet:false
         ~flags_for:None
         [ Command.Args.A "-o"; Path (Path.build dir) ]
     in
@@ -2003,6 +2050,34 @@ let gen_project_rules sctx project =
     ())
 ;;
 
+let setup_classify_rules sctx ~all =
+  let ctx = Super_context.context sctx in
+  Log.info [ Pp.text "Classifying libraries" ];
+  let* libs, _ = Valid.get ctx ~all in
+  let* map = libs_maps_general ctx (List.map ~f:(fun l -> Lib.name l) libs) in
+  let dirs =
+    List.fold_left
+      ~f:(fun map lib ->
+        let dir = Lib_info.obj_dir (Lib.info lib) |> Obj_dir.dir in
+        Path.Map.add_exn (Path.Map.remove map dir) dir lib)
+      ~init:Path.Map.empty
+      libs
+  in
+  let list = Path.Map.to_list dirs in
+  let+ _ =
+    Memo.List.filter_map
+      ~f:(fun (dir, lib) ->
+        Log.info [ Pp.textf "Classifying dir %s" (dir |> Path.to_string) ];
+        if Lib.is_local lib
+        then Memo.return None
+        else
+          let+ result = classify_rule sctx ~all dir (Index.of_external_lib map lib) in
+          Some result)
+      list
+  in
+  []
+;;
+
 let has_rules m =
   let* dirs, rules = Rules.collect (fun () -> m) in
   let directory_targets =
@@ -2013,6 +2088,7 @@ let has_rules m =
 
 let gen_rules sctx ~dir rest =
   let all = true in
+  Log.info [ Pp.textf "gen_rules %s" (String.concat ~sep:" " rest) ];
   match rest with
   | [] ->
     Memo.return
@@ -2020,6 +2096,7 @@ let gen_rules sctx ~dir rest =
          ~build_dir_only_sub_dirs:
            (Build_config.Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
          (Memo.return Rules.empty))
+  | [ "classify" ] -> has_rules (setup_classify_rules sctx ~all)
   | [ "odoc" ] -> has_rules (setup_odoc_rules sctx ~all)
   | [ "index" ] -> has_rules (setup_all_index_rules sctx ~all)
   | [ "html"; "docs" ] -> has_rules (setup_all_html_rules sctx ~all)

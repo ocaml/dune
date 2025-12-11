@@ -13,5 +13,13 @@ Private libraries attached to packages shouldn't be displayed in the index
   > touch foo.ml bar.ml
 
   $ dune build @doc
+  $ cat _build/default/_doc/_mlds/foo/foo/index.mld
+  @toc_status hidden
+  @order_category libraries
+  {0 Library [foo]}
+  {!modules: Foo}
   $ cat _build/default/_doc/_mlds/foo/index.mld
   {0 foo index}
+  {1 Library foo}
+  The entry point of this library is the module:
+  {!/foo/module-Foo}.

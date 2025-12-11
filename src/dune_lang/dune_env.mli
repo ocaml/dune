@@ -15,7 +15,19 @@ module Odoc : sig
     | Fatal
     | Nonfatal
 
-  type t = { warnings : warnings option }
+  type sidebar =
+    | Global
+    | Per_package
+
+  type support =
+    | Root
+    | Per_package
+
+  type t =
+    { warnings : warnings option
+    ; sidebar : sidebar option
+    ; support : support option
+    }
 
   val decode : t Decoder.t
 end

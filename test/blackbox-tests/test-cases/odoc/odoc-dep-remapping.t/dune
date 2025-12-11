@@ -1,0 +1,4 @@
+(library
+ (name testlib)
+ (public_name testpkg.lib)
+ (libraries odoc-parser))

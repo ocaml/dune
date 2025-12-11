@@ -1,0 +1,9 @@
+(library
+ (name mylib)
+ (public_name mylib)
+ (modules mylib))
+
+(library
+ (name mylib_sub)
+ (public_name mylib.sub)
+ (modules mylib_sub))

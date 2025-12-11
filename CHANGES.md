@@ -1,9 +1,181 @@
-Unreleased
-----------
+3.21.0~alpha3 (2025-12-10)
+---------------------------
 
-If you're a contributor, please include your CHANGES entry in a `$PR_NUMBER.md`
-file in either `doc/changes/{added|changed|fixed}/`. At release time, it will
-be incoporated into the changelog properly.
+### Fixed
+
+- Fix `include_subdirs qualified` incorrectly picking the furthest module
+  instead of the closest when resolving module name ambiguities. (#12587,
+  @ElectreAAS and @Alizter)
+
+- Fix: include the module alias in the transitive dependency closure with
+  `(include_subdirs qualified)`. (#12299, @anmonteiro)
+
+- Improve error messages for invalid version formats containing non-ASCII
+  characters. Previously, non-ASCII characters in version strings (e.g., `(lang
+  dune è)` or `(using menhir π3.14)`) would fail with a generic "Invalid file"
+  error. Now they display a clear message: "Invalid atom: contains non-ASCII
+  character(s). Atoms must only contain ASCII characters." The fix is
+  implemented at the lexer level, providing consistent error handling across all
+  s-expression parsing. (#12844, fixes #12836, @benodiwal)
+
+- Pass private modules with -H when this is available (#12666, @rgrinberg)
+
+- Allow multiple modules in `(modules_flags ...)`, in `coq.theory` (#12733, @rlepigre)
+
+- Improve error message for invalid version formats in both `(lang dune ...)` and
+  `(using extension ...)` declarations. Changes "Atom of the form NNN.NNN expected"
+  to "Invalid version. Version must be two numbers separated by a dot." (#12833, @benodiwal)
+
+- Fix crash when running `dune build @check` on a library with virtual modules.
+  (#12644, fixes #12636, @Alizter)
+
+- Provide a more informative error message when `(pkg enabled)` is put in
+  `dune-project` instead of `dune-workspace`. (#12802, fixes #12801,
+  @benodiwal)
+
+- Improve error message when invalid version strings are used in `dune-project`
+  files. Non-ASCII characters and malformed versions now show a helpful hint
+  with an example of the correct format. (#12794, fixes #12751, @benodiwal)
+
+- Stop hiding the `root_module` from the include path (#12239, @rgrinberg)
+
+- Allow `$ dune init` to work on absolute paths (#12601, fixes #7806,
+  @rgrinberg)
+
+- `(include_subdirs qualified)`: Add missing alias dependency to module group.
+  (#12530, @anmonteiro)
+
+- Add Melange compilation to the `@all` alias in libraries (#12628,
+  @anmonteiro)
+
+- Fix greedy version location in lang declarations. Previously, error locations for
+  invalid lang versions would span multiple bytes for multi-byte UTF-8 characters,
+  causing carets to appear misaligned and seemingly include the closing
+  parenthesis. Now, error locations for ASCII strings show the full length (e.g.,
+  "Ali" shows `^^^`), while non-ASCII strings show only the first byte (e.g., "è"
+  shows `^`) to avoid multi-byte character display issues. (#12869, fixes #12806,
+  @benodiwal)
+
+- melange support: don't emit empty JavaScript modules for generated module
+  aliases. (#12464, @anmonteiro)
+
+### Added
+
+- (Experimental): Introduce the `library_parameter` stanza. It allows users to
+  declare a parameter when using the OxCaml compiler.
+  (#11963, implements #12084, @maiste) 
+
+
+- Added the ability to scroll horizontally in TUI. (#12386, @Alizter)
+
+- Feature: Include shell command that was executed when a cram test has
+  occurred in the error message (#12307, @rgrinberg)
+
+-  support expanding variables in `(promote (into ..))` (#12832, fixes #12742,
+   @anmonteiro)
+
+- Add support for `%{cmt:...}` and `%{cmti:...}` variables to reference
+  compiled annotation files (.cmt and .cmti) containing typed abstract syntax
+  trees with location and type information. (#12634, grants #12633, @Alizter)
+
+- Add `$ dune describe tests` to describe the tests in the workspace
+  (@Gromototo, #12545, fixes #12030)
+
+- Add `argv`, the process environment, and the dune version to the config event
+  in the trace (#12909, @rgrinberg)
+
+- Allow `dune runtest` to properly run while a watch mode server is running.
+  (#12473, grants #8114, @gridbugs and @ElectreAAS)
+
+- Use copy-on-write (COW) when copying files on filesystems that support it
+  (Btrfs, ZFS, XFS, etc), under Linux. (#12074, fixes #12071, @nojb)
+
+- Add support for Tangled ATproto-based code repositories (#12197, @avsm)
+
+- Add support for instantiating OxCaml parameterised libraries.
+  (#12561, @art-w)
+
+- Add a `(conflict_markers error|ignore)` option to the cram stanza. When
+  `(conflict_markers error)` is set, the cram test will fail in the presence of
+  conflict markers. Git, diff3 and jujutsu conflict markers are detected.
+  (#12538, #12617, #12655, fixes #12512, @rgrinberg, @Alizter)
+
+- Introduce a `%{ppx:lib1+..+libn}` stanza to make it possible to refer to ppx
+  executables built by dune. This is useful for writing tests (#12711,
+  @rgrinberg)
+
+- Introduce a `(dir ..)` field on packages defined in the `dune-project`. This
+  field allows to associate a directory with a particular package. This makes
+  dune automatically filter out all stanzas in this directory and its
+  descendants with `--only-packages`. All users are recommended to switch to
+  using this field. (#12614, fixes #3255, @rgrinberg)
+
+- Add support for `DUNE_ROOT` environment variable, similar to the existing
+  `--root` CLI parameter. (fixes #12399 @sir4ur0n)
+
+- Introduce an `unused-libs` alias to detect unused libraries.
+  (#12623, fixes #650, @rgrinberg)
+
+- Add `--files` flag to `dune describe opam-files` to print only the names of
+  the opam files line by line. (#9793, @reynir and @Alizter)
+
+- `dune exec` now accepts absolute paths inside the workspace.
+  (#12094, @Alizter)
+
+- Add `coqdoc_header` and `coqdoc_footer` fields to the `coq` field of the
+  `env` stanza, and to the `coq.theory` stanza, allowing to configure a
+  custom header or footer respectively in the HTML output of `coqdoc`.
+  (#11131, @rlepigre)
+
+- Allow `dune fmt` to properly run while a watch mode server is running.
+  Note that the `--preview` flag is not supported in this mode.
+  (#12064, @ElectreAAS)
+
+- Support for generating `_CoqProject` files for `coq.theory` stanzas.
+  (#11752, @rlepigre)
+
+- Added `(files)` stanza, similar to `(dirs)` to control which files are visible
+  to Dune on a per-directory basis. (#12879, @nojb)
+- Add support for %{ocaml-config:ox} (#12236, @jonludlam)
+
+- Introduce `dune promotion show` command to display the contents of corrected
+  files that are ready for promotion. This allows users to preview changes
+  before running `dune promote`. The command accepts file arguments to show
+  specific files, or displays all promotable files when called without
+  arguments. (#12669, fixes #3883, @MixiMaxiMouse)
+- New `(lang rocq)` build mode for Rocq 9.0 and later. This new mode
+  is very similar to the existing `(lang coq)`, except that it doesn't
+  need the `coq*` compatibility wrappers. As of today `(lang rocq)`
+  doesn't support yet composed builds with Rocq itself, this will be
+  added later.  `(lang coq)` is deprecated, development is frozen, and
+  will be removed at some point in the future. (#12035, @ejgallego,
+  @lysxia, fixes #11572)
+
+### Changed
+
+- Don't run `ocamldep` to compute false dependencies on the `root_module`
+  (#12227, @rgrinberg)
+
+- `dune format-dune-file` now uses the syntax version of the Dune project that
+  contains the file being formatted (if any) instead of using the latest version
+  available, which remains the default if there is no Dune project in scope.
+  (#11865, @nojb)
+
+- Persistent DB and process events have been slightly modified. Persistent
+  DB events have more concise names and job events always include full
+  information. (#12867, @rgrinberg)
+
+- Removed the `--trace-extended` flag. Its functionality is always enabled when
+  tracing is active (#12908, @rgrinberg)
+
+- The `test/dune` file generated by `dune init proj` now depends on the project library. (#12791, @shonfeder)
+
+- Starting with version 3.21 of the Dune language, Dune no longer changes the
+  default set of compiler warnings. For users that would like to keep the old
+  behaviour, the variable `%{dune-warnings}` can be used in an `(env)` stanza in
+  a top-level Dune file: `(env (dev (flags :standard %{dune-warnings})))`.
+  (#12766, @nojb)
+- Fix: stop generating `cmt` files for cinaps binaries (#12530, @rgrinberg)
 
 3.20.2 (2025-09-02)
 -------------------

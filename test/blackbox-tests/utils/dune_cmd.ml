@@ -334,6 +334,29 @@ module Wait_for_file_to_appear = struct
   let () = register name of_args run
 end
 
+(* implements `exec -a` in a portable way *)
+module Exec_a = struct
+  type t =
+    { argv0 : string
+    ; prog : string
+    ; args : string list
+    }
+
+  let name = "exec-a"
+
+  let of_args = function
+    | argv0 :: prog :: args -> { argv0; prog; args }
+    | _ -> raise (Arg.Bad "Required arguments are <argv0> <program> [argument]...")
+  ;;
+
+  let run { argv0; prog; args } =
+    let args = Array.of_list @@ (argv0 :: args) in
+    Unix.execvp prog args
+  ;;
+
+  let () = register name of_args run
+end
+
 let () =
   let name, args =
     match Array.to_list Sys.argv with

@@ -25,26 +25,8 @@ Make a project that depends on the test packages:
   > (lang dune 3.13)
   > (package
   >  (name x)
+  >  (allow_empty)
   >  (depends foo bar))
-  > EOF
-
-  $ cat > dune <<EOF
-  > (executable
-  >  (name exec_a)
-  >  (public_name exec-a)
-  >  (libraries unix))
-  > EOF
-
-Small helper binary to implement `exec -a` in a portable way
-
-  $ cat > exec_a.ml <<EOF
-  > let () =
-  >   let desired_argv0 = Sys.argv.(1) in
-  >   let prog = Sys.argv.(2) in
-  >   let args = Array.length Sys.argv in
-  >   let new_args = Array.init (args - 2) (fun i -> Sys.argv.(i+2)) in
-  >   new_args.(0) <- desired_argv0;
-  >   Unix.execvp prog new_args
   > EOF
 
 Make lockfiles for the packages.
@@ -89,16 +71,6 @@ Make a fake dune exe:
   > EOF
   $ chmod a+x .bin/dune
 
-  $ dune build @install
-  $ mkdir .temp
-  $ dune install --prefix $PWD/.temp
-  $ cp .temp/bin/exec-a $PWD/.bin/
-
-Show that the binary works like `exec -a` would work
-
-  $ .bin/exec-a "desired-argv0" sh -c 'echo $0'
-  desired-argv0
-
   $ dune clean
 
 Try building in an environment where `dune` refers to the fake dune.
@@ -122,11 +94,11 @@ Call Dune with an absolute PATH as argv[0]:
 Call Dune with argv[0] set to a relative PATH. Make sure "dune" in PATH refers
 to the fake dune:
 
-  $ (PATH=$PWD/.bin:$PATH exec-a "dune" sh -c "which dune")
+  $ PATH=$PWD/.bin:$PATH dune_cmd exec-a "dune" sh -c "which dune"
   $TESTCASE_ROOT/.bin/dune
 
 Make sure that fake dune is not picked up when dune is called with argv[0] = "dune":
 
   $ dune clean
-  $ (PATH=$PWD/.bin:$PATH exec-a "dune" $DUNE build "$pkg_root/$foo_digest/target/")
+  $ PATH=$PWD/.bin:$PATH dune_cmd exec-a "dune" $DUNE build "$pkg_root/$foo_digest/target/"
   Fake dune! (args: build -p foo @install)

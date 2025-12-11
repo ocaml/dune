@@ -14,7 +14,6 @@ val global : unit -> t option
 val set_global : t -> unit
 val create : dst -> t
 val record_gc_and_fd : t -> unit
-val close : t -> unit
 
 module Event : sig
   module Async : sig

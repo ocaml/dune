@@ -1177,7 +1177,7 @@ type t =
   ; root : Workspace_root.t
   ; rpc :
       [ `Allow of Dune_lang.Dep_conf.t Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
-  ; stats : Dune_trace.t option
+  ; stats : Dune_trace.Out.t option
   }
 
 let capture_outputs t = t.builder.capture_outputs
@@ -1269,7 +1269,7 @@ let print_entering_message c =
 let build (root : Workspace_root.t) (builder : Builder.t) =
   let stats =
     Option.map builder.stats_trace_file ~f:(fun f ->
-      let stats = Dune_trace.create (Out (open_out f)) in
+      let stats = Dune_trace.Out.create (Out (open_out f)) in
       Dune_trace.set_global stats;
       stats)
   in
@@ -1408,13 +1408,9 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)
     ];
   Dune_console.separate_messages c.builder.separate_error_messages;
-  Option.iter c.stats ~f:(fun stats ->
-    let event =
-      Dune_trace.Event.config
-        ~version:
-          (Build_info.V1.version () |> Option.map ~f:Build_info.V1.Version.to_string)
-    in
-    Dune_trace.emit stats event);
+  Dune_trace.emit (fun () ->
+    Dune_trace.Event.config
+      ~version:(Build_info.V1.version () |> Option.map ~f:Build_info.V1.Version.to_string));
   (* Setup hook for printing GC stats to a file *)
   at_exit (fun () ->
     match c.builder.dump_gc_stats with

@@ -53,18 +53,16 @@ module Make (D : Desc) = struct
 
   let to_string (v : D.t) = Printf.sprintf "%s%s" magic (Marshal.to_string v [])
 
-  let with_record stats what ~file ~f =
+  let with_record what ~file ~f =
     let start = Unix.gettimeofday () in
     let res = Result.try_with f in
-    let event =
+    Dune_trace.emit (fun () ->
       Dune_trace.Event.persistent
         ~file
         ~module_:D.name
         what
         ~start
-        ~stop:(Unix.gettimeofday ())
-    in
-    Dune_trace.emit stats event;
+        ~stop:(Unix.gettimeofday ()));
     Result.ok_exn res
   ;;
 
@@ -81,8 +79,7 @@ module Make (D : Desc) = struct
       lazy
         (match Dune_trace.global () with
          | None -> dump
-         | Some stats ->
-           fun file v -> with_record stats `Save ~file ~f:(fun () -> dump file v))
+         | Some _ -> fun file v -> with_record `Save ~file ~f:(fun () -> dump file v))
     in
     fun file (v : D.t) -> (Lazy.force dump) file v
   ;;
@@ -114,8 +111,7 @@ module Make (D : Desc) = struct
       lazy
         (match Dune_trace.global () with
          | None -> read_file
-         | Some stats ->
-           fun file -> with_record stats `Load ~file ~f:(fun () -> read_file file))
+         | Some _ -> fun file -> with_record `Load ~file ~f:(fun () -> read_file file))
     in
     fun file -> if Path.exists file then (Lazy.force read_file) file else None
   ;;

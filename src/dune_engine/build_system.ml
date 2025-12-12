@@ -305,17 +305,14 @@ end = struct
     Digest.generic trace
   ;;
 
-  let report_evaluated_rule_exn (t : Build_config.t) =
-    Option.iter t.stats ~f:(fun stats ->
-      let event =
-        let rule_total =
-          match Fiber.Svar.read State.t with
-          | Building progress -> progress.number_of_rules_discovered
-          | _ -> assert false
-        in
-        Dune_trace.Event.evalauted_rules ~rule_total
+  let report_evaluated_rule_exn () =
+    Dune_trace.emit (fun () ->
+      let rule_total =
+        match Fiber.Svar.read State.t with
+        | Building progress -> progress.number_of_rules_discovered
+        | _ -> assert false
       in
-      Dune_trace.emit stats event)
+      Dune_trace.Event.evalauted_rules ~rule_total)
   ;;
 
   module Exec_result = struct
@@ -510,7 +507,7 @@ end = struct
     let config = Build_config.get () in
     wrap_fiber (fun () ->
       let open Fiber.O in
-      report_evaluated_rule_exn config;
+      report_evaluated_rule_exn ();
       let* () =
         maybe_async_rule_file_op (fun () -> Path.mkdir_p (Path.build targets.root))
       in

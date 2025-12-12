@@ -295,7 +295,7 @@ module Event = struct
           in
           Dune_trace.Event.Rpc.message kind ~meth_ ~id stage
       in
-      Dune_trace.emit stats event)
+      Dune_trace.Out.emit stats event)
   ;;
 end
 

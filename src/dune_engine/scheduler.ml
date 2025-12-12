@@ -6,7 +6,7 @@ open Dune_async_io
 module Config = struct
   type t =
     { concurrency : int
-    ; stats : Dune_trace.t option
+    ; stats : Dune_trace.Out.t option
     ; print_ctrl_c_warning : bool
     ; watch_exclusions : string list
     }
@@ -122,7 +122,7 @@ module Event : sig
     type event := t
     type t
 
-    val create : Dune_trace.t option -> t
+    val create : unit -> t
 
     (** Return the next event. File changes event are always flattened and
         returned first. *)
@@ -187,12 +187,11 @@ end = struct
       ; mutable pending_worker_tasks : int
       ; worker_tasks_completed : Fiber.fill Queue.t
       ; timers : Fiber.fill Queue.t
-      ; stats : Dune_trace.t option
       ; mutable got_event : bool
       ; mutable yield : unit Fiber.Ivar.t option
       }
 
-    let create stats =
+    let create () =
       let jobs_completed = Queue.create () in
       let file_watcher_tasks = Queue.create () in
       let worker_tasks_completed = Queue.create () in
@@ -213,7 +212,6 @@ end = struct
       ; pending_jobs
       ; worker_tasks_completed
       ; pending_worker_tasks
-      ; stats
       ; got_event = false
       ; yield = None
       }
@@ -343,9 +341,11 @@ end = struct
     end
 
     let next q =
-      Option.iter q.stats ~f:(fun trace ->
-        Dune_trace.emit trace (Dune_trace.Event.gc ());
-        Option.iter (Dune_trace.Event.fd_count ()) ~f:(Dune_trace.emit trace));
+      Dune_trace.emit_all (fun () ->
+        let gc = [ Dune_trace.Event.gc () ] in
+        match Dune_trace.Event.fd_count () with
+        | None -> gc
+        | Some fd -> fd :: gc);
       Mutex.lock q.mutex;
       let rec loop () =
         match
@@ -1185,8 +1185,8 @@ module Run = struct
        [--trace-file] *)
     Option.iter stats ~f:(fun stats ->
       let event = Dune_trace.Event.scheduler_idle () in
-      Dune_trace.emit stats event;
-      Dune_trace.flush stats)
+      Dune_trace.Out.emit stats event;
+      Dune_trace.Out.flush stats)
   ;;
 
   let poll step =
@@ -1237,7 +1237,7 @@ module Run = struct
         ~(on_event : Config.t -> Handler.Event.t -> unit)
         run
     =
-    let events = Event_queue.create config.stats in
+    let events = Event_queue.create () in
     let file_watcher =
       match file_watcher with
       | No_watcher -> None

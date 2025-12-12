@@ -84,6 +84,7 @@ module Spec = struct
     { prog : ('path, Action.Prog.Not_found.t) result
     ; args : 'path arg Array.Immutable.t
     ; ocamlfind_destdir : 'path
+    ; dune_exe : 'path
     ; pkg : Dune_pkg.Package_name.t * Loc.t
     ; depexts : string list
     }
@@ -101,13 +102,16 @@ module Spec = struct
     { t with
       args = Array.Immutable.map t.args ~f:(map_arg ~f)
     ; ocamlfind_destdir = f t.ocamlfind_destdir
+    ; dune_exe = f t.dune_exe
     ; prog = Result.map t.prog ~f
     }
   ;;
 
   let is_useful_to ~memoize:_ = true
 
-  let encode { prog; args; ocamlfind_destdir; pkg = _; depexts = _ } path _ : Sexp.t =
+  let encode { prog; args; ocamlfind_destdir; dune_exe; pkg = _; depexts = _ } path _
+    : Sexp.t
+    =
     let prog : Sexp.t =
       match prog with
       | Ok p -> path p
@@ -120,11 +124,11 @@ module Spec = struct
              | String s -> Sexp.Atom s
              | Path p -> path p)))
     in
-    List [ List ([ prog ] @ args); path ocamlfind_destdir ]
+    List [ List ([ prog ] @ args); path ocamlfind_destdir; path dune_exe ]
   ;;
 
   let action
-        { prog; args; ocamlfind_destdir; pkg; depexts }
+        { prog; args; ocamlfind_destdir; dune_exe; pkg; depexts }
         ~(ectx : Action.context)
         ~(eenv : Action.env)
     =
@@ -144,8 +148,7 @@ module Spec = struct
       let dune_folder =
         let bin_folder = Temp.create Dir ~prefix:"dune" ~suffix:"self-in-path" in
         let dst = Path.relative bin_folder "dune" in
-        let src = Path.of_string Sys.executable_name in
-        Io.portable_symlink ~src ~dst;
+        Io.portable_symlink ~src:dune_exe ~dst;
         Path.to_string bin_folder
       in
       let env =
@@ -188,6 +191,6 @@ end
 
 module A = Action_ext.Make (Spec)
 
-let action ~pkg ~depexts prog args ~ocamlfind_destdir =
-  A.action { Spec.prog; args; ocamlfind_destdir; pkg; depexts }
+let action ~pkg ~depexts prog args ~ocamlfind_destdir ~dune_exe =
+  A.action { Spec.prog; args; ocamlfind_destdir; dune_exe; pkg; depexts }
 ;;

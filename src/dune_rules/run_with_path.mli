@@ -20,4 +20,5 @@ val action
   -> Action.Prog.t
   -> Path.t Spec.arg Array.Immutable.t
   -> ocamlfind_destdir:Path.t
+  -> dune_exe:Path.t
   -> Action.t

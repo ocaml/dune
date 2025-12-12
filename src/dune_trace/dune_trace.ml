@@ -140,6 +140,7 @@ module Event = struct
         [ "build_dir", `String (Path.Build.to_string Path.Build.root)
         ; "argv", `List (Array.to_list Sys.argv |> List.map ~f:Json.string)
         ; "env", `List (Unix.environment () |> Array.to_list |> List.map ~f:Json.string)
+        ; "root", `String Path.(to_absolute_filename root)
         ]
       in
       match version with

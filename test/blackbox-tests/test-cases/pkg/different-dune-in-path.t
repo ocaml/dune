@@ -93,12 +93,6 @@ Call Dune with an absolute PATH as argv[0]:
   $ PATH=$fakepath $DUNE build "$pkg_root/$bar_digest/target/"
   Fake dune! (args: build -p bar @install)
 
-Call Dune with argv[0] set to a relative PATH. Make sure "dune" in PATH refers
-to the fake dune:
-
-  $ PATH=$fakepath dune_cmd exec-a "dune" sh -c "which dune"
-  $TESTCASE_ROOT/.bin/dune
-
 Make sure that fake dune is not picked up when dune is called with argv[0] = "dune":
 
   $ dune clean

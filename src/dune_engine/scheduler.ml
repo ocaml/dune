@@ -343,7 +343,9 @@ end = struct
     end
 
     let next q =
-      Option.iter q.stats ~f:Dune_trace.record_gc_and_fd;
+      Option.iter q.stats ~f:(fun trace ->
+        Dune_trace.emit trace (Dune_trace.Event.gc ());
+        Option.iter (Dune_trace.Event.fd_count ()) ~f:(Dune_trace.emit trace));
       Mutex.lock q.mutex;
       let rec loop () =
         match

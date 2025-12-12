@@ -21,7 +21,7 @@ module Dune : sig
   type t
 
   (** Source directory *)
-  val src_root : t -> Path.Build.t
+  val src_root : t -> (Path.Build.t, Path.t list) Either.t
 
   (** ML libraries *)
   val libraries : t -> (Loc.t * Lib.t) list Resolve.t
@@ -42,7 +42,6 @@ module Legacy : sig
       In the case of a [Dune.t] lib, this list is obtained from the [src_root],
       via [Dir_contents.rocq], maybe we should move that function here and make
       it common.
-
   *)
 
   (** List of vo files *)
@@ -86,7 +85,12 @@ module DB : sig
       libraries are installed, we would infer the right amount of information. *)
   val create_from_rocqpaths : Rocq_path.t list -> t
 
-  val find_many : t -> (Loc.t * Rocq_lib_name.t) list -> lib list Resolve.Memo.t
-  val resolve_boot : t -> (Loc.t * lib) option Resolve.Memo.t
-  val resolve : t -> Loc.t * Rocq_lib_name.t -> lib Resolve.Memo.t
+  val find_many
+    :  t
+    -> (Loc.t * Rocq_lib_name.t) list
+    -> db:Lib.DB.t
+    -> lib list Resolve.Memo.t
+
+  val resolve_boot : db:Lib.DB.t -> t -> (Loc.t * lib) option Resolve.Memo.t
+  val resolve : db:Lib.DB.t -> t -> Loc.t * Rocq_lib_name.t -> lib Resolve.Memo.t
 end

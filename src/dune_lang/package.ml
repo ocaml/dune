@@ -133,7 +133,7 @@ let decode =
        and+ depends = field ~default:[] "depends" (repeat Package_dependency.decode)
        and+ conflicts = field ~default:[] "conflicts" (repeat Package_dependency.decode)
        and+ depopts = field ~default:[] "depopts" (repeat Package_dependency.decode)
-       and+ info = Package_info.decode ~since:(2, 0) ()
+       and+ info = Package_info.decode ~toplevel:false ~since:(2, 0) ()
        and+ tags = field "tags" (enter (repeat string)) ~default:[]
        and+ exclusive_dir =
          field_o

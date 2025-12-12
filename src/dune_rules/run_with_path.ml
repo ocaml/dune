@@ -143,8 +143,8 @@ module Spec = struct
       let metadata = Process.create_metadata ~purpose:ectx.metadata.purpose () in
       let dune_folder =
         let bin_folder = Temp.create Dir ~prefix:"dune" ~suffix:"self-in-path" in
-        let dst = Path.relative bin_folder "dune" in
         let src = Path.of_string Sys.executable_name in
+        let dst = Path.relative bin_folder "dune" in
         Io.portable_symlink ~src ~dst;
         Path.to_string bin_folder
       in

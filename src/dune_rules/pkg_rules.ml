@@ -1143,15 +1143,33 @@ module Action_expander = struct
 
   let sandbox = Sandbox_mode.Set.singleton Sandbox_mode.copy
 
+  let rec action_contains_run action =
+    match (action : Dune_lang.Action.t) with
+    | Run _ -> true
+    | Progn actions -> actions |> List.find ~f:action_contains_run |> Option.is_some
+    | When (_, action) -> action_contains_run action
+    | Withenv (_, action) -> action_contains_run action
+    | _ -> false
+  ;;
+
   let expand context (pkg : Pkg.t) action =
+    let depend_on_dune =
+      match action_contains_run action with
+      | false -> Action_builder.return ()
+      | true ->
+        Path.External.of_string Sys.executable_name
+        |> Path.external_
+        |> Action_builder.path
+    in
     let+ action =
       let expander = expander context pkg in
       expand action ~expander >>| Action.chdir pkg.paths.source_dir
     in
     (* TODO copying is needed for build systems that aren't dune and those
        with an explicit install step *)
-    Action.Full.make ~sandbox action
-    |> Action_builder.return
+    let open Action_builder.O in
+    depend_on_dune
+    >>> (Action.Full.make ~sandbox action |> Action_builder.return)
     |> Action_builder.with_no_targets
   ;;
 

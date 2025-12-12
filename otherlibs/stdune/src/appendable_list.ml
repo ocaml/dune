@@ -105,3 +105,13 @@ and is_empty_list = function
 
 let concat list = Concat list
 let of_list x = List x
+
+let rec exists t ~f =
+  match t with
+  | Empty -> false
+  | Singleton x -> f x
+  | Cons (x, xs) -> f x || exists xs ~f
+  | List xs -> List.exists xs ~f
+  | Append (x, y) -> exists x ~f || exists y ~f
+  | Concat xs -> List.exists ~f:(exists ~f) xs
+;;

@@ -341,11 +341,11 @@ end = struct
     end
 
     let next q =
-      Dune_trace.emit_all (fun () ->
-        let gc = [ Dune_trace.Event.gc () ] in
+      Dune_trace.emit Gc (fun () -> Dune_trace.Event.gc ());
+      Dune_trace.emit_all Fd (fun () ->
         match Dune_trace.Event.fd_count () with
-        | None -> gc
-        | Some fd -> fd :: gc);
+        | None -> []
+        | Some fd -> [ fd ]);
       Mutex.lock q.mutex;
       let rec loop () =
         match
@@ -1179,21 +1179,19 @@ module Run = struct
 
   (* Work we're allowed to do between successive polling iterations. this work
      should be fast and never fail (within reason) *)
-  let run_when_idle stats : unit =
+  let run_when_idle () : unit =
     (* Technically, flushing can fail with some IO error and disrupt the build.
        But we don't care because the user enabled this manually with
        [--trace-file] *)
-    Option.iter stats ~f:(fun stats ->
-      let event = Dune_trace.Event.scheduler_idle () in
-      Dune_trace.Out.emit stats event;
-      Dune_trace.Out.flush stats)
+    Dune_trace.emit Scheduler Dune_trace.Event.scheduler_idle;
+    Dune_trace.flush ()
   ;;
 
   let poll step =
     let* t = poll_init () in
     let rec loop () =
       let* _res = poll_iter t step in
-      run_when_idle t.config.stats;
+      run_when_idle ();
       let* () = Trigger.wait t.build_inputs_changed in
       loop ()
     in

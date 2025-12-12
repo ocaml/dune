@@ -56,7 +56,7 @@ module Make (D : Desc) = struct
   let with_record what ~file ~f =
     let start = Unix.gettimeofday () in
     let res = Result.try_with f in
-    Dune_trace.emit (fun () ->
+    Dune_trace.emit Persistent (fun () ->
       Dune_trace.Event.persistent
         ~file
         ~module_:D.name

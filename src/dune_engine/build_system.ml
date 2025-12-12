@@ -306,7 +306,7 @@ end = struct
   ;;
 
   let report_evaluated_rule_exn () =
-    Dune_trace.emit (fun () ->
+    Dune_trace.emit Rules (fun () ->
       let rule_total =
         match Fiber.Svar.read State.t with
         | Building progress -> progress.number_of_rules_discovered

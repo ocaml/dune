@@ -1075,8 +1075,8 @@ let as_outside_build_dir_exn : t -> Outside_build_dir.t = function
     Code_error.raise "as_outside_build_dir_exn" [ "path", Build.to_dyn path ]
 ;;
 
-let destruct_build_dir : t -> [ `Inside of Build.t | `Outside of Outside_build_dir.t ]
-  = function
+let destruct_build_dir : t -> [ `Inside of Build.t | `Outside of Outside_build_dir.t ] =
+  function
   | In_source_tree p -> `Outside (In_source_dir p)
   | External s -> `Outside (External s)
   | In_build_dir s -> `Inside s
@@ -1368,18 +1368,18 @@ module Table = struct
   ;;
 
   let filteri_inplace { source; build; external_ } ~f =
-    Source0.Table.filteri_inplace source ~f:(fun [@inline] ~key ~data ->
+    Source0.Table.filteri_inplace source ~f:(fun[@inline] ~key ~data ->
       f ~key:(In_source_tree key) ~data);
-    Build.Table.filteri_inplace build ~f:(fun [@inline] ~key ~data ->
+    Build.Table.filteri_inplace build ~f:(fun[@inline] ~key ~data ->
       f ~key:(In_build_dir key) ~data);
-    External.Table.filteri_inplace external_ ~f:(fun [@inline] ~key ~data ->
+    External.Table.filteri_inplace external_ ~f:(fun[@inline] ~key ~data ->
       f ~key:(External key) ~data)
   ;;
 
   let filter_inplace { source; build; external_ } ~f =
-    Source0.Table.filteri_inplace source ~f:(fun [@inline] ~key:_ ~data -> f data);
-    Build.Table.filteri_inplace build ~f:(fun [@inline] ~key:_ ~data -> f data);
-    External.Table.filteri_inplace external_ ~f:(fun [@inline] ~key:_ ~data -> f data)
+    Source0.Table.filteri_inplace source ~f:(fun[@inline] ~key:_ ~data -> f data);
+    Build.Table.filteri_inplace build ~f:(fun[@inline] ~key:_ ~data -> f data);
+    External.Table.filteri_inplace external_ ~f:(fun[@inline] ~key:_ ~data -> f data)
   ;;
 
   let to_dyn f { source; build; external_ } =

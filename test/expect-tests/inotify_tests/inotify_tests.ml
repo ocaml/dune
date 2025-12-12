@@ -26,8 +26,8 @@ let remove_dot_slash s = String.drop_prefix s ~prefix:"./" |> Option.value ~defa
 
 (* Events generated from watching directory "." are prefixed with ".". Remove
    the prefix as it's not super interesting. *)
-let remove_dot_slash_from_event : Async_inotify.Event.t -> Async_inotify.Event.t
-  = function
+let remove_dot_slash_from_event : Async_inotify.Event.t -> Async_inotify.Event.t =
+  function
   | Created s -> Created (remove_dot_slash s)
   | Unlinked s -> Unlinked (remove_dot_slash s)
   | Modified s -> Modified (remove_dot_slash s)

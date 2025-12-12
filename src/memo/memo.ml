@@ -1093,7 +1093,7 @@ end = struct
       let+ deps_changed =
         (* Make sure [f] gets inlined to avoid unnecessary closure allocations
            and improve stack traces in profiling. *)
-        Deps.changed_or_not cached_value.deps ~f:(fun [@inline] (Dep_node.T dep) ->
+        Deps.changed_or_not cached_value.deps ~f:(fun[@inline] (Dep_node.T dep) ->
           consider_and_restore_from_cache_without_adding_dep dep
           >>= function
           | Ok cached_value_of_dep ->

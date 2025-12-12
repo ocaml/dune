@@ -677,8 +677,8 @@ module Solver = struct
 
   module Solver = struct
     (* Copyright (C) 2013, Thomas Leonard
-     *See the README file for details, or visit http://0install.net.
-    *)
+     * See the README file for details, or visit http://0install.net.
+     *)
     module Sat = Sat.Make (Input.Impl)
 
     type decision_state =

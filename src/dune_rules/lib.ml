@@ -354,9 +354,9 @@ end = struct
       }
 
     let compare { path; name } t =
-      let open Ordering.O in
-      let= () = Lib_name.compare name t.name in
-      Path.compare path t.path
+      match Lib_name.compare name t.name with
+      | Eq -> Path.compare path t.path
+      | x -> x
     ;;
 
     let to_dyn { path; name } =

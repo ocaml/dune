@@ -372,7 +372,7 @@ module Dir = struct
                    ~stop
                    ~dir:t.path
                in
-               Dune_trace.emit stats event;
+               Dune_trace.Out.emit stats event;
                res)
       in
       fun t ~traverse ~trace_event_name ~f ->

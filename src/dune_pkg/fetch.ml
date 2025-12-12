@@ -250,7 +250,7 @@ let fetch_local ~checksum ~target (url, url_loc) =
 let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
   let event =
     Dune_trace.(
-      start (global ()) (fun () ->
+      Out.start (global ()) (fun () ->
         Dune_trace.Event.Async.fetch
           ~url:(OpamUrl.to_string url)
           ~target
@@ -261,7 +261,8 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
   in
   Fiber.finalize
     ~finally:(fun () ->
-      Dune_trace.finish event;
+      Option.iter (Dune_trace.global ()) ~f:(fun trace ->
+        Dune_trace.Out.finish trace event);
       Fiber.return ())
     (fun () ->
        match url.backend with

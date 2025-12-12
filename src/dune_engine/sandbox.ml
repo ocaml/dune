@@ -182,7 +182,7 @@ let snapshot t =
 
 let create ~mode ~dune_stats ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
   let event =
-    Dune_trace.start dune_stats (fun () ->
+    Dune_trace.Out.start dune_stats (fun () ->
       Dune_trace.Event.Async.create_sandbox ~loc:rule_loc)
   in
   init ();
@@ -200,7 +200,7 @@ let create ~mode ~dune_stats ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
          targets produced dynamically will be unavailable. *)
       link_deps t ~mode ~deps)
   in
-  Dune_trace.finish event;
+  Option.iter dune_stats ~f:(fun trace -> Dune_trace.Out.finish trace event);
   match mode with
   | Patch_back_source_tree ->
     (* Only supported on Linux because we rely on the mtime changing to detect

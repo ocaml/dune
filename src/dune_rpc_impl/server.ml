@@ -41,7 +41,7 @@ module Run = struct
     ; root : string
     ; where : Dune_rpc.Where.t
     ; server : Csexp_rpc.Server.t Lazy.t
-    ; stats : Dune_trace.t option
+    ; stats : Dune_trace.Out.t option
     ; server_ivar : Csexp_rpc.Server.t Fiber.Ivar.t
     ; registry : [ `Add | `Skip ]
     }

@@ -5,7 +5,7 @@ open Import
 module Config : sig
   type t =
     { concurrency : int
-    ; stats : Dune_trace.t option
+    ; stats : Dune_trace.Out.t option
     ; print_ctrl_c_warning : bool
     ; watch_exclusions : string list
     }
@@ -151,7 +151,7 @@ val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t
     [duration] should be at least this long. *)
 val sleep : seconds:float -> unit Fiber.t
 
-val stats : unit -> Dune_trace.t option Fiber.t
+val stats : unit -> Dune_trace.Out.t option Fiber.t
 
 (** Wait for a build input to change. If a build input change was seen but
     hasn't been handled yet, return immediately.

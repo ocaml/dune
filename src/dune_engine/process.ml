@@ -804,7 +804,6 @@ module Result = struct
 end
 
 let report_process_finished
-      stats
       ~metadata
       ~dir
       ~prog
@@ -825,7 +824,7 @@ let report_process_finished
   in
   let stdout = Result.Out.get stdout in
   let stderr = Result.Out.get stderr in
-  let event =
+  Dune_trace.emit (fun () ->
     Dune_trace.Event.process
       ~name:metadata.name
       ~started_at
@@ -838,9 +837,7 @@ let report_process_finished
       ~dir
       ~stdout
       ~stderr
-      ~times:(times : Proc.Times.t)
-  in
-  Dune_trace.emit stats event
+      ~times:(times : Proc.Times.t))
 ;;
 
 let set_temp_dir_when_running_actions = ref true
@@ -979,7 +976,7 @@ let run_internal
       prog
       args
   =
-  Scheduler.with_job_slot (fun _cancel (config : Scheduler.Config.t) ->
+  Scheduler.with_job_slot (fun _cancel (_config : Scheduler.Config.t) ->
     let dir =
       match dir with
       | None -> dir
@@ -1043,19 +1040,17 @@ let run_internal
       ; resource_usage = process_info.resource_usage
       }
     in
-    Option.iter config.stats ~f:(fun stats ->
-      report_process_finished
-        stats
-        ~metadata
-        ~dir
-        ~prog:prog_str
-        ~pid:t.pid
-        ~args
-        ~started_at:t.started_at
-        ~exit_status:result.exit_status
-        ~stdout:result.stdout
-        ~stderr:result.stderr
-        times);
+    report_process_finished
+      ~metadata
+      ~dir
+      ~prog:prog_str
+      ~pid:t.pid
+      ~args
+      ~started_at:t.started_at
+      ~exit_status:result.exit_status
+      ~stdout:result.stdout
+      ~stderr:result.stderr
+      times;
     match termination_reason with
     | Cancel ->
       (* if the cancellation token was fired, then we:

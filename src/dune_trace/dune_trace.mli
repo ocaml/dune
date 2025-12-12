@@ -1,19 +1,5 @@
 open Stdune
 
-type t
-
-type dst =
-  | Out of out_channel
-  | Custom of
-      { write : string -> unit
-      ; close : unit -> unit
-      ; flush : unit -> unit
-      }
-
-val global : unit -> t option
-val set_global : t -> unit
-val create : dst -> t
-
 module Event : sig
   module Async : sig
     type t
@@ -91,10 +77,28 @@ module Event : sig
   end
 end
 
-val emit : t -> Event.t -> unit
-val start : t option -> (unit -> Event.Async.data) -> Event.Async.t option
-val finish : Event.Async.t option -> unit
-val flush : t -> unit
+module Out : sig
+  type t
+
+  type dst =
+    | Out of out_channel
+    | Custom of
+        { write : string -> unit
+        ; close : unit -> unit
+        ; flush : unit -> unit
+        }
+
+  val create : dst -> t
+  val emit : t -> Event.t -> unit
+  val start : t option -> (unit -> Event.Async.data) -> Event.Async.t option
+  val finish : t -> Event.Async.t option -> unit
+  val flush : t -> unit
+end
+
+val global : unit -> Out.t option
+val set_global : Out.t -> unit
+val emit : (unit -> Event.t) -> unit
+val emit_all : (unit -> Event.t list) -> unit
 
 module Private : sig
   module Fd_count : sig

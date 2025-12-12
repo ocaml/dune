@@ -110,7 +110,9 @@ let warn_ignore_arguments lock_held_by =
 ;;
 
 let should_warn ~warn_forwarding builder =
-  warn_forwarding && not (Common.Builder.equal builder Common.Builder.default)
+  (not Execution_env.inside_dune)
+  && warn_forwarding
+  && not (Common.Builder.equal builder Common.Builder.default)
 ;;
 
 let send_request ~f connection name =

@@ -418,6 +418,25 @@ to the user's workspace. However, one can customize this directory by using the
    # Absolute paths are also allowed
    $ dune build --build-dir /tmp/build foo.exe
 
+Controlling Concurrency
+=======================
+
+By default Dune automatically detects the number of CPU cores and runs that
+many jobs in parallel. You can override this using the ``-j`` flag or the
+``DUNE_JOBS`` environment variable with either a positive integer or ``auto``
+to use the default auto-detection.
+
+.. code:: console
+
+   $ dune build -j 4
+
+   # this is equivalent to:
+   $ DUNE_JOBS=4 dune build
+
+The command-line option takes precedence over the environment variable, which
+takes precedence over the :doc:`jobs </reference/config/jobs>` setting in the
+configuration file.
+
 Installing a Package
 ====================
 

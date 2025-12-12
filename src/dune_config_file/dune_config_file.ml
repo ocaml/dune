@@ -483,7 +483,7 @@ module Dune_config = struct
 
   let default =
     { display = Simple { verbosity = Quiet; status_line = not Execution_env.inside_dune }
-    ; concurrency = (if Execution_env.inside_dune then Fixed 1 else Auto)
+    ; concurrency = Auto
     ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
     ; cache_enabled = Enabled_except_user_rules

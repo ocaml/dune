@@ -13,7 +13,7 @@ Test for the "dune cache clear" command.
 
   $ dune build
 
-  $ ls $DUNE_CACHE_ROOT | sort -u
+  $ ls $DUNE_CACHE_ROOT/db | sort -u
   files
   meta
   temp
@@ -21,20 +21,20 @@ Test for the "dune cache clear" command.
 
   $ dune cache clear
 
-  $ ! test -d $DUNE_CACHE_ROOT
+  $ ! test -d $DUNE_CACHE_ROOT/db
 
 Next let us add some extra directories/files and check that they are not deleted
 by mistake.
 
   $ dune build
 
-  $ mkdir -p $DUNE_CACHE_ROOT/extra; touch $DUNE_CACHE_ROOT/extra1 $DUNE_CACHE_ROOT/extra/extra2
+  $ mkdir -p $DUNE_CACHE_ROOT/db/extra; touch $DUNE_CACHE_ROOT/db/extra1 $DUNE_CACHE_ROOT/db/extra/extra2
 
   $ dune cache clear
   Error:
-  rmdir($TESTCASE_ROOT/dune-cache): Directory not empty
+  rmdir($TESTCASE_ROOT/dune-cache/db): Directory not empty
   [1]
 
-  $ find $DUNE_CACHE_ROOT -type f | sort -u
-  $TESTCASE_ROOT/dune-cache/extra/extra2
-  $TESTCASE_ROOT/dune-cache/extra1
+  $ find $DUNE_CACHE_ROOT/db -type f | sort -u
+  $TESTCASE_ROOT/dune-cache/db/extra/extra2
+  $TESTCASE_ROOT/dune-cache/db/extra1

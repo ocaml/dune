@@ -26,7 +26,7 @@ Change source files to force a recompilation
   > let f x y = x - y
   > EOF
   $ dune build
-  $ ls $DUNE_CACHE_ROOT | sort
+  $ ls $DUNE_CACHE_ROOT/db | sort
   files
   meta
   temp

@@ -22,7 +22,7 @@ type t =
   ; conflict_markers : Conflict_markers.t option
   ; package : Package.t option
   ; runtest_alias : (Loc.t * bool) option
-  ; timeout : (Loc.t * float) option
+  ; timeout : (Loc.t * Time.Span.t) option
   ; setup_scripts : (Loc.t * string) list
   }
 

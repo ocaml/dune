@@ -19,7 +19,8 @@ end
 
 module Times : sig
   type t =
-    { elapsed_time : float (** Same as the "real" time reported by the "time" command *)
+    { elapsed_time : Time.Span.t
+      (** Same as the "real" time reported by the "time" command *)
     ; resource_usage : Resource_usage.t option
     }
 end
@@ -28,7 +29,7 @@ module Process_info : sig
   type t =
     { pid : Pid.t
     ; status : Unix.process_status
-    ; end_time : float (** Time at which the process finished. *)
+    ; end_time : Time.t (** Time at which the process finished. *)
     ; resource_usage : Resource_usage.t option
     }
 end

@@ -1300,13 +1300,13 @@ let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) cell =
       let* attributes =
         if time_nodes
         then (
-          let start = Unix.gettimeofday () in
+          let start = Time.now () in
           (* CR-someday cmoseley: We could record errors here and include them
              as part of the graph. *)
           let+ (_ : (_, Collect_errors_monoid.t) result) =
             report_and_collect_errors (fun () -> dep_node.spec.f dep_node.input)
           in
-          let runtime = Unix.gettimeofday () -. start in
+          let runtime = Time.Span.to_secs (Time.diff (Time.now ()) start) in
           String.Map.of_list_exn [ "runtime", Graph.Attribute.Float runtime ])
         else Fiber.return String.Map.empty
       in

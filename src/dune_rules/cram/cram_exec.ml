@@ -458,7 +458,7 @@ let run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout ~setup_
     ~metadata
     ~dir:cwd
     ~env
-    (Timeout { timeout_seconds = Option.map ~f:snd timeout; failure_mode = Strict })
+    (Timeout { timeout = Option.map ~f:snd timeout; failure_mode = Strict })
     sh
     [ Path.to_string sh_script.script ]
   >>| function
@@ -466,7 +466,7 @@ let run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout ~setup_
   | Error `Timed_out ->
     let timeout_loc, timeout = Option.value_exn timeout in
     let timeout_set_message =
-      [ Pp.textf "A time limit of %.2fs has been set in " timeout
+      [ Pp.textf "A time limit of %.2fs has been set in " (Time.Span.to_secs timeout)
       ; Pp.tag User_message.Style.Loc @@ Loc.pp_file_colon_line timeout_loc
       ]
       |> Pp.concat
@@ -565,7 +565,7 @@ module Run = struct
       ; dir : 'path
       ; script : 'path
       ; output : 'target
-      ; timeout : (Loc.t * float) option
+      ; timeout : (Loc.t * Time.Span.t) option
       ; setup_scripts : 'path list
       }
 
@@ -591,7 +591,8 @@ module Run = struct
         [ path dir
         ; path script
         ; target output
-        ; Dune_sexp.Encoder.(option float (Option.map ~f:snd timeout))
+        ; Dune_sexp.Encoder.(
+            option float (Option.map ~f:(fun (_, time) -> Time.Span.to_secs time) timeout))
           |> Dune_sexp.to_sexp
         ; List (List.map ~f:path setup_scripts)
         ]

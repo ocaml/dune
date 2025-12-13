@@ -352,14 +352,14 @@ let lock_path { dir; _ } =
 ;;
 
 let rec attempt_to_lock flock lock ~max_retries =
-  let sleep_duration = 0.1 in
+  let sleep_duration = Time.Span.of_secs 0.1 in
   match Flock.lock_non_block flock lock with
   | Error e -> Fiber.return @@ Error e
   | Ok `Success -> Fiber.return (Ok `Success)
   | Ok `Failure ->
     if max_retries > 0
     then
-      let* () = Scheduler.sleep ~seconds:sleep_duration in
+      let* () = Scheduler.sleep sleep_duration in
       attempt_to_lock flock lock ~max_retries:(max_retries - 1)
     else Fiber.return (Ok `Failure)
 ;;

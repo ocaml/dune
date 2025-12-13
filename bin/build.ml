@@ -1,9 +1,9 @@
 open Import
 
 let with_metrics ~common f =
-  let start_time = Unix.gettimeofday () in
+  let start_time = Time.now () in
   Fiber.finalize f ~finally:(fun () ->
-    let duration = Unix.gettimeofday () -. start_time in
+    let duration = Time.diff (Time.now ()) start_time in
     if Common.print_metrics common
     then (
       let gc_stat = Gc.quick_stat () in
@@ -14,7 +14,7 @@ let with_metrics ~common f =
            ([ Pp.textf "%s" memo_counters_report
             ; Pp.textf
                 "(%.2fs total, %.1fM heap words)"
-                duration
+                (Time.Span.to_secs duration)
                 (float_of_int gc_stat.heap_words /. 1_000_000.)
             ; Pp.text "Timers:"
             ]
@@ -23,7 +23,7 @@ let with_metrics ~common f =
                   Pp.textf
                     "%s - time spent = %.2fs, count = %d"
                     timer
-                    cumulative_time
+                    (Time.Span.to_secs cumulative_time)
                     count)
                 (String.Map.to_list (Metrics.Timer.aggregated_timers ())))));
     Memo.Metrics.reset ();

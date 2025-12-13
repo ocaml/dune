@@ -14,7 +14,7 @@ module Failure_mode = struct
     | Accept : int Predicate.t -> ('a, ('a, int) result) t
     | Return : ('a, 'a * int) t
     | Timeout :
-        { timeout_seconds : float option
+        { timeout : Time.Span.t option
         ; failure_mode : ('a, 'b) t
         }
         -> ('a, ('b, [ `Timed_out ]) result) t
@@ -31,8 +31,8 @@ module Failure_mode = struct
     | `Timeout -> Code_error.raise "should not return `Timeout" []
   ;;
 
-  let timeout_seconds : type a b. (a, b) t -> float option = function
-    | Timeout { timeout_seconds; _ } -> timeout_seconds
+  let timeout : type a b. (a, b) t -> Time.Span.t option = function
+    | Timeout { timeout; _ } -> timeout
     | Strict | Accept _ | Return -> None
   ;;
 
@@ -687,7 +687,7 @@ end = struct
 end
 
 type t =
-  { started_at : float
+  { started_at : Time.t
   ; pid : Pid.t
   ; response_file : Path.t option
   ; stdout : Path.t option
@@ -842,9 +842,9 @@ let report_process_finished
 
 let set_temp_dir_when_running_actions = ref true
 
-let await ~timeout_seconds { response_file; pid; _ } =
+let await ~timeout { response_file; pid; _ } =
   let+ process_info, termination_reason =
-    Scheduler.wait_for_build_process ?timeout_seconds pid ~is_process_group_leader:true
+    Scheduler.wait_for_build_process ?timeout pid ~is_process_group_leader:true
   in
   Option.iter response_file ~f:Path.unlink_exn;
   process_info, termination_reason
@@ -919,7 +919,7 @@ let spawn
   let started_at =
     (* jeremiedimino: I think we should do this just before the [execve]
        in the stub for [Spawn.spawn] to be as precise as possible *)
-    Unix.gettimeofday ()
+    Time.now ()
   in
   let pid =
     let env =
@@ -1031,12 +1031,12 @@ let run_internal
       Running_jobs.start id t.pid ~description ~started_at:t.started_at
     in
     let* process_info, termination_reason =
-      await ~timeout_seconds:(Failure_mode.timeout_seconds fail_mode) t
+      await ~timeout:(Failure_mode.timeout fail_mode) t
     in
     let+ () = Running_jobs.stop id in
     let result = Result.make t process_info fail_mode in
     let times =
-      { Proc.Times.elapsed_time = process_info.end_time -. t.started_at
+      { Proc.Times.elapsed_time = Time.diff process_info.end_time t.started_at
       ; resource_usage = process_info.resource_usage
       }
     in

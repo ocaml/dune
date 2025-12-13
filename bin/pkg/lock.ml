@@ -346,7 +346,7 @@ let solve_lock_dir
        | None -> solve_for_platforms)
     | false -> [ solver_env ]
   in
-  let time_start = Unix.gettimeofday () in
+  let time_start = Time.now () in
   let* repos =
     let repo_map = repositories_of_workspace workspace in
     let repo_names =
@@ -360,7 +360,7 @@ let solve_lock_dir
       ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
   in
   let* pins = resolve_project_pins project_pins in
-  let time_solve_start = Unix.gettimeofday () in
+  let time_solve_start = Time.now () in
   progress_state := Some Progress_indicator.Per_lockdir.State.Solving;
   let* result =
     solve_multiple_platforms
@@ -418,14 +418,18 @@ let solve_lock_dir
       =
       solver_result
     in
-    let time_end = Unix.gettimeofday () in
+    let time_end = Time.now () in
     let maybe_perf_stats =
       if print_perf_stats
       then
         [ Pp.nop
         ; Pp.textf "Expanded packages: %d" num_expanded_packages
-        ; Pp.textf "Updated repos in: %.2fs" (time_solve_start -. time_start)
-        ; Pp.textf "Solved dependencies in: %.2fs" (time_end -. time_solve_start)
+        ; Pp.textf
+            "Updated repos in: %.2fs"
+            (Time.Span.to_secs (Time.diff time_solve_start time_start))
+        ; Pp.textf
+            "Solved dependencies in: %.2fs"
+            (Time.Span.to_secs (Time.diff time_end time_solve_start))
         ]
       else []
     in

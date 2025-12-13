@@ -11,7 +11,7 @@ module Spec = struct
     ; enabled_if : (Expander.t * Blang.t) list
     ; locks : Path.Set.t Action_builder.t
     ; packages : Package.Name.Set.t
-    ; timeout : (Loc.t * float) option
+    ; timeout : (Loc.t * Time.Span.t) option
     ; conflict_markers : Cram_stanza.Conflict_markers.t
     ; setup_scripts : Path.t list
     }
@@ -297,7 +297,7 @@ let rules ~sctx ~dir tests =
                 Option.merge
                   acc.timeout
                   stanza.timeout
-                  ~f:(Ordering.min (fun x y -> Float.compare (snd x) (snd y)))
+                  ~f:(Ordering.min (fun x y -> Time.Span.compare (snd x) (snd y)))
               in
               let conflict_markers =
                 Option.value ~default:acc.conflict_markers stanza.conflict_markers

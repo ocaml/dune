@@ -13,7 +13,7 @@ val run
   -> dir:Path.t
   -> script:Path.t
   -> output:Path.Build.t
-  -> timeout:(Loc.t * float) option
+  -> timeout:(Loc.t * Time.Span.t) option
   -> setup_scripts:Path.t list
   -> Action.t
 

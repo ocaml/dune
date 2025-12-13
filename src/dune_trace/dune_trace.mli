@@ -44,7 +44,7 @@ module Event : sig
 
   val process
     :  name:string option
-    -> started_at:float
+    -> started_at:Time.t
     -> targets:targets option
     -> categories:string list
     -> pid:Pid.t
@@ -61,11 +61,11 @@ module Event : sig
     :  file:Path.t
     -> module_:string
     -> [ `Save | `Load ]
-    -> start:float
-    -> stop:float
+    -> start:Time.t
+    -> stop:Time.t
     -> t
 
-  val scan_source : name:string -> start:float -> stop:float -> dir:Path.Source.t -> t
+  val scan_source : name:string -> start:Time.t -> stop:Time.t -> dir:Path.Source.t -> t
   val scheduler_idle : unit -> t
   val config : version:string option -> t
   val gc : unit -> t

@@ -68,8 +68,8 @@ let make ~frames_per_second (module Base : S) : (module Dune_console.Backend) =
       Dune_engine.Scheduler.spawn_thread
       @@ fun () ->
       Terminal_signals.unblock ();
-      let last = ref (Unix.gettimeofday ()) in
-      let frame_rate = 1. /. float_of_int frames_per_second in
+      let last = ref (Time.now ()) in
+      let frame_rate = Time.Span.of_secs (1. /. float_of_int frames_per_second) in
       let cleanup exn =
         state.finished <- true;
         Option.iter exn ~f:(fun exn ->
@@ -117,10 +117,12 @@ let make ~frames_per_second (module Base : S) : (module Dune_console.Backend) =
              state.dirty <- false);
           Mutex.unlock mutex;
           let new_time =
-            let now = Unix.gettimeofday () in
+            let now = Time.now () in
             let time_budget =
-              let elapsed = now -. !last in
-              if elapsed >= frame_rate then 0. else frame_rate -. elapsed
+              let elapsed = Time.diff now !last in
+              if elapsed >= frame_rate
+              then Time.Span.zero
+              else Time.Span.diff frame_rate elapsed
             in
             match Base.handle_user_events ~now ~time_budget mutex state with
             | time -> time
@@ -172,8 +174,8 @@ let progress ~frames_per_second =
          the next loop iteration. Because it doesn't react to user input, it cannot
          modify the UI state, and as a consequence doesn't need the mutex. *)
       let handle_user_events ~now ~time_budget (_ : Mutex.t) (_ : state) =
-        Unix.sleepf time_budget;
-        now +. time_budget
+        Unix.sleepf (Time.Span.to_secs time_budget);
+        Time.add now time_budget
       ;;
     end)
 ;;

@@ -76,13 +76,13 @@ let establish_connection_exn () =
 
 let establish_connection_with_retry () =
   let open Fiber.O in
-  let pause_between_retries_s = 0.2 in
+  let pause_between_retries_s = Time.Span.of_secs 0.2 in
   let rec loop () =
     establish_connection ()
     >>= function
     | Ok x -> Fiber.return x
     | Error _ ->
-      let* () = Dune_engine.Scheduler.sleep ~seconds:pause_between_retries_s in
+      let* () = Dune_engine.Scheduler.sleep pause_between_retries_s in
       loop ()
   in
   loop ()

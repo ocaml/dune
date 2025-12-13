@@ -30,7 +30,8 @@ let make (times : Proc.Times.t) (gc : Gc.stat) =
       times.resource_usage
       ~default:{ user_cpu_time = 0.; system_cpu_time = 0. }
   in
-  { elapsed_time = times.elapsed_time
+  let elapsed_time = Time.Span.to_secs times.elapsed_time in
+  { elapsed_time
   ; user_cpu_time
   ; system_cpu_time
   ; minor_words = gc.minor_words

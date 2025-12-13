@@ -272,6 +272,7 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
     let start_job { Running_jobs.pid; description; started_at; id } =
       let id = Running_jobs.Id.to_int id |> Job.Id.create in
       let pid = Pid.to_int pid in
+      let started_at = Time.to_secs started_at in
       Job.Event.Start { Job.started_at; id; pid; description }
     in
     let stop_job id = Job.Event.Stop (Job.Id.create (Running_jobs.Id.to_int id)) in

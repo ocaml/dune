@@ -95,22 +95,17 @@ let solve ~dev_tool ~local_packages =
        ~portable_lock_dir:false
 ;;
 
+(* Some dev tools must be built with the same version of the ocaml compiler as
+   the project. This function returns the version of the "ocaml" package used to
+   compile the project in the default build context.
+
+   TODO: This only makes sure to match the default compiler packages (defined in
+   Pkg_toolchain). This won't work for custom compilers added as pins. Ideally
+   user pinned dependencies should be added to the pins of packages *)
+
 let compiler_package_name = Package_name.of_string "ocaml"
 
-(* Some dev tools must be built with the same version of the ocaml
-   compiler as the project. This function returns the version of the
-   "ocaml" package used to compile the project in the default build
-   context.
-
-   TODO: This only makes sure that the version of compiler used to
-   build the dev tool matches the version of the compiler used to
-   build this project. This will fail if the project is built with a
-   custom compiler (e.g. ocaml-variants) since the version of the
-   compiler will be the same between the project and dev tool while
-   they still use different compilers. A more robust solution would be
-   to ensure that the exact compiler package used to build the dev
-   tool matches the package used to build the compiler. *)
-let locked_ocaml_compiler_version () =
+let load_packages () =
   let open Memo.O in
   let context =
     (* Dev tools are only ever built with the default context. *)
@@ -130,25 +125,37 @@ let locked_ocaml_compiler_version () =
             [ Pp.text "Try running"; User_message.command "dune pkg lock" ]
         ]
   | Ok { packages; _ } ->
-    let packages = Lock_dir.Packages.pkgs_on_platform_by_name packages ~platform in
-    (match Package_name.Map.find packages compiler_package_name with
-     | None ->
-       User_error.raise
-         [ Pp.textf
-             "The lockdir doesn't contain a lockfile for the package %S."
-             (Package_name.to_string compiler_package_name)
-         ]
-         ~hints:
-           [ Pp.concat
-               ~sep:Pp.space
-               [ Pp.textf
-                   "Add a dependency on %S to one of the packages in dune-project and \
-                    then run"
-                   (Package_name.to_string compiler_package_name)
-               ; User_message.command "dune pkg lock"
-               ]
-           ]
-     | Some pkg -> Memo.return pkg.info.version)
+    Memo.return (Lock_dir.Packages.pkgs_on_platform_by_name packages ~platform)
+;;
+
+let lookup_package_exn packages pkg_name =
+  match Package_name.Map.find packages pkg_name with
+  | Some p -> p
+  | None ->
+    User_error.raise
+      [ Pp.textf
+          "The lockdir doesn't contain a lockfile for the package %S."
+          (Package_name.to_string pkg_name)
+      ]
+      ~hints:
+        [ Pp.concat
+            ~sep:Pp.space
+            [ Pp.textf
+                "Add a dependency on %S to one of the packages in dune-project and then \
+                 run"
+                (Package_name.to_string pkg_name)
+            ; User_message.command "dune pkg lock"
+            ]
+        ]
+;;
+
+let lookup_package_opt packages pkg_name = Package_name.Map.find packages pkg_name
+
+let locked_ocaml_compiler_version () =
+  let open Memo.O in
+  let* packages = load_packages () in
+  let pkg = lookup_package_exn packages compiler_package_name in
+  Memo.return pkg.info.version
 ;;
 
 (* Returns a dependency constraint on the version of the ocaml
@@ -165,13 +172,34 @@ let locked_ocaml_compiler_constraint () =
   { Package_dependency.name = compiler_package_name; constraint_ }
 ;;
 
+let extra_compilers = Dune_rules.Pkg_toolchain.compiler_package_names
+
+let extra_compiler_constraints () =
+  let open Memo.O in
+  let* packages = load_packages () in
+  let extact_package package =
+    match lookup_package_opt packages package with
+    | None -> Memo.return []
+    | Some pkg ->
+      let open Dune_lang in
+      let version = pkg.info.version in
+      let constraint_ =
+        Some
+          (Package_constraint.Uop (Eq, String_literal (Package_version.to_string version)))
+      in
+      Memo.return [ { Package_dependency.name = package; constraint_ } ]
+  in
+  Memo.List.concat_map ~f:extact_package extra_compilers
+;;
+
 let extra_dependencies dev_tool =
   let open Memo.O in
   match Dune_pkg.Dev_tool.needs_to_build_with_same_compiler_as_project dev_tool with
   | false -> Memo.return []
   | true ->
+    let* more_compiler_packages = extra_compiler_constraints () in
     let+ constraint_ = locked_ocaml_compiler_constraint () in
-    [ constraint_ ]
+    constraint_ :: more_compiler_packages
 ;;
 
 let lockdir_status dev_tool =

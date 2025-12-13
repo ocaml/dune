@@ -4,6 +4,8 @@ open Import
     versions. Creates the directory if it doesn't already exist. *)
 val base_dir : unit -> Path.Outside_build_dir.t
 
+val compiler_package_names : Dune_lang.Package_name.t list
+
 (** Dune will download and build the ocaml-base-compiler and
     ocaml-variants packages into a user-wide directory (shared among
     projects) rather than using the usual package management mechanism to

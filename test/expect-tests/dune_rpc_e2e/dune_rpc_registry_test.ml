@@ -14,7 +14,7 @@ let try_ ~times ~delay_seconds ~f =
       (match res with
        | Some s -> Fiber.return (Some s)
        | None ->
-         let* () = Scheduler.sleep ~seconds:delay_seconds in
+         let* () = Scheduler.sleep (Time.Span.of_secs delay_seconds) in
          loop (n - 1))
   in
   loop times
@@ -42,7 +42,8 @@ let run =
       ~finally:(fun () -> Sys.chdir cwd)
       ~f:(fun () ->
         Sys.chdir (Path.to_string dir);
-        Scheduler.Run.go config run ~timeout_seconds:5.0 ~on_event:(fun _ _ -> ()))
+        Scheduler.Run.go config run ~timeout:(Time.Span.of_secs 5.0) ~on_event:(fun _ _ ->
+          ()))
 ;;
 
 let%expect_test "turn on dune watch and wait until the connection is listed" =

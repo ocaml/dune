@@ -32,7 +32,7 @@ end
 
 module Times = struct
   type t =
-    { elapsed_time : float
+    { elapsed_time : Time.Span.t
     ; resource_usage : Resource_usage.t option
     }
 end
@@ -41,7 +41,7 @@ module Process_info = struct
   type t =
     { pid : Pid.t
     ; status : Unix.process_status
-    ; end_time : float
+    ; end_time : Time.t
     ; resource_usage : Resource_usage.t option
     }
 end
@@ -66,6 +66,7 @@ let wait wait flags =
       | Pid pid -> Pid.to_int pid
     in
     let pid, status, end_time, resource_usage = stub_wait4 pid flags in
+    let end_time = Time.of_epoch_secs end_time in
     { Process_info.pid = Pid.of_int pid
     ; status
     ; end_time

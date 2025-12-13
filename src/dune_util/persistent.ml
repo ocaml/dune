@@ -54,15 +54,10 @@ module Make (D : Desc) = struct
   let to_string (v : D.t) = Printf.sprintf "%s%s" magic (Marshal.to_string v [])
 
   let with_record what ~file ~f =
-    let start = Unix.gettimeofday () in
+    let start = Time.now () in
     let res = Result.try_with f in
     Dune_trace.emit Persistent (fun () ->
-      Dune_trace.Event.persistent
-        ~file
-        ~module_:D.name
-        what
-        ~start
-        ~stop:(Unix.gettimeofday ()));
+      Dune_trace.Event.persistent ~file ~module_:D.name what ~start ~stop:(Time.now ()));
     Result.ok_exn res
   ;;
 

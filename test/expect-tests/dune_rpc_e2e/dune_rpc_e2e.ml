@@ -34,7 +34,7 @@ let init_chan ~root_dir =
     let* res = once () in
     match res with
     | Some res -> Fiber.return res
-    | None -> Scheduler.sleep ~seconds:0.2 >>= loop
+    | None -> Scheduler.sleep (Time.Span.of_secs 0.2) >>= loop
   in
   loop ()
 ;;
@@ -109,7 +109,7 @@ let run ?env ~prog ~argv () =
   Unix.close stdout_w;
   Unix.close stderr_w;
   ( pid
-  , (let+ proc = Scheduler.wait_for_process ~timeout_seconds:3.0 pid in
+  , (let+ proc = Scheduler.wait_for_process ~timeout:(Time.Span.of_secs 3.0) pid in
      if proc.status <> Unix.WEXITED 0
      then (
        let name =
@@ -195,5 +195,6 @@ let run run =
     ~finally:(fun () -> Sys.chdir cwd)
     ~f:(fun () ->
       Sys.chdir (Path.to_string dir);
-      Scheduler.Run.go config run ~timeout_seconds:5.0 ~on_event:(fun _ _ -> ()))
+      Scheduler.Run.go config run ~timeout:(Time.Span.of_secs 5.0) ~on_event:(fun _ _ ->
+        ()))
 ;;

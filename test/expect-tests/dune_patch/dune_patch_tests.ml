@@ -150,7 +150,7 @@ let test files (patch, patch_contents) =
   in
   Scheduler.Run.go
     config
-    ~timeout_seconds:5.0
+    ~timeout:(Time.Span.of_secs 5.0)
     ~file_watcher:No_watcher
     ~on_event:(fun _ _ -> ())
   @@ fun () ->

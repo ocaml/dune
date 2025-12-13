@@ -326,7 +326,7 @@ module Console_backend = struct
     Mutex.lock mutex;
     state.dirty <- true;
     Mutex.unlock mutex;
-    Unix.gettimeofday ()
+    Time.now ()
   ;;
 
   let rec handle_user_events ~now ~time_budget mutex (state : Dune_threaded_console.state)
@@ -335,7 +335,9 @@ module Console_backend = struct
        up and continue. *)
     let input_fds =
       let sigcont_r, _ = Lazy.force sigcont_pipe in
-      match Unix.select [ Unix.stdin; sigcont_r ] [] [] time_budget with
+      match
+        Unix.select [ Unix.stdin; sigcont_r ] [] [] (Time.Span.to_secs time_budget)
+      with
       | exception Unix.Unix_error (EINTR, _, _) -> `Restore
       | [], _, _ -> `Timeout
       | fds, _, _ ->
@@ -352,7 +354,7 @@ module Console_backend = struct
     match input_fds with
     | `Restore -> set_dirty ~mutex state
     | `Timeout ->
-      now +. time_budget
+      Time.add now time_budget
       (* Nothing to do, we return the time at the end of the time budget. *)
     | `Event ->
       (match Term.event (term ()) with
@@ -367,9 +369,11 @@ module Console_backend = struct
          (* If we encounter an exception, we make sure to rehandle user events with a
             corrected time budget. *)
          let old_now = now in
-         let now = Unix.gettimeofday () in
-         let delta_now = now -. old_now in
-         let time_budget = Float.max 0. (time_budget -. delta_now) in
+         let now = Time.now () in
+         let delta_now = Time.diff now old_now in
+         let time_budget =
+           Time.Span.max Time.Span.zero (Time.Span.diff time_budget delta_now)
+         in
          handle_user_events ~now ~time_budget mutex state)
   ;;
 

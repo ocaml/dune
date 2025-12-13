@@ -66,7 +66,7 @@ let start t k : Event.Async.t option =
   | None -> None
   | Some _ ->
     let event_data = k () in
-    let start = Unix.gettimeofday () in
+    let start = Time.now () in
     Some (Event.Async.create ~event_data ~start)
 ;;
 
@@ -75,14 +75,14 @@ let finish t event =
   | None -> ()
   | Some { Event.Async.start; event_data = { args; cat; name } } ->
     let dur =
-      let stop = Unix.gettimeofday () in
-      Timestamp.of_float_seconds (stop -. start)
+      let stop = Time.now () in
+      Time.diff stop start |> Time.Span.to_secs |> Timestamp.of_float_seconds
     in
     let common =
       Chrome_trace.Event.common_fields
         ?cat
         ~name
-        ~ts:(Timestamp.of_float_seconds start)
+        ~ts:(Timestamp.of_float_seconds (Time.to_secs start))
         ()
     in
     let event = Chrome_trace.Event.complete ?args common ~dur in

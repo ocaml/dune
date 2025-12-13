@@ -47,7 +47,7 @@ let load () =
     | Vendored -> `Vendored
     | Normal | Data_only -> `Regular
   in
-  let+ projects, dune_files =
+  let* projects, dune_files =
     let f dir : Projects_and_dune_files.t Memo.t =
       let path = Source_tree.Dir.path dir in
       let project = Source_tree.Dir.project dir in
@@ -69,12 +69,40 @@ let load () =
       ~f
   in
   let projects = Appendable_list.to_list_rev projects in
-  let all_packages, vendored_packages =
-    List.fold_left
+  let+ all_packages, vendored_packages =
+    Memo.List.fold_left
       projects
       ~init:(Package.Name.Map.empty, Package.Name.Set.empty)
       ~f:(fun (acc_packages, vendored) (status, (project : Dune_project.t)) ->
-        let packages = Dune_project.including_hidden_packages project in
+        let+ packages =
+          let packages = Dune_project.including_hidden_packages project in
+          let+ disabled =
+            Package.Name.Map.values packages
+            |> List.filter_map ~f:(fun package ->
+              Package.enabled_if package |> Option.map ~f:(fun expr -> package, expr))
+            |> Memo.List.map ~f:(fun (package, expr) ->
+              Blang_expand.eval
+                expr
+                ~dir:Path.root (* This value is irrelevant *)
+                ~f:(fun ~source:_ pform ->
+                  match pform with
+                  | Var (Os v) -> Lock_dir.Sys_vars.(os_values poll v)
+                  | Var Architecture ->
+                    let+ arch = Memo.Lazy.force Lock_dir.Sys_vars.poll.arch in
+                    [ Value.String (Option.value ~default:"" arch) ]
+                  | _ -> assert false)
+              >>| function
+              | true -> None
+              | false -> Some package)
+            >>| List.filter_opt
+            >>| Package.Name.Map.of_list_map_exn ~f:(fun pkg -> Package.name pkg, ())
+          in
+          Package.Name.Map.merge packages disabled ~f:(fun _key package disabled ->
+            match package, disabled with
+            | Some p, Some () -> Some (p, `Disabled)
+            | Some p, None -> Some (p, `Enabled)
+            | None, None | None, Some _ -> assert false)
+        in
         let vendored =
           match status with
           | `Regular -> vendored
@@ -82,7 +110,7 @@ let load () =
             Package.Name.Set.of_keys packages |> Package.Name.Set.union vendored
         in
         let acc_packages =
-          Package.Name.Map.union acc_packages packages ~f:(fun name a b ->
+          Package.Name.Map.union acc_packages packages ~f:(fun name (a, _) (b, _) ->
             User_error.raise
               [ Pp.textf
                   "The package %S is defined more than once:"
@@ -94,7 +122,9 @@ let load () =
         acc_packages, vendored)
   in
   let mask = Only_packages.mask all_packages ~vendored:vendored_packages in
-  let packages = Only_packages.filter_packages mask all_packages in
+  let packages =
+    Package.Name.Map.map ~f:fst all_packages |> Only_packages.filter_packages mask
+  in
   let projects = List.rev_map projects ~f:snd in
   let dune_files =
     let without_ctx =
@@ -102,7 +132,7 @@ let load () =
         let (_ : Package.Name.t Path.Source.Map.t) =
           match
             Package.Name.Map.values all_packages
-            |> List.filter_map ~f:(fun pkg ->
+            |> List.filter_map ~f:(fun (pkg, _) ->
               match Package.exclusive_dir pkg with
               | None -> None
               | Some d -> Some (d, pkg))

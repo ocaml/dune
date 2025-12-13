@@ -51,30 +51,45 @@ let mem t name =
 ;;
 
 let mask packages ~vendored : t =
-  match Clflags.t () with
-  | No_restriction -> None
-  | Restrict { names; command_line_option } ->
-    Package.Name.Set.iter names ~f:(fun pkg_name ->
-      if not (Package.Name.Map.mem packages pkg_name)
-      then (
-        let pkg_name = Package.Name.to_string pkg_name in
-        User_error.raise
-          [ Pp.textf
-              "I don't know about package %s (passed through %s)"
-              pkg_name
-              command_line_option
-          ]
-          ~hints:
-            (User_message.did_you_mean
-               pkg_name
-               ~candidates:
-                 (Package.Name.Map.keys packages |> List.map ~f:Package.Name.to_string))));
-    Package.Name.Map.filter_map packages ~f:(fun pkg ->
-      let name = Package.name pkg in
-      let vendored = Package.Name.Set.mem vendored name in
-      let included = Package.Name.Set.mem names name in
-      Option.some_if (vendored || included) pkg)
-    |> Option.some
+  let enabled, disabled =
+    Package.Name.Map.partition_map packages ~f:(fun (package, status) ->
+      match status with
+      | `Enabled -> Left package
+      | `Disabled -> Right ())
+  in
+  match
+    match Clflags.t () with
+    | No_restriction -> None
+    | Restrict { names; command_line_option } ->
+      Package.Name.Set.iter names ~f:(fun pkg_name ->
+        if not (Package.Name.Map.mem packages pkg_name)
+        then (
+          let pkg_name = Package.Name.to_string pkg_name in
+          User_error.raise
+            [ Pp.textf
+                "I don't know about package %s (passed through %s)"
+                pkg_name
+                command_line_option
+            ]
+            ~hints:
+              (User_message.did_you_mean
+                 pkg_name
+                 ~candidates:
+                   (Package.Name.Map.keys packages |> List.map ~f:Package.Name.to_string))));
+      Package.Name.Map.filter_map packages ~f:(fun (pkg, _) ->
+        let name = Package.name pkg in
+        let vendored = Package.Name.Set.mem vendored name in
+        let included = Package.Name.Set.mem names name in
+        Option.some_if (vendored || included) pkg)
+      |> Option.some
+  with
+  | None -> if Package.Name.Map.is_empty disabled then None else Some enabled
+  | Some p ->
+    Some
+      (Package.Name.Map.merge p enabled ~f:(fun _ masked enabled ->
+         match masked, enabled with
+         | Some x, Some _ -> Some x
+         | _, _ -> None))
 ;;
 
 let filter_packages (t : t) packages =

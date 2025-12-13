@@ -1269,7 +1269,17 @@ let print_entering_message c =
 let build (root : Workspace_root.t) (builder : Builder.t) =
   let stats =
     Option.map builder.stats_trace_file ~f:(fun f ->
-      let stats = Dune_trace.Out.create (Out (open_out f)) in
+      let cats =
+        match Sys.getenv_opt "DUNE_TRACE" with
+        | None -> Dune_trace.Category.[ Sandbox; Persistent; Process; Rules; Pkg ]
+        | Some s ->
+          String.split ~on:',' s
+          |> List.map ~f:(fun x ->
+            match Dune_trace.Category.of_string x with
+            | Some s -> s
+            | None -> User_error.raise [ Pp.textf "unrecognized trace category %S" x ])
+      in
+      let stats = Dune_trace.Out.create cats (Out (open_out f)) in
       Dune_trace.set_global stats;
       stats)
   in
@@ -1293,8 +1303,7 @@ let build (root : Workspace_root.t) (builder : Builder.t) =
              ~registry
              ~root:root.dir
              ~handle:Dune_rules_rpc.register
-             ~parse_build_arg:Dune_rules_rpc.parse_build_arg
-             stats))
+             ~parse_build_arg:Dune_rules_rpc.parse_build_arg))
     else `Forbid_builds
   in
   if builder.print_metrics then Dune_metrics.enable ();
@@ -1408,9 +1417,9 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)
     ];
   Dune_console.separate_messages c.builder.separate_error_messages;
-  Dune_trace.emit (fun () ->
-    Dune_trace.Event.config
-      ~version:(Build_info.V1.version () |> Option.map ~f:Build_info.V1.Version.to_string));
+  Dune_trace.always_emit
+    (Dune_trace.Event.config
+       ~version:(Build_info.V1.version () |> Option.map ~f:Build_info.V1.Version.to_string));
   (* Setup hook for printing GC stats to a file *)
   at_exit (fun () ->
     match c.builder.dump_gc_stats with

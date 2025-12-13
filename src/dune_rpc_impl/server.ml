@@ -41,7 +41,6 @@ module Run = struct
     ; root : string
     ; where : Dune_rpc.Where.t
     ; server : Csexp_rpc.Server.t Lazy.t
-    ; stats : Dune_trace.Out.t option
     ; server_ivar : Csexp_rpc.Server.t Fiber.Ivar.t
     ; registry : [ `Add | `Skip ]
     }
@@ -97,7 +96,7 @@ module Run = struct
              cleanup_registry := Some path;
              at_exit run_cleanup_registry
            in
-           let* () = Server.serve sessions t.stats t.handler in
+           let* () = Server.serve sessions t.handler in
            Fiber.Pool.close t.pool)
         (fun () -> Fiber.Pool.run t.pool)
     in
@@ -445,7 +444,7 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
   rpc
 ;;
 
-let create ~lock_timeout ~registry ~root ~handle stats ~parse_build_arg =
+let create ~lock_timeout ~registry ~root ~handle ~parse_build_arg =
   let t = Fdecl.create Dyn.opaque in
   let pending_jobs = Job_queue.create () in
   let handler = Dune_rpc_server.make (handler t handle) in
@@ -477,7 +476,6 @@ let create ~lock_timeout ~registry ~root ~handle stats ~parse_build_arg =
     ; pool
     ; root
     ; where
-    ; stats
     ; server
     ; registry
     ; server_ivar = Fiber.Ivar.create ()

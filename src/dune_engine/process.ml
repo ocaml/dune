@@ -824,7 +824,7 @@ let report_process_finished
   in
   let stdout = Result.Out.get stdout in
   let stderr = Result.Out.get stderr in
-  Dune_trace.emit (fun () ->
+  Dune_trace.emit Process (fun () ->
     Dune_trace.Event.process
       ~name:metadata.name
       ~started_at

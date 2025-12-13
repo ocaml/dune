@@ -1,4 +1,5 @@
 open Stdune
+module Category = Category
 module Timestamp = Chrome_trace.Event.Timestamp
 module Event = Event
 
@@ -16,6 +17,7 @@ module Out = struct
     ; close : unit -> unit
     ; flush : unit -> unit
     ; mutable after_first_event : bool
+    ; cats : Category.Set.t
     }
 
   (* all fields of record used *)
@@ -25,7 +27,7 @@ module Out = struct
     close ()
   ;;
 
-  let create dst =
+  let create cats dst =
     let print =
       match dst with
       | Out out -> fun str -> Stdlib.output_string out str
@@ -41,7 +43,8 @@ module Out = struct
       | Out out -> fun () -> flush out
       | Custom c -> c.flush
     in
-    { print; close; after_first_event = false; flush }
+    let cats = Category.Set.of_list cats in
+    { print; close; after_first_event = false; flush; cats }
   ;;
 
   let flush t = t.flush ()
@@ -106,16 +109,28 @@ let set_global t =
 
 let global () = !global
 
-let emit f =
+let always_emit event =
   match global () with
   | None -> ()
-  | Some out -> Out.emit out (f ())
+  | Some out -> Out.emit out event
 ;;
 
-let emit_all f =
+let emit cat f =
   match global () with
   | None -> ()
-  | Some out -> List.iter (f ()) ~f:(Out.emit out)
+  | Some out -> if Category.Set.mem out.cats cat then Out.emit out (f ())
+;;
+
+let emit_all cat f =
+  match global () with
+  | None -> ()
+  | Some out -> if Category.Set.mem out.cats cat then List.iter (f ()) ~f:(Out.emit out)
+;;
+
+let flush () =
+  match global () with
+  | None -> ()
+  | Some s -> Out.flush s
 ;;
 
 module Private = struct

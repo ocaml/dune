@@ -18,18 +18,18 @@ module Async = struct
   let create_sandbox ~loc =
     { args = Some [ "loc", `String (Loc.to_file_colon_line loc) ]
     ; name = "create-sandbox"
-    ; cat = Some [ "sandbox" ]
+    ; cat = Some [ Category.to_string Sandbox ]
     }
   ;;
 
   let fetch ~url ~target ~checksum =
-    let args = [ "url", `String url; "target", `String (Path.to_string target) ] in
     let args =
+      let args = [ "url", `String url; "target", `String (Path.to_string target) ] in
       match checksum with
       | None -> args
       | Some c -> ("checksum", `String c) :: args
     in
-    { args = Some args; cat = Some [ "pkg" ]; name = "fetch" }
+    { args = Some args; cat = Some [ Category.to_string Pkg ]; name = "fetch" }
   ;;
 end
 
@@ -137,7 +137,7 @@ let process
       | None -> Filename.basename prog
     in
     let ts = Timestamp.of_float_seconds started_at in
-    Event.common_fields ~cat:("process" :: categories) ~name ~ts ()
+    Event.common_fields ~cat:(Category.to_string Process :: categories) ~name ~ts ()
   in
   let always =
     [ "process_args", `List (List.map process_args ~f:(fun arg -> `String arg))
@@ -234,7 +234,7 @@ module Rpc = struct
       | `Request id -> ("request_id", to_json id) :: args
     in
     let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
-    let common = Event.common_fields ~cat:[ "rpc" ] ~ts ~name () in
+    let common = Event.common_fields ~cat:[ Category.to_string Rpc ] ~ts ~name () in
     Event.async
       (Chrome_trace.Id.create (`Int id))
       ~args
@@ -252,7 +252,11 @@ module Rpc = struct
       | Some err -> ("error", `String err) :: base
     in
     let common =
-      Event.common_fields ~cat:[ "rpc"; "packet" ] ~name:"packet_read" ~ts ()
+      Event.common_fields
+        ~cat:[ Category.to_string Rpc; "packet" ]
+        ~name:"packet_read"
+        ~ts
+        ()
     in
     Event.instant ~args common
   ;;
@@ -262,7 +266,11 @@ module Rpc = struct
     let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
     let args = [ "id", `Int id; "count", `Int count ] in
     let common =
-      Event.common_fields ~cat:[ "rpc"; "packet" ] ~name:"packet_write" ~ts ()
+      Event.common_fields
+        ~cat:[ Category.to_string Rpc; "packet" ]
+        ~name:"packet_write"
+        ~ts
+        ()
     in
     Event.instant ~args common
   ;;
@@ -276,7 +284,9 @@ module Rpc = struct
       | None -> base
       | Some err -> ("error", `String err) :: base
     in
-    let common = Event.common_fields ~cat:[ "rpc"; "accept" ] ~name:"accept" ~ts () in
+    let common =
+      Event.common_fields ~cat:[ Category.to_string Rpc; "accept" ] ~name:"accept" ~ts ()
+    in
     Event.instant ~args common
   ;;
 
@@ -284,7 +294,9 @@ module Rpc = struct
     let open Chrome_trace in
     let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
     let args = [ "id", `Int id ] in
-    let common = Event.common_fields ~cat:[ "rpc"; "session" ] ~name:"close" ~ts () in
+    let common =
+      Event.common_fields ~cat:[ Category.to_string Rpc; "session" ] ~name:"close" ~ts ()
+    in
     Event.instant ~args common
   ;;
 end
@@ -293,7 +305,7 @@ let gc () =
   let module Event = Chrome_trace.Event in
   let module Json = Chrome_trace.Json in
   let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
-  let common = Event.common_fields ~name:"gc" ~ts () in
+  let common = Event.common_fields ~cat:[ Category.to_string Gc ] ~name:"gc" ~ts () in
   let args =
     let stat = Gc.quick_stat () in
     [ "stack_size", `Int stat.stack_size
@@ -318,6 +330,6 @@ let fd_count () =
   | Unknown -> None
   | This fds ->
     let args = [ "value", `Int fds ] in
-    let common = Event.common_fields ~name:"fds" ~ts () in
+    let common = Event.common_fields ~cat:[ Category.to_string Fd ] ~name:"fds" ~ts () in
     Some (Event.counter common args)
 ;;

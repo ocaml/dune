@@ -101,7 +101,7 @@ module Session = struct
   let create fd =
     Unix.set_nonblock fd;
     let id = Id.gen () in
-    Dune_trace.emit (fun () -> Dune_trace.Event.Rpc.session ~id:(Id.to_int id) Start);
+    Dune_trace.emit Rpc (fun () -> Dune_trace.Event.Rpc.session ~id:(Id.to_int id) Start);
     let state =
       let size = 8192 in
       Open
@@ -135,7 +135,7 @@ module Session = struct
     let* () = Fiber.return () in
     match t.state with
     | Closed ->
-      Dune_trace.emit (fun () ->
+      Dune_trace.emit Rpc (fun () ->
         Dune_trace.Event.Rpc.packet_read ~id:(Id.to_int t.id) ~success:true ~error:None);
       Fiber.return None
     | Open ({ fd; in_buf; read_mutex; _ } as open_) ->
@@ -205,7 +205,7 @@ module Session = struct
         let* res = Fiber.Mutex.with_lock read_mutex ~f:(fun () -> read Stack.Empty) in
         match res with
         | Error exn ->
-          Dune_trace.emit (fun () ->
+          Dune_trace.emit Rpc (fun () ->
             Dune_trace.Event.Rpc.packet_read
               ~id:(Id.to_int t.id)
               ~success:false
@@ -214,7 +214,7 @@ module Session = struct
           let+ () = close t in
           None
         | Ok None ->
-          Dune_trace.emit (fun () ->
+          Dune_trace.emit Rpc (fun () ->
             Dune_trace.Event.Rpc.packet_read
               ~id:(Id.to_int t.id)
               ~success:true
@@ -222,7 +222,7 @@ module Session = struct
           let+ () = close t in
           None
         | Ok (Some sexp) ->
-          Dune_trace.emit (fun () ->
+          Dune_trace.emit Rpc (fun () ->
             Dune_trace.Event.Rpc.packet_read
               ~id:(Id.to_int t.id)
               ~success:true
@@ -273,7 +273,7 @@ module Session = struct
 
   let write t sexps =
     let* () = Fiber.return () in
-    Dune_trace.emit (fun () ->
+    Dune_trace.emit Rpc (fun () ->
       Dune_trace.Event.Rpc.packet_write ~id:(Id.to_int t.id) ~count:(List.length sexps));
     match t.state with
     | Closed -> Fiber.return (Error `Closed)
@@ -297,7 +297,7 @@ module Session = struct
 
   let close t =
     let* () = Fiber.return () in
-    Dune_trace.emit (fun () -> Dune_trace.Event.Rpc.close ~id:(Id.to_int t.id));
+    Dune_trace.emit Rpc (fun () -> Dune_trace.Event.Rpc.close ~id:(Id.to_int t.id));
     match t.state with
     | Closed -> Fiber.return ()
     | Open { fd; _ } ->
@@ -412,19 +412,19 @@ module Server = struct
         let+ accept = Transport.accept transport in
         match accept with
         | Error _exn ->
-          Dune_trace.emit (fun () ->
+          Dune_trace.emit Rpc (fun () ->
             Dune_trace.Event.Rpc.accept
               ~success:false
               ~error:(Some "RPC accept failed. Server will not accept new clients"));
           None
         | Ok None ->
-          Dune_trace.emit (fun () ->
+          Dune_trace.emit Rpc (fun () ->
             Dune_trace.Event.Rpc.accept
               ~success:false
               ~error:(Some "No more clients will be accepted"));
           None
         | Ok (Some fd) ->
-          Dune_trace.emit (fun () ->
+          Dune_trace.emit Rpc (fun () ->
             Dune_trace.Event.Rpc.accept ~success:true ~error:None);
           let session = Session.create fd in
           Some session

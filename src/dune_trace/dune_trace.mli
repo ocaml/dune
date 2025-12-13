@@ -11,6 +11,7 @@ module Category : sig
     | Rules
     | Pkg
     | Scheduler
+    | Promote
 
   val of_string : string -> t option
 end
@@ -70,6 +71,7 @@ module Event : sig
   val config : version:string option -> t
   val gc : unit -> t
   val fd_count : unit -> t option
+  val promote : Path.Build.t -> Path.Source.t -> t
 
   module Rpc : sig
     type stage =

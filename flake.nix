@@ -176,6 +176,7 @@
               mercurial
               unzip
               perl
+              jq
             ]
             ++ lib.optionals stdenv.isLinux [ strace ];
           testNativeBuildInputs =

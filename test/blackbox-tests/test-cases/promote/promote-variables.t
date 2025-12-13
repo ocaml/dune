@@ -12,8 +12,14 @@ Test expanding variables in `(promote (into ..))`
   >   (with-stdout-to promoted (echo "Hello, world!"))))
   > EOF
 
-  $ dune build a/b/promoted --verbose 2>&1 | grep "Promoting"
-  Promoting "_build/default/a/b/promoted" to "another/promoted"
+  $ dune build a/b/promoted --trace-file trace.json
+
+  $ jq '.[] | select(.name == "promote") | .args' trace.json
+  {
+    "src": "_build/default/a/b/promoted",
+    "dst": "another/promoted"
+  }
+
   $ cat another/promoted
   Hello, world!
 

@@ -8,7 +8,7 @@ module Spec = struct
     ; extra_aliases : Alias.Name.Set.t
     ; deps : unit Action_builder.t list
     ; sandbox : Sandbox_config.t
-    ; enabled_if : (Expander.t * Blang.t) list
+    ; enabled_if : (Loc.t * Expander.t * Blang.t) list
     ; locks : Path.Set.t Action_builder.t
     ; packages : Package.Name.Set.t
     ; timeout : (Loc.t * Time.Span.t) option
@@ -74,26 +74,55 @@ let test_rule
     |> Alias.Name.Set.to_list_map ~f:(Alias.make ~dir)
   in
   let alias = Alias.make ~dir test_name_alias in
-  (* Here we get all other aliases to depend on the main alias which is the same as the
-     name of the cram test. *)
-  let* () =
+  let add_extra_aliases_deps () =
     Memo.parallel_iter extra_aliases ~f:(fun extra_alias ->
       Rules.Produce.Alias.add_deps ~loc extra_alias (Action_builder.dep (Dep.alias alias)))
   in
   match test with
   | Error (Missing_run_t test) ->
     (* We error out on invalid tests even if they are disabled. *)
+    let* () = add_extra_aliases_deps () in
     Action_builder.fail { fail = (fun () -> missing_run_t test) }
     |> Alias_rules.add sctx ~alias ~loc
   | Ok test ->
-    (* Morally, this is equivalent to evaluating them all concurrently and
-       taking the conjunction, but we do it this way to avoid evaluating things
-       unnecessarily *)
-    Memo.List.for_all enabled_if ~f:(fun (expander, blang) ->
-      Expander.eval_blang expander blang)
+    (* Evaluate all enabled_if conditions and collect those that are false *)
+    Memo.List.filter_map enabled_if ~f:(fun (stanza_loc, expander, blang) ->
+      Expander.eval_blang expander blang
+      >>| function
+      | true -> None
+      | false -> Some (stanza_loc, blang))
     >>= (function
-     | false -> Alias_rules.add_empty sctx ~alias ~loc
-     | true ->
+     | _ :: _ as false_conditions ->
+       (* Some conditions are false so test is disabled.
+          Don't add @runtest -> @test dependency for disabled tests.
+          Use Action_builder.fail so error only triggers when alias is demanded. *)
+       let test_name = Cram_test.path test |> Path.Source.to_string in
+       let conditions =
+         List.map false_conditions ~f:(fun (stanza_loc, blang) ->
+           let cond = Blang.encode blang |> Dune_sexp.to_string in
+           sprintf "%s (in %s)" cond (Loc.to_file_colon_line stanza_loc))
+         |> String.concat ~sep:", "
+       in
+       let first_loc =
+         match false_conditions with
+         | (stanza_loc, _) :: _ -> stanza_loc
+         | [] -> loc
+       in
+       Action_builder.fail
+         { fail =
+             (fun () ->
+               User_error.raise
+                 ~loc:first_loc
+                 [ Pp.textf "Test %s is disabled." test_name
+                 ; Pp.textf
+                     "The enabled_if condition(s) evaluated to false: %s"
+                     conditions
+                 ])
+         }
+       |> Alias_rules.add sctx ~alias ~loc:first_loc
+     | [] ->
+       (* All conditions are true so test is enabled *)
+       let* () = add_extra_aliases_deps () in
        let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
        let script = Path.Build.append_source prefix_with (Cram_test.script test) in
        let base_path =
@@ -281,7 +310,9 @@ let rules ~sctx ~dir tests =
                           ; Pp.text (Loc.to_file_colon_line loc')
                           ]))
               in
-              let enabled_if = (expander, stanza.enabled_if) :: acc.enabled_if in
+              let enabled_if =
+                (stanza.loc, expander, stanza.enabled_if) :: acc.enabled_if
+              in
               let extra_aliases =
                 match stanza.alias with
                 | None -> acc.extra_aliases

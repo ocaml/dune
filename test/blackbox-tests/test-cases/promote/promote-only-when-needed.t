@@ -8,8 +8,16 @@ Test that targets aren't re-promoted if they are up to date.
   >  (action (with-stdout-to promoted (echo "Hello, world!"))))
   > EOF
 
-  $ dune build promoted --verbose 2>&1 | grep "Promoting"
-  Promoting "_build/default/promoted" to "promoted"
+  $ showPromotions() {
+  > jq '.[] | select(.name == "promote") | .args' trace.json
+  > }
+
+  $ dune build promoted --trace-file trace.json
+  $ showPromotions
+  {
+    "src": "_build/default/promoted",
+    "dst": "promoted"
+  }
   $ cat promoted
   Hello, world!
 
@@ -23,8 +31,12 @@ Dune doesn't promote the file again if it's unchanged.
 Dune does promotes the file again if it's changed.
 
   $ echo hi > promoted
-  $ dune build promoted --verbose 2>&1 | grep "Promoting"
-  Promoting "_build/default/promoted" to "promoted"
+  $ dune build promoted --trace-file trace.json
+  $ showPromotions
+  {
+    "src": "_build/default/promoted",
+    "dst": "promoted"
+  }
   $ cat promoted
   Hello, world!
 
@@ -46,8 +58,14 @@ Now test behaviour for executables, which use artifact substitution.
   >   | None -> print_endline "Has no version info")
   > EOF
 
-  $ dune build hello.exe --verbose 2>&1 | grep "Promoting"
-  Promoting "_build/default/hello.exe" to "hello.exe"
+  $ dune build hello.exe --trace-file trace.json
+
+  $ showPromotions
+  {
+    "src": "_build/default/hello.exe",
+    "dst": "hello.exe"
+  }
+
   $ ./hello.exe
   Hello, World!
   Has version info
@@ -56,5 +74,12 @@ Bug: Dune currently re-promotes versioned executables on every restart.
 
 # CR-someday amokhov: Fix this.
 
-  $ dune build hello.exe --verbose 2>&1 | grep "Promoting"
-  Promoting "_build/default/hello.exe" to "hello.exe"
+  $ dune build hello.exe --trace-file trace.json
+
+  $ showPromotions
+  {
+    "src": "_build/default/hello.exe",
+    "dst": "hello.exe"
+  }
+
+  $ jq '.[] | select(.name == "promote") | .args'

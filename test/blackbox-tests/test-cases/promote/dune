@@ -1,0 +1,3 @@
+(cram
+ (applies_to promote-variables promote-only-when-needed)
+ (deps %{bin:jq}))

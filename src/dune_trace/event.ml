@@ -340,3 +340,17 @@ let fd_count () =
     let common = Event.common_fields ~cat:[ Category.to_string Fd ] ~name:"fds" ~ts () in
     Some (Event.counter common args)
 ;;
+
+let promote src dst =
+  let module Event = Chrome_trace.Event in
+  let common =
+    let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+    Event.common_fields ~cat:[ Category.to_string Promote ] ~name:"promote" ~ts ()
+  in
+  let args =
+    [ "src", `String (Path.Build.to_string src)
+    ; "dst", `String (Path.Source.to_string dst)
+    ]
+  in
+  Event.instant ~args common
+;;

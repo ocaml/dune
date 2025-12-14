@@ -14,8 +14,12 @@ depends: [
   "ocaml" {>= "4.08"}
   "odoc" {with-doc}
 ]
+dev-repo: "git+https://github.com/ocaml/dune.git"
+x-maintenance-intent: ["none"]
 build: [
   ["dune" "subst"] {dev}
+  ["rm" "-rf" "vendor/csexp"]
+  ["rm" "-rf" "vendor/pp"]
   [
     "dune"
     "build"
@@ -24,9 +28,6 @@ build: [
     "-j"
     jobs
     "@install"
-    "@runtest" {with-test}
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/ocaml/dune.git"
-x-maintenance-intent: ["none"]

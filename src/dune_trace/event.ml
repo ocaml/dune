@@ -388,3 +388,13 @@ let resolve_targets targets aliases =
   in
   Event.instant ~args common
 ;;
+
+let load_dir dir =
+  let module Event = Chrome_trace.Event in
+  let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+  let args = [ "dir", `String (Path.to_string dir) ] in
+  let common =
+    Event.common_fields ~cat:[ Category.to_string Debug ] ~name:"load-dir" ~ts ()
+  in
+  Event.instant ~args common
+;;

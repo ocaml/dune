@@ -874,10 +874,7 @@ end = struct
   ;;
 
   let load_dir_impl ~dir : Loaded.t Memo.t =
-    if !Clflags.debug_load_dir
-    then
-      Console.print_user_message
-        (User_message.make [ Pp.textf "Loading build directory %s" (Path.to_string dir) ]);
+    Dune_trace.emit Debug (fun () -> Dune_trace.Event.load_dir dir);
     get_dir_triage ~dir
     >>= function
     | Known l -> Memo.return l

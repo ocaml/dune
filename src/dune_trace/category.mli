@@ -10,6 +10,7 @@ type t =
   | Scheduler
   | Promote
   | Build
+  | Debug
 
 val to_string : t -> string
 val of_string : string -> t option

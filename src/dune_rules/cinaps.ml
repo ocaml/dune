@@ -70,6 +70,8 @@ let () =
   Dune_project.Extension.register_simple syntax (return [ name, decode_stanza decode ])
 ;;
 
+let flags = Ocaml_flags.of_list [ "-w"; "-24" ]
+
 let gen_rules sctx t ~dir ~scope =
   let loc = t.loc in
   (* Files checked by cinaps *)
@@ -175,7 +177,7 @@ let gen_rules sctx t ~dir ~scope =
         ~opaque:(Explicit false)
         ~requires_compile
         ~requires_link
-        ~flags:(Ocaml_flags.of_list [ "-w"; "-24" ])
+        ~flags
         ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
         ~melange_package_name:None
         ~package:None

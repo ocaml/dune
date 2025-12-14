@@ -261,72 +261,73 @@ module Driver = struct
   ;;
 end
 
-let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
-  let* driver_and_libs =
-    let ( let& ) t f = Resolve.Memo.bind t ~f in
-    let& pps = Resolve.Memo.lift pps in
-    let& pps = Lib.closure ~linking:true pps in
-    Driver.select pps ~loc:(Dot_ppx (target, pp_names))
-    >>| Resolve.map ~f:(fun driver -> driver, pps)
-    >>|
-    (* Extend the dependency stack as we don't have locations at this point *)
-    Resolve.push_stack_frame ~human_readable_description:(fun () ->
-      Dyn.pp (List [ String "pps"; Dyn.(list Lib_name.to_dyn) pp_names ]))
-  in
-  (* CR-someday diml: what we should do is build the .cmx/.cmo once and for all
+let build_ppx_driver =
+  let flags = Ocaml_flags.of_list [ "-g"; "-w"; "-24" ] in
+  fun sctx ~scope ~target ~pps ~pp_names ->
+    let* driver_and_libs =
+      let ( let& ) t f = Resolve.Memo.bind t ~f in
+      let& pps = Resolve.Memo.lift pps in
+      let& pps = Lib.closure ~linking:true pps in
+      Driver.select pps ~loc:(Dot_ppx (target, pp_names))
+      >>| Resolve.map ~f:(fun driver -> driver, pps)
+      >>|
+      (* Extend the dependency stack as we don't have locations at this point *)
+      Resolve.push_stack_frame ~human_readable_description:(fun () ->
+        Dyn.pp (List [ String "pps"; Dyn.(list Lib_name.to_dyn) pp_names ]))
+    in
+    (* CR-someday diml: what we should do is build the .cmx/.cmo once and for all
      at the point where the driver is defined. *)
-  let dir = Path.Build.parent_exn target in
-  let main_module_name = Module_name.of_string_allow_invalid (Loc.none, "_ppx") in
-  let module_ = Module.generated ~kind:Impl ~src_dir:dir [ main_module_name ] in
-  let* () =
-    let ml_source =
-      Module.file ~ml_kind:Impl module_ |> Option.value_exn |> Path.as_in_build_dir_exn
+    let dir = Path.Build.parent_exn target in
+    let main_module_name = Module_name.of_string_allow_invalid (Loc.none, "_ppx") in
+    let module_ = Module.generated ~kind:Impl ~src_dir:dir [ main_module_name ] in
+    let* () =
+      let ml_source =
+        Module.file ~ml_kind:Impl module_ |> Option.value_exn |> Path.as_in_build_dir_exn
+      in
+      Super_context.add_rule
+        sctx
+        ~dir
+        (Action_builder.write_file_dyn
+           ml_source
+           (Resolve.read
+              (let open Resolve.O in
+               let+ driver, _ = driver_and_libs in
+               sprintf "let () = %s ()\n" driver.info.main)))
+    and* linkages =
+      let ctx = Super_context.context sctx in
+      let+ ocaml = Context.ocaml ctx in
+      [ Exe.Linkage.native_or_custom ocaml ]
+    and+ cctx =
+      let obj_dir = Obj_dir.for_pp ~dir in
+      let requires_compile = Resolve.map driver_and_libs ~f:snd in
+      let requires_link = Memo.lazy_ (fun () -> Memo.return requires_compile) in
+      let opaque = Compilation_context.Explicit false in
+      let modules = Modules.With_vlib.singleton_exe module_ in
+      Compilation_context.create
+        ~super_context:sctx
+        ~scope
+        ~obj_dir
+        ~modules
+        ~flags
+        ~requires_compile:(Memo.return requires_compile)
+        ~requires_link
+        ~opaque
+        ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
+        ~melange_package_name:None
+        ~package:None
+        ~bin_annot:false
+        ()
     in
-    Super_context.add_rule
-      sctx
-      ~dir
-      (Action_builder.write_file_dyn
-         ml_source
-         (Resolve.read
-            (let open Resolve.O in
-             let+ driver, _ = driver_and_libs in
-             sprintf "let () = %s ()\n" driver.info.main)))
-  and* linkages =
-    let ctx = Super_context.context sctx in
-    let+ ocaml = Context.ocaml ctx in
-    [ Exe.Linkage.native_or_custom ocaml ]
-  and+ cctx =
-    let obj_dir = Obj_dir.for_pp ~dir in
-    let requires_compile = Resolve.map driver_and_libs ~f:snd in
-    let requires_link = Memo.lazy_ (fun () -> Memo.return requires_compile) in
-    let flags = Ocaml_flags.of_list [ "-g"; "-w"; "-24" ] in
-    let opaque = Compilation_context.Explicit false in
-    let modules = Modules.With_vlib.singleton_exe module_ in
-    Compilation_context.create
-      ~super_context:sctx
-      ~scope
-      ~obj_dir
-      ~modules
-      ~flags
-      ~requires_compile:(Memo.return requires_compile)
-      ~requires_link
-      ~opaque
-      ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
-      ~melange_package_name:None
-      ~package:None
-      ~bin_annot:false
-      ()
-  in
-  let+ (_ : Exe.dep_graphs) =
-    let program : Exe.Program.t =
-      { name = Filename.remove_extension (Path.Build.basename target)
-      ; main_module_name
-      ; loc = Loc.none
-      }
+    let+ (_ : Exe.dep_graphs) =
+      let program : Exe.Program.t =
+        { name = Filename.remove_extension (Path.Build.basename target)
+        ; main_module_name
+        ; loc = Loc.none
+        }
+      in
+      Exe.build_and_link ~program ~linkages cctx ~promote:None
     in
-    Exe.build_and_link ~program ~linkages cctx ~promote:None
-  in
-  ()
+    ()
 ;;
 
 let ppx_exe_path (ctx : Build_context.t) ~key =

@@ -11,8 +11,11 @@ type t =
   | Pkg
   | Scheduler
   | Promote
+  | Build
 
-let all = [ Rpc; Gc; Fd; Sandbox; Persistent; Process; Rules; Pkg; Scheduler; Promote ]
+let all =
+  [ Rpc; Gc; Fd; Sandbox; Persistent; Process; Rules; Pkg; Scheduler; Promote; Build ]
+;;
 
 let to_string = function
   | Rpc -> "rpc"
@@ -25,6 +28,7 @@ let to_string = function
   | Pkg -> "pkg"
   | Scheduler -> "scheduler"
   | Promote -> "promote"
+  | Build -> "build"
 ;;
 
 let of_string =
@@ -51,5 +55,6 @@ module Set = Bit_set.Make (struct
       | Pkg -> 7
       | Scheduler -> 8
       | Promote -> 9
+      | Build -> 10
     ;;
   end)

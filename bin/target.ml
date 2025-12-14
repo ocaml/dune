@@ -220,34 +220,35 @@ let resolve_target root ~setup target =
   | dep -> Action_builder.return (Error (dep, []))
 ;;
 
-let resolve_targets
-      root
-      (config : Dune_config.t)
-      (setup : Dune_rules.Main.build_system)
-      user_targets
-  =
+let resolve_targets root (setup : Dune_rules.Main.build_system) user_targets =
   match user_targets with
   | [] -> Action_builder.return []
   | _ ->
     let+ targets = Action_builder.List.map user_targets ~f:(resolve_target root ~setup) in
-    (match config.display with
-     | Simple { verbosity = Verbose; _ } ->
-       Log.info
-         [ Pp.text "Actual targets:"
-         ; Pp.enumerate
-             (List.concat_map targets ~f:(function
-                | Ok targets -> targets
-                | Error _ -> []))
-             ~f:(function
-               | File p -> Pp.verbatim (Path.to_string_maybe_quoted p)
-               | Alias a -> Alias.pp a)
-         ]
-     | _ -> ());
+    Dune_trace.emit Build (fun () ->
+      let files, aliases =
+        List.concat_map targets ~f:(function
+          | Ok targets -> targets
+          | Error _ -> [])
+        |> List.partition_map ~f:(function
+          | Request.File p -> Left p
+          | Alias { name; recursive; dir; contexts } ->
+            Right
+              ({ name = Dune_engine.Alias.Name.to_string name
+               ; recursive
+               ; dir
+               ; contexts =
+                   List.map contexts ~f:(fun ctx ->
+                     Dune_rules.Context.name ctx |> Context_name.to_string)
+               }
+               : Dune_trace.Event.alias))
+      in
+      Dune_trace.Event.resolve_targets files aliases);
     targets
 ;;
 
-let resolve_targets_exn root config setup user_targets =
-  resolve_targets root config setup user_targets
+let resolve_targets_exn root setup user_targets =
+  resolve_targets root setup user_targets
   >>| List.concat_map ~f:(function
     | Error (dep, hints) ->
       User_error.raise
@@ -256,9 +257,9 @@ let resolve_targets_exn root config setup user_targets =
     | Ok targets -> targets)
 ;;
 
-let interpret_targets root config setup user_targets =
+let interpret_targets root setup user_targets =
   let* () = Action_builder.return () in
-  resolve_targets_exn root config setup user_targets >>= request
+  resolve_targets_exn root setup user_targets >>= request
 ;;
 
 type target_type = Target_type.t =

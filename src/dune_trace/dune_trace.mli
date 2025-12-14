@@ -12,6 +12,7 @@ module Category : sig
     | Pkg
     | Scheduler
     | Promote
+    | Build
 
   val of_string : string -> t option
 end
@@ -72,6 +73,15 @@ module Event : sig
   val gc : unit -> t
   val fd_count : unit -> t option
   val promote : Path.Build.t -> Path.Source.t -> t
+
+  type alias =
+    { dir : Path.Source.t
+    ; name : string
+    ; recursive : bool
+    ; contexts : string list
+    }
+
+  val resolve_targets : Path.t list -> alias list -> t
 
   module Rpc : sig
     type stage =

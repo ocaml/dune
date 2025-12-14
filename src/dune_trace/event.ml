@@ -354,3 +354,37 @@ let promote src dst =
   in
   Event.instant ~args common
 ;;
+
+type alias =
+  { dir : Path.Source.t
+  ; name : string
+  ; recursive : bool
+  ; contexts : string list
+  }
+
+let json_of_alias { dir; name; recursive; contexts } =
+  `Assoc
+    [ "dir", `String (Path.Source.to_string dir)
+    ; "name", `String name
+    ; "recursive", `Bool recursive
+    ; "contexts", `List (List.map contexts ~f:Json.string)
+    ]
+;;
+
+let resolve_targets targets aliases =
+  let module Event = Chrome_trace.Event in
+  let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+  let args =
+    [ "targets", List.map targets ~f:(fun p -> `String (Path.to_string p))
+    ; "aliases", List.map aliases ~f:json_of_alias
+    ]
+    |> List.filter_map ~f:(fun (k, v) ->
+      match v with
+      | [] -> None
+      | _ :: _ -> Some (k, `List v))
+  in
+  let common =
+    Event.common_fields ~cat:[ Category.to_string Build ] ~name:"targets" ~ts ()
+  in
+  Event.instant ~args common
+;;

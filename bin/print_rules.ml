@@ -291,8 +291,7 @@ let term =
           Target.all_direct_targets None
           >>| Path.Build.Map.foldi ~init:[] ~f:(fun p _ acc -> Path.build p :: acc)
           >>| Action_builder.paths
-        | _ ->
-          Memo.return (Target.interpret_targets (Common.root common) config setup targets)
+        | _ -> Memo.return (Target.interpret_targets (Common.root common) setup targets)
       in
       let+ rules = Dune_engine.Reflection.eval ~request ~recursive in
       let print oc =

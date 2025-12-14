@@ -1,0 +1,3 @@
+(cram
+ (applies_to artifact-variables)
+ (deps %{bin:jq}))

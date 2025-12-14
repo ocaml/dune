@@ -83,7 +83,7 @@ let run_build_system ~common ~request =
       Fiber.return ())
 ;;
 
-let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
+let poll_handling_rpc_build_requests ~(common : Common.t) =
   let open Fiber.O in
   let rpc =
     match Common.rpc common with
@@ -96,8 +96,7 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
        let request setup =
          let root = Common.root common in
          match kind with
-         | Build targets ->
-           Target.interpret_targets (Common.root common) config setup targets
+         | Build targets -> Target.interpret_targets (Common.root common) setup targets
          | Runtest test_paths ->
            Runtest_common.make_request
              ~contexts:setup.contexts
@@ -114,7 +113,7 @@ let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
        named on the command line in reaction to file system changes. The other
        is responsible for building targets named in RPC build requests. *)
     let+ () = Dune_engine.Scheduler.Run.poll (run_build_system ~common ~request)
-    and+ () = poll_handling_rpc_build_requests ~common ~config in
+    and+ () = poll_handling_rpc_build_requests ~common in
     ())
 ;;
 
@@ -122,7 +121,7 @@ let run_build_command_poll_passive ~common ~config ~request:_ : unit =
   (* CR-someday aalekseyev: It would've been better to complain if [request] is
      non-empty, but we can't check that here because [request] is a function.*)
   Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config (fun () ->
-    poll_handling_rpc_build_requests ~common ~config)
+    poll_handling_rpc_build_requests ~common)
 ;;
 
 let run_build_command_once ~(common : Common.t) ~config ~request =
@@ -235,9 +234,7 @@ let build =
           targets
         >>| Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:true)
     | Ok () ->
-      let request setup =
-        Target.interpret_targets (Common.root common) config setup targets
-      in
+      let request setup = Target.interpret_targets (Common.root common) setup targets in
       run_build_command ~common ~config ~request
   in
   Cmd.v (Cmd.info "build" ~doc ~man ~envs:Common.envs) term

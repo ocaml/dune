@@ -76,24 +76,11 @@ Workspace binary should print "Workspace."
 
   $ dune clean
   $ dune build ./message.txt
-  File "dune", lines 1-3, characters 0-78:
-  1 | (rule
-  2 |  (target message.txt)
-  3 |  (action (with-stdout-to %{target} (run foobar))))
-  Error: No rule found for .bin/foobar
-  File "dune", lines 1-3, characters 0-78:
-  1 | (rule
-  2 |  (target message.txt)
-  3 |  (action (with-stdout-to %{target} (run foobar))))
-  Error: No rule found for .bin/foobar (context other_context)
-  [1]
   $ cat _build/default/message.txt
-  cat: _build/default/message.txt: No such file or directory
-  [1]
+  Workspace.
 
 Context binaries override the workspace binaries. Expecting "Context."
 
   $ cat _build/other_context/message.txt
-  cat: _build/other_context/message.txt: No such file or directory
-  [1]
+  Context.
 

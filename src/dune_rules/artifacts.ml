@@ -16,7 +16,10 @@ type where =
   | Original_path
 
 type path =
-  | Resolved of Path.Build.t
+  | Resolved of
+      { binding : File_binding.Expanded.t
+      ; path : Path.Build.t
+      }
   | Origin of origin list
 
 type local_bins = path Filename.Map.t
@@ -36,6 +39,13 @@ let force { local_bins; _ } =
   ()
 ;;
 
+let local_binaries { local_bins; _ } =
+  let+ local_bins = Memo.Lazy.force local_bins in
+  List.filter_map (Filename.Map.to_list local_bins) ~f:(function
+    | _, Resolved p -> Some p.binding
+    | _, Origin _origins -> None)
+;;
+
 let analyze_binary t name =
   match Filename.is_relative name with
   | false -> Memo.return (`Resolved (Path.of_filename_relative_to_initial_cwd name))
@@ -48,7 +58,7 @@ let analyze_binary t name =
       | Some path -> `Resolved path
     in
     (match Filename.Map.find local_bins name with
-     | Some (Resolved p) -> Memo.return (`Resolved (Path.build p))
+     | Some (Resolved p) -> Memo.return (`Resolved (Path.build p.path))
      | None -> which ()
      | Some (Origin origins) ->
        Memo.parallel_map origins ~f:(fun origin ->
@@ -108,9 +118,9 @@ let add_binaries t ~dir l =
   let local_bins =
     Memo.lazy_ ~name:"Artifacts.Bin.add_binaries" (fun () ->
       let+ local_bins = Memo.Lazy.force t.local_bins in
-      List.fold_left l ~init:local_bins ~f:(fun acc fb ->
-        let path = File_binding.Expanded.dst_path fb ~dir:(local_bin dir) in
-        Filename.Map.set acc (Path.Build.basename path) (Resolved path)))
+      List.fold_left l ~init:local_bins ~f:(fun acc binding ->
+        let path = File_binding.Expanded.dst_path binding ~dir:(local_bin dir) in
+        Filename.Map.set acc (Path.Build.basename path) (Resolved { binding; path })))
   in
   { t with local_bins }
 ;;

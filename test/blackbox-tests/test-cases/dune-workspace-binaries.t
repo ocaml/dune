@@ -27,9 +27,3 @@ a dune-workspace file:
 
   $ chmod +x test.sh
   $ dune build ./message.txt
-  File "dune", lines 1-3, characters 0-78:
-  1 | (rule
-  2 |  (target message.txt)
-  3 |  (action (with-stdout-to %{target} (run foobar))))
-  Error: No rule found for .bin/foobar
-  [1]

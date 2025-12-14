@@ -44,6 +44,12 @@
 (rule
  (copy dune-private-libs.opam.template chrome-trace.opam.template))
 
+(rule
+ (copy dune-private-libs.opam.template fs-io.opam.template))
+
+(rule
+ (copy dune-private-libs.opam.template top-closure.opam.template))
+
 (env
  (_
   (flags :standard %{dune-warnings} -alert -unstable)

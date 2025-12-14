@@ -23,4 +23,4 @@
 
 # Somehow, the command below works on nix in CI (but nowhere else?!)
 
-  $ (dune build ./message.txt &> /dev/null) || true
+  $ dune build ./message.txt

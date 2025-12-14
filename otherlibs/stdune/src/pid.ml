@@ -6,6 +6,6 @@ let equal = Int.equal
 let to_int t = t
 
 let of_int t =
-  assert (t >= 0);
+  assert (t > 0);
   t
 ;;

@@ -52,7 +52,10 @@ Cram
 
    .. describe:: (enabled_if <blang>)
 
-      Control whether the tests are enabled.
+      Control whether the tests are included in the ``runtest`` alias and other
+      aliases specified by the ``alias`` field. When ``enabled_if`` evaluates to
+      ``false``, the test is excluded from these aliases but can still be run
+      explicitly via its own alias (e.g., ``dune build @foo`` for ``foo.t``).
 
       .. seealso:: :doc:`/reference/boolean-language`, :doc:`/concepts/variables`
 

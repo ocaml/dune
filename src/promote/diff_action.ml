@@ -17,7 +17,7 @@ let exec ~rule_loc ({ Diff.optional; file1; file2; mode } as diff) =
   let remove_intermediate_file () =
     if optional
     then (
-      try Path.unlink_exn (Path.build file2) with
+      try Fpath.unlink_exn (Path.Build.to_string file2) with
       | Unix.Unix_error (ENOENT, _, _) -> ())
   in
   if diff_eq_files diff

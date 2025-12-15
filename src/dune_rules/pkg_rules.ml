@@ -1982,7 +1982,9 @@ module Install_action = struct
                 section, file)
               |> Section.Map.of_list_multi
             in
-            let+ () = Async.async (fun () -> Path.unlink_exn install_file) in
+            let+ () =
+              Async.async (fun () -> Fpath.unlink_exn (Path.to_string install_file))
+            in
             map
         in
         (* Combine the artifacts declared in the .install, and the ones we discovered

@@ -331,7 +331,7 @@ module File_ops_real (W : sig
     if Path.exists dst
     then (
       print_line "Deleting %s" (Path.to_string_maybe_quoted dst);
-      print_unix_error (fun () -> Path.unlink_exn dst))
+      print_unix_error (fun () -> Fpath.unlink_exn (Path.to_string dst)))
   ;;
 
   let remove_dir_if_exists ~if_non_empty dir =

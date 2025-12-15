@@ -352,9 +352,6 @@ val rmdir : t -> unit
 val unlink_exn : t -> unit
 val unlink_no_err : t -> unit
 
-(** [link src dst] creates a hardlink from [src] to [dst]. *)
-val link : t -> t -> unit
-
 (** If the path does not exist, this function is a no-op. *)
 val rm_rf : ?allow_external:bool -> t -> unit
 

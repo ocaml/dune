@@ -61,7 +61,7 @@ end
    [$file] is the shared cache entry for the empty file. After that, no more
    hard links on [$file] will be allowed, triggering the [EMLINK] code path. *)
 let link_even_if_there_are_too_many_links_already ~src ~dst =
-  try Path.link src dst with
+  try Fpath.link (Path.to_string src) (Path.to_string dst) with
   | Unix.Unix_error (Unix.EMLINK, _, _) ->
     Temp.with_temp_file
       ~dir:(Lazy.force temp_dir)
@@ -75,7 +75,7 @@ let link_even_if_there_are_too_many_links_already ~src ~dst =
            copy we've just created in the [temp_file]. *)
         Path.rename temp_file src;
         (* This should now succeed. *)
-        Path.link src dst)
+        Fpath.link (Path.to_string src) (Path.to_string dst))
 ;;
 
 module Artifacts = struct

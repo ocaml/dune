@@ -9,10 +9,12 @@ module Optimistically = struct
   ;;
 
   let link ~src ~dst =
-    try Path.link src dst with
+    let src' = Path.to_string src in
+    let dst' = Path.to_string dst in
+    try Fpath.link src' dst' with
     | Unix.Unix_error (Unix.ENOENT, _, _) ->
       Path.mkdir_p (Path.parent_exn dst);
-      Path.link src dst
+      Fpath.link src' dst'
   ;;
 end
 

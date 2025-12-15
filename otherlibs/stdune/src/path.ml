@@ -825,7 +825,6 @@ module Build = struct
   let of_local t = t
   let chmod t ~mode = Unix.chmod (to_string t) mode
   let lstat t = Unix.lstat (to_string t)
-  let unlink t = Fpath.unlink (to_string t)
   let to_dyn s = Dyn.variant "In_build_dir" [ to_dyn s ]
 end
 

@@ -197,7 +197,6 @@ module Build : sig
   val chmod : t -> mode:int -> unit
 
   val lstat : t -> Unix.stats
-  val unlink : t -> Fpath.unlink_status
 
   module Table : Hashtbl.S with type key = t
 end

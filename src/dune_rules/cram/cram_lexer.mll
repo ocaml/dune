@@ -135,9 +135,13 @@ and command_cont loc acc = parse
   | "  > " ([^'\n']* as str)
     { let loc = Loc.set_stop loc (Lexing.lexeme_end_p lexbuf) in
       eol_then_continue_or_finish loc str acc lexbuf }
-  | "  >"
+  | "  >" '\n'
+    { let loc = Loc.set_stop loc (pos_before_newline lexbuf) in
+      Lexing.new_line lexbuf;
+      command_cont loc ("" :: acc) lexbuf }
+  | "  >" eof
     { let loc = Loc.set_stop loc (Lexing.lexeme_end_p lexbuf) in
-      eol_then_continue_or_finish loc "" acc lexbuf }
+      (loc, Command (List.rev ("" :: acc))) }
   | ""
     { (loc, Command (List.rev acc)) }
 

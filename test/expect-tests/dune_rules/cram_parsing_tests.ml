@@ -478,6 +478,16 @@ let%expect_test "single-space comment after output" =
    lexer *)
 let%expect_test "output resembling conflict marker" =
   test "  $ echo '>> Hello'\n  >> Hello";
-  [%expect.unreachable]
-[@@expect.uncaught_exn {| (Failure "lexing: empty token") |}]
+  [%expect
+    {|
+    File "test.t", line 1, characters 2-19:
+    1 |   $ echo '>> Hello'
+          ^^^^^^^^^^^^^^^^^
+
+    Command [ "echo '>> Hello'" ]
+    { pos_fname = "test.t"
+    ; start = { pos_lnum = 1; pos_bol = 0; pos_cnum = 2 }
+    ; stop = { pos_lnum = 1; pos_bol = 0; pos_cnum = 19 }
+    }
+    |}]
 ;;

@@ -35,8 +35,6 @@ in the default findlib.conf
   > EOF
 
   $ dune build --root lib @install
-  Entering directory 'lib'
-  Leaving directory 'lib'
 
   $ dune install --root lib --prefix $PWD/prefix
 
@@ -74,8 +72,6 @@ ocamlfind can find it
 Dune should be able to find it too
 
   $ dune build --root=app @install -x foo # grep notocamldep-foo
-  Entering directory 'app'
-  Leaving directory 'app'
 
   $ dune trace cat | jq '.args | select(has("prog") and (.prog | contains("notocamldep-foo"))) | del(.pid)'
   {

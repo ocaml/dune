@@ -20,8 +20,6 @@ Reproduce github #7020
   > EOF
 
   $ dune build @install --root $dir
-  Entering directory '_to-install'
-  Leaving directory '_to-install'
   $ cd $dir
   $ dune install --root . --prefix _install --display short
   Installing _install/lib/dummyfoo/META

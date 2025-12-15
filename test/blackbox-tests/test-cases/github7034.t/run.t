@@ -14,7 +14,6 @@ It builds on its own (with a warning) when lang dune is 3.2 or below:
   $ ./make-inner .
   $ ./gen-dune-project inner 3.2 > inner/dune-project
   $ dune printenv --root=inner --field flags
-  Entering directory 'inner'
   (flags
    (-w
     @1..3@5..28@30..39@43@46..47@49..57@61..62-40
@@ -22,7 +21,6 @@ It builds on its own (with a warning) when lang dune is 3.2 or below:
     -strict-formats
     -short-paths
     -keep-locs))
-  Leaving directory 'inner'
   $ dune build --root=inner
   Entering directory 'inner'
   File "inner.ml", line 6, characters 11-18:
@@ -39,7 +37,6 @@ It builds on its own (with a warning) when lang dune is 3.2 or below:
 Note that in versions of lang dune above 3.2 this warning becomes an error:
   $ ./gen-dune-project inner 3.3 > inner/dune-project
   $ dune printenv --root=inner --field flags
-  Entering directory 'inner'
   (flags
    (-w
     @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
@@ -47,7 +44,6 @@ Note that in versions of lang dune above 3.2 this warning becomes an error:
     -strict-formats
     -short-paths
     -keep-locs))
-  Leaving directory 'inner'
   $ dune build --root=inner
   Entering directory 'inner'
   File "inner.ml", line 6, characters 11-18:
@@ -66,7 +62,6 @@ Building the outer project works when lang dune is 3.2 or below:
 
   $ ./gen-dune-project outer 3.2 > outer/dune-project
   $ dune printenv --root=outer --field flags
-  Entering directory 'outer'
   (flags
    (-w
     @1..3@5..28@30..39@43@46..47@49..57@61..62-40
@@ -74,7 +69,6 @@ Building the outer project works when lang dune is 3.2 or below:
     -strict-formats
     -short-paths
     -keep-locs))
-  Leaving directory 'outer'
 
   $ dune build --root=outer
   Entering directory 'outer'
@@ -87,7 +81,6 @@ Building the outer project works when lang dune is 3.2 or below:
 But when lang dune is 3.3 or higher the warning becomes an error:
   $ ./gen-dune-project outer 3.3 > outer/dune-project
   $ dune printenv --root=outer --field flags
-  Entering directory 'outer'
   (flags
    (-w
     @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
@@ -95,9 +88,7 @@ But when lang dune is 3.3 or higher the warning becomes an error:
     -strict-formats
     -short-paths
     -keep-locs))
-  Leaving directory 'outer'
   $ dune printenv outer/vendored/inner --root=outer --field flags
-  Entering directory 'outer'
   (flags
    (-w
     @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
@@ -105,11 +96,8 @@ But when lang dune is 3.3 or higher the warning becomes an error:
     -strict-formats
     -short-paths
     -keep-locs))
-  Leaving directory 'outer'
 
   $ dune build --root=outer
-  Entering directory 'outer'
-  Leaving directory 'outer'
 
   $ dune trace cat | jq 'select(.cat == "process") | .args |
   >   select(.target_files and (.target_files | any(contains(".cmx")))) |

@@ -614,7 +614,6 @@ module Builder = struct
     { debug_dep_path : bool
     ; debug_backtraces : bool
     ; debug_artifact_substitution : bool
-    ; debug_load_dir : bool
     ; debug_digests : bool
     ; debug_package_logs : bool
     ; wait_for_filesystem_clock : bool
@@ -700,14 +699,6 @@ module Builder = struct
             [ "debug-artifact-substitution" ]
             ~docs
             ~doc:(Some "Print debugging info about artifact substitution"))
-    and+ debug_load_dir =
-      Arg.(
-        value
-        & flag
-        & info
-            [ "debug-load-dir" ]
-            ~docs
-            ~doc:(Some "Print debugging info about directory loading"))
     and+ debug_digests =
       Arg.(
         value
@@ -1033,7 +1024,6 @@ module Builder = struct
     { debug_dep_path
     ; debug_backtraces
     ; debug_artifact_substitution
-    ; debug_load_dir
     ; debug_digests
     ; debug_package_logs
     ; wait_for_filesystem_clock
@@ -1092,7 +1082,6 @@ module Builder = struct
         { debug_dep_path
         ; debug_backtraces
         ; debug_artifact_substitution
-        ; debug_load_dir
         ; debug_digests
         ; debug_package_logs
         ; wait_for_filesystem_clock
@@ -1133,7 +1122,6 @@ module Builder = struct
     Bool.equal t.debug_dep_path debug_dep_path
     && Bool.equal t.debug_backtraces debug_backtraces
     && Bool.equal t.debug_artifact_substitution debug_artifact_substitution
-    && Bool.equal t.debug_load_dir debug_load_dir
     && Bool.equal t.debug_digests debug_digests
     && Bool.equal t.debug_package_logs debug_package_logs
     && Bool.equal t.wait_for_filesystem_clock wait_for_filesystem_clock
@@ -1391,7 +1379,6 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   Dune_engine.Clflags.report_errors_config := c.builder.report_errors_config;
   Dune_engine.Clflags.debug_backtraces c.builder.debug_backtraces;
   Dune_rules.Clflags.debug_artifact_substitution := c.builder.debug_artifact_substitution;
-  Dune_engine.Clflags.debug_load_dir := c.builder.debug_load_dir;
   Dune_engine.Clflags.debug_fs_cache := c.builder.cache_debug_flags.fs_cache;
   Dune_digest.Clflags.debug_digests := c.builder.debug_digests;
   Dune_rules.Clflags.debug_package_logs := c.builder.debug_package_logs;

@@ -14,9 +14,6 @@ val debug_backtraces : bool -> unit
 (** Print debug info for cached file-system operations *)
 val debug_fs_cache : bool ref
 
-(** Print debug info when loading rules in directories *)
-val debug_load_dir : bool ref
-
 module Promote : sig
   type t =
     | Automatically

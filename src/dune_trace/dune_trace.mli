@@ -13,6 +13,7 @@ module Category : sig
     | Scheduler
     | Promote
     | Build
+    | Debug
 
   val of_string : string -> t option
 end
@@ -82,6 +83,7 @@ module Event : sig
     }
 
   val resolve_targets : Path.t list -> alias list -> t
+  val load_dir : Path.t -> t
 
   module Rpc : sig
     type stage =

@@ -50,7 +50,7 @@ module File = struct
   ;;
 
   let do_promote ~correction_file ~dst =
-    Path.Source.unlink_no_err dst;
+    Fpath.unlink_no_err (Path.Source.to_string dst);
     let chmod = Path.Permissions.add Path.Permissions.write in
     match Io.copy_file ~chmod ~src:correction_file ~dst:(Path.source dst) () with
     | () -> ()
@@ -116,7 +116,7 @@ let dump_db db =
   if Path.build_dir_exists ()
   then (
     match db with
-    | [] -> if Path.exists db_file then Path.unlink_no_err db_file
+    | [] -> if Path.exists db_file then Fpath.unlink_no_err (Path.to_string db_file)
     | l -> P.dump db_file l)
 ;;
 

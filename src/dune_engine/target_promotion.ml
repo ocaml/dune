@@ -168,7 +168,7 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
       (match
          Unix_error.Detailed.catch
            (fun () ->
-              Path.unlink_no_err dst_dir;
+              Fpath.unlink_no_err (Path.to_string dst_dir);
               Path.mkdir_p dst_dir)
            ()
        with
@@ -219,12 +219,12 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
       Fs_cache.Dir_contents.iter dir_contents ~f:(function
         | file_name, S_REG ->
           if not (Targets.Produced.mem targets (Path.Build.relative build_dir file_name))
-          then Path.unlink_no_err (Path.relative dst_dir file_name)
+          then Fpath.unlink_no_err (Path.to_string (Path.relative dst_dir file_name))
         | dir_name, S_DIR ->
           let src_dir = Path.Build.relative build_dir dir_name in
           if not (Targets.Produced.mem_dir targets src_dir)
           then Path.rm_rf (Path.relative dst_dir dir_name)
-        | name, _kind -> Path.unlink_no_err (Path.relative dst_dir name))
+        | name, _kind -> Fpath.unlink_no_err (Path.to_string (Path.relative dst_dir name)))
   in
   Fiber.sequential_iter_seq (Targets.Produced.all_dirs_seq targets) ~f:(fun dir ->
     remove_stale_files_and_subdirectories ~dir)

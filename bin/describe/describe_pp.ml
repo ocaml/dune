@@ -99,7 +99,7 @@ let print_pped_file =
     match Path.stat dump_file with
     | Ok { st_kind = S_REG; _ } ->
       Io.cat dump_file;
-      Path.unlink_no_err dump_file
+      Fpath.unlink_no_err (Path.to_string dump_file)
     | _ ->
       User_error.raise
         [ Pp.textf "cannot find a dump file: %s" (Path.to_string dump_file) ]

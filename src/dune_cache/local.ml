@@ -163,7 +163,7 @@ module Artifacts = struct
                 Path.build (Path.Build.append_local artifacts.root target)
               in
               (match
-                 Path.unlink_no_err path_in_temp_dir;
+                 Fpath.unlink_no_err (Path.to_string path_in_temp_dir);
                  (* At first, we deduplicate the temporary file. Doing this
                     intermediate step allows us to keep the original target in case
                     the below link step fails. This might happen if the trimmer has
@@ -293,7 +293,7 @@ module Artifacts = struct
         (match mode with
          | Hardlink -> hardlink ~src ~dst
          | Copy -> copy ~src ~dst);
-        Unwind.push unwind (fun () -> Path.Build.unlink_no_err target)
+        Unwind.push unwind (fun () -> Fpath.unlink_no_err (Path.Build.to_string target))
       in
       try Targets.Produced.iteri artifacts ~f:mk_file ~d:mk_dir with
       | exn ->

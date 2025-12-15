@@ -696,7 +696,7 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst 
        let+ () = Conf.run_sign_hook conf ~has_subst temp_file in
        replace_if_different ~delete_dst_if_it_is_a_directory ~src:temp_file ~dst)
     ~finally:(fun () ->
-      Path.unlink_no_err temp_file;
+      Fpath.unlink_no_err (Path.to_string temp_file);
       Fiber.return ())
 ;;
 

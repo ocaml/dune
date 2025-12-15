@@ -99,7 +99,7 @@ module Curl = struct
       let stderr =
         match Io.read_file stderr with
         | s ->
-          Path.unlink_no_err stderr;
+          Fpath.unlink_no_err (Path.to_string stderr);
           [ Pp.text s ]
         | exception s ->
           [ Pp.textf
@@ -118,7 +118,7 @@ module Curl = struct
             ]
             @ stderr)))
     else (
-      Path.unlink_no_err stderr;
+      Fpath.unlink_no_err (Path.to_string stderr);
       match
         let open Option.O in
         let suffix = {|"|} in

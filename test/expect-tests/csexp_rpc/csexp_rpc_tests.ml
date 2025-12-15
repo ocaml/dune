@@ -12,8 +12,8 @@ type event =
 let server (where : Unix.sockaddr) =
   (match where with
    | ADDR_UNIX p ->
+     Fpath.unlink_no_err p;
      let p = Path.of_string p in
-     Path.unlink_no_err p;
      Path.mkdir_p (Path.parent_exn p)
    | _ -> ());
   match Server.create [ where ] ~backlog:10 with

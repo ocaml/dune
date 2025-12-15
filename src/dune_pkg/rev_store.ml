@@ -384,7 +384,7 @@ let with_flock lock_path ~f =
               f ())
            ~finally:(fun () ->
              let+ () = Fiber.return () in
-             Path.unlink_no_err lock_path;
+             Fpath.unlink_no_err (Path.to_string lock_path);
              match Flock.unlock flock with
              | Ok () -> ()
              | Error ue ->

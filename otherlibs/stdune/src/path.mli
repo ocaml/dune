@@ -198,7 +198,6 @@ module Build : sig
 
   val lstat : t -> Unix.stats
   val unlink : t -> Fpath.unlink_status
-  val unlink_no_err : t -> unit
 
   module Table : Hashtbl.S with type key = t
 end
@@ -347,8 +346,6 @@ val is_dir_sep : char -> bool
 
 (** [is_dir t] checks if [t] is a directory. It swallows permission errors so the preferred way is to use [stat] instead *)
 val is_directory : t -> bool
-
-val unlink_no_err : t -> unit
 
 (** If the path does not exist, this function is a no-op. *)
 val rm_rf : ?allow_external:bool -> t -> unit

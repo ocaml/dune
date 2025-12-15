@@ -477,14 +477,14 @@ let create ~lock_timeout ~registry ~root ~handle ~parse_build_arg =
   let server =
     lazy
       (let socket_file = Where.rpc_socket_file () in
-       Path.unlink_no_err (Path.build socket_file);
+       Fpath.unlink_no_err (Path.Build.to_string socket_file);
        Path.mkdir_p (Path.build (Path.Build.parent_exn socket_file));
        match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:10 with
        | Ok s ->
          (match where with
           | `Ip _ -> Io.write_file (Path.build socket_file) (Where.to_string where)
           | `Unix _ -> ());
-         at_exit (fun () -> Path.Build.unlink_no_err socket_file);
+         at_exit (fun () -> Fpath.unlink_no_err (Path.Build.to_string socket_file));
          s
        | Error `Already_in_use ->
          User_error.raise

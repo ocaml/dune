@@ -250,13 +250,13 @@ let apply_changes_to_source_tree t ~old_snapshot =
   in
   let copy_file p =
     let in_source_tree = in_source_tree p in
-    Path.unlink_no_err in_source_tree;
+    Fpath.unlink_no_err (Path.to_string in_source_tree);
     Option.iter (Path.parent in_source_tree) ~f:Path.mkdir_p;
     Io.copy_file ~src:p ~dst:in_source_tree ()
   in
   let delete_file p =
     let in_source_tree = in_source_tree p in
-    Path.unlink_no_err in_source_tree
+    Fpath.unlink_no_err (Path.to_string in_source_tree)
   in
   Path.Map.iter2 old_snapshot new_snapshot ~f:(fun p before after ->
     match before, after with

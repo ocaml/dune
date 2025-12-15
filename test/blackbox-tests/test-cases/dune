@@ -126,6 +126,7 @@
 
 (cram
  (applies_to hidden-deps-unsupported)
+ (deps %{bin:jq})
  (enabled_if
   (< %{ocaml_version} 5.2.0)))
 

@@ -1,8 +1,20 @@
 This test is guarded by ocaml version >= 5.2, so it should include foo with -H when
 implicit_transitive_deps is set to false.
 
+  $ jqScript=$(mktemp)
+  $ cat >$jqScript <<'EOF'
+  > .[] |
+  > .args.process_args |
+  > select(. != null) |
+  > select(index("run.ml")) as $arr |
+  > [range(0; $arr | length - 1) as $i |
+  >   if $arr[$i] == "-I" or $arr[$i] == "-H" then [$arr[$i], $arr[$i + 1]] else empty end]
+  > | .[]
+  > EOF
+
   $ getincludes () {
-  >   dune build --verbose ./run.exe 2>&1 | grep run.ml | grep -Eo '\-[IH] [a-z/.]+' | sort
+  > dune build --trace-file trace.json ./run.exe
+  > jq -c -f $jqScript trace.json
   > }
 
   $ cat >dune-project <<EOF
@@ -11,15 +23,12 @@ implicit_transitive_deps is set to false.
   > EOF
 
   $ getincludes
-  -I .bar.objs/byte
-  -I .bar.objs/byte
-  -I .bar.objs/native
-  -I .foo.objs/byte
-  -I .foo.objs/byte
-  -I .foo.objs/native
-  -I .run.eobjs/byte
-  -I .run.eobjs/byte
-  -I .run.eobjs/native
+  ["-I",".run.eobjs/byte"]
+  ["-I",".run.eobjs/native"]
+  ["-I",".bar.objs/byte"]
+  ["-I",".bar.objs/native"]
+  ["-I",".foo.objs/byte"]
+  ["-I",".foo.objs/native"]
 
 In the following two tests we use "false-if-hidden-includes-supported" for
 testing purposes, but since this test is guarded by OCaml version >= 5.2, this
@@ -31,15 +40,12 @@ should be equivalent to "false".
   > EOF
 
   $ getincludes
-  -H .foo.objs/byte
-  -H .foo.objs/byte
-  -H .foo.objs/native
-  -I .bar.objs/byte
-  -I .bar.objs/byte
-  -I .bar.objs/native
-  -I .run.eobjs/byte
-  -I .run.eobjs/byte
-  -I .run.eobjs/native
+  ["-I",".run.eobjs/byte"]
+  ["-I",".run.eobjs/native"]
+  ["-I",".bar.objs/byte"]
+  ["-I",".bar.objs/native"]
+  ["-H",".foo.objs/byte"]
+  ["-H",".foo.objs/native"]
 
 Test transitive deps can not be directly accessed, both for compiler versions supporting -H or not:
 

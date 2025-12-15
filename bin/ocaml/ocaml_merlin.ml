@@ -222,15 +222,15 @@ module Dump_config = struct
     (* CR-someday Alizter: document this option *)
     and+ dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH" ~doc:None)
     and+ selected_context = Selected_context.arg in
-    let common, config =
+    let _common, config =
       let builder =
         let builder = Common.Builder.forbid_builds builder in
         Common.Builder.disable_log_file builder
       in
       Common.init builder
     in
-    Scheduler.go_with_rpc_server ~common ~config (fun () ->
-      Server.dump ~selected_context dir)
+    (* CR-soon rgrinberg: remove pointless args *)
+    Scheduler.no_build_no_rpc ~config (fun () -> Server.dump ~selected_context dir)
   ;;
 
   let command = Cmd.v info term
@@ -254,14 +254,15 @@ let start_session_info name = Cmd.info name ~doc ~man
 let start_session_term =
   let+ builder = Common.Builder.term
   and+ selected_context = Selected_context.arg in
-  let common, config =
+  let _common, config =
     let builder =
       let builder = Common.Builder.forbid_builds builder in
       Common.Builder.disable_log_file builder
     in
     Common.init builder
   in
-  Scheduler.go_with_rpc_server ~common ~config (Server.start ~selected_context)
+  (* CR-soon rgrinberg: remove pointless args *)
+  Scheduler.no_build_no_rpc ~config (Server.start ~selected_context)
 ;;
 
 let command = Cmd.v (start_session_info "ocaml-merlin") start_session_term
@@ -297,14 +298,15 @@ module Dump_dot_merlin = struct
                  "The path to the folder of which the configuration should be printed. \
                   Defaults to the current directory."))
     and+ selected_context = Selected_context.arg in
-    let common, config =
+    let _common, config =
       let builder =
         let builder = Common.Builder.forbid_builds builder in
         Common.Builder.disable_log_file builder
       in
       Common.init builder
     in
-    Scheduler.go_with_rpc_server ~common ~config (fun () ->
+    (* CR-soon rgrinberg: stop taking pointless args *)
+    Scheduler.no_build_no_rpc ~config (fun () ->
       match path with
       | Some s -> Server.dump_dot_merlin ~selected_context s
       | None -> Server.dump_dot_merlin ~selected_context ".")

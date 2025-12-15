@@ -78,12 +78,13 @@ module Apply = struct
     let files_to_promote = files_to_promote ~common files in
     match Dune_util.Global_lock.lock ~timeout:None with
     | Ok () ->
+      (* Why are we starting an RPC server??? *)
       Scheduler.go_with_rpc_server ~common ~config (fun () ->
         let open Fiber.O in
         let+ () = Fiber.return () in
         Diff_promotion.promote_files_registered_in_last_run files_to_promote)
     | Error lock_held_by ->
-      Scheduler.go_without_rpc_server ~common ~config (fun () ->
+      Scheduler.no_build_no_rpc ~config (fun () ->
         let open Fiber.O in
         Rpc.Rpc_common.fire_request
           ~name:"promote_many"
@@ -109,8 +110,8 @@ module Diff = struct
     in
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
-    Scheduler.go_with_rpc_server ~common ~config (fun () ->
-      Diff_promotion.display files_to_promote)
+    (* CR-soon rgrinberg: remove pointless args *)
+    Scheduler.no_build_no_rpc ~config (fun () -> Diff_promotion.display files_to_promote)
   ;;
 
   let command = Cmd.v info term
@@ -127,8 +128,8 @@ module Files = struct
     in
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
-    Scheduler.go_with_rpc_server ~common ~config (fun () ->
-      display_files files_to_promote)
+    (* CR-soon rgrinberg: remove pointless args *)
+    Scheduler.no_build_no_rpc ~config (fun () -> display_files files_to_promote)
   ;;
 
   let command = Cmd.v info term
@@ -144,8 +145,8 @@ module Show = struct
     in
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
-    Scheduler.go_with_rpc_server ~common ~config (fun () ->
-      show_corrected_contents files_to_promote)
+    (* CR-soon rgrinberg: remove pointless args *)
+    Scheduler.no_build_no_rpc ~config (fun () -> show_corrected_contents files_to_promote)
   ;;
 
   let command = Cmd.v info term

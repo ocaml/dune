@@ -45,7 +45,7 @@ let run_fmt_command ~common ~config ~preview builder =
   | Error lock_held_by ->
     (* The --preview flag is being ignored by the RPC server, warn the user. *)
     if preview then Rpc.Rpc_common.warn_ignore_arguments lock_held_by;
-    Scheduler.go_without_rpc_server ~common ~config (fun () ->
+    Scheduler.no_build_no_rpc ~config (fun () ->
       Rpc.Rpc_common.fire_request
         ~name:"format"
         ~wait:true

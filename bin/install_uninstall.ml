@@ -842,8 +842,9 @@ let make ~what =
     and+ sections = Sections.term in
     let builder = Common.Builder.forbid_builds builder in
     let builder = Common.Builder.disable_log_file builder in
+    (* CR-soon rgrinberg: stop taking pointless args *)
     let common, config = Common.init builder in
-    Scheduler.go_with_rpc_server ~common ~config (fun () ->
+    Scheduler.no_build_no_rpc ~config (fun () ->
       let from_command_line =
         { Install.Roots.lib_root = libdir_from_command_line
         ; etc_root = etcdir_from_command_line

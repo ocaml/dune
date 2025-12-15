@@ -78,9 +78,10 @@ let context_cwd : Init_context.t Term.t =
   let+ builder = Common.Builder.term
   and+ path = path in
   let builder = Common.Builder.set_default_root_is_cwd builder true in
-  let common, config = Common.init builder in
+  let _common, config = Common.init builder in
   let project_defaults = config.project_defaults in
-  Scheduler.go_with_rpc_server ~common ~config (fun () ->
+  (* CR-soon rgrinberg: remove pointless args *)
+  Scheduler.no_build_no_rpc ~config (fun () ->
     Memo.run (Init_context.make path project_defaults))
 ;;
 
@@ -280,9 +281,10 @@ let project =
        in
        let builder = Builder.set_root common_builder root in
        let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p root in
-       let common, config = Common.init builder in
+       let _common, config = Common.init builder in
        let project_defaults = config.project_defaults in
-       Scheduler.go_with_rpc_server ~common ~config (fun () ->
+       (* CR-soon rgrinberg: remove pointless args *)
+       Scheduler.no_build_no_rpc ~config (fun () ->
          Memo.run @@ init_context project_defaults)
      in
      Component.init

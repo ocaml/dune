@@ -47,7 +47,7 @@ let runtest_term =
         ~to_cwd:(Common.root common).to_cwd
         ~test_paths)
   | Error lock_held_by ->
-    Scheduler.go_without_rpc_server ~common ~config (fun () ->
+    Scheduler.no_build_no_rpc ~config (fun () ->
       let open Fiber.O in
       Rpc.Rpc_common.fire_request
         ~name:"runtest"

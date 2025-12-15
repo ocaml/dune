@@ -284,7 +284,7 @@ module Artifacts = struct
         if not (Path.exists path)
         then (
           Path.mkdir_p path;
-          Unwind.push unwind (fun () -> Path.rmdir path))
+          Unwind.push unwind (fun () -> Unix.rmdir (Path.to_string path)))
       in
       let mk_file file file_digest =
         let target = Path.Build.append_local artifacts.root file in

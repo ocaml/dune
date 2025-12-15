@@ -1213,7 +1213,6 @@ let is_directory t =
   | Sys_error _ -> false
 ;;
 
-let rmdir t = Unix.rmdir (to_string t)
 let unlink_no_err t = Fpath.unlink_no_err (to_string t)
 let build_dir_exists () = is_directory build_dir
 

@@ -348,7 +348,6 @@ val is_dir_sep : char -> bool
 (** [is_dir t] checks if [t] is a directory. It swallows permission errors so the preferred way is to use [stat] instead *)
 val is_directory : t -> bool
 
-val rmdir : t -> unit
 val unlink_no_err : t -> unit
 
 (** If the path does not exist, this function is a no-op. *)

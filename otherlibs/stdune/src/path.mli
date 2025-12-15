@@ -353,10 +353,6 @@ val unlink_no_err : t -> unit
 (** If the path does not exist, this function is a no-op. *)
 val rm_rf : ?allow_external:bool -> t -> unit
 
-(** [clear_dir t] deletes all the contents of directory [t] without removing [t]
-    itself. *)
-val clear_dir : t -> Fpath.clear_dir_result
-
 val mkdir_p : ?perms:int -> t -> unit
 val build_dir_exists : unit -> bool
 val ensure_build_dir_exists : unit -> unit

@@ -1241,8 +1241,6 @@ let extend_basename t ~suffix =
   | External t -> external_ (External.extend_basename t ~suffix)
 ;;
 
-let clear_dir dir = Fpath.clear_dir (to_string dir)
-
 let rm_rf ?(allow_external = false) t =
   if (not allow_external) && not (is_managed t)
   then Code_error.raise "Path.rm_rf called on external dir" [ "t", to_dyn t ];

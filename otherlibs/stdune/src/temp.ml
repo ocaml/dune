@@ -116,7 +116,7 @@ let destroy what fn =
 ;;
 
 let clear_dir dir =
-  (match Path.clear_dir dir with
+  (match Fpath.clear_dir (Path.to_string dir) with
    | Cleared -> ()
    | Directory_does_not_exist ->
      (* We can end up here if the temporary directory has already been cleared,

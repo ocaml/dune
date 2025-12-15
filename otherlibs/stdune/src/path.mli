@@ -196,8 +196,6 @@ module Build : sig
       you need to modify existing permissions in a non-trivial way. *)
   val chmod : t -> mode:int -> unit
 
-  val lstat : t -> Unix.stats
-
   module Table : Hashtbl.S with type key = t
 end
 

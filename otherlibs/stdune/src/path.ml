@@ -824,7 +824,6 @@ module Build = struct
   let to_string_maybe_quoted p = String.maybe_quoted (to_string p)
   let of_local t = t
   let chmod t ~mode = Unix.chmod (to_string t) mode
-  let lstat t = Unix.lstat (to_string t)
   let to_dyn s = Dyn.variant "In_build_dir" [ to_dyn s ]
 end
 

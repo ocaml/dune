@@ -1,4 +1,4 @@
-Test that the "dune tools exec ocamlmerlin" command causes merlin to be
+Test that the "dune tools exec merlin" command causes merlin to be
 locked, built and run when the command is run from a dune project with
 a lockdir containing an "ocaml" lockfile.
 
@@ -24,11 +24,11 @@ a lockdir containing an "ocaml" lockfile.
   > (version 5.2.0)
   > EOF
 
-  $ dune tools exec ocamlmerlin
+  $ dune tools exec merlin
   Solution for _build/.dev-tools.locks/merlin:
   - merlin.0.0.1
   - ocaml.5.2.0
-       Running 'ocamlmerlin'
+       Running 'merlin'
   hello from fake ocamlmerlin
 
 Make sure that after evaling the output of 'dune tools env', the first ocamlmerlin

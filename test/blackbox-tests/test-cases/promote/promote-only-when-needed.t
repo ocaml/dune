@@ -9,7 +9,7 @@ Test that targets aren't re-promoted if they are up to date.
   > EOF
 
   $ showPromotions() {
-  > jq '.[] | select(.name == "promote") | .args' trace.json
+  > jq '.[] | select(.name == "promote") | .args' trace.json || true
   > }
 
   $ dune build promoted --trace-file trace.json
@@ -23,8 +23,8 @@ Test that targets aren't re-promoted if they are up to date.
 
 Dune doesn't promote the file again if it's unchanged.
 
-  $ dune build promoted --verbose 2>&1 | grep "Promoting"
-  [1]
+  $ dune build promoted --trace-file trace.json
+  $ showPromotions
   $ cat promoted
   Hello, world!
 

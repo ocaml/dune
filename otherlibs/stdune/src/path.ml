@@ -823,7 +823,6 @@ module Build = struct
 
   let to_string_maybe_quoted p = String.maybe_quoted (to_string p)
   let of_local t = t
-  let chmod t ~mode = Unix.chmod (to_string t) mode
   let to_dyn s = Dyn.variant "In_build_dir" [ to_dyn s ]
 end
 
@@ -1398,7 +1397,6 @@ module Source = struct
 end
 
 let rename old_path new_path = Unix.rename (to_string old_path) (to_string new_path)
-let chmod t ~mode = Unix.chmod (to_string t) mode
 
 let drop_prefix path ~prefix =
   let prefix_s = to_string prefix in

@@ -288,7 +288,7 @@ let refresh_and_remove_write_permissions ~allow_dirs path =
           | exception Unix.Unix_error (ENOENT, _, _) -> Error Broken_symlink)
        | S_REG ->
          let perm = Path.Permissions.remove Path.Permissions.write stats.st_perm in
-         Path.chmod ~mode:perm path;
+         Unix.chmod (Path.to_string path) perm;
          (* we know it's a file, so we don't allow directories for safety *)
          refresh ~allow_dirs:false { stats with st_perm = perm } path
        | _ ->

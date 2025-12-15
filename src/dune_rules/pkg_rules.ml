@@ -1824,11 +1824,12 @@ module Install_action = struct
       match Section.should_set_executable_bit section with
       | false -> ()
       | true ->
+        let dst = Path.to_string dst in
         let permission =
-          let perm = (Unix.stat (Path.to_string dst)).st_perm in
+          let perm = (Unix.stat dst).st_perm in
           Path.Permissions.(add execute) perm
         in
-        Path.chmod dst ~mode:permission
+        Unix.chmod dst permission
     ;;
 
     let read_variables config_file =

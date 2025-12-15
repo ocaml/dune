@@ -27,8 +27,6 @@ nested more than the dune-project file
   > EOF
 
   $ dune build --root lib
-  Entering directory 'lib'
-  Leaving directory 'lib'
 
   $ cat lib/_build/default/foo.install
   lib: [
@@ -55,8 +53,6 @@ nested more than the dune-project file
   >  (melange.runtime_deps ./runtime/runtime.js))
   > EOF
   $ dune build --root lib
-  Entering directory 'lib'
-  Leaving directory 'lib'
 
   $ cat lib/_build/default/foo.install
   lib: [

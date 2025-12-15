@@ -38,6 +38,16 @@ end
     it separates messages with a blank line when [b = true]. *)
 val separate_messages : bool -> unit
 
+(** [set_prefix_and_suffix ~prefix ~suffix] sets messages to print before the
+    first output and after the last output. The prefix is printed immediately
+    before the first call to [print_user_message]. The suffix is printed at
+    [finish] time, but only if the prefix was printed (i.e., there was output).
+    Can only be called once. *)
+val set_prefix_and_suffix
+  :  prefix:User_message.Style.t Pp.t
+  -> suffix:User_message.Style.t Pp.t
+  -> unit
+
 module Backend : sig
   type t = (module Backend)
 

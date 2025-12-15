@@ -26,8 +26,6 @@ so this also tests that it won't be a problem.
   > EOF
 
   $ dune build --root B @install
-  Entering directory 'B'
-  Leaving directory 'B'
   $ dune install --root B --prefix=$PWD --display=short
   Installing $TESTCASE_ROOT/lib/B/META
   Installing $TESTCASE_ROOT/lib/B/dune-package
@@ -52,8 +50,6 @@ Next we update B and install it again.
   > EOF
 
   $ dune build --root B @install
-  Entering directory 'B'
-  Leaving directory 'B'
   $ dune install --root B --prefix=$PWD --display=short
   Deleting $TESTCASE_ROOT/lib/B/META
   Installing $TESTCASE_ROOT/lib/B/META
@@ -91,8 +87,6 @@ Next we add a new file to B that should cause a call to coqdep, but no rebuild.
   > EOF
 
   $ dune build --root B @install
-  Entering directory 'B'
-  Leaving directory 'B'
   $ dune install --root B --prefix=$PWD --display=short
   Deleting $TESTCASE_ROOT/lib/B/META
   Installing $TESTCASE_ROOT/lib/B/META
@@ -117,5 +111,3 @@ Next we add a new file to B that should cause a call to coqdep, but no rebuild.
 Now we should see that A is not rebuilt, however coqdep is called, this seems to fail
 
   $ dune build --root A --display=short
-  Entering directory 'A'
-  Leaving directory 'A'

@@ -24,19 +24,19 @@ a dune-workspace file:
   > EOF
 
   $ cat >workspace.sh <<EOF
-  > #!/bin/bash
+  > #!/bin/sh
   > echo "Workspace."
   > EOF
   $ chmod +x workspace.sh
 
   $ cat >dune-file.sh <<EOF
-  > #!/bin/bash
+  > #!/bin/sh
   > echo "Dune file."
   > EOF
   $ chmod +x dune-file.sh
 
   $ cat >context.sh <<EOF
-  > #!/bin/bash
+  > #!/bin/sh
   > echo "Context."
   > EOF
   $ chmod +x context.sh

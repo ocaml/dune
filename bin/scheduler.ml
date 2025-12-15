@@ -67,6 +67,18 @@ let rpc server =
   }
 ;;
 
+let no_build_no_rpc ~config:dune_config f =
+  let config =
+    Dune_config.for_scheduler
+      dune_config
+      None
+      ~print_ctrl_c_warning:true
+      ~watch_exclusions:[]
+  in
+  Dune_rules.Clflags.concurrency := config.concurrency;
+  Run.go config ~on_event:(fun _ _ -> ()) f
+;;
+
 let go_without_rpc_server ~(common : Common.t) ~config:dune_config f =
   let stats = Common.stats common in
   let config =

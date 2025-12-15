@@ -15,8 +15,9 @@ let info = Cmd.info "upgrade" ~doc ~man
 
 let term =
   let+ builder = Common.Builder.term in
-  let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config (fun () -> Dune_upgrader.upgrade ())
+  (* CR-soon rgrinberg: stop taking pointless args *)
+  let _common, config = Common.init builder in
+  Scheduler.no_build_no_rpc ~config Dune_upgrader.upgrade
 ;;
 
 let command = Cmd.v info term

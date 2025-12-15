@@ -51,7 +51,7 @@ let lock_and_build_dev_tool ~common ~config builder dev_tool =
   let open Fiber.O in
   match Dune_util.Global_lock.lock ~timeout:None with
   | Error lock_held_by ->
-    Scheduler.go_without_rpc_server ~common ~config (fun () ->
+    Scheduler.no_build_no_rpc ~config (fun () ->
       let* () = Lock_dev_tool.lock_dev_tool dev_tool |> Memo.run in
       build_dev_tool_via_rpc builder lock_held_by dev_tool)
   | Ok () ->

@@ -525,14 +525,7 @@ let term =
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string Common.default_build_dir);
   Dune_config.init config ~watch:false;
   Log.init_disabled ();
-  Dune_engine.Scheduler.Run.go
-    ~on_event:(fun _ _ -> ())
-    (Dune_config.for_scheduler
-       config
-       ~watch_exclusions:[]
-       None
-       ~print_ctrl_c_warning:false)
-    subst
+  Scheduler.no_build_no_rpc ~config subst
 ;;
 
 let command = Cmd.v info term

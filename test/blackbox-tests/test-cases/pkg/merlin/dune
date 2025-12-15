@@ -1,0 +1,9 @@
+(cram
+ (deps helpers.sh)
+ (applies_to :whole_subtree))
+
+;; issues with dev tool lock dirs in source
+
+(cram
+ (applies_to dev-tool-merlin-no-lock-dir dev-tool-merlin-no-ocaml-lockfile)
+ (enabled_if false))

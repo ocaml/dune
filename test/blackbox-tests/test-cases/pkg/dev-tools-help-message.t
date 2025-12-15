@@ -48,6 +48,12 @@ Output the help text:
              ocamllsp executable (pass flags to ocamllsp after the '--'
              argument, such as 'dune tools exec ocamllsp -- --help').
   
+         ocamlmerlin [OPTION]… [ARGS]…
+             Wrapper for running ocamlmerlin intended to be run automatically
+             by a text editor. All positional arguments will be passed to the
+             ocamlmerlin executable (pass flags to ocamlmerlin after the '--'
+             argument, such as 'dune tools exec ocamlmerlin -- --help').
+  
          odig [OPTION]… [ARGS]…
              Wrapper for running odig intended to be run automatically by a
              text editor. All positional arguments will be passed to the odig

@@ -152,22 +152,47 @@ let fire_notification
   send_request connection name ~f:(fun client -> notify_exn client notification arg)
 ;;
 
+let print_err_warn (num_errors, num_warnings) =
+  let enumeration =
+    let report_one what count =
+      if count = 0
+      then []
+      else (
+        let plural = if count = 1 then "" else "s" in
+        [ sprintf "%d %s%s" count what plural ])
+    in
+    [ report_one "error" num_errors; report_one "warning" num_warnings ]
+    |> List.concat
+    |> String.enumerate_and
+  in
+  if num_errors >= 1
+  then User_error.raise [ Pp.textf "Build failed with %s." enumeration ]
+  else User_warning.emit [ Pp.textf "Build completed with %s." enumeration ]
+;;
+
 let wrap_build_outcome_exn ~print_on_success build_outcome =
   match build_outcome with
   | Dune_rpc.Build_outcome_with_diagnostics.Success ->
     if print_on_success
     then Console.print [ Pp.text "Success" |> Pp.tag User_message.Style.Success ]
   | Failure errors ->
-    let error_msg =
-      match List.length errors with
-      | 0 ->
-        Code_error.raise
-          "Build via RPC failed, but the RPC server did not send an error message."
-          []
-      | 1 -> Pp.paragraph "Build failed with 1 error."
-      | n -> Pp.paragraphf "Build failed with %d errors." n
+    let counts =
+      List.fold_left
+        errors
+        ~init:(0, 0)
+        ~f:(fun (errors, warnings) { Dune_rpc.Compound_user_error.main; severity; _ } ->
+          match severity with
+          | Error ->
+            Console.print_user_message main;
+            errors + 1, warnings
+          | Warning ->
+            User_warning.emit_message main;
+            errors, warnings + 1)
     in
-    List.iter errors ~f:(fun { Dune_rpc.Compound_user_error.main; _ } ->
-      Console.print_user_message main);
-    User_error.raise [ error_msg |> Pp.tag User_message.Style.Error ]
+    (match counts with
+     | 0, 0 ->
+       Code_error.raise
+         "Build via RPC failed, but the RPC server did not send an error message."
+         []
+     | _ -> print_err_warn counts)
 ;;

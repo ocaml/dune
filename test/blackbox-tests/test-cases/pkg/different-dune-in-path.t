@@ -29,10 +29,6 @@ Make a project that depends on the test packages:
   >  (depends foo bar))
   > EOF
 
-  $ cat > dune <<EOF
-  > (data_only_dirs bin)
-  > EOF
-
 Make lockfiles for the packages.
   $ make_lockdir
   $ make_lockpkg foo <<EOF
@@ -65,18 +61,40 @@ Make lockfiles for the packages.
 Test that the project can be built normally.
   $ build_pkg foo
 
+
 Make a fake dune exe:
-  $ mkdir bin
-  $ cat > bin/dune <<EOF
+
+  $ mkdir .bin
+  $ cat > .bin/dune << 'EOF'
   > #!/bin/sh
-  > echo "Fake dune! (args: \$@)"
+  > echo "Fake dune! (args: $@)"
   > EOF
-  $ chmod a+x bin/dune
+  $ chmod a+x .bin/dune
 
   $ dune clean
+
 Try building in an environment where `dune` refers to the fake dune.
-  $ DUNE=$(which dune)  # otherwise we would start by running the wrong dune
-  $ PATH=$PWD/bin:$PATH $DUNE build $pkg_root/$($dune pkg print-digest foo)/target/
+
+Remember the path to the dune under test, otherwise we would launch the wrong
+Dune and add our fake `dune` to the PATH.
+
+  $ DUNE=$(which dune)
+  $ fakepath=$PWD/.bin:$PATH
+
+Remember the digests, to not to have to call nested Dunes:
+
+  $ foo_digest="$(dune pkg print-digest foo)"
+  $ bar_digest="$(dune pkg print-digest bar)"
+
+Call Dune with an absolute PATH as argv[0]:
+
+  $ PATH=$fakepath $DUNE build "$pkg_root/$foo_digest/target/"
   Fake dune! (args: build -p foo @install)
-  $ PATH=$PWD/bin:$PATH $DUNE build $pkg_root/$($dune pkg print-digest bar)/target/
+  $ PATH=$fakepath $DUNE build "$pkg_root/$bar_digest/target/"
   Fake dune! (args: build -p bar @install)
+
+Make sure that fake dune is not picked up when dune is called with argv[0] = "dune":
+
+  $ dune clean
+  $ PATH=$fakepath dune_cmd exec-a "dune" $DUNE build "$pkg_root/$foo_digest/target/"
+  Fake dune! (args: build -p foo @install)

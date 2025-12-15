@@ -473,3 +473,11 @@ let%expect_test "single-space comment after output" =
     }
     |}]
 ;;
+
+(* Test for https://github.com/ocaml/dune/pull/12963: >> in output confused the
+   lexer *)
+let%expect_test "output resembling conflict marker" =
+  test "  $ echo '>> Hello'\n  >> Hello";
+  [%expect.unreachable]
+[@@expect.uncaught_exn {| (Failure "lexing: empty token") |}]
+;;

@@ -13,8 +13,18 @@ Link-time flags for running cinaps
 
   $ touch test.ml
 
-  $ dune build --verbose @cinaps 2>&1 | sed -n 's#.*/cinaps.exe.*\(-linkall\).*#\1#p'
-  -linkall
+  $ dune build @cinaps --trace-file trace.json # sed -n 's#.*/cinaps.exe.*\(-linkall\).*#\1#p'
+  $ jqScript=$(mktemp)
+  $ cat >$jqScript <<EOF
+  > .[] |
+  > .args |
+  > select(has("process_args") and (.process_args | index("-linkall"))) |
+  > .process_args |
+  > .[] |
+  > select(endswith(".exe"))
+  > EOF
+  $ jq -f $jqScript trace.json
+  ".cinaps.edaf9873/cinaps.exe"
 
 Check that the version guard is correct.
 

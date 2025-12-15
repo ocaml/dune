@@ -438,14 +438,14 @@ let portable_hardlink ~src ~dst =
         user_error "Too many indirections; is this a cyclic symbolic link?"
       | Error (Unix_error error) -> user_error (Unix_error.Detailed.to_string_hum error)
     in
-    (try Path.link src dst with
+    (try Fpath.link (Path.to_string src) (Path.to_string dst) with
      | Unix.Unix_error (Unix.EEXIST, _, _) ->
        (* CR-someday amokhov: Investigate why we need to occasionally clear the
           destination (we also do this in the symlink case above). Perhaps, the
           list of dependencies may have duplicates? If yes, it may be better to
           filter out the duplicates first. *)
        Path.unlink_exn dst;
-       Path.link src dst
+       Fpath.link (Path.to_string src) (Path.to_string dst)
      | Unix.Unix_error (Unix.EMLINK, _, _) ->
        (* If we can't make a new hard link because we reached the limit on the
           number of hard links per file, we fall back to copying. We expect

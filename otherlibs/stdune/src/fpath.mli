@@ -14,6 +14,9 @@ type mkdir_p_result =
 
 val mkdir_p : ?perms:int -> string -> mkdir_p_result
 
+(** [link src dst] creates a hardlink from [src] to [dst]. *)
+val link : string -> string -> unit
+
 type follow_symlink_error =
   | Not_a_symlink
   | Max_depth_exceeded

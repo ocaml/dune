@@ -7,7 +7,21 @@ a lockdir containing an "ocaml" lockfile.
 
   $ mkrepo
   $ make_mock_ocamllsp_package
-  $ mkpkg ocaml 5.2.0
+  $ mkpkg ocaml 5.2.0 << EOF
+  > depends: [
+  > "ocaml-base-compiler" {= "5.2.0"}
+  > ]
+  > EOF
+
+  $ mkpkg ocaml-base-compiler 5.2.0 << EOF
+  > flags: compiler
+  > conflict-class: "ocaml-core-compiler"
+  > EOF
+
+  $ mkpkg ocaml-compiler 5.2.0 << EOF
+  > depends: [
+  > "ocaml" {= "5.2.0" & post}
+  > ]
 
   $ setup_ocamllsp_workspace
 
@@ -16,17 +30,17 @@ a lockdir containing an "ocaml" lockfile.
   > 
   > (package
   >  (name foo)
-  >  (allow_empty))
+  >  (allow_empty)
+  >  (depends
+  >  (ocaml (= 5.2.0))
+  >  (ocaml-base-compiler (= 5.2.0))))
   > EOF
 
-  $ make_lockdir
-  $ make_lockpkg ocaml <<EOF
-  > (version 5.2.0)
-  > EOF
+  $ dune build
 
   $ dune tools exec ocamllsp
   Solution for _build/.dev-tools.locks/ocaml-lsp-server:
-  - ocaml.5.2.0
+  - ocaml-base-compiler.5.2.0
   - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'
   hello from fake ocamllsp

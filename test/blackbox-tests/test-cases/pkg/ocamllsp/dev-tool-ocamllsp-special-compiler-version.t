@@ -5,8 +5,16 @@ Test the special compiler version is picked up by ocamllsp.
 
   $ mkrepo
   $ make_mock_ocamllsp_package
-  $ mkpkg ocaml-variants 5.2.0+ox
-  $ mkpkg ocaml 5.2.0
+  $ mkpkg ocaml-variants 5.2.0+ox << EOF
+  > flags: compiler
+  > conflict-class: "ocaml-core-compiler"
+  > EOF
+
+  $ mkpkg ocaml 5.2.0 << EOF
+  > depends: [
+  > "ocaml-variants"
+  > ]
+  > EOF
 
   $ setup_ocamllsp_workspace
 
@@ -26,7 +34,6 @@ Test the special compiler version is picked up by ocamllsp.
 Here `ocamllsp` will pickup the compiler dependency on 5.2.0+ox
   $ dune tools exec ocamllsp
   Solution for _build/.dev-tools.locks/ocaml-lsp-server:
-  - ocaml.5.2.0
   - ocaml-lsp-server.0.0.1
   - ocaml-variants.5.2.0+ox
        Running 'ocamllsp'

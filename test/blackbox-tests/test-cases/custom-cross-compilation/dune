@@ -1,0 +1,3 @@
+(cram
+ (applies_to cross-compilation-ocamlfind)
+ (deps %{bin:jq}))

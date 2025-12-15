@@ -24,11 +24,11 @@ produced symbolic links work correctly and are appropriately cached.
 
 Dune cache contains entries for [source] and [target] but not for [link]
 
-  $ (cd "$DUNE_CACHE_ROOT/meta/v5"; grep -rs . -e 'source' | dune_cmd count-lines)
+  $ (cd "$DUNE_CACHE_ROOT/db/meta/v5"; grep -rs . -e 'source' | dune_cmd count-lines)
   1
-  $ (cd "$DUNE_CACHE_ROOT/meta/v5"; grep -rs . -e 'target' | dune_cmd count-lines)
+  $ (cd "$DUNE_CACHE_ROOT/db/meta/v5"; grep -rs . -e 'target' | dune_cmd count-lines)
   1
-  $ (cd "$DUNE_CACHE_ROOT/meta/v5"; grep -rs . -e 'link' | dune_cmd count-lines)
+  $ (cd "$DUNE_CACHE_ROOT/db/meta/v5"; grep -rs . -e 'link' | dune_cmd count-lines)
   0
 
 The files in the build directory are shared with the cache entries

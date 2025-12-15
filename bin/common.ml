@@ -1365,8 +1365,8 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
     ];
   Log.info
     [ Pp.textf
-        "Shared cache location: %s"
-        (Path.to_string (Lazy.force Dune_cache_storage.Layout.root_dir))
+        "Shared build cache location: %s"
+        (Path.to_string (Lazy.force Dune_cache_storage.Layout.build_cache_dir))
     ];
   Dune_rules.Main.init
     ~stats:c.stats
@@ -1482,8 +1482,8 @@ let envs =
         ~doc:"If different than $(b,0), ANSI colors should be enabled no matter what."
         "CLICOLOR_FORCE"
     ; info
+        ~doc:"If set, determines the location of all the different caches used by dune."
         "DUNE_CACHE_ROOT"
-        ~doc:"If set, determines the location of the machine-global shared cache."
     ]
 ;;
 

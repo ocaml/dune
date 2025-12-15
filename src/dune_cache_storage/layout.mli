@@ -8,8 +8,9 @@
 open Stdune
 open Import
 
-(** The path to the root directory of the cache. *)
-val root_dir : Path.t Lazy.t
+(** The directory containing the build cache.
+    Set to [Dune_util.cache_root_dir/db]. *)
+val build_cache_dir : Path.t Lazy.t
 
 (** Create a few subdirectories in [root_dir]. We expose this function because
     we don't want to modify the file system when the cache is disabled.

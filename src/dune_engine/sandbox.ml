@@ -49,7 +49,7 @@ module Item = struct
     | Other of Unix.file_kind
 
   let of_path path =
-    let { Unix.st_kind; st_perm; _ } = Path.Untracked.stat_exn path in
+    let { Unix.st_kind; st_perm; _ } = Unix.stat (Path.to_string path) in
     match st_kind with
     | S_DIR -> Directory { perms = st_perm }
     | S_REG -> File
@@ -58,7 +58,7 @@ module Item = struct
 
   let of_kind path (kind : Unix.file_kind) =
     match kind with
-    | S_DIR -> Directory { perms = (Path.Untracked.stat_exn path).st_perm }
+    | S_DIR -> Directory { perms = (Unix.stat (Path.to_string path)).st_perm }
     | S_REG -> File
     | S_LNK -> Link
     | _ -> Other kind
@@ -74,7 +74,7 @@ let copy_recursively =
   let rec loop item ~src ~dst =
     match (item : Item.t) with
     | Link ->
-      (match Path.Untracked.stat_exn src with
+      (match Unix.stat (Path.to_string src) with
        | { Unix.st_kind = S_REG; _ } -> Io.copy_file ~chmod:chmod_file ~src ~dst ()
        | { Unix.st_kind = S_DIR; st_perm = perms; _ } ->
          loop (Directory { perms }) ~src ~dst
@@ -172,7 +172,7 @@ let snapshot t =
         let p = Path.relative dir basename in
         match kind with
         | S_REG ->
-          let stats = Path.Untracked.lstat_exn p in
+          let stats = Unix.lstat (Path.to_string p) in
           Path.Map.add_exn acc p (Cached_digest.Reduced_stats.of_unix_stats stats)
         | S_DIR -> walk p acc
         | _ -> acc)

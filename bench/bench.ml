@@ -235,7 +235,7 @@ let () =
     }
   in
   let size =
-    let stat : Unix.stats = Path.stat_exn dune in
+    let stat : Unix.stats = Unix.stat (Path.to_string dune) in
     stat.st_size
   in
   let results =

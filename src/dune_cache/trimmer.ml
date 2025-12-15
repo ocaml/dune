@@ -134,7 +134,7 @@ let overhead_size () =
   let stats =
     let f p =
       try
-        let stats = Path.stat_exn p in
+        let stats = Unix.stat (Path.to_string p) in
         if file_exists_and_is_unused ~stats then Int64.of_int stats.st_size else 0L
       with
       | Unix.Unix_error (Unix.ENOENT, _, _) -> 0L

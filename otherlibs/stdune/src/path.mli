@@ -369,9 +369,7 @@ end
 val local_part : t -> Local.t
 
 val stat : t -> (Unix.stats, Unix_error.Detailed.t) Result.t
-val stat_exn : t -> Unix.stats
 val lstat : t -> (Unix.stats, Unix_error.Detailed.t) Result.t
-val lstat_exn : t -> Unix.stats
 
 (** Rename a file. [rename oldpath newpath] renames the file called [oldpath] to
     [newpath], moving it between directories if needed. If [newpath] already

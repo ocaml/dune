@@ -51,7 +51,7 @@ module Stat = struct
   ;;
 
   let run { file; data } =
-    let stats = Path.lstat_exn file in
+    let stats = Unix.lstat (Path.to_string file) in
     print_endline (pp_stats data stats)
   ;;
 

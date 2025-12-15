@@ -1813,7 +1813,7 @@ module Install_action = struct
             with
             | None -> section
             | Some section' ->
-              let perm = (Path.Untracked.stat_exn file).st_perm in
+              let perm = (Unix.stat (Path.to_string file)).st_perm in
               if Path.Permissions.(test execute perm) then section' else section
           in
           section, maybe_drop_sandbox_dir file))
@@ -1825,7 +1825,7 @@ module Install_action = struct
       | false -> ()
       | true ->
         let permission =
-          let perm = (Path.Untracked.stat_exn dst).st_perm in
+          let perm = (Unix.stat (Path.to_string dst)).st_perm in
           Path.Permissions.(add execute) perm
         in
         Path.chmod dst ~mode:permission

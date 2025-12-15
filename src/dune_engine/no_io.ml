@@ -10,9 +10,7 @@ module Path = struct
     let readdir_unsorted = readdir_unsorted
     let readdir_unsorted_with_kinds = readdir_unsorted_with_kinds
     let stat = stat
-    let stat_exn = stat_exn
     let lstat = lstat
-    let lstat_exn = lstat_exn
   end
 
   (* Encourage using [Fs_memo] equivalents if possible. The untracked versions

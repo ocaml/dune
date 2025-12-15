@@ -1383,10 +1383,8 @@ let local_part = function
   | In_build_dir l -> l
 ;;
 
-let stat_exn t = Unix.stat (to_string t)
-let stat t = Unix_error.Detailed.catch stat_exn t
-let lstat_exn t = Unix.lstat (to_string t)
-let lstat t = Unix_error.Detailed.catch lstat_exn t
+let stat t = Unix_error.Detailed.catch (fun p -> Unix.stat (to_string p)) t
+let lstat t = Unix_error.Detailed.catch (fun p -> Unix.lstat (to_string p)) t
 
 include (Comparator.Operators (T) : Comparator.OPS with type t := t)
 

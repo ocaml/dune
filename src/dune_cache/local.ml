@@ -74,9 +74,10 @@ let link_even_if_there_are_too_many_links_already ~src ~dst =
         Io.copy_file ~src ~dst:temp_file ();
         (* This replaces [src], which has too many links already, with a fresh
            copy we've just created in the [temp_file]. *)
-        Path.rename temp_file src;
+        let src = Path.to_string src in
+        Unix.rename (Path.to_string temp_file) src;
         (* This should now succeed. *)
-        Fpath.link (Path.to_string src) (Path.to_string dst))
+        Fpath.link src (Path.to_string dst))
 ;;
 
 module Artifacts = struct
@@ -184,7 +185,9 @@ module Artifacts = struct
                     [rename] operation has a quirk where [path_in_temp_dir] can
                     remain on disk. This is not a problem because we clean the
                     temporary directory later. *)
-                 Path.rename path_in_temp_dir path_in_build_dir
+                 Unix.rename
+                   (Path.to_string path_in_temp_dir)
+                   (Path.to_string path_in_build_dir)
                with
                | exception e -> Store_result.Error e
                | () -> Already_present)

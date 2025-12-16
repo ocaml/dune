@@ -1396,8 +1396,6 @@ module Source = struct
   let to_local t = t
 end
 
-let rename old_path new_path = Unix.rename (to_string old_path) (to_string new_path)
-
 let drop_prefix path ~prefix =
   let prefix_s = to_string prefix in
   let path_s = to_string path in

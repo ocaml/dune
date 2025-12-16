@@ -367,11 +367,6 @@ val local_part : t -> Local.t
 val stat : t -> (Unix.stats, Unix_error.Detailed.t) Result.t
 val lstat : t -> (Unix.stats, Unix_error.Detailed.t) Result.t
 
-(** Rename a file. [rename oldpath newpath] renames the file called [oldpath] to
-    [newpath], moving it between directories if needed. If [newpath] already
-    exists, its contents will be replaced with those of [oldpath]. *)
-val rename : t -> t -> unit
-
 (** [drop_prefix_exn t ~prefix] drops the [prefix] from a path, including any
     leftover directory separator prefix. Raises a [Code_error.t] if the prefix
     wasn't found. *)

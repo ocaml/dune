@@ -125,7 +125,7 @@ let extract t ~archive ~target =
       | Ok _ -> target_in_temp
     in
     Path.mkdir_p (Path.parent_exn target);
-    Path.rename target_in_temp target;
+    Unix.rename (Path.to_string target_in_temp) (Path.to_string target);
     Ok ())
   else
     Io.with_file_in temp_stderr_path ~f:(fun err_channel ->

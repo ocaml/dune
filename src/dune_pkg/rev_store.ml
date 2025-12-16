@@ -1051,7 +1051,7 @@ module At_rev = struct
           User_error.raise [ Pp.text "failed to untar archive created by git" ]
         | Ok () -> ())
     in
-    Path.rename target_in_temp_dir target
+    Unix.rename (Path.to_string target_in_temp_dir) (Path.to_string target)
   ;;
 end
 

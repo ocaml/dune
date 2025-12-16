@@ -2,10 +2,12 @@ open Stdune
 
 module Optimistically = struct
   let rename ~src ~dst =
-    try Path.rename src dst with
+    let src' = Path.to_string src in
+    let dst' = Path.to_string dst in
+    try Unix.rename src' dst' with
     | Unix.Unix_error _ ->
       Path.mkdir_p (Path.parent_exn dst);
-      Path.rename src dst
+      Unix.rename src' dst'
   ;;
 
   let link ~src ~dst =

@@ -189,7 +189,7 @@ let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
   with_download url checksum ~target ~f:(fun output ->
     match unpack_flag with
     | false ->
-      Path.rename output target;
+      Unix.rename (Path.to_string output) (Path.to_string target);
       Fiber.return @@ Ok ()
     | true ->
       unpack_archive

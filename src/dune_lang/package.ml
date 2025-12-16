@@ -135,12 +135,13 @@ let decode =
           | Some _ ->
             let dep_sexp = Package_dependency.encode dep in
             let dep_string = Dune_sexp.to_string dep_sexp in
+            (* CR-someday: construct the combined constraint for the user *)
             User_warning.emit
               ~loc
               ~hints:
                 [ Pp.text
-                    "Duplicate dependencies on the same package are redundant. If you \
-                     want to specify multiple constraints, combine them using (and ...)."
+                    "If you want to specify multiple constraints, combine them using \
+                     (and ...)."
                 ]
               [ Pp.textf
                   "Duplicate dependency on package %s in '%s' field."

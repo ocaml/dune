@@ -133,3 +133,8 @@
 (cram
  (applies_to trace-file)
  (deps %{bin:perl}))
+
+(cram
+ (applies_to build-lock-no-rpc)
+ (deps %{bin:flock})
+ (timeout 5))

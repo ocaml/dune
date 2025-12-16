@@ -48,7 +48,7 @@ let run_fmt_command ~common ~config ~preview builder =
     Scheduler.no_build_no_rpc ~config (fun () ->
       Rpc.Rpc_common.fire_request
         ~name:"format"
-        ~wait:true
+        ~wait:false
         ~warn_forwarding:false
         ~lock_held_by
         builder

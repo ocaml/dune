@@ -1199,23 +1199,11 @@ module DB = struct
       ; dep_pkg_digest : Pkg_digest.t
       }
 
-    let dep_equal (dep : dep) { dep_pkg; dep_loc; dep_pkg_digest } =
-      Pkg.equal dep.dep_pkg dep_pkg
-      && Loc.equal dep.dep_loc dep_loc
-      && Pkg_digest.equal dep.dep_pkg_digest dep_pkg_digest
-    ;;
-
     type entry =
       { pkg : Pkg.t
       ; deps : dep list
       ; pkg_digest : Pkg_digest.t
       }
-
-    let entry_equal (entry : entry) { pkg; deps; pkg_digest } =
-      Pkg.equal entry.pkg pkg
-      && List.equal dep_equal entry.deps deps
-      && Pkg_digest.equal entry.pkg_digest pkg_digest
-    ;;
 
     let entries_by_name_of_lock_dir
           (lock_dir : Dune_pkg.Lock_dir.t)
@@ -1269,8 +1257,6 @@ module DB = struct
 
     (* Associate each package's digest with the package and its dependencies. *)
     type t = entry Pkg_digest.Map.t
-
-    let equal = Pkg_digest.Map.equal ~equal:entry_equal
 
     let of_lock_dir lock_dir ~platform ~system_provided =
       entries_by_name_of_lock_dir lock_dir ~platform ~system_provided
@@ -1335,22 +1321,19 @@ module DB = struct
     ;;
   end
 
+  module Id = Id.Make ()
+
   type t =
-    { pkg_digest_table : Pkg_table.t
+    { id : Id.t
+    ; pkg_digest_table : Pkg_table.t
     ; system_provided : Package.Name.Set.t
     }
 
-  let equal t ({ pkg_digest_table; system_provided } as t') =
-    phys_equal t t'
-    || (Pkg_table.equal t.pkg_digest_table pkg_digest_table
-        && Package.Name.Set.equal t.system_provided system_provided)
-  ;;
+  let equal x y = Id.equal x.id y.id
 
-  let hash = `Do_not_hash
-  let _ = hash
-  (* Because t is large, hashing is expensive, so much so that hashing the db in Input.t
-     below slowed down the dune call in the test repo described in #12248 from 1s to
-     2s. *)
+  let create ~pkg_digest_table ~system_provided =
+    { id = Id.gen (); pkg_digest_table; system_provided }
+  ;;
 
   let pkg_digest_of_name lock_dir platform pkg_name ~system_provided =
     let entries_by_name =
@@ -1393,7 +1376,7 @@ module DB = struct
                >>| Pkg_table.union
                      (Pkg_table.of_lock_dir lock_dir ~platform ~system_provided)
              in
-             { pkg_digest_table; system_provided })
+             create ~pkg_digest_table ~system_provided)
     in
     fun ctx ~allow_sharing -> Memo.exec of_ctx_memo (ctx, allow_sharing)
   ;;
@@ -1409,30 +1392,32 @@ module DB = struct
 
   (* Returns the db for all dev tools combined with the default context, and
      the digest for the dev tool's package. *)
-  let of_dev_tool dev_tool =
+  let of_dev_tool =
     let system_provided = default_system_provided in
-    let* lock_dir = Lock_dir.of_dev_tool dev_tool
-    and* platform = Lock_dir.Sys_vars.solver_env
-    and* lock_dir_active_for_default_ctx =
-      Lock_dir.lock_dir_active Context_name.default
+    let inactive_lockdir =
+      Memo.lazy_ (fun () ->
+        let+ pkg_digest_table = Memo.Lazy.force Pkg_table.all_existing_dev_tools in
+        create ~pkg_digest_table ~system_provided)
     in
-    let+ pkg_digest_table =
-      match lock_dir_active_for_default_ctx with
-      | false -> Memo.Lazy.force Pkg_table.all_existing_dev_tools
-      | true ->
-        let+ pkg_digest_table_all_dev_tools =
-          Memo.Lazy.force Pkg_table.all_existing_dev_tools
-        and+ { pkg_digest_table = pkg_digest_table_default_ctx; system_provided = _ } =
-          of_ctx Context_name.default ~allow_sharing:true
-        in
-        Pkg_table.union pkg_digest_table_default_ctx pkg_digest_table_all_dev_tools
-    in
-    ( { pkg_digest_table; system_provided }
-    , pkg_digest_of_name
+    let of_dev_tool_memo =
+      Memo.create "pkg-db-dev-tool" ~input:(module Dune_pkg.Dev_tool)
+      @@ fun dev_tool ->
+      let+ lock_dir = Lock_dir.of_dev_tool dev_tool
+      and+ platform = Lock_dir.Sys_vars.solver_env in
+      pkg_digest_of_name
         lock_dir
         platform
         (Pkg_dev_tool.package_name dev_tool)
-        ~system_provided )
+        ~system_provided
+    in
+    fun dev_tool ->
+      let+ db =
+        Lock_dir.lock_dir_active Context_name.default
+        >>= function
+        | false -> Memo.Lazy.force inactive_lockdir
+        | true -> of_ctx Context_name.default ~allow_sharing:true
+      and+ pkg_digest = Memo.exec of_dev_tool_memo dev_tool in
+      db, pkg_digest
   ;;
 end
 

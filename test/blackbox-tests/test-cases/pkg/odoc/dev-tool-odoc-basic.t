@@ -7,16 +7,7 @@ a lockdir containing an "ocaml" lockfile.
 
   $ mkrepo
   $ make_mock_odoc_package
-  $ mkpkg ocaml 5.2.0 << EOF
-  > depends: [
-  > "ocaml-base-compiler" {= "5.2.0"}
-  > ]
-  > EOF
-
-  $ mkpkg ocaml-base-compiler 5.2.0 << EOF
-  > flags: compiler
-  > conflict-class: "ocaml-core-compiler"
-  > EOF
+  $ mk_ocaml 5.2.0
   $ setup_odoc_workspace
 
   $ cat > dune-project <<EOF
@@ -35,6 +26,7 @@ a lockdir containing an "ocaml" lockfile.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune ocaml doc
   Solution for _build/.dev-tools.locks/odoc:
   - ocaml-base-compiler.5.2.0
+  - ocaml-compiler.5.2.0
   - odoc.0.0.1
   hello from fake odoc
   hello from fake odoc

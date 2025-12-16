@@ -5,15 +5,10 @@ Test the special compiler version is picked up by ocamllsp.
 
   $ mkrepo
   $ make_mock_ocamllsp_package
+  $ mk_ocaml 5.2.0
   $ mkpkg ocaml-variants 5.2.0+ox << EOF
   > flags: compiler
   > conflict-class: "ocaml-core-compiler"
-  > EOF
-
-  $ mkpkg ocaml 5.2.0 << EOF
-  > depends: [
-  > "ocaml-variants"
-  > ]
   > EOF
 
   $ setup_ocamllsp_workspace

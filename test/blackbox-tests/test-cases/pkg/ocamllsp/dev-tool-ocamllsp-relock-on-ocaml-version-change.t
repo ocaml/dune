@@ -9,27 +9,8 @@ same version of the ocaml compiler as the code that it's analyzing.
 
   $ mkrepo
   $ make_mock_ocamllsp_package
-  $ mkpkg ocaml 5.2.0 << EOF
-  > depends: [
-  > "ocaml-base-compiler" {= "5.2.0"}
-  > ]
-  > EOF
-
-  $ mkpkg ocaml-base-compiler 5.2.0 << EOF
-  > flags: compiler
-  > conflict-class: "ocaml-core-compiler"
-  > EOF
-
-  $ mkpkg ocaml 5.1.0 << EOF
-  > depends: [
-  > "ocaml-base-compiler" {= "5.1.0"}
-  > ]
-  > EOF
-
-  $ mkpkg ocaml-base-compiler 5.1.0 << EOF
-  > flags: compiler
-  > conflict-class: "ocaml-core-compiler"
-  > EOF
+  $ mk_ocaml 5.2.0
+  $ mk_ocaml 5.1.0
 
   $ setup_ocamllsp_workspace
 
@@ -40,8 +21,7 @@ same version of the ocaml compiler as the code that it's analyzing.
   >  (name foo)
   >  (allow_empty)
   >  (depends
-  >  (ocaml (= 5.2.0))
-  >  (ocaml-base-compiler (= 5.2.0))))
+  >    (ocaml (= 5.2.0))))
   > EOF
 
   $ dune build
@@ -50,10 +30,11 @@ Initially ocamllsp will be depend on ocaml.5.2.0 to match the project.
   $ dune tools exec ocamllsp
   Solution for _build/.dev-tools.locks/ocaml-lsp-server:
   - ocaml-base-compiler.5.2.0
+  - ocaml-compiler.5.2.0
   - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'
   hello from fake ocamllsp
-  $ cat "${dev_tool_lock_dir}"/ocaml-base-compiler.pkg
+  $ grep "version" "${dev_tool_lock_dir}"/ocaml-base-compiler.pkg
   (version 5.2.0)
 
 
@@ -65,6 +46,7 @@ We can re-run "dune tools exec ocamllsp" without relocking or rebuilding.
   of the compiler.
   Solution for _build/.dev-tools.locks/ocaml-lsp-server:
   - ocaml-base-compiler.5.2.0
+  - ocaml-compiler.5.2.0
   - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'
   hello from fake ocamllsp
@@ -77,8 +59,7 @@ Change the version of ocaml that the project depends on.
   >  (name foo)
   >  (allow_empty)
   >  (depends
-  >  (ocaml (= 5.1.0))
-  >  (ocaml-base-compiler (= 5.1.0))))
+  >    (ocaml (= 5.1.0))))
   > EOF
 
   $ dune build
@@ -93,8 +74,9 @@ before running. Ocamllsp now depends on ocaml.5.1.0.
   of the compiler.
   Solution for _build/.dev-tools.locks/ocaml-lsp-server:
   - ocaml-base-compiler.5.1.0
+  - ocaml-compiler.5.1.0
   - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'
   hello from fake ocamllsp
-  $ cat "${dev_tool_lock_dir}"/ocaml-base-compiler.pkg
+  $ grep "version" "${dev_tool_lock_dir}"/ocaml-base-compiler.pkg
   (version 5.1.0)

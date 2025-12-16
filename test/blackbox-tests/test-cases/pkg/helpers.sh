@@ -76,6 +76,50 @@ mkpkg() {
   cat >>$mock_packages/$name/$name.$version/opam
 }
 
+mk_ocaml() {
+  version=$1
+  major=$(echo "$version" | cut -d. -f1)
+  minor=$(echo "$version" | cut -d. -f2)
+  patch=$(echo "$version" | cut -d. -f3)
+  # minor=$(ver[1])
+  # patch=$(ver[2])
+  # ((next=minor+1))
+  next=$(echo "$patch 1 + p" | dc)
+  # echo $next
+  constraint="{>= \"$major.$minor.$patch~\" & < \"$major.$minor.$next~\"}"
+  # echo $major $minor $patch $version
+  mkpkg ocaml $version << EOF
+   depends: [
+   "ocaml-base-compiler" $constraint |
+   "ocaml-variants" $constraint
+   ]
+EOF
+
+  mkpkg ocaml-base-compiler $version << EOF
+  depends: [
+  "ocaml-compiler" $constraint
+   ]
+  flags: compiler
+  conflict-class: "ocaml-core-compiler"
+EOF
+
+  mkpkg ocaml-variants $version << EOF
+  depends: [
+  "ocaml-compiler" {= "$version"}
+   ]
+  flags: compiler
+  conflict-class: "ocaml-core-compiler"
+EOF
+
+  mkpkg ocaml-compiler $version << EOF
+  depends: [
+  "ocaml" {= "$version" & post}
+  ]
+EOF
+
+}
+
+
 set_pkg_to () {
   local value="${1}"
   if grep "(pkg .*)" dune-workspace > /dev/null; then

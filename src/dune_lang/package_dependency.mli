@@ -6,6 +6,6 @@ type t =
   }
 
 val encode : t Encoder.t
-val decode : (Loc.t * t) Decoder.t
+val decode : t Decoder.t
 val to_dyn : t -> Dyn.t
 val equal : t -> t -> bool

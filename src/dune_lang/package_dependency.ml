@@ -92,11 +92,11 @@ let decode =
     (match check_for_typo ~loc result with
      | Some msg -> User_warning.emit_message msg
      | None -> ());
-    result
+    loc, result
   in
   enter constrained
-  <|> let+ name = Well_formed_name.decode in
-      { name; constraint_ = None }
+  <|> let+ loc, name = located Well_formed_name.decode in
+      loc, { name; constraint_ = None }
 ;;
 
 let to_dyn { name; constraint_ } =

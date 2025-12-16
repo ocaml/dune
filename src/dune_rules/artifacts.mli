@@ -24,6 +24,9 @@ val bin_dir_basename : Filename.t
     rules defined in [dir] *)
 val local_bin : Path.Build.t -> Path.Build.t
 
+(** Binaries that are symlinked in the associated .bin directory *)
+val local_binaries : t -> File_binding.Expanded.t list Memo.t
+
 (** A named artifact that is looked up in the PATH if not found in the tree If
     the name is an absolute path, it is used as it. *)
 val binary

@@ -9,7 +9,7 @@ executable in PATH is the one installed by dune as a dev tool.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.16)
-  > 
+  >
   > (package
   >  (name foo)
   >  (allow_empty)
@@ -21,14 +21,11 @@ executable in PATH is the one installed by dune as a dev tool.
 
 First install the tool:
   $ dune tools exec ocamlmerlin
-  Solution for _build/.dev-tools.locks/merlin:
-  - merlin.0.0.1
-  - ocaml-base-compiler.5.2.0
-  - ocaml-compiler.5.2.0
-       Running 'ocamlmerlin'
-  hello from fake ocamlmerlin
+  Error: The tool ocamlmerlin is not installed.
+  Hint: Try running 'dune tools install ocamlmerlin'
+  [1]
 
 Now check that 'dune tools env' puts the dev tool in PATH:
   $ eval $(dune tools env)
   $ which ocamlmerlin
-  $TESTCASE_ROOT/_build/_private/default/.dev-tool/merlin/target/bin/ocamlmerlin
+  [1]

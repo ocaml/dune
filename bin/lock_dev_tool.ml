@@ -150,12 +150,9 @@ let compiler_constraints () =
 ;;
 
 let extra_dependencies dev_tool =
-  let open Memo.O in
   match Dune_pkg.Dev_tool.needs_to_build_with_same_compiler_as_project dev_tool with
   | false -> Memo.return []
-  | true ->
-    let+ compiler_dependencies = compiler_constraints () in
-    compiler_dependencies
+  | true -> compiler_constraints ()
 ;;
 
 let lockdir_status dev_tool =

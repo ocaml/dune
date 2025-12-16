@@ -26,7 +26,7 @@ same version of the ocaml compiler as the code that it's analyzing.
 
   $ dune build
 
-Initially ocamllsp will be depend on ocaml.5.2.0 to match the project.
+Initially ocamllsp will depend on ocaml-base-compiler.5.2.0 to match the project.
   $ dune tools exec ocamllsp
   Solution for _build/.dev-tools.locks/ocaml-lsp-server:
   - ocaml-base-compiler.5.2.0

@@ -17,8 +17,7 @@ a lockdir containing an "ocaml" lockfile.
   >  (name foo)
   >  (allow_empty)
   >  (depends
-  >  (ocaml (= 5.2.0))
-  >  (ocaml-base-compiler (= 5.2.0))))
+  >    (ocaml (= 5.2.0))))
   > EOF
 
   $ dune build

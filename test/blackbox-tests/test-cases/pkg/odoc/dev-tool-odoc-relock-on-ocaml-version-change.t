@@ -21,13 +21,12 @@ same version of the ocaml compiler as the code that it's analyzing.
   >  (name foo)
   >  (allow_empty)
   >  (depends
-  >  (ocaml (= 5.2.0))
-  >  (ocaml-base-compiler (= 5.2.0))))
+  >  (ocaml (= 5.2.0))))
   > EOF
 
   $ dune build
 
-Initially odoc will be depend on ocaml.5.2.0 to match the project.
+Initially odoc will depend on ocaml-base-compiler.5.2.0 to match the project.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune ocaml doc
   Solution for _build/.dev-tools.locks/odoc:
   - ocaml-base-compiler.5.2.0
@@ -71,8 +70,7 @@ Change the version of ocaml that the project depends on.
   >  (name foo)
   >  (allow_empty)
   >  (depends
-  >  (ocaml (= 5.1.0))
-  >  (ocaml-base-compiler (= 5.1.0))))
+  >  (ocaml (= 5.1.0))))
   > EOF
 
   $ dune build

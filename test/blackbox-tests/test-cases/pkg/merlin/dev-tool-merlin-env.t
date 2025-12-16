@@ -6,7 +6,7 @@ executable in PATH is the one installed by dune as a dev tool.
 
   $ mkrepo
   $ make_mock_merlin_package
-  $ mkpkg ocaml 5.2.0
+  $ mk_ocaml 5.2.0
 
   $ setup_merlin_workspace
 
@@ -15,19 +15,19 @@ executable in PATH is the one installed by dune as a dev tool.
   > 
   > (package
   >  (name foo)
-  >  (allow_empty))
+  >  (allow_empty)
+  >  (depends
+  >    (ocaml (= 5.2.0))))
   > EOF
 
-  $ make_lockdir
-  $ make_lockpkg ocaml <<EOF
-  > (version 5.2.0)
-  > EOF
+  $ dune build
 
 First install the tool:
   $ dune tools exec ocamlmerlin
   Solution for _build/.dev-tools.locks/merlin:
   - merlin.0.0.1
-  - ocaml.5.2.0
+  - ocaml-base-compiler.5.2.0
+  - ocaml-compiler.5.2.0
        Running 'ocamlmerlin'
   hello from fake ocamlmerlin
 

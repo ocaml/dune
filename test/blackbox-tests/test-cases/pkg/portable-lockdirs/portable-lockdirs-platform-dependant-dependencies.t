@@ -77,7 +77,8 @@ Build the project as if we were on linux and confirm that only the linux-specifi
   foo.0.0.1-5e48eb7073ada94c09fb13ac3853f1e9
   linux-only.0.0.1-f754e8cf64f80c214f1a86ee403f0dc3
 
-  $ dune clean
+Use --full to remove all packages including those from the previous platform:
+  $ dune clean --full
 
 Build the project as if we were on macos and confirm that only the macos-specific dependency is installed:
   $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=x86_64 DUNE_CONFIG__OS_FAMILY=homebrew DUNE_CONFIG__OS_DISTRIBUTION=homebrew DUNE_CONFIG__OS_VERSION=15.3.1 dune build

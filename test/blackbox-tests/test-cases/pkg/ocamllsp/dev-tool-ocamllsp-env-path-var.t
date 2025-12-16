@@ -28,6 +28,7 @@ Confirm that each dev tool's bin directory is now in PATH:
   - ocaml.5.2.0
   - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'
+  $TESTCASE_ROOT/_build/_private/default/.dev-tool/merlin/target/bin
   $TESTCASE_ROOT/_build/_private/default/.dev-tool/ocaml-index/target/bin
   $TESTCASE_ROOT/_build/_private/default/.dev-tool/dune-release/target/bin
   $TESTCASE_ROOT/_build/_private/default/.dev-tool/opam-publish/target/bin

@@ -104,13 +104,10 @@ let exe_name = function
   | Opam_publish -> "opam-publish"
   | Dune_release -> "dune-release"
   | Ocaml_index -> "ocaml-index"
-  | Merlin -> "merlin"
+  | Merlin -> "ocamlmerlin"
 ;;
 
-let exe_path_components_within_package = function
-  | Merlin -> [ "bin"; "ocamlmerlin" ]
-  | t -> [ "bin"; exe_name t ]
-;;
+let exe_path_components_within_package t = [ "bin"; exe_name t ]
 
 let needs_to_build_with_same_compiler_as_project = function
   | Ocamlformat -> false

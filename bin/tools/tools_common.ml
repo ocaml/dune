@@ -137,7 +137,8 @@ let exec_command dev_tool =
   let info =
     let doc =
       sprintf
-        {|Wrapper for running %s. All positional arguments will be passed to the
+        {|Wrapper for running %s intended to be run automatically
+          by a text editor. All positional arguments will be passed to the
           %s executable (pass flags to %s after the '--'
           argument, such as 'dune tools exec %s -- --help').|}
         exe_name

@@ -131,3 +131,8 @@
  (applies_to hidden-deps-unsupported)
  (enabled_if
   (< %{ocaml_version} 5.2.0)))
+
+(cram
+ (applies_to build-lock-no-rpc)
+ (deps %{bin:flock})
+ (timeout 5))

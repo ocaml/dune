@@ -122,6 +122,18 @@ let send_request ~f connection name =
     ~f
 ;;
 
+let raise_rpc_not_found ~lock_held_by =
+  User_error.raise
+    (match lock_held_by with
+     | Dune_util.Global_lock.Lock_held_by.Unknown -> [ Pp.text "RPC server not running." ]
+     | Pid_from_lockfile pid ->
+       [ Pp.textf
+           "Another dune instance (pid: %d) has the build directory locked but is not \
+            running an RPC server."
+           pid
+       ])
+;;
+
 let fire_request
       ~name
       ~wait
@@ -132,7 +144,15 @@ let fire_request
       arg
   =
   let open Fiber.O in
-  let* connection = establish_client_session ~wait in
+  let* connection =
+    Fiber.map_reduce_errors
+      (module Monoid.Unit)
+      ~on_error:(fun _ -> Fiber.return ())
+      (fun () -> establish_client_session ~wait)
+    >>| function
+    | Ok conn -> conn
+    | Error () -> raise_rpc_not_found ~lock_held_by
+  in
   if should_warn ~warn_forwarding builder then warn_ignore_arguments lock_held_by;
   send_request connection name ~f:(fun client -> request_exn client request arg)
 ;;
@@ -147,7 +167,15 @@ let fire_notification
       arg
   =
   let open Fiber.O in
-  let* connection = establish_client_session ~wait in
+  let* connection =
+    Fiber.map_reduce_errors
+      (module Monoid.Unit)
+      ~on_error:(fun _ -> Fiber.return ())
+      (fun () -> establish_client_session ~wait)
+    >>| function
+    | Ok conn -> conn
+    | Error () -> raise_rpc_not_found ~lock_held_by
+  in
   if should_warn ~warn_forwarding builder then warn_ignore_arguments lock_held_by;
   send_request connection name ~f:(fun client -> notify_exn client notification arg)
 ;;

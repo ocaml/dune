@@ -227,7 +227,7 @@ let build =
         let open Fiber.O in
         Rpc.Rpc_common.fire_request
           ~name:"build"
-          ~wait:true
+          ~wait:false
           ~lock_held_by
           builder
           Dune_rpc_impl.Decl.build

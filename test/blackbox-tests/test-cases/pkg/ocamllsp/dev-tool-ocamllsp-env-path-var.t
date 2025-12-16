@@ -16,7 +16,7 @@ Make a fake ocamllsp package that prints out the PATH variable:
 
   $ cat > dune-project <<EOF
   > (lang dune 3.16)
-  > 
+  >
   > (package
   >  (name foo)
   >  (allow_empty)
@@ -26,12 +26,15 @@ Make a fake ocamllsp package that prints out the PATH variable:
 
   $ dune build
 
-Confirm that each dev tool's bin directory is now in PATH:
-  $ dune tools exec ocamllsp | tr : '\n' | grep '_build/_private/default/.dev-tool'
+First install the tool:
+  $ dune tools install ocamllsp
   Solution for _build/.dev-tools.locks/ocaml-lsp-server:
   - ocaml-base-compiler.5.2.0
   - ocaml-compiler.5.2.0
   - ocaml-lsp-server.0.0.1
+
+Confirm that each dev tool's bin directory is now in PATH:
+  $ dune tools exec ocamllsp | tr : '\n' | grep '_build/_private/default/.dev-tool'
        Running 'ocamllsp'
   $TESTCASE_ROOT/_build/_private/default/.dev-tool/merlin/target/bin
   $TESTCASE_ROOT/_build/_private/default/.dev-tool/ocaml-index/target/bin

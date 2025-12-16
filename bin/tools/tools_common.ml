@@ -1,3 +1,4 @@
+open Dune_config
 open Import
 module Pkg_dev_tool = Dune_rules.Pkg_dev_tool
 
@@ -127,12 +128,27 @@ let install_command dev_tool =
 
 let exec_command dev_tool =
   let exe_name = Pkg_dev_tool.exe_name dev_tool in
+  let exe_path = dev_tool_exe_path dev_tool in
   let term =
     let+ builder = Common.Builder.term
     (* CR-someday Alizter: document this option *)
     and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS" ~doc:None)) in
     let common, config = Common.init builder in
-    lock_build_and_run_dev_tool ~common ~config builder dev_tool ~args
+    match Config.get Dune_rules.Compile_time.lock_dev_tools with
+    | `Enabled -> lock_build_and_run_dev_tool ~common ~config builder dev_tool ~args
+    | `Disabled ->
+      if Path.exists exe_path
+      then run_dev_tool (Common.root common) dev_tool ~args
+      else
+        User_error.raise
+          [ Pp.textf "The tool %s is not installed." exe_name ]
+          ~hints:
+            [ Pp.concat
+                ~sep:Pp.space
+                [ Pp.text "Try running"
+                ; User_message.command (sprintf "dune tools install %s" exe_name)
+                ]
+            ]
   in
   let info =
     let doc =

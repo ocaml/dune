@@ -124,31 +124,24 @@ let decode =
   let check_duplicate_deps deps field_name =
     ignore
       (List.fold_left deps ~init:[] ~f:(fun seen (loc, dep) ->
-         (match
-            List.find_opt
-              ~f:(fun (_, seen_dep) ->
-                Package_name.equal
-                  dep.Package_dependency.name
-                  seen_dep.Package_dependency.name)
-              seen
-          with
-          | Some _ ->
-            let dep_sexp = Package_dependency.encode dep in
-            let dep_string = Dune_sexp.to_string dep_sexp in
-            (* CR-someday: construct the combined constraint for the user *)
-            User_warning.emit
-              ~loc
-              ~hints:
-                [ Pp.text
-                    "If you want to specify multiple constraints, combine them using \
-                     (and ...)."
-                ]
-              [ Pp.textf
-                  "Duplicate dependency on package %s in '%s' field."
-                  dep_string
-                  field_name
-              ]
-          | None -> ());
+         List.find_opt seen ~f:(fun (_, seen_dep) ->
+           Package_name.equal dep.Package_dependency.name seen_dep.Package_dependency.name)
+         |> Option.iter ~f:(fun _ ->
+           (* CR-someday: construct the combined constraint for the user *)
+           let dep_sexp = Package_dependency.encode dep in
+           let dep_string = Dune_sexp.to_string dep_sexp in
+           User_warning.emit
+             ~loc
+             ~hints:
+               [ Pp.text
+                   "If you want to specify multiple constraints, combine them using (and \
+                    ...)."
+               ]
+             [ Pp.textf
+                 "Duplicate dependency on package %s in '%s' field."
+                 dep_string
+                 field_name
+             ]);
          (loc, dep) :: seen)
        : (Loc.t * Package_dependency.t) list)
   in

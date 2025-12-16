@@ -140,7 +140,11 @@ module Lock_dir = struct
         field_o "version_preference" Dune_pkg.Version_preference.decode
       and+ repositories = Dune_lang.Ordered_set_lang.field "repositories"
       and+ constraints =
-        field ~default:[] "constraints" (repeat Dune_lang.Package_dependency.decode)
+        (* CR-someday: use the locations for better error messages *)
+        field
+          ~default:[]
+          "constraints"
+          (repeat Dune_lang.Package_dependency.decode >>| List.map ~f:snd)
       and+ depopts = field ~default:[] "depopts" (repeat (located Package.Name.decode))
       and+ pins = field ~default:[] "pins" (repeat (located string))
       and+ solve_for_platforms =

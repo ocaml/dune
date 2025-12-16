@@ -92,7 +92,7 @@ let cache =
 let get_current_filesystem_time () =
   let special_path = Path.relative Path.build_dir ".filesystem-clock" in
   Io.write_file special_path "<dummy>";
-  (Path.stat_exn special_path).st_mtime
+  (Unix.stat (Path.to_string special_path)).st_mtime
 ;;
 
 let wait_for_fs_clock_to_advance () =
@@ -175,8 +175,8 @@ let set_with_stat path digest stat =
 
 let set path digest =
   (* the caller of [set] ensures that the files exist *)
+  let stat = Unix.stat (Path.Build.to_string path) in
   let path = Path.build path in
-  let stat = Path.stat_exn path in
   set_with_stat path digest stat
 ;;
 
@@ -260,12 +260,12 @@ let catch_fs_errors f =
 (* Here we make only one [stat] call on the happy path. *)
 let refresh_without_removing_write_permissions ~allow_dirs path =
   catch_fs_errors (fun () ->
-    match Path.stat_exn path with
+    match Unix.stat (Path.to_string path) with
     | stats -> refresh stats ~allow_dirs path
     | exception Unix.Unix_error (ELOOP, _, _) -> Error Cyclic_symlink
     | exception Unix.Unix_error (ENOENT, _, _) ->
       (* Test if this is a broken symlink for better error messages. *)
-      (match Path.lstat_exn path with
+      (match Unix.lstat (Path.to_string path) with
        | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
        | _stats_so_must_be_a_symlink -> Error Broken_symlink))
 ;;
@@ -277,18 +277,18 @@ let refresh_without_removing_write_permissions ~allow_dirs path =
    here, e.g., by telling the subsequent [chmod] to not follow symlinks. *)
 let refresh_and_remove_write_permissions ~allow_dirs path =
   catch_fs_errors (fun () ->
-    match Path.lstat_exn path with
+    match Unix.lstat (Path.to_string path) with
     | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
     | stats ->
       (match stats.st_kind with
        | S_LNK ->
-         (match Path.stat_exn path with
+         (match Unix.stat (Path.to_string path) with
           | stats -> refresh stats ~allow_dirs:false path
           | exception Unix.Unix_error (ELOOP, _, _) -> Error Cyclic_symlink
           | exception Unix.Unix_error (ENOENT, _, _) -> Error Broken_symlink)
        | S_REG ->
          let perm = Path.Permissions.remove Path.Permissions.write stats.st_perm in
-         Path.chmod ~mode:perm path;
+         Unix.chmod (Path.to_string path) perm;
          (* we know it's a file, so we don't allow directories for safety *)
          refresh ~allow_dirs:false { stats with st_perm = perm } path
        | _ ->
@@ -313,8 +313,8 @@ let peek_file ~allow_dirs path =
       (if x.stats_checked = cache.checked_key
        then Ok x.digest
        else (
-         (* The [stat_exn] below follows symlinks. *)
-         match Path.stat_exn path with
+         (* The [stat] below follows symlinks. *)
+         match Unix.stat (Path.to_string path) with
          | exception Unix.Unix_error (ELOOP, _, _) ->
            Error Digest_result.Error.Cyclic_symlink
          | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file

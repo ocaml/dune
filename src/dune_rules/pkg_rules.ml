@@ -1813,7 +1813,7 @@ module Install_action = struct
             with
             | None -> section
             | Some section' ->
-              let perm = (Path.Untracked.stat_exn file).st_perm in
+              let perm = (Unix.stat (Path.to_string file)).st_perm in
               if Path.Permissions.(test execute perm) then section' else section
           in
           section, maybe_drop_sandbox_dir file))
@@ -1824,11 +1824,12 @@ module Install_action = struct
       match Section.should_set_executable_bit section with
       | false -> ()
       | true ->
+        let dst = Path.to_string dst in
         let permission =
-          let perm = (Path.Untracked.stat_exn dst).st_perm in
+          let perm = (Unix.stat dst).st_perm in
           Path.Permissions.(add execute) perm
         in
-        Path.chmod dst ~mode:permission
+        Unix.chmod dst permission
     ;;
 
     let read_variables config_file =
@@ -1982,7 +1983,9 @@ module Install_action = struct
                 section, file)
               |> Section.Map.of_list_multi
             in
-            let+ () = Async.async (fun () -> Path.unlink_exn install_file) in
+            let+ () =
+              Async.async (fun () -> Fpath.unlink_exn (Path.to_string install_file))
+            in
             map
         in
         (* Combine the artifacts declared in the .install, and the ones we discovered

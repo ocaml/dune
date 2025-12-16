@@ -30,14 +30,15 @@ module Target = struct
   type t = { executable : bool }
 
   let create path =
-    match Path.Build.lstat path with
+    let path = Path.Build.to_string path in
+    match Unix.lstat path with
     | { Unix.st_kind = Unix.S_REG; st_perm; _ } ->
-      Path.Build.chmod path ~mode:(Path.Permissions.remove Path.Permissions.write st_perm);
+      Unix.chmod path (Path.Permissions.remove Path.Permissions.write st_perm);
       let executable = Path.Permissions.test Path.Permissions.execute st_perm in
       Some { executable }
     | { Unix.st_kind = Unix.S_DIR; st_perm; _ } ->
       (* Adding "executable" permissions to directories mean we can traverse them. *)
-      Path.Build.chmod path ~mode:(Path.Permissions.add Path.Permissions.execute st_perm);
+      Unix.chmod path (Path.Permissions.add Path.Permissions.execute st_perm);
       (* the value of [executable] here is ignored, but [Some] is meaningful. *)
       Some { executable = true }
     | (exception Unix.Unix_error _) | _ -> None
@@ -73,9 +74,10 @@ let link_even_if_there_are_too_many_links_already ~src ~dst =
         Io.copy_file ~src ~dst:temp_file ();
         (* This replaces [src], which has too many links already, with a fresh
            copy we've just created in the [temp_file]. *)
-        Path.rename temp_file src;
+        let src = Path.to_string src in
+        Unix.rename (Path.to_string temp_file) src;
         (* This should now succeed. *)
-        Fpath.link (Path.to_string src) (Path.to_string dst))
+        Fpath.link src (Path.to_string dst))
 ;;
 
 module Artifacts = struct
@@ -163,7 +165,7 @@ module Artifacts = struct
                 Path.build (Path.Build.append_local artifacts.root target)
               in
               (match
-                 Path.unlink_no_err path_in_temp_dir;
+                 Fpath.unlink_no_err (Path.to_string path_in_temp_dir);
                  (* At first, we deduplicate the temporary file. Doing this
                     intermediate step allows us to keep the original target in case
                     the below link step fails. This might happen if the trimmer has
@@ -183,7 +185,9 @@ module Artifacts = struct
                     [rename] operation has a quirk where [path_in_temp_dir] can
                     remain on disk. This is not a problem because we clean the
                     temporary directory later. *)
-                 Path.rename path_in_temp_dir path_in_build_dir
+                 Unix.rename
+                   (Path.to_string path_in_temp_dir)
+                   (Path.to_string path_in_build_dir)
                with
                | exception e -> Store_result.Error e
                | () -> Already_present)
@@ -284,7 +288,7 @@ module Artifacts = struct
         if not (Path.exists path)
         then (
           Path.mkdir_p path;
-          Unwind.push unwind (fun () -> Path.rmdir path))
+          Unwind.push unwind (fun () -> Unix.rmdir (Path.to_string path)))
       in
       let mk_file file file_digest =
         let target = Path.Build.append_local artifacts.root file in
@@ -293,7 +297,7 @@ module Artifacts = struct
         (match mode with
          | Hardlink -> hardlink ~src ~dst
          | Copy -> copy ~src ~dst);
-        Unwind.push unwind (fun () -> Path.Build.unlink_no_err target)
+        Unwind.push unwind (fun () -> Fpath.unlink_no_err (Path.Build.to_string target))
       in
       try Targets.Produced.iteri artifacts ~f:mk_file ~d:mk_dir with
       | exn ->

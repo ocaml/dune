@@ -444,8 +444,10 @@ let portable_hardlink ~src ~dst =
           destination (we also do this in the symlink case above). Perhaps, the
           list of dependencies may have duplicates? If yes, it may be better to
           filter out the duplicates first. *)
-       Path.unlink_exn dst;
-       Fpath.link (Path.to_string src) (Path.to_string dst)
+       let src = Path.to_string src in
+       let dst = Path.to_string dst in
+       Fpath.unlink_exn dst;
+       Fpath.link src dst
      | Unix.Unix_error (Unix.EMLINK, _, _) ->
        (* If we can't make a new hard link because we reached the limit on the
           number of hard links per file, we fall back to copying. We expect

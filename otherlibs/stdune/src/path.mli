@@ -192,14 +192,6 @@ module Build : sig
   val split_sandbox_root : t -> t option * t
   val of_local : Local.t -> t
 
-  (** Set permissions for a given path. You can use the [Permissions] module if
-      you need to modify existing permissions in a non-trivial way. *)
-  val chmod : t -> mode:int -> unit
-
-  val lstat : t -> Unix.stats
-  val unlink : t -> Fpath.unlink_status
-  val unlink_no_err : t -> unit
-
   module Table : Hashtbl.S with type key = t
 end
 
@@ -348,16 +340,8 @@ val is_dir_sep : char -> bool
 (** [is_dir t] checks if [t] is a directory. It swallows permission errors so the preferred way is to use [stat] instead *)
 val is_directory : t -> bool
 
-val rmdir : t -> unit
-val unlink_exn : t -> unit
-val unlink_no_err : t -> unit
-
 (** If the path does not exist, this function is a no-op. *)
 val rm_rf : ?allow_external:bool -> t -> unit
-
-(** [clear_dir t] deletes all the contents of directory [t] without removing [t]
-    itself. *)
-val clear_dir : t -> Fpath.clear_dir_result
 
 val mkdir_p : ?perms:int -> t -> unit
 val build_dir_exists : unit -> bool
@@ -381,18 +365,7 @@ end
 val local_part : t -> Local.t
 
 val stat : t -> (Unix.stats, Unix_error.Detailed.t) Result.t
-val stat_exn : t -> Unix.stats
 val lstat : t -> (Unix.stats, Unix_error.Detailed.t) Result.t
-val lstat_exn : t -> Unix.stats
-
-(** Rename a file. [rename oldpath newpath] renames the file called [oldpath] to
-    [newpath], moving it between directories if needed. If [newpath] already
-    exists, its contents will be replaced with those of [oldpath]. *)
-val rename : t -> t -> unit
-
-(** Set permissions for a given path. You can use the [Permissions] module if
-    you need to modify existing permissions in a non-trivial way. *)
-val chmod : t -> mode:int -> unit
 
 (** [drop_prefix_exn t ~prefix] drops the [prefix] from a path, including any
     leftover directory separator prefix. Raises a [Code_error.t] if the prefix

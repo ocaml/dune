@@ -133,8 +133,10 @@ module Pending_targets = struct
     Hooks.End_of_build.always (fun () ->
       let targets = !t in
       t := Targets.empty;
-      Targets.iter targets ~file:Path.Build.unlink_no_err ~dir:(fun p ->
-        Path.rm_rf (Path.build p)))
+      Targets.iter
+        targets
+        ~file:(fun p -> p |> Path.Build.to_string |> Fpath.unlink_no_err)
+        ~dir:(fun p -> Path.rm_rf (Path.build p)))
   ;;
 end
 
@@ -581,7 +583,7 @@ end = struct
             maybe_async_rule_file_op (fun () ->
               let remove_target_dir dir = Path.rm_rf (Path.build dir) in
               let remove_target_file path =
-                match Path.Build.unlink path with
+                match Fpath.unlink (Path.Build.to_string path) with
                 | Success -> ()
                 | Does_not_exist -> ()
                 | Is_a_directory ->

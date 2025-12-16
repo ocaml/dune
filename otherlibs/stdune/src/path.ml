@@ -80,8 +80,6 @@ end = struct
       | Some i -> Some (String.take t i))
   ;;
 
-  let unlink_no_err t = Fpath.unlink_no_err t
-
   let basename t =
     if is_root t
     then Code_error.raise "Path.Local.basename called on the root" []
@@ -542,7 +540,6 @@ end = struct
   ;;
 
   let mkdir_p ?perms path = ignore (Fpath.mkdir_p ?perms path : Fpath.mkdir_p_result)
-  let unlink_no_err t = Fpath.unlink_no_err t
   let extension t = Filename.extension t
 
   let split_extension t =
@@ -826,10 +823,6 @@ module Build = struct
 
   let to_string_maybe_quoted p = String.maybe_quoted (to_string p)
   let of_local t = t
-  let chmod t ~mode = Unix.chmod (to_string t) mode
-  let lstat t = Unix.lstat (to_string t)
-  let unlink t = Fpath.unlink (to_string t)
-  let unlink_no_err t = Fpath.unlink_no_err (to_string t)
   let to_dyn s = Dyn.variant "In_build_dir" [ to_dyn s ]
 end
 
@@ -1213,9 +1206,6 @@ let is_directory t =
   | Sys_error _ -> false
 ;;
 
-let rmdir t = Unix.rmdir (to_string t)
-let unlink_exn t = Fpath.unlink_exn (to_string t)
-let unlink_no_err t = Fpath.unlink_no_err (to_string t)
 let build_dir_exists () = is_directory build_dir
 
 let ensure_build_dir_exists () =
@@ -1242,8 +1232,6 @@ let extend_basename t ~suffix =
   | In_build_dir t -> in_build_dir (Local.extend_basename t ~suffix)
   | External t -> external_ (External.extend_basename t ~suffix)
 ;;
-
-let clear_dir dir = Fpath.clear_dir (to_string dir)
 
 let rm_rf ?(allow_external = false) t =
   if (not allow_external) && not (is_managed t)
@@ -1394,10 +1382,8 @@ let local_part = function
   | In_build_dir l -> l
 ;;
 
-let stat_exn t = Unix.stat (to_string t)
-let stat t = Unix_error.Detailed.catch stat_exn t
-let lstat_exn t = Unix.lstat (to_string t)
-let lstat t = Unix_error.Detailed.catch lstat_exn t
+let stat t = Unix_error.Detailed.catch (fun p -> Unix.stat (to_string p)) t
+let lstat t = Unix_error.Detailed.catch (fun p -> Unix.lstat (to_string p)) t
 
 include (Comparator.Operators (T) : Comparator.OPS with type t := t)
 
@@ -1409,9 +1395,6 @@ module Source = struct
   let is_in_build_dir s = is_in_build_dir (path_of_local s)
   let to_local t = t
 end
-
-let rename old_path new_path = Unix.rename (to_string old_path) (to_string new_path)
-let chmod t ~mode = Unix.chmod (to_string t) mode
 
 let drop_prefix path ~prefix =
   let prefix_s = to_string prefix in

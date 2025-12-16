@@ -331,7 +331,7 @@ module File_ops_real (W : sig
     if Path.exists dst
     then (
       print_line "Deleting %s" (Path.to_string_maybe_quoted dst);
-      print_unix_error (fun () -> Path.unlink_exn dst))
+      print_unix_error (fun () -> Fpath.unlink_exn (Path.to_string dst)))
   ;;
 
   let remove_dir_if_exists ~if_non_empty dir =
@@ -339,7 +339,7 @@ module File_ops_real (W : sig
     | Error (Unix.ENOENT, _, _) -> ()
     | Ok [] ->
       print_line "Deleting empty directory %s" (Path.to_string_maybe_quoted dir);
-      print_unix_error (fun () -> Path.rmdir dir)
+      print_unix_error (fun () -> Unix.rmdir (Path.to_string dir))
     | Error (e, _, _) ->
       User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
     | _ ->

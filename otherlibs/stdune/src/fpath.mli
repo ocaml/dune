@@ -48,6 +48,8 @@ type clear_dir_result =
   | Cleared
   | Directory_does_not_exist
 
+(** [clear_dir t] deletes all the contents of directory [t] without removing [t]
+    itself. *)
 val clear_dir : string -> clear_dir_result
 
 (** If the path does not exist, this function is a no-op. *)

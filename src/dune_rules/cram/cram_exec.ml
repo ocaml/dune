@@ -106,7 +106,7 @@ let run_expect_test file ~f =
 
          Eventually, we should just have a way to read the source from outside the
          sandbox. *)
-      Path.unlink_no_err file;
+      Fpath.unlink_no_err (Path.to_string file);
       file_contents)
   in
   let* expected =

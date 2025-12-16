@@ -205,7 +205,7 @@ let remove_old_artifacts
         match kind with
         | Unix.S_DIR ->
           if not (Subdir_set.mem subdirs_to_keep fn) then Path.rm_rf (Path.build path)
-        | _ -> Path.unlink_exn (Path.build path)))
+        | _ -> Fpath.unlink_exn (Path.Build.to_string path)))
 ;;
 
 (* We don't remove files in there as we don't know upfront if they are stale or

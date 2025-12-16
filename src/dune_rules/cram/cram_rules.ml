@@ -213,12 +213,24 @@ let rules ~sctx ~dir tests =
   in
   Memo.parallel_iter tests ~f:(fun test ->
     let* spec =
-      let name =
+      let cram_test =
         match test with
-        | Ok test -> Cram_test.name test
-        | Error (Missing_run_t test) -> Cram_test.name test
+        | Ok t -> t
+        | Error (Missing_run_t t) -> t
       in
+      let name = Cram_test.name cram_test in
       let test_name_alias = Alias.Name.of_string name in
+      let () =
+        if Alias.Name.equal test_name_alias Alias0.empty
+        then
+          User_error.raise
+            ~loc:(Loc.in_file (Path.source (Cram_test.script cram_test)))
+            [ Pp.textf
+                "Cram test %S would define the 'empty' alias which is reserved."
+                (Path.Source.basename (Cram_test.path cram_test))
+            ; Pp.text "Please rename this test file."
+            ]
+      in
       let init = None, Spec.make_empty ~test_name_alias in
       let+ runtest_alias, acc =
         Memo.List.fold_left

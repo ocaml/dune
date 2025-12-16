@@ -21,8 +21,10 @@ The `dune build` should generate the opam file
   >   (alcotest :with-test)
   >   (dune (and :build (> 1.5)))
   >   (foo (and :dev (> 1.5) (< 2.0)))
-  >   (uri (and (>= 1.9.0) (< 2.0.0)))
-  >   (fieldslib (and (> v0.12) (< v0.13)))))
+  >   (uri (>= 1.9.0))
+  >   (uri (< 2.0.0))
+  >   (fieldslib (> v0.12))
+  >   (fieldslib (< v0.13))))
   > 
   > (package
   >  (name cohttp-async)
@@ -34,7 +36,8 @@ The `dune build` should generate the opam file
   >  (depends
   >   (cohttp (>= 1.0.2))
   >   (conduit-async (>= 1.0.3))
-  >   (async (and (>= v0.10.0) (< v0.12)))))
+  >   (async (>= v0.10.0))
+  >   (async (< v0.12))))
   > 
   > (package
   >  (name cohttp-lwt)
@@ -46,7 +49,8 @@ The `dune build` should generate the opam file
   >  (depends
   >   (cohttp (>= 1.0.2))
   >   (conduit-lwt (>= 1.0.3))
-  >   (lwt (and (>= 5.0.0) (< 6.0.0)))))
+  >   (lwt (>= 5.0.0))
+  >   (lwt (< 6.0.0))))
   > EOF
 
   $ dune build @install
@@ -72,8 +76,10 @@ The `dune build` should generate the opam file
     "alcotest" {with-test}
     "dune" {build & > "1.5"}
     "foo" {dev & > "1.5" & < "2.0"}
-    "uri" {>= "1.9.0" & < "2.0.0"}
-    "fieldslib" {> "v0.12" & < "v0.13"}
+    "uri" {>= "1.9.0"}
+    "uri" {< "2.0.0"}
+    "fieldslib" {> "v0.12"}
+    "fieldslib" {< "v0.13"}
   ]
 
   $ cat cohttp-async.opam
@@ -99,7 +105,8 @@ The `dune build` should generate the opam file
   depends: [
     "cohttp" {>= "1.0.2"}
     "conduit-async" {>= "1.0.3"}
-    "async" {>= "v0.10.0" & < "v0.12"}
+    "async" {>= "v0.10.0"}
+    "async" {< "v0.12"}
   ]
 
   $ cat cohttp-lwt.opam
@@ -126,5 +133,6 @@ The `dune build` should generate the opam file
   depends: [
     "cohttp" {>= "1.0.2"}
     "conduit-lwt" {>= "1.0.3"}
-    "lwt" {>= "5.0.0" & < "6.0.0"}
+    "lwt" {>= "5.0.0"}
+    "lwt" {< "6.0.0"}
   ]

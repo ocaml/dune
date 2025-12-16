@@ -20,12 +20,12 @@ executable in PATH is the one installed by dune as a dev tool.
   $ dune build
 
 First install the tool:
-  $ dune tools exec ocamlmerlin
-  Error: The tool ocamlmerlin is not installed.
-  Hint: Try running 'dune tools install ocamlmerlin'
-  [1]
+  $ dune tools install ocamlmerlin
+  Solution for _build/.dev-tools.locks/merlin:
+  - merlin.0.0.1
+  - ocaml.5.2.0
 
 Now check that 'dune tools env' puts the dev tool in PATH:
   $ eval $(dune tools env)
   $ which ocamlmerlin
-  [1]
+  $TESTCASE_ROOT/_build/_private/default/.dev-tool/merlin/target/bin/ocamlmerlin

@@ -49,7 +49,7 @@ Change the version of ocaml that the project depends on.
 
 Running "dune tools exec ocamlmerlin" causes merlin to be relocked and rebuilt
 before running. Merlin now depends on ocaml.5.1.0.
-  $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune tools exec ocamlmerlin
+  $ dune tools exec ocamlmerlin
   The version of the compiler package ("ocaml") in this project's lockdir has
   changed to 5.1.0 (formerly the compiler version was 5.2.0). The dev-tool
   "merlin" will be re-locked and rebuilt with this version of the compiler.

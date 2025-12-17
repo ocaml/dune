@@ -335,6 +335,11 @@ let missing_project_name =
     ~since:(3, 11)
 ;;
 
+(* Warn about duplicate dependencies in package definitions *)
+let duplicate_deps =
+  Warning.make ~default:(fun _ -> `Enabled) ~name:"duplicate_deps" ~since:(3, 18)
+;;
+
 (* To be called once per project, when we are generating the rules for the root
    directory of the project *)
 let gen_project_rules =
@@ -386,6 +391,28 @@ let gen_project_rules =
                        to your dune-project file to make sure that $ dune subst works in \
                        release or pinned builds"
                   ]))
+    and+ () =
+      (* Emit warnings for duplicate dependencies in packages *)
+      let packages = Dune_project.packages project in
+      Dune_lang.Package.Name.Map.values packages
+      |> Memo.parallel_iter ~f:(fun pkg ->
+        Dune_lang.Package.duplicate_dep_warnings pkg
+        |> Memo.parallel_iter
+             ~f:(fun (warning : Dune_lang.Package.Duplicate_dep_warning.t) ->
+               Warning_emit.emit
+                 duplicate_deps
+                 (Warning_emit.Context.project project)
+                 (fun () ->
+                    Memo.return
+                      (User_message.make
+                         ~loc:warning.loc
+                         [ Pp.textf
+                             "Duplicate dependency on package %s in '%s' field. If you \
+                              want to specify multiple constraints, combine them using \
+                              (and ...)."
+                             warning.dep_string
+                             warning.field_name
+                         ]))))
     in
     ()
   in

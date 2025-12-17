@@ -11,10 +11,10 @@ Test that cram tests that timeout still offer partial promotion.
 
 Create a test with multiple commands where the second one will timeout:
 
-  $ cat > test.t <<EOF
-  >   \$ echo "first command"
-  >   \$ sleep 10
-  >   \$ echo "never reached"
+  $ cat > test.t <<'EOF'
+  >   $ echo "first command"
+  >   $ sleep 10
+  >   $ echo "never reached"
   > EOF
 
 Run the test - it should timeout but still generate a .corrected file.

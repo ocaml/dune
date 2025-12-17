@@ -8,21 +8,19 @@ Testing how timeout affects the digest:
 
 This test counts the occurances of the cram script in the log.
   $ check() {
-  >   cat _build/log | grep -c main.sh
+  > dune test --trace-file trace.json mytest.t
+  > jq '[ .[] | select(.cat == "process,cram") ] | length' trace.json
   > }
 
 We can observe the test is run the first time:
 
-  $ dune test mytest.t
   $ check
   1
 
 And is not run the second time:
 
-  $ dune test mytest.t
   $ check
   0
-  [1]
 
 If we add a timeout, we would not expect for the digest of the cram test to
 change.
@@ -34,14 +32,11 @@ change.
 
 However this is currently not the case and we rerun the cram test:
 
-  $ dune test mytest.t
   $ check
   1
 
-  $ dune test mytest.t
   $ check
   0
-  [1]
 
 This is again the case on another time change:
 
@@ -50,12 +45,9 @@ This is again the case on another time change:
   >  (timeout 2))
   > EOF
  
-  $ dune test mytest.t
   $ check
   1
 
-  $ dune test mytest.t
   $ check
   0
-  [1]
 

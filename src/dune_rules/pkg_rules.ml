@@ -439,6 +439,8 @@ module Pkg = struct
     ; build_command : Build_command.t option
     ; install_command : Dune_lang.Action.t option
     ; depends : t list
+    ; depends_on_dune : bool
+      (* whether the package declares a dependency on Dune, even if Dune is stripped from [depends] *)
     ; depexts : Depexts.t list
     ; info : Pkg_info.t
     ; paths : Path.t Paths.t
@@ -1143,33 +1145,15 @@ module Action_expander = struct
 
   let sandbox = Sandbox_mode.Set.singleton Sandbox_mode.copy
 
-  let rec action_contains_run action =
-    match (action : Dune_lang.Action.t) with
-    | Run _ -> true
-    | Progn actions -> actions |> List.find ~f:action_contains_run |> Option.is_some
-    | When (_, action) -> action_contains_run action
-    | Withenv (_, action) -> action_contains_run action
-    | _ -> false
-  ;;
-
   let expand context (pkg : Pkg.t) action =
-    let depend_on_dune =
-      match action_contains_run action with
-      | false -> Action_builder.return ()
-      | true ->
-        Path.External.of_string Sys.executable_name
-        |> Path.external_
-        |> Action_builder.path
-    in
     let+ action =
       let expander = expander context pkg in
       expand action ~expander >>| Action.chdir pkg.paths.source_dir
     in
     (* TODO copying is needed for build systems that aren't dune and those
        with an explicit install step *)
-    let open Action_builder.O in
-    depend_on_dune
-    >>> (Action.Full.make ~sandbox action |> Action_builder.return)
+    Action.Full.make ~sandbox action
+    |> Action_builder.return
     |> Action_builder.with_no_targets
   ;;
 
@@ -1220,6 +1204,7 @@ module DB = struct
     type entry =
       { pkg : Pkg.t
       ; deps : dep list
+      ; has_dune_dep : bool
       ; pkg_digest : Pkg_digest.t
       }
 
@@ -1249,24 +1234,30 @@ module DB = struct
         Package.Name.Table.find_or_add cache pkg.info.name ~f:(fun name ->
           let seen_set = Package.Name.Set.add seen_set name in
           let seen_list = pkg :: seen_list in
-          let deps =
+          let system_deps, deps =
             Dune_pkg.Lock_dir.Conditional_choice.choose_for_platform pkg.depends ~platform
             |> Option.value ~default:[]
-            |> List.filter_map
+            |> List.partition_map
                  ~f:(fun { Dune_pkg.Lock_dir.Dependency.name; loc = dep_loc } ->
                    if Package.Name.Set.mem system_provided name
-                   then None
+                   then Left name
                    else (
                      let dep_pkg = Package.Name.Map.find_exn pkgs_by_name name in
                      let dep_entry = compute_entry dep_pkg ~seen_set ~seen_list in
-                     Some { dep_pkg; dep_loc; dep_pkg_digest = dep_entry.pkg_digest }))
+                     Right { dep_pkg; dep_loc; dep_pkg_digest = dep_entry.pkg_digest }))
+          in
+          let has_dune_dep =
+            List.mem
+              ~equal:Dune_lang.Package_name.equal
+              system_deps
+              Dune_pkg.Dune_dep.name
           in
           let pkg_digest =
             Pkg_digest.create
               pkg
               (List.map deps ~f:(fun { dep_pkg_digest; _ } -> dep_pkg_digest))
           in
-          { pkg; deps; pkg_digest })
+          { pkg; deps; has_dune_dep; pkg_digest })
       in
       Package.Name.Map.map
         pkgs_by_name
@@ -1289,8 +1280,8 @@ module DB = struct
        dependencies are identical as a sanity check. *)
     let union_check
           pkg_digest
-          ({ pkg = pkg_a; deps = deps_a; pkg_digest = _ } as entry)
-          { pkg = pkg_b; deps = deps_b; pkg_digest = _ }
+          ({ pkg = pkg_a; deps = deps_a; has_dune_dep = _; pkg_digest = _ } as entry)
+          { pkg = pkg_b; deps = deps_b; has_dune_dep = _; pkg_digest = _ }
       =
       if not (Pkg.equal (Pkg.remove_locs pkg_a) (Pkg.remove_locs pkg_b))
       then
@@ -1493,6 +1484,7 @@ end = struct
             ; enabled_on_platforms = _
             } as pkg
         ; deps
+        ; has_dune_dep
         ; pkg_digest = _
         } ->
       assert (Package.Name.equal pkg_digest.name info.name);
@@ -1607,6 +1599,7 @@ end = struct
         ; build_command
         ; install_command
         ; depends
+        ; depends_on_dune = has_dune_dep
         ; depexts
         ; paths
         ; write_paths
@@ -2252,9 +2245,21 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
     |> Action_builder.progn
   in
   let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
+  let depend_on_dune =
+    match pkg.depends_on_dune with
+    | false -> Action_builder.return ()
+    | true ->
+      Sys.executable_name
+      |> Path.External.of_string
+      |> Path.external_
+      |> Action_builder.path
+  in
+  let open Action_builder.O in
+  let action_builder =
+    Action_builder.deps deps >>> depend_on_dune |> Action_builder.with_no_targets
+  in
   let open Action_builder.With_targets.O in
-  Action_builder.deps deps
-  |> Action_builder.with_no_targets
+  action_builder
   (* TODO should we add env deps on these? *)
   >>> add_env (Pkg.exported_env pkg) build_action
   |> Action_builder.With_targets.add_directories

@@ -15,5 +15,6 @@ doesn't contain a lockfile for the "ocaml" package.
 
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune ocaml doc
   Error: No compiler declared in the lockfile
-  Hint: Try running 'dune build'
+  Hint: Add a dependency on a compiler to one of the packages in dune-project
+  and then run 'dune build'
   [1]

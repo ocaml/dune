@@ -127,7 +127,11 @@ let compiler_package () =
          ~hints:
            [ Pp.concat
                ~sep:Pp.space
-               [ Pp.text "Try running"; User_message.command "dune build" ]
+               [ Pp.text
+                   "Add a dependency on a compiler to one of the packages in \
+                    dune-project and then run"
+               ; User_message.command "dune build"
+               ]
            ]
      | Some (_loc, pkg_name) ->
        (match Package_name.Map.find pkgs pkg_name with

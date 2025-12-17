@@ -34,7 +34,7 @@ end
 
 module T = struct
   type t =
-    | Bvar of Package_variable_name.t
+    | Bvar of Value.t
     | Uop of Relop.t * Value.t
     | Bop of Relop.t * Value.t * Value.t
     | And of t list
@@ -44,7 +44,7 @@ module T = struct
   let rec to_dyn =
     let open Dyn in
     function
-    | Bvar v -> variant "Bvar" [ Package_variable_name.to_dyn v ]
+    | Bvar v -> variant "Bvar" [ Value.to_dyn v ]
     | Uop (b, x) -> variant "Uop" [ Relop.to_dyn b; Value.to_dyn x ]
     | Bop (b, x, y) -> variant "Bop" [ Relop.to_dyn b; Value.to_dyn x; Value.to_dyn y ]
     | And t -> variant "And" (List.map ~f:to_dyn t)
@@ -55,7 +55,7 @@ module T = struct
   let rec compare a b =
     let open Ordering.O in
     match a, b with
-    | Bvar a, Bvar b -> Package_variable_name.compare a b
+    | Bvar a, Bvar b -> Value.compare a b
     | Bvar _, _ -> Lt
     | _, Bvar _ -> Gt
     | Uop (a_op, a_value), Uop (b_op, b_value) ->
@@ -85,7 +85,12 @@ include Comparable.Make (T)
 let rec encode c =
   let open Encoder in
   match c with
-  | Bvar x -> Package_variable_name.Project.encode x
+  | Bvar (String_literal _) ->
+    (* We don't need to encode such values at the moment. They can only be
+       constructed when converting from [enabled_if] to [available]. Our sexp
+       decoder never produces such values for example. *)
+    assert false
+  | Bvar (Variable x) -> Package_variable_name.Project.encode x
   | Uop (op, x) -> pair Relop.encode Value.encode (op, x)
   | Bop (op, x, y) -> triple Relop.encode Value.encode Value.encode (op, x, y)
   | And conjuncts -> list sexp (string "and" :: List.map ~f:encode conjuncts)
@@ -154,7 +159,7 @@ let decode =
     >>= function
     | Atom (_loc, A s) when String.is_prefix s ~prefix:":" ->
       let+ () = junk in
-      Bvar (Package_variable_name.of_string (String.drop s 1))
+      Bvar (Variable (Package_variable_name.of_string (String.drop s 1)))
     | _ -> sum (ops @ logops))
 ;;
 

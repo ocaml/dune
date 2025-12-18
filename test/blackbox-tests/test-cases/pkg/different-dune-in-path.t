@@ -92,7 +92,15 @@ Call Dune with an absolute PATH as argv[0]:
   $ PATH=$fakepath $DUNE build "$pkg_root/$foo_digest/target/"
   $ PATH=$fakepath $DUNE build "$pkg_root/$bar_digest/target/"
 
-Make sure that fake dune is not picked up when dune is called with argv[0] = "dune":
+argv[0] is set by the calling program (like a shell or cram test runner) and
+could be wrong, hence it cannot always be trusted. In the examples above we
+launch dune with an absolute path, thus one could just use argv[0] to get the
+exact path to the `dune` binary.
+
+To make sure that we pick up the right dune even when argv[0] is being set to
+unhelpful values we launch the binary but set the value to a relative value,
+namely argv[0] = "dune". This is exactly what happens if `dune` is in the PATH
+and the user launches `dune` in a shell.
 
   $ dune clean
   $ PATH=$fakepath dune_cmd exec-a "dune" $DUNE build "$pkg_root/$foo_digest/target/"

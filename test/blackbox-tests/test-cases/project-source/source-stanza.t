@@ -84,7 +84,7 @@ Test github forge.
   File "dune-project", line 4, characters 16-29:
   4 | (source (github org/proj/repo))
                       ^^^^^^^^^^^^^
-  Error: Github repository must be of form user/repo
+  Error: GitHub repository must be of form user/repo
   Hint: The provided form 'org/proj/repo' is specific to GitLab projects
   [1]
 
@@ -96,7 +96,7 @@ Test bitbucket forge.
   4 | (source (bitbucket org/proj/repo))
                          ^^^^^^^^^^^^^
   Error: Bitbucket repository must be of form user/repo
-  Hint: The provided form 'org/proj/repo' is specific to Gitlab projects
+  Hint: The provided form 'org/proj/repo' is specific to GitLab projects
   [1]
 
 Test sourcehut forge.
@@ -106,8 +106,8 @@ Test sourcehut forge.
   File "dune-project", line 4, characters 19-32:
   4 | (source (sourcehut org/proj/repo))
                          ^^^^^^^^^^^^^
-  Error: Sourcehut repository must be of form user/repo
-  Hint: The provided form 'org/proj/repo' is specific to Gitlab projects
+  Error: SourceHut repository must be of form user/repo
+  Hint: The provided form 'org/proj/repo' is specific to GitLab projects
   [1]
 
 Test codeberg forge.
@@ -118,7 +118,7 @@ Test codeberg forge.
   4 | (source (codeberg org/proj/repo))
                         ^^^^^^^^^^^^^
   Error: Codeberg repository must be of form user/repo
-  Hint: The provided form 'org/proj/repo' is specific to Gitlab projects
+  Hint: The provided form 'org/proj/repo' is specific to GitLab projects
   [1]
 
 So far we have been using '(lang dune 3.17)' which supports gitlab organization
@@ -132,7 +132,7 @@ syntax.
   File "dune-project", line 4, characters 8-30:
   4 | (source (gitlab org/proj/repo))
               ^^^^^^^^^^^^^^^^^^^^^^
-  Error: Gitlab organization repo is only available since version 3.17 of the
+  Error: GitLab organization repo is only available since version 3.17 of the
   dune language. Please update your dune-project file to have (lang dune 3.17).
   [1]
 

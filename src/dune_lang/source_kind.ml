@@ -112,7 +112,7 @@ module Host = struct
         | Gitlab _, [ user; repo ] ->
           Gitlab (User_repo { user; repo }), Some ((2, 8), name)
         | Gitlab _, [ org; proj; repo ] ->
-          Gitlab (Org_repo { org; proj; repo }), Some ((3, 17), "Gitlab organization repo")
+          Gitlab (Org_repo { org; proj; repo }), Some ((3, 17), "GitLab organization repo")
         | Gitlab _, _ ->
           User_error.raise
             ~loc
@@ -121,7 +121,7 @@ module Host = struct
           User_error.raise
             ~loc
             ~hints:
-              [ Pp.textf "The provided form '%s' is specific to Gitlab projects" str ]
+              [ Pp.textf "The provided form '%s' is specific to GitLab projects" str ]
             [ Pp.textf "%s repository must be of form user/repo" name ]
         | _, _ ->
           User_error.raise

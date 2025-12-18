@@ -325,7 +325,7 @@ implementations of virtual libraries. (@anmonteiro, #11248)
   the correct semantics for `(implicit_transitive_deps false)`.
   (#10644, fixes #9333, ocsigen/tyxml#274, #2733, #4963, @MA0100)
 
-- Add support for specifying Gitlab organization repositories in `source`
+- Add support for specifying GitLab organization repositories in `source`
   stanzas (#10766, fixes #6723, @H-ANSEN)
 
 - New option to control jsoo sourcemap generation in env and executable stanza

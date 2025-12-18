@@ -21,7 +21,7 @@ source
        - ``(github user/repo)``
      * - `Bitbucket <https://bitbucket.org>`_
        - ``(bitbucket user/repo)``
-     * - `Gitlab <https://gitlab.com>`_
+     * - `GitLab <https://gitlab.com>`_
        - | ``(gitlab user/repo)``
          | ``(gitlab organization/project/repo)`` *(New in 3.17)*
      * - `Sourcehut <https://sr.ht>`_

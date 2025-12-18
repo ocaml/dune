@@ -85,7 +85,7 @@ Test github forge.
   4 | (source (github org/proj/repo))
                       ^^^^^^^^^^^^^
   Error: Github repository must be of form user/repo
-  Hint: The provided form 'org/proj/repo' is specific to Gitlab projects
+  Hint: The provided form 'org/proj/repo' is specific to GitLab projects
   [1]
 
 Test bitbucket forge.

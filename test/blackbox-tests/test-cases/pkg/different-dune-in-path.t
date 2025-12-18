@@ -37,6 +37,8 @@ Make lockfiles for the packages.
   > (build
   >  (run dune build -p %{pkg-self:name} @install))
   > 
+  > (depends dune)
+  > 
   > (source
   >  (fetch
   >   (url $PWD/foo.tar)))
@@ -50,6 +52,8 @@ Make lockfiles for the packages.
   > (build
   >   ; Exercise that the dune exe can be located when it's launched by a subprocess.
   >  (run sh -c "dune build -p %{pkg-self:name} @install"))
+  > 
+  > (depends dune)
   > 
   > (source
   >  (fetch

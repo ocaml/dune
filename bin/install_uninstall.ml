@@ -34,7 +34,9 @@ let interpret_destdir ~destdir path =
 let get_dirs context ~prefix_from_command_line ~from_command_line =
   let open Fiber.O in
   let module Roots = Install.Roots in
-  let prefix_from_command_line = Option.map ~f:Path.of_string prefix_from_command_line in
+  let prefix_from_command_line =
+    Option.map ~f:Path.of_string_allow_outside_workspace prefix_from_command_line
+  in
   let+ roots =
     match prefix_from_command_line with
     | None -> Memo.run (Context.roots context)

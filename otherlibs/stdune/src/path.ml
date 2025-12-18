@@ -945,6 +945,15 @@ let of_filename_relative_to_initial_cwd fn =
   external_ (External.of_filename_relative_to_initial_cwd fn)
 ;;
 
+let of_string_allow_outside_workspace s =
+  if Filename.is_relative s
+  then (
+    match Local.L.relative_result Local.root (explode_path s) with
+    | Ok _ -> of_string s
+    | Error `Outside_the_workspace -> of_filename_relative_to_initial_cwd s)
+  else of_string s
+;;
+
 let to_absolute_filename t = Outside_build_dir.to_absolute_filename (local_or_external t)
 
 let external_of_local x ~root =

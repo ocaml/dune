@@ -107,7 +107,7 @@ But when lang dune is 3.3 or higher the warning becomes an error:
     -keep-locs))
   Leaving directory 'outer'
 
-  $ dune build --root=outer
+  $ dune build --trace=trace.json --root=outer
   Entering directory 'outer'
   Leaving directory 'outer'
   $ pat="\-o [./a-zA-Z_]\{1,\}.cmx"
@@ -116,6 +116,11 @@ But when lang dune is 3.3 or higher the warning becomes an error:
   -o .outer.eobjs/native/dune__exe__Outer.cmx
   $ grep "$pat" $log | sort | grep -n -E -o "\-w [^ ]+"
   1:-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
+
+  $ jq '.[] | select(.cat == "process") | .args |
+  >   select(.target_files and (.target_files | any(contains(".cmx")))) |
+  >   .process_args | .[index("-w") + 1]' trace.json
+  "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40"
 
 This is unexpected as vendored projects should be built according to their
 declared dune-project rather than the dune-project of the outer project.

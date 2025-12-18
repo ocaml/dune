@@ -110,12 +110,6 @@ But when lang dune is 3.3 or higher the warning becomes an error:
   $ dune build --trace=trace.json --root=outer
   Entering directory 'outer'
   Leaving directory 'outer'
-  $ pat="\-o [./a-zA-Z_]\{1,\}.cmx"
-  $ log=outer/_build/log
-  $ grep -o "$pat" $log | sort
-  -o .outer.eobjs/native/dune__exe__Outer.cmx
-  $ grep "$pat" $log | sort | grep -n -E -o "\-w [^ ]+"
-  1:-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
 
   $ jq '.[] | select(.cat == "process") | .args |
   >   select(.target_files and (.target_files | any(contains(".cmx")))) |

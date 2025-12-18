@@ -30,9 +30,9 @@ Our development process is as follows:
 - Substantial changes should be preceded by upfront design and planning,
   proportional to the scope and impact of the intended change.
   - This design should be reviewed by at least one other party.
-  - Github issues are an appropriate venue for most design discussions, but more
+  - GitHub issues are an appropriate venue for most design discussions, but more
     involved design work may warrant an RFC or ADR.
-- Github is the preferred venue for discussing architectural and design decisions.
+- GitHub is the preferred venue for discussing architectural and design decisions.
   Exchanges in meetings and chat are valuable, but we insist on deliberating and
   recording the what and why of our work in the persistent record of GitHub.
 - Changes are submitted via GitHub pull requests against the `main` branch.

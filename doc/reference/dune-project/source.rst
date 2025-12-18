@@ -17,7 +17,7 @@ source
 
      * - Service
        - Syntax
-     * - `Github <https://github.com>`_
+     * - `GitHub <https://github.com>`_
        - ``(github user/repo)``
      * - `Bitbucket <https://bitbucket.org>`_
        - ``(bitbucket user/repo)``

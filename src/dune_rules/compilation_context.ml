@@ -99,6 +99,7 @@ type t =
   ; melange_package_name : Lib_name.t option
   ; modes : Lib_mode.Map.Set.t
   ; bin_annot : bool
+  ; bin_annot_cms : bool
   ; loc : Loc.t option
   ; ocaml : Ocaml_toolchain.t
   ; for_ : Compilation_mode.t
@@ -126,6 +127,7 @@ let melange_package_name t = t.melange_package_name
 let implements t = t.implements
 let modes t = t.modes
 let bin_annot t = t.bin_annot
+let bin_annot_cms t = t.bin_annot_cms
 let context t = Super_context.context t.super_context
 let dep_graphs t = t.modules.dep_graphs
 let ocaml t = t.ocaml
@@ -160,6 +162,7 @@ let create
       ?parameters
       ?modes
       ?bin_annot
+      ?bin_annot_cms
       ?loc
       ?instances
       for_
@@ -209,6 +212,10 @@ let create
     match bin_annot with
     | Some b -> Memo.return b
     | None -> Env_stanza_db.bin_annot ~dir:(Obj_dir.dir obj_dir)
+  and+ bin_annot_cms =
+    match bin_annot_cms with
+    | Some b -> Memo.return b
+    | None -> Env_stanza_db.bin_annot_cms ~dir:(Obj_dir.dir obj_dir)
   in
   { super_context
   ; scope
@@ -230,6 +237,7 @@ let create
   ; melange_package_name
   ; modes
   ; bin_annot
+  ; bin_annot_cms
   ; loc
   ; ocaml
   ; instances
@@ -341,7 +349,7 @@ let for_plugin_executable t ~embed_in_plugin_libraries =
   { t with requires_link }
 ;;
 
-let without_bin_annot t = { t with bin_annot = false }
+let without_bin_annot t = { t with bin_annot = false; bin_annot_cms = false }
 let set_obj_dir t obj_dir = { t with obj_dir }
 let set_modes t ~modes = { t with modes }
 

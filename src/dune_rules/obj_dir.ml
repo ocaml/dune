@@ -594,6 +594,17 @@ module Module = struct
     obj_file t m ~kind:cmi_kind ~ext
   ;;
 
+  let cms_file t m ~(ml_kind : Ml_kind.t) ~cm_kind =
+    let file = Module.file m ~ml_kind in
+    let ext = Ml_kind.cms_ext ml_kind in
+    (* The .cms files are stored alongside .cmi files (in [byte_dir] for OCaml).
+       [Lib_mode.Cm_kind.cmi] ensures we look in the right directory:
+       - [Ocaml Cmi] -> [Ocaml Cmi] -> [byte_dir]
+       - [Ocaml Cmx] -> [Ocaml Cmi] -> [byte_dir] *)
+    let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
+    Option.map file ~f:(fun _ -> obj_file t m ~kind:cmi_kind ~ext)
+  ;;
+
   let odoc t m =
     let obj_name = Module.obj_name m in
     let basename = Module_name.Unique.artifact_filename obj_name ~ext:".odoc" in

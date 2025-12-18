@@ -262,35 +262,32 @@ end
 module Version = struct
   type t = int * int * int (* major * minor * patch *)
 
-  let of_string s : t option =
-    (* strip any suffix *)
-    let s =
-      match
-        String.findi s ~f:(function
-          | '+' | '-' | '~' -> true
-          | _ -> false)
-      with
-      | None -> s
-      | Some i -> String.take s i
-    in
-    try
-      match String.split s ~on:'.' with
-      | [ major; minor; patch ] ->
-        Some (int_of_string major, int_of_string minor, int_of_string patch)
-      | [ major; minor ] -> Some (int_of_string major, int_of_string minor, 0)
-      | _ -> None
-    with
-    | _ -> None
+  let regex =
+    let open Re in
+    seq
+      [ bos
+      ; rep1 digit |> group
+      ; char '.'
+      ; rep1 digit |> group
+      ; opt (seq [ char '.'; rep1 digit |> group ])
+      ]
+    |> compile
   ;;
 
-  let compare (ma1, mi1, pa1) (ma2, mi2, pa2) =
-    match Int.compare ma1 ma2 with
-    | Ordering.Eq ->
-      (match Int.compare mi1 mi2 with
-       | Ordering.Eq -> Int.compare pa1 pa2
-       | n -> n)
-    | n -> n
+  let of_string s : t option =
+    let open Option.O in
+    let* groups = Re.exec_opt regex s in
+    let* major = Int.of_string (Re.Group.get groups 1) in
+    let* minor = Int.of_string (Re.Group.get groups 2) in
+    let+ patch =
+      match Re.Group.get_opt groups 3 with
+      | None -> Some 0
+      | Some p -> Int.of_string p
+    in
+    major, minor, patch
   ;;
+
+  let compare = Tuple.T3.compare Int.compare Int.compare Int.compare
 
   let higher_than_310 version =
     match version with

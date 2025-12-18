@@ -54,5 +54,3 @@ Create ppx1, ppx2 and exe:
   $ touch project/exe/the_exe.ml
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root project ./exe/the_exe.exe
-  Entering directory 'project'
-  Leaving directory 'project'

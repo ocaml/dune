@@ -16,8 +16,6 @@
   > EOF
 
   $ dune build --root a
-  Entering directory 'a'
-  Leaving directory 'a'
 
   $ dune install --root a --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/a/META
@@ -39,8 +37,6 @@
   Leaving directory 'b'
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @runtest
-  Entering directory 'b'
-  Leaving directory 'b'
 
   $ rm a/CATME
   $ cat >a/CATME <<EOF
@@ -48,8 +44,6 @@
   > EOF
 
   $ dune build --root a
-  Entering directory 'a'
-  Leaving directory 'a'
 
   $ dune install --root a --prefix $PWD/prefix --display short
   Deleting $TESTCASE_ROOT/prefix/lib/a/META
@@ -65,8 +59,6 @@
   Leaving directory 'b'
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @runtest
-  Entering directory 'b'
-  Leaving directory 'b'
 
   $ cat >b/dune-project <<EOF
   > (lang dune 2.8)

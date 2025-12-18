@@ -1222,7 +1222,10 @@ let print_entering_message c =
 
        This is why Dune also prints such a message; this way people running Dune
        through such an editor will be able to use the "jump to error" feature of
-       their editor. *)
+       their editor.
+
+       We defer printing until there is actual output, so that silent builds
+       don't produce any noise. *)
     let dir =
       match Execution_env.inside_dune with
       | false -> cwd
@@ -1245,10 +1248,9 @@ let print_entering_message c =
               in
               loop ".." (Filename.dirname s)))
     in
-    Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ];
-    at_exit (fun () ->
-      flush stdout;
-      Console.print [ Pp.verbatim (sprintf "Leaving directory '%s'" dir) ]))
+    Console.set_prefix_and_suffix
+      ~prefix:(Pp.verbatimf "Entering directory '%s'" dir)
+      ~suffix:(Pp.verbatimf "Leaving directory '%s'" dir))
 ;;
 
 (* CR-someday rleshchinskiy: The split between `build` and `init` seems quite arbitrary,

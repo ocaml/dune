@@ -43,6 +43,16 @@ let print_blank_line () =
 
 let first_msg = ref true
 let separate_messages v = separate_messages_flag := v
+let pending_prefix = ref None
+let pending_suffix = ref None
+
+let set_prefix_and_suffix ~prefix ~suffix =
+  match !pending_prefix with
+  | Some _ -> Code_error.raise "set_prefix_and_suffix called twice" []
+  | None ->
+    pending_prefix := Some prefix;
+    pending_suffix := Some suffix
+;;
 
 (* If the [separate_messages = false], then [print_blank_line ()] does nothing.
    When [separate_messages = true], [print_blank_line ()] does nothing the
@@ -69,6 +79,11 @@ let print_blank_line () =
 
 let print_user_message msg =
   let (module M : Backend_intf.S) = !Backend.main in
+  (match !pending_prefix with
+   | Some pp ->
+     pending_prefix := None;
+     M.print_user_message (User_message.make [ pp ])
+   | None -> ());
   print_blank_line ();
   M.print_user_message msg
 ;;
@@ -89,6 +104,8 @@ let print_if_no_status_line line =
 let reset () =
   (* forget that [print_user_message] has ever been called *)
   first_msg := true;
+  pending_prefix := None;
+  pending_suffix := None;
   let (module M : Backend_intf.S) = !Backend.main in
   M.reset ()
 ;;
@@ -96,12 +113,19 @@ let reset () =
 let reset_flush_history () =
   (* forget that [print_user_message] has ever been called *)
   first_msg := true;
+  pending_prefix := None;
+  pending_suffix := None;
   let (module M : Backend_intf.S) = !Backend.main in
   M.reset_flush_history ()
 ;;
 
 let finish () =
   let (module M : Backend_intf.S) = !Backend.main in
+  (* Print suffix only if prefix was consumed (i.e., there was output) *)
+  (match !pending_prefix, !pending_suffix with
+   | None, Some pp -> M.print_user_message (User_message.make [ pp ])
+   | _ -> ());
+  pending_suffix := None;
   M.finish ()
 ;;
 

@@ -35,8 +35,6 @@ We setup an installed theory. Note that lib/coq/user-contrib doesn't exist yet,
 so this also tests that it won't be a problem.
 
   $ dune build --root global @install
-  Entering directory 'global'
-  Leaving directory 'global'
   $ dune install --root global --prefix=$PWD --display=short
   Installing $TESTCASE_ROOT/lib/global/META
   Installing $TESTCASE_ROOT/lib/global/dune-package
@@ -211,5 +209,3 @@ with the loadpath semantics of Coq.
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.vo
 
   $ dune build --root user
-  Entering directory 'user'
-  Leaving directory 'user'

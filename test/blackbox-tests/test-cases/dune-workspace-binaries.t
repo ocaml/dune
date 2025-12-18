@@ -21,7 +21,7 @@ a dune-workspace file:
   > EOF
 
   $ cat >test.sh <<EOF
-  > #!/bin/bash
+  > #!/bin/sh
   > echo "This is only a test."
   > EOF
 

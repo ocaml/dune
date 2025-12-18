@@ -419,56 +419,67 @@ The `dune-package` should list the different instantiations in the dependencies:
    (lib
     (META
      a/a.cmi
+     a/a.cmsi
      a/a.cmti
      a/a.mli
      a_impl/a_impl.a
      a_impl/a_impl.cma
      a_impl/a_impl.cmi
+     a_impl/a_impl.cms
      a_impl/a_impl.cmt
      a_impl/a_impl.cmx
      a_impl/a_impl.cmxa
      a_impl/a_impl.ml
      a_impl/a_impl__a_impl__.cmi
+     a_impl/a_impl__a_impl__.cms
      a_impl/a_impl__a_impl__.cmt
      a_impl/a_impl__a_impl__.cmx
      a_impl/a_impl__a_impl__.ml
      a_of_b/a_of_b.a
      a_of_b/a_of_b.cma
      a_of_b/a_of_b.cmi
+     a_of_b/a_of_b.cms
      a_of_b/a_of_b.cmt
      a_of_b/a_of_b.cmx
      a_of_b/a_of_b.cmxa
      a_of_b/a_of_b.ml
      a_of_b/a_of_b__a_of_b__.cmi
+     a_of_b/a_of_b__a_of_b__.cms
      a_of_b/a_of_b__a_of_b__.cmt
      a_of_b/a_of_b__a_of_b__.cmx
      a_of_b/a_of_b__a_of_b__.ml
      b/b.cmi
+     b/b.cmsi
      b/b.cmti
      b/b.mli
      b_impl/b_dep.ml
      b_impl/b_impl.a
      b_impl/b_impl.cma
      b_impl/b_impl.cmi
+     b_impl/b_impl.cms
      b_impl/b_impl.cmt
      b_impl/b_impl.cmx
      b_impl/b_impl.cmxa
      b_impl/b_impl.ml
      b_impl/b_impl__B_dep.cmi
+     b_impl/b_impl__B_dep.cms
      b_impl/b_impl__B_dep.cmt
      b_impl/b_impl__B_dep.cmx
      b_impl/b_impl__b_impl__.cmi
+     b_impl/b_impl__b_impl__.cms
      b_impl/b_impl__b_impl__.cmt
      b_impl/b_impl__b_impl__.cmx
      b_impl/b_impl__b_impl__.ml
      b_impl2/b_impl2.a
      b_impl2/b_impl2.cma
      b_impl2/b_impl2.cmi
+     b_impl2/b_impl2.cms
      b_impl2/b_impl2.cmt
      b_impl2/b_impl2.cmx
      b_impl2/b_impl2.cmxa
      b_impl2/b_impl2.ml
      b_impl2/b_impl2__b_impl2__.cmi
+     b_impl2/b_impl2__b_impl2__.cms
      b_impl2/b_impl2__b_impl2__.cmt
      b_impl2/b_impl2__b_impl2__.cmx
      b_impl2/b_impl2__b_impl2__.ml
@@ -476,6 +487,7 @@ The `dune-package` should list the different instantiations in the dependencies:
      lib_ab/lib_ab.a
      lib_ab/lib_ab.cma
      lib_ab/lib_ab.cmi
+     lib_ab/lib_ab.cms
      lib_ab/lib_ab.cmt
      lib_ab/lib_ab.cmx
      lib_ab/lib_ab.cmxa
@@ -484,24 +496,30 @@ The `dune-package` should list the different instantiations in the dependencies:
      lib_apply/lib_apply.a
      lib_apply/lib_apply.cma
      lib_apply/lib_apply.cmi
+     lib_apply/lib_apply.cms
      lib_apply/lib_apply.cmt
      lib_apply/lib_apply.cmx
      lib_apply/lib_apply.cmxa
      lib_apply/lib_apply.ml
      lib_apply/lib_apply__.cmi
+     lib_apply/lib_apply__.cms
      lib_apply/lib_apply__.cmt
      lib_apply/lib_apply__.cmx
      lib_apply/lib_apply__.ml
      lib_apply/lib_apply__F.cmi
+     lib_apply/lib_apply__F.cms
      lib_apply/lib_apply__F.cmt
      lib_apply/lib_apply__F.cmx
      lib_apply/lib_apply__X.cmi
+     lib_apply/lib_apply__X.cms
      lib_apply/lib_apply__X.cmt
      lib_apply/lib_apply__X.cmx
      lib_apply/lib_apply__Y.cmi
+     lib_apply/lib_apply__Y.cms
      lib_apply/lib_apply__Y.cmt
      lib_apply/lib_apply__Y.cmx
      lib_apply/lib_apply__Z.cmi
+     lib_apply/lib_apply__Z.cms
      lib_apply/lib_apply__Z.cmt
      lib_apply/lib_apply__Z.cmx
      lib_apply/x.ml
@@ -721,56 +739,67 @@ And all the required files should be installed:
   lib: [
     "_build/install/default/lib/project/META"
     "_build/install/default/lib/project/a/a.cmi" {"a/a.cmi"}
+    "_build/install/default/lib/project/a/a.cmsi" {"a/a.cmsi"}
     "_build/install/default/lib/project/a/a.cmti" {"a/a.cmti"}
     "_build/install/default/lib/project/a/a.mli" {"a/a.mli"}
     "_build/install/default/lib/project/a_impl/a_impl.a" {"a_impl/a_impl.a"}
     "_build/install/default/lib/project/a_impl/a_impl.cma" {"a_impl/a_impl.cma"}
     "_build/install/default/lib/project/a_impl/a_impl.cmi" {"a_impl/a_impl.cmi"}
+    "_build/install/default/lib/project/a_impl/a_impl.cms" {"a_impl/a_impl.cms"}
     "_build/install/default/lib/project/a_impl/a_impl.cmt" {"a_impl/a_impl.cmt"}
     "_build/install/default/lib/project/a_impl/a_impl.cmx" {"a_impl/a_impl.cmx"}
     "_build/install/default/lib/project/a_impl/a_impl.cmxa" {"a_impl/a_impl.cmxa"}
     "_build/install/default/lib/project/a_impl/a_impl.ml" {"a_impl/a_impl.ml"}
     "_build/install/default/lib/project/a_impl/a_impl__a_impl__.cmi" {"a_impl/a_impl__a_impl__.cmi"}
+    "_build/install/default/lib/project/a_impl/a_impl__a_impl__.cms" {"a_impl/a_impl__a_impl__.cms"}
     "_build/install/default/lib/project/a_impl/a_impl__a_impl__.cmt" {"a_impl/a_impl__a_impl__.cmt"}
     "_build/install/default/lib/project/a_impl/a_impl__a_impl__.cmx" {"a_impl/a_impl__a_impl__.cmx"}
     "_build/install/default/lib/project/a_impl/a_impl__a_impl__.ml" {"a_impl/a_impl__a_impl__.ml"}
     "_build/install/default/lib/project/a_of_b/a_of_b.a" {"a_of_b/a_of_b.a"}
     "_build/install/default/lib/project/a_of_b/a_of_b.cma" {"a_of_b/a_of_b.cma"}
     "_build/install/default/lib/project/a_of_b/a_of_b.cmi" {"a_of_b/a_of_b.cmi"}
+    "_build/install/default/lib/project/a_of_b/a_of_b.cms" {"a_of_b/a_of_b.cms"}
     "_build/install/default/lib/project/a_of_b/a_of_b.cmt" {"a_of_b/a_of_b.cmt"}
     "_build/install/default/lib/project/a_of_b/a_of_b.cmx" {"a_of_b/a_of_b.cmx"}
     "_build/install/default/lib/project/a_of_b/a_of_b.cmxa" {"a_of_b/a_of_b.cmxa"}
     "_build/install/default/lib/project/a_of_b/a_of_b.ml" {"a_of_b/a_of_b.ml"}
     "_build/install/default/lib/project/a_of_b/a_of_b__a_of_b__.cmi" {"a_of_b/a_of_b__a_of_b__.cmi"}
+    "_build/install/default/lib/project/a_of_b/a_of_b__a_of_b__.cms" {"a_of_b/a_of_b__a_of_b__.cms"}
     "_build/install/default/lib/project/a_of_b/a_of_b__a_of_b__.cmt" {"a_of_b/a_of_b__a_of_b__.cmt"}
     "_build/install/default/lib/project/a_of_b/a_of_b__a_of_b__.cmx" {"a_of_b/a_of_b__a_of_b__.cmx"}
     "_build/install/default/lib/project/a_of_b/a_of_b__a_of_b__.ml" {"a_of_b/a_of_b__a_of_b__.ml"}
     "_build/install/default/lib/project/b/b.cmi" {"b/b.cmi"}
+    "_build/install/default/lib/project/b/b.cmsi" {"b/b.cmsi"}
     "_build/install/default/lib/project/b/b.cmti" {"b/b.cmti"}
     "_build/install/default/lib/project/b/b.mli" {"b/b.mli"}
     "_build/install/default/lib/project/b_impl/b_dep.ml" {"b_impl/b_dep.ml"}
     "_build/install/default/lib/project/b_impl/b_impl.a" {"b_impl/b_impl.a"}
     "_build/install/default/lib/project/b_impl/b_impl.cma" {"b_impl/b_impl.cma"}
     "_build/install/default/lib/project/b_impl/b_impl.cmi" {"b_impl/b_impl.cmi"}
+    "_build/install/default/lib/project/b_impl/b_impl.cms" {"b_impl/b_impl.cms"}
     "_build/install/default/lib/project/b_impl/b_impl.cmt" {"b_impl/b_impl.cmt"}
     "_build/install/default/lib/project/b_impl/b_impl.cmx" {"b_impl/b_impl.cmx"}
     "_build/install/default/lib/project/b_impl/b_impl.cmxa" {"b_impl/b_impl.cmxa"}
     "_build/install/default/lib/project/b_impl/b_impl.ml" {"b_impl/b_impl.ml"}
     "_build/install/default/lib/project/b_impl/b_impl__B_dep.cmi" {"b_impl/b_impl__B_dep.cmi"}
+    "_build/install/default/lib/project/b_impl/b_impl__B_dep.cms" {"b_impl/b_impl__B_dep.cms"}
     "_build/install/default/lib/project/b_impl/b_impl__B_dep.cmt" {"b_impl/b_impl__B_dep.cmt"}
     "_build/install/default/lib/project/b_impl/b_impl__B_dep.cmx" {"b_impl/b_impl__B_dep.cmx"}
     "_build/install/default/lib/project/b_impl/b_impl__b_impl__.cmi" {"b_impl/b_impl__b_impl__.cmi"}
+    "_build/install/default/lib/project/b_impl/b_impl__b_impl__.cms" {"b_impl/b_impl__b_impl__.cms"}
     "_build/install/default/lib/project/b_impl/b_impl__b_impl__.cmt" {"b_impl/b_impl__b_impl__.cmt"}
     "_build/install/default/lib/project/b_impl/b_impl__b_impl__.cmx" {"b_impl/b_impl__b_impl__.cmx"}
     "_build/install/default/lib/project/b_impl/b_impl__b_impl__.ml" {"b_impl/b_impl__b_impl__.ml"}
     "_build/install/default/lib/project/b_impl2/b_impl2.a" {"b_impl2/b_impl2.a"}
     "_build/install/default/lib/project/b_impl2/b_impl2.cma" {"b_impl2/b_impl2.cma"}
     "_build/install/default/lib/project/b_impl2/b_impl2.cmi" {"b_impl2/b_impl2.cmi"}
+    "_build/install/default/lib/project/b_impl2/b_impl2.cms" {"b_impl2/b_impl2.cms"}
     "_build/install/default/lib/project/b_impl2/b_impl2.cmt" {"b_impl2/b_impl2.cmt"}
     "_build/install/default/lib/project/b_impl2/b_impl2.cmx" {"b_impl2/b_impl2.cmx"}
     "_build/install/default/lib/project/b_impl2/b_impl2.cmxa" {"b_impl2/b_impl2.cmxa"}
     "_build/install/default/lib/project/b_impl2/b_impl2.ml" {"b_impl2/b_impl2.ml"}
     "_build/install/default/lib/project/b_impl2/b_impl2__b_impl2__.cmi" {"b_impl2/b_impl2__b_impl2__.cmi"}
+    "_build/install/default/lib/project/b_impl2/b_impl2__b_impl2__.cms" {"b_impl2/b_impl2__b_impl2__.cms"}
     "_build/install/default/lib/project/b_impl2/b_impl2__b_impl2__.cmt" {"b_impl2/b_impl2__b_impl2__.cmt"}
     "_build/install/default/lib/project/b_impl2/b_impl2__b_impl2__.cmx" {"b_impl2/b_impl2__b_impl2__.cmx"}
     "_build/install/default/lib/project/b_impl2/b_impl2__b_impl2__.ml" {"b_impl2/b_impl2__b_impl2__.ml"}
@@ -778,6 +807,7 @@ And all the required files should be installed:
     "_build/install/default/lib/project/lib_ab/lib_ab.a" {"lib_ab/lib_ab.a"}
     "_build/install/default/lib/project/lib_ab/lib_ab.cma" {"lib_ab/lib_ab.cma"}
     "_build/install/default/lib/project/lib_ab/lib_ab.cmi" {"lib_ab/lib_ab.cmi"}
+    "_build/install/default/lib/project/lib_ab/lib_ab.cms" {"lib_ab/lib_ab.cms"}
     "_build/install/default/lib/project/lib_ab/lib_ab.cmt" {"lib_ab/lib_ab.cmt"}
     "_build/install/default/lib/project/lib_ab/lib_ab.cmx" {"lib_ab/lib_ab.cmx"}
     "_build/install/default/lib/project/lib_ab/lib_ab.cmxa" {"lib_ab/lib_ab.cmxa"}
@@ -786,24 +816,30 @@ And all the required files should be installed:
     "_build/install/default/lib/project/lib_apply/lib_apply.a" {"lib_apply/lib_apply.a"}
     "_build/install/default/lib/project/lib_apply/lib_apply.cma" {"lib_apply/lib_apply.cma"}
     "_build/install/default/lib/project/lib_apply/lib_apply.cmi" {"lib_apply/lib_apply.cmi"}
+    "_build/install/default/lib/project/lib_apply/lib_apply.cms" {"lib_apply/lib_apply.cms"}
     "_build/install/default/lib/project/lib_apply/lib_apply.cmt" {"lib_apply/lib_apply.cmt"}
     "_build/install/default/lib/project/lib_apply/lib_apply.cmx" {"lib_apply/lib_apply.cmx"}
     "_build/install/default/lib/project/lib_apply/lib_apply.cmxa" {"lib_apply/lib_apply.cmxa"}
     "_build/install/default/lib/project/lib_apply/lib_apply.ml" {"lib_apply/lib_apply.ml"}
     "_build/install/default/lib/project/lib_apply/lib_apply__.cmi" {"lib_apply/lib_apply__.cmi"}
+    "_build/install/default/lib/project/lib_apply/lib_apply__.cms" {"lib_apply/lib_apply__.cms"}
     "_build/install/default/lib/project/lib_apply/lib_apply__.cmt" {"lib_apply/lib_apply__.cmt"}
     "_build/install/default/lib/project/lib_apply/lib_apply__.cmx" {"lib_apply/lib_apply__.cmx"}
     "_build/install/default/lib/project/lib_apply/lib_apply__.ml" {"lib_apply/lib_apply__.ml"}
     "_build/install/default/lib/project/lib_apply/lib_apply__F.cmi" {"lib_apply/lib_apply__F.cmi"}
+    "_build/install/default/lib/project/lib_apply/lib_apply__F.cms" {"lib_apply/lib_apply__F.cms"}
     "_build/install/default/lib/project/lib_apply/lib_apply__F.cmt" {"lib_apply/lib_apply__F.cmt"}
     "_build/install/default/lib/project/lib_apply/lib_apply__F.cmx" {"lib_apply/lib_apply__F.cmx"}
     "_build/install/default/lib/project/lib_apply/lib_apply__X.cmi" {"lib_apply/lib_apply__X.cmi"}
+    "_build/install/default/lib/project/lib_apply/lib_apply__X.cms" {"lib_apply/lib_apply__X.cms"}
     "_build/install/default/lib/project/lib_apply/lib_apply__X.cmt" {"lib_apply/lib_apply__X.cmt"}
     "_build/install/default/lib/project/lib_apply/lib_apply__X.cmx" {"lib_apply/lib_apply__X.cmx"}
     "_build/install/default/lib/project/lib_apply/lib_apply__Y.cmi" {"lib_apply/lib_apply__Y.cmi"}
+    "_build/install/default/lib/project/lib_apply/lib_apply__Y.cms" {"lib_apply/lib_apply__Y.cms"}
     "_build/install/default/lib/project/lib_apply/lib_apply__Y.cmt" {"lib_apply/lib_apply__Y.cmt"}
     "_build/install/default/lib/project/lib_apply/lib_apply__Y.cmx" {"lib_apply/lib_apply__Y.cmx"}
     "_build/install/default/lib/project/lib_apply/lib_apply__Z.cmi" {"lib_apply/lib_apply__Z.cmi"}
+    "_build/install/default/lib/project/lib_apply/lib_apply__Z.cms" {"lib_apply/lib_apply__Z.cms"}
     "_build/install/default/lib/project/lib_apply/lib_apply__Z.cmt" {"lib_apply/lib_apply__Z.cmt"}
     "_build/install/default/lib/project/lib_apply/lib_apply__Z.cmx" {"lib_apply/lib_apply__Z.cmx"}
     "_build/install/default/lib/project/lib_apply/x.ml" {"lib_apply/x.ml"}

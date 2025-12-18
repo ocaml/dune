@@ -336,7 +336,8 @@ end = struct
       in
       let set_dir m = List.rev_map ~f:(fun (cm_kind, p) -> cm_dir m cm_kind, p) in
       let+ modules_impl =
-        let+ bin_annot = Env_stanza_db.bin_annot ~dir in
+        let+ bin_annot = Env_stanza_db.bin_annot ~dir
+        and+ bin_annot_cms = Env_stanza_db.bin_annot_cms ~dir in
         List.rev_concat_map installable_modules.impl ~f:(fun m ->
           let cmt_files =
             match bin_annot with
@@ -350,7 +351,19 @@ end = struct
                       condition
                       (kind, Obj_dir.Module.cmt_file obj_dir m ~ml_kind ~cm_kind:kind)))
           in
-          List.rev_append (common m) cmt_files |> set_dir m)
+          let cms_files =
+            match bin_annot_cms with
+            | false -> []
+            | true ->
+              List.rev_concat_map Ml_kind.all ~f:(fun ml_kind ->
+                List.rev_concat_map
+                  [ native || byte, Lib_mode.Cm_kind.Ocaml Cmi ]
+                  ~f:(fun (condition, kind) ->
+                    if_
+                      condition
+                      (kind, Obj_dir.Module.cms_file obj_dir m ~ml_kind ~cm_kind:kind)))
+          in
+          List.rev_append (common m) (List.rev_append cmt_files cms_files) |> set_dir m)
       in
       let modules_vlib =
         List.rev_concat_map installable_modules.vlib ~f:(fun m ->

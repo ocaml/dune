@@ -322,7 +322,7 @@ module Wait_for_file_to_appear = struct
     | [ file ] ->
       let file = Path.of_filename_relative_to_initial_cwd file in
       { file }
-    | _ -> raise (Arg.Bad (sprintf "1 argument must be provided"))
+    | _ -> raise (Arg.Bad "1 argument must be provided")
   ;;
 
   let run { file } =
@@ -357,6 +357,115 @@ module Exec_a = struct
   let () = register name of_args run
 end
 
+module Sed = struct
+  type io =
+    | Inplace of Path.t
+    | Stdio
+
+  type action =
+    | Subst of
+        { rex : Re.re
+        ; replacement : string
+        }
+    | Delete of Re.re
+
+  type t =
+    { io : io
+    ; action : action
+    }
+
+  let io = function
+    | Some p -> Inplace p
+    | None -> Stdio
+  ;;
+
+  let subst ?file ~rex ~replacement () =
+    let io = io file in
+    let action = Subst { rex; replacement } in
+    { io; action }
+  ;;
+
+  let delete ?file ~rex () =
+    let io = io file in
+    let action = Delete rex in
+    { io; action }
+  ;;
+
+  let run_action inputs = function
+    | Subst { rex; replacement } ->
+      List.map inputs ~f:(fun line ->
+        Re.Pcre.substitute ~rex ~subst:(fun _ -> replacement) line)
+    | Delete rex -> List.filter inputs ~f:(fun line -> not @@ Re.Pcre.pmatch ~rex line)
+  ;;
+
+  let run { io; action } =
+    let inputs, output =
+      match io with
+      | Inplace p ->
+        let inputs = p |> Io.read_file |> String.split_on_char ~sep:'\n' in
+        let output outputs =
+          let temp = p |> Path.to_string |> sprintf "%s.tmp" |> Path.of_string in
+          Io.write_lines temp outputs;
+          Unix.rename (Path.to_string temp) (Path.to_string p)
+        in
+        inputs, output
+      | Stdio ->
+        let inputs = Io.input_lines stdin in
+        let output outputs =
+          List.iter outputs ~f:(fun line ->
+            output_string stdout line;
+            output_char stdout '\n')
+        in
+        inputs, output
+    in
+    let outputs = run_action inputs action in
+    output outputs
+  ;;
+end
+
+module Run_sed (C : sig
+    val name : string
+    val of_args : string list -> Sed.t
+  end) =
+struct
+  let () = register C.name C.of_args Sed.run
+end
+
+module Subst = Run_sed (struct
+    let name = "subst"
+
+    let of_args = function
+      | pattern :: replacement :: optional ->
+        let rex = Re.Pcre.regexp pattern in
+        let file =
+          match optional with
+          | [] -> None
+          | [ filename ] -> Some (Path.of_filename_relative_to_initial_cwd filename)
+          | _ :: _ :: _ -> raise (Arg.Bad "Too many arguments")
+        in
+        Sed.subst ?file ~rex ~replacement ()
+      | _ -> raise (Arg.Bad "Required arguments are <pattern> <replacement> [file]")
+    ;;
+  end)
+
+module Delete = Run_sed (struct
+    let name = "delete"
+
+    let of_args = function
+      | pattern :: optional ->
+        let rex = Re.Pcre.regexp pattern in
+        Printexc.record_backtrace true;
+        let file =
+          match optional with
+          | [] -> None
+          | [ filename ] -> Some (Path.of_filename_relative_to_initial_cwd filename)
+          | _ :: _ :: _ -> raise (Arg.Bad "Too many arguments")
+        in
+        Sed.delete ?file ~rex ()
+      | _ -> raise (Arg.Bad "Required arguments are <pattern> [file]")
+    ;;
+  end)
+
 let () =
   let name, args =
     match Array.to_list Sys.argv with
@@ -368,7 +477,7 @@ let () =
   in
   match Table.find commands name with
   | None ->
-    Format.eprintf "No command %S name found" name;
+    Format.eprintf "No command named %S found" name;
     exit 1
   | Some run -> run args
 ;;

@@ -105,24 +105,6 @@
                 utop = osuper.utop.overrideAttrs {
                   dontGzipMan = true;
                 };
-                odoc-parser = osuper.odoc-parser.overrideAttrs (old: {
-                  version = "3.1.0";
-                  src = odoc-src;
-                  patches = [ ];
-                  postPatch = ''
-                    # Substitute version placeholder since we're building from source
-                    find . -type f -name "*.ml" -exec sed -i 's/%%VERSION%%/3.1.0/g' {} +
-                  '';
-                });
-                odoc = osuper.odoc.overrideAttrs (old: {
-                  version = "3.1.0";
-                  src = odoc-src;
-                  patches = [ ];
-                  postPatch = ''
-                    # Substitute version placeholder since we're building from source
-                    find . -type f -name "*.ml" -exec sed -i 's/%%VERSION%%/3.1.0/g' {} +
-                  '';
-                });
               }
             );
           };

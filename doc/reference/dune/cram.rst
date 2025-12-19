@@ -118,3 +118,14 @@ Cram
       inserted. The default behavior is to ``ignore`` them. Setting ``error``
       will make the test runner reject such conflicts and refuse to run the
       test.
+
+   .. describe:: (setup_scripts <files-list>)
+
+      .. versionadded:: 3.21
+
+      Determines the list of shell files that will be sourced before the
+      execution of every cram test this stanza is applied to. A single script
+      will not be sourced more than once, no matter how many times it is listed
+      in this field. The order of evaluation for these scripts is deterministic
+      but is left undefined, so it is not recommended that these scripts have
+      side effects.

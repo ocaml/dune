@@ -2,7 +2,6 @@ When populating the "deps" field of a lockfile, only packages which have locked
 versions compatible with the lockfile's package's dependency version
 constraints should be included.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ mkpkg a 0.0.1

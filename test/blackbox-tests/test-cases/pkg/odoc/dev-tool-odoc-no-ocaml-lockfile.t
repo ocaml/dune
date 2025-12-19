@@ -1,8 +1,6 @@
 Exercise the behaviour of "dune ocaml doc" when the lockdir
 doesn't contain a lockfile for the "ocaml" package.
 
-  $ . ../helpers.sh
-
   $ cat > dune-project <<EOF
   > (lang dune 3.16)
   > 

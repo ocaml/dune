@@ -1,7 +1,5 @@
 Test the error message when unzip is needed but not installed.
 
-  $ . ./helpers.sh
-
   $ make_lockdir
 
 Set up our fake decompressor binaries, they all just copy the file to the

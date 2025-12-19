@@ -1,6 +1,5 @@
 Package conflicts are ignored when dune-projects contains multiple conflicts
 
-  $ . ./helpers.sh
   $ mkrepo
   $ mkpkg bar
 

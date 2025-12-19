@@ -1,7 +1,5 @@
 Simple example of generating a lock file with Dune
 
-  $ . ../helpers.sh
-
 Helper shell function that generates an opam file for a package:
 
   $ emptypkg() {

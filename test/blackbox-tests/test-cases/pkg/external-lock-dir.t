@@ -1,7 +1,5 @@
 A lock directory which does not exist in the source tree:
 
-  $ . ./helpers.sh
-
   $ mkdir project
 
   $ make_lockdir

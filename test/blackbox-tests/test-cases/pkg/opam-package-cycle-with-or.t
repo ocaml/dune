@@ -6,7 +6,6 @@ cycle. We have the following packages:
 Now c depends either on a or on a fourth package d. Therefore there is a valid solution
 available that avoids a cycle.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ mkpkg a <<EOF

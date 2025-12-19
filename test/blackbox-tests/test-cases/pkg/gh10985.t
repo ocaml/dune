@@ -28,8 +28,6 @@ Now we set up a lock file with this package and then attempt to use it:
   > (lang dune 3.11)
   > EOF
 
-  $ . ../helpers.sh
-
   $ make_lockdir
   $ make_lockpkg mypkg <<EOF
   > (version 0.0.1)

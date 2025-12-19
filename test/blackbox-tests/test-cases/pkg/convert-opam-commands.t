@@ -1,4 +1,4 @@
-  $ . ./helpers.sh
+
   $ mkrepo
 
   $ mkpkg standard-dune <<EOF

@@ -1,7 +1,5 @@
 It's possible to include additional packages or constraints in workspace files:
 
-  $ . ./helpers.sh
-
   $ cat >dune-workspace <<EOF
   > (lang dune 3.11)
   > (lock_dir

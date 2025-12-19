@@ -1,4 +1,4 @@
-  $ . ./helpers.sh
+
   $ mkrepo
 
 Make a package with an extra-source field
@@ -51,7 +51,6 @@ The lockfile should contain the fetching of extra sources.
      (checksum
       sha256=8beda92f97cde6d4a55a836ca6dc9f860bb5f1a6b765b80be4594943288571cf))))
   (source (copy $TESTCASE_ROOT/source))
-
 
 The lockfile should contain the fetching of extra sources with md5 checksums.
 

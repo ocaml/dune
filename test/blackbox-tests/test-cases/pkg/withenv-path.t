@@ -1,8 +1,6 @@
 Demonstrate what happens if a user attempts to add to modify the PATH variable
 using the withenv action.
 
-  $ . ./helpers.sh
-
 This path is system-specific so we need to be able to remove it from the output.
   $ DUNE_PATH=$(dirname $(which dune))
 

@@ -1,7 +1,6 @@
 Test that we produce an error message when a non-local package depends on a
 local package.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

@@ -1,8 +1,6 @@
 The pin stanza allows us to define packages that are not available
 in any repository
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

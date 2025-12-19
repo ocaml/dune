@@ -1,6 +1,5 @@
 Test the error message when installing package that fails.
 
-  $ . ./helpers.sh
   $ make_lockdir
   $ export DUNE_DEBUG_PACKAGE_LOGS=0
 

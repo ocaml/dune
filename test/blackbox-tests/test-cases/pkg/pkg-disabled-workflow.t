@@ -10,7 +10,6 @@ This means that:
 3. This should work even when lock directories are present.
 4. Explicit settings should override auto-detection.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 First, create a dummy library package in a subdirectory that we can depend on:

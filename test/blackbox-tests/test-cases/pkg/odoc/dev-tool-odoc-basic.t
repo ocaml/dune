@@ -2,9 +2,6 @@ Test that the "dune ocaml doc" command causes odoc to be
 locked, built and run when the command is run from a dune project with
 a lockdir containing an "ocaml" lockfile.
 
-  $ . ../helpers.sh
-  $ . ./helpers.sh
-
   $ mkrepo
   $ make_mock_odoc_package
   $ mk_ocaml 5.2.0

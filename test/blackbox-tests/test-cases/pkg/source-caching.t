@@ -1,7 +1,5 @@
 This test demonstrates that fetching package sources should be cached
 
-  $ . ./helpers.sh
-
   $ make_lockdir
 
   $ tarball=source.tar

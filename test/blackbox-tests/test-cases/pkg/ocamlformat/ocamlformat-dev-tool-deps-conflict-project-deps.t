@@ -6,7 +6,6 @@ printer.1.0, and the project depends on a different version, printer.2.0.
 It shows those two do not conflict, and the dev-tools dependencies do not leak
 into the user build environment.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a fake OCamlFormat which depends on printer lib:

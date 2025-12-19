@@ -1,7 +1,5 @@
 We can pull multiple packages from a single source
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

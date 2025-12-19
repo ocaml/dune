@@ -1,8 +1,6 @@
 This test demonstrates a local package that's in the same conflict-class of a
 dependency.
 
-  $ . ./helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

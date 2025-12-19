@@ -3,7 +3,6 @@ gives a good user message rather. It is very likely that users will type
 foo.1.2.3 for a package version due to the convention in opam.
 In this case we could also hint at the correct syntax for dune-project files.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ mkpkg foo 1.2.3
   $ cat > dune-project <<EOF

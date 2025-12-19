@@ -1,8 +1,6 @@
 Exercise the "dune pkg enabled" command which checks whether package management
 should be used.
 
-  $ . ./helpers.sh
-
   $ mkrepo
 
   $ cat >dune-workspace <<EOF

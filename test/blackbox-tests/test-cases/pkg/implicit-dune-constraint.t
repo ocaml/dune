@@ -3,7 +3,6 @@ the dune version to match the version of dune being used to generate the
 constraint. On another hand, we ensure `dune` can be used as a declared
 dependency.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ test() {

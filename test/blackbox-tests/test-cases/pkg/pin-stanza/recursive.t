@@ -1,7 +1,5 @@
 Sources are traversed recursively (unlike pins)
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

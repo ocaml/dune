@@ -1,8 +1,5 @@
 Test that the ocamllsp dev tool can see the ocamlformat dev tool.
 
-  $ . ../helpers.sh
-  $ . ./helpers.sh
-
   $ mkrepo
   $ mkpkg ocaml 5.2.0
 

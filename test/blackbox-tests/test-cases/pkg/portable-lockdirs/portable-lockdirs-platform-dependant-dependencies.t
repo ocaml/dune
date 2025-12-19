@@ -1,6 +1,5 @@
 Test for a project whose dependencies are different depending on the platform.
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

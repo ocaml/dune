@@ -1,6 +1,5 @@
 Testing how the solver handles cycles in an opam repository.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ mkpkg a <<'EOF'

@@ -1,5 +1,5 @@
 (cram
- (deps helpers.sh)
+ (setup_scripts helpers.sh)
  (applies_to :whole_subtree))
 
 ;; issues with dev tool lock dirs in source

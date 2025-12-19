@@ -1,7 +1,4 @@
-  $ . ../helpers.sh
-
 Source helpers for creating another repo, etc.
-  $ . ./helpers.sh
 
 We setup a couple of different mock repositories. First, create
 mock-opam-repository with a couple of packages

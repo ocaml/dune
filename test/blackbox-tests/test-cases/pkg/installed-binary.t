@@ -1,7 +1,5 @@
 Test that installed binaries are visible in dependent packages
 
-  $ . ./helpers.sh
-
   $ make_lockdir
   $ make_lockpkg test <<EOF
   > (version 0.0.1)

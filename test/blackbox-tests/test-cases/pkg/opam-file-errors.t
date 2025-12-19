@@ -1,5 +1,5 @@
 Tests for error messages while reading package metadata from opam files
-  $ . ./helpers.sh
+
   $ mkrepo
   $ add_mock_repo_if_needed
 

@@ -1,5 +1,3 @@
-. ../helpers.sh
-
 dev_tool_lock_dir="_build/.dev-tools.locks/ocamlformat"
 
 make_fake_ocamlformat() {

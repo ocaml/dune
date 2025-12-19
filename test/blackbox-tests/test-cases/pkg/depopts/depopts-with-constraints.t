@@ -1,6 +1,5 @@
 We test how the solver chooses a solution for depopts with constraints.
 
-  $ . ../helpers.sh
   $ mkrepo
 
 We create a package "foo" that is the dependency of two packages "optional" and

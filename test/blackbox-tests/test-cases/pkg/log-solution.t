@@ -1,7 +1,6 @@
 Make sure the solution of the lock directory solver is written into the build
 log.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
   $ enable_pkg

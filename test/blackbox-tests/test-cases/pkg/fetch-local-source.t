@@ -1,6 +1,5 @@
 Test that dune can fetch local sources.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a local source archive:

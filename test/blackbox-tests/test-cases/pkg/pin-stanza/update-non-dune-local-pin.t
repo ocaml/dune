@@ -2,8 +2,6 @@ This demonstrates pinning a non-opam package and then modifying its sources.
 Whenever the sources are modified, dune should rebuild the package in the
 workspace where it's locked.
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

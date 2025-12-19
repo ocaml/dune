@@ -1,8 +1,6 @@
 Additional files overlaid on top of the source can be found in the
 %pkg.files/ directory:
 
-  $ . ./helpers.sh
-
   $ mkdir test-source
   $ touch test-source/foo
 

@@ -332,20 +332,23 @@ module Options_implied_by_dash_p = struct
   ;;
 
   let dash_p =
+    let dash_p_implies = [ "--release"; "--ignore-lock-dir"; "--only-packages" ] in
     Term.with_used_args
       Arg.(
         value
-        & alias_opt (fun s -> [ "--release"; "--ignore-lock-dir"; "--only-packages"; s ])
+        & alias_opt (fun s -> dash_p_implies @ [ s ])
         & info
             [ "p"; "for-release-of-packages" ]
             ~docs
             ~docv:"PACKAGES"
             ~doc:
               (Some
-                 "Shorthand for $(b,--release --only-packages PACKAGE). You must use \
-                  this option in your $(i,<package>.opam) files, in order to build only \
-                  what's necessary when your project contains multiple packages as well \
-                  as getting reproducible builds."))
+                 (sprintf
+                    "Shorthand for $(b,%s PACKAGE). You must use this option in your \
+                     $(i,<package>.opam) files, in order to build only what's necessary \
+                     when your project contains multiple packages as well as getting \
+                     reproducible builds."
+                    (String.concat ~sep:" " dash_p_implies))))
   ;;
 
   let term =

@@ -5,7 +5,7 @@ tools are in PATH.
   $ . ./helpers.sh
 
   $ mkrepo
-  $ mkpkg ocaml 5.2.0
+  $ mk_ocaml 5.2.0
   $ setup_ocamllsp_workspace
 
 Make a fake ocamllsp package that prints out the PATH variable:
@@ -17,15 +17,23 @@ Make a fake ocamllsp package that prints out the PATH variable:
   > ]
   > EOF
 
-  $ make_lockdir
-  $ make_lockpkg ocaml <<EOF
-  > (version 5.2.0)
+  $ cat > dune-project <<EOF
+  > (lang dune 3.16)
+  > 
+  > (package
+  >  (name foo)
+  >  (allow_empty)
+  >  (depends
+  >    (ocaml (= 5.2.0))))
   > EOF
+
+  $ dune build
 
 Confirm that each dev tool's bin directory is now in PATH:
   $ dune tools exec ocamllsp | tr : '\n' | grep '_build/_private/default/.dev-tool'
   Solution for _build/.dev-tools.locks/ocaml-lsp-server:
-  - ocaml.5.2.0
+  - ocaml-base-compiler.5.2.0
+  - ocaml-compiler.5.2.0
   - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'
   $TESTCASE_ROOT/_build/_private/default/.dev-tool/merlin/target/bin

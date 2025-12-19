@@ -164,11 +164,12 @@
           testBuildInputs =
             with pkgs;
             [
+              bc
               file
-              mercurial
-              unzip
-              perl
               jq
+              mercurial
+              perl
+              unzip
             ]
             ++ lib.optionals stdenv.isLinux [ strace ];
           testNativeBuildInputs =

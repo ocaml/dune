@@ -58,7 +58,7 @@ let is_compiler_and_toolchains_enabled name =
       ; Package_name.of_string "ocaml-compiler"
         (* The [ocaml-compiler] package is required to include all the
            packages that might install a compiler, starting from ocaml.5.3.0.
-        *)
+    *)
       ]
     in
     List.mem compiler_package_names name ~equal:Package_name.equal

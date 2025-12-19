@@ -10,8 +10,6 @@ Dune implements several different caches:
   can't be installed like regular packages, due to them not being relocatable.
 - The revision store is a git repository containing all revisions fetched via
   git.
-- The LMDB cache is a subcache of the revision store, caching expensive
-  git lookup operations.
 
 Their location is as follows:
 
@@ -24,15 +22,11 @@ Their location is as follows:
 +------------------+----------------+------------------------------------+-----------------------------------+
 | Revision store   | Enabled        | ``XDG_CACHE_HOME/dune/git-repo``   | ``DUNE_CACHE_ROOT/git-repo``      |
 +------------------+----------------+------------------------------------+-----------------------------------+
-| LMDB cache       | Disabled       | ``XDG_CACHE_HOME/dune/rev_store``  | ``DUNE_CACHE_ROOT/rev_store``     |
-+------------------+----------------+------------------------------------+-----------------------------------+
 
 .. note::
 
    On Windows, you can replace ``XDG_CACHE_HOME`` by ``%LOCALAPPDATA%\Microsoft\Windows\Temporary Internet Files``
 
-.. note::
-   It is in fact ``git-repo`` (with a dash) and ``rev_store`` (with an underline)
 
 .. TODO(diataxis) Above is reference material, below is explanation.
 

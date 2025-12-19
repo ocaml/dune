@@ -61,7 +61,7 @@ module Apply = struct
         let open Fiber.O in
         Rpc.Rpc_common.fire_request
           ~name:"promote_many"
-          ~wait:true
+          ~wait:false
           ~lock_held_by
           builder
           Dune_rpc_private.Procedures.Public.promote_many

@@ -9,7 +9,7 @@ module Session = Csexp_rpc.Session
 
 (* enable to debug process stdout/stderr *)
 let debug = false
-let () = if debug then Log.init ~file:Stderr ()
+let () = if debug then Log.init Stderr
 
 let dune_prog =
   lazy

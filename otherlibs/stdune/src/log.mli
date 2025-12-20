@@ -10,11 +10,7 @@ module File : sig
 end
 
 (** Initialise the log file *)
-val init : ?file:File.t -> unit -> unit
-
-(** Initialise this module with a disabled logger, i.e. swallowing error
-    messages. *)
-val init_disabled : unit -> unit
+val init : File.t -> unit
 
 (** Print the message only the log file (despite verbose mode) if it's set *)
 val log : (unit -> User_message.Style.t Pp.t list) -> unit

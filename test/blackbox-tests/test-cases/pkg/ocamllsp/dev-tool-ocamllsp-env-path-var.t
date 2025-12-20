@@ -16,7 +16,7 @@ Make a fake ocamllsp package that prints out the PATH variable:
 
   $ cat > dune-project <<EOF
   > (lang dune 3.16)
-  >
+  > 
   > (package
   >  (name foo)
   >  (allow_empty)

@@ -13,7 +13,7 @@ same version of the ocaml compiler as the code that it's analyzing.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.16)
-  >
+  > 
   > (package
   >  (name foo)
   >  (allow_empty)
@@ -44,7 +44,7 @@ We can re-run "dune tools exec ocamllsp" without relocking or rebuilding.
 Change the version of ocaml that the project depends on.
   $ cat > dune-project <<EOF
   > (lang dune 3.16)
-  >
+  > 
   > (package
   >  (name foo)
   >  (allow_empty)

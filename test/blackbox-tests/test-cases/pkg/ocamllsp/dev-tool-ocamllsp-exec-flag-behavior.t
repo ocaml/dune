@@ -1,12 +1,9 @@
 Test the behavior of "dune tools exec" with and without the
 DUNE_CONFIG__LOCK_DEV_TOOL flag.
 
-  $ . ../helpers.sh
-  $ . ./helpers.sh
-
   $ mkrepo
   $ make_mock_ocamllsp_package
-  $ mkpkg ocaml 5.2.0
+  $ mk_ocaml 5.2.0
 
   $ setup_ocamllsp_workspace
 
@@ -15,13 +12,12 @@ DUNE_CONFIG__LOCK_DEV_TOOL flag.
   > 
   > (package
   >  (name foo)
-  >  (allow_empty))
+  >  (allow_empty)
+  >  (depends
+  >    (ocaml (= 5.2.0))))
   > EOF
 
-  $ make_lockdir
-  $ make_lockpkg ocaml <<EOF
-  > (version 5.2.0)
-  > EOF
+  $ dune build
 
 Without the flag (default behavior), exec fails if tool is not installed:
   $ dune tools exec ocamllsp
@@ -32,7 +28,8 @@ Without the flag (default behavior), exec fails if tool is not installed:
 With DUNE_CONFIG__LOCK_DEV_TOOL=enabled, exec auto-installs and runs:
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune tools exec ocamllsp
   Solution for _build/.dev-tools.locks/ocaml-lsp-server:
-  - ocaml.5.2.0
+  - ocaml-base-compiler.5.2.0
+  - ocaml-compiler.5.2.0
   - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'
   hello from fake ocamllsp

@@ -1325,7 +1325,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string c.builder.build_dir);
   (* Once we have the build directory set, initialise the logging. We can't do
      this earlier, because the build log typically goes into [_build/log]. *)
-  Log.init () ~file:builder.log_file;
+  Log.init builder.log_file;
   (* We need to print this before reading the workspace file, so that the editor
      can interpret errors in the workspace file. *)
   print_entering_message c;

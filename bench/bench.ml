@@ -220,7 +220,7 @@ let format_results bench_results =
 ;;
 
 let () =
-  Log.init ~file:No_log_file ();
+  Log.init No_log_file;
   let dir = Temp.create Dir ~prefix:"dune" ~suffix:"bench" in
   Sys.chdir (Path.to_string dir);
   Path.as_external dir |> Option.value_exn |> Path.set_root;

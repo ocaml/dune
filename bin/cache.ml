@@ -46,7 +46,7 @@ let trim =
                            ~f:(fun (units, _) -> List.hd units)
                            Bytes_unit.conversion_table)))))
      in
-     Log.init_disabled ();
+     Log.init No_log_file;
      let open Result.O in
      match
        let+ goal =

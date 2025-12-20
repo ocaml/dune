@@ -9,7 +9,7 @@ executable in PATH is the one installed by dune as a dev tool.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.16)
-  >
+  > 
   > (package
   >  (name foo)
   >  (allow_empty)

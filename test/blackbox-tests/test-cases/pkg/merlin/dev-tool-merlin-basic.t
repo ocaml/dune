@@ -10,7 +10,7 @@ a lockdir containing an "ocaml" lockfile.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.16)
-  >
+  > 
   > (package
   >  (name foo)
   >  (allow_empty)

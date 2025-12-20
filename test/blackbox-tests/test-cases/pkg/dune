@@ -8,7 +8,8 @@
    (DUNE_DEBUG_PACKAGE_LOGS 1))))
 
 (cram
- (deps helpers.sh %{bin:git} ../git-helpers.sh)
+ (deps %{bin:git} ../git-helpers.sh)
+ (setup_scripts helpers.sh ../git-helpers.sh)
  (applies_to :whole_subtree))
 
 (cram

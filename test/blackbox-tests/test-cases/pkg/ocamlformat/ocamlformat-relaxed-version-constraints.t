@@ -1,7 +1,7 @@
 Check that dune can choose a version of ocamlformat with a suffix (e.g.
 0.24+foo) to satisfy a .ocamlformat config that specifies a matching version
 without the suffix.
-  $ . ./helpers.sh
+
   $ mkrepo
   $ make_project_with_dev_tool_lockdir
 

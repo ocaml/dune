@@ -1,6 +1,5 @@
 Exercises end to end, locking and building ocamlformat dev tool.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ make_fake_ocamlformat "0.26.2"

@@ -1,7 +1,6 @@
 Exercise dune solving projects with version constraints on dune that aren't
 satisfied by the currently-running dune.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

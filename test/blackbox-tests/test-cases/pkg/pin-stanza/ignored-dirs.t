@@ -1,7 +1,5 @@
 Pulling projects should respect ignored directories.
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

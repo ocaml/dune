@@ -1,5 +1,3 @@
-  $ . ../helpers.sh 
-
 If both make and gmake are available, we should prefer make.
 
 opam doesn't resolve make but rather runs make literally so it is up to whatever is in

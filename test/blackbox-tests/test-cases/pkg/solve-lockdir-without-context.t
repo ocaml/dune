@@ -1,7 +1,6 @@
 This test checks whether a custom lock dir can be created, without having to
 specify it in the context.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ mkpkg a <<EOF
   > EOF

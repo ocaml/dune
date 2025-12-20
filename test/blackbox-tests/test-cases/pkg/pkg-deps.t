@@ -1,7 +1,5 @@
 We should be able to specify (package ..) deps on locally built packages.
 
-  $ . ./helpers.sh
-
   $ cat >dune-project <<EOF
   > (lang dune 3.11)
   > EOF

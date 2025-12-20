@@ -1,7 +1,5 @@
 Testing the when action in lockfiles
 
-  $ . ./helpers.sh
-
   $ make_lockdir
 
 Case with a mix of uncoditional and conditional actions in a progn action

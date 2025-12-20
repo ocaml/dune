@@ -1,7 +1,6 @@
 If the dev-tool feature is enabled then "dune fmt" should invoke the "ocamlformat"
 executable from the dev-tool and not the one from PATH.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ make_fake_ocamlformat "0.26.2"

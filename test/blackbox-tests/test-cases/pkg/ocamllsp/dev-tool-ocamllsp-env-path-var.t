@@ -1,9 +1,6 @@
 Test that the ocamllsp dev tool executes in an environment where other dev
 tools are in PATH.
 
-  $ . ../helpers.sh
-  $ . ./helpers.sh
-
   $ mkrepo
   $ mk_ocaml 5.2.0
   $ setup_ocamllsp_workspace

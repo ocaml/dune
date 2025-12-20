@@ -1,5 +1,3 @@
-  $ . ../helpers.sh
-
 Here we test the translation and implementation of opam package variables.
 
 We echo each package variable. 

@@ -1,8 +1,6 @@
 We set the PATH with (exported_env ..) and this should be reflected when
 looking up binaries in the workspace.
 
-  $ . ./helpers.sh
-
   $ make_lockdir
 
   $ bin=foobarbin

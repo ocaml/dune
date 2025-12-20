@@ -1,7 +1,5 @@
 Test the error cases for invalid opam repositories
 
-  $ . ../helpers.sh
-
   $ cat >dune-project <<EOF
   > (lang dune 3.8)
   > (package

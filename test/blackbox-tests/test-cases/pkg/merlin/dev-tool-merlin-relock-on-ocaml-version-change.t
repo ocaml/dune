@@ -4,9 +4,6 @@ with the version of the ocaml compiler now in the project's
 lockdir. This is necessary because merlin must be compiled with the
 same version of the ocaml compiler as the code that it's analyzing.
 
-  $ . ../helpers.sh
-  $ . ./helpers.sh
-
   $ mkrepo
   $ make_mock_merlin_package
   $ mk_ocaml 5.2.0

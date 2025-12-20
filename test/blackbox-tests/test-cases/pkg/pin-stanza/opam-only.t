@@ -1,7 +1,5 @@
 We try to pull an opam package that isn't a dune project
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

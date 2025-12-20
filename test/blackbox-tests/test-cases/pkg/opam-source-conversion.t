@@ -1,7 +1,5 @@
 Test conversion of opam sources into lock dir package specifications
 
-  $ . ./helpers.sh
-
   $ mkrepo
 
   $ mkpkg testpkg <<EOF

@@ -1,6 +1,5 @@
 Demonstrate that we copy empty directories
 
-  $ . ./helpers.sh
   $ make_lockdir
 
   $ src=_foo

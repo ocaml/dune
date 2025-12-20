@@ -1,9 +1,6 @@
 Test that after evaling the output of 'dune tools env', the first ocamlmerlin
 executable in PATH is the one installed by dune as a dev tool.
 
-  $ . ../helpers.sh
-  $ . ./helpers.sh
-
   $ mkrepo
   $ make_mock_merlin_package
   $ mk_ocaml 5.2.0

@@ -1,6 +1,5 @@
 The solver should repsect the (conflicts) field of the (package) stanza.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ mkpkg foo 0.0.1
   $ mkpkg bar << EOF

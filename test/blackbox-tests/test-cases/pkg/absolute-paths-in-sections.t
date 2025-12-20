@@ -1,7 +1,5 @@
 Test that section pforms are substituted with absolute paths.
 
-  $ . ./helpers.sh
-
   $ make_lockdir
   $ make_lockpkg test <<EOF
   > (version 0.0.1)

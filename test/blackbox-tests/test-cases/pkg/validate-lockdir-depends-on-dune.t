@@ -1,6 +1,5 @@
 Reproduce internal error with dune pkg validate-lockdir in #11188.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ mkpkg a <<EOF
   > depends: [ "dune" ]

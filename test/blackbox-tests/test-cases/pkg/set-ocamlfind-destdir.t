@@ -1,6 +1,5 @@
 Test that the OCAMLFIND_DESTDIR environment variable is set when running
 install and build commands.
-  $ . ./helpers.sh
 
   $ make_lockdir
   $ make_lockpkg test <<'EOF'

@@ -1,8 +1,5 @@
 Test the special compiler version is picked up by ocamllsp.
 
-  $ . ../helpers.sh
-  $ . ./helpers.sh
-
   $ mkrepo
   $ make_mock_ocamllsp_package
   $ mk_ocaml 5.2.0

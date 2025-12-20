@@ -1,6 +1,5 @@
 The ocaml compiler needs to be marked inside the lock dir:
 
-  $ . ./helpers.sh
   $ mkrepo
 
 To mark it, we use `conflict-class: "ocaml-core-compiler"`

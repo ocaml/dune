@@ -2,8 +2,6 @@ Reproduce #10839.
 
 Dune file in OCaml syntax and a files directory should work
 
-  $ . ./helpers.sh
-
   $ make_lockdir
 
   $ make_lockpkg base-bytes <<EOF

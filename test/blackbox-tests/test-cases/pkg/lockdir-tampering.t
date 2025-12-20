@@ -2,7 +2,6 @@ Tests that dune can detect when the lockdir has diverged from the local package
 dependencies due to tampering with the lockdir. These are cases that won't be
 caught by checking the dependency hash.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ mkpkg a <<EOF
   > depends: [ "c" "d" ]

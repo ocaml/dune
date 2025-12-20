@@ -5,8 +5,6 @@ it's even worth checking for. What matters is that there are no cycles at the
 package level, the sources can contain a cycle, we just need to make sure we
 detect it and not descend into an infinite loop.
 
-  $ . ../helpers.sh
-
   $ mkdir a b
 
   $ cat >a/dune-project <<EOF

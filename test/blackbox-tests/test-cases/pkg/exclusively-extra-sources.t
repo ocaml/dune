@@ -1,6 +1,5 @@
 Test for packages with no source field but with extra_sources.
 
-  $ . ./helpers.sh
   $ make_lockdir
   $ make_lockpkg foo <<EOF
   > (version 1)

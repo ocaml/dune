@@ -1,7 +1,6 @@
 When installing a dev tool which already has a lockdir, detect the case where
 the tool's lockfile is absent from the lockdir and relock.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a fake ocamlformat package

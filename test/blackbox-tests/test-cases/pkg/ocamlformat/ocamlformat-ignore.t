@@ -1,6 +1,5 @@
 Make sure the format rules depends on ".ocamlformat-ignore" file when it exists.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ make_fake_ocamlformat "0.26.2"

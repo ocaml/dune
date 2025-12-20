@@ -1,8 +1,5 @@
 Test fetching from git
 
-  $ . ../git-helpers.sh
-  $ . ./helpers.sh
-
   $ mkdir somerepo
   $ cd somerepo
   $ git init --quiet

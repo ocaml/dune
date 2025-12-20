@@ -1,7 +1,5 @@
 Clarify the behavior when the `dune` in PATH is not the one used to start the build.
 
-  $ . ./helpers.sh
-
   $ make_test_package() {
   >   mkdir tmp
   >   cd tmp
@@ -60,7 +58,6 @@ Make lockfiles for the packages.
 
 Test that the project can be built normally.
   $ build_pkg foo
-
 
 Make a fake dune exe:
 

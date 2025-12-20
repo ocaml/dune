@@ -1,5 +1,3 @@
-  $ . ../helpers.sh
-
 Here we test the translation and implementation of global opam variables. OS specific
 variables can be found in `opam-var-os.t`.
 

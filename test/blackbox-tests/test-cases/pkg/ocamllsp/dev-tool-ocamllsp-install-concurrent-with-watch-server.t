@@ -1,8 +1,5 @@
 Test that ocamllsp can be installed while dune is running in watch mode.
 
-  $ . ../helpers.sh
-  $ . ./helpers.sh
-
   $ mkrepo
   $ make_mock_ocamllsp_package
   $ mkpkg ocaml 5.2.0

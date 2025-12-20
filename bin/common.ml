@@ -58,12 +58,6 @@ open struct
 end
 
 module Package = Dune_lang.Package
-
-module Let_syntax = struct
-  let ( let+ ) t f = Term.(const f $ t)
-  let ( and+ ) a b = Term.(const (fun x y -> x, y) $ a $ b)
-end
-
 open Let_syntax
 
 let copts_sect = "COMMON OPTIONS"

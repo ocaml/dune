@@ -82,11 +82,6 @@ val build_info : unit Cmdliner.Term.t
 
 val default_build_dir : string
 
-module Let_syntax : sig
-  val ( let+ ) : 'a Cmdliner.Term.t -> ('a -> 'b) -> 'b Cmdliner.Term.t
-  val ( and+ ) : 'a Cmdliner.Term.t -> 'b Cmdliner.Term.t -> ('a * 'b) Cmdliner.Term.t
-end
-
 (** [one_of term1 term2] allows options from [term1] or exclusively options from
     [term2]. If the user passes options from both terms, an error is reported. *)
 val one_of : 'a Cmdliner.Term.t -> 'a Cmdliner.Term.t -> 'a Cmdliner.Term.t

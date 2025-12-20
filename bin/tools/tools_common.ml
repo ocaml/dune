@@ -1,4 +1,3 @@
-open Dune_config
 open Import
 module Pkg_dev_tool = Dune_rules.Pkg_dev_tool
 
@@ -134,9 +133,9 @@ let exec_command dev_tool =
     (* CR-someday Alizter: document this option *)
     and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS" ~doc:None)) in
     let common, config = Common.init builder in
-    match Config.get Dune_rules.Compile_time.lock_dev_tools with
-    | `Enabled -> lock_build_and_run_dev_tool ~common ~config builder dev_tool ~args
-    | `Disabled ->
+    match Lazy.force Lock_dev_tool.is_enabled with
+    | true -> lock_build_and_run_dev_tool ~common ~config builder dev_tool ~args
+    | false ->
       if Path.exists exe_path
       then run_dev_tool (Common.root common) dev_tool ~args
       else

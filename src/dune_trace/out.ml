@@ -80,7 +80,7 @@ let finish t event =
     in
     let common =
       Chrome_trace.Event.common_fields
-        ?cat
+        ~cat:[ Category.to_string cat ]
         ~name
         ~ts:(Timestamp.of_float_seconds (Time.to_secs start))
         ()

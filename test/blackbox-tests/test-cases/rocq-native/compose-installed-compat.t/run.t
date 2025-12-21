@@ -42,7 +42,7 @@ so this also tests that it won't be a problem.
 
 
 Next we go into our Dune project and build it.
-  $ dune build --root A
+  $ dune build --trace-file trace.json --root A
   Entering directory 'A'
   Inductive hello : Set :=
       I : hello | am : hello | an : hello | install : hello | loc : hello.
@@ -50,20 +50,52 @@ Next we go into our Dune project and build it.
 
 Now we check the flags that were passed to coqdep and coqc:
 
-  $ tail -4 A/_build/log | head -2 | ../scrub_coq_args.sh
-  rocq dep
-  -boot
-  -R coq/theories Corelib
-  -Q $TESTCASE_ROOT/lib/coq/user-contrib/B B
-  -R . A -dyndep opt -vos a.v >
-  _build/default/.A.theory.d
-  rocq compile -q
-  -w -deprecated-native-compiler-option -native-output-dir .
-  -native-compiler on
-  -nI lib/rocq-runtime/kernel
-  -nI .
-  -boot
-  -R coq/theories Corelib
-  -Q $TESTCASE_ROOT/lib/coq/user-contrib/B B
-  -R . A
-  a.v
+  $ jq '.[] | select(.cat == "process" and (.args.process_args.[0] | IN ("compile", "dep"))) | {name, args: (.args.process_args | map(sub(".*/coq-core"; "coq-core")))}' trace.json
+  {
+    "name": "rocq",
+    "args": [
+      "dep",
+      "-boot",
+      "-R",
+      "$TESTCASE_ROOT/lib/coq/theories",
+      "Corelib",
+      "-Q",
+      "$TESTCASE_ROOT/lib/coq/user-contrib/B",
+      "B",
+      "-R",
+      ".",
+      "A",
+      "-dyndep",
+      "opt",
+      "-vos",
+      "a.v"
+    ]
+  }
+  {
+    "name": "rocq",
+    "args": [
+      "compile",
+      "-q",
+      "-w",
+      "-deprecated-native-compiler-option",
+      "-native-output-dir",
+      ".",
+      "-native-compiler",
+      "on",
+      "-nI",
+      "/home/runner/work/dune/dune/_opam/lib/rocq-runtime/kernel",
+      "-nI",
+      ".",
+      "-boot",
+      "-R",
+      "$TESTCASE_ROOT/lib/coq/theories",
+      "Corelib",
+      "-Q",
+      "$TESTCASE_ROOT/lib/coq/user-contrib/B",
+      "B",
+      "-R",
+      ".",
+      "A",
+      "a.v"
+    ]
+  }

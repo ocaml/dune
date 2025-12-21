@@ -75,14 +75,18 @@ let config ~version =
   in
   let open Chrome_trace in
   let ts = make_ts (Time.now ()) in
-  let common = Event.common_fields ~cat:[ "config" ] ~name:"config" ~ts () in
+  let common =
+    Event.common_fields ~cat:[ Category.to_string Config ] ~name:"config" ~ts ()
+  in
   Event.instant ~args common
 ;;
 
 let exit () =
   let open Chrome_trace in
   let ts = make_ts (Time.now ()) in
-  let common = Event.common_fields ~cat:[ "config" ] ~name:"exit" ~ts () in
+  let common =
+    Event.common_fields ~cat:[ Category.to_string Config ] ~name:"exit" ~ts ()
+  in
   Event.instant common
 ;;
 

@@ -76,6 +76,13 @@ let config ~version =
   Event.instant ~args common
 ;;
 
+let exit () =
+  let open Chrome_trace in
+  let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+  let common = Event.common_fields ~cat:[ "config" ] ~name:"exit" ~ts () in
+  Event.instant common
+;;
+
 let scheduler_idle () =
   let fields =
     let ts =

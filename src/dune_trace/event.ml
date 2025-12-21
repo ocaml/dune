@@ -147,11 +147,12 @@ let process
       | None -> Filename.basename prog
     in
     let ts = make_ts started_at in
-    Event.common_fields ~cat:(Category.to_string Process :: categories) ~name ~ts ()
+    Event.common_fields ~cat:[ Category.to_string Process ] ~name ~ts ()
   in
   let always =
     [ "process_args", `List (List.map process_args ~f:(fun arg -> `String arg))
     ; "pid", `Int (Pid.to_int pid)
+    ; "categories", `List (List.map categories ~f:Json.string)
     ]
   in
   let extended =

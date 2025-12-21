@@ -168,7 +168,6 @@
               file
               jq
               mercurial
-              perl
               unzip
               coreutils
               bc

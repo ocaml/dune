@@ -101,7 +101,7 @@ module Session = struct
   let create fd =
     Unix.set_nonblock fd;
     let id = Id.gen () in
-    Dune_trace.emit Rpc (fun () -> Dune_trace.Event.Rpc.session ~id:(Id.to_int id) Start);
+    Dune_trace.emit Rpc (fun () -> Dune_trace.Event.Rpc.session ~id:(Id.to_int id) `Start);
     let state =
       let size = 8192 in
       Open

@@ -7,7 +7,7 @@ let make_dur span = Timestamp.of_float_seconds (Time.Span.to_secs span)
 module Async = struct
   type data =
     { args : Chrome_trace.Event.args option
-    ; cat : string list option
+    ; cat : Category.t
     ; name : string
     }
 
@@ -21,7 +21,7 @@ module Async = struct
   let create_sandbox ~loc =
     { args = Some [ "loc", `String (Loc.to_file_colon_line loc) ]
     ; name = "create-sandbox"
-    ; cat = Some [ Category.to_string Sandbox ]
+    ; cat = Sandbox
     }
   ;;
 
@@ -32,7 +32,7 @@ module Async = struct
       | None -> args
       | Some c -> ("checksum", `String c) :: args
     in
-    { args = Some args; cat = Some [ Category.to_string Pkg ]; name = "fetch" }
+    { args = Some args; cat = Pkg; name = "fetch" }
   ;;
 end
 

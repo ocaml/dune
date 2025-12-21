@@ -85,6 +85,8 @@ let config ~version =
       ; "argv", `List (Array.to_list Sys.argv |> List.map ~f:Json.string)
       ; "env", `List (Unix.environment () |> Array.to_list |> List.map ~f:Json.string)
       ; "root", `String Path.(to_absolute_filename root)
+      ; "pid", `Int (Unix.getpid ())
+      ; "initial_cwd", Json.string Fpath.initial_cwd
       ]
     in
     match version with

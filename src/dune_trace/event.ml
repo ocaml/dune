@@ -1,6 +1,9 @@
 open Stdune
 module Timestamp = Chrome_trace.Event.Timestamp
 
+let make_ts ts = Timestamp.of_float_seconds (Time.to_secs ts)
+let make_dur span = Timestamp.of_float_seconds (Time.Span.to_secs span)
+
 module Async = struct
   type data =
     { args : Chrome_trace.Event.args option
@@ -38,11 +41,11 @@ type t = Chrome_trace.Event.t
 let scan_source ~name ~start ~stop ~dir =
   let module Event = Chrome_trace.Event in
   let module Timestamp = Event.Timestamp in
-  let dur = Time.diff stop start |> Time.Span.to_secs |> Timestamp.of_float_seconds in
+  let dur = make_dur (Time.diff stop start) in
   let common =
     Event.common_fields
       ~name:(name ^ ": " ^ Path.Source.to_string dir)
-      ~ts:(Timestamp.of_float_seconds (Time.to_secs start))
+      ~ts:(make_ts start)
       ()
   in
   let args = [ "dir", `String (Path.Source.to_string dir) ] in
@@ -52,7 +55,7 @@ let scan_source ~name ~start ~stop ~dir =
 let evalauted_rules ~rule_total =
   let open Chrome_trace in
   let args = [ "value", `Int rule_total ] in
-  let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+  let ts = make_ts (Time.now ()) in
   let common = Event.common_fields ~name:"evaluated_rules" ~ts () in
   Event.counter common args
 ;;
@@ -71,23 +74,21 @@ let config ~version =
     | Some v -> ("version", Stdune.Json.string v) :: args
   in
   let open Chrome_trace in
-  let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+  let ts = make_ts (Time.now ()) in
   let common = Event.common_fields ~cat:[ "config" ] ~name:"config" ~ts () in
   Event.instant ~args common
 ;;
 
 let exit () =
   let open Chrome_trace in
-  let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+  let ts = make_ts (Time.now ()) in
   let common = Event.common_fields ~cat:[ "config" ] ~name:"exit" ~ts () in
   Event.instant common
 ;;
 
 let scheduler_idle () =
   let fields =
-    let ts =
-      Chrome_trace.Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs)
-    in
+    let ts = make_ts (Time.now ()) in
     Chrome_trace.Event.common_fields ~name:"watch mode iteration" ~ts ()
   in
   (* the instant event allows us to separate build commands from
@@ -145,7 +146,7 @@ let process
       | Some n -> n
       | None -> Filename.basename prog
     in
-    let ts = Timestamp.of_float_seconds (Time.to_secs started_at) in
+    let ts = make_ts started_at in
     Event.common_fields ~cat:(Category.to_string Process :: categories) ~name ~ts ()
   in
   let always =
@@ -182,20 +183,15 @@ let process
       ]
   in
   let args = always @ extended in
-  let dur = Event.Timestamp.of_float_seconds (Time.Span.to_secs times.elapsed_time) in
+  let dur = make_dur times.elapsed_time in
   Event.complete ~args ~dur common
 ;;
 
 let persistent ~file ~module_ what ~start ~stop =
   let module Event = Chrome_trace.Event in
   let module Timestamp = Event.Timestamp in
-  let dur = Time.diff stop start |> Time.Span.to_secs |> Timestamp.of_float_seconds in
-  let common =
-    Event.common_fields
-      ~name:"db"
-      ~ts:(Timestamp.of_float_seconds (Time.to_secs start))
-      ()
-  in
+  let dur = make_dur (Time.diff stop start) in
+  let common = Event.common_fields ~name:"db" ~ts:(make_ts start) () in
   let args =
     [ "path", `String (Path.to_string file)
     ; "module", `String module_
@@ -222,7 +218,7 @@ module Rpc = struct
   let session ~id stage =
     let open Chrome_trace in
     let common =
-      let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+      let ts = make_ts (Time.now ()) in
       Event.common_fields ~ts ~name:"rpc_session" ()
     in
     let id = Chrome_trace.Id.create (`Int id) in
@@ -247,7 +243,7 @@ module Rpc = struct
       | `Notification -> args
       | `Request id -> ("request_id", to_json id) :: args
     in
-    let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+    let ts = make_ts (Time.now ()) in
     let common = Event.common_fields ~cat:[ Category.to_string Rpc ] ~ts ~name () in
     Event.async
       (Chrome_trace.Id.create (`Int id))
@@ -258,7 +254,7 @@ module Rpc = struct
 
   let packet_read ~id ~success ~error =
     let open Chrome_trace in
-    let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+    let ts = make_ts (Time.now ()) in
     let args =
       let base = [ "id", `Int id; "success", `Bool success ] in
       match error with
@@ -277,7 +273,7 @@ module Rpc = struct
 
   let packet_write ~id ~count =
     let open Chrome_trace in
-    let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+    let ts = make_ts (Time.now ()) in
     let args = [ "id", `Int id; "count", `Int count ] in
     let common =
       Event.common_fields
@@ -291,7 +287,7 @@ module Rpc = struct
 
   let accept ~success ~error =
     let open Chrome_trace in
-    let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+    let ts = make_ts (Time.now ()) in
     let args =
       let base = [ "success", `Bool success ] in
       match error with
@@ -306,7 +302,7 @@ module Rpc = struct
 
   let close ~id =
     let open Chrome_trace in
-    let ts = Time.now () |> Time.to_secs |> Event.Timestamp.of_float_seconds in
+    let ts = make_ts (Time.now ()) in
     let args = [ "id", `Int id ] in
     let common =
       Event.common_fields ~cat:[ Category.to_string Rpc; "session" ] ~name:"close" ~ts ()
@@ -318,7 +314,7 @@ end
 let gc () =
   let module Event = Chrome_trace.Event in
   let module Json = Chrome_trace.Json in
-  let ts = Time.now () |> Time.to_secs |> Event.Timestamp.of_float_seconds in
+  let ts = make_ts (Time.now ()) in
   let common = Event.common_fields ~cat:[ Category.to_string Gc ] ~name:"gc" ~ts () in
   let args =
     let stat = Gc.quick_stat () in
@@ -339,7 +335,7 @@ let gc () =
 let fd_count () =
   let module Event = Chrome_trace.Event in
   let module Json = Chrome_trace.Json in
-  let ts = Time.now () |> Time.to_secs |> Event.Timestamp.of_float_seconds in
+  let ts = make_ts (Time.now ()) in
   match Fd_count.get () with
   | Unknown -> None
   | This fds ->
@@ -351,7 +347,7 @@ let fd_count () =
 let promote src dst =
   let module Event = Chrome_trace.Event in
   let common =
-    let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+    let ts = make_ts (Time.now ()) in
     Event.common_fields ~cat:[ Category.to_string Promote ] ~name:"promote" ~ts ()
   in
   let args =
@@ -380,7 +376,7 @@ let json_of_alias { dir; name; recursive; contexts } =
 
 let resolve_targets targets aliases =
   let module Event = Chrome_trace.Event in
-  let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+  let ts = make_ts (Time.now ()) in
   let args =
     [ "targets", List.map targets ~f:(fun p -> `String (Path.to_string p))
     ; "aliases", List.map aliases ~f:json_of_alias
@@ -398,7 +394,7 @@ let resolve_targets targets aliases =
 
 let load_dir dir =
   let module Event = Chrome_trace.Event in
-  let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+  let ts = make_ts (Time.now ()) in
   let args = [ "dir", `String (Path.to_string dir) ] in
   let common =
     Event.common_fields ~cat:[ Category.to_string Debug ] ~name:"load-dir" ~ts ()

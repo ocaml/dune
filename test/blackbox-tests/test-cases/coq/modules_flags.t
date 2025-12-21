@@ -19,7 +19,7 @@ Reproducing test case for https://github.com/ocaml/dune/issues/12638.
   > EOF
 
   $ printFlags() {
-  > jq -f $jqScript trace.json
+  > dune trace cat | jq -f $jqScript
   > }
 
   $ cat > dune <<EOF
@@ -30,7 +30,7 @@ Reproducing test case for https://github.com/ocaml/dune/issues/12638.
   >   (bar (-w -deprecated-since-8.16))))
   > EOF
 
-  $ dune build --trace-file trace.json foo.vo
+  $ dune build foo.vo
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
@@ -45,7 +45,7 @@ Reproducing test case for https://github.com/ocaml/dune/issues/12638.
     "-deprecated-native-compiler-option"
   ]
 
-  $ dune build --trace-file trace.json bar.vo
+  $ dune build bar.vo
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
@@ -81,7 +81,7 @@ Reproducing test case for https://github.com/ocaml/dune/issues/12638.
   >   (bar (-w -deprecated-since-8.16))))
   > EOF
 
-  $ dune build --trace-file trace.json foo.vo
+  $ dune build foo.vo
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
@@ -91,7 +91,7 @@ Reproducing test case for https://github.com/ocaml/dune/issues/12638.
     "-w",
     "-deprecated-native-compiler-option"
   ]
-  $ dune build --trace-file trace.json bar.vo
+  $ dune build bar.vo
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:

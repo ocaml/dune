@@ -12,9 +12,9 @@ Test expanding variables in `(promote (into ..))`
   >   (with-stdout-to promoted (echo "Hello, world!"))))
   > EOF
 
-  $ dune build a/b/promoted --trace-file trace.json
+  $ dune build a/b/promoted
 
-  $ jq '.[] | select(.name == "promote") | .args' trace.json
+  $ dune trace cat | jq '.[] | select(.name == "promote") | .args'
   {
     "src": "_build/default/a/b/promoted",
     "dst": "another/promoted"

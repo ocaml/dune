@@ -8,8 +8,8 @@ Testing how timeout affects the digest:
 
 This test counts the occurances of the cram script in the log.
   $ check() {
-  > dune test --trace-file trace.json mytest.t
-  > jq '[ .[] | select(.cat == "process" and (.args.categories == ["cram"])) ] | length' trace.json
+  > dune test mytest.t
+  > dune trace cat | jq '[ .[] | select(.cat == "process" and (.args.categories == ["cram"])) ] | length'
   > }
 
 We can observe the test is run the first time:

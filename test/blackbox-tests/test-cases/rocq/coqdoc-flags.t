@@ -17,9 +17,9 @@ Testing the coqdoc flags field of the env stanza.
   > Definition a := 42.
   > EOF
 
-  $ dune build --trace-file trace.json @doc
+  $ dune build @doc
 
-  $ jq '.[] | select(.cat == "process" and .args.process_args.[0] == "doc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")' trace.json
+  $ dune trace cat | jq '.[] | select(.cat == "process" and .args.process_args.[0] == "doc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")'
   "doc"
   "-R"
   "coq/theories"

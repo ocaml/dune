@@ -1,6 +1,6 @@
 Testing coqdoc when composed with a boot library
 
-  $ dune build --trace-file trace.json A/A.html
+  $ dune build A/A.html
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
@@ -16,7 +16,7 @@ Testing coqdoc when composed with a boot library
 
 Dune should be passing '--coqlib' to coqdoc, but it doesn't. This is a bug.
 
-  $ jq -c '.[] | select(.name == "coqc" or .name == "coqdoc") | .args.process_args' trace.json
+  $ dune trace cat | jq -c '.[] | select(.name == "coqc" or .name == "coqdoc") | .args.process_args'
   ["--config"]
   ["-q","-w","-deprecated-native-compiler-option","-w","-native-compiler-disabled","-native-compiler","ondemand","-noinit","-boot","-R","Coq","Coq","Coq/Init/Prelude.v"]
   ["-q","-w","-deprecated-native-compiler-option","-w","-native-compiler-disabled","-native-compiler","ondemand","-boot","-R","Coq","Coq","Coq/mytheory.v"]

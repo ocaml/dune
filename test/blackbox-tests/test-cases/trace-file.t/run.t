@@ -1,9 +1,9 @@
   $ export DUNE_TRACE="process,gc"
-  $ dune build prog.exe --trace-file trace.json
+  $ dune build prog.exe
 
 This captures the commands that are being run:
 
-  $ jq '.[] | select(.cat == "process") | .args | del(.pid) | .prog |= sub(".*/"; "")' trace.json
+  $ dune trace cat | jq '.[] | select(.cat == "process") | .args | del(.pid) | .prog |= sub(".*/"; "")'
   {
     "process_args": [
       "-config"
@@ -114,7 +114,7 @@ This captures the commands that are being run:
 
 As well as data about the garbage collector:
 
-  $ jq '[ .[] | select(.cat == "gc") ] | .[0] | .args | keys' trace.json
+  $ dune trace cat | jq '[ .[] | select(.cat == "gc") ] | .[0] | .args | keys'
   [
     "compactions",
     "heap_words",

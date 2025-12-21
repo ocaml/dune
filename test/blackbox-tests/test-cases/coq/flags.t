@@ -17,10 +17,10 @@ Test case: default flags
   > EOF
 
   $ runFlags() {
-  > jq '.[] | select(.name == "coqc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")' trace.json
+  > dune trace cat | jq '.[] | select(.name == "coqc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")'
   > }
 
-  $ dune build foo.vo --trace-file trace.json
+  $ dune build foo.vo
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
@@ -93,7 +93,7 @@ TC: :standard
   > EOF
 
   $ rm _build/default/foo.vo
-  $ dune build --trace-file trace.json foo.vo
+  $ dune build foo.vo
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
@@ -165,7 +165,7 @@ TC: override :standard
   >  (flags ))
   > EOF
 
-  $ dune build --trace-file trace.json foo.vo
+  $ dune build foo.vo
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
@@ -236,7 +236,7 @@ TC: add to :standard
   >  (flags :standard -type-in-type))
   > EOF
 
-  $ dune build --trace-file trace.json foo.vo
+  $ dune build foo.vo
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
@@ -315,7 +315,7 @@ TC: extend in workspace + override standard
   > (env (dev (coq (flags -type-in-type))))
   > EOF
 
-  $ dune build --trace-file trace.json foo.vo
+  $ dune build foo.vo
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
@@ -386,7 +386,7 @@ TC: extend in workspace + override standard
   > (env (dev (coq (flags :standard -type-in-type))))
   > EOF
 
-  $ dune build --trace-file trace.json foo.vo
+  $ dune build foo.vo
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
@@ -460,7 +460,7 @@ TC: extend in dune (env) + override standard
   > EOF
 
   $ rm -rf _build/default/foo.vo
-  $ dune build --trace-file trace.json foo.vo
+  $ dune build foo.vo
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
@@ -533,7 +533,7 @@ TC: extend in dune (env) + standard
   > EOF
 
   $ rm -rf _build/default/foo.vo
-  $ dune build --trace-file trace.json foo.vo
+  $ dune build foo.vo
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
@@ -613,7 +613,7 @@ TC: extend in dune (env) + workspace + standard
   > EOF
 
   $ rm -rf _build/default/foo.vo
-  $ dune build --trace-file trace.json foo.vo
+  $ dune build foo.vo
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:

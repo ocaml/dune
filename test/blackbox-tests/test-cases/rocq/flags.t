@@ -18,8 +18,8 @@ Test case: default flags
 
   $ runFlags() {
   > dune clean
-  > dune build --trace-file trace.json foo.vo
-  > jq -c '.[] | select(.name == "rocq") | .args.process_args | .[] | sub(".*/coq/"; "coq/")' trace.json
+  > dune build foo.vo
+  > dune trace cat | jq -c '.[] | select(.name == "rocq") | .args.process_args | .[] | sub(".*/coq/"; "coq/")'
   > }
 
   $ runFlags
@@ -61,7 +61,6 @@ TC: :standard
   >  (flags :standard))
   > EOF
 
-  $ dune build --trace-file trace.json foo.vo
   $ runFlags
   "--config"
   "dep"

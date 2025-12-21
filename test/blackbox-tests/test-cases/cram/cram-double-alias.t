@@ -15,11 +15,11 @@ aliases that are being built together.
   >   $ echo foo
   > EOF
 
-  $ dune build --trace-file trace.json @this @runtest
+  $ dune build @this @runtest
   File "foo.t", line 1, characters 0-0:
   Error: Files _build/default/foo.t and _build/default/foo.t.corrected differ.
   [1]
 
 Here we make sure that the cram test is only run once
-  $ jq '[ .[] | select(.cat == "process" and (.args.categories == ["cram"])) ] | length' trace.json
+  $ dune trace cat | jq '[ .[] | select(.cat == "process" and (.args.categories == ["cram"])) ] | length'
   1

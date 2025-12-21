@@ -9,10 +9,10 @@ Test that targets aren't re-promoted if they are up to date.
   > EOF
 
   $ showPromotions() {
-  > jq '.[] | select(.name == "promote") | .args' trace.json || true
+  > dune trace cat | jq '.[] | select(.name == "promote") | .args' || true
   > }
 
-  $ dune build promoted --trace-file trace.json
+  $ dune build promoted
   $ showPromotions
   {
     "src": "_build/default/promoted",
@@ -23,7 +23,7 @@ Test that targets aren't re-promoted if they are up to date.
 
 Dune doesn't promote the file again if it's unchanged.
 
-  $ dune build promoted --trace-file trace.json
+  $ dune build promoted
   $ showPromotions
   $ cat promoted
   Hello, world!
@@ -31,7 +31,7 @@ Dune doesn't promote the file again if it's unchanged.
 Dune does promotes the file again if it's changed.
 
   $ echo hi > promoted
-  $ dune build promoted --trace-file trace.json
+  $ dune build promoted
   $ showPromotions
   {
     "src": "_build/default/promoted",
@@ -58,7 +58,7 @@ Now test behaviour for executables, which use artifact substitution.
   >   | None -> print_endline "Has no version info")
   > EOF
 
-  $ dune build hello.exe --trace-file trace.json
+  $ dune build hello.exe
 
   $ showPromotions
   {
@@ -74,12 +74,10 @@ Bug: Dune currently re-promotes versioned executables on every restart.
 
 # CR-someday amokhov: Fix this.
 
-  $ dune build hello.exe --trace-file trace.json
+  $ dune build hello.exe
 
   $ showPromotions
   {
     "src": "_build/default/hello.exe",
     "dst": "hello.exe"
   }
-
-  $ jq '.[] | select(.name == "promote") | .args'

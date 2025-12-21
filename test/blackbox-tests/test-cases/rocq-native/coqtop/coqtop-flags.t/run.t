@@ -1,8 +1,8 @@
 Testing that the correct flags are being passed to dune rocq top
 
 The flags passed to coqc:
-  $ dune build --trace-file trace.json
-  $ jq '.[] | select(.cat == "process" and (.args.process_args.[0] == "compile")) | .args.process_args | .[] | sub(".*/coq/theories"; "coq/theories") | sub(".*/rocq-runtime/"; "rocq-runtime/")' trace.json
+  $ dune build
+  $ dune trace cat | jq '.[] | select(.cat == "process" and (.args.process_args.[0] == "compile")) | .args.process_args | .[] | sub(".*/coq/theories"; "coq/theories") | sub(".*/rocq-runtime/"; "rocq-runtime/")'
   "compile"
   "-w"
   "-notation-overridden"

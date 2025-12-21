@@ -14,6 +14,7 @@ module Category : sig
     | Promote
     | Build
     | Debug
+    | Config
 
   val of_string : string -> t option
 end

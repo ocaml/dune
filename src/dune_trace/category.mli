@@ -11,6 +11,7 @@ type t =
   | Promote
   | Build
   | Debug
+  | Config
 
 val to_string : t -> string
 val of_string : string -> t option

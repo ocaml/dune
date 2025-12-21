@@ -1,10 +1,12 @@
+open Stdune
+
 (** An RPC handler which is abstract over the handling of the "Build" request
     type. The type argument allows instances to choose different
     representations of build targets. *)
 type 'build_arg t
 
 val create
-  :  lock_timeout:float option
+  :  lock_timeout:Time.Span.t option
   -> registry:[ `Add | `Skip ]
   -> root:string
   -> handle:(unit Dune_rpc_server.Handler.t -> unit)

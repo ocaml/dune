@@ -1280,7 +1280,7 @@ let build (root : Workspace_root.t) (builder : Builder.t) =
            in
            let lock_timeout =
              match builder.watch with
-             | Yes Passive -> Some 1.0
+             | Yes Passive -> Some (Time.Span.of_secs 1.0)
              | _ -> None
            in
            Dune_rpc_impl.Server.create

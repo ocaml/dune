@@ -1,3 +1,5 @@
+open Stdune
+
 (** Minimal bindings for fsevents on macos.
 
     We only bind to the subset of fsevents relevant to dune. *)
@@ -61,7 +63,7 @@ type t
 
 (** [create ~paths ~latency ~f] create a new watcher watching [paths], with
     debouncing based on [latency]. [f] is called for every new event *)
-val create : paths:string list -> latency:float -> f:(Event.t list -> unit) -> t
+val create : paths:string list -> latency:Time.Span.t -> f:(Event.t list -> unit) -> t
 
 (** [start t dq] will start listening for fsevents. *)
 val start : t -> Dispatch_queue.t -> unit

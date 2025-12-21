@@ -17,10 +17,20 @@ Testing the coqdoc flags field of the env stanza.
   > Definition a := 42.
   > EOF
 
-  $ dune build @doc
+  $ dune build --trace-file trace.json @doc
 
-  $ tail _build/log -n 1 | ./scrub_coq_args.sh | sed 's/.*rocq/rocq/'
-  rocq doc
-  -R coq/theories Corelib
-  -R . a --toc -toc-depth 2 --html -d a.html
-  foo.v
+  $ jq '.[] | select(.cat == "process" and .args.process_args.[0] == "doc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")' trace.json
+  "doc"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "a"
+  "--toc"
+  "-toc-depth"
+  "2"
+  "--html"
+  "-d"
+  "a.html"
+  "foo.v"

@@ -84,6 +84,7 @@ Dune should be able to find it too
       "-impl",
       "foo.ml"
     ],
+    "categories": [],
     "prog": "$TESTCASE_ROOT/notocamldep-foo",
     "dir": "_build/default.foo",
     "exit": 0,

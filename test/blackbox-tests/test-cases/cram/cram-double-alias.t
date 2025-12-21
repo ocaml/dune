@@ -21,5 +21,5 @@ aliases that are being built together.
   [1]
 
 Here we make sure that the cram test is only run once
-  $ jq '[ .[] | select(.cat == "process,cram") ] | length' trace.json
+  $ jq '[ .[] | select(.cat == "process" and (.args.categories == ["cram"])) ] | length' trace.json
   1

@@ -439,6 +439,8 @@ module Pkg = struct
     ; build_command : Build_command.t option
     ; install_command : Dune_lang.Action.t option
     ; depends : t list
+    ; depends_on_dune : bool
+      (* whether the package declares a dependency on Dune, even if Dune is stripped from [depends] *)
     ; depexts : Depexts.t list
     ; info : Pkg_info.t
     ; paths : Path.t Paths.t
@@ -1202,6 +1204,7 @@ module DB = struct
     type entry =
       { pkg : Pkg.t
       ; deps : dep list
+      ; has_dune_dep : bool
       ; pkg_digest : Pkg_digest.t
       }
 
@@ -1231,24 +1234,31 @@ module DB = struct
         Package.Name.Table.find_or_add cache pkg.info.name ~f:(fun name ->
           let seen_set = Package.Name.Set.add seen_set name in
           let seen_list = pkg :: seen_list in
-          let deps =
+          let provided, deps =
             Dune_pkg.Lock_dir.Conditional_choice.choose_for_platform pkg.depends ~platform
             |> Option.value ~default:[]
-            |> List.filter_map
+            |> List.partition_map
                  ~f:(fun { Dune_pkg.Lock_dir.Dependency.name; loc = dep_loc } ->
                    if Package.Name.Set.mem system_provided name
-                   then None
+                   then Left name
                    else (
                      let dep_pkg = Package.Name.Map.find_exn pkgs_by_name name in
                      let dep_entry = compute_entry dep_pkg ~seen_set ~seen_list in
-                     Some { dep_pkg; dep_loc; dep_pkg_digest = dep_entry.pkg_digest }))
+                     Right { dep_pkg; dep_loc; dep_pkg_digest = dep_entry.pkg_digest }))
+          in
+          let has_dune_dep =
+            (* CR-someday rgrinberg: no need to collect this list just to check
+               for one element. Also, it's not clear to me why we can't just
+               scan all the deps for dune. We're traversing the entire list
+               anyway *)
+            List.mem ~equal:Dune_lang.Package_name.equal provided Dune_pkg.Dune_dep.name
           in
           let pkg_digest =
             Pkg_digest.create
               pkg
               (List.map deps ~f:(fun { dep_pkg_digest; _ } -> dep_pkg_digest))
           in
-          { pkg; deps; pkg_digest })
+          { pkg; deps; has_dune_dep; pkg_digest })
       in
       Package.Name.Map.map
         pkgs_by_name
@@ -1271,8 +1281,8 @@ module DB = struct
        dependencies are identical as a sanity check. *)
     let union_check
           pkg_digest
-          ({ pkg = pkg_a; deps = deps_a; pkg_digest = _ } as entry)
-          { pkg = pkg_b; deps = deps_b; pkg_digest = _ }
+          ({ pkg = pkg_a; deps = deps_a; has_dune_dep = _; pkg_digest = _ } as entry)
+          { pkg = pkg_b; deps = deps_b; has_dune_dep = _; pkg_digest = _ }
       =
       if not (Pkg.equal (Pkg.remove_locs pkg_a) (Pkg.remove_locs pkg_b))
       then
@@ -1475,6 +1485,7 @@ end = struct
             ; enabled_on_platforms = _
             } as pkg
         ; deps
+        ; has_dune_dep
         ; pkg_digest = _
         } ->
       assert (Package.Name.equal pkg_digest.name info.name);
@@ -1589,6 +1600,7 @@ end = struct
         ; build_command
         ; install_command
         ; depends
+        ; depends_on_dune = has_dune_dep
         ; depexts
         ; paths
         ; write_paths
@@ -2126,6 +2138,10 @@ let files path =
   Dep.Set.of_source_files ~files ~empty_directories, files
 ;;
 
+let dune_dep =
+  lazy (Sys.executable_name |> Path.External.of_string |> Path.external_ |> Dep.file)
+;;
+
 let build_rule context_name ~source_deps (pkg : Pkg.t) =
   let+ build_action =
     let+ copy_action, build_action, install_action =
@@ -2233,10 +2249,14 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
     |> List.concat
     |> Action_builder.progn
   in
-  let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
   let open Action_builder.With_targets.O in
-  Action_builder.deps deps
-  |> Action_builder.with_no_targets
+  (let deps =
+     let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
+     match pkg.depends_on_dune with
+     | false -> deps
+     | true -> Dep.Set.add deps (Lazy.force dune_dep)
+   in
+   Action_builder.deps deps |> Action_builder.with_no_targets)
   (* TODO should we add env deps on these? *)
   >>> add_env (Pkg.exported_env pkg) build_action
   |> Action_builder.With_targets.add_directories

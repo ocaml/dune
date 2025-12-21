@@ -35,6 +35,8 @@ Make lockfiles for the packages.
   > (build
   >  (run dune build -p %{pkg-self:name} @install))
   > 
+  > (depends dune)
+  > 
   > (source
   >  (fetch
   >   (url $PWD/foo.tar)))
@@ -48,6 +50,8 @@ Make lockfiles for the packages.
   > (build
   >   ; Exercise that the dune exe can be located when it's launched by a subprocess.
   >  (run sh -c "dune build -p %{pkg-self:name} @install"))
+  > 
+  > (depends dune)
   > 
   > (source
   >  (fetch
@@ -88,7 +92,6 @@ Call Dune with an absolute PATH as argv[0]:
   $ PATH=$fakepath $DUNE build "$pkg_root/$foo_digest/target/"
   Fake dune! (args: build -p foo @install)
   $ PATH=$fakepath $DUNE build "$pkg_root/$bar_digest/target/"
-  Fake dune! (args: build -p bar @install)
 
 Make sure that fake dune is not picked up when dune is called with argv[0] = "dune":
 

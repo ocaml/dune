@@ -1,10 +1,35 @@
 open Stdune
-module Id = Chrome_trace.Id
-module Event = Chrome_trace.Event
-module Timestamp = Event.Timestamp
 
-let make_ts ts = Timestamp.of_float_seconds (Time.to_secs ts)
-let make_dur span = Timestamp.of_float_seconds (Time.Span.to_secs span)
+module Event = struct
+  module Id = Chrome_trace.Id
+  module Event = Chrome_trace.Event
+
+  let make_ts ts = Event.Timestamp.of_float_seconds (Time.to_secs ts)
+  let make_dur span = Event.Timestamp.of_float_seconds (Time.Span.to_secs span)
+
+  type args = Event.args
+  type t = Event.t
+
+  let complete ?args ~name ~start ~dur cat =
+    Event.common_fields ~ts:(make_ts start) ~name ~cat:[ Category.to_string cat ] ()
+    |> Event.complete ~dur:(make_dur dur) ?args
+  ;;
+
+  let instant ?args ~name ts cat =
+    Event.common_fields ~ts:(make_ts ts) ~name ~cat:[ Category.to_string cat ] ()
+    |> Event.instant ?args
+  ;;
+
+  let async ?args id ~name ts stage cat =
+    Event.common_fields ~cat:[ Category.to_string cat ] ~ts:(make_ts ts) ~name ()
+    |> Event.async
+         ?args
+         id
+         (match stage with
+          | `Start -> Start
+          | `Stop -> End)
+  ;;
+end
 
 module Async = struct
   type data =
@@ -41,25 +66,19 @@ end
 type t = Event.t
 
 let scan_source ~name ~start ~stop ~dir =
-  let dur = make_dur (Time.diff stop start) in
-  let common =
-    Event.common_fields
-      ~name:(name ^ ": " ^ Path.Source.to_string dir)
-      ~ts:(make_ts start)
-      ()
-  in
+  let dur = Time.diff stop start in
   let args = [ "dir", `String (Path.Source.to_string dir) ] in
-  Event.complete common ~args ~dur
+  Event.complete ~name ~start ~args ~dur Rules
 ;;
 
 let evalauted_rules ~rule_total =
+  let now = Time.now () in
   let args = [ "value", `Int rule_total ] in
-  let ts = make_ts (Time.now ()) in
-  let common = Event.common_fields ~name:"evaluated_rules" ~ts () in
-  Event.counter common args
+  Event.instant ~name:"evalauted_rules" ~args now Rules
 ;;
 
 let config ~version =
+  let now = Time.now () in
   let args =
     let args =
       [ "build_dir", `String (Path.Build.to_string Path.Build.root)
@@ -72,29 +91,17 @@ let config ~version =
     | None -> args
     | Some v -> ("version", Stdune.Json.string v) :: args
   in
-  let ts = make_ts (Time.now ()) in
-  let common =
-    Event.common_fields ~cat:[ Category.to_string Config ] ~name:"config" ~ts ()
-  in
-  Event.instant ~args common
+  Event.instant ~args ~name:"config" now Config
 ;;
 
 let exit () =
-  let ts = make_ts (Time.now ()) in
-  let common =
-    Event.common_fields ~cat:[ Category.to_string Config ] ~name:"exit" ~ts ()
-  in
-  Event.instant common
+  let now = Time.now () in
+  Event.instant ~name:"exit" now Config
 ;;
 
 let scheduler_idle () =
-  let fields =
-    let ts = make_ts (Time.now ()) in
-    Event.common_fields ~name:"watch mode iteration" ~ts ()
-  in
-  (* the instant event allows us to separate build commands from
-       different iterations of the watch mode in the event viewer *)
-  Event.instant ~scope:Global fields
+  let now = Time.now () in
+  Event.instant ~name:"watch mode iteration" now Scheduler
 ;;
 
 module Exit_status = struct
@@ -140,57 +147,53 @@ let process
       ~stderr
       ~(times : Proc.Times.t)
   =
-  let common =
-    let name =
-      match name with
-      | Some n -> n
-      | None -> Filename.basename prog
-    in
-    let ts = make_ts started_at in
-    Event.common_fields ~cat:[ Category.to_string Process ] ~name ~ts ()
+  let name =
+    match name with
+    | Some n -> n
+    | None -> Filename.basename prog
   in
-  let always =
-    [ "process_args", `List (List.map process_args ~f:(fun arg -> `String arg))
-    ; "pid", `Int (Pid.to_int pid)
-    ; "categories", `List (List.map categories ~f:Json.string)
-    ]
-  in
-  let extended =
-    let exit =
-      match exit with
-      | Ok n -> [ "exit", `Int n ]
-      | Error (Exit_status.Failed n) ->
-        [ "exit", `Int n; "error", `String (sprintf "exited with code %d" n) ]
-      | Error (Signaled s) ->
-        [ "exit", `Int (Signal.to_int s)
-        ; "error", `String (sprintf "got signal %s" (Signal.name s))
-        ]
-    in
-    let output name s =
-      match s with
-      | "" -> []
-      | s -> [ name, `String s ]
-    in
-    List.concat
-      [ [ "prog", `String prog
-        ; "dir", `String (Option.map ~f:Path.to_string dir |> Option.value ~default:".")
-        ]
-      ; exit
-      ; (match targets with
-         | None -> []
-         | Some targets -> args_of_targets targets)
-      ; output "stdout" stdout
-      ; output "stderr" stderr
+  let args =
+    let always =
+      [ "process_args", `List (List.map process_args ~f:(fun arg -> `String arg))
+      ; "pid", `Int (Pid.to_int pid)
+      ; "categories", `List (List.map categories ~f:Json.string)
       ]
+    in
+    let extended =
+      let exit =
+        match exit with
+        | Ok n -> [ "exit", `Int n ]
+        | Error (Exit_status.Failed n) ->
+          [ "exit", `Int n; "error", `String (sprintf "exited with code %d" n) ]
+        | Error (Signaled s) ->
+          [ "exit", `Int (Signal.to_int s)
+          ; "error", `String (sprintf "got signal %s" (Signal.name s))
+          ]
+      in
+      let output name s =
+        match s with
+        | "" -> []
+        | s -> [ name, `String s ]
+      in
+      List.concat
+        [ [ "prog", `String prog
+          ; "dir", `String (Option.map ~f:Path.to_string dir |> Option.value ~default:".")
+          ]
+        ; exit
+        ; (match targets with
+           | None -> []
+           | Some targets -> args_of_targets targets)
+        ; output "stdout" stdout
+        ; output "stderr" stderr
+        ]
+    in
+    always @ extended
   in
-  let args = always @ extended in
-  let dur = make_dur times.elapsed_time in
-  Event.complete ~args ~dur common
+  Event.complete ~args ~start:started_at ~dur:times.elapsed_time ~name Process
 ;;
 
 let persistent ~file ~module_ what ~start ~stop =
-  let dur = make_dur (Time.diff stop start) in
-  let common = Event.common_fields ~name:"db" ~ts:(make_ts start) () in
+  let dur = Time.diff stop start in
   let args =
     [ "path", `String (Path.to_string file)
     ; "module", `String module_
@@ -201,26 +204,19 @@ let persistent ~file ~module_ what ~start ~stop =
            | `Load -> "load") )
     ]
   in
-  Event.complete common ~args ~dur
+  Event.complete ~name:"db" ~args ~start ~dur Persistent
 ;;
 
 module Rpc = struct
   type stage =
-    | Start
-    | Stop
-
-  let async_kind_of_stage = function
-    | Start -> Event.Start
-    | Stop -> End
-  ;;
+    [ `Start
+    | `Stop
+    ]
 
   let session ~id stage =
-    let common =
-      let ts = make_ts (Time.now ()) in
-      Event.common_fields ~ts ~name:"rpc_session" ()
-    in
-    let id = Id.create (`Int id) in
-    Event.async id (async_kind_of_stage stage) common
+    let now = Time.now () in
+    let id = Event.Id.create (`Int id) in
+    Event.async id now stage ~name:"rpc_session" Rpc
   ;;
 
   let rec to_json : Sexp.t -> Json.t = function
@@ -229,72 +225,58 @@ module Rpc = struct
   ;;
 
   let message what ~meth_ ~id stage =
+    let now = Time.now () in
     let name =
       match what with
       | `Notification -> "notification"
       | `Request _ -> "request"
     in
-    let args = [ "meth", `String meth_ ] in
     let args =
+      let args = [ "meth", `String meth_ ] in
       match what with
       | `Notification -> args
       | `Request id -> ("request_id", to_json id) :: args
     in
-    let ts = make_ts (Time.now ()) in
-    let common = Event.common_fields ~cat:[ Category.to_string Rpc ] ~ts ~name () in
-    Event.async (Id.create (`Int id)) ~args (async_kind_of_stage stage) common
+    Event.async (Event.Id.create (`Int id)) ~args ~name now stage Rpc
   ;;
 
   let packet_read ~id ~success ~error =
-    let ts = make_ts (Time.now ()) in
+    let now = Time.now () in
     let args =
       let base = [ "id", `Int id; "success", `Bool success ] in
       match error with
       | None -> base
       | Some err -> ("error", `String err) :: base
     in
-    let common =
-      Event.common_fields ~cat:[ Category.to_string Rpc ] ~name:"packet_read" ~ts ()
-    in
-    Event.instant ~args common
+    Event.instant ~args ~name:"packet_read" now Rpc
   ;;
 
   let packet_write ~id ~count =
-    let ts = make_ts (Time.now ()) in
+    let now = Time.now () in
     let args = [ "id", `Int id; "count", `Int count ] in
-    let common =
-      Event.common_fields ~cat:[ Category.to_string Rpc ] ~name:"packet_write" ~ts ()
-    in
-    Event.instant ~args common
+    Event.instant ~name:"packet_write" ~args now Rpc
   ;;
 
   let accept ~success ~error =
-    let ts = make_ts (Time.now ()) in
+    let now = Time.now () in
     let args =
       let base = [ "success", `Bool success ] in
       match error with
       | None -> base
       | Some err -> ("error", `String err) :: base
     in
-    let common =
-      Event.common_fields ~cat:[ Category.to_string Rpc ] ~name:"accept" ~ts ()
-    in
-    Event.instant ~args common
+    Event.instant ~args ~name:"accept" now Rpc
   ;;
 
   let close ~id =
-    let ts = make_ts (Time.now ()) in
+    let now = Time.now () in
     let args = [ "id", `Int id ] in
-    let common =
-      Event.common_fields ~cat:[ Category.to_string Rpc ] ~name:"close" ~ts ()
-    in
-    Event.instant ~args common
+    Event.instant ~args ~name:"close" now Rpc
   ;;
 end
 
 let gc () =
-  let ts = make_ts (Time.now ()) in
-  let common = Event.common_fields ~cat:[ Category.to_string Gc ] ~name:"gc" ~ts () in
+  let now = Time.now () in
   let args =
     let stat = Gc.quick_stat () in
     [ "stack_size", `Int stat.stack_size
@@ -308,30 +290,26 @@ let gc () =
     ; "minor_collections", `Int stat.minor_collections
     ]
   in
-  Event.counter common args
+  Event.instant ~name:"gc" ~args now Gc
 ;;
 
 let fd_count () =
-  let ts = make_ts (Time.now ()) in
   match Fd_count.get () with
   | Unknown -> None
   | This fds ->
+    let now = Time.now () in
     let args = [ "value", `Int fds ] in
-    let common = Event.common_fields ~cat:[ Category.to_string Fd ] ~name:"fds" ~ts () in
-    Some (Event.counter common args)
+    Some (Event.instant ~name:"fds" ~args now Fd)
 ;;
 
 let promote src dst =
-  let common =
-    let ts = make_ts (Time.now ()) in
-    Event.common_fields ~cat:[ Category.to_string Promote ] ~name:"promote" ~ts ()
-  in
+  let now = Time.now () in
   let args =
     [ "src", `String (Path.Build.to_string src)
     ; "dst", `String (Path.Source.to_string dst)
     ]
   in
-  Event.instant ~args common
+  Event.instant ~name:"promote" ~args now Promote
 ;;
 
 type alias =
@@ -351,7 +329,7 @@ let json_of_alias { dir; name; recursive; contexts } =
 ;;
 
 let resolve_targets targets aliases =
-  let ts = make_ts (Time.now ()) in
+  let now = Time.now () in
   let args =
     [ "targets", List.map targets ~f:(fun p -> `String (Path.to_string p))
     ; "aliases", List.map aliases ~f:json_of_alias
@@ -361,17 +339,11 @@ let resolve_targets targets aliases =
       | [] -> None
       | _ :: _ -> Some (k, `List v))
   in
-  let common =
-    Event.common_fields ~cat:[ Category.to_string Build ] ~name:"targets" ~ts ()
-  in
-  Event.instant ~args common
+  Event.instant ~args ~name:"targets" now Build
 ;;
 
 let load_dir dir =
-  let ts = make_ts (Time.now ()) in
+  let now = Time.now () in
   let args = [ "dir", `String (Path.to_string dir) ] in
-  let common =
-    Event.common_fields ~cat:[ Category.to_string Debug ] ~name:"load-dir" ~ts ()
-  in
-  Event.instant ~args common
+  Event.instant ~name:"load-dir" ~args now Debug
 ;;

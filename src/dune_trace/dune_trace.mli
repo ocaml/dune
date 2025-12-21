@@ -88,8 +88,9 @@ module Event : sig
 
   module Rpc : sig
     type stage =
-      | Start
-      | Stop
+      [ `Start
+      | `Stop
+      ]
 
     val session : id:int -> stage -> t
 

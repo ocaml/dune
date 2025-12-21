@@ -1234,7 +1234,7 @@ module DB = struct
         Package.Name.Table.find_or_add cache pkg.info.name ~f:(fun name ->
           let seen_set = Package.Name.Set.add seen_set name in
           let seen_list = pkg :: seen_list in
-          let system_deps, deps =
+          let provided, deps =
             Dune_pkg.Lock_dir.Conditional_choice.choose_for_platform pkg.depends ~platform
             |> Option.value ~default:[]
             |> List.partition_map
@@ -1247,10 +1247,11 @@ module DB = struct
                      Right { dep_pkg; dep_loc; dep_pkg_digest = dep_entry.pkg_digest }))
           in
           let has_dune_dep =
-            List.mem
-              ~equal:Dune_lang.Package_name.equal
-              system_deps
-              Dune_pkg.Dune_dep.name
+            (* CR-someday rgrinberg: no need to collect this list just to check
+               for one element. Also, it's not clear to me why we can't just
+               scan all the deps for dune. We're traversing the entire list
+               anyway *)
+            List.mem ~equal:Dune_lang.Package_name.equal provided Dune_pkg.Dune_dep.name
           in
           let pkg_digest =
             Pkg_digest.create
@@ -2137,6 +2138,10 @@ let files path =
   Dep.Set.of_source_files ~files ~empty_directories, files
 ;;
 
+let dune_dep =
+  lazy (Sys.executable_name |> Path.External.of_string |> Path.external_ |> Dep.file)
+;;
+
 let build_rule context_name ~source_deps (pkg : Pkg.t) =
   let+ build_action =
     let+ copy_action, build_action, install_action =
@@ -2244,22 +2249,14 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
     |> List.concat
     |> Action_builder.progn
   in
-  let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
-  let depend_on_dune =
-    match pkg.depends_on_dune with
-    | false -> Action_builder.return ()
-    | true ->
-      Sys.executable_name
-      |> Path.External.of_string
-      |> Path.external_
-      |> Action_builder.path
-  in
-  let open Action_builder.O in
-  let action_builder =
-    Action_builder.deps deps >>> depend_on_dune |> Action_builder.with_no_targets
-  in
   let open Action_builder.With_targets.O in
-  action_builder
+  (let deps =
+     let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
+     match pkg.depends_on_dune with
+     | false -> deps
+     | true -> Dep.Set.add deps (Lazy.force dune_dep)
+   in
+   Action_builder.deps deps |> Action_builder.with_no_targets)
   (* TODO should we add env deps on these? *)
   >>> add_env (Pkg.exported_env pkg) build_action
   |> Action_builder.With_targets.add_directories

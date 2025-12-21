@@ -262,11 +262,7 @@ module Rpc = struct
       | Some err -> ("error", `String err) :: base
     in
     let common =
-      Event.common_fields
-        ~cat:[ Category.to_string Rpc; "packet" ]
-        ~name:"packet_read"
-        ~ts
-        ()
+      Event.common_fields ~cat:[ Category.to_string Rpc ] ~name:"packet_read" ~ts ()
     in
     Event.instant ~args common
   ;;
@@ -276,11 +272,7 @@ module Rpc = struct
     let ts = make_ts (Time.now ()) in
     let args = [ "id", `Int id; "count", `Int count ] in
     let common =
-      Event.common_fields
-        ~cat:[ Category.to_string Rpc; "packet" ]
-        ~name:"packet_write"
-        ~ts
-        ()
+      Event.common_fields ~cat:[ Category.to_string Rpc ] ~name:"packet_write" ~ts ()
     in
     Event.instant ~args common
   ;;
@@ -295,7 +287,7 @@ module Rpc = struct
       | Some err -> ("error", `String err) :: base
     in
     let common =
-      Event.common_fields ~cat:[ Category.to_string Rpc; "accept" ] ~name:"accept" ~ts ()
+      Event.common_fields ~cat:[ Category.to_string Rpc ] ~name:"accept" ~ts ()
     in
     Event.instant ~args common
   ;;
@@ -305,7 +297,7 @@ module Rpc = struct
     let ts = make_ts (Time.now ()) in
     let args = [ "id", `Int id ] in
     let common =
-      Event.common_fields ~cat:[ Category.to_string Rpc; "session" ] ~name:"close" ~ts ()
+      Event.common_fields ~cat:[ Category.to_string Rpc ] ~name:"close" ~ts ()
     in
     Event.instant ~args common
   ;;

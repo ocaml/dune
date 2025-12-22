@@ -66,25 +66,9 @@ let make_local_package_wrapping_dev_tool ~dev_tool ~dev_tool_version ~extra_depe
   }
 ;;
 
-(* Get pins from a project (both from pin stanzas and package pin_depends) *)
-let project_and_package_pins project =
-  let dir = Dune_project.root project in
-  let pins = Dune_project.pins project in
-  let packages = Dune_project.packages project in
-  Pin.DB.add_opam_pins (Pin.DB.of_stanza ~dir pins) packages
-;;
-
 (* Collect all pins from all projects and filter to only compiler packages.
    This allows dev tools to use the same pinned compiler as the main project. *)
-let compiler_pins =
-  let open Memo.O in
-  Dune_rules.Dune_load.projects ()
-  >>| List.fold_left ~init:Pin.DB.empty ~f:(fun acc project ->
-    let pins = project_and_package_pins project in
-    Pin.DB.combine_exn acc pins)
-  >>| Pin.DB.filter_by_package_names
-        ~package_names:Dune_pkg.Dev_tool.compiler_package_names
-;;
+let compiler_pins = Memo.O.(Pkg.Lock.project_pins >>| Pin.DB.filter_compilers)
 
 let solve ~dev_tool ~local_packages =
   let open Memo.O in

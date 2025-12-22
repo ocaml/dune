@@ -92,12 +92,19 @@ module DB = struct
     }
   ;;
 
-  let filter_by_package_names t ~package_names =
-    let package_name_set = Package_name.Set.of_list package_names in
+  let filter_compilers t =
     { t with
-      map =
+      all =
+        List.filter_map t.all ~f:(fun pin ->
+          match
+            List.filter pin.packages ~f:(fun (pkg : Package.t) ->
+              Dev_tool.is_compiler_package pkg.name)
+          with
+          | [] -> None
+          | packages -> Some { pin with packages })
+    ; map =
         Package_name.Map.filteri t.map ~f:(fun name _ ->
-          Package_name.Set.mem package_name_set name)
+          Dev_tool.is_compiler_package name)
     }
   ;;
 

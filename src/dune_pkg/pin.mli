@@ -15,7 +15,7 @@ module DB : sig
 
   (** [filter_by_package_names t ~package_names] returns a new pin database
       containing only the pins for packages whose names are in [package_names]. *)
-  val filter_by_package_names : t -> package_names:Package_name.t list -> t
+  val filter_compilers : t -> t
 
   module Workspace : sig
     type db := t

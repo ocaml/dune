@@ -92,6 +92,15 @@ module DB = struct
     }
   ;;
 
+  let filter_by_package_names t ~package_names =
+    let package_name_set = Package_name.Set.of_list package_names in
+    { t with
+      map =
+        Package_name.Map.filteri t.map ~f:(fun name _ ->
+          Package_name.Set.mem package_name_set name)
+    }
+  ;;
+
   module Workspace = struct
     type nonrec t = Local_package.pin Package_name.Map.t String.Map.t
 

@@ -12,6 +12,7 @@ include struct
   module Pkg_info = Lock_dir.Pkg_info
   module Depexts = Lock_dir.Depexts
   module Digest_feed = Dune_digest.Feed
+  module Dune_dep = Dune_dep
 end
 
 module Variable = struct
@@ -1234,24 +1235,28 @@ module DB = struct
         Package.Name.Table.find_or_add cache pkg.info.name ~f:(fun name ->
           let seen_set = Package.Name.Set.add seen_set name in
           let seen_list = pkg :: seen_list in
-          let provided, deps =
+          let has_dune_dep, deps =
             Dune_pkg.Lock_dir.Conditional_choice.choose_for_platform pkg.depends ~platform
             |> Option.value ~default:[]
-            |> List.partition_map
-                 ~f:(fun { Dune_pkg.Lock_dir.Dependency.name; loc = dep_loc } ->
-                   if Package.Name.Set.mem system_provided name
-                   then Left name
-                   else (
+            |> List.fold_right
+                 ~init:(false, [])
+                 ~f:
+                   (fun
+                     { Dune_pkg.Lock_dir.Dependency.name; loc = dep_loc }
+                     (has_dune_dep, acc)
+                   ->
+                   match
+                     ( Dune_lang.Package_name.equal name Dune_dep.name
+                     , Package.Name.Set.mem system_provided name )
+                   with
+                   | true, _ -> true, acc
+                   | false, true -> has_dune_dep, acc
+                   | _, false ->
                      let dep_pkg = Package.Name.Map.find_exn pkgs_by_name name in
                      let dep_entry = compute_entry dep_pkg ~seen_set ~seen_list in
-                     Right { dep_pkg; dep_loc; dep_pkg_digest = dep_entry.pkg_digest }))
-          in
-          let has_dune_dep =
-            (* CR-someday rgrinberg: no need to collect this list just to check
-               for one element. Also, it's not clear to me why we can't just
-               scan all the deps for dune. We're traversing the entire list
-               anyway *)
-            List.mem ~equal:Dune_lang.Package_name.equal provided Dune_pkg.Dune_dep.name
+                     ( has_dune_dep
+                     , { dep_pkg; dep_loc; dep_pkg_digest = dep_entry.pkg_digest } :: acc
+                     ))
           in
           let pkg_digest =
             Pkg_digest.create

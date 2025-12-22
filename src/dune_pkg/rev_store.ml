@@ -380,6 +380,7 @@ let with_flock lock_path ~f =
        | Ok `Success ->
          Fiber.finalize
            (fun () ->
+              Unix.ftruncate fd 0;
               Dune_util.Global_lock.write_pid fd;
               f ())
            ~finally:(fun () ->

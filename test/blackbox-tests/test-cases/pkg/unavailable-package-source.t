@@ -12,7 +12,10 @@ Demonstrate what happens when we try to fetch from a source that doesn't exist:
   > }
 
 Local file system
-  $ runtest "(copy \"$PWD/dummy\")" 2>&1 | sed "s#$(pwd)#PWD#" | sed '/ *^\^*$/d' | sed '\#^File ".*dune.lock/foo.pkg", line 2, characters#d'
+  $ runtest "(copy \"$PWD/dummy\")" 2>&1 \
+  >  | dune_cmd subst "$PWD" 'PWD' \
+  >  | dune_cmd delete ' *\^\^*$' \
+  >  | dune_cmd delete '^File ".*dune.lock/foo.pkg", line 2, characters'
   2 | (source (copy "PWD/dummy"))
   Error:
   PWD/dummy
@@ -20,9 +23,9 @@ Local file system
 
 Git
   $ runtest "(fetch (url \"git+file://$PWD/dummy\"))" 2>&1 \
-  > | sed "s#$(pwd)#PWD#" \
+  > | dune_cmd subst "$PWD" 'PWD' \
   > | sanitize_pkg_digest foo.dev \
-  > | sed -E 's#/url/[a-f0-9]+#/url/DIGEST#'
+  > | dune_cmd subst '/url/[a-f0-9]+' '/url/DIGEST'
   fatal: 'PWD/dummy' does not appear to be a git repository
   fatal: Could not read from remote repository.
   
@@ -40,6 +43,9 @@ Git
 
 HTTP
 
-  $ runtest "(fetch (url \"https://0.0.0.0:35000\"))" 2>&1 | sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | sed "s/'[0-9]*'/X/"
+  $ runtest "(fetch (url \"https://0.0.0.0:35000\"))" 2>&1 \
+  >  | sed -ne '/Error:/,$ p' \
+  >  | sed '/^Reason/ q' \
+  >  | dune_cmd subst "'[0-9]*'" 'X'
   Error: failed to extract 'download'
   Reason: 'tar' failed with non-zero exit code X and output:

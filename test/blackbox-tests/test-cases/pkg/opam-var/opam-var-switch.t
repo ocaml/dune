@@ -47,7 +47,7 @@ opam-var-unsupported.t
        (run echo %{toplevel})
        (run echo %{stublibs}))))))
 
-  $ build_pkg testpkg 2>&1 | sed -E 's#.*.sandbox/[^/]+#.sandbox/$SANDBOX#g'
+  $ build_pkg testpkg 2>&1 | dune_cmd subst '.*.sandbox/[^/]+' '.sandbox/$SANDBOX'
   dune
   .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-d349dc24837a78e7f391d386e4fcec8d/source
   .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-d349dc24837a78e7f391d386e4fcec8d/target

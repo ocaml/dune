@@ -194,7 +194,7 @@ Pin to an HTTP archive detects wrong hash
   >  (name foo)
   >  (libraries bar))
   > EOF
-  $ sed -i.tmp "s/$MD5_CHECKSUM/92449184682b45b5f07e811fdd61d35f/g" ${default_lock_dir}/bar.1.0.0.pkg
+  $ dune_cmd subst "$MD5_CHECKSUM" '92449184682b45b5f07e811fdd61d35f' ${default_lock_dir}/bar.1.0.0.pkg
   $ rm -rf already-served
   $ dune build 2>&1 | grep -v "md5"
   File "dune.lock/bar.1.0.0.pkg", line 6, characters 12-48:

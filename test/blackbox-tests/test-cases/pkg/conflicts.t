@@ -69,7 +69,7 @@ Even though the conflicts are listed by opam without a `|` to indicate a
 disjunction, either package is problematic:
 
   $ mkpkg dune 3.11
-  $ echo '(lang dune 3.11)' | solve_project 2>&1 | sed -E 's/3.[0-9]+/3.XX/'
+  $ echo '(lang dune 3.11)' | solve_project 2>&1 | dune_cmd subst '3.[0-9]+' '3.XX'
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
@@ -87,7 +87,7 @@ disjunction, either package is problematic:
 Adding a new version of `foo` only resolves one conflict:
 
   $ mkpkg foo 0.2
-  $ echo '(lang dune 3.11)' | solve_project 2>&1 | sed -E 's/3.[0-9]+/3.XX/'
+  $ echo '(lang dune 3.11)' | solve_project 2>&1 | dune_cmd subst '3.[0-9]+' '3.XX'
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   

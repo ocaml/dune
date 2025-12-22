@@ -111,7 +111,7 @@ url and the extra source.
   Solution for dune.lock:
   - needs-patch.0.0.1
 
-  $ sed -E 's/md5=[0-9a-f]+/md5=$HASH/g' ${default_lock_dir}/needs-patch.0.0.1.pkg
+  $ dune_cmd subst 'md5=[0-9a-f]+' 'md5=$HASH'< "${default_lock_dir}/needs-patch.0.0.1.pkg"
   (version 0.0.1)
   
   (build

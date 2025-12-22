@@ -16,7 +16,7 @@ the build directory in `$dev_tool_lock_dir` with our custom build directory.
   $ default_build_dir="_build"
   $ custom_build_dir="_other_build"
   $ default_dev_tool_lock_dir="${dev_tool_lock_dir}"
-  $ dev_tool_lock_dir=$(echo "${dev_tool_lock_dir}" | sed "s/^$default_build_dir/$custom_build_dir/")
+  $ dev_tool_lock_dir=$(echo "${dev_tool_lock_dir}" | dune_cmd subst "^$default_build_dir" "$custom_build_dir")
 
 Create a configuration with this custom build directory
 

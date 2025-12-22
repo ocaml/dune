@@ -2,8 +2,6 @@ Trying to build a package after updating the dependencies in dune-project but
 without running `dune_pkg_lock_normalized` must raise an error in the context of Dune
 Package Managemenet. 
 
-  $ . ./helpers.sh
-
 Create a fake project and lock it:
 
   $ mkrepo

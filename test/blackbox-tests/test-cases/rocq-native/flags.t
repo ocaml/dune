@@ -9,6 +9,12 @@ Test cases to check Coq's flag setting is correct:
   > Definition t := 3.
   > EOF
 
+  $ runFlags() {
+  > dune clean
+  > dune build --trace-file trace.json foo.vo
+  > jq -c '.[] | select(.name == "rocq") | .args.process_args | .[] | sub(".*/coq/"; "coq/") | sub(".*/rocq-runtime/"; "rocq-runtime/")' trace.json
+  > }
+
 Test case: default flags
 
   $ cat > dune <<EOF
@@ -16,16 +22,40 @@ Test case: default flags
   >  (name foo))
   > EOF
 
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile -q
-  -w -deprecated-native-compiler-option -native-output-dir .
-  -native-compiler on
-  -nI lib/rocq-runtime/kernel
-  -nI .
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-q"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-native-output-dir"
+  "."
+  "-native-compiler"
+  "on"
+  "-nI"
+  "rocq-runtime/kernel"
+  "-nI"
+  "."
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"
 
 TC: :standard
 
@@ -35,17 +65,40 @@ TC: :standard
   >  (flags :standard))
   > EOF
 
-  $ rm _build/default/foo.vo
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile -q
-  -w -deprecated-native-compiler-option -native-output-dir .
-  -native-compiler on
-  -nI lib/rocq-runtime/kernel
-  -nI .
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-q"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-native-output-dir"
+  "."
+  "-native-compiler"
+  "on"
+  "-nI"
+  "rocq-runtime/kernel"
+  "-nI"
+  "."
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"
 
 TC: override :standard
 
@@ -55,16 +108,39 @@ TC: override :standard
   >  (flags ))
   > EOF
 
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile
-  -w -deprecated-native-compiler-option -native-output-dir .
-  -native-compiler on
-  -nI lib/rocq-runtime/kernel
-  -nI .
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-native-output-dir"
+  "."
+  "-native-compiler"
+  "on"
+  "-nI"
+  "rocq-runtime/kernel"
+  "-nI"
+  "."
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"
 
 TC: add to :standard
 
@@ -74,16 +150,41 @@ TC: add to :standard
   >  (flags :standard -type-in-type))
   > EOF
 
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile -q -type-in-type
-  -w -deprecated-native-compiler-option -native-output-dir .
-  -native-compiler on
-  -nI lib/rocq-runtime/kernel
-  -nI .
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-q"
+  "-type-in-type"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-native-output-dir"
+  "."
+  "-native-compiler"
+  "on"
+  "-nI"
+  "rocq-runtime/kernel"
+  "-nI"
+  "."
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"
 
 TC: extend in workspace + override standard
 
@@ -98,16 +199,40 @@ TC: extend in workspace + override standard
   > (env (dev (rocq (flags -type-in-type))))
   > EOF
 
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile -type-in-type
-  -w -deprecated-native-compiler-option -native-output-dir .
-  -native-compiler on
-  -nI lib/rocq-runtime/kernel
-  -nI .
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-type-in-type"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-native-output-dir"
+  "."
+  "-native-compiler"
+  "on"
+  "-nI"
+  "rocq-runtime/kernel"
+  "-nI"
+  "."
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"
 
 TC: extend in workspace + override standard
 
@@ -116,16 +241,41 @@ TC: extend in workspace + override standard
   > (env (dev (rocq (flags :standard -type-in-type))))
   > EOF
 
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile -q -type-in-type
-  -w -deprecated-native-compiler-option -native-output-dir .
-  -native-compiler on
-  -nI lib/rocq-runtime/kernel
-  -nI .
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-q"
+  "-type-in-type"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-native-output-dir"
+  "."
+  "-native-compiler"
+  "on"
+  "-nI"
+  "rocq-runtime/kernel"
+  "-nI"
+  "."
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"
 
 TC: extend in dune (env) + override standard
 
@@ -135,17 +285,40 @@ TC: extend in dune (env) + override standard
   > (env (dev (rocq (flags -type-in-type))))
   > EOF
 
-  $ rm -rf _build/default/foo.vo
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile -type-in-type
-  -w -deprecated-native-compiler-option -native-output-dir .
-  -native-compiler on
-  -nI lib/rocq-runtime/kernel
-  -nI .
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-type-in-type"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-native-output-dir"
+  "."
+  "-native-compiler"
+  "on"
+  "-nI"
+  "rocq-runtime/kernel"
+  "-nI"
+  "."
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"
 
 TC: extend in dune (env) + standard
 
@@ -155,17 +328,42 @@ TC: extend in dune (env) + standard
   > (env (dev (rocq (flags :standard -type-in-type))))
   > EOF
 
-  $ rm -rf _build/default/foo.vo
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile -q -type-in-type -type-in-type
-  -w -deprecated-native-compiler-option -native-output-dir .
-  -native-compiler on
-  -nI lib/rocq-runtime/kernel
-  -nI .
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-q"
+  "-type-in-type"
+  "-type-in-type"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-native-output-dir"
+  "."
+  "-native-compiler"
+  "on"
+  "-nI"
+  "rocq-runtime/kernel"
+  "-nI"
+  "."
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"
 
 TC: extend in dune (env) + workspace + standard
 
@@ -180,14 +378,39 @@ TC: extend in dune (env) + workspace + standard
   > (env (dev (rocq (flags :standard -type-in-type))))
   > EOF
 
-  $ rm -rf _build/default/foo.vo
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile -q -type-in-type -bt
-  -w -deprecated-native-compiler-option -native-output-dir .
-  -native-compiler on
-  -nI lib/rocq-runtime/kernel
-  -nI .
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-q"
+  "-type-in-type"
+  "-bt"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-native-output-dir"
+  "."
+  "-native-compiler"
+  "on"
+  "-nI"
+  "rocq-runtime/kernel"
+  "-nI"
+  "."
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"

@@ -1,7 +1,6 @@
 With a faulty version of OCamlFormat, "dune fmt" is supposed to stop with the
 build error of "ocamlformat".
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a fake ocamlformat with a missing ocamlformat.ml file:

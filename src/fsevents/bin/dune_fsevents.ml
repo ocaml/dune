@@ -1,3 +1,5 @@
+open Stdune
+
 let paths, latency =
   let latency = ref 0. in
   let paths = ref [] in
@@ -10,7 +12,7 @@ let paths, latency =
 ;;
 
 let fsevents =
-  Fsevents.create ~paths ~latency ~f:(fun events ->
+  Fsevents.create ~paths ~latency:(Time.Span.of_secs latency) ~f:(fun events ->
     ListLabels.iter events ~f:(fun evt ->
       Printf.printf "%s\n%!" (Dyn.to_string (Fsevents.Event.to_dyn_raw evt))))
 ;;

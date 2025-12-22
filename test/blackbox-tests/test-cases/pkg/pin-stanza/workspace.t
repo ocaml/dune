@@ -1,7 +1,5 @@
 It should be possible to include custom repos from the workspace:
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

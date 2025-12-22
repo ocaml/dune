@@ -1,7 +1,5 @@
 Test that can fetch the sources from an external dir
 
-  $ . ./helpers.sh
-
   $ mkdir foo
   $ echo "y" > foo/x
 

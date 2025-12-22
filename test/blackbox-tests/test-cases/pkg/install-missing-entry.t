@@ -1,7 +1,5 @@
 Test missing entries in the .install file
 
-  $ . ./helpers.sh
-
   $ make_lockdir
   $ lockfile() {
   > make_lockpkg test <<EOF

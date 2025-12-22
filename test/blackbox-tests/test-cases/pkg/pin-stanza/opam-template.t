@@ -1,8 +1,6 @@
 A user may set the build command using the opam template feature. This build
 command is currently not respected when the package is pinned.
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

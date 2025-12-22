@@ -1,7 +1,6 @@
 Test the installation of toolchains package by building and installing
 a mock compiler package using dune's toolchain mechanism.
 
-  $ . ./helpers.sh
   $ make_lockdir
 
   $ mkdir fake-compiler

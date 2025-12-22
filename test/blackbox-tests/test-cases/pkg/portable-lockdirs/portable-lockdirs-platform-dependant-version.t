@@ -1,6 +1,5 @@
 Test for a project which depends on different versions of the same package depending on the platform.
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

@@ -1,7 +1,6 @@
 We test the conversion and build of the opam file patch field with multiple entries with
 patch files that patch multiple files.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a package with two patches, one inside a directory. The first patch patches a single

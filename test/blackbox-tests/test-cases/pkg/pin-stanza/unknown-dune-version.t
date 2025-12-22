@@ -1,6 +1,5 @@
 We are unable to pin projects that the version of dune doesn't understand.
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

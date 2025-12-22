@@ -1,7 +1,5 @@
 Test that we can set variables
 
-  $ . ./helpers.sh
-
   $ make_lockdir
   $ make_lockpkg test <<EOF
   > (version 0.0.1)

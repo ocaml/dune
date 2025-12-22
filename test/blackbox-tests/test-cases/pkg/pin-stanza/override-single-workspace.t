@@ -1,7 +1,5 @@
 Override a source when multiple projects in a workspace set it.
 
-  $ . ../helpers.sh
-
 Here we demonstrate that projects override their sub projects:
 
   $ mkdir a && cd a

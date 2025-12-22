@@ -24,26 +24,44 @@ Testing the coqdoc_header and coqdoc_footer field of the env stanza.
   > footer
   > EOF
 
-  $ dune build @doc
+  $ dune build --trace-file trace.json @doc
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
   (warnings (deprecated_coq_lang disabled))
 
-  $ tail _build/log -n 1 | ./scrub_coq_args.sh | sed 's/.*coq/coq/'
-  coqdoc
-  coq/theories Coq
-  -R . a --toc --with-header header.html --with-footer footer.html --html -d a.html
-  foo.v
+  $ jq '.[] | select(.name == "coqdoc") | .args.process_args | .[] | sub(".*/coq"; "/coq")' trace.json
+  "-R"
+  "/coq/theories"
+  "Coq"
+  "-R"
+  "."
+  "a"
+  "--toc"
+  "--with-header"
+  "header.html"
+  "--with-footer"
+  "footer.html"
+  "--html"
+  "-d"
+  "a.html"
+  "foo.v"
 
-  $ dune build @doc-latex
+  $ dune build --trace-file trace.json @doc-latex
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
   (warnings (deprecated_coq_lang disabled))
 
-  $ tail _build/log -n 1 | ./scrub_coq_args.sh | sed 's/.*coq/coq/'
-  coqdoc
-  coq/theories Coq
-  -R . a --toc --latex -d a.tex
-  foo.v
+  $ jq '.[] | select(.name == "coqdoc") | .args.process_args | .[] | sub(".*/coq"; "/coq")' trace.json
+  "-R"
+  "/coq/theories"
+  "Coq"
+  "-R"
+  "."
+  "a"
+  "--toc"
+  "--latex"
+  "-d"
+  "a.tex"
+  "foo.v"

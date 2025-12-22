@@ -17,14 +17,14 @@ source
 
      * - Service
        - Syntax
-     * - `Github <https://github.com>`_
+     * - `GitHub <https://github.com>`_
        - ``(github user/repo)``
      * - `Bitbucket <https://bitbucket.org>`_
        - ``(bitbucket user/repo)``
-     * - `Gitlab <https://gitlab.com>`_
+     * - `GitLab <https://gitlab.com>`_
        - | ``(gitlab user/repo)``
          | ``(gitlab organization/project/repo)`` *(New in 3.17)*
-     * - `Sourcehut <https://sr.ht>`_
+     * - `SourceHut <https://sr.ht>`_
        - ``(sourcehut user/repo)``
      * - `Codeberg <https://codeberg.org>`_
        - ``(codeberg user/repo)`` *(New in 3.17)*

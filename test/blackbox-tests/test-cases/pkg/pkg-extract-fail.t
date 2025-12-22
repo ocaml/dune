@@ -4,7 +4,6 @@ exit codes and error messages, see #11560 for example output
 Create a mock package whose url is a corrupted/invalid tar file attempt to
 build this package and check for sufficient error handling
 
-  $ . ./helpers.sh
   $ echo "corrupted tar" > corrupted.tar
 
   $ mkpkg foo <<EOF

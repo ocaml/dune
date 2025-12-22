@@ -1,7 +1,6 @@
 Exercise solving with portable lockdirs when there is a custom solver
 environment that affects the solution.
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

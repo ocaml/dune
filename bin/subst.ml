@@ -524,7 +524,7 @@ let term =
   Path.set_root (Path.External.cwd ());
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string Common.default_build_dir);
   Dune_config.init config ~watch:false;
-  Log.init_disabled ();
+  Log.init No_log_file;
   Scheduler.no_build_no_rpc ~config subst
 ;;
 

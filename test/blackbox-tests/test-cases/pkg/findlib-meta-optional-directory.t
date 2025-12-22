@@ -2,8 +2,6 @@ Demonstrate the handling of findlib directories that don't exist
 
 Reproduces #11405
 
-  $ . ./helpers.sh
-
   $ mkdir external_sources
 
   $ cat >external_sources/META <<EOF

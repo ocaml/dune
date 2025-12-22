@@ -132,4 +132,4 @@
 
 (cram
  (applies_to trace-file)
- (deps %{bin:perl}))
+ (deps %{bin:jq}))

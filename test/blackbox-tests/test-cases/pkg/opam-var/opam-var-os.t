@@ -2,8 +2,6 @@
 # that it re-runs after an update. That's a little hard to express however, and
 # one must remember to manually force to re-run it after an upgrade.
 
-  $ . ../helpers.sh
-
 Here we test global opam variables that are system specific. Since these values change
 between systems, we can't hardcode them in the test. Instead, we use the opam var command
 to compare their values.

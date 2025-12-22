@@ -1,4 +1,4 @@
-  $ . ./helpers.sh
+
   $ mkrepo
  
 A package with different linux and macos dependencies including a test-only

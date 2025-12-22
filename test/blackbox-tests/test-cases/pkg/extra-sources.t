@@ -1,8 +1,5 @@
 Fetch from more than one source
 
-  $ . ../git-helpers.sh
-  $ . ./helpers.sh
-
   $ make_lockdir
   $ mkdir foo
   $ cat >foo/bar <<EOF

@@ -1,6 +1,5 @@
 Test that ocamlformat is re-run when a source file changes.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ make_project_with_dev_tool_lockdir
 

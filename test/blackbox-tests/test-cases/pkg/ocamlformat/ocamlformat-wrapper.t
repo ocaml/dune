@@ -1,6 +1,5 @@
 Exercise running the ocamlformat wrapper command.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ make_fake_ocamlformat "0.26.2"

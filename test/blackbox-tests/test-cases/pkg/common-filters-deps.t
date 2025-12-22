@@ -1,7 +1,6 @@
 Demonstrate that local dependencies that are marked as {with-test} can be
 included.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ mkpkg post <<EOF

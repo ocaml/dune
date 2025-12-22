@@ -2,4 +2,4 @@
 
 (executable
  (name dune_fsevents)
- (libraries threads.posix dyn fsevents))
+ (libraries threads.posix dyn stdune fsevents))

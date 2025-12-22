@@ -1,7 +1,5 @@
 Demonstrates constraints that self reference the version
 
-  $ . ./helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

@@ -16,7 +16,7 @@ type real = { oc : out_channel option }
 let t = Fdecl.create Dyn.opaque
 let verbose = ref false
 
-let init ?(file = File.Default) () =
+let init (file : File.t) =
   let oc =
     match file with
     | No_log_file -> None
@@ -36,7 +36,6 @@ let init ?(file = File.Default) () =
   Fdecl.set t (Some { oc })
 ;;
 
-let init_disabled () = Fdecl.set t None
 let t () = Fdecl.get t
 
 let log_oc oc msg =

@@ -1,19 +1,19 @@
-How to Release a Binary Distribution of an Application on Github with Dune
+How to Release a Binary Distribution of an Application on GitHub with Dune
 ==========================================================================
 
-This guide will show you how to write a Github Action which builds a binary
+This guide will show you how to write a GitHub Action which builds a binary
 distribution of an application for various platforms using Dune package
-management, and uploads the compiled artifacts to a Github release.
+management, and uploads the compiled artifacts to a GitHub release.
 
 We'll make a workflow called "Release" which will run every time a tag is pushed
-to the repo on Github. The workflow will build the project for the targets
+to the repo on GitHub. The workflow will build the project for the targets
 ``x86_64-linux``, ``x86_64-macos``, and ``aarch64-macos``, and then upload a
-gzipped tarball of the built artifacts to a Github release named after the tag.
+gzipped tarball of the built artifacts to a GitHub release named after the tag.
 
 Dune will be installed by the `setup-dune
 <https://github.com/ocaml-dune/setup-dune>`_ action.
 
-The following is the manifest for a Github Action workflow which releases a
+The following is the manifest for a GitHub Action workflow which releases a
 binary distribution of a package named ``my_app``.
 
 .. code:: yaml

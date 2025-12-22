@@ -1,7 +1,5 @@
 Checks whether dev-tool locking takes custom build directories correctly into account.
 
-  $ . ./helpers.sh
-
 Set up some ocamlformat that we want to install.
 
   $ ocamlformat_version="0.26.2"

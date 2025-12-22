@@ -1,6 +1,5 @@
 Testing the translation of the setenv field of an opam file into the dune lock dir.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a package with a setenv. We also test all the kinds of env updates here expcept for
@@ -134,5 +133,4 @@ Appended 2nd time without leading sep:Appended without leading sep
   Prepended 2nd time with sep:Prepended with trailing sep
   Appended without leading sep:Appended 2nd time without leading sep
   Appended with leading sep:Appended 2nd time with leading sep
-
 

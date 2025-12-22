@@ -1,6 +1,5 @@
 Demonstrate the case where a project can only be solved for a subset of platforms.
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

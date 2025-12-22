@@ -16,15 +16,42 @@ Test case: default flags
   >  (name foo))
   > EOF
 
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile -q
-  -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled
-  -native-compiler ondemand
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags() {
+  > dune clean
+  > dune build --trace-file trace.json foo.vo
+  > jq -c '.[] | select(.name == "rocq") | .args.process_args | .[] | sub(".*/coq/"; "coq/")' trace.json
+  > }
+
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-q"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-w"
+  "-native-compiler-disabled"
+  "-native-compiler"
+  "ondemand"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"
 
 TC: :standard
 
@@ -34,16 +61,37 @@ TC: :standard
   >  (flags :standard))
   > EOF
 
-  $ rm _build/default/foo.vo
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile -q
-  -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled
-  -native-compiler ondemand
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ dune build --trace-file trace.json foo.vo
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-q"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-w"
+  "-native-compiler-disabled"
+  "-native-compiler"
+  "ondemand"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"
 
 TC: override :standard
 
@@ -53,15 +101,35 @@ TC: override :standard
   >  (flags ))
   > EOF
 
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile
-  -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled
-  -native-compiler ondemand
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-w"
+  "-native-compiler-disabled"
+  "-native-compiler"
+  "ondemand"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"
 
 TC: add to :standard
 
@@ -71,15 +139,37 @@ TC: add to :standard
   >  (flags :standard -type-in-type))
   > EOF
 
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile -q -type-in-type
-  -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled
-  -native-compiler ondemand
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-q"
+  "-type-in-type"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-w"
+  "-native-compiler-disabled"
+  "-native-compiler"
+  "ondemand"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"
 
 TC: extend in workspace + override standard
 
@@ -94,15 +184,36 @@ TC: extend in workspace + override standard
   > (env (dev (rocq (flags -type-in-type))))
   > EOF
 
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile -type-in-type
-  -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled
-  -native-compiler ondemand
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-type-in-type"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-w"
+  "-native-compiler-disabled"
+  "-native-compiler"
+  "ondemand"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"
 
 TC: extend in workspace + override standard
 
@@ -111,15 +222,37 @@ TC: extend in workspace + override standard
   > (env (dev (rocq (flags :standard -type-in-type))))
   > EOF
 
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile -q -type-in-type
-  -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled
-  -native-compiler ondemand
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-q"
+  "-type-in-type"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-w"
+  "-native-compiler-disabled"
+  "-native-compiler"
+  "ondemand"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"
 
 TC: extend in dune (env) + override standard
 
@@ -129,16 +262,36 @@ TC: extend in dune (env) + override standard
   > (env (dev (rocq (flags -type-in-type))))
   > EOF
 
-  $ rm -rf _build/default/foo.vo
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile -type-in-type
-  -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled
-  -native-compiler ondemand
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-type-in-type"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-w"
+  "-native-compiler-disabled"
+  "-native-compiler"
+  "ondemand"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"
 
 TC: extend in dune (env) + standard
 
@@ -148,16 +301,38 @@ TC: extend in dune (env) + standard
   > (env (dev (rocq (flags :standard -type-in-type))))
   > EOF
 
-  $ rm -rf _build/default/foo.vo
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile -q -type-in-type -type-in-type
-  -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled
-  -native-compiler ondemand
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-q"
+  "-type-in-type"
+  "-type-in-type"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-w"
+  "-native-compiler-disabled"
+  "-native-compiler"
+  "ondemand"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"
 
 TC: extend in dune (env) + workspace + standard
 
@@ -172,13 +347,35 @@ TC: extend in dune (env) + workspace + standard
   > (env (dev (rocq (flags :standard -type-in-type))))
   > EOF
 
-  $ rm -rf _build/default/foo.vo
-  $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
-  rocq compile -q -type-in-type -bt
-  -w -deprecated-native-compiler-option
-  -w -native-compiler-disabled
-  -native-compiler ondemand
-  -boot
-  -R coq/theories Corelib
-  -R . foo
-  foo.v
+  $ runFlags
+  "--config"
+  "dep"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "-dyndep"
+  "opt"
+  "-vos"
+  "foo.v"
+  "compile"
+  "-q"
+  "-type-in-type"
+  "-bt"
+  "-w"
+  "-deprecated-native-compiler-option"
+  "-w"
+  "-native-compiler-disabled"
+  "-native-compiler"
+  "ondemand"
+  "-boot"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "foo"
+  "foo.v"

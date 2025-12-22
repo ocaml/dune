@@ -1,8 +1,6 @@
 Setting the source of a package to a non dune package with pin-depends should
 respect the pin-depends
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

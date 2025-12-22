@@ -308,7 +308,7 @@ let create ~paths ~latency ~f =
   (match paths with
    | [] -> Code_error.raise "Fsevents.create: paths empty" []
    | _ -> ());
-  State.create (Idle (Raw.create paths latency f))
+  State.create (Idle (Raw.create paths (Time.Span.to_secs latency) f))
 ;;
 
 let set_exclusion_paths t ~paths =

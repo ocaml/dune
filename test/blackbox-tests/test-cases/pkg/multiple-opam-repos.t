@@ -1,7 +1,5 @@
 We want to test that support for multiple opam repositories works.
 
-  $ . ../git-helpers.sh
-  $ . ./helpers.sh
   $ mkrepo
   $ mkpkg foo 1.0 <<EOF
   > EOF

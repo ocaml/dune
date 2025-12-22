@@ -16,7 +16,7 @@ Git is implemented as a way to store revisions and being able to address them.
 However, these revisions do not have to have a common ancestor and given Git
 uses SHA1 hashes for addressing it is possible to join multiple repositories in
 one single Git repository without clashing. A fairly common usecase outside of
-Dune are `gh-pages` branches to serve documentation on Github, which do not
+Dune are `gh-pages` branches to serve documentation on GitHub, which do not
 share a common parent with the main branch of the repository.
 
 The revision store exploits this feature by putting all revisions of all

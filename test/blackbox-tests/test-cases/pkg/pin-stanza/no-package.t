@@ -1,7 +1,5 @@
 Here we try to pin a package to a source that doesn't define said package:
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

@@ -2,8 +2,6 @@ Set lock file per context.
 
 TODO: versioning will be added once this feature is stable
 
-  $ . ./helpers.sh
-
   $ cat >dune-workspace <<EOF
   > (lang dune 3.8)
   > (context

@@ -1,7 +1,5 @@
 The test-source folder has a file to use substitution on.
 
-  $ . ./helpers.sh
-
   $ mkdir test-source
   $ cat >test-source/foo.ml.in <<EOF
   > This file will be fed to the substitution mechanism

@@ -4,8 +4,8 @@ module Config = Dune_config.Config
 let lock_file = Path.Build.(relative root ".lock")
 
 let with_timeout ~timeout f =
-  let now () = Unix.gettimeofday () in
-  let deadline = now () +. timeout in
+  let now () = Time.now () in
+  let deadline = Time.add (now ()) timeout in
   let rec loop () =
     if now () >= deadline
     then `Timed_out

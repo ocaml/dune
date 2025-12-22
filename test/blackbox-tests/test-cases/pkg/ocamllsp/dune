@@ -1,5 +1,5 @@
 (cram
- (deps helpers.sh)
+ (setup_scripts helpers.sh)
  (applies_to :whole_subtree))
 
 ;; flaky https://github.com/ocaml/dune/actions/runs/15262698269/job/42923225446

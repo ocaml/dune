@@ -142,7 +142,7 @@ type kind =
       ; scheduler : Scheduler.t
       ; source : Fsevents.t
       ; sync : Fsevents.t
-      ; latency : float
+      ; latency : Time.Span.t
       ; on_event : Fsevents.Event.t -> Path.t -> Event.t option
       }
   | Inotify of Inotify_lib.t
@@ -562,7 +562,12 @@ let fsevents_standard_event ~should_exclude event path =
     Some (Event.Fs_memo_event { Fs_memo_event.kind; path }))
 ;;
 
-let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) ~should_exclude () =
+let create_fsevents
+      ?(latency = Time.Span.of_secs 0.2)
+      ~(scheduler : Scheduler.t)
+      ~should_exclude
+      ()
+  =
   prepare_sync ();
   let sync_table = Table.create (module String) 64 in
   let sync =

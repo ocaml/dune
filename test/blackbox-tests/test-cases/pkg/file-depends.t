@@ -4,7 +4,6 @@ field which is a list of external files, together with their checksums, that
 the package depends on. We make sure that such a package really does depend on
 the files found in files-depend. 
 
-  $ . ./helpers.sh
   $ make_lockdir
   $ foo=$PWD/foo make_lockpkg file-depends <<EOF
   > (version 0.0.1)

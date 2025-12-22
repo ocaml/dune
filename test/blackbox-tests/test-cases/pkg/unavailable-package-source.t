@@ -1,7 +1,5 @@
 Demonstrate what happens when we try to fetch from a source that doesn't exist:
 
-  $ . ./helpers.sh
-
   $ make_lockdir
 
   $ runtest() {

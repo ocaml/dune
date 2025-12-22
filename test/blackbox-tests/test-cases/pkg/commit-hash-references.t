@@ -1,7 +1,5 @@
 What happens if a branch has the same format as a ref?
 
-  $ . ../git-helpers.sh
-  $ . ./helpers.sh
   $ mkrepo
   $ mkpkg foo 1.0
   $ cd mock-opam-repository

@@ -1,8 +1,6 @@
 This test demonstrates a package where the .install file being created by the
 file copying step rather than the build step.
 
-  $ . ./helpers.sh
-
   $ make_lockdir
   $ mkdir -p ${default_lock_dir}/foo.files
 

@@ -120,3 +120,16 @@ let needs_to_build_with_same_compiler_as_project = function
   | Dune_release -> false
   | Utop | Odoc | Ocamllsp | Ocaml_index | Odig | Merlin -> true
 ;;
+
+(* Package names that are considered compiler packages. When these are pinned
+   in the project, the pins should be propagated to dev tools that need to be
+   built with the same compiler. This list is also used by pkg_toolchain. *)
+let compiler_package_names =
+  List.map
+    ~f:Package_name.of_string
+    [ "ocaml"; "ocaml-base-compiler"; "ocaml-variants"; "ocaml-compiler" ]
+;;
+
+let is_compiler_package name =
+  List.mem compiler_package_names name ~equal:Package_name.equal
+;;

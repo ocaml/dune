@@ -3,15 +3,6 @@ open Import
 module Lock_dir = Dune_pkg.Lock_dir
 module Pin = Dune_pkg.Pin
 
-(* Package names that are considered compiler packages. When these are pinned
-   in the project, the pins should be propagated to dev tools that need to be
-   built with the same compiler. *)
-let compiler_package_names =
-  List.map
-    ~f:Package_name.of_string
-    [ "ocaml"; "ocaml-base-compiler"; "ocaml-variants"; "ocaml-compiler" ]
-;;
-
 let is_enabled =
   lazy
     (match Config.get Dune_rules.Compile_time.lock_dev_tools with
@@ -91,7 +82,8 @@ let compiler_pins =
   >>| List.fold_left ~init:Pin.DB.empty ~f:(fun acc project ->
     let pins = project_and_package_pins project in
     Pin.DB.combine_exn acc pins)
-  >>| Pin.DB.filter_by_package_names ~package_names:compiler_package_names
+  >>| Pin.DB.filter_by_package_names
+        ~package_names:Dune_pkg.Dev_tool.compiler_package_names
 ;;
 
 let solve ~dev_tool ~local_packages =

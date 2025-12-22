@@ -193,6 +193,25 @@ let process_inotify_event
   | Queue_overflow -> [ Queue_overflow ]
 ;;
 
+let emit_events events =
+  Dune_trace.emit_all File_watcher (fun () ->
+    List.map events ~f:(fun (event : Event.t) ->
+      Dune_trace.Event.file_watcher
+        (match event with
+         | Queue_overflow -> `Queue_overflow
+         | Sync sync -> `Sync (Sync_id.to_int sync)
+         | Watcher_terminated -> `Watcher_terminated
+         | Fs_memo_event { path; kind } ->
+           let kind =
+             match kind with
+             | Created -> `Created
+             | Deleted -> `Deleted
+             | File_changed -> `File_changed
+             | Unknown -> `Unknown
+           in
+           `File (path, kind))))
+;;
+
 let shutdown t =
   match t.kind with
   | Fswatch { pid; _ } -> `Kill pid
@@ -427,12 +446,16 @@ let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) should_excl
                 path
             | Moved _ | Queue_overflow -> None
           in
-          match is_fs_sync_event_generated_by_dune with
-          | None -> process_inotify_event event should_exclude
-          | Some path ->
-            (match Fs_sync.consume_event sync_table path with
-             | None -> []
-             | Some id -> [ Event.Sync id ]))))
+          let events =
+            match is_fs_sync_event_generated_by_dune with
+            | None -> process_inotify_event event should_exclude
+            | Some path ->
+              (match Fs_sync.consume_event sync_table path with
+               | None -> []
+               | Some id -> [ Event.Sync id ])
+          in
+          emit_events events;
+          events)))
     ~log_error:(fun error -> Console.print [ Pp.text error ])
 ;;
 

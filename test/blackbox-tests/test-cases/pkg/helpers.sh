@@ -204,16 +204,24 @@ make_lockpkg_file() {
 }
 
 dune_pkg_lock_normalized() {
-  if dune pkg lock $@ 2> solve-stderr.txt; then
+  out="$(mktemp)"
+  if dune pkg lock $@ 2>> "${out}"; then
+    processed="$(mktemp)"
     if [ "$DUNE_CONFIG__PORTABLE_LOCK_DIR" = "disabled" ]; then
-      cat solve-stderr.txt
+      cp "${out}" "${processed}"
     else
-      cat solve-stderr.txt \
+      cat "${out}" \
         | awk '/Solution/{printf"%s:\n",$0;f=0};f{print};/Dependencies.*:/{f=1}' \
-        | dune_cmd subst '\(none\)' '(no dependencies to lock)'
+        | dune_cmd subst '\(none\)' '(no dependencies to lock)' \
+        > "${processed}"
     fi
+    cat "${processed}"
   else
-    cat solve-stderr.txt | sed '/The dependency solver failed to find a solution for the following platforms:/,/\.\.\.with this error:/d'
+    processed="$(mktemp)"
+    cat "${out}" \
+      | sed '/The dependency solver failed to find a solution for the following platforms:/,/\.\.\.with this error:/d' \
+      > "${processed}"
+    cat "${processed}"
     return 1
   fi
 }

@@ -1238,12 +1238,12 @@ module DB = struct
           let has_dune_dep, deps =
             Dune_pkg.Lock_dir.Conditional_choice.choose_for_platform pkg.depends ~platform
             |> Option.value ~default:[]
-            |> List.fold_left
+            |> List.fold_right
                  ~init:(false, [])
                  ~f:
                    (fun
-                     (has_dune_dep, acc)
                      { Dune_pkg.Lock_dir.Dependency.name; loc = dep_loc }
+                     (has_dune_dep, acc)
                    ->
                    match
                      ( Dune_lang.Package_name.equal name Dune_dep.name

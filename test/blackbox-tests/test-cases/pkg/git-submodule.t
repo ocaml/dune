@@ -35,14 +35,13 @@ someotherrepo as a submodule.
   > (build (progn (run cat foo) (run cat mysubmodule/bar)))
   > EOF
 
-Building this package should pull in both repositories. At the moment this is
-not the case and only somerepo is pulled.
+Building this package should pull in both repositories:
 
-  $ build_pkg test 2>&1 | sed -E 's|.*/cat|cat|'
+  $ build_pkg test
   hello
   world
 
-When the above works it should act like:
+It should act exactly like:
 
   $ make_lockpkg test <<EOF
   > (version 0.0.1)

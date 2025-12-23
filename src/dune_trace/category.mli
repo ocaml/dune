@@ -12,6 +12,7 @@ type t =
   | Build
   | Debug
   | Config
+  | File_watcher
 
 val to_string : t -> string
 val of_string : string -> t option

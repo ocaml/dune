@@ -20,14 +20,14 @@ project:
   $ mkpkg dune 2.0.0
 
 Solve the dependencies:
-  $ dune_pkg_lock_normalized | sed -E 's/"3.[0-9]+"/"3.XX"/'
+  $ dune_pkg_lock_normalized | dune_cmd subst '3.[0-9]+' '3.XX'
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
   Couldn't solve the package dependency formula.
   Selected candidates: foo.dev
   - dune -> (problem)
-      User requested = 3.21
-      foo dev requires < 3.0
+      User requested = 3.XX
+      foo dev requires < 3.XX
       Rejected candidates:
-        dune.3.21: Incompatible with restriction: < 3.0
+        dune.3.XX: Incompatible with restriction: < 3.XX

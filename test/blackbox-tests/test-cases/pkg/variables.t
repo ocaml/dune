@@ -58,7 +58,7 @@ Now we demonstrate we get a proper error from invalid .config files:
   >  ))
   > EOF
 
-  $ build_pkg test 2>&1 | sed 's/File .*:/File $REDACTED:/'
+  $ build_pkg test 2>&1 | dune_cmd subst 'File .*:' 'File $REDACTED:'
   Error:
   File $REDACTED:
   1 | this is dummy text

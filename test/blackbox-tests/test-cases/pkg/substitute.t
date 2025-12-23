@@ -87,7 +87,7 @@ Now with variables set
   >   (substitute defined.ml.in defined.ml)
   >   (system "cat defined.ml")))
   > EOF
-  $ build_pkg test 2>&1 | sed 's/%{os}% is.*/%{os}% is $REDACTED/g'
+  $ build_pkg test 2>&1 | dune_cmd subst '%\{os\}% is.*' '%{os}% is $REDACTED'
   We substitute '%{name}%' into 'test' and '%{_:name}%' into 'test'
   And '%{version}%' is set to '0.0.1'
   There is also some paths set:

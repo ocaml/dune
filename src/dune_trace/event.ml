@@ -349,3 +349,22 @@ let load_dir dir =
   let args = [ "dir", `String (Path.to_string dir) ] in
   Event.instant ~name:"load-dir" ~args now Debug
 ;;
+
+let file_watcher event =
+  (* CR-soon rgrinberg: this timestamp is wrong *)
+  let now = Time.now () in
+  let name, args =
+    match event with
+    | `Queue_overflow -> "queue_overflow", []
+    | `Sync id -> "sync", [ "id", Json.int id ]
+    | `Watcher_terminated -> "watcher_terminated", []
+    | `File (path, kind) ->
+      ( (match kind with
+         | `Created -> "create"
+         | `Deleted -> "delete"
+         | `File_changed -> "changed"
+         | `Unknown -> "unknown")
+      , [ "path", Json.string (Path.to_string path) ] )
+  in
+  Event.instant ~name ~args now File_watcher
+;;

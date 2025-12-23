@@ -67,7 +67,7 @@ than the tag is pointing to (still the initial commit):
 
 In this case Dune can't determine which reference to use and will error out:
 
-  $ dune_pkg_lock_normalized 2>&1 | sed "s|$PWD|\$PWD|"
+  $ dune_pkg_lock_normalized 2>&1 | dune_cmd subst "$PWD" '$PWD'
   Error: Reference "duplicated" in remote
   "file://$PWD/_repo"
   is ambiguous

@@ -1256,7 +1256,8 @@ let build (root : Workspace_root.t) (builder : Builder.t) =
       let cats =
         match Sys.getenv_opt "DUNE_TRACE" with
         | None ->
-          Dune_trace.Category.[ Sandbox; Persistent; Process; Rules; Pkg; Promote; Build ]
+          Dune_trace.Category.
+            [ Sandbox; Persistent; Process; Rules; Pkg; Promote; Build; File_watcher ]
         | Some s ->
           String.split ~on:',' s
           |> List.map ~f:(fun x ->

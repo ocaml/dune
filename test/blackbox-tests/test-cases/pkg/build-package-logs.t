@@ -20,7 +20,7 @@ Create a package with a failing command that throws an error:
 
 Building the package should fail and print an error:
 
-  $ build_pkg x 2>&1 | sed -E 's#/.*/cat#cat#g'
+  $ build_pkg x 2>&1 | dune_cmd subst '/.*/cat' cat
   File "dune.lock/x.pkg", line 4, characters 11-14:
   4 |       (run cat i_dont_exist)))
                  ^^^

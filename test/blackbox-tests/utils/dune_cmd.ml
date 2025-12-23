@@ -398,6 +398,17 @@ module Sed = struct
     | Delete rex -> List.filter inputs ~f:(fun line -> not @@ Re.Pcre.pmatch ~rex line)
   ;;
 
+  (* unlike Io.write_lines, do not append \n at the last line *)
+  let rec write_lines ~outputs oc =
+    match outputs with
+    | [] -> ()
+    | [ last ] -> output_string oc last
+    | line :: outputs ->
+      output_string oc line;
+      output_char oc '\n';
+      write_lines ~outputs oc
+  ;;
+
   let run { io; action } =
     let inputs, output =
       match io with
@@ -405,16 +416,16 @@ module Sed = struct
         let inputs = p |> Io.read_file |> String.split_on_char ~sep:'\n' in
         let output outputs =
           let temp = p |> Path.to_string |> sprintf "%s.tmp" |> Path.of_string in
-          Io.write_lines temp outputs;
+          Io.with_file_out temp ~f:(write_lines ~outputs);
           Unix.rename (Path.to_string temp) (Path.to_string p)
         in
         inputs, output
       | Stdio ->
         let inputs = Io.input_lines stdin in
         let output outputs =
-          List.iter outputs ~f:(fun line ->
-            output_string stdout line;
-            output_char stdout '\n')
+          write_lines stdout ~outputs;
+          (* on stdout, write a trailing \n *)
+          output_char stdout '\n'
         in
         inputs, output
     in

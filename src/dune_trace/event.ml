@@ -368,3 +368,38 @@ let file_watcher event =
   in
   Event.instant ~name ~args now File_watcher
 ;;
+
+let rec json_of_sexp : Sexp.t -> Json.t = function
+  | Atom s -> Json.string s
+  | List xs -> Json.list (List.map ~f:json_of_sexp xs)
+;;
+
+let error loc kind exn backtrace memo_stack =
+  let now = Time.now () in
+  let name =
+    match kind with
+    | `User -> "user"
+    | `Fatal -> "fatal"
+  in
+  let loc =
+    Option.map loc ~f:(fun loc -> "loc", Json.string (Loc.to_file_colon_line loc))
+  in
+  let memo_stack =
+    match memo_stack with
+    | [] -> None
+    | frames ->
+      let frames =
+        List.map frames ~f:(fun dyn -> json_of_sexp (Sexp.of_dyn dyn)) |> Json.list
+      in
+      Some ("memo", frames)
+  in
+  let backtrace =
+    Option.map backtrace ~f:(fun bt ->
+      "backtrace", Json.string (Printexc.raw_backtrace_to_string bt))
+  in
+  let args =
+    ("exn", Json.string (Printexc.to_string exn))
+    :: List.filter_opt [ loc; memo_stack; backtrace ]
+  in
+  Event.instant ~name ~args now Diagnostics
+;;

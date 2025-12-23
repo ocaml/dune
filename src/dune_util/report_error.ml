@@ -143,6 +143,7 @@ let format_memo_stack pps =
 ;;
 
 let gen_report
+      exn
       { responsible; msg; has_embedded_location; needs_stack_trace }
       memo_stack
       backtrace
@@ -191,6 +192,22 @@ let gen_report
          | Developer -> i_must_not_crash ())
       ]
   in
+  let () =
+    try
+      Dune_trace.emit Diagnostics (fun () ->
+        Dune_trace.Event.error
+          loc
+          (match responsible with
+           | User -> `User
+           | Developer -> `Fatal)
+          exn
+          backtrace
+          (List.map memo_stack ~f:Memo.Stack_frame.to_dyn))
+    with
+    | _ ->
+      (* We don't want a failure to write to the trace raise another event *)
+      ()
+  in
   Dune_console.print_user_message { msg with loc; paragraphs }
 ;;
 
@@ -202,7 +219,7 @@ let gen_report exn backtrace =
   in
   match exn with
   | Already_reported -> ()
-  | _ -> gen_report (get_error_from_exn exn) memo_stack backtrace
+  | _ -> gen_report exn (get_error_from_exn exn) memo_stack backtrace
 ;;
 
 let report { Exn_with_backtrace.exn; backtrace } = gen_report exn (Some backtrace)

@@ -415,6 +415,10 @@ module Sed = struct
     { io; action }
   ;;
 
+  let filter_fold ~init inputs ~f =
+    inputs |> List.fold_left ~init:(init, []) ~f |> snd |> List.rev
+  ;;
+
   let run_action inputs = function
     | Subst { rex; replacement } ->
       List.map inputs ~f:(fun line ->
@@ -422,7 +426,7 @@ module Sed = struct
     | Delete rex -> List.filter inputs ~f:(fun line -> not @@ Re.Pcre.pmatch ~rex line)
     | Delete_between { from; to' } ->
       inputs
-      |> List.fold_left ~init:(true, []) ~f:(fun (print, lines) line ->
+      |> filter_fold ~init:true ~f:(fun (print, lines) line ->
         match print with
         | true ->
           (match Re.Pcre.pmatch ~rex:from line with
@@ -432,11 +436,9 @@ module Sed = struct
           (match Re.Pcre.pmatch ~rex:to' line with
            | true -> true, lines
            | false -> false, lines))
-      |> snd
-      |> List.rev
     | Print_from rex ->
       inputs
-      |> List.fold_left ~init:(false, []) ~f:(fun (print, lines) line ->
+      |> filter_fold ~init:false ~f:(fun (print, lines) line ->
         match print with
         | true -> print, line :: lines
         | false ->
@@ -444,19 +446,15 @@ module Sed = struct
           (match print with
            | true -> print, line :: lines
            | false -> print, lines))
-      |> snd
-      |> List.rev
     | Print_until rex ->
       inputs
-      |> List.fold_left ~init:(true, []) ~f:(fun (print, lines) line ->
+      |> filter_fold ~init:true ~f:(fun (print, lines) line ->
         match print with
         | false -> print, lines
         | true ->
           (match Re.Pcre.pmatch ~rex line with
            | true -> false, line :: lines
            | false -> print, line :: lines))
-      |> snd
-      |> List.rev
   ;;
 
   (* unlike Io.write_lines, do not append \n at the last line *)

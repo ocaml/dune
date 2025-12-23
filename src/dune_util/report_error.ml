@@ -14,7 +14,6 @@ type error =
   }
 
 let code_error ~loc ~dyn_without_loc =
-  let open Pp.O in
   { responsible = Developer
   ; msg =
       User_message.make
@@ -25,7 +24,7 @@ let code_error ~loc ~dyn_without_loc =
                "Internal error, please report upstream including the contents of \
                 _build/log.")
         ; Pp.text "Description:"
-        ; Pp.box ~indent:2 (Pp.verbatim "  " ++ Dyn.pp dyn_without_loc)
+        ; Pp.box ~indent:2 Pp.O.(Pp.verbatim "  " ++ Dyn.pp dyn_without_loc)
         ]
   ; has_embedded_location = false
   ; needs_stack_trace = false
@@ -66,8 +65,7 @@ let get_error_from_exn = function
       match msg.dir with
       | None -> msg
       | Some path ->
-        let build_context = Path.extract_build_context (Path.of_string path) in
-        (match build_context with
+        (match Path.extract_build_context (Path.of_string path) with
          | None -> msg
          | Some (ctxt, _) -> { msg with context = Some ctxt })
     in
@@ -89,19 +87,20 @@ let get_error_from_exn = function
     ; needs_stack_trace = false
     }
   | exn ->
-    let open Pp.O in
-    let s = Printexc.to_string exn in
     let loc, pp =
+      let s = Printexc.to_string exn in
       match
         Scanf.sscanf s "File %S, line %d, characters %d-%d:" (fun a b c d -> a, b, c, d)
       with
-      | Error () -> None, User_error.prefix ++ Pp.textf " exception %s" s
+      | Error () -> None, Pp.O.(User_error.prefix ++ Pp.textf " exception %s" s)
       | Ok (fname, line, start, stop) ->
-        let start : Lexing.position =
-          { pos_fname = fname; pos_lnum = line; pos_cnum = start; pos_bol = 0 }
+        let loc =
+          let start : Lexing.position =
+            { pos_fname = fname; pos_lnum = line; pos_cnum = start; pos_bol = 0 }
+          in
+          let stop = { start with pos_cnum = stop } in
+          Loc.create ~start ~stop
         in
-        let stop = { start with pos_cnum = stop } in
-        let loc = Loc.create ~start ~stop in
         Some loc, Pp.text s
     in
     { responsible = Developer
@@ -137,13 +136,62 @@ let format_memo_stack pps =
   | [] -> None
   | _ ->
     Some
-      (Pp.vbox
-         (Pp.concat
-            ~sep:Pp.cut
-            (List.map pps ~f:(fun pp ->
-               Pp.box
-                 ~indent:3
-                 (Pp.seq (Pp.verbatim "-> ") (Pp.seq (Pp.text "required by ") pp))))))
+      (List.map pps ~f:(fun pp ->
+         Pp.O.(Pp.verbatim "-> " ++ Pp.text "required by " ++ pp |> Pp.box ~indent:3))
+       |> Pp.concat ~sep:Pp.cut
+       |> Pp.vbox)
+;;
+
+let gen_report
+      { responsible; msg; has_embedded_location; needs_stack_trace }
+      memo_stack
+      backtrace
+  =
+  let loc = if msg.loc = Some Loc.none then None else msg.loc in
+  let paragraphs =
+    List.concat
+      [ msg.paragraphs
+      ; (if responsible = User && not !report_backtraces_flag
+         then []
+         else (
+           match backtrace with
+           | None -> []
+           | Some backtrace ->
+             Printexc.raw_backtrace_to_string backtrace
+             |> String.split_lines
+             |> List.map ~f:(fun line -> Pp.box ~indent:2 (Pp.text line))))
+      ; (match
+           let memo_stack =
+             if !print_memo_stacks || needs_stack_trace
+             then memo_stack
+             else (
+               match loc with
+               | None -> if has_embedded_location then [] else memo_stack
+               | Some loc ->
+                 if Filename.is_relative (Loc.start loc).pos_fname
+                 then
+                   (* If the error points to a local file, we assume that we
+                      don't need to explain to the user how we reached this
+                      error. *)
+                   []
+                 else memo_stack)
+           in
+           format_memo_stack
+             (match responsible with
+              | User ->
+                List.filter_map memo_stack ~f:Memo.Stack_frame.human_readable_description
+              | Developer ->
+                List.map memo_stack ~f:(fun frame ->
+                  Dyn.pp (Memo.Stack_frame.to_dyn frame)))
+         with
+         | None -> []
+         | Some pp -> [ pp ])
+      ; (match responsible with
+         | User -> []
+         | Developer -> i_must_not_crash ())
+      ]
+  in
+  Dune_console.print_user_message { msg with loc; paragraphs }
 ;;
 
 let gen_report exn backtrace =
@@ -154,61 +202,7 @@ let gen_report exn backtrace =
   in
   match exn with
   | Already_reported -> ()
-  | _ ->
-    let { responsible; msg; has_embedded_location; needs_stack_trace } =
-      get_error_from_exn exn
-    in
-    let msg = if msg.loc = Some Loc.none then { msg with loc = None } else msg in
-    let append (msg : User_message.t) pp =
-      { msg with paragraphs = msg.paragraphs @ pp }
-    in
-    let msg =
-      if responsible = User && not !report_backtraces_flag
-      then msg
-      else (
-        match backtrace with
-        | None -> msg
-        | Some backtrace ->
-          append
-            msg
-            (List.map
-               (Printexc.raw_backtrace_to_string backtrace |> String.split_lines)
-               ~f:(fun line -> Pp.box ~indent:2 (Pp.text line))))
-    in
-    let memo_stack =
-      if !print_memo_stacks || needs_stack_trace
-      then memo_stack
-      else (
-        match msg.loc with
-        | None -> if has_embedded_location then [] else memo_stack
-        | Some loc ->
-          if Filename.is_relative (Loc.start loc).pos_fname
-          then
-            (* If the error points to a local file, we assume that we don't need
-               to explain to the user how we reached this error. *)
-            []
-          else memo_stack)
-    in
-    let memo_stack =
-      match responsible with
-      | User ->
-        format_memo_stack
-          (List.filter_map memo_stack ~f:Memo.Stack_frame.human_readable_description)
-      | Developer ->
-        format_memo_stack
-          (List.map memo_stack ~f:(fun frame -> Dyn.pp (Memo.Stack_frame.to_dyn frame)))
-    in
-    let msg =
-      match memo_stack with
-      | None -> msg
-      | Some pp -> append msg [ pp ]
-    in
-    let msg =
-      match responsible with
-      | User -> msg
-      | Developer -> append msg (i_must_not_crash ())
-    in
-    Dune_console.print_user_message msg
+  | _ -> gen_report (get_error_from_exn exn) memo_stack backtrace
 ;;
 
 let report { Exn_with_backtrace.exn; backtrace } = gen_report exn (Some backtrace)

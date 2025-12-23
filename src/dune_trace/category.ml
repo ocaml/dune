@@ -15,6 +15,7 @@ type t =
   | Debug
   | Config
   | File_watcher
+  | Diagnostics
 
 let all =
   [ Rpc
@@ -31,6 +32,7 @@ let all =
   ; Debug
   ; Config
   ; File_watcher
+  ; Diagnostics
   ]
 ;;
 
@@ -49,6 +51,7 @@ let to_string = function
   | Debug -> "debug"
   | Config -> "config"
   | File_watcher -> "file_watcher"
+  | Diagnostics -> "diagnostics"
 ;;
 
 let of_string =
@@ -79,5 +82,6 @@ module Set = Bit_set.Make (struct
       | Debug -> 11
       | Config -> 12
       | File_watcher -> 13
+      | Diagnostics -> 14
     ;;
   end)

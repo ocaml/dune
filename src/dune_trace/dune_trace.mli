@@ -16,6 +16,7 @@ module Category : sig
     | Debug
     | Config
     | File_watcher
+    | Diagnostics
 
   val of_string : string -> t option
 end
@@ -93,6 +94,14 @@ module Event : sig
        | `Sync of int
        | `Watcher_terminated
        ]
+    -> t
+
+  val error
+    :  Loc.t option
+    -> [< `Fatal | `User ]
+    -> Exn.t
+    -> Printexc.raw_backtrace option
+    -> Dyn.t list
     -> t
 
   module Rpc : sig

@@ -13,6 +13,7 @@ type t =
   | Debug
   | Config
   | File_watcher
+  | Diagnostics
 
 val to_string : t -> string
 val of_string : string -> t option

@@ -35,7 +35,7 @@ Here we demonstrate that projects override their sub projects:
   - bar.dev
 
   $ print_source "bar.dev"
-  (source (fetch (url file://PWD/_bar))) (dev) 
+  (source (fetch (url file://PWD/_bar)))
 
   $ cd ..
 

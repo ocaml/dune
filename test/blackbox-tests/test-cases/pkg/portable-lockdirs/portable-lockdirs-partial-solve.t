@@ -47,7 +47,7 @@ to solve for macos, linux, and windows by default.
   solve for in the dune-workspace file.
 
 The log file will contain errors about the package being unavailable.
-  $ sed -n -e "/The dependency solver failed to find a solution for the following platforms:/,\$p" _build/log
+  $ dune_cmd print-from "The dependency solver failed to find a solution for the following platforms:" < _build/log
   # The dependency solver failed to find a solution for the following platforms:
   # - arch = x86_64; os = linux
   # - arch = arm64; os = linux

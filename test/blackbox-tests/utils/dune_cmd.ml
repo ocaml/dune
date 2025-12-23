@@ -368,6 +368,12 @@ module Sed = struct
         ; replacement : string
         }
     | Delete of Re.re
+    | Delete_between of
+        { from : Re.re
+        ; to' : Re.re
+        }
+    | Print_from of Re.re
+    | Print_until of Re.re
 
   type t =
     { io : io
@@ -391,11 +397,66 @@ module Sed = struct
     { io; action }
   ;;
 
+  let delete_between ?file ~from ~to' () =
+    let io = io file in
+    let action = Delete_between { from; to' } in
+    { io; action }
+  ;;
+
+  let print_from ?file ~rex () =
+    let io = io file in
+    let action = Print_from rex in
+    { io; action }
+  ;;
+
+  let print_until ?file ~rex () =
+    let io = io file in
+    let action = Print_until rex in
+    { io; action }
+  ;;
+
   let run_action inputs = function
     | Subst { rex; replacement } ->
       List.map inputs ~f:(fun line ->
         Re.Pcre.substitute ~rex ~subst:(fun _ -> replacement) line)
     | Delete rex -> List.filter inputs ~f:(fun line -> not @@ Re.Pcre.pmatch ~rex line)
+    | Delete_between { from; to' } ->
+      inputs
+      |> List.fold_left ~init:(true, []) ~f:(fun (print, lines) line ->
+        match print with
+        | true ->
+          (match Re.Pcre.pmatch ~rex:from line with
+           | true -> false, lines
+           | false -> true, line :: lines)
+        | false ->
+          (match Re.Pcre.pmatch ~rex:to' line with
+           | true -> true, lines
+           | false -> false, lines))
+      |> snd
+      |> List.rev
+    | Print_from rex ->
+      inputs
+      |> List.fold_left ~init:(false, []) ~f:(fun (print, lines) line ->
+        match print with
+        | true -> print, line :: lines
+        | false ->
+          let print = Re.Pcre.pmatch ~rex line in
+          (match print with
+           | true -> print, line :: lines
+           | false -> print, lines))
+      |> snd
+      |> List.rev
+    | Print_until rex ->
+      inputs
+      |> List.fold_left ~init:(true, []) ~f:(fun (print, lines) line ->
+        match print with
+        | false -> print, lines
+        | true ->
+          (match Re.Pcre.pmatch ~rex line with
+           | true -> false, line :: lines
+           | false -> print, line :: lines))
+      |> snd
+      |> List.rev
   ;;
 
   (* unlike Io.write_lines, do not append \n at the last line *)
@@ -465,7 +526,6 @@ module Delete = Run_sed (struct
     let of_args = function
       | pattern :: optional ->
         let rex = Re.Pcre.regexp pattern in
-        Printexc.record_backtrace true;
         let file =
           match optional with
           | [] -> None
@@ -473,6 +533,58 @@ module Delete = Run_sed (struct
           | _ :: _ :: _ -> raise (Arg.Bad "Too many arguments")
         in
         Sed.delete ?file ~rex ()
+      | _ -> raise (Arg.Bad "Required arguments are <pattern> [file]")
+    ;;
+  end)
+
+module Delete_between = Run_sed (struct
+    let name = "delete-between"
+
+    let of_args = function
+      | from :: to' :: optional ->
+        let from = Re.Pcre.regexp from in
+        let to' = Re.Pcre.regexp to' in
+        let file =
+          match optional with
+          | [] -> None
+          | [ filename ] -> Some (Path.of_filename_relative_to_initial_cwd filename)
+          | _ :: _ :: _ -> raise (Arg.Bad "Too many arguments")
+        in
+        Sed.delete_between ?file ~from ~to' ()
+      | _ -> raise (Arg.Bad "Required arguments are <start-pattern> <end-pattern> [file]")
+    ;;
+  end)
+
+module Print_after = Run_sed (struct
+    let name = "print-from"
+
+    let of_args = function
+      | pattern :: optional ->
+        let rex = Re.Pcre.regexp pattern in
+        let file =
+          match optional with
+          | [] -> None
+          | [ filename ] -> Some (Path.of_filename_relative_to_initial_cwd filename)
+          | _ :: _ :: _ -> raise (Arg.Bad "Too many arguments")
+        in
+        Sed.print_from ?file ~rex ()
+      | _ -> raise (Arg.Bad "Required arguments are <pattern> [file]")
+    ;;
+  end)
+
+module Print_until = Run_sed (struct
+    let name = "print-until"
+
+    let of_args = function
+      | pattern :: optional ->
+        let rex = Re.Pcre.regexp pattern in
+        let file =
+          match optional with
+          | [] -> None
+          | [ filename ] -> Some (Path.of_filename_relative_to_initial_cwd filename)
+          | _ :: _ :: _ -> raise (Arg.Bad "Too many arguments")
+        in
+        Sed.print_until ?file ~rex ()
       | _ -> raise (Arg.Bad "Required arguments are <pattern> [file]")
     ;;
   end)

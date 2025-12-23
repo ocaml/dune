@@ -35,7 +35,7 @@ Local pinned source.
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url file://PWD/_bar_file))) (dev) 
+  (source (fetch (url file://PWD/_bar_file)))
 
 "opam" directory at the root
 
@@ -49,7 +49,7 @@ Local pinned source.
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url file://PWD/_bar_file_opam_dir))) (dev) 
+  (source (fetch (url file://PWD/_bar_file_opam_dir)))
 
 "bar.opam" file at the root
 
@@ -63,7 +63,7 @@ Local pinned source.
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url file://PWD/_bar_named_opam_root))) (dev) 
+  (source (fetch (url file://PWD/_bar_named_opam_root)))
 
 "bar.opam" file at opam/
 
@@ -77,7 +77,7 @@ Local pinned source.
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url file://PWD/_bar_named_opam_subdir))) (dev) 
+  (source (fetch (url file://PWD/_bar_named_opam_subdir)))
 
 Git pinned source:
 
@@ -96,7 +96,7 @@ Git pinned source:
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url git+file://PWD/_bar_git))) (dev) 
+  (source (fetch (url git+file://PWD/_bar_git)))
 
 Git pinned source with toplevel opam file:
 
@@ -115,7 +115,7 @@ Git pinned source with toplevel opam file:
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url git+file://PWD/_bar_opam_git))) (dev) 
+  (source (fetch (url git+file://PWD/_bar_opam_git)))
 
 Git pinned source with toplevel opam dir 1
 
@@ -135,7 +135,7 @@ Git pinned source with toplevel opam dir 1
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url git+file://PWD/_bar_opam_dir_git1))) (dev) 
+  (source (fetch (url git+file://PWD/_bar_opam_dir_git1)))
 
 Git pinned source with toplevel opam dir 2
 

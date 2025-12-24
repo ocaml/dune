@@ -1,23 +1,18 @@
 (library
- (name dune_unit_tests)
+ (name persistent_tests)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
  (libraries
-  ocaml_config
-  spawn
-  dune_tests_common
-  stdune
   dune_util
+  dyn
+  stdune
   dune_engine
   dune_rules
-  fiber
-  dune_lang
-  memo
-  unix
+  dune_digest
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config
   ppx_expect.config_types
   base
-  ppx_inline_test.config)
- (inline_tests)
- (preprocess
-  (pps ppx_expect)))
+  ppx_inline_test.config))

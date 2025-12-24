@@ -1,23 +1,25 @@
 (library
- (name dune_unit_tests)
+ (name findlib_tests)
+ (inline_tests
+  (deps
+   (source_tree ../../unit-tests/findlib-db)
+   (source_tree ../../unit-tests/toolchain.d)))
  (libraries
   ocaml_config
-  spawn
+  ocaml
   dune_tests_common
   stdune
-  dune_util
   dune_engine
   dune_rules
-  fiber
   dune_lang
+  dune_findlib
   memo
-  unix
+  test_scheduler
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config
   ppx_expect.config_types
   base
   ppx_inline_test.config)
- (inline_tests)
  (preprocess
   (pps ppx_expect)))

@@ -1,6 +1,5 @@
 (library
  (name dune_rpc_tests)
- (modules dune_rpc_tests)
  (inline_tests)
  (libraries
   dune_util

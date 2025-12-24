@@ -219,7 +219,7 @@ dune_pkg_lock_normalized() {
   else
     processed="$(mktemp)"
     cat "${out}" \
-      | sed '/The dependency solver failed to find a solution for the following platforms:/,/\.\.\.with this error:/d' \
+      | dune_cmd delete-between 'The dependency solver failed to find a solution for the following platforms:' '\.\.\.with this error:' \
       > "${processed}"
     cat "${processed}"
     return 1
@@ -251,7 +251,13 @@ EOF
 }
 
 print_source() {
-  cat "${default_lock_dir}"/"$1".pkg | sed -n "/source/,//p" | dune_cmd subst "$PWD" "PWD" | tr '\n' ' '| tr -s " "
+  cat "${default_lock_dir}"/"$1".pkg \
+  | dune_cmd print-from 'source' \
+  | dune_cmd print-until '^$' \
+  | dune_cmd subst "$PWD" "PWD" \
+  | tr '\n' ' ' \
+  | tr -s " " \
+  | dune_cmd subst '\s$' ''
 }
 
 solve() {

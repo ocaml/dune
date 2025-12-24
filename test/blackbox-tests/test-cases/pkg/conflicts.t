@@ -59,7 +59,7 @@ When conflicts are obtained from an opam file instead of a dune-project,
 the behaviour should be the same:
 
   $ dune build x.opam
-  $ sed -n '/conflicts/,/]/p' x.opam
+  $ dune_cmd print-from 'conflicts' < x.opam | dune_cmd print-until ']'
   conflicts: [
     "foo" {< "0.2"}
     "foo2" {< "0.2"}

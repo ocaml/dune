@@ -28,5 +28,5 @@ We try to pull an opam package that isn't a dune project
   $ grep dev $pkg
   (version dev)
   (dev)
-  $ grep "file://" $pkg | sed "s#$PWD#PWD#g"
+  $ grep "file://" $pkg | dune_cmd subst "$PWD" PWD
      file://PWD/_foo)))

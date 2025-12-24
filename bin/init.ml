@@ -81,7 +81,7 @@ let context_cwd : Init_context.t Term.t =
   let _common, config = Common.init builder in
   let project_defaults = config.project_defaults in
   (* CR-soon rgrinberg: remove pointless args *)
-  Scheduler.no_build_no_rpc ~config (fun () ->
+  Scheduler_setup.no_build_no_rpc ~config (fun () ->
     Memo.run (Init_context.make path project_defaults))
 ;;
 
@@ -284,7 +284,7 @@ let project =
        let _common, config = Common.init builder in
        let project_defaults = config.project_defaults in
        (* CR-soon rgrinberg: remove pointless args *)
-       Scheduler.no_build_no_rpc ~config (fun () ->
+       Scheduler_setup.no_build_no_rpc ~config (fun () ->
          Memo.run @@ init_context project_defaults)
      in
      Component.init

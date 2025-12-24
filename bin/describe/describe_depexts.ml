@@ -13,7 +13,8 @@ let term =
   and+ context_name = Common.context_arg ~doc:(Some "Build context to use.") in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config (fun () -> print_depexts context_name)
+  Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
+    print_depexts context_name)
 ;;
 
 let info =

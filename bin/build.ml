@@ -90,7 +90,7 @@ let poll_handling_rpc_build_requests ~(common : Common.t) =
     | `Allow server -> server
     | `Forbid_builds -> Code_error.raise "rpc server must be allowed in passive mode" []
   in
-  Dune_engine.Scheduler.Run.poll_passive
+  Scheduler.Run.poll_passive
     ~get_build_request:
       (let+ { kind; outcome } = Dune_rpc_impl.Server.pending_action rpc in
        let request setup =
@@ -107,21 +107,26 @@ let poll_handling_rpc_build_requests ~(common : Common.t) =
 ;;
 
 let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
-  Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config (fun () ->
-    let open Fiber.O in
-    (* Run two fibers concurrently. One is responible for rebuilding targets
+  Scheduler_setup.go_with_rpc_server_and_console_status_reporting
+    ~common
+    ~config
+    (fun () ->
+       let open Fiber.O in
+       (* Run two fibers concurrently. One is responible for rebuilding targets
        named on the command line in reaction to file system changes. The other
        is responsible for building targets named in RPC build requests. *)
-    let+ () = Dune_engine.Scheduler.Run.poll (run_build_system ~common ~request)
-    and+ () = poll_handling_rpc_build_requests ~common in
-    ())
+       let+ () = Scheduler.Run.poll (run_build_system ~common ~request)
+       and+ () = poll_handling_rpc_build_requests ~common in
+       ())
 ;;
 
 let run_build_command_poll_passive ~common ~config ~request:_ : unit =
   (* CR-someday aalekseyev: It would've been better to complain if [request] is
      non-empty, but we can't check that here because [request] is a function.*)
-  Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config (fun () ->
-    poll_handling_rpc_build_requests ~common)
+  Scheduler_setup.go_with_rpc_server_and_console_status_reporting
+    ~common
+    ~config
+    (fun () -> poll_handling_rpc_build_requests ~common)
 ;;
 
 let run_build_command_once ~(common : Common.t) ~config ~request =
@@ -132,7 +137,7 @@ let run_build_command_once ~(common : Common.t) ~config ~request =
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
     | Ok () -> ()
   in
-  Scheduler.go_with_rpc_server ~common ~config once
+  Scheduler_setup.go_with_rpc_server ~common ~config once
 ;;
 
 let run_build_command ~(common : Common.t) ~config ~request =
@@ -223,7 +228,7 @@ let build =
          perform the RPC call.
       *)
       let targets = Rpc.Rpc_common.prepare_targets targets in
-      Scheduler.go_without_rpc_server ~common ~config (fun () ->
+      Scheduler_setup.go_without_rpc_server ~common ~config (fun () ->
         let open Fiber.O in
         Rpc.Rpc_common.fire_request
           ~name:"build"

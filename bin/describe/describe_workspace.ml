@@ -660,7 +660,7 @@ let term : unit Term.t =
     in
     Dune_lang.Decoder.parse parse Univ_map.empty ast
   in
-  Scheduler.go_with_rpc_server ~common ~config
+  Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
   let* setup = Import.Main.setup () in

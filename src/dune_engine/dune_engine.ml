@@ -25,7 +25,6 @@ module Clflags = Clflags
 module Response_file = Response_file
 module File_selector = File_selector
 module Action_to_sh = Action_to_sh
-module Scheduler = Scheduler
 module Hooks = Hooks
 module Diff_promotion = Diff_promotion
 module Fs_cache = Fs_cache

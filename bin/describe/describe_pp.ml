@@ -164,7 +164,7 @@ let term =
     Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"FILE" ~doc:None))
   in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config
+  Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
   let* setup = Import.Main.setup () in

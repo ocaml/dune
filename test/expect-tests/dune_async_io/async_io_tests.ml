@@ -1,6 +1,6 @@
 open Stdune
 open Fiber.O
-module Scheduler = Dune_engine.Scheduler
+open Dune_scheduler
 open Dune_async_io
 
 let config =

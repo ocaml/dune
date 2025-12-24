@@ -1,4 +1,5 @@
 open Stdune
+open Dune_scheduler
 
 let () = Dune_tests_common.init ()
 
@@ -122,7 +123,6 @@ include struct
   module Action = Action
   module Display = Display
   module Process = Process
-  module Scheduler = Scheduler
 end
 
 let create_files =

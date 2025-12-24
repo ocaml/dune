@@ -183,6 +183,48 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
+  ; { path = "src/dune_thread_pool"
+    ; main_module_name = Some "Dune_thread_pool"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/fsevents"
+    ; main_module_name = Some "Fsevents"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "vendor/ocaml-inotify/src"
+    ; main_module_name = Some "Ocaml_inotify"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/async_inotify_for_dune"
+    ; main_module_name = Some "Async_inotify_for_dune"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/fswatch_win"
+    ; main_module_name = Some "Fswatch_win"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/dune_file_watcher"
+    ; main_module_name = Some "Dune_file_watcher"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/dune_scheduler"
+    ; main_module_name = Some "Dune_scheduler"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
   ; { path = "otherlibs/chrome-trace/src"
     ; main_module_name = Some "Chrome_trace"
     ; include_subdirs = No
@@ -225,45 +267,9 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_thread_pool"
-    ; main_module_name = Some "Dune_thread_pool"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/fsevents"
-    ; main_module_name = Some "Fsevents"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "vendor/ocaml-inotify/src"
-    ; main_module_name = Some "Ocaml_inotify"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/async_inotify_for_dune"
-    ; main_module_name = Some "Async_inotify_for_dune"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/fswatch_win"
-    ; main_module_name = Some "Fswatch_win"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/dune_file_watcher"
-    ; main_module_name = Some "Dune_file_watcher"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/dune_engine"
     ; main_module_name = Some "Dune_engine"
-    ; include_subdirs = Unqualified
+    ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
     }
@@ -534,6 +540,7 @@ let main =
             ; "Dune_rules"
             ; "Dune_vcs"
             ; "Dune_engine"
+            ; "Dune_scheduler"
             ; "Dune_targets"
             ; "Dune_util"
             ; "Dune_upgrader"

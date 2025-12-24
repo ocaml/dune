@@ -2,6 +2,7 @@
 
 open Stdune
 open Dune_engine
+open Dune_scheduler
 module Caml = Stdlib
 
 let config =

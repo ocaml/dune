@@ -17,7 +17,7 @@ let term =
     | Some package_name -> package_name
     | None -> User_error.raise [ Pp.textf "Invalid package name: %S" package_name ]
   in
-  Scheduler.go_with_rpc_server ~common ~config (fun () ->
+  Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
     let+ pkg_digest_opt =
       build_exn (fun () ->

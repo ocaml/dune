@@ -3,6 +3,19 @@ open Fiber.O
 open Dune_thread_pool
 open Dune_async_io
 
+module Fs_memo = struct
+  let handle_fs_event = Fdecl.create Dyn.opaque
+  let init = Fdecl.create Dyn.opaque
+
+  let set_impl ~handle_fs_event:handle_fs_event' ~init:init' =
+    Fdecl.set handle_fs_event handle_fs_event';
+    Fdecl.set init init'
+  ;;
+
+  let handle_fs_event event = Fdecl.get handle_fs_event event
+  let init ~dune_file_watcher = Fdecl.get init ~dune_file_watcher
+end
+
 module Config = struct
   type t =
     { concurrency : int
@@ -905,17 +918,17 @@ let wait_for_build_process t pid =
 ;;
 
 let got_shutdown reason =
-  let msg =
+  if !Log.verbose
+  then (
     match (reason : Shutdown.Reason.t) with
-    | Timeout -> "Timeout"
-    | Requested -> "Shutting down"
-    | Signal signal -> sprintf "Got signal %s, exiting." (Signal.name signal)
-  in
-  Log.verbose_message msg []
+    | Timeout -> Log.info "Shutdown" [ "reason", Dyn.variant "Timeout" [] ]
+    | Requested -> Log.info "Shutdown" [ "reason", Dyn.variant "Requested" [] ]
+    | Signal signal ->
+      Log.info "Shutdown" [ "reason", Dyn.variant "Signal" [ Signal.to_dyn signal ] ])
 ;;
 
 let filesystem_watcher_terminated () =
-  Log.info "Filesystem watcher terminated, exiting." []
+  Log.info "Shutdown" [ "reason", Dyn.string "Filesystem watcher terminated" ]
 ;;
 
 type saw_shutdown =
@@ -1246,8 +1259,11 @@ module Run = struct
              ())
     in
     let t = prepare config ~handler:on_event ~events ~file_watcher in
-    let initial_invalidation = Fs_memo.init ~dune_file_watcher:file_watcher in
-    Memo.reset initial_invalidation;
+    Option.iter file_watcher ~f:(fun dune_file_watcher ->
+      let initial_invalidation =
+        Fs_memo.init ~dune_file_watcher:(Some dune_file_watcher)
+      in
+      Memo.reset initial_invalidation);
     let result =
       let run =
         match timeout with
@@ -1365,3 +1381,5 @@ let wait_for_build_input_change () =
   let* t = t () in
   Trigger.wait t.build_inputs_changed
 ;;
+
+let set_fs_memo_impl = Fs_memo.set_impl

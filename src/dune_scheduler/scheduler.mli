@@ -162,3 +162,11 @@ val stats : unit -> Dune_trace.Out.t option Fiber.t
 val wait_for_build_input_change : unit -> unit Fiber.t
 
 val spawn_thread : (unit -> unit) -> unit
+
+(** [set_fs_memo_impl] registers the file system memoization callbacks.
+    This must be called by dune_engine at initialization before starting
+    the scheduler to enable proper file system event handling. *)
+val set_fs_memo_impl
+  :  handle_fs_event:(Dune_file_watcher.Fs_memo_event.t -> Memo.Invalidation.t)
+  -> init:(dune_file_watcher:Dune_file_watcher.t option -> Memo.Invalidation.t)
+  -> unit

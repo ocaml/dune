@@ -2,7 +2,7 @@ open Stdune
 open Dune_vcs
 module Process = Dune_engine.Process
 module Display = Dune_engine.Display
-module Scheduler = Dune_engine.Scheduler
+open Dune_scheduler
 module Console = Dune_console
 open Fiber.O
 

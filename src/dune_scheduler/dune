@@ -1,0 +1,17 @@
+(library
+ (name dune_scheduler)
+ (libraries
+  unix
+  csexp
+  stdune
+  dune_console
+  dyn
+  fiber
+  memo
+  dune_async_io
+  threads.posix
+  dune_trace
+  dune_util
+  dune_thread_pool
+  dune_file_watcher)
+ (synopsis "Internal Dune library, do not use!"))

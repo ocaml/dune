@@ -230,7 +230,7 @@ module Dump_config = struct
       Common.init builder
     in
     (* CR-soon rgrinberg: remove pointless args *)
-    Scheduler.no_build_no_rpc ~config (fun () -> Server.dump ~selected_context dir)
+    Scheduler_setup.no_build_no_rpc ~config (fun () -> Server.dump ~selected_context dir)
   ;;
 
   let command = Cmd.v info term
@@ -262,7 +262,7 @@ let start_session_term =
     Common.init builder
   in
   (* CR-soon rgrinberg: remove pointless args *)
-  Scheduler.no_build_no_rpc ~config (Server.start ~selected_context)
+  Scheduler_setup.no_build_no_rpc ~config (Server.start ~selected_context)
 ;;
 
 let command = Cmd.v (start_session_info "ocaml-merlin") start_session_term
@@ -306,7 +306,7 @@ module Dump_dot_merlin = struct
       Common.init builder
     in
     (* CR-soon rgrinberg: stop taking pointless args *)
-    Scheduler.no_build_no_rpc ~config (fun () ->
+    Scheduler_setup.no_build_no_rpc ~config (fun () ->
       match path with
       | Some s -> Server.dump_dot_merlin ~selected_context s
       | None -> Server.dump_dot_merlin ~selected_context ".")

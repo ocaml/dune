@@ -6,6 +6,7 @@
  (libraries
   stdune
   dune_engine
+  dune_scheduler
   unix
   threads.posix
   fiber

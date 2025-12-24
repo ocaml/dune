@@ -1,6 +1,7 @@
 include Stdune
 include Dune_config_file
 include Dune_vcs
+include Dune_scheduler
 
 include struct
   open Dune_engine
@@ -100,7 +101,7 @@ end = struct
 
   let setup () =
     let open Fiber.O in
-    let* scheduler = Dune_engine.Scheduler.t () in
+    let* scheduler = Scheduler.t () in
     Console.Status_line.set
       (Live
          (fun () ->
@@ -122,7 +123,7 @@ end = struct
                   total
                   (total - done_)
                   (if failed = 0 then "" else sprintf ", %u failed" failed)
-                  (Dune_engine.Scheduler.running_jobs_count scheduler))));
+                  (Scheduler.running_jobs_count scheduler))));
     Fiber.return (Memo.of_thunk get)
   ;;
 end

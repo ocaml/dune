@@ -49,7 +49,7 @@ module Apply = struct
     match Dune_util.Global_lock.lock ~timeout:None with
     | Ok () ->
       (* Why are we starting an RPC server??? *)
-      Scheduler.go_with_rpc_server ~common ~config (fun () ->
+      Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
         let open Fiber.O in
         let+ () = Fiber.return () in
         let missing =
@@ -57,7 +57,7 @@ module Apply = struct
         in
         List.iter ~f:on_missing missing)
     | Error lock_held_by ->
-      Scheduler.no_build_no_rpc ~config (fun () ->
+      Scheduler_setup.no_build_no_rpc ~config (fun () ->
         let open Fiber.O in
         Rpc.Rpc_common.fire_request
           ~name:"promote_many"
@@ -84,7 +84,7 @@ module Diff = struct
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
     (* CR-soon rgrinberg: remove pointless args *)
-    Scheduler.no_build_no_rpc ~config (fun () ->
+    Scheduler_setup.no_build_no_rpc ~config (fun () ->
       let open Fiber.O in
       let db = Diff_promotion.load_db () in
       let* missing = Diff_promotion.missing ~db files_to_promote in
@@ -107,7 +107,7 @@ module Files = struct
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
     (* CR-soon rgrinberg: remove pointless args *)
-    Scheduler.no_build_no_rpc ~config (fun () ->
+    Scheduler_setup.no_build_no_rpc ~config (fun () ->
       let open Fiber.O in
       let db = Diff_promotion.load_db () in
       let* missing = Diff_promotion.missing ~db files_to_promote in
@@ -129,7 +129,7 @@ module Show = struct
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
     (* CR-soon rgrinberg: remove pointless args *)
-    Scheduler.no_build_no_rpc ~config (fun () ->
+    Scheduler_setup.no_build_no_rpc ~config (fun () ->
       let open Fiber.O in
       let db = Diff_promotion.load_db () in
       let+ missing = Diff_promotion.missing ~db files_to_promote in

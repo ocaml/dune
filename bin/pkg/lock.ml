@@ -566,7 +566,7 @@ let term =
   and+ print_perf_stats = Arg.(value & flag & info [ "print-perf-stats" ] ~doc:None) in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config (fun () ->
+  Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
     Pkg_common.check_pkg_management_enabled ()
     >>>

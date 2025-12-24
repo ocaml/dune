@@ -246,7 +246,7 @@ let monitor ~quit_on_disconnect () =
       Console.Status_line.set
         (Console.Status_line.Live
            (fun () -> Pp.verbatim ("Waiting for RPC server" ^ String.make (i mod 4) '.')));
-      let+ () = Dune_engine.Scheduler.sleep (Time.Span.of_secs 0.3) in
+      let+ () = Scheduler.sleep (Time.Span.of_secs 0.3) in
       Some (i + 1))
 ;;
 
@@ -284,7 +284,7 @@ let command =
         ~print_ctrl_c_warning:true
         ~watch_exclusions:[]
     in
-    Dune_engine.Scheduler.Run.go
+    Scheduler.Run.go
       config
       ~on_event:(fun _ _ -> ())
       ~file_watcher:No_watcher

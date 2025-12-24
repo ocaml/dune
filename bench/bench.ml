@@ -1,5 +1,6 @@
 open Stdune
 module Process = Dune_engine.Process
+open Dune_scheduler
 
 module Console = struct
   include Dune_console
@@ -225,7 +226,6 @@ let () =
   Sys.chdir (Path.to_string dir);
   Path.as_external dir |> Option.value_exn |> Path.set_root;
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string "_build");
-  let module Scheduler = Dune_engine.Scheduler in
   let config =
     Dune_engine.Clflags.display := Quiet;
     { Scheduler.Config.concurrency = 10

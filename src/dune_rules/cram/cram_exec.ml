@@ -114,7 +114,7 @@ let run_expect_test file ~f =
     f lexbuf
   in
   let corrected_file = Path.extend_basename file ~suffix:".corrected" in
-  Dune_engine.Scheduler.async_exn (fun () ->
+  Scheduler.async_exn (fun () ->
     if file_contents <> expected
     then (
       (* we only need to restore the test file so the diff doesn't fail *)

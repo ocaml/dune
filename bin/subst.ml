@@ -525,7 +525,7 @@ let term =
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string Common.default_build_dir);
   Dune_config.init config ~watch:false;
   Log.init No_log_file;
-  Scheduler.no_build_no_rpc ~config subst
+  Scheduler_setup.no_build_no_rpc ~config subst
 ;;
 
 let command = Cmd.v info term

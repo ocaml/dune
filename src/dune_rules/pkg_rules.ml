@@ -923,27 +923,32 @@ module Action_expander = struct
              let dir = t.paths.source_dir in
              Memo.return @@ Ok (Path.relative dir program)
            | In_path ->
-             let* artifacts = t.artifacts in
-             (match Filename.Map.find artifacts program with
-              | Some s -> Memo.return @@ Ok s
-              | None ->
-                (let path = Global.env () |> Env_path.path in
-                 Which.which ~path program)
-                >>= (function
-                 | Some p -> Memo.return (Ok p)
+             (match program with
+              | "dune" ->
+                let dune = Path.of_string Sys.executable_name in
+                Memo.return @@ Ok dune
+              | program ->
+                let* artifacts = t.artifacts in
+                (match Filename.Map.find artifacts program with
+                 | Some s -> Memo.return @@ Ok s
                  | None ->
-                   let+ depexts = filtered_depexts t in
-                   let hint =
-                     Run_with_path.depexts_hint depexts
-                     |> Option.map ~f:(fun pp -> Format.asprintf "%a" Pp.to_fmt pp)
-                   in
-                   Error
-                     (Action.Prog.Not_found.create
-                        ?hint
-                        ~program
-                        ~context:t.context
-                        ~loc:(Some loc)
-                        ()))))
+                   (let path = Global.env () |> Env_path.path in
+                    Which.which ~path program)
+                   >>= (function
+                    | Some p -> Memo.return (Ok p)
+                    | None ->
+                      let+ depexts = filtered_depexts t in
+                      let hint =
+                        Run_with_path.depexts_hint depexts
+                        |> Option.map ~f:(fun pp -> Format.asprintf "%a" Pp.to_fmt pp)
+                      in
+                      Error
+                        (Action.Prog.Not_found.create
+                           ?hint
+                           ~program
+                           ~context:t.context
+                           ~loc:(Some loc)
+                           ())))))
       in
       Result.map prog ~f:(map_exe t)
     ;;

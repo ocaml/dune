@@ -1,0 +1,21 @@
+(executable
+ (name example)
+ (flags
+  (:standard -w -9-27))
+ (ctypes
+  (external_library_name libexample)
+  (build_flags_resolver pkg_config)
+  (deps
+   (:foo_h "foo.h")
+   (:bar_h bar.h)
+   baz.h)
+  (headers
+   (preamble
+    "#include <example.h>\n#include \"%{foo_h}\"\n#include \"%{bar_h}\"\n#include \"baz.h\"\n#include \"%{dep:qux.h}\""))
+  (type_description
+   (instance Types)
+   (functor Type_description))
+  (function_description
+   (instance Functions)
+   (functor Function_description))
+  (generated_entry_point C)))

@@ -24,4 +24,5 @@
     "_build/install/default/lib/coq/user-contrib/rec_module/c/ooo.glob" {"coq/user-contrib/rec_module/c/ooo.glob"}
     "_build/install/default/lib/coq/user-contrib/rec_module/c/ooo.v" {"coq/user-contrib/rec_module/c/ooo.v"}
     "_build/install/default/lib/coq/user-contrib/rec_module/c/ooo.vo" {"coq/user-contrib/rec_module/c/ooo.vo"}
+    "_build/install/default/lib/coq/user-contrib/rec_module/rocq-package" {"coq/user-contrib/rec_module/rocq-package"}
   ]

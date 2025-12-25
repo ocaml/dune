@@ -41,6 +41,7 @@ so this also tests that it won't be a problem.
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/rocq-package
 
 
 Next we go into our Dune project and build it.
@@ -64,6 +65,7 @@ somewhere else.
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.glob
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/rocq-package
   Deleting empty directory $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native
   Deleting empty directory $TESTCASE_ROOT/lib/coq/user-contrib/B
   Deleting empty directory $TESTCASE_ROOT/lib/B
@@ -76,6 +78,7 @@ somewhere else.
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B/b.glob
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B/b.v
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B/b.vo
+  Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B/rocq-package
 
 As expected, Dune can no longer build A:
 
@@ -137,6 +140,7 @@ with the loadpath semantics of Coq.
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/rocq-package
 
   $ dune build --root A
   Entering directory 'A'

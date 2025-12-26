@@ -1,5 +1,4 @@
 open Stdune
-module Timestamp = Chrome_trace.Event.Timestamp
 
 type dst =
   | Out of out_channel
@@ -76,15 +75,8 @@ let finish t event =
   | Some { Event.Async.start; event_data = { args; cat; name } } ->
     let dur =
       let stop = Time.now () in
-      Time.diff stop start |> Time.Span.to_secs |> Timestamp.of_float_seconds
+      Time.diff stop start
     in
-    let common =
-      Chrome_trace.Event.common_fields
-        ~cat:[ Category.to_string cat ]
-        ~name
-        ~ts:(Timestamp.of_float_seconds (Time.to_secs start))
-        ()
-    in
-    let event = Chrome_trace.Event.complete ?args common ~dur in
+    let event = Event.Event.complete ?args ~start ~dur cat ~name in
     emit t event
 ;;

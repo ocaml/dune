@@ -21,6 +21,11 @@
  (deps %{bin:dunepp}))
 
 (cram
+ (deps %{bin:codesign})
+ (enabled_if
+  (= %{system} macosx)))
+
+(cram
  (applies_to :whole_subtree)
  (deps
   (env_var OCAML_COLOR)

@@ -1,0 +1,4 @@
+(documentation
+ (package mypkg)
+ (files
+  (glob_files_rec (*.mld with_prefix .))))

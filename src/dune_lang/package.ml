@@ -166,7 +166,7 @@ let decode =
          field ~default:[] "conflicts" (repeat (located Package_dependency.decode))
        and+ depopts_with_locs =
          field ~default:[] "depopts" (repeat (located Package_dependency.decode))
-       and+ info = Package_info.decode ~since:(2, 0) ()
+       and+ info = Package_info.decode ~toplevel:false ~since:(2, 0) ()
        and+ tags = field "tags" (enter (repeat string)) ~default:[]
        and+ exclusive_dir =
          field_o

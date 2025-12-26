@@ -48,9 +48,21 @@ module Odoc = struct
     | Fatal
     | Nonfatal
 
-  type t = { warnings : warnings option }
+  type sidebar =
+    | Global
+    | Per_package
 
-  let empty = { warnings = None }
+  type support =
+    | Root
+    | Per_package
+
+  type t =
+    { warnings : warnings option
+    ; sidebar : sidebar option
+    ; support : support option
+    }
+
+  let empty = { warnings = None; sidebar = None; support = None }
 
   let warnings_equal x y =
     match x, y with
@@ -58,13 +70,34 @@ module Odoc = struct
     | (Fatal | Nonfatal), _ -> false
   ;;
 
-  let equal x y = Option.equal warnings_equal x.warnings y.warnings
+  let sidebar_equal x y =
+    match x, y with
+    | Global, Global | Per_package, Per_package -> true
+    | (Global | Per_package), _ -> false
+  ;;
+
+  let support_equal x y =
+    match x, y with
+    | Root, Root | Per_package, Per_package -> true
+    | (Root | Per_package), _ -> false
+  ;;
+
+  let equal x y =
+    Option.equal warnings_equal x.warnings y.warnings
+    && Option.equal sidebar_equal x.sidebar y.sidebar
+    && Option.equal support_equal x.support y.support
+  ;;
+
   let warnings_decode = enum [ "fatal", Fatal; "nonfatal", Nonfatal ]
+  let sidebar_decode = enum [ "global", Global; "per-package", Per_package ]
+  let support_decode = enum [ "root", Root; "per-package", Per_package ]
 
   let decode =
     fields
-    @@ let+ warnings = field_o "warnings" warnings_decode in
-       { warnings }
+    @@ let+ warnings = field_o "warnings" warnings_decode
+       and+ sidebar = field_o "sidebar" sidebar_decode
+       and+ support = field_o "support" support_decode in
+       { warnings; sidebar; support }
   ;;
 end
 

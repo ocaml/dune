@@ -1,0 +1,3 @@
+(library
+ (name foolib)
+ (public_name foo.lib))

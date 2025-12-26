@@ -22,21 +22,26 @@ Demonstrate how odoc interops with the `stdlib` stanza
   > EOF
 
   $ dune build @doc
+  File "_odoc/l/l/l.odoc":
+  Warning: Couldn't find the following modules:
+    Bar
 
 Bar is compiled
-  $ find _build/default -name '*.odoc' | sort -n
-  _build/default/.l.objs/byte/l.odoc
-  _build/default/.l.objs/byte/l__Bar.odoc
-  _build/default/_doc/_odoc/pkg/l/page-index.odoc
+  $ find _build/default/_doc/_odoc/l -name '*.odoc' | sort -n
+  _build/default/_doc/_odoc/l/l/l.odoc
+  _build/default/_doc/_odoc/l/l/l__Bar.odoc
+  _build/default/_doc/_odoc/l/l/page-index.odoc
+  _build/default/_doc/_odoc/l/page-index.odoc
 
 Bar is not linked
-  $ find _build/default -name '*.odocl' | sort -n
-  _build/default/_doc/_odocls/l/l.odocl
-  _build/default/_doc/_odocls/l/page-index.odocl
+  $ find _build/default/_doc/_odocl/l -name '*.odocl' | sort -n
+  _build/default/_doc/_odocl/l/l/l.odocl
+  _build/default/_doc/_odocl/l/l/page-index.odocl
+  _build/default/_doc/_odocl/l/page-index.odocl
 
 No html is generated for Bar
 
-  $ find _build/default -name '*.html' | sort -n
-  _build/default/_doc/_html/index.html
-  _build/default/_doc/_html/l/L/index.html
+  $ find _build/default/_doc/_html/l -name '*.html' | sort -n
   _build/default/_doc/_html/l/index.html
+  _build/default/_doc/_html/l/l/L/index.html
+  _build/default/_doc/_html/l/l/index.html

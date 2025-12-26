@@ -1,0 +1,5 @@
+{0 Package A}
+
+This is package A. It provides {!Liba}.
+
+See also the related package B, which provides {!Libb}.

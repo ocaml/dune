@@ -1,3 +1,0 @@
-(cram
- (applies_to :whole_subtree)
- (deps %{bin:odoc}))

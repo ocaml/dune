@@ -1,0 +1,4 @@
+(library
+ (name mylib)
+ (public_name mylib)
+ (libraries lwt))

@@ -1,6 +1,0 @@
-(library
- (name sublib2)
- (wrapped false)
- (public_name odoctest3.sublib2)
- (libraries sublib1))
- 

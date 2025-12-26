@@ -26,6 +26,36 @@ is used when generating OPAM files (see :doc:`generate_opam_files`).
 
       Package dependencies, as :token:`~pkg-dep:dep_specification`.
 
+   .. describe:: (documentation <doc-spec>)
+
+      .. versionadded:: 2.0
+
+      The documentation field allows to specify documentation options for the
+      package.
+
+      It may contain the following fields:
+
+      .. describe:: (url <url>)
+
+         .. versionadded:: 3.20
+
+         Where the documentation is hosted. The same as `(documentation
+         <string>)` available in older Dune versions. Overrides the
+         corresponding global field (see :doc:`documentation`).
+
+      .. describe:: (depends <dep-specification>)
+
+         .. versionadded:: 3.20
+
+         Lists the packages whose docs is referenced in an ``mli`` or ``mld``
+         file. For instance, to be able to reference ``cmdliner``'s tutorial
+         with ``{!/cmdliner/tutorial}``, ``cmdliner`` needs to be added here.
+
+         The syntax for this field is :token:`~pkg-dep:dep_specification`.
+
+      This field can also be the same as the corresponding global field (see
+      :doc:`documentation`), in which case this takes precedence.
+
    .. describe:: (conflicts <dep-specification>)
 
       Package conflicts, as :token:`~pkg-dep:dep_specification`.
@@ -93,13 +123,6 @@ is used when generating OPAM files (see :doc:`generate_opam_files`).
 
       The same as (and takes precedences over) the corresponding global field
       (see :doc:`homepage`).
-
-   .. describe:: (documentation ...)
-
-      .. versionadded:: 2.0
-
-      The same as (and takes precedences over) the corresponding global field
-      (see :doc:`documentation`).
 
    .. describe:: (sites ...)
 

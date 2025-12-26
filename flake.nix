@@ -275,7 +275,10 @@
               '';
               inherit meta;
               nativeBuildInputs =
-                baseInputs ++ [ duneScript ] ++ (if hasOcamlOverride then [ pkgs'.ocamlPackages.ocaml ] else [ ]);
+                baseInputs
+                ++ pkgs'.lib.optionals stdenv.isDarwin [ pkgs'.darwin.sigtool ]
+                ++ [ duneScript ]
+                ++ (if hasOcamlOverride then [ pkgs'.ocamlPackages.ocaml ] else [ ]);
               inputsFrom = if hasOcamlOverride then [ ] else [ pkgs'.ocamlPackages.dune_3 ];
               buildInputs =
                 (if includeTestDeps then testBuildInputs else [ ])

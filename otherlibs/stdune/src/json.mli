@@ -14,3 +14,4 @@ val assoc : (string * t) list -> t
 val list : t list -> t
 val int : int -> t
 val float : float -> t
+val bool : bool -> t

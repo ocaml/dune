@@ -1,13 +1,34 @@
 open Stdune
 
+module Arg = struct
+  include Json
+
+  let rec sexp : Sexp.t -> t = function
+    | Atom s -> string s
+    | List xs -> list (List.map ~f:sexp xs)
+  ;;
+
+  let dyn dyn = sexp (Sexp.of_dyn dyn)
+  let path p = string (Path.to_string p)
+  let source_path p = string (Path.Source.to_string p)
+  let build_path p = string (Path.Build.to_string p)
+  let record x = `Assoc x
+end
+
 module Event = struct
-  module Id = Chrome_trace.Id
+  module Id = struct
+    open Chrome_trace.Id
+
+    let int x = create (`Int x)
+    let string x = create (`String x)
+  end
+
   module Event = Chrome_trace.Event
 
   let make_ts ts = Event.Timestamp.of_float_seconds (Time.to_secs ts)
   let make_dur span = Event.Timestamp.of_float_seconds (Time.Span.to_secs span)
 
-  type args = Event.args
+  type args = (string * Arg.t) list
   type t = Event.t
 
   let complete ?args ~name ~start ~dur cat =
@@ -46,7 +67,7 @@ module Async = struct
   let create ~event_data ~start = { event_data; start }
 
   let create_sandbox ~loc =
-    { args = Some [ "loc", `String (Loc.to_file_colon_line loc) ]
+    { args = Some [ "loc", Arg.string (Loc.to_file_colon_line loc) ]
     ; name = "create-sandbox"
     ; cat = Sandbox
     }
@@ -54,10 +75,10 @@ module Async = struct
 
   let fetch ~url ~target ~checksum =
     let args =
-      let args = [ "url", `String url; "target", `String (Path.to_string target) ] in
+      let args = [ "url", Arg.string url; "target", Arg.path target ] in
       match checksum with
       | None -> args
-      | Some c -> ("checksum", `String c) :: args
+      | Some c -> ("checksum", Arg.string c) :: args
     in
     { args = Some args; cat = Pkg; name = "fetch" }
   ;;
@@ -67,13 +88,13 @@ type t = Event.t
 
 let scan_source ~name ~start ~stop ~dir =
   let dur = Time.diff stop start in
-  let args = [ "dir", `String (Path.Source.to_string dir) ] in
+  let args = [ "dir", Arg.source_path dir ] in
   Event.complete ~name ~start ~args ~dur Rules
 ;;
 
 let evalauted_rules ~rule_total =
   let now = Time.now () in
-  let args = [ "value", `Int rule_total ] in
+  let args = [ "value", Arg.int rule_total ] in
   Event.instant ~name:"evalauted_rules" ~args now Rules
 ;;
 
@@ -81,17 +102,17 @@ let config ~version =
   let now = Time.now () in
   let args =
     let args =
-      [ "build_dir", `String (Path.Build.to_string Path.Build.root)
-      ; "argv", `List (Array.to_list Sys.argv |> List.map ~f:Json.string)
-      ; "env", `List (Unix.environment () |> Array.to_list |> List.map ~f:Json.string)
-      ; "root", `String Path.(to_absolute_filename root)
-      ; "pid", `Int (Unix.getpid ())
-      ; "initial_cwd", Json.string Fpath.initial_cwd
+      [ "build_dir", Arg.build_path Path.Build.root
+      ; "argv", Arg.list (Array.to_list Sys.argv |> List.map ~f:Arg.string)
+      ; "env", Arg.list (Unix.environment () |> Array.to_list |> List.map ~f:Arg.string)
+      ; "root", Arg.string Path.(to_absolute_filename root)
+      ; "pid", Arg.int (Unix.getpid ())
+      ; "initial_cwd", Arg.string Fpath.initial_cwd
       ]
     in
     match version with
     | None -> args
-    | Some v -> ("version", Stdune.Json.string v) :: args
+    | Some v -> ("version", Arg.string v) :: args
   in
   Event.instant ~args ~name:"config" now Config
 ;;
@@ -126,9 +147,9 @@ let args_of_targets =
     then []
     else
       [ ( name
-        , `List
+        , Arg.list
             (Filename.Set.to_list_map set ~f:(fun x ->
-               `String (Path.Build.relative root x |> Path.Build.to_string))) )
+               Arg.build_path (Path.Build.relative root x))) )
       ]
   in
   fun { root; files; dirs } ->
@@ -156,30 +177,30 @@ let process
   in
   let args =
     let always =
-      [ "process_args", `List (List.map process_args ~f:(fun arg -> `String arg))
-      ; "pid", `Int (Pid.to_int pid)
-      ; "categories", `List (List.map categories ~f:Json.string)
+      [ "process_args", Arg.list (List.map process_args ~f:Arg.string)
+      ; "pid", Arg.int (Pid.to_int pid)
+      ; "categories", Arg.list (List.map categories ~f:Arg.string)
       ]
     in
     let extended =
       let exit =
         match exit with
-        | Ok n -> [ "exit", `Int n ]
+        | Ok n -> [ "exit", Arg.int n ]
         | Error (Exit_status.Failed n) ->
-          [ "exit", `Int n; "error", `String (sprintf "exited with code %d" n) ]
+          [ "exit", Arg.int n; "error", Arg.string (sprintf "exited with code %d" n) ]
         | Error (Signaled s) ->
-          [ "exit", `Int (Signal.to_int s)
-          ; "error", `String (sprintf "got signal %s" (Signal.name s))
+          [ "exit", Arg.int (Signal.to_int s)
+          ; "error", Arg.string (sprintf "got signal %s" (Signal.name s))
           ]
       in
       let output name s =
         match s with
         | "" -> []
-        | s -> [ name, `String s ]
+        | s -> [ name, Arg.string s ]
       in
       List.concat
-        [ [ "prog", `String prog
-          ; "dir", `String (Option.map ~f:Path.to_string dir |> Option.value ~default:".")
+        [ [ "prog", Arg.string prog
+          ; "dir", Arg.path (Option.value dir ~default:Path.root)
           ]
         ; exit
         ; (match targets with
@@ -197,10 +218,10 @@ let process
 let persistent ~file ~module_ what ~start ~stop =
   let dur = Time.diff stop start in
   let args =
-    [ "path", `String (Path.to_string file)
-    ; "module", `String module_
+    [ "path", Arg.path file
+    ; "module", Arg.string module_
     ; ( "operation"
-      , `String
+      , Arg.string
           (match what with
            | `Save -> "save"
            | `Load -> "load") )
@@ -217,13 +238,13 @@ module Rpc = struct
 
   let session ~id stage =
     let now = Time.now () in
-    let id = Event.Id.create (`Int id) in
+    let id = Event.Id.int id in
     Event.async id now stage ~name:"rpc_session" Rpc
   ;;
 
-  let rec to_json : Sexp.t -> Json.t = function
-    | Atom s -> `String s
-    | List s -> `List (List.map s ~f:to_json)
+  let rec to_json : Sexp.t -> Arg.t = function
+    | Atom s -> Arg.string s
+    | List s -> Arg.list (List.map s ~f:to_json)
   ;;
 
   let message what ~meth_ ~id stage =
@@ -234,45 +255,45 @@ module Rpc = struct
       | `Request _ -> "request"
     in
     let args =
-      let args = [ "meth", `String meth_ ] in
+      let args = [ "meth", Arg.string meth_ ] in
       match what with
       | `Notification -> args
       | `Request id -> ("request_id", to_json id) :: args
     in
-    Event.async (Event.Id.create (`Int id)) ~args ~name now stage Rpc
+    Event.async (Event.Id.int id) ~args ~name now stage Rpc
   ;;
 
   let packet_read ~id ~success ~error =
     let now = Time.now () in
     let args =
-      let base = [ "id", `Int id; "success", `Bool success ] in
+      let base = [ "id", Arg.int id; "success", Arg.bool success ] in
       match error with
       | None -> base
-      | Some err -> ("error", `String err) :: base
+      | Some err -> ("error", Arg.string err) :: base
     in
     Event.instant ~args ~name:"packet_read" now Rpc
   ;;
 
   let packet_write ~id ~count =
     let now = Time.now () in
-    let args = [ "id", `Int id; "count", `Int count ] in
+    let args = [ "id", Arg.int id; "count", Arg.int count ] in
     Event.instant ~name:"packet_write" ~args now Rpc
   ;;
 
   let accept ~success ~error =
     let now = Time.now () in
     let args =
-      let base = [ "success", `Bool success ] in
+      let base = [ "success", Arg.bool success ] in
       match error with
       | None -> base
-      | Some err -> ("error", `String err) :: base
+      | Some err -> ("error", Arg.string err) :: base
     in
     Event.instant ~args ~name:"accept" now Rpc
   ;;
 
   let close ~id =
     let now = Time.now () in
-    let args = [ "id", `Int id ] in
+    let args = [ "id", Arg.int id ] in
     Event.instant ~args ~name:"close" now Rpc
   ;;
 end
@@ -281,15 +302,15 @@ let gc () =
   let now = Time.now () in
   let args =
     let stat = Gc.quick_stat () in
-    [ "stack_size", `Int stat.stack_size
-    ; "heap_words", `Int stat.heap_words
-    ; "top_heap_words", `Int stat.top_heap_words
-    ; "minor_words", `Float stat.minor_words
-    ; "major_words", `Float stat.major_words
-    ; "promoted_words", `Float stat.promoted_words
-    ; "compactions", `Int stat.compactions
-    ; "major_collections", `Int stat.major_collections
-    ; "minor_collections", `Int stat.minor_collections
+    [ "stack_size", Arg.int stat.stack_size
+    ; "heap_words", Arg.int stat.heap_words
+    ; "top_heap_words", Arg.int stat.top_heap_words
+    ; "minor_words", Arg.float stat.minor_words
+    ; "major_words", Arg.float stat.major_words
+    ; "promoted_words", Arg.float stat.promoted_words
+    ; "compactions", Arg.int stat.compactions
+    ; "major_collections", Arg.int stat.major_collections
+    ; "minor_collections", Arg.int stat.minor_collections
     ]
   in
   Event.instant ~name:"gc" ~args now Gc
@@ -300,17 +321,13 @@ let fd_count () =
   | Unknown -> None
   | This fds ->
     let now = Time.now () in
-    let args = [ "value", `Int fds ] in
+    let args = [ "value", Arg.int fds ] in
     Some (Event.instant ~name:"fds" ~args now Fd)
 ;;
 
 let promote src dst =
   let now = Time.now () in
-  let args =
-    [ "src", `String (Path.Build.to_string src)
-    ; "dst", `String (Path.Source.to_string dst)
-    ]
-  in
+  let args = [ "src", Arg.build_path src; "dst", Arg.source_path dst ] in
   Event.instant ~name:"promote" ~args now Promote
 ;;
 
@@ -322,31 +339,31 @@ type alias =
   }
 
 let json_of_alias { dir; name; recursive; contexts } =
-  `Assoc
-    [ "dir", `String (Path.Source.to_string dir)
-    ; "name", `String name
-    ; "recursive", `Bool recursive
-    ; "contexts", `List (List.map contexts ~f:Json.string)
+  Arg.record
+    [ "dir", Arg.source_path dir
+    ; "name", Arg.string name
+    ; "recursive", Arg.bool recursive
+    ; "contexts", Arg.list (List.map contexts ~f:Arg.string)
     ]
 ;;
 
 let resolve_targets targets aliases =
   let now = Time.now () in
   let args =
-    [ "targets", List.map targets ~f:(fun p -> `String (Path.to_string p))
+    [ "targets", List.map targets ~f:Arg.path
     ; "aliases", List.map aliases ~f:json_of_alias
     ]
     |> List.filter_map ~f:(fun (k, v) ->
       match v with
       | [] -> None
-      | _ :: _ -> Some (k, `List v))
+      | _ :: _ -> Some (k, Arg.list v))
   in
   Event.instant ~args ~name:"targets" now Build
 ;;
 
 let load_dir dir =
   let now = Time.now () in
-  let args = [ "dir", `String (Path.to_string dir) ] in
+  let args = [ "dir", Arg.path dir ] in
   Event.instant ~name:"load-dir" ~args now Debug
 ;;
 
@@ -356,7 +373,7 @@ let file_watcher event =
   let name, args =
     match event with
     | `Queue_overflow -> "queue_overflow", []
-    | `Sync id -> "sync", [ "id", Json.int id ]
+    | `Sync id -> "sync", [ "id", Arg.int id ]
     | `Watcher_terminated -> "watcher_terminated", []
     | `File (path, kind) ->
       ( (match kind with
@@ -364,14 +381,9 @@ let file_watcher event =
          | `Deleted -> "delete"
          | `File_changed -> "changed"
          | `Unknown -> "unknown")
-      , [ "path", Json.string (Path.to_string path) ] )
+      , [ "path", Arg.path path ] )
   in
   Event.instant ~name ~args now File_watcher
-;;
-
-let rec json_of_sexp : Sexp.t -> Json.t = function
-  | Atom s -> Json.string s
-  | List xs -> Json.list (List.map ~f:json_of_sexp xs)
 ;;
 
 let error loc kind exn backtrace memo_stack =
@@ -382,23 +394,21 @@ let error loc kind exn backtrace memo_stack =
     | `Fatal -> "fatal"
   in
   let loc =
-    Option.map loc ~f:(fun loc -> "loc", Json.string (Loc.to_file_colon_line loc))
+    Option.map loc ~f:(fun loc -> "loc", Arg.string (Loc.to_file_colon_line loc))
   in
   let memo_stack =
     match memo_stack with
     | [] -> None
     | frames ->
-      let frames =
-        List.map frames ~f:(fun dyn -> json_of_sexp (Sexp.of_dyn dyn)) |> Json.list
-      in
+      let frames = List.map frames ~f:Arg.dyn |> Arg.list in
       Some ("memo", frames)
   in
   let backtrace =
     Option.map backtrace ~f:(fun bt ->
-      "backtrace", Json.string (Printexc.raw_backtrace_to_string bt))
+      "backtrace", Arg.string (Printexc.raw_backtrace_to_string bt))
   in
   let args =
-    ("exn", Json.string (Printexc.to_string exn))
+    ("exn", Arg.string (Printexc.to_string exn))
     :: List.filter_opt [ loc; memo_stack; backtrace ]
   in
   Event.instant ~name ~args now Diagnostics

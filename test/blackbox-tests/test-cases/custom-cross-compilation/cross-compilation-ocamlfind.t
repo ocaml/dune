@@ -73,11 +73,11 @@ ocamlfind can find it
 
 Dune should be able to find it too
 
-  $ dune build --trace-file trace.json --root=app @install -x foo # grep notocamldep-foo
+  $ dune build --root=app @install -x foo # grep notocamldep-foo
   Entering directory 'app'
   Leaving directory 'app'
 
-  $ jq '.[] | .args | select(has("prog") and (.prog | contains("notocamldep-foo"))) | del(.pid)' trace.json
+  $ dune trace cat | jq '.[] | .args | select(has("prog") and (.prog | contains("notocamldep-foo"))) | del(.pid)'
   {
     "process_args": [
       "-modules",

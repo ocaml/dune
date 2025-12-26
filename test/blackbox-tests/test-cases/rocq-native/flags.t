@@ -11,8 +11,8 @@ Test cases to check Coq's flag setting is correct:
 
   $ runFlags() {
   > dune clean
-  > dune build --trace-file trace.json foo.vo
-  > jq -c '.[] | select(.name == "rocq") | .args.process_args | .[] | sub(".*/coq/"; "coq/") | sub(".*/rocq-runtime/"; "rocq-runtime/")' trace.json
+  > dune build foo.vo
+  > dune trace cat | jq -c '.[] | select(.name == "rocq") | .args.process_args | .[] | sub(".*/coq/"; "coq/") | sub(".*/rocq-runtime/"; "rocq-runtime/")'
   > }
 
 Test case: default flags

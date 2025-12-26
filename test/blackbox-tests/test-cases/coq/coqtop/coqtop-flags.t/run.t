@@ -1,13 +1,13 @@
 Testing that the correct flags are being passed to dune coq top
 
 The flags passed to coqc:
-  $ dune build --trace-file trace.json
+  $ dune build
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
   Hint: To disable this warning, add the following to your dune-project file:
   (warnings (deprecated_coq_lang disabled))
 
-  $ jq '[ .[] | select(.name == "coqc") | .args.process_args ] | .[1] | .[] | sub(".*/coq/"; "coq/") | sub(".*/coq-core/"; "coq-core/")' trace.json
+  $ dune trace cat | jq '[ .[] | select(.name == "coqc") | .args.process_args ] | .[1] | .[] | sub(".*/coq/"; "coq/") | sub(".*/coq-core/"; "coq-core/")'
   "-w"
   "-notation-overridden"
   "-w"

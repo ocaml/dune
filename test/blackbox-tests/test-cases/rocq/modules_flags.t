@@ -19,7 +19,7 @@ Reproducing test case for https://github.com/ocaml/dune/issues/12638.
   > EOF
 
   $ printFlags() {
-  > jq -f $jqScript trace.json
+  > dune trace cat | jq -f $jqScript
   > }
 
   $ cat > dune <<EOF
@@ -30,7 +30,7 @@ Reproducing test case for https://github.com/ocaml/dune/issues/12638.
   >   (bar (-w -deprecated-since-8.16))))
   > EOF
 
-  $ dune build --trace-file trace.json foo.vo
+  $ dune build foo.vo
   $ printFlags
   [
     "-w",
@@ -41,7 +41,7 @@ Reproducing test case for https://github.com/ocaml/dune/issues/12638.
     "-deprecated-native-compiler-option"
   ]
 
-  $ dune build --trace-file trace.json bar.vo
+  $ dune build bar.vo
   $ printFlags
   [
     "-w",
@@ -60,13 +60,13 @@ Reproducing test case for https://github.com/ocaml/dune/issues/12638.
   >   (bar (-w -deprecated-since-8.16))))
   > EOF
 
-  $ dune build --trace-file trace.json foo.vo
+  $ dune build foo.vo
   $ printFlags
   [
     "-w",
     "-deprecated-native-compiler-option"
   ]
-  $ dune build --trace-file trace.json bar.vo
+  $ dune build bar.vo
   $ printFlags
   [
     "-w",

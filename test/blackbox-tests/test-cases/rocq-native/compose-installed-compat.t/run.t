@@ -42,7 +42,7 @@ so this also tests that it won't be a problem.
 
 
 Next we go into our Dune project and build it.
-  $ dune build --trace-file trace.json --root A
+  $ dune build --root A
   Entering directory 'A'
   Inductive hello : Set :=
       I : hello | am : hello | an : hello | install : hello | loc : hello.
@@ -50,7 +50,7 @@ Next we go into our Dune project and build it.
 
 Now we check the flags that were passed to coqdep and coqc:
 
-  $ jq '.[] | select(.cat == "process" and (.args.process_args.[0] | IN ("compile", "dep"))) | {name, args: (.args.process_args | map(sub(".*/coq-core"; "coq-core")))}' trace.json
+  $ dune trace cat | jq '.[] | select(.cat == "process" and (.args.process_args.[0] | IN ("compile", "dep"))) | {name, args: (.args.process_args | map(sub(".*/coq-core"; "coq-core")))}'
   {
     "name": "rocq",
     "args": [

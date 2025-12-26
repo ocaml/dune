@@ -14,12 +14,12 @@ rule.
   > EOF
 
   $ loadedDirs() {
-  > jq -c '.[] | select(.name == "load-dir") | .args' $1
+  > jq -c '.[] | select(.name == "load-dir") | .args'
   > }
 
   $ build() {
-  > dune build --trace-file trace.json $@
-  > loadedDirs trace.json
+  > dune build $@
+  > dune trace cat | loadedDirs
   > }
 
   $ export DUNE_TRACE=debug
@@ -50,7 +50,7 @@ output/
 
 Now we try loading the rules in output/a and make sure that nothing is deleted:
 
-  $ dune rules --trace-file trace.json output/a/
+  $ dune rules output/a/
   ((deps ())
    (targets ((files ()) (directories (_build/default/output))))
    (context default)
@@ -59,7 +59,7 @@ Now we try loading the rules in output/a and make sure that nothing is deleted:
      _build/default
      (bash "echo creating output dir && mkdir -p output/a && touch output/a/b"))))
 
-  $ loadedDirs trace.json
+  $ dune trace cat | loadedDirs
   {"dir":"_build/default/output"}
   {"dir":"_build/default"}
   {"dir":"_build/default/.dune"}

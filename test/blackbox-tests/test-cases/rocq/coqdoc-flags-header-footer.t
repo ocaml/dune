@@ -24,9 +24,9 @@ Testing the rocqdoc_header and rocqdoc_footer field of the env stanza.
   > footer
   > EOF
 
-  $ dune build --trace-file trace.json @doc
+  $ dune build @doc
 
-  $ jq -c '.[] | select(.cat == "process" and .args.process_args.[0] == "doc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")' trace.json
+  $ dune trace cat | jq -c '.[] | select(.cat == "process" and .args.process_args.[0] == "doc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")'
   "doc"
   "-R"
   "coq/theories"
@@ -44,9 +44,9 @@ Testing the rocqdoc_header and rocqdoc_footer field of the env stanza.
   "a.html"
   "foo.v"
 
-  $ dune build --trace-file trace.json @doc-latex
+  $ dune build @doc-latex
 
-  $ jq -c '.[] | select(.cat == "process" and .args.process_args.[0] == "doc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")' trace.json
+  $ dune trace cat | jq -c '.[] | select(.cat == "process" and .args.process_args.[0] == "doc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")'
   "doc"
   "-R"
   "coq/theories"

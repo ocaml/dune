@@ -1,6 +1,6 @@
 Testing coqdoc when composed with a boot library
 
-  $ dune build --trace-file trace.json A/A.html
+  $ dune build A/A.html
 
   $ ls _build/default/A
   A.html
@@ -12,5 +12,5 @@ Testing coqdoc when composed with a boot library
 
 Dune should be passing '--coqlib' to coqdoc, but it doesn't. This is a bug.
 
-  $ jq -c '.[] | select(.cat == "process" and .args.process_args.[0] == "doc") | .args.process_args' trace.json
+  $ dune trace cat | jq -c '.[] | select(.cat == "process" and .args.process_args.[0] == "doc") | .args.process_args'
   ["doc","-R","../Coq","Corelib","-R",".","A","--toc","--html","-d","A.html","a.v"]

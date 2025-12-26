@@ -7,8 +7,8 @@ Bug #4632
   > EOF
 
   $ runtest() {
-  > dune build --trace-file trace.json $@
-  > jq '.[] | select(.cat == "log" and .args.message == "Dune context") | .args.context | .[] | select(.[0] == "profile")' trace.json
+  > dune build $@
+  > dune trace cat | jq '.[] | select(.cat == "log" and .args.message == "Dune context") | .args.context | .[] | select(.[0] == "profile")'
   > }
 
   $ runtest

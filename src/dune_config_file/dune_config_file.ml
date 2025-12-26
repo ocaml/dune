@@ -715,7 +715,7 @@ module Dune_config = struct
       | Fixed i -> i
       | Auto ->
         let n = Lazy.force auto_concurrency in
-        Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
+        Log.info "Auto-detected concurrency" [ "concurrency", Dyn.int n ];
         n
     in
     (Dune_engine.Clflags.display

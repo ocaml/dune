@@ -3,7 +3,7 @@ open Import
 let base_dir =
   lazy
     (let dir = Path.relative (Lazy.force Dune_util.cache_root_dir) "toolchains" in
-     Log.info [ Pp.textf "Toolchains cache location: %s" (Path.to_string dir) ];
+     Log.info "Toolchains cache location" [ "dir", Dyn.string (Path.to_string dir) ];
      Path.as_outside_build_dir_exn dir)
 ;;
 

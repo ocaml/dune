@@ -6,19 +6,45 @@ Bug #4632
   > (lang dune 3.13)
   > EOF
 
-  $ dune build --verbose 2>&1 | grep "; profile"
-   ; profile = Dev
+  $ runtest() {
+  > dune build --trace-file trace.json $@
+  > jq '.[] | select(.cat == "log" and .args.message == "Dune context") | .args.context | .[] | select(.[0] == "profile")' trace.json
+  > }
 
-  $ dune build --release --verbose 2>&1 | grep "; profile"
-   ; profile = Release
+  $ runtest
+  [
+    "profile",
+    "Dev"
+  ]
+
+  $ runtest --release
+  [
+    "profile",
+    "Release"
+  ]
 
   $ export DUNE_PROFILE=envvar
 
-  $ dune build --verbose 2>&1 | grep "; profile"
-   ; profile = User_defined "envvar"
+  $ runtest
+  [
+    "profile",
+    [
+      "User_defined",
+      "envvar"
+    ]
+  ]
 
-  $ dune build --release --verbose 2>&1 | grep "; profile"
-   ; profile = Release
+  $ runtest --release
+  [
+    "profile",
+    "Release"
+  ]
 
-  $ dune build --profile cmdline --verbose 2>&1 | grep "; profile"
-   ; profile = User_defined "cmdline"
+  $ runtest --profile cmdline
+  [
+    "profile",
+    [
+      "User_defined",
+      "cmdline"
+    ]
+  ]

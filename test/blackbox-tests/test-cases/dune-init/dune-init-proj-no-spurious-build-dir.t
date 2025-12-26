@@ -11,9 +11,9 @@ directory in the current directory.
   > }
 
   $ ls
+  _build
   foo
   $ ls foo
-  _build
   bin
   dune-project
   foo.opam
@@ -25,10 +25,10 @@ directory in the current directory.
   Success: initialized project component named foo
   Leaving directory 'bar'
   $ ls
+  _build
   bar
   foo
   $ ls bar
-  _build
   bar
   bin
   dune-project
@@ -42,11 +42,11 @@ directory in the current directory.
   Success: initialized project component named foo
   Leaving directory 'baz'
   $ ls
+  _build
   bar
   baz
   foo
   $ ls baz
-  _build
   baz
   bin
   dune-project

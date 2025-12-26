@@ -170,4 +170,17 @@ module Status_line = struct
 end
 
 let () = User_warning.set_reporter print_user_message
-let () = Log.set_forward_verbose print_user_message
+
+let () =
+  Log.set_forward_verbose (fun msg args ->
+    let formatted_args =
+      List.map args ~f:(fun (k, v) -> Printf.sprintf "%s: %s" k (Dyn.to_string v))
+      |> String.concat ~sep:" "
+    in
+    let full_msg =
+      if String.is_empty formatted_args
+      then msg
+      else Printf.sprintf "%s %s" msg formatted_args
+    in
+    print [ Pp.verbatim full_msg ])
+;;

@@ -383,7 +383,9 @@ let solve_lock_dir
     | `All_error messages -> Error messages
     | `All_ok solver_result -> Ok (solver_result, [])
     | `Partial (solver_result, errors) ->
-      Log.info @@ pp_solve_errors_by_platforms errors;
+      Log.info
+        "Solver found partial solution"
+        [ "error_count", Dyn.int (List.length errors) ];
       let all_platforms =
         List.concat_map errors ~f:snd |> List.sort_uniq ~compare:Solver_env.compare
       in
@@ -402,8 +404,8 @@ let solve_lock_dir
                  ; Pp.nop
                  ; Pp.box
                    @@ Pp.text
-                        "See the log or run with --verbose for more details. Configure \
-                         platforms to solve for in the dune-workspace file."
+                        "See the trace file with --trace-file for more details. \
+                         Configure platforms to solve for in the dune-workspace file."
                  ]
           ] )
   in

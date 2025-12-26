@@ -276,12 +276,11 @@ let command =
     in
     let builder = Common.Builder.forbid_builds builder in
     let builder = Common.Builder.disable_log_file builder in
-    let common, config = Common.init builder in
-    let stats = Common.stats common in
+    let _common, config = Common.init builder in
     let config =
       Dune_config.for_scheduler
         config
-        stats
+        (Dune_trace.global ())
         ~print_ctrl_c_warning:true
         ~watch_exclusions:[]
     in

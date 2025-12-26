@@ -150,16 +150,16 @@ module Cache = struct
       (let path = Path.relative (Lazy.force Dune_util.cache_root_dir) "rev_store" in
        let rev_store_cache = Dune_config.Config.get rev_store_cache in
        Log.info
-         [ Pp.textf
-             "Revision store cache: %s"
-             (Dune_config.Config.Toggle.to_string rev_store_cache)
-         ];
+         "Revision store cache"
+         [ "status", Dune_config.Config.Toggle.to_dyn rev_store_cache ];
        match rev_store_cache with
+       | `Disabled -> None
        | `Enabled ->
          Path.mkdir_p path;
-         Log.info [ Pp.textf "Revision store cache location: %s" (Path.to_string path) ];
-         Some path
-       | `Disabled -> None)
+         Log.info
+           "Revision store cache location"
+           [ "path", Dyn.string (Path.to_string path) ];
+         Some path)
   ;;
 
   let db =
@@ -1217,7 +1217,7 @@ let content_of_files t files =
 let git_repo_dir =
   lazy
     (let dir = Path.relative (Lazy.force Dune_util.cache_root_dir) "git-repo" in
-     Log.info [ Pp.textf "Git repository cache location: %s" (Path.to_string dir) ];
+     Log.info "Git repository cache location" [ "dir", Path.to_dyn dir ];
      dir)
 ;;
 

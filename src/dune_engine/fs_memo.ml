@@ -83,10 +83,8 @@ end = struct
        | Ok () -> ()
        | Error `Does_not_exist ->
          Log.info
-           [ Pp.textf
-               "Attempted to add watch to non-existent directory %s."
-               (Path.to_string containing_dir)
-           ]);
+           "Attempted to add watch to non-existent directory"
+           [ "path", Dyn.string (Path.to_string containing_dir) ]);
       (match Dune_file_watcher.add_watch watcher path with
        | Error `Does_not_exist | Ok () -> ())
   ;;

@@ -645,7 +645,6 @@ module Builder = struct
     ; stats_trace_file : string option
     ; allow_builds : bool
     ; default_root_is_cwd : bool
-    ; log_file : Log.File.t
     }
 
   let root t = t.root
@@ -653,7 +652,7 @@ module Builder = struct
   let forbid_builds t = { t with allow_builds = false; no_print_directory = true }
   let default_root_is_cwd t = t.default_root_is_cwd
   let set_default_root_is_cwd t x = { t with default_root_is_cwd = x }
-  let disable_log_file t = { t with log_file = No_log_file }
+  let disable_log_file t = { t with stats_trace_file = None }
   let set_promote t v = { t with promote = Some v }
   let default_target t = t.default_target
 
@@ -892,7 +891,7 @@ module Builder = struct
     and+ stats_trace_file =
       Arg.(
         value
-        & opt (some string) None
+        & opt (some string) (Some "_build/trace.json")
         & info
             [ "trace-file" ]
             ~docs
@@ -1067,7 +1066,6 @@ module Builder = struct
     ; stats_trace_file
     ; allow_builds = true
     ; default_root_is_cwd = false
-    ; log_file = Default
     }
   ;;
 
@@ -1112,7 +1110,6 @@ module Builder = struct
         ; stats_trace_file
         ; allow_builds
         ; default_root_is_cwd
-        ; log_file
         }
     =
     Bool.equal t.debug_dep_path debug_dep_path
@@ -1152,7 +1149,6 @@ module Builder = struct
     && Option.equal String.equal t.stats_trace_file stats_trace_file
     && Bool.equal t.allow_builds allow_builds
     && Bool.equal t.default_root_is_cwd default_root_is_cwd
-    && Log.File.equal t.log_file log_file
   ;;
 end
 
@@ -1161,7 +1157,6 @@ type t =
   ; root : Workspace_root.t
   ; rpc :
       [ `Allow of Dune_lang.Dep_conf.t Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
-  ; stats : Dune_trace.Out.t option
   }
 
 let capture_outputs t = t.builder.capture_outputs
@@ -1182,7 +1177,6 @@ let rpc t =
 ;;
 
 let watch_exclusions t = t.builder.watch_exclusions
-let stats t = t.stats
 
 (* To avoid needless recompilations under Windows, where the case of
    [Sys.getcwd] can vary between different invocations of [dune], normalize to
@@ -1251,33 +1245,6 @@ let print_entering_message c =
 (* CR-someday rleshchinskiy: The split between `build` and `init` seems quite arbitrary,
    we should probably refactor that at some point. *)
 let build (root : Workspace_root.t) (builder : Builder.t) =
-  let stats =
-    Option.map builder.stats_trace_file ~f:(fun f ->
-      let cats =
-        match Sys.getenv_opt "DUNE_TRACE" with
-        | None ->
-          Dune_trace.Category.
-            [ Sandbox
-            ; Persistent
-            ; Process
-            ; Rules
-            ; Pkg
-            ; Promote
-            ; Build
-            ; File_watcher
-            ; Diagnostics
-            ]
-        | Some s ->
-          String.split ~on:',' s
-          |> List.map ~f:(fun x ->
-            match Dune_trace.Category.of_string x with
-            | Some s -> s
-            | None -> User_error.raise [ Pp.textf "unrecognized trace category %S" x ])
-      in
-      let stats = Dune_trace.Out.create cats (Out (open_out f)) in
-      Dune_trace.set_global stats;
-      stats)
-  in
   let rpc =
     if builder.allow_builds
     then
@@ -1302,7 +1269,7 @@ let build (root : Workspace_root.t) (builder : Builder.t) =
     else `Forbid_builds
   in
   if builder.print_metrics then Dune_metrics.enable ();
-  { builder; root; rpc; stats }
+  { builder; root; rpc }
 ;;
 
 let maybe_init_cache (cache_config : Dune_cache.Config.t) =
@@ -1327,9 +1294,40 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string c.builder.build_dir);
-  (* Once we have the build directory set, initialise the logging. We can't do
-     this earlier, because the build log typically goes into [_build/log]. *)
-  Log.init builder.log_file;
+  let () =
+    match builder.stats_trace_file with
+    | None -> Log.init No_log_file
+    | Some stats ->
+      let trace = Path.of_filename_relative_to_initial_cwd stats in
+      let cats =
+        match Sys.getenv_opt "DUNE_TRACE" with
+        | None ->
+          Dune_trace.Category.
+            [ Config
+            ; Sandbox
+            ; Persistent
+            ; Process
+            ; Rules
+            ; Pkg
+            ; Promote
+            ; Build
+            ; Log
+            ; File_watcher
+            ; Diagnostics
+            ]
+        | Some s ->
+          String.split ~on:',' s
+          |> List.map ~f:(fun x ->
+            match Dune_trace.Category.of_string x with
+            | Some s -> s
+            | None -> User_error.raise [ Pp.textf "unrecognized trace category %S" x ])
+      in
+      Path.parent trace |> Option.iter ~f:Path.mkdir_p;
+      let stats = Dune_trace.Out.create cats (Out (open_out (Path.to_string trace))) in
+      Dune_trace.set_global stats;
+      Log.init
+        (Redirect (fun w -> Dune_trace.emit Log (fun () -> Dune_trace.Event.log w)))
+  in
   (* We need to print this before reading the workspace file, so that the editor
      can interpret errors in the workspace file. *)
   print_entering_message c;
@@ -1365,17 +1363,16 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
         }
   in
   Log.info
-    [ Pp.textf
-        "Shared cache: %s"
-        (Dune_config.Cache.Toggle.to_string config.cache_enabled)
-    ];
+    "Shared cache enabled"
+    [ "cache_enabled", Dune_config.Cache.Toggle.to_dyn config.cache_enabled ];
   Log.info
-    [ Pp.textf
-        "Shared build cache location: %s"
-        (Path.to_string (Lazy.force Dune_cache_storage.Layout.build_cache_dir))
+    "Shared cache location"
+    [ ( "root_dir"
+      , Dyn.string (Path.to_string (Lazy.force Dune_cache_storage.Layout.build_cache_dir))
+      )
     ];
   Dune_rules.Main.init
-    ~stats:c.stats
+    ~stats:(Dune_trace.global ())
     ~sandboxing_preference:config.sandboxing_preference
     ~cache_config:(maybe_init_cache cache_config)
     ~cache_debug_flags:c.builder.cache_debug_flags
@@ -1406,10 +1403,8 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
       | Disabled | Enabled_except_user_rules -> false
       | Enabled -> true);
   Log.info
-    [ Pp.textf
-        "Workspace root: %s"
-        (Path.to_absolute_filename Path.root |> String.maybe_quoted)
-    ];
+    "Workspace root"
+    [ "root", Dyn.string (Path.to_absolute_filename Path.root |> String.maybe_quoted) ];
   Dune_console.separate_messages c.builder.separate_error_messages;
   Dune_trace.always_emit
     (Dune_trace.Event.config

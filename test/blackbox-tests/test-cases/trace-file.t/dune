@@ -1,3 +1,2 @@
 (executable
- (name prog)
-)
+ (name prog))

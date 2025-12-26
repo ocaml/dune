@@ -111,12 +111,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "otherlibs/chrome-trace/src"
-    ; main_module_name = Some "Chrome_trace"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/dune_trace"
     ; main_module_name = Some "Dune_trace"
     ; include_subdirs = No
@@ -179,6 +173,12 @@ let local_libraries =
     }
   ; { path = "src/dune_cache"
     ; main_module_name = Some "Dune_cache"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "otherlibs/chrome-trace/src"
+    ; main_module_name = Some "Chrome_trace"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None

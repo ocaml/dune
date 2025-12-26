@@ -9,25 +9,21 @@ type dst =
       }
 
 type t =
-  { print : string -> unit
+  { print_sexp : Csexp.t -> unit
   ; close : unit -> unit
   ; flush : unit -> unit
-  ; mutable after_first_event : bool
   ; cats : Category.Set.t
   }
 
 (* all fields of record used *)
 
-let close { print; close; _ } =
-  print "]\n";
-  close ()
-;;
+let close { close; _ } = close ()
 
 let create cats dst =
-  let print =
+  let print_sexp =
     match dst with
-    | Out out -> fun str -> Stdlib.output_string out str
-    | Custom c -> c.write
+    | Out out -> fun sexp -> Csexp.to_channel out sexp
+    | Custom c -> fun sexp -> c.write (Csexp.to_string sexp)
   in
   let close =
     match dst with
@@ -40,25 +36,11 @@ let create cats dst =
     | Custom c -> c.flush
   in
   let cats = Category.Set.of_list cats in
-  { print; close; after_first_event = false; flush; cats }
+  { print_sexp; close; flush; cats }
 ;;
 
 let flush t = t.flush ()
-
-let next_leading_char t =
-  match t.after_first_event with
-  | true -> ','
-  | false ->
-    t.after_first_event <- true;
-    '['
-;;
-
-let printf t format_string =
-  let c = next_leading_char t in
-  Printf.ksprintf t.print ("%c" ^^ format_string ^^ "\n") c
-;;
-
-let emit t event = printf t "%s" (Json.to_string (Chrome_trace.Event.to_json event))
+let emit t event = t.print_sexp event
 
 let start t k : Event.Async.t option =
   match t with

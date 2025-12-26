@@ -14,7 +14,7 @@ rule.
   > EOF
 
   $ loadedDirs() {
-  > jq -c '.[] | select(.name == "load-dir") | .args'
+  > jq -c 'select(.name == "load-dir") | .args'
   > }
 
   $ build() {

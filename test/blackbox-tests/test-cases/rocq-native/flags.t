@@ -12,7 +12,7 @@ Test cases to check Coq's flag setting is correct:
   $ runFlags() {
   > dune clean
   > dune build foo.vo
-  > dune trace cat | jq -c '.[] | select(.name == "rocq") | .args.process_args | .[] | sub(".*/coq/"; "coq/") | sub(".*/rocq-runtime/"; "rocq-runtime/")'
+  > dune trace cat | jq -c 'select(.name == "rocq") | .args.process_args | .[] | sub(".*/coq/"; "coq/") | sub(".*/rocq-runtime/"; "rocq-runtime/")'
   > }
 
 Test case: default flags

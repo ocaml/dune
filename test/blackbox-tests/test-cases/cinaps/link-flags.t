@@ -16,7 +16,6 @@ Link-time flags for running cinaps
   $ dune build @cinaps
   $ jqScript=$(mktemp)
   $ cat >$jqScript <<EOF
-  > .[] |
   > .args |
   > select(has("process_args") and (.process_args | index("-linkall"))) |
   > .process_args |

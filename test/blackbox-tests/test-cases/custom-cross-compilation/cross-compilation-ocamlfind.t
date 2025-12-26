@@ -77,7 +77,7 @@ Dune should be able to find it too
   Entering directory 'app'
   Leaving directory 'app'
 
-  $ dune trace cat | jq '.[] | .args | select(has("prog") and (.prog | contains("notocamldep-foo"))) | del(.pid)'
+  $ dune trace cat | jq '.args | select(has("prog") and (.prog | contains("notocamldep-foo"))) | del(.pid)'
   {
     "process_args": [
       "-modules",

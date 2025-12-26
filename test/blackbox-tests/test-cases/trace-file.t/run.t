@@ -3,7 +3,7 @@
 
 This captures the commands that are being run:
 
-  $ dune trace cat | jq '.[] | select(.cat == "process") | .args | del(.pid) | .prog |= sub(".*/"; "")'
+  $ dune trace cat | jq 'select(.cat == "process") | .args | del(.pid) | .prog |= sub(".*/"; "")'
   {
     "process_args": [
       "-config"
@@ -114,7 +114,7 @@ This captures the commands that are being run:
 
 As well as data about the garbage collector:
 
-  $ dune trace cat | jq '[ .[] | select(.cat == "gc") ] | .[0] | .args | keys'
+  $ dune trace cat | jq -s '[ .[] | select(.cat == "gc") ] | .[0] | .args | keys'
   [
     "compactions",
     "heap_words",

@@ -1,6 +1,5 @@
 open Stdune
 module Category = Category
-module Timestamp = Chrome_trace.Event.Timestamp
 module Event = Event
 module Out = Out
 

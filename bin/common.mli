@@ -24,6 +24,7 @@ val dump_memo_graph_with_timing : t -> bool
 val watch : t -> Dune_rpc_impl.Watch_mode_config.t
 val file_watcher : t -> Dune_engine.Scheduler.Run.file_watcher
 val prefix_target : t -> string -> string
+val default_trace_file : Path.Local.t
 
 (** [Builder] describes how to initialize Dune. *)
 module Builder : sig

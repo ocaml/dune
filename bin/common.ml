@@ -57,6 +57,8 @@ open struct
   module Manpage = Manpage
 end
 
+let default_trace_file = Path.Local.of_string "_build/trace.json"
+
 module Package = Dune_lang.Package
 open Let_syntax
 
@@ -891,7 +893,7 @@ module Builder = struct
     and+ stats_trace_file =
       Arg.(
         value
-        & opt (some string) (Some "_build/trace.json")
+        & opt (some string) (Some (Stdune.Path.Local.to_string default_trace_file))
         & info
             [ "trace-file" ]
             ~docs

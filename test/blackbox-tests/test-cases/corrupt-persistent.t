@@ -15,7 +15,7 @@ Delete last 10 chars of the .db file to corrupt it
 Dune log the corrupted file and recover
 
   $ dune build a
-  $ dune trace cat | jq 'include "dune"; .[] | logs("corrupt")'
+  $ dune trace cat | jq 'include "dune"; logs("corrupt")'
   {
     "message": "Warning: Failed to load corrupted file",
     "file": "_build/.db",

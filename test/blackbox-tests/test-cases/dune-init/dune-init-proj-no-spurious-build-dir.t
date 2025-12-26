@@ -5,6 +5,11 @@ directory in the current directory.
   Entering directory 'foo'
   Success: initialized project component named foo
   Leaving directory 'foo'
+
+  $ ls() {
+  > command ls $@ | sort
+  > }
+
   $ ls
   foo
   $ ls foo

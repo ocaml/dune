@@ -57,6 +57,13 @@ Test the error message if a destination is a non-empty directory instead of a fi
   Installing prefix/lib/foo/META
   Installing prefix/lib/foo/dune-package
   Error: Please delete non-empty directory prefix/lib/foo/foo.a manually.
+  Installing prefix/lib/foo/foo.cma
+  Installing prefix/lib/foo/foo.cmi
+  Installing prefix/lib/foo/foo.cmt
+  Installing prefix/lib/foo/foo.cmx
+  Installing prefix/lib/foo/foo.cmxa
+  Installing prefix/lib/foo/foo.ml
+  Installing prefix/lib/foo/foo.cmxs
   [1]
 
 Dry runs should validate the same blocker.
@@ -72,6 +79,34 @@ Dry runs should validate the same blocker.
   Copying _build/install/default/lib/foo/dune-package to prefix/lib/foo/dune-package (executable: false)
   Creating directory prefix/lib/foo
   Error: Please delete non-empty directory prefix/lib/foo/foo.a manually.
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/foo.cma
+  Installing prefix/lib/foo/foo.cma
+  Copying _build/install/default/lib/foo/foo.cma to prefix/lib/foo/foo.cma (executable: false)
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/foo.cmi
+  Installing prefix/lib/foo/foo.cmi
+  Copying _build/install/default/lib/foo/foo.cmi to prefix/lib/foo/foo.cmi (executable: false)
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/foo.cmt
+  Installing prefix/lib/foo/foo.cmt
+  Copying _build/install/default/lib/foo/foo.cmt to prefix/lib/foo/foo.cmt (executable: false)
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/foo.cmx
+  Installing prefix/lib/foo/foo.cmx
+  Copying _build/install/default/lib/foo/foo.cmx to prefix/lib/foo/foo.cmx (executable: false)
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/foo.cmxa
+  Installing prefix/lib/foo/foo.cmxa
+  Copying _build/install/default/lib/foo/foo.cmxa to prefix/lib/foo/foo.cmxa (executable: false)
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/foo.ml
+  Installing prefix/lib/foo/foo.ml
+  Copying _build/install/default/lib/foo/foo.ml to prefix/lib/foo/foo.ml (executable: false)
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/foo.cmxs
+  Installing prefix/lib/foo/foo.cmxs
+  Copying _build/install/default/lib/foo/foo.cmxs to prefix/lib/foo/foo.cmxs (executable: true)
   [1]
 
 Test the error message if a destination is a file instead of a directory.
@@ -80,10 +115,28 @@ Test the error message if a destination is a file instead of a directory.
   $ mkdir -p prefix/lib; touch prefix/lib/foo
   $ dune install --prefix prefix --display short
   Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
   [1]
 
 Dry runs should validate the same existing directory blockers.
 
   $ dune install --prefix prefix --display short --dry-run
+  Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
+  Error: Please delete file prefix/lib/foo manually.
   Error: Please delete file prefix/lib/foo manually.
   [1]

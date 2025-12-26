@@ -88,20 +88,23 @@ type 'src t =
 
 let map_dst t ~f = { t with dst = f t.dst }
 
-let to_dyn { src; kind; dst; section; optional } =
-  let open Dyn in
-  let dyn_of_kind = function
-    | `File -> String "file"
-    | `Directory -> String "directory"
-    | `Source_tree -> String "source_tree"
+let to_dyn =
+  let dyn_of_kind =
+    let open Dyn in
+    function
+    | `File -> variant "File" []
+    | `Directory -> variant "Directory" []
+    | `Source_tree -> variant "Source_tree" []
   in
-  record
-    [ "src", Path.Build.to_dyn src
-    ; "kind", dyn_of_kind kind
-    ; "dst", Dst.to_dyn dst
-    ; "section", Section.to_dyn section
-    ; "optional", Dyn.Bool optional
-    ]
+  fun f { src; kind; dst; section; optional } ->
+    let open Dyn in
+    record
+      [ "src", f src
+      ; "kind", dyn_of_kind kind
+      ; "dst", Dst.to_dyn dst
+      ; "section", Section.to_dyn section
+      ; "optional", Dyn.bool optional
+      ]
 ;;
 
 module Sourced = struct
@@ -129,7 +132,7 @@ module Sourced = struct
       | Dune -> Variant ("Dune", [])
       | User loc -> Variant ("User", [ Loc.to_dyn loc ])
     in
-    Record [ "source", source_to_dyn source; "entry", to_dyn entry ]
+    Record [ "source", source_to_dyn source; "entry", to_dyn Path.Build.to_dyn entry ]
   ;;
 end
 
@@ -227,25 +230,6 @@ let of_install_file ~optional ~src ~dst ~section =
   ; kind = `File
   ; optional
   }
-;;
-
-let dyn_of_kind =
-  let open Dyn in
-  function
-  | `File -> variant "File" []
-  | `Directory -> variant "Directory" []
-  | `Source_tree -> variant "Source_tree" []
-;;
-
-let to_dyn f { optional; src; kind; dst; section } =
-  let open Dyn in
-  record
-    [ "src", f src
-    ; "kind", dyn_of_kind kind
-    ; "dst", Dst.to_dyn dst
-    ; "section", Section.to_dyn section
-    ; "optional", Dyn.bool optional
-    ]
 ;;
 
 let group entries =

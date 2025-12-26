@@ -641,46 +641,43 @@ let run
   let (module Ops) = file_operations ~verbosity ~dry_run ~workspace in
   let files_deleted_in = ref Path.Set.empty in
   let+ () =
-    Fiber.sequential_iter
-      install_files_by_context
-      ~f:(fun (context, entries_per_package) ->
-        let* roots = get_dirs context ~prefix_from_command_line ~from_command_line in
-        let conf = Artifact_substitution.Conf.of_install ~relocatable ~roots ~context in
-        Fiber.sequential_iter entries_per_package ~f:(fun (package, entries) ->
-          let+ entries =
-            (* CR rgrinberg: why don't we install things concurrently? *)
-            Fiber.sequential_map entries ~f:(fun entry ->
-              let dst =
-                let paths = Install.Paths.make ~relative:Path.relative ~package ~roots in
-                Install.Entry.relative_installed_path entry ~paths
-                |> interpret_destdir ~destdir
-              in
-              let dir = Path.parent_exn dst in
-              match what with
-              | Uninstall ->
-                Ops.remove_file_if_exists dst;
-                files_deleted_in := Path.Set.add !files_deleted_in dir;
-                Fiber.return entry
-              | Install ->
-                install_entry
-                  ~ops:(module Ops)
-                  ~conf
-                  ~package
-                  ~dir
-                  ~create_install_files
-                  ~dst
-                  ~verbosity
-                  entry)
-          in
-          if create_install_files
-          then (
-            let fn =
-              resolve_package_install
-                workspace
-                ~findlib_toolchain:(Context.findlib_toolchain context)
-                package
+    Fiber.parallel_iter install_files_by_context ~f:(fun (context, entries_per_package) ->
+      let* roots = get_dirs context ~prefix_from_command_line ~from_command_line in
+      let conf = Artifact_substitution.Conf.of_install ~relocatable ~roots ~context in
+      Fiber.parallel_iter entries_per_package ~f:(fun (package, entries) ->
+        let+ entries =
+          Fiber.parallel_map entries ~f:(fun entry ->
+            let dst =
+              let paths = Install.Paths.make ~relative:Path.relative ~package ~roots in
+              Install.Entry.relative_installed_path entry ~paths
+              |> interpret_destdir ~destdir
             in
-            Install.Entry.gen_install_file entries |> Io.write_file (Path.source fn))))
+            let dir = Path.parent_exn dst in
+            match what with
+            | Uninstall ->
+              Ops.remove_file_if_exists dst;
+              files_deleted_in := Path.Set.add !files_deleted_in dir;
+              Fiber.return entry
+            | Install ->
+              install_entry
+                ~ops:(module Ops)
+                ~conf
+                ~package
+                ~dir
+                ~create_install_files
+                ~dst
+                ~verbosity
+                entry)
+        in
+        if create_install_files
+        then (
+          let fn =
+            resolve_package_install
+              workspace
+              ~findlib_toolchain:(Context.findlib_toolchain context)
+              package
+          in
+          Install.Entry.gen_install_file entries |> Io.write_file (Path.source fn))))
   in
   Path.Set.to_list !files_deleted_in
   (* This [List.rev] is to ensure we process children directories before

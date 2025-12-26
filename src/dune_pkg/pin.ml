@@ -92,6 +92,22 @@ module DB = struct
     }
   ;;
 
+  let filter_compilers t =
+    { t with
+      all =
+        List.filter_map t.all ~f:(fun pin ->
+          match
+            List.filter pin.packages ~f:(fun (pkg : Package.t) ->
+              Dev_tool.is_compiler_package pkg.name)
+          with
+          | [] -> None
+          | packages -> Some { pin with packages })
+    ; map =
+        Package_name.Map.filteri t.map ~f:(fun name _ ->
+          Dev_tool.is_compiler_package name)
+    }
+  ;;
+
   module Workspace = struct
     type nonrec t = Local_package.pin Package_name.Map.t String.Map.t
 

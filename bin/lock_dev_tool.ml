@@ -66,6 +66,10 @@ let make_local_package_wrapping_dev_tool ~dev_tool ~dev_tool_version ~extra_depe
   }
 ;;
 
+(* Collect all pins from all projects and filter to only compiler packages.
+   This allows dev tools to use the same pinned compiler as the main project. *)
+let compiler_pins = Memo.O.(Pkg.Lock.project_pins >>| Pin.DB.filter_compilers)
+
 let solve ~dev_tool ~local_packages =
   let open Memo.O in
   let* solver_env_from_current_system =
@@ -78,7 +82,7 @@ let solve ~dev_tool ~local_packages =
     | `Enabled ->
       Workspace.add_repo workspace Dune_pkg.Pkg_workspace.Repository.binary_packages
     | `Disabled -> workspace
-  in
+  and* compiler_pins = compiler_pins in
   (* as we want to write to the source, we're using the source lock dir here *)
   let lock_dir =
     Dune_rules.Lock_dir.dev_tool_external_lock_dir dev_tool |> Path.external_
@@ -87,7 +91,7 @@ let solve ~dev_tool ~local_packages =
   @@ Pkg.Lock.solve
        workspace
        ~local_packages
-       ~project_pins:Pin.DB.empty
+       ~project_pins:compiler_pins
        ~solver_env_from_current_system
        ~version_preference:None
        ~lock_dirs:[ lock_dir ]
@@ -97,10 +101,7 @@ let solve ~dev_tool ~local_packages =
 
 (* Some dev tools must be built with the same version of the ocaml compiler as
    the project. This function returns the compiler package used to compile the
-   project in the default build context.
-
-   TODO: This only deduces version constraints of the compiler, however this
-   won't work for custom compiler pins. *)
+   project in the default build context. *)
 
 let compiler_package () =
   let open Memo.O in

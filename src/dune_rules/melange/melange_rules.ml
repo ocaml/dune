@@ -540,62 +540,64 @@ module Runtime_deps = struct
   ;;
 end
 
-let setup_runtime_assets_rules =
-  let find_directory_target_ancestor =
-    Dir_status.find_directory_target_ancestor ~jsoo_enabled:Jsoo_rules.jsoo_enabled
-  in
-  fun sctx ~scope ~dir ~target_dir ~mode ~promote_in_source ~output ~for_ mel ->
-    let* { Runtime_deps.copy; deps } = Runtime_deps.targets sctx ~dir ~output ~for_ mel in
-    let deps =
-      let paths =
-        List.fold_left copy ~init:deps ~f:(fun paths (_, target) ->
-          Path.build target :: paths)
-      in
-      Action_builder.paths paths
+let setup_runtime_assets_rules
+      sctx
+      ~scope
+      ~dir
+      ~target_dir
+      ~mode
+      ~promote_in_source
+      ~output
+      ~for_
+      mel
+  =
+  Runtime_deps.targets sctx ~dir ~output ~for_ mel
+  >>= fun { Runtime_deps.copy; deps } ->
+  let loc = mel.loc in
+  Memo.parallel_map copy ~f:(fun (src, dst) ->
+    let mode =
+      compute_promote_in_source
+        ~promote_in_source
+        ~project:(Scope.project scope)
+        ~dir
+        ~output
+        ~mode
+        ~src
+        ~dst
     in
-    let+ directory_targets =
-      let loc = mel.loc in
-      let+ dirs =
-        Memo.parallel_map copy ~f:(fun (src, dst) ->
-          let mode =
-            compute_promote_in_source
-              ~promote_in_source
-              ~project:(Scope.project scope)
-              ~dir
-              ~output
-              ~mode
-              ~src
-              ~dst
-          in
-          Memo.Option.bind (Path.as_in_build_dir src) ~f:find_directory_target_ancestor
-          >>= function
-          | None ->
-            let+ () =
-              Super_context.add_rule ~loc ~dir ~mode sctx (Action_builder.copy ~src ~dst)
-            in
-            None
-          | Some directory_target_ancestor ->
-            let dst =
-              let rel = Path.reach ~from:src (Path.build directory_target_ancestor) in
-              Path.Build.relative dst rel
-            in
-            let+ () =
-              let src = Path.build directory_target_ancestor in
-              Super_context.add_rule
-                ~loc
-                ~dir
-                ~mode
-                sctx
-                (Action_builder.symlink_dir ~src ~dst)
-            in
-            Some dst)
+    Memo.Option.bind
+      (Path.as_in_build_dir src)
+      ~f:(Dir_status.find_directory_target_ancestor ~jsoo_enabled:Jsoo_rules.jsoo_enabled)
+    >>= function
+    | None ->
+      Memo.Option.map (Path.as_outside_build_dir src) ~f:Fs_memo.is_directory
+      >>= fun is_dir ->
+      let dst, builder =
+        match is_dir with
+        | Some (Ok true) -> Right dst, Action_builder.symlink_dir ~src ~dst
+        | Some (Ok false) | Some (Error _) | None ->
+          Left dst, Action_builder.copy ~src ~dst
       in
-      List.filter_map dirs ~f:(function
-        | Some dir -> Some (dir, loc)
-        | None -> None)
-      |> Path.Build.Map.of_list_exn
-    and+ () = add_deps_to_aliases ?alias:mel.alias deps ~dir:target_dir in
-    directory_targets
+      let+ () = Super_context.add_rule ~loc ~dir ~mode sctx builder in
+      dst
+    | Some directory_target_ancestor ->
+      let new_src = Path.build directory_target_ancestor in
+      let dst =
+        let rel = Path.reach ~from:src new_src in
+        Path.Build.relative dst rel
+      in
+      let builder = Action_builder.symlink_dir ~src:new_src ~dst in
+      let+ () = Super_context.add_rule ~loc ~dir ~mode sctx builder in
+      Right dst)
+  >>| List.partition_map ~f:Fun.id
+  >>= fun (file_deps, directory_targets) ->
+  let+ () =
+    let paths =
+      List.concat_map [ file_deps; directory_targets ] ~f:(List.map ~f:Path.build) @ deps
+    in
+    add_deps_to_aliases ?alias:mel.alias (Action_builder.paths paths) ~dir:target_dir
+  in
+  Path.Build.Map.of_list_map_exn directory_targets ~f:(fun p -> p, loc)
 ;;
 
 let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =

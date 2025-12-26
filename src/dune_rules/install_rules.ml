@@ -245,34 +245,32 @@ end = struct
           in
           make_entry ?sub_dir Lib source ?dst))
     in
-    let additional_deps =
-      let find_directory_target_ancestor =
-        Dir_status.find_directory_target_ancestor ~jsoo_enabled:Jsoo_rules.jsoo_enabled
-      in
-      fun (loc, deps) ->
-        Lib_file_deps.eval deps ~expander ~loc ~paths:(Disallow_external lib_name)
-        >>| Path.Set.to_list
-        >>= Memo.parallel_map ~f:(fun path ->
-          let path =
-            let path = path |> Path.as_in_build_dir_exn in
-            check_runtime_deps_relative_path ~lib_info:info ~loc (Path.Build.local path);
-            path
-          in
-          let sub_dir =
-            let src_dir = Path.Build.parent_exn path in
-            match Path.Build.equal lib_src_dir src_dir with
-            | true -> None
-            | false ->
-              Path.Build.local src_dir
-              |> Path.Local.descendant ~of_:(Path.Build.local lib_src_dir)
-              |> Option.map ~f:Path.Local.to_string
-          in
-          find_directory_target_ancestor path
-          >>| function
-          | None -> make_entry ?sub_dir Lib path
-          | Some dir_target_path ->
-            let dep = make_entry ?sub_dir Lib dir_target_path in
-            { dep with entry = Install.Entry.set_kind dep.entry `Directory })
+    let additional_deps (loc, deps) =
+      Lib_file_deps.eval deps ~expander ~loc ~paths:(Disallow_external lib_name)
+      >>| Path.Set.to_list
+      >>= Memo.parallel_map ~f:(fun path ->
+        let path = Path.as_in_build_dir_exn path in
+        check_runtime_deps_relative_path ~lib_info:info ~loc (Path.Build.local path);
+        Dir_status.find_directory_target_ancestor
+          ~jsoo_enabled:Jsoo_rules.jsoo_enabled
+          path
+        >>| function
+        | None -> path, `File
+        | Some dir_target_path -> dir_target_path, `Directory)
+      >>| Path.Build.Map.of_list_reduce ~f:(fun _ kind -> kind)
+      >>| Path.Build.Map.to_list_map ~f:(fun path kind ->
+        let sub_dir =
+          let src_dir = Path.Build.parent_exn path in
+          match Path.Build.equal lib_src_dir src_dir with
+          | true -> None
+          | false ->
+            Path.Build.local src_dir
+            |> Path.Local.descendant ~of_:(Path.Build.local lib_src_dir)
+            |> Option.map ~f:Path.Local.to_string
+        in
+        let dep = make_entry ?sub_dir Lib path in
+        let entry = Install.Entry.set_kind dep.entry kind in
+        { dep with entry })
     in
     let { Lib_config.has_native; ext_obj; _ } = lib_config in
     let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =

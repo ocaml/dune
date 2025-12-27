@@ -1292,9 +1292,13 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Coq_stanza.Theory.t)
         let dst = Path.Local.(to_string (relative dst_dir plugin_file_basename)) in
         let entry =
           (* TODO this [loc] should come from [s.buildable.libraries] *)
-          Install.Entry.make Section.Lib_root ~dst ~kind:`File plugin_file
+          Install.Entry.Unexpanded.make
+            Section.Lib_root
+            ~dst
+            ~kind:Install.Entry.Unexpanded.File
+            plugin_file
         in
-        Install.Entry.Sourced.create ~loc entry))
+        Install.Entry.Sourced.Unexpanded.create ~loc entry))
     else []
   in
   List.concat_map ~f:rules_for_lib ml_libs
@@ -1337,9 +1341,13 @@ let install_rules ~sctx ~dir s =
     let to_dst f = Path.Local.to_string @@ Path.Local.relative dst_dir f in
     let make_entry (orig_file : Path.Build.t) (dst_file : string) =
       let entry =
-        Install.Entry.make Section.Lib_root ~dst:(to_dst dst_file) orig_file ~kind:`File
+        Install.Entry.Unexpanded.make
+          Section.Lib_root
+          ~dst:(to_dst dst_file)
+          orig_file
+          ~kind:Install.Entry.Unexpanded.File
       in
-      Install.Entry.Sourced.create ~loc entry
+      Install.Entry.Sourced.Unexpanded.create ~loc entry
     in
     let+ coq_sources = Dir_contents.coq dir_contents in
     coq_sources

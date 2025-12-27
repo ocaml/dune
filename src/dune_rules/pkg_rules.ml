@@ -1887,7 +1887,12 @@ module Install_action = struct
         |> List.map ~f:(fun (name, value) -> Package_variable_name.of_opam name, value)
     ;;
 
-    let install_entry ~src ~install_file ~target_dir (entry : Path.t Install.Entry.t) =
+    let install_entry
+          ~src
+          ~install_file
+          ~target_dir
+          (entry : Path.t Install.Entry.Expanded.t)
+      =
       match Path.Untracked.exists src, entry.optional with
       | false, true -> None
       | false, false ->
@@ -1963,7 +1968,7 @@ module Install_action = struct
             let* map =
               let install_entries =
                 let dir = Path.parent_exn install_file in
-                Install.Entry.load_install_file install_file (fun local ->
+                Install.Entry.Expanded.load_install_file install_file (fun local ->
                   Path.append_local dir local)
               in
               let by_src =

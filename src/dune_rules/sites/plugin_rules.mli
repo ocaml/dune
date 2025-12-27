@@ -7,4 +7,4 @@ val install_rules
   -> package_db:Package_db.t
   -> dir:Path.Build.t
   -> Plugin.t
-  -> Install.Entry.Sourced.t list Memo.t
+  -> Install.Entry.Sourced.Unexpanded.t list Memo.t

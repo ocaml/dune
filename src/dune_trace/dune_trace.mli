@@ -131,15 +131,7 @@ end
 module Out : sig
   type t
 
-  type dst =
-    | Out of out_channel
-    | Custom of
-        { write : string -> unit
-        ; close : unit -> unit
-        ; flush : unit -> unit
-        }
-
-  val create : Category.t list -> dst -> t
+  val create : Category.t list -> out_channel -> t
   val emit : t -> Event.t -> unit
   val start : t option -> (unit -> Event.Async.data) -> Event.Async.t option
   val finish : t -> Event.Async.t option -> unit

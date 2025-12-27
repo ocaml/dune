@@ -1,49 +1,20 @@
 open Stdune
 
-type dst =
-  | Out of out_channel
-  | Custom of
-      { write : string -> unit
-      ; close : unit -> unit
-      ; flush : unit -> unit
-      }
-
 type t =
-  { print : string -> unit
-  ; close : unit -> unit
-  ; flush : unit -> unit
+  { out : out_channel
   ; mutable after_first_event : bool
   ; cats : Category.Set.t
   }
 
 (* all fields of record used *)
 
-let close { print; close; _ } =
-  print "]\n";
-  close ()
+let close t =
+  output_string t.out "]\n";
+  close_out t.out
 ;;
 
-let create cats dst =
-  let print =
-    match dst with
-    | Out out -> fun str -> Stdlib.output_string out str
-    | Custom c -> c.write
-  in
-  let close =
-    match dst with
-    | Out out -> fun () -> Stdlib.close_out out
-    | Custom c -> c.close
-  in
-  let flush =
-    match dst with
-    | Out out -> fun () -> flush out
-    | Custom c -> c.flush
-  in
-  let cats = Category.Set.of_list cats in
-  { print; close; after_first_event = false; flush; cats }
-;;
-
-let flush t = t.flush ()
+let create cats out = { out; after_first_event = false; cats = Category.Set.of_list cats }
+let flush t = flush t.out
 
 let next_leading_char t =
   match t.after_first_event with
@@ -55,7 +26,7 @@ let next_leading_char t =
 
 let printf t format_string =
   let c = next_leading_char t in
-  Printf.ksprintf t.print ("%c" ^^ format_string ^^ "\n") c
+  Printf.ksprintf (output_string t.out) ("%c" ^^ format_string ^^ "\n") c
 ;;
 
 let emit t event = printf t "%s" (Json.to_string (Chrome_trace.Event.to_json event))

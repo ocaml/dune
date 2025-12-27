@@ -5,7 +5,3 @@
 (cram
  (applies_to remove-write-permissions)
  (deps %{bin:bash}))
-
-(cram
- (applies_to loading-inside-directory-target)
- (deps %{bin:jq}))

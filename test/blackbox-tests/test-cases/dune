@@ -30,6 +30,7 @@
  (deps
   (env_var OCAML_COLOR)
   (env_var DUNE_JOBS)
+  %{bin:jq}
   %{bin:dune_cmd}
   (package dune))
  ;; We don't allow conflict markers in tests
@@ -131,10 +132,5 @@
 
 (cram
  (applies_to hidden-deps-unsupported)
- (deps %{bin:jq})
  (enabled_if
   (< %{ocaml_version} 5.2.0)))
-
-(cram
- (applies_to trace-file)
- (deps %{bin:jq}))

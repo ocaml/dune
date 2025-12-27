@@ -107,13 +107,13 @@ But when lang dune is 3.3 or higher the warning becomes an error:
     -keep-locs))
   Leaving directory 'outer'
 
-  $ dune build --trace=trace.json --root=outer
+  $ dune build --root=outer
   Entering directory 'outer'
   Leaving directory 'outer'
 
   $ jq '.[] | select(.cat == "process") | .args |
   >   select(.target_files and (.target_files | any(contains(".cmx")))) |
-  >   .process_args | .[index("-w") + 1]' trace.json
+  >   .process_args | .[index("-w") + 1]'
   "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40"
 
 This is unexpected as vendored projects should be built according to their

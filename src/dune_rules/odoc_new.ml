@@ -1226,12 +1226,12 @@ let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =
         let doc_path = Section.Map.find_exn dpkg.sections Doc in
         Some
           (List.filter_map fs ~f:(function
-             | `File, dst ->
+             | { kind = File; dst } ->
                let str = Install.Entry.Dst.to_string dst in
                if Filename.check_suffix str ".mld"
                then Some (Path.relative doc_path str, str)
                else None
-             | _ -> None))
+             | { kind = Directory; dst = _ } -> None))
       | _ -> None)
     |> List.concat
 ;;

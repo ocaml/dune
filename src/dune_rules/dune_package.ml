@@ -416,7 +416,10 @@ module Entry = struct
   ;;
 end
 
-type path = [ `File | `Dir ] * Install.Entry.Dst.t
+type path =
+  { kind : Install.Entry.Expanded.kind
+  ; dst : Install.Entry.Dst.t
+  }
 
 let decode_path =
   let open Dune_lang.Decoder in
@@ -426,21 +429,22 @@ let decode_path =
     enter
     @@
     let* () = keyword "dir" in
-    let+ d = Install.Entry.Dst.decode in
-    `Dir, d
+    let+ dst = Install.Entry.Dst.decode in
+    { kind = Directory; dst }
   | _ ->
     let+ f = Install.Entry.Dst.decode in
-    `File, f
+    { kind = File; dst = f }
 ;;
 
 let encode_path = function
-  | `File, f -> Install.Entry.Dst.encode f
-  | `Dir, d -> Dune_lang.Encoder.constr "dir" Install.Entry.Dst.encode d
+  | { kind = Install.Entry.Expanded.File; dst = f } -> Install.Entry.Dst.encode f
+  | { kind = Directory; dst } ->
+    Dune_lang.Encoder.constr "dir" Install.Entry.Dst.encode dst
 ;;
 
 let path_to_dyn = function
-  | `File, f -> Install.Entry.Dst.to_dyn f
-  | `Dir, d -> Dyn.variant "dir" [ Install.Entry.Dst.to_dyn d ]
+  | { kind = Install.Entry.Expanded.File; dst = f } -> Install.Entry.Dst.to_dyn f
+  | { kind = Directory; dst } -> Dyn.variant "dir" [ Install.Entry.Dst.to_dyn dst ]
 ;;
 
 type t =

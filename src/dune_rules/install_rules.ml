@@ -749,10 +749,10 @@ end = struct
       |> List.map ~f:(fun (e : Install.Entry.Sourced.Unexpanded.t) ->
         let kind =
           match e.entry.kind with
-          | File -> `File
-          | Directory | Source_tree -> `Dir
+          | File -> Install.Entry.Expanded.File
+          | Directory | Source_tree -> Directory
         in
-        e.entry.section, (kind, e.entry.dst))
+        e.entry.section, { Dune_package.kind; dst = e.entry.dst })
       |> Section.Map.of_list_multi
       |> Section.Map.to_list
     in

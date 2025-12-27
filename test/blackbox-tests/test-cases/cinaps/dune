@@ -2,7 +2,3 @@
  (applies_to :whole_subtree)
  (deps
   (package cinaps)))
-
-(cram
- (applies_to link-flags)
- (deps %{bin:jq}))

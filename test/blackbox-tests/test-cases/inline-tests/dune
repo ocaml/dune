@@ -8,10 +8,6 @@
  (deps %{bin:refmt}))
 
 (cram
- (applies_to simple)
- (deps %{bin:jq}))
-
-(cram
  (applies_to github6607)
  (deps
   (package stdune)))

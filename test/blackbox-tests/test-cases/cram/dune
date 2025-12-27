@@ -6,10 +6,6 @@
  (applies_to error subprocess)
  (enabled_if false))
 
-(cram
- (applies_to timeout-redigest cram-double-alias)
- (deps %{bin:jq}))
-
 ;; mac has a different sh error message
 
 (cram

@@ -75,6 +75,7 @@ val archive : t -> dir:Path.Build.t -> ext:string -> Path.Build.t
 val best_name : t -> Lib_name.t
 val is_virtual : t -> bool
 val is_impl : t -> bool
+val has_inline_tests : t -> bool
 val obj_dir : dir:Path.Build.t -> t -> Path.Build.t Obj_dir.t
 val main_module_name : t -> Lib_info.Main_module_name.t
 val to_lib_id : src_dir:Path.Source.t -> t -> Lib_id.Local.t

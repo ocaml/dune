@@ -403,6 +403,10 @@ let best_name t =
 let is_virtual t = t.kind = Virtual
 let is_impl t = Option.is_some t.implements
 
+let has_inline_tests t =
+  Sub_system_name.Map.mem t.sub_systems (Sub_system_name.of_string "inline_tests")
+;;
+
 let obj_dir ~dir t =
   let private_lib =
     match t.visibility with

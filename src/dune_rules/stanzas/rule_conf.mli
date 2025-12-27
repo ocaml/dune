@@ -19,4 +19,3 @@ val decode : t Dune_sexp.Decoder.t
 type lex_or_yacc
 
 val ocamlyacc : t list Dune_lang.Decoder.t
-val ocamllex : t list Dune_lang.Decoder.t

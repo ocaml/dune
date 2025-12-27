@@ -72,7 +72,7 @@ let stanzas : Stanza.Parser.t list =
     ; ("executable", Executables.(decode_stanza single))
     ; ("executables", Executables.(decode_stanza multi))
     ; ("rule", Rule_conf.(decode_stanza Rule_conf.decode))
-    ; ("ocamllex", Rule_conf.(decode_stanzas ocamllex))
+    ; "ocamllex", Ocamllex.decode_stanza Ocamllex.decode
     ; ("ocamlyacc", Rule_conf.(decode_stanzas ocamlyacc))
     ; ("install", Install_conf.(decode_stanza decode))
     ; ("alias", Alias_conf.(decode_stanza decode))

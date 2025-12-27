@@ -1,9 +1,27 @@
 open Stdune
 
+module Mutex = struct
+  open Mutex
+
+  let[@warning "-32"] [@inline never] protect m f =
+    lock m;
+    match f () with
+    | x ->
+      unlock m;
+      x
+    | exception e ->
+      unlock m;
+      reraise e
+  ;;
+
+  include Mutex
+end
+
 type t =
   { fd : Unix.file_descr
   ; buf : Buffer.t
   ; cats : Category.Set.t
+  ; mutex : Mutex.t
   }
 
 (* CR-someday rgrinberg: remove this once we drop support for < 5.2 *)
@@ -38,8 +56,9 @@ let flush =
 ;;
 
 let close t =
-  flush t;
-  Unix.close t.fd
+  Mutex.protect t.mutex (fun () ->
+    flush t;
+    Unix.close t.fd)
 ;;
 
 let create cats path =
@@ -51,7 +70,7 @@ let create cats path =
   in
   let cats = Category.Set.of_list cats in
   let buf = Buffer.create (1 lsl 16) in
-  { fd; cats; buf }
+  { fd; cats; buf; mutex = Mutex.create () }
 ;;
 
 let to_buffer t sexp =
@@ -78,8 +97,9 @@ let emit_buffered t event =
 ;;
 
 let emit t event =
-  emit_buffered t event;
-  flush t
+  Mutex.protect t.mutex (fun () ->
+    emit_buffered t event;
+    flush t)
 ;;
 
 let start t k : Event.Async.t option =

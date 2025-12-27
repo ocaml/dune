@@ -4,15 +4,15 @@ dune trace cat can be used to view the trace:
   > (lang dune 3.21)
   > EOF
   $ dune build
-  $ dune trace cat | jq -c '.[] | keys'
-  ["args","cat","name","ph","pid","tid","ts"]
-  ["args","cat","name","ph","pid","tid","ts"]
-  ["args","cat","name","ph","pid","tid","ts"]
-  ["args","cat","name","ph","pid","tid","ts"]
-  ["args","cat","name","ph","pid","tid","ts"]
-  ["args","cat","name","ph","pid","tid","ts"]
-  ["args","cat","dur","name","ph","pid","tid","ts"]
-  ["args","cat","name","ph","pid","tid","ts"]
-  ["args","cat","dur","name","ph","pid","tid","ts"]
-  ["args","cat","dur","name","ph","pid","tid","ts"]
-  ["cat","name","ph","pid","tid","ts"]
+  $ dune trace cat | jq -c 'keys'
+  ["args","cat","name","ts"]
+  ["args","cat","name","ts"]
+  ["args","cat","name","ts"]
+  ["args","cat","name","ts"]
+  ["args","cat","name","ts"]
+  ["args","cat","name","ts"]
+  ["args","cat","dur","name","ts"]
+  ["args","cat","name","ts"]
+  ["args","cat","dur","name","ts"]
+  ["args","cat","dur","name","ts"]
+  ["args","cat","name","ts"]

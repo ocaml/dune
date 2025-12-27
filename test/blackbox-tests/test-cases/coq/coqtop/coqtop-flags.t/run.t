@@ -7,7 +7,7 @@ The flags passed to coqc:
   Hint: To disable this warning, add the following to your dune-project file:
   (warnings (deprecated_coq_lang disabled))
 
-  $ dune trace cat | jq '[ .[] | select(.name == "coqc") | .args.process_args ] | .[1] | .[] | sub(".*/coq/"; "coq/") | sub(".*/coq-core/"; "coq-core/")'
+  $ dune trace cat | jq -s '[ .[] | select(.name == "coqc") | .args.process_args ] | .[1] | .[] | sub(".*/coq/"; "coq/") | sub(".*/coq-core/"; "coq-core/")'
   "-w"
   "-notation-overridden"
   "-w"

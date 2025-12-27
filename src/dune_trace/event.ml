@@ -1,54 +1,58 @@
 open Stdune
 
 module Arg = struct
-  include Json
+  type t = Sexp.t
 
-  let rec sexp : Sexp.t -> t = function
-    | Atom s -> string s
-    | List xs -> list (List.map ~f:sexp xs)
-  ;;
-
+  let string s = Sexp.Atom s
+  let sexp t = t
   let dyn dyn = sexp (Sexp.of_dyn dyn)
   let path p = string (Path.to_string p)
   let source_path p = string (Path.Source.to_string p)
   let build_path p = string (Path.Build.to_string p)
-  let record x = `Assoc x
+  let float x = string (string_of_float x)
+  let list xs = Sexp.List xs
+  let int x = Sexp.Atom (string_of_int x)
+  let bool x = Sexp.Atom (string_of_bool x)
+  let record xs = List.map xs ~f:(fun (k, v) -> list [ string k; v ])
 end
 
 module Event = struct
   module Id = struct
-    open Chrome_trace.Id
+    type t = string
 
-    let int x = create (`Int x)
-    let string x = create (`String x)
+    let int x = string_of_int x
+    let string x = x
   end
 
-  module Event = Chrome_trace.Event
-
-  let make_ts ts = Event.Timestamp.of_float_seconds (Time.to_secs ts)
-  let make_dur span = Event.Timestamp.of_float_seconds (Time.Span.to_secs span)
+  let make_ts ts = Arg.float (Time.to_secs ts)
+  let make_dur span = Arg.float (Time.Span.to_secs span)
 
   type args = (string * Arg.t) list
-  type t = Event.t
+  type t = Sexp.t
 
-  let complete ?args ~name ~start ~dur cat =
-    Event.common_fields ~ts:(make_ts start) ~name ~cat:[ Category.to_string cat ] ()
-    |> Event.complete ~dur:(make_dur dur) ?args
+  let base ~name cat : Sexp.t list = [ Atom (Category.to_string cat); Atom name ]
+
+  let complete ?(args = []) ~name ~start ~dur cat : t =
+    List (base ~name cat @ [ Sexp.List [ make_ts start; make_dur dur ] ] @ Arg.record args)
   ;;
 
-  let instant ?args ~name ts cat =
-    Event.common_fields ~ts:(make_ts ts) ~name ~cat:[ Category.to_string cat ] ()
-    |> Event.instant ?args
+  let instant ?(args = []) ~name ts cat : t =
+    List (base ~name cat @ [ make_ts ts ] @ Arg.record args)
   ;;
 
-  let async ?args id ~name ts stage cat =
-    Event.common_fields ~cat:[ Category.to_string cat ] ~ts:(make_ts ts) ~name ()
-    |> Event.async
-         ?args
-         id
-         (match stage with
-          | `Start -> Start
-          | `Stop -> End)
+  let async ?(args = []) id ~name ts stage cat : t =
+    List
+      (base ~name cat
+       @ [ make_ts ts ]
+       @ Arg.record
+           [ "id", Arg.string id
+           ; ( "stage"
+             , Arg.string
+                 (match stage with
+                  | `Start -> "start"
+                  | `Stop -> "stop") )
+           ]
+       @ Arg.record args)
   ;;
 end
 
@@ -345,6 +349,7 @@ let json_of_alias { dir; name; recursive; contexts } =
     ; "recursive", Arg.bool recursive
     ; "contexts", Arg.list (List.map contexts ~f:Arg.string)
     ]
+  |> Arg.list
 ;;
 
 let resolve_targets targets aliases =
@@ -423,7 +428,7 @@ let log { Log.Message.level; message; args } =
     | `Verbose -> "verbose"
   in
   let args =
-    ("message", `String message) :: List.map args ~f:(fun (name, v) -> name, Arg.dyn v)
+    ("message", Arg.string message) :: List.map args ~f:(fun (k, s) -> k, Arg.dyn s)
   in
   Event.instant ~args ~name now Log
 ;;

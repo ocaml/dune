@@ -19,7 +19,7 @@ Testing the coqdoc flags field of the env stanza.
 
   $ dune build @doc
 
-  $ dune trace cat | jq '.[] | select(.cat == "process" and .args.process_args.[0] == "doc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")'
+  $ dune trace cat | jq 'select(.cat == "process" and .args.process_args.[0] == "doc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")'
   "doc"
   "-R"
   "coq/theories"

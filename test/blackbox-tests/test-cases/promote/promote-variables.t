@@ -14,7 +14,7 @@ Test expanding variables in `(promote (into ..))`
 
   $ dune build a/b/promoted
 
-  $ dune trace cat | jq '.[] | select(.name == "promote") | .args'
+  $ dune trace cat | jq 'select(.name == "promote") | .args'
   {
     "src": "_build/default/a/b/promoted",
     "dst": "another/promoted"

@@ -10,7 +10,6 @@ Reproducing test case for https://github.com/ocaml/dune/issues/12638.
   $ jqScript=$(mktemp)
 
   $ cat >$jqScript <<'EOF'
-  > .[] |
   > select(.cat == "process") |
   > .args.process_args as $arr |
   > [range(0; $arr | length - 1) as $i |

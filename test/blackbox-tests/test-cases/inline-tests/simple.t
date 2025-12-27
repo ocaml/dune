@@ -48,7 +48,7 @@ Make sure building both aliases doesn't build both
   Fatal error: exception File ".foo_simple.inline-tests/main.ml-gen", line 1, characters 40-46: Assertion failed
   [1]
 This test demonstrates that the action is being run once
-  $ dune trace cat | jq '.[] | select(.cat == "process") | .args.prog | select(contains("inline-test-runner.exe"))'
+  $ dune trace cat | jq 'select(.cat == "process") | .args.prog | select(contains("inline-test-runner.exe"))'
   ".foo_simple.inline-tests/inline-test-runner.exe"
 
 The expected behavior for the following three tests is to output nothing: the tests are disabled or ignored.

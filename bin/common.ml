@@ -1326,7 +1326,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
             | None -> User_error.raise [ Pp.textf "unrecognized trace category %S" x ])
       in
       Path.parent trace |> Option.iter ~f:Path.mkdir_p;
-      let stats = Dune_trace.Out.create cats (open_out (Path.to_string trace)) in
+      let stats = Dune_trace.Out.create cats trace in
       Dune_trace.set_global stats;
       Log.init
         (Redirect (fun w -> Dune_trace.emit Log (fun () -> Dune_trace.Event.log w)))

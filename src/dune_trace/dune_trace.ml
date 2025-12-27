@@ -47,4 +47,5 @@ let flush () =
 
 module Private = struct
   module Fd_count = Fd_count
+  module Buffer = Buffer
 end

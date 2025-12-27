@@ -147,7 +147,7 @@ end
 module Out : sig
   type t
 
-  val create : Category.t list -> out_channel -> t
+  val create : Category.t list -> Path.t -> t
   val emit : t -> Event.t -> unit
   val start : t option -> (unit -> Event.Async.data) -> Event.Async.t option
   val finish : t -> Event.Async.t option -> unit
@@ -169,4 +169,6 @@ module Private : sig
 
     val get : unit -> t
   end
+
+  module Buffer : module type of Buffer
 end

@@ -211,13 +211,23 @@ module Copyfile = struct
       copy_channels ic oc)
   ;;
 
-  let copy_file =
+  let copy_file_best =
     match available with
     | `Sendfile -> sendfile_with_fallback
     | `Copyfile -> copyfile
     | `Nothing -> copy_file_portable
   ;;
+
+  let copy_file_impl = ref `Best
+
+  let copy_file ?chmod ~src ~dst () =
+    match !copy_file_impl with
+    | `Portable -> copy_file_portable ?chmod ~src ~dst ()
+    | `Best -> copy_file_best ?chmod ~src ~dst ()
+  ;;
 end
+
+let set_copy_impl m = Copyfile.copy_file_impl := m
 
 module Make (Path : sig
     type t

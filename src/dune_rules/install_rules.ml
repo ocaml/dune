@@ -75,7 +75,7 @@ let check_runtime_deps_relative_path local_path ~loc ~lib_info =
 module Stanzas_to_entries : sig
   val stanzas_to_entries
     :  Super_context.t
-    -> Install.Entry.Sourced.t list Package.Name.Map.t Memo.t
+    -> Install.Entry.Sourced.Unexpanded.t list Package.Name.Map.t Memo.t
 end = struct
   let lib_ppxs ctx ~scope ~(lib : Library.t) =
     match lib.kind with
@@ -151,12 +151,12 @@ end = struct
            | None -> subdir
            | Some lib_subdir -> Filename.concat lib_subdir subdir)
     in
-    fun section ~loc ?sub_dir ?dst fn ->
+    fun section ~loc ?sub_dir ?dst ~kind fn ->
       let entry =
-        Install.Entry.make
+        Install.Entry.Unexpanded.make
           section
           fn
-          ~kind:`File
+          ~kind
           ~dst:
             (let dst =
                match dst with
@@ -167,17 +167,17 @@ end = struct
              | None -> dst
              | Some dir -> sprintf "%s/%s" dir dst)
       in
-      Install.Entry.Sourced.create ~loc entry
+      Install.Entry.Sourced.Unexpanded.create ~loc entry
   ;;
 
   let doc_install_files ~loc mld_contents =
     List.rev_map mld_contents ~f:(fun (mld : Doc_sources.mld) ->
-      Install.Entry.make
-        ~kind:`File
+      Install.Entry.Unexpanded.make
+        ~kind:Install.Entry.Unexpanded.File
         ~dst:(sprintf "odoc-pages/%s" (Path.Local.to_string mld.in_doc))
         Section.Doc
         mld.path
-      |> Install.Entry.Sourced.create ~loc)
+      |> Install.Entry.Sourced.Unexpanded.create ~loc)
   ;;
 
   let lib_install_files
@@ -243,7 +243,7 @@ end = struct
               in
               sub_dir, dst
           in
-          make_entry ?sub_dir Lib source ?dst))
+          make_entry ~kind:File ?sub_dir Lib source ?dst))
     in
     let additional_deps (loc, deps) =
       Lib_file_deps.eval deps ~expander ~loc ~paths:(Disallow_external lib_name)
@@ -255,8 +255,8 @@ end = struct
           ~jsoo_enabled:Jsoo_rules.jsoo_enabled
           path
         >>| function
-        | None -> path, `File
-        | Some dir_target_path -> dir_target_path, `Directory)
+        | None -> path, Install.Entry.Unexpanded.File
+        | Some dir_target_path -> dir_target_path, Directory)
       >>| Path.Build.Map.of_list_reduce ~f:(fun _ kind -> kind)
       >>| Path.Build.Map.to_list_map ~f:(fun path kind ->
         let sub_dir =
@@ -268,9 +268,7 @@ end = struct
             |> Path.Local.descendant ~of_:(Path.Build.local lib_src_dir)
             |> Option.map ~f:Path.Local.to_string
         in
-        let dep = make_entry ?sub_dir Lib path in
-        let entry = Install.Entry.set_kind dep.entry kind in
-        { dep with entry })
+        make_entry ~kind ?sub_dir Lib path)
     in
     let { Lib_config.has_native; ext_obj; _ } = lib_config in
     let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
@@ -352,24 +350,28 @@ end = struct
     and+ dll_files =
       dll_files ~modes:ocaml ~dynlink:lib.dynlink ~ctx info
       >>| List.rev_map ~f:(fun a ->
-        let entry = Install.Entry.make ~kind:`File Stublibs a in
-        Install.Entry.Sourced.create ~loc entry)
+        let entry =
+          Install.Entry.Unexpanded.make ~kind:Install.Entry.Unexpanded.File Stublibs a
+        in
+        Install.Entry.Sourced.Unexpanded.create ~loc entry)
     in
     let install_c_headers =
       List.rev_map lib.install_c_headers ~f:(fun (loc, base) ->
         Path.Build.relative dir (base ^ Foreign_language.header_extension)
-        |> make_entry ~loc Lib)
+        |> make_entry ~kind:File ~loc Lib)
     in
     List.rev_concat
       [ sources
       ; melange_runtime_entries
-      ; List.rev_map module_files ~f:(fun (sub_dir, file) -> make_entry ?sub_dir Lib file)
+      ; List.rev_map module_files ~f:(fun (sub_dir, file) ->
+          make_entry ~kind:File ?sub_dir Lib file)
       ; (match lib.kind with
          | Parameter -> []
          | Virtual | Dune_file _ ->
            List.rev_concat
-             [ List.rev_map lib_files ~f:(fun (section, file) -> make_entry section file)
-             ; List.rev_map execs ~f:(make_entry Libexec)
+             [ List.rev_map lib_files ~f:(fun (section, file) ->
+                 make_entry ~kind:File section file)
+             ; List.rev_map execs ~f:(make_entry ~kind:File Libexec)
              ; dll_files
              ; install_c_headers
              ; public_headers
@@ -462,9 +464,9 @@ end = struct
     let+ files =
       Install_entry.File.to_file_bindings_expanded install_conf.files ~expand ~dir
       >>= Memo.List.map ~f:(fun fb ->
-        let+ entry = make_entry ~kind:`File fb in
+        let+ entry = make_entry ~kind:File fb in
         let loc = File_binding.Expanded.src_loc fb in
-        Install.Entry.Sourced.create ~loc entry)
+        Install.Entry.Sourced.Unexpanded.create ~loc entry)
     and+ files_from_dirs =
       Install_entry.Dir.to_file_bindings_expanded
         install_conf.dirs
@@ -473,8 +475,8 @@ end = struct
         ~relative_dst_path_starts_with_parent_error_when:`Deprecation_warning_from_3_11
       >>= Memo.List.map ~f:(fun fb ->
         let loc = File_binding.Expanded.src_loc fb in
-        let+ entry = make_entry ~kind:`Directory fb in
-        Install.Entry.Sourced.create ~loc entry)
+        let+ entry = make_entry ~kind:Directory fb in
+        Install.Entry.Sourced.Unexpanded.create ~loc entry)
     and+ source_trees =
       (* There's no deprecation warning when a relative destination path
          starts with a parent in this feature. It's safe to raise an error in
@@ -487,7 +489,7 @@ end = struct
         ~relative_dst_path_starts_with_parent_error_when:`Always_error
       >>= Memo.List.map ~f:(fun fb ->
         let loc = File_binding.Expanded.src_loc fb in
-        let* entry = make_entry ~kind:`Source_tree fb in
+        let* entry = make_entry ~kind:Source_tree fb in
         let+ () =
           Source_tree.find_dir (Path.Build.drop_build_context_exn entry.src)
           >>| function
@@ -495,7 +497,7 @@ end = struct
           | None ->
             User_error.raise ~loc [ Pp.text "This source directory does not exist" ]
         in
-        Install.Entry.Sourced.create ~loc entry)
+        Install.Entry.Sourced.Unexpanded.create ~loc entry)
     in
     List.rev_concat [ files; files_from_dirs; source_trees ]
   ;;
@@ -541,8 +543,12 @@ end = struct
         let opam_file = Package_paths.opam_file ctx pkg in
         let init =
           let file section local_file dst =
-            Install.Entry.make section local_file ~kind:`File ~dst
-            |> Install.Entry.Sourced.create
+            Install.Entry.Unexpanded.make
+              section
+              local_file
+              ~kind:Install.Entry.Unexpanded.File
+              ~dst
+            |> Install.Entry.Sourced.Unexpanded.create
           in
           let deprecated_meta_and_dune_files =
             Package.deprecated_package_names pkg
@@ -579,8 +585,13 @@ end = struct
             if is_odig_doc_file fn
             then (
               let odig_file = Path.Build.relative pkg_dir fn in
-              let entry = Install.Entry.make Doc ~kind:`File odig_file in
-              Install.Entry.Sourced.create entry :: acc)
+              let entry =
+                Install.Entry.Unexpanded.make
+                  Doc
+                  ~kind:Install.Entry.Unexpanded.File
+                  odig_file
+              in
+              Install.Entry.Sourced.Unexpanded.create entry :: acc)
             else acc))
     and+ entries =
       let* package_db = Package_db.create ctx.name in
@@ -606,8 +617,11 @@ end = struct
          for all. *)
       List.sort
         entries
-        ~compare:(fun (a : Install.Entry.Sourced.t) (b : Install.Entry.Sourced.t) ->
-          Install.Entry.compare Path.Build.compare a.entry b.entry))
+        ~compare:
+          (fun
+            (a : Install.Entry.Sourced.Unexpanded.t)
+            (b : Install.Entry.Sourced.Unexpanded.t)
+          -> Install.Entry.Unexpanded.compare a.entry b.entry))
   ;;
 
   let stanzas_to_entries =
@@ -732,11 +746,11 @@ end = struct
     let+ files =
       let+ map = Stanzas_to_entries.stanzas_to_entries sctx in
       Package.Name.Map.Multi.find map pkg_name
-      |> List.map ~f:(fun (e : Install.Entry.Sourced.t) ->
+      |> List.map ~f:(fun (e : Install.Entry.Sourced.Unexpanded.t) ->
         let kind =
           match e.entry.kind with
-          | `File -> `File
-          | `Directory | `Source_tree -> `Dir
+          | File -> `File
+          | Directory | Source_tree -> `Dir
         in
         e.entry.section, (kind, e.entry.dst))
       |> Section.Map.of_list_multi
@@ -972,11 +986,11 @@ let symlink_source_dir ~dir ~dst =
 
 let symlink_installed_artifacts_to_build_install
       (ctx : Build_context.t)
-      (entries : Install.Entry.Sourced.t list)
+      (entries : Install.Entry.Sourced.Unexpanded.t list)
       ~install_paths
   =
   let install_dir = Install.Context.dir ~context:ctx.name in
-  Memo.parallel_map entries ~f:(fun (s : Install.Entry.Sourced.t) ->
+  Memo.parallel_map entries ~f:(fun (s : Install.Entry.Sourced.Unexpanded.t) ->
     let entry = s.entry in
     let dst =
       let relative =
@@ -995,7 +1009,7 @@ let symlink_installed_artifacts_to_build_install
       Rule.make ~info:(From_dune_file loc) ~targets build
     in
     match entry.kind with
-    | `Source_tree ->
+    | Install.Entry.Unexpanded.Source_tree ->
       symlink_source_dir ~dir:src ~dst
       >>| List.map ~f:(fun (suffix, dst, build) ->
         let rule = rule build in
@@ -1004,22 +1018,25 @@ let symlink_installed_artifacts_to_build_install
             Install.Entry.map_dst entry ~f:(fun dst ->
               Install.Entry.Dst.add_suffix dst (Path.Local.to_string suffix))
           in
-          let entry = Install.Entry.set_src entry dst in
-          Install.Entry.set_kind entry `File
+          let entry = Install.Entry.Unexpanded.expand entry in
+          Install.Entry.Expanded.set_src entry dst
         in
         { s with entry }, rule)
-    | (`File | `Directory) as kind ->
+    | File ->
       let entry =
-        let entry = Install.Entry.set_src entry dst in
+        let entry = Install.Entry.Unexpanded.expand entry in
+        let entry = Install.Entry.Expanded.set_src entry dst in
         { s with entry }
       in
-      let action =
-        (match kind with
-         | `File -> Action_builder.symlink
-         | `Directory -> Action_builder.symlink_dir)
-          ~src
-          ~dst
+      let action = Action_builder.symlink ~src ~dst in
+      Memo.return [ entry, rule action ]
+    | Directory ->
+      let entry =
+        let entry = Install.Entry.Unexpanded.expand entry in
+        let entry = Install.Entry.Expanded.set_src entry dst in
+        { s with entry }
       in
+      let action = Action_builder.symlink_dir ~src ~dst in
       Memo.return [ entry, rule action ])
 ;;
 
@@ -1045,7 +1062,8 @@ let packages =
       Memo.parallel_map packages ~f:(fun (pkg : Package.t) ->
         Package.name pkg
         |> install_entries sctx
-        >>| List.map ~f:(fun (e : Install.Entry.Sourced.t) -> e.entry.src, Package.id pkg))
+        >>| List.map ~f:(fun (e : Install.Entry.Sourced.Unexpanded.t) ->
+          e.entry.src, Package.id pkg))
     in
     List.rev_concat l
     |> Path.Build.Map.of_list_fold ~init:Package.Id.Set.empty ~f:Package.Id.Set.add
@@ -1139,7 +1157,7 @@ let package_deps (pkg : Package.t) files =
 include (
 struct
   module Spec = struct
-    type ('path, 'target) t = Path.t Install.Entry.t list * 'target
+    type ('path, 'target) t = Path.t Install.Entry.Expanded.t list * 'target
 
     let name = "gen-install-file"
     let version = 2
@@ -1148,7 +1166,7 @@ struct
     let encode (_entries, dst) _path target : Sexp.t = List [ target dst ]
 
     let make_entry entry path comps =
-      Install.Entry.set_src entry path
+      Install.Entry.Expanded.set_src entry path
       |> Install.Entry.map_dst ~f:(fun dst -> Install.Entry.Dst.concat_all dst comps)
     ;;
 
@@ -1159,8 +1177,12 @@ struct
           List.rev_map acc ~f:(fun (path, comps) ->
             let comps = List.rev comps in
             make_entry entry path comps)
-          |> List.sort ~compare:(fun (x : _ Install.Entry.t) (y : _ Install.Entry.t) ->
-            Path.compare x.src y.src)
+          |> List.sort
+               ~compare:
+                 (fun
+                   (x : Path.t Install.Entry.Expanded.t)
+                   (y : Path.t Install.Entry.Expanded.t)
+                 -> Path.compare x.src y.src)
         | (dir, comps) :: dirs ->
           (match Path.Untracked.readdir_unsorted_with_kinds dir with
            | Error (e, x, y) -> raise (Unix.Unix_error (e, x, y))
@@ -1186,14 +1208,10 @@ struct
         let+ entries =
           Fiber.parallel_map entries ~f:(fun (entry : _ Install.Entry.t) ->
             match entry.kind with
-            | `File -> Fiber.return [ entry ]
-            | `Directory -> Fiber.return (read_dir_recursively entry)
-            | `Source_tree ->
-              Code_error.raise
-                "This entry should have been expanded into `File"
-                [ "entry", Install.Entry.to_dyn Path.to_dyn entry ])
+            | Install.Entry.Expanded.File -> Fiber.return [ entry ]
+            | Directory -> Fiber.return (read_dir_recursively entry))
         in
-        List.concat entries |> Install.Entry.gen_install_file
+        List.concat entries |> Install.Entry.Expanded.gen_install_file
       in
       Async.async (fun () -> Io.write_file (Path.build dst) entries)
     ;;
@@ -1204,7 +1222,10 @@ struct
   let gen_install_file entries ~dst = A.action (entries, dst)
 end :
 sig
-  val gen_install_file : Path.t Install.Entry.t list -> dst:Path.Build.t -> Action.t
+  val gen_install_file
+    :  Path.t Install.Entry.Expanded.t list
+    -> dst:Path.Build.t
+    -> Action.t
 end)
 
 let gen_package_install_file_rules sctx (package : Package.t) =
@@ -1220,7 +1241,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   let files =
     Action_builder.map
       entries
-      ~f:(List.rev_map ~f:(fun (e : Install.Entry.Sourced.t) -> e.entry.src))
+      ~f:(List.rev_map ~f:(fun (e : Install.Entry.Sourced.Expanded.t) -> e.entry.src))
     |> Action_builder.memoize "entries"
   in
   let* dune_project = Dune_load.find_project ~dir:pkg_build_dir in
@@ -1305,16 +1326,19 @@ let gen_package_install_file_rules sctx (package : Package.t) =
             let toolchain = Context_name.to_string toolchain in
             Path.of_string (toolchain ^ "-sysroot")
           in
-          List.rev_map entries ~f:(fun (e : Install.Entry.Sourced.t) ->
+          List.rev_map entries ~f:(fun (e : Install.Entry.Sourced.Expanded.t) ->
             { e with
               entry =
-                Install.Entry.add_install_prefix e.entry ~paths:install_paths ~prefix
+                Install.Entry.Expanded.add_install_prefix
+                  e.entry
+                  ~paths:install_paths
+                  ~prefix
             })
       in
       if not (Package.allow_empty package)
       then
         if
-          List.for_all entries ~f:(fun (e : Install.Entry.Sourced.t) ->
+          List.for_all entries ~f:(fun (e : Install.Entry.Sourced.Expanded.t) ->
             match e.source with
             | Dune -> true
             | User _ -> false)
@@ -1328,8 +1352,8 @@ let gen_package_install_file_rules sctx (package : Package.t) =
                  the dune-project file"
                 (Package.Name.to_string package_name)
             ]);
-      List.rev_map entries ~f:(fun (e : Install.Entry.Sourced.t) ->
-        Install.Entry.set_src e.entry (Path.build e.entry.src))
+      List.rev_map entries ~f:(fun (e : Install.Entry.Sourced.Expanded.t) ->
+        Install.Entry.Expanded.set_src e.entry (Path.build e.entry.src))
     in
     entries
     >>| gen_install_file ~dst:install_file

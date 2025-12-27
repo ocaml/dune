@@ -70,7 +70,7 @@ val install_rules
   :  sctx:Super_context.t
   -> dir:Path.Build.t
   -> Rocq_stanza.Theory.t
-  -> Install.Entry.Sourced.t list Memo.t
+  -> Install.Entry.Sourced.Unexpanded.t list Memo.t
 
 (** Compute the effective Rocq enviroment *)
 val rocq_env : dir:Path.Build.t -> Rocq_flags.t Action_builder.t

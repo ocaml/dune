@@ -30,11 +30,13 @@
  (deps
   (env_var OCAML_COLOR)
   (env_var DUNE_JOBS)
+  ../dune.jq
   %{bin:jq}
   %{bin:dune_cmd}
   (package dune))
  ;; We don't allow conflict markers in tests
  (conflict_markers error)
+ (setup_scripts ../setup-script.sh)
  ;; Tests shouldn't take longer than 60s
  (timeout 60))
 

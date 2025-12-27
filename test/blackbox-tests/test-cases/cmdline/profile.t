@@ -8,7 +8,7 @@ Bug #4632
 
   $ runtest() {
   > dune build $@
-  > dune trace cat | jq '.[] | select(.cat == "log" and .args.message == "Dune context") | .args.context | .[] | select(.[0] == "profile")'
+  > dune trace cat | jq 'include "dune"; .[] | logs("Dune context") | .context | .[] | select(.[0] == "profile")'
   > }
 
   $ runtest

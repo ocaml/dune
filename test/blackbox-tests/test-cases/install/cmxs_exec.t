@@ -60,6 +60,13 @@ Test the error message if a destination is a non-empty directory instead of a fi
   Installing prefix/lib/foo/META
   Installing prefix/lib/foo/dune-package
   Error: Please delete non-empty directory prefix/lib/foo/foo.a manually.
+  Installing prefix/lib/foo/foo.cma
+  Installing prefix/lib/foo/foo.cmi
+  Installing prefix/lib/foo/foo.cmt
+  Installing prefix/lib/foo/foo.cmx
+  Installing prefix/lib/foo/foo.cmxa
+  Installing prefix/lib/foo/foo.ml
+  Installing prefix/lib/foo/foo.cmxs
   [1]
 
 Test the error message if a destination is a file instead of a directory.
@@ -68,5 +75,23 @@ Test the error message if a destination is a file instead of a directory.
   $ mkdir -p prefix/lib; touch prefix/lib/foo
   $ dune install --prefix prefix --display short
   Installing prefix/lib/foo/META
+  Error: Please delete file prefix/lib/foo manually.
+  Installing prefix/lib/foo/dune-package
+  Error: Please delete file prefix/lib/foo manually.
+  Installing prefix/lib/foo/foo.a
+  Error: Please delete file prefix/lib/foo manually.
+  Installing prefix/lib/foo/foo.cma
+  Error: Please delete file prefix/lib/foo manually.
+  Installing prefix/lib/foo/foo.cmi
+  Error: Please delete file prefix/lib/foo manually.
+  Installing prefix/lib/foo/foo.cmt
+  Error: Please delete file prefix/lib/foo manually.
+  Installing prefix/lib/foo/foo.cmx
+  Error: Please delete file prefix/lib/foo manually.
+  Installing prefix/lib/foo/foo.cmxa
+  Error: Please delete file prefix/lib/foo manually.
+  Installing prefix/lib/foo/foo.ml
+  Error: Please delete file prefix/lib/foo manually.
+  Installing prefix/lib/foo/foo.cmxs
   Error: Please delete file prefix/lib/foo manually.
   [1]

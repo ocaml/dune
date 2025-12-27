@@ -249,6 +249,11 @@ val relative_to_source_in_build_or_external
     to the initial directory dune was launched in. *)
 val of_filename_relative_to_initial_cwd : string -> t
 
+(** Like [of_string], but if the path is relative and would escape the workspace
+    (e.g., [../foo]), it is treated as relative to the initial directory dune
+    was launched in instead of raising an error. *)
+val of_string_allow_outside_workspace : string -> t
+
 (** Convert a path to an absolute filename. Must be called after the workspace
     root has been set. [root] is the root directory of local paths *)
 val to_absolute_filename : t -> string

@@ -217,6 +217,9 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
   and+ () =
     Memo.parallel_iter stanzas ~f:(fun stanza ->
       match Stanza.repr stanza with
+      | Ocamllex.T ocamllex ->
+        let dir = Dir_contents.dir dir_contents in
+        Ocamllex_rules.gen_rules ocamllex ~sctx ~dir
       | Menhir_stanza.T m ->
         Expander.eval_blang expander m.enabled_if
         >>= (function

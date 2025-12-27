@@ -182,37 +182,6 @@ type lex_or_yacc =
   ; enabled_if : Blang.t
   }
 
-let ocamllex_to_rule { loc; modules; mode; enabled_if } =
-  let module S = String_with_vars in
-  List.map modules ~f:(fun name ->
-    let src = name ^ ".mll" in
-    let dst = name ^ ".ml" in
-    { targets =
-        (* CR-someday aalekseyev: want to use [multiplicity = One] here, but
-           can't because this is might get parsed with old dune syntax where
-           [multiplicity = One] is not supported. *)
-        Static { targets = [ S.make_text loc dst, File ]; multiplicity = Multiple }
-    ; deps = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
-    ; action =
-        ( loc
-        , Chdir
-            ( S.virt_pform __POS__ (Var Workspace_root)
-            , Dune_lang.Action.run
-                (S.virt_text __POS__ "ocamllex")
-                [ S.virt_text __POS__ "-q"
-                ; S.virt_text __POS__ "-o"
-                ; S.virt_pform __POS__ (Var Targets)
-                ; S.virt_pform __POS__ (Var Deps)
-                ] ) )
-    ; mode
-    ; locks = []
-    ; loc
-    ; enabled_if
-    ; aliases = []
-    ; package = None
-    })
-;;
-
 let ocamlyacc_to_rule { loc; modules; mode; enabled_if } =
   let module S = String_with_vars in
   List.map modules ~f:(fun name ->
@@ -254,5 +223,4 @@ let lex_or_yacc =
          { loc; modules; mode; enabled_if })
 ;;
 
-let ocamllex = lex_or_yacc >>| ocamllex_to_rule
 let ocamlyacc = lex_or_yacc >>| ocamlyacc_to_rule

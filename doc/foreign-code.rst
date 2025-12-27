@@ -387,6 +387,34 @@ The `re2 project <https://github.com/janestreet/re2>`_ uses this method to
 build the ``re2`` C library. You can look at the file ``re2/src/re2_c/dune`` in
 this project to see a full working example.
 
+.. _compile-commands:
+
+Editor Support for C/C++ Stubs
+==============================
+
+.. versionadded:: 3.23
+
+Language servers such as `clangd <https://clangd.llvm.org/>`_ and `ccls
+<https://github.com/MaskRay/ccls>`_ need a ``compile_commands.json`` file to
+provide code navigation, completion, and diagnostics for C and C++ sources.
+Dune can generate this file for you.
+
+When using ``(lang dune 3.23)`` or later, ``dune build @check`` produces a
+`compilation database <https://clang.llvm.org/docs/JSONCompilationDatabase.html>`_
+covering all C and C++ sources declared via ``foreign_stubs``,
+``foreign_library``, and ctypes stanzas in the workspace. The file is promoted
+to the workspace root so that editors can find it without configuration. Running
+``dune clean`` removes it. You can also build the file directly with
+``dune build compile_commands.json``.
+
+Each entry records the full compiler invocation that Dune would use for that
+source file, including the C compiler, base flags from ``ocamlc -config``,
+user-specified ``(flags ...)``, ``-I`` paths for the OCaml standard library,
+library dependencies (via ``install_c_headers``), and ``(include_dirs ...)``.
+
+Since the file is a build artifact promoted to the source tree, you should add
+``compile_commands.json`` to your ``.gitignore``.
+
 .. _ctypes: https://github.com/ocamllabs/ocaml-ctypes
 .. _pkg-config: https://www.freedesktop.org/wiki/Software/pkg-config/
 .. _errno_policy: https://ocaml.org/p/ctypes/0.20.1/doc/Cstubs/index.html#type-errno_policy

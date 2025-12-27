@@ -8,6 +8,7 @@ _perf
 _coverage
 __pycache__
 *.install
+compile_commands.json
 
 # vim swap files
 *.swp

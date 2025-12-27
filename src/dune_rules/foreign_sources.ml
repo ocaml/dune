@@ -8,12 +8,18 @@ type t =
   }
 
 let for_lib t ~name = Lib_name.Map.find_exn t.libraries name
+let for_lib_opt t ~name = Lib_name.Map.find t.libraries name
 
 let for_archive t ~archive_name =
   Foreign.Archive.Name.Map.find_exn t.archives archive_name
 ;;
 
+let for_archive_opt t ~archive_name =
+  Foreign.Archive.Name.Map.find t.archives archive_name
+;;
+
 let for_exes t ~first_exe = String.Map.find_exn t.executables first_exe
+let for_exes_opt t ~first_exe = String.Map.find t.executables first_exe
 
 let empty =
   { libraries = Lib_name.Map.empty

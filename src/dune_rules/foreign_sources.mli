@@ -6,8 +6,11 @@ type t
 
 val empty : t
 val for_lib : t -> name:Lib_name.t -> Foreign.Sources.t
+val for_lib_opt : t -> name:Lib_name.t -> Foreign.Sources.t option
 val for_archive : t -> archive_name:Foreign.Archive.Name.t -> Foreign.Sources.t
+val for_archive_opt : t -> archive_name:Foreign.Archive.Name.t -> Foreign.Sources.t option
 val for_exes : t -> first_exe:string -> Foreign.Sources.t
+val for_exes_opt : t -> first_exe:string -> Foreign.Sources.t option
 
 val make
   :  Stanza.t list

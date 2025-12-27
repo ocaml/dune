@@ -259,6 +259,12 @@ module Source = struct
     | Ctypes _ -> All
   ;;
 
+  let include_dirs t =
+    match t.kind with
+    | Stubs stubs -> stubs.include_dirs
+    | Ctypes _ -> []
+  ;;
+
   let user_object_name t =
     t.path |> Path.Build.split_extension |> fst |> Path.Build.basename
   ;;

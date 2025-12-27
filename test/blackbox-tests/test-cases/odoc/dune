@@ -1,3 +1,8 @@
 (cram
  (applies_to :whole_subtree)
  (deps %{bin:odoc} %{bin:sherlodoc}))
+
+(cram
+ (applies_to odoc-markdown-version-check)
+ (deps)
+ (setup_scripts helpers.sh))

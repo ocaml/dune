@@ -163,6 +163,9 @@ end = struct
           | Menhir_stanza.T menhir -> Memo.return (Menhir_stanza.targets menhir)
           | Ocamllex.T ocamllex ->
             Memo.return (List.map ocamllex.modules ~f:(fun s -> s ^ ".ml"))
+          | Ocamlyacc.T ocamlyacc ->
+            Memo.return
+              (List.concat_map ocamlyacc.modules ~f:(fun s -> [ s ^ ".ml"; s ^ ".mli" ]))
           | Rule_conf.T rule ->
             Simple_rules.user_rule sctx rule ~dir ~expander
             >>| (function

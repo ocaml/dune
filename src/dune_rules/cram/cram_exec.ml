@@ -174,12 +174,14 @@ let dyn_of_metadata_result =
 type full_block_result =
   { block : block_result
   ; metadata : metadata_result
+  ; duration : Dune_trace.Event.Cram.times option
   }
 
 type sh_script =
   { script : Path.t
   ; cram_to_output : block_result Cram_lexer.block list
   ; metadata_file : Path.t option
+  ; time_file : Path.t option
   }
 
 let read_exit_codes_and_prefix_maps file =
@@ -210,22 +212,59 @@ let read_exit_codes_and_prefix_maps file =
   loop [] (String.split ~on:'\000' s)
 ;;
 
+let read_times =
+  let make_time s = Float.of_string s |> Option.value_exn |> Time.Span.of_secs in
+  fun file ->
+    let open Option.O in
+    let* file = file in
+    let+ contents = Option.try_with (fun () -> Io.read_file file ~binary:true) in
+    String.split_lines contents
+    |> List.filter_map ~f:(fun s ->
+      match String.trim s with
+      | "" -> None
+      | s ->
+        (match String.split_on_char s ~sep:'|' with
+         | [ real; system; user ] ->
+           Option.try_with (fun () ->
+             { Dune_trace.Event.Cram.real = make_time real
+             ; user = make_time user
+             ; system = make_time system
+             })
+         | _ -> None))
+;;
+
 let read_and_attach_exit_codes (sh_script : sh_script)
   : full_block_result Cram_lexer.block list
   =
   let metadata_entries = read_exit_codes_and_prefix_maps sh_script.metadata_file in
-  let rec loop acc entries blocks =
+  let times = read_times sh_script.time_file in
+  let next_time = function
+    | None -> None, None
+    | Some [] -> None, Some []
+    | Some (time :: times) -> Some time, Some times
+  in
+  let rec loop acc entries blocks times =
     match blocks, entries with
     | [], [] -> List.rev acc
     | (Cram_lexer.Comment _ as comment) :: blocks, _ ->
-      loop (comment :: acc) entries blocks
+      loop (comment :: acc) entries blocks times
     | Command block :: blocks, metadata_entry :: entries ->
-      loop (Command { block; metadata = Present metadata_entry } :: acc) entries blocks
+      let duration, times = next_time times in
+      loop
+        (Command { block; metadata = Present metadata_entry; duration } :: acc)
+        entries
+        blocks
+        times
     | Cram_lexer.Command block :: blocks, [] ->
-      loop (Command { block; metadata = Missing_unreachable } :: acc) entries blocks
+      let duration, times = next_time times in
+      loop
+        (Command { block; metadata = Missing_unreachable; duration } :: acc)
+        entries
+        blocks
+        times
     | [], _ :: _ -> Code_error.raise "more blocks than metadata" []
   in
-  loop [] metadata_entries sh_script.cram_to_output
+  loop [] metadata_entries sh_script.cram_to_output times
 ;;
 
 let line_number =
@@ -279,7 +318,7 @@ let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
   List.map cram_to_output ~f:(fun (t : full_block_result Cram_lexer.block) ->
     match t with
     | Cram_lexer.Comment t -> Cram_lexer.Comment t
-    | Command { block; metadata } ->
+    | Command { block; metadata; duration = _ } ->
       let output =
         match metadata with
         | Missing_unreachable -> "***** UNREACHABLE *****"
@@ -338,7 +377,20 @@ let cram_commmands commands =
   Buffer.contents buf
 ;;
 
-let create_sh_script cram_stanzas ~temp_dir ~setup_scripts : sh_script Fiber.t =
+let timeformat =
+  lazy
+    (let format =
+       let precision = 3 in
+       [ 'R'; 'S'; 'U' ]
+       |> List.map ~f:(fun what -> sprintf "%%%d%c" precision what)
+       |> String.concat ~sep:"|"
+     in
+     sprintf {|TIMEFORMAT="%s"|} format)
+;;
+
+let create_sh_script cram_stanzas ~temp_dir ~setup_scripts (shell : Cram_stanza.Shell.t)
+  : sh_script Fiber.t
+  =
   let script = Path.relative temp_dir "main.sh" in
   let oc = Io.open_out ~binary:true script in
   Fiber.finalize ~finally:(fun () -> Fiber.return @@ close_out oc)
@@ -350,6 +402,18 @@ let create_sh_script cram_stanzas ~temp_dir ~setup_scripts : sh_script Fiber.t =
     quote_for_sh path
   in
   let metadata_file = file "cram.metadata" in
+  let user_shell_time_file =
+    match shell with
+    | Sh -> None
+    | Bash -> Some (file "time")
+  in
+  let* user_shell_time_file_sh_path =
+    match user_shell_time_file with
+    | None -> Fiber.return None
+    | Some f ->
+      let+ file = sh_path f in
+      Some file
+  in
   let* metadata_file_sh_path = sh_path metadata_file in
   let i = ref 0 in
   let loop block =
@@ -370,11 +434,18 @@ let create_sh_script cram_stanzas ~temp_dir ~setup_scripts : sh_script Fiber.t =
       (* Where we store the output of shell code written by the user *)
       let user_shell_code_output_file = file ~ext:".output" in
       let+ user_shell_code_output_file_sh_path = sh_path user_shell_code_output_file in
+      let untimed_command =
+        sprintf
+          ". %s > %s 2>&1"
+          user_shell_code_file_sh_path
+          user_shell_code_output_file_sh_path
+      in
       fprln
         oc
-        ". %s > %s 2>&1"
-        user_shell_code_file_sh_path
-        user_shell_code_output_file_sh_path;
+        "%s"
+        (match user_shell_time_file_sh_path with
+         | None -> untimed_command
+         | Some time_file -> sprintf "{ time %s; } 2>> %s" untimed_command time_file);
       fprln
         oc
         {|printf "%%d\0%%s\0" $? "$%s" >> %s|}
@@ -396,10 +467,16 @@ let create_sh_script cram_stanzas ~temp_dir ~setup_scripts : sh_script Fiber.t =
       | External _ -> ()
       | In_build_dir _ -> fprln oc "rm -f %s" script_sh_path)
   in
+  (* Needed for us to capture timing information. Users shouldn't really care,
+     but if they do, they can always set this again within their command (and
+     break timings) *)
+  (match shell with
+   | Sh -> ()
+   | Bash -> fprln oc "%s" (Lazy.force timeformat));
   let+ cram_to_output = Fiber.sequential_map ~f:loop cram_stanzas in
   let command_count = !i in
   let metadata_file = Option.some_if (command_count > 0) metadata_file in
-  { script; cram_to_output; metadata_file }
+  { script; cram_to_output; metadata_file; time_file = user_shell_time_file }
 ;;
 
 let _display_with_bars s = List.iter (String.split_lines s) ~f:(Printf.eprintf "| %s\n")
@@ -447,7 +524,7 @@ let run_cram_test
       (shell : Cram_stanza.Shell.t)
   =
   let open Fiber.O in
-  let* sh_script = create_sh_script cram_stanzas ~temp_dir ~setup_scripts in
+  let* sh_script = create_sh_script cram_stanzas ~temp_dir ~setup_scripts shell in
   let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
   let sh =
@@ -481,7 +558,19 @@ let run_cram_test
     sh
     [ Path.to_string sh_script.script ]
   >>| function
-  | Ok () -> read_and_attach_exit_codes sh_script |> sanitize ~parent_script:script
+  | Ok () ->
+    let detailed_output = read_and_attach_exit_codes sh_script in
+    Dune_trace.emit Cram (fun () ->
+      (* CR-someday rgrinberg: a little lame that we don't have a good way
+         to relate these to the underlying process event. *)
+      List.filter_map detailed_output ~f:(function
+        | Comment _ -> None
+        | Command { duration; block = { command; _ }; _ } ->
+          (match duration with
+           | None -> None
+           | Some times -> Some { Dune_trace.Event.Cram.command; times }))
+      |> Dune_trace.Event.Cram.test);
+    sanitize ~parent_script:script detailed_output
   | Error `Timed_out ->
     let timeout_loc, timeout = Option.value_exn timeout in
     let timeout_set_message =

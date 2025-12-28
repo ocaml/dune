@@ -432,3 +432,34 @@ let log { Log.Message.level; message; args } =
   in
   Event.instant ~args ~name now Log
 ;;
+
+module Cram = struct
+  type times =
+    { real : Time.Span.t
+    ; system : Time.Span.t
+    ; user : Time.Span.t
+    }
+
+  type command =
+    { command : string list
+    ; times : times
+    }
+
+  let test commands =
+    let now = Time.now () in
+    let args =
+      [ ( "commands"
+        , List.map commands ~f:(fun { command; times = { real; user; system } } ->
+            Arg.record
+              [ "command", Arg.list (List.map command ~f:Arg.string)
+              ; "real", Event.make_dur real
+              ; "user", Event.make_dur user
+              ; "system", Event.make_dur system
+              ]
+            |> Arg.list)
+          |> Arg.list )
+      ]
+    in
+    Event.instant ~args ~name:"cram" now Cram
+  ;;
+end

@@ -1316,6 +1316,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
             ; Log
             ; File_watcher
             ; Diagnostics
+            ; Cram
             ]
         | Some s ->
           String.split ~on:',' s

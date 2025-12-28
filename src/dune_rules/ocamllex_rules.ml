@@ -19,7 +19,6 @@ let rule sctx ~dir ~loc ~mode : Action.Full.t Action_builder.With_targets.t -> u
 ;;
 
 let gen_rules ~sctx ~dir { Ocamllex.loc; modules; mode; enabled_if = _ } =
-  let module S = String_with_vars in
   Memo.sequential_iter modules ~f:(fun name ->
     let src = Path.Build.relative dir (name ^ ".mll") in
     let dst = Path.Build.relative dir (name ^ ".ml") in

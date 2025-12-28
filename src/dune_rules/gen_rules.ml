@@ -222,6 +222,11 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
         >>= (function
          | false -> Memo.return ()
          | true -> Ocamllex_rules.gen_rules ocamllex ~sctx ~dir:ctx_dir)
+      | Ocamlyacc.T ocamlyacc ->
+        Expander.eval_blang expander ocamlyacc.enabled_if
+        >>= (function
+         | false -> Memo.return ()
+         | true -> Ocamlyacc_rules.gen_rules ocamlyacc ~sctx ~dir:ctx_dir)
       | Menhir_stanza.T m ->
         Expander.eval_blang expander m.enabled_if
         >>= (function

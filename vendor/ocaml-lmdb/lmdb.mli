@@ -195,7 +195,7 @@ module Conv : sig
         interface when appropriate to avoid calls to [malloc] and [memcpy].
 
       @param deserialise
-        The passed {!bigstring} is only valid as long as the current transaction.
+        The passed {!type:bigstring} is only valid as long as the current transaction.
         It is therefore strongly recommended not to leak it out of [deserialise].
 
       @param flags Flags to be set on a map using this converter.
@@ -307,6 +307,9 @@ module Map : sig
   (** [env map] returns the environment of [map]. *)
   val env : _ t -> Env.t
 
+
+  (** {2 Accessors} *)
+
   (** [get map key] returns the first value associated to [key].
       @raise Not_found if the key is not in the map.
   *)
@@ -320,8 +323,8 @@ module Map : sig
 
       @param flags {!Flags}
       @raise Exists on maps not supporting duplicates if the key already exists.
-      @raise Exists if key is already bound to [value] and {!
-      Map.Flags.no_dup_data} was passed.
+      @raise Exists if key is already bound to [value] and
+      {!Map.Flags.no_dup_data} was passed.
   *)
   val add : ('key, 'value, _) t ->
     ?txn:[> `Write ] Txn.t -> ?flags:Flags.t -> 'key -> 'value -> unit
@@ -344,6 +347,46 @@ module Map : sig
   *)
   val remove : ('key, 'value, _) t ->
     ?txn:[> `Write ] Txn.t -> ?value:'value -> 'key -> unit
+
+
+  (** {2 Iterators} *)
+
+  (** Dispensers / Generators are iterators meant to be used via
+      [Stdlib.Seq.of_dispenser] or the
+      {{:https://c-cube.github.io/gen/last/gen/Gen/index.html}Gen} module
+
+      They create a read-only (child) transaction and cursor which are
+      automatically closed when the Dispenser is exhausted. Therefore be sure
+      to completely exhaust a dispenser in a timely fashion.
+  *)
+
+  (** [to_dispenser map]
+      returns key-value pairs in order. *)
+  val to_dispenser :
+    ?txn: [> `Read ] Txn.t ->
+    ('key, 'value, _) t ->
+    (unit -> ('key * 'value) option)
+
+  (** [to_dispenser_rev map]
+      returns key-value pairs in reverse order. *)
+  val to_dispenser_rev :
+    ?txn: [> `Read ] Txn.t ->
+    ('key, 'value, _) t ->
+    (unit -> ('key * 'value) option)
+
+  (** [to_dispenser_all map]
+      returns keys with their associated values in order. *)
+  val to_dispenser_all :
+    ?txn: [> `Read ] Txn.t ->
+    ('key, 'value, [> `Dup ]) t ->
+    (unit -> ('key * 'value array) option)
+
+  (** [to_dispenser_all map]
+      returns keys with their associated values in reverse order. *)
+  val to_dispenser_rev_all :
+    ?txn: [> `Read ] Txn.t ->
+    ('key, 'value, [> `Dup ]) t ->
+    (unit -> ('key * 'value array) option)
 
 
   (** {2 Misc} *)
@@ -391,14 +434,14 @@ module Cursor : sig
 
       Here is an example that returns the first 5 elements of a [map]:
       {[
-go ro map begin fun c ->
-let h = first c in
-let rec aux i =
-  if i < 5 then next c :: aux (i+1)
-  else []
-in
-h :: aux 1
-end
+      go ro map begin fun c ->
+      let h = first c in
+      let rec aux i =
+        if i < 5 then next c :: aux (i+1)
+        else []
+      in
+      h :: aux 1
+      end
       ]}
 
       @param txn if omitted a transient transaction will implicitely be
@@ -407,6 +450,8 @@ end
   val go : 'perm perm -> ?txn:'perm Txn.t -> ('key, 'value, 'dup) Map.t ->
     (('key, 'value, 'perm, 'dup) t -> 'a) -> 'a
 
+  val txn : (_, _, 'perm, _) t -> 'perm Txn.t
+  (** [env txn] returns the transaction of [cursor] *)
 
   (** {2 Modification} *)
 
@@ -583,6 +628,8 @@ end
 
   (** {2 Convenient Iterators} *)
 
+  (** @deprecated Since 1.1. Use {!val:Map.to_dispenser} instead *)
+
   (** Call [f] once for each key-value pair.
       Will call [f] multiple times with the same key for duplicates *)
 
@@ -593,7 +640,7 @@ end
     unit
 
   val iter_rev :
-    ?cursor:('key, 'value, [> `Read ] as 'perm, 'dup) t ->
+    ?cursor:('key, 'value, [> `Read ], 'dup) t ->
     f:('key -> 'value -> unit) ->
     ('key, 'value, 'dup) Map.t ->
     unit
@@ -619,7 +666,7 @@ end
     unit
 
   val iter_rev_all :
-    ?cursor:('key, 'value, [> `Read ] as 'perm, 'dup) t ->
+    ?cursor:('key, 'value, [> `Read ], 'dup) t ->
     f:('key -> 'value array -> unit) ->
     ('key, 'value, [> `Dup ] as  'dup) Map.t ->
     unit

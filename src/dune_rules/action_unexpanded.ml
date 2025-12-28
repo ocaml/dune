@@ -376,7 +376,7 @@ end = struct
 
     let target = add_or_remove_target ~what:"Target" ~f:Path.Build.Map.set
 
-    let prog_and_args sw env acc =
+    let prog_args_and_deps sw env acc =
       let b =
         let dir = Path.build env.dir in
         let loc = loc sw in
@@ -413,13 +413,24 @@ end = struct
                in
                Artifacts.binary ?hint ~loc:(Some loc) ~where artifacts s)
         in
-        let prog = Result.map prog ~f:(Expander.map_exe env.expander) in
         let args = Value.L.to_strings ~dir args in
-        prog, args
+        match prog with
+        | Ok prog ->
+          let dep, prog, args = Expander.map_exe env.expander prog args in
+          (Ok prog, args), [ dep ]
+        | Error _ as v -> (v, []), []
       in
-      register_deps b env acc ~f:(function
-        | Ok p, _ -> [ p ]
-        | Error _, _ -> [])
+      register_deps b env acc ~f:(function _, deps -> deps)
+    ;;
+
+    let prog_and_args sw env acc =
+      Memo.map
+        ~f:(fun (x, v) ->
+          ( Action_builder.bind
+              ~f:(fun (prog_and_args, _) -> Action_builder.return prog_and_args)
+              x
+          , v ))
+        (prog_args_and_deps sw env acc)
     ;;
   end
 end

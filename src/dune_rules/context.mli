@@ -91,10 +91,9 @@ val implicit : t -> bool
 val compare : t -> t -> Ordering.t
 
 (** [map_exe t exe] returns a version of [exe] that is suitable for being
-    executed on the current machine. For instance, if [t] is a cross-compilation
-    build context, [map_exe t exe] returns the version of [exe] that lives in
-    the host build context. Otherwise, it just returns [exe]. *)
-val map_exe : t -> Path.t -> Path.t
+    executed on the current machine. Returns:
+    [dependency, actual_program, actual_arguments] *)
+val map_exe : t -> Path.t -> string list -> Path.t * Path.t * string list
 
 (** Query where build artifacts should be installed if the user doesn't specify
     an explicit installation directory. *)

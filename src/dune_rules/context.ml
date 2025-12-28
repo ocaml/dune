@@ -76,6 +76,7 @@ type builder =
   ; env : Env.t Memo.t
   ; implicit : bool
   ; findlib_toolchain : Context_name.t option
+  ; target_exec : (string * string list) option
   ; for_host : (Context_name.t * t Memo.t) option
   ; path : Path.t list
   }
@@ -91,6 +92,12 @@ and t =
   ; which : Filename.t -> Path.t option Memo.t
   }
 
+let target_exec toolchain =
+  match !Dune_engine.Clflags.target_exec, Context_name.to_string toolchain with
+  | Some (name, prog, args), toolchain when name = toolchain -> Some (prog, args)
+  | _ -> None
+;;
+
 module Builder = struct
   type t = builder
 
@@ -105,6 +112,7 @@ module Builder = struct
     ; env = Memo.return Env.empty
     ; implicit = false
     ; findlib_toolchain = None
+    ; target_exec = None
     ; for_host = None
     ; path = []
     }
@@ -161,6 +169,7 @@ module Builder = struct
     ; name
     ; env = Memo.return env
     ; findlib_toolchain = toolchain
+    ; target_exec = None
     }
   ;;
 end
@@ -572,7 +581,11 @@ module Group = struct
             (Memo.Lazy.create ~name:"findlib_toolchain" (fun () ->
                let name = Context_name.target builder.name ~toolchain:findlib_toolchain in
                create
-                 { builder with name; findlib_toolchain = Some findlib_toolchain }
+                 { builder with
+                   name
+                 ; findlib_toolchain = Some findlib_toolchain
+                 ; target_exec = target_exec findlib_toolchain
+                 }
                  ~kind
                |> Memo.return)))
     in
@@ -729,15 +742,33 @@ module DB = struct
 end
 
 let map_exe (context : t) =
-  match context.builder.for_host with
-  | None -> fun exe -> exe
-  | Some (name, _) ->
-    fun exe ->
-      let build_dir = Context_name.build_dir name in
-      (match Path.extract_build_context_dir exe with
-       | Some (dir, exe) when Path.equal dir (Path.build context.build_dir) ->
-         Path.append_source (Path.build build_dir) exe
-       | _ -> exe)
+  match context.builder with
+  | { for_host = None; _ } -> fun prog args -> prog, prog, args
+  | { target_exec = Some (wrapper, wrapper_args); _ } ->
+    fun prog args ->
+      (match Path.extract_build_context_dir prog with
+       | Some (dir, _) when Path.equal dir (Path.build context.build_dir) ->
+         let args = wrapper_args @ (Path.to_absolute_filename prog :: args) in
+         let wrapper =
+           match Bin.which ~path:(Env_path.path Env.initial) wrapper with
+           | Some p -> p
+           | None ->
+             User_error.raise
+               [ Pp.textf "Target exec wrapper %s could not be found in the path!" wrapper
+               ]
+         in
+         prog, wrapper, args
+       | _ -> prog, prog, args)
+  | { for_host = Some (name, _); _ } ->
+    let build_dir = Context_name.build_dir name in
+    fun prog args ->
+      let prog =
+        match Path.extract_build_context_dir prog with
+        | Some (dir, prog) when Path.equal dir (Path.build context.build_dir) ->
+          Path.append_source (Path.build build_dir) prog
+        | _ -> prog
+      in
+      prog, prog, args
 ;;
 
 let roots =

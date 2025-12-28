@@ -27,6 +27,7 @@ Building the package should fail and print an error:
   Error: Logs for package x
   cat: i_dont_exist: No such file or directory
   
+  [1]
 
 Create a package with a succeeding command that displays some text:
 

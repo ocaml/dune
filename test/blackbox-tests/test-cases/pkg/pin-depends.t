@@ -200,6 +200,7 @@ Pin to an HTTP archive detects wrong hash
   File "dune.lock/bar.1.0.0.pkg", line 6, characters 12-48:
                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Invalid checksum, got
+  [1]
 
 Pin to an HTTP archive needs `dune_pkg_lock_normalized` to download and compute the hash
 of the target again

@@ -186,8 +186,9 @@ EOF
 }
 
 make_lockpkg() {
+  local pkg="$1"
   mkdir -p "${source_lock_dir}"
-  local f="${source_lock_dir}/$1.pkg"
+  local f="${source_lock_dir}/$pkg.pkg"
   cat > "$f"
 }
 
@@ -207,7 +208,7 @@ dune_pkg_lock_normalized() {
   out="$(mktemp)"
   if dune pkg lock $@ 2>> "${out}"; then
     processed="$(mktemp)"
-    if [ "$DUNE_CONFIG__PORTABLE_LOCK_DIR" = "disabled" ]; then
+    if [ "${DUNE_CONFIG__PORTABLE_LOCK_DIR:-}" = "disabled" ]; then
       cp "${out}" "${processed}"
     else
       cat "${out}" \

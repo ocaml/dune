@@ -52,6 +52,7 @@ and then a duplicated symbol error will happen
 
 FIXME: we could detect this earlier and display a better error message
   $ dune exec ./stubs_exe.bc.exe 2>&1 | grep -q 'duplicate symbol\|multiple definition' 
+  [1]
 
 But two foreign stubs for the same file and mode is an error:
   $ cat >dune <<EOF

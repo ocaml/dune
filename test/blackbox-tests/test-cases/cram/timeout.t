@@ -44,4 +44,5 @@ behaviour is for dune to kill the cram test immediately.
   Error: Cram test timed out while running command:
     $ command
   A time limit of 0.00s has been set in dune:2
+  [1]
 

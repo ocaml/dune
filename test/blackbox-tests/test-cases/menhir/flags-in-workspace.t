@@ -18,3 +18,4 @@ See #9024.
     ("Syntax identifier is unset",
      { name = "menhir"
      ; supported_versions =
+  [1]

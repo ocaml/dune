@@ -83,6 +83,7 @@ disjunction, either package is problematic:
   - foo2 -> (problem)
       No usable implementations:
         foo2.0.0.1: Package does not satisfy constraints of local package x
+  [1]
 
 Adding a new version of `foo` only resolves one conflict:
 
@@ -98,6 +99,7 @@ Adding a new version of `foo` only resolves one conflict:
   - foo2 -> (problem)
       No usable implementations:
         foo2.0.0.1: Package does not satisfy constraints of local package x
+  [1]
 
 Addition of `foo2` to solve the last remaining conflict:
 

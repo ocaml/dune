@@ -21,6 +21,7 @@ The cinaps actions should be attached to the runtest alias:
   File "test.ml", line 1, characters 0-0:
   1a2
   > hello
+  [1]
 
 but also to the cinaps alias:
 
@@ -28,6 +29,7 @@ but also to the cinaps alias:
   File "test.ml", line 1, characters 0-0:
   1a2
   > hello
+  [1]
 
 The cinaps stanza offers a promotion workflow:
 

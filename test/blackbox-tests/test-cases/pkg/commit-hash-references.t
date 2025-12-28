@@ -32,3 +32,4 @@ Which foo will we get?
 
   $ dune pkg lock 2>&1 | grep "not found" | dune_cmd subst "$AMBIGUOUS_REF" '$AMBIGUOUS_REF'
   revision "$AMBIGUOUS_REF" not found in
+  [1]

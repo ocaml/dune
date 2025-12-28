@@ -72,6 +72,7 @@ variable can escape to subseqent shell invocations on MacOS.)
   - unzip
   - bsdtar
   - tar
+  [1]
 
 Build with only GNU tar that can't extract ZIP archives:
 
@@ -83,6 +84,7 @@ Build with only GNU tar that can't extract ZIP archives:
   - unzip
   - bsdtar
   - tar
+  [1]
 
 Build with bsdtar that can extract ZIP archives, without unzip. It should work:
 

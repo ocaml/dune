@@ -12,3 +12,4 @@ file is present.
       ^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: 'menhir' is available only when menhir is enabled in the dune-project
   file. You must enable it using (using menhir <version>) in your dune-project file.
+  [1]

@@ -33,6 +33,7 @@ the rule and the sandbox cleanup.
   4 |                "\| echo failed action && exit 1
   5 |           )))
   failed action
+  [1]
 
 Manual cleaning step so the dune executing the test suite doesn't croak trying
 to delete the readonly dir

@@ -20,6 +20,7 @@ Local file system
   Error:
   PWD/dummy
   does not exist
+  [1]
 
 Git
   $ runtest "(fetch (url \"git+file://$PWD/dummy\"))" 2>&1 \
@@ -40,6 +41,7 @@ Git
      _build/_private/default/.pkg/foo.dev-DIGEST_HASH/target
   Hint: Check that this Git URL in the project configuration is correct:
   "file://PWD/dummy"
+  [1]
 
 HTTP
 
@@ -49,3 +51,4 @@ HTTP
   >  | dune_cmd subst "'[0-9]*'" 'X'
   Error: failed to extract 'download'
   Reason: 'tar' failed with non-zero exit code X and output:
+  [1]

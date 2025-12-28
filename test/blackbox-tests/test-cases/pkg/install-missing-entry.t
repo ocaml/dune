@@ -20,6 +20,7 @@ This should give us a proper error that myfile wasn't generated
   does not exist
   -> required by
      $ROOT/_private/default/.pkg/test.0.0.1-962f24dc2cb394442fe86368a850a9d0/target
+  [1]
 
 This on the other hand shouldn't error because myfile is optional
 

@@ -14,14 +14,20 @@ dune trace cat --follow
   > EOF
 
   $ checkStart() {
-  > { dune trace cat | jq 'select(.name == "config" and .cat == "config")' | head -n 1 ; } 1> /dev/null 2>&1
-  > }
+  >   dune trace cat \
+  >     | jq 'select(.name == "config" and .cat == "config")' \
+  >     | head -n 1 \
+  >     || true
+  > } 1> /dev/null 2>&1
 
   $ dune build ./x &
 
   $ while ! checkStart; do sleep 0.1; done
 
-  $ ( dune trace cat --follow > /dev/null ) &
+  $ ( dune trace cat --follow \
+  > | jq 'select(.cat == "config" and (.name == "config" or .name == "exit")) | .name' ) &
+  "config"
+  "exit"
 
   $ echo resume > $fifo
 

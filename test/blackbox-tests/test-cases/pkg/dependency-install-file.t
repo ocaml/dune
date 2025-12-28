@@ -57,3 +57,4 @@ With this project set up, lets depend on it.
   > EOF
   $ dune exec ./foo.exe 2>&1 | grep -o "Unbound module Nondune"
   Unbound module Nondune
+  [1]

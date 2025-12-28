@@ -129,3 +129,10 @@ Cram
       in this field. The order of evaluation for these scripts is deterministic
       but is left undefined, so it is not recommended that these scripts have
       side effects.
+
+   .. describe:: (shell <sh|bash>)
+
+      .. versionadded:: 3.22
+
+      Determines the shell executable to use to execute the cram script. By
+      default, cram scripts will execute with ``sh``.

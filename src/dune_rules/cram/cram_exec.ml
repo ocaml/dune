@@ -435,14 +435,30 @@ let make_temp_dir ~script =
   temp_dir
 ;;
 
-let run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout ~setup_scripts =
+let run_cram_test
+      env
+      ~src
+      ~script
+      ~cram_stanzas
+      ~temp_dir
+      ~cwd
+      ~timeout
+      ~setup_scripts
+      (shell : Cram_stanza.Shell.t)
+  =
   let open Fiber.O in
   let* sh_script = create_sh_script cram_stanzas ~temp_dir ~setup_scripts in
   let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
   let sh =
     let path = Env_path.path Env.initial in
-    match Bin.which ~path "sh" with
+    match
+      Bin.which
+        ~path
+        (match shell with
+         | Sh -> "sh"
+         | Bash -> "bash")
+    with
     | Some sh -> sh
     | None ->
       User_error.raise [ Pp.text "CRAM test aborted, \"sh\" can not be found in PATH" ]
@@ -512,6 +528,7 @@ let run_produce_correction
       ~script
       ~timeout
       ~setup_scripts
+      shell
       lexbuf
   =
   let temp_dir = make_temp_dir ~script in
@@ -519,7 +536,16 @@ let run_produce_correction
   let cwd = Path.parent_exn script in
   let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
-  run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout ~setup_scripts
+  run_cram_test
+    env
+    ~src
+    ~script
+    ~cram_stanzas
+    ~temp_dir
+    ~cwd
+    ~timeout
+    ~setup_scripts
+    shell
   >>| compose_cram_output
 ;;
 
@@ -541,6 +567,7 @@ let run_and_produce_output
       ~dst
       ~timeout
       ~setup_scripts
+      shell
   =
   let script_contents = Io.read_file ~binary:false script in
   let lexbuf = Lexbuf.from_string script_contents ~fname:(Path.to_string script) in
@@ -551,7 +578,16 @@ let run_and_produce_output
   let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
   let+ commands =
-    run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout ~setup_scripts
+    run_cram_test
+      env
+      ~src
+      ~script
+      ~cram_stanzas
+      ~temp_dir
+      ~cwd
+      ~timeout
+      ~setup_scripts
+      shell
     >>| List.filter_map ~f:(function
       | Cram_lexer.Command c -> Some c
       | Comment _ -> None)
@@ -570,12 +606,17 @@ module Run = struct
       ; output : 'target
       ; timeout : (Loc.t * Time.Span.t) option
       ; setup_scripts : 'path list
+      ; shell : Cram_stanza.Shell.t
       }
 
     let name = "cram-run"
-    let version = 3
+    let version = 4
 
-    let bimap ({ src = _; dir; script; output; timeout; setup_scripts } as t) f g =
+    let bimap
+          ({ src = _; dir; script; output; timeout; setup_scripts; shell = _ } as t)
+          f
+          g
+      =
       { t with
         dir = f dir
       ; script = f script
@@ -587,7 +628,7 @@ module Run = struct
 
     let is_useful_to ~memoize:_ = true
 
-    let encode { src = _; dir; script; output; timeout; setup_scripts } path target
+    let encode { src = _; dir; script; output; timeout; shell; setup_scripts } path target
       : Sexp.t
       =
       List
@@ -598,11 +639,12 @@ module Run = struct
             option float (Option.map ~f:(fun (_, time) -> Time.Span.to_secs time) timeout))
           |> Dune_sexp.to_sexp
         ; List (List.map ~f:path setup_scripts)
+        ; Atom (Cram_stanza.Shell.to_string shell)
         ]
     ;;
 
     let action
-          { src; dir; script; output; timeout; setup_scripts }
+          { src; dir; script; output; timeout; setup_scripts; shell }
           ~ectx:_
           ~(eenv : Action.env)
       =
@@ -615,14 +657,15 @@ module Run = struct
         ~dst:output
         ~timeout
         ~setup_scripts
+        shell
     ;;
   end
 
   include Action_ext.Make (Spec)
 end
 
-let run ~src ~dir ~script ~output ~timeout ~setup_scripts =
-  Run.action { src; dir; script; output; timeout; setup_scripts }
+let run ~src ~dir ~script ~output ~timeout ~setup_scripts shell =
+  Run.action { src; dir; script; output; timeout; setup_scripts; shell }
 ;;
 
 module Make_script = struct
@@ -746,7 +789,8 @@ module Action = struct
              ~env:eenv.env
              ~script
              ~timeout:None
-             ~setup_scripts:[])
+             ~setup_scripts:[]
+             Sh)
     ;;
   end
 

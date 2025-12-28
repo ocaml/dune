@@ -481,7 +481,7 @@ lang<coq-lang>` stanza present:
 
 .. code:: dune
 
-  (lang dune 3.21)
+  (lang dune 3.22)
   (using coq 0.8)
 
 Next we need a :doc:`/reference/dune/index` file with a :ref:`coq-theory`

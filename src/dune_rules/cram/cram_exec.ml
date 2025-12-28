@@ -171,7 +171,10 @@ let dyn_of_metadata_result =
   | Present p -> variant "Present" [ dyn_of_metadata_entry p ]
 ;;
 
-type full_block_result = block_result * metadata_result
+type full_block_result =
+  { block : block_result
+  ; metadata : metadata_result
+  }
 
 type sh_script =
   { script : Path.t
@@ -216,10 +219,10 @@ let read_and_attach_exit_codes (sh_script : sh_script)
     | [], [] -> List.rev acc
     | (Cram_lexer.Comment _ as comment) :: blocks, _ ->
       loop (comment :: acc) entries blocks
-    | Command block_result :: blocks, metadata_entry :: entries ->
-      loop (Command (block_result, Present metadata_entry) :: acc) entries blocks
-    | Cram_lexer.Command block_result :: blocks, [] ->
-      loop (Command (block_result, Missing_unreachable) :: acc) entries blocks
+    | Command block :: blocks, metadata_entry :: entries ->
+      loop (Command { block; metadata = Present metadata_entry } :: acc) entries blocks
+    | Cram_lexer.Command block :: blocks, [] ->
+      loop (Command { block; metadata = Missing_unreachable } :: acc) entries blocks
     | [], _ :: _ -> Code_error.raise "more blocks than metadata" []
   in
   loop [] metadata_entries sh_script.cram_to_output
@@ -273,22 +276,22 @@ let dyn_of_command_out { command; metadata; output } =
 ;;
 
 let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
-  List.map cram_to_output ~f:(fun (t : (block_result * _) Cram_lexer.block) ->
+  List.map cram_to_output ~f:(fun (t : full_block_result Cram_lexer.block) ->
     match t with
     | Cram_lexer.Comment t -> Cram_lexer.Comment t
-    | Command (block_result, metadata) ->
+    | Command { block; metadata } ->
       let output =
         match metadata with
         | Missing_unreachable -> "***** UNREACHABLE *****"
         | Present { build_path_prefix_map; exit_code = _ } ->
-          Io.read_file ~binary:false block_result.output_file
+          Io.read_file ~binary:false block.output_file
           |> Ansi_color.strip
           |> rewrite_paths
                ~parent_script
-               ~command_script:block_result.script
+               ~command_script:block.script
                build_path_prefix_map
       in
-      Command { command = block_result.command; metadata; output })
+      Command { command = block.command; metadata; output })
 ;;
 
 (* Compose user written cram stanzas to output *)

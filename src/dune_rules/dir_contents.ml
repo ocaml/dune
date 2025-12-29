@@ -253,8 +253,13 @@ end = struct
               stanzas >>= load_text_files sctx st_dir ~src_dir ~dir)
           in
           let dirs =
-            [ { Source_file_dir.dir; path_to_root = []; files; source_dir = Some st_dir }
-            ]
+            Nonempty_list.
+              [ { Source_file_dir.dir
+                ; path_to_root = []
+                ; files
+                ; source_dir = Some st_dir
+                }
+              ]
           in
           let ml =
             Memo.lazy_ (fun () ->
@@ -346,12 +351,13 @@ end = struct
                         })))
            in
            let dirs =
-             { Source_file_dir.dir
-             ; path_to_root = []
-             ; files
-             ; source_dir = Some source_dir
-             }
-             :: subdirs
+             Nonempty_list.(
+               { Source_file_dir.dir
+               ; path_to_root = []
+               ; files
+               ; source_dir = Some source_dir
+               }
+               :: subdirs)
            in
            let lib_config =
              let+ ocaml = Context.ocaml ctx in

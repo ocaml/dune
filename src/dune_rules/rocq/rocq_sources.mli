@@ -30,7 +30,7 @@ val of_dir
   :  Stanza.t list
   -> dir:Path.Build.t
   -> include_subdirs:Loc.t * Include_subdirs.t
-  -> dirs:Source_file_dir.t list
+  -> dirs:Source_file_dir.t Nonempty_list.t
   -> t
 
 (** [find_module ~source t] finds a Rocq library name and module corresponding to

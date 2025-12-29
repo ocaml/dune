@@ -2,15 +2,23 @@ open Import
 
 type 'a args = 'a Command.Args.t list
 
-let ocamllex_bin sctx ~loc ~dir =
-  Super_context.resolve_program sctx ~loc:(Some loc) ~dir ~where:Original_path "ocamllex"
-;;
-
-let ocamllex sctx ~loc ~dir (args : 'a args) : Action.Full.t Action_builder.With_targets.t
-  =
-  let ocamllex_bin = ocamllex_bin sctx ~loc ~dir in
-  let build_dir = Super_context.context sctx |> Context.build_dir in
-  Command.run_dyn_prog (* ~sandbox *) ~dir:(Path.build build_dir) ocamllex_bin args
+let ocamllex =
+  let ocamllex_bin sctx ~loc ~dir =
+    Super_context.resolve_program
+      sctx
+      ~loc:(Some loc)
+      ~dir
+      ~where:Original_path
+      "ocamllex"
+  in
+  fun sctx ~loc ~dir (args : 'a args) : Action.Full.t Action_builder.With_targets.t ->
+    let ocamllex_bin = ocamllex_bin sctx ~loc ~dir in
+    let build_dir = Super_context.context sctx |> Context.build_dir in
+    Command.run_dyn_prog
+      ~sandbox:Sandbox_config.needs_sandboxing
+      ~dir:(Path.build build_dir)
+      ocamllex_bin
+      args
 ;;
 
 let rule sctx ~dir ~loc ~mode : Action.Full.t Action_builder.With_targets.t -> unit Memo.t

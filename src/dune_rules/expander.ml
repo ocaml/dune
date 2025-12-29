@@ -77,11 +77,11 @@ let set_scope t ~dir ~project ~scope ~scope_host =
 let set_artifacts t ~artifacts_host = { t with artifacts_host }
 let set_expanding_what t x = { t with expanding_what = x }
 
-let map_exe t prog args =
+let map_exe ~force_host t prog args =
   match t.expanding_what with
   | Deps_like_field -> prog, prog, args
   | Nothing_special | User_action _ | User_action_without_targets _ ->
-    Context.map_exe t.context prog args
+    Context.map_exe ~force_host t.context prog args
 ;;
 
 let extend_env t ~env =
@@ -646,7 +646,7 @@ let expand_pform_macro
       (fun t ->
         With
           (dep
-             (match map_exe t (relative ~source t.dir s) [] with
+             (match map_exe ~force_host:false t (relative ~source t.dir s) [] with
               | dep, _, _ -> dep)))
   | Dep -> Need_full_expander (fun t -> With (dep (relative ~source t.dir s)))
   | Bin ->

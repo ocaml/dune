@@ -20,45 +20,44 @@ Make a package "foo" whose build will fail after printing a message:
   $ cat >foo/foo.opam <<EOF
   > opam-version: "2.0"
   > build: [
-  >  [ make ]
+  >  [ "./make" ]
   > ]
   > EOF
-  $ cat >foo/Makefile <<EOF
-  > all:
-  > 	echo aaa
-  > 	false
+  $ cat > foo/make <<EOF
+  > #!/bin/sh
+  > echo aaa
+  > exit 1
   > EOF
+  $ chmod +x foo/make
 
   $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - foo.dev
 
 Attempt to build the package the first time:
-(the error from make is grep'd out because it is not consistant across different systems)
-  $ build_pkg foo 2>&1 | grep -v -e "^make" -e "^gmake"
-  echo aaa
+
+  $ build_pkg foo
   aaa
-  false
-  File "dune.lock/foo.dev.pkg", line 4, characters 30-37:
-  4 |  (all_platforms ((action (run %{make})))))
-                                    ^^^^^^^
+  File "dune.lock/foo.dev.pkg", line 4, characters 30-36:
+  4 |  (all_platforms ((action (run ./make)))))
+                                    ^^^^^^
   Error: Logs for package foo
   
+  [1]
 
 Update the message that gets printed while building foo:
-  $ cat >foo/Makefile <<EOF
-  > all:
-  > 	echo bbb
-  > 	false
+  $ cat > foo/make <<EOF
+  > #!/bin/sh
+  > echo bbb
+  > exit 1
   > EOF
 
 The change to the package is picked up:
-  $ build_pkg foo 2>&1 | grep -v -e "^make" -e "^gmake"
-  echo bbb
+  $ build_pkg foo
   bbb
-  false
-  File "dune.lock/foo.dev.pkg", line 4, characters 30-37:
-  4 |  (all_platforms ((action (run %{make})))))
-                                    ^^^^^^^
+  File "dune.lock/foo.dev.pkg", line 4, characters 30-36:
+  4 |  (all_platforms ((action (run ./make)))))
+                                    ^^^^^^
   Error: Logs for package foo
   
+  [1]

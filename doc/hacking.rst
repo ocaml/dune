@@ -107,17 +107,14 @@ For integration tests, we use a system similar to `Cram tests
    line
 
 These tests must be reproducible, so it is often necessary to filter command
-output to show only relevant parts. This also prevents tests from breaking
-due to unrelated changes and makes them easier to read.
+output to show only relevant parts. This also prevents tests from breaking due
+to unrelated changes and makes them easier to read.
 
-For portability across systems it is important to only use a subset of commands
-that are available on all platforms. However, if some functionality is crucial,
-our Cram tests have access to a command called ``dune_cmd`` which is an OCaml
-tool which implements some functionality portably. Some of the functionality
-includes getting file statistics data portably, waiting for files to appear,
-waiting for file system clocks to update etc. It also implements a subset of
-``sed`` features bringing frequently-used functionality of ``sed`` without the
-hard to read ``sed`` syntax to the table.
+For tests that run on multiple platforms, use only commands available
+everywhere. When platform-specific functionality is needed, Cram tests can use
+``dune_cmd``, an OCaml tool that provides portable implementations of common
+operations: file statistics, waiting for files to appear, waiting for
+filesystem clocks to advance, and a subset of sed features with clearer syntax.
 
 .. _ppx_expect:      https://github.com/janestreet/ppx_expect
 

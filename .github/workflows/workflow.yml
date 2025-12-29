@@ -203,6 +203,11 @@ jobs:
         if: ${{ matrix.apt_update == true }}
         run: sudo apt update
 
+      - name: Use OCaml ${{ matrix.ocaml-compiler }}
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+
       - name: Load opam cache when not Windows
         if: runner.os != 'Windows'
         id: opam-cache
@@ -222,11 +227,6 @@ jobs:
             ~/.opam
             ~/work/dune/dune/_opam
           key: opam-${{ matrix.os }}-${{ matrix.windows-system }}-${{ hashFiles('**.opam') }}
-
-      - name: Use OCaml ${{ matrix.ocaml-compiler }}
-        uses: ocaml/setup-ocaml@v3
-        with:
-          ocaml-compiler: ${{ matrix.ocaml-compiler }}
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: |
@@ -319,6 +319,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v6
 
+      - name: Setup OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+          dune-cache: true
       - name: Load opam cache when not Windows
         if: runner.os != 'Windows'
         id: opam-cache
@@ -329,11 +334,6 @@ jobs:
             ~/work/dune/dune/_opam
           key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
 
-      - name: Setup OCaml
-        uses: ocaml/setup-ocaml@v3
-        with:
-          ocaml-compiler: ${{ matrix.ocaml-compiler }}
-          dune-cache: true
       - name: install Rocq Prover
         run: opam install -y ${{ matrix.opam-packages }}
       - name: test Rocq Prover Build Language
@@ -369,6 +369,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v6
 
+      - name: Use OCaml 5.2.x
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.2.x
       - name: Load opam cache when not Windows
         if: runner.os != 'Windows'
         id: opam-cache
@@ -378,11 +382,6 @@ jobs:
             ~/.opam
             ~/work/dune/dune/_opam
           key: opam-wasm-${{ hashFiles('**.opam') }}
-
-      - name: Use OCaml 5.2.x
-        uses: ocaml/setup-ocaml@v3
-        with:
-          ocaml-compiler: 5.2.x
 
       - name: Install faked binaryen-bin package
         # The binaries have already been downloaded
@@ -433,6 +432,15 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Install OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ocaml-variants.5.2.0+ox
+          opam-repositories: |
+            oxcaml: "git+https://github.com/oxcaml/opam-repository.git"
+            default: "git+https://github.com/ocaml/opam-repository.git"
+          opam-pin: false
+
       - name: Load opam cache when not Windows
         if: runner.os != 'Windows'
         id: opam-cache
@@ -443,14 +451,6 @@ jobs:
             ~/work/dune/dune/_opam
           key: opam-ox-${{ hashFiles('**.opam') }}
 
-      - name: Install OCaml
-        uses: ocaml/setup-ocaml@v3
-        with:
-          ocaml-compiler: ocaml-variants.5.2.0+ox
-          opam-repositories: |
-            oxcaml: "git+https://github.com/oxcaml/opam-repository.git"
-            default: "git+https://github.com/ocaml/opam-repository.git"
-          opam-pin: false
 
       - name: Pin deps
         run: opam pin add -n . --with-version=3.21.0

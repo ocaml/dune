@@ -106,6 +106,20 @@ For integration tests, we use a system similar to `Cram tests
    multi
    line
 
+These tests must be reproducible, so it is often times necessary to process the
+output of commands to only print relevant parts. This is also a good practice
+in general as it prevents tests from breaking when unrelated changes happen and
+makes them easier to read as the reader has to skim over less output.
+
+For portability across systems it is important to only use a subset of commands
+that are available on all platforms. However, if some functionality is crucial,
+our Cram tests have access to a command called ``dune_cmd`` which is an OCaml
+tool which implements some functionality portably. Some of the functionality
+includes getting file statistics data portably, waiting for files to appear,
+waiting for file system clocks to update etc. It also implements a subset of
+``sed`` features bringing frequently-used functionality of ``sed`` without the
+hard to read ``sed`` syntax to the table.
+
 .. _ppx_expect:      https://github.com/janestreet/ppx_expect
 
 .. seealso::

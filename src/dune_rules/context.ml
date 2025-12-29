@@ -741,10 +741,9 @@ module DB = struct
   ;;
 end
 
-let map_exe (context : t) =
-  match context.builder with
-  | { for_host = None; _ } -> fun prog args -> prog, prog, args
-  | { target_exec = Some (wrapper, wrapper_args); _ } ->
+let map_exe ~force_host (context : t) =
+  match force_host, context.builder with
+  | false, { target_exec = Some (wrapper, wrapper_args); _ } ->
     fun prog args ->
       (match Path.extract_build_context_dir prog with
        | Some (dir, _) when Path.equal dir (Path.build context.build_dir) ->
@@ -759,7 +758,8 @@ let map_exe (context : t) =
          in
          prog, wrapper, args
        | _ -> prog, prog, args)
-  | { for_host = Some (name, _); _ } ->
+  | _, { for_host = None; _ } -> fun prog args -> prog, prog, args
+  | _, { for_host = Some (name, _); _ } ->
     let build_dir = Context_name.build_dir name in
     fun prog args ->
       let prog =

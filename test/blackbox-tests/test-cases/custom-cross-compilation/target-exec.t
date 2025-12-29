@@ -30,6 +30,10 @@ Create a simple executable that prints a message:
   >  (action (run ./hello.exe --hello-arg1 --hello-arg2)))
   > 
   > (rule
+  >  (alias runexec_hello)
+  >  (action (runexec ./hello.exe --runexec-arg1 --runexec-arg2)))
+  > 
+  > (rule
   >  (alias runecho)
   >  (action (run sh -c "echo \"Hello from context %{context_name}\"")))
   > EOF
@@ -173,3 +177,21 @@ Build with an invalid --target_exec option
   $ dune build @runhello --target-exec native_wrapper.sh --force
   Error: --target-exec: invalid format
   [1]
+
+Test runexec action (should always run host binary, bypassing wrapper)
+
+  $ PATH="$PWD/bin:$PATH" dune build @runexec_hello -x test_toolchain --target-exec test_toolchain=test_toolchain_wrapper.sh --force
+  ---- HELLO START ----
+  Hello from OCaml!
+  PWD: $TESTCASE_ROOT/_build/default
+  Args: ./hello.exe --runexec-arg1 --runexec-arg2
+  ---- HELLO END ----
+  
+  ---- HELLO START ----
+  Hello from OCaml!
+  PWD: $TESTCASE_ROOT/_build/default.test_toolchain
+  Args: ../default/hello.exe --runexec-arg1 --runexec-arg2
+  ---- HELLO END ----
+  
+
+

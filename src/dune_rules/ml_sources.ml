@@ -607,6 +607,7 @@ let make
       ~dirs
   =
   let+ modules_of_stanzas =
+    let dirs = Nonempty_list.to_list dirs in
     let modules =
       let dialects = Dune_project.dialects project in
       match include_subdirs with

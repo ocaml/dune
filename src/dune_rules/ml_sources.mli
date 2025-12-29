@@ -60,5 +60,5 @@ val make
   -> loc:Loc.t
   -> lookup_vlib:(loc:Loc.t -> dir:Path.Build.t -> t Memo.t)
   -> include_subdirs:Loc.t * Include_subdirs.t
-  -> dirs:Source_file_dir.t list
+  -> dirs:Source_file_dir.t Nonempty_list.t
   -> t Memo.t

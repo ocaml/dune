@@ -106,10 +106,9 @@ For integration tests, we use a system similar to `Cram tests
    multi
    line
 
-These tests must be reproducible, so it is often times necessary to process the
-output of commands to only print relevant parts. This is also a good practice
-in general as it prevents tests from breaking when unrelated changes happen and
-makes them easier to read as the reader has to skim over less output.
+These tests must be reproducible, so it is often necessary to filter command
+output to show only relevant parts. This also prevents tests from breaking
+due to unrelated changes and makes them easier to read.
 
 For portability across systems it is important to only use a subset of commands
 that are available on all platforms. However, if some functionality is crucial,

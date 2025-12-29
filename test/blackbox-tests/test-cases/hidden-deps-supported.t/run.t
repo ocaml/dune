@@ -3,7 +3,6 @@ implicit_transitive_deps is set to false.
 
   $ jqScript=$(mktemp)
   $ cat >$jqScript <<'EOF'
-  > .[] |
   > .args.process_args |
   > select(. != null) |
   > select(index("run.ml")) as $arr |

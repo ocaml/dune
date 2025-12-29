@@ -9,7 +9,7 @@ Test that targets aren't re-promoted if they are up to date.
   > EOF
 
   $ showPromotions() {
-  > dune trace cat | jq '.[] | select(.name == "promote") | .args' || true
+  > dune trace cat | jq 'select(.name == "promote") | .args' || true
   > }
 
   $ dune build promoted

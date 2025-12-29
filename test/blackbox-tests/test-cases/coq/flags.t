@@ -17,7 +17,7 @@ Test case: default flags
   > EOF
 
   $ runFlags() {
-  > dune trace cat | jq '.[] | select(.name == "coqc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")'
+  > dune trace cat | jq 'select(.name == "coqc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")'
   > }
 
   $ dune build foo.vo

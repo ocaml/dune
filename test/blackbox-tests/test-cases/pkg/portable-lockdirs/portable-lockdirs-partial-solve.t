@@ -31,7 +31,7 @@ Make a package that is only available on macos.
 
 Solving will still succeed, but there'll be a warning because dune will attempt
 to solve for macos, linux, and windows by default.
-  $ dune pkg lock --trace-file trace.json
+  $ dune pkg lock --trace-file trace.csexp
   Solution for dune.lock
   
   Dependencies common to all supported platforms:
@@ -49,18 +49,17 @@ to solve for macos, linux, and windows by default.
 The log file will contain errors about the package being unavailable.
   $ jqScript=$(mktemp)
   $ cat >$jqScript <<EOF
-  > .[] |
   > select(.cat == "log" and .args.message != "ocamlparam" and (.args.message | contains("Shared cache") | not)) |
   > .args
   > EOF
-  $ jq -f $jqScript trace.json
+  $ dune trace cat --trace-file trace.csexp | jq -f $jqScript
   {
     "message": "Workspace root",
     "root": "$TESTCASE_ROOT"
   }
   {
     "message": "Solver found partial solution",
-    "error_count": "1"
+    "error_count": 1
   }
   {
     "message": "Dependency solution",

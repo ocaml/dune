@@ -8,43 +8,28 @@ Bug #4632
 
   $ runtest() {
   > dune build $@
-  > dune trace cat | jq 'include "dune"; .[] | logs("Dune context") | .context | .[] | select(.[0] == "profile")'
+  > dune trace cat | jq 'include "dune"; logs("Dune context") | .context.profile'
   > }
 
   $ runtest
-  [
-    "profile",
-    "Dev"
-  ]
+  "Dev"
 
   $ runtest --release
-  [
-    "profile",
-    "Release"
-  ]
+  "Release"
 
   $ export DUNE_PROFILE=envvar
 
   $ runtest
   [
-    "profile",
-    [
-      "User_defined",
-      "envvar"
-    ]
+    "User_defined",
+    "envvar"
   ]
 
   $ runtest --release
-  [
-    "profile",
-    "Release"
-  ]
+  "Release"
 
   $ runtest --profile cmdline
   [
-    "profile",
-    [
-      "User_defined",
-      "cmdline"
-    ]
+    "User_defined",
+    "cmdline"
   ]

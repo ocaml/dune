@@ -17,7 +17,7 @@ prefixed and unprefixed modules are built.
 
   $ buildAndShow() {
   > dune build $@
-  > dune trace cat | jq '.[] | select(.name == "targets") | .args'
+  > dune trace cat | jq 'select(.name == "targets") | .args'
   > }
 
 Command line version.

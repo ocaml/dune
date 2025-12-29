@@ -24,6 +24,7 @@ module File = struct
 
   let dialect t = t.dialect
   let path t = t.path
+  let original_path t = t.original_path
 
   let version_installed t ~src_root ~install_dir =
     let path =
@@ -35,7 +36,10 @@ module File = struct
     { t with path }
   ;;
 
-  let make dialect path = { dialect; path; original_path = path }
+  let make ?original_path dialect path =
+    let original_path = Option.value original_path ~default:path in
+    { dialect; path; original_path }
+  ;;
 
   let to_dyn { path; original_path; dialect } =
     let open Dyn in
@@ -188,6 +192,8 @@ module Source = struct
     | None -> base
     | Some i -> i :: base
   ;;
+
+  let files_by_ml_kind t = t.files
 
   let map_files t ~f =
     let files = Ml_kind.Dict.mapi ~f t.files in

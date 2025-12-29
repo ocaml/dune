@@ -37,6 +37,7 @@ module Per_stanza = struct
     { libraries : component Lib_id.Local.Map.t
     ; executables : component String.Map.t
     ; melange_emits : component String.Map.t
+    ; ocamllexes : Module.Source.t Module_trie.t Loc.Map.t
     ; (* Map from modules to the origin they are part of *)
       rev_map : (Origin.t * Path.Build.t) list Module_name.Path.Map.t
     ; libraries_by_obj_dir : Lib_id.Local.t list Path.Build.Map.t
@@ -46,6 +47,7 @@ module Per_stanza = struct
     { libraries = Lib_id.Local.Map.empty
     ; executables = String.Map.empty
     ; melange_emits = String.Map.empty
+    ; ocamllexes = Loc.Map.empty
     ; rev_map = Module_name.Path.Map.empty
     ; libraries_by_obj_dir = Path.Build.Map.empty
     }
@@ -59,14 +61,22 @@ module Per_stanza = struct
     ; obj_dir : Path.Build.t Obj_dir.t
     }
 
+  type 'stanza parser_gen_group =
+    { stanza : 'stanza
+    ; sources : Module.Source.t Module_trie.t
+    }
+
   type groups =
     { libraries : Library.t group_part list
     ; executables : Executables.t group_part list
     ; tests : Tests.t group_part list
     ; melange_emits : Melange_stanzas.Emit.t group_part list
+    ; ocamllexes : Ocamllex.t parser_gen_group list
     }
 
-  let make { libraries = libs; executables = exes; tests; melange_emits = emits } =
+  let make
+        { libraries = libs; executables = exes; tests; melange_emits = emits; ocamllexes }
+    =
     let libraries, libraries_by_obj_dir =
       List.fold_left
         libs
@@ -123,6 +133,10 @@ module Per_stanza = struct
           ~loc:part.stanza.loc
           [ Pp.textf "Target %S appears for the second time in this directory" name ]
     in
+    let ocamllexes =
+      Loc.Map.of_list_map_exn ocamllexes ~f:(fun { stanza; sources } ->
+        stanza.loc, sources)
+    in
     let rev_map =
       let by_path (origin : Origin.t * Path.Build.t) trie =
         Module_trie.fold trie ~init:[] ~f:(fun (_loc, m) acc ->
@@ -145,7 +159,7 @@ module Per_stanza = struct
                | None -> Some [ origin ]
                | Some origins -> Some (origin :: origins)))
     in
-    { libraries; executables; melange_emits; rev_map; libraries_by_obj_dir }
+    { libraries; executables; melange_emits; ocamllexes; rev_map; libraries_by_obj_dir }
   ;;
 end
 
@@ -166,31 +180,7 @@ let empty =
 
 let artifacts t = Memo.Lazy.force t.artifacts
 
-let modules_of_files ~path ~dialects ~dir ~files =
-  let dir = Path.build dir in
-  let impl_files, intf_files =
-    let make_module dialect name fn =
-      name, Module.File.make dialect (Path.relative dir fn)
-    in
-    let loc = Loc.in_dir dir in
-    Filename.Set.to_list files
-    |> List.filter_partition_map ~f:(fun fn ->
-      (* we aren't using Filename.extension because we want to handle
-         filenames such as foo.cppo.ml *)
-      match String.lsplit2 fn ~on:'.' with
-      | None -> Skip
-      | Some (s, ext) ->
-        (match Dialect.DB.find_by_extension dialects ("." ^ ext) with
-         | None -> Skip
-         | Some (dialect, ml_kind) ->
-           let module_ =
-             let name = Module_name.of_string_allow_invalid (loc, s) in
-             make_module dialect name fn
-           in
-           (match ml_kind with
-            | Impl -> Left module_
-            | Intf -> Right module_)))
-  in
+let modules_of_files_gen ~path ~dir (impl_files, intf_files) =
   let parse_one_set (files : (Module_name.t * Module.File.t) list) =
     match Module_name.Map.of_list files with
     | Ok x -> x
@@ -210,6 +200,32 @@ let modules_of_files ~path ~dialects ~dir ~files =
   let intfs = parse_one_set intf_files in
   Module_name.Map.merge impls intfs ~f:(fun name impl intf ->
     Some (Module.Source.make (path @ [ name ]) ~impl ~intf))
+;;
+
+let modules_of_files ~path ~dialects ~dir ~files =
+  let dir = Path.build dir in
+  let make_module dialect name fn =
+    name, Module.File.make dialect (Path.relative dir fn)
+  in
+  let loc = Loc.in_dir dir in
+  Filename.Set.to_list files
+  |> List.filter_partition_map ~f:(fun fn ->
+    (* we aren't using Filename.extension because we want to handle
+         filenames such as foo.cppo.ml *)
+    match String.lsplit2 fn ~on:'.' with
+    | None -> Skip
+    | Some (s, ext) ->
+      (match Dialect.DB.find_by_extension dialects ("." ^ ext) with
+       | None -> Skip
+       | Some (dialect, ml_kind) ->
+         let module_ =
+           let name = Module_name.of_string_allow_invalid (loc, s) in
+           make_module dialect name fn
+         in
+         (match ml_kind with
+          | Impl -> Left module_
+          | Intf -> Right module_)))
+  |> modules_of_files_gen ~path ~dir
 ;;
 
 type for_ =
@@ -352,6 +368,52 @@ let virtual_modules ~lookup_vlib ~libs vlib =
   }
 ;;
 
+module Parser_generators = struct
+  type for_ = Ocamllex of Loc.t
+
+  let source_modules t ~for_ =
+    let (Ocamllex loc) = for_ in
+    Loc.Map.find t.modules.ocamllexes loc
+  ;;
+
+  type t =
+    | Ocamllex
+    | Parser
+
+  let classify = function
+    | "mll" -> Some Ocamllex
+    | "mly" -> Some Parser
+    | _ -> None
+  ;;
+
+  let modules_of_files ~path ~dir ~files =
+    let dir = Path.build dir in
+    let loc = Loc.in_dir dir in
+    Filename.Set.to_list files
+    |> List.concat_map ~f:(fun fn ->
+      (* we aren't using Filename.extension because we want to handle
+         filenames such as foo.cppo.ml *)
+      match String.lsplit2 fn ~on:'.' with
+      | None -> [ List.Skip ]
+      | Some (s, ext) ->
+        (match classify ext with
+         | Some Ocamllex ->
+           let module_ =
+             let name = Module_name.of_string_allow_invalid (loc, s) in
+             let original_path = Path.relative dir fn in
+             let ext = Dialect.extension Dialect.ocaml Ml_kind.Impl |> Option.value_exn in
+             let path = Path.set_extension original_path ~ext in
+             name, Module.File.make ~original_path Dialect.ocaml path
+           in
+           [ Left module_ ]
+         | Some Parser
+         (* XXX(anmonteiro): ocamlyacc will return impl + intf *)
+         | None -> [ Skip ]))
+    |> List.filter_partition_map ~f:Fun.id
+    |> modules_of_files_gen ~path ~dir
+  ;;
+end
+
 let has_instances (lib : Buildable.t) =
   List.exists lib.libraries ~f:(function
     | Lib_dep.Instantiate _ -> true
@@ -426,6 +488,7 @@ let make_lib_modules
     Modules_field_evaluator.eval
       ~expander
       ~modules
+      ~module_path:None
       ~stanza_loc
       ~kind
       ~private_modules:
@@ -487,21 +550,37 @@ let modules_of_stanzas =
            | `Library y -> loop l { acc with libraries = y :: acc.libraries }
            | `Executables y -> loop l { acc with executables = y :: acc.executables }
            | `Tests y -> loop l { acc with tests = y :: acc.tests }
-           | `Melange_emit y -> loop l { acc with melange_emits = y :: acc.melange_emits })
+           | `Melange_emit y -> loop l { acc with melange_emits = y :: acc.melange_emits }
+           | `Ocamllex y -> loop l { acc with ocamllexes = y :: acc.ocamllexes })
       in
-      fun l -> loop l { libraries = []; executables = []; tests = []; melange_emits = [] }
+      fun l ->
+        loop
+          l
+          { libraries = []
+          ; executables = []
+          ; tests = []
+          ; melange_emits = []
+          ; ocamllexes = []
+          }
     in
     fun l ->
-      let { Per_stanza.libraries; executables; tests; melange_emits } =
+      let { Per_stanza.libraries; executables; tests; melange_emits; ocamllexes } =
         rev_filter_partition l
       in
       { Per_stanza.libraries = List.rev libraries
       ; executables = List.rev executables
       ; tests = List.rev tests
       ; melange_emits = List.rev melange_emits
+      ; ocamllexes = List.rev ocamllexes
       }
   in
-  let make_executables ~dir ~expander ~modules ~project exes =
+  let make_executables
+        ~dir
+        ~expander
+        ~(modules : Module.Source.t Module_trie.t)
+        ~project
+        exes
+    =
     let obj_dir = Executables.obj_dir ~dir exes in
     let+ sources, modules =
       let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
@@ -510,6 +589,7 @@ let modules_of_stanzas =
       Modules_field_evaluator.eval
         ~expander
         ~modules
+        ~module_path:None
         ~stanza_loc
         ~src_dir:dir
         ~kind:Modules_field_evaluator.Exe_or_normal_lib
@@ -531,17 +611,87 @@ let modules_of_stanzas =
     match result with
     | `Executables group_part -> `Tests { group_part with stanza = tests }
   in
+  let merge_parser_sources ~ocamllexes modules =
+    let parser_gen_modules =
+      List.fold_left
+        ocamllexes
+        ~init:Module_trie.empty
+        ~f:(fun acc { Per_stanza.stanza = _; sources } ->
+          Module_trie.fold sources ~init:acc ~f:(fun m acc ->
+            Module_trie.set acc (Module.Source.path m) m))
+    in
+    Module_trie.merge modules parser_gen_modules ~f:(fun _ m1 m2 ->
+      match m1, m2 with
+      | None, None -> None
+      | Some m, None | None, Some m -> Some m
+      | Some m1, Some m2 ->
+        let { Ml_kind.Dict.impl; intf } =
+          let files1 = Module.Source.files_by_ml_kind m1 in
+          let files2 = Module.Source.files_by_ml_kind m2 in
+          Ml_kind.Dict.of_func (fun ~ml_kind ->
+            match Ml_kind.Dict.get files1 ml_kind, Ml_kind.Dict.get files2 ml_kind with
+            | None, None -> None
+            | Some m, None | _, Some m -> Some m)
+        in
+        let m = Module.Source.make ~impl ~intf (Module.Source.path m1) in
+        Some m)
+  in
   fun (dirs : Source_file_dir.t Nonempty_list.t)
     ~expander
     ~project
     ~libs
     ~lookup_vlib
-    ~modules
+    ~(modules : Module.Source.t Module_trie.t)
+    ~parser_gen_modules
     ~include_subdirs ->
     let { Source_file_dir.dir; _ } = Nonempty_list.hd dirs in
-    Nonempty_list.to_list dirs
-    |> Memo.parallel_map ~f:(fun (dune_file : Source_file_dir.t) ->
-      Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
+    let dirs =
+      let dirs = Nonempty_list.to_list dirs in
+      match include_subdirs with
+      | _, (Include_subdirs.No | Include Unqualified) ->
+        List.map dirs ~f:(fun (dune_file : Source_file_dir.t) -> None, dune_file.stanzas)
+      | _, Include Qualified ->
+        List.map dirs ~f:(fun (dune_file : Source_file_dir.t) ->
+          let path =
+            let loc = Path.build dir |> Path.drop_optional_build_context |> Loc.in_dir in
+            List.map dune_file.path_to_root ~f:(fun m ->
+              Module_name.parse_string_exn (loc, m))
+          in
+          Some path, dune_file.stanzas)
+    in
+    let* ocamllexes =
+      Memo.parallel_map dirs ~f:(fun (module_path, stanzas) ->
+        Memo.parallel_map stanzas ~f:(fun stanza ->
+          match Stanza.repr stanza with
+          | Ocamllex.T ocamllex ->
+            Expander.eval_blang expander ocamllex.enabled_if
+            >>= (function
+             | false -> Memo.return None
+             | true ->
+               let+ sources =
+                 let version = Dune_project.dune_version project in
+                 let+ sources, _modules =
+                   Modules_field_evaluator.eval
+                     ~expander
+                     ~modules:parser_gen_modules
+                     ~module_path
+                     ~stanza_loc:ocamllex.loc
+                     ~kind:Exe_or_normal_lib
+                     ~version
+                     ~private_modules:Ordered_set_lang.Unexpanded.standard
+                     ~src_dir:dir
+                     (Ocamllex.modules_settings ocamllex)
+                 in
+                 Module_trie.map sources ~f:snd
+               in
+               Some { Per_stanza.stanza = ocamllex; sources })
+          | _ -> Memo.return None))
+      >>| List.concat
+      >>| List.filter_map ~f:Fun.id
+    in
+    let modules = merge_parser_sources ~ocamllexes modules in
+    Memo.parallel_map dirs ~f:(fun (_, stanzas) ->
+      Memo.parallel_map stanzas ~f:(fun stanza ->
         let enabled_if =
           match Stanza.repr stanza with
           | Library.T lib -> lib.enabled_if
@@ -584,6 +734,7 @@ let modules_of_stanzas =
                Modules_field_evaluator.eval
                  ~expander
                  ~modules
+                 ~module_path:None
                  ~stanza_loc:mel.loc
                  ~kind:Modules_field_evaluator.Exe_or_normal_lib
                  ~version
@@ -602,6 +753,7 @@ let modules_of_stanzas =
            | _ -> Memo.return `Skip)))
     >>| List.concat
     >>| filter_partition_map
+    >>| fun modules_of_stanzas -> { modules_of_stanzas with ocamllexes }
 ;;
 
 let make
@@ -615,17 +767,17 @@ let make
       (dirs : Source_file_dir.t Nonempty_list.t)
   =
   let+ modules_of_stanzas =
-    let modules =
+    let modules, parser_gen_modules =
       let dirs = Nonempty_list.to_list dirs in
       let dialects = Dune_project.dialects project in
       match include_subdirs with
       | Include Qualified ->
         List.fold_left
           dirs
-          ~init:Module_trie.empty
+          ~init:(Module_trie.empty, Module_trie.empty)
           ~f:
             (fun
-              acc
+              (acc, acc_parsing)
               { Source_file_dir.dir; path_to_root; files; source_dir = _; stanzas = _ }
             ->
             match
@@ -636,10 +788,14 @@ let make
                 List.map path_to_root ~f:(fun m -> Module_name.parse_string_exn (loc, m))
               in
               let modules = modules_of_files ~dialects ~dir ~files ~path in
-              Module_trie.set_map acc path modules
+              let parser_gen_modules =
+                Parser_generators.modules_of_files ~dir ~files ~path
+              in
+              ( Module_trie.set_map acc path modules
+              , Module_trie.set_map acc_parsing path parser_gen_modules )
             with
-            | Ok s -> s
-            | Error module_ ->
+            | Ok s, Ok s' -> s, s'
+            | Error module_, _ | _, Error module_ ->
               let module_ =
                 match module_ with
                 | Leaf m ->
@@ -669,31 +825,44 @@ let make
                 ; Pp.textf "- module group %s" group
                 ])
       | No | Include Unqualified ->
-        List.fold_left
-          dirs
-          ~init:Module_name.Map.empty
-          ~f:
-            (fun
-              acc
-              { Source_file_dir.dir
-              ; files
-              ; path_to_root = _
-              ; source_dir = _
-              ; stanzas = _
-              }
-            ->
-            let modules = modules_of_files ~dialects ~dir ~files ~path:[] in
-            Module_name.Map.union acc modules ~f:(fun name x y ->
-              User_error.raise
-                ~loc
-                [ Pp.textf
-                    "Module %S appears in several directories:"
-                    (Module_name.to_string name)
-                ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.Source.src_dir x))
-                ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.Source.src_dir y))
-                ; Pp.text "This is not allowed, please rename one of them."
-                ]))
-        |> Module_trie.of_map
+        let modules, parser_gen_modules =
+          List.fold_left
+            dirs
+            ~init:(Module_name.Map.empty, Module_name.Map.empty)
+            ~f:
+              (fun
+                (acc, acc_parsing)
+                { Source_file_dir.dir
+                ; files
+                ; path_to_root = _
+                ; source_dir = _
+                ; stanzas = _
+                }
+              ->
+              let path = [] in
+              let modules = modules_of_files ~dialects ~dir ~files ~path in
+              let parser_gen_modules =
+                Parser_generators.modules_of_files ~dir ~files ~path
+              in
+              let union_exn name x y =
+                User_error.raise
+                  ~loc
+                  [ Pp.textf
+                      "Module %S appears in several directories:"
+                      (Module_name.to_string name)
+                  ; Pp.textf
+                      "- %s"
+                      (Path.to_string_maybe_quoted (Module.Source.src_dir x))
+                  ; Pp.textf
+                      "- %s"
+                      (Path.to_string_maybe_quoted (Module.Source.src_dir y))
+                  ; Pp.text "This is not allowed, please rename one of them."
+                  ]
+              in
+              ( Module_name.Map.union acc modules ~f:union_exn
+              , Module_name.Map.union acc_parsing parser_gen_modules ~f:union_exn ))
+        in
+        Module_trie.of_map modules, Module_trie.of_map parser_gen_modules
     in
     modules_of_stanzas
       dirs
@@ -702,6 +871,7 @@ let make
       ~libs
       ~lookup_vlib
       ~modules
+      ~parser_gen_modules
       ~include_subdirs:(loc_include_subdirs, include_subdirs)
   in
   let modules = Per_stanza.make modules_of_stanzas in

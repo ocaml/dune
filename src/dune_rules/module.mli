@@ -7,7 +7,8 @@ module File : sig
 
   val dialect : t -> Dialect.t
   val path : t -> Path.t
-  val make : Dialect.t -> Path.t -> t
+  val original_path : t -> Path.t
+  val make : ?original_path:Path.t -> Dialect.t -> Path.t -> t
 end
 
 module Kind : sig
@@ -34,6 +35,7 @@ module Source : sig
   val make : impl:File.t option -> intf:File.t option -> Module_name.Path.t -> t
   val has : t -> ml_kind:Ml_kind.t -> bool
   val files : t -> File.t list
+  val files_by_ml_kind : t -> File.t option Ml_kind.Dict.t
   val path : t -> Module_name.Path.t
   val to_dyn : t -> Dyn.t
   val src_dir : t -> Path.t

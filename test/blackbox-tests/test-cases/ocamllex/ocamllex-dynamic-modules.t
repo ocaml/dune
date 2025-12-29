@@ -25,17 +25,37 @@ The unit `mod.mll` is present in the working tree, `lib.ml` uses it:
   >   | eof { false }
   > EOF
 
-file `gen/lst`:
+  $ cat >foo.ml <<EOF
+  > let x = Mod.lex
+  > EOF
+  $ cat >dune <<EOF
+  > (ocamllex (:include gen/lst))
+  > (library (name foo))
+  > EOF
 
+Building under dune 3.22 throws an error
+
+  $ dune build foo.cma
+  File "dune", line 1, characters 10-28:
+  1 | (ocamllex (:include gen/lst))
+                ^^^^^^^^^^^^^^^^^^
+  Error: the ability to specify non-constant module lists is only available
+  since version 3.22 of the dune language. Please update your dune-project file
+  to have (lang dune 3.22).
+  [1]
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.22)
+  > EOF
+  $ dune build foo.cma
+
+`%{read-lines:..}` also works
+
+  $ dune clean
   $ cat >dune <<EOF
   > (ocamllex
   >  (modules (:include gen/lst)))
+  > (library (name foo))
   > EOF
 
-  $ dune b
-  File "dune", line 2, characters 10-28:
-  2 |  (modules (:include gen/lst)))
-                ^^^^^^^^^^^^^^^^^^
-  Error: Atom or quoted string expected
-  [1]
-
+  $ dune build foo.cma

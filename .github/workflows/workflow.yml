@@ -219,7 +219,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ replace(matrix.ocaml-compiler, ',', '-') }}-${{ hashFiles('**.opam') }}
 
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
         uses: ocaml/setup-ocaml@v3
@@ -277,7 +277,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ replace(matrix.ocaml-compiler, ',', '-') }}-${{ hashFiles('**.opam') }}
 
   coq:
     name: Coq 8.16.1
@@ -329,7 +329,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ replace(matrix.ocaml-compiler, ',', '-') }}-${{ hashFiles('**.opam') }}
 
       - name: Setup OCaml
         uses: ocaml/setup-ocaml@v3
@@ -360,7 +360,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ replace(matrix.ocaml-compiler, ',', '-') }}-${{ hashFiles('**.opam') }}
 
   wasm:
     name: Wasm_of_ocaml
@@ -398,7 +398,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+          key: opam-wasm-${{ hashFiles('**.opam') }}
 
       - name: Use OCaml 5.2.x
         uses: ocaml/setup-ocaml@v3
@@ -427,7 +427,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+          key: opam-wasm-${{ hashFiles('**.opam') }}
 
       - name: Save cache when Windows
         uses: actions/cache/save@v5
@@ -436,7 +436,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+          key: opam-wasm-${{ hashFiles('**.opam') }}
 
   cygwin:
     name: Cygwin Build
@@ -471,7 +471,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+          key: opam-ox-${{ hashFiles('**.opam') }}
 
       - name: Load opam cache when Windows
         if: runner.os == 'Windows'
@@ -511,7 +511,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+          key: opam-ox-${{ hashFiles('**.opam') }}
 
       - name: Save cache when Windows
         uses: actions/cache/save@v5
@@ -520,7 +520,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+          key: opam-ox-${{ hashFiles('**.opam') }}
 
   create-local-opam-switch:
     name: Create local opam switch

@@ -172,10 +172,12 @@ jobs:
           ## MSVC
           - ocaml-compiler: ocaml-compiler.5.4.0,system-msvc
             os: windows-latest
+            windows-system: msvc
             run_tests: true
           ## mingw
           - ocaml-compiler: ocaml-base-compiler.5.4.0,system-mingw
             os: windows-latest
+            windows-system: mingw
             run_tests: true
           # OCaml 4:
           ## ubuntu (x86)
@@ -219,7 +221,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ replace(matrix.ocaml-compiler, ',', '-') }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ matrix.windows-system }}-${{ hashFiles('**.opam') }}
 
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
         uses: ocaml/setup-ocaml@v3
@@ -277,7 +279,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ replace(matrix.ocaml-compiler, ',', '-') }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ matrix.windows-system }}-${{ hashFiles('**.opam') }}
 
   coq:
     name: Coq 8.16.1
@@ -327,16 +329,6 @@ jobs:
             ~/work/dune/dune/_opam
           key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
 
-      - name: Load opam cache when Windows
-        if: runner.os == 'Windows'
-        id: opam-cache-windows
-        uses: actions/cache/restore@v5
-        with:
-          path: |
-            ~/.opam
-            ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ replace(matrix.ocaml-compiler, ',', '-') }}-${{ hashFiles('**.opam') }}
-
       - name: Setup OCaml
         uses: ocaml/setup-ocaml@v3
         with:
@@ -359,15 +351,6 @@ jobs:
             ~/work/dune/dune/_opam
           key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
 
-      - name: Save cache when Windows
-        uses: actions/cache/save@v5
-        if: steps.opam-cache-windows.outputs.cache-hit != 'true' && runner.os == 'Windows'
-        with:
-          path: |
-            ~/.opam
-            ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ replace(matrix.ocaml-compiler, ',', '-') }}-${{ hashFiles('**.opam') }}
-
   wasm:
     name: Wasm_of_ocaml
     needs: nix-build
@@ -389,16 +372,6 @@ jobs:
       - name: Load opam cache when not Windows
         if: runner.os != 'Windows'
         id: opam-cache
-        uses: actions/cache/restore@v5
-        with:
-          path: |
-            ~/.opam
-            ~/work/dune/dune/_opam
-          key: opam-wasm-${{ hashFiles('**.opam') }}
-
-      - name: Load opam cache when Windows
-        if: runner.os == 'Windows'
-        id: opam-cache-windows
         uses: actions/cache/restore@v5
         with:
           path: |
@@ -429,15 +402,6 @@ jobs:
       - name: Save cache when not Windows
         uses: actions/cache/save@v5
         if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
-        with:
-          path: |
-            ~/.opam
-            ~/work/dune/dune/_opam
-          key: opam-wasm-${{ hashFiles('**.opam') }}
-
-      - name: Save cache when Windows
-        uses: actions/cache/save@v5
-        if: steps.opam-cache-windows.outputs.cache-hit != 'true' && runner.os == 'Windows'
         with:
           path: |
             ~/.opam
@@ -479,16 +443,6 @@ jobs:
             ~/work/dune/dune/_opam
           key: opam-ox-${{ hashFiles('**.opam') }}
 
-      - name: Load opam cache when Windows
-        if: runner.os == 'Windows'
-        id: opam-cache-windows
-        uses: actions/cache/restore@v5
-        with:
-          path: |
-            ~/.opam
-            ~/work/dune/dune/_opam
-          key: opam-ox-${{ hashFiles('**.opam') }}
-
       - name: Install OCaml
         uses: ocaml/setup-ocaml@v3
         with:
@@ -513,15 +467,6 @@ jobs:
       - name: Save cache when not Windows
         uses: actions/cache/save@v5
         if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
-        with:
-          path: |
-            ~/.opam
-            ~/work/dune/dune/_opam
-          key: opam-ox-${{ hashFiles('**.opam') }}
-
-      - name: Save cache when Windows
-        uses: actions/cache/save@v5
-        if: steps.opam-cache-windows.outputs.cache-hit != 'true' && runner.os == 'Windows'
         with:
           path: |
             ~/.opam

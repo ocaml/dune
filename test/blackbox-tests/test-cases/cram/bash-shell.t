@@ -5,7 +5,7 @@ Demonstrate the shell field in the cram stanza
   > EOF
 
   $ printShell() {
-  > dune trace cat | jq '.[] | select(.cat == "process" and (.args.categories | index("cram"))) | .args | .prog | split("/") | last'
+  > dune trace cat | jq 'select(.cat == "process" and (.args.categories | index("cram"))) | .args | .prog | split("/") | last'
   > }
 
   $ cat >foo.t <<'EOF'

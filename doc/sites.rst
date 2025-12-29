@@ -98,6 +98,11 @@ site using the :doc:`generate_sites_module stanza
 The generated module ``mysites`` depends on the library ``dune-site`` provided
 by Dune. As such, the dependency on ``dune-site`` must be specified explicitly.
 
+.. warning::
+
+   An executable that depends (even transitively) on `dune-site` will be compiled with
+   `linkall`, regardless of other options.
+
 .. note::
 
    The dependency on ``dune-site`` also needs to be added to the ``depends``

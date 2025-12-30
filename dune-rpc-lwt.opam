@@ -9,7 +9,7 @@ homepage: "https://github.com/ocaml/dune"
 doc: "https://dune.readthedocs.io/"
 bug-reports: "https://github.com/ocaml/dune/issues"
 depends: [
-  "dune" {>= "3.21"}
+  "dune" {>= "3.22"}
   "dune-rpc" {= version}
   "csexp" {>= "1.5.0"}
   "lwt" {>= "5.6.0"}

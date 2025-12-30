@@ -461,7 +461,7 @@ jobs:
 
 
       - name: Pin deps
-        run: opam pin add -n . --with-version=3.21.0
+        run: opam pin add -n . --with-version=3.22.0
 
       - name: Install deps
         run: opam install csexp pp re spawn uutf ppx_inline_test ./dune.opam
@@ -503,7 +503,7 @@ jobs:
       - name: Create an empty switch
         run: opam switch create . --empty
       - name: Pin local packages to local dependencies
-        run: opam pin add . -n --with-version=3.21.0
+        run: opam pin add . -n --with-version=3.22.0
         #                                     ^^^^^^
         # When updating dune lang, update this too
       - name: Install external dependencies

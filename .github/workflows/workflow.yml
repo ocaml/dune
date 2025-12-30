@@ -156,39 +156,46 @@ jobs:
         include:
           # OCaml trunk:
           - ocaml-compiler: ocaml-variants.5.5.0+trunk
+            cache-prefix: ocaml-variants.5.5.0+trunk
             os: ubuntu-latest
           # OCaml 5:
           ## ubuntu (x86)
           - ocaml-compiler: 5.4.x
+            cache-prefix: 5.4.x
             os: ubuntu-latest
             run_tests: true
           ## macos (Apple Silicon)
           - ocaml-compiler: 5.4.x
+            cache-prefix: 5.4.x
             os: macos-latest
             run_tests: true
           ## macos (x86)
           - ocaml-compiler: 5.4.x
+            cache-prefix: 5.4.x
             os: macos-15-intel
           ## MSVC
           - ocaml-compiler: ocaml-compiler.5.4.0,system-msvc
             os: windows-latest
-            windows-system: msvc
+            cache-prefix: ocaml-compiler.5.4.0-system-msvc
             run_tests: true
           ## mingw
           - ocaml-compiler: ocaml-base-compiler.5.4.0,system-mingw
             os: windows-latest
-            windows-system: mingw
+            cache-prefix: ocaml-compiler.5.4.0-system-mingw
             run_tests: true
           # OCaml 4:
           ## ubuntu (x86)
           - ocaml-compiler: 4.14.x
+            cache-prefix: 4.14.x
             os: ubuntu-latest
           ## ubuntu (x86-32)
           - ocaml-compiler: "ocaml-variants.4.14.2+options,ocaml-option-32bit"
+            cache-prefix: "ocaml-variants.4.14.2-ocaml-option-32bit"
             os: ubuntu-latest
             apt_update: true
           ## macos (Apple Silicon)
           - ocaml-compiler: 4.14.x
+            cache-prefix: 4.14.x
             os: macos-latest
 
     runs-on: ${{ matrix.os }}
@@ -216,7 +223,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
 
       - name: Load opam cache when Windows
         if: runner.os == 'Windows'
@@ -226,7 +233,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.windows-system }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: |
@@ -270,7 +277,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
 
       - name: Save cache when Windows
         uses: actions/cache/save@v5
@@ -279,7 +286,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.windows-system }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
 
   coq:
     name: Coq 8.16.1
@@ -332,7 +339,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
 
       - name: install Rocq Prover
         run: opam install -y ${{ matrix.opam-packages }}
@@ -349,7 +356,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
 
   wasm:
     name: Wasm_of_ocaml

@@ -865,10 +865,11 @@ module Builder = struct
       =
       Options_implied_by_dash_p.term
     and+ x =
+      let doc = "Cross-compile using this toolchain." in
       Arg.(
         value
         & opt (some Arg.context_name) None
-        & info [ "x" ] ~docs ~doc:(Some "Cross-compile using this toolchain."))
+        & info [ "x" ] ~docs ~doc:(Some doc) ~env:(Cmd.Env.info ~doc "DUNE_CROSS_TARGET"))
     and+ target_exec =
       let doc =
         "Wrapper command for running target binaries when cross-compiling. Format: \

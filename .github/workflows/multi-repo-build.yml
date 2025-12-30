@@ -92,29 +92,35 @@ jobs:
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
+          echo "::group::Checking if we need to detect depexts"
           if [ -n "${{ inputs.depext_linux }}" ]; then
             depexts="${{ inputs.depext_linux }}"
           else
-            depexts=$(cd workspace && nix shell .. -c dune show depexts)
+            depexts=$(cd workspace && nix shell .. -c dune show depexts 2>&1)
           fi
+          echo "::endgroup::"
+          echo "::group::Installing depexts: $depexts"
           if [ -n "$depexts" ]; then
-            echo "Installing depexts: $depexts"
             sudo apt-get update
             sudo apt-get install -y $depexts
           fi
+          echo "::endgroup::"
 
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
+          echo "::group::Checking if we need to detect depexts"
           if [ -n "${{ inputs.depext_macos }}" ]; then
             depexts="${{ inputs.depext_macos }}"
           else
-            depexts=$(cd workspace && nix shell .. -c dune show depexts)
+            depexts=$(cd workspace && nix shell .. -c dune show depexts 2>&1)
           fi
+          echo "::endgroup::"
+          echo "::group::Installing depexts: $depexts"
           if [ -n "$depexts" ]; then
-            echo "Installing depexts: $depexts"
             brew install $depexts
           fi
+          echo "::endgroup::"
 
       - name: Run main command
         run: cd workspace && nix shell .. -c ${{ inputs.main_command }}

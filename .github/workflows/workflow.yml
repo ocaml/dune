@@ -145,6 +145,7 @@ jobs:
   build:
     name: Build
     # we only start building our other jobs, once our main tests have passed
+    needs: nix-test
     strategy:
       fail-fast: false
       matrix:

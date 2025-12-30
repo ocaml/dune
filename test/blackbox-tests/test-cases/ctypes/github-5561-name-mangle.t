@@ -16,16 +16,8 @@
   > EOF
 
   $ bash -c 'set -o pipefail; dune build 2>&1 | head -n 20'
-  File "dune", lines 1-9, characters 0-211:
-  1 | (library
-  2 |  (name foo)
-  3 |  (ctypes
-  4 |   (external_library_name fooBar)
-  5 |   (build_flags_resolver vendored)
-  6 |   (generated_entry_point Types_generated2)
-  7 |   (type_description
-  8 |    (instance Type)
-  9 |    (functor Type_description))))
-  Error: Module Type_description is required by ctypes at dune:9 but is missing
-  in the modules field of the stanza.
+  File "fooBar__type_gen.ml", line 3, characters 12-28:
+  3 |     (module Type_description.Types)
+                  ^^^^^^^^^^^^^^^^
+  Error: Unbound module Type_description
   [1]

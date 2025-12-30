@@ -18,6 +18,7 @@ module Category : sig
     | File_watcher
     | Diagnostics
     | Log
+    | Cram
 
   val of_string : string -> t option
 end
@@ -125,6 +126,21 @@ module Event : sig
     val packet_write : id:int -> count:int -> t
     val accept : success:bool -> error:string option -> t
     val close : id:int -> t
+  end
+
+  module Cram : sig
+    type times =
+      { real : Time.Span.t
+      ; system : Time.Span.t
+      ; user : Time.Span.t
+      }
+
+    type command =
+      { command : string list
+      ; times : times
+      }
+
+    val test : command list -> t
   end
 end
 

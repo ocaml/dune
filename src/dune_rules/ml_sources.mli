@@ -51,14 +51,12 @@ val empty : t
 val include_subdirs : t -> Include_subdirs.t
 
 val make
-  :  Stanza.t list
-  -> expander:Expander.t
-  -> dir:Path.Build.t
+  :  expander:Expander.t
   -> libs:Lib.DB.t Memo.t
   -> project:Dune_project.t
   -> lib_config:Lib_config.t Memo.t
   -> loc:Loc.t
   -> lookup_vlib:(loc:Loc.t -> dir:Path.Build.t -> t Memo.t)
   -> include_subdirs:Loc.t * Include_subdirs.t
-  -> dirs:Source_file_dir.t Nonempty_list.t
+  -> Source_file_dir.t Nonempty_list.t
   -> t Memo.t

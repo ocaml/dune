@@ -42,12 +42,15 @@ let empty =
 
 let rocq_modules_of_files ~dirs =
   let filter_v_files
-        ({ Source_file_dir.dir = _; path_to_root = _; files; source_dir = _ } as sd)
+        ({ Source_file_dir.dir = _; path_to_root = _; files; source_dir = _; stanzas = _ }
+         as sd)
     =
     { sd with files = String.Set.filter files ~f:(fun f -> Filename.check_suffix f ".v") }
   in
   let dirs = Nonempty_list.map dirs ~f:filter_v_files |> Nonempty_list.to_list in
-  let build_mod_dir { Source_file_dir.dir; path_to_root = prefix; files; source_dir = _ } =
+  let build_mod_dir
+        { Source_file_dir.dir; path_to_root = prefix; files; source_dir = _; stanzas = _ }
+    =
     String.Set.to_list_map files ~f:(fun file ->
       let name, _ = Filename.split_extension file in
       let name = Rocq_module.Name.make name in

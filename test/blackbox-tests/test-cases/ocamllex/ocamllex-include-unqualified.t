@@ -21,4 +21,4 @@
   >   | _   { true  }
   >   | eof { false }
   > EOF
-  $ dune build ./lib/foo/lexer.ml
+  $ dune build

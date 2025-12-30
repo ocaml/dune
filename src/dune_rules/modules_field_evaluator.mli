@@ -23,6 +23,7 @@ type kind =
 val eval
   :  expander:Expander.t
   -> modules:Module.Source.t Module_trie.t
+  -> module_path:Module_name.t list option
   -> stanza_loc:Loc.t
   -> private_modules:Ordered_set_lang.Unexpanded.t
   -> kind:kind

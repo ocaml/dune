@@ -23,7 +23,10 @@ Show an edge case of `(include_subdirs ..)` and ocamllex
   File "dune", line 3, characters 0-16:
   3 | (ocamllex lexer)
       ^^^^^^^^^^^^^^^^
-  Error: No rule found for lexer.mll
+  Error: The `ocamllex' stanza for a module must be specified in the same
+  directory as the module it generates.
+  - module directory: src/a
+  - ocamllex directory: .
   [1]
 
 The `(ocamllex ..)` stanza must live next to the source file

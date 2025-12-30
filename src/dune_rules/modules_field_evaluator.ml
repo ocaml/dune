@@ -44,16 +44,22 @@ let eval0 =
     in
     r, !fake_modules
   in
-  let parse ~all_modules ~loc ~fake_modules s =
+  let parse ~all_modules ~loc ~fake_modules ~module_path s =
     let name = Module_name.of_string_allow_invalid (loc, s) in
-    match Module_trie.find all_modules [ name ] with
+    let path =
+      let base = [ name ] in
+      match module_path with
+      | None -> base
+      | Some module_path -> module_path @ [ name ]
+    in
+    match Module_trie.find all_modules path with
     | Some m -> Ok m
     | None ->
       fake_modules := Module_name.Map.set !fake_modules name loc;
       Error name
   in
-  fun ~expander ~loc ~all_modules ~standard osl ->
-    let parse = parse ~all_modules in
+  fun ~expander ~loc ~all_modules ~module_path ~standard osl ->
+    let parse = parse ~all_modules ~module_path in
     let standard = Module_trie.map standard ~f:(fun m -> loc, Ok m) in
     let+ (modules, fake_modules), _ =
       Action_builder.evaluate_and_collect_facts
@@ -336,6 +342,7 @@ let eval
       ~stanza_loc
       ~private_modules
       ~kind
+      ~module_path
       ~src_dir
       ~is_vendored
       ~version
@@ -344,7 +351,7 @@ let eval
   =
   (* Fake modules are modules that do not exist but it doesn't matter because
      they are only removed from a set (for jbuild file compatibility) *)
-  let eval = eval0 ~expander ~loc:stanza_loc ~all_modules in
+  let eval = eval0 ~expander ~loc:stanza_loc ~all_modules ~module_path in
   let allow_new_public_modules =
     match kind with
     | Exe_or_normal_lib | Virtual _ | Parameter -> true
@@ -411,6 +418,7 @@ let eval
 let eval
       ~expander
       ~modules:(all_modules : Module.Source.t Module_trie.t)
+      ~module_path
       ~stanza_loc
       ~private_modules
       ~kind
@@ -422,7 +430,13 @@ let eval
     Pp.textf "(modules) field at %s" (Loc.to_file_colon_line stanza_loc))
   @@ fun () ->
   let* modules0 =
-    eval0 ~expander ~loc:stanza_loc ~all_modules ~standard:all_modules settings.modules
+    eval0
+      ~expander
+      ~loc:stanza_loc
+      ~all_modules
+      ~module_path
+      ~standard:all_modules
+      settings.modules
   in
   let* is_vendored =
     match Path.Build.drop_build_context src_dir with
@@ -433,6 +447,7 @@ let eval
     eval
       ~expander
       ~modules:all_modules
+      ~module_path
       ~stanza_loc
       ~private_modules
       ~kind

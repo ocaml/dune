@@ -40,13 +40,6 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
-      - uses: nix-community/cache-nix-action@v6
-        with:
-          primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
-          gc-max-store-size-linux: 2G
-          gc-max-store-size-macos: 2G
       - run: nix build
 
   nix-test:
@@ -62,12 +55,6 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
-      - uses: nix-community/cache-nix-action@v6
-        with:
-          primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
-          gc-max-store-size-linux: 10G
       - run: nix develop -i -c make test
 
   fmt:
@@ -78,12 +65,6 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
-      - uses: nix-community/cache-nix-action@v6
-        with:
-          primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
-          gc-max-store-size-linux: 2G
       - run: nix develop .#fmt -c make fmt
 
   doc:
@@ -94,12 +75,6 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
-      - uses: nix-community/cache-nix-action@v6
-        with:
-          primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
-          gc-max-store-size-linux: 2G
       - run: nix develop .#doc -c make doc
         env:
           LC_ALL: C
@@ -117,12 +92,6 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
-      - uses: nix-community/cache-nix-action@v6
-        with:
-          primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
-          gc-max-store-size-linux: 2G
       - run: nix develop -i .#bootstrap-check -c make test-bootstrap-script
 
   nix-build-4-08:
@@ -167,7 +136,7 @@ jobs:
             nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
           gc-max-store-size-linux: 2G
-      - run: nix develop -i .#bootstrap-ox -c make release 
+      - run: nix develop -i .#bootstrap-ox -c make release
 
 #
 # Stage 2
@@ -188,37 +157,46 @@ jobs:
         include:
           # OCaml trunk:
           - ocaml-compiler: ocaml-variants.5.5.0+trunk
+            cache-prefix: ocaml-variants.5.5.0+trunk
             os: ubuntu-latest
           # OCaml 5:
           ## ubuntu (x86)
           - ocaml-compiler: 5.4.x
+            cache-prefix: 5.4.x
             os: ubuntu-latest
             run_tests: true
           ## macos (Apple Silicon)
           - ocaml-compiler: 5.4.x
+            cache-prefix: 5.4.x
             os: macos-latest
             run_tests: true
           ## macos (x86)
           - ocaml-compiler: 5.4.x
+            cache-prefix: 5.4.x
             os: macos-15-intel
           ## MSVC
           - ocaml-compiler: ocaml-compiler.5.4.0,system-msvc
             os: windows-latest
+            cache-prefix: ocaml-compiler.5.4.0-system-msvc
             run_tests: true
           ## mingw
           - ocaml-compiler: ocaml-base-compiler.5.4.0,system-mingw
             os: windows-latest
+            cache-prefix: ocaml-compiler.5.4.0-system-mingw
             run_tests: true
           # OCaml 4:
           ## ubuntu (x86)
           - ocaml-compiler: 4.14.x
+            cache-prefix: 4.14.x
             os: ubuntu-latest
           ## ubuntu (x86-32)
           - ocaml-compiler: "ocaml-variants.4.14.2+options,ocaml-option-32bit"
+            cache-prefix: "ocaml-variants.4.14.2-ocaml-option-32bit"
             os: ubuntu-latest
             apt_update: true
           ## macos (Apple Silicon)
           - ocaml-compiler: 4.14.x
+            cache-prefix: 4.14.x
             os: macos-latest
 
     runs-on: ${{ matrix.os }}
@@ -237,6 +215,26 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
+
+      - name: Load opam cache when not Windows
+        if: runner.os != 'Windows'
+        id: opam-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ~/.opam
+            ~/work/dune/dune/_opam
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
+
+      - name: Load opam cache when Windows
+        if: runner.os == 'Windows'
+        id: opam-cache-windows
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ~/.opam
+            ~/work/dune/dune/_opam
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: |
@@ -272,6 +270,24 @@ jobs:
       - name: Build configurator
         run: opam install ./dune-configurator.opam
         if: ${{ matrix.configurator == true }}
+
+      - name: Save cache when not Windows
+        uses: actions/cache/save@v5
+        if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
+        with:
+          path: |
+            ~/.opam
+            ~/work/dune/dune/_opam
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
+
+      - name: Save cache when Windows
+        uses: actions/cache/save@v5
+        if: steps.opam-cache-windows.outputs.cache-hit != 'true' && runner.os == 'Windows'
+        with:
+          path: |
+            ~/.opam
+            ~/work/dune/dune/_opam
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
 
   coq:
     name: Coq 8.16.1
@@ -310,11 +326,22 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
+
       - name: Setup OCaml
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
           dune-cache: true
+      - name: Load opam cache when not Windows
+        if: runner.os != 'Windows'
+        id: opam-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ~/.opam
+            ~/work/dune/dune/_opam
+          key: opam-rocq-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+
       - name: install Rocq Prover
         run: opam install -y ${{ matrix.opam-packages }}
       - name: test Rocq Prover Build Language
@@ -322,6 +349,15 @@ jobs:
         env:
           # We disable the Dune cache when running the tests
           DUNE_CACHE: disabled
+
+      - name: Save cache when not Windows
+        uses: actions/cache/save@v5
+        if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
+        with:
+          path: |
+            ~/.opam
+            ~/work/dune/dune/_opam
+          key: opam-rocq-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
 
   wasm:
     name: Wasm_of_ocaml
@@ -345,6 +381,15 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 5.2.x
+      - name: Load opam cache when not Windows
+        if: runner.os != 'Windows'
+        id: opam-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ~/.opam
+            ~/work/dune/dune/_opam
+          key: opam-wasm-${{ hashFiles('**.opam') }}
 
       - name: Install faked binaryen-bin package
         # The binaries have already been downloaded
@@ -361,6 +406,15 @@ jobs:
       - name: Run Tests
         run: opam exec -- make test-wasm
 
+      - name: Save cache when not Windows
+        uses: actions/cache/save@v5
+        if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
+        with:
+          path: |
+            ~/.opam
+            ~/work/dune/dune/_opam
+          key: opam-wasm-${{ hashFiles('**.opam') }}
+
   cygwin:
     name: Cygwin Build
     runs-on: windows-latest
@@ -375,7 +429,7 @@ jobs:
       ## In order to build dune locally we need to have the re library
       ## available. Even if we do, it is likely that our vendored blake3 rules
       ## will miss cygwin support. So for now, we don't enable the rest.
-      
+
       # - name: Build Dune
       # run: _boot/dune build dune.install
 
@@ -395,6 +449,17 @@ jobs:
             default: "git+https://github.com/ocaml/opam-repository.git"
           opam-pin: false
 
+      - name: Load opam cache when not Windows
+        if: runner.os != 'Windows'
+        id: opam-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ~/.opam
+            ~/work/dune/dune/_opam
+          key: opam-ox-${{ hashFiles('**.opam') }}
+
+
       - name: Pin deps
         run: opam pin add -n . --with-version=3.21.0
 
@@ -406,6 +471,15 @@ jobs:
 
       - name: Run OxCaml tests
         run: opam exec -- ./dune.exe test ./test/blackbox-tests/test-cases/oxcaml
+
+      - name: Save cache when not Windows
+        uses: actions/cache/save@v5
+        if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
+        with:
+          path: |
+            ~/.opam
+            ~/work/dune/dune/_opam
+          key: opam-ox-${{ hashFiles('**.opam') }}
 
   create-local-opam-switch:
     name: Create local opam switch
@@ -420,6 +494,7 @@ jobs:
           - 5
     runs-on: ${{ matrix.os }}
     steps:
+      # TODO: opam cache here?
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
         uses: ocaml/setup-ocaml@v3
         with:
@@ -443,12 +518,6 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
-      - uses: nix-community/cache-nix-action@v6
-        with:
-          primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
-          gc-max-store-size-linux: 5G
       - run: nix develop .#microbench -c make dune build bench/micro
 
   utop-dev-tool-test:

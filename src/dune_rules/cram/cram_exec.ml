@@ -556,7 +556,10 @@ let run_cram_test
     ~env
     (Timeout { timeout = Option.map ~f:snd timeout; failure_mode = Strict })
     sh
-    [ Path.to_string sh_script.script ]
+    ((match shell with
+      | Sh -> []
+      | Bash -> [ "-euo"; "pipefail" ])
+     @ [ Path.to_string sh_script.script ])
   >>| function
   | Ok () ->
     let detailed_output = read_and_attach_exit_codes sh_script in
@@ -699,7 +702,7 @@ module Run = struct
       }
 
     let name = "cram-run"
-    let version = 4
+    let version = 5
 
     let bimap
           ({ src = _; dir; script; output; timeout; setup_scripts; shell = _ } as t)

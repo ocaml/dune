@@ -33,9 +33,9 @@ Demonstrate the shell field in the cram stanza
 
   $ cat >options.t <<'EOF'
   >   $ set -o | grep -e pipefail -e nounset -e errexit
-  >   errexit        	off
-  >   nounset        	off
-  >   pipefail       	off
+  >   errexit        	on
+  >   nounset        	on
+  >   pipefail       	on
   > EOF
 
   $ dune runtest options.t

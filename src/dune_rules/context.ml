@@ -92,9 +92,12 @@ and t =
   ; which : Filename.t -> Path.t option Memo.t
   }
 
-let target_exec toolchain =
-  match !Dune_engine.Clflags.target_exec, Context_name.to_string toolchain with
-  | Some (name, prog, args), toolchain when name = toolchain -> Some (prog, args)
+let default_target_exec ~target_exec toolchain =
+  match
+    target_exec, !Dune_engine.Clflags.target_exec, Context_name.to_string toolchain
+  with
+  | _, Some (name, prog, args), toolchain when name = toolchain -> Some (prog, args)
+  | Some target_exec, _, _ -> Some target_exec
   | _ -> None
 ;;
 
@@ -576,7 +579,7 @@ module Group = struct
       in
       List.filter_map targets ~f:(function
         | Native -> None
-        | Named findlib_toolchain ->
+        | Named { name = findlib_toolchain; target_exec } ->
           Some
             (Memo.Lazy.create ~name:"findlib_toolchain" (fun () ->
                let name = Context_name.target builder.name ~toolchain:findlib_toolchain in
@@ -584,7 +587,7 @@ module Group = struct
                  { builder with
                    name
                  ; findlib_toolchain = Some findlib_toolchain
-                 ; target_exec = target_exec findlib_toolchain
+                 ; target_exec = default_target_exec ~target_exec findlib_toolchain
                  }
                  ~kind
                |> Memo.return)))

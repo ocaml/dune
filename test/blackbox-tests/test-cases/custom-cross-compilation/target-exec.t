@@ -238,4 +238,103 @@ Test runexec action (should always run host binary, bypassing wrapper)
   ---- HELLO END ----
   
 
+Build with dune-workspace
 
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.21)
+  > (context
+  >  (default
+  >    (targets
+  >      native
+  >      ((name test_toolchain) (target_exec test_toolchain_wrapper.sh)))))
+  > EOF
+
+  $ PATH="$PWD/bin:$PATH" dune build @runhello --force
+  ---- HELLO START ----
+  Hello from OCaml!
+  PWD: $TESTCASE_ROOT/_build/default
+  Args: ./hello.exe --hello-arg1 --hello-arg2
+  ---- HELLO END ----
+  
+  === TEST_TOOLCHAIN WRAPPER START ===
+  WRAPPER PWD: $TESTCASE_ROOT/_build/default.test_toolchain
+  WRAPPER executing: $TESTCASE_ROOT/_build/default.test_toolchain/hello.exe --hello-arg1 --hello-arg2
+  === WRAPPER EXEC ===
+  ---- HELLO START ----
+  Hello from OCaml!
+  PWD: $TESTCASE_ROOT/_build/default.test_toolchain
+  Args: $TESTCASE_ROOT/_build/default.test_toolchain/hello.exe --hello-arg1 --hello-arg2
+  ---- HELLO END ----
+  
+
+Build with dune-workspace and arguments
+
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.21)
+  > (context
+  >  (default
+  >    (targets
+  >      native
+  >      ((name test_toolchain) (target_exec wrapper_with_args.sh --arg1 --arg2)))))
+  > EOF
+
+  $ PATH="$PWD/bin:$PATH" dune build @runhello --force
+  ---- HELLO START ----
+  Hello from OCaml!
+  PWD: $TESTCASE_ROOT/_build/default
+  Args: ./hello.exe --hello-arg1 --hello-arg2
+  ---- HELLO END ----
+  
+  === WRAPPER WITH ARGS START ===
+  WRAPPER: all args: --arg1 --arg2 $TESTCASE_ROOT/_build/default.test_toolchain/hello.exe --hello-arg1 --hello-arg2
+  === WRAPPER EXEC ===
+  ---- HELLO START ----
+  Hello from OCaml!
+  PWD: $TESTCASE_ROOT/_build/default.test_toolchain
+  Args: $TESTCASE_ROOT/_build/default.test_toolchain/hello.exe --hello-arg1 --hello-arg2
+  ---- HELLO END ----
+  
+Build with dune-workspace and --target-exec should give priority to --target-exec
+
+  $ cat > bin/cli_wrapper.sh <<'EOF'
+  > #!/bin/sh
+  > echo "=== CLI WRAPPER START ==="
+  > echo "WRAPPER: all args: $@"
+  > echo "=== WRAPPER EXEC ==="
+  > exec "$@"
+  > EOF
+
+  $ chmod +x bin/cli_wrapper.sh
+
+  $ PATH="$PWD/bin:$PATH" dune build @runhello --target-exec test_toolchain=cli_wrapper.sh --force
+  ---- HELLO START ----
+  Hello from OCaml!
+  PWD: $TESTCASE_ROOT/_build/default
+  Args: ./hello.exe --hello-arg1 --hello-arg2
+  ---- HELLO END ----
+  
+  === CLI WRAPPER START ===
+  WRAPPER: all args: $TESTCASE_ROOT/_build/default.test_toolchain/hello.exe --hello-arg1 --hello-arg2
+  === WRAPPER EXEC ===
+  ---- HELLO START ----
+  Hello from OCaml!
+  PWD: $TESTCASE_ROOT/_build/default.test_toolchain
+  Args: $TESTCASE_ROOT/_build/default.test_toolchain/hello.exe --hello-arg1 --hello-arg2
+  ---- HELLO END ----
+  
+
+Build with invalid dune-workspace
+
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.21)
+  > (context
+  >  (default
+  >    (targets
+  >      ((name native) (target_exec test_toolchain_wrapper.sh)))))
+  > EOF
+
+  $ PATH="$PWD/bin:$PATH" dune build @runhello --force
+  Error: Native target cannot have target_exec specified
+  [1]
+
+  $ rm -f dune-workspace

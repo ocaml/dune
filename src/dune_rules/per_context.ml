@@ -17,7 +17,7 @@ let all =
       let targets =
         List.filter_map targets ~f:(function
           | Native -> None
-          | Named toolchain ->
+          | Named { name = toolchain; _ } ->
             let name = Context_name.target native ~toolchain in
             Some (name, `Target (context, toolchain)))
       in

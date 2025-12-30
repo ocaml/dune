@@ -111,4 +111,4 @@ jobs:
           fi
 
       - name: Build
-        run: cd workspace && nix run .. -- build
+        run: cd workspace && nix run .. -- build --display short

@@ -340,7 +340,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
+          key: opam-rocq-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
 
       - name: install Rocq Prover
         run: opam install -y ${{ matrix.opam-packages }}
@@ -357,7 +357,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
+          key: opam-rocq-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
 
   wasm:
     name: Wasm_of_ocaml

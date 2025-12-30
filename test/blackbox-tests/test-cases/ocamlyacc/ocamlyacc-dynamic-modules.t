@@ -3,7 +3,7 @@ Test the ability of `(modules ..)` to contain dynamic forms such as
 stanza.
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.21)
+  > (lang dune 3.22)
   > EOF
 
   $ mkdir -p gen
@@ -39,9 +39,4 @@ The `ocamlyacc` stanza uses `%{read-lines:..}` inside the `(modules ..)` field:
   >  (modules %{read-lines:gen/lst}))
   > EOF
 
-  $ dune build
-  File "dune", line 4, characters 10-31:
-  4 |  (modules %{read-lines:gen/lst}))
-                ^^^^^^^^^^^^^^^^^^^^^
-  Error: Atom or quoted string expected
-  [1]
+  $ dune build lib.cma

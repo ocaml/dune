@@ -7,7 +7,22 @@ type t =
   ; enabled_if : Blang.t
   }
 
-include Stanza.Make (struct
+type for_ =
+  | Ocamllex of t
+  | Ocamlyacc of t
+
+let tool = function
+  | Ocamllex _ -> "ocamllex"
+  | Ocamlyacc _ -> "ocamlyacc"
+;;
+
+module Ocamllex = Stanza.Make (struct
+    type nonrec t = t
+
+    include Poly
+  end)
+
+module Ocamlyacc = Stanza.Make (struct
     type nonrec t = t
 
     include Poly
@@ -28,9 +43,9 @@ let decode =
          { loc; modules; mode; enabled_if })
 ;;
 
-let modules_settings t =
+let modules_settings modules =
   { Modules_settings.root_module = None
   ; modules_without_implementation = Ordered_set_lang.Unexpanded.standard
-  ; modules = t.modules
+  ; modules
   }
 ;;

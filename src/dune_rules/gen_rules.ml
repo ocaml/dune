@@ -217,16 +217,26 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
   and+ () =
     Memo.parallel_iter stanzas ~f:(fun stanza ->
       match Stanza.repr stanza with
-      | Ocamllex.T ocamllex ->
+      | Parser_generators.Ocamllex.T ocamllex ->
         Expander.eval_blang expander ocamllex.enabled_if
         >>= (function
          | false -> Memo.return ()
-         | true -> Ocamllex_rules.gen_rules ocamllex ~sctx ~dir_contents ~dir:ctx_dir)
-      | Ocamlyacc.T ocamlyacc ->
+         | true ->
+           Parser_generator_rules.gen_rules
+             sctx
+             ~dir_contents
+             ~dir:ctx_dir
+             ~for_:(Ocamllex ocamllex))
+      | Parser_generators.Ocamlyacc.T ocamlyacc ->
         Expander.eval_blang expander ocamlyacc.enabled_if
         >>= (function
          | false -> Memo.return ()
-         | true -> Ocamlyacc_rules.gen_rules ocamlyacc ~sctx ~dir:ctx_dir)
+         | true ->
+           Parser_generator_rules.gen_rules
+             sctx
+             ~dir_contents
+             ~dir:ctx_dir
+             ~for_:(Ocamlyacc ocamlyacc))
       | Menhir_stanza.T m ->
         Expander.eval_blang expander m.enabled_if
         >>= (function

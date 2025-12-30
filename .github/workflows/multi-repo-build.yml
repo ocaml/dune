@@ -17,6 +17,11 @@ on:
         required: false
         type: string
         default: ''
+      main_command:
+        description: 'Main command to run (default: "dune build --display short")'
+        required: false
+        type: string
+        default: 'dune build --display short'
 
 env:
   EXTRA_NIX_CONFIG: |
@@ -40,6 +45,7 @@ jobs:
           echo "Repos: ${{ inputs.repos }}"
           echo "Depext Linux: ${{ inputs.depext_linux || '(auto-detect)' }}"
           echo "Depext macOS: ${{ inputs.depext_macos || '(auto-detect)' }}"
+          echo "Main command: ${{ inputs.main_command }}"
           echo "==============================="
 
       - name: Checkout Dune
@@ -110,5 +116,5 @@ jobs:
             brew install $depexts
           fi
 
-      - name: Build
-        run: cd workspace && nix run .. -- build --display short
+      - name: Run main command
+        run: cd workspace && nix shell .. -c ${{ inputs.main_command }}

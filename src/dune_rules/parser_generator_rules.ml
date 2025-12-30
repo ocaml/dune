@@ -52,7 +52,7 @@ let gen_rules sctx ~dir_contents ~dir ~for_ =
   in
   Dir_contents.ocaml dir_contents
   >>| Ml_sources.Parser_generators.modules ~for_:modules_for
-  >>= fun targets ->
+  >>= fun { deps = _; targets } ->
   let { Parser_generators.mode; _ } = ocamllex_or_ocamlyacc in
   Module_trie.to_map targets
   |> Module_name.Map.values

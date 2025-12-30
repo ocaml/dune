@@ -11,6 +11,7 @@ type for_ =
   | Ocamllex of t
   | Ocamlyacc of t
 
+val since_expanded : Dune_lang.Syntax.Version.t
 val tool : for_ -> string
 val decode : t Dune_lang.Decoder.t
 

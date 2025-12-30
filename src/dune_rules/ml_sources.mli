@@ -40,8 +40,14 @@ module Parser_generators : sig
   type for_ =
     | Ocamllex of Loc.t
     | Ocamlyacc of Loc.t
+    | Menhir of Loc.t
 
-  val modules : t -> for_:for_ -> (Loc.t * Module.Source.t) Module_trie.t
+  type dep_info =
+    { deps : Path.Set.t
+    ; targets : (Loc.t * Module.Source.t) Module_trie.t
+    }
+
+  val modules : t -> for_:for_ -> dep_info
 end
 
 (** Find out the origin of the stanza for a given module *)

@@ -137,6 +137,29 @@ Build with -x test_toolchain and environment variable DUNE_TARGET_EXEC=test_tool
   ---- HELLO END ----
   
 
+Build with environment variables DUNE_CROSS_TARGET=test_toolchain and DUNE_TARGET_EXEC=test_toolchain=test_toolchain_wrapper.sh
+(should cross compile and use target binary ./hello.exe wrapped with the wrapper)
+
+  $ PATH="$PWD/bin:$PATH" DUNE_CROSS_TARGET=test_toolchain DUNE_TARGET_EXEC=test_toolchain=test_toolchain_wrapper.sh dune build @runhello --force
+  ---- HELLO START ----
+  Hello from OCaml!
+  PWD: $TESTCASE_ROOT/_build/default
+  Args: ./hello.exe --hello-arg1 --hello-arg2
+  ---- HELLO END ----
+  
+  === TEST_TOOLCHAIN WRAPPER START ===
+  WRAPPER PWD: $TESTCASE_ROOT/_build/default.test_toolchain
+  WRAPPER executing: $TESTCASE_ROOT/_build/default.test_toolchain/hello.exe --hello-arg1 --hello-arg2
+  === WRAPPER EXEC ===
+  ---- HELLO START ----
+  Hello from OCaml!
+  PWD: $TESTCASE_ROOT/_build/default.test_toolchain
+  Args: $TESTCASE_ROOT/_build/default.test_toolchain/hello.exe --hello-arg1 --hello-arg2
+  ---- HELLO END ----
+  
+
+
+
 
 Build with -x test_toolchain and --target-exec with arguments
 (should use target binary ./hello.exe wrapped with the wrapper)

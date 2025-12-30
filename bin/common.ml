@@ -877,7 +877,12 @@ module Builder = struct
       Arg.(
         value
         & opt (some string) None
-        & info [ "target-exec" ] ~docs ~docv:"TOOLCHAIN=CMD" ~doc:(Some doc))
+        & info
+            [ "target-exec" ]
+            ~docs
+            ~docv:"TOOLCHAIN=CMD"
+            ~doc:(Some doc)
+            ~env:(Cmd.Env.info ~doc "DUNE_TARGET_EXEC"))
     and+ build_dir =
       let doc = "Specified build directory. _build if unspecified" in
       Arg.(

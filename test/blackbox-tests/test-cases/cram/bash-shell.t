@@ -30,3 +30,12 @@ Demonstrate the shell field in the cram stanza
   [1]
   $ printShell
   "bash"
+
+  $ cat >options.t <<'EOF'
+  >   $ set -o | grep -e pipefail -e nounset -e errexit
+  >   errexit        	off
+  >   nounset        	off
+  >   pipefail       	off
+  > EOF
+
+  $ dune runtest options.t

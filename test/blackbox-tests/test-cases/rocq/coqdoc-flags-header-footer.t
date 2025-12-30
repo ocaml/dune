@@ -26,16 +26,36 @@ Testing the rocqdoc_header and rocqdoc_footer field of the env stanza.
 
   $ dune build @doc
 
-  $ tail _build/log -n 1 | ./scrub_coq_args.sh | sed 's/.*rocq/rocq/'
-  rocq doc
-  -R coq/theories Corelib
-  -R . a --toc --with-header header.html --with-footer footer.html --html -d a.html
-  foo.v
+  $ dune trace cat | jq -c 'select(.cat == "process" and .args.process_args.[0] == "doc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")'
+  "doc"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "a"
+  "--toc"
+  "--with-header"
+  "header.html"
+  "--with-footer"
+  "footer.html"
+  "--html"
+  "-d"
+  "a.html"
+  "foo.v"
 
   $ dune build @doc-latex
 
-  $ tail _build/log -n 1 | ./scrub_coq_args.sh | sed 's/.*rocq/rocq/'
-  rocq doc
-  -R coq/theories Corelib
-  -R . a --toc --latex -d a.tex
-  foo.v
+  $ dune trace cat | jq -c 'select(.cat == "process" and .args.process_args.[0] == "doc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")'
+  "doc"
+  "-R"
+  "coq/theories"
+  "Corelib"
+  "-R"
+  "."
+  "a"
+  "--toc"
+  "--latex"
+  "-d"
+  "a.tex"
+  "foo.v"

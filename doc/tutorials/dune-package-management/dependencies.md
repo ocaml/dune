@@ -167,3 +167,23 @@ builds the package will not be accessible as `library` anymore.
 The removed dependency might still be accessible if some other dependency of
 your project depends on it, thus if it is a transitive dependency.
 :::
+
+
+## External Dependencies
+
+Many packages also declare external system dependencies ("depexts") that must
+be installed in order to compile or use the package. This information is stored
+in the package's `.opam` file.
+
+To view these external dependencies, use `dune show depexts`. The output can
+then be used to install the required system packages via your system package
+manager.
+
+For example, the [`postgresql`](https://ocaml.org/p/postgresql/5.3.2) library
+shows the following depexts on an Ubuntu system:
+
+```sh
+$ dune show depexts
+libpq-dev
+pkg-config
+```

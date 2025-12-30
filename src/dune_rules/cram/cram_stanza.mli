@@ -4,6 +4,14 @@ type applies_to =
   | Whole_subtree
   | Files_matching_in_this_dir of Predicate_lang.Glob.t
 
+module Shell : sig
+  type t =
+    | Sh
+    | Bash
+
+  val to_string : t -> string
+end
+
 module Conflict_markers : sig
   type t =
     | Error
@@ -24,6 +32,7 @@ type t =
   ; runtest_alias : (Loc.t * bool) option
   ; timeout : (Loc.t * Time.Span.t) option
   ; setup_scripts : (Loc.t * string) list
+  ; shell : Shell.t option
   }
 
 val decode : t Dune_lang.Decoder.t

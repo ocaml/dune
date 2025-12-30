@@ -1,6 +1,5 @@
 open Stdune
 module Category = Category
-module Timestamp = Chrome_trace.Event.Timestamp
 module Event = Event
 module Out = Out
 
@@ -10,7 +9,9 @@ let () =
   at_exit (fun () ->
     match !global with
     | None -> ()
-    | Some t -> Out.close t)
+    | Some t ->
+      Out.emit t (Event.exit ());
+      Out.close t)
 ;;
 
 let set_global t =

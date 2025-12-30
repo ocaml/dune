@@ -1,7 +1,5 @@
 We try to pull an opam package that isn't a dune project
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 
@@ -30,5 +28,5 @@ We try to pull an opam package that isn't a dune project
   $ grep dev $pkg
   (version dev)
   (dev)
-  $ grep "file://" $pkg | sed "s#$PWD#PWD#g"
+  $ grep "file://" $pkg | dune_cmd subst "$PWD" PWD
      file://PWD/_foo)))

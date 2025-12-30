@@ -652,6 +652,7 @@ module Dune_config = struct
       | Preserve -> ()
       | Clear_on_rebuild -> Console.reset ()
       | Clear_on_rebuild_and_flush_history -> Console.reset_flush_history ());
+    Stdune.Io.set_copy_impl Config.(get copy_file);
     Log.verbose
     := match t.display with
        | Simple { verbosity = Verbose; _ } -> true
@@ -715,7 +716,7 @@ module Dune_config = struct
       | Fixed i -> i
       | Auto ->
         let n = Lazy.force auto_concurrency in
-        Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
+        Log.info "Auto-detected concurrency" [ "concurrency", Dyn.int n ];
         n
     in
     (Dune_engine.Clflags.display

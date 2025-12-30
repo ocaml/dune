@@ -1,6 +1,5 @@
 Test that dune supports lockfiles with md5, sha256 and sha512 hashes.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

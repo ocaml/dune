@@ -36,8 +36,15 @@ following stanzas:
 - ``executable(s)``
 - ``test(s)``
 
+.. tip::
+
+   The ``(ocamllex ..)``, ``(ocamlyacc ..)`` and ``(menhir ..)`` stanzas must
+   be defined in a ``dune`` file next to their corresponding source files, even
+   when the directory group root is an ancestor.
+
 .. warning::
 
-   Currently the `(ocamllex)`, `(ocamlyacc)` and `(menhir)` stanzas do not work
-   well in combination with `(include_subdirs qualified)`. See `this issue
-   <https://github.com/ocaml/dune/issues/11119>`_ for more information.
+   Currently the ``(ocamllex ..)``, ``(ocamlyacc ..)`` and ``(menhir ..)``
+   stanzas do not work well in combination with ``(include_subdirs qualified)``.
+   See `this issue <https://github.com/ocaml/dune/issues/11119>`_ for more
+   information.

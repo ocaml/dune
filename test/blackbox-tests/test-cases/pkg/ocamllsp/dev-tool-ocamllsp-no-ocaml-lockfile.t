@@ -1,8 +1,6 @@
 Exercise the behaviour of "dune tools exec ocamllsp" when the lockdir
 doesn't contain a lockfile for the "ocaml" package.
 
-  $ . ../helpers.sh
-
   $ cat > dune-project <<EOF
   > (lang dune 3.16)
   > 

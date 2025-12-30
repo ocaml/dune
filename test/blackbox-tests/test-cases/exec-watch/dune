@@ -24,5 +24,6 @@
   exec-watch-ignore-sigterm
   exec-signal
   exec-watch-fail
+  exec-watch-multi-levels
   exec-watch-basic)
  (enabled_if false))

@@ -1,7 +1,5 @@
 Package resolution creating a cycle
 
-  $ . ./helpers.sh
-
   $ make_lockdir
   $ make_lockpkg a <<EOF
   > (version 0.0.1)

@@ -1,8 +1,6 @@
 Demonstrate that you can't use a relative path referring outside the workspace
 in the pin stanza:
 
-  $ . ../helpers.sh
-
 Make a package containing a library:
   $ mkdir foo
   $ cat > foo/dune-workspace <<EOF

@@ -30,11 +30,22 @@ Testing the coqdoc_header and coqdoc_footer field of the env stanza.
   Hint: To disable this warning, add the following to your dune-project file:
   (warnings (deprecated_coq_lang disabled))
 
-  $ tail _build/log -n 1 | ./scrub_coq_args.sh | sed 's/.*coq/coq/'
-  coqdoc
-  coq/theories Coq
-  -R . a --toc --with-header header.html --with-footer footer.html --html -d a.html
-  foo.v
+  $ dune trace cat | jq 'select(.name == "coqdoc") | .args.process_args | .[] | sub(".*/coq"; "/coq")'
+  "-R"
+  "/coq/theories"
+  "Coq"
+  "-R"
+  "."
+  "a"
+  "--toc"
+  "--with-header"
+  "header.html"
+  "--with-footer"
+  "footer.html"
+  "--html"
+  "-d"
+  "a.html"
+  "foo.v"
 
   $ dune build @doc-latex
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
@@ -42,8 +53,15 @@ Testing the coqdoc_header and coqdoc_footer field of the env stanza.
   Hint: To disable this warning, add the following to your dune-project file:
   (warnings (deprecated_coq_lang disabled))
 
-  $ tail _build/log -n 1 | ./scrub_coq_args.sh | sed 's/.*coq/coq/'
-  coqdoc
-  coq/theories Coq
-  -R . a --toc --latex -d a.tex
-  foo.v
+  $ dune trace cat | jq 'select(.name == "coqdoc") | .args.process_args | .[] | sub(".*/coq"; "/coq")'
+  "-R"
+  "/coq/theories"
+  "Coq"
+  "-R"
+  "."
+  "a"
+  "--toc"
+  "--latex"
+  "-d"
+  "a.tex"
+  "foo.v"

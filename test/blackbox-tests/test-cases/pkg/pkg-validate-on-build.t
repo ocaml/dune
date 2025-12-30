@@ -7,8 +7,6 @@ the current platform isn't one of the platforms for which a solution exists in
 the lockdir, and this is tested in "portable-lockdirs-custom-platforms".
   $ export DUNE_CONFIG__PORTABLE_LOCK_DIR=disabled
 
-  $ . ./helpers.sh
-
   $ mkrepo
 
   $ mkpkg a <<EOF

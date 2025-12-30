@@ -6,8 +6,6 @@ for generating platform-specific lockdirs should be removed in favour of making
 all lockdirs portable.
   $ export DUNE_CONFIG__PORTABLE_LOCK_DIR=disabled
 
-  $ . ./helpers.sh
-
   $ mkrepo
 
   $ mkpkg arm64-only <<EOF

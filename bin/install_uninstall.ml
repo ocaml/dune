@@ -34,7 +34,9 @@ let interpret_destdir ~destdir path =
 let get_dirs context ~prefix_from_command_line ~from_command_line =
   let open Fiber.O in
   let module Roots = Install.Roots in
-  let prefix_from_command_line = Option.map ~f:Path.of_string prefix_from_command_line in
+  let prefix_from_command_line =
+    Option.map ~f:Path.of_string_allow_outside_workspace prefix_from_command_line
+  in
   let+ roots =
     match prefix_from_command_line with
     | None -> Memo.run (Context.roots context)
@@ -437,7 +439,7 @@ let install_entry
       ~package
       ~dir
       ~create_install_files
-      (entry : Path.t Install.Entry.t)
+      (entry : Path.t Install.Entry.Expanded.t)
       ~dst
       ~verbosity
   =
@@ -478,7 +480,7 @@ let install_entry
       in
       Ops.copy_file ~src:entry.src ~dst ~executable ~kind ~package ~conf
     in
-    Install.Entry.set_src entry dst
+    Install.Entry.Expanded.set_src entry dst
 ;;
 
 let run
@@ -582,8 +584,8 @@ let run
       let entries_per_package =
         List.map install_files ~f:(fun (package, install_file) ->
           let entries =
-            Install.Entry.load_install_file install_file Path.of_local
-            |> List.filter ~f:(fun (entry : Path.t Install.Entry.t) ->
+            Install.Entry.Expanded.load_install_file install_file Path.of_local
+            |> List.filter ~f:(fun (entry : Path.t Install.Entry.Expanded.t) ->
               Sections.should_install sections entry.section)
           in
           match
@@ -680,7 +682,8 @@ let run
                 ~findlib_toolchain:(Context.findlib_toolchain context)
                 package
             in
-            Install.Entry.gen_install_file entries |> Io.write_file (Path.source fn))))
+            Install.Entry.Expanded.gen_install_file entries
+            |> Io.write_file (Path.source fn))))
   in
   Path.Set.to_list !files_deleted_in
   (* This [List.rev] is to ensure we process children directories before

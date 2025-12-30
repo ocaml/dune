@@ -3,7 +3,6 @@ the dune version to match the version of dune being used to generate the
 constraint. On another hand, we ensure `dune` can be used as a declared
 dependency.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ test() {
@@ -13,7 +12,7 @@ dependency.
   > solve foo
   > }
 
-  $ test "2.0.0" 2>&1 | sed -E 's/3.[0-9]+/3.XX/g'
+  $ test "2.0.0" 2>&1 | dune_cmd subst '3.[0-9]+' '3.XX'
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
@@ -28,7 +27,7 @@ dependency.
   Solution for dune.lock:
   - foo.0.0.1
 
-  $ test "4.0.0" 2>&1 | sed -E 's/3.[0-9]+/3.XX/g'
+  $ test "4.0.0" 2>&1 | dune_cmd subst '3.[0-9]+' '3.XX'
   Solution for dune.lock:
   - foo.0.0.1
 

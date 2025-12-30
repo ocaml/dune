@@ -1,0 +1,5 @@
+(rule
+ (alias runtest)
+ (deps dune.jq)
+ (action
+  (run %{bin:jq} -L. "include \"dune\"; .")))

@@ -1,7 +1,6 @@
 When the version in .ocamlformat changes, automatically relock ocamlformat with
 the new version.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ make_fake_ocamlformat "0.26.0"

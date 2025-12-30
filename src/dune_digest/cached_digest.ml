@@ -375,7 +375,7 @@ let remove path =
 
 module Untracked = struct
   let source_or_external_file path =
-    peek_or_refresh_file ~allow_dirs:false (Path.outside_build_dir path)
+    peek_or_refresh_file ~allow_dirs:true (Path.outside_build_dir path)
   ;;
 
   let invalidate_cached_timestamp path =

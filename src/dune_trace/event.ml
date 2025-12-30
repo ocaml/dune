@@ -1,10 +1,65 @@
 open Stdune
-module Timestamp = Chrome_trace.Event.Timestamp
+
+module Arg = struct
+  type t = Sexp.t
+
+  let string s = Sexp.Atom s
+  let sexp t = t
+  let dyn dyn = sexp (Sexp.of_dyn dyn)
+  let path p = string (Path.to_string p)
+  let source_path p = string (Path.Source.to_string p)
+  let build_path p = string (Path.Build.to_string p)
+  let float x = string (string_of_float x)
+  let list xs = Sexp.List xs
+  let int x = Sexp.Atom (string_of_int x)
+  let bool x = Sexp.Atom (string_of_bool x)
+  let record xs = List.map xs ~f:(fun (k, v) -> list [ string k; v ])
+end
+
+module Event = struct
+  module Id = struct
+    type t = string
+
+    let int x = string_of_int x
+    let string x = x
+  end
+
+  let make_ts ts = Arg.float (Time.to_secs ts)
+  let make_dur span = Arg.float (Time.Span.to_secs span)
+
+  type args = (string * Arg.t) list
+  type t = Sexp.t
+
+  let base ~name cat : Sexp.t list = [ Atom (Category.to_string cat); Atom name ]
+
+  let complete ?(args = []) ~name ~start ~dur cat : t =
+    List (base ~name cat @ [ Sexp.List [ make_ts start; make_dur dur ] ] @ Arg.record args)
+  ;;
+
+  let instant ?(args = []) ~name ts cat : t =
+    List (base ~name cat @ [ make_ts ts ] @ Arg.record args)
+  ;;
+
+  let async ?(args = []) id ~name ts stage cat : t =
+    List
+      (base ~name cat
+       @ [ make_ts ts ]
+       @ Arg.record
+           [ "id", Arg.string id
+           ; ( "stage"
+             , Arg.string
+                 (match stage with
+                  | `Start -> "start"
+                  | `Stop -> "stop") )
+           ]
+       @ Arg.record args)
+  ;;
+end
 
 module Async = struct
   type data =
-    { args : Chrome_trace.Event.args option
-    ; cat : string list option
+    { args : Event.args option
+    ; cat : Category.t
     ; name : string
     }
 
@@ -16,76 +71,64 @@ module Async = struct
   let create ~event_data ~start = { event_data; start }
 
   let create_sandbox ~loc =
-    { args = Some [ "loc", `String (Loc.to_file_colon_line loc) ]
+    { args = Some [ "loc", Arg.string (Loc.to_file_colon_line loc) ]
     ; name = "create-sandbox"
-    ; cat = Some [ Category.to_string Sandbox ]
+    ; cat = Sandbox
     }
   ;;
 
   let fetch ~url ~target ~checksum =
     let args =
-      let args = [ "url", `String url; "target", `String (Path.to_string target) ] in
+      let args = [ "url", Arg.string url; "target", Arg.path target ] in
       match checksum with
       | None -> args
-      | Some c -> ("checksum", `String c) :: args
+      | Some c -> ("checksum", Arg.string c) :: args
     in
-    { args = Some args; cat = Some [ Category.to_string Pkg ]; name = "fetch" }
+    { args = Some args; cat = Pkg; name = "fetch" }
   ;;
 end
 
-type t = Chrome_trace.Event.t
+type t = Event.t
 
 let scan_source ~name ~start ~stop ~dir =
-  let module Event = Chrome_trace.Event in
-  let module Timestamp = Event.Timestamp in
-  let dur = Time.diff stop start |> Time.Span.to_secs |> Timestamp.of_float_seconds in
-  let common =
-    Event.common_fields
-      ~name:(name ^ ": " ^ Path.Source.to_string dir)
-      ~ts:(Timestamp.of_float_seconds (Time.to_secs start))
-      ()
-  in
-  let args = [ "dir", `String (Path.Source.to_string dir) ] in
-  Event.complete common ~args ~dur
+  let dur = Time.diff stop start in
+  let args = [ "dir", Arg.source_path dir ] in
+  Event.complete ~name ~start ~args ~dur Rules
 ;;
 
 let evalauted_rules ~rule_total =
-  let open Chrome_trace in
-  let args = [ "value", `Int rule_total ] in
-  let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
-  let common = Event.common_fields ~name:"evaluated_rules" ~ts () in
-  Event.counter common args
+  let now = Time.now () in
+  let args = [ "value", Arg.int rule_total ] in
+  Event.instant ~name:"evalauted_rules" ~args now Rules
 ;;
 
 let config ~version =
+  let now = Time.now () in
   let args =
     let args =
-      [ "build_dir", `String (Path.Build.to_string Path.Build.root)
-      ; "argv", `List (Array.to_list Sys.argv |> List.map ~f:Json.string)
-      ; "env", `List (Unix.environment () |> Array.to_list |> List.map ~f:Json.string)
-      ; "root", `String Path.(to_absolute_filename root)
+      [ "build_dir", Arg.build_path Path.Build.root
+      ; "argv", Arg.list (Array.to_list Sys.argv |> List.map ~f:Arg.string)
+      ; "env", Arg.list (Unix.environment () |> Array.to_list |> List.map ~f:Arg.string)
+      ; "root", Arg.string Path.(to_absolute_filename root)
+      ; "pid", Arg.int (Unix.getpid ())
+      ; "initial_cwd", Arg.string Fpath.initial_cwd
       ]
     in
     match version with
     | None -> args
-    | Some v -> ("version", Stdune.Json.string v) :: args
+    | Some v -> ("version", Arg.string v) :: args
   in
-  let open Chrome_trace in
-  let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
-  let common = Event.common_fields ~cat:[ "config" ] ~name:"config" ~ts () in
-  Event.instant ~args common
+  Event.instant ~args ~name:"config" now Config
+;;
+
+let exit () =
+  let now = Time.now () in
+  Event.instant ~name:"exit" now Config
 ;;
 
 let scheduler_idle () =
-  let fields =
-    let ts =
-      Chrome_trace.Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs)
-    in
-    Chrome_trace.Event.common_fields ~name:"watch mode iteration" ~ts ()
-  in
-  (* the instant event allows us to separate build commands from
-       different iterations of the watch mode in the event viewer *)
-  Chrome_trace.Event.instant ~scope:Global fields
+  let now = Time.now () in
+  Event.instant ~name:"watch mode iteration" now Scheduler
 ;;
 
 module Exit_status = struct
@@ -108,9 +151,9 @@ let args_of_targets =
     then []
     else
       [ ( name
-        , `List
+        , Arg.list
             (Filename.Set.to_list_map set ~f:(fun x ->
-               `String (Path.Build.relative root x |> Path.Build.to_string))) )
+               Arg.build_path (Path.Build.relative root x))) )
       ]
   in
   fun { root; files; dirs } ->
@@ -131,228 +174,165 @@ let process
       ~stderr
       ~(times : Proc.Times.t)
   =
-  let open Chrome_trace in
-  let common =
-    let name =
-      match name with
-      | Some n -> n
-      | None -> Filename.basename prog
-    in
-    let ts = Timestamp.of_float_seconds (Time.to_secs started_at) in
-    Event.common_fields ~cat:(Category.to_string Process :: categories) ~name ~ts ()
+  let name =
+    match name with
+    | Some n -> n
+    | None -> Filename.basename prog
   in
-  let always =
-    [ "process_args", `List (List.map process_args ~f:(fun arg -> `String arg))
-    ; "pid", `Int (Pid.to_int pid)
-    ]
-  in
-  let extended =
-    let exit =
-      match exit with
-      | Ok n -> [ "exit", `Int n ]
-      | Error (Exit_status.Failed n) ->
-        [ "exit", `Int n; "error", `String (sprintf "exited with code %d" n) ]
-      | Error (Signaled s) ->
-        [ "exit", `Int (Signal.to_int s)
-        ; "error", `String (sprintf "got signal %s" (Signal.name s))
-        ]
-    in
-    let output name s =
-      match s with
-      | "" -> []
-      | s -> [ name, `String s ]
-    in
-    List.concat
-      [ [ "prog", `String prog
-        ; "dir", `String (Option.map ~f:Path.to_string dir |> Option.value ~default:".")
-        ]
-      ; exit
-      ; (match targets with
-         | None -> []
-         | Some targets -> args_of_targets targets)
-      ; output "stdout" stdout
-      ; output "stderr" stderr
+  let args =
+    let always =
+      [ "process_args", Arg.list (List.map process_args ~f:Arg.string)
+      ; "pid", Arg.int (Pid.to_int pid)
+      ; "categories", Arg.list (List.map categories ~f:Arg.string)
       ]
+    in
+    let extended =
+      let exit =
+        match exit with
+        | Ok n -> [ "exit", Arg.int n ]
+        | Error (Exit_status.Failed n) ->
+          [ "exit", Arg.int n; "error", Arg.string (sprintf "exited with code %d" n) ]
+        | Error (Signaled s) ->
+          [ "exit", Arg.int (Signal.to_int s)
+          ; "error", Arg.string (sprintf "got signal %s" (Signal.name s))
+          ]
+      in
+      let output name s =
+        match s with
+        | "" -> []
+        | s -> [ name, Arg.string s ]
+      in
+      List.concat
+        [ [ "prog", Arg.string prog
+          ; "dir", Arg.path (Option.value dir ~default:Path.root)
+          ]
+        ; exit
+        ; (match targets with
+           | None -> []
+           | Some targets -> args_of_targets targets)
+        ; output "stdout" stdout
+        ; output "stderr" stderr
+        ]
+    in
+    always @ extended
   in
-  let args = always @ extended in
-  let dur = Event.Timestamp.of_float_seconds (Time.Span.to_secs times.elapsed_time) in
-  Event.complete ~args ~dur common
+  Event.complete ~args ~start:started_at ~dur:times.elapsed_time ~name Process
 ;;
 
 let persistent ~file ~module_ what ~start ~stop =
-  let module Event = Chrome_trace.Event in
-  let module Timestamp = Event.Timestamp in
-  let dur = Time.diff stop start |> Time.Span.to_secs |> Timestamp.of_float_seconds in
-  let common =
-    Event.common_fields
-      ~name:"db"
-      ~ts:(Timestamp.of_float_seconds (Time.to_secs start))
-      ()
-  in
+  let dur = Time.diff stop start in
   let args =
-    [ "path", `String (Path.to_string file)
-    ; "module", `String module_
+    [ "path", Arg.path file
+    ; "module", Arg.string module_
     ; ( "operation"
-      , `String
+      , Arg.string
           (match what with
            | `Save -> "save"
            | `Load -> "load") )
     ]
   in
-  Event.complete common ~args ~dur
+  Event.complete ~name:"db" ~args ~start ~dur Persistent
 ;;
 
 module Rpc = struct
   type stage =
-    | Start
-    | Stop
-
-  let async_kind_of_stage = function
-    | Start -> Chrome_trace.Event.Start
-    | Stop -> End
-  ;;
+    [ `Start
+    | `Stop
+    ]
 
   let session ~id stage =
-    let open Chrome_trace in
-    let common =
-      let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
-      Event.common_fields ~ts ~name:"rpc_session" ()
-    in
-    let id = Chrome_trace.Id.create (`Int id) in
-    Event.async id (async_kind_of_stage stage) common
+    let now = Time.now () in
+    let id = Event.Id.int id in
+    Event.async id now stage ~name:"rpc_session" Rpc
   ;;
 
-  let rec to_json : Sexp.t -> Chrome_trace.Json.t = function
-    | Atom s -> `String s
-    | List s -> `List (List.map s ~f:to_json)
+  let rec to_json : Sexp.t -> Arg.t = function
+    | Atom s -> Arg.string s
+    | List s -> Arg.list (List.map s ~f:to_json)
   ;;
 
   let message what ~meth_ ~id stage =
-    let open Chrome_trace in
+    let now = Time.now () in
     let name =
       match what with
       | `Notification -> "notification"
       | `Request _ -> "request"
     in
-    let args = [ "meth", `String meth_ ] in
     let args =
+      let args = [ "meth", Arg.string meth_ ] in
       match what with
       | `Notification -> args
       | `Request id -> ("request_id", to_json id) :: args
     in
-    let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
-    let common = Event.common_fields ~cat:[ Category.to_string Rpc ] ~ts ~name () in
-    Event.async
-      (Chrome_trace.Id.create (`Int id))
-      ~args
-      (async_kind_of_stage stage)
-      common
+    Event.async (Event.Id.int id) ~args ~name now stage Rpc
   ;;
 
   let packet_read ~id ~success ~error =
-    let open Chrome_trace in
-    let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+    let now = Time.now () in
     let args =
-      let base = [ "id", `Int id; "success", `Bool success ] in
+      let base = [ "id", Arg.int id; "success", Arg.bool success ] in
       match error with
       | None -> base
-      | Some err -> ("error", `String err) :: base
+      | Some err -> ("error", Arg.string err) :: base
     in
-    let common =
-      Event.common_fields
-        ~cat:[ Category.to_string Rpc; "packet" ]
-        ~name:"packet_read"
-        ~ts
-        ()
-    in
-    Event.instant ~args common
+    Event.instant ~args ~name:"packet_read" now Rpc
   ;;
 
   let packet_write ~id ~count =
-    let open Chrome_trace in
-    let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
-    let args = [ "id", `Int id; "count", `Int count ] in
-    let common =
-      Event.common_fields
-        ~cat:[ Category.to_string Rpc; "packet" ]
-        ~name:"packet_write"
-        ~ts
-        ()
-    in
-    Event.instant ~args common
+    let now = Time.now () in
+    let args = [ "id", Arg.int id; "count", Arg.int count ] in
+    Event.instant ~name:"packet_write" ~args now Rpc
   ;;
 
   let accept ~success ~error =
-    let open Chrome_trace in
-    let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+    let now = Time.now () in
     let args =
-      let base = [ "success", `Bool success ] in
+      let base = [ "success", Arg.bool success ] in
       match error with
       | None -> base
-      | Some err -> ("error", `String err) :: base
+      | Some err -> ("error", Arg.string err) :: base
     in
-    let common =
-      Event.common_fields ~cat:[ Category.to_string Rpc; "accept" ] ~name:"accept" ~ts ()
-    in
-    Event.instant ~args common
+    Event.instant ~args ~name:"accept" now Rpc
   ;;
 
   let close ~id =
-    let open Chrome_trace in
-    let ts = Time.now () |> Time.to_secs |> Event.Timestamp.of_float_seconds in
-    let args = [ "id", `Int id ] in
-    let common =
-      Event.common_fields ~cat:[ Category.to_string Rpc; "session" ] ~name:"close" ~ts ()
-    in
-    Event.instant ~args common
+    let now = Time.now () in
+    let args = [ "id", Arg.int id ] in
+    Event.instant ~args ~name:"close" now Rpc
   ;;
 end
 
 let gc () =
-  let module Event = Chrome_trace.Event in
-  let module Json = Chrome_trace.Json in
-  let ts = Time.now () |> Time.to_secs |> Event.Timestamp.of_float_seconds in
-  let common = Event.common_fields ~cat:[ Category.to_string Gc ] ~name:"gc" ~ts () in
+  let now = Time.now () in
   let args =
     let stat = Gc.quick_stat () in
-    [ "stack_size", `Int stat.stack_size
-    ; "heap_words", `Int stat.heap_words
-    ; "top_heap_words", `Int stat.top_heap_words
-    ; "minor_words", `Float stat.minor_words
-    ; "major_words", `Float stat.major_words
-    ; "promoted_words", `Float stat.promoted_words
-    ; "compactions", `Int stat.compactions
-    ; "major_collections", `Int stat.major_collections
-    ; "minor_collections", `Int stat.minor_collections
+    [ "stack_size", Arg.int stat.stack_size
+    ; "heap_words", Arg.int stat.heap_words
+    ; "top_heap_words", Arg.int stat.top_heap_words
+    ; "minor_words", Arg.float stat.minor_words
+    ; "major_words", Arg.float stat.major_words
+    ; "promoted_words", Arg.float stat.promoted_words
+    ; "compactions", Arg.int stat.compactions
+    ; "major_collections", Arg.int stat.major_collections
+    ; "minor_collections", Arg.int stat.minor_collections
     ]
   in
-  Event.counter common args
+  Event.instant ~name:"gc" ~args now Gc
 ;;
 
 let fd_count () =
-  let module Event = Chrome_trace.Event in
-  let module Json = Chrome_trace.Json in
-  let ts = Time.now () |> Time.to_secs |> Event.Timestamp.of_float_seconds in
   match Fd_count.get () with
   | Unknown -> None
   | This fds ->
-    let args = [ "value", `Int fds ] in
-    let common = Event.common_fields ~cat:[ Category.to_string Fd ] ~name:"fds" ~ts () in
-    Some (Event.counter common args)
+    let now = Time.now () in
+    let args = [ "value", Arg.int fds ] in
+    Some (Event.instant ~name:"fds" ~args now Fd)
 ;;
 
 let promote src dst =
-  let module Event = Chrome_trace.Event in
-  let common =
-    let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
-    Event.common_fields ~cat:[ Category.to_string Promote ] ~name:"promote" ~ts ()
-  in
-  let args =
-    [ "src", `String (Path.Build.to_string src)
-    ; "dst", `String (Path.Source.to_string dst)
-    ]
-  in
-  Event.instant ~args common
+  let now = Time.now () in
+  let args = [ "src", Arg.build_path src; "dst", Arg.source_path dst ] in
+  Event.instant ~name:"promote" ~args now Promote
 ;;
 
 type alias =
@@ -363,38 +343,92 @@ type alias =
   }
 
 let json_of_alias { dir; name; recursive; contexts } =
-  `Assoc
-    [ "dir", `String (Path.Source.to_string dir)
-    ; "name", `String name
-    ; "recursive", `Bool recursive
-    ; "contexts", `List (List.map contexts ~f:Json.string)
+  Arg.record
+    [ "dir", Arg.source_path dir
+    ; "name", Arg.string name
+    ; "recursive", Arg.bool recursive
+    ; "contexts", Arg.list (List.map contexts ~f:Arg.string)
     ]
+  |> Arg.list
 ;;
 
 let resolve_targets targets aliases =
-  let module Event = Chrome_trace.Event in
-  let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
+  let now = Time.now () in
   let args =
-    [ "targets", List.map targets ~f:(fun p -> `String (Path.to_string p))
+    [ "targets", List.map targets ~f:Arg.path
     ; "aliases", List.map aliases ~f:json_of_alias
     ]
     |> List.filter_map ~f:(fun (k, v) ->
       match v with
       | [] -> None
-      | _ :: _ -> Some (k, `List v))
+      | _ :: _ -> Some (k, Arg.list v))
   in
-  let common =
-    Event.common_fields ~cat:[ Category.to_string Build ] ~name:"targets" ~ts ()
-  in
-  Event.instant ~args common
+  Event.instant ~args ~name:"targets" now Build
 ;;
 
 let load_dir dir =
-  let module Event = Chrome_trace.Event in
-  let ts = Event.Timestamp.of_float_seconds (Time.now () |> Time.to_secs) in
-  let args = [ "dir", `String (Path.to_string dir) ] in
-  let common =
-    Event.common_fields ~cat:[ Category.to_string Debug ] ~name:"load-dir" ~ts ()
+  let now = Time.now () in
+  let args = [ "dir", Arg.path dir ] in
+  Event.instant ~name:"load-dir" ~args now Debug
+;;
+
+let file_watcher event =
+  (* CR-soon rgrinberg: this timestamp is wrong *)
+  let now = Time.now () in
+  let name, args =
+    match event with
+    | `Queue_overflow -> "queue_overflow", []
+    | `Sync id -> "sync", [ "id", Arg.int id ]
+    | `Watcher_terminated -> "watcher_terminated", []
+    | `File (path, kind) ->
+      ( (match kind with
+         | `Created -> "create"
+         | `Deleted -> "delete"
+         | `File_changed -> "changed"
+         | `Unknown -> "unknown")
+      , [ "path", Arg.path path ] )
   in
-  Event.instant ~args common
+  Event.instant ~name ~args now File_watcher
+;;
+
+let error loc kind exn backtrace memo_stack =
+  let now = Time.now () in
+  let name =
+    match kind with
+    | `User -> "user"
+    | `Fatal -> "fatal"
+  in
+  let loc =
+    Option.map loc ~f:(fun loc -> "loc", Arg.string (Loc.to_file_colon_line loc))
+  in
+  let memo_stack =
+    match memo_stack with
+    | [] -> None
+    | frames ->
+      let frames = List.map frames ~f:Arg.dyn |> Arg.list in
+      Some ("memo", frames)
+  in
+  let backtrace =
+    Option.map backtrace ~f:(fun bt ->
+      "backtrace", Arg.string (Printexc.raw_backtrace_to_string bt))
+  in
+  let args =
+    ("exn", Arg.string (Printexc.to_string exn))
+    :: List.filter_opt [ loc; memo_stack; backtrace ]
+  in
+  Event.instant ~name ~args now Diagnostics
+;;
+
+let log { Log.Message.level; message; args } =
+  let now = Time.now () in
+  let name =
+    match level with
+    | `Warn -> "warn"
+    | `Info -> "info"
+    | `Verbose -> "verbose"
+  in
+  let args =
+    ("message", Arg.string message) :: List.map args ~f:(fun (k, s) -> k, Arg.dyn s)
+  in
+  Event.instant ~args ~name now Log
 ;;

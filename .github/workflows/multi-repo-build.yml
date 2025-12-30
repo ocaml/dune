@@ -45,8 +45,8 @@ jobs:
       - name: Cache Nix store
         uses: nix-community/cache-nix-action@v6
         with:
-          primary-key: nix-${{ runner.os }}-nix-build-${{ hashFiles('**/*.nix', '**/flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-nix-build-
+          primary-key: nix-${{ runner.os }}-nix-build--${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-nix-build--
           save: false
 
       - name: Build Dune

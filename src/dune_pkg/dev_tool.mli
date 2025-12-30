@@ -23,3 +23,6 @@ val exe_name : t -> string
 val exe_path_components_within_package : t -> string list
 
 val needs_to_build_with_same_compiler_as_project : t -> bool
+
+(** Returns true if the given package name is a compiler package. *)
+val is_compiler_package : Package_name.t -> bool

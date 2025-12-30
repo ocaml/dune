@@ -1,6 +1,5 @@
 We test how opam files with depopts fields are translated into dune.lock files:
 
-  $ . ../helpers.sh
   $ mkrepo
 
 Make a package with a depopts field

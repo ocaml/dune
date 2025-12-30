@@ -171,7 +171,10 @@ let dyn_of_metadata_result =
   | Present p -> variant "Present" [ dyn_of_metadata_entry p ]
 ;;
 
-type full_block_result = block_result * metadata_result
+type full_block_result =
+  { block : block_result
+  ; metadata : metadata_result
+  }
 
 type sh_script =
   { script : Path.t
@@ -216,10 +219,10 @@ let read_and_attach_exit_codes (sh_script : sh_script)
     | [], [] -> List.rev acc
     | (Cram_lexer.Comment _ as comment) :: blocks, _ ->
       loop (comment :: acc) entries blocks
-    | Command block_result :: blocks, metadata_entry :: entries ->
-      loop (Command (block_result, Present metadata_entry) :: acc) entries blocks
-    | Cram_lexer.Command block_result :: blocks, [] ->
-      loop (Command (block_result, Missing_unreachable) :: acc) entries blocks
+    | Command block :: blocks, metadata_entry :: entries ->
+      loop (Command { block; metadata = Present metadata_entry } :: acc) entries blocks
+    | Cram_lexer.Command block :: blocks, [] ->
+      loop (Command { block; metadata = Missing_unreachable } :: acc) entries blocks
     | [], _ :: _ -> Code_error.raise "more blocks than metadata" []
   in
   loop [] metadata_entries sh_script.cram_to_output
@@ -273,22 +276,22 @@ let dyn_of_command_out { command; metadata; output } =
 ;;
 
 let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
-  List.map cram_to_output ~f:(fun (t : (block_result * _) Cram_lexer.block) ->
+  List.map cram_to_output ~f:(fun (t : full_block_result Cram_lexer.block) ->
     match t with
     | Cram_lexer.Comment t -> Cram_lexer.Comment t
-    | Command (block_result, metadata) ->
+    | Command { block; metadata } ->
       let output =
         match metadata with
         | Missing_unreachable -> "***** UNREACHABLE *****"
         | Present { build_path_prefix_map; exit_code = _ } ->
-          Io.read_file ~binary:false block_result.output_file
+          Io.read_file ~binary:false block.output_file
           |> Ansi_color.strip
           |> rewrite_paths
                ~parent_script
-               ~command_script:block_result.script
+               ~command_script:block.script
                build_path_prefix_map
       in
-      Command { command = block_result.command; metadata; output })
+      Command { command = block.command; metadata; output })
 ;;
 
 (* Compose user written cram stanzas to output *)
@@ -432,14 +435,30 @@ let make_temp_dir ~script =
   temp_dir
 ;;
 
-let run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout ~setup_scripts =
+let run_cram_test
+      env
+      ~src
+      ~script
+      ~cram_stanzas
+      ~temp_dir
+      ~cwd
+      ~timeout
+      ~setup_scripts
+      (shell : Cram_stanza.Shell.t)
+  =
   let open Fiber.O in
   let* sh_script = create_sh_script cram_stanzas ~temp_dir ~setup_scripts in
   let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
   let sh =
     let path = Env_path.path Env.initial in
-    match Bin.which ~path "sh" with
+    match
+      Bin.which
+        ~path
+        (match shell with
+         | Sh -> "sh"
+         | Bash -> "bash")
+    with
     | Some sh -> sh
     | None ->
       User_error.raise [ Pp.text "CRAM test aborted, \"sh\" can not be found in PATH" ]
@@ -509,6 +528,7 @@ let run_produce_correction
       ~script
       ~timeout
       ~setup_scripts
+      shell
       lexbuf
   =
   let temp_dir = make_temp_dir ~script in
@@ -516,7 +536,16 @@ let run_produce_correction
   let cwd = Path.parent_exn script in
   let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
-  run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout ~setup_scripts
+  run_cram_test
+    env
+    ~src
+    ~script
+    ~cram_stanzas
+    ~temp_dir
+    ~cwd
+    ~timeout
+    ~setup_scripts
+    shell
   >>| compose_cram_output
 ;;
 
@@ -538,6 +567,7 @@ let run_and_produce_output
       ~dst
       ~timeout
       ~setup_scripts
+      shell
   =
   let script_contents = Io.read_file ~binary:false script in
   let lexbuf = Lexbuf.from_string script_contents ~fname:(Path.to_string script) in
@@ -548,7 +578,16 @@ let run_and_produce_output
   let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
   let+ commands =
-    run_cram_test env ~src ~script ~cram_stanzas ~temp_dir ~cwd ~timeout ~setup_scripts
+    run_cram_test
+      env
+      ~src
+      ~script
+      ~cram_stanzas
+      ~temp_dir
+      ~cwd
+      ~timeout
+      ~setup_scripts
+      shell
     >>| List.filter_map ~f:(function
       | Cram_lexer.Command c -> Some c
       | Comment _ -> None)
@@ -567,12 +606,17 @@ module Run = struct
       ; output : 'target
       ; timeout : (Loc.t * Time.Span.t) option
       ; setup_scripts : 'path list
+      ; shell : Cram_stanza.Shell.t
       }
 
     let name = "cram-run"
-    let version = 3
+    let version = 4
 
-    let bimap ({ src = _; dir; script; output; timeout; setup_scripts } as t) f g =
+    let bimap
+          ({ src = _; dir; script; output; timeout; setup_scripts; shell = _ } as t)
+          f
+          g
+      =
       { t with
         dir = f dir
       ; script = f script
@@ -584,7 +628,7 @@ module Run = struct
 
     let is_useful_to ~memoize:_ = true
 
-    let encode { src = _; dir; script; output; timeout; setup_scripts } path target
+    let encode { src = _; dir; script; output; timeout; shell; setup_scripts } path target
       : Sexp.t
       =
       List
@@ -595,11 +639,12 @@ module Run = struct
             option float (Option.map ~f:(fun (_, time) -> Time.Span.to_secs time) timeout))
           |> Dune_sexp.to_sexp
         ; List (List.map ~f:path setup_scripts)
+        ; Atom (Cram_stanza.Shell.to_string shell)
         ]
     ;;
 
     let action
-          { src; dir; script; output; timeout; setup_scripts }
+          { src; dir; script; output; timeout; setup_scripts; shell }
           ~ectx:_
           ~(eenv : Action.env)
       =
@@ -612,14 +657,15 @@ module Run = struct
         ~dst:output
         ~timeout
         ~setup_scripts
+        shell
     ;;
   end
 
   include Action_ext.Make (Spec)
 end
 
-let run ~src ~dir ~script ~output ~timeout ~setup_scripts =
-  Run.action { src; dir; script; output; timeout; setup_scripts }
+let run ~src ~dir ~script ~output ~timeout ~setup_scripts shell =
+  Run.action { src; dir; script; output; timeout; setup_scripts; shell }
 ;;
 
 module Make_script = struct
@@ -743,7 +789,8 @@ module Action = struct
              ~env:eenv.env
              ~script
              ~timeout:None
-             ~setup_scripts:[])
+             ~setup_scripts:[]
+             Sh)
     ;;
   end
 

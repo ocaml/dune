@@ -103,3 +103,4 @@ let assoc (xs : (string * t) list) : t = `Assoc xs
 let list (xs : t list) : t = `List xs
 let int (x : int) : t = `Int x
 let float (x : float) : t = `Float x
+let bool x = `Bool x

@@ -80,12 +80,11 @@ let no_build_no_rpc ~config:dune_config f =
 ;;
 
 let go_without_rpc_server ~(common : Common.t) ~config:dune_config f =
-  let stats = Common.stats common in
   let config =
     let watch_exclusions = Common.watch_exclusions common in
     Dune_config.for_scheduler
       dune_config
-      stats
+      (Dune_trace.global ())
       ~print_ctrl_c_warning:true
       ~watch_exclusions
   in
@@ -112,12 +111,11 @@ let go_with_rpc_server_and_console_status_reporting
     | `Allow server -> rpc server
     | `Forbid_builds -> Code_error.raise "rpc must be enabled in polling mode" []
   in
-  let stats = Common.stats common in
   let config =
     let watch_exclusions = Common.watch_exclusions common in
     Dune_config.for_scheduler
       dune_config
-      stats
+      (Dune_trace.global ())
       ~print_ctrl_c_warning:true
       ~watch_exclusions
   in

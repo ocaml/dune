@@ -6,7 +6,6 @@
    ;; should live under a different alias
    ;; %{bin:hg}
    %{bin:git}))
- (modules vcs_tests)
  (libraries
   dune_tests_common
   stdune

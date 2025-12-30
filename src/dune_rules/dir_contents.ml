@@ -161,6 +161,11 @@ end = struct
           | Rocq_stanza.Extraction.T s ->
             Memo.return (Rocq_stanza.Extraction.ml_target_fnames s)
           | Menhir_stanza.T menhir -> Memo.return (Menhir_stanza.targets menhir)
+          | Ocamllex.T ocamllex ->
+            Memo.return (List.map ocamllex.modules ~f:(fun s -> s ^ ".ml"))
+          | Ocamlyacc.T ocamlyacc ->
+            Memo.return
+              (List.concat_map ocamlyacc.modules ~f:(fun s -> [ s ^ ".ml"; s ^ ".mli" ]))
           | Rule_conf.T rule ->
             Simple_rules.user_rule sctx rule ~dir ~expander
             >>| (function
@@ -248,8 +253,13 @@ end = struct
               stanzas >>= load_text_files sctx st_dir ~src_dir ~dir)
           in
           let dirs =
-            [ { Source_file_dir.dir; path_to_root = []; files; source_dir = Some st_dir }
-            ]
+            Nonempty_list.
+              [ { Source_file_dir.dir
+                ; path_to_root = []
+                ; files
+                ; source_dir = Some st_dir
+                }
+              ]
           in
           let ml =
             Memo.lazy_ (fun () ->
@@ -341,12 +351,13 @@ end = struct
                         })))
            in
            let dirs =
-             { Source_file_dir.dir
-             ; path_to_root = []
-             ; files
-             ; source_dir = Some source_dir
-             }
-             :: subdirs
+             Nonempty_list.(
+               { Source_file_dir.dir
+               ; path_to_root = []
+               ; files
+               ; source_dir = Some source_dir
+               }
+               :: subdirs)
            in
            let lib_config =
              let+ ocaml = Context.ocaml ctx in

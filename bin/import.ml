@@ -39,6 +39,7 @@ include struct
   module Library = Library
   module Melange = Melange
   module Executables = Executables
+  module Dir_contents = Dir_contents
 end
 
 include struct
@@ -86,7 +87,7 @@ end
 
 module Dune_rpc = Dune_rpc_private
 module Graph = Dune_graph.Graph
-include Common.Let_syntax
+include Let_syntax
 
 module Main : sig
   include module type of struct

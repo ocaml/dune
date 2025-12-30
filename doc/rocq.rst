@@ -450,7 +450,7 @@ lang<rocq-lang>` stanza present:
 
 .. code:: dune
 
-  (lang dune 3.21)
+  (lang dune 3.22)
   (using rocq 0.11)
 
 Next we need a :doc:`/reference/dune/index` file with a :ref:`rocq-theory`
@@ -681,7 +681,7 @@ the plugin to sit in, otherwise Rocq will not be able to find it.
 
 .. code:: dune
 
-  (lang dune 3.21)
+  (lang dune 3.22)
   (using rocq 0.11)
 
   (package

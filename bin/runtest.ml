@@ -43,7 +43,7 @@ let runtest_term =
   | Ok () ->
     Build.run_build_command ~common ~config ~request:(fun setup ->
       Runtest_common.make_request
-        ~contexts:setup.contexts
+        ~scontexts:setup.scontexts
         ~to_cwd:(Common.root common).to_cwd
         ~test_paths)
   | Error lock_held_by ->

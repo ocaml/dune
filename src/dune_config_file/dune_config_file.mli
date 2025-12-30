@@ -43,6 +43,7 @@ module Dune_config : sig
         -> t Dune_lang.Decoder.t
 
       val to_string : t -> string
+      val to_dyn : t -> Dyn.t
     end
 
     module Storage_mode : sig

@@ -23,7 +23,8 @@ requires(ppx_driver) = "baz"
 ;;
 
 let db_path : Path.Outside_build_dir.t =
-  External (Path.External.of_filename_relative_to_initial_cwd "../unit-tests/findlib-db")
+  External
+    (Path.External.of_filename_relative_to_initial_cwd "../../unit-tests/findlib-db")
 ;;
 
 let print_pkg ppf pkg =

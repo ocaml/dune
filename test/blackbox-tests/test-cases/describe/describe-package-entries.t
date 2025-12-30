@@ -34,7 +34,7 @@ Test for the `dune describe package-entries` command
       (entry
        ((src
          (In_build_dir default/META.foo))
-        (kind file)
+        (kind File)
         (dst META)
         (section LIB)
         (optional false))))
@@ -42,7 +42,7 @@ Test for the `dune describe package-entries` command
       (entry
        ((src
          (In_build_dir default/foo.dune-package))
-        (kind file)
+        (kind File)
         (dst dune-package)
         (section LIB)
         (optional false))))
@@ -60,7 +60,7 @@ Test for the `dune describe package-entries` command
       (entry
        ((src
          (In_build_dir default/foo.a))
-        (kind file)
+        (kind File)
         (dst foo.a)
         (section LIB)
         (optional false))))
@@ -78,7 +78,7 @@ Test for the `dune describe package-entries` command
       (entry
        ((src
          (In_build_dir default/foo.cma))
-        (kind file)
+        (kind File)
         (dst foo.cma)
         (section LIB)
         (optional false))))
@@ -96,7 +96,7 @@ Test for the `dune describe package-entries` command
       (entry
        ((src
          (In_build_dir default/.foo.objs/byte/foo.cmi))
-        (kind file)
+        (kind File)
         (dst foo.cmi)
         (section LIB)
         (optional false))))
@@ -114,7 +114,7 @@ Test for the `dune describe package-entries` command
       (entry
        ((src
          (In_build_dir default/.foo.objs/byte/foo.cmt))
-        (kind file)
+        (kind File)
         (dst foo.cmt)
         (section LIB)
         (optional false))))
@@ -132,7 +132,7 @@ Test for the `dune describe package-entries` command
       (entry
        ((src
          (In_build_dir default/.foo.objs/native/foo.cmx))
-        (kind file)
+        (kind File)
         (dst foo.cmx)
         (section LIB)
         (optional false))))
@@ -150,7 +150,7 @@ Test for the `dune describe package-entries` command
       (entry
        ((src
          (In_build_dir default/foo.cmxa))
-        (kind file)
+        (kind File)
         (dst foo.cmxa)
         (section LIB)
         (optional false))))
@@ -168,7 +168,7 @@ Test for the `dune describe package-entries` command
       (entry
        ((src
          (In_build_dir default/foo.ml))
-        (kind file)
+        (kind File)
         (dst foo.ml)
         (section LIB)
         (optional false))))
@@ -176,7 +176,7 @@ Test for the `dune describe package-entries` command
       (entry
        ((src
          (In_build_dir default/foo.opam))
-        (kind file)
+        (kind File)
         (dst opam)
         (section LIB)
         (optional false))))
@@ -194,7 +194,7 @@ Test for the `dune describe package-entries` command
       (entry
        ((src
          (In_build_dir default/foo.cmxs))
-        (kind file)
+        (kind File)
         (dst foo.cmxs)
         (section LIBEXEC)
         (optional false))))
@@ -212,7 +212,7 @@ Test for the `dune describe package-entries` command
       (entry
        ((src
          (In_build_dir default/main.exe))
-        (kind file)
+        (kind File)
         (dst main.exe)
         (section BIN)
         (optional false)))))))

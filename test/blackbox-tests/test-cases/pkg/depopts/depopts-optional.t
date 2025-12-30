@@ -1,6 +1,5 @@
 This tests that depopts are considered optional by the solver.
 
-  $ . ../helpers.sh
   $ mkrepo
   $ mkpkg foo
   $ mkpkg bar

@@ -1,8 +1,6 @@
 The pin stanza allows us to define packages that are not available
 in any repository
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 
@@ -33,16 +31,15 @@ Now we verify the metadata we generated for the package. First we verify the
 build instructions and version are set correctly.
 
 We print the source separately for ease of post processing the output.
-  $ cat ${default_lock_dir}/foo.1.0.0.pkg | sed "/source/,//d"
+  $ dune_cmd delete-between 'source' '^$' < ${default_lock_dir}/foo.1.0.0.pkg
   (version 1.0.0)
   
   (build
    (all_platforms ((dune))))
-  
   
   (dev)
 
 Now we make sure that the source is set correctly.
 
   $ print_source "foo.1.0.0"
-  (source (fetch (url file://PWD/_extra_source))) 
+  (source (fetch (url file://PWD/_extra_source)))

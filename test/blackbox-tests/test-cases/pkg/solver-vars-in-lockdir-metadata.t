@@ -9,7 +9,6 @@ lockdirs. The analogous cases for portable lockdirs is tested in
 and "portable-lockdirs-custom-platforms" (setting platform variables in dune-workspace).
   $ export DUNE_CONFIG__PORTABLE_LOCK_DIR=disabled
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ mkpkg no-deps-a 1.0 <<EOF

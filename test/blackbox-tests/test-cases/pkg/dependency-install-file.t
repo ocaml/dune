@@ -1,7 +1,5 @@
 A package that installs itself into the ocaml stdlib should work.
 
-  $ . ./helpers.sh
-
   $ mkdir nondune
   $ cd nondune
   $ cat > nondune.ml <<EOF

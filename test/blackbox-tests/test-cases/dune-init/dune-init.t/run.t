@@ -319,9 +319,6 @@ The generated project contains all expected subcomponents:
   new_exec_proj/dune-project
   new_exec_proj/new_exec_proj.opam
   
-  new_exec_proj/_build:
-  log
-  
   new_exec_proj/bin:
   dune
   main.ml
@@ -440,9 +437,6 @@ The generated project contains all expected subcomponents:
   $ ls new_lib_proj/**
   new_lib_proj/dune-project
   new_lib_proj/new_lib_proj.opam
-  
-  new_lib_proj/_build:
-  log
   
   new_lib_proj/lib:
   dune
@@ -572,9 +566,6 @@ The `esy` project contains all expected subcomponents:
   $ ls new_esy_proj/**
   new_esy_proj/dune-project
   new_esy_proj/package.json
-  
-  new_esy_proj/_build:
-  log
   
   new_esy_proj/bin:
   dune

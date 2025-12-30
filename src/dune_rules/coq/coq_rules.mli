@@ -63,6 +63,6 @@ val install_rules
   :  sctx:Super_context.t
   -> dir:Path.Build.t
   -> Coq_stanza.Theory.t
-  -> Install.Entry.Sourced.t list Memo.t
+  -> Install.Entry.Sourced.Unexpanded.t list Memo.t
 
 val coq_env : dir:Path.Build.t -> Coq_flags.t Action_builder.t

@@ -12,6 +12,7 @@ include struct
   module Pkg_info = Lock_dir.Pkg_info
   module Depexts = Lock_dir.Depexts
   module Digest_feed = Dune_digest.Feed
+  module Dune_dep = Dune_dep
 end
 
 module Variable = struct
@@ -439,6 +440,8 @@ module Pkg = struct
     ; build_command : Build_command.t option
     ; install_command : Dune_lang.Action.t option
     ; depends : t list
+    ; depends_on_dune : bool
+      (* whether the package declares a dependency on Dune, even if Dune is stripped from [depends] *)
     ; depexts : Depexts.t list
     ; info : Pkg_info.t
     ; paths : Path.t Paths.t
@@ -920,27 +923,32 @@ module Action_expander = struct
              let dir = t.paths.source_dir in
              Memo.return @@ Ok (Path.relative dir program)
            | In_path ->
-             let* artifacts = t.artifacts in
-             (match Filename.Map.find artifacts program with
-              | Some s -> Memo.return @@ Ok s
-              | None ->
-                (let path = Global.env () |> Env_path.path in
-                 Which.which ~path program)
-                >>= (function
-                 | Some p -> Memo.return (Ok p)
+             (match program with
+              | "dune" ->
+                let dune = Path.of_string Sys.executable_name in
+                Memo.return @@ Ok dune
+              | program ->
+                let* artifacts = t.artifacts in
+                (match Filename.Map.find artifacts program with
+                 | Some s -> Memo.return @@ Ok s
                  | None ->
-                   let+ depexts = filtered_depexts t in
-                   let hint =
-                     Run_with_path.depexts_hint depexts
-                     |> Option.map ~f:(fun pp -> Format.asprintf "%a" Pp.to_fmt pp)
-                   in
-                   Error
-                     (Action.Prog.Not_found.create
-                        ?hint
-                        ~program
-                        ~context:t.context
-                        ~loc:(Some loc)
-                        ()))))
+                   (let path = Global.env () |> Env_path.path in
+                    Which.which ~path program)
+                   >>= (function
+                    | Some p -> Memo.return (Ok p)
+                    | None ->
+                      let+ depexts = filtered_depexts t in
+                      let hint =
+                        Run_with_path.depexts_hint depexts
+                        |> Option.map ~f:(fun pp -> Format.asprintf "%a" Pp.to_fmt pp)
+                      in
+                      Error
+                        (Action.Prog.Not_found.create
+                           ?hint
+                           ~program
+                           ~context:t.context
+                           ~loc:(Some loc)
+                           ())))))
       in
       Result.map prog ~f:(map_exe t)
     ;;
@@ -1202,6 +1210,7 @@ module DB = struct
     type entry =
       { pkg : Pkg.t
       ; deps : dep list
+      ; has_dune_dep : bool
       ; pkg_digest : Pkg_digest.t
       }
 
@@ -1231,24 +1240,35 @@ module DB = struct
         Package.Name.Table.find_or_add cache pkg.info.name ~f:(fun name ->
           let seen_set = Package.Name.Set.add seen_set name in
           let seen_list = pkg :: seen_list in
-          let deps =
+          let has_dune_dep, deps =
             Dune_pkg.Lock_dir.Conditional_choice.choose_for_platform pkg.depends ~platform
             |> Option.value ~default:[]
-            |> List.filter_map
-                 ~f:(fun { Dune_pkg.Lock_dir.Dependency.name; loc = dep_loc } ->
-                   if Package.Name.Set.mem system_provided name
-                   then None
-                   else (
+            |> List.fold_right
+                 ~init:(false, [])
+                 ~f:
+                   (fun
+                     { Dune_pkg.Lock_dir.Dependency.name; loc = dep_loc }
+                     (has_dune_dep, acc)
+                   ->
+                   match
+                     ( Dune_lang.Package_name.equal name Dune_dep.name
+                     , Package.Name.Set.mem system_provided name )
+                   with
+                   | true, _ -> true, acc
+                   | false, true -> has_dune_dep, acc
+                   | _, false ->
                      let dep_pkg = Package.Name.Map.find_exn pkgs_by_name name in
                      let dep_entry = compute_entry dep_pkg ~seen_set ~seen_list in
-                     Some { dep_pkg; dep_loc; dep_pkg_digest = dep_entry.pkg_digest }))
+                     ( has_dune_dep
+                     , { dep_pkg; dep_loc; dep_pkg_digest = dep_entry.pkg_digest } :: acc
+                     ))
           in
           let pkg_digest =
             Pkg_digest.create
               pkg
               (List.map deps ~f:(fun { dep_pkg_digest; _ } -> dep_pkg_digest))
           in
-          { pkg; deps; pkg_digest })
+          { pkg; deps; has_dune_dep; pkg_digest })
       in
       Package.Name.Map.map
         pkgs_by_name
@@ -1271,8 +1291,8 @@ module DB = struct
        dependencies are identical as a sanity check. *)
     let union_check
           pkg_digest
-          ({ pkg = pkg_a; deps = deps_a; pkg_digest = _ } as entry)
-          { pkg = pkg_b; deps = deps_b; pkg_digest = _ }
+          ({ pkg = pkg_a; deps = deps_a; has_dune_dep = _; pkg_digest = _ } as entry)
+          { pkg = pkg_b; deps = deps_b; has_dune_dep = _; pkg_digest = _ }
       =
       if not (Pkg.equal (Pkg.remove_locs pkg_a) (Pkg.remove_locs pkg_b))
       then
@@ -1475,6 +1495,7 @@ end = struct
             ; enabled_on_platforms = _
             } as pkg
         ; deps
+        ; has_dune_dep
         ; pkg_digest = _
         } ->
       assert (Package.Name.equal pkg_digest.name info.name);
@@ -1589,6 +1610,7 @@ end = struct
         ; build_command
         ; install_command
         ; depends
+        ; depends_on_dune = has_dune_dep
         ; depexts
         ; paths
         ; write_paths
@@ -1870,7 +1892,12 @@ module Install_action = struct
         |> List.map ~f:(fun (name, value) -> Package_variable_name.of_opam name, value)
     ;;
 
-    let install_entry ~src ~install_file ~target_dir (entry : Path.t Install.Entry.t) =
+    let install_entry
+          ~src
+          ~install_file
+          ~target_dir
+          (entry : Path.t Install.Entry.Expanded.t)
+      =
       match Path.Untracked.exists src, entry.optional with
       | false, true -> None
       | false, false ->
@@ -1946,7 +1973,7 @@ module Install_action = struct
             let* map =
               let install_entries =
                 let dir = Path.parent_exn install_file in
-                Install.Entry.load_install_file install_file (fun local ->
+                Install.Entry.Expanded.load_install_file install_file (fun local ->
                   Path.append_local dir local)
               in
               let by_src =
@@ -2126,6 +2153,10 @@ let files path =
   Dep.Set.of_source_files ~files ~empty_directories, files
 ;;
 
+let dune_dep =
+  lazy (Sys.executable_name |> Path.External.of_string |> Path.external_ |> Dep.file)
+;;
+
 let build_rule context_name ~source_deps (pkg : Pkg.t) =
   let+ build_action =
     let+ copy_action, build_action, install_action =
@@ -2233,10 +2264,14 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
     |> List.concat
     |> Action_builder.progn
   in
-  let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
   let open Action_builder.With_targets.O in
-  Action_builder.deps deps
-  |> Action_builder.with_no_targets
+  (let deps =
+     let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
+     match pkg.depends_on_dune with
+     | false -> deps
+     | true -> Dep.Set.add deps (Lazy.force dune_dep)
+   in
+   Action_builder.deps deps |> Action_builder.with_no_targets)
   (* TODO should we add env deps on these? *)
   >>> add_env (Pkg.exported_env pkg) build_action
   |> Action_builder.With_targets.add_directories

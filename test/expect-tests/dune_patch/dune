@@ -1,7 +1,6 @@
 (library
  (name dune_patch_tests)
  (inline_tests)
- (modules dune_patch_tests)
  (libraries
   dune_tests_common
   stdune

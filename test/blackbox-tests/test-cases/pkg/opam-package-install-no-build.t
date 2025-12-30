@@ -1,6 +1,5 @@
 In this test we test the translation of an opam package with only an install step.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a package with only an install step 

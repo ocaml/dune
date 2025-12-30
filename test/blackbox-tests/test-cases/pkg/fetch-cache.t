@@ -1,7 +1,5 @@
 Testing that files are only fetched once.
 
-  $ . ./helpers.sh
-
 No need to set DUNE_CACHE (enabled by default) as the
 fetch rules are always considered safe to cache, but we'll set a custom
 directory for the shared cache.

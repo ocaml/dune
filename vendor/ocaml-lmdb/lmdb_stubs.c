@@ -17,7 +17,7 @@
 
 #ifdef _WIN32
 #include <malloc.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFlyBSD__)
 #include <stdlib.h>
 #else
 #include <alloca.h>
@@ -428,6 +428,19 @@ CAMLprim value mdbs_txn_env (value txn)
   return hide(env);
 }
 
+CAMLprim value mdbs_cursor_txn (value cursor)
+{
+  MDB_txn *txn;
+  caml_release_runtime_system();
+  txn = mdb_cursor_txn(unhide(cursor));
+  caml_acquire_runtime_system();
+
+  if (txn == NULL)
+    caml_invalid_argument("Lmdb.Cursor.txn: invalid cursor handle.");
+
+  return hide(txn);
+}
+
 CAMLprim value mdbs_txn_begin (value env, value parent, value flags)
 {
   MDB_txn *cparent, *txn;
@@ -585,7 +598,7 @@ CAMLprim value mdbs_get(value txn, value dbi, value key)
 CAMLprim value mdbs_cursor_get(value cursor, value keyopt, value valopt, value op)
 {
   CAMLparam2(keyopt, valopt);
-  CAMLlocal1(ret);
+  CAMLlocal3(ret, rkey, rval);
   MDB_val ckey, cval;
   void *dkey, *dval;
 
@@ -600,17 +613,18 @@ CAMLprim value mdbs_cursor_get(value cursor, value keyopt, value valopt, value o
 	&cval,
 	Unsigned_int_val(op)));
 
-  ret = caml_alloc_small(2,0);
-  Field(ret, 0) = Val_unit;
-  Field(ret, 1) = Val_unit;
   if (ckey.mv_data == dkey && Is_block(keyopt))
-    Field(ret, 0) = keyopt;
+    rkey = keyopt;
   else
-    Field(ret, 0) = ba_of_mvp(&ckey);
+    rkey = ba_of_mvp(&ckey);
   if (cval.mv_data == dval && Is_block(valopt))
-    Field(ret, 1) = valopt;
+    rval = valopt;
   else
-    Field(ret, 1) = ba_of_mvp(&cval);
+    rval = ba_of_mvp(&cval);
+
+  ret = caml_alloc_small(2,0);
+  Field(ret, 0) = rkey;
+  Field(ret, 1) = rval;
 
   CAMLreturn(ret);
 }

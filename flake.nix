@@ -164,11 +164,18 @@
           testBuildInputs =
             with pkgs;
             [
+              bc
               file
+              jq
               mercurial
               unzip
-              perl
-              jq
+              coreutils
+              bc
+              curl
+              git
+              binaryen
+              procps
+              which
             ]
             ++ lib.optionals stdenv.isLinux [ strace ];
           testNativeBuildInputs =
@@ -268,7 +275,10 @@
               '';
               inherit meta;
               nativeBuildInputs =
-                baseInputs ++ [ duneScript ] ++ (if hasOcamlOverride then [ pkgs'.ocamlPackages.ocaml ] else [ ]);
+                baseInputs
+                ++ pkgs'.lib.optionals stdenv.isDarwin [ pkgs'.darwin.sigtool ]
+                ++ [ duneScript ]
+                ++ (if hasOcamlOverride then [ pkgs'.ocamlPackages.ocaml ] else [ ]);
               inputsFrom = if hasOcamlOverride then [ ] else [ pkgs'.ocamlPackages.dune_3 ];
               buildInputs =
                 (if includeTestDeps then testBuildInputs else [ ])
@@ -471,12 +481,6 @@
               (with pkgs; [
                 # dev tools
                 ccls
-                # test dependencies
-                binaryen
-                curl
-                git
-                procps
-                which
               ])
               ++ (with pkgs.ocamlPackages; [
                 core_bench

@@ -2,8 +2,6 @@ When building a project with -p we should ignore the lock directory. This is so
 that packages with lockdirs in their source archive can be built by opam
 without using locked dependencies.
 
-  $ . ./helpers.sh
-
   $ make_lockdir
   $ make_lockpkg test <<EOF
   > (build

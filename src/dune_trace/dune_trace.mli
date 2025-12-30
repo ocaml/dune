@@ -14,6 +14,10 @@ module Category : sig
     | Promote
     | Build
     | Debug
+    | Config
+    | File_watcher
+    | Diagnostics
+    | Log
 
   val of_string : string -> t option
 end
@@ -84,11 +88,29 @@ module Event : sig
 
   val resolve_targets : Path.t list -> alias list -> t
   val load_dir : Path.t -> t
+  val log : Log.Message.t -> t
+
+  val file_watcher
+    :  [ `File of Path.t * [ `Created | `Deleted | `File_changed | `Unknown ]
+       | `Queue_overflow
+       | `Sync of int
+       | `Watcher_terminated
+       ]
+    -> t
+
+  val error
+    :  Loc.t option
+    -> [< `Fatal | `User ]
+    -> Exn.t
+    -> Printexc.raw_backtrace option
+    -> Dyn.t list
+    -> t
 
   module Rpc : sig
     type stage =
-      | Start
-      | Stop
+      [ `Start
+      | `Stop
+      ]
 
     val session : id:int -> stage -> t
 
@@ -109,15 +131,7 @@ end
 module Out : sig
   type t
 
-  type dst =
-    | Out of out_channel
-    | Custom of
-        { write : string -> unit
-        ; close : unit -> unit
-        ; flush : unit -> unit
-        }
-
-  val create : Category.t list -> dst -> t
+  val create : Category.t list -> out_channel -> t
   val emit : t -> Event.t -> unit
   val start : t option -> (unit -> Event.Async.data) -> Event.Async.t option
   val finish : t -> Event.Async.t option -> unit

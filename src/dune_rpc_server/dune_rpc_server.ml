@@ -326,9 +326,7 @@ module H = struct
 
   let dispatch_notification (type a) (t : a t) (session : a Session.t) meth_ n =
     let kind = Notification in
-    Event.emit
-      (Message { kind; meth_; stage = Dune_trace.Event.Rpc.Start })
-      (Session.id session);
+    Event.emit (Message { kind; meth_; stage = `Start }) (Session.id session);
     let+ result = V.Handler.handle_notification t.handler session n in
     let () =
       match result with
@@ -342,12 +340,12 @@ module H = struct
           ]
       | Ok r -> r
     in
-    Event.emit (Message { kind; meth_; stage = Stop }) (Session.id session)
+    Event.emit (Message { kind; meth_; stage = `Stop }) (Session.id session)
   ;;
 
   let dispatch_request (type a) (t : a t) (session : a Session.t) meth_ r id =
     let kind = Request id in
-    Event.emit (Message { kind; meth_; stage = Start }) (Session.id session);
+    Event.emit (Message { kind; meth_; stage = `Start }) (Session.id session);
     let* response =
       let+ result =
         (* TODO instead of waiting for all errors, wait for the first one.
@@ -365,7 +363,7 @@ module H = struct
         in
         Error (Response.Error.create ~kind:Code_error ~message:"server error" ~payload ())
     in
-    Event.emit (Message { kind; meth_; stage = Stop }) (Session.id session);
+    Event.emit (Message { kind; meth_; stage = `Stop }) (Session.id session);
     match session.base.close.state with
     | `Closed -> Fiber.return ()
     | `Open -> session.base.send (Some [ Response (id, response) ])
@@ -654,7 +652,7 @@ struct
         new_session server ~name ~queries ~send
       in
       let id = session#id in
-      Event.emit (Session Start) id;
+      Event.emit (Session `Start) id;
       let+ res =
         Fiber.map_reduce_errors
           (module Monoid.Unit)
@@ -664,16 +662,15 @@ struct
             (match exn.exn with
              | Dune_util.Report_error.Already_reported -> ()
              | _ ->
-               Log.info
-                 [ Pp.textf
-                     "encountered error serving rpc client (id %d)"
-                     (Session.Id.to_int id)
-                 ; Exn_with_backtrace.pp exn
-                 ]);
-            Dune_util.Report_error.report exn;
+               Log.warn
+                 "encountered error serving rpc client"
+                 [ "id", Dyn.int (Session.Id.to_int id)
+                 ; "error", Exn_with_backtrace.to_dyn exn
+                 ];
+               Dune_util.Report_error.report exn);
             session#close)
       in
-      Event.emit (Session Stop) id;
+      Event.emit (Session `Stop) id;
       match res with
       | Ok () -> ()
       | Error () ->

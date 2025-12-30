@@ -1,7 +1,6 @@
 Test for packages with an extra-source file with the same name as a
 file in the package's source.
 
-  $ . ./helpers.sh
   $ make_lockdir
   $ make_lockpkg foo <<EOF
   > (version 1)

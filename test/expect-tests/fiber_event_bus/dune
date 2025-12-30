@@ -1,6 +1,5 @@
 (library
  (name fiber_event_bus_tests)
- (modules fiber_event_bus_tests)
  (inline_tests)
  (libraries
   stdune

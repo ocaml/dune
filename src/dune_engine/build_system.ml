@@ -308,7 +308,7 @@ end = struct
   ;;
 
   let report_evaluated_rule_exn () =
-    Dune_trace.emit Rules (fun () ->
+    Dune_trace.emit Debug (fun () ->
       let rule_total =
         match Fiber.Svar.read State.t with
         | Building progress -> progress.number_of_rules_discovered
@@ -591,11 +591,10 @@ end = struct
                      in anyway. *)
                   remove_target_dir path
                 | Error exn ->
-                  Log.info
-                    [ Pp.textf
-                        "Error while removing target %s: %s"
-                        (Path.Build.to_string path)
-                        (Printexc.to_string exn)
+                  Log.warn
+                    "Error while removing target"
+                    [ "path", Dyn.string (Path.Build.to_string path)
+                    ; "error", Dyn.string (Printexc.to_string exn)
                     ]
               in
               Targets.Validated.iter

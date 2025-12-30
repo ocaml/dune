@@ -1,7 +1,6 @@
 When an OCamlFormat version does not exist, "dune fmt" would fail with a
 solving error.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a project with no dependency on OCamlFormat.

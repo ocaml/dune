@@ -59,7 +59,8 @@ struct
          we're also printing successes, but it can be useful to see successes
          too if the goal is to understand when and how the file in the build
          directory appeared *)
-      if debug_shared_cache then Log.info [ Pp.textf "cache restore success %s" (key ()) ];
+      if debug_shared_cache
+      then Log.info "cache restore success" [ "key", Dyn.string (key ()) ];
       Hit_or_miss.Hit artifacts
     | Not_found_in_cache -> Hit_or_miss.Miss Miss_reason.Not_found_in_cache
     | Error exn -> Miss (Error (Printexc.to_string exn))
@@ -147,33 +148,31 @@ struct
       >>= (function
        | Stored targets_and_digests ->
          let+ () = upload ~rule_digest in
-         Log.info [ Pp.textf "cache store success [%s]" hex ];
+         Log.info "cache store success" [ "hex", Dyn.string hex ];
          update_cached_digests ~targets_and_digests;
          Some targets_and_digests
        | Already_present targets_and_digests ->
-         Log.info [ Pp.textf "cache store skipped [%s]: already present" hex ];
+         Log.info "cache store skipped: already present" [ "hex", Dyn.string hex ];
          update_cached_digests ~targets_and_digests;
          Fiber.return (Some targets_and_digests)
        | Error (Unix.Unix_error (Unix.EXDEV, "link", file)) ->
          (* We cannot hardlink across partitions so we kindly let the user know
             that they should use copy cache instead. *)
          Log.info
-           [ Pp.concat
-               [ Pp.textf "cache store error [%s]:" hex
-               ; Pp.space
-               ; Pp.textf
-                   "cannot link %s between file systems. Use (cache-storage-mode copy) \
-                    instead."
-                   file
-               ]
+           "cache store error"
+           [ "hex", Dyn.string hex
+           ; "file", Dyn.string file
+           ; "reason", Dyn.string "cannot link between file systems"
            ];
          Fiber.return None
        | Error exn ->
-         Log.info [ pp_error (Printexc.to_string exn) ];
+         Log.info "cache store error" [ "error", Dyn.string (Printexc.to_string exn) ];
          Fiber.return None
        | Will_not_store_due_to_non_determinism sexp ->
          (* CR-someday amokhov: We should systematically log all warnings. *)
-         Log.info [ pp_error (Sexp.to_string sexp) ];
+         Log.info
+           "cache store non-deterministic"
+           [ "sexp", Dyn.string (Sexp.to_string sexp) ];
          User_warning.emit [ pp_error (Sexp.to_string sexp) ];
          Fiber.return None)
   ;;

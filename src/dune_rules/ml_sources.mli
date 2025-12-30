@@ -8,6 +8,7 @@ module Origin : sig
   type t =
     | Library of Library.t
     | Executables of Executables.t
+    | Tests of Tests.t
     | Melange of Melange_stanzas.Emit.t
 
   val preprocess : t -> Preprocess.With_instrumentation.t Preprocess.Per_module.t
@@ -59,5 +60,5 @@ val make
   -> loc:Loc.t
   -> lookup_vlib:(loc:Loc.t -> dir:Path.Build.t -> t Memo.t)
   -> include_subdirs:Loc.t * Include_subdirs.t
-  -> dirs:Source_file_dir.t list
+  -> dirs:Source_file_dir.t Nonempty_list.t
   -> t Memo.t

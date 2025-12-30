@@ -1,7 +1,5 @@
 Things should be the same whether dependencies are specified or not.
 
-  $ . ./helpers.sh
-
   $ make_lockdir
 
 If we have a package we depend on

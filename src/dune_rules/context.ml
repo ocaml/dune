@@ -696,10 +696,7 @@ module DB = struct
           native :: targets)
       in
       let+ all = List.concat contexts |> Memo.parallel_map ~f:Memo.Lazy.force in
-      List.iter all ~f:(fun t ->
-        let open Pp.O in
-        Log.info
-          [ Pp.box ~indent:1 (Pp.text "Dune context:" ++ Pp.cut ++ Dyn.pp (to_dyn t)) ]);
+      List.iter all ~f:(fun t -> Log.info "Dune context" [ "context", to_dyn t ]);
       all
     in
     let memo = Memo.lazy_ ~name:"build-contexts" impl in

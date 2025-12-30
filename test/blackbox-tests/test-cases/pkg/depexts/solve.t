@@ -1,6 +1,5 @@
 Solving would add opam 'depext' field to lock directory packages
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

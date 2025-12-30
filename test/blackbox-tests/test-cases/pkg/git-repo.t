@@ -1,7 +1,5 @@
 We want to make sure our OPAM-repository in git support works well.
 
-  $ . ../git-helpers.sh
-  $ . ./helpers.sh
   $ mkrepo
   $ mkpkg foo 1.0 <<EOF
   > EOF

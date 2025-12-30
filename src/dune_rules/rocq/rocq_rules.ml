@@ -1205,9 +1205,13 @@ let install_rules ~sctx ~dir s =
     let to_dst f = Path.Local.to_string @@ Path.Local.relative dst_dir f in
     let make_entry (orig_file : Path.Build.t) (dst_file : string) =
       let entry =
-        Install.Entry.make Section.Lib_root ~dst:(to_dst dst_file) orig_file ~kind:`File
+        Install.Entry.Unexpanded.make
+          Section.Lib_root
+          ~dst:(to_dst dst_file)
+          orig_file
+          ~kind:Install.Entry.Unexpanded.File
       in
-      Install.Entry.Sourced.create ~loc entry
+      Install.Entry.Sourced.Unexpanded.create ~loc entry
     in
     let+ rocq_sources = Dir_contents.rocq dir_contents in
     rocq_sources

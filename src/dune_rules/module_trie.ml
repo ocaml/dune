@@ -49,7 +49,7 @@ let rec gen_set_k t ps v ~on_exists =
         | Some c -> on_exists c)
       else (
         match x with
-        | None -> None
+        | None -> Some (Map (gen_set_k Map.empty ps v ~on_exists))
         | Some (Leaf _ as leaf) -> Some leaf
         | Some (Map m) -> Some (Map (gen_set_k m ps v ~on_exists))))
 ;;

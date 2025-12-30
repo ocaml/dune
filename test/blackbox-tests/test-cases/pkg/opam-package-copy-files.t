@@ -1,7 +1,6 @@
 This test checks that the files in the files/ directory inside a package in an opam
 repository are copied correctly to the dune.lock file.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a package with a patch

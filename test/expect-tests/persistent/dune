@@ -1,0 +1,18 @@
+(library
+ (name persistent_tests)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
+ (libraries
+  dune_util
+  dyn
+  stdune
+  dune_engine
+  dune_rules
+  dune_digest
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  base
+  ppx_inline_test.config))

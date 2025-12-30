@@ -1,7 +1,5 @@
 Install actions should have the switch directory prepared:
 
-  $ . ./helpers.sh
-
   $ make_lockdir
   $ make_lockpkg test <<EOF
   > (version 0.0.1)

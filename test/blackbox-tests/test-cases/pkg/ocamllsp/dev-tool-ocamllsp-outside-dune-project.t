@@ -1,7 +1,6 @@
 Exercise the behaviour of "dune tools exec ocamllsp" when run outside
 of a dune project.
 
-
 This is necessary for dune to act as it normally would outside of a
 dune workspace.
   $ unset INSIDE_DUNE

@@ -488,8 +488,8 @@ type external_ = Path.t t
 type local = Path.Build.t t
 
 let map t ~path_kind ~f_path ~f_obj_dir ~f_public_deps =
-  let f_dir = f_path ~kind:`Dir in
-  let f = f_path ~kind:`File in
+  let f_dir = f_path ~kind:Install.Entry.Expanded.Directory in
+  let f = f_path ~kind:File in
   let list = List.map ~f in
   let mode_list = Mode.Dict.map ~f:list in
   let native_archives =
@@ -692,8 +692,8 @@ let for_dune_package
             if Path.is_managed p
             then (
               match kind with
-              | `File -> Path.relative dir (Path.basename p)
-              | `Dir -> dir)
+              | Install.Entry.Expanded.File -> Path.relative dir (Path.basename p)
+              | Directory -> dir)
             else p)
 ;;
 

@@ -34,6 +34,21 @@ module Conflict_markers = struct
   let decode = enum (List.map all ~f:(fun x -> to_string x, x))
 end
 
+module Shell = struct
+  type t =
+    | Sh
+    | Bash
+
+  let all = [ "sh", Sh; "bash", Bash ]
+
+  let to_string =
+    let all = List.rev_map all ~f:Tuple.T2.swap in
+    fun x -> Option.value_exn (List.assoc all x)
+  ;;
+
+  let decode = enum all
+end
+
 type t =
   { loc : Loc.t
   ; applies_to : applies_to
@@ -46,6 +61,7 @@ type t =
   ; runtest_alias : (Loc.t * bool) option
   ; timeout : (Loc.t * Time.Span.t) option
   ; setup_scripts : (Loc.t * string) list
+  ; shell : Shell.t option
   }
 
 include Stanza.Make (struct
@@ -108,6 +124,8 @@ let decode =
            (Dune_lang.Syntax.since Stanza.syntax (3, 21) >>> repeat (located string))
        in
        Option.value scripts ~default:[]
+     and+ shell =
+       field_o "shell" (Dune_lang.Syntax.since Stanza.syntax (3, 22) >>> Shell.decode)
      in
      { loc
      ; alias
@@ -120,5 +138,6 @@ let decode =
      ; timeout
      ; conflict_markers
      ; setup_scripts
+     ; shell
      })
 ;;

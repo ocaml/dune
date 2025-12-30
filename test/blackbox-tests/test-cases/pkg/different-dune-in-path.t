@@ -1,7 +1,5 @@
 Clarify the behavior when the `dune` in PATH is not the one used to start the build.
 
-  $ . ./helpers.sh
-
   $ make_test_package() {
   >   mkdir tmp
   >   cd tmp
@@ -37,6 +35,8 @@ Make lockfiles for the packages.
   > (build
   >  (run dune build -p %{pkg-self:name} @install))
   > 
+  > (depends dune)
+  > 
   > (source
   >  (fetch
   >   (url $PWD/foo.tar)))
@@ -51,6 +51,8 @@ Make lockfiles for the packages.
   >   ; Exercise that the dune exe can be located when it's launched by a subprocess.
   >  (run sh -c "dune build -p %{pkg-self:name} @install"))
   > 
+  > (depends dune)
+  > 
   > (source
   >  (fetch
   >   (url $PWD/bar.tar)))
@@ -60,7 +62,6 @@ Make lockfiles for the packages.
 
 Test that the project can be built normally.
   $ build_pkg foo
-
 
 Make a fake dune exe:
 
@@ -89,12 +90,17 @@ Remember the digests, to not to have to call nested Dunes:
 Call Dune with an absolute PATH as argv[0]:
 
   $ PATH=$fakepath $DUNE build "$pkg_root/$foo_digest/target/"
-  Fake dune! (args: build -p foo @install)
   $ PATH=$fakepath $DUNE build "$pkg_root/$bar_digest/target/"
-  Fake dune! (args: build -p bar @install)
 
-Make sure that fake dune is not picked up when dune is called with argv[0] = "dune":
+argv[0] is set by the calling program (like a shell or cram test runner) and
+could be wrong, hence it cannot always be trusted. In the examples above we
+launch dune with an absolute path, thus one could just use argv[0] to get the
+exact path to the `dune` binary.
+
+To make sure that we pick up the right dune even when argv[0] is being set to
+unhelpful values we launch the binary but set the value to a relative value,
+namely argv[0] = "dune". This is exactly what happens if `dune` is in the PATH
+and the user launches `dune` in a shell.
 
   $ dune clean
   $ PATH=$fakepath dune_cmd exec-a "dune" $DUNE build "$pkg_root/$foo_digest/target/"
-  Fake dune! (args: build -p foo @install)

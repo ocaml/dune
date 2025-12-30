@@ -58,7 +58,10 @@ module Entry : sig
   val to_dyn : t Dyn.builder
 end
 
-type path = [ `File | `Dir ] * Install.Entry.Dst.t
+type path =
+  { kind : Install.Entry.Expanded.kind
+  ; dst : Install.Entry.Dst.t
+  }
 
 type t =
   { name : Package.Name.t

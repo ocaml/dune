@@ -1,7 +1,6 @@
 Test the installation of toolchains package by building and installing
 a mock compiler package using dune's toolchain mechanism.
 
-  $ . ./helpers.sh
   $ make_lockdir
   $ add_mock_repo_if_needed
 
@@ -83,6 +82,8 @@ We generate a fake package to use it
 We try to build the dependency to show that it echoes the wong path. Until we
 fix the problem, it shows the sandbox path
 
-  $ XDG_CACHE_HOME=$PWD/fake-cache dune build @pkg-install 2>&1 | sed -E 's#[[:alnum:]]{32}#<hash>#g' | sed 's#[^ ]*_build#$TESTCASE_ROOT/_build#g'
+  $ XDG_CACHE_HOME=$PWD/fake-cache dune build @pkg-install 2>&1 \
+  > | dune_cmd subst '[[:alnum:]]{32}' '<hash>' \
+  > | dune_cmd subst '[^ ]*_build' '$TESTCASE_ROOT/_build'
   $TESTCASE_ROOT/_build/.sandbox/<hash>/_private/default/.pkg/ocaml-base-compiler.1-<hash>/target/share/ocaml-base-compiler
 

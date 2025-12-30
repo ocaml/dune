@@ -35,8 +35,11 @@ module type PARAMS = sig
   val dir : Path.Build.t
 
   (* [stanza] is the [(menhir ...)] stanza, as found in the [dune] file. *)
-
   val stanza : stanza
+
+  (* [module_path] is the module path from the module group root to this
+     module, accounting for `(include_subdirs ..)`. *)
+  val module_path : Module_name.t list
 end
 
 (* -------------------------------------------------------------------------- *)
@@ -255,7 +258,7 @@ module Run (P : PARAMS) = struct
     let mock_module : Module.t =
       let source =
         let impl = Module.File.make Dialect.ocaml (Path.build (mock_ml base)) in
-        Module.Source.make ~impl:(Some impl) ~intf:None [ name ]
+        Module.Source.make ~impl:(Some impl) ~intf:None (module_path @ [ name ])
       in
       Module.of_source ~visibility:Public ~kind:Impl source
     in
@@ -367,12 +370,13 @@ let module_names (stanza : Menhir_stanza.t) : Module_name.t list =
     Module_name.of_string_allow_invalid (stanza.loc, s))
 ;;
 
-let gen_rules ~dir cctx stanza =
+let gen_rules ~dir ~module_path cctx stanza =
   let module R =
     Run (struct
       let cctx = cctx
       let dir = dir
       let stanza = stanza
+      let module_path = module_path
     end)
   in
   R.gen_rules ()

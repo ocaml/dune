@@ -42,6 +42,3 @@
 Menhir parsers in qualified subdirectories should be able to refer to sibling modules:
 
   $ dune build
-  File "lang/parser.mly", line 2, characters 8-11:
-  Error: Unbound module Ast
-  [1]

@@ -254,7 +254,8 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
                List.find_map cctxs ~f:(fun (loc, cctx) ->
                  Option.some_if (Loc.equal loc (Ml_sources.Origin.loc origin)) cctx))
            >>= (function
-            | Some cctx -> Menhir_rules.gen_rules cctx m ~dir:ctx_dir
+            | Some cctx ->
+              Menhir_rules.gen_rules cctx m ~module_path:base_path ~dir:ctx_dir
             | None ->
               (* This happens often when passing a [-p ...] option that hides a
                  library *)

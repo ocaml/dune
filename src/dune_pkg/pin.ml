@@ -297,7 +297,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
             (OpamUrl.to_string (snd package.url))
         ]
     | Some pkg ->
-      let resolved_package =
+      let+ resolved_package =
         let local_package = Local_package.of_package pkg in
         let opam_file =
           local_package
@@ -310,10 +310,23 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
             (Package_name.to_opam_package_name package.name)
             (Package_version.to_opam_package_version package.version)
         in
-        Resolved_package.local_package
-          ~command_source:local_package.command_source
-          (package.loc, opam_file)
-          opam_package
+        let _, url = package.url in
+        let loc = package.loc in
+        let+ mount = Mount.of_opam_url loc url in
+        match Mount.backend mount with
+        | Path _ ->
+          Resolved_package.local_package
+            ~command_source:local_package.command_source
+            (loc, opam_file)
+            opam_package
+        | Git at_rev ->
+          (* when pinning there is no files dir nor does it make sense *)
+          Resolved_package.git_repo
+            opam_package
+            (loc, opam_file)
+            at_rev
+            ~files_dir:None
+            ~url:(Some url)
       in
       mark_resolved package.name resolved_package
   in
@@ -336,7 +349,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
         >>= (function
          | None -> pinned_via_opam stack package
          | Some (pins, packages) ->
-           pinned_via_dune packages package;
+           let* () = pinned_via_dune packages package in
            let pins = DB.add_opam_pins pins packages in
            loop stack pins))
   in

@@ -202,14 +202,16 @@ let empty =
 
 let artifacts t = Memo.Lazy.force t.artifacts
 
-let modules_of_files_gen ~path ~dir (impl_files, intf_files) =
-  let parse_one_set (files : (Module_name.t * Module.File.t) list) =
-    match Module_name.Map.of_list files with
+let modules_of_files_gen =
+  let parse_one_set (files : (string * Module.File.t) list) ~dir =
+    match Filename.Map.of_list files with
     | Ok x -> x
     | Error (name, f1, f2) ->
+      let loc = Loc.in_dir dir in
+      let name = Module_name.of_string_allow_invalid (loc, name) in
       let src_dir = Path.drop_build_context_exn dir in
       User_error.raise
-        ~loc:(Loc.in_dir dir)
+        ~loc
         [ Pp.textf
             "Too many files for module %s in %s:"
             (Module_name.to_string name)
@@ -218,18 +220,23 @@ let modules_of_files_gen ~path ~dir (impl_files, intf_files) =
         ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f2))
         ]
   in
-  let impls = parse_one_set impl_files in
-  let intfs = parse_one_set intf_files in
-  Module_name.Map.merge impls intfs ~f:(fun name impl intf ->
-    Some (Module.Source.make Nonempty_list.(path @ [ name ]) ~impl ~intf))
+  fun ~dir (impl_files, intf_files) ->
+    let impls = parse_one_set impl_files ~dir in
+    let intfs = parse_one_set intf_files ~dir in
+    let loc = Loc.in_dir dir in
+    Filename.Map.merge impls intfs ~f:(fun name impl intf ->
+      let module_path =
+        (* later replaced *)
+        Nonempty_list.[ Module_name.of_string_allow_invalid (loc, name) ]
+      in
+      Some (Module.Source.make module_path ~impl ~intf))
 ;;
 
-let modules_of_files ~path ~dialects ~dir ~files =
+let modules_of_files ~dialects ~dir ~files =
   let dir = Path.build dir in
   let make_module dialect name fn =
     name, Module.File.make dialect (Path.relative dir fn)
   in
-  let loc = Loc.in_dir dir in
   Filename.Set.to_list files
   |> List.filter_partition_map ~f:(fun fn ->
     (* we aren't using Filename.extension because we want to handle
@@ -240,14 +247,11 @@ let modules_of_files ~path ~dialects ~dir ~files =
       (match Dialect.DB.find_by_extension dialects ("." ^ ext) with
        | None -> Skip
        | Some (dialect, ml_kind) ->
-         let module_ =
-           let name = Module_name.of_string_allow_invalid (loc, s) in
-           make_module dialect name fn
-         in
+         let module_ = make_module dialect s fn in
          (match ml_kind with
           | Impl -> Left module_
           | Intf -> Right module_)))
-  |> modules_of_files_gen ~path ~dir
+  |> modules_of_files_gen ~dir
 ;;
 
 type for_ =
@@ -419,9 +423,8 @@ module Parser_generators = struct
       let path = Path.set_extension original_path ~ext in
       module_name, Module.File.make ~original_path Dialect.ocaml path
     in
-    fun ~path ~dir ~files ->
+    fun ~dir ~files ->
       let dir = Path.build dir in
-      let loc = Loc.in_dir dir in
       Filename.Set.to_list files
       |> List.concat_map ~f:(fun fn ->
         (* we aren't using Filename.extension because we want to handle
@@ -431,21 +434,18 @@ module Parser_generators = struct
         | Some (s, ext) ->
           (match classify ext with
            | Some kind ->
-             let module_name = Module_name.of_string_allow_invalid (loc, s) in
              let original_path = Path.relative dir fn in
              (match kind with
               | Ocamllex ->
-                let module_ =
-                  make_module module_name ~original_path ~ml_kind:Ml_kind.Impl
-                in
+                let module_ = make_module s ~original_path ~ml_kind:Ml_kind.Impl in
                 [ Left module_ ]
               | Parser ->
-                let impl = make_module module_name ~original_path ~ml_kind:Ml_kind.Impl
-                and intf = make_module module_name ~original_path ~ml_kind:Ml_kind.Intf in
+                let impl = make_module s ~original_path ~ml_kind:Ml_kind.Impl
+                and intf = make_module s ~original_path ~ml_kind:Ml_kind.Intf in
                 [ Left impl; Right intf ])
            | None -> [ Skip ]))
       |> List.filter_partition_map ~f:Fun.id
-      |> modules_of_files_gen ~path ~dir
+      |> modules_of_files_gen ~dir
   ;;
 
   let eval_source_modules
@@ -680,7 +680,7 @@ let modules_of_stanzas =
     match result with
     | `Executables group_part -> `Tests { group_part with stanza = tests }
   in
-  let merge_parser_sources ~ocamllexes ~ocamlyaccs modules =
+  let merge_parser_sources modules ~ocamllexes ~ocamlyaccs =
     let parser_gen_modules =
       List.concat
         [ List.map ocamllexes ~f:(fun (x : _ Per_stanza.parser_gen_group) -> x.sources)
@@ -711,23 +711,26 @@ let modules_of_stanzas =
     ~project
     ~libs
     ~lookup_vlib
-    ~(modules : Module.Source.t Module_trie.t)
-    ~parser_gen_modules
+    ~(modules : Module.Source.t Module_trie.t Memo.Lazy.t)
+    ~(parser_gen_modules : Module.Source.t Module_trie.t Memo.Lazy.t)
     ~include_subdirs ->
     let { Source_file_dir.dir; _ } = Nonempty_list.hd dirs in
     let dirs =
       match include_subdirs with
       | _, (Include_subdirs.No | Include Unqualified) ->
         Nonempty_list.to_list_map dirs ~f:(fun (dune_file : Source_file_dir.t) ->
-          None, dune_file.stanzas)
+          lazy None, dune_file.stanzas)
       | _, Include Qualified ->
         Nonempty_list.to_list_map dirs ~f:(fun (dune_file : Source_file_dir.t) ->
-          let path =
-            let loc = Path.build dir |> Path.drop_optional_build_context |> Loc.in_dir in
-            List.map dune_file.path_to_root ~f:(fun m ->
-              Module_name.parse_string_exn (loc, m))
-          in
-          Some path, dune_file.stanzas)
+          ( lazy
+              (let path =
+                 let dir = Path.build dir in
+                 let loc = Loc.in_dir (Path.drop_optional_build_context dir) in
+                 List.map dune_file.path_to_root ~f:(fun m ->
+                   Module_name.parse_string_exn (loc, m))
+               in
+               Some path)
+          , dune_file.stanzas ))
     in
     let* ocamllexes, ocamlyaccs =
       Memo.parallel_map dirs ~f:(fun (module_path, stanzas) ->
@@ -745,11 +748,13 @@ let modules_of_stanzas =
             (match Stanza.repr stanza with
              | Parser_generators.Stanzas.Ocamllex.T ocamllex ->
                let+ sources =
+                 let* all_modules = Memo.Lazy.force parser_gen_modules in
+                 let module_path = Lazy.force module_path in
                  Parser_generators.eval_source_modules
                    ~src_dir:dir
                    ~project
                    ~expander
-                   ~all_modules:parser_gen_modules
+                   ~all_modules
                    ~module_path
                    ~loc:ocamllex.loc
                    ocamllex.modules
@@ -757,11 +762,13 @@ let modules_of_stanzas =
                List.Left { Per_stanza.stanza = ocamllex; sources }
              | Parser_generators.Stanzas.Ocamlyacc.T ocamlyacc ->
                let+ sources =
+                 let* all_modules = Memo.Lazy.force parser_gen_modules in
+                 let module_path = Lazy.force module_path in
                  Parser_generators.eval_source_modules
                    ~src_dir:dir
                    ~project
                    ~expander
-                   ~all_modules:parser_gen_modules
+                   ~all_modules
                    ~module_path
                    ~loc:ocamlyacc.loc
                    ocamlyacc.modules
@@ -771,7 +778,9 @@ let modules_of_stanzas =
       >>| List.concat
       >>| List.filter_partition_map ~f:Fun.id
     in
-    let modules = merge_parser_sources ~ocamllexes ~ocamlyaccs modules in
+    let* modules =
+      Memo.Lazy.force modules >>| merge_parser_sources ~ocamllexes ~ocamlyaccs
+    in
     Memo.parallel_map dirs ~f:(fun (_, stanzas) ->
       Memo.parallel_map stanzas ~f:(fun stanza ->
         let enabled_if =
@@ -838,6 +847,26 @@ let modules_of_stanzas =
     >>| fun modules_of_stanzas -> { modules_of_stanzas with ocamllexes; ocamlyaccs }
 ;;
 
+let module_trie_by_module_name modules =
+  Memo.lazy_ (fun () ->
+    Module_trie.By_dir.foldi modules ~init:Module_trie.empty ~f:(fun module_key m acc ->
+      let path =
+        let file = Module.Source.files m |> List.hd in
+        let dir = Module.File.path file |> Path.parent_exn in
+        let loc = Path.drop_optional_build_context dir |> Loc.in_dir in
+        let (module_name :: dirs) = Nonempty_list.rev module_key in
+        let module_name = Module_name.of_string_allow_invalid (loc, module_name) in
+        let dirs = List.map dirs ~f:(fun s -> Module_name.parse_string_exn (loc, s)) in
+        Nonempty_list.(rev (module_name :: dirs))
+      in
+      let m =
+        let { Ml_kind.Dict.impl; intf } = Module.Source.files_by_ml_kind m in
+        Module.Source.make ~impl ~intf path
+      in
+      Module_trie.set acc path m)
+    |> Memo.return)
+;;
+
 let make
       ~expander
       ~libs
@@ -856,30 +885,21 @@ let make
       | Include Qualified ->
         let set_modules acc path modules =
           match path with
-          | [] -> Ok (Module_trie.of_map modules)
-          | p :: path -> Module_trie.set_map acc (p :: path) modules
+          | [] -> Ok (Module_trie.By_dir.of_map modules)
+          | p :: path -> Module_trie.By_dir.set_map acc (p :: path) modules
         in
         List.fold_left
           dirs
-          ~init:(Module_trie.empty, Module_trie.empty)
+          ~init:(Module_trie.By_dir.empty, Module_trie.By_dir.empty)
           ~f:
             (fun
               (acc, acc_parsing)
               { Source_file_dir.dir; path_to_root; files; source_dir = _; stanzas = _ }
             ->
             match
-              let path =
-                let loc =
-                  Path.build dir |> Path.drop_optional_build_context |> Loc.in_dir
-                in
-                List.map path_to_root ~f:(fun m -> Module_name.parse_string_exn (loc, m))
-              in
-              let modules = modules_of_files ~dialects ~dir ~files ~path in
-              let parser_gen_modules =
-                Parser_generators.modules_of_files ~dir ~files ~path
-              in
-              ( set_modules acc path modules
-              , set_modules acc_parsing path parser_gen_modules )
+              ( modules_of_files ~dialects ~dir ~files |> set_modules acc path_to_root
+              , Parser_generators.modules_of_files ~dir ~files
+                |> set_modules acc_parsing path_to_root )
             with
             | Ok s, Ok s' -> s, s'
             | Error module_, _ | _, Error module_ ->
@@ -915,7 +935,7 @@ let make
         let modules, parser_gen_modules =
           List.fold_left
             dirs
-            ~init:(Module_name.Map.empty, Module_name.Map.empty)
+            ~init:(Filename.Map.empty, Filename.Map.empty)
             ~f:
               (fun
                 (acc, acc_parsing)
@@ -926,17 +946,15 @@ let make
                 ; stanzas = _
                 }
               ->
-              let path = [] in
-              let modules = modules_of_files ~dialects ~dir ~files ~path in
-              let parser_gen_modules =
-                Parser_generators.modules_of_files ~dir ~files ~path
-              in
+              let modules = modules_of_files ~dialects ~dir ~files in
+              let parser_gen_modules = Parser_generators.modules_of_files ~dir ~files in
               let union_exn name x y =
                 User_error.raise
                   ~loc
                   [ Pp.textf
                       "Module %S appears in several directories:"
-                      (Module_name.to_string name)
+                      (Module_name.of_string_allow_invalid (Loc.none, name)
+                       |> Module_name.to_string)
                   ; Pp.textf
                       "- %s"
                       (Path.to_string_maybe_quoted (Module.Source.src_dir x))
@@ -946,10 +964,13 @@ let make
                   ; Pp.text "This is not allowed, please rename one of them."
                   ]
               in
-              ( Module_name.Map.union acc modules ~f:union_exn
-              , Module_name.Map.union acc_parsing parser_gen_modules ~f:union_exn ))
+              ( Filename.Map.union acc modules ~f:union_exn
+              , Filename.Map.union acc_parsing parser_gen_modules ~f:union_exn ))
         in
-        Module_trie.of_map modules, Module_trie.of_map parser_gen_modules
+        Module_trie.By_dir.of_map modules, Module_trie.By_dir.of_map parser_gen_modules
+    in
+    let modules, parser_gen_modules =
+      module_trie_by_module_name modules, module_trie_by_module_name parser_gen_modules
     in
     modules_of_stanzas
       dirs

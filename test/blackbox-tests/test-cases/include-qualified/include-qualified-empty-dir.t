@@ -17,11 +17,4 @@ directories that don't contain source files
 The directory `bar-baz`, even though not a valid module name, doesn't have any
 source files. The library should still compile.
 
-  $ dune build foo.cma --display=short
-  File "bar-baz", line 1, characters 0-0:
-  Error: "bar-baz" is an invalid module name.
-  Module names must be non-empty, start with a letter, and composed only of the
-  following characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
-  Hint: bar_baz would be a correct module name
-  [1]
-
+  $ dune build foo.cma

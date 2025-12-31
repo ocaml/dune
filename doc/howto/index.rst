@@ -28,3 +28,4 @@ These guides will help you use Dune's features in your project.
    use-opam-alongside-dune-package-management
    configure-editors-with-package-management
    customize-dev-tools-lock-directories
+   many-executables

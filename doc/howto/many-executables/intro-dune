@@ -1,0 +1,6 @@
+(executable
+ (name hello)
+ (libraries greet intro_ocaml))
+
+(executable
+ (name fibonacci))

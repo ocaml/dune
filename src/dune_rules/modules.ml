@@ -236,7 +236,7 @@ module Mangle = struct
       then None
       else
         Some
-          (List.map ~f:Module_name.uncapitalize (Nonempty_list.to_list path)
+          (Nonempty_list.to_list_map path ~f:Module_name.uncapitalize
            |> Path.Local.L.relative Path.Local.root
            |> Path.Local.set_extension ~ext:".ml")
     in

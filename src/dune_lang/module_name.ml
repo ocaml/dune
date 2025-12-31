@@ -117,10 +117,7 @@ module Path = struct
 
     let to_dyn t = Dyn.list to_dyn (Nonempty_list.to_list t)
     let compare = Nonempty_list.compare ~compare
-
-    let to_string Nonempty_list.(t :: ts) =
-      List.map ~f:to_string (t :: ts) |> String.concat ~sep:"."
-    ;;
+    let to_string t = Nonempty_list.to_list_map ~f:to_string t |> String.concat ~sep:"."
   end
 
   include T

@@ -35,8 +35,7 @@ let rec find t (p :: ps : key) =
      | p :: ps -> find t (p :: ps))
 ;;
 
-let rec gen_set_k t ps v ~on_exists =
-  let Nonempty_list.(p :: ps) = ps in
+let rec gen_set_k t (p :: ps : key) v ~on_exists =
   Map.update t p ~f:(fun x ->
     match ps with
     | [] ->

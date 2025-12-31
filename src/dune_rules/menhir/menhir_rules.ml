@@ -258,7 +258,10 @@ module Run (P : PARAMS) = struct
     let mock_module : Module.t =
       let source =
         let impl = Module.File.make Dialect.ocaml (Path.build (mock_ml base)) in
-        Module.Source.make ~impl:(Some impl) ~intf:None (module_path @ [ name ])
+        Module.Source.make
+          ~impl:(Some impl)
+          ~intf:None
+          Nonempty_list.(module_path @ [ name ])
       in
       Module.of_source ~visibility:Public ~kind:Impl source
     in

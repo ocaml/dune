@@ -104,7 +104,7 @@ module Stdlib = struct
           if Module.name m = main_module_name || special_compiler_module stdlib m
           then m
           else (
-            let path = [ main_module_name; Module.name m ] in
+            let path = Nonempty_list.[ main_module_name; Module.name m ] in
             let m = Module.set_path m path in
             Module.set_obj_name m (Module_name.Path.wrap path)))
     in
@@ -201,26 +201,42 @@ module Mangle = struct
       | _ -> Option.map prefix ~f:(fun p -> p.public), has_lib_interface
     in
     let obj_name =
-      Module_name.Path.wrap
-      @@
-      let base =
-        if has_lib_interface then Module_name.Path.append_double_underscore path else path
+      let wrap =
+        let base =
+          if has_lib_interface
+          then Module_name.Path.append_double_underscore path |> Nonempty_list.to_list
+          else path
+        in
+        match prefix with
+        | Some prefix -> Nonempty_list.(prefix :: base)
+        | None ->
+          (match has_lib_interface, base with
+           | true, [] ->
+             (* Note: impossible, just converted from `Nonempty_list` above. *)
+             assert false
+           | false, [] ->
+             (* Note: the case of a module group
+               a) without a library interface
+               b) without a prefix (unwrapped library)
+             may only occur for a `(include_subdirs qualified)` module alias
+             that's not the root. Therefore, `path` can never be empty in this
+             branch. *)
+             assert false
+           | _, b :: bs -> Nonempty_list.(b :: bs))
       in
-      match prefix with
-      | None -> base
-      | Some prefix -> prefix :: base
+      Module_name.Path.wrap wrap
     in
     let path =
       if has_lib_interface
-      then [ Module_name.Unique.to_name ~loc:Loc.none obj_name ]
-      else path @ [ interface ]
+      then Nonempty_list.[ Module_name.Unique.to_name ~loc:Loc.none obj_name ]
+      else Nonempty_list.(path @ [ interface ])
     in
     let install_as =
       if has_lib_interface
       then None
       else
         Some
-          (List.map ~f:Module_name.uncapitalize path
+          (List.map ~f:Module_name.uncapitalize (Nonempty_list.to_list path)
            |> Path.Local.L.relative Path.Local.root
            |> Path.Local.set_extension ~ext:".ml")
     in
@@ -237,11 +253,23 @@ module Mangle = struct
       let path = Module.path m in
       let prefix = prefix t in
       match t with
-      | Exe | Melange -> (Option.value_exn prefix).public :: path
-      | Unwrapped -> if is_lib_interface then List.remove_last_exn path else path
+      | Exe | Melange ->
+        let prefix = Option.value_exn prefix in
+        let (x :: xs) = path in
+        Nonempty_list.(prefix.public :: x :: xs)
+      | Unwrapped ->
+        if is_lib_interface
+        then (
+          let path = Nonempty_list.to_list path in
+          List.remove_last_exn path |> Nonempty_list.of_list_exn)
+        else path
       | Lib _ ->
-        let path = if is_lib_interface then List.remove_last_exn path else path in
-        Visibility.Map.find (Option.value_exn prefix) (Module.visibility m) :: path
+        let path =
+          let path = Nonempty_list.to_list path in
+          if is_lib_interface then List.remove_last_exn path else path
+        in
+        Nonempty_list.(
+          Visibility.Map.find (Option.value_exn prefix) (Module.visibility m) :: path)
     in
     Module.set_obj_name m (Module_name.Path.wrap path_for_mangle)
   ;;
@@ -278,11 +306,11 @@ module Group = struct
         ; name = interface
         ; modules =
             Module_name.Map.mapi trie ~f:(fun name (m : 'a Module_trie.node) ->
-              let rev_path = name :: rev_path in
+              let rev_path = Nonempty_list.(name :: rev_path) in
               match m with
-              | Map m -> Group (loop name rev_path m)
+              | Map m -> Group (loop name (Nonempty_list.to_list rev_path) m)
               | Leaf m ->
-                let m = Module.set_path m (List.rev rev_path) in
+                let m = Module.set_path m (Nonempty_list.rev rev_path) in
                 Module (Mangle.wrap_module mangle m ~interface:(Some interface)))
         }
       in
@@ -407,7 +435,7 @@ module Group = struct
          | Some (Module _) -> acc
          | Some (Group g) -> loop (g :: acc) g.modules ps)
     in
-    fun acc modules m -> loop acc modules (Module.path m)
+    fun acc modules m -> loop acc modules (Nonempty_list.to_list (Module.path m))
   ;;
 
   (* [parents acc modules m] returns [acc] followed by all parent groups of 
@@ -1297,11 +1325,13 @@ module With_vlib = struct
            the last component.
 
            For example: foo/foo.ml would has the path [ "Foo"; "Foo" ] *)
-        List.remove_last_exn path
+        List.remove_last_exn (Nonempty_list.to_list path) |> Nonempty_list.of_list_exn
     in
     match t with
     | Impl { impl = { modules = Wrapped w; _ }; _ } | Modules { modules = Wrapped w; _ }
-      -> w.group.name :: path
+      ->
+      let (x :: xs) = path in
+      Nonempty_list.(w.group.name :: x :: xs)
     | _ -> Module.path m
   ;;
 end

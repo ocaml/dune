@@ -14,10 +14,10 @@ let empty = Map.empty
 let mapi =
   let rec loop t f acc =
     Map.mapi t ~f:(fun name node ->
-      let path = name :: acc in
+      let path = Nonempty_list.(name :: acc) in
       match node with
-      | Leaf a -> Leaf (f (List.rev path) a)
-      | Map m -> Map (loop m f path))
+      | Leaf a -> Leaf (f (Nonempty_list.rev path) a)
+      | Map m -> Map (loop m f (Nonempty_list.to_list path)))
   in
   fun t ~f -> loop t f []
 ;;
@@ -25,33 +25,29 @@ let mapi =
 let map t ~f = mapi t ~f:(fun _key m -> f m)
 let of_map t : _ t = Map.map t ~f:(fun v -> Leaf v)
 
-let rec find t = function
-  | [] -> None
-  | p :: ps ->
-    (match Map.find t p with
-     | None -> None
-     | Some (Leaf a) -> Option.some_if (List.is_empty ps) a
-     | Some (Map t) -> find t ps)
+let rec find t (p :: ps : key) =
+  match Map.find t p with
+  | None -> None
+  | Some (Leaf a) -> Option.some_if (List.is_empty ps) a
+  | Some (Map t) ->
+    (match ps with
+     | [] -> None
+     | p :: ps -> find t (p :: ps))
 ;;
 
 let rec gen_set_k t ps v ~on_exists =
-  match ps with
-  | [] ->
-    (match v with
-     | Leaf _ -> Code_error.raise "gen_set: no top level leaf" []
-     | Map m -> m)
-  | p :: ps ->
-    Map.update t p ~f:(fun x ->
-      if List.is_empty ps
-      then (
-        match x with
-        | None -> Some v
-        | Some c -> on_exists c)
-      else (
-        match x with
-        | None -> Some (Map (gen_set_k Map.empty ps v ~on_exists))
-        | Some (Leaf _ as leaf) -> Some leaf
-        | Some (Map m) -> Some (Map (gen_set_k m ps v ~on_exists))))
+  let Nonempty_list.(p :: ps) = ps in
+  Map.update t p ~f:(fun x ->
+    match ps with
+    | [] ->
+      (match x with
+       | None -> Some v
+       | Some c -> on_exists c)
+    | p :: ps ->
+      (match x with
+       | None -> Some (Map (gen_set_k Map.empty (p :: ps) v ~on_exists))
+       | Some (Leaf _ as leaf) -> Some leaf
+       | Some (Map m) -> Some (Map (gen_set_k m (p :: ps) v ~on_exists))))
 ;;
 
 let gen_set (type a) (t : a t) ps v =
@@ -74,17 +70,15 @@ let rec filter_map t ~f =
        | Some a -> Some (Leaf a)))
 ;;
 
-let rec remove t = function
-  | [] -> t
-  | p :: ps ->
-    Map.update t p ~f:(fun x ->
-      if List.is_empty ps
-      then None
-      else (
-        match x with
-        | None -> None
-        | Some (Leaf _ as leaf) -> Some leaf
-        | Some (Map m) -> non_empty_map (remove m ps)))
+let rec remove t (p :: ps : key) =
+  Map.update t p ~f:(fun x ->
+    match ps with
+    | [] -> None
+    | p :: ps ->
+      (match x with
+       | None -> None
+       | Some (Leaf _ as leaf) -> Some leaf
+       | Some (Map m) -> non_empty_map (remove m (p :: ps))))
 ;;
 
 let mem t p = Option.is_some (find t p)
@@ -93,7 +87,7 @@ let foldi t ~init ~f =
   let rec loop acc path t =
     Map.foldi ~init:acc t ~f:(fun k v acc ->
       match v with
-      | Leaf s -> f (List.rev (k :: path)) s acc
+      | Leaf s -> f (Nonempty_list.rev (k :: path)) s acc
       | Map t -> loop acc (k :: path) t)
   in
   loop init [] t
@@ -112,14 +106,15 @@ let rec to_dyn f t =
 let merge x y ~f =
   let rec base ~path ~f t =
     Map.foldi t ~init:empty ~f:(fun k v acc ->
-      let path = k :: path in
-      let rev_path = List.rev path in
+      let path = Nonempty_list.(k :: path) in
       match v with
       | Leaf leaf ->
-        (match f rev_path leaf with
+        (match f (Nonempty_list.rev path) leaf with
          | None -> acc
          | Some leaf -> Map.add_exn acc k (Leaf leaf))
-      | Map m -> Map.add_exn acc k (Map (base ~path ~f m)))
+      | Map m ->
+        let path = Nonempty_list.to_list path in
+        Map.add_exn acc k (Map (base ~path ~f m)))
   in
   let rec loop path x y =
     match x, y with
@@ -128,13 +123,14 @@ let merge x y ~f =
     | None, Some y -> base y ~path ~f:(fun path x -> f path None (Some x))
     | Some x, Some y ->
       Map.merge x y ~f:(fun (name : Module_name.t) x y ->
-        let path = name :: path in
-        let rev_path = List.rev path in
+        let path = Nonempty_list.(name :: path) in
+        let rev_path = Nonempty_list.rev path in
         let leaf l r =
           match f rev_path l r with
           | None -> None
           | Some x -> Some (Leaf x)
         in
+        let path = Nonempty_list.to_list path in
         match x, y with
         | None, None -> assert false
         (* leaves *)

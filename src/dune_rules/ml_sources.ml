@@ -201,7 +201,7 @@ let modules_of_files_gen ~path ~dir (impl_files, intf_files) =
   let impls = parse_one_set impl_files in
   let intfs = parse_one_set intf_files in
   Module_name.Map.merge impls intfs ~f:(fun name impl intf ->
-    Some (Module.Source.make (path @ [ name ]) ~impl ~intf))
+    Some (Module.Source.make Nonempty_list.(path @ [ name ]) ~impl ~intf))
 ;;
 
 let modules_of_files ~path ~dialects ~dir ~files =
@@ -774,6 +774,11 @@ let make
       let dialects = Dune_project.dialects project in
       match include_subdirs with
       | Include Qualified ->
+        let set_modules acc path modules =
+          match path with
+          | [] -> Ok (Module_trie.of_map modules)
+          | p :: path -> Module_trie.set_map acc (p :: path) modules
+        in
         List.fold_left
           dirs
           ~init:(Module_trie.empty, Module_trie.empty)
@@ -793,8 +798,8 @@ let make
               let parser_gen_modules =
                 Parser_generators.modules_of_files ~dir ~files ~path
               in
-              ( Module_trie.set_map acc path modules
-              , Module_trie.set_map acc_parsing path parser_gen_modules )
+              ( set_modules acc path modules
+              , set_modules acc_parsing path parser_gen_modules )
             with
             | Ok s, Ok s' -> s, s'
             | Error module_, _ | _, Error module_ ->

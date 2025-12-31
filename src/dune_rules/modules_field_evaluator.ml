@@ -20,7 +20,7 @@ type kind =
 
 let eval0 =
   let key = function
-    | Error s -> [ s ]
+    | Error s -> Nonempty_list.[ s ]
     | Ok m -> [ Module.Source.name m ]
   in
   let module Key = struct
@@ -47,10 +47,10 @@ let eval0 =
   let parse ~all_modules ~loc ~fake_modules ~module_path s =
     let name = Module_name.of_string_allow_invalid (loc, s) in
     let path =
-      let base = [ name ] in
+      let base = Nonempty_list.[ name ] in
       match module_path with
       | None -> base
-      | Some module_path -> module_path @ [ name ]
+      | Some module_path -> Nonempty_list.(module_path @ base)
     in
     match Module_trie.find all_modules path with
     | Some m -> Ok m
@@ -388,7 +388,7 @@ let eval
     ~version;
   let all_modules =
     Module_trie.mapi modules ~f:(fun _path (_, m) ->
-      let name = [ Module.Source.name m ] in
+      let name = Nonempty_list.[ Module.Source.name m ] in
       let visibility =
         if Module_trie.mem private_modules name then Visibility.Private else Public
       in
@@ -410,7 +410,7 @@ let eval
   match root_module with
   | None -> all_modules
   | Some (_, name) ->
-    let path = [ name ] in
+    let path = Nonempty_list.[ name ] in
     let module_ = Module.generated ~kind:Root ~src_dir path in
     Module_trie.set all_modules path module_
 ;;

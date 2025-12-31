@@ -15,3 +15,13 @@ artifacts
   $ touch invalid-module.ml
 
   $ dune build
+
+  $ cat > dune <<EOF
+  > (library (name foo))
+  > EOF
+  $ dune build
+  Error: foo__Invalid-module corresponds to an invalid module name
+  -> required by _build/default/foo__.ml-gen
+  -> required by alias all
+  -> required by alias default
+  [1]

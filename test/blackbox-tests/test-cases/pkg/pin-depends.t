@@ -90,13 +90,14 @@ Git pinned source:
   > EOF
   $ git add -A
   $ git commit --quiet -m "Initial commit"
+  $ expected_commit=$(git rev-parse HEAD)
   $ cd ..
-  $ runtest "git+file://$PWD/$dir"
+  $ runtest "git+file://$PWD/$dir" | dune_cmd subst $expected_commit '$EXPECTED_COMMIT'
   Solution for dune.lock:
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url git+file://PWD/_bar_git)))
+  (source (fetch (url git+file://PWD/_bar_git#$EXPECTED_COMMIT)))
 
 Git pinned source with toplevel opam file:
 
@@ -109,13 +110,14 @@ Git pinned source with toplevel opam file:
   > EOF
   $ git add -A
   $ git commit --quiet -m "Initial commit"
+  $ expected_commit=$(git rev-parse HEAD)
   $ cd ..
-  $ runtest "git+file://$PWD/$dir"
+  $ runtest "git+file://$PWD/$dir" | dune_cmd subst $expected_commit '$EXPECTED_COMMIT'
   Solution for dune.lock:
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url git+file://PWD/_bar_opam_git)))
+  (source (fetch (url git+file://PWD/_bar_opam_git#$EXPECTED_COMMIT)))
 
 Git pinned source with toplevel opam dir 1
 
@@ -129,13 +131,14 @@ Git pinned source with toplevel opam dir 1
   > EOF
   $ git add -A
   $ git commit --quiet -m "Initial commit"
+  $ expected_commit=$(git rev-parse HEAD)
   $ cd ..
-  $ runtest "git+file://$PWD/$dir"
+  $ runtest "git+file://$PWD/$dir" | dune_cmd subst $expected_commit '$EXPECTED_COMMIT'
   Solution for dune.lock:
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url git+file://PWD/_bar_opam_dir_git1)))
+  (source (fetch (url git+file://PWD/_bar_opam_dir_git1#$EXPECTED_COMMIT)))
 
 Git pinned source with toplevel opam dir 2
 

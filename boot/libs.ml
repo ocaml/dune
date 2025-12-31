@@ -111,6 +111,12 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
+  ; { path = "vendor/bigstringaf"
+    ; main_module_name = Some "Bigstringaf"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
   ; { path = "src/dune_trace"
     ; main_module_name = Some "Dune_trace"
     ; include_subdirs = No
@@ -341,12 +347,6 @@ let local_libraries =
     }
   ; { path = "src/dune_findlib"
     ; main_module_name = Some "Dune_findlib"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "vendor/bigstringaf"
-    ; main_module_name = Some "Bigstringaf"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None

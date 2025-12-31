@@ -558,7 +558,7 @@ let run_cram_test
     sh
     ((match shell with
       | Sh -> []
-      | Bash -> [ "-euo"; "pipefail" ])
+      | Bash -> [ "-uo"; "pipefail" ])
      @ [ Path.to_string sh_script.script ])
   >>| function
   | Ok () ->

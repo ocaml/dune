@@ -37,7 +37,9 @@ val modules_and_obj_dir
 val modules : t -> libs:Lib.DB.t -> for_:for_ -> Modules.t Memo.t
 
 module Parser_generators : sig
-  type for_ = Ocamllex of Loc.t
+  type for_ =
+    | Ocamllex of Loc.t
+    | Ocamlyacc of Loc.t
 
   val source_modules : t -> for_:for_ -> Module.Source.t Module_trie.t option
 end

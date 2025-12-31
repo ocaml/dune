@@ -38,6 +38,7 @@ module Per_stanza = struct
     ; executables : component String.Map.t
     ; melange_emits : component String.Map.t
     ; ocamllexes : Module.Source.t Module_trie.t Loc.Map.t
+    ; ocamlyaccs : Module.Source.t Module_trie.t Loc.Map.t
     ; (* Map from modules to the origin they are part of *)
       rev_map : (Origin.t * Path.Build.t) list Module_name.Path.Map.t
     ; libraries_by_obj_dir : Lib_id.Local.t list Path.Build.Map.t
@@ -48,6 +49,7 @@ module Per_stanza = struct
     ; executables = String.Map.empty
     ; melange_emits = String.Map.empty
     ; ocamllexes = Loc.Map.empty
+    ; ocamlyaccs = Loc.Map.empty
     ; rev_map = Module_name.Path.Map.empty
     ; libraries_by_obj_dir = Path.Build.Map.empty
     }
@@ -71,11 +73,18 @@ module Per_stanza = struct
     ; executables : Executables.t group_part list
     ; tests : Tests.t group_part list
     ; melange_emits : Melange_stanzas.Emit.t group_part list
-    ; ocamllexes : Ocamllex.t parser_gen_group list
+    ; ocamllexes : Parser_generators.t parser_gen_group list
+    ; ocamlyaccs : Parser_generators.t parser_gen_group list
     }
 
   let make
-        { libraries = libs; executables = exes; tests; melange_emits = emits; ocamllexes }
+        { libraries = libs
+        ; executables = exes
+        ; tests
+        ; melange_emits = emits
+        ; ocamllexes
+        ; ocamlyaccs
+        }
     =
     let libraries, libraries_by_obj_dir =
       List.fold_left
@@ -139,6 +148,10 @@ module Per_stanza = struct
       Loc.Map.of_list_map_exn ocamllexes ~f:(fun { stanza; sources } ->
         stanza.loc, sources)
     in
+    let ocamlyaccs =
+      Loc.Map.of_list_map_exn ocamlyaccs ~f:(fun { stanza; sources } ->
+        stanza.loc, sources)
+    in
     let rev_map =
       let by_path (origin : Origin.t * Path.Build.t) trie =
         Module_trie.fold trie ~init:[] ~f:(fun (_loc, m) acc ->
@@ -161,7 +174,14 @@ module Per_stanza = struct
                | None -> Some [ origin ]
                | Some origins -> Some (origin :: origins)))
     in
-    { libraries; executables; melange_emits; ocamllexes; rev_map; libraries_by_obj_dir }
+    { libraries
+    ; executables
+    ; melange_emits
+    ; ocamllexes
+    ; ocamlyaccs
+    ; rev_map
+    ; libraries_by_obj_dir
+    }
   ;;
 end
 
@@ -213,7 +233,7 @@ let modules_of_files ~path ~dialects ~dir ~files =
   Filename.Set.to_list files
   |> List.filter_partition_map ~f:(fun fn ->
     (* we aren't using Filename.extension because we want to handle
-         filenames such as foo.cppo.ml *)
+       filenames such as foo.cppo.ml *)
     match String.lsplit2 fn ~on:'.' with
     | None -> Skip
     | Some (s, ext) ->
@@ -371,11 +391,16 @@ let virtual_modules ~lookup_vlib ~libs vlib =
 ;;
 
 module Parser_generators = struct
-  type for_ = Ocamllex of Loc.t
+  module Stanzas = Parser_generators
+
+  type for_ =
+    | Ocamllex of Loc.t
+    | Ocamlyacc of Loc.t
 
   let source_modules t ~for_ =
-    let (Ocamllex loc) = for_ in
-    Loc.Map.find t.modules.ocamllexes loc
+    match for_ with
+    | Ocamllex loc -> Loc.Map.find t.modules.ocamllexes loc
+    | Ocamlyacc loc -> Loc.Map.find t.modules.ocamlyaccs loc
   ;;
 
   type t =
@@ -388,31 +413,63 @@ module Parser_generators = struct
     | _ -> None
   ;;
 
-  let modules_of_files ~path ~dir ~files =
-    let dir = Path.build dir in
-    let loc = Loc.in_dir dir in
-    Filename.Set.to_list files
-    |> List.concat_map ~f:(fun fn ->
-      (* we aren't using Filename.extension because we want to handle
-         filenames such as foo.cppo.ml *)
-      match String.lsplit2 fn ~on:'.' with
-      | None -> [ List.Skip ]
-      | Some (s, ext) ->
-        (match classify ext with
-         | Some Ocamllex ->
-           let module_ =
-             let name = Module_name.of_string_allow_invalid (loc, s) in
+  let modules_of_files =
+    let make_module module_name ~original_path ~ml_kind =
+      let ext = Dialect.extension Dialect.ocaml ml_kind |> Option.value_exn in
+      let path = Path.set_extension original_path ~ext in
+      module_name, Module.File.make ~original_path Dialect.ocaml path
+    in
+    fun ~path ~dir ~files ->
+      let dir = Path.build dir in
+      let loc = Loc.in_dir dir in
+      Filename.Set.to_list files
+      |> List.concat_map ~f:(fun fn ->
+        (* we aren't using Filename.extension because we want to handle
+           filenames such as foo.cppo.ml *)
+        match String.lsplit2 fn ~on:'.' with
+        | None -> [ List.Skip ]
+        | Some (s, ext) ->
+          (match classify ext with
+           | Some kind ->
+             let module_name = Module_name.of_string_allow_invalid (loc, s) in
              let original_path = Path.relative dir fn in
-             let ext = Dialect.extension Dialect.ocaml Ml_kind.Impl |> Option.value_exn in
-             let path = Path.set_extension original_path ~ext in
-             name, Module.File.make ~original_path Dialect.ocaml path
-           in
-           [ Left module_ ]
-         | Some Parser
-         (* XXX(anmonteiro): ocamlyacc will return impl + intf *)
-         | None -> [ Skip ]))
-    |> List.filter_partition_map ~f:Fun.id
-    |> modules_of_files_gen ~path ~dir
+             (match kind with
+              | Ocamllex ->
+                let module_ =
+                  make_module module_name ~original_path ~ml_kind:Ml_kind.Impl
+                in
+                [ Left module_ ]
+              | Parser ->
+                let impl = make_module module_name ~original_path ~ml_kind:Ml_kind.Impl
+                and intf = make_module module_name ~original_path ~ml_kind:Ml_kind.Intf in
+                [ Left impl; Right intf ])
+           | None -> [ Skip ]))
+      |> List.filter_partition_map ~f:Fun.id
+      |> modules_of_files_gen ~path ~dir
+  ;;
+
+  let eval_source_modules
+        ~src_dir
+        ~project
+        ~expander
+        ~all_modules:modules
+        ~module_path
+        ~loc
+        modules_osl
+    =
+    let version = Dune_project.dune_version project in
+    Modules_field_evaluator.eval
+      ~expander
+      ~modules
+      ~module_path
+      ~stanza_loc:loc
+      ~kind:Exe_or_normal_lib
+      ~version
+      ~private_modules:Ordered_set_lang.Unexpanded.standard
+      ~src_dir
+      (Parser_generators.modules_settings modules_osl)
+    >>| fst
+    >>| Module_trie.map ~f:snd
   ;;
 end
 
@@ -553,7 +610,8 @@ let modules_of_stanzas =
            | `Executables y -> loop l { acc with executables = y :: acc.executables }
            | `Tests y -> loop l { acc with tests = y :: acc.tests }
            | `Melange_emit y -> loop l { acc with melange_emits = y :: acc.melange_emits }
-           | `Ocamllex y -> loop l { acc with ocamllexes = y :: acc.ocamllexes })
+           | `Ocamllex y -> loop l { acc with ocamllexes = y :: acc.ocamllexes }
+           | `Ocamlyacc y -> loop l { acc with ocamlyaccs = y :: acc.ocamlyaccs })
       in
       fun l ->
         loop
@@ -563,10 +621,18 @@ let modules_of_stanzas =
           ; tests = []
           ; melange_emits = []
           ; ocamllexes = []
+          ; ocamlyaccs = []
           }
     in
     fun l ->
-      let { Per_stanza.libraries; executables; tests; melange_emits; ocamllexes } =
+      let { Per_stanza.libraries
+          ; executables
+          ; tests
+          ; melange_emits
+          ; ocamllexes
+          ; ocamlyaccs
+          }
+        =
         rev_filter_partition l
       in
       { Per_stanza.libraries = List.rev libraries
@@ -574,6 +640,7 @@ let modules_of_stanzas =
       ; tests = List.rev tests
       ; melange_emits = List.rev melange_emits
       ; ocamllexes = List.rev ocamllexes
+      ; ocamlyaccs = List.rev ocamlyaccs
       }
   in
   let make_executables
@@ -613,14 +680,15 @@ let modules_of_stanzas =
     match result with
     | `Executables group_part -> `Tests { group_part with stanza = tests }
   in
-  let merge_parser_sources ~ocamllexes modules =
+  let merge_parser_sources ~ocamllexes ~ocamlyaccs modules =
     let parser_gen_modules =
-      List.fold_left
-        ocamllexes
-        ~init:Module_trie.empty
-        ~f:(fun acc { Per_stanza.stanza = _; sources } ->
-          Module_trie.fold sources ~init:acc ~f:(fun m acc ->
-            Module_trie.set acc (Module.Source.path m) m))
+      List.concat
+        [ List.map ocamllexes ~f:(fun (x : _ Per_stanza.parser_gen_group) -> x.sources)
+        ; List.map ocamlyaccs ~f:(fun (x : _ Per_stanza.parser_gen_group) -> x.sources)
+        ]
+      |> List.fold_left ~init:Module_trie.empty ~f:(fun acc sources ->
+        Module_trie.fold sources ~init:acc ~f:(fun m acc ->
+          Module_trie.set acc (Module.Source.path m) m))
     in
     Module_trie.merge modules parser_gen_modules ~f:(fun _ m1 m2 ->
       match m1, m2 with
@@ -661,37 +729,49 @@ let modules_of_stanzas =
           in
           Some path, dune_file.stanzas)
     in
-    let* ocamllexes =
+    let* ocamllexes, ocamlyaccs =
       Memo.parallel_map dirs ~f:(fun (module_path, stanzas) ->
         Memo.parallel_map stanzas ~f:(fun stanza ->
-          match Stanza.repr stanza with
-          | Ocamllex.T ocamllex ->
-            Expander.eval_blang expander ocamllex.enabled_if
-            >>= (function
-             | false -> Memo.return None
-             | true ->
+          let enabled_if =
+            match Stanza.repr stanza with
+            | Parser_generators.Stanzas.Ocamllex.T ocamllex -> ocamllex.enabled_if
+            | Parser_generators.Stanzas.Ocamlyacc.T ocamlyacc -> ocamlyacc.enabled_if
+            | _ -> Blang.false_
+          in
+          Expander.eval_blang expander enabled_if
+          >>= function
+          | false -> Memo.return List.Skip
+          | true ->
+            (match Stanza.repr stanza with
+             | Parser_generators.Stanzas.Ocamllex.T ocamllex ->
                let+ sources =
-                 let version = Dune_project.dune_version project in
-                 let+ sources, _modules =
-                   Modules_field_evaluator.eval
-                     ~expander
-                     ~modules:parser_gen_modules
-                     ~module_path
-                     ~stanza_loc:ocamllex.loc
-                     ~kind:Exe_or_normal_lib
-                     ~version
-                     ~private_modules:Ordered_set_lang.Unexpanded.standard
-                     ~src_dir:dir
-                     (Ocamllex.modules_settings ocamllex)
-                 in
-                 Module_trie.map sources ~f:snd
+                 Parser_generators.eval_source_modules
+                   ~src_dir:dir
+                   ~project
+                   ~expander
+                   ~all_modules:parser_gen_modules
+                   ~module_path
+                   ~loc:ocamllex.loc
+                   ocamllex.modules
                in
-               Some { Per_stanza.stanza = ocamllex; sources })
-          | _ -> Memo.return None))
+               List.Left { Per_stanza.stanza = ocamllex; sources }
+             | Parser_generators.Stanzas.Ocamlyacc.T ocamlyacc ->
+               let+ sources =
+                 Parser_generators.eval_source_modules
+                   ~src_dir:dir
+                   ~project
+                   ~expander
+                   ~all_modules:parser_gen_modules
+                   ~module_path
+                   ~loc:ocamlyacc.loc
+                   ocamlyacc.modules
+               in
+               List.Right { Per_stanza.stanza = ocamlyacc; sources }
+             | _ -> Memo.return List.Skip)))
       >>| List.concat
-      >>| List.filter_map ~f:Fun.id
+      >>| List.filter_partition_map ~f:Fun.id
     in
-    let modules = merge_parser_sources ~ocamllexes modules in
+    let modules = merge_parser_sources ~ocamllexes ~ocamlyaccs modules in
     Memo.parallel_map dirs ~f:(fun (_, stanzas) ->
       Memo.parallel_map stanzas ~f:(fun stanza ->
         let enabled_if =
@@ -755,7 +835,7 @@ let modules_of_stanzas =
            | _ -> Memo.return `Skip)))
     >>| List.concat
     >>| filter_partition_map
-    >>| fun modules_of_stanzas -> { modules_of_stanzas with ocamllexes }
+    >>| fun modules_of_stanzas -> { modules_of_stanzas with ocamllexes; ocamlyaccs }
 ;;
 
 let make

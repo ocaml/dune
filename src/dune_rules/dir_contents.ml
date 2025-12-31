@@ -161,9 +161,6 @@ end = struct
           | Rocq_stanza.Extraction.T s ->
             Memo.return (Rocq_stanza.Extraction.ml_target_fnames s)
           | Menhir_stanza.T menhir -> Memo.return (Menhir_stanza.targets menhir)
-          | Ocamlyacc.T ocamlyacc ->
-            Memo.return
-              (List.concat_map ocamlyacc.modules ~f:(fun s -> [ s ^ ".ml"; s ^ ".mli" ]))
           | Rule_conf.T rule ->
             Simple_rules.user_rule sctx rule ~dir ~expander
             >>| (function

@@ -113,11 +113,14 @@ end
 
 module Path = struct
   module T = struct
-    type nonrec t = t list
+    type nonrec t = t Nonempty_list.t
 
-    let to_dyn = Dyn.list to_dyn
-    let compare = List.compare ~compare
-    let to_string t = List.map ~f:to_string t |> String.concat ~sep:"."
+    let to_dyn t = Dyn.list to_dyn (Nonempty_list.to_list t)
+    let compare = Nonempty_list.compare ~compare
+
+    let to_string Nonempty_list.(t :: ts) =
+      List.map ~f:to_string (t :: ts) |> String.concat ~sep:"."
+    ;;
   end
 
   include T
@@ -129,13 +132,16 @@ module Path = struct
   module Set = C.Set
   module Map = C.Map
 
-  let wrap path =
-    Unique.of_name_assuming_needs_no_mangling @@ String.concat ~sep:"__" path
+  let wrap (p :: path : t) =
+    Unique.of_name_assuming_needs_no_mangling @@ String.concat ~sep:"__" (p :: path)
   ;;
 
-  let append_double_underscore t = t @ [ "" ]
-  let encode (t : t) = List.map t ~f:encode
-  let decode = Decoder.(repeat decode)
+  let append_double_underscore t = Nonempty_list.(t @ [ "" ])
+  let encode (t :: ts : t) = List.map (t :: ts) ~f:encode
+  let decode = Decoder.(repeat decode >>| Nonempty_list.of_list_exn)
 end
 
-let wrap t ~with_ = Path.wrap (t :: with_)
+let wrap t ~with_ =
+  let (x :: xs : Path.t) = with_ in
+  Path.wrap (t :: x :: xs)
+;;

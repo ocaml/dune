@@ -57,7 +57,8 @@ module Unique : sig
 end
 
 module Path : sig
-  type nonrec t = t list
+  type module_name := t
+  type nonrec t = t Nonempty_list.t
 
   val compare : t -> t -> Ordering.t
   val equal : t -> t -> bool
@@ -71,7 +72,7 @@ module Path : sig
   val wrap : t -> Unique.t
   val encode : t -> Dune_sexp.t list
   val decode : t Decoder.t
-  val append_double_underscore : t -> t
+  val append_double_underscore : module_name list -> t
 end
 
 val wrap : t -> with_:Path.t -> Unique.t

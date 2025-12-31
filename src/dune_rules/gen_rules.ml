@@ -246,7 +246,7 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
            in
            Menhir_rules.module_names m
            |> Memo.List.find_map ~f:(fun name ->
-             let path = base_path @ [ name ] in
+             let path = Nonempty_list.(base_path @ [ name ]) in
              Ml_sources.find_origin ml_sources ~libs:(Scope.libs scope) path
              >>| function
              | None -> None

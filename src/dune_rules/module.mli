@@ -16,7 +16,7 @@ module Kind : sig
     | Intf_only
     | Virtual
     | Impl
-    | Alias of Module_name.Path.t
+    | Alias of Module_name.t list
     | Impl_vmodule
     | Wrapped_compat
     | Root

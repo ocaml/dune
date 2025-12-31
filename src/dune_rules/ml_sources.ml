@@ -116,10 +116,12 @@ module Per_stanza = struct
       | Ok map ->
         String.Map.map map ~f:(fun (origin, modules, obj_dir, _loc) ->
           origin, modules, obj_dir)
-      | Error (name, (_, _, _, loc1), (_, _, _, _loc2)) ->
+      | Error (name, (_, _, _, loc1), (_, _, _, loc2)) ->
         User_error.raise
           ~loc:loc1
-          [ Pp.textf "Executable %S appears for the second time in this directory" name ]
+          [ Pp.textf "Executable %S appears for the second time in this directory" name
+          ; Pp.textf "Already defined at %s" (Loc.to_file_colon_line loc2)
+          ]
     in
     let melange_emits =
       match

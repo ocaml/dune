@@ -59,7 +59,7 @@ let linkages
 ;;
 
 let programs ~modules ~(exes : Executables.t) =
-  List.map (Nonempty_list.to_list exes.names) ~f:(fun (loc, name) ->
+  Nonempty_list.to_list_map exes.names ~f:(fun (loc, name) ->
     let mod_name = Module_name.of_string_allow_invalid (loc, name) in
     match Modules.With_vlib.find modules mod_name with
     | Some m ->

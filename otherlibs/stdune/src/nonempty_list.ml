@@ -22,6 +22,7 @@ let of_list_exn = function
 ;;
 
 let to_list (x :: xs) = List.cons x xs
+let to_list_map (x :: xs) ~f = List.map (x :: xs) ~f
 let map (x :: xs) ~f = f x :: List.map xs ~f
 
 let compare xs ys ~compare =

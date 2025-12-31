@@ -2511,8 +2511,7 @@ module DB = struct
             | `Exe (Nonempty_list.((loc, _) :: _) as names) ->
               Pp.textf
                 "executables %s in %s"
-                (String.enumerate_and
-                   (Nonempty_list.map ~f:snd names |> Nonempty_list.to_list))
+                (String.enumerate_and (Nonempty_list.to_list_map ~f:snd names))
                 (Loc.to_file_colon_line loc)))
     in
     let pps =

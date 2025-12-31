@@ -648,12 +648,12 @@ let modules_of_stanzas =
     ~include_subdirs ->
     let { Source_file_dir.dir; _ } = Nonempty_list.hd dirs in
     let dirs =
-      let dirs = Nonempty_list.to_list dirs in
       match include_subdirs with
       | _, (Include_subdirs.No | Include Unqualified) ->
-        List.map dirs ~f:(fun (dune_file : Source_file_dir.t) -> None, dune_file.stanzas)
+        Nonempty_list.to_list_map dirs ~f:(fun (dune_file : Source_file_dir.t) ->
+          None, dune_file.stanzas)
       | _, Include Qualified ->
-        List.map dirs ~f:(fun (dune_file : Source_file_dir.t) ->
+        Nonempty_list.to_list_map dirs ~f:(fun (dune_file : Source_file_dir.t) ->
           let path =
             let loc = Path.build dir |> Path.drop_optional_build_context |> Loc.in_dir in
             List.map dune_file.path_to_root ~f:(fun m ->

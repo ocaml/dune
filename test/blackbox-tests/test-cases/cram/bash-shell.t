@@ -39,3 +39,26 @@ Demonstrate the shell field in the cram stanza
   > EOF
 
   $ dune runtest options.t
+
+  $ cat >code.t <<'EOF'
+  >   $ function foo() { return 1; }
+  >   $ foo
+  >   [1]
+  > EOF
+
+  $ dune runtest code.t
+  File "code.t", line 1, characters 0-0:
+  Error: Files _build/default/code.t and _build/default/code.t.corrected
+  differ.
+  [1]
+
+  $ cat >exit1.t <<EOF
+  >   $ false
+  >   [1]
+  > EOF
+
+  $ dune runtest exit1.t
+  File "exit1.t", line 1, characters 0-0:
+  Error: Files _build/default/exit1.t and _build/default/exit1.t.corrected
+  differ.
+  [1]

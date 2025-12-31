@@ -2,7 +2,7 @@
 
 open Stdune
 
-val read_from_string_exn : contents:string -> Path.t -> OpamFile.OPAM.t
+val read_from_string_exn : contents:string -> Path.t option -> OpamFile.OPAM.t
 
 type value := OpamParserTypes.FullPos.value
 

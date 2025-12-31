@@ -10,8 +10,9 @@ val dune : t
 
 val git_repo
   :  OpamPackage.t
-  -> opam_file:Path.Local.t
+  -> opam_file:Path.Local.t option
   -> opam_file_contents:string
+  -> dune_build:bool
   -> Rev_store.At_rev.t
   -> files_dir:Path.Local.t option
   -> url:OpamUrl.t option

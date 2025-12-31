@@ -1130,3 +1130,5 @@ let _oxcaml_extension =
      specific decoder. *)
   Extension.register Oxcaml.syntax (Decoder.return ((), [])) Dyn.unit
 ;;
+
+let _unreleased = Extension.register Unreleased.syntax (Decoder.return ((), [])) Dyn.unit

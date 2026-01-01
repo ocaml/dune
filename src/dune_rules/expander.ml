@@ -187,6 +187,7 @@ let expand_artifact ~source t artifact arg =
   | Pform.Artifact.Mod kind ->
     let name =
       Module_name.of_string_allow_invalid (Dune_lang.Template.Pform.loc source, name)
+      |> Module_name.Unchecked.allow_invalid
     in
     (match Artifacts_obj.lookup_module artifacts name with
      | None -> does_not_exist ~what:"Module" (Module_name.to_string name)

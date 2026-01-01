@@ -182,12 +182,13 @@ module Mangle = struct
                  "%s__%s"
                  (Module_name.to_string main_module_name)
                  (Lib_name.Local.to_string lib)
-               |> Module_name.of_string
+               |> Module_name.of_checked_string
            ; public = main_module_name
            })
-    | Exe -> Module_name.of_string "dune__exe" |> Visibility.Map.make_both |> Option.some
+    | Exe ->
+      Module_name.of_checked_string "dune__exe" |> Visibility.Map.make_both |> Option.some
     | Melange ->
-      Module_name.of_string "melange" |> Visibility.Map.make_both |> Option.some
+      Module_name.of_checked_string "melange" |> Visibility.Map.make_both |> Option.some
     | Unwrapped -> None
   ;;
 

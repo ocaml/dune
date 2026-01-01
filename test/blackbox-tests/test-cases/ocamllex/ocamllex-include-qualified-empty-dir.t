@@ -27,12 +27,6 @@ The directory `bar-baz`, even though not a valid module name, doesn't have any
 source files. The library should still compile.
 
   $ dune build foo.cma
-  File "bar-baz", line 1, characters 0-0:
-  Error: "bar-baz" is an invalid module name.
-  Module names must be non-empty, start with a letter, and composed only of the
-  following characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
-  Hint: bar_baz would be a correct module name
-  [1]
 
 Adding an unrelated module in a different source tree should also ignore the
 lexer with the invalid name.
@@ -59,12 +53,6 @@ lexer with the invalid name.
   > EOF
 
   $ dune build foo.cma
-  File "bar-baz", line 1, characters 0-0:
-  Error: "bar-baz" is an invalid module name.
-  Module names must be non-empty, start with a letter, and composed only of the
-  following characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
-  Hint: bar_baz would be a correct module name
-  [1]
 
   $ mkdir -p bar
   $ cat > bar/dune <<EOF
@@ -72,9 +60,9 @@ lexer with the invalid name.
   > EOF
 
   $ dune build foo.cma
-  File "bar-baz", line 1, characters 0-0:
-  Error: "bar-baz" is an invalid module name.
-  Module names must be non-empty, start with a letter, and composed only of the
-  following characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
-  Hint: bar_baz would be a correct module name
+  Error: foo__Bar__Lex-er corresponds to an invalid module name
+  -> required by _build/default/foo__Bar.ml-gen
+  -> required by _build/default/.foo.objs/byte/foo__Bar.cmo
+  -> required by _build/default/foo.cma
   [1]
+

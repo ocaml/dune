@@ -37,8 +37,8 @@ module Per_stanza = struct
     { libraries : component Lib_id.Local.Map.t
     ; executables : component String.Map.t
     ; melange_emits : component String.Map.t
-    ; ocamllexes : Module.Source.t Module_trie.t Loc.Map.t
-    ; ocamlyaccs : Module.Source.t Module_trie.t Loc.Map.t
+    ; ocamllexes : (Loc.t * Module.Source.t) Module_trie.t Loc.Map.t
+    ; ocamlyaccs : (Loc.t * Module.Source.t) Module_trie.t Loc.Map.t
     ; (* Map from modules to the origin they are part of *)
       rev_map : (Origin.t * Path.Build.t) list Module_name.Path.Map.t
     ; libraries_by_obj_dir : Lib_id.Local.t list Path.Build.Map.t
@@ -65,7 +65,7 @@ module Per_stanza = struct
 
   type 'stanza parser_gen_group =
     { stanza : 'stanza
-    ; targets : Module.Source.t Module_trie.t
+    ; targets : (Loc.t * Module.Source.t) Module_trie.t
     }
 
   type groups =
@@ -226,8 +226,8 @@ let modules_of_files ~path ~dialects ~dir ~files =
             | Impl -> Left module_
             | Intf -> Right module_)))
   in
-  let parse_one_set (files : (Module_name.t * Module.File.t) list) =
-    match Module_name.Map.of_list files with
+  let parse_one_set (files : (Module_name.Unchecked.t * Module.File.t) list) =
+    match Module_name.Unchecked.Map.of_list files with
     | Ok x -> x
     | Error (name, f1, f2) ->
       let src_dir = Path.drop_build_context_exn dir in
@@ -235,7 +235,7 @@ let modules_of_files ~path ~dialects ~dir ~files =
         ~loc:(Loc.in_dir dir)
         [ Pp.textf
             "Too many files for module %s in %s:"
-            (Module_name.to_string name)
+            (Module_name.to_string (Module_name.Unchecked.allow_invalid name))
             (Path.Source.to_string_maybe_quoted src_dir)
         ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f1))
         ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f2))
@@ -243,8 +243,12 @@ let modules_of_files ~path ~dialects ~dir ~files =
   in
   let impls = parse_one_set impl_files in
   let intfs = parse_one_set intf_files in
-  Module_name.Map.merge impls intfs ~f:(fun name impl intf ->
-    Some (Module.Source.make Nonempty_list.(path @ [ name ]) ~impl ~intf))
+  Module_name.Unchecked.Map.merge impls intfs ~f:(fun name impl intf ->
+    Some
+      (Module.Source.make
+         Nonempty_list.(map (path @ [ name ]) ~f:Module_name.Unchecked.allow_invalid)
+         ~impl
+         ~intf))
 ;;
 
 type for_ =
@@ -446,24 +450,30 @@ module Parser_generators = struct
         in
         Modules_field_evaluator.expand_all_unchecked ~expander modules_osl
       in
-      match for_ with
-      | Ocamllex _ | Ocamlyacc _ ->
-        Module_trie.map expanded ~f:(fun (_, (module_name, basename)) ->
-          let module_path = Nonempty_list.(module_path @ [ module_name ]) in
-          let original_path =
-            let base_path = Path.relative (Path.build src_dir) basename in
-            let ext = Targets.extension ~for_ in
-            Path.set_extension base_path ~ext
-          in
-          let impl = make_module ~original_path ~ml_kind:Ml_kind.Impl in
-          let intf =
-            match for_ with
-            | Ocamllex _ -> None
-            | Ocamlyacc _ ->
-              let intf = make_module ~original_path ~ml_kind:Ml_kind.Intf in
-              Some intf
-          in
-          Module.Source.make ~intf ~impl:(Some impl) module_path)
+      let targets =
+        match for_ with
+        | Ocamllex { loc; _ } | Ocamlyacc { loc; _ } ->
+          Module_trie.Unchecked.map expanded ~f:(fun (_, (module_name, basename)) ->
+            let module_path =
+              Nonempty_list.(
+                map (module_path @ [ module_name ]) ~f:Module_name.Unchecked.allow_invalid)
+            in
+            let original_path =
+              let base_path = Path.relative (Path.build src_dir) basename in
+              let ext = Targets.extension ~for_ in
+              Path.set_extension base_path ~ext
+            in
+            let impl = make_module ~original_path ~ml_kind:Ml_kind.Impl in
+            let intf =
+              match for_ with
+              | Ocamllex _ -> None
+              | Ocamlyacc _ ->
+                let intf = make_module ~original_path ~ml_kind:Ml_kind.Intf in
+                Some intf
+            in
+            loc, Module.Source.make ~intf ~impl:(Some impl) module_path)
+      in
+      Module_trie.Unchecked.check_exn targets
   ;;
 end
 
@@ -639,7 +649,7 @@ let modules_of_stanzas =
   let make_executables
         ~dir
         ~expander
-        ~(modules : Module.Source.t Module_trie.t)
+        ~(modules : Module.Source.t Module_trie.Unchecked.t)
         ~project
         exes
     =
@@ -678,11 +688,14 @@ let modules_of_stanzas =
         [ List.map ocamllexes ~f:(fun (x : _ Per_stanza.parser_gen_group) -> x.targets)
         ; List.map ocamlyaccs ~f:(fun (x : _ Per_stanza.parser_gen_group) -> x.targets)
         ]
-      |> List.fold_left ~init:Module_trie.empty ~f:(fun acc targets ->
-        Module_trie.fold targets ~init:acc ~f:(fun m acc ->
-          Module_trie.set acc (Module.Source.path m) m))
+      |> List.fold_left ~init:Module_trie.Unchecked.empty ~f:(fun acc targets ->
+        Module_trie.fold targets ~init:acc ~f:(fun (_, m) acc ->
+          let module_path =
+            Nonempty_list.map (Module.Source.path m) ~f:Module_name.unchecked
+          in
+          Module_trie.Unchecked.set acc module_path m))
     in
-    Module_trie.merge modules parser_gen_modules ~f:(fun _ m1 m2 ->
+    Module_trie.Unchecked.merge modules parser_gen_modules ~f:(fun _ m1 m2 ->
       match m1, m2 with
       | None, None -> None
       | Some m, None | None, Some m -> Some m
@@ -703,7 +716,7 @@ let modules_of_stanzas =
     ~project
     ~libs
     ~lookup_vlib
-    ~(modules : Module.Source.t Module_trie.t)
+    ~(modules : Module.Source.t Module_trie.Unchecked.t)
     ~include_subdirs ->
     let { Source_file_dir.dir; _ } = Nonempty_list.hd dirs in
     let dirs =
@@ -719,7 +732,8 @@ let modules_of_stanzas =
               let loc =
                 Path.build dir |> Path.drop_optional_build_context |> Loc.in_dir
               in
-              List.map path_to_root ~f:(fun m -> Module_name.parse_string_exn (loc, m))
+              List.map path_to_root ~f:(fun m ->
+                Module_name.of_string_allow_invalid (loc, m))
             in
             path, stanzas, dir)
     in
@@ -843,7 +857,7 @@ let make
       | Include Qualified ->
         List.fold_left
           dirs
-          ~init:Module_trie.empty
+          ~init:Module_trie.Unchecked.empty
           ~f:
             (fun
               acc
@@ -854,10 +868,11 @@ let make
                 let loc =
                   Path.build dir |> Path.drop_optional_build_context |> Loc.in_dir
                 in
-                List.map path_to_root ~f:(fun m -> Module_name.parse_string_exn (loc, m))
+                List.map path_to_root ~f:(fun m ->
+                  Module_name.of_string_allow_invalid (loc, m))
               in
               let modules = modules_of_files ~dialects ~dir ~files ~path in
-              Module_trie.set_map acc path modules
+              Module_trie.Unchecked.set_map acc path modules
             with
             | Ok s -> s
             | Error module_ ->
@@ -893,7 +908,7 @@ let make
         let modules =
           List.fold_left
             dirs
-            ~init:Module_name.Map.empty
+            ~init:Module_name.Unchecked.Map.empty
             ~f:
               (fun
                 acc
@@ -905,12 +920,12 @@ let make
                 }
               ->
               let modules = modules_of_files ~dialects ~dir ~files ~path:[] in
-              Module_name.Map.union acc modules ~f:(fun name x y ->
+              Module_name.Unchecked.Map.union acc modules ~f:(fun name x y ->
                 User_error.raise
                   ~loc
                   [ Pp.textf
                       "Module %S appears in several directories:"
-                      (Module_name.to_string name)
+                      (Module_name.to_string (Module_name.Unchecked.allow_invalid name))
                   ; Pp.textf
                       "- %s"
                       (Path.to_string_maybe_quoted (Module.Source.src_dir x))
@@ -920,7 +935,7 @@ let make
                   ; Pp.text "This is not allowed, please rename one of them."
                   ]))
         in
-        Module_trie.of_map modules
+        Module_trie.Unchecked.of_map modules
     in
     modules_of_stanzas
       dirs

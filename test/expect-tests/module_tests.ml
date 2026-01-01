@@ -3,7 +3,7 @@ module Kind = Dune_rules.Module.Kind
 
 (* See #10264 *)
 let%expect_test "Module.Kind encoding round trip" =
-  let module_name s = Dune_lang.Module_name.of_string s in
+  let module_name s = Dune_lang.Module_name.of_checked_string s in
   let test k =
     let ast = Kind.encode k in
     let sexp = Dune_sexp.Ast.add_loc ~loc:Loc.none ast in

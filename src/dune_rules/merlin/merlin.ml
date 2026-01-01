@@ -147,7 +147,9 @@ module Processed = struct
       ; pp_config =
           (match
              Module_name.Per_item.of_mapping
-               [ [ Module_name.of_string "Test" ], Some { flag = Ppx; args = "-x" } ]
+               [ ( [ Module_name.of_checked_string "Test" ]
+                 , Some { flag = Ppx; args = "-x" } )
+               ]
                ~default:None
            with
            | Ok s -> s

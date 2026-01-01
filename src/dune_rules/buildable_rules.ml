@@ -132,7 +132,11 @@ let modules_rules
     | Some mains ->
       if Dune_project.executables_implicit_empty_intf (Scope.project scope)
       then (
-        let executable_names = List.map mains ~f:Module_name.of_string_allow_invalid in
+        let executable_names =
+          List.map mains ~f:(fun main ->
+            Module_name.of_string_allow_invalid main
+            |> Module_name.Unchecked.allow_invalid)
+        in
         fun name -> default || List.mem executable_names name ~equal:Module_name.equal)
       else fun _ -> default
   in

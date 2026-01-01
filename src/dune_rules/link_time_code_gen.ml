@@ -241,7 +241,7 @@ let findlib_dynload cctx lib loc =
     and+ findlib = Lib.DB.resolve db (loc, Lib_name.of_string "findlib") in
     [ dynlink; findlib ]
   in
-  let name = Module_name.of_string "findlib_initl" in
+  let name = Module_name.of_checked_string "findlib_initl" in
   let obj_name = Some (Module_name.Unique.of_name_assuming_needs_no_mangling name) in
   generate_and_compile_module
     ~obj_name

@@ -446,7 +446,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
   let* () = Super_context.add_rule sctx ~loc ~dir action in
   (* We build the generated executable linking in the libs from the libraries
      field *)
-  let main_module_name = Module_name.of_string name in
+  let main_module_name = Module_name.of_checked_string name in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let lib name = Lib_dep.Direct (loc, Lib_name.of_string name) in
   let* cctx =

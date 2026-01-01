@@ -1,5 +1,7 @@
 Here we test the translation and implementation of opam package variables.
 
+CR-soon Alizter: The numbers here are pointless since we have line numbers.
+
 We echo each package variable. 
 
   $ mkrepo
@@ -42,6 +44,8 @@ We echo each package variable.
   >   [ "echo" "40" foo:with-doc ]
   >   [ "echo" "41"   _:with-dev-setup ]
   >   [ "echo" "42" foo:with-dev-setup ]
+  >   [ "echo"  _:build-id ]
+  >   [ "echo" foo:build-id ]
   > ]
   > EOF
   > mkpkg "foo" <<EOF
@@ -101,7 +105,9 @@ corresponding Dune version.
        (run echo 39 %{pkg-self:with-doc})
        (run echo 40 %{pkg:foo:with-doc})
        (run echo 41 %{pkg-self:with-dev-setup})
-       (run echo 42 %{pkg:foo:with-dev-setup}))))))
+       (run echo 42 %{pkg:foo:with-dev-setup})
+       (run echo %{pkg-self:build-id})
+       (run echo %{pkg:foo:build-id}))))))
   
   (depends
    (all_platforms (foo)))
@@ -138,7 +144,7 @@ The values here are not important, but Dune should be able to interpret the vari
                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-dev-setup"
   File "dune.lock/testpkg.0.0.1.pkg", line 48, characters 18-43:
-  48 |      (run echo 42 %{pkg:foo:with-dev-setup}))))))
+  48 |      (run echo 42 %{pkg:foo:with-dev-setup})
                          ^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-dev-setup"
   [1]

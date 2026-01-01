@@ -817,6 +817,11 @@ module Action_expander = struct
          | "enable" ->
            Memo.return @@ Ok [ Value.String (if present then "enable" else "disable") ]
          | "installed" -> Memo.return @@ Ok [ Value.String (Bool.to_string present) ]
+         | "build-id" ->
+           (* build-id is used by some packages (e.g., relocatable-compiler) for
+              caching across opam switches. Since dune doesn't do this, we use a
+              fixed dummy value that won't collide with real opam build-ids. *)
+           Memo.return @@ Ok [ Value.String "d00ed00ed00ed00ed00ed00ed00ed00e" ]
          | _ ->
            (match paths with
             | None -> Memo.return (Error (`Undefined_pkg_var variable_name))

@@ -534,7 +534,7 @@ module Pkg = struct
 
   let install_roots t =
     let default_install_roots = Paths.install_roots t.paths in
-    match Pkg_toolchain.is_compiler_and_toolchains_enabled t.info.name with
+    match Pkg_toolchain.is_compiler_package_with_toolchains_enabled t.info.name with
     | false -> default_install_roots
     | true ->
       (* Compiler packages store their libraries in a subdirectory named "ocaml". *)
@@ -1370,12 +1370,29 @@ module DB = struct
     { id : Id.t
     ; pkg_digest_table : Pkg_table.t
     ; system_provided : Package.Name.Set.t
+    ; is_relocatable_compiler_context : bool
     }
 
   let equal x y = Id.equal x.id y.id
 
-  let create ~pkg_digest_table ~system_provided =
-    { id = Id.gen (); pkg_digest_table; system_provided }
+  let create =
+    (* A compiler is relocatable if the solution contains the
+       "relocatable-compiler" meta-package (from dra27's overlay repo) or
+       the "relocatable" virtual package (from upstream opam-repository). *)
+    let is_relocatable_meta_package name =
+      Package.Name.equal name (Package.Name.of_string "relocatable-compiler")
+      || Package.Name.equal name (Package.Name.of_string "relocatable")
+    in
+    fun ~pkg_digest_table ~system_provided ->
+      { id = Id.gen ()
+      ; pkg_digest_table
+      ; system_provided
+      ; is_relocatable_compiler_context =
+          Pkg_digest.Map.existsi
+            pkg_digest_table
+            ~f:(fun _ { Pkg_table.pkg = { info = { name; _ }; _ }; _ } ->
+              is_relocatable_meta_package name)
+      }
   ;;
 
   let pkg_digest_of_name lock_dir platform pkg_name ~system_provided =
@@ -1560,9 +1577,11 @@ end = struct
       let build_command = Option.map build_command ~f:relocate_build in
       let paths =
         let paths = Paths.map_path write_paths ~f:Path.build in
-        match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name with
-        | false -> paths
-        | true ->
+        if
+          db.is_relocatable_compiler_context
+          || not (Pkg_toolchain.is_compiler_package_with_toolchains_enabled info.name)
+        then paths
+        else (
           (* Modify the environment as well as build and install commands for
              the compiler package. The specific changes are:
              - setting the prefix in the build environment to inside the user's
@@ -1573,7 +1592,8 @@ end = struct
                toolchain directory
              - if a matching version of the compiler is
                already installed in the user's toolchain directory then the
-               build and install commands are replaced with no-ops *)
+               build and install commands are replaced with no-ops
+             *)
           let prefix = Pkg_toolchain.installation_prefix pkg in
           let install_roots =
             Pkg_toolchain.install_roots ~prefix
@@ -1582,7 +1602,7 @@ end = struct
           { paths with
             prefix = Path.outside_build_dir prefix
           ; install_roots = Lazy.from_val install_roots
-          }
+          })
       in
       let t =
         { Pkg.id

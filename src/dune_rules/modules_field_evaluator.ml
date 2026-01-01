@@ -283,7 +283,7 @@ let check_invalid_module_listing
        |> List.map ~f:(fun name -> stanza_loc, name))
       [ Pp.text "You must provide an implementation for all of these modules." ];
     (* Checking that (modules) includes all declared modules *)
-    let print_undelared_modules field mods =
+    let print_undeclared_modules field mods =
       (* If we are in a vendored stanza we do nothing. *)
       if not is_vendored
       then
@@ -293,11 +293,11 @@ let check_invalid_module_listing
           mods
           [ Pp.text "They must also appear in the modules field." ]
     in
-    print_undelared_modules
+    print_undeclared_modules
       "modules_without_implementation"
       undeclared_modules_without_implementation;
-    print_undelared_modules "private_modules" undeclared_private_modules;
-    print_undelared_modules "virtual_modules" undeclared_virtual_modules;
+    print_undeclared_modules "private_modules" undeclared_private_modules;
+    print_undeclared_modules "virtual_modules" undeclared_virtual_modules;
     if missing_intf_only <> []
     then (
       match Ordered_set_lang.Unexpanded.loc modules_without_implementation with

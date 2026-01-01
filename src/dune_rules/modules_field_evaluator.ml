@@ -18,7 +18,7 @@ type kind =
   | Exe_or_normal_lib
   | Parameter
 
-let eval0_unchecked =
+let eval0 =
   let key = function
     | Error s -> Nonempty_list.[ s ]
     | Ok m -> [ Module.Source.name m ]
@@ -65,30 +65,25 @@ let eval0_unchecked =
       Action_builder.evaluate_and_collect_facts
         (expand_and_eval expander ~parse ~standard ~key osl)
     in
-    modules, fake_modules
-;;
-
-let eval0 ~expander ~loc ~all_modules ~module_path ~standard osl =
-  let+ modules, fake_modules =
-    eval0_unchecked ~expander ~loc ~all_modules ~module_path ~standard osl
-  in
-  let modules =
-    Module_trie.filter_map modules ~f:(fun (loc, m) ->
-      match m with
-      | Ok m -> Some (loc, m)
-      | Error s ->
+    let modules =
+      Module_trie.filter_map modules ~f:(fun (loc, m) ->
+        match m with
+        | Ok m -> Some (loc, m)
+        | Error s ->
+          User_error.raise
+            ~loc
+            [ Pp.textf "Module %s doesn't exist." (Module_name.to_string s) ])
+    in
+    Module_name.Map.iteri
+      ~f:(fun m loc ->
         User_error.raise
           ~loc
-          [ Pp.textf "Module %s doesn't exist." (Module_name.to_string s) ])
-  in
-  Module_name.Map.iteri
-    ~f:(fun m loc ->
-      User_error.raise
-        ~loc
-        [ Pp.textf "Module %s is excluded but it doesn't exist." (Module_name.to_string m)
-        ])
-    fake_modules;
-  modules
+          [ Pp.textf
+              "Module %s is excluded but it doesn't exist."
+              (Module_name.to_string m)
+          ])
+      fake_modules;
+    modules
 ;;
 
 type single_module_error =
@@ -283,7 +278,7 @@ let check_invalid_module_listing
        |> List.map ~f:(fun name -> stanza_loc, name))
       [ Pp.text "You must provide an implementation for all of these modules." ];
     (* Checking that (modules) includes all declared modules *)
-    let print_undeclared_modules field mods =
+    let print_undelared_modules field mods =
       (* If we are in a vendored stanza we do nothing. *)
       if not is_vendored
       then
@@ -293,11 +288,11 @@ let check_invalid_module_listing
           mods
           [ Pp.text "They must also appear in the modules field." ]
     in
-    print_undeclared_modules
+    print_undelared_modules
       "modules_without_implementation"
       undeclared_modules_without_implementation;
-    print_undeclared_modules "private_modules" undeclared_private_modules;
-    print_undeclared_modules "virtual_modules" undeclared_virtual_modules;
+    print_undelared_modules "private_modules" undeclared_private_modules;
+    print_undelared_modules "virtual_modules" undeclared_virtual_modules;
     if missing_intf_only <> []
     then (
       match Ordered_set_lang.Unexpanded.loc modules_without_implementation with
@@ -418,30 +413,6 @@ let eval
     let path = Nonempty_list.[ name ] in
     let module_ = Module.generated ~kind:Root ~src_dir path in
     Module_trie.set all_modules path module_
-;;
-
-let expand_only_available
-      ~expander
-      ~modules:(all_modules : Module.Source.t Module_trie.t)
-      ~module_path
-      ~stanza_loc
-      (settings : Modules_settings.t)
-  =
-  Memo.push_stack_frame ~human_readable_description:(fun () ->
-    Pp.textf "(modules) field at %s" (Loc.to_file_colon_line stanza_loc))
-  @@ fun () ->
-  let+ modules, _ =
-    eval0_unchecked
-      ~expander
-      ~loc:stanza_loc
-      ~all_modules
-      ~module_path
-      ~standard:all_modules
-      settings.modules
-  in
-  Module_trie.filter_map modules ~f:(function
-    | loc, Ok m -> Some (loc, m)
-    | _, Error _ -> None)
 ;;
 
 let eval

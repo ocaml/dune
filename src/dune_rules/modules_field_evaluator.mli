@@ -20,14 +20,6 @@ type kind =
   | Exe_or_normal_lib
   | Parameter
 
-val expand_only_available
-  :  expander:Expander.t
-  -> modules:Module.Source.t Module_trie.t
-  -> module_path:Module_name.t list option
-  -> stanza_loc:Loc.t
-  -> Modules_settings.t
-  -> (Loc.t * Module.Source.t) Module_trie.t Memo.t
-
 val eval
   :  expander:Expander.t
   -> modules:Module.Source.t Module_trie.t

@@ -448,27 +448,13 @@ module Parser_generators = struct
       |> modules_of_files_gen ~path ~dir
   ;;
 
-  let eval_source_modules
-        ~src_dir
-        ~project
-        ~expander
-        ~all_modules:modules
-        ~module_path
-        ~loc
-        modules_osl
-    =
-    let version = Dune_project.dune_version project in
-    Modules_field_evaluator.eval
+  let expand_modules ~expander ~all_modules:modules ~module_path ~loc modules_osl =
+    Modules_field_evaluator.expand_only_available
       ~expander
       ~modules
       ~module_path
       ~stanza_loc:loc
-      ~kind:Exe_or_normal_lib
-      ~version
-      ~private_modules:Ordered_set_lang.Unexpanded.standard
-      ~src_dir
       (Parser_generators.modules_settings modules_osl)
-    >>| fst
     >>| Module_trie.map ~f:snd
   ;;
 end
@@ -745,9 +731,7 @@ let modules_of_stanzas =
             (match Stanza.repr stanza with
              | Parser_generators.Stanzas.Ocamllex.T ocamllex ->
                let+ sources =
-                 Parser_generators.eval_source_modules
-                   ~src_dir:dir
-                   ~project
+                 Parser_generators.expand_modules
                    ~expander
                    ~all_modules:parser_gen_modules
                    ~module_path
@@ -757,9 +741,7 @@ let modules_of_stanzas =
                List.Left { Per_stanza.stanza = ocamllex; sources }
              | Parser_generators.Stanzas.Ocamlyacc.T ocamlyacc ->
                let+ sources =
-                 Parser_generators.eval_source_modules
-                   ~src_dir:dir
-                   ~project
+                 Parser_generators.expand_modules
                    ~expander
                    ~all_modules:parser_gen_modules
                    ~module_path

@@ -17,8 +17,7 @@ Building works even if `a` is missing
 
   $ dune build -p foo
 
-Adding an `ocamllex` stanza for `a` shows a false error for `-p foo` (error is
-in `bar`)
+Adding an `ocamllex` stanza for `a` still let's the build through for `-p foo`
 
   $ cat > dune <<EOF
   > (ocamllex (modules a))
@@ -29,9 +28,12 @@ in `bar`)
   > EOF
 
   $ dune build -p foo
-  File "dune", line 1, characters 19-20:
-  1 | (ocamllex (modules a))
-                         ^
+
+Building `bar` still fails
+
+  $ dune build -p bar
+  File "dune", line 5, characters 28-29:
+  5 |  (public_name bar) (modules a))
+                                  ^
   Error: Module A doesn't exist.
   [1]
-

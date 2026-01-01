@@ -1,7 +1,7 @@
 Test building a module group containing a `.mll` file, without `(ocamllex ..)`
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.21)
+  > (lang dune 3.22)
   > EOF
   $ cat > dune <<EOF
   > (library (name foo))
@@ -20,8 +20,21 @@ module `Lexer` can't be found if no `(ocamllex ..)` stanza defines it
   > let x = Lexer.lex
   > EOF
 
-  $ dune build foo.cma --display=short
-        ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt} (exit 2)
+  $ dune build foo.cma
+  File "foo.ml", line 1, characters 8-13:
+  1 | let x = Lexer.lex
+              ^^^^^
+  Error: Unbound module Lexer
+  [1]
+
+Same if ocamllex `(modules ..)` is empty
+
+  $ cat > dune <<EOF
+  > (ocamllex (modules))
+  > (library (name foo))
+  > EOF
+
+  $ dune build foo.cma
   File "foo.ml", line 1, characters 8-13:
   1 | let x = Lexer.lex
               ^^^^^

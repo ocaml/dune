@@ -3,4 +3,4 @@
  (foreign_stubs
   (language c)
   (names dune_trace_stubs))
- (libraries stdune csexp bigstringaf spawn unix))
+ (libraries stdune csexp bigstringaf threads.posix spawn unix))

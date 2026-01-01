@@ -39,12 +39,6 @@ let emit_all cat f =
   | Some out -> if Category.Set.mem out.cats cat then List.iter (f ()) ~f:(Out.emit out)
 ;;
 
-let flush () =
-  match global () with
-  | None -> ()
-  | Some s -> Out.flush s
-;;
-
 module Private = struct
   module Fd_count = Fd_count
   module Buffer = Buffer

@@ -63,7 +63,7 @@ module Crawl = struct
     match Stanza.repr stanza with
     | Tests.T (tests : Tests.t) ->
       let* enabled = Expander.eval_blang expander tests.enabled_if in
-      let names = List.map ~f:snd (Nonempty_list.to_list tests.exes.names) in
+      let names = Nonempty_list.to_list_map tests.exes.names ~f:snd in
       let package =
         Option.map tests.package ~f:(fun p ->
           Dune_lang.Package.name p |> Dune_lang.Package_name.to_string)

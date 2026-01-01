@@ -424,7 +424,7 @@ module Crawl = struct
         immediate_deps_of_module ~options ~obj_dir ~modules:modules_ module_
       in
       let obj_dir = Obj_dir.of_local obj_dir in
-      let* modules_ = modules ~obj_dir ~deps_of modules_ in
+      let* modules = modules ~obj_dir ~deps_of modules_ in
       let+ requires =
         let* compile_info = Exe_rules.compile_info ~scope exes in
         let open Resolve.Memo.O in
@@ -440,9 +440,9 @@ module Crawl = struct
        | Ok libs ->
          let include_dirs = Obj_dir.all_cmis obj_dir in
          let exe_descr =
-           { Descr.Exe.names = List.map ~f:snd (Nonempty_list.to_list exes.names)
+           { Descr.Exe.names = Nonempty_list.to_list_map exes.names ~f:snd
            ; requires = List.map ~f:uid_of_library libs
-           ; modules = modules_
+           ; modules
            ; include_dirs
            }
          in

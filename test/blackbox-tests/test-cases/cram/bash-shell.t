@@ -54,3 +54,10 @@ Demonstrate the shell field in the cram stanza
   > EOF
 
   $ dune runtest exit1.t
+
+Undefined Variables:
+
+  $ cat >undefined.t <<'EOF'
+  >   $ echo $foo
+  >   ***** UNREACHABLE *****
+  > EOF

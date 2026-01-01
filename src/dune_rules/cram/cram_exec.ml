@@ -302,7 +302,7 @@ let rewrite_paths ~build_path_prefix_map ~parent_script ~command_script s =
 type command_out =
   { command : string list
   ; metadata : metadata_result
-  ; output : string
+  ; output : string option
   }
 
 let dyn_of_command_out { command; metadata; output } =
@@ -310,7 +310,7 @@ let dyn_of_command_out { command; metadata; output } =
   record
     [ "command", (list string) command
     ; "metadata", dyn_of_metadata_result metadata
-    ; "output", string output
+    ; "output", (option string) output
     ]
 ;;
 
@@ -320,15 +320,21 @@ let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
     | Cram_lexer.Comment t -> Cram_lexer.Comment t
     | Command { block; metadata; duration = _ } ->
       let output =
+        let output =
+          match Io.read_file ~binary:false block.output_file with
+          | exception _ -> None
+          | contents -> Some (Ansi_color.strip contents)
+        in
         match metadata with
-        | Missing_unreachable -> "***** UNREACHABLE *****"
+        | Missing_unreachable -> output
         | Present { build_path_prefix_map; exit_code = _ } ->
-          Io.read_file ~binary:false block.output_file
-          |> Ansi_color.strip
-          |> rewrite_paths
-               ~parent_script
-               ~command_script:block.script
-               ~build_path_prefix_map
+          Option.map
+            output
+            ~f:
+              (rewrite_paths
+                 ~parent_script
+                 ~command_script:block.script
+                 ~build_path_prefix_map)
       in
       Command { command = block.command; metadata; output })
 ;;
@@ -351,9 +357,17 @@ let compose_cram_output (cram_to_output : _ Cram_lexer.block list) =
       List.iteri command ~f:(fun i line ->
         let line = sprintf "%c %s" (if i = 0 then '$' else '>') line in
         add_line_prefixed_with_two_space line);
-      String.split_lines output |> List.iter ~f:add_line_prefixed_with_two_space;
+      let unreachable = "***** UNREACHABLE *****" in
+      let () =
+        Option.value output ~default:unreachable
+        |> String.split_lines
+        |> List.iter ~f:add_line_prefixed_with_two_space
+      in
       (match metadata with
-       | Missing_unreachable | Present { exit_code = 0; build_path_prefix_map = _ } -> ()
+       | Missing_unreachable ->
+         Option.iter output ~f:(fun (_ : string) ->
+           add_line_prefixed_with_two_space unreachable)
+       | Present { exit_code = 0; build_path_prefix_map = _ } -> ()
        | Present { exit_code; build_path_prefix_map = _ } ->
          add_line_prefixed_with_two_space (sprintf "[%d]" exit_code)));
   Buffer.contents buf
@@ -702,7 +716,7 @@ module Run = struct
       }
 
     let name = "cram-run"
-    let version = 5
+    let version = 6
 
     let bimap
           ({ src = _; dir; script; output; timeout; setup_scripts; shell = _ } as t)

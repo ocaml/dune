@@ -63,3 +63,11 @@ Undefined Variables:
   > EOF
 
   $ dune runtest undefined.t
+  File "undefined.t", line 1, characters 0-0:
+  Error: Files _build/default/undefined.t and
+  _build/default/undefined.t.corrected differ.
+  [1]
+
+  $ dune promotion show undefined.t 2>&1 | head -n 2 | dune_cmd subst ".*line 1:" "line 1:"
+    $ echo $foo
+  line 1: foo: unbound variable

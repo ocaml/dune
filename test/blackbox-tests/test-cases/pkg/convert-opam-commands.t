@@ -266,7 +266,9 @@ Package with package conjunction and string selections inside variable interpola
   > build: [
   >   [ "echo" "a %{installed}% b" ]
   >   [ "echo" "c %{installed?x:y}% d" ]
+  >   [ "echo" "c2 %{installed?x}% d2" ]
   >   [ "echo" "e %{foo:installed?x:y}% f" ]
+  >   [ "echo" "e2 %{foo:installed?x}% f2" ]
   >   [ "echo" "g %{foo+bar+_:installed?x:y}% h" ]
   >   # The "enable" variable is syntactic sugar around "installed" in some (but not all) cases.
   >   # Its intention appears to be for use with ./configure scripts that take --enable-<feature> or
@@ -314,9 +316,21 @@ preserved between opam and dune.
        (run
         echo
         (concat
+         "c2 "
+         (if (catch_undefined_var %{pkg-self:installed} false) x "")
+         " d2"))
+       (run
+        echo
+        (concat
          "e "
          (if (catch_undefined_var %{pkg:foo:installed} false) x y)
          " f"))
+       (run
+        echo
+        (concat
+         "e2 "
+         (if (catch_undefined_var %{pkg:foo:installed} false) x "")
+         " f2"))
        (run
         echo
         (concat

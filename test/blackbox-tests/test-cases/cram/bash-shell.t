@@ -61,3 +61,5 @@ Undefined Variables:
   >   $ echo $foo
   >   ***** UNREACHABLE *****
   > EOF
+
+  $ dune runtest undefined.t

@@ -5,6 +5,10 @@ open Import
     Set to [Dune_util.cache_home_dir/toolchains]. *)
 val base_dir : unit -> Path.Outside_build_dir.t
 
+(** Returns true if relocatable-compiler is in the given list of package names.
+    When true, the compiler should be treated as a regular package. *)
+val is_relocatable_compiler : Package.Name.t list -> bool
+
 (** Dune will download and build the ocaml-base-compiler and
     ocaml-variants packages into a user-wide directory (shared among
     projects) rather than using the usual package management mechanism to
@@ -18,7 +22,10 @@ val base_dir : unit -> Path.Outside_build_dir.t
     manage their compiler installation with opam or a system package
     manager, as compilers packages that would be installed by dune will
     not work correctly. *)
-val is_compiler_and_toolchains_enabled : Package.Name.t -> bool
+val is_compiler_and_toolchains_enabled
+  :  Package.Name.t
+  -> dep_names:Package.Name.t list
+  -> bool
 
 (** Returns the path to the directory containing the given package within the
     toolchain directory. This will be something like

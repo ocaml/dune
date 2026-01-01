@@ -97,13 +97,30 @@ let opam_variable_to_slang ~loc packages variable =
    with the following syntax:
 
      "%{?conf-g++:your-variable:}%"
+
+   Also handles the case where the conditional syntax %{pkg:var?then:else}%
+   was not correctly parsed by OpamTypesBase.filter_ident_of_string, which
+   only looks for '?' in the package part, not in the variable part.
 *)
 let desugar_special_string_interpolation_syntax
       ((packages, variable, string_converter) as fident)
   =
+  let var_str = OpamVariable.to_string variable in
   match string_converter with
-  | Some (package_and_variable, "")
-    when List.is_empty packages && String.is_empty (OpamVariable.to_string variable) ->
+  | None when String.contains var_str '?' ->
+    (* Handle pkg:var?then or pkg:var?then:else syntax where the '?' ended up
+       in the variable name instead of being parsed as a converter *)
+    (match String.lsplit2 var_str ~on:'?' with
+     | Some (var, rest) ->
+       let converter =
+         match String.lsplit2 rest ~on:':' with
+         | Some (then_, else_) -> Some (then_, else_)
+         | None -> Some (rest, "")
+       in
+       packages, OpamVariable.of_string var, converter
+     | None -> fident)
+  | Some (package_and_variable, "") when List.is_empty packages && String.is_empty var_str
+    ->
     (match String.lsplit2 package_and_variable ~on:':' with
      | Some (package, variable) ->
        ( [ Some (OpamPackage.Name.of_string package) ]

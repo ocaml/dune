@@ -272,7 +272,7 @@ let line_number =
   seq [ set "123456789"; rep digit ]
 ;;
 
-let rewrite_paths build_path_prefix_map ~parent_script ~command_script s =
+let rewrite_paths ~build_path_prefix_map ~parent_script ~command_script s =
   match Build_path_prefix_map.decode_map build_path_prefix_map with
   | Error msg ->
     Code_error.raise
@@ -328,7 +328,7 @@ let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
           |> rewrite_paths
                ~parent_script
                ~command_script:block.script
-               build_path_prefix_map
+               ~build_path_prefix_map
       in
       Command { command = block.command; metadata; output })
 ;;

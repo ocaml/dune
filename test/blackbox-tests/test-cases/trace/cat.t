@@ -33,7 +33,6 @@ Test that --sexp and --chrome-trace are mutually exclusive:
   $ dune trace cat --sexp --chrome-trace 2>&1 | head -1
   Error: --chrome-trace and --sexp are mutually exclusive
 
-
 All the event types from chrome and field per type:
 
   $ dune trace cat --chrome | jq 'group_by(.ph) | map({value: .[0].ph, representative: .[0] | keys})'

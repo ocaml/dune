@@ -18,7 +18,7 @@ type kind =
   | Exe_or_normal_lib
   | Parameter
 
-let eval0 =
+let eval0_unchecked =
   let key = function
     | Error s -> Nonempty_list.[ s ]
     | Ok m -> [ Module.Source.name m ]
@@ -65,25 +65,30 @@ let eval0 =
       Action_builder.evaluate_and_collect_facts
         (expand_and_eval expander ~parse ~standard ~key osl)
     in
-    let modules =
-      Module_trie.filter_map modules ~f:(fun (loc, m) ->
-        match m with
-        | Ok m -> Some (loc, m)
-        | Error s ->
-          User_error.raise
-            ~loc
-            [ Pp.textf "Module %s doesn't exist." (Module_name.to_string s) ])
-    in
-    Module_name.Map.iteri
-      ~f:(fun m loc ->
+    modules, fake_modules
+;;
+
+let eval0 ~expander ~loc ~all_modules ~module_path ~standard osl =
+  let+ modules, fake_modules =
+    eval0_unchecked ~expander ~loc ~all_modules ~module_path ~standard osl
+  in
+  let modules =
+    Module_trie.filter_map modules ~f:(fun (loc, m) ->
+      match m with
+      | Ok m -> Some (loc, m)
+      | Error s ->
         User_error.raise
           ~loc
-          [ Pp.textf
-              "Module %s is excluded but it doesn't exist."
-              (Module_name.to_string m)
-          ])
-      fake_modules;
-    modules
+          [ Pp.textf "Module %s doesn't exist." (Module_name.to_string s) ])
+  in
+  Module_name.Map.iteri
+    ~f:(fun m loc ->
+      User_error.raise
+        ~loc
+        [ Pp.textf "Module %s is excluded but it doesn't exist." (Module_name.to_string m)
+        ])
+    fake_modules;
+  modules
 ;;
 
 type single_module_error =
@@ -413,6 +418,30 @@ let eval
     let path = Nonempty_list.[ name ] in
     let module_ = Module.generated ~kind:Root ~src_dir path in
     Module_trie.set all_modules path module_
+;;
+
+let expand_only_available
+      ~expander
+      ~modules:(all_modules : Module.Source.t Module_trie.t)
+      ~module_path
+      ~stanza_loc
+      (settings : Modules_settings.t)
+  =
+  Memo.push_stack_frame ~human_readable_description:(fun () ->
+    Pp.textf "(modules) field at %s" (Loc.to_file_colon_line stanza_loc))
+  @@ fun () ->
+  let+ modules, _ =
+    eval0_unchecked
+      ~expander
+      ~loc:stanza_loc
+      ~all_modules
+      ~module_path
+      ~standard:all_modules
+      settings.modules
+  in
+  Module_trie.filter_map modules ~f:(function
+    | loc, Ok m -> Some (loc, m)
+    | _, Error _ -> None)
 ;;
 
 let eval

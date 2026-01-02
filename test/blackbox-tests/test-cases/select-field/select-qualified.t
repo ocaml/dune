@@ -71,11 +71,6 @@ Specifying the relative filename works
 Paths must be specified relative to the module group root
 
   $ dune build foo.cma
-  Error: foo__Sub/bar corresponds to an invalid module name
-  -> required by _build/default/foo__.ml-gen
-  -> required by _build/default/.foo.objs/byte/foo__.cmo
-  -> required by _build/default/foo.cma
-  [1]
 
 Works with executables as well:
 
@@ -90,9 +85,4 @@ Works with executables as well:
   > EOF
 
   $ dune exec ./foo.exe
-  Error: dune__exe__Sub/bar corresponds to an invalid module name
-  -> required by _build/default/.foo.eobjs/dune__exe.ml-gen
-  -> required by _build/default/.foo.eobjs/byte/dune__exe.cmi
-  -> required by _build/default/.foo.eobjs/native/dune__exe.cmx
-  -> required by _build/default/foo.exe
-  [1]
+  Test: Unix was found!

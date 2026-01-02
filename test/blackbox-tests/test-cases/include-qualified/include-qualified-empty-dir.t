@@ -21,13 +21,13 @@ source files. The library should still compile.
 
   $ cat > dune <<EOF
   > (include_subdirs qualified)
-  > (library (name foo) (modules))
+  > (rule (with-stdout-to hello.txt (run echo hello)))
   > (library (name bar))
   > EOF
 
   $ touch bar-baz/hello.ml
 
-  $ dune build foo.cma
+  $ dune build ./hello.txt
   File "bar-baz", line 1, characters 0-0:
   Error: "bar-baz" is an invalid module name.
   Module names must be non-empty, start with a letter, and composed only of the

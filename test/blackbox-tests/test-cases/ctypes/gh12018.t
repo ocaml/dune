@@ -42,16 +42,7 @@ Reproduction case for https://github.com/ocaml/dune/issues/12018
   > EOF
 
   $ LIBEX=$(realpath "$PWD/libexample")
-  $ DYLD_LIBRARY_PATH="$LIBEX" LD_LIBRARY_PATH="$LIBEX" PKG_CONFIG_PATH="$LIBEX/pkgconfig" PKG_CONFIG_ARGN="--define-prefix" dune exec ./foo.exe
-  File "dune", line 3, characters 10-13:
-  3 |  (modules foo)
-                ^^^
-  Error: Module Function_description is required by ctypes at dune:13 but is
-  missing in the modules field of the stanza.
-  File "dune", line 3, characters 10-13:
-  3 |  (modules foo)
-                ^^^
-  Error: Module Type_description is required by ctypes at dune:10 but is
-  missing in the modules field of the stanza.
-  [1]
-
+  $ DYLD_LIBRARY_PATH="$LIBEX" LD_LIBRARY_PATH="$LIBEX" PKG_CONFIG_PATH="$LIBEX/pkgconfig" PKG_CONFIG_ARGN="--define-prefix" dune exec ./foo.exe 2>&1 | head -3
+  Internal error, please report upstream including the contents of _build/log.
+  Description:
+    ("link_many: unable to find module",

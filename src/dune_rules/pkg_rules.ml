@@ -1929,6 +1929,38 @@ module Install_action = struct
         Some (entry.section, dst)
     ;;
 
+    let rec resolve_symlinks_in dir =
+      match Readdir.read_directory_with_kinds dir with
+      | Error e -> Unix_error.Detailed.raise e
+      | Ok entries ->
+        List.iter entries ~f:(fun (fname, kind) ->
+          let path = Filename.concat dir fname in
+          match (kind : Unix.file_kind) with
+          | S_DIR -> resolve_symlinks_in path
+          | S_LNK ->
+            (match Fpath.follow_symlink path with
+             | Error (Unix_error e) -> Unix_error.Detailed.raise e
+             | Error Not_a_symlink ->
+               Code_error.raise
+                 "resolve_symlinks_in: not a symlink"
+                 [ "path", Dyn.string path ]
+             | Error Max_depth_exceeded ->
+               User_error.raise
+                 [ Pp.textf
+                     "Unable to resolve symlink %s: too many levels of symbolic links"
+                     path
+                 ]
+             | Ok resolved ->
+               (match Unix.lstat resolved with
+                | { Unix.st_kind = S_REG; _ } ->
+                  Fpath.unlink_exn path;
+                  Io.portable_hardlink
+                    ~src:(Path.of_string resolved)
+                    ~dst:(Path.of_string path)
+                | _ -> ()))
+          | _ -> ())
+    ;;
+
     let action
           { package
           ; install_file
@@ -2016,9 +2048,14 @@ module Install_action = struct
         let+ variables = Async.async (fun () -> read_variables config_file) in
         { Install_cookie.Gen.files; variables }
       in
-      (* Produce the cookie file in the standard path *)
-      let cookie_file = Path.build @@ Paths.install_cookie' target_dir in
       Async.async (fun () ->
+        (* Resolve symlinks in target_dir so that the cache can store them. The
+         dune cache doesn't support symlinks, so we replace them with hardlinks
+         to their targets. *)
+        if Path.Untracked.exists (Path.build target_dir)
+        then resolve_symlinks_in (Path.Build.to_string target_dir);
+        (* Produce the cookie file in the standard path *)
+        let cookie_file = Path.build @@ Paths.install_cookie' target_dir in
         cookie_file |> Path.parent_exn |> Path.mkdir_p;
         Install_cookie.dump cookie_file cookies)
     ;;

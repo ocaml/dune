@@ -177,6 +177,9 @@ let to_map t =
     | Map _ -> assert false)
 ;;
 
+let to_list_map t ~f = fold t ~init:[] ~f:(fun m acc -> f m :: acc)
+let to_list_mapi t ~f = foldi t ~init:[] ~f:(fun k m acc -> f k m :: acc)
+
 let toplevel_only (t : _ t) =
   Module_name.Map.filter_map t ~f:(function
     | Leaf v -> Some v

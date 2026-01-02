@@ -26,6 +26,8 @@ val fold : 'a t -> init:'acc -> f:('a -> 'acc -> 'acc) -> 'acc
 val foldi : 'a t -> init:'acc -> f:(key -> 'a -> 'acc -> 'acc) -> 'acc
 val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 val to_map : 'a t -> 'a Module_name.Map.t
+val to_list_map : 'a t -> f:('a -> 'b) -> 'b list
+val to_list_mapi : 'a t -> f:(key -> 'a -> 'b) -> 'b list
 val singleton : key -> 'a -> 'a t
 val merge : 'a t -> 'b t -> f:(key -> 'a option -> 'b option -> 'c option) -> 'c t
 val as_singleton : 'a t -> 'a option

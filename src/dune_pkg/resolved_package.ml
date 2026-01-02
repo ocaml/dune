@@ -59,17 +59,15 @@ let read_opam_file package ~opam_file_path ~opam_file_contents ~url =
   | Some url -> OpamFile.OPAM.with_url (OpamFile.URL.create url) opam_file
 ;;
 
-let git_repo package ~opam_file ~opam_file_contents rev ~files_dir ~url =
-  let opam_file_path = Path.of_local opam_file in
+let git_repo package ~opam_file ~opam_file_contents ~dune_build rev ~files_dir ~url =
+  let opam_file_path = Option.map ~f:Path.of_local opam_file in
   let opam_file = read_opam_file package ~opam_file_path ~opam_file_contents ~url in
-  let loc = Loc.in_file opam_file_path in
-  Rest
-    { dune_build = false
-    ; loc
-    ; package
-    ; opam_file
-    ; extra_files = Git_files (files_dir, rev)
-    }
+  let loc =
+    match opam_file_path with
+    | Some opam_file_path -> Loc.in_file opam_file_path
+    | None -> Loc.none
+  in
+  Rest { dune_build; loc; package; opam_file; extra_files = Git_files (files_dir, rev) }
 ;;
 
 let local_fs package ~dir ~opam_file_path ~files_dir ~url =
@@ -77,7 +75,7 @@ let local_fs package ~dir ~opam_file_path ~files_dir ~url =
   let files_dir = Option.map files_dir ~f:(Path.append_local dir) in
   let opam_file =
     let opam_file_contents = Io.read_file ~binary:true opam_file_path in
-    read_opam_file package ~opam_file_path ~opam_file_contents ~url
+    read_opam_file package ~opam_file_path:(Some opam_file_path) ~opam_file_contents ~url
   in
   let loc = Loc.in_file opam_file_path in
   Rest

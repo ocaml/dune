@@ -261,7 +261,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
           ; Stack.pp stack
           ]
   in
-  let opam_package stack (package : Local_package.pin) =
+  let pinned_via_opam stack (package : Local_package.pin) =
     let* resolved_package = Pinned_package.resolve_package package in
     resolve package.name resolved_package;
     Resolved_package.opam_file resolved_package
@@ -286,7 +286,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
     |> Fiber.parallel_iter ~f:(fun package ->
       Pinned_package.resolve_package package >>| resolve package.name)
   in
-  let dune_package packages (package : Local_package.pin) =
+  let pinned_via_dune packages (package : Local_package.pin) =
     match Package_name.Map.find packages package.name with
     | None ->
       User_error.raise
@@ -297,7 +297,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
             (OpamUrl.to_string (snd package.url))
         ]
     | Some pkg ->
-      let resolved_package =
+      let+ resolved_package =
         let local_package = Local_package.of_package pkg in
         let opam_file =
           local_package
@@ -310,11 +310,38 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
             (Package_name.to_opam_package_name package.name)
             (Package_version.to_opam_package_version package.version)
         in
-        Resolved_package.local_package
-          ~command_source:local_package.command_source
-          package.loc
-          opam_file
-          opam_package
+        let _, url = package.url in
+        let loc = package.loc in
+        let+ mount = Mount.of_opam_url loc url in
+        match Mount.backend mount with
+        | Path _ ->
+          Resolved_package.local_package
+            ~command_source:local_package.command_source
+            loc
+            opam_file
+            opam_package
+        | Git at_rev ->
+          let dune_build =
+            match local_package.command_source with
+            | Assume_defaults -> true
+            | Opam_file _ -> false
+          in
+          let opam_file_contents = OpamFile.OPAM.write_to_string opam_file in
+          let files_dir =
+            match dune_build with
+            | true -> None
+            | false ->
+              (* TODO: there might be a [files_dir] in the opam/files subfolder *)
+              None
+          in
+          Resolved_package.git_repo
+            opam_package
+            ~opam_file:None
+            ~opam_file_contents
+            ~dune_build
+            at_rev
+            ~files_dir
+            ~url:(Some url)
       in
       resolve package.name resolved_package
   in
@@ -331,13 +358,13 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
     |> Fiber.parallel_iter ~f:(fun (package : Local_package.pin) ->
       let stack = Stack.push stack package in
       match package.origin with
-      | `Opam -> opam_package stack package
+      | `Opam -> pinned_via_opam stack package
       | `Dune ->
         eval_url package.url
         >>= (function
-         | None -> opam_package stack package
+         | None -> pinned_via_opam stack package
          | Some (more_sources, packages) ->
-           dune_package packages package;
+           let* () = pinned_via_dune packages package in
            let more_sources = DB.add_opam_pins more_sources packages in
            loop stack more_sources))
   in

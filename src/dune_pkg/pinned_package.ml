@@ -95,8 +95,9 @@ let resolve_package { Local_package.loc; url = loc_url, url; name; version; orig
     in
     Resolved_package.git_repo
       package
-      ~opam_file:opam_file_path
+      ~opam_file:(Some opam_file_path)
       ~opam_file_contents
+      ~dune_build:false
       rev
       ~files_dir
       ~url:(Some url)

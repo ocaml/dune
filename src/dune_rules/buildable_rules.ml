@@ -24,10 +24,11 @@ let ocaml_flags t ~dir (spec : Dune_lang.Ocaml_flags.Spec.t) =
 let gen_select_rules sctx ~dir compile_info =
   Lib.Compile.resolved_selects compile_info
   |> Resolve.Memo.read_memo
-  >>= Memo.parallel_iter ~f:(fun { Lib.Compile.Resolved_select.dst_fn; src_fn } ->
+  >>= Memo.parallel_iter ~f:(fun { Lib.Compile.Resolved_select.dst_fn; src_fn; loc } ->
     let dst = Path.Build.relative dir dst_fn in
     Super_context.add_rule
       sctx
+      ~loc
       ~dir
       (Action_builder.with_file_targets
          ~file_targets:[ dst ]

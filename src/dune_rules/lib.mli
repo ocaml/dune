@@ -95,6 +95,7 @@ module Compile : sig
     type t =
       { src_fn : Filename.t Resolve.t
       ; dst_fn : Filename.t
+      ; loc : Loc.t
       }
   end
 

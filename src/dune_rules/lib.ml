@@ -306,6 +306,7 @@ module Resolved_select = struct
   type t =
     { src_fn : Filename.t Resolve.t
     ; dst_fn : Filename.t
+    ; loc : Loc.t
     }
 end
 
@@ -1758,7 +1759,7 @@ end = struct
       in
       get fst, get snd
     in
-    res, { Resolved_select.src_fn; dst_fn = result_fn }
+    res, { Resolved_select.src_fn; dst_fn = result_fn; loc }
   ;;
 
   let resolve_complex_deps db deps ~private_deps ~parameters =

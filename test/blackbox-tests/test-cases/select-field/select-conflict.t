@@ -32,6 +32,6 @@ a conflicting rule
   $ dune build foo.cma
   Error: Multiple rules generated for _build/default/lexer.ml:
   - dune:1
-  - <internal location>
+  - dune:5
   [1]
 

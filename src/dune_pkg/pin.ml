@@ -321,15 +321,26 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
             opam_file
             opam_package
         | Git at_rev ->
+          let dune_build =
+            match local_package.command_source with
+            | Assume_defaults -> true
+            | Opam_file _ -> false
+          in
           let opam_file_contents = OpamFile.OPAM.write_to_string opam_file in
-          (* when pinning there is no files dir nor does it make sense *)
+          let files_dir =
+            match dune_build with
+            | true -> None
+            | false ->
+              (* TODO: there might be a [files_dir] in the opam/files subfolder *)
+              None
+          in
           Resolved_package.git_repo
             opam_package
             ~opam_file:None
             ~opam_file_contents
-            ~dune_build:true
+            ~dune_build
             at_rev
-            ~files_dir:None
+            ~files_dir
             ~url:(Some url)
       in
       resolve package.name resolved_package

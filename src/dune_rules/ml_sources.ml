@@ -154,8 +154,7 @@ module Per_stanza = struct
     in
     let rev_map =
       let by_path (origin : Origin.t * Path.Build.t) trie =
-        Module_trie.fold trie ~init:[] ~f:(fun (_loc, m) acc ->
-          (Module.Source.path m, origin) :: acc)
+        Module_trie.to_list_map trie ~f:(fun (_loc, m) -> Module.Source.path m, origin)
       in
       List.rev_concat
         [ List.rev_concat_map libs ~f:(fun part ->

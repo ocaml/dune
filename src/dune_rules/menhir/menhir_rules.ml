@@ -254,7 +254,10 @@ module Run (P : PARAMS) = struct
       |> rule ~mode:Standard
     in
     (* 2. The OCaml compiler performs type inference. *)
-    let name = Module_name.of_string_allow_invalid (stanza.loc, mock base) in
+    let name =
+      Module_name.of_string_allow_invalid (stanza.loc, mock base)
+      |> Module_name.Unchecked.allow_invalid
+    in
     let mock_module : Module.t =
       let source =
         let impl = Module.File.make Dialect.ocaml (Path.build (mock_ml base)) in
@@ -367,7 +370,7 @@ end
 
 (* The final glue. *)
 
-let module_names (stanza : Menhir_stanza.t) : Module_name.t list =
+let module_names (stanza : Menhir_stanza.t) : Module_name.Unchecked.t list =
   List.map (Menhir_stanza.modules stanza) ~f:(fun s ->
     (* TODO the loc can improved here *)
     Module_name.of_string_allow_invalid (stanza.loc, s))

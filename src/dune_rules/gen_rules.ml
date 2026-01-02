@@ -252,11 +252,13 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
                  ~of_:(Path.Build.local (Dir_contents.dir dir_contents))
                |> Option.value_exn
                |> Path.Local.explode
-               |> List.map ~f:Module_name.of_string
+               |> List.map ~f:Module_name.of_checked_string
            in
            Menhir_rules.module_names m
            |> Memo.List.find_map ~f:(fun name ->
-             let path = Nonempty_list.(base_path @ [ name ]) in
+             let path =
+               Nonempty_list.(base_path @ [ Module_name.Unchecked.validate_exn name ])
+             in
              Ml_sources.find_origin ml_sources ~libs:(Scope.libs scope) path)
            >>| Option.bind ~f:(fun loc -> Loc.Map.find cctxs (Ml_sources.Origin.loc loc))
            >>= (function

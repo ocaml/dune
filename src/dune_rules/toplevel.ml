@@ -12,7 +12,10 @@ module Source = struct
     }
 
   let main_module t =
-    let main_module_name = Module_name.of_string_allow_invalid (t.loc, t.name) in
+    let main_module_name =
+      Module_name.of_string_allow_invalid (t.loc, t.name)
+      |> Module_name.Unchecked.allow_invalid
+    in
     Module.generated ~kind:Impl ~src_dir:t.dir [ main_module_name ]
   ;;
 

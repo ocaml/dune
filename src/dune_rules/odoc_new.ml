@@ -719,7 +719,9 @@ end = struct
       let basename =
         Path.basename v.source |> Filename.remove_extension |> Stdune.String.capitalize
       in
-      Some (Module_name.of_string_allow_invalid (Loc.none, basename))
+      Some
+        (Module_name.of_string_allow_invalid (Loc.none, basename)
+         |> Module_name.Unchecked.allow_invalid)
     | _ -> None
   ;;
 
@@ -1064,7 +1066,7 @@ let parse_odoc_deps =
     | [] -> cur
     | x :: rest ->
       (match String.split ~on:' ' x with
-       | [ m; hash ] -> getdeps ((Module_name.of_string m, hash) :: cur) rest
+       | [ m; hash ] -> getdeps ((Module_name.of_checked_string m, hash) :: cur) rest
        | _ -> getdeps cur rest)
   in
   fun lines -> getdeps [] lines
@@ -1150,7 +1152,7 @@ let modules_of_dir d : (Module_name.t * (Path.t * [ `Cmti | `Cmt | `Cmi ])) list
         List.find_exn extensions ~f:(fun (ext, _ty) ->
           List.exists list ~f:(fun (n, _) -> n = m ^ ext))
       in
-      Module_name.of_string m, (Path.relative d (m ^ ext), ty))
+      Module_name.of_checked_string m, (Path.relative d (m ^ ext), ty))
 ;;
 
 (* Here we are constructing the list of artifacts for various types of things

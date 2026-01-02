@@ -93,7 +93,10 @@ end = struct
             names
             ~f:
               (List.iter ~f:(fun name ->
-                 ignore (Module_name.parse_string_exn name : Module_name.t)));
+                 ignore
+                   (Module_name.of_string_allow_invalid name
+                    |> Module_name.Unchecked.validate_exn
+                    : Module_name.t)));
         match names, public_names with
         | Some names, _ -> names
         | None, Some public_names ->
@@ -141,7 +144,7 @@ end = struct
               ~loc
               [ Pp.textf "field %s is missing" (pluralize ~multi "name") ]
       in
-      Nonempty_list.of_list names |> Option.value_exn
+      Nonempty_list.of_list_exn names
     in
     let public =
       match package, public_names with

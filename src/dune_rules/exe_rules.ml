@@ -60,23 +60,30 @@ let linkages
 
 let programs ~modules ~(exes : Executables.t) =
   Nonempty_list.to_list_map exes.names ~f:(fun (loc, name) ->
-    let mod_name = Module_name.of_string_allow_invalid (loc, name) in
-    match Modules.With_vlib.find modules mod_name with
+    let main_module_name =
+      Module_name.of_string_allow_invalid (loc, name)
+      |> Module_name.Unchecked.allow_invalid
+    in
+    match Modules.With_vlib.find modules main_module_name with
     | Some m ->
       if Module.has m ~ml_kind:Impl
-      then { Exe.Program.name; main_module_name = mod_name; loc }
+      then { Exe.Program.name; main_module_name; loc }
       else
         User_error.raise
           ~loc
-          [ Pp.textf "Module %S has no implementation." (Module_name.to_string mod_name) ]
+          [ Pp.textf
+              "Module %S has no implementation."
+              (Module_name.to_string main_module_name)
+          ]
     | None ->
       let msg =
         match Ordered_set_lang.Unexpanded.loc exes.buildable.modules.modules with
-        | None -> Pp.textf "Module %S doesn't exist." (Module_name.to_string mod_name)
+        | None ->
+          Pp.textf "Module %S doesn't exist." (Module_name.to_string main_module_name)
         | Some _ ->
           Pp.textf
             "The name %S is not listed in the (modules) field of this stanza."
-            (Module_name.to_string mod_name)
+            (Module_name.to_string main_module_name)
       in
       User_error.raise ~loc [ msg ])
 ;;

@@ -55,7 +55,7 @@ end
 
 let parse_module_names ~dir ~(unit : Module.t) ~modules words =
   List.concat_map words ~f:(fun m ->
-    let m = Module_name.of_string m in
+    let m = Module_name.of_checked_string m in
     match Modules.With_vlib.find_dep modules ~of_:unit m with
     | Ok s -> s
     | Error `Parent_cycle ->

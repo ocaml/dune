@@ -278,7 +278,10 @@ let build_ppx_driver =
     (* CR-someday diml: what we should do is build the .cmx/.cmo once and for all
      at the point where the driver is defined. *)
     let dir = Path.Build.parent_exn target in
-    let main_module_name = Module_name.of_string_allow_invalid (Loc.none, "_ppx") in
+    let main_module_name =
+      Module_name.of_string_allow_invalid (Loc.none, "_ppx")
+      |> Module_name.Unchecked.allow_invalid
+    in
     let module_ = Module.generated ~kind:Impl ~src_dir:dir [ main_module_name ] in
     let* () =
       let ml_source =

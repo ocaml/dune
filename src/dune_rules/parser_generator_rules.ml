@@ -19,7 +19,7 @@ let tool =
       args
 ;;
 
-let add_rule sctx ~dir ~loc ~mode m ~for_ =
+let add_rule sctx ~dir ~mode (loc, m) ~for_ =
   let args =
     let files = Module.Source.files m in
     let file = List.hd files in
@@ -53,8 +53,8 @@ let gen_rules sctx ~dir_contents ~dir ~for_ =
   Dir_contents.ocaml dir_contents
   >>| Ml_sources.Parser_generators.modules ~for_:modules_for
   >>= fun targets ->
-  let { Parser_generators.loc; mode; _ } = ocamllex_or_ocamlyacc in
+  let { Parser_generators.mode; _ } = ocamllex_or_ocamlyacc in
   Module_trie.to_map targets
   |> Module_name.Map.values
-  |> Memo.parallel_iter ~f:(add_rule sctx ~dir ~loc ~mode ~for_)
+  |> Memo.parallel_iter ~f:(add_rule sctx ~dir ~mode ~for_)
 ;;

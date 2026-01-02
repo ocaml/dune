@@ -19,11 +19,11 @@ type kind =
   | Parameter
 
 module Key = struct
-  type t = Module_name.Path.t
+  type t = Module_name.Unchecked.Path.t
 
-  let compare = Module_name.Path.compare
+  let compare = Module_name.Unchecked.Path.compare
 
-  module Map = Module_trie
+  module Map = Module_trie.Unchecked
 end
 
 module Unordered = Ordered_set_lang.Unordered (Key)
@@ -35,7 +35,7 @@ let expand_all_unchecked =
     let expand_and_eval =
       let open Action_builder.O in
       let+ set = Expander.expand_ordered_set_lang expander osl in
-      let standard = Module_trie.empty in
+      let standard = Module_trie.Unchecked.empty in
       Unordered.eval_loc set ~parse ~key ~standard
     in
     Action_builder.evaluate_and_collect_facts expand_and_eval >>| fst
@@ -44,14 +44,14 @@ let expand_all_unchecked =
 let eval0 =
   let key = function
     | Error s -> Nonempty_list.[ s ]
-    | Ok m -> [ Module.Source.name m ]
+    | Ok m -> [ Module.Source.name m |> Module_name.unchecked ]
   in
   (* Fake modules are modules that do not exist but it doesn't matter because
      they are only removed from a set (for jbuild file compatibility) *)
   let expand_and_eval t set ~parse ~key ~standard =
     let open Action_builder.O in
     let+ set = Expander.expand_ordered_set_lang t set in
-    let fake_modules = ref Module_name.Map.empty in
+    let fake_modules = ref Module_name.Unchecked.Map.empty in
     let r =
       let parse ~loc x = parse ~loc ~fake_modules x in
       Unordered.eval_loc set ~parse ~key ~standard
@@ -61,35 +61,38 @@ let eval0 =
   let parse ~all_modules ~loc ~fake_modules s =
     let name = Module_name.of_string_allow_invalid (loc, s) in
     let path = Nonempty_list.[ name ] in
-    match Module_trie.find all_modules path with
+    match Module_trie.Unchecked.find all_modules path with
     | Some m -> Ok m
     | None ->
-      fake_modules := Module_name.Map.set !fake_modules name loc;
+      fake_modules := Module_name.Unchecked.Map.set !fake_modules name loc;
       Error name
   in
   fun ~expander ~loc ~all_modules ~standard osl ->
     let parse = parse ~all_modules in
-    let standard = Module_trie.map standard ~f:(fun m -> loc, Ok m) in
+    let standard = Module_trie.Unchecked.map standard ~f:(fun m -> loc, Ok m) in
     let+ (modules, fake_modules), _ =
       Action_builder.evaluate_and_collect_facts
         (expand_and_eval expander ~parse ~standard ~key osl)
     in
     let modules =
-      Module_trie.filter_map modules ~f:(fun (loc, m) ->
+      Module_trie.Unchecked.filter_map modules ~f:(fun (loc, m) ->
         match m with
         | Ok m -> Some (loc, m)
         | Error s ->
           User_error.raise
             ~loc
-            [ Pp.textf "Module %s doesn't exist." (Module_name.to_string s) ])
+            [ Pp.textf
+                "Module %s doesn't exist."
+                (Module_name.to_string (Module_name.Unchecked.allow_invalid s))
+            ])
     in
-    Module_name.Map.iteri
+    Module_name.Unchecked.Map.iteri
       ~f:(fun m loc ->
         User_error.raise
           ~loc
           [ Pp.textf
               "Module %s is excluded but it doesn't exist."
-              (Module_name.to_string m)
+              (Module_name.to_string (Module_name.Unchecked.allow_invalid m))
           ])
       fake_modules;
     modules
@@ -111,7 +114,7 @@ type single_module_error =
   | Undeclared_virtual_module
 
 type errors =
-  { errors : (single_module_error * Loc.t * Module_name.Path.t) list
+  { errors : (single_module_error * Loc.t * Module_name.Unchecked.t Nonempty_list.t) list
   ; unimplemented_virt_modules : Module_name.Path.Set.t
   }
 
@@ -129,20 +132,25 @@ let find_errors
        why the code is implemented this way. *)
     List.fold_left
       [ intf_only; virtual_modules; private_modules ]
-      ~init:(Module_trie.map modules ~f:snd)
+      ~init:(Module_trie.Unchecked.map modules ~f:snd)
       ~f:(fun acc map ->
-        Module_trie.foldi map ~init:acc ~f:(fun name (_loc, m) acc ->
-          Module_trie.set acc name m))
+        Module_trie.Unchecked.foldi map ~init:acc ~f:(fun name (_loc, m) acc ->
+          Module_trie.Unchecked.set acc name m))
   in
   let errors =
-    Module_trie.foldi all ~init:[] ~f:(fun module_name module_ acc ->
+    Module_trie.Unchecked.foldi all ~init:[] ~f:(fun module_name module_ acc ->
       let has_impl = Module.Source.has module_ ~ml_kind:Impl in
       let has_intf = Module.Source.has module_ ~ml_kind:Intf in
-      let impl_vmodule = Module_name.Path.Set.mem existing_virtual_modules module_name in
-      let modules = Module_trie.find modules module_name in
-      let private_ = Module_trie.find private_modules module_name in
-      let virtual_ = Module_trie.find virtual_modules module_name in
-      let intf_only = Module_trie.find intf_only module_name in
+      let impl_vmodule =
+        let module_name =
+          Nonempty_list.map module_name ~f:Module_name.Unchecked.allow_invalid
+        in
+        Module_name.Path.Set.mem existing_virtual_modules module_name
+      in
+      let modules = Module_trie.Unchecked.find modules module_name in
+      let private_ = Module_trie.Unchecked.find private_modules module_name in
+      let virtual_ = Module_trie.Unchecked.find virtual_modules module_name in
+      let intf_only = Module_trie.Unchecked.find intf_only module_name in
       let with_property prop f acc =
         match prop with
         | None -> acc
@@ -180,7 +188,8 @@ let find_errors
   in
   let unimplemented_virt_modules =
     Module_name.Path.Set.filter existing_virtual_modules ~f:(fun module_name ->
-      match Module_trie.find all module_name with
+      let module_name = Nonempty_list.map module_name ~f:Module_name.unchecked in
+      match Module_trie.Unchecked.find all module_name with
       | None -> true
       | Some m -> not (Module.Source.has m ~ml_kind:Impl))
   in
@@ -216,7 +225,8 @@ let check_invalid_module_listing
   then (
     let get kind =
       List.filter_map errors ~f:(fun (k, loc, m) -> Option.some_if (kind = k) (loc, m))
-      |> List.sort ~compare:(fun (_, a) (_, b) -> Module_name.Path.compare a b)
+      |> List.sort ~compare:(fun (_, a) (_, b) ->
+        Nonempty_list.compare ~compare:Module_name.Unchecked.compare a b)
     in
     let vmodule_impls_with_own_intf = get Vmodule_impls_with_own_intf in
     let forbidden_new_public_modules = get Forbidden_new_public_module in
@@ -233,9 +243,12 @@ let check_invalid_module_listing
     in
     let undeclared_private_modules = get Undeclared_private_module in
     let undeclared_virtual_modules = get Undeclared_virtual_module in
-    let uncapitalized = List.map ~f:(fun (_, m) -> Module_name.Path.uncapitalize m) in
+    let uncapitalized =
+      List.map ~f:(fun (_, m) -> Module_name.Unchecked.Path.uncapitalize m)
+    in
     let line_list modules =
-      Pp.enumerate modules ~f:(fun (_, m) -> Pp.verbatim (Module_name.Path.to_string m))
+      Pp.enumerate modules ~f:(fun (_, m) ->
+        Pp.verbatim (Module_name.Unchecked.Path.to_string m))
     in
     let print ?(is_error = true) before l after =
       match l with
@@ -283,8 +296,8 @@ let check_invalid_module_listing
     print
       [ Pp.text "These modules are declared virtual, but are missing." ]
       (unimplemented_virt_modules
-       |> Module_name.Path.Set.to_list
-       |> List.map ~f:(fun name -> stanza_loc, name))
+       |> Module_name.Path.Set.to_list_map ~f:(fun name ->
+         stanza_loc, Nonempty_list.map name ~f:Module_name.unchecked))
       [ Pp.text "You must provide an implementation for all of these modules." ];
     (* Checking that (modules) includes all declared modules *)
     let print_undeclared_modules field mods =
@@ -347,7 +360,7 @@ let check_invalid_module_listing
 
 let eval
       ~expander
-      ~modules:(all_modules : Module.Source.t Module_trie.t)
+      ~modules:(all_modules : Module.Source.t Module_trie.Unchecked.t)
       ~stanza_loc
       ~private_modules
       ~kind
@@ -370,13 +383,16 @@ let eval
     | Exe_or_normal_lib | Virtual _ | Parameter -> Module_name.Path.Set.empty
     | Implementation { existing_virtual_modules; _ } -> existing_virtual_modules
   in
-  let+ intf_only = eval ~standard:Module_trie.empty modules_without_implementation
+  let+ intf_only =
+    eval ~standard:Module_trie.Unchecked.empty modules_without_implementation
   and+ virtual_modules =
     match kind with
-    | Exe_or_normal_lib | Implementation _ -> Memo.return Module_trie.empty
-    | Virtual { virtual_modules } -> eval ~standard:Module_trie.empty virtual_modules
-    | Parameter -> Memo.return (Module_trie.map ~f:(fun v -> stanza_loc, v) all_modules)
-  and+ private_modules = eval ~standard:Module_trie.empty private_modules in
+    | Exe_or_normal_lib | Implementation _ -> Memo.return Module_trie.Unchecked.empty
+    | Virtual { virtual_modules } ->
+      eval ~standard:Module_trie.Unchecked.empty virtual_modules
+    | Parameter ->
+      Memo.return (Module_trie.Unchecked.map ~f:(fun v -> stanza_loc, v) all_modules)
+  and+ private_modules = eval ~standard:Module_trie.Unchecked.empty private_modules in
   let is_parameter =
     match kind with
     | Parameter -> true
@@ -394,16 +410,19 @@ let eval
     ~is_vendored
     ~is_parameter
     ~version;
+  let modules = Module_trie.Unchecked.check_exn modules in
   let all_modules =
     Module_trie.mapi modules ~f:(fun _path (_, m) ->
-      let name = Nonempty_list.[ Module.Source.name m ] in
+      let name = Nonempty_list.[ Module.Source.name m |> Module_name.unchecked ] in
       let visibility =
-        if Module_trie.mem private_modules name then Visibility.Private else Public
+        if Module_trie.Unchecked.mem private_modules name
+        then Visibility.Private
+        else Public
       in
       let kind =
         if is_parameter
         then Module.Kind.Parameter
-        else if Module_trie.mem virtual_modules name
+        else if Module_trie.Unchecked.mem virtual_modules name
         then Virtual
         else if Module.Source.has m ~ml_kind:Impl
         then (
@@ -415,17 +434,20 @@ let eval
       in
       Module.of_source m ~kind ~visibility)
   in
-  match root_module with
-  | None -> all_modules
-  | Some (_, name) ->
-    let path = Nonempty_list.[ name ] in
-    let module_ = Module.generated ~kind:Root ~src_dir path in
-    Module_trie.set all_modules path module_
+  let all_modules =
+    match root_module with
+    | None -> all_modules
+    | Some (_, name) ->
+      let path = Nonempty_list.[ name ] in
+      let module_ = Module.generated ~kind:Root ~src_dir path in
+      Module_trie.set all_modules path module_
+  in
+  modules, all_modules
 ;;
 
 let eval
       ~expander
-      ~modules:(all_modules : Module.Source.t Module_trie.t)
+      ~modules:(all_modules : Module.Source.t Module_trie.Unchecked.t)
       ~stanza_loc
       ~private_modules
       ~kind
@@ -444,18 +466,15 @@ let eval
     | Some src_dir -> Source_tree.is_vendored src_dir
     | None -> Memo.return false
   in
-  let+ modules =
-    eval
-      ~expander
-      ~modules:all_modules
-      ~stanza_loc
-      ~private_modules
-      ~kind
-      ~src_dir
-      ~is_vendored
-      settings
-      modules0
-      ~version
-  in
-  modules0, modules
+  eval
+    ~expander
+    ~modules:all_modules
+    ~stanza_loc
+    ~private_modules
+    ~kind
+    ~src_dir
+    ~is_vendored
+    settings
+    modules0
+    ~version
 ;;

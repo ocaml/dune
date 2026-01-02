@@ -1,12 +1,18 @@
 open Import
 module Package_constraint = Dune_lang.Package_constraint
 
+module Origin = struct
+  type t =
+    | Opam_file
+    | Pin_stanza
+end
+
 type pin =
   { loc : Loc.t
   ; version : Package_version.t
   ; url : Loc.t * OpamUrl.t
   ; name : Package_name.t
-  ; origin : [ `Dune | `Opam ]
+  ; origin : Origin.t
   }
 
 type pins = pin Package_name.Map.t
@@ -190,7 +196,7 @@ let of_package (t : Dune_lang.Package.t) =
             Package_version.of_opam_package_version (OpamPackage.version pkg)
           in
           let loc = Loc.in_file (Path.source file) in
-          name, { loc; version; url = loc, url; name; origin = `Opam })
+          name, { loc; version; url = loc, url; name; origin = Opam_file })
         |> Package_name.Map.of_list
       with
       | Ok x -> x

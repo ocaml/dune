@@ -20,18 +20,14 @@ type kind =
   | Exe_or_normal_lib
   | Parameter
 
-val expand_only_available
+val expand_all_unchecked
   :  expander:Expander.t
-  -> modules:Module.Source.t Module_trie.t
-  -> module_path:Module_name.t list option
-  -> stanza_loc:Loc.t
-  -> Modules_settings.t
-  -> (Loc.t * Module.Source.t) Module_trie.t Memo.t
+  -> Ordered_set_lang.Unexpanded.t
+  -> (Loc.t * (Module_name.t * string)) Module_trie.t Memo.t
 
 val eval
   :  expander:Expander.t
   -> modules:Module.Source.t Module_trie.t
-  -> module_path:Module_name.t list option
   -> stanza_loc:Loc.t
   -> private_modules:Ordered_set_lang.Unexpanded.t
   -> kind:kind

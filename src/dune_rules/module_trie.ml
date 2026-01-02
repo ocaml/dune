@@ -35,18 +35,24 @@ let rec find t (p :: ps : key) =
      | p :: ps -> find t (p :: ps))
 ;;
 
-let rec gen_set_k t (p :: ps : key) v ~on_exists =
-  Map.update t p ~f:(fun x ->
-    match ps with
-    | [] ->
-      (match x with
-       | None -> Some v
-       | Some c -> on_exists c)
-    | p :: ps ->
-      (match x with
-       | None -> Some (Map (gen_set_k Map.empty (p :: ps) v ~on_exists))
-       | Some (Leaf _ as leaf) -> Some leaf
-       | Some (Map m) -> Some (Map (gen_set_k m (p :: ps) v ~on_exists))))
+let rec gen_set_k t ps v ~on_exists =
+  match ps with
+  | [] ->
+    (match v with
+     | Leaf _ -> Code_error.raise "gen_set: no top level leaf" []
+     | Map m -> m)
+  | p :: ps ->
+    Map.update t p ~f:(fun x ->
+      match ps with
+      | [] ->
+        (match x with
+         | None -> Some v
+         | Some c -> on_exists c)
+      | p :: ps ->
+        (match x with
+         | None -> Some (Map (gen_set_k Map.empty (p :: ps) v ~on_exists))
+         | Some (Leaf _ as leaf) -> Some leaf
+         | Some (Map m) -> Some (Map (gen_set_k m (p :: ps) v ~on_exists))))
 ;;
 
 let gen_set (type a) (t : a t) ps v =
@@ -56,7 +62,10 @@ let gen_set (type a) (t : a t) ps v =
   | exception Duplicate d -> Error d
 ;;
 
-let set t path v = gen_set_k t path (Leaf v) ~on_exists:(fun _ -> Some (Leaf v))
+let set t (p :: ps : key) v =
+  gen_set_k t (p :: ps) (Leaf v) ~on_exists:(fun _ -> Some (Leaf v))
+;;
+
 let set_map t k v = gen_set t k (Map (of_map v))
 let non_empty_map m = if Map.is_empty m then None else Some (Map m)
 

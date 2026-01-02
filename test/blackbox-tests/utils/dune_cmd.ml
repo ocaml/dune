@@ -334,6 +334,23 @@ module Wait_for_file_to_appear = struct
   let () = register name of_args run
 end
 
+module Mksocket = struct
+  let name = "mksocket"
+
+  let of_args = function
+    | [ path ] -> path
+    | _ -> raise (Arg.Bad "Usage: dune_cmd mksocket <path>")
+  ;;
+
+  let run path =
+    let sock = Unix.socket Unix.PF_UNIX Unix.SOCK_STREAM 0 in
+    Unix.bind sock (Unix.ADDR_UNIX path);
+    Unix.close sock
+  ;;
+
+  let () = register name of_args run
+end
+
 (* implements `exec -a` in a portable way *)
 module Exec_a = struct
   type t =

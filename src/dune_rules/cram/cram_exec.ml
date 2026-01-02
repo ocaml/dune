@@ -622,9 +622,11 @@ let run_cram_test
         ; Pp.verbatimf "  $ %s" cmd
         ]
     in
-    User_error.raise
+    User_warning.emit
       ~loc:(Loc.in_file (Path.drop_optional_build_context_maybe_sandboxed src))
-      (timeout_msg @ [ timeout_set_message ])
+      (timeout_msg @ [ timeout_set_message ]);
+    (* Return partial results so a .corrected file can be generated for promotion *)
+    read_and_attach_exit_codes sh_script |> sanitize ~parent_script:script
 ;;
 
 let run_produce_correction

@@ -15,11 +15,11 @@ This is similar to how compilers install binaries (e.g., ocamlc -> ocamlc.opt).
   > (version 0.0.1)
   > (build
   >  (progn
-  >   (run true BUILDING_FOO_PACKAGE) ; for grepping later
+  >   (run true BUILDING_FOO_PACKAGE)
   >   (run mkdir -p %{lib}/%{pkg-self:name})
-  >   (run sh -c "echo 'real content' > %{lib}/%{pkg-self:name}/real.txt")
+  >   (write-file %{lib}/%{pkg-self:name}/real.txt "real content\n")
   >   (run ln -s real.txt %{lib}/%{pkg-self:name}/link.txt)
-  >   (run touch %{lib}/%{pkg-self:name}/META)))
+  >   (write-file %{lib}/%{pkg-self:name}/META "")))
   > EOF
 
   $ cat > dune-project <<EOF
@@ -49,15 +49,15 @@ Check that the files exist:
 The symlink has been resolved to a regular file (hardlink to the target):
 
   $ dune_cmd stat kind $(get_build_pkg_dir foo)/target/lib/foo/link.txt
-  symbolic link
+  regular file
 
 Check hardlink count. Files should have hardlinks > 1 indicating they are cached.
 real.txt has 3 hardlinks: original, link.txt (resolved), and cache entry.
 
   $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/target/lib/foo/real.txt
-  1
+  3
   $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/target/lib/foo/META
-  1
+  2
 
 Clean and rebuild to verify cache restore:
 
@@ -67,5 +67,5 @@ Clean and rebuild to verify cache restore:
 The build command should not be rerun since it will be restored from cache.
 
   $ count_trace BUILDING_FOO_PACKAGE
-  1
+  0
 

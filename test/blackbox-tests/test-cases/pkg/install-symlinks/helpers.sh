@@ -2,5 +2,5 @@
 # Useful for verifying whether a build action ran (count > 0) or was cached (count = 0).
 count_trace() {
   dune trace cat \
-    | jq -s --arg needle "$1" '[ .[] | select(.cat == "process" and .args.process_args == [$needle]) ] | length'
+    | jq -s --arg needle "$1" '[ .[] | select(.cat == "process" and .name == "start" and (.args.process_args | any(contains($needle)))) ] | length'
 }

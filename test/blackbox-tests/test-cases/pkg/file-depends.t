@@ -5,14 +5,15 @@ the package depends on. We make sure that such a package really does depend on
 the files found in files-depend. 
 
   $ make_lockdir
-  $ foo=$PWD/foo make_lockpkg file-depends <<EOF
+  $ foo=$PWD/foo
+  $ make_lockpkg file-depends <<EOF
   > (version 0.0.1)
   > (build
   >  (system "\| echo Building file-depends
-  >          "\| cat > file-depends.config <<EOF
+  >          "\| cat > file-depends.config <<INNER
   >          "\| opam-version: "2.0"
   >          "\| file-depends: [ "$foo" "md5=00000000000000000000000000000000" ]
-  >          "\| EOF
+  >          "\| INNER
   >  ))
   > EOF
 

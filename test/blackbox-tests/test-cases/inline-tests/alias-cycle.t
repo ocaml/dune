@@ -47,3 +47,4 @@ This kind of cycle has a difficult to understand error message.
   -> required by _build/default/foo_simple.cma
   -> required by alias all
   -> required by alias default
+  [1]

@@ -5,7 +5,7 @@ Applying the same setup script twice:
   > EOF
 
   $ cat >helpers.sh <<EOF
-  > if [ -n "$x" ]; then
+  > if [ -n "${x:-}" ]; then
   >   exit 1
   > else
   >   x=1

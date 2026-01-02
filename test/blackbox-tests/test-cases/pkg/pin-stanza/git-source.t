@@ -73,6 +73,7 @@ In this case Dune can't determine which reference to use and will error out:
   is ambiguous
   Hint: If you want to specify a tag use refs/tags/duplicated
   Hint: If you want to specify a branch use refs/branches/duplicated
+  [1]
 
 Git also has unambibuous namespaces tags and branches, for tags it is `refs/tags/`.
 

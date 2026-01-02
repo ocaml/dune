@@ -25,3 +25,4 @@ Here we try to pin a package to a source that doesn't define said package:
        ^^^^^^^^^^^^^^^^^^^^
   Error: package bar doesn't exist in source
   $URL
+  [1]

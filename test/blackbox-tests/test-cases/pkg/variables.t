@@ -67,3 +67,4 @@ Now we demonstrate we get a proper error from invalid .config files:
   Reason: Parse error
   -> required by
      _build/_private/default/.pkg/test.0.0.1-69ac79828345d1ca458538ce94b5c970/target
+  [1]

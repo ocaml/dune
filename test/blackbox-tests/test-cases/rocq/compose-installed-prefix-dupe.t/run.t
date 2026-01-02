@@ -8,7 +8,7 @@ First we install our two theories with the conflicting name prefix.
 
 We add these to ROCQPATH
 
-  $ export ROCQPATH=../B/lib/coq/user-contrib:../C/lib/coq/user-contrib:$ROCQPATH
+  $ export ROCQPATH=../B/lib/coq/user-contrib:../C/lib/coq/user-contrib:${ROCQPATH:-}
 
 Now we create a theory that depends on both
 

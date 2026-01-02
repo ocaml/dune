@@ -16,7 +16,7 @@ First we install our two theories with the conflicting name prefix.
 
 We add these to COQPATH
 
-  $ export COQPATH=../B/lib/coq/user-contrib:../C/lib/coq/user-contrib:$COQPATH
+  $ export COQPATH=../B/lib/coq/user-contrib:../C/lib/coq/user-contrib:${COQPATH:-}
 
 Now we create a theory that depends on both
 

@@ -95,11 +95,11 @@ shared buffer):
   $ cp gen_lifecycle.ml gen.ml
   $ cp gen_lifecycle.ml genb.ml
   $ cat >gen1.ml <<EOF
-  > let ver_$i = Gen.current_version
+  > let ver_1 = Gen.current_version
   > let () = prerr_endline "some string"
   > EOF
   $ cat >gen2.ml <<EOF
-  > let ver_$i = Genb.current_version
+  > let ver_2 = Genb.current_version
   > let () = prerr_endline "some string2"
   > EOF
 

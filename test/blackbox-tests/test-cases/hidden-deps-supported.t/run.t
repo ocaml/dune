@@ -58,3 +58,4 @@ Test transitive deps can not be directly accessed, both for compiler versions su
   1 | let _ = Bar.y + Foo.v
                       ^^^
   Error: Unbound module Foo
+  [1]

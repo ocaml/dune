@@ -46,7 +46,7 @@ Negative values fail immediately.
 Checking some currently accepted float values:
 
   $ test() {
-  >   echo "(cram (timeout $1))" > dune
+  >   echo "(cram (timeout ${1:-}))" > dune
   >   dune build 
   > }
 

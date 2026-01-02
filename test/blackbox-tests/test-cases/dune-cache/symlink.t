@@ -30,6 +30,7 @@ Dune cache contains entries for [source] and [target] but not for [link]
   1
   $ (cd "$DUNE_CACHE_ROOT/db/meta/v5"; grep -rs . -e 'link' | dune_cmd count-lines)
   0
+  [1]
 
 The files in the build directory are shared with the cache entries
 

@@ -19,6 +19,7 @@ build this package and check for sufficient error handling
   $ build_pkg foo 2>&1 | dune_cmd print-from 'Error:' | dune_cmd print-until '^Reason' | dune_cmd subst "'[0-9]*'" X
   Error: failed to extract 'corrupted.tar'
   Reason: 'tar' failed with non-zero exit code X and output:
+  [1]
 
 Repeat the same test as above but ensure that error output from gzip is
 captured
@@ -38,6 +39,7 @@ captured
   $ build_pkg foo 2>&1 | dune_cmd print-from 'Error:' | dune_cmd print-until '^Reason' | dune_cmd subst "'[0-9]*'" X
   Error: failed to extract 'corrupted.tar.gz'
   Reason: 'tar' failed with non-zero exit code X and output:
+  [1]
 
 Now try another local package but this time of zip format to test if stderr is
 captured from the unzip tool. Note that preprocessing here makes the unzip
@@ -59,3 +61,4 @@ error message a bit less clear
   $ build_pkg foo 2>&1 | dune_cmd print-from 'Error:' | dune_cmd print-until '^Reason' | dune_cmd subst "'[0-9]*'" X
   Error: failed to extract 'corrupted.zip'
   Reason: 'unzip' failed with non-zero exit code X and output:
+  [1]

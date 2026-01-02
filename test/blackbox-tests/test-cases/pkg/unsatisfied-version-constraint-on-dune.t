@@ -31,3 +31,4 @@ Solve the dependencies:
       foo dev requires < 3.XX
       Rejected candidates:
         dune.3.XX: Incompatible with restriction: < 3.XX
+  [1]

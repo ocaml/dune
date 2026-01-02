@@ -1,3 +1,3 @@
 jq() {
-  command jq $JQ -L$INSIDE_DUNE/test/blackbox-tests "$@"
+  command jq -L$INSIDE_DUNE/test/blackbox-tests "$@"
 }

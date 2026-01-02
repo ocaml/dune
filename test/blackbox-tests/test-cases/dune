@@ -22,6 +22,7 @@
 
 (cram
  (applies_to :whole_subtree)
+ (shell bash)
  (deps
   (env_var OCAML_COLOR)
   (env_var DUNE_JOBS)

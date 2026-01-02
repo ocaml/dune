@@ -33,3 +33,4 @@ Package sources can be set to git and be nested:
        ^^^^^^^^^^^^^^^^^^^^
   Error: package bar doesn't exist in source
   $URL_repo
+  [1]

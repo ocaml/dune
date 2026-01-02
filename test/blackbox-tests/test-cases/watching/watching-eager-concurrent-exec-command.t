@@ -35,6 +35,7 @@ Demonstrate running an executable from PATH:
 Demonstrate trying to run exec in watch mode while another watch server is running:
   $ dune exec ./foo.exe --watch 2>&1 | tr '\n' ' ' | sed 's/(pid: [0-9]*)/(pid: PID)/'
   Error: Another instance of dune (pid: PID) has locked the _build directory. Refusing to start a new watch server until no other instances of dune are running. 
+  [1]
 
 Demonstrate running an executable via an absolute path:
   $ dune exec $(which echo) "baz"

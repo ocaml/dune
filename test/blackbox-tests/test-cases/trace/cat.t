@@ -19,8 +19,8 @@ dune trace cat can be used to view the trace:
 
 Test the --sexp flag outputs S-expressions (not JSON):
 
-  $ dune trace cat --sexp | head -1 | grep -q "^(" && echo "S-expression output detected"
-  S-expression output detected
+  $ dune trace cat --sexp | head -1 | sed 's/(.*)/(...)/g' || true
+  (...)
 
 Test the --chrome-trace flag outputs Chrome event format as a JSON array with
 some typical fields:
@@ -32,6 +32,7 @@ Test that --sexp and --chrome-trace are mutually exclusive:
 
   $ dune trace cat --sexp --chrome-trace 2>&1 | head -1
   Error: --chrome-trace and --sexp are mutually exclusive
+  [1]
 
 All the event types from chrome and field per type:
 

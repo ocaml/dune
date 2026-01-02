@@ -46,3 +46,4 @@ Reproduction case for https://github.com/ocaml/dune/issues/12018
   Internal error, please report upstream including the contents of _build/log.
   Description:
     ("link_many: unable to find module",
+  [1]

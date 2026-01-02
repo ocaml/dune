@@ -37,7 +37,7 @@ test-bootstrap-script:
 
 .PHONY: release
 release: $(BIN)
-	@$(BIN) build dune.install -p dune --profile dune-bootstrap
+	@$(BIN) build @install -p dune --profile dune-bootstrap
 
 $(BIN):
 	@ocaml boot/bootstrap.ml
@@ -116,7 +116,7 @@ test-melange: $(BIN)
 	$(BIN) build @runtest-melange
 
 test-all: $(BIN)
-	DUNE_ROCQ_TEST=enable $(BIN) build @runtest @runtest-js @runtest-rocq @runtest-melange
+	$(BIN) build @runtest @runtest-js @runtest-rocq @runtest-melange
 
 test-ox: $(BIN)
 	$(BIN) runtest test/blackbox-tests/test-cases/oxcaml
@@ -124,11 +124,6 @@ test-ox: $(BIN)
 .PHONY: check
 check: $(BIN)
 	@$(BIN) build @check
-
-.PHONY: start
-start: $(BIN)
-	@$(BIN) init start-file
-	@$(BIN) build @start/build -w
 
 .PHONY: fmt
 fmt: $(BIN)
@@ -181,16 +176,13 @@ dune: $(BIN)
 opam-release: dev
 	$(BIN) exec -- $(MAKE) dune-release
 
-# Set DUNE_RELEASE_YES_FLAG=true to force dune-release to run with the --yes flag
-# Avoiding the need for interaction
-DUNE_RELEASE_YES_FLAG := $(if $(filter true,$(DUNE_RELEASE_YES)),--yes)
 dune-release:
-	dune-release tag $(DUNE_RELEASE_YES_FLAG)
+	dune-release tag
 	dune-release distrib --skip-build --skip-lint --skip-tests
 # See https://github.com/ocamllabs/dune-release/issues/206
-	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish --verbose $(if $(filter prerelease,$(RELEASE_KIND)),--prerelease) $(DUNE_RELEASE_YES_FLAG)
-	dune-release opam pkg $(DUNE_RELEASE_YES_FLAG)
-	dune-release opam submit $(DUNE_RELEASE_YES_FLAG)
+	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish --verbose
+	dune-release opam pkg
+	dune-release opam submit
 
 .PHONY: docker-build-image
 docker-build-image:

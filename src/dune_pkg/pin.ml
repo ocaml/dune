@@ -35,8 +35,8 @@ module DB = struct
       map =
         Package_name.Map.fold pins ~init:t.map ~f:(fun (pin : Local_package.pin) acc ->
           (match pin.origin with
-           | `Dune -> Code_error.raise "add_opam_pins: can only pin opam packages" []
-           | `Opam -> ());
+           | Pin_stanza -> Code_error.raise "add_opam_pins: can only pin opam packages" []
+           | Opam_file -> ());
           Package_name.Map.update acc pin.name ~f:(function
             | None -> Some (pin, t.context)
             | Some _ as x -> x))
@@ -50,7 +50,7 @@ module DB = struct
     ; map =
         Pin_stanza.Project.map pins
         |> Package_name.Map.map ~f:(fun (url, pkg) ->
-          let pkg = local_package_of_pin pkg ~url ~origin:`Dune in
+          let pkg = local_package_of_pin pkg ~url ~origin:Pin_stanza in
           pkg, context)
     }
   ;;
@@ -117,7 +117,7 @@ module DB = struct
       Dune_lang.Pin_stanza.Workspace.map pins
       |> String.Map.map ~f:(fun map ->
         Package_name.Map.map map ~f:(fun (url, package) ->
-          local_package_of_pin package ~url ~origin:`Dune))
+          local_package_of_pin package ~url ~origin:Pin_stanza))
     ;;
 
     let extract (t : t) ~names =
@@ -276,7 +276,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
         ; version
         ; name
         ; loc = package.loc
-        ; origin = `Opam
+        ; origin = Opam_file
         }
       in
       let stack = Stack.push stack package in
@@ -331,8 +331,8 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
     |> Fiber.parallel_iter ~f:(fun (package : Local_package.pin) ->
       let stack = Stack.push stack package in
       match package.origin with
-      | `Opam -> pinned_via_opam stack package
-      | `Dune ->
+      | Opam_file -> pinned_via_opam stack package
+      | Pin_stanza ->
         eval_url package.url
         >>= (function
          | None -> pinned_via_opam stack package

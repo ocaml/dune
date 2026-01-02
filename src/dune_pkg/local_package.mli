@@ -1,11 +1,17 @@
 open Import
 
+module Origin : sig
+  type t =
+    | Opam_file
+    | Pin_stanza
+end
+
 type pin =
   { loc : Loc.t
   ; version : Package_version.t
   ; url : Loc.t * OpamUrl.t
   ; name : Package_name.t
-  ; origin : [ `Dune | `Opam ]
+  ; origin : Origin.t
   }
 
 type pins = pin Package_name.Map.t

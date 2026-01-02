@@ -32,8 +32,8 @@ Adding an `ocamllex` stanza for `a` still let's the build through for `-p foo`
 Building `bar` still fails
 
   $ dune build -p bar
-  File "dune", line 5, characters 28-29:
-  5 |  (public_name bar) (modules a))
-                                  ^
-  Error: Module A doesn't exist.
+  File "dune", line 1, characters 0-22:
+  1 | (ocamllex (modules a))
+      ^^^^^^^^^^^^^^^^^^^^^^
+  Error: No rule found for a.mll
   [1]

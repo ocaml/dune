@@ -21,17 +21,16 @@ let tool =
 
 let add_rule sctx ~dir ~loc ~mode m ~for_ =
   let args =
-    let sources = Module.Source.files m in
-    let source = List.hd sources in
-    let src = Module.File.original_path source in
+    let files = Module.Source.files m in
+    let file = List.hd files in
+    let src = Module.File.original_path file in
     match for_ with
     | Parser_generators.Ocamllex _ ->
-      let dst = Module.File.path source |> Path.as_in_build_dir_exn in
+      let dst = Module.File.path file |> Path.as_in_build_dir_exn in
       [ Command.Args.As [ "-q"; "-o" ]; Target dst; Command.Args.Dep src ]
     | Ocamlyacc _ ->
       let targets =
-        List.map sources ~f:(fun source ->
-          Module.File.path source |> Path.as_in_build_dir_exn)
+        List.map files ~f:(fun file -> Module.File.path file |> Path.as_in_build_dir_exn)
       in
       [ Command.Args.Dep src; Hidden_targets targets ]
   in
@@ -52,28 +51,12 @@ let gen_rules sctx ~dir_contents ~dir ~for_ =
     | Ocamlyacc s -> s, Ocamlyacc s.loc
   in
   Dir_contents.ocaml dir_contents
-  >>| Ml_sources.Parser_generators.source_modules ~for_:modules_for
+  >>| Ml_sources.Parser_generators.modules ~for_:modules_for
   >>= function
   | None -> Memo.return ()
-  | Some source_modules ->
+  | Some targets ->
     let { Parser_generators.loc; mode; _ } = ocamllex_or_ocamlyacc in
-    Module_trie.to_map source_modules
-    |> Module_name.Map.to_list
-    |> Memo.parallel_iter ~f:(fun (_name, m) ->
-      let src_dir = Module.Source.src_dir m |> Path.as_in_build_dir_exn in
-      match Path.Build.equal dir src_dir with
-      | true -> add_rule sctx ~dir ~loc ~mode m ~for_
-      | false ->
-        let tool_dir = Path.Build.drop_build_context_exn dir in
-        let src_dir = Path.Build.drop_build_context_exn src_dir in
-        let tool = Parser_generators.tool for_ in
-        User_error.raise
-          ~loc
-          [ Pp.textf
-              "The `%s' stanza for a module must be specified in the same directory as \
-               the module it generates."
-              tool
-          ; Pp.textf "- module directory: %s" (Path.Source.to_string src_dir)
-          ; Pp.textf "- %s directory: %s" tool (Path.Source.to_string tool_dir)
-          ])
+    Module_trie.to_map targets
+    |> Module_name.Map.values
+    |> Memo.parallel_iter ~f:(add_rule sctx ~dir ~loc ~mode ~for_)
 ;;

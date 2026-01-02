@@ -19,7 +19,7 @@ val mapi : 'a t -> f:(key -> 'a -> 'b) -> 'b t
 val of_map : 'a Module_name.Map.t -> 'a t
 val find : 'a t -> key -> 'a option
 val set : 'a t -> key -> 'a -> 'a t
-val set_map : 'a t -> key -> 'a Module_name.Map.t -> ('a t, 'a node) result
+val set_map : 'a t -> Module_name.t list -> 'a Module_name.Map.t -> ('a t, 'a node) result
 val remove : 'a t -> key -> 'a t
 val mem : 'a t -> key -> bool
 val fold : 'a t -> init:'acc -> f:('a -> 'acc -> 'acc) -> 'acc

@@ -42,10 +42,3 @@ let decode =
          and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) () in
          { loc; modules; mode; enabled_if })
 ;;
-
-let modules_settings modules =
-  { Modules_settings.root_module = None
-  ; modules_without_implementation = Ordered_set_lang.Unexpanded.standard
-  ; modules
-  }
-;;

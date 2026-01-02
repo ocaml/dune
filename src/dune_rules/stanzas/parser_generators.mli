@@ -13,7 +13,6 @@ type for_ =
 
 val tool : for_ -> string
 val decode : t Dune_lang.Decoder.t
-val modules_settings : Ordered_set_lang.Unexpanded.t -> Modules_settings.t
 
 module Ocamllex : Stanza.S with type t := t
 module Ocamlyacc : Stanza.S with type t := t

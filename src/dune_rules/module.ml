@@ -156,7 +156,7 @@ module Source = struct
   ;;
 
   let has t ~ml_kind = Ml_kind.Dict.get t.files ml_kind |> Option.is_some
-  let name t = List.last (Nonempty_list.to_list t.path) |> Option.value_exn
+  let name t = Nonempty_list.last t.path
   let path t = t.path
 
   let choose_file { files = { impl; intf }; path = _ } =

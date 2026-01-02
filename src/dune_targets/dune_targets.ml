@@ -203,7 +203,6 @@ module Produced = struct
         ; Pp.verbatim (Unix.error_message unix_error)
         ]
       | Unsupported_file (file, kind) ->
-        (* CR-soon amokhov: This case is untested. *)
         [ Pp.textf
             "Rule produced file %S with unrecognised kind %S"
             (Path.Build.drop_build_context_maybe_sandboxed_exn file

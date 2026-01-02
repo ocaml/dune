@@ -39,7 +39,7 @@ module For_stanza : sig
 
   val of_stanzas
     :  Stanza.t list
-    -> cctxs:(Loc.t * Compilation_context.t) list
+    -> cctxs:Compilation_context.t Loc.Map.t
     -> sctx:Super_context.t
     -> src_dir:Path.Source.t
     -> ctx_dir:Path.Build.t
@@ -47,7 +47,7 @@ module For_stanza : sig
     -> dir_contents:Dir_contents.t
     -> expander:Expander.t
     -> ( Merlin.t list
-         , (Loc.t * Compilation_context.t) list
+         , Compilation_context.t Loc.Map.t
          , Path.Build.t list
          , Path.Source.t list )
          t
@@ -61,7 +61,13 @@ end = struct
     }
 
   let empty_none = { merlin = None; cctx = None; js = None; source_dirs = None }
-  let empty_list = { merlin = []; cctx = []; js = []; source_dirs = [] }
+  let empty_list = { merlin = []; cctx = Loc.Map.empty; js = []; source_dirs = [] }
+
+  let add_map_maybe hd_o tl =
+    match hd_o with
+    | Some (loc, hd) -> Loc.Map.add_exn tl loc hd
+    | None -> tl
+  ;;
 
   let cons_maybe hd_o tl =
     match hd_o with
@@ -71,7 +77,7 @@ end = struct
 
   let cons acc x =
     { merlin = cons_maybe x.merlin acc.merlin
-    ; cctx = cons_maybe x.cctx acc.cctx
+    ; cctx = add_map_maybe x.cctx acc.cctx
     ; source_dirs = cons_maybe x.source_dirs acc.source_dirs
     ; js =
         (match x.js with
@@ -80,13 +86,7 @@ end = struct
     }
   ;;
 
-  let rev t =
-    { t with
-      merlin = List.rev t.merlin
-    ; cctx = List.rev t.cctx
-    ; source_dirs = List.rev t.source_dirs
-    }
-  ;;
+  let rev t = { t with merlin = List.rev t.merlin; source_dirs = List.rev t.source_dirs }
 
   let if_available f = function
     | false -> Memo.return empty_none
@@ -187,7 +187,7 @@ end = struct
     Memo.parallel_map
       stanzas
       ~f:(of_stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander)
-    >>| List.fold_left ~init:{ empty_list with cctx = cctxs } ~f:(fun acc x -> cons acc x)
+    >>| List.fold_left ~init:{ empty_list with cctx = cctxs } ~f:cons
     >>| rev
   ;;
 end
@@ -257,12 +257,8 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
            Menhir_rules.module_names m
            |> Memo.List.find_map ~f:(fun name ->
              let path = Nonempty_list.(base_path @ [ name ]) in
-             Ml_sources.find_origin ml_sources ~libs:(Scope.libs scope) path
-             >>| function
-             | None -> None
-             | Some origin ->
-               List.find_map cctxs ~f:(fun (loc, cctx) ->
-                 Option.some_if (Loc.equal loc (Ml_sources.Origin.loc origin)) cctx))
+             Ml_sources.find_origin ml_sources ~libs:(Scope.libs scope) path)
+           >>| Option.bind ~f:(fun loc -> Loc.Map.find cctxs (Ml_sources.Origin.loc loc))
            >>= (function
             | Some cctx ->
               Menhir_rules.gen_rules cctx m ~module_path:base_path ~dir:ctx_dir
@@ -330,7 +326,7 @@ let gen_rules_source_only sctx ~dir source_dir =
 ;;
 
 let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
-  : (Loc.t * Compilation_context.t) list Memo.t
+  : Compilation_context.t Loc.Map.t Memo.t
   =
   let+ () = gen_format_and_cram_rules sctx ~dir source_dir
   and+ contexts =
@@ -343,7 +339,7 @@ let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
     | None ->
       let project = Source_tree.Dir.project source_dir in
       let+ () = Alias_builder.define_all_alias ~js_targets:[] ~project dir in
-      []
+      Loc.Map.empty
   in
   contexts
 ;;
@@ -514,11 +510,13 @@ let gen_rules_standalone_or_root sctx ~dir ~source_dir =
   let* rules' =
     Rules.collect_unit (fun () ->
       let* dir_contents = Dir_contents.Standalone_or_root.root standalone_or_root in
-      let* cctxs = gen_rules_group_part_or_root sctx dir_contents [] ~source_dir ~dir in
+      let* cctxs =
+        gen_rules_group_part_or_root sctx dir_contents Loc.Map.empty ~source_dir ~dir
+      in
       Dir_contents.Standalone_or_root.subdirs standalone_or_root
       >>= Memo.parallel_iter ~f:(fun dc ->
         let source_dir = Option.value_exn (Dir_contents.source_dir dc) in
-        let+ (_ : (Loc.t * Compilation_context.t) list) =
+        let+ (_ : Compilation_context.t Loc.Map.t) =
           gen_rules_group_part_or_root
             sctx
             dir_contents

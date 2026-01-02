@@ -27,7 +27,10 @@ The select field does not pick up the module sources for the test stanza
 correctly. This is a bug.
 
   $ dune build foo.cma
-  File "_unknown_", line 1, characters 0-0:
+  File "dune", lines 5-7, characters 2-75:
+  5 |   (select bar.ml from
+  6 |    (unix -> bar.unix.ml)
+  7 |    (!unix -> bar.nounix.ml))))
   Error: No rule found for bar.unix.ml
   [1]
 

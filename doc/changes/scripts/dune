@@ -1,0 +1,5 @@
+(rule
+ (alias runtest)
+ (deps build_changelog.sh)
+ (action
+  (run %{bin:bash} -n %{deps})))

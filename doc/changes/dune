@@ -6,3 +6,9 @@
    (glob_files *.md)))
  (action
   (run bash ./forbid-files.sh %{md})))
+
+(rule
+ (alias runtest)
+ (deps forbid-files.sh)
+ (action
+  (run %{bin:bash} -n %{deps})))

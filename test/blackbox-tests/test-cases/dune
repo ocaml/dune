@@ -16,6 +16,12 @@
    ../utils/sherlodoc.exe
    ../utils/ocaml_index.exe)))
 
+(rule
+ (alias runtest)
+ (deps git-helpers.sh)
+ (action
+  (run %{bin:bash} -n %{deps})))
+
 (cram
  (applies_to pp-cwd)
  (deps %{bin:dunepp}))

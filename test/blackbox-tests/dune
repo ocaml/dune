@@ -3,3 +3,9 @@
  (deps dune.jq)
  (action
   (run %{bin:jq} -L. "include \"dune\"; .")))
+
+(rule
+ (alias runtest)
+ (deps setup-script.sh)
+ (action
+  (run %{bin:bash} -n %{deps})))

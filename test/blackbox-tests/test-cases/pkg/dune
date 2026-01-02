@@ -7,6 +7,12 @@
   (env-vars
    (DUNE_DEBUG_PACKAGE_LOGS 1))))
 
+(rule
+ (alias runtest)
+ (deps helpers.sh)
+ (action
+  (run %{bin:bash} -n %{deps})))
+
 (cram
  (deps %{bin:git} %{bin:bc})
  (setup_scripts helpers.sh ../git-helpers.sh)

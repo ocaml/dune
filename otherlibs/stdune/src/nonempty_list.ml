@@ -2,6 +2,11 @@ type 'a t = ( :: ) of 'a * 'a list
 
 let hd (x :: _) = x
 
+let last = function
+  | [ t ] -> t
+  | _ :: ts -> List.last ts |> Option.value_exn
+;;
+
 let rev =
   let rec rev_append l1 (l2 :: l2s : _ t) =
     match l1 with

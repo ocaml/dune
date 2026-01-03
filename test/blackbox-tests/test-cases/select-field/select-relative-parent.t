@@ -22,6 +22,9 @@ paths
   > let () = print_endline "Test: Unix was not found!"
   > EOF
 
-  $ dune build foo.cma 2>&1 | grep "must not crash"
-  I must not crash.  Uncertainty is the mind-killer. Exceptions are the
+  $ dune build foo.cma
+  File "sub/dune", line 5, characters 12-26:
+  5 |    (unix -> ../bar.unix.ml)
+                  ^^^^^^^^^^^^^^
+  Error: path outside the workspace: ../bar.unix.ml from .
   [1]

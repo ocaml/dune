@@ -22,6 +22,7 @@ We test the `(select)` field of the `(libraries)` field in the presence of
   $ cat > sub/bar.nounix.ml <<EOF
   > let () = print_endline "Test: Unix was not found!"
   > EOF
+  $ touch sub/bar.unix.mli sub/bar.nounix.mli
 
 The select field does not pick up the module sources for the test stanza
 correctly. This is a bug.
@@ -39,7 +40,7 @@ correctly. This is a bug.
   > (library
   >  (name foo)
   >  (libraries
-  >   (select bar.ml from
+  >   (select sub/bar.ml from
   >    (unix -> sub/bar.unix.ml)
   >    (!unix -> sub/bar.nounix.ml))))
   > EOF
@@ -47,8 +48,19 @@ correctly. This is a bug.
 It also doesn't allow specifying the path
 
   $ dune build foo.cma
-  File "dune", line 6, characters 12-27:
-  6 |    (unix -> sub/bar.unix.ml)
-                  ^^^^^^^^^^^^^^^
-  Error: The format for files in this select branch must be bar.{name}.ml
-  [1]
+
+  $ cat > dune <<EOF
+  > (include_subdirs unqualified)
+  > (library
+  >  (name foo)
+  >  (libraries
+  >   (select ./sub/bar.ml from
+  >    (unix -> sub/bar.unix.ml)
+  >    (!unix -> sub/bar.nounix.ml))
+  >   (select sub/bar.mli from
+  >    (unix -> sub/bar.unix.mli)
+  >    (!unix -> sub/bar.nounix.mli))))
+  > EOF
+
+  $ dune build foo.cma
+

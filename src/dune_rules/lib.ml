@@ -304,8 +304,8 @@ end
 
 module Resolved_select = struct
   type t =
-    { src_fn : Filename.t Resolve.t
-    ; dst_fn : Filename.t
+    { src_fn : Path.Local.t Resolve.t
+    ; dst_fn : Path.Local.t
     ; loc : Loc.t
     }
 end

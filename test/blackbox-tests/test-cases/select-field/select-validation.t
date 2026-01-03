@@ -28,10 +28,14 @@ Test module path validation for `(select ..)` targets when using
   > EOF
 
   $ dune build
-  Error: foo__Foo-bar/baz corresponds to an invalid module name
-  -> required by _build/default/foo__.ml-gen
-  -> required by alias all
-  -> required by alias default
+  File "dune", lines 5-7, characters 2-99:
+  5 |   (select foo-bar/baz.ml from
+  6 |    (unix -> foo-bar/baz.unix.ml)
+  7 |    (!unix -> foo-bar/baz.nounix.ml))))
+  Error: "foo-bar" is an invalid module name.
+  Module names must be non-empty, start with a letter, and composed only of the
+  following characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
+  Hint: foo_bar would be a correct module name
   [1]
 
   $ mkdir -p foo_bar
@@ -53,16 +57,12 @@ Test module path validation for `(select ..)` targets when using
   > EOF
 
   $ dune build --display=short
-  Error: foo__Foo_bar/baz-qux corresponds to an invalid module name
-  -> required by _build/default/foo__.ml-gen
-  -> required by _build/default/.foo.objs/byte/foo__.cmi
-  -> required by _build/default/.foo.objs/native/foo.cmx
-  -> required by _build/default/foo.a
-  -> required by alias all
-  -> required by alias default
   File "dune", lines 5-7, characters 2-111:
   5 |   (select foo_bar/baz-qux.ml from
   6 |    (unix -> foo_bar/baz-qux.unix.ml)
   7 |    (!unix -> foo_bar/baz-qux.nounix.ml))))
-  Error: No rule found for foo_bar/baz-qux.unix.ml
+  Error: "baz-qux" is an invalid module name.
+  Module names must be non-empty, start with a letter, and composed only of the
+  following characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
+  Hint: baz_qux would be a correct module name
   [1]

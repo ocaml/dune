@@ -25,7 +25,7 @@ let gen_select_rules sctx ~dir compile_info =
   Lib.Compile.resolved_selects compile_info
   |> Resolve.Memo.read_memo
   >>= Memo.parallel_iter ~f:(fun { Lib.Compile.Resolved_select.dst_fn; src_fn; loc } ->
-    let dst = Path.Build.relative dir dst_fn in
+    let dst = Path.Build.append_local dir dst_fn in
     Super_context.add_rule
       sctx
       ~loc
@@ -34,7 +34,7 @@ let gen_select_rules sctx ~dir compile_info =
          ~file_targets:[ dst ]
          (let open Action_builder.O in
           let* src_fn = Resolve.read src_fn in
-          let src = Path.build (Path.Build.relative dir src_fn) in
+          let src = Path.build (Path.Build.append_local dir src_fn) in
           let+ () = Action_builder.path src in
           let context = Super_context.context sctx in
           Action.Full.make (Copy_line_directive.action context ~src ~dst))))

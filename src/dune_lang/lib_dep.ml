@@ -5,7 +5,7 @@ module Select = struct
     type t =
       { required : Lib_name.Set.t
       ; forbidden : Lib_name.Set.t
-      ; file : string
+      ; file : Path.Local.t
       }
 
     let decode ~result_fn =
@@ -22,28 +22,33 @@ module Select = struct
                 match String.drop_prefix s ~prefix:"!" with
                 | Some s -> Right (Lib_name.parse_string_exn (loc, s))
                 | None -> Left (Lib_name.parse_string_exn (loc, s)))
-             ~after:(located filename)
+             ~after:(located relative_file)
          in
          match file with
          | None ->
            User_error.raise ~loc [ Pp.textf "(<[!]libraries>... -> <file>) expected" ]
          | Some (loc_file, file) ->
+           let file_str = file in
+           let file = Path.Local.parse_string_exn ~loc:loc_file file in
            let () =
              if dune_version >= (2, 0)
              then (
-               let prefix, suffix =
-                 let name, ext = Filename.split_extension result_fn in
-                 let prefix = name ^ "." in
-                 prefix, ext
+               let result_prefix, result_suffix =
+                 let prefix, ext = Path.Local.split_extension result_fn in
+                 Path.Local.to_string prefix, ext
                in
-               if not (String.is_prefix file ~prefix && String.is_suffix file ~suffix)
-               then
+               match
+                 ( String.is_prefix ~prefix:result_prefix (Path.Local.to_string file)
+                 , String.is_suffix file_str ~suffix:result_suffix )
+               with
+               | true, true -> ()
+               | _result_is_prefix, _result_is_suffix ->
                  User_error.raise
                    ~loc:loc_file
                    [ Pp.textf
-                       "The format for files in this select branch must be %s{name}%s"
-                       prefix
-                       suffix
+                       "The format for files in this select branch must be %s.{name}%s"
+                       result_prefix
+                       result_suffix
                    ])
            in
            let rec loop required forbidden = function
@@ -68,25 +73,27 @@ module Select = struct
       record
         [ "required", Lib_name.Set.to_dyn required
         ; "forbidden", Lib_name.Set.to_dyn forbidden
-        ; "file", string file
+        ; "file", Path.Local.to_dyn file
         ]
     ;;
   end
 
   type t =
-    { result_fn : string
+    { result_fn : Path.Local.t
     ; choices : Choice.t list
     ; loc : Loc.t
     }
 
   let to_dyn { result_fn; choices; loc = _ } =
     let open Dyn in
-    record [ "result_fn", string result_fn; "choices", list Choice.to_dyn choices ]
+    record
+      [ "result_fn", Path.Local.to_dyn result_fn; "choices", list Choice.to_dyn choices ]
   ;;
 
   let decode =
     let open Decoder in
-    let* result_fn = filename in
+    let* result_fn = relative_file in
+    let result_fn = Path.of_string_allow_outside_workspace result_fn |> Path.local_part in
     let+ loc = loc
     and+ () = keyword "from"
     and+ choices = repeat (Choice.decode ~result_fn) in

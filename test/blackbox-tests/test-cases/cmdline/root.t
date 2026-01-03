@@ -53,14 +53,10 @@ When the root is [.], specifying it is redundant:
 When the root is a different directory, honor it:
 
   $ dune runtest --force --root=./subdir1
-  Entering directory 'subdir1'
   subdir1
-  Leaving directory 'subdir1'
 
   $ DUNE_ROOT=./subdir1 dune runtest --force
-  Entering directory 'subdir1'
   subdir1
-  Leaving directory 'subdir1'
 
   $ cd subdir1 && dune runtest --force && cd ..
   subdir1
@@ -72,22 +68,16 @@ When the root is a different directory, honor it:
   subdir1
 
   $ cd subdir1 && dune runtest --force --root=.. && cd ..
-  Entering directory '..'
   root
   subdir1
   subdir2
-  Leaving directory '..'
 
   $ cd subdir1 && DUNE_ROOT=.. dune runtest --force && cd ..
-  Entering directory '..'
   root
   subdir1
   subdir2
-  Leaving directory '..'
 
 When both [--root] and [DUNE_ROOT] are specified, [--root] has priority:
 
   $ DUNE_ROOT=./subdir1 dune runtest --force --root=./subdir2
-  Entering directory 'subdir2'
   subdir2
-  Leaving directory 'subdir2'

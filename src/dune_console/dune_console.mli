@@ -38,6 +38,12 @@ end
     it separates messages with a blank line when [b = true]. *)
 val separate_messages : bool -> unit
 
+(** [set_directory dir] sets the directory to announce when output is printed.
+    If any output occurs, ["Entering directory '<dir>'"] is printed before the
+    first output, and ["Leaving directory '<dir>'"] is printed at [finish] time.
+    If no output occurs, nothing is printed. Raises a code error if set twice. *)
+val set_directory : string -> unit
+
 module Backend : sig
   type t = (module Backend)
 

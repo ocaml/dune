@@ -370,8 +370,6 @@ And the test has a dependency on the library
 We can build the project:
 
   $ dune build --root new_exec_proj
-  Entering directory 'new_exec_proj'
-  Leaving directory 'new_exec_proj'
 
 And the opam file will be generated as expected
 
@@ -412,15 +410,11 @@ And the opam file will be generated as expected
 We can build and run the resulting executable:
 
   $ dune exec --root new_exec_proj ./bin/main.exe
-  Entering directory 'new_exec_proj'
-  Leaving directory 'new_exec_proj'
   Hello, World!
 
 We can build and run the project's tests:
 
   $ dune exec --root new_exec_proj ./test/test_new_exec_proj.exe
-  Entering directory 'new_exec_proj'
-  Leaving directory 'new_exec_proj'
 
 Initializing Library Projects
 ================================
@@ -485,8 +479,6 @@ And the test has a dependency on the library
 We can build and install the project:
 
   $ dune build --root new_lib_proj @install
-  Entering directory 'new_lib_proj'
-  Leaving directory 'new_lib_proj'
 
 And the opam file will be generated as expected
 
@@ -527,8 +519,6 @@ And the opam file will be generated as expected
 And we we can run the tests:
 
   $ dune runtest --root new_lib_proj
-  Entering directory 'new_lib_proj'
-  Leaving directory 'new_lib_proj'
 
 
 Initializing Projects Using the PATH Argument

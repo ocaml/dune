@@ -2,8 +2,6 @@ Test that we can implement external libraries.
 
 First we create an external library
   $ dune build --root vlib @install
-  Entering directory 'vlib'
-  Leaving directory 'vlib'
 
 Then we make sure that we can implement it
   $ env OCAMLPATH=vlib/_build/install/default/lib dune build @default @install --root impl

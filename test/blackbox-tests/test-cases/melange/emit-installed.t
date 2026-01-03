@@ -23,8 +23,6 @@ Test dependency on installed package
   > EOF
 
   $ dune build --root lib-a
-  Entering directory 'lib-a'
-  Leaving directory 'lib-a'
 
   $ dune install --root lib-a --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/a/META

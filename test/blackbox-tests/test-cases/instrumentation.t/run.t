@@ -186,7 +186,5 @@ Next, we check the backend can be used when it is installed.
   $ cat >installed/main.ml <<EOF
   > EOF
   $ OCAMLPATH=$PWD/_install/lib:$OCAMLPATH dune build --root installed
-  Entering directory 'installed'
-  Leaving directory 'installed'
   $ installed/_build/default/main.exe
   Hello from Main!

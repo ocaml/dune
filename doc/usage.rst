@@ -121,16 +121,20 @@ The root of the current workspace is determined by looking up a
 ``dune-workspace`` or ``dune-project`` file in the current directory and its
 parent directories. Dune requires at least one of these two files to operate.
 
-If it isn't in the current directory, Dune prints out the root when starting:
+If it isn't in the current directory and Dune produces output (such as errors
+or warnings), Dune prints ``Entering directory`` before the first message and
+``Leaving directory`` at the end:
 
 .. code:: console
 
     $ dune runtest
     Entering directory '/home/jdimino/code/dune'
     ...
+    Leaving directory '/home/jdimino/code/dune'
 
-This message can be suppressed with the ``--no-print-directory``
-command line option (as in GNU make).
+If the build is silent (no errors, warnings, or other output), these messages
+are not printed. This message can also be suppressed with the
+``--no-print-directory`` command line option (as in GNU make).
 
 More precisely, Dune will choose the outermost ancestor directory containing a
 ``dune-workspace`` file, which is used to mark the root of the current workspace.

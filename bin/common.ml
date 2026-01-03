@@ -910,7 +910,11 @@ module Builder = struct
         & info
             [ "no-print-directory" ]
             ~docs
-            ~doc:(Some "Suppress \"Entering directory\" messages."))
+            ~doc:
+              (Some
+                 "Suppress \"Entering/Leaving directory\" messages. These are printed \
+                  when dune runs from a different directory than the workspace root and \
+                  produces (stderr) output."))
     and+ store_orig_src_dir =
       let doc = "Store original source location in dune-package metadata." in
       Arg.(
@@ -1215,7 +1219,10 @@ let print_entering_message c =
 
        This is why Dune also prints such a message; this way people running Dune
        through such an editor will be able to use the "jump to error" feature of
-       their editor. *)
+       their editor.
+
+       We defer printing until there is actual output, so that silent builds
+       don't produce any noise. *)
     let dir =
       match Execution_env.inside_dune with
       | false -> cwd
@@ -1238,10 +1245,7 @@ let print_entering_message c =
               in
               loop ".." (Filename.dirname s)))
     in
-    Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ];
-    at_exit (fun () ->
-      flush stdout;
-      Console.print [ Pp.verbatim (sprintf "Leaving directory '%s'" dir) ]))
+    Console.set_directory dir)
 ;;
 
 (* CR-someday rleshchinskiy: The split between `build` and `init` seems quite arbitrary,

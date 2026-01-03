@@ -25,8 +25,6 @@ rules with dependencies outside the build dir are allowed
   Leaving directory 'a/b'
 
   $ dune build --root=a/b @test
-  Entering directory 'a/b'
-  Leaving directory 'a/b'
 
   $ cat >external.txt <<EOF
   > txt2
@@ -56,8 +54,6 @@ rules with dependencies outside the build dir are allowed
 
 # Check that nothing is done when nothing change
   $ dune build --root=a/b @test
-  Entering directory 'a/b'
-  Leaving directory 'a/b'
 
   $ cat >external.txt <<EOF
   > txt2
@@ -88,8 +84,6 @@ rules with dependencies outside the build dir are allowed
 
 # Check that nothing is done when nothing change
   $ dune build --root=a/b @test
-  Entering directory 'a/b'
-  Leaving directory 'a/b'
 
   $ cat >a/external.txt <<EOF
   > txt2
@@ -119,8 +113,6 @@ rules with dependencies outside the build dir are allowed
 
 # Check that nothing is done when nothing change
   $ dune build --root=a/b @test
-  Entering directory 'a/b'
-  Leaving directory 'a/b'
 
   $ cat >a/external.txt <<EOF
   > txt2
@@ -153,8 +145,6 @@ rules with dependencies outside the build dir are allowed
 
 # Check that nothing is done when nothing change
   $ dune build --root=a/b @test
-  Entering directory 'a/b'
-  Leaving directory 'a/b'
 
   $ cat >external.txt <<EOF
   > txt2
@@ -184,8 +174,6 @@ rules with dependencies outside the build dir are allowed
 
 # Check that nothing is done when nothing change
   $ dune build --root=a/b @test
-  Entering directory 'a/b'
-  Leaving directory 'a/b'
 
   $ cat >external.txt <<EOF
   > txt2
@@ -205,22 +193,16 @@ rules with dependencies outside the build dir are allowed
   $ chmod u+x a/script.sh
 
   $ dune exec --root=a/b -- $PWD/a/script.sh
-  Entering directory 'a/b'
-  Leaving directory 'a/b'
   txt1
 
 ## Test dune exec 1 level below
   $ dune exec --root=a/b -- ../script.sh
-  Entering directory 'a/b'
-  Leaving directory 'a/b'
   txt1
 
 ## Test dune exec 2 level below
   $ mv a/script.sh .
 
   $ dune exec --root=a/b -- ../../script.sh
-  Entering directory 'a/b'
-  Leaving directory 'a/b'
   txt1
 
 # Regression test for #5572

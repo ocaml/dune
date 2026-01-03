@@ -8,3 +8,9 @@ def redactCommandTimes:
         .value = "redacted"
       else . end)
     else . end);
+
+def slowestCommands($n):
+  [.[] | select(type == "object" and .args.commands != null)
+       | .args.test as $test | .args.commands[] | {test: $test} + .]
+  | sort_by(-.real)
+  | .[:$n];

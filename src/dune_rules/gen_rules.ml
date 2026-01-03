@@ -243,6 +243,12 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
          | false -> Memo.return ()
          | true ->
            let* ml_sources = Dir_contents.ocaml dir_contents in
+           let { Ml_sources.Parser_generators.deps = _; targets } =
+             Ml_sources.Parser_generators.modules ml_sources ~for_:(Menhir m.loc)
+           in
+           let menhir_module_names =
+             Module_trie.to_list_map targets ~f:(fun (_, m) -> Module.Source.name m)
+           in
            let base_path =
              match Ml_sources.include_subdirs ml_sources with
              | Include Unqualified | No -> []
@@ -254,11 +260,8 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
                |> Path.Local.explode
                |> List.map ~f:Module_name.of_checked_string
            in
-           Menhir_rules.module_names m
-           |> Memo.List.find_map ~f:(fun name ->
-             let path =
-               Nonempty_list.(base_path @ [ Module_name.Unchecked.validate_exn name ])
-             in
+           Memo.List.find_map menhir_module_names ~f:(fun name ->
+             let path = Nonempty_list.(base_path @ [ name ]) in
              Ml_sources.find_origin ml_sources ~libs:(Scope.libs scope) path)
            >>| Option.bind ~f:(fun loc -> Loc.Map.find cctxs (Ml_sources.Origin.loc loc))
            >>= (function
@@ -268,7 +271,10 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
               (* This happens often when passing a [-p ...] option that hides a
                  library *)
               let file_targets =
-                Menhir_stanza.targets m |> List.map ~f:(Path.Build.relative ctx_dir)
+                Module_trie.to_list_map targets ~f:(fun (_, m) ->
+                  List.map (Module.Source.files m) ~f:(fun m ->
+                    Module.File.path m |> Path.as_in_build_dir_exn))
+                |> List.concat
               in
               Super_context.add_rule
                 sctx

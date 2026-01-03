@@ -47,8 +47,3 @@ We add a `(menhir ..)` stanza in the group root dune file
 Show that the menhir stanza must live next to the source
 
   $ dune build
-  File "src/a/dune", line 2, characters 10-34:
-  2 |  (modules %{read-lines:../gen/lst})
-                ^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Atom or quoted string expected
-  [1]

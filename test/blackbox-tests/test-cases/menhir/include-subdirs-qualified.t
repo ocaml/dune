@@ -66,4 +66,3 @@ Use `merge_into`
   > EOF
 
   $ dune build
-

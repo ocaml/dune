@@ -23,6 +23,7 @@ Demonstrate command level trace events
 
   $ dune trace cat | jq 'include "dune"; select(.cat == "cram") | .args | redactCommandTimes'
   {
+    "test": "_build/default/foo.t",
     "commands": [
       {
         "command": [
@@ -81,6 +82,7 @@ Timeout:
 
   $ dune trace cat | jq 'include "dune"; select(.cat == "cram") | .args | redactCommandTimes'
   {
+    "test": "_build/default/timeout.t",
     "commands": []
   }
 

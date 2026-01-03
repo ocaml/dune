@@ -586,7 +586,7 @@ let run_cram_test
           (match duration with
            | None -> None
            | Some times -> Some { Dune_trace.Event.Cram.command; times }))
-      |> Dune_trace.Event.Cram.test);
+      |> Dune_trace.Event.Cram.test ~test:src);
     sanitize ~parent_script:script detailed_output
   | Error `Timed_out ->
     let timeout_loc, timeout = Option.value_exn timeout in

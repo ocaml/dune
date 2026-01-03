@@ -147,6 +147,7 @@ end
 
 type t =
   | Run of Slang.t list
+  | Runexec of Slang.t list
   | With_accepted_exit_codes of int Predicate_lang.t * t
   | Dynamic_run of String_with_vars.t * String_with_vars.t list
   | Chdir of String_with_vars.t * t
@@ -372,6 +373,14 @@ let decode_dune_file =
           Slang.Literal prog :: List.map args ~f:(fun arg -> Slang.Literal arg)
         in
         Run slang )
+    ; ( "runexec"
+      , Syntax.since Stanza.syntax (3, 21)
+        >>> let+ prog = sw
+            and+ args = repeat sw in
+            let slang =
+              Slang.Literal prog :: List.map args ~f:(fun arg -> Slang.Literal arg)
+            in
+            Runexec slang )
     ]
   in
   Decoder.fix @@ fun t -> Decoder.sum (cstrs_dune_file t @ dune_file_specific)
@@ -407,6 +416,10 @@ let decode_pkg =
           repeat Slang.decode
         in
         Run args )
+    ; ( "runexec"
+      , Syntax.since Stanza.syntax (3, 21)
+        >>> let+ args = repeat Slang.decode in
+            Runexec args )
     ]
   in
   Decoder.fix @@ fun t -> Decoder.sum (cstrs_dune_file t @ cstrs_pkg t)
@@ -416,6 +429,7 @@ let rec encode =
   let sw = String_with_vars.encode in
   function
   | Run xs -> List (atom "run" :: List.map xs ~f:Slang.encode)
+  | Runexec xs -> List (atom "runexec" :: List.map xs ~f:Slang.encode)
   | With_accepted_exit_codes (pred, t) ->
     List
       [ atom "with-accepted-exit-codes"
@@ -490,6 +504,7 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | When (_, t)
     | No_infer t -> loop t
     | Run _
+    | Runexec _
     | Echo _
     | Cat _
     | Copy _
@@ -564,6 +579,11 @@ let rec map t ~string_with_vars ~slang ~blang =
   match t with
   | Run xs ->
     Run
+      (List.map
+         ~f:(fun slang_ -> slang slang_ |> slang_map_string_with_vars ~f:string_with_vars)
+         xs)
+  | Runexec xs ->
+    Runexec
       (List.map
          ~f:(fun slang_ -> slang slang_ |> slang_map_string_with_vars ~f:string_with_vars)
          xs)

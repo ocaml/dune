@@ -89,6 +89,7 @@ end
 
 type t =
   | Run of Slang.t list
+  | Runexec of Slang.t list
   | With_accepted_exit_codes of int Predicate_lang.t * t
   | Dynamic_run of String_with_vars.t * String_with_vars.t list
   | Chdir of String_with_vars.t * t

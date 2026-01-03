@@ -149,7 +149,7 @@ module Event : sig
       ; times : times
       }
 
-    val test : command list -> t
+    val test : test:Path.t -> command list -> t
   end
 end
 

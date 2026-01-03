@@ -7,6 +7,14 @@ let last = function
   | _ :: ts -> List.last ts |> Option.value_exn
 ;;
 
+let destruct_last =
+  let rec loop acc = function
+    | [ x ] -> List.rev acc, x
+    | x :: y :: xs -> loop (x :: acc) (y :: xs)
+  in
+  fun (xs : 'a t) -> loop [] xs
+;;
+
 let rev =
   let rec rev_append l1 (l2 :: l2s : _ t) =
     match l1 with

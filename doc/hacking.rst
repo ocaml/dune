@@ -459,33 +459,137 @@ Dune easy as it requires nothing but an OCaml compiler as well as to prevent
 circular dependencies. Before vendoring, make sure that the license of the code
 allows it to be included in Dune.
 
-The vendored code lives in the ``vendor/`` subdirectory. To vendor new code,
-create a shell script ``update-<library>.sh``, that will be launched from the
-``vendor/`` folder to download and unpack the source and copy the necessary
-source files into the ``vendor/<library>`` folder. Try to keep the amount of
-source code imported minimal, e.g., leave out ``dune-project`` files. For the
-most part, it should be enough to copy ``.ml`` and ``.mli`` files. Make sure to
-also include the license if there is such a file in the code to be vendored to
-stay compliant.
+The vendored code lives in the ``vendor/`` subdirectory and is managed by a
+declarative system consisting of two main components:
 
-As these sources get vendored not as subprojects but parts of Dune, you need
-to deal with ``public_name``. The preferred way is to remove the
-``public_name`` and only use the private name. If that is not possible, the
-library can be renamed into ``dune-private-libs.<library>``.
+- ``vendor/packages.ml``: A declarative configuration file that specifies all
+  vendored packages, their Git sources, revisions, build commands, and file
+  copy rules
+- ``vendor/vendor_updater.ml``: A comprehensive OCaml tool that automates
+  fetching, updating, and patch management for vendored packages
 
-To deal with the modified ``dune`` files in ``update-<library>.sh`` scripts,
-you can commit the modified files to ``dune`` and make the
-``update-<library>.sh`` script to use ``git checkout`` to restore the ``dune``
-file.
+Quick Start
+-----------
 
-For larger modifications, it is better to fork the upstream project in the
-ocaml-dune_ organisation and then vendor the forked copy in Dune. This makes
-the changes better visible and easier to update from upstream in the long run
-while keeping our custom patches in sync. The changes to the ``dune`` files are
-to be kept in the Dune repository.
+To work with vendored packages, use the ``vendor_updater`` tool:
 
-It is preferable to cut out as many dependencies as possible, e.g., ones that
-are only necessary on older OCaml versions or build-time dependencies.
+.. code:: bash
+
+   # List all vendored packages and their versions
+   $ dune exec vendor/vendor_updater.exe -- list
+
+   # Check which packages have newer versions available
+   $ dune exec vendor/vendor_updater.exe -- outdated
+
+   # Update a specific package (e.g., cmdliner)
+   $ dune exec vendor/vendor_updater.exe -- fetch cmdliner
+
+   # Generate or update patches for a package
+   $ dune exec vendor/vendor_updater.exe -- patch cmdliner
+
+   # Validate that all patches are up to date
+   $ dune exec vendor/vendor_updater.exe -- lint
+
+Package Configuration
+---------------------
+
+Each vendored package is defined in ``vendor/packages.ml`` with the following
+structure:
+
+.. code:: ocaml
+
+   { name = "package-name"
+   ; source = Git { url = "https://github.com/..."; revision = Tag "v1.0.0"; build_cmd = None }
+   ; copy_rules = [ Copy { src = "src/file.ml"; dst_dir = "src" } ]
+   ; preserve_rules = [ "src/dune" ]
+   }
+
+**Key fields:**
+
+- ``name``: The package name (matches the ``vendor/<name>`` directory)
+- ``source``: Git repository information including URL and revision (``Tag`` or ``Commit``)
+- ``build_cmd``: Optional build command to run before copying files (usually ``Some (`Dune [...])`` for dune subst)
+- ``copy_rules``: Rules defining which files to copy from the source repository
+- ``preserve_rules``: Files that should be preserved across updates (typically local ``dune`` files)
+
+**Copy rule types:**
+
+- ``Copy { src; dst_dir }``: Copy a single file to a destination directory
+- ``Copy_glob { src_dir; pattern; dst_dir }``: Copy files matching a glob pattern
+- ``Remove paths``: Remove specific files after copying (useful for excluding unwanted modules)
+
+Updating Packages
+-----------------
+
+To update a vendored package:
+
+1. **Update the revision** in ``vendor/packages.ml`` to point to the desired commit or tag
+2. **Fetch the update**:
+
+   .. code:: bash
+
+      $ dune exec vendor/vendor_updater.exe -- fetch package-name
+
+3. **Update patches if needed**:
+
+   .. code:: bash
+
+      $ dune exec vendor/vendor_updater.exe -- patch package-name
+
+4. **Test the changes** to ensure everything builds and tests pass
+5. **Commit the changes** including the updated ``packages.ml`` and any modified patch files
+
+Patch Management
+----------------
+
+The vendoring system supports patch files in ``vendor/patches/<package>.patch``
+that are automatically applied after fetching source code. This is useful for:
+
+- Modifying ``dune`` files to integrate with Dune's build system
+- Removing or modifying problematic dependencies
+- Applying upstream patches that haven't been released yet
+
+**Working with patches:**
+
+- **Generate a patch**: Make manual changes to files in ``vendor/<package>/`` then run:
+
+  .. code:: bash
+
+     $ dune exec vendor/vendor_updater.exe -- patch package-name
+
+- **Validate patches**: Ensure all patches apply cleanly and are up to date:
+
+  .. code:: bash
+
+     $ dune exec vendor/vendor_updater.exe -- lint
+
+- **Preserve files**: Use ``preserve_rules`` in ``packages.ml`` to keep local
+  modifications (like ``dune`` files) across updates
+
+Adding New Packages
+-------------------
+
+To vendor a new package:
+
+1. **Check the license** to ensure it's compatible with Dune's licensing
+2. **Add an entry** to ``vendor/packages.ml`` following the existing pattern
+3. **Minimize dependencies**: Copy only essential ``.ml``, ``.mli``, and license files
+4. **Handle public names**: Remove ``public_name`` from ``dune`` files or rename to ``dune-private-libs.<library>``
+5. **Test thoroughly** to ensure the package builds and integrates correctly
+
+For larger modifications, consider forking the upstream project in the
+ocaml-dune_ organisation and vendoring the forked copy. This makes changes
+more visible and easier to maintain.
+
+Best Practices
+--------------
+
+- **Keep minimal footprint**: Import only necessary source files
+- **Use specific revisions**: Prefer specific commit hashes or tags over branch names
+- **Preserve local modifications**: Use ``preserve_rules`` for files that need local changes
+- **Document patches**: Include clear commit messages explaining why patches are needed
+- **Regular updates**: Check for updates periodically using the ``outdated`` command
+- **Test thoroughly**: Always test builds and functionality after updating packages
 
 .. _ocaml-dune: https://github.com/ocaml-dune/
 

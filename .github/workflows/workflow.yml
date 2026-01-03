@@ -57,6 +57,22 @@ jobs:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix develop -i -c make test
 
+  vendor-lint:
+    name: Vendor Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
+      - uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: |
+            nix-${{ runner.os }}-nix-test-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-nix-test-
+          save: false
+      - run: nix develop -i -c make vendor-lint
+
   fmt:
     name: Format
     runs-on: ubuntu-latest

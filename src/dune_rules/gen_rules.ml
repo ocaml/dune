@@ -246,27 +246,16 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
            let { Ml_sources.Parser_generators.deps = _; targets } =
              Ml_sources.Parser_generators.modules ml_sources ~for_:(Menhir m.loc)
            in
-           let menhir_module_names =
-             Module_trie.to_list_map targets ~f:(fun (_, m) -> Module.Source.name m)
-           in
-           let base_path =
-             match Ml_sources.include_subdirs ml_sources with
-             | Include Unqualified | No -> []
-             | Include Qualified ->
-               Path.Local.descendant
-                 (Path.Build.local ctx_dir)
-                 ~of_:(Path.Build.local (Dir_contents.dir dir_contents))
-               |> Option.value_exn
-               |> Path.Local.explode
-               |> List.map ~f:Module_name.of_checked_string
-           in
-           Memo.List.find_map menhir_module_names ~f:(fun name ->
-             let path = Nonempty_list.(base_path @ [ name ]) in
-             Ml_sources.find_origin ml_sources ~libs:(Scope.libs scope) path)
-           >>| Option.bind ~f:(fun loc -> Loc.Map.find cctxs (Ml_sources.Origin.loc loc))
+           Memo.List.find_map (Module_trie.to_list targets) ~f:(fun (_, m) ->
+             let module_path = Module.Source.path m in
+             Ml_sources.find_origin ml_sources ~libs:(Scope.libs scope) module_path
+             >>| Option.bind ~f:(fun loc ->
+               Loc.Map.find cctxs (Ml_sources.Origin.loc loc))
+             >>| Option.map ~f:(fun cctx -> module_path, cctx))
            >>= (function
-            | Some cctx ->
-              Menhir_rules.gen_rules cctx m ~module_path:base_path ~dir:ctx_dir
+            | Some (module_path, cctx) ->
+              let module_path, _ = Nonempty_list.destruct_last module_path in
+              Menhir_rules.gen_rules cctx m ~dir:ctx_dir ~module_path
             | None ->
               (* This happens often when passing a [-p ...] option that hides a
                  library *)

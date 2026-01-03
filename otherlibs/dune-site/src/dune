@@ -9,3 +9,6 @@
  (libraries
   (re_export dune-private-libs.dune-section)
   dune-site.private))
+
+(documentation
+ (package dune-site))

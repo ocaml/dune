@@ -80,6 +80,7 @@ module Component : sig
         { template : Template.t
         ; inline_tests : bool
         ; pkg : Pkg.t
+        ; use_src_dir : bool
         }
     end
 

@@ -1,5 +1,3 @@
-(include_subdirs unqualified)
-
 (library
  (name dune_engine)
  (libraries
@@ -15,6 +13,7 @@
   threads.posix
   predicate_lang
   dune_cache
+  dune_scheduler
   dune_cache_storage
   dune_glob
   dune_targets

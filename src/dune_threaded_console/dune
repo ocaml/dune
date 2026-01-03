@@ -1,3 +1,10 @@
 (library
  (name dune_threaded_console)
- (libraries stdune dune_util dune_console dune_engine threads.posix unix))
+ (libraries
+  stdune
+  dune_util
+  dune_console
+  dune_scheduler
+  dune_engine
+  threads.posix
+  unix))

@@ -1,6 +1,6 @@
 open Stdune
 open Fiber.O
-module Scheduler = Dune_engine.Scheduler
+open Dune_scheduler
 
 let config =
   Dune_engine.Clflags.display := Short;

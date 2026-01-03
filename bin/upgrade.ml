@@ -17,7 +17,7 @@ let term =
   let+ builder = Common.Builder.term in
   (* CR-soon rgrinberg: stop taking pointless args *)
   let _common, config = Common.init builder in
-  Scheduler.no_build_no_rpc ~config Dune_upgrader.upgrade
+  Scheduler_setup.no_build_no_rpc ~config Dune_upgrader.upgrade
 ;;
 
 let command = Cmd.v info term

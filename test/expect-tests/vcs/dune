@@ -12,6 +12,7 @@
   dune_util
   dune_vcs
   dune_engine
+  dune_scheduler
   fiber
   memo
   ;; This is because of the (implicit_transitive_deps false)

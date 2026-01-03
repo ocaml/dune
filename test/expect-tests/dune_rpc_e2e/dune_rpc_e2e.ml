@@ -1,6 +1,6 @@
 open Stdune
 open Fiber.O
-module Scheduler = Dune_engine.Scheduler
+open Dune_scheduler
 module Dune_rpc = Dune_rpc_private
 module Request = Dune_rpc.Public.Request
 module Diagnostic = Dune_rpc.Diagnostic

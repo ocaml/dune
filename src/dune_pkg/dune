@@ -9,6 +9,7 @@
   lmdb
   fiber
   fiber_util
+  dune_scheduler
   dune_engine
   dune_util
   dune_trace

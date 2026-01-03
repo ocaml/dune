@@ -1,3 +1,5 @@
+open Import
+
 module Dune_config : sig
   (** Dune configuration (visible to the user) *)
 
@@ -155,5 +157,5 @@ module Dune_config : sig
     -> watch_exclusions:string list
     -> Dune_trace.Out.t option
     -> print_ctrl_c_warning:bool
-    -> Dune_engine.Scheduler.Config.t
+    -> Scheduler.Config.t
 end

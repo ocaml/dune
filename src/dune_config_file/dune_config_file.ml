@@ -1,8 +1,9 @@
+open Import
+
 module Dune_config = struct
   open Stdune
   open Dune_lang.Decoder
   module Display = Display
-  module Scheduler = Dune_engine.Scheduler
   module Sandbox_mode = Dune_engine.Sandbox_mode
   module Console = Dune_console
   module Stanza = Dune_lang.Stanza

@@ -1,5 +1,6 @@
 open Stdune
 open Dune_config_file
+open Dune_scheduler
 module Console = Dune_console
 module Graph = Dune_graph.Graph
 module Profile = Dune_lang.Profile
@@ -634,7 +635,7 @@ module Builder = struct
     ; dump_gc_stats : Path.External.t option
     ; always_show_command_line : bool
     ; promote_install_files : bool
-    ; file_watcher : Dune_engine.Scheduler.Run.file_watcher
+    ; file_watcher : Scheduler.Run.file_watcher
     ; workspace_config : Workspace.Clflags.t
     ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
     ; report_errors_config : Dune_engine.Report_errors_config.t
@@ -945,8 +946,7 @@ module Builder = struct
       Arg.(
         value
         & opt
-            (enum
-               [ "automatic", Dune_engine.Scheduler.Run.Automatic; "manual", No_watcher ])
+            (enum [ "automatic", Scheduler.Run.Automatic; "manual", No_watcher ])
             Automatic
         & info [ "file-watcher" ] ~doc:(Some doc))
     and+ watch_exclusions =
@@ -1138,7 +1138,7 @@ module Builder = struct
     && Option.equal Path.External.equal t.dump_gc_stats dump_gc_stats
     && Bool.equal t.always_show_command_line always_show_command_line
     && Bool.equal t.promote_install_files promote_install_files
-    && Dune_engine.Scheduler.Run.file_watcher_equal t.file_watcher file_watcher
+    && Scheduler.Run.file_watcher_equal t.file_watcher file_watcher
     && Source.Workspace.Clflags.equal t.workspace_config workspace_config
     && Dune_engine.Cache_debug_flags.equal t.cache_debug_flags cache_debug_flags
     && Dune_engine.Report_errors_config.equal t.report_errors_config report_errors_config

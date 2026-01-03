@@ -11,7 +11,7 @@ let term =
     Arg.(value & flag & info [ "files" ] ~doc:(Some doc))
   in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config
+  Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
   build_exn
   @@ fun () ->

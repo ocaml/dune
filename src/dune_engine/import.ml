@@ -5,6 +5,7 @@ module Console = Dune_console
 module Metrics = Dune_metrics
 module Compound_user_error = Dune_rpc_private.Compound_user_error
 module Stringlike = Dune_util.Stringlike
+include Dune_scheduler
 
 module type Stringlike = Dune_util.Stringlike
 

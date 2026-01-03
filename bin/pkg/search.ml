@@ -111,7 +111,7 @@ let term =
   and+ query = Arg.(value & pos 0 (some string) None & info [] ~docv:"QUERY" ~doc:None) in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config (fun () ->
+  Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
     Pkg_common.check_pkg_management_enabled () >>> search_packages ~query ())
 ;;

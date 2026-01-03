@@ -17,6 +17,7 @@
   csexp
   fiber
   dune_engine
+  dune_scheduler
   dune_rpc_impl
   csexp_rpc
   ;; This is because of the (implicit_transitive_deps false)
@@ -60,6 +61,7 @@
   dune_rpc_e2e
   dune_engine
   dune_rpc_impl
+  dune_scheduler
   stdune
   fiber
   xdg

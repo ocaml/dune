@@ -112,7 +112,7 @@ type 'build_arg pending_action_kind =
 
 type 'build_arg pending_action =
   { kind : 'build_arg pending_action_kind
-  ; outcome : Dune_engine.Scheduler.Run.Build_outcome.t Fiber.Ivar.t
+  ; outcome : Scheduler.Run.Build_outcome.t Fiber.Ivar.t
   }
 
 module Client = Stdune.Unit

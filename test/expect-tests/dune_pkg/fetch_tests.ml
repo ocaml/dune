@@ -1,5 +1,5 @@
 open Stdune
-module Scheduler = Dune_engine.Scheduler
+open Dune_scheduler
 module Checksum = Dune_pkg.Checksum
 module Rev_store = Dune_pkg.Rev_store
 module Fetch = Dune_pkg.Fetch

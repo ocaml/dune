@@ -1,8 +1,8 @@
 open Stdune
 open Fiber.O
+open Dune_scheduler
 module Where = Dune_rpc_private.Where
 module Registry = Dune_rpc_private.Registry
-module Scheduler = Dune_engine.Scheduler
 module Poll_active = Dune_rpc_impl.Poll_active
 open Dune_rpc_e2e
 

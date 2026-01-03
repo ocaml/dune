@@ -55,7 +55,7 @@ let client_term builder f =
   let builder = Common.Builder.forbid_builds builder in
   let builder = Common.Builder.disable_log_file builder in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config f
+  Scheduler_setup.go_with_rpc_server ~common ~config f
 ;;
 
 let wait_term =
@@ -82,7 +82,7 @@ let establish_connection_with_retry () =
     >>= function
     | Ok x -> Fiber.return x
     | Error _ ->
-      let* () = Dune_engine.Scheduler.sleep pause_between_retries_s in
+      let* () = Scheduler.sleep pause_between_retries_s in
       loop ()
   in
   loop ()

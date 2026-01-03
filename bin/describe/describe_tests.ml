@@ -131,7 +131,7 @@ let term : unit Term.t =
   and+ context_name = Common.context_arg ~doc:(Some "Build context to use.")
   and+ format = Describe_format.arg in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config
+  Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
   let* setup = Import.Main.setup () in

@@ -1,5 +1,5 @@
 open Import
-open Dune_engine.Scheduler
+open Scheduler
 
 let maybe_clear_screen ~details_hum (dune_config : Dune_config.t) =
   match Execution_env.inside_dune with

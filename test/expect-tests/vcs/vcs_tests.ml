@@ -2,8 +2,8 @@ open Stdune
 open Fiber.O
 open Dune_vcs
 open Dune_tests_common
+open Dune_scheduler
 module Process = Dune_engine.Process
-module Scheduler = Dune_engine.Scheduler
 
 let () = init ()
 let printf = Printf.printf

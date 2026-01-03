@@ -15,6 +15,7 @@
   dune_console
   dune_digest
   dune_engine
+  dune_scheduler
   dune_findlib
   dune_glob
   dune_lang

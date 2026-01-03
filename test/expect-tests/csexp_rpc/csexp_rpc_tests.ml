@@ -1,7 +1,7 @@
 open Stdune
 open Csexp_rpc
 open Fiber.O
-module Scheduler = Dune_engine.Scheduler
+open Dune_scheduler
 
 let () = Dune_tests_common.init ()
 

@@ -522,10 +522,7 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
     (let+ ocaml = ocaml in
      lib_config_var var ocaml.lib_config)
     |> static
-  | Os v ->
-    static
-      (let+ v = Lock_dir.Sys_vars.(os poll v) in
-       [ Value.String (Option.value v ~default:"") ])
+  | Os v -> static Lock_dir.Sys_vars.(os_values poll v)
   | Ext_exe
   | Cpp
   | Pa_cpp

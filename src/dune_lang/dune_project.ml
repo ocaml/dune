@@ -883,199 +883,205 @@ let parse_packages
 
 let parse ~dir ~(lang : Lang.Instance.t) ~file =
   let open Decoder in
+  fields
+  @@
+  let* explicit_extensions =
+    multi_field
+      "using"
+      (let+ loc = loc
+       and+ name = located string
+       and+ ver = located Syntax.Version.decode
+       and+ parse_args = capture in
+       (* We don't parse the arguments quite yet as we want to set the
+          version of extensions before parsing them. *)
+       Extension.instantiate ~dune_lang_ver:lang.version ~loc ~parse_args name ver)
+  in
   String_with_vars.set_decoding_env
-    (Pform.Env.initial ~stanza:lang.version ~extensions:[])
-  @@ fields
-  @@ let+ name = field_o "name" Dune_project_name.decode
-     and+ version = field_o "version" Package_version.decode
-     and+ info = Package_info.decode ()
-     and+ packages = multi_field "package" (Package.decode ~dir)
-     and+ pins = Pin_stanza.Project.decode
-     and+ explicit_extensions =
-       multi_field
-         "using"
-         (let+ loc = loc
-          and+ name = located string
-          and+ ver = located Syntax.Version.decode
-          and+ parse_args = capture in
-          (* We don't parse the arguments quite yet as we want to set the
-             version of extensions before parsing them. *)
-          Extension.instantiate ~dune_lang_ver:lang.version ~loc ~parse_args name ver)
-     and+ implicit_transitive_deps =
-       field_o "implicit_transitive_deps" Implicit_transitive_deps.Stanza.decode
-     and+ wrapped_executables =
-       field_o_b "wrapped_executables" ~check:(Syntax.since Stanza.syntax (1, 11))
-     and+ map_workspace_root =
-       field_o_b "map_workspace_root" ~check:(Syntax.since Stanza.syntax (3, 7))
-     and+ allow_approximate_merlin =
-       (* TODO DUNE4 remove this field from parsing *)
-       let+ loc = loc
-       and+ field =
-         field_b "allow_approximate_merlin" ~check:(Syntax.since Stanza.syntax (1, 9))
-       in
-       Option.some_if field loc
-     and+ executables_implicit_empty_intf =
-       field_o_b
-         "executables_implicit_empty_intf"
-         ~check:(Syntax.since Stanza.syntax (2, 9))
-     and+ accept_alternative_dune_file_name =
-       field_b
-         "accept_alternative_dune_file_name"
-         ~check:(Syntax.since Stanza.syntax (3, 0))
-     and+ () = Versioned_file.no_more_lang
-     and+ generate_opam_files =
-       field_o_b "generate_opam_files" ~check:(Syntax.since Stanza.syntax (1, 10))
-     and+ use_standard_c_and_cxx_flags =
-       field_o_b "use_standard_c_and_cxx_flags" ~check:(Syntax.since Stanza.syntax (2, 8))
-     and+ dialects =
-       multi_field
-         "dialect"
-         (Syntax.since Stanza.syntax (1, 11) >>> located Dialect.decode)
-     and+ explicit_js_mode =
-       field_o_b "explicit_js_mode" ~check:(Syntax.since Stanza.syntax (1, 11))
-     and+ format_config = Format_config.field ~since:(2, 0)
-     and+ subst_config = Subst_config.field
-     and+ strict_package_deps =
-       field_o_b "strict_package_deps" ~check:(Syntax.since Stanza.syntax (2, 3))
-     and+ cram = Toggle.field "cram" ~check:(Syntax.since Stanza.syntax (2, 7))
-     and+ expand_aliases_in_sandbox =
-       field_o_b "expand_aliases_in_sandbox" ~check:(Syntax.since Stanza.syntax (3, 0))
-     and+ opam_file_location =
-       field_o
-         "opam_file_location"
-         (Syntax.since Stanza.syntax (3, 8)
-          >>> enum
-                [ "relative_to_project", `Relative_to_project
-                ; "inside_opam_directory", `Inside_opam_directory
-                ])
-     and+ warnings =
-       field
-         "warnings"
-         ~default:Warning.Settings.empty
-         (Syntax.since Stanza.syntax (3, 11) >>> Warning.Settings.decode)
-     and+ () =
-       field_o
-         "pkg"
-         (let+ loc = loc
-          and+ () = junk_everything in
-          loc)
-       >>| Option.iter ~f:(fun loc ->
-         User_error.raise
-           ~loc
-           ~hints:
-             [ Pp.text
-                 "Move this stanza to your dune-workspace file. If you don't have one, \
-                  create one in your workspace root."
-             ]
-           [ Pp.text "The (pkg ...) stanza is only valid in dune-workspace files." ])
+    (let extensions =
+       List.map explicit_extensions ~f:(fun (instance : Extension.instance) ->
+         let (Extension.Packed { syntax; _ }) = instance.extension in
+         syntax, instance.version)
      in
-     fun (opam_packages : (Loc.t * Package.t Memo.t) Package.Name.Map.t) ->
-       let opam_file_location =
-         Option.value opam_file_location ~default:(opam_file_location_default ~lang)
-       in
-       let generate_opam_files = Option.value ~default:false generate_opam_files in
-       let open Memo.O in
-       let+ packages =
-         parse_packages
-           name
-           ~info
-           ~dir
-           ~version
-           packages
-           opam_file_location
-           ~generate_opam_files
-           opam_packages
-       in
-       let name =
-         match name with
-         | Some n -> n
-         | None -> default_name ~dir ~packages
-       in
-       let explicit_extensions = explicit_extensions_map explicit_extensions in
-       let parsing_context, stanza_parser, extension_args =
-         interpret_lang_and_extensions ~lang ~explicit_extensions
-       in
-       let implicit_transitive_deps =
-         Option.value
-           implicit_transitive_deps
-           ~default:(Implicit_transitive_deps.Stanza.default ~lang)
-       in
-       let wrapped_executables =
-         Option.value wrapped_executables ~default:(wrapped_executables_default ~lang)
-       in
-       let map_workspace_root =
-         Option.value map_workspace_root ~default:(map_workspace_root_default ~lang)
-       in
-       let executables_implicit_empty_intf =
-         Option.value
-           executables_implicit_empty_intf
-           ~default:(executables_implicit_empty_intf_default ~lang)
-       in
-       let strict_package_deps =
-         Option.value strict_package_deps ~default:(strict_package_deps_default ~lang)
-       in
-       let dune_version = lang.version in
-       let explicit_js_mode =
-         Option.value explicit_js_mode ~default:(explicit_js_mode_default ~lang)
-       in
-       let use_standard_c_and_cxx_flags =
-         match use_standard_c_and_cxx_flags with
-         | None -> use_standard_c_and_cxx_flags_default ~lang
-         | some -> some
-       in
-       let cram =
-         match cram with
-         | None -> cram_default ~lang
-         | Some t -> Toggle.enabled t
-       in
-       let expand_aliases_in_sandbox =
-         Option.value
-           expand_aliases_in_sandbox
-           ~default:(expand_aliases_in_sandbox_default ~lang)
-       in
-       let root = dir in
-       let dialects =
-         let dialects =
-           match String.Map.find explicit_extensions Melange_syntax.name with
-           | Some extension -> (extension.loc, Dialect.rescript) :: dialects
-           | None -> dialects
-         in
-         List.fold_left
-           dialects
-           ~init:Dialect.DB.builtin
-           ~f:(fun dialects (loc, dialect) -> Dialect.DB.add dialects ~loc dialect)
-       in
-       { name
-       ; root
-       ; version
-       ; dune_version
-       ; info
-       ; packages
-       ; stanza_parser
-       ; project_file = Some file
-       ; extension_args
-       ; parsing_context
-       ; implicit_transitive_deps
-       ; wrapped_executables
-       ; map_workspace_root
-       ; executables_implicit_empty_intf
-       ; accept_alternative_dune_file_name
-       ; generate_opam_files
-       ; warnings
-       ; use_standard_c_and_cxx_flags
-       ; dialects
-       ; explicit_js_mode
-       ; format_config
-       ; subst_config
-       ; strict_package_deps
-       ; allow_approximate_merlin
-       ; pins
-       ; cram
-       ; expand_aliases_in_sandbox
-       ; opam_file_location
-       ; including_hidden_packages = packages
-       ; exclusive_dir_packages = make_exclusive_dir_packages packages
-       }
+     Pform.Env.initial ~stanza:lang.version ~extensions)
+  @@
+  let parsing_context, _, _ =
+    let explicit_extensions = explicit_extensions_map explicit_extensions in
+    interpret_lang_and_extensions ~lang ~explicit_extensions
+  in
+  Decoder.set_many parsing_context
+  @@
+  let+ name = field_o "name" Dune_project_name.decode
+  and+ version = field_o "version" Package_version.decode
+  and+ info = Package_info.decode ()
+  and+ packages = multi_field "package" (Package.decode ~dir)
+  and+ pins = Pin_stanza.Project.decode
+  and+ implicit_transitive_deps =
+    field_o "implicit_transitive_deps" Implicit_transitive_deps.Stanza.decode
+  and+ wrapped_executables =
+    field_o_b "wrapped_executables" ~check:(Syntax.since Stanza.syntax (1, 11))
+  and+ map_workspace_root =
+    field_o_b "map_workspace_root" ~check:(Syntax.since Stanza.syntax (3, 7))
+  and+ allow_approximate_merlin =
+    (* TODO DUNE4 remove this field from parsing *)
+    let+ loc = loc
+    and+ field =
+      field_b "allow_approximate_merlin" ~check:(Syntax.since Stanza.syntax (1, 9))
+    in
+    Option.some_if field loc
+  and+ executables_implicit_empty_intf =
+    field_o_b "executables_implicit_empty_intf" ~check:(Syntax.since Stanza.syntax (2, 9))
+  and+ accept_alternative_dune_file_name =
+    field_b "accept_alternative_dune_file_name" ~check:(Syntax.since Stanza.syntax (3, 0))
+  and+ () = Versioned_file.no_more_lang
+  and+ generate_opam_files =
+    field_o_b "generate_opam_files" ~check:(Syntax.since Stanza.syntax (1, 10))
+  and+ use_standard_c_and_cxx_flags =
+    field_o_b "use_standard_c_and_cxx_flags" ~check:(Syntax.since Stanza.syntax (2, 8))
+  and+ dialects =
+    multi_field "dialect" (Syntax.since Stanza.syntax (1, 11) >>> located Dialect.decode)
+  and+ explicit_js_mode =
+    field_o_b "explicit_js_mode" ~check:(Syntax.since Stanza.syntax (1, 11))
+  and+ format_config = Format_config.field ~since:(2, 0)
+  and+ subst_config = Subst_config.field
+  and+ strict_package_deps =
+    field_o_b "strict_package_deps" ~check:(Syntax.since Stanza.syntax (2, 3))
+  and+ cram = Toggle.field "cram" ~check:(Syntax.since Stanza.syntax (2, 7))
+  and+ expand_aliases_in_sandbox =
+    field_o_b "expand_aliases_in_sandbox" ~check:(Syntax.since Stanza.syntax (3, 0))
+  and+ opam_file_location =
+    field_o
+      "opam_file_location"
+      (Syntax.since Stanza.syntax (3, 8)
+       >>> enum
+             [ "relative_to_project", `Relative_to_project
+             ; "inside_opam_directory", `Inside_opam_directory
+             ])
+  and+ warnings =
+    field
+      "warnings"
+      ~default:Warning.Settings.empty
+      (Syntax.since Stanza.syntax (3, 11) >>> Warning.Settings.decode)
+  and+ () =
+    field_o
+      "pkg"
+      (let+ loc = loc
+       and+ () = junk_everything in
+       loc)
+    >>| Option.iter ~f:(fun loc ->
+      User_error.raise
+        ~loc
+        ~hints:
+          [ Pp.text
+              "Move this stanza to your dune-workspace file. If you don't have one, \
+               create one in your workspace root."
+          ]
+        [ Pp.text "The (pkg ...) stanza is only valid in dune-workspace files." ])
+  in
+  fun (opam_packages : (Loc.t * Package.t Memo.t) Package.Name.Map.t) ->
+    let opam_file_location =
+      Option.value opam_file_location ~default:(opam_file_location_default ~lang)
+    in
+    let generate_opam_files = Option.value ~default:false generate_opam_files in
+    let open Memo.O in
+    let+ packages =
+      parse_packages
+        name
+        ~info
+        ~dir
+        ~version
+        packages
+        opam_file_location
+        ~generate_opam_files
+        opam_packages
+    in
+    let name =
+      match name with
+      | Some n -> n
+      | None -> default_name ~dir ~packages
+    in
+    let explicit_extensions = explicit_extensions_map explicit_extensions in
+    let parsing_context, stanza_parser, extension_args =
+      interpret_lang_and_extensions ~lang ~explicit_extensions
+    in
+    let implicit_transitive_deps =
+      Option.value
+        implicit_transitive_deps
+        ~default:(Implicit_transitive_deps.Stanza.default ~lang)
+    in
+    let wrapped_executables =
+      Option.value wrapped_executables ~default:(wrapped_executables_default ~lang)
+    in
+    let map_workspace_root =
+      Option.value map_workspace_root ~default:(map_workspace_root_default ~lang)
+    in
+    let executables_implicit_empty_intf =
+      Option.value
+        executables_implicit_empty_intf
+        ~default:(executables_implicit_empty_intf_default ~lang)
+    in
+    let strict_package_deps =
+      Option.value strict_package_deps ~default:(strict_package_deps_default ~lang)
+    in
+    let dune_version = lang.version in
+    let explicit_js_mode =
+      Option.value explicit_js_mode ~default:(explicit_js_mode_default ~lang)
+    in
+    let use_standard_c_and_cxx_flags =
+      match use_standard_c_and_cxx_flags with
+      | None -> use_standard_c_and_cxx_flags_default ~lang
+      | some -> some
+    in
+    let cram =
+      match cram with
+      | None -> cram_default ~lang
+      | Some t -> Toggle.enabled t
+    in
+    let expand_aliases_in_sandbox =
+      Option.value
+        expand_aliases_in_sandbox
+        ~default:(expand_aliases_in_sandbox_default ~lang)
+    in
+    let root = dir in
+    let dialects =
+      let dialects =
+        match String.Map.find explicit_extensions Melange_syntax.name with
+        | Some extension -> (extension.loc, Dialect.rescript) :: dialects
+        | None -> dialects
+      in
+      List.fold_left dialects ~init:Dialect.DB.builtin ~f:(fun dialects (loc, dialect) ->
+        Dialect.DB.add dialects ~loc dialect)
+    in
+    { name
+    ; root
+    ; version
+    ; dune_version
+    ; info
+    ; packages
+    ; stanza_parser
+    ; project_file = Some file
+    ; extension_args
+    ; parsing_context
+    ; implicit_transitive_deps
+    ; wrapped_executables
+    ; map_workspace_root
+    ; executables_implicit_empty_intf
+    ; accept_alternative_dune_file_name
+    ; generate_opam_files
+    ; warnings
+    ; use_standard_c_and_cxx_flags
+    ; dialects
+    ; explicit_js_mode
+    ; format_config
+    ; subst_config
+    ; strict_package_deps
+    ; allow_approximate_merlin
+    ; pins
+    ; cram
+    ; expand_aliases_in_sandbox
+    ; opam_file_location
+    ; including_hidden_packages = packages
+    ; exclusive_dir_packages = make_exclusive_dir_packages packages
+    }
 ;;
 
 let load_dune_project ~read ~dir opam_packages : t Memo.t =

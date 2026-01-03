@@ -36,6 +36,7 @@ val tags : t -> string list
 val synopsis : t -> string option
 val info : t -> Package_info.t
 val description : t -> string option
+val enabled_if : t -> Blang.t option
 val id : t -> Id.t
 
 val set_version_and_info
@@ -60,6 +61,7 @@ val create
   -> conflicts:Package_dependency.t list
   -> depends:Package_dependency.t list
   -> depopts:Package_dependency.t list
+  -> enabled_if:Blang.t option
   -> info:Package_info.t
   -> has_opam_file:opam_file
   -> dir:Path.Source.t

@@ -108,6 +108,33 @@ let default_build_command =
            ~with_sites:Dune_project.(is_extension_set project dune_site_extension))
 ;;
 
+let var_of_sw sw : Package_constraint.Value.t =
+  match String_with_vars.pform_only sw with
+  | None ->
+    (match String_with_vars.text_only sw with
+     | Some s -> String_literal s
+     | None -> assert false)
+  | Some s ->
+    Variable
+      (match s with
+       | Var Architecture -> Package_variable_name.arch
+       | Var (Os Os) -> Package_variable_name.os
+       | Var (Os Os_version) -> Package_variable_name.os_version
+       | Var (Os Os_distribution) -> Package_variable_name.os_distribution
+       | Var (Os Os_family) -> Package_variable_name.os_family
+       | _ -> assert false)
+;;
+
+let rec constraint_of_blang (blang : Blang.t) : Package_constraint.t =
+  match blang with
+  | Const b -> Package_constraint.Uop (Eq, String_literal (Bool.to_string b))
+  | Not b -> Package_constraint.Not (constraint_of_blang b)
+  | And xs -> And (List.map ~f:constraint_of_blang xs)
+  | Or xs -> Or (List.map ~f:constraint_of_blang xs)
+  | Compare (op, lhs, rhs) -> Bop (op, var_of_sw lhs, var_of_sw rhs)
+  | Expr b -> Bvar (var_of_sw b)
+;;
+
 let package_fields package ~project =
   let open Opam_file.Create in
   let tags =
@@ -131,7 +158,15 @@ let package_fields package ~project =
       | [] -> None
       | _ :: _ -> Some (k, list Dune_pkg.Package_dependency.opam_depend v))
   in
-  let fields = [ optional; dep_fields ] in
+  let available =
+    match Package.enabled_if package with
+    | None -> []
+    | Some blang ->
+      [ ( "available"
+        , constraint_of_blang blang |> Dune_pkg.Package_dependency.opam_constraint )
+      ]
+  in
+  let fields = [ optional; dep_fields; available ] in
   let fields =
     let dune_version = Dune_project.dune_version project in
     if dune_version >= (2, 0) && tags <> [] then tags :: fields else fields
@@ -176,14 +211,18 @@ let insert_dune_dep depends dune_version =
 
 let rec already_requires_odoc : Package_constraint.t -> bool = function
   | Uop _ | Bop _ -> true
-  | Bvar var -> Dune_lang.Package_variable_name.(one_of var [ with_doc; build; post ])
+  | Bvar (String_literal _) -> false
+  | Bvar (Variable var) ->
+    Dune_lang.Package_variable_name.(one_of var [ with_doc; build; post ])
   | And l -> List.for_all ~f:already_requires_odoc l
   | Or l -> List.exists ~f:already_requires_odoc l
   | Not t -> not (already_requires_odoc t)
 ;;
 
 let insert_odoc_dep depends =
-  let with_doc : Package_constraint.t = Bvar Dune_lang.Package_variable_name.with_doc in
+  let with_doc : Package_constraint.t =
+    Bvar (Variable Dune_lang.Package_variable_name.with_doc)
+  in
   let odoc_dep = { Package_dependency.name = odoc_name; constraint_ = Some with_doc } in
   let rec loop acc = function
     | [] -> List.rev (odoc_dep :: acc)

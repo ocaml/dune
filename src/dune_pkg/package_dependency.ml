@@ -73,8 +73,9 @@ module Constraint = struct
   end
 
   let rec to_opam_condition = function
-    | Bvar variable ->
+    | Bvar (Variable variable) ->
       OpamTypes.Atom (OpamTypes.Filter (Variable.to_opam_filter variable))
+    | Bvar (String_literal s) -> OpamTypes.Atom (OpamTypes.Filter (FString s))
     | Uop (op, value) ->
       OpamTypes.Atom
         (OpamTypes.Constraint (Op.to_relop_pelem op, Value.to_opam_filter value))
@@ -96,7 +97,7 @@ module Constraint = struct
   let rec of_opam_filter (filter : OpamTypes.filter) =
     let open Result.O in
     match filter with
-    | FIdent ([], name, None) -> Ok (Bvar (Variable.of_opam name))
+    | FIdent ([], name, None) -> Ok (Bvar (Variable (Variable.of_opam name)))
     | FOp (lhs, relop, rhs) ->
       let op = Op.of_opam relop in
       let+ lhs = Value.of_opam_filter lhs
@@ -113,6 +114,7 @@ module Constraint = struct
     | FNot constraint_ ->
       let+ constraint_ = of_opam_filter constraint_ in
       Not constraint_
+    (* CR-someday rgrinberg: Handle FString? *)
     | _ -> Error (Convert_from_opam_error.Can't_convert_opam_filter_to_condition filter)
   ;;
 
@@ -166,7 +168,8 @@ let op_list op = function
 let opam_constraint t : OpamParserTypes.FullPos.value =
   let open OpamParserTypes.FullPos in
   let rec opam_constraint context = function
-    | Constraint.Bvar v -> Constraint.Variable.to_opam v
+    | Constraint.Bvar (Variable v) -> Constraint.Variable.to_opam v
+    | Constraint.Bvar (String_literal v) -> nopos (String v)
     | Uop (op, x) ->
       nopos (Prefix_relop (nopos @@ Constraint.Op.to_opam op, Constraint.Value.to_opam x))
     | Bop (op, x, y) ->

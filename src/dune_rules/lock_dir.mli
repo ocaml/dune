@@ -43,6 +43,7 @@ module Sys_vars : sig
     }
 
   val os : t -> Dune_lang.Pform.Var.Os.t -> string option Memo.t
+  val os_values : t -> Dune_lang.Pform.Var.Os.t -> Value.t list Memo.t
   val poll : t
   val solver_env : Dune_pkg.Solver_env.t Memo.t
 end

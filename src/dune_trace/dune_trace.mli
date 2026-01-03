@@ -65,6 +65,15 @@ module Event : sig
     -> times:Proc.Times.t
     -> t
 
+  type timeout =
+    { pid : Pid.t
+    ; group_leader : bool
+    ; timeout : Time.Span.t
+    }
+
+  val signal_received : Signal.t -> t
+  val signal_sent : Signal.t -> [ `Ui | `Timeout of timeout ] -> t
+
   val persistent
     :  file:Path.t
     -> module_:string

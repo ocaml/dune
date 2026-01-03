@@ -657,6 +657,7 @@ end = struct
     let wait_signal = Staged.unstage (signal_waiter ()) in
     while true do
       let signal = wait_signal () in
+      Dune_trace.emit Process (fun () -> Dune_trace.Event.signal_received signal);
       Event.Queue.send_shutdown q (Signal signal);
       match signal with
       | Int | Quit | Term ->
@@ -1333,9 +1334,15 @@ let wait_for_process_with_timeout t pid waiter ~timeout ~is_process_group_leader
       Alarm_clock.await sleep
       >>| function
       | `Finished when Process_watcher.is_running t.process_watcher pid ->
-        if is_process_group_leader
-        then kill_process_group pid Sys.sigkill
-        else Unix.kill (Pid.to_int pid) Sys.sigkill;
+        let () =
+          if is_process_group_leader
+          then kill_process_group pid Sys.sigkill
+          else Unix.kill (Pid.to_int pid) Sys.sigkill
+        in
+        Dune_trace.emit Process (fun () ->
+          Dune_trace.Event.signal_sent
+            Kill
+            (`Timeout { pid; group_leader = is_process_group_leader; timeout }));
         `Timed_out
       | _ -> `Finished
     and+ res, termination_reason =

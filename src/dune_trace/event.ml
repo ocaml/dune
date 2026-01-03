@@ -219,6 +219,37 @@ let process
   Event.complete ~args ~start:started_at ~dur:times.elapsed_time ~name Process
 ;;
 
+let signal_received signal =
+  Event.instant
+    ~args:[ "signal", Arg.string (Signal.name signal) ]
+    ~name:"signal_received"
+    (Time.now ())
+    Process
+;;
+
+type timeout =
+  { pid : Pid.t
+  ; group_leader : bool
+  ; timeout : Time.Span.t
+  }
+
+let signal_sent signal source =
+  let args =
+    match source with
+    | `Ui -> [ "source", Arg.string "ui" ]
+    | `Timeout { pid; group_leader; timeout } ->
+      [ "pid", Arg.int (Pid.to_int pid)
+      ; "group_leader", Arg.bool group_leader
+      ; "timeout", Event.make_dur timeout
+      ]
+  in
+  Event.instant
+    ~args:([ "signal", Arg.string (Signal.name signal) ] @ args)
+    ~name:"signal_sent"
+    (Time.now ())
+    Process
+;;
+
 let persistent ~file ~module_ what ~start ~stop =
   let dur = Time.diff stop start in
   let args =

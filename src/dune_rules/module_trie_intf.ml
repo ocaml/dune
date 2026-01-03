@@ -24,6 +24,7 @@ module type S = sig
   val foldi : 'a t -> init:'acc -> f:(key -> 'a -> 'acc -> 'acc) -> 'acc
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
   val to_map : 'a t -> 'a map
+  val to_list : 'a t -> 'a list
   val to_list_map : 'a t -> f:('a -> 'b) -> 'b list
   val to_list_mapi : 'a t -> f:(key -> 'a -> 'b) -> 'b list
   val singleton : key -> 'a -> 'a t

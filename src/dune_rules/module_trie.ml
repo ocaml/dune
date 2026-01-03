@@ -188,6 +188,7 @@ module Make (S : S) :
       | Map _ -> assert false)
   ;;
 
+  let to_list t = fold t ~init:[] ~f:List.cons
   let to_list_map t ~f = fold t ~init:[] ~f:(fun m acc -> f m :: acc)
   let to_list_mapi t ~f = foldi t ~init:[] ~f:(fun k m acc -> f k m :: acc)
 

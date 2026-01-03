@@ -25,7 +25,10 @@ let term =
                    Term.release !term;
                    match Lazy.force old with
                    | Sys.Signal_handle f -> f i
-                   | _ -> Unix.kill (Unix.getpid ()) Sys.sigstop))
+                   | _ ->
+                     Unix.kill (Unix.getpid ()) (Signal.to_int Stop);
+                     Dune_trace.emit Process (fun () ->
+                       Dune_trace.Event.signal_sent Stop `Ui)))
        in
        ignore (Lazy.force old);
        term)
@@ -267,7 +270,8 @@ let document =
   let keyboard_handler = function
     (* When we encounter q we make sure to quit by signaling termination. *)
     | `ASCII 'q', _ ->
-      Unix.kill (Unix.getpid ()) Sys.sigterm;
+      Unix.kill (Unix.getpid ()) (Signal.to_int Term);
+      Dune_trace.emit Process (fun () -> Dune_trace.Event.signal_sent Term `Ui);
       `Handled
     (* Toggle help screen *)
     | `ASCII '?', _ ->

@@ -14,6 +14,8 @@ module Arg = struct
   let int x = Sexp.Atom (string_of_int x)
   let bool x = Sexp.Atom (string_of_bool x)
   let record xs = List.map xs ~f:(fun (k, v) -> list [ string k; v ])
+  let time ts = float (Time.to_secs ts)
+  let span span = float (Time.Span.to_secs span)
 end
 
 module Event = struct
@@ -24,26 +26,24 @@ module Event = struct
     let string x = x
   end
 
-  let make_ts ts = Arg.float (Time.to_secs ts)
-  let make_dur span = Arg.float (Time.Span.to_secs span)
-
   type args = (string * Arg.t) list
   type t = Sexp.t
 
   let base ~name cat : Sexp.t list = [ Atom (Category.to_string cat); Atom name ]
 
   let complete ?(args = []) ~name ~start ~dur cat : t =
-    List (base ~name cat @ [ Sexp.List [ make_ts start; make_dur dur ] ] @ Arg.record args)
+    List
+      (base ~name cat @ [ Sexp.List [ Arg.time start; Arg.span dur ] ] @ Arg.record args)
   ;;
 
   let instant ?(args = []) ~name ts cat : t =
-    List (base ~name cat @ [ make_ts ts ] @ Arg.record args)
+    List (base ~name cat @ [ Arg.time ts ] @ Arg.record args)
   ;;
 
   let async ?(args = []) id ~name ts stage cat : t =
     List
       (base ~name cat
-       @ [ make_ts ts ]
+       @ [ Arg.time ts ]
        @ Arg.record
            [ "id", Arg.string id
            ; ( "stage"
@@ -240,7 +240,7 @@ let signal_sent signal source =
     | `Timeout { pid; group_leader; timeout } ->
       [ "pid", Arg.int (Pid.to_int pid)
       ; "group_leader", Arg.bool group_leader
-      ; "timeout", Event.make_dur timeout
+      ; "timeout", Arg.span timeout
       ]
   in
   Event.instant
@@ -483,9 +483,9 @@ module Cram = struct
         , List.map commands ~f:(fun { command; times = { real; user; system } } ->
             Arg.record
               [ "command", Arg.list (List.map command ~f:Arg.string)
-              ; "real", Event.make_dur real
-              ; "user", Event.make_dur user
-              ; "system", Event.make_dur system
+              ; "real", Arg.span real
+              ; "user", Arg.span user
+              ; "system", Arg.span system
               ]
             |> Arg.list)
           |> Arg.list )

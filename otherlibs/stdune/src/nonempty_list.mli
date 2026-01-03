@@ -4,6 +4,7 @@ type 'a t = ( :: ) of 'a * 'a list
 
 val hd : 'a t -> 'a
 val last : 'a t -> 'a
+val destruct_last : 'a t -> 'a list * 'a
 val rev : 'a t -> 'a t
 val of_list : 'a list -> 'a t option
 val of_list_exn : 'a list -> 'a t

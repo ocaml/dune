@@ -186,6 +186,15 @@ let inline_tests : bool Term.t =
 
 let opt_default ~default term = Term.(const (Option.value ~default) $ term)
 
+let use_src_dir : bool Term.t =
+  let docv = "USE_SRC_DIR" in
+  let doc =
+    "Whether to store the sources in a src/ directory or not. Only applicable for $(b, \
+     project)"
+  in
+  Arg.(value & flag & info [ "with-src-dir" ] ~docv ~doc:(Some doc))
+;;
+
 let executable =
   let doc = "A binary executable." in
   let man = [] in
@@ -237,6 +246,7 @@ let project =
      and+ path = path
      and+ common = project_common
      and+ inline_tests = inline_tests
+     and+ use_src_dir = use_src_dir
      and+ template =
        let docv = "PROJECT_KIND" in
        let doc =
@@ -288,7 +298,8 @@ let project =
          Memo.run @@ init_context project_defaults)
      in
      Component.init
-       (Project { context; common; options = { template; inline_tests; pkg } });
+       (Project
+          { context; common; options = { template; inline_tests; pkg; use_src_dir } });
      print_completion "project" (Dune_lang.Atom.of_string name)
 ;;
 

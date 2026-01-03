@@ -313,6 +313,7 @@ module Component = struct
         { template : Template.t
         ; inline_tests : bool
         ; pkg : Pkg.t
+        ; use_src_dir : bool
         }
     end
 
@@ -537,6 +538,7 @@ module Component = struct
     ;;
 
     let proj_exec dir ({ context; common; options } : Options.Project.t Options.t) =
+      let dir = if options.use_src_dir then Path.Source.relative dir "src" else dir in
       let lib_target =
         src
           { context = { context with dir = Path.Source.relative dir "lib" }
@@ -570,6 +572,7 @@ module Component = struct
     ;;
 
     let proj_lib dir ({ context; common; options } : Options.Project.t Options.t) =
+      let dir = if options.use_src_dir then Path.Source.relative dir "src" else dir in
       let lib_target =
         src
           { context = { context with dir = Path.Source.relative dir "lib" }

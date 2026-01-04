@@ -9,7 +9,6 @@
   dyn
   fiber
   memo
-  dune_async_io
   threads.posix
   predicate_lang
   dune_cache
@@ -25,7 +24,6 @@
   dune_output_truncation
   dune_rpc_private
   dune_rpc_client
-  dune_thread_pool
   spawn
   dune_file_watcher
   dune_digest

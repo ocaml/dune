@@ -87,12 +87,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_async_io"
-    ; main_module_name = Some "Dune_async_io"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "otherlibs/dune-glob/src"
     ; main_module_name = Some "Dune_glob"
     ; include_subdirs = No
@@ -179,6 +173,12 @@ let local_libraries =
     }
   ; { path = "src/dune_cache"
     ; main_module_name = Some "Dune_cache"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/dune_async_io"
+    ; main_module_name = Some "Dune_async_io"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None

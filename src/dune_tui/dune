@@ -7,7 +7,6 @@
   dune_nottui
   dune_notty
   dune_notty_unix
-  dune_config
   dune_console
   dune_trace
   dune_threaded_console

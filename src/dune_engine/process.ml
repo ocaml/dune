@@ -805,15 +805,13 @@ end
 
 let report_process_finished
       ~metadata
-      ~dir
       ~prog
       ~pid
-      ~args
-      ~started_at
       ~exit_status
       ~stdout
       ~stderr
-      (times : Proc.Times.t)
+      ~ended_at
+      ~times
   =
   let targets =
     match metadata.purpose with
@@ -825,19 +823,16 @@ let report_process_finished
   let stdout = Result.Out.get stdout in
   let stderr = Result.Out.get stderr in
   Dune_trace.emit Process (fun () ->
-    Dune_trace.Event.process
+    Dune_trace.Event.process_stop
       ~name:metadata.name
-      ~started_at
       ~targets
-      ~categories:metadata.categories
       ~pid
       ~exit:exit_status
       ~prog
-      ~process_args:args
-      ~dir
       ~stdout
       ~stderr
-      ~times:(times : Proc.Times.t))
+      ~ended_at
+      ~times)
 ;;
 
 let set_temp_dir_when_running_actions = ref true
@@ -1030,6 +1025,15 @@ let run_internal
       in
       Running_jobs.start id t.pid ~description ~started_at:t.started_at
     in
+    Dune_trace.emit Process (fun () ->
+      Dune_trace.Event.process_start
+        ~name:metadata.name
+        ~categories:metadata.categories
+        ~pid:t.pid
+        ~prog:prog_str
+        ~process_args:args
+        ~dir
+        ~started_at:t.started_at);
     let* process_info, termination_reason =
       await ~timeout:(Failure_mode.timeout fail_mode) t
     in
@@ -1042,15 +1046,13 @@ let run_internal
     in
     report_process_finished
       ~metadata
-      ~dir
       ~prog:prog_str
       ~pid:t.pid
-      ~args
-      ~started_at:t.started_at
       ~exit_status:result.exit_status
       ~stdout:result.stdout
       ~stderr:result.stderr
-      times;
+      ~ended_at:process_info.end_time
+      ~times;
     match termination_reason with
     | Cancel ->
       (* if the cancellation token was fired, then we:

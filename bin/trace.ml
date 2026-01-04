@@ -105,11 +105,22 @@ let json_of_event ~chrome (sexp : Sexp.t) =
   | false -> Json.assoc base
   | true ->
     let kind =
-      match dur with
-      | None -> "i"
-      | Some _ -> "X"
+      match List.assoc rest "stage" with
+      | Some (`String "start") -> "b"
+      | Some (`String "stop") -> "e"
+      | _ ->
+        (match dur with
+         | None -> "i"
+         | Some _ -> "X")
     in
-    Json.assoc (base @ [ "ph", Json.string kind; "pid", Json.int (Lazy.force pid) ])
+    let id_field =
+      match List.assoc rest "id" with
+      | Some id -> [ "id", id ]
+      | None -> []
+    in
+    [ base; [ "ph", Json.string kind; "pid", Json.int (Lazy.force pid) ]; id_field ]
+    |> List.concat
+    |> Json.assoc
 ;;
 
 let cat =

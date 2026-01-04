@@ -160,92 +160,89 @@ let args_of_targets =
     paths root "target_files" files @ paths root "target_dirs" dirs
 ;;
 
-let process
-      ~name
-      ~started_at
-      ~targets
-      ~categories
-      ~pid
-      ~exit
-      ~prog
-      ~process_args
-      ~dir
-      ~stdout
-      ~stderr
-      ~times:{ Proc.Times.elapsed_time; resource_usage }
-  =
-  let name =
-    match name with
-    | Some n -> n
-    | None -> Filename.basename prog
+let process_name ~name ~prog =
+  match name with
+  | Some name -> name
+  | None -> Filename.basename prog
+;;
+
+let process_start ~name ~categories ~pid ~prog ~process_args ~dir ~started_at =
+  let name = process_name ~name ~prog in
+  let id = Event.Id.int (Pid.to_int pid) in
+  let args =
+    [ "process_args", Arg.list (List.map process_args ~f:Arg.string)
+    ; "pid", Arg.int (Pid.to_int pid)
+    ; "categories", Arg.list (List.map categories ~f:Arg.string)
+    ; "prog", Arg.string prog
+    ; "dir", Arg.path (Option.value dir ~default:Path.root)
+    ]
+  in
+  Event.async id ~args ~name started_at `Start Process
+;;
+
+let process_stop ~name ~targets ~pid ~exit ~prog ~stdout ~stderr ~ended_at ~times =
+  let name = process_name ~name ~prog in
+  let id = Event.Id.int (Pid.to_int pid) in
+  let exit_args =
+    match exit with
+    | Ok n -> [ "exit", Arg.int n ]
+    | Error (Exit_status.Failed n) ->
+      [ "exit", Arg.int n; "error", Arg.string (sprintf "exited with code %d" n) ]
+    | Error (Signaled s) ->
+      [ "exit", Arg.int (Signal.to_int s)
+      ; "error", Arg.string (sprintf "got signal %s" (Signal.name s))
+      ]
+  in
+  let output name s =
+    match s with
+    | "" -> []
+    | s -> [ name, Arg.string s ]
+  in
+  let times_args =
+    let { Proc.Times.elapsed_time; resource_usage } = times in
+    [ "elapsed", Arg.span elapsed_time ]
+    @
+    match resource_usage with
+    | None -> []
+    | Some
+        { Proc.Resource_usage.user_cpu_time
+        ; system_cpu_time
+        ; maxrss
+        ; minflt
+        ; majflt
+        ; inblock
+        ; oublock
+        ; nvcsw
+        ; nivcsw
+        } ->
+      [ ( "rusage"
+        , Arg.record
+            [ "user_cpu_time", Arg.span user_cpu_time
+            ; "system_cpu_time", Arg.span system_cpu_time
+            ; "maxrss", Arg.int maxrss
+            ; "minflt", Arg.int minflt
+            ; "majflt", Arg.int majflt
+            ; "inblock", Arg.int inblock
+            ; "oublock", Arg.int oublock
+            ; "nvcsw", Arg.int nvcsw
+            ; "nivcsw", Arg.int nivcsw
+            ]
+          |> Arg.list )
+      ]
   in
   let args =
-    let always =
-      [ "process_args", Arg.list (List.map process_args ~f:Arg.string)
-      ; "pid", Arg.int (Pid.to_int pid)
-      ; "categories", Arg.list (List.map categories ~f:Arg.string)
+    List.concat
+      [ [ "pid", Arg.int (Pid.to_int pid) ]
+      ; exit_args
+      ; times_args
+      ; (match targets with
+         | None -> []
+         | Some targets -> args_of_targets targets)
+      ; output "stdout" stdout
+      ; output "stderr" stderr
       ]
-    in
-    let extended =
-      let exit =
-        match exit with
-        | Ok n -> [ "exit", Arg.int n ]
-        | Error (Exit_status.Failed n) ->
-          [ "exit", Arg.int n; "error", Arg.string (sprintf "exited with code %d" n) ]
-        | Error (Signaled s) ->
-          [ "exit", Arg.int (Signal.to_int s)
-          ; "error", Arg.string (sprintf "got signal %s" (Signal.name s))
-          ]
-      in
-      let output name s =
-        match s with
-        | "" -> []
-        | s -> [ name, Arg.string s ]
-      in
-      List.concat
-        [ [ "prog", Arg.string prog
-          ; "dir", Arg.path (Option.value dir ~default:Path.root)
-          ]
-        ; exit
-        ; (match targets with
-           | None -> []
-           | Some targets -> args_of_targets targets)
-        ; output "stdout" stdout
-        ; output "stderr" stderr
-        ]
-    in
-    let resource_usage =
-      match resource_usage with
-      | None -> []
-      | Some
-          { Proc.Resource_usage.user_cpu_time
-          ; system_cpu_time
-          ; maxrss
-          ; minflt
-          ; majflt
-          ; inblock
-          ; oublock
-          ; nvcsw
-          ; nivcsw
-          } ->
-        [ ( "rusage"
-          , Arg.record
-              [ "user_cpu_time", Arg.span user_cpu_time
-              ; "system_cpu_time", Arg.span system_cpu_time
-              ; "maxrss", Arg.int maxrss
-              ; "minflt", Arg.int minflt
-              ; "majflt", Arg.int majflt
-              ; "inblock", Arg.int inblock
-              ; "oublock", Arg.int oublock
-              ; "nvcsw", Arg.int nvcsw
-              ; "nivcsw", Arg.int nivcsw
-              ]
-            |> Arg.list )
-        ]
-    in
-    always @ extended @ resource_usage
   in
-  Event.complete ~args ~start:started_at ~dur:elapsed_time ~name Process
+  Event.async id ~args ~name ended_at `Stop Process
 ;;
 
 let signal_received signal =

@@ -1,5 +1,5 @@
-Process trace events are only emitted at completion, not at start. This test
-runs two concurrent processes and verifies we only see "complete" events.
+Process trace events are emitted at both start and stop. This test runs two
+concurrent processes and verifies we see separate start/stop events.
 
   $ cat > dune-project << EOF
   > (lang dune 3.22)
@@ -32,10 +32,28 @@ Two scripts synchronized via FIFOs - proc1 exits first, proc2 waits for it:
 
   $ dune build -j2 @test-concurrent --force
 
-Both processes have duration (complete events), no separate start events:
+We now see separate start and stop events for each process:
 
-  $ dune trace cat | jq 'select(.cat == "process" and .name == "sh") | .args.process_args[0], (.dur != null)'
-  "proc1.sh"
-  true
-  "proc2.sh"
-  true
+  $ dune trace cat | jq -r 'select(.cat == "process" and .name == "sh") | .args.stage'
+  start
+  start
+  stop
+  stop
+
+Chrome trace format has correct phases (b=begin, e=end):
+
+  $ dune trace cat --chrome | jq -r '.[] | select(.cat == "process" and .name == "sh") | .ph' | sort | uniq
+  b
+  e
+
+Each process ID has start (b) before stop (e):
+
+  $ dune trace cat --chrome | jq '[.[] | select(.cat == "process" and .name == "sh")] | group_by(.id) | map([.[].ph]) | .[]'
+  [
+    "b",
+    "e"
+  ]
+  [
+    "b",
+    "e"
+  ]

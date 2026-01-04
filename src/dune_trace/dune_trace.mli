@@ -50,18 +50,25 @@ module Event : sig
     ; dirs : Filename.Set.t
     }
 
-  val process
+  val process_start
     :  name:string option
-    -> started_at:Time.t
-    -> targets:targets option
     -> categories:string list
     -> pid:Pid.t
-    -> exit:Exit_status.t
     -> prog:string
     -> process_args:string list
     -> dir:Path.t option
+    -> started_at:Time.t
+    -> t
+
+  val process_stop
+    :  name:string option
+    -> targets:targets option
+    -> pid:Pid.t
+    -> exit:Exit_status.t
+    -> prog:string
     -> stdout:string
     -> stderr:string
+    -> ended_at:Time.t
     -> times:Proc.Times.t
     -> t
 

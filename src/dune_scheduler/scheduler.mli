@@ -144,23 +144,12 @@ val shutdown : unit -> unit Fiber.t
     similar to what happens on file system events in polling mode. *)
 val cancel_current_build : unit -> unit Fiber.t
 
-val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t
-
 (** [sleep duration] wait for [duration] seconds to elapse. Sleepers
     are checked for wake up at a rate of once per 0.1 seconds. So
     [duration] should be at least this long. *)
 val sleep : Time.Span.t -> unit Fiber.t
 
 val stats : unit -> Dune_trace.Out.t option Fiber.t
-
-(** Wait for a build input to change. If a build input change was seen but
-    hasn't been handled yet, return immediately.
-
-    Return even for build input change that are not significant, so that RPC
-    clients may observe that Dune reacted to a file change. This is needed for
-    benchmarking the watch mode of Dune. *)
-val wait_for_build_input_change : unit -> unit Fiber.t
-
 val spawn_thread : (unit -> unit) -> unit
 
 (** [set_fs_memo_impl] registers the file system memoization callbacks.
@@ -170,3 +159,15 @@ val set_fs_memo_impl
   :  handle_fs_event:(Dune_file_watcher.Fs_memo_event.t -> Memo.Invalidation.t)
   -> init:(dune_file_watcher:Dune_file_watcher.t option -> Memo.Invalidation.t)
   -> unit
+
+module For_tests : sig
+  (** Wait for a build input to change. If a build input change was seen but
+      hasn't been handled yet, return immediately.
+
+      Return even for build input change that are not significant, so that RPC
+      clients may observe that Dune reacted to a file change. This is needed
+      for benchmarking the watch mode of Dune. *)
+  val wait_for_build_input_change : unit -> unit Fiber.t
+
+  val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t
+end

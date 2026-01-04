@@ -549,12 +549,6 @@ let cancel_current_build () =
     Fiber.Cancel.fire cancellation
 ;;
 
-let inject_memo_invalidation invalidation =
-  let* t = t () in
-  Event.Queue.send_invalidation_event t.events invalidation;
-  Fiber.return ()
-;;
-
 let wait_for_process_with_timeout t pid waiter ~timeout ~is_process_group_leader =
   Fiber.of_thunk (fun () ->
     let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) timeout in
@@ -612,9 +606,17 @@ let sleep dur =
     assert false
 ;;
 
-let wait_for_build_input_change () =
-  let* t = t () in
-  Trigger.wait t.build_inputs_changed
-;;
-
 let set_fs_memo_impl = Fs_memo.set_impl
+
+module For_tests = struct
+  let wait_for_build_input_change () =
+    let* t = t () in
+    Trigger.wait t.build_inputs_changed
+  ;;
+
+  let inject_memo_invalidation invalidation =
+    let* t = t () in
+    Event.Queue.send_invalidation_event t.events invalidation;
+    Fiber.return ()
+  ;;
+end

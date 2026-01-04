@@ -177,12 +177,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_thread_pool"
-    ; main_module_name = Some "Dune_thread_pool"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/fsevents"
     ; main_module_name = Some "Fsevents"
     ; include_subdirs = No

@@ -28,16 +28,11 @@ let empty =
 ;;
 
 let coq_modules_of_files ~dirs =
-  let filter_v_files
-        ({ Source_file_dir.dir = _; path_to_root = _; files; source_dir = _; stanzas = _ }
-         as sd)
-    =
+  let filter_v_files ({ Source_file_dir.files; _ } as sd) =
     { sd with files = String.Set.filter files ~f:(fun f -> Filename.check_suffix f ".v") }
   in
   let dirs = Nonempty_list.to_list_map dirs ~f:filter_v_files in
-  let build_mod_dir
-        { Source_file_dir.dir; path_to_root = prefix; files; source_dir = _; stanzas = _ }
-    =
+  let build_mod_dir { Source_file_dir.dir; path_to_root = prefix; files; _ } =
     String.Set.to_list_map files ~f:(fun file ->
       let name, _ = Filename.split_extension file in
       let name = Coq_module.Name.make name in

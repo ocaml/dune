@@ -58,37 +58,6 @@ module Handler = struct
   type t = Config.t -> Event.t -> unit
 end
 
-module Trigger : sig
-  (** Conceptually, a [unit Fiber.Ivar.t] that can be filled idempotently.
-      Ivars cannot, in general, have idempotent fill operations, since the second
-      fill might have different data in it than the first. Since this type only
-      contains unit data, we can be sure that every fill will be (). In fact, we
-      don't even both accepting data as the parameter of [trigger], since we
-      already know what it must be. *)
-  type t
-
-  val create : unit -> t
-  val trigger : t -> Fiber.fill list
-  val wait : t -> unit Fiber.t
-end = struct
-  type t =
-    { ivar : unit Fiber.Ivar.t
-    ; mutable filled : bool
-    }
-
-  let create () = { ivar = Fiber.Ivar.create (); filled = false }
-
-  let trigger t =
-    if t.filled
-    then []
-    else (
-      t.filled <- true;
-      [ Fiber.Fill (t.ivar, ()) ])
-  ;;
-
-  let wait t = Fiber.Ivar.read t.ivar
-end
-
 type t =
   { config : Config.t
   ; alarm_clock : Alarm_clock.t Lazy.t

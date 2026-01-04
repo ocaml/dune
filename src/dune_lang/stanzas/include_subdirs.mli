@@ -2,7 +2,7 @@ open Import
 
 type qualification =
   | Unqualified
-  | Qualified
+  | Qualified of { dirs : File_binding.Unexpanded.t list }
 
 type t =
   | No

@@ -86,3 +86,31 @@ Works with executables as well:
 
   $ dune exec ./foo.exe
   Test: Unix was found!
+
+More levels:
+
+  $ mkdir -p sub/more/levels
+  $ cat > sub/more/levels/mod.unix.ml <<EOF
+  > let () = print_endline "Test: Unix was found!"
+  > EOF
+  $ cat > sub/more/levels/mod.nounix.ml <<EOF
+  > let () = print_endline "Test: Unix was not found!"
+  > EOF
+  $ cat > dune <<EOF
+  > (include_subdirs qualified)
+  > (executable
+  >  (name foo)
+  >  (libraries
+  >   (select sub/bar.ml from
+  >    (unix -> sub/bar.unix.ml)
+  >    (!unix -> sub/bar.nounix.ml))
+  >   (select sub/more/levels/mod.ml from
+  >    (unix -> sub/more/levels/mod.unix.ml)
+  >    (!unix -> sub/more/levels/mod.nounix.ml))
+  > ))
+  > EOF
+
+  $ dune clean
+  $ dune exec ./foo.exe
+  Test: Unix was found!
+  Test: Unix was found!

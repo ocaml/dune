@@ -66,3 +66,28 @@ Test module path validation for `(select ..)` targets when using
   following characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
   Hint: baz_qux would be a correct module name
   [1]
+
+`(select ..)` not included in the modules set, but still validated as a module
+name
+
+  $ cat > dune <<EOF
+  > (include_subdirs qualified)
+  > (library
+  >  (name foo)
+  >  (modules foo)
+  >  (libraries
+  >   (select foo_bar/baz-qux.ml from
+  >    (unix -> foo_bar/baz-qux.unix.ml)
+  >    (!unix -> foo_bar/baz-qux.nounix.ml))))
+  > EOF
+
+  $ dune build
+  File "dune", lines 6-8, characters 2-111:
+  6 |   (select foo_bar/baz-qux.ml from
+  7 |    (unix -> foo_bar/baz-qux.unix.ml)
+  8 |    (!unix -> foo_bar/baz-qux.nounix.ml))))
+  Error: "baz-qux" is an invalid module name.
+  Module names must be non-empty, start with a letter, and composed only of the
+  following characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
+  Hint: baz_qux would be a correct module name
+  [1]

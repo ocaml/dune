@@ -1,7 +1,6 @@
 open Import
 open Fiber.O
 open Dune_thread_pool
-open Dune_async_io
 module Thread = Thread0
 
 module Fs_memo = struct

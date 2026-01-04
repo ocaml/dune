@@ -2,6 +2,7 @@ open Import
 open Fiber.O
 open Dune_thread_pool
 open Dune_async_io
+module Thread = Thread0
 
 module Fs_memo = struct
   let handle_fs_event = Fdecl.create Dyn.opaque
@@ -69,49 +70,6 @@ module Shutdown = struct
       | E Timeout -> Some "shutdown: timeout"
       | E (Signal s) -> Some (sprintf "shutdown: signal %s received" (Signal.name s))
       | _ -> None)
-  ;;
-end
-
-(* These are the signals that will make the scheduler attempt to terminate dune *)
-let interrupt_signals : Signal.t list = [ Int; Quit; Term ]
-
-(* In addition, the scheduler also blocks some other signals so that only
-   designated threads can handle them by unblocking *)
-let blocked_signals : Signal.t list = Terminal_signals.signals @ interrupt_signals
-
-module Thread : sig
-  val spawn : (unit -> unit) -> unit
-  val delay : float -> unit
-  val wait_signal : int list -> int
-end = struct
-  include Thread
-
-  let block_signals =
-    lazy
-      (let signos = List.map blocked_signals ~f:Signal.to_int in
-       ignore (Unix.sigprocmask SIG_BLOCK signos : int list))
-  ;;
-
-  let create =
-    if Sys.win32
-    then Thread.create
-    else
-      (* On unix, we make sure to block signals globally before starting a
-         thread so that only the signal watcher thread can receive signals. *)
-      fun f x ->
-        Lazy.force block_signals;
-        Thread.create f x
-  ;;
-
-  let spawn f =
-    let f () =
-      try f () with
-      | exn ->
-        let exn = Exn_with_backtrace.capture exn in
-        Dune_util.Report_error.report exn
-    in
-    let (_ : Thread.t) = create f () in
-    ()
   ;;
 end
 
@@ -623,7 +581,7 @@ end
 module Signal_watcher : sig
   val init : print_ctrl_c_warning:bool -> Event.Queue.t -> unit
 end = struct
-  let signos = List.map interrupt_signals ~f:Signal.to_int
+  let signos = List.map Thread.interrupt_signals ~f:Signal.to_int
 
   let warning =
     {|

@@ -81,7 +81,7 @@ let error_no_module_consumer ~loc (qualification : Include_subdirs.qualification
          (include_subdirs %s)."
         (match qualification with
          | Unqualified -> "unqualified"
-         | Qualified -> "qualified")
+         | Qualified _ -> "qualified")
     ]
 ;;
 

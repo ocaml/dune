@@ -1,0 +1,3 @@
+(cram
+ (applies_to concurrent-process-events)
+ (timeout 1))

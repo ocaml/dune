@@ -476,10 +476,11 @@ module Cram = struct
     ; times : times
     }
 
-  let test commands =
+  let test ~test commands =
     let now = Time.now () in
     let args =
-      [ ( "commands"
+      [ "test", Arg.path test
+      ; ( "commands"
         , List.map commands ~f:(fun { command; times = { real; user; system } } ->
             Arg.record
               [ "command", Arg.list (List.map command ~f:Arg.string)

@@ -52,7 +52,7 @@ let validate_qualified t ~include_subdirs =
     is_qualified t
     &&
     match include_subdirs with
-    | Include_subdirs.Include Qualified -> false
+    | Include_subdirs.Include (Qualified _) -> false
     | No | Include Unqualified -> true
   then
     User_error.raise

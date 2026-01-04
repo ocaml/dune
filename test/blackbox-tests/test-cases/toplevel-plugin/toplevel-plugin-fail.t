@@ -133,7 +133,7 @@ This is not allowed in toplevels, so it fails.
   >   print_endline "Done with registration of Plugin2";
   > EOF
 
-  $ dune build @all 2>&1 | dune_cmd sanitize
+  $ dune build @install
   $ dune install --prefix _install --display short
   Installing _install/lib/top-plugin1/META
   Installing _install/lib/top-plugin1/dune-package

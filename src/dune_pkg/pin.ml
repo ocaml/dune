@@ -312,8 +312,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
         in
         Resolved_package.local_package
           ~command_source:local_package.command_source
-          package.loc
-          opam_file
+          (package.loc, opam_file)
           opam_package
       in
       resolve package.name resolved_package

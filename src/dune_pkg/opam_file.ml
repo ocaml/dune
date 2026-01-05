@@ -24,24 +24,41 @@ let loc_of_opam_pos
   Loc.create ~start ~stop
 ;;
 
-let read_from_string_exn ~contents path =
+let opam_file_of_string_exn ~contents path =
   let filename = Path.to_absolute_filename path |> OpamFilename.raw in
   let pos = OpamTypesBase.pos_file filename in
+  let loc = Loc.in_file path in
   try
     let syntax = OpamFile.Syntax.of_string (OpamFile.make filename) contents in
-    OpamPp.parse OpamFile.OPAM.pp_raw_fields ~pos syntax.file_contents
+    loc, OpamPp.parse OpamFile.OPAM.pp_raw_fields ~pos syntax.file_contents
   with
   | OpamPp.Bad_version (_, message) ->
-    User_error.raise
-      ~loc:(Loc.in_file path)
-      [ Pp.text "unexpected version"; Pp.text message ]
+    User_error.raise ~loc [ Pp.text "unexpected version"; Pp.text message ]
   | OpamPp.Bad_format (pos, message) ->
     let loc =
       match pos with
-      | None -> Loc.in_file path
+      | None -> loc
       | Some pos -> loc_of_opam_pos pos
     in
     User_error.raise ~loc [ Pp.text "unable to parse opam file"; Pp.text message ]
+;;
+
+let opam_file_of_path path =
+  let contents = Io.read_file ~binary:true path in
+  opam_file_of_string_exn ~contents path
+;;
+
+let add_opam_package_to_opam_file package opam_file =
+  opam_file
+  |> OpamFile.OPAM.with_version (OpamPackage.version package)
+  |> OpamFile.OPAM.with_name (OpamPackage.name package)
+;;
+
+let opam_file_with ~package ~url opam_file =
+  let opam_file = add_opam_package_to_opam_file package opam_file in
+  match url with
+  | None -> opam_file
+  | Some url -> OpamFile.OPAM.with_url (OpamFile.URL.create url) opam_file
 ;;
 
 let parse_gen entry (lb : Lexing.lexbuf) =

@@ -165,8 +165,8 @@ let of_package (t : Dune_lang.Package.t) =
     ; command_source = Assume_defaults
     }
   | Some { file; contents = opam_file_string } ->
-    let opam_file =
-      Opam_file.read_from_string_exn ~contents:opam_file_string (Path.source file)
+    let _opam_file_loc, opam_file =
+      Opam_file.opam_file_of_string_exn ~contents:opam_file_string (Path.source file)
     in
     let command_source =
       Opam_file

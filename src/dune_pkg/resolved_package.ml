@@ -43,26 +43,8 @@ let extra_files = function
   | Rest t -> Some t.extra_files
 ;;
 
-let add_opam_package_to_opam_file package opam_file =
-  opam_file
-  |> OpamFile.OPAM.with_version (OpamPackage.version package)
-  |> OpamFile.OPAM.with_name (OpamPackage.name package)
-;;
-
-let read_opam_file package ~opam_file_path ~opam_file_contents ~url =
-  let opam_file =
-    Opam_file.read_from_string_exn ~contents:opam_file_contents opam_file_path
-    |> add_opam_package_to_opam_file package
-  in
-  match url with
-  | None -> opam_file
-  | Some url -> OpamFile.OPAM.with_url (OpamFile.URL.create url) opam_file
-;;
-
-let git_repo package ~opam_file ~opam_file_contents rev ~files_dir ~url =
-  let opam_file_path = Path.of_local opam_file in
-  let opam_file = read_opam_file package ~opam_file_path ~opam_file_contents ~url in
-  let loc = Loc.in_file opam_file_path in
+let git_repo package (loc, opam_file) rev ~files_dir ~url =
+  let opam_file = Opam_file.opam_file_with ~package ~url opam_file in
   Rest
     { dune_build = false
     ; loc
@@ -72,14 +54,9 @@ let git_repo package ~opam_file ~opam_file_contents rev ~files_dir ~url =
     }
 ;;
 
-let local_fs package ~dir ~opam_file_path ~files_dir ~url =
-  let opam_file_path = Path.append_local dir opam_file_path in
+let local_fs package (loc, opam_file) ~dir ~files_dir ~url =
   let files_dir = Option.map files_dir ~f:(Path.append_local dir) in
-  let opam_file =
-    let opam_file_contents = Io.read_file ~binary:true opam_file_path in
-    read_opam_file package ~opam_file_path ~opam_file_contents ~url
-  in
-  let loc = Loc.in_file opam_file_path in
+  let opam_file = Opam_file.opam_file_with ~package ~url opam_file in
   Rest
     { dune_build = false
     ; loc
@@ -114,13 +91,13 @@ let scan_files_entries path =
             ]))
 ;;
 
-let local_package ~command_source loc opam_file opam_package =
+let local_package ~command_source (loc, opam_file) opam_package =
   let dune_build =
     match (command_source : Local_package.command_source) with
     | Assume_defaults -> true
     | Opam_file _ -> false
   in
-  let opam_file = add_opam_package_to_opam_file opam_package opam_file in
+  let opam_file = Opam_file.opam_file_with ~package:opam_package ~url:None opam_file in
   let package = OpamFile.OPAM.package opam_file in
   Rest { dune_build; opam_file; package; loc; extra_files = Inside_files_dir None }
 ;;

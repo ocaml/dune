@@ -166,7 +166,11 @@ let load_opam_package_from_dir ~(dir : Path.t) package =
   | false -> None
   | true ->
     let files_dir = Some (Paths.files_dir package) in
-    Some (Resolved_package.local_fs package ~dir ~opam_file_path ~files_dir ~url:None)
+    let opam_file =
+      let path = Path.append_local dir opam_file_path in
+      Opam_file.opam_file_of_path path
+    in
+    Some (Resolved_package.local_fs package opam_file ~dir ~files_dir ~url:None)
 ;;
 
 let load_packages_from_git rev_store opam_packages =
@@ -177,11 +181,14 @@ let load_packages_from_git rev_store opam_packages =
   List.map2
     opam_packages
     contents
-    ~f:(fun (opam_file, package, rev, files_dir) opam_file_contents ->
+    ~f:(fun (opam_file, package, rev, files_dir) contents ->
+      let opam_file =
+        let path = opam_file |> Rev_store.File.path |> Path.of_local in
+        Opam_file.opam_file_of_string_exn ~contents path
+      in
       Resolved_package.git_repo
         package
-        ~opam_file:(Rev_store.File.path opam_file)
-        ~opam_file_contents
+        opam_file
         rev
         ~files_dir:(Some files_dir)
         ~url:None)

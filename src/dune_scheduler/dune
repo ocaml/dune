@@ -8,7 +8,6 @@
   dyn
   fiber
   memo
-  dune_async_io
   threads.posix
   dune_trace
   dune_util

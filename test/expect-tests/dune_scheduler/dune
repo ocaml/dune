@@ -1,16 +1,14 @@
 (library
- (name dune_async_io_tests)
+ (name dune_scheduler_tests)
  (inline_tests)
  (preprocess
   (pps ppx_expect))
  (libraries
   stdune
-  dune_engine
   dune_scheduler
   unix
   threads.posix
   fiber
-  dune_async_io
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config

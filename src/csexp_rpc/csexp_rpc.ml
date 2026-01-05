@@ -1,6 +1,6 @@
 open Stdune
 open Fiber.O
-open Dune_async_io
+open Dune_scheduler
 module Session_id = Id.Make ()
 
 module Socket = struct

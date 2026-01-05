@@ -1,7 +1,6 @@
 open Stdune
 open Fiber.O
 open Dune_scheduler
-open Dune_async_io
 
 let config =
   { Scheduler.Config.concurrency = 1

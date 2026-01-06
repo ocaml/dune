@@ -25,8 +25,8 @@ let restore_cwd_and_execve prog argv ~env =
 
 module Resource_usage = struct
   type t =
-    { user_cpu_time : float
-    ; system_cpu_time : float
+    { user_cpu_time : Time.Span.t
+    ; system_cpu_time : Time.Span.t
     }
 end
 

@@ -167,6 +167,7 @@
               bc
               file
               jq
+              ripgrep
               mercurial
               unzip
               coreutils

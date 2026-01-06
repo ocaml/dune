@@ -8,26 +8,42 @@ opam. We also define ocaml-option-tsan.0.0.1 as a compiler option package that
 forces ocaml = 5.2.0, this gives us an option that can “pull” the solver toward
 the 5.2.0 compiler stack when enabled.
 
-  $ mkrepo
+$ mkrepo
+
   $ mkpkg ocaml 5.2.0 <<EOF
   > depends: [ "ocaml-base-compiler" {= "5.2.0"} ]
+  > build: [ "sh" "-c" "echo Building ocaml-5.2.0" ]
   > EOF
+
   $ mkpkg ocaml-base-compiler 5.2.0 <<EOF
   > depends: [ "ocaml-compiler" {= "5.2.0"} ]
+  > build: [ "sh" "-c" "echo Building ocaml-base-compiler-5.2.0" ]
   > EOF
+
   $ mkpkg ocaml-compiler 5.2.0 <<EOF
-  > depopts: ["ocaml-option-tsan"]
+  > depopts: [ "ocaml-option-tsan" ]
+  > build: [ "sh" "-c" "echo Building ocaml-compiler-5.2.0" ]
   > EOF
+
   $ mkpkg ocaml 5.3.0 <<EOF
   > depends: [ "ocaml-base-compiler" {= "5.3.0"} ]
+  > build: [ "sh" "-c" "echo Building ocaml-5.3.0" ]
   > EOF
+
   $ mkpkg ocaml-base-compiler 5.3.0 <<EOF
   > depends: [ "ocaml-compiler" {= "5.3.0"} ]
+  > build: [ "sh" "-c" "echo Building ocaml-base-compiler-5.3.0" ]
   > EOF
-  $ mkpkg ocaml-compiler 5.3.0
+
+  $ mkpkg ocaml-compiler 5.3.0 <<EOF
+  > build: [ "sh" "-c" "echo Building ocaml-compiler-5.3.0" ]
+  > EOF
+
   $ mkpkg ocaml-option-tsan 0.0.1 <<EOF
   > depends: [ "ocaml" {= "5.2.0" & post} ]
+  > build: [ "sh" "-c" "echo Building ocaml-option-tsan-0.0.1" ]
   > EOF
+
 
   $ add_mock_repo_if_needed
 
@@ -44,13 +60,7 @@ compiler stack.
   >  (depends ocaml))
   > EOF
 
-  $ dune pkg lock
-  Solution for dune.lock
-  
-  Dependencies common to all supported platforms:
-  - ocaml.5.3.0
-  - ocaml-base-compiler.5.3.0
-  - ocaml-compiler.5.3.0
+dune pkg lock
 
 We add a special context `dune-new.lock` with dependency on ocaml-tsan, which in
 turn depends on ocaml 5.2.0. This should force the 5.2.0 stack to be solved.
@@ -60,7 +70,7 @@ turn depends on ocaml 5.2.0. This should force the 5.2.0 stack to be solved.
   >  (path dune-new.lock)
   >  (repositories mock)
   >  (constraints
-  >    (ocaml-option-tsan (= 0.0.1)))
+  >    ocaml-compiler)
   >  (depopts ocaml-option-tsan))
   > 
   > (context
@@ -73,6 +83,22 @@ turn depends on ocaml 5.2.0. This should force the 5.2.0 stack to be solved.
   >   (lock_dir dune-new.lock)))
   > EOF
 
+dune pkg lock dune-new.lock
+
+  $ dune pkg lock
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - ocaml.5.3.0
+  - ocaml-base-compiler.5.3.0
+  - ocaml-compiler.5.3.0
+
+
+  $ dune build @@_build/default/pkg-install
+  Building ocaml-compiler-5.3.0
+  Building ocaml-base-compiler-5.3.0
+  Building ocaml-5.3.0
+
   $ dune pkg lock dune-new.lock
   Solution for dune-new.lock
   
@@ -81,6 +107,12 @@ turn depends on ocaml 5.2.0. This should force the 5.2.0 stack to be solved.
   - ocaml-base-compiler.5.2.0
   - ocaml-compiler.5.2.0
   - ocaml-option-tsan.0.0.1
+
+  $ dune build @@_build/new/pkg-install
+  Building ocaml-option-tsan-0.0.1
+  Building ocaml-compiler-5.2.0
+  Building ocaml-base-compiler-5.2.0
+  Building ocaml-5.2.0
 
 Finally, we declare an action that prints out its current context to show
 building in different contexts.
@@ -93,8 +125,8 @@ building in different contexts.
   >    (echo "built in context: %{context_name}"))))
   > EOF
 
-
   $ dune build _build/default/built-by.txt _build/new/built-by.txt
+
   $ cat _build/default/built-by.txt
   built in context: default
 

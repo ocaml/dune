@@ -27,17 +27,18 @@ let loc_of_opam_pos
 let opam_file_of_string_exn ~contents path =
   let filename = Path.to_absolute_filename path |> OpamFilename.raw in
   let pos = OpamTypesBase.pos_file filename in
-  let loc = Loc.in_file path in
   try
     let syntax = OpamFile.Syntax.of_string (OpamFile.make filename) contents in
-    loc, OpamPp.parse OpamFile.OPAM.pp_raw_fields ~pos syntax.file_contents
+    OpamPp.parse OpamFile.OPAM.pp_raw_fields ~pos syntax.file_contents
   with
   | OpamPp.Bad_version (_, message) ->
-    User_error.raise ~loc [ Pp.text "unexpected version"; Pp.text message ]
+    User_error.raise
+      ~loc:(Loc.in_file path)
+      [ Pp.text "unexpected version"; Pp.text message ]
   | OpamPp.Bad_format (pos, message) ->
     let loc =
       match pos with
-      | None -> loc
+      | None -> Loc.in_file path
       | Some pos -> loc_of_opam_pos pos
     in
     User_error.raise ~loc [ Pp.text "unable to parse opam file"; Pp.text message ]

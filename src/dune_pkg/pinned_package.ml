@@ -72,7 +72,8 @@ let resolve_package { Local_package.loc; url = loc_url, url; name; version; orig
   | Path dir ->
     let opam_file =
       let path = Path.append_local dir opam_file_path in
-      Opam_file.opam_file_of_path path
+      let loc = Loc.in_file path in
+      loc, Opam_file.opam_file_of_path path
     in
     Resolved_package.local_fs package opam_file ~dir ~files_dir ~url:(Some url)
     |> Fiber.return
@@ -99,7 +100,8 @@ let resolve_package { Local_package.loc; url = loc_url, url; name; version; orig
     in
     let opam_file =
       let path = Path.of_local opam_file_path in
-      Opam_file.opam_file_of_string_exn ~contents path
+      let loc = Loc.in_file path in
+      loc, Opam_file.opam_file_of_string_exn ~contents path
     in
     Resolved_package.git_repo package opam_file rev ~files_dir ~url:(Some url)
 ;;

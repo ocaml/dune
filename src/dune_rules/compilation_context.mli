@@ -37,6 +37,7 @@ val create
   -> ?modes:Lib_mode.Map.Set.t
   -> ?bin_annot:bool
   -> ?bin_annot_cms:bool
+  -> ?cms_cmt_dependency:Workspace.Context.Cms_cmt_dependency.t
   -> ?loc:Loc.t
   -> ?instances:Parameterised_instances.t Resolve.Memo.t
   -> Compilation_mode.t
@@ -84,6 +85,7 @@ val for_module_generated_at_link_time
 val for_plugin_executable : t -> embed_in_plugin_libraries:(Loc.t * Lib_name.t) list -> t
 val bin_annot : t -> bool
 val bin_annot_cms : t -> bool
+val cms_cmt_dependency : t -> Workspace.Context.Cms_cmt_dependency.t
 val without_bin_annot : t -> t
 
 (** The dependency graph for the modules of the library. *)

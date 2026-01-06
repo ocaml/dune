@@ -14,8 +14,6 @@ Key differences between env stanza and flags field:
 - env stanza only generates cms/cmsi during byte/cmi compilation (like cmt/cmti), 
 | whereas flags field passes the flag to ALL compilations including native
 
-  $ . ./helpers.sh
-
 Create a project with OxCaml language extension (required for bin_annot_cms):
 
   $ cat >dune-project <<EOF

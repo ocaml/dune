@@ -11,6 +11,5 @@
   threads.posix
   dune_trace
   dune_util
-  dune_thread_pool
   dune_file_watcher)
  (synopsis "Internal Dune library, do not use!"))

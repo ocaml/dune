@@ -1,4 +1,4 @@
-open Dune_thread_pool
+open Dune_scheduler.For_benchmarks
 
 let spawn_thread f = ignore (Thread.create f ())
 

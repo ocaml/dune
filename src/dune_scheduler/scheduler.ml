@@ -1,6 +1,5 @@
 open Import
 open Fiber.O
-open Dune_thread_pool
 module Thread = Thread0
 
 module Fs_memo = struct

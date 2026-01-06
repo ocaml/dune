@@ -1,19 +1,28 @@
 context
 -------
 
-The ``(context ...)`` stanza declares a build context. The argument can be
-either ``default`` or ``(default)`` for the default build context, or it can be
-the description of an opam switch, as follows:
+The ``(context ...)`` stanza declares a build context. The kind of context can
+be either ``(default ...)`` for the default build context, or ``(opam ...)`` to
+use an opam switch.
 
 .. code:: dune
 
-    (context (opam (switch <opam-switch-name>)
-                   <optional-fields>))
+    (context
+      (default
+        <optional-fields>))
+
+.. code:: dune
+
+    (context
+      (opam
+        (switch <opam-switch-name>)
+          <optional-fields>))
 
 ``<optional-fields>`` are:
 
 -  ``(name <name>)`` is the subdirectory's name for ``_build``, where this
-   build's context artifacts will be stored.
+   build's context artifacts will be stored. If omitted, the context name
+   defaults to ``default``.
 
 -  ``(lock_dir <path>)`` specifies the lock directory that will be used for
    building this context (if any). If no lock directory is specified
@@ -71,8 +80,8 @@ the description of an opam switch, as follows:
   archives statically linked into the runtime system.
 
 
-Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field in order to
-setup cross compilation. See :ref:`cross-compilation` for more information.
+Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field to setup
+cross compilation. See :ref:`cross-compilation` for more information.
 
 Merlin reads compilation artifacts, and it can only read the compilation
 artifacts of a single context. Usually, you should use the artifacts from the

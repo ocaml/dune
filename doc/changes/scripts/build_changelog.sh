@@ -34,10 +34,10 @@ generate_version_header() {
   today=$(date "+%Y-%m-%d")
 
   header="$version ($today)"
-  header_size=$(echo "$header" | wc -m)
+  header_size=${#header}
   echo "$header" >> "$output"
 
-  for i in $(seq $header_size); do
+  for _ in $(seq "$header_size"); do
     echo -n "-" >> "$output"
   done
 
@@ -73,7 +73,7 @@ append_files_in_dir_if_not_empty() {
 }
 
 # Move to the Dune root directory
-cd $(dirname $0)
+cd "$(dirname "$0")"
 cd ../../../
 
 # Create the output file

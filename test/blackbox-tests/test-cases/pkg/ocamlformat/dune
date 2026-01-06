@@ -9,3 +9,20 @@
 (cram
  (deps %{bin:md5sum})
  (applies_to ocamlformat-patch-extra-files))
+
+(rule
+ (alias runtest)
+ (deps helpers.sh)
+ (action
+  (run %{bin:bash} -n %{deps})))
+
+;; this file has too many problems. enable once you're brave enough to solve
+;; them
+
+(rule
+ (alias runtest)
+ (enabled_if
+  (and false %{bin-available:shellcheck}))
+ (deps helpers.sh)
+ (action
+  (run %{bin:shellcheck} -s bash %{deps})))

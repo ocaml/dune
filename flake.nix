@@ -168,6 +168,7 @@
               file
               jq
               ripgrep
+              shellcheck
               mercurial
               unzip
               coreutils

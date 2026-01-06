@@ -230,7 +230,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
   let assigned = ref Package_name.Map.empty in
   (* The concrete opam metadata we determined for every assigned package. *)
   let resolved = ref Package_name.Map.empty in
-  let resolve name resolved_package =
+  let mark_resolved name resolved_package =
     resolved := Package_name.Map.add_exn !resolved name resolved_package
   in
   let assign (stack : Stack.t) (package : Local_package.pin) =
@@ -263,7 +263,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
   in
   let pinned_via_opam stack (package : Local_package.pin) =
     let* resolved_package = Pinned_package.resolve_package package in
-    resolve package.name resolved_package;
+    mark_resolved package.name resolved_package;
     Resolved_package.opam_file resolved_package
     |> OpamFile.OPAM.pin_depends
     |> List.filter_map ~f:(fun (pkg, url) ->
@@ -284,7 +284,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
       | `Skip -> None
       | `Continue -> Some package)
     |> Fiber.parallel_iter ~f:(fun package ->
-      Pinned_package.resolve_package package >>| resolve package.name)
+      Pinned_package.resolve_package package >>| mark_resolved package.name)
   in
   let pinned_via_dune packages (package : Local_package.pin) =
     match Package_name.Map.find packages package.name with
@@ -315,7 +315,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
           (package.loc, opam_file)
           opam_package
       in
-      resolve package.name resolved_package
+      mark_resolved package.name resolved_package
   in
   let eval_url =
     let state = Scan_project.make_state () in
@@ -335,10 +335,10 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
         eval_url package.url
         >>= (function
          | None -> pinned_via_opam stack package
-         | Some (more_sources, packages) ->
+         | Some (pins, packages) ->
            pinned_via_dune packages package;
-           let more_sources = DB.add_opam_pins more_sources packages in
-           loop stack more_sources))
+           let pins = DB.add_opam_pins pins packages in
+           loop stack pins))
   in
   let+ () = loop Stack.empty t in
   !resolved

@@ -1,5 +1,5 @@
 Having multiple opam packages that all depend on one pinned pkg in
-the workspace causes confusion
+the workspace caused confusion
 
   $ mkrepo
   $ add_mock_repo_if_needed
@@ -28,13 +28,12 @@ Main left & right both depend on the trouble maker package in their opam file
   > pin-depends: [ "trouble.1.0.0" "file://$PWD/trouble" ]
   > EOF
 
-This should work
+This now works!
   $ dune_pkg_lock_normalized
-  File "main_left.opam", line 1, characters 0-0:
-  Error: local package trouble cannot be pinned
-  [1]
+  Solution for dune.lock:
+  - trouble.1.0.0
 
-If the versions disagree, we don't give a clear error
+If the versions disagree, we give a clear error
   $ cat > main_left.opam << EOF
   > opam-version: "2.0"
   > build: [ "echo" "main_left" ]
@@ -44,10 +43,11 @@ If the versions disagree, we don't give a clear error
 
   $ dune_pkg_lock_normalized
   File "main_left.opam", line 1, characters 0-0:
-  Error: local package trouble cannot be pinned
+  Error: local package trouble is pinned here with version 9.9.9, but also
+  version 1.0.0 in main_right.opam:1
   [1]
 
-If the urls disagree, we also don't give a clear error
+If the urls disagree, we also give a clear error
   $ cat > main_left.opam << EOF
   > opam-version: "2.0"
   > build: [ "echo" "main_left" ]
@@ -57,7 +57,8 @@ If the urls disagree, we also don't give a clear error
 
   $ dune_pkg_lock_normalized
   File "main_left.opam", line 1, characters 0-0:
-  Error: local package trouble cannot be pinned
+  Error: local package trouble is pinned twice with different URLs
+  it is also defined in main_right.opam:1
   [1]
 
 If instead of two opam pins we have one opam pin and one dune pin

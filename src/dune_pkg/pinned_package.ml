@@ -1,18 +1,40 @@
 open Import
 open Fiber.O
 
-let collect (local_packages : Local_package.t Package_name.Map.t) =
-  match
-    Package_name.Map.values local_packages
-    |> List.concat_map ~f:(fun (local_package : Local_package.t) ->
-      Package_name.Map.to_list_map local_package.pins ~f:(fun name pin -> name, pin))
-    |> Package_name.Map.of_list
-  with
-  | Ok s -> s
-  | Error (_, pin, _) ->
+let merge_pins name (pin1 : Local_package.pin) (pin2 : Local_package.pin) =
+  let loc1, url1 = pin1.url in
+  let loc2, url2 = pin2.url in
+  if Package_version.equal pin1.version pin2.version
+  then
+    if OpamUrl.equal url1 url2
+    then pin1
+    else
+      User_error.raise
+        ~loc:loc1
+        [ Pp.textf
+            "local package %s is pinned twice with different URLs"
+            (Package_name.to_string name)
+        ; Pp.textf "it is also defined in %s" (Loc.to_file_colon_line loc2)
+        ]
+  else
     User_error.raise
-      ~loc:pin.loc
-      [ Pp.textf "local package %s cannot be pinned" (Package_name.to_string pin.name) ]
+      ~loc:loc1
+      [ Pp.textf
+          "local package %s is pinned here with version %s, but also version %s in %s"
+          (Package_name.to_string name)
+          (Package_version.to_string pin1.version)
+          (Package_version.to_string pin2.version)
+          (Loc.to_file_colon_line loc2)
+      ]
+;;
+
+let collect (local_packages : Local_package.t Package_name.Map.t) =
+  Package_name.Map.values local_packages
+  |> List.concat_map ~f:(fun (local_package : Local_package.t) ->
+    Package_name.Map.to_list_map local_package.pins ~f:(fun name pin -> name, pin))
+  |> List.sort ~compare:(fun (_, (pin1 : Local_package.pin)) (_, pin2) ->
+    Loc.compare pin1.loc pin2.loc)
+  |> Package_name.Map.of_list_reducei ~f:merge_pins
 ;;
 
 (* There's many layouts for pinned packages:

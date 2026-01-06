@@ -164,10 +164,8 @@ let of_package (t : Dune_lang.Package.t) =
     ; pins = Package_name.Map.empty
     ; command_source = Assume_defaults
     }
-  | Some { file; contents = opam_file_string } ->
-    let opam_file =
-      Opam_file.read_from_string_exn ~contents:opam_file_string (Path.source file)
-    in
+  | Some { file; contents } ->
+    let opam_file = Opam_file.opam_file_of_string_exn ~contents (Path.source file) in
     let command_source =
       Opam_file
         { build = opam_file |> OpamFile.OPAM.build

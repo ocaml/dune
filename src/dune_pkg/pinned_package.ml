@@ -70,10 +70,15 @@ let resolve_package { Local_package.loc; url = loc_url, url; name; version; orig
   let* opam_file_path, files_dir = discover_layout loc name mount in
   match Mount.backend mount with
   | Path dir ->
-    Resolved_package.local_fs package ~dir ~opam_file_path ~files_dir ~url:(Some url)
+    let opam_file =
+      let path = Path.append_local dir opam_file_path in
+      let loc = Loc.in_file path in
+      loc, Opam_file.opam_file_of_path path
+    in
+    Resolved_package.local_fs package opam_file ~dir ~files_dir ~url:(Some url)
     |> Fiber.return
   | Git rev ->
-    let+ opam_file_contents =
+    let+ contents =
       (* CR-rgrinberg: not efficient to make such individual calls *)
       Mount.read mount opam_file_path
       >>| function
@@ -93,11 +98,10 @@ let resolve_package { Local_package.loc; url = loc_url, url; name; version; orig
           ; "files", Dyn.list Path.Local.to_dyn files
           ]
     in
-    Resolved_package.git_repo
-      package
-      ~opam_file:opam_file_path
-      ~opam_file_contents
-      rev
-      ~files_dir
-      ~url:(Some url)
+    let opam_file =
+      let path = Path.of_local opam_file_path in
+      let loc = Loc.in_file path in
+      loc, Opam_file.opam_file_of_string_exn ~contents path
+    in
+    Resolved_package.git_repo package opam_file rev ~files_dir ~url:(Some url)
 ;;

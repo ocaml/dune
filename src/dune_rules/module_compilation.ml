@@ -30,19 +30,54 @@ let opens modules m =
   Command.Args.As (Modules.With_vlib.local_open modules m |> Ocaml_flags.open_flags)
 ;;
 
-let other_cm_files ~opaque ~cm_kind ~obj_dir =
+let other_cm_files
+      ~opaque
+      ~cm_kind
+      ~obj_dir
+      ~cms_cmt_dependency
+      ~bin_annot
+      ~bin_annot_cms
+      ~is_ox
+  =
   List.concat_map ~f:(fun m ->
     let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
     let deps = [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind) ] in
-    if Module.has m ~ml_kind:Impl && cm_kind = Ocaml Cmx && not opaque
-    then (
-      let cmx = Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml Cmx) in
-      Path.build cmx :: deps)
-    else if Module.has m ~ml_kind:Impl && cm_kind = Melange Cmj
-    then (
-      let cmj = Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Melange Cmj) in
-      Path.build cmj :: deps)
-    else deps)
+    let deps =
+      if Module.has m ~ml_kind:Impl && cm_kind = Ocaml Cmx && not opaque
+      then (
+        let cmx = Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml Cmx) in
+        Path.build cmx :: deps)
+      else if Module.has m ~ml_kind:Impl && cm_kind = Melange Cmj
+      then (
+        let cmj = Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Melange Cmj) in
+        Path.build cmj :: deps)
+      else deps
+    in
+    (* Add .cms/.cmt dependencies when enabled. Like .cmx dependencies, these are
+       skipped when -opaque is used. *)
+    let cms_cmt_deps =
+      let open Workspace.Context.Cms_cmt_dependency in
+      match cms_cmt_dependency with
+      | No_dependency -> []
+      | Depends_on_cms when bin_annot_cms && is_ox && not opaque ->
+        (* We pass as [cm_kind] [Ocaml Cmx/Cmi] but the specific [cm_kind]
+           doesn't matter here: .cms/.cmt files are stored in byte_dir
+           regardless (see [Obj_dir.Module.cms_file]). *)
+        List.filter_opt
+          [ Obj_dir.Module.cms_file obj_dir m ~ml_kind:Impl ~cm_kind:(Ocaml Cmx)
+          ; Obj_dir.Module.cms_file obj_dir m ~ml_kind:Intf ~cm_kind:(Ocaml Cmi)
+          ]
+        |> List.map ~f:Path.build
+      | Depends_on_cms -> []
+      | Depends_on_cmt when bin_annot && is_ox && not opaque ->
+        List.filter_opt
+          [ Obj_dir.Module.cmt_file obj_dir m ~ml_kind:Impl ~cm_kind:(Ocaml Cmx)
+          ; Obj_dir.Module.cmt_file obj_dir m ~ml_kind:Intf ~cm_kind:(Ocaml Cmi)
+          ]
+        |> List.map ~f:Path.build
+      | Depends_on_cmt -> []
+    in
+    cms_cmt_deps @ deps)
 ;;
 
 let copy_interface ~sctx ~dir ~obj_dir ~cm_kind m =
@@ -230,8 +265,22 @@ let build_cm
    let other_cm_files =
      let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
      let module_deps = Dep_graph.deps_of dep_graph m in
+     let cms_cmt_dependency = Compilation_context.cms_cmt_dependency cctx in
+     let bin_annot = Compilation_context.bin_annot cctx in
+     let bin_annot_cms = Compilation_context.bin_annot_cms cctx in
+     let is_ox = Ocaml_config.ox ocaml.ocaml_config in
      Action_builder.dyn_paths_unit
-       (Action_builder.map module_deps ~f:(other_cm_files ~opaque ~cm_kind ~obj_dir))
+       (Action_builder.map
+          module_deps
+          ~f:
+            (other_cm_files
+               ~opaque
+               ~cm_kind
+               ~obj_dir
+               ~cms_cmt_dependency
+               ~bin_annot
+               ~bin_annot_cms
+               ~is_ox))
    in
    let cmt_args =
      match cm_kind with

@@ -79,6 +79,7 @@ type builder =
   ; target_exec : (string * string list) option
   ; for_host : (Context_name.t * t Memo.t) option
   ; path : Path.t list
+  ; cms_cmt_dependency : Workspace.Context.Cms_cmt_dependency.t
   }
 
 and t =
@@ -118,6 +119,7 @@ module Builder = struct
     ; target_exec = None
     ; for_host = None
     ; path = []
+    ; cms_cmt_dependency = Workspace.Context.Cms_cmt_dependency.No_dependency
     }
   ;;
 
@@ -154,6 +156,7 @@ module Builder = struct
         ; dynamically_linked_foreign_archives
         ; instrument_with
         ; merlin
+        ; cms_cmt_dependency
         }
     =
     let env =
@@ -173,6 +176,7 @@ module Builder = struct
     ; env = Memo.return env
     ; findlib_toolchain = toolchain
     ; target_exec = None
+    ; cms_cmt_dependency
     }
   ;;
 end
@@ -199,6 +203,7 @@ let fdo_target_exe t = t.builder.fdo_target_exe
 let instrument_with t = t.builder.instrument_with
 let merlin t = t.builder.merlin
 let profile t = t.builder.profile
+let cms_cmt_dependency t = t.builder.cms_cmt_dependency
 let equal x y = Context_name.equal x.builder.name y.builder.name
 let hash t = Context_name.hash t.builder.name
 let build_context t = t.build_context

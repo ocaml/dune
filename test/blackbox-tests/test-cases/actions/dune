@@ -4,3 +4,7 @@
 (cram
  (applies_to concurrent)
  (enabled_if false))
+
+(cram
+ (applies_to run-shebang)
+ (alias runtest-windows))

@@ -117,7 +117,7 @@ EOF
 set_pkg_to () {
   local value="${1}"
   if grep "(pkg .*)" dune-workspace > /dev/null; then
-    dune_cmd substitute "(pkg .*)" "(pkg ${value})" dune-workspace
+    dune_cmd subst "\\(pkg [^)]*\\)" "(pkg ${value})" dune-workspace
   else
     echo "(pkg ${value})" >> dune-workspace
   fi

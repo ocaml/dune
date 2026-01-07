@@ -86,7 +86,7 @@ module DB = struct
               [ Pp.textf
                   "package %S is defined in more than one source"
                   (Package_name.to_string name)
-              ; Pp.textf "it is also defined in %s" (Loc.to_file_colon_line (fst lhs).loc)
+              ; Pp.textf "it is also defined in %s" (Loc.to_file_colon_line (fst rhs).loc)
               ])
     ; context
     }

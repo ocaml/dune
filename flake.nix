@@ -70,6 +70,81 @@
     {
       formatter = forAllSystems (pkgs: pkgs.nixfmt);
 
+      # ocamlPackages with dune_3 replaced by local sources
+      # Usage: nix build .#revdeps.x86_64-linux.lwt
+      revdeps = forAllSystems (
+        pkgs:
+        let
+          inherit (pkgs) lib;
+
+          # Import nixpkgs with allowBroken so deps of broken pkgs can be evaluated
+          pkgsPermissive = import nixpkgs {
+            inherit (pkgs.stdenv.hostPlatform) system;
+            config = { allowBroken = true; allowUnfree = true; };
+            overlays = [
+              ocaml-overlays.overlays.default
+              (final: prev: {
+                ocamlPackages = prev.ocaml-ng.ocamlPackages_5_4.overrideScope (
+                  oself: osuper: {
+                    dune_3 = osuper.dune_3.overrideAttrs (old: {
+                      src = ./.;
+                    });
+                  }
+                );
+              })
+            ];
+          };
+
+          pkgs' = pkgsPermissive;
+
+          ocamlPkgs = pkgs'.ocamlPackages;
+
+          # Packages that fail to evaluate with abort (tryEval can't catch these)
+          excludeList = [
+            "hyper" # missing mirage-crypto-rng-lwt
+            "melange-playground" # missing lib arg
+          ];
+
+          # Build list of all buildable packages for the 'all' derivation
+          names = builtins.attrNames ocamlPkgs;
+          tryPkg = name:
+            if builtins.elem name excludeList then
+              null
+            else
+              let
+                accessed = builtins.tryEval ocamlPkgs.${name};
+              in
+              if !accessed.success then
+                null
+              else
+                let
+                  pkg = accessed.value;
+                  # Check if it's a derivation
+                  isDrv = builtins.tryEval (lib.isDerivation pkg);
+                  # meta.broken can be a throw, so wrap each check
+                  notBroken = builtins.tryEval (!(pkg.meta.broken or false));
+                  isAvailable = builtins.tryEval (pkg.meta.available or true);
+                  # Force evaluation of drvPath to catch dependency errors
+                  canBuild = builtins.tryEval (builtins.seq pkg.drvPath true);
+                in
+                if isDrv.success && isDrv.value
+                   && notBroken.success && notBroken.value
+                   && isAvailable.success && isAvailable.value
+                   && canBuild.success && canBuild.value
+                then pkg
+                else null;
+
+          allPkgs = lib.filter (p: p != null) (map tryPkg names);
+        in
+        # Expose the whole scope for individual builds, plus 'all' for everything
+        ocamlPkgs
+        // {
+          all = pkgs'.linkFarm "all-ocaml-revdeps" (
+            map (drv: { name = drv.pname or drv.name; path = drv; }) allPkgs
+          );
+        }
+      );
+
       packages = forAllSystems (
         pkgs:
         let

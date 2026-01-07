@@ -73,6 +73,88 @@ end = struct
   ;;
 end
 
+module Windows_executables = struct
+  (* Parse a shebang line (without the #! prefix) and return the executable name
+   and its arguments. *)
+  let parse_shebang_line line =
+    let line = String.trim line in
+    let parts = String.split_on_char ~sep:' ' line |> List.filter ~f:(fun x -> x <> "") in
+    match parts with
+    | [] -> None, [] (* empty shebang line *)
+    | executable_path :: exe_args ->
+      let exe_name = Filename.basename executable_path in
+      let exe, extra_args =
+        if exe_name <> "env"
+        then
+          ( Some exe_name
+          , if List.is_empty exe_args then [] else [ String.concat ~sep:" " exe_args ] )
+          (* shebang lines only support a single argument *)
+        else (
+          (* Currently, we only support the following forms of env shebang lines:
+             #!/usr/bin/env prog_name
+             #!/usr/bin/env -S prog_name arg1 arg2 ...
+          *)
+          match exe_args with
+          | [] -> None, [] (* env command with no args *)
+          | "-S" :: [] -> None, [] (* env -S with no args *)
+          | "-S" :: name :: cmd_args ->
+            if String.starts_with name ~prefix:"-"
+            then None, [] (* Don't support env -S --other-args prog_name ... *)
+            else Some name, cmd_args (* env -S allows multiple args *)
+          | name :: [] -> Some name, [] (* env with a single prog_name arg *)
+          | _name :: _ -> None, [] (* env with multiple args *))
+      in
+      exe, extra_args
+  ;;
+
+  (* This function adds support for shebang line parsing on Windows to allow
+     running scripts in run actions using the correct executable. *)
+  let adjust_prog_and_args ~metadata ~path ?dir prog args =
+    let { Process.loc; annots; _ } = metadata in
+    let prog_name = Path.basename prog in
+    let parse_win32_prog_and_args prog =
+      Stdune.Io.with_file_in ~binary:true prog ~f:(fun ic ->
+        match really_input_string ic 2 <> "#!" with
+        | true -> None, []
+        | false ->
+          (* CR-someday: Limit how many bytes we read here? *)
+          let line = input_line ic in
+          let prog, args = parse_shebang_line line in
+          (match prog with
+           | None ->
+             User_error.raise
+               ?loc
+               ~annots
+               [ Pp.textf "Dune could not parse the shebang line in %s:" prog_name
+               ; Pp.textf "  #!%s" line
+               ; Pp.textf
+                   "Dune currently only supports the following forms of shebang lines:"
+               ; Pp.textf "  #!/path/to/executable <argument>"
+               ; Pp.textf "  #!/path/to/env <executable>"
+               ; Pp.textf "  #!/path/to/env -S <executable> <arg1> <arg2> ..."
+               ; Pp.textf
+                   "If this is a valid shebang line that should be parsed by Dune, \
+                    please report upstream including the contents of the shebang line."
+               ]
+           | _ -> prog, args))
+    in
+    match parse_win32_prog_and_args prog with
+    | (exception Sys_error _) | (exception End_of_file) -> prog, args
+    | None, _ -> prog, args
+    | Some cmd, extra_args ->
+      (match Bin.which ~path cmd with
+       | None ->
+         User_error.raise
+           ?loc
+           ~annots
+           [ Pp.textf "%s: No such file or directory" prog_name ]
+       | Some cmd ->
+         let prog_str = Path.reach_for_running ?from:dir prog in
+         let args = List.concat [ extra_args; prog_str :: args ] in
+         cmd, args)
+  ;;
+end
+
 module Spec = struct
   type 'path chunk =
     | String of string
@@ -154,6 +236,18 @@ module Spec = struct
              ~var:"OCAMLFIND_DESTDIR"
              ~value:(Path.to_absolute_filename ocamlfind_destdir)
         |> Env_path.cons ~dir:dune_folder
+      in
+      let prog, args =
+        if not Sys.win32
+        then prog, args
+        else (
+          let path = Env_path.path env in
+          Windows_executables.adjust_prog_and_args
+            ~metadata
+            ~path
+            ~dir:eenv.working_dir
+            prog
+            args)
       in
       Output.with_error
         ~accepted_exit_codes:eenv.exit_codes

@@ -28,12 +28,12 @@ let make (times : Proc.Times.t) (gc : Gc.stat) =
   let { Proc.Resource_usage.user_cpu_time; system_cpu_time } =
     Option.value
       times.resource_usage
-      ~default:{ user_cpu_time = 0.; system_cpu_time = 0. }
+      ~default:{ user_cpu_time = Time.Span.zero; system_cpu_time = Time.Span.zero }
   in
   let elapsed_time = Time.Span.to_secs times.elapsed_time in
   { elapsed_time
-  ; user_cpu_time
-  ; system_cpu_time
+  ; user_cpu_time = Time.Span.to_secs user_cpu_time
+  ; system_cpu_time = Time.Span.to_secs system_cpu_time
   ; minor_words = gc.minor_words
   ; promoted_words = gc.promoted_words
   ; major_words = gc.major_words

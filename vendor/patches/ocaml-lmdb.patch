@@ -1,0 +1,15 @@
+diff --git a/vendor/ocaml-lmdb/mdb.c b/vendor/ocaml-lmdb/mdb.c
+--- a/vendor/ocaml-lmdb/mdb.c
++++ b/vendor/ocaml-lmdb/mdb.c
+@@ -322,6 +322,11 @@ union semun {
+  * also Robust, but some systems don't support them
+  * either.)
+  */
++/* Cygwin does not support robust mutexes */
++#ifdef __CYGWIN__
++# define MDB_USE_ROBUST 0
++#endif
++
+ #ifndef MDB_USE_ROBUST
+ /* Android currently lacks Robust Mutex support. So does glibc < 2.4. */
+ # if defined(MDB_USE_POSIX_MUTEX) && (defined(__ANDROID__) || \

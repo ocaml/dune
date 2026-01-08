@@ -1,1 +1,16 @@
 (vendored_dirs *)
+
+(executable
+ (name vendor_updater)
+ (libraries
+  cmdliner
+  dune_config_file
+  dune_console
+  dune_engine
+  dune_patch
+  dune_util
+  fiber
+  opam_format
+  re
+  spawn
+  stdune))

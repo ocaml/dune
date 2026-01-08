@@ -1,6 +1,7 @@
 (library
  (name lmdb)
- (synopsis "Bindings for LMDB, a fast in-file database with ACID transactions")
+ (synopsis
+  "Bindings for LMDB, a fast in-file database with ACID transactions")
  (libraries unix bigstringaf)
  (foreign_stubs
   (language c)
@@ -8,5 +9,10 @@
    :standard
    -I
    .
-   (:include flags/c_flags.sexp))
+   (:include c_flags.sexp))
   (names lmdb_stubs mdb midl)))
+
+(rule
+ (with-stdout-to
+  c_flags.sexp
+  (run %{ocaml} %{dep:gen_c_flags.ml} %{ocaml-config:ccomp_type})))

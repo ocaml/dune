@@ -1,0 +1,73 @@
+diff --git a/vendor/ocaml-inotify/src/inotify.ml b/vendor/ocaml-inotify/src/inotify.ml
+--- a/vendor/ocaml-inotify/src/inotify.ml
++++ b/vendor/ocaml-inotify/src/inotify.ml
+@@ -129,3 +129,5 @@ let read fd =
+   in
+ 
+   List.rev (read_one 0 [])
++
++external supported_by_the_os : unit -> bool = "caml_inotify_is_supported"
+diff --git a/vendor/ocaml-inotify/src/inotify.mli b/vendor/ocaml-inotify/src/inotify.mli
+--- a/vendor/ocaml-inotify/src/inotify.mli
++++ b/vendor/ocaml-inotify/src/inotify.mli
+@@ -113,3 +113,7 @@ val rm_watch  : Unix.file_descr -> watch -> unit
+     case the event kind list will consist of [[Q_overflow]]. Such an event would be
+     associated with a watch descriptor [-1], never returned from {!add_watch}. *)
+ val read      : Unix.file_descr -> event list
++
++(** Returns [true] if inotify is supported by the OS.
++    So effectively it returns true on linux and false elsewhere. *)
++val supported_by_the_os : unit -> bool
+diff --git a/vendor/ocaml-inotify/src/inotify_stubs.c b/vendor/ocaml-inotify/src/inotify_stubs.c
+--- a/vendor/ocaml-inotify/src/inotify_stubs.c
++++ b/vendor/ocaml-inotify/src/inotify_stubs.c
+@@ -17,7 +17,6 @@
+ #include <errno.h>
+ #include <string.h>
+ #include <stdio.h>
+-#include <unistd.h>
+ #include <limits.h>
+ #include <caml/mlvalues.h>
+ #include <caml/memory.h>
+@@ -30,6 +29,7 @@
+ 
+ #ifdef __linux__
+ 
++#include <unistd.h>
+ #include <features.h>
+ #include <sys/inotify.h>
+ 
+@@ -48,6 +48,12 @@ static int inotify_return_table[] = {
+   IN_IGNORED, IN_ISDIR, IN_Q_OVERFLOW, IN_UNMOUNT, 0
+ };
+ 
++value caml_inotify_is_supported (value unit) {
++  CAMLparam1(unit);
++
++  CAMLreturn(Val_int(1));
++}
++
+ value caml_inotify_init(value unit) {
+   CAMLparam1(unit);
+ 
+@@ -116,7 +122,13 @@ value caml_inotify_convert(value buf) {
+   CAMLreturn(event);
+ }
+ 
+-# else
++#else
++
++value caml_inotify_is_supported (value unit) {
++  CAMLparam1(unit);
++
++  CAMLreturn(Val_int(0));
++}
+ 
+ value caml_inotify_init(value unit) {
+   CAMLparam1(unit);
+diff --git a/vendor/ocaml-inotify/src/ocaml_inotify.ml b/vendor/ocaml-inotify/src/ocaml_inotify.ml
+new file mode 100644
+--- /dev/null
++++ b/vendor/ocaml-inotify/src/ocaml_inotify.ml
+@@ -0,0 +1 @@
++module Inotify = Inotify

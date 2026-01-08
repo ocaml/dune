@@ -1,0 +1,40 @@
+diff --git a/vendor/re/src/import.ml b/vendor/re/src/import.ml
+--- a/vendor/re/src/import.ml
++++ b/vendor/re/src/import.ml
+@@ -1,4 +1,24 @@
+-module List = Stdlib.ListLabels
++module List = struct
++  include Stdlib.ListLabels
++
++  let rec equal ~eq xs ys =
++    match xs, ys with
++    | [], [] -> true
++    | x :: xs, y :: ys -> eq x y && equal ~eq xs ys
++    | _, _ -> false
++  ;;
++
++  let rec compare a b ~cmp:f : int =
++    match a, b with
++    | [], [] -> 0
++    | [], _ :: _ -> -1
++    | _ :: _, [] -> 1
++    | x :: a, y :: b ->
++      (match f x y with
++       | 0 -> compare a b ~cmp:f
++       | ne -> ne)
++  ;;
++end
+ 
+ module Poly = struct
+   let equal = ( = )
+@@ -13,8 +33,8 @@ let ( = ) = Int.equal
+ let ( == ) = [ `Use_phys_equal ]
+ let ( < ) x y = Int.compare x y = -1
+ let ( > ) x y = Int.compare x y = 1
+-let min = Int.min
+-let max = Int.max
++let min (x : int) y = min x y
++let max (x : int) y = max x y
+ let compare = Int.compare
+ 
+ module Option = struct

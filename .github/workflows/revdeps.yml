@@ -8,6 +8,11 @@ on:
         required: false
         default: 'all'
         type: string
+      dune_version:
+        description: 'Dune version: "dev" (local checkout) or git ref (e.g., "3.16.0", commit sha)'
+        required: false
+        default: 'dev'
+        type: string
 
 concurrency:
   group: "${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
@@ -33,4 +38,9 @@ jobs:
       - name: Build OCaml reverse dependencies
         run: |
           packages="${{ inputs.packages }}"
-          nix build .#revdeps.x86_64-linux.$packages --keep-going
+          dune_version="${{ inputs.dune_version }}"
+          if [ "$dune_version" = "dev" ] || [ -z "$dune_version" ]; then
+            nix build .#revdeps.x86_64-linux.$packages --keep-going --override-input revdeps-dune path:.
+          else
+            nix build .#revdeps.x86_64-linux.$packages --keep-going --override-input revdeps-dune "github:ocaml/dune/$dune_version"
+          fi

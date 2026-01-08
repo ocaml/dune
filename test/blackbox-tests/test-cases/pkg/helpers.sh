@@ -20,7 +20,7 @@ source_lock_dir="${default_lock_dir}"
 # _build directory.
 get_build_pkg_dir() {
   package_name=$1
-  digest=$($dune pkg print-digest $package_name)
+  digest=$($dune pkg print-digest "$package_name")
   status=$?
   if [ "$status" -eq "0" ]; then
     echo "$pkg_root/$digest"
@@ -30,7 +30,8 @@ get_build_pkg_dir() {
 }
 
 build_pkg() {
-  prefix=$(get_build_pkg_dir $1)
+  local pkg=$1
+  prefix="$(get_build_pkg_dir "$pkg")"
   status=$?
   if [ "$status" -eq "0" ]; then
     $dune build "$prefix/target"
@@ -40,21 +41,26 @@ build_pkg() {
 }
 
 show_pkg() {
-  prefix="$(get_build_pkg_dir $1)"
+  local pkg=$1
+  prefix="$(get_build_pkg_dir "$pkg")"
   find "$prefix" | sort | dune_cmd subst "$prefix" ""
 }
 
 strip_sandbox() {
+  # we want to substitute it to $SANDBOX
+  # shellcheck disable=SC2016
   dune_cmd subst '[^ ]*.sandbox/[^/]+' '$SANDBOX'
 }
 
 show_pkg_targets() {
-  prefix="$(get_build_pkg_dir $1)/target"
+  local pkg=$1
+  prefix="$(get_build_pkg_dir "$pkg")/target"
   find "$prefix" | sort | dune_cmd subst "$prefix" ""
 }
 
 show_pkg_cookie() {
-  $dune internal dump "$(get_build_pkg_dir $1)/target/cookie"
+  local pkg=$1
+  $dune internal dump "$(get_build_pkg_dir "$pkg")/target/cookie"
 }
 
 mock_packages="mock-opam-repository/packages"
@@ -71,9 +77,9 @@ mkpkg() {
   else
     version="$2"
   fi
-  mkdir -p $mock_packages/$name/$name.$version
-  echo 'opam-version: "2.0"' > $mock_packages/$name/$name.$version/opam
-  cat >>$mock_packages/$name/$name.$version/opam
+  mkdir -p "$mock_packages/$name/$name.$version"
+  echo 'opam-version: "2.0"' > "$mock_packages/$name/$name.$version/opam"
+  cat >> "$mock_packages/$name/$name.$version/opam"
 }
 
 mk_ocaml() {
@@ -84,14 +90,14 @@ mk_ocaml() {
   next=$(echo "$patch + 1" | bc)
   constraint="{>= \"$major.$minor.$patch~\" & < \"$major.$minor.$next~\"}"
 
-  mkpkg ocaml $version << EOF
+  mkpkg ocaml "$version" << EOF
   depends: [
    "ocaml-base-compiler" $constraint |
    "ocaml-variants" $constraint
   ]
 EOF
 
-  mkpkg ocaml-base-compiler $version << EOF
+  mkpkg ocaml-base-compiler "$version" << EOF
   depends: [
    "ocaml-compiler" $constraint
   ]
@@ -99,7 +105,7 @@ EOF
   conflict-class: "ocaml-core-compiler"
 EOF
 
-  mkpkg ocaml-variants $version << EOF
+  mkpkg ocaml-variants "$version" << EOF
   depends: [
    "ocaml-compiler" {= "$version"}
   ]
@@ -107,7 +113,7 @@ EOF
   conflict-class: "ocaml-core-compiler"
 EOF
 
-  mkpkg ocaml-compiler $version << EOF
+  mkpkg ocaml-compiler "$version" << EOF
   depends: [
    "ocaml" {= "$version" & post}
   ]
@@ -206,7 +212,7 @@ make_lockpkg_file() {
 
 dune_pkg_lock_normalized() {
   out="$(mktemp)"
-  if dune pkg lock $@ 2>> "${out}"; then
+  if dune pkg lock "$@" 2>> "${out}"; then
     processed="$(mktemp)"
     if [ "${DUNE_CONFIG__PORTABLE_LOCK_DIR:-}" = "disabled" ]; then
       cp "${out}" "${processed}"
@@ -230,7 +236,7 @@ dune_pkg_lock_normalized() {
 solve_project() {
   cat >dune-project
   add_mock_repo_if_needed
-  dune_pkg_lock_normalized $@
+  dune_pkg_lock_normalized "$@"
 }
 
 make_lockdir() {
@@ -262,7 +268,7 @@ print_source() {
 }
 
 solve() {
-  make_project $@ | solve_project
+  make_project "$@" | solve_project dune.lock
 }
 
 # Pass a string of the form PACKAGE_NAME.PACKAGE_VERSION and replaces the

@@ -18,7 +18,11 @@ open Import
 
 (** This module is similar to [Dir_contents] but for globally installed libs *)
 
-type t
+type legacy
+
+type t =
+  | Rocq_package of Rocq_package.t
+  | Legacy of legacy
 
 val name : t -> Rocq_lib_name.t
 val path : t -> Path.t

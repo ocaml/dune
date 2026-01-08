@@ -1,7 +1,8 @@
 dev_tool_lock_dir="_build/.dev-tools.locks/ocamlformat"
 
 make_fake_ocamlformat() {
-  version=$1
+  local version=$1
+  local ml_file
   if [ "$#" -eq "1" ]
   then
     ml_file=""
@@ -33,7 +34,8 @@ EOF
 }
 
 make_ocamlformat_opam_pkg() {
-  version=$1
+  local version=$1
+  local port
   if [ "$#" -eq "2" ]
   then
     port="$2"
@@ -109,9 +111,8 @@ EOF
 EOF
 }
 
-
 make_printer_lib() {
-  version=$1
+  local version=$1
   mkdir printer
   cat > printer/dune-project <<EOF
 (lang dune 3.13)
@@ -136,7 +137,7 @@ EOF
 }
 
 make_opam_printer() {
-  version=$1
+  local version=$1
   mkpkg printer "$version" <<EOF
 build: [
    [

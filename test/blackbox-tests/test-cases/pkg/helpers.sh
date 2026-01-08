@@ -19,9 +19,10 @@ source_lock_dir="${default_lock_dir}"
 # Prints the directory containing the package target and source dirs within the
 # _build directory.
 get_build_pkg_dir() {
-  package_name=$1
+  local package_name=$1
+  local digest
   digest=$($dune pkg print-digest "$package_name")
-  status=$?
+  local status=$?
   if [ "$status" -eq "0" ]; then
     echo "$pkg_root/$digest"
   else
@@ -31,8 +32,9 @@ get_build_pkg_dir() {
 
 build_pkg() {
   local pkg=$1
+  local prefix
   prefix="$(get_build_pkg_dir "$pkg")"
-  status=$?
+  local status=$?
   if [ "$status" -eq "0" ]; then
     $dune build "$prefix/target"
   else
@@ -42,6 +44,7 @@ build_pkg() {
 
 show_pkg() {
   local pkg=$1
+  local prefix
   prefix="$(get_build_pkg_dir "$pkg")"
   find "$prefix" | sort | dune_cmd subst "$prefix" ""
 }
@@ -54,6 +57,7 @@ strip_sandbox() {
 
 show_pkg_targets() {
   local pkg=$1
+  local prefix
   prefix="$(get_build_pkg_dir "$pkg")/target"
   find "$prefix" | sort | dune_cmd subst "$prefix" ""
 }
@@ -70,7 +74,8 @@ mkrepo() {
 }
 
 mkpkg() {
-  name=$1
+  local name=$1
+  local version
   if [ "$#" -eq "1" ]
   then
     version="0.0.1"
@@ -83,12 +88,16 @@ mkpkg() {
 }
 
 mk_ocaml() {
-  version="$1"
+  local version="$1"
+  local major
   major=$(echo "$version" | cut -d. -f1)
+  local minor
   minor=$(echo "$version" | cut -d. -f2)
+  local patch
   patch=$(echo "$version" | cut -d. -f3)
+  local next
   next=$(echo "$patch + 1" | bc)
-  constraint="{>= \"$major.$minor.$patch~\" & < \"$major.$minor.$next~\"}"
+  local constraint="{>= \"$major.$minor.$patch~\" & < \"$major.$minor.$next~\"}"
 
   mkpkg ocaml "$version" << EOF
   depends: [
@@ -143,7 +152,7 @@ unset_pkg() {
 
 add_mock_repo_if_needed() {
   # default, but can be overridden, e.g. if git is required
-  repo="${1:-file://$(pwd)/mock-opam-repository}"
+  local repo="${1:-file://$(pwd)/mock-opam-repository}"
 
   if [ ! -e dune-workspace ]
   then
@@ -180,7 +189,7 @@ EOF
 
 create_mock_repo() {
   # Always create a fresh workspace with mock repository configuration
-  repo="${1:-file://$(pwd)/mock-opam-repository}"
+  local repo="${1:-file://$(pwd)/mock-opam-repository}"
   cat >dune-workspace <<EOF
 (lang dune 3.20)
 (lock_dir
@@ -211,6 +220,8 @@ make_lockpkg_file() {
 }
 
 dune_pkg_lock_normalized() {
+  local out
+  local processed
   out="$(mktemp)"
   if dune pkg lock "$@" 2>> "${out}"; then
     processed="$(mktemp)"

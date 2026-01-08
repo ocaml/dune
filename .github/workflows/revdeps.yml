@@ -1,8 +1,13 @@
 name: Reverse Dependencies
 
 on:
-  pull_request:
   workflow_dispatch:
+    inputs:
+      packages:
+        description: 'Packages to test (e.g., "all", "lwt", "{base,core}")'
+        required: false
+        default: 'all'
+        type: string
 
 concurrency:
   group: "${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
@@ -25,5 +30,7 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
-      - name: Build all OCaml reverse dependencies
-        run: nix build .#revdeps.x86_64-linux.all --keep-going
+      - name: Build OCaml reverse dependencies
+        run: |
+          packages="${{ inputs.packages }}"
+          nix build .#revdeps.x86_64-linux.$packages --keep-going

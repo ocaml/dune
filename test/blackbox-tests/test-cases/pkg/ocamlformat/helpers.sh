@@ -28,7 +28,7 @@ EOF
 (executable
  (public_name ocamlformat))
 EOF
-  tar cf ocamlformat-$version.tar ocamlformat
+  tar cf "ocamlformat-${version}.tar" ocamlformat
   rm -rf ocamlformat
 }
 
@@ -42,7 +42,7 @@ make_ocamlformat_opam_pkg() {
   fi
   if [ ! "$port" = "" ]
   then
-    mkpkg ocamlformat $version <<EOF
+    mkpkg ocamlformat "$version" <<EOF
 build: [
   [
      "dune"
@@ -55,12 +55,12 @@ build: [
 url {
   src: "http://127.0.0.1:$port"
   checksum: [
-    "md5=$(md5sum ocamlformat-$version.tar | cut -f1 -d' ')"
+    "md5=$(md5sum "ocamlformat-${version}.tar" | cut -f1 -d' ')"
   ]
 }
 EOF
   else
-    mkpkg ocamlformat $version <<EOF
+    mkpkg ocamlformat "$version" <<EOF
 build: [
   [
      "dune"
@@ -73,7 +73,7 @@ build: [
 url {
   src: "file://$PWD/ocamlformat-$version.tar"
   checksum: [
-    "md5=$(md5sum ocamlformat-$version.tar | cut -f1 -d' ')"
+    "md5=$(md5sum "ocamlformat-${version}.tar" | cut -f1 -d' ')"
   ]
 }
 EOF
@@ -117,7 +117,7 @@ make_printer_lib() {
 (lang dune 3.13)
 (package (name printer))
 EOF
-  if [ $version = "1.0" ]
+  if [ "${version}" = "1.0" ]
   then
   cat > printer/printer.ml <<EOF
 let print () = print_endline "formatted"
@@ -131,13 +131,13 @@ EOF
 (library
  (public_name printer))
 EOF
-  tar cf printer.$version.tar printer
+  tar cf "printer.${version}.tar" printer
   rm -r printer
 }
 
 make_opam_printer() {
   version=$1
-  mkpkg printer $version <<EOF
+  mkpkg printer "$version" <<EOF
 build: [
    [
     "dune"
@@ -150,7 +150,7 @@ build: [
  url {
  src: "file://$PWD/printer.$version.tar"
  checksum: [
-  "md5=$(md5sum printer.$version.tar | cut -f1 -d' ')"
+  "md5=$(md5sum "printer.${version}.tar" | cut -f1 -d' ')"
  ]
 }
 EOF

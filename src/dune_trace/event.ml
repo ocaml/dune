@@ -172,7 +172,7 @@ let process
       ~dir
       ~stdout
       ~stderr
-      ~(times : Proc.Times.t)
+      ~times:{ Proc.Times.elapsed_time; resource_usage }
   =
   let name =
     match name with
@@ -214,9 +214,38 @@ let process
         ; output "stderr" stderr
         ]
     in
-    always @ extended
+    let resource_usage =
+      match resource_usage with
+      | None -> []
+      | Some
+          { Proc.Resource_usage.user_cpu_time
+          ; system_cpu_time
+          ; maxrss
+          ; minflt
+          ; majflt
+          ; inblock
+          ; oublock
+          ; nvcsw
+          ; nivcsw
+          } ->
+        [ ( "rusage"
+          , Arg.record
+              [ "user_cpu_time", Arg.span user_cpu_time
+              ; "system_cpu_time", Arg.span system_cpu_time
+              ; "maxrss", Arg.int maxrss
+              ; "minflt", Arg.int minflt
+              ; "majflt", Arg.int majflt
+              ; "inblock", Arg.int inblock
+              ; "oublock", Arg.int oublock
+              ; "nvcsw", Arg.int nvcsw
+              ; "nivcsw", Arg.int nivcsw
+              ]
+            |> Arg.list )
+        ]
+    in
+    always @ extended @ resource_usage
   in
-  Event.complete ~args ~start:started_at ~dur:times.elapsed_time ~name Process
+  Event.complete ~args ~start:started_at ~dur:elapsed_time ~name Process
 ;;
 
 let signal_received signal =

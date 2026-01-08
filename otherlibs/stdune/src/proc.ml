@@ -27,7 +27,27 @@ module Resource_usage = struct
   type t =
     { user_cpu_time : Time.Span.t
     ; system_cpu_time : Time.Span.t
+    ; maxrss : int
+    ; minflt : int
+    ; majflt : int
+    ; inblock : int
+    ; oublock : int
+    ; nvcsw : int
+    ; nivcsw : int
     }
+
+  let zero =
+    { user_cpu_time = Time.Span.zero
+    ; system_cpu_time = Time.Span.zero
+    ; maxrss = 0
+    ; minflt = 0
+    ; majflt = 0
+    ; inblock = 0
+    ; oublock = 0
+    ; nvcsw = 0
+    ; nivcsw = 0
+    }
+  ;;
 end
 
 module Times = struct

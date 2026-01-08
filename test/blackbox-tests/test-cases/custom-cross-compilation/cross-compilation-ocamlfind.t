@@ -77,7 +77,13 @@ Dune should be able to find it too
   Entering directory 'app'
   Leaving directory 'app'
 
-  $ dune trace cat | jq '.args | select(has("prog") and (.prog | contains("notocamldep-foo"))) | del(.pid)'
+  $ dune trace cat | jq '
+  >   .args
+  > | select(has("prog") and (.prog
+  > | contains("notocamldep-foo")))
+  > | del(.pid)
+  > | .rusage |= keys
+  > '
   {
     "process_args": [
       "-modules",
@@ -90,6 +96,17 @@ Dune should be able to find it too
     "exit": 0,
     "target_files": [
       "_build/default.foo/.repro.objs/repro__Foo.impl.d"
+    ],
+    "rusage": [
+      "inblock",
+      "majflt",
+      "maxrss",
+      "minflt",
+      "nivcsw",
+      "nvcsw",
+      "oublock",
+      "system_cpu_time",
+      "user_cpu_time"
     ]
   }
 

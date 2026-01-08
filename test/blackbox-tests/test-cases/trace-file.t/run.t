@@ -3,7 +3,13 @@
 
 This captures the commands that are being run:
 
-  $ dune trace cat | jq 'select(.cat == "process") | .args | del(.pid) | .prog |= sub(".*/"; "")'
+  $ dune trace cat | jq '
+  >   select(.cat == "process")
+  > | .args
+  > | del(.pid)
+  > | .prog |= sub(".*/"; "")
+  > | .rusage |= keys
+  > '
   {
     "process_args": [
       "-config"
@@ -11,7 +17,18 @@ This captures the commands that are being run:
     "categories": [],
     "prog": "ocamlc.opt",
     "dir": ".",
-    "exit": 0
+    "exit": 0,
+    "rusage": [
+      "inblock",
+      "majflt",
+      "maxrss",
+      "minflt",
+      "nivcsw",
+      "nvcsw",
+      "oublock",
+      "system_cpu_time",
+      "user_cpu_time"
+    ]
   }
   {
     "process_args": [
@@ -25,6 +42,17 @@ This captures the commands that are being run:
     "exit": 0,
     "target_files": [
       "_build/default/.prog.eobjs/prog.impl.d"
+    ],
+    "rusage": [
+      "inblock",
+      "majflt",
+      "maxrss",
+      "minflt",
+      "nivcsw",
+      "nvcsw",
+      "oublock",
+      "system_cpu_time",
+      "user_cpu_time"
     ]
   }
   {
@@ -56,6 +84,17 @@ This captures the commands that are being run:
       "_build/default/.prog.eobjs/byte/prog.cmi",
       "_build/default/.prog.eobjs/byte/prog.cmo",
       "_build/default/.prog.eobjs/byte/prog.cmt"
+    ],
+    "rusage": [
+      "inblock",
+      "majflt",
+      "maxrss",
+      "minflt",
+      "nivcsw",
+      "nvcsw",
+      "oublock",
+      "system_cpu_time",
+      "user_cpu_time"
     ]
   }
   {
@@ -88,6 +127,17 @@ This captures the commands that are being run:
     "target_files": [
       "_build/default/.prog.eobjs/native/prog.cmx",
       "_build/default/.prog.eobjs/native/prog.o"
+    ],
+    "rusage": [
+      "inblock",
+      "majflt",
+      "maxrss",
+      "minflt",
+      "nivcsw",
+      "nvcsw",
+      "oublock",
+      "system_cpu_time",
+      "user_cpu_time"
     ]
   }
   {
@@ -109,6 +159,17 @@ This captures the commands that are being run:
     "exit": 0,
     "target_files": [
       "_build/default/prog.exe"
+    ],
+    "rusage": [
+      "inblock",
+      "majflt",
+      "maxrss",
+      "minflt",
+      "nivcsw",
+      "nvcsw",
+      "oublock",
+      "system_cpu_time",
+      "user_cpu_time"
     ]
   }
 

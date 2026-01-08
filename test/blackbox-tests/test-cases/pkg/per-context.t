@@ -21,7 +21,7 @@ TODO: versioning will be added once this feature is stable
   $ cat >foo.lock/test.pkg <<EOF
   > (version 0.0.1)
   > (build
-  >  (system "echo building from %{context_name}"))
+  >  (system "echo 'building from %{context_name}\nversion: %{pkg:test:version}'"))
   > EOF
 
   $ mkdir bar.lock
@@ -32,11 +32,13 @@ TODO: versioning will be added once this feature is stable
   $ cat >bar.lock/test.pkg <<EOF
   > (version 0.0.2)
   > (build
-  >  (system "echo building from %{context_name}"))
+  >  (system "echo 'building from %{context_name}\nversion: %{pkg:test:version}'"))
   > EOF
 
   $ dune build @@_build/default/pkg-install
   building from default
+  version: 0.0.1
 
   $ dune build @@_build/foo/pkg-install
   building from foo
+  version: 0.0.2

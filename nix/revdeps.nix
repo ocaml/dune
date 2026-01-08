@@ -9,6 +9,12 @@ let
 
   # Overlay that replaces dune and all its subpackages with revdeps-dune source
   duneOverlay = final: prev: {
+    # Override top-level dune and dune_3
+    dune_3 = prev.dune_3.overrideAttrs (old: {
+      src = revdeps-dune;
+    });
+    dune = final.dune_3;
+
     ocamlPackages = prev.ocaml-ng.ocamlPackages_5_4.overrideScope (
       oself: osuper:
       let

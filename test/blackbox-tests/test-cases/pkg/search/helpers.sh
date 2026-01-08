@@ -6,7 +6,7 @@ mkrepo_other() {
 
 mkpkg_other() {
   local mock_packages
-  mock_packages="other-opam-repository/packages"
+  export mock_packages="other-opam-repository/packages"
   mkpkg "$@"
 }
 

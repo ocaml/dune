@@ -51,7 +51,7 @@ end
 
 module Scheduler = struct
   type t =
-    { spawn_thread : (unit -> unit) -> unit
+    { spawn_thread : (unit -> unit) -> Thread.t
     ; thread_safe_send_emit_events_job : (unit -> Event.t list) -> unit
     }
 end
@@ -489,7 +489,7 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend ~watch_exclusi
       scheduler.thread_safe_send_emit_events_job job
     done
   in
-  scheduler.spawn_thread (fun () -> worker_thread pipe);
+  let (_ : Thread.t) = scheduler.spawn_thread (fun () -> worker_thread pipe) in
   { kind = Fswatch { pid; wait_for_watches_established = wait }; sync_table }
 ;;
 
@@ -532,7 +532,7 @@ let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
     Thread.delay debounce_interval;
     buffer_thread ()
   in
-  scheduler.spawn_thread buffer_thread;
+  let (_ : Thread.t) = scheduler.spawn_thread buffer_thread in
   res
 ;;
 
@@ -624,17 +624,19 @@ let create_fsevents
   let cv = Condition.create () in
   let dispatch_queue_ref = ref None in
   let mutex = Mutex.create () in
-  scheduler.spawn_thread (fun () ->
-    let dispatch_queue = Fsevents.Dispatch_queue.create () in
-    Mutex.lock mutex;
-    dispatch_queue_ref := Some dispatch_queue;
-    Condition.signal cv;
-    Mutex.unlock mutex;
-    Fsevents.start source dispatch_queue;
-    Fsevents.start sync dispatch_queue;
-    match Fsevents.Dispatch_queue.wait_until_stopped dispatch_queue with
-    | Ok () -> ()
-    | Error exn -> Code_error.raise "fsevents callback raised" [ "exn", Exn.to_dyn exn ]);
+  let (_ : Thread.t) =
+    scheduler.spawn_thread (fun () ->
+      let dispatch_queue = Fsevents.Dispatch_queue.create () in
+      Mutex.lock mutex;
+      dispatch_queue_ref := Some dispatch_queue;
+      Condition.signal cv;
+      Mutex.unlock mutex;
+      Fsevents.start source dispatch_queue;
+      Fsevents.start sync dispatch_queue;
+      match Fsevents.Dispatch_queue.wait_until_stopped dispatch_queue with
+      | Ok () -> ()
+      | Error exn -> Code_error.raise "fsevents callback raised" [ "exn", Exn.to_dyn exn ])
+  in
   let external_ = Watch_trie.empty in
   let dispatch_queue =
     Mutex.lock mutex;
@@ -687,11 +689,13 @@ let create_fswatch_win ~(scheduler : Scheduler.t) ~debounce_interval:sleep ~shou
   let sync_table = Table.create (module String) 64 in
   let t = Fswatch_win.create () in
   Fswatch_win.add t (Path.to_absolute_filename Path.root);
-  scheduler.spawn_thread (fun () ->
-    while true do
-      let events = Fswatch_win.wait t ~sleep in
-      List.iter ~f:(fswatch_win_callback ~scheduler ~sync_table ~should_exclude) events
-    done);
+  let (_ : Thread.t) =
+    scheduler.spawn_thread (fun () ->
+      while true do
+        let events = Fswatch_win.wait t ~sleep in
+        List.iter ~f:(fswatch_win_callback ~scheduler ~sync_table ~should_exclude) events
+      done)
+  in
   { kind = Fswatch_win { t; scheduler }; sync_table }
 ;;
 

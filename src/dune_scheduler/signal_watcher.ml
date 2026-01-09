@@ -52,4 +52,7 @@ let run ~print_ctrl_c_warning q =
   done
 ;;
 
-let init ~print_ctrl_c_warning q = Thread0.spawn (fun () -> run ~print_ctrl_c_warning q)
+let init ~print_ctrl_c_warning q =
+  let (_ : Thread.t) = Thread0.spawn (fun () -> run ~print_ctrl_c_warning q) in
+  ()
+;;

@@ -10,7 +10,7 @@ let%expect_test _ =
     Dune_file_watcher.create_default
       ~fsevents_debounce:(Time.Span.of_secs 0.)
       ~scheduler:
-        { spawn_thread = (fun f -> ignore (Thread.create f () : Thread.t))
+        { spawn_thread = (fun f -> Thread.create f ())
         ; thread_safe_send_emit_events_job =
             (fun job ->
               critical_section mutex ~f:(fun () ->

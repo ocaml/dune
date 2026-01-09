@@ -10,7 +10,8 @@ Reproducing test case for https://github.com/ocaml/dune/issues/12638.
   $ jqScript=$(mktemp)
 
   $ cat >$jqScript <<'EOF'
-  > select(.cat == "process") |
+  > include "dune";
+  > processes |
   > .args.process_args as $arr |
   > [range(0; $arr | length - 1) as $i |
   >   if ($arr[$i] == "-w" and ($arr[$i + 1] | contains("deprecated"))) then [$arr[$i], $arr[$i + 1]] else empty end]

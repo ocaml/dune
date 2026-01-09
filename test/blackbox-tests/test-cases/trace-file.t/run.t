@@ -3,8 +3,8 @@
 
 This captures the commands that are being run:
 
-  $ dune trace cat | jq '
-  >   select(.cat == "process")
+  $ dune trace cat | jq 'include "dune";
+  >   processes
   > | .args
   > | del(.pid)
   > | .prog |= sub(".*/"; "")

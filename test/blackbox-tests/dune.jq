@@ -11,8 +11,10 @@ def redactCommandTimes:
 
 def targets: (.target_files // []) + (.target_dirs // []);
 
+def processes: select(.cat == "process" and .args.pid != null);
+
 def targetsMatching($m):
-    select(.cat == "process")
+    processes
   | select(.args | targets | any(contains($m)))
   | .args
   | {target_files, target_dirs}

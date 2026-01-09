@@ -15,6 +15,12 @@ pkg_root="_build/_private/default/.pkg"
 
 default_lock_dir="dune.lock"
 source_lock_dir="${default_lock_dir}"
+mock_packages="mock-opam-repository/packages"
+
+# this needs to be a function, because it might be called from a subdir
+default_repo_path() {
+  echo "file://$(pwd)/mock-opam-repository"
+}
 
 # Prints the directory containing the package target and source dirs within the
 # _build directory.
@@ -66,8 +72,6 @@ show_pkg_cookie() {
   local pkg=$1
   $dune internal dump "$(get_build_pkg_dir "$pkg")/target/cookie"
 }
-
-mock_packages="mock-opam-repository/packages"
 
 mkrepo() {
   mkdir -p $mock_packages
@@ -152,7 +156,12 @@ unset_pkg() {
 
 add_mock_repo_if_needed() {
   # default, but can be overridden, e.g. if git is required
-  local repo="${1:-file://$(pwd)/mock-opam-repository}"
+  local repo
+  if [ "$#" -eq "0" ]; then
+    repo=$(default_repo_path)
+  else
+    repo="$1"
+  fi
 
   if [ ! -e dune-workspace ]
   then
@@ -228,16 +237,17 @@ dune_pkg_lock_normalized() {
     if [ "${DUNE_CONFIG__PORTABLE_LOCK_DIR:-}" = "disabled" ]; then
       cp "${out}" "${processed}"
     else
-      cat "${out}" \
-        | awk '/Solution/{printf"%s:\n",$0;f=0};f{print};/Dependencies.*:/{f=1}' \
+        awk '/Solution/{printf"%s:\n",$0;f=0};f{print};/Dependencies.*:/{f=1}' "${out}" \
         | dune_cmd subst '\(none\)' '(no dependencies to lock)' \
         > "${processed}"
     fi
     cat "${processed}"
   else
     processed="$(mktemp)"
-    cat "${out}" \
-      | dune_cmd delete-between 'The dependency solver failed to find a solution for the following platforms:' '\.\.\.with this error:' \
+      dune_cmd delete-between \
+	      'The dependency solver failed to find a solution for the following platforms:' \
+	      '\.\.\.with this error:' \
+      < "${out}" \
       > "${processed}"
     cat "${processed}"
     return 1
@@ -246,7 +256,9 @@ dune_pkg_lock_normalized() {
 
 solve_project() {
   cat >dune-project
-  add_mock_repo_if_needed
+  local repo
+  repo=$(default_repo_path)
+  add_mock_repo_if_needed "$repo"
   dune_pkg_lock_normalized "$@"
 }
 

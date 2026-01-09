@@ -1,6 +1,5 @@
-open Stdune
+open Import
 open Fiber.O
-open Dune_scheduler
 module Process = Dune_engine.Process
 module Display = Dune_engine.Display
 module Rev_store = Dune_pkg.Rev_store

@@ -57,7 +57,7 @@ let create events period_seconds =
   let t =
     { events; active = true; alarms = []; period_seconds; mutex = Mutex.create () }
   in
-  Thread.spawn (polling_loop t);
+  let (_ : Thread.t) = Thread.spawn (polling_loop t) in
   t
 ;;
 

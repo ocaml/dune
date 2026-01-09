@@ -13,7 +13,7 @@ module type Scheduler = sig
   val fill_jobs : Fiber.fill list -> unit
   val register_job_started : unit -> unit
   val cancel_job_started : unit -> unit
-  val spawn_thread : (unit -> unit) -> unit
+  val spawn_thread : (unit -> unit) -> Thread.t
 end
 
 let byte = Bytes.make 1 '0'
@@ -254,7 +254,7 @@ end = struct
     let+ t = Fiber.Var.get_exn t_var in
     if not t.started
     then (
-      start t;
+      let (_ : Thread.t) = start t in
       t.started <- true);
     t
   ;;

@@ -54,7 +54,8 @@ let spawn_worker t =
       Mutex.unlock t.mutex)
   in
   t.running <- t.running + 1;
-  Thread0.spawn start
+  let (_ : Thread.t) = Thread0.spawn start in
+  ()
 ;;
 
 let maybe_spawn_worker t = if t.idle = 0 && t.running < t.max_workers then spawn_worker t

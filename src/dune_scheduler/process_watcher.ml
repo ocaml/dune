@@ -162,6 +162,6 @@ let init events =
     ; running_count = 0
     }
   in
-  Thread0.spawn (fun () -> run t);
+  let (_ : Thread.t) = Thread0.spawn (fun () -> run t) in
   t
 ;;

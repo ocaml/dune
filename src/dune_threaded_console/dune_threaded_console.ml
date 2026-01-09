@@ -156,6 +156,11 @@ let make ~frames_per_second (module Base : S) : (module Dune_console.Backend) =
         Mutex.lock mutex;
         cleanup (Some exn)
     ;;
+
+    let start () =
+      let (_ : Thread.t) = start () in
+      ()
+    ;;
   end
   in
   (module T)

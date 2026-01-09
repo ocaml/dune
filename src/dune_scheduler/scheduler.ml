@@ -238,7 +238,7 @@ end = struct
       - notifying completed jobs
       - starting cancellations
       - terminating the scheduler on signals *)
-  let rec iter (t : t) : Fiber.fill Nonempty_list.t =
+  let rec iter (t : t) : Fiber.fill list =
     t.handler t.config Tick;
     match Event.Queue.next t.events with
     | File_watcher_task job ->
@@ -275,9 +275,9 @@ end = struct
           Fiber.Cancel.fire' cancellation
       in
       let fills = Trigger.trigger t.build_inputs_changed @ fills in
-      match Nonempty_list.of_list fills with
-      | None -> iter t
-      | Some fills -> fills)
+      match fills with
+      | [] -> iter t
+      | fills -> fills)
   ;;
 
   let run t f : _ result =
@@ -298,7 +298,7 @@ end = struct
             Dune_util.Report_error.report e;
             Fiber.return ()))
     in
-    match Fiber.run fiber ~iter:(fun () -> iter t |> Nonempty_list.to_list) with
+    match Fiber.run fiber ~iter:(fun () -> iter t) with
     | Ok res ->
       assert (Event.Queue.pending_jobs t.events = 0);
       assert (Event.Queue.pending_worker_tasks t.events = 0);

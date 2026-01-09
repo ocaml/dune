@@ -32,13 +32,11 @@ let serve_once ~filename =
   Http.Server.start server;
   let port = Http.Server.port server in
   let thread =
-    Thread.create
-      (fun server ->
-         Http.Server.accept server ~f:(fun session ->
-           let () = Http.Server.accept_request session in
-           Http.Server.respond_file session ~file:filename);
-         Http.Server.stop server)
-      server
+    Scheduler.spawn_thread (fun () ->
+      Http.Server.accept server ~f:(fun session ->
+        let () = Http.Server.accept_request session in
+        Http.Server.respond_file session ~file:filename);
+      Http.Server.stop server)
   in
   port, thread
 ;;

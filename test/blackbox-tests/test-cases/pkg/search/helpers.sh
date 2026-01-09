@@ -14,18 +14,18 @@ create_dune_workspace_with_mock_repos() {
   # Always create a fresh workspace with mock repository configuration
   repo1="file://$(pwd)/mock-opam-repository"
   repo2="file://$(pwd)/other-opam-repository"
-  cat >dune-workspace <<EOF
-(lang dune 3.20)
-(pkg enabled)
-(lock_dir
- (repositories other mock))
-(repository
- (name mock)
- (url "${repo1}"))
-(repository
- (name other)
- (url "${repo2}"))
-EOF
+  cat >dune-workspace <<- EOF
+	(lang dune 3.20)
+	(pkg enabled)
+	(lock_dir
+	 (repositories other mock))
+	(repository
+	 (name mock)
+	 (url "${repo1}"))
+	(repository
+	 (name other)
+	 (url "${repo2}"))
+	EOF
 }
 
 mk_multiple_packages() {
@@ -40,10 +40,10 @@ mk_multiple_packages() {
       else
         prefix="Short synopsis for"
       fi
-      mkpkg "$pkg" "$version" <<EOF
-depends: [ "ocaml" {>= "4.12.0"} ]
-synopsis: "$prefix package: '$pkg' version: '$version'"
-EOF
+      mkpkg "$pkg" "$version" <<- EOF
+	depends: [ "ocaml" {>= "4.12.0"} ]
+	synopsis: "$prefix package: '$pkg' version: '$version'"
+	EOF
     done
   done
 }

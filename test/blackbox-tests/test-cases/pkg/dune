@@ -17,8 +17,7 @@
 
 (rule
  (alias runtest)
- (enabled_if
-  (and false %{bin-available:shellcheck}))
+ (enabled_if %{bin-available:shellcheck})
  (deps helpers.sh)
  (action
   (run %{bin:shellcheck} -s bash %{deps})))

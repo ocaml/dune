@@ -15,13 +15,20 @@ pkg_root="_build/_private/default/.pkg"
 
 default_lock_dir="dune.lock"
 source_lock_dir="${default_lock_dir}"
+mock_packages="mock-opam-repository/packages"
+
+# this needs to be a function, because it might be called from a subdir
+default_repo_path() {
+  echo "file://$(pwd)/mock-opam-repository"
+}
 
 # Prints the directory containing the package target and source dirs within the
 # _build directory.
 get_build_pkg_dir() {
-  package_name=$1
-  digest=$($dune pkg print-digest $package_name)
-  status=$?
+  local package_name=$1
+  local digest
+  digest=$($dune pkg print-digest "$package_name")
+  local status=$?
   if [ "$status" -eq "0" ]; then
     echo "$pkg_root/$digest"
   else
@@ -30,8 +37,10 @@ get_build_pkg_dir() {
 }
 
 build_pkg() {
-  prefix=$(get_build_pkg_dir $1)
-  status=$?
+  local pkg=$1
+  local prefix
+  prefix="$(get_build_pkg_dir "$pkg")"
+  local status=$?
   if [ "$status" -eq "0" ]; then
     $dune build "$prefix/target"
   else
@@ -40,58 +49,68 @@ build_pkg() {
 }
 
 show_pkg() {
-  prefix="$(get_build_pkg_dir $1)"
+  local pkg=$1
+  local prefix
+  prefix="$(get_build_pkg_dir "$pkg")"
   find "$prefix" | sort | dune_cmd subst "$prefix" ""
 }
 
 strip_sandbox() {
+  # we want to substitute it to $SANDBOX
+  # shellcheck disable=SC2016
   dune_cmd subst '[^ ]*.sandbox/[^/]+' '$SANDBOX'
 }
 
 show_pkg_targets() {
-  prefix="$(get_build_pkg_dir $1)/target"
+  local pkg=$1
+  local prefix
+  prefix="$(get_build_pkg_dir "$pkg")/target"
   find "$prefix" | sort | dune_cmd subst "$prefix" ""
 }
 
 show_pkg_cookie() {
-  $dune internal dump "$(get_build_pkg_dir $1)/target/cookie"
+  local pkg=$1
+  $dune internal dump "$(get_build_pkg_dir "$pkg")/target/cookie"
 }
-
-mock_packages="mock-opam-repository/packages"
 
 mkrepo() {
   mkdir -p $mock_packages
 }
 
 mkpkg() {
-  name=$1
+  local name=$1
+  local version
   if [ "$#" -eq "1" ]
   then
     version="0.0.1"
   else
     version="$2"
   fi
-  mkdir -p $mock_packages/$name/$name.$version
-  echo 'opam-version: "2.0"' > $mock_packages/$name/$name.$version/opam
-  cat >>$mock_packages/$name/$name.$version/opam
+  mkdir -p "$mock_packages/$name/$name.$version"
+  echo 'opam-version: "2.0"' > "$mock_packages/$name/$name.$version/opam"
+  cat >> "$mock_packages/$name/$name.$version/opam"
 }
 
 mk_ocaml() {
-  version="$1"
+  local version="$1"
+  local major
   major=$(echo "$version" | cut -d. -f1)
+  local minor
   minor=$(echo "$version" | cut -d. -f2)
+  local patch
   patch=$(echo "$version" | cut -d. -f3)
+  local next
   next=$(echo "$patch + 1" | bc)
-  constraint="{>= \"$major.$minor.$patch~\" & < \"$major.$minor.$next~\"}"
+  local constraint="{>= \"$major.$minor.$patch~\" & < \"$major.$minor.$next~\"}"
 
-  mkpkg ocaml $version << EOF
+  mkpkg ocaml "$version" << EOF
   depends: [
    "ocaml-base-compiler" $constraint |
    "ocaml-variants" $constraint
   ]
 EOF
 
-  mkpkg ocaml-base-compiler $version << EOF
+  mkpkg ocaml-base-compiler "$version" << EOF
   depends: [
    "ocaml-compiler" $constraint
   ]
@@ -99,7 +118,7 @@ EOF
   conflict-class: "ocaml-core-compiler"
 EOF
 
-  mkpkg ocaml-variants $version << EOF
+  mkpkg ocaml-variants "$version" << EOF
   depends: [
    "ocaml-compiler" {= "$version"}
   ]
@@ -107,7 +126,7 @@ EOF
   conflict-class: "ocaml-core-compiler"
 EOF
 
-  mkpkg ocaml-compiler $version << EOF
+  mkpkg ocaml-compiler "$version" << EOF
   depends: [
    "ocaml" {= "$version" & post}
   ]
@@ -137,7 +156,12 @@ unset_pkg() {
 
 add_mock_repo_if_needed() {
   # default, but can be overridden, e.g. if git is required
-  repo="${1:-file://$(pwd)/mock-opam-repository}"
+  local repo
+  if [ "$#" -eq "0" ]; then
+    repo=$(default_repo_path)
+  else
+    repo="$1"
+  fi
 
   if [ ! -e dune-workspace ]
   then
@@ -174,7 +198,7 @@ EOF
 
 create_mock_repo() {
   # Always create a fresh workspace with mock repository configuration
-  repo="${1:-file://$(pwd)/mock-opam-repository}"
+  local repo="${1:-file://$(pwd)/mock-opam-repository}"
   cat >dune-workspace <<EOF
 (lang dune 3.20)
 (lock_dir
@@ -205,22 +229,25 @@ make_lockpkg_file() {
 }
 
 dune_pkg_lock_normalized() {
+  local out
+  local processed
   out="$(mktemp)"
-  if dune pkg lock $@ 2>> "${out}"; then
+  if dune pkg lock "$@" 2>> "${out}"; then
     processed="$(mktemp)"
     if [ "${DUNE_CONFIG__PORTABLE_LOCK_DIR:-}" = "disabled" ]; then
       cp "${out}" "${processed}"
     else
-      cat "${out}" \
-        | awk '/Solution/{printf"%s:\n",$0;f=0};f{print};/Dependencies.*:/{f=1}' \
+        awk '/Solution/{printf"%s:\n",$0;f=0};f{print};/Dependencies.*:/{f=1}' "${out}" \
         | dune_cmd subst '\(none\)' '(no dependencies to lock)' \
         > "${processed}"
     fi
     cat "${processed}"
   else
     processed="$(mktemp)"
-    cat "${out}" \
-      | dune_cmd delete-between 'The dependency solver failed to find a solution for the following platforms:' '\.\.\.with this error:' \
+      dune_cmd delete-between \
+	      'The dependency solver failed to find a solution for the following platforms:' \
+	      '\.\.\.with this error:' \
+      < "${out}" \
       > "${processed}"
     cat "${processed}"
     return 1
@@ -229,8 +256,10 @@ dune_pkg_lock_normalized() {
 
 solve_project() {
   cat >dune-project
-  add_mock_repo_if_needed
-  dune_pkg_lock_normalized $@
+  local repo
+  repo=$(default_repo_path)
+  add_mock_repo_if_needed "$repo"
+  dune_pkg_lock_normalized "$@"
 }
 
 make_lockdir() {
@@ -252,8 +281,8 @@ EOF
 }
 
 print_source() {
-  cat "${default_lock_dir}"/"$1".pkg \
-  | dune_cmd print-from 'source' \
+  dune_cmd print-from 'source' \
+	  < "${default_lock_dir}"/"$1".pkg \
   | dune_cmd print-until '^$' \
   | dune_cmd subst "$PWD" "PWD" \
   | tr '\n' ' ' \
@@ -262,7 +291,7 @@ print_source() {
 }
 
 solve() {
-  make_project $@ | solve_project
+  make_project "$@" | solve_project dune.lock
 }
 
 # Pass a string of the form PACKAGE_NAME.PACKAGE_VERSION and replaces the

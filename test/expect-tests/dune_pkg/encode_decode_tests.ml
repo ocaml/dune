@@ -1,5 +1,4 @@
-open Stdune
-open Dune_scheduler
+open Import
 module Checksum = Dune_pkg.Checksum
 module Lock_dir = Dune_pkg.Lock_dir
 module Dependency = Dune_pkg.Lock_dir.Dependency
@@ -11,8 +10,6 @@ module Rev_store = Dune_pkg.Rev_store
 module Package_version = Dune_pkg.Package_version
 module Source = Dune_pkg.Source
 module Package_name = Dune_lang.Package_name
-
-let () = Dune_tests_common.init ()
 
 module Update = struct
   open Dyn

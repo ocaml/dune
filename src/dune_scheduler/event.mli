@@ -16,6 +16,7 @@ type t =
   | File_system_watcher_terminated
   | Shutdown of Shutdown.Reason.t
   | Fiber_fill_ivar of Fiber.fill
+  | Job_complete_ready
 
 module Queue : sig
   type event := t
@@ -33,6 +34,9 @@ module Queue : sig
   (** Register the fact that a job was started. *)
   val register_job_started : t -> unit
 
+  (** Register the fact that a job was finished. *)
+  val finish_job : t -> unit
+
   (** Number of jobs for which the status hasn't been reported yet .*)
   val pending_jobs : t -> int
 
@@ -49,6 +53,7 @@ module Queue : sig
 
   val send_invalidation_event : t -> Memo.Invalidation.t -> unit
   val send_job_completed : t -> job -> Proc.Process_info.t -> unit
+  val send_job_completed_ready : t -> unit
   val send_shutdown : t -> Shutdown.Reason.t -> unit
   val send_timers_completed : t -> Fiber.fill Nonempty_list.t -> unit
   val yield_if_there_are_pending_events : t -> unit Fiber.t

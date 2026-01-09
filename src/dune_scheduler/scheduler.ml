@@ -70,6 +70,7 @@ type t =
   ; mutable build_inputs_changed : Trigger.t
   ; mutable cancel : Fiber.Cancel.t
   ; thread_pool : Thread_pool.t
+  ; signal_watcher : Thread.t
   }
 
 let t : t option Fiber.Var.t = Fiber.Var.create None
@@ -170,15 +171,26 @@ let kill_and_wait_for_all_processes t =
     | Shutdown reason ->
       got_shutdown reason;
       saw_signal := Got_shutdown
+    | Job_complete_ready ->
+      ignore (Process_watcher.wait_unix t.process_watcher : Fiber.fill list)
     | _ -> ()
   done;
+  (* This silliness is needed because we have tests that run the scheduler
+     more than once per process. Such tests require the signal watcher to be
+     reset with the correct event queue. *)
+  if not Sys.win32
+  then (
+    Unix.kill (Unix.getpid ()) (Signal.to_int Thread.signal_watcher_interrupt);
+    Thread.join t.signal_watcher);
   !saw_signal
 ;;
 
 let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   (* The signal watcher must be initialized first so that signals are
      blocked in all threads. *)
-  Signal_watcher.init ~print_ctrl_c_warning:config.print_ctrl_c_warning events;
+  let signal_watcher =
+    Signal_watcher.init ~print_ctrl_c_warning:config.print_ctrl_c_warning events
+  in
   let cancel = Fiber.Cancel.create () in
   let process_watcher = Process_watcher.init events in
   { status =
@@ -201,6 +213,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   ; alarm_clock = lazy (Alarm_clock.create events (Time.Span.of_secs 0.1))
   ; cancel
   ; thread_pool = Thread_pool.create ~min_workers:4 ~max_workers:50
+  ; signal_watcher
   }
 ;;
 
@@ -255,6 +268,10 @@ end = struct
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();
       raise (Abort Already_reported)
+    | Job_complete_ready ->
+      (match Process_watcher.wait_unix t.process_watcher with
+       | [] -> iter t
+       | fills -> fills)
     | Fiber_fill_ivar fill -> [ fill ]
     | Shutdown reason ->
       got_shutdown reason;
@@ -489,7 +506,7 @@ module Run = struct
         Some
           (Dune_file_watcher.create_default
              ~scheduler:
-               { spawn_thread = Thread.spawn
+               { spawn_thread
                ; thread_safe_send_emit_events_job =
                    (fun job -> Event_queue.send_file_watcher_task events job)
                }

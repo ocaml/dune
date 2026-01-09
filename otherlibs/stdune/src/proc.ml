@@ -69,7 +69,7 @@ end
 external stub_wait4
   :  int
   -> Unix.wait_flag list
-  -> int * Unix.process_status * float * Resource_usage.t
+  -> (int * Unix.process_status * float * Resource_usage.t) option
   = "dune_wait4"
 
 type wait =
@@ -85,11 +85,12 @@ let wait wait flags =
       | Any -> -1
       | Pid pid -> Pid.to_int pid
     in
-    let pid, status, end_time, resource_usage = stub_wait4 pid flags in
-    let end_time = Time.of_epoch_secs end_time in
-    { Process_info.pid = Pid.of_int pid
-    ; status
-    ; end_time
-    ; resource_usage = Some resource_usage
-    })
+    stub_wait4 pid flags
+    |> Option.map ~f:(fun (pid, status, end_time, resource_usage) ->
+      let end_time = Time.of_epoch_secs end_time in
+      { Process_info.pid = Pid.of_int pid
+      ; status
+      ; end_time
+      ; resource_usage = Some resource_usage
+      }))
 ;;

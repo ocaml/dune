@@ -325,6 +325,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
             opam_package
             (loc, opam_file)
             at_rev
+            ~dune_build:true
             ~files_dir:None
             ~url:(Some url)
       in

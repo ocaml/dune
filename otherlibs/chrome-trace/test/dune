@@ -2,7 +2,6 @@
  (name chrome_trace_tests)
  (inline_tests)
  (libraries
-  dune_tests_common
   stdune
   chrome_trace
   ;; This is because of the (implicit_transitive_deps false)

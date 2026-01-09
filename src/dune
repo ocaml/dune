@@ -1,5 +1,3 @@
-(vendored_dirs *)
-
 (alias
  (name runtest)
  (deps

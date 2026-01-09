@@ -281,8 +281,8 @@ EOF
 }
 
 print_source() {
-  cat "${default_lock_dir}"/"$1".pkg \
-  | dune_cmd print-from 'source' \
+  dune_cmd print-from 'source' \
+	  < "${default_lock_dir}"/"$1".pkg \
   | dune_cmd print-until '^$' \
   | dune_cmd subst "$PWD" "PWD" \
   | tr '\n' ' ' \

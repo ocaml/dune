@@ -200,7 +200,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   ; build_inputs_changed = Trigger.create ()
   ; alarm_clock = lazy (Alarm_clock.create events (Time.Span.of_secs 0.1))
   ; cancel
-  ; thread_pool = Thread_pool.create ~spawn_thread ~min_workers:4 ~max_workers:50
+  ; thread_pool = Thread_pool.create ~min_workers:4 ~max_workers:50
   }
 ;;
 

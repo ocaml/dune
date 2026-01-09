@@ -14,7 +14,6 @@ open Stdune
 type t =
   { mutex : Mutex.t
   ; cv : Condition.t
-  ; spawn_thread : (unit -> unit) -> unit
   ; tasks : (unit -> unit) Queue.t
   ; min_workers : int
   ; max_workers : int
@@ -55,16 +54,15 @@ let spawn_worker t =
       Mutex.unlock t.mutex)
   in
   t.running <- t.running + 1;
-  t.spawn_thread start
+  Thread0.spawn start
 ;;
 
 let maybe_spawn_worker t = if t.idle = 0 && t.running < t.max_workers then spawn_worker t
 
-let create ~min_workers ~max_workers ~spawn_thread =
+let create ~min_workers ~max_workers =
   let t =
     { min_workers
     ; max_workers
-    ; spawn_thread
     ; cv = Condition.create ()
     ; mutex = Mutex.create ()
     ; tasks = Queue.create ()

@@ -105,11 +105,8 @@ let%expect_test "fetching an object twice from the store" =
   let () = run (fun () -> create_repo_at dir >>| ignore) in
   let get_remote_head dir = git_out ~dir [ "rev-parse"; "HEAD" ] in
   let add_file_to_remote commit_msg dir file contents =
-    run
-    @@ fun () ->
-    Fiber.return (write dir file contents)
-    >>> git ~dir [ "add"; file ]
-    >>> git ~dir [ "commit"; sprintf "-m '%s'" commit_msg ]
+    write dir file contents;
+    git ~dir [ "add"; file ] >>> git ~dir [ "commit"; sprintf "-m '%s'" commit_msg ]
   in
   let get_file remote_revision file expected_file_content =
     let* at_rev =
@@ -140,7 +137,7 @@ let%expect_test "fetching an object twice from the store" =
   let file_A = "file_A" in
   let file_A_content = "this is file A" in
   run (fun () ->
-    add_file_to_remote "added file A" dir file_A [ file_A_content ];
+    let* () = add_file_to_remote "added file A" dir file_A [ file_A_content ] in
     let* remote_revision = get_remote_head dir in
     get_file remote_revision file_A file_A_content
     >>> get_file remote_revision file_A file_A_content);
@@ -162,7 +159,7 @@ let%expect_test "fetching an object twice from the store" =
   let file_B = "file_B" in
   let file_B_content = "this is file B" in
   run (fun () ->
-    add_file_to_remote "added file B" dir file_B [ file_B_content ];
+    let* () = add_file_to_remote "added file B" dir file_B [ file_B_content ] in
     let* remote_revision = get_remote_head dir in
     Fiber.sequential_iter
       ~f:Fun.id

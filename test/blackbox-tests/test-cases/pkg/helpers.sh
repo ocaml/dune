@@ -103,34 +103,34 @@ mk_ocaml() {
   next=$(echo "$patch + 1" | bc)
   local constraint="{>= \"$major.$minor.$patch~\" & < \"$major.$minor.$next~\"}"
 
-  mkpkg ocaml "$version" << EOF
-  depends: [
-   "ocaml-base-compiler" $constraint |
-   "ocaml-variants" $constraint
-  ]
-EOF
+  mkpkg ocaml "$version" <<- EOF
+	depends: [
+	  "ocaml-base-compiler" $constraint |
+	  "ocaml-variants" $constraint
+	]
+	EOF
 
-  mkpkg ocaml-base-compiler "$version" << EOF
-  depends: [
-   "ocaml-compiler" $constraint
-  ]
-  flags: compiler
-  conflict-class: "ocaml-core-compiler"
-EOF
+  mkpkg ocaml-base-compiler "$version" <<- EOF
+	depends: [
+	  "ocaml-compiler" $constraint
+	]
+	flags: compiler
+	conflict-class: "ocaml-core-compiler"
+	EOF
 
-  mkpkg ocaml-variants "$version" << EOF
-  depends: [
-   "ocaml-compiler" {= "$version"}
-  ]
-  flags: compiler
-  conflict-class: "ocaml-core-compiler"
-EOF
+  mkpkg ocaml-variants "$version" <<- EOF
+	depends: [
+	  "ocaml-compiler" {= "$version"}
+	]
+	flags: compiler
+	conflict-class: "ocaml-core-compiler"
+	EOF
 
-  mkpkg ocaml-compiler "$version" << EOF
-  depends: [
-   "ocaml" {= "$version" & post}
-  ]
-EOF
+  mkpkg ocaml-compiler "$version" <<- EOF
+	depends: [
+	  "ocaml" {= "$version" & post}
+	]
+	EOF
 }
 
 set_pkg_to () {
@@ -165,31 +165,31 @@ add_mock_repo_if_needed() {
 
   if [ ! -e dune-workspace ]
   then
-      cat >dune-workspace <<EOF
-(lang dune 3.20)
-(lock_dir
- (repositories mock))
-(repository
- (name mock)
- (url "${repo}"))
-EOF
+      cat >dune-workspace <<- EOF
+	(lang dune 3.20)
+	(lock_dir
+	 (repositories mock))
+	(repository
+	 (name mock)
+	 (url "${repo}"))
+	EOF
   else
     if ! grep '(name mock)' dune-workspace > /dev/null
     then
       # add the repo definition
-      cat >>dune-workspace <<EOF
-(repository
- (name mock)
- (url "${repo}"))
-EOF
+      cat >>dune-workspace <<- EOF
+	(repository
+	 (name mock)
+	 (url "${repo}"))
+	EOF
  
       # reference the repo - only add lock_dir if no existing lock_dir references mock
       if ! grep '(repositories' dune-workspace | grep 'mock' > /dev/null
       then
-        cat >>dune-workspace <<EOF
-(lock_dir
- (repositories mock))
-EOF
+        cat >>dune-workspace <<- EOF
+	(lock_dir
+	 (repositories mock))
+	EOF
       fi
   
     fi
@@ -199,14 +199,14 @@ EOF
 create_mock_repo() {
   # Always create a fresh workspace with mock repository configuration
   local repo="${1:-file://$(pwd)/mock-opam-repository}"
-  cat >dune-workspace <<EOF
-(lang dune 3.20)
-(lock_dir
- (repositories mock))
-(repository
- (name mock)
- (url "${repo}"))
-EOF
+  cat >dune-workspace <<- EOF
+	(lang dune 3.20)
+	(lock_dir
+	 (repositories mock))
+	(repository
+	 (name mock)
+	 (url "${repo}"))
+	EOF
 }
 
 make_lockpkg() {
@@ -264,20 +264,20 @@ solve_project() {
 
 make_lockdir() {
   mkdir -p "${source_lock_dir}"
-  cat > "${source_lock_dir}"/lock.dune <<EOF
-(lang package 0.1)
-(repositories (complete true))
-EOF
+  cat > "${source_lock_dir}"/lock.dune <<- EOF
+	(lang package 0.1)
+	(repositories (complete true))
+	EOF
 }
 
 make_project() {
-  cat <<EOF
-(lang dune 3.20)
- (package
-  (name x)
-  (allow_empty)
-  (depends $@))
-EOF
+  cat <<- EOF
+	(lang dune 3.20)
+	 (package
+	  (name x)
+	  (allow_empty)
+	  (depends $@))
+	EOF
 }
 
 print_source() {

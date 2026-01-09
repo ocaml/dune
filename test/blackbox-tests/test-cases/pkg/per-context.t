@@ -16,7 +16,6 @@ TODO: versioning will be added once this feature is stable
   $ mkdir foo.lock
   $ cat >foo.lock/lock.dune <<EOF
   > (lang package 0.1)
-  > (repositories (complete true))
   > EOF
   $ cat >foo.lock/test.pkg <<EOF
   > (version 0.0.1)
@@ -27,13 +26,14 @@ TODO: versioning will be added once this feature is stable
   $ mkdir bar.lock
   $ cat >bar.lock/lock.dune <<EOF
   > (lang package 0.1)
-  > (repositories (complete true))
   > EOF
   $ cat >bar.lock/test.pkg <<EOF
   > (version 0.0.2)
   > (build
   >  (system "echo 'building from %{context_name}\nversion: %{pkg:test:version}'"))
   > EOF
+
+Build both contexts
 
   $ dune build @@_build/default/pkg-install
   building from default

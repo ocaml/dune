@@ -43,27 +43,54 @@ let extra_files = function
   | Rest t -> Some t.extra_files
 ;;
 
+let rec has_dune_dependency formula =
+  match (formula : OpamTypes.filtered_formula) with
+  | Empty -> false
+  | Atom (name, _condition) ->
+    (* ignore the condition *)
+    let dune_dep_name = OpamPackage.name Dune_dep.package in
+    OpamPackage.Name.equal name dune_dep_name
+  | Block b -> has_dune_dependency b
+  | And (left, right) | Or (left, right) ->
+    (* we just care it exists somewhere *)
+    has_dune_dependency left || has_dune_dependency right
+;;
+
+let has_dune_command (args, _filter) =
+  match args with
+  | [] -> false
+  | (maybe_dune, _filter) :: _ ->
+    (* there could be dune in other positions in the
+       argument or even in a script called via the formula
+       but it becomes infeasible to determine that *)
+    (match (maybe_dune : OpamTypes.simple_arg) with
+     | CString "dune" -> true
+     | CString _ | CIdent _ -> false)
+;;
+
+let is_dune_build opam_file =
+  let depends_on_dune =
+    let depends = OpamFile.OPAM.depends opam_file in
+    has_dune_dependency depends
+  in
+  let builds_with_dune =
+    let build = OpamFile.OPAM.build opam_file in
+    List.exists ~f:has_dune_command build
+  in
+  depends_on_dune || builds_with_dune
+;;
+
 let git_repo package (loc, opam_file) rev ~files_dir ~url =
   let opam_file = Opam_file.opam_file_with ~package ~url opam_file in
-  Rest
-    { dune_build = false
-    ; loc
-    ; package
-    ; opam_file
-    ; extra_files = Git_files (files_dir, rev)
-    }
+  let dune_build = is_dune_build opam_file in
+  Rest { dune_build; loc; package; opam_file; extra_files = Git_files (files_dir, rev) }
 ;;
 
 let local_fs package (loc, opam_file) ~dir ~files_dir ~url =
   let files_dir = Option.map files_dir ~f:(Path.append_local dir) in
   let opam_file = Opam_file.opam_file_with ~package ~url opam_file in
-  Rest
-    { dune_build = false
-    ; loc
-    ; package
-    ; extra_files = Inside_files_dir files_dir
-    ; opam_file
-    }
+  let dune_build = is_dune_build opam_file in
+  Rest { dune_build; loc; package; extra_files = Inside_files_dir files_dir; opam_file }
 ;;
 
 (* Scan a path recursively down retrieving a list of all files together with their

@@ -13,7 +13,6 @@ module type Scheduler = sig
   val fill_jobs : Fiber.fill list -> unit
   val register_job_started : unit -> unit
   val cancel_job_started : unit -> unit
-  val spawn_thread : (unit -> unit) -> Thread.t
 end
 
 let byte = Bytes.make 1 '0'
@@ -232,7 +231,7 @@ let rec select_loop t =
 
 let start t =
   let module Scheduler = (val t.scheduler : Scheduler) in
-  Scheduler.spawn_thread (fun () ->
+  Thread0.spawn (fun () ->
     Mutex.lock t.mutex;
     match select_loop t with
     | () -> Mutex.unlock t.mutex

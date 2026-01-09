@@ -10,13 +10,23 @@
   - [env] is the environment in which the program is run. *)
 val restore_cwd_and_execve : string -> string list -> env:Env.t -> _
 
+(* CR-soon rgrinberg: rename to rusage *)
 module Resource_usage : sig
   type t =
     { user_cpu_time : Time.Span.t
       (** Same as the "user" time reported by the "time" command *)
     ; system_cpu_time : Time.Span.t
       (** Same as the "sys" time reported by the "time" command *)
+    ; maxrss : int
+    ; minflt : int
+    ; majflt : int
+    ; inblock : int
+    ; oublock : int
+    ; nvcsw : int
+    ; nivcsw : int
     }
+
+  val zero : t
 end
 
 module Times : sig

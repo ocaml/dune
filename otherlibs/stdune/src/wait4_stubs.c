@@ -67,9 +67,16 @@ value dune_wait4(value v_pid, value flags) {
   if (pid == -1)
     uerror("wait4", Nothing);
 
-  times = caml_alloc_small(2 * Double_wosize, Double_array_tag);
-  Store_double_field(times, 0, ru.ru_utime.tv_sec + ru.ru_utime.tv_usec / 1e6);
-  Store_double_field(times, 1, ru.ru_stime.tv_sec + ru.ru_stime.tv_usec / 1e6);
+  times = caml_alloc_tuple(9);
+  Store_field(times, 0, caml_copy_double(ru.ru_utime.tv_sec + ru.ru_utime.tv_usec / 1e6));
+  Store_field(times, 1, caml_copy_double(ru.ru_stime.tv_sec + ru.ru_stime.tv_usec / 1e6));
+  Store_field(times, 2, Val_long(ru.ru_maxrss));
+  Store_field(times, 3, Val_long(ru.ru_minflt));
+  Store_field(times, 4, Val_long(ru.ru_majflt));
+  Store_field(times, 5, Val_long(ru.ru_inblock));
+  Store_field(times, 6, Val_long(ru.ru_oublock));
+  Store_field(times, 7, Val_long(ru.ru_nvcsw));
+  Store_field(times, 8, Val_long(ru.ru_nivcsw));
 
   res = caml_alloc_tuple(4);
   Store_field(res, 0, Val_int(pid));

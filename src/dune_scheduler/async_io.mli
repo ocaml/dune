@@ -19,7 +19,6 @@ module type Scheduler = sig
   val fill_jobs : Fiber.fill list -> unit
   val register_job_started : unit -> unit
   val cancel_job_started : unit -> unit
-  val spawn_thread : (unit -> unit) -> Thread.t
 end
 
 (** [with_io scheduler f] runs [f] with [scheduler]. All operations in this

@@ -284,7 +284,6 @@ end = struct
     let fiber =
       set t (fun () ->
         let module Scheduler = struct
-          let spawn_thread = spawn_thread
           let register_job_started () = Event.Queue.register_worker_task_started t.events
           let fill_jobs jobs = Event.Queue.send_worker_tasks_completed t.events jobs
           let cancel_job_started () = Event.Queue.cancel_work_task_started t.events

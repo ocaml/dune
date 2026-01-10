@@ -50,3 +50,6 @@ def coqdocFlags:
   | .args.process_args
   | .[]
   | rocqArg;
+
+def redactedActionTraces:
+  [ .[] | select(.args.digest != null) | .ts |= 0 | .args.digest |= "REDACTED" ] | sort_by(.name) | .[];

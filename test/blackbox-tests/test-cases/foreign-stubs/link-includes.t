@@ -19,8 +19,6 @@ Test linktime includes for an external library with C stubs
   >  (c_names lib_stubs))
   > EOF
   $ dune build --root lib1 @install
-  Entering directory 'lib1'
-  Leaving directory 'lib1'
 
 First we create an external library and implementation
   $ mkdir exe
@@ -34,7 +32,5 @@ First we create an external library and implementation
 
 Then we make sure that it works fine.
   $ env OCAMLPATH=lib1/_build/install/default/lib: dune exec --root exe ./bar.exe
-  Entering directory 'exe'
-  Leaving directory 'exe'
   lib1: 42
 

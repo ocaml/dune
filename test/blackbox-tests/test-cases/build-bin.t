@@ -56,8 +56,6 @@ Building the private executable via the env alias should work too:
   $ dune build %{bin:priv}
 
   $ (cd foo && dune build --root .. %{bin:priv}) # should work
-  Entering directory '..'
-  Leaving directory '..'
   $ dune build %{bin:foo} # doesn't work because foo is underneath us
   File "command line", line 1, characters 0-10:
   Error: Program foo not found in the tree or in PATH

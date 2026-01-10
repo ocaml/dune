@@ -26,8 +26,6 @@ Test `melange.runtime_deps` in a library that has been installed
   > EOF
 
   $ dune build --root lib
-  Entering directory 'lib'
-  Leaving directory 'lib'
 
   $ cat lib/_build/default/foo.install
   lib: [
@@ -74,8 +72,6 @@ Test `melange.runtime_deps` in a library that has been installed
   > EOF
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @mel
-  Entering directory 'app'
-  Leaving directory 'app'
 
   $ ls app/_build/default/output/node_modules/foo
   foo.js

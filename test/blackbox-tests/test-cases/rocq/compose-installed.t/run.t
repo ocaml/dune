@@ -27,8 +27,6 @@ We setup an installed theory. Note that lib/coq/user-contrib doesn't exist yet,
 so this also tests that it won't be a problem.
 
   $ dune build --root B @install
-  Entering directory 'B'
-  Leaving directory 'B'
   $ dune install --root B --prefix=$PWD --display=short
   Installing $TESTCASE_ROOT/lib/B/META
   Installing $TESTCASE_ROOT/lib/B/dune-package
@@ -110,5 +108,3 @@ with the loadpath semantics of Coq.
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
 
   $ dune build --root A
-  Entering directory 'A'
-  Leaving directory 'A'

@@ -44,6 +44,19 @@ let print_blank_line () =
 let first_msg = ref true
 let separate_messages v = separate_messages_flag := v
 
+type printing_directory_state =
+  | Not_set
+  | Set of string
+  | Entering_printed of string
+
+let directory = ref Not_set
+
+let set_directory dir =
+  match !directory with
+  | Not_set | Entering_printed _ -> directory := Set dir
+  | Set _ -> ()
+;;
+
 (* If the [separate_messages = false], then [print_blank_line ()] does nothing.
    When [separate_messages = true], [print_blank_line ()] does nothing the
    first time it is called, whereas subsequent calls print a new line. Note
@@ -69,6 +82,12 @@ let print_blank_line () =
 
 let print_user_message msg =
   let (module M : Backend_intf.S) = !Backend.main in
+  (match !directory with
+   | Set dir ->
+     directory := Entering_printed dir;
+     M.print_user_message
+       (User_message.make [ Pp.verbatimf "Entering directory '%s'" dir ])
+   | Not_set | Entering_printed _ -> ());
   print_blank_line ();
   M.print_user_message msg
 ;;
@@ -102,6 +121,15 @@ let reset_flush_history () =
 
 let finish () =
   let (module M : Backend_intf.S) = !Backend.main in
+  (match !directory with
+   | Entering_printed dir ->
+     (* make sure all buffered stdout output comes before the "leaving" message
+        or else it will interleave. *)
+     flush stdout;
+     directory := Set dir;
+     M.print_user_message
+       (User_message.make [ Pp.verbatimf "Leaving directory '%s'" dir ])
+   | Not_set | Set _ -> ());
   M.finish ()
 ;;
 

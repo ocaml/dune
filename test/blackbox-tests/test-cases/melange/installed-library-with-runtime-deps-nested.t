@@ -26,8 +26,6 @@ nested more than the dune-project file
   > EOF
 
   $ dune build --root lib
-  Entering directory 'lib'
-  Leaving directory 'lib'
 
   $ cat lib/_build/default/foo.install
   lib: [
@@ -63,8 +61,6 @@ nested more than the dune-project file
   > EOF
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @melange
-  Entering directory 'app'
-  Leaving directory 'app'
 
 File exists in output dir
 

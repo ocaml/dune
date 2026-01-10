@@ -2,8 +2,6 @@
   $ cp dune dune-project a.opam a
 
   $ dune build --root=a
-  Entering directory 'a'
-  Leaving directory 'a'
   $ dune_cmd cat a/_build/install/default/lib/a/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
   (lang dune <version>)
   (name a)
@@ -118,8 +116,6 @@
 
 Build with "--store-orig-source-dir" profile
   $ dune build --root=a --store-orig-source-dir
-  Entering directory 'a'
-  Leaving directory 'a'
   $ dune_cmd cat a/_build/install/default/lib/a/dune-package | grep -A 1 '(orig_src_dir'
    (orig_src_dir
     $TESTCASE_ROOT/a)
@@ -132,8 +128,6 @@ Build with "--store-orig-source-dir" profile
 
 Build with "DUNE_STORE_ORIG_SOURCE_DIR=true" profile
   $ DUNE_STORE_ORIG_SOURCE_DIR=true dune build --root=a
-  Entering directory 'a'
-  Leaving directory 'a'
   $ dune_cmd cat a/_build/install/default/lib/a/dune-package | grep -A 1 '(orig_src_dir'
    (orig_src_dir
     $TESTCASE_ROOT/a)

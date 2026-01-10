@@ -50,6 +50,18 @@ module Event : sig
     ; dirs : Filename.Set.t
     }
 
+  val process_start
+    :  pid:Pid.t
+    -> dir:Path.t option
+    -> prog:string
+    -> args:string list
+    -> timeout:Time.Span.t option
+    -> started_at:Time.t
+    -> name:string option
+    -> categories:string list
+    -> targets:targets option
+    -> t
+
   val process
     :  name:string option
     -> started_at:Time.t

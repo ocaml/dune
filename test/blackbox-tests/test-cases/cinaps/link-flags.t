@@ -16,11 +16,13 @@ Link-time flags for running cinaps
   $ dune build @cinaps
   $ jqScript=$(mktemp)
   $ cat >$jqScript <<EOF
-  > .args |
-  > select(has("process_args") and (.process_args | index("-linkall"))) |
-  > .process_args |
-  > .[] |
-  > select(endswith(".exe"))
+  > include "dune";
+  >   processes
+  > | .args
+  > | select(.process_args | index("-linkall"))
+  > | .process_args
+  > | .[]
+  > | select(endswith(".exe"))
   > EOF
   $ dune trace cat | jq -f $jqScript
   ".cinaps.edaf9873/cinaps.exe"

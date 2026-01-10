@@ -35,7 +35,7 @@ Set a custom flag in the environment:
 
   $ show_flags() {
   >   dune trace cat \
-  >     | jq -r --arg f "$1" 'select(.args.process_args | last == $f) | .args.process_args | join(" ")'
+  >     | jq -r --arg f "$1" 'include "dune"; processes | select(.args.process_args | last == $f) | .args.process_args | join(" ")'
   > }
 
 Direct :standard correctly picks up the environment flag:

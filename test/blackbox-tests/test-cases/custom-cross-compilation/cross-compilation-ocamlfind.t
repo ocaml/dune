@@ -78,9 +78,10 @@ Dune should be able to find it too
   Leaving directory 'app'
 
   $ dune trace cat | jq '
-  >   .args
-  > | select(has("prog") and (.prog
-  > | contains("notocamldep-foo")))
+  > include "dune";
+  >    processes
+  > | .args
+  > | select(.prog | contains("notocamldep-foo"))
   > | del(.pid)
   > | .rusage |= keys
   > '

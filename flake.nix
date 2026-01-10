@@ -229,8 +229,29 @@
                   pkgs.extend (
                     pself: psuper: {
                       ocamlPackages = psuper.ocamlPackages.overrideScope (
-                        oself: osuper: {
+                        oself: osuper: with oself; {
                           dune_3 = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
+                          fs-io = buildDunePackage {
+                            pname = "fs-io";
+                            inherit (dune_3) src version;
+                          };
+                          top-closure = buildDunePackage {
+                            pname = "top-closure";
+                            inherit (dune_3) src version;
+                          };
+                          dune-glob = osuper.dune-glob.overrideAttrs (o: {
+                            propagatedBuildInputs = o.propagatedBuildInputs ++ [
+                              pp
+                              re
+                            ];
+                          });
+                          stdune = osuper.stdune.overrideAttrs (o: {
+                            propagatedBuildInputs = o.propagatedBuildInputs ++ [
+                              pp
+                              fs-io
+                              top-closure
+                            ];
+                          });
                         }
                       );
                     }

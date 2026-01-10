@@ -19,6 +19,7 @@ module Category : sig
     | Diagnostics
     | Log
     | Cram
+    | Action
 
   val of_string : string -> t option
 end
@@ -164,6 +165,11 @@ module Event : sig
       }
 
     val test : test:Path.t -> command list -> t
+  end
+
+  module Action : sig
+    val start : name:string -> start:Time.t -> t
+    val finish : name:string -> start:Time.t -> t
   end
 end
 

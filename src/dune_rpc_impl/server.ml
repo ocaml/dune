@@ -197,7 +197,6 @@ end
 type 'build_arg t =
   { config : Run.t
   ; pending_jobs : 'build_arg pending_action Job_queue.t
-  ; parse_build_arg : string -> 'build_arg
   ; mutable clients : Clients.t
   }
 
@@ -223,7 +222,7 @@ let get_current_diagnostic_errors () =
     | `Diagnostic compound_user_error -> Some compound_user_error)
 ;;
 
-let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
+let handler (t : _ t Fdecl.t) : 'build_arg Dune_rpc_server.Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
     let client = () in
@@ -346,8 +345,7 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
   in
   let () =
     implement_request_pending_action Decl.build ~f:(fun targets ->
-      let server = Fdecl.get t in
-      let targets = List.map targets ~f:server.parse_build_arg in
+      let targets = List.map targets ~f:Dune_rules_rpc.parse_build_arg in
       Build targets)
   in
   let () =
@@ -463,14 +461,14 @@ let handler (t : _ t Fdecl.t) handle : 'build_arg Dune_rpc_server.Handler.t =
     let f _ () = Fiber.return Path.Build.(to_string root) in
     Handler.implement_request rpc Procedures.Public.build_dir f
   in
-  handle rpc;
+  Dune_rules_rpc.register rpc;
   rpc
 ;;
 
-let create ~lock_timeout ~registry ~root ~handle ~parse_build_arg =
+let create ~lock_timeout ~registry ~root =
   let t = Fdecl.create Dyn.opaque in
   let pending_jobs = Job_queue.create () in
-  let handler = Dune_rpc_server.make (handler t handle) in
+  let handler = Dune_rpc_server.make (handler t) in
   let pool = Fiber.Pool.create () in
   let where = Where.default () in
   Global_lock.lock_exn ~timeout:lock_timeout;
@@ -504,7 +502,7 @@ let create ~lock_timeout ~registry ~root ~handle ~parse_build_arg =
     ; server_ivar = Fiber.Ivar.create ()
     }
   in
-  let res = { config; pending_jobs; clients = Clients.empty; parse_build_arg } in
+  let res = { config; pending_jobs; clients = Clients.empty } in
   Fdecl.set t res;
   res
 ;;

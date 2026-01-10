@@ -1262,12 +1262,7 @@ let build (root : Workspace_root.t) (builder : Builder.t) =
              | Yes Passive -> Some (Time.Span.of_secs 1.0)
              | _ -> None
            in
-           Dune_rpc_impl.Server.create
-             ~lock_timeout
-             ~registry
-             ~root:root.dir
-             ~handle:Dune_rules_rpc.register
-             ~parse_build_arg:Dune_rules_rpc.parse_build_arg))
+           Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir))
     else `Forbid_builds
   in
   if builder.print_metrics then Dune_metrics.enable ();

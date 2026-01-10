@@ -7,6 +7,7 @@ module Progress = struct
     { number_of_rules_discovered : int
     ; number_of_rules_executed : int
     ; number_of_rules_failed : int
+    ; start_time : float
     }
 
   let to_dyn t =
@@ -14,22 +15,29 @@ module Progress = struct
       [ "number_of_rules_discovered", Dyn.int t.number_of_rules_discovered
       ; "number_of_rules_executed", Dyn.int t.number_of_rules_executed
       ; "number_of_rules_failed", Dyn.int t.number_of_rules_failed
+      ; "start_time", Dyn.float t.start_time
       ]
   ;;
 
   let equal
-        { number_of_rules_discovered; number_of_rules_executed; number_of_rules_failed }
+        { number_of_rules_discovered
+        ; number_of_rules_executed
+        ; number_of_rules_failed
+        ; start_time
+        }
         t
     =
     Int.equal number_of_rules_discovered t.number_of_rules_discovered
     && Int.equal number_of_rules_executed t.number_of_rules_executed
     && Int.equal number_of_rules_failed t.number_of_rules_failed
+    && start_time = t.start_time
   ;;
 
   let init =
     { number_of_rules_discovered = 0
     ; number_of_rules_executed = 0
     ; number_of_rules_failed = 0
+    ; start_time = Unix.gettimeofday ()
     }
   ;;
 end

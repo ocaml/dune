@@ -1,0 +1,55 @@
+name: Bisect Reverse Dependencies
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package to test (e.g., "lwt", "base")'
+        required: true
+        type: string
+      good:
+        description: 'Known good ref (e.g., "3.16.0")'
+        required: true
+        type: string
+      bad:
+        description: 'Known bad ref (e.g., "main", commit sha)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  EXTRA_NIX_CONFIG: |
+    extra-substituters = https://anmonteiro.nix-cache.workers.dev
+    extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
+
+jobs:
+  bisect:
+    name: Bisect ${{ inputs.package }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
+      - name: Bisect
+        run: |
+          package="${{ inputs.package }}"
+          good="${{ inputs.good }}"
+          bad="${{ inputs.bad }}"
+
+          git bisect start --no-checkout
+          git bisect good "$good"
+          git bisect bad "$bad"
+
+          git bisect run sh -c "nix build .#revdeps.x86_64-linux.$package --override-input revdeps-dune \"github:ocaml/dune/\$(git rev-parse BISECT_HEAD)\""
+
+          echo "## Bisect Result" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "First bad commit:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          git bisect log | tail -20 >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

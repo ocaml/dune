@@ -35,7 +35,7 @@ type process_state =
   | Zombie of Proc.Process_info.t
 
 (* This mutable table is safe: it does not interact with the state we track in
-     the build system. *)
+   the build system. *)
 type t =
   { mutex : Mutex.t Lazy.t
   ; something_is_running : Condition.t option
@@ -56,12 +56,7 @@ let is_running_win32 t pid =
 
 let is_running = if Sys.win32 then is_running_win32 else is_running_unix
 
-module Process_table : sig
-  val add : t -> Event.job -> unit
-  val remove : t -> Proc.Process_info.t -> Event.job option
-  val running_count : t -> int
-  val iter : t -> f:(Event.job -> unit) -> unit
-end = struct
+module Process_table = struct
   let add t (job : Event.job) =
     match Table.find t.table job.pid with
     | None ->

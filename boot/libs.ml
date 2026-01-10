@@ -483,12 +483,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_rules_rpc"
-    ; main_module_name = Some "Dune_rules_rpc"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ]
 
 let main =
@@ -554,7 +548,6 @@ let main =
             ; "Csexp"
             ; "Csexp_rpc"
             ; "Dune_rpc_impl"
-            ; "Dune_rules_rpc"
             ; "Dune_rpc_private"
             ; "Dune_rpc_client"
             ; "Spawn"

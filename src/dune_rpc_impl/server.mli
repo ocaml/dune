@@ -9,9 +9,6 @@ val create
   :  lock_timeout:Time.Span.t option
   -> registry:[ `Add | `Skip ]
   -> root:string
-  -> handle:(unit Dune_rpc_server.Handler.t -> unit)
-       (** register additional requests or notifications *)
-  -> parse_build_arg:(string -> Dune_lang.Dep_conf.t)
   -> Dune_lang.Dep_conf.t t
 
 type 'build_arg pending_action_kind =

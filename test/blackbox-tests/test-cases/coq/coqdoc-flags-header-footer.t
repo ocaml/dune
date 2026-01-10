@@ -30,9 +30,9 @@ Testing the coqdoc_header and coqdoc_footer field of the env stanza.
   Hint: To disable this warning, add the following to your dune-project file:
   (warnings (deprecated_coq_lang disabled))
 
-  $ dune trace cat | jq 'select(.name == "coqdoc") | .args.process_args | .[] | sub(".*/coq"; "/coq")'
+  $ dune trace cat | jq 'include "dune"; coqdocFlags'
   "-R"
-  "/coq/theories"
+  "coq/theories"
   "Coq"
   "-R"
   "."
@@ -53,9 +53,9 @@ Testing the coqdoc_header and coqdoc_footer field of the env stanza.
   Hint: To disable this warning, add the following to your dune-project file:
   (warnings (deprecated_coq_lang disabled))
 
-  $ dune trace cat | jq 'select(.name == "coqdoc") | .args.process_args | .[] | sub(".*/coq"; "/coq")'
+  $ dune trace cat | jq 'include "dune"; coqdocFlags'
   "-R"
-  "/coq/theories"
+  "coq/theories"
   "Coq"
   "-R"
   "."

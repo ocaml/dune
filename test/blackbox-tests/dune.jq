@@ -11,7 +11,7 @@ def redactCommandTimes:
 
 def targets: (.target_files // []) + (.target_dirs // []);
 
-def processes: select(.cat == "process" and .args.pid != null);
+def processes: select(.cat == "process" and .name == "finish");
 
 def targetsMatching($m):
     processes
@@ -25,3 +25,28 @@ def slowestCommands($n):
        | .args.test as $test | .args.commands[] | {test: $test} + .]
   | sort_by(-.real)
   | .[:$n];
+
+def basename: split("/") | last;
+
+def rocqArg:
+    sub(".*/coq/theories"; "coq/theories")
+  | sub(".*/rocq-runtime/"; "rocq-runtime/")
+  | sub(".*/coq/"; "coq/")
+  | sub(".*/coq-core"; "coq-core");
+
+def rocqFlags:
+    processes
+  | select(.args.prog | basename | (contains("rocq") or contains("coq")))
+  | {name: (.args.prog | basename), args: (.args.process_args | map(rocqArg))};
+
+def coqcCoqdepFlags:
+    processes
+  | select(.args.process_args[0] | IN("compile", "dep"))
+  | {name: .args.prog | basename, args: (.args.process_args | map(rocqArg))};
+
+def coqdocFlags:
+    processes
+  | select((.args.prog | basename) == "coqdoc")
+  | .args.process_args
+  | .[]
+  | rocqArg;

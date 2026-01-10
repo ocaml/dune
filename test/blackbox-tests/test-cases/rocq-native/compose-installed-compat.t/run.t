@@ -50,9 +50,9 @@ Next we go into our Dune project and build it.
 
 Now we check the flags that were passed to coqdep and coqc:
 
-  $ dune trace cat | jq 'include "dune"; select(.args.process_args.[0] | IN ("compile", "dep")) | {name, args: (.args.process_args | map(sub(".*/coq-core"; "coq-core")))}'
+  $ dune trace cat | jq 'include "dune"; coqcCoqdepFlags'
   {
-    "name": "rocq",
+    "name": "finish",
     "args": [
       "dep",
       "-boot",
@@ -72,7 +72,7 @@ Now we check the flags that were passed to coqdep and coqc:
     ]
   }
   {
-    "name": "rocq",
+    "name": "finish",
     "args": [
       "compile",
       "-q",

@@ -23,7 +23,7 @@ Testing the coqdoc flags field of the env stanza.
   Hint: To disable this warning, add the following to your dune-project file:
   (warnings (deprecated_coq_lang disabled))
 
-  $ dune trace cat | jq 'select(.name == "coqdoc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")'
+  $ dune trace cat | jq 'include "dune"; coqdocFlags'
   "-R"
   "coq/theories"
   "Coq"

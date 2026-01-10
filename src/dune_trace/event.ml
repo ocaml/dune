@@ -215,11 +215,6 @@ let process
       ~stderr
       ~times:{ Proc.Times.elapsed_time; resource_usage }
   =
-  let name =
-    match name with
-    | Some n -> n
-    | None -> Filename.basename prog
-  in
   let args =
     let always =
       [ "process_args", Arg.list (List.map process_args ~f:Arg.string)
@@ -244,12 +239,15 @@ let process
            | Some targets -> args_of_targets targets)
         ; output "stdout" stdout
         ; output "stderr" stderr
+        ; (match name with
+           | None -> []
+           | Some name -> [ "name", Arg.string name ])
         ]
     in
     let resource_usage = make_rusage_args resource_usage in
     always @ extended @ resource_usage
   in
-  Event.complete ~args ~start:started_at ~dur:elapsed_time ~name Process
+  Event.complete ~args ~start:started_at ~dur:elapsed_time ~name:"finish" Process
 ;;
 
 let unknown_process { Proc.Process_info.pid; status; end_time; resource_usage } =

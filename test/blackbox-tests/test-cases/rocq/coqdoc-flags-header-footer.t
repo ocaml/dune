@@ -26,7 +26,7 @@ Testing the rocqdoc_header and rocqdoc_footer field of the env stanza.
 
   $ dune build @doc
 
-  $ dune trace cat | jq -c 'include "dune"; select(.args.process_args.[0] == "doc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")'
+  $ dune trace cat | jq -c 'include "dune"; coqdocFlags'
   "doc"
   "-R"
   "coq/theories"
@@ -46,7 +46,7 @@ Testing the rocqdoc_header and rocqdoc_footer field of the env stanza.
 
   $ dune build @doc-latex
 
-  $ dune trace cat | jq -c 'include "dune"; processes | select(.args.process_args.[0] == "doc") | .args.process_args | .[] | sub(".*/coq/"; "coq/")'
+  $ dune trace cat | jq -c 'include "dune"; coqdocFlags'
   "doc"
   "-R"
   "coq/theories"

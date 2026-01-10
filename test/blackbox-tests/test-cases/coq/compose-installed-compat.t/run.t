@@ -58,7 +58,7 @@ Next we go into our Dune project and build it.
 
 Now we check the flags that were passed to coqdep and coqc:
 
-  $ dune trace cat | jq 'select(.name == "coqc" or .name == "coqdep") | {name, args: (.args.process_args | map(sub(".*/coq-core"; "coq-core")))}'
+  $ dune trace cat | jq 'include "dune"; rocqFlags'
   {
     "name": "coqc",
     "args": [
@@ -70,10 +70,10 @@ Now we check the flags that were passed to coqdep and coqc:
     "args": [
       "-boot",
       "-R",
-      "$TESTCASE_ROOT/lib/coq/theories",
+      "coq/theories",
       "Coq",
       "-Q",
-      "$TESTCASE_ROOT/lib/coq/user-contrib/B",
+      "coq/user-contrib/B",
       "B",
       "-R",
       ".",
@@ -100,10 +100,10 @@ Now we check the flags that were passed to coqdep and coqc:
       ".",
       "-boot",
       "-R",
-      "$TESTCASE_ROOT/lib/coq/theories",
+      "coq/theories",
       "Coq",
       "-Q",
-      "$TESTCASE_ROOT/lib/coq/user-contrib/B",
+      "coq/user-contrib/B",
       "B",
       "-R",
       ".",

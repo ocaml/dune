@@ -125,5 +125,11 @@ let resolve_package { Local_package.loc; url = loc_url, url; name; version; orig
       let loc = Loc.in_file path in
       loc, Opam_file.opam_file_of_string_exn ~contents path
     in
-    Resolved_package.git_repo package opam_file rev ~files_dir ~url:(Some url)
+    Resolved_package.git_repo
+      package
+      opam_file
+      rev
+      ~dune_build:false
+      ~files_dir
+      ~url:(Some url)
 ;;

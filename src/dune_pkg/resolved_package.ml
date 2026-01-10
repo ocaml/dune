@@ -43,15 +43,9 @@ let extra_files = function
   | Rest t -> Some t.extra_files
 ;;
 
-let git_repo package (loc, opam_file) rev ~files_dir ~url =
+let git_repo package (loc, opam_file) rev ~dune_build ~files_dir ~url =
   let opam_file = Opam_file.opam_file_with ~package ~url opam_file in
-  Rest
-    { dune_build = false
-    ; loc
-    ; package
-    ; opam_file
-    ; extra_files = Git_files (files_dir, rev)
-    }
+  Rest { dune_build; loc; package; opam_file; extra_files = Git_files (files_dir, rev) }
 ;;
 
 let local_fs package (loc, opam_file) ~dir ~files_dir ~url =

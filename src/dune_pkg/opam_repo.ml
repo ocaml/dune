@@ -192,6 +192,7 @@ let load_packages_from_git rev_store opam_packages =
         package
         opam_file
         rev
+        ~dune_build:false
         ~files_dir:(Some files_dir)
         ~url:None)
 ;;

@@ -20,6 +20,7 @@ val git_repo
   :  OpamPackage.t
   -> Loc.t * OpamFile.OPAM.t
   -> Rev_store.At_rev.t
+  -> dune_build:bool
   -> files_dir:Path.Local.t option
   -> url:OpamUrl.t option
   -> t

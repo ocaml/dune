@@ -569,3 +569,14 @@ module Cram = struct
     Event.instant ~args ~name:"cram" now Cram
   ;;
 end
+
+module Action = struct
+  let start ~name ~start =
+    Event.instant ~args:[ "name", Arg.string name ] ~name:"start" start Action
+  ;;
+
+  let finish ~name ~start =
+    let dur = Time.diff (Time.now ()) start in
+    Event.complete ~args:[ "name", Arg.string name ] ~name:"finish" ~start ~dur Action
+  ;;
+end

@@ -31,7 +31,10 @@ struct
 
     let action a ~ectx ~eenv =
       let open Fiber.O in
+      let start = Time.now () in
+      Dune_trace.emit Action (fun () -> Dune_trace.Event.Action.start ~name ~start);
       let+ () = action a ~ectx ~eenv in
+      Dune_trace.emit Action (fun () -> Dune_trace.Event.Action.finish ~name ~start);
       Done_or_more_deps.Done
     ;;
   end

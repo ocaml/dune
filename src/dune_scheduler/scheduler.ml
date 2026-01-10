@@ -69,7 +69,7 @@ type t =
   ; fs_syncs : unit Fiber.Ivar.t Dune_file_watcher.Sync_id.Table.t
   ; mutable build_inputs_changed : Trigger.t
   ; mutable cancel : Fiber.Cancel.t
-  ; thread_pool : Thread_pool.t
+  ; thread_pool : Thread_pool.t Lazy.t
   ; signal_watcher : Thread.t
   }
 
@@ -212,7 +212,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   ; build_inputs_changed = Trigger.create ()
   ; alarm_clock = lazy (Alarm_clock.create events (Time.Span.of_secs 0.1))
   ; cancel
-  ; thread_pool = Thread_pool.create ~min_workers:4 ~max_workers:50
+  ; thread_pool = lazy (Thread_pool.create ~min_workers:4 ~max_workers:50)
   ; signal_watcher
   }
 ;;
@@ -353,7 +353,7 @@ let async f =
     let res = Exn_with_backtrace.try_with f in
     Event.Queue.send_worker_task_completed t.events (Fiber.Fill (ivar, res))
   in
-  Thread_pool.task t.thread_pool ~f;
+  Thread_pool.task (Lazy.force t.thread_pool) ~f;
   Event.Queue.register_worker_task_started t.events;
   Fiber.Ivar.read ivar
 ;;

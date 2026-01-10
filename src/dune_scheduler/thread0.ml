@@ -20,9 +20,8 @@ let blocked_signals : Signal.t list = Terminal_signals.signals @ interrupt_signa
 let block_signals =
   lazy
     (let () =
-       Sys.set_signal
-         (Signal.to_int signal_watcher_interrupt)
-         (Signal_handle (fun _ -> ()))
+       List.iter [ signal_watcher_interrupt; Chld ] ~f:(fun signal ->
+         Sys.set_signal (Signal.to_int signal) (Signal_handle (fun _ -> ())))
      in
      let signos = List.map blocked_signals ~f:Signal.to_int in
      ignore (Unix.sigprocmask SIG_BLOCK signos : int list))

@@ -114,16 +114,27 @@ end = struct
                { Build_system.Progress.number_of_rules_executed = done_
                ; number_of_rules_discovered = total
                ; number_of_rules_failed = failed
+               ; start_time
                } ->
+             let running = Scheduler.running_jobs_count scheduler in
+             let remaining = total - done_ in
+             let queued = max 0 (remaining - running) in
+             let elapsed = Unix.gettimeofday () -. start_time in
+             let elapsed_str =
+               if elapsed < 60.0
+               then sprintf "%.0fs" elapsed
+               else
+                 sprintf "%.0fm%.0fs" (floor (elapsed /. 60.0)) (mod_float elapsed 60.0)
+             in
              Pp.verbatim
                (sprintf
-                  "Done: %u%% (%u/%u, %u left%s) (jobs: %u)"
-                  (if total = 0 then 0 else done_ * 100 / total)
+                  "%u/%u done, %u running, %u queued%s (%s)"
                   done_
                   total
-                  (total - done_)
+                  running
+                  queued
                   (if failed = 0 then "" else sprintf ", %u failed" failed)
-                  (Scheduler.running_jobs_count scheduler))));
+                  elapsed_str)));
     Fiber.return (Memo.of_thunk get)
   ;;
 end

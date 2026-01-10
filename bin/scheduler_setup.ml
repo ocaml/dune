@@ -34,13 +34,20 @@ let on_event dune_config _config = function
              | Build_failed__now_waiting_for_changes -> Build_system.Progress.init
              | Building progress -> progress
            in
+           let elapsed = Unix.gettimeofday () -. progression.start_time in
+           let elapsed_str =
+             if elapsed < 60.0
+             then sprintf "%.0fs" elapsed
+             else sprintf "%.0fm%.0fs" (floor (elapsed /. 60.0)) (mod_float elapsed 60.0)
+           in
            Pp.seq
              (Pp.tag User_message.Style.Error (Pp.verbatim "Source files changed"))
              (Pp.verbatim
                 (sprintf
-                   ", restarting current build... (%u/%u)"
+                   ", restarting current build... (%u/%u, %s)"
                    progression.number_of_rules_executed
-                   progression.number_of_rules_discovered))))
+                   progression.number_of_rules_discovered
+                   elapsed_str))))
   | Build_finish build_result ->
     let message =
       match build_result with

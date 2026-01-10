@@ -65,6 +65,8 @@ module Event : sig
     -> times:Proc.Times.t
     -> t
 
+  val unknown_process : Proc.Process_info.t -> t
+
   type timeout =
     { pid : Pid.t
     ; group_leader : bool

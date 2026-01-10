@@ -16,6 +16,7 @@ type t =
   | File_system_watcher_terminated
   | Shutdown of Shutdown.Reason.t
   | Fiber_fill_ivar of Fiber.fill
+  | Job_complete_ready
 
 module Invalidation_event = struct
   type t =
@@ -35,6 +36,7 @@ module Queue = struct
     ; cond : Condition.t
     ; mutable pending_jobs : int
     ; mutable pending_worker_tasks : int
+    ; mutable job_complete_ready : bool
     ; worker_tasks_completed : Fiber.fill Queue.t
     ; timers : Fiber.fill Queue.t
     ; mutable got_event : bool
@@ -64,10 +66,16 @@ module Queue = struct
     ; pending_worker_tasks
     ; got_event = false
     ; yield = None
+    ; job_complete_ready = false
     }
   ;;
 
   let register_job_started q = q.pending_jobs <- q.pending_jobs + 1
+
+  let finish_job q =
+    assert (q.pending_jobs > 0);
+    q.pending_jobs <- q.pending_jobs - 1
+  ;;
 
   let register_worker_task_started q =
     q.pending_worker_tasks <- q.pending_worker_tasks + 1
@@ -108,6 +116,15 @@ module Queue = struct
       Option.map (Shutdown.Reason.Set.choose q.shutdown_reasons) ~f:(fun reason ->
         q.shutdown_reasons <- Shutdown.Reason.Set.remove q.shutdown_reasons reason;
         Shutdown reason)
+    ;;
+
+    let job_complete_ready : t =
+      fun q ->
+      match q.job_complete_ready with
+      | false -> None
+      | true ->
+        q.job_complete_ready <- false;
+        Some Job_complete_ready
     ;;
 
     let file_watcher_task q =
@@ -174,6 +191,24 @@ module Queue = struct
     let chain list q = List.find_map list ~f:(fun f -> f q)
   end
 
+  let events_in_order =
+    (* Event sources are listed in priority order. Signals are the
+       highest priority to maximize responsiveness to Ctrl+C.
+       [file_watcher_task], [worker_tasks_completed] and [invalidation] are
+       used for reacting to user input, so their latency is also important.
+       [jobs_completed] and [yield] are where the bulk of the work is done, so
+       they are the lowest priority to avoid starving other things. *)
+    Event_source.
+      [ shutdown
+      ; file_watcher_task
+      ; invalidation
+      ; worker_tasks_completed
+      ; (if Sys.win32 then jobs_completed else job_complete_ready)
+      ; yield
+      ; timers
+      ]
+  ;;
+
   let next q =
     Dune_trace.emit Gc (fun () -> Dune_trace.Event.gc ());
     Dune_trace.emit_all Fd (fun () ->
@@ -182,27 +217,7 @@ module Queue = struct
       | Some fd -> [ fd ]);
     Mutex.lock q.mutex;
     let rec loop () =
-      match
-        Event_source.(
-          run
-            (chain
-               (* Event sources are listed in priority order. Signals are the
-                    highest priority to maximize responsiveness to Ctrl+C.
-                    [file_watcher_task], [worker_tasks_completed] and
-                    [invalidation] are used for reacting to user input, so their
-                    latency is also important. [jobs_completed] and [yield] are
-                    where the bulk of the work is done, so they are the lowest
-                    priority to avoid starving other things. *)
-               [ shutdown
-               ; file_watcher_task
-               ; invalidation
-               ; worker_tasks_completed
-               ; jobs_completed
-               ; yield
-               ; timers
-               ]))
-          q
-      with
+      match Event_source.(run (chain events_in_order)) q with
       | None -> wait ()
       | Some event -> event
     and wait () =
@@ -240,6 +255,8 @@ module Queue = struct
   let send_job_completed q job proc_info =
     add_event q (fun q -> Queue.push q.jobs_completed (job, proc_info))
   ;;
+
+  let send_job_completed_ready q = add_event q (fun q -> q.job_complete_ready <- true)
 
   let send_shutdown q signal =
     add_event q (fun q ->

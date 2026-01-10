@@ -14,3 +14,5 @@ val is_running : t -> Pid.t -> bool
 
 (** Send the following signal to all running processes. *)
 val killall : t -> int -> unit
+
+val wait_unix : t -> Fiber.fill list

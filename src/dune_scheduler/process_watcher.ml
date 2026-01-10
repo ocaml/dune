@@ -19,6 +19,8 @@ let kill_process_group pid signal =
        signal twice we're greatly increasing the existing race condition where
        we call [wait] in parallel with [kill]. *)
     (try Unix.kill (-Pid.to_int pid) signal with
+     (* CR-someday rgrinerg: do we need to catch this error now that we're no
+        longer racing? *)
      | Unix.Unix_error _ -> ())
   | true ->
     (* Process groups are not supported on Windows (or even if they are, [spawn]
@@ -35,23 +37,28 @@ type process_state =
 (* This mutable table is safe: it does not interact with the state we track in
      the build system. *)
 type t =
-  { mutex : Mutex.t
-  ; something_is_running : Condition.t
+  { mutex : Mutex.t Lazy.t
+  ; something_is_running : Condition.t option
   ; table : (Pid.t, process_state) Table.t
   ; events : Event.Queue.t
   ; mutable running_count : int
   }
 
-let is_running t pid =
-  Mutex.lock t.mutex;
-  let res = Table.mem t.table pid in
-  Mutex.unlock t.mutex;
+let is_running_unix t pid = Table.mem t.table pid
+
+let is_running_win32 t pid =
+  let mutex = Lazy.force t.mutex in
+  Mutex.lock mutex;
+  let res = is_running_unix t pid in
+  Mutex.unlock mutex;
   res
 ;;
 
+let is_running = if Sys.win32 then is_running_win32 else is_running_unix
+
 module Process_table : sig
   val add : t -> Event.job -> unit
-  val remove : t -> Proc.Process_info.t -> unit
+  val remove : t -> Proc.Process_info.t -> Event.job option
   val running_count : t -> int
   val iter : t -> f:(Event.job -> unit) -> unit
 end = struct
@@ -60,7 +67,10 @@ end = struct
     | None ->
       Table.set t.table job.pid (Running job);
       t.running_count <- t.running_count + 1;
-      if t.running_count = 1 then Condition.signal t.something_is_running
+      (match t.something_is_running with
+       | None -> ()
+       | Some something_is_running ->
+         if t.running_count = 1 then Condition.signal something_is_running)
     | Some (Zombie proc_info) ->
       Table.remove t.table job.pid;
       Event.Queue.send_job_completed t.events job proc_info
@@ -69,11 +79,13 @@ end = struct
 
   let remove t (proc_info : Proc.Process_info.t) =
     match Table.find t.table proc_info.pid with
-    | None -> Table.set t.table proc_info.pid (Zombie proc_info)
+    | None ->
+      Table.set t.table proc_info.pid (Zombie proc_info);
+      None
     | Some (Running job) ->
       t.running_count <- t.running_count - 1;
       Table.remove t.table proc_info.pid;
-      Event.Queue.send_job_completed t.events job proc_info
+      Some job
     | Some (Zombie _) -> assert false
   ;;
 
@@ -87,18 +99,33 @@ end = struct
   let running_count t = t.running_count
 end
 
-let register_job t job =
+let register_job_win32 t job =
   Event.Queue.register_job_started t.events;
-  Mutex.lock t.mutex;
+  let mutex = Lazy.force t.mutex in
+  Mutex.lock mutex;
   Process_table.add t job;
-  Mutex.unlock t.mutex
+  Mutex.unlock mutex
 ;;
 
-let killall t signal =
-  Mutex.lock t.mutex;
-  Process_table.iter t ~f:(fun job -> kill_process_group job.pid signal);
-  Mutex.unlock t.mutex
+let register_job_unix t job =
+  Event.Queue.register_job_started t.events;
+  Process_table.add t job
 ;;
+
+let register_job = if Sys.win32 then register_job_win32 else register_job_unix
+
+let killall_unix t signal =
+  Process_table.iter t ~f:(fun job -> kill_process_group job.pid signal)
+;;
+
+let killall_win32 t signal =
+  let mutex = Lazy.force t.mutex in
+  Mutex.lock mutex;
+  killall_unix t signal;
+  Mutex.unlock mutex
+;;
+
+let killall = if Sys.win32 then killall_win32 else killall_unix
 
 exception Finished of Proc.Process_info.t
 
@@ -116,52 +143,59 @@ let wait_nonblocking_win32 t =
     false
   with
   | Finished proc_info ->
-    (* We need to do the [Unix.waitpid] and remove the process while holding
-         the lock, otherwise the pid might be reused in between. *)
-    Process_table.remove t proc_info;
+    Process_table.remove t proc_info
+    |> Option.iter ~f:(fun job -> Event.Queue.send_job_completed t.events job proc_info);
     true
 ;;
 
-let wait_win32 t =
-  while not (wait_nonblocking_win32 t) do
-    Mutex.unlock t.mutex;
-    Thread.delay 0.001;
-    Mutex.lock t.mutex
-  done
+let rec wait_unix t acc =
+  match Proc.wait Any [ WNOHANG ] with
+  | None -> acc
+  | Some proc_info ->
+    (match Process_table.remove t proc_info with
+     | None ->
+       Dune_trace.emit Process (fun () -> Dune_trace.Event.unknown_process proc_info);
+       wait_unix t acc
+     | Some job ->
+       Event.Queue.finish_job t.events;
+       let acc = Fiber.Fill (job.ivar, proc_info) :: acc in
+       wait_unix t acc)
 ;;
 
-let wait_unix t =
-  Mutex.unlock t.mutex;
-  let proc_info = Proc.wait Any [] in
-  Mutex.lock t.mutex;
-  Process_table.remove t proc_info
-;;
+let wait_unix t = List.rev (wait_unix t [])
 
-let wait =
-  match Platform.OS.value with
-  | Windows -> wait_win32
-  | Linux | Darwin | FreeBSD | OpenBSD | NetBSD | Haiku | Other -> wait_unix
-;;
-
-let run t =
-  Mutex.lock t.mutex;
+let run_win32 t =
+  let mutex = Lazy.force t.mutex in
+  let something_is_running = Option.value_exn t.something_is_running in
+  Mutex.lock mutex;
   while true do
     while Process_table.running_count t = 0 do
-      Condition.wait t.something_is_running t.mutex
+      Condition.wait something_is_running mutex
     done;
-    wait t
+    while not (wait_nonblocking_win32 t) do
+      Mutex.unlock mutex;
+      Thread.delay 0.001;
+      Mutex.lock mutex
+    done
   done
 ;;
 
 let init events =
   let t =
-    { mutex = Mutex.create ()
-    ; something_is_running = Condition.create ()
+    { mutex =
+        lazy
+          (if Sys.win32
+           then Mutex.create ()
+           else Code_error.raise "process watcher mutex is only needed on windows" [])
+    ; something_is_running = (if Sys.win32 then Some (Condition.create ()) else None)
     ; table = Table.create (module Pid) 128
     ; events
     ; running_count = 0
     }
   in
-  let (_ : Thread.t) = Thread0.spawn (fun () -> run t) in
+  if Sys.win32
+  then (
+    let (_ : Thread.t) = Thread0.spawn (fun () -> run_win32 t) in
+    ());
   t
 ;;

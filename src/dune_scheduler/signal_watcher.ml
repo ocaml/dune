@@ -26,16 +26,18 @@ let signal_waiter () =
   else Staged.stage (fun () -> Thread.wait_signal signos |> Signal.of_int)
 ;;
 
-let run ~print_ctrl_c_warning q =
+let run ~print_ctrl_c_warning q : unit =
   let last_exit_signals = Queue.create () in
   let one_second = Time.Span.of_secs 1. in
   let wait_signal = Staged.unstage (signal_waiter ()) in
   while true do
     let signal = wait_signal () in
     Dune_trace.emit Process (fun () -> Dune_trace.Event.signal_received signal);
-    Event.Queue.send_shutdown q (Signal signal);
     match signal with
+    | _ when Signal.equal signal Thread0.signal_watcher_interrupt -> raise_notrace Exit
+    | Chld -> Event.Queue.send_job_completed_ready q
     | Int | Quit | Term ->
+      Event.Queue.send_shutdown q (Signal signal);
       let now = Time.now () in
       Queue.push last_exit_signals now;
       (* Discard old signals *)
@@ -52,7 +54,20 @@ let run ~print_ctrl_c_warning q =
   done
 ;;
 
+(* Make sure that we never have more than one signal watcher running at a time *)
+let m = Mutex.create ()
+
 let init ~print_ctrl_c_warning q =
-  let (_ : Thread.t) = Thread0.spawn (fun () -> run ~print_ctrl_c_warning q) in
-  ()
+  Thread0.spawn (fun () ->
+    Mutex.lock m;
+    let res =
+      try
+        run ~print_ctrl_c_warning q;
+        None
+      with
+      | Exit -> None
+      | exn -> Some exn
+    in
+    Mutex.unlock m;
+    Option.iter res ~f:raise)
 ;;

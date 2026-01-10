@@ -3,6 +3,11 @@
  (modules dune_cmd)
  (libraries stdune re dune-configurator build_path_prefix_map str unix))
 
+(executable
+ (name action_trace)
+ (modules action_trace)
+ (libraries stdune unix csexp dune_action_trace))
+
 (ocamllex dunepp)
 
 (executable

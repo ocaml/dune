@@ -3,11 +3,13 @@ implicit_transitive_deps is set to false.
 
   $ jqScript=$(mktemp)
   $ cat >$jqScript <<'EOF'
-  > .args.process_args |
-  > select(. != null) |
-  > select(index("run.ml")) as $arr |
-  > [range(0; $arr | length - 1) as $i |
-  >   if $arr[$i] == "-I" or $arr[$i] == "-H" then [$arr[$i], $arr[$i + 1]] else empty end]
+  > include "dune";
+  >   processes
+  > | .args.process_args
+  > | select(. != null)
+  > | select(index("run.ml")) as $arr
+  > | [range(0; $arr | length - 1) as $i
+  > | if $arr[$i] == "-I" or $arr[$i] == "-H" then [$arr[$i], $arr[$i + 1]] else empty end]
   > | .[]
   > EOF
 

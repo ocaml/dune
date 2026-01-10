@@ -201,6 +201,35 @@ let make_exit exit =
     ]
 ;;
 
+let process_start ~pid ~dir ~prog ~args ~timeout ~started_at ~name ~categories ~targets =
+  let args =
+    let always =
+      [ "process_args", Arg.list (List.map args ~f:Arg.string)
+      ; "pid", Arg.int (Pid.to_int pid)
+      ; "categories", Arg.list (List.map categories ~f:Arg.string)
+      ]
+    in
+    let extended =
+      List.concat
+        [ [ "prog", Arg.string prog
+          ; "dir", Arg.path (Option.value dir ~default:Path.root)
+          ]
+        ; (match targets with
+           | None -> []
+           | Some targets -> args_of_targets targets)
+        ; (match name with
+           | None -> []
+           | Some name -> [ "name", Arg.string name ])
+        ; (match timeout with
+           | None -> []
+           | Some timeout -> [ "timeout", Arg.span timeout ])
+        ]
+    in
+    always @ extended
+  in
+  Event.instant ~args ~name:"start" started_at Process
+;;
+
 let process
       ~name
       ~started_at

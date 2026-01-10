@@ -859,6 +859,8 @@ let spawn
       ~setpgid
       ~prog
       ~args
+      ~metadata
+      ~timeout
       ()
   =
   let stdout_on_success = Io.output_on_success stdout
@@ -949,6 +951,24 @@ let spawn
          | Some dir -> Path (Path.to_string dir))
     |> Pid.of_int
   in
+  Dune_trace.emit Process (fun () ->
+    let targets =
+      match metadata.purpose with
+      | Internal_job -> None
+      | Build_job None -> None
+      | Build_job (Some { dirs; files; root }) ->
+        Some { Dune_trace.Event.root; dirs; files }
+    in
+    Dune_trace.Event.process_start
+      ~targets
+      ~pid
+      ~dir
+      ~prog:prog_str
+      ~args
+      ~timeout
+      ~name:metadata.name
+      ~categories:metadata.categories
+      ~started_at);
   Io.release stdout;
   Io.release stderr;
   { started_at
@@ -1004,6 +1024,7 @@ let run_internal
         cmdline
       | _ -> Pp.nop
     in
+    let timeout = Failure_mode.timeout fail_mode in
     let (t : t) =
       spawn
         ?dir
@@ -1014,6 +1035,8 @@ let run_internal
         ~setpgid
         ~prog
         ~args
+        ~metadata
+        ~timeout
         ()
     in
     let* () =
@@ -1030,9 +1053,7 @@ let run_internal
       in
       Running_jobs.start id t.pid ~description ~started_at:t.started_at
     in
-    let* process_info, termination_reason =
-      await ~timeout:(Failure_mode.timeout fail_mode) t
-    in
+    let* process_info, termination_reason = await ~timeout t in
     let+ () = Running_jobs.stop id in
     let result = Result.make t process_info fail_mode in
     let times =

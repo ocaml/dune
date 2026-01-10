@@ -421,17 +421,17 @@ end = struct
         match prog with
         | Ok prog ->
           let dep, prog, args = Expander.map_exe ~force_host env.expander prog args in
-          (Ok prog, args), [ dep ]
-        | Error _ as v -> (v, []), []
+          Ok prog, args, [ dep ]
+        | Error _ as v -> v, args, []
       in
-      register_deps b env acc ~f:(function _, deps -> deps)
+      register_deps b env acc ~f:(function _, _, deps -> deps)
     ;;
 
     let prog_and_args ~force_host sw env acc =
       Memo.map
         ~f:(fun (x, v) ->
           ( Action_builder.bind
-              ~f:(fun (prog_and_args, _) -> Action_builder.return prog_and_args)
+              ~f:(fun (prog, args, _) -> Action_builder.return (prog, args))
               x
           , v ))
         (prog_args_and_deps ~force_host sw env acc)

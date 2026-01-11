@@ -17,15 +17,16 @@ Test `melange.runtime_deps` in a library that has been installed
   > (library
   >  (public_name foo)
   >  (modes melange)
-  >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (melange.runtime_deps ./some_dir ./file.txt))
   > EOF
   $ cat > lib/foo.ml <<EOF
+  > external readFileSync : string -> encoding:string -> string = "readFileSync"
+  > [@@mel.module "fs"]
   > let dirname = [%mel.raw "__dirname"]
   > let () = Js.log2 "dirname:" dirname
   > let file_path = "./index.txt"
-  > let read_asset () = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
+  > let read_asset () = readFileSync (dirname ^ "/" ^ file_path) ~encoding:"utf8"
   > EOF
 
   $ dune build
@@ -49,7 +50,6 @@ Test `melange.runtime_deps` in a library that has been installed
   > (library
   >  (public_name foo)
   >  (modes melange)
-  >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (melange.runtime_deps ./some_dir/inside-dir-target.txt ./some_dir ./file.txt))
   > EOF

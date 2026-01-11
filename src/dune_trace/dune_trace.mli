@@ -99,7 +99,7 @@ module Event : sig
 
   val scan_source : name:string -> start:Time.t -> stop:Time.t -> dir:Path.Source.t -> t
   val scheduler_idle : unit -> t
-  val config : version:string option -> t
+  val init : version:string option -> t
   val gc : unit -> t
   val fd_count : unit -> t option
   val promote : Path.Build.t -> Path.Source.t -> t

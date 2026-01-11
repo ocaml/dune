@@ -102,7 +102,7 @@ let evalauted_rules ~rule_total =
   Event.instant ~name:"evalauted_rules" ~args now Rules
 ;;
 
-let config ~version =
+let init ~version =
   let now = Time.now () in
   let args =
     let args =
@@ -118,7 +118,7 @@ let config ~version =
     | None -> args
     | Some v -> ("version", Arg.string v) :: args
   in
-  Event.instant ~args ~name:"config" now Config
+  Event.instant ~args ~name:"init" now Config
 ;;
 
 let exit () =

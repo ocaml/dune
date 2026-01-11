@@ -25,8 +25,8 @@ dune trace cat --follow
   $ while ! checkStart; do sleep 0.1; done
 
   $ ( dune trace cat --follow \
-  > | jq 'select(.cat == "config" and (.name == "config" or .name == "exit")) | .name' ) &
-  "config"
+  > | jq 'select(.cat == "config" and (.name == "init" or .name == "exit")) | .name' ) &
+  "init"
   "exit"
 
   $ echo resume > $fifo

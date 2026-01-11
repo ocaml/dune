@@ -1324,7 +1324,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
       Path.parent trace |> Option.iter ~f:Path.mkdir_p;
       let stats = Dune_trace.Out.create cats trace in
       Dune_trace.set_global stats;
-      Dune_trace.Event.config
+      Dune_trace.Event.init
         ~version:
           (Build_info.V1.version () |> Option.map ~f:Build_info.V1.Version.to_string)
       |> Dune_trace.always_emit;

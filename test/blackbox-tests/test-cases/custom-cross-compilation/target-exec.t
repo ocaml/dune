@@ -8,7 +8,7 @@ Setup environment:
 Create a simple executable that prints a message:
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.21)
+  > (lang dune 3.22)
   > EOF
 
   $ cat > hello.ml <<EOF
@@ -241,7 +241,7 @@ Test runexec action (should always run host binary, bypassing wrapper)
 Build with dune-workspace
 
   $ cat > dune-workspace <<EOF
-  > (lang dune 3.21)
+  > (lang dune 3.22)
   > (context
   >  (default
   >    (targets
@@ -270,7 +270,7 @@ Build with dune-workspace
 Build with dune-workspace and arguments
 
   $ cat > dune-workspace <<EOF
-  > (lang dune 3.21)
+  > (lang dune 3.22)
   > (context
   >  (default
   >    (targets
@@ -326,7 +326,7 @@ Build with dune-workspace and --target-exec should give priority to --target-exe
 Build with invalid dune-workspace
 
   $ cat > dune-workspace <<EOF
-  > (lang dune 3.21)
+  > (lang dune 3.22)
   > (context
   >  (default
   >    (targets

@@ -319,7 +319,7 @@ module Context = struct
               and+ target_exec =
                 field_o
                   "target_exec"
-                  (Dune_lang.Syntax.since Stanza.syntax (3, 21)
+                  (Dune_lang.Syntax.since Stanza.syntax (3, 22)
                    >>>
                    let+ prog = string
                    and+ args = repeat string in

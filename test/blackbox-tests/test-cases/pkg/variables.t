@@ -34,7 +34,7 @@ Test that we can set variables
   abool: true
   astring: foobar
   somestrings: foo bar
-  share path: ../../test.0.0.1-4720c73ae6ba1444af0517c28d2b366e/target/share/test
+  share path: ../../test.0.0.1-9c401dcba674aef73cb59a8542e10768/target/share/test
   version: 1.2.3
 
   $ show_pkg_cookie test
@@ -66,5 +66,5 @@ Now we demonstrate we get a proper error from invalid .config files:
   Error parsing test.config
   Reason: Parse error
   -> required by
-     _build/_private/default/.pkg/test.0.0.1-69ac79828345d1ca458538ce94b5c970/target
+     _build/_private/default/.pkg/test.0.0.1-8af7aa610e92a4df76396bed0f179745/target
   [1]

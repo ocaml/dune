@@ -91,3 +91,29 @@ name
   following characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
   Hint: baz_qux would be a correct module name
   [1]
+
+  $ cat > foo.ml <<EOF
+  > let () = print_endline "hello"
+  > EOF
+
+  $ cat > dune <<EOF
+  > (library
+  >  (name foo)
+  >  (libraries
+  >   (select link-opam-manifest from
+  >    (unix -> link-opam-manifest.pull)
+  >    (!unix -> link-opam-manifest.dummy))))
+  > (rule
+  >  (targets link-opam-manifest.dummy)
+  >  (action (progn (echo "dummy\n") (with-stdout-to link-opam-manifest.dummy (echo "")))))
+  > (rule
+  >  (targets link-opam-manifest.pull)
+  >  (action (progn (echo "pull\n") (with-stdout-to %{targets} (echo "")))))
+  > EOF
+  $ dune build
+  File "dune", lines 4-6, characters 2-110:
+  4 |   (select link-opam-manifest from
+  5 |    (unix -> link-opam-manifest.pull)
+  6 |    (!unix -> link-opam-manifest.dummy))))
+  Error: No solution found for this select form.
+  [1]

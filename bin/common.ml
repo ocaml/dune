@@ -1324,6 +1324,10 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
       Path.parent trace |> Option.iter ~f:Path.mkdir_p;
       let stats = Dune_trace.Out.create cats trace in
       Dune_trace.set_global stats;
+      Dune_trace.Event.config
+        ~version:
+          (Build_info.V1.version () |> Option.map ~f:Build_info.V1.Version.to_string)
+      |> Dune_trace.always_emit;
       Log.init
         (Redirect (fun w -> Dune_trace.emit Log (fun () -> Dune_trace.Event.log w)))
   in
@@ -1405,9 +1409,6 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
     "Workspace root"
     [ "root", Dyn.string (Path.to_absolute_filename Path.root |> String.maybe_quoted) ];
   Dune_console.separate_messages c.builder.separate_error_messages;
-  Dune_trace.always_emit
-    (Dune_trace.Event.config
-       ~version:(Build_info.V1.version () |> Option.map ~f:Build_info.V1.Version.to_string));
   (* Setup hook for printing GC stats to a file *)
   at_exit (fun () ->
     match c.builder.dump_gc_stats with

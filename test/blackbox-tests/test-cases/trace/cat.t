@@ -20,8 +20,8 @@ dune trace cat can be used to view the trace:
 
 Test the --sexp flag outputs S-expressions (not JSON):
 
-  $ dune trace cat --sexp | head -1 | sed 's/(.*)/(...)/g' || true
-  (...)
+  $ dune trace cat --sexp | head -1 | cut -c1 || true
+  (
 
 Test the --chrome-trace flag outputs Chrome event format as a JSON array with
 some typical fields:

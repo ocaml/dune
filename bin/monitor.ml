@@ -278,11 +278,7 @@ let command =
     let builder = Common.Builder.disable_log_file builder in
     let _common, config = Common.init builder in
     let config =
-      Dune_config.for_scheduler
-        config
-        (Dune_trace.global ())
-        ~print_ctrl_c_warning:true
-        ~watch_exclusions:[]
+      Dune_config.for_scheduler config ~print_ctrl_c_warning:true ~watch_exclusions:[]
     in
     Scheduler.Run.go
       config

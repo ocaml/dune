@@ -25,7 +25,6 @@ let run =
   Dune_engine.Clflags.display := Quiet;
   let config =
     { Scheduler.Config.concurrency = 1
-    ; stats = None
     ; print_ctrl_c_warning = false
     ; watch_exclusions = []
     }

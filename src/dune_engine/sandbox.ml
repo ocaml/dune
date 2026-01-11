@@ -180,7 +180,8 @@ let snapshot t =
   walk (Path.build t.dir) Path.Map.empty
 ;;
 
-let create ~mode ~dune_stats ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
+let create ~mode ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
+  let dune_stats = Dune_trace.global () in
   let event =
     Dune_trace.Out.start dune_stats (fun () ->
       Dune_trace.Event.Async.create_sandbox ~loc:rule_loc)

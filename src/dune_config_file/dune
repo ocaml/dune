@@ -12,7 +12,6 @@
   dune_cache_storage
   dune_engine
   dune_rpc_private
-  dune_trace
   dune_tui
   dune_util
   spawn

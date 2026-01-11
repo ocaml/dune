@@ -6,7 +6,6 @@ let go =
   let config =
     Clflags.display := Short;
     { Scheduler.Config.concurrency = 1
-    ; stats = None
     ; print_ctrl_c_warning = true
     ; watch_exclusions = []
     }

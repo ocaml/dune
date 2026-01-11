@@ -356,7 +356,6 @@ end = struct
     let { Action.Full.action; env; locks; can_go_in_shared_cache = _; sandbox = _ } =
       action
     in
-    let* dune_stats = Scheduler.stats () in
     let deps =
       Dep.Facts.paths
         ~expand_aliases:
@@ -374,7 +373,6 @@ end = struct
             ~rule_dir:targets.root
             ~rule_loc:loc
             ~rule_digest
-            ~dune_stats
         in
         Some sandbox
       | None ->

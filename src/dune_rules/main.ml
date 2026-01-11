@@ -55,7 +55,6 @@ let execution_parameters =
 ;;
 
 let init
-      ~stats
       ~sandboxing_preference
       ~cache_config
       ~(cache_debug_flags : Dune_engine.Cache_debug_flags.t)
@@ -85,7 +84,6 @@ let init
     end)
   in
   Build_config.set
-    ~stats
     ~sandboxing_preference
     ~promote_source
     ~contexts:

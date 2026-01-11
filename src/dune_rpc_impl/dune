@@ -9,7 +9,6 @@
   dune_rpc_client
   dune_rpc_private
   dune_rpc_server
-  dune_trace
   source
   memo
   dune_util

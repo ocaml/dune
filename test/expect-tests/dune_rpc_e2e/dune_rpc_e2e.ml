@@ -176,7 +176,6 @@ let with_dune_watch ?watch_mode_args ?env f =
 let config =
   Dune_engine.Clflags.display := Quiet;
   { Scheduler.Config.concurrency = 1
-  ; stats = None
   ; print_ctrl_c_warning = false
   ; watch_exclusions = []
   }

@@ -1375,7 +1375,6 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
       )
     ];
   Dune_rules.Main.init
-    ~stats:(Dune_trace.global ())
     ~sandboxing_preference:config.sandboxing_preference
     ~cache_config:(maybe_init_cache cache_config)
     ~cache_debug_flags:c.builder.cache_debug_flags

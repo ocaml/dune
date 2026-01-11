@@ -18,7 +18,6 @@ end
 module Config = struct
   type t =
     { concurrency : int
-    ; stats : Dune_trace.Out.t option
     ; print_ctrl_c_warning : bool
     ; watch_exclusions : string list
     }
@@ -77,12 +76,6 @@ let t : t option Fiber.Var.t = Fiber.Var.create None
 let set x f = Fiber.Var.set t (Some x) f
 let t_opt () = Fiber.Var.get t
 let t () = Fiber.Var.get_exn t
-
-let stats () =
-  let+ t = t () in
-  t.config.stats
-;;
-
 let running_jobs_count t = Event.Queue.pending_jobs t.events
 
 exception Build_cancelled

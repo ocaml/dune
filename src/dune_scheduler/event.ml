@@ -210,8 +210,8 @@ module Queue = struct
   ;;
 
   let next q =
-    Dune_trace.emit Gc (fun () -> Dune_trace.Event.gc ());
-    Dune_trace.emit_all Fd (fun () ->
+    Dune_trace.emit ~buffered:true Gc (fun () -> Dune_trace.Event.gc ());
+    Dune_trace.emit_all ~buffered:true Fd (fun () ->
       match Dune_trace.Event.fd_count () with
       | None -> []
       | Some fd -> [ fd ]);

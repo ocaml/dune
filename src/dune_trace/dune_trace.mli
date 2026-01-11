@@ -177,7 +177,7 @@ module Out : sig
   type t
 
   val create : Category.t list -> Path.t -> t
-  val emit : t -> Event.t -> unit
+  val emit : ?buffered:bool -> t -> Event.t -> unit
   val start : t option -> (unit -> Event.Async.data) -> Event.Async.t option
   val finish : t -> Event.Async.t option -> unit
 end
@@ -185,8 +185,9 @@ end
 val global : unit -> Out.t option
 val set_global : Out.t -> unit
 val always_emit : Event.t -> unit
-val emit : Category.t -> (unit -> Event.t) -> unit
-val emit_all : Category.t -> (unit -> Event.t list) -> unit
+val emit : ?buffered:bool -> Category.t -> (unit -> Event.t) -> unit
+val emit_all : ?buffered:bool -> Category.t -> (unit -> Event.t list) -> unit
+val flush : unit -> unit
 
 module Private : sig
   module Fd_count : sig

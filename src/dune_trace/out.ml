@@ -96,11 +96,13 @@ let emit_buffered t event =
   to_buffer t event
 ;;
 
-let emit t event =
+let emit ?(buffered = false) t event =
   Mutex.protect t.mutex (fun () ->
     emit_buffered t event;
-    flush t)
+    if not buffered then flush t)
 ;;
+
+let flush t = Mutex.protect t.mutex (fun () -> flush t)
 
 let start t k : Event.Async.t option =
   match t with

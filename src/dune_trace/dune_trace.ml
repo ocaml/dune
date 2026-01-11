@@ -27,16 +27,23 @@ let always_emit event =
   | Some out -> Out.emit out event
 ;;
 
-let emit cat f =
+let emit ?buffered cat f =
   match global () with
   | None -> ()
-  | Some out -> if Category.Set.mem out.cats cat then Out.emit out (f ())
+  | Some out -> if Category.Set.mem out.cats cat then Out.emit ?buffered out (f ())
 ;;
 
-let emit_all cat f =
+let flush () =
   match global () with
   | None -> ()
-  | Some out -> if Category.Set.mem out.cats cat then List.iter (f ()) ~f:(Out.emit out)
+  | Some out -> Out.flush out
+;;
+
+let emit_all ?buffered cat f =
+  match global () with
+  | None -> ()
+  | Some out ->
+    if Category.Set.mem out.cats cat then List.iter (f ()) ~f:(Out.emit ?buffered out)
 ;;
 
 module Private = struct

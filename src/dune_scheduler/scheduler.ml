@@ -441,7 +441,10 @@ module Run = struct
 
   (* Work we're allowed to do between successive polling iterations. this work
      should be fast and never fail (within reason) *)
-  let run_when_idle () : unit = Dune_trace.emit Scheduler Dune_trace.Event.scheduler_idle
+  let run_when_idle () : unit =
+    Dune_trace.emit ~buffered:true Scheduler Dune_trace.Event.scheduler_idle;
+    Dune_trace.flush ()
+  ;;
 
   let poll step =
     let* t = poll_init () in

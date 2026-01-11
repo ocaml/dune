@@ -9,10 +9,14 @@ be a particular event emitted by dune.
 
   $ dune trace cat | jq -s 'first | {name, cat, args: (.args | keys)}'
   {
-    "name": "info",
-    "cat": "log",
+    "name": "config",
+    "cat": "config",
     "args": [
-      "OCAMLPARAM",
-      "message"
+      "argv",
+      "build_dir",
+      "env",
+      "initial_cwd",
+      "pid",
+      "root"
     ]
   }

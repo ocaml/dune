@@ -29,4 +29,4 @@
   $ ls -a test/_build
   .
   ..
-  trace.json
+  trace.csexp

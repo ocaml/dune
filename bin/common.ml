@@ -58,7 +58,7 @@ open struct
   module Manpage = Manpage
 end
 
-let default_trace_file = Path.Local.of_string "_build/trace.json"
+let default_trace_file = Path.Local.of_string "_build/trace.csexp"
 
 module Package = Dune_lang.Package
 open Let_syntax

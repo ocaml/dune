@@ -9,7 +9,7 @@ be a particular event emitted by dune.
 
   $ dune trace cat | jq -s 'first | {name, cat, args: (.args | keys)}'
   {
-    "name": "config",
+    "name": "init",
     "cat": "config",
     "args": [
       "argv",

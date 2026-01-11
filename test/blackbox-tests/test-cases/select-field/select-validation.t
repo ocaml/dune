@@ -111,9 +111,5 @@ name
   >  (action (progn (echo "pull\n") (with-stdout-to %{targets} (echo "")))))
   > EOF
   $ dune build
-  File "dune", lines 4-6, characters 2-110:
-  4 |   (select link-opam-manifest from
-  5 |    (unix -> link-opam-manifest.pull)
-  6 |    (!unix -> link-opam-manifest.dummy))))
-  Error: No solution found for this select form.
-  [1]
+  pull
+  dummy

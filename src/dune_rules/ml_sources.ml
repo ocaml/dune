@@ -776,10 +776,7 @@ module Generated_modules = struct
                   (match ml_kind with
                    | Ml_kind.Impl -> Left (module_path, (loc, file))
                    | Intf -> Right (module_path, (loc, file)))
-                | None ->
-                  User_error.raise
-                    ~loc
-                    [ Pp.text "No solution found for this select form." ])))
+                | None -> Skip)))
       in
       let impls = parse_one_set ~dir impl_files in
       let intfs = parse_one_set ~dir intf_files in

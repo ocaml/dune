@@ -100,38 +100,25 @@ module Set = struct
 
   let default loc : t = { empty with byte = Some Inherited; best = Some (Requested loc) }
 
-  module Details = struct
-    type t = Kind.t option
-
-    let validate t ~if_ = if if_ then t else None
-    let ( ||| ) x y = if Option.is_some x then x else y
-  end
-
-  let eval_detailed t ~has_native =
+  let eval t ~has_native =
     let exists = function
       | Best | Byte -> true
       | Native -> has_native
     in
-    let get key : Details.t =
+    let get key : bool =
       match Map.find t key with
-      | None -> None
-      | Some Kind.Inherited -> Option.some_if (exists key) Kind.Inherited
+      | None -> false
+      | Some Kind.Inherited -> exists key
       | Some (Kind.Requested loc) ->
         (* TODO always true for now, but we should delay this error *)
-        let exists =
-          exists key || User_error.raise ~loc [ Pp.text "this mode isn't available" ]
-        in
-        Option.some_if exists (Kind.Requested loc)
+        exists key || User_error.raise ~loc [ Pp.text "this mode isn't available" ]
     in
     let best_mode = if has_native then Native else Byte in
     let best = get Best in
-    let open Details in
-    let byte = get Byte ||| validate best ~if_:(best_mode = Byte) in
-    let native = get Native ||| validate best ~if_:(best_mode = Native) in
+    let byte = get Byte || if best_mode = Byte then best else false in
+    let native = get Native || if best_mode = Native then best else false in
     { Mode.Dict.byte; native }
   ;;
-
-  let eval t ~has_native = eval_detailed t ~has_native |> Mode.Dict.map ~f:Option.is_some
 end
 
 module Lib = struct
@@ -234,18 +221,10 @@ module Lib = struct
 
     let default loc : t = { empty with ocaml = Set.default loc }
 
-    module Details = struct
-      type t = Kind.t option
-    end
-
-    let eval_detailed t ~has_native =
-      let get key : Details.t = Map.find t key in
-      let melange = get Melange in
-      { Lib_mode.Map.ocaml = Set.eval_detailed t.ocaml ~has_native; melange }
-    ;;
-
     let eval t ~has_native =
-      eval_detailed t ~has_native |> Lib_mode.Map.map ~f:Option.is_some
+      let get key : Kind.t option = Map.find t key in
+      let melange = get Melange |> Option.is_some in
+      { Lib_mode.Map.ocaml = Set.eval t.ocaml ~has_native; melange }
     ;;
   end
 end

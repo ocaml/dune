@@ -70,13 +70,8 @@ module Make (D : Desc) = struct
         | exception Invalid_argument s ->
           raise (Invalid_argument (sprintf "%s (%s)" s D.name)))
     in
-    let dump =
-      lazy
-        (match Dune_trace.global () with
-         | None -> dump
-         | Some _ -> fun file v -> with_record `Save ~file ~f:(fun () -> dump file v))
-    in
-    fun file (v : D.t) -> (Lazy.force dump) file v
+    let dump file v = with_record `Save ~file ~f:(fun () -> dump file v) in
+    fun file (v : D.t) -> dump file v
   ;;
 
   let load =

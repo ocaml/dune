@@ -417,6 +417,7 @@ end = struct
          | None -> root
          | Some sandbox -> Sandbox.map_path sandbox root)
     in
+    let action_trace = Action_trace.create rule_digest in
     Fiber.finalize
       ~finally:(fun () ->
         match sandbox with
@@ -428,6 +429,7 @@ end = struct
          with_locks locks ~f:(fun () ->
            let* action_exec_result =
              let input =
+               let env = Action_trace.add_to_env action_trace env in
                { Action_exec.root
                ; context (* can be derived from the root *)
                ; env
@@ -441,6 +443,7 @@ end = struct
              Action_exec.exec input ~build_deps
            in
            let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
+           Action_trace.collect action_trace;
            let* () =
              match sandbox with
              | None -> Fiber.return ()

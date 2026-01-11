@@ -27,5 +27,6 @@
   spawn
   dune_file_watcher
   dune_digest
+  dune_action_trace
   dune_metrics)
  (synopsis "Internal Dune library, do not use!"))

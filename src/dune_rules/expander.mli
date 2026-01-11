@@ -115,7 +115,14 @@ val expand_and_eval_set
   -> string list Action_builder.t
 
 val eval_blang : t -> Blang.t -> bool Memo.t
-val map_exe : t -> Path.t -> Path.t
+
+val map_exe
+  :  force_host:bool
+  -> t
+  -> Path.t
+  -> string list
+  -> Path.t * Path.t * string list
+
 val artifacts : t -> Artifacts.t Memo.t
 val expand_locks : t -> Locks.t -> Path.t list Action_builder.t
 

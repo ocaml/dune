@@ -422,8 +422,7 @@ let setup_emit_cmj_rules
         ~opaque:Inherit_from_settings
         ~melange_package_name:None
         ~package:mel.package
-        ~modes:
-          { ocaml = { byte = None; native = None }; melange = Some (Requested mel.loc) }
+        ~modes:{ ocaml = Mode.Dict.make_both false; melange = true }
     in
     let* () = Module_compilation.build_all cctx in
     let* () =

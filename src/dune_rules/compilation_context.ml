@@ -191,12 +191,8 @@ let create
   in
   let sandbox = Sandbox_config.no_special_requirements in
   let modes =
-    let default =
-      { Lib_mode.Map.ocaml = Mode.Dict.make_both (Some Mode_conf.Kind.Inherited)
-      ; melange = None
-      }
-    in
-    Option.value ~default modes |> Lib_mode.Map.map ~f:Option.is_some
+    let default = { Lib_mode.Map.ocaml = Mode.Dict.make_both true; melange = false } in
+    Option.value ~default modes
   in
   let opaque =
     let profile = Context.profile context in

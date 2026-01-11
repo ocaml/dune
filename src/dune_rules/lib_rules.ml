@@ -496,6 +496,7 @@ let cctx
       ~scope
       ~parameters
       ~compile_info
+      ~modes
   =
   let* flags = Buildable_rules.ocaml_flags sctx ~dir lib.buildable.flags
   and* implements = Virtual_rules.impl sctx ~lib ~scope in
@@ -514,14 +515,6 @@ let cctx
   let requires_link = Lib.Compile.requires_link compile_info in
   let instances =
     Parameterised_rules.instances ~sctx ~db:(Scope.libs scope) lib.buildable.libraries
-  in
-  let* modes =
-    let+ ocaml =
-      let ctx = Super_context.context sctx in
-      Context.ocaml ctx
-    in
-    let { Lib_config.has_native; _ } = ocaml.lib_config in
-    Mode_conf.Lib.Set.eval_detailed lib.modes ~has_native
   in
   let package = Library.package lib in
   let js_of_ocaml = Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml in
@@ -673,13 +666,30 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
       (Local lib_id)
       ~allow_overlaps:buildable.allow_overlapping_dependencies
   in
+  let* modes =
+    let+ ocaml =
+      let ctx = Super_context.context sctx in
+      Context.ocaml ctx
+    in
+    let { Lib_config.has_native; _ } = ocaml.lib_config in
+    Mode_conf.Lib.Set.eval lib.modes ~has_native
+  in
   let f () =
     let* source_modules =
       Dir_contents.ocaml dir_contents >>= Ml_sources.modules ~libs ~for_:(Library lib_id)
     in
     let parameters = Lib.parameters local_lib in
     let* cctx =
-      cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~parameters ~compile_info
+      cctx
+        lib
+        ~sctx
+        ~source_modules
+        ~dir
+        ~scope
+        ~expander
+        ~parameters
+        ~compile_info
+        ~modes
     in
     let* () =
       match buildable.ctypes with

@@ -29,4 +29,4 @@
 
 (cram
  (enabled_if false)
- (applies_to watching-eager-concurrent-build-command))
+ (applies_to watching-eager-concurrent-build-command sigpipe))

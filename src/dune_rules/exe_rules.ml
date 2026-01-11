@@ -201,7 +201,7 @@ let executables_rules
           x)
     in
     Compilation_context.create
-      ()
+      Ocaml
       ~loc:exes.buildable.loc
       ~super_context:sctx
       ~scope

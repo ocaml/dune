@@ -287,7 +287,7 @@ include Sub_system.Register_end_point (struct
           Lib.closure ~linking:true ((lib :: libs) @ more_libs)
         in
         Compilation_context.create
-          ()
+          Ocaml
           ~super_context:sctx
           ~scope
           ~obj_dir

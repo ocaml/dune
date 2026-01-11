@@ -9,6 +9,23 @@ open Import
     associated to each library, executable and executables stanza. *)
 type t
 
+module For : sig
+  type t =
+    | Ocaml
+    | Melange
+
+  type modes =
+    { modes : t list
+    ; merlin : t
+    }
+
+  val modes : Lib_mode.Map.Set.t -> modes
+end
+
+type for_ = For.t =
+  | Ocaml
+  | Melange
+
 (** Sets whether [-opaque] is going to be used during compilation. This
     constructs a different dependency graph for native executables. In
     particular, we can omit dependency on .cmx files. For mli only modules, this
@@ -39,7 +56,7 @@ val create
   -> ?bin_annot:bool
   -> ?loc:Loc.t
   -> ?instances:Parameterised_rules.instances list Resolve.Memo.t
-  -> unit
+  -> for_
   -> t Memo.t
 
 (** Return a compilation context suitable for compiling the alias module. *)
@@ -74,6 +91,7 @@ val modes : t -> Lib_mode.Map.Set.t
 val for_wrapped_compat : t -> t
 val for_root_module : t -> Module.t -> t
 val ocaml : t -> Ocaml_toolchain.t
+val for_ : t -> for_
 
 val for_module_generated_at_link_time
   :  t

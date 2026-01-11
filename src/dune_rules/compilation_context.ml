@@ -78,6 +78,29 @@ let singleton_modules m =
   { modules = Modules.With_vlib.singleton m; dep_graphs = Dep_graph.Ml_kind.dummy m }
 ;;
 
+module For = struct
+  type t =
+    | Ocaml
+    | Melange
+
+  type modes =
+    { modes : t list
+    ; merlin : t
+    }
+
+  let modes (modes : Lib_mode.Map.Set.t) =
+    match modes.ocaml.byte, modes.ocaml.native, modes.melange with
+    | false, false, true -> { modes = [ Melange ]; merlin = Melange }
+    | true, _, false | _, true, false -> { modes = [ Ocaml ]; merlin = Ocaml }
+    | true, _, true | _, true, true -> { modes = [ Ocaml; Melange ]; merlin = Ocaml }
+    | false, false, false -> { modes = []; merlin = Ocaml }
+  ;;
+end
+
+type for_ = For.t =
+  | Ocaml
+  | Melange
+
 type t =
   { super_context : Super_context.t
   ; scope : Scope.t
@@ -102,6 +125,7 @@ type t =
   ; bin_annot : bool
   ; loc : Loc.t option
   ; ocaml : Ocaml_toolchain.t
+  ; for_ : for_
   }
 
 let loc t = t.loc
@@ -164,7 +188,7 @@ let create
       ?bin_annot
       ?loc
       ?instances
-      ()
+      for_
   =
   let project = Scope.project scope in
   let context = Super_context.context super_context in
@@ -235,8 +259,11 @@ let create
   ; loc
   ; ocaml
   ; instances
+  ; for_
   }
 ;;
+
+let for_ t = t.for_
 
 let alias_and_root_module_flags =
   let extra = [ "-w"; "-49"; "-nopervasives"; "-nostdlib" ] in

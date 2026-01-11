@@ -233,7 +233,7 @@ let setup sctx ~dir =
   let* cctx =
     let requires_link = Memo.lazy_ (fun () -> requires) in
     Compilation_context.create
-      ()
+      Ocaml
       ~super_context:sctx
       ~scope
       ~obj_dir

@@ -22,6 +22,7 @@ type t =
   ; buf : Buffer.t
   ; cats : Category.Set.t
   ; mutex : Mutex.t
+  ; path : Path.t
   }
 
 (* CR-someday rgrinberg: remove this once we drop support for < 5.2 *)
@@ -70,7 +71,7 @@ let create cats path =
   in
   let cats = Category.Set.of_list cats in
   let buf = Buffer.create (1 lsl 16) in
-  { fd; cats; buf; mutex = Mutex.create () }
+  { fd; cats; buf; mutex = Mutex.create (); path }
 ;;
 
 let to_buffer t sexp =

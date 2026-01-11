@@ -3,6 +3,7 @@ type t =
   ; buf : Buffer.t
   ; cats : Category.Set.t
   ; mutex : Mutex.t
+  ; path : Stdune.Path.t
   }
 
 val emit : ?buffered:bool -> t -> Event.t -> unit

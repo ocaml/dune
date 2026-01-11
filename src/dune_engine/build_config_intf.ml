@@ -119,8 +119,7 @@ module type Build_config = sig
   (** Initialise the build system. This must be called before running the build
       system and only once. *)
   val set
-    :  stats:Dune_trace.Out.t option
-    -> contexts:(Build_context.t * Context_type.t) list Memo.Lazy.t
+    :  contexts:(Build_context.t * Context_type.t) list Memo.Lazy.t
     -> promote_source:
          (chmod:(int -> int)
           -> delete_dst_if_it_is_a_directory:bool
@@ -149,7 +148,6 @@ module type Build_config = sig
         -> src:Path.Build.t
         -> dst:Path.Source.t
         -> unit Fiber.t
-    ; stats : Dune_trace.Out.t option
     ; cache_config : Dune_cache.Config.t
     ; cache_debug_flags : Cache_debug_flags.t
     ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t

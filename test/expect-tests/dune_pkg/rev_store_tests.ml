@@ -22,7 +22,7 @@ let () =
 let run thunk =
   let on_event _config _event = () in
   let config : Scheduler.Config.t =
-    { concurrency = 1; stats = None; print_ctrl_c_warning = false; watch_exclusions = [] }
+    { concurrency = 1; print_ctrl_c_warning = false; watch_exclusions = [] }
   in
   Scheduler.Run.go config ~on_event thunk
 ;;

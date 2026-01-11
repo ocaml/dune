@@ -69,11 +69,7 @@ let rpc server =
 
 let no_build_no_rpc ~config:dune_config f =
   let config =
-    Dune_config.for_scheduler
-      dune_config
-      None
-      ~print_ctrl_c_warning:true
-      ~watch_exclusions:[]
+    Dune_config.for_scheduler dune_config ~print_ctrl_c_warning:true ~watch_exclusions:[]
   in
   Dune_rules.Clflags.concurrency := config.concurrency;
   Run.go config ~on_event:(fun _ _ -> ()) f
@@ -82,11 +78,7 @@ let no_build_no_rpc ~config:dune_config f =
 let go_without_rpc_server ~(common : Common.t) ~config:dune_config f =
   let config =
     let watch_exclusions = Common.watch_exclusions common in
-    Dune_config.for_scheduler
-      dune_config
-      (Dune_trace.global ())
-      ~print_ctrl_c_warning:true
-      ~watch_exclusions
+    Dune_config.for_scheduler dune_config ~print_ctrl_c_warning:true ~watch_exclusions
   in
   Dune_rules.Clflags.concurrency := config.concurrency;
   Run.go config ~on_event:(on_event dune_config) f
@@ -113,11 +105,7 @@ let go_with_rpc_server_and_console_status_reporting
   in
   let config =
     let watch_exclusions = Common.watch_exclusions common in
-    Dune_config.for_scheduler
-      dune_config
-      (Dune_trace.global ())
-      ~print_ctrl_c_warning:true
-      ~watch_exclusions
+    Dune_config.for_scheduler dune_config ~print_ctrl_c_warning:true ~watch_exclusions
   in
   Dune_rules.Clflags.concurrency := config.concurrency;
   let file_watcher = Common.file_watcher common in

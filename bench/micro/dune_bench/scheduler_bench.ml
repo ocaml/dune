@@ -8,7 +8,6 @@ module Caml = Stdlib
 let config =
   Dune_engine.Clflags.display := Short;
   { Scheduler.Config.concurrency = 1
-  ; stats = None
   ; print_ctrl_c_warning = false
   ; watch_exclusions = []
   }

@@ -125,7 +125,6 @@ let run kind script =
   Dune_engine.Clflags.display := Short;
   let config =
     { Scheduler.Config.concurrency = 1
-    ; stats = None
     ; print_ctrl_c_warning = false
     ; watch_exclusions = []
     }

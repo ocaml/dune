@@ -5,7 +5,6 @@ open Import
 module Config : sig
   type t =
     { concurrency : int
-    ; stats : Dune_trace.Out.t option
     ; print_ctrl_c_warning : bool
     ; watch_exclusions : string list
     }
@@ -149,7 +148,6 @@ val cancel_current_build : unit -> unit Fiber.t
     [duration] should be at least this long. *)
 val sleep : Time.Span.t -> unit Fiber.t
 
-val stats : unit -> Dune_trace.Out.t option Fiber.t
 val spawn_thread : (unit -> unit) -> Thread.t
 
 (** [set_fs_memo_impl] registers the file system memoization callbacks.

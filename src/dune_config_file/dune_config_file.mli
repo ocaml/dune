@@ -155,7 +155,6 @@ module Dune_config : sig
   val for_scheduler
     :  t
     -> watch_exclusions:string list
-    -> Dune_trace.Out.t option
     -> print_ctrl_c_warning:bool
     -> Scheduler.Config.t
 end

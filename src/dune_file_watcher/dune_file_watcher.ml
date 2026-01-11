@@ -194,7 +194,7 @@ let process_inotify_event
 ;;
 
 let emit_events events =
-  Dune_trace.emit_all File_watcher (fun () ->
+  Dune_trace.emit_all ~buffered:true File_watcher (fun () ->
     List.map events ~f:(fun (event : Event.t) ->
       Dune_trace.Event.file_watcher
         (match event with

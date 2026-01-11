@@ -497,6 +497,7 @@ let cctx
       ~parameters
       ~compile_info
       ~modes
+      ~for_
   =
   let* flags = Buildable_rules.ocaml_flags sctx ~dir lib.buildable.flags
   and* implements = Virtual_rules.impl sctx ~lib ~scope in
@@ -530,7 +531,7 @@ let cctx
     | Private None -> None
   in
   Compilation_context.create
-    ()
+    for_
     ~super_context:sctx
     ~scope
     ~obj_dir
@@ -674,7 +675,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
     let { Lib_config.has_native; _ } = ocaml.lib_config in
     Mode_conf.Lib.Set.eval lib.modes ~has_native
   in
-  let f () =
+  let f for_ =
     let* source_modules =
       Dir_contents.ocaml dir_contents >>= Ml_sources.modules ~libs ~for_:(Library lib_id)
     in
@@ -690,6 +691,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         ~parameters
         ~compile_info
         ~modes
+        ~for_
     in
     let* () =
       match buildable.ctypes with
@@ -711,5 +713,9 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
   let merlin_ident = Merlin_ident.for_lib (Library.best_name lib) in
-  Buildable_rules.with_lib_deps (Super_context.context sctx) merlin_ident ~dir ~f
+  Buildable_rules.with_lib_deps
+    (Super_context.context sctx)
+    merlin_ident
+    ~dir
+    ~f:(fun () -> f Ocaml)
 ;;

@@ -102,6 +102,7 @@ type t =
   ; bin_annot : bool
   ; loc : Loc.t option
   ; ocaml : Ocaml_toolchain.t
+  ; for_ : Compilation_mode.t
   }
 
 let loc t = t.loc
@@ -164,7 +165,7 @@ let create
       ?bin_annot
       ?loc
       ?instances
-      ()
+      for_
   =
   let project = Scope.project scope in
   let context = Super_context.context super_context in
@@ -235,8 +236,11 @@ let create
   ; loc
   ; ocaml
   ; instances
+  ; for_
   }
 ;;
+
+let for_ t = t.for_
 
 let alias_and_root_module_flags =
   let extra = [ "-w"; "-49"; "-nopervasives"; "-nostdlib" ] in

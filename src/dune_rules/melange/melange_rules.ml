@@ -408,7 +408,7 @@ let setup_emit_cmj_rules
     let* cctx =
       let direct_requires = Lib.Compile.direct_requires compile_info in
       Compilation_context.create
-        ()
+        Melange
         ~loc:mel.loc
         ~super_context:sctx
         ~scope

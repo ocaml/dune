@@ -39,7 +39,7 @@ val create
   -> ?bin_annot:bool
   -> ?loc:Loc.t
   -> ?instances:Parameterised_rules.instances list Resolve.Memo.t
-  -> unit
+  -> Compilation_mode.t
   -> t Memo.t
 
 (** Return a compilation context suitable for compiling the alias module. *)
@@ -74,6 +74,7 @@ val modes : t -> Lib_mode.Map.Set.t
 val for_wrapped_compat : t -> t
 val for_root_module : t -> Module.t -> t
 val ocaml : t -> Ocaml_toolchain.t
+val for_ : t -> Compilation_mode.t
 
 val for_module_generated_at_link_time
   :  t

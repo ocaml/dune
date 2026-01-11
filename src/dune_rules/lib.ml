@@ -393,6 +393,8 @@ module T = struct
     ; implements : t Resolve.t option
     ; project : Dune_project.t option
     ; (* these fields cannot be forced until the library is instantiated *)
+      (* TODO(anmonteiro): change this to Compilation_mode.By_mode.t *)
+      (* default_implementation : t Resolve.t Memo.Lazy.t Compilation_mode.By_mode.t option *)
       default_implementation : t Resolve.t Memo.Lazy.t option
     ; sub_systems : Sub_system0.Instance.t Memo.Lazy.t Sub_system_name.Map.t
     }

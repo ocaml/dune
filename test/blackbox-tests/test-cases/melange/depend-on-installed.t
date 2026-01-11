@@ -175,3 +175,76 @@ An explicitly empty [melange.libraries] field remains empty after installation.
   $ node consumer/_build/default/dist/main.js
   melange
 
+A non-empty [melange.libraries] field remains independent from an explicitly
+empty [libraries] field after installation.
+
+  $ mkdir melange_dep shared_empty_ocaml consumer-melange-dep prefix-melange-dep
+
+  $ cat > melange_dep/dune-project <<EOF
+  > (lang dune 3.24)
+  > (package (name melange_dep))
+  > (using melange 0.1)
+  > EOF
+
+  $ cat > melange_dep/dune <<EOF
+  > (library
+  >  (modes melange)
+  >  (public_name melange_dep))
+  > EOF
+
+  $ cat > melange_dep/foo.ml <<EOF
+  > let value = "melange dep"
+  > EOF
+
+  $ dune build --root melange_dep @install
+  $ dune install --root melange_dep --prefix $PWD/prefix-melange-dep > /dev/null
+
+  $ cat > shared_empty_ocaml/dune-project <<EOF
+  > (lang dune 3.24)
+  > (package (name shared_empty_ocaml))
+  > (using melange 0.1)
+  > EOF
+
+  $ cat > shared_empty_ocaml/dune <<EOF
+  > (library
+  >  (modes byte melange)
+  >  (public_name shared_empty_ocaml)
+  >  (libraries )
+  >  (melange.libraries melange_dep))
+  > EOF
+
+  $ cat > shared_empty_ocaml/shared_empty_ocaml.ml <<EOF
+  > let value = "ocaml"
+  > EOF
+
+  $ cat > shared_empty_ocaml/shared_empty_ocaml.melange.ml <<EOF
+  > let value = Melange_dep.Foo.value
+  > EOF
+
+  $ OCAMLPATH=$PWD/prefix-melange-dep/lib/:$OCAMLPATH dune build --root shared_empty_ocaml @install
+  $ dune install --root shared_empty_ocaml --prefix $PWD/prefix-melange-dep > /dev/null
+
+  $ grep -E "requires|melange_requires" prefix-melange-dep/lib/shared_empty_ocaml/dune-package
+   (melange_requires melange_dep)
+
+  $ cat > consumer-melange-dep/dune-project <<EOF
+  > (lang dune 3.24)
+  > (package (name consumer_melange_dep))
+  > (using melange 0.1)
+  > EOF
+
+  $ cat > consumer-melange-dep/dune <<EOF
+  > (melange.emit
+  >  (target dist)
+  >  (alias melange-dist)
+  >  (emit_stdlib false)
+  >  (libraries shared_empty_ocaml))
+  > EOF
+
+  $ cat > consumer-melange-dep/main.ml <<EOF
+  > let () = Js.log Shared_empty_ocaml.value
+  > EOF
+
+  $ OCAMLPATH=$PWD/prefix-melange-dep/lib/:$OCAMLPATH dune build --root consumer-melange-dep @melange-dist --display=quiet
+  $ node consumer-melange-dep/_build/default/dist/main.js
+  melange dep

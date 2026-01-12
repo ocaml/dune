@@ -2,8 +2,8 @@
 ./test-cases/actions/with-nested-exit-codes.t
 ./test-cases/actions/with-stdin-from.t
 ./test-cases/actions/with-unsupported-nested-exit-codes.t
-./test-cases/bad-alias-error/absolute-path.t/run.t
-./test-cases/bad-alias-error/outside-workspace.t/run.t
+./test-cases/alias/bad-alias-error/absolute-path.t/run.t
+./test-cases/alias/bad-alias-error/outside-workspace.t/run.t
 ./test-cases/block-strings.t/run.t
 ./test-cases/cmdliner-dep-conf.t/run.t
 ./test-cases/ctypes/github-5561-name-mangle.t

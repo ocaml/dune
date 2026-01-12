@@ -32,3 +32,8 @@
  (action
   (system
    "rg --files-without-match '^\\S' --glob \"*.t\" --glob \"!*coq*\" --glob \"!*rocq*\" . | sort > %{target}")))
+
+(alias
+ (enabled_if %{bin-available:rg})
+ (name runtest)
+ (deps lacking-description))

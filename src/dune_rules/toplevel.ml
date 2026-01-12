@@ -237,7 +237,7 @@ module Stanza = struct
         let requires_link = Lib.Compile.requires_link compile_info in
         let obj_dir = Source.obj_dir source in
         Compilation_context.create
-          ()
+          Ocaml
           ~super_context:sctx
           ~scope
           ~obj_dir

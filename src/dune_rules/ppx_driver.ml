@@ -319,7 +319,7 @@ let build_ppx_driver =
         ~melange_package_name:None
         ~package:None
         ~bin_annot:false
-        ()
+        Ocaml
     in
     let+ (_ : Exe.dep_graphs) =
       let program : Exe.Program.t =

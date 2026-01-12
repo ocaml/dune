@@ -481,7 +481,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
       ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
       ~melange_package_name:None
       ~package:None
-      ()
+      Ocaml
   in
   let ext = ".bc.exe" in
   let+ (_ : Exe.dep_graphs) =

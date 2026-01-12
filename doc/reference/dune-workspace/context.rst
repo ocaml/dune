@@ -2,8 +2,9 @@ context
 -------
 
 The ``(context ...)`` stanza declares a build context. The kind of context can
-be either ``(default ...)`` for the default build context, or ``(opam ...)`` to
-use an opam switch.
+be either ``(default ...)`` for the default kind of build context, or ``(opam
+...)`` to use an opam switch. The ``default`` context without extra fields can
+be specifed as ``(context default)``
 
 .. code:: dune
 
@@ -22,7 +23,7 @@ use an opam switch.
 
 -  ``(name <name>)`` is the subdirectory's name for ``_build``, where this
    build's context artifacts will be stored. If omitted, the context name
-   defaults to ``default``.
+   is ``default``.
 
 -  ``(lock_dir <path>)`` specifies the lock directory that will be used for
    building this context (if any). If no lock directory is specified
@@ -39,8 +40,8 @@ use an opam switch.
 - ``(generate_merlin_rules)`` instructs Dune to generate Merlin rules for this
   context, even if it is not the one selected via ``(merlin)``.
 
-- ``(profile <profile>)`` sets a different profile for a :term:`build context`. This has
-  precedence over the command-line option ``--profile``.
+- ``(profile <profile>)`` sets a different profile for a :term:`build context`.
+  This has precedence over the command-line option ``--profile``.
 
 - ``(env <env>)`` sets the environment for a particular context. This is of
   higher precedence than the root ``env`` stanza in the workspace file. This
@@ -61,6 +62,9 @@ use an opam switch.
   Relative paths are interpreted with respect to the workspace root. See
   :ref:`finding-root`.
 
+- ``(targets )`` lets you specify a list of target names to set up cross
+  compilation targets. See :ref:`cross-compilation` for more information.
+
 - ``(fdo <target_exe>)`` builds this context with feedback-direct optimizations.
   It requires `OCamlFDO <https://github.com/gretay-js/ocamlfdo>`__.
   ``<target_exe>`` is a path-interpreted relative to the workspace root (see
@@ -78,10 +82,6 @@ use an opam switch.
   including ``(disable_dynamically_linked_foreign_archives true)`` in the
   workspace file, so bytecode executables will be built with all foreign
   archives statically linked into the runtime system.
-
-
-Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field to setup
-cross compilation. See :ref:`cross-compilation` for more information.
 
 Merlin reads compilation artifacts, and it can only read the compilation
 artifacts of a single context. Usually, you should use the artifacts from the

@@ -59,11 +59,13 @@ let include_subdirs dir_contents =
   | Include Unqualified -> Unqualified
 ;;
 
+let for_ = Compilation_mode.Ocaml
+
 let make_root_module sctx ~name compile_info =
   let open Action_builder.O in
   let+ entries =
-    let requires_compile = Lib.Compile.direct_requires compile_info in
-    Root_module.entries sctx ~requires_compile ~for_:Ocaml
+    let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
+    Root_module.entries sctx ~requires_compile ~for_
   in
   { Root_module_data.name; entries }
 ;;
@@ -160,7 +162,7 @@ let make_main sctx ~root_module compile_info dir_contents =
 
 let gen_rules sctx (exes : Executables.t) ~dir compile_info dir_contents =
   Memo.Option.iter exes.bootstrap_info ~f:(fun fname ->
-    let requires_link = Lib.Compile.requires_link compile_info in
+    let requires_link = Lib.Compile.requires_link compile_info ~for_ in
     Action_builder.write_file_dyn
       (Path.Build.relative dir fname)
       (let open Action_builder.O in

@@ -10,7 +10,12 @@ open Import
     function has returned. Consider adding a type annotation to make sure this
     doesn't happen by mistake. *)
 
-val gen_select_rules : Super_context.t -> dir:Path.Build.t -> Lib.Compile.t -> unit Memo.t
+val gen_select_rules
+  :  Super_context.t
+  -> dir:Path.Build.t
+  -> Lib.Compile.t
+  -> for_:Compilation_mode.t
+  -> unit Memo.t
 
 (** Generate the rules for the [(select ...)] forms in library dependencies *)
 val with_lib_deps

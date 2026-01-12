@@ -436,7 +436,13 @@ module Valid = struct
               Lib.Set.fold ~init:(Memo.return []) libs ~f:(fun lib acc ->
                 let* acc = acc in
                 let+ libs =
-                  let* libs = Lib.closure (lib :: Option.to_list stdlib) ~linking:false in
+                  let for_ =
+                    (Compilation_mode.of_mode_set (Lib_info.modes (Lib.info lib)))
+                      .for_merlin
+                  in
+                  let* libs =
+                    Lib.closure (lib :: Option.to_list stdlib) ~linking:false ~for_
+                  in
                   Resolve.read_memo libs
                 in
                 libs :: acc))
@@ -893,7 +899,13 @@ let compile_module
    require all of the odoc files for all dependency libraries to be
    created rather than doing any fine-grained dependency management. *)
 let compile_requires stdlib_opt libs =
-  Memo.List.map ~f:(fun l -> Lib.closure ~linking:false [ l ]) libs
+  Memo.List.map
+    ~f:(fun l ->
+      let for_ =
+        (Compilation_mode.of_mode_set (Lib_info.modes (Lib.info l))).for_merlin
+      in
+      Lib.closure ~linking:false [ l ] ~for_)
+    libs
   >>| Resolve.all
   >>| Resolve.map ~f:(fun requires ->
     let requires = List.flatten requires in
@@ -905,8 +917,8 @@ let compile_requires stdlib_opt libs =
     List.filter requires ~f:(fun l -> not (List.mem libs l ~equal:lib_equal)))
 ;;
 
-let link_requires stdlib_opt libs =
-  Lib.closure libs ~linking:false
+let link_requires stdlib_opt libs (* ~for_ *) =
+  Lib.closure libs ~linking:false ~for_:Ocaml
   |> Resolve.Memo.map ~f:(fun libs ->
     match stdlib_opt with
     | None -> libs

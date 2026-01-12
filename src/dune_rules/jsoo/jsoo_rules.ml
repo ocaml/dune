@@ -706,6 +706,8 @@ let build_cm
     ~sourcemap:Js_of_ocaml.Sourcemap.Inline
 ;;
 
+let for_ = Compilation_mode.Ocaml
+
 let setup_separate_compilation_rules sctx components =
   match components with
   | _ :: _ :: _ :: _ | [] | [ _ ] -> Memo.return ()
@@ -721,8 +723,8 @@ let setup_separate_compilation_rules sctx components =
        let info = Lib.info pkg in
        let requires =
          let open Resolve.Memo.O in
-         let* reqs = Lib.requires pkg in
-         Lib.closure ~linking:false reqs
+         let* reqs = Lib.requires pkg ~for_ in
+         Lib.closure ~linking:false reqs ~for_
        in
        let lib_name = Lib_name.to_string (Lib.name pkg) in
        let* archives =

@@ -366,6 +366,8 @@ let melange_compile_flags ~sctx ~dir (mel : Melange_stanzas.Emit.t) =
   >>| Ocaml_flags.allow_only_melange
 ;;
 
+let for_ = Compilation_mode.Melange
+
 let setup_emit_cmj_rules
       ~sctx
       ~scope
@@ -403,12 +405,12 @@ let setup_emit_cmj_rules
       in
       Modules.With_vlib.modules modules, pp
     in
-    let requires_link = Lib.Compile.requires_link compile_info in
+    let requires_link = Lib.Compile.requires_link compile_info ~for_ in
     let* flags = melange_compile_flags ~sctx ~dir mel in
     let* cctx =
-      let direct_requires = Lib.Compile.direct_requires compile_info in
+      let direct_requires = Lib.Compile.direct_requires compile_info ~for_ in
       Compilation_context.create
-        Melange
+        for_
         ~loc:mel.loc
         ~super_context:sctx
         ~scope
@@ -472,7 +474,7 @@ let setup_emit_cmj_rules
         ~modes:`Melange_emit
         ~parameters:(Resolve.return []) )
   in
-  let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
+  let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir ~for_ in
   Buildable_rules.with_lib_deps ctx merlin_ident ~dir ~f
 ;;
 
@@ -740,7 +742,7 @@ let setup_js_rules_libraries =
         let output = output_of_lib ~target_dir lib in
         let* includes =
           let+ requires_link =
-            Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)
+            Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info ~for_)
             |> Resolve.Memo.map ~f:(with_vlib_implementations lib)
           in
           cmj_includes ~requires_link ~scope lib_config
@@ -784,7 +786,7 @@ let setup_js_rules_libraries =
                        ~allow_overlaps:mel.allow_overlapping_dependencies
                        (Scope.libs scope)
                        vlib
-                     |> Lib.Compile.requires_link
+                     |> Lib.Compile.requires_link ~for_
                      |> Memo.Lazy.force
                    in
                    let open Resolve.O in
@@ -868,7 +870,7 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
   in
   let* compile_info = compile_info ~scope mel in
   let* requires_link_resolve =
-    Lib.Compile.requires_link compile_info |> Memo.Lazy.force
+    Lib.Compile.requires_link compile_info ~for_ |> Memo.Lazy.force
   in
   match Resolve.to_result requires_link_resolve with
   | Ok requires_link ->

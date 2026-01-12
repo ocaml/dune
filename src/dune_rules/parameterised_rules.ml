@@ -321,7 +321,7 @@ let instantiate ~sctx lib =
       impl_only
   in
   let* requires =
-    Lib.closure ~linking:true [ lib ]
+    Lib.closure ~linking:true [ lib ] ~for_
     |> Resolve.Memo.map
          ~f:(List.map ~f:(Lib.Parameterised.for_instance ~build_dir ~ext_lib))
   in

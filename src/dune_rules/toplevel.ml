@@ -113,6 +113,8 @@ let pp_flags t =
   | No_preprocessing -> Action_builder.return Pp.nop
 ;;
 
+let for_ = Compilation_mode.Ocaml
+
 let setup_module_rules t =
   let main_ml =
     (let open Action_builder.O in
@@ -233,11 +235,11 @@ module Stanza = struct
             (Ocaml_flags.default ~dune_version ~profile)
             [ "-w"; "-24" ]
         in
-        let requires_compile = Lib.Compile.direct_requires compile_info in
-        let requires_link = Lib.Compile.requires_link compile_info in
+        let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
+        let requires_link = Lib.Compile.requires_link compile_info ~for_ in
         let obj_dir = Source.obj_dir source in
         Compilation_context.create
-          Ocaml
+          for_
           ~super_context:sctx
           ~scope
           ~obj_dir

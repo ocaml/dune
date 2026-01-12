@@ -71,6 +71,7 @@ let () =
 ;;
 
 let flags = Ocaml_flags.of_list [ "-w"; "-24" ]
+let for_ = Compilation_mode.Ocaml
 
 let gen_rules sctx t ~dir ~scope =
   let loc = t.loc in
@@ -165,11 +166,11 @@ let gen_rules sctx t ~dir ~scope =
         in
         Pp_spec.pp_module preprocess module_ >>| Modules.With_vlib.singleton_exe
       in
-      let requires_compile = Lib.Compile.direct_requires compile_info in
-      let requires_link = Lib.Compile.requires_link compile_info in
+      let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
+      let requires_link = Lib.Compile.requires_link compile_info ~for_ in
       let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name in
       Compilation_context.create
-        Ocaml
+        for_
         ~super_context:sctx
         ~scope
         ~obj_dir

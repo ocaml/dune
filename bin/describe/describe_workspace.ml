@@ -385,6 +385,8 @@ module Crawl = struct
       module_ ~obj_dir ~deps_for_intf ~deps_for_impl m :: acc)
   ;;
 
+  let for_ = Compilation_mode.Ocaml
+
   (* Builds a workspace item for the provided executables object *)
   let executables sctx ~options ~project ~dir (exes : Executables.t)
     : (Descr.Item.t * Lib.Set.t) option Memo.t
@@ -428,10 +430,10 @@ module Crawl = struct
       let+ requires =
         let* compile_info = Exe_rules.compile_info ~scope exes in
         let open Resolve.Memo.O in
-        let* requires = Lib.Compile.direct_requires compile_info in
+        let* requires = Lib.Compile.direct_requires compile_info ~for_ in
         if options.with_pps
         then
-          let+ pps = Lib.Compile.pps compile_info in
+          let+ pps = Lib.Compile.pps compile_info ~for_ in
           pps @ requires
         else Resolve.Memo.return requires
       in
@@ -451,7 +453,7 @@ module Crawl = struct
 
   (* Builds a workspace item for the provided library object *)
   let library sctx ~options (lib : Lib.t) : Descr.Item.t option Memo.t =
-    let* requires = Lib.requires lib in
+    let* requires = Lib.requires lib ~for_ in
     match Resolve.peek requires with
     | Error () -> Memo.return None
     | Ok requires ->
@@ -595,7 +597,7 @@ module Crawl = struct
       (* the executables' libraries, and the project's libraries *)
       Lib.Set.union exe_libs project_libs
       |> Lib.Set.to_list
-      |> Lib.descriptive_closure ~with_pps:options.with_pps
+      |> Lib.descriptive_closure ~with_pps:options.with_pps ~for_
       >>= Memo.parallel_map ~f:(library ~options sctx)
       >>| List.filter_opt
     in

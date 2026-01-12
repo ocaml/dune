@@ -186,6 +186,7 @@ include Sub_system.Register_end_point (struct
           ; scope
           ; source_modules
           ; compile_info = _
+          ; for_
           }
           ~expander
           ~(info : Info.t)
@@ -284,10 +285,10 @@ include Sub_system.Register_end_point (struct
           let* more_libs =
             Resolve.Memo.List.map info.libraries ~f:(Lib.DB.resolve lib_db)
           in
-          Lib.closure ~linking:true ((lib :: libs) @ more_libs)
+          Lib.closure ~linking:true ((lib :: libs) @ more_libs) ~for_
         in
         Compilation_context.create
-          Ocaml
+          for_
           ~super_context:sctx
           ~scope
           ~obj_dir

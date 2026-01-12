@@ -25,7 +25,7 @@ type t =
   ; mlds : (Documentation.t * Doc_sources.mld list) list Memo.Lazy.t
   ; coq : Coq_sources.t Memo.Lazy.t
   ; rocq : Rocq_sources.t Memo.Lazy.t
-  ; ml : Ml_sources.t Memo.Lazy.t
+  ; ml : Ml_sources.t Memo.Lazy.t Compilation_mode.By_mode.t
   ; source_dir : Source_tree.Dir.t option
   }
 
@@ -39,7 +39,7 @@ let empty kind ~dir ~source_dir =
   ; dir
   ; source_dir
   ; text_files = Filename.Set.empty
-  ; ml = Memo.Lazy.of_val Ml_sources.empty
+  ; ml = Compilation_mode.By_mode.both (Memo.Lazy.of_val Ml_sources.empty)
   ; mlds = Memo.Lazy.of_val []
   ; foreign_sources = Memo.Lazy.of_val Foreign_sources.empty
   ; coq = Memo.Lazy.of_val Coq_sources.empty
@@ -91,7 +91,7 @@ let dir t = t.dir
 let source_dir t = t.source_dir
 let coq t = Memo.Lazy.force t.coq
 let rocq t = Memo.Lazy.force t.rocq
-let ocaml t = Memo.Lazy.force t.ml
+let ocaml t = Memo.Lazy.force (Compilation_mode.By_mode.get ~for_:Ocaml t.ml)
 
 let dirs t =
   match t.kind with
@@ -266,7 +266,7 @@ end = struct
               ; source_dir = Some st_dir
               ; dir
               ; text_files = files
-              ; ml
+              ; ml = { Compilation_mode.By_mode.ocaml = ml; melange = ml }
               ; mlds
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
@@ -406,7 +406,7 @@ end = struct
                  ; source_dir
                  ; dir
                  ; text_files = files
-                 ; ml
+                 ; ml = { Compilation_mode.By_mode.ocaml = ml; melange = ml }
                  ; foreign_sources
                  ; mlds
                  ; coq
@@ -418,7 +418,7 @@ end = struct
              ; source_dir = Some source_dir
              ; dir
              ; text_files = files
-             ; ml
+             ; ml = { Compilation_mode.By_mode.ocaml = ml; melange = ml }
              ; foreign_sources
              ; mlds
              ; coq
@@ -508,5 +508,5 @@ let () =
     let* t =
       Context.DB.by_dir dir >>| Context.name >>= Super_context.find_exn >>= Load.get ~dir
     in
-    Memo.Lazy.force t.ml >>= Ml_sources.artifacts)
+    Memo.Lazy.force t.ml.ocaml >>= Ml_sources.artifacts)
 ;;

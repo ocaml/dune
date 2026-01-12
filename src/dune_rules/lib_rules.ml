@@ -500,7 +500,7 @@ let cctx
       ~for_
   =
   let* flags = Buildable_rules.ocaml_flags sctx ~dir lib.buildable.flags
-  and* implements = Virtual_rules.impl sctx ~lib ~scope in
+  and* implements = Virtual_rules.impl sctx ~lib ~scope ~for_ in
   let obj_dir = Library.obj_dir ~dir lib in
   let* modules, pp =
     Buildable_rules.modules_rules
@@ -677,7 +677,8 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
   in
   let f for_ =
     let* source_modules =
-      Dir_contents.ocaml dir_contents >>= Ml_sources.modules ~libs ~for_:(Library lib_id)
+      Dir_contents.ml dir_contents ~for_
+      >>= Ml_sources.modules ~libs ~for_:(Library lib_id)
     in
     let parameters = Lib.parameters local_lib in
     let* cctx =

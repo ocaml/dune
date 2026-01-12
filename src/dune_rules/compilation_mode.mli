@@ -12,6 +12,7 @@ type modes =
   ; merlin : t
   }
 
+val of_lib_mode : Lib_mode.t -> t
 val modes : Lib_mode.Map.Set.t -> modes
 
 module By_mode : sig

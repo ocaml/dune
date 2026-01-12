@@ -63,7 +63,7 @@ let make_root_module sctx ~name compile_info =
   let open Action_builder.O in
   let+ entries =
     let requires_compile = Lib.Compile.direct_requires compile_info in
-    Root_module.entries sctx ~requires_compile
+    Root_module.entries sctx ~requires_compile ~for_:Ocaml
   in
   { Root_module_data.name; entries }
 ;;

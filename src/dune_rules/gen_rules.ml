@@ -242,7 +242,8 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
         >>= (function
          | false -> Memo.return ()
          | true ->
-           let* ml_sources = Dir_contents.ocaml dir_contents in
+           (* TODO(anmonteiro): support Melange *)
+           let* ml_sources = Dir_contents.ml dir_contents ~for_:Ocaml in
            let { Ml_sources.Parser_generators.deps = _; targets } =
              Ml_sources.Parser_generators.modules ml_sources ~for_:(Menhir m.loc)
            in

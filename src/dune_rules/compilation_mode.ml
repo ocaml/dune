@@ -20,6 +20,11 @@ let to_dyn = function
   | Melange -> Dyn.variant "Melange" []
 ;;
 
+let of_lib_mode = function
+  | Lib_mode.Ocaml _ -> Ocaml
+  | Melange -> Melange
+;;
+
 let modes (modes : Lib_mode.Map.Set.t) =
   match modes.ocaml.byte, modes.ocaml.native, modes.melange with
   | false, false, true -> { modes = [ Melange ]; merlin = Melange }

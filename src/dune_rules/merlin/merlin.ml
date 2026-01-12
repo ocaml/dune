@@ -632,11 +632,11 @@ module Unprocessed = struct
       Some { Processed.flag = Processed.Pp_kind.Ppx; args }
   ;;
 
-  let src_dirs sctx lib =
+  let src_dirs sctx lib ~for_ =
     match Lib.Local.of_lib lib with
     | None -> Lib.info lib |> Lib_info.src_dir |> Path.Set.singleton |> Memo.return
     | Some lib ->
-      Dir_contents.modules_of_local_lib sctx lib
+      Dir_contents.modules_of_local_lib sctx lib ~for_
       >>| Modules.source_dirs
       >>| Path.Set.map ~f:Path.drop_optional_build_context
   ;;
@@ -651,8 +651,9 @@ module Unprocessed = struct
   ;;
 
   let add_lib_dirs sctx mode libs =
+    let for_ = Compilation_mode.of_lib_mode mode in
     Memo.parallel_map libs ~f:(fun lib ->
-      let+ dirs = src_dirs sctx lib in
+      let+ dirs = src_dirs sctx lib ~for_ in
       lib, dirs)
     >>| List.fold_left
           ~init:(Path.Set.empty, Path.Set.empty)

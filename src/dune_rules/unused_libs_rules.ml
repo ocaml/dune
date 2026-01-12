@@ -3,7 +3,7 @@ open Memo.O
 
 let classify_libs sctx libs =
   Memo.parallel_map libs ~f:(fun (loc, lib) ->
-    let+ modules = Dir_contents.modules_of_lib sctx lib in
+    let+ modules = Dir_contents.modules_of_lib sctx lib ~for_:Ocaml in
     loc, lib, modules)
   >>| List.partition_map ~f:(fun (loc, lib, modules) ->
     match modules with

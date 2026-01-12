@@ -170,6 +170,7 @@ module Event : sig
   module Action : sig
     val start : name:string -> start:Time.t -> t
     val finish : name:string -> start:Time.t -> t
+    val trace : digest:string -> Csexp.t -> t
   end
 end
 

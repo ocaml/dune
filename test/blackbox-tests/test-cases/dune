@@ -9,6 +9,7 @@
    (OCAML_COLOR always))
   (binaries
    ../utils/dune_cmd.exe
+   ../utils/action_trace.exe
    ../utils/dunepp.exe
    ../utils/melc_stdlib_prefix.exe
    ../utils/refmt.exe
@@ -35,6 +36,7 @@
   ../dune.jq
   %{bin:jq}
   %{bin:dune_cmd}
+  %{bin:action_trace}
   (package dune))
  ;; We don't allow conflict markers in tests
  (conflict_markers error)

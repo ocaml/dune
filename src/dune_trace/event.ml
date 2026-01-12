@@ -579,4 +579,15 @@ module Action = struct
     let dur = Time.diff (Time.now ()) start in
     Event.complete ~args:[ "name", Arg.string name ] ~name:"finish" ~start ~dur Action
   ;;
+
+  let trace ~digest (csexp : Sexp.t) =
+    match csexp with
+    | List xs -> Sexp.List (xs @ [ Sexp.List [ Atom "digest"; Atom digest ] ])
+    | Atom x ->
+      log
+        { Log.Message.level = `Warn
+        ; message = "invalid event"
+        ; args = [ "payload", Dyn.string x; "digest", Dyn.string digest ]
+        }
+  ;;
 end

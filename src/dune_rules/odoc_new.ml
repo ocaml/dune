@@ -1191,9 +1191,9 @@ let lib_artifacts ctx all index lib modules =
   let cm_kind : Lib_mode.Cm_kind.t =
     match
       let modes = Lib_info.modes info in
-      Lib_mode.Map.Set.for_merlin modes
+      (Compilation_mode.of_mode_set modes).for_merlin
     with
-    | Ocaml _ -> Ocaml Cmi
+    | Ocaml -> Ocaml Cmi
     | Melange -> Melange Cmi
   in
   let obj_dir = Lib_info.obj_dir info in
@@ -1468,8 +1468,10 @@ let index_info_of_lib_def =
     in
     let info = Lib.info lib in
     let+ artifacts =
-      let { Compilation_mode.merlin; _ } = Compilation_mode.modes (Lib_info.modes info) in
-      let+ modules = Dir_contents.modules_of_lib sctx (lib :> Lib.t) ~for_:merlin in
+      let { Compilation_mode.for_merlin; _ } =
+        Compilation_mode.of_mode_set (Lib_info.modes info)
+      in
+      let+ modules = Dir_contents.modules_of_lib sctx (lib :> Lib.t) ~for_:for_merlin in
       match modules with
       | Some m -> lib_artifacts ctx all index (lib :> Lib.t) m
       | None ->

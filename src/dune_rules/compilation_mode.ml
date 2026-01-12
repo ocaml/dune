@@ -6,7 +6,7 @@ type t =
 
 type modes =
   { modes : t list
-  ; merlin : t
+  ; for_merlin : t
   }
 
 let equal a b =
@@ -25,12 +25,12 @@ let of_lib_mode = function
   | Melange -> Melange
 ;;
 
-let modes (modes : Lib_mode.Map.Set.t) =
+let of_mode_set (modes : Lib_mode.Map.Set.t) =
   match modes.ocaml.byte, modes.ocaml.native, modes.melange with
-  | false, false, true -> { modes = [ Melange ]; merlin = Melange }
-  | true, _, false | _, true, false -> { modes = [ Ocaml ]; merlin = Ocaml }
-  | true, _, true | _, true, true -> { modes = [ Ocaml; Melange ]; merlin = Ocaml }
-  | false, false, false -> { modes = []; merlin = Ocaml }
+  | false, false, true -> { modes = [ Melange ]; for_merlin = Melange }
+  | true, _, false | _, true, false -> { modes = [ Ocaml ]; for_merlin = Ocaml }
+  | true, _, true | _, true, true -> { modes = [ Ocaml; Melange ]; for_merlin = Ocaml }
+  | false, false, false -> { modes = []; for_merlin = Ocaml }
 ;;
 
 module By_mode = struct

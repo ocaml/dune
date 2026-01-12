@@ -133,11 +133,5 @@ module Map = struct
       let open Dyn in
       record [ "ocaml", Ocaml.Mode.Dict.Set.to_dyn ocaml; "melange", bool melange ]
     ;;
-
-    let for_merlin { ocaml = { byte; native = _ }; melange } =
-      match byte, melange with
-      | false, true -> Melange
-      | _, _ -> Ocaml Byte
-    ;;
   end
 end

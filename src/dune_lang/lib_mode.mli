@@ -53,6 +53,5 @@ module Map : sig
     val of_list : mode list -> t
     val to_dyn : t -> Dyn.t
     val equal : t -> t -> bool
-    val for_merlin : t -> mode
   end
 end

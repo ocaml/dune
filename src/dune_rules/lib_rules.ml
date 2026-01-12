@@ -587,8 +587,10 @@ let library_rules
         ~dir
         ~lib_config
     in
-    let mode = Lib_mode.Map.Set.for_merlin (Lib_info.modes info) in
-    let+ () = Check_rules.add_obj_dir sctx ~obj_dir mode in
+    let { Compilation_mode.for_merlin; _ } =
+      Compilation_mode.of_mode_set (Lib_info.modes info)
+    in
+    let+ () = Check_rules.add_obj_dir sctx ~obj_dir for_merlin in
     info
   in
   let+ () =

@@ -9,11 +9,11 @@ val to_dyn : t -> Dyn.t
 
 type modes =
   { modes : t list
-  ; merlin : t
+  ; for_merlin : t
   }
 
 val of_lib_mode : Lib_mode.t -> t
-val modes : Lib_mode.Map.Set.t -> modes
+val of_mode_set : Lib_mode.Map.Set.t -> modes
 
 module By_mode : sig
   type mode := t

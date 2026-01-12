@@ -10,7 +10,7 @@ let generate_and_compile_module cctx ~precompiled_cmi ~obj_name ~name ~lib ~code
   =
   let sctx = Compilation_context.super_context cctx in
   let* module_ =
-    let+ modules = Dir_contents.modules_of_lib sctx lib in
+    let+ modules = Dir_contents.modules_of_lib sctx lib ~for_:Ocaml in
     let obj_name =
       match obj_name with
       | Some _ -> obj_name

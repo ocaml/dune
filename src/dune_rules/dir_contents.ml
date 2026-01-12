@@ -25,7 +25,8 @@ type t =
   ; mlds : (Documentation.t * Doc_sources.mld list) list Memo.Lazy.t
   ; coq : Coq_sources.t Memo.Lazy.t
   ; rocq : Rocq_sources.t Memo.Lazy.t
-  ; ml : Ml_sources.t Memo.Lazy.t Compilation_mode.By_mode.t
+  ; ocaml : Ml_sources.t Memo.Lazy.t
+  ; melange : Ml_sources.t Memo.Lazy.t
   ; source_dir : Source_tree.Dir.t option
   }
 
@@ -39,7 +40,8 @@ let empty kind ~dir ~source_dir =
   ; dir
   ; source_dir
   ; text_files = Filename.Set.empty
-  ; ml = Compilation_mode.By_mode.both (Memo.Lazy.of_val Ml_sources.empty)
+  ; ocaml = Memo.Lazy.of_val Ml_sources.empty
+  ; melange = Memo.Lazy.of_val Ml_sources.empty
   ; mlds = Memo.Lazy.of_val []
   ; foreign_sources = Memo.Lazy.of_val Foreign_sources.empty
   ; coq = Memo.Lazy.of_val Coq_sources.empty
@@ -91,7 +93,14 @@ let dir t = t.dir
 let source_dir t = t.source_dir
 let coq t = Memo.Lazy.force t.coq
 let rocq t = Memo.Lazy.force t.rocq
-let ocaml t = Memo.Lazy.force (Compilation_mode.By_mode.get ~for_:Ocaml t.ml)
+let ocaml t = Memo.Lazy.force t.ocaml
+let melange t = Memo.Lazy.force t.melange
+
+let ml t ~for_ =
+  match for_ with
+  | Compilation_mode.Ocaml -> ocaml t
+  | Melange -> melange t
+;;
 
 let dirs t =
   match t.kind with
@@ -190,7 +199,7 @@ end = struct
     let hash = Tuple.T2.hash Super_context.hash Path.Build.hash
   end
 
-  let lookup_vlib sctx ~current_dir ~loc ~dir =
+  let lookup_vlib sctx ~current_dir ~loc ~dir ~for_ =
     match Path.Build.equal current_dir dir with
     | true ->
       User_error.raise
@@ -199,7 +208,7 @@ end = struct
             "Virtual library and its implementation(s) cannot be defined in the same \
              directory"
         ]
-    | false -> Load.get sctx ~dir >>= ocaml
+    | false -> Load.get sctx ~dir >>= ml ~for_
   ;;
 
   let human_readable_description dir =
@@ -245,7 +254,7 @@ end = struct
           in
           let ml =
             Memo.lazy_ (fun () ->
-              let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
+              let lookup_vlib = lookup_vlib sctx ~current_dir:dir ~for_:Ocaml in
               let loc = loc_of_dune_file st_dir in
               let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
               let* expander = Super_context.expander sctx ~dir
@@ -266,7 +275,8 @@ end = struct
               ; source_dir = Some st_dir
               ; dir
               ; text_files = files
-              ; ml = { Compilation_mode.By_mode.ocaml = ml; melange = ml }
+              ; ocaml = ml
+              ; melange = ml
               ; mlds
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
@@ -356,7 +366,7 @@ end = struct
            in
            let ml =
              Memo.lazy_ (fun () ->
-               let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
+               let lookup_vlib = lookup_vlib sctx ~current_dir:dir ~for_:Ocaml in
                let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
                let* expander = Super_context.expander sctx ~dir
                and* dirs = Memo.Lazy.force dirs in
@@ -406,7 +416,8 @@ end = struct
                  ; source_dir
                  ; dir
                  ; text_files = files
-                 ; ml = { Compilation_mode.By_mode.ocaml = ml; melange = ml }
+                 ; ocaml = ml
+                 ; melange = ml
                  ; foreign_sources
                  ; mlds
                  ; coq
@@ -418,7 +429,8 @@ end = struct
              ; source_dir = Some source_dir
              ; dir
              ; text_files = files
-             ; ml = { Compilation_mode.By_mode.ocaml = ml; melange = ml }
+             ; ocaml = ml
+             ; melange = ml
              ; foreign_sources
              ; mlds
              ; coq
@@ -481,25 +493,25 @@ end
 
 include Load
 
-let modules_of_local_lib sctx lib =
+let modules_of_local_lib sctx lib ~for_ =
   let info = Lib.Local.info lib in
   let dir = Lib_info.src_dir info in
   let* t = get sctx ~dir
   and* libs = Scope.DB.find_by_dir dir >>| Scope.libs in
-  ocaml t
+  ml t ~for_
   >>= Ml_sources.modules
         ~libs
         ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
 ;;
 
-let modules_of_lib sctx lib =
+let modules_of_lib sctx lib ~for_ =
   match
     let info = Lib.info lib in
     Lib_info.modules info
   with
   | External modules -> Memo.return modules
   | Local ->
-    let+ modules = modules_of_local_lib sctx (Lib.Local.of_lib_exn lib) in
+    let+ modules = modules_of_local_lib sctx (Lib.Local.of_lib_exn lib) ~for_ in
     Some (Modules.With_vlib.modules modules)
 ;;
 
@@ -508,5 +520,5 @@ let () =
     let* t =
       Context.DB.by_dir dir >>| Context.name >>= Super_context.find_exn >>= Load.get ~dir
     in
-    Memo.Lazy.force t.ml.ocaml >>= Ml_sources.artifacts)
+    Memo.Lazy.force t.ocaml >>= Ml_sources.artifacts)
 ;;

@@ -11,6 +11,7 @@ val make
   -> lib:Library.t
   -> info:Path.t Lib_info.t
   -> vlib:Lib.t
+  -> for_:Compilation_mode.t
   -> t Memo.t
 
 val impl : t -> Library.t

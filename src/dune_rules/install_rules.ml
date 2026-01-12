@@ -210,7 +210,7 @@ end = struct
         >>= Ml_sources.modules
               ~libs:(Scope.libs scope)
               ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
-      and+ impl = Virtual_rules.impl sctx ~lib ~scope in
+      and+ impl = Virtual_rules.impl sctx ~lib ~scope ~for_:Ocaml in
       Virtual_rules.impl_modules impl modules |> Modules.With_vlib.split_by_lib
     in
     let lib_src_dir = Lib_info.src_dir info in

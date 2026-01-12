@@ -1466,8 +1466,10 @@ let index_info_of_lib_def =
       | Some l -> Index.of_local_lib l
       | None -> Index.of_external_lib maps lib
     in
+    let info = Lib.info lib in
     let+ artifacts =
-      let+ modules = Dir_contents.modules_of_lib sctx (lib :> Lib.t) in
+      let { Compilation_mode.merlin; _ } = Compilation_mode.modes (Lib_info.modes info) in
+      let+ modules = Dir_contents.modules_of_lib sctx (lib :> Lib.t) ~for_:merlin in
       match modules with
       | Some m -> lib_artifacts ctx all index (lib :> Lib.t) m
       | None ->
@@ -1486,7 +1488,7 @@ let index_info_of_lib_def =
       in
       Lib.Map.singleton lib entry_modules
     in
-    let package = Lib_info.package (Lib.info lib) in
+    let package = Lib_info.package info in
     let lib_index_info =
       ( index
       , { Index_tree.libs

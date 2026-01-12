@@ -28,6 +28,8 @@ type t =
   ; hidden_deps : Dep.Set.t Action_builder.t
   }
 
+let for_ = Compilation_mode.Ocaml
+
 let build_instance
       ~sctx
       ~obj_dir
@@ -172,7 +174,8 @@ let lib_hidden_deps ~sctx ~kind lib requires =
           | Local ->
             let local_lib = Lib.Local.of_lib_exn lib in
             let+ modules =
-              Action_builder.of_memo (Dir_contents.modules_of_local_lib sctx local_lib)
+              Action_builder.of_memo
+                (Dir_contents.modules_of_local_lib sctx local_lib ~for_)
             in
             Some (Modules.With_vlib.modules modules)
         in
@@ -304,7 +307,7 @@ let instantiate ~sctx lib =
       Memo.return (obj_dir_for_dep_rules dir, modules)
     | Local ->
       let local_lib = Lib.Local.of_lib_exn lib in
-      let+ modules = Dir_contents.modules_of_local_lib sctx local_lib in
+      let+ modules = Dir_contents.modules_of_local_lib sctx local_lib ~for_ in
       let modules_obj_dir = Lib_info.obj_dir (Lib.Local.info local_lib) in
       modules_obj_dir, Modules.With_vlib.modules modules
   in
@@ -509,7 +512,7 @@ let instances ~sctx ~db (deps : Lib_dep.t list) =
         in
         Module_name.Map.of_list_map_exn module_names ~f:(fun m -> m, [])
       in
-      let+ entry_names = Root_module.entry_module_names sctx lib
+      let+ entry_names = Root_module.entry_module_names sctx lib ~for_
       and+ args =
         Resolve.Memo.List.fold_left
           arguments

@@ -42,6 +42,9 @@ module type PARAMS = sig
   val module_path : Module_name.t list
 end
 
+(* TODO(anmonteiro): support melange *)
+let for_ = Compilation_mode.Ocaml
+
 (* -------------------------------------------------------------------------- *)
 
 (* This functor is where [(menhir ...)] stanzas are desugared. *)
@@ -189,7 +192,7 @@ module Run (P : PARAMS) = struct
       let+ { Ml_sources.Parser_generators.deps; targets = _ } =
         let sctx = Compilation_context.super_context cctx in
         Dir_contents.get sctx ~dir
-        >>= Dir_contents.ocaml
+        >>= Dir_contents.ml ~for_
         >>| Ml_sources.Parser_generators.modules ~for_:(Menhir stanza.loc)
       in
       match stanza.merge_into with

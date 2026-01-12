@@ -107,7 +107,7 @@ let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
     let lib = Lib.Local.of_lib_exn lib in
     let info = Lib.Local.info lib in
     let+ modules =
-      let* modules = Dir_contents.modules_of_local_lib sctx lib in
+      let* modules = Dir_contents.modules_of_local_lib sctx lib ~for_:Melange in
       let preprocess = Lib_info.preprocess info in
       modules_in_obj_dir ~sctx ~scope ~preprocess modules >>| Modules.With_vlib.modules
     in
@@ -379,7 +379,7 @@ let setup_emit_cmj_rules
   let dir = Dir_contents.dir dir_contents in
   let f () =
     let* modules, obj_dir =
-      Dir_contents.ocaml dir_contents
+      Dir_contents.melange dir_contents
       >>= Ml_sources.modules_and_obj_dir
             ~libs:(Scope.libs scope)
             ~for_:(Melange { target = mel.target })
@@ -601,7 +601,7 @@ let setup_runtime_assets_rules
 
 let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
   let* modules, obj_dir =
-    Dir_contents.ocaml dir_contents
+    Dir_contents.melange dir_contents
     >>= Ml_sources.modules_and_obj_dir
           ~libs:(Scope.libs scope)
           ~for_:(Melange { target = mel.target })

@@ -239,12 +239,16 @@ module Context = struct
       |> Package_name.of_opam_package_name
       |> Package_name.Map.mem (Lazy.force t.local_packages)
     in
+    let with_test_value =
+      match Solver_env.get t.solver_env Package_variable_name.with_test with
+      | Some v -> if Variable_value.equal v Variable_value.true_ then true else false
+      | None -> true
+    in
+    let with_test = package_is_local && with_test_value in
     Solver_env.to_env t.solver_env
     |> Solver_stats.Updater.wrap_env t.stats_updater
     |> Lock_pkg.add_self_to_filter_env package
-    |> Resolve_opam_formula.apply_filter
-         ~with_test:package_is_local
-         ~formula:filtered_formula
+    |> Resolve_opam_formula.apply_filter ~with_test ~formula:filtered_formula
   ;;
 
   exception Found of Package_name.t
@@ -1562,10 +1566,16 @@ let reject_unreachable_packages =
                 Solver_env.to_env solver_env
                 |> Lock_pkg.add_self_to_filter_env opam_package
               in
+              let with_test =
+                match Solver_env.get solver_env Package_variable_name.with_test with
+                | Some v ->
+                  if Variable_value.equal v Variable_value.true_ then true else false
+                | None -> true
+              in
               Dependency_formula.to_filtered_formula pkg.dependencies
               |> Resolve_opam_formula.filtered_formula_to_package_names
                    ~env
-                   ~with_test:true
+                   ~with_test
                    ~packages:
                      (Package_name.Map.set pkgs_by_version Dune_dep.name dune_version)
             with

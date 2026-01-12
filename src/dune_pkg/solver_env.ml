@@ -34,19 +34,6 @@ let is_subset =
     Variable_value.equal value of_)
 ;;
 
-let validate t ~loc =
-  if Package_variable_name.Map.mem t Package_variable_name.with_test
-  then
-    User_error.raise
-      ?loc
-      [ Pp.textf
-          "Setting the %S solver variable is not permitted as it would conflict with \
-           dune's internal use of %S while solving opam packages."
-          Package_variable_name.(to_string with_test)
-          Package_variable_name.(to_string with_test)
-      ]
-;;
-
 let encode t =
   let open Encoder in
   Package_variable_name.Map.to_list t
@@ -59,9 +46,7 @@ let decode =
     located (repeat (pair Package_variable_name.decode Variable_value.decode))
   in
   match Package_variable_name.Map.of_list bindings with
-  | Ok t ->
-    validate t ~loc:(Some loc);
-    t
+  | Ok t -> t
   | Error (duplicate_key, a, b) ->
     User_error.raise
       ~loc
@@ -75,7 +60,6 @@ let decode =
 
 let set t variable_name variable_value =
   let t = Package_variable_name.Map.set t variable_name variable_value in
-  validate t ~loc:None;
   t
 ;;
 

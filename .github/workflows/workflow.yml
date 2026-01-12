@@ -107,7 +107,7 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
-      - uses: nix-community/cache-nix-action@v6
+      - uses: nix-community/cache-nix-action@v7
         with:
           primary-key: |
             nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
@@ -130,7 +130,7 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
-      - uses: nix-community/cache-nix-action@v6
+      - uses: nix-community/cache-nix-action@v7
         with:
           primary-key: |
             nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
@@ -298,7 +298,7 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
-      - uses: nix-community/cache-nix-action@v6
+      - uses: nix-community/cache-nix-action@v7
         with:
           primary-key: |
             nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
@@ -529,7 +529,7 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
-      - uses: nix-community/cache-nix-action@v6
+      - uses: nix-community/cache-nix-action@v7
         with:
           primary-key: |
             nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}

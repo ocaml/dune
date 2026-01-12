@@ -61,9 +61,30 @@ Confirming that the build action creates the conditional file:
    (all_platforms
     ((action
       (progn
-       (run mkdir -p %{share} %{lib}/%{pkg-self:name})
-       (run touch %{lib}/%{pkg-self:name}/META)
-       (run sh -c "echo %{sys_ocaml_version} > %{share}/sys-ocaml-version"))))))
+       (run
+        mkdir
+        -p
+        %{share}
+        (concat
+         (catch_undefined_var %{lib} "")
+         /
+         (catch_undefined_var %{pkg-self:name} "")))
+       (run
+        touch
+        (concat
+         (catch_undefined_var %{lib} "")
+         /
+         (catch_undefined_var %{pkg-self:name} "")
+         /META))
+       (run
+        sh
+        -c
+        (concat
+         "echo "
+         (catch_undefined_var %{sys_ocaml_version} "")
+         " > "
+         (catch_undefined_var %{share} "")
+         /sys-ocaml-version)))))))
 
 Build and print the file that was conditionally added. Note that the value of
 "sys-ocaml-version" at solve-time may be different from "sys-ocaml-version" at

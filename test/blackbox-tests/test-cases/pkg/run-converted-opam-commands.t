@@ -127,9 +127,10 @@ Generate a mock opam repository
   $ build_single_package error4
   Solution for dune.lock:
   - error4.0.0.1
-  File "dune.lock/error4.0.0.1.pkg", line 5, characters 7-37:
-  5 |   (run not-a-program-%{pkg-self:name} echo hello)))
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "dune.lock/error4.0.0.1.pkg", lines 6-8, characters 3-76:
+  6 |    (concat
+  7 |     not-a-program-
+  8 |     (catch_undefined_var %{pkg-self:name} ""))
   Error: Program not-a-program-error4 not found in the tree or in PATH
    (context: default)
   [1]

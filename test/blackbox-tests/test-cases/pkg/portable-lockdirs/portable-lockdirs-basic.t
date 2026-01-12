@@ -65,31 +65,107 @@ Create a package that writes a different value to some files depending on the os
     ((((arch x86_64) (os linux)))
      ((action
        (progn
-        (run mkdir -p %{share} %{lib}/%{pkg-self:name})
-        (run touch %{lib}/%{pkg-self:name}/META)
-        (run sh -c "echo Linux > %{share}/kernel")
-        (run sh -c "echo x86_64 > %{share}/machine")))))
+        (run
+         mkdir
+         -p
+         %{share}
+         (concat
+          (catch_undefined_var %{lib} "")
+          /
+          (catch_undefined_var %{pkg-self:name} "")))
+        (run
+         touch
+         (concat
+          (catch_undefined_var %{lib} "")
+          /
+          (catch_undefined_var %{pkg-self:name} "")
+          /META))
+        (run
+         sh
+         -c
+         (concat "echo Linux > " (catch_undefined_var %{share} "") /kernel))
+        (run
+         sh
+         -c
+         (concat "echo x86_64 > " (catch_undefined_var %{share} "") /machine))))))
     ((((arch arm64) (os linux)))
      ((action
        (progn
-        (run mkdir -p %{share} %{lib}/%{pkg-self:name})
-        (run touch %{lib}/%{pkg-self:name}/META)
-        (run sh -c "echo Linux > %{share}/kernel")
-        (run sh -c "echo arm64 > %{share}/machine")))))
+        (run
+         mkdir
+         -p
+         %{share}
+         (concat
+          (catch_undefined_var %{lib} "")
+          /
+          (catch_undefined_var %{pkg-self:name} "")))
+        (run
+         touch
+         (concat
+          (catch_undefined_var %{lib} "")
+          /
+          (catch_undefined_var %{pkg-self:name} "")
+          /META))
+        (run
+         sh
+         -c
+         (concat "echo Linux > " (catch_undefined_var %{share} "") /kernel))
+        (run
+         sh
+         -c
+         (concat "echo arm64 > " (catch_undefined_var %{share} "") /machine))))))
     ((((arch x86_64) (os macos)))
      ((action
        (progn
-        (run mkdir -p %{share} %{lib}/%{pkg-self:name})
-        (run touch %{lib}/%{pkg-self:name}/META)
-        (run sh -c "echo Darwin > %{share}/kernel")
-        (run sh -c "echo x86_64 > %{share}/machine")))))
+        (run
+         mkdir
+         -p
+         %{share}
+         (concat
+          (catch_undefined_var %{lib} "")
+          /
+          (catch_undefined_var %{pkg-self:name} "")))
+        (run
+         touch
+         (concat
+          (catch_undefined_var %{lib} "")
+          /
+          (catch_undefined_var %{pkg-self:name} "")
+          /META))
+        (run
+         sh
+         -c
+         (concat "echo Darwin > " (catch_undefined_var %{share} "") /kernel))
+        (run
+         sh
+         -c
+         (concat "echo x86_64 > " (catch_undefined_var %{share} "") /machine))))))
     ((((arch arm64) (os macos)))
      ((action
        (progn
-        (run mkdir -p %{share} %{lib}/%{pkg-self:name})
-        (run touch %{lib}/%{pkg-self:name}/META)
-        (run sh -c "echo Darwin > %{share}/kernel")
-        (run sh -c "echo arm64 > %{share}/machine")))))))
+        (run
+         mkdir
+         -p
+         %{share}
+         (concat
+          (catch_undefined_var %{lib} "")
+          /
+          (catch_undefined_var %{pkg-self:name} "")))
+        (run
+         touch
+         (concat
+          (catch_undefined_var %{lib} "")
+          /
+          (catch_undefined_var %{pkg-self:name} "")
+          /META))
+        (run
+         sh
+         -c
+         (concat "echo Darwin > " (catch_undefined_var %{share} "") /kernel))
+        (run
+         sh
+         -c
+         (concat "echo arm64 > " (catch_undefined_var %{share} "") /machine))))))))
 
   $ DUNE_CONFIG__ARCH=arm64 dune build
   $ cat $pkg_root/$(dune pkg print-digest foo)/target/share/kernel

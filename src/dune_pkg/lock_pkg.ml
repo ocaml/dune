@@ -148,7 +148,11 @@ let opam_string_to_slang ~package ~loc opam_string =
          when String.is_prefix ~prefix:"%{" interp && String.is_suffix ~suffix:"}%" interp
          ->
          let ident = String.sub ~pos:2 ~len:(String.length interp - 4) interp in
-         opam_raw_fident_to_slang ~loc ident
+         (* In opam, undefined variables in string interpolation evaluate to
+            empty string. Wrap the result in catch_undefined_var to match this
+            behavior. *)
+         Result.map (opam_raw_fident_to_slang ~loc ident) ~f:(fun slang ->
+           Slang.catch_undefined_var slang ~fallback:(Slang.text ""))
        | other ->
          Error
            (User_error.make

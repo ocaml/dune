@@ -1,7 +1,6 @@
-Test that dune doesn't allow the "with-test" solver variable to be set by the
-user.
+Test that setting the "with-test" variable in solver_env works as expected.
 
-Add a workspace that attempts to set the "with-test" variable:
+Add a workspace that sets the "with-test" variable to "true":
   $ mkrepo
   $ cat >dune-workspace <<EOF
   > (lang dune 3.21)
@@ -10,27 +9,12 @@ Add a workspace that attempts to set the "with-test" variable:
   >  (repositories mock)
   >  (solver_env
   >   (with-test true)))
-  > (context
-  >  (default
-  >   (name default)
-  >   (lock_dir dune.lock)))
   > (repository
   >  (name mock)
   >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
 
-  $ dune pkg print-solver-env
-  Solver environment for lock directory dune.lock:
-  - arch = x86_64
-  - opam-version = 2.2.0
-  - os = linux
-  - os-distribution = ubuntu
-  - os-family = debian
-  - os-version = 24.11
-  - post = true
-  - sys-ocaml-version = 5.4.0+fake
-  - with-dev-setup = false
-  - with-doc = false
+  $ dune pkg print-solver-env 2>&1 | grep with-test
   - with-test = true
 
   $ mkpkg foo
@@ -47,12 +31,17 @@ Add a workspace that attempts to set the "with-test" variable:
   >   (bar :with-test)))
   > EOF
 
+Both packages will be added to the solution because the dune-workspace setting
+explicitly tells to install test dependencies.
+
   $ dune pkg lock
   Solution for dune.lock
   
   Dependencies common to all supported platforms:
   - bar.0.0.1
   - foo.0.0.1
+
+Setting the "with-test" variable to false.
 
   $ cat >dune-workspace <<EOF
   > (lang dune 3.21)
@@ -61,10 +50,6 @@ Add a workspace that attempts to set the "with-test" variable:
   >  (repositories mock)
   >  (solver_env
   >   (with-test false)))
-  > (context
-  >  (default
-  >   (name default)
-  >   (lock_dir dune.lock)))
   > (repository
   >  (name mock)
   >  (url "file://$(pwd)/mock-opam-repository"))
@@ -82,19 +67,11 @@ Add a workspace that attempts to set the "with-test" variable:
   >   (bar :with-test)))
   > EOF
 
-  $ dune pkg print-solver-env
-  Solver environment for lock directory dune.lock:
-  - arch = x86_64
-  - opam-version = 2.2.0
-  - os = linux
-  - os-distribution = ubuntu
-  - os-family = debian
-  - os-version = 24.11
-  - post = true
-  - sys-ocaml-version = 5.4.0+fake
-  - with-dev-setup = false
-  - with-doc = false
+  $ dune pkg print-solver-env 2>&1 | grep with-test
   - with-test = false
+
+Now on the contrary, setting the "with-test" variable to false will not include
+test dependencies in the solution.
 
   $ dune pkg lock
   Solution for dune.lock

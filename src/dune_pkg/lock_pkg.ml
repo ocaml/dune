@@ -21,8 +21,8 @@ let simplify_filter get_solver_var =
       then
         (* We don't generate lockfiles for local packages, and we don't include
            test dependencies for non-local packages, so "with-test" always
-           evaluates to "false". This remains the same regardless of the
-           "with-test" solver environment. *)
+           evaluates to "false" even if the solver environment is set to true.
+           *)
         Some (B false)
       else get_solver_var name |> Option.map ~f:Variable_value.to_opam_variable_contents
     | _ -> None)

@@ -58,12 +58,6 @@ open struct
 end
 
 module Package = Dune_lang.Package
-
-module Let_syntax = struct
-  let ( let+ ) t f = Term.(const f $ t)
-  let ( and+ ) a b = Term.(const (fun x y -> x, y) $ a $ b)
-end
-
 open Let_syntax
 
 let copts_sect = "COMMON OPTIONS"
@@ -332,20 +326,23 @@ module Options_implied_by_dash_p = struct
   ;;
 
   let dash_p =
+    let dash_p_implies = [ "--release"; "--ignore-lock-dir"; "--only-packages" ] in
     Term.with_used_args
       Arg.(
         value
-        & alias_opt (fun s -> [ "--release"; "--ignore-lock-dir"; "--only-packages"; s ])
+        & alias_opt (fun s -> dash_p_implies @ [ s ])
         & info
             [ "p"; "for-release-of-packages" ]
             ~docs
             ~docv:"PACKAGES"
             ~doc:
               (Some
-                 "Shorthand for $(b,--release --only-packages PACKAGE). You must use \
-                  this option in your $(i,<package>.opam) files, in order to build only \
-                  what's necessary when your project contains multiple packages as well \
-                  as getting reproducible builds."))
+                 (sprintf
+                    "Shorthand for $(b,%s PACKAGE). You must use this option in your \
+                     $(i,<package>.opam) files, in order to build only what's necessary \
+                     when your project contains multiple packages as well as getting \
+                     reproducible builds."
+                    (String.concat ~sep:" " dash_p_implies))))
   ;;
 
   let term =
@@ -1259,7 +1256,8 @@ let build (root : Workspace_root.t) (builder : Builder.t) =
       let cats =
         match Sys.getenv_opt "DUNE_TRACE" with
         | None ->
-          Dune_trace.Category.[ Sandbox; Persistent; Process; Rules; Pkg; Promote; Build ]
+          Dune_trace.Category.
+            [ Sandbox; Persistent; Process; Rules; Pkg; Promote; Build; File_watcher ]
         | Some s ->
           String.split ~on:',' s
           |> List.map ~f:(fun x ->
@@ -1283,7 +1281,7 @@ let build (root : Workspace_root.t) (builder : Builder.t) =
            in
            let lock_timeout =
              match builder.watch with
-             | Yes Passive -> Some 1.0
+             | Yes Passive -> Some (Time.Span.of_secs 1.0)
              | _ -> None
            in
            Dune_rpc_impl.Server.create
@@ -1322,7 +1320,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string c.builder.build_dir);
   (* Once we have the build directory set, initialise the logging. We can't do
      this earlier, because the build log typically goes into [_build/log]. *)
-  Log.init () ~file:builder.log_file;
+  Log.init builder.log_file;
   (* We need to print this before reading the workspace file, so that the editor
      can interpret errors in the workspace file. *)
   print_entering_message c;

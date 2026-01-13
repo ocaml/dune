@@ -1,5 +1,3 @@
-  $ . ../helpers.sh
-
 We use an empty repository with no packages for this test.
 
   $ mkrepo

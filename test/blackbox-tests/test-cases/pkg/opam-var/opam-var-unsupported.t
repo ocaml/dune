@@ -1,5 +1,3 @@
-  $ . ../helpers.sh
-
   $ mkrepo
   > fail_solve() {
   >   mkpkg testpkg <<EOF

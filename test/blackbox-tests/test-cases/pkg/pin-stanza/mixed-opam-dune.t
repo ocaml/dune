@@ -1,8 +1,6 @@
 We try to use a project that has both opam files and a dune-project file. We
 should favor the dune metadata in such a case.
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

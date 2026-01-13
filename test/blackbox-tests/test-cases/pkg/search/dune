@@ -1,2 +1,2 @@
 (cram
- (deps helpers.sh))
+ (setup_scripts helpers.sh))

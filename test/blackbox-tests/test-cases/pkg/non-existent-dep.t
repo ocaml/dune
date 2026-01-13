@@ -2,7 +2,7 @@ A package depending on a package that doesn't exist.
 The solver now gives a more sane error message.
 
 A few packages here so the errors could get large.
-  $ . ./helpers.sh
+
   $ mkrepo
   $ add_mock_repo_if_needed
   $ mkpkg a 0.0.1

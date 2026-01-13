@@ -10,7 +10,9 @@ let () =
   at_exit (fun () ->
     match !global with
     | None -> ()
-    | Some t -> Out.close t)
+    | Some t ->
+      Out.emit t (Event.exit ());
+      Out.close t)
 ;;
 
 let set_global t =

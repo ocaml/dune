@@ -1,6 +1,5 @@
 Solving with an unknown variable on depexts:
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

@@ -1,8 +1,7 @@
 We test how opam files with substs fields together with patches fields are translated into
 the dune.lock file. Opam allows substitution to happen before the patches phase, so we
 must do the same.
- 
-  $ . ./helpers.sh
+
   $ mkrepo
 
 Make a package with a substs and patches field field 

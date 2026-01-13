@@ -5,7 +5,6 @@ dependencies.
 If the dev-tool feature is not enabled then "dune fmt" should invoke the
 "ocamlformat" executable from the project's regular package dependencies.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ make_fake_ocamlformat "0.26.2"
@@ -13,7 +12,6 @@ If the dev-tool feature is not enabled then "dune fmt" should invoke the
 
   $ make_ocamlformat_opam_pkg "0.26.2"
   $ make_ocamlformat_opam_pkg "0.26.3"
-
 
 Make a project that depends on the fake ocamlformat.0.26.2:
   $ make_project_with_dev_tool_lockdir

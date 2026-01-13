@@ -10,8 +10,6 @@ because the 'patch' file is already present.
 
 The issue is now fixed.
 
-
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a fake ocamlformat:

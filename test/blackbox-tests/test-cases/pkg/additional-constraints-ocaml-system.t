@@ -1,8 +1,6 @@
 Test that we support the use case of using additional constraints to force the
 system compiler to be used instead of installing the compiler.
 
-  $ . ./helpers.sh
-
 Create packages resembling the ocaml compiler packages
   $ mkrepo
 

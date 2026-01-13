@@ -1,7 +1,5 @@
 Test that shows what happens when dune.lock is ignored.
 
-  $ . ./helpers.sh
-
   $ make_lockdir
   $ make_lockpkg test <<EOF
   > (version 0.0.1)

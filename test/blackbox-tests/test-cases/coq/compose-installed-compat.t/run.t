@@ -46,7 +46,7 @@ so this also tests that it won't be a problem.
 
 
 Next we go into our Dune project and build it.
-  $ dune build --root A
+  $ dune build --trace-file trace.json --root A
   Entering directory 'A'
   Warning: Dune's Coq Build Language is deprecated, and will be removed in Dune
   3.24. Please upgrade to the new Rocq Build Language.
@@ -58,20 +58,56 @@ Next we go into our Dune project and build it.
 
 Now we check the flags that were passed to coqdep and coqc:
 
-  $ tail -4 A/_build/log | head -2 | ../scrub_coq_args.sh
-  coqdep
-  -boot
-  -R coq/theories Coq
-  -Q $TESTCASE_ROOT/lib/coq/user-contrib/B B
-  -R . A -dyndep opt -vos a.v >
-  _build/default/.A.theory.d
-  coqc -q
-  -w -deprecated-native-compiler-option -native-output-dir .
-  -native-compiler on
-  -nI lib/coq-core/kernel
-  -nI .
-  -boot
-  -R coq/theories Coq
-  -Q $TESTCASE_ROOT/lib/coq/user-contrib/B B
-  -R . A
-  a.v
+  $ jq '.[] | select(.name == "coqc" or .name == "coqdep") | {name, args: (.args.process_args | map(sub(".*/coq-core"; "coq-core")))}' trace.json
+  {
+    "name": "coqc",
+    "args": [
+      "--config"
+    ]
+  }
+  {
+    "name": "coqdep",
+    "args": [
+      "-boot",
+      "-R",
+      "$TESTCASE_ROOT/lib/coq/theories",
+      "Coq",
+      "-Q",
+      "$TESTCASE_ROOT/lib/coq/user-contrib/B",
+      "B",
+      "-R",
+      ".",
+      "A",
+      "-dyndep",
+      "opt",
+      "-vos",
+      "a.v"
+    ]
+  }
+  {
+    "name": "coqc",
+    "args": [
+      "-q",
+      "-w",
+      "-deprecated-native-compiler-option",
+      "-native-output-dir",
+      ".",
+      "-native-compiler",
+      "on",
+      "-nI",
+      "coq-core/kernel",
+      "-nI",
+      ".",
+      "-boot",
+      "-R",
+      "$TESTCASE_ROOT/lib/coq/theories",
+      "Coq",
+      "-Q",
+      "$TESTCASE_ROOT/lib/coq/user-contrib/B",
+      "B",
+      "-R",
+      ".",
+      "A",
+      "a.v"
+    ]
+  }

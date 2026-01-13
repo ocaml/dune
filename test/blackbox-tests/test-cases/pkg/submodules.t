@@ -1,8 +1,6 @@
 We want to make sure locking works even with submodules. Submodules can
 contains submodules on their own which should also work.
 
-  $ . ../git-helpers.sh
-  $ . ./helpers.sh
   $ mkrepo
   $ mkpkg foo <<EOF
   > EOF

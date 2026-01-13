@@ -1,7 +1,5 @@
 Test that we can set variables
 
-  $ . ./helpers.sh
-
   $ make_lockdir
   $ make_lockpkg test <<EOF
   > (version 0.0.1)
@@ -60,7 +58,7 @@ Now we demonstrate we get a proper error from invalid .config files:
   >  ))
   > EOF
 
-  $ build_pkg test 2>&1 | sed 's/File .*:/File $REDACTED:/'
+  $ build_pkg test 2>&1 | dune_cmd subst 'File .*:' 'File $REDACTED:'
   Error:
   File $REDACTED:
   1 | this is dummy text

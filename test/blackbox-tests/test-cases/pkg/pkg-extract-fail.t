@@ -4,7 +4,6 @@ exit codes and error messages, see #11560 for example output
 Create a mock package whose url is a corrupted/invalid tar file attempt to
 build this package and check for sufficient error handling
 
-  $ . ./helpers.sh
   $ echo "corrupted tar" > corrupted.tar
 
   $ mkpkg foo <<EOF
@@ -17,7 +16,7 @@ build this package and check for sufficient error handling
   $ solve foo
   Solution for dune.lock:
   - foo.0.0.1
-  $ build_pkg foo 2>&1 |  sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | sed "s/'[0-9]*'/X/"
+  $ build_pkg foo 2>&1 |  sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | dune_cmd subst "'[0-9]*'" X
   Error: failed to extract 'corrupted.tar'
   Reason: 'tar' failed with non-zero exit code X and output:
 
@@ -36,7 +35,7 @@ captured
   Solution for dune.lock:
   - foo.0.0.1
 
-  $ build_pkg foo 2>&1 |  sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | sed "s/'[0-9]*'/X/"
+  $ build_pkg foo 2>&1 |  sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | dune_cmd subst "'[0-9]*'" X
   Error: failed to extract 'corrupted.tar.gz'
   Reason: 'tar' failed with non-zero exit code X and output:
 
@@ -57,6 +56,6 @@ unzip error message a bit less clear
   Solution for dune.lock:
   - foo.0.0.1
 
-  $ build_pkg foo 2>&1 | sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | sed "s/'[0-9]*'/X/"
+  $ build_pkg foo 2>&1 | sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | dune_cmd subst "'[0-9]*'" X
   Error: failed to extract 'corrupted.zip'
   Reason: 'unzip' failed with non-zero exit code X and output:

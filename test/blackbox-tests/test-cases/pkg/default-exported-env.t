@@ -1,7 +1,5 @@
 Some environment variables are automatically exported by packages:
 
-  $ . ./helpers.sh
-
   $ make_lockdir
   $ make_lockpkg test <<EOF
   > (version 0.0.1)

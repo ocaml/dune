@@ -1,7 +1,6 @@
 Exercise differences between the behavior of `dune fmt` when a lockdir is
 present and a lockdir is absent.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ make_project_with_dev_tool_lockdir
 

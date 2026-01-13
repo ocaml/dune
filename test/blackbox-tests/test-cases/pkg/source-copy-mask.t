@@ -1,6 +1,5 @@
 We shouldn't copy files that aren't sources
 
-  $ . ./helpers.sh
   $ make_lockdir
 
   $ src=_foo

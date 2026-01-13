@@ -8,7 +8,7 @@ let%expect_test _ =
   let events_buffer = ref [] in
   let watcher =
     Dune_file_watcher.create_default
-      ~fsevents_debounce:0.
+      ~fsevents_debounce:(Time.Span.of_secs 0.)
       ~scheduler:
         { spawn_thread = (fun f -> ignore (Thread.create f () : Thread.t))
         ; thread_safe_send_emit_events_job =

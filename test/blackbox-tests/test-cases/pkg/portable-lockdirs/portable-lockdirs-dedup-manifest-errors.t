@@ -1,7 +1,6 @@
 Test that errors with opam package manifests are only printed a single time
 even when they are encountered by multiple concurrent runs of the opam solver.
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

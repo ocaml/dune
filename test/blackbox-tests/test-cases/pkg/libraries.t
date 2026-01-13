@@ -1,8 +1,6 @@
 This test attempts to build a library installed through a lock file and then
 use it inside dune.
 
-  $ . ./helpers.sh
-
 We set up a library that will be installed as part of the package:
 
   $ mkdir external_sources

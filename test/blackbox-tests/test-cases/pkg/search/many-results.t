@@ -1,7 +1,4 @@
-  $ . ../helpers.sh
-
 Load search/helpers.sh for helper to create many packages
-  $ . ./helpers.sh
 
 We setup a simple mock repository directory with a couple of packages.
 

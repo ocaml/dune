@@ -1,7 +1,5 @@
 Create a lock directory that didn't originally exist
 
-  $ . ../helpers.sh
-
   $ cat > dune-workspace <<EOF
   > (lang dune 3.20)
   > (pkg enabled)

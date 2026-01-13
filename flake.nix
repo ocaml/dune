@@ -189,11 +189,18 @@
           testBuildInputs =
             with pkgs;
             [
+              bc
               file
+              jq
               mercurial
               unzip
-              perl
-              jq
+              coreutils
+              bc
+              curl
+              git
+              binaryen
+              procps
+              which
             ]
             ++ lib.optionals stdenv.isLinux [ strace ];
           testNativeBuildInputs =
@@ -496,12 +503,6 @@
               (with pkgs; [
                 # dev tools
                 ccls
-                # test dependencies
-                binaryen
-                curl
-                git
-                procps
-                which
               ])
               ++ (with pkgs.ocamlPackages; [
                 core_bench

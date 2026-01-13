@@ -61,7 +61,7 @@ end
 
 (** Create a new file watcher with default settings. *)
 val create_default
-  :  ?fsevents_debounce:float
+  :  ?fsevents_debounce:Time.Span.t
   -> watch_exclusions:string list
   -> scheduler:Scheduler.t
   -> unit

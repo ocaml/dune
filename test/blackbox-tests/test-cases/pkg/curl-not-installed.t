@@ -1,6 +1,5 @@
 Test the error message when curl is needed but not installed.
 
-  $ . ./helpers.sh
   $ make_lockdir
 
   $ makepkg() {

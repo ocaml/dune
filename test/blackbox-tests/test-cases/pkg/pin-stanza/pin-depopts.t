@@ -1,7 +1,6 @@
 Test that it's possible to lock a project that depends on a pinned
 package with depopts.
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

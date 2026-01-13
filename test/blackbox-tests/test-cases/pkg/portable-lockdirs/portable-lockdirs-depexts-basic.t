@@ -1,6 +1,5 @@
 Demonstrate various cases representing depexts in lockfiles.
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

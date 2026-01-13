@@ -171,7 +171,7 @@ let test_with_multiple_fsevents ~setup ~test:f =
         let res =
           Fsevents.create
             ~paths:[ config.dir ]
-            ~latency:0.0
+            ~latency:(Time.Span.of_secs 0.0)
             ~f:(make_callback sync ~f:config.on_event)
         in
         (match config.exclusion_paths with

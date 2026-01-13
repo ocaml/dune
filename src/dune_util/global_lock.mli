@@ -1,3 +1,5 @@
+open Stdune
+
 (** global lock shared between dune processes.
 
     Before starting rpc, writing to the build dir, this lock should be locked. *)
@@ -11,9 +13,9 @@ end
 (** Attempt to acquire a lock. once a lock is locked, subsequent locks always
     succeed. Returns [Ok ()] if the lock is acquired within [timeout] seconds,
     and [Error ()] otherwise. *)
-val lock : timeout:float option -> (unit, Lock_held_by.t) result
+val lock : timeout:Time.Span.t option -> (unit, Lock_held_by.t) result
 
-val lock_exn : timeout:float option -> unit
+val lock_exn : timeout:Time.Span.t option -> unit
 
 (** release a lock and allow it be re-acquired *)
 val unlock : unit -> unit

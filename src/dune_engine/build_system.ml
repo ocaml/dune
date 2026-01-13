@@ -666,6 +666,36 @@ end = struct
           ~targets:produced_targets
           ~promote_source:config.promote_source
       in
+      (* Emit rule trace with observed deps and produced targets *)
+      let () =
+        Dune_trace.emit Rule (fun () ->
+          let deps =
+            Dep.Map.foldi facts ~init:[] ~f:(fun dep fact acc ->
+              match dep, Dep.Fact.digest fact with
+              | Dep.File p, Some d -> (Path.to_string p, Digest.to_string d) :: acc
+              | Dep.File_selector fs, Some d ->
+                (Path.to_string (File_selector.dir fs), Digest.to_string d) :: acc
+              | Dep.Alias a, Some d ->
+                (Path.Build.to_string (Alias.dir a), Digest.to_string d) :: acc
+              | Dep.Env _, _ -> acc
+              | Dep.Universe, _ -> acc
+              | _, None -> acc)
+          in
+          let targets =
+            Targets.Produced.to_list_map produced_targets ~f:(fun local_path digest_opt ->
+              match digest_opt with
+              | Some digest ->
+                Some
+                  ( Path.Build.append_local produced_targets.root local_path
+                  , Digest.to_string digest )
+              | None -> None)
+            |> List.filter_map ~f:Fun.id
+          in
+          Dune_trace.Event.Rule.info
+            ~rule_digest:(Digest.to_string rule_digest)
+            ~deps
+            ~targets)
+      in
       let+ () = State.incr_rule_done_exn () in
       produced_targets)
     (* jeremidimino: We need to include the dependencies discovered while

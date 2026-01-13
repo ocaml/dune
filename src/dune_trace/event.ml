@@ -591,3 +591,21 @@ module Action = struct
         }
   ;;
 end
+
+module Rule = struct
+  let info ~rule_digest ~deps ~targets =
+    let args =
+      [ "rule_digest", Arg.string rule_digest
+      ; ( "deps"
+        , Arg.list
+            (List.map deps ~f:(fun (path, digest) ->
+               Arg.list [ Arg.string path; Arg.string digest ])) )
+      ; ( "targets"
+        , Arg.list
+            (List.map targets ~f:(fun (path, digest) ->
+               Arg.list [ Arg.build_path path; Arg.string digest ])) )
+      ]
+    in
+    Event.instant ~args ~name:"info" (Time.now ()) Category.Rule
+  ;;
+end

@@ -239,6 +239,13 @@ module Fact = struct
   ;;
 
   let alias _alias files = Alias files
+
+  let digest = function
+    | Nothing -> None
+    | File (_, digest) -> Some digest
+    | File_selector { facts; _ } -> Some facts.digest
+    | Alias facts -> Some facts.digest
+  ;;
 end
 
 module Set = struct

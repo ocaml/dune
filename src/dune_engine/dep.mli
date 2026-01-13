@@ -39,6 +39,7 @@ module Fact : sig
   val nothing : t
   val file : Path.t -> Digest.t -> t
   val to_dyn : t -> Dyn.t
+  val digest : t -> Digest.t option
 
   module Files : sig
     (** A group of files for which we cache the digest of the whole group. *)

@@ -20,6 +20,7 @@ module Category : sig
     | Log
     | Cram
     | Action
+    | Rule
 
   val of_string : string -> t option
 end
@@ -171,6 +172,14 @@ module Event : sig
     val start : name:string -> start:Time.t -> t
     val finish : name:string -> start:Time.t -> t
     val trace : digest:string -> Csexp.t -> t
+  end
+
+  module Rule : sig
+    val info
+      :  rule_digest:string
+      -> deps:(string * string) list
+      -> targets:(Path.Build.t * string) list
+      -> t
   end
 end
 

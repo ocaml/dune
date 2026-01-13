@@ -335,57 +335,55 @@ let build_cm
 
 let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
   let open Memo.O in
-  let { Lib_mode.Map.ocaml; melange } = Compilation_context.modes cctx in
   let build_cm = build_cm cctx m ~force_write_cmi ~precompiled_cmi in
-  let* () =
-    Memo.when_ (ocaml.byte || ocaml.native) (fun () ->
-      let* () = build_cm ~cm_kind:(Ocaml Cmo) ~phase:None
-      and* () =
-        let ctx = Compilation_context.context cctx in
-        let ocaml = Compilation_context.ocaml cctx in
-        let can_split =
-          Ocaml.Version.supports_split_at_emit ocaml.version
-          || Ocaml_config.is_dev_version ocaml.ocaml_config
-        in
-        match Context.fdo_target_exe ctx, can_split with
-        | None, _ -> build_cm ~cm_kind:(Ocaml Cmx) ~phase:None
-        | Some _, false -> build_cm ~cm_kind:(Ocaml Cmx) ~phase:(Some All)
-        | Some _, true ->
-          build_cm ~cm_kind:(Ocaml Cmx) ~phase:(Some Compile)
-          >>> Fdo.opt_rule cctx m
-          >>> build_cm ~cm_kind:(Ocaml Cmx) ~phase:(Some Emit)
-      and* () =
-        Memo.when_ (not precompiled_cmi) (fun () ->
-          build_cm ~cm_kind:(Ocaml Cmi) ~phase:None)
+  match Compilation_context.for_ cctx with
+  | Ocaml ->
+    let* () = build_cm ~cm_kind:(Ocaml Cmo) ~phase:None
+    and* () =
+      let ctx = Compilation_context.context cctx in
+      let ocaml = Compilation_context.ocaml cctx in
+      let can_split =
+        Ocaml.Version.supports_split_at_emit ocaml.version
+        || Ocaml_config.is_dev_version ocaml.ocaml_config
       in
-      let obj_dir = Compilation_context.obj_dir cctx in
-      match Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml Cmo) with
-      | None -> Memo.return ()
-      | Some src ->
-        let ml_kind = Ml_kind.Impl in
-        let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
-        let module_deps = Dep_graph.deps_of dep_graph m in
-        Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
-          Compilation_context.js_of_ocaml cctx
-          |> Js_of_ocaml.Mode.Pair.select ~mode
-          |> Memo.Option.iter ~f:(fun in_context ->
-            (* Build *.cmo.js / *.wasmo *)
-            let sctx = Compilation_context.super_context cctx in
-            let dir = Compilation_context.dir cctx in
-            let action_with_targets =
-              Jsoo_rules.build_cm
-                cctx
-                ~dir
-                ~in_context
-                ~mode
-                ~src:(Path.build src)
-                ~obj_dir
-                ~deps:module_deps
-                ~config:None
-            in
-            Super_context.add_rule sctx ~dir action_with_targets)))
-  in
-  Memo.when_ melange (fun () ->
+      match Context.fdo_target_exe ctx, can_split with
+      | None, _ -> build_cm ~cm_kind:(Ocaml Cmx) ~phase:None
+      | Some _, false -> build_cm ~cm_kind:(Ocaml Cmx) ~phase:(Some All)
+      | Some _, true ->
+        build_cm ~cm_kind:(Ocaml Cmx) ~phase:(Some Compile)
+        >>> Fdo.opt_rule cctx m
+        >>> build_cm ~cm_kind:(Ocaml Cmx) ~phase:(Some Emit)
+    and* () =
+      Memo.when_ (not precompiled_cmi) (fun () ->
+        build_cm ~cm_kind:(Ocaml Cmi) ~phase:None)
+    in
+    let obj_dir = Compilation_context.obj_dir cctx in
+    (match Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml Cmo) with
+     | None -> Memo.return ()
+     | Some src ->
+       let ml_kind = Ml_kind.Impl in
+       let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
+       let module_deps = Dep_graph.deps_of dep_graph m in
+       Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
+         Compilation_context.js_of_ocaml cctx
+         |> Js_of_ocaml.Mode.Pair.select ~mode
+         |> Memo.Option.iter ~f:(fun in_context ->
+           (* Build *.cmo.js / *.wasmo *)
+           let sctx = Compilation_context.super_context cctx in
+           let dir = Compilation_context.dir cctx in
+           let action_with_targets =
+             Jsoo_rules.build_cm
+               cctx
+               ~dir
+               ~in_context
+               ~mode
+               ~src:(Path.build src)
+               ~obj_dir
+               ~deps:module_deps
+               ~config:None
+           in
+           Super_context.add_rule sctx ~dir action_with_targets)))
+  | Melange ->
     let* () = build_cm ~cm_kind:(Melange Cmj) ~phase:None
     and* () =
       Memo.when_ (not precompiled_cmi) (fun () ->
@@ -397,7 +395,7 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
       let obj_dir = Compilation_context.obj_dir cctx in
       Obj_dir.melange_dir obj_dir
     in
-    Alias_builder.define_all_alias ~project ~predicate_dir ~js_targets:[] dir)
+    Alias_builder.define_all_alias ~project ~predicate_dir ~js_targets:[] dir
 ;;
 
 let ocamlc_i ~deps cctx (m : Module.t) ~output =

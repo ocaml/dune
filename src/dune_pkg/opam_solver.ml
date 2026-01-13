@@ -15,6 +15,12 @@
 open Import
 open Fiber.O
 
+let with_test solver_env =
+  match Solver_env.get solver_env Package_variable_name.with_test with
+  | Some v -> if Variable_value.equal v Variable_value.true_ then true else false
+  | None -> true
+;;
+
 module Priority = struct
   (* A priority defines a package's position in the list of candidates
      fed to the solver. Any change to package selection should be reflected in
@@ -239,12 +245,7 @@ module Context = struct
       |> Package_name.of_opam_package_name
       |> Package_name.Map.mem (Lazy.force t.local_packages)
     in
-    let with_test_value =
-      match Solver_env.get t.solver_env Package_variable_name.with_test with
-      | Some v -> if Variable_value.equal v Variable_value.true_ then true else false
-      | None -> true
-    in
-    let with_test = package_is_local && with_test_value in
+    let with_test = package_is_local && with_test t.solver_env in
     Solver_env.to_env t.solver_env
     |> Solver_stats.Updater.wrap_env t.stats_updater
     |> Lock_pkg.add_self_to_filter_env package
@@ -1566,12 +1567,7 @@ let reject_unreachable_packages =
                 Solver_env.to_env solver_env
                 |> Lock_pkg.add_self_to_filter_env opam_package
               in
-              let with_test =
-                match Solver_env.get solver_env Package_variable_name.with_test with
-                | Some v ->
-                  if Variable_value.equal v Variable_value.true_ then true else false
-                | None -> true
-              in
+              let with_test = with_test solver_env in
               Dependency_formula.to_filtered_formula pkg.dependencies
               |> Resolve_opam_formula.filtered_formula_to_package_names
                    ~env

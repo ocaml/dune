@@ -1216,15 +1216,19 @@ let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.
   in
   match (output : Output_format.t) with
   | Markdown ->
-    let directory_target = Paths.markdown ctx (Pkg name) in
-    let toplevel_index = Paths.markdown_index ctx in
-    let deps =
-      let open Action_builder.O in
-      let+ () = Action_builder.path (Path.build directory_target)
-      and+ () = Action_builder.path (Path.build toplevel_index) in
-      ()
-    in
-    Rules.Produce.Alias.add_deps alias deps
+    let* markdown_supported = supports_doc_markdown sctx in
+    if not markdown_supported
+    then Memo.return ()
+    else
+      let directory_target = Paths.markdown ctx (Pkg name) in
+      let toplevel_index = Paths.markdown_index ctx in
+      let deps =
+        let open Action_builder.O in
+        let+ () = Action_builder.path (Path.build directory_target)
+        and+ () = Action_builder.path (Path.build toplevel_index) in
+        ()
+      in
+      Rules.Produce.Alias.add_deps alias deps
   | Html | Json ->
     let* libs =
       Context.name ctx |> libs_of_pkg ~pkg:name >>| List.map ~f:(fun lib -> Lib lib)

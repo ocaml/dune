@@ -22,6 +22,7 @@ directories that don't contain source files
 Lexer ends up in the melange src
 
   $ find _build/default | sort | grep lexer
+  _build/default/.melange_src/lexer.ml
   _build/default/lexer.ml
   _build/default/lexer.mll
 
@@ -39,5 +40,6 @@ Test the qualified case
   $ dune build
 
   $ find _build/default | sort | grep lexer
+  _build/default/.melange_src/sub/lexer.ml
   _build/default/sub/lexer.ml
   _build/default/sub/lexer.mll

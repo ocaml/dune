@@ -14,6 +14,26 @@ let pped_module m ~f =
   pped
 ;;
 
+let pp_input_file (file : Module.File.t) ~ml_kind =
+  let ext =
+    Dialect.extension (Module.File.dialect file) ml_kind |> Option.value_exn
+  in
+  let original_path = Module.File.original_path file in
+  if Filename.Extension.Or_empty.check (Path.extension original_path) ext
+  then original_path
+  else Module.File.path file
+;;
+
+let pp_input_path m ~ml_kind =
+  Module.source m ~ml_kind |> Option.value_exn |> pp_input_file ~ml_kind
+;;
+
+let pp_corrected_path m ~ml_kind ~suffix =
+  pp_input_path m ~ml_kind
+  |> Path.as_in_build_dir_exn
+  |> Path.Build.extend_basename ~suffix
+;;
+
 let get_rules sctx key =
   let ctx = Super_context.context sctx in
   let build_context = Context.build_context ctx in
@@ -50,19 +70,10 @@ let gen_rules sctx components =
 
 let promote_correction (m : Module.t) build ~suffix ~ml_kind =
   let open Action_builder.O in
-  let src = Module.source m ~ml_kind |> Option.value_exn |> Module.File.original_path in
-  let dst =
-    Module.source m ~ml_kind
-    |> Option.value_exn
-    |> Module.File.path
-    |> Path.as_in_build_dir_exn
-  in
+  let src = pp_input_path m ~ml_kind in
+  let dst = pp_corrected_path m ~ml_kind ~suffix in
   let+ act = build in
-  Action.Full.reduce
-    [ act
-    ; Action.Full.make
-        (Action.diff ~optional:true src (Path.Build.extend_basename dst ~suffix))
-    ]
+  Action.Full.reduce [ act; Action.Full.make (Action.diff ~optional:true src dst) ]
 ;;
 
 let promote_correction_with_target fn build ~suffix =
@@ -201,7 +212,7 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
                     (Ok (Path.build exe))
                     [ As args
                     ; Command.Ml_kind.ppx_driver_flag ml_kind
-                    ; Dep (Module.File.path src)
+                    ; Dep (pp_input_file src ~ml_kind)
                     ; As flags
                     ]))))
   in
@@ -335,14 +346,14 @@ let pp_one_module
         let open Memo.O in
         let* ast = setup_dialect_rules sctx ~sandbox ~dir ~expander m in
         let* () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
-        pped_module ast ~f:(fun ml_kind src dst ->
+        pped_module ast ~f:(fun ml_kind _src dst ->
           Super_context.add_rule
             sctx
             ~loc
             ~dir
             (promote_correction_with_target
                ~suffix:corrected_suffix
-               (Path.as_in_build_dir_exn (Option.value_exn (Module.file m ~ml_kind)))
+               (pp_input_path m ~ml_kind |> Path.as_in_build_dir_exn)
                (Action_builder.with_file_targets
                   ~file_targets:[ dst ]
                   (let open Action_builder.O in
@@ -358,7 +369,7 @@ let pp_one_module
                          ; A "-o"
                          ; Path (Path.build dst)
                          ; Command.Ml_kind.ppx_driver_flag ml_kind
-                         ; Dep (Path.build src)
+                         ; Dep (pp_input_path m ~ml_kind)
                          ; Hidden_deps
                              (Module.source m ~ml_kind
                               |> Option.value_exn

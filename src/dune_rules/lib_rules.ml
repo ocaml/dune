@@ -305,7 +305,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
   if List.for_all ~f:List.is_empty [ all_o_files; vlib_stubs_o_files ]
   then Memo.return ()
   else (
-    let modes = (Compilation_context.modes cctx).ocaml in
+    let modes = Compilation_context.modes cctx |> Option.value_exn in
     let ocamlmklib =
       let build_targets_together =
         modes.native
@@ -456,35 +456,40 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
         in
         Cm_files.make ~excluded_modules ~obj_dir ~ext_obj ~modules ~top_sorted_modules ()
       in
-      iter_modes_concurrently modes.ocaml ~f:(fun mode ->
-        build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode ~cm_files)
+      Memo.Option.iter
+        modes
+        ~f:
+          (iter_modes_concurrently ~f:(fun mode ->
+             build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode ~cm_files))
   and* () =
     (* Build *.cma.js / *.wasma *)
-    Memo.when_ modes.ocaml.byte (fun () ->
-      let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
-      Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
-        let action_with_targets =
-          List.map Jsoo_rules.Config.all ~f:(fun config ->
-            Jsoo_rules.build_cm
-              cctx
-              ~dir
-              ~in_context:
-                (Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml
-                 |> Js_of_ocaml.Mode.Pair.select ~mode)
-              ~mode
-              ~config:(Some config)
-              ~src:(Path.build src)
-              ~deps:(Action_builder.return [])
-              ~obj_dir)
-        in
-        Memo.parallel_iter action_with_targets ~f:(fun rule ->
-          Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc rule)))
+    Memo.Option.iter modes ~f:(fun modes ->
+      Memo.when_ modes.byte (fun () ->
+        let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
+        Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
+          let action_with_targets =
+            List.map Jsoo_rules.Config.all ~f:(fun config ->
+              Jsoo_rules.build_cm
+                cctx
+                ~dir
+                ~in_context:
+                  (Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml
+                   |> Js_of_ocaml.Mode.Pair.select ~mode)
+                ~mode
+                ~config:(Some config)
+                ~src:(Path.build src)
+                ~deps:(Action_builder.return [])
+                ~obj_dir)
+          in
+          Memo.parallel_iter action_with_targets ~f:(fun rule ->
+            Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc rule))))
   in
-  Memo.when_
-    (Lib_info.dynlink_supported lib_info
-     && Dynlink_supported.By_the_os.get natdynlink_supported
-     && modes.ocaml.native)
-    (fun () -> build_shared ~native_archives ~sctx lib ~dir ~flags)
+  Memo.Option.iter modes ~f:(fun modes ->
+    Memo.when_
+      (Lib_info.dynlink_supported lib_info
+       && Dynlink_supported.By_the_os.get natdynlink_supported
+       && modes.native)
+      (fun () -> build_shared ~native_archives ~sctx lib ~dir ~flags))
 ;;
 
 let cctx
@@ -496,7 +501,7 @@ let cctx
       ~scope
       ~parameters
       ~compile_info
-      ~modes
+      ~lib_info
       ~for_
   =
   let* flags =
@@ -534,6 +539,11 @@ let cctx
     | Private (Some pkg) -> Some (Lib_name.mangled (Package.name pkg) (snd lib.name))
     | Private None -> None
   in
+  let modes =
+    match for_ with
+    | Compilation_mode.Melange -> None
+    | Ocaml -> Some (Lib_info.modes lib_info).ocaml
+  in
   Compilation_context.create
     for_
     ~super_context:sctx
@@ -550,7 +560,7 @@ let cctx
     ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.map ~f:Option.some js_of_ocaml)
     ~package
     ~melange_package_name
-    ~modes
+    ?modes
     ~instances
 ;;
 
@@ -562,6 +572,7 @@ let library_rules
       ~dir_contents
       ~compile_info
       ~ctx_dir
+      ~for_merlin
   =
   let modules = Compilation_context.modules cctx in
   let obj_dir = Compilation_context.obj_dir cctx in
@@ -571,6 +582,7 @@ let library_rules
   let scope = Compilation_context.scope cctx in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let lib_config = (Compilation_context.ocaml cctx).lib_config in
+  let for_ = Compilation_context.for_ cctx in
   let top_sorted_modules =
     let impl_only = Modules.With_vlib.impl_only modules in
     Dep_graph.top_closed_implementations
@@ -585,19 +597,20 @@ let library_rules
       ~dir
       ~lib_config
   in
-  let { Compilation_mode.for_merlin; _ } =
-    Compilation_mode.of_mode_set (Lib_info.modes lib_info)
-  in
   let* () = Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir implements in
   let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
   let* () = gen_wrapped_compat_modules lib cctx
+  and* () =
+    Memo.when_ (Compilation_mode.equal for_ Melange) (fun () ->
+      Melange_rules.setup_melange_sources_copy_rules ~sctx ~dir source_modules)
   and* () = Module_compilation.build_all cctx
-  and* () = Check_rules.add_obj_dir sctx ~obj_dir for_merlin in
-  let for_ = Compilation_context.for_ cctx in
+  and* () = Check_rules.add_obj_dir sctx ~obj_dir for_
+  and* () =
+    Memo.when_
+      (Compilation_context.bin_annot cctx && for_merlin)
+      (fun () -> Ocaml_index.cctx_rules cctx)
+  in
   let+ () =
-    Memo.when_ (Compilation_context.bin_annot cctx) (fun () ->
-      Ocaml_index.cctx_rules cctx)
-  and+ () =
     Memo.when_
       (not (Library.is_virtual lib))
       (fun () -> setup_build_archives lib ~lib_info ~top_sorted_modules ~cctx ~expander)
@@ -615,7 +628,7 @@ let library_rules
            ~dir_contents
            ~vlib_stubs_o_files)
   and+ () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
-  and+ () = Odoc.setup_library_odoc_rules cctx local_lib
+  and+ () = Memo.when_ for_merlin (fun () -> Odoc.setup_library_odoc_rules cctx local_lib)
   and+ () =
     let source_modules =
       Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)
@@ -657,7 +670,7 @@ let library_rules
       ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Merlin_ident.for_lib (Library.best_name lib))
-      ~for_:for_merlin
+      ~for_
       ~parameters
   in
   merlin
@@ -677,15 +690,19 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
       (Local lib_id)
       ~allow_overlaps:buildable.allow_overlapping_dependencies
   in
-  let* modes =
-    let+ ocaml =
+  let* lib_info =
+    let+ lib_config =
       let ctx = Super_context.context sctx in
-      Context.ocaml ctx
+      let+ ocaml = Context.ocaml ctx in
+      ocaml.lib_config
     in
-    let { Lib_config.has_native; _ } = ocaml.lib_config in
-    Mode_conf.Lib.Set.eval lib.modes ~has_native
+    Library.to_lib_info
+      lib
+      ~expander:(Memo.return (Expander.to_expander0 expander))
+      ~dir
+      ~lib_config
   in
-  let f for_ =
+  let f ~for_ ~for_merlin =
     let* source_modules =
       Dir_contents.ml dir_contents ~for_
       >>= Ml_sources.modules ~libs ~for_:(Library lib_id)
@@ -701,7 +718,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         ~expander
         ~parameters
         ~compile_info
-        ~modes
+        ~lib_info
         ~for_
     in
     let* () =
@@ -719,14 +736,27 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         ~dir_contents
         ~compile_info
         ~ctx_dir:dir
+        ~for_merlin
     in
     cctx, merlin
   in
-  let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir ~for_:Ocaml in
-  let merlin_ident = Merlin_ident.for_lib (Library.best_name lib) in
-  Buildable_rules.with_lib_deps
-    (Super_context.context sctx)
-    merlin_ident
-    ~dir
-    ~f:(fun () -> f Ocaml)
+  let+ cctxs =
+    let merlin_ident = Merlin_ident.for_lib (Library.best_name lib) in
+    let { Compilation_mode.for_merlin; modes } =
+      Compilation_mode.of_mode_set (Lib_info.modes lib_info)
+    in
+    Memo.parallel_map modes ~f:(fun for_ ->
+      let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir ~for_ in
+      let+ r =
+        Buildable_rules.with_lib_deps
+          (Super_context.context sctx)
+          merlin_ident
+          ~dir
+          ~f:(fun () ->
+            let for_merlin = Compilation_mode.equal for_ for_merlin in
+            f ~for_ ~for_merlin)
+      in
+      for_, Some r)
+  in
+  Compilation_mode.By_mode.of_list cctxs ~init:None
 ;;

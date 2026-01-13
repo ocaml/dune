@@ -920,12 +920,15 @@ let compile_requires stdlib_opt libs =
     List.filter requires ~f:(fun l -> not (List.mem libs l ~equal:lib_equal)))
 ;;
 
-let link_requires stdlib_opt libs (* ~for_ *) =
-  Lib.closure libs ~linking:false ~for_:Ocaml
-  |> Resolve.Memo.map ~f:(fun libs ->
-    match stdlib_opt with
-    | None -> libs
-    | Some stdlib -> stdlib :: libs)
+(* TODO(anmonteiro): this is likely wrong? *)
+let link_requires stdlib_opt libs =
+  let open Resolve.Memo.O in
+  let+ ocaml = Lib.closure libs ~linking:false ~for_:Ocaml
+  and+ melange = Lib.closure libs ~linking:false ~for_:Melange in
+  let libs = ocaml @ melange in
+  match stdlib_opt with
+  | None -> libs
+  | Some stdlib -> stdlib :: libs
 ;;
 
 let compile_mld sctx a ~parent_opt ~quiet ~is_index ~children =

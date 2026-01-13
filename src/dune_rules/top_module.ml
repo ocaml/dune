@@ -13,6 +13,8 @@ let drop_rules f =
   res
 ;;
 
+let for_ = Compilation_mode.Ocaml
+
 let find_module sctx src =
   let src =
     Path.Build.append_source (Context.build_dir (Super_context.context sctx)) src
@@ -30,7 +32,7 @@ let find_module sctx src =
   | Some module_name ->
     let dir = Path.Build.parent_exn src in
     let* dir_contents = drop_rules @@ fun () -> Dir_contents.get sctx ~dir in
-    let* ocaml = Dir_contents.ocaml dir_contents
+    let* ocaml = Dir_contents.ml dir_contents ~for_
     and* scope = Dir_contents.dir dir_contents |> Scope.DB.find_by_dir in
     Ml_sources.find_origin ocaml ~libs:(Scope.libs scope) [ module_name ]
     >>= (function
@@ -43,7 +45,10 @@ let find_module sctx src =
          match origin with
          | Executables exes -> Exe_rules.rules ~sctx ~dir_contents ~scope ~expander exes
          | Tests tests -> Exe_rules.rules ~sctx ~dir_contents ~scope ~expander tests.exes
-         | Library lib -> Lib_rules.rules lib ~sctx ~dir_contents ~expander ~scope
+         | Library lib ->
+           Lib_rules.rules lib ~sctx ~dir_contents ~expander ~scope
+           >>| Compilation_mode.By_mode.get ~for_
+           >>| Option.value_exn
          | Melange mel ->
            Melange_rules.setup_emit_cmj_rules ~sctx ~dir_contents ~expander ~scope mel
        in
@@ -93,9 +98,7 @@ let gen_rules sctx ~dir:rules_dir ~comps =
       private_obj_dir (Super_context.context sctx) src
       |> Compilation_context.set_obj_dir cctx
       |> Compilation_context.without_bin_annot
-      |> Compilation_context.set_modes
-           ~modes:
-             { Lib_mode.Map.melange = false; ocaml = { byte = true; native = false } }
+      |> Compilation_context.set_modes ~modes:{ byte = true; native = false }
     in
     Module_compilation.build_module ~force_write_cmi:true cctx module_
 ;;

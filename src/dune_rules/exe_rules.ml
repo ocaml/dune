@@ -151,7 +151,7 @@ let executables_rules
      of the same name *)
   let* modules, obj_dir =
     let first_exe = first_exe exes in
-    Dir_contents.ocaml dir_contents
+    Dir_contents.ml dir_contents ~for_
     >>= Ml_sources.modules_and_obj_dir ~libs:(Scope.libs scope) ~for_:(Exe { first_exe })
   in
   let* () = Check_rules.add_obj_dir sctx ~obj_dir Ocaml in

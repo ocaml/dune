@@ -103,7 +103,27 @@ module Lib = struct
       | External modules ->
         (match modules.ocaml, modules.melange with
          | None, None -> assert false
-         | Some m, _ | _, Some m -> Some m)
+         | Some m, _ -> Some m
+         | _, Some modules ->
+           let src_dir = Lib_info.src_dir info in
+           Modules.With_vlib.map modules ~f:(fun m ->
+             List.fold_left Ml_kind.all ~init:m ~f:(fun m ml_kind ->
+               match Module.source m ~ml_kind with
+               | None -> m
+               | Some msrc ->
+                 (match
+                    Path.descendant
+                      (Module.File.path msrc)
+                      ~of_:(Path.relative src_dir Melange.Source.dir)
+                  with
+                  | None -> m
+                  | Some segment ->
+                    let m' =
+                      let path' = Path.append_local src_dir (Path.local_part segment) in
+                      Module.File.set_path msrc path'
+                    in
+                    Module.set_source m ~ml_kind (Some m'))))
+           |> Option.some)
       | Local -> None
     in
     let melange_runtime_deps = additional_paths (Lib_info.melange_runtime_deps info) in

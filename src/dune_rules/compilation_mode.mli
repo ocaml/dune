@@ -25,6 +25,7 @@ module By_mode : sig
 
   val just : 'a -> for_:mode -> 'a option t
   val both : 'a -> 'a t
+  val choose : 'a option t -> 'a option
   val from_fun : (for_:mode -> 'a) -> 'a t
   val of_list : (mode * 'a) list -> init:'a -> 'a t
   val map : 'a t -> f:(for_:mode -> 'a -> 'b) -> 'b t

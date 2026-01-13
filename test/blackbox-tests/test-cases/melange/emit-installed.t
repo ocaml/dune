@@ -28,19 +28,19 @@ Test dependency on installed package
 
   $ dune install --root lib-a --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/a/META
-  Installing $TESTCASE_ROOT/prefix/lib/a/a.ml
   Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
-  Installing $TESTCASE_ROOT/prefix/lib/a/foo.ml
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a.cmi
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a.cmj
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/a/melange/a.ml
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Foo.cmi
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Foo.cmj
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Foo.cmt
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Sub.cmi
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Sub.cmj
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Sub.cmt
-  Installing $TESTCASE_ROOT/prefix/lib/a/sub/sub.ml
+  Installing $TESTCASE_ROOT/prefix/lib/a/melange/foo.ml
+  Installing $TESTCASE_ROOT/prefix/lib/a/melange/sub/sub.ml
 
   $ cat >b/dune-project <<EOF
   > (lang dune 3.8)

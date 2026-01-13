@@ -55,7 +55,6 @@ The runtime_dep index.txt was copied to the build folder
   assets
   globbed
   main.ml
-  main.pp.ml
   output
   $ ls _build/default/output
   assets

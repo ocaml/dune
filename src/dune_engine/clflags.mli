@@ -1,5 +1,8 @@
 (** Command line flags *)
 
+(** Wrapper for target executables in cross-compilation: (toolchain, prog, args) *)
+val target_exec : (string * string * string list) option ref
+
 val report_errors_config : Report_errors_config.t ref
 
 (** Stop the build upon encountering an error. *)

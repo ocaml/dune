@@ -15,6 +15,7 @@ module Promote = struct
   ;;
 end
 
+let target_exec = ref None
 let report_errors_config = ref Report_errors_config.default
 let stop_on_first_error = ref false
 let debug_fs_cache = ref false

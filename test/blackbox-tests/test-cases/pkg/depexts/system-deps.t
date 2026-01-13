@@ -53,8 +53,8 @@ Yet we don't try to build it at all
   $ dune build
 
 And we don't print the hint
-  $ dune exec src/foo.exe
-  sh: line 1: foobar: command not found
+  $ dune exec src/foo.exe 2>&1 | sed 's/.*foobar.*not found/foobar not found/'
+  foobar not found
 
 If however, the 'libraries' field is present and there is an unknown 'hi'
 lib required, dune will try building depexts to find said 'hi' module,

@@ -150,7 +150,7 @@ jobs:
       fail-fast: false
       matrix:
         # Please keep the list in sync with the minimal version of OCaml in
-        # dune-project, dune.opam.template and bootstrap.ml
+        # dune-project, opam/dune.opam.template and bootstrap.ml
         #
         # We don't run tests on all versions of the Windows environment and on
         # 4.02.x and 4.07.x in other environments
@@ -238,8 +238,8 @@ jobs:
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: |
-          opam pin -n .
-          opam install ./dune.opam --deps-only
+          opam pin -n . --with-version=3.22.0
+          opam install dune --deps-only
 
       - name: Install system deps on macOS
         run: brew install coreutils pkg-config file
@@ -268,7 +268,7 @@ jobs:
 
       # We never build configurator
       - name: Build configurator
-        run: opam install ./dune-configurator.opam
+        run: opam install dune-configurator
         if: ${{ matrix.configurator == true }}
 
       - name: Save cache when not Windows
@@ -465,7 +465,7 @@ jobs:
         run: opam pin add -n . --with-version=3.22.0
 
       - name: Install deps
-        run: opam install csexp pp re spawn uutf ppx_inline_test ./dune.opam
+        run: opam install csexp pp re spawn uutf ppx_inline_test dune
 
       - name: Build dune
         run: opam exec -- make bootstrap

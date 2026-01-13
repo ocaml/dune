@@ -97,7 +97,7 @@ type t =
   ; sandbox : Sandbox_config.t
   ; package : Package.t option
   ; melange_package_name : Lib_name.t option
-  ; modes : Lib_mode.Map.Set.t
+  ; modes : Mode.Dict.Set.t option
   ; bin_annot : bool
   ; bin_annot_cms : bool
   ; cms_cmt_dependency : Workspace.Context.Cms_cmt_dependency.t
@@ -173,6 +173,12 @@ let create
   let project = Scope.project scope in
   let context = Super_context.context super_context in
   let* ocaml = Context.ocaml context in
+  let modes =
+    match for_, modes with
+    | Compilation_mode.Melange, _ -> None
+    | Ocaml, Some modes -> Some modes
+    | Ocaml, None -> Some (Mode.Dict.make_both true)
+  in
   let direct_requires, hidden_requires =
     match Dune_project.implicit_transitive_deps project ocaml.version with
     | Enabled -> Memo.Lazy.force requires_link, Resolve.Memo.return []
@@ -199,8 +205,10 @@ let create
     | Compilation_mode.Melange -> Sandbox_config.needs_sandboxing
   in
   let modes =
-    let default = { Lib_mode.Map.ocaml = Mode.Dict.make_both true; melange = false } in
-    Option.value ~default modes
+    match for_, modes with
+    | Compilation_mode.Melange, _ -> None
+    | Ocaml, Some modes -> Some modes
+    | Ocaml, None -> Some (Mode.Dict.make_both true)
   in
   let opaque =
     let profile = Context.profile context in
@@ -372,7 +380,7 @@ let without_bin_annot t =
 ;;
 
 let set_obj_dir t obj_dir = { t with obj_dir }
-let set_modes t ~modes = { t with modes }
+let set_modes t ~modes = { t with modes = Some modes }
 
 let instances t =
   match t.instances with

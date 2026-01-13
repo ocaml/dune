@@ -25,11 +25,11 @@ Reproduce github #7020
   $ cd $dir
   $ dune install --root . --prefix _install --display short
   Installing _install/lib/dummyfoo/META
-  Installing _install/lib/dummyfoo/dummyfoo.ml
   Installing _install/lib/dummyfoo/dune-package
   Installing _install/lib/dummyfoo/melange/dummyfoo.cmi
   Installing _install/lib/dummyfoo/melange/dummyfoo.cmj
   Installing _install/lib/dummyfoo/melange/dummyfoo.cmt
+  Installing _install/lib/dummyfoo/melange/dummyfoo.ml
   $ cd ..
 
   $ export OCAMLPATH=$PWD/$dir/_install/lib

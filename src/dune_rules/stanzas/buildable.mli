@@ -8,6 +8,7 @@ type for_ =
 type t =
   { loc : Loc.t
   ; modules : Modules_settings.t
+  ; melange_modules : Ordered_set_lang.Unexpanded.t option
   ; empty_module_interface_if_absent : bool
   ; libraries : Lib_dep.t list
   ; foreign_archives : (Loc.t * Foreign.Archive.t) list

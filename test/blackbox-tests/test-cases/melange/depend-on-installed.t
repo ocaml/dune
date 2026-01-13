@@ -21,15 +21,15 @@ Test dependency on installed package
 
   $ dune install --root a --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/a/META
-  Installing $TESTCASE_ROOT/prefix/lib/a/a.ml
   Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
-  Installing $TESTCASE_ROOT/prefix/lib/a/foo.ml
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a.cmi
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a.cmj
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/a/melange/a.ml
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Foo.cmi
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Foo.cmj
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Foo.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/a/melange/foo.ml
 
   $ cat >b/dune-project <<EOF
   > (lang dune 3.8)
@@ -63,19 +63,19 @@ Test dependency on installed package
 
   $ dune install --root b --prefix $PWD/prefix --display=short
   Installing $TESTCASE_ROOT/prefix/lib/b/META
-  Installing $TESTCASE_ROOT/prefix/lib/b/b.ml
-  Installing $TESTCASE_ROOT/prefix/lib/b/bar.ml
   Installing $TESTCASE_ROOT/prefix/lib/b/dune-package
-  Installing $TESTCASE_ROOT/prefix/lib/b/foo.ml
   Installing $TESTCASE_ROOT/prefix/lib/b/melange/b.cmi
   Installing $TESTCASE_ROOT/prefix/lib/b/melange/b.cmj
   Installing $TESTCASE_ROOT/prefix/lib/b/melange/b.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/b/melange/b.ml
   Installing $TESTCASE_ROOT/prefix/lib/b/melange/b__Bar.cmi
   Installing $TESTCASE_ROOT/prefix/lib/b/melange/b__Bar.cmj
   Installing $TESTCASE_ROOT/prefix/lib/b/melange/b__Bar.cmt
   Installing $TESTCASE_ROOT/prefix/lib/b/melange/b__Foo.cmi
   Installing $TESTCASE_ROOT/prefix/lib/b/melange/b__Foo.cmj
   Installing $TESTCASE_ROOT/prefix/lib/b/melange/b__Foo.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/b/melange/bar.ml
+  Installing $TESTCASE_ROOT/prefix/lib/b/melange/foo.ml
 
   $ cat >app/dune-project <<EOF
   > (lang dune 3.8)

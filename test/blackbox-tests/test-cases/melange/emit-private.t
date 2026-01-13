@@ -23,14 +23,14 @@ Test dependency on a private library in the same package as melange.emit
 
   $ dune install --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/pkg/META
-  Installing $TESTCASE_ROOT/prefix/lib/pkg/__private__/a/a.ml
-  Installing $TESTCASE_ROOT/prefix/lib/pkg/__private__/a/foo.ml
   Installing $TESTCASE_ROOT/prefix/lib/pkg/__private__/a/melange/.public_cmi_melange/a.cmi
   Installing $TESTCASE_ROOT/prefix/lib/pkg/__private__/a/melange/.public_cmi_melange/a.cmt
   Installing $TESTCASE_ROOT/prefix/lib/pkg/__private__/a/melange/.public_cmi_melange/a__Foo.cmi
   Installing $TESTCASE_ROOT/prefix/lib/pkg/__private__/a/melange/.public_cmi_melange/a__Foo.cmt
   Installing $TESTCASE_ROOT/prefix/lib/pkg/__private__/a/melange/a.cmj
+  Installing $TESTCASE_ROOT/prefix/lib/pkg/__private__/a/melange/a.ml
   Installing $TESTCASE_ROOT/prefix/lib/pkg/__private__/a/melange/a__Foo.cmj
+  Installing $TESTCASE_ROOT/prefix/lib/pkg/__private__/a/melange/foo.ml
   Installing $TESTCASE_ROOT/prefix/lib/pkg/dune-package
 
   $ cat > b/dune <<EOF
@@ -47,7 +47,6 @@ Test dependency on a private library in the same package as melange.emit
   > EOF
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build @dist --display=short 2>&1 | grep -v melange
-      ocamldep (internal)
           melc b/dist/node_modules/pkg.__private__.a/foo.js
           melc b/dist/b/bar.js
 

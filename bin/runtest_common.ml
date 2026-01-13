@@ -67,7 +67,7 @@ let classify_ml_test ~sctx ~dir ~ml_file =
         ~dir:
           (Path.Build.append_source (Context.build_dir (Super_context.context sctx)) dir)
     in
-    let* ml_sources = Dir_contents.ocaml dir_contents
+    let* ml_sources = Dir_contents.ml dir_contents ~for_:Ocaml
     and* scope = Dir_contents.dir dir_contents |> Dune_rules.Scope.DB.find_by_dir in
     Dune_rules.Ml_sources.find_origin
       ml_sources

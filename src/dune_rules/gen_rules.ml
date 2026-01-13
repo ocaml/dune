@@ -118,7 +118,10 @@ end = struct
       in
       if_available_buildable
         ~loc:lib.buildable.loc
-        (fun () -> Lib_rules.rules lib ~sctx ~scope ~dir_contents ~expander)
+        (fun () ->
+           Lib_rules.rules lib ~sctx ~scope ~dir_contents ~expander
+           >>| Compilation_mode.By_mode.choose
+           >>| Option.value_exn)
         enabled_if
     | Foreign_library.T lib ->
       Expander.eval_blang expander lib.enabled_if

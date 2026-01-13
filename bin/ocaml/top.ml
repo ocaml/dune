@@ -71,7 +71,8 @@ let term =
         Dune_rules.Utop.libs_under_dir sctx ~db ~dir:(Path.build dir)
       in
       let* requires =
-        Dune_rules.Resolve.Memo.read_memo (Dune_rules.Lib.closure ~linking:true libs)
+        Dune_rules.Resolve.Memo.read_memo
+          (Dune_rules.Lib.closure ~linking:true libs ~for_:Ocaml)
       in
       let* lib_config =
         let+ ocaml = Context.ocaml context in

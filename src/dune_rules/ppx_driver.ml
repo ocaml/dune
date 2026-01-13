@@ -261,13 +261,15 @@ module Driver = struct
   ;;
 end
 
+let for_ = Compilation_mode.Ocaml
+
 let build_ppx_driver =
   let flags = Ocaml_flags.of_list [ "-g"; "-w"; "-24" ] in
   fun sctx ~scope ~target ~pps ~pp_names ->
     let* driver_and_libs =
       let ( let& ) t f = Resolve.Memo.bind t ~f in
       let& pps = Resolve.Memo.lift pps in
-      let& pps = Lib.closure ~linking:true pps in
+      let& pps = Lib.closure ~linking:true pps ~for_ in
       Driver.select pps ~loc:(Dot_ppx (target, pp_names))
       >>| Resolve.map ~f:(fun driver -> driver, pps)
       >>|
@@ -424,7 +426,7 @@ let ppx_driver_and_flags ctx ~lib_name ~expander ~scope ~loc ~flags pps =
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     ppx_driver_and_flags_internal ctx ~loc ~expander ~dune_version ~lib_name ~flags libs
   and+ driver =
-    let* libs = Resolve.Memo.read (Lib.closure libs ~linking:true) in
+    let* libs = Resolve.Memo.read (Lib.closure libs ~linking:true ~for_) in
     Action_builder.of_memo (Driver.select libs ~loc:(User_file (loc, pps)))
     >>= Resolve.read
   in

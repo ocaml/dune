@@ -432,7 +432,7 @@ end = struct
                  ~dune_version
                  ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
              in
-             let+ requires = Lib.Compile.direct_requires compile_info in
+             let+ requires = Lib.Compile.direct_requires compile_info ~for_:Ocaml in
              Resolve.is_ok requires)
       | Coq_stanza.Theory.T d -> Memo.return (Option.is_some d.package)
       | Rocq_stanza.Theory.T d -> Memo.return (Option.is_some d.package)

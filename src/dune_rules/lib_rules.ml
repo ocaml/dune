@@ -512,8 +512,8 @@ let cctx
       source_modules
   in
   let modules = Virtual_rules.impl_modules implements modules in
-  let requires_compile = Lib.Compile.direct_requires compile_info in
-  let requires_link = Lib.Compile.requires_link compile_info in
+  let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
+  let requires_link = Lib.Compile.requires_link compile_info ~for_ in
   let instances =
     Parameterised_rules.instances ~sctx ~db:(Scope.libs scope) lib.buildable.libraries
   in
@@ -593,6 +593,7 @@ let library_rules
     let+ () = Check_rules.add_obj_dir sctx ~obj_dir for_merlin in
     info
   in
+  let for_ = Compilation_context.for_ cctx in
   let+ () =
     Memo.when_ (Compilation_context.bin_annot cctx) (fun () ->
       Ocaml_index.cctx_rules cctx)
@@ -620,10 +621,17 @@ let library_rules
       Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)
     in
     Sub_system.gen_rules
-      { super_context = sctx; dir; stanza = lib; scope; source_modules; compile_info }
+      { super_context = sctx
+      ; dir
+      ; stanza = lib
+      ; scope
+      ; source_modules
+      ; compile_info
+      ; for_
+      }
   and+ () =
     let toolchain = Compilation_context.ocaml cctx in
-    let user_written_requires = Lib.Compile.user_written_requires compile_info in
+    let user_written_requires = Lib.Compile.user_written_requires compile_info ~for_ in
     let allow_unused_libraries = Lib.Compile.allow_unused_libraries compile_info in
     Unused_libs_rules.gen_rules
       sctx
@@ -714,7 +722,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
     in
     cctx, merlin
   in
-  let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
+  let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir ~for_:Ocaml in
   let merlin_ident = Merlin_ident.for_lib (Library.best_name lib) in
   Buildable_rules.with_lib_deps
     (Super_context.context sctx)

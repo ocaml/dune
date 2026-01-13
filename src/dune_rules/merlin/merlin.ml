@@ -732,7 +732,7 @@ module Unprocessed = struct
                      ocaml.version
                    |> Dune_project.Implicit_transitive_deps.to_bool
                  in
-                 Lib.closure [ lib ] ~linking
+                 Lib.closure [ lib ] ~linking ~for_:Melange
                  |> Resolve.Memo.peek
                  >>| function
                  | Ok libs -> libs

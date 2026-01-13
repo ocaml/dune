@@ -135,6 +135,8 @@ let o_files
     Mode.Map.Multi.add_all o_files All extra_o_files)
 ;;
 
+let for_ = Compilation_mode.Ocaml
+
 let executables_rules
       ~sctx
       ~dir
@@ -189,8 +191,8 @@ let executables_rules
   in
   let programs = programs ~modules ~exes in
   let* cctx =
-    let requires_compile = Lib.Compile.direct_requires compile_info in
-    let requires_link = Lib.Compile.requires_link compile_info in
+    let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
+    let requires_link = Lib.Compile.requires_link compile_info ~for_ in
     let instances =
       Parameterised_rules.instances ~sctx ~db:(Scope.libs scope) exes.buildable.libraries
     in
@@ -221,7 +223,7 @@ let executables_rules
   let* requires_compile = Compilation_context.requires_compile cctx in
   let* () =
     let toolchain = Compilation_context.ocaml cctx in
-    let user_written_requires = Lib.Compile.user_written_requires compile_info in
+    let user_written_requires = Lib.Compile.user_written_requires compile_info ~for_ in
     let allow_unused_libraries = Lib.Compile.allow_unused_libraries compile_info in
     Unused_libs_rules.gen_rules
       sctx
@@ -374,7 +376,7 @@ let rules ~sctx ~dir_contents ~scope ~expander (exes : Executables.t) =
       ~compile_info
       ~embed_in_plugin_libraries:exes.embed_in_plugin_libraries
   in
-  let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir
+  let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir ~for_
   and* () = Bootstrap_info.gen_rules sctx exes ~dir compile_info dir_contents in
   let merlin_ident = Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names) in
   Buildable_rules.with_lib_deps (Super_context.context sctx) merlin_ident ~dir ~f

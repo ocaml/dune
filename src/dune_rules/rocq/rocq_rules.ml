@@ -411,7 +411,7 @@ let libs_of_theory ~lib_db ~theories_deps plugins : (Lib.t list * _) Resolve.Mem
     Resolve.List.concat_map ~f:Rocq_lib.Dune.libraries dune_theories |> Resolve.Memo.lift
   in
   let libs = libs @ dlibs in
-  let+ findlib_libs = Lib.closure ~linking:false (List.map ~f:snd libs) in
+  let+ findlib_libs = Lib.closure ~linking:false (List.map ~f:snd libs) ~for_:Ocaml in
   findlib_libs, legacy_theories
 ;;
 

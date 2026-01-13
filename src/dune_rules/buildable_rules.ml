@@ -21,8 +21,8 @@ let ocaml_flags t ~dir (spec : Dune_lang.Ocaml_flags.Spec.t) =
     Ocaml_flags.with_vendored_flags ~ocaml_version flags
 ;;
 
-let gen_select_rules sctx ~dir compile_info =
-  Lib.Compile.resolved_selects compile_info
+let gen_select_rules sctx ~dir compile_info ~for_ =
+  Lib.Compile.resolved_selects compile_info ~for_
   |> Resolve.Memo.read_memo
   >>= Memo.parallel_iter ~f:(fun { Lib.Compile.Resolved_select.dst_fn; src_fn; loc } ->
     let dst = Path.Build.append_local dir dst_fn in

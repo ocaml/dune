@@ -401,6 +401,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
 ;;
 
 let name = "mdx_gen"
+let for_ = Compilation_mode.Ocaml
 
 let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
   let loc = t.loc in
@@ -461,8 +462,8 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
         ~pps:[]
         ~dune_version
     in
-    let requires_compile = Lib.Compile.direct_requires compile_info
-    and requires_link = Lib.Compile.requires_link compile_info in
+    let requires_compile = Lib.Compile.direct_requires compile_info ~for_
+    and requires_link = Lib.Compile.requires_link compile_info ~for_ in
     let obj_dir = Obj_dir.make_exe ~dir ~name in
     let modules =
       Module.generated ~kind:Impl ~src_dir:dir [ main_module_name ]
@@ -481,7 +482,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
       ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
       ~melange_package_name:None
       ~package:None
-      Ocaml
+      for_
   in
   let ext = ".bc.exe" in
   let+ (_ : Exe.dep_graphs) =

@@ -1146,7 +1146,6 @@ let setup_lib_markdown_rules sctx lib =
     let target = Lib lib in
     let* odocs = odoc_artefacts sctx target in
     let* () =
-      (* because libraries with a package are handled in the package-level rule with the system shell script for all directory target, we skip packages *)
       match Lib_info.package (Lib.Local.info lib) with
       | Some _ -> Memo.return ()
       | None ->

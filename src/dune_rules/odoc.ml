@@ -1149,7 +1149,7 @@ let setup_lib_markdown_rules sctx lib =
       match Lib_info.package (Lib.Local.info lib) with
       | Some _ -> Memo.return ()
       | None ->
-        (* when there's no package, we still need have rules for each odoc file *)
+        (* when there's no package, we still need to have rules for each odoc file *)
         Memo.parallel_iter odocs ~f:(fun odoc -> setup_generate_markdown sctx odoc)
     in
     Memo.With_implicit_output.exec setup_lib_markdown_rules_def (sctx, lib))

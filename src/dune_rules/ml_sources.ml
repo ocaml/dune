@@ -215,15 +215,29 @@ let empty =
 
 let artifacts t = Memo.Lazy.force t.artifacts
 
-let modules_of_files ~path ~dialects ~dir ~files =
+let source_in_dir ~dir fn ~for_ =
+  let dst = Path.Build.append_local dir fn in
+  match for_ with
+  | Compilation_mode.Ocaml -> dst
+  | Melange ->
+    let melange_src = Path.Build.relative dir Melange.Source.dir in
+    let descendant =
+      Path.Local.descendant (Path.Build.local dst) ~of_:(Path.Build.local dir)
+      |> Option.value_exn
+    in
+    Path.Build.append_local melange_src descendant
+;;
+
+let modules_of_files ~dialects ~dir ~files =
   let dir = Path.build dir in
   let impl_files, intf_files =
     let make_module dialect name fn =
-      name, Module.File.make dialect (Path.relative dir fn)
+      let path_in_build_dir = Path.relative dir fn in
+      let original_path = Path.relative dir fn in
+      name, Module.File.make dialect ~original_path path_in_build_dir
     in
     let loc = Loc.in_dir dir in
-    Filename.Set.to_list files
-    |> List.filter_partition_map ~f:(fun fn ->
+    List.filter_partition_map (Filename.Set.to_list files) ~f:(fun fn ->
       (* we aren't using Filename.extension because we want to ignore
          filenames such as `foo.cppo.ml` or `foo.{filter}.ml` (e.g. from the
          `(select ..)` field) *)
@@ -259,8 +273,97 @@ let modules_of_files ~path ~dialects ~dir ~files =
         ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f2))
         ]
   in
-  let impls = parse_one_set impl_files in
-  let intfs = parse_one_set intf_files in
+  parse_one_set impl_files, parse_one_set intf_files
+;;
+
+let melange_modules_of_files ~root_dir ~dialects ~dir ~files =
+  let impl_files, intf_files =
+    let make_module dialect name ~original_fn ~fn =
+      let dst = Path.Build.relative dir fn in
+      let descendant =
+        Path.Local.descendant (Path.Build.local dst) ~of_:(Path.Build.local root_dir)
+        |> Option.value_exn
+      in
+      let path_in_build_dir = source_in_dir ~dir:root_dir descendant ~for_:Melange in
+      let original_path = Path.Build.relative dir original_fn |> Path.build in
+      name, Module.File.make dialect ~original_path (Path.build path_in_build_dir)
+    in
+    let loc = Loc.in_dir (Path.build dir) in
+    List.filter_partition_map (Filename.Set.to_list files) ~f:(fun fn ->
+      (* we aren't using Filename.extension because we want to handle
+         filenames such as foo.cppo.ml *)
+      match String.lsplit2 fn ~on:'.' with
+      | None -> Skip
+      | Some (s, ext) ->
+        let melange_specific, ext =
+          match String.lsplit2 ext ~on:'.' with
+          | Some ("melange", ext) -> true, ext
+          | Some _ | None -> false, ext
+        in
+        (match Filename.Extension.of_string ("." ^ ext) with
+         | None -> Skip
+         | Some ext ->
+           (match Dialect.DB.find_by_extension dialects ext with
+            | None -> Skip
+            | Some (dialect, ml_kind) ->
+              let name = Module_name.of_string_allow_invalid (loc, s) in
+              let module_ =
+                let name, module_ =
+                  make_module
+                    dialect
+                    name
+                    ~original_fn:fn
+                    ~fn:(s ^ Filename.Extension.to_string ext)
+                in
+                name, (module_, melange_specific)
+              in
+              (match ml_kind with
+               | Impl -> Left module_
+               | Intf -> Right module_))))
+  in
+  let parse_one_set =
+    let exception Duplicate of (Module_name.Unchecked.t * Module.File.t * Module.File.t)
+    in
+    fun (files : (Module_name.Unchecked.t * (Module.File.t * bool)) list) ->
+      let ret =
+        try
+          let map =
+            let inner =
+              Module_name.Unchecked.Map.of_list_reducei files ~f:(fun name a b ->
+                match a, b with
+                | (_, true), (_, false) -> a
+                | (_, false), (_, true) -> b
+                | (f1, false), (f2, false) | (f1, true), (f2, true) ->
+                  raise (Duplicate (name, f1, f2)))
+            in
+            Module_name.Unchecked.Map.map inner ~f:fst
+          in
+          Ok map
+        with
+        | Duplicate (name, f1, f2) -> Error (name, f1, f2)
+      in
+      match ret with
+      | Ok x -> x
+      | Error (name, f1, f2) ->
+        let src_dir = Path.Build.drop_build_context_exn dir in
+        User_error.raise
+          [ Pp.textf
+              "Too many files for module %s in %s:"
+              (Module_name.to_string (name |> Module_name.Unchecked.allow_invalid))
+              (Path.Source.to_string_maybe_quoted src_dir)
+          ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f1))
+          ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f2))
+          ]
+  in
+  parse_one_set impl_files, parse_one_set intf_files
+;;
+
+let modules_of_files ~root_dir ~path ~dialects ~dir ~files ~for_ =
+  let impls, intfs =
+    match for_ with
+    | Compilation_mode.Melange -> melange_modules_of_files ~root_dir ~dialects ~dir ~files
+    | Ocaml -> modules_of_files ~dialects ~dir ~files
+  in
   Module_name.Unchecked.Map.merge impls intfs ~f:(fun name impl intf ->
     Some
       (Module.Source.make
@@ -471,24 +574,45 @@ module Parser_generators = struct
   end
 
   let expand_modules =
-    let make_file ~original_path ~ml_kind =
+    let make_file ~original_path ~ml_kind ~root_dir ~for_ =
       let ext = Dialect.extension Dialect.ocaml ml_kind |> Option.value_exn in
-      let path = Path.set_extension original_path ~ext in
+      let original_path, path =
+        let dst = Path.Build.set_extension original_path ~ext in
+        let original_path =
+          match for_ with
+          | Compilation_mode.Ocaml -> original_path
+          | Melange -> dst
+        in
+        let path =
+          match for_ with
+          | Ocaml -> dst
+          | Melange ->
+            (* In the Melange case, we redirect the `ocaml-src/generated.ml` to
+               `ocaml-src/.melange_src/generated.ml` *)
+            let descendant =
+              Path.Local.descendant
+                (Path.Build.local dst)
+                ~of_:(Path.Build.local root_dir)
+              |> Option.value_exn
+            in
+            source_in_dir ~dir:root_dir descendant ~for_
+        in
+        Path.build original_path, Path.build path
+      in
       Module.File.make ~original_path Dialect.ocaml path
     in
-    let make_module ~module_path ~original_path ~for_ =
-      let impl = Some (make_file ~original_path ~ml_kind:Ml_kind.Impl) in
+    let make_module ~module_path ~root_dir ~original_path ~for_parser_gen ~for_ =
+      let impl = Some (make_file ~original_path ~root_dir ~ml_kind:Ml_kind.Impl ~for_) in
       let intf =
-        match for_ with
+        match for_parser_gen with
         | Targets.Ocamllex _ -> None
         | Ocamlyacc _ | Menhir _ ->
-          let intf = make_file ~original_path ~ml_kind:Ml_kind.Intf in
+          let intf = make_file ~original_path ~root_dir ~ml_kind:Ml_kind.Intf ~for_ in
           Some intf
       in
       Module.Source.make ~impl ~intf module_path
     in
-    fun ~expander ~src_dir ~module_path ~for_ ->
-      let src_dir = Path.build src_dir in
+    fun ~expander ~root_dir ~src_dir ~module_path ~for_ ~mode ->
       let+ expanded =
         Modules_field_evaluator.expand_all_unchecked ~expander (Targets.modules ~for_)
       in
@@ -499,7 +623,9 @@ module Parser_generators = struct
           ~f:(fun (_, (_module_name, basename)) acc ->
             let original_path =
               let ext = Targets.extension ~for_ in
-              Path.set_extension (Path.relative src_dir basename) ~ext
+              Path.Build.relative src_dir basename
+              |> Path.build
+              |> Path.set_extension ~ext
             in
             Path.Set.add acc original_path)
       in
@@ -514,29 +640,35 @@ module Parser_generators = struct
                 map (module_path @ [ module_name ]) ~f:Module_name.Unchecked.allow_invalid)
             in
             let original_path =
-              let base_path = Path.relative src_dir basename in
+              let base_path = Path.Build.relative src_dir basename in
               let ext = Targets.extension ~for_ in
-              Path.set_extension base_path ~ext
+              Path.Build.set_extension base_path ~ext
             in
-            loc, make_module ~module_path ~original_path ~for_)
+            ( loc
+            , make_module
+                ~module_path
+                ~original_path
+                ~root_dir
+                ~for_parser_gen:for_
+                ~for_:mode ))
         | Menhir { Menhir_stanza.merge_into = Some basename; loc; _ } ->
           let impl =
             let original_path =
               let ext =
                 Dialect.extension Dialect.ocaml Ml_kind.Impl |> Option.value_exn
               in
-              Path.set_extension (Path.relative src_dir basename) ~ext
+              Path.Build.set_extension (Path.Build.relative src_dir basename) ~ext
             in
-            Some (make_file ~original_path ~ml_kind:Ml_kind.Impl)
+            Some (make_file ~original_path ~root_dir ~ml_kind:Ml_kind.Impl ~for_:mode)
           in
           let intf =
             let original_path =
               let ext =
                 Dialect.extension Dialect.ocaml Ml_kind.Intf |> Option.value_exn
               in
-              Path.set_extension (Path.relative src_dir basename) ~ext
+              Path.Build.set_extension (Path.Build.relative src_dir basename) ~ext
             in
-            Some (make_file ~original_path ~ml_kind:Ml_kind.Intf)
+            Some (make_file ~original_path ~root_dir ~ml_kind:Ml_kind.Intf ~for_:mode)
           in
           let module_name = Module_name.of_string_allow_invalid (loc, basename) in
           let module_path = Nonempty_list.(module_path @ [ module_name ]) in
@@ -624,7 +756,15 @@ let make_lib_modules
   let has_instances = has_instances lib.buildable in
   let open Memo.O in
   let* sources, modules =
-    let { Buildable.loc = stanza_loc; modules = modules_settings; _ } = lib.buildable in
+    let { Buildable.loc = stanza_loc; modules = modules_settings; melange_modules; _ } =
+      lib.buildable
+    in
+    let modules_settings =
+      match for_, melange_modules with
+      | Compilation_mode.Melange, Some melange_modules ->
+        { modules_settings with modules = melange_modules }
+      | _ -> modules_settings
+    in
     Modules_field_evaluator.eval
       ~expander
       ~modules
@@ -739,7 +879,7 @@ module Generated_modules = struct
           ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f2))
           ]
     in
-    fun ~dir ~dialects ~include_subdirs { modules; _ } libraries ->
+    fun ~dir ~dialects ~include_subdirs { modules; _ } libraries ~for_ ->
       (* Manually add files generated by the (select ...) dependencies *)
       let impl_files, intf_files =
         List.filter_partition_map libraries ~f:(fun dep ->
@@ -765,7 +905,10 @@ module Generated_modules = struct
                  let ext = Filename.Extension.Or_empty.extension_exn ext in
                  match Dialect.DB.find_by_extension dialects ext with
                  | Some (dialect, ml_kind) ->
-                   let file = Module.File.make dialect (Path.build dst) in
+                   let file =
+                     let file = source_in_dir ~dir descendant ~for_ in
+                     Module.File.make dialect (Path.build file)
+                   in
                    let module_path =
                      let base_path =
                        match include_subdirs with
@@ -854,8 +997,9 @@ module Generated_modules = struct
       in
       merge_two modules parser_gen_modules
     in
-    fun ~expander ~include_subdirs ~dirs modules ->
+    fun ~expander ~include_subdirs ~dirs ~for_:mode modules ->
       let+ ({ ocamllexes; ocamlyaccs; menhirs; _ } as generated_modules) =
+        let { Source_file_dir.dir = root_dir; _ } = Nonempty_list.hd dirs in
         Memo.parallel_map
           (Nonempty_list.to_list dirs)
           ~f:(fun { Source_file_dir.dir; stanzas; path_to_root; _ } ->
@@ -882,6 +1026,8 @@ module Generated_modules = struct
                        ~src_dir:dir
                        ~module_path
                        ~for_:(Ocamllex ocamllex)
+                       ~mode
+                       ~root_dir
                    in
                    `Ocamllex { Per_stanza.stanza = ocamllex; dep_info }
                  | Parser_generators.Stanzas.Ocamlyacc.T ocamlyacc ->
@@ -891,6 +1037,8 @@ module Generated_modules = struct
                        ~src_dir:dir
                        ~module_path
                        ~for_:(Ocamlyacc ocamlyacc)
+                       ~mode
+                       ~root_dir
                    in
                    `Ocamlyacc { Per_stanza.stanza = ocamlyacc; dep_info }
                  | Menhir_stanza.T menhir ->
@@ -900,6 +1048,8 @@ module Generated_modules = struct
                        ~src_dir:dir
                        ~module_path
                        ~for_:(Menhir menhir)
+                       ~mode
+                       ~root_dir
                    in
                    `Menhir { Per_stanza.stanza = menhir; dep_info }
                  | _ -> Memo.return `Skip)))
@@ -992,10 +1142,16 @@ let modules_of_stanzas =
     ~libs
     ~lookup_vlib
     ~(modules : Module.Source.t Module_trie.Unchecked.t)
+    ~for_
     ~include_subdirs:(loc_include_subdirs, include_subdirs) ->
     let dialects = Dune_project.dialects project in
     let* ({ ocamllexes; ocamlyaccs; menhirs; _ } as modules) =
-      Generated_modules.add_generated_modules ~expander ~include_subdirs ~dirs modules
+      Generated_modules.add_generated_modules
+        ~expander
+        ~include_subdirs
+        ~dirs
+        ~for_
+        modules
     in
     Memo.parallel_map
       (Nonempty_list.to_list dirs)
@@ -1027,6 +1183,7 @@ let modules_of_stanzas =
                      ~dir
                      ~dialects
                      ~include_subdirs
+                     ~for_
                      lib.buildable.libraries
                  in
                  make_lib_modules
@@ -1036,9 +1193,9 @@ let modules_of_stanzas =
                    ~lookup_vlib
                    ~modules
                    ~lib
+                   ~for_
                    ~include_subdirs:(loc_include_subdirs, include_subdirs)
                    ~version:lib.dune_version
-                   ~for_:Ocaml
                  >>= Resolve.read_memo
                in
                let obj_dir = Library.obj_dir lib ~dir in
@@ -1050,6 +1207,7 @@ let modules_of_stanzas =
                    ~dir
                    ~dialects
                    ~include_subdirs
+                   ~for_
                    exes.buildable.libraries
                in
                make_executables ~dir ~expander ~modules ~project exes
@@ -1060,6 +1218,7 @@ let modules_of_stanzas =
                    ~dir
                    ~dialects
                    ~include_subdirs
+                   ~for_
                    tests.exes.buildable.libraries
                in
                make_tests ~dir ~expander ~modules ~project tests
@@ -1072,6 +1231,7 @@ let modules_of_stanzas =
                      ~dir
                      ~dialects
                      ~include_subdirs
+                     ~for_:Melange
                      mel.libraries
                  in
                  let version = Dune_project.dune_version project in
@@ -1108,8 +1268,10 @@ let make
       ~loc
       ~lookup_vlib
       ~include_subdirs:(loc_include_subdirs, (include_subdirs : Include_subdirs.t))
+      ~for_
       (dirs : Source_file_dir.t Nonempty_list.t)
   =
+  let ({ Source_file_dir.dir = root_dir; _ } :: _) = dirs in
   let+ modules_of_stanzas =
     let modules =
       let dirs = Nonempty_list.to_list dirs in
@@ -1122,7 +1284,9 @@ let make
           ~f:(fun acc { Source_file_dir.dir; files; path_to_root; _ } ->
             match
               let path = module_path ~loc:None ~include_subdirs ~dir path_to_root in
-              let modules = modules_of_files ~dialects ~dir ~files ~path in
+              let modules =
+                modules_of_files ~root_dir ~dialects ~dir ~files ~path ~for_
+              in
               Module_trie.Unchecked.set_map acc path modules
             with
             | Ok s -> s
@@ -1160,8 +1324,11 @@ let make
           List.fold_left
             dirs
             ~init:Module_name.Unchecked.Map.empty
-            ~f:(fun acc { Source_file_dir.dir; files; _ } ->
-              let modules = modules_of_files ~dialects ~dir ~files ~path:[] in
+            ~f:(fun acc { Source_file_dir.dir; files; path_to_root = _; _ } ->
+              let modules =
+                let path = [] in
+                modules_of_files ~root_dir ~dialects ~dir ~files ~path ~for_
+              in
               Module_name.Unchecked.Map.union acc modules ~f:(fun name x y ->
                 User_error.raise
                   ~loc
@@ -1184,6 +1351,7 @@ let make
       ~expander
       ~project
       ~libs
+      ~for_
       ~lookup_vlib
       ~modules
       ~include_subdirs:(loc_include_subdirs, include_subdirs)

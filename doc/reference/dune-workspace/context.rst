@@ -2,9 +2,11 @@ context
 -------
 
 The ``(context ...)`` stanza declares a build context. The kind of context can
-be either ``(default ...)`` for the default kind of build context, or ``(opam
-...)`` to use an opam switch. The ``default`` context without extra fields can
-be specifed as ``(context default)``
+be either ``(default ...)`` for the regular build context, or ``(opam
+...)`` to use an opam switch.
+
+The ``default`` context without extra fields can be specifed as ``(context
+default)``
 
 .. code:: dune
 
@@ -19,21 +21,11 @@ be specifed as ``(context default)``
         (switch <opam-switch-name>)
           <optional-fields>))
 
-``<optional-fields>`` are:
+``<optional-fields>`` common to both context types are:
 
 -  ``(name <name>)`` is the subdirectory's name for ``_build``, where this
    build's context artifacts will be stored. If omitted, the context name
    is ``default``.
-
--  ``(lock_dir <path>)`` specifies the lock directory that will be used for
-   building this context (if any). If no lock directory is specified
-   ``dune.lock`` will be used. See the
-   :doc:`/reference/dune-workspace/lock_dir` stanza for lock directory
-   configuration options.
-
--  ``(root <opam-root>)`` is the opam root. By default, it will take the opam
-   root defined by the environment in which ``dune`` is run, which is usually
-   ``~/.opam``.
 
 - ``(merlin)`` instructs Dune to use this build context for Merlin.
 
@@ -77,11 +69,26 @@ be specifed as ``(context default)``
   execution counters is *src/fdo.exe.fdo-profile*.  This feature is
   **experimental** and no backwards compatibility is implied.
 
-- By default, Dune builds and installs dynamically-linked foreign archives
-  (usually named ``dll*.so``). It's possible to disable this by setting by
-  including ``(disable_dynamically_linked_foreign_archives true)`` in the
-  workspace file, so bytecode executables will be built with all foreign
-  archives statically linked into the runtime system.
+``<optional-fields>`` specific to ``(context default)`` are:
+
+-  ``(lock_dir <path>)`` specifies the lock directory that will be used for
+   building this context (if any). If no lock directory is specified
+   ``dune.lock`` will be used. See the
+   :doc:`/reference/dune-workspace/lock_dir` stanza for lock directory
+   configuration options.
+
+``<optional-fields>`` specific to ``(context (opam ...))`` are:
+
+-  ``(root <opam-root>)`` is the opam root. By default, it will take the opam
+   root defined by the environment in which ``dune`` is run, which is usually
+   ``~/.opam``.
+
+
+By default, Dune builds and installs dynamically-linked foreign archives
+(usually named ``dll*.so``). It's possible to disable this by setting by
+including ``(disable_dynamically_linked_foreign_archives true)`` in the
+workspace file, so bytecode executables will be built with all foreign archives
+statically linked into the runtime system.
 
 Merlin reads compilation artifacts, and it can only read the compilation
 artifacts of a single context. Usually, you should use the artifacts from the

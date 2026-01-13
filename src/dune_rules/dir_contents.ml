@@ -254,7 +254,26 @@ end = struct
           in
           let ml =
             Memo.lazy_ (fun () ->
-              let lookup_vlib = lookup_vlib sctx ~current_dir:dir ~for_:Ocaml in
+              let for_ = Compilation_mode.Ocaml in
+              let lookup_vlib = lookup_vlib sctx ~current_dir:dir ~for_ in
+              let loc = loc_of_dune_file st_dir in
+              let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
+              let* expander = Super_context.expander sctx ~dir
+              and* dirs = Memo.Lazy.force dirs in
+              Ml_sources.make
+                ~expander
+                ~libs
+                ~for_
+                ~project
+                ~lib_config
+                ~loc
+                ~include_subdirs
+                ~lookup_vlib
+                dirs)
+          and melange =
+            Memo.lazy_ (fun () ->
+              let for_ = Compilation_mode.Melange in
+              let lookup_vlib = lookup_vlib sctx ~current_dir:dir ~for_ in
               let loc = loc_of_dune_file st_dir in
               let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
               let* expander = Super_context.expander sctx ~dir
@@ -267,6 +286,7 @@ end = struct
                 ~loc
                 ~include_subdirs
                 ~lookup_vlib
+                ~for_
                 dirs)
           in
           let mlds = mlds ~sctx ~dir ~dune_file:d ~files in
@@ -276,7 +296,7 @@ end = struct
               ; dir
               ; text_files = files
               ; ocaml = ml
-              ; melange = ml
+              ; melange
               ; mlds
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
@@ -366,7 +386,8 @@ end = struct
            in
            let ml =
              Memo.lazy_ (fun () ->
-               let lookup_vlib = lookup_vlib sctx ~current_dir:dir ~for_:Ocaml in
+               let for_ = Compilation_mode.Ocaml in
+               let lookup_vlib = lookup_vlib sctx ~current_dir:dir ~for_ in
                let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
                let* expander = Super_context.expander sctx ~dir
                and* dirs = Memo.Lazy.force dirs in
@@ -374,6 +395,24 @@ end = struct
                  ~expander
                  ~project
                  ~libs
+                 ~for_
+                 ~lib_config
+                 ~loc
+                 ~lookup_vlib
+                 ~include_subdirs
+                 dirs)
+           and melange =
+             Memo.lazy_ (fun () ->
+               let for_ = Compilation_mode.Melange in
+               let lookup_vlib = lookup_vlib sctx ~current_dir:dir ~for_ in
+               let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
+               let* expander = Super_context.expander sctx ~dir
+               and* dirs = Memo.Lazy.force dirs in
+               Ml_sources.make
+                 ~expander
+                 ~project
+                 ~libs
+                 ~for_
                  ~lib_config
                  ~loc
                  ~lookup_vlib
@@ -417,7 +456,7 @@ end = struct
                  ; dir
                  ; text_files = files
                  ; ocaml = ml
-                 ; melange = ml
+                 ; melange
                  ; foreign_sources
                  ; mlds
                  ; coq
@@ -430,7 +469,7 @@ end = struct
              ; dir
              ; text_files = files
              ; ocaml = ml
-             ; melange = ml
+             ; melange
              ; foreign_sources
              ; mlds
              ; coq
@@ -507,7 +546,7 @@ let modules_of_local_lib sctx lib ~for_ =
 let modules_of_lib sctx lib ~for_ =
   match
     let info = Lib.info lib in
-    Lib_info.modules info
+    Lib_info.modules info ~for_
   with
   | External modules -> Memo.return modules
   | Local ->

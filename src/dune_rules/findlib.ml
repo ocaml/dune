@@ -131,15 +131,23 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
     let main_module_name : Lib_info.Main_module_name.t = This None in
     let enabled = Memo.return Lib_info.Enabled_status.Normal in
     let requires =
-      let exports = Lib_name.Set.of_list (Findlib.Package.exports t) in
-      Findlib.Package.requires t
-      |> List.map ~f:(fun name ->
-        let lib_dep =
-          if Lib_name.Set.mem exports name then Lib_dep.re_export else Lib_dep.direct
-        in
-        lib_dep (add_loc name))
+      let ocaml =
+        let exports = Lib_name.Set.of_list (Findlib.Package.exports t) in
+        Findlib.Package.requires t
+        |> List.map ~f:(fun name ->
+          let lib_dep =
+            if Lib_name.Set.mem exports name then Lib_dep.re_export else Lib_dep.direct
+          in
+          lib_dep (add_loc name))
+      in
+      { Compilation_mode.By_mode.ocaml; melange = [] }
     in
-    let ppx_runtime_deps = List.map ~f:add_loc (Findlib.Package.ppx_runtime_deps t) in
+    let ppx_runtime_deps =
+      { Compilation_mode.By_mode.ocaml =
+          List.map (Findlib.Package.ppx_runtime_deps t) ~f:add_loc
+      ; melange = []
+      }
+    in
     let special_builtin_support : (Loc.t * Lib_info.Special_builtin_support.t) option =
       (* findlib has been around for much longer than dune, so it is
          acceptable to have a special case in dune for findlib. *)
@@ -153,7 +161,9 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
     let jsoo_runtime = Findlib.Package.jsoo_runtime t in
     let wasmoo_runtime = Findlib.Package.wasmoo_runtime t in
     let melange_runtime_deps = Lib_info.File_deps.External [] in
-    let preprocess = Preprocess.Per_module.no_preprocessing () in
+    let preprocess =
+      Compilation_mode.By_mode.both (Preprocess.Per_module.no_preprocessing ())
+    in
     let default_implementation = None in
     let wrapped = None in
     let foreign_archives, native_archives =
@@ -190,7 +200,11 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
     let entry_modules =
       Lib_info.Source.External
         (match Vars.get_words t.vars "main_modules" Ps.empty with
-         | _ :: _ as modules -> Ok (List.map ~f:Module_name.of_checked_string modules)
+         | _ :: _ as modules ->
+           Ok
+             (Compilation_mode.By_mode.just
+                ~for_:Ocaml
+                (List.map ~f:Module_name.of_checked_string modules))
          | [] ->
            (match dir_contents with
             | Error (e, _, _) ->
@@ -219,9 +233,10 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
                       Module_name.of_string_user_error (Loc.in_dir src_dir, name)
                     with
                     | Ok s -> Ok (Some s)
-                    | Error e -> Error e))))
+                    | Error e -> Error e))
+              |> Result.map ~f:(Compilation_mode.By_mode.just ~for_:Ocaml)))
     in
-    let modules = Lib_info.Source.External None in
+    let modules = Lib_info.Source.External (Compilation_mode.By_mode.both None) in
     let name = t.name in
     let lib_id = Lib_id.External (loc, name) in
     Lib_info.create

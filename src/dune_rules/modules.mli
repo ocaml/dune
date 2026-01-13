@@ -97,6 +97,8 @@ module With_vlib : sig
     -> alias:(Group.t -> 'acc -> 'acc)
     -> 'acc
 
+  val map : t -> f:(Module.t -> Module.t) -> t
+
   (** For wrapped libraries, this is the user written entry module for the
       library. For single module libraries, it's the sole module in the library *)
   val lib_interface : t -> Module.t option

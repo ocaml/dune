@@ -2,7 +2,7 @@ open Import
 open Memo.O
 
 let entry_module_names sctx lib ~for_ =
-  match Lib_info.entry_modules (Lib.info lib) with
+  match Lib_info.entry_modules (Lib.info lib) ~for_ with
   | External d -> Resolve.Memo.of_result d
   | Local ->
     let+ modules =

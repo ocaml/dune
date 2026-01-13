@@ -465,6 +465,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
     let requires_compile = Lib.Compile.direct_requires compile_info ~for_
     and requires_link = Lib.Compile.requires_link compile_info ~for_ in
     let obj_dir = Obj_dir.make_exe ~dir ~name in
+    let for_ = Compilation_mode.Ocaml in
     let modules =
       Module.generated ~kind:Impl ~src_dir:dir ~for_ [ main_module_name ]
       |> Modules.With_vlib.singleton_exe

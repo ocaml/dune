@@ -6,6 +6,7 @@ type t =
   ; vlib_modules : Modules.t
   ; vlib_foreign_objects : Path.t list
   ; impl_cm_kind : Cm_kind.t
+  ; for_ : Compilation_mode.t
   }
 
 let vlib_modules t = t.vlib_modules
@@ -68,7 +69,7 @@ let make ~sctx ~scope ~(lib : Library.t) ~info ~vlib ~for_ =
     in
     Mode.cm_kind (if byte then Byte else Native)
   in
-  { impl = lib; impl_cm_kind; vlib; vlib_modules; vlib_foreign_objects }
+  { impl = lib; impl_cm_kind; vlib; vlib_modules; vlib_foreign_objects; for_ }
 ;;
 
 let setup_copy_rules ~sctx ~dir vimpl =
@@ -80,13 +81,6 @@ let setup_copy_rules ~sctx ~dir vimpl =
   let copy_to_obj_dir ~src ~dst =
     add_rule ~loc:(Loc.of_pos __POS__) (Action_builder.symlink ~src ~dst)
   in
-  let* { Lib_config.has_native; ext_obj; _ } =
-    let+ ocaml = Context.ocaml ctx in
-    ocaml.lib_config
-  in
-  let { Lib_mode.Map.ocaml = { byte; native }; melange } =
-    Mode_conf.Lib.Set.eval vimpl.impl.modes ~has_native
-  in
   let copy_obj_file m kind =
     let src = Obj_dir.Module.cm_file_exn vlib_obj_dir m ~kind in
     let dst = Obj_dir.Module.cm_file_exn impl_obj_dir m ~kind in
@@ -97,23 +91,40 @@ let setup_copy_rules ~sctx ~dir vimpl =
     let src = Obj_dir.Module.cm_public_file_exn vlib_obj_dir src ~kind in
     copy_to_obj_dir ~src ~dst
   in
-  let copy_objs src =
-    Memo.when_ (byte || native) (fun () -> copy_obj_file src (Ocaml Cmi))
-    >>> Memo.when_ melange (fun () -> copy_obj_file src (Melange Cmi))
-    >>> Memo.when_
-          (Module.visibility src = Public
-           && Obj_dir.need_dedicated_public_dir impl_obj_dir)
-          (fun () ->
-             Memo.when_ (byte || native) (copy_interface_to_impl ~src (Ocaml Cmi))
-             >>> Memo.when_ melange (copy_interface_to_impl ~src (Melange Cmi)))
-    >>> Memo.when_ (Module.has src ~ml_kind:Impl) (fun () ->
-      Memo.when_ byte (fun () -> copy_obj_file src (Ocaml Cmo))
-      >>> Memo.when_ melange (fun () -> copy_obj_file src (Melange Cmj))
-      >>> Memo.when_ native (fun () ->
-        copy_obj_file src (Ocaml Cmx)
-        >>>
-        let object_file dir = Obj_dir.Module.o_file_exn dir src ~ext_obj in
-        copy_to_obj_dir ~src:(object_file vlib_obj_dir) ~dst:(object_file impl_obj_dir)))
+  let copy_objs =
+    match vimpl.for_ with
+    | Ocaml ->
+      fun src ->
+        let* { Lib_config.has_native; ext_obj; _ } =
+          let+ ocaml = Context.ocaml ctx in
+          ocaml.lib_config
+        in
+        let { Lib_mode.Map.ocaml = { byte; native }; melange = _ } =
+          Mode_conf.Lib.Set.eval vimpl.impl.modes ~has_native
+        in
+        copy_obj_file src (Ocaml Cmi)
+        >>> Memo.when_
+              (Module.visibility src = Public
+               && Obj_dir.need_dedicated_public_dir impl_obj_dir)
+              (fun () -> copy_interface_to_impl ~src (Ocaml Cmi) ())
+        >>> Memo.when_ (Module.has src ~ml_kind:Impl) (fun () ->
+          Memo.when_ byte (fun () -> copy_obj_file src (Ocaml Cmo))
+          >>> Memo.when_ native (fun () ->
+            copy_obj_file src (Ocaml Cmx)
+            >>>
+            let object_file dir = Obj_dir.Module.o_file_exn dir src ~ext_obj in
+            copy_to_obj_dir
+              ~src:(object_file vlib_obj_dir)
+              ~dst:(object_file impl_obj_dir)))
+    | Melange ->
+      fun src ->
+        copy_obj_file src (Melange Cmi)
+        >>> Memo.when_
+              (Module.visibility src = Public
+               && Obj_dir.need_dedicated_public_dir impl_obj_dir)
+              (fun () -> (copy_interface_to_impl ~src (Melange Cmi)) ())
+        >>> Memo.when_ (Module.has src ~ml_kind:Impl) (fun () ->
+          copy_obj_file src (Melange Cmj))
   in
   let vlib_modules = vlib_modules vimpl in
   Modules.fold vlib_modules ~init:(Memo.return ()) ~f:(fun m acc -> acc >>> copy_objs m)

@@ -516,8 +516,8 @@ let cat_file { dir; _ } command =
 
 let rev_parse { dir; _ } rev =
   let git = Lazy.force Vcs.git in
-  let+ line, code =
-    Process.run_capture_line
+  let+ lines, code =
+    Process.run_capture_lines
       ~dir
       ~display:Quiet
       ~env
@@ -525,7 +525,9 @@ let rev_parse { dir; _ } rev =
       git
       [ "rev-parse"; "--verify"; "--quiet"; sprintf "%s^{commit}" rev ]
   in
-  if code = 0 then Some (Option.value_exn (Object.of_sha1 line)) else None
+  match lines, code with
+  | [ line ], 0 -> Some (Option.value_exn (Object.of_sha1 line))
+  | _, _ -> None
 ;;
 
 let object_exists_no_lock { dir; _ } obj =

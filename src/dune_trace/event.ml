@@ -18,6 +18,22 @@ module Arg = struct
   let span span = float (Time.Span.to_secs span)
 end
 
+let gc_args () =
+  (* CR-someday rgrinberg: find a way to include all new fields in recent
+     versions of OCaml *)
+  let stat = Gc.quick_stat () in
+  [ "stack_size", Arg.int stat.stack_size
+  ; "heap_words", Arg.int stat.heap_words
+  ; "top_heap_words", Arg.int stat.top_heap_words
+  ; "minor_words", Arg.float stat.minor_words
+  ; "major_words", Arg.float stat.major_words
+  ; "promoted_words", Arg.float stat.promoted_words
+  ; "compactions", Arg.int stat.compactions
+  ; "major_collections", Arg.int stat.major_collections
+  ; "minor_collections", Arg.int stat.minor_collections
+  ]
+;;
+
 module Event = struct
   module Id = struct
     type t = string
@@ -123,7 +139,11 @@ let init ~version =
 
 let exit () =
   let now = Time.now () in
-  Event.instant ~name:"exit" now Config
+  let args =
+    let gc = gc_args () in
+    [ "gc", Arg.list (Arg.record gc) ]
+  in
+  Event.instant ~args ~name:"exit" now Config
 ;;
 
 let scheduler_idle () =
@@ -409,19 +429,7 @@ end
 
 let gc () =
   let now = Time.now () in
-  let args =
-    let stat = Gc.quick_stat () in
-    [ "stack_size", Arg.int stat.stack_size
-    ; "heap_words", Arg.int stat.heap_words
-    ; "top_heap_words", Arg.int stat.top_heap_words
-    ; "minor_words", Arg.float stat.minor_words
-    ; "major_words", Arg.float stat.major_words
-    ; "promoted_words", Arg.float stat.promoted_words
-    ; "compactions", Arg.int stat.compactions
-    ; "major_collections", Arg.int stat.major_collections
-    ; "minor_collections", Arg.int stat.minor_collections
-    ]
-  in
+  let args = gc_args () in
   Event.instant ~name:"gc" ~args now Gc
 ;;
 

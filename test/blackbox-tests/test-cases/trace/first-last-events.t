@@ -20,3 +20,24 @@ be a particular event emitted by dune.
       "root"
     ]
   }
+
+Demonstrate the last event:
+
+  $ dune trace cat | jq -s 'last | { name, cat, args: (.args | .gc |= keys) }'
+  {
+    "name": "exit",
+    "cat": "config",
+    "args": {
+      "gc": [
+        "compactions",
+        "heap_words",
+        "major_collections",
+        "major_words",
+        "minor_collections",
+        "minor_words",
+        "promoted_words",
+        "stack_size",
+        "top_heap_words"
+      ]
+    }
+  }

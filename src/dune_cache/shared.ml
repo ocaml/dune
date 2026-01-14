@@ -37,8 +37,6 @@ end
 module Make (S : sig
     val debug_shared_cache : bool
     val config : Config.t
-    val upload : rule_digest:Dune_digest.t -> unit Fiber.t
-    val download : rule_digest:Dune_digest.t -> unit Fiber.t
   end) =
 struct
   open S
@@ -47,7 +45,7 @@ struct
     : (Digest.t Targets.Produced.t, Miss_reason.t) Hit_or_miss.t Fiber.t
     =
     let open Fiber.O in
-    let+ () = download ~rule_digest in
+    let+ () = Fiber.return () in
     let key () =
       shared_cache_key_string_for_log
         ~rule_digest
@@ -147,10 +145,9 @@ struct
       Local.store_artifacts ~mode ~rule_digest ~compute_digest targets
       >>= (function
        | Stored targets_and_digests ->
-         let+ () = upload ~rule_digest in
          Log.info "cache store success" [ "hex", Dyn.string hex ];
          update_cached_digests ~targets_and_digests;
-         Some targets_and_digests
+         Fiber.return (Some targets_and_digests)
        | Already_present targets_and_digests ->
          Log.info "cache store skipped: already present" [ "hex", Dyn.string hex ];
          update_cached_digests ~targets_and_digests;

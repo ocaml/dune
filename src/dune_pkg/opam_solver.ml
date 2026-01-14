@@ -17,7 +17,7 @@ open Fiber.O
 
 let with_test solver_env =
   match Solver_env.get solver_env Package_variable_name.with_test with
-  | Some v -> if Variable_value.equal v Variable_value.true_ then true else false
+  | Some v -> Variable_value.equal v Variable_value.true_
   | None -> true
 ;;
 

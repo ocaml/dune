@@ -43,35 +43,37 @@ Create two rules that create directories, and trys to install them both
 
 When only one package is installed, result is as expected
   $ dune build @install --only a
-  $ tree -d _build
-  _build
-  |-- default
-  |   `-- a
-  |       `-- share
-  `-- install
-      `-- default
-          |-- lib
-          |   `-- a
-          `-- share -> ../../default/a/share
+  $ ls -RL _build/install/default
+  _build/install/default:
+  lib
+  share
   
-  9 directories
+  _build/install/default/lib:
+  a
+  
+  _build/install/default/lib/a:
+  META
+  dune-package
+  
+  _build/install/default/share:
+  readme_a.txt
 
 Same with the other, though note that this removes the previous
   $ dune build @install --only b
-  $ tree -d _build
-  _build
-  |-- default
-  |   |-- a
-  |   |   `-- share
-  |   `-- b
-  |       `-- share
-  `-- install
-      `-- default
-          |-- lib
-          |   `-- b
-          `-- share -> ../../default/b/share
+  $ ls -RL _build/install/default
+  _build/install/default:
+  lib
+  share
   
-  11 directories
+  _build/install/default/lib:
+  b
+  
+  _build/install/default/lib/b:
+  META
+  dune-package
+  
+  _build/install/default/share:
+  readme_b.txt
 
   $ dune clean
 
@@ -79,8 +81,6 @@ Both at the same time leads to a crash
   $ dune build @install 2>&1 | grep "must not crash"
   I must not crash.  Uncertainty is the mind-killer. Exceptions are the
   [1]
-  $ tree -d _build
-  _build
-  `-- default
-  
-  2 directories
+  $ ls -RL _build/install/default
+  ls: cannot access '_build/install/default': No such file or directory
+  [2]

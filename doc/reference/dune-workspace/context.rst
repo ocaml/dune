@@ -5,27 +5,27 @@ The ``(context ...)`` stanza declares a build context. The kind of context can
 be either ``(default ...)`` for the regular build context, or ``(opam
 ...)`` to use an opam switch.
 
-The ``default`` context without extra fields can be specifed as ``(context
-default)``
+The ``default`` context without extra fields can be specified as ``(context
+default)``.
 
 .. code:: dune
 
     (context
-      (default
-        <optional-fields>))
+     (default
+      <optional-fields>))
 
 .. code:: dune
 
     (context
-      (opam
-        (switch <opam-switch-name>)
-          <optional-fields>))
+     (opam
+      (switch <opam-switch-name>)
+      <optional-fields>))
 
 ``<optional-fields>`` common to both context types are:
 
--  ``(name <name>)`` is the subdirectory's name for ``_build``, where this
-   build's context artifacts will be stored. If omitted, the context name
-   is ``default``.
+- ``(name <name>)`` is the subdirectory's name for ``_build``, where this
+   build's context artifacts will be stored. If omitted, the context name is
+   ``default`` for the default context, and switch name for the opam context.
 
 - ``(merlin)`` instructs Dune to use this build context for Merlin.
 
@@ -54,7 +54,7 @@ default)``
   Relative paths are interpreted with respect to the workspace root. See
   :ref:`finding-root`.
 
-- ``(targets )`` lets you specify a list of target names to set up cross
+- ``(targets <targets>)`` lets you specify a list of target names to set up cross
   compilation targets. See :ref:`cross-compilation` for more information.
 
 - ``(fdo <target_exe>)`` builds this context with feedback-direct optimizations.
@@ -68,6 +68,9 @@ default)``
   the name of the context is *default-fdo-foo* and the filename that contains
   execution counters is *src/fdo.exe.fdo-profile*.  This feature is
   **experimental** and no backwards compatibility is implied.
+
+- ``(instrument_with <instrumentation_backend>)`` turns on instrumentation for
+  the context. See :doc:`/instrumentation` for more information.
 
 ``<optional-fields>`` specific to ``(context default)`` are:
 

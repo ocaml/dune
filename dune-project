@@ -5,6 +5,7 @@
 (name dune)
 
 (generate_opam_files true)
+(opam_file_location inside_opam_directory)
 
 (accept_alternative_dune_file_name)
 

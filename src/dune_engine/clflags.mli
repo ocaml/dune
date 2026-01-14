@@ -14,9 +14,6 @@ val capture_outputs : bool ref
 (** Always print backtraces, to help debugging dune itself *)
 val debug_backtraces : bool -> unit
 
-(** Print debug info for cached file-system operations *)
-val debug_fs_cache : bool ref
-
 module Promote : sig
   type t =
     | Automatically

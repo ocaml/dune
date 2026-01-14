@@ -17,6 +17,7 @@ type t =
   | Log
   | Cram
   | Action
+  | Cache
 
 val to_string : t -> string
 val of_string : string -> t option

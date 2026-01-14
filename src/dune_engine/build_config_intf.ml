@@ -126,8 +126,6 @@ module type Build_config = sig
           -> src:Path.Build.t
           -> dst:Path.Source.t
           -> unit Fiber.t)
-    -> cache_config:Dune_cache.Config.t
-    -> cache_debug_flags:Cache_debug_flags.t
     -> sandboxing_preference:Sandbox_mode.t list
     -> rule_generator:(module Gen_rules.Rule_generator)
     -> implicit_default_alias:(Path.Build.t -> unit Action_builder.t option Memo.t)
@@ -148,8 +146,6 @@ module type Build_config = sig
         -> src:Path.Build.t
         -> dst:Path.Source.t
         -> unit Fiber.t
-    ; cache_config : Dune_cache.Config.t
-    ; cache_debug_flags : Cache_debug_flags.t
     ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t
     ; execution_parameters :
         Context_name.t -> dir:Path.Build.t -> Execution_parameters.t Memo.t

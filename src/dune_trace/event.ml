@@ -599,3 +599,44 @@ module Action = struct
         }
   ;;
 end
+
+module Cache = struct
+  let shared what ~rule_digest ~head =
+    let now = Time.now () in
+    let name =
+      match what with
+      | `Miss _ -> "miss"
+      | `Hit -> "hit"
+    in
+    let args =
+      [ "rule_digest", Arg.string rule_digest; "head", Arg.build_path head ]
+      @
+      match what with
+      | `Miss reason -> [ "reason", Arg.string reason ]
+      | `Hit -> []
+    in
+    Event.instant ~args ~name now Cache
+  ;;
+
+  let workspace_local_miss ~head ~reason =
+    let now = Time.now () in
+    let args = [ "target", Arg.build_path head; "reason", Arg.string reason ] in
+    Event.instant ~args ~name:"workspace_local_miss" now Cache
+  ;;
+
+  let fs_update ~cache_type ~path result =
+    let now = Time.now () in
+    let args =
+      [ "cache_type", Arg.string cache_type
+      ; "path", Arg.string (Path.Outside_build_dir.to_string path)
+      ; ( "result"
+        , Arg.string
+            (match result with
+             | `Skipped -> "skipped"
+             | `Changed -> "changed"
+             | `Unchanged -> "unchanged") )
+      ]
+    in
+    Event.instant ~args ~name:"fs_update" now Cache
+  ;;
+end

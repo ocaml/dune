@@ -53,3 +53,20 @@ def coqdocFlags:
 
 def redactedActionTraces:
   [ .[] | select(.args.digest != null) | .ts |= 0 | .args.digest |= "REDACTED" ] | sort_by(.name) | .[];
+
+def cacheEvent($path):
+  select(.cat == "cache") | .args | select(.path == $path);
+
+def cacheMisses:
+  select(.cat == "cache") | select(.name == "workspace_local_miss" or .name == "miss");
+
+def cacheMissesMatching($path):
+    [ .[] | cacheMisses ]
+  | map(select((.args.target // .args.head) | test("source|target1")))
+  | sort_by(.args.target // .args.head)
+  | .[] | {name, target: (.args.target // .args.head), reason: .args.reason};
+
+def fsUpdateWithPath($path):
+    select(.name == "fs_update")
+  | .args
+  | select(.path == $path);

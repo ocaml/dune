@@ -71,8 +71,6 @@ type t =
       -> src:Path.Build.t
       -> dst:Path.Source.t
       -> unit Fiber.t
-  ; cache_config : Dune_cache.Config.t
-  ; cache_debug_flags : Cache_debug_flags.t
   ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t
   ; execution_parameters :
       Context_name.t -> dir:Path.Build.t -> Execution_parameters.t Memo.t
@@ -87,8 +85,6 @@ let get () = Fdecl.get t
 let set
       ~contexts
       ~promote_source
-      ~cache_config
-      ~cache_debug_flags
       ~sandboxing_preference
       ~rule_generator
       ~implicit_default_alias
@@ -112,8 +108,6 @@ let set
     ; sandboxing_preference =
         sandboxing_preference @ Sandbox_mode.all_except_patch_back_source_tree
     ; promote_source
-    ; cache_config
-    ; cache_debug_flags
     ; implicit_default_alias
     ; execution_parameters
     ; source_tree

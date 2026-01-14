@@ -8,6 +8,7 @@
   dune_util
   dune_console
   dune_targets
+  dune_trace
   fiber
   stdune
   unix))

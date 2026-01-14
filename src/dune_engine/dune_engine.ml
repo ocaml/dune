@@ -30,7 +30,6 @@ module Diff_promotion = Diff_promotion
 module Fs_cache = Fs_cache
 module Fs_memo = Fs_memo
 module Execution_parameters = Execution_parameters
-module Cache_debug_flags = Cache_debug_flags
 module Report_errors_config = Report_errors_config
 module Reflection = Reflection
 module No_io = No_io

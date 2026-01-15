@@ -1024,30 +1024,30 @@ let modules_of_stanzas =
                (match vendor_status with
                 | `Excluded -> Memo.return `Skip
                 | `Included alias ->
-               let+ sources, modules =
-                 let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
-                 let modules =
-                   Generated_modules.with_lib_select_deps
-                     modules
-                     ~dir
-                     ~dialects
-                     ~include_subdirs
-                     lib.buildable.libraries
-                 in
-                 make_lib_modules
-                   ~expander
-                   ~dir
-                   ~libs
-                   ~lookup_vlib
-                   ~modules
-                   ~lib
-                   ~include_subdirs:(loc_include_subdirs, include_subdirs)
-                   ~version:lib.dune_version
-                   ~alias
-                 >>= Resolve.read_memo
-               in
-               let obj_dir = Library.obj_dir lib ~dir in
-               `Library { Per_stanza.stanza = lib; sources; modules; dir; obj_dir })
+                  let+ sources, modules =
+                    let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
+                    let modules =
+                      Generated_modules.with_lib_select_deps
+                        modules
+                        ~dir
+                        ~dialects
+                        ~include_subdirs
+                        lib.buildable.libraries
+                    in
+                    make_lib_modules
+                      ~expander
+                      ~dir
+                      ~libs
+                      ~lookup_vlib
+                      ~modules
+                      ~lib
+                      ~include_subdirs:(loc_include_subdirs, include_subdirs)
+                      ~version:lib.dune_version
+                      ~alias
+                    >>= Resolve.read_memo
+                  in
+                  let obj_dir = Library.obj_dir lib ~dir in
+                  `Library { Per_stanza.stanza = lib; sources; modules; dir; obj_dir })
              | Executables.T exes ->
                let modules =
                  Generated_modules.with_lib_select_deps

@@ -246,7 +246,7 @@ module Lib = struct
        let modes = Lib_mode.Map.Set.of_list modes in
        let info : Path.t Lib_info.t =
          let src_dir = Obj_dir.dir obj_dir in
-         let lib_id = Lib_id.External (loc, name) in
+         let lib_id = Lib_id.External (Lib_id.External.make ~loc name) in
          let enabled = Memo.return Lib_info.Enabled_status.Normal in
          let status =
            match Lib_name.analyze name with

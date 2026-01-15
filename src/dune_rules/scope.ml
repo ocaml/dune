@@ -94,17 +94,16 @@ module DB = struct
       | Deprecated_library_name lib ->
         Memo.return (Lib.DB.Resolve_result.redirect_by_name public_libs lib)
     in
-    let resolve_lib_id ~public_libs lib_id_map lib_id =
-      match Lib_id.Map.find lib_id_map lib_id with
+    let resolve_local ~public_libs lib_id_map lib_id =
+      match Lib_id.Local.Map.find lib_id_map lib_id with
       | None -> Memo.return Lib.DB.Resolve_result.not_found
-      | Some found_or_redirect ->
-        resolve_found_or_redirect ~public_libs found_or_redirect
+      | Some found_or_redirect -> resolve_found_or_redirect ~public_libs found_or_redirect
     in
     fun ~instrument_with ~public_libs ~lib_config stanzas ->
       let by_name, by_id, _ =
         List.fold_left
           stanzas
-          ~init:(Lib_name.Map.empty, Lib_id.Map.empty, Lib_name.Map.empty)
+          ~init:(Lib_name.Map.empty, Lib_id.Local.Map.empty, Lib_name.Map.empty)
           ~f:(fun (by_name, by_id, libname_conflict_map) (dir, stanza) ->
             let lib_id, name, r2 =
               let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
@@ -194,7 +193,7 @@ module DB = struct
             and by_id =
               match lib_id with
               | None -> by_id
-              | Some lib_id -> Lib_id.Map.add_exn by_id (Local lib_id) r2
+              | Some lib_id -> Lib_id.Local.Map.add_exn by_id lib_id r2
             in
             by_name, by_id, libname_conflict_map)
       in
@@ -203,12 +202,13 @@ module DB = struct
         | None | Some [] -> Memo.return []
         | Some [ fr ] -> resolve_found_or_redirect ~public_libs fr >>| List.singleton
         | Some frs -> Memo.parallel_map frs ~f:(resolve_found_or_redirect ~public_libs)
-      and resolve_lib_id = resolve_lib_id ~public_libs by_id in
+      and resolve_local = resolve_local ~public_libs by_id in
       Lib.DB.create
         ()
         ~parent:(Some public_libs)
         ~resolve
-        ~resolve_lib_id
+        ~resolve_local
+        ~resolve_external:(fun _ -> Memo.return Lib.DB.Resolve_result.not_found)
         ~all:(fun () -> Lib_name.Map.keys by_name |> Memo.return)
         ~instrument_with
   ;;
@@ -238,8 +238,8 @@ module DB = struct
         else Lib.DB.Resolve_result.not_found
       | Name name -> Memo.return (Lib.DB.Resolve_result.redirect_in_the_same_db name)
     in
-    let resolve_lib_id t public_libs lib_id =
-      match Lib_id.Map.find public_libs lib_id with
+    let resolve_local t local_libs lib_id =
+      match Lib_id.Local.Map.find local_libs lib_id with
       | None -> Memo.return Lib.DB.Resolve_result.not_found
       | Some rt -> resolve_redirect_to t rt
     in
@@ -247,7 +247,7 @@ module DB = struct
       let by_name, by_id =
         List.fold_left
           stanzas
-          ~init:(Lib_name.Map.empty, Lib_id.Map.empty)
+          ~init:(Lib_name.Map.empty, Lib_id.Local.Map.empty)
           ~f:
             (fun
               (by_name, by_id)
@@ -289,11 +289,11 @@ module DB = struct
               let by_id =
                 match lib_id2 with
                 | None -> by_id
-                | Some lib_id2 -> Lib_id.Map.add_exn by_id (Local lib_id2) r2
+                | Some lib_id2 -> Lib_id.Local.Map.add_exn by_id lib_id2 r2
               in
               by_name, by_id)
       in
-      let resolve_lib_id lib_id = resolve_lib_id t by_id lib_id in
+      let resolve_local = resolve_local t by_id in
       let resolve name =
         match Lib_name.Map.find by_name name with
         | None -> Memo.return []
@@ -302,7 +302,8 @@ module DB = struct
       Lib.DB.create
         ~parent:(Some installed_libs)
         ~resolve
-        ~resolve_lib_id
+        ~resolve_local
+        ~resolve_external:(fun _ -> Memo.return Lib.DB.Resolve_result.not_found)
         ~all:(fun () -> Lib_name.Map.keys by_name |> Memo.return)
         ()
   ;;
@@ -548,42 +549,40 @@ module DB = struct
             in
             if not enabled
             then Memo.return acc
-            else
+            else (
               (* Check vendor stanza filtering *)
               let src_dir = Dune_file.dir d in
               let lib_name = Library.best_name lib in
               let lib_pkg = Option.map (Library.package lib) ~f:Package.name in
               let* status = Lib.library_status ~src_dir ~lib_name ~lib_pkg in
-              (match status with
-               | `Excluded -> Memo.return acc
-               | `Included _ ->
-                 (match lib.visibility with
-                  | Private None -> Memo.return acc
-                  | Private (Some pkg) ->
-                    let src_dir = Dune_file.dir d in
-                    let* scope =
-                      find_by_dir (Path.Build.append_source build_dir src_dir)
-                    in
-                    Lib.DB.find_lib_id
-                      (libs scope)
-                      (Local (Library.to_lib_id ~src_dir lib))
-                    >>| (function
-                     | None -> acc
-                     | Some lib ->
-                       let name = Package.name pkg in
-                       (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
-                  | Public pub ->
-                    let src_dir = Dune_file.dir d in
-                    Lib.DB.find_lib_id
-                      public_libs
-                      (Local (Library.to_lib_id ~src_dir lib))
-                    >>| (function
-                     | None -> acc
-                     | Some lib ->
-                       let package = Public_lib.package pub in
-                       let name = Package.name package in
-                       let local_lib = Lib.Local.of_lib_exn lib in
-                       (name, Lib_entry.Library local_lib) :: acc)))
+              match status with
+              | `Excluded -> Memo.return acc
+              | `Included _ ->
+                (match lib.visibility with
+                 | Private None -> Memo.return acc
+                 | Private (Some pkg) ->
+                   let src_dir = Dune_file.dir d in
+                   let* scope =
+                     find_by_dir (Path.Build.append_source build_dir src_dir)
+                   in
+                   Lib.DB.find_lib_id
+                     (libs scope)
+                     (Local (Library.to_lib_id ~src_dir lib))
+                   >>| (function
+                    | None -> acc
+                    | Some lib ->
+                      let name = Package.name pkg in
+                      (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
+                 | Public pub ->
+                   let src_dir = Dune_file.dir d in
+                   Lib.DB.find_lib_id public_libs (Local (Library.to_lib_id ~src_dir lib))
+                   >>| (function
+                    | None -> acc
+                    | Some lib ->
+                      let package = Public_lib.package pub in
+                      let name = Package.name package in
+                      let local_lib = Lib.Local.of_lib_exn lib in
+                      (name, Lib_entry.Library local_lib) :: acc)))
           | Deprecated_library_name.T ({ old_name = old_public_name, _; _ } as d) ->
             let package = Public_lib.package old_public_name in
             let name = Package.name package in

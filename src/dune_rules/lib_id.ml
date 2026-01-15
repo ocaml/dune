@@ -37,23 +37,39 @@ module Local = struct
   let loc t = t.loc
 end
 
+module External = struct
+  type t =
+    { name : Lib_name.t
+    ; loc : Loc.t
+    }
+
+  let make ~loc name = { name; loc }
+  let name t = t.name
+  let loc t = t.loc
+
+  let to_dyn { name; loc } =
+    let open Dyn in
+    record [ "name", Lib_name.to_dyn name; "loc", Loc.to_dyn_hum loc ]
+  ;;
+end
+
 module T = struct
   type t =
-    | External of (Loc.t * Lib_name.t)
+    | External of External.t
     | Local of Local.t
 
   let compare a b =
     match a, b with
-    | External (_, a), External (_, b) -> Lib_name.compare a b
+    | External a, External b -> Lib_name.compare a.name b.name
     | Local a, Local b -> Local.compare a b
-    | Local { loc = loc1; _ }, External (loc2, _)
-    | External (loc1, _), Local { loc = loc2; _ } -> Loc.compare loc1 loc2
+    | Local { loc = loc1; _ }, External { loc = loc2; _ }
+    | External { loc = loc1; _ }, Local { loc = loc2; _ } -> Loc.compare loc1 loc2
   ;;
 
   let to_dyn t =
     let open Dyn in
     match t with
-    | External (_, lib_name) -> variant "External" [ Lib_name.to_dyn lib_name ]
+    | External t -> variant "External" [ External.to_dyn t ]
     | Local t -> variant "Local" [ Local.to_dyn t ]
   ;;
 
@@ -65,14 +81,14 @@ include Comparable.Make (T)
 
 let to_local_exn = function
   | Local t -> t
-  | External (loc, name) ->
+  | External { loc; name } ->
     Code_error.raise ~loc "Expected a Local library id" [ "name", Lib_name.to_dyn name ]
 ;;
 
 let name = function
-  | Local { name; _ } | External (_, name) -> name
+  | Local { name; _ } | External { name; _ } -> name
 ;;
 
 let loc = function
-  | Local { loc; _ } | External (loc, _) -> loc
+  | Local { loc; _ } | External { loc; _ } -> loc
 ;;

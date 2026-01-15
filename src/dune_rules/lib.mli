@@ -158,7 +158,8 @@ module DB : sig
   val create
     :  parent:t option
     -> resolve:(Lib_name.t -> Resolve_result.t list Memo.t)
-    -> resolve_lib_id:(Lib_id.t -> Resolve_result.t Memo.t)
+    -> resolve_local:(Lib_id.Local.t -> Resolve_result.t Memo.t)
+    -> resolve_external:(Lib_id.External.t -> Resolve_result.t Memo.t)
     -> all:(unit -> Lib_name.t list Memo.t)
     -> instrument_with:Lib_name.t list
     -> unit

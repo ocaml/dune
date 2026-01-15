@@ -474,7 +474,8 @@ end
 type db =
   { parent : db option
   ; resolve : Lib_name.t -> resolve_result list Memo.t
-  ; resolve_lib_id : Lib_id.t -> resolve_result Memo.t
+  ; resolve_local : Lib_id.Local.t -> resolve_result Memo.t
+  ; resolve_external : Lib_id.External.t -> resolve_result Memo.t
   ; instantiate :
       (Lib_name.t -> Path.t Lib_info.t -> hidden:string option -> Status.t Memo.t) Lazy.t
   ; all : Lib_name.t list Memo.Lazy.t
@@ -1662,7 +1663,10 @@ end = struct
   let resolve_lib_id db lib_id =
     let open Memo.O in
     let super db = resolve_lib_id db lib_id in
-    db.resolve_lib_id lib_id >>= handle_resolve_result ~super db
+    (match lib_id with
+     | Local local -> db.resolve_local local
+     | External external_ -> db.resolve_external external_)
+    >>= handle_resolve_result ~super db
   ;;
 
   let available_internal db (name : Lib_name.t) =
@@ -2410,12 +2414,13 @@ module DB = struct
 
   type t = db
 
-  let create ~parent ~resolve ~resolve_lib_id ~all ~instrument_with () =
+  let create ~parent ~resolve ~resolve_local ~resolve_external ~all ~instrument_with () =
     let rec t =
       lazy
         { parent
         ; resolve
-        ; resolve_lib_id
+        ; resolve_local
+        ; resolve_external
         ; all = Memo.lazy_ all
         ; instrument_with
         ; instantiate
@@ -2452,17 +2457,14 @@ module DB = struct
         ()
         ~parent:None
         ~resolve
-        ~resolve_lib_id:(fun lib_id ->
-          (* For Local lib_ids (libraries defined in dune files), we should not
-             resolve them in the installed libraries database because installed
-             libraries don't have a meaningful src_dir. This prevents incorrectly
-             finding an installed library when looking up a local library that
-             has been excluded by vendor stanza filtering. *)
-          match lib_id with
-          | External _ ->
-            let open Memo.O in
-            resolve (Lib_id.name lib_id) >>| List.hd
-          | Local _ -> Memo.return Not_found)
+        ~resolve_local:(fun _ ->
+          (* Local lib_ids (from dune files) cannot be resolved in the installed
+             libraries database - they have a src_dir which has no meaning for
+             installed packages. *)
+          Memo.return Not_found)
+        ~resolve_external:(fun ext ->
+          let open Memo.O in
+          resolve (Lib_id.External.name ext) >>| List.hd)
         ~all:(fun () ->
           let open Memo.O in
           Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.name)

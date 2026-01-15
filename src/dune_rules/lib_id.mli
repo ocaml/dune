@@ -13,8 +13,17 @@ module Local : sig
   val to_dyn : t -> Dyn.t
 end
 
+module External : sig
+  type t
+
+  val make : loc:Loc.t -> Lib_name.t -> t
+  val name : t -> Lib_name.t
+  val loc : t -> Loc.t
+  val to_dyn : t -> Dyn.t
+end
+
 type t =
-  | External of (Loc.t * Lib_name.t)
+  | External of External.t
   | Local of Local.t
 
 module Map : Map.S with type key = t

@@ -79,8 +79,6 @@ let init
     Dune_cache.Shared.Make (struct
       let debug_shared_cache = cache_debug_flags.shared_cache
       let config = cache_config
-      let upload ~rule_digest:_ = Fiber.return ()
-      let download ~rule_digest:_ = Fiber.return ()
     end)
   in
   Build_config.set

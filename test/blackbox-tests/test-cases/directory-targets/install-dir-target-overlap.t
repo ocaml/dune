@@ -1,4 +1,5 @@
 Installing multiple directories into share_root currently crashes dune
+Originally reported as https://github.com/ocaml/dune/issues/13307
 
   $ cat >dune-project <<EOF
   > (lang dune 3.20)

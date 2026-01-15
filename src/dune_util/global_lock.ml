@@ -7,7 +7,7 @@ let with_timeout ~timeout f =
   let now () = Time.now () in
   let deadline = Time.add (now ()) timeout in
   let rec loop () =
-    if now () >= deadline
+    if Time.(now () >= deadline)
     then `Timed_out
     else (
       match f () with

@@ -14,8 +14,8 @@ module Arg = struct
   let int x = Sexp.Atom (string_of_int x)
   let bool x = Sexp.Atom (string_of_bool x)
   let record xs = List.map xs ~f:(fun (k, v) -> list [ string k; v ])
-  let time ts = float (Time.to_secs ts)
-  let span span = float (Time.Span.to_secs span)
+  let time ts = int (Time.to_ns ts)
+  let span span = int (Time.Span.to_ns span)
 end
 
 let gc_args () =

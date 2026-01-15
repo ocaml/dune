@@ -9,7 +9,7 @@ module Event : sig
     :  ?args:args
     -> category:string
     -> name:string
-    -> time_in_seconds:float
+    -> time_in_nanoseconds:int
     -> unit
     -> t
 
@@ -17,8 +17,8 @@ module Event : sig
     :  ?args:args
     -> category:string
     -> name:string
-    -> start_in_seconds:float
-    -> duration_in_seconds:float
+    -> start_in_nanoseconds:int
+    -> duration_in_nanoseconds:int
     -> unit
     -> t
 end

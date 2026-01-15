@@ -9,23 +9,26 @@ module Event = struct
 
   module Arg = struct
     let string s = Csexp.Atom s
-    let float x = string (string_of_float x)
+    let int x = string (string_of_int x)
     let list xs = Csexp.List xs
     let record xs = List.map xs ~f:(fun (k, v) -> list [ string k; v ])
-    let time ts = float ts
-    let span span = float span
+    let time_ns ts = int ts
+    let span_ns span = int span
   end
 
   let base ~name cat : Csexp.t list = [ Atom cat; Atom name ]
 
-  let instant ?(args = []) ~category ~name ~time_in_seconds () =
-    Csexp.List (base ~name category @ [ Arg.time time_in_seconds ] @ Arg.record args)
+  let instant ?(args = []) ~category ~name ~time_in_nanoseconds () =
+    Csexp.List
+      (base ~name category @ [ Arg.time_ns time_in_nanoseconds ] @ Arg.record args)
   ;;
 
-  let span ?(args = []) ~category ~name ~start_in_seconds ~duration_in_seconds () =
+  let span ?(args = []) ~category ~name ~start_in_nanoseconds ~duration_in_nanoseconds () =
     Csexp.List
       (base ~name category
-       @ [ Csexp.List [ Arg.time start_in_seconds; Arg.span duration_in_seconds ] ]
+       @ [ Csexp.List
+             [ Arg.time_ns start_in_nanoseconds; Arg.span_ns duration_in_nanoseconds ]
+         ]
        @ Arg.record args)
   ;;
 end

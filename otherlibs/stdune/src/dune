@@ -22,4 +22,5 @@
    wait4_stubs
    platform_stubs
    copyfile_stubs
-   signal_stubs)))
+   signal_stubs
+   time_stubs)))

@@ -24,6 +24,8 @@ void dune_wait4(value v_pid, value flags) {
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
+#include <stdint.h>
 
 #define TAG_WEXITED 0
 #define TAG_WSIGNALED 1
@@ -66,7 +68,7 @@ value dune_wait4(value v_pid, value flags) {
   CAMLlocal2(times, res);
 
   int status, cv_flags;
-  struct timeval tp;
+  struct timespec tp;
   cv_flags = caml_convert_flag_list(flags, wait_flag_table);
   pid_t pid = Int_val(v_pid);
 
@@ -76,7 +78,7 @@ value dune_wait4(value v_pid, value flags) {
   // returns the pid of the terminated process, or -1 on error
   pid = wait4(pid, &status, cv_flags, &ru);
   int wait_errno = errno;
-  gettimeofday(&tp, NULL);
+  clock_gettime(CLOCK_REALTIME, &tp);
   caml_leave_blocking_section();
   if (pid == 0) {
     CAMLreturn(Val_none);
@@ -90,8 +92,10 @@ value dune_wait4(value v_pid, value flags) {
   }
 
   times = caml_alloc_tuple(9);
-  Store_field(times, 0, caml_copy_double(ru.ru_utime.tv_sec + ru.ru_utime.tv_usec / 1e6));
-  Store_field(times, 1, caml_copy_double(ru.ru_stime.tv_sec + ru.ru_stime.tv_usec / 1e6));
+  Store_field(times, 0, Val_long(((int64_t)ru.ru_utime.tv_sec * 1000000000LL) +
+                                 ((int64_t)ru.ru_utime.tv_usec * 1000LL)));
+  Store_field(times, 1, Val_long(((int64_t)ru.ru_stime.tv_sec * 1000000000LL) +
+                                 ((int64_t)ru.ru_stime.tv_usec * 1000LL)));
   Store_field(times, 2, Val_long(ru.ru_maxrss));
   Store_field(times, 3, Val_long(ru.ru_minflt));
   Store_field(times, 4, Val_long(ru.ru_majflt));
@@ -104,7 +108,7 @@ value dune_wait4(value v_pid, value flags) {
   Store_field(res, 0, Val_int(pid));
   Store_field(res, 1, alloc_process_status(status));
   Store_field(res, 2,
-              caml_copy_double(((double)tp.tv_sec + (double)tp.tv_usec / 1e6)));
+              Val_long(((int64_t)tp.tv_sec * 1000000000LL) + (int64_t)tp.tv_nsec));
   Store_field(res, 3, times);
   CAMLreturn(caml_alloc_some_compat(res));
 }

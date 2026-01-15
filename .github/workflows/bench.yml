@@ -41,6 +41,7 @@ jobs:
 
       - name: Install deps on Unix
         run: |
+          opam pin -n . --with-version=3.22.0
           opam install . --deps-only --with-test
           opam exec -- make dev-deps
           # Install hyperfine

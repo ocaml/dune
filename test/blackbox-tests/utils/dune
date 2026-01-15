@@ -1,11 +1,15 @@
 (executable
  (name dune_cmd)
  (modules dune_cmd)
+ (enabled_if
+  (<> %{profile} dune-bootstrap))
  (libraries stdune re dune-configurator build_path_prefix_map str unix))
 
 (executable
  (name action_trace)
  (modules action_trace)
+ (enabled_if
+  (<> %{profile} dune-bootstrap))
  (libraries stdune unix csexp dune_action_trace))
 
 (ocamllex dunepp)

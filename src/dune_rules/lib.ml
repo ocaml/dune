@@ -1213,13 +1213,23 @@ end = struct
   let projects_by_package =
     Memo.lazy_ (fun () ->
       let open Memo.O in
-      Dune_load.projects ()
-      >>| List.concat_map ~f:(fun project ->
-        Dune_project.including_hidden_packages project
-        |> Package.Name.Map.to_list_map ~f:(fun _ (pkg : Package.t) ->
-          let name = Package.name pkg in
-          name, project))
-      >>| Package.Name.Map.of_list_exn)
+      let* projects = Dune_load.projects () in
+      (* Filter packages based on vendor stanzas *)
+      let+ pairs =
+        Memo.parallel_map projects ~f:(fun project ->
+          let project_root = Dune_project.root project in
+          Dune_project.including_hidden_packages project
+          |> Package.Name.Map.to_list
+          |> Memo.parallel_map ~f:(fun (_, (pkg : Package.t)) ->
+            let name = Package.name pkg in
+            (* Check if this package is visible according to vendor stanzas *)
+            let+ visible =
+              Package_db.is_package_visible ~src_dir:project_root ~pkg_name:name
+            in
+            if visible then Some (name, project) else None)
+          >>| List.filter_opt)
+      in
+      List.concat pairs |> Package.Name.Map.of_list_exn)
   ;;
 
   let resolve_parameters db ~private_deps info =
@@ -2443,8 +2453,16 @@ module DB = struct
         ~parent:None
         ~resolve
         ~resolve_lib_id:(fun lib_id ->
-          let open Memo.O in
-          resolve (Lib_id.name lib_id) >>| List.hd)
+          (* For Local lib_ids (libraries defined in dune files), we should not
+             resolve them in the installed libraries database because installed
+             libraries don't have a meaningful src_dir. This prevents incorrectly
+             finding an installed library when looking up a local library that
+             has been excluded by vendor stanza filtering. *)
+          match lib_id with
+          | External _ ->
+            let open Memo.O in
+            resolve (Lib_id.name lib_id) >>| List.hd
+          | Local _ -> Memo.return Not_found)
         ~all:(fun () ->
           let open Memo.O in
           Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.name)
@@ -2839,3 +2857,9 @@ end = struct
   let equal = equal
   let hash = hash
 end
+
+let library_status ~src_dir ~lib_name ~lib_pkg =
+  let open Memo.O in
+  let+ vendor_stanzas = Source_tree.vendor_stanzas_for src_dir in
+  Dune_lang.Vendor_stanza.find_library_status vendor_stanzas ~lib_name ~lib_pkg
+;;

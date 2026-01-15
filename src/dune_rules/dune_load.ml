@@ -74,7 +74,7 @@ let load () =
       projects
       ~init:(Package.Name.Map.empty, Package.Name.Set.empty)
       ~f:(fun (acc_packages, vendored) (status, (project : Dune_project.t)) ->
-        let+ packages =
+        let* packages =
           let packages = Dune_project.including_hidden_packages project in
           let+ disabled =
             Package.Name.Map.values packages
@@ -103,21 +103,34 @@ let load () =
             | Some p, None -> Some (p, `Enabled)
             | None, None | None, Some _ -> assert false)
         in
+        (* Filter packages based on vendor stanzas. If a project is under a vendor
+           stanza with a package field, only include packages that match. This allows
+           cherry-picking packages from different versions of the same repository. *)
+        let+ packages, has_vendor_stanzas =
+          let project_root = Dune_project.root project in
+          let+ vendor_stanzas = Source_tree.vendor_stanzas_for project_root in
+          let filtered =
+            Package.Name.Map.filteri packages ~f:(fun pkg_name _ ->
+              Dune_lang.Vendor_stanza.applies_to_package_list vendor_stanzas ~pkg_name)
+          in
+          filtered, not (List.is_empty vendor_stanzas)
+        in
         let vendored =
-          match status with
-          | `Regular -> vendored
-          | `Vendored ->
-            Package.Name.Set.of_keys packages |> Package.Name.Set.union vendored
+          (* Mark packages as vendored if they come from a vendored_dirs directory
+             OR if they come from a directory with vendor stanzas. *)
+          let is_vendored =
+            match status with
+            | `Vendored -> true
+            | `Regular -> has_vendor_stanzas
+          in
+          if is_vendored
+          then Package.Name.Set.of_keys packages |> Package.Name.Set.union vendored
+          else vendored
         in
         let acc_packages =
-          Package.Name.Map.union acc_packages packages ~f:(fun name (a, _) (b, _) ->
-            User_error.raise
-              [ Pp.textf
-                  "The package %S is defined more than once:"
-                  (Package.Name.to_string name)
-              ; Pp.textf "- %s" (Loc.to_file_colon_line (Package.loc a))
-              ; Pp.textf "- %s" (Loc.to_file_colon_line (Package.loc b))
-              ])
+          (* Keep the first package encountered for each name. Library conflict
+             detection happens later at the scope level through dune file processing. *)
+          Package.Name.Map.union acc_packages packages ~f:(fun _ a _ -> Some a)
         in
         acc_packages, vendored)
   in

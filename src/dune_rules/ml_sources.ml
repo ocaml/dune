@@ -565,6 +565,7 @@ let make_lib_modules
       ~modules
       ~include_subdirs:(loc_include_subdirs, (include_subdirs : Include_subdirs.t))
       ~version
+      ~alias
   =
   let open Resolve.Memo.O in
   let* kind, main_module_name, wrapped =
@@ -575,9 +576,15 @@ let make_lib_modules
          the above [match lib.implements with ...], we know that we can't get
          [From _]. That's why we have these [assert false]. *)
       let main_module_name =
-        match Library.main_module_name lib with
-        | This x -> x
-        | From _ -> assert false
+        (* If alias is provided by a vendor stanza, use it for the wrapper module name *)
+        match alias with
+        | Some alias_name ->
+          Some
+            (Module_name.of_local_lib_name (Loc.none, Lib_name.to_local_exn alias_name))
+        | None ->
+          (match Library.main_module_name lib with
+           | This x -> x
+           | From _ -> assert false)
       in
       let wrapped =
         match lib.wrapped with
@@ -1008,6 +1015,15 @@ let modules_of_stanzas =
                 invalid [implements] field, we will get an error immediately even if
                 the library is not built. We should change this to carry the
                 [Or_exn.t] a bit longer. *)
+               (* Check if this library is filtered by a vendor stanza and get alias.
+                  Use the LOCAL name (lib.name) for matching against vendor stanzas. *)
+               let src_dir = Path.Build.drop_build_context_exn dir in
+               let lib_name = Library.best_name lib in
+               let lib_pkg = Option.map (Library.package lib) ~f:Package.name in
+               let* vendor_status = Lib.library_status ~src_dir ~lib_name ~lib_pkg in
+               (match vendor_status with
+                | `Excluded -> Memo.return `Skip
+                | `Included alias ->
                let+ sources, modules =
                  let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
                  let modules =
@@ -1027,10 +1043,11 @@ let modules_of_stanzas =
                    ~lib
                    ~include_subdirs:(loc_include_subdirs, include_subdirs)
                    ~version:lib.dune_version
+                   ~alias
                  >>= Resolve.read_memo
                in
                let obj_dir = Library.obj_dir lib ~dir in
-               `Library { Per_stanza.stanza = lib; sources; modules; dir; obj_dir }
+               `Library { Per_stanza.stanza = lib; sources; modules; dir; obj_dir })
              | Executables.T exes ->
                let modules =
                  Generated_modules.with_lib_select_deps

@@ -354,9 +354,20 @@ let make stanzas ~dir ~dune_version ~dirs =
     |> Memo.parallel_map ~f:(fun (stanza, enabled_if) ->
       let* expander = Expander0.get ~dir in
       Expander0.eval_blang expander enabled_if
-      >>| function
-      | false -> None
-      | true -> Some stanza)
+      >>= function
+      | false -> Memo.return None
+      | true ->
+        (* Check vendor stanza filtering for libraries. *)
+        (match stanza with
+         | `Library lib ->
+           let src_dir = Path.Build.drop_build_context_exn dir in
+           let lib_name = Library.best_name lib in
+           let lib_pkg = Option.map (Library.package lib) ~f:Package.name in
+           Lib.library_status ~src_dir ~lib_name ~lib_pkg
+           >>| (function
+            | `Excluded -> None
+            | `Included _ -> Some stanza)
+         | _ -> Memo.return (Some stanza)))
     >>| List.filter_opt
   in
   make stanzas ~dune_version ~dirs

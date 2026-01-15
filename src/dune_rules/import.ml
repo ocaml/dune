@@ -135,6 +135,7 @@ include struct
   module Include_subdirs = Include_subdirs
   module Mode_conf = Mode_conf
   module Modules_settings = Modules_settings
+  module Vendor_stanza = Vendor_stanza
 end
 
 include Dune_engine.No_io

@@ -58,6 +58,11 @@ val files_of : Path.Source.t -> Path.Source.Set.t Memo.t
 (** [true] iff the path is a vendored directory *)
 val is_vendored : Path.Source.t -> bool Memo.t
 
+(** [vendor_stanzas_for dir] returns the vendor stanzas that apply to [dir], if any.
+    This walks up the directory tree looking for vendor stanzas in a parent
+    directory that match [dir]. Multiple stanzas can apply (one per package). *)
+val vendor_stanzas_for : Path.Source.t -> Vendor_stanza.t list Memo.t
+
 (** [nearest_vcs t fn] returns the version control system with the longest root
     path that is an ancestor of [fn]. *)
 val nearest_vcs : Path.Source.t -> Vcs.t option Memo.t

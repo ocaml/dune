@@ -52,4 +52,5 @@ include struct
   module Ordered_set_lang = Ordered_set_lang
   module Blang = Blang
   module Relop = Relop
+  module Vendor_stanza = Vendor_stanza
 end

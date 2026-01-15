@@ -20,3 +20,9 @@ build all installable targets, run the tests, format, or lint the code located
 in such a directory while still building your project's dependencies. Libraries
 and executables in vendored directories will also be built with a ``-w -a`` flag
 to suppress all warnings and prevent pollution of your build output.
+
+See Also
+~~~~~~~~
+
+- :doc:`vendor` - Control which libraries are exposed from vendored directories
+  and support library aliasing

@@ -14,11 +14,34 @@ First we verify that packages alone do not cause duplication errors:
   > (vendored_dirs vendor)
   > EOF
   $ dune build @all
-However, adding dune-project files causes the duplicate detection to fire:
+However, adding dune-project files and libraries with the same public name
+causes a duplicate detection error when the library is used:
   $ cp dune-project ./vendor/duped/
   $ cp dune-project ./vendor/pkg/vendor/duped/
-  $ dune build @all
-  Error: The package "duped" is defined more than once:
-  - vendor/pkg/vendor/duped/duped.opam:1
-  - vendor/duped/duped.opam:1
+  $ cat >vendor/duped/dune <<EOF
+  > (library (name duped) (public_name duped))
+  > EOF
+  $ cat >vendor/duped/duped.ml <<EOF
+  > let x = 1
+  > EOF
+  $ cat >vendor/pkg/vendor/duped/dune <<EOF
+  > (library (name duped) (public_name duped))
+  > EOF
+  $ cat >vendor/pkg/vendor/duped/duped.ml <<EOF
+  > let x = 2
+  > EOF
+  $ cat >dune <<EOF
+  > (vendored_dirs vendor)
+  > (executable (name main) (libraries duped))
+  > EOF
+  $ cat >main.ml <<EOF
+  > let () = print_int Duped.x
+  > EOF
+  $ dune build ./main.exe
+  File "vendor/duped/dune", line 1, characters 0-42:
+  1 | (library (name duped) (public_name duped))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Library with name "duped" is already defined in
+  vendor/pkg/vendor/duped/dune:1. Either change one of the names, or enable
+  them conditionally using the 'enabled_if' field.
   [1]

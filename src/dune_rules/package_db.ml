@@ -63,3 +63,8 @@ let section_of_site t ~loc ~pkg:pkg_name ~site =
       [ Pp.textf "The package %s is not found" (Package.Name.to_string pkg_name) ]
   | Some pkg -> section_of_any_package_site pkg pkg_name loc site
 ;;
+
+let is_package_visible ~src_dir ~pkg_name =
+  let+ vendor_stanzas = Source_tree.vendor_stanzas_for src_dir in
+  Dune_lang.Vendor_stanza.is_package_visible vendor_stanzas ~pkg_name
+;;

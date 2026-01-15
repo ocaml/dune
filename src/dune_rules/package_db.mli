@@ -23,3 +23,11 @@ val section_of_site
   -> pkg:Package.Name.t
   -> site:Site.t
   -> Section.t Memo.t
+
+(** {1 Vendor stanza visibility helpers} *)
+
+(** Check if a package is visible according to vendor stanzas. *)
+val is_package_visible
+  :  src_dir:Path.Source.t
+  -> pkg_name:Package.Name.t
+  -> bool Memo.t

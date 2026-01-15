@@ -387,6 +387,22 @@ let set_version t version = { t with version }
 let entry_modules t = t.entry_modules
 let dynlink_supported t = Mode.Dict.get t.plugins Native <> []
 
+let as_ t ~alias =
+  (* When aliasing a library, change both the library name and the wrapper module name *)
+  let alias_local = Lib_name.to_local_exn alias in
+  let alias_module_name = Module_name.of_local_lib_name (Loc.none, alias_local) in
+  let main_module_name =
+    match t.main_module_name with
+    | Inherited.This None -> Inherited.This None (* unwrapped stays unwrapped *)
+    | Inherited.This (Some _) ->
+      (* Change wrapper module name to be based on alias *)
+      Inherited.This (Some alias_module_name)
+    | Inherited.From loc -> Inherited.From loc (* inherited stays inherited *)
+  in
+  let local_main_module_name = Some alias_module_name in
+  { t with name = alias; main_module_name; local_main_module_name }
+;;
+
 let eval_native_archives_exn (type path) (t : path t) ~modules =
   match t.native_archives, modules with
   | Files f, _ -> f

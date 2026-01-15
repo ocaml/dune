@@ -281,3 +281,12 @@ module Local : sig
 
   include Comparable_intf.S with type key := t
 end
+
+(** {1 Vendor stanza visibility helpers} *)
+
+(** Check library visibility for a source directory. *)
+val library_status
+  :  src_dir:Path.Source.t
+  -> lib_name:Lib_name.t
+  -> lib_pkg:Package.Name.t option
+  -> [ `Excluded | `Included of Lib_name.t option ] Memo.t

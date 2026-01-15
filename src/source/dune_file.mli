@@ -34,6 +34,9 @@ end
 
 val files : t -> Files.t
 
+(** Vendor stanzas defined in the dune file, keyed by directory name *)
+val vendor : t -> Dune_lang.Vendor_stanza.t list Filename.Map.t
+
 (** Directories introduced via [(subdir ..)] *)
 val sub_dirnames : t -> Filename.t list
 

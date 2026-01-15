@@ -70,7 +70,9 @@ module DB = struct
 
   module Library_related_stanza = struct
     type t =
-      | Library of Library.t
+      | Library of
+          Library.t
+          * Lib_name.t option (* library and optional alias from vendor stanza *)
       | Library_redirect of Library_redirect.Local.t
       | Deprecated_library_name of Deprecated_library_name.t
   end
@@ -95,7 +97,8 @@ module DB = struct
     let resolve_lib_id ~public_libs lib_id_map lib_id =
       match Lib_id.Map.find lib_id_map lib_id with
       | None -> Memo.return Lib.DB.Resolve_result.not_found
-      | Some found_or_redirect -> resolve_found_or_redirect ~public_libs found_or_redirect
+      | Some found_or_redirect ->
+        resolve_found_or_redirect ~public_libs found_or_redirect
     in
     fun ~instrument_with ~public_libs ~lib_config stanzas ->
       let by_name, by_id, _ =
@@ -126,12 +129,19 @@ module DB = struct
                     s.new_public_name
                 in
                 None, lib_name, deprecated_lib
-              | Library (conf : Library.t) ->
+              | Library (conf, alias) ->
                 let info =
                   let expander = Expander0.get ~dir in
-                  Library.to_lib_info conf ~expander ~dir ~lib_config |> Lib_info.of_local
+                  let info =
+                    Library.to_lib_info conf ~expander ~dir ~lib_config
+                    |> Lib_info.of_local
+                  in
+                  match alias with
+                  | None -> info
+                  | Some alias -> Lib_info.as_ info ~alias
                 and lib_id = Library.to_lib_id ~src_dir conf in
-                Some lib_id, Library.best_name conf, Found_or_redirect.found info
+                let name = Option.value alias ~default:(Library.best_name conf) in
+                Some lib_id, name, Found_or_redirect.found info
             in
             let libname_conflict_map =
               Lib_name.Map.update libname_conflict_map name ~f:(function
@@ -245,7 +255,7 @@ module DB = struct
             ->
             let candidate =
               match stanza with
-              | Library ({ project; visibility = Public p; _ } as conf) ->
+              | Library (({ project; visibility = Public p; _ } as conf), alias) ->
                 let lib_id =
                   let src_dir =
                     Path.drop_optional_build_context_src_exn (Path.build dir)
@@ -258,11 +268,12 @@ module DB = struct
                     Expander0.eval_blang expander conf.enabled_if >>| Toggle.of_bool)
                   |> Memo.Lazy.force
                 in
+                let name = Option.value alias ~default:(Public_lib.name p) in
                 Some
-                  ( Public_lib.name p
+                  ( name
                   , Project { project; lib_id; enabled; loc = Public_lib.loc p }
                   , Some lib_id )
-              | Library _ | Library_redirect _ -> None
+              | Library (_, _) | Library_redirect _ -> None
               | Deprecated_library_name s ->
                 Some
                   (Deprecated_library_name.old_public_name s, Name s.new_public_name, None)
@@ -313,7 +324,7 @@ module DB = struct
       List.map stanzas ~f:(fun (dir, stanza) ->
         let project =
           match (stanza : Library_related_stanza.t) with
-          | Library lib -> lib.project
+          | Library (lib, _) -> lib.project
           | Library_redirect x -> x.project
           | Deprecated_library_name x -> x.project
         in
@@ -383,29 +394,44 @@ module DB = struct
   ;;
 
   let create_from_stanzas ~projects_by_root ~(context : Context_name.t) stanzas =
-    let stanzas, coq_stanzas, rocq_stanzas =
-      let build_dir = Context_name.build_dir context in
-      Dune_file.fold_static_stanzas
+    let build_dir = Context_name.build_dir context in
+    (* Collect all stanzas, checking vendor stanza filtering for libraries *)
+    let* stanzas, coq_stanzas, rocq_stanzas =
+      Dune_file.Memo_fold.fold_static_stanzas
         stanzas
         ~init:([], [], [])
         ~f:(fun dune_file stanza (acc, coq_acc, rocq_acc) ->
+          let src_dir = Dune_file.dir dune_file in
+          let ctx_dir = Path.Build.append_source build_dir src_dir in
           match Stanza.repr stanza with
           | Library.T lib ->
-            let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
-            (ctx_dir, Library_related_stanza.Library lib) :: acc, coq_acc, rocq_acc
+            (* Check if this library is filtered by a vendor stanza and get alias.
+               Use the LOCAL name (lib.name) for matching against vendor stanzas,
+               since that's how users specify libraries in vendor stanzas. *)
+            let lib_name = Library.best_name lib in
+            let lib_pkg = Option.map (Library.package lib) ~f:Package.name in
+            let+ status = Lib.library_status ~src_dir ~lib_name ~lib_pkg in
+            (match status with
+             | `Excluded -> acc, coq_acc, rocq_acc
+             | `Included alias ->
+               ( (ctx_dir, Library_related_stanza.Library (lib, alias)) :: acc
+               , coq_acc
+               , rocq_acc ))
           | Deprecated_library_name.T d ->
-            let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
-            (ctx_dir, Deprecated_library_name d) :: acc, coq_acc, rocq_acc
+            Memo.return
+              ( (ctx_dir, Library_related_stanza.Deprecated_library_name d) :: acc
+              , coq_acc
+              , rocq_acc )
           | Library_redirect.Local.T d ->
-            let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
-            (ctx_dir, Library_redirect d) :: acc, coq_acc, rocq_acc
+            Memo.return
+              ( (ctx_dir, Library_related_stanza.Library_redirect d) :: acc
+              , coq_acc
+              , rocq_acc )
           | Coq_stanza.Theory.T coq_lib ->
-            let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
-            acc, (ctx_dir, coq_lib) :: coq_acc, rocq_acc
+            Memo.return (acc, (ctx_dir, coq_lib) :: coq_acc, rocq_acc)
           | Rocq_stanza.Theory.T rocq_lib ->
-            let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
-            acc, coq_acc, (ctx_dir, rocq_lib) :: rocq_acc
-          | _ -> acc, coq_acc, rocq_acc)
+            Memo.return (acc, coq_acc, (ctx_dir, rocq_lib) :: rocq_acc)
+          | _ -> Memo.return (acc, coq_acc, rocq_acc))
     in
     create ~projects_by_root ~context stanzas coq_stanzas rocq_stanzas
   ;;
@@ -522,28 +548,42 @@ module DB = struct
             in
             if not enabled
             then Memo.return acc
-            else (
-              match lib.visibility with
-              | Private None -> Memo.return acc
-              | Private (Some pkg) ->
-                let src_dir = Dune_file.dir d in
-                let* scope = find_by_dir (Path.Build.append_source build_dir src_dir) in
-                Lib.DB.find_lib_id (libs scope) (Local (Library.to_lib_id ~src_dir lib))
-                >>| (function
-                 | None -> acc
-                 | Some lib ->
-                   let name = Package.name pkg in
-                   (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
-              | Public pub ->
-                let src_dir = Dune_file.dir d in
-                Lib.DB.find_lib_id public_libs (Local (Library.to_lib_id ~src_dir lib))
-                >>| (function
-                 | None -> acc
-                 | Some lib ->
-                   let package = Public_lib.package pub in
-                   let name = Package.name package in
-                   let local_lib = Lib.Local.of_lib_exn lib in
-                   (name, Lib_entry.Library local_lib) :: acc))
+            else
+              (* Check vendor stanza filtering *)
+              let src_dir = Dune_file.dir d in
+              let lib_name = Library.best_name lib in
+              let lib_pkg = Option.map (Library.package lib) ~f:Package.name in
+              let* status = Lib.library_status ~src_dir ~lib_name ~lib_pkg in
+              (match status with
+               | `Excluded -> Memo.return acc
+               | `Included _ ->
+                 (match lib.visibility with
+                  | Private None -> Memo.return acc
+                  | Private (Some pkg) ->
+                    let src_dir = Dune_file.dir d in
+                    let* scope =
+                      find_by_dir (Path.Build.append_source build_dir src_dir)
+                    in
+                    Lib.DB.find_lib_id
+                      (libs scope)
+                      (Local (Library.to_lib_id ~src_dir lib))
+                    >>| (function
+                     | None -> acc
+                     | Some lib ->
+                       let name = Package.name pkg in
+                       (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
+                  | Public pub ->
+                    let src_dir = Dune_file.dir d in
+                    Lib.DB.find_lib_id
+                      public_libs
+                      (Local (Library.to_lib_id ~src_dir lib))
+                    >>| (function
+                     | None -> acc
+                     | Some lib ->
+                       let package = Public_lib.package pub in
+                       let name = Package.name package in
+                       let local_lib = Lib.Local.of_lib_exn lib in
+                       (name, Lib_entry.Library local_lib) :: acc)))
           | Deprecated_library_name.T ({ old_name = old_public_name, _; _ } as d) ->
             let package = Public_lib.package old_public_name in
             let name = Package.name package in

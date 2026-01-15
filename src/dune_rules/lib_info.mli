@@ -172,6 +172,10 @@ val of_local : local -> external_
 val as_local_exn : external_ -> local
 val set_version : 'a t -> Package_version.t option -> 'a t
 
+(** Create a copy of the library info with a new name and updated wrapper module.
+    Used for vendor stanza aliasing where a library is exposed under a different name. *)
+val as_ : 'a t -> alias:Lib_name.t -> 'a t
+
 val for_dune_package
   :  Path.t t
   -> name:Lib_name.t

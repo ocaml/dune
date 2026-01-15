@@ -3,6 +3,19 @@
 
 open Import
 
+(** The AST for ordered set language expressions. *)
+module Ast : sig
+  type expanded
+  type unexpanded
+
+  type ('a, _) t =
+    | Element : 'a -> ('a, _) t
+    | Standard : ('a, _) t
+    | Union : ('a, 'b) t list -> ('a, 'b) t
+    | Diff : ('a, 'b) t * ('a, 'b) t -> ('a, 'b) t
+    | Include : String_with_vars.t -> ('a, unexpanded) t
+end
+
 type t
 
 include module type of Ordered_set_lang_intf
@@ -96,3 +109,18 @@ end
 
 module Unordered_string :
   Ordered_set_lang_intf.Unordered_eval with type t = t and module Key := String
+
+(** Parsing utilities for ordered set language. *)
+module Parse : sig
+  (** Parse an ordered set language expression without (:include ...) support.
+
+      @param elt decoder for simple atom elements
+      @param list_elt optional decoder for list elements like [(name :as alias)].
+        When provided, lists that don't match special patterns will be parsed
+        using this decoder instead of raising an error. *)
+  val without_include
+    :  elt:('a, Ast.expanded) Ast.t Decoder.t
+    -> ?list_elt:('a, Ast.expanded) Ast.t Decoder.t
+    -> unit
+    -> ('a, Ast.expanded) Ast.t Decoder.t
+end

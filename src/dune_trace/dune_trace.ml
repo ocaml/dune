@@ -11,7 +11,18 @@ let () =
     | None -> ()
     | Some t ->
       Out.emit t (Event.exit ());
-      Out.close t)
+      Out.close t;
+      (match Env.(get initial Dune_action_trace.Private.trace_dir_env_var) with
+       | None -> ()
+       | Some dir ->
+         let dir = Path.of_string dir in
+         Path.mkdir_p dir;
+         let dst =
+           Path.relative
+             (Temp.temp_dir ~parent_dir:dir ~prefix:"dune" ~suffix:"trace")
+             "trace.csexp"
+         in
+         Io.copy_file ~src:t.path ~dst ()))
 ;;
 
 let set_global t =

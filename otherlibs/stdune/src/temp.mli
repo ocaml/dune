@@ -32,6 +32,8 @@ val clear_dir : Path.t -> unit
     safely use any file name there. *)
 val temp_file : dir:Path.t -> prefix:string -> suffix:string -> Path.t
 
+val temp_dir : parent_dir:Path.t -> prefix:string -> suffix:string -> Path.t
+
 (** Like [temp_file], but passes the temporary file to the callback [f], and
     makes sure the temporary file is deleted when [f] completes. If [f] raises
     an exception, the exception is re-raised (and the file is still deleted). *)

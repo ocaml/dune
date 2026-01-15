@@ -43,7 +43,9 @@ default)``.
   context.
 
 - ``(host <host_context>)`` chooses a different context to build binaries that
-  are meant to be executed on the host machine, such as preprocessors.
+  are meant to be executed on the host machine, such as preprocessors. Note:
+  ``(host ...)`` and ``(targets ...)`` cannot be used together in the same
+  context.
 
 - ``(paths (<var1> <val1>) .. (<varN> <valN>))`` allows you to set the value of
   any ``PATH``-like variables in this context. If ``PATH`` itself is modified in
@@ -72,9 +74,14 @@ default)``.
 - ``(instrument_with <instrumentation_backend>)`` turns on instrumentation for
   the context. See :doc:`/instrumentation` for more information.
 
+- ``(disable_dynamically_linked_foreign_archives <bool>)``: Disable Dune's
+  default behavior of building/installing dynamically-linked foreign archives
+  (e.g., ``dll*.so``), so bytecode executables are built with all foreign archives
+  statically linked into the runtime system.
+
 ``<optional-fields>`` specific to ``(context default)`` are:
 
--  ``(lock_dir <path>)`` specifies the lock directory that will be used for
+- ``(lock_dir <path>)`` specifies the lock directory that will be used for
    building this context (if any). If no lock directory is specified
    ``dune.lock`` will be used. See the
    :doc:`/reference/dune-workspace/lock_dir` stanza for lock directory
@@ -82,16 +89,9 @@ default)``.
 
 ``<optional-fields>`` specific to ``(context (opam ...))`` are:
 
--  ``(root <opam-root>)`` is the opam root. By default, it will take the opam
+- ``(root <opam-root>)`` is the opam root. By default, it will take the opam
    root defined by the environment in which ``dune`` is run, which is usually
    ``~/.opam``.
-
-
-By default, Dune builds and installs dynamically-linked foreign archives
-(usually named ``dll*.so``). It's possible to disable this by setting by
-including ``(disable_dynamically_linked_foreign_archives true)`` in the
-workspace file, so bytecode executables will be built with all foreign archives
-statically linked into the runtime system.
 
 Merlin reads compilation artifacts, and it can only read the compilation
 artifacts of a single context. Usually, you should use the artifacts from the

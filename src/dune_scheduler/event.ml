@@ -5,6 +5,8 @@ type job =
   ; ivar : Proc.Process_info.t Fiber.Ivar.t
   }
 
+let dyn_of_job { pid; ivar = _ } = Dyn.record [ "pid", Dyn.int (Pid.to_int pid) ]
+
 type build_input_change =
   | Fs_event of Dune_file_watcher.Fs_memo_event.t
   | Invalidation of Memo.Invalidation.t
@@ -42,6 +44,13 @@ module Queue = struct
     ; mutable got_event : bool
     ; mutable yield : unit Fiber.Ivar.t option
     }
+
+  let to_dyn { pending_jobs; pending_worker_tasks; _ } =
+    Dyn.record
+      [ "pending_jobs", Dyn.int pending_jobs
+      ; "pending_worker_tasks", Dyn.int pending_worker_tasks
+      ]
+  ;;
 
   let create () =
     let jobs_completed = Queue.create () in

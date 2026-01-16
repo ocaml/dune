@@ -202,6 +202,8 @@ module Event : sig
 
     val dropped_stale_mtimes : Path.t list -> fs_now:float -> t
   end
+
+  val debug : (string * Dyn.t) list -> t
 end
 
 module Out : sig

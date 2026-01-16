@@ -6,11 +6,12 @@ let join = Thread.join
 let delay = Thread.delay
 let wait_signal = Thread.wait_signal
 let signal_watcher_interrupt : Signal.t = Usr1
+let signal_watcher_debug : Signal.t = Usr2
 
 (* These are the signals that will make the scheduler attempt to terminate dune
    or signal to dune to reap a process *)
 let interrupt_signals : Signal.t list =
-  [ signal_watcher_interrupt; Chld; Int; Quit; Term ]
+  [ signal_watcher_interrupt; signal_watcher_debug; Chld; Int; Quit; Term ]
 ;;
 
 (* In addition, the scheduler also blocks some other signals so that only
@@ -20,8 +21,10 @@ let blocked_signals : Signal.t list = Terminal_signals.signals @ interrupt_signa
 let block_signals =
   lazy
     (let () =
-       List.iter [ signal_watcher_interrupt; Chld ] ~f:(fun signal ->
-         Sys.set_signal (Signal.to_int signal) (Signal_handle (fun _ -> ())))
+       List.iter
+         [ signal_watcher_interrupt; signal_watcher_debug; Chld ]
+         ~f:(fun signal ->
+           Sys.set_signal (Signal.to_int signal) (Signal_handle (fun _ -> ())))
      in
      let signos = List.map blocked_signals ~f:Signal.to_int in
      ignore (Unix.sigprocmask SIG_BLOCK signos : int list))

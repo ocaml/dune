@@ -1,3 +1,11 @@
+Unreleased
+----------
+
+If you're a contributor, please include your CHANGES entry in a `$PR_NUMBER.md`
+file in either `doc/changes/{added|changed|fixed}/`. At release time, it will
+be incoporated into the changelog properly.
+
+
 3.21.0 (2026-01-12)
 -------------------
 

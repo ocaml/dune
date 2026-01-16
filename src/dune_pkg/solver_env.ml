@@ -36,18 +36,20 @@ let is_subset =
 
 let validate t ~loc =
   match Package_variable_name.Map.find t Package_variable_name.with_test with
-  | Some v -> if Variable_value.equal v Variable_value.true_ then
-    User_error.raise
-      ?loc
-      [ Pp.textf
-          "Setting the %S solver variable to 'true' is not permitted as it would \
-           conflict with dune's internal use of %S while solving opam packages. \
-           The value is true by default for local dependencies and cannot be true \
-           for transitive test dependecies."
-          Package_variable_name.(to_string with_test)
-          Package_variable_name.(to_string with_test)
-      ]
-  else ()
+  | Some v ->
+    if Variable_value.equal v Variable_value.true_
+    then
+      User_error.raise
+        ?loc
+        [ Pp.textf
+            "Setting the %S solver variable to 'true' is not permitted as it would \
+             conflict with dune's internal use of %S while solving opam packages. The \
+             value is true by default for local dependencies and cannot be true for \
+             transitive test dependecies."
+            Package_variable_name.(to_string with_test)
+            Package_variable_name.(to_string with_test)
+        ]
+    else ()
   | None -> ()
 ;;
 
@@ -63,7 +65,9 @@ let decode =
     located (repeat (pair Package_variable_name.decode Variable_value.decode))
   in
   match Package_variable_name.Map.of_list bindings with
-  | Ok t -> validate t ~loc:(Some loc); t
+  | Ok t ->
+    validate t ~loc:(Some loc);
+    t
   | Error (duplicate_key, a, b) ->
     User_error.raise
       ~loc

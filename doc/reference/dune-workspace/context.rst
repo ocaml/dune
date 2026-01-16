@@ -1,9 +1,11 @@
 context
 -------
 
-The ``(context ...)`` stanza declares a build context. The kind of context can
-be either ``(default ...)`` for the regular build context, or ``(opam
-...)`` to use an opam switch.
+The ``(context ...)`` stanza allows you to declare multiple build contexts which
+can be built at the same time. By default Dune uses a single context called
+``default`` whose build directory appears in ``_build/default/``. There are two
+different kinds of context decalarations: ``(default ...)`` for the regular
+build context, or ``(opam ...)`` to use an opam switch.
 
 The ``default`` context without extra fields can be specified as ``(context
 default)``.

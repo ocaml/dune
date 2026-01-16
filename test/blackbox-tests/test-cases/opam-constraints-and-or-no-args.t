@@ -72,8 +72,6 @@ Generating opam files should trigger a (nice) error:
   $ dune build
   Error: logical operations with no arguments are not supported
   -> required by _build/default/p.opam
-  -> required by _build/install/default/lib/p/opam
-  -> required by _build/default/p.install
   -> required by alias all
   -> required by alias default
   [1]

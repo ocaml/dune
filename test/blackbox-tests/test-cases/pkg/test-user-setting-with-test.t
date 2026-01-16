@@ -6,16 +6,11 @@ Add a workspace that sets the "with-test" variable to "true":
   > (lang dune 3.21)
   > (lock_dir
   >  (path dune.lock)
-  >  (repositories mock)
-  >  (solver_env
-  >   (with-test true)))
+  >  (repositories mock))
   > (repository
   >  (name mock)
   >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
-
-  $ dune pkg print-solver-env 2>&1 | grep with-test
-  - with-test = true
 
   $ mkpkg foo
   $ mkpkg bar
@@ -77,4 +72,34 @@ test dependencies in the solution.
   Solution for dune.lock
   
   Dependencies common to all supported platforms:
+  - foo.0.0.1
+
+Now change workspace to with-test to default value again:
+
+  $ cat >dune-workspace <<EOF
+  > (lang dune 3.21)
+  > (lock_dir
+  >  (path dune.lock)
+  >  (repositories mock))
+  > (repository
+  >  (name mock)
+  >  (url "file://$(pwd)/mock-opam-repository"))
+  > EOF
+
+The env variable is not longer set to false:
+
+  $ dune pkg print-solver-env 2>&1 | grep with-test
+  [1]
+
+However, validate-lockdir and @pkg-install don't catch the change:
+
+  $ dune pkg validate-lockdir
+  $ dune build @pkg-install
+
+But when you re-lock it, you see a different solution
+  $ dune pkg lock
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - bar.0.0.1
   - foo.0.0.1

@@ -7,8 +7,10 @@ can be built at the same time. By default Dune uses a single context called
 different kinds of context decalarations: ``(default ...)`` for the regular
 build context, or ``(opam ...)`` to use an opam switch.
 
-The ``default`` context without extra fields can be specified as ``(context
-default)``.
+.. note::
+   Eventhough the regular kind of context is specified by the ``(default ...)``
+   field of the ``context`` stanza, we refer to it as the **regular context** to
+   avoid confusion with the default context name.
 
 .. code:: dune
 
@@ -45,9 +47,13 @@ default)``.
   context.
 
 - ``(host <host_context>)`` chooses a different context to build binaries that
-  are meant to be executed on the host machine, such as preprocessors. Note:
-  ``(host ...)`` and ``(targets ...)`` cannot be used together in the same
-  context.
+  are meant to be executed on the host machine, such as preprocessors. See
+  :ref:`cross-compilation` for more information. This is mutually exclusive with
+  the ``(targets ...)`` field.
+
+- ``(targets <targets>)`` lets you specify a list of target names to set up
+  cross compilation targets. See :ref:`cross-compilation` for more information.
+  This is mutually exclusive with the ``(host ...)`` field.
 
 - ``(paths (<var1> <val1>) .. (<varN> <valN>))`` allows you to set the value of
   any ``PATH``-like variables in this context. If ``PATH`` itself is modified in
@@ -57,9 +63,6 @@ default)``.
   the value is specified using the :doc:`/reference/ordered-set-language`.
   Relative paths are interpreted with respect to the workspace root. See
   :ref:`finding-root`.
-
-- ``(targets <targets>)`` lets you specify a list of target names to set up cross
-  compilation targets. See :ref:`cross-compilation` for more information.
 
 - ``(fdo <target_exe>)`` builds this context with feedback-direct optimizations.
   It requires `OCamlFDO <https://github.com/gretay-js/ocamlfdo>`__.
@@ -78,10 +81,10 @@ default)``.
 
 - ``(disable_dynamically_linked_foreign_archives <bool>)``: Disable Dune's
   default behavior of building/installing dynamically-linked foreign archives
-  (e.g., ``dll*.so``), so bytecode executables are built with all foreign archives
-  statically linked into the runtime system.
+  (e.g., ``dll*.so``), so bytecode executables are built with all foreign
+  archives statically linked into the runtime system.
 
-``<optional-fields>`` specific to ``(context default)`` are:
+``<optional-fields>`` specific to ``(context (default ...))`` are:
 
 - ``(lock_dir <path>)`` specifies the lock directory that will be used for
    building this context (if any). If no lock directory is specified

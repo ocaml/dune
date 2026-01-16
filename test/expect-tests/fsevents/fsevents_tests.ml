@@ -246,9 +246,11 @@ let%expect_test "move file" =
   test_with_operations (fun () ->
     Io.String_path.write_file "old" "foobar";
     Unix.rename "old" "new");
+  (* With FSEvents coalescing, both create and rename events for "old" are
+     combined into a single event with the Rename flag set. *)
   [%expect
     {|
-    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/old" }
+    > { action = "Rename"; kind = "File"; path = "$TESTCASE_ROOT/old" }
     > { action = "Rename"; kind = "File"; path = "$TESTCASE_ROOT/new" } |}]
 ;;
 

@@ -341,21 +341,30 @@ CAMLprim value dune_fsevents_kind(value v_flags) {
 
 static const FSEventStreamEventFlags action_mask =
     kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemRemoved |
-    kFSEventStreamEventFlagItemRenamed | kFSEventStreamEventFlagItemModified;
+    kFSEventStreamEventFlagItemRenamed | kFSEventStreamEventFlagItemModified |
+    kFSEventStreamEventFlagItemInodeMetaMod;
 
 CAMLprim value dune_fsevents_action(value v_flags) {
   CAMLparam1(v_flags);
   CAMLlocal1(v_action);
 
   uint32_t flags = Int32_val(v_flags) & action_mask;
-  if (flags & kFSEventStreamEventFlagItemCreated) {
-    v_action = Val_int(0);
-  } else if (flags & kFSEventStreamEventFlagItemRemoved) {
+  if (flags & kFSEventStreamEventFlagItemRemoved) {
     v_action = Val_int(1);
-  } else if (flags & kFSEventStreamEventFlagItemModified) {
-    v_action = Val_int(2);
   } else if (flags & kFSEventStreamEventFlagItemRenamed) {
     v_action = Val_int(3);
+  } else if ((flags & kFSEventStreamEventFlagItemCreated) &&
+             (flags & kFSEventStreamEventFlagItemModified)) {
+    // Events can be coalesced: use InodeMetaMod to disambiguate
+    if (flags & kFSEventStreamEventFlagItemInodeMetaMod) {
+      v_action = Val_int(2);  // Modify
+    } else {
+      v_action = Val_int(0);  // Create
+    }
+  } else if (flags & kFSEventStreamEventFlagItemCreated) {
+    v_action = Val_int(0);
+  } else if (flags & kFSEventStreamEventFlagItemModified) {
+    v_action = Val_int(2);
   } else {
     v_action = Val_int(4);
   }

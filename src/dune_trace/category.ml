@@ -20,6 +20,7 @@ type t =
   | Cram
   | Action
   | Cache
+  | Digest
 
 let all =
   [ Rpc
@@ -41,6 +42,7 @@ let all =
   ; Cram
   ; Action
   ; Cache
+  ; Digest
   ]
 ;;
 
@@ -64,6 +66,7 @@ let to_string = function
   | Cram -> "cram"
   | Action -> "action"
   | Cache -> "cache"
+  | Digest -> "digest"
 ;;
 
 let of_string =
@@ -99,5 +102,6 @@ module Set = Bit_set.Make (struct
       | Cram -> 16
       | Action -> 17
       | Cache -> 18
+      | Digest -> 19
     ;;
   end)

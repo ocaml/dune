@@ -34,6 +34,11 @@ type process_state =
   | Running of Event.job
   | Zombie of Proc.Process_info.t
 
+let dyn_of_process_state = function
+  | Running job -> Dyn.variant "Running" [ Event.dyn_of_job job ]
+  | Zombie _ -> Dyn.variant "Zombie" []
+;;
+
 (* This mutable table is safe: it does not interact with the state we track in
    the build system. *)
 type t =
@@ -43,6 +48,13 @@ type t =
   ; events : Event.Queue.t
   ; mutable running_count : int
   }
+
+let to_dyn { table; running_count; _ } =
+  Dyn.record
+    [ "table", Table.to_dyn dyn_of_process_state table
+    ; "running_count", Dyn.int running_count
+    ]
+;;
 
 let is_running_unix t pid = Table.mem t.table pid
 

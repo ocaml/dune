@@ -72,6 +72,13 @@ type t =
   ; signal_watcher : Thread.t
   }
 
+let to_dyn { events; process_watcher; _ } =
+  Dyn.record
+    [ "events", Event.Queue.to_dyn events
+    ; "process_watcher", Process_watcher.to_dyn process_watcher
+    ]
+;;
+
 let t : t option Fiber.Var.t = Fiber.Var.create None
 let set x f = Fiber.Var.set t (Some x) f
 let t_opt () = Fiber.Var.get t
@@ -178,6 +185,15 @@ let kill_and_wait_for_all_processes t =
   !saw_signal
 ;;
 
+let current = ref None
+
+let () =
+  Debug.register ~name:"scheduler" (fun () ->
+    match !current with
+    | None -> Dyn.Option None
+    | Some s -> to_dyn s)
+;;
+
 let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   (* The signal watcher must be initialized first so that signals are
      blocked in all threads. *)
@@ -186,28 +202,32 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   in
   let cancel = Fiber.Cancel.create () in
   let process_watcher = Process_watcher.init events in
-  { status =
-      (* Slightly weird initialization happening here: for polling mode we
+  let t =
+    { status =
+        (* Slightly weird initialization happening here: for polling mode we
          initialize in "Building" state, immediately switch to Standing_by
          and then back to "Building". It would make more sense to start in
          "Stand_by" from the start. We can't "just" switch the initial value
          here because then the non-polling mode would run in "Standing_by"
          mode, which is even weirder. *)
-      Building cancel
-  ; invalidation = Memo.Invalidation.empty
-  ; job_throttle = Fiber.Throttle.create config.concurrency
-  ; process_watcher
-  ; events
-  ; config
-  ; handler
-  ; file_watcher
-  ; fs_syncs = Dune_file_watcher.Sync_id.Table.create 64
-  ; build_inputs_changed = Trigger.create ()
-  ; alarm_clock = lazy (Alarm_clock.create events (Time.Span.of_secs 0.1))
-  ; cancel
-  ; thread_pool = lazy (Thread_pool.create ~min_workers:4 ~max_workers:50)
-  ; signal_watcher
-  }
+        Building cancel
+    ; invalidation = Memo.Invalidation.empty
+    ; job_throttle = Fiber.Throttle.create config.concurrency
+    ; process_watcher
+    ; events
+    ; config
+    ; handler
+    ; file_watcher
+    ; fs_syncs = Dune_file_watcher.Sync_id.Table.create 64
+    ; build_inputs_changed = Trigger.create ()
+    ; alarm_clock = lazy (Alarm_clock.create events (Time.Span.of_secs 0.1))
+    ; cancel
+    ; thread_pool = lazy (Thread_pool.create ~min_workers:4 ~max_workers:50)
+    ; signal_watcher
+    }
+  in
+  current := Some t;
+  t
 ;;
 
 module Run_once : sig

@@ -57,6 +57,12 @@ let emit_all ?buffered cat f =
     if Category.Set.mem out.cats cat then List.iter (f ()) ~f:(Out.emit ?buffered out)
 ;;
 
+let enabled cat =
+  match global () with
+  | None -> false
+  | Some s -> Category.Set.mem s.cats cat
+;;
+
 module Private = struct
   module Fd_count = Fd_count
   module Buffer = Buffer

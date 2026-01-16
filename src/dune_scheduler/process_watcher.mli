@@ -5,6 +5,7 @@ val kill_process_group : Pid.t -> int -> unit
 (** Initialize the process watcher thread. *)
 type t
 
+val to_dyn : t -> Dyn.t
 val init : Event.Queue.t -> t
 
 (** Register a new running job. *)

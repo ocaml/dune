@@ -125,14 +125,13 @@ module Artifacts = struct
   (* Step II of [store_skipping_metadata].
 
      Computing digests can be slow, so we do that in parallel. *)
-  let compute_digests_in ~temp_dir ~targets ~compute_digest
-    : Digest.t Targets.Produced.t Or_exn.t Fiber.t
+  let compute_digests_in ~temp_dir ~targets : Digest.t Targets.Produced.t Or_exn.t Fiber.t
     =
     let open Fiber.O in
     Fiber.collect_errors (fun () ->
       Targets.Produced.parallel_map targets ~f:(fun path { Target.executable } ->
         let file = Path.append_local temp_dir path in
-        compute_digest ~executable file))
+        Fiber.return (Dune_digest.file_with_executable_bit ~executable file)))
     >>| Result.map_error ~f:(function
       | exn :: _ -> exn.Exn_with_backtrace.exn
       | [] -> assert false)
@@ -217,16 +216,14 @@ module Artifacts = struct
           Store_result.combine results result)
   ;;
 
-  let store_skipping_metadata ~mode ~targets ~compute_digest
-    : Store_artifacts_result.t Fiber.t
-    =
+  let store_skipping_metadata ~mode ~targets : Store_artifacts_result.t Fiber.t =
     Dune_cache_storage.with_temp_dir ~suffix:"artifacts" (function
       | Error exn -> Fiber.return (Store_artifacts_result.Error exn)
       | Ok temp_dir ->
         (match store_targets_to ~temp_dir ~targets ~mode with
          | Error exn -> Fiber.return (Store_artifacts_result.Error exn)
          | Ok () ->
-           compute_digests_in ~temp_dir ~targets ~compute_digest
+           compute_digests_in ~temp_dir ~targets
            >>| (function
             | Error exn -> Store_artifacts_result.Error exn
             | Ok artifacts ->
@@ -234,8 +231,8 @@ module Artifacts = struct
               Store_artifacts_result.of_store_result ~artifacts result)))
   ;;
 
-  let store ~mode ~rule_digest ~compute_digest targets : Store_artifacts_result.t Fiber.t =
-    let+ result = store_skipping_metadata ~mode ~targets ~compute_digest in
+  let store ~mode ~rule_digest targets : Store_artifacts_result.t Fiber.t =
+    let+ result = store_skipping_metadata ~mode ~targets in
     Store_artifacts_result.bind result ~f:(fun artifacts ->
       let result = store_metadata ~mode ~rule_digest ~metadata:[] artifacts in
       Store_artifacts_result.of_store_result ~artifacts result)

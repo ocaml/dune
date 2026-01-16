@@ -5,6 +5,8 @@ type job =
   ; ivar : Proc.Process_info.t Fiber.Ivar.t
   }
 
+val dyn_of_job : job -> Dyn.t
+
 type build_input_change =
   | Fs_event of Dune_file_watcher.Fs_memo_event.t
   | Invalidation of Memo.Invalidation.t
@@ -22,6 +24,7 @@ module Queue : sig
   type event := t
   type t
 
+  val to_dyn : t -> Dyn.t
   val create : unit -> t
 
   (** Return the next event. File changes event are always flattened and

@@ -93,12 +93,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_metrics"
-    ; main_module_name = Some "Dune_metrics"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "otherlibs/dune-action-trace"
     ; main_module_name = Some "Dune_action_trace"
     ; include_subdirs = No
@@ -173,6 +167,12 @@ let local_libraries =
     }
   ; { path = "src/dune_scheduler"
     ; main_module_name = Some "Dune_scheduler"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/dune_metrics"
+    ; main_module_name = Some "Dune_metrics"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None

@@ -26,7 +26,7 @@ end
 
     If [allow_dirs = false], this function returns [Unexpected_kind] if the path
     points to a directory. *)
-val build_file : allow_dirs:bool -> Path.Build.t -> Digest_result.t
+val build_file : allow_dirs:bool -> Path.Build.t -> Digest_result.t Fiber.t
 
 (** Same as [build_file], but forces the digest of the file to be re-computed.
 
@@ -36,7 +36,7 @@ val refresh
   :  allow_dirs:bool
   -> remove_write_permissions:bool
   -> Path.Build.t
-  -> Digest_result.t
+  -> Digest_result.t Fiber.t
 
 module Untracked : sig
   (** Digest the contents of a source or external file. This function doesn't

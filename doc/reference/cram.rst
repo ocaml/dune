@@ -203,3 +203,40 @@ can be applied by running ``dune promote``, as usual.
   -other-file.txt
   +changed-name.txt
    this-file.txt
+
+Early Shell Exits
+^^^^^^^^^^^^^^^^^
+
+If a command causes the shell to exit early, all subsequent commands become
+unreachable. Dune marks these with ``***** UNREACHABLE *****``:
+
+.. code:: cram
+
+   Commands after an early exit are unreachable:
+
+     $ exit 1
+     ***** UNREACHABLE *****
+     $ echo "this won't run"
+     ***** UNREACHABLE *****
+
+Output from commands that did execute can still be promoted normally.
+
+A common cause of unexpected early exits is the POSIX special builtin behavior.
+Cram tests run with ``sh`` by default, which operates in POSIX mode. In POSIX,
+``.`` (source) is a *special builtin*, and when a special builtin fails, a
+non-interactive shell exits immediately.
+
+This means ``source foo.sh`` (without ``./``) can cause the shell to exit if
+``foo.sh`` is not found in ``PATH``:
+
+.. code:: cram
+
+   This will exit the shell because foo.sh is not in PATH:
+
+     $ source foo.sh
+     ***** UNREACHABLE *****
+
+   Use an explicit path to avoid this:
+
+     $ source ./foo.sh
+

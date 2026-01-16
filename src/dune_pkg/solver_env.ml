@@ -42,10 +42,9 @@ let validate t ~loc =
       User_error.raise
         ?loc
         [ Pp.textf
-            "Setting the %S solver variable to 'true' is not permitted as it would \
-             conflict with dune's internal use of %S while solving opam packages. The \
-             value is true by default for local dependencies and cannot be true for \
-             transitive test dependecies."
+            "Setting the %S solver variable to 'true' is not currently supported. Dune \
+             already uses %S for local packages, but it cannot be applied to transitive \
+             dependencies."
             Package_variable_name.(to_string with_test)
             Package_variable_name.(to_string with_test)
         ]

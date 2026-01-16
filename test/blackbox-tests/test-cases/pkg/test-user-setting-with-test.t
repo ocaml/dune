@@ -92,10 +92,9 @@ Setting the value of with-test to true would fail:
   File "dune-workspace", line 6, characters 2-18:
   6 |   (with-test true)))
         ^^^^^^^^^^^^^^^^
-  Error: Setting the "with-test" solver variable to 'true' is not permitted as
-  it would conflict with dune's internal use of "with-test" while solving opam
-  packages. The value is true by default for local dependencies and cannot be
-  true for transitive test dependecies.
+  Error: Setting the "with-test" solver variable to 'true' is not currently
+  supported. Dune already uses "with-test" for local packages, but it cannot be
+  applied to transitive dependencies.
   [1]
 Now change workspace to with-test to default value again:
 

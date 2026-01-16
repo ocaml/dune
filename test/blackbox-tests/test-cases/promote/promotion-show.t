@@ -158,9 +158,9 @@ When called without arguments, 'show' should display all files that
 have corrections available. The order may vary.
 
   $ dune promotion show
-  B actual
-  
   A actual
+  
+  B actual
   
 
 === TEST: Verify read-only behavior ===

@@ -605,7 +605,7 @@ end = struct
           in
           let* produced_targets, dynamic_deps_stages =
             (* Step III. Try to restore artifacts from the shared cache. *)
-            Rule_cache.Shared.lookup ~can_go_in_shared_cache ~rule_digest ~targets
+            Dune_cache.Shared.lookup ~can_go_in_shared_cache ~rule_digest ~targets
             >>= function
             | Some produced_targets ->
               (* Rules with dynamic deps can't be stored to the shared cache
@@ -632,7 +632,7 @@ end = struct
               (* Step V. Examine produced targets and store them to the shared
                  cache if needed. *)
               let* produced_targets =
-                Rule_cache.Shared.examine_targets_and_store
+                Dune_cache.Shared.examine_targets_and_store
                   ~can_go_in_shared_cache
                   ~loc
                   ~rule_digest

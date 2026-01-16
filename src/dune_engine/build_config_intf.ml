@@ -132,7 +132,6 @@ module type Build_config = sig
     -> execution_parameters:
          (Context_name.t -> dir:Path.Build.t -> Execution_parameters.t Memo.t)
     -> source_tree:(module Source_tree)
-    -> shared_cache:(module Dune_cache.Shared.S)
     -> write_error_summary:(Build_system_error.Set.t -> unit Fiber.t)
     -> unit
 
@@ -150,7 +149,6 @@ module type Build_config = sig
     ; execution_parameters :
         Context_name.t -> dir:Path.Build.t -> Execution_parameters.t Memo.t
     ; source_tree : (module Source_tree)
-    ; shared_cache : (module Dune_cache.Shared.S)
     ; write_error_summary : Build_system_error.Set.t -> unit Fiber.t
     }
 

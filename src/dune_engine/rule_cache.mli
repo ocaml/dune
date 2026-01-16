@@ -29,8 +29,3 @@ module Workspace_local : sig
     -> targets_digest:Digest.t
     -> unit
 end
-
-(** The shared cache is a separate directory that contains historical build
-    artifacts produced in different workspaces. To restore results from the
-    shared cache, Dune copes or hardlinks them into the build directory. *)
-module Shared : Dune_cache.Shared.S

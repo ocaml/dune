@@ -140,7 +140,7 @@ This approach has several advantages:
 
 When a package specifies a Git source with a branch or tag name (rather than a
 commit hash), Dune must resolve it to a concrete commit. The resolution
-process:
+process is as follows:
 
   1. Query the remote with `git ls-remote <url>` to get all refs and their
      commit hashes. The results are cached in memory per URL.

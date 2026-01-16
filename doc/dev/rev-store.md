@@ -134,7 +134,7 @@ directly from the URL without creating a persistent remote configuration.
 This approach has several advantages:
   * No remote naming conflicts between different sources
   * Minimal metadata stored in the Git repository
-  * Only the needed objects are fetched
+  * Only the objects that are required are fetched
 
 ### Revision Resolution
 

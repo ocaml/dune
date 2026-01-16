@@ -81,35 +81,3 @@ let print_events ~try_to_get_events ~expected =
       expected
       (List.length events)
 ;;
-
-let path_of_event (event : Dune_file_watcher.Fs_memo_event.t) =
-  match event.path with
-  | In_source_tree p -> Path.Source.to_string p
-  | In_build_dir p -> Path.Build.to_string p
-  | External p -> Path.External.to_string p
-;;
-
-let wait_for_paths ~try_to_get_events ~paths =
-  let paths_set = String.Set.of_list paths in
-  let seen = ref String.Set.empty in
-  let all_seen () = String.Set.is_subset paths_set ~of_:!seen in
-  let result =
-    retry_loop ~period:0.01 ~timeout:3.0 ~f:(fun () ->
-      match try_to_get_events () with
-      | None -> if all_seen () then Some () else None
-      | Some events ->
-        List.iter events ~f:(fun event ->
-          let p = path_of_event event in
-          if String.Set.mem paths_set p then seen := String.Set.add !seen p);
-        if all_seen () then Some () else None)
-  in
-  let seen_list = String.Set.to_list !seen in
-  match result with
-  | Some () -> printf "saw: %s\n" (String.concat ~sep:", " seen_list)
-  | None ->
-    let missing = String.Set.diff paths_set !seen |> String.Set.to_list in
-    printf
-      "saw: %s (missing: %s)\n"
-      (String.concat ~sep:", " seen_list)
-      (String.concat ~sep:", " missing)
-;;

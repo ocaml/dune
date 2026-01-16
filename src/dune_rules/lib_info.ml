@@ -300,6 +300,8 @@ end
 type 'path t =
   { loc : Loc.t
   ; name : Lib_name.t
+  ; source_name :
+      Lib_name.t (* original name before aliasing, used for foreign source lookup *)
   ; lib_id : Lib_id.t
   ; kind : Lib_kind.t
   ; status : Status.t
@@ -343,6 +345,7 @@ type 'path t =
   }
 
 let name t = t.name
+let source_name t = t.source_name
 let lib_id t = t.lib_id
 let version t = t.version
 let dune_version t = t.dune_version
@@ -457,6 +460,7 @@ let create
   =
   { loc
   ; name
+  ; source_name = name (* source_name starts same as name, preserved through aliasing *)
   ; lib_id
   ; kind
   ; status
@@ -556,6 +560,7 @@ let to_dyn
       { loc
       ; path_kind = _
       ; name
+      ; source_name = _
       ; lib_id
       ; kind
       ; status

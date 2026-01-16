@@ -43,7 +43,6 @@ Create vendored library with multiple public libraries:
 Test with no libraries field (defaults to :standard):
 
   $ cat >duniverse/dune <<EOF
-  > (vendored_dirs *)
   > (vendor mylib.1.0.0)
   > EOF
 
@@ -62,7 +61,6 @@ Test with no libraries field (defaults to :standard):
 Test explicit library list:
 
   $ cat >duniverse/dune <<EOF
-  > (vendored_dirs *)
   > (vendor mylib.1.0.0 (libraries mylib mylib.extra))
   > EOF
 
@@ -81,7 +79,6 @@ Test explicit library list:
 Test :standard \ exclusion syntax - exclude mylib.internal:
 
   $ cat >duniverse/dune <<EOF
-  > (vendored_dirs *)
   > (vendor mylib.1.0.0 (libraries :standard \ mylib.internal))
   > EOF
 
@@ -117,7 +114,6 @@ Verify excluded library is inaccessible:
 Test library aliasing with :as:
 
   $ cat >duniverse/dune <<EOF
-  > (vendored_dirs *)
   > (vendor mylib.1.0.0 (libraries (mylib :as mylib_alias)))
   > EOF
 

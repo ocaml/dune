@@ -92,6 +92,11 @@ val name : _ t -> Lib_name.t
 val lib_id : _ t -> Lib_id.t
 val loc : _ t -> Loc.t
 
+(** [source_name t] returns the original library name before any aliasing.
+    This is the name used for foreign source lookup. When aliased, [name t]
+    returns the alias but [source_name t] returns the original. *)
+val source_name : _ t -> Lib_name.t
+
 (** The [*.cma] and [*.cmxa] files for OCaml libraries. Libraries built by Dune
     will always have zero or one element in the list (zero if they are not
     buildable in the corresponding mode). External libraries, however, can have

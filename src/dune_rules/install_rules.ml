@@ -693,6 +693,9 @@ end = struct
           let obj_dir = Lib.Local.obj_dir lib in
           let lib = Lib.Local.to_lib lib in
           let name = Lib.name lib in
+          (* Use the original library name for foreign source lookup,
+             since foreign_sources are indexed by source_name, not aliased name *)
+          let source_name = Lib_info.source_name info in
           let* expander = Super_context.expander sctx ~dir in
           let file_deps (deps : _ Lib_info.File_deps.t) =
             match deps with
@@ -714,7 +717,7 @@ end = struct
               ocaml.lib_config.ext_obj
             in
             let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
-            Foreign_sources.for_lib ~name foreign_sources
+            Foreign_sources.for_lib ~name:source_name foreign_sources
             |> Foreign.Sources.object_files ~dir ~ext_obj
             |> List.map ~f:Path.build
           and* modules =

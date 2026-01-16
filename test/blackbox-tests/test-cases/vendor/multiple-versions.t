@@ -67,7 +67,6 @@ Version 2.0.0:
 
 Cherry-pick: core from 1.0.0, extra from 2.0.0
   $ cat > vendor/dune << EOF
-  > (vendored_dirs *)
   > (vendor myrepo.1.0.0 (package core))
   > (vendor myrepo.2.0.0 (package extra))
   > EOF

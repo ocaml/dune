@@ -59,7 +59,6 @@ Test 2: vendor stanza - same semantics, vendored packages are NOT installed
 ----------------------------------------------------------------------
 
   $ cat >duniverse/dune <<EOF
-  > (vendored_dirs *)
   > (vendor mylib.1.0.0)
   > EOF
 
@@ -80,7 +79,6 @@ Test 3: vendor stanza with aliasing - library exposed under different name
 ----------------------------------------------------------------------
 
   $ cat >duniverse/dune <<EOF
-  > (vendored_dirs *)
   > (vendor mylib.1.0.0 (libraries (mylib :as vendored_mylib)))
   > EOF
 
@@ -141,7 +139,6 @@ Create a library where private name (mylib_impl) differs from public name (other
   > EOF
 
   $ cat >duniverse/dune <<EOF
-  > (vendored_dirs *)
   > (vendor otherlib.1.0.0 (libraries (otherlib :as aliased_lib)))
   > EOF
 

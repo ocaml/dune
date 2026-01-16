@@ -1,0 +1,3 @@
+(cram
+ (deps
+  (package dune)))

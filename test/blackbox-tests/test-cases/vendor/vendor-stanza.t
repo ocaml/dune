@@ -40,10 +40,9 @@ Create a duniverse-style vendored directory structure:
   > let cli_msg = "CLI output"
   > EOF
 
-Use vendored_dirs with vendor stanza to expose only specific libraries:
+Use vendor stanza to expose only specific libraries:
 
   $ cat >duniverse/dune <<EOF
-  > (vendored_dirs *)
   > (vendor fmt.0.9.0 (libraries fmt fmt.tty))
   > EOF
 
@@ -66,7 +65,6 @@ Build should succeed with allowed library:
 Test that vendor stanza is parsed with package field:
 
   $ cat >duniverse/dune <<EOF
-  > (vendored_dirs *)
   > (vendor fmt.0.9.0
   >  (libraries fmt fmt.tty)
   >  (package fmt))
@@ -77,7 +75,6 @@ Test that vendor stanza is parsed with package field:
 Test multiple vendor stanzas for same directory (one per package):
 
   $ cat >duniverse/dune <<EOF
-  > (vendored_dirs *)
   > (vendor fmt.0.9.0 (package fmt) (libraries fmt))
   > (vendor fmt.0.9.0 (package fmt) (libraries fmt.tty))
   > EOF
@@ -87,7 +84,6 @@ Test multiple vendor stanzas for same directory (one per package):
 Test vendor stanza with all fields:
 
   $ cat >duniverse/dune <<EOF
-  > (vendored_dirs *)
   > (vendor fmt.0.9.0
   >  (libraries fmt fmt.tty)
   >  (package fmt))

@@ -130,7 +130,6 @@ module Workspace_local = struct
     | Ok targets ->
       (match
          Targets.Produced.map_with_errors
-           ~all_errors:false
            ~f:(Cached_digest.build_file ~allow_dirs:true)
            targets
        with

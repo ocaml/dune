@@ -116,7 +116,6 @@ let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~produced_targets
         match Local.Target.create target with
         | Some _ -> Ok ()
         | None -> Error ())
-      ~all_errors:false
       produced_targets
   with
   | Error _ -> Fiber.return None
@@ -169,9 +168,7 @@ let compute_target_digests_or_raise_error
       ~allow_dirs:true
       ~remove_write_permissions:should_remove_write_permissions_on_generated_files
   in
-  match
-    Targets.Produced.map_with_errors ~f:compute_digest ~all_errors:true produced_targets
-  with
+  match Targets.Produced.map_with_errors ~f:compute_digest produced_targets with
   | Ok result -> result
   | Error errors ->
     let missing, errors =

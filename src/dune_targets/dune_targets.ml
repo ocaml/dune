@@ -485,14 +485,11 @@ module Produced = struct
     Digest.generic (all_digests "ignored" contents)
   ;;
 
-  exception Short_circuit
-
   (* The odd type of [d] and [f] is due to the fact that [map_with_errors]
      is used for a variety of things, not all "map-like". *)
   let map_with_errors
         ?(d : (Path.Build.t -> (unit, 'e) result) option)
         ~(f : Path.Build.t -> ('b, 'e) result)
-        ~all_errors
         { root; contents }
     =
     let errors = ref [] in
@@ -501,7 +498,7 @@ module Produced = struct
       | Ok s -> Some s
       | Error e ->
         errors := (path, e) :: !errors;
-        if all_errors then None else raise_notrace Short_circuit
+        None
     in
     let rec aux path { files; subdirs } =
       let files =
@@ -518,15 +515,10 @@ module Produced = struct
        | Some f ->
          (match f path with
           | Ok () -> ()
-          | Error e ->
-            errors := (path, e) :: !errors;
-            if all_errors then () else raise_notrace Short_circuit));
+          | Error e -> errors := (path, e) :: !errors));
       { files; subdirs }
     in
-    let result =
-      try { root; contents = aux root contents } with
-      | Short_circuit -> { root; contents = empty }
-    in
+    let result = { root; contents = aux root contents } in
     match Nonempty_list.of_list !errors with
     | None -> Ok result
     | Some list -> Error list

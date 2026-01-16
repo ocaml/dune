@@ -121,10 +121,7 @@ let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~produced_targets
   with
   | Error _ -> Fiber.return None
   | Ok targets ->
-    let compute_digest ~executable path =
-      Fiber.return (Digest.file_with_executable_bit ~executable path)
-    in
-    Local.store_artifacts ~mode ~rule_digest ~compute_digest targets
+    Local.store_artifacts ~mode ~rule_digest targets
     >>= (function
      | Stored targets_and_digests ->
        Log.info "cache store success" [ "hex", Dyn.string hex ];

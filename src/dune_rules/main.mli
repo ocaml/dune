@@ -4,7 +4,6 @@ open Import
 val init
   :  sandboxing_preference:Sandbox_mode.t list
   -> cache_config:Dune_cache.Config.t
-  -> cache_debug_flags:Dune_engine.Cache_debug_flags.t
   -> unit
   -> unit
 

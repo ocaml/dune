@@ -20,6 +20,7 @@ module Category : sig
     | Log
     | Cram
     | Action
+    | Cache
 
   val of_string : string -> t option
 end
@@ -171,6 +172,22 @@ module Event : sig
     val start : name:string -> start:Time.t -> t
     val finish : name:string -> start:Time.t -> t
     val trace : digest:string -> Csexp.t -> t
+  end
+
+  module Cache : sig
+    val shared
+      :  [ `Miss of string | `Hit ]
+      -> rule_digest:string
+      -> head:Path.Build.t
+      -> t
+
+    val workspace_local_miss : head:Path.Build.t -> reason:string -> t
+
+    val fs_update
+      :  cache_type:string
+      -> path:Path.Outside_build_dir.t
+      -> [ `Skipped | `Changed | `Unchanged ]
+      -> t
   end
 end
 

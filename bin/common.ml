@@ -547,68 +547,6 @@ let shared_with_config_file =
   }
 ;;
 
-module Cache_debug_flags = Dune_engine.Cache_debug_flags
-
-let cache_debug_flags_term : Cache_debug_flags.t Term.t =
-  let initial =
-    { Cache_debug_flags.shared_cache = false
-    ; workspace_local_cache = false
-    ; fs_cache = false
-    }
-  in
-  let all_layers =
-    [ ("shared", fun r -> { r with Cache_debug_flags.shared_cache = true })
-    ; ( "workspace-local"
-      , fun r -> { r with Cache_debug_flags.workspace_local_cache = true } )
-    ; ("fs", fun r -> { r with Cache_debug_flags.fs_cache = true })
-    ]
-  in
-  let no_layers = [], Fun.id in
-  let combine_layers =
-    List.fold_right ~init:no_layers ~f:(fun (names, value) (acc_names, acc_value) ->
-      names @ acc_names, fun x -> acc_value (value x))
-  in
-  let all_layer_names = String.concat ~sep:"," (List.map ~f:fst all_layers) in
-  let layers_conv =
-    let parser s =
-      let parse_one s =
-        match
-          List.find_map all_layers ~f:(fun (name, value) ->
-            match String.equal name s with
-            | true -> Some ([ name ], value)
-            | false -> None)
-        with
-        | None -> ksprintf (fun s -> Error (`Msg s)) "Invalid cache layer name: %S" s
-        | Some x -> Ok x
-      in
-      String.split s ~on:','
-      |> List.map ~f:parse_one
-      |> Result.List.all
-      |> Result.map ~f:combine_layers
-    in
-    let printer ppf (names, _value) =
-      Format.pp_print_string ppf (String.concat ~sep:"," names)
-    in
-    Arg.conv ~docv:"CACHE-LAYERS" (parser, printer)
-  in
-  let+ _names, value =
-    Arg.(
-      value
-      & opt layers_conv no_layers
-      & info
-          [ "debug-cache" ]
-          ~docs:copts_sect
-          ~doc:
-            (Some
-               (sprintf
-                  "Show debug messages on cache misses for the given cache layers. Value \
-                   is a comma-separated list of cache layer names. All available cache \
-                   layers: %s."
-                  all_layer_names)))
-  in
-  value initial
-;;
-
 module Builder = struct
   type t =
     { debug_dep_path : bool
@@ -637,7 +575,6 @@ module Builder = struct
     ; promote_install_files : bool
     ; file_watcher : Scheduler.Run.file_watcher
     ; workspace_config : Workspace.Clflags.t
-    ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
     ; report_errors_config : Dune_engine.Report_errors_config.t
     ; separate_error_messages : bool
     ; stop_on_first_error : bool
@@ -999,7 +936,6 @@ module Builder = struct
                   drop anything. You should probably not care about this option; it is \
                   mostly useful for Dune developers to make Dune tests of the digest \
                   cache more reproducible."))
-    and+ cache_debug_flags = cache_debug_flags_term
     and+ report_errors_config =
       Arg.(
         value
@@ -1073,7 +1009,6 @@ module Builder = struct
         ; config_from_command_line
         ; config_from_config_file
         }
-    ; cache_debug_flags
     ; report_errors_config
     ; separate_error_messages
     ; stop_on_first_error
@@ -1118,7 +1053,6 @@ module Builder = struct
         ; promote_install_files
         ; file_watcher
         ; workspace_config
-        ; cache_debug_flags
         ; report_errors_config
         ; separate_error_messages
         ; stop_on_first_error
@@ -1158,7 +1092,6 @@ module Builder = struct
     && Bool.equal t.promote_install_files promote_install_files
     && Scheduler.Run.file_watcher_equal t.file_watcher file_watcher
     && Source.Workspace.Clflags.equal t.workspace_config workspace_config
-    && Dune_engine.Cache_debug_flags.equal t.cache_debug_flags cache_debug_flags
     && Dune_engine.Report_errors_config.equal t.report_errors_config report_errors_config
     && Bool.equal t.separate_error_messages separate_error_messages
     && Bool.equal t.stop_on_first_error stop_on_first_error
@@ -1396,14 +1329,12 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   Dune_rules.Main.init
     ~sandboxing_preference:config.sandboxing_preference
     ~cache_config:(maybe_init_cache cache_config)
-    ~cache_debug_flags:c.builder.cache_debug_flags
     ();
   Only_packages.Clflags.set c.builder.only_packages;
   Report_error.print_memo_stacks := c.builder.debug_dep_path;
   Dune_engine.Clflags.report_errors_config := c.builder.report_errors_config;
   Dune_engine.Clflags.debug_backtraces c.builder.debug_backtraces;
   Dune_rules.Clflags.debug_artifact_substitution := c.builder.debug_artifact_substitution;
-  Dune_engine.Clflags.debug_fs_cache := c.builder.cache_debug_flags.fs_cache;
   Dune_digest.Clflags.debug_digests := c.builder.debug_digests;
   Dune_rules.Clflags.debug_package_logs := c.builder.debug_package_logs;
   Dune_digest.Clflags.wait_for_filesystem_clock := c.builder.wait_for_filesystem_clock;

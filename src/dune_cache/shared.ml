@@ -2,10 +2,6 @@ open Import
 
 module type S = Shared_intf.S
 
-let shared_cache_key_string_for_log ~rule_digest ~head_target =
-  sprintf "[%s] (%s)" (Digest.to_string rule_digest) (Path.Build.to_string head_target)
-;;
-
 module Miss_reason = struct
   type t =
     | Cache_disabled
@@ -14,28 +10,16 @@ module Miss_reason = struct
     | Not_found_in_cache
     | Error of string
 
-  let report ~rule_digest ~head_target reason =
-    let reason =
-      match reason with
-      | Cache_disabled -> "cache disabled"
-      | Cannot_go_in_shared_cache -> "can't go in shared cache"
-      | Error exn -> sprintf "error: %s" exn
-      | Rerunning_for_reproducibility_check -> "rerunning for reproducibility check"
-      | Not_found_in_cache -> "not found in cache"
-    in
-    Console.print_user_message
-      (User_message.make
-         [ Pp.hbox
-             (Pp.textf
-                "Shared cache miss %s: %s"
-                (shared_cache_key_string_for_log ~rule_digest ~head_target)
-                reason)
-         ])
+  let to_string = function
+    | Cache_disabled -> "cache disabled"
+    | Cannot_go_in_shared_cache -> "can't go in shared cache"
+    | Error exn -> sprintf "error: %s" exn
+    | Rerunning_for_reproducibility_check -> "rerunning for reproducibility check"
+    | Not_found_in_cache -> "not found in cache"
   ;;
 end
 
 module Make (S : sig
-    val debug_shared_cache : bool
     val config : Config.t
   end) =
 struct
@@ -46,19 +30,18 @@ struct
     =
     let open Fiber.O in
     let+ () = Fiber.return () in
-    let key () =
-      shared_cache_key_string_for_log
-        ~rule_digest
-        ~head_target:(Targets.Validated.head targets)
-    in
+    let head = Targets.Validated.head targets in
     match Local.restore_artifacts ~mode ~rule_digest ~target_dir:targets.root with
     | Restored artifacts ->
       (* it's a small departure from the general "debug cache" semantics that
          we're also printing successes, but it can be useful to see successes
          too if the goal is to understand when and how the file in the build
          directory appeared *)
-      if debug_shared_cache
-      then Log.info "cache restore success" [ "key", Dyn.string (key ()) ];
+      Dune_trace.emit ~buffered:true Cache (fun () ->
+        Dune_trace.Event.Cache.shared
+          `Hit
+          ~rule_digest:(Dune_digest.to_string rule_digest)
+          ~head);
       Hit_or_miss.Hit artifacts
     | Not_found_in_cache -> Hit_or_miss.Miss Miss_reason.Not_found_in_cache
     | Error exn -> Miss (Error (Printexc.to_string exn))
@@ -88,16 +71,21 @@ struct
     in
     match result with
     | Hit result -> Some result
-    | Miss reason ->
-      (match debug_shared_cache, reason with
-       | true, _ | false, Error _ ->
-         (* Always log errors because they are not expected as a part of normal
-            operation and might indicate a problem. *)
-         Miss_reason.report
-           reason
-           ~rule_digest
-           ~head_target:(Targets.Validated.head targets)
-       | false, _ -> ());
+    | Miss (reason : Miss_reason.t) ->
+      let always_emit =
+        match reason with
+        | Error _ | Rerunning_for_reproducibility_check -> true
+        | _ -> false
+      in
+      let event () =
+        let reason = Miss_reason.to_string reason in
+        let head = Targets.Validated.head targets in
+        let rule_digest = Dune_digest.to_string rule_digest in
+        Dune_trace.Event.Cache.shared (`Miss reason) ~rule_digest ~head
+      in
+      if always_emit
+      then Dune_trace.always_emit (event ())
+      else Dune_trace.emit ~buffered:true Cache event;
       None
   ;;
 

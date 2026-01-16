@@ -1,11 +1,7 @@
 open Import
 
 (** Tie the knot between [Dune_engine] and [Dune_rules]. *)
-val init
-  :  sandboxing_preference:Sandbox_mode.t list
-  -> cache_config:Dune_cache.Config.t
-  -> unit
-  -> unit
+val init : sandboxing_preference:Sandbox_mode.t list -> unit -> unit
 
 type build_system =
   { contexts : Context.t list

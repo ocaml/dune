@@ -211,30 +211,3 @@ module Workspace_local = struct
       None
   ;;
 end
-
-module Shared = struct
-  let lookup ~can_go_in_shared_cache ~rule_digest ~targets =
-    let config = Build_config.get () in
-    let module Shared_cache = (val config.shared_cache) in
-    Shared_cache.lookup ~can_go_in_shared_cache ~rule_digest ~targets
-  ;;
-
-  let examine_targets_and_store
-        ~can_go_in_shared_cache
-        ~loc
-        ~rule_digest
-        ~should_remove_write_permissions_on_generated_files
-        ~action
-        ~produced_targets
-    =
-    let config = Build_config.get () in
-    let module Shared_cache = (val config.shared_cache) in
-    Shared_cache.examine_targets_and_store
-      ~can_go_in_shared_cache
-      ~loc
-      ~rule_digest
-      ~should_remove_write_permissions_on_generated_files
-      ~action
-      ~produced_targets
-  ;;
-end

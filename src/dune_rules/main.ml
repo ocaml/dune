@@ -54,7 +54,7 @@ let execution_parameters =
   fun context ~dir -> Memo.exec memo (context, dir)
 ;;
 
-let init ~sandboxing_preference ~cache_config () : unit =
+let init ~sandboxing_preference () : unit =
   let promote_source ~chmod ~delete_dst_if_it_is_a_directory ~src ~dst =
     let open Fiber.O in
     let* ctx = Path.Build.parent_exn src |> Context.DB.by_dir |> Memo.run in
@@ -68,11 +68,6 @@ let init ~sandboxing_preference ~cache_config () : unit =
       ~dst
       ~conf
       ()
-  in
-  let module Shared_cache =
-    Dune_cache.Shared.Make (struct
-      let config = cache_config
-    end)
   in
   Build_config.set
     ~sandboxing_preference
@@ -90,7 +85,6 @@ let init ~sandboxing_preference ~cache_config () : unit =
     ~implicit_default_alias
     ~execution_parameters
     ~source_tree:(module Source_tree)
-    ~shared_cache:(module Shared_cache)
     ~write_error_summary:(fun _ -> Fiber.return ())
 ;;
 

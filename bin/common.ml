@@ -1326,10 +1326,8 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
       , Dyn.string (Path.to_string (Lazy.force Dune_cache_storage.Layout.build_cache_dir))
       )
     ];
-  Dune_rules.Main.init
-    ~sandboxing_preference:config.sandboxing_preference
-    ~cache_config:(maybe_init_cache cache_config)
-    ();
+  Dune_cache.Shared.config := maybe_init_cache cache_config;
+  Dune_rules.Main.init ~sandboxing_preference:config.sandboxing_preference ();
   Only_packages.Clflags.set c.builder.only_packages;
   Report_error.print_memo_stacks := c.builder.debug_dep_path;
   Dune_engine.Clflags.report_errors_config := c.builder.report_errors_config;

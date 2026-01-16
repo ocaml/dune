@@ -131,7 +131,7 @@ module Artifacts = struct
     Fiber.collect_errors (fun () ->
       Targets.Produced.parallel_map targets ~f:(fun path { Target.executable } ->
         let file = Path.append_local temp_dir path in
-        Fiber.return (Dune_digest.file_with_executable_bit ~executable file)))
+        Dune_digest.file_with_executable_bit ~executable file))
     >>| Result.map_error ~f:(function
       | exn :: _ -> exn.Exn_with_backtrace.exn
       | [] -> assert false)

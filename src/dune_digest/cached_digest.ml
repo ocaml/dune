@@ -119,20 +119,19 @@ let delete_very_recent_entries () =
       | Lt -> true
       | Gt | Eq -> false
     in
-    (match !Clflags.debug_digests with
+    (match Dune_trace.enabled Digest with
      | false -> Path.Table.filter_inplace cache.table ~f:filter
      | true ->
+       let dropped = ref [] in
        Path.Table.filteri_inplace cache.table ~f:(fun ~key:path ~data ->
          let filter = filter data in
-         if not filter
-         then
-           Console.print
-             [ Pp.textf
-                 "Dropping cached digest for %s because it has exactly the same mtime as \
-                  the file system clock."
-                 (Path.to_string_maybe_quoted path)
-             ];
-         filter))
+         if not filter then dropped := path :: !dropped;
+         filter);
+       (match !dropped with
+        | [] -> ()
+        | _ :: _ ->
+          Dune_trace.emit ~buffered:true Digest (fun () ->
+            Dune_trace.Event.Digest.dropped_stale_mtimes !dropped ~fs_now:now)))
 ;;
 
 let dump () =
@@ -336,20 +335,13 @@ let peek_file ~allow_dirs path =
             | Gt | Lt ->
               let digest_result = digest_path_with_stats ~allow_dirs path stats in
               Digest_result.iter digest_result ~f:(fun digest ->
-                if !Clflags.debug_digests
-                then
-                  Console.print
-                    [ Pp.textf
-                        "Re-digested file %s because its stats changed:"
-                        (Path.to_string_maybe_quoted path)
-                    ; Dyn.pp
-                        (Dyn.Record
-                           [ "old_digest", Digest.to_dyn x.digest
-                           ; "new_digest", Digest.to_dyn digest
-                           ; "old_stats", Reduced_stats.to_dyn x.stats
-                           ; "new_stats", Reduced_stats.to_dyn reduced_stats
-                           ])
-                    ];
+                Dune_trace.emit ~buffered:true Digest (fun () ->
+                  Dune_trace.Event.Digest.redigest
+                    ~path
+                    ~old_digest:(Digest.to_string x.digest)
+                    ~new_digest:(Digest.to_string digest)
+                    ~old_stats:(Reduced_stats.to_dyn x.stats)
+                    ~new_stats:(Reduced_stats.to_dyn reduced_stats));
                 needs_dumping := true;
                 set_max_timestamp cache stats;
                 x.digest <- digest;

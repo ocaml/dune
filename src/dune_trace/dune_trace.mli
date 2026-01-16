@@ -21,6 +21,7 @@ module Category : sig
     | Cram
     | Action
     | Cache
+    | Digest
 
   val of_string : string -> t option
 end
@@ -189,6 +190,18 @@ module Event : sig
       -> [ `Skipped | `Changed | `Unchanged ]
       -> t
   end
+
+  module Digest : sig
+    val redigest
+      :  path:Path.t
+      -> old_digest:string
+      -> new_digest:string
+      -> old_stats:Dyn.t
+      -> new_stats:Dyn.t
+      -> t
+
+    val dropped_stale_mtimes : Path.t list -> fs_now:float -> t
+  end
 end
 
 module Out : sig
@@ -203,6 +216,7 @@ end
 val global : unit -> Out.t option
 val set_global : Out.t -> unit
 val always_emit : Event.t -> unit
+val enabled : Category.t -> bool
 val emit : ?buffered:bool -> Category.t -> (unit -> Event.t) -> unit
 val emit_all : ?buffered:bool -> Category.t -> (unit -> Event.t list) -> unit
 val flush : unit -> unit

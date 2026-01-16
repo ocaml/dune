@@ -1333,7 +1333,6 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   Dune_engine.Clflags.report_errors_config := c.builder.report_errors_config;
   Dune_engine.Clflags.debug_backtraces c.builder.debug_backtraces;
   Dune_rules.Clflags.debug_artifact_substitution := c.builder.debug_artifact_substitution;
-  Dune_digest.Clflags.debug_digests := c.builder.debug_digests;
   Dune_rules.Clflags.debug_package_logs := c.builder.debug_package_logs;
   Dune_digest.Clflags.wait_for_filesystem_clock := c.builder.wait_for_filesystem_clock;
   Dune_engine.Clflags.capture_outputs := c.builder.capture_outputs;

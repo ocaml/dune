@@ -640,3 +640,26 @@ module Cache = struct
     Event.instant ~args ~name:"fs_update" now Cache
   ;;
 end
+
+module Digest = struct
+  let redigest ~path ~old_digest ~new_digest ~old_stats ~new_stats =
+    let now = Time.now () in
+    let args =
+      [ "path", Arg.path path
+      ; "old_digest", Arg.string old_digest
+      ; "new_digest", Arg.string new_digest
+      ; "old_stats", Arg.dyn old_stats
+      ; "new_stats", Arg.dyn new_stats
+      ]
+    in
+    Event.instant ~args ~name:"redigest" now Digest
+  ;;
+
+  let dropped_stale_mtimes paths ~fs_now =
+    let now = Time.now () in
+    let args =
+      [ "fs_now", Arg.float fs_now; "paths", Arg.list (List.map paths ~f:Arg.path) ]
+    in
+    Event.instant ~args ~name:"dropped_stale_mtimes" now Digest
+  ;;
+end

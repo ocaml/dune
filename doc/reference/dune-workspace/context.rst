@@ -3,14 +3,15 @@ context
 
 The ``(context ...)`` stanza allows you to declare multiple build contexts which
 can be built at the same time. By default Dune uses a single context called
-``default`` whose build directory appears in ``_build/default/``. There are two
-different kinds of context decalarations: ``(default ...)`` for the regular
-build context, or ``(opam ...)`` to use an opam switch.
+``default`` whose build directory artefacts in ``_build/default/``. There are
+two different kinds of context declarations: ``(default ...)`` for the regular
+kind of build context, or ``(opam ...)`` to use an opam switch.
 
 .. note::
-   Eventhough the regular kind of context is specified by the ``(default ...)``
-   field of the ``context`` stanza, we refer to it as the **regular context** to
-   avoid confusion with the default context name.
+
+   Despite its name, the ``(default ...)`` field of the ``context`` stanza
+   specifies what we call the **regular context**, named this way to avoid
+   confusion with the default context name.
 
 .. code:: dune
 
@@ -27,17 +28,17 @@ build context, or ``(opam ...)`` to use an opam switch.
 
 ``<optional-fields>`` common to both context types are:
 
-- ``(name <name>)`` is the subdirectory's name for ``_build``, where this
-   build's context artifacts will be stored. If omitted, the context name is
-   ``default`` for the default context, and switch name for the opam context.
+- ``(name <name>)`` is the name of the subdirectory within ``_build`` where this
+  context's build artifacts will be stored. If omitted, the context name is
+  ``default`` for the default context, and switch name for the opam context.
 
 - ``(merlin)`` instructs Dune to use this build context for Merlin.
 
 - ``(generate_merlin_rules)`` instructs Dune to generate Merlin rules for this
   context, even if it is not the one selected via ``(merlin)``.
 
-- ``(profile <profile>)`` sets a different profile for a :term:`build context`.
-  This has precedence over the command-line option ``--profile``.
+- ``(profile <profile>)`` sets the profile for this :term:`build context`. This
+  takes precedence over the command-line option ``--profile``.
 
 - ``(env <env>)`` sets the environment for a particular context. This is of
   higher precedence than the root ``env`` stanza in the workspace file. This
@@ -46,14 +47,14 @@ build context, or ``(opam ...)`` to use an opam switch.
 - ``(toolchain <findlib_toolchain>)`` sets a ``findlib`` toolchain for the
   context.
 
-- ``(host <host_context>)`` chooses a different context to build binaries that
+- ``(host <host_context>)`` specifies a different context to build binaries that
   are meant to be executed on the host machine, such as preprocessors. See
   :ref:`cross-compilation` for more information. This is mutually exclusive with
   the ``(targets ...)`` field.
 
-- ``(targets <targets>)`` lets you specify a list of target names to set up
-  cross compilation targets. See :ref:`cross-compilation` for more information.
-  This is mutually exclusive with the ``(host ...)`` field.
+- ``(targets <targets>)`` specified target names for cross compilation targets.
+  See :ref:`cross-compilation` for more information. This is mutually exclusive
+  with the ``(host ...)`` field.
 
 - ``(paths (<var1> <val1>) .. (<varN> <valN>))`` allows you to set the value of
   any ``PATH``-like variables in this context. If ``PATH`` itself is modified in
@@ -66,7 +67,7 @@ build context, or ``(opam ...)`` to use an opam switch.
 
 - ``(fdo <target_exe>)`` builds this context with feedback-direct optimizations.
   It requires `OCamlFDO <https://github.com/gretay-js/ocamlfdo>`__.
-  ``<target_exe>`` is a path-interpreted relative to the workspace root (see
+  ``<target_exe>`` is a path interpreted relative to the workspace root (see
   :ref:`finding-root`). ``<target_exe>`` specifies which executable to optimize.
   Users should define a different context for each target executable built with
   FDO. The context name is derived automatically from the default name and
@@ -79,10 +80,10 @@ build context, or ``(opam ...)`` to use an opam switch.
 - ``(instrument_with <instrumentation_backend>)`` turns on instrumentation for
   the context. See :doc:`/instrumentation` for more information.
 
-- ``(disable_dynamically_linked_foreign_archives <bool>)``: Disable Dune's
-  default behavior of building/installing dynamically-linked foreign archives
-  (e.g., ``dll*.so``), so bytecode executables are built with all foreign
-  archives statically linked into the runtime system.
+- ``(disable_dynamically_linked_foreign_archives <bool>)`` disables Dune's
+  default behavior of building and installing dynamically-linked foreign
+  archives (e.g., ``dll*.so``), so bytecode executables are built with all
+  foreign archives statically linked into the runtime system.
 
 ``<optional-fields>`` specific to ``(context (default ...))`` are:
 

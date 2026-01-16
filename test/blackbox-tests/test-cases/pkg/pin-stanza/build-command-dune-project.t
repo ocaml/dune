@@ -72,6 +72,6 @@ Demonstrate the build command we construct for different types of projects:
 
 If we build the deps, everything works fine and we see the output of the opam
 pins:
-  $ dune build @pkg-install
+  $ dune build @pkg-install 2>&1 | sort
   mixed
   opam only

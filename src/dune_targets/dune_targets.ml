@@ -509,36 +509,56 @@ module Produced = struct
      is used for a variety of things, not all "map-like". *)
   let map_with_errors
         ?(d : (Path.Build.t -> (unit, 'e) result) option)
-        ~(f : Path.Build.t -> ('b, 'e) result)
+        ~(f : Path.Build.t -> ('b, 'e) result Fiber.t)
         { root; contents }
     =
+    let open Fiber.O in
     let errors = ref [] in
     let f path =
-      match f path with
-      | Ok s -> Some s
-      | Error e ->
-        errors := (path, e) :: !errors;
+      let+ result = f path in
+      match result with
+      | Ok value -> Some value
+      | Error error ->
+        errors := (path, error) :: !errors;
         None
     in
-    let rec aux path { files; subdirs } =
-      let files =
-        Filename.Map.filter_mapi files ~f:(fun file _ ->
-          f (Path.Build.relative path file))
-      in
-      let subdirs =
-        Filename.Map.mapi subdirs ~f:(fun dir subdirs_contents ->
-          let dir = Path.Build.relative path dir in
-          aux dir subdirs_contents)
-      in
-      (match d with
-       | None -> ()
-       | Some f ->
-         (match f path with
-          | Ok () -> ()
-          | Error e -> errors := (path, e) :: !errors));
-      { files; subdirs }
+    let map_files path files =
+      Filename.Map.foldi
+        files
+        ~init:(Fiber.return Filename.Map.empty)
+        ~f:(fun file_name _payload acc ->
+          let* acc = acc in
+          let path = Path.Build.relative path file_name in
+          let* result = f path in
+          match result with
+          | None -> Fiber.return acc
+          | Some value -> Fiber.return (Filename.Map.set acc file_name value))
     in
-    let result = { root; contents = aux root contents } in
+    let rec map_subdirs path subdirs =
+      Filename.Map.foldi
+        subdirs
+        ~init:(Fiber.return Filename.Map.empty)
+        ~f:(fun dir_name dir_contents acc ->
+          let* acc = acc in
+          let dir = Path.Build.relative path dir_name in
+          let* mapped = aux dir dir_contents in
+          Fiber.return (Filename.Map.set acc dir_name mapped))
+    and aux path { files; subdirs } =
+      let* files = map_files path files in
+      let* subdirs = map_subdirs path subdirs in
+      let* () =
+        match d with
+        | None -> Fiber.return ()
+        | Some f_dir ->
+          Fiber.return
+            (match f_dir path with
+             | Ok () -> ()
+             | Error error -> errors := (path, error) :: !errors)
+      in
+      Fiber.return { files; subdirs }
+    in
+    let+ contents = aux root contents in
+    let result = { root; contents } in
     match Nonempty_list.of_list !errors with
     | None -> Ok result
     | Some list -> Error list

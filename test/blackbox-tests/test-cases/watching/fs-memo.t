@@ -333,15 +333,13 @@ Same problem for files.
   ------------------------------------------
   Failure
   Failure
-  Error: file-1: Permission denied
-  -> required by _build/default/file-1
-  -> required by _build/default/result
-  -> required by alias default
+  File "file-1", line 1, characters 0-0:
+  Error: File unavailable: file-1
+  open(file-1): Permission denied
   Had 1 error, waiting for filesystem changes...
-  Error: file-1: Permission denied
-  -> required by _build/default/file-1
-  -> required by _build/default/result
-  -> required by alias default
+  File "file-1", line 1, characters 0-0:
+  Error: File unavailable: file-1
+  open(file-1): Permission denied
   Had 1 error, waiting for filesystem changes...
   ------------------------------------------
   result = '13' -> '13' -> '13'

@@ -9,7 +9,7 @@ module Id : Id.S
 type job =
   { pid : Pid.t
   ; description : unit Pp.t
-  ; started_at : float
+  ; started_at : Time.t
   ; id : Id.t
   }
 
@@ -21,7 +21,7 @@ type event =
 type t
 
 val current : t -> job Id.Map.t
-val start : Id.t -> Pid.t -> description:unit Pp.t -> started_at:float -> unit Fiber.t
+val start : Id.t -> Pid.t -> description:unit Pp.t -> started_at:Time.t -> unit Fiber.t
 val stop : Id.t -> unit Fiber.t
 val equal : t -> t -> bool
 

@@ -1,5 +1,6 @@
 include Stdune
 include Dune_vcs
+include Dune_scheduler
 module Console = Dune_console
 module Digest = Dune_digest
 

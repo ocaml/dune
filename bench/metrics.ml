@@ -25,14 +25,13 @@ type ('float, 'int) t =
 let make (times : Proc.Times.t) (gc : Gc.stat) =
   (* We default to 0 for the other processor times since they are rarely None in
      pracice. *)
-  let { Proc.Resource_usage.user_cpu_time; system_cpu_time } =
-    Option.value
-      times.resource_usage
-      ~default:{ user_cpu_time = 0.; system_cpu_time = 0. }
+  let { Proc.Resource_usage.user_cpu_time; system_cpu_time; _ } =
+    Option.value times.resource_usage ~default:Proc.Resource_usage.zero
   in
-  { elapsed_time = times.elapsed_time
-  ; user_cpu_time
-  ; system_cpu_time
+  let elapsed_time = Time.Span.to_secs times.elapsed_time in
+  { elapsed_time
+  ; user_cpu_time = Time.Span.to_secs user_cpu_time
+  ; system_cpu_time = Time.Span.to_secs system_cpu_time
   ; minor_words = gc.minor_words
   ; promoted_words = gc.promoted_words
   ; major_words = gc.major_words

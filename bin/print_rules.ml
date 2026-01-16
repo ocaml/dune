@@ -279,7 +279,7 @@ let term =
   and+ targets = Arg.(value & pos_all dep [] & Arg.info [] ~docv:"TARGET" ~doc:None) in
   let common, config = Common.init builder in
   let out = Option.map ~f:Path.of_string out in
-  Scheduler.go_with_rpc_server ~common ~config (fun () ->
+  Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in
     build_exn (fun () ->
@@ -291,8 +291,7 @@ let term =
           Target.all_direct_targets None
           >>| Path.Build.Map.foldi ~init:[] ~f:(fun p _ acc -> Path.build p :: acc)
           >>| Action_builder.paths
-        | _ ->
-          Memo.return (Target.interpret_targets (Common.root common) config setup targets)
+        | _ -> Memo.return (Target.interpret_targets (Common.root common) setup targets)
       in
       let+ rules = Dune_engine.Reflection.eval ~request ~recursive in
       let print oc =

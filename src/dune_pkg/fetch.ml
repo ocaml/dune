@@ -99,7 +99,7 @@ module Curl = struct
       let stderr =
         match Io.read_file stderr with
         | s ->
-          Path.unlink_no_err stderr;
+          Fpath.unlink_no_err (Path.to_string stderr);
           [ Pp.text s ]
         | exception s ->
           [ Pp.textf
@@ -118,7 +118,7 @@ module Curl = struct
             ]
             @ stderr)))
     else (
-      Path.unlink_no_err stderr;
+      Fpath.unlink_no_err (Path.to_string stderr);
       match
         let open Option.O in
         let suffix = {|"|} in
@@ -189,7 +189,7 @@ let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
   with_download url checksum ~target ~f:(fun output ->
     match unpack_flag with
     | false ->
-      Path.rename output target;
+      Unix.rename (Path.to_string output) (Path.to_string target);
       Fiber.return @@ Ok ()
     | true ->
       unpack_archive
@@ -250,7 +250,7 @@ let fetch_local ~checksum ~target (url, url_loc) =
 let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
   let event =
     Dune_trace.(
-      start (global ()) (fun () ->
+      Out.start (global ()) (fun () ->
         Dune_trace.Event.Async.fetch
           ~url:(OpamUrl.to_string url)
           ~target
@@ -261,7 +261,8 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
   in
   Fiber.finalize
     ~finally:(fun () ->
-      Dune_trace.finish event;
+      Option.iter (Dune_trace.global ()) ~f:(fun trace ->
+        Dune_trace.Out.finish trace event);
       Fiber.return ())
     (fun () ->
        match url.backend with

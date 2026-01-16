@@ -1,5 +1,3 @@
-(include_subdirs unqualified)
-
 (library
  (name dune_engine)
  (libraries
@@ -11,10 +9,10 @@
   dyn
   fiber
   memo
-  dune_async_io
   threads.posix
   predicate_lang
   dune_cache
+  dune_scheduler
   dune_cache_storage
   dune_glob
   dune_targets
@@ -26,9 +24,9 @@
   dune_output_truncation
   dune_rpc_private
   dune_rpc_client
-  dune_thread_pool
   spawn
   dune_file_watcher
   dune_digest
+  dune_action_trace
   dune_metrics)
  (synopsis "Internal Dune library, do not use!"))

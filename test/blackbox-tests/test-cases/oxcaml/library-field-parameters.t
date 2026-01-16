@@ -120,7 +120,9 @@ parameters:
 We can by inspecting the `ocamlobjinfo` for the "Runtime parameters:" field,
 which lists the parameters on the following indented lines:
 
-  $ alias runtime_parameters="sed -ne '/parameter/,/^[^\t]/{/^\t/p}'"
+  $ runtime_parameters() {
+  > sed -ne '/parameter/,/^[^\t]/{/^\t/p}'
+  > }
 
   $ ocamlobjinfo _build/default/lib/.lib.objs/native/lib__Lib_util.cmx | runtime_parameters
   	Lib__

@@ -1,7 +1,6 @@
 Creates some packages that simulate some of the ocaml compiler
 packages and test solving a project that depends on "ocaml".
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ CURRENT=5.2.0

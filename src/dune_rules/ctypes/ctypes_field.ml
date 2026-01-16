@@ -191,7 +191,9 @@ let decode =
      ; type_description
      ; function_description
      ; generated_types =
-         Option.value generated_types ~default:(Module_name.of_string "Types_generated")
+         Option.value
+           generated_types
+           ~default:(Module_name.of_checked_string "Types_generated")
      ; generated_entry_point
      ; deps = Option.value ~default:[] deps
      ; version
@@ -226,7 +228,7 @@ let c_generated_types_module ctypes =
     (ctypes.external_library_name
      |> External_lib_name.to_module_name
      |> Module_name.to_string)
-  |> Module_name.of_string
+  |> Module_name.of_checked_string
 ;;
 
 let c_generated_functions_module ctypes (fd : Function_description.t) =
@@ -237,17 +239,19 @@ let c_generated_functions_module ctypes (fd : Function_description.t) =
      |> External_lib_name.to_string)
     (Module_name.to_string fd.functor_)
     (Module_name.to_string fd.instance)
-  |> Module_name.of_string
+  |> Module_name.of_checked_string
 ;;
 
 let c_generated_functions_cout_c { external_library_name; _ } fd =
   c_generated_functions_cout_c_of_lib ~external_library_name fd
 ;;
 
-let type_gen_script_module ctypes = type_gen_script ctypes |> Module_name.of_string
+let type_gen_script_module ctypes =
+  type_gen_script ctypes |> Module_name.of_checked_string
+;;
 
 let function_gen_script_module ctypes function_description =
-  function_gen_script ctypes function_description |> Module_name.of_string
+  function_gen_script ctypes function_description |> Module_name.of_checked_string
 ;;
 
 let generated_modules ctypes =

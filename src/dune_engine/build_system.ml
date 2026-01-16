@@ -133,8 +133,10 @@ module Pending_targets = struct
     Hooks.End_of_build.always (fun () ->
       let targets = !t in
       t := Targets.empty;
-      Targets.iter targets ~file:Path.Build.unlink_no_err ~dir:(fun p ->
-        Path.rm_rf (Path.build p)))
+      Targets.iter
+        targets
+        ~file:(fun p -> p |> Path.Build.to_string |> Fpath.unlink_no_err)
+        ~dir:(fun p -> Path.rm_rf (Path.build p)))
   ;;
 end
 
@@ -305,17 +307,14 @@ end = struct
     Digest.generic trace
   ;;
 
-  let report_evaluated_rule_exn (t : Build_config.t) =
-    Option.iter t.stats ~f:(fun stats ->
-      let event =
-        let rule_total =
-          match Fiber.Svar.read State.t with
-          | Building progress -> progress.number_of_rules_discovered
-          | _ -> assert false
-        in
-        Dune_trace.Event.evalauted_rules ~rule_total
+  let report_evaluated_rule_exn () =
+    Dune_trace.emit Debug (fun () ->
+      let rule_total =
+        match Fiber.Svar.read State.t with
+        | Building progress -> progress.number_of_rules_discovered
+        | _ -> assert false
       in
-      Dune_trace.emit stats event)
+      Dune_trace.Event.evalauted_rules ~rule_total)
   ;;
 
   module Exec_result = struct
@@ -357,7 +356,6 @@ end = struct
     let { Action.Full.action; env; locks; can_go_in_shared_cache = _; sandbox = _ } =
       action
     in
-    let* dune_stats = Scheduler.stats () in
     let deps =
       Dep.Facts.paths
         ~expand_aliases:
@@ -375,7 +373,6 @@ end = struct
             ~rule_dir:targets.root
             ~rule_loc:loc
             ~rule_digest
-            ~dune_stats
         in
         Some sandbox
       | None ->
@@ -418,6 +415,7 @@ end = struct
          | None -> root
          | Some sandbox -> Sandbox.map_path sandbox root)
     in
+    let action_trace = Action_trace.create rule_digest in
     Fiber.finalize
       ~finally:(fun () ->
         match sandbox with
@@ -429,6 +427,7 @@ end = struct
          with_locks locks ~f:(fun () ->
            let* action_exec_result =
              let input =
+               let env = Action_trace.add_to_env action_trace env in
                { Action_exec.root
                ; context (* can be derived from the root *)
                ; env
@@ -442,6 +441,7 @@ end = struct
              Action_exec.exec input ~build_deps
            in
            let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
+           let* () = Action_trace.collect action_trace in
            let* () =
              match sandbox with
              | None -> Fiber.return ()
@@ -510,7 +510,7 @@ end = struct
     let config = Build_config.get () in
     wrap_fiber (fun () ->
       let open Fiber.O in
-      report_evaluated_rule_exn config;
+      report_evaluated_rule_exn ();
       let* () =
         maybe_async_rule_file_op (fun () -> Path.mkdir_p (Path.build targets.root))
       in
@@ -584,7 +584,7 @@ end = struct
             maybe_async_rule_file_op (fun () ->
               let remove_target_dir dir = Path.rm_rf (Path.build dir) in
               let remove_target_file path =
-                match Path.Build.unlink path with
+                match Fpath.unlink (Path.Build.to_string path) with
                 | Success -> ()
                 | Does_not_exist -> ()
                 | Is_a_directory ->
@@ -592,11 +592,10 @@ end = struct
                      in anyway. *)
                   remove_target_dir path
                 | Error exn ->
-                  Log.info
-                    [ Pp.textf
-                        "Error while removing target %s: %s"
-                        (Path.Build.to_string path)
-                        (Printexc.to_string exn)
+                  Log.warn
+                    "Error while removing target"
+                    [ "path", Dyn.string (Path.Build.to_string path)
+                    ; "error", Dyn.string (Printexc.to_string exn)
                     ]
               in
               Targets.Validated.iter
@@ -606,7 +605,7 @@ end = struct
           in
           let* produced_targets, dynamic_deps_stages =
             (* Step III. Try to restore artifacts from the shared cache. *)
-            Rule_cache.Shared.lookup ~can_go_in_shared_cache ~rule_digest ~targets
+            Dune_cache.Shared.lookup ~can_go_in_shared_cache ~rule_digest ~targets
             >>= function
             | Some produced_targets ->
               (* Rules with dynamic deps can't be stored to the shared cache
@@ -633,7 +632,7 @@ end = struct
               (* Step V. Examine produced targets and store them to the shared
                  cache if needed. *)
               let* produced_targets =
-                Rule_cache.Shared.examine_targets_and_store
+                Dune_cache.Shared.examine_targets_and_store
                   ~can_go_in_shared_cache
                   ~loc
                   ~rule_digest

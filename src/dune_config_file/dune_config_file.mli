@@ -1,3 +1,5 @@
+open Import
+
 module Dune_config : sig
   (** Dune configuration (visible to the user) *)
 
@@ -43,6 +45,7 @@ module Dune_config : sig
         -> t Dune_lang.Decoder.t
 
       val to_string : t -> string
+      val to_dyn : t -> Dyn.t
     end
 
     module Storage_mode : sig
@@ -152,7 +155,6 @@ module Dune_config : sig
   val for_scheduler
     :  t
     -> watch_exclusions:string list
-    -> Dune_trace.t option
     -> print_ctrl_c_warning:bool
-    -> Dune_engine.Scheduler.Config.t
+    -> Scheduler.Config.t
 end

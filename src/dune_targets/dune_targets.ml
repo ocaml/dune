@@ -196,7 +196,6 @@ module Produced = struct
              |> Path.Source.to_string_maybe_quoted)
         ]
       | Unreadable_dir (dir, (unix_error, _, _)) ->
-        (* CR-soon amokhov: This case is untested. *)
         [ Pp.textf
             "Rule produced unreadable directory %S"
             (Path.Build.drop_build_context_maybe_sandboxed_exn dir
@@ -204,7 +203,6 @@ module Produced = struct
         ; Pp.verbatim (Unix.error_message unix_error)
         ]
       | Unsupported_file (file, kind) ->
-        (* CR-soon amokhov: This case is untested. *)
         [ Pp.textf
             "Rule produced file %S with unrecognised kind %S"
             (Path.Build.drop_build_context_maybe_sandboxed_exn file

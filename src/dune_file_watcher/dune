@@ -4,6 +4,7 @@
   spawn
   fsevents
   dune_console
+  dune_trace
   unix
   stdune
   threads.posix

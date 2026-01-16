@@ -4,3 +4,4 @@ run should not access foo
   1 | Printf.printf "Can't access %d\n" Foo.v
                                         ^^^
   Error: Unbound module Foo
+  [1]

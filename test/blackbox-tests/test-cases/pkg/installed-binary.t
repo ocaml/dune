@@ -1,7 +1,5 @@
 Test that installed binaries are visible in dependent packages
 
-  $ . ./helpers.sh
-
   $ make_lockdir
   $ make_lockpkg test <<EOF
   > (version 0.0.1)
@@ -45,19 +43,19 @@ Test that installed binaries are visible in dependent packages
   { files =
       [ (LIB,
          [ In_build_dir
-             "_private/default/.pkg/test.0.0.1-8240dbfd7c93ea3e976f855df6946a09/target/lib/test/libxxx"
+             "_private/default/.pkg/test.0.0.1-3961b04534812838962de3518e57cedc/target/lib/test/libxxx"
          ])
       ; (LIB_ROOT,
          [ In_build_dir
-             "_private/default/.pkg/test.0.0.1-8240dbfd7c93ea3e976f855df6946a09/target/lib/lib_rootxxx"
+             "_private/default/.pkg/test.0.0.1-3961b04534812838962de3518e57cedc/target/lib/lib_rootxxx"
          ])
       ; (BIN,
          [ In_build_dir
-             "_private/default/.pkg/test.0.0.1-8240dbfd7c93ea3e976f855df6946a09/target/bin/foo"
+             "_private/default/.pkg/test.0.0.1-3961b04534812838962de3518e57cedc/target/bin/foo"
          ])
       ; (SHARE_ROOT,
          [ In_build_dir
-             "_private/default/.pkg/test.0.0.1-8240dbfd7c93ea3e976f855df6946a09/target/share/lib_rootxxx"
+             "_private/default/.pkg/test.0.0.1-3961b04534812838962de3518e57cedc/target/share/lib_rootxxx"
          ])
       ]
   ; variables = []

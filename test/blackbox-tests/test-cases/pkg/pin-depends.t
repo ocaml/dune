@@ -1,8 +1,5 @@
 Demonstrate our support for pin-depends.
 
-  $ . ../git-helpers.sh
-  $ . ./helpers.sh
-
   $ add_mock_repo_if_needed
   $ cat >dune-project <<EOF
   > (lang dune 3.13)
@@ -38,7 +35,7 @@ Local pinned source.
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url file://PWD/_bar_file))) (dev) 
+  (source (fetch (url file://PWD/_bar_file)))
 
 "opam" directory at the root
 
@@ -52,7 +49,7 @@ Local pinned source.
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url file://PWD/_bar_file_opam_dir))) (dev) 
+  (source (fetch (url file://PWD/_bar_file_opam_dir)))
 
 "bar.opam" file at the root
 
@@ -66,7 +63,7 @@ Local pinned source.
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url file://PWD/_bar_named_opam_root))) (dev) 
+  (source (fetch (url file://PWD/_bar_named_opam_root)))
 
 "bar.opam" file at opam/
 
@@ -80,7 +77,7 @@ Local pinned source.
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url file://PWD/_bar_named_opam_subdir))) (dev) 
+  (source (fetch (url file://PWD/_bar_named_opam_subdir)))
 
 Git pinned source:
 
@@ -99,7 +96,7 @@ Git pinned source:
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url git+file://PWD/_bar_git))) (dev) 
+  (source (fetch (url git+file://PWD/_bar_git)))
 
 Git pinned source with toplevel opam file:
 
@@ -118,7 +115,7 @@ Git pinned source with toplevel opam file:
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url git+file://PWD/_bar_opam_git))) (dev) 
+  (source (fetch (url git+file://PWD/_bar_opam_git)))
 
 Git pinned source with toplevel opam dir 1
 
@@ -138,7 +135,7 @@ Git pinned source with toplevel opam dir 1
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-  (source (fetch (url git+file://PWD/_bar_opam_dir_git1))) (dev) 
+  (source (fetch (url git+file://PWD/_bar_opam_dir_git1)))
 
 Git pinned source with toplevel opam dir 2
 
@@ -197,12 +194,13 @@ Pin to an HTTP archive detects wrong hash
   >  (name foo)
   >  (libraries bar))
   > EOF
-  $ sed -i.tmp "s/$MD5_CHECKSUM/92449184682b45b5f07e811fdd61d35f/g" ${default_lock_dir}/bar.1.0.0.pkg
+  $ dune_cmd subst "$MD5_CHECKSUM" '92449184682b45b5f07e811fdd61d35f' ${default_lock_dir}/bar.1.0.0.pkg
   $ rm -rf already-served
   $ dune build 2>&1 | grep -v "md5"
   File "dune.lock/bar.1.0.0.pkg", line 6, characters 12-48:
                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Invalid checksum, got
+  [1]
 
 Pin to an HTTP archive needs `dune_pkg_lock_normalized` to download and compute the hash
 of the target again

@@ -35,8 +35,8 @@ module DB = struct
       map =
         Package_name.Map.fold pins ~init:t.map ~f:(fun (pin : Local_package.pin) acc ->
           (match pin.origin with
-           | `Dune -> Code_error.raise "add_opam_pins: can only pin opam packages" []
-           | `Opam -> ());
+           | Pin_stanza -> Code_error.raise "add_opam_pins: can only pin opam packages" []
+           | Opam_file -> ());
           Package_name.Map.update acc pin.name ~f:(function
             | None -> Some (pin, t.context)
             | Some _ as x -> x))
@@ -50,7 +50,7 @@ module DB = struct
     ; map =
         Pin_stanza.Project.map pins
         |> Package_name.Map.map ~f:(fun (url, pkg) ->
-          let pkg = local_package_of_pin pkg ~url ~origin:`Dune in
+          let pkg = local_package_of_pin pkg ~url ~origin:Pin_stanza in
           pkg, context)
     }
   ;;
@@ -86,9 +86,25 @@ module DB = struct
               [ Pp.textf
                   "package %S is defined in more than one source"
                   (Package_name.to_string name)
-              ; Pp.textf "it is also defined in %s" (Loc.to_file_colon_line (fst lhs).loc)
+              ; Pp.textf "it is also defined in %s" (Loc.to_file_colon_line (fst rhs).loc)
               ])
     ; context
+    }
+  ;;
+
+  let filter_compilers t =
+    { t with
+      all =
+        List.filter_map t.all ~f:(fun pin ->
+          match
+            List.filter pin.packages ~f:(fun (pkg : Package.t) ->
+              Dev_tool.is_compiler_package pkg.name)
+          with
+          | [] -> None
+          | packages -> Some { pin with packages })
+    ; map =
+        Package_name.Map.filteri t.map ~f:(fun name _ ->
+          Dev_tool.is_compiler_package name)
     }
   ;;
 
@@ -101,7 +117,7 @@ module DB = struct
       Dune_lang.Pin_stanza.Workspace.map pins
       |> String.Map.map ~f:(fun map ->
         Package_name.Map.map map ~f:(fun (url, package) ->
-          local_package_of_pin package ~url ~origin:`Dune))
+          local_package_of_pin package ~url ~origin:Pin_stanza))
     ;;
 
     let extract (t : t) ~names =
@@ -214,7 +230,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
   let assigned = ref Package_name.Map.empty in
   (* The concrete opam metadata we determined for every assigned package. *)
   let resolved = ref Package_name.Map.empty in
-  let resolve name resolved_package =
+  let mark_resolved name resolved_package =
     resolved := Package_name.Map.add_exn !resolved name resolved_package
   in
   let assign (stack : Stack.t) (package : Local_package.pin) =
@@ -245,9 +261,9 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
           ; Stack.pp stack
           ]
   in
-  let opam_package stack (package : Local_package.pin) =
+  let pinned_via_opam stack (package : Local_package.pin) =
     let* resolved_package = Pinned_package.resolve_package package in
-    resolve package.name resolved_package;
+    mark_resolved package.name resolved_package;
     Resolved_package.opam_file resolved_package
     |> OpamFile.OPAM.pin_depends
     |> List.filter_map ~f:(fun (pkg, url) ->
@@ -260,7 +276,7 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
         ; version
         ; name
         ; loc = package.loc
-        ; origin = `Opam
+        ; origin = Opam_file
         }
       in
       let stack = Stack.push stack package in
@@ -268,9 +284,9 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
       | `Skip -> None
       | `Continue -> Some package)
     |> Fiber.parallel_iter ~f:(fun package ->
-      Pinned_package.resolve_package package >>| resolve package.name)
+      Pinned_package.resolve_package package >>| mark_resolved package.name)
   in
-  let dune_package packages (package : Local_package.pin) =
+  let pinned_via_dune packages (package : Local_package.pin) =
     match Package_name.Map.find packages package.name with
     | None ->
       User_error.raise
@@ -296,11 +312,10 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
         in
         Resolved_package.local_package
           ~command_source:local_package.command_source
-          package.loc
-          opam_file
+          (package.loc, opam_file)
           opam_package
       in
-      resolve package.name resolved_package
+      mark_resolved package.name resolved_package
   in
   let eval_url =
     let state = Scan_project.make_state () in
@@ -315,15 +330,15 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
     |> Fiber.parallel_iter ~f:(fun (package : Local_package.pin) ->
       let stack = Stack.push stack package in
       match package.origin with
-      | `Opam -> opam_package stack package
-      | `Dune ->
+      | Opam_file -> pinned_via_opam stack package
+      | Pin_stanza ->
         eval_url package.url
         >>= (function
-         | None -> opam_package stack package
-         | Some (more_sources, packages) ->
-           dune_package packages package;
-           let more_sources = DB.add_opam_pins more_sources packages in
-           loop stack more_sources))
+         | None -> pinned_via_opam stack package
+         | Some (pins, packages) ->
+           pinned_via_dune packages package;
+           let pins = DB.add_opam_pins pins packages in
+           loop stack pins))
   in
   let+ () = loop Stack.empty t in
   !resolved

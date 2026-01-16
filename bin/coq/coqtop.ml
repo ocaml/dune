@@ -45,7 +45,7 @@ let term =
   in
   let coq_file_arg = Common.prefix_target common coq_file_arg |> Path.Local.of_string in
   let coqtop, args, env =
-    Scheduler.go_with_rpc_server ~common ~config
+    Scheduler_setup.go_with_rpc_server ~common ~config
     @@ fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in
@@ -141,7 +141,10 @@ let term =
       let* (args, _) : string list * Dep.Fact.t Dep.Map.t =
         let* args = args in
         let dir = Path.external_ Path.External.initial_cwd in
-        let args = Dune_rules.Command.expand ~dir (S args) in
+        let args =
+          Dune_rules.Command.expand ~dir (S args)
+          |> Action_builder.With_targets.map ~f:Appendable_list.to_list
+        in
         Action_builder.evaluate_and_collect_facts args.build
       in
       let* prog = Super_context.resolve_program_memo sctx ~dir ~loc:None coqtop in

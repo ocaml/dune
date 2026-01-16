@@ -19,3 +19,4 @@ We need ocamlfind to run this test
   -> required by _build/install/default/lib/pas-de-bol/META
   -> required by _build/default/root/pas-de-bol.install
   -> required by alias root/install
+  [1]

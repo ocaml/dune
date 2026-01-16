@@ -43,11 +43,11 @@ let runtest_term =
   | Ok () ->
     Build.run_build_command ~common ~config ~request:(fun setup ->
       Runtest_common.make_request
-        ~contexts:setup.contexts
+        ~scontexts:setup.scontexts
         ~to_cwd:(Common.root common).to_cwd
         ~test_paths)
   | Error lock_held_by ->
-    Scheduler.go_without_rpc_server ~common ~config (fun () ->
+    Scheduler_setup.no_build_no_rpc ~config (fun () ->
       let open Fiber.O in
       Rpc.Rpc_common.fire_request
         ~name:"runtest"

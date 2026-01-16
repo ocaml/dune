@@ -205,7 +205,7 @@ let remove_old_artifacts
         match kind with
         | Unix.S_DIR ->
           if not (Subdir_set.mem subdirs_to_keep fn) then Path.rm_rf (Path.build path)
-        | _ -> Path.unlink_exn (Path.build path)))
+        | _ -> Fpath.unlink_exn (Path.Build.to_string path)))
 ;;
 
 (* We don't remove files in there as we don't know upfront if they are stale or
@@ -874,10 +874,7 @@ end = struct
   ;;
 
   let load_dir_impl ~dir : Loaded.t Memo.t =
-    if !Clflags.debug_load_dir
-    then
-      Console.print_user_message
-        (User_message.make [ Pp.textf "Loading build directory %s" (Path.to_string dir) ]);
+    Dune_trace.emit Debug (fun () -> Dune_trace.Event.load_dir dir);
     get_dir_triage ~dir
     >>= function
     | Known l -> Memo.return l

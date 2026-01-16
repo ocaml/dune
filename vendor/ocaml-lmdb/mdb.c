@@ -174,6 +174,14 @@ typedef SSIZE_T	ssize_t;
 # endif
 #elif defined(__ANDROID__)
 # define MDB_FDATASYNC		fsync
+#elif defined(__HAIKU__)
+# define MDB_USE_POSIX_SEM	1
+# define MDB_FDATASYNC		fsync
+#endif
+
+/* NetBSD does not define union semun in sys/sem.h */
+#if defined(__NetBSD__) && !defined(_SEM_SEMUN_UNDEFINED)
+# define _SEM_SEMUN_UNDEFINED  1
 #endif
 
 #ifndef _WIN32
@@ -3418,6 +3426,7 @@ mdb_txn_end(MDB_txn *txn, unsigned mode)
 
 		txn->mt_numdbs = 0;
 		txn->mt_flags = MDB_TXN_FINISHED;
+		mdb_midl_free(txn->mt_spill_pgs);
 
 		if (!txn->mt_parent) {
 			mdb_midl_shrink(&txn->mt_free_pgs);
@@ -3439,7 +3448,6 @@ mdb_txn_end(MDB_txn *txn, unsigned mode)
 			mdb_midl_free(txn->mt_free_pgs);
 			free(txn->mt_u.dirty_list);
 		}
-		mdb_midl_free(txn->mt_spill_pgs);
 
 		mdb_midl_free(pghead);
 	}
@@ -9633,7 +9641,7 @@ mdb_cursor_del0(MDB_cursor *mc)
 						goto fail;
 				}
 				if (m3->mc_xcursor && !(m3->mc_flags & C_EOF)) {
-					MDB_node *node = NODEPTR(m3->mc_pg[m3->mc_top], m3->mc_ki[m3->mc_top]);
+					MDB_node *node = NODEPTR(m3->mc_pg[mc->mc_top], m3->mc_ki[mc->mc_top]);
 					/* If this node has dupdata, it may need to be reinited
 					 * because its data has moved.
 					 * If the xcursor was not initd it must be reinited.

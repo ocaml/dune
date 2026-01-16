@@ -8,6 +8,7 @@ module Origin : sig
   type t =
     | Library of Library.t
     | Executables of Executables.t
+    | Tests of Tests.t
     | Melange of Melange_stanzas.Emit.t
 
   val preprocess : t -> Preprocess.With_instrumentation.t Preprocess.Per_module.t
@@ -35,6 +36,20 @@ val modules_and_obj_dir
 (** Modules attached to a library, executable, or melange.emit stanza. *)
 val modules : t -> libs:Lib.DB.t -> for_:for_ -> Modules.t Memo.t
 
+module Parser_generators : sig
+  type for_ =
+    | Ocamllex of Loc.t
+    | Ocamlyacc of Loc.t
+    | Menhir of Loc.t
+
+  type dep_info =
+    { deps : Path.Set.t
+    ; targets : (Loc.t * Module.Source.t) Module_trie.t
+    }
+
+  val modules : t -> for_:for_ -> dep_info
+end
+
 (** Find out the origin of the stanza for a given module *)
 val find_origin : t -> libs:Lib.DB.t -> Module_name.Path.t -> Origin.t option Memo.t
 
@@ -50,14 +65,12 @@ val empty : t
 val include_subdirs : t -> Include_subdirs.t
 
 val make
-  :  Stanza.t list
-  -> expander:Expander.t
-  -> dir:Path.Build.t
+  :  expander:Expander.t
   -> libs:Lib.DB.t Memo.t
   -> project:Dune_project.t
   -> lib_config:Lib_config.t Memo.t
   -> loc:Loc.t
   -> lookup_vlib:(loc:Loc.t -> dir:Path.Build.t -> t Memo.t)
   -> include_subdirs:Loc.t * Include_subdirs.t
-  -> dirs:Source_file_dir.t list
+  -> Source_file_dir.t Nonempty_list.t
   -> t Memo.t

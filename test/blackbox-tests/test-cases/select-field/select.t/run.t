@@ -26,6 +26,9 @@
   >   (select bar.ml from
   >    (unix -> bar.unix.ml)
   >    (!unix -> bar.no_unix.ml))
+  >   (select foo.mli from
+  >    (fakefoobar -> foo.fake.mli)
+  >    (!fakefoobar -> foo.no_fake.mli))
   >   (select foo.ml from
   >    (fakefoobar -> foo.fake.ml)
   >    (!fakefoobar -> foo.no_fake.ml))))

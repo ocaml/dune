@@ -24,6 +24,7 @@ module File = struct
 
   let dialect t = t.dialect
   let path t = t.path
+  let original_path t = t.original_path
 
   let version_installed t ~src_root ~install_dir =
     let path =
@@ -35,7 +36,10 @@ module File = struct
     { t with path }
   ;;
 
-  let make dialect path = { dialect; path; original_path = path }
+  let make ?original_path dialect path =
+    let original_path = Option.value original_path ~default:path in
+    { dialect; path; original_path }
+  ;;
 
   let to_dyn { path; original_path; dialect } =
     let open Dyn in
@@ -52,7 +56,7 @@ module Kind = struct
     | Intf_only
     | Virtual
     | Impl
-    | Alias of Module_name.Path.t
+    | Alias of Module_name.t list
     | Impl_vmodule
     | Wrapped_compat
     | Root
@@ -67,7 +71,7 @@ module Kind = struct
     | Alias path ->
       (match path with
        | [] -> string "alias"
-       | _ :: _ -> constr "alias" (fun x -> List (Module_name.Path.encode x)) path)
+       | x :: xs -> constr "alias" (fun x -> List (Module_name.Path.encode x)) (x :: xs))
     | Impl_vmodule -> string "impl_vmodule"
     | Wrapped_compat -> string "wrapped_compat"
     | Root -> string "root"
@@ -93,7 +97,7 @@ module Kind = struct
           | None -> return (Alias [])
           | Some _ ->
             let+ path = enter Module_name.Path.decode in
-            Alias path )
+            Alias (Nonempty_list.to_list path) )
       ]
   ;;
 
@@ -141,7 +145,6 @@ module Source = struct
   ;;
 
   let make ~impl ~intf path =
-    if path = [] then Code_error.raise "path cannot be empty" [];
     (match impl, intf with
      | None, None ->
        Code_error.raise
@@ -153,7 +156,7 @@ module Source = struct
   ;;
 
   let has t ~ml_kind = Ml_kind.Dict.get t.files ml_kind |> Option.is_some
-  let name t = List.last t.path |> Option.value_exn
+  let name t = Nonempty_list.last t.path
   let path t = t.path
 
   let choose_file { files = { impl; intf }; path = _ } =
@@ -188,6 +191,8 @@ module Source = struct
     | None -> base
     | Some i -> i :: base
   ;;
+
+  let files_by_ml_kind t = t.files
 
   let map_files t ~f =
     let files = Ml_kind.Dict.mapi ~f t.files in

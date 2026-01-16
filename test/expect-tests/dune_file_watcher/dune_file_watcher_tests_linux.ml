@@ -9,7 +9,7 @@ let%expect_test _ =
   let watcher =
     Dune_file_watcher.create_default
       ~scheduler:
-        { spawn_thread = (fun f -> ignore (Thread.create f () : Thread.t))
+        { spawn_thread = (fun f -> Thread.create f ())
         ; thread_safe_send_emit_events_job =
             (fun job ->
               critical_section mutex ~f:(fun () ->

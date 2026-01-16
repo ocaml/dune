@@ -1,7 +1,5 @@
 Override a source when multiple projects in a workspace set it.
 
-  $ . ../helpers.sh
-
 Here we demonstrate that projects override their sub projects:
 
   $ mkdir a && cd a
@@ -37,7 +35,7 @@ Here we demonstrate that projects override their sub projects:
   - bar.dev
 
   $ print_source "bar.dev"
-  (source (fetch (url file://PWD/_bar))) (dev) 
+  (source (fetch (url file://PWD/_bar)))
 
   $ cd ..
 
@@ -70,5 +68,5 @@ select a priority:
   4 |  (package (name bar)))
        ^^^^^^^^^^^^^^^^^^^^
   Error: package "bar" is defined in more than one source
-  it is also defined in prj1/dune-project:4
+  it is also defined in prj2/dune-project:4
   [1]

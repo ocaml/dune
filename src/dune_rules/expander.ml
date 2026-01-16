@@ -77,11 +77,11 @@ let set_scope t ~dir ~project ~scope ~scope_host =
 let set_artifacts t ~artifacts_host = { t with artifacts_host }
 let set_expanding_what t x = { t with expanding_what = x }
 
-let map_exe t p =
+let map_exe ~force_host t prog args =
   match t.expanding_what with
-  | Deps_like_field -> p
+  | Deps_like_field -> prog, prog, args
   | Nothing_special | User_action _ | User_action_without_targets _ ->
-    Context.map_exe t.context p
+    Context.map_exe ~force_host t.context prog args
 ;;
 
 let extend_env t ~env =
@@ -187,6 +187,7 @@ let expand_artifact ~source t artifact arg =
   | Pform.Artifact.Mod kind ->
     let name =
       Module_name.of_string_allow_invalid (Dune_lang.Template.Pform.loc source, name)
+      |> Module_name.Unchecked.allow_invalid
     in
     (match Artifacts_obj.lookup_module artifacts name with
      | None -> does_not_exist ~what:"Module" (Module_name.to_string name)
@@ -521,10 +522,7 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
     (let+ ocaml = ocaml in
      lib_config_var var ocaml.lib_config)
     |> static
-  | Os v ->
-    static
-      (let+ v = Lock_dir.Sys_vars.(os poll v) in
-       [ Value.String (Option.value v ~default:"") ])
+  | Os v -> static Lock_dir.Sys_vars.(os_values poll v)
   | Ext_exe
   | Cpp
   | Pa_cpp
@@ -643,7 +641,13 @@ let expand_pform_macro
     (* This case is for %{path-no-dep:...} which was only allowed inside
            jbuild files *)
     assert false
-  | Exe -> Need_full_expander (fun t -> With (dep (map_exe t (relative ~source t.dir s))))
+  | Exe ->
+    Need_full_expander
+      (fun t ->
+        With
+          (dep
+             (match map_exe ~force_host:false t (relative ~source t.dir s) [] with
+              | dep, _, _ -> dep)))
   | Dep -> Need_full_expander (fun t -> With (dep (relative ~source t.dir s)))
   | Bin ->
     Need_full_expander

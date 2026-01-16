@@ -1,5 +1,4 @@
-open Stdune
-module Scheduler = Dune_engine.Scheduler
+open Import
 module Checksum = Dune_pkg.Checksum
 module Rev_store = Dune_pkg.Rev_store
 module Fetch = Dune_pkg.Fetch
@@ -32,13 +31,11 @@ let serve_once ~filename =
   Http.Server.start server;
   let port = Http.Server.port server in
   let thread =
-    Thread.create
-      (fun server ->
-         Http.Server.accept server ~f:(fun session ->
-           let () = Http.Server.accept_request session in
-           Http.Server.respond_file session ~file:filename);
-         Http.Server.stop server)
-      server
+    Scheduler.spawn_thread (fun () ->
+      Http.Server.accept server ~f:(fun session ->
+        let () = Http.Server.accept_request session in
+        Http.Server.respond_file session ~file:filename);
+      Http.Server.stop server)
   in
   port, thread
 ;;
@@ -72,7 +69,7 @@ let download ?(reproducible = true) ~unpack ~port ~filename ~target ?checksum ()
 let run thunk =
   let on_event _config _event = () in
   let config : Scheduler.Config.t =
-    { concurrency = 1; stats = None; print_ctrl_c_warning = false; watch_exclusions = [] }
+    { concurrency = 1; print_ctrl_c_warning = false; watch_exclusions = [] }
   in
   Scheduler.Run.go config ~on_event (fun () ->
     let open Fiber.O in

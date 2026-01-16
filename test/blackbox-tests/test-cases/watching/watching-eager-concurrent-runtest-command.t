@@ -12,7 +12,6 @@ Define a test that just prints "Hello, World!"
   $ dune build --watch &
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
   Hello, World!
 
 Make sure the RPC server is properly started:
@@ -23,11 +22,6 @@ Test that we can run a test while another instance of dune is running in watch
 mode:
   $ dune runtest 2>&1
   Success
-
-Test that passing extra arguments to `dune runtest` prints a warning when
-running concurrently with another instance of dune in watch mode:
-  $ dune runtest --auto-promote 2>&1 | tr '\n' ' ' | sed 's/(pid: [0-9]*)/(pid: PID)/'
-  Warning: Your build request is being forwarded to a running Dune instance (pid: PID). Note that certain command line arguments may be ignored. Success 
 
   $ dune shutdown
   $ wait

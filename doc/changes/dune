@@ -6,3 +6,16 @@
    (glob_files *.md)))
  (action
   (run bash ./forbid-files.sh %{md})))
+
+(rule
+ (alias runtest)
+ (deps forbid-files.sh)
+ (action
+  (run %{bin:bash} -n %{deps})))
+
+(rule
+ (alias runtest)
+ (enabled_if %{bin-available:shellcheck})
+ (deps forbid-files.sh)
+ (action
+  (run %{bin:shellcheck} -s bash %{deps})))

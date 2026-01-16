@@ -152,7 +152,7 @@ let libs db (context : Context.t) =
           dir
           exes.buildable.libraries
           exes.buildable.preprocess
-          (List.map (Nonempty_list.to_list exes.names) ~f:snd)
+          (Nonempty_list.to_list_map exes.names ~f:snd)
           exes.package
           Item.Kind.Executables
           (exes_extensions ocaml.lib_config exes.modes)
@@ -175,7 +175,7 @@ let libs db (context : Context.t) =
           dir
           tests.exes.buildable.libraries
           tests.exes.buildable.preprocess
-          (List.map (Nonempty_list.to_list tests.exes.names) ~f:snd)
+          (Nonempty_list.to_list_map tests.exes.names ~f:snd)
           (if Option.is_none tests.package then tests.exes.package else tests.package)
           Item.Kind.Tests
           (exes_extensions ocaml.lib_config tests.exes.modes)
@@ -205,7 +205,7 @@ let term =
   and+ _ = Describe_lang_compat.arg
   and+ format = Describe_format.arg in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config
+  Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
   let* setup = Import.Main.setup () in

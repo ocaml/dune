@@ -2,7 +2,7 @@ Tests that changing the dependencies of a project cause lockdir validation to
 fail due to the dependency hash not matching the hash stored in the lockdir.
 
 Dummy opam repo so we can generate lockdirs
-  $ . ./helpers.sh
+
   $ mkrepo
   $ mkpkg a <<EOF
   > EOF

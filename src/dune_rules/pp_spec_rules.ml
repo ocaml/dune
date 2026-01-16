@@ -276,7 +276,8 @@ let pp_one_module
              and* () = preprocessor_deps in
              Command.expand_no_targets
                ~dir:(Super_context.context sctx |> Context.build_dir |> Path.build)
-               (S [ Dep (Path.build exe); As driver_flags; As flags ]))
+               (S [ Dep (Path.build exe); As driver_flags; As flags ])
+             >>| Appendable_list.to_list)
         in
         [ "-ppx"; String.quote_list_for_shell args ]
       in

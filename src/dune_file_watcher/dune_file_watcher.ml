@@ -51,7 +51,7 @@ end
 
 module Scheduler = struct
   type t =
-    { spawn_thread : (unit -> unit) -> unit
+    { spawn_thread : (unit -> unit) -> Thread.t
     ; thread_safe_send_emit_events_job : (unit -> Event.t list) -> unit
     }
 end
@@ -142,7 +142,7 @@ type kind =
       ; scheduler : Scheduler.t
       ; source : Fsevents.t
       ; sync : Fsevents.t
-      ; latency : float
+      ; latency : Time.Span.t
       ; on_event : Fsevents.Event.t -> Path.t -> Event.t option
       }
   | Inotify of Inotify_lib.t
@@ -191,6 +191,25 @@ let process_inotify_event
        create_event_unless_excluded ~kind:Deleted ~path:from
        @ create_event_unless_excluded ~kind:Created ~path:to_)
   | Queue_overflow -> [ Queue_overflow ]
+;;
+
+let emit_events events =
+  Dune_trace.emit_all ~buffered:true File_watcher (fun () ->
+    List.map events ~f:(fun (event : Event.t) ->
+      Dune_trace.Event.file_watcher
+        (match event with
+         | Queue_overflow -> `Queue_overflow
+         | Sync sync -> `Sync (Sync_id.to_int sync)
+         | Watcher_terminated -> `Watcher_terminated
+         | Fs_memo_event { path; kind } ->
+           let kind =
+             match kind with
+             | Created -> `Created
+             | Deleted -> `Deleted
+             | File_changed -> `File_changed
+             | Unknown -> `Unknown
+           in
+           `File (path, kind))))
 ;;
 
 let shutdown t =
@@ -427,12 +446,16 @@ let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) should_excl
                 path
             | Moved _ | Queue_overflow -> None
           in
-          match is_fs_sync_event_generated_by_dune with
-          | None -> process_inotify_event event should_exclude
-          | Some path ->
-            (match Fs_sync.consume_event sync_table path with
-             | None -> []
-             | Some id -> [ Event.Sync id ]))))
+          let events =
+            match is_fs_sync_event_generated_by_dune with
+            | None -> process_inotify_event event should_exclude
+            | Some path ->
+              (match Fs_sync.consume_event sync_table path with
+               | None -> []
+               | Some id -> [ Event.Sync id ])
+          in
+          emit_events events;
+          events)))
     ~log_error:(fun error -> Console.print [ Pp.text error ])
 ;;
 
@@ -466,7 +489,7 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend ~watch_exclusi
       scheduler.thread_safe_send_emit_events_job job
     done
   in
-  scheduler.spawn_thread (fun () -> worker_thread pipe);
+  let (_ : Thread.t) = scheduler.spawn_thread (fun () -> worker_thread pipe) in
   { kind = Fswatch { pid; wait_for_watches_established = wait }; sync_table }
 ;;
 
@@ -509,7 +532,7 @@ let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
     Thread.delay debounce_interval;
     buffer_thread ()
   in
-  scheduler.spawn_thread buffer_thread;
+  let (_ : Thread.t) = scheduler.spawn_thread buffer_thread in
   res
 ;;
 
@@ -562,7 +585,12 @@ let fsevents_standard_event ~should_exclude event path =
     Some (Event.Fs_memo_event { Fs_memo_event.kind; path }))
 ;;
 
-let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) ~should_exclude () =
+let create_fsevents
+      ?(latency = Time.Span.of_secs 0.2)
+      ~(scheduler : Scheduler.t)
+      ~should_exclude
+      ()
+  =
   prepare_sync ();
   let sync_table = Table.create (module String) 64 in
   let sync =
@@ -596,17 +624,19 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) ~should_exclude 
   let cv = Condition.create () in
   let dispatch_queue_ref = ref None in
   let mutex = Mutex.create () in
-  scheduler.spawn_thread (fun () ->
-    let dispatch_queue = Fsevents.Dispatch_queue.create () in
-    Mutex.lock mutex;
-    dispatch_queue_ref := Some dispatch_queue;
-    Condition.signal cv;
-    Mutex.unlock mutex;
-    Fsevents.start source dispatch_queue;
-    Fsevents.start sync dispatch_queue;
-    match Fsevents.Dispatch_queue.wait_until_stopped dispatch_queue with
-    | Ok () -> ()
-    | Error exn -> Code_error.raise "fsevents callback raised" [ "exn", Exn.to_dyn exn ]);
+  let (_ : Thread.t) =
+    scheduler.spawn_thread (fun () ->
+      let dispatch_queue = Fsevents.Dispatch_queue.create () in
+      Mutex.lock mutex;
+      dispatch_queue_ref := Some dispatch_queue;
+      Condition.signal cv;
+      Mutex.unlock mutex;
+      Fsevents.start source dispatch_queue;
+      Fsevents.start sync dispatch_queue;
+      match Fsevents.Dispatch_queue.wait_until_stopped dispatch_queue with
+      | Ok () -> ()
+      | Error exn -> Code_error.raise "fsevents callback raised" [ "exn", Exn.to_dyn exn ])
+  in
   let external_ = Watch_trie.empty in
   let dispatch_queue =
     Mutex.lock mutex;
@@ -659,11 +689,13 @@ let create_fswatch_win ~(scheduler : Scheduler.t) ~debounce_interval:sleep ~shou
   let sync_table = Table.create (module String) 64 in
   let t = Fswatch_win.create () in
   Fswatch_win.add t (Path.to_absolute_filename Path.root);
-  scheduler.spawn_thread (fun () ->
-    while true do
-      let events = Fswatch_win.wait t ~sleep in
-      List.iter ~f:(fswatch_win_callback ~scheduler ~sync_table ~should_exclude) events
-    done);
+  let (_ : Thread.t) =
+    scheduler.spawn_thread (fun () ->
+      while true do
+        let events = Fswatch_win.wait t ~sleep in
+        List.iter ~f:(fswatch_win_callback ~scheduler ~sync_table ~should_exclude) events
+      done)
+  in
   { kind = Fswatch_win { t; scheduler }; sync_table }
 ;;
 

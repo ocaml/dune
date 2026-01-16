@@ -8,7 +8,7 @@ module Args0 = struct
     | `Targets
     ]
 
-  type expand = dir:Path.t -> string list Action_builder.t
+  type expand = dir:Path.t -> string Appendable_list.t Action_builder.t
 
   type _ t =
     | A : string -> _ t
@@ -96,10 +96,7 @@ let rec expand
   | Hidden_targets fns ->
     Action_builder.return Appendable_list.empty
     |> Action_builder.with_file_targets ~file_targets:fns
-  | Expand f ->
-    f ~dir
-    |> Action_builder.map ~f:Appendable_list.of_list
-    |> Action_builder.with_no_targets
+  | Expand f -> f ~dir |> Action_builder.with_no_targets
 
 and expand_no_targets ~dir (t : without_targets t) =
   let { Action_builder.With_targets.build; targets } = expand ~dir t in
@@ -162,9 +159,7 @@ module Args = struct
       Action_builder.create_memo
         "Command.Args.memo"
         ~input:(module Path)
-        ~cutoff:(List.equal String.equal)
-        (fun dir ->
-           expand_no_targets ~dir t |> Action_builder.map ~f:Appendable_list.to_list)
+        (fun dir -> expand_no_targets ~dir t)
     in
     Expand (fun ~dir -> Action_builder.exec_memo memo dir)
   ;;
@@ -174,11 +169,3 @@ module Ml_kind = struct
   let flag t = Ml_kind.choose ~impl:(Args.A "-impl") ~intf:(A "-intf") t
   let ppx_driver_flag t = Ml_kind.choose ~impl:(Args.A "--impl") ~intf:(A "--intf") t
 end
-
-let expand ~dir args =
-  expand ~dir args |> Action_builder.With_targets.map ~f:Appendable_list.to_list
-;;
-
-let expand_no_targets ~dir t =
-  expand_no_targets ~dir t |> Action_builder.map ~f:Appendable_list.to_list
-;;

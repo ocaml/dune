@@ -11,7 +11,7 @@ val reset : unit -> unit
 module Timer : sig
   module Measure : sig
     type t =
-      { cumulative_time : float
+      { cumulative_time : Time.Span.t
       ; count : int
       }
   end

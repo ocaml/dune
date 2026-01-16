@@ -254,14 +254,11 @@ let build_cm
         Resolve.Memo.read (Compilation_context.parameters cctx)
         >>| List.concat_map ~f:(fun m -> [ "-parameter"; Module_name.to_string m ]))
    in
-   let flags, sandbox =
-     let flags =
-       Command.Args.dyn (Ocaml_flags.get (Compilation_context.flags cctx) mode)
-     in
+   let flags = Command.Args.dyn (Ocaml_flags.get (Compilation_context.flags cctx) mode) in
+   let pp_flags, sandbox =
      match Module.pp_flags m with
-     | None -> flags, sandbox
-     | Some (pp, sandbox') ->
-       S [ flags; Command.Args.dyn pp ], Sandbox_config.inter sandbox sandbox'
+     | None -> Command.Args.empty, sandbox
+     | Some (pp, sandbox') -> Command.Args.dyn pp, Sandbox_config.inter sandbox sandbox'
    in
    let output =
      match phase with
@@ -301,6 +298,7 @@ let build_cm
             ~dir:(Path.build (Context.build_dir ctx))
             compiler
             [ flags
+            ; pp_flags
             ; cmt_args
             ; Command.Args.S obj_dirs
             ; Command.Args.as_any
@@ -555,9 +553,13 @@ let root_source entries =
 ;;
 
 let build_root_module cctx root_module =
+  let for_ = Compilation_context.for_ cctx in
   let sctx = Compilation_context.super_context cctx in
   let entries =
-    Root_module.entries sctx ~requires_compile:(Compilation_context.requires_compile cctx)
+    Root_module.entries
+      sctx
+      ~requires_compile:(Compilation_context.requires_compile cctx)
+      ~for_
   in
   let cctx = Compilation_context.for_root_module cctx root_module in
   let file = Option.value_exn (Module.file root_module ~ml_kind:Impl) in

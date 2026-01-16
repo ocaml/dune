@@ -18,7 +18,8 @@ Using same melange.emit target in two contexts
   $ cat > a/dune << EOF
   > (melange.emit
   >  (target foo)
-  >  (enabled_if (= %{context_name} "default")))
+  >  (enabled_if (= %{context_name} "default"))
+  >  (emit_stdlib false))
   > EOF
   $ cat > a/foo.ml <<EOF
   > let () = print_endline "foo"
@@ -27,7 +28,8 @@ Using same melange.emit target in two contexts
   $ cat > b/dune << EOF
   > (melange.emit
   >  (target foo)
-  >  (enabled_if (= %{context_name} "alt-context")))
+  >  (enabled_if (= %{context_name} "alt-context"))
+  >  (emit_stdlib false))
   > EOF
   $ cat > b/foo.ml <<EOF
   > let () = print_endline "foo"

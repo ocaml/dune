@@ -1,20 +1,22 @@
-  $ alias dune_printenv="dune printenv --profile default --field c_flags --field cxx_flags"
+  $ printenv() {
+  > dune printenv --profile default --field c_flags --field cxx_flags $@
+  > }
 
-  $ dune_printenv .
+  $ printenv .
   (c_flags (":standard + in ."))
   (cxx_flags (":standard + in ."))
 
-  $ dune_printenv src
+  $ printenv src
   (c_flags
    (":standard + in ." ":standard + in src"))
   (cxx_flags
    (":standard + in ." ":standard + in src"))
 
-  $ dune_printenv bin
+  $ printenv bin
   (c_flags ("in bin"))
   (cxx_flags ("in bin"))
 
-  $ dune_printenv run
+  $ printenv run
   (c_flags (-DTEST_C))
   (cxx_flags (-DTEST_CPP))
 

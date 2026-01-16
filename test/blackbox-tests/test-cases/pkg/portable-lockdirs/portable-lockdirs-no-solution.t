@@ -1,6 +1,5 @@
 Demonstrate the case where a project can't be solved at all.
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

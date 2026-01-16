@@ -1,5 +1,8 @@
 (** Command line flags *)
 
+(** Wrapper for target executables in cross-compilation: (toolchain, prog, args) *)
+val target_exec : (string * string * string list) option ref
+
 val report_errors_config : Report_errors_config.t ref
 
 (** Stop the build upon encountering an error. *)
@@ -10,12 +13,6 @@ val capture_outputs : bool ref
 
 (** Always print backtraces, to help debugging dune itself *)
 val debug_backtraces : bool -> unit
-
-(** Print debug info for cached file-system operations *)
-val debug_fs_cache : bool ref
-
-(** Print debug info when loading rules in directories *)
-val debug_load_dir : bool ref
 
 module Promote : sig
   type t =

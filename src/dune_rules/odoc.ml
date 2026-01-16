@@ -339,7 +339,7 @@ let compile_module
                  (Obj_dir.Module.cmti_file
                     ~cm_kind:
                       (match mode with
-                       | Lib_mode.Ocaml _ -> Ocaml Cmi
+                       | Compilation_mode.Ocaml -> Ocaml Cmi
                        | Melange -> Melange Cmi)
                     obj_dir
                     m))
@@ -440,14 +440,14 @@ let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
   |> Modules.fold ~init:[] ~f:(fun m acc ->
     let compiled =
       let modes = Lib_info.modes info in
-      let mode = Lib_mode.Map.Set.for_merlin modes in
+      let { Compilation_mode.for_merlin; _ } = Compilation_mode.of_mode_set modes in
       compile_module
         sctx
         ~includes
         ~dep_graphs:(Compilation_context.dep_graphs cctx)
         ~obj_dir
         ~pkg_or_lnu
-        ~mode
+        ~mode:for_merlin
         m
     in
     compiled :: acc)
@@ -613,7 +613,11 @@ let libs_of_pkg ctx ~pkg =
 ;;
 
 let entry_modules_by_lib sctx lib =
-  Dir_contents.modules_of_local_lib sctx lib >>| Modules.entry_modules
+  let info = Lib.Local.info lib in
+  let { Compilation_mode.for_merlin; _ } =
+    Compilation_mode.of_mode_set (Lib_info.modes info)
+  in
+  Dir_contents.modules_of_local_lib sctx lib ~for_:for_merlin >>| Modules.entry_modules
 ;;
 
 let entry_modules sctx ~pkg =
@@ -759,11 +763,16 @@ let setup_pkg_rules_def memo_name f =
   let module Input = struct
     module Super_context = Super_context.As_memo_key
 
-    type t = Super_context.t * Package.Name.t
+    type t = Super_context.t * Package.Name.t * Compilation_mode.t
 
-    let equal (s1, p1) (s2, p2) = Package.Name.equal p1 p2 && Super_context.equal s1 s2
-    let hash = Tuple.T2.hash Super_context.hash Package.Name.hash
-    let to_dyn (_, package) = Package.Name.to_dyn package
+    let equal (s1, p1, c1) (s2, p2, c2) =
+      Package.Name.equal p1 p2
+      && Super_context.equal s1 s2
+      && Compilation_mode.equal c1 c2
+    ;;
+
+    let hash = Tuple.T3.hash Super_context.hash Package.Name.hash Poly.hash
+    let to_dyn (_, package, _) = Package.Name.to_dyn package
   end
   in
   Memo.With_implicit_output.create
@@ -774,11 +783,11 @@ let setup_pkg_rules_def memo_name f =
 ;;
 
 let setup_pkg_odocl_rules_def =
-  let f (sctx, pkg) =
+  let f (sctx, pkg, for_) =
     let* libs = Super_context.context sctx |> Context.name |> libs_of_pkg ~pkg in
     let* requires =
       let libs = (libs :> Lib.t list) in
-      Lib.closure libs ~linking:false
+      Lib.closure libs ~linking:false ~for_
     in
     let* () = Memo.parallel_iter libs ~f:(setup_lib_odocl_rules sctx ~requires)
     and* _ =
@@ -795,8 +804,8 @@ let setup_pkg_odocl_rules_def =
   setup_pkg_rules_def "setup-package-odocls-rules" f
 ;;
 
-let setup_pkg_odocl_rules sctx ~pkg : unit Memo.t =
-  Memo.With_implicit_output.exec setup_pkg_odocl_rules_def (sctx, pkg)
+let setup_pkg_odocl_rules sctx ~pkg ~for_ : unit Memo.t =
+  Memo.With_implicit_output.exec setup_pkg_odocl_rules_def (sctx, pkg, for_)
 ;;
 
 let out_file (output : Output_format.t) odoc =
@@ -864,7 +873,7 @@ let setup_lib_html_rules sctx ~search_db lib =
 ;;
 
 let setup_pkg_html_rules_def =
-  let f (sctx, pkg) =
+  let f (sctx, pkg, _for_) =
     let ctx = Super_context.context sctx in
     let* libs = Context.name ctx |> libs_of_pkg ~pkg in
     let dir = Paths.html ctx (Pkg pkg) in
@@ -888,8 +897,8 @@ let setup_pkg_html_rules_def =
   setup_pkg_rules_def "setup-package-html-rules" f
 ;;
 
-let setup_pkg_html_rules sctx ~pkg : unit Memo.t =
-  Memo.With_implicit_output.exec setup_pkg_html_rules_def (sctx, pkg)
+let setup_pkg_html_rules sctx ~pkg ~for_ : unit Memo.t =
+  Memo.With_implicit_output.exec setup_pkg_html_rules_def (sctx, pkg, for_)
 ;;
 
 let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.t) =
@@ -1062,15 +1071,24 @@ let gen_rules sctx ~dir rest =
          let+ lib = Lib.DB.find lib_db lib in
          Option.bind ~f:Lib.Local.of_lib lib
        in
+       let for_ =
+         match lib with
+         | Some lib ->
+           let modes =
+             Lib_info.modes (Lib.Local.info lib) |> Compilation_mode.of_mode_set
+           in
+           modes.for_merlin
+         | None -> Ocaml
+       in
        let+ () =
          match lib with
          | None -> Memo.return ()
          | Some lib ->
            (match Lib_info.package (Lib.Local.info lib) with
             | None ->
-              let* requires = Lib.closure [ Lib.Local.to_lib lib ] ~linking:false in
+              let* requires = Lib.closure [ Lib.Local.to_lib lib ] ~linking:false ~for_ in
               setup_lib_odocl_rules sctx lib ~requires
-            | Some pkg -> setup_pkg_odocl_rules sctx ~pkg)
+            | Some pkg -> setup_pkg_odocl_rules sctx ~pkg ~for_)
        and+ () =
          let* packages = Dune_load.packages () in
          match
@@ -1079,7 +1097,7 @@ let gen_rules sctx ~dir rest =
          | None -> Memo.return ()
          | Some pkg ->
            let name = Package.name pkg in
-           setup_pkg_odocl_rules sctx ~pkg:name
+           setup_pkg_odocl_rules sctx ~pkg:name ~for_
        in
        ())
   | [ "_html"; lib_unique_name_or_pkg ] ->
@@ -1093,6 +1111,15 @@ let gen_rules sctx ~dir rest =
          let+ lib = Lib.DB.find lib_db lib in
          Option.bind ~f:Lib.Local.of_lib lib
        in
+       let for_ =
+         match lib with
+         | Some lib ->
+           let modes =
+             Lib_info.modes (Lib.Local.info lib) |> Compilation_mode.of_mode_set
+           in
+           modes.for_merlin
+         | None -> Ocaml
+       in
        let+ () =
          match lib with
          | None -> Memo.return ()
@@ -1102,7 +1129,7 @@ let gen_rules sctx ~dir rest =
               (* lib with no package above it *)
               let* search_db = search_db_for_lib sctx lib in
               setup_lib_html_rules sctx ~search_db lib
-            | Some pkg -> setup_pkg_html_rules sctx ~pkg)
+            | Some pkg -> setup_pkg_html_rules sctx ~pkg ~for_)
        and+ () =
          let* packages = Dune_load.packages () in
          match
@@ -1111,7 +1138,7 @@ let gen_rules sctx ~dir rest =
          | None -> Memo.return ()
          | Some pkg ->
            let name = Package.name pkg in
-           setup_pkg_html_rules sctx ~pkg:name
+           setup_pkg_html_rules sctx ~pkg:name ~for_
        in
        ())
   | _ -> Memo.return (Gen_rules.redirect_to_parent Gen_rules.Rules.empty)

@@ -8,7 +8,7 @@ installed by Dune while building the Homebrew package.
 
 To use Dune package management to build a project as a Homebrew package, the
 project must have a source archive hosted online somewhere (e.g. a gzipped
-tarball on the project's Github release page).
+tarball on the project's GitHub release page).
 
 Before making a Homebrew package, it's a good idea to familiarize yourself with
 Homebrew's terminology and packaging conventions `here
@@ -16,19 +16,19 @@ Homebrew's terminology and packaging conventions `here
 
 Homebrew packages are recommended to be source-based, and for the source code
 to be explicitly versioned, so for this example assume ``my_app`` has a
-versioned archive hosted on Github with version ``0.1.0``.
+versioned archive hosted on GitHub with version ``0.1.0``.
 
 Homebrew can generate a starting point for a formula if you point it at a
-source archive hosted on Github:
+source archive hosted on GitHub:
 
 .. code:: console
 
   $ brew create https://github.com/me/my_app/archive/refs/tags/0.1.0.tar.gz
 
 A source archive like the one in the above command is generated when you
-release a project on Github. The above command will generate a file named
+release a project on GitHub. The above command will generate a file named
 ``my_app.rb`` in your current tap. All the project metadata will be filled in
-automatically based on the project on Github. All we need to do now is to
+automatically based on the project on GitHub. All we need to do now is to
 specify dependencies and the commands ``brew`` should run when installing the
 package.
 

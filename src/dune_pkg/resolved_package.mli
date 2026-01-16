@@ -5,30 +5,38 @@ type t
 val package : t -> OpamPackage.t
 val opam_file : t -> OpamFile.OPAM.t
 val loc : t -> Loc.t
+
+(** Determines whether the package is to be built using Dune or not *)
 val dune_build : t -> bool
+
+(** A resolved package representing Dune itself. Dune is always handled in a special
+    manner as we never want to build it so this value is a placeholder for cases
+    where the code needs a resolved package for Dune.
+ *)
 val dune : t
 
+(** Creates a resolved package from a source stored in Git, remote or local. *)
 val git_repo
   :  OpamPackage.t
-  -> opam_file:Path.Local.t
-  -> opam_file_contents:string
+  -> Loc.t * OpamFile.OPAM.t
   -> Rev_store.At_rev.t
   -> files_dir:Path.Local.t option
   -> url:OpamUrl.t option
   -> t
 
+(** Creates a resolved package from a source stored in the local file system. *)
 val local_fs
   :  OpamPackage.t
+  -> Loc.t * OpamFile.OPAM.t
   -> dir:Path.t
-  -> opam_file_path:Path.Local.t
   -> files_dir:Path.Local.t option
   -> url:OpamUrl.t option
   -> t
 
+(** Creates a resolved package from a source stored in the workspace. *)
 val local_package
   :  command_source:Local_package.command_source
-  -> Loc.t
-  -> OpamFile.OPAM.t
+  -> Loc.t * OpamFile.OPAM.t
   -> OpamPackage.t
   -> t
 

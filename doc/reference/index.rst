@@ -66,7 +66,7 @@ These documents specify the various features and languages present in Dune.
 
        cli
        ../dune-libs
-       ../caching
+       caches
 
   .. grid-item::
 

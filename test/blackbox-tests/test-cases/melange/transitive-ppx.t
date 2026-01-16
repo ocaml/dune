@@ -34,7 +34,7 @@ Test interaction of melange.emit library ppx dependencies
                         ^^^^^^^^^^^
   Error: Library "not-present" not found.
   -> required by library "mel-subdir" in _build/default/lib/impl
-  -> required by _build/default/META.mel-subdir
+  -> required by _build/default/mel-subdir.dune-package
   -> required by alias all
   -> required by alias default
   [1]

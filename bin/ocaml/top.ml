@@ -48,7 +48,7 @@ let term =
     Common.context_arg ~doc:(Some {|Select context where to build/run top.|})
   in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config (fun () ->
+  Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in
     build_exn (fun () ->
@@ -71,7 +71,8 @@ let term =
         Dune_rules.Utop.libs_under_dir sctx ~db ~dir:(Path.build dir)
       in
       let* requires =
-        Dune_rules.Resolve.Memo.read_memo (Dune_rules.Lib.closure ~linking:true libs)
+        Dune_rules.Resolve.Memo.read_memo
+          (Dune_rules.Lib.closure ~linking:true libs ~for_:Ocaml)
       in
       let* lib_config =
         let+ ocaml = Context.ocaml context in
@@ -225,7 +226,7 @@ module Module = struct
       Common.context_arg ~doc:(Some {|Select context where to build/run top.|})
     in
     let common, config = Common.init builder in
-    Scheduler.go_with_rpc_server ~common ~config (fun () ->
+    Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
       build_exn (fun () ->

@@ -186,6 +186,7 @@ include Sub_system.Register_end_point (struct
           ; scope
           ; source_modules
           ; compile_info = _
+          ; for_
           }
           ~expander
           ~(info : Info.t)
@@ -198,7 +199,7 @@ include Sub_system.Register_end_point (struct
       in
       let runner_name = Inline_tests_info.inline_test_runner in
       let main_module =
-        let name = Module_name.of_string "main" in
+        let name = Module_name.of_checked_string "main" in
         Module.generated ~kind:Impl ~src_dir:inline_test_dir [ name ]
       in
       (* Generate the runner file *)
@@ -284,10 +285,10 @@ include Sub_system.Register_end_point (struct
           let* more_libs =
             Resolve.Memo.List.map info.libraries ~f:(Lib.DB.resolve lib_db)
           in
-          Lib.closure ~linking:true ((lib :: libs) @ more_libs)
+          Lib.closure ~linking:true ((lib :: libs) @ more_libs) ~for_
         in
         Compilation_context.create
-          ()
+          for_
           ~super_context:sctx
           ~scope
           ~obj_dir

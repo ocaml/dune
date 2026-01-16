@@ -1,4 +1,3 @@
-  $ . ./helpers.sh
 
   $ outdated () {
   >  dune pkg outdated $@

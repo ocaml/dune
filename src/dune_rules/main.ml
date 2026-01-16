@@ -54,14 +54,7 @@ let execution_parameters =
   fun context ~dir -> Memo.exec memo (context, dir)
 ;;
 
-let init
-      ~stats
-      ~sandboxing_preference
-      ~cache_config
-      ~(cache_debug_flags : Dune_engine.Cache_debug_flags.t)
-      ()
-  : unit
-  =
+let init ~sandboxing_preference () : unit =
   let promote_source ~chmod ~delete_dst_if_it_is_a_directory ~src ~dst =
     let open Fiber.O in
     let* ctx = Path.Build.parent_exn src |> Context.DB.by_dir |> Memo.run in
@@ -76,16 +69,7 @@ let init
       ~conf
       ()
   in
-  let module Shared_cache =
-    Dune_cache.Shared.Make (struct
-      let debug_shared_cache = cache_debug_flags.shared_cache
-      let config = cache_config
-      let upload ~rule_digest:_ = Fiber.return ()
-      let download ~rule_digest:_ = Fiber.return ()
-    end)
-  in
   Build_config.set
-    ~stats
     ~sandboxing_preference
     ~promote_source
     ~contexts:
@@ -97,13 +81,10 @@ let init
          :: (Install.Context.install_context, Empty)
          :: (Fetch_rules.context, Empty)
          :: List.map contexts ~f:(fun ctx -> ctx, With_sources)))
-    ~cache_config
-    ~cache_debug_flags
     ~rule_generator:(module Gen_rules)
     ~implicit_default_alias
     ~execution_parameters
     ~source_tree:(module Source_tree)
-    ~shared_cache:(module Shared_cache)
     ~write_error_summary:(fun _ -> Fiber.return ())
 ;;
 

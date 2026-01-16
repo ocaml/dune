@@ -13,3 +13,8 @@ where ``<setting>`` is one of:
 
 - ``<number>``, a positive integer specifying the maximum number of jobs Dune
   may use simultaneously.
+
+This setting can also be controlled via the ``-j`` command-line option or the
+``DUNE_JOBS`` environment variable. The command-line option takes precedence
+over the environment variable, which takes precedence over the configuration
+file.

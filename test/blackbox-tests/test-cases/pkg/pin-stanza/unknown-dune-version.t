@@ -1,6 +1,5 @@
 We are unable to pin projects that the version of dune doesn't understand.
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 
@@ -23,7 +22,7 @@ We are unable to pin projects that the version of dune doesn't understand.
 # The location here is messed up b/c we are using a source path (incorrectly)
 # to construct the project
 
-  $ dune pkg lock 2>&1 | sed -E 's/3.[0-9]+/3.XX/g'
+  $ dune pkg lock 2>&1 | dune_cmd subst '3.[0-9]+' '3.XX'
   File "dune-project", line 1, characters 11-16:
   1 | (lang dune 3.XX)
                  ^^^^^
@@ -32,3 +31,4 @@ We are unable to pin projects that the version of dune doesn't understand.
   - 1.0 to 1.12
   - 2.0 to 2.9
   - 3.XX to 3.XX
+  [1]

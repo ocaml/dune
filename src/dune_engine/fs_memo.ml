@@ -83,10 +83,8 @@ end = struct
        | Ok () -> ()
        | Error `Does_not_exist ->
          Log.info
-           [ Pp.textf
-               "Attempted to add watch to non-existent directory %s."
-               (Path.to_string containing_dir)
-           ]);
+           "Attempted to add watch to non-existent directory"
+           [ "path", Dyn.string (Path.to_string containing_dir) ]);
       (match Dune_file_watcher.add_watch watcher path with
        | Error `Does_not_exist | Ok () -> ())
   ;;
@@ -142,17 +140,15 @@ end = struct
   let update_all : Path.Outside_build_dir.t -> Fs_cache.Update_result.t =
     let update t path =
       let result = Fs_cache.update t path in
-      if !Clflags.debug_fs_cache
-      then
-        Console.print_user_message
-          (User_message.make
-             [ Pp.hbox
-                 (Pp.textf
-                    "Updating %s cache for %S: %s"
-                    (Fs_cache.Debug.name t)
-                    (Path.Outside_build_dir.to_string path)
-                    (Dyn.to_string (Fs_cache.Update_result.to_dyn result)))
-             ]);
+      Dune_trace.emit ~buffered:true Cache (fun () ->
+        let cache_type = Fs_cache.Debug.name t in
+        let result =
+          match result with
+          | Fs_cache.Update_result.Skipped -> `Skipped
+          | Updated { changed = true } -> `Changed
+          | Updated { changed = false } -> `Unchanged
+        in
+        Dune_trace.Event.Cache.fs_update ~cache_type ~path result);
       result
     in
     fun p ->
@@ -402,3 +398,6 @@ let handle_fs_event ({ kind; path } : Dune_file_watcher.Fs_memo_event.t)
 ;;
 
 let init = Watcher.init
+
+(* Register the Fs_memo implementation with the scheduler *)
+let () = Dune_scheduler.Scheduler.set_fs_memo_impl ~handle_fs_event ~init

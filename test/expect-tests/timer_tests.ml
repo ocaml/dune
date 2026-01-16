@@ -1,11 +1,10 @@
 open Stdune
 open Fiber.O
-module Scheduler = Dune_engine.Scheduler
+open Dune_scheduler
 
 let config =
   Dune_engine.Clflags.display := Short;
   { Scheduler.Config.concurrency = 1
-  ; stats = None
   ; print_ctrl_c_warning = false
   ; watch_exclusions = []
   }
@@ -16,11 +15,11 @@ let%expect_test "create and wait for timer" =
     ~on_event:(fun _ _ -> ())
     config
     (fun () ->
-       let now () = Unix.gettimeofday () in
+       let now () = Time.now () in
        let start = now () in
-       let duration = 0.2 in
-       let+ () = Scheduler.sleep ~seconds:duration in
-       assert (now () -. start >= duration);
+       let duration = Time.Span.of_secs 0.2 in
+       let+ () = Scheduler.sleep duration in
+       assert (Time.Span.to_secs (Time.diff (now ()) start) >= Time.Span.to_secs duration);
        print_endline "timer finished successfully");
   [%expect {| timer finished successfully |}]
 ;;
@@ -32,7 +31,10 @@ let%expect_test "multiple timers" =
     (fun () ->
        [ 0.3; 0.2; 0.1 ]
        |> Fiber.parallel_iter ~f:(fun duration ->
-         let+ () = Scheduler.sleep ~seconds:duration in
+         let+ () =
+           let duration = Time.Span.of_secs duration in
+           Scheduler.sleep duration
+         in
          printfn "finished %0.2f" duration));
   [%expect
     {|
@@ -53,7 +55,9 @@ let%expect_test "run process with timeout" =
          in
          Spawn.spawn ~prog ~argv:[ prog; "100000" ] () |> Pid.of_int
        in
-       let+ _ = Scheduler.wait_for_process ~timeout_seconds:0.1 pid in
+       let+ (_ : Proc.Process_info.t) =
+         Scheduler.wait_for_process ~timeout:(Time.Span.of_secs 0.1) pid
+       in
        print_endline "sleep timed out");
   [%expect
     {|

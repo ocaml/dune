@@ -30,6 +30,7 @@
   dune_rules
   dune_vcs
   dune_engine
+  dune_scheduler
   dune_targets
   dune_util
   dune_upgrader
@@ -43,7 +44,6 @@
   csexp
   csexp_rpc
   dune_rpc_impl
-  dune_rules_rpc
   dune_rpc_private
   dune_rpc_client
   spawn

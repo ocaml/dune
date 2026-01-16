@@ -21,14 +21,15 @@ Test `melange.runtime_deps` in a private library
   > (library
   >  (name foo)
   >  (modes melange)
-  >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (melange.runtime_deps index.txt))
   > EOF
   $ cat > lib/foo.ml <<EOF
+  > external readFileSync : string -> encoding:string -> string = "readFileSync"
+  > [@@mel.module "fs"]
   > let dirname = [%mel.raw "__dirname"]
   > let file_path = "./index.txt"
-  > let read_asset () = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
+  > let read_asset () = readFileSync (dirname ^ "/" ^ file_path) ~encoding:"utf8"
   > EOF
 
   $ mkdir assets
@@ -37,9 +38,11 @@ Test `melange.runtime_deps` in a private library
   > EOF
 
   $ cat > main.ml <<EOF
+  > external readFileSync : string -> encoding:string -> string = "readFileSync"
+  > [@@mel.module "fs"]
   > let dirname = [%mel.raw "__dirname"]
   > let file_path = "./assets/file.txt"
-  > let file_content = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
+  > let file_content = readFileSync (dirname ^ "/" ^ file_path) ~encoding:"utf8"
   > let () = Js.log file_content
   > let () = Js.log (Foo.read_asset ())
   > EOF

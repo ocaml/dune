@@ -18,7 +18,7 @@ let command =
     let _common, _config = Common.init builder in
     Dune_util.Global_lock.lock_exn ~timeout:None;
     Dune_engine.Target_promotion.files_in_source_tree_to_delete ()
-    |> Path.Source.Set.iter ~f:(fun p -> Path.unlink_no_err (Path.source p));
+    |> Path.Source.Set.iter ~f:(fun p -> Fpath.unlink_no_err (Path.Source.to_string p));
     Path.rm_rf Path.build_dir
   in
   Cmd.v (Cmd.info "clean" ~doc ~man) term

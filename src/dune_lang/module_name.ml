@@ -17,6 +17,61 @@ let add_suffix = ( ^ )
 let uncapitalize = String.uncapitalize
 let pp_quote fmt x = Format.fprintf fmt "%S" x
 
+module Unchecked = struct
+  type valid_name = t
+
+  module T = struct
+    type t =
+      { loc : Loc.t
+      ; original : string
+      ; name : valid_name
+      }
+
+    let compare t1 t2 = String.compare t1.name t2.name
+
+    let equal t1 t2 =
+      match compare t1 t2 with
+      | Eq -> true
+      | Gt | Lt -> false
+    ;;
+
+    let to_dyn t =
+      Dyn.record
+        [ "name", to_dyn t.name
+        ; "original", Dyn.string t.original
+        ; "loc", Loc.to_dyn t.loc
+        ]
+    ;;
+  end
+
+  include T
+  include Comparable.Make (T)
+
+  let validate_exn : t -> valid_name = fun t -> parse_string_exn (t.loc, t.original)
+  let allow_invalid t = t.name
+  let make ~loc s = { loc; original = s; name = String.capitalize s }
+
+  module Path = struct
+    module T = struct
+      type nonrec t = t Nonempty_list.t
+
+      let to_dyn t = Dyn.list to_dyn (Nonempty_list.to_list t)
+      let compare = Nonempty_list.compare ~compare
+
+      let to_string t =
+        Nonempty_list.to_list_map ~f:(fun x -> x.name) t |> String.concat ~sep:"."
+      ;;
+    end
+
+    include T
+
+    let equal x y = compare x y |> Ordering.is_eq
+    let uncapitalize s = to_string s |> String.uncapitalize
+
+    include Comparable.Make (T)
+  end
+end
+
 module Set = struct
   include String.Set
 
@@ -26,7 +81,10 @@ end
 module Map = String.Map
 module Infix = Comparator.Operators (String)
 
-let of_local_lib_name (loc, s) = parse_string_exn (loc, Lib_name.Local.to_string s)
+let of_local_lib_name (loc, s) =
+  Unchecked.make ~loc (Lib_name.Local.to_string s) |> Unchecked.validate_exn
+;;
+
 let to_local_lib_name s = Lib_name.Local.of_string s
 
 module Per_item = struct
@@ -56,10 +114,13 @@ module Per_item = struct
   ;;
 end
 
-let of_string_allow_invalid (_loc, s) =
+let of_string_allow_invalid (loc, s) =
   (* TODO add a warning here that is possible to disable *)
-  String.capitalize s
+  Unchecked.make ~loc s
 ;;
+
+let unchecked t = Unchecked.make ~loc:Loc.none t
+let of_checked_string = of_string
 
 module Unique = struct
   module T = struct
@@ -101,7 +162,8 @@ module Unique = struct
       | None -> fn
       | Some i -> String.take fn i
     in
-    of_name_assuming_needs_no_mangling (of_string_allow_invalid (loc, name))
+    of_name_assuming_needs_no_mangling
+      (Unchecked.allow_invalid (of_string_allow_invalid (loc, name)))
   ;;
 
   let to_dyn = to_dyn
@@ -113,11 +175,11 @@ end
 
 module Path = struct
   module T = struct
-    type nonrec t = t list
+    type nonrec t = t Nonempty_list.t
 
-    let to_dyn = Dyn.list to_dyn
-    let compare = List.compare ~compare
-    let to_string t = List.map ~f:to_string t |> String.concat ~sep:"."
+    let to_dyn t = Dyn.list to_dyn (Nonempty_list.to_list t)
+    let compare = Nonempty_list.compare ~compare
+    let to_string t = Nonempty_list.to_list_map ~f:to_string t |> String.concat ~sep:"."
   end
 
   include T
@@ -129,13 +191,16 @@ module Path = struct
   module Set = C.Set
   module Map = C.Map
 
-  let wrap path =
-    Unique.of_name_assuming_needs_no_mangling @@ String.concat ~sep:"__" path
+  let wrap (p :: path : t) =
+    Unique.of_name_assuming_needs_no_mangling @@ String.concat ~sep:"__" (p :: path)
   ;;
 
-  let append_double_underscore t = t @ [ "" ]
-  let encode (t : t) = List.map t ~f:encode
-  let decode = Decoder.(repeat decode)
+  let append_double_underscore t = Nonempty_list.(t @ [ "" ])
+  let encode (t :: ts : t) = List.map (t :: ts) ~f:encode
+  let decode = Decoder.(repeat decode >>| Nonempty_list.of_list_exn)
 end
 
-let wrap t ~with_ = Path.wrap (t :: with_)
+let wrap t ~with_ =
+  let (x :: xs : Path.t) = with_ in
+  Path.wrap (t :: x :: xs)
+;;

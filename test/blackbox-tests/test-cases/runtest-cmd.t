@@ -60,13 +60,16 @@ Passing no arguments to $ dune runtest should be equivalent to $ dune build
   File "mytest.t", line 1, characters 0-0:
   File "tests/filetest.t", line 1, characters 0-0:
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
+  [1]
 
 Passing the name of a test should only run that test.
 
   $ dune test mytest.t 2>&1 | grep "^File"
   File "mytest.t", line 1, characters 0-0:
+  [1]
   $ dune test tests/myothertest.t 2>&1 | grep "^File"
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
+  [1]
 
 Passing a directory should run all the tests in that directory (recursively).
 
@@ -75,20 +78,24 @@ Passing a directory should run all the tests in that directory (recursively).
   File "mytest.t", line 1, characters 0-0:
   File "tests/filetest.t", line 1, characters 0-0:
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
+  [1]
 
 - The tests/ subdirectory:
   $ dune test tests/ 2>&1 | grep "^File"
   File "tests/filetest.t", line 1, characters 0-0:
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
+  [1]
 
 - We can also build in _build/ directories:
   $ dune test _build/default 2>&1 | grep "^File"
   File "mytest.t", line 1, characters 0-0:
   File "tests/filetest.t", line 1, characters 0-0:
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
+  [1]
   $ dune test _build/default/tests 2>&1 | grep "^File"
   File "tests/filetest.t", line 1, characters 0-0:
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
+  [1]
 
 - We can build in absolute paths:
   $ dune test $PWD/mytest.t

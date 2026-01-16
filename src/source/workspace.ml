@@ -292,29 +292,65 @@ end
 
 module Context = struct
   module Target = struct
+    type named =
+      { name : Context_name.t
+      ; target_exec : (string * string list) option
+      }
+
     type t =
       | Native
-      | Named of Context_name.t
+      | Named of named
 
     let equal x y =
       match x, y with
       | Native, Native -> true
       | Native, _ | _, Native -> false
-      | Named x, Named y -> Context_name.equal x y
+      | Named x, Named y -> Context_name.equal x.name y.name
     ;;
 
     let t =
-      let+ context_name = Context_name.decode in
-      match Context_name.to_string context_name with
-      | "native" -> Native
-      | _ -> Named context_name
+      let open Dune_lang.Decoder in
+      peek
+      >>= function
+      | Some (List _) ->
+        enter
+          (fields
+             (let+ name = field "name" Context_name.decode
+              and+ target_exec =
+                field_o
+                  "target_exec"
+                  (Dune_lang.Syntax.since Stanza.syntax (3, 22)
+                   >>>
+                   let+ prog = string
+                   and+ args = repeat string in
+                   prog, args)
+              in
+              match Context_name.to_string name, target_exec with
+              | "native", Some _ ->
+                User_error.raise
+                  [ Pp.text "Native target cannot have target_exec specified" ]
+              | "native", None -> Native
+              | _ -> Named { name; target_exec }))
+      | _ ->
+        let+ context_name = Context_name.decode in
+        (match Context_name.to_string context_name with
+         | "native" -> Native
+         | _ -> Named { name = context_name; target_exec = None })
     ;;
 
     let to_dyn =
       let open Dyn in
       function
       | Native -> variant "Native" []
-      | Named name -> variant "Named" [ Context_name.to_dyn name ]
+      | Named ({ name; target_exec } : named) ->
+        variant
+          "Named"
+          [ record
+              [ "name", Context_name.to_dyn name
+              ; ( "target_exec"
+                , option (fun (prog, args) -> list string (prog :: args)) target_exec )
+              ]
+          ]
     ;;
 
     let add ts x =
@@ -653,7 +689,7 @@ module Context = struct
     n
     :: List.filter_map (targets t) ~f:(function
       | Native -> None
-      | Named s -> Some (Context_name.target n ~toolchain:s))
+      | Named { name; _ } -> Some (Context_name.target n ~toolchain:name))
   ;;
 
   let default ~x ~profile ~instrument_with =
@@ -682,7 +718,7 @@ module Context = struct
     native
     :: List.filter_map (targets t) ~f:(function
       | Native -> None
-      | Named toolchain ->
+      | Named { name = toolchain; _ } ->
         let name = Context_name.target name ~toolchain in
         Some (Build_context.create ~name))
   ;;
@@ -966,7 +1002,9 @@ let step1 clflags =
          Path.Source.root
        | Some (In_source_dir s) -> s)
   in
-  let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
+  let x =
+    Option.map x ~f:(fun s -> Context.Target.Named { name = s; target_exec = None })
+  in
   let superpose_with_command_line cl field =
     let+ x = field in
     lazy (Option.value cl ~default:(Lazy.force x))
@@ -1086,7 +1124,9 @@ let default clflags =
     =
     clflags
   in
-  let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
+  let x =
+    Option.map x ~f:(fun s -> Context.Target.Named { name = s; target_exec = None })
+  in
   let config =
     create_final_config
       ~config_from_config_file

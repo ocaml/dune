@@ -1,7 +1,5 @@
 Test the error cases for invalid opam repositories
 
-  $ . ../helpers.sh
-
   $ cat >dune-project <<EOF
   > (lang dune 3.8)
   > (package
@@ -12,8 +10,9 @@ Test the error cases for invalid opam repositories
   $ lock() {
   > out="$(dune pkg lock 2>&1)"
   > local code="$?"
-  > echo "$out" | sed 's/character.*:/characters X-X:/g' \
-  >   | sed 's/url ".*"/url ../g' \
+  > echo "$out" \
+  >   | dune_cmd subst 'character.*:' 'characters X-X:' \
+  >   | dune_cmd subst 'url ".*"' 'url ..' \
   >   | grep -v "\^"
   > return $code
   > }

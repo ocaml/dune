@@ -1,5 +1,8 @@
 open Import
 
+(** Collect all pins from all projects in the workspace. *)
+val project_pins : Dune_pkg.Pin.DB.t Memo.t
+
 val solve
   :  Workspace.t
   -> local_packages:Dune_pkg.Local_package.t Package_name.Map.t

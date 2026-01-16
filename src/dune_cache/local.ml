@@ -30,14 +30,15 @@ module Target = struct
   type t = { executable : bool }
 
   let create path =
-    match Path.Build.lstat path with
+    let path = Path.Build.to_string path in
+    match Unix.lstat path with
     | { Unix.st_kind = Unix.S_REG; st_perm; _ } ->
-      Path.Build.chmod path ~mode:(Path.Permissions.remove Path.Permissions.write st_perm);
+      Unix.chmod path (Path.Permissions.remove Path.Permissions.write st_perm);
       let executable = Path.Permissions.test Path.Permissions.execute st_perm in
       Some { executable }
     | { Unix.st_kind = Unix.S_DIR; st_perm; _ } ->
       (* Adding "executable" permissions to directories mean we can traverse them. *)
-      Path.Build.chmod path ~mode:(Path.Permissions.add Path.Permissions.execute st_perm);
+      Unix.chmod path (Path.Permissions.add Path.Permissions.execute st_perm);
       (* the value of [executable] here is ignored, but [Some] is meaningful. *)
       Some { executable = true }
     | (exception Unix.Unix_error _) | _ -> None
@@ -61,7 +62,7 @@ end
    [$file] is the shared cache entry for the empty file. After that, no more
    hard links on [$file] will be allowed, triggering the [EMLINK] code path. *)
 let link_even_if_there_are_too_many_links_already ~src ~dst =
-  try Path.link src dst with
+  try Fpath.link (Path.to_string src) (Path.to_string dst) with
   | Unix.Unix_error (Unix.EMLINK, _, _) ->
     Temp.with_temp_file
       ~dir:(Lazy.force temp_dir)
@@ -73,9 +74,10 @@ let link_even_if_there_are_too_many_links_already ~src ~dst =
         Io.copy_file ~src ~dst:temp_file ();
         (* This replaces [src], which has too many links already, with a fresh
            copy we've just created in the [temp_file]. *)
-        Path.rename temp_file src;
+        let src = Path.to_string src in
+        Unix.rename (Path.to_string temp_file) src;
         (* This should now succeed. *)
-        Path.link src dst)
+        Fpath.link src (Path.to_string dst))
 ;;
 
 module Artifacts = struct
@@ -123,14 +125,13 @@ module Artifacts = struct
   (* Step II of [store_skipping_metadata].
 
      Computing digests can be slow, so we do that in parallel. *)
-  let compute_digests_in ~temp_dir ~targets ~compute_digest
-    : Digest.t Targets.Produced.t Or_exn.t Fiber.t
+  let compute_digests_in ~temp_dir ~targets : Digest.t Targets.Produced.t Or_exn.t Fiber.t
     =
     let open Fiber.O in
     Fiber.collect_errors (fun () ->
       Targets.Produced.parallel_map targets ~f:(fun path { Target.executable } ->
         let file = Path.append_local temp_dir path in
-        compute_digest ~executable file))
+        Fiber.return (Dune_digest.file_with_executable_bit ~executable file)))
     >>| Result.map_error ~f:(function
       | exn :: _ -> exn.Exn_with_backtrace.exn
       | [] -> assert false)
@@ -163,7 +164,7 @@ module Artifacts = struct
                 Path.build (Path.Build.append_local artifacts.root target)
               in
               (match
-                 Path.unlink_no_err path_in_temp_dir;
+                 Fpath.unlink_no_err (Path.to_string path_in_temp_dir);
                  (* At first, we deduplicate the temporary file. Doing this
                     intermediate step allows us to keep the original target in case
                     the below link step fails. This might happen if the trimmer has
@@ -183,7 +184,9 @@ module Artifacts = struct
                     [rename] operation has a quirk where [path_in_temp_dir] can
                     remain on disk. This is not a problem because we clean the
                     temporary directory later. *)
-                 Path.rename path_in_temp_dir path_in_build_dir
+                 Unix.rename
+                   (Path.to_string path_in_temp_dir)
+                   (Path.to_string path_in_build_dir)
                with
                | exception e -> Store_result.Error e
                | () -> Already_present)
@@ -213,16 +216,14 @@ module Artifacts = struct
           Store_result.combine results result)
   ;;
 
-  let store_skipping_metadata ~mode ~targets ~compute_digest
-    : Store_artifacts_result.t Fiber.t
-    =
+  let store_skipping_metadata ~mode ~targets : Store_artifacts_result.t Fiber.t =
     Dune_cache_storage.with_temp_dir ~suffix:"artifacts" (function
       | Error exn -> Fiber.return (Store_artifacts_result.Error exn)
       | Ok temp_dir ->
         (match store_targets_to ~temp_dir ~targets ~mode with
          | Error exn -> Fiber.return (Store_artifacts_result.Error exn)
          | Ok () ->
-           compute_digests_in ~temp_dir ~targets ~compute_digest
+           compute_digests_in ~temp_dir ~targets
            >>| (function
             | Error exn -> Store_artifacts_result.Error exn
             | Ok artifacts ->
@@ -230,8 +231,8 @@ module Artifacts = struct
               Store_artifacts_result.of_store_result ~artifacts result)))
   ;;
 
-  let store ~mode ~rule_digest ~compute_digest targets : Store_artifacts_result.t Fiber.t =
-    let+ result = store_skipping_metadata ~mode ~targets ~compute_digest in
+  let store ~mode ~rule_digest targets : Store_artifacts_result.t Fiber.t =
+    let+ result = store_skipping_metadata ~mode ~targets in
     Store_artifacts_result.bind result ~f:(fun artifacts ->
       let result = store_metadata ~mode ~rule_digest ~metadata:[] artifacts in
       Store_artifacts_result.of_store_result ~artifacts result)
@@ -284,7 +285,7 @@ module Artifacts = struct
         if not (Path.exists path)
         then (
           Path.mkdir_p path;
-          Unwind.push unwind (fun () -> Path.rmdir path))
+          Unwind.push unwind (fun () -> Unix.rmdir (Path.to_string path)))
       in
       let mk_file file file_digest =
         let target = Path.Build.append_local artifacts.root file in
@@ -293,7 +294,7 @@ module Artifacts = struct
         (match mode with
          | Hardlink -> hardlink ~src ~dst
          | Copy -> copy ~src ~dst);
-        Unwind.push unwind (fun () -> Path.Build.unlink_no_err target)
+        Unwind.push unwind (fun () -> Fpath.unlink_no_err (Path.Build.to_string target))
       in
       try Targets.Produced.iteri artifacts ~f:mk_file ~d:mk_dir with
       | exn ->

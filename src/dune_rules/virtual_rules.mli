@@ -9,7 +9,14 @@ val setup_copy_rules_for_impl
   -> unit Memo.t
 
 val no_implements : t
-val impl : Super_context.t -> lib:Library.t -> scope:Scope.t -> t Memo.t
+
+val impl
+  :  Super_context.t
+  -> lib:Library.t
+  -> scope:Scope.t
+  -> for_:Compilation_mode.t
+  -> t Memo.t
+
 val impl_modules : t -> Modules.t -> Modules.With_vlib.t
 val stubs_o_files : t -> Path.t list
 val implements_parameter : t -> Module.t -> Module_name.t option Resolve.Memo.t

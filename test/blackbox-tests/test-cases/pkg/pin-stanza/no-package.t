@@ -1,7 +1,5 @@
 Here we try to pin a package to a source that doesn't define said package:
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 
@@ -21,9 +19,10 @@ Here we try to pin a package to a source that doesn't define said package:
   >  (depends bar))
   > EOF
 
-  $ dune pkg lock 2>&1 | sed 's#file://.*#$URL#g'
+  $ dune pkg lock 2>&1 | dune_cmd subst 'file://.*' '$URL'
   File "dune-project", line 4, characters 1-21:
   4 |  (package (name bar)))
        ^^^^^^^^^^^^^^^^^^^^
   Error: package bar doesn't exist in source
   $URL
+  [1]

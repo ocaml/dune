@@ -84,7 +84,7 @@ let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
     Console.print
       [ Pp.vbox @@ Pp.concat_map ~f:Pp.vbox paragraphs ~sep:(Pp.seq Pp.space Pp.space) ]
   in
-  Scheduler.go_with_rpc_server ~common ~config
+  Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
   Build.run_build_system ~common ~request

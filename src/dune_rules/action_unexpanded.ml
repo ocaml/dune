@@ -78,7 +78,11 @@ module Action_expander : sig
     (* Evaluate a path that "consumes" a target, such as in [(diff? ...
        <file>)] *)
     val consume_file : String_with_vars.t -> Path.Build.t t
-    val prog_and_args : String_with_vars.t -> (Action.Prog.t * string list) t
+
+    val prog_and_args
+      :  force_host:bool
+      -> String_with_vars.t
+      -> (Action.Prog.t * string list) t
 
     module At_rule_eval_stage : sig
       (* Expansion that happens at the time the rule is constructed rather than
@@ -376,7 +380,7 @@ end = struct
 
     let target = add_or_remove_target ~what:"Target" ~f:Path.Build.Map.set
 
-    let prog_and_args sw env acc =
+    let prog_args_and_deps ~force_host sw env acc =
       let b =
         let dir = Path.build env.dir in
         let loc = loc sw in
@@ -413,13 +417,24 @@ end = struct
                in
                Artifacts.binary ?hint ~loc:(Some loc) ~where artifacts s)
         in
-        let prog = Result.map prog ~f:(Expander.map_exe env.expander) in
         let args = Value.L.to_strings ~dir args in
-        prog, args
+        match prog with
+        | Ok prog ->
+          let dep, prog, args = Expander.map_exe ~force_host env.expander prog args in
+          Ok prog, args, [ dep ]
+        | Error _ as v -> v, args, []
       in
-      register_deps b env acc ~f:(function
-        | Ok p, _ -> [ p ]
-        | Error _, _ -> [])
+      register_deps b env acc ~f:(function _, _, deps -> deps)
+    ;;
+
+    let prog_and_args ~force_host sw env acc =
+      Memo.map
+        ~f:(fun (x, v) ->
+          ( Action_builder.bind
+              ~f:(fun (prog, args, _) -> Action_builder.return (prog, args))
+              x
+          , v ))
+        (prog_args_and_deps ~force_host sw env acc)
     ;;
   end
 end
@@ -429,31 +444,38 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
   let module E = Action_expander.E in
   let open Action_expander.O in
   let module O (* [O] for "outcome" *) = Action in
-  let expand_run prog args =
+  let expand_run ~force_host prog args =
     let+ args = A.all (List.map args ~f:E.strings)
-    and+ prog, more_args = E.prog_and_args prog in
+    and+ prog, more_args = E.prog_and_args ~force_host prog in
     let args = List.concat args in
     prog, more_args @ args
   in
-  match t with
-  | Run args ->
+  let expand_run_action ~force_host ~action_name args =
     let string_args =
       List.filter_map args ~f:(function
         | Slang.Literal sw -> Some sw
         | _ -> None)
     in
     if List.length string_args < List.length args
-    then User_error.raise [ Pp.text "All arguments to \"run\" action must be strings" ];
-    (match string_args with
-     | prog :: args ->
-       let+ prog, args = expand_run prog args in
-       O.Run (prog, Array.Immutable.of_list args)
-     | [] -> User_error.raise [ Pp.text "\"run\" action must have at least one argument" ])
+    then
+      User_error.raise
+        [ Pp.textf "All arguments to \"%s\" action must be strings" action_name ];
+    match string_args with
+    | prog :: args ->
+      let+ prog, args = expand_run ~force_host prog args in
+      O.Run (prog, Array.Immutable.of_list args)
+    | [] ->
+      User_error.raise
+        [ Pp.textf "\"%s\" action must have at least one argument" action_name ]
+  in
+  match t with
+  | Run args -> expand_run_action ~force_host:false ~action_name:"run" args
+  | Runexec args -> expand_run_action ~force_host:true ~action_name:"runexec" args
   | With_accepted_exit_codes (pred, t) ->
     let+ t = expand t in
     O.With_accepted_exit_codes (pred, t)
   | Dynamic_run (prog, args) ->
-    let+ prog, args = expand_run prog args in
+    let+ prog, args = expand_run ~force_host:false prog args in
     Action_plugin.action ~prog ~args
   | Chdir (fn, t) ->
     E.At_rule_eval_stage.path fn ~f:(fun dir ->

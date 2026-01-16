@@ -1,7 +1,5 @@
 Test the error message when unzip is needed but not installed.
 
-  $ . ./helpers.sh
-
   $ make_lockdir
 
 Set up our fake decompressor binaries, they all just copy the file to the
@@ -74,6 +72,7 @@ variable can escape to subseqent shell invocations on MacOS.)
   - unzip
   - bsdtar
   - tar
+  [1]
 
 Build with only GNU tar that can't extract ZIP archives:
 
@@ -85,6 +84,7 @@ Build with only GNU tar that can't extract ZIP archives:
   - unzip
   - bsdtar
   - tar
+  [1]
 
 Build with bsdtar that can extract ZIP archives, without unzip. It should work:
 

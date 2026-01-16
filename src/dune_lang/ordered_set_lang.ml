@@ -300,6 +300,22 @@ module Unexpanded = struct
     loop t.ast
   ;;
 
+  let decode_since_expanded_gen decoder ~since_expanded ~is_expanded =
+    let open Decoder in
+    let+ loc, t = located decoder
+    and+ ver = Syntax.get_exn Stanza.syntax in
+    if ver < since_expanded && not (is_expanded t)
+    then
+      Syntax.Error.since
+        loc
+        Stanza.syntax
+        since_expanded
+        ~what:"the ability to specify non-constant module lists";
+    t
+  ;;
+
+  let decode_since_expanded = decode_since_expanded_gen decode ~is_expanded
+
   let field_gen field ?check ?since_expanded is_expanded =
     let decode =
       match check with
@@ -309,18 +325,7 @@ module Unexpanded = struct
     let x = field decode in
     match since_expanded with
     | None -> x
-    | Some since_expanded ->
-      let open Decoder in
-      let+ loc, x = located x
-      and+ ver = Syntax.get_exn Stanza.syntax in
-      if ver < since_expanded && not (is_expanded x)
-      then
-        Syntax.Error.since
-          loc
-          Stanza.syntax
-          since_expanded
-          ~what:"the ability to specify non-constant module lists";
-      x
+    | Some since_expanded -> decode_since_expanded_gen x ~since_expanded ~is_expanded
   ;;
 
   let field ?check ?since_expanded name =

@@ -281,21 +281,18 @@ module Event = struct
         ; stage : Dune_trace.Event.Rpc.stage
         }
 
-  let emit t stats id =
-    Option.iter stats ~f:(fun stats ->
-      let event =
-        let id = Session_id.to_int id in
-        match t with
-        | Session stage -> Dune_trace.Event.Rpc.session ~id stage
-        | Message { kind; meth_; stage } ->
-          let kind =
-            match kind with
-            | Request id -> `Request (Dune_rpc_private.Id.to_sexp id)
-            | Notification -> `Notification
-          in
-          Dune_trace.Event.Rpc.message kind ~meth_ ~id stage
-      in
-      Dune_trace.emit stats event)
+  let emit t id =
+    Dune_trace.emit Rpc (fun () ->
+      let id = Session_id.to_int id in
+      match t with
+      | Session stage -> Dune_trace.Event.Rpc.session ~id stage
+      | Message { kind; meth_; stage } ->
+        let kind =
+          match kind with
+          | Request id -> `Request (Dune_rpc_private.Id.to_sexp id)
+          | Notification -> `Notification
+        in
+        Dune_trace.Event.Rpc.message kind ~meth_ ~id stage)
   ;;
 end
 
@@ -327,12 +324,9 @@ module H = struct
 
   (* TODO catch and convert dispatch users *)
 
-  let dispatch_notification (type a) (t : a t) stats (session : a Session.t) meth_ n =
+  let dispatch_notification (type a) (t : a t) (session : a Session.t) meth_ n =
     let kind = Notification in
-    Event.emit
-      (Message { kind; meth_; stage = Dune_trace.Event.Rpc.Start })
-      stats
-      (Session.id session);
+    Event.emit (Message { kind; meth_; stage = `Start }) (Session.id session);
     let+ result = V.Handler.handle_notification t.handler session n in
     let () =
       match result with
@@ -346,12 +340,12 @@ module H = struct
           ]
       | Ok r -> r
     in
-    Event.emit (Message { kind; meth_; stage = Stop }) stats (Session.id session)
+    Event.emit (Message { kind; meth_; stage = `Stop }) (Session.id session)
   ;;
 
-  let dispatch_request (type a) (t : a t) stats (session : a Session.t) meth_ r id =
+  let dispatch_request (type a) (t : a t) (session : a Session.t) meth_ r id =
     let kind = Request id in
-    Event.emit (Message { kind; meth_; stage = Start }) stats (Session.id session);
+    Event.emit (Message { kind; meth_; stage = `Start }) (Session.id session);
     let* response =
       let+ result =
         (* TODO instead of waiting for all errors, wait for the first one.
@@ -369,25 +363,25 @@ module H = struct
         in
         Error (Response.Error.create ~kind:Code_error ~message:"server error" ~payload ())
     in
-    Event.emit (Message { kind; meth_; stage = Stop }) stats (Session.id session);
+    Event.emit (Message { kind; meth_; stage = `Stop }) (Session.id session);
     match session.base.close.state with
     | `Closed -> Fiber.return ()
     | `Open -> session.base.send (Some [ Response (id, response) ])
   ;;
 
-  let run_session (type a) (t : a t) stats (session : a Session.t) =
+  let run_session (type a) (t : a t) (session : a Session.t) =
     let open Fiber.O in
     let* () =
       Fiber.Stream.In.parallel_iter session.base.queries ~f:(fun (message : Packet.t) ->
         match message with
         | Response resp -> Session.Stage1.response session.base resp
-        | Notification n -> dispatch_notification t stats session n.method_ n
-        | Request (id, r) -> dispatch_request t stats session r.method_ r id)
+        | Notification n -> dispatch_notification t session n.method_ n
+        | Request (id, r) -> dispatch_request t session r.method_ r id)
     in
     Session.Stage1.close session.base
   ;;
 
-  let negotiate_version (type a) (t : a stage1) stats (session : a Session.Stage1.t) =
+  let negotiate_version (type a) (t : a stage1) (session : a Session.Stage1.t) =
     let open Fiber.O in
     let* query = Fiber.Stream.In.read session.queries in
     match query with
@@ -424,10 +418,10 @@ module H = struct
                session.menu <- Some menu;
                let session = Session.of_stage1 session handler in
                let* () = t.base.on_upgrade session menu in
-               run_session { handler } stats session)))
+               run_session { handler } session)))
   ;;
 
-  let handle (type a) (t : a stage1) stats (session : a Session.Stage1.t) =
+  let handle (type a) (t : a stage1) (session : a Session.Stage1.t) =
     let open Fiber.O in
     let* () = Fiber.return () in
     let* query = Fiber.Stream.In.read session.queries in
@@ -456,7 +450,7 @@ module H = struct
                 in
                 session.send (Some [ Response (id, response) ])
               in
-              negotiate_version t stats session))
+              negotiate_version t session))
   ;;
 
   module Builder = struct
@@ -593,7 +587,7 @@ type t = Server : 'a H.stage1 -> t
 let make (type a) (h : a H.Builder.t) : t = Server (H.Builder.to_handler h)
 let version (Server h) = h.base.version
 
-let new_session (Server handler) stats ~name ~queries ~send =
+let new_session (Server handler) ~name ~queries ~send =
   let session = Fdecl.create Dyn.opaque in
   Fdecl.set
     session
@@ -611,7 +605,7 @@ let new_session (Server handler) stats ~name ~queries ~send =
       Fiber.fork_and_join_unit
         (fun () -> Fiber.Pool.run session.pool)
         (fun () ->
-           let* () = H.handle handler stats session in
+           let* () = H.handle handler session in
            Session.Stage1.close session)
   end
 ;;
@@ -639,7 +633,7 @@ module Make (S : sig
 struct
   open Fiber.O
 
-  let serve sessions stats server =
+  let serve sessions server =
     Fiber.Stream.In.parallel_iter sessions ~f:(fun session ->
       let session =
         let send = function
@@ -655,10 +649,10 @@ struct
           create_sequence (fun () -> S.read session) ~version:(version server) Packet.sexp
         in
         let name = S.name session in
-        new_session server stats ~name ~queries ~send
+        new_session server ~name ~queries ~send
       in
       let id = session#id in
-      Event.emit (Session Start) stats id;
+      Event.emit (Session `Start) id;
       let+ res =
         Fiber.map_reduce_errors
           (module Monoid.Unit)
@@ -668,16 +662,15 @@ struct
             (match exn.exn with
              | Dune_util.Report_error.Already_reported -> ()
              | _ ->
-               Log.info
-                 [ Pp.textf
-                     "encountered error serving rpc client (id %d)"
-                     (Session.Id.to_int id)
-                 ; Exn_with_backtrace.pp exn
-                 ]);
-            Dune_util.Report_error.report exn;
+               Log.warn
+                 "encountered error serving rpc client"
+                 [ "id", Dyn.int (Session.Id.to_int id)
+                 ; "error", Exn_with_backtrace.to_dyn exn
+                 ];
+               Dune_util.Report_error.report exn);
             session#close)
       in
-      Event.emit (Session Stop) stats id;
+      Event.emit (Session `Stop) id;
       match res with
       | Ok () -> ()
       | Error () ->

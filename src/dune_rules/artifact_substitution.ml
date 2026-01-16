@@ -675,12 +675,12 @@ let replace_if_different ~delete_dst_if_it_is_a_directory ~src ~dst =
       let dst_digest = Digest.file dst in
       Digest.equal temp_file_digest dst_digest
   in
-  if not up_to_date then Path.rename src dst
+  if not up_to_date then Unix.rename (Path.to_string src) (Path.to_string dst)
 ;;
 
 let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst () =
   (* We create a temporary file in the same directory to ensure it's on the same
-     partition as [dst] (otherwise, [Path.rename temp_file dst] won't work). The
+     partition as [dst] (otherwise, [Unix.rename temp_file dst] won't work). The
      prefix ".#" is used because Dune ignores such files and so creating this
      file will not trigger a rebuild. *)
   let temp_file =
@@ -696,7 +696,7 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst 
        let+ () = Conf.run_sign_hook conf ~has_subst temp_file in
        replace_if_different ~delete_dst_if_it_is_a_directory ~src:temp_file ~dst)
     ~finally:(fun () ->
-      Path.unlink_no_err temp_file;
+      Fpath.unlink_no_err (Path.to_string temp_file);
       Fiber.return ())
 ;;
 

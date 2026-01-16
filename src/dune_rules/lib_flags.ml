@@ -30,7 +30,7 @@ module Link_params = struct
       | Byte_with_stubs_statically_linked_in -> Memo.return @@ select_lib_files Mode.Byte
       | Native ->
         let+ native_archives =
-          let+ modules = Dir_contents.modules_of_lib sctx t in
+          let+ modules = Dir_contents.modules_of_lib sctx t ~for_:Ocaml in
           Lib_info.eval_native_archives_exn info ~modules
         in
         let lib_files = select_lib_files Mode.Native in

@@ -346,7 +346,7 @@ let solve_lock_dir
        | None -> solve_for_platforms)
     | false -> [ solver_env ]
   in
-  let time_start = Unix.gettimeofday () in
+  let time_start = Time.now () in
   let* repos =
     let repo_map = repositories_of_workspace workspace in
     let repo_names =
@@ -360,7 +360,7 @@ let solve_lock_dir
       ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
   in
   let* pins = resolve_project_pins project_pins in
-  let time_solve_start = Unix.gettimeofday () in
+  let time_solve_start = Time.now () in
   progress_state := Some Progress_indicator.Per_lockdir.State.Solving;
   let* result =
     solve_multiple_platforms
@@ -383,7 +383,9 @@ let solve_lock_dir
     | `All_error messages -> Error messages
     | `All_ok solver_result -> Ok (solver_result, [])
     | `Partial (solver_result, errors) ->
-      Log.info @@ pp_solve_errors_by_platforms errors;
+      Log.info
+        "Solver found partial solution"
+        [ "error_count", Dyn.int (List.length errors) ];
       let all_platforms =
         List.concat_map errors ~f:snd |> List.sort_uniq ~compare:Solver_env.compare
       in
@@ -402,8 +404,8 @@ let solve_lock_dir
                  ; Pp.nop
                  ; Pp.box
                    @@ Pp.text
-                        "See the log or run with --verbose for more details. Configure \
-                         platforms to solve for in the dune-workspace file."
+                        "See the trace file with --trace-file for more details. \
+                         Configure platforms to solve for in the dune-workspace file."
                  ]
           ] )
   in
@@ -418,14 +420,18 @@ let solve_lock_dir
       =
       solver_result
     in
-    let time_end = Unix.gettimeofday () in
+    let time_end = Time.now () in
     let maybe_perf_stats =
       if print_perf_stats
       then
         [ Pp.nop
         ; Pp.textf "Expanded packages: %d" num_expanded_packages
-        ; Pp.textf "Updated repos in: %.2fs" (time_solve_start -. time_start)
-        ; Pp.textf "Solved dependencies in: %.2fs" (time_end -. time_solve_start)
+        ; Pp.textf
+            "Updated repos in: %.2fs"
+            (Time.Span.to_secs (Time.diff time_solve_start time_start))
+        ; Pp.textf
+            "Solved dependencies in: %.2fs"
+            (Time.Span.to_secs (Time.diff time_end time_solve_start))
         ]
       else []
     in
@@ -560,7 +566,7 @@ let term =
   and+ print_perf_stats = Arg.(value & flag & info [ "print-perf-stats" ] ~doc:None) in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config (fun () ->
+  Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
     Pkg_common.check_pkg_management_enabled ()
     >>>

@@ -3,6 +3,9 @@
 open Import
 
 module Pkg_info : sig
+  (** Representation of the parsed package in a lock dir.
+
+     The [dev] field configures the "dev" filter from OPAM formulae. *)
   type t =
     { name : Package_name.t
     ; version : Package_version.t

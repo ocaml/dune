@@ -38,7 +38,7 @@ let create_temp_file ?(perms = 0o600) path =
 
 let destroy = function
   | Dir -> Path.rm_rf ~allow_external:true
-  | File -> Path.unlink_no_err
+  | File -> fun p -> Fpath.unlink_no_err (Path.to_string p)
 ;;
 
 let create_temp_dir ?perms path =
@@ -116,7 +116,7 @@ let destroy what fn =
 ;;
 
 let clear_dir dir =
-  (match Path.clear_dir dir with
+  (match Fpath.clear_dir (Path.to_string dir) with
    | Cleared -> ()
    | Directory_does_not_exist ->
      (* We can end up here if the temporary directory has already been cleared,
@@ -154,7 +154,7 @@ struct
     | temp_file ->
       M.protect
         ~f:(fun () -> f (Ok temp_file))
-        ~finally:(fun () -> Path.unlink_no_err temp_file)
+        ~finally:(fun () -> Fpath.unlink_no_err (Path.to_string temp_file))
   ;;
 
   let with_temp_dir ~parent_dir ~prefix ~suffix ~f =

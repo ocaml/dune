@@ -59,6 +59,8 @@ let archives ?(preds = []) lib =
   ]
 ;;
 
+let for_ = Compilation_mode.Ocaml
+
 let gen_lib pub_name lib ~version =
   let open Action_builder.O in
   let info = Lib.info lib in
@@ -87,10 +89,10 @@ let gen_lib pub_name lib ~version =
     | _ -> name
   in
   let to_names = Lib_name.Set.of_list_map ~f:name in
-  let* lib_deps = Resolve.Memo.read (Lib.requires lib) >>| to_names in
-  let* lib_re_exports = Resolve.Memo.read (Lib.re_exports lib) >>| to_names in
+  let* lib_deps = Resolve.Memo.read (Lib.requires lib ~for_) >>| to_names in
+  let* lib_re_exports = Resolve.Memo.read (Lib.re_exports lib ~for_) >>| to_names in
   let* ppx_rt_deps =
-    Lib.ppx_runtime_deps lib |> Resolve.Memo.read |> Action_builder.map ~f:to_names
+    Lib.ppx_runtime_deps lib ~for_ |> Resolve.Memo.read |> Action_builder.map ~f:to_names
   in
   let+ ppx_runtime_deps_for_deprecated_method =
     (* For the deprecated method, we need to put all the runtime dependencies of
@@ -103,8 +105,8 @@ let gen_lib pub_name lib ~version =
 
        Sigh... *)
     let open Resolve.Memo.O in
-    Lib.closure [ lib ] ~linking:false
-    >>= Resolve.Memo.List.concat_map ~f:Lib.ppx_runtime_deps
+    Lib.closure [ lib ] ~linking:false ~for_
+    >>= Resolve.Memo.List.concat_map ~f:(Lib.ppx_runtime_deps ~for_)
     >>| to_names
     |> Resolve.Memo.read
   in

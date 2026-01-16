@@ -37,6 +37,7 @@ Run the cram test, should fail and file should be promoted
   Error: rename(_build/default/my_cram.t/run.t.corrected): Not a directory
   -> required by alias my_cram
   -> required by alias runtest
+  [1]
 
 We cannot promote:
 

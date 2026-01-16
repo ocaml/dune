@@ -1,7 +1,5 @@
 A lock directory which does not exist in the source tree:
 
-  $ . ./helpers.sh
-
   $ mkdir project
 
   $ make_lockdir
@@ -24,3 +22,4 @@ A lock directory which does not exist in the source tree:
          "$TESTCASE_ROOT/dune.lock"
      })
   Raised at Stdune__Code_error.raise in file
+  [1]

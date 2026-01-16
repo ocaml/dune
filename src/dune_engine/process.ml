@@ -14,7 +14,7 @@ module Failure_mode = struct
     | Accept : int Predicate.t -> ('a, ('a, int) result) t
     | Return : ('a, 'a * int) t
     | Timeout :
-        { timeout_seconds : float option
+        { timeout : Time.Span.t option
         ; failure_mode : ('a, 'b) t
         }
         -> ('a, ('b, [ `Timed_out ]) result) t
@@ -31,8 +31,8 @@ module Failure_mode = struct
     | `Timeout -> Code_error.raise "should not return `Timeout" []
   ;;
 
-  let timeout_seconds : type a b. (a, b) t -> float option = function
-    | Timeout { timeout_seconds; _ } -> timeout_seconds
+  let timeout : type a b. (a, b) t -> Time.Span.t option = function
+    | Timeout { timeout; _ } -> timeout
     | Strict | Accept _ | Return -> None
   ;;
 
@@ -687,7 +687,7 @@ end = struct
 end
 
 type t =
-  { started_at : float
+  { started_at : Time.t
   ; pid : Pid.t
   ; response_file : Path.t option
   ; stdout : Path.t option
@@ -804,7 +804,6 @@ module Result = struct
 end
 
 let report_process_finished
-      stats
       ~metadata
       ~dir
       ~prog
@@ -825,7 +824,7 @@ let report_process_finished
   in
   let stdout = Result.Out.get stdout in
   let stderr = Result.Out.get stderr in
-  let event =
+  Dune_trace.emit Process (fun () ->
     Dune_trace.Event.process
       ~name:metadata.name
       ~started_at
@@ -838,18 +837,16 @@ let report_process_finished
       ~dir
       ~stdout
       ~stderr
-      ~times:(times : Proc.Times.t)
-  in
-  Dune_trace.emit stats event
+      ~times:(times : Proc.Times.t))
 ;;
 
 let set_temp_dir_when_running_actions = ref true
 
-let await ~timeout_seconds { response_file; pid; _ } =
+let await ~timeout { response_file; pid; _ } =
   let+ process_info, termination_reason =
-    Scheduler.wait_for_build_process ?timeout_seconds pid ~is_process_group_leader:true
+    Scheduler.wait_for_build_process ?timeout pid ~is_process_group_leader:true
   in
-  Option.iter response_file ~f:Path.unlink_exn;
+  Option.iter response_file ~f:(fun path -> path |> Path.to_string |> Fpath.unlink_exn);
   process_info, termination_reason
 ;;
 
@@ -862,6 +859,8 @@ let spawn
       ~setpgid
       ~prog
       ~args
+      ~metadata
+      ~timeout
       ()
   =
   let stdout_on_success = Io.output_on_success stdout
@@ -922,7 +921,7 @@ let spawn
   let started_at =
     (* jeremiedimino: I think we should do this just before the [execve]
        in the stub for [Spawn.spawn] to be as precise as possible *)
-    Unix.gettimeofday ()
+    Time.now ()
   in
   let pid =
     let env =
@@ -952,6 +951,24 @@ let spawn
          | Some dir -> Path (Path.to_string dir))
     |> Pid.of_int
   in
+  Dune_trace.emit Process (fun () ->
+    let targets =
+      match metadata.purpose with
+      | Internal_job -> None
+      | Build_job None -> None
+      | Build_job (Some { dirs; files; root }) ->
+        Some { Dune_trace.Event.root; dirs; files }
+    in
+    Dune_trace.Event.process_start
+      ~targets
+      ~pid
+      ~dir
+      ~prog:prog_str
+      ~args
+      ~timeout
+      ~name:metadata.name
+      ~categories:metadata.categories
+      ~started_at);
   Io.release stdout;
   Io.release stderr;
   { started_at
@@ -979,7 +996,7 @@ let run_internal
       prog
       args
   =
-  Scheduler.with_job_slot (fun _cancel (config : Scheduler.Config.t) ->
+  Scheduler.with_job_slot (fun _cancel (_config : Scheduler.Config.t) ->
     let dir =
       match dir with
       | None -> dir
@@ -1007,6 +1024,7 @@ let run_internal
         cmdline
       | _ -> Pp.nop
     in
+    let timeout = Failure_mode.timeout fail_mode in
     let (t : t) =
       spawn
         ?dir
@@ -1017,6 +1035,8 @@ let run_internal
         ~setpgid
         ~prog
         ~args
+        ~metadata
+        ~timeout
         ()
     in
     let* () =
@@ -1033,29 +1053,25 @@ let run_internal
       in
       Running_jobs.start id t.pid ~description ~started_at:t.started_at
     in
-    let* process_info, termination_reason =
-      await ~timeout_seconds:(Failure_mode.timeout_seconds fail_mode) t
-    in
+    let* process_info, termination_reason = await ~timeout t in
     let+ () = Running_jobs.stop id in
     let result = Result.make t process_info fail_mode in
     let times =
-      { Proc.Times.elapsed_time = process_info.end_time -. t.started_at
+      { Proc.Times.elapsed_time = Time.diff process_info.end_time t.started_at
       ; resource_usage = process_info.resource_usage
       }
     in
-    Option.iter config.stats ~f:(fun stats ->
-      report_process_finished
-        stats
-        ~metadata
-        ~dir
-        ~prog:prog_str
-        ~pid:t.pid
-        ~args
-        ~started_at:t.started_at
-        ~exit_status:result.exit_status
-        ~stdout:result.stdout
-        ~stderr:result.stderr
-        times);
+    report_process_finished
+      ~metadata
+      ~dir
+      ~prog:prog_str
+      ~pid:t.pid
+      ~args
+      ~started_at:t.started_at
+      ~exit_status:result.exit_status
+      ~stdout:result.stdout
+      ~stderr:result.stderr
+      times;
     match termination_reason with
     | Cancel ->
       (* if the cancellation token was fired, then we:

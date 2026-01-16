@@ -71,14 +71,10 @@ type t =
       -> src:Path.Build.t
       -> dst:Path.Source.t
       -> unit Fiber.t
-  ; stats : Dune_trace.t option
-  ; cache_config : Dune_cache.Config.t
-  ; cache_debug_flags : Cache_debug_flags.t
   ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t
   ; execution_parameters :
       Context_name.t -> dir:Path.Build.t -> Execution_parameters.t Memo.t
   ; source_tree : (module Source_tree)
-  ; shared_cache : (module Dune_cache.Shared.S)
   ; write_error_summary : Build_system_error.Set.t -> unit Fiber.t
   }
 
@@ -86,17 +82,13 @@ let t : t Fdecl.t = Fdecl.create Dyn.opaque
 let get () = Fdecl.get t
 
 let set
-      ~stats
       ~contexts
       ~promote_source
-      ~cache_config
-      ~cache_debug_flags
       ~sandboxing_preference
       ~rule_generator
       ~implicit_default_alias
       ~execution_parameters
       ~source_tree
-      ~shared_cache
       ~write_error_summary
   =
   let contexts =
@@ -114,13 +106,9 @@ let set
     ; sandboxing_preference =
         sandboxing_preference @ Sandbox_mode.all_except_patch_back_source_tree
     ; promote_source
-    ; stats
-    ; cache_config
-    ; cache_debug_flags
     ; implicit_default_alias
     ; execution_parameters
     ; source_tree
-    ; shared_cache
     ; write_error_summary
     }
 ;;

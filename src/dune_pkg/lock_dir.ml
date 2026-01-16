@@ -1434,7 +1434,7 @@ module Write_disk = struct
     match check_existing_lock_dir src, check_existing_lock_dir dst with
     | Ok `Is_existing_lock_dir, Ok `Non_existant ->
       fun () ->
-        (match Path.rename src dst with
+        (match Unix.rename (Path.to_string src) (Path.to_string dst) with
          | () -> ()
          | exception Unix.Unix_error (Unix.EXDEV, _, _) ->
            safely_copy_lock_dir_when_dst_non_existant ~dst src;
@@ -1520,11 +1520,12 @@ module Write_disk = struct
               let version = pkg.info.version |> Package_version.to_string in
               sprintf "%s.%s" name version)
           in
-          [ Pp.textf
-              "Dependency solution for %s:"
-              (Path.to_string_maybe_quoted lock_dir_path_external)
-          ; Pp.enumerate ~f:Pp.text pkgs
-          ]);
+          Log.Message.create
+            `Info
+            "Dependency solution"
+            [ "lock_dir", Dyn.string (Path.to_string_maybe_quoted lock_dir_path_external)
+            ; "packages", Dyn.list Dyn.string pkgs
+            ]);
         Path.mkdir_p parent_dir;
         Temp.with_temp_dir ~parent_dir ~prefix:"dune" ~suffix:"lock" ~f:build
     | None ->

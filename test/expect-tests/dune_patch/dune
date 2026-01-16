@@ -1,13 +1,13 @@
 (library
  (name dune_patch_tests)
  (inline_tests)
- (modules dune_patch_tests)
  (libraries
   dune_tests_common
   stdune
   fiber
   dune_patch
   dune_engine
+  dune_scheduler
   dune_util
   unix
   ;; This is because of the (implicit_transitive_deps false)

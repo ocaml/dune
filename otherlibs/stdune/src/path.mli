@@ -192,14 +192,6 @@ module Build : sig
   val split_sandbox_root : t -> t option * t
   val of_local : Local.t -> t
 
-  (** Set permissions for a given path. You can use the [Permissions] module if
-      you need to modify existing permissions in a non-trivial way. *)
-  val chmod : t -> mode:int -> unit
-
-  val lstat : t -> Unix.stats
-  val unlink : t -> Fpath.unlink_status
-  val unlink_no_err : t -> unit
-
   module Table : Hashtbl.S with type key = t
 end
 
@@ -256,6 +248,11 @@ val relative_to_source_in_build_or_external
 (** Create an external path. If the argument is relative, assume it is relative
     to the initial directory dune was launched in. *)
 val of_filename_relative_to_initial_cwd : string -> t
+
+(** Like [of_string], but if the path is relative and would escape the workspace
+    (e.g., [../foo]), it is treated as relative to the initial directory dune
+    was launched in instead of raising an error. *)
+val of_string_allow_outside_workspace : string -> t
 
 (** Convert a path to an absolute filename. Must be called after the workspace
     root has been set. [root] is the root directory of local paths *)
@@ -348,17 +345,8 @@ val is_dir_sep : char -> bool
 (** [is_dir t] checks if [t] is a directory. It swallows permission errors so the preferred way is to use [stat] instead *)
 val is_directory : t -> bool
 
-val rmdir : t -> unit
-val unlink_exn : t -> unit
-val unlink_no_err : t -> unit
-val link : t -> t -> unit
-
 (** If the path does not exist, this function is a no-op. *)
 val rm_rf : ?allow_external:bool -> t -> unit
-
-(** [clear_dir t] deletes all the contents of directory [t] without removing [t]
-    itself. *)
-val clear_dir : t -> Fpath.clear_dir_result
 
 val mkdir_p : ?perms:int -> t -> unit
 val build_dir_exists : unit -> bool
@@ -382,18 +370,7 @@ end
 val local_part : t -> Local.t
 
 val stat : t -> (Unix.stats, Unix_error.Detailed.t) Result.t
-val stat_exn : t -> Unix.stats
 val lstat : t -> (Unix.stats, Unix_error.Detailed.t) Result.t
-val lstat_exn : t -> Unix.stats
-
-(** Rename a file. [rename oldpath newpath] renames the file called [oldpath] to
-    [newpath], moving it between directories if needed. If [newpath] already
-    exists, its contents will be replaced with those of [oldpath]. *)
-val rename : t -> t -> unit
-
-(** Set permissions for a given path. You can use the [Permissions] module if
-    you need to modify existing permissions in a non-trivial way. *)
-val chmod : t -> mode:int -> unit
 
 (** [drop_prefix_exn t ~prefix] drops the [prefix] from a path, including any
     leftover directory separator prefix. Raises a [Code_error.t] if the prefix

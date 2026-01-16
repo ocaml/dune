@@ -351,6 +351,7 @@ dependency.
   Error: File unavailable:
   $TESTCASE_ROOT/test/../link
   Cyclic symbolic link
+  [1]
 
 So, it seems like we must play dirty to create a symbolic link loop.
 

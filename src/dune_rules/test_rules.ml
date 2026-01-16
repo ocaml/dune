@@ -92,8 +92,12 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
           in
           let test_exe = s ^ ext in
           let extra_bindings =
-            let test_exe_path =
-              Expander.map_exe expander (Path.relative (Path.build dir) test_exe)
+            let test_exe_path, _, _ =
+              Expander.map_exe
+                ~force_host:false
+                expander
+                (Path.relative (Path.build dir) test_exe)
+                []
             in
             Pform.Map.singleton test_pform [ Value.Path test_exe_path ]
           in

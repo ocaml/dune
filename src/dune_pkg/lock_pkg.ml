@@ -43,8 +43,7 @@ let is_valid_global_variable_name = function
 
 (* CR-rgrinberg: we need this validation in substitution actions as well *)
 let is_valid_package_variable_name = function
-  | "hash" | "build-id" | "misc" | "opam-version" | "depends" | "build" | "opamfile" ->
-    false
+  | "hash" | "misc" | "opam-version" | "depends" | "build" | "opamfile" -> false
   | _ -> true
 ;;
 

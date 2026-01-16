@@ -20,7 +20,7 @@
  (library_flags -linkall)
  (preprocess
   (pps ppx_bench))
- (libraries dune_thread_pool unix threads.posix core_bench.inline_benchmarks))
+ (libraries dune_scheduler unix threads.posix core_bench.inline_benchmarks))
 
 (executable
  (name thread_pool_bench_main)

@@ -1,14 +1,14 @@
+module Action = Action
+module Alias_name = Alias_name
+module Build_path_prefix_map = Build_path_prefix_map0
+module Gc = Gc
+module Global_lock = Global_lock
 module Persistent = Persistent
 module Report_error = Report_error
 module Stringlike = Stringlike
 
 module type Stringlike = Stringlike_intf.S
 
-module Build_path_prefix_map = Build_path_prefix_map0
-module Global_lock = Global_lock
-module Action = Action
-module Alias_name = Alias_name
-module Gc = Gc
 open Stdune
 
 let manual_xdg = ref None
@@ -35,6 +35,30 @@ let override_xdg : Xdg.t -> unit =
   if Lazy.is_val xdg
   then Code_error.raise "xdg overridden after being set" []
   else manual_xdg := Some new_xdg
+;;
+
+let ( / ) = Path.relative
+
+(** The default directory of all caches (build and others), used when
+    [$DUNE_CACHE_ROOT] is unset.
+    Set to [$XDG_CACHE_HOME/dune]. *)
+let default_cache_dir =
+  lazy
+    (let cache_dir = Xdg.cache_dir (Lazy.force xdg) in
+     Path.of_filename_relative_to_initial_cwd cache_dir / "dune")
+;;
+
+let cache_root_dir =
+  lazy
+    (let var = "DUNE_CACHE_ROOT" in
+     match Sys.getenv_opt var with
+     | Some path ->
+       if Filename.is_relative path
+       then
+         User_error.raise
+           [ Pp.paragraphf "$%s should be an absolute path, but is %S" var path ];
+       Path.external_ (Path.External.of_string path)
+     | None -> Lazy.force default_cache_dir)
 ;;
 
 let frames_per_second () =

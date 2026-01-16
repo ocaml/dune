@@ -50,7 +50,7 @@ module File = struct
   ;;
 
   let do_promote ~correction_file ~dst =
-    Path.Source.unlink_no_err dst;
+    Fpath.unlink_no_err (Path.Source.to_string dst);
     let chmod = Path.Permissions.add Path.Permissions.write in
     match Io.copy_file ~chmod ~src:correction_file ~dst:(Path.source dst) () with
     | () -> ()
@@ -116,7 +116,7 @@ let dump_db db =
   if Path.build_dir_exists ()
   then (
     match db with
-    | [] -> if Path.exists db_file then Path.unlink_no_err db_file
+    | [] -> if Path.exists db_file then Fpath.unlink_no_err (Path.to_string db_file)
     | l -> P.dump db_file l)
 ;;
 
@@ -130,13 +130,11 @@ let group_by_targets db =
        ~f:(List.sort ~compare:(fun (x, _) (y, _) -> Path.Build.compare x y))
 ;;
 
-let do_promote db files_to_promote =
-  let by_targets = group_by_targets db in
-  let promote_one dst srcs =
-    match srcs with
-    | [] -> assert false
-    | (src, staging) :: others ->
-      (* We used to remove promoted files from the digest cache, to force Dune
+let promote_one dst srcs =
+  match srcs with
+  | [] -> assert false
+  | (src, staging) :: others ->
+    (* We used to remove promoted files from the digest cache, to force Dune
          to redigest them on the next run. We did this because on OSX [mtime] is
          not precise enough and if a file is modified and promoted quickly, it
          looked like it hadn't changed even though it might have.
@@ -149,47 +147,65 @@ let do_promote db files_to_promote =
          not promote into the build directory anyway), and source digests should
          be correctly invalidated via [fs_memo]. If that doesn't happen, we
          should fix [fs_memo] instead of manually resetting the caches here. *)
-      File.promote { src; staging; dst };
-      List.iter others ~f:(fun (path, _staging) ->
-        Console.print
-          [ Pp.textf " -> ignored %s." (Path.to_string_maybe_quoted (Path.build path))
-          ; Pp.space
-          ])
+    File.promote { src; staging; dst };
+    List.iter others ~f:(fun (path, _staging) ->
+      Console.print
+        [ Pp.textf " -> ignored %s." (Path.to_string_maybe_quoted (Path.build path))
+        ; Pp.space
+        ])
+;;
+
+let do_promote_all db = group_by_targets db |> Path.Source.Map.iteri ~f:promote_one
+
+let do_promote_these db files =
+  let by_targets = group_by_targets db in
+  let by_targets, missing =
+    let files = Path.Source.Set.of_list files in
+    Path.Source.Set.fold files ~init:(by_targets, []) ~f:(fun fn (map, missing) ->
+      match Path.Source.Map.find map fn with
+      | None -> map, fn :: missing
+      | Some srcs ->
+        promote_one fn srcs;
+        Path.Source.Map.remove map fn, missing)
   in
-  match files_to_promote with
-  | Dune_rpc_private.Files_to_promote.All ->
-    Path.Source.Map.iteri by_targets ~f:promote_one;
-    []
-  | These (files, on_missing) ->
-    let by_targets =
-      let files = Path.Source.Set.of_list files in
-      Path.Source.Set.fold files ~init:by_targets ~f:(fun fn map ->
-        match Path.Source.Map.find by_targets fn with
-        | None ->
-          on_missing fn;
-          map
-        | Some srcs ->
-          promote_one fn srcs;
-          Path.Source.Map.remove by_targets fn)
-    in
+  let remaining =
     Path.Source.Map.to_list by_targets
     |> List.concat_map ~f:(fun (dst, srcs) ->
       List.map srcs ~f:(fun (src, staging) -> { File.src; staging; dst }))
+  in
+  (* [group_by_targets] will sort all files, but the [fold] above reverses
+     the list of missing files. Here we re-reverse it so it is sorted.
+     CR-someday ElectreAAS: get rid of the fragile reversals and set
+     conversions to do everything in one pass. *)
+  let sorted_missing = List.rev missing in
+  remaining, sorted_missing
+;;
+
+let do_promote db = function
+  | Dune_rpc_private.Files_to_promote.All ->
+    do_promote_all db;
+    [], []
+  | These files -> do_promote_these db files
 ;;
 
 let finalize () =
   let db =
     match !Dune_engine.Clflags.promote with
-    | Some Automatically -> do_promote !File.db All
+    | Some Automatically ->
+      do_promote_all !File.db;
+      []
     | Some Never | None -> !File.db
   in
   dump_db db
 ;;
 
+(* Returns the list of files that were in [files_to_promote]
+   but not present in the promotion database. *)
 let promote_files_registered_in_last_run files_to_promote =
   let db = load_db () in
-  let db = do_promote db files_to_promote in
-  dump_db db
+  let remaining, missing = do_promote db files_to_promote in
+  dump_db remaining;
+  missing
 ;;
 
 let diff_for_file (file : File.t) =
@@ -199,19 +215,23 @@ let diff_for_file (file : File.t) =
   Print_diff.get msg original correction
 ;;
 
-let filter_db files_to_promote db =
+(** [partition_db db files_to_promote] splits [files_to_promote] into two lists
+    - The files present in [db] as actual [File.t]s.
+    - The files absent from [db] as [Path]s. *)
+let partition_db db files_to_promote =
   match files_to_promote with
-  | Dune_rpc_private.Files_to_promote.All -> db
-  | These (files, on_missing) ->
-    List.filter_map files ~f:(fun file ->
-      let r = List.find db ~f:(fun (f : File.t) -> Path.Source.equal f.dst file) in
-      if Option.is_none r then on_missing file;
-      r)
+  | Dune_rpc_private.Files_to_promote.All -> db, []
+  | These paths ->
+    List.partition_map paths ~f:(fun path ->
+      let res = List.find db ~f:(fun (f : File.t) -> Path.Source.equal f.dst path) in
+      match res with
+      | Some file -> Left file
+      | None -> Right path)
 ;;
 
-let display files_to_promote =
+let sort_for_display db files_to_promote =
   let open Fiber.O in
-  let files = load_db () |> filter_db files_to_promote in
+  let files, missing = partition_db db files_to_promote in
   let+ diff_opts =
     Fiber.parallel_map files ~f:(fun file ->
       let+ diff_opt = diff_for_file file in
@@ -219,8 +239,46 @@ let display files_to_promote =
       | Ok diff -> Some (file, diff)
       | Error _ -> None)
   in
-  diff_opts
-  |> List.filter_opt
-  |> List.sort ~compare:(fun (file, _) (file', _) -> File.compare file file')
-  |> List.iter ~f:(fun (_file, diff) -> Print_diff.Diff.print diff)
+  let sorted_diffs =
+    diff_opts
+    |> List.filter_opt
+    |> List.sort ~compare:(fun (file, _) (file', _) -> File.compare file file')
+  in
+  let sorted_missing = List.sort missing ~compare:Path.Source.compare in
+  sorted_diffs, sorted_missing
+;;
+
+let missing ~db files_to_promote =
+  let open Fiber.O in
+  let+ _diffs, missing = sort_for_display db files_to_promote in
+  missing
+;;
+
+let display_diffs ~db files_to_promote =
+  let open Fiber.O in
+  let+ diffs, _missing = sort_for_display db files_to_promote in
+  List.iter diffs ~f:(fun (_file, diff) -> Print_diff.Diff.print diff)
+;;
+
+let display_files ~db files_to_promote =
+  let open Fiber.O in
+  let+ diffs, _missing = sort_for_display db files_to_promote in
+  List.iter diffs ~f:(fun (file, _diff) ->
+    Console.printf "%s" (File.source file |> Path.Source.to_string))
+;;
+
+let display_corrected_contents ~db files_to_promote =
+  let files, _missing = partition_db db files_to_promote in
+  List.iter files ~f:(fun file ->
+    let correction_file = File.correction_file file in
+    if Path.exists correction_file
+    then (
+      let contents = Io.read_file correction_file in
+      Console.printf "%s" contents)
+    else
+      User_warning.emit
+        [ Pp.textf
+            "Corrected file does not exist for %s."
+            (File.source file |> Path.Source.to_string_maybe_quoted)
+        ])
 ;;

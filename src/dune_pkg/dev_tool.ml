@@ -10,6 +10,7 @@ type t =
   | Opam_publish
   | Dune_release
   | Ocaml_index
+  | Merlin
 
 let to_dyn = function
   | Ocamlformat -> Dyn.variant "Ocamlformat" []
@@ -21,6 +22,7 @@ let to_dyn = function
   | Opam_publish -> Dyn.variant "Opam_publish" []
   | Dune_release -> Dyn.variant "Dune_release" []
   | Ocaml_index -> Dyn.variant "Ocaml_index" []
+  | Merlin -> Dyn.variant "Merlin" []
 ;;
 
 let all =
@@ -33,6 +35,7 @@ let all =
   ; Opam_publish
   ; Dune_release
   ; Ocaml_index
+  ; Merlin
   ]
 ;;
 
@@ -57,6 +60,8 @@ let equal a b =
   | Dune_release, _ -> false
   | _, Dune_release -> false
   | Ocaml_index, Ocaml_index -> true
+  | Ocaml_index, _ | _, Ocaml_index -> false
+  | Merlin, Merlin -> true
 ;;
 
 let hash = Poly.hash
@@ -71,6 +76,7 @@ let package_name = function
   | Opam_publish -> Package_name.of_string "opam-publish"
   | Dune_release -> Package_name.of_string "dune-release"
   | Ocaml_index -> Package_name.of_string "ocaml-index"
+  | Merlin -> Package_name.of_string "merlin"
 ;;
 
 let of_package_name package_name =
@@ -84,6 +90,7 @@ let of_package_name package_name =
   | "opam-publish" -> Opam_publish
   | "dune-release" -> Dune_release
   | "ocaml-index" -> Ocaml_index
+  | "merlin" -> Merlin
   | other -> User_error.raise [ Pp.textf "No such dev tool: %s" other ]
 ;;
 
@@ -97,6 +104,7 @@ let exe_name = function
   | Opam_publish -> "opam-publish"
   | Dune_release -> "dune-release"
   | Ocaml_index -> "ocaml-index"
+  | Merlin -> "ocamlmerlin"
 ;;
 
 let exe_path_components_within_package t = [ "bin"; exe_name t ]
@@ -110,5 +118,18 @@ let needs_to_build_with_same_compiler_as_project = function
     false
   | Opam_publish -> false
   | Dune_release -> false
-  | Utop | Odoc | Ocamllsp | Ocaml_index | Odig -> true
+  | Utop | Odoc | Ocamllsp | Ocaml_index | Odig | Merlin -> true
+;;
+
+(* Package names that are considered compiler packages. When these are pinned
+   in the project, the pins should be propagated to dev tools that need to be
+   built with the same compiler. This list is also used by pkg_toolchain. *)
+let compiler_package_names =
+  List.map
+    ~f:Package_name.of_string
+    [ "ocaml"; "ocaml-base-compiler"; "ocaml-variants"; "ocaml-compiler" ]
+;;
+
+let is_compiler_package name =
+  List.mem compiler_package_names name ~equal:Package_name.equal
 ;;

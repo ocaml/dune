@@ -72,8 +72,8 @@ let stanzas : Stanza.Parser.t list =
     ; ("executable", Executables.(decode_stanza single))
     ; ("executables", Executables.(decode_stanza multi))
     ; ("rule", Rule_conf.(decode_stanza Rule_conf.decode))
-    ; ("ocamllex", Rule_conf.(decode_stanzas ocamllex))
-    ; ("ocamlyacc", Rule_conf.(decode_stanzas ocamlyacc))
+    ; "ocamllex", Parser_generators.Ocamllex.decode_stanza Parser_generators.decode
+    ; "ocamlyacc", Parser_generators.Ocamlyacc.decode_stanza Parser_generators.decode
     ; ("install", Install_conf.(decode_stanza decode))
     ; ("alias", Alias_conf.(decode_stanza decode))
     ; ("copy_files", Copy_files.(decode_stanza decode))

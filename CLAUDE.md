@@ -110,7 +110,7 @@ This output will appear in cram test diffs, making it easy to observe values.
 
 ### Development Guidelines
 - Always verify changes build with `dune build @check`
-- Run `dune fmt` to ensure code formatting (requires ocamlformat 0.27.0)
+- Run `dune fmt` to ensure code formatting (requires ocamlformat)
 - Keep lines under 80 characters
 - Only add comments for complex algorithms or when explicitly requested
 - Don't disable warnings or tests unless prompted

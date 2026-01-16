@@ -30,7 +30,7 @@ let available_exes ~dir (exes : Executables.t) =
       ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
   in
   (* CR-someday rgrinberg: what if a preprocessor is unavailable? *)
-  let+ available = Lib.Compile.direct_requires compile_info in
+  let+ available = Lib.Compile.direct_requires compile_info ~for_:Ocaml in
   Resolve.is_ok available
 ;;
 

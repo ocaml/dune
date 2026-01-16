@@ -58,7 +58,7 @@ let gen_parse names =
             ; modes
             ; optional = false
             ; buildable
-            ; names = Nonempty_list.of_list names |> Option.value_exn
+            ; names = Nonempty_list.of_list_exn names
             ; package = None
             ; promote = None
             ; install_conf = None

@@ -103,32 +103,22 @@ module Workspace_local = struct
       | Always_rerun
       | Error_while_collecting_directory_targets of Targets.Produced.Error.t
 
-    let report ~head_target reason =
-      let reason =
-        match reason with
-        | No_previous_record -> "never seen this target before"
-        | Rule_changed (before, after) ->
-          sprintf
-            "rule or dependencies changed: %s -> %s"
-            (Digest.to_string before)
-            (Digest.to_string after)
-        | Targets_missing -> "target missing from build dir"
-        | Targets_changed -> "target changed in build dir"
-        | Always_rerun -> "not trying to use the cache"
-        | Dynamic_deps_changed -> "dynamic dependencies changed"
-        | Error_while_collecting_directory_targets error ->
-          sprintf
-            "error while collecting directory targets: %s"
-            (Targets.Produced.Error.to_string_hum error)
-      in
-      Console.print_user_message
-        (User_message.make
-           [ Pp.hbox
-               (Pp.textf
-                  "Workspace-local cache miss: %s: %s"
-                  (Path.Build.to_string head_target)
-                  reason)
-           ])
+    let to_string reason =
+      match reason with
+      | No_previous_record -> "never seen this target before"
+      | Rule_changed (before, after) ->
+        sprintf
+          "rule or dependencies changed: %s -> %s"
+          (Digest.to_string before)
+          (Digest.to_string after)
+      | Targets_missing -> "target missing from build dir"
+      | Targets_changed -> "target changed in build dir"
+      | Always_rerun -> "not trying to use the cache"
+      | Dynamic_deps_changed -> "dynamic dependencies changed"
+      | Error_while_collecting_directory_targets error ->
+        sprintf
+          "error while collecting directory targets: %s"
+          (Targets.Produced.Error.to_string_hum error)
     ;;
   end
 
@@ -205,36 +195,19 @@ module Workspace_local = struct
     match result with
     | Hit result -> Some result
     | Miss reason ->
-      let t = Build_config.get () in
-      if t.cache_debug_flags.workspace_local_cache
-      then Miss_reason.report reason ~head_target:(Targets.Validated.head targets);
+      let head_target = Targets.Validated.head targets in
+      let always_emit =
+        match reason with
+        | Miss_reason.Error_while_collecting_directory_targets _ -> true
+        | _ -> false
+      in
+      let event () =
+        let reason = Miss_reason.to_string reason in
+        Dune_trace.Event.Cache.workspace_local_miss ~head:head_target ~reason
+      in
+      if always_emit
+      then Dune_trace.always_emit (event ())
+      else Dune_trace.emit ~buffered:true Cache (fun () -> event ());
       None
-  ;;
-end
-
-module Shared = struct
-  let lookup ~can_go_in_shared_cache ~rule_digest ~targets =
-    let config = Build_config.get () in
-    let module Shared_cache = (val config.shared_cache) in
-    Shared_cache.lookup ~can_go_in_shared_cache ~rule_digest ~targets
-  ;;
-
-  let examine_targets_and_store
-        ~can_go_in_shared_cache
-        ~loc
-        ~rule_digest
-        ~should_remove_write_permissions_on_generated_files
-        ~action
-        ~produced_targets
-    =
-    let config = Build_config.get () in
-    let module Shared_cache = (val config.shared_cache) in
-    Shared_cache.examine_targets_and_store
-      ~can_go_in_shared_cache
-      ~loc
-      ~rule_digest
-      ~should_remove_write_permissions_on_generated_files
-      ~action
-      ~produced_targets
   ;;
 end

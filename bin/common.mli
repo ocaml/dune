@@ -17,14 +17,14 @@ val rpc
      ]
 
 val watch_exclusions : t -> string list
-val stats : t -> Dune_trace.t option
 val print_metrics : t -> bool
 val dump_memo_graph_file : t -> Path.External.t option
 val dump_memo_graph_format : t -> Dune_graph.Graph.File_format.t
 val dump_memo_graph_with_timing : t -> bool
 val watch : t -> Dune_rpc_impl.Watch_mode_config.t
-val file_watcher : t -> Dune_engine.Scheduler.Run.file_watcher
+val file_watcher : t -> Dune_scheduler.Scheduler.Run.file_watcher
 val prefix_target : t -> string -> string
+val default_trace_file : Path.Local.t
 
 (** [Builder] describes how to initialize Dune. *)
 module Builder : sig
@@ -36,7 +36,6 @@ module Builder : sig
   val forbid_builds : t -> t
   val default_root_is_cwd : t -> bool
   val set_default_root_is_cwd : t -> bool -> t
-  val set_log_file : t -> Log.File.t -> t
   val disable_log_file : t -> t
   val set_promote : t -> Dune_engine.Clflags.Promote.t -> t
   val default_target : t -> Arg.Dep.t
@@ -82,11 +81,6 @@ val context_arg : doc:string option -> Dune_engine.Context_name.t Cmdliner.Term.
 val build_info : unit Cmdliner.Term.t
 
 val default_build_dir : string
-
-module Let_syntax : sig
-  val ( let+ ) : 'a Cmdliner.Term.t -> ('a -> 'b) -> 'b Cmdliner.Term.t
-  val ( and+ ) : 'a Cmdliner.Term.t -> 'b Cmdliner.Term.t -> ('a * 'b) Cmdliner.Term.t
-end
 
 (** [one_of term1 term2] allows options from [term1] or exclusively options from
     [term2]. If the user passes options from both terms, an error is reported. *)

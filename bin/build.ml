@@ -1,9 +1,9 @@
 open Import
 
 let with_metrics ~common f =
-  let start_time = Unix.gettimeofday () in
+  let start_time = Time.now () in
   Fiber.finalize f ~finally:(fun () ->
-    let duration = Unix.gettimeofday () -. start_time in
+    let duration = Time.diff (Time.now ()) start_time in
     if Common.print_metrics common
     then (
       let gc_stat = Gc.quick_stat () in
@@ -14,7 +14,7 @@ let with_metrics ~common f =
            ([ Pp.textf "%s" memo_counters_report
             ; Pp.textf
                 "(%.2fs total, %.1fM heap words)"
-                duration
+                (Time.Span.to_secs duration)
                 (float_of_int gc_stat.heap_words /. 1_000_000.)
             ; Pp.text "Timers:"
             ]
@@ -23,7 +23,7 @@ let with_metrics ~common f =
                   Pp.textf
                     "%s - time spent = %.2fs, count = %d"
                     timer
-                    cumulative_time
+                    (Time.Span.to_secs cumulative_time)
                     count)
                 (String.Map.to_list (Metrics.Timer.aggregated_timers ())))));
     Memo.Metrics.reset ();
@@ -83,24 +83,23 @@ let run_build_system ~common ~request =
       Fiber.return ())
 ;;
 
-let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
+let poll_handling_rpc_build_requests ~(common : Common.t) =
   let open Fiber.O in
   let rpc =
     match Common.rpc common with
     | `Allow server -> server
     | `Forbid_builds -> Code_error.raise "rpc server must be allowed in passive mode" []
   in
-  Dune_engine.Scheduler.Run.poll_passive
+  Scheduler.Run.poll_passive
     ~get_build_request:
       (let+ { kind; outcome } = Dune_rpc_impl.Server.pending_action rpc in
        let request setup =
          let root = Common.root common in
          match kind with
-         | Build targets ->
-           Target.interpret_targets (Common.root common) config setup targets
+         | Build targets -> Target.interpret_targets (Common.root common) setup targets
          | Runtest test_paths ->
            Runtest_common.make_request
-             ~contexts:setup.contexts
+             ~scontexts:setup.scontexts
              ~to_cwd:root.to_cwd
              ~test_paths
        in
@@ -108,21 +107,26 @@ let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
 ;;
 
 let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
-  Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config (fun () ->
-    let open Fiber.O in
-    (* Run two fibers concurrently. One is responible for rebuilding targets
+  Scheduler_setup.go_with_rpc_server_and_console_status_reporting
+    ~common
+    ~config
+    (fun () ->
+       let open Fiber.O in
+       (* Run two fibers concurrently. One is responible for rebuilding targets
        named on the command line in reaction to file system changes. The other
        is responsible for building targets named in RPC build requests. *)
-    let+ () = Dune_engine.Scheduler.Run.poll (run_build_system ~common ~request)
-    and+ () = poll_handling_rpc_build_requests ~common ~config in
-    ())
+       let+ () = Scheduler.Run.poll (run_build_system ~common ~request)
+       and+ () = poll_handling_rpc_build_requests ~common in
+       ())
 ;;
 
 let run_build_command_poll_passive ~common ~config ~request:_ : unit =
   (* CR-someday aalekseyev: It would've been better to complain if [request] is
      non-empty, but we can't check that here because [request] is a function.*)
-  Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config (fun () ->
-    poll_handling_rpc_build_requests ~common ~config)
+  Scheduler_setup.go_with_rpc_server_and_console_status_reporting
+    ~common
+    ~config
+    (fun () -> poll_handling_rpc_build_requests ~common)
 ;;
 
 let run_build_command_once ~(common : Common.t) ~config ~request =
@@ -133,7 +137,7 @@ let run_build_command_once ~(common : Common.t) ~config ~request =
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
     | Ok () -> ()
   in
-  Scheduler.go_with_rpc_server ~common ~config once
+  Scheduler_setup.go_with_rpc_server ~common ~config once
 ;;
 
 let run_build_command ~(common : Common.t) ~config ~request =
@@ -224,7 +228,7 @@ let build =
          perform the RPC call.
       *)
       let targets = Rpc.Rpc_common.prepare_targets targets in
-      Scheduler.go_without_rpc_server ~common ~config (fun () ->
+      Scheduler_setup.go_without_rpc_server ~common ~config (fun () ->
         let open Fiber.O in
         Rpc.Rpc_common.fire_request
           ~name:"build"
@@ -235,9 +239,7 @@ let build =
           targets
         >>| Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:true)
     | Ok () ->
-      let request setup =
-        Target.interpret_targets (Common.root common) config setup targets
-      in
+      let request setup = Target.interpret_targets (Common.root common) setup targets in
       run_build_command ~common ~config ~request
   in
   Cmd.v (Cmd.info "build" ~doc ~man ~envs:Common.envs) term

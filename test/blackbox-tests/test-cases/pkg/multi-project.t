@@ -1,7 +1,5 @@
 Multiple projects support
 
-  $ . ./helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

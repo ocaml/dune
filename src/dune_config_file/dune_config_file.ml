@@ -1,8 +1,9 @@
+open Import
+
 module Dune_config = struct
   open Stdune
   open Dune_lang.Decoder
   module Display = Display
-  module Scheduler = Dune_engine.Scheduler
   module Sandbox_mode = Dune_engine.Sandbox_mode
   module Console = Dune_console
   module Stanza = Dune_lang.Stanza
@@ -483,7 +484,7 @@ module Dune_config = struct
 
   let default =
     { display = Simple { verbosity = Quiet; status_line = not Execution_env.inside_dune }
-    ; concurrency = (if Execution_env.inside_dune then Fixed 1 else Auto)
+    ; concurrency = Auto
     ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
     ; cache_enabled = Enabled_except_user_rules
@@ -710,19 +711,19 @@ module Dune_config = struct
          loop commands))
   ;;
 
-  let for_scheduler (t : t) ~watch_exclusions stats ~print_ctrl_c_warning =
+  let for_scheduler (t : t) ~watch_exclusions ~print_ctrl_c_warning =
     let concurrency =
       match t.concurrency with
       | Fixed i -> i
       | Auto ->
         let n = Lazy.force auto_concurrency in
-        Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
+        Log.info "Auto-detected concurrency" [ "concurrency", Dyn.int n ];
         n
     in
     (Dune_engine.Clflags.display
      := match t.display with
         | Tui -> Dune_engine.Display.Quiet
         | Simple { verbosity; _ } -> verbosity);
-    { Scheduler.Config.concurrency; stats; print_ctrl_c_warning; watch_exclusions }
+    { Scheduler.Config.concurrency; print_ctrl_c_warning; watch_exclusions }
   ;;
 end

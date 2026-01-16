@@ -21,5 +21,5 @@ aliases that are being built together.
   [1]
 
 Here we make sure that the cram test is only run once
-  $ cat _build/log | grep dune_cram | sed 's/.*dune_cram_[0-9a-f]*_/dune_cram_HASH_/g'
-  dune_cram_HASH_.cram.sh/main.sh)
+  $ dune trace cat | jq -s 'include "dune"; [ .[] | processes | select(.args.categories == ["cram"]) ] | length'
+  1

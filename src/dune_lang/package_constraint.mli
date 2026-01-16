@@ -13,7 +13,7 @@ end
     represent strings and booleans. If a variable appears in a position where a
     boolean is expected it will be assumed to represent a boolean. *)
 type t =
-  | Bvar of Package_variable_name.t (** A boolean variable *)
+  | Bvar of Value.t
   | Uop of Relop.t * Value.t
   (** A unary operator applied to a value. Unary operators are operators
       whose LHS is implied by context. E.g. when placing version constraints

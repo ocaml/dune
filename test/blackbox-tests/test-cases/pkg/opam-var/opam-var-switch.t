@@ -1,5 +1,3 @@
-  $ . ../helpers.sh
-
 These opam variables are known as "switch variables" in opam, but since in Dune we don't
 have switches, we consider them glboal variables. To keep inline with opam we consider
 there to be a single switch named "dune" and all the installation locations should be in
@@ -49,17 +47,17 @@ opam-var-unsupported.t
        (run echo %{toplevel})
        (run echo %{stublibs}))))))
 
-  $ build_pkg testpkg 2>&1 | sed -E 's#.*.sandbox/[^/]+#.sandbox/$SANDBOX#g'
+  $ build_pkg testpkg 2>&1 | dune_cmd subst '.*.sandbox/[^/]+' '.sandbox/$SANDBOX'
   dune
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-d349dc24837a78e7f391d386e4fcec8d/source
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-d349dc24837a78e7f391d386e4fcec8d/target
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-d349dc24837a78e7f391d386e4fcec8d/target/lib
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-d349dc24837a78e7f391d386e4fcec8d/target/lib
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-d349dc24837a78e7f391d386e4fcec8d/target/bin
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-d349dc24837a78e7f391d386e4fcec8d/target/sbin
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-d349dc24837a78e7f391d386e4fcec8d/target/share
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-d349dc24837a78e7f391d386e4fcec8d/target/doc
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-d349dc24837a78e7f391d386e4fcec8d/target/etc
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-d349dc24837a78e7f391d386e4fcec8d/target/man
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-d349dc24837a78e7f391d386e4fcec8d/target/lib/toplevel
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-d349dc24837a78e7f391d386e4fcec8d/target/lib/stublibs
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/source
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/lib
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/lib
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/bin
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/sbin
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/share
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/doc
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/etc
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/man
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/lib/toplevel
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/lib/stublibs

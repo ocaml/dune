@@ -10,7 +10,6 @@ This means that:
 3. This should work even when lock directories are present.
 4. Explicit settings should override auto-detection.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 First, create a dummy library package in a subdirectory that we can depend on:
@@ -85,15 +84,18 @@ Test that pkg commands fail when disabled:
 
   $ dune pkg outdated 2>&1 | grep "Error:"
   Error: Package management is disabled in workspace configuration.
+  [1]
 
   $ dune pkg validate-lockdir 2>&1 | grep "Error:"
   Error: Package management is disabled in workspace configuration.
+  [1]
 
 Test that dune build fails appropriately when trying to use unavailable
 packages, proving we did not install the needed dependency:
 
   $ dune build 2>&1 | grep -E "(Error|Library.*not found)" | head -5
   Error: Library "testlib" not found.
+  [1]
 
 Now create a lock directory with our testlib package to simulate the case
 where lockdirs exist but pkg is disabled. First, temporarily enable pkg to
@@ -122,6 +124,7 @@ loaded:
 
   $ dune build 2>&1 | grep -E "(Error|Library.*not found)" | head -5
   Error: Library "testlib" not found.
+  [1]
 
 This behavior is identical to having no lock directory. When pkg is disabled,
 the build system does not load package rules, so it does not know about the

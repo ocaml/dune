@@ -38,9 +38,14 @@ end
 
 module Context : sig
   module Target : sig
+    type named =
+      { name : Context_name.t
+      ; target_exec : (string * string list) option
+      }
+
     type t =
       | Native
-      | Named of Context_name.t
+      | Named of named
 
     val equal : t -> t -> bool
   end

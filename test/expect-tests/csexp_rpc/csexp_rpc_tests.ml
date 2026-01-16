@@ -1,7 +1,7 @@
 open Stdune
 open Csexp_rpc
 open Fiber.O
-module Scheduler = Dune_engine.Scheduler
+open Dune_scheduler
 
 let () = Dune_tests_common.init ()
 
@@ -12,8 +12,8 @@ type event =
 let server (where : Unix.sockaddr) =
   (match where with
    | ADDR_UNIX p ->
+     Fpath.unlink_no_err p;
      let p = Path.of_string p in
-     Path.unlink_no_err p;
      Path.mkdir_p (Path.parent_exn p)
    | _ -> ());
   match Server.create [ where ] ~backlog:10 with
@@ -90,7 +90,6 @@ let%expect_test "csexp server life cycle" =
   Dune_engine.Clflags.display := Quiet;
   let config =
     { Scheduler.Config.concurrency = 1
-    ; stats = None
     ; print_ctrl_c_warning = false
     ; watch_exclusions = []
     }

@@ -1,7 +1,5 @@
 Demonstrate the build command we construct for different types of projects:
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

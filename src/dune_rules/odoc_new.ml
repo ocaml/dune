@@ -182,9 +182,7 @@ module Index = struct
       of_external_loc maps loc
     with
     | Some loc -> loc
-    | None ->
-      Log.info [ Pp.textf "Argh lib ex loc: %s" (Lib_name.to_string name) ];
-      [ Sub_dir (Lib_name.to_string (Lib.name lib)); Top_dir Other ]
+    | None -> [ Sub_dir (Lib_name.to_string (Lib.name lib)); Top_dir Other ]
   ;;
 
   let of_pkg maps pkg =
@@ -239,7 +237,7 @@ let libs_maps_def =
         match Path.Map.add acc path i with
         | Ok acc -> i + 1, acc
         | Error _ ->
-          Log.info [ Pp.textf "Error adding findlib path to map" ];
+          Log.warn "Error adding findlib path to map" [];
           i + 1, acc)
       |> snd
     in
@@ -257,9 +255,10 @@ let libs_maps_def =
         (match Dune_package.Lib.external_location l with
          | None ->
            Log.info
-             [ Pp.textf
-                 "No location for lib %s"
-                 (Dune_package.Lib.info l |> Lib_info.name |> Lib_name.to_string)
+             "No location for lib"
+             [ ( "lib"
+               , Dyn.string
+                   (Dune_package.Lib.info l |> Lib_info.name |> Lib_name.to_string) )
              ];
            Memo.return maps
          | Some location ->
@@ -275,11 +274,9 @@ let libs_maps_def =
                 | Ok l -> l
                 | Error _ ->
                   (* I don't expect this should ever happen *)
-                  Log.info
-                    [ Pp.textf
-                        "Error adding lib %s to loc_of_lib map"
-                        (Lib_name.to_string name)
-                    ];
+                  Log.warn
+                    "Error adding lib to loc_of_lib map"
+                    [ "lib", Dyn.string (Lib_name.to_string name) ];
                   maps.loc_of_lib
               in
               let loc_of_pkg =
@@ -298,11 +295,9 @@ let libs_maps_def =
                   (match Lib_name.Map.add libs name (l, lib) with
                    | Ok libs -> Some libs
                    | Error _ ->
-                     Log.info
-                       [ Pp.textf
-                           "Error adding lib %s to libs_of_loc map"
-                           (Lib_name.to_string name)
-                       ];
+                     Log.warn
+                       "Error adding lib to libs_of_loc map"
+                       [ "lib", Dyn.string (Lib_name.to_string name) ];
                      Some libs)
               in
               let libs_of_loc =
@@ -360,11 +355,9 @@ module Classify = struct
   let classify_location maps location =
     match Ext_loc_map.find maps.libs_of_loc location with
     | None ->
-      Log.info
-        [ Pp.textf
-            "classify_local_dir: No lib at this location: %s"
-            (Dyn.to_string (Dune_package.External_location.to_dyn location))
-        ];
+      Log.warn
+        "classify_local_dir: No lib at this location"
+        [ "location", Dune_package.External_location.to_dyn location ];
       Memo.return Nothing
     | Some libs ->
       (try
@@ -443,7 +436,13 @@ module Valid = struct
               Lib.Set.fold ~init:(Memo.return []) libs ~f:(fun lib acc ->
                 let* acc = acc in
                 let+ libs =
-                  let* libs = Lib.closure (lib :: Option.to_list stdlib) ~linking:false in
+                  let for_ =
+                    (Compilation_mode.of_mode_set (Lib_info.modes (Lib.info lib)))
+                      .for_merlin
+                  in
+                  let* libs =
+                    Lib.closure (lib :: Option.to_list stdlib) ~linking:false ~for_
+                  in
                   Resolve.read_memo libs
                 in
                 libs :: acc))
@@ -539,11 +538,9 @@ module Valid = struct
             match Lib_name.Map.add cats.local (Lib.name (llib :> Lib.t)) llib with
             | Ok l -> l
             | Error _ ->
-              Log.info
-                [ Pp.textf
-                    "Error adding local library %s to categorized map"
-                    (Lib.name (llib :> Lib.t) |> Lib_name.to_string)
-                ];
+              Log.warn
+                "Error adding local library to categorized map"
+                [ "lib", Dyn.string (Lib.name (llib :> Lib.t) |> Lib_name.to_string) ];
               cats.local
           in
           Memo.return { cats with local }
@@ -552,7 +549,8 @@ module Valid = struct
           (match Lib_name.Map.find maps.loc_of_lib (Lib.name lib) with
            | None ->
              Log.info
-               [ Pp.textf "No location for lib: %s" (Lib.name lib |> Lib_name.to_string) ];
+               "No location for lib"
+               [ "lib", Dyn.string (Lib.name lib |> Lib_name.to_string) ];
              Memo.return cats
            | Some location ->
              let* classification = Classify.classify_location maps location in
@@ -565,11 +563,9 @@ module Valid = struct
                  let loc_str =
                    Dyn.to_string (Dune_package.External_location.to_dyn location)
                  in
-                 Log.info
-                   [ Pp.textf
-                       "Duplicate 'Dune_with_modules' library found in location %s"
-                       loc_str
-                   ];
+                 Log.warn
+                   "Duplicate 'Dune_with_modules' library found in location"
+                   [ "location", Dyn.string loc_str ];
                  old
              in
              let externals = Ext_loc_map.update cats.externals location ~f in
@@ -729,7 +725,9 @@ end = struct
       let basename =
         Path.basename v.source |> Filename.remove_extension |> Stdune.String.capitalize
       in
-      Some (Module_name.of_string_allow_invalid (Loc.none, basename))
+      Some
+        (Module_name.of_string_allow_invalid (Loc.none, basename)
+         |> Module_name.Unchecked.allow_invalid)
     | _ -> None
   ;;
 
@@ -901,7 +899,13 @@ let compile_module
    require all of the odoc files for all dependency libraries to be
    created rather than doing any fine-grained dependency management. *)
 let compile_requires stdlib_opt libs =
-  Memo.List.map ~f:(fun l -> Lib.closure ~linking:false [ l ]) libs
+  Memo.List.map
+    ~f:(fun l ->
+      let for_ =
+        (Compilation_mode.of_mode_set (Lib_info.modes (Lib.info l))).for_merlin
+      in
+      Lib.closure ~linking:false [ l ] ~for_)
+    libs
   >>| Resolve.all
   >>| Resolve.map ~f:(fun requires ->
     let requires = List.flatten requires in
@@ -913,8 +917,8 @@ let compile_requires stdlib_opt libs =
     List.filter requires ~f:(fun l -> not (List.mem libs l ~equal:lib_equal)))
 ;;
 
-let link_requires stdlib_opt libs =
-  Lib.closure libs ~linking:false
+let link_requires stdlib_opt libs (* ~for_ *) =
+  Lib.closure libs ~linking:false ~for_:Ocaml
   |> Resolve.Memo.map ~f:(fun libs ->
     match stdlib_opt with
     | None -> libs
@@ -1074,7 +1078,7 @@ let parse_odoc_deps =
     | [] -> cur
     | x :: rest ->
       (match String.split ~on:' ' x with
-       | [ m; hash ] -> getdeps ((Module_name.of_string m, hash) :: cur) rest
+       | [ m; hash ] -> getdeps ((Module_name.of_checked_string m, hash) :: cur) rest
        | _ -> getdeps cur rest)
   in
   fun lines -> getdeps [] lines
@@ -1160,7 +1164,7 @@ let modules_of_dir d : (Module_name.t * (Path.t * [ `Cmti | `Cmt | `Cmi ])) list
         List.find_exn extensions ~f:(fun (ext, _ty) ->
           List.exists list ~f:(fun (n, _) -> n = m ^ ext))
       in
-      Module_name.of_string m, (Path.relative d (m ^ ext), ty))
+      Module_name.of_checked_string m, (Path.relative d (m ^ ext), ty))
 ;;
 
 (* Here we are constructing the list of artifacts for various types of things
@@ -1199,9 +1203,9 @@ let lib_artifacts ctx all index lib modules =
   let cm_kind : Lib_mode.Cm_kind.t =
     match
       let modes = Lib_info.modes info in
-      Lib_mode.Map.Set.for_merlin modes
+      (Compilation_mode.of_mode_set modes).for_merlin
     with
-    | Ocaml _ -> Ocaml Cmi
+    | Ocaml -> Ocaml Cmi
     | Melange -> Melange Cmi
   in
   let obj_dir = Lib_info.obj_dir info in
@@ -1236,12 +1240,12 @@ let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =
         let doc_path = Section.Map.find_exn dpkg.sections Doc in
         Some
           (List.filter_map fs ~f:(function
-             | `File, dst ->
+             | { kind = File; dst } ->
                let str = Install.Entry.Dst.to_string dst in
                if Filename.check_suffix str ".mld"
                then Some (Path.relative doc_path str, str)
                else None
-             | _ -> None))
+             | { kind = Directory; dst = _ } -> None))
       | _ -> None)
     |> List.concat
 ;;
@@ -1474,18 +1478,20 @@ let index_info_of_lib_def =
       | Some l -> Index.of_local_lib l
       | None -> Index.of_external_lib maps lib
     in
+    let info = Lib.info lib in
     let+ artifacts =
-      let+ modules = Dir_contents.modules_of_lib sctx (lib :> Lib.t) in
+      let { Compilation_mode.for_merlin; _ } =
+        Compilation_mode.of_mode_set (Lib_info.modes info)
+      in
+      let+ modules = Dir_contents.modules_of_lib sctx (lib :> Lib.t) ~for_:for_merlin in
       match modules with
       | Some m -> lib_artifacts ctx all index (lib :> Lib.t) m
       | None ->
         (* Note this shouldn't happen as we've filtered out libs
            without a [Modules.t] in the classification stage. *)
-        Log.info
-          [ Pp.textf
-              "Expecting modules info for library %s"
-              (Lib.name lib |> Lib_name.to_string)
-          ];
+        Log.warn
+          "Expecting modules info for library"
+          [ "lib", Dyn.string (Lib.name lib |> Lib_name.to_string) ];
         []
     in
     let libs =
@@ -1496,7 +1502,7 @@ let index_info_of_lib_def =
       in
       Lib.Map.singleton lib entry_modules
     in
-    let package = Lib_info.package (Lib.info lib) in
+    let package = Lib_info.package info in
     let lib_index_info =
       ( index
       , { Index_tree.libs

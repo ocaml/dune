@@ -26,12 +26,12 @@ export BUILD_PATH_PREFIX_MAP="/OCAMLC=$ocamlc:$BUILD_PATH_PREFIX_MAP"
 # which is then used to bootstrap the fake dune.
 create_dune() {
   cat > bin/main.ml
-  cat > bin/dune <<EOF
-(executable
- (name main)
- (libraries $1)
- (bootstrap_info bootstrap-info))
-EOF
+  cat > bin/dune <<- EOF
+	(executable
+	 (name main)
+	 (libraries $1)
+	 (bootstrap_info bootstrap-info))
+	EOF
   dune build bin/bootstrap-info
   cp _build/default/bin/bootstrap-info boot/libs.ml
   bootstrap.exe && _boot/dune.exe

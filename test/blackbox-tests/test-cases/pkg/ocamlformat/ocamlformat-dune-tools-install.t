@@ -1,7 +1,6 @@
 Test that checks the interaction of `dune fmt` with `dune tools install
 ocamlformat`.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Set up a ocamlformat via OPAM package:

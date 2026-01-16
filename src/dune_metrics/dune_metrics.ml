@@ -6,13 +6,13 @@ let enable () = enabled := true
 module Timer = struct
   module Measure = struct
     type t =
-      { cumulative_time : float
+      { cumulative_time : Time.Span.t
       ; count : int
       }
   end
 
   type t =
-    { start_time : float
+    { start_time : Time.t
     ; tag : string
     ; mutable stopped : bool
     }
@@ -28,15 +28,15 @@ module Timer = struct
            | Some { Measure.cumulative_time; count } ->
              Some
                { Measure.cumulative_time =
-                   cumulative_time +. (Unix.gettimeofday () -. start_time)
+                   Time.Span.add cumulative_time (Time.diff (Time.now ()) start_time)
                ; count = count + 1
                }
            | None ->
              Some
-               { Measure.cumulative_time = Unix.gettimeofday () -. start_time; count = 1 })
+               { Measure.cumulative_time = Time.diff (Time.now ()) start_time; count = 1 })
   ;;
 
-  let start tag = { start_time = Unix.gettimeofday (); tag; stopped = false }
+  let start tag = { start_time = Time.now (); tag; stopped = false }
 
   let stop t =
     match !enabled with
@@ -51,7 +51,7 @@ module Timer = struct
     match !enabled with
     | false -> f ()
     | true ->
-      let start_time = Unix.gettimeofday () in
+      let start_time = Time.now () in
       Exn.protect ~f ~finally:(fun () ->
         update_aggregate { tag; start_time; stopped = false })
   ;;

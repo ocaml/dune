@@ -1,6 +1,5 @@
 Test for a project whose dependencies are different depending on the platform.
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 
@@ -74,13 +73,13 @@ A package that conditionally depends on packages depending on the OS:
 Build the project as if we were on linux and confirm that only the linux-specific dependency is installed:
   $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=arm64 DUNE_CONFIG__OS_FAMILY=debian DUNE_CONFIG__OS_DISTRIBUTION=ubuntu DUNE_CONFIG__OS_VERSION=24.11 dune build
   $ ls $pkg_root/
-  foo.0.0.1-5e48eb7073ada94c09fb13ac3853f1e9
-  linux-only.0.0.1-f754e8cf64f80c214f1a86ee403f0dc3
+  foo.0.0.1-8a5ad1a19f5f8d72369fe49a7f3ca0f3
+  linux-only.0.0.1-a1576fc5a8c775d87e8186b53db62eef
 
   $ dune clean
 
 Build the project as if we were on macos and confirm that only the macos-specific dependency is installed:
   $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=x86_64 DUNE_CONFIG__OS_FAMILY=homebrew DUNE_CONFIG__OS_DISTRIBUTION=homebrew DUNE_CONFIG__OS_VERSION=15.3.1 dune build
   $ ls $pkg_root/
-  foo.0.0.1-c8f5e41510b06a6875f85e9639e1a288
-  macos-only.0.0.1-6fa10e046474f147e8ea1a1932a87966
+  foo.0.0.1-be71f4a233c5170a74ac038f693ea063
+  macos-only.0.0.1-158076f066cd0c29ae731e289007e0a5

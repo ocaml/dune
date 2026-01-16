@@ -4,9 +4,6 @@ Once the branch is modified, dune should rebuild the package.
 
 This bug is reported in #10063
 
-  $ . ../git-helpers.sh
-  $ . ./helpers.sh
-
   $ src="_git_source"
 
   $ mkdir $src && cd $src

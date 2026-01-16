@@ -1,7 +1,5 @@
 Test conversion of opam sources into lock dir package specifications
 
-  $ . ./helpers.sh
-
   $ mkrepo
 
   $ mkpkg testpkg <<EOF
@@ -38,11 +36,11 @@ Test conversion of opam sources into lock dir package specifications
 
   $ rm -rf ${default_lock_dir}
 
-  $ solve testpkg 2>&1 | sed -E 's#.*.sandbox/[^/]+#.sandbox/$SANDBOX#g' | sed '/File "/q'
+  $ solve testpkg
   Solution for dune.lock:
   - testpkg.0.0.1
 
-  $ showpkg | sed -e "s#$PWD#<pwd>#"
+  $ showpkg | dune_cmd subst "$PWD" '<pwd>'
   (version 0.0.1)
   
   (source

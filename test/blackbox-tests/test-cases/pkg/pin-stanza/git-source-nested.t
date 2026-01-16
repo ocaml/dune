@@ -1,8 +1,5 @@
 Package sources can be set to git and be nested:
 
-  $ . ../../git-helpers.sh
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 
@@ -30,9 +27,10 @@ Package sources can be set to git and be nested:
   >  (package (name bar)))
   > EOF
 
-  $ dune pkg lock 2>&1 | sed 's#git+file://.*/#$URL#'
+  $ dune pkg lock 2>&1 | dune_cmd subst 'git\+file://.*/' '$URL'
   File "dune-project", line 5, characters 1-21:
   5 |  (package (name bar)))
        ^^^^^^^^^^^^^^^^^^^^
   Error: package bar doesn't exist in source
   $URL_repo
+  [1]

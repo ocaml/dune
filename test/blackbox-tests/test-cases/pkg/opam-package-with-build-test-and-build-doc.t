@@ -3,7 +3,6 @@ since been deprecated to the `build` field with a filter.
 
 In this test we demonstrate that we don't currently do anything special with those fields.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ mkpkg with-build-test-doc <<EOF

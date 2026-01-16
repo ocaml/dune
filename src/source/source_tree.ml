@@ -362,9 +362,9 @@ module Dir = struct
            | None -> map_reduce
            | Some stats ->
              fun t ~traverse ~trace_event_name ~f ->
-               let start = Unix.gettimeofday () in
+               let start = Time.now () in
                let+ res = map_reduce t ~traverse ~trace_event_name ~f in
-               let stop = Unix.gettimeofday () in
+               let stop = Time.now () in
                let event =
                  Dune_trace.Event.scan_source
                    ~name:trace_event_name
@@ -372,7 +372,7 @@ module Dir = struct
                    ~stop
                    ~dir:t.path
                in
-               Dune_trace.emit stats event;
+               Dune_trace.Out.emit stats event;
                res)
       in
       fun t ~traverse ~trace_event_name ~f ->

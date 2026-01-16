@@ -74,6 +74,8 @@ module Pid = Pid
 module Applicative = Applicative
 module Json = Json
 module Log = Log
+module Time = Time
+module Escape0 = Escape
 
 module type Top_closure = Top_closure.Top_closure
 

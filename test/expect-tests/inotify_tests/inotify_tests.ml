@@ -26,8 +26,8 @@ let remove_dot_slash s = String.drop_prefix s ~prefix:"./" |> Option.value ~defa
 
 (* Events generated from watching directory "." are prefixed with ".". Remove
    the prefix as it's not super interesting. *)
-let remove_dot_slash_from_event : Async_inotify.Event.t -> Async_inotify.Event.t
-  = function
+let remove_dot_slash_from_event : Async_inotify.Event.t -> Async_inotify.Event.t =
+  function
   | Created s -> Created (remove_dot_slash s)
   | Unlinked s -> Unlinked (remove_dot_slash s)
   | Modified s -> Modified (remove_dot_slash s)
@@ -55,7 +55,7 @@ let watch, collect_events =
   let cond = Condition.create () in
   let inotify =
     Async_inotify.create
-      ~spawn_thread:(fun f -> ignore (Thread.create f () : Thread.t))
+      ~spawn_thread:(fun f -> Thread.create f ())
       ~modify_event_selector:`Closed_writable_fd
       ~log_error:print_endline
       ~send_emit_events_job_to_scheduler:(fun f ->

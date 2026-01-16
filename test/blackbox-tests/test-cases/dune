@@ -3,11 +3,13 @@
   (env-vars
    (DUNE_CONFIG__BACKGROUND_SANDBOXES disabled)
    (DUNE_CONFIG__BACKGROUND_DIGESTS disabled)
+   (DUNE_JOBS 1)
    ;; We set ocaml to always be colored since it changes the output of
    ;; ocamlc error messages. See https://github.com/ocaml/ocaml/issues/14144
    (OCAML_COLOR always))
   (binaries
    ../utils/dune_cmd.exe
+   ../utils/action_trace.exe
    ../utils/dunepp.exe
    ../utils/melc_stdlib_prefix.exe
    ../utils/refmt.exe
@@ -15,18 +17,30 @@
    ../utils/sherlodoc.exe
    ../utils/ocaml_index.exe)))
 
+(rule
+ (alias runtest)
+ (deps git-helpers.sh)
+ (action
+  (run %{bin:bash} -n %{deps})))
+
 (cram
  (applies_to pp-cwd)
  (deps %{bin:dunepp}))
 
 (cram
  (applies_to :whole_subtree)
+ (shell bash)
  (deps
   (env_var OCAML_COLOR)
+  (env_var DUNE_JOBS)
+  ../dune.jq
+  %{bin:jq}
   %{bin:dune_cmd}
+  %{bin:action_trace}
   (package dune))
  ;; We don't allow conflict markers in tests
  (conflict_markers error)
+ (setup_scripts ../setup-script.sh)
  ;; Tests shouldn't take longer than 60s
  (timeout 60))
 
@@ -127,6 +141,15 @@
  (enabled_if
   (< %{ocaml_version} 5.2.0)))
 
-(cram
- (applies_to trace-file)
- (deps %{bin:perl}))
+(rule
+ (alias runtest)
+ (deps git-helpers.sh)
+ (action
+  (run %{bin:bash} -n %{deps})))
+
+(rule
+ (alias runtest)
+ (enabled_if %{bin-available:shellcheck})
+ (deps git-helpers.sh)
+ (action
+  (run %{bin:shellcheck} -s bash %{deps})))

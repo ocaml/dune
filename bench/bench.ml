@@ -1,5 +1,6 @@
 open Stdune
 module Process = Dune_engine.Process
+open Dune_scheduler
 
 module Console = struct
   include Dune_console
@@ -220,22 +221,20 @@ let format_results bench_results =
 ;;
 
 let () =
-  Log.init ~file:No_log_file ();
+  Log.init No_log_file;
   let dir = Temp.create Dir ~prefix:"dune" ~suffix:"bench" in
   Sys.chdir (Path.to_string dir);
   Path.as_external dir |> Option.value_exn |> Path.set_root;
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string "_build");
-  let module Scheduler = Dune_engine.Scheduler in
   let config =
     Dune_engine.Clflags.display := Quiet;
     { Scheduler.Config.concurrency = 10
-    ; stats = None
     ; print_ctrl_c_warning = false
     ; watch_exclusions = []
     }
   in
   let size =
-    let stat : Unix.stats = Path.stat_exn dune in
+    let stat : Unix.stats = Unix.stat (Path.to_string dune) in
     stat.st_size
   in
   let results =

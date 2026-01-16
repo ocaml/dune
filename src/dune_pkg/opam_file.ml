@@ -24,7 +24,7 @@ let loc_of_opam_pos
   Loc.create ~start ~stop
 ;;
 
-let read_from_string_exn ~contents path =
+let opam_file_of_string_exn ~contents path =
   let filename = Path.to_absolute_filename path |> OpamFilename.raw in
   let pos = OpamTypesBase.pos_file filename in
   try
@@ -42,6 +42,24 @@ let read_from_string_exn ~contents path =
       | Some pos -> loc_of_opam_pos pos
     in
     User_error.raise ~loc [ Pp.text "unable to parse opam file"; Pp.text message ]
+;;
+
+let opam_file_of_path path =
+  let contents = Io.read_file ~binary:true path in
+  opam_file_of_string_exn ~contents path
+;;
+
+let add_opam_package_to_opam_file package opam_file =
+  opam_file
+  |> OpamFile.OPAM.with_version (OpamPackage.version package)
+  |> OpamFile.OPAM.with_name (OpamPackage.name package)
+;;
+
+let opam_file_with ~package ~url opam_file =
+  let opam_file = add_opam_package_to_opam_file package opam_file in
+  match url with
+  | None -> opam_file
+  | Some url -> OpamFile.OPAM.with_url (OpamFile.URL.create url) opam_file
 ;;
 
 let parse_gen entry (lb : Lexing.lexbuf) =
@@ -282,6 +300,7 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
     ~conflicts:[]
     ~depends:[]
     ~depopts:[]
+    ~enabled_if:None (* CR-someday rgrinberg: would be nice to interpret this *)
     ~info
     ~synopsis:(get_one "synopsis")
     ~description:(get_one "description")

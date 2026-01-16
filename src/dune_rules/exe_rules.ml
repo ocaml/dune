@@ -59,24 +59,31 @@ let linkages
 ;;
 
 let programs ~modules ~(exes : Executables.t) =
-  List.map (Nonempty_list.to_list exes.names) ~f:(fun (loc, name) ->
-    let mod_name = Module_name.of_string_allow_invalid (loc, name) in
-    match Modules.With_vlib.find modules mod_name with
+  Nonempty_list.to_list_map exes.names ~f:(fun (loc, name) ->
+    let main_module_name =
+      Module_name.of_string_allow_invalid (loc, name)
+      |> Module_name.Unchecked.allow_invalid
+    in
+    match Modules.With_vlib.find modules main_module_name with
     | Some m ->
       if Module.has m ~ml_kind:Impl
-      then { Exe.Program.name; main_module_name = mod_name; loc }
+      then { Exe.Program.name; main_module_name; loc }
       else
         User_error.raise
           ~loc
-          [ Pp.textf "Module %S has no implementation." (Module_name.to_string mod_name) ]
+          [ Pp.textf
+              "Module %S has no implementation."
+              (Module_name.to_string main_module_name)
+          ]
     | None ->
       let msg =
         match Ordered_set_lang.Unexpanded.loc exes.buildable.modules.modules with
-        | None -> Pp.textf "Module %S doesn't exist." (Module_name.to_string mod_name)
+        | None ->
+          Pp.textf "Module %S doesn't exist." (Module_name.to_string main_module_name)
         | Some _ ->
           Pp.textf
             "The name %S is not listed in the (modules) field of this stanza."
-            (Module_name.to_string mod_name)
+            (Module_name.to_string main_module_name)
       in
       User_error.raise ~loc [ msg ])
 ;;
@@ -128,6 +135,8 @@ let o_files
     Mode.Map.Multi.add_all o_files All extra_o_files)
 ;;
 
+let for_ = Compilation_mode.Ocaml
+
 let executables_rules
       ~sctx
       ~dir
@@ -145,7 +154,7 @@ let executables_rules
     Dir_contents.ocaml dir_contents
     >>= Ml_sources.modules_and_obj_dir ~libs:(Scope.libs scope) ~for_:(Exe { first_exe })
   in
-  let* () = Check_rules.add_obj_dir sctx ~obj_dir (Ocaml Byte) in
+  let* () = Check_rules.add_obj_dir sctx ~obj_dir Ocaml in
   let ctx = Super_context.context sctx in
   let* ocaml = Context.ocaml ctx in
   let project = Scope.project scope in
@@ -182,8 +191,8 @@ let executables_rules
   in
   let programs = programs ~modules ~exes in
   let* cctx =
-    let requires_compile = Lib.Compile.direct_requires compile_info in
-    let requires_link = Lib.Compile.requires_link compile_info in
+    let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
+    let requires_link = Lib.Compile.requires_link compile_info ~for_ in
     let instances =
       Parameterised_rules.instances ~sctx ~db:(Scope.libs scope) exes.buildable.libraries
     in
@@ -194,7 +203,7 @@ let executables_rules
           x)
     in
     Compilation_context.create
-      ()
+      Ocaml
       ~loc:exes.buildable.loc
       ~super_context:sctx
       ~scope
@@ -214,7 +223,7 @@ let executables_rules
   let* requires_compile = Compilation_context.requires_compile cctx in
   let* () =
     let toolchain = Compilation_context.ocaml cctx in
-    let user_written_requires = Lib.Compile.user_written_requires compile_info in
+    let user_written_requires = Lib.Compile.user_written_requires compile_info ~for_ in
     let allow_unused_libraries = Lib.Compile.allow_unused_libraries compile_info in
     Unused_libs_rules.gen_rules
       sctx
@@ -367,7 +376,7 @@ let rules ~sctx ~dir_contents ~scope ~expander (exes : Executables.t) =
       ~compile_info
       ~embed_in_plugin_libraries:exes.embed_in_plugin_libraries
   in
-  let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir
+  let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir ~for_
   and* () = Bootstrap_info.gen_rules sctx exes ~dir compile_info dir_contents in
   let merlin_ident = Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names) in
   Buildable_rules.with_lib_deps (Super_context.context sctx) merlin_ident ~dir ~f

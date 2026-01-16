@@ -99,6 +99,7 @@ let name = function
 ;;
 
 let compare (x : t) (y : t) = Poly.compare x y
+let equal (x : t) (y : t) = Poly.equal x y
 
 let to_dyn =
   let open Dyn in

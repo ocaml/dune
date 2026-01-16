@@ -70,6 +70,9 @@ let () =
   Dune_project.Extension.register_simple syntax (return [ name, decode_stanza decode ])
 ;;
 
+let flags = Ocaml_flags.of_list [ "-w"; "-24" ]
+let for_ = Compilation_mode.Ocaml
+
 let gen_rules sctx t ~dir ~scope =
   let loc = t.loc in
   (* Files checked by cinaps *)
@@ -99,7 +102,7 @@ let gen_rules sctx t ~dir ~scope =
     in
     Path.Build.relative dir ("." ^ name ^ "." ^ stamp)
   in
-  let main_module_name = Module_name.of_string name in
+  let main_module_name = Module_name.of_checked_string name in
   let module_ = Module.generated ~kind:Impl [ main_module_name ] ~src_dir:cinaps_dir in
   let* () =
     let cinaps_ml =
@@ -163,11 +166,11 @@ let gen_rules sctx t ~dir ~scope =
         in
         Pp_spec.pp_module preprocess module_ >>| Modules.With_vlib.singleton_exe
       in
-      let requires_compile = Lib.Compile.direct_requires compile_info in
-      let requires_link = Lib.Compile.requires_link compile_info in
+      let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
+      let requires_link = Lib.Compile.requires_link compile_info ~for_ in
       let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name in
       Compilation_context.create
-        ()
+        for_
         ~super_context:sctx
         ~scope
         ~obj_dir
@@ -175,7 +178,7 @@ let gen_rules sctx t ~dir ~scope =
         ~opaque:(Explicit false)
         ~requires_compile
         ~requires_link
-        ~flags:(Ocaml_flags.of_list [ "-w"; "-24" ])
+        ~flags
         ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
         ~melange_package_name:None
         ~package:None

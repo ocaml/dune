@@ -24,4 +24,6 @@ setup
 dependencies
 pinning
 repos
+locking
+oxcaml
 :::

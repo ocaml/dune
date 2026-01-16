@@ -21,19 +21,20 @@ let ocaml_flags t ~dir (spec : Dune_lang.Ocaml_flags.Spec.t) =
     Ocaml_flags.with_vendored_flags ~ocaml_version flags
 ;;
 
-let gen_select_rules sctx ~dir compile_info =
-  Lib.Compile.resolved_selects compile_info
+let gen_select_rules sctx ~dir compile_info ~for_ =
+  Lib.Compile.resolved_selects compile_info ~for_
   |> Resolve.Memo.read_memo
-  >>= Memo.parallel_iter ~f:(fun { Lib.Compile.Resolved_select.dst_fn; src_fn } ->
-    let dst = Path.Build.relative dir dst_fn in
+  >>= Memo.parallel_iter ~f:(fun { Lib.Compile.Resolved_select.dst_fn; src_fn; loc } ->
+    let dst = Path.Build.append_local dir dst_fn in
     Super_context.add_rule
       sctx
+      ~loc
       ~dir
       (Action_builder.with_file_targets
          ~file_targets:[ dst ]
          (let open Action_builder.O in
           let* src_fn = Resolve.read src_fn in
-          let src = Path.build (Path.Build.relative dir src_fn) in
+          let src = Path.build (Path.Build.append_local dir src_fn) in
           let+ () = Action_builder.path src in
           let context = Super_context.context sctx in
           Action.Full.make (Copy_line_directive.action context ~src ~dst))))
@@ -131,7 +132,11 @@ let modules_rules
     | Some mains ->
       if Dune_project.executables_implicit_empty_intf (Scope.project scope)
       then (
-        let executable_names = List.map mains ~f:Module_name.of_string_allow_invalid in
+        let executable_names =
+          List.map mains ~f:(fun main ->
+            Module_name.of_string_allow_invalid main
+            |> Module_name.Unchecked.allow_invalid)
+        in
         fun name -> default || List.mem executable_names name ~equal:Module_name.equal)
       else fun _ -> default
   in

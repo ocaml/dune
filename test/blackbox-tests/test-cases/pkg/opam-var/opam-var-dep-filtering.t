@@ -1,7 +1,5 @@
 Demonstrate how dependencies are filtered in opam files:
 
-  $ . ../helpers.sh 
-
   $ build_single_package() {
   > solve_project <<EOF
   > (lang dune 3.11)

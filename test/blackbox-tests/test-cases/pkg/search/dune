@@ -1,2 +1,15 @@
 (cram
- (deps helpers.sh))
+ (setup_scripts helpers.sh))
+
+(rule
+ (alias runtest)
+ (deps helpers.sh)
+ (action
+  (run %{bin:bash} -n %{deps})))
+
+(rule
+ (alias runtest)
+ (enabled_if %{bin-available:shellcheck})
+ (deps helpers.sh)
+ (action
+  (run %{bin:shellcheck} -s bash %{deps})))

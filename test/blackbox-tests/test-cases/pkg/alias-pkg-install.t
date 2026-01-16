@@ -1,8 +1,6 @@
 This test verifies the @pkg-install alias fetch and build the project dependencies
 without building the project itself.
 
-  $ . ./helpers.sh
-
 Create a project using the fake library as a dependency:
   $ cat > dune-project << EOF
   > (lang dune 3.16)

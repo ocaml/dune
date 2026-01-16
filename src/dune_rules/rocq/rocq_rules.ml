@@ -411,7 +411,7 @@ let libs_of_theory ~lib_db ~theories_deps plugins : (Lib.t list * _) Resolve.Mem
     Resolve.List.concat_map ~f:Rocq_lib.Dune.libraries dune_theories |> Resolve.Memo.lift
   in
   let libs = libs @ dlibs in
-  let+ findlib_libs = Lib.closure ~linking:false (List.map ~f:snd libs) in
+  let+ findlib_libs = Lib.closure ~linking:false (List.map ~f:snd libs) ~for_:Ocaml in
   findlib_libs, legacy_theories
 ;;
 
@@ -524,10 +524,10 @@ let setup_rocqproject_for_theory_rule
   let contents : string With_targets.t =
     let open With_targets.O in
     let dir = Path.build dir in
-    let+ args_bld = Command.expand ~dir (Command.Args.S args)
+    let+ args_bld = Command.expand ~dir (Command.Args.S args) >>| Appendable_list.to_list
     and+ args_src =
       let dir = Path.source (Path.drop_build_context_exn dir) in
-      Command.expand ~dir (Command.Args.S args)
+      Command.expand ~dir (Command.Args.S args) >>| Appendable_list.to_list
     in
     let contents = Buffer.create 73 in
     let rec add_args args_bld args_src =
@@ -1205,9 +1205,13 @@ let install_rules ~sctx ~dir s =
     let to_dst f = Path.Local.to_string @@ Path.Local.relative dst_dir f in
     let make_entry (orig_file : Path.Build.t) (dst_file : string) =
       let entry =
-        Install.Entry.make Section.Lib_root ~dst:(to_dst dst_file) orig_file ~kind:`File
+        Install.Entry.Unexpanded.make
+          Section.Lib_root
+          ~dst:(to_dst dst_file)
+          orig_file
+          ~kind:Install.Entry.Unexpanded.File
       in
-      Install.Entry.Sourced.create ~loc entry
+      Install.Entry.Sourced.Unexpanded.create ~loc entry
     in
     let+ rocq_sources = Dir_contents.rocq dir_contents in
     rocq_sources

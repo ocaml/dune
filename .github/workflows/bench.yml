@@ -1,3 +1,4 @@
+# This file is auto-generated. Edit ci/bench.yml.in instead
 name: Build time benchmarks
 
 # Do not run this workflow on pull request since this workflow has permission to modify contents.
@@ -21,7 +22,7 @@ jobs:
         os:
           - ubuntu-latest
         ocaml-compiler:
-          - 5.1.x
+          - 5.4.x
 
     runs-on: ${{ matrix.os }}
 
@@ -41,6 +42,7 @@ jobs:
 
       - name: Install deps on Unix
         run: |
+          opam pin -n . --with-version=3.22.0
           opam install . --deps-only --with-test
           opam exec -- make dev-deps
           # Install hyperfine
@@ -71,40 +73,6 @@ jobs:
           auto-push: true
           # Ratio indicating how worse the current benchmark result is.
           # 175% means if last build took 40s and current takes >70s, it will trigger an alert
-          alert-threshold: "225%"
-          fail-on-alert: true
-          # Enable alert commit comment
-          comment-on-alert: true
-          # Mention @jchavarri in the commit comment
-          alert-comment-cc-users: '@jchavarri'
-
-      - name: Clone pupilfirst fork
-        run: git clone --depth 1 https://github.com/jchavarri/pupilfirst.git
-
-      - name: Install all deps
-        working-directory: pupilfirst
-        run: opam install -y . --deps-only
-
-      - name: Run pupilfirst benchmark
-        working-directory: pupilfirst
-        run: ../bench/gen-benchmark.sh 'opam exec -- ../_boot/dune.exe build --root=. @main' 'opam exec -- ../_boot/dune.exe clean --root=.' 'pupilfirst build time (${{ runner.os }})' > melange-benchmark-result.json
-
-      - name: Print pupilfirst benchmark results
-        working-directory: pupilfirst
-        run: |
-          cat bench.json
-          cat melange-benchmark-result.json
-
-      - name: Store melange benchmark result
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: Melange Benchmark
-          tool: "customSmallerIsBetter"
-          output-file-path: pupilfirst/melange-benchmark-result.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
-          # Ratio indicating how worse the current benchmark result is.
-          # 150% means if last build took 40s and current takes >60s, it will trigger an alert
           alert-threshold: "225%"
           fail-on-alert: true
           # Enable alert commit comment

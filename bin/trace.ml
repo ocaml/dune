@@ -158,6 +158,151 @@ let times_of_sexp (sexp : Sexp.t) =
 
 let pid = lazy (Unix.getpid ())
 
+(* Chrome trace event with parsed fields for post-processing *)
+type chrome_event =
+  { cat : string
+  ; name : string
+  ; ts : float (* seconds *)
+  ; dur : float option (* seconds *)
+  ; args : (string * Json.t) list
+  }
+
+(* Extract a meaningful target name from process args for chrome trace *)
+let extract_target_name ~prog ~process_args =
+  let prog_short =
+    match String.rindex_opt prog '/' with
+    | Some i -> String.sub prog ~pos:(i + 1) ~len:(String.length prog - i - 1)
+    | None -> prog
+  in
+  let is_source_file s =
+    List.exists
+      ~f:(fun ext -> String.is_suffix s ~suffix:ext)
+      [ ".ml"; ".mli"; ".ml-gen"; ".pp.ml"; ".pp.mli"
+      ; ".mll"; ".mly"; ".atd"; ".re"; ".rei"
+      ; ".c"; ".cpp"; ".h"
+      ; ".exe"; ".a"; ".cmo"; ".cmx"; ".cmi"
+      ]
+  in
+  let shorten_path s =
+    let parts = String.split s ~on:'/' in
+    let len = List.length parts in
+    if len > 3
+    then
+      let rec drop n lst = if n <= 0 then lst else drop (n - 1) (List.tl lst) in
+      String.concat ~sep:"/" (drop (len - 3) parts)
+    else s
+  in
+  (* Search args in reverse for source files (target usually at end) *)
+  let target =
+    List.find_map (List.rev process_args) ~f:(fun arg ->
+      if String.is_prefix arg ~prefix:"-"
+      then None
+      else if is_source_file arg
+      then Some (shorten_path arg)
+      else None)
+  in
+  match target with
+  | Some t -> Printf.sprintf "%s: %s" prog_short t
+  | None ->
+    (* Fallback: first non-flag arg *)
+    (match List.find process_args ~f:(fun s -> not (String.is_prefix s ~prefix:"-")) with
+     | Some arg -> Printf.sprintf "%s: %s" prog_short (shorten_path arg)
+     | None -> prog_short)
+;;
+
+(* Assign thread IDs based on overlapping execution times for chrome trace.
+   Works on events with ts/dur already in microseconds to avoid float precision issues. *)
+let assign_tids (events : chrome_event list) : (chrome_event * int) list =
+  let sorted = List.sort events ~compare:(fun a b -> Float.compare a.ts b.ts) in
+  let thread_ends = ref [] in
+  List.map sorted ~f:(fun event ->
+    let end_time = event.ts +. Option.value event.dur ~default:0.0 in
+    let rec find_free i = function
+      | [] ->
+        thread_ends := !thread_ends @ [ end_time ];
+        i
+      | end_t :: rest ->
+        if end_t <= event.ts then (
+          thread_ends := List.mapi !thread_ends ~f:(fun j t -> if j = i then end_time else t);
+          i)
+        else find_free (i + 1) rest
+    in
+    let tid = find_free 0 !thread_ends in
+    event, tid)
+;;
+
+(* Parse sexp into chrome_event, extracting target name for process events *)
+let parse_chrome_event (sexp : Sexp.t) : chrome_event =
+  let cat, name, ts_sexp, rest = base_of_sexp sexp in
+  let ts, dur =
+    match ts_sexp with
+    | Sexp.Atom s -> float_of_string s, None
+    | Sexp.List [ Atom ts_str; Atom dur_str ] ->
+      float_of_string ts_str, Some (float_of_string dur_str)
+    | _ -> invalid_sexp sexp
+  in
+  let args =
+    List.map rest ~f:(function
+      | Sexp.List [ Atom ("process_args" as k); List v ] ->
+        ( k
+        , Json.list
+            (List.map v ~f:(function
+               | Sexp.Atom s -> Json.string s
+               | _ -> invalid_sexp sexp)) )
+      | Sexp.List [ Atom k; v ] -> k, json_of_sexp v
+      | _ -> invalid_sexp sexp)
+  in
+  (* For process finish events, extract a better name *)
+  let name =
+    if String.equal cat "process" && String.equal name "finish"
+    then (
+      let prog =
+        List.find_map args ~f:(fun (k, v) ->
+          if String.equal k "prog"
+          then (match v with `String s -> Some s | _ -> None)
+          else None)
+        |> Option.value ~default:"unknown"
+      in
+      let process_args =
+        List.find_map args ~f:(fun (k, v) ->
+          if String.equal k "process_args"
+          then (match v with
+            | `List l ->
+              Some (List.filter_map l ~f:(function `String s -> Some s | _ -> None))
+            | _ -> None)
+          else None)
+        |> Option.value ~default:[]
+      in
+      extract_target_name ~prog ~process_args)
+    else name
+  in
+  { cat; name; ts; dur; args }
+;;
+
+(* Convert chrome_event (already in microseconds) to JSON *)
+let chrome_event_to_json_us ~tid (event : chrome_event) : Json.t =
+  (* Keep only exit code in args *)
+  let args =
+    List.filter event.args ~f:(fun (k, _) -> String.equal k "exit")
+  in
+  let base =
+    [ "name", Json.string event.name
+    ; "cat", Json.string event.cat
+    ; "ts", Json.float event.ts
+    ; "pid", Json.int 1
+    ; "tid", Json.int tid
+    ; "args", Json.assoc args
+    ]
+  in
+  let with_dur =
+    match event.dur with
+    | Some d -> ("dur", Json.float d) :: base
+    | None -> base
+  in
+  let ph = match event.dur with Some _ -> "X" | None -> "i" in
+  Json.assoc (("ph", Json.string ph) :: with_dur)
+;;
+
 let json_of_event ~chrome (sexp : Sexp.t) =
   let cat, name, ts, rest = base_of_sexp sexp in
   let ts, dur = times_of_sexp ts in
@@ -228,39 +373,64 @@ let cat =
       | true, false -> `Chrome
       | false, false -> `Json
     in
-    let print =
-      match mode with
-      | `Sexp -> fun sexp -> print_endline (Sexp.to_string sexp)
-      | `Json ->
-        fun sexp -> print_endline (Json.to_string (json_of_event ~chrome:false sexp))
-      | `Chrome ->
-        let first = ref true in
-        fun sexp ->
-          let char =
-            if !first
-            then (
-              let () = first := false in
-              '[')
-            else ','
-          in
-          print_char char;
-          print_endline (Json.to_string (json_of_event ~chrome:true sexp))
-    in
-    let print_with_flush sexp =
-      print sexp;
-      if follow then flush stdout
-    in
     let trace_file =
       match trace_file with
       | Some s -> s
       | None -> Path.Local.to_string Common.default_trace_file
     in
-    if follow
-    then iter_sexps_follow trace_file ~f:print_with_flush
-    else iter_sexps trace_file ~f:print;
     match mode with
-    | `Chrome -> print_endline "]"
-    | `Json | `Sexp -> ()
+    | `Chrome ->
+      (* Buffer events, assign tids based on overlap, output with proper names *)
+      if follow
+      then User_error.raise [ Pp.text "--follow is not supported with --chrome-trace" ];
+      let events = ref [] in
+      iter_sexps trace_file ~f:(fun sexp -> events := parse_chrome_event sexp :: !events);
+      let events = List.rev !events in
+      (* Filter out noisy events *)
+      let events = List.filter events ~f:(fun e ->
+        not (String.equal e.name "signal_received")
+        && not (String.equal e.name "create-sandbox")) in
+      (* Only process events with duration need tid assignment for parallelism *)
+      let process_events, other_events =
+        List.partition_map events ~f:(fun e ->
+          match e.dur with
+          | Some _ when String.equal e.cat "process" -> Left e
+          | _ -> Right e)
+      in
+      (* Convert to microseconds BEFORE tid assignment to avoid float precision issues *)
+      let to_microseconds e =
+        { e with ts = e.ts *. 1_000_000.0
+        ; dur = Option.map e.dur ~f:(fun d -> d *. 1_000_000.0) }
+      in
+      let process_events_us = List.map process_events ~f:to_microseconds in
+      let other_events_us = List.map other_events ~f:to_microseconds in
+      let with_tids = assign_tids process_events_us in
+      (* Output as JSON array *)
+      print_char '[';
+      let first = ref true in
+      let output json =
+        if not !first then print_char ',';
+        first := false;
+        print_endline (Json.to_string json)
+      in
+      List.iter with_tids ~f:(fun (event, tid) -> output (chrome_event_to_json_us ~tid event));
+      List.iter other_events_us ~f:(fun event -> output (chrome_event_to_json_us ~tid:0 event));
+      print_endline "]"
+    | `Sexp | `Json ->
+      let print =
+        match mode with
+        | `Sexp -> fun sexp -> print_endline (Sexp.to_string sexp)
+        | `Json ->
+          fun sexp -> print_endline (Json.to_string (json_of_event ~chrome:false sexp))
+        | `Chrome -> assert false
+      in
+      let print_with_flush sexp =
+        print sexp;
+        if follow then flush stdout
+      in
+      if follow
+      then iter_sexps_follow trace_file ~f:print_with_flush
+      else iter_sexps trace_file ~f:print
   in
   Cmd.v info term
 ;;

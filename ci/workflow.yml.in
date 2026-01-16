@@ -1,4 +1,3 @@
-# This file is auto-generated. Edit ci/workflow.yml.in instead
 name: CI
 
 on:
@@ -239,7 +238,7 @@ jobs:
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: |
-          opam pin -n . --with-version=3.22.0
+          opam pin -n . --with-version=%%VERSION%%
           opam install dune --deps-only
 
       - name: Install system deps on macOS
@@ -463,7 +462,7 @@ jobs:
 
 
       - name: Pin deps
-        run: opam pin add -n . --with-version=3.22.0
+        run: opam pin add -n . --with-version=%%VERSION%%
 
       - name: Install deps
         run: opam install csexp pp re spawn uutf ppx_inline_test dune
@@ -505,7 +504,7 @@ jobs:
       - name: Create an empty switch
         run: opam switch create . --empty
       - name: Pin local packages to local dependencies
-        run: opam pin add . -n --with-version=3.22.0
+        run: opam pin add . -n --with-version=%%VERSION%%
         #                                     ^^^^^^
         # When updating dune lang, update this too
       - name: Install external dependencies

@@ -5,3 +5,8 @@ val print_events
   :  try_to_get_events:(unit -> Dune_file_watcher.Fs_memo_event.t list option)
   -> expected:int
   -> unit
+
+val wait_for_paths
+  :  try_to_get_events:(unit -> Dune_file_watcher.Fs_memo_event.t list option)
+  -> paths:string list
+  -> unit

@@ -217,6 +217,10 @@ let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) =
   | _ -> loop path stats
 ;;
 
+let path_with_stats_async ~allow_dirs path (stats : Stats_for_digest.t) =
+  Dune_scheduler.Scheduler.async_exn (fun () -> path_with_stats ~allow_dirs path stats)
+;;
+
 let file_with_executable_bit ~executable path =
   let open Fiber.O in
   let+ content_digest = file_async path in

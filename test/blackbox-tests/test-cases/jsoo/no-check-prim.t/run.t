@@ -4,8 +4,8 @@ Compilation using jsoo
   > sed s,^\ *$(ocamlc -config-var c_compiler),\ \ C_COMPILER,g
       ocamldep bin/.technologic.eobjs/technologic.impl.d
       ocamldep lib/.x.objs/x.impl.d
-        ocamlc lib/.x.objs/byte/x__.{cmi,cmo,cmt}
       ocamldep lib/.x.objs/x__Y.impl.d
+        ocamlc lib/.x.objs/byte/x__.{cmi,cmo,cmt}
    js_of_ocaml bin/.technologic.eobjs/jsoo/technologic.bc.runtime.js
       ocamldep bin/.technologic.eobjs/z.impl.d
       ocamlopt lib/.x.objs/native/x__.{cmx,o}

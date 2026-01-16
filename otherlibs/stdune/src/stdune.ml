@@ -76,6 +76,7 @@ module Json = Json
 module Log = Log
 module Time = Time
 module Escape0 = Escape
+module Debug = Debug
 
 module type Top_closure = Top_closure.Top_closure
 

@@ -663,3 +663,9 @@ module Digest = struct
     Event.instant ~args ~name:"dropped_stale_mtimes" now Digest
   ;;
 end
+
+let debug dump =
+  let now = Time.now () in
+  let args = List.map dump ~f:(fun (name, dyn) -> name, Arg.dyn dyn) in
+  Event.instant ~args ~name:"debug" now Diagnostics
+;;

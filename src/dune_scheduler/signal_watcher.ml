@@ -35,6 +35,10 @@ let run ~print_ctrl_c_warning q : unit =
     Dune_trace.emit Process (fun () -> Dune_trace.Event.signal_received signal);
     match signal with
     | _ when Signal.equal signal Thread0.signal_watcher_interrupt -> raise_notrace Exit
+    | _ when Signal.equal signal Thread0.signal_watcher_debug ->
+      Dune_trace.emit Diagnostics (fun () ->
+        let dump = Debug.dump () in
+        Dune_trace.Event.debug dump)
     | Chld -> Event.Queue.send_job_completed_ready q
     | Int | Quit | Term ->
       Event.Queue.send_shutdown q (Signal signal);

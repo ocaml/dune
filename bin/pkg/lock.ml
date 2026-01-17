@@ -1,5 +1,6 @@
 open Import
 open Pkg_common
+open Dune_opam
 module Package_version = Dune_pkg.Package_version
 module Opam_repo = Dune_pkg.Opam_repo
 module Lock_dir = Dune_pkg.Lock_dir
@@ -215,7 +216,7 @@ let summary_message
     let pkgs_by_platform = Lock_dir.Packages.pkgs_by_platform lock_dir.packages in
     let opam_package_of_pkg (pkg : Lock_dir.Pkg.t) =
       OpamPackage.create
-        (Dune_pkg.Package_name.to_opam_package_name pkg.info.name)
+        (Package_name.to_opam_package_name pkg.info.name)
         (Dune_pkg.Package_version.to_opam_package_version pkg.info.version)
     in
     let pkgs_by_opam_package =

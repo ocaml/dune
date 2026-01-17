@@ -1,9 +1,11 @@
 open Import
+open Dune_opam
 open Memo.O
+module Env = Stdune.Env
+module Package = Dune_lang.Package
 
 include struct
   open Dune_pkg
-  module Package_variable = Package_variable
   module Substs = Substs
   module Checksum = Checksum
   module Source = Source
@@ -605,7 +607,7 @@ module Expander0 = struct
   include Expander0
 
   type t =
-    { name : Dune_pkg.Package_name.t
+    { name : Package.Name.t
     ; paths : Path.t Paths.t
     ; artifacts : Path.t Filename.Map.t Memo.t
     ; depends :
@@ -1256,7 +1258,7 @@ module DB = struct
                      (has_dune_dep, acc)
                    ->
                    match
-                     ( Dune_lang.Package_name.equal name Dune_dep.name
+                     ( Dune_lang.Package.Name.equal name Dune_dep.name
                      , Package.Name.Set.mem system_provided name )
                    with
                    | true, _ -> true, acc
@@ -2482,7 +2484,7 @@ let ocaml_toolchain context =
         Action_builder.List.fold_left
           ~init:(Global.env (), Path.Set.empty)
           ~f:(fun (env, binaries) pkg ->
-            let env = Env.extend_env env (Pkg.exported_env pkg) in
+            let env = Stdune.Env.extend_env env (Pkg.exported_env pkg) in
             let+ cookie = (Pkg_installed.of_paths pkg.paths).cookie in
             let binaries =
               Section.Map.find cookie.files Bin

@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 open Pkg_common
 
 let find_outdated_packages ~transitive ~lock_dirs_arg () =

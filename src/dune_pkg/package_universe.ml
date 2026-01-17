@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 
 type t =
   { local_packages : Local_package.t Package_name.Map.t

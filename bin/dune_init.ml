@@ -601,7 +601,7 @@ module Component = struct
           match (pkg : Options.Project.Pkg.t) with
           | Opam ->
             let name = Options.Common.package_name common in
-            let opam_file = Package_name.file name ~dir in
+            let opam_file = Dune_opam.Package_name.file name ~dir in
             [ File.make_text
                 ~dir:(Path.Source.parent_exn opam_file)
                 (Path.Source.basename opam_file)

@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 
 (** all of the packages in a dune project under the constraints of a given
     platform, including local packages and packages in a lockdir. the lockdir

@@ -303,6 +303,12 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
+  ; { path = "src/dune_opam"
+    ; main_module_name = Some "Dune_opam"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
   ; { path = "src/fiber_event_bus"
     ; main_module_name = Some "Fiber_event_bus"
     ; include_subdirs = No
@@ -482,6 +488,7 @@ let main =
             ; "Ocaml_config"
             ; "Dune_sexp"
             ; "Dune_lang"
+            ; "Dune_opam"
             ; "Predicate_lang"
             ; "Fiber"
             ; "Fiber_event_bus"

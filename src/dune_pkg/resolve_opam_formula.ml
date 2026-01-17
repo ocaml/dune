@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 module Relop = Dune_lang.Relop
 
 let apply_filter env ~with_test ~(formula : OpamTypes.filtered_formula)

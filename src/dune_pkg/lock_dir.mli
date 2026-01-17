@@ -1,6 +1,7 @@
 (** Frontend the lock directory format *)
 
 open Import
+open Dune_opam
 
 module Pkg_info : sig
   (** Representation of the parsed package in a lock dir.

@@ -1,4 +1,5 @@
 open Stdune
+open Dune_opam
 
 let name = Package_name.of_string "dune"
 

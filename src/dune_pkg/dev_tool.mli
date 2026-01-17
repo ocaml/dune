@@ -1,3 +1,5 @@
+open Dune_opam
+
 type t =
   | Ocamlformat
   | Odoc

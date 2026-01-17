@@ -13,6 +13,7 @@
   ocaml
   ocaml_config
   dune_lang
+  dune_opam
   predicate_lang
   fiber
   fiber_event_bus

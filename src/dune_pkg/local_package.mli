@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 
 module Origin : sig
   type t =

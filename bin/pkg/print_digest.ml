@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 
 let term =
   let+ builder = Common.Builder.term

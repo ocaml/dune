@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 
 module Solver_result : sig
   type t =

@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 include Dune_lang.Package_dependency
 
 let nopos pelem = { OpamParserTypes.FullPos.pelem; pos = Opam_file.nopos }
@@ -17,6 +18,8 @@ module Constraint = struct
   module Op = struct
     include Dune_lang.Relop
 
+    let of_opam = Relop.of_opam
+
     let to_opam : t -> OpamParserTypes.relop = function
       | Eq -> `Eq
       | Gte -> `Geq
@@ -24,15 +27,6 @@ module Constraint = struct
       | Gt -> `Gt
       | Lt -> `Lt
       | Neq -> `Neq
-    ;;
-
-    let of_opam = function
-      | `Eq -> Eq
-      | `Geq -> Gte
-      | `Leq -> Lte
-      | `Gt -> Gt
-      | `Lt -> Lt
-      | `Neq -> Neq
     ;;
 
     let to_relop_pelem op =

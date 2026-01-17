@@ -1,3 +1,4 @@
+open Dune_opam
 open Stdune
 
 module Constraint : sig

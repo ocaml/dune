@@ -413,10 +413,9 @@ let to_dyn (type path) (t : path t) =
   | External e -> variant "External" [ External.to_dyn e ]
 ;;
 
-let convert_to_external (t : Path.Build.t t) ~dir =
+let convert_to_external (t : Path.Build.t t) ~dir ~has_private_modules =
   match t with
   | Local e ->
-    let has_private_modules = Local.need_dedicated_public_dir e in
     External (External.make ~dir ~has_private_modules ~private_lib:e.private_lib)
   | _ -> assert false
 ;;

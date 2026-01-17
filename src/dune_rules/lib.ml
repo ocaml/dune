@@ -2720,7 +2720,9 @@ let to_dune_lib
   let obj_dir =
     match Lib_info.obj_dir lib.info |> Obj_dir.to_local with
     | None -> assert false
-    | Some obj_dir -> Obj_dir.convert_to_external ~dir obj_dir
+    | Some obj_dir ->
+      let has_private_modules = Obj_dir.need_dedicated_public_dir obj_dir in
+      Obj_dir.convert_to_external ~dir ~has_private_modules obj_dir
   in
   let modules =
     let install_dir = Obj_dir.dir obj_dir in

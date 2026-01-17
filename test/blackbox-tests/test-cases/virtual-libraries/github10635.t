@@ -43,7 +43,4 @@ Implementation with public_name (but no private modules of its own):
 
 Should build without "External.cm_dir" errors:
 
-  $ dune build @install 2>&1 | grep -i "code_error\|external.cm_dir" || true
-    ("External.cm_dir",
-  Raised at Stdune__Code_error.raise in file
-    "otherlibs/stdune/src/code_error.ml", line 10, characters 30-62
+  $ dune build @install

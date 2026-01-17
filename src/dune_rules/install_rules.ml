@@ -280,7 +280,19 @@ end = struct
       let obj_dir = Lib_info.obj_dir info in
       let cm_dir =
         let external_obj_dir =
-          Obj_dir.convert_to_external obj_dir ~dir:(Path.build dir)
+          let has_private_modules =
+            (* CR-someday rgrinberg: This is a bit of a hack because we are
+               installing private modules of the private library inside an
+               implementation that has no private modules. We should just stop
+               install the virtual library artifacts altogether since they're
+               already installed in their own directory. *)
+            let vlib_has_private_modules =
+              List.exists installable_modules.vlib ~f:(fun m ->
+                Module.visibility m = Private)
+            in
+            vlib_has_private_modules || Obj_dir.need_dedicated_public_dir obj_dir
+          in
+          Obj_dir.convert_to_external obj_dir ~dir:(Path.build dir) ~has_private_modules
         in
         fun m cm_kind ->
           let visibility = Module.visibility m in

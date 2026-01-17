@@ -14,26 +14,6 @@ module Set = C.Set
 module Map = C.Map
 module Metrics = Dune_metrics
 
-let file file =
-  (* On Windows, if this function is invoked in a background thread,
-       if can happen that the file is not properly closed.
-       [O_SHARE_DELETE] ensures that the main thread can delete it even if it
-       is still open. See #8243. *)
-  let fd =
-    match Unix.openfile file [ Unix.O_RDONLY; O_SHARE_DELETE; O_CLOEXEC ] 0 with
-    | fd -> fd
-    | exception Unix.Unix_error (Unix.EACCES, _, _) ->
-      raise (Sys_error (sprintf "%s: Permission denied" file))
-    | exception exn -> reraise exn
-  in
-  Exn.protectx fd ~f:Blake3_mini.fd ~finally:Unix.close
-;;
-
-let equal = Blake3_mini.Digest.equal
-let hash = Poly.hash
-let file p = file (Path.to_string p)
-let from_hex s = Blake3_mini.Digest.of_hex s
-
 module Hasher = struct
   type t = Blake3_mini.t
 
@@ -57,6 +37,56 @@ module Hasher = struct
         digest)
   ;;
 end
+
+let open_for_digest file =
+  (* On Windows, if this function is invoked in a background thread,
+     if can happen that the file is not properly closed.
+     [O_SHARE_DELETE] ensures that the main thread can delete it even if it
+     is still open. See #8243. *)
+  Unix.openfile file [ Unix.O_RDONLY; O_SHARE_DELETE; O_CLOEXEC ] 0
+;;
+
+(* CR-someday rgrinberg: maybe this should exist in blake3_mini? *)
+let zero = lazy (Hasher.with_singleton (fun _f -> ()))
+
+let file file =
+  let fd =
+    match open_for_digest file with
+    | fd -> fd
+    | exception Unix.Unix_error (Unix.EACCES, _, _) ->
+      raise (Sys_error (sprintf "%s: Permission denied" file))
+    | exception exn -> reraise exn
+  in
+  Exn.protectx fd ~f:Blake3_mini.fd ~finally:Unix.close
+;;
+
+let async_digest_minimum = 1_000
+
+let file_async file =
+  let open Fiber.O in
+  let* () = Fiber.return () in
+  let fd = open_for_digest file in
+  let size =
+    match Unix.fstat fd with
+    | exception exn ->
+      Unix.close fd;
+      raise exn
+    | stat -> stat.st_size
+  in
+  if size = 0
+  then Fiber.return (Lazy.force zero)
+  else if size < async_digest_minimum
+  then Fiber.return (Exn.protectx fd ~f:Blake3_mini.fd ~finally:Unix.close)
+  else
+    Dune_scheduler.Scheduler.async_exn (fun () ->
+      Exn.protectx fd ~f:Blake3_mini.fd ~finally:Unix.close)
+;;
+
+let equal = Blake3_mini.Digest.equal
+let hash = Poly.hash
+let file p = file (Path.to_string p)
+let file_async p = file_async (Path.to_string p)
+let from_hex s = Blake3_mini.Digest.of_hex s
 
 module Feed = struct
   type hasher = Hasher.t
@@ -186,4 +216,10 @@ let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) =
   | S_DIR when not allow_dirs -> Error Path_digest_error.Unexpected_kind
   | S_BLK | S_CHR | S_LNK | S_FIFO | S_SOCK -> Error Unexpected_kind
   | _ -> loop path stats
+;;
+
+let file_with_executable_bit ~executable path =
+  let open Fiber.O in
+  let+ content_digest = file_async path in
+  path_with_executable_bit ~content_digest ~executable
 ;;

@@ -99,12 +99,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "vendor/ocaml-blake3-mini"
-    ; main_module_name = Some "Blake3_mini"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "otherlibs/dune-action-trace"
     ; main_module_name = Some "Dune_action_trace"
     ; include_subdirs = No
@@ -147,42 +141,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_digest"
-    ; main_module_name = Some "Dune_digest"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/predicate_lang"
-    ; main_module_name = Some "Predicate_lang"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/fiber_util"
-    ; main_module_name = Some "Fiber_util"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/dune_cache_storage"
-    ; main_module_name = Some "Dune_cache_storage"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/dune_targets"
-    ; main_module_name = Some "Dune_targets"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/dune_cache"
-    ; main_module_name = Some "Dune_cache"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/fsevents"
     ; main_module_name = Some "Fsevents"
     ; include_subdirs = No
@@ -215,6 +173,48 @@ let local_libraries =
     }
   ; { path = "src/dune_scheduler"
     ; main_module_name = Some "Dune_scheduler"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "vendor/ocaml-blake3-mini"
+    ; main_module_name = Some "Blake3_mini"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/dune_digest"
+    ; main_module_name = Some "Dune_digest"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/predicate_lang"
+    ; main_module_name = Some "Predicate_lang"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/fiber_util"
+    ; main_module_name = Some "Fiber_util"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/dune_cache_storage"
+    ; main_module_name = Some "Dune_cache_storage"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/dune_targets"
+    ; main_module_name = Some "Dune_targets"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/dune_cache"
+    ; main_module_name = Some "Dune_cache"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None

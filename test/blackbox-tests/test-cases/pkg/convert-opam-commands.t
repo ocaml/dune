@@ -117,8 +117,11 @@ Package which has boolean where string was expected. This should be caught while
    (all_platforms
     ((action
       (progn
-       (run ./configure --prefix=%{prefix} --docdir=%{doc}/ocaml)
-       (run %{make} -j%{jobs}))))))
+       (run
+        ./configure
+        (concat --prefix= (catch_undefined_var %{prefix} ""))
+        (concat --docdir= (catch_undefined_var %{doc} "") /ocaml))
+       (run %{make} (concat -j (catch_undefined_var %{jobs} ""))))))))
 
   $ cat ${default_lock_dir}/with-percent-sign.0.0.1.pkg
   (version 0.0.1)
@@ -304,54 +307,73 @@ preserved between opam and dune.
    (all_platforms
     ((action
       (progn
-       (run echo "a %{pkg-self:installed} b")
+       (run
+        echo
+        (concat "a " (catch_undefined_var %{pkg-self:installed} "") " b"))
        (run
         echo
         (concat
          "c "
-         (if (catch_undefined_var %{pkg-self:installed} false) x y)
+         (catch_undefined_var
+          (if (catch_undefined_var %{pkg-self:installed} false) x y)
+          "")
          " d"))
        (run
         echo
         (concat
          "e "
-         (if (catch_undefined_var %{pkg:foo:installed} false) x y)
+         (catch_undefined_var
+          (if (catch_undefined_var %{pkg:foo:installed} false) x y)
+          "")
          " f"))
        (run
         echo
         (concat
          "g "
-         (if
-          (catch_undefined_var
-           (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg-self:installed})
-           false)
-          x
-          y)
+         (catch_undefined_var
+          (if
+           (catch_undefined_var
+            (and
+             %{pkg:foo:installed}
+             %{pkg:bar:installed}
+             %{pkg-self:installed})
+            false)
+           x
+           y)
+          "")
          " h"))
-       (run echo --%{pkg-self:enable}-feature)
+       (run
+        echo
+        (concat -- (catch_undefined_var %{pkg-self:enable} "") -feature))
        (run
         echo
         (concat
          --
-         (if (catch_undefined_var %{pkg-self:installed} false) enable disable)
+         (catch_undefined_var
+          (if (catch_undefined_var %{pkg-self:installed} false) enable disable)
+          "")
          -feature))
        (run
         echo
         (concat
          --
-         (if
-          (catch_undefined_var
-           (and %{pkg:foo:installed} %{pkg:bar:installed})
-           false)
-          enable
-          disable)
+         (catch_undefined_var
+          (if
+           (catch_undefined_var
+            (and %{pkg:foo:installed} %{pkg:bar:installed})
+            false)
+           enable
+           disable)
+          "")
          -feature))
        (run
         echo
         (concat
          --
-         (if
-          (catch_undefined_var (and %{pkg:foo:enable} %{pkg:bar:enable}) false)
-          x
-          y)
+         (catch_undefined_var
+          (if
+           (catch_undefined_var (and %{pkg:foo:enable} %{pkg:bar:enable}) false)
+           x
+           y)
+          "")
          -feature)))))))

@@ -850,6 +850,70 @@ let await ~timeout { response_file; pid; _ } =
   process_info, termination_reason
 ;;
 
+(* Parse a shebang line (without the #! prefix) and return the executable name
+   and its arguments. *)
+let parse_shebang_line line =
+  let parts = String.split_on_char ~sep:' ' line in
+  match parts with
+  | [] -> None, [] (* Empty shebang line *)
+  | executable_path :: exe_args ->
+    let exe_name = Filename.basename executable_path in
+    let exe, extra_args =
+      if exe_name <> "env"
+      then
+        ( Some exe_name
+        , if List.is_empty exe_args then [] else [ String.concat ~sep:" " exe_args ] )
+        (* shebang lines only support a single argument *)
+      else (
+        match exe_args with
+        | [] -> None, [] (* env command with no args *)
+        | "-S" :: [] -> None, [] (* env -S with no args *)
+        | "-S" :: name :: cmd_args ->
+          Some name, cmd_args (* env -S allows multiple args *)
+        | name :: _ -> Some name, [] (* env with a single arg *))
+    in
+    exe, extra_args
+;;
+
+module Windows_executables = struct
+  module H = Stdlib.Hashtbl.Make (String)
+
+  let executables = H.create 8
+
+  (* This function adds support for shebang line parsing on Windows to allow
+     running scripts in run actions using the correct executable. *)
+  let adjust_prog_and_args ~env ~dir prog args =
+    let parse_win32_prog_and_args prog =
+      Stdune.Io.with_file_in ~binary:true prog ~f:(fun ic ->
+        if really_input_string ic 2 <> "#!"
+        then None, []
+        else (
+          let line = input_line ic |> String.trim in
+          parse_shebang_line line))
+    in
+    match parse_win32_prog_and_args prog with
+    | (exception Not_found) | None, _ -> prog, args
+    | Some cmd, extra_args ->
+      let executable =
+        match H.find_opt executables cmd with
+        | Some _ as s -> s
+        | None ->
+          let path = Option.value env ~default:Env.initial |> Env_path.path in
+          (match Bin.which ~path cmd with
+           | Some p as s ->
+             H.add executables cmd p;
+             s
+           | None -> None)
+      in
+      (match executable with
+       | None -> prog, args
+       | Some cmd ->
+         let prog_str = Path.reach_for_running ?from:dir prog in
+         let args = List.concat [ extra_args; prog_str :: args ] in
+         cmd, args)
+  ;;
+end
+
 let spawn
       ?dir
       ?(env = Env.initial)
@@ -1003,6 +1067,11 @@ let run_internal
       | Some p -> if Path.is_root p then None else Some p
     in
     let id = Running_jobs.Id.gen () in
+    let prog, args =
+      if not Sys.win32
+      then prog, args
+      else Windows_executables.adjust_prog_and_args ~env ~dir prog args
+    in
     let prog_str = Path.reach_for_running ?from:dir prog in
     let command_line =
       command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from

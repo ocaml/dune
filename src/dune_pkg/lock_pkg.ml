@@ -97,13 +97,30 @@ let opam_variable_to_slang ~loc packages variable =
    with the following syntax:
 
      "%{?conf-g++:your-variable:}%"
+
+   Also handles the case where the conditional syntax %{pkg:var?then:else}%
+   was not correctly parsed by OpamTypesBase.filter_ident_of_string, which
+   only looks for '?' in the package part, not in the variable part.
 *)
 let desugar_special_string_interpolation_syntax
       ((packages, variable, string_converter) as fident)
   =
+  let var_str = OpamVariable.to_string variable in
   match string_converter with
-  | Some (package_and_variable, "")
-    when List.is_empty packages && String.is_empty (OpamVariable.to_string variable) ->
+  | None when String.contains var_str '?' ->
+    (* Handle pkg:var?then or pkg:var?then:else syntax where the '?' ended up
+       in the variable name instead of being parsed as a converter *)
+    (match String.lsplit2 var_str ~on:'?' with
+     | Some (var, rest) ->
+       let converter =
+         match String.lsplit2 rest ~on:':' with
+         | Some (then_, else_) -> Some (then_, else_)
+         | None -> Some (rest, "")
+       in
+       packages, OpamVariable.of_string var, converter
+     | None -> fident)
+  | Some (package_and_variable, "") when List.is_empty packages && String.is_empty var_str
+    ->
     (match String.lsplit2 package_and_variable ~on:':' with
      | Some (package, variable) ->
        ( [ Some (OpamPackage.Name.of_string package) ]
@@ -147,7 +164,11 @@ let opam_string_to_slang ~package ~loc opam_string =
          when String.is_prefix ~prefix:"%{" interp && String.is_suffix ~suffix:"}%" interp
          ->
          let ident = String.sub ~pos:2 ~len:(String.length interp - 4) interp in
-         opam_raw_fident_to_slang ~loc ident
+         (* In opam, undefined variables in string interpolation evaluate to
+            empty string. Wrap the result in catch_undefined_var to match this
+            behavior. *)
+         Result.map (opam_raw_fident_to_slang ~loc ident) ~f:(fun slang ->
+           Slang.catch_undefined_var slang ~fallback:(Slang.text ""))
        | other ->
          Error
            (User_error.make

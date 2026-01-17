@@ -449,6 +449,9 @@ module Pkg = struct
     ; files_dir : Path.Build.t option
     ; pkg_digest : Pkg_digest.t
     ; mutable exported_env : string Env_update.t list
+    ; is_relocatable_compiler_context : bool
+      (* true if relocatable-compiler is in the lock directory, meaning
+         the compiler should be treated as a regular package *)
     }
 
   module Top_closure = Top_closure.Make (Id.Set) (Monad.Id)
@@ -525,13 +528,17 @@ module Pkg = struct
 
   let install_roots t =
     let default_install_roots = Paths.install_roots t.paths in
-    match Pkg_toolchain.is_compiler_and_toolchains_enabled t.info.name with
-    | false -> default_install_roots
-    | true ->
-      (* Compiler packages store their libraries in a subdirectory named "ocaml". *)
-      { default_install_roots with
-        lib_root = Path.relative default_install_roots.lib_root "ocaml"
-      }
+    (* Skip toolchain handling if this is a relocatable compiler context *)
+    if t.is_relocatable_compiler_context
+    then default_install_roots
+    else (
+      match Pkg_toolchain.is_compiler_and_toolchains_enabled t.info.name ~dep_names:[] with
+      | false -> default_install_roots
+      | true ->
+        (* Compiler packages store their libraries in a subdirectory named "ocaml". *)
+        { default_install_roots with
+          lib_root = Path.relative default_install_roots.lib_root "ocaml"
+        })
   ;;
 
   (* Given a list of packages, construct an env containing variables
@@ -1360,6 +1367,11 @@ module DB = struct
     { id = Id.gen (); pkg_digest_table; system_provided }
   ;;
 
+  let all_package_names t =
+    Pkg_digest.Map.fold t.pkg_digest_table ~init:[] ~f:(fun entry acc ->
+      entry.pkg.info.name :: acc)
+  ;;
+
   let pkg_digest_of_name lock_dir platform pkg_name ~system_provided =
     let entries_by_name =
       Pkg_table.entries_by_name_of_lock_dir lock_dir ~platform ~system_provided
@@ -1584,9 +1596,14 @@ end = struct
       let install_command = Option.map install_command ~f:relocate in
       let build_command = choose_for_current_platform build_command in
       let build_command = Option.map build_command ~f:relocate_build in
+      (* Check if relocatable-compiler is in the lock directory. This means
+         the compiler should be treated as a regular package, not cached in
+         the toolchains directory. *)
+      let all_pkg_names = DB.all_package_names db in
+      let is_relocatable_compiler_context = Pkg_toolchain.is_relocatable_compiler all_pkg_names in
       let paths =
         let paths = Paths.map_path write_paths ~f:Path.build in
-        match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name with
+        match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name ~dep_names:all_pkg_names with
         | false -> paths
         | true ->
           (* Modify the environment as well as build and install commands for
@@ -1623,6 +1640,7 @@ end = struct
         ; files_dir
         ; pkg_digest
         ; exported_env = []
+        ; is_relocatable_compiler_context
         }
       in
       let+ exported_env =
@@ -1929,6 +1947,38 @@ module Install_action = struct
         Some (entry.section, dst)
     ;;
 
+    let rec resolve_symlinks_in dir =
+      match Readdir.read_directory_with_kinds dir with
+      | Error e -> Unix_error.Detailed.raise e
+      | Ok entries ->
+        List.iter entries ~f:(fun (fname, kind) ->
+          let path = Filename.concat dir fname in
+          match (kind : Unix.file_kind) with
+          | S_DIR -> resolve_symlinks_in path
+          | S_LNK ->
+            (match Fpath.follow_symlink path with
+             | Error (Unix_error e) -> Unix_error.Detailed.raise e
+             | Error Not_a_symlink ->
+               Code_error.raise
+                 "resolve_symlinks_in: not a symlink"
+                 [ "path", Dyn.string path ]
+             | Error Max_depth_exceeded ->
+               User_error.raise
+                 [ Pp.textf
+                     "Unable to resolve symlink %s: too many levels of symbolic links"
+                     path
+                 ]
+             | Ok resolved ->
+               (match Unix.lstat resolved with
+                | { Unix.st_kind = S_REG; _ } ->
+                  Fpath.unlink_exn path;
+                  Io.portable_hardlink
+                    ~src:(Path.of_string resolved)
+                    ~dst:(Path.of_string path)
+                | _ -> ()))
+          | _ -> ())
+    ;;
+
     let action
           { package
           ; install_file
@@ -2016,9 +2066,14 @@ module Install_action = struct
         let+ variables = Async.async (fun () -> read_variables config_file) in
         { Install_cookie.Gen.files; variables }
       in
-      (* Produce the cookie file in the standard path *)
-      let cookie_file = Path.build @@ Paths.install_cookie' target_dir in
       Async.async (fun () ->
+        (* Resolve symlinks in target_dir so that the cache can store them. The
+         dune cache doesn't support symlinks, so we replace them with hardlinks
+         to their targets. *)
+        if Path.Untracked.exists (Path.build target_dir)
+        then resolve_symlinks_in (Path.Build.to_string target_dir);
+        (* Produce the cookie file in the standard path *)
+        let cookie_file = Path.build @@ Paths.install_cookie' target_dir in
         cookie_file |> Path.parent_exn |> Path.mkdir_p;
         Install_cookie.dump cookie_file cookies)
     ;;

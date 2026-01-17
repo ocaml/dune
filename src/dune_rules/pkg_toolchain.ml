@@ -47,8 +47,15 @@ let installation_prefix pkg =
   Path.Outside_build_dir.relative pkg_dir "target"
 ;;
 
-let is_compiler_and_toolchains_enabled name =
+let relocatable_package_name = Package.Name.of_string "relocatable-compiler"
+
+let is_relocatable_compiler dep_names =
+  List.exists dep_names ~f:(Package.Name.equal relocatable_package_name)
+;;
+
+let is_compiler_and_toolchains_enabled name ~dep_names =
   match Config.get Compile_time.toolchains with
+  | `Enabled when is_relocatable_compiler dep_names -> false
   | `Enabled -> Dune_pkg.Dev_tool.is_compiler_package name
   | `Disabled -> false
 ;;

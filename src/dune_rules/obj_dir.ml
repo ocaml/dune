@@ -30,84 +30,78 @@ end
 
 module External = struct
   type t =
-    { public_dir : Path.t
-    ; private_dir : Path.t option
-    ; public_cmi_ocaml_dir : Path.t option
-    ; public_cmi_melange_dir : Path.t option
-    ; melange_dir : Path.t
+    { public_dir : Path.t Compilation_mode.By_mode.t
+    ; private_dir : Path.t option Compilation_mode.By_mode.t
+    ; public_cmi_dir : Path.t option Compilation_mode.By_mode.t
     }
 
   let equal : t -> t -> bool = Poly.equal
 
   let make ~dir ~has_private_modules ~private_lib =
     let private_dir =
-      if has_private_modules then Some (Path.relative dir ".private") else None
+      match has_private_modules with
+      | false -> Compilation_mode.By_mode.both None
+      | true ->
+        { Compilation_mode.By_mode.ocaml = Some (Path.relative dir ".private")
+        ; melange = Some (Path.relative dir ".private")
+        }
     in
-    let public_cmi_ocaml_dir =
-      if private_lib then Some (Path.relative dir ".public_cmi") else None
+    let public_dir =
+      { Compilation_mode.By_mode.ocaml = dir
+      ; melange = Path.relative dir Melange.Install.dir
+      }
     in
-    let melange_dir = Path.relative dir Melange.Install.dir in
-    let public_cmi_melange_dir =
-      if private_lib then Some (Path.relative melange_dir ".public_cmi_melange") else None
+    let public_cmi_dir =
+      match private_lib with
+      | false -> Compilation_mode.By_mode.both None
+      | true ->
+        { Compilation_mode.By_mode.ocaml = Some (Path.relative dir ".public_cmi")
+        ; melange = Some (Path.relative public_dir.melange ".public_cmi_melange")
+        }
     in
-    { public_dir = dir
-    ; private_dir
-    ; public_cmi_ocaml_dir
-    ; public_cmi_melange_dir
-    ; melange_dir
-    }
+    { public_dir; private_dir; public_cmi_dir }
   ;;
 
-  let public_cmi_ocaml_dir t = Option.value ~default:t.public_dir t.public_cmi_ocaml_dir
+  let public_cmi_ocaml_dir t =
+    Option.value ~default:t.public_dir.ocaml t.public_cmi_dir.ocaml
+  ;;
 
   let public_cmi_melange_dir t =
-    Option.value ~default:t.melange_dir t.public_cmi_melange_dir
+    Option.value ~default:t.public_dir.melange t.public_cmi_dir.melange
   ;;
 
-  let to_dyn
-        { public_dir
-        ; private_dir
-        ; public_cmi_ocaml_dir
-        ; melange_dir
-        ; public_cmi_melange_dir
-        }
-    =
+  let to_dyn { public_dir; private_dir; public_cmi_dir } =
     let open Dyn in
     record
-      [ "public_dir", Path.to_dyn public_dir
-      ; "private_dir", option Path.to_dyn private_dir
-      ; "public_cmi_ocaml_dir", option Path.to_dyn public_cmi_ocaml_dir
-      ; "melange_dir", Path.to_dyn melange_dir
-      ; "public_cmi_melange_dir", option Path.to_dyn public_cmi_melange_dir
+      [ "public_dir", Compilation_mode.By_mode.to_dyn Path.to_dyn public_dir
+      ; "private_dir", Compilation_mode.By_mode.to_dyn (option Path.to_dyn) private_dir
+      ; ( "public_cmi_dir"
+        , Compilation_mode.By_mode.to_dyn (option Path.to_dyn) public_cmi_dir )
       ]
   ;;
 
   let cm_dir t (cm_kind : Lib_mode.Cm_kind.t) (visibility : Visibility.t) =
     match cm_kind, visibility, t.private_dir with
-    | (Ocaml Cmi | Melange Cmi), Private, Some p -> p
-    | (Ocaml Cmi | Melange Cmi), Private, None ->
+    | Ocaml Cmi, Private, { Compilation_mode.By_mode.ocaml = Some p; melange = _ } -> p
+    | Ocaml Cmi, Private, { Compilation_mode.By_mode.ocaml = None; melange = _ } ->
+      Code_error.raise "External.cm_dir" [ "t", to_dyn t ]
+    | Melange Cmi, Private, { Compilation_mode.By_mode.melange = Some p; ocaml = _ } -> p
+    | Melange Cmi, Private, { Compilation_mode.By_mode.melange = None; ocaml = _ } ->
       Code_error.raise "External.cm_dir" [ "t", to_dyn t ]
     | Ocaml Cmi, Public, _ -> public_cmi_ocaml_dir t
     | Melange Cmi, Public, _ -> public_cmi_melange_dir t
-    | Melange Cmj, _, _ -> t.melange_dir
-    | Ocaml (Cmo | Cmx), _, _ -> t.public_dir
+    | Melange Cmj, _, _ -> t.public_dir.melange
+    | Ocaml (Cmo | Cmx), _, _ -> t.public_dir.ocaml
   ;;
 
-  let encode
-        { public_dir
-        ; private_dir
-        ; public_cmi_ocaml_dir
-        ; public_cmi_melange_dir
-        ; melange_dir = _
-        }
-    =
+  let encode { public_dir; private_dir; public_cmi_dir } =
     let open Dune_lang.Encoder in
     let extract d =
-      Path.descendant ~of_:public_dir d |> Option.value_exn |> Path.to_string
+      Path.descendant ~of_:public_dir.ocaml d |> Option.value_exn |> Path.to_string
     in
-    let private_dir = Option.map ~f:extract private_dir in
-    let public_cmi_ocaml_dir = Option.map ~f:extract public_cmi_ocaml_dir in
-    let public_cmi_melange_dir = Option.map ~f:extract public_cmi_melange_dir in
+    let private_dir = Option.map ~f:extract private_dir.ocaml in
+    let public_cmi_ocaml_dir = Option.map ~f:extract public_cmi_dir.ocaml in
+    let public_cmi_melange_dir = Option.map ~f:extract public_cmi_dir.melange in
     record_fields
       [ field_o "private_dir" string private_dir
       ; field_o "public_cmi_ocaml_dir" string public_cmi_ocaml_dir
@@ -116,7 +110,11 @@ module External = struct
   ;;
 
   let decode ~dir =
-    let public_dir = dir in
+    let public_dir =
+      { Compilation_mode.By_mode.ocaml = dir
+      ; melange = Path.relative dir Melange.Install.dir
+      }
+    in
     let open Dune_lang.Decoder in
     fields
       (let+ private_dir = field_o "private_dir" string
@@ -129,35 +127,29 @@ module External = struct
        let public_cmi_melange_dir =
          Option.map ~f:(Path.relative dir) public_cmi_melange_dir
        in
-       { public_dir
-       ; private_dir
-       ; melange_dir = Path.relative dir Melange.Install.dir
-       ; public_cmi_ocaml_dir
-       ; public_cmi_melange_dir
-       })
+       let private_dir = Compilation_mode.By_mode.both private_dir in
+       let public_cmi_dir =
+         { Compilation_mode.By_mode.ocaml = public_cmi_ocaml_dir
+         ; melange = public_cmi_melange_dir
+         }
+       in
+       { public_dir; private_dir; public_cmi_dir })
   ;;
 
-  let byte_dir t = t.public_dir
-  let jsoo_dir t = t.public_dir
-  let native_dir t = t.public_dir
-  let melange_dir t = t.melange_dir
-  let dir t = t.public_dir
-  let obj_dir t = t.public_dir
-  let odoc_dir t = t.public_dir
-  let all_obj_dirs t ~mode:_ = [ t.public_dir ]
+  let byte_dir t = t.public_dir.ocaml
+  let jsoo_dir t = t.public_dir.ocaml
+  let native_dir t = t.public_dir.ocaml
+  let melange_dir t = t.public_dir.melange
+  let dir t = t.public_dir.ocaml
+  let obj_dir t = t.public_dir.ocaml
+  let odoc_dir t = t.public_dir.ocaml
+  let all_obj_dirs t ~mode:_ = [ t.public_dir.ocaml ]
 
-  let all_cmis
-        { public_dir
-        ; melange_dir = _
-        ; private_dir
-        ; public_cmi_ocaml_dir
-        ; public_cmi_melange_dir = _
-        }
-    =
+  let all_cmis { public_dir; private_dir; public_cmi_dir } =
     List.filter_opt
-      [ Some public_dir
-      ; private_dir
-      ; public_cmi_ocaml_dir
+      [ Some public_dir.ocaml
+      ; private_dir.ocaml
+      ; public_cmi_dir.ocaml
         (* TODO: might need to pass mode to conditionally include public_cmi_melange_dir *)
       ]
   ;;

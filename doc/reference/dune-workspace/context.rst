@@ -1,37 +1,44 @@
 context
 -------
 
-The ``(context ...)`` stanza declares a build context. The argument can be
-either ``default`` or ``(default)`` for the default build context, or it can be
-the description of an opam switch, as follows:
+The ``(context ...)`` stanza allows you to declare multiple build contexts which
+can be built at the same time. By default Dune uses a single context called
+``default`` whose build directory artefacts in ``_build/default/``. There are
+two different kinds of context declarations: ``(default ...)`` for the regular
+kind of build context, or ``(opam ...)`` to use an opam switch.
+
+.. note::
+
+   Despite its name, the ``(default ...)`` field of the ``context`` stanza
+   specifies what we call the **regular context**, named this way to avoid
+   confusion with the default context name.
 
 .. code:: dune
 
-    (context (opam (switch <opam-switch-name>)
-                   <optional-fields>))
+    (context
+     (default
+      <optional-fields>))
 
-``<optional-fields>`` are:
+.. code:: dune
 
--  ``(name <name>)`` is the subdirectory's name for ``_build``, where this
-   build's context artifacts will be stored.
+    (context
+     (opam
+      (switch <opam-switch-name>)
+      <optional-fields>))
 
--  ``(lock_dir <path>)`` specifies the lock directory that will be used for
-   building this context (if any). If no lock directory is specified
-   ``dune.lock`` will be used. See the
-   :doc:`/reference/dune-workspace/lock_dir` stanza for lock directory
-   configuration options.
+``<optional-fields>`` common to both context types are:
 
--  ``(root <opam-root>)`` is the opam root. By default, it will take the opam
-   root defined by the environment in which ``dune`` is run, which is usually
-   ``~/.opam``.
+- ``(name <name>)`` is the name of the subdirectory within ``_build`` where this
+  context's build artifacts will be stored. If omitted, the context name is
+  ``default`` for the default context, and switch name for the opam context.
 
 - ``(merlin)`` instructs Dune to use this build context for Merlin.
 
 - ``(generate_merlin_rules)`` instructs Dune to generate Merlin rules for this
   context, even if it is not the one selected via ``(merlin)``.
 
-- ``(profile <profile>)`` sets a different profile for a :term:`build context`. This has
-  precedence over the command-line option ``--profile``.
+- ``(profile <profile>)`` sets the profile for this :term:`build context`. This
+  takes precedence over the command-line option ``--profile``.
 
 - ``(env <env>)`` sets the environment for a particular context. This is of
   higher precedence than the root ``env`` stanza in the workspace file. This
@@ -40,8 +47,14 @@ the description of an opam switch, as follows:
 - ``(toolchain <findlib_toolchain>)`` sets a ``findlib`` toolchain for the
   context.
 
-- ``(host <host_context>)`` chooses a different context to build binaries that
-  are meant to be executed on the host machine, such as preprocessors.
+- ``(host <host_context>)`` specifies a different context to build binaries that
+  are meant to be executed on the host machine, such as preprocessors. See
+  :ref:`cross-compilation` for more information. This is mutually exclusive with
+  the ``(targets ...)`` field.
+
+- ``(targets <targets>)`` specified target names for cross compilation targets.
+  See :ref:`cross-compilation` for more information. This is mutually exclusive
+  with the ``(host ...)`` field.
 
 - ``(paths (<var1> <val1>) .. (<varN> <valN>))`` allows you to set the value of
   any ``PATH``-like variables in this context. If ``PATH`` itself is modified in
@@ -54,7 +67,7 @@ the description of an opam switch, as follows:
 
 - ``(fdo <target_exe>)`` builds this context with feedback-direct optimizations.
   It requires `OCamlFDO <https://github.com/gretay-js/ocamlfdo>`__.
-  ``<target_exe>`` is a path-interpreted relative to the workspace root (see
+  ``<target_exe>`` is a path interpreted relative to the workspace root (see
   :ref:`finding-root`). ``<target_exe>`` specifies which executable to optimize.
   Users should define a different context for each target executable built with
   FDO. The context name is derived automatically from the default name and
@@ -64,15 +77,27 @@ the description of an opam switch, as follows:
   execution counters is *src/fdo.exe.fdo-profile*.  This feature is
   **experimental** and no backwards compatibility is implied.
 
-- By default, Dune builds and installs dynamically-linked foreign archives
-  (usually named ``dll*.so``). It's possible to disable this by setting by
-  including ``(disable_dynamically_linked_foreign_archives true)`` in the
-  workspace file, so bytecode executables will be built with all foreign
-  archives statically linked into the runtime system.
+- ``(instrument_with <instrumentation_backend>)`` turns on instrumentation for
+  the context. See :doc:`/instrumentation` for more information.
 
+- ``(disable_dynamically_linked_foreign_archives <bool>)`` disables Dune's
+  default behavior of building and installing dynamically-linked foreign
+  archives (e.g., ``dll*.so``), so bytecode executables are built with all
+  foreign archives statically linked into the runtime system.
 
-Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field in order to
-setup cross compilation. See :ref:`cross-compilation` for more information.
+``<optional-fields>`` specific to ``(context (default ...))`` are:
+
+- ``(lock_dir <path>)`` specifies the lock directory that will be used for
+   building this context (if any). If no lock directory is specified
+   ``dune.lock`` will be used. See the
+   :doc:`/reference/dune-workspace/lock_dir` stanza for lock directory
+   configuration options.
+
+``<optional-fields>`` specific to ``(context (opam ...))`` are:
+
+- ``(root <opam-root>)`` is the opam root. By default, it will take the opam
+   root defined by the environment in which ``dune`` is run, which is usually
+   ``~/.opam``.
 
 Merlin reads compilation artifacts, and it can only read the compilation
 artifacts of a single context. Usually, you should use the artifacts from the

@@ -391,7 +391,7 @@ module Valid = struct
   let valid_libs_and_packages =
     let run (ctx, all, projects) =
       let* libs_and_pkgs =
-        let* mask = Dune_load.mask () in
+        let* visible = Scope.DB.mask () in
         Scope.DB.with_all ctx ~f:(fun find ->
           Memo.List.fold_left projects ~init:([], []) ~f:(fun (libs_acc, pkg_acc) proj ->
             let* vendored = Source_tree.is_vendored (Dune_project.root proj) in
@@ -405,13 +405,13 @@ module Valid = struct
               let+ libs_acc =
                 let+ libs = Lib.DB.all lib_db in
                 let libs =
-                  if Only_packages.mem_all mask
-                  then libs
-                  else
+                  match visible with
+                  | None -> libs
+                  | Some set ->
                     Lib.Set.filter libs ~f:(fun lib ->
                       let info = Lib.info lib in
                       match Lib_info.package info with
-                      | Some p -> Only_packages.mem mask p
+                      | Some p -> Package.Name.Set.mem set p
                       | None -> false)
                 in
                 (proj, lib_db, libs) :: libs_acc
@@ -419,9 +419,9 @@ module Valid = struct
               let pkg_acc =
                 let pkgs =
                   let proj_pkgs = Dune_project.packages proj |> Package.Name.Map.keys in
-                  if Only_packages.mem_all mask
-                  then proj_pkgs
-                  else List.filter ~f:(Only_packages.mem mask) proj_pkgs
+                  match visible with
+                  | None -> proj_pkgs
+                  | Some set -> List.filter ~f:(Package.Name.Set.mem set) proj_pkgs
                 in
                 pkgs @ pkg_acc
               in
@@ -1251,7 +1251,7 @@ let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =
 ;;
 
 let pkg_mlds sctx pkg =
-  let* pkgs = Dune_load.packages () in
+  let* pkgs = Scope.DB.packages () in
   if Package.Name.Map.mem pkgs pkg
   then
     let+ res, warnings = Odoc.mlds sctx pkg in

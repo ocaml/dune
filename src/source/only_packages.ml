@@ -50,12 +50,17 @@ let mem t name =
   | Some map -> Package.Name.Map.mem map name
 ;;
 
-let mask packages ~vendored : t =
-  let enabled, disabled =
-    Package.Name.Map.partition_map packages ~f:(fun (package, status) ->
-      match status with
-      | `Enabled -> Left package
-      | `Disabled -> Right ())
+type package_status =
+  { enabled : bool
+  ; vendored : bool
+  }
+
+let mask packages : t =
+  let enabled_pkgs, disabled_pkgs =
+    Package.Name.Map.partition_map packages ~f:(fun pkgs ->
+      match List.find pkgs ~f:(fun (_, status) -> status.enabled) with
+      | Some (pkg, _) -> Left pkg
+      | None -> Right ())
   in
   match
     match Clflags.t () with
@@ -76,18 +81,19 @@ let mask packages ~vendored : t =
                  pkg_name
                  ~candidates:
                    (Package.Name.Map.keys packages |> List.map ~f:Package.Name.to_string))));
-      Package.Name.Map.filter_map packages ~f:(fun (pkg, _) ->
-        let name = Package.name pkg in
-        let vendored = Package.Name.Set.mem vendored name in
-        let included = Package.Name.Set.mem names name in
-        Option.some_if (vendored || included) pkg)
+      Package.Name.Map.filter_map packages ~f:(fun pkgs ->
+        match pkgs with
+        | [] -> None
+        | (pkg, status) :: _ ->
+          let included = Package.Name.Set.mem names (Package.name pkg) in
+          Option.some_if (status.vendored || included) pkg)
       |> Option.some
   with
-  | None -> if Package.Name.Map.is_empty disabled then None else Some enabled
-  | Some p ->
+  | None -> if Package.Name.Map.is_empty disabled_pkgs then None else Some enabled_pkgs
+  | Some masked ->
     Some
-      (Package.Name.Map.merge p enabled ~f:(fun _ masked enabled ->
-         match masked, enabled with
+      (Package.Name.Map.merge masked enabled_pkgs ~f:(fun _ m e ->
+         match m, e with
          | Some x, Some _ -> Some x
          | _, _ -> None))
 ;;

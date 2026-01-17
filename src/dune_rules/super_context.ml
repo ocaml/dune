@@ -314,7 +314,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
 
 let all =
   Memo.lazy_ ~name:"Super_context.all" (fun () ->
-    let* packages = Dune_load.packages ()
+    let* packages = Scope.DB.packages ()
     and* contexts = Context.DB.all () in
     let rec sctxs =
       lazy

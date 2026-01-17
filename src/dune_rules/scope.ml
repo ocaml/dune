@@ -382,7 +382,175 @@ module DB = struct
     value, public_libs
   ;;
 
-  let create_from_stanzas ~projects_by_root ~(context : Context_name.t) stanzas =
+  (* Maps each scoped directory to the set of packages that are allowed to be
+     visible from that directory. This enables per-directory scoping: different
+     directories can have different visibility rules for the same vendor packages. *)
+  type scope_db = { packages : Package.Name.Set.t Path.Source.Map.t }
+
+  let packages_under_dir by_dir ~dir =
+    Path.Source.Map.foldi by_dir ~init:Package.Name.Set.empty ~f:(fun pkg_dir names acc ->
+      if Path.Source.is_descendant pkg_dir ~of_:dir
+      then Package.Name.Set.union acc names
+      else acc)
+    |> Package.Name.Set.to_list
+  ;;
+
+  module Scopes_monoid = struct
+    type t = Package.Name.Set.t Path.Source.Map.t
+
+    include Monoid.Make (struct
+        type nonrec t = t
+
+        let empty = Path.Source.Map.empty
+
+        let combine =
+          Path.Source.Map.union ~f:(fun _dir a b -> Some (Package.Name.Set.union a b))
+        ;;
+      end)
+  end
+
+  module Scopes_map_reduce =
+    Source_tree.Make_map_reduce_with_progress (Memo) (Scopes_monoid)
+
+  let scope_db =
+    Memo.lazy_ ~name:"scope-db" (fun () ->
+      let* all_packages = Dune_load.packages () in
+      (* Map from directory to the set of packages defined in that directory *)
+      let packages_by_dir =
+        Package.Name.Map.fold all_packages ~init:Path.Source.Map.empty ~f:(fun pkgs acc ->
+          List.fold_left pkgs ~init:acc ~f:(fun acc (pkg, _status) ->
+            let dir = Package.dir pkg in
+            Path.Source.Map.update acc dir ~f:(function
+              | None -> Some (Package.Name.Set.singleton (Package.name pkg))
+              | Some set -> Some (Package.Name.Set.add set (Package.name pkg)))))
+      in
+      let+ packages =
+        Scopes_map_reduce.map_reduce
+          ~traverse:Source_dir_status.Set.all
+          ~trace_event_name:"collect-scopes"
+          ~f:(fun dir ->
+            match Source_tree.Dir.dune_file dir with
+            | None -> Memo.return Scopes_monoid.empty
+            | Some df ->
+              let parent_dir = Source_tree.Dir.path dir in
+              let scope_map = Source.Dune_file.scope df in
+              if Filename.Map.is_empty scope_map
+              then Memo.return Scopes_monoid.empty
+              else
+                Memo.return
+                  (Filename.Map.foldi
+                     scope_map
+                     ~init:Scopes_monoid.empty
+                     ~f:(fun subdir stanzas acc ->
+                       let scoped_dir = Path.Source.relative parent_dir subdir in
+                       let standard =
+                         packages_under_dir packages_by_dir ~dir:scoped_dir
+                       in
+                       (* Compute the allowed packages for this scoped directory.
+                        Multiple scope stanzas targeting the same directory have their
+                        allowed packages unioned together. *)
+                       let allowed =
+                         List.fold_left
+                           stanzas
+                           ~init:Package.Name.Set.empty
+                           ~f:(fun acc stanza ->
+                             Package.Name.Set.union
+                               acc
+                               (Dune_lang.Scope_stanza.eval_packages stanza ~standard))
+                       in
+                       Path.Source.Map.update acc scoped_dir ~f:(function
+                         | None -> Some allowed
+                         | Some existing -> Some (Package.Name.Set.union existing allowed)))))
+      in
+      { packages })
+  ;;
+
+  (* Check if a source directory is under any scoped directory, and if so,
+     return the allowed packages for the most specific (deepest) scope. *)
+  let find_scope_for_dir packages src_dir =
+    Path.Source.Map.foldi packages ~init:None ~f:(fun scoped_dir allowed acc ->
+      if Path.Source.is_descendant src_dir ~of_:scoped_dir
+      then (
+        match acc with
+        | None -> Some (scoped_dir, allowed)
+        | Some (prev_dir, _) ->
+          (* Keep the most specific (deepest) scope *)
+          if Path.Source.is_descendant scoped_dir ~of_:prev_dir
+          then Some (scoped_dir, allowed)
+          else acc)
+      else acc)
+  ;;
+
+  let filter_by_scope ~packages:{ packages } stanzas =
+    if Path.Source.Map.is_empty packages
+    then stanzas
+    else
+      List.filter_map stanzas ~f:(fun (ctx_dir, stanza) ->
+        match stanza with
+        | Library_related_stanza.Library lib ->
+          let visible =
+            match Option.map (Library.package lib) ~f:Package.name with
+            | None -> false (* private libs not visible through scope *)
+            | Some pkg_name ->
+              let src_dir = Path.Build.drop_build_context_exn ctx_dir in
+              (match find_scope_for_dir packages src_dir with
+               | None -> true (* not under any scope = visible *)
+               | Some (_, allowed) -> Package.Name.Set.mem allowed pkg_name)
+          in
+          Option.some_if visible (ctx_dir, stanza)
+        | _ -> Some (ctx_dir, stanza))
+  ;;
+
+  let packages =
+    let memo =
+      Memo.lazy_ ~name:"scope-packages" (fun () ->
+        let+ { packages = scope_packages } = Memo.Lazy.force scope_db
+        and+ all_packages = Dune_load.packages () in
+        let scope_filtered =
+          Package.Name.Map.filter_map all_packages ~f:(fun pkgs ->
+            let visible_pkgs =
+              List.filter pkgs ~f:(fun (pkg, _status) ->
+                let pkg_dir = Package.dir pkg in
+                match find_scope_for_dir scope_packages pkg_dir with
+                | None -> true
+                | Some (_, allowed) -> Package.Name.Set.mem allowed (Package.name pkg))
+            in
+            match visible_pkgs with
+            | [] -> None
+            | _ -> Some visible_pkgs)
+        in
+        let mask = Only_packages.mask scope_filtered in
+        Package.Name.Map.filter_mapi scope_filtered ~f:(fun name pkgs ->
+          if Only_packages.mem mask name
+          then (
+            match pkgs with
+            | [] -> None
+            | [ (pkg, _) ] -> Some pkg
+            | (pkg1, _) :: (pkg2, _) :: _ ->
+              User_error.raise
+                [ Pp.textf
+                    "The package %S is defined more than once:"
+                    (Package.Name.to_string name)
+                ; Pp.textf "- %s" (Loc.to_file_colon_line (Package.loc pkg1))
+                ; Pp.textf "- %s" (Loc.to_file_colon_line (Package.loc pkg2))
+                ])
+          else None))
+    in
+    fun () -> Memo.Lazy.force memo
+  ;;
+
+  let mask =
+    let memo =
+      Memo.lazy_ ~name:"scope-mask" (fun () ->
+        let+ packages = packages () in
+        if Package.Name.Map.is_empty packages
+        then None
+        else Some (Package.Name.Set.of_keys packages))
+    in
+    fun () -> Memo.Lazy.force memo
+  ;;
+
+  let create_from_stanzas ~projects_by_root ~(context : Context_name.t) ~packages stanzas =
     let stanzas, coq_stanzas, rocq_stanzas =
       let build_dir = Context_name.build_dir context in
       Dune_file.fold_static_stanzas
@@ -407,6 +575,7 @@ module DB = struct
             acc, coq_acc, (ctx_dir, rocq_lib) :: rocq_acc
           | _ -> acc, coq_acc, rocq_acc)
     in
+    let stanzas = filter_by_scope ~packages stanzas in
     create ~projects_by_root ~context stanzas coq_stanzas rocq_stanzas
   ;;
 
@@ -414,8 +583,9 @@ module DB = struct
     Per_context.create_by_name ~name:"scope" (fun context ->
       Memo.Lazy.create (fun () ->
         let* projects_by_root = Dune_load.projects_by_root ()
+        and* packages = Memo.Lazy.force scope_db
         and* stanzas = Dune_load.dune_files context in
-        create_from_stanzas ~projects_by_root ~context stanzas)
+        create_from_stanzas ~projects_by_root ~context ~packages stanzas)
       |> Memo.Lazy.force)
     |> Staged.unstage
   ;;

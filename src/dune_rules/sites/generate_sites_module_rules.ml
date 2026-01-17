@@ -134,7 +134,7 @@ let plugins_code packages buf pkg sites =
 
 let setup_rules sctx ~dir (def : Generate_sites_module_stanza.t) =
   let impl =
-    let+ packages = Dune_load.packages () in
+    let+ packages = Scope.DB.packages () in
     let buf = Buffer.create 1024 in
     if def.sourceroot then sourceroot_code buf;
     if def.relocatable then relocatable_code buf;

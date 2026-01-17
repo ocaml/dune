@@ -23,10 +23,11 @@ val enumerate : t -> [ `Set of Package.Name.Set.t | `All ]
 val mem : t -> Package.Name.t -> bool
 val mem_all : t -> bool
 
-val mask
-  :  (Package.t * [ `Enabled | `Disabled ]) Package.Name.Map.t
-  -> vendored:Package.Name.Set.t
-  -> t
+type package_status =
+  { enabled : bool
+  ; vendored : bool
+  }
 
+val mask : (Package.t * package_status) list Package.Name.Map.t -> t
 val filter_packages : t -> Package.t Package.Name.Map.t -> Package.t Package.Name.Map.t
 val filter_packages_in_project : vendored:bool -> Dune_project.t -> Dune_project.t

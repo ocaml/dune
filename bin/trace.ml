@@ -150,9 +150,13 @@ let iter_sexps_follow file ~f =
 
 let times_of_sexp (sexp : Sexp.t) =
   match sexp with
-  | Atom s -> float_of_string s, None
+  | Atom s ->
+    let ns = int_of_string s in
+    Time.of_ns ns, None
   | List [ Atom ts; Atom dur ] ->
-    float_of_string ts, Some ("dur", Json.float (float_of_string dur))
+    let ts_ns = int_of_string ts in
+    let dur_ns = int_of_string dur in
+    Time.of_ns ts_ns, Some (Time.Span.of_ns dur_ns)
   | _ -> invalid_sexp sexp
 ;;
 
@@ -175,13 +179,13 @@ let json_of_event ~chrome (sexp : Sexp.t) =
   let base =
     [ "cat", Json.string cat
     ; "name", Json.string name
-    ; "ts", Json.float ts
+    ; "ts", Json.float (Time.to_secs ts)
     ; "args", Json.assoc rest
     ]
     @
     match dur with
     | None -> []
-    | Some (x, k) -> [ x, k ]
+    | Some k -> [ "dur", Json.float (Time.Span.to_secs k) ]
   in
   match chrome with
   | false -> Json.assoc base

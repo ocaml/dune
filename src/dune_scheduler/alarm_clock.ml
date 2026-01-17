@@ -34,7 +34,7 @@ let polling_loop t () =
       let now = Time.now () in
       let expired, active =
         List.partition_map t.alarms ~f:(fun (expiration, ivar) ->
-          if now > expiration
+          if Time.( > ) now expiration
           then Left (Fiber.Fill (ivar, `Finished))
           else Right (expiration, ivar))
       in

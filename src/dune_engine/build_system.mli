@@ -68,9 +68,10 @@ module Progress : sig
     { number_of_rules_discovered : int
     ; number_of_rules_executed : int
     ; number_of_rules_failed : int
+    ; start_time : float
     }
 
-  (** Initialize with zeros on all measures. *)
+  (** Initialize with zeros on all measures and current time as start_time. *)
   val init : t
 end
 

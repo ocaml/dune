@@ -73,13 +73,13 @@
 ./test-cases/inline-tests/many-backends-choose.t
 ./test-cases/inline-tests/missing-backend.t
 ./test-cases/inline-tests/too-many-backends.t
-./test-cases/installable-dup-private-libs.t/run.t
 ./test-cases/install-dir/install-bindir.t
 ./test-cases/install-dir/install-datadir.t
 ./test-cases/install-dir/install-docdir.t
 ./test-cases/install-dir/install-etcdir.t
 ./test-cases/install-dir/install-mandir.t
 ./test-cases/install-dry-run.t/run.t
+./test-cases/installable-dup-private-libs.t/run.t
 ./test-cases/jsoo/env.t
 ./test-cases/jsoo/sourcemap.t/run.t
 ./test-cases/jsoo/without_implem.t/run.t
@@ -125,9 +125,9 @@
 ./test-cases/stdlib/stdlib-flags.t
 ./test-cases/targets-with-vars.t/run.t
 ./test-cases/test-build-if/version.t
-./test-cases/tests-locks.t/tests/a.t
 ./test-cases/tests-locks.t/tests-no-locks/b.t
 ./test-cases/tests-locks.t/tests-no-locks/sub/d.t
+./test-cases/tests-locks.t/tests/a.t
 ./test-cases/tests-locks.t/tests/sub/b.t
 ./test-cases/top-module/load-with-pp.t
 ./test-cases/unreadable-src.t

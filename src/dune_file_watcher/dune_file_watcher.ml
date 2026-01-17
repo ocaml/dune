@@ -143,7 +143,7 @@ type kind =
       ; source : Fsevents.t
       ; sync : Fsevents.t
       ; latency : Time.Span.t
-      ; on_event : Fsevents.Event.t -> Path.t -> Event.t option
+      ; on_event : Fsevents.Event.t -> Path.t -> Event.t list option
       }
   | Inotify of Inotify_lib.t
   | Fswatch_win of
@@ -553,11 +553,16 @@ let fsevents_callback ?exclusion_paths (scheduler : Scheduler.t) ~f events =
     | Some paths -> fun p -> List.mem paths p ~equal:Path.equal
   in
   scheduler.thread_safe_send_emit_events_job (fun () ->
-    List.filter_map events ~f:(fun event ->
+    List.concat_map events ~f:(fun event ->
       let path =
         Fsevents.Event.path event |> Path.of_string |> Path.Expert.try_localize_external
       in
-      if skip_path path then None else f event path))
+      if skip_path path
+      then []
+      else (
+        match f event path with
+        | None -> []
+        | Some events -> events)))
 ;;
 
 let fsevents ?exclusion_paths ~latency ~paths scheduler f =
@@ -575,14 +580,21 @@ let fsevents_standard_event ~should_exclude event path =
   if should_exclude (Path.to_string path)
   then None
   else (
-    let kind =
-      match Fsevents.Event.action event with
-      | Rename | Unknown -> Fs_memo_event.Unknown
-      | Create -> Created
-      | Remove -> Deleted
-      | Modify -> if Fsevents.Event.kind event = File then File_changed else Unknown
-    in
-    Some (Event.Fs_memo_event { Fs_memo_event.kind; path }))
+    let ev kind = Event.Fs_memo_event { Fs_memo_event.kind; path } in
+    Some
+      (match Fsevents.Event.action event with
+       | Rename ->
+         (* For renames, check if path exists to determine old vs new *)
+         [ ev (if Path.exists path then Created else Deleted) ]
+       | Create ->
+         (* File creation: also emit File_changed to match inotify behavior *)
+         if Fsevents.Event.kind event = File
+         then [ ev Created; ev File_changed ]
+         else [ ev Created ]
+       | Remove -> [ ev Deleted ]
+       | Modify ->
+         [ ev (if Fsevents.Event.kind event = File then File_changed else Unknown) ]
+       | Unknown -> [ ev Unknown ]))
 ;;
 
 let create_fsevents
@@ -609,7 +621,7 @@ let create_fsevents
            | Remove -> None
            | Rename | Unknown | Create | Modify ->
              Option.map (Fs_sync.consume_event sync_table path) ~f:(fun id ->
-               Event.Sync id)))
+               [ Event.Sync id ])))
   in
   let on_event = fsevents_standard_event ~should_exclude in
   let source =

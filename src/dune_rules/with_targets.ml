@@ -41,10 +41,6 @@ let add_directories t ~directory_targets =
 
 let map { build; targets } ~f = { build = map build ~f; targets }
 
-let map2 x y ~f =
-  { build = map2 x.build y.build ~f; targets = Targets.combine x.targets y.targets }
-;;
-
 let both x y =
   { build = both x.build y.build; targets = Targets.combine x.targets y.targets }
 ;;

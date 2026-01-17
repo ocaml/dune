@@ -43,6 +43,7 @@ val compare : t -> t -> Ordering.t
 val to_string : t -> string
 val from_hex : string -> t option
 val file : Path.t -> t
+val file_async : Path.t -> t Fiber.t
 val string : string -> t
 val to_string_raw : t -> string
 val generic : 'a -> t
@@ -86,6 +87,12 @@ val path_with_stats
   -> Path.t
   -> Stats_for_digest.t
   -> (t, Path_digest_error.t) result
+
+val path_with_stats_async
+  :  allow_dirs:bool
+  -> Path.t
+  -> Stats_for_digest.t
+  -> (t, Path_digest_error.t) result Fiber.t
 
 (** Digest a file taking the [executable] bit into account. Should not be called
     on a directory. *)

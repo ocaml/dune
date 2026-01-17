@@ -1,9 +1,9 @@
 (library
  (name dune_digest)
  (libraries
-  dune_metrics
-  fiber
   dune_scheduler
+  fiber
+  dune_metrics
   blake3_mini
   dune_console
   dune_util

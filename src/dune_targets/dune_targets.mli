@@ -161,9 +161,9 @@ module Produced : sig
      is used for a variety of things, not all "map-like". *)
   val map_with_errors
     :  ?d:(Path.Build.t -> (unit, 'e) result)
-    -> f:(Path.Build.t -> ('b, 'e) result)
+    -> f:(Path.Build.t -> ('b, 'e) result Fiber.t)
     -> 'a t
-    -> ('b t, (Path.Build.t * 'e) Nonempty_list.t) result
+    -> ('b t, (Path.Build.t * 'e) Nonempty_list.t) result Fiber.t
 
   val to_dyn : _ t -> Dyn.t
 end

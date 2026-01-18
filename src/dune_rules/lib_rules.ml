@@ -574,25 +574,22 @@ let library_rules
       (Compilation_context.dep_graphs cctx).impl
       impl_only
   in
-  let* () = Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir implements in
   let* expander = Super_context.expander sctx ~dir in
+  let lib_info =
+    Library.to_lib_info
+      lib
+      ~expander:(Memo.return (Expander.to_expander0 expander))
+      ~dir
+      ~lib_config
+  in
+  let { Compilation_mode.for_merlin; _ } =
+    Compilation_mode.of_mode_set (Lib_info.modes lib_info)
+  in
+  let* () = Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir implements in
   let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
   let* () = gen_wrapped_compat_modules lib cctx
   and* () = Module_compilation.build_all cctx
-  and* lib_info =
-    let info =
-      Library.to_lib_info
-        lib
-        ~expander:(Memo.return (Expander.to_expander0 expander))
-        ~dir
-        ~lib_config
-    in
-    let { Compilation_mode.for_merlin; _ } =
-      Compilation_mode.of_mode_set (Lib_info.modes info)
-    in
-    let+ () = Check_rules.add_obj_dir sctx ~obj_dir for_merlin in
-    info
-  in
+  and* () = Check_rules.add_obj_dir sctx ~obj_dir for_merlin in
   let for_ = Compilation_context.for_ cctx in
   let+ () =
     Memo.when_ (Compilation_context.bin_annot cctx) (fun () ->
@@ -657,7 +654,7 @@ let library_rules
       ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Merlin_ident.for_lib (Library.best_name lib))
-      ~modes:(`Lib (Lib_info.modes lib_info))
+      ~for_:for_merlin
       ~parameters
   in
   merlin

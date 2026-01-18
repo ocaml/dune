@@ -335,7 +335,7 @@ let executables_rules
         (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names))
-      ~modes:`Exe
+      ~for_
       ~parameters:(Resolve.return [])
   in
   cctx, merlin

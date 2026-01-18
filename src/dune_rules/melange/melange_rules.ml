@@ -480,7 +480,7 @@ let setup_emit_cmj_rules
         ~obj_dir
         ~ident:merlin_ident
         ~dialects:(Dune_project.dialects (Scope.project scope))
-        ~modes:`Melange_emit
+        ~for_
         ~parameters:(Resolve.return []) )
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir ~for_ in

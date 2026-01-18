@@ -60,7 +60,12 @@ let lib_output_path ~output_dir ~lib_dir src =
 
 let make_js_name ~js_ext ~output m =
   let dst_dir =
-    let src_dir = Module.file m ~ml_kind:Impl |> Option.value_exn |> Path.parent_exn in
+    let src_dir =
+      Module.source m ~ml_kind:Impl
+      |> Option.value_exn
+      |> Module.File.original_path
+      |> Path.parent_exn
+    in
     match output with
     | Output_kind.Public_library { lib_dir; target_dir; output_dir } ->
       let output_dir = Path.Build.append_local target_dir output_dir in
@@ -70,7 +75,7 @@ let make_js_name ~js_ext ~output m =
         target_dir
         (src_dir |> Path.as_in_build_dir_exn |> Path.Build.drop_build_context_exn)
   in
-  let basename = Melange.js_basename m ^ js_ext in
+  let basename = Module_compilation.melange_js_basename m ^ js_ext in
   Path.Build.relative dst_dir basename
 ;;
 

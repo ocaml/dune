@@ -54,6 +54,7 @@ val of_source : visibility:Visibility.t -> kind:Kind.t -> Source.t -> t
 val name : t -> Module_name.t
 val path : t -> Module_name.Path.t
 val source : t -> ml_kind:Ml_kind.t -> File.t option
+val source_without_pp : t -> ml_kind:Ml_kind.t -> Path.t option
 val pp_flags : t -> (string list Action_builder.t * Sandbox_config.t) option
 val install_as : t -> Path.Local.t option
 val file : t -> ml_kind:Ml_kind.t -> Path.t option
@@ -90,7 +91,6 @@ end
 
 val sources : t -> Path.t list
 val sources_without_pp : t -> Path.t list
-val source_without_pp : ml_kind:Ml_kind.t -> t -> Path.t option
 val visibility : t -> Visibility.t
 val encode : t -> src_dir:Path.t -> Dune_lang.t list
 val decode : src_dir:Path.t -> t Dune_lang.Decoder.t

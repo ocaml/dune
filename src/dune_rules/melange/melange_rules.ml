@@ -297,7 +297,7 @@ let build_js
   Memo.parallel_iter module_systems ~f:(fun (module_system, js_ext) ->
     let js_output = make_js_name ~output ~js_ext m in
     let mode =
-      let src = Module.file m ~ml_kind:Impl |> Option.value_exn in
+      let src = Module.source_without_pp m ~ml_kind:Impl |> Option.value_exn in
       compute_promote_in_source
         ~promote_in_source
         ~project

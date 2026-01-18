@@ -556,10 +556,12 @@ let run_cram_test
   in
   let metadata =
     let name =
-      let base = Path.basename sh_script.script in
-      match String.equal base "run.t" with
-      | false -> base
-      | true -> sprintf "%s/%s" (Path.basename (Path.parent_exn sh_script.script)) base
+      let base = Path.basename src in
+      (match String.equal base "run.t" with
+       | false -> src
+       | true -> Path.parent_exn src)
+      |> Path.drop_build_context_exn
+      |> Path.Source.to_string
     in
     Process.create_metadata ~name ~categories:[ "cram" ] ()
   in

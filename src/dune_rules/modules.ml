@@ -932,6 +932,18 @@ let fold_user_available t ~f ~init =
   | Wrapped w -> Wrapped.fold_user_available w ~init ~f
 ;;
 
+let map_user_available t ~f =
+  let modules =
+    match t.modules with
+    | Singleton m -> Singleton (f m)
+    | Unwrapped m -> Unwrapped (Unwrapped.map m ~f)
+    | Stdlib w -> Stdlib (Stdlib.map w ~f)
+    | Wrapped ({ group; wrapped_compat = _; wrapped = _; toplevel_module = _ } as w) ->
+      Wrapped { w with group = Group.map group ~f }
+  in
+  with_obj_map modules
+;;
+
 let map_user_written t ~f =
   let f m = if is_user_written m then f m else Memo.return m in
   let+ modules =
@@ -1243,6 +1255,17 @@ module With_vlib = struct
                [ "t", to_dyn t; "m", Module.to_dyn m ]
            | Some group -> alias group acc)
         | _ -> normal m acc)
+  ;;
+
+  let map t ~f =
+    match t with
+    | Modules modules -> Modules (map_user_available ~f modules)
+    | Impl impl ->
+      Impl
+        { impl with
+          impl = map_user_available ~f impl.impl
+        ; vlib = map_user_available ~f impl.vlib
+        }
   ;;
 
   type split_by_lib =

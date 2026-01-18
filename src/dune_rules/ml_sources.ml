@@ -389,9 +389,9 @@ let modules_and_obj_dir t ~libs ~for_ =
 
 let modules t ~libs ~for_ = modules_and_obj_dir t ~libs ~for_ >>| fst
 
-let virtual_modules ~lookup_vlib ~libs ~for_:_ vlib =
+let virtual_modules ~lookup_vlib ~libs ~for_ vlib =
   let+ modules =
-    match Lib_info.modules vlib with
+    match Lib_info.modules vlib ~for_ with
     | External modules ->
       Option.value_exn modules |> Modules.With_vlib.drop_vlib |> Memo.return
     | Local ->

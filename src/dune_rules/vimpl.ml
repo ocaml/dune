@@ -18,7 +18,7 @@ let vlib_obj_map t = Modules.obj_map t.vlib_modules
 let make ~sctx ~scope ~(lib : Library.t) ~info ~vlib ~for_ =
   let open Memo.O in
   let+ vlib_modules, vlib_foreign_objects =
-    match Lib_info.modules info, Lib_info.foreign_objects info with
+    match Lib_info.modules info ~for_, Lib_info.foreign_objects info with
     | External modules, External fa ->
       let modules = Option.value_exn modules in
       Memo.return (Modules.With_vlib.drop_vlib modules, fa)

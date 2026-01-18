@@ -731,11 +731,19 @@ end = struct
             |> List.map ~f:Path.build
           and* modules =
             let* libs = Scope.DB.find_by_dir dir >>| Scope.libs in
-            Dir_contents.ocaml dir_contents
-            >>= Ml_sources.modules
-                  ~libs
-                  ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
-            >>| Modules.With_vlib.modules
+            let+ modules =
+              let lib_modes = Compilation_mode.of_mode_set (Lib_info.modes info) in
+              Memo.parallel_map lib_modes.modes ~f:(fun for_ ->
+                let+ modules =
+                  Dir_contents.ml dir_contents ~for_
+                  >>= Ml_sources.modules
+                        ~libs
+                        ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
+                  >>| Modules.With_vlib.modules
+                in
+                for_, Some modules)
+            in
+            Compilation_mode.By_mode.of_list modules ~init:None
           and* melange_runtime_deps = file_deps (Lib_info.melange_runtime_deps info)
           and* public_headers = file_deps (Lib_info.public_headers info) in
           let+ dune_lib =

@@ -112,7 +112,7 @@ Now test file-system events generated during directory target promotion.
   $ build d1
   Success
 
-  $ stop_dune > .#debug-output
+  $ stop_dune > /dev/null
 
 Show that Dune ignores the initial "dune-workspace" events (injected by Dune).
 

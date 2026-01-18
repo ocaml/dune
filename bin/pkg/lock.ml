@@ -1,4 +1,3 @@
-open Dune_config
 open Import
 open Pkg_common
 module Package_version = Dune_pkg.Package_version

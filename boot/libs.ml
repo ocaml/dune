@@ -81,12 +81,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_config"
-    ; main_module_name = Some "Dune_config"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "otherlibs/dune-glob/src"
     ; main_module_name = Some "Dune_glob"
     ; include_subdirs = No
@@ -541,7 +535,6 @@ let main =
             ; "Cmdliner_term_deprecated"
             ; "Cmdliner_trie"
             ; "Build_info"
-            ; "Dune_config"
             ; "Dune_config_file"
             ; "Chrome_trace"
             ; "Dune_trace"

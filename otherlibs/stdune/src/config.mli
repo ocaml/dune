@@ -1,5 +1,3 @@
-open Stdune
-
 (** General dune configuration library for non user facing configuration.
 
     The configuration available through this module is non user facing and is

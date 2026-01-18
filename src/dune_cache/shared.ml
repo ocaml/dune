@@ -1,6 +1,8 @@
-open Import
+module Shared_cache_config = Config
 
 let config = ref Config.Disabled
+
+open Import
 
 module Miss_reason = struct
   type t =
@@ -45,7 +47,7 @@ let lookup_impl ~rule_digest ~targets =
   match !config with
   | Disabled -> Fiber.return (Hit_or_miss.Miss Miss_reason.Cache_disabled)
   | Enabled { storage_mode = mode; reproducibility_check } ->
-    (match Config.Reproducibility_check.sample reproducibility_check with
+    (match Shared_cache_config.Reproducibility_check.sample reproducibility_check with
      | true ->
        (* CR-someday amokhov: Here we re-execute the rule, as in Jenga. To make
           [check_probability] more meaningful, we could first make sure that

@@ -15,7 +15,7 @@ let () =
        |> Env.get
      in
      Xdg.create ~env ());
-  Dune_config.Config.init String.Map.empty;
+  Config.init String.Map.empty;
   Dune_tests_common.init ()
 ;;
 

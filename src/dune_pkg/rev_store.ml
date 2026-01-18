@@ -142,16 +142,14 @@ module Cache = struct
 
        When we do this we should check [Int.equal Sys.word_size 64] since
        32-bit platforms won't handle our cache size well. *)
-    Dune_config.Config.make_toggle ~name:"rev_store_cache" ~default:`Disabled
+    Config.make_toggle ~name:"rev_store_cache" ~default:`Disabled
   ;;
 
   let revision_store_dir =
     lazy
       (let path = Path.relative (Lazy.force Dune_util.cache_root_dir) "rev_store" in
-       let rev_store_cache = Dune_config.Config.get rev_store_cache in
-       Log.info
-         "Revision store cache"
-         [ "status", Dune_config.Config.Toggle.to_dyn rev_store_cache ];
+       let rev_store_cache = Config.get rev_store_cache in
+       Log.info "Revision store cache" [ "status", Config.Toggle.to_dyn rev_store_cache ];
        match rev_store_cache with
        | `Disabled -> None
        | `Enabled ->

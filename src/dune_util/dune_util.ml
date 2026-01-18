@@ -62,7 +62,7 @@ let cache_root_dir =
 ;;
 
 let frames_per_second () =
-  match Dune_config.Config.(get threaded_console_frames_per_second) with
+  match Config.(get threaded_console_frames_per_second) with
   | `Custom fps -> fps
   | `Default when Stdune.Execution_env.inside_emacs -> 15
   | `Default -> 60

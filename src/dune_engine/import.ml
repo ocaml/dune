@@ -13,7 +13,6 @@ module Persistent = Dune_util.Persistent
 module Glob = Dune_glob.V1
 module Targets = Dune_targets
 include No_io
-include Dune_config
 
 (* To make bug reports usable *)
 let () = Printexc.record_backtrace true

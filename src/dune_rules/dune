@@ -10,7 +10,6 @@
   dune_action_plugin
   dune_cache
   dune_cache_storage
-  dune_config
   dune_config_file
   dune_console
   dune_digest

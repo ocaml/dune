@@ -1,6 +1,5 @@
-open Stdune
-
 let initialized = ref false
+let sprintf = Printf.sprintf
 
 type 'a t =
   { name : string

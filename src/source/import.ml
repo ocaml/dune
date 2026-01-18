@@ -1,5 +1,4 @@
 include Stdune
-include Dune_config
 include Dune_vcs
 include Dune_util
 include Dune_config_file

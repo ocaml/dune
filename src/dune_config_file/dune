@@ -3,7 +3,6 @@
  (libraries
   stdune
   xdg
-  dune_config
   dune_scheduler
   dune_console
   dune_threaded_console

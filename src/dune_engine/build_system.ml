@@ -1005,7 +1005,7 @@ end = struct
   let build_file_memo =
     lazy
       (let cutoff =
-         match Dune_config.Config.(get cutoffs_that_reduce_concurrency_in_watch_mode) with
+         match Config.(get cutoffs_that_reduce_concurrency_in_watch_mode) with
          | `Disabled -> None
          | `Enabled -> Some (Tuple.T2.equal Digest.equal target_kind_equal)
        in

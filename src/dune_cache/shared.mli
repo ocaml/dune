@@ -1,6 +1,6 @@
-open Import
-
 val config : Config.t ref
+
+open Import
 
 (** The shared cache is a separate directory that contains historical build
     artifacts produced in different workspaces. To restore results from the

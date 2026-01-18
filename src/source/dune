@@ -1,7 +1,6 @@
 (library
  (name source)
  (libraries
-  dune_config
   dune_config_file
   dune_console
   dune_digest

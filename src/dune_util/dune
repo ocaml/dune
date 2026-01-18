@@ -10,6 +10,5 @@
   pp
   build_path_prefix_map
   dune_sexp
-  dune_config
   memo
   unix))

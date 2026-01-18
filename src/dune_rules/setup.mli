@@ -1,3 +1,5 @@
+open Stdune
+
 (** Setup of dune *)
 
 (** These parameters are set by [ocaml configure.ml] ran by the user or without
@@ -10,8 +12,8 @@ val library_path : string list
 (** Where to install files. All the directories are absolute path *)
 val roots : string option Install.Roots.t
 
-val toolchains : Dune_config.Config.Toggle.t
-val lock_dev_tool : Dune_config.Config.Toggle.t
-val bin_dev_tools : Dune_config.Config.Toggle.t
-val portable_lock_dir : Dune_config.Config.Toggle.t
+val toolchains : Config.Toggle.t
+val lock_dev_tool : Config.Toggle.t
+val bin_dev_tools : Config.Toggle.t
+val portable_lock_dir : Config.Toggle.t
 val prefix : string option

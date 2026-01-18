@@ -1,5 +1,4 @@
 open Import
-open Dune_config
 module Stringlike = Dune_util.Stringlike
 
 module Name = struct

@@ -34,6 +34,7 @@ let index_path_in_obj_dir obj_dir =
 ;;
 
 let cctx_rules cctx =
+  let for_ = Compilation_context.for_ cctx in
   (* Indexing is performed by the external binary [ocaml-index] which performs
      full shape reduction to compute the actual definition of all the elements in
      the typedtree. This step is therefore dependent on all the cmts of those
@@ -90,11 +91,10 @@ let cctx_rules cctx =
       @@
       let open Action_builder.O in
       let+ () = Action_builder.return () in
-      let modes = Compilation_context.modes cctx in
       let cm_kind =
-        if modes.ocaml.native || modes.ocaml.byte
-        then Lib_mode.Cm_kind.(Ocaml Cmi)
-        else Lib_mode.Cm_kind.(Melange Cmi)
+        match for_ with
+        | Ocaml -> Lib_mode.Cm_kind.(Ocaml Cmi)
+        | Melange -> Lib_mode.Cm_kind.(Melange Cmi)
       in
       (* We only index occurrences in user-written modules *)
       let paths =

@@ -590,7 +590,7 @@ module Toplevel_index = struct
 end
 
 let setup_toplevel_index_rule sctx output =
-  let* packages = Dune_load.packages () in
+  let* packages = Scope.DB.packages () in
   let index = Toplevel_index.of_packages packages in
   let content = Toplevel_index.content output index in
   let ctx = Super_context.context sctx in
@@ -1030,7 +1030,7 @@ let has_rules ?(directory_targets = Path.Build.Map.empty) m =
 
 let with_package pkg ~f =
   let pkg = Package.Name.of_string pkg in
-  let* packages = Dune_load.packages () in
+  let* packages = Scope.DB.packages () in
   match Package.Name.Map.find packages pkg with
   | Some pkg -> has_rules (f pkg)
   | None -> Memo.return Gen_rules.no_rules
@@ -1091,7 +1091,7 @@ let gen_rules sctx ~dir rest =
               setup_lib_odocl_rules sctx lib ~requires
             | Some pkg -> setup_pkg_odocl_rules sctx ~pkg ~for_)
        and+ () =
-         let* packages = Dune_load.packages () in
+         let* packages = Scope.DB.packages () in
          match
            Package.Name.Map.find packages (Package.Name.of_string lib_unique_name_or_pkg)
          with
@@ -1132,7 +1132,7 @@ let gen_rules sctx ~dir rest =
               setup_lib_html_rules sctx ~search_db lib
             | Some pkg -> setup_pkg_html_rules sctx ~pkg ~for_)
        and+ () =
-         let* packages = Dune_load.packages () in
+         let* packages = Scope.DB.packages () in
          match
            Package.Name.Map.find packages (Package.Name.of_string lib_unique_name_or_pkg)
          with

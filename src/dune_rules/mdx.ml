@@ -522,7 +522,7 @@ let gen_rules t ~sctx ~dir ~scope ~expander =
     match t.package with
     | None -> Memo.return true
     | Some package ->
-      let+ mask = Dune_load.mask () in
+      let+ mask = Scope.DB.mask () in
       Only_packages.mem_all mask || Only_packages.mem mask (Package.name package)
   in
   Memo.when_ do_it register_rules

@@ -34,6 +34,9 @@ end
 
 val files : t -> Files.t
 
+(** Scope stanzas, keyed by the subdirectory they apply to *)
+val scope : t -> (Loc.t * Dune_lang.Scope_stanza.t) Filename.Map.t
+
 (** Directories introduced via [(subdir ..)] *)
 val sub_dirnames : t -> Filename.t list
 

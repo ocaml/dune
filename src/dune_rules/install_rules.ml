@@ -549,7 +549,7 @@ end = struct
   let stanzas_to_entries sctx =
     let ctx = Context.build_context (Super_context.context sctx) in
     let* stanzas = Dune_load.dune_files ctx.name in
-    let* packages = Dune_load.packages () in
+    let* packages = Scope.DB.packages () in
     let+ init =
       Package_map_traversals.parallel_map packages ~f:(fun _name (pkg : Package.t) ->
         let opam_file = Package_paths.opam_file ctx pkg in
@@ -1076,7 +1076,7 @@ let install_entries sctx package =
 
 let packages =
   let f sctx =
-    let* packages = Dune_load.packages () in
+    let* packages = Scope.DB.packages () in
     let packages = Package.Name.Map.values packages in
     let+ l =
       Memo.parallel_map packages ~f:(fun (pkg : Package.t) ->
@@ -1304,7 +1304,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
     files >>| Path.Set.of_list_map ~f:Path.build >>= Action_builder.path_set
   in
   let* () =
-    let* all_packages = Dune_load.packages () in
+    let* all_packages = Scope.DB.packages () in
     let target_alias =
       Dep_conf_eval.package_install ~context:build_context ~pkg:package
     in
@@ -1421,7 +1421,7 @@ let scheme_per_ctx_memo =
     ~input:(module Super_context.As_memo_key)
     "install-rule-scheme"
     (fun sctx ->
-       Dune_load.packages ()
+       Scope.DB.packages ()
        >>| Package.Name.Map.values
        >>= Memo.parallel_map ~f:(fun pkg -> scheme sctx (Package.name pkg))
        >>| Scheme.all

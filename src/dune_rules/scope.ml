@@ -382,7 +382,30 @@ module DB = struct
     value, public_libs
   ;;
 
-  let create_from_stanzas ~projects_by_root ~(context : Context_name.t) stanzas =
+  let filter_by_scope scopes stanzas =
+    if Path.Source.Map.is_empty scopes
+    then stanzas
+    else
+      List.filter_map stanzas ~f:(fun (ctx_dir, stanza) ->
+        match stanza with
+        | Library_related_stanza.Library lib ->
+          let visible =
+            match Option.map (Library.package lib) ~f:Package.name with
+            | None -> false
+            | Some pkg_name ->
+              let src_dir = Path.Build.drop_build_context_exn ctx_dir in
+              (match Package_scope.find_scope_for_dir scopes src_dir with
+               | None -> true
+               | Some (_, allowed) -> Package.Name.Set.mem allowed pkg_name)
+          in
+          Option.some_if visible (ctx_dir, stanza)
+        | _ -> Some (ctx_dir, stanza))
+  ;;
+
+  let packages = Package_scope.packages
+  let mask = Package_scope.mask
+
+  let create_from_stanzas ~projects_by_root ~(context : Context_name.t) ~scopes stanzas =
     let stanzas, coq_stanzas, rocq_stanzas =
       let build_dir = Context_name.build_dir context in
       Dune_file.fold_static_stanzas
@@ -407,6 +430,7 @@ module DB = struct
             acc, coq_acc, (ctx_dir, rocq_lib) :: rocq_acc
           | _ -> acc, coq_acc, rocq_acc)
     in
+    let stanzas = filter_by_scope scopes stanzas in
     create ~projects_by_root ~context stanzas coq_stanzas rocq_stanzas
   ;;
 
@@ -414,8 +438,9 @@ module DB = struct
     Per_context.create_by_name ~name:"scope" (fun context ->
       Memo.Lazy.create (fun () ->
         let* projects_by_root = Dune_load.projects_by_root ()
+        and* scopes = Package_scope.db ()
         and* stanzas = Dune_load.dune_files context in
-        create_from_stanzas ~projects_by_root ~context stanzas)
+        create_from_stanzas ~projects_by_root ~context ~scopes stanzas)
       |> Memo.Lazy.force)
     |> Staged.unstage
   ;;

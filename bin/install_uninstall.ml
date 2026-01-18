@@ -85,7 +85,7 @@ module Workspace = struct
   let get () =
     let open Memo.O in
     Memo.run
-      (let+ packages = Dune_rules.Dune_load.packages ()
+      (let+ packages = Dune_rules.Scope.DB.packages ()
        and+ contexts = Context.DB.all () in
        { packages; contexts })
   ;;

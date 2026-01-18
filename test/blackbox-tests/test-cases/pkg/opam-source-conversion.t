@@ -61,7 +61,7 @@ Unsupported backends:
   > }
   > EOF
 
-  $ solve testpkg 2>&1
+  $ solve testpkg
   Solution for dune.lock:
   - testpkg.0.0.1
   $ showpkg
@@ -71,6 +71,15 @@ Unsupported backends:
    (fetch
     (url hg+http://no-support.com/foo)
     (checksum md5=069aa55d40e548280f92af693f6c625a)))
+
+Create a local git repo to resolve to
+
+  $ mkdir _repo
+  $ git -C _repo init --initial-branch=main --quiet
+  $ touch _repo/content
+  $ git -C _repo add -A
+  $ git -C _repo commit -m "Initial commit" --quiet
+  $ expected_hash=$(git -C _repo rev-parse HEAD)
 
 git+http
 
@@ -82,7 +91,7 @@ git+http
   > }
   > EOF
 
-  $ solve testpkg 2>&1
+  $ solve testpkg
   Solution for dune.lock:
   - testpkg.0.0.1
   $ showpkg
@@ -98,19 +107,20 @@ git+file
   $ rm -rf ${default_lock_dir}
   $ mkpkg testpkg <<EOF
   > url {
-  >   src: "git+file://here"
+  >   src: "git+file://$PWD/_repo"
   >   checksum: "md5=069aa55d40e548280f92af693f6c625a"
   > }
   > EOF
-  $ solve testpkg 2>&1
+  $ solve testpkg
   Solution for dune.lock:
   - testpkg.0.0.1
-  $ showpkg
+  $ showpkg | dune_cmd subst "$PWD" '$PWD' | dune_cmd subst "$expected_hash" '$EXPECTED_HASH'
   (version 0.0.1)
   
   (source
    (fetch
-    (url git+file://here)
+    (url
+     git+file://$PWD/_repo#$EXPECTED_HASH)
     (checksum md5=069aa55d40e548280f92af693f6c625a)))
 
 git+foobar
@@ -122,7 +132,7 @@ git+foobar
   >   checksum: "md5=069aa55d40e548280f92af693f6c625a"
   > }
   > EOF
-  $ solve testpkg 2>&1
+  $ solve testpkg
   Solution for dune.lock:
   - testpkg.0.0.1
   $ showpkg
@@ -142,7 +152,7 @@ file+git
   >   checksum: "md5=069aa55d40e548280f92af693f6c625a"
   > }
   > EOF
-  $ solve testpkg 2>&1
+  $ solve testpkg
   Solution for dune.lock:
   - testpkg.0.0.1
   $ showpkg

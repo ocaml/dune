@@ -1655,6 +1655,50 @@ let package_kind =
     else `Non_compiler
 ;;
 
+let resolve_url (file_url : OpamFile.URL.t) =
+  let url = OpamFile.URL.url file_url in
+  let+ url : OpamUrl.t =
+    match url.backend with
+    | `git ->
+      let loc = Loc.none in
+      let+ mount = Mount.of_opam_url loc url in
+      (match Mount.backend mount with
+       | Path path ->
+         Code_error.raise
+           "Attempted to resolve git URL but loading it resolved to a local path"
+           [ "url", OpamUrl.to_dyn url; "path", Path.to_dyn path ]
+       | Git at_rev ->
+         let hash =
+           at_rev |> Rev_store.At_rev.rev |> Rev_store.Object.to_hex |> Option.some
+         in
+         { url with hash })
+    | _ -> Fiber.return url
+  in
+  OpamFile.URL.with_url url file_url
+;;
+
+let resolve_opam_packages opam_packages_to_lock ~resolve_package =
+  opam_packages_to_lock
+  |> List.map ~f:(fun opam_package ->
+    let name = OpamPackage.name opam_package |> Package_name.of_opam_package_name in
+    let version = OpamPackage.version opam_package in
+    let resolved_package = resolve_package name version in
+    (* resolve URLs *)
+    let+ resolved_package =
+      let opam_file = Resolved_package.opam_file resolved_package in
+      let+ opam_file =
+        match OpamFile.OPAM.url opam_file with
+        | None -> Fiber.return opam_file
+        | Some url ->
+          let+ url = resolve_url url in
+          OpamFile.OPAM.with_url url opam_file
+      in
+      Resolved_package.with_opam_file opam_file resolved_package
+    in
+    name, opam_package, resolved_package)
+  |> Fiber.all
+;;
+
 let solve_lock_dir
       solver_env
       version_preference
@@ -1732,8 +1776,7 @@ let solve_lock_dir
          (Table.find_exn candidates_cache name).resolved
          |> OpamPackage.Version.Map.find version
        in
-       let pkgs_by_name =
-         let open Result.O in
+       let* pkgs_by_name =
          let+ pkgs =
            let version_by_package_name =
              Package_name.Map.of_list_map_exn
@@ -1742,13 +1785,10 @@ let solve_lock_dir
                  ( Package_name.of_opam_package_name (OpamPackage.name package)
                  , Package_version.of_opam_package_version (OpamPackage.version package) ))
            in
-           List.map opam_packages_to_lock ~f:(fun opam_package ->
-             let name =
-               OpamPackage.name opam_package |> Package_name.of_opam_package_name
-             in
-             let resolved_package =
-               resolve_package name (OpamPackage.version opam_package)
-             in
+           let+ resolved_pkgs =
+             resolve_opam_packages opam_packages_to_lock ~resolve_package
+           in
+           List.map resolved_pkgs ~f:(fun (name, opam_package, resolved_package) ->
              Lock_pkg.opam_package_to_lock_file_pkg
                solver_env
                stats_updater
@@ -1759,22 +1799,23 @@ let solve_lock_dir
                ~portable_lock_dir)
            |> Result.List.all
          in
-         match Package_name.Map.of_list_map pkgs ~f:(fun pkg -> pkg.info.name, pkg) with
-         | Error (name, _pkg1, _pkg2) ->
-           Code_error.raise
-             "Solver selected multiple versions for the same package"
-             [ "name", Package_name.to_dyn name ]
-         | Ok pkgs_by_name ->
-           let reachable =
-             reject_unreachable_packages
-               solver_env
-               ~dune_version:
-                 (Package_version.of_opam_package_version context.dune_version)
-               ~local_packages
-               ~pkgs_by_name
-           in
-           Package_name.Map.filteri pkgs_by_name ~f:(fun name _ ->
-             Package_name.Set.mem reachable name)
+         Result.map pkgs ~f:(fun pkgs ->
+           match Package_name.Map.of_list_map pkgs ~f:(fun pkg -> pkg.info.name, pkg) with
+           | Error (name, _pkg1, _pkg2) ->
+             Code_error.raise
+               "Solver selected multiple versions for the same package"
+               [ "name", Package_name.to_dyn name ]
+           | Ok pkgs_by_name ->
+             let reachable =
+               reject_unreachable_packages
+                 solver_env
+                 ~dune_version:
+                   (Package_version.of_opam_package_version context.dune_version)
+                 ~local_packages
+                 ~pkgs_by_name
+             in
+             Package_name.Map.filteri pkgs_by_name ~f:(fun name _ ->
+               Package_name.Set.mem reachable name))
        in
        let ocaml =
          let open Result.O in

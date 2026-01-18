@@ -47,16 +47,12 @@ Implementation with public_name (but no private modules of its own):
 Should build without "External.cm_dir" errors:
 
   $ dune build @install
-  Error: Multiple rules generated for
-  _build/install/default/lib/pkg/impl/.private/vlib__Helper.cmi:
-  - impl/dune:1
-  - impl/dune:1
-  -> required by _build/default/pkg.install
-  -> required by alias install
-  Error: Multiple rules generated for
-  _build/install/default/lib/pkg/vlib/.private/vlib__Helper.cmt:
-  - vlib/dune:1
-  - vlib/dune:1
-  -> required by _build/default/pkg.install
-  -> required by alias install
-  [1]
+
+  $ dune install --display=short --prefix=out 2>&1 | grep '\.private'
+  Installing out/lib/pkg/impl/.private/vlib__Helper.cmi
+  Installing out/lib/pkg/impl/melange/.private/vlib__Helper.cmi
+  Installing out/lib/pkg/vlib/.private/vlib__Helper.cmi
+  Installing out/lib/pkg/vlib/.private/vlib__Helper.cmt
+  Installing out/lib/pkg/vlib/melange/.private/vlib__Helper.cmi
+  Installing out/lib/pkg/vlib/melange/.private/vlib__Helper.cmt
+

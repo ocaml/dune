@@ -38,26 +38,29 @@ module External = struct
   let equal : t -> t -> bool = Poly.equal
 
   let make ~dir ~has_private_modules ~private_lib =
-    let private_dir =
-      match has_private_modules with
-      | false -> Compilation_mode.By_mode.both None
-      | true ->
-        { Compilation_mode.By_mode.ocaml = Some (Path.relative dir ".private")
-        ; melange = Some (Path.relative dir ".private")
-        }
-    in
     let public_dir =
       { Compilation_mode.By_mode.ocaml = dir
       ; melange = Path.relative dir Melange.Install.dir
       }
     in
+    let private_dir =
+      match has_private_modules with
+      | false -> Compilation_mode.By_mode.both None
+      | true ->
+        Compilation_mode.By_mode.map public_dir ~f:(fun ~for_:_ public_dir ->
+          Some (Path.relative public_dir ".private"))
+    in
     let public_cmi_dir =
       match private_lib with
       | false -> Compilation_mode.By_mode.both None
       | true ->
-        { Compilation_mode.By_mode.ocaml = Some (Path.relative dir ".public_cmi")
-        ; melange = Some (Path.relative public_dir.melange ".public_cmi_melange")
-        }
+        Compilation_mode.By_mode.map public_dir ~f:(fun ~for_ public_dir ->
+          let segment =
+            match for_ with
+            | Ocaml -> ".public_cmi"
+            | Melange -> ".public_cmi_melange"
+          in
+          Some (Path.relative public_dir segment))
     in
     { public_dir; private_dir; public_cmi_dir }
   ;;
@@ -120,14 +123,20 @@ module External = struct
       (let+ private_dir = field_o "private_dir" string
        and+ public_cmi_ocaml_dir = field_o "public_cmi_ocaml_dir" string
        and+ public_cmi_melange_dir = field_o "public_cmi_melange_dir" string in
-       let private_dir = Option.map ~f:(Path.relative dir) private_dir in
+       let private_dir =
+         { Compilation_mode.By_mode.ocaml = Option.map ~f:(Path.relative dir) private_dir
+         ; melange =
+             Option.map
+               ~f:(fun _ -> Path.relative public_dir.melange ".private")
+               private_dir
+         }
+       in
        let public_cmi_ocaml_dir =
          Option.map ~f:(Path.relative dir) public_cmi_ocaml_dir
        in
        let public_cmi_melange_dir =
          Option.map ~f:(Path.relative dir) public_cmi_melange_dir
        in
-       let private_dir = Compilation_mode.By_mode.both private_dir in
        let public_cmi_dir =
          { Compilation_mode.By_mode.ocaml = public_cmi_ocaml_dir
          ; melange = public_cmi_melange_dir

@@ -31,6 +31,7 @@ val eval
   -> stanza_loc:Loc.t
   -> private_modules:Ordered_set_lang.Unexpanded.t
   -> kind:kind
+  -> for_:Compilation_mode.t
   -> src_dir:Path.Build.t
   -> version:Dune_lang.Syntax.Version.t
   -> Modules_settings.t

@@ -284,7 +284,7 @@ let build_ppx_driver =
       Module_name.of_string_allow_invalid (Loc.none, "_ppx")
       |> Module_name.Unchecked.allow_invalid
     in
-    let module_ = Module.generated ~kind:Impl ~src_dir:dir [ main_module_name ] in
+    let module_ = Module.generated ~kind:Impl ~src_dir:dir ~for_ [ main_module_name ] in
     let* () =
       let ml_source =
         Module.file ~ml_kind:Impl module_ |> Option.value_exn |> Path.as_in_build_dir_exn

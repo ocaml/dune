@@ -466,7 +466,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
     and requires_link = Lib.Compile.requires_link compile_info ~for_ in
     let obj_dir = Obj_dir.make_exe ~dir ~name in
     let modules =
-      Module.generated ~kind:Impl ~src_dir:dir [ main_module_name ]
+      Module.generated ~kind:Impl ~src_dir:dir ~for_ [ main_module_name ]
       |> Modules.With_vlib.singleton_exe
     in
     let flags = Ocaml_flags.default ~dune_version ~profile:Release in

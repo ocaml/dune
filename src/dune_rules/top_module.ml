@@ -78,7 +78,7 @@ let gen_rules sctx ~dir:rules_dir ~comps =
   >>= function
   | None -> Memo.return ()
   | Some (module_, cctx, _merlin, _) ->
-    let module_ = Module.set_source module_ Intf None in
+    let module_ = Module.set_source module_ ~ml_kind:Intf None in
     let* () =
       (let obj_dir = Compilation_context.obj_dir cctx in
        module_deps cctx module_

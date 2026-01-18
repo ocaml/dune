@@ -656,7 +656,7 @@ module Unprocessed = struct
       ~f:(pp_flags ctx ~expander t.config.libname)
   ;;
 
-  let add_lib_dirs sctx for_ libs =
+  let add_lib_dirs sctx ~for_ libs =
     Memo.parallel_map libs ~f:(fun lib ->
       let+ dirs = src_dirs sctx lib ~for_ in
       lib, dirs)
@@ -732,7 +732,7 @@ module Unprocessed = struct
                      ocaml.version
                    |> Dune_project.Implicit_transitive_deps.to_bool
                  in
-                 Lib.closure [ lib ] ~linking ~for_:Melange
+                 Lib.closure [ lib ] ~linking ~for_:t.config.mode
                  |> Resolve.Memo.peek
                  >>| function
                  | Ok libs -> libs
@@ -742,10 +742,10 @@ module Unprocessed = struct
       in
       let+ flags = flags
       and+ indexes = Ocaml_index.context_indexes context
-      and+ deps_src_dirs, deps_obj_dirs = add_lib_dirs sctx mode requires_compile
+      and+ deps_src_dirs, deps_obj_dirs = add_lib_dirs sctx ~for_:mode requires_compile
       and+ hidden_src_dirs, hidden_obj_dirs =
         let requires_hidden = Resolve.peek requires_hidden |> Result.value ~default:[] in
-        add_lib_dirs sctx mode requires_hidden
+        add_lib_dirs sctx ~for_:mode requires_hidden
       in
       let parameters = Resolve.peek parameters |> Result.value ~default:[] in
       let src_dirs =

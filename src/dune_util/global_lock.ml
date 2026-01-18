@@ -1,5 +1,4 @@
 open Stdune
-module Config = Dune_config.Config
 
 let lock_file = Path.Build.(relative root ".lock")
 

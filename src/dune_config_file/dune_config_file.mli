@@ -68,7 +68,7 @@ module Dune_config : sig
 
         - [Unset]: Package management enablement is not explicitly configured.  *)
     type t =
-      | Set of Loc.t * Dune_config.Config.Toggle.t
+      | Set of Loc.t * Config.Toggle.t
       | Unset
   end
 

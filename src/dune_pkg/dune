@@ -18,7 +18,6 @@
   dune_digest
   re
   dune_vcs
-  dune_config
   opam_format
   build_info
   sat

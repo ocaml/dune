@@ -33,7 +33,6 @@ include struct
   module type Stringlike = Stringlike
 end
 
-include Dune_config
 include Dune_config_file
 
 include struct

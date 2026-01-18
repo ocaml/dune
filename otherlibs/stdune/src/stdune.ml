@@ -77,6 +77,7 @@ module Log = Log
 module Time = Time
 module Escape0 = Escape
 module Debug = Debug
+module Config = Config
 
 module type Top_closure = Top_closure.Top_closure
 

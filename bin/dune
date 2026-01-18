@@ -37,7 +37,6 @@
   dune_pkg
   cmdliner
   build_info
-  dune_config
   dune_config_file
   chrome_trace
   dune_trace

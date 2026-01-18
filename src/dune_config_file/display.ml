@@ -1,5 +1,4 @@
 open Stdune
-open Dune_config
 module Display = Dune_engine.Display
 
 type t =

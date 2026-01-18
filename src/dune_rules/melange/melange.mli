@@ -14,5 +14,3 @@ module Cm_kind : module type of Dune_lang.Melange.Cm_kind
 module Install : sig
   val dir : string
 end
-
-val js_basename : Module.t -> Filename.t

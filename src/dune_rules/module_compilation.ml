@@ -60,6 +60,23 @@ let copy_interface ~sctx ~dir ~obj_dir ~cm_kind m =
             ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:cmi_kind)))
 ;;
 
+let melange_js_basename m =
+  match Module.file ~ml_kind:Impl m with
+  | Some s ->
+    (* we aren't using Filename.extension because we want to handle
+       filenames such as foo.pp.ml *)
+    (match String.lsplit2 (Path.basename s) ~on:'.' with
+     | None ->
+       Code_error.raise
+         "could not extract module name from file path"
+         [ "module", Module.to_dyn m ]
+     | Some (module_name, _) -> module_name)
+  | None ->
+    Code_error.raise
+      "could not find melange source from module"
+      [ "module", Module.to_dyn m ]
+;;
+
 let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) module_ =
   match cm_kind with
   | Ocaml (Cmi | Cmo | Cmx) | Melange Cmi -> []
@@ -104,14 +121,14 @@ let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) m
       :: A "--mel-package-output"
       :: Command.Args.Path mel_package_output
       :: A "--mel-module-name"
-      :: A (Melange.js_basename module_)
+      :: A (melange_js_basename module_)
       :: mel_package_name
     else
       Command.Args.A "--bs-stop-after-cmj"
       :: A "--bs-package-output"
       :: Command.Args.Path mel_package_output
       :: A "--bs-module-name"
-      :: A (Melange.js_basename module_)
+      :: A (melange_js_basename module_)
       :: mel_package_name
 ;;
 

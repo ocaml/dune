@@ -24,14 +24,13 @@
 (rule
  (target lacking-description)
  (deps
-  %{bin:sort}
   %{bin:rg}
   ;; CR-someday rgrinberg: we need a recursive glob for source_tree
   (source_tree test-cases))
  (mode promote)
  (action
   (system
-   "rg --files-without-match '^\\S' --glob \"*.t\" --glob \"!*coq*\" --glob \"!*rocq*\" . | sort > %{target}")))
+   "rg --files-without-match '^\\S' --glob \"*.t\" --glob \"!*coq*\" --glob \"!*rocq*\" --sort=path . > %{target}")))
 
 (alias
  (enabled_if %{bin-available:rg})

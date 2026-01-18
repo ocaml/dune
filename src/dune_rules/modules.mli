@@ -15,6 +15,7 @@ val lib
   -> implements:bool
   -> has_instances:bool
   -> modules:Module.t Module_trie.t
+  -> for_:Compilation_mode.t
   -> t
 
 val decode : src_dir:Path.t -> t Dune_lang.Decoder.t

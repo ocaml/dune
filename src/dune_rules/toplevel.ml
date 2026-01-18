@@ -2,6 +2,7 @@ open Import
 open Memo.O
 
 let toplevel_dir_prefix = ".toplevel."
+let for_ = Compilation_mode.Ocaml
 
 module Source = struct
   type t =
@@ -16,7 +17,7 @@ module Source = struct
       Module_name.of_string_allow_invalid (t.loc, t.name)
       |> Module_name.Unchecked.allow_invalid
     in
-    Module.generated ~kind:Impl ~src_dir:t.dir [ main_module_name ]
+    Module.generated ~kind:Impl ~src_dir:t.dir ~for_ [ main_module_name ]
   ;;
 
   let source_path t =
@@ -112,8 +113,6 @@ let pp_flags t =
   | Action _ | Future_syntax _ -> assert false (* Error in parsing *)
   | No_preprocessing -> Action_builder.return Pp.nop
 ;;
-
-let for_ = Compilation_mode.Ocaml
 
 let setup_module_rules t =
   let main_ml =

@@ -364,6 +364,7 @@ let eval
       ~stanza_loc
       ~private_modules
       ~kind
+      ~for_
       ~src_dir
       ~is_vendored
       ~version
@@ -439,7 +440,7 @@ let eval
     | None -> all_modules
     | Some (_, name) ->
       let path = Nonempty_list.[ name ] in
-      let module_ = Module.generated ~kind:Root ~src_dir path in
+      let module_ = Module.generated ~kind:Root ~for_ ~src_dir path in
       Module_trie.set all_modules path module_
   in
   modules, all_modules
@@ -451,6 +452,7 @@ let eval
       ~stanza_loc
       ~private_modules
       ~kind
+      ~for_
       ~src_dir
       ~version
       (settings : Modules_settings.t)
@@ -472,6 +474,7 @@ let eval
     ~stanza_loc
     ~private_modules
     ~kind
+    ~for_
     ~src_dir
     ~is_vendored
     settings

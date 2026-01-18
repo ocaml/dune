@@ -176,7 +176,7 @@ module Source = struct
     | Intf -> { t with files = { t.files with intf = Some file } }
   ;;
 
-  let set_source t ml_kind file =
+  let set_source t ~ml_kind file =
     match ml_kind with
     | Ml_kind.Impl -> { t with files = { t.files with impl = file } }
     | Intf -> { t with files = { t.files with intf = file } }
@@ -280,8 +280,8 @@ let add_file t kind file =
   { t with source }
 ;;
 
-let set_source t kind file =
-  let source = Source.set_source t.source kind file in
+let set_source t ~ml_kind file =
+  let source = Source.set_source t.source ~ml_kind file in
   { t with source }
 ;;
 
@@ -421,7 +421,14 @@ let version_installed t ~src_root ~install_dir =
   map_files t ~f:(fun _ -> File.version_installed ~src_root ~install_dir)
 ;;
 
-let generated ?install_as ?obj_name ~(kind : Kind.t) ~src_dir (path : Module_name.Path.t) =
+let generated
+      ?install_as
+      ?obj_name
+      ~(kind : Kind.t)
+      ~(for_ : Compilation_mode.t)
+      ~src_dir
+      (path : Module_name.Path.t)
+  =
   let obj_name =
     match obj_name with
     | Some obj_name -> obj_name
@@ -430,6 +437,11 @@ let generated ?install_as ?obj_name ~(kind : Kind.t) ~src_dir (path : Module_nam
   let source =
     let impl =
       let basename = Module_name.Unique.artifact_filename obj_name ~ext:ml_gen in
+      let src_dir =
+        match for_ with
+        | Ocaml -> src_dir
+        | Melange -> src_dir
+      in
       Path.Build.relative src_dir basename |> Path.build |> File.make Dialect.ocaml
     in
     Source.make ~impl:(Some impl) ~intf:None path

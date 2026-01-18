@@ -200,7 +200,7 @@ include Sub_system.Register_end_point (struct
       let runner_name = Inline_tests_info.inline_test_runner in
       let main_module =
         let name = Module_name.of_checked_string "main" in
-        Module.generated ~kind:Impl ~src_dir:inline_test_dir [ name ]
+        Module.generated ~kind:Impl ~for_ ~src_dir:inline_test_dir [ name ]
       in
       (* Generate the runner file *)
       let js_of_ocaml =

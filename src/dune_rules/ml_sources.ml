@@ -389,7 +389,7 @@ let modules_and_obj_dir t ~libs ~for_ =
 
 let modules t ~libs ~for_ = modules_and_obj_dir t ~libs ~for_ >>| fst
 
-let virtual_modules ~lookup_vlib ~libs vlib =
+let virtual_modules ~lookup_vlib ~libs ~for_:_ vlib =
   let+ modules =
     match Lib_info.modules vlib with
     | External modules ->
@@ -565,6 +565,7 @@ let make_lib_modules
       ~modules
       ~include_subdirs:(loc_include_subdirs, (include_subdirs : Include_subdirs.t))
       ~version
+      ~for_
   =
   let open Resolve.Memo.O in
   let* kind, main_module_name, wrapped =
@@ -611,7 +612,7 @@ let make_lib_modules
       let+ kind =
         let+ impl =
           let* vlib = Lib.implements resolved |> Option.value_exn >>| Lib.info in
-          virtual_modules ~lookup_vlib ~libs vlib |> Resolve.Memo.lift_memo
+          virtual_modules ~lookup_vlib ~libs ~for_ vlib |> Resolve.Memo.lift_memo
         in
         Modules_field_evaluator.Implementation impl
       in
@@ -631,6 +632,7 @@ let make_lib_modules
       ~src_dir:dir
       modules_settings
       ~version
+      ~for_
   in
   let () =
     match lib.stdlib, include_subdirs with
@@ -670,7 +672,8 @@ let make_lib_modules
         ~obj_dir:dir
         ~modules
         ~main_module_name
-        ~wrapped )
+        ~wrapped
+        ~for_ )
 ;;
 
 let module_path ~loc ~include_subdirs ~dir path_to_root =
@@ -960,6 +963,7 @@ let modules_of_stanzas =
         ~private_modules:Ordered_set_lang.Unexpanded.standard
         ~version:exes.dune_version
         modules_settings
+        ~for_:Ocaml
     in
     let has_instances = has_instances exes.buildable in
     let modules =
@@ -1027,6 +1031,7 @@ let modules_of_stanzas =
                    ~lib
                    ~include_subdirs:(loc_include_subdirs, include_subdirs)
                    ~version:lib.dune_version
+                   ~for_:Ocaml
                  >>= Resolve.read_memo
                in
                let obj_dir = Library.obj_dir lib ~dir in
@@ -1071,6 +1076,7 @@ let modules_of_stanzas =
                    ~version
                    ~private_modules:Ordered_set_lang.Unexpanded.standard
                    ~src_dir:dir
+                   ~for_:Melange
                    mel.modules
                in
                let modules =

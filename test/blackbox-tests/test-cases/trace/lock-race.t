@@ -1,6 +1,6 @@
-Demonstrate that dune does not acquire the lock before writing to the trace file.
-This is a bug where a second dune process that fails to acquire the lock will
-still overwrite the trace file from the first process.
+Demonstrate that dune acquires the lock before writing to the default trace file.
+This test verifies that a second dune process will NOT overwrite the trace file
+from the first process when it cannot acquire the lock.
 
   $ cat >dune-project <<EOF
   > (lang dune 3.22)
@@ -20,9 +20,7 @@ Create a rule that will block the first dune process, holding the lock:
 Start the first dune process in watch mode. It will acquire the lock and
 hold it while running the rule:
 
-  $ dune build @foo --watch >/dev/null &
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
+  $ dune build @foo --watch &>/dev/null &
 
 Wait for the first process to start and acquire the lock:
 
@@ -32,14 +30,14 @@ Extract the PID from the first dune process's trace:
 
   $ pid1=$(dune trace cat | jq -r '.args.pid' | head -1)
 
-Now try to run a second dune process with watch mode. The bug is that the second
-dune will truncate the trace file BEFORE trying to acquire the lock. Even though
-the second dune connects via RPC (and succeeds), it has already corrupted the trace:
+Now try to run a second dune process with watch mode. The second dune will NOT
+truncate the trace file because it checks the lock first. It will connect via RPC
+instead, leaving the original trace intact:
 
   $ dune build @foo --watch 2>&1 | head -1
   Success
 
-Check if the trace was overwritten. The PIDs should differ, demonstrating the bug:
+Verify the trace was NOT overwritten. The PIDs should match:
 
   $ pid2=$(dune trace cat | jq -r '.args.pid' | head -1)
   $ if [ "$pid1" != "$pid2" ]; then
@@ -47,7 +45,7 @@ Check if the trace was overwritten. The PIDs should differ, demonstrating the bu
   > else
   >   echo "OK: Trace was not overwritten (PIDs match)"
   > fi
-  BUG: Trace was overwritten by second dune (PIDs differ)
+  OK: Trace was not overwritten (PIDs match)
 
 Clean up by killing the background dune process:
 

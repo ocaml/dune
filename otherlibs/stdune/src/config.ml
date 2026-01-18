@@ -8,6 +8,7 @@ type 'a t =
   }
 
 let env_name t = sprintf "DUNE_CONFIG__%s" (String.uppercase_ascii t.name)
+let is_initialized () = !initialized
 
 let get t =
   if not !initialized

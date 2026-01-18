@@ -27,6 +27,9 @@ val make : name:string -> of_string:(string -> ('a, string) result) -> default:'
 
 val make_toggle : name:string -> default:Toggle.t -> Toggle.t t
 
+(** [is_initialized ()] returns whether [init] has been called *)
+val is_initialized : unit -> bool
+
 (** [get t] return the value of the configuration for [t] *)
 val get : 'a t -> 'a
 

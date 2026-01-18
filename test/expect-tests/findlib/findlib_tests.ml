@@ -134,7 +134,7 @@ let%expect_test _ =
   in
   (* "foo" should depend on "baz" *)
   let info = Dune_package.Lib.info pkg in
-  let requires = Lib_info.requires info in
+  let requires = Lib_info.requires info ~for_:Ocaml in
   let dyn = Dyn.list Lib_dep.to_dyn requires in
   let pp = Dyn.pp dyn in
   Format.printf "%a@." Pp.to_fmt pp;

@@ -169,7 +169,7 @@ let lib_hidden_deps ~sctx ~kind lib requires =
         let lib_info = Lib.info dep in
         let obj_dir = Lib_info.obj_dir lib_info in
         let+ modules =
-          match Lib_info.modules lib_info with
+          match Lib_info.modules lib_info ~for_ with
           | External opt_modules -> Action_builder.return opt_modules
           | Local ->
             let local_lib = Lib.Local.of_lib_exn lib in
@@ -300,7 +300,7 @@ let instantiate ~sctx lib =
   let lib_info = Lib.info lib in
   let modules_obj_dir = Lib_info.obj_dir lib_info in
   let* deps_obj_dir, modules =
-    match Lib_info.modules lib_info with
+    match Lib_info.modules lib_info ~for_ with
     | External None -> Code_error.raise "library has no modules" [ "lib", Lib.to_dyn lib ]
     | External (Some modules) ->
       let dir = Lib.Parameterised.dir ~build_dir lib in
@@ -315,7 +315,7 @@ let instantiate ~sctx lib =
   let dep_graph =
     dep_graph
       ~ocaml_version:ocaml.version
-      ~preprocess:(Lib_info.preprocess lib_info)
+      ~preprocess:(Lib_info.preprocess ~for_ lib_info)
       ~obj_dir:deps_obj_dir
       ~modules
       impl_only
@@ -368,7 +368,7 @@ let external_dep_rules ~sctx ~dir ~scope lib_name =
     | None -> Code_error.raise "not found" [ "lib", Dyn.string lib_name ]
     | Some lib -> lib
   in
-  match Lib_info.modules (Lib.info lib) with
+  match Lib_info.modules (Lib.info lib) ~for_ with
   | Local -> Memo.return ()
   | External None -> Code_error.raise "library has no modules" [ "lib", Lib.to_dyn lib ]
   | External (Some modules) ->

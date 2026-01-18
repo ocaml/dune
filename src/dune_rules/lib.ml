@@ -1284,7 +1284,7 @@ end = struct
         in
         let modes = (Compilation_mode.of_mode_set (Lib_info.modes info)).modes in
         Memo.parallel_map modes ~f:(fun for_ ->
-          Lib_info.preprocess info
+          Lib_info.preprocess info ~for_
           |> Instrumentation.with_instrumentation ~instrumentation_backend
           >>| fun pps -> for_, Preprocess.Per_module.pps pps)
         |> Memo.map ~f:Resolve.all
@@ -1296,7 +1296,7 @@ end = struct
         Compilation_mode.By_mode.map pps ~f:(fun ~for_ pps ->
           let open Memo.O in
           let+ resolved =
-            Lib_info.requires info
+            Lib_info.requires info ~for_
             |> resolve_deps_and_add_runtime_deps
                  db
                  ~private_deps
@@ -1412,15 +1412,16 @@ end = struct
     in
     let* ppx_runtime_deps =
       let ppx_runtime_deps = Lib_info.ppx_runtime_deps info in
-      Compilation_mode.By_mode.Memo.from_fun (fun ~for_:_ ->
-        let deps = ppx_runtime_deps in
+      Compilation_mode.By_mode.Memo.from_fun (fun ~for_ ->
+        let deps = Compilation_mode.By_mode.get ppx_runtime_deps ~for_ in
         resolve_simple_deps db ~private_deps deps)
     in
     let user_written_requires =
-      Compilation_mode.By_mode.from_fun (fun ~for_:_ ->
+      Compilation_mode.By_mode.from_fun (fun ~for_ ->
         let open Memo.O in
         let+ complex =
-          Lib_info.requires info |> resolve_complex_deps db ~private_deps ~parameters:[]
+          Lib_info.requires info ~for_
+          |> resolve_complex_deps db ~private_deps ~parameters:[]
         in
         Resolve_names.Resolved.user_written complex)
     in
@@ -2716,7 +2717,10 @@ let to_dune_lib
       Lib_name.mangled (Package.name pkg) (Lib_name.to_local_exn lib.name)
     | _ -> lib.name
   in
-  let add_loc = List.map ~f:(fun x -> loc, mangled_name x) in
+  let add_loc =
+    Compilation_mode.By_mode.map ~f:(fun ~for_:_ ->
+      List.map ~f:(fun x -> loc, mangled_name x))
+  in
   let obj_dir =
     match Lib_info.obj_dir lib.info |> Obj_dir.to_local with
     | None -> assert false
@@ -2726,10 +2730,12 @@ let to_dune_lib
   in
   let modules =
     let install_dir = Obj_dir.dir obj_dir in
-    Modules.With_vlib.version_installed
-      modules
-      ~src_root:(Lib_info.src_dir lib.info)
-      ~install_dir
+    Compilation_mode.By_mode.map modules ~f:(fun ~for_:_for_ modules ->
+      Option.map modules ~f:(fun modules ->
+        Modules.With_vlib.version_installed
+          modules
+          ~src_root:(Lib_info.src_dir lib.info)
+          ~install_dir))
   in
   let use_public_name ~lib_field ~info_field =
     match info_field, lib_field with
@@ -2757,7 +2763,7 @@ let to_dune_lib
   and+ ppx_runtime_deps = to_resolve_memo lib.ppx_runtime_deps
   and+ requires = to_resolve_memo lib.requires
   and+ re_exports = to_resolve_memo lib.re_exports in
-  let ppx_runtime_deps = add_loc ppx_runtime_deps.ocaml in
+  let ppx_runtime_deps = add_loc ppx_runtime_deps in
   let requires =
     Compilation_mode.By_mode.map requires ~f:(fun ~for_ requires ->
       List.map requires ~f:(fun lib ->
@@ -2779,7 +2785,6 @@ let to_dune_lib
               ; new_name = None
               })))
   in
-  let requires = requires.ocaml in
   let name = mangled_name lib in
   let remove_public_dep_prefix paths =
     let prefix = Lib_info.src_dir lib.info in

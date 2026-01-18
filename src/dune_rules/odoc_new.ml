@@ -367,8 +367,11 @@ module Classify = struct
              let info = Dune_package.Lib.info dlib in
              let pkg = Lib_name.package_name (Lib_info.name info) in
              (match
-                let mods_opt = Lib_info.modules info in
-                mods_opt, Lib_info.entry_modules info
+                let for_ =
+                  (Compilation_mode.of_mode_set (Lib_info.modes info)).for_merlin
+                in
+                let mods_opt = Lib_info.modules ~for_ info in
+                mods_opt, Lib_info.entry_modules info ~for_
               with
               | External (Some _), External (Ok _) -> pkg, lib
               | _ -> raise Fallback)

@@ -93,6 +93,8 @@ let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
   Modules.map_user_written modules ~f:(fun m -> Memo.return @@ pped_map m)
 ;;
 
+let for_ = Compilation_mode.Melange
+
 let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
   match Lib_info.modules (Lib.info lib) with
   | External None ->
@@ -112,7 +114,7 @@ let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
     let lib = Lib.Local.of_lib_exn lib in
     let info = Lib.Local.info lib in
     let+ modules =
-      let* modules = Dir_contents.modules_of_local_lib sctx lib ~for_:Melange in
+      let* modules = Dir_contents.modules_of_local_lib sctx lib ~for_ in
       let preprocess = Lib_info.preprocess info in
       modules_in_obj_dir ~sctx ~scope ~preprocess modules >>| Modules.With_vlib.modules
     in
@@ -342,7 +344,9 @@ let build_js
         With_targets.map_build command ~f:(fun command ->
           let open Action_builder.O in
           let paths =
-            let+ module_deps = Dep_rules.read_deps_of ~obj_dir ~modules ~ml_kind:Impl m in
+            let+ module_deps =
+              Dep_rules.read_deps_of ~obj_dir ~modules ~ml_kind:Impl m ~for_
+            in
             List.filter_map module_deps ~f:(fun dep_m ->
               let kind : Lib_mode.Cm_kind.t = Melange Cmj in
               Obj_dir.Module.cm_file obj_dir dep_m ~kind |> Option.map ~f:Path.build)
@@ -391,7 +395,7 @@ let setup_emit_cmj_rules
             ~libs:(Scope.libs scope)
             ~for_:(Melange { target = mel.target })
     in
-    let* () = Check_rules.add_obj_dir sctx ~obj_dir Melange in
+    let* () = Check_rules.add_obj_dir sctx ~obj_dir for_ in
     let* modules, pp =
       let+ modules, pp =
         Buildable_rules.modules_rules

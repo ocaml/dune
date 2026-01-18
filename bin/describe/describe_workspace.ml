@@ -335,13 +335,15 @@ module Crawl = struct
     else Digest.generic name
   ;;
 
+  let for_ = Compilation_mode.Ocaml
+
   let immediate_deps_of_module ~options ~obj_dir ~modules unit =
     match (options : Options.t) with
     | { with_deps = false; _ } ->
       Action_builder.return { Root.Ocaml.Ml_kind.Dict.intf = []; impl = [] }
     | { with_deps = true; _ } ->
       let deps ml_kind =
-        Dune_rules.Dep_rules.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit
+        Dune_rules.Dep_rules.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit ~for_
       in
       let open Action_builder.O in
       let+ intf, impl = Action_builder.both (deps Intf) (deps Impl) in
@@ -384,8 +386,6 @@ module Crawl = struct
       in
       module_ ~obj_dir ~deps_for_intf ~deps_for_impl m :: acc)
   ;;
-
-  let for_ = Compilation_mode.Ocaml
 
   (* Builds a workspace item for the provided executables object *)
   let executables sctx ~options ~project ~dir (exes : Executables.t)

@@ -274,7 +274,7 @@ let dep_graph ~ocaml_version ~preprocess ~obj_dir ~modules impl_only =
         let open Action_builder.O in
         let module_ = pp_map module_ in
         let+ deps =
-          Dep_rules.read_immediate_deps_of module_ ~modules ~obj_dir ~ml_kind:Impl
+          Dep_rules.read_immediate_deps_of module_ ~modules ~obj_dir ~ml_kind:Impl ~for_
         in
         let local_open = Modules.With_vlib.alias_for modules module_ in
         local_open @ deps
@@ -379,6 +379,7 @@ let external_dep_rules ~sctx ~dir ~scope lib_name =
         ~dir
         ~obj_dir:(obj_dir_for_dep_rules dir)
         ~impl:Virtual_rules.no_implements
+        ~for_
         ~modules
     in
     ()

@@ -18,8 +18,6 @@ Show PPX snippet preview is shown in Dune
   $ export DUNE_SANDBOX=symlink
   $ dune build @all
   File "lib/the_lib.ml", line 1, characters 7-11:
-  1 | let x: nope = "hello"
-             ^^^^
   Error: Unbound type constructor nope
   [1]
 
@@ -28,8 +26,6 @@ Works if the sandbox is disabled
   $ export DUNE_SANDBOX=none
   $ dune build @all
   File "lib/the_lib.ml", line 1, characters 7-11:
-  1 | let x: nope = "hello"
-             ^^^^
   Error: Unbound type constructor nope
   [1]
 
@@ -40,16 +36,12 @@ Works if the sandbox is disabled
   $ export DUNE_SANDBOX=symlink
   $ dune build @all
   File "lib/the_lib.mli", line 1, characters 7-11:
-  1 | val x: nope
-             ^^^^
   Error: Unbound type constructor nope
   [1]
 
   $ export DUNE_SANDBOX=none
   $ dune build @all
   File "lib/the_lib.mli", line 1, characters 7-11:
-  1 | val x: nope
-             ^^^^
   Error: Unbound type constructor nope
   [1]
 

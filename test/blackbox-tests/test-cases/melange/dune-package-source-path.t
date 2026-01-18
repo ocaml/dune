@@ -25,14 +25,14 @@ form `foo.bar.baz`
   $ dune install --root a --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/a/META
   Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
-  Installing $TESTCASE_ROOT/prefix/lib/a/sub/a.ml
-  Installing $TESTCASE_ROOT/prefix/lib/a/sub/foo.ml
   Installing $TESTCASE_ROOT/prefix/lib/a/sub/melange/a.cmi
   Installing $TESTCASE_ROOT/prefix/lib/a/sub/melange/a.cmj
   Installing $TESTCASE_ROOT/prefix/lib/a/sub/melange/a.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/a/sub/melange/a.ml
   Installing $TESTCASE_ROOT/prefix/lib/a/sub/melange/a__Foo.cmi
   Installing $TESTCASE_ROOT/prefix/lib/a/sub/melange/a__Foo.cmj
   Installing $TESTCASE_ROOT/prefix/lib/a/sub/melange/a__Foo.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/a/sub/melange/foo.ml
 
   $ cat prefix/lib/a/dune-package | grep path
        (source (path A) (impl (path sub/a.ml-gen))))

@@ -354,5 +354,4 @@ let for_plugin_executable t ~embed_in_plugin_libraries =
 
 let without_bin_annot t = { t with bin_annot = false }
 let set_obj_dir t obj_dir = { t with obj_dir }
-let set_modes t ~modes = { t with modes }
 let instances t = t.instances

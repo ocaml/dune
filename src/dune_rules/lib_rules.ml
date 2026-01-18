@@ -559,6 +559,7 @@ let library_rules
       ~dir_contents
       ~compile_info
       ~ctx_dir
+      ~for_merlin
   =
   let modules = Compilation_context.modules cctx in
   let obj_dir = Compilation_context.obj_dir cctx in
@@ -578,6 +579,14 @@ let library_rules
   let* expander = Super_context.expander sctx ~dir in
   let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
   let* () = gen_wrapped_compat_modules lib cctx
+  and* () =
+    let for_ = Compilation_context.for_ cctx in
+    Memo.when_ (for_ = Compilation_mode.Melange) (fun () ->
+      Melange_rules.setup_melange_sources_copy_rules
+        ~sctx
+        ~dir
+        ~expander
+        ~modules:source_modules)
   and* () = Module_compilation.build_all cctx
   and* lib_info =
     let info =
@@ -587,16 +596,14 @@ let library_rules
         ~dir
         ~lib_config
     in
-    let { Compilation_mode.for_merlin; _ } =
-      Compilation_mode.of_mode_set (Lib_info.modes info)
-    in
-    let+ () = Check_rules.add_obj_dir sctx ~obj_dir for_merlin in
+    let for_ = Compilation_context.for_ cctx in
+    let+ () = Check_rules.add_obj_dir sctx ~obj_dir for_ in
     info
   in
-  let for_ = Compilation_context.for_ cctx in
   let+ () =
-    Memo.when_ (Compilation_context.bin_annot cctx) (fun () ->
-      Ocaml_index.cctx_rules cctx)
+    Memo.when_
+      (Compilation_context.bin_annot cctx && Option.is_some for_merlin)
+      (fun () -> Ocaml_index.cctx_rules cctx)
   and+ () =
     Memo.when_
       (not (Library.is_virtual lib))
@@ -615,8 +622,11 @@ let library_rules
            ~dir_contents
            ~vlib_stubs_o_files)
   and+ () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
-  and+ () = Odoc.setup_library_odoc_rules cctx local_lib
   and+ () =
+    Memo.when_ (Option.is_some for_merlin) (fun () ->
+      Odoc.setup_library_odoc_rules cctx local_lib)
+  and+ () =
+    let for_ = Compilation_context.for_ cctx in
     let source_modules =
       Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)
     in
@@ -630,6 +640,7 @@ let library_rules
       ; for_
       }
   and+ () =
+    let for_ = Compilation_context.for_ cctx in
     let toolchain = Compilation_context.ocaml cctx in
     let user_written_requires = Lib.Compile.user_written_requires compile_info ~for_ in
     let allow_unused_libraries = Lib.Compile.allow_unused_libraries compile_info in
@@ -685,7 +696,25 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
     let { Lib_config.has_native; _ } = ocaml.lib_config in
     Mode_conf.Lib.Set.eval lib.modes ~has_native
   in
-  let f for_ =
+  let lib_modes =
+    let { Compilation_mode.for_merlin; _ } = Compilation_mode.of_mode_set modes in
+    let base =
+      if modes.ocaml.byte || modes.ocaml.native
+      then [ Compilation_mode.Ocaml, { modes with melange = false }, for_merlin ]
+      else []
+    in
+    let base =
+      if modes.melange
+      then
+        ( Compilation_mode.Melange
+        , { modes with ocaml = { byte = false; native = false } }
+        , for_merlin )
+        :: base
+      else base
+    in
+    base
+  in
+  let f ~for_:(for_, lib_modes, for_merlin) =
     let* source_modules =
       Dir_contents.ml dir_contents ~for_
       >>= Ml_sources.modules ~libs ~for_:(Library lib_id)
@@ -701,7 +730,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         ~expander
         ~parameters
         ~compile_info
-        ~modes
+        ~modes:lib_modes
         ~for_
     in
     let* () =
@@ -711,6 +740,12 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         Ctypes_rules.gen_rules ~loc:(fst lib.name) ~cctx ~buildable ~sctx ~scope ~dir
     in
     let+ merlin =
+      let for_merlin =
+        match Compilation_context.for_ cctx, for_merlin with
+        | Compilation_mode.Ocaml, Compilation_mode.Ocaml | Melange, Melange ->
+          Some for_merlin
+        | _, _ -> None
+      in
       library_rules
         lib
         ~local_lib:(Lib.Local.of_lib_exn local_lib)
@@ -719,14 +754,22 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         ~dir_contents
         ~compile_info
         ~ctx_dir:dir
+        ~for_merlin
     in
     cctx, merlin
   in
-  let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir ~for_:Ocaml in
-  let merlin_ident = Merlin_ident.for_lib (Library.best_name lib) in
-  Buildable_rules.with_lib_deps
-    (Super_context.context sctx)
-    merlin_ident
-    ~dir
-    ~f:(fun () -> f Ocaml)
+  let+ cctxs =
+    let merlin_ident = Merlin_ident.for_lib (Library.best_name lib) in
+    Memo.parallel_map lib_modes ~f:(fun (for_, lib_modes, for_merlin) ->
+      let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir ~for_ in
+      let+ r =
+        Buildable_rules.with_lib_deps
+          (Super_context.context sctx)
+          merlin_ident
+          ~dir
+          ~f:(fun () -> f ~for_:(for_, lib_modes, for_merlin))
+      in
+      for_, Some r)
+  in
+  Compilation_mode.By_mode.of_list cctxs ~init:None
 ;;

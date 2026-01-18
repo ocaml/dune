@@ -9,6 +9,7 @@ type for_ =
 type t =
   { loc : Loc.t
   ; modules : Modules_settings.t
+  ; melange_modules : Ordered_set_lang.Unexpanded.t option
   ; empty_module_interface_if_absent : bool
   ; libraries : Lib_dep.t list
   ; foreign_archives : (Loc.t * Foreign.Archive.t) list
@@ -114,7 +115,8 @@ let decode (for_ : for_) =
                (2, 0)
                ~extra_info:"Use the (foreign_archives ...) field instead."
              >>> enter (maybe string))))
-  and+ libraries = decode_libraries ~allow_re_export:in_library
+  and+ libraries =
+    field "libraries" (Lib_dep.L.decode ~allow_re_export:in_library) ~default:[]
   and+ flags = decode_ocaml_flags
   and+ js_of_ocaml =
     field
@@ -184,6 +186,7 @@ let decode (for_ : for_) =
   ; preprocessor_deps
   ; lint
   ; modules
+  ; melange_modules = Some modules.modules
   ; empty_module_interface_if_absent
   ; foreign_stubs
   ; foreign_archives

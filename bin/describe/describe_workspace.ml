@@ -343,6 +343,7 @@ module Crawl = struct
       Action_builder.return { Root.Ocaml.Ml_kind.Dict.intf = []; impl = [] }
     | { with_deps = true; _ } ->
       let deps ml_kind =
+        (* TODO(anmonteiro): support Melange *)
         Dune_rules.Dep_rules.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit ~for_
       in
       let open Action_builder.O in
@@ -465,6 +466,7 @@ module Crawl = struct
         match Lib.is_local lib with
         | false -> Memo.return []
         | true ->
+          let mode = (Compilation_mode.of_mode_set (Lib_info.modes info)).for_merlin in
           (* XXX why do we have a second object directory? *)
           let* modules_, obj_dir_ =
             let* libs =
@@ -487,7 +489,7 @@ module Crawl = struct
             Staged.unstage
             @@ Pp_spec.pped_modules_map
                  (Dune_lang.Preprocess.Per_module.without_instrumentation
-                    (Lib_info.preprocess info))
+                    (Lib_info.preprocess info ~for_:mode))
                  version
           in
           let deps_of module_ =
@@ -596,7 +598,7 @@ module Crawl = struct
     let+ libs =
       (* the executables' libraries, and the project's libraries *)
       Lib.Set.union exe_libs project_libs
-      |> Lib.Set.to_list
+      |> Lib.Set.to_list (* TODO(anmonteiro): support Melange *)
       |> Lib.descriptive_closure ~with_pps:options.with_pps ~for_
       >>= Memo.parallel_map ~f:(library ~options sctx)
       >>| List.filter_opt

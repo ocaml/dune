@@ -243,12 +243,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_output_truncation"
-    ; main_module_name = Some "Dune_output_truncation"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/csexp_rpc"
     ; main_module_name = Some "Csexp_rpc"
     ; include_subdirs = No

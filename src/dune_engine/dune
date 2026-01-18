@@ -21,7 +21,6 @@
   dune_action_plugin
   dune_util
   build_path_prefix_map
-  dune_output_truncation
   dune_rpc_private
   dune_rpc_client
   spawn

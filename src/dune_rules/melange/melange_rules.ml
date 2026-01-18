@@ -96,7 +96,7 @@ let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
 let for_ = Compilation_mode.Melange
 
 let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
-  match Lib_info.modules (Lib.info lib) with
+  match Lib_info.modules (Lib.info lib) ~for_ with
   | External None ->
     User_error.raise
       [ Pp.textf
@@ -115,7 +115,7 @@ let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
     let info = Lib.Local.info lib in
     let+ modules =
       let* modules = Dir_contents.modules_of_local_lib sctx lib ~for_ in
-      let preprocess = Lib_info.preprocess info in
+      let preprocess = Lib_info.preprocess info ~for_ in
       modules_in_obj_dir ~sctx ~scope ~preprocess modules >>| Modules.With_vlib.modules
     in
     let () =

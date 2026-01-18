@@ -91,7 +91,7 @@ module Lib = struct
     let archives = Lib_info.archives info in
     let sub_systems = Lib_info.sub_systems info in
     let plugins = Lib_info.plugins info in
-    let requires = Lib_info.requires info in
+    let requires = Lib_info.requires info ~for_:Ocaml in
     let parameters = Lib_info.parameters info in
     let foreign_objects =
       match Lib_info.foreign_objects info with
@@ -99,8 +99,11 @@ module Lib = struct
       | Local -> assert false
     in
     let modules =
-      match Lib_info.modules info with
-      | External ms -> ms
+      match Lib_info.modules_by_mode info with
+      | External modules ->
+        (match modules.ocaml, modules.melange with
+         | None, None -> assert false
+         | Some m, _ | _, Some m -> Some m)
       | Local -> None
     in
     let melange_runtime_deps = additional_paths (Lib_info.melange_runtime_deps info) in
@@ -140,7 +143,7 @@ module Lib = struct
        ; paths "wasmoo_runtime" wasmoo_runtime
        ; Lib_dep.L.field_encode requires ~name:"requires"
        ; field_l "parameters" (no_loc Lib_name.encode) parameters
-       ; libs "ppx_runtime_deps" ppx_runtime_deps
+       ; libs "ppx_runtime_deps" ppx_runtime_deps.ocaml
        ; field_o "implements" (no_loc Lib_name.encode) implements
        ; field_o "default_implementation" (no_loc Lib_name.encode) default_implementation
        ; field_o "main_module_name" Module_name.encode main_module_name
@@ -258,17 +261,32 @@ module Lib = struct
          let main_module_name = Lib_info.Inherited.This main_module_name in
          let foreign_objects = Lib_info.Source.External foreign_objects in
          let public_headers = Lib_info.File_deps.External public_headers in
-         let preprocess = Preprocess.Per_module.no_preprocessing () in
+         let preprocess =
+           Compilation_mode.By_mode.both (Preprocess.Per_module.no_preprocessing ())
+         in
          let virtual_deps = [] in
          let dune_version = None in
-         let entry_modules = Modules.entry_modules modules |> List.map ~f:Module.name in
-         let modules = Modules.With_vlib.modules modules in
+         let modules =
+           { Compilation_mode.By_mode.ocaml = Some modules; melange = Some modules }
+         in
+         let entry_modules =
+           Compilation_mode.By_mode.map modules ~f:(fun ~for_:_ modules ->
+             Option.map modules ~f:(fun modules ->
+               Modules.entry_modules modules |> List.map ~f:Module.name))
+         in
+         let modules =
+           Compilation_mode.By_mode.map modules ~f:(fun ~for_:_ modules ->
+             Option.map modules ~f:(fun modules -> Modules.With_vlib.modules modules))
+         in
          let wrapped =
-           Some (Lib_info.Inherited.This (Modules.With_vlib.wrapped modules))
+           let any_modules = modules.ocaml |> Option.value_exn in
+           Some (Lib_info.Inherited.This (Modules.With_vlib.wrapped any_modules))
          in
          let entry_modules = Lib_info.Source.External (Ok entry_modules) in
-         let modules = Lib_info.Source.External (Some modules) in
+         let modules = Lib_info.Source.External modules in
          let melange_runtime_deps = Lib_info.File_deps.External melange_runtime_deps in
+         let requires = Compilation_mode.By_mode.both requires in
+         let ppx_runtime_deps = Compilation_mode.By_mode.both ppx_runtime_deps in
          Lib_info.create
            ~path_kind:External
            ~loc

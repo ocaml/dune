@@ -439,8 +439,9 @@ let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
   |> Modules.With_vlib.drop_vlib
   |> Modules.fold ~init:[] ~f:(fun m acc ->
     let compiled =
-      let modes = Lib_info.modes info in
-      let { Compilation_mode.for_merlin; _ } = Compilation_mode.of_mode_set modes in
+      let { Compilation_mode.for_merlin; _ } =
+        Compilation_mode.of_mode_set (Lib_info.modes info)
+      in
       compile_module
         sctx
         ~includes

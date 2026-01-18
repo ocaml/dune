@@ -507,7 +507,7 @@ let modules_of_local_lib sctx lib ~for_ =
 let modules_of_lib sctx lib ~for_ =
   match
     let info = Lib.info lib in
-    Lib_info.modules info
+    Lib_info.modules info ~for_
   with
   | External modules -> Memo.return modules
   | Local ->

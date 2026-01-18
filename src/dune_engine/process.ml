@@ -6,7 +6,25 @@ module Timestamp = Event.Timestamp
 module Action_output_on_success = Execution_parameters.Action_output_on_success
 module Action_output_limit = Execution_parameters.Action_output_limit
 
-let limit_output = Dune_output_truncation.limit_output ~message:"TRUNCATED BY DUNE"
+let limit_output output ~n =
+  let message = "TRUNCATED BY DUNE" in
+  let noutput = String.length output in
+  if noutput <= n
+  then output
+  else (
+    match
+      ( String.index_from output (n / 2) '\n'
+      , String.rindex_from output (noutput - 1 - (n / 2)) '\n' )
+    with
+    | Some i1, Some i2 when i1 < i2 ->
+      String.concat
+        ~sep:""
+        [ String.take output (i1 + 1); "..."; message; "..."; String.drop output i2 ]
+    | _ ->
+      let message = "\n..." ^ message ^ "...\n" in
+      let output = String.take output (n - String.length message |> max 0) in
+      output ^ message)
+;;
 
 module Failure_mode = struct
   type ('a, 'b) t =

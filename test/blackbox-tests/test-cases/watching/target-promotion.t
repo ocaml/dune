@@ -171,7 +171,7 @@ Now test file-system events generated during target promotion.
   $ cat promoted
   bye
 
-  $ stop_dune > .#debug-output
+  $ stop_dune > /dev/null
 
 Show that Dune ignores the initial "dune-workspace" events (injected by Dune).
 

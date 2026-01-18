@@ -341,13 +341,13 @@ let sources_without_pp t =
     ~f:(Option.map ~f:(fun (x : File.t) -> x.original_path))
 ;;
 
-let source_without_pp ~ml_kind t =
+let source_without_pp t ~ml_kind =
   let source =
     match (ml_kind : Ml_kind.t) with
     | Impl -> t.source.files.impl
     | Intf -> t.source.files.intf
   in
-  Option.map source ~f:(fun (x : File.t) -> x.original_path)
+  Option.map source ~f:File.original_path
 ;;
 
 module Obj_map = struct

@@ -15,8 +15,7 @@ Create a project that install a manpage & build it
   > (install
   >  (section  man)
   >  (files    test.1)
-  >  (package  test)
-  > )
+  >  (package  test))
   > EOF
 
   $ cat >test.1 <<EOF

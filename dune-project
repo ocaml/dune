@@ -255,3 +255,12 @@ understood by dune language."))
  (maintenance_intent none)
  (description "Misc. Collection of File System Operations"))
 
+(package
+ (name dune-action-trace)
+ (dir otherlibs/dune-action-trace)
+ (synopsis "Dune Action Traces")
+ (depends
+  csexp
+  (ocaml (>= 4.08)))
+ (maintenance_intent none)
+ (description "Produce trace events from dune actions"))

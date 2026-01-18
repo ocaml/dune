@@ -15,7 +15,6 @@ end
 val return : 'a -> 'a t
 val bind : 'a t -> f:('a -> 'b t) -> 'b t
 val map : 'a t -> f:('a -> 'b) -> 'b t
-val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 val both : 'a t -> 'b t -> ('a * 'b) t
 val all : 'a t list -> 'a list t
 val all_unit : unit t list -> unit t

@@ -32,3 +32,5 @@ module Set : sig
   val empty : t
   val of_list : cat list -> t
 end
+
+val default : t list

@@ -22,8 +22,6 @@ module Category : sig
     | Action
     | Cache
     | Digest
-
-  val of_string : string -> t option
 end
 
 module Event : sig
@@ -209,7 +207,7 @@ end
 module Out : sig
   type t
 
-  val create : Category.t list -> Path.t -> t
+  val create : Path.t -> t
   val emit : ?buffered:bool -> t -> Event.t -> unit
   val start : t option -> (unit -> Event.Async.data) -> Event.Async.t option
   val finish : t -> Event.Async.t option -> unit

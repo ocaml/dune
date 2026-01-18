@@ -617,13 +617,17 @@ module Module = struct
     ;;
   end
 
-  let dep t dep =
+  let dep t dep ~for_ =
     match (dep : Dep.t) with
     | Immediate (m, _) | Transitive (m, _) ->
       (match Module.kind m with
        | Module.Kind.Alias _ | Root -> None
        | _ ->
-         let dir = obj_dir t in
+         let dir =
+           match for_ with
+           | Compilation_mode.Ocaml -> obj_dir t
+           | Melange -> obj_dir t
+         in
          let name = Dep.basename dep in
          Some (Path.Build.relative dir name))
   ;;

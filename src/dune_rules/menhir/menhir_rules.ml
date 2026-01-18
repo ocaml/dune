@@ -299,7 +299,7 @@ module Run (P : PARAMS) = struct
       let modules = Compilation_context.modules cctx in
       let impl = Compilation_context.implements cctx in
       let dir = Obj_dir.dir obj_dir in
-      Dep_rules.for_module ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx mock_module
+      Dep_rules.for_module ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx mock_module ~for_
     in
     let* () =
       Module_compilation.ocamlc_i ~deps cctx mock_module ~output:(inferred_mli base)

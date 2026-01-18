@@ -1,7 +1,24 @@
 open Stdune
 module Category = Category
 module Event = Event
-module Out = Out
+
+module Out = struct
+  include Out
+
+  let create path =
+    let cats =
+      match Sys.getenv_opt "DUNE_TRACE" with
+      | None -> Category.default
+      | Some s ->
+        String.split ~on:',' s
+        |> List.map ~f:(fun x ->
+          match Category.of_string x with
+          | Some s -> s
+          | None -> User_error.raise [ Pp.textf "unrecognized trace category %S" x ])
+    in
+    create cats path
+  ;;
+end
 
 let global = ref None
 

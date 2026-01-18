@@ -105,3 +105,20 @@ module Set = Bit_set.Make (struct
       | Digest -> 19
     ;;
   end)
+
+let default =
+  [ Config
+  ; Sandbox
+  ; Persistent
+  ; Process
+  ; Rules
+  ; Pkg
+  ; Promote
+  ; Build
+  ; Log
+  ; File_watcher
+  ; Diagnostics
+  ; Cram
+  ; Action
+  ]
+;;

@@ -1248,33 +1248,8 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
     | None -> Log.init No_log_file
     | Some stats ->
       let trace = Path.of_filename_relative_to_initial_cwd stats in
-      let cats =
-        match Sys.getenv_opt "DUNE_TRACE" with
-        | None ->
-          Dune_trace.Category.
-            [ Config
-            ; Sandbox
-            ; Persistent
-            ; Process
-            ; Rules
-            ; Pkg
-            ; Promote
-            ; Build
-            ; Log
-            ; File_watcher
-            ; Diagnostics
-            ; Cram
-            ; Action
-            ]
-        | Some s ->
-          String.split ~on:',' s
-          |> List.map ~f:(fun x ->
-            match Dune_trace.Category.of_string x with
-            | Some s -> s
-            | None -> User_error.raise [ Pp.textf "unrecognized trace category %S" x ])
-      in
       Path.parent trace |> Option.iter ~f:Path.mkdir_p;
-      let stats = Dune_trace.Out.create cats trace in
+      let stats = Dune_trace.Out.create trace in
       Dune_trace.set_global stats;
       Dune_trace.Event.init
         ~version:

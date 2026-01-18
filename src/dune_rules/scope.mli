@@ -19,6 +19,14 @@ val rocq_libs : t -> Rocq_lib.DB.t Memo.t
 
 (** Scope databases *)
 module DB : sig
+  (** Returns packages after applying scope visibility rules. Raises if there
+      are duplicate package names among visible packages. *)
+  val packages : unit -> Package.t Package.Name.Map.t Memo.t
+
+  (** Returns the set of visible package names after scope filtering.
+      [None] means all packages are visible. *)
+  val mask : unit -> Package.Name.Set.t option Memo.t
+
   val find_by_dir : Path.Build.t -> t Memo.t
   val find_by_project : Context_name.t -> Dune_project.t -> t Memo.t
   val public_libs : Context_name.t -> Lib.DB.t Memo.t

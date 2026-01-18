@@ -17,11 +17,10 @@ end
 
 type t =
   { dune_files : Dune_file.t list Per_context.t
-  ; packages : Package.t Package.Name.Map.t
+  ; packages : (Package.t * Only_packages.package_status) list Package.Name.Map.t
   ; projects : Dune_project.t list
   ; projects_by_root : Dune_project.t Path.Source.Map.t
   ; dune_file_by_dir : Dune_file_db.t Per_context.t
-  ; mask : Only_packages.t
   }
 
 type status =
@@ -69,11 +68,11 @@ let load () =
       ~f
   in
   let projects = Appendable_list.to_list_rev projects in
-  let+ all_packages, vendored_packages =
+  let+ all_packages =
     Memo.List.fold_left
       projects
-      ~init:(Package.Name.Map.empty, Package.Name.Set.empty)
-      ~f:(fun (acc_packages, vendored) (status, (project : Dune_project.t)) ->
+      ~init:Package.Name.Map.empty
+      ~f:(fun acc_packages (status, (project : Dune_project.t)) ->
         let+ packages =
           let packages = Dune_project.including_hidden_packages project in
           let+ disabled =
@@ -97,34 +96,21 @@ let load () =
             >>| List.filter_opt
             >>| Package.Name.Map.of_list_map_exn ~f:(fun pkg -> Package.name pkg, ())
           in
+          let vendored = Poly.equal status `Vendored in
           Package.Name.Map.merge packages disabled ~f:(fun _key package disabled ->
+            let open Only_packages in
             match package, disabled with
-            | Some p, Some () -> Some (p, `Disabled)
-            | Some p, None -> Some (p, `Enabled)
+            | Some p, Some () -> Some (p, { enabled = false; vendored })
+            | Some p, None -> Some (p, { enabled = true; vendored })
             | None, None | None, Some _ -> assert false)
         in
-        let vendored =
-          match status with
-          | `Regular -> vendored
-          | `Vendored ->
-            Package.Name.Set.of_keys packages |> Package.Name.Set.union vendored
+        let all_packages =
+          Package.Name.Map.map packages ~f:(fun (pkg, status) -> [ pkg, status ])
         in
-        let acc_packages =
-          Package.Name.Map.union acc_packages packages ~f:(fun name (a, _) (b, _) ->
-            User_error.raise
-              [ Pp.textf
-                  "The package %S is defined more than once:"
-                  (Package.Name.to_string name)
-              ; Pp.textf "- %s" (Loc.to_file_colon_line (Package.loc a))
-              ; Pp.textf "- %s" (Loc.to_file_colon_line (Package.loc b))
-              ])
-        in
-        acc_packages, vendored)
+        Package.Name.Map.union acc_packages all_packages ~f:(fun _name a b ->
+          Some (a @ b)))
   in
-  let mask = Only_packages.mask all_packages ~vendored:vendored_packages in
-  let packages =
-    Package.Name.Map.map ~f:fst all_packages |> Only_packages.filter_packages mask
-  in
+  let mask = Only_packages.mask all_packages in
   let projects = List.rev_map projects ~f:snd in
   let dune_files =
     let without_ctx =
@@ -132,10 +118,12 @@ let load () =
         let (_ : Package.Name.t Path.Source.Map.t) =
           match
             Package.Name.Map.values all_packages
-            |> List.filter_map ~f:(fun (pkg, _) ->
-              match Package.exclusive_dir pkg with
-              | None -> None
-              | Some d -> Some (d, pkg))
+            |> List.concat_map
+                 ~f:
+                   (List.filter_map ~f:(fun (pkg, _) ->
+                      match Package.exclusive_dir pkg with
+                      | None -> None
+                      | Some d -> Some (d, pkg)))
             |> Path.Source.Map.of_list_map ~f:(fun ((_loc, d), pkg) ->
               d, Package.name pkg)
           with
@@ -162,9 +150,8 @@ let load () =
   in
   let dune_file_by_dir = Dune_file_db.per_context dune_files |> Staged.unstage in
   { dune_files
-  ; mask
   ; dune_file_by_dir
-  ; packages
+  ; packages = all_packages
   ; projects
   ; projects_by_root =
       Path.Source.Map.of_list_map_exn projects ~f:(fun project ->
@@ -193,11 +180,6 @@ let stanzas_in_dir dir =
       let* { dune_file_by_dir; _ } = load () in
       let+ map = dune_file_by_dir ctx in
       Path.Source.Map.find map dir)
-;;
-
-let mask () =
-  let+ { mask; _ } = load () in
-  mask
 ;;
 
 let packages () =

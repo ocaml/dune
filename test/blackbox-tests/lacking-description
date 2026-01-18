@@ -24,9 +24,9 @@
 ./test-cases/directory-targets/old-style/dep.t/run.t
 ./test-cases/directory-targets/old-style/target.t/run.t
 ./test-cases/double-echo.t/run.t
+./test-cases/dune_memory-and-the-universe.t/run.t
 ./test-cases/dune-binaries.t
 ./test-cases/dune-init/github7806.t
-./test-cases/dune_memory-and-the-universe.t/run.t
 ./test-cases/enabled_if/eif-dune-describe.t
 ./test-cases/enabled_if/eif-ocaml_version_lte.t/run.t
 ./test-cases/env/env-cflags.t/run.t
@@ -73,13 +73,13 @@
 ./test-cases/inline-tests/many-backends-choose.t
 ./test-cases/inline-tests/missing-backend.t
 ./test-cases/inline-tests/too-many-backends.t
-./test-cases/installable-dup-private-libs.t/run.t
 ./test-cases/install-dir/install-bindir.t
 ./test-cases/install-dir/install-datadir.t
 ./test-cases/install-dir/install-docdir.t
 ./test-cases/install-dir/install-etcdir.t
 ./test-cases/install-dir/install-mandir.t
 ./test-cases/install-dry-run.t/run.t
+./test-cases/installable-dup-private-libs.t/run.t
 ./test-cases/jsoo/env.t
 ./test-cases/jsoo/sourcemap.t/run.t
 ./test-cases/jsoo/without_implem.t/run.t
@@ -125,9 +125,9 @@
 ./test-cases/stdlib/stdlib-flags.t
 ./test-cases/targets-with-vars.t/run.t
 ./test-cases/test-build-if/version.t
-./test-cases/tests-locks.t/tests/a.t
 ./test-cases/tests-locks.t/tests-no-locks/b.t
 ./test-cases/tests-locks.t/tests-no-locks/sub/d.t
+./test-cases/tests-locks.t/tests/a.t
 ./test-cases/tests-locks.t/tests/sub/b.t
 ./test-cases/top-module/load-with-pp.t
 ./test-cases/unreadable-src.t

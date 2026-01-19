@@ -34,3 +34,7 @@ The debug event can be triggered with Sigusr1
       ]
     }
   }
+
+  $ kill $pid
+
+  $ wait

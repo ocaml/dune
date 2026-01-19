@@ -169,7 +169,7 @@ module Io = struct
       | Out -> [ Unix.O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE ]
       | In -> [ O_RDONLY; O_SHARE_DELETE ]
     in
-    let fd = lazy (Unix.openfile (Path.to_string fn) flags perm) in
+    let fd = lazy (Unix.openfile (Path.to_string fn) (O_CLOEXEC :: flags) perm) in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
     { kind = File fn; fd; channel; status = Close_after_exec }
   ;;

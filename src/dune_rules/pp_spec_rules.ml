@@ -48,16 +48,23 @@ let gen_rules sctx components =
   | _ -> Memo.return ()
 ;;
 
-let promote_correction fn build ~suffix =
+let promote_correction (m : Module.t) build ~suffix ~ml_kind =
   let open Action_builder.O in
+  let src = Module.source m ~ml_kind |> Option.value_exn |> Module.File.original_path in
+  let dst =
+    Module.source m ~ml_kind
+    |> Option.value_exn
+    |> Module.File.path
+    |> Path.as_in_build_dir_exn
+  in
   let+ act = build in
   Action.Full.reduce
     [ act
     ; Action.Full.make
         (Promote.Diff_action.diff
            ~optional:true
-           (Path.build fn)
-           (Path.Build.extend_basename fn ~suffix))
+           src
+           (Path.Build.extend_basename dst ~suffix))
     ]
 ;;
 
@@ -187,8 +194,8 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
               ~loc
               (promote_correction
                  ~suffix:corrected_suffix
-                 (Path.as_in_build_dir_exn
-                    (Option.value_exn (Module.file source ~ml_kind)))
+                 ~ml_kind
+                 source
                  (let* exe, flags, args = driver_and_flags in
                   let dir = ctx |> Context.build_dir |> Path.build in
                   Command.run'

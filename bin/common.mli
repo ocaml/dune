@@ -18,9 +18,6 @@ val rpc
 
 val watch_exclusions : t -> string list
 val print_metrics : t -> bool
-val dump_memo_graph_file : t -> Path.External.t option
-val dump_memo_graph_format : t -> Dune_graph.Graph.File_format.t
-val dump_memo_graph_with_timing : t -> bool
 val watch : t -> Dune_rpc_impl.Watch_mode_config.t
 val file_watcher : t -> Dune_scheduler.Scheduler.Run.file_watcher
 val prefix_target : t -> string -> string

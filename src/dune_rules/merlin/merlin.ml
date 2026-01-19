@@ -504,7 +504,7 @@ module Unprocessed = struct
     ; objs_dirs : Path.Set.t
     ; extensions : string option Ml_kind.Dict.t list
     ; readers : string list String.Map.t
-    ; mode : Compilation_mode.t
+    ; for_ : Compilation_mode.t
     ; parameters : Module_name.t list Resolve.t
     }
 
@@ -525,30 +525,24 @@ module Unprocessed = struct
         ~obj_dir
         ~dialects
         ~ident
-        ~modes
+        ~for_
         ~parameters
     =
     (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
-    let mode =
-      match modes with
-      | `Exe -> Compilation_mode.Ocaml
-      | `Melange_emit -> Melange
-      | `Lib (m : Lib_mode.Map.Set.t) -> (Compilation_mode.of_mode_set m).for_merlin
-    in
     let objs_dirs =
-      Path.Set.singleton @@ obj_dir_of_lib `Private mode (Obj_dir.of_local obj_dir)
+      Path.Set.singleton @@ obj_dir_of_lib `Private for_ (Obj_dir.of_local obj_dir)
     in
     let flags =
       Ocaml_flags.get
         flags
-        (match mode with
+        (match for_ with
          | Melange -> Melange
          | Ocaml -> Ocaml Byte)
     in
     let { Dialect.DB.extensions; readers } = Dialect.DB.for_merlin dialects in
     let config =
       { stdlib_dir
-      ; mode
+      ; for_
       ; requires_compile
       ; requires_hidden
       ; flags
@@ -685,7 +679,7 @@ module Unprocessed = struct
              ; requires_hidden
              ; preprocess = _
              ; libname = _
-             ; mode
+             ; for_
              ; parameters
              }
          } as t)
@@ -700,7 +694,7 @@ module Unprocessed = struct
       let* stdlib_dir =
         Action_builder.of_memo
         @@
-        match t.config.mode with
+        match t.config.for_ with
         | Ocaml -> Memo.return (Some stdlib_dir)
         | Melange ->
           let open Memo.O in
@@ -713,7 +707,7 @@ module Unprocessed = struct
         let requires_compile =
           Resolve.peek requires_compile |> Result.value ~default:[]
         in
-        match t.config.mode with
+        match t.config.for_ with
         | Ocaml -> Action_builder.return requires_compile
         | Melange ->
           Action_builder.of_memo
@@ -732,7 +726,7 @@ module Unprocessed = struct
                      ocaml.version
                    |> Dune_project.Implicit_transitive_deps.to_bool
                  in
-                 Lib.closure [ lib ] ~linking ~for_:t.config.mode
+                 Lib.closure [ lib ] ~linking ~for_:t.config.for_
                  |> Resolve.Memo.peek
                  >>| function
                  | Ok libs -> libs
@@ -742,10 +736,10 @@ module Unprocessed = struct
       in
       let+ flags = flags
       and+ indexes = Ocaml_index.context_indexes context
-      and+ deps_src_dirs, deps_obj_dirs = add_lib_dirs sctx ~for_:mode requires_compile
+      and+ deps_src_dirs, deps_obj_dirs = add_lib_dirs sctx ~for_ requires_compile
       and+ hidden_src_dirs, hidden_obj_dirs =
         let requires_hidden = Resolve.peek requires_hidden |> Result.value ~default:[] in
-        add_lib_dirs sctx ~for_:mode requires_hidden
+        add_lib_dirs sctx ~for_ requires_hidden
       in
       let parameters = Resolve.peek parameters |> Result.value ~default:[] in
       let src_dirs =

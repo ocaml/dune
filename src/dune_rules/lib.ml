@@ -1282,8 +1282,8 @@ end = struct
         let instrumentation_backend =
           instrumentation_backend db.instrument_with resolve_forbid_ignore
         in
-        let modes = (Compilation_mode.of_mode_set (Lib_info.modes info)).modes in
-        Memo.parallel_map modes ~f:(fun for_ ->
+        let modes = Compilation_mode.of_mode_set (Lib_info.modes info) in
+        Memo.parallel_map modes.modes ~f:(fun for_ ->
           Lib_info.preprocess info ~for_
           |> Instrumentation.with_instrumentation ~instrumentation_backend
           >>| fun pps -> for_, Preprocess.Per_module.pps pps)

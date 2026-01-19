@@ -222,8 +222,7 @@ module Lib = struct
     let default loc : t = { empty with ocaml = Set.default loc }
 
     let eval t ~has_native =
-      let get key : Kind.t option = Map.find t key in
-      let melange = get Melange |> Option.is_some in
+      let melange = Map.find t Melange |> Option.is_some in
       { Lib_mode.Map.ocaml = Set.eval t.ocaml ~has_native; melange }
     ;;
   end

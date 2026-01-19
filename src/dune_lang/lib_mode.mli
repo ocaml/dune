@@ -40,9 +40,7 @@ module Map : sig
     }
 
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
-  val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
   val get : 'a t -> mode -> 'a
-  val map : 'a t -> f:('a -> 'b) -> 'b t
   val make_all : 'a -> 'a t
   val make : byte:'a -> native:'a -> melange:'a -> 'a t
 
@@ -52,6 +50,5 @@ module Map : sig
     val encode : t -> Dune_sexp.t list
     val of_list : mode list -> t
     val to_dyn : t -> Dyn.t
-    val equal : t -> t -> bool
   end
 end

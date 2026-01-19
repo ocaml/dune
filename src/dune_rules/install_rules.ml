@@ -270,9 +270,8 @@ end = struct
         in
         make_entry ~kind ?sub_dir Lib path)
     in
-    let { Lib_config.has_native; ext_obj; _ } = lib_config in
     let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
-      Mode_conf.Lib.Set.eval lib.modes ~has_native
+      Lib_info.modes info
     in
     let+ melange_runtime_entries = additional_deps lib.melange_runtime_deps
     and+ public_headers = additional_deps lib.public_headers
@@ -326,6 +325,7 @@ end = struct
           match (lib.kind : Lib_kind.t) with
           | Parameter -> []
           | Virtual ->
+            let { Lib_config.ext_obj; _ } = lib_config in
             common_module_impls
               [ if_ byte (Ocaml Cmo, cm_file (Ocaml Cmo))
               ; if_ native (Ocaml Cmx, Obj_dir.Module.o_file obj_dir m ~ext_obj)

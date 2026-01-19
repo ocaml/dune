@@ -1,27 +1,23 @@
 let print dyn = print_endline (Dyn.to_string dyn)
 
-(* CR-soon Alizter: Char is currently printed as a raw character, not as an
-   OCaml char literal. This means there are no quotes and special characters
-   are not escaped. *)
-
 let%expect_test "char - printable" =
   print (Dyn.char 'a');
-  [%expect {| a |}];
+  [%expect {| 'a' |}];
   print (Dyn.char 'Z');
-  [%expect {| Z |}];
+  [%expect {| 'Z' |}];
   print (Dyn.char '0');
-  [%expect {| 0 |}];
+  [%expect {| '0' |}];
   print (Dyn.char ':');
-  [%expect {| : |}]
+  [%expect {| ':' |}]
 ;;
 
 let%expect_test "char - special" =
   print (Dyn.char '\'');
-  [%expect {| ' |}];
+  [%expect {| '\'' |}];
   print (Dyn.char '"');
-  [%expect {| " |}];
+  [%expect {| '"' |}];
   print (Dyn.char '\\');
-  [%expect {| \ |}]
+  [%expect {| '\\' |}]
 ;;
 
 (* CR-soon Alizter: Int32/Int64/Nativeint are printed without their literal

@@ -56,6 +56,11 @@ module Event : sig
 
   (** [action t] describes the action occurred to [path t] *)
   val action : t -> action
+
+  (** [is_create_and_modify t] returns true if the event has both Create and
+      Modify flags set (without InodeMetaMod), indicating a coalesced event
+      that should be reported as both Created and File_changed. *)
+  val is_create_and_modify : t -> bool
 end
 
 (** the type of fsevents watcher *)

@@ -229,6 +229,11 @@ module Event = struct
       ; "path", string t.path
       ]
   ;;
+
+  let is_create_and_modify t =
+    let r = raw t.flags in
+    r.item_created && r.item_modified && (not r.item_inode_meta_mod) && not r.item_renamed
+  ;;
 end
 
 module Raw = struct

@@ -19,6 +19,11 @@ let%expect_test _ =
       ~watch_exclusions:[]
       ()
   in
+  let is_file_event (e : Dune_file_watcher.Fs_memo_event.t) =
+    match e.path with
+    | In_source_tree p -> not (Path.is_directory (Path.source p))
+    | In_build_dir _ | External _ -> false
+  in
   let try_to_get_events () =
     critical_section mutex ~f:(fun () ->
       match !events_buffer with
@@ -26,10 +31,10 @@ let%expect_test _ =
       | list ->
         events_buffer := [];
         Some
-          (List.map list ~f:(function
+          (List.filter_map list ~f:(function
              | Dune_file_watcher.Event.Sync _ -> assert false
              | Queue_overflow -> assert false
-             | Fs_memo_event e -> e
+             | Fs_memo_event e -> if is_file_event e then Some e else None
              | Watcher_terminated -> assert false)))
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in
@@ -57,10 +62,9 @@ let%expect_test _ =
    | Error _ -> assert false
    | Ok () -> ());
   Stdio.Out_channel.write_all "d/w/x" ~data:"x";
-  print_events 3;
+  print_events 2;
   [%expect
     {|
-    { path = In_source_tree "d"; kind = "Created" }
     { path = In_source_tree "d/w/x"; kind = "Created" }
     { path = In_source_tree "d/w/x"; kind = "File_changed" }
 |}];

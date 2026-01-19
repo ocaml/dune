@@ -4,33 +4,13 @@
  (libraries dune_file_watcher base stdune threads.posix stdio unix))
 
 (library
- (name dune_file_watcher_tests_macos)
- (modules dune_file_watcher_tests_macos)
+ (name dune_file_watcher_tests)
+ (modules dune_file_watcher_tests)
  (inline_tests
   (enabled_if
-   (= %{system} macosx))
-  (deps
-   (sandbox always)))
- (libraries
-  unix
-  dune_file_watcher
-  dune_file_watcher_tests_lib
-  ppx_expect.config
-  ppx_expect.config_types
-  base
-  stdune
-  ppx_inline_test.config
-  threads.posix
-  stdio)
- (preprocess
-  (pps ppx_expect)))
-
-(library
- (name dune_file_watcher_tests_linux)
- (modules dune_file_watcher_tests_linux)
- (inline_tests
-  (enabled_if
-   (= %{system} linux))
+   (or
+    (= %{system} macosx)
+    (= %{system} linux)))
   (deps
    (sandbox always)))
  (libraries

@@ -54,6 +54,10 @@ let run ~print_ctrl_c_warning q : unit =
       let n = Queue.length last_exit_signals in
       if n = 2 && print_ctrl_c_warning then prerr_endline warning;
       if n = 3 then sys_exit 1
+    | Kill ->
+      (* On macOS, sometimes we process a `SIGKILL` either immediately before
+         or after `SIGINT`. Given Dune is going to exit anyway, we ignore it. *)
+      ()
     | _ -> (* we only blocked the signals above *) assert false
   done
 ;;

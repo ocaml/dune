@@ -75,7 +75,7 @@ let path =
 ;;
 
 let context_cwd : Init_context.t Term.t =
-  let+ builder = Common.Builder.term
+  let+ builder = Common.Builder.term_without_trace
   and+ path = path in
   let builder = Common.Builder.set_default_root_is_cwd builder true in
   let _common, config = Common.init builder in
@@ -233,7 +233,7 @@ let project =
   in
   let man = [] in
   Cmd.v (Cmd.info "project" ~doc ~man)
-  @@ let+ common_builder = Builder.term
+  @@ let+ common_builder = Builder.term_without_trace
      and+ path = path
      and+ common = project_common
      and+ inline_tests = inline_tests

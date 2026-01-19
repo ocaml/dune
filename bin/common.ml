@@ -612,7 +612,7 @@ module Builder = struct
     Buffer.contents b
   ;;
 
-  let term =
+  let make_term ~trace =
     let docs = copts_sect in
     let+ config_from_command_line = shared_with_config_file
     and+ debug_dep_path =
@@ -847,7 +847,7 @@ module Builder = struct
     and+ stats_trace_file =
       Arg.(
         value
-        & opt (some string) (Some (Stdune.Path.Local.to_string default_trace_file))
+        & opt (some string) trace
         & info
             [ "trace-file" ]
             ~docs
@@ -1023,6 +1023,8 @@ module Builder = struct
     }
   ;;
 
+  let term_without_trace = make_term ~trace:None
+  let term = make_term ~trace:(Some (Stdune.Path.Local.to_string default_trace_file))
   let default = Term.eval_no_args_empty_env term
 
   let equal
@@ -1247,16 +1249,28 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
     match builder.stats_trace_file with
     | None -> Log.init No_log_file
     | Some stats ->
-      let trace = Path.of_filename_relative_to_initial_cwd stats in
-      Path.parent trace |> Option.iter ~f:Path.mkdir_p;
-      let stats = Dune_trace.Out.create trace in
-      Dune_trace.set_global stats;
-      Dune_trace.Event.init
-        ~version:
-          (Build_info.V1.version () |> Option.map ~f:Build_info.V1.Version.to_string)
-      |> Dune_trace.always_emit;
-      Log.init
-        (Redirect (fun w -> Dune_trace.emit Log (fun () -> Dune_trace.Event.log w)))
+      (match
+         (* For default location, try to acquire lock first to avoid corrupting
+           an existing trace from another dune process *)
+         if String.equal stats (Stdune.Path.Local.to_string default_trace_file)
+         then (
+           match Dune_util.Global_lock.lock ~timeout:None with
+           | Ok () -> `Create
+           | Error _ -> `Skip)
+         else `Create
+       with
+       | `Skip -> Log.init No_log_file
+       | `Create ->
+         let trace = Path.of_filename_relative_to_initial_cwd stats in
+         Path.parent trace |> Option.iter ~f:Path.mkdir_p;
+         let stats = Dune_trace.Out.create trace in
+         Dune_trace.set_global stats;
+         Dune_trace.Event.init
+           ~version:
+             (Build_info.V1.version () |> Option.map ~f:Build_info.V1.Version.to_string)
+         |> Dune_trace.always_emit;
+         Log.init
+           (Redirect (fun w -> Dune_trace.emit Log (fun () -> Dune_trace.Event.log w))))
   in
   (* We need to print this before reading the workspace file, so that the editor
      can interpret errors in the workspace file. *)

@@ -11,7 +11,6 @@ directory in the current directory.
   > }
 
   $ ls
-  _build
   foo
   $ ls foo
   bin
@@ -25,7 +24,6 @@ directory in the current directory.
   Success: initialized project component named foo
   Leaving directory 'bar'
   $ ls
-  _build
   bar
   foo
   $ ls bar
@@ -42,7 +40,6 @@ directory in the current directory.
   Success: initialized project component named foo
   Leaving directory 'baz'
   $ ls
-  _build
   bar
   baz
   foo

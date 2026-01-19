@@ -90,7 +90,12 @@ module Lock_held_by = struct
 end
 
 let lock ~timeout =
-  match Config.(get global_lock) with
+  match
+    (* If Config hasn't been initialized yet, default to `Enabled behavior.
+       This allows the lock to be acquired early (e.g., before creating trace
+       files) to prevent corruption. *)
+    if Config.is_initialized () then Config.(get global_lock) else `Enabled
+  with
   | `Disabled -> Ok ()
   | `Enabled ->
     if !locked

@@ -1,5 +1,6 @@
 type t
 
+val start : t
 val now : unit -> t
 val to_secs : t -> float
 val to_ns : t -> int

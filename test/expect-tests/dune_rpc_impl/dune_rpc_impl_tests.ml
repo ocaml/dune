@@ -54,7 +54,7 @@ let%expect_test "serialize and deserialize error message" =
             (0,
              Concat
                (Break (("", 1, ""), ("", 0, "")),
-                [ Seq (Tag (Error, Verbatim "Error"), Char :)
+                [ Seq (Tag (Error, Verbatim "Error"), Char ':')
                 ; Verbatim "Oh no!"
                 ])),
           Break (("", 0, ""), ("", 0, ""))))
@@ -70,10 +70,11 @@ let%expect_test "serialize and deserialize error message" =
                   (0,
                    Concat
                      (Break (("", 1, ""), ("", 0, "")),
-                      [ Seq (Tag (Error, Verbatim "Error"), Char :)
+                      [ Seq (Tag (Error, Verbatim "Error"), Char ':')
                       ; Verbatim "Oh no!"
                       ])))),
-          Break (("", 0, ""), ("", 0, "")))) |}]
+          Break (("", 0, ""), ("", 0, ""))))
+    |}]
 ;;
 
 let%expect_test "serialize and deserialize error message with location" =
@@ -103,7 +104,7 @@ let%expect_test "serialize and deserialize error message with location" =
                  (0,
                   Concat
                     (Break (("", 1, ""), ("", 0, "")),
-                     [ Seq (Tag (Error, Verbatim "Error"), Char :)
+                     [ Seq (Tag (Error, Verbatim "Error"), Char ':')
                      ; Verbatim "An error with location!"
                      ])),
                Break (("", 0, ""), ("", 0, "")))
@@ -126,11 +127,12 @@ let%expect_test "serialize and deserialize error message with location" =
                        (0,
                         Concat
                           (Break (("", 1, ""), ("", 0, "")),
-                           [ Seq (Tag (Error, Verbatim "Error"), Char :)
+                           [ Seq (Tag (Error, Verbatim "Error"), Char ':')
                            ; Verbatim "An error with location!"
                            ])))),
                Break (("", 0, ""), ("", 0, "")))
-          ])) |}]
+          ]))
+    |}]
 ;;
 
 let%expect_test "serialize and deserialize error with location excerpt and hint" =
@@ -172,7 +174,7 @@ let%expect_test "serialize and deserialize error with location excerpt and hint"
                  (0,
                   Concat
                     (Break (("", 1, ""), ("", 0, "")),
-                     [ Seq (Tag (Error, Verbatim "Error"), Char :)
+                     [ Seq (Tag (Error, Verbatim "Error"), Char ':')
                      ; Verbatim "An error with location!"
                      ])),
                Break (("", 0, ""), ("", 0, "")))
@@ -219,7 +221,7 @@ let%expect_test "serialize and deserialize error with location excerpt and hint"
                             (0,
                              Concat
                                (Break (("", 1, ""), ("", 0, "")),
-                                [ Seq (Tag (Error, Verbatim "Error"), Char :)
+                                [ Seq (Tag (Error, Verbatim "Error"), Char ':')
                                 ; Verbatim "An error with location!"
                                 ]))
                         ; Box
@@ -238,5 +240,6 @@ let%expect_test "serialize and deserialize error with location excerpt and hint"
                                 Verbatim "Hint 2"))
                         ]))),
                Break (("", 0, ""), ("", 0, "")))
-          ])) |}]
+          ]))
+    |}]
 ;;

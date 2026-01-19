@@ -114,7 +114,7 @@ let rec pp ?(in_arg = false) =
   | Bool b -> Pp.verbatim (string_of_bool b)
   | String s -> string_in_ocaml_syntax s
   | Bytes b -> string_in_ocaml_syntax (Bytes.to_string b)
-  | Char c -> Pp.char c
+  | Char c -> Pp.verbatim (Printf.sprintf "%C" c)
   | Float f -> Pp.verbatim (float_to_string f)
   | Option None -> pp ~in_arg (Variant ("None", []))
   | Option (Some x) -> pp ~in_arg (Variant ("Some", [ x ]))

@@ -88,17 +88,11 @@ module Map = struct
     Ocaml.Mode.Dict.equal f ocaml t.ocaml && f melange t.melange
   ;;
 
-  let to_dyn to_dyn { ocaml; melange } =
-    let open Dyn in
-    record [ "ocaml", Ocaml.Mode.Dict.to_dyn to_dyn ocaml; "melange", to_dyn melange ]
-  ;;
-
   let get t = function
     | Ocaml k -> Ocaml.Mode.Dict.get t.ocaml k
     | Melange -> t.melange
   ;;
 
-  let map t ~f = { ocaml = Ocaml.Mode.Dict.map ~f t.ocaml; melange = f t.melange }
   let make_all x = { ocaml = Ocaml.Mode.Dict.make_both x; melange = x }
 
   let make ~byte ~native ~melange =
@@ -108,17 +102,16 @@ module Map = struct
   module Set = struct
     type nonrec t = bool t
 
-    let equal = equal Bool.equal
-
-    let to_list (t : t) =
-      let l = [] in
-      let l = if t.ocaml.native then Ocaml Native :: l else l in
-      let l = if t.ocaml.byte then Ocaml Byte :: l else l in
-      let l = if t.melange then Melange :: l else l in
-      l
+    let encode =
+      let to_list (t : t) =
+        let l = [] in
+        let l = if t.ocaml.native then Ocaml Native :: l else l in
+        let l = if t.ocaml.byte then Ocaml Byte :: l else l in
+        let l = if t.melange then Melange :: l else l in
+        l
+      in
+      fun t -> List.map ~f:encode (to_list t)
     ;;
-
-    let encode t = List.map ~f:encode (to_list t)
 
     let of_list l =
       { ocaml =

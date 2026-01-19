@@ -34,29 +34,13 @@ let of_mode_set (modes : Lib_mode.Map.Set.t) =
 ;;
 
 module By_mode = struct
-  type mode = t
-
   type nonrec 'a t =
     { ocaml : 'a
     ; melange : 'a
     }
 
-  let just t ~for_ =
-    match for_ with
-    | Ocaml -> { ocaml = Some t; melange = None }
-    | Melange -> { ocaml = None; melange = Some t }
-  ;;
-
   let both t = { ocaml = t; melange = t }
   let from_fun f = { ocaml = f ~for_:Ocaml; melange = f ~for_:Melange }
-
-  let to_list t =
-    match t.ocaml, t.melange with
-    | Some ocaml, Some melange -> [ Ocaml, ocaml; Melange, melange ]
-    | Some ocaml, None -> [ Ocaml, ocaml ]
-    | None, Some melange -> [ Melange, melange ]
-    | None, None -> []
-  ;;
 
   let of_list xs ~init =
     List.fold_left xs ~init:{ ocaml = init; melange = init } ~f:(fun acc (k, item) ->
@@ -65,18 +49,13 @@ module By_mode = struct
       | Melange -> { acc with melange = item })
   ;;
 
+  let just t ~for_ = of_list ~init:None [ for_, Some t ]
   let map t ~f = { ocaml = f ~for_:Ocaml t.ocaml; melange = f ~for_:Melange t.melange }
 
   let get ~for_ t =
     match for_ with
     | Ocaml -> t.ocaml
     | Melange -> t.melange
-  ;;
-
-  let set ~for_ t x =
-    match for_ with
-    | Ocaml -> { t with ocaml = x }
-    | Melange -> { t with melange = x }
   ;;
 
   let to_dyn f t =
@@ -91,23 +70,6 @@ module By_mode = struct
       let+ ocaml = f ~for_:Ocaml
       and+ melange = f ~for_:Melange in
       { ocaml; melange }
-    ;;
-
-    let map
-      :  'a option t
-      -> f:(for_:mode -> 'a option -> 'b option Memo.t)
-      -> 'b option t Memo.t
-      =
-      fun t ~f ->
-      let+ y =
-        let { ocaml; melange } = map t ~f in
-        Memo.parallel_map
-          [ Ocaml, ocaml; Melange, melange ]
-          ~f:(fun (for_, x) ->
-            let+ x = x in
-            for_, x)
-      in
-      of_list y ~init:None
     ;;
   end
 end

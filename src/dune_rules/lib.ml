@@ -2606,10 +2606,8 @@ module DB = struct
                      (Nonempty_list.map ~f:snd names |> Nonempty_list.to_list))
                   (Loc.to_file_colon_line loc)))
       in
-      let init =
-        Compilation_mode.By_mode.both (Memo.lazy_ (fun () -> Resolve.Memo.return []))
-      in
-      Compilation_mode.By_mode.set init ~for_ requires_link
+      let init = Memo.lazy_ (fun () -> Resolve.Memo.return []) in
+      Compilation_mode.By_mode.of_list ~init [ for_, requires_link ]
     in
     let pps : lib list Resolve.Memo.t Compilation_mode.By_mode.t =
       let pps =
@@ -2617,8 +2615,8 @@ module DB = struct
         let+ resolved = Memo.Lazy.force resolved in
         resolved.pps
       in
-      let init = Compilation_mode.By_mode.both (Resolve.Memo.return []) in
-      Compilation_mode.By_mode.set init ~for_ pps
+      let init = Resolve.Memo.return [] in
+      Compilation_mode.By_mode.of_list ~init [ for_, pps ]
     in
     let direct_requires : lib list Resolve.Memo.t Compilation_mode.By_mode.t =
       let direct_requires =
@@ -2626,8 +2624,8 @@ module DB = struct
         let+ resolved = Memo.Lazy.force resolved in
         resolved.requires
       in
-      let init = Compilation_mode.By_mode.both (Resolve.Memo.return []) in
-      Compilation_mode.By_mode.set init ~for_ direct_requires
+      let init = Resolve.Memo.return [] in
+      Compilation_mode.By_mode.of_list ~init [ for_, direct_requires ]
     in
     let resolved_selects
       : Resolved_select.t list Resolve.Memo.t Compilation_mode.By_mode.t
@@ -2637,8 +2635,8 @@ module DB = struct
         let+ resolved = Memo.Lazy.force resolved in
         Resolve.return resolved.selects
       in
-      let init = Compilation_mode.By_mode.both (Resolve.Memo.return []) in
-      Compilation_mode.By_mode.set init ~for_ resolved_selects
+      let init = Resolve.Memo.return [] in
+      Compilation_mode.By_mode.of_list ~init [ for_, resolved_selects ]
     in
     let allow_unused_libraries =
       Resolve_names.resolve_simple_deps t ~private_deps:Allow_all allow_unused_libraries
@@ -2652,8 +2650,8 @@ module DB = struct
           |> Memo.map ~f:Resolve_names.Resolved.user_written)
         |> Memo.Lazy.force
       in
-      let init = Compilation_mode.By_mode.both (Resolve.Memo.return []) in
-      Compilation_mode.By_mode.set init ~for_ resolved_user_written_requires
+      let init = Resolve.Memo.return [] in
+      Compilation_mode.By_mode.of_list ~init [ for_, resolved_user_written_requires ]
     in
     { Compile.direct_requires
     ; user_written_requires

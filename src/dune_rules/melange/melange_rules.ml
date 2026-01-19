@@ -369,8 +369,12 @@ let add_deps_to_aliases ?(alias = Melange_stanzas.Emit.implicit_alias) ~dir deps
 ;;
 
 let melange_compile_flags ~sctx ~dir (mel : Melange_stanzas.Emit.t) =
-  let specific = Lib_mode.Map.make_all mel.compile_flags in
-  Dune_lang.Ocaml_flags.Spec.make ~common:Ordered_set_lang.Unexpanded.standard ~specific
+  let common = Ordered_set_lang.Unexpanded.standard in
+  let specific =
+    let ocaml = Mode.Dict.make_both common in
+    { Lib_mode.Map.ocaml; melange = mel.compile_flags }
+  in
+  Dune_lang.Ocaml_flags.Spec.make ~common ~specific
   |> Ocaml_flags_db.ocaml_flags sctx ~dir
   >>| Ocaml_flags.allow_only_melange
 ;;

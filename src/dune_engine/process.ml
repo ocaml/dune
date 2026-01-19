@@ -874,6 +874,7 @@ let spawn
       ~(stdout : _ Io.t)
       ~(stderr : _ Io.t)
       ~(stdin : _ Io.t)
+      ~queued
       ~setpgid
       ~prog
       ~args
@@ -986,7 +987,8 @@ let spawn
       ~timeout
       ~name:metadata.name
       ~categories:metadata.categories
-      ~started_at);
+      ~started_at
+      ~queued);
   Io.release stdout;
   Io.release stderr;
   { started_at
@@ -1014,7 +1016,9 @@ let run_internal
       prog
       args
   =
+  let start = Time.now () in
   Scheduler.with_job_slot (fun _cancel (_config : Scheduler.Config.t) ->
+    let queued = Time.diff (Time.now ()) start in
     let dir =
       match dir with
       | None -> dir
@@ -1047,6 +1051,7 @@ let run_internal
       spawn
         ?dir
         ?env
+        ~queued
         ~stdout:stdout_to
         ~stderr:stderr_to
         ~stdin:stdin_from

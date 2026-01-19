@@ -61,6 +61,7 @@ module Event : sig
     -> name:string option
     -> categories:string list
     -> targets:targets option
+    -> queued:Time.Span.t
     -> t
 
   val process

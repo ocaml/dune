@@ -221,12 +221,24 @@ let make_exit exit =
     ]
 ;;
 
-let process_start ~pid ~dir ~prog ~args ~timeout ~started_at ~name ~categories ~targets =
+let process_start
+      ~pid
+      ~dir
+      ~prog
+      ~args
+      ~timeout
+      ~started_at
+      ~name
+      ~categories
+      ~targets
+      ~queued
+  =
   let args =
     let always =
       [ "process_args", Arg.list (List.map args ~f:Arg.string)
       ; "pid", Arg.int (Pid.to_int pid)
       ; "categories", Arg.list (List.map categories ~f:Arg.string)
+      ; "queued", Arg.span queued
       ]
     in
     let extended =

@@ -75,7 +75,6 @@ type t =
   ; execution_parameters :
       Context_name.t -> dir:Path.Build.t -> Execution_parameters.t Memo.t
   ; source_tree : (module Source_tree)
-  ; write_error_summary : Build_system_error.Set.t -> unit Fiber.t
   }
 
 let t : t Fdecl.t = Fdecl.create Dyn.opaque
@@ -89,7 +88,6 @@ let set
       ~implicit_default_alias
       ~execution_parameters
       ~source_tree
-      ~write_error_summary
   =
   let contexts =
     Memo.lazy_ ~name:"Build_config.set" (fun () ->
@@ -109,6 +107,5 @@ let set
     ; implicit_default_alias
     ; execution_parameters
     ; source_tree
-    ; write_error_summary
     }
 ;;

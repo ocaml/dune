@@ -85,7 +85,6 @@ let init ~sandboxing_preference () : unit =
     ~implicit_default_alias
     ~execution_parameters
     ~source_tree:(module Source_tree)
-    ~write_error_summary:(fun _ -> Fiber.return ())
 ;;
 
 let get () =

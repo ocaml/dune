@@ -1153,7 +1153,6 @@ let run f =
       Fiber.collect_errors (fun () ->
         Memo.run_with_error_handler f ~handle_error_no_raise:report_early_exn)
     in
-    let* () = (Build_config.get ()).write_error_summary (Fiber.Svar.read State.errors) in
     match res with
     | Ok res ->
       let+ () = State.set Build_succeeded__now_waiting_for_changes in

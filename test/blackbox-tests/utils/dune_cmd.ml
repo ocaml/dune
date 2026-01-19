@@ -69,7 +69,7 @@ module Wait_for_fs_clock_to_advance = struct
   let run () =
     let fn = "." ^ name ^ ".tmp" in
     let fstime () =
-      Unix.close (Unix.openfile fn [ O_WRONLY; O_CREAT; O_TRUNC ] 0o644);
+      Unix.close (Unix.openfile fn [ O_WRONLY; O_CREAT; O_TRUNC; O_CLOEXEC ] 0o644);
       let t = (Unix.stat fn).st_ctime in
       Unix.unlink fn;
       t

@@ -248,8 +248,9 @@ let%expect_test "move file" =
     Unix.rename "old" "new");
   [%expect
     {|
-    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/old" }
-    > { action = "Rename"; kind = "File"; path = "$TESTCASE_ROOT/new" } |}]
+    > { action = "Rename"; kind = "File"; path = "$TESTCASE_ROOT/old" }
+    > { action = "Rename"; kind = "File"; path = "$TESTCASE_ROOT/new" }
+    |}]
 ;;
 
 let%expect_test "raise inside callback" =

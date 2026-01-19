@@ -552,7 +552,6 @@ module Builder = struct
     { debug_dep_path : bool
     ; debug_backtraces : bool
     ; debug_artifact_substitution : bool
-    ; debug_digests : bool
     ; debug_package_logs : bool
     ; wait_for_filesystem_clock : bool
     ; only_packages : Only_packages.Clflags.t
@@ -635,14 +634,6 @@ module Builder = struct
             [ "debug-artifact-substitution" ]
             ~docs
             ~doc:(Some "Print debugging info about artifact substitution"))
-    and+ debug_digests =
-      Arg.(
-        value
-        & flag
-        & info
-            [ "debug-digests" ]
-            ~docs
-            ~doc:(Some "Explain why Dune decides to re-digest some files"))
     and+ debug_package_logs =
       let doc = "Always print the standard logs when building packages" in
       Arg.(
@@ -973,7 +964,6 @@ module Builder = struct
     { debug_dep_path
     ; debug_backtraces
     ; debug_artifact_substitution
-    ; debug_digests
     ; debug_package_logs
     ; wait_for_filesystem_clock
     ; only_packages
@@ -1032,7 +1022,6 @@ module Builder = struct
         { debug_dep_path
         ; debug_backtraces
         ; debug_artifact_substitution
-        ; debug_digests
         ; debug_package_logs
         ; wait_for_filesystem_clock
         ; only_packages
@@ -1071,7 +1060,6 @@ module Builder = struct
     Bool.equal t.debug_dep_path debug_dep_path
     && Bool.equal t.debug_backtraces debug_backtraces
     && Bool.equal t.debug_artifact_substitution debug_artifact_substitution
-    && Bool.equal t.debug_digests debug_digests
     && Bool.equal t.debug_package_logs debug_package_logs
     && Bool.equal t.wait_for_filesystem_clock wait_for_filesystem_clock
     && Only_packages.Clflags.equal t.only_packages only_packages

@@ -21,3 +21,15 @@ stanza
   > EOF
 
   $ dune build
+
+Add a root_module that is the stdlib alias, too
+
+  $ cat > dune << EOF
+  > (library
+  >  (name mystdlib)
+  >  (stdlib)
+  >  (root_module mystdlib)
+  >  (modes melange))
+  > EOF
+
+  $ dune build

@@ -91,7 +91,10 @@ git+http
   > }
   > EOF
 
-  $ solve testpkg
+  $ mkdir _bin
+  $ cp fakegit.sh _bin/git
+
+  $ PATH=_bin:$PATH solve testpkg
   Solution for dune.lock:
   - testpkg.0.0.1
   $ showpkg
@@ -99,12 +102,13 @@ git+http
   
   (source
    (fetch
-    (url git+http://github.com/foo)
+    (url git+http://github.com/foo#058003b274f05b092a391555ffdee8b36f1897b3)
     (checksum md5=069aa55d40e548280f92af693f6c625a)))
 
 git+file
 
   $ rm -rf ${default_lock_dir}
+
   $ mkpkg testpkg <<EOF
   > url {
   >   src: "git+file://$PWD/_repo"
@@ -132,7 +136,7 @@ git+foobar
   >   checksum: "md5=069aa55d40e548280f92af693f6c625a"
   > }
   > EOF
-  $ solve testpkg
+  $ PATH=_bin:$PATH solve testpkg
   Solution for dune.lock:
   - testpkg.0.0.1
   $ showpkg
@@ -140,7 +144,8 @@ git+foobar
   
   (source
    (fetch
-    (url git+foobar://random-thing-here)
+    (url
+     git+foobar://random-thing-here#058003b274f05b092a391555ffdee8b36f1897b3)
     (checksum md5=069aa55d40e548280f92af693f6c625a)))
 
 file+git

@@ -10,8 +10,8 @@ Without the toggle, we get an error message for using the new mode subfield
   11 |    (mode native)
           ^^^^^^^^^^^^^
   Error: 'mode' is available only when mode_specific_stubs is enabled in the
-  dune-project file. You must enable it using (using mode_specific_stubs 0.1)
-  in your dune-project file.
+  dune-project or workspace file. You must enable it using (using
+  mode_specific_stubs 0.1) in the file.
 
 But the toggle only exists in Dune 3.5
   $ cat >dune-project <<EOF

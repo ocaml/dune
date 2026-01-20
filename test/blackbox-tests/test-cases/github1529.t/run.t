@@ -11,5 +11,5 @@ file is present.
   1 | (menhir (modules parser))
       ^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: 'menhir' is available only when menhir is enabled in the dune-project
-  file. You must enable it using (using menhir <version>) in your dune-project file.
+  or workspace file. You must enable it using (using menhir <version>) in the file.
   [1]

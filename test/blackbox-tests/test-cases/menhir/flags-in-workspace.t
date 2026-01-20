@@ -13,9 +13,9 @@ See #9024.
   > EOF
 
   $ dune build 2>&1 | head -n 5
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("Syntax identifier is unset",
-     { name = "menhir"
-     ; supported_versions =
+  File "dune-workspace", line 3, characters 7-29:
+  3 |  (test (menhir_flags --table)))
+             ^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'menhir_flags' is available only when menhir is enabled in the
+  dune-project or workspace file. You must enable it using (using menhir 2.1)
   [1]

@@ -28,6 +28,10 @@
  (applies_to :whole_subtree))
 
 (cram
+ (setup_scripts ../watching/helpers.sh)
+ (applies_to autolock-with-watch-server))
+
+(cram
  (deps %{bin:patch})
  (applies_to patch opam-package-with-patch extra-sources))
 

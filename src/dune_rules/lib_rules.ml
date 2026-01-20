@@ -499,7 +499,11 @@ let cctx
       ~modes
       ~for_
   =
-  let* flags = Buildable_rules.ocaml_flags sctx ~dir lib.buildable.flags
+  let* flags =
+    let+ base = Buildable_rules.ocaml_flags sctx ~dir lib.buildable.flags in
+    match lib.stdlib with
+    | None -> base
+    | Some _ -> Ocaml_flags.append_nostdlib base
   and* implements = Virtual_rules.impl sctx ~lib ~scope ~for_ in
   let obj_dir = Library.obj_dir ~dir lib in
   let* modules, pp =
@@ -544,7 +548,6 @@ let cctx
     ~preprocessing:pp
     ~opaque:Inherit_from_settings
     ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.map ~f:Option.some js_of_ocaml)
-    ?stdlib:lib.stdlib
     ~package
     ~melange_package_name
     ~modes

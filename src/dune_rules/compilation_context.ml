@@ -93,7 +93,6 @@ type t =
   ; includes : Includes.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
-  ; stdlib : Ocaml_stdlib.t option
   ; js_of_ocaml : Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
   ; sandbox : Sandbox_config.t
   ; package : Package.t option
@@ -119,7 +118,6 @@ let parameters t = t.parameters
 let includes t = t.includes
 let preprocessing t = t.preprocessing
 let opaque t = t.opaque
-let stdlib t = t.stdlib
 let js_of_ocaml t = t.js_of_ocaml
 let sandbox t = t.sandbox
 let set_sandbox t sandbox = { t with sandbox }
@@ -155,7 +153,6 @@ let create
       ~requires_link
       ?(preprocessing = Pp_spec.dummy)
       ~opaque
-      ?stdlib
       ~js_of_ocaml
       ~package
       ~melange_package_name
@@ -227,7 +224,6 @@ let create
       Includes.make ~project ~opaque ~direct_requires ~hidden_requires ocaml.lib_config
   ; preprocessing
   ; opaque
-  ; stdlib
   ; js_of_ocaml
   ; sandbox
   ; package
@@ -244,8 +240,8 @@ let create
 let for_ t = t.for_
 
 let alias_and_root_module_flags =
-  let extra = [ "-w"; "-49"; "-nopervasives"; "-nostdlib" ] in
-  fun base -> Ocaml_flags.append_common base extra
+  let extra = [ "-w"; "-49" ] in
+  fun base -> Ocaml_flags.append_common base extra |> Ocaml_flags.append_nostdlib
 ;;
 
 let for_alias_module t alias_module =
@@ -287,13 +283,7 @@ let for_alias_module t alias_module =
          modules to compile it. *)
       t.modules, t.includes
   in
-  { t with
-    flags = alias_and_root_module_flags flags
-  ; includes
-  ; stdlib = None
-  ; sandbox
-  ; modules
-  }
+  { t with flags = alias_and_root_module_flags flags; includes; sandbox; modules }
 ;;
 
 let for_root_module t root_module =
@@ -305,7 +295,6 @@ let for_root_module t root_module =
   in
   { t with
     flags = alias_and_root_module_flags flags
-  ; stdlib = None
   ; modules = singleton_modules root_module
   }
 ;;
@@ -340,7 +329,7 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
 let for_wrapped_compat t =
   (* See #10689 *)
   let flags = Ocaml_flags.append_common t.flags [ "-w"; "-53" ] in
-  { t with includes = Includes.empty; stdlib = None; flags }
+  { t with includes = Includes.empty; flags }
 ;;
 
 let for_plugin_executable t ~embed_in_plugin_libraries =

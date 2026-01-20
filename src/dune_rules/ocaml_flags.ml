@@ -73,23 +73,36 @@ let default_flags ~dune_version ~profile =
   else []
 ;;
 
-type t = string list Action_builder.t Dune_lang.Ocaml_flags.t
+(* NOTE(anmonteiro): we track `nostdlib` separately to avoid repeating flags in
+   the case of compiling the stdlib module alias. This may be removed once
+   Melange accepts duplicate `-nopervasives` CLI flags. *)
+type t =
+  { nostdlib : bool
+  ; flags : string list Action_builder.t Dune_lang.Ocaml_flags.t
+  }
 
 let empty =
   let build = Action_builder.return [] in
-  { Ocaml_flags.common = build; specific = Lib_mode.Map.make_all build }
+  { nostdlib = false
+  ; flags = { Ocaml_flags.common = build; specific = Lib_mode.Map.make_all build }
+  }
 ;;
 
-let of_list l = { empty with common = Action_builder.return l }
+let of_list l =
+  { empty with flags = { empty.flags with common = Action_builder.return l } }
+;;
 
 let default ~dune_version ~profile =
-  { common = Action_builder.return (default_flags ~dune_version ~profile)
-  ; specific =
-      { ocaml =
-          { byte = Action_builder.return default_ocamlc_flags
-          ; native = Action_builder.return default_ocamlopt_flags
+  { nostdlib = false
+  ; flags =
+      { common = Action_builder.return (default_flags ~dune_version ~profile)
+      ; specific =
+          { ocaml =
+              { byte = Action_builder.return default_ocamlc_flags
+              ; native = Action_builder.return default_ocamlopt_flags
+              }
+          ; melange = Action_builder.return default_ocamlc_flags
           }
-      ; melange = Action_builder.return default_ocamlc_flags
       }
   }
 ;;
@@ -98,22 +111,39 @@ let make ~(spec : Ocaml_flags.Spec.t) ~default ~eval =
   let f name x standard =
     Action_builder.memoize ~cutoff:(List.equal String.equal) name (eval x ~standard)
   in
-  { common = f "common flags" spec.common default.common
-  ; specific =
-      { ocaml =
-          { byte = f "ocamlc flags" spec.specific.ocaml.byte default.specific.ocaml.byte
-          ; native =
-              f "ocamlopt flags" spec.specific.ocaml.native default.specific.ocaml.native
+  { nostdlib = false
+  ; flags =
+      { common = f "common flags" spec.common default.flags.common
+      ; specific =
+          { ocaml =
+              { byte =
+                  f
+                    "ocamlc flags"
+                    spec.specific.ocaml.byte
+                    default.flags.specific.ocaml.byte
+              ; native =
+                  f
+                    "ocamlopt flags"
+                    spec.specific.ocaml.native
+                    default.flags.specific.ocaml.native
+              }
+          ; melange =
+              f
+                "melange compile_flags"
+                spec.specific.melange
+                default.flags.specific.melange
           }
-      ; melange = f "melange compile_flags" spec.specific.melange default.specific.melange
       }
   }
 ;;
 
+let nostdlib_flags = [ "-nopervasives"; "-nostdlib" ]
+
 let get t mode =
-  let+ common = t.common
-  and+ specific = Lib_mode.Map.get t.specific mode in
-  common @ specific
+  let+ common = t.flags.common
+  and+ specific = Lib_mode.Map.get t.flags.specific mode in
+  let nostdlib = if t.nostdlib then nostdlib_flags else [] in
+  nostdlib @ common @ specific
 ;;
 
 let map_common t ~f =
@@ -124,18 +154,19 @@ let map_common t ~f =
   { t with common }
 ;;
 
-let append_common t flags = map_common t ~f:(fun l -> l @ flags)
+let append_common t flags = { t with flags = map_common t.flags ~f:(fun l -> l @ flags) }
+let append_nostdlib t = { t with nostdlib = true }
 let with_vendored_warnings t = append_common t vendored_warnings
 let with_vendored_alerts t = append_common t vendored_alerts
 
 let dump t =
-  let+ common = t.common
-  and+ byte = t.specific.ocaml.byte
-  and+ native = t.specific.ocaml.native
-  and+ melange = t.specific.melange in
+  let+ common = t.flags.common
+  and+ byte = t.flags.specific.ocaml.byte
+  and+ native = t.flags.specific.ocaml.native
+  and+ melange = t.flags.specific.melange in
   List.map
     ~f:Dune_lang.Encoder.(pair string (list string))
-    [ "flags", common
+    [ "flags", (if t.nostdlib then nostdlib_flags else []) @ common
     ; "ocamlc_flags", byte
     ; "ocamlopt_flags", native
     ; "melange.compile_flags", melange
@@ -160,7 +191,7 @@ let allow_only_melange t =
                  [])
          })
   in
-  { t with specific = { t.specific with ocaml } }
+  { t with flags = { t.flags with specific = { t.flags.specific with ocaml } } }
 ;;
 
 let open_flags modules =

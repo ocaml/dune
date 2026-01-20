@@ -332,12 +332,6 @@ let build_cm
             ; opaque_arg
             ; As (Fdo.phase_flags phase)
             ; opens
-            ; As
-                (match Compilation_context.stdlib cctx with
-                 | None -> []
-                 | Some _ ->
-                   (* XXX why aren't these just normal library flags? *)
-                   [ "-nopervasives"; "-nostdlib" ])
             ; A "-o"
             ; Target output
             ; A "-c"

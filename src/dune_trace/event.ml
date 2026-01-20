@@ -128,6 +128,7 @@ let init ~version =
       ; "root", Arg.string Path.(to_absolute_filename root)
       ; "pid", Arg.int (Unix.getpid ())
       ; "initial_cwd", Arg.string Fpath.initial_cwd
+      ; "start", Arg.time Time.start
       ]
     in
     match version with

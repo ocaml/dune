@@ -25,7 +25,8 @@ Dune itself produces action traces
       "env",
       "initial_cwd",
       "pid",
-      "root"
+      "root",
+      "start"
     ],
     "keys": [
       "args",
@@ -46,7 +47,8 @@ Dune itself produces action traces
       "env",
       "initial_cwd",
       "pid",
-      "root"
+      "root",
+      "start"
     ],
     "keys": [
       "args",

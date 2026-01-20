@@ -2,6 +2,7 @@ type t = int
 
 external now : unit -> t = "dune_clock_gettime_realtime"
 
+let start = now ()
 let ns_per_sec = 1_000_000_000
 let ns_per_sec_float = float_of_int ns_per_sec
 let to_secs t = float_of_int t /. ns_per_sec_float

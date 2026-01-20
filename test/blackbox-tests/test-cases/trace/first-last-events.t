@@ -17,7 +17,8 @@ be a particular event emitted by dune.
       "env",
       "initial_cwd",
       "pid",
-      "root"
+      "root",
+      "start"
     ]
   }
 

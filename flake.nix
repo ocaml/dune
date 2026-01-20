@@ -164,7 +164,6 @@
           testBuildInputs =
             with pkgs;
             [
-              bc
               file
               jq
               ripgrep
@@ -172,7 +171,6 @@
               mercurial
               unzip
               coreutils
-              bc
               curl
               git
               binaryen

@@ -100,7 +100,7 @@ mk_ocaml() {
   local patch
   patch=$(echo "$version" | cut -d. -f3)
   local next
-  next=$(echo "$patch + 1" | bc)
+  next=$((patch + 1))
   local constraint="{>= \"$major.$minor.$patch~\" & < \"$major.$minor.$next~\"}"
 
   mkpkg ocaml "$version" <<- EOF

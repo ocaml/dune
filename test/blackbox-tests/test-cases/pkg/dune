@@ -23,7 +23,7 @@
   (run %{bin:shellcheck} -s bash %{deps})))
 
 (cram
- (deps %{bin:git} %{bin:bc})
+ (deps %{bin:git})
  (setup_scripts helpers.sh ../git-helpers.sh)
  (applies_to :whole_subtree))
 

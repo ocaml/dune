@@ -35,16 +35,21 @@ let is_subset =
 ;;
 
 let validate t ~loc =
-  if Package_variable_name.Map.mem t Package_variable_name.with_test
-  then
-    User_error.raise
-      ?loc
-      [ Pp.textf
-          "Setting the %S solver variable is not permitted as it would conflict with \
-           dune's internal use of %S while solving opam packages."
-          Package_variable_name.(to_string with_test)
-          Package_variable_name.(to_string with_test)
-      ]
+  match Package_variable_name.Map.find t Package_variable_name.with_test with
+  | Some v ->
+    if Variable_value.equal v Variable_value.true_
+    then
+      User_error.raise
+        ?loc
+        [ Pp.textf
+            "Setting the %S solver variable to 'true' is not currently supported. Dune \
+             already uses %S for local packages, but it cannot be applied to transitive \
+             dependencies."
+            Package_variable_name.(to_string with_test)
+            Package_variable_name.(to_string with_test)
+        ]
+    else ()
+  | None -> ()
 ;;
 
 let encode t =

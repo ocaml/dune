@@ -53,7 +53,7 @@ let run_build_system ~common ~request =
        (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
          time the build system is rerun? *)
        (* This top-level node is used for traversing the whole Memo graph. *)
-       let toplevel_cell, toplevel =
+       let _toplevel_cell, toplevel =
          Memo.Lazy.Expert.create ~name:"toplevel" (fun () ->
            let open Memo.O in
            let+ (), (_ : Dep.Fact.t Dep.Map.t) =
@@ -61,23 +61,7 @@ let run_build_system ~common ~request =
            in
            ())
        in
-       let* res = run ~toplevel in
-       let+ () =
-         match Common.dump_memo_graph_file common with
-         | None -> Fiber.return ()
-         | Some file ->
-           let path = Path.external_ file in
-           let+ graph =
-             Memo.dump_cached_graph
-               ~time_nodes:(Common.dump_memo_graph_with_timing common)
-               toplevel_cell
-           in
-           Graph.serialize graph ~path ~format:(Common.dump_memo_graph_format common)
-         (* CR-someday cmoseley: It would be nice to use Persistent to dump a
-           copy of the graph's internal representation here, so it could be used
-           without needing to re-run the build*)
-       in
-       res)
+       run ~toplevel)
     ~finally:(fun () ->
       Hooks.End_of_build.run ();
       Fiber.return ())

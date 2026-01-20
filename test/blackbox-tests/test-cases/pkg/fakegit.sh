@@ -2,10 +2,15 @@
 
 # dummy implementation of just enough git to be able to create a lock file
 
+# we need access to the real git binary, so we expect the env to have a
+# REAL_GIT variable pointing to the actual git
+REAL_GIT=${REAL_GIT:-false}
+
 case $1 in
   init)
-    # we don't create any repo
-    exit 0
+    # we pass this over to actual git
+    $REAL_GIT "$@"
+    exit $?
     ;;
   ls-remote)
     # hardcoded output, just HEAD pointing to a revision

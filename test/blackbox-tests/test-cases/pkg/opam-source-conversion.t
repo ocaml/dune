@@ -93,6 +93,7 @@ git+http
 
   $ mkdir _bin
   $ cp fakegit.sh _bin/git
+  $ export REAL_GIT=$(which git)
 
   $ PATH=_bin:$PATH solve testpkg
   Solution for dune.lock:

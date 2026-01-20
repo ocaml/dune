@@ -288,7 +288,7 @@ module Extension = struct
     ()
   ;;
 
-  let instantiate ~dune_lang_ver ~loc ~parse_args (name_loc, name) (ver_loc, ver) =
+  let lookup ~dune_lang_ver ~loc (name_loc, name) (ver_loc, ver) =
     match Table.find extensions name with
     | None ->
       User_error.raise
@@ -303,9 +303,19 @@ module Extension = struct
             name
             (Syntax.Version.to_string v)
         ]
-    | Some (Extension (Packed e)) ->
+    | Some (Extension (Packed e as packed)) ->
       Syntax.check_supported ~dune_lang_ver e.syntax (ver_loc, ver);
-      { extension = Packed e; version = ver; loc; parse_args }
+      packed, ver
+  ;;
+
+  let instantiate ~dune_lang_ver ~loc ~parse_args name ver =
+    let extension, version = lookup ~dune_lang_ver ~loc name ver in
+    { extension; version; loc; parse_args }
+  ;;
+
+  let find_syntax ~dune_lang_ver ~loc name ver =
+    let Packed e, version = lookup ~dune_lang_ver ~loc name ver in
+    e.syntax, version
   ;;
 
   type automatic =

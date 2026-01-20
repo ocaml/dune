@@ -979,7 +979,7 @@ let check_lock_dirs_no_dupes lock_dirs =
       ]
 ;;
 
-let step1 clflags =
+let step1 ~(lang : Lang.Instance.t) clflags =
   let { Clflags.x
       ; profile = cl_profile
       ; instrument_with = cl_instrument_with
@@ -1009,6 +1009,24 @@ let step1 clflags =
     let+ x = field in
     lazy (Option.value cl ~default:(Lazy.force x))
   in
+  let* extensions =
+    multi_field
+      "using"
+      (let+ loc = loc
+       and+ name = located string
+       and+ ver = located Dune_lang.Syntax.Version.decode in
+       Dune_lang.Dune_project.Extension.find_syntax
+         ~dune_lang_ver:lang.version
+         ~loc
+         name
+         ver)
+  in
+  let parsing_context =
+    List.fold_left extensions ~init:Univ_map.empty ~f:(fun acc (syntax, version) ->
+      Univ_map.set acc (Dune_lang.Syntax.key syntax) (Active version))
+  in
+  Dune_lang.Decoder.set_many parsing_context
+  @@
   let* () = Dune_lang.Versioned_file.no_more_lang
   and+ env = env_field_lazy
   and+ profile =
@@ -1111,7 +1129,7 @@ let step1 clflags =
   { Step1.t; config }
 ;;
 
-let step1 clflags = fields (step1 clflags)
+let step1 ~lang clflags = fields (step1 ~lang clflags)
 
 let default clflags =
   let { Clflags.x
@@ -1157,7 +1175,7 @@ let load_step1 clflags p =
       parse_contents lb ~f:(fun lang ->
         String_with_vars.set_decoding_env
           (Pform.Env.initial ~stanza:lang.version ~extensions:[])
-          (step1 clflags)))
+          (step1 ~lang clflags)))
 ;;
 
 let filename = "dune-workspace"

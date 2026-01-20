@@ -15,7 +15,7 @@ dune trace cat --follow
 
   $ checkStart() {
   >   dune trace cat \
-  >     | jq 'select(.name == "config" and .cat == "config")' \
+  >     | jq 'select(.name == "init" and .cat == "config")' \
   >     | head -n 1 \
   >     || true
   > } 1> /dev/null 2>&1

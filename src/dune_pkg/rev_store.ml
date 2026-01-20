@@ -627,7 +627,27 @@ let load_or_create ~dir =
   let+ () =
     with_flock lock ~f:(fun () ->
       match Fpath.mkdir_p (Path.to_string dir) with
-      | Already_exists -> Fiber.return ()
+      | Already_exists ->
+        (* CR-Leonidas-from-XIV: figure out what `rev-parse --is-bare-repository`
+           is doing and implement it without shelling out *)
+        run t ~display:Quiet [ "rev-parse"; "--is-bare-repository" ]
+        >>| (function
+         | Ok () ->
+           (* This command will also succeed if it is a non-bare repo (it just
+              displays "false" in that case) that will work for the rev store
+              just as well. *)
+           ()
+         | Error _git_error ->
+           let command = sprintf "rm -rf %s" (Path.to_string_maybe_quoted dir) in
+           let hints =
+             [ Pp.text "Try deleting the folder with"; User_message.command command ]
+           in
+           User_error.raise
+             ~hints
+             [ Pp.text
+                 "The folder at the revision store location is not a valid bare git \
+                  repository."
+             ])
       | Created ->
         run t ~display:Quiet [ "init"; "--bare" ]
         >>| (function

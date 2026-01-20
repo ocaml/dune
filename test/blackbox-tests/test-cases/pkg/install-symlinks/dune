@@ -1,0 +1,2 @@
+(cram
+ (setup_scripts helpers.sh))

@@ -36,6 +36,10 @@ let
           };
       in
       {
+        ocaml = osuper.ocaml.override {
+          flambdaSupport = false;
+        };
+
         dune_3 = osuper.dune_3.overrideAttrs (old: {
           src = revdeps-dune;
         });

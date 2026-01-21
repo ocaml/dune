@@ -1,46 +1,23 @@
 open Stdune
 
-module Counter = struct
-  type t = int ref
-
-  let create () = ref 0
-  let read t = !t
-  let incr t = incr t
-  let add t count = t := !t + count
-end
-
 module Restore = struct
   let nodes = Counter.create ()
   let edges = Counter.create ()
   let blocked = Counter.create ()
-
-  let reset () =
-    nodes := 0;
-    edges := 0;
-    blocked := 0
-  ;;
+  let reset () = List.iter [ nodes; edges; blocked ] ~f:Counter.reset
 end
 
 module Compute = struct
   let nodes = Counter.create ()
   let edges = Counter.create ()
   let blocked = Counter.create ()
-
-  let reset () =
-    nodes := 0;
-    edges := 0;
-    blocked := 0
-  ;;
+  let reset () = List.iter [ nodes; edges; blocked ] ~f:Counter.reset
 end
 
 module Cycle_detection = struct
   let nodes = Counter.create ()
   let edges = Counter.create ()
-
-  let reset () =
-    nodes := 0;
-    edges := 0
-  ;;
+  let reset () = List.iter [ nodes; edges ] ~f:Counter.reset
 end
 
 let reset () =

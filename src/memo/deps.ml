@@ -1,4 +1,3 @@
-module Counter = Metrics.Counter
 module M = Metrics
 open Stdune
 module Metrics = M

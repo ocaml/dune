@@ -89,7 +89,7 @@ type t =
   ; requires_link : Lib.t list Resolve.t Memo.Lazy.t
   ; implements : Virtual_rules.t
   ; parameters : Module_name.t list Resolve.Memo.t
-  ; instances : Parameterised_rules.instances list Resolve.Memo.t option
+  ; instances : Parameterised_instances.t Resolve.Memo.t option
   ; includes : Includes.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
@@ -355,4 +355,9 @@ let for_plugin_executable t ~embed_in_plugin_libraries =
 let without_bin_annot t = { t with bin_annot = false }
 let set_obj_dir t obj_dir = { t with obj_dir }
 let set_modes t ~modes = { t with modes }
-let instances t = t.instances
+
+let instances t =
+  match t.instances with
+  | None -> Action_builder.return Parameterised_instances.none
+  | Some instances -> Resolve.Memo.read instances
+;;

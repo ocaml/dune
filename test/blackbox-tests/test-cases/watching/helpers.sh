@@ -1,9 +1,9 @@
-DUNE_RUNNING=0
+export DUNE_RUNNING=0
 
 start_dune () {
-    ((dune build "$@" --passive-watch-mode > .#dune-output 2>&1) || (echo exit $? >> .#dune-output)) &
+    ( (dune build "$@" --passive-watch-mode > .#dune-output 2>&1) || (echo exit $? >> .#dune-output) ) &
     DUNE_PID=$!;
-    DUNE_RUNNING=1;
+    export DUNE_RUNNING=1;
 }
 
 timeout="$(command -v timeout || echo gtimeout)"
@@ -27,10 +27,10 @@ stop_dune () {
     if [ "$(uname -s)" = "Linux" ]
     then
         # wait for all child processes
-        tail --pid=$DUNE_PID -f /dev/null;
+        tail --pid="$DUNE_PID" -f /dev/null;
     else
         # wait for dune to exit
-        wait $DUNE_PID;
+        wait "$DUNE_PID";
     fi
     cat .#dune-output;
 }

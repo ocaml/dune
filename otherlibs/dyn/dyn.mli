@@ -28,8 +28,7 @@ val compare : t -> t -> Ordering.t
 val hash : t -> int
 
 (** Prints valid OCaml literals for all constructors except:
-    [Int32], [Int64], [Nativeint], [Bytes], [Float] (infinity/nan),
-    [Opaque], [Map], [Set]. *)
+    [Bytes], [Float] (infinity/nan), [Opaque], [Map], [Set]. *)
 val pp : t -> _ Pp.t
 
 val to_string : t -> string

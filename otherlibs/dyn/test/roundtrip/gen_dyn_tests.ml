@@ -1,17 +1,14 @@
 let int_cases = [ Dyn.int 42; Dyn.int (-1); Dyn.int 0; Dyn.int max_int; Dyn.int min_int ]
 
-(* CR-someday Alizter: int32 doesn't print with literal suffix l *)
-let _int32_cases =
+let int32_cases =
   [ Dyn.int32 42l; Dyn.int32 (-1l); Dyn.int32 Int32.max_int; Dyn.int32 Int32.min_int ]
 ;;
 
-(* CR-someday Alizter: int64 doesn't print with literal suffix L *)
-let _int64_cases =
+let int64_cases =
   [ Dyn.int64 42L; Dyn.int64 (-1L); Dyn.int64 Int64.max_int; Dyn.int64 Int64.min_int ]
 ;;
 
-(* CR-someday Alizter: nativeint doesn't print with literal suffix n *)
-let _nativeint_cases = [ Dyn.nativeint 42n; Dyn.nativeint (-1n) ]
+let nativeint_cases = [ Dyn.nativeint 42n; Dyn.nativeint (-1n) ]
 
 let string_cases =
   [ Dyn.string "hello"
@@ -136,6 +133,9 @@ let variant_cases =
 let all_cases =
   List.concat
     [ int_cases
+    ; int32_cases
+    ; int64_cases
+    ; nativeint_cases
     ; string_cases
     ; char_cases
     ; float_cases

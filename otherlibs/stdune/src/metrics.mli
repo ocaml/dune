@@ -1,5 +1,3 @@
-open Stdune
-
 (** Utilities for collecting performance metrics *)
 
 (** This function must be called to enable all performance metrics. *)

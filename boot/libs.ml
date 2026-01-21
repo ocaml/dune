@@ -87,12 +87,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_metrics"
-    ; main_module_name = Some "Dune_metrics"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "otherlibs/dune-action-trace"
     ; main_module_name = Some "Dune_action_trace"
     ; include_subdirs = No
@@ -508,7 +502,6 @@ let main =
             ; "UnixLabels"
             ; "Install"
             ; "Dune_findlib"
-            ; "Dune_metrics"
             ; "Dune_digest"
             ; "Dune_cache"
             ; "Dune_cache_storage"

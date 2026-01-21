@@ -1,6 +1,8 @@
-open Stdune
-open Fiber.O
 module Counter = Metrics.Counter
+module M = Metrics
+open Stdune
+module Metrics = M
+open Fiber.O
 
 (* The array is stored reversed to avoid reversing the list in [create]. We need to be
    careful about traversing the array in the right order in the functions [to_list] and

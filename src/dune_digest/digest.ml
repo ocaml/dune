@@ -12,7 +12,6 @@ include T
 module C = Comparable.Make (T)
 module Set = C.Set
 module Map = C.Map
-module Metrics = Dune_metrics
 
 module Hasher = struct
   type t = Blake3_mini.t

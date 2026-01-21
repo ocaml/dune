@@ -60,7 +60,6 @@ include struct
 end
 
 module Digest = Dune_digest
-module Metrics = Dune_metrics
 module Console = Dune_console
 
 include struct

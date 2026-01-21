@@ -83,8 +83,12 @@ let float_to_string =
     loop 0
   in
   fun x ->
-    let s = format_float "%.15g" x in
-    valid_float_lexeme @@ if float_of_string s = x then s else format_float "%.17g" x
+    match Float.classify_float x with
+    | FP_nan -> "nan"
+    | FP_infinite -> if x > 0. then "infinity" else "neg_infinity"
+    | FP_normal | FP_subnormal | FP_zero ->
+      let s = format_float "%.15g" x in
+      valid_float_lexeme @@ if float_of_string s = x then s else format_float "%.17g" x
 ;;
 
 let pp_sequence start stop x ~f =

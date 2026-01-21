@@ -18,7 +18,10 @@
       url = "github:oxcaml/opam-repository";
       flake = false;
     };
-    revdeps-dune.url = "github:ocaml/dune";
+    revdeps-dune = {
+      url = "github:ocaml/dune";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
   outputs =
     { self

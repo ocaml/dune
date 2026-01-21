@@ -8,13 +8,13 @@ type job =
 val dyn_of_job : job -> Dyn.t
 
 type build_input_change =
-  | Fs_event of Dune_file_watcher.Fs_memo_event.t
+  | Fs_event of File_watcher.Fs_memo_event.t
   | Invalidation of Memo.Invalidation.t
 
 type t =
-  | File_watcher_task of (unit -> Dune_file_watcher.Event.t list)
+  | File_watcher_task of (unit -> File_watcher.Event.t list)
   | Build_inputs_changed of build_input_change Nonempty_list.t
-  | File_system_sync of Dune_file_watcher.Sync_id.t
+  | File_system_sync of File_watcher.Sync_id.t
   | File_system_watcher_terminated
   | Shutdown of Shutdown.Reason.t
   | Fiber_fill_ivar of Fiber.fill
@@ -47,12 +47,12 @@ module Queue : sig
   val send_worker_tasks_completed : t -> Fiber.fill list -> unit
   val register_worker_task_started : t -> unit
   val cancel_work_task_started : t -> unit
-  val send_file_watcher_task : t -> (unit -> Dune_file_watcher.Event.t list) -> unit
+  val send_file_watcher_task : t -> (unit -> File_watcher.Event.t list) -> unit
 
   (** It's a bit weird to have both this and [send_file_watcher_task]. The
       reason is that [send_file_watcher_task] uses [send_file_watcher_events]
       internally. *)
-  val send_file_watcher_events : t -> Dune_file_watcher.Event.t list -> unit
+  val send_file_watcher_events : t -> File_watcher.Event.t list -> unit
 
   val send_invalidation_event : t -> Memo.Invalidation.t -> unit
   val send_job_completed : t -> job -> Proc.Process_info.t -> unit

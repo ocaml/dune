@@ -7,7 +7,7 @@ let%expect_test _ =
   let mutex = Mutex.create () in
   let events_buffer = ref [] in
   let watcher =
-    Dune_file_watcher.create_default
+    Dune_scheduler.File_watcher.create_default
       ~scheduler:
         { spawn_thread = (fun f -> Thread.create f ())
         ; thread_safe_send_emit_events_job =
@@ -27,16 +27,16 @@ let%expect_test _ =
         events_buffer := [];
         Some
           (List.map list ~f:(function
-             | Dune_file_watcher.Event.Sync _ -> assert false
+             | Dune_scheduler.File_watcher.Event.Sync _ -> assert false
              | Queue_overflow -> assert false
              | Fs_memo_event e -> e
              | Watcher_terminated -> assert false)))
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in
-  (match Dune_file_watcher.add_watch watcher (Path.of_string ".") with
+  (match Dune_scheduler.File_watcher.add_watch watcher (Path.of_string ".") with
    | Error _ -> assert false
    | Ok () -> ());
-  Dune_file_watcher.wait_for_initial_watches_established_blocking watcher;
+  Dune_scheduler.File_watcher.wait_for_initial_watches_established_blocking watcher;
   Stdio.Out_channel.write_all "x" ~data:"x";
   print_events 2;
   [%expect
@@ -53,7 +53,7 @@ let%expect_test _ =
     { path = In_source_tree "y"; kind = "Created" }
 |}];
   let (_ : _) = Fpath.mkdir_p "d/w" in
-  (match Dune_file_watcher.add_watch watcher (Path.of_string "d/w") with
+  (match Dune_scheduler.File_watcher.add_watch watcher (Path.of_string "d/w") with
    | Error _ -> assert false
    | Ok () -> ());
   Stdio.Out_channel.write_all "d/w/x" ~data:"x";

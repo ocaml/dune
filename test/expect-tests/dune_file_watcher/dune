@@ -1,7 +1,7 @@
 (library
  (name dune_file_watcher_tests_lib)
  (modules dune_file_watcher_tests_lib)
- (libraries dune_file_watcher base stdune threads.posix stdio unix))
+ (libraries dune_scheduler base stdune threads.posix stdio unix))
 
 (library
  (name dune_file_watcher_tests_macos)
@@ -15,7 +15,7 @@
    (sandbox always)))
  (libraries
   unix
-  dune_file_watcher
+  dune_scheduler
   dune_file_watcher_tests_lib
   ppx_expect.config
   ppx_expect.config_types
@@ -36,7 +36,7 @@
   (deps
    (sandbox always)))
  (libraries
-  dune_file_watcher
+  dune_scheduler
   dune_file_watcher_tests_lib
   ppx_expect.config
   ppx_expect.config_types
@@ -58,7 +58,7 @@
  (libraries
   base
   dune_config_file
-  dune_file_watcher
+  dune_scheduler
   ppx_expect.config
   ppx_expect.config_types
   ppx_inline_test.config)

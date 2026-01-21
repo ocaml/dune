@@ -154,8 +154,8 @@ val spawn_thread : (unit -> unit) -> Thread.t
     This must be called by dune_engine at initialization before starting
     the scheduler to enable proper file system event handling. *)
 val set_fs_memo_impl
-  :  handle_fs_event:(Dune_file_watcher.Fs_memo_event.t -> Memo.Invalidation.t)
-  -> init:(dune_file_watcher:Dune_file_watcher.t option -> Memo.Invalidation.t)
+  :  handle_fs_event:(File_watcher.Fs_memo_event.t -> Memo.Invalidation.t)
+  -> init:(dune_file_watcher:File_watcher.t option -> Memo.Invalidation.t)
   -> unit
 
 module For_tests : sig

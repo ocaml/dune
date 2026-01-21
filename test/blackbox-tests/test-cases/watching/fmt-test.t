@@ -1,5 +1,3 @@
-  $ . ./helpers.sh
-
   $ echo '(lang dune 3.20)' > dune-project
   $ cat > dune << EOF
   > (executable

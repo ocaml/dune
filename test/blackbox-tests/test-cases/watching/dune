@@ -3,7 +3,7 @@
   (binaries ../../utils/ocamlformat.exe)))
 
 (cram
- (deps helpers.sh))
+ (setup_scripts helpers.sh))
 
 (cram
  (applies_to fmt-test)

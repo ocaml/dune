@@ -1,7 +1,5 @@
 Demonstrate running "dune promote" concurrently with a passive rpc server
 
-  $ . ./helpers.sh
-
   $ echo '(lang dune 3.20)' > dune-project
   $ echo "  $ echo hello" > my_test.t
 

@@ -1,7 +1,5 @@
 Test that Dune mkdirs the right set of directories in the sandbox.
 
-  $ . ./helpers.sh
-
 ----------------------------------------------------------------------------------
 * Compile a simple rule
 

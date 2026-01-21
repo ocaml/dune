@@ -3,8 +3,6 @@ adding . to $CWD
 
 Reproduce #6907
 
-  $ . ./helpers.sh
-
   $ export PATH=.:$PATH
   $ echo "(lang dune 2.0)" > dune-project
 

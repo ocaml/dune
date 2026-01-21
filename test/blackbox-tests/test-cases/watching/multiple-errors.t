@@ -1,7 +1,5 @@
 We test the behavior of watch mode when we have multiple errors
 
-  $ . ./helpers.sh
-
   $ echo "(lang dune 3.11)" > dune-project
 
   $ start_dune

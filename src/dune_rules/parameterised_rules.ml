@@ -83,16 +83,33 @@ let build_instance
     |> Super_context.add_rule ~dir sctx)
 ;;
 
+let lib_archive ~mode lib_info =
+  match Mode.Dict.get (Lib_info.archives lib_info) mode with
+  | [ target ] -> target
+  | [] | _ :: _ :: _ ->
+    Code_error.raise
+      "expected single archive target"
+      [ "info", Lib_name.to_dyn (Lib_info.name lib_info) ]
+;;
+
+let build_jsoo ~sctx ~obj_dir ~dir ~lib ~mode ~config =
+  let src = lib_archive ~mode:Byte (Lib.info lib) in
+  Jsoo_rules.build_from_cm
+    sctx
+    ~mode
+    ~in_context:Js_of_ocaml.In_context.default
+    ~obj_dir
+    ~dir
+    ~src
+    ~config
+    ~shapes:(Action_builder.return [])
+    ~sourcemap:Js_of_ocaml.Sourcemap.No
+  |> Super_context.add_rule ~dir sctx
+;;
+
 let build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules =
   let lib_info = Lib_info.as_local_exn (Lib.info lib) in
-  let target =
-    match Mode.Dict.get (Lib_info.archives lib_info) mode with
-    | [ target ] -> target
-    | [] | _ :: _ :: _ ->
-      Code_error.raise
-        "expected single target"
-        [ "info", Lib_info.to_dyn Path.Build.to_dyn lib_info ]
-  in
+  let target = lib_archive ~mode lib_info in
   let hidden_targets =
     match mode, Lib_info.native_archives lib_info with
     | Native, Files lst -> lst
@@ -328,19 +345,26 @@ let instantiate ~sctx lib =
   let lib = Lib.Parameterised.for_instance ~build_dir ~ext_lib lib in
   let obj_dir = Lib_info.obj_dir (Lib.info lib) |> Obj_dir.as_local_exn in
   let top_sorted_modules = Dep_graph.top_closed_implementations dep_graph impl_only in
-  Memo.parallel_iter Ocaml.Mode.all ~f:(fun mode ->
-    let* modules =
-      build_modules
-        ~sctx
-        ~obj_dir
-        ~modules_obj_dir
-        ~dep_graph
-        ~mode
-        ~requires
-        ~lib
-        impl_only
-    in
-    build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules)
+  let+ () =
+    Memo.parallel_iter Ocaml.Mode.all ~f:(fun mode ->
+      let* modules =
+        build_modules
+          ~sctx
+          ~obj_dir
+          ~modules_obj_dir
+          ~dep_graph
+          ~mode
+          ~requires
+          ~lib
+          impl_only
+      in
+      build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules)
+  and+ () =
+    Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
+      Memo.parallel_iter Jsoo_rules.Config.all ~f:(fun config ->
+        build_jsoo ~sctx ~obj_dir ~dir:build_dir ~lib ~mode ~config:(Some config)))
+  in
+  ()
 ;;
 
 let resolve_instantiation scope instance_name =

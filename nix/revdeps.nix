@@ -144,7 +144,12 @@ let
     ocamlVersion = "5_4";
   };
 
-  allPkgs = lib.attrValues candidates;
+  # Filter to only packages available on current platform
+  platformCompatible = lib.filterAttrs (name: pkg:
+    lib.meta.availableOn pkgsPermissive.stdenv.hostPlatform pkg
+  ) candidates;
+
+  allPkgs = lib.attrValues platformCompatible;
 in
 # Expose the whole scope for individual builds, plus 'all' for everything
 pkgsPermissive.ocamlPackages

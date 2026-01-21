@@ -535,6 +535,8 @@ let cmo_js_of_module ~mode m =
     ~ext:(Js_of_ocaml.Ext.cmo ~mode)
 ;;
 
+let unused_ext_lib = Filename.Extension.of_string_exn ".unused"
+
 let link_rule
       ~mode
       cc
@@ -551,6 +553,7 @@ let link_rule
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in
   let ctx = Super_context.context sctx |> Context.build_context in
+  let build_dir = Super_context.context sctx |> Context.build_dir in
   let get_all =
     let open Action_builder.O in
     let+ config =
@@ -565,6 +568,9 @@ let link_rule
     and+ jsoo_version =
       let* jsoo = jsoo ~dir sctx in
       Action_builder.of_memo @@ Version.jsoo_version jsoo
+    in
+    let libs =
+      List.map libs ~f:(Lib.Parameterised.for_instance ~build_dir ~ext_lib:unused_ext_lib)
     in
     (* Special case for the stdlib because it is not referenced in the
        META *)
@@ -668,6 +674,23 @@ let build_cm'
     ~sourcemap
 ;;
 
+let build_from_cm sctx ~dir ~in_context ~mode ~src ~obj_dir ~shapes ~config ~sourcemap =
+  let target =
+    let name = with_js_ext ~mode (Path.basename src) in
+    in_obj_dir ~obj_dir ~config [ name ]
+  in
+  build_cm'
+    sctx
+    ~dir
+    ~in_context
+    ~mode
+    ~src
+    ~target
+    ~shapes
+    ~config:(Option.map config ~f:Action_builder.return)
+    ~sourcemap
+;;
+
 let build_cm
       cctx
       ~dir
@@ -678,10 +701,6 @@ let build_cm
       ~deps
       ~config:config_opt
   =
-  let target =
-    let name = with_js_ext ~mode (Path.basename src) in
-    in_obj_dir ~obj_dir ~config:config_opt [ name ]
-  in
   let sctx = Compilation_context.super_context cctx in
   let shapes =
     let ctx = Super_context.context sctx |> Context.build_context in
@@ -702,15 +721,15 @@ let build_cm
     @ List.map deps ~f:(fun m ->
       Path.build (in_obj_dir ~obj_dir ~config:config_opt [ cmo_js_of_module ~mode m ]))
   in
-  build_cm'
+  build_from_cm
     sctx
     ~dir
     ~in_context
     ~mode
     ~src
-    ~target
+    ~obj_dir
     ~shapes
-    ~config:(Option.map config_opt ~f:Action_builder.return)
+    ~config:config_opt
     ~sourcemap:Js_of_ocaml.Sourcemap.Inline
 ;;
 

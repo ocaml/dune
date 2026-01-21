@@ -54,8 +54,7 @@ let float_cases =
   ]
 ;;
 
-(* CR-someday: infinity/neg_infinity/nan print as inf/-inf/nan, not OCaml literals *)
-let _float_special_cases = [ Dyn.float infinity; Dyn.float neg_infinity; Dyn.float nan ]
+let float_special_cases = [ Dyn.float infinity; Dyn.float neg_infinity; Dyn.float nan ]
 let bool_cases = [ Dyn.bool true; Dyn.bool false ]
 let unit_cases = [ Dyn.unit () ]
 
@@ -139,6 +138,7 @@ let all_cases =
     ; string_cases
     ; char_cases
     ; float_cases
+    ; float_special_cases
     ; bool_cases
     ; unit_cases
     ; list_cases

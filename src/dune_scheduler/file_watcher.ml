@@ -455,7 +455,6 @@ let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) should_excl
           in
           emit_events events;
           events)))
-    ~log_error:(fun error -> Console.print [ Pp.text error ])
 ;;
 
 let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend ~watch_exclusions =

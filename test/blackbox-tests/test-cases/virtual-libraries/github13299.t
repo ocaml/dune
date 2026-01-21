@@ -75,11 +75,3 @@ Should still build the fallback in the negative case:
   >    (!mylib_opt -> config.without.ml))))
   > EOF
   $ dune build main.exe
-  File "dune", line 3, characters 12-22:
-  3 |  (libraries mylib_impl))
-                  ^^^^^^^^^^
-  Error: Library "mylib_impl" in _build/default/mylib_impl is hidden (optional
-  with unavailable dependencies).
-  -> required by _build/default/.main.eobjs/native/dune__exe__Main.cmx
-  -> required by _build/default/main.exe
-  [1]

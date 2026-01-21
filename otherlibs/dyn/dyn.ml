@@ -108,9 +108,9 @@ let rec pp ?(in_arg = false) =
   | Opaque -> Pp.verbatim "<opaque>"
   | Unit -> Pp.verbatim "()"
   | Int i -> Pp.verbatim (string_of_int i)
-  | Int32 i -> Pp.verbatim (Int32.to_string i)
-  | Int64 i -> Pp.verbatim (Int64.to_string i)
-  | Nativeint i -> Pp.verbatim (Nativeint.to_string i)
+  | Int32 i -> Pp.verbatim (Int32.to_string i ^ "l")
+  | Int64 i -> Pp.verbatim (Int64.to_string i ^ "L")
+  | Nativeint i -> Pp.verbatim (Nativeint.to_string i ^ "n")
   | Bool b -> Pp.verbatim (string_of_bool b)
   | String s -> string_in_ocaml_syntax s
   | Bytes b -> string_in_ocaml_syntax (Bytes.to_string b)

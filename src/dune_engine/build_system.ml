@@ -243,28 +243,23 @@ end = struct
   let build_deps deps = Dep.Map.parallel_map deps ~f:(fun dep () -> build_dep dep)
 
   let select_sandbox_mode (config : Sandbox_config.t) ~loc ~sandboxing_preference =
-    (* Rules with (mode patch-back-source-tree) are special and are not affected
-       by sandboxing preferences. *)
-    match Sandbox_mode.Set.is_patch_back_source_tree_only config with
-    | true -> Some Sandbox_mode.Patch_back_source_tree
-    | false ->
-      let evaluate_sandboxing_preference preference =
-        match Sandbox_mode.Set.mem config preference with
-        | false -> None
-        | true -> Some preference
-      in
-      (match List.find_map sandboxing_preference ~f:evaluate_sandboxing_preference with
-       | Some choice -> choice
-       | None ->
-         (* This is not trivial to reach because the user rules are checked at
-            parse time and [sandboxing_preference] always includes all possible
-            modes. However, it can still be reached if multiple sandbox config
-            specs are combined into an unsatisfiable one. *)
-         User_error.raise
-           ~loc
-           [ Pp.text
-               "This rule forbids all sandboxing modes (but it also requires sandboxing)"
-           ])
+    let evaluate_sandboxing_preference preference =
+      match Sandbox_mode.Set.mem config preference with
+      | false -> None
+      | true -> Some preference
+    in
+    match List.find_map sandboxing_preference ~f:evaluate_sandboxing_preference with
+    | Some choice -> choice
+    | None ->
+      (* This is not trivial to reach because the user rules are checked at
+         parse time and [sandboxing_preference] always includes all possible
+         modes. However, it can still be reached if multiple sandbox config
+         specs are combined into an unsatisfiable one. *)
+      User_error.raise
+        ~loc
+        [ Pp.text
+            "This rule forbids all sandboxing modes (but it also requires sandboxing)"
+        ]
   ;;
 
   (* The current version of the rule digest scheme. We should increment it when
@@ -550,16 +545,10 @@ end = struct
       in
       let can_go_in_shared_cache =
         action.can_go_in_shared_cache
-        && (not
-              (always_rerun
-               || is_action_dynamic
-               || Action.is_useful_to_memoize action.action = Clearly_not))
-        &&
-        match sandbox_mode with
-        | Some Patch_back_source_tree ->
-          (* Action in this mode cannot go in the shared cache *)
-          false
-        | _ -> true
+        && not
+             (always_rerun
+              || is_action_dynamic
+              || Action.is_useful_to_memoize action.action = Clearly_not)
       in
       let* (produced_targets : Digest.t Targets.Produced.t) =
         (* Step I. Check if the workspace-local cache is up to date. *)

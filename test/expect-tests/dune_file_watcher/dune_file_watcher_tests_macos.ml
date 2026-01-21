@@ -8,7 +8,6 @@ let%expect_test _ =
   let events_buffer = ref [] in
   let watcher =
     Dune_file_watcher.create_default
-      ~fsevents_debounce:(Time.Span.of_secs 0.)
       ~scheduler:
         { spawn_thread = (fun f -> Thread.create f ())
         ; thread_safe_send_emit_events_job =
@@ -36,18 +35,19 @@ let%expect_test _ =
   let print_events n = print_events ~try_to_get_events ~expected:n in
   Dune_file_watcher.wait_for_initial_watches_established_blocking watcher;
   Stdio.Out_channel.write_all "x" ~data:"x";
-  print_events 3;
+  print_events 2;
   [%expect
     {|
     { path = In_source_tree "."; kind = "Created" }
-    { path = In_build_dir "."; kind = "Created" }
-    { path = In_source_tree "x"; kind = "Unknown" } |}];
+    { path = In_source_tree "x"; kind = "Created" }
+    |}];
   Unix.rename "x" "y";
   print_events 2;
   [%expect
     {|
-    { path = In_source_tree "x"; kind = "Unknown" }
-    { path = In_source_tree "y"; kind = "Unknown" } |}];
+    { path = In_source_tree "x"; kind = "Deleted" }
+    { path = In_source_tree "y"; kind = "Created" }
+    |}];
   let (_ : _) = Fpath.mkdir_p "d/w" in
   Stdio.Out_channel.write_all "d/w/x" ~data:"x";
   print_events 3;
@@ -55,8 +55,9 @@ let%expect_test _ =
     {|
     { path = In_source_tree "d"; kind = "Created" }
     { path = In_source_tree "d/w"; kind = "Created" }
-    { path = In_source_tree "d/w/x"; kind = "Unknown" } |}];
+    { path = In_source_tree "d/w/x"; kind = "Created" }
+    |}];
   Stdio.Out_channel.write_all "d/w/y" ~data:"y";
   print_events 1;
-  [%expect {| { path = In_source_tree "d/w/y"; kind = "Unknown" } |}]
+  [%expect {| { path = In_source_tree "d/w/y"; kind = "Created" } |}]
 ;;

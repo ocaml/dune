@@ -2,9 +2,7 @@
  (name fsevents_tests)
  (inline_tests
   (enabled_if
-   (and
-    (<> %{env:CI=false} true)
-    (= %{system} macosx)))
+   (= %{system} macosx))
   (deps
    (sandbox always)))
  (libraries

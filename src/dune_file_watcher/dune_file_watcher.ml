@@ -577,7 +577,8 @@ let fsevents_standard_event ~should_exclude event path =
   else (
     let kind =
       match Fsevents.Event.action event with
-      | Rename | Unknown -> Fs_memo_event.Unknown
+      | Unknown -> Fs_memo_event.Unknown
+      | Rename -> if Path.exists path then Created else Deleted
       | Create -> Created
       | Remove -> Deleted
       | Modify -> if Fsevents.Event.kind event = File then File_changed else Unknown

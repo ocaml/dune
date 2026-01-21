@@ -360,7 +360,7 @@ module Dir = struct
         lazy
           (match Dune_trace.global () with
            | None -> map_reduce
-           | Some stats ->
+           | Some trace ->
              fun t ~traverse ~trace_event_name ~f ->
                let start = Time.now () in
                let+ res = map_reduce t ~traverse ~trace_event_name ~f in
@@ -372,7 +372,7 @@ module Dir = struct
                    ~stop
                    ~dir:t.path
                in
-               Dune_trace.Out.emit stats event;
+               Dune_trace.Out.emit trace event;
                res)
       in
       fun t ~traverse ~trace_event_name ~f ->

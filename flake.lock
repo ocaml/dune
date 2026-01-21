@@ -217,22 +217,6 @@
         "type": "github"
       }
     },
-    "nixpkgs_2": {
-      "locked": {
-        "lastModified": 1766870016,
-        "narHash": "sha256-fHmxAesa6XNqnIkcS6+nIHuEmgd/iZSP/VXxweiEuQw=",
-        "owner": "nixos",
-        "repo": "nixpkgs",
-        "rev": "5c2bc52fb9f8c264ed6c93bd20afa2ff5e763dce",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nixos",
-        "ref": "nixpkgs-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
     "ocaml-overlays": {
       "inputs": {
         "nixpkgs": [
@@ -354,7 +338,9 @@
     "revdeps-dune": {
       "inputs": {
         "melange": "melange_2",
-        "nixpkgs": "nixpkgs_2",
+        "nixpkgs": [
+          "nixpkgs"
+        ],
         "nixpkgs-old": "nixpkgs-old_2",
         "ocaml-overlays": "ocaml-overlays_2",
         "oxcaml": "oxcaml_2",

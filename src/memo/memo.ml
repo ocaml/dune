@@ -1,4 +1,6 @@
+module Metrics0 = Metrics
 open Stdune
+module Metrics = Metrics0
 open Fiber.O
 module Graph = Dune_graph.Graph
 module Console = Dune_console
@@ -1627,8 +1629,6 @@ let reset invalidation =
   Invalidation.execute (Invalidation.combine invalidation invalidate_current_run);
   Run.restart ()
 ;;
-
-module Metrics = Metrics
 
 module For_tests = struct
   let get_deps (type i o) (t : (i, o) Table.t) inp =

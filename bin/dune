@@ -22,7 +22,6 @@
   unix
   install
   dune_findlib
-  dune_metrics
   dune_digest
   dune_cache
   dune_cache_storage

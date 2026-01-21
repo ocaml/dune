@@ -1158,7 +1158,7 @@ let build (root : Workspace_root.t) (builder : Builder.t) =
            Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir))
     else `Forbid_builds
   in
-  if builder.print_metrics then Dune_metrics.enable ();
+  if builder.print_metrics then Metrics.enable ();
   { builder; root; rpc }
 ;;
 

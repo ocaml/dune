@@ -1,4 +1,6 @@
+module M = Metrics
 open Stdune
+module Metrics = M
 module Process = Dune_engine.Process
 open Dune_scheduler
 

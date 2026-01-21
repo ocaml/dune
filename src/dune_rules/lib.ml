@@ -1171,6 +1171,7 @@ module rec Resolve_names : sig
     -> Lib_dep.t list
     -> private_deps:private_deps
     -> parameters:(Loc.t * lib) list
+    -> for_:Compilation_mode.t
     -> Resolved.deps Memo.t
 
   val resolve_deps_and_add_runtime_deps
@@ -1421,7 +1422,7 @@ end = struct
         let open Memo.O in
         let+ complex =
           Lib_info.requires info ~for_
-          |> resolve_complex_deps db ~private_deps ~parameters:[]
+          |> resolve_complex_deps db ~private_deps ~parameters:[] ~for_
         in
         Resolve_names.Resolved.user_written complex)
     in
@@ -1797,7 +1798,7 @@ end = struct
     end
   end
 
-  let resolve_select db ~private_deps { Lib_dep.Select.result_fn; choices; loc } =
+  let resolve_select db ~private_deps { Lib_dep.Select.result_fn; choices; loc } ~for_ =
     let open Memo.O in
     let+ res, src_fn =
       let+ select =
@@ -1807,12 +1808,22 @@ end = struct
           >>= function
           | true -> Memo.return None
           | false ->
-            Lib_name.Set.fold required ~init:[] ~f:(fun x acc -> (loc, x) :: acc)
+            let add_loc x = loc, x in
+            Lib_name.Set.to_list_map required ~f:add_loc
             |> resolve_simple_deps ~private_deps db
             |> Resolve.Memo.peek
-            >>| (function
-             | Ok ts -> Some (List.map ts ~f:(fun lib -> loc, lib), file)
-             | Error () -> None))
+            >>= (function
+             | Error () -> Memo.return None
+             | Ok ts ->
+               linking_closure_with_overlap_checks
+                 None
+                 ~forbidden_libraries:Map.empty
+                 ~for_
+                 ts
+               >>| Resolve.peek
+               >>| (function
+                | Error () -> None
+                | Ok _closure -> Some (List.map ts ~f:add_loc, file))))
       in
       let get which =
         match select |> Option.map ~f:which with
@@ -1824,7 +1835,7 @@ end = struct
     res, { Resolved_select.src_fn; dst_fn = result_fn; loc }
   ;;
 
-  let resolve_complex_deps db deps ~private_deps ~parameters =
+  let resolve_complex_deps db deps ~private_deps ~parameters ~for_ =
     let open Memo.O in
     let resolve_parameterised_dep (loc, lib) ~arguments =
       resolve_dep db (loc, lib) ~private_deps
@@ -1853,7 +1864,7 @@ end = struct
          | None -> acc
          | Some lib -> Resolved.Builder.add_resolved acc loc lib)
       | Select select ->
-        let+ resolved, select = resolve_select db ~private_deps select in
+        let+ resolved, select = resolve_select db ~private_deps select ~for_ in
         Resolved.Builder.add_select acc resolved select
       | Instantiate { loc; lib; arguments; new_name = _ } ->
         let* arguments =
@@ -1959,7 +1970,7 @@ end = struct
         ~for_
     =
     let open Memo.O in
-    resolve_complex_deps db ~private_deps ~parameters deps
+    resolve_complex_deps db ~private_deps ~parameters deps ~for_
     >>= add_pp_runtime_deps db ~private_deps ~parameters ~dune_version ~pps ~for_
   ;;
 
@@ -2582,7 +2593,7 @@ module DB = struct
                     "Library %S appears for the second time"
                     (Lib_name.to_string lib.name)
                 ]
-          and+ res =
+          and* res =
             let open Memo.O in
             let+ resolved = Memo.Lazy.force resolved in
             resolved.requires
@@ -2646,7 +2657,12 @@ module DB = struct
       =
       let resolved_user_written_requires =
         Memo.lazy_ (fun () ->
-          Resolve_names.resolve_complex_deps t ~private_deps:Allow_all deps ~parameters:[]
+          Resolve_names.resolve_complex_deps
+            t
+            ~private_deps:Allow_all
+            deps
+            ~parameters:[]
+            ~for_
           |> Memo.map ~f:Resolve_names.Resolved.user_written)
         |> Memo.Lazy.force
       in

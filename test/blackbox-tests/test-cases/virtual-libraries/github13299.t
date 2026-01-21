@@ -52,14 +52,6 @@ implementation is incorrectly marked as having unavailable dependencies.
   $ touch main.ml
 
   $ dune build main.exe 2>&1
-  File "dune", line 3, characters 12-22:
-  3 |  (libraries mylib_impl))
-                  ^^^^^^^^^^
-  Error: Library "mylib_impl" in _build/default/mylib_impl is hidden (optional
-  with unavailable dependencies).
-  -> required by _build/default/.main.eobjs/native/dune__exe__Main.cmx
-  -> required by _build/default/main.exe
-  [1]
 
 Forcing the fallback succeeds:
 

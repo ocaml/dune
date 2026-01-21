@@ -45,13 +45,4 @@ to the default select branch.
   > EOF
 
   $ dune build main.exe
-  File "mylib_opt/dune", line 3, characters 12-34:
-  3 |  (libraries external_lib_not_found))
-                  ^^^^^^^^^^^^^^^^^^^^^^
-  Error: Library "external_lib_not_found" not found.
-  -> required by library "mylib_opt" in _build/default/mylib_opt
-  -> required by executable main in dune:2
-  -> required by _build/default/.main.eobjs/native/dune__exe__Main.cmx
-  -> required by _build/default/main.exe
-  [1]
 

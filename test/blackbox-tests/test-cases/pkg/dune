@@ -93,6 +93,13 @@
  (deps %{bin:unzip})
  (applies_to pkg-extract-fail))
 
+(cram
+ (applies_to build-action-path)
+ ; TODO: Enable on all platforms once Windows bug is fixed
+ (enabled_if
+  (= %{os_type} Win32))
+ (alias runtest-windows))
+
 ;; disabled for flakiness
 
 (cram

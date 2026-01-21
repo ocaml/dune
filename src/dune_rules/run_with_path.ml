@@ -146,16 +146,14 @@ module Spec = struct
         let src = Path.of_string Sys.executable_name in
         let dst = Path.relative bin_folder "dune" in
         Io.portable_symlink ~src ~dst;
-        Path.to_string bin_folder
+        bin_folder
       in
       let env =
         eenv.env
         |> Env.add
              ~var:"OCAMLFIND_DESTDIR"
              ~value:(Path.to_absolute_filename ocamlfind_destdir)
-        |> Env.update ~var:"PATH" ~f:(function
-          | None -> Some dune_folder
-          | Some path -> Some (sprintf "%s:%s" dune_folder path))
+        |> Env_path.cons ~dir:dune_folder
       in
       Output.with_error
         ~accepted_exit_codes:eenv.exit_codes

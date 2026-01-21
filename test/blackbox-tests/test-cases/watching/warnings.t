@@ -1,8 +1,6 @@
 Preventing regression about the RPC promotion which didn't print a warning
 where the normal promotion did. They should now be the same.
 
-  $ . ./helpers.sh
-
   $ echo '(lang dune 3.20)' > dune-project
 
 Something to promote for A

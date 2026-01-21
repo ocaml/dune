@@ -2,8 +2,6 @@ Test target promotion in file-watching mode.
 
   $ export DUNE_TRACE="cache"
 
-  $ . ./helpers.sh
-
   $ echo '(lang dune 3.0)' > dune-project
   $ cat > dune <<EOF
   > (rule

@@ -1,6 +1,5 @@
 Tests for [Fs_memo] module.
 
-  $ . ./helpers.sh
   $ export DUNE_TRACE=cache
 
 # CR-someday rgrinberg: split this massive test

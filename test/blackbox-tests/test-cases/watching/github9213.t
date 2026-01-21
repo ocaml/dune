@@ -1,5 +1,3 @@
-  $ . ./helpers.sh
-
 This test demonstrates a fixed bug where rules for .install are being duplicated between
 rebuilds.
 

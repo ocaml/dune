@@ -1,7 +1,5 @@
 Test what happens in watch mode when we depend on dot files
 
-  $ . ./helpers.sh
-
   $ echo '(lang dune 3.0)' > dune-project
   $ cat > dune <<EOF
   > (rule

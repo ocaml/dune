@@ -1,7 +1,5 @@
 Modify an input file during the build so that Dune interrupts the build once.
 
-  $ . ./helpers.sh
-
 Bad rule! You are not supposed to modify the source tree. No ice-cream for you!
 
   $ mkdir test

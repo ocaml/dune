@@ -1,7 +1,5 @@
 Test directory target promotion in file-watching mode.
 
-  $ . ./helpers.sh
-
   $ echo '(lang dune 3.0)' > dune-project
   $ mkdir test; cd test
   $ cat > dune-project <<EOF

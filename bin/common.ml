@@ -329,7 +329,7 @@ module Options_implied_by_dash_p = struct
   ;;
 
   let dash_p =
-    let dash_p_implies = [ "--release"; "--ignore-lock-dir"; "--only-packages" ] in
+    let dash_p_implies = [ "--release"; "--pkg=disabled"; "--only-packages" ] in
     Term.with_used_args
       Arg.(
         value
@@ -399,7 +399,7 @@ let display_term =
       & info [ "display" ] ~docs:copts_sect ~docv:"MODE" ~doc:(Some doc))
 ;;
 
-let shared_with_config_file =
+let shared_with_config_file ~allow_pkg_flag =
   let docs = copts_sect in
   let+ concurrency =
     let module Concurrency = Dune_config.Concurrency in
@@ -528,6 +528,20 @@ let shared_with_config_file =
                 $(b,--action-stdout-on-success=swallow \
                 --action-stderr-on-success=must-be-empty). This ensures that a \
                 successful build has a \"clean\" empty output."))
+  and+ pkg_enabled =
+    if allow_pkg_flag
+    then
+      Arg.(
+        value
+        & opt (some (enum Dune_config.Pkg_enabled.(all Cli))) None
+        & info
+            [ "pkg" ]
+            ~docs
+            ~doc:
+              (Some
+                 "Enable or disable package management. The default behaviour depends on \
+                  whether a lock directory exists."))
+    else Term.const None
   in
   { Dune_config.Partial.display
   ; concurrency
@@ -542,7 +556,7 @@ let shared_with_config_file =
   ; action_stdout_on_success
   ; action_stderr_on_success
   ; project_defaults = None
-  ; pkg_enabled = None
+  ; pkg_enabled
   ; experimental = None
   }
 ;;
@@ -608,9 +622,9 @@ module Builder = struct
     Buffer.contents b
   ;;
 
-  let make_term ~trace =
+  let make_term ~trace ~allow_pkg_flag =
     let docs = copts_sect in
-    let+ config_from_command_line = shared_with_config_file
+    let+ config_from_command_line = shared_with_config_file ~allow_pkg_flag
     and+ debug_dep_path =
       Arg.(
         value
@@ -973,8 +987,14 @@ module Builder = struct
     }
   ;;
 
-  let term_without_trace = make_term ~trace:None
-  let term = make_term ~trace:(Some (Stdune.Path.Local.to_string default_trace_file))
+  let term_no_trace_no_pkg = make_term ~trace:None ~allow_pkg_flag:false
+
+  let term =
+    make_term
+      ~trace:(Some (Stdune.Path.Local.to_string default_trace_file))
+      ~allow_pkg_flag:true
+  ;;
+
   let default = Term.eval_no_args_empty_env term
 
   let equal

@@ -578,7 +578,7 @@ module Builder = struct
     ; watch_exclusions : string list
     ; build_dir : string
     ; root : string option
-    ; stats_trace_file : string option
+    ; trace_file : string option
     ; allow_builds : bool
     ; default_root_is_cwd : bool
     ; target_exec : string option
@@ -589,7 +589,7 @@ module Builder = struct
   let forbid_builds t = { t with allow_builds = false; no_print_directory = true }
   let default_root_is_cwd t = t.default_root_is_cwd
   let set_default_root_is_cwd t x = { t with default_root_is_cwd = x }
-  let disable_log_file t = { t with stats_trace_file = None }
+  let disable_log_file t = { t with trace_file = None }
   let set_promote t v = { t with promote = Some v }
   let default_target t = t.default_target
 
@@ -801,7 +801,7 @@ module Builder = struct
             ~docs
             ~env:(Cmd.Env.info ~doc "DUNE_DIFF_COMMAND")
             ~doc:(Some doc))
-    and+ stats_trace_file =
+    and+ trace_file =
       Arg.(
         value
         & opt (some string) trace
@@ -966,7 +966,7 @@ module Builder = struct
     ; watch_exclusions
     ; build_dir = Option.value ~default:default_build_dir build_dir
     ; root
-    ; stats_trace_file
+    ; trace_file
     ; allow_builds = true
     ; default_root_is_cwd = false
     ; target_exec
@@ -1008,7 +1008,7 @@ module Builder = struct
         ; watch_exclusions
         ; build_dir
         ; root
-        ; stats_trace_file
+        ; trace_file
         ; allow_builds
         ; default_root_is_cwd
         ; target_exec
@@ -1043,7 +1043,7 @@ module Builder = struct
     && List.equal String.equal t.watch_exclusions watch_exclusions
     && String.equal t.build_dir build_dir
     && Option.equal String.equal t.root root
-    && Option.equal String.equal t.stats_trace_file stats_trace_file
+    && Option.equal String.equal t.trace_file trace_file
     && Bool.equal t.allow_builds allow_builds
     && Bool.equal t.default_root_is_cwd default_root_is_cwd
     && Option.equal String.equal t.target_exec target_exec
@@ -1185,7 +1185,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   Path.set_root (normalize_path (Path.External.cwd ()));
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string c.builder.build_dir);
   let () =
-    match builder.stats_trace_file with
+    match builder.trace_file with
     | None -> Log.init No_log_file
     | Some stats ->
       (match

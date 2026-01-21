@@ -70,16 +70,16 @@ Make a mock package to add as pin dependency
 
   $ dune build
 
-  $ dune tools install ocamllsp 2>&1 | sed -E \
-  >   -e 's|_build/\.sandbox/[0-9a-f]+|_build/.sandbox/HASH|g' \
-  >   -e 's|(ocamlbuild\.0\.15\.0\+ox)-[0-9a-f]+|\1-HASH|g'
+  $ dune tools install ocamllsp 2>&1 \
+  > | dune_cmd subst '_build/\.sandbox/[0-9a-f]+' '_build/.sandbox/HASH' \
+  > | dune_cmd subst '(ocamlbuild\.0\.15\.0\+ox)-[0-9a-f]+' 'ocamlbuild.0.15.0+ox-HASH1'
   Solution for _build/.dev-tools.locks/ocaml-lsp-server:
   - ocaml-base-compiler.5.2.0
   - ocaml-compiler.5.2.0
   - ocaml-lsp-server.0.0.1
   - ocamlbuild.0.15.0+ox
   Error:
-  open(_build/.sandbox/HASH/_private/default/.pkg/ocamlbuild.0.15.0+ox-HASH/source/fix.patch): No such file or directory
+  open(_build/.sandbox/HASH/_private/default/.pkg/ocamlbuild.0.15.0+ox-HASH1/source/fix.patch): No such file or directory
   -> required by
-     _build/_private/default/.pkg/ocamlbuild.0.15.0+ox-HASH/target/cookie
+     _build/_private/default/.pkg/ocamlbuild.0.15.0+ox-HASH1/target/cookie
   -> required by Computing closure for package "ocaml-lsp-server"

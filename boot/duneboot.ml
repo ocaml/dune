@@ -375,14 +375,12 @@ module Arch = struct
   type t =
     [ `arm64
     | `amd64
-    | `x86_64
     | `other
     ]
 
   let of_string : string -> t = function
     | "arm64" -> `arm64
-    | "amd64" -> `amd64
-    | "x86_64" -> `x86_64
+    | "amd64" | "x86_64" -> `amd64
     | _ -> `other
   ;;
 end
@@ -1276,13 +1274,13 @@ end
 module File_kind = struct
   type asm =
     { syntax : [ `Gas | `Intel ]
-    ; arch : [ `Amd64 ] option
+    ; arch : Arch.t option
     ; os : [ `Win | `Unix ] option
     ; assembler : [ `C_comp | `Msvc_asm ]
     }
 
   type c =
-    { arch : [ `Arm64 | `X86 ] option
+    { arch : Arch.t option
     ; flags : string list
     }
 
@@ -1322,11 +1320,11 @@ module File_kind = struct
         let fn = Filename.remove_extension fn in
         let check suffix = String.ends_with fn ~suffix in
         if check "x86-64_unix"
-        then Some `Unix, Some `Amd64, `C_comp
+        then Some `Unix, Some `amd64, `C_comp
         else if check "x86-64_windows_gnu"
-        then Some `Win, Some `Amd64, `C_comp
+        then Some `Win, Some `amd64, `C_comp
         else if check "x86-64_windows_msvc"
-        then Some `Win, Some `Amd64, `Msvc_asm
+        then Some `Win, Some `amd64, `Msvc_asm
         else None, None, `C_comp
       in
       Some (Asm { syntax; arch; os; assembler })
@@ -1336,7 +1334,7 @@ module File_kind = struct
         let check suffix = String.ends_with fn ~suffix in
         let x86 gnu _msvc =
           (* CR rgrinberg: select msvc flags on windows *)
-          Some `X86, gnu
+          Some `amd64, gnu
         in
         if check "_sse2"
         then x86 [ "-msse2" ] [ "/arch:SSE2" ]
@@ -1347,7 +1345,7 @@ module File_kind = struct
         else if check "_avx512"
         then x86 [ "-mavx512f"; "-mavx512vl"; "-mavx512bw" ] [ "/arch:AVX512" ]
         else if String.ends_with fn ~suffix:"_neon"
-        then Some `Arm64, []
+        then Some `arm64, []
         else None, []
       in
       Some (C { arch; flags })
@@ -1616,6 +1614,12 @@ module Library = struct
     ; path_by_obj : Module.Path.t Module.Obj.Map.t
     }
 
+  let is_target_arch ~architecture (arch : Arch.t option) =
+    match arch with
+    | None -> true
+    | Some arch -> architecture = arch
+  ;;
+
   let keep_asm
         { File_kind.syntax; arch; os; assembler = _ }
         ~ccomp_type
@@ -1631,18 +1635,11 @@ module Library = struct
         | `Gas, `Msvc -> false
         | `Gas, _ -> true
         | `Intel, _ -> false)
-    &&
-    match arch, architecture with
-    | None, _ -> true
-    | Some `Amd64, `amd64 -> true
-    | Some `Amd64, _ -> false
+    && is_target_arch ~architecture arch
   ;;
 
   let keep_c { File_kind.arch; flags = _ } ~architecture =
-    match arch with
-    | None -> true
-    | Some `Arm64 -> architecture = `arm64
-    | Some `X86 -> architecture = `amd64 || architecture = `x86_64
+    is_target_arch ~architecture arch
   ;;
 
   let make_c (c : File_kind.c) ~fn ~os_type ~word_size ~ccomp_type =

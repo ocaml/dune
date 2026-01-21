@@ -6,8 +6,6 @@
     - sandboxing by symlinking dependencies
     - sandboxing by copying dependencies
     - sandboxing by hardlinking dependencies
-    - sandboxing by copying dependencies, detecting changes and patching back
-      the source tree
 
     In the last mode, Dune applies all the changes that happened in the sandbox
     to the source tree. This includes:
@@ -29,7 +27,6 @@ type some =
   | Symlink
   | Copy
   | Hardlink
-  | Patch_back_source_tree
 
 type t = some option
 
@@ -44,7 +41,6 @@ module Dict : sig
     ; symlink : 'a
     ; copy : 'a
     ; hardlink : 'a
-    ; patch_back_source_tree : 'a
     }
 
   val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
@@ -57,11 +53,6 @@ module Set : sig
   type t
 
   val singleton : key -> t
-
-  (** For rules with (mode patch-back-source-tree). *)
-  val patch_back_source_tree_only : t
-
-  val is_patch_back_source_tree_only : t -> bool
   val equal : t -> t -> bool
   val compare : t -> t -> Ordering.t
   val of_func : (key -> bool) -> t
@@ -69,11 +60,6 @@ module Set : sig
   val inter : t -> t -> t
   val to_dyn : t -> Dyn.t
 end
-
-(** We exclude [Some Patch_back_source_tree] because selecting this mode
-    globally via the command line or the config file seems like a terrible
-    choice. Also, we want to get rid of this mode eventually. *)
-val all_except_patch_back_source_tree : t list
 
 val all : t list
 val none : t

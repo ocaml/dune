@@ -14,13 +14,6 @@ let create ~deps_rev = Array.of_list deps_rev
 let length = Array.length
 let to_list t = Array.fold_left t ~init:[] ~f:(fun acc x -> x :: acc)
 
-module Changed_or_not = struct
-  type 'cycle t =
-    | Unchanged
-    | Changed
-    | Cancelled of { dependency_cycle : 'cycle }
-end
-
 let changed_or_not t ~f =
   let rec go index =
     if index < 0

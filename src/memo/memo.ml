@@ -5,13 +5,7 @@ open Fiber.O
 module Graph = Dune_graph.Graph
 module Console = Dune_console
 module Counter = Metrics.Counter
-
-module Debug = struct
-  let track_locations_of_lazy_values = ref false
-  let check_invariants = ref false
-  let verbose_diagnostics = ref false
-end
-
+module Debug = Debug
 include Fiber
 
 let when_ x y =
@@ -22,54 +16,13 @@ let when_ x y =
 
 let of_reproducible_fiber = Fun.id
 
-module Allow_cutoff = struct
-  type 'o t =
-    | No
-    | Yes of ('o -> 'o -> bool)
-end
+module Id = Id.Make ()
 
 module type Input = sig
   type t
 
   include Table.Key with type t := t
 end
-
-module Spec = struct
-  type ('i, 'o) t =
-    { name : string option
-    ; (* If the field [witness] precedes any of the functional values ([input]
-         and [f]), then polymorphic comparison actually works for [Spec.t]s. *)
-      witness : 'i Type_eq.Id.t
-    ; input : (module Store_intf.Input with type t = 'i)
-    ; allow_cutoff : 'o Allow_cutoff.t
-    ; f : 'i -> 'o Fiber.t
-    ; human_readable_description : ('i -> User_message.Style.t Pp.t) option
-    }
-
-  let create ~name ~input ~human_readable_description ~cutoff f =
-    let name =
-      match name with
-      | None when !Debug.track_locations_of_lazy_values ->
-        Option.map (Caller_id.get ~skip:[ __FILE__ ]) ~f:(fun loc ->
-          sprintf "lazy value created at %s" (Loc.to_file_colon_line loc))
-      | _ -> name
-    in
-    let allow_cutoff =
-      match cutoff with
-      | None -> Allow_cutoff.No
-      | Some equal -> Yes equal
-    in
-    { name
-    ; input
-    ; allow_cutoff
-    ; witness = Type_eq.Id.create ()
-    ; f
-    ; human_readable_description
-    }
-  ;;
-end
-
-module Id = Id.Make ()
 
 (* We can get rid of this once we use the memoization system more pervasively
    and all the dependencies are properly specified *)
@@ -494,8 +447,6 @@ module Computation0 = struct
 
   let create () = { ivar = Fiber.Ivar.create (); dag_node = Lazy_dag_node.create () }
 end
-
-module Changed_or_not = Deps.Changed_or_not
 
 (* For debugging *)
 let _print_dep_node ?prefix (dep_node : _ Dep_node.t) =

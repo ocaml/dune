@@ -22,7 +22,7 @@ to the dune file dir)
   $ dune rules lib/.a.objs/melange/a.cmj |
   > grep -e "--bs-package-output" --after-context=1
       --bs-package-output
-      .
+      .melange_src
 
 Cmj rules should include `--bs-package-name` with the private mangled name
 

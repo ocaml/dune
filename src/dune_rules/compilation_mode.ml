@@ -40,6 +40,13 @@ module By_mode = struct
     }
 
   let both t = { ocaml = t; melange = t }
+
+  let choose t =
+    match t.ocaml, t.melange with
+    | Some m, _ | None, Some m -> Some m
+    | None, None -> None
+  ;;
+
   let from_fun f = { ocaml = f ~for_:Ocaml; melange = f ~for_:Melange }
 
   let of_list xs ~init =

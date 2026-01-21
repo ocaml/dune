@@ -1798,41 +1798,43 @@ end = struct
     end
   end
 
-  let resolve_select db ~private_deps { Lib_dep.Select.result_fn; choices; loc } ~for_ =
+  let resolve_select =
     let open Memo.O in
-    let+ res, src_fn =
-      let+ select =
-        Memo.List.find_map choices ~f:(fun { required; forbidden; file } ->
-          Lib_name.Set.to_list forbidden
-          |> Memo.List.exists ~f:(available_internal db)
-          >>= function
-          | true -> Memo.return None
-          | false ->
-            let add_loc x = loc, x in
-            Lib_name.Set.to_list_map required ~f:add_loc
-            |> resolve_simple_deps ~private_deps db
-            |> Resolve.Memo.peek
-            >>= (function
-             | Error () -> Memo.return None
-             | Ok ts ->
-               linking_closure_with_overlap_checks
-                 None
-                 ~forbidden_libraries:Map.empty
-                 ~for_
-                 ts
-               >>| Resolve.peek
-               >>| (function
-                | Error () -> None
-                | Ok _closure -> Some (List.map ts ~f:add_loc, file))))
-      in
-      let get which =
-        match select |> Option.map ~f:which with
-        | Some rs -> Resolve.return rs
-        | None -> Error.no_solution_found_for_select ~loc
-      in
-      get fst, get snd
+    let resolve_set db ~private_deps libs ~for_ =
+      resolve_simple_deps ~private_deps db libs
+      |> Resolve.Memo.peek
+      >>= function
+      | Error () -> Memo.return None
+      | Ok ts ->
+        linking_closure_with_overlap_checks None ~forbidden_libraries:Map.empty ~for_ ts
+        >>| Resolve.peek
+        >>| (function
+         | Error () -> None
+         | Ok _closure -> Some ts)
     in
-    res, { Resolved_select.src_fn; dst_fn = result_fn; loc }
+    fun db ~private_deps { Lib_dep.Select.result_fn; choices; loc } ~for_ ->
+      let+ res, src_fn =
+        let+ select =
+          Memo.List.find_map choices ~f:(fun { required; forbidden; file } ->
+            Lib_name.Set.to_list forbidden
+            |> Memo.List.exists ~f:(fun set ->
+              resolve_set db ~private_deps ~for_ [ loc, set ] >>| Option.is_some)
+            >>= function
+            | true -> Memo.return None
+            | false ->
+              let add_loc x = loc, x in
+              Lib_name.Set.to_list_map required ~f:add_loc
+              |> resolve_set db ~private_deps ~for_
+              >>| Option.map ~f:(fun ts -> List.map ts ~f:add_loc, file))
+        in
+        let get which =
+          match select |> Option.map ~f:which with
+          | Some rs -> Resolve.return rs
+          | None -> Error.no_solution_found_for_select ~loc
+        in
+        get fst, get snd
+      in
+      res, { Resolved_select.src_fn; dst_fn = result_fn; loc }
   ;;
 
   let resolve_complex_deps db deps ~private_deps ~parameters ~for_ =

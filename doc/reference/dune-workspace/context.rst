@@ -1,14 +1,14 @@
 context
 -------
-.. CR sudha247: The introductory description of context can be improved to
-.. better convey what it does.
 
-The ``(context ...)`` stanza allows you to declare multiple build contexts in
-the workspace. Each context has its own configuration, and multiple contexts can
-be built side by side. By default Dune uses a single context called ``default``
-whose build directory artifacts appear in ``_build/default/``. There are two
-different kinds of context declarations: ``(default ...)`` for the regular kind
-of build context, or ``(opam ...)`` to use an opam switch.
+The ``(context ...)`` stanza declares a build context. Each context builds the
+same sources with a different configuration and stores its artefacts in a
+separate subdirectory of ``_build/``. This is useful for cross compilation or
+building against multiple lock directories or opam switches.
+
+By default, Dune uses a single context called ``default`` with artefacts in
+``_build/default/``. There are two kinds of context: ``(default ...)`` for a
+regular build context, or ``(opam ...)`` to use an opam switch.
 
 .. note::
 

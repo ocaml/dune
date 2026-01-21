@@ -116,13 +116,31 @@ which corresponds to `~min_len` in Link_time_code_gen.
   $ ocaml compare.ml _build/default/gen2.bc _install/bin/gen2
   64
 
-  $ dune build --debug-artifact-substitution
-  Found placeholder in _build/default/gen_lifecycle.exe:
-  - placeholder: Vcs_describe (In_source_tree ".")
-  - evaluates to: "v0.0.1"
-  Found placeholder in _build/default/gen_lifecycle.bc:
-  - placeholder: Vcs_describe (In_source_tree ".")
-  - evaluates to: "v0.0.1"
+  $ dune build
+
+  $ dune trace cat | jq 'select(.cat == "artifact_subtitution") | .args'
+  {
+    "file": "_build/default/gen_lifecycle.exe",
+    "placeholder": [
+      "Vcs_describe",
+      [
+        "In_source_tree",
+        "."
+      ]
+    ],
+    "value": "v0.0.1"
+  }
+  {
+    "file": "_build/default/gen_lifecycle.bc",
+    "placeholder": [
+      "Vcs_describe",
+      [
+        "In_source_tree",
+        "."
+      ]
+    ],
+    "value": "v0.0.1"
+  }
 
   $ ocaml compare.ml gen_lifecycle.old ./gen_lifecycle.exe
   64

@@ -551,7 +551,6 @@ module Builder = struct
   type t =
     { debug_dep_path : bool
     ; debug_backtraces : bool
-    ; debug_artifact_substitution : bool
     ; debug_package_logs : bool
     ; wait_for_filesystem_clock : bool
     ; only_packages : Only_packages.Clflags.t
@@ -623,14 +622,6 @@ module Builder = struct
                  "In case of error, print the dependency path from the targets on the \
                   command line to the rule that failed."))
     and+ debug_backtraces = debug_backtraces
-    and+ debug_artifact_substitution =
-      Arg.(
-        value
-        & flag
-        & info
-            [ "debug-artifact-substitution" ]
-            ~docs
-            ~doc:(Some "Print debugging info about artifact substitution"))
     and+ debug_package_logs =
       let doc = "Always print the standard logs when building packages" in
       Arg.(
@@ -929,7 +920,6 @@ module Builder = struct
     in
     { debug_dep_path
     ; debug_backtraces
-    ; debug_artifact_substitution
     ; debug_package_logs
     ; wait_for_filesystem_clock
     ; only_packages
@@ -981,7 +971,6 @@ module Builder = struct
         t
         { debug_dep_path
         ; debug_backtraces
-        ; debug_artifact_substitution
         ; debug_package_logs
         ; wait_for_filesystem_clock
         ; only_packages
@@ -1016,7 +1005,6 @@ module Builder = struct
     =
     Bool.equal t.debug_dep_path debug_dep_path
     && Bool.equal t.debug_backtraces debug_backtraces
-    && Bool.equal t.debug_artifact_substitution debug_artifact_substitution
     && Bool.equal t.debug_package_logs debug_package_logs
     && Bool.equal t.wait_for_filesystem_clock wait_for_filesystem_clock
     && Only_packages.Clflags.equal t.only_packages only_packages
@@ -1260,7 +1248,6 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   Report_error.print_memo_stacks := c.builder.debug_dep_path;
   Dune_engine.Clflags.report_errors_config := c.builder.report_errors_config;
   Dune_engine.Clflags.debug_backtraces c.builder.debug_backtraces;
-  Dune_rules.Clflags.debug_artifact_substitution := c.builder.debug_artifact_substitution;
   Dune_rules.Clflags.debug_package_logs := c.builder.debug_package_logs;
   Dune_digest.Clflags.wait_for_filesystem_clock := c.builder.wait_for_filesystem_clock;
   Dune_engine.Clflags.capture_outputs := c.builder.capture_outputs;

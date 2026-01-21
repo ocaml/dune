@@ -22,6 +22,7 @@ module Category : sig
     | Action
     | Cache
     | Digest
+    | Artifact_substitution
 end
 
 module Event : sig
@@ -203,6 +204,7 @@ module Event : sig
   end
 
   val debug : (string * Dyn.t) list -> t
+  val artifact_substitution : file:Path.t -> placeholder:Dyn.t -> value:string -> t
 end
 
 module Out : sig

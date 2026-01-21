@@ -567,19 +567,11 @@ let parse ~input ~mode =
           | Test -> Fiber.return Some_substitution
           | Copy { output; input_file; conf } ->
             let* s = eval t ~conf in
-            (if !Clflags.debug_artifact_substitution
-             then
-               let open Pp.O in
-               Console.print
-                 [ Pp.textf
-                     "Found placeholder in %s:"
-                     (Path.to_string_maybe_quoted input_file)
-                 ; Pp.enumerate
-                     ~f:Fun.id
-                     [ Pp.text "placeholder: " ++ Dyn.pp (to_dyn t)
-                     ; Pp.text "evaluates to: " ++ Dyn.pp (String s)
-                     ]
-                 ]);
+            Dune_trace.emit Artifact_substitution (fun () ->
+              Dune_trace.Event.artifact_substitution
+                ~file:input_file
+                ~placeholder:(to_dyn t)
+                ~value:s);
             let s = encode_replacement ~len ~repl:s in
             output (Bytes.unsafe_of_string s) 0 len;
             let pos = placeholder_start + len in

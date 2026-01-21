@@ -682,3 +682,14 @@ let debug dump =
   let args = List.map dump ~f:(fun (name, dyn) -> name, Arg.dyn dyn) in
   Event.instant ~args ~name:"debug" now Diagnostics
 ;;
+
+let artifact_substitution ~file ~placeholder ~value =
+  let now = Time.now () in
+  let args =
+    [ "file", Arg.path file
+    ; "placeholder", Arg.dyn placeholder
+    ; "value", Arg.string value
+    ]
+  in
+  Event.instant ~args ~name:"debug" now Artifact_substitution
+;;

@@ -64,8 +64,8 @@ type t =
   ; job_throttle : Fiber.Throttle.t
   ; events : Event.Queue.t
   ; process_watcher : Process_watcher.t
-  ; file_watcher : Dune_file_watcher.t option
-  ; fs_syncs : unit Fiber.Ivar.t Dune_file_watcher.Sync_id.Table.t
+  ; file_watcher : File_watcher.t option
+  ; fs_syncs : unit Fiber.Ivar.t File_watcher.Sync_id.Table.t
   ; mutable build_inputs_changed : Trigger.t
   ; mutable cancel : Fiber.Cancel.t
   ; thread_pool : Thread_pool.t Lazy.t
@@ -218,7 +218,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
     ; config
     ; handler
     ; file_watcher
-    ; fs_syncs = Dune_file_watcher.Sync_id.Table.create 64
+    ; fs_syncs = File_watcher.Sync_id.Table.create 64
     ; build_inputs_changed = Trigger.create ()
     ; alarm_clock = lazy (Alarm_clock.create events (Time.Span.of_secs 0.1))
     ; cancel
@@ -272,10 +272,10 @@ end = struct
       Event.Queue.send_file_watcher_events t.events events;
       iter t
     | File_system_sync id ->
-      (match Dune_file_watcher.Sync_id.Table.find t.fs_syncs id with
+      (match File_watcher.Sync_id.Table.find t.fs_syncs id with
        | None -> iter t
        | Some ivar ->
-         Dune_file_watcher.Sync_id.Table.remove t.fs_syncs id;
+         File_watcher.Sync_id.Table.remove t.fs_syncs id;
          [ Fill (ivar, ()) ])
     | Build_inputs_changed events -> build_input_change t events
     | File_system_watcher_terminated ->
@@ -344,7 +344,7 @@ end = struct
       (* CR-someday rgrinberg: we do not wind down the threads for the file
          watchers currently. Might interefere with tests that spawn the
          scheduler more than once *)
-      match Dune_file_watcher.shutdown watcher with
+      match File_watcher.shutdown watcher with
       | `Kill pid ->
         (* CR-someday rgrinberg: Instead of this hackery, we should probably
            just rgister the watcher as a non build process. Luckily, this code
@@ -383,8 +383,8 @@ let flush_file_watcher t =
   | None -> Fiber.return ()
   | Some file_watcher ->
     let ivar = Fiber.Ivar.create () in
-    let id = Dune_file_watcher.emit_sync file_watcher in
-    Dune_file_watcher.Sync_id.Table.set t.fs_syncs id ivar;
+    let id = File_watcher.emit_sync file_watcher in
+    File_watcher.Sync_id.Table.set t.fs_syncs id ivar;
     Fiber.Ivar.read ivar
 ;;
 
@@ -520,7 +520,7 @@ module Run = struct
       | No_watcher -> None
       | Automatic ->
         Some
-          (Dune_file_watcher.create_default
+          (File_watcher.create_default
              ~scheduler:
                { spawn_thread
                ; thread_safe_send_emit_events_job =

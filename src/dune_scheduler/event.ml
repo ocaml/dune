@@ -8,13 +8,13 @@ type job =
 let dyn_of_job { pid; ivar = _ } = Dyn.record [ "pid", Dyn.int (Pid.to_int pid) ]
 
 type build_input_change =
-  | Fs_event of Dune_file_watcher.Fs_memo_event.t
+  | Fs_event of File_watcher.Fs_memo_event.t
   | Invalidation of Memo.Invalidation.t
 
 type t =
-  | File_watcher_task of (unit -> Dune_file_watcher.Event.t list)
+  | File_watcher_task of (unit -> File_watcher.Event.t list)
   | Build_inputs_changed of build_input_change Nonempty_list.t
-  | File_system_sync of Dune_file_watcher.Sync_id.t
+  | File_system_sync of File_watcher.Sync_id.t
   | File_system_watcher_terminated
   | Shutdown of Shutdown.Reason.t
   | Fiber_fill_ivar of Fiber.fill
@@ -23,7 +23,7 @@ type t =
 module Invalidation_event = struct
   type t =
     | Invalidation of Memo.Invalidation.t
-    | Filesystem_event of Dune_file_watcher.Event.t
+    | Filesystem_event of File_watcher.Event.t
 end
 
 module Queue = struct
@@ -31,7 +31,7 @@ module Queue = struct
 
   type t =
     { jobs_completed : (job * Proc.Process_info.t) Queue.t
-    ; file_watcher_tasks : (unit -> Dune_file_watcher.Event.t list) Queue.t
+    ; file_watcher_tasks : (unit -> File_watcher.Event.t list) Queue.t
     ; mutable invalidation_events : Invalidation_event.t list
     ; mutable shutdown_reasons : Shutdown.Reason.Set.t
     ; mutex : Mutex.t

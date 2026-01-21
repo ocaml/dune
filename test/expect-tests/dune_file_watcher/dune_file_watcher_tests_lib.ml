@@ -67,7 +67,9 @@ let get_events ~try_to_get_events ~expected =
 let print_events ~try_to_get_events ~expected =
   let events, status = get_events ~try_to_get_events ~expected in
   List.iter events ~f:(fun event ->
-    Dune_file_watcher.Fs_memo_event.to_dyn event |> Dyn.to_string |> Stdio.print_endline);
+    Dune_scheduler.File_watcher.Fs_memo_event.to_dyn event
+    |> Dyn.to_string
+    |> Stdio.print_endline);
   match status with
   | `Ok -> ()
   | `Not_enough ->

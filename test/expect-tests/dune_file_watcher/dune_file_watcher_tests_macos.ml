@@ -7,7 +7,7 @@ let%expect_test _ =
   let mutex = Mutex.create () in
   let events_buffer = ref [] in
   let watcher =
-    Dune_file_watcher.create_default
+    Dune_scheduler.File_watcher.create_default
       ~fsevents_debounce:(Time.Span.of_secs 0.)
       ~scheduler:
         { spawn_thread = (fun f -> Thread.create f ())
@@ -28,13 +28,13 @@ let%expect_test _ =
         events_buffer := [];
         Some
           (List.filter_map list ~f:(function
-             | Dune_file_watcher.Event.Sync _ -> None
+             | Dune_scheduler.File_watcher.Event.Sync _ -> None
              | Queue_overflow -> assert false
              | Fs_memo_event e -> Some e
              | Watcher_terminated -> assert false)))
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in
-  Dune_file_watcher.wait_for_initial_watches_established_blocking watcher;
+  Dune_scheduler.File_watcher.wait_for_initial_watches_established_blocking watcher;
   Stdio.Out_channel.write_all "x" ~data:"x";
   print_events 3;
   [%expect

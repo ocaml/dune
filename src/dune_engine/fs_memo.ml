@@ -3,7 +3,7 @@ open Memo.O
 
 (* Watching and invalidating paths. *)
 module Watcher : sig
-  val init : dune_file_watcher:Dune_file_watcher.t option -> Memo.Invalidation.t
+  val init : dune_file_watcher:Dune_scheduler.File_watcher.t option -> Memo.Invalidation.t
 
   (* Watch a path. You should call this function *before* accessing the file
      system to prevent possible races.
@@ -36,12 +36,12 @@ end = struct
      - If the file watcher turns out to be missing, the state [No_file_watcher]
        is used to indicate that there is no need to accumulate [watched_record]s.
 
-     - [File_watcher] holds [Dune_file_watcher.t] once it has been initialised
+     - [File_watcher] holds [Dune_scheduler.File_watcher.t] once it has been initialised
        and all previously collected [watched_record]s have been passed to it. *)
   type state =
     | Waiting_for_file_watcher of watch_record list
     | No_file_watcher
-    | File_watcher of Dune_file_watcher.t
+    | File_watcher of Dune_scheduler.File_watcher.t
 
   (* Ideally this should be an [Fdecl] instead of a mutable reference, but there
      are currently two reasons why it's not:
@@ -66,7 +66,7 @@ end = struct
      it can't be because watching the root is not sufficient to receive events
      for creation of "root/a/b/c" -- for that we need to watch "root/a/b". *)
   let watch_path watcher path =
-    match Dune_file_watcher.add_watch watcher path with
+    match Dune_scheduler.File_watcher.add_watch watcher path with
     | Ok () -> ()
     | Error `Does_not_exist ->
       (* If we're at the root of the workspace (or the Unix root) then we can't
@@ -79,13 +79,13 @@ end = struct
          watching the parent. We still try to add a watch for the [path] itself
          after that succeeds, in case the [path] was created already before we
          started watching its parent. *)
-      (match Dune_file_watcher.add_watch watcher containing_dir with
+      (match Dune_scheduler.File_watcher.add_watch watcher containing_dir with
        | Ok () -> ()
        | Error `Does_not_exist ->
          Log.info
            "Attempted to add watch to non-existent directory"
            [ "path", Dyn.string (Path.to_string containing_dir) ]);
-      (match Dune_file_watcher.add_watch watcher path with
+      (match Dune_scheduler.File_watcher.add_watch watcher path with
        | Error `Does_not_exist | Ok () -> ())
   ;;
 
@@ -102,7 +102,7 @@ end = struct
   (* This comment applies to both memoization tables below.
 
      It may seem weird that we are adding a watch on every invalidation of the
-     cell. This is OK because [Dune_file_watcher.add_watch] is idempotent, in
+     cell. This is OK because [Dune_scheduler.File_watcher.add_watch] is idempotent, in
      the sense that we are not accumulating watches. In fact, if a path
      disappears then we lose the watch and have to re-establish it, so doing it
      on every computation is sometimes necessary. *)
@@ -383,7 +383,7 @@ let invalidate_path_and_its_parent path =
    - Finally, the result of [dir_contents] queries can be updated without
      calling [Path.Untracked.readdir_unsorted_with_kinds]: we know which file or
      directory should be added to or removed from the result. *)
-let handle_fs_event ({ kind; path } : Dune_file_watcher.Fs_memo_event.t)
+let handle_fs_event ({ kind; path } : Dune_scheduler.File_watcher.Fs_memo_event.t)
   : Memo.Invalidation.t
   =
   match Path.destruct_build_dir path with

@@ -1,5 +1,3 @@
-  $ . ../git-helpers.sh
-
 dune subst should not fail when encountering broken symlinks.
 See #9593.
 
@@ -9,7 +7,7 @@ See #9593.
   > (package
   >  (name proj))
   > EOF
-  $ ln -s nonexistent broken 
+  $ ln -s nonexistent broken
 
 This test requires a git repository, otherwise `dune subst` does nothing.
 

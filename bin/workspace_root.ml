@@ -51,7 +51,7 @@ let find from =
         [ Pp.textf
             "Unable to read directory %s. Will not look for root in parent directories."
             dir
-        ; User_error.reason msg
+        ; User_error.reason (Pp.verbatim msg)
         ; Pp.text "To remove this warning, set your root explicitly using --root."
         ];
       candidate

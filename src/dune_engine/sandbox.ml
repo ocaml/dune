@@ -136,7 +136,13 @@ let link_function ~(mode : Sandbox_mode.some) =
      | Hardlink ->
        (match Sys.win32 with
         | true -> win32_error mode
-        | false -> fun src dst -> Io.portable_hardlink ~src ~dst))
+        | false -> fun src dst -> Io.portable_hardlink ~src ~dst)
+     | Patch_back_source_tree ->
+       (* We need to let the action modify its dependencies, so we copy
+          dependencies and make them writable. *)
+       (* CR-someday: this doesn't work with directory targets *)
+       let chmod = Path.Permissions.add Path.Permissions.write in
+       fun src dst -> Io.copy_file ~src ~dst ~chmod ())
 ;;
 
 let link_deps t ~mode ~deps =
@@ -196,7 +202,28 @@ let create ~mode ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
       link_deps t ~mode ~deps)
   in
   Option.iter dune_stats ~f:(fun trace -> Dune_trace.Out.finish trace event);
-  t
+  match mode with
+  | Patch_back_source_tree ->
+    (* Only supported on Linux because we rely on the mtime changing to detect
+       when a file changes. This doesn't work on OSX for instance as the file
+       system granularity is 1s, which is too coarse. *)
+    (match Platform.OS.value with
+     | Linux -> ()
+     | _ ->
+       User_error.raise
+         ~loc:rule_loc
+         [ Pp.textf
+             "(mode patch-back-source-tree) is only supported on Linux at the moment."
+         ]);
+    (* We expect this call to [snapshot t] to return the same set of files as
+       [deps], given that's exactly what we just copied in the sandbox. So in
+       theory, we could iterate over [deps] rather than scan the file system.
+       However, the code is simpler if we just call [snapshot t] before and
+       after running the action. Given that [patch_back_source_tree] is a dodgy
+       feature that we hope to get rid of in the long run, we favor code
+       simplicity over performance. *)
+    { t with snapshot = Some (snapshot t) }
+  | _ -> t
 ;;
 
 (* Same as [rename] except that if the source doesn't exist we delete the

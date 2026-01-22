@@ -482,7 +482,7 @@ module Alias_module = struct
   type t =
     { aliases : alias list
     ; shadowed : Module_name.t list
-    ; instances : Parameterised_rules.instances list
+    ; instances : Parameterised_instances.t
     }
 
   let to_ml { aliases; shadowed; instances } =
@@ -503,7 +503,7 @@ module Alias_module = struct
         b
         "\nmodule %s = struct end\n[@@deprecated \"this module is shadowed\"]\n"
         (Module_name.to_string shadowed));
-    Parameterised_rules.print_instances b instances;
+    Parameterised_instances.print_instances b instances;
     Buffer.contents b
   ;;
 
@@ -533,11 +533,7 @@ let build_alias_module cctx group =
   let* () =
     let alias_file =
       let open Action_builder.O in
-      let+ instances =
-        match Compilation_context.instances cctx with
-        | None -> Action_builder.return []
-        | Some instances -> Resolve.Memo.read instances
-      in
+      let+ instances = Compilation_context.instances cctx in
       let project = Compilation_context.scope cctx |> Scope.project in
       let modules = Compilation_context.modules cctx in
       Alias_module.of_modules project modules group instances |> Alias_module.to_ml

@@ -194,7 +194,10 @@ let executables_rules
     let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
     let requires_link = Lib.Compile.requires_link compile_info ~for_ in
     let instances =
-      Parameterised_rules.instances ~sctx ~db:(Scope.libs scope) exes.buildable.libraries
+      Parameterised_instances.instances
+        ~sctx
+        ~db:(Scope.libs scope)
+        exes.buildable.libraries
     in
     let js_of_ocaml =
       Js_of_ocaml.Mode.Pair.mapi js_of_ocaml ~f:(fun mode x ->

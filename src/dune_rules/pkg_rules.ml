@@ -1540,7 +1540,14 @@ end = struct
         | true, Some build_path ->
           let+ file_set = Build_system.files_of ~dir:files_dir_path in
           Some build_path, Filename_set.filenames file_set
-        | _ -> Memo.return (None, Filename.Set.empty)
+        | _ ->
+          let files_dir_path_no_version = Pkg.files_dir info.name None ~lock_dir in
+          let* exists = Build_system.file_exists files_dir_path_no_version in
+          (match exists, Path.as_in_build_dir files_dir_path_no_version with
+           | true, Some build_path ->
+             let+ file_set = Build_system.files_of ~dir:files_dir_path_no_version in
+             Some build_path, Filename_set.filenames file_set
+           | _ -> Memo.return (None, Filename.Set.empty))
       in
       let id = Pkg.Id.gen () in
       let write_paths =

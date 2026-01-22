@@ -172,5 +172,7 @@ module Detailed = struct
       ]
   ;;
 
-  let pp ?(prefix = "") unix_error = Pp.verbatim (prefix ^ to_string_hum unix_error)
+  let pp ~prefix unix_error = Pp.verbatim (prefix ^ to_string_hum unix_error)
+  let pp_reason unix_error = pp ~prefix:"Reason: " unix_error
+  let pp u = pp ~prefix:"" u
 end

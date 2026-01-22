@@ -108,7 +108,7 @@ let eval_status ~status_map ~(parent_status : Source_dir_status.t) dir
 let error_unable_to_load ~path unix_error =
   User_error.raise
     [ Pp.textf "Unable to load source %s." (Path.Source.to_string_maybe_quoted path)
-    ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
+    ; Unix_error.Detailed.pp_reason unix_error
     ]
 ;;
 

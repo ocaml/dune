@@ -16,5 +16,6 @@ module Detailed : sig
 
   val equal : t -> t -> bool
   val to_string_hum : t -> string
-  val pp : ?prefix:string -> t -> 'a Pp.t
+  val pp : t -> 'a Pp.t
+  val pp_reason : t -> 'a Pp.t
 end

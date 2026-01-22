@@ -76,7 +76,7 @@ let init ~sandboxing_preference () : unit =
       (Memo.lazy_ (fun () ->
          let open Memo.O in
          let+ contexts = Workspace.workspace () >>| Workspace.build_contexts in
-         let open Dune_engine.Build_config.Gen_rules.Context_type in
+         let open Dune_engine.Build_config.Context_type in
          (Private_context.t, Empty)
          :: (Install.Context.install_context, Empty)
          :: (Fetch_rules.context, Empty)

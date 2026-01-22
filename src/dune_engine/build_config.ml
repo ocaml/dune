@@ -1,8 +1,12 @@
 open Import
 
-module Gen_rules = struct
-  module Context_type = Build_config_intf.Context_type
+module Context_type = struct
+  type t =
+    | Empty
+    | With_sources
+end
 
+module Gen_rules = struct
   module Build_only_sub_dirs = struct
     type t = Subdir_set.t Path.Build.Map.t
 
@@ -17,7 +21,11 @@ module Gen_rules = struct
   end
 
   module Rules = struct
-    include Build_config_intf.Rules
+    type nonrec t =
+      { build_dir_only_sub_dirs : Build_only_sub_dirs.t
+      ; directory_targets : Loc.t Path.Build.Map.t
+      ; rules : Rules.t Memo.t
+      }
 
     let empty =
       { build_dir_only_sub_dirs = Path.Build.Map.empty
@@ -48,7 +56,10 @@ module Gen_rules = struct
   end
 
   module Gen_rules_result = struct
-    include Build_config_intf.Gen_rules_result
+    type t =
+      | Rules of Rules.t
+      | Unknown_context
+      | Redirect_to_parent of Rules.t
 
     let redirect_to_parent rules = Redirect_to_parent rules
     let rules_here rules = Rules rules
@@ -56,13 +67,28 @@ module Gen_rules = struct
     let no_rules = rules_here Rules.empty
   end
 
-  module type Rule_generator = Build_config_intf.Rule_generator
+  module type Rule_generator = sig
+    val gen_rules
+      :  Context_name.t
+      -> dir:Path.Build.t
+      -> string list
+      -> Gen_rules_result.t Memo.t
+  end
 end
 
-module type Source_tree = Build_config_intf.Source_tree
+module type Source_tree = sig
+  module Dir : sig
+    type t
+
+    val sub_dir_names : t -> Filename.Set.t
+    val filenames : t -> Filename.Set.t
+  end
+
+  val find_dir : Path.Source.t -> Dir.t option Memo.t
+end
 
 type t =
-  { contexts : (Build_context.t * Gen_rules.Context_type.t) Context_name.Map.t Memo.Lazy.t
+  { contexts : (Build_context.t * Context_type.t) Context_name.Map.t Memo.Lazy.t
   ; rule_generator : (module Gen_rules.Rule_generator)
   ; sandboxing_preference : Sandbox_mode.t list
   ; promote_source :

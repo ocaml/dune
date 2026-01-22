@@ -1,7 +1,7 @@
 open Import
 open Memo.O
 module Gen_rules = Build_config.Gen_rules
-module Context_type = Gen_rules.Context_type
+module Context_type = Build_config.Context_type
 module Build_only_sub_dirs = Gen_rules.Build_only_sub_dirs
 
 module type Rule_generator = Gen_rules.Rule_generator

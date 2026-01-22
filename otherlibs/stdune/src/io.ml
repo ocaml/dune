@@ -431,7 +431,7 @@ let portable_hardlink ~src ~dst =
       [ Pp.textf
           "Sandbox creation error: cannot resolve symbolic link %S."
           (Path.to_string src)
-      ; Pp.textf "Reason: %s" msg
+      ; User_error.reason msg
       ]
   in
   (* CR-someday amokhov: Instead of always falling back to copying, we could

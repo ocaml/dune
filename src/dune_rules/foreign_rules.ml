@@ -143,7 +143,7 @@ let include_dir_flags ~expander ~dir ~include_dirs =
                User_error.raise
                  ~loc
                  [ Pp.textf "Unable to read the include directory."
-                 ; Pp.textf "Reason: %s." msg
+                 ; User_error.reason msg
                  ]
              in
              Action_builder.of_memo

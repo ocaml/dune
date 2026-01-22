@@ -81,8 +81,44 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
+  ; { path = "src/dune_sexp"
+    ; main_module_name = Some "Dune_sexp"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/ocaml-config"
+    ; main_module_name = Some "Ocaml_config"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/ocaml"
+    ; main_module_name = Some "Ocaml"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
   ; { path = "otherlibs/dune-glob/src"
     ; main_module_name = Some "Dune_glob"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "otherlibs/ocamlc-loc/src"
+    ; main_module_name = Some "Ocamlc_loc"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "otherlibs/xdg"
+    ; main_module_name = Some "Xdg"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "otherlibs/dune-rpc/private"
+    ; main_module_name = Some "Dune_rpc_private"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -129,20 +165,8 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "otherlibs/xdg"
-    ; main_module_name = Some "Xdg"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "vendor/build_path_prefix_map/src"
     ; main_module_name = Some "Build_path_prefix_map"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/dune_sexp"
-    ; main_module_name = Some "Dune_sexp"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -167,6 +191,30 @@ let local_libraries =
     }
   ; { path = "src/dune_digest"
     ; main_module_name = Some "Dune_digest"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "vendor/sha"
+    ; main_module_name = None
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "vendor/opam/src/core"
+    ; main_module_name = None
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "vendor/opam-file-format"
+    ; main_module_name = None
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "vendor/opam/src/format"
+    ; main_module_name = None
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -207,18 +255,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "otherlibs/ocamlc-loc/src"
-    ; main_module_name = Some "Ocamlc_loc"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "otherlibs/dune-rpc/private"
-    ; main_module_name = Some "Dune_rpc_private"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "otherlibs/dune-action-plugin/src"
     ; main_module_name = Some "Dune_action_plugin"
     ; include_subdirs = No
@@ -239,54 +275,6 @@ let local_libraries =
     }
   ; { path = "src/dune_engine"
     ; main_module_name = Some "Dune_engine"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/action_ext"
-    ; main_module_name = Some "Action_ext"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/promote"
-    ; main_module_name = Some "Promote"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/ocaml-config"
-    ; main_module_name = Some "Ocaml_config"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/ocaml"
-    ; main_module_name = Some "Ocaml"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "vendor/sha"
-    ; main_module_name = None
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "vendor/opam/src/core"
-    ; main_module_name = None
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "vendor/opam-file-format"
-    ; main_module_name = None
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "vendor/opam/src/format"
-    ; main_module_name = None
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -359,6 +347,12 @@ let local_libraries =
     }
   ; { path = "src/install"
     ; main_module_name = Some "Install"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/action_ext"
+    ; main_module_name = Some "Action_ext"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -477,7 +471,6 @@ let main =
         { name = "Root"
         ; entries =
             [ "Memo"
-            ; "Promote"
             ; "Ocaml"
             ; "Ocaml_config"
             ; "Dune_sexp"

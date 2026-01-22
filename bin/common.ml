@@ -423,7 +423,7 @@ let shared_with_config_file =
           ~doc:(Some doc))
   and+ sandboxing_preference =
     let all =
-      List.map Dune_engine.Sandbox_mode.all ~f:(fun s ->
+      List.map Dune_engine.Sandbox_mode.all_except_patch_back_source_tree ~f:(fun s ->
         Dune_engine.Sandbox_mode.to_string s, s)
     in
     Arg.(
@@ -443,7 +443,7 @@ let shared_with_config_file =
                   (String.concat
                      ~sep:", "
                      (List.map
-                        Dune_engine.Sandbox_mode.all
+                        Dune_engine.Sandbox_mode.all_except_patch_back_source_tree
                         ~f:Dune_engine.Sandbox_mode.to_string)))))
   and+ terminal_persistence =
     let modes = Dune_config.Terminal_persistence.all in

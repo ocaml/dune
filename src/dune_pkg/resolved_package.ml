@@ -38,6 +38,14 @@ let opam_file = function
   | Rest t -> t.opam_file
 ;;
 
+let with_opam_file opam_file = function
+  | Dune ->
+    Code_error.raise
+      "Attempted to set an opam file on a Dune build. This is unsupported."
+      []
+  | Rest r -> Rest { r with opam_file }
+;;
+
 let extra_files = function
   | Dune -> None
   | Rest t -> Some t.extra_files

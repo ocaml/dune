@@ -1546,8 +1546,13 @@ end = struct
         in
         match exists, Path.as_in_build_dir files_dir_path with
         | true, Some build_path ->
-          let+ file_set = Build_system.files_of ~dir:files_dir_path in
-          Some build_path, Filename_set.filenames file_set
+          let file_list = Dune_pkg.Resolved_package.scan_files_entries files_dir_path in
+          (match file_list with
+           | Ok file_list ->
+             Memo.return
+               ( Some build_path
+               , file_list |> List.map ~f:Path.Local.to_string |> Filename.Set.of_list )
+           | _ -> Memo.return (None, Filename.Set.empty))
         | _ -> Memo.return (None, Filename.Set.empty)
       in
       let id = Pkg.Id.gen () in

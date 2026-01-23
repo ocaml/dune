@@ -1674,10 +1674,20 @@ let resolve_url (file_url : OpamFile.URL.t) =
            "Attempted to resolve git URL but loading it resolved to a local path"
            [ "url", OpamUrl.to_dyn url; "path", Path.to_dyn path ]
        | Git at_rev ->
-         let hash =
-           at_rev |> Rev_store.At_rev.rev |> Rev_store.Object.to_hex |> Option.some
-         in
-         { url with hash })
+         let resolved_hash = at_rev |> Rev_store.At_rev.rev |> Rev_store.Object.to_hex in
+         (match !Dune_engine.Clflags.display, url.hash with
+          | Short, Some old_hash ->
+            (match String.equal resolved_hash old_hash with
+             | true -> ()
+             | false ->
+               User_warning.emit
+                 [ Pp.textf
+                     "Locking repository URL %s to commit %s"
+                     (OpamUrl.to_string url)
+                     resolved_hash
+                 ])
+          | _ -> ());
+         { url with hash = Some resolved_hash })
     | _ -> Fiber.return url
   in
   OpamFile.URL.with_url url file_url

@@ -53,3 +53,5 @@ val get_opam_package_files
     Raises [User_error] if extra files in a directory cannot be accessed or
     digested due to permission errors, filesystem errors. *)
 val digest : t -> Dune_digest.t
+
+val scan_files_entries : Path.t -> (Path.Local.t list, User_message.t) result

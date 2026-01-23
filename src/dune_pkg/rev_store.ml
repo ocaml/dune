@@ -422,6 +422,13 @@ let env =
   |> Env.add ~var:"GIT_TERMINAL_PROMPT" ~value:"0"
 ;;
 
+let with_specified_git_dir ~dir env =
+  (* prevent Git from walking up the file system to find a potentially
+     unrelated git directory, so we disable the walk up by setting
+     the directory explicitely. *)
+  Env.add env ~var:"GIT_DIR" ~value:(Path.to_string dir)
+;;
+
 module Git_error = struct
   type t =
     { dir : Path.t
@@ -461,6 +468,7 @@ let run_with_exit_code { dir; _ } ~allow_codes ~display args =
         | Ok path ->
           let+ (), exit_code =
             let stderr_to = Process.Io.file path Out in
+            let env = with_specified_git_dir ~dir env in
             Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
           in
           Io.read_file path, exit_code)
@@ -627,7 +635,28 @@ let load_or_create ~dir =
   let+ () =
     with_flock lock ~f:(fun () ->
       match Fpath.mkdir_p (Path.to_string dir) with
-      | Already_exists -> Fiber.return ()
+      | Already_exists ->
+        (* CR-Leonidas-from-XIV: this doesn't actually care about whethe the
+           result is [true] or [false] (and it doesn't matter too much), it's
+           mostly about whether rev-parse recognizes the repo as valid. *)
+        run t ~display:Quiet [ "rev-parse"; "--is-bare-repository" ]
+        >>| (function
+         | Ok () ->
+           (* This command will also succeed if it is a non-bare repo (it just
+              displays "false" in that case) that will work for the rev store
+              just as well. *)
+           ()
+         | Error _git_error ->
+           let command = sprintf "rm -rf %s" (Path.to_string_maybe_quoted dir) in
+           let hints =
+             [ Pp.text "Try deleting the folder with"; User_message.command command ]
+           in
+           User_error.raise
+             ~hints
+             [ Pp.text
+                 "The folder at the revision store location is not a valid bare git \
+                  repository."
+             ])
       | Created ->
         run t ~display:Quiet [ "init"; "--bare" ]
         >>| (function

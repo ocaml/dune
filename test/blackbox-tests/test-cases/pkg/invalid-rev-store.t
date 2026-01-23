@@ -47,6 +47,10 @@ Let's replace the rev-store with one that's not properly initialized:
 Dune does not detect the invalid rev-store and fails with an unhelpful error
 message because git is confused:
 
-  $ dune_pkg_lock_normalized 2>&1 | grep -o "invalid gitfile format"
-  invalid gitfile format
+  $ dune_pkg_lock_normalized
+  Error: The folder at the revision store location is not a valid bare git
+  repository.
+  Hint: Try deleting the folder with
+  Hint:
+  'rm -rf $TESTCASE_ROOT/.cache/dune/git-repo'
   [1]

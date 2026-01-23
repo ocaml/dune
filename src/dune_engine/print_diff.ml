@@ -84,6 +84,10 @@ end = struct
   ;;
 end
 
+let make_metadata ?annots ?has_embedded_location loc =
+  Process.create_metadata ?has_embedded_location ~purpose:Internal_job ~loc ?annots ()
+;;
+
 let prepare ~skip_trailing_cr annots path1 path2 =
   let dir, file1, file2 =
     match
@@ -95,13 +99,7 @@ let prepare ~skip_trailing_cr annots path1 path2 =
     | _ -> Path.root, path1, path2
   in
   let loc = Loc.in_file file1 in
-  let run
-        ?(dir = dir)
-        ?(metadata = Process.create_metadata ~purpose:Internal_job ~loc ~annots ())
-        prog
-        args
-        ~fallback
-    =
+  let run ?(dir = dir) ?(metadata = make_metadata loc) prog args ~fallback =
     With_fallback.run { dir; prog; args; metadata } ~fallback
   in
   let file1, file2 = Path.(to_string file1, to_string file2) in
@@ -116,9 +114,9 @@ let prepare ~skip_trailing_cr annots path1 path2 =
              (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path2))
          ])
   in
+  let which prog = Bin.which ~path:(Env_path.path Env.initial) prog in
   let normal_diff () =
     let diff =
-      let which prog = Bin.which ~path:(Env_path.path Env.initial) prog in
       match which "git" with
       | Some path ->
         let dir =
@@ -137,15 +135,17 @@ let prepare ~skip_trailing_cr annots path1 path2 =
               ~f:(fun path -> resolve_link_for_git path |> Path.reach ~from:dir)
               [ path1; path2 ] )
       | None ->
-        (match which "diff" with
-         | Some path -> Some (dir, path, [ "-u" ], "--strip-trailing-cr", [ file1; file2 ])
-         | None -> None)
+        which "diff"
+        |> Option.map ~f:(fun path ->
+          dir, path, [ "-u" ], "--strip-trailing-cr", [ file1; file2 ])
     in
     match diff with
     | None -> fallback
     | Some (dir, path, args, skip_trailing_cr_arg, files) ->
-      let args = if skip_trailing_cr then args @ [ skip_trailing_cr_arg ] else args in
-      let args = args @ files in
+      let args =
+        let args = if skip_trailing_cr then args @ [ skip_trailing_cr_arg ] else args in
+        args @ files
+      in
       run ~dir path args ~fallback
   in
   match !Clflags.diff_command with
@@ -177,7 +177,7 @@ let prepare ~skip_trailing_cr annots path1 path2 =
     if Execution_env.inside_dune
     then fallback
     else (
-      match Bin.which ~path:(Env_path.path Env.initial) "patdiff" with
+      match which "patdiff" with
       | None -> normal_diff ()
       | Some prog ->
         run
@@ -193,11 +193,9 @@ let prepare ~skip_trailing_cr annots path1 path2 =
                 output has a location.
 
                 For this reason, we manually pass the below annotation. *)
-             Process.create_metadata
-               ~purpose:Internal_job
-               ~loc
-               ~has_embedded_location:true
-               ())
+             make_metadata
+               loc
+               ~has_embedded_location:true)
           ~fallback:
             ((* Use "diff" if "patdiff" reported no differences *)
              normal_diff

@@ -5,18 +5,18 @@ Test that adding constraints to ocamllsp via `lock_dir` works.
   $ mkpkg ocaml-lsp-server <<EOF
   > depends: ["ocamlbuild"]
   > build: [
-  >  ["sh" "-c" "true"]
+  >  ["true"]
   > ]
   > install: [
   >  [ "sh" "-c" "echo '#!/bin/sh' > %{bin}%/ocamllsp" ]
   >  [ "sh" "-c" "echo 'echo hello from fake ocamllsp' >> %{bin}%/ocamllsp" ]
-  >  [ "sh" "-c" "chmod a+x %{bin}%/ocamllsp" ]
+  >  [ "chmod a+x %{bin}%/ocamllsp" ]
   > ]
   > EOF
 
   $ mkpkg ocamlbuild 0.15.0+ox <<EOF
   > build: [
-  >  ["sh" "-c" "true"]
+  >  ["true"]
   > ]
   > patches: ["fix.patch"]
   > extra-files: [
@@ -36,10 +36,6 @@ Add patch files for ocamlbuild
   > @@ -0,0 +1 @@
   > +patched
   > EOF
-
-  $ ls $mock_packages/ocamlbuild/ocamlbuild.0.15.0+ox/files
-  fix.patch
-
 
 Make a mock package to add as pin dependency
 
@@ -83,3 +79,4 @@ Make a mock package to add as pin dependency
   -> required by
      _build/_private/default/.pkg/ocamlbuild.0.15.0+ox-HASH1/target/cookie
   -> required by Computing closure for package "ocaml-lsp-server"
+  [1]

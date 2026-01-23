@@ -1,5 +1,11 @@
 exception E of User_message.t
 
+module Severity = User_message.Severity
+module Related = User_message.Related
+module Diagnostic = User_message.Diagnostic
+
+let related = User_message.related
+let with_related = User_message.with_related
 let prefix = Pp.seq (Pp.tag User_message.Style.Error (Pp.verbatim "Error")) (Pp.char ':')
 
 let make ?has_embedded_location ?needs_stack_trace ?loc ?hints ?annots paragraphs =
@@ -13,9 +19,26 @@ let make ?has_embedded_location ?needs_stack_trace ?loc ?hints ?annots paragraph
     ~prefix
 ;;
 
-let raise ?has_embedded_location ?needs_stack_trace ?loc ?hints ?annots paragraphs =
+let raise
+      ?has_embedded_location
+      ?needs_stack_trace
+      ?loc
+      ?hints
+      ?annots
+      ?related
+      paragraphs
+  =
   raise
-    (E (make ?has_embedded_location ?needs_stack_trace ?loc ?hints ?annots paragraphs))
+    (E
+       (User_message.make
+          ?has_embedded_location
+          ?needs_stack_trace
+          ?loc
+          ?hints
+          ?annots
+          ?related
+          paragraphs
+          ~prefix))
 ;;
 
 let ok_exn = function

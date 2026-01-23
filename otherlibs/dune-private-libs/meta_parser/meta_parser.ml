@@ -30,12 +30,17 @@ module Make (Stdune : sig
     end
 
     module User_error : sig
+      module Diagnostic : sig
+        type t
+      end
+
       val raise
         :  ?has_embedded_location:bool
         -> ?needs_stack_trace:bool
         -> ?loc:Loc.t
         -> ?hints:User_message.Style.t Pp.t list
         -> ?annots:User_message.Annots.t
+        -> ?related:Diagnostic.t list
         -> User_message.Style.t Pp.t list
         -> _
     end

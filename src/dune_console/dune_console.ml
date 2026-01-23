@@ -29,6 +29,7 @@ let blank_line_msg =
   { User_message.paragraphs = [ Pp.cut ]
   ; hints = []
   ; annots = User_message.Annots.empty
+  ; related = []
   ; loc = None
   ; context = None
   ; dir = None

@@ -340,6 +340,7 @@ module User_message = struct
           ; paragraphs
           ; hints
           ; annots = _
+          ; related = _
           ; context
           ; dir
           ; has_embedded_location = _
@@ -357,6 +358,7 @@ module User_message = struct
       ; context
       ; dir
       ; annots = Annots.empty
+      ; related = []
       ; needs_stack_trace = false
       ; has_embedded_location = false
       }
@@ -764,10 +766,6 @@ module Compound_user_error = struct
       ; "related", (list string) (List.map related ~f:Stdune.User_message.to_string)
       ; "severity", Diagnostic.severity_to_dyn severity
       ]
-  ;;
-
-  let annot =
-    Stdune.User_message.Annots.Key.create ~name:"compound-user-error" (Dyn.list to_dyn)
   ;;
 
   let make ~main ~related = create ~main ~related ~severity:Error

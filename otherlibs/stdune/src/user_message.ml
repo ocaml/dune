@@ -165,63 +165,145 @@ module Print_config = struct
   ;;
 end
 
+type severity =
+  | Error
+  | Warning
+
+type related =
+  { loc : Loc0.t
+  ; message : Style.t Pp.t
+  }
+
 type t =
   { loc : Loc0.t option
   ; paragraphs : Style.t Pp.t list
   ; hints : Style.t Pp.t list
   ; annots : Annots.t
+  ; related : diagnostic list
   ; context : string option
   ; dir : string option
   ; has_embedded_location : bool
   ; needs_stack_trace : bool
   }
 
-let to_dyn
-      { loc
-      ; paragraphs
-      ; hints
-      ; annots
-      ; context
-      ; dir
-      ; has_embedded_location
-      ; needs_stack_trace
-      }
+and diagnostic =
+  { main : t
+  ; related : related list
+  ; severity : severity
+  }
+
+module Severity = struct
+  type t = severity =
+    | Error
+    | Warning
+
+  let to_dyn = function
+    | Error -> Dyn.variant "Error" []
+    | Warning -> Dyn.variant "Warning" []
+  ;;
+
+  let compare (a : t) b =
+    match a, b with
+    | Error, Error | Warning, Warning -> Ordering.Eq
+    | Error, Warning -> Lt
+    | Warning, Error -> Gt
+  ;;
+end
+
+module Related = struct
+  type t = related =
+    { loc : Loc0.t
+    ; message : Style.t Pp.t
+    }
+
+  let to_dyn { loc; message } =
+    Dyn.record [ "loc", Loc0.to_dyn loc; "message", Pp.to_dyn Style.to_dyn message ]
+  ;;
+
+  let compare { loc; message } t =
+    let open Ordering.O in
+    let= () = Loc0.compare loc t.loc in
+    Pp.compare ~compare:Style.compare message t.message
+  ;;
+end
+
+let related (t : t) = t.related
+let with_related (t : t) related = { t with related }
+
+let rec to_dyn
+          { loc
+          ; paragraphs
+          ; hints
+          ; annots
+          ; related
+          ; context
+          ; dir
+          ; has_embedded_location
+          ; needs_stack_trace
+          }
   =
   Dyn.record
     [ "loc", Dyn.option Loc0.to_dyn loc
     ; "paragraphs", Dyn.list (Pp.to_dyn Style.to_dyn) paragraphs
     ; "hints", Dyn.list (Pp.to_dyn Style.to_dyn) hints
     ; "annots", Annots.to_dyn annots
+    ; "related", Dyn.list diagnostic_to_dyn related
     ; "context", Dyn.option Dyn.string context
     ; "dir", Dyn.option Dyn.string dir
     ; "has_embedded_location", Dyn.bool has_embedded_location
     ; "needs_stack_trace", Dyn.bool needs_stack_trace
     ]
+
+and diagnostic_to_dyn { main; related; severity } =
+  Dyn.record
+    [ "main", to_dyn main
+    ; "related", Dyn.list Related.to_dyn related
+    ; "severity", Severity.to_dyn severity
+    ]
 ;;
 
-let compare
-      { loc
-      ; paragraphs
-      ; hints
-      ; annots
-      ; context = _
-      ; dir = _
-      ; has_embedded_location
-      ; needs_stack_trace
-      }
-      t
+let rec compare
+          { loc
+          ; paragraphs
+          ; hints
+          ; annots
+          ; related
+          ; context = _
+          ; dir = _
+          ; has_embedded_location
+          ; needs_stack_trace
+          }
+          t
   =
   let open Ordering.O in
   let= () = Option.compare Loc0.compare loc t.loc in
   let compare = Pp.compare ~compare:Style.compare in
   let= () = List.compare paragraphs t.paragraphs ~compare in
   let= () = List.compare hints t.hints ~compare in
+  let= () = List.compare related t.related ~compare:diagnostic_compare in
   let= () = Bool.compare has_embedded_location t.has_embedded_location in
   let= () = Bool.compare needs_stack_trace t.needs_stack_trace in
   Poly.compare annots t.annots
+
+and diagnostic_compare { main; related; severity } t =
+  let open Ordering.O in
+  let= () = compare main t.main in
+  let= () = List.compare related t.related ~compare:Related.compare in
+  Severity.compare severity t.severity
 ;;
 
 let equal a b = Ordering.is_eq (compare a b)
+
+module Diagnostic = struct
+  type nonrec t = diagnostic =
+    { main : t
+    ; related : related list
+    ; severity : severity
+    }
+
+  let to_dyn = diagnostic_to_dyn
+  let compare = diagnostic_compare
+end
 
 let make
       ?(has_embedded_location = false)
@@ -230,6 +312,7 @@ let make
       ?prefix
       ?(hints = [])
       ?(annots = Annots.empty)
+      ?(related = [])
       ?context
       ?dir
       paragraphs
@@ -244,6 +327,7 @@ let make
   ; hints
   ; paragraphs
   ; annots
+  ; related
   ; context
   ; dir
   ; has_embedded_location
@@ -256,6 +340,7 @@ let pp
       ; paragraphs
       ; hints
       ; annots = _
+      ; related = _
       ; context
       ; dir = _
       ; has_embedded_location = _

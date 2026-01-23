@@ -240,7 +240,6 @@ module Compound_user_error : sig
 
   val sexp : t Conv.value
   val to_dyn : t -> Dyn.t
-  val annot : t list Stdune.User_message.Annots.Key.t
 
   (** Make a [t] with severity as [Error]. *)
   val make : main:User_message.t -> related:User_message.t list -> t

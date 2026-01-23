@@ -296,18 +296,22 @@ let raise_module_conflict_error ~module_path origins =
       assert false
     | loc :: related_locs -> loc, related_locs
   in
-  let annots =
+  let related =
     let main = User_message.make ~loc [ main_message ] in
     let related =
       List.map related_locs ~f:(fun loc ->
-        User_message.make ~loc [ Pp.text "Used in this stanza" ])
+        { User_error.Related.loc
+        ; User_error.Related.message = Pp.text "Used in this stanza"
+        })
     in
-    User_message.Annots.singleton
-      Compound_user_error.annot
-      [ Compound_user_error.make ~main ~related ]
+    [ { User_error.Diagnostic.main
+      ; User_error.Diagnostic.related
+      ; User_error.Diagnostic.severity = User_error.Severity.Error
+      }
+    ]
   in
   User_error.raise
-    ~annots
+    ~related
     ~loc:(Loc.drop_position loc)
     [ main_message
     ; Pp.enumerate locs ~f:(fun loc -> Pp.verbatim (Loc.to_file_colon_line loc))
@@ -643,16 +647,21 @@ let make_lib_modules
       let main_message =
         Pp.text "a library with (stdlib ...) may not use (include_subdirs qualified)"
       in
-      let annots =
+      let related =
         let main = User_message.make ~loc:loc_include_subdirs [ main_message ] in
         let related =
-          [ User_message.make ~loc:stdlib.loc [ Pp.text "Already defined here" ] ]
+          [ { User_error.Related.loc = stdlib.loc
+            ; User_error.Related.message = Pp.text "Already defined here"
+            }
+          ]
         in
-        User_message.Annots.singleton
-          Compound_user_error.annot
-          [ Compound_user_error.make ~main ~related ]
+        [ { User_error.Diagnostic.main
+          ; User_error.Diagnostic.related
+          ; User_error.Diagnostic.severity = User_error.Severity.Error
+          }
+        ]
       in
-      User_error.raise ~annots ~loc:loc_include_subdirs [ main_message ]
+      User_error.raise ~loc:loc_include_subdirs ~related [ main_message ]
     | _, _ -> ()
   in
   let () =

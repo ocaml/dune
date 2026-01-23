@@ -257,18 +257,23 @@ let make stanzas ~(sources : Unresolved.t) ~dune_version =
       let main_message =
         sprintf "Multiple definitions for the same object file %S" path
       in
-      let annots =
+      let related =
         let main = User_message.make ~loc [ Pp.text main_message ] in
         let related =
-          [ User_message.make ~loc:another_loc [ Pp.text "Object already defined here" ] ]
+          [ { User_error.Related.loc = another_loc
+            ; User_error.Related.message = Pp.text "Object already defined here"
+            }
+          ]
         in
-        User_message.Annots.singleton
-          Compound_user_error.annot
-          [ Compound_user_error.make ~main ~related ]
+        [ { User_error.Diagnostic.main
+          ; User_error.Diagnostic.related
+          ; User_error.Diagnostic.severity = User_error.Severity.Error
+          }
+        ]
       in
       User_error.raise
         ~loc
-        ~annots
+        ~related
         [ Pp.textf
             "%s. See another definition at %s."
             main_message
@@ -315,18 +320,23 @@ let make stanzas ~(sources : Unresolved.t) ~dune_version =
             "Multiple foreign libraries with the same archive name %S"
             (Foreign.Archive.Name.to_string archive_name)
         in
-        let annots =
+        let related =
           let main = User_message.make ~loc:loc2 [ Pp.text main_message ] in
           let related =
-            [ User_message.make ~loc:loc1 [ Pp.text "Name already used here" ] ]
+            [ { User_error.Related.loc = loc1
+              ; User_error.Related.message = Pp.text "Name already used here"
+              }
+            ]
           in
-          User_message.Annots.singleton
-            Compound_user_error.annot
-            [ Compound_user_error.make ~main ~related ]
+          [ { User_error.Diagnostic.main
+            ; User_error.Diagnostic.related
+            ; User_error.Diagnostic.severity = User_error.Severity.Error
+            }
+          ]
         in
         User_error.raise
-          ~annots
           ~loc:loc2
+          ~related
           [ Pp.textf
               "%s; the name has already been taken in %s."
               main_message

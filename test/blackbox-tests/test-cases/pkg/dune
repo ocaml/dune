@@ -45,7 +45,7 @@
  (applies_to git-repo))
 
 (cram
- (deps fakegit.sh)
+ (deps ../../utils/fakegit.sh)
  (applies_to opam-source-conversion))
 
 (cram

@@ -908,8 +908,7 @@ end = struct
             in
             User_error.raise
               ~loc:rule.loc
-              ~annots:
-                (User_message.Annots.singleton User_message.Annots.needs_stack_trace ())
+              ~needs_stack_trace:true
               [ Pp.textf
                   "This rule defines a directory target %S that matches the requested \
                    path %S but the rule's action didn't produce it"

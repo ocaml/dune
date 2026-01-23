@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # dummy implementation of just enough git to be able to create a lock file
 

@@ -1693,7 +1693,11 @@ let resolve_url (file_url : OpamFile.URL.t) =
   OpamFile.URL.with_url url file_url
 ;;
 
-let resolve_opam_packages opam_packages_to_lock ~resolve_package =
+let resolve_opam_packages opam_packages_to_lock candidates_cache =
+  let resolve_package name version =
+    let entry : Context.candidates = Table.find_exn candidates_cache name in
+    OpamPackage.Version.Map.find version entry.resolved
+  in
   Fiber.parallel_map opam_packages_to_lock ~f:(fun opam_package ->
     let name = OpamPackage.name opam_package |> Package_name.of_opam_package_name in
     let version = OpamPackage.version opam_package in
@@ -1800,7 +1804,7 @@ let solve_lock_dir
                  , Package_version.of_opam_package_version (OpamPackage.version package) ))
            in
            let+ resolved_pkgs =
-             resolve_opam_packages opam_packages_to_lock ~resolve_package
+             resolve_opam_packages opam_packages_to_lock candidates_cache
            in
            List.map resolved_pkgs ~f:(fun (name, opam_package, resolved_package) ->
              Lock_pkg.opam_package_to_lock_file_pkg

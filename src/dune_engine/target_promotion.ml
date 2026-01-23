@@ -74,7 +74,7 @@ let promote_target_if_not_up_to_date
          this, perhaps, by making artifact substitution a field of [promote]. *)
       Fiber.return false
     | _ ->
-      Dune_trace.emit Promote (fun () -> Dune_trace.Event.promote src dst);
+      Dune_trace.emit Promote (fun () -> Dune_trace.Event.Promote.promote src dst);
       if promote_until_clean then To_delete.add dst;
       (* The file in the build directory might be read-only if it comes from the
          shared cache. However, we want the file in the source tree to be

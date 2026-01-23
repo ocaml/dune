@@ -455,11 +455,28 @@ let fd_count () =
     Some (Event.instant ~name:"fds" ~args now Fd)
 ;;
 
-let promote src dst =
-  let now = Time.now () in
-  let args = [ "src", Arg.build_path src; "dst", Arg.source_path dst ] in
-  Event.instant ~name:"promote" ~args now Promote
-;;
+module Promote = struct
+  let promote src dst =
+    let now = Time.now () in
+    let args = [ "src", Arg.build_path src; "dst", Arg.source_path dst ] in
+    Event.instant ~name:"promote" ~args now Promote
+  ;;
+
+  let register kind src dst =
+    let now = Time.now () in
+    let args =
+      [ "src", Arg.build_path src
+      ; "dst", Arg.source_path dst
+      ; ( "how"
+        , Arg.string
+            (match kind with
+             | `Direct -> "direct"
+             | `Staged -> "staged") )
+      ]
+    in
+    Event.instant ~name:"promote" ~args now Promote
+  ;;
+end
 
 type alias =
   { dir : Path.Source.t

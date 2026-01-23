@@ -50,19 +50,19 @@ module File = struct
   let db : t list ref = ref []
 
   let register_dep ~source_file ~correction_file =
-    db
-    := { src = snd (Path.Build.split_sandbox_root correction_file)
-       ; staging = None
-       ; dst = source_file
-       }
-       :: !db
+    let src = snd (Path.Build.split_sandbox_root correction_file) in
+    Dune_trace.emit Promote (fun () ->
+      Dune_trace.Event.Promote.register `Direct src source_file);
+    db := { src; staging = None; dst = source_file } :: !db
   ;;
 
   let register_intermediate ~source_file ~correction_file =
+    let src = snd (Path.Build.split_sandbox_root correction_file) in
+    Dune_trace.emit Promote (fun () ->
+      Dune_trace.Event.Promote.register `Staged src source_file);
     let staging = in_staging_area source_file in
     Path.mkdir_p (Path.build (Option.value_exn (Path.Build.parent staging)));
     Unix.rename (Path.Build.to_string correction_file) (Path.Build.to_string staging);
-    let src = snd (Path.Build.split_sandbox_root correction_file) in
     db := { src; staging = Some staging; dst = source_file } :: !db
   ;;
 

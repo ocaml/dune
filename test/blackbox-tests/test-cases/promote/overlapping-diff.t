@@ -31,6 +31,18 @@ Test how overlapping diff actions are handled
   <one><two>
   [1]
 
+  $ dune trace cat | jq 'select(.cat == "promote") | .args'
+  {
+    "src": "_build/default/foo.expected",
+    "dst": "foo",
+    "how": "staged"
+  }
+  {
+    "src": "_build/default/foo.expected",
+    "dst": "foo",
+    "how": "staged"
+  }
+
 # CR-someday rgrinberg: why isn't this showing anything?!
 
   $ dune promotion list

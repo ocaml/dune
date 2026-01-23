@@ -750,7 +750,7 @@ let filename =
 
 let extension =
   plain_string (fun ~loc s ->
-    if String.is_prefix ~prefix:"." s
+    if String.starts_with ~prefix:"." s
     then User_error.raise ~loc [ Pp.textf "extension must not start with '.'" ];
     "." ^ s)
 ;;

@@ -9,7 +9,7 @@ type t =
 
 let fname_in_dir_test = "run.t"
 let suffix = ".t"
-let is_cram_suffix = String.is_suffix ~suffix
+let is_cram_suffix = String.ends_with ~suffix
 
 let to_dyn =
   let open Dyn in

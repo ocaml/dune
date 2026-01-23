@@ -31,7 +31,7 @@ let normalise_arch raw =
     when a = "armv8b"
          || a = "armv8l"
          || List.exists
-              ~f:(fun prefix -> String.is_prefix ~prefix a)
+              ~f:(fun prefix -> String.starts_with ~prefix a)
               [ "armv5"; "armv6"; "earmv6"; "armv7"; "earmv7" ] -> "arm32"
   | s -> s
 ;;

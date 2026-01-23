@@ -185,12 +185,13 @@ end = struct
     let rec loop acc = function
       | [] -> acc
       | "--enable" :: name :: rest -> loop (enable name acc) rest
-      | maybe_enable :: rest when String.is_prefix maybe_enable ~prefix:"--enable=" ->
+      | maybe_enable :: rest when String.starts_with ~prefix:"--enable=" maybe_enable ->
         (match String.drop_prefix maybe_enable ~prefix:"--enable=" with
          | Some name -> loop (enable name acc) rest
          | _ -> assert false)
       | "--disable" :: name :: rest -> loop (disable name acc) rest
-      | maybe_disable :: rest when String.is_prefix maybe_disable ~prefix:"--disable=" ->
+      | maybe_disable :: rest when String.starts_with ~prefix:"--disable=" maybe_disable
+        ->
         (match String.drop_prefix maybe_disable ~prefix:"--disable=" with
          | Some name -> loop (disable name acc) rest
          | _ -> assert false)
@@ -198,7 +199,8 @@ end = struct
       | "--effects" :: "cps" :: rest -> loop { acc with effects = Some Cps } rest
       | "--effects" :: "double-translation" :: rest ->
         loop { acc with effects = Some Double_translation } rest
-      | maybe_effects :: rest when String.is_prefix maybe_effects ~prefix:"--effects=" ->
+      | maybe_effects :: rest when String.starts_with ~prefix:"--effects=" maybe_effects
+        ->
         let backend =
           Option.bind
             (String.drop_prefix maybe_effects ~prefix:"--effects=")
@@ -251,20 +253,21 @@ end = struct
     let rec loop acc = function
       | [] -> acc
       | "--enable" :: ("effects" | "use-js-string") :: rest -> loop acc rest
-      | maybe_enable :: rest when String.is_prefix maybe_enable ~prefix:"--enable=" ->
+      | maybe_enable :: rest when String.starts_with ~prefix:"--enable=" maybe_enable ->
         (match String.drop_prefix maybe_enable ~prefix:"--enable=" with
          | Some ("effects" | "use-js-string") -> loop acc rest
          | Some _ -> loop (maybe_enable :: acc) rest
          | None -> assert false)
       | "--disable" :: ("effects" | "use-js-string") :: rest -> loop acc rest
-      | maybe_disable :: rest when String.is_prefix maybe_disable ~prefix:"--disable=" ->
+      | maybe_disable :: rest when String.starts_with ~prefix:"--disable=" maybe_disable
+        ->
         (match String.drop_prefix maybe_disable ~prefix:"--disable=" with
          | Some ("effects" | "use-js-string") -> loop acc rest
          | Some _ -> loop (maybe_disable :: acc) rest
          | None -> assert false)
       | "--effects" :: _backend :: rest -> loop acc rest
-      | maybe_effects :: rest when String.is_prefix maybe_effects ~prefix:"--effects=" ->
-        loop acc rest
+      | maybe_effects :: rest when String.starts_with ~prefix:"--effects=" maybe_effects
+        -> loop acc rest
       | "--toplevel" :: rest -> loop acc rest
       | other :: rest -> loop (other :: acc) rest
     in

@@ -53,14 +53,14 @@ let map_loc_to_source_path loc =
 let cram_stanzas =
   let is_conflict_marker line =
     [ "======="; "%%%%%%%"; "+++++++"; "-------"; "|||||||" ]
-    |> List.exists ~f:(fun prefix -> String.is_prefix line ~prefix)
+    |> List.exists ~f:(fun prefix -> String.starts_with ~prefix line)
   in
   let find_conflict ~loc state line =
     match state with
-    | `No_conflict when String.is_prefix ~prefix:"<<<<<<<" line -> `Started loc
+    | `No_conflict when String.starts_with ~prefix:"<<<<<<<" line -> `Started loc
     | `Started loc when is_conflict_marker line -> `Has_markers loc
     | `Has_markers loc when is_conflict_marker line -> `Has_markers loc
-    | `Has_markers start_loc when String.is_prefix ~prefix:">>>>>>>" line ->
+    | `Has_markers start_loc when String.starts_with ~prefix:">>>>>>>" line ->
       User_error.raise
         ~loc:(Loc.span start_loc loc)
         [ Pp.text

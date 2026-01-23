@@ -60,9 +60,9 @@ let is_special (st_kind : Unix.file_kind) =
 ;;
 
 let is_temp_file fn =
-  String.is_prefix fn ~prefix:".#"
-  || String.is_suffix fn ~suffix:".swp"
-  || String.is_suffix fn ~suffix:"~"
+  String.starts_with ~prefix:".#" fn
+  || String.ends_with ~suffix:".swp" fn
+  || String.ends_with ~suffix:"~" fn
 ;;
 
 let of_source_path_impl path =

@@ -18,6 +18,25 @@ module StringLabels = struct
     fun ~f s -> loop s 0 (String.length s) f
   ;;
 
+  let[@warning "-32"] starts_with s ~prefix =
+    let prefix_len = String.length prefix in
+    match String.length s < prefix_len with
+    | true -> false
+    | false ->
+      let s_prefix = String.sub s 0 prefix_len in
+      String.equal prefix s_prefix
+  ;;
+
+  let[@warning "-32"] ends_with s ~suffix =
+    let len = String.length s in
+    let suffix_len = String.length suffix in
+    match len < suffix_len with
+    | true -> false
+    | false ->
+      let s_suffix = String.sub s (len - suffix_len) suffix_len in
+      String.equal suffix s_suffix
+  ;;
+
   (* overwrite them with stdlib versions if available *)
   include Stdlib.StringLabels
 end
@@ -64,20 +83,20 @@ struct
         && check_suffix s ~suffix suffix_len offset (i + 1))
   ;;
 
-  let is_prefix s ~prefix =
+  let starts_with ~prefix s =
     let len = length s in
     let prefix_len = length prefix in
     len >= prefix_len && check_prefix s ~prefix prefix_len 0
   ;;
 
-  let is_suffix s ~suffix =
+  let ends_with ~suffix s =
     let len = length s in
     let suffix_len = length suffix in
     len >= suffix_len && check_suffix s ~suffix suffix_len (len - suffix_len) 0
   ;;
 
   let drop_prefix s ~prefix =
-    if is_prefix s ~prefix
+    if starts_with ~prefix s
     then
       if length s = length prefix
       then Some ""
@@ -92,7 +111,7 @@ struct
   ;;
 
   let drop_suffix s ~suffix =
-    if is_suffix s ~suffix
+    if ends_with ~suffix s
     then
       if length s = length suffix
       then Some ""
@@ -311,7 +330,7 @@ let drop_prefix_and_suffix t ~prefix ~suffix =
   let s_len = String.length suffix in
   let t_len = String.length t in
   let p_s_len = p_len + s_len in
-  if p_s_len <= t_len && is_prefix t ~prefix && is_suffix t ~suffix
+  if p_s_len <= t_len && starts_with ~prefix t && ends_with ~suffix t
   then Some (sub t ~pos:p_len ~len:(t_len - p_s_len))
   else None
 ;;

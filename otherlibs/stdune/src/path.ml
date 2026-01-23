@@ -205,7 +205,7 @@ end = struct
     else (
       let of_len = String.length of_ in
       let t_len = String.length t in
-      if t_len > of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_
+      if t_len > of_len && t.[of_len] = '/' && String.starts_with ~prefix:of_ t
       then Some (String.drop t (of_len + 1))
       else None)
   ;;
@@ -216,7 +216,7 @@ end = struct
     ||
     let of_len = String.length of_ in
     let t_len = String.length t in
-    t_len > of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_
+    t_len > of_len && t.[of_len] = '/' && String.starts_with ~prefix:of_ t
   ;;
 
   module Reach = struct
@@ -582,7 +582,9 @@ end = struct
   let to_string_maybe_quoted t = String.maybe_quoted (to_string t)
 
   let is_descendant b ~of_:a =
-    if is_root a then true else String.is_prefix ~prefix:(to_string a ^ "/") (to_string b)
+    if is_root a
+    then true
+    else String.starts_with ~prefix:(to_string a ^ "/") (to_string b)
   ;;
 
   module Map = String.Map

@@ -470,7 +470,7 @@ let run_with_exit_code { dir; _ } ~allow_codes ~display args =
   else (
     match exit_code with
     | 129
-      when String.is_prefix ~prefix:"error: unknown option `no-write-fetch-head'" stderr
+      when String.starts_with ~prefix:"error: unknown option `no-write-fetch-head'" stderr
       ->
       User_error.raise
         [ User_message.command

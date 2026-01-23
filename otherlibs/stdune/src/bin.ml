@@ -27,7 +27,7 @@ let exists fn =
 ;;
 
 let add_exe prog =
-  if String.is_suffix (String.lowercase prog) ~suffix:exe then prog else prog ^ exe
+  if String.ends_with ~suffix:exe (String.lowercase prog) then prog else prog ^ exe
 ;;
 
 let which ~path prog =

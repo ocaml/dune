@@ -1,77 +1,13 @@
 (* Because other the syntax s.[x] causes trouble *)
 module String = Stdlib.String
 
-module StringLabels = struct
-  (* functions potentially in the stdlib, depending on OCaml version *)
-
-  let[@warning "-32"] exists =
-    let rec loop s i len f =
-      if i = len then false else f (String.unsafe_get s i) || loop s (i + 1) len f
-    in
-    fun ~f s -> loop s 0 (String.length s) f
-  ;;
-
-  let[@warning "-32"] for_all =
-    let rec loop s i len f =
-      i = len || (f (String.unsafe_get s i) && loop s (i + 1) len f)
-    in
-    fun ~f s -> loop s 0 (String.length s) f
-  ;;
-
-  let[@warning "-32"] starts_with s ~prefix =
-    let prefix_len = String.length prefix in
-    match String.length s < prefix_len with
-    | true -> false
-    | false ->
-      let s_prefix = String.sub s 0 prefix_len in
-      String.equal prefix s_prefix
-  ;;
-
-  let[@warning "-32"] ends_with s ~suffix =
-    let len = String.length s in
-    let suffix_len = String.length suffix in
-    match len < suffix_len with
-    | true -> false
-    | false ->
-      let s_suffix = String.sub s (len - suffix_len) suffix_len in
-      String.equal suffix s_suffix
-  ;;
-
-  (* overwrite them with stdlib versions if available *)
-  include Stdlib.StringLabels
-end
-
-include StringLabels
-
-let compare a b = Ordering.of_int (String.compare a b)
-
-module T = struct
-  type t = StringLabels.t
-
-  let compare = compare
-  let equal (x : t) (y : t) = x = y
-  let hash (s : t) = Poly.hash s
-  let to_dyn s = Dyn.String s
-end
-
-let to_dyn = T.to_dyn
-let equal : string -> string -> bool = ( = )
-let hash = Poly.hash
-let capitalize = capitalize_ascii
-let uncapitalize = uncapitalize_ascii
-let uppercase = uppercase_ascii
-let lowercase = lowercase_ascii
-let index = index_opt
-let index_from = index_from_opt
-let rindex = rindex_opt
-let rindex_from = rindex_from_opt
-let break s ~pos = sub s ~pos:0 ~len:pos, sub s ~pos ~len:(length s - pos)
-let is_empty s = length s = 0
-
 module Cased_functions (X : sig
     val normalize : char -> char
   end) =
 struct
+  let length = String.length
+  let sub = StringLabels.sub
+
   let rec check_prefix s ~prefix len i =
     i = len
     || (X.normalize s.[i] = X.normalize prefix.[i] && check_prefix s ~prefix len (i + 1))
@@ -133,6 +69,57 @@ include Cased_functions (struct
 module Caseless = Cased_functions (struct
     let normalize = Char.lowercase_ascii
   end)
+
+module StringLabels = struct
+  (* functions potentially in the stdlib, depending on OCaml version *)
+
+  let[@warning "-32"] exists =
+    let rec loop s i len f =
+      if i = len then false else f (String.unsafe_get s i) || loop s (i + 1) len f
+    in
+    fun ~f s -> loop s 0 (String.length s) f
+  ;;
+
+  let[@warning "-32"] for_all =
+    let rec loop s i len f =
+      i = len || (f (String.unsafe_get s i) && loop s (i + 1) len f)
+    in
+    fun ~f s -> loop s 0 (String.length s) f
+  ;;
+
+  let[@warning "-32"] starts_with = starts_with
+  let[@warning "-32"] ends_with = ends_with
+
+  (* overwrite them with stdlib versions if available *)
+  include Stdlib.StringLabels
+end
+
+include StringLabels
+
+let compare a b = Ordering.of_int (String.compare a b)
+
+module T = struct
+  type t = StringLabels.t
+
+  let compare = compare
+  let equal (x : t) (y : t) = x = y
+  let hash (s : t) = Poly.hash s
+  let to_dyn s = Dyn.String s
+end
+
+let to_dyn = T.to_dyn
+let equal : string -> string -> bool = ( = )
+let hash = Poly.hash
+let capitalize = capitalize_ascii
+let uncapitalize = uncapitalize_ascii
+let uppercase = uppercase_ascii
+let lowercase = lowercase_ascii
+let index = index_opt
+let index_from = index_from_opt
+let rindex = rindex_opt
+let rindex_from = rindex_from_opt
+let break s ~pos = sub s ~pos:0 ~len:pos, sub s ~pos ~len:(length s - pos)
+let is_empty s = length s = 0
 
 let extract_words s ~is_word_char =
   let rec skip_blanks i =

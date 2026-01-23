@@ -38,6 +38,15 @@ case $1 in
     echo "Unsupported cat-file command: $@" >&2
     exit 2
     ;;
+  rev-parse)
+    # let git answer this one
+    if [ "$2" = "--is-bare-repository" ]; then
+      $REAL_GIT "$@"
+      exit $?
+    fi
+    echo "Unsupported rev-parse command: $@" >&2
+    exit 2
+    ;;
   *)
     # unsupported, exit out
     echo "Unsupported command: $@" >&2

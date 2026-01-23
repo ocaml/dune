@@ -149,10 +149,11 @@ let include_dir_flags ~expander ~dir ~include_dirs =
              Action_builder.of_memo
              @@ Fs_memo.is_directory (Path.as_outside_build_dir_exn include_dir)
              >>| function
-             | Error msg -> error (Unix_error.Detailed.to_string_hum msg)
+             | Error msg -> error (Unix_error.Detailed.pp msg)
              | Ok true -> ()
              | Ok false ->
-               error (sprintf "%S is not a directory" (Path.to_string include_dir))
+               error
+                 (Pp.text (sprintf "%S is not a directory" (Path.to_string include_dir)))
            in
            let deps =
              File_selector.of_predicate_lang ~dir:include_dir Predicate_lang.true_

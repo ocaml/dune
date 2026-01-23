@@ -481,7 +481,7 @@ module Loader = struct
             [ Pp.textf
                 "Unable to read directory %s for findlib package"
                 (Path.to_string_maybe_quoted dir)
-            ; User_error.reason (Unix.error_message unix_error)
+            ; User_error.reason (Pp.verbatim (Unix.error_message unix_error))
             ]
         | Ok { sub_dirs; metas } ->
           let+ sub_dirs =

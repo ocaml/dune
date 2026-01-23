@@ -1890,7 +1890,7 @@ module Install_action = struct
                 (Loc.pp loc |> Pp.map_tags ~f:(fun Loc.Loc -> User_message.Style.Loc))
                 ++ error
             in
-            User_error.raise [ message_with_loc; User_error.reason message ]
+            User_error.raise [ message_with_loc; User_error.reason (Pp.verbatim message) ]
         in
         OpamFile.Dot_config.bindings config
         |> List.map ~f:(fun (name, value) -> Package_variable_name.of_opam name, value)

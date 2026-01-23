@@ -13,8 +13,10 @@ let ok_exn = function
   | Error msg -> Stdlib.raise (E msg)
 ;;
 
-let reason msg = Pp.textf "Reason: %s" msg
-let reason_l msg = [ Pp.text "Reason:"; msg ]
+let reason =
+  let reason = Pp.tag User_message.Style.Kwd (Pp.verbatim "Reason") in
+  fun msg -> Pp.hovbox (Pp.concat [ reason; Pp.char ':'; Pp.space; msg ])
+;;
 
 let () =
   Printexc.register_printer (function

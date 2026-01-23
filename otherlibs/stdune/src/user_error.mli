@@ -30,5 +30,4 @@ val prefix : User_message.Style.t Pp.t
     - [ok_exn (Error msg)] is [Stdlib.raise (E msg)] *)
 val ok_exn : ('a, User_message.t) result -> 'a
 
-val reason : string -> 'a Pp.t
-val reason_l : 'a Pp.t -> 'a Pp.t list
+val reason : User_message.Style.t Pp.t -> User_message.Style.t Pp.t

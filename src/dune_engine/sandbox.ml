@@ -316,10 +316,8 @@ let move_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated
 
 let failed_to_delete_sandbox dir reason =
   User_error.raise
-    [ Pp.textf "failed to delete sandbox in %s" (Path.Build.to_string_maybe_quoted dir)
-    ; Pp.text "Reason:"
-    ; reason
-    ]
+    ([ Pp.textf "failed to delete sandbox in %s" (Path.Build.to_string_maybe_quoted dir) ]
+     @ User_error.reason_l reason)
 ;;
 
 let destroy t =

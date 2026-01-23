@@ -241,7 +241,7 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
         [ Pp.text
             "Unable to read opam file. Some information about this package such as its \
              version will be ignored."
-        ; Pp.textf "Reason: %s" (Printexc.to_string exn)
+        ; User_error.reason (Printexc.to_string exn)
         ];
       None
   in

@@ -13,6 +13,9 @@ let ok_exn = function
   | Error msg -> Stdlib.raise (E msg)
 ;;
 
+let reason msg = Pp.textf "Reason: %s" msg
+let reason_l msg = [ Pp.text "Reason:"; msg ]
+
 let () =
   Printexc.register_printer (function
     | E t ->

@@ -434,7 +434,7 @@ let ancestor_vcs =
                   "Unable to read directory %s. Will not look for VCS root in parent \
                    directories."
                   dir
-              ; Pp.textf "Reason: %s" msg
+              ; User_error.reason msg
               ];
             None)
       in

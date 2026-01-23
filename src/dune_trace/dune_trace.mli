@@ -104,7 +104,11 @@ module Event : sig
   val init : version:string option -> t
   val gc : unit -> t
   val fd_count : unit -> t option
-  val promote : Path.Build.t -> Path.Source.t -> t
+
+  module Promote : sig
+    val promote : Path.Build.t -> Path.Source.t -> t
+    val register : [ `Direct | `Staged ] -> Path.Build.t -> Path.Source.t -> t
+  end
 
   type alias =
     { dir : Path.Source.t

@@ -196,11 +196,7 @@ let prepare ~skip_trailing_cr annots path1 path2 =
              Process.create_metadata
                ~purpose:Internal_job
                ~loc
-               ~annots:
-                 (User_message.Annots.set
-                    annots
-                    User_message.Annots.has_embedded_location
-                    ())
+               ~has_embedded_location:true
                ())
           ~fallback:
             ((* Use "diff" if "patdiff" reported no differences *)

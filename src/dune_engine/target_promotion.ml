@@ -130,9 +130,9 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
           | Some error -> [ Unix_error.Detailed.pp_reason error ]
         in
         User_error.raise
+          ~needs_stack_trace:true
           ~loc
           (msg (Path.Source.to_string into_dir) :: extra_messages)
-          ~annots:(User_message.Annots.singleton User_message.Annots.needs_stack_trace ())
       in
       Memo.run (Fs_memo.path_kind (In_source_dir into_dir))
       >>| (function
@@ -150,7 +150,7 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
     in
     User_error.raise
       (Pp.textf "Cannot promote files to %S." (Path.to_string dst_dir) :: msgs)
-      ~annots:(User_message.Annots.singleton User_message.Annots.needs_stack_trace ())
+      ~needs_stack_trace:true
   in
   let create_directory_if_needed ~dir =
     let dst_dir = relocate dir in

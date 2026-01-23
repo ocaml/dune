@@ -231,6 +231,7 @@ type metadata =
   ; name : string option
   ; categories : string list
   ; purpose : purpose
+  ; has_embedded_location : bool
   }
 
 let default_metadata =
@@ -239,18 +240,20 @@ let default_metadata =
   ; purpose = Internal_job
   ; categories = []
   ; name = None
+  ; has_embedded_location = false
   }
 ;;
 
 let create_metadata
       ?loc
       ?(annots = default_metadata.annots)
+      ?(has_embedded_location = false)
       ?name
       ?(categories = default_metadata.categories)
       ?(purpose = Internal_job)
       ()
   =
-  { loc; annots; name; categories; purpose }
+  { loc; annots; name; categories; purpose; has_embedded_location }
 ;;
 
 let io_to_redirection_path (kind : Io.kind) =
@@ -567,29 +570,29 @@ end = struct
   let get_loc_annots_and_dir ~dir ~metadata ~output =
     let { loc; annots; _ } = metadata in
     let dir = Option.value dir ~default:Path.root in
-    let annots =
+    let annots, has_embedded_location =
       match output with
-      | No_output -> annots
+      | No_output -> annots, false
       | Has_output output ->
         if output.has_embedded_location
         then (
-          let annots =
-            User_message.Annots.set annots User_message.Annots.has_embedded_location ()
-          in
           match Compound_user_error.parse_output ~dir output.without_color with
-          | [] -> annots
-          | errors -> User_message.Annots.set annots Compound_user_error.annot errors)
-        else annots
+          | [] -> annots, true
+          | errors ->
+            User_message.Annots.set annots Compound_user_error.annot errors, true)
+        else annots, false
     in
-    loc, annots, dir
+    loc, annots, has_embedded_location, dir
   ;;
 
-  let fail ?dir ~loc ~annots paragraphs =
+  let fail ?dir ~loc ~annots ~has_embedded_location paragraphs =
     (* We don't use [User_error.make] as it would add the "Error: " prefix. We
        don't need this prefix as it is already included in the output of the
        command. *)
     let dir = Option.map ~f:Path.to_string dir in
-    raise (User_error.E (User_message.make ?dir ?loc ~annots paragraphs))
+    raise
+      (User_error.E
+         (User_message.make ?dir ?loc ~annots ~has_embedded_location paragraphs))
   ;;
 
   let verbose t ~id ~metadata ~output ~command_line ~dir =
@@ -614,9 +617,12 @@ end = struct
         | Failed n -> sprintf "exited with code %d" n
         | Signaled signame -> sprintf "got signal %s" (Signal.name signame)
       in
-      let loc, annots, dir = get_loc_annots_and_dir ~dir ~metadata ~output in
+      let loc, annots, has_embedded_location, dir =
+        get_loc_annots_and_dir ~dir ~metadata ~output
+      in
       fail
         ~dir
+        ~has_embedded_location
         ~loc
         ~annots
         ((Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
@@ -672,7 +678,9 @@ end = struct
       then Console.print_user_message (User_message.make paragraphs);
       n
     | Error error ->
-      let loc, annots, dir = get_loc_annots_and_dir ~dir ~metadata ~output in
+      let loc, annots, has_embedded_location, dir =
+        get_loc_annots_and_dir ~dir ~metadata ~output
+      in
       let paragraphs =
         match verbosity with
         | Short ->
@@ -703,7 +711,7 @@ end = struct
                 | Signaled signame ->
                   [ Pp.textf "Command got signal %s." (Signal.name signame) ]))
       in
-      fail ~dir ~loc ~annots paragraphs
+      fail ~dir ~loc ~annots ~has_embedded_location paragraphs
   ;;
 end
 

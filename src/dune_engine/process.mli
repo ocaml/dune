@@ -79,11 +79,13 @@ type metadata =
     (** name when emitting stats. defaults to the basename of the executable *)
   ; categories : string list (** additional categories when emitting stats *)
   ; purpose : purpose
+  ; has_embedded_location : bool
   }
 
 val create_metadata
   :  ?loc:Loc.t
   -> ?annots:User_message.Annots.t
+  -> ?has_embedded_location:bool
   -> ?name:string
   -> ?categories:string list
   -> ?purpose:purpose

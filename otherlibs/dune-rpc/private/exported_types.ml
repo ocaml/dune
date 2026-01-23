@@ -335,13 +335,31 @@ module User_message = struct
   let sexp_without_annots =
     let open Conv in
     let sexp_pp = Pp.sexp Style.sexp in
-    let from { loc; paragraphs; hints; annots = _; context; dir } =
+    let from
+          { loc
+          ; paragraphs
+          ; hints
+          ; annots = _
+          ; context
+          ; dir
+          ; has_embedded_location = _
+          ; needs_stack_trace = _
+          }
+      =
       let loc = Option.map loc ~f:Import.Loc.to_lexbuf_loc in
       loc, paragraphs, hints, context, dir
     in
     let to_ (loc, paragraphs, hints, context, dir) =
       let loc = Option.map loc ~f:Import.Loc.of_lexbuf_loc in
-      { loc; paragraphs; hints; context; dir; annots = Annots.empty }
+      { loc
+      ; paragraphs
+      ; hints
+      ; context
+      ; dir
+      ; annots = Annots.empty
+      ; needs_stack_trace = false
+      ; has_embedded_location = false
+      }
     in
     let loc = field "loc" (optional Loc.sexp) in
     let paragraphs = field "paragraphs" (required (list sexp_pp)) in

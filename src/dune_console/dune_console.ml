@@ -32,6 +32,8 @@ let blank_line_msg =
   ; loc = None
   ; context = None
   ; dir = None
+  ; has_embedded_location = false
+  ; needs_stack_trace = false
   }
 ;;
 

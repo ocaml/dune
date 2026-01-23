@@ -123,14 +123,17 @@ module Spec = struct
             local directories into the build directory, and the logic for
             excluding them lives in [Pkg_rules.source_rules]. *)
          let target_abs = Path.to_absolute_filename target in
-         Fpath.traverse
-           ~init:()
-           ~dir:target_abs
-           ~on_dir:(fun ~dir:_ _ () -> ())
-           ~on_file:(fun ~dir:_ _ () -> ())
-           ~on_broken_symlink:(fun ~dir fname () ->
-             let path = Filename.concat target_abs (Filename.concat dir fname) in
-             Fpath.rm_rf path));
+         let on_symlink ~dir fname () =
+           let path = Filename.concat target_abs (Filename.concat dir fname) in
+           match Unix.stat path with
+           | { Unix.st_kind = kind; _ } -> (), Some kind
+           | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
+             Fpath.rm_rf path;
+             (), None
+           | exception Unix.Unix_error (error, syscall, arg) ->
+             Unix_error.Detailed.raise (Unix_error.Detailed.create error ~syscall ~arg)
+         in
+         Fpath.traverse ~init:() ~dir:target_abs ~on_symlink:(`Call on_symlink) ());
       Fiber.return ()
     | Error (Checksum_mismatch actual_checksum) ->
       (match checksum with
@@ -344,7 +347,7 @@ module Copy = struct
           let src = Path.L.relative src_dir [ dir; fname ] in
           let dst = Path.L.relative dst_dir [ dir; fname ] in
           Io.copy_file ~src ~dst ())
-        ~on_broken_symlink:(fun ~dir:_ _fname () -> ())
+        ()
     ;;
   end
 

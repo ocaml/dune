@@ -422,6 +422,13 @@ let env =
   |> Env.add ~var:"GIT_TERMINAL_PROMPT" ~value:"0"
 ;;
 
+let with_specified_git_dir ~dir env =
+  (* prevent Git from walking up the file system to find a potentially
+     unrelated git directory, so we disable the walk up by setting
+     the directory explicitely. *)
+  Env.add env ~var:"GIT_DIR" ~value:(Path.to_string dir)
+;;
+
 module Git_error = struct
   type t =
     { dir : Path.t
@@ -461,6 +468,7 @@ let run_with_exit_code { dir; _ } ~allow_codes ~display args =
         | Ok path ->
           let+ (), exit_code =
             let stderr_to = Process.Io.file path Out in
+            let env = with_specified_git_dir ~dir env in
             Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
           in
           Io.read_file path, exit_code)
@@ -628,8 +636,9 @@ let load_or_create ~dir =
     with_flock lock ~f:(fun () ->
       match Fpath.mkdir_p (Path.to_string dir) with
       | Already_exists ->
-        (* CR-Leonidas-from-XIV: figure out what `rev-parse --is-bare-repository`
-           is doing and implement it without shelling out *)
+        (* CR-Leonidas-from-XIV: this doesn't actually care about whethe the
+           result is [true] or [false] (and it doesn't matter too much), it's
+           mostly about whether rev-parse recognizes the repo as valid. *)
         run t ~display:Quiet [ "rev-parse"; "--is-bare-repository" ]
         >>| (function
          | Ok () ->

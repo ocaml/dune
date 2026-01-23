@@ -79,7 +79,7 @@ let of_source_path_impl path =
           "to the dune file: %s"
           (Path.Source.to_string_maybe_quoted
              (Path.Source.relative (Path.Source.parent_exn path) "dune"))
-      ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
+      ; Unix_error.Detailed.pp_reason unix_error
       ];
     Memo.return (Error unix_error)
   | Ok dir_contents ->

@@ -38,8 +38,8 @@ module Select = struct
                  Path.Local.to_string prefix, ext
                in
                match
-                 ( String.is_prefix ~prefix:result_prefix (Path.Local.to_string file)
-                 , String.is_suffix file_str ~suffix:result_suffix )
+                 ( String.starts_with ~prefix:result_prefix (Path.Local.to_string file)
+                 , String.ends_with ~suffix:result_suffix file_str )
                with
                | true, true -> ()
                | _result_is_prefix, _result_is_suffix ->

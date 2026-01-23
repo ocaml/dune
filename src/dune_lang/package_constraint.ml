@@ -157,7 +157,7 @@ let decode =
     in
     peek_exn
     >>= function
-    | Atom (_loc, A s) when String.is_prefix s ~prefix:":" ->
+    | Atom (_loc, A s) when String.starts_with ~prefix:":" s ->
       let+ () = junk in
       Bvar (Variable (Package_variable_name.of_string (String.drop s 1)))
     | _ -> sum (ops @ logops))

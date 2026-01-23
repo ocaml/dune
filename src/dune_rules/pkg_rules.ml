@@ -473,7 +473,7 @@ module Pkg = struct
       | ".hg" | ".git" | "_darcs" | "_opam" | "_build" | "_esy" -> true
       | _ -> false
     in
-    let skip_file = String.is_prefix ~prefix:".#" in
+    let skip_file = String.starts_with ~prefix:".#" in
     let rec loop root acc path =
       let full_path = Path.External.append_local root path in
       Fs_memo.dir_contents (External full_path)

@@ -12,7 +12,7 @@ let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
   let cflags = Ocaml_config.ocamlc_cflags ocaml_config in
   let c, cxx =
     let cxxflags =
-      List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+      List.filter cflags ~f:(fun s -> not (String.starts_with ~prefix:"-std=" s))
     in
     match Dune_project.use_standard_c_and_cxx_flags project with
     | None | Some false -> Action_builder.(return cflags, return cxxflags)
@@ -340,7 +340,7 @@ let build_o_files
       |> List.fold_left ~init:[] ~f:(fun acc dc ->
         Dir_contents.text_files dc
         |> Filename.Set.fold ~init:acc ~f:(fun fn acc ->
-          if String.is_suffix fn ~suffix:Foreign_language.header_extension
+          if String.ends_with ~suffix:Foreign_language.header_extension fn
           then Path.relative (Path.build (Dir_contents.dir dc)) fn :: acc
           else acc))
     in

@@ -22,7 +22,7 @@ open Simplified
 
 let echo s =
   let lines = String.split_lines s in
-  if String.is_suffix s ~suffix:"\n"
+  if String.ends_with ~suffix:"\n" s
   then List.map lines ~f:(fun s -> Run ("echo", [ s ]))
   else (
     match List.rev lines with

@@ -560,7 +560,7 @@ end = struct
           User_message.Style.Ansi_styles styles)
       in
       let without_color = Ansi_color.strip s in
-      let has_embedded_location = String.is_prefix ~prefix:"File " without_color in
+      let has_embedded_location = String.starts_with ~prefix:"File " without_color in
       Has_output { with_color; without_color; has_embedded_location }
   ;;
 

@@ -254,24 +254,16 @@ let make stanzas ~(sources : Unresolved.t) ~dune_version =
     match String.Map.of_list objects with
     | Ok _ -> ()
     | Error (path, loc, another_loc) ->
-      let main_message =
-        sprintf "Multiple definitions for the same object file %S" path
-      in
-      let annots =
-        let main = User_message.make ~loc [ Pp.text main_message ] in
-        let related =
-          [ User_message.make ~loc:another_loc [ Pp.text "Object already defined here" ] ]
-        in
-        User_message.Annots.singleton
-          Compound_user_error.annot
-          [ Compound_user_error.make ~main ~related ]
+      let related =
+        [ User_message.make ~loc:another_loc [ Pp.text "Object already defined here" ] ]
       in
       User_error.raise
         ~loc
-        ~annots
+        ~related
         [ Pp.textf
-            "%s. See another definition at %s."
-            main_message
+            "Multiple definitions for the same object file %S. See another definition at \
+             %s."
+            path
             (Loc.to_file_colon_line another_loc)
         ]
         ~hints:
@@ -315,18 +307,12 @@ let make stanzas ~(sources : Unresolved.t) ~dune_version =
             "Multiple foreign libraries with the same archive name %S"
             (Foreign.Archive.Name.to_string archive_name)
         in
-        let annots =
-          let main = User_message.make ~loc:loc2 [ Pp.text main_message ] in
-          let related =
-            [ User_message.make ~loc:loc1 [ Pp.text "Name already used here" ] ]
-          in
-          User_message.Annots.singleton
-            Compound_user_error.annot
-            [ Compound_user_error.make ~main ~related ]
+        let related =
+          [ User_message.make ~loc:loc1 [ Pp.text "Name already used here" ] ]
         in
         User_error.raise
-          ~annots
           ~loc:loc2
+          ~related
           [ Pp.textf
               "%s; the name has already been taken in %s."
               main_message

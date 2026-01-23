@@ -50,4 +50,3 @@ With some consumer
   - a/dune:4
   - a/dune:1
   [1]
-

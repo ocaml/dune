@@ -13,7 +13,6 @@
   memo
   dune_util
   fiber
-  promote
   stdune
   unix)
  (synopsis "Dune's rpc server + a usable client"))

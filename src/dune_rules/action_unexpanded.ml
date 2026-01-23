@@ -580,7 +580,7 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
         let+ p = E.dep file2 in
         Expander0.as_in_build_dir p ~loc:(String_with_vars.loc file2) ~what:"File"
     in
-    Promote.Diff_action.diff ~optional ~mode file1 file2
+    Action.diff ~optional ~mode file1 file2
   | No_infer t -> A.no_infer (expand t)
   | Pipe (outputs, l) ->
     let+ l = A.all (List.map l ~f:expand) in

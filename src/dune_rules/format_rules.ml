@@ -6,7 +6,7 @@ let add_diff loc alias ~input ~output =
   let dir = Alias.dir alias in
   let action =
     let dir = Path.Build.parent_exn dir in
-    Action.Chdir (Path.build dir, Promote.Diff_action.diff input output)
+    Action.Chdir (Path.build dir, Action.diff input output)
   in
   Action_builder.paths [ input; Path.build output ]
   >>> Action_builder.return (Action.Full.make action)

@@ -36,7 +36,6 @@
   ocaml_config
   opam_format
   predicate_lang
-  promote
   scheme
   source
   stdune

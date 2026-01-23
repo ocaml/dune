@@ -1,5 +1,5 @@
 open Import
-module Diff_promotion = Promote.Diff_promotion
+module Diff_promotion = Dune_engine.Diff_promotion
 
 let files_to_promote ~common files : Dune_rpc.Files_to_promote.t =
   match files with

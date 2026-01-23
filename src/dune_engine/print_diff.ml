@@ -1,6 +1,6 @@
 open Import
 open Fiber.O
-module Process = Dune_engine.Process
+module Process = Process
 
 (* [git diff] doesn't like symlink arguments *)
 let resolve_link_for_git path =

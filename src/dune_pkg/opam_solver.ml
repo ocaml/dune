@@ -1694,8 +1694,7 @@ let resolve_url (file_url : OpamFile.URL.t) =
 ;;
 
 let resolve_opam_packages opam_packages_to_lock ~resolve_package =
-  opam_packages_to_lock
-  |> List.map ~f:(fun opam_package ->
+  Fiber.parallel_map opam_packages_to_lock ~f:(fun opam_package ->
     let name = OpamPackage.name opam_package |> Package_name.of_opam_package_name in
     let version = OpamPackage.version opam_package in
     let resolved_package = resolve_package name version in
@@ -1712,7 +1711,6 @@ let resolve_opam_packages opam_packages_to_lock ~resolve_package =
       Resolved_package.with_opam_file opam_file resolved_package
     in
     name, opam_package, resolved_package)
-  |> Fiber.all
 ;;
 
 let solve_lock_dir

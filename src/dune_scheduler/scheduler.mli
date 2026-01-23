@@ -148,7 +148,7 @@ val cancel_current_build : unit -> unit Fiber.t
     [duration] should be at least this long. *)
 val sleep : Time.Span.t -> unit Fiber.t
 
-val spawn_thread : (unit -> unit) -> Thread.t
+val spawn_thread : name:string -> (unit -> unit) -> Thread.t
 
 (** [set_fs_memo_impl] registers the file system memoization callbacks.
     This must be called by dune_engine at initialization before starting

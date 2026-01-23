@@ -10,6 +10,6 @@ val signal_watcher_debug : Signal.t
 
 val join : t -> unit
 val interrupt_signals : Signal.t list
-val spawn : (unit -> unit) -> Thread.t
+val spawn : name:string -> (unit -> unit) -> Thread.t
 val delay : float -> unit
 val wait_signal : int list -> int

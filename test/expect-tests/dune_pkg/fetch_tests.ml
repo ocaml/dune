@@ -31,7 +31,7 @@ let serve_once ~filename =
   Http.Server.start server;
   let port = Http.Server.port server in
   let thread =
-    Scheduler.spawn_thread (fun () ->
+    Scheduler.spawn_thread ~name:"http-server" (fun () ->
       Http.Server.accept server ~f:(fun session ->
         let () = Http.Server.accept_request session in
         Http.Server.respond_file session ~file:filename);

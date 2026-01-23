@@ -253,7 +253,7 @@ end = struct
     let+ t = Fiber.Var.get_exn t_var in
     if not t.started
     then (
-      let (_ : Thread.t) = start t in
+      let (_ : Thread.t) = start ~name:"async-io" t in
       t.started <- true);
     t
   ;;

@@ -20,6 +20,7 @@ type t =
   | Cache
   | Digest
   | Artifact_substitution
+  | Thread
 
 val to_string : t -> string
 val of_string : string -> t option

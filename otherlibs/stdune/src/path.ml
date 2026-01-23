@@ -488,13 +488,11 @@ module External : sig
 
   val root : t
   val relative : t -> string -> t
-  val mkdir_p : ?perms:int -> t -> unit
   val initial_cwd : t
   val cwd : unit -> t
   val as_local : t -> string
   val append_local : t -> Local.t -> t
   val of_filename_relative_to_initial_cwd : string -> t
-  val is_broken_symlink : t -> bool
 end = struct
   module Table = String.Table
 
@@ -539,7 +537,6 @@ end = struct
     | Some p -> p
   ;;
 
-  let mkdir_p ?perms path = ignore (Fpath.mkdir_p ?perms path : Fpath.mkdir_p_result)
   let extension t = Filename.extension t
 
   let split_extension t =
@@ -568,8 +565,6 @@ end = struct
   let of_filename_relative_to_initial_cwd fn =
     if Filename.is_relative fn then relative initial_cwd fn else of_string fn
   ;;
-
-  let is_broken_symlink = Fpath.is_broken_symlink
 
   include (
     Comparator.Operators (struct
@@ -658,7 +653,9 @@ module Outside_build_dir = struct
 
   let mkdir_p ?perms = function
     | In_source_dir t -> Relative_to_source_root.mkdir_p ?perms t
-    | External t -> External.mkdir_p ?perms t
+    | External t ->
+      let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p ?perms (External.to_string t) in
+      ()
   ;;
 
   let relative t s =
@@ -1251,7 +1248,9 @@ let rm_rf ?(allow_external = false) t =
 ;;
 
 let mkdir_p ?perms = function
-  | External s -> External.mkdir_p s ?perms
+  | External s ->
+    let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p (External.to_string s) ?perms in
+    ()
   | In_source_tree s -> Relative_to_source_root.mkdir_p s ?perms
   | In_build_dir k ->
     Outside_build_dir.mkdir_p
@@ -1435,7 +1434,7 @@ let drop_prefix_exn t ~prefix =
 ;;
 
 let is_broken_symlink = function
-  | External e -> External.is_broken_symlink e
+  | External e -> Fpath.is_broken_symlink (External.to_string e)
   | In_source_tree _ | In_build_dir _ ->
     (* Paths within the source tree and build dir are always fully-expanded,
        so there's no possibility for them to be broken symlinks. *)

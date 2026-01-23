@@ -77,7 +77,6 @@ module External : sig
   val initial_cwd : t
   val cwd : unit -> t
   val relative : t -> string -> t
-  val mkdir_p : ?perms:int -> t -> unit
   val of_filename_relative_to_initial_cwd : string -> t
   val append_local : t -> Local.t -> t
 

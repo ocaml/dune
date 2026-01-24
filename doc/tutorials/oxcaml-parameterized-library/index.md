@@ -1,165 +1,207 @@
 ---
-author: Etienne Marais
+author: Etienne Marais, Shon Feder
 ---
 
-OxCaml Parameterised Library With Dune
+OxCaml Parameterised Libraries with Dune
 ======================================
 
-:::{warning}
-Parameterised libraries are only supported by the OxCaml branch of the OCaml
-compiler. You need to install this version of the compiler to use parameterised
-libraries with Dune. This feature should be considered experimental.
+::: {warning}
+- This feature is experimental.
+- Parameterised libraries are only supported by the OxCaml branch of the OCaml
+compiler. You need to [install the OxCaml compiler][get-oxcaml] to use
+parameterised libraries with Dune.
 :::
 
+[get-oxcaml]: https://oxcaml.org/get-oxcaml/
+
 This tutorial explains how to create and use a parameterized library in Dune.
-This feature enables the functorization of whole libraries, for example to do
-dependency injection. Parameterized libraries provide a more flexible version
-of dune's {doc}`/virtual-libraries`.
+*Parameterised libraries* specify some of their dependencies as *library
+parameters*, without committing a concrete implementations. This is useful for
+build-time dependency injection and for generalizing over platform-specific
+implementations. It provides a more flexible alternative to dune's
+{doc}`/virtual-libraries`.
 
 By the end of the tutorial, you will know:
-- how to create a library parameter,
+
+- how to declare a library parameter,
 - how to implement a library parameter,
-- how to parameterise a library with a library parameter,
-- how to instantiate a parameterised library with a a parameter implementation.
+- how to parameterise a library on a library parameter,
+- how to instantiate a parameterised library by supplying an implementation of
+  its library parameters.
 
-## Getting started
+## Getting Started
 
-Once you have checked that [OxCaml](https://oxcaml.org/) is available in your
-path, you can enable the `oxcaml` extension in your `dune-project`:
+Once you have checked that [OxCaml](https://oxcaml.org/) is installed and its
+`ocamlc` is available on your path, you can enable Dune's `oxcaml` extension in
+your `dune-project`:
 
 :::{literalinclude} parameter/dune-project
 :language: dune
 :::
 
 :::{important}
-It is mandatory to add the `oxcaml` extension. It allows dune to use the
-stanzas and fields specific to OxCaml. This extension is only available since
-version `3.20` of dune.
+Enabling the OxCaml extension by adding the `(use oxcaml 0.1)` stanza allows
+dune to use the stanzas and fields specific to OxCaml. This extension is only
+available since dune `3.20`.
 :::
 
-## Create a Library Parameter
+## Declare a Library Parameter
 
-In this section, we are going to learn how to write a library parameter.
-Library parameters allow your library code to be generic with respect to the
-implementation of the parameter, such that you can easily swap the
-implementation for another. This is useful for dependency injection, testing,
-platform-specific code, etc. The feature is most similar to OCaml `module type`
-definitions, since a library parameter is just an OCaml mli interface.
+Library parameters allow libraries to be generic over libraries they depend on.
+This is useful for dependency injection, testing, platform-specific code, etc.
 
-First, we create a `param/` directory where we are going to host our parameter
-definition.
+:::{note}
+The interface of a library parameter is specified using an OCaml `.mli` file and
+declared via the `library_parameter` dune stanza.  The following analogy holds:
+
+|                 | module parameters                 | library parameters                        |
+|-----------------|-----------------------------------|-------------------------------------------|
+| *declaration*   | `module type Intf = <sig>`        | `(library_parameter (name intf))`  stanza |
+| *specification* | a module signature: `sig ... end` | an interface file: e.g.,  `intf.mli`      |
+:::
+
+
+First, we create an (arbitrarily named) `param/` directory where we are going to
+write our parameter definition.
 
 ```{code-block} shell
 mkdir param
 ```
 
-In `param/`, we create a new `dune` file using the
-{doc}`/reference/dune/library_parameter` stanza to define a new library
-parameter, which we have named `param`:
+We create a `param/dune` file containing a
+{doc}`/reference/dune/library_parameter` stanza that declares a new library
+parameter named `param`:
 
 :::{literalinclude} parameter/param/dune
 :language: dune
 :::
-::::
 
-Still in `param/`, we also define the interface of the parameter in
-`param.mli`:
+To complete the declaration, we must provide an `.mli` file matching the given
+`name`, which will specify the interface of the library parameter. We create
+this in `param/param.mli`:
 
 :::{literalinclude} parameter/param/param.mli
 :language: ocaml
 :::
-::::
 
-This interface defines the types, functions and submodules, which
-will later be provided by this parameter.
+This interface specifies the types, functions, and modules which must be
+provided by a library for it to implement the declared parameter.
 
-## Creating an Implementation
+## Implement a Library Parameter
 
-In this section, we will learn how to write a library that implements our
-parameter interface.
+:::{note}
+The implementation of a library parameter must satisfy the signature of the
+parameter it claims to implement. The following analogy holds:
 
-As for the parameter, we are going to add a new directory `impl/` to host the
-implementation code of our parameter:
+|                        | module implementation                 | library implementation                                                                   |
+|------------------------|---------------------------------------|------------------------------------------------------------------------------------------|
+| *ascribed declaration* | `module Impl : Intf`                  | a library `stanza` with an `implements` field: `(library (name impl) (implements intf))` |
+| *implementation*       | a module expression: `struct ... end` | a set of `.ml` files                                                                     |
+:::
+
+We create an (arbitrarily named) directory `impl/`  where we are going to
+write an implementation of our library parameter:
 
 ```{code-block} shell
 mkdir impl
 ```
 
-An implementation of a parameter is just a library, with the `(implements param)`
-annotation:
+An implementation of a declared library parameter named `param` is a normal dune
+library with the `(implements param)` annotation. We declare this `impl/dune`:
 
 :::{literalinclude} parameter/impl/dune
 :language: dune
 :::
 
-The implementation in `impl/impl.ml` must satisfy the parameter signature:
+For the sake of simplicity, we give the example of a single-module library,
+defined in `impl/impl.ml`. This must satisfy the parameter interface ascribed by
+the `implements` field:
 
 :::{literalinclude} parameter/impl/impl.ml
 :language: ocaml
 :::
 
-## Creating a parameterised library
+## Define a Parameterised Library
 
-We'll define a library in the new folder `lib/` which is parameterised.
-First create the new directory:
+:::{note}
+A parameterised library must specify the parameters it requires. The following
+analogy holds:
+
+|               | parameterised module (a "functor") | parameterised library                           |
+|---------------|------------------------------------|-------------------------------------------------|
+| *declaration* | `module M (P : Intf)`              | a `(library (name m) (parameters intf))` stanza |
+:::
+
+We create an (arbitrarily named) directory `lib/`  where we are going to write a
+library that is parameterised on our declared library parameter.
 
 ```{code-block} shell
 mkdir lib
 ```
 
-Then add a `lib/dune` file to declare the library, with the special
-`(parameters param)` field to indicate it is generic with respect to the
-parameter `param`:
+We add a `lib/dune` file to declare the library, with the `(parameters param)`
+field, indicating that the library is generic over the library parameter `param`:
 
 :::{literalinclude} parameter/lib/dune
 :language: dune
 :::
-::::
 
-In the modules, we can then refer to `Param` even though we haven't
-yet specified which concrete implementation to use. For example,
-we can directly use `Param` functions:
+
+Within the modules comprising a parameterised library, we can then refer library
+parameters without having to decide on a concrete implementation of the
+libraries up front. In our example, we can directly use the functions from the
+declared `Param` in our library `lib/lib.ml`:
 
 :::{literalinclude} parameter/lib/lib.ml
 :language: ocaml
 :::
-::::
 
-## Instantiating a parameterised library
+## Instantiate a Parameterised Library
 
-Other libraries can depend on our parameterised library, either because they
-are themselves parameterised with the same parameter, or if they specify which
-implementation of the parameter to use.  For executables, all the parameterised
-libraries must be provided concrete arguments (otherwise we wouldn't be able to
-run their code).
+:::{note}
+To instantiate a parameterised library, we must supply library arguments that
+implement all specified parameters. The following analogy holds:
 
-To conclude this tutorial, we define an executable target in the new folder `bin/`.
-First create the directory:
+|                 | functor application | library instantiation                                                      |
+|-----------------|---------------------|----------------------------------------------------------------------------|
+| *instantiation* | `M (P)`             | a `(instantiate m p)` expression in {doc}`/reference/library-dependencies` |
+:::
+
+A *library* can depend on parameterised Libraries if it is, either,
+parameterised with the same parameters as its dependencies, or, it
+**instantiates** its parameterised dependencies. An *executable*, however, must
+instantiate any parameterised libraries, otherwise we wouldn't be able to
+compile a complete program to execute.
+
+To conclude this tutorial, we define an executable target in the new folder
+`bin/`, that depends on an instantiation of our parameterised library.
+
+We create an (arbitrarily named) `bin` directory:
 
 ```{code-block} shell
 mkdir bin
 ```
 
-And add a `bin/dune` file to define our executable:
+Then we add a `bin/dune` file defining our executable:
 
 :::{literalinclude} parameter/bin/dune
 :language: dune
 :::
-::::
 
-In the `libraries` dependencies, the syntax `(instantiate lib impl)` specifies
-that we want to use the parameterised library `lib` with `impl` as the
-implementation of its parameter `param`.
+In the `libraries` field, the syntax `(instantiate lib impl)` specifies that we
+want to use the concrete library resulting from applying the parameterised
+library `lib` to the library argument `impl`. Note that this application is only
+possible because we defined the `impl` library as an implementation of the
+library parameter, `param`.
 
-The code for our binary simply calls the library code, using the name `Lib`:
+The code for our binary simply calls the library code, using the library's name, `Lib`:
 
 :::{literalinclude} parameter/bin/bin.ml
 :language: ocaml
 :::
-::::
 
 ## Conclusion
 
-In this tutorial, we have learned how to define a parameter, its
-implementation, a parameterised library and how to instantiate them for an
-executable target.
+In this tutorial, we have learned how to declare a library parameter, define its
+implementation, define a parameterised library, and finally to use the latter by
+instantiating it for an executable target.

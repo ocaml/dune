@@ -25,7 +25,7 @@ end
 
 module Shutdown = Shutdown
 
-let spawn_thread f = Thread.spawn f
+let spawn_thread ~name f = Thread.spawn ~name f
 
 type status =
   | (* We are not doing a build. Just accumulating invalidations until the next
@@ -522,7 +522,7 @@ module Run = struct
         Some
           (File_watcher.create_default
              ~scheduler:
-               { spawn_thread
+               { spawn_thread = spawn_thread ~name:"file-watcher"
                ; thread_safe_send_emit_events_job =
                    (fun job -> Event_queue.send_file_watcher_task events job)
                }

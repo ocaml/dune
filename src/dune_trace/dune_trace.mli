@@ -23,6 +23,7 @@ module Category : sig
     | Cache
     | Digest
     | Artifact_substitution
+    | Thread
 end
 
 module Event : sig
@@ -104,6 +105,7 @@ module Event : sig
   val init : version:string option -> t
   val gc : unit -> t
   val fd_count : unit -> t option
+  val spawn_thread : name:string -> t
 
   module Promote : sig
     val promote : Path.Build.t -> Path.Source.t -> t

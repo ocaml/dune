@@ -710,3 +710,9 @@ let artifact_substitution ~file ~placeholder ~value =
   in
   Event.instant ~args ~name:"debug" now Artifact_substitution
 ;;
+
+let spawn_thread ~name =
+  let now = Time.now () in
+  let args = [ "name", Arg.string name ] in
+  Event.instant ~args ~name:"spawn_thread" now Thread
+;;

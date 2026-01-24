@@ -47,5 +47,6 @@ module Partial : sig
   val no_special_requirements : t
   val no_sandboxing : t
   val needs_sandboxing : t
+  val patch_back_source_tree : t
   val disallow : Sandbox_mode.t -> t
 end

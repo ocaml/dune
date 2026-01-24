@@ -51,3 +51,5 @@ val register_intermediate
     refers to a path in the build dir, not in the sandbox (it can point to the
     sandbox, but the sandbox root will be stripped). *)
 val register_dep : source_file:Path.Source.t -> correction_file:Path.Build.t -> unit
+
+val register_delete : Path.Source.t -> unit

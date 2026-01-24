@@ -35,8 +35,8 @@ let%expect_test "persistent digests" =
     da4ce847dd41df462849adecfe43f4eb
     ---
 
-    TO-PROMOTE version 3
-    f2d6070d92c27497a6c2d89782d81c99
+    TO-PROMOTE version 4
+    25683308e2c8ecb69f71c3b9de1f2ac5
     ---
 
     COPY-LINE-DIRECTIVE-MAP version 2

@@ -17,26 +17,30 @@ module Glob_files = struct
 end
 
 module Sandbox_config = struct
-  type t = Loc.t * [ `None | `Always | `Preserve_file_kind ] list
+  type mode =
+    [ `None
+    | `Always
+    | `Preserve_file_kind
+    | `Patch_back_source_tree
+    ]
 
-  let equal =
-    Tuple.T2.equal
-      Loc.equal
-      (List.equal (fun a b ->
-         match a, b with
-         | `None, `None | `Always, `Always | `Preserve_file_kind, `Preserve_file_kind ->
-           true
-         | _, _ -> false))
-  ;;
+  type t = Loc.t * mode list
+
+  let equal_mode : mode -> mode -> bool = Poly.equal
+  let equal = Tuple.T2.equal Loc.equal (List.equal equal_mode)
 
   let all =
-    [ "none", `None; "always", `Always; "preserve_file_kind", `Preserve_file_kind ]
+    [ "none", `None, (1, 12)
+    ; "always", `Always, (1, 12)
+    ; "preserve_file_kind", `Preserve_file_kind, (1, 12)
+    ; "patch_back_source_tree", `Patch_back_source_tree, (3, 22)
+    ]
   ;;
 
   let loc (loc, _) = loc
 
   let string_of_mode mode =
-    List.find_map all ~f:(fun (s, mode') ->
+    List.find_map all ~f:(fun (s, mode', _) ->
       if Poly.equal mode mode' then Some s else None)
     |> Option.value_exn
   ;;
@@ -46,7 +50,13 @@ module Sandbox_config = struct
   ;;
 
   let decode : t Decoder.t =
-    Syntax.since Stanza.syntax (1, 12) >>> located (repeat (enum all))
+    let all =
+      List.map all ~f:(fun (name, mode, version) ->
+        ( name
+        , let+ () = Syntax.since Stanza.syntax version in
+          mode ))
+    in
+    located (repeat (enum' all))
   ;;
 
   let fold (_, xs) ~f ~init = List.fold_left xs ~init ~f:(fun acc a -> f a acc)

@@ -31,7 +31,7 @@ let init =
 (* Snapshot used to detect modifications. We use the same algorithm as
    [Cached_digest] given that we are trying to detect the same kind of
    changes. *)
-type snapshot = Cached_digest.Reduced_stats.t Path.Map.t
+type snapshot = [ `Dir | `File of Cached_digest.Reduced_stats.t ] Path.Map.t
 
 type t =
   { dir : Path.Build.t
@@ -149,10 +149,13 @@ let snapshot t =
   Fpath.traverse
     ~dir:(Path.to_string root)
     ~init:Path.Map.empty
+    ~on_dir:(fun ~dir fname acc ->
+      let path = Path.relative root (Filename.concat dir fname) in
+      Path.Map.add_exn acc path `Dir)
     ~on_file:(fun ~dir fname acc ->
       let p = Path.relative root (Filename.concat dir fname) in
       let stats = Unix.stat (Path.to_string p) in
-      Path.Map.add_exn acc p (Cached_digest.Reduced_stats.of_unix_stats stats))
+      Path.Map.add_exn acc p (`File (Cached_digest.Reduced_stats.of_unix_stats stats)))
     ~on_other:`Ignore
     ~on_symlink:`Ignore
     ()
@@ -181,26 +184,7 @@ let create ~mode ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
   in
   Option.iter dune_stats ~f:(fun trace -> Dune_trace.Out.finish trace event);
   match mode with
-  | Patch_back_source_tree ->
-    (* Only supported on Linux because we rely on the mtime changing to detect
-       when a file changes. This doesn't work on OSX for instance as the file
-       system granularity is 1s, which is too coarse. *)
-    (match Platform.OS.value with
-     | Linux -> ()
-     | _ ->
-       User_error.raise
-         ~loc:rule_loc
-         [ Pp.textf
-             "(mode patch-back-source-tree) is only supported on Linux at the moment."
-         ]);
-    (* We expect this call to [snapshot t] to return the same set of files as
-       [deps], given that's exactly what we just copied in the sandbox. So in
-       theory, we could iterate over [deps] rather than scan the file system.
-       However, the code is simpler if we just call [snapshot t] before and
-       after running the action. Given that [patch_back_source_tree] is a dodgy
-       feature that we hope to get rid of in the long run, we favor code
-       simplicity over performance. *)
-    { t with snapshot = Some (snapshot t) }
+  | Patch_back_source_tree -> { t with snapshot = Some (snapshot t) }
   | _ -> t
 ;;
 
@@ -217,35 +201,48 @@ let rename_optional_file ~src ~dst =
      | () -> ())
 ;;
 
-let apply_changes_to_source_tree t ~old_snapshot =
+let register_snapshot_promotion t (targets : Targets.Validated.t) ~old_snapshot =
   let new_snapshot = snapshot t in
   (* Same as promotion: make the file writable when copying to the source
      tree. *)
   let in_source_tree p =
-    Path.extract_build_context_dir_maybe_sandboxed p
-    |> Option.value_exn
-    |> snd
-    |> Path.source
+    Path.extract_build_context_dir_maybe_sandboxed p |> Option.value_exn |> snd
   in
   let copy_file p =
-    let in_source_tree = in_source_tree p in
-    Fpath.unlink_no_err (Path.to_string in_source_tree);
-    Option.iter (Path.parent in_source_tree) ~f:Path.mkdir_p;
-    Io.copy_file ~src:p ~dst:in_source_tree ()
+    let source_file = in_source_tree p in
+    let correction_file = Path.as_in_build_dir_exn p in
+    Diff_promotion.register_intermediate `Move ~source_file ~correction_file
   in
-  let delete_file p =
-    let in_source_tree = in_source_tree p in
-    Fpath.unlink_no_err (Path.to_string in_source_tree)
-  in
+  let delete what file = in_source_tree file |> Diff_promotion.register_delete what in
+  let target_root_in_sandbox = map_path t targets.root in
   Path.Map.iter2 old_snapshot new_snapshot ~f:(fun p before after ->
-    match before, after with
-    | None, None -> assert false
-    | None, Some _ -> copy_file p
-    | Some _, None -> delete_file p
-    | Some before, Some after ->
-      (match Cached_digest.Reduced_stats.compare before after with
-       | Eq -> ()
-       | Lt | Gt -> copy_file p))
+    if
+      not
+        (let dir = Path.as_in_build_dir_exn (Path.parent_exn p) in
+         Path.Build.equal dir target_root_in_sandbox
+         &&
+         let basename = Path.basename p in
+         Filename.Set.mem targets.files basename || Filename.Set.mem targets.dirs basename)
+    then (
+      match before, after with
+      | None, None -> assert false
+      | None, Some (`File _) -> copy_file p
+      | Some (`File _), None -> delete `File p
+      | Some `Dir, None -> delete `Directory p
+      | Some `Dir, Some `Dir -> ()
+      | None, Some `Dir ->
+        (* We don't create empty dirs and rely on the traversal of this dir to
+           create the underlying files. Mayb e we should try harder *)
+        ()
+      | Some (`File _), Some `Dir ->
+        (* We are going to traverse the target directory here, but we should
+           really treat this as a deletion *)
+        ()
+      | Some `Dir, Some (`File _) -> copy_file p
+      | Some (`File before), Some (`File after) ->
+        (match Cached_digest.Reduced_stats.compare before after with
+         | Eq -> ()
+         | Lt | Gt -> copy_file p)))
 ;;
 
 let hint_delete_dir =
@@ -260,7 +257,7 @@ let move_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated
   =
   maybe_async (fun () ->
     Option.iter t.snapshot ~f:(fun old_snapshot ->
-      apply_changes_to_source_tree t ~old_snapshot);
+      register_snapshot_promotion t targets ~old_snapshot);
     Targets.Validated.iter
       targets
       ~file:(fun target ->

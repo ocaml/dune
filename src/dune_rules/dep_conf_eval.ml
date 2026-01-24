@@ -9,6 +9,7 @@ let make_sandboxing_config config =
       | `None -> Sandbox_config.Partial.no_sandboxing
       | `Always -> Sandbox_config.Partial.needs_sandboxing
       | `Preserve_file_kind -> Sandbox_config.Partial.disallow Sandbox_mode.symlink
+      | `Patch_back_source_tree -> Sandbox_config.Partial.patch_back_source_tree
     in
     partial :: acc)
   |> Dune_engine.Sandbox_config.Partial.merge ~loc

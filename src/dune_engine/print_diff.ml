@@ -215,12 +215,12 @@ let prepare ~skip_trailing_cr annots path1 path2 =
       | Some command -> With_fallback.run command ~fallback:normal_diff)
 ;;
 
-let print ?(skip_trailing_cr = Sys.win32) annots path1 path2 =
+let print ~skip_trailing_cr annots path1 path2 =
   let p = prepare ~skip_trailing_cr annots path1 path2 in
   With_fallback.exec p
 ;;
 
-let get ?(skip_trailing_cr = Sys.win32) annots path1 path2 =
-  let p = prepare ~skip_trailing_cr annots path1 path2 in
+let get path1 path2 =
+  let p = prepare ~skip_trailing_cr:Sys.win32 User_message.Annots.empty path1 path2 in
   With_fallback.capture p
 ;;

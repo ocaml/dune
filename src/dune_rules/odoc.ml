@@ -1156,7 +1156,7 @@ let setup_lib_markdown_rules sctx lib =
 ;;
 
 let setup_pkg_markdown_rules_def =
-  let f (sctx, pkg) =
+  let f (sctx, pkg, _for_) =
     let ctx = Super_context.context sctx in
     let* markdown_supported = supports_doc_markdown sctx in
     if not markdown_supported
@@ -1201,8 +1201,8 @@ let setup_pkg_markdown_rules_def =
   setup_pkg_rules_def "setup-package-markdown-rules" f
 ;;
 
-let setup_pkg_markdown_rules sctx ~pkg : unit Memo.t =
-  Memo.With_implicit_output.exec setup_pkg_markdown_rules_def (sctx, pkg)
+let setup_pkg_markdown_rules sctx ~pkg ~for_ : unit Memo.t =
+  Memo.With_implicit_output.exec setup_pkg_markdown_rules_def (sctx, pkg, for_)
 ;;
 
 let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.t) =
@@ -1399,7 +1399,7 @@ let gen_rules sctx ~dir rest =
          Package.Name.Map.to_seq packages
          |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
            let pkg_name = Package.name pkg in
-           setup_pkg_markdown_rules sctx ~pkg:pkg_name)))
+           setup_pkg_markdown_rules sctx ~pkg:pkg_name ~for_:Compilation_mode.Ocaml)))
   | [ "_markdown"; _lib_unique_name_or_pkg ] ->
     (* package directories are directory targets *)
     Memo.return Gen_rules.no_rules

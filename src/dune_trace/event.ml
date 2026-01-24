@@ -141,8 +141,37 @@ let init ~version =
 let exit () =
   let now = Time.now () in
   let args =
-    let gc = gc_args () in
-    [ "gc", Arg.list (Arg.record gc) ]
+    let gc = gc_args () |> Arg.record |> Arg.list in
+    let double ~count ~time =
+      [ "count", Arg.int (Counter.read count)
+      ; "time", Arg.span (Counter.Timer.read time)
+      ]
+    in
+    let triple (module S : Metrics.Stat) =
+      let open S in
+      double ~count ~time @ [ "bytes", Arg.int (Counter.read bytes) ]
+      |> Arg.record
+      |> Arg.list
+    in
+    let io =
+      [ "files_read", triple (module Metrics.File_read)
+      ; "files_written", triple (module Metrics.File_write)
+      ; ( "directories_read"
+        , double ~count:Metrics.Directory_read.count ~time:Metrics.Directory_read.time
+          |> Arg.record
+          |> Arg.list )
+      ]
+      |> Arg.record
+      |> Arg.list
+    in
+    let digest =
+      [ "files", triple (module Metrics.Digest.File)
+      ; "values", triple (module Metrics.Digest.Value)
+      ]
+      |> Arg.record
+      |> Arg.list
+    in
+    [ "gc", gc; "io", io; "digest", digest ]
   in
   Event.instant ~args ~name:"exit" now Config
 ;;

@@ -48,7 +48,15 @@ let open_for_digest file =
 (* CR-someday rgrinberg: maybe this should exist in blake3_mini? *)
 let zero = lazy (Hasher.with_singleton (fun _f -> ()))
 
+let digest_and_close_fd fd =
+  let start = Counter.Timer.start () in
+  let res = Exn.protectx fd ~f:Blake3_mini.fd ~finally:Unix.close in
+  Counter.Timer.stop Metrics.Digest.File.time start;
+  res
+;;
+
 let file file =
+  Counter.incr Metrics.Digest.File.count;
   let fd =
     match open_for_digest file with
     | fd -> fd
@@ -56,7 +64,7 @@ let file file =
       raise (Sys_error (sprintf "%s: Permission denied" file))
     | exception exn -> reraise exn
   in
-  Exn.protectx fd ~f:Blake3_mini.fd ~finally:Unix.close
+  digest_and_close_fd fd
 ;;
 
 let async_digest_minimum = 1_000
@@ -65,6 +73,7 @@ let file_async file =
   let open Fiber.O in
   let* () = Fiber.return () in
   let fd = open_for_digest file in
+  Counter.incr Metrics.Digest.File.count;
   let size =
     match Unix.fstat fd with
     | exception exn ->
@@ -72,13 +81,12 @@ let file_async file =
       raise exn
     | stat -> stat.st_size
   in
+  Counter.add Metrics.Digest.File.bytes size;
   if size = 0
   then Fiber.return (Lazy.force zero)
   else if size < async_digest_minimum
-  then Fiber.return (Exn.protectx fd ~f:Blake3_mini.fd ~finally:Unix.close)
-  else
-    Dune_scheduler.Scheduler.async_exn (fun () ->
-      Exn.protectx fd ~f:Blake3_mini.fd ~finally:Unix.close)
+  then Fiber.return (digest_and_close_fd fd)
+  else Dune_scheduler.Scheduler.async_exn (fun () -> digest_and_close_fd fd)
 ;;
 
 let equal = Blake3_mini.Digest.equal
@@ -92,7 +100,12 @@ module Feed = struct
   type 'a t = hasher -> 'a -> unit
 
   let contramap a ~f hasher b = a hasher (f b)
-  let string hasher s = Blake3_mini.feed_string hasher s ~pos:0 ~len:(String.length s)
+
+  let string hasher s =
+    Counter.add Metrics.Digest.Value.bytes (String.length s);
+    Blake3_mini.feed_string hasher s ~pos:0 ~len:(String.length s)
+  ;;
+
   let bool = contramap string ~f:Bool.to_string
   let int = contramap string ~f:Int.to_string
 
@@ -128,7 +141,11 @@ let string s = Feed.compute_digest Feed.string s
 let to_string_raw s = Blake3_mini.Digest.to_binary s
 
 let generic a =
-  Metrics.Timer.record "generic_digest" ~f:(fun () -> Feed.compute_digest Feed.generic a)
+  let start = Counter.Timer.start () in
+  Counter.incr Metrics.Digest.Value.count;
+  let res = Feed.compute_digest Feed.generic a in
+  Counter.Timer.stop Metrics.Digest.Value.time start;
+  res
 ;;
 
 let path_with_executable_bit =

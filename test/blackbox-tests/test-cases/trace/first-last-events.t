@@ -24,7 +24,10 @@ be a particular event emitted by dune.
 
 Demonstrate the last event:
 
-  $ dune trace cat | jq -s 'last | { name, cat, args: (.args | .gc |= keys) }'
+  $ dune trace cat | jq -s '
+  >   last
+  > | { name, cat, args: (.args | .gc |= keys | .io |= keys | .digest |= keys) }
+  > '
   {
     "name": "exit",
     "cat": "config",
@@ -39,6 +42,15 @@ Demonstrate the last event:
         "promoted_words",
         "stack_size",
         "top_heap_words"
+      ],
+      "io": [
+        "directories_read",
+        "files_read",
+        "files_written"
+      ],
+      "digest": [
+        "files",
+        "values"
       ]
     }
   }

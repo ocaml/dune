@@ -85,7 +85,13 @@ end = struct
 end
 
 let make_metadata ?annots ?has_embedded_location loc =
-  Process.create_metadata ?has_embedded_location ~purpose:Internal_job ~loc ?annots ()
+  Process.create_metadata
+    ~categories:[ "diff" ]
+    ?has_embedded_location
+    ~purpose:Internal_job
+    ~loc
+    ?annots
+    ()
 ;;
 
 let prepare ~skip_trailing_cr annots path1 path2 =

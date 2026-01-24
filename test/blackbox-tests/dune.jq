@@ -52,7 +52,7 @@ def coqdocFlags:
   | rocqArg;
 
 def redactedActionTraces:
-  [ .[] | select(.args.digest != null) | .ts |= 0 | .args.digest |= "REDACTED" ] | sort_by(.name) | .[];
+  [ .[] | select(.cat != "config" and .args.digest != null) | .ts |= 0 | .args.digest |= "REDACTED" ] | sort_by(.name) | .[];
 
 def cacheEvent($path):
   select(.cat == "cache") | .args | select(.path == $path);

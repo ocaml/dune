@@ -54,6 +54,7 @@ let readdir_with_kind_if_available_win32 : Unix.dir_handle -> Readdir_result.t =
 ;;
 
 let readdir_with_kind_if_available : Unix.dir_handle -> Readdir_result.t =
+  Counter.incr Metrics.Directory_read.count;
   if Stdlib.Sys.win32
   then readdir_with_kind_if_available_win32
   else readdir_with_kind_if_available_unix

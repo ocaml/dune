@@ -1,5 +1,5 @@
 ---
-author: Etienne Marais, Shon Feder
+author: Etienne Marais, Arthur Wendling, Sudha Parimala, Shon Feder
 ---
 
 OxCaml Parameterised Libraries with Dune

@@ -27,8 +27,14 @@ run time. This test makes sure that this is recorded as a dependency.
 
   $ dune runtest --auto-promote
   File "README.md", line 1, characters 0-0:
-  Error: Files _build/default/README.md and
-  _build/default/.mdx/README.md.corrected differ.
+  --- README.md
+  +++ .mdx/README.md.corrected
+  @@ -1,4 +1,4 @@
+   ```ocaml
+   # foo ();;
+  -- : int = 1
+  +- : int = 2
+   ```
   Promoting _build/default/.mdx/README.md.corrected to README.md.
   [1]
 

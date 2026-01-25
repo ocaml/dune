@@ -24,8 +24,11 @@ and dune correctly complains
 
   $ dune build @correction1
   File "text-file", line 1, characters 0-0:
-  Error: Files _build/default/text-file and _build/default/text-file-corrected
-  differ.
+  --- text-file
+  +++ text-file-corrected
+  @@ -1 +1 @@
+  -file-contents
+  +corrected-contents-1
   [1]
 
 Promotion works fine:
@@ -63,8 +66,11 @@ Promotion should work when sandboxing is used:
 
   $ dune build @correction1 --sandbox copy
   File "text-file", line 1, characters 0-0:
-  Error: Files _build/default/text-file and _build/default/text-file-corrected
-  differ.
+  --- text-file
+  +++ text-file-corrected
+  @@ -1 +1 @@
+  -new-contents
+  +another-correction
   [1]
 
   $ dune promote
@@ -97,8 +103,11 @@ One fix is to not look at it, and flag its existence as an error.
   $ dune build text-file-corrected
   $ dune build @correction1
   File "text-file", line 1, characters 0-0:
-  Error: Files _build/default/text-file and _build/default/text-file-corrected
-  differ.
+  --- text-file
+  +++ text-file-corrected
+  @@ -1 +1 @@
+  -another-correction
+  +corrected-contents-1
   [1]
 
 Sandboxing helps since dune will sandbox all actions:

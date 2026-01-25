@@ -33,8 +33,11 @@ Run "dune fmt" without the dev-tools feature enabled. This should invoke the oca
 executable from the package dependencies (ie., 'ocamlformat.0.26.2').
   $ dune fmt --preview
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1 @@
+  -let () = print_endline "Hello, world"
+  +formatted with version 0.26.2
   [1]
   $ cat _build/default/.formatted/foo.ml
   formatted with version 0.26.2
@@ -46,8 +49,11 @@ dev-tool (0.26.3).
   Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.3
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1 @@
+  -let () = print_endline "Hello, world"
+  +formatted with version 0.26.3
   Promoting _build/default/.formatted/foo.ml to foo.ml.
   [1]
   $ cat foo.ml
@@ -60,8 +66,11 @@ regular package dependency.
   $ rm -r "${dev_tool_lock_dir}"
   $ dune fmt --preview
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1 @@
+  -formatted with version 0.26.3
+  +formatted with version 0.26.2
   [1]
   $ cat _build/default/.formatted/foo.ml
   formatted with version 0.26.2

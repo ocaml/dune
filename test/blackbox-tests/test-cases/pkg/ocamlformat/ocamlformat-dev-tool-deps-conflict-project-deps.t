@@ -97,8 +97,11 @@ versions of the same dependency.
   - ocamlformat.0.26.2
   - printer.1.0
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1 @@
+  -let () = Printer.print ()
+  +formatted
   [1]
   $ cat _build/default/.formatted/foo.ml
   formatted

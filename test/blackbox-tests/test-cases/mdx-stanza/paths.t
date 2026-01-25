@@ -74,8 +74,12 @@ But this works with stanza 0.3:
   $ set_version 0.3
   $ dune runtest
   File "a/README.md", line 1, characters 0-0:
-  Error: Files _build/default/a/README.md and
-  _build/default/a/.mdx/README.md.corrected differ.
+  --- a/README.md
+  +++ a/.mdx/README.md.corrected
+  @@ -1,2 +1,3 @@
+   ```ocaml file=../b/src.ml
+  +let x = 1
+   ```
   [1]
   $ set_version 0.2
 
@@ -89,8 +93,12 @@ Files in the same directory work.
 
   $ dune runtest
   File "a/README.md", line 1, characters 0-0:
-  Error: Files _build/default/a/README.md and
-  _build/default/a/.mdx/README.md.corrected differ.
+  --- a/README.md
+  +++ a/.mdx/README.md.corrected
+  @@ -1,2 +1,3 @@
+   ```ocaml file=src.ml
+  +let x = 1
+   ```
   [1]
 
 From a subdirectory too:
@@ -104,6 +112,10 @@ From a subdirectory too:
 
   $ dune runtest
   File "a/README.md", line 1, characters 0-0:
-  Error: Files _build/default/a/README.md and
-  _build/default/a/.mdx/README.md.corrected differ.
+  --- a/README.md
+  +++ a/.mdx/README.md.corrected
+  @@ -1,2 +1,3 @@
+   ```ocaml file=sub/src.ml
+  +let x = 1
+   ```
   [1]

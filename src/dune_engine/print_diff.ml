@@ -84,10 +84,10 @@ end = struct
   ;;
 end
 
-let make_metadata ?has_embedded_location annots loc =
+let make_metadata ~has_embedded_location annots loc =
   Process.create_metadata
     ~categories:[ "diff" ]
-    ?has_embedded_location
+    ~has_embedded_location
     ~purpose:Internal_job
     ~loc
     ~annots
@@ -105,7 +105,11 @@ module External = struct
         @ (if skip_trailing_cr then [ "--strip-trailing-cr" ] else [])
         @ [ file1; file2 ]
       in
-      { dir; prog; args; metadata = make_metadata annots loc })
+      { dir
+      ; prog
+      ; args
+      ; metadata = make_metadata ~has_embedded_location:false annots loc
+      })
   ;;
 
   let git ~skip_trailing_cr annots loc path1 path2 =
@@ -120,7 +124,7 @@ module External = struct
       in
       { dir
       ; prog
-      ; metadata = make_metadata annots loc
+      ; metadata = make_metadata ~has_embedded_location:false annots loc
       ; args =
           [ "--no-pager"; "diff"; "--no-index"; "--color=always"; "-u" ]
           @ (if skip_trailing_cr then [ "--ignore-cr-at-eol" ] else [])
@@ -181,7 +185,11 @@ let prepare ~skip_trailing_cr annots path1 path2 =
       sprintf "%s %s %s" cmd (String.quote_for_shell file1) (String.quote_for_shell file2)
     in
     With_fallback.run
-      { prog = sh; args = [ arg; cmd ]; metadata = make_metadata annots loc; dir }
+      { prog = sh
+      ; args = [ arg; cmd ]
+      ; metadata = make_metadata ~has_embedded_location:false annots loc
+      ; dir
+      }
       ~fallback:
         (With_fallback.fail
            (User_error.make

@@ -94,6 +94,62 @@ let make_metadata ?annots ?has_embedded_location loc =
     ()
 ;;
 
+module External = struct
+  let which prog = Bin.which ~path:(Env_path.path Env.initial) prog
+
+  let diff ~skip_trailing_cr ~dir loc file1 file2 =
+    which "diff"
+    |> Option.map ~f:(fun prog ->
+      let args =
+        [ "-u" ]
+        @ (if skip_trailing_cr then [ "--strip-trailing-cr" ] else [])
+        @ [ file1; file2 ]
+      in
+      { dir; prog; args; metadata = make_metadata loc })
+  ;;
+
+  let git ~skip_trailing_cr loc path1 path2 =
+    which "git"
+    |> Option.map ~f:(fun prog ->
+      let dir =
+        (* We can't run [git] from [dir] as [dir] might be inside a sandbox
+          and sandboxes have fake [.git] files to stop [git] from escaping
+          the sandbox. If we did, the below git command would fail saying it
+          can run this fake [.git] file. *)
+        Path.root
+      in
+      { dir
+      ; prog
+      ; metadata = make_metadata loc
+      ; args =
+          [ "--no-pager"; "diff"; "--no-index"; "--color=always"; "-u" ]
+          @ (if skip_trailing_cr then [ "--ignore-cr-at-eol" ] else [])
+          @ List.map [ path1; path2 ] ~f:(fun path ->
+            resolve_link_for_git path |> Path.reach ~from:dir)
+      })
+  ;;
+
+  let patdiff ~dir loc file1 file2 =
+    which "patdiff"
+    |> Option.map ~f:(fun prog ->
+      let metadata =
+        (* Because of the [-location-style omake], patdiff will print the
+           location of each hunk in a format that the editor should understand.
+           However, the location won't be the first line of the output, so the
+           [process] module won't recognise that the output has a location.
+
+           For this reason, we manually pass the below annotation. *)
+        make_metadata loc ~has_embedded_location:true
+      in
+      let args =
+        [ "-keep-whitespace"; "-location-style"; "omake" ]
+        @ (if Lazy.force Ansi_color.stderr_supports_color then [] else [ "-ascii" ])
+        @ [ file1; file2 ]
+      in
+      { dir; prog; metadata; args })
+  ;;
+end
+
 let prepare ~skip_trailing_cr annots path1 path2 =
   let dir, file1, file2 =
     match
@@ -105,9 +161,6 @@ let prepare ~skip_trailing_cr annots path1 path2 =
     | _ -> Path.root, path1, path2
   in
   let loc = Loc.in_file file1 in
-  let run ?(dir = dir) ?(metadata = make_metadata loc) prog args ~fallback =
-    With_fallback.run { dir; prog; args; metadata } ~fallback
-  in
   let file1, file2 = Path.(to_string file1, to_string file2) in
   let fallback =
     With_fallback.fail
@@ -120,40 +173,6 @@ let prepare ~skip_trailing_cr annots path1 path2 =
              (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path2))
          ])
   in
-  let which prog = Bin.which ~path:(Env_path.path Env.initial) prog in
-  let normal_diff () =
-    let diff =
-      match which "git" with
-      | Some path ->
-        let dir =
-          (* We can't run [git] from [dir] as [dir] might be inside a sandbox
-             and sandboxes have fake [.git] files to stop [git] from escaping
-             the sandbox. If we did, the below git command would fail saying it
-             can run this fake [.git] file. *)
-          Path.root
-        in
-        Some
-          ( dir
-          , path
-          , [ "--no-pager"; "diff"; "--no-index"; "--color=always"; "-u" ]
-          , "--ignore-cr-at-eol"
-          , List.map
-              ~f:(fun path -> resolve_link_for_git path |> Path.reach ~from:dir)
-              [ path1; path2 ] )
-      | None ->
-        which "diff"
-        |> Option.map ~f:(fun path ->
-          dir, path, [ "-u" ], "--strip-trailing-cr", [ file1; file2 ])
-    in
-    match diff with
-    | None -> fallback
-    | Some (dir, path, args, skip_trailing_cr_arg, files) ->
-      let args =
-        let args = if skip_trailing_cr then args @ [ skip_trailing_cr_arg ] else args in
-        args @ files
-      in
-      run ~dir path args ~fallback
-  in
   match !Clflags.diff_command with
   | Some "-" -> fallback
   | Some cmd ->
@@ -161,9 +180,8 @@ let prepare ~skip_trailing_cr annots path1 path2 =
     let cmd =
       sprintf "%s %s %s" cmd (String.quote_for_shell file1) (String.quote_for_shell file2)
     in
-    run
-      sh
-      [ arg; cmd ]
+    With_fallback.run
+      { prog = sh; args = [ arg; cmd ]; metadata = make_metadata loc; dir }
       ~fallback:
         (With_fallback.fail
            (User_error.make
@@ -183,29 +201,18 @@ let prepare ~skip_trailing_cr annots path1 path2 =
     if Execution_env.inside_dune
     then fallback
     else (
-      match which "patdiff" with
-      | None -> normal_diff ()
-      | Some prog ->
-        run
-          prog
-          ([ "-keep-whitespace"; "-location-style"; "omake" ]
-           @ (if Lazy.force Ansi_color.stderr_supports_color then [] else [ "-ascii" ])
-           @ [ file1; file2 ])
-          ~metadata:
-            ((* Because of the [-location-style omake], patdiff will print the
-                location of each hunk in a format that the editor should
-                understand. However, the location won't be the first line of
-                the output, so the [process] module won't recognise that the
-                output has a location.
-
-                For this reason, we manually pass the below annotation. *)
-             make_metadata
-               loc
-               ~has_embedded_location:true)
-          ~fallback:
-            ((* Use "diff" if "patdiff" reported no differences *)
-             normal_diff
-               ()))
+      let normal_diff =
+        match
+          match External.git ~skip_trailing_cr loc path1 path2 with
+          | Some g -> Some g
+          | None -> External.diff ~skip_trailing_cr ~dir loc file1 file2
+        with
+        | None -> fallback
+        | Some command -> With_fallback.run command ~fallback
+      in
+      match External.patdiff ~dir loc file1 file2 with
+      | None -> normal_diff
+      | Some command -> With_fallback.run command ~fallback:normal_diff)
 ;;
 
 let print ?(skip_trailing_cr = Sys.win32) annots path1 path2 =

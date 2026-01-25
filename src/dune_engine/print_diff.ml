@@ -84,20 +84,20 @@ end = struct
   ;;
 end
 
-let make_metadata ?annots ?has_embedded_location loc =
+let make_metadata ?has_embedded_location annots loc =
   Process.create_metadata
     ~categories:[ "diff" ]
     ?has_embedded_location
     ~purpose:Internal_job
     ~loc
-    ?annots
+    ~annots
     ()
 ;;
 
 module External = struct
   let which prog = Bin.which ~path:(Env_path.path Env.initial) prog
 
-  let diff ~skip_trailing_cr ~dir loc file1 file2 =
+  let diff ~skip_trailing_cr ~dir annots loc file1 file2 =
     which "diff"
     |> Option.map ~f:(fun prog ->
       let args =
@@ -105,10 +105,10 @@ module External = struct
         @ (if skip_trailing_cr then [ "--strip-trailing-cr" ] else [])
         @ [ file1; file2 ]
       in
-      { dir; prog; args; metadata = make_metadata loc })
+      { dir; prog; args; metadata = make_metadata annots loc })
   ;;
 
-  let git ~skip_trailing_cr loc path1 path2 =
+  let git ~skip_trailing_cr annots loc path1 path2 =
     which "git"
     |> Option.map ~f:(fun prog ->
       let dir =
@@ -120,7 +120,7 @@ module External = struct
       in
       { dir
       ; prog
-      ; metadata = make_metadata loc
+      ; metadata = make_metadata annots loc
       ; args =
           [ "--no-pager"; "diff"; "--no-index"; "--color=always"; "-u" ]
           @ (if skip_trailing_cr then [ "--ignore-cr-at-eol" ] else [])
@@ -129,7 +129,7 @@ module External = struct
       })
   ;;
 
-  let patdiff ~dir loc file1 file2 =
+  let patdiff ~dir annots loc file1 file2 =
     which "patdiff"
     |> Option.map ~f:(fun prog ->
       let metadata =
@@ -139,7 +139,7 @@ module External = struct
            [process] module won't recognise that the output has a location.
 
            For this reason, we manually pass the below annotation. *)
-        make_metadata loc ~has_embedded_location:true
+        make_metadata annots loc ~has_embedded_location:true
       in
       let args =
         [ "-keep-whitespace"; "-location-style"; "omake" ]
@@ -181,7 +181,7 @@ let prepare ~skip_trailing_cr annots path1 path2 =
       sprintf "%s %s %s" cmd (String.quote_for_shell file1) (String.quote_for_shell file2)
     in
     With_fallback.run
-      { prog = sh; args = [ arg; cmd ]; metadata = make_metadata loc; dir }
+      { prog = sh; args = [ arg; cmd ]; metadata = make_metadata annots loc; dir }
       ~fallback:
         (With_fallback.fail
            (User_error.make
@@ -203,14 +203,14 @@ let prepare ~skip_trailing_cr annots path1 path2 =
     else (
       let normal_diff =
         match
-          match External.git ~skip_trailing_cr loc path1 path2 with
+          match External.git ~skip_trailing_cr annots loc path1 path2 with
           | Some g -> Some g
-          | None -> External.diff ~skip_trailing_cr ~dir loc file1 file2
+          | None -> External.diff ~skip_trailing_cr ~dir annots loc file1 file2
         with
         | None -> fallback
         | Some command -> With_fallback.run command ~fallback
       in
-      match External.patdiff ~dir loc file1 file2 with
+      match External.patdiff ~dir annots loc file1 file2 with
       | None -> normal_diff
       | Some command -> With_fallback.run command ~fallback:normal_diff)
 ;;

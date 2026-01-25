@@ -227,10 +227,9 @@ let promote_files_registered_in_last_run files_to_promote =
 ;;
 
 let diff_for_file (file : File.t) =
-  let msg = User_message.Annots.empty in
   let original = Path.source file.dst in
   let correction = File.correction_file file in
-  Print_diff.get msg original correction
+  Print_diff.get original correction
 ;;
 
 (** [partition_db db files_to_promote] splits [files_to_promote] into two lists

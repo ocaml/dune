@@ -86,9 +86,9 @@ module Diff = struct
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
       let open Fiber.O in
       let db = Diff_promotion.load_db () in
-      let* missing = Diff_promotion.missing ~db files_to_promote in
+      let* missing = Diff_promotion.missing db files_to_promote in
       List.iter ~f:on_missing missing;
-      Diff_promotion.display_diffs ~db files_to_promote)
+      Diff_promotion.display_diffs db files_to_promote)
   ;;
 
   let command = Cmd.v info term
@@ -109,9 +109,9 @@ module Files = struct
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
       let open Fiber.O in
       let db = Diff_promotion.load_db () in
-      let* missing = Diff_promotion.missing ~db files_to_promote in
+      let* missing = Diff_promotion.missing db files_to_promote in
       List.iter ~f:on_missing missing;
-      Diff_promotion.display_files ~db files_to_promote)
+      Diff_promotion.display_files db files_to_promote)
   ;;
 
   let command = Cmd.v info term
@@ -131,9 +131,9 @@ module Show = struct
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
       let open Fiber.O in
       let db = Diff_promotion.load_db () in
-      let+ missing = Diff_promotion.missing ~db files_to_promote in
+      let+ missing = Diff_promotion.missing db files_to_promote in
       List.iter ~f:on_missing missing;
-      Diff_promotion.display_corrected_contents ~db files_to_promote)
+      Diff_promotion.display_corrected_contents db files_to_promote)
   ;;
 
   let command = Cmd.v info term

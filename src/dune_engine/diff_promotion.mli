@@ -33,24 +33,26 @@ module File : sig
   val register_dep : source_file:Path.Source.t -> correction_file:Path.Build.t -> unit
 end
 
+type db
+
 (** Promote all registered files if [!Clflags.auto_promote]. Otherwise dump the
     list of registered files to [_build/.to-promote]. *)
 val finalize : unit -> unit
 
-val load_db : unit -> File.t list
+val load_db : unit -> db
 val promote_files_registered_in_last_run : Files_to_promote.t -> Path.Source.t list
 
-(** [missing ~db files] returns the list of files in [files] but not in [db]. *)
-val missing : db:File.t list -> Files_to_promote.t -> Path.Source.t list Fiber.t
+(** [missing db files] returns the list of files in [files] but not in [db]. *)
+val missing : db -> Files_to_promote.t -> Path.Source.t list Fiber.t
 
-(** [display_diffs ~db files] will only print the diffs of files that are both
+(** [display_diffs db files] will only print the diffs of files that are both
     in [files] and in [db]. *)
-val display_diffs : db:File.t list -> Files_to_promote.t -> unit Fiber.t
+val display_diffs : db -> Files_to_promote.t -> unit Fiber.t
 
-(** [display_file_names ~db files] will only print the filenames of files that are
+(** [display_file_names db files] will only print the filenames of files that are
     both in [files] and in [db]. *)
-val display_files : db:File.t list -> Files_to_promote.t -> unit Fiber.t
+val display_files : db -> Files_to_promote.t -> unit Fiber.t
 
-(** [display_corrected_contents ~db files] will print the changes in plain text
+(** [display_corrected_contents db files] will print the changes in plain text
     of files that are both in [files] and in [db]. *)
-val display_corrected_contents : db:File.t list -> Files_to_promote.t -> unit
+val display_corrected_contents : db -> Files_to_promote.t -> unit

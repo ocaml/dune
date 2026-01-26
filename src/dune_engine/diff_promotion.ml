@@ -26,6 +26,7 @@ module File = struct
     ; dst : Path.Source.t
     }
 
+  (* CR-soon rgrinberg: rename either this accessor or the function *)
   let source t = t.dst
 
   let compare { src; staging; dst } t =
@@ -285,13 +286,6 @@ let display_diffs db files_to_promote =
   let open Fiber.O in
   let+ diffs, _missing = sort_for_display db files_to_promote in
   List.iter diffs ~f:(fun (_file, diff) -> Print_diff.Diff.print diff)
-;;
-
-let display_files db files_to_promote =
-  let open Fiber.O in
-  let+ diffs, _missing = sort_for_display db files_to_promote in
-  List.iter diffs ~f:(fun (file, _diff) ->
-    Console.printf "%s" (File.source file |> Path.Source.to_string))
 ;;
 
 let display_corrected_contents db files_to_promote =

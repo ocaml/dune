@@ -101,17 +101,22 @@ module Files = struct
     let+ builder = Common.Builder.term
     and+ files =
       (* CR-someday Alizter: document this option *)
+      (* CR-soon rgrinberg: why do we even need this argument? *)
       Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
     in
-    let common, config = Common.init builder in
+    let common, _config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
     (* CR-soon rgrinberg: remove pointless args *)
-    Scheduler_setup.no_build_no_rpc ~config (fun () ->
-      let open Fiber.O in
-      let db = Diff_promotion.load_db () in
-      let* missing = Diff_promotion.missing db files_to_promote in
-      List.iter ~f:on_missing missing;
-      Diff_promotion.display_files db files_to_promote)
+    let db = Diff_promotion.load_db () in
+    let { Diff_promotion.present; missing } =
+      Diff_promotion.partition_db db files_to_promote
+    in
+    let missing = List.sort missing ~compare:Path.Source.compare in
+    List.iter ~f:on_missing missing;
+    List.sort present ~compare:(fun x y ->
+      Path.Source.compare (Diff_promotion.File.source x) (Diff_promotion.File.source y))
+    |> List.iter ~f:(fun file ->
+      Diff_promotion.File.source file |> Path.Source.to_string |> Console.printf "%s")
   ;;
 
   let command = Cmd.v info term

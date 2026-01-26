@@ -1,1 +1,6 @@
 (vendored_dirs *)
+
+(alias
+ (name runtest)
+ (deps
+  (alias_rec unused-libs)))

@@ -1,7 +1,5 @@
 Testing install actions
 
-  $ . ./helpers.sh
-
   $ make_lockdir
   $ make_lockpkg test <<EOF
   > (version 0.0.1)
@@ -35,7 +33,7 @@ Testing install actions
   { files =
       [ (LIB_ROOT,
          [ In_build_dir
-             "_private/default/.pkg/test.0.0.1-f6ed2ec1b5272dd0b899919ab4533208/target/lib/xxx"
+             "_private/default/.pkg/test.0.0.1-1bcbc23258c96a9171e50ea858773794/target/lib/xxx"
          ])
       ]
   ; variables = []

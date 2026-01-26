@@ -89,4 +89,4 @@ val path_with_stats
 
 (** Digest a file taking the [executable] bit into account. Should not be called
     on a directory. *)
-val file_with_executable_bit : executable:bool -> Path.t -> t
+val file_with_executable_bit : executable:bool -> Path.t -> t Fiber.t

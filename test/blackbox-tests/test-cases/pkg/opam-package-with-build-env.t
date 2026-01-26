@@ -1,7 +1,6 @@
 In this test we test the translation of a package with a build-env field into a dune lock
 file.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a package with a build-env field

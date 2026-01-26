@@ -14,11 +14,11 @@ module Failure_mode : sig
         the process exits with one of these codes. *)
     | Return : ('a, 'a * int) t (** Accept any error code and return it. *)
     | Timeout :
-        { timeout_seconds : float option
+        { timeout : Time.Span.t option
         ; failure_mode : ('a, 'b) t
         }
         -> ('a, ('b, [ `Timed_out ]) result) t
-    (** In addition to the [failure_mode], finish early if [timeout_seconds]
+    (** In addition to the [failure_mode], finish early if [timeout]
         was reached. *)
 end
 
@@ -79,11 +79,13 @@ type metadata =
     (** name when emitting stats. defaults to the basename of the executable *)
   ; categories : string list (** additional categories when emitting stats *)
   ; purpose : purpose
+  ; has_embedded_location : bool
   }
 
 val create_metadata
   :  ?loc:Loc.t
   -> ?annots:User_message.Annots.t
+  -> ?has_embedded_location:bool
   -> ?name:string
   -> ?categories:string list
   -> ?purpose:purpose

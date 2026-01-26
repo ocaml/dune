@@ -4,7 +4,6 @@ exit codes and error messages, see #11560 for example output
 Create a mock package whose url is a corrupted/invalid tar file attempt to
 build this package and check for sufficient error handling
 
-  $ . ./helpers.sh
   $ echo "corrupted tar" > corrupted.tar
 
   $ mkpkg foo <<EOF
@@ -17,9 +16,10 @@ build this package and check for sufficient error handling
   $ solve foo
   Solution for dune.lock:
   - foo.0.0.1
-  $ build_pkg foo 2>&1 |  sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | sed "s/'[0-9]*'/X/"
+  $ build_pkg foo 2>&1 | dune_cmd print-from 'Error:' | dune_cmd print-until '^Reason' | dune_cmd subst "'[0-9]*'" X
   Error: failed to extract 'corrupted.tar'
   Reason: 'tar' failed with non-zero exit code X and output:
+  [1]
 
 Repeat the same test as above but ensure that error output from gzip is
 captured
@@ -36,13 +36,14 @@ captured
   Solution for dune.lock:
   - foo.0.0.1
 
-  $ build_pkg foo 2>&1 |  sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | sed "s/'[0-9]*'/X/"
+  $ build_pkg foo 2>&1 | dune_cmd print-from 'Error:' | dune_cmd print-until '^Reason' | dune_cmd subst "'[0-9]*'" X
   Error: failed to extract 'corrupted.tar.gz'
   Reason: 'tar' failed with non-zero exit code X and output:
+  [1]
 
 Now try another local package but this time of zip format to test if stderr is
-captured from the unzip tool. Note that preprocessing with sed here makes the
-unzip error message a bit less clear
+captured from the unzip tool. Note that preprocessing here makes the unzip
+error message a bit less clear
 
   $ echo "corrupted zip" > corrupted.zip
 
@@ -57,6 +58,7 @@ unzip error message a bit less clear
   Solution for dune.lock:
   - foo.0.0.1
 
-  $ build_pkg foo 2>&1 | sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | sed "s/'[0-9]*'/X/"
+  $ build_pkg foo 2>&1 | dune_cmd print-from 'Error:' | dune_cmd print-until '^Reason' | dune_cmd subst "'[0-9]*'" X
   Error: failed to extract 'corrupted.zip'
   Reason: 'unzip' failed with non-zero exit code X and output:
+  [1]

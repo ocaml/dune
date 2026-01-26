@@ -1,7 +1,5 @@
 Repro `dune exec --watch` crash with pkg management
 
-  $ . ./helpers.sh
-
   $ mkdir external_sources
   $ cat >external_sources/dune-project <<EOF
   > (lang dune 3.11)

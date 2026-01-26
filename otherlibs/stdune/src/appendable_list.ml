@@ -17,7 +17,11 @@ let ( @ ) a b =
   | _, _ -> Append (a, b)
 ;;
 
-let cons x xs = Cons (x, xs)
+let cons x xs =
+  match xs with
+  | Empty -> Singleton x
+  | _ -> Cons (x, xs)
+;;
 
 let to_list_rev =
   let rec loop1 acc t stack =
@@ -103,5 +107,24 @@ and is_empty_list = function
   | x :: xs -> is_empty x && is_empty_list xs
 ;;
 
-let concat list = Concat list
-let of_list x = List x
+let of_list = function
+  | [] -> Empty
+  | [ x ] -> Singleton x
+  | xs -> List xs
+;;
+
+let concat = function
+  | [] -> Empty
+  | [ x ] -> x
+  | xs -> Concat xs
+;;
+
+let rec exists t ~f =
+  match t with
+  | Empty -> false
+  | Singleton x -> f x
+  | Cons (x, xs) -> f x || exists xs ~f
+  | List xs -> List.exists xs ~f
+  | Append (x, y) -> exists x ~f || exists y ~f
+  | Concat xs -> List.exists ~f:(exists ~f) xs
+;;

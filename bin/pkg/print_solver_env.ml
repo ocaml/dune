@@ -40,7 +40,8 @@ let term =
   and+ lock_dirs_arg = Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config (fun () -> print_solver_env ~lock_dirs_arg)
+  Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
+    print_solver_env ~lock_dirs_arg)
 ;;
 
 let info =

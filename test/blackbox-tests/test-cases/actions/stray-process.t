@@ -1,6 +1,5 @@
 Shows what happens when Dune tries to kill an action that has sub-processes.
 
-  $ . ../watching/helpers.sh
   $ export PATH=$PWD/bin:$PATH
 
   $ echo '(lang dune 3.0)' > dune-project

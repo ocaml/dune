@@ -1,9 +1,7 @@
-open Dune_thread_pool
-
-let spawn_thread f = ignore (Thread.create f ())
+open Dune_scheduler.For_benchmarks
 
 let%bench "almost no-op" =
-  let tp = Thread_pool.create ~min_workers:10 ~max_workers:50 ~spawn_thread in
+  let tp = Thread_pool.create ~min_workers:10 ~max_workers:50 in
   let tasks = 50_000 in
   let counter = Atomic.make tasks in
   let f () = Atomic.decr counter in
@@ -16,7 +14,7 @@ let%bench "almost no-op" =
 ;;
 
 let%bench "syscall" =
-  let tp = Thread_pool.create ~min_workers:10 ~max_workers:50 ~spawn_thread in
+  let tp = Thread_pool.create ~min_workers:10 ~max_workers:50 in
   let tasks = 50_000 in
   let counter = Atomic.make tasks in
   let f () =

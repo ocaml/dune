@@ -233,16 +233,17 @@ let link_exe
           ; Dyn link_args
           ]
     >>| Action.Full.add_sandbox sandbox
+  and* mode =
+    let sctx = Compilation_context.super_context cctx in
+    let* expander = Super_context.expander sctx ~dir in
+    let rule_mode =
+      match promote with
+      | None -> Rule_mode.Standard
+      | Some p -> Promote p
+    in
+    Rule_mode_expand.expand_path ~expander ~dir rule_mode
   in
-  Super_context.add_rule
-    sctx
-    ~loc
-    ~dir
-    ~mode:
-      (match promote with
-       | None -> Standard
-       | Some p -> Promote p)
-    action_with_targets
+  Super_context.add_rule sctx ~loc ~dir ~mode action_with_targets
 ;;
 
 let link_js
@@ -268,7 +269,7 @@ let link_js
       let+ l =
         Command.expand_no_targets ~dir:(Path.build (Compilation_context.dir cctx)) cmd
       in
-      List.exists l ~f:(String.equal "-linkall"))
+      Appendable_list.exists l ~f:(String.equal "-linkall"))
   in
   Jsoo_rules.build_exe
     cctx

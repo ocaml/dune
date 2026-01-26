@@ -1,9 +1,6 @@
 Check that if the user tampers with the lockdir in a way that invalidates the
 package graph then it's caught when loading the lockdir.
 
-  $ . ./helpers.sh
-
-
   $ make_lockdir
   $ make_lockpkg a <<EOF
   > (version 0.0.1)

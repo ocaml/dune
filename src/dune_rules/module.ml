@@ -24,6 +24,7 @@ module File = struct
 
   let dialect t = t.dialect
   let path t = t.path
+  let original_path t = t.original_path
 
   let version_installed t ~src_root ~install_dir =
     let path =
@@ -35,7 +36,10 @@ module File = struct
     { t with path }
   ;;
 
-  let make dialect path = { dialect; path; original_path = path }
+  let make ?original_path dialect path =
+    let original_path = Option.value original_path ~default:path in
+    { dialect; path; original_path }
+  ;;
 
   let to_dyn { path; original_path; dialect } =
     let open Dyn in
@@ -52,7 +56,7 @@ module Kind = struct
     | Intf_only
     | Virtual
     | Impl
-    | Alias of Module_name.Path.t
+    | Alias of Module_name.t list
     | Impl_vmodule
     | Wrapped_compat
     | Root
@@ -67,7 +71,7 @@ module Kind = struct
     | Alias path ->
       (match path with
        | [] -> string "alias"
-       | _ :: _ -> constr "alias" (fun x -> List (Module_name.Path.encode x)) path)
+       | x :: xs -> constr "alias" (fun x -> List (Module_name.Path.encode x)) (x :: xs))
     | Impl_vmodule -> string "impl_vmodule"
     | Wrapped_compat -> string "wrapped_compat"
     | Root -> string "root"
@@ -93,7 +97,7 @@ module Kind = struct
           | None -> return (Alias [])
           | Some _ ->
             let+ path = enter Module_name.Path.decode in
-            Alias path )
+            Alias (Nonempty_list.to_list path) )
       ]
   ;;
 
@@ -141,7 +145,6 @@ module Source = struct
   ;;
 
   let make ~impl ~intf path =
-    if path = [] then Code_error.raise "path cannot be empty" [];
     (match impl, intf with
      | None, None ->
        Code_error.raise
@@ -153,7 +156,7 @@ module Source = struct
   ;;
 
   let has t ~ml_kind = Ml_kind.Dict.get t.files ml_kind |> Option.is_some
-  let name t = List.last t.path |> Option.value_exn
+  let name t = Nonempty_list.last t.path
   let path t = t.path
 
   let choose_file { files = { impl; intf }; path = _ } =
@@ -173,7 +176,7 @@ module Source = struct
     | Intf -> { t with files = { t.files with intf = Some file } }
   ;;
 
-  let set_source t ml_kind file =
+  let set_source t ~ml_kind file =
     match ml_kind with
     | Ml_kind.Impl -> { t with files = { t.files with impl = file } }
     | Intf -> { t with files = { t.files with intf = file } }
@@ -188,6 +191,8 @@ module Source = struct
     | None -> base
     | Some i -> i :: base
   ;;
+
+  let files_by_ml_kind t = t.files
 
   let map_files t ~f =
     let files = Ml_kind.Dict.mapi ~f t.files in
@@ -275,8 +280,8 @@ let add_file t kind file =
   { t with source }
 ;;
 
-let set_source t kind file =
-  let source = Source.set_source t.source kind file in
+let set_source t ~ml_kind file =
+  let source = Source.set_source t.source ~ml_kind file in
   { t with source }
 ;;
 
@@ -336,13 +341,13 @@ let sources_without_pp t =
     ~f:(Option.map ~f:(fun (x : File.t) -> x.original_path))
 ;;
 
-let source_without_pp ~ml_kind t =
+let source_without_pp t ~ml_kind =
   let source =
     match (ml_kind : Ml_kind.t) with
     | Impl -> t.source.files.impl
     | Intf -> t.source.files.intf
   in
-  Option.map source ~f:(fun (x : File.t) -> x.original_path)
+  Option.map source ~f:File.original_path
 ;;
 
 module Obj_map = struct
@@ -379,11 +384,12 @@ let encode ({ source; obj_name; pp = _; visibility; kind; install_as = _ } as t)
 ;;
 
 let decode ~src_dir =
+  let module K = Kind in
   let open Dune_lang.Decoder in
   fields
     (let+ obj_name = field "obj_name" Module_name.Unique.decode
      and+ visibility = field "visibility" Visibility.decode
-     and+ kind = field_o "kind" Kind.decode
+     and+ kind = field_o "kind" K.decode
      and+ source = field "source" (Source.decode ~dir:src_dir) in
      let kind =
        match kind with
@@ -415,7 +421,14 @@ let version_installed t ~src_root ~install_dir =
   map_files t ~f:(fun _ -> File.version_installed ~src_root ~install_dir)
 ;;
 
-let generated ?install_as ?obj_name ~(kind : Kind.t) ~src_dir (path : Module_name.Path.t) =
+let generated
+      ?install_as
+      ?obj_name
+      ~(kind : Kind.t)
+      ~(for_ : Compilation_mode.t)
+      ~src_dir
+      (path : Module_name.Path.t)
+  =
   let obj_name =
     match obj_name with
     | Some obj_name -> obj_name
@@ -424,6 +437,11 @@ let generated ?install_as ?obj_name ~(kind : Kind.t) ~src_dir (path : Module_nam
   let source =
     let impl =
       let basename = Module_name.Unique.artifact_filename obj_name ~ext:ml_gen in
+      let src_dir =
+        match for_ with
+        | Ocaml -> src_dir
+        | Melange -> src_dir
+      in
       Path.Build.relative src_dir basename |> Path.build |> File.make Dialect.ocaml
     in
     Source.make ~impl:(Some impl) ~intf:None path

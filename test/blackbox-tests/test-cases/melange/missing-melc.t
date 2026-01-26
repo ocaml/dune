@@ -29,6 +29,7 @@ For melange.emit stanzas, an error is shown
 
   $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . @mel 2>&1 | grep Program)
   Error: Program melc not found in the tree or in PATH
+  [1]
 
 For libraries, if no melange.emit stanza is found, build does not fail
 

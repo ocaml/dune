@@ -1,16 +1,14 @@
+open Import
+
 (** An RPC handler which is abstract over the handling of the "Build" request
     type. The type argument allows instances to choose different
     representations of build targets. *)
 type 'build_arg t
 
 val create
-  :  lock_timeout:float option
+  :  lock_timeout:Time.Span.t option
   -> registry:[ `Add | `Skip ]
   -> root:string
-  -> handle:(unit Dune_rpc_server.Handler.t -> unit)
-       (** register additional requests or notifications *)
-  -> Dune_trace.t option
-  -> parse_build_arg:(string -> Dune_lang.Dep_conf.t)
   -> Dune_lang.Dep_conf.t t
 
 type 'build_arg pending_action_kind =
@@ -24,7 +22,7 @@ type 'build_arg pending_action_kind =
     with the outcome of their request. *)
 type 'build_arg pending_action =
   { kind : 'build_arg pending_action_kind
-  ; outcome : Dune_engine.Scheduler.Run.Build_outcome.t Fiber.Ivar.t
+  ; outcome : Scheduler.Run.Build_outcome.t Fiber.Ivar.t
   }
 
 val pending_action : 'build_arg t -> 'build_arg pending_action Fiber.t

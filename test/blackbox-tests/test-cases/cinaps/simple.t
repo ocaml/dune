@@ -21,6 +21,7 @@ The cinaps actions should be attached to the runtest alias:
   File "test.ml", line 1, characters 0-0:
   1a2
   > hello
+  [1]
 
 but also to the cinaps alias:
 
@@ -28,13 +29,19 @@ but also to the cinaps alias:
   File "test.ml", line 1, characters 0-0:
   1a2
   > hello
+  [1]
 
 The cinaps stanza offers a promotion workflow:
 
   $ dune runtest --auto-promote
   File "test.ml", line 1, characters 0-0:
-  Error: Files _build/default/test.ml and
-  _build/default/test.ml.cinaps-corrected differ.
+  --- test.ml
+  +++ test.ml.cinaps-corrected
+  @@ -1,3 +1,4 @@
+   (*$ print_endline "\nhello" *)
+  +hello
+   (*$*)
+   let x = 1
   Promoting _build/default/test.ml.cinaps-corrected to test.ml.
   [1]
 

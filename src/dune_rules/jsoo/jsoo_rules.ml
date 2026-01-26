@@ -185,12 +185,13 @@ end = struct
     let rec loop acc = function
       | [] -> acc
       | "--enable" :: name :: rest -> loop (enable name acc) rest
-      | maybe_enable :: rest when String.is_prefix maybe_enable ~prefix:"--enable=" ->
+      | maybe_enable :: rest when String.starts_with ~prefix:"--enable=" maybe_enable ->
         (match String.drop_prefix maybe_enable ~prefix:"--enable=" with
          | Some name -> loop (enable name acc) rest
          | _ -> assert false)
       | "--disable" :: name :: rest -> loop (disable name acc) rest
-      | maybe_disable :: rest when String.is_prefix maybe_disable ~prefix:"--disable=" ->
+      | maybe_disable :: rest when String.starts_with ~prefix:"--disable=" maybe_disable
+        ->
         (match String.drop_prefix maybe_disable ~prefix:"--disable=" with
          | Some name -> loop (disable name acc) rest
          | _ -> assert false)
@@ -198,7 +199,8 @@ end = struct
       | "--effects" :: "cps" :: rest -> loop { acc with effects = Some Cps } rest
       | "--effects" :: "double-translation" :: rest ->
         loop { acc with effects = Some Double_translation } rest
-      | maybe_effects :: rest when String.is_prefix maybe_effects ~prefix:"--effects=" ->
+      | maybe_effects :: rest when String.starts_with ~prefix:"--effects=" maybe_effects
+        ->
         let backend =
           Option.bind
             (String.drop_prefix maybe_effects ~prefix:"--effects=")
@@ -251,20 +253,21 @@ end = struct
     let rec loop acc = function
       | [] -> acc
       | "--enable" :: ("effects" | "use-js-string") :: rest -> loop acc rest
-      | maybe_enable :: rest when String.is_prefix maybe_enable ~prefix:"--enable=" ->
+      | maybe_enable :: rest when String.starts_with ~prefix:"--enable=" maybe_enable ->
         (match String.drop_prefix maybe_enable ~prefix:"--enable=" with
          | Some ("effects" | "use-js-string") -> loop acc rest
          | Some _ -> loop (maybe_enable :: acc) rest
          | None -> assert false)
       | "--disable" :: ("effects" | "use-js-string") :: rest -> loop acc rest
-      | maybe_disable :: rest when String.is_prefix maybe_disable ~prefix:"--disable=" ->
+      | maybe_disable :: rest when String.starts_with ~prefix:"--disable=" maybe_disable
+        ->
         (match String.drop_prefix maybe_disable ~prefix:"--disable=" with
          | Some ("effects" | "use-js-string") -> loop acc rest
          | Some _ -> loop (maybe_disable :: acc) rest
          | None -> assert false)
       | "--effects" :: _backend :: rest -> loop acc rest
-      | maybe_effects :: rest when String.is_prefix maybe_effects ~prefix:"--effects=" ->
-        loop acc rest
+      | maybe_effects :: rest when String.starts_with ~prefix:"--effects=" maybe_effects
+        -> loop acc rest
       | "--toplevel" :: rest -> loop acc rest
       | other :: rest -> loop (other :: acc) rest
     in
@@ -371,7 +374,7 @@ let js_of_ocaml_rule
     Action_builder.map flags ~f:(fun flags ->
       match config with
       | None -> flags
-      | Some _ -> Config.remove_config_flags flags)
+      | Some (_ : Config.t Action_builder.t) -> Config.remove_config_flags flags)
   in
   Command.run_dyn_prog
     ~dir:(Path.build dir)
@@ -400,8 +403,8 @@ let js_of_ocaml_rule
               Action_builder.of_memo (Version.jsoo_version jsoo)
             in
             Command.Args.S
-              (List.map (Config.to_flags ~jsoo_version config) ~f:(fun x ->
-                 Command.Args.A x))))
+              (Config.to_flags ~jsoo_version config
+               |> List.map ~f:(fun x -> Command.Args.A x))))
     ; A "-o"
     ; Target target
     ; spec
@@ -617,18 +620,29 @@ let link_rule
     ~sourcemap
 ;;
 
-let build_cm' sctx ~dir ~in_context ~mode ~src ~target ~config ~shapes ~sourcemap =
+let build_cm'
+      sctx
+      ~dir
+      ~(in_context : Js_of_ocaml.In_context.t)
+      ~mode
+      ~src
+      ~target
+      ~config
+      ~shapes
+      ~sourcemap
+  =
   let spec =
     Command.Args.(
       S
         [ Dep src
         ; Dyn
             (let open Action_builder.O in
-             let* jsoo_version =
-               let* jsoo = jsoo ~dir sctx in
-               Action_builder.of_memo @@ Version.jsoo_version jsoo
-             in
+             let* () = Action_builder.return () in
              let+ shapes =
+               let* jsoo_version =
+                 let* jsoo = jsoo ~dir sctx in
+                 Action_builder.of_memo @@ Version.jsoo_version jsoo
+               in
                match jsoo_has_shapes jsoo_version with
                | false -> Action_builder.return []
                | true -> shapes
@@ -636,13 +650,12 @@ let build_cm' sctx ~dir ~in_context ~mode ~src ~target ~config ~shapes ~sourcema
              S (List.map shapes ~f:(fun s -> S [ A "--load-shape"; Dep s ])))
         ])
   in
-  let flags = in_context.Js_of_ocaml.In_context.flags in
   js_of_ocaml_rule
     sctx
     ~mode
     ~sub_command:Compile
     ~dir
-    ~flags
+    ~flags:in_context.flags
     ~spec
     ~target
     ~directory_targets:[]
@@ -650,23 +663,33 @@ let build_cm' sctx ~dir ~in_context ~mode ~src ~target ~config ~shapes ~sourcema
     ~sourcemap
 ;;
 
-let build_cm cctx ~dir ~in_context ~mode ~src ~obj_dir ~deps ~config:config_opt =
-  let name = with_js_ext ~mode (Path.basename src) in
-  let target = in_obj_dir ~obj_dir ~config:config_opt [ name ] in
+let build_cm
+      cctx
+      ~dir
+      ~(in_context : Js_of_ocaml.In_context.t)
+      ~mode
+      ~src
+      ~obj_dir
+      ~deps
+      ~config:config_opt
+  =
+  let target =
+    let name = with_js_ext ~mode (Path.basename src) in
+    in_obj_dir ~obj_dir ~config:config_opt [ name ]
+  in
   let sctx = Compilation_context.super_context cctx in
-  let ctx = Super_context.context sctx |> Context.build_context in
   let shapes =
+    let ctx = Super_context.context sctx |> Context.build_context in
     let open Action_builder.O in
     let+ libs = Resolve.Memo.read (Compilation_context.requires_link cctx)
     and+ deps = deps
     and+ config =
       match config_opt with
+      | Some config -> Action_builder.return config
       | None ->
-        let flags = in_context.Js_of_ocaml.In_context.flags in
-        js_of_ocaml_flags sctx ~dir ~mode flags
+        js_of_ocaml_flags sctx ~dir ~mode in_context.flags
         |> Action_builder.bind ~f:(fun (x : _ Js_of_ocaml.Flags.t) -> x.compile)
         |> Action_builder.map ~f:Config.of_flags
-      | Some config -> Action_builder.return config
     in
     let deps = List.filter deps ~f:(fun m -> Module.has m ~ml_kind:Impl) in
     (Path.build (in_build_dir ctx ~config [ "stdlib"; with_js_ext ~mode "stdlib.cma" ])
@@ -686,6 +709,8 @@ let build_cm cctx ~dir ~in_context ~mode ~src ~obj_dir ~deps ~config:config_opt 
     ~sourcemap:Js_of_ocaml.Sourcemap.Inline
 ;;
 
+let for_ = Compilation_mode.Ocaml
+
 let setup_separate_compilation_rules sctx components =
   match components with
   | _ :: _ :: _ :: _ | [] | [ _ ] -> Memo.return ()
@@ -701,8 +726,8 @@ let setup_separate_compilation_rules sctx components =
        let info = Lib.info pkg in
        let requires =
          let open Resolve.Memo.O in
-         let* reqs = Lib.requires pkg in
-         Lib.closure ~linking:false reqs
+         let* reqs = Lib.requires pkg ~for_ in
+         Lib.closure ~linking:false reqs ~for_
        in
        let lib_name = Lib_name.to_string (Lib.name pkg) in
        let* archives =
@@ -856,10 +881,14 @@ let build_exe
           (Path.Build.set_extension src ~ext:(Js_of_ocaml.Ext.runtime ~mode))
       ]
   in
-  let rule_mode : Rule.Mode.t =
-    match promote with
-    | None -> Standard
-    | Some p -> Promote p
+  let* rule_mode : Rule.Mode.t =
+    let* expander = Super_context.expander sctx ~dir in
+    let rule_mode =
+      match promote with
+      | None -> Rule_mode.Standard
+      | Some p -> Promote p
+    in
+    Rule_mode_expand.expand_path ~expander ~dir rule_mode
   in
   let* cmode =
     match compilation_mode with
@@ -886,7 +915,7 @@ let build_exe
         ~runtime_files
         ~target:standalone_runtime
         ~flags
-        ~sourcemap:Js_of_ocaml.Sourcemap.Inline
+        ~sourcemap:Inline
       |> Super_context.add_rule ~loc sctx ~dir
     and+ () =
       link_rule

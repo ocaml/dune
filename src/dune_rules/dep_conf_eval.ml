@@ -150,11 +150,11 @@ let package loc pkg (context : Build_context.t) ~dune_version =
       (let open Memo.O in
        Memo.parallel_map pkg.files ~f:(fun (s, l) ->
          let dir = Section.Map.find_exn pkg.sections s in
-         Memo.parallel_map l ~f:(fun (kind, d) ->
-           let path = Path.relative dir (Install.Entry.Dst.to_string d) in
+         Memo.parallel_map l ~f:(fun { kind; dst } ->
+           let path = Path.relative dir (Install.Entry.Dst.to_string dst) in
            match kind with
-           | `File -> Memo.return [ path ]
-           | `Dir ->
+           | File -> Memo.return [ path ]
+           | Directory ->
              Path.as_outside_build_dir_exn path
              |> dir_contents ~loc
              >>| List.rev_map ~f:Path.outside_build_dir)

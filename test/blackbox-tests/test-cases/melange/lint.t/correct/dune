@@ -1,4 +1,5 @@
 (melange.emit
  (target out)
+ (emit_stdlib false)
  (lint
   (pps correct_static_add)))

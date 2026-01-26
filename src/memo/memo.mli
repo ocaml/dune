@@ -1,3 +1,4 @@
+module Metrics = Metrics
 open Stdune
 
 (** A type of memoized computations that can be recomputed incrementally when
@@ -435,8 +436,6 @@ module Debug : sig
       this flag temporarily while debugging a test. *)
   val verbose_diagnostics : bool ref
 end
-
-module Metrics = Metrics
 
 module For_tests : sig
   (** After executing a memoized function with a given name and input, it is

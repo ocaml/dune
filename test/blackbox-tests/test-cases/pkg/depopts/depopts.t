@@ -1,6 +1,5 @@
 Selecting depopts
 
-  $ . ../helpers.sh
   $ mkrepo
   $ mkpkg foo
   $ mkpkg bar

@@ -2,7 +2,6 @@ Exercise generating depexts in portable lockdirs by solving a project that
 depends on a simplified copy of conf-pkg-config - a package whose depexts vary
 greatly depending on the platform.
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

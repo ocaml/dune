@@ -6,7 +6,6 @@ printer.1.0, and the project depends on a different version, printer.2.0.
 It shows those two do not conflict, and the dev-tools dependencies do not leak
 into the user build environment.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a fake OCamlFormat which depends on printer lib:
@@ -98,8 +97,11 @@ versions of the same dependency.
   - ocamlformat.0.26.2
   - printer.1.0
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1 @@
+  -let () = Printer.print ()
+  +formatted
   [1]
   $ cat _build/default/.formatted/foo.ml
   formatted
@@ -141,9 +143,9 @@ dev-tools don't leak into the project.
 
 There is no leak here. It is not taking Printer module from the printer of dev-tools dependency.
   $ dune exec -- foo
-  File "foo.ml", line 1, characters 9-22:
+  File "foo.ml", line 1, characters 9-16:
   1 | let () = Printer.print ()
-               ^^^^^^^^^^^^^
+               ^^^^^^^
   Error: Unbound module Printer
-  Hint: Did you mean Printexc or Printf?
+  Hint:    Did you mean Printexc or Printf?
   [1]

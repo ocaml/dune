@@ -1,21 +1,21 @@
 open Import
 
+let base_dir =
+  lazy
+    (let dir = Path.relative (Lazy.force Dune_util.cache_root_dir) "toolchains" in
+     Log.info "Toolchains cache location" [ "dir", Dyn.string (Path.to_string dir) ];
+     Path.as_outside_build_dir_exn dir)
+;;
+
 let base_dir () =
-  let cache_dir =
-    Lazy.force Dune_util.xdg |> Xdg.cache_dir |> Path.Outside_build_dir.of_string
-  in
-  let path =
-    Path.Outside_build_dir.relative
-      (Path.Outside_build_dir.relative cache_dir "dune")
-      "toolchains"
-  in
-  (let path = Path.outside_build_dir path in
-   if not (Path.Untracked.exists path) then Path.mkdir_p path;
-   if not (Path.Untracked.is_directory path)
-   then
-     User_error.raise
-       [ Pp.textf "Expected %s to be a directory but it is not." (Path.to_string path) ]);
-  path
+  let base_dir = Lazy.force base_dir in
+  let path = Path.outside_build_dir base_dir in
+  if not (Path.Untracked.exists path) then Path.mkdir_p path;
+  if not (Path.Untracked.is_directory path)
+  then
+    User_error.raise
+      [ Pp.textf "Expected %s to be a directory but it is not." (Path.to_string path) ];
+  base_dir
 ;;
 
 let pkg_dir (pkg : Dune_pkg.Lock_dir.Pkg.t) =
@@ -49,19 +49,7 @@ let installation_prefix pkg =
 
 let is_compiler_and_toolchains_enabled name =
   match Config.get Compile_time.toolchains with
-  | `Enabled ->
-    let module Package_name = Dune_pkg.Package_name in
-    let compiler_package_names =
-      (* TODO don't hardcode these names here *)
-      [ Package_name.of_string "ocaml-base-compiler"
-      ; Package_name.of_string "ocaml-variants"
-      ; Package_name.of_string "ocaml-compiler"
-        (* The [ocaml-compiler] package is required to include all the
-           packages that might install a compiler, starting from ocaml.5.3.0.
-        *)
-      ]
-    in
-    List.mem compiler_package_names name ~equal:Package_name.equal
+  | `Enabled -> Dune_pkg.Dev_tool.is_compiler_package name
   | `Disabled -> false
 ;;
 

@@ -1,5 +1,3 @@
-  $ . ../helpers.sh
-
 Here we test the translation and implementation of global opam variables. OS specific
 variables can be found in `opam-var-os.t`.
 
@@ -45,6 +43,6 @@ Therefore we modify the lockfile here to remove these from the opam file:
 The value for "jobs" should always be 1.
 
   $ GROUP="$(id -gn)"
-  > build_pkg testpkg 2>&1 | sed "s/$GROUP/GROUP/g"
+  > build_pkg testpkg 2>&1 | dune_cmd subst "$GROUP" 'GROUP'
   1
   GROUP

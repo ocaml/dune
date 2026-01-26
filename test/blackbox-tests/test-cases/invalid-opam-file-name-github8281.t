@@ -38,3 +38,4 @@ Whenever an invalid package name is used, dune crashes when building @doc
            }
      })
   Raised at Stdune__Code_error.raise in file
+  [1]

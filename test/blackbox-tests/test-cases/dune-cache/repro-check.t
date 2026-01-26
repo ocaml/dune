@@ -76,10 +76,10 @@ Set 'cache-check-probability' to 1.0, which should trigger the check
 
 Check that the reported digests make sense
 
-  $ dune_cmd cat $DUNE_CACHE_ROOT/files/v4/73/7378fb2d7d80dc4468d6558d864f0897
+  $ dune_cmd cat $DUNE_CACHE_ROOT/db/files/v4/73/7378fb2d7d80dc4468d6558d864f0897
   old-content
-  $ dune_cmd cat $DUNE_CACHE_ROOT/files/v4/074/074ebdc1c3853f27c68566d8d183032c
-  Fatal error: exception Unix.Unix_error(Unix.ENOENT, "open", "$TESTCASE_ROOT/.cache/files/v4/074/074ebdc1c3853f27c68566d8d183032c")
+  $ dune_cmd cat $DUNE_CACHE_ROOT/db/files/v4/074/074ebdc1c3853f27c68566d8d183032c
+  Fatal error: exception Unix.Unix_error(Unix.ENOENT, "open", "$TESTCASE_ROOT/.cache/db/files/v4/074/074ebdc1c3853f27c68566d8d183032c")
   [2]
 
 Check that probability values less than zero and greater than one are rejected

@@ -39,7 +39,12 @@ module type S = sig
       underestimation of the actual amount of time spent, we will render faster
       than the desired frame rate. If it is an overestimation, we will render
       slower. *)
-  val handle_user_events : now:float -> time_budget:float -> Mutex.t -> state -> float
+  val handle_user_events
+    :  now:Time.t
+    -> time_budget:Time.Span.t
+    -> Mutex.t
+    -> state
+    -> Time.t
 
   (** [reset] is called by the main thread to reset the user interface. *)
   val reset : unit -> unit

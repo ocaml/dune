@@ -1,7 +1,6 @@
 Test that explicit locking followed by auto-locking produces equivalent results
 and does not trigger unnecessary rebuilds.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

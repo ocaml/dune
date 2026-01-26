@@ -1,7 +1,6 @@
 Exercise differences between the behavior of `dune fmt` when a lockdir is
 present and a lockdir is absent.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ make_project_with_dev_tool_lockdir
 
@@ -43,8 +42,11 @@ attempt to build the package "foo".
   Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.0.1
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1,2 @@
+   let () = print_endline "Hello, world"
+  +(* formatted with fake ocamlformat *)
   Promoting _build/default/.formatted/foo.ml to foo.ml.
   [1]
   $ cat foo.ml

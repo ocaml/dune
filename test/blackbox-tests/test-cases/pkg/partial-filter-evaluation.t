@@ -1,7 +1,6 @@
 Test that solver vars in filters are replaced by their values in filter
 expressions in lockfiles.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Declare a package which refers to some variables:

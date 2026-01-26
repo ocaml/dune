@@ -1,6 +1,5 @@
 Test that auto-locking correctly detects when to rebuild based on repository changes.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
   $ enable_pkg

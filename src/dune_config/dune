@@ -1,5 +1,0 @@
-(library
- (name dune_config)
- ;; careful with adding dependencies here
- ;; anything that this library depends on cannot itself be configurable
- (libraries dyn stdune))

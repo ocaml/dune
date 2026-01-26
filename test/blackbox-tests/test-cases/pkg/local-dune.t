@@ -1,7 +1,5 @@
 Dune is defined in the workspace where we're solving
 
-  $ . ./helpers.sh
-
   $ mkrepo
 
   $ mkpkg bar <<EOF

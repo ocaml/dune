@@ -49,6 +49,11 @@ module Unexpanded : sig
   include Conv.S with type t := t
 
   val encode : t -> Dune_sexp.t list
+
+  val decode_since_expanded
+    :  since_expanded:Syntax.Version.t
+    -> (t, Decoder.values) Decoder.parser
+
   val standard : t
   val of_strings : pos:string * int * int * int -> string list -> t
   val include_single : context:Univ_map.t -> pos:string * int * int * int -> string -> t

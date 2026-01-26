@@ -17,3 +17,4 @@ The misc install section isn't supported:
   Description:
     ("Install.Paths.get", {})
   Raised at Stdune__Code_error.raise in file
+  [1]

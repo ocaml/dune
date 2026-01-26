@@ -649,6 +649,10 @@ module Env = struct
       }
   ;;
 
+  let os ?what ~version () =
+    List.map Var.Os.all ~f:(fun v -> Var.Os.to_string v, since ?what ~version (Var.Os v))
+  ;;
+
   let initial =
     let macros =
       let macro (x : Macro.t) = No_info x in
@@ -766,17 +770,30 @@ module Env = struct
         ; "dune-warnings", since ~version:(3, 21) Var.Dune_warnings
         ]
       in
-      let os =
-        List.map Var.Os.all ~f:(fun v ->
-          Var.Os.to_string v, since ~version:(3, 20) (Var.Os v))
-      in
-      String.Map.of_list_exn (List.concat [ lowercased; uppercased; other; os ])
+      String.Map.of_list_exn
+        (List.concat [ lowercased; uppercased; other; os ~version:(3, 20) () ])
     in
     fun ~stanza:syntax_version ~extensions ->
       let extensions =
         Syntax.Map.of_list_exn ((Stanza.syntax, syntax_version) :: extensions)
       in
       { syntax_version; syntax_lang = Stanza.syntax; vars; macros; extensions }
+  ;;
+
+  let package_enabled_if =
+    let syntax_version = 3, 21 in
+    let syntax_lang = Unreleased.syntax in
+    let vars =
+      let os = os ~what:syntax_lang ~version:syntax_version () in
+      (* CR rgrinberg: This has to be disabled for multi context builds *)
+      ("architecture", No_info Var.Architecture) :: os
+    in
+    { syntax_version = 0, 1
+    ; syntax_lang = Unreleased.syntax
+    ; vars = String.Map.of_list_exn vars
+    ; macros = String.Map.empty
+    ; extensions = Syntax.Map.singleton Unreleased.syntax syntax_version
+    }
   ;;
 
   let lt_renamed_input_file t =

@@ -1,5 +1,3 @@
-  $ . ../git-helpers.sh
-
 Test subst and files with unicode (#3879)
 -----------------------------------------
 

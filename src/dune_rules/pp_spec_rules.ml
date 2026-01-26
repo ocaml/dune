@@ -48,16 +48,20 @@ let gen_rules sctx components =
   | _ -> Memo.return ()
 ;;
 
-let promote_correction fn build ~suffix =
+let promote_correction (m : Module.t) build ~suffix ~ml_kind =
   let open Action_builder.O in
+  let src = Module.source m ~ml_kind |> Option.value_exn |> Module.File.original_path in
+  let dst =
+    Module.source m ~ml_kind
+    |> Option.value_exn
+    |> Module.File.path
+    |> Path.as_in_build_dir_exn
+  in
   let+ act = build in
   Action.Full.reduce
     [ act
     ; Action.Full.make
-        (Promote.Diff_action.diff
-           ~optional:true
-           (Path.build fn)
-           (Path.Build.extend_basename fn ~suffix))
+        (Action.diff ~optional:true src (Path.Build.extend_basename dst ~suffix))
     ]
 ;;
 
@@ -67,7 +71,7 @@ let promote_correction_with_target fn build ~suffix =
     ; Action_builder.with_no_targets
         (Action_builder.return
            (Action.Full.make
-              (Promote.Diff_action.diff
+              (Action.diff
                  ~optional:true
                  (Path.build fn)
                  (Path.Build.extend_basename fn ~suffix))))
@@ -187,8 +191,8 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
               ~loc
               (promote_correction
                  ~suffix:corrected_suffix
-                 (Path.as_in_build_dir_exn
-                    (Option.value_exn (Module.file source ~ml_kind)))
+                 ~ml_kind
+                 source
                  (let* exe, flags, args = driver_and_flags in
                   let dir = ctx |> Context.build_dir |> Path.build in
                   Command.run'
@@ -276,7 +280,8 @@ let pp_one_module
              and* () = preprocessor_deps in
              Command.expand_no_targets
                ~dir:(Super_context.context sctx |> Context.build_dir |> Path.build)
-               (S [ Dep (Path.build exe); As driver_flags; As flags ]))
+               (S [ Dep (Path.build exe); As driver_flags; As flags ])
+             >>| Appendable_list.to_list)
         in
         [ "-ppx"; String.quote_list_for_shell args ]
       in

@@ -246,7 +246,7 @@ let monitor ~quit_on_disconnect () =
       Console.Status_line.set
         (Console.Status_line.Live
            (fun () -> Pp.verbatim ("Waiting for RPC server" ^ String.make (i mod 4) '.')));
-      let+ () = Dune_engine.Scheduler.sleep ~seconds:0.3 in
+      let+ () = Scheduler.sleep (Time.Span.of_secs 0.3) in
       Some (i + 1))
 ;;
 
@@ -276,16 +276,11 @@ let command =
     in
     let builder = Common.Builder.forbid_builds builder in
     let builder = Common.Builder.disable_log_file builder in
-    let common, config = Common.init builder in
-    let stats = Common.stats common in
+    let _common, config = Common.init builder in
     let config =
-      Dune_config.for_scheduler
-        config
-        stats
-        ~print_ctrl_c_warning:true
-        ~watch_exclusions:[]
+      Dune_config.for_scheduler config ~print_ctrl_c_warning:true ~watch_exclusions:[]
     in
-    Dune_engine.Scheduler.Run.go
+    Scheduler.Run.go
       config
       ~on_event:(fun _ _ -> ())
       ~file_watcher:No_watcher

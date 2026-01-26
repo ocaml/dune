@@ -11,7 +11,7 @@ This test is about `binaries` in `env` stanzas in `dune-workspace` files.
   > EOF
 
   $ cat >x <<EOF
-  > #/bin/sh
+  > #!/bin/sh
   > echo foo
   > EOF
 
@@ -72,18 +72,11 @@ With 3.2, this fixes the error.
 In the default context:
 
   $ t 3.2 _ x
-  Error: No rule found for .bin/x
-  -> required by %{bin:x} at dune:3
-  -> required by alias foo in dune:1
-  [1]
+  foo
 
 And for explicit profiles:
 
   $ t 3.2 dev x
-  Error: No rule found for .bin/x
-  -> required by %{bin:x} at dune:3
-  -> required by alias foo in dune:1
-  [1]
 
 And for another profile:
 

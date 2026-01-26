@@ -11,5 +11,8 @@ type backend =
 val backend : t -> backend
 val of_opam_url : Loc.t -> OpamUrl.t -> t Fiber.t
 val stat : t -> Path.Local.t -> [ `Absent_or_unrecognized | `Dir | `File ] Fiber.t
+
+(** [read t p] reads the contents of the file at path [p], if it exists *)
 val read : t -> Path.Local.t -> string option Fiber.t
+
 val readdir : t -> Path.Local.t -> [ `File | `Dir ] Filename.Map.t Fiber.t

@@ -23,6 +23,8 @@ val text_files : t -> Filename.Set.t
 val foreign_sources : t -> Foreign_sources.t Memo.t
 
 val ocaml : t -> Ml_sources.t Memo.t
+val melange : t -> Ml_sources.t Memo.t
+val ml : t -> for_:Compilation_mode.t -> Ml_sources.t Memo.t
 
 (** All mld files attached to this documentation stanza *)
 val mlds : t -> stanza:Documentation.t -> Doc_sources.mld list Memo.t
@@ -33,8 +35,17 @@ val rocq : t -> Rocq_sources.t Memo.t
 (** Get the directory contents of the given directory. *)
 val get : Super_context.t -> dir:Path.Build.t -> t Memo.t
 
-val modules_of_lib : Super_context.t -> Lib.t -> Modules.With_vlib.t option Memo.t
-val modules_of_local_lib : Super_context.t -> Lib.Local.t -> Modules.t Memo.t
+val modules_of_lib
+  :  Super_context.t
+  -> Lib.t
+  -> for_:Compilation_mode.t
+  -> Modules.With_vlib.t option Memo.t
+
+val modules_of_local_lib
+  :  Super_context.t
+  -> Lib.Local.t
+  -> for_:Compilation_mode.t
+  -> Modules.t Memo.t
 
 (** All directories in this group if [t] is a group root or just [t] if it is
     not part of a group. *)

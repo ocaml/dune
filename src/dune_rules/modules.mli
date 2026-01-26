@@ -15,6 +15,7 @@ val lib
   -> implements:bool
   -> has_instances:bool
   -> modules:Module.t Module_trie.t
+  -> for_:Compilation_mode.t
   -> t
 
 val decode : src_dir:Path.t -> t Dune_lang.Decoder.t
@@ -95,6 +96,8 @@ module With_vlib : sig
     -> normal:(Module.t -> 'acc -> 'acc)
     -> alias:(Group.t -> 'acc -> 'acc)
     -> 'acc
+
+  val map : t -> f:(Module.t -> Module.t) -> t
 
   (** For wrapped libraries, this is the user written entry module for the
       library. For single module libraries, it's the sole module in the library *)

@@ -186,6 +186,7 @@ include Sub_system.Register_end_point (struct
           ; scope
           ; source_modules
           ; compile_info = _
+          ; for_
           }
           ~expander
           ~(info : Info.t)
@@ -198,8 +199,8 @@ include Sub_system.Register_end_point (struct
       in
       let runner_name = Inline_tests_info.inline_test_runner in
       let main_module =
-        let name = Module_name.of_string "main" in
-        Module.generated ~kind:Impl ~src_dir:inline_test_dir [ name ]
+        let name = Module_name.of_checked_string "main" in
+        Module.generated ~kind:Impl ~for_ ~src_dir:inline_test_dir [ name ]
       in
       (* Generate the runner file *)
       let js_of_ocaml =
@@ -264,14 +265,30 @@ include Sub_system.Register_end_point (struct
             Resolve.Memo.List.concat_map backends ~f:(fun (backend : Backend.t) ->
               backend.runner_libraries)
           in
-          let* lib = Lib.DB.resolve lib_db (loc, Library.best_name lib) in
+          let* arguments =
+            Resolve.Memo.lift_memo
+            @@ Memo.List.map info.arguments ~f:(fun (loc, dep) ->
+              let open Memo.O in
+              let+ dep = Lib.DB.resolve lib_db (loc, dep) in
+              loc, dep)
+          in
+          let* lib =
+            let* lib = Lib.DB.resolve lib_db (loc, Library.best_name lib) in
+            Resolve.Memo.lift
+            @@ Lib.Parameterised.instantiate
+                 ~from:`inline_tests
+                 ~loc
+                 lib
+                 arguments
+                 ~parent_parameters:[]
+          in
           let* more_libs =
             Resolve.Memo.List.map info.libraries ~f:(Lib.DB.resolve lib_db)
           in
-          Lib.closure ~linking:true ((lib :: libs) @ more_libs)
+          Lib.closure ~linking:true ((lib :: libs) @ more_libs) ~for_
         in
         Compilation_context.create
-          ()
+          for_
           ~super_context:sctx
           ~scope
           ~obj_dir
@@ -406,7 +423,7 @@ include Sub_system.Register_end_point (struct
                List.map source_files ~f:(fun fn ->
                  Path.as_in_build_dir_exn fn
                  |> Path.Build.extend_basename ~suffix:".corrected"
-                 |> Promote.Diff_action.diff ~optional:true fn)
+                 |> Action.diff ~optional:true fn)
                |> Action.concurrent
              in
              Action.Full.make ~sandbox @@ Action.progn [ run_tests; diffs ]))

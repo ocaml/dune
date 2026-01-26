@@ -2,8 +2,8 @@ open Stdune
 open Fiber.O
 open Dune_vcs
 open Dune_tests_common
+open Dune_scheduler
 module Process = Dune_engine.Process
-module Scheduler = Dune_engine.Scheduler
 
 let () = init ()
 let printf = Printf.printf
@@ -125,7 +125,6 @@ let run kind script =
   Dune_engine.Clflags.display := Short;
   let config =
     { Scheduler.Config.concurrency = 1
-    ; stats = None
     ; print_ctrl_c_warning = false
     ; watch_exclusions = []
     }

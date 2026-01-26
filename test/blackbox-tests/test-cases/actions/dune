@@ -1,5 +1,5 @@
 (cram
- (deps ../watching/helpers.sh bin/sub_process.exe))
+ (deps bin/sub_process.exe))
 
 (cram
  (applies_to concurrent)

@@ -1,7 +1,5 @@
 We test the output of the watch mode client when we have multiple errors
 
-  $ . ../helpers.sh
-
   $ start_dune
 
   $ dune rpc ping --wait

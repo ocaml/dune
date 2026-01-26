@@ -63,7 +63,7 @@ module Crawl = struct
     match Stanza.repr stanza with
     | Tests.T (tests : Tests.t) ->
       let* enabled = Expander.eval_blang expander tests.enabled_if in
-      let names = List.map ~f:snd (Nonempty_list.to_list tests.exes.names) in
+      let names = Nonempty_list.to_list_map tests.exes.names ~f:snd in
       let package =
         Option.map tests.package ~f:(fun p ->
           Dune_lang.Package.name p |> Dune_lang.Package_name.to_string)
@@ -131,7 +131,7 @@ let term : unit Term.t =
   and+ context_name = Common.context_arg ~doc:(Some "Build context to use.")
   and+ format = Describe_format.arg in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config
+  Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
   let* setup = Import.Main.setup () in

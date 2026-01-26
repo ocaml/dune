@@ -13,5 +13,5 @@ val make
   :  Stanza.t list
   -> dir:Path.Build.t
   -> dune_version:Syntax.Version.t
-  -> dirs:Source_file_dir.t list
+  -> dirs:Source_file_dir.t Nonempty_list.t
   -> t Memo.t

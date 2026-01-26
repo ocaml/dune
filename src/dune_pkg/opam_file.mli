@@ -2,7 +2,19 @@
 
 open Stdune
 
-val read_from_string_exn : contents:string -> Path.t -> OpamFile.OPAM.t
+(** [opam_file_of_string_exn ~contents p] creates an [OpamFile.OPAM.t] from
+    [content] and stores [p] as the location of the OPAM file. *)
+val opam_file_of_string_exn : contents:string -> Path.t -> OpamFile.OPAM.t
+
+(** [opam_file_of_path p] reads the file at path [p] and creates an
+    [OpamFile.OPAM.t] from the contents *)
+val opam_file_of_path : Path.t -> OpamFile.OPAM.t
+
+val opam_file_with
+  :  package:OpamPackage.t
+  -> url:OpamUrl.t option
+  -> OpamFile.OPAM.t
+  -> OpamFile.OPAM.t
 
 type value := OpamParserTypes.FullPos.value
 

@@ -40,45 +40,29 @@ let builtin_for_dune : Dune_package.t =
 ;;
 
 module DB = struct
+  module Id = Id.Make ()
+
   type t =
-    { stdlib_dir : Path.t
+    { id : Id.t
+    ; stdlib_dir : Path.t
     ; paths : Path.t list
     ; builtins : Meta.Simplified.t Package.Name.Map.t
     ; ext_lib : Filename.Extension.t
     }
 
-  let to_dyn { stdlib_dir; paths; builtins; ext_lib } =
+  let to_dyn { id; stdlib_dir; paths; builtins; ext_lib } =
     let open Dyn in
     record
-      [ "stdlib_dir", Path.to_dyn stdlib_dir
+      [ "id", Id.to_dyn id
+      ; "stdlib_dir", Path.to_dyn stdlib_dir
       ; "paths", list Path.to_dyn paths
       ; "builtins", Package.Name.Map.to_dyn Meta.Simplified.to_dyn builtins
       ; "ext_lib", string ext_lib
       ]
   ;;
 
-  let equal t { stdlib_dir; paths; builtins; ext_lib } =
-    Path.equal t.stdlib_dir stdlib_dir
-    && List.equal Path.equal t.paths paths
-    && Package.Name.Map.equal ~equal:Meta.Simplified.equal t.builtins builtins
-    && String.equal t.ext_lib ext_lib
-  ;;
-
-  let equal a b =
-    (* Since the DB is cached per context, physical equality will
-       shortcut almost all equality tests. *)
-    phys_equal a b || equal a b
-  ;;
-
-  let hash { stdlib_dir; paths; builtins; ext_lib } =
-    Poly.hash
-      ( Path.hash stdlib_dir
-      , List.hash Path.hash paths
-      , Package.Name.Map.to_list builtins
-        |> List.hash (fun (k, v) ->
-          Tuple.T2.hash Package.Name.hash Meta.Simplified.hash (k, v))
-      , String.hash ext_lib )
-  ;;
+  let equal x y = Id.equal x.id y.id
+  let hash t = Id.hash t.id
 
   let create ~paths ~(lib_config : Lib_config.t) =
     let stdlib_dir = lib_config.stdlib_dir in
@@ -87,7 +71,7 @@ module DB = struct
       let version = lib_config.ocaml_version in
       Meta.builtins ~stdlib_dir ~version
     in
-    { stdlib_dir; paths; builtins; ext_lib }
+    { id = Id.gen (); stdlib_dir; paths; builtins; ext_lib }
   ;;
 end
 
@@ -147,15 +131,23 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
     let main_module_name : Lib_info.Main_module_name.t = This None in
     let enabled = Memo.return Lib_info.Enabled_status.Normal in
     let requires =
-      let exports = Lib_name.Set.of_list (Findlib.Package.exports t) in
-      Findlib.Package.requires t
-      |> List.map ~f:(fun name ->
-        let lib_dep =
-          if Lib_name.Set.mem exports name then Lib_dep.re_export else Lib_dep.direct
-        in
-        lib_dep (add_loc name))
+      let ocaml =
+        let exports = Lib_name.Set.of_list (Findlib.Package.exports t) in
+        Findlib.Package.requires t
+        |> List.map ~f:(fun name ->
+          let lib_dep =
+            if Lib_name.Set.mem exports name then Lib_dep.re_export else Lib_dep.direct
+          in
+          lib_dep (add_loc name))
+      in
+      { Compilation_mode.By_mode.ocaml; melange = [] }
     in
-    let ppx_runtime_deps = List.map ~f:add_loc (Findlib.Package.ppx_runtime_deps t) in
+    let ppx_runtime_deps =
+      { Compilation_mode.By_mode.ocaml =
+          List.map (Findlib.Package.ppx_runtime_deps t) ~f:add_loc
+      ; melange = []
+      }
+    in
     let special_builtin_support : (Loc.t * Lib_info.Special_builtin_support.t) option =
       (* findlib has been around for much longer than dune, so it is
          acceptable to have a special case in dune for findlib. *)
@@ -169,7 +161,9 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
     let jsoo_runtime = Findlib.Package.jsoo_runtime t in
     let wasmoo_runtime = Findlib.Package.wasmoo_runtime t in
     let melange_runtime_deps = Lib_info.File_deps.External [] in
-    let preprocess = Preprocess.Per_module.no_preprocessing () in
+    let preprocess =
+      Compilation_mode.By_mode.both (Preprocess.Per_module.no_preprocessing ())
+    in
     let default_implementation = None in
     let wrapped = None in
     let foreign_archives, native_archives =
@@ -197,7 +191,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
           if ext = ext_lib
           then (
             let file = Path.relative t.dir f in
-            if String.is_prefix f ~prefix:Foreign.Archive.Name.lib_file_prefix
+            if String.starts_with ~prefix:Foreign.Archive.Name.lib_file_prefix f
             then Left file
             else Right file)
           else Skip)
@@ -206,7 +200,11 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
     let entry_modules =
       Lib_info.Source.External
         (match Vars.get_words t.vars "main_modules" Ps.empty with
-         | _ :: _ as modules -> Ok (List.map ~f:Module_name.of_string modules)
+         | _ :: _ as modules ->
+           Ok
+             (Compilation_mode.By_mode.just
+                ~for_:Ocaml
+                (List.map ~f:Module_name.of_checked_string modules))
          | [] ->
            (match dir_contents with
             | Error (e, _, _) ->
@@ -235,9 +233,10 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
                       Module_name.of_string_user_error (Loc.in_dir src_dir, name)
                     with
                     | Ok s -> Ok (Some s)
-                    | Error e -> Error e))))
+                    | Error e -> Error e))
+              |> Result.map ~f:(Compilation_mode.By_mode.just ~for_:Ocaml)))
     in
-    let modules = Lib_info.Source.External None in
+    let modules = Lib_info.Source.External (Compilation_mode.By_mode.both None) in
     let name = t.name in
     let lib_id = Lib_id.External (loc, name) in
     Lib_info.create
@@ -309,7 +308,7 @@ module Loader = struct
             List.filter_partition_map contents ~f:(fun (name, kind) ->
               match resolve_link ~dir:path ~fname:name kind with
               | Some S_DIR -> Left name
-              | Some S_REG when String.is_prefix name ~prefix:file_prefix -> Right name
+              | Some S_REG when String.starts_with ~prefix:file_prefix name -> Right name
               | _ -> Skip)
           in
           Ok
@@ -482,7 +481,7 @@ module Loader = struct
             [ Pp.textf
                 "Unable to read directory %s for findlib package"
                 (Path.to_string_maybe_quoted dir)
-            ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
+            ; User_error.reason (Pp.verbatim (Unix.error_message unix_error))
             ]
         | Ok { sub_dirs; metas } ->
           let+ sub_dirs =

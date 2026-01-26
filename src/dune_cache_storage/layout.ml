@@ -1,25 +1,9 @@
 open Stdune
 open Import
 
-let default_root_dir =
-  lazy
-    (let cache_dir = Xdg.cache_dir (Lazy.force Dune_util.xdg) in
-     Path.L.relative (Path.of_filename_relative_to_initial_cwd cache_dir) [ "dune"; "db" ])
-;;
-
-let root_dir =
-  lazy
-    (let var = "DUNE_CACHE_ROOT" in
-     match Sys.getenv_opt var with
-     | None -> Lazy.force default_root_dir
-     | Some path ->
-       if Filename.is_relative path
-       then failwith (sprintf "%s should be an absolute path, but is %s" var path);
-       Path.of_filename_relative_to_initial_cwd path)
-;;
-
 let ( / ) = Path.relative
-let temp_dir = lazy (Lazy.force root_dir / "temp")
+let build_cache_dir = lazy (Lazy.force Dune_util.cache_root_dir / "db")
+let temp_dir = lazy (Lazy.force build_cache_dir / "temp")
 
 let cache_path ~dir ~hex =
   let two_first_chars = sprintf "%c%c" hex.[0] hex.[1] in
@@ -52,13 +36,15 @@ let list_entries ~storage =
 
 module Versioned = struct
   let metadata_storage_dir t =
-    lazy (Lazy.force root_dir / "meta" / Version.Metadata.to_string t)
+    lazy (Lazy.force build_cache_dir / "meta" / Version.Metadata.to_string t)
   ;;
 
-  let file_storage_dir t = lazy (Lazy.force root_dir / "files" / Version.File.to_string t)
+  let file_storage_dir t =
+    lazy (Lazy.force build_cache_dir / "files" / Version.File.to_string t)
+  ;;
 
   let value_storage_dir t =
-    lazy (Lazy.force root_dir / "values" / Version.Value.to_string t)
+    lazy (Lazy.force build_cache_dir / "values" / Version.Value.to_string t)
   ;;
 
   let metadata_path t ~rule_or_action_digest =

@@ -1,8 +1,8 @@
 open Stdune
 open Fiber.O
+open Dune_scheduler
 module Where = Dune_rpc_private.Where
 module Registry = Dune_rpc_private.Registry
-module Scheduler = Dune_engine.Scheduler
 module Poll_active = Dune_rpc_impl.Poll_active
 open Dune_rpc_e2e
 
@@ -14,7 +14,7 @@ let try_ ~times ~delay_seconds ~f =
       (match res with
        | Some s -> Fiber.return (Some s)
        | None ->
-         let* () = Scheduler.sleep ~seconds:delay_seconds in
+         let* () = Scheduler.sleep (Time.Span.of_secs delay_seconds) in
          loop (n - 1))
   in
   loop times
@@ -25,7 +25,6 @@ let run =
   Dune_engine.Clflags.display := Quiet;
   let config =
     { Scheduler.Config.concurrency = 1
-    ; stats = None
     ; print_ctrl_c_warning = false
     ; watch_exclusions = []
     }
@@ -42,7 +41,8 @@ let run =
       ~finally:(fun () -> Sys.chdir cwd)
       ~f:(fun () ->
         Sys.chdir (Path.to_string dir);
-        Scheduler.Run.go config run ~timeout_seconds:5.0 ~on_event:(fun _ _ -> ()))
+        Scheduler.Run.go config run ~timeout:(Time.Span.of_secs 5.0) ~on_event:(fun _ _ ->
+          ()))
 ;;
 
 let%expect_test "turn on dune watch and wait until the connection is listed" =

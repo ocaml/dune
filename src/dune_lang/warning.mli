@@ -1,7 +1,6 @@
 (** General warning mechanism for dune rules *)
 
 open Import
-open Dune_config
 
 type t
 

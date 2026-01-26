@@ -56,6 +56,7 @@ The following pages describe the available stanzas and their meanings.
       dynamic_include
       env
       dirs
+      files
       data_only_dirs
       ignored_subdirs
       include_subdirs

@@ -1,6 +1,5 @@
 Tests for reading dependencies out of opam files
 
-  $ . ./helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

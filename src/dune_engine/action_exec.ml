@@ -14,7 +14,7 @@ let maybe_async =
 ;;
 
 module Duration = struct
-  type t = float option
+  type t = Time.Span.t option
 
   let empty = None
 
@@ -23,7 +23,7 @@ module Duration = struct
     | None, None -> None
     | Some _, None -> x
     | None, Some _ -> y
-    | Some x, Some y -> Some (x +. y)
+    | Some x, Some y -> Some (Time.Span.add x y)
   ;;
 end
 
@@ -39,7 +39,7 @@ module Produce = struct
 
   let return : 'a. 'a -> 'a t = fun a state -> Fiber.return (a, state)
 
-  let incr_duration : float -> 'a t =
+  let incr_duration : Time.Span.t -> 'a t =
     fun how_much state ->
     Fiber.return ((), State.combine state { duration = Some how_much })
   ;;
@@ -125,7 +125,7 @@ module Exec_result = struct
 
   type ok =
     { dynamic_deps_stages : (Dep.Set.t * Dep.Facts.t) list
-    ; duration : float option
+    ; duration : Time.Span.t option
     }
 
   type t = (ok, Error.t list) Result.t
@@ -258,6 +258,9 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
     let+ () = maybe_async (fun () -> Path.mkdir_p (Path.build path)) in
     Done
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
+  | Diff diff ->
+    let+ () = Produce.of_fiber (Diff_action.exec ectx.rule_loc diff) in
+    Done
   | Extension (module A) -> Produce.of_fiber @@ A.Spec.action A.v ~ectx ~eenv
 
 and redirect_out t ~ectx ~eenv ~perm outputs fn =

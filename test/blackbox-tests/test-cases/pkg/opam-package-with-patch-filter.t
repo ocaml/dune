@@ -1,7 +1,6 @@
 We test the translation of an opam package with a patches field with a filter into a dune
 lock file.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a package with a patch behind a filter

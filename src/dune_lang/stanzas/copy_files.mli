@@ -7,7 +7,7 @@ type origin =
 type t =
   { add_line_directive : bool
   ; alias : Alias_name.t option
-  ; mode : Dune_engine.Rule.Mode.t
+  ; mode : Rule_mode.t
   ; enabled_if : Blang.t
   ; files : String_with_vars.t
   ; only_sources : Blang.t

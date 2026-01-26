@@ -1,5 +1,3 @@
-  $ . ../helpers.sh
-
 We setup a simple mock repository directory with a couple of packages.
 
   $ mkrepo

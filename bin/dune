@@ -9,7 +9,6 @@
  (root_module root)
  (libraries
   memo
-  promote
   ocaml
   ocaml_config
   dune_lang
@@ -22,7 +21,6 @@
   unix
   install
   dune_findlib
-  dune_metrics
   dune_digest
   dune_cache
   dune_cache_storage
@@ -30,20 +28,19 @@
   dune_rules
   dune_vcs
   dune_engine
+  dune_scheduler
   dune_targets
   dune_util
   dune_upgrader
   dune_pkg
   cmdliner
   build_info
-  dune_config
   dune_config_file
   chrome_trace
   dune_trace
   csexp
   csexp_rpc
   dune_rpc_impl
-  dune_rules_rpc
   dune_rpc_private
   dune_rpc_client
   spawn

@@ -2,6 +2,7 @@ open Import
 open Memo.O
 
 let toplevel_dir_prefix = ".toplevel."
+let for_ = Compilation_mode.Ocaml
 
 module Source = struct
   type t =
@@ -12,8 +13,11 @@ module Source = struct
     }
 
   let main_module t =
-    let main_module_name = Module_name.of_string_allow_invalid (t.loc, t.name) in
-    Module.generated ~kind:Impl ~src_dir:t.dir [ main_module_name ]
+    let main_module_name =
+      Module_name.of_string_allow_invalid (t.loc, t.name)
+      |> Module_name.Unchecked.allow_invalid
+    in
+    Module.generated ~kind:Impl ~src_dir:t.dir ~for_ [ main_module_name ]
   ;;
 
   let source_path t =
@@ -230,11 +234,11 @@ module Stanza = struct
             (Ocaml_flags.default ~dune_version ~profile)
             [ "-w"; "-24" ]
         in
-        let requires_compile = Lib.Compile.direct_requires compile_info in
-        let requires_link = Lib.Compile.requires_link compile_info in
+        let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
+        let requires_link = Lib.Compile.requires_link compile_info ~for_ in
         let obj_dir = Source.obj_dir source in
         Compilation_context.create
-          ()
+          for_
           ~super_context:sctx
           ~scope
           ~obj_dir

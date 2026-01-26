@@ -571,7 +571,11 @@ let to_lib_info
     | Public (_, pkg) -> Package.version pkg
     | Installed_private | Installed | Private _ -> None
   in
-  let requires = conf.buildable.libraries in
+  let requires =
+    { Compilation_mode.By_mode.ocaml = conf.buildable.libraries
+    ; melange = conf.buildable.libraries
+    }
+  in
   let parameters = conf.parameters in
   let allow_unused_libraries = conf.buildable.allow_unused_libraries in
   let loc = conf.buildable.loc in
@@ -580,8 +584,16 @@ let to_lib_info
   let orig_src_dir = None in
   let synopsis = conf.synopsis in
   let sub_systems = conf.sub_systems in
-  let ppx_runtime_deps = conf.ppx_runtime_libraries in
-  let preprocess = conf.buildable.preprocess in
+  let ppx_runtime_deps =
+    { Compilation_mode.By_mode.ocaml = conf.ppx_runtime_libraries
+    ; melange = conf.ppx_runtime_libraries
+    }
+  in
+  let preprocess =
+    { Compilation_mode.By_mode.ocaml = conf.buildable.preprocess
+    ; melange = conf.buildable.preprocess
+    }
+  in
   let virtual_deps = conf.virtual_deps in
   let dune_version = Some conf.dune_version in
   let implements = conf.implements in

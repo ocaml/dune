@@ -1,8 +1,6 @@
 A workspace with a package that exists in the lock file and in the workspace
 shouldn't be allowed (for now)
 
-  $ . ./helpers.sh
-
   $ cat >dune-project <<EOF
   > (lang dune 3.11)
   > EOF

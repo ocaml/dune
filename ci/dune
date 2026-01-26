@@ -1,0 +1,25 @@
+(executable
+ (name update_version)
+ (libraries stdune dune_rpc_private re))
+
+(rule
+ (deps bench.yml.in)
+ (target bench.yml)
+ (mode
+  (promote
+   (into ../.github/workflows)))
+ (action
+  (with-stdout-to
+   %{target}
+   (run ./update_version.exe %{deps}))))
+
+(rule
+ (deps workflow.yml.in)
+ (target workflow.yml)
+ (mode
+  (promote
+   (into ../.github/workflows)))
+ (action
+  (with-stdout-to
+   %{target}
+   (run ./update_version.exe %{deps}))))

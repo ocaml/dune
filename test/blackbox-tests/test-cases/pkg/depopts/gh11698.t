@@ -1,7 +1,5 @@
 Reproduce the bug in #11698
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

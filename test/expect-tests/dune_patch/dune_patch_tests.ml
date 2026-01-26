@@ -1,4 +1,5 @@
 open Stdune
+open Dune_scheduler
 
 let () = Dune_tests_common.init ()
 
@@ -122,7 +123,6 @@ include struct
   module Action = Action
   module Display = Display
   module Process = Process
-  module Scheduler = Scheduler
 end
 
 let create_files =
@@ -143,14 +143,13 @@ let test files (patch, patch_contents) =
   let patch_file = Path.append_local dir (Path.Local.of_string patch) in
   let config =
     { Scheduler.Config.concurrency = 1
-    ; stats = None
     ; print_ctrl_c_warning = false
     ; watch_exclusions = []
     }
   in
   Scheduler.Run.go
     config
-    ~timeout_seconds:5.0
+    ~timeout:(Time.Span.of_secs 5.0)
     ~file_watcher:No_watcher
     ~on_event:(fun _ _ -> ())
   @@ fun () ->

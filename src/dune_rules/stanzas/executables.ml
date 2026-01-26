@@ -93,7 +93,10 @@ end = struct
             names
             ~f:
               (List.iter ~f:(fun name ->
-                 ignore (Module_name.parse_string_exn name : Module_name.t)));
+                 ignore
+                   (Module_name.of_string_allow_invalid name
+                    |> Module_name.Unchecked.validate_exn
+                    : Module_name.t)));
         match names, public_names with
         | Some names, _ -> names
         | None, Some public_names ->
@@ -141,7 +144,7 @@ end = struct
               ~loc
               [ Pp.textf "field %s is missing" (pluralize ~multi "name") ]
       in
-      Nonempty_list.of_list names |> Option.value_exn
+      Nonempty_list.of_list_exn names
     in
     let public =
       match package, public_names with
@@ -409,7 +412,7 @@ type t =
   ; optional : bool
   ; buildable : Buildable.t
   ; package : Package.t option
-  ; promote : Rule.Promote.t option
+  ; promote : Rule_mode.Promote.t option
   ; install_conf : Install_conf.t option
   ; embed_in_plugin_libraries : (Loc.t * Lib_name.t) list
   ; forbidden_libraries : (Loc.t * Lib_name.t) list

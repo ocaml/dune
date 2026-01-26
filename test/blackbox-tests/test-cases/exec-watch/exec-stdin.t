@@ -15,7 +15,7 @@ We use the done flag as a signal that the program has finished.
 
   $ cat > touch.ml <<EOF
   > let touch path =
-  >  let fd = Unix.openfile path [ Unix.O_CREAT ] 0o777 in
+  >  let fd = Unix.openfile path [ Unix.O_CREAT; O_CLOEXEC ] 0o777 in
   >  Unix.close fd
   > ;;
   > EOF

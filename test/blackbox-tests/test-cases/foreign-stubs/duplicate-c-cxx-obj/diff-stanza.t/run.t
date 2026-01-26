@@ -9,3 +9,4 @@ stubs names, things are still broken if their .o files overlap:
   definition at dune:9.
   Hint: You can avoid the name clash by renaming one of the objects, or by
   placing it into a different directory.
+  [1]

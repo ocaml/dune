@@ -24,23 +24,15 @@ module Map : sig
     }
 end
 
-type mode_conf := t
-
 module Set : sig
   type nonrec t = Kind.t option Map.t
 
-  val of_list : (mode_conf * Kind.t) list -> t
   val decode : t Decoder.t
-
-  module Details : sig
-    type t = Kind.t option
-  end
-
-  val eval_detailed : t -> has_native:bool -> Details.t Mode.Dict.t
-  val eval : t -> has_native:bool -> Mode.Dict.Set.t
 end
 
 module Lib : sig
+  type mode_conf := t
+
   type t =
     | Ocaml of mode_conf
     | Melange
@@ -60,13 +52,7 @@ module Lib : sig
 
     val of_list : (mode_conf * Kind.t) list -> t
     val decode : t Decoder.t
-
-    module Details : sig
-      type t = Kind.t option
-    end
-
     val default : Loc.t -> t
-    val eval_detailed : t -> has_native:bool -> Details.t Lib_mode.Map.t
     val eval : t -> has_native:bool -> Lib_mode.Map.Set.t
     val decode_osl : stanza_loc:Loc.t -> Dune_project.t -> t Decoder.t
   end

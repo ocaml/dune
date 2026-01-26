@@ -20,8 +20,7 @@ don't belong to.
   > (library
   >  (public_name mel-foo)
   >  (name mel_foo)
-  >  (modes melange)
-  >  (preprocess (pps melange.ppx)))
+  >  (modes melange))
   > EOF
   $ cat > lib/mel_foo.ml <<EOF
   > let x = "lib"

@@ -1,6 +1,7 @@
 include Stdune
 include Dune_config_file
 include Dune_vcs
+include Dune_scheduler
 
 include struct
   open Dune_engine
@@ -39,6 +40,7 @@ include struct
   module Library = Library
   module Melange = Melange
   module Executables = Executables
+  module Dir_contents = Dir_contents
 end
 
 include struct
@@ -58,7 +60,6 @@ include struct
 end
 
 module Digest = Dune_digest
-module Metrics = Dune_metrics
 module Console = Dune_console
 
 include struct
@@ -84,10 +85,9 @@ include struct
   module Resolved_package = Resolved_package
 end
 
-module Log = Dune_util.Log
 module Dune_rpc = Dune_rpc_private
 module Graph = Dune_graph.Graph
-include Common.Let_syntax
+include Let_syntax
 
 module Main : sig
   include module type of struct
@@ -100,7 +100,7 @@ end = struct
 
   let setup () =
     let open Fiber.O in
-    let* scheduler = Dune_engine.Scheduler.t () in
+    let* scheduler = Scheduler.t () in
     Console.Status_line.set
       (Live
          (fun () ->
@@ -122,7 +122,7 @@ end = struct
                   total
                   (total - done_)
                   (if failed = 0 then "" else sprintf ", %u failed" failed)
-                  (Dune_engine.Scheduler.running_jobs_count scheduler))));
+                  (Scheduler.running_jobs_count scheduler))));
     Fiber.return (Memo.of_thunk get)
   ;;
 end
@@ -161,11 +161,11 @@ let command_alias ?orig_name cmd term name =
 let build_system_mutex = Fiber.Mutex.create ()
 
 let build f =
-  Hooks.End_of_build.once Promote.Diff_promotion.finalize;
+  Hooks.End_of_build.once Dune_engine.Diff_promotion.finalize;
   Fiber.Mutex.with_lock build_system_mutex ~f:(fun () -> Build_system.run f)
 ;;
 
 let build_exn f =
-  Hooks.End_of_build.once Promote.Diff_promotion.finalize;
+  Hooks.End_of_build.once Dune_engine.Diff_promotion.finalize;
   Fiber.Mutex.with_lock build_system_mutex ~f:(fun () -> Build_system.run_exn f)
 ;;

@@ -27,8 +27,8 @@ using `(select ...)` in melange.emit
   >  (emit_stdlib false)
   >  (libraries
   >   (select bar.ml from
-  >    (melange -> bar.melange.ml)
-  >    (!melange -> bar.native.ml))
+  >    (melange.dom -> bar.melange.ml)
+  >    (!melange.dom -> bar.native.ml))
   >   (select foo.ml from
   >    (fakefoobar -> foo.fake.ml)
   >    (!fakefoobar -> foo.no_fake.ml))))

@@ -1,6 +1,5 @@
 Basic usage of portable lockdirs.
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

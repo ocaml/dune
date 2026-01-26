@@ -1,7 +1,6 @@
 We test depopts with conflicting constraints to see which one the solver will
 prefer if any:
 
-  $ . ../helpers.sh
   $ mkpkg foo 1
   $ mkpkg foo 2
 

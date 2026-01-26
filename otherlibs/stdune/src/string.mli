@@ -12,8 +12,8 @@ val to_dyn : t -> Dyn.t
 val break : t -> pos:int -> t * t
 val is_empty : t -> bool
 val of_list : char list -> t
-val is_prefix : t -> prefix:t -> bool
-val is_suffix : t -> suffix:t -> bool
+val starts_with : prefix:t -> t -> bool
+val ends_with : suffix:t -> t -> bool
 val take : t -> int -> t
 val drop : t -> int -> t
 val split_n : t -> int -> t * t

@@ -1,7 +1,5 @@
 Requesting to build a single package should not build unrelated things:
 
-  $ . ./helpers.sh
-
   $ make_lockdir
 
   $ cat >dune-project <<EOF

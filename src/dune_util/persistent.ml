@@ -53,19 +53,11 @@ module Make (D : Desc) = struct
 
   let to_string (v : D.t) = Printf.sprintf "%s%s" magic (Marshal.to_string v [])
 
-  let with_record stats ~name ~file ~f =
-    let start = Unix.gettimeofday () in
+  let with_record what ~file ~f =
+    let start = Time.now () in
     let res = Result.try_with f in
-    let event =
-      let stop = Unix.gettimeofday () in
-      let module Event = Chrome_trace.Event in
-      let module Timestamp = Event.Timestamp in
-      let dur = Timestamp.of_float_seconds (stop -. start) in
-      let common = Event.common_fields ~name ~ts:(Timestamp.of_float_seconds start) () in
-      let args = [ "path", `String (Path.to_string file); "module", `String D.name ] in
-      Event.complete common ~args ~dur
-    in
-    Dune_trace.emit stats event;
+    Dune_trace.emit Persistent (fun () ->
+      Dune_trace.Event.persistent ~file ~module_:D.name what ~start ~stop:(Time.now ()));
     Result.ok_exn res
   ;;
 
@@ -78,16 +70,8 @@ module Make (D : Desc) = struct
         | exception Invalid_argument s ->
           raise (Invalid_argument (sprintf "%s (%s)" s D.name)))
     in
-    let dump =
-      lazy
-        (match Dune_trace.global () with
-         | None -> dump
-         | Some stats ->
-           fun file v ->
-             with_record stats ~name:"Writing Persistent Dune State" ~file ~f:(fun () ->
-               dump file v))
-    in
-    fun file (v : D.t) -> (Lazy.force dump) file v
+    let dump file v = with_record `Save ~file ~f:(fun () -> dump file v) in
+    fun file (v : D.t) -> dump file v
   ;;
 
   let load =
@@ -100,15 +84,9 @@ module Make (D : Desc) = struct
           then (
             match (Marshal.from_channel ic : D.t) with
             | exception Failure f ->
-              Log.info_user_message
-                (User_message.make
-                   [ Pp.tag
-                       User_message.Style.Warning
-                       (Pp.textf
-                          "Failed to load corrupted file %s: %s"
-                          (Path.to_string file)
-                          f)
-                   ]);
+              Log.warn
+                "Failed to load corrupted file"
+                [ "file", Dyn.string (Path.to_string file); "error", Dyn.string f ];
               None
             | d -> Some d)
           else None)
@@ -117,10 +95,7 @@ module Make (D : Desc) = struct
       lazy
         (match Dune_trace.global () with
          | None -> read_file
-         | Some stats ->
-           fun file ->
-             with_record stats ~name:"Loading Persistent Dune State" ~file ~f:(fun () ->
-               read_file file))
+         | Some _ -> fun file -> with_record `Load ~file ~f:(fun () -> read_file file))
     in
     fun file -> if Path.exists file then (Lazy.force read_file) file else None
   ;;

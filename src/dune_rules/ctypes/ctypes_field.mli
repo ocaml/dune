@@ -36,7 +36,6 @@ end
 module Type_description : sig
   type t =
     { functor_ : Module_name.t
-    ; functor_loc : Loc.t
     ; instance : Module_name.t
     }
 end
@@ -46,7 +45,6 @@ module Function_description : sig
     { concurrency : Concurrency_policy.t
     ; errno_policy : Errno_policy.t
     ; functor_ : Module_name.t
-    ; functor_loc : Loc.t
     ; instance : Module_name.t
     }
 end

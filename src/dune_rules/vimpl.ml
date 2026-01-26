@@ -15,10 +15,10 @@ let impl_cm_kind t = t.impl_cm_kind
 let vlib_stubs_o_files t = t.vlib_foreign_objects
 let vlib_obj_map t = Modules.obj_map t.vlib_modules
 
-let make ~sctx ~scope ~(lib : Library.t) ~info ~vlib =
+let make ~sctx ~scope ~(lib : Library.t) ~info ~vlib ~for_ =
   let open Memo.O in
   let+ vlib_modules, vlib_foreign_objects =
-    match Lib_info.modules info, Lib_info.foreign_objects info with
+    match Lib_info.modules info ~for_, Lib_info.foreign_objects info with
     | External modules, External fa ->
       let modules = Option.value_exn modules in
       Memo.return (Modules.With_vlib.drop_vlib modules, fa)
@@ -41,7 +41,7 @@ let make ~sctx ~scope ~(lib : Library.t) ~info ~vlib =
             ~instrumentation_backend:(Lib.DB.instrumentation_backend db)
           |> Resolve.Memo.read_memo
         in
-        Dir_contents.ocaml dir_contents
+        Dir_contents.ml dir_contents ~for_
         >>= Ml_sources.modules
               ~libs:db
               ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))

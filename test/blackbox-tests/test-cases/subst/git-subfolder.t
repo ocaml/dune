@@ -1,5 +1,3 @@
-  $ . ../git-helpers.sh
-
 Running `dune subst` in a subfolder of a Git repository should work.
 Regression test for https://github.com/ocaml/dune/issues/11045
 

@@ -28,3 +28,4 @@ Regression test for #6644
 
   $ dune build foo.cma 2>&1 | grep Assert_failure | sed 's/\(.* Assert_failure\).*/\1/g'
   Fatal error: exception Assert_failure
+  [1]

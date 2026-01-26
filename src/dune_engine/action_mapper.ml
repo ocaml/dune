@@ -38,6 +38,8 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     | Remove_tree x -> Remove_tree (f_target ~dir x)
     | Mkdir x -> Mkdir (f_target ~dir x)
     | Pipe (outputs, l) -> Pipe (outputs, List.map l ~f:(fun t -> f t ~dir))
+    | Diff ({ file1; file2; _ } as diff) ->
+      Diff { diff with file1 = f_path ~dir file1; file2 = f_target ~dir file2 }
     | Extension ext -> Extension (f_ext ~dir ext)
   ;;
 

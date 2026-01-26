@@ -6,7 +6,7 @@
 # Author(s): The Dune team
 # Date: 2025-09-29
 #
-# Usage: $ ./build_changelog.sh <X.Y.Z> 
+# Usage: $ ./build_changelog.sh <X.Y.Z>
 # where X.Y.Z is the version of Dune
 
 set -euo pipefail
@@ -21,14 +21,23 @@ add_newline() {
   echo "" >> "$output"
 }
 
+# Version headers have a format like
+#
+# ```
+# l.n.m. (yyyy-mm-dd)
+# -------------------
+# ```
+#
+# Using setext level 2 headings.
+# See https://spec.commonmark.org/0.31.2/#setext-headings
 generate_version_header() {
   today=$(date "+%Y-%m-%d")
 
   header="$version ($today)"
-  header_size=$(echo "$header" | wc -m)
+  header_size=${#header}
   echo "$header" >> "$output"
 
-  for i in $(seq $header_size); do
+  for _ in $(seq "$header_size"); do
     echo -n "-" >> "$output"
   done
 
@@ -52,7 +61,9 @@ append_files_in_dir_if_not_empty() {
     return 0
   fi
 
-  echo "## $subheader" >> "$output"
+  # Subheaders use ATX headings, and must be at level 3 to ensure that they are
+  # subordinate to the version headers.
+  echo "### $subheader" >> "$output"
   add_newline
   for file in $list_of_files; do
       cat "$file" >> "$output"
@@ -62,7 +73,7 @@ append_files_in_dir_if_not_empty() {
 }
 
 # Move to the Dune root directory
-cd $(dirname $0)
+cd "$(dirname "$0")"
 cd ../../../
 
 # Create the output file

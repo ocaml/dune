@@ -1,20 +1,17 @@
-(include_subdirs unqualified)
-
 (library
  (name dune_engine)
  (libraries
   unix
   csexp
   stdune
-  dune_config
   dune_console
   dyn
   fiber
   memo
-  dune_async_io
   threads.posix
   predicate_lang
   dune_cache
+  dune_scheduler
   dune_cache_storage
   dune_glob
   dune_targets
@@ -23,12 +20,9 @@
   dune_action_plugin
   dune_util
   build_path_prefix_map
-  dune_output_truncation
   dune_rpc_private
   dune_rpc_client
-  dune_thread_pool
   spawn
-  dune_file_watcher
   dune_digest
-  dune_metrics)
+  dune_action_trace)
  (synopsis "Internal Dune library, do not use!"))

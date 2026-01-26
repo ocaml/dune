@@ -55,7 +55,6 @@ module Validated : sig
 
   val to_dyn : t -> Dyn.t
   val unvalidate : t -> unvalidated
-  val to_trace_args : t -> (string * Chrome_trace.Json.t) list
 end
 
 module Validation_result : sig
@@ -163,7 +162,6 @@ module Produced : sig
   val map_with_errors
     :  ?d:(Path.Build.t -> (unit, 'e) result)
     -> f:(Path.Build.t -> ('b, 'e) result)
-    -> all_errors:bool
     -> 'a t
     -> ('b t, (Path.Build.t * 'e) Nonempty_list.t) result
 

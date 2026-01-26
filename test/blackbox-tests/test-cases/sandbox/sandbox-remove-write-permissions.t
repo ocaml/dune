@@ -23,6 +23,7 @@ Remove write permissions from a sandbox directory and observe the error we get
   Error:
   rename(_build/.sandbox/$SANDBOX/default/foo): Permission denied
   -> required by _build/default/foo
+  [1]
 
 Manual cleaning step so the dune executing the test suite doesn't croak trying
 to delete the readonly dir

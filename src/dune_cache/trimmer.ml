@@ -66,7 +66,7 @@ let trim_broken_metadata_entries ~trimmed_so_far =
                (* If another process deletes [path] and the [unlink_no_err] below
                   is a no-op, we take the credit and increase
                   [trimmed_so_far]. *)
-               Path.unlink_no_err path;
+               Fpath.unlink_no_err (Path.to_string path);
                Trimming_result.add trimmed_so_far ~bytes
              | Error _ ->
                (* Alas, here we can't take any (non-zero) credit, since we don't
@@ -120,7 +120,7 @@ let trim ~goal =
     if trimmed_so_far.trimmed_bytes >= goal
     then trimmed_so_far
     else (
-      Path.unlink_no_err path;
+      Fpath.unlink_no_err (Path.to_string path);
       (* CR-someday amokhov: We should really be using block_size * #blocks
          because that's how much we save actually. *)
       Trimming_result.add trimmed_so_far ~bytes)
@@ -134,7 +134,7 @@ let overhead_size () =
   let stats =
     let f p =
       try
-        let stats = Path.stat_exn p in
+        let stats = Unix.stat (Path.to_string p) in
         if file_exists_and_is_unused ~stats then Int64.of_int stats.st_size else 0L
       with
       | Unix.Unix_error (Unix.ENOENT, _, _) -> 0L

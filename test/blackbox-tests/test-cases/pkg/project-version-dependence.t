@@ -1,8 +1,6 @@
 Demonstrate that there should be no dependence on the dune lang version for
 building packages:
 
-  $ . ./helpers.sh
-
   $ make_lockdir
   $ make_lockpkg test <<EOF
   > (version 0.0.1)

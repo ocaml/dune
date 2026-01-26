@@ -1,14 +1,11 @@
-For now, this field is disabled
-
-  $ export DUNE_CONFIG__ALLOW_UNUSED_LIBRARIES=enabled
-
 Test allow_unused_libraries field
 
 The allow_unused_libraries field allows specifying libraries that should not
 trigger unused library errors even when they are not used.
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.21)
+  > (lang dune 3.22)
+  > (using unreleased 0.1)
   > EOF
 
 Create three libraries - one will be used, two won't be used:

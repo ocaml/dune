@@ -1,13 +1,12 @@
 open Stdune
-module Config = Dune_config.Config
 
 let lock_file = Path.Build.(relative root ".lock")
 
 let with_timeout ~timeout f =
-  let now () = Unix.gettimeofday () in
-  let deadline = now () +. timeout in
+  let now () = Time.now () in
+  let deadline = Time.add (now ()) timeout in
   let rec loop () =
-    if now () >= deadline
+    if Time.(now () >= deadline)
     then `Timed_out
     else (
       match f () with
@@ -91,7 +90,12 @@ module Lock_held_by = struct
 end
 
 let lock ~timeout =
-  match Config.(get global_lock) with
+  match
+    (* If Config hasn't been initialized yet, default to `Enabled behavior.
+       This allows the lock to be acquired early (e.g., before creating trace
+       files) to prevent corruption. *)
+    if Config.is_initialized () then Config.(get global_lock) else `Enabled
+  with
   | `Disabled -> Ok ()
   | `Enabled ->
     if !locked

@@ -1,6 +1,5 @@
 Test variable filters on dependencies
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ mkpkg foo-dependency <<EOF

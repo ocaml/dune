@@ -434,6 +434,7 @@ module Component = struct
                 }
               ]
             ~contents_basename:None
+            ~enabled_if:None
         in
         let packages = Package.Name.Map.singleton (Package.name package) package in
         let info =

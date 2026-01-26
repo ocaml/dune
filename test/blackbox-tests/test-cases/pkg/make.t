@@ -1,5 +1,4 @@
 Build a package with make
-  $ . ./helpers.sh
 
   $ mkdir foo
   $ cat >foo/Makefile <<EOF

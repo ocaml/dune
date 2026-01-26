@@ -20,7 +20,7 @@ where Dune is supposed to store the cache:
   Warning: Cache directories could not be created: Permission denied; disabling
   cache
   Hint: Make sure the directory
-  $TESTCASE_ROOT/readonly/cache-dir/temp
+  $TESTCASE_ROOT/readonly/cache-dir/db/temp
   can be created
 
 Likewise, this should also happen if the location is set via XDG variables.

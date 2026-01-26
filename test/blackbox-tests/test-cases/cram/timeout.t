@@ -18,8 +18,11 @@ allow the test to fail. (Since "hi" needs to be promoted).
 
   $ dune test test.t
   File "test.t", line 1, characters 0-0:
-  Error: Files _build/default/test.t and _build/default/test.t.corrected
-  differ.
+  --- test.t
+  +++ test.t.corrected
+  @@ -1 +1,2 @@
+     $ echo hi
+  +  hi
   [1]
 
 Next we create a cram test that will take longer than our timeout budget which
@@ -44,4 +47,5 @@ behaviour is for dune to kill the cram test immediately.
   Error: Cram test timed out while running command:
     $ command
   A time limit of 0.00s has been set in dune:2
+  [1]
 

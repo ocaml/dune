@@ -16,8 +16,7 @@ val make
 
 val external_env : t -> Env.t Memo.t
 
-(** Binaries that are symlinked in the associated .bin directory of [dir]. This
-    associated directory is *)
+(** Binaries that are symlinked in the associated .bin directory of [dir]. *)
 val local_binaries : t -> File_binding.Expanded.t list Memo.t
 
 val artifacts : t -> Artifacts.t Memo.t

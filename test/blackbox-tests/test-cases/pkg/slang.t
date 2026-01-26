@@ -1,4 +1,3 @@
-  $ . ./helpers.sh
 
   $ make_lockdir
 

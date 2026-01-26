@@ -1,7 +1,5 @@
 Basic tests for the file-watching mode.
 
-  $ . ./helpers.sh
-
 ----------------------------------------------------------------------------------
 * Compile a simple rule
 

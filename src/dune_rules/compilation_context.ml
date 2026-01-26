@@ -89,11 +89,10 @@ type t =
   ; requires_link : Lib.t list Resolve.t Memo.Lazy.t
   ; implements : Virtual_rules.t
   ; parameters : Module_name.t list Resolve.Memo.t
-  ; instances : Parameterised_rules.instances list Resolve.Memo.t option
+  ; instances : Parameterised_instances.t Resolve.Memo.t option
   ; includes : Includes.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
-  ; stdlib : Ocaml_stdlib.t option
   ; js_of_ocaml : Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
   ; sandbox : Sandbox_config.t
   ; package : Package.t option
@@ -102,6 +101,7 @@ type t =
   ; bin_annot : bool
   ; loc : Loc.t option
   ; ocaml : Ocaml_toolchain.t
+  ; for_ : Compilation_mode.t
   }
 
 let loc t = t.loc
@@ -118,7 +118,6 @@ let parameters t = t.parameters
 let includes t = t.includes
 let preprocessing t = t.preprocessing
 let opaque t = t.opaque
-let stdlib t = t.stdlib
 let js_of_ocaml t = t.js_of_ocaml
 let sandbox t = t.sandbox
 let set_sandbox t sandbox = { t with sandbox }
@@ -154,7 +153,6 @@ let create
       ~requires_link
       ?(preprocessing = Pp_spec.dummy)
       ~opaque
-      ?stdlib
       ~js_of_ocaml
       ~package
       ~melange_package_name
@@ -164,7 +162,7 @@ let create
       ?bin_annot
       ?loc
       ?instances
-      ()
+      for_
   =
   let project = Scope.project scope in
   let context = Super_context.context super_context in
@@ -191,12 +189,8 @@ let create
   in
   let sandbox = Sandbox_config.no_special_requirements in
   let modes =
-    let default =
-      { Lib_mode.Map.ocaml = Mode.Dict.make_both (Some Mode_conf.Kind.Inherited)
-      ; melange = None
-      }
-    in
-    Option.value ~default modes |> Lib_mode.Map.map ~f:Option.is_some
+    let default = { Lib_mode.Map.ocaml = Mode.Dict.make_both true; melange = false } in
+    Option.value ~default modes
   in
   let opaque =
     let profile = Context.profile context in
@@ -210,6 +204,7 @@ let create
       ~sctx:super_context
       ~impl:implements
       ~modules
+      ~for_
   and+ bin_annot =
     match bin_annot with
     | Some b -> Memo.return b
@@ -229,7 +224,6 @@ let create
       Includes.make ~project ~opaque ~direct_requires ~hidden_requires ocaml.lib_config
   ; preprocessing
   ; opaque
-  ; stdlib
   ; js_of_ocaml
   ; sandbox
   ; package
@@ -239,12 +233,15 @@ let create
   ; loc
   ; ocaml
   ; instances
+  ; for_
   }
 ;;
 
+let for_ t = t.for_
+
 let alias_and_root_module_flags =
-  let extra = [ "-w"; "-49"; "-nopervasives"; "-nostdlib" ] in
-  fun base -> Ocaml_flags.append_common base extra
+  let extra = [ "-w"; "-49" ] in
+  fun base -> Ocaml_flags.append_common base extra |> Ocaml_flags.append_nostdlib
 ;;
 
 let for_alias_module t alias_module =
@@ -286,13 +283,7 @@ let for_alias_module t alias_module =
          modules to compile it. *)
       t.modules, t.includes
   in
-  { t with
-    flags = alias_and_root_module_flags flags
-  ; includes
-  ; stdlib = None
-  ; sandbox
-  ; modules
-  }
+  { t with flags = alias_and_root_module_flags flags; includes; sandbox; modules }
 ;;
 
 let for_root_module t root_module =
@@ -304,7 +295,6 @@ let for_root_module t root_module =
   in
   { t with
     flags = alias_and_root_module_flags flags
-  ; stdlib = None
   ; modules = singleton_modules root_module
   }
 ;;
@@ -339,7 +329,7 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
 let for_wrapped_compat t =
   (* See #10689 *)
   let flags = Ocaml_flags.append_common t.flags [ "-w"; "-53" ] in
-  { t with includes = Includes.empty; stdlib = None; flags }
+  { t with includes = Includes.empty; flags }
 ;;
 
 let for_plugin_executable t ~embed_in_plugin_libraries =
@@ -354,4 +344,9 @@ let for_plugin_executable t ~embed_in_plugin_libraries =
 let without_bin_annot t = { t with bin_annot = false }
 let set_obj_dir t obj_dir = { t with obj_dir }
 let set_modes t ~modes = { t with modes }
-let instances t = t.instances
+
+let instances t =
+  match t.instances with
+  | None -> Action_builder.return Parameterised_instances.none
+  | Some instances -> Resolve.Memo.read instances
+;;

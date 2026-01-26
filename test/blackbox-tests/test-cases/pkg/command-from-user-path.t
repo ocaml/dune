@@ -1,7 +1,5 @@
 Make sure we can run exes from the user's PATH variable.
 
-  $ . ./helpers.sh
-
 Create a directory containing a shell script and add the directory to PATH.
   $ mkdir bin
   $ cat > bin/hello <<EOF

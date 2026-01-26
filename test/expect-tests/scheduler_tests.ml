@@ -1,4 +1,5 @@
 open Stdune
+include Dune_scheduler
 open Dune_tests_common
 open Dune_engine
 open Fiber.O
@@ -8,20 +9,14 @@ let () = init ()
 let default =
   Clflags.display := Short;
   { Scheduler.Config.concurrency = 1
-  ; stats = None
   ; print_ctrl_c_warning = false
   ; watch_exclusions = []
   }
 ;;
 
-let go ?(timeout_seconds = 0.3) ?(config = default) f =
+let go ?(timeout = Time.Span.of_secs 0.3) ?(config = default) f =
   try
-    Scheduler.Run.go
-      ~timeout_seconds
-      config
-      ~file_watcher:No_watcher
-      ~on_event:(fun _ _ -> ())
-      f
+    Scheduler.Run.go ~timeout config ~file_watcher:No_watcher ~on_event:(fun _ _ -> ()) f
   with
   | Scheduler.Run.Shutdown.E Requested -> ()
 ;;
@@ -51,10 +46,11 @@ let%expect_test "cancelling a build" =
       (fun () ->
          let* () = Fiber.Ivar.read build_started in
          let* () =
-           Scheduler.inject_memo_invalidation (Memo.Cell.invalidate cell ~reason:Unknown)
+           Scheduler.For_tests.inject_memo_invalidation
+             (Memo.Cell.invalidate cell ~reason:Unknown)
          in
          (* Wait for the scheduler to acknowledge the change *)
-         let* () = Scheduler.wait_for_build_input_change () in
+         let* () = Scheduler.For_tests.wait_for_build_input_change () in
          Fiber.Ivar.fill build_cancelled ()));
   [%expect {| PASS: build was cancelled |}]
 ;;
@@ -72,9 +68,10 @@ let%expect_test "cancelling a build: effect on other fibers" =
       (fun () ->
          let* () = Fiber.Ivar.read build_started in
          let* () =
-           Scheduler.inject_memo_invalidation (Memo.Cell.invalidate cell ~reason:Unknown)
+           Scheduler.For_tests.inject_memo_invalidation
+             (Memo.Cell.invalidate cell ~reason:Unknown)
          in
-         let* () = Scheduler.wait_for_build_input_change () in
+         let* () = Scheduler.For_tests.wait_for_build_input_change () in
          let* res = Fiber.collect_errors (fun () -> Fiber.return ()) in
          print_endline
            (match res with

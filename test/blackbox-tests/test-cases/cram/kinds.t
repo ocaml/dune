@@ -16,8 +16,11 @@ Tests can be in a single file.
 
   $ dune runtest file
   File "file/file.t", line 1, characters 0-0:
-  Error: Files _build/default/file/file.t and
-  _build/default/file/file.t.corrected differ.
+  --- file/file.t
+  +++ file/file.t.corrected
+  @@ -1 +1,2 @@
+     $ echo File test
+  +  File test
   [1]
 
   $ dune promote file/file.t
@@ -41,8 +44,13 @@ other files are visible within the test.
 
   $ dune runtest dir
   File "dir/dir.t/run.t", line 1, characters 0-0:
-  Error: Files _build/default/dir/dir.t/run.t and
-  _build/default/dir/dir.t/run.t.corrected differ.
+  --- dir/dir.t/run.t
+  +++ dir/dir.t/run.t.corrected
+  @@ -1,2 +1,4 @@
+     $ echo Dir test
+  +  Dir test
+     $ cat a
+  +  Contents of file a
   [1]
 
   $ dune promote dir/dir.t/run.t

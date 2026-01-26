@@ -70,11 +70,10 @@ It's an error for the binary to partially instantiate `lib_ab`:
   File "bin/dune", line 3, characters 26-32:
   3 |   (libraries (instantiate lib_ab b_impl))) ; missing a_impl
                                 ^^^^^^
-  Error: Parameter "project.a" is missing.
+  Error: Missing argument for parameter "project.a".
   -> required by _build/default/bin/bin.exe
   -> required by _build/install/default/bin/project.bin
-  Hint: Pass an argument implementing project.a to the dependency, or add
-  (parameters project.a)
+  Hint: Pass an argument implementing "project.a" to the dependency.
   [1]
 
 It's an error to instantiate twice without renamming: (dune might be able to
@@ -141,12 +140,11 @@ dependencies, because its parameter `b` is missing:
   File "bin/dune", line 6, characters 31-37:
   6 |     (instantiate lib_ab a_impl a_of_b)))
                                      ^^^^^^
-  Error: Parameter "project.b" is missing.
+  Error: Missing argument for parameter "project.b".
   -> required by _build/default/bin/.bin.eobjs/native/dune__exe__Bin.cmx
   -> required by _build/default/bin/bin.exe
   -> required by _build/install/default/bin/project.bin
-  Hint: Pass an argument implementing project.b to the dependency, or add
-  (parameters project.b)
+  Hint: Pass an argument implementing "project.b" to the dependency.
   [1]
 
 However `lib_ab` can depend on `a_of_b`, such that the parameter `b` will be

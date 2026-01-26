@@ -50,7 +50,6 @@ end
 val store_artifacts
   :  mode:Dune_cache_storage.Mode.t
   -> rule_digest:Digest.t
-  -> compute_digest:(executable:bool -> Path.t -> Digest.t Fiber.t)
   -> Target.t Targets.Produced.t
   -> Store_artifacts_result.t Fiber.t
 

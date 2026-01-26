@@ -13,9 +13,6 @@ val display : Dune_engine.Display.t ref
 (** Re-exported form [Dune_engine] *)
 val capture_outputs : bool ref
 
-(** Print debug info about artifact substitution *)
-val debug_artifact_substitution : bool ref
-
 (** Print package output when building with package management *)
 val debug_package_logs : bool ref
 

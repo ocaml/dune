@@ -92,7 +92,7 @@ let cache =
 let get_current_filesystem_time () =
   let special_path = Path.relative Path.build_dir ".filesystem-clock" in
   Io.write_file special_path "<dummy>";
-  (Path.stat_exn special_path).st_mtime
+  (Unix.stat (Path.to_string special_path)).st_mtime
 ;;
 
 let wait_for_fs_clock_to_advance () =
@@ -119,20 +119,19 @@ let delete_very_recent_entries () =
       | Lt -> true
       | Gt | Eq -> false
     in
-    (match !Clflags.debug_digests with
+    (match Dune_trace.enabled Digest with
      | false -> Path.Table.filter_inplace cache.table ~f:filter
      | true ->
+       let dropped = ref [] in
        Path.Table.filteri_inplace cache.table ~f:(fun ~key:path ~data ->
          let filter = filter data in
-         if not filter
-         then
-           Console.print
-             [ Pp.textf
-                 "Dropping cached digest for %s because it has exactly the same mtime as \
-                  the file system clock."
-                 (Path.to_string_maybe_quoted path)
-             ];
-         filter))
+         if not filter then dropped := path :: !dropped;
+         filter);
+       (match !dropped with
+        | [] -> ()
+        | _ :: _ ->
+          Dune_trace.emit ~buffered:true Digest (fun () ->
+            Dune_trace.Event.Digest.dropped_stale_mtimes !dropped ~fs_now:now)))
 ;;
 
 let dump () =
@@ -175,8 +174,8 @@ let set_with_stat path digest stat =
 
 let set path digest =
   (* the caller of [set] ensures that the files exist *)
+  let stat = Unix.stat (Path.Build.to_string path) in
   let path = Path.build path in
-  let stat = Path.stat_exn path in
   set_with_stat path digest stat
 ;;
 
@@ -260,12 +259,12 @@ let catch_fs_errors f =
 (* Here we make only one [stat] call on the happy path. *)
 let refresh_without_removing_write_permissions ~allow_dirs path =
   catch_fs_errors (fun () ->
-    match Path.stat_exn path with
+    match Unix.stat (Path.to_string path) with
     | stats -> refresh stats ~allow_dirs path
     | exception Unix.Unix_error (ELOOP, _, _) -> Error Cyclic_symlink
     | exception Unix.Unix_error (ENOENT, _, _) ->
       (* Test if this is a broken symlink for better error messages. *)
-      (match Path.lstat_exn path with
+      (match Unix.lstat (Path.to_string path) with
        | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
        | _stats_so_must_be_a_symlink -> Error Broken_symlink))
 ;;
@@ -277,18 +276,18 @@ let refresh_without_removing_write_permissions ~allow_dirs path =
    here, e.g., by telling the subsequent [chmod] to not follow symlinks. *)
 let refresh_and_remove_write_permissions ~allow_dirs path =
   catch_fs_errors (fun () ->
-    match Path.lstat_exn path with
+    match Unix.lstat (Path.to_string path) with
     | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
     | stats ->
       (match stats.st_kind with
        | S_LNK ->
-         (match Path.stat_exn path with
+         (match Unix.stat (Path.to_string path) with
           | stats -> refresh stats ~allow_dirs:false path
           | exception Unix.Unix_error (ELOOP, _, _) -> Error Cyclic_symlink
           | exception Unix.Unix_error (ENOENT, _, _) -> Error Broken_symlink)
        | S_REG ->
          let perm = Path.Permissions.remove Path.Permissions.write stats.st_perm in
-         Path.chmod ~mode:perm path;
+         Unix.chmod (Path.to_string path) perm;
          (* we know it's a file, so we don't allow directories for safety *)
          refresh ~allow_dirs:false { stats with st_perm = perm } path
        | _ ->
@@ -313,8 +312,8 @@ let peek_file ~allow_dirs path =
       (if x.stats_checked = cache.checked_key
        then Ok x.digest
        else (
-         (* The [stat_exn] below follows symlinks. *)
-         match Path.stat_exn path with
+         (* The [stat] below follows symlinks. *)
+         match Unix.stat (Path.to_string path) with
          | exception Unix.Unix_error (ELOOP, _, _) ->
            Error Digest_result.Error.Cyclic_symlink
          | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
@@ -336,20 +335,13 @@ let peek_file ~allow_dirs path =
             | Gt | Lt ->
               let digest_result = digest_path_with_stats ~allow_dirs path stats in
               Digest_result.iter digest_result ~f:(fun digest ->
-                if !Clflags.debug_digests
-                then
-                  Console.print
-                    [ Pp.textf
-                        "Re-digested file %s because its stats changed:"
-                        (Path.to_string_maybe_quoted path)
-                    ; Dyn.pp
-                        (Dyn.Record
-                           [ "old_digest", Digest.to_dyn x.digest
-                           ; "new_digest", Digest.to_dyn digest
-                           ; "old_stats", Reduced_stats.to_dyn x.stats
-                           ; "new_stats", Reduced_stats.to_dyn reduced_stats
-                           ])
-                    ];
+                Dune_trace.emit ~buffered:true Digest (fun () ->
+                  Dune_trace.Event.Digest.redigest
+                    ~path
+                    ~old_digest:(Digest.to_string x.digest)
+                    ~new_digest:(Digest.to_string digest)
+                    ~old_stats:(Reduced_stats.to_dyn x.stats)
+                    ~new_stats:(Reduced_stats.to_dyn reduced_stats));
                 needs_dumping := true;
                 set_max_timestamp cache stats;
                 x.digest <- digest;
@@ -375,7 +367,7 @@ let remove path =
 
 module Untracked = struct
   let source_or_external_file path =
-    peek_or_refresh_file ~allow_dirs:false (Path.outside_build_dir path)
+    peek_or_refresh_file ~allow_dirs:true (Path.outside_build_dir path)
   ;;
 
   let invalidate_cached_timestamp path =

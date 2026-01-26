@@ -15,13 +15,21 @@ prefixed and unprefixed modules are built.
   $ dune clean
   $ dune build @t1
 
+  $ buildAndShow() {
+  > dune build $@
+  > dune trace cat | jq 'select(.name == "targets") | .args'
+  > }
+
 Command line version.
 
-  $ dune build --verbose %{cmo:a} %{cmo:b} %{cmo:c} 2>&1 | grep -A100 'Actual targets'
-  Actual targets:
-  - _build/default/.a1.objs/byte/a1__A.cmo
-  - _build/default/.b.eobjs/byte/dune__exe__B.cmo
-  - _build/default/.c1.objs/byte/c.cmo
+  $ buildAndShow %{cmo:a} %{cmo:b} %{cmo:c}
+  {
+    "targets": [
+      "_build/default/.a1.objs/byte/a1__A.cmo",
+      "_build/default/.b.eobjs/byte/dune__exe__B.cmo",
+      "_build/default/.c1.objs/byte/c.cmo"
+    ]
+  }
 
 The next test tries to build a .cmi file (of a module in a wrapped library).
 
@@ -30,9 +38,12 @@ The next test tries to build a .cmi file (of a module in a wrapped library).
 
 Command line version.
 
-  $ dune build --verbose %{cmi:a} 2>&1 | grep -A100 'Actual targets'
-  Actual targets:
-  - _build/default/.a1.objs/byte/a1__A.cmi
+  $ buildAndShow %{cmi:a}
+  {
+    "targets": [
+      "_build/default/.a1.objs/byte/a1__A.cmi"
+    ]
+  }
 
 Command line version; note that the error message is slightly different.
 
@@ -48,9 +59,12 @@ The next test builds a native .cmxa.
 
 Command line version.
 
-  $ dune build --verbose %{cmxa:a1} 2>&1 | grep -A100 'Actual targets'
-  Actual targets:
-  - _build/default/a1.cmxa
+  $ buildAndShow %{cmxa:a1}
+  {
+    "targets": [
+      "_build/default/a1.cmxa"
+    ]
+  }
 
 Command line version.
 
@@ -67,9 +81,12 @@ defined. The library is public in this case, but we use the local name.
 
 Command line version.
 
-  $ dune build --verbose %{cma:sub2/bar2} 2>&1 | grep -A100 'Actual targets'
-  Actual targets:
-  - _build/default/sub2/bar2.cma
+  $ buildAndShow %{cma:sub2/bar2}
+  {
+    "targets": [
+      "_build/default/sub2/bar2.cma"
+    ]
+  }
 
 This test builds a .cmo in a subdirectory (same project).
 
@@ -78,9 +95,12 @@ This test builds a .cmo in a subdirectory (same project).
 
 Command line version.
 
-  $ dune build --verbose %{cmo:sub/x} 2>&1 | grep -A100 'Actual targets'
-  Actual targets:
-  - _build/default/sub/.bar.objs/byte/bar__X.cmo
+  $ buildAndShow %{cmo:sub/x}
+  {
+    "targets": [
+      "_build/default/sub/.bar.objs/byte/bar__X.cmo"
+    ]
+  }
 
 This test builds a module in a subdirectory (different project) belonging to a
 private library.
@@ -88,11 +108,14 @@ private library.
   $ dune clean
   $ dune build @t8
 
-COmmand line version.
+Command line version.
 
-  $ dune build --verbose %{cmo:sub3/x} 2>&1 | grep -A100 'Actual targets'
-  Actual targets:
-  - _build/default/sub3/.c1.objs/byte/c1__X.cmo
+  $ buildAndShow %{cmo:sub3/x}
+  {
+    "targets": [
+      "_build/default/sub3/.c1.objs/byte/c1__X.cmo"
+    ]
+  }
 
 This test builds a private library in a subdirectory belonging to a different
 project.
@@ -102,9 +125,12 @@ project.
 
 Command line version.
 
-  $ dune build --verbose %{cma:sub3/c1} 2>&1 | grep -A100 'Actual targets'
-  Actual targets:
-  - _build/default/sub3/c1.cma
+  $ buildAndShow %{cma:sub3/c1}
+  {
+    "targets": [
+      "_build/default/sub3/c1.cma"
+    ]
+  }
 
 This test builds a library in the current directory that has the same name as a
 public library defined in a subdirectory.
@@ -114,9 +140,12 @@ public library defined in a subdirectory.
 
 Command line version.
 
-  $ dune build --verbose %{cma:c1} 2>&1 | grep -A100 'Actual targets'
-  Actual targets:
-  - _build/default/c1.cma
+  $ buildAndShow %{cma:c1}
+  {
+    "targets": [
+      "_build/default/c1.cma"
+    ]
+  }
 
 This test checks error handling.
 

@@ -1,0 +1,20 @@
+(library
+ (name dune_scheduler)
+ (libraries
+  async_inotify_for_dune
+  ocaml_inotify
+  spawn
+  fsevents
+  fswatch_win
+  re
+  unix
+  csexp
+  stdune
+  dune_console
+  dyn
+  fiber
+  memo
+  threads.posix
+  dune_trace
+  dune_util)
+ (synopsis "Internal Dune library, do not use!"))

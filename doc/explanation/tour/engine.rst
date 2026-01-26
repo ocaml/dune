@@ -12,4 +12,4 @@ different frontend and CLI.
 In the context of Dune, the engine keeps track of the various directories and
 the rules in them and is able to build files using them. In addition, it takes
 care of the various caches that Dune uses, such as the one present in the
-``_build`` directory, the :doc:`shared cache </caching>`, etc.
+``_build`` directory, the :doc:`shared cache </reference/caches>`, etc.

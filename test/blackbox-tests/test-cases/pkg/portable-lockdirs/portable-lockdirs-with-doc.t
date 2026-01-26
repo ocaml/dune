@@ -1,8 +1,6 @@
 Test that the with-doc variable is stored in the lockdir when it's set in
 dune-workspace.
 
-
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

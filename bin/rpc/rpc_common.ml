@@ -55,7 +55,7 @@ let client_term builder f =
   let builder = Common.Builder.forbid_builds builder in
   let builder = Common.Builder.disable_log_file builder in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config f
+  Scheduler_setup.go_with_rpc_server ~common ~config f
 ;;
 
 let wait_term =
@@ -76,13 +76,13 @@ let establish_connection_exn () =
 
 let establish_connection_with_retry () =
   let open Fiber.O in
-  let pause_between_retries_s = 0.2 in
+  let pause_between_retries_s = Time.Span.of_secs 0.2 in
   let rec loop () =
     establish_connection ()
     >>= function
     | Ok x -> Fiber.return x
     | Error _ ->
-      let* () = Dune_engine.Scheduler.sleep ~seconds:pause_between_retries_s in
+      let* () = Scheduler.sleep pause_between_retries_s in
       loop ()
   in
   loop ()
@@ -110,7 +110,9 @@ let warn_ignore_arguments lock_held_by =
 ;;
 
 let should_warn ~warn_forwarding builder =
-  warn_forwarding && not (Common.Builder.equal builder Common.Builder.default)
+  (not Execution_env.inside_dune)
+  && warn_forwarding
+  && not (Common.Builder.equal builder Common.Builder.default)
 ;;
 
 let send_request ~f connection name =
@@ -150,22 +152,47 @@ let fire_notification
   send_request connection name ~f:(fun client -> notify_exn client notification arg)
 ;;
 
+let print_err_warn (num_errors, num_warnings) =
+  let enumeration =
+    let report_one what count =
+      if count = 0
+      then []
+      else (
+        let plural = if count = 1 then "" else "s" in
+        [ sprintf "%d %s%s" count what plural ])
+    in
+    [ report_one "error" num_errors; report_one "warning" num_warnings ]
+    |> List.concat
+    |> String.enumerate_and
+  in
+  if num_errors >= 1
+  then User_error.raise [ Pp.textf "Build failed with %s." enumeration ]
+  else User_warning.emit [ Pp.textf "Build completed with %s." enumeration ]
+;;
+
 let wrap_build_outcome_exn ~print_on_success build_outcome =
   match build_outcome with
   | Dune_rpc.Build_outcome_with_diagnostics.Success ->
     if print_on_success
     then Console.print [ Pp.text "Success" |> Pp.tag User_message.Style.Success ]
   | Failure errors ->
-    let error_msg =
-      match List.length errors with
-      | 0 ->
-        Code_error.raise
-          "Build via RPC failed, but the RPC server did not send an error message."
-          []
-      | 1 -> Pp.paragraph "Build failed with 1 error."
-      | n -> Pp.paragraphf "Build failed with %d errors." n
+    let counts =
+      List.fold_left
+        errors
+        ~init:(0, 0)
+        ~f:(fun (errors, warnings) { Dune_rpc.Compound_user_error.main; severity; _ } ->
+          match severity with
+          | Error ->
+            Console.print_user_message main;
+            errors + 1, warnings
+          | Warning ->
+            User_warning.emit_message main;
+            errors, warnings + 1)
     in
-    List.iter errors ~f:(fun { Dune_rpc.Compound_user_error.main; _ } ->
-      Console.print_user_message main);
-    User_error.raise [ error_msg |> Pp.tag User_message.Style.Error ]
+    (match counts with
+     | 0, 0 ->
+       Code_error.raise
+         "Build via RPC failed, but the RPC server did not send an error message."
+         []
+     | _ -> print_err_warn counts)
 ;;

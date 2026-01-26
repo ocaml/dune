@@ -1,8 +1,6 @@
 Reproduction case for #4923: weird things observed when we add/remove
 a file in watch mode.
 
-  $ . ./helpers.sh
-
   $ echo '(lang dune 3.0)' > dune-project
   $ mkdir a b
   $ cat > a/dune <<EOF

@@ -12,27 +12,6 @@ include T
 module C = Comparable.Make (T)
 module Set = C.Set
 module Map = C.Map
-module Metrics = Dune_metrics
-
-let file file =
-  (* On Windows, if this function is invoked in a background thread,
-       if can happen that the file is not properly closed.
-       [O_SHARE_DELETE] ensures that the main thread can delete it even if it
-       is still open. See #8243. *)
-  let fd =
-    match Unix.openfile file [ Unix.O_RDONLY; O_SHARE_DELETE; O_CLOEXEC ] 0 with
-    | fd -> fd
-    | exception Unix.Unix_error (Unix.EACCES, _, _) ->
-      raise (Sys_error (sprintf "%s: Permission denied" file))
-    | exception exn -> reraise exn
-  in
-  Exn.protectx fd ~f:Blake3_mini.fd ~finally:Unix.close
-;;
-
-let equal = Blake3_mini.Digest.equal
-let hash = Poly.hash
-let file p = file (Path.to_string p)
-let from_hex s = Blake3_mini.Digest.of_hex s
 
 module Hasher = struct
   type t = Blake3_mini.t
@@ -58,12 +37,75 @@ module Hasher = struct
   ;;
 end
 
+let open_for_digest file =
+  (* On Windows, if this function is invoked in a background thread,
+     if can happen that the file is not properly closed.
+     [O_SHARE_DELETE] ensures that the main thread can delete it even if it
+     is still open. See #8243. *)
+  Unix.openfile file [ Unix.O_RDONLY; O_SHARE_DELETE; O_CLOEXEC ] 0
+;;
+
+(* CR-someday rgrinberg: maybe this should exist in blake3_mini? *)
+let zero = lazy (Hasher.with_singleton (fun _f -> ()))
+
+let digest_and_close_fd fd =
+  let start = Counter.Timer.start () in
+  let res = Exn.protectx fd ~f:Blake3_mini.fd ~finally:Unix.close in
+  Counter.Timer.stop Metrics.Digest.File.time start;
+  res
+;;
+
+let file file =
+  Counter.incr Metrics.Digest.File.count;
+  let fd =
+    match open_for_digest file with
+    | fd -> fd
+    | exception Unix.Unix_error (Unix.EACCES, _, _) ->
+      raise (Sys_error (sprintf "%s: Permission denied" file))
+    | exception exn -> reraise exn
+  in
+  digest_and_close_fd fd
+;;
+
+let async_digest_minimum = 1_000
+
+let file_async file =
+  let open Fiber.O in
+  let* () = Fiber.return () in
+  let fd = open_for_digest file in
+  Counter.incr Metrics.Digest.File.count;
+  let size =
+    match Unix.fstat fd with
+    | exception exn ->
+      Unix.close fd;
+      raise exn
+    | stat -> stat.st_size
+  in
+  Counter.add Metrics.Digest.File.bytes size;
+  if size = 0
+  then Fiber.return (Lazy.force zero)
+  else if size < async_digest_minimum
+  then Fiber.return (digest_and_close_fd fd)
+  else Dune_scheduler.Scheduler.async_exn (fun () -> digest_and_close_fd fd)
+;;
+
+let equal = Blake3_mini.Digest.equal
+let hash = Poly.hash
+let file p = file (Path.to_string p)
+let file_async p = file_async (Path.to_string p)
+let from_hex s = Blake3_mini.Digest.of_hex s
+
 module Feed = struct
   type hasher = Hasher.t
   type 'a t = hasher -> 'a -> unit
 
   let contramap a ~f hasher b = a hasher (f b)
-  let string hasher s = Blake3_mini.feed_string hasher s ~pos:0 ~len:(String.length s)
+
+  let string hasher s =
+    Counter.add Metrics.Digest.Value.bytes (String.length s);
+    Blake3_mini.feed_string hasher s ~pos:0 ~len:(String.length s)
+  ;;
+
   let bool = contramap string ~f:Bool.to_string
   let int = contramap string ~f:Int.to_string
 
@@ -99,7 +141,11 @@ let string s = Feed.compute_digest Feed.string s
 let to_string_raw s = Blake3_mini.Digest.to_binary s
 
 let generic a =
-  Metrics.Timer.record "generic_digest" ~f:(fun () -> Feed.compute_digest Feed.generic a)
+  let start = Counter.Timer.start () in
+  Counter.incr Metrics.Digest.Value.count;
+  let res = Feed.compute_digest Feed.generic a in
+  Counter.Timer.stop Metrics.Digest.Value.time start;
+  res
 ;;
 
 let path_with_executable_bit =
@@ -186,4 +232,10 @@ let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) =
   | S_DIR when not allow_dirs -> Error Path_digest_error.Unexpected_kind
   | S_BLK | S_CHR | S_LNK | S_FIFO | S_SOCK -> Error Unexpected_kind
   | _ -> loop path stats
+;;
+
+let file_with_executable_bit ~executable path =
+  let open Fiber.O in
+  let+ content_digest = file_async path in
+  path_with_executable_bit ~content_digest ~executable
 ;;

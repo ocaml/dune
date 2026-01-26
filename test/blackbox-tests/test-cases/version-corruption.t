@@ -1,5 +1,3 @@
-  $ . ./git-helpers.sh
-
 Define a helper program that counts how many bytes differ between two files.
 
   $ cat > compare.ml << EOF
@@ -95,11 +93,11 @@ shared buffer):
   $ cp gen_lifecycle.ml gen.ml
   $ cp gen_lifecycle.ml genb.ml
   $ cat >gen1.ml <<EOF
-  > let ver_$i = Gen.current_version
+  > let ver_1 = Gen.current_version
   > let () = prerr_endline "some string"
   > EOF
   $ cat >gen2.ml <<EOF
-  > let ver_$i = Genb.current_version
+  > let ver_2 = Genb.current_version
   > let () = prerr_endline "some string2"
   > EOF
 
@@ -116,13 +114,31 @@ which corresponds to `~min_len` in Link_time_code_gen.
   $ ocaml compare.ml _build/default/gen2.bc _install/bin/gen2
   64
 
-  $ dune build --debug-artifact-substitution
-  Found placeholder in _build/default/gen_lifecycle.exe:
-  - placeholder: Vcs_describe (In_source_tree ".")
-  - evaluates to: "v0.0.1"
-  Found placeholder in _build/default/gen_lifecycle.bc:
-  - placeholder: Vcs_describe (In_source_tree ".")
-  - evaluates to: "v0.0.1"
+  $ dune build
+
+  $ dune trace cat | jq 'select(.cat == "artifact_subtitution") | .args'
+  {
+    "file": "_build/default/gen_lifecycle.exe",
+    "placeholder": [
+      "Vcs_describe",
+      [
+        "In_source_tree",
+        "."
+      ]
+    ],
+    "value": "v0.0.1"
+  }
+  {
+    "file": "_build/default/gen_lifecycle.bc",
+    "placeholder": [
+      "Vcs_describe",
+      [
+        "In_source_tree",
+        "."
+      ]
+    ],
+    "value": "v0.0.1"
+  }
 
   $ ocaml compare.ml gen_lifecycle.old ./gen_lifecycle.exe
   64

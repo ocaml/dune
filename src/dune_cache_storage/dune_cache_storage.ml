@@ -361,7 +361,7 @@ let with_temp_dir ?(prefix = "dune") ~suffix f =
 let clear () =
   let rm_rf path = Path.rm_rf ~allow_external:true path in
   let rmdir path =
-    try Path.rmdir path with
+    try Unix.rmdir (Path.to_string path) with
     | Unix.Unix_error ((ENOENT | ENOTEMPTY), _, _) -> ()
   in
   let rm_rf_all versions dir =
@@ -376,5 +376,5 @@ let clear () =
   rm_rf (Lazy.force Layout.temp_dir);
   (* Do not catch errors when deleting the root directory so that they are
      reported to the user. *)
-  Path.rmdir (Lazy.force Layout.root_dir)
+  Layout.build_cache_dir |> Lazy.force |> Path.to_string |> Unix.rmdir
 ;;

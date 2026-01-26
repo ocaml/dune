@@ -1,8 +1,6 @@
 Test that dune can handle the case where a dependency's source contains a
 symlink with a missing destination.
 
-  $ . ./helpers.sh
-
 Define a package foo containing a broken symlink.
   $ mkdir foo
   $ touch foo/a.txt

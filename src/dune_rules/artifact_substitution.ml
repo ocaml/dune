@@ -567,19 +567,11 @@ let parse ~input ~mode =
           | Test -> Fiber.return Some_substitution
           | Copy { output; input_file; conf } ->
             let* s = eval t ~conf in
-            (if !Clflags.debug_artifact_substitution
-             then
-               let open Pp.O in
-               Console.print
-                 [ Pp.textf
-                     "Found placeholder in %s:"
-                     (Path.to_string_maybe_quoted input_file)
-                 ; Pp.enumerate
-                     ~f:Fun.id
-                     [ Pp.text "placeholder: " ++ Dyn.pp (to_dyn t)
-                     ; Pp.text "evaluates to: " ++ Dyn.pp (String s)
-                     ]
-                 ]);
+            Dune_trace.emit Artifact_substitution (fun () ->
+              Dune_trace.Event.artifact_substitution
+                ~file:input_file
+                ~placeholder:(to_dyn t)
+                ~value:s);
             let s = encode_replacement ~len ~repl:s in
             output (Bytes.unsafe_of_string s) 0 len;
             let pos = placeholder_start + len in
@@ -675,12 +667,12 @@ let replace_if_different ~delete_dst_if_it_is_a_directory ~src ~dst =
       let dst_digest = Digest.file dst in
       Digest.equal temp_file_digest dst_digest
   in
-  if not up_to_date then Path.rename src dst
+  if not up_to_date then Unix.rename (Path.to_string src) (Path.to_string dst)
 ;;
 
 let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst () =
   (* We create a temporary file in the same directory to ensure it's on the same
-     partition as [dst] (otherwise, [Path.rename temp_file dst] won't work). The
+     partition as [dst] (otherwise, [Unix.rename temp_file dst] won't work). The
      prefix ".#" is used because Dune ignores such files and so creating this
      file will not trigger a rebuild. *)
   let temp_file =
@@ -696,7 +688,7 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst 
        let+ () = Conf.run_sign_hook conf ~has_subst temp_file in
        replace_if_different ~delete_dst_if_it_is_a_directory ~src:temp_file ~dst)
     ~finally:(fun () ->
-      Path.unlink_no_err temp_file;
+      Fpath.unlink_no_err (Path.to_string temp_file);
       Fiber.return ())
 ;;
 

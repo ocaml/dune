@@ -10,8 +10,6 @@ because the 'patch' file is already present.
 
 The issue is now fixed.
 
-
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a fake ocamlformat:
@@ -64,8 +62,11 @@ First run of 'dune fmt' is supposed to format the fail.
   Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.2
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1 @@
+  -let () = print_endline "Hello, world"
+  +formatted with version 0.26.2
   Promoting _build/default/.formatted/foo.ml to foo.ml.
   [1]
 

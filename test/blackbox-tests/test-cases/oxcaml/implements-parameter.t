@@ -1,11 +1,9 @@
 This test ensures the `implements` field is working in the context of
 parameterised libraries.
 
-  $ . ./helpers.sh
-
 We create a public parameter:
 
-  $ init_project
+  $ init_oxcaml_project
 
   $ cat >> dune-project << EOF
   > (package (name public_foo))

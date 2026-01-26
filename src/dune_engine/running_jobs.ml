@@ -5,7 +5,7 @@ module Id = Stdune.Id.Make ()
 type job =
   { pid : Pid.t
   ; description : unit Pp.t
-  ; started_at : float
+  ; started_at : Time.t
   ; id : Id.t
   }
 

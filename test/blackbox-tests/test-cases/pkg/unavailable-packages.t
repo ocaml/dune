@@ -1,7 +1,6 @@
 Test that the solver environment associate with lockdirs is respected by the
 solver.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 This test is specialized to non-portable lockdirs. For an analogous test of

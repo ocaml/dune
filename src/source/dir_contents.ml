@@ -60,9 +60,9 @@ let is_special (st_kind : Unix.file_kind) =
 ;;
 
 let is_temp_file fn =
-  String.is_prefix fn ~prefix:".#"
-  || String.is_suffix fn ~suffix:".swp"
-  || String.is_suffix fn ~suffix:"~"
+  String.starts_with ~prefix:".#" fn
+  || String.ends_with ~suffix:".swp" fn
+  || String.ends_with ~suffix:"~" fn
 ;;
 
 let of_source_path_impl path =
@@ -79,7 +79,7 @@ let of_source_path_impl path =
           "to the dune file: %s"
           (Path.Source.to_string_maybe_quoted
              (Path.Source.relative (Path.Source.parent_exn path) "dune"))
-      ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
+      ; Unix_error.Detailed.pp_reason unix_error
       ];
     Memo.return (Error unix_error)
   | Ok dir_contents ->

@@ -117,7 +117,7 @@ let exec display ~patch ~dir ~stderr =
       let file = Path.append_local dir file in
       let temp = Path.extend_basename file ~suffix:".for_patch" in
       Io.copy_file ~src:file ~dst:temp ();
-      Path.rename temp file);
+      Unix.rename (Path.to_string temp) (Path.to_string file));
   match patches with
   | [] -> User_error.raise [ Pp.text "No patches in patch file detected" ]
   | { Patch.op = _; prefix } :: patches ->

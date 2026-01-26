@@ -1,7 +1,6 @@
 This test checks that the patches field of an opam file is correctly translated into the
 appropriate build step.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a package with a patch
@@ -9,7 +8,6 @@ Make a package with a patch
   > patches: ["foo.patch"]
   > build: ["cat" "foo.ml"]
   > EOF
-
 
   $ mkdir -p $mock_packages/with-patch/with-patch.0.0.1/files
   $ cat >$mock_packages/with-patch/with-patch.0.0.1/files/foo.patch <<EOF

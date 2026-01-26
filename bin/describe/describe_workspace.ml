@@ -335,13 +335,15 @@ module Crawl = struct
     else Digest.generic name
   ;;
 
+  let for_ = Compilation_mode.Ocaml
+
   let immediate_deps_of_module ~options ~obj_dir ~modules unit =
     match (options : Options.t) with
     | { with_deps = false; _ } ->
       Action_builder.return { Root.Ocaml.Ml_kind.Dict.intf = []; impl = [] }
     | { with_deps = true; _ } ->
       let deps ml_kind =
-        Dune_rules.Dep_rules.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit
+        Dune_rules.Dep_rules.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit ~for_
       in
       let open Action_builder.O in
       let+ intf, impl = Action_builder.both (deps Intf) (deps Impl) in
@@ -424,14 +426,14 @@ module Crawl = struct
         immediate_deps_of_module ~options ~obj_dir ~modules:modules_ module_
       in
       let obj_dir = Obj_dir.of_local obj_dir in
-      let* modules_ = modules ~obj_dir ~deps_of modules_ in
+      let* modules = modules ~obj_dir ~deps_of modules_ in
       let+ requires =
         let* compile_info = Exe_rules.compile_info ~scope exes in
         let open Resolve.Memo.O in
-        let* requires = Lib.Compile.direct_requires compile_info in
+        let* requires = Lib.Compile.direct_requires compile_info ~for_ in
         if options.with_pps
         then
-          let+ pps = Lib.Compile.pps compile_info in
+          let+ pps = Lib.Compile.pps compile_info ~for_ in
           pps @ requires
         else Resolve.Memo.return requires
       in
@@ -440,9 +442,9 @@ module Crawl = struct
        | Ok libs ->
          let include_dirs = Obj_dir.all_cmis obj_dir in
          let exe_descr =
-           { Descr.Exe.names = List.map ~f:snd (Nonempty_list.to_list exes.names)
+           { Descr.Exe.names = Nonempty_list.to_list_map exes.names ~f:snd
            ; requires = List.map ~f:uid_of_library libs
-           ; modules = modules_
+           ; modules
            ; include_dirs
            }
          in
@@ -451,7 +453,7 @@ module Crawl = struct
 
   (* Builds a workspace item for the provided library object *)
   let library sctx ~options (lib : Lib.t) : Descr.Item.t option Memo.t =
-    let* requires = Lib.requires lib in
+    let* requires = Lib.requires lib ~for_ in
     match Resolve.peek requires with
     | Error () -> Memo.return None
     | Ok requires ->
@@ -485,7 +487,7 @@ module Crawl = struct
             Staged.unstage
             @@ Pp_spec.pped_modules_map
                  (Dune_lang.Preprocess.Per_module.without_instrumentation
-                    (Lib_info.preprocess info))
+                    (Lib_info.preprocess info ~for_))
                  version
           in
           let deps_of module_ =
@@ -595,7 +597,7 @@ module Crawl = struct
       (* the executables' libraries, and the project's libraries *)
       Lib.Set.union exe_libs project_libs
       |> Lib.Set.to_list
-      |> Lib.descriptive_closure ~with_pps:options.with_pps
+      |> Lib.descriptive_closure ~with_pps:options.with_pps ~for_
       >>= Memo.parallel_map ~f:(library ~options sctx)
       >>| List.filter_opt
     in
@@ -660,7 +662,7 @@ let term : unit Term.t =
     in
     Dune_lang.Decoder.parse parse Univ_map.empty ast
   in
-  Scheduler.go_with_rpc_server ~common ~config
+  Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
   let* setup = Import.Main.setup () in

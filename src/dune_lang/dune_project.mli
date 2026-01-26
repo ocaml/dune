@@ -1,5 +1,4 @@
 open Import
-open Dune_config
 module Pin_stanza := Pin_stanza
 module Execution_parameters := Dune_engine.Execution_parameters
 

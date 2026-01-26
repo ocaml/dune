@@ -97,7 +97,9 @@ Build directory target from the command line.
 
 Test that workspace-local cache works for directory targets.
 
-  $ dune build output/x --debug-cache=workspace-local
+  $ export DUNE_TRACE=cache
+  $ dune build output/x
+  $ dune trace cat | jq 'include "dune"; cacheMisses'
 
 Requesting the directory target directly works too.
 

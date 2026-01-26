@@ -1,6 +1,5 @@
 Exercises end to end locking and building a simple project.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

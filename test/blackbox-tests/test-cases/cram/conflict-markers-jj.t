@@ -121,7 +121,7 @@ Partial jujutsu conflicts are ignored:
   > >>>>>>>
   > EOF
 
-  $ dune runtest test.t
+  $ dune runtest test.t --diff-command -
   File "test.t", line 1, characters 0-0:
   Error: Files _build/default/test.t and _build/default/test.t.corrected
   differ.
@@ -134,7 +134,7 @@ Partial jujutsu conflicts are ignored:
   >   > bar
   > EOF
 
-  $ dune runtest test.t
+  $ dune runtest test.t --diff-command -
   File "test.t", line 1, characters 0-0:
   Error: Files _build/default/test.t and _build/default/test.t.corrected
   differ.

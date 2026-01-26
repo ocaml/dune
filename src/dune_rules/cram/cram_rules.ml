@@ -11,9 +11,10 @@ module Spec = struct
     ; enabled_if : (Expander.t * Blang.t) list
     ; locks : Path.Set.t Action_builder.t
     ; packages : Package.Name.Set.t
-    ; timeout : (Loc.t * float) option
+    ; timeout : (Loc.t * Time.Span.t) option
     ; conflict_markers : Cram_stanza.Conflict_markers.t
     ; setup_scripts : Path.t list
+    ; shell : Cram_stanza.Shell.t
     }
 
   let make_empty ~test_name_alias =
@@ -28,6 +29,7 @@ module Spec = struct
     ; timeout = None
     ; conflict_markers = Ignore
     ; setup_scripts = []
+    ; shell = Sh
     }
   ;;
 end
@@ -64,6 +66,7 @@ let test_rule
        ; timeout
        ; conflict_markers
        ; setup_scripts
+       ; shell
        } :
         Spec.t)
       (test : (Cram_test.t, error) result)
@@ -151,6 +154,7 @@ let test_rule
             ~output
             ~timeout
             ~setup_scripts
+            shell
           |> Action.Full.make ~locks ~sandbox)
          |> Action_builder.with_file_targets ~file_targets:[ output ]
          |> Super_context.add_rule sctx ~dir ~loc
@@ -161,7 +165,7 @@ let test_rule
        let+ () = List.map ~f:Path.build [ script; output ] |> Action_builder.paths in
        Action.progn
          [ Cram_exec.diff ~src:(Path.build script) ~output:(Path.build output)
-         ; Promote.Diff_action.diff
+         ; Action.diff
              ~optional:true
              ~mode:Text
              (Path.build script)
@@ -201,10 +205,10 @@ let rules ~sctx ~dir tests =
   let* stanzas = collect_stanzas ~dir
   and* with_package_mask =
     Dune_load.mask ()
+    >>| Only_packages.enumerate
     >>| function
-    | None -> fun _packages f -> f ()
-    | Some only ->
-      let only = Package.Name.Set.of_keys only in
+    | `All -> fun _packages f -> f ()
+    | `Set only ->
       fun packages f ->
         Memo.when_
           (Package.Name.Set.is_empty packages
@@ -297,11 +301,12 @@ let rules ~sctx ~dir tests =
                 Option.merge
                   acc.timeout
                   stanza.timeout
-                  ~f:(Ordering.min (fun x y -> Float.compare (snd x) (snd y)))
+                  ~f:(Ordering.min (fun x y -> Time.Span.compare (snd x) (snd y)))
               in
               let conflict_markers =
                 Option.value ~default:acc.conflict_markers stanza.conflict_markers
               in
+              let shell = Option.value ~default:acc.shell stanza.shell in
               let setup_scripts =
                 let more_current_scripts =
                   List.map stanza.setup_scripts ~f:(fun (_loc, script) ->
@@ -328,6 +333,7 @@ let rules ~sctx ~dir tests =
                 ; timeout
                 ; conflict_markers
                 ; setup_scripts
+                ; shell
                 } ))
       in
       let extra_aliases =

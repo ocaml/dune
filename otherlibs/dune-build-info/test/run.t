@@ -114,29 +114,6 @@ Check what the generated build info module looks like:
     ; "dune-build-info", Some "XXX"
     ]
 
-Test --debug-artifact-substitution
-----------------------------------
-
-The order of substitutions printed by `--debug-artifact-substitution`
-is not stable across machines since it depends on the order in which
-the string constant end up in the binary. To make the test stable, we
-craft an example with a single placeholder to make the output stable:
-
-  $ cat >d/dune <<EOF
-  > (executable
-  >  (public_name d)
-  >  (promote (until-clean))
-  >  (libraries dune-build-info))
-  > EOF
-
-  $ cp c/c.ml d/d.ml
-
-  $ dune build d/d.install
-  $ dune install d --prefix _install --debug-artifact-substitution
-  Found placeholder in _build/install/default/bin/d:
-  - placeholder: Vcs_describe (In_source_tree "d")
-  - evaluates to: "1.0+d"
-
 Test substitution when promoting
 --------------------------------
 

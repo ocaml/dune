@@ -13,5 +13,4 @@
  (applies_to build-info)
  (deps
   %{bin:git}
-  ../git-helpers.sh
   (package dune-build-info)))

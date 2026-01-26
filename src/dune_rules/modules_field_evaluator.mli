@@ -20,12 +20,18 @@ type kind =
   | Exe_or_normal_lib
   | Parameter
 
+val expand_all_unchecked
+  :  expander:Expander.t
+  -> Ordered_set_lang.Unexpanded.t
+  -> (Loc.t * (Module_name.Unchecked.t * string)) Module_trie.Unchecked.t Memo.t
+
 val eval
   :  expander:Expander.t
-  -> modules:Module.Source.t Module_trie.t
+  -> modules:Module.Source.t Module_trie.Unchecked.t
   -> stanza_loc:Loc.t
   -> private_modules:Ordered_set_lang.Unexpanded.t
   -> kind:kind
+  -> for_:Compilation_mode.t
   -> src_dir:Path.Build.t
   -> version:Dune_lang.Syntax.Version.t
   -> Modules_settings.t

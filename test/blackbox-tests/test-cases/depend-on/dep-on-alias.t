@@ -46,6 +46,7 @@ expanded when creating the sandbox:
   6 |  (deps (alias a))
   7 |  (action (system "printf \"running b: \"; cat x")))
   running b: cat: x: No such file or directory
+  [1]
   $ cat >dune-project <<EOF
   > (lang dune 3.0)
   > (expand_aliases_in_sandbox)

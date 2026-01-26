@@ -25,6 +25,7 @@ val empty : t
 val of_list : string list -> t
 val get : t -> Lib_mode.t -> string list Action_builder.t
 val append_common : t -> string list -> t
+val append_nostdlib : t -> t
 val with_vendored_alerts : t -> t
 val dump : t -> Dune_lang.t list Action_builder.t
 val with_vendored_flags : t -> ocaml_version:Version.t -> t

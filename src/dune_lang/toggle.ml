@@ -1,5 +1,4 @@
 open Import
-open Dune_config
 include Config.Toggle
 
 let enabled : t -> bool = function

@@ -3,7 +3,7 @@
  (deps %{bin:ps}))
 
 (cram
- (applies_to error)
+ (applies_to error subprocess)
  (enabled_if false))
 
 ;; mac has a different sh error message

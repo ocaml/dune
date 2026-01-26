@@ -31,6 +31,8 @@ module Libs_and_ppxs =
 
 module Source_tree_map_reduce = Source_tree.Dir.Make_map_reduce (Memo) (Libs_and_ppxs)
 
+let for_ = Compilation_mode.Ocaml
+
 let add_stanza db ~dir (acc, pps) stanza =
   match Stanza.repr stanza with
   | Library.T l ->
@@ -89,7 +91,7 @@ let add_stanza db ~dir (acc, pps) stanza =
           ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
           ~forbidden_libraries:exes.forbidden_libraries
       in
-      let+ available = Lib.Compile.direct_requires compile_info in
+      let+ available = Lib.Compile.direct_requires compile_info ~for_ in
       Resolve.peek available
     in
     (match libs with
@@ -143,7 +145,7 @@ let requires ~loc ~db ~libs =
   (loc, Lib_name.of_string "utop")
   |> Lib.DB.resolve db
   >>| (fun utop -> utop :: libs)
-  >>= Lib.closure ~linking:true
+  >>= Lib.closure ~linking:true ~for_
 ;;
 
 let utop_dev_tool_lock_dir_exists =
@@ -233,7 +235,7 @@ let setup sctx ~dir =
   let* cctx =
     let requires_link = Memo.lazy_ (fun () -> requires) in
     Compilation_context.create
-      ()
+      for_
       ~super_context:sctx
       ~scope
       ~obj_dir

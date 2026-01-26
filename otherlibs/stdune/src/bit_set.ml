@@ -52,4 +52,6 @@ struct
       done;
       !acc
   ;;
+
+  let of_list = List.fold_left ~init:empty ~f:add
 end

@@ -39,8 +39,18 @@ Run the test:
 
   $ dune runtest
   File "external.t", line 1, characters 0-0:
-  Error: Files _build/default/external.t and
-  _build/default/external.t.corrected differ.
+  --- external.t
+  +++ external.t.corrected
+  @@ -1,7 +1,7 @@
+   Test that external helper is available
+   
+     $ external_helper
+  -  External helper called 1
+  +  External helper called
+   
+     $ echo $EXTERNAL_VAR
+  -  from_external_script 1
+  +  from_external_script
   [1]
 
 Verify the external script still exists (was NOT deleted):

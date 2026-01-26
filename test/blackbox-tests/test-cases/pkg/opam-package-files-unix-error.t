@@ -1,7 +1,6 @@
 This test demonstrates the behaviour when a Unix error is encountered when copying the
 files/ directory from a package directory inside an opam repository.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a package with a patch

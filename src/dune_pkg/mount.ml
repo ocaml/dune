@@ -79,7 +79,7 @@ let stat t path =
   match t with
   | Path dir ->
     let path = Path.append_local dir path in
-    (match (Path.stat_exn path).st_kind with
+    (match (Unix.stat (Path.to_string path)).st_kind with
      | S_REG -> `File
      | S_DIR -> `Dir
      | _ -> `Absent_or_unrecognized
@@ -123,7 +123,7 @@ let readdir t dir =
            | S_REG -> Some `File
            | S_DIR -> Some `Dir
            | S_LNK ->
-             (match (Path.stat_exn (Path.relative dir name)).st_kind with
+             (match (Unix.stat (Path.to_string (Path.relative dir name))).st_kind with
               | S_REG -> Some `File
               | S_DIR -> Some `Dir
               | _ -> None)

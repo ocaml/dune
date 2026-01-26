@@ -1,7 +1,6 @@
 Exercise the solver on a package with a conjunction in its dependency
 constraints.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ mkpkg a

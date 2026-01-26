@@ -25,16 +25,14 @@ let init () =
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string "_build")
 ;;
 
-let now () = Unix.gettimeofday ()
-
 let retry_loop (type a) ~period ~timeout ~(f : unit -> a option) : a option =
-  let t0 = now () in
+  let t0 = Time.now () in
   let rec loop () =
     match f () with
     | Some res -> Some res
     | None ->
-      let t1 = now () in
-      if Base.Float.( < ) (t1 -. t0) timeout
+      let t1 = Time.now () in
+      if Base.Float.( < ) (Time.Span.to_secs (Time.diff t1 t0)) timeout
       then (
         Thread.delay period;
         loop ())
@@ -69,7 +67,9 @@ let get_events ~try_to_get_events ~expected =
 let print_events ~try_to_get_events ~expected =
   let events, status = get_events ~try_to_get_events ~expected in
   List.iter events ~f:(fun event ->
-    Dune_file_watcher.Fs_memo_event.to_dyn event |> Dyn.to_string |> Stdio.print_endline);
+    Dune_scheduler.File_watcher.Fs_memo_event.to_dyn event
+    |> Dyn.to_string
+    |> Stdio.print_endline);
   match status with
   | `Ok -> ()
   | `Not_enough ->

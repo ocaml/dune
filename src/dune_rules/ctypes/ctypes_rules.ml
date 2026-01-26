@@ -267,7 +267,7 @@ let build_c_program
 let program_of_module_and_dir ~dir program =
   let build_dir = Path.build dir in
   { Exe.Program.name = program
-  ; main_module_name = Module_name.of_string program
+  ; main_module_name = Module_name.of_checked_string program
   ; loc = Loc.in_file (Path.relative build_dir program)
   }
 ;;

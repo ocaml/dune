@@ -5,10 +5,14 @@ directory in the current directory.
   Entering directory 'foo'
   Success: initialized project component named foo
   Leaving directory 'foo'
+
+  $ ls() {
+  > command ls $@ | sort
+  > }
+
   $ ls
   foo
   $ ls foo
-  _build
   bin
   dune-project
   foo.opam
@@ -23,7 +27,6 @@ directory in the current directory.
   bar
   foo
   $ ls bar
-  _build
   bar
   bin
   dune-project
@@ -41,7 +44,6 @@ directory in the current directory.
   baz
   foo
   $ ls baz
-  _build
   baz
   bin
   dune-project

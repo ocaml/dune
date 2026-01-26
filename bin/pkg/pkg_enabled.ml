@@ -3,7 +3,7 @@ open Import
 let term =
   let+ builder = Common.Builder.term in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config (fun () ->
+  Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     Memo.run
     @@
     let open Memo.O in

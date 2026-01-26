@@ -51,7 +51,7 @@ val make
   -> obj_dir:Path.Build.t Obj_dir.t
   -> dialects:Dialect.DB.t
   -> ident:Merlin_ident.t
-  -> modes:[ `Lib of Lib_mode.Map.Set.t | `Exe | `Melange_emit ]
+  -> for_:Compilation_mode.t
   -> parameters:Module_name.t list Resolve.t
        (** The `parameters` argument takes the list of parameters from the
        compilation context and stores it in the form of `["-parameter"; "P1";

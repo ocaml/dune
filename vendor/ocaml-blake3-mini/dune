@@ -198,6 +198,7 @@
    (= %{architecture} "aarch64")))
  (archive_name blake3)
  (language c)
+ (flags :standard -Wno-unused-function)
  (names blake3 blake3_portable blake3_dispatch blake3_neon))
 
 ; 3. Portable C implementation

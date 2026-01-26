@@ -1,7 +1,6 @@
 Same setup as e2e.t but this time using building without an explicit
 `dune pkg lock`.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
   $ enable_pkg

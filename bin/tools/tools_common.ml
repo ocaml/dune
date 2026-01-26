@@ -19,10 +19,10 @@ let dev_tool_build_target dev_tool =
        (Path.to_string (dev_tool_exe_path dev_tool)))
 ;;
 
-let build_dev_tool_directly common dev_tool =
+let build_dev_tool_directly dev_tool =
   let open Fiber.O in
   let+ result =
-    Build.run_build_system ~common ~request:(fun _build_system ->
+    Build.run_build_system ~request:(fun _build_system ->
       let open Action_builder.O in
       let* () = dev_tool |> Lock_dev_tool.lock_dev_tool |> Action_builder.of_memo in
       (* Make sure the tool's lockdir is generated before building the tool. *)
@@ -51,12 +51,12 @@ let lock_and_build_dev_tool ~common ~config builder dev_tool =
   let open Fiber.O in
   match Dune_util.Global_lock.lock ~timeout:None with
   | Error lock_held_by ->
-    Scheduler.go_without_rpc_server ~common ~config (fun () ->
+    Scheduler_setup.no_build_no_rpc ~config (fun () ->
       let* () = Lock_dev_tool.lock_dev_tool dev_tool |> Memo.run in
       build_dev_tool_via_rpc builder lock_held_by dev_tool)
   | Ok () ->
-    Scheduler.go_with_rpc_server ~common ~config (fun () ->
-      build_dev_tool_directly common dev_tool)
+    Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
+      build_dev_tool_directly dev_tool)
 ;;
 
 let run_dev_tool workspace_root dev_tool ~args =

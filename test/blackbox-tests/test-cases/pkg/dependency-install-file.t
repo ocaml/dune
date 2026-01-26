@@ -1,7 +1,5 @@
 A package that installs itself into the ocaml stdlib should work.
 
-  $ . ./helpers.sh
-
   $ mkdir nondune
   $ cd nondune
   $ cat > nondune.ml <<EOF
@@ -59,3 +57,4 @@ With this project set up, lets depend on it.
   > EOF
   $ dune exec ./foo.exe 2>&1 | grep -o "Unbound module Nondune"
   Unbound module Nondune
+  [1]

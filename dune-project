@@ -1,10 +1,11 @@
-(lang dune 3.21)
+(lang dune 3.22)
 ;          ^^^^
 ; When changing the version, don't forget to regenerate *.opam files
 ; by running [dune build].
 (name dune)
 
 (generate_opam_files true)
+(opam_file_location inside_opam_directory)
 
 (accept_alternative_dune_file_name)
 
@@ -254,3 +255,12 @@ understood by dune language."))
  (maintenance_intent none)
  (description "Misc. Collection of File System Operations"))
 
+(package
+ (name dune-action-trace)
+ (dir otherlibs/dune-action-trace)
+ (synopsis "Dune Action Traces")
+ (depends
+  csexp
+  (ocaml (>= 4.08)))
+ (maintenance_intent none)
+ (description "Produce trace events from dune actions"))

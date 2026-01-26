@@ -1,7 +1,5 @@
 Helper shell function that generates an opam file for a package:
 
-  $ . ../git-helpers.sh
-  $ . ./helpers.sh
   $ mkrepo
 
 Make a mock repo tarball that will get used by dune to download the package

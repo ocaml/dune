@@ -91,16 +91,15 @@ end
 module Type_description = struct
   type t =
     { functor_ : Module_name.t
-    ; functor_loc : Loc.t
     ; instance : Module_name.t
     }
 
   let decode =
     let open Dune_lang.Decoder in
     fields
-      (let+ functor_loc, functor_ = located @@ field "functor" Module_name.decode
+      (let+ functor_ = field "functor" Module_name.decode
        and+ instance = field "instance" Module_name.decode in
-       { functor_; functor_loc; instance })
+       { functor_; instance })
   ;;
 end
 
@@ -109,7 +108,6 @@ module Function_description = struct
     { concurrency : Concurrency_policy.t
     ; errno_policy : Errno_policy.t
     ; functor_ : Module_name.t
-    ; functor_loc : Loc.t
     ; instance : Module_name.t
     }
 
@@ -118,12 +116,11 @@ module Function_description = struct
     fields
       (let+ concurrency = field_o "concurrency" Concurrency_policy.decode
        and+ errno_policy = field_o "errno_policy" Errno_policy.decode
-       and+ functor_loc, functor_ = located @@ field "functor" Module_name.decode
+       and+ functor_ = field "functor" Module_name.decode
        and+ instance = field "instance" Module_name.decode in
        { concurrency = Option.value concurrency ~default:Concurrency_policy.default
        ; errno_policy = Option.value errno_policy ~default:Errno_policy.default
        ; functor_
-       ; functor_loc
        ; instance
        })
   ;;
@@ -194,7 +191,9 @@ let decode =
      ; type_description
      ; function_description
      ; generated_types =
-         Option.value generated_types ~default:(Module_name.of_string "Types_generated")
+         Option.value
+           generated_types
+           ~default:(Module_name.of_checked_string "Types_generated")
      ; generated_entry_point
      ; deps = Option.value ~default:[] deps
      ; version
@@ -229,7 +228,7 @@ let c_generated_types_module ctypes =
     (ctypes.external_library_name
      |> External_lib_name.to_module_name
      |> Module_name.to_string)
-  |> Module_name.of_string
+  |> Module_name.of_checked_string
 ;;
 
 let c_generated_functions_module ctypes (fd : Function_description.t) =
@@ -240,17 +239,19 @@ let c_generated_functions_module ctypes (fd : Function_description.t) =
      |> External_lib_name.to_string)
     (Module_name.to_string fd.functor_)
     (Module_name.to_string fd.instance)
-  |> Module_name.of_string
+  |> Module_name.of_checked_string
 ;;
 
 let c_generated_functions_cout_c { external_library_name; _ } fd =
   c_generated_functions_cout_c_of_lib ~external_library_name fd
 ;;
 
-let type_gen_script_module ctypes = type_gen_script ctypes |> Module_name.of_string
+let type_gen_script_module ctypes =
+  type_gen_script ctypes |> Module_name.of_checked_string
+;;
 
 let function_gen_script_module ctypes function_description =
-  function_gen_script ctypes function_description |> Module_name.of_string
+  function_gen_script ctypes function_description |> Module_name.of_checked_string
 ;;
 
 let generated_modules ctypes =

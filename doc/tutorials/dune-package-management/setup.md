@@ -55,29 +55,25 @@ just define the module as an executable.
 
 After our project skeleton is set up, we can proceed to the next step.
 
-## Locking Dependencies
+## Enable package management
 
-After declaring the dependencies, you will need to tell Dune which package
-versions to use for your project. This is done by creating a lock directory.
-This is easily done with a new Dune command:
+So far we have done everything as in a regular Dune project. However, now we
+need to tell Dune that we want to use the package management feature. To do so
+we have to add a new stanza to our `dune-workspace` file, creating it if it
+doesn't exist.
 
-```
-$ dune pkg lock
-Solution for dune.lock:
-- ocaml.5.2.0
-- ocaml-base-compiler.5.2.0
-- ocaml-config.3
-```
+::::{dropdown} `dune-workspace`
+:icon: file-code
 
-This will update all the required opam repositories, use the newest version of
-each and try to find a set of packages and versions that satisfy the
-constraints that your project dependencies declare.
-
-:::{note}
-The versions that get locked might be different from this tutorial, as we only
-specified the lower bound of `ocaml`; barring any additional configuration, Dune
-will pick the newest possible version for each dependency.
+:::{literalinclude} setup/dune-workspace
+:language: dune
+:emphasize-lines: 2
 :::
+
+This new stanza will tell Dune to determine the packages that your project
+depends on, find the right versions, download, and build them on the next build.
+
+::::
 
 ## Build Project
 
@@ -87,11 +83,22 @@ To build the project, you can just use the regular Dune commands.
 dune build
 ```
 
-This will download, build, and install all your locked dependencies and then use
-those to build your project. This means that the first time building it will take
-longer than usual, as the dependencies need to be built first. Subsequent
-builds where all dependencies have been built before will be just as fast as
-before.
+Since this is the first time we have run the build system after enabling package
+management a number of things will happen:
+
+ 1. It will download and update all required opam repositories to determine
+    which packages are available.
+ 2. It will attempt to find a package solution that satisfies all dependency
+    constraints.
+ 3. It will download the sources of the dependencies.
+ 4. It will build the dependencies in sandbox locations.
+ 5. It will install the dependencies in the build folder.
+ 6. It will build the project using the dependencies that it has installed.
+
+This means that building the first time will take longer than usual, as the
+dependencies need to be built, possibly including the OCaml compiler.
+Subsequent builds where all dependencies have already been built will
+be significantly faster.
 
 We can show that the package has been built successfully and works as expected:
 
@@ -101,12 +108,15 @@ Hello, OCaml, Rust!
 ```
 
 :::{note}
-If you want to only build and fetch the project dependencies, you can use
+If you don't want to build your project, instead stopping at step 5, you can use
 the `@pkg-install` alias like so
 
 ```shell
 $ dune build @pkg-install
 ```
+
+This functionality can be useful to cache the installation of dependencies,
+somewhat similar to `opam switch create` followed by `opam install`.
 
 See {doc}`/reference/aliases/pkg-install` for more information.
 :::

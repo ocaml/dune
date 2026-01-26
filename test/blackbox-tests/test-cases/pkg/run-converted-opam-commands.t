@@ -1,4 +1,3 @@
-  $ . ./helpers.sh
 
 Generate a mock opam repository
   $ mkdir -p mock-opam-repository
@@ -32,7 +31,6 @@ Generate a mock opam repository
   > ]
   > EOF
 
-
   $ mkpkg baz <<EOF
   > install: [
   >   ["echo" "installed" { installed } "not installed" { ! installed }]
@@ -41,7 +39,6 @@ Generate a mock opam repository
   >   ["echo" "madeup-defined" { ? madeup } "installed-defined" { ? installed } ]
   > ]
   > EOF
-
 
   $ mkpkg error1 <<EOF
   > install: [

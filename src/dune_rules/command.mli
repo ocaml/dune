@@ -39,7 +39,7 @@ module Args : sig
       of type [string list] in the action builder monad. You can use the
       constructor [Expand] to specify the meaning directly, which is sometimes
       useful, e.g. for memoization. *)
-  type expand = dir:Path.t -> string list Action_builder.t
+  type expand = dir:Path.t -> string Appendable_list.t Action_builder.t
 
   type _ t =
     | A : string -> _ t
@@ -107,7 +107,10 @@ end
 (** [expand ~dir args] interprets the command line arguments [args] to produce
     corresponding strings, assuming they will be used as arguments to run a
     command in directory [dir]. *)
-val expand : dir:Path.t -> 'a Args.t -> string list Action_builder.With_targets.t
+val expand
+  :  dir:Path.t
+  -> 'a Args.t
+  -> string Appendable_list.t Action_builder.With_targets.t
 
 (** [expand_no_targets ~dir args] interprets the command line arguments [args]
     to produce corresponding strings, assuming they will be used as arguments to
@@ -115,4 +118,4 @@ val expand : dir:Path.t -> 'a Args.t -> string list Action_builder.With_targets.
 val expand_no_targets
   :  dir:Path.t
   -> Args.without_targets Args.t
-  -> string list Action_builder.t
+  -> string Appendable_list.t Action_builder.t

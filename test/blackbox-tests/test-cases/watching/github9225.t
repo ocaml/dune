@@ -1,5 +1,3 @@
-  $ . ./helpers.sh
-
 This test demonstrates a bug where multiple rules for ccomp and .opam are loaded between
 rebuilds.
 

@@ -34,6 +34,7 @@
   3 |  (foreign_stubs (language c) (names foo))
   4 |  (foreign_archives bar))
   Error: No rule found for libbar$ext_lib
+  [1]
 
 ----------------------------------------------------------------------------------
 * Build succeeds when a self-built archive exists.

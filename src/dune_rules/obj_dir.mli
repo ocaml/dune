@@ -74,7 +74,13 @@ val make_external_no_private : dir:Path.t -> Path.t t
 
 val encode : Path.t t -> Dune_lang.t list
 val decode : dir:Path.t -> Path.t t Dune_lang.Decoder.t
-val convert_to_external : Path.Build.t t -> dir:Path.t -> Path.t t
+
+val convert_to_external
+  :  Path.Build.t t
+  -> dir:Path.t
+  -> has_private_modules:bool
+  -> Path.t t
+
 val cm_dir : 'path t -> Lib_mode.Cm_kind.t -> Visibility.t -> 'path
 val to_dyn : _ t -> Dyn.t
 val make_exe : dir:Path.Build.t -> name:string -> Path.Build.t t
@@ -138,5 +144,5 @@ module Module : sig
       | Transitive of Module.t * Ml_kind.t
   end
 
-  val dep : Path.Build.t t -> Dep.t -> Path.Build.t option
+  val dep : Path.Build.t t -> Dep.t -> for_:Compilation_mode.t -> Path.Build.t option
 end

@@ -37,8 +37,23 @@ Run the test:
 
   $ dune runtest
   File "basic.t", line 1, characters 0-0:
-  Error: Files _build/default/basic.t and _build/default/basic.t.corrected
-  differ.
+  --- basic.t
+  +++ basic.t.corrected
+  @@ -1,11 +1,14 @@
+   Test that setup scripts are sourced and functions are available
+   
+     $ test_helper "foo"
+  +  Helper called: foo
+   
+   Test that variables from setup scripts are available
+   
+     $ echo $MY_VAR
+  +  test_value_from_helper
+   
+   Check if setup script is visible in test directory
+   
+     $ ! [ -e *.sh ] && echo "No sh files"
+  +  No sh files
   [1]
 
   $ dune promote

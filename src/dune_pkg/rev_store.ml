@@ -2,7 +2,7 @@ open Stdune
 open Dune_vcs
 module Process = Dune_engine.Process
 module Display = Dune_engine.Display
-module Scheduler = Dune_engine.Scheduler
+open Dune_scheduler
 module Console = Dune_console
 open Fiber.O
 
@@ -142,36 +142,27 @@ module Cache = struct
 
        When we do this we should check [Int.equal Sys.word_size 64] since
        32-bit platforms won't handle our cache size well. *)
-    Dune_config.Config.make_toggle ~name:"rev_store_cache" ~default:`Disabled
+    Config.make_toggle ~name:"rev_store_cache" ~default:`Disabled
   ;;
 
-  let cache_dir =
+  let revision_store_dir =
     lazy
-      (let path =
-         Path.L.relative
-           (Lazy.force Dune_util.xdg
-            |> Xdg.cache_dir
-            |> Path.Outside_build_dir.of_string
-            |> Path.outside_build_dir)
-           [ "dune"; "rev_store" ]
-       in
-       let rev_store_cache = Dune_config.Config.get rev_store_cache in
-       Dune_util.Log.info
-         [ Pp.textf
-             "Revision store cache: %s"
-             (Dune_config.Config.Toggle.to_string rev_store_cache)
-         ];
-       match rev_store_cache, Path.mkdir_p path with
-       | `Enabled, () ->
-         Dune_util.Log.info
-           [ Pp.textf "Revision store cache location: %s" (Path.to_string path) ];
-         Some path
-       | `Disabled, () -> None)
+      (let path = Path.relative (Lazy.force Dune_util.cache_root_dir) "rev_store" in
+       let rev_store_cache = Config.get rev_store_cache in
+       Log.info "Revision store cache" [ "status", Config.Toggle.to_dyn rev_store_cache ];
+       match rev_store_cache with
+       | `Disabled -> None
+       | `Enabled ->
+         Path.mkdir_p path;
+         Log.info
+           "Revision store cache location"
+           [ "path", Dyn.string (Path.to_string path) ];
+         Some path)
   ;;
 
   let db =
     lazy
-      (Lazy.force cache_dir
+      (Lazy.force revision_store_dir
        |> Option.map ~f:(fun path ->
          Lmdb.Env.create
            ~map_size:(Int64.to_int 5_000_000_000L) (* 5 GB *)
@@ -353,14 +344,14 @@ let lock_path { dir; _ } =
 ;;
 
 let rec attempt_to_lock flock lock ~max_retries =
-  let sleep_duration = 0.1 in
+  let sleep_duration = Time.Span.of_secs 0.1 in
   match Flock.lock_non_block flock lock with
   | Error e -> Fiber.return @@ Error e
   | Ok `Success -> Fiber.return (Ok `Success)
   | Ok `Failure ->
     if max_retries > 0
     then
-      let* () = Scheduler.sleep ~seconds:sleep_duration in
+      let* () = Scheduler.sleep sleep_duration in
       attempt_to_lock flock lock ~max_retries:(max_retries - 1)
     else Fiber.return (Ok `Failure)
 ;;
@@ -387,11 +378,12 @@ let with_flock lock_path ~f =
        | Ok `Success ->
          Fiber.finalize
            (fun () ->
+              Unix.ftruncate fd 0;
               Dune_util.Global_lock.write_pid fd;
               f ())
            ~finally:(fun () ->
              let+ () = Fiber.return () in
-             Path.unlink_no_err lock_path;
+             Fpath.unlink_no_err (Path.to_string lock_path);
              match Flock.unlock flock with
              | Ok () -> ()
              | Error ue ->
@@ -428,6 +420,13 @@ let env =
   Env.add Env.initial ~var:"LC_ALL" ~value:"C"
   (* to avoid prmompting for passwords *)
   |> Env.add ~var:"GIT_TERMINAL_PROMPT" ~value:"0"
+;;
+
+let with_specified_git_dir ~dir env =
+  (* prevent Git from walking up the file system to find a potentially
+     unrelated git directory, so we disable the walk up by setting
+     the directory explicitely. *)
+  Env.add env ~var:"GIT_DIR" ~value:(Path.to_string dir)
 ;;
 
 module Git_error = struct
@@ -469,6 +468,7 @@ let run_with_exit_code { dir; _ } ~allow_codes ~display args =
         | Ok path ->
           let+ (), exit_code =
             let stderr_to = Process.Io.file path Out in
+            let env = with_specified_git_dir ~dir env in
             Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
           in
           Io.read_file path, exit_code)
@@ -478,7 +478,7 @@ let run_with_exit_code { dir; _ } ~allow_codes ~display args =
   else (
     match exit_code with
     | 129
-      when String.is_prefix ~prefix:"error: unknown option `no-write-fetch-head'" stderr
+      when String.starts_with ~prefix:"error: unknown option `no-write-fetch-head'" stderr
       ->
       User_error.raise
         [ User_message.command
@@ -522,8 +522,8 @@ let cat_file { dir; _ } command =
 
 let rev_parse { dir; _ } rev =
   let git = Lazy.force Vcs.git in
-  let+ line, code =
-    Process.run_capture_line
+  let+ lines, code =
+    Process.run_capture_lines
       ~dir
       ~display:Quiet
       ~env
@@ -531,7 +531,9 @@ let rev_parse { dir; _ } rev =
       git
       [ "rev-parse"; "--verify"; "--quiet"; sprintf "%s^{commit}" rev ]
   in
-  if code = 0 then Some (Option.value_exn (Object.of_sha1 line)) else None
+  match lines, code with
+  | [ line ], 0 -> Some (Option.value_exn (Object.of_sha1 line))
+  | _, _ -> None
 ;;
 
 let object_exists_no_lock { dir; _ } obj =
@@ -633,7 +635,28 @@ let load_or_create ~dir =
   let+ () =
     with_flock lock ~f:(fun () ->
       match Fpath.mkdir_p (Path.to_string dir) with
-      | Already_exists -> Fiber.return ()
+      | Already_exists ->
+        (* CR-Leonidas-from-XIV: this doesn't actually care about whethe the
+           result is [true] or [false] (and it doesn't matter too much), it's
+           mostly about whether rev-parse recognizes the repo as valid. *)
+        run t ~display:Quiet [ "rev-parse"; "--is-bare-repository" ]
+        >>| (function
+         | Ok () ->
+           (* This command will also succeed if it is a non-bare repo (it just
+              displays "false" in that case) that will work for the rev store
+              just as well. *)
+           ()
+         | Error _git_error ->
+           let command = sprintf "rm -rf %s" (Path.to_string_maybe_quoted dir) in
+           let hints =
+             [ Pp.text "Try deleting the folder with"; User_message.command command ]
+           in
+           User_error.raise
+             ~hints
+             [ Pp.text
+                 "The folder at the revision store location is not a valid bare git \
+                  repository."
+             ])
       | Created ->
         run t ~display:Quiet [ "init"; "--bare" ]
         >>| (function
@@ -1058,7 +1081,7 @@ module At_rev = struct
           User_error.raise [ Pp.text "failed to untar archive created by git" ]
         | Ok () -> ())
     in
-    Path.rename target_in_temp_dir target
+    Unix.rename (Path.to_string target_in_temp_dir) (Path.to_string target)
   ;;
 end
 
@@ -1220,13 +1243,14 @@ let content_of_files t files =
       | None -> Cache.Key.Map.find_exn to_write key)
 ;;
 
+let git_repo_dir =
+  lazy
+    (let dir = Path.relative (Lazy.force Dune_util.cache_root_dir) "git-repo" in
+     Log.info "Git repository cache location" [ "dir", Path.to_dyn dir ];
+     dir)
+;;
+
 let get =
-  Fiber.Lazy.create (fun () ->
-    let dir =
-      Path.L.relative
-        (Path.of_string (Xdg.cache_dir (Lazy.force Dune_util.xdg)))
-        [ "dune"; "git-repo" ]
-    in
-    load_or_create ~dir)
+  Fiber.Lazy.create (fun () -> load_or_create ~dir:(Lazy.force git_repo_dir))
   |> Fiber.Lazy.force
 ;;

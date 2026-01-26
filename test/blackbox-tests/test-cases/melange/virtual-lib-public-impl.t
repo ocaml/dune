@@ -33,8 +33,7 @@ Test virtual libraries where the virtual implementation is a public library
   >  (name timeJs)
   >  (public_name concrete_lib)
   >  (implements the_lib)
-  >  (modes melange)
-  >  (preprocess (pps melange.ppx)))
+  >  (modes melange))
   > EOF
   $ cat > js_impl/virt.ml <<EOF
   > let gettimeofday : unit -> float = fun () -> 42.

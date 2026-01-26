@@ -2,7 +2,6 @@ Ensure dune can handle the special string interpolation syntax used by opam for
 packages whose names contain a '+' character. This syntax is described in
 https://opam.ocaml.org/doc/Manual.html#Variables
 
-  $ . ./helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

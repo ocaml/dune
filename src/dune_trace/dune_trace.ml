@@ -1,34 +1,24 @@
 open Stdune
-module Timestamp = Chrome_trace.Event.Timestamp
-module Json = Json
+module Category = Category
+module Event = Event
 
-module Mac = struct
-  external open_fds : pid:int -> int = "dune_trace_open_fds"
-  external available : unit -> bool = "dune_trace_available"
+module Out = struct
+  include Out
+
+  let create path =
+    let cats =
+      match Sys.getenv_opt "DUNE_TRACE" with
+      | None -> Category.default
+      | Some s ->
+        String.split ~on:',' s
+        |> List.map ~f:(fun x ->
+          match Category.of_string x with
+          | Some s -> s
+          | None -> User_error.raise [ Pp.textf "unrecognized trace category %S" x ])
+    in
+    create cats path
+  ;;
 end
-
-type dst =
-  | Out of out_channel
-  | Custom of
-      { write : string -> unit
-      ; close : unit -> unit
-      ; flush : unit -> unit
-      }
-
-type t =
-  { print : string -> unit
-  ; close : unit -> unit
-  ; flush : unit -> unit
-  ; extended_build_job_info : bool
-  ; mutable after_first_event : bool
-  }
-
-(* all fields of record used *)
-
-let close { print; close; _ } =
-  print "]\n";
-  close ()
-;;
 
 let global = ref None
 
@@ -36,7 +26,20 @@ let () =
   at_exit (fun () ->
     match !global with
     | None -> ()
-    | Some t -> close t)
+    | Some t ->
+      Out.emit t (Event.exit ());
+      Out.close t;
+      (match Env.(get initial Dune_action_trace.Private.trace_dir_env_var) with
+       | None -> ()
+       | Some dir ->
+         let dir = Path.of_string dir in
+         Path.mkdir_p dir;
+         let dst =
+           Path.relative
+             (Temp.temp_dir ~parent_dir:dir ~prefix:"dune" ~suffix:"trace")
+             "trace.csexp"
+         in
+         Io.copy_file ~src:t.path ~dst ()))
 ;;
 
 let set_global t =
@@ -46,206 +49,38 @@ let set_global t =
 
 let global () = !global
 
-let create ~extended_build_job_info dst =
-  let print =
-    match dst with
-    | Out out -> Stdlib.output_string out
-    | Custom c -> c.write
-  in
-  let close =
-    match dst with
-    | Out out -> fun () -> Stdlib.close_out out
-    | Custom c -> c.close
-  in
-  let flush =
-    match dst with
-    | Out out -> fun () -> flush out
-    | Custom c -> c.flush
-  in
-  { print; close; after_first_event = false; flush; extended_build_job_info }
-;;
-
-let flush t = t.flush ()
-let extended_build_job_info t = t.extended_build_job_info
-
-let next_leading_char t =
-  match t.after_first_event with
-  | true -> ','
-  | false ->
-    t.after_first_event <- true;
-    '['
-;;
-
-let printf t format_string =
-  let c = next_leading_char t in
-  Printf.ksprintf t.print ("%c" ^^ format_string ^^ "\n") c
-;;
-
-let emit t event = printf t "%s" (Json.to_string (Chrome_trace.Event.to_json event))
-
-module Event = struct
-  type data =
-    { args : Chrome_trace.Event.args option
-    ; cat : string list option
-    ; name : string
-    }
-
-  type nonrec t =
-    { t : t
-    ; event_data : data
-    ; start : float
-    }
-
-  let data ~args ~cat ~name = { args; cat; name }
-end
-
-let start t k : Event.t option =
-  match t with
-  | None -> None
-  | Some t ->
-    let event_data = k () in
-    let start = Unix.gettimeofday () in
-    Some { t; event_data; start }
-;;
-
-let finish event =
-  match event with
+let always_emit event =
+  match global () with
   | None -> ()
-  | Some { Event.t; start; event_data = { args; cat; name } } ->
-    let dur =
-      let stop = Unix.gettimeofday () in
-      Timestamp.of_float_seconds (stop -. start)
-    in
-    let common =
-      Chrome_trace.Event.common_fields
-        ?cat
-        ~name
-        ~ts:(Timestamp.of_float_seconds start)
-        ()
-    in
-    let event = Chrome_trace.Event.complete ?args common ~dur in
-    emit t event
+  | Some out -> Out.emit out event
 ;;
 
-module Fd_count = struct
-  type t =
-    | Unknown
-    | This of int
+let emit ?buffered cat f =
+  match global () with
+  | None -> ()
+  | Some out -> if Category.Set.mem out.cats cat then Out.emit ?buffered out (f ())
+;;
 
-  let lsof =
-    let prog = lazy (Bin.which ~path:(Env_path.path Env.initial) "lsof") in
-    (* note: we do not use the Process module here, because it would create a
-       circular dependency *)
-    fun () ->
-      match Lazy.force prog with
-      | None -> Unknown
-      | Some prog ->
-        let lsof_r, lsof_w = Unix.pipe ~cloexec:true () in
-        let prog = Path.to_string prog in
-        let pid =
-          let argv =
-            [ prog; "-l"; "-O"; "-P"; "-n"; "-w"; "-p"; string_of_int (Unix.getpid ()) ]
-          in
-          Spawn.spawn ~prog ~argv ~stdout:lsof_w () |> Pid.of_int
-        in
-        Unix.close lsof_w;
-        (match
-           let _, status = Unix.waitpid [] (Pid.to_int pid) in
-           status
-         with
-         | Unix.WEXITED 0 ->
-           let count =
-             let chan = Unix.in_channel_of_descr lsof_r in
-             let rec loop acc =
-               match input_line chan with
-               | exception End_of_file -> acc
-               | _ -> loop (acc + 1)
-             in
-             (* the output contains a header line *)
-             let res = loop (-1) in
-             Io.close_in chan;
-             res
-           in
-           This count
-         | (exception Unix.Unix_error (_, _, _))
-         (* The final [waitpid] call fails with:
+let flush () =
+  match global () with
+  | None -> ()
+  | Some out -> Out.flush out
+;;
 
-            {[
-              Error: waitpid(): No child processes
-            ]} *)
-         | _ ->
-           Unix.close lsof_r;
-           Unknown)
-  ;;
+let emit_all ?buffered cat f =
+  match global () with
+  | None -> ()
+  | Some out ->
+    if Category.Set.mem out.cats cat then List.iter (f ()) ~f:(Out.emit ?buffered out)
+;;
 
-  let proc_fs () =
-    match Sys.readdir "/proc/self/fd" with
-    | files -> This (Array.length files - 1 (* -1 for the dirfd *))
-    | exception Sys_error _ -> Unknown
-  ;;
-
-  let how = ref `Unknown
-  let pid = lazy (Unix.getpid ())
-
-  let get () =
-    match !how with
-    | `Disable -> Unknown
-    | `Lsof -> lsof ()
-    | `Proc_fs -> proc_fs ()
-    | `Mac -> This (Mac.open_fds ~pid:(Lazy.force pid))
-    | `Unknown ->
-      if Mac.available ()
-      then (
-        how := `Mac;
-        This (Mac.open_fds ~pid:(Lazy.force pid)))
-      else (
-        match proc_fs () with
-        | This _ as n ->
-          how := `Proc_fs;
-          n
-        | Unknown ->
-          let res = lsof () in
-          (how
-           := match res with
-              | This _ -> `Lsof
-              | Unknown -> `Disable);
-          res)
-  ;;
-end
-
-let record_gc_and_fd stats =
-  let module Event = Chrome_trace.Event in
-  let module Json = Chrome_trace.Json in
-  let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
-  let () =
-    let common = Event.common_fields ~name:"gc" ~ts () in
-    let args =
-      let stat = Gc.quick_stat () in
-      [ "stack_size", `Int stat.stack_size
-      ; "heap_words", `Int stat.heap_words
-      ; "top_heap_words", `Int stat.top_heap_words
-      ; "minor_words", `Float stat.minor_words
-      ; "major_words", `Float stat.major_words
-      ; "promoted_words", `Float stat.promoted_words
-      ; "compactions", `Int stat.compactions
-      ; "major_collections", `Int stat.major_collections
-      ; "minor_collections", `Int stat.minor_collections
-      ]
-    in
-    let event = Event.counter common args in
-    emit stats event
-  in
-  match Fd_count.get () with
-  | Unknown -> ()
-  | This fds ->
-    let event =
-      let args = [ "value", `Int fds ] in
-      let common = Event.common_fields ~name:"fds" ~ts () in
-      Event.counter common args
-    in
-    emit stats event
+let enabled cat =
+  match global () with
+  | None -> false
+  | Some s -> Category.Set.mem s.cats cat
 ;;
 
 module Private = struct
   module Fd_count = Fd_count
+  module Buffer = Buffer
 end

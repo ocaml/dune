@@ -1,6 +1,5 @@
 Make sure the format rules depends on ".ocamlformat-ignore" file when it exists.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ make_fake_ocamlformat "0.26.2"
@@ -17,8 +16,11 @@ Add a fake binary in the PATH
 Check without ".ocamlformat-ignore" file and the feature.
   $ dune fmt --preview
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1 @@
+  -let () = print_endline "Hello, world"
+  +fake ocamlformat from PATH
   [1]
   $ cat _build/default/.formatted/foo.ml
   fake ocamlformat from PATH
@@ -31,8 +33,12 @@ Check with the feature when ".ocamlformat-ignore" file exists.
   Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.2
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1,2 @@
+  -let () = print_endline "Hello, world"
+  +ignoring some files
+  +formatted with version 0.26.2
   [1]
   $ ls _build/default/.ocamlformat-ignore
   _build/default/.ocamlformat-ignore
@@ -47,8 +53,12 @@ exists even if the dev-tool feature is disabled.
 Check without the feature when ".ocamlformat-ignore" file exists.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=disabled dune fmt
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1,2 @@
+  -let () = print_endline "Hello, world"
+  +ignoring some files
+  +fake ocamlformat from PATH
   Promoting _build/default/.formatted/foo.ml to foo.ml.
   [1]
   $ ls _build/default/.ocamlformat-ignore

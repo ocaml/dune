@@ -1,7 +1,5 @@
 Demonstrate how depopts can be forced in the workspace
 
-  $ . ../helpers.sh
-
   $ mkrepo
 
   $ mkpkg foo

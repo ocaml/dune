@@ -13,11 +13,22 @@ rule.
   >  (action (bash "echo creating output dir && mkdir -p output/a && touch output/a/b")))
   > EOF
 
-  $ dune build --debug-load-dir output/
-  Loading build directory _build/default
-  Loading build directory _build/default/.dune
-  Loading build directory _build
+  $ loadedDirs() {
+  > jq -c 'select(.name == "load-dir") | .args'
+  > }
+
+  $ build() {
+  > dune build $@
+  > dune trace cat | loadedDirs
+  > }
+
+  $ export DUNE_TRACE=debug
+
+  $ build output/
   creating output dir
+  {"dir":"_build/default"}
+  {"dir":"_build/default/.dune"}
+  {"dir":"_build"}
   $ find _build/default/output
   _build/default/output
   _build/default/output/a
@@ -27,11 +38,11 @@ We are loading the rules in output/a and while making sure that we don't delete
 and re-create output/b. The following should not re-run the rule that recreates
 output/
 
-  $ dune build --debug-load-dir output/a/b
-  Loading build directory _build/default/output/a
-  Loading build directory _build/default
-  Loading build directory _build/default/.dune
-  Loading build directory _build
+  $ build output/a/b
+  {"dir":"_build/default/output/a"}
+  {"dir":"_build/default"}
+  {"dir":"_build/default/.dune"}
+  {"dir":"_build"}
   $ find _build/default/output
   _build/default/output
   _build/default/output/a
@@ -39,11 +50,7 @@ output/
 
 Now we try loading the rules in output/a and make sure that nothing is deleted:
 
-  $ dune rules --debug-load-dir output/a/
-  Loading build directory _build/default/output
-  Loading build directory _build/default
-  Loading build directory _build/default/.dune
-  Loading build directory _build
+  $ dune rules output/a/
   ((deps ())
    (targets ((files ()) (directories (_build/default/output))))
    (context default)
@@ -51,6 +58,13 @@ Now we try loading the rules in output/a and make sure that nothing is deleted:
     (chdir
      _build/default
      (bash "echo creating output dir && mkdir -p output/a && touch output/a/b"))))
+
+  $ dune trace cat | loadedDirs
+  {"dir":"_build/default/output"}
+  {"dir":"_build/default"}
+  {"dir":"_build/default/.dune"}
+  {"dir":"_build"}
+
   $ find _build/default/output
   _build/default/output
   _build/default/output/a

@@ -13,7 +13,6 @@ val all_direct_targets : Path.Source.t option -> target_type Path.Build.Map.t Me
 
 val interpret_targets
   :  Workspace_root.t
-  -> Dune_config.t
   -> Dune_rules.Main.build_system
   -> Arg.Dep.t list
   -> unit Dune_engine.Action_builder.t

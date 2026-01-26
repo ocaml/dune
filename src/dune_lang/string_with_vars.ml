@@ -263,22 +263,22 @@ type yes_no_unknown =
 
 let is_suffix t ~suffix:want =
   match known_suffix t with
-  | Full s -> if String.is_suffix ~suffix:want s then Yes else No
+  | Full s -> if String.ends_with ~suffix:want s then Yes else No
   | Partial { suffix = have; source_pform } ->
-    if String.is_suffix ~suffix:want have
+    if String.ends_with ~suffix:want have
     then Yes
-    else if String.is_suffix ~suffix:have want
+    else if String.ends_with ~suffix:have want
     then Unknown { source_pform }
     else No
 ;;
 
 let is_prefix t ~prefix:want =
   match known_prefix t with
-  | Full s -> if String.is_prefix ~prefix:want s then Yes else No
+  | Full s -> if String.starts_with ~prefix:want s then Yes else No
   | Partial { prefix = have; source_pform } ->
-    if String.is_prefix ~prefix:want have
+    if String.starts_with ~prefix:want have
     then Yes
-    else if String.is_prefix ~prefix:have want
+    else if String.starts_with ~prefix:have want
     then Unknown { source_pform }
     else No
 ;;

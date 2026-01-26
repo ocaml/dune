@@ -1,12 +1,6 @@
 (** Various performance metrics. *)
 
-module Counter : sig
-  type t
-
-  val read : t -> int
-  val incr : t -> unit
-  val add : t -> int -> unit
-end
+open Stdune
 
 (** Counters related to Memo attempting (and possibly succeeding) to restore node values
     from cache (i.e. from Memo tables). *)

@@ -211,13 +211,23 @@ module Copyfile = struct
       copy_channels ic oc)
   ;;
 
-  let copy_file =
+  let copy_file_best =
     match available with
     | `Sendfile -> sendfile_with_fallback
     | `Copyfile -> copyfile
     | `Nothing -> copy_file_portable
   ;;
+
+  let copy_file_impl = ref `Best
+
+  let copy_file ?chmod ~src ~dst () =
+    match !copy_file_impl with
+    | `Portable -> copy_file_portable ?chmod ~src ~dst ()
+    | `Best -> copy_file_best ?chmod ~src ~dst ()
+  ;;
 end
+
+let set_copy_impl m = Copyfile.copy_file_impl := m
 
 module Make (Path : sig
     type t
@@ -263,32 +273,53 @@ struct
   ;;
 
   let read_file ?(binary = true) fn =
-    if binary
-    then Fs_io.read_file (Path.to_string fn) |> Result.ok_exn
-    else read_file_chan ~binary fn
+    let start = Counter.Timer.start () in
+    Counter.incr Metrics.File_read.count;
+    let res =
+      if binary
+      then Fs_io.read_file (Path.to_string fn) |> Result.ok_exn
+      else read_file_chan ~binary fn
+    in
+    Counter.add Metrics.File_read.bytes (String.length res);
+    Counter.Timer.stop Metrics.File_read.time start;
+    res
   ;;
 
   let lines_of_file fn = with_file_in fn ~f:input_lines ~binary:false
   let zero_strings_of_file fn = with_file_in fn ~f:input_zero_separated ~binary:true
 
   let write_file ?(binary = true) ?perm fn data =
-    if binary
-    then
-      Fs_io.write_file
-        ~perm:(Option.value ~default:default_out_perm perm)
-        ~data
-        ~path:(Path.to_string fn)
-      |> Result.ok_exn
-    else with_file_out ~binary ?perm fn ~f:(fun oc -> output_string oc data)
+    let start = Counter.Timer.start () in
+    Counter.incr Metrics.File_write.count;
+    Counter.add Metrics.File_write.bytes (String.length data);
+    let res =
+      if binary
+      then
+        Fs_io.write_file
+          ~perm:(Option.value ~default:default_out_perm perm)
+          ~data
+          ~path:(Path.to_string fn)
+        |> Result.ok_exn
+      else with_file_out ~binary ?perm fn ~f:(fun oc -> output_string oc data)
+    in
+    Counter.Timer.stop Metrics.File_read.time start;
+    res
   ;;
 
   let write_lines ?binary ?perm fn lines =
-    with_file_out ?binary ?perm fn ~f:(fun oc ->
-      List.iter
-        ~f:(fun line ->
-          output_string oc line;
-          output_string oc "\n")
-        lines)
+    let start = Counter.Timer.start () in
+    Counter.incr Metrics.File_write.count;
+    let res =
+      with_file_out ?binary ?perm fn ~f:(fun oc ->
+        List.iter
+          ~f:(fun line ->
+            Counter.add Metrics.File_write.bytes (String.length line + 1);
+            output_string oc line;
+            output_string oc "\n")
+          lines)
+    in
+    Counter.Timer.stop Metrics.Directory_read.time start;
+    res
   ;;
 
   let read_file_and_normalize_eols fn =
@@ -421,7 +452,7 @@ let portable_hardlink ~src ~dst =
       [ Pp.textf
           "Sandbox creation error: cannot resolve symbolic link %S."
           (Path.to_string src)
-      ; Pp.textf "Reason: %s" msg
+      ; User_error.reason (Pp.verbatim msg)
       ]
   in
   (* CR-someday amokhov: Instead of always falling back to copying, we could
@@ -438,14 +469,16 @@ let portable_hardlink ~src ~dst =
         user_error "Too many indirections; is this a cyclic symbolic link?"
       | Error (Unix_error error) -> user_error (Unix_error.Detailed.to_string_hum error)
     in
-    (try Path.link src dst with
+    (try Fpath.link (Path.to_string src) (Path.to_string dst) with
      | Unix.Unix_error (Unix.EEXIST, _, _) ->
        (* CR-someday amokhov: Investigate why we need to occasionally clear the
           destination (we also do this in the symlink case above). Perhaps, the
           list of dependencies may have duplicates? If yes, it may be better to
           filter out the duplicates first. *)
-       Path.unlink_exn dst;
-       Path.link src dst
+       let src = Path.to_string src in
+       let dst = Path.to_string dst in
+       Fpath.unlink_exn dst;
+       Fpath.link src dst
      | Unix.Unix_error (Unix.EMLINK, _, _) ->
        (* If we can't make a new hard link because we reached the limit on the
           number of hard links per file, we fall back to copying. We expect

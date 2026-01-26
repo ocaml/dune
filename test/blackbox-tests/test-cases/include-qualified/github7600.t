@@ -18,6 +18,7 @@ directories too.
   $ cat > src/foo.ml
 
   $ mkdir src/baz-bar
+  $ touch src/baz-bar/x.ml
 
   $ dune build @install
   File "src/baz-bar", line 1, characters 0-0:

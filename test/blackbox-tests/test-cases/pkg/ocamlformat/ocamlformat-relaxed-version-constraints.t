@@ -1,7 +1,7 @@
 Check that dune can choose a version of ocamlformat with a suffix (e.g.
 0.24+foo) to satisfy a .ocamlformat config that specifies a matching version
 without the suffix.
-  $ . ./helpers.sh
+
   $ mkrepo
   $ make_project_with_dev_tool_lockdir
 
@@ -31,8 +31,11 @@ This should choose the 0.24+foo version:
   Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.24+foo
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1,2 @@
+   let () = print_endline "Hello, world"
+  +(* formatted with fake ocamlformat 0.24+foo *)
   Promoting _build/default/.formatted/foo.ml to foo.ml.
   [1]
   $ cat foo.ml
@@ -46,8 +49,12 @@ This should choose the 0.24+bar version:
   Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.25+bar
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1,2 +1,3 @@
+   let () = print_endline "Hello, world"
+   (* formatted with fake ocamlformat 0.24+foo *)
+  +(* formatted with fake ocamlformat 0.25+bar *)
   Promoting _build/default/.formatted/foo.ml to foo.ml.
   [1]
   $ cat foo.ml

@@ -1,6 +1,5 @@
 We test how opam files with substs fields are translated into the dune.lock file.
- 
-  $ . ./helpers.sh
+
   $ mkrepo
 
 Make a package with a substs field 

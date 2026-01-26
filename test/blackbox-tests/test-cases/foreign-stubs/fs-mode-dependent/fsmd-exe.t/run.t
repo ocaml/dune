@@ -7,7 +7,7 @@ Without the toggle, we get an error message for using the new mode subfield
   > (lang dune 3.5)
   > EOF
 
-  $ dune build 2>&1 | head -n 6
+  $ dune build 2>&1 | head -n 6 || true
   File "dune", line 11, characters 3-16:
   11 |    (mode native)
           ^^^^^^^^^^^^^

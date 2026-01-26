@@ -1,6 +1,5 @@
 Demonstrate the translation of filtered dependencies
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ mkpkg pkg-post <<EOF

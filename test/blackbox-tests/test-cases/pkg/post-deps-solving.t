@@ -1,6 +1,5 @@
 Solving for post dependencies:
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ mkpkg bar

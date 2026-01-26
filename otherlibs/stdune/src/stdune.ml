@@ -72,6 +72,14 @@ module Scanf = Scanf
 module Sys = Sys
 module Pid = Pid
 module Applicative = Applicative
+module Json = Json
+module Log = Log
+module Time = Time
+module Escape0 = Escape
+module Debug = Debug
+module Config = Config
+module Metrics = Metrics
+module Counter = Counter
 
 module type Top_closure = Top_closure.Top_closure
 

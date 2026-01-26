@@ -4,12 +4,13 @@
  (libraries
   dune_trace
   dune_console
-  chrome_trace
+  dune_scheduler
   stdune
   fiber
   dune_lang
   dune_engine
-  dune_util))
+  dune_util
+  unix))
 
 (rule
  (alias bench)

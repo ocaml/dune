@@ -1,6 +1,5 @@
 Exercise dune resolving the post dependencies found in compiler packages.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ cat >dune-workspace << EOF

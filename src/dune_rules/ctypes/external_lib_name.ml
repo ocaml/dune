@@ -21,4 +21,4 @@ let clean t =
     | _ -> '_')
 ;;
 
-let to_module_name t = Module_name.of_string (clean t)
+let to_module_name t = Module_name.of_checked_string (clean t)

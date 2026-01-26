@@ -6,13 +6,13 @@
    ;; should live under a different alias
    ;; %{bin:hg}
    %{bin:git}))
- (modules vcs_tests)
  (libraries
   dune_tests_common
   stdune
   dune_util
   dune_vcs
   dune_engine
+  dune_scheduler
   fiber
   memo
   ;; This is because of the (implicit_transitive_deps false)

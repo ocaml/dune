@@ -24,4 +24,5 @@ module Make (Element : sig
   val compare : t -> t -> Ordering.t
   val equal : t -> t -> bool
   val of_func : (Element.t -> bool) -> t
+  val of_list : Element.t list -> t
 end

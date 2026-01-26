@@ -1,4 +1,3 @@
-open Dune_config
 open Import
 include module type of Config.Toggle with type t = Config.Toggle.t
 

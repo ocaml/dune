@@ -1,7 +1,6 @@
 Test that available optional dependencies of a package are added to the
 "depends" field of that package's lockfile.
 
-  $ . ../helpers.sh
   $ mkrepo
 
   $ mkpkg a

@@ -120,7 +120,9 @@ parameters:
 We can by inspecting the `ocamlobjinfo` for the "Runtime parameters:" field,
 which lists the parameters on the following indented lines:
 
-  $ alias runtime_parameters="sed -ne '/parameter/,/^[^\t]/{/^\t/p}'"
+  $ runtime_parameters() {
+  > sed -ne '/parameter/,/^[^\t]/{/^\t/p}'
+  > }
 
   $ ocamlobjinfo _build/default/lib/.lib.objs/native/lib__Lib_util.cmx | runtime_parameters
   	Lib__
@@ -335,13 +337,12 @@ required parameters.
   File "bin/dune", line 1, characters 34-37:
   1 | (executable (name bin) (libraries lib))
                                         ^^^
-  Error: Parameter "project.a" is missing.
+  Error: Missing argument for parameter "project.a".
   -> required by _build/default/bin/.bin.eobjs/native/dune__exe__Bin.cmx
   -> required by _build/default/bin/bin.exe
   -> required by alias bin/all
   -> required by alias default
-  Hint: Pass an argument implementing project.a to the dependency, or add
-  (parameters project.a)
+  Hint: Pass an argument implementing "project.a" to the dependency.
   [1]
 
   $ rm -r bin
@@ -357,14 +358,13 @@ Same for libraries:
   File "lib2/dune", line 1, characters 32-35:
   1 | (library (name lib2) (libraries lib))
                                       ^^^
-  Error: Parameter "project.a" is missing.
+  Error: Missing argument for parameter "project.a".
   -> required by library "lib2" in _build/default/lib2
   -> required by _build/default/lib2/.lib2.objs/native/lib2.cmx
   -> required by _build/default/lib2/lib2.a
   -> required by alias lib2/all
   -> required by alias default
-  Hint: Pass an argument implementing project.a to the dependency, or add
-  (parameters project.a)
+  Hint: Pass an argument implementing "project.a" to the dependency.
   [1]
 
 It works if `lib2` is itself parameterised with the same parameters as `lib`:

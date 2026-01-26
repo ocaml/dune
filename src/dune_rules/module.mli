@@ -7,7 +7,8 @@ module File : sig
 
   val dialect : t -> Dialect.t
   val path : t -> Path.t
-  val make : Dialect.t -> Path.t -> t
+  val original_path : t -> Path.t
+  val make : ?original_path:Path.t -> Dialect.t -> Path.t -> t
 end
 
 module Kind : sig
@@ -15,7 +16,7 @@ module Kind : sig
     | Intf_only
     | Virtual
     | Impl
-    | Alias of Module_name.Path.t
+    | Alias of Module_name.t list
     | Impl_vmodule
     | Wrapped_compat
     | Root
@@ -34,6 +35,7 @@ module Source : sig
   val make : impl:File.t option -> intf:File.t option -> Module_name.Path.t -> t
   val has : t -> ml_kind:Ml_kind.t -> bool
   val files : t -> File.t list
+  val files_by_ml_kind : t -> File.t option Ml_kind.Dict.t
   val path : t -> Module_name.Path.t
   val to_dyn : t -> Dyn.t
   val src_dir : t -> Path.t
@@ -52,6 +54,7 @@ val of_source : visibility:Visibility.t -> kind:Kind.t -> Source.t -> t
 val name : t -> Module_name.t
 val path : t -> Module_name.Path.t
 val source : t -> ml_kind:Ml_kind.t -> File.t option
+val source_without_pp : t -> ml_kind:Ml_kind.t -> Path.t option
 val pp_flags : t -> (string list Action_builder.t * Sandbox_config.t) option
 val install_as : t -> Path.Local.t option
 val file : t -> ml_kind:Ml_kind.t -> Path.t option
@@ -61,7 +64,7 @@ val has : t -> ml_kind:Ml_kind.t -> bool
 val set_obj_name : t -> Module_name.Unique.t -> t
 val set_path : t -> Module_name.Path.t -> t
 val add_file : t -> Ml_kind.t -> File.t -> t
-val set_source : t -> Ml_kind.t -> File.t option -> t
+val set_source : t -> ml_kind:Ml_kind.t -> File.t option -> t
 
 (** Set preprocessing flags *)
 val set_pp : t -> (string list Action_builder.t * Sandbox_config.t) option -> t
@@ -88,7 +91,6 @@ end
 
 val sources : t -> Path.t list
 val sources_without_pp : t -> Path.t list
-val source_without_pp : ml_kind:Ml_kind.t -> t -> Path.t option
 val visibility : t -> Visibility.t
 val encode : t -> src_dir:Path.t -> Dune_lang.t list
 val decode : src_dir:Path.t -> t Dune_lang.Decoder.t
@@ -111,6 +113,7 @@ val generated
   :  ?install_as:Path.Local.t
   -> ?obj_name:Module_name.Unique.t
   -> kind:Kind.t
+  -> for_:Compilation_mode.t
   -> src_dir:Path.Build.t
   -> Module_name.Path.t
   -> t

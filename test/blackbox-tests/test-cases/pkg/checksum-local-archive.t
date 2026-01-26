@@ -1,7 +1,5 @@
 Make sure that we verify archives of local archives
 
-  $ . ./helpers.sh
-
   $ make_lockdir
 
   $ touch foo.tar.gz

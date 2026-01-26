@@ -1,7 +1,6 @@
 Test that extra files associated with a package are handled correctly when
 multiple different versions of the package are present in the lockdir.
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

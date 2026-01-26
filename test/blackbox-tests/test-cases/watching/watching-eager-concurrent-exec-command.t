@@ -10,7 +10,6 @@ testing the --no-build option:
   $ dune build README.md --watch &
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
 
 Make sure the RPC server is properly started:
   $ dune rpc ping --wait
@@ -33,14 +32,10 @@ Demonstrate running an executable from PATH:
   executable's name within your PATH only.
   bar
 
-Demonstrate printing a warning if arguments are passed that would be ignored
-due to how Dune builds via RPC:
-  $ dune exec --force ./foo.exe 2>&1 | tr '\n' ' ' | sed 's/(pid: [0-9]*)/(pid: PID)/'
-  Warning: Your build request is being forwarded to a running Dune instance (pid: PID). Note that certain command line arguments may be ignored. foo 
-
 Demonstrate trying to run exec in watch mode while another watch server is running:
   $ dune exec ./foo.exe --watch 2>&1 | tr '\n' ' ' | sed 's/(pid: [0-9]*)/(pid: PID)/'
   Error: Another instance of dune (pid: PID) has locked the _build directory. Refusing to start a new watch server until no other instances of dune are running. 
+  [1]
 
 Demonstrate running an executable via an absolute path:
   $ dune exec $(which echo) "baz"

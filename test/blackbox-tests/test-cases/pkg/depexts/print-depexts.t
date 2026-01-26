@@ -1,6 +1,5 @@
 Show that the depexts that a project has can be printed.
 
-  $ . ../helpers.sh
   $ mkrepo
 
 Make a project:

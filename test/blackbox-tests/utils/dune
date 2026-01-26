@@ -3,6 +3,11 @@
  (modules dune_cmd)
  (libraries stdune re dune-configurator build_path_prefix_map str unix))
 
+(executable
+ (name action_trace)
+ (modules action_trace)
+ (libraries stdune unix csexp dune_action_trace))
+
 (ocamllex dunepp)
 
 (executable
@@ -31,3 +36,16 @@
 (executable
  (modules ocamlformat)
  (name ocamlformat))
+
+(rule
+ (alias runtest)
+ (deps fakegit.sh)
+ (action
+  (run %{bin:bash} -n %{deps})))
+
+(rule
+ (alias runtest)
+ (enabled_if %{bin-available:shellcheck})
+ (deps fakegit.sh)
+ (action
+  (run %{bin:shellcheck} -s bash %{deps})))

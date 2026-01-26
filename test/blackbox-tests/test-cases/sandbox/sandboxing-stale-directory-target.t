@@ -20,3 +20,4 @@ A faulty test escapes the sandbox by creating its target outside the sandbox
   build directory
   Hint: delete this file manually or check the permissions of the parent
   directory of this file
+  [1]

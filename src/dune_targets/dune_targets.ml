@@ -102,20 +102,6 @@ module Validated = struct
       ; "dirs", Filename.Set.to_dyn dirs
       ]
   ;;
-
-  let to_trace_args { root; files; dirs } =
-    let mkset s xs =
-      if Filename.Set.is_empty xs
-      then []
-      else
-        [ ( s
-          , `List
-              (Filename.Set.to_list_map xs ~f:(fun x ->
-                 `String (Path.Build.relative root x |> Path.Build.to_string))) )
-        ]
-    in
-    mkset "target_files" files @ mkset "target_dirs" dirs
-  ;;
 end
 
 module Validation_result = struct
@@ -210,7 +196,6 @@ module Produced = struct
              |> Path.Source.to_string_maybe_quoted)
         ]
       | Unreadable_dir (dir, (unix_error, _, _)) ->
-        (* CR-soon amokhov: This case is untested. *)
         [ Pp.textf
             "Rule produced unreadable directory %S"
             (Path.Build.drop_build_context_maybe_sandboxed_exn dir
@@ -218,7 +203,6 @@ module Produced = struct
         ; Pp.verbatim (Unix.error_message unix_error)
         ]
       | Unsupported_file (file, kind) ->
-        (* CR-soon amokhov: This case is untested. *)
         [ Pp.textf
             "Rule produced file %S with unrecognised kind %S"
             (Path.Build.drop_build_context_maybe_sandboxed_exn file
@@ -501,14 +485,11 @@ module Produced = struct
     Digest.generic (all_digests "ignored" contents)
   ;;
 
-  exception Short_circuit
-
   (* The odd type of [d] and [f] is due to the fact that [map_with_errors]
      is used for a variety of things, not all "map-like". *)
   let map_with_errors
         ?(d : (Path.Build.t -> (unit, 'e) result) option)
         ~(f : Path.Build.t -> ('b, 'e) result)
-        ~all_errors
         { root; contents }
     =
     let errors = ref [] in
@@ -517,7 +498,7 @@ module Produced = struct
       | Ok s -> Some s
       | Error e ->
         errors := (path, e) :: !errors;
-        if all_errors then None else raise_notrace Short_circuit
+        None
     in
     let rec aux path { files; subdirs } =
       let files =
@@ -534,15 +515,10 @@ module Produced = struct
        | Some f ->
          (match f path with
           | Ok () -> ()
-          | Error e ->
-            errors := (path, e) :: !errors;
-            if all_errors then () else raise_notrace Short_circuit));
+          | Error e -> errors := (path, e) :: !errors));
       { files; subdirs }
     in
-    let result =
-      try { root; contents = aux root contents } with
-      | Short_circuit -> { root; contents = empty }
-    in
+    let result = { root; contents = aux root contents } in
     match Nonempty_list.of_list !errors with
     | None -> Ok result
     | Some list -> Error list

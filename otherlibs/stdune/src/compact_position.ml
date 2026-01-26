@@ -11,7 +11,7 @@ module Position = struct
   let small_enough =
     let max_size = 1 lsl field_size in
     let test int = int <= max_size in
-    fun [@inline] { Lexing.pos_bol; pos_cnum; pos_lnum; pos_fname = _ } ->
+    fun[@inline] { Lexing.pos_bol; pos_cnum; pos_lnum; pos_fname = _ } ->
       test pos_bol && test pos_cnum && test pos_lnum
   ;;
 
@@ -75,7 +75,7 @@ module Same_line_loc = struct
 
   let small_enough =
     let max_size = 1 lsl field_size in
-    fun [@inline] int -> int <= max_size
+    fun[@inline] int -> int <= max_size
   ;;
 
   let[@inline] to_loc t ~fname:pos_fname =

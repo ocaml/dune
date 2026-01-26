@@ -1,7 +1,5 @@
 Demonstrate how dune handles project dependency cycles in the same project
 
-  $ . ./helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

@@ -46,6 +46,7 @@ module Tests : sig
     ; executable_link_flags : Ordered_set_lang.Unexpanded.t
     ; backend : (Loc.t * Lib_name.t) option
     ; libraries : (Loc.t * Lib_name.t) list
+    ; arguments : (Loc.t * Lib_name.t) list
     ; enabled_if : Blang.t
     }
 

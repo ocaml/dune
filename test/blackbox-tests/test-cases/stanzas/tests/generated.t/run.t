@@ -1,5 +1,9 @@
   $ dune runtest
   File "generated.expected", line 1, characters 0-0:
-  Error: Files _build/default/generated.expected and
-  _build/default/generated.exe.output differ.
+  --- generated.expected
+  +++ generated.exe.output
+  @@ -1,2 +1,2 @@
+   foo
+  -bar
+  +baz
   [1]

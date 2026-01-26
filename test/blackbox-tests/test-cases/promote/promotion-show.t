@@ -83,9 +83,17 @@ actually create promotable files.
 
   $ dune runtest 2>&1
   File "a.expected", line 1, characters 0-0:
-  Error: Files _build/default/a.expected and _build/default/a.actual differ.
+  --- a.expected
+  +++ a.actual
+  @@ -1 +1 @@
+  -A expected
+  +A actual
   File "b.expected", line 1, characters 0-0:
-  Error: Files _build/default/b.expected and _build/default/b.actual differ.
+  --- b.expected
+  +++ b.actual
+  @@ -1 +1 @@
+  -B expected
+  +B actual
   [1]
 
 === TEST: Show corrected contents of a single file ===
@@ -253,5 +261,5 @@ This 'diff?' rule also doesn't create a promotion entry.
 When multiple files have no promotions available, each gets a warning.
 
   $ dune promotion show multi.expected empty.expected
-  Warning: Nothing to promote for multi.expected.
   Warning: Nothing to promote for empty.expected.
+  Warning: Nothing to promote for multi.expected.

@@ -23,8 +23,15 @@ variable. This is only the case since mdx 2.1.0.
 
   $ dune runtest --auto-promote
   File "README.md", line 1, characters 0-0:
-  Error: Files _build/default/README.md and
-  _build/default/.mdx/README.md.corrected differ.
+  --- README.md
+  +++ .mdx/README.md.corrected
+  @@ -1,5 +1,6 @@
+   ```ocaml
+   # "a";;
+  +- : string = "a"
+   ```
+   
+   ```ocaml non-deterministic
   Promoting _build/default/.mdx/README.md.corrected to README.md.
   [1]
 
@@ -42,8 +49,14 @@ variable. This is only the case since mdx 2.1.0.
 
   $ MDX_RUN_NON_DETERMINISTIC=1 dune runtest --auto-promote
   File "README.md", line 1, characters 0-0:
-  Error: Files _build/default/README.md and
-  _build/default/.mdx/README.md.corrected differ.
+  --- README.md
+  +++ .mdx/README.md.corrected
+  @@ -5,4 +5,5 @@
+   
+   ```ocaml non-deterministic
+   # "b";;
+  +- : string = "b"
+   ```
   Promoting _build/default/.mdx/README.md.corrected to README.md.
   [1]
 

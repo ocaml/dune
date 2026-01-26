@@ -8,3 +8,4 @@ c_names with overlapping names in different stanzas
   definition at dune:9.
   Hint: You can avoid the name clash by renaming one of the objects, or by
   placing it into a different directory.
+  [1]

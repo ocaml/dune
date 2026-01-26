@@ -1,7 +1,7 @@
 open Import
 open Memo.O
 module Gen_rules = Build_config.Gen_rules
-module Context_type = Gen_rules.Context_type
+module Context_type = Build_config.Context_type
 module Build_only_sub_dirs = Gen_rules.Build_only_sub_dirs
 
 module type Rule_generator = Gen_rules.Rule_generator
@@ -92,7 +92,7 @@ let get_dir_triage ~dir =
       | Error unix_error ->
         User_warning.emit
           [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
-          ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
+          ; Unix_error.Detailed.pp_reason unix_error
           ];
         Filename.Set.empty
       | Ok filenames ->
@@ -205,7 +205,7 @@ let remove_old_artifacts
         match kind with
         | Unix.S_DIR ->
           if not (Subdir_set.mem subdirs_to_keep fn) then Path.rm_rf (Path.build path)
-        | _ -> Path.unlink_exn (Path.build path)))
+        | _ -> Fpath.unlink_exn (Path.Build.to_string path)))
 ;;
 
 (* We don't remove files in there as we don't know upfront if they are stale or
@@ -874,10 +874,7 @@ end = struct
   ;;
 
   let load_dir_impl ~dir : Loaded.t Memo.t =
-    if !Clflags.debug_load_dir
-    then
-      Console.print_user_message
-        (User_message.make [ Pp.textf "Loading build directory %s" (Path.to_string dir) ]);
+    Dune_trace.emit Debug (fun () -> Dune_trace.Event.load_dir dir);
     get_dir_triage ~dir
     >>= function
     | Known l -> Memo.return l

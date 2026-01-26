@@ -60,6 +60,23 @@ let copy_interface ~sctx ~dir ~obj_dir ~cm_kind m =
             ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:cmi_kind)))
 ;;
 
+let melange_js_basename m =
+  match Module.file ~ml_kind:Impl m with
+  | Some s ->
+    (* we aren't using Filename.extension because we want to handle
+       filenames such as foo.pp.ml *)
+    (match String.lsplit2 (Path.basename s) ~on:'.' with
+     | None ->
+       Code_error.raise
+         "could not extract module name from file path"
+         [ "module", Module.to_dyn m ]
+     | Some (module_name, _) -> module_name)
+  | None ->
+    Code_error.raise
+      "could not find melange source from module"
+      [ "module", Module.to_dyn m ]
+;;
+
 let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) module_ =
   match cm_kind with
   | Ocaml (Cmi | Cmo | Cmx) | Melange Cmi -> []
@@ -72,7 +89,10 @@ let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) m
     in
     let mel_package_name, mel_package_output =
       let package_output =
-        Module.file ~ml_kind:Impl module_ |> Option.value_exn |> Path.parent_exn
+        Module.source ~ml_kind:Impl module_
+        |> Option.value_exn
+        |> Module.File.original_path
+        |> Path.parent_exn
       in
       match Compilation_context.melange_package_name cctx with
       | None -> [], package_output
@@ -104,14 +124,14 @@ let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) m
       :: A "--mel-package-output"
       :: Command.Args.Path mel_package_output
       :: A "--mel-module-name"
-      :: A (Melange.js_basename module_)
+      :: A (melange_js_basename module_)
       :: mel_package_name
     else
       Command.Args.A "--bs-stop-after-cmj"
       :: A "--bs-package-output"
       :: Command.Args.Path mel_package_output
       :: A "--bs-module-name"
-      :: A (Melange.js_basename module_)
+      :: A (melange_js_basename module_)
       :: mel_package_name
 ;;
 
@@ -254,14 +274,11 @@ let build_cm
         Resolve.Memo.read (Compilation_context.parameters cctx)
         >>| List.concat_map ~f:(fun m -> [ "-parameter"; Module_name.to_string m ]))
    in
-   let flags, sandbox =
-     let flags =
-       Command.Args.dyn (Ocaml_flags.get (Compilation_context.flags cctx) mode)
-     in
+   let flags = Command.Args.dyn (Ocaml_flags.get (Compilation_context.flags cctx) mode) in
+   let pp_flags, sandbox =
      match Module.pp_flags m with
-     | None -> flags, sandbox
-     | Some (pp, sandbox') ->
-       S [ flags; Command.Args.dyn pp ], Sandbox_config.inter sandbox sandbox'
+     | None -> Command.Args.empty, sandbox
+     | Some (pp, sandbox') -> Command.Args.dyn pp, Sandbox_config.inter sandbox sandbox'
    in
    let output =
      match phase with
@@ -301,6 +318,7 @@ let build_cm
             ~dir:(Path.build (Context.build_dir ctx))
             compiler
             [ flags
+            ; pp_flags
             ; cmt_args
             ; Command.Args.S obj_dirs
             ; Command.Args.as_any
@@ -314,12 +332,6 @@ let build_cm
             ; opaque_arg
             ; As (Fdo.phase_flags phase)
             ; opens
-            ; As
-                (match Compilation_context.stdlib cctx with
-                 | None -> []
-                 | Some _ ->
-                   (* XXX why aren't these just normal library flags? *)
-                   [ "-nopervasives"; "-nostdlib" ])
             ; A "-o"
             ; Target output
             ; A "-c"
@@ -470,7 +482,7 @@ module Alias_module = struct
   type t =
     { aliases : alias list
     ; shadowed : Module_name.t list
-    ; instances : Parameterised_rules.instances list
+    ; instances : Parameterised_instances.t
     }
 
   let to_ml { aliases; shadowed; instances } =
@@ -491,7 +503,7 @@ module Alias_module = struct
         b
         "\nmodule %s = struct end\n[@@deprecated \"this module is shadowed\"]\n"
         (Module_name.to_string shadowed));
-    Parameterised_rules.print_instances b instances;
+    Parameterised_instances.print_instances b instances;
     Buffer.contents b
   ;;
 
@@ -521,11 +533,7 @@ let build_alias_module cctx group =
   let* () =
     let alias_file =
       let open Action_builder.O in
-      let+ instances =
-        match Compilation_context.instances cctx with
-        | None -> Action_builder.return []
-        | Some instances -> Resolve.Memo.read instances
-      in
+      let+ instances = Compilation_context.instances cctx in
       let project = Compilation_context.scope cctx |> Scope.project in
       let modules = Compilation_context.modules cctx in
       Alias_module.of_modules project modules group instances |> Alias_module.to_ml
@@ -555,9 +563,13 @@ let root_source entries =
 ;;
 
 let build_root_module cctx root_module =
+  let for_ = Compilation_context.for_ cctx in
   let sctx = Compilation_context.super_context cctx in
   let entries =
-    Root_module.entries sctx ~requires_compile:(Compilation_context.requires_compile cctx)
+    Root_module.entries
+      sctx
+      ~requires_compile:(Compilation_context.requires_compile cctx)
+      ~for_
   in
   let cctx = Compilation_context.for_root_module cctx root_module in
   let file = Option.value_exn (Module.file root_module ~ml_kind:Impl) in

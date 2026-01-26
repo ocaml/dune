@@ -1,8 +1,6 @@
 This test verifies the @pkg-install alias outputs the build progress when
 --display is short or verbose.
 
-  $ . ./helpers.sh
-
 Add a lock file for a fake library foo:
   $ make_lockdir
   $ make_lockpkg foo <<EOF

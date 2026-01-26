@@ -18,7 +18,7 @@ module Exec_result : sig
         (* The set can be derived from the facts by getting the keys of the
            facts map. We don't do it because conversion isn't free *)
         (Dep.Set.t * Dep.Facts.t) list
-    ; duration : float option
+    ; duration : Time.Span.t option
     }
 
   type t = (ok, Error.t list) Result.t

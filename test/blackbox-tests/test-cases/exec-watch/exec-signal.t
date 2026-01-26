@@ -19,7 +19,7 @@ since it shouldn't affect dune's other functions.
 
   $ cat > touch.ml <<EOF
   > let touch path =
-  >  let fd = Unix.openfile path [ Unix.O_CREAT ] 0o777 in
+  >  let fd = Unix.openfile path [ Unix.O_CREA; O_CLOEXEC ] 0o777 in
   >  Unix.close fd
   > ;;
   > EOF

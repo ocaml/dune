@@ -204,6 +204,7 @@ module Env : sig
     -> extensions:(Syntax.t * Syntax.Version.t) list
     -> t
 
+  val package_enabled_if : t
   val add_user_vars : t -> string list -> t
   val parse : t -> Template.Pform.t -> pform
 

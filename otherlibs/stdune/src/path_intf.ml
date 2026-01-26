@@ -41,7 +41,6 @@ module type S = sig
   val is_root : t -> bool
   val parent_exn : t -> t
   val parent : t -> t option
-  val unlink_no_err : t -> unit
 end
 
 (** [Unspecified.w] is a type-level placeholder of an unspecified path. (see
@@ -117,6 +116,4 @@ module type Local_gen = sig
       -> string list
       -> ('w t, [ `Outside_the_workspace ]) Result.t
   end
-
-  val unlink_no_err : 'w t -> unit
 end

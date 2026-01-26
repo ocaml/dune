@@ -46,21 +46,21 @@ module Mask = struct
   ;;
 
   let of_only_packages_mask mask =
-    match mask with
-    | None -> True
-    | Some visible_pkgs ->
+    match Only_packages.enumerate mask with
+    | `All -> True
+    | `Set visible_pkgs ->
       Fun
         (fun stanza ->
           match Stanzas.stanza_package stanza with
           | None -> true
           | Some package ->
             let name = Package.Id.name package in
-            Package.Name.Map.mem visible_pkgs name)
+            Package.Name.Set.mem visible_pkgs name)
   ;;
 
   let is_promoted_rule =
     let is_promoted_mode version = function
-      | Rule.Mode.Promote { only = None; lifetime; _ } ->
+      | Rule_mode.Promote { only = None; lifetime; _ } ->
         if version >= (3, 5)
         then (
           match lifetime with

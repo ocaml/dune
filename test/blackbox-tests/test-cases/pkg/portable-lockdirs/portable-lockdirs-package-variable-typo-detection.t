@@ -1,6 +1,5 @@
 Detect common typos with package variables when describing platforms to solve for.
 
-  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 

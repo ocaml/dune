@@ -29,8 +29,7 @@ Test private virtual libraries and implementations
   > (library
   >  (name timeJs)
   >  (implements the_lib)
-  >  (modes melange)
-  >  (preprocess (pps melange.ppx)))
+  >  (modes melange))
   > EOF
   $ cat > js_impl/virt.ml <<EOF
   > let gettimeofday : unit -> float = fun () -> 42.

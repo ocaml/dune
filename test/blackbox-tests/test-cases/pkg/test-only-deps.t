@@ -1,6 +1,5 @@
 Test that we can identify the test-only locked dependencies of a package
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ mkpkg a 0.0.1 <<EOF

@@ -1,7 +1,6 @@
 Test the installation of toolchains package by building and installing
 a mock compiler package using dune's toolchain mechanism.
 
-  $ . ./helpers.sh
   $ make_lockdir
 
   $ mkdir fake-compiler
@@ -73,12 +72,13 @@ variable which includes the test sandbox path which is different each
 time the tests runs. Strip the hash out of the toolchain directory
 name so the output is consistent across test runs.
   $ remove_hash() {
-  >   sed 's/\(ocaml-base-compiler.1-\)[^/]*/\1HASH/'
+  >   dune_cmd subst 'ocaml-base-compiler.1-[^/]+' 'ocaml-base-compiler.1-HASH'
   > }
 
-Attempt to build the project. This will fail due to the fake compiler
+Attempt to build the project. This will fail due to the fake compiler,
 but the fake compiler will end up installed as a toolchain package.
-  $ XDG_CACHE_HOME=$PWD/fake-cache DUNE_CONFIG__TOOLCHAINS=enabled build_pkg ocaml-base-compiler 2>&1 | remove_hash
+Also test that XDG_CACHE_HOME is respected.
+  $ XDG_CACHE_HOME=$PWD/fake-cache DUNE_CONFIG__TOOLCHAINS=enabled build_pkg ocaml-base-compiler
 
 Enumerate the contents of the fake toolchains directory:
   $ find fake-cache/dune/toolchains | sort | remove_hash
@@ -87,3 +87,14 @@ Enumerate the contents of the fake toolchains directory:
   fake-cache/dune/toolchains/ocaml-base-compiler.1-HASH/target
   fake-cache/dune/toolchains/ocaml-base-compiler.1-HASH/target/bin
   fake-cache/dune/toolchains/ocaml-base-compiler.1-HASH/target/bin/ocamlc
+
+Also test that DUNE_CACHE_ROOT is respected.
+  $ DUNE_CACHE_ROOT=$PWD/other-fake-cache DUNE_CONFIG__TOOLCHAINS=enabled build_pkg ocaml-base-compiler
+
+Enumerate the contents of the fake toolchains directory:
+  $ find other-fake-cache/toolchains/ | sort | remove_hash
+  other-fake-cache/toolchains/
+  other-fake-cache/toolchains/ocaml-base-compiler.1-HASH
+  other-fake-cache/toolchains/ocaml-base-compiler.1-HASH/target
+  other-fake-cache/toolchains/ocaml-base-compiler.1-HASH/target/bin
+  other-fake-cache/toolchains/ocaml-base-compiler.1-HASH/target/bin/ocamlc

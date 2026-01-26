@@ -18,7 +18,7 @@ include (
     let of_string_opt name =
       if
         name = ""
-        || String.is_prefix name ~prefix:"."
+        || String.starts_with ~prefix:"." name
         || name = "log"
         || String.contains name '/'
         || String.contains name '\\'

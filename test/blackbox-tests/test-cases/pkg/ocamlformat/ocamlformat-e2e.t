@@ -1,6 +1,5 @@
 Exercises end to end, locking and building ocamlformat dev tool.
 
-  $ . ./helpers.sh
   $ mkrepo
 
   $ make_fake_ocamlformat "0.26.2"
@@ -28,8 +27,11 @@ OCamlFormat.
   Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.3
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1 @@
+  -let () = print_endline "Hello, world"
+  +formatted with version 0.26.3
   [1]
   $ cat _build/default/.formatted/foo.ml
   formatted with version 0.26.3
@@ -49,8 +51,11 @@ file.
   Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.2
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1 @@
+  -let () = print_endline "Hello, world"
+  +formatted with version 0.26.2
   [1]
   $ cat _build/default/.formatted/foo.ml
   formatted with version 0.26.2
@@ -58,8 +63,11 @@ file.
 Formating a second time would not trigger the lock/solve.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt --preview
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1 @@
+  -let () = print_endline "Hello, world"
+  +formatted with version 0.26.2
   [1]
   $ cat _build/default/.formatted/foo.ml
   formatted with version 0.26.2
@@ -71,6 +79,9 @@ When the lock dir is removed, the solving/lock is renewed:
   Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.2
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1 @@
+  -let () = print_endline "Hello, world"
+  +formatted with version 0.26.2
   [1]

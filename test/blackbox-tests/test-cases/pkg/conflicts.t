@@ -1,6 +1,5 @@
 The solver should repsect the (conflicts) field of the (package) stanza.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ mkpkg foo 0.0.1
   $ mkpkg bar << EOF
@@ -60,7 +59,7 @@ When conflicts are obtained from an opam file instead of a dune-project,
 the behaviour should be the same:
 
   $ dune build x.opam
-  $ sed -n '/conflicts/,/]/p' x.opam
+  $ dune_cmd print-from 'conflicts' < x.opam | dune_cmd print-until ']'
   conflicts: [
     "foo" {< "0.2"}
     "foo2" {< "0.2"}
@@ -70,7 +69,7 @@ Even though the conflicts are listed by opam without a `|` to indicate a
 disjunction, either package is problematic:
 
   $ mkpkg dune 3.11
-  $ echo '(lang dune 3.11)' | solve_project 2>&1 | sed -E 's/3.[0-9]+/3.XX/'
+  $ echo '(lang dune 3.11)' | solve_project 2>&1 | dune_cmd subst '3.[0-9]+' '3.XX'
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
@@ -84,11 +83,12 @@ disjunction, either package is problematic:
   - foo2 -> (problem)
       No usable implementations:
         foo2.0.0.1: Package does not satisfy constraints of local package x
+  [1]
 
 Adding a new version of `foo` only resolves one conflict:
 
   $ mkpkg foo 0.2
-  $ echo '(lang dune 3.11)' | solve_project 2>&1 | sed -E 's/3.[0-9]+/3.XX/'
+  $ echo '(lang dune 3.11)' | solve_project 2>&1 | dune_cmd subst '3.[0-9]+' '3.XX'
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
@@ -99,6 +99,7 @@ Adding a new version of `foo` only resolves one conflict:
   - foo2 -> (problem)
       No usable implementations:
         foo2.0.0.1: Package does not satisfy constraints of local package x
+  [1]
 
 Addition of `foo2` to solve the last remaining conflict:
 

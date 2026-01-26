@@ -13,8 +13,9 @@ val run
   -> dir:Path.t
   -> script:Path.t
   -> output:Path.Build.t
-  -> timeout:(Loc.t * float) option
+  -> timeout:(Loc.t * Time.Span.t) option
   -> setup_scripts:Path.t list
+  -> Cram_stanza.Shell.t
   -> Action.t
 
 (** Produces a diff if [src] needs to be updated *)

@@ -62,7 +62,6 @@ end
 
 type t =
   { fd : Unix.file_descr
-  ; log_error : string -> unit
   ; watch_table : (Inotify_watch.t, string) Table.t
   ; path_table : (string, Inotify.watch) Table.t
   ; send_emit_events_job_to_scheduler : (unit -> Event.t list) -> unit
@@ -98,13 +97,14 @@ let process_raw_events t events =
       else (
         match Table.find watch_table watch with
         | None ->
-          t.log_error
-            (sprintf
-               "Events for an unknown watch (%d) [%s]\n"
-               (Inotify.int_of_watch watch)
-               (String.concat
-                  ~sep:", "
-                  (List.map ev_kinds ~f:Inotify.string_of_event_kind)));
+          Dune_console.print
+            [ Pp.verbatimf
+                "Events for an unknown watch (%d) [%s]\n"
+                (Inotify.int_of_watch watch)
+                (String.concat
+                   ~sep:", "
+                   (List.map ev_kinds ~f:Inotify.string_of_event_kind))
+            ];
           []
         | Some path ->
           let fn =
@@ -150,22 +150,20 @@ let process_raw_events t events =
 
 let pump_events t ~spawn_thread =
   let fd = t.fd in
-  spawn_thread (fun () ->
-    while true do
-      match UnixLabels.select ~read:[ fd ] ~write:[] ~except:[] ~timeout:(-1.) with
-      | _, _, _ ->
-        let events = Inotify.read fd in
-        t.send_emit_events_job_to_scheduler (fun () -> process_raw_events t events)
-      | exception Unix.Unix_error (EINTR, _, _) -> ()
-    done)
+  let (_ : Thread.t) =
+    spawn_thread (fun () ->
+      while true do
+        match UnixLabels.select ~read:[ fd ] ~write:[] ~except:[] ~timeout:(-1.) with
+        | _, _, _ ->
+          let events = Inotify.read fd in
+          t.send_emit_events_job_to_scheduler (fun () -> process_raw_events t events)
+        | exception Unix.Unix_error (EINTR, _, _) -> ()
+      done)
+  in
+  ()
 ;;
 
-let create
-      ~spawn_thread
-      ~modify_event_selector
-      ~log_error
-      ~send_emit_events_job_to_scheduler
-  =
+let create ~spawn_thread ~modify_event_selector ~send_emit_events_job_to_scheduler =
   let fd = Inotify.create () in
   let watch_table = Table.create (module Inotify_watch) 10 in
   let modify_selector : Inotify.selector =
@@ -179,7 +177,6 @@ let create
     ; path_table = Table.create (module String) 10
     ; select_events =
         [ S_Create; S_Delete; modify_selector; S_Move_self; S_Moved_from; S_Moved_to ]
-    ; log_error
     ; send_emit_events_job_to_scheduler
     }
   in

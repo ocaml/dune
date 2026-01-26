@@ -53,8 +53,8 @@ let rec decode_one =
   let not_or a = not (Or a) in
   fun f ->
     let open Decoder in
-    let bool_ops () =
-      sum [ "or", many f or_ []; "and", many f and_ []; "not", many f not_or [] ]
+    let bool_ops =
+      lazy (sum [ "or", many f or_ []; "and", many f and_ []; "not", many f not_or [] ])
     in
     let elt =
       let+ e = f in
@@ -79,7 +79,7 @@ let rec decode_one =
          User_error.raise
            ~loc
            [ Pp.text ":include isn't supported in the predicate language" ]
-       | "or" | "and" | "not" -> bool_ops ()
+       | "or" | "and" | "not" -> Lazy.force bool_ops
        | s when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
          User_error.raise
            ~loc

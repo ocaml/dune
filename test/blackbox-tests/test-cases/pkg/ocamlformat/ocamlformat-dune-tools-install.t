@@ -1,7 +1,6 @@
 Test that checks the interaction of `dune fmt` with `dune tools install
 ocamlformat`.
 
-  $ . ./helpers.sh
   $ mkrepo
 
 Set up a ocamlformat via OPAM package:
@@ -53,17 +52,22 @@ Formatting should use the locked ocamlformat with the feature flag enabled:
 
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt --preview
   File "foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
-  differ.
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1 @@
+  -let () = print_endline "Hello, world"
+  +formatted with version 0.26.2
   [1]
 
 It should also use the locked dev tool when the feature flag is not passed:
 
   $ dune fmt --preview
-  ocamlformat from PATH, not pkg
-  -> required by _build/default/.formatted/foo.ml
-  -> required by alias .formatted/fmt
-  -> required by alias fmt
+  File "foo.ml", line 1, characters 0-0:
+  --- foo.ml
+  +++ .formatted/foo.ml
+  @@ -1 +1 @@
+  -let () = print_endline "Hello, world"
+  +formatted with version 0.26.2
   [1]
 
 It should use the ocamlformat from PATH when the lock dir is deleted:

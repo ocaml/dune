@@ -1,8 +1,5 @@
 Multiple opam repositories that define the same package:
 
-  $ . ../git-helpers.sh
-  $ . ./helpers.sh
-
   $ pkg="packages/foo"
   $ mkdir -p repo1/$pkg repo2/$pkg
 
@@ -60,7 +57,6 @@ Define 1.0.0 in repo1 and 2.0.0 in repo2 for the same package:
   
   (build
    (all_platforms ((action (run echo repo2)))))
-
 
 We define 2.0.0 in both repo1 and repo2, but repo1 is listed first, so it
 should take priority

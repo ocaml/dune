@@ -56,7 +56,8 @@ let to_string ~sep string_of_name t =
 let to_module_name t =
   let applied_name = to_string ~sep:'-' Module_name.to_string t in
   let module_name = Module_name.of_string_allow_invalid (Loc.none, applied_name) in
-  Module_name.Unique.of_name_assuming_needs_no_mangling module_name
+  Module_name.Unique.of_name_assuming_needs_no_mangling
+    (Module_name.Unchecked.allow_invalid module_name)
 ;;
 
 let to_string = to_string ~sep:'!' Lib_name.to_string

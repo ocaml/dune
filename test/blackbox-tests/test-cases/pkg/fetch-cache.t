@@ -1,7 +1,5 @@
 Testing that files are only fetched once.
 
-  $ . ./helpers.sh
-
 No need to set DUNE_CACHE (enabled by default) as the
 fetch rules are always considered safe to cache, but we'll set a custom
 directory for the shared cache.
@@ -37,7 +35,7 @@ disabling the download of the source a second time.
 
 Make sure that the file that was fetched is in the cache:
 
-  $ find $DUNE_CACHE_ROOT/files -type f -exec md5sum {} \; | grep --quiet $CONTENT_CHECKSUM
+  $ find $DUNE_CACHE_ROOT/db/files -type f -exec md5sum {} \; | grep --quiet $CONTENT_CHECKSUM
 
 Cleaning the project to force rebuilding. If we attempt to build without the
 cache, it will fail, as the source is 404 now:

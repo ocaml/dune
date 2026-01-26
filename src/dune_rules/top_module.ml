@@ -42,6 +42,7 @@ let find_module sctx src =
          @@ fun () ->
          match origin with
          | Executables exes -> Exe_rules.rules ~sctx ~dir_contents ~scope ~expander exes
+         | Tests tests -> Exe_rules.rules ~sctx ~dir_contents ~scope ~expander tests.exes
          | Library lib -> Lib_rules.rules lib ~sctx ~dir_contents ~expander ~scope
          | Melange mel ->
            Melange_rules.setup_emit_cmj_rules ~sctx ~dir_contents ~expander ~scope mel
@@ -77,7 +78,7 @@ let gen_rules sctx ~dir:rules_dir ~comps =
   >>= function
   | None -> Memo.return ()
   | Some (module_, cctx, _merlin, _) ->
-    let module_ = Module.set_source module_ Intf None in
+    let module_ = Module.set_source module_ ~ml_kind:Intf None in
     let* () =
       (let obj_dir = Compilation_context.obj_dir cctx in
        module_deps cctx module_

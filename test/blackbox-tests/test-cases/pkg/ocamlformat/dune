@@ -1,5 +1,5 @@
 (cram
- (deps helpers.sh)
+ (setup_scripts helpers.sh)
  (applies_to :whole_subtree))
 
 (cram
@@ -9,3 +9,16 @@
 (cram
  (deps %{bin:md5sum})
  (applies_to ocamlformat-patch-extra-files))
+
+(rule
+ (alias runtest)
+ (deps helpers.sh)
+ (action
+  (run %{bin:bash} -n %{deps})))
+
+(rule
+ (alias runtest)
+ (enabled_if %{bin-available:shellcheck})
+ (deps helpers.sh)
+ (action
+  (run %{bin:shellcheck} -s bash %{deps})))

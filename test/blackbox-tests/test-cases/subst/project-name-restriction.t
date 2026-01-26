@@ -1,5 +1,3 @@
-  $ . ../git-helpers.sh
-
 dune subst requires that the project name must exist as a package. However, dune
 doesn't verify that this is the case
 

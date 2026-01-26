@@ -5,7 +5,7 @@ Applying the same setup script twice:
   > EOF
 
   $ cat >helpers.sh <<EOF
-  > if [ -n "$x" ]; then
+  > if [ -n "${x:-}" ]; then
   >   exit 1
   > else
   >   x=1
@@ -26,7 +26,12 @@ Applying the same setup script twice:
 
   $ dune runtest foo.t
   File "foo.t", line 1, characters 0-0:
-  Error: Files _build/default/foo.t and _build/default/foo.t.corrected differ.
+  --- foo.t
+  +++ foo.t.corrected
+  @@ -1,2 +1,2 @@
+     $ echo $x
+  -    1
+  +  1
   [1]
   $ dune promote
   Promoting _build/default/foo.t.corrected to foo.t.

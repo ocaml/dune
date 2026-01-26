@@ -1,7 +1,5 @@
 Test that we run the build command
 
-  $ . ./helpers.sh
-
   $ make_lockdir
   $ make_lockpkg test <<EOF
   > (version 0.0.1)

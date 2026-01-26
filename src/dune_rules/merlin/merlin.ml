@@ -147,7 +147,9 @@ module Processed = struct
       ; pp_config =
           (match
              Module_name.Per_item.of_mapping
-               [ [ Module_name.of_string "Test" ], Some { flag = Ppx; args = "-x" } ]
+               [ ( [ Module_name.of_checked_string "Test" ]
+                 , Some { flag = Ppx; args = "-x" } )
+               ]
                ~default:None
            with
            | Ok s -> s
@@ -479,9 +481,9 @@ end
 
 let obj_dir_of_lib kind mode obj_dir =
   (match kind, mode with
-   | `Private, Lib_mode.Ocaml _ -> Obj_dir.byte_dir
+   | `Private, Compilation_mode.Ocaml -> Obj_dir.byte_dir
    | `Private, Melange -> Obj_dir.melange_dir
-   | `Public, Ocaml _ -> Obj_dir.public_cmi_ocaml_dir
+   | `Public, Ocaml -> Obj_dir.public_cmi_ocaml_dir
    | `Public, Melange -> Obj_dir.public_cmi_melange_dir)
     obj_dir
 ;;
@@ -502,7 +504,7 @@ module Unprocessed = struct
     ; objs_dirs : Path.Set.t
     ; extensions : string option Ml_kind.Dict.t list
     ; readers : string list String.Map.t
-    ; mode : Lib_mode.t
+    ; for_ : Compilation_mode.t
     ; parameters : Module_name.t list Resolve.t
     }
 
@@ -523,24 +525,24 @@ module Unprocessed = struct
         ~obj_dir
         ~dialects
         ~ident
-        ~modes
+        ~for_
         ~parameters
     =
     (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
-    let mode =
-      match modes with
-      | `Exe -> Lib_mode.Ocaml Byte
-      | `Melange_emit -> Melange
-      | `Lib (m : Lib_mode.Map.Set.t) -> Lib_mode.Map.Set.for_merlin m
-    in
     let objs_dirs =
-      Path.Set.singleton @@ obj_dir_of_lib `Private mode (Obj_dir.of_local obj_dir)
+      Path.Set.singleton @@ obj_dir_of_lib `Private for_ (Obj_dir.of_local obj_dir)
     in
-    let flags = Ocaml_flags.get flags mode in
+    let flags =
+      Ocaml_flags.get
+        flags
+        (match for_ with
+         | Melange -> Melange
+         | Ocaml -> Ocaml Byte)
+    in
     let { Dialect.DB.extensions; readers } = Dialect.DB.for_merlin dialects in
     let config =
       { stdlib_dir
-      ; mode
+      ; for_
       ; requires_compile
       ; requires_hidden
       ; flags
@@ -630,11 +632,11 @@ module Unprocessed = struct
       Some { Processed.flag = Processed.Pp_kind.Ppx; args }
   ;;
 
-  let src_dirs sctx lib =
+  let src_dirs sctx lib ~for_ =
     match Lib.Local.of_lib lib with
     | None -> Lib.info lib |> Lib_info.src_dir |> Path.Set.singleton |> Memo.return
     | Some lib ->
-      Dir_contents.modules_of_local_lib sctx lib
+      Dir_contents.modules_of_local_lib sctx lib ~for_
       >>| Modules.source_dirs
       >>| Path.Set.map ~f:Path.drop_optional_build_context
   ;;
@@ -648,9 +650,9 @@ module Unprocessed = struct
       ~f:(pp_flags ctx ~expander t.config.libname)
   ;;
 
-  let add_lib_dirs sctx mode libs =
+  let add_lib_dirs sctx ~for_ libs =
     Memo.parallel_map libs ~f:(fun lib ->
-      let+ dirs = src_dirs sctx lib in
+      let+ dirs = src_dirs sctx lib ~for_ in
       lib, dirs)
     >>| List.fold_left
           ~init:(Path.Set.empty, Path.Set.empty)
@@ -658,7 +660,7 @@ module Unprocessed = struct
             ( Path.Set.union src_dirs more_src_dirs
             , let public_cmi_dir =
                 let info = Lib.info lib in
-                obj_dir_of_lib `Public mode (Lib_info.obj_dir info)
+                obj_dir_of_lib `Public for_ (Lib_info.obj_dir info)
               in
               Path.Set.add obj_dirs public_cmi_dir ))
     |> Action_builder.of_memo
@@ -677,7 +679,7 @@ module Unprocessed = struct
              ; requires_hidden
              ; preprocess = _
              ; libname = _
-             ; mode
+             ; for_
              ; parameters
              }
          } as t)
@@ -687,12 +689,13 @@ module Unprocessed = struct
         ~expander
     =
     let open Action_builder.O in
+    let context = Super_context.context sctx in
     let+ config =
       let* stdlib_dir =
         Action_builder.of_memo
         @@
-        match t.config.mode with
-        | Ocaml _ -> Memo.return (Some stdlib_dir)
+        match t.config.for_ with
+        | Ocaml -> Memo.return (Some stdlib_dir)
         | Melange ->
           let open Memo.O in
           Melange_binary.where sctx ~loc:None ~dir
@@ -704,8 +707,8 @@ module Unprocessed = struct
         let requires_compile =
           Resolve.peek requires_compile |> Result.value ~default:[]
         in
-        match t.config.mode with
-        | Ocaml _ -> Action_builder.return requires_compile
+        match t.config.for_ with
+        | Ocaml -> Action_builder.return requires_compile
         | Melange ->
           Action_builder.of_memo
             (let open Memo.O in
@@ -717,13 +720,13 @@ module Unprocessed = struct
              | Some lib ->
                let+ libs =
                  let* linking =
-                   let+ ocaml = Context.ocaml (Super_context.context sctx) in
+                   let+ ocaml = Context.ocaml context in
                    Dune_project.implicit_transitive_deps
                      (Scope.project scope)
                      ocaml.version
                    |> Dune_project.Implicit_transitive_deps.to_bool
                  in
-                 Lib.closure [ lib ] ~linking
+                 Lib.closure [ lib ] ~linking ~for_:t.config.for_
                  |> Resolve.Memo.peek
                  >>| function
                  | Ok libs -> libs
@@ -732,11 +735,11 @@ module Unprocessed = struct
                List.concat [ requires_compile; libs ])
       in
       let+ flags = flags
-      and+ indexes = Action_builder.of_memo (Ocaml_index.context_indexes sctx)
-      and+ deps_src_dirs, deps_obj_dirs = add_lib_dirs sctx mode requires_compile
+      and+ indexes = Ocaml_index.context_indexes context
+      and+ deps_src_dirs, deps_obj_dirs = add_lib_dirs sctx ~for_ requires_compile
       and+ hidden_src_dirs, hidden_obj_dirs =
         let requires_hidden = Resolve.peek requires_hidden |> Result.value ~default:[] in
-        add_lib_dirs sctx mode requires_hidden
+        add_lib_dirs sctx ~for_ requires_hidden
       in
       let parameters = Resolve.peek parameters |> Result.value ~default:[] in
       let src_dirs =
@@ -755,7 +758,7 @@ module Unprocessed = struct
       ; indexes
       ; parameters
       }
-    and+ pp_config = pp_config t (Super_context.context sctx) ~expander in
+    and+ pp_config = pp_config t context ~expander in
     let per_file_config =
       (* And copy for each module the resulting pp flags *)
       modules

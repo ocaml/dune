@@ -426,6 +426,17 @@ For customization purposes, use `dune-mode-hook'."
   (compile (format "%s build @@runtest" dune-command))
   (dune-promote))
 
+;;;###autoload
+(defun dune-find-dominating ()
+  "Find dominating dune file."
+  (interactive)
+  (if-let* ((dune-file-dir (locate-dominating-file "." "dune"))
+            (dune-file (concat dune-file-dir "dune")))
+      (progn
+        (xref-push-marker-stack)
+        (find-file dune-file))
+    (error "Found no dune file dominating %s" default-directory)))
+
 (defun dune-project-p (directory)
   "Return t if DIRECTORY is a dune project."
   (file-exists-p (expand-file-name "dune-project" directory)))

@@ -1,15 +1,14 @@
+open Import
+
 module Dune_config = struct
   open Stdune
   open Dune_lang.Decoder
   module Display = Display
-  module Scheduler = Dune_engine.Scheduler
   module Sandbox_mode = Dune_engine.Sandbox_mode
   module Console = Dune_console
   module Stanza = Dune_lang.Stanza
   module String_with_vars = Dune_lang.String_with_vars
   module Pform = Dune_lang.Pform
-  module Log = Dune_util.Log
-  module Config = Dune_config.Config
 
   (* the configuration file use the same version numbers as dune-project files for
      simplicity *)
@@ -53,7 +52,7 @@ module Dune_config = struct
 
   module Pkg_enabled = struct
     type t =
-      | Set of Loc.t * Dune_config.Config.Toggle.t
+      | Set of Loc.t * Config.Toggle.t
       | Unset
 
     let decode =
@@ -65,7 +64,7 @@ module Dune_config = struct
     let equal x y =
       match x, y with
       | Set (x_loc, x_toggle), Set (y_loc, y_toggle) ->
-        Loc.equal x_loc y_loc && Dune_config.Config.Toggle.equal x_toggle y_toggle
+        Loc.equal x_loc y_loc && Config.Toggle.equal x_toggle y_toggle
       | Set _, _ | _, Set _ -> false
       | Unset, Unset -> true
     ;;
@@ -484,7 +483,7 @@ module Dune_config = struct
 
   let default =
     { display = Simple { verbosity = Quiet; status_line = not Execution_env.inside_dune }
-    ; concurrency = (if Execution_env.inside_dune then Fixed 1 else Auto)
+    ; concurrency = Auto
     ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
     ; cache_enabled = Enabled_except_user_rules
@@ -653,6 +652,7 @@ module Dune_config = struct
       | Preserve -> ()
       | Clear_on_rebuild -> Console.reset ()
       | Clear_on_rebuild_and_flush_history -> Console.reset_flush_history ());
+    Stdune.Io.set_copy_impl Config.(get copy_file);
     Log.verbose
     := match t.display with
        | Simple { verbosity = Verbose; _ } -> true
@@ -710,19 +710,19 @@ module Dune_config = struct
          loop commands))
   ;;
 
-  let for_scheduler (t : t) ~watch_exclusions stats ~print_ctrl_c_warning =
+  let for_scheduler (t : t) ~watch_exclusions ~print_ctrl_c_warning =
     let concurrency =
       match t.concurrency with
       | Fixed i -> i
       | Auto ->
         let n = Lazy.force auto_concurrency in
-        Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
+        Log.info "Auto-detected concurrency" [ "concurrency", Dyn.int n ];
         n
     in
     (Dune_engine.Clflags.display
      := match t.display with
         | Tui -> Dune_engine.Display.Quiet
         | Simple { verbosity; _ } -> verbosity);
-    { Scheduler.Config.concurrency; stats; print_ctrl_c_warning; watch_exclusions }
+    { Scheduler.Config.concurrency; print_ctrl_c_warning; watch_exclusions }
   ;;
 end

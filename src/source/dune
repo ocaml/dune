@@ -1,8 +1,6 @@
 (library
  (name source)
  (libraries
-  chrome_trace
-  dune_config
   dune_config_file
   dune_console
   dune_digest
@@ -18,5 +16,6 @@
   memo
   ocaml_config
   predicate_lang
-  stdune)
+  stdune
+  unix)
  (synopsis "Internal Dune library, do not use!"))

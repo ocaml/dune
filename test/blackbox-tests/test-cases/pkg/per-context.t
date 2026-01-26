@@ -2,10 +2,8 @@ Set lock file per context.
 
 TODO: versioning will be added once this feature is stable
 
-  $ . ./helpers.sh
-
   $ cat >dune-workspace <<EOF
-  > (lang dune 3.8)
+  > (lang dune 3.21)
   > (context
   >  (default
   >   (lock_dir foo.lock)))
@@ -18,14 +16,29 @@ TODO: versioning will be added once this feature is stable
   $ mkdir foo.lock
   $ cat >foo.lock/lock.dune <<EOF
   > (lang package 0.1)
-  > (repositories (complete true))
   > EOF
   $ cat >foo.lock/test.pkg <<EOF
   > (version 0.0.1)
   > (build
-  >  (system "echo building from %{context_name}"))
+  >  (system "echo 'building from %{context_name}\nversion: %{pkg:test:version}'"))
   > EOF
-  $ ln -s foo.lock bar.lock
 
-  $ build_pkg test
+  $ mkdir bar.lock
+  $ cat >bar.lock/lock.dune <<EOF
+  > (lang package 0.1)
+  > EOF
+  $ cat >bar.lock/test.pkg <<EOF
+  > (version 0.0.2)
+  > (build
+  >  (system "echo 'building from %{context_name}\nversion: %{pkg:test:version}'"))
+  > EOF
+
+Build both contexts
+
+  $ dune build @@_build/default/pkg-install
   building from default
+  version: 0.0.1
+
+  $ dune build @@_build/foo/pkg-install
+  building from foo
+  version: 0.0.2

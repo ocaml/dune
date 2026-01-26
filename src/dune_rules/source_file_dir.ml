@@ -5,4 +5,5 @@ type t =
   ; path_to_root : Filename.t list
   ; files : Filename.Set.t
   ; source_dir : Source_tree.Dir.t option
+  ; stanzas : Stanza.t list
   }

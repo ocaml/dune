@@ -1,7 +1,5 @@
 Applying patches
 
-  $ . ./helpers.sh
-
   $ mkdir test-source
   $ make_lockdir
   $ make_lockpkg test <<EOF

@@ -32,6 +32,11 @@ We should be able to use menhir as a group interface:
   $ touch group/m.ml
 
   $ dune build
-  File "group/group.mly", line 2, characters 11-12:
-  Error: Unbound module M
-  [1]
+  File "group/group__mock.ml.mock", line 1:
+  Warning 63 [erroneous-printed-signature]: The printed interface differs from
+    the inferred interface. The inferred interface contained items which could
+    not be printed properly due to name collisions between identifiers.
+    File "_none_", line 1:
+    Definition of module Dune__exe__Group__/2 Beware
+    that this warning is purely informational and will not catch all instances
+    of erroneous printed interface.

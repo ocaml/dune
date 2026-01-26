@@ -1,6 +1,5 @@
 (library
  (name dune_rpc_impl_tests)
- (modules dune_rpc_impl_tests)
  (inline_tests)
  (libraries
   ; ocaml_config

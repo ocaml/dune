@@ -58,8 +58,8 @@ let install_rules ~sctx ~package_db ~dir ({ name; site = loc, (pkg, site); _ } a
         ~dst:(sprintf "%s/%s" (Package.Name.to_string name) Dune_findlib.Package.meta_fn)
         (Site { pkg; site; loc })
         (Package_db.section_of_site package_db)
-        ~kind:`File
+        ~kind:File
         meta
     in
-    [ Install.Entry.Sourced.create ~loc entry ])
+    [ Install.Entry.Sourced.Unexpanded.create ~loc entry ])
 ;;

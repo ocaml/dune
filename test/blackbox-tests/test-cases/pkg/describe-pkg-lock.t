@@ -1,4 +1,4 @@
-  $ . ./helpers.sh
+
   $ mkrepo
 
 Testing the output of the dune describe pkg lock command.

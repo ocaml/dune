@@ -55,6 +55,10 @@ struct
   let rename a b = Rename (a, b)
   let remove_tree path = Remove_tree path
   let mkdir path = Mkdir path
+
+  let diff ?(optional = false) ?(mode = Diff.Mode.Text) file1 file2 =
+    Diff { optional; file1; file2; mode }
+  ;;
 end
 
 module Prog = struct
@@ -193,6 +197,7 @@ let fold_one_step t ~init:acc ~f =
   | Rename _
   | Remove_tree _
   | Mkdir _
+  | Diff _
   | Extension _ -> acc
 ;;
 
@@ -236,6 +241,7 @@ let rec is_dynamic = function
   | Write_file _
   | Rename _
   | Remove_tree _
+  | Diff _
   | Mkdir _ -> false
   | Extension (module A) -> A.Spec.is_dynamic
 ;;
@@ -285,6 +291,7 @@ let is_useful_to memoize =
     | Write_file _ -> true
     | Rename _ -> memoize
     | Remove_tree _ -> false
+    | Diff _ -> false
     | Mkdir _ -> false
     | Run _ -> true
     | Bash _ -> true

@@ -3,7 +3,7 @@
  (libraries
   stdune
   xdg
-  dune_config
+  dune_scheduler
   dune_console
   dune_threaded_console
   dune_lang
@@ -11,8 +11,8 @@
   dune_cache_storage
   dune_engine
   dune_rpc_private
-  dune_trace
   dune_tui
   dune_util
-  spawn)
+  spawn
+  unix)
  (synopsis "Internal Dune library, do not use!"))

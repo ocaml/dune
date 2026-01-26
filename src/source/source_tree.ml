@@ -108,7 +108,7 @@ let eval_status ~status_map ~(parent_status : Source_dir_status.t) dir
 let error_unable_to_load ~path unix_error =
   User_error.raise
     [ Pp.textf "Unable to load source %s." (Path.Source.to_string_maybe_quoted path)
-    ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
+    ; Unix_error.Detailed.pp_reason unix_error
     ]
 ;;
 
@@ -194,6 +194,14 @@ and contents
   =
   let files = Dir_contents.files readdir in
   let+ dune_file = Dune_file.load ~dir:path dir_status project ~files ~parent:dune_file in
+  let files =
+    let predicate =
+      match dune_file with
+      | None -> Dune_file.Files.default
+      | Some dune_file -> Dune_file.files dune_file
+    in
+    Dune_file.Files.eval predicate ~files
+  in
   let vcs = Dir0.Vcs.get_vcs ~default:default_vcs ~readdir ~path in
   let sub_dirs =
     let sub_dirs =
@@ -352,25 +360,19 @@ module Dir = struct
         lazy
           (match Dune_trace.global () with
            | None -> map_reduce
-           | Some stats ->
+           | Some trace ->
              fun t ~traverse ~trace_event_name ~f ->
-               let start = Unix.gettimeofday () in
+               let start = Time.now () in
                let+ res = map_reduce t ~traverse ~trace_event_name ~f in
+               let stop = Time.now () in
                let event =
-                 let stop = Unix.gettimeofday () in
-                 let module Event = Chrome_trace.Event in
-                 let module Timestamp = Event.Timestamp in
-                 let dur = Timestamp.of_float_seconds (stop -. start) in
-                 let common =
-                   Event.common_fields
-                     ~name:(trace_event_name ^ ": " ^ Path.Source.to_string t.path)
-                     ~ts:(Timestamp.of_float_seconds start)
-                     ()
-                 in
-                 let args = [ "dir", `String (Path.Source.to_string t.path) ] in
-                 Event.complete common ~args ~dur
+                 Dune_trace.Event.scan_source
+                   ~name:trace_event_name
+                   ~start
+                   ~stop
+                   ~dir:t.path
                in
-               Dune_trace.emit stats event;
+               Dune_trace.Out.emit trace event;
                res)
       in
       fun t ~traverse ~trace_event_name ~f ->
@@ -432,7 +434,7 @@ let ancestor_vcs =
                   "Unable to read directory %s. Will not look for VCS root in parent \
                    directories."
                   dir
-              ; Pp.textf "Reason: %s" msg
+              ; User_error.reason (Pp.verbatim msg)
               ];
             None)
       in

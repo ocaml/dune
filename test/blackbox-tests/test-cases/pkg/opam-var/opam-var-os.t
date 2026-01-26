@@ -2,8 +2,6 @@
 # that it re-runs after an update. That's a little hard to express however, and
 # one must remember to manually force to re-run it after an upgrade.
 
-  $ . ../helpers.sh
-
 Here we test global opam variables that are system specific. Since these values change
 between systems, we can't hardcode them in the test. Instead, we use the opam var command
 to compare their values.
@@ -76,5 +74,5 @@ separately here:
   - testpkg.0.0.1
 
   $ ocaml_version="$(ocaml -vnum)"
-  $ build_pkg testpkg 2>&1 | sed "s/$ocaml_version/OCAML_VERSION/g"
+  $ build_pkg testpkg 2>&1 | dune_cmd subst "$ocaml_version" 'OCAML_VERSION'
   OCAML_VERSION

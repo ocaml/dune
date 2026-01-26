@@ -48,9 +48,9 @@ However, the compilation without `(implicit_transitive_deps)` fails:
   > EOF
 
   $ OCAMLPATH=$(pwd)/_install dune exec ./main.exe
-  File "main.ml", line 1, characters 19-24:
+  File "main.ml", line 1, characters 19-22:
   1 | let () = print_int Bar.x; print_newline ()
-                         ^^^^^
+                         ^^^
   Error: Unbound module Bar
   [1]
 

@@ -1,7 +1,6 @@
 Test that the parameters support access to the dependencies
 
-  $ . ./helpers.sh
-  $ init_project
+  $ init_oxcaml_project
 
 Creates a library that exports a module we can later import as part of the library
 

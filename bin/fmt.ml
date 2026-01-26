@@ -35,17 +35,17 @@ let run_fmt_command ~common ~config ~preview builder =
       Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts:setup.contexts dir
       |> Alias.request
     in
-    Build.run_build_system ~common ~request
+    Build.run_build_system ~request
     >>| function
     | Ok () -> ()
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
   in
   match Dune_util.Global_lock.lock ~timeout:None with
-  | Ok () -> Scheduler.go_with_rpc_server ~common ~config once
+  | Ok () -> Scheduler_setup.go_with_rpc_server ~common ~config once
   | Error lock_held_by ->
     (* The --preview flag is being ignored by the RPC server, warn the user. *)
     if preview then Rpc.Rpc_common.warn_ignore_arguments lock_held_by;
-    Scheduler.go_without_rpc_server ~common ~config (fun () ->
+    Scheduler_setup.no_build_no_rpc ~config (fun () ->
       Rpc.Rpc_common.fire_request
         ~name:"format"
         ~wait:true

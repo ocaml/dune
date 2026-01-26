@@ -1,7 +1,5 @@
 We can override the sources set by packages we're fetching:
 
-  $ . ../helpers.sh
-
   $ mkrepo
   $ add_mock_repo_if_needed
 

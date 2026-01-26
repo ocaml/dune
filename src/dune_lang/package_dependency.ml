@@ -61,7 +61,8 @@ let check_for_typo ~loc { name; constraint_ } =
           ]
     in
     Some message
-  | Some (Bvar var) when String.equal (Package_variable_name.to_string var) "with_test" ->
+  | Some (Bvar (Variable var))
+    when String.equal (Package_variable_name.to_string var) "with_test" ->
     let message =
       User_message.make
         ~loc

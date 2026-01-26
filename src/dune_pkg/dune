@@ -9,7 +9,7 @@
   lmdb
   fiber
   fiber_util
-  chrome_trace
+  dune_scheduler
   dune_engine
   dune_util
   dune_trace
@@ -18,8 +18,8 @@
   dune_digest
   re
   dune_vcs
-  dune_config
   opam_format
   build_info
   sat
+  unix
   xdg))

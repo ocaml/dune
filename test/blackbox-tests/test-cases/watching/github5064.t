@@ -1,8 +1,6 @@
 A test case for #5064: errors when changing module dependencies in the
 file-watching mode.
 
-  $ . ./helpers.sh
-
   $ echo '(lang dune 3.0)' > dune-project
   $ mkdir lib
   $ cat > lib/dune <<EOF

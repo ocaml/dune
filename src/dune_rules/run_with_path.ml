@@ -141,11 +141,19 @@ module Spec = struct
           |> String.concat ~sep:"")
       in
       let metadata = Process.create_metadata ~purpose:ectx.metadata.purpose () in
+      let dune_folder =
+        let bin_folder = Temp.create Dir ~prefix:"dune" ~suffix:"self-in-path" in
+        let src = Path.of_string Sys.executable_name in
+        let dst = Path.relative bin_folder "dune" in
+        Io.portable_symlink ~src ~dst;
+        bin_folder
+      in
       let env =
-        Env.add
-          eenv.env
-          ~var:"OCAMLFIND_DESTDIR"
-          ~value:(Path.to_absolute_filename ocamlfind_destdir)
+        eenv.env
+        |> Env.add
+             ~var:"OCAMLFIND_DESTDIR"
+             ~value:(Path.to_absolute_filename ocamlfind_destdir)
+        |> Env_path.cons ~dir:dune_folder
       in
       Output.with_error
         ~accepted_exit_codes:eenv.exit_codes

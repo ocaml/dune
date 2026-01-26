@@ -1,7 +1,7 @@
 Test if setup scripts are visible in test directory
 
   $ cat > dune-project << EOF
-  > (lang dune 3.21)
+  > (lang dune 3.22)
   > EOF
 
   $ cat > secret.sh << 'EOF'
@@ -10,16 +10,20 @@ Test if setup scripts are visible in test directory
 
   $ cat > dune << EOF
   > (cram
+  >  (shell bash)
   >  (setup_scripts secret.sh))
   > EOF
 
   $ cat > check.t << 'EOF'
-  >   $ ls *.sh 2>&1 || echo "No .sh files found"
-  >   No .sh files found
+  >   $ shopt -s nullglob
+  >   > set -- *.sh
+  >   > shopt -u nullglob
+  >   $ if (( $# )); then
+  >   >   echo "have .sh files"
+  >   > else
+  >   >   echo "no .sh files"
+  >   > fi
+  >   no .sh files
   > EOF
 
   $ dune runtest
-  File "check.t", line 1, characters 0-0:
-  Error: Files _build/default/check.t and _build/default/check.t.corrected
-  differ.
-  [1]

@@ -14,6 +14,9 @@ type mkdir_p_result =
 
 val mkdir_p : ?perms:int -> string -> mkdir_p_result
 
+(** [link src dst] creates a hardlink from [src] to [dst]. *)
+val link : string -> string -> unit
+
 type follow_symlink_error =
   | Not_a_symlink
   | Max_depth_exceeded
@@ -45,6 +48,8 @@ type clear_dir_result =
   | Cleared
   | Directory_does_not_exist
 
+(** [clear_dir t] deletes all the contents of directory [t] without removing [t]
+    itself. *)
 val clear_dir : string -> clear_dir_result
 
 (** If the path does not exist, this function is a no-op. *)

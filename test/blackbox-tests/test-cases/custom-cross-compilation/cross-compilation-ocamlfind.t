@@ -73,8 +73,43 @@ ocamlfind can find it
 
 Dune should be able to find it too
 
-  $ dune build --root=app @install -x foo --verbose 2>&1 | grep notocamldep-foo
-  Running[8]: (cd _build/default.foo && $TESTCASE_ROOT/notocamldep-foo -modules -impl foo.ml) > _build/default.foo/.repro.objs/repro__Foo.impl.d
+  $ dune build --root=app @install -x foo # grep notocamldep-foo
+  Entering directory 'app'
+  Leaving directory 'app'
+
+  $ dune trace cat | jq '
+  > include "dune";
+  >    processes
+  > | .args
+  > | select(.prog | contains("notocamldep-foo"))
+  > | del(.pid)
+  > | .rusage |= keys
+  > '
+  {
+    "process_args": [
+      "-modules",
+      "-impl",
+      "foo.ml"
+    ],
+    "categories": [],
+    "prog": "$TESTCASE_ROOT/notocamldep-foo",
+    "dir": "_build/default.foo",
+    "exit": 0,
+    "target_files": [
+      "_build/default.foo/.repro.objs/repro__Foo.impl.d"
+    ],
+    "rusage": [
+      "inblock",
+      "majflt",
+      "maxrss",
+      "minflt",
+      "nivcsw",
+      "nvcsw",
+      "oublock",
+      "system_cpu_time",
+      "user_cpu_time"
+    ]
+  }
 
 Library is built in the target context
 

@@ -18,10 +18,12 @@ in the same dune file
   $ cat > dune << EOF
   > (melange.emit
   >  (target foo)
-  >  (enabled_if (= %{context_name} "default")))
+  >  (enabled_if (= %{context_name} "default"))
+  >  (emit_stdlib false))
   > (melange.emit
   >  (target foo)
-  >  (enabled_if (= %{context_name} "alt-context")))
+  >  (enabled_if (= %{context_name} "alt-context"))
+  >  (emit_stdlib false))
   > EOF
   $ cat > foo.ml <<EOF
   > let () = print_endline "foo"

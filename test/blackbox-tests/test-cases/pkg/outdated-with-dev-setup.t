@@ -1,6 +1,5 @@
 Reproduce internal error with dune pkg outdated in #11188.
 
-  $ . ./helpers.sh
   $ mkrepo
   $ mkpkg a
   $ mkpkg b

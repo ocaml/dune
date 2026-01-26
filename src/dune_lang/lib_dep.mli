@@ -5,12 +5,12 @@ module Select : sig
     type t =
       { required : Lib_name.Set.t
       ; forbidden : Lib_name.Set.t
-      ; file : string
+      ; file : Path.Local.t
       }
   end
 
   type t =
-    { result_fn : string
+    { result_fn : Path.Local.t
     ; choices : Choice.t list
     ; loc : Loc.t
     }

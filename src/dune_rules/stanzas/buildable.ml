@@ -45,18 +45,10 @@ let decode_lint = field "lint" Lint.decode ~default:Lint.default
 let decode_allow_overlapping = field_b "allow_overlapping_dependencies"
 
 let decode_allow_unused_libraries =
-  let config =
-    Config.make
-      ~name:"ALLOW_UNUSED_LIBRARIES"
-      ~of_string:Config.Toggle.of_string
-      ~default:`Disabled
-  in
   field
     "allow_unused_libraries"
-    (let* () = return () in
-     match Config.get config with
-     | `Disabled -> User_error.raise [ Pp.text "this field is disabled by default" ]
-     | `Enabled -> repeat (located Lib_name.decode))
+    (let* () = Dune_lang.Unreleased.since () in
+     repeat (located Lib_name.decode))
     ~default:[]
 ;;
 

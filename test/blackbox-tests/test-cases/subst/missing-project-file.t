@@ -1,5 +1,3 @@
-  $ . ../git-helpers.sh
-
 subst assumes that dune-project always exists:
 
   $ git init -q

@@ -52,6 +52,14 @@ let rec mkdir_p ?perms t_s =
            Code_error.raise "failed to create parent directory" [ "t_s", Dyn.string t_s ]))
 ;;
 
+let link src dst =
+  match Unix.link src dst with
+  | exception Unix.Unix_error (Unix.EUNKNOWNERR -1142, syscall, arg)
+  (* Needed for OCaml < 5.1 on windows *) ->
+    Exn.reraise (Unix.Unix_error (Unix.EMLINK, syscall, arg))
+  | s -> s
+;;
+
 let resolve_link path =
   match Unix.readlink path with
   | exception Unix.Unix_error (EINVAL, _, _) -> Ok None
@@ -128,7 +136,7 @@ let win32_unlink fn =
        retry_loop 30)
 ;;
 
-let unlink_exn = if Stdlib.Sys.win32 then win32_unlink else Unix.unlink
+let unlink_exn = if Stdlib.Sys.win32 then win32_unlink else fun t -> Unix.unlink t
 
 type unlink_status =
   | Success

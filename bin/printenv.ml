@@ -93,7 +93,7 @@ let term =
                 print multiple fields."))
   in
   let common, config = Common.init builder in
-  Scheduler.go_with_rpc_server ~common ~config (fun () ->
+  Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in
     let* setup = Memo.run setup in

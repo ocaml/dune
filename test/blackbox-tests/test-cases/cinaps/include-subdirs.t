@@ -27,3 +27,4 @@ cinaps doesn't work with (include_subdirs unqualified)
   < let x = 1
   ---
   > hello
+  [1]

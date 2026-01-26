@@ -13,6 +13,7 @@ module Foreign_rules = Foreign_rules
 module Jsoo_rules = Jsoo_rules
 module Super_context = Super_context
 module Compilation_context = Compilation_context
+module Compilation_mode = Compilation_mode
 module Colors = Colors
 module Dune_package = Dune_package
 module Alias_rec = Alias_rec

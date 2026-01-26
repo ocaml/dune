@@ -33,7 +33,7 @@ val build_exe
   -> src:Path.Build.t
   -> obj_dir:Path.Build.t Obj_dir.t
   -> top_sorted_modules:Module.t list Action_builder.t
-  -> promote:Rule.Promote.t option
+  -> promote:Rule_mode.Promote.t option
   -> linkall:bool Action_builder.t
   -> link_time_code_gen:Link_time_code_gen_type.t Resolve.t
   -> jsoo_mode:Js_of_ocaml.Mode.t

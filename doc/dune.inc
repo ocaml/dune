@@ -297,6 +297,15 @@
  (files   dune-top.1))
 
 (rule
+ (with-stdout-to dune-trace.1
+  (run dune trace --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-trace.1))
+
+(rule
  (with-stdout-to dune-uninstall.1
   (run dune uninstall --help=groff)))
 

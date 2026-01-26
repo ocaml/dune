@@ -32,8 +32,7 @@ private
   > (library
   >  (name timeJs)
   >  (implements the_lib)
-  >  (modes melange)
-  >  (preprocess (pps melange.ppx)))
+  >  (modes melange))
   > EOF
   $ cat > js_impl/virt.ml <<EOF
   > let gettimeofday : unit -> float = fun () -> 42.
@@ -47,12 +46,11 @@ private
   > EOF
 
   $ dune build @melange
-  File "js_impl/dune", lines 1-5, characters 0-95:
+  File "js_impl/dune", lines 1-4, characters 0-63:
   1 | (library
   2 |  (name timeJs)
   3 |  (implements the_lib)
-  4 |  (modes melange)
-  5 |  (preprocess (pps melange.ppx)))
+  4 |  (modes melange))
   Error: Dune doesn't currently support building private implementations of
   virtual public libaries for `(modes melange)`
   Hint: Add a `public_name` to the library `timeJs'.

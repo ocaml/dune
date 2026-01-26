@@ -3,7 +3,7 @@ Setting the compiler in the lock directory
 We need some data for ocamlc -config
 
   $ mkdir stdlib && touch stdlib/Makefile.config
-  $ . ./helpers.sh
+
   $ cat >ocaml.config <<EOF
   > version: 4.14.1
   > standard_library_default: $PWD/stdlib

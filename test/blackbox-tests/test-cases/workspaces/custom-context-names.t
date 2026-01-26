@@ -23,5 +23,6 @@
   > EOF
   $ dune build 2>&1 | grep "must not crash"
   I must not crash.  Uncertainty is the mind-killer. Exceptions are the
+  [1]
 
 

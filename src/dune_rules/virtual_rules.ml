@@ -40,7 +40,7 @@ let vimpl_exn = function
   | No_implements | Parameter _ -> Code_error.raise "Virtual_rules.vimpl_exn" []
 ;;
 
-let impl sctx ~(lib : Library.t) ~scope =
+let impl sctx ~(lib : Library.t) ~scope ~for_ =
   match lib.implements with
   | None -> Memo.return No_implements
   | Some (loc, implements) ->
@@ -68,6 +68,6 @@ let impl sctx ~(lib : Library.t) ~scope =
           Memo.return
             (Parameter { main_module; implements_parameter = Lib.main_module_name vlib })
         | Virtual ->
-          let+ vimpl = Vimpl.make ~sctx ~scope ~lib ~info ~vlib in
+          let+ vimpl = Vimpl.make ~sctx ~scope ~lib ~info ~vlib ~for_ in
           Virtual vimpl))
 ;;

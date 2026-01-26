@@ -3,9 +3,6 @@
   (binaries ../../utils/ocamlformat.exe)))
 
 (cram
- (deps helpers.sh))
-
-(cram
  (applies_to fmt-test)
  (deps %{bin:ocamlformat}))
 
@@ -29,4 +26,4 @@
 
 (cram
  (enabled_if false)
- (applies_to watching-eager-concurrent-build-command))
+ (applies_to watching-eager-concurrent-build-command sigpipe))

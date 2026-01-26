@@ -8,6 +8,7 @@
   csexp
   csexp_rpc
   dune_engine
+  dune_scheduler
   unix
   threads.posix
   fiber

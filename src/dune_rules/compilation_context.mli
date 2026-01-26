@@ -29,17 +29,16 @@ val create
   -> requires_link:Lib.t list Resolve.t Memo.Lazy.t
   -> ?preprocessing:Pp_spec.t
   -> opaque:opaque
-  -> ?stdlib:Ocaml_stdlib.t
   -> js_of_ocaml:Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
   -> package:Package.t option
   -> melange_package_name:Lib_name.t option
   -> ?implements:Virtual_rules.t
   -> ?parameters:Lib.t list Resolve.Memo.t
-  -> ?modes:Mode_conf.Set.Details.t Lib_mode.Map.t
+  -> ?modes:Lib_mode.Map.Set.t
   -> ?bin_annot:bool
   -> ?loc:Loc.t
-  -> ?instances:Parameterised_rules.instances list Resolve.Memo.t
-  -> unit
+  -> ?instances:Parameterised_instances.t Resolve.Memo.t
+  -> Compilation_mode.t
   -> t Memo.t
 
 (** Return a compilation context suitable for compiling the alias module. *)
@@ -63,7 +62,6 @@ val parameters : t -> Module_name.t list Resolve.Memo.t
 val includes : t -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 val preprocessing : t -> Pp_spec.t
 val opaque : t -> bool
-val stdlib : t -> Ocaml_stdlib.t option
 val js_of_ocaml : t -> Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
 val sandbox : t -> Sandbox_config.t
 val set_sandbox : t -> Sandbox_config.t -> t
@@ -74,6 +72,7 @@ val modes : t -> Lib_mode.Map.Set.t
 val for_wrapped_compat : t -> t
 val for_root_module : t -> Module.t -> t
 val ocaml : t -> Ocaml_toolchain.t
+val for_ : t -> Compilation_mode.t
 
 val for_module_generated_at_link_time
   :  t
@@ -91,4 +90,4 @@ val dep_graphs : t -> Dep_graph.t Ml_kind.Dict.t
 val loc : t -> Loc.t option
 val set_obj_dir : t -> Path.Build.t Obj_dir.t -> t
 val set_modes : t -> modes:Lib_mode.Map.Set.t -> t
-val instances : t -> Parameterised_rules.instances list Resolve.Memo.t option
+val instances : t -> Parameterised_instances.t Action_builder.t

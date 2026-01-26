@@ -31,7 +31,7 @@ let normalise_arch raw =
     when a = "armv8b"
          || a = "armv8l"
          || List.exists
-              ~f:(fun prefix -> String.is_prefix ~prefix a)
+              ~f:(fun prefix -> String.starts_with ~prefix a)
               [ "armv5"; "armv6"; "earmv6"; "armv7"; "earmv7" ] -> "arm32"
   | s -> s
 ;;
@@ -50,10 +50,8 @@ let run_capture_line ~path ~prog ~args =
 
 module Config_override_variables = struct
   let string_option_config name =
-    let config =
-      Dune_config.Config.make ~name ~of_string:(fun s -> Ok (Some s)) ~default:None
-    in
-    fun () -> Dune_config.Config.get config
+    let config = Config.make ~name ~of_string:(fun s -> Ok (Some s)) ~default:None in
+    fun () -> Config.get config
   ;;
 
   let os = string_option_config "os"

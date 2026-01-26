@@ -234,25 +234,33 @@ let diff_for_file (file : File.t) =
   Print_diff.get original correction
 ;;
 
+type all =
+  { present : File.t list
+  ; missing : Path.Source.t list
+  }
+
 (** [partition_db db files_to_promote] splits [files_to_promote] into two lists
     - The files present in [db] as actual [File.t]s.
     - The files absent from [db] as [Path]s. *)
 let partition_db db files_to_promote =
-  match files_to_promote with
-  | Files_to_promote.All -> db, []
-  | These paths ->
-    List.partition_map paths ~f:(fun path ->
-      let res = List.find db ~f:(fun (f : File.t) -> Path.Source.equal f.dst path) in
-      match res with
-      | Some file -> Left file
-      | None -> Right path)
+  let present, missing =
+    match files_to_promote with
+    | Files_to_promote.All -> db, []
+    | These paths ->
+      List.partition_map paths ~f:(fun path ->
+        let res = List.find db ~f:(fun (f : File.t) -> Path.Source.equal f.dst path) in
+        match res with
+        | Some file -> Left file
+        | None -> Right path)
+  in
+  { present; missing }
 ;;
 
 let sort_for_display db files_to_promote =
   let open Fiber.O in
-  let files, missing = partition_db db files_to_promote in
+  let { present; missing } = partition_db db files_to_promote in
   let+ diff_opts =
-    Fiber.parallel_map files ~f:(fun file ->
+    Fiber.parallel_map present ~f:(fun file ->
       let+ diff_opt = diff_for_file file in
       match diff_opt with
       | Ok diff -> Some (file, diff)
@@ -287,8 +295,8 @@ let display_files db files_to_promote =
 ;;
 
 let display_corrected_contents db files_to_promote =
-  let files, _missing = partition_db db files_to_promote in
-  List.iter files ~f:(fun file ->
+  let { present; missing = _ } = partition_db db files_to_promote in
+  List.iter present ~f:(fun file ->
     let correction_file = File.correction_file file in
     if Path.Untracked.exists correction_file
     then (

@@ -1,5 +1,5 @@
-Variables referencing packages not in the lock evaluate to empty string,
-matching opam semantics.
+Variables referencing packages not in the lock evaluate to empty string at
+solve time, matching opam semantics.
 
   $ mkrepo
 
@@ -18,9 +18,22 @@ matching opam semantics.
   - in-lock.0.0.1
   - test-pkg.0.0.1
 
-  $ build_pkg test-pkg
-  File "dune.lock/test-pkg.0.0.1.pkg", line 8, characters 16-65:
-  8 |      (run sh -c "echo 'not-in-lock:[%{pkg:not-in-lock:version}]'"))))))
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Undefined package variable "version"
-  [1]
+The lock file shows that the unavailable package variable is resolved to empty
+string at solve time:
+
+  $ cat dune.lock/test-pkg.0.0.1.pkg
+  (version 0.0.1)
+  
+  (build
+   (all_platforms
+    ((action
+      (progn
+       (run sh -c "echo 'in-lock:[%{pkg:in-lock:version}]'")
+       (run sh -c "echo 'not-in-lock:[]'"))))))
+  
+  (depends
+   (all_platforms (in-lock)))
+
+
+
+

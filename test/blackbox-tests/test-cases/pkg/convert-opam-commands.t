@@ -40,17 +40,22 @@ Make sure we don't mess up percent signs that aren't part of variable interpolat
   > build: [ "./configure" "--prefix=%{prefix" ]
   > EOF
 
+  $ mkpkg foo
+
   $ mkpkg variable-types <<EOF
+  > depends: [ "foo" ]
   > build: [
   >   ["echo" local_var]
   >   ["echo" _:explicit_local_var]
-  >   ["echo" foo:package_var]
+  >   ["echo" foo:version]
+  >   ["echo" "%{bar:version}%"]
   >   ["echo" os-family]
   > ]
   > EOF
 
 Package for exercising opam filters on commands:
   $ mkpkg exercise-filters <<EOF
+  > depends: [ "foo" ]
   > build: [
   >   [ "echo" "a" ] { foo  }
   >   [ "echo" "b" ] { foo & bar }
@@ -87,6 +92,7 @@ Package which has boolean where string was expected. This should be caught while
 
   $ solve standard-dune with-interpolation with-percent-sign variable-types
   Solution for dune.lock:
+  - foo.0.0.1
   - standard-dune.0.0.1
   - variable-types.0.0.1
   - with-interpolation.0.0.1
@@ -126,6 +132,9 @@ Package which has boolean where string was expected. This should be caught while
   (build
    (all_platforms ((action (run printf %d 42)))))
 
+The lock file shows that foo:version is kept as a pform (since foo is in the
+solution) while bar:version is resolved to empty string at solve time (since bar
+is not in the solution):
   $ cat ${default_lock_dir}/variable-types.0.0.1.pkg
   (version 0.0.1)
   
@@ -135,8 +144,14 @@ Package which has boolean where string was expected. This should be caught while
       (progn
        (run echo %{pkg-self:local_var})
        (run echo %{pkg-self:explicit_local_var})
-       (run echo %{pkg:foo:package_var})
+       (run echo %{pkg:foo:version})
+       (run echo "")
        (run echo %{os_family}))))))
+  
+  (depends
+   (all_platforms (foo)))
+
+
 
   $ solve with-malformed-interpolation
   File "$TESTCASE_ROOT/mock-opam-repository/packages/with-malformed-interpolation/with-malformed-interpolation.0.0.1/opam", line 1, characters 0-0:
@@ -149,6 +164,7 @@ Package which has boolean where string was expected. This should be caught while
   $ solve exercise-filters
   Solution for dune.lock:
   - exercise-filters.0.0.1
+  - foo.0.0.1
 
   $ cat ${default_lock_dir}/exercise-filters.0.0.1.pkg
   (version 0.0.1)
@@ -189,11 +205,15 @@ Package which has boolean where string was expected. This should be caught while
        (when
         (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg:baz:installed})
         (run echo m)))))))
+  
+  (depends
+   (all_platforms (foo)))
 
 Test that if opam filter translation is disabled the output doesn't contain any translated filters:
   $ solve exercise-filters
   Solution for dune.lock:
   - exercise-filters.0.0.1
+  - foo.0.0.1
   $ cat ${default_lock_dir}/exercise-filters.0.0.1.pkg
   (version 0.0.1)
   
@@ -233,6 +253,9 @@ Test that if opam filter translation is disabled the output doesn't contain any 
        (when
         (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg:baz:installed})
         (run echo m)))))))
+  
+  (depends
+   (all_platforms (foo)))
 
   $ solve exercise-term-filters
   Solution for dune.lock:
@@ -263,6 +286,7 @@ Test that if opam filter translation is disabled the output doesn't contain any 
 
 Package with package conjunction and string selections inside variable interpolations:
   $ mkpkg package-conjunction-and-string-selection <<EOF
+  > depends: [ "foo" ]
   > build: [
   >   [ "echo" "a %{installed}% b" ]
   >   [ "echo" "c %{installed?x:y}% d" ]
@@ -283,6 +307,7 @@ Package with package conjunction and string selections inside variable interpola
   > (package (name x) (depends package-conjunction-and-string-selection))
   > EOF
   Solution for dune.lock:
+  - foo.0.0.1
   - package-conjunction-and-string-selection.0.0.1
 Note that "enable" is not a true opam variable. Opam desugars occurrences of
 "pkg:enable" into "pkg:enable?enable:disable" but if the explicit package scope
@@ -355,3 +380,6 @@ preserved between opam and dune.
           x
           y)
          -feature)))))))
+  
+  (depends
+   (all_platforms (foo)))

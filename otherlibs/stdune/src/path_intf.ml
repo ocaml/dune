@@ -4,7 +4,6 @@ module type S = sig
   val hash : t -> int
   val to_string : t -> string
   val of_string : string -> t
-  val parse_string_exn : loc:Loc0.t -> string -> t
 
   (** a directory is smaller than its descendants *)
   include Comparator.S with type t := t
@@ -38,7 +37,6 @@ module type S = sig
   end
 
   val equal : t -> t -> bool
-  val relative : ?error_loc:Loc0.t -> t -> string -> t
   val to_string_maybe_quoted : t -> string
   val is_descendant : t -> of_:t -> bool
   val is_root : t -> bool
@@ -46,9 +44,24 @@ module type S = sig
   val parent : t -> t option
 end
 
+module type With_loc = sig
+  type t
+
+  val relative : ?error_loc:Loc0.t -> t -> string -> t
+  val parse_string_exn : loc:Loc0.t -> string -> t
+end
+
 (** [Unspecified.w] is a type-level placeholder of an unspecified path. (see
     [Local_gen] for how it's used) *)
 module Unspecified = struct
+  type w
+end
+
+module Source = struct
+  type w
+end
+
+module Build = struct
   type w
 end
 
@@ -65,7 +78,6 @@ module type Local_gen = sig
      additionally ask for an object that fixes 'w *)
   val to_string : 'w t -> string
   val of_string : string -> 'w t
-  val parse_string_exn : loc:Loc0.t -> string -> 'w t
 
   (** a directory is smaller than its descendants *)
   val compare : 'w t -> 'w t -> Ordering.t
@@ -101,7 +113,6 @@ module type Local_gen = sig
     module Table : Hashtbl.S with type key = Root.w t
   end
 
-  val relative : ?error_loc:Loc0.t -> 'w t -> string -> 'w t
   val to_string_maybe_quoted : 'w t -> string
   val is_descendant : 'w t -> of_:'w t -> bool
   val is_root : 'w t -> bool
@@ -115,8 +126,6 @@ module type Local_gen = sig
   val split_first_component : 'w t -> (Filename.t * Unspecified.w t) option
 
   module L : sig
-    val relative : ?error_loc:Loc0.t -> 'w t -> string list -> 'w t
-
     val relative_result
       :  'w t
       -> string list

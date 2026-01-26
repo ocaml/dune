@@ -221,61 +221,6 @@ module Produced = struct
 
   let empty = { files = Filename.Map.empty; subdirs = Filename.Map.empty }
 
-  (** The call sites ensure that [dir = Path.Build.append_local validated.root local].
-      No need for [local] actually... *)
-  let rec contents_of_dir ~file_f (dir : Path.Build.t) : ('a dir_contents, Error.t) result
-    =
-    let open Result.O in
-    let init = empty in
-    match Path.readdir_unsorted_with_kinds (Path.build dir) with
-    | Error (Unix.ENOENT, _, _) -> Error (Missing_dir dir)
-    | Error e -> Error (Unreadable_dir (dir, e))
-    | Ok dir_contents ->
-      Result.List.fold_left dir_contents ~init ~f:(fun dir_contents (name, kind) ->
-        match (kind : File_kind.t) with
-        | S_LNK | S_REG ->
-          let files =
-            match file_f (Path.Local.relative (Path.Build.local dir) name) with
-            | Some payload -> Filename.Map.add_exn dir_contents.files name payload
-            | None -> dir_contents.files
-          in
-          Ok { dir_contents with files }
-        | S_DIR ->
-          let+ subdirs_contents =
-            contents_of_dir ~file_f (Path.Build.relative dir name)
-          in
-          { dir_contents with
-            subdirs = Filename.Map.add_exn dir_contents.subdirs name subdirs_contents
-          }
-        | _ -> Error (Unsupported_file (Path.Build.relative dir name, kind)))
-  ;;
-
-  let of_validated (validated : Validated.t) =
-    let open Result.O in
-    (* We assume here that [dir_name] is either a child of [root], or that we're ok with having [root/a/b] but not [root/a]. *)
-    let aggregate_dir { root; contents } dir_name =
-      let dir = Path.Build.relative root dir_name in
-      let* new_contents = contents_of_dir ~file_f:(fun _ -> Some ()) dir in
-      if is_empty_dir_conts new_contents
-      then Error (Empty_dir dir)
-      else (
-        let contents =
-          { contents with
-            subdirs = Filename.Map.add_exn contents.subdirs dir_name new_contents
-          }
-        in
-        Ok { root; contents })
-    in
-    let rooted_files = Filename.Set.to_map validated.files ~f:(Fun.const ()) in
-    Filename.Set.to_list validated.dirs
-    |> Result.List.fold_left
-         ~init:
-           { root = validated.root
-           ; contents = { files = rooted_files; subdirs = Filename.Map.empty }
-           }
-         ~f:aggregate_dir
-  ;;
-
   let of_files root (files : 'a option Path.Local.Map.t) : 'a t =
     let rec aux mb_payload contents path =
       match path, mb_payload with
@@ -309,6 +254,81 @@ module Produced = struct
         else aux mb_payload contents (Path.Local.explode file))
     in
     { root; contents }
+  ;;
+
+  (** The call sites ensure that [dir = Path.Build.append_local validated.root local].
+      No need for [local] actually... *)
+  let contents_of_dir ~file_f (dir : Path.Build.t) : ('a dir_contents, Error.t) result =
+    let exception Traverse_error of Error.t in
+    let root = dir in
+    let on_file ~dir fname acc =
+      match
+        file_f
+          (let dir_build = Path.Build.relative root dir in
+           Path.Local.relative (Path.Build.local dir_build) fname)
+      with
+      | None -> acc
+      | Some payload ->
+        let key = Path.Local.of_string (Filename.concat dir fname) in
+        Path.Local.Map.set acc key (Some payload)
+    in
+    let on_dir ~dir fname acc =
+      let key = Path.Local.of_string (Filename.concat dir fname) in
+      Path.Local.Map.set acc key None
+    in
+    let on_error ~dir err _acc =
+      let dir = Path.Build.relative root dir in
+      raise_notrace
+        (Traverse_error
+           (match err with
+            | Unix.ENOENT, _, _ -> Missing_dir dir
+            | _ -> Unreadable_dir (dir, err)))
+    in
+    try
+      let entries =
+        Fpath.traverse
+          ~dir:(Path.Build.to_string root)
+          ~init:Path.Local.Map.empty
+          ~on_file
+          ~on_dir
+          ~on_other:
+            (`Call
+                (fun ~dir fname kind _ ->
+                  let path = Path.Build.relative root (Filename.concat dir fname) in
+                  raise_notrace (Traverse_error (Unsupported_file (path, kind)))))
+          ~on_symlink:(`Call (fun ~dir fname acc -> on_file ~dir fname acc, None))
+          ~on_error:(`Call on_error)
+          ()
+      in
+      Ok (of_files root entries).contents
+    with
+    | Traverse_error err -> Error err
+  ;;
+
+  let of_validated (validated : Validated.t) =
+    let open Result.O in
+    (* We assume here that [dir_name] is either a child of [root], or that we're ok with having [root/a/b] but not [root/a]. *)
+    let aggregate_dir { root; contents } dir_name =
+      let dir = Path.Build.relative root dir_name in
+      let* new_contents = contents_of_dir ~file_f:(fun _ -> Some ()) dir in
+      if is_empty_dir_conts new_contents
+      then Error (Empty_dir dir)
+      else (
+        let contents =
+          { contents with
+            subdirs = Filename.Map.add_exn contents.subdirs dir_name new_contents
+          }
+        in
+        Ok { root; contents })
+    in
+    let rooted_files = Filename.Set.to_map validated.files ~f:(Fun.const ()) in
+    Filename.Set.to_list validated.dirs
+    |> Result.List.fold_left
+         ~init:
+           { root = validated.root
+           ; contents = { files = rooted_files; subdirs = Filename.Map.empty }
+           }
+         ~f:aggregate_dir
   ;;
 
   let find_any { root; contents } name =

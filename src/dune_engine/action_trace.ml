@@ -49,57 +49,67 @@ let collect { dir; digest } =
   let unrecognized = Queue.create () in
   let errors = Queue.create () in
   let needs_cleanup = ref false in
-  let rec loop dir =
-    match Path.Untracked.readdir_unsorted_with_kinds (Path.build dir) with
-    | Error (ENOENT, _, _) -> ()
-    | Error e ->
-      needs_cleanup := true;
-      let error =
-        User_error.make
-          [ Pp.textf "unreadable dir %s" (Path.Build.to_string_maybe_quoted dir)
-          ; Unix_error.Detailed.pp e
-          ]
-      in
-      Queue.push errors (User_error.E error)
-    | Ok names ->
-      needs_cleanup := true;
-      let dirs, files =
-        List.filter_partition_map names ~f:(fun (name, (kind : Unix.file_kind)) ->
-          let kind =
-            match kind with
-            | S_LNK ->
-              (match Path.Untracked.stat (Path.build (Path.Build.relative dir name)) with
-               | Ok s -> Ok s.st_kind
-               | Error e -> Error e)
-            | _ -> Ok kind
-          in
-          match kind with
-          | Ok S_REG -> Right name
-          | Ok S_DIR -> Left name
-          | Ok _ ->
-            Queue.push unrecognized (Path.Build.relative dir name);
-            Skip
-          | Error error ->
-            let error =
-              User_message.make
-                [ Pp.textf
-                    "broken symlink %s"
-                    (Path.Build.to_string_maybe_quoted (Path.Build.relative dir name))
-                ; Unix_error.Detailed.pp error
-                ]
-            in
-            Queue.push errors (User_error.E error);
-            Skip)
-        (* CR-someday rgrinberg: handle symlinks? *)
-      in
-      List.iter files ~f:(fun file ->
-        try collect_file (Path.Build.relative dir file) ~digest with
-        | exn -> Queue.push errors exn);
-      List.iter dirs ~f:(fun name -> loop (Path.Build.relative dir name))
+  let root = dir in
+  let root_path = Path.build root in
+  if Path.Untracked.exists root_path then needs_cleanup := true;
+  let build_path_of ~dir fname = Path.Build.relative root (Filename.concat dir fname) in
+  let build_dir_of dir =
+    if String.equal dir "" then root else Path.Build.relative root dir
   in
-  loop dir;
+  let push_broken_symlink ~dir fname error =
+    needs_cleanup := true;
+    let path = build_path_of ~dir fname in
+    let error =
+      User_message.make
+        [ Pp.textf "broken symlink %s" (Path.Build.to_string_maybe_quoted path)
+        ; Unix_error.Detailed.pp error
+        ]
+    in
+    Queue.push errors (User_error.E error)
+  in
+  let on_file ~dir fname () =
+    needs_cleanup := true;
+    let file = build_path_of ~dir fname in
+    try collect_file file ~digest with
+    | exn -> Queue.push errors exn
+  in
+  let on_other ~dir fname _kind () =
+    needs_cleanup := true;
+    Queue.push unrecognized (build_path_of ~dir fname)
+  in
+  let on_symlink ~dir fname () =
+    let path = Path.build (build_path_of ~dir fname) in
+    match Path.Untracked.stat path with
+    | Ok { Unix.st_kind = kind; _ } -> (), Some kind
+    | Error error ->
+      push_broken_symlink ~dir fname error;
+      (), None
+  in
+  Fpath.traverse
+    ~dir:(Path.to_string root_path)
+    ~init:()
+    ~on_file
+    ~on_dir:(fun ~dir:_ _ () -> needs_cleanup := true)
+    ~on_other:(`Call on_other)
+    ~on_symlink:(`Call on_symlink)
+    ~on_error:
+      (`Call
+          (fun ~dir error () ->
+            match error with
+            | Unix.ENOENT, _, _ -> ()
+            | _ ->
+              needs_cleanup := true;
+              let dir = build_dir_of dir in
+              let error =
+                User_error.make
+                  [ Pp.textf "unreadable dir %s" (Path.Build.to_string_maybe_quoted dir)
+                  ; Unix_error.Detailed.pp error
+                  ]
+              in
+              Queue.push errors (User_error.E error)))
+    ();
   Dune_trace.flush ();
-  if !needs_cleanup then Fpath.rm_rf (Path.to_string (Path.build dir));
+  if !needs_cleanup then Fpath.rm_rf (Path.to_string root_path);
   (match Queue.to_list unrecognized with
    | [] -> ()
    | unrecognized ->

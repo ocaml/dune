@@ -60,9 +60,23 @@ val is_root : string -> bool
 val traverse
   :  dir:string
   -> init:'acc
-  -> on_file:(dir:string -> Filename.t -> 'acc -> 'acc)
-  -> on_dir:(dir:string -> Filename.t -> 'acc -> 'acc)
-  -> on_broken_symlink:(dir:string -> Filename.t -> 'acc -> 'acc)
+  -> ?on_file:(dir:string -> Filename.t -> 'acc -> 'acc)
+  -> ?on_dir:(dir:string -> Filename.t -> 'acc -> 'acc)
+  -> ?on_other:
+       [ `Ignore
+       | `Raise
+       | `Call of dir:string -> Filename.t -> Unix.file_kind -> 'acc -> 'acc
+       ]
+  -> ?on_symlink:
+       [ `Ignore
+       | `Resolve
+       | `Raise
+       | `Call of dir:string -> Filename.t -> 'acc -> 'acc * Unix.file_kind option
+       ]
+  -> ?enter_dir:(dir:string -> Filename.t -> bool)
+  -> ?on_error:
+       [ `Ignore | `Raise | `Call of dir:string -> Unix_error.Detailed.t -> 'acc -> 'acc ]
+  -> unit
   -> 'acc
 
 val traverse_files

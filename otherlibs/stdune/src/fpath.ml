@@ -202,29 +202,84 @@ let rm_rf fn =
   | _ -> unlink_exn fn
 ;;
 
-let traverse ~dir ~init ~on_file ~on_dir ~on_broken_symlink =
+let default ~dir:_ _ acc = acc
+
+(* CR-someday rgrinberg: maybe we should make sure that we don't hit any
+   symlink loops here? *)
+let traverse
+      ~dir
+      ~init
+      ?(on_file = default)
+      ?(on_dir = default)
+      ?(on_other = `Raise)
+      ?(on_symlink = `Resolve)
+      ?(enter_dir = fun ~dir:_ _fname -> true)
+      ?(on_error = `Raise)
+      ()
+  =
+  let on_other =
+    match on_other with
+    | `Call f -> f
+    | `Ignore -> fun ~dir:_ _fname _kind acc -> acc
+    | `Raise ->
+      fun ~dir fname kind _acc ->
+        User_error.raise
+          [ Pp.textf
+              "unrecognized file kind %s in %S"
+              (File_kind.to_string_hum kind)
+              (Filename.concat dir fname)
+          ]
+  in
+  let handle_kind ~dir fname kind stack acc =
+    match (kind : Unix.file_kind) with
+    | S_DIR ->
+      let acc = on_dir ~dir fname acc in
+      let stack =
+        if enter_dir ~dir fname then Filename.concat dir fname :: stack else stack
+      in
+      stack, acc
+    | S_REG -> stack, on_file ~dir fname acc
+    | kind -> stack, on_other ~dir fname kind acc
+  in
+  let on_error =
+    match on_error with
+    | `Raise -> fun ~dir:_ err _ -> Unix_error.Detailed.raise err
+    | `Ignore -> fun ~dir:_ _err acc -> acc
+    | `Call f -> f
+  in
   let rec loop root stack acc =
     match stack with
     | [] -> acc
     | dir :: dirs ->
       let dir_path = Filename.concat root dir in
       (match Readdir.read_directory_with_kinds dir_path with
-       | Error e -> Unix_error.Detailed.raise e
+       | Error e ->
+         let acc = on_error ~dir e acc in
+         loop root dirs acc
        | Ok entries ->
          let stack, acc =
            List.fold_left entries ~init:(dirs, acc) ~f:(fun (stack, acc) (fname, kind) ->
              match (kind : Unix.file_kind) with
-             | S_DIR -> Filename.concat dir fname :: stack, on_dir ~dir fname acc
-             | S_REG -> stack, on_file ~dir fname acc
              | S_LNK ->
-               let path = Filename.concat dir_path fname in
-               (match (Unix.stat path).st_kind with
-                | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
-                  stack, on_broken_symlink ~dir fname acc
-                | S_DIR -> Filename.concat dir fname :: stack, on_dir ~dir fname acc
-                | S_REG -> stack, on_file ~dir fname acc
-                | _ -> stack, acc)
-             | _ -> stack, acc)
+               (match on_symlink with
+                | `Raise ->
+                  User_error.raise
+                    [ Pp.textf
+                        "Symlink %s is not allowed here"
+                        (Filename.concat dir fname)
+                    ]
+                | `Ignore -> stack, acc
+                | `Resolve ->
+                  (match Unix.stat (Filename.concat dir_path fname) with
+                   | exception Unix.Unix_error (x, y, z) ->
+                     stack, on_error ~dir (x, y, z) acc
+                   | stat -> handle_kind ~dir fname stat.st_kind stack acc)
+                | `Call f ->
+                  let acc, kind = f ~dir fname acc in
+                  (match kind with
+                   | None -> stack, acc
+                   | Some kind -> handle_kind ~dir fname kind stack acc))
+             | kind -> handle_kind ~dir fname kind stack acc)
          in
          loop root stack acc)
   in
@@ -233,7 +288,23 @@ let traverse ~dir ~init ~on_file ~on_dir ~on_broken_symlink =
 
 let traverse_files ~dir ~init ~f =
   let skip = fun ~dir:_ _fname acc -> acc in
-  traverse ~dir ~init ~on_dir:skip ~on_broken_symlink:skip ~on_file:f
+  let root = dir in
+  let on_symlink ~dir fname acc =
+    let path = Filename.concat (Filename.concat root dir) fname in
+    match Unix.stat path with
+    | { Unix.st_kind = kind; _ } -> acc, Some kind
+    | exception Unix.Unix_error (Unix.ENOENT, _, _) -> acc, None
+    | exception Unix.Unix_error (error, syscall, arg) ->
+      Unix_error.Detailed.raise (Unix_error.Detailed.create error ~syscall ~arg)
+  in
+  traverse
+    ~dir
+    ~init
+    ~on_dir:skip
+    ~on_other:`Ignore
+    ~on_symlink:(`Call on_symlink)
+    ~on_file:f
+    ()
 ;;
 
 let is_broken_symlink path =

@@ -86,7 +86,7 @@ end
 
 (** In the source section of the current workspace. *)
 module Source : sig
-  type w
+  type w = Path_intf.Source.w
   type t = w Path0.Local_gen.t
 
   include Path_intf.S with type t := t
@@ -150,7 +150,7 @@ module Outside_build_dir : sig
 end
 
 module Build : sig
-  type w
+  type w = Path_intf.Build.w
   type t = w Path0.Local_gen.t
 
   include Path_intf.S with type t := t

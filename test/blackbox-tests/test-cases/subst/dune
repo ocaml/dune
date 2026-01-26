@@ -5,4 +5,4 @@
 
 (cram
  (applies_to :whole_subtree)
- (deps %{bin:git} ../git-helpers.sh))
+ (deps %{bin:git}))

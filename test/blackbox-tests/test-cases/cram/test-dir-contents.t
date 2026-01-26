@@ -6,8 +6,11 @@ Demonstrate the files and directories listed in a cram test:
 
   $ dune runtest test.t
   File "test.t", line 1, characters 0-0:
-  Error: Files _build/default/test.t and _build/default/test.t.corrected
-  differ.
+  --- test.t
+  +++ test.t.corrected
+  @@ -1 +1,2 @@
+     $ find . | sort
+  +  .
   [1]
 
   $ dune promote
@@ -29,8 +32,11 @@ Now repeat the test for a test defined using a directory:
 
   $ dune runtest foo.t
   File "foo.t/run.t", line 1, characters 0-0:
-  Error: Files _build/default/foo.t/run.t and
-  _build/default/foo.t/run.t.corrected differ.
+  --- foo.t/run.t
+  +++ foo.t/run.t.corrected
+  @@ -1 +1,2 @@
+     $ find . | sort
+  +  .
   [1]
   $ dune promote
   Promoting _build/default/foo.t/run.t.corrected to foo.t/run.t.

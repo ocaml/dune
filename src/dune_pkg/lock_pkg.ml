@@ -145,8 +145,8 @@ let opam_string_to_slang ~package ~loc opam_string =
       (match Re.Group.get group 0 with
        | "%%" -> Ok (Slang.text "%")
        | interp
-         when String.is_prefix ~prefix:"%{" interp && String.is_suffix ~suffix:"}%" interp
-         ->
+         when String.starts_with ~prefix:"%{" interp
+              && String.ends_with ~suffix:"}%" interp ->
          let ident = String.sub ~pos:2 ~len:(String.length interp - 4) interp in
          opam_raw_fident_to_slang ~loc ident
        | other ->

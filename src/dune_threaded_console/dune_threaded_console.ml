@@ -65,7 +65,7 @@ let make ~frames_per_second (module Base : S) : (module Dune_console.Backend) =
 
     let start () =
       Base.start ();
-      Scheduler.spawn_thread
+      Scheduler.spawn_thread ~name:"console"
       @@ fun () ->
       Terminal_signals.unblock ();
       let last = ref (Time.now ()) in

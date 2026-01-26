@@ -24,4 +24,4 @@ Verify that the run with path action correctly adds Dune to PATH on all platform
   > EOF
 
   $ dune build @pkg-install 2>&1
-  $PATH incorrect!
+  $PATH correct!

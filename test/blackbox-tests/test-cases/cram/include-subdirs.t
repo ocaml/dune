@@ -19,11 +19,17 @@ the (include_subdirs unqualified) is not present, both tests fail as expected.
 
   $ dune runtest
   File "bar.t/run.t", line 1, characters 0-0:
-  Error: Files _build/default/bar.t/run.t and
-  _build/default/bar.t/run.t.corrected differ.
+  --- bar.t/run.t
+  +++ bar.t/run.t.corrected
+  @@ -1 +1,2 @@
+     $ echo bar
+  +  bar
   File "sub/foo.t", line 1, characters 0-0:
-  Error: Files _build/default/sub/foo.t and _build/default/sub/foo.t.corrected
-  differ.
+  --- sub/foo.t
+  +++ sub/foo.t.corrected
+  @@ -1 +1,2 @@
+     $ echo foo
+  +  foo
   [1]
 
 Previously, adding (include_subdirs unqualified) highlights two issues:
@@ -40,9 +46,15 @@ These have now been fixed, and both cram tests work correctly with
 
   $ dune runtest
   File "bar.t/run.t", line 1, characters 0-0:
-  Error: Files _build/default/bar.t/run.t and
-  _build/default/bar.t/run.t.corrected differ.
+  --- bar.t/run.t
+  +++ bar.t/run.t.corrected
+  @@ -1 +1,2 @@
+     $ echo bar
+  +  bar
   File "sub/foo.t", line 1, characters 0-0:
-  Error: Files _build/default/sub/foo.t and _build/default/sub/foo.t.corrected
-  differ.
+  --- sub/foo.t
+  +++ sub/foo.t.corrected
+  @@ -1 +1,2 @@
+     $ echo foo
+  +  foo
   [1]

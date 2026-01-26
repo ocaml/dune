@@ -455,7 +455,7 @@ end = struct
 
   let is_odig_doc_file fn =
     List.exists [ "README"; "LICENSE"; "CHANGE"; "HISTORY" ] ~f:(fun prefix ->
-      String.is_prefix fn ~prefix)
+      String.starts_with ~prefix fn)
   ;;
 
   let entries_of_install_stanza ~dir ~expander ~package_db (install_conf : Install_conf.t)
@@ -932,7 +932,7 @@ end = struct
           in
           let pp =
             Pp.concat_map template ~sep:Pp.newline ~f:(fun s ->
-              if String.is_prefix s ~prefix:"#"
+              if String.starts_with ~prefix:"#" s
               then (
                 match String.extract_blank_separated_words (String.drop s 1) with
                 | [ ("JBUILDER_GEN" | "DUNE_GEN") ] -> Meta.pp meta.entries

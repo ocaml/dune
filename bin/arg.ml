@@ -61,7 +61,7 @@ module Dep = struct
   let alias_rec ~dir s = Dep_conf.Alias_rec (make_alias_sw ~dir s)
 
   let parse_alias s =
-    if not (String.is_prefix s ~prefix:"@")
+    if not (String.starts_with ~prefix:"@" s)
     then None
     else (
       let pos, recursive =

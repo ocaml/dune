@@ -1,5 +1,3 @@
-  $ . ../git-helpers.sh
-
 Read from dune-project package stanza
 -------------------------------------
 And without an opam file preset.

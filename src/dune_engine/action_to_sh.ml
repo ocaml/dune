@@ -22,7 +22,7 @@ open Simplified
 
 let echo s =
   let lines = String.split_lines s in
-  if String.is_suffix s ~suffix:"\n"
+  if String.ends_with ~suffix:"\n" s
   then List.map lines ~f:(fun s -> Run ("echo", [ s ]))
   else (
     match List.rev lines with
@@ -68,6 +68,18 @@ let simplify act =
     | Remove_tree x -> Run ("rm", [ "-rf"; x ]) :: acc
     | Mkdir x -> mkdir x :: acc
     | Pipe (outputs, l) -> Pipe (List.map ~f:block l, outputs) :: acc
+    | Diff { optional; file1; file2; mode = Binary } ->
+      assert (not optional);
+      Run ("cmp", [ file1; file2 ]) :: acc
+    | Diff { optional = true; file1; file2; mode = _ } ->
+      Sh
+        (Printf.sprintf
+           "test ! -e file1 -o ! -e file2 || diff %s %s"
+           (String.quote_for_shell file1)
+           (String.quote_for_shell file2))
+      :: acc
+    | Diff { optional = false; file1; file2; mode = _ } ->
+      Run ("diff", [ file1; file2 ]) :: acc
     | Extension _ -> Sh "# extensions are not supported" :: acc
   and block act =
     match List.rev (loop act []) with

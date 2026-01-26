@@ -11,6 +11,7 @@ dune trace cat can be used to view the trace:
   ["args","cat","name","ts"]
   ["args","cat","name","ts"]
   ["args","cat","name","ts"]
+  ["args","cat","name","ts"]
   ["args","cat","dur","name","ts"]
   ["args","cat","name","ts"]
   ["args","cat","dur","name","ts"]

@@ -1,7 +1,7 @@
 open Import
 open Memo.O
 module Gen_rules = Build_config.Gen_rules
-module Context_type = Gen_rules.Context_type
+module Context_type = Build_config.Context_type
 module Build_only_sub_dirs = Gen_rules.Build_only_sub_dirs
 
 module type Rule_generator = Gen_rules.Rule_generator
@@ -92,7 +92,7 @@ let get_dir_triage ~dir =
       | Error unix_error ->
         User_warning.emit
           [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
-          ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
+          ; Unix_error.Detailed.pp_reason unix_error
           ];
         Filename.Set.empty
       | Ok filenames ->

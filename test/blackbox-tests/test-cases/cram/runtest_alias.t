@@ -22,7 +22,11 @@ This should run the test
 
   $ dune build @this
   File "foo.t", line 1, characters 0-0:
-  Error: Files _build/default/foo.t and _build/default/foo.t.corrected differ.
+  --- foo.t
+  +++ foo.t.corrected
+  @@ -1 +1,2 @@
+     $ echo foo
+  +  foo
   [1]
 
 Now we try setting runtest alias default twice. This should be impossible:

@@ -17,7 +17,6 @@ val rpc
      ]
 
 val watch_exclusions : t -> string list
-val print_metrics : t -> bool
 val watch : t -> Dune_rpc_impl.Watch_mode_config.t
 val file_watcher : t -> Dune_scheduler.Scheduler.Run.file_watcher
 val prefix_target : t -> string -> string

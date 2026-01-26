@@ -35,7 +35,11 @@ executed:
   $ echo "(cram enable)" >> dune-project
   $ dune runtest
   File "run.t", line 1, characters 0-0:
-  Error: Files _build/default/run.t and _build/default/run.t.corrected differ.
+  --- run.t
+  +++ run.t.corrected
+  @@ -1 +1,2 @@
+     $ echo "Hello, world!"
+  +  Hello, world!
   [1]
 
 With Dune 3.0 and later, we don't get an error since cram tests are enabled by
@@ -47,7 +51,11 @@ default:
 
   $ dune runtest
   File "run.t", line 1, characters 0-0:
-  Error: Files _build/default/run.t and _build/default/run.t.corrected differ.
+  --- run.t
+  +++ run.t.corrected
+  @@ -1 +1,2 @@
+     $ echo "Hello, world!"
+  +  Hello, world!
   [1]
 
 And if we disable them on purpose, we get an error message:

@@ -12,7 +12,12 @@ after they're promted
 
   $ dune runtest foo.t
   File "foo.t", line 1, characters 0-0:
-  Error: Files _build/default/foo.t and _build/default/foo.t.corrected differ.
+  --- foo.t
+  +++ foo.t.corrected
+  @@ -1,2 +1,3 @@
+     $ echo run >> $TESTCASE_ROOT/side-effect
+     $ echo bazy
+  +  bazy
   [1]
   $ cat side-effect
   run

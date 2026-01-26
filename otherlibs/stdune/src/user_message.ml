@@ -134,9 +134,6 @@ module Annots = struct
 
   include (T : Univ_map.S with type t = T.t and module Key := Key)
 
-  let has_embedded_location = Key.create ~name:"has-embedded-location" Unit.to_dyn
-  let needs_stack_trace = Key.create ~name:"needs-stack-trace" Unit.to_dyn
-
   let to_dyn t =
     Dyn.Map
       (let f =
@@ -175,9 +172,21 @@ type t =
   ; annots : Annots.t
   ; context : string option
   ; dir : string option
+  ; has_embedded_location : bool
+  ; needs_stack_trace : bool
   }
 
-let to_dyn { loc; paragraphs; hints; annots; context; dir } =
+let to_dyn
+      { loc
+      ; paragraphs
+      ; hints
+      ; annots
+      ; context
+      ; dir
+      ; has_embedded_location
+      ; needs_stack_trace
+      }
+  =
   Dyn.record
     [ "loc", Dyn.option Loc0.to_dyn loc
     ; "paragraphs", Dyn.list (Pp.to_dyn Style.to_dyn) paragraphs
@@ -185,31 +194,74 @@ let to_dyn { loc; paragraphs; hints; annots; context; dir } =
     ; "annots", Annots.to_dyn annots
     ; "context", Dyn.option Dyn.string context
     ; "dir", Dyn.option Dyn.string dir
+    ; "has_embedded_location", Dyn.bool has_embedded_location
+    ; "needs_stack_trace", Dyn.bool needs_stack_trace
     ]
 ;;
 
-let compare { loc; paragraphs; hints; annots; context = _; dir = _ } t =
+let compare
+      { loc
+      ; paragraphs
+      ; hints
+      ; annots
+      ; context = _
+      ; dir = _
+      ; has_embedded_location
+      ; needs_stack_trace
+      }
+      t
+  =
   let open Ordering.O in
   let= () = Option.compare Loc0.compare loc t.loc in
   let compare = Pp.compare ~compare:Style.compare in
   let= () = List.compare paragraphs t.paragraphs ~compare in
   let= () = List.compare hints t.hints ~compare in
+  let= () = Bool.compare has_embedded_location t.has_embedded_location in
+  let= () = Bool.compare needs_stack_trace t.needs_stack_trace in
   Poly.compare annots t.annots
 ;;
 
 let equal a b = Ordering.is_eq (compare a b)
 
-let make ?loc ?prefix ?(hints = []) ?(annots = Annots.empty) ?context ?dir paragraphs =
+let make
+      ?(has_embedded_location = false)
+      ?(needs_stack_trace = false)
+      ?loc
+      ?prefix
+      ?(hints = [])
+      ?(annots = Annots.empty)
+      ?context
+      ?dir
+      paragraphs
+  =
   let paragraphs =
     match prefix, paragraphs with
     | None, l -> l
     | Some p, [] -> [ p ]
     | Some p, x :: l -> Pp.concat ~sep:Pp.space [ p; x ] :: l
   in
-  { loc; hints; paragraphs; annots; context; dir }
+  { loc
+  ; hints
+  ; paragraphs
+  ; annots
+  ; context
+  ; dir
+  ; has_embedded_location
+  ; needs_stack_trace
+  }
 ;;
 
-let pp { loc; paragraphs; hints; annots = _; context; dir = _ } =
+let pp
+      { loc
+      ; paragraphs
+      ; hints
+      ; annots = _
+      ; context
+      ; dir = _
+      ; has_embedded_location = _
+      ; needs_stack_trace = _
+      }
+  =
   let open Pp.O in
   let paragraphs =
     match hints with
@@ -312,9 +364,9 @@ let is_loc_none loc =
   | Some loc -> loc = Loc0.none
 ;;
 
-let has_embedded_location msg = Annots.mem msg.annots Annots.has_embedded_location
+let has_embedded_location msg = msg.has_embedded_location
 let has_location msg = (not (is_loc_none msg.loc)) || has_embedded_location msg
-let needs_stack_trace msg = Annots.mem msg.annots Annots.needs_stack_trace
+let needs_stack_trace msg = msg.needs_stack_trace
 
 let command cmd =
   (* CR-someday rgrinberg: this should be its own tag, but that might bring

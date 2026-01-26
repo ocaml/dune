@@ -31,7 +31,9 @@ module Make (Stdune : sig
 
     module User_error : sig
       val raise
-        :  ?loc:Loc.t
+        :  ?has_embedded_location:bool
+        -> ?needs_stack_trace:bool
+        -> ?loc:Loc.t
         -> ?hints:User_message.Style.t Pp.t list
         -> ?annots:User_message.Annots.t
         -> User_message.Style.t Pp.t list

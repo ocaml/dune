@@ -38,8 +38,11 @@ Run tests to see the actual behavior:
 
   $ dune runtest
   File "test.t", line 1, characters 0-0:
-  Error: Files _build/default/test.t and _build/default/test.t.corrected
-  differ.
+  --- test.t
+  +++ test.t.corrected
+  @@ -1 +1,2 @@
+     $ setup
+  +  first.sh
   [1]
 
   $ dune promote

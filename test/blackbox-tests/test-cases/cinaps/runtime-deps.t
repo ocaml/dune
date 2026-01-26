@@ -22,8 +22,12 @@ Runtime dependencies for running cinaps
 
   $ dune build @cinaps --auto-promote
   File "test.ml", line 1, characters 0-0:
-  Error: Files _build/default/test.ml and
-  _build/default/test.ml.cinaps-corrected differ.
+  --- test.ml
+  +++ test.ml.cinaps-corrected
+  @@ -1,2 +1 @@
+  -(*$ let f = open_in "foo" in print_endline (input_line f); close_in f *)
+  -(*)
+  +(*$ let f = open_in "foo" in print_endline (input_line f); close_in f *)hello world
   Promoting _build/default/test.ml.cinaps-corrected to test.ml.
   [1]
   $ cat test.ml

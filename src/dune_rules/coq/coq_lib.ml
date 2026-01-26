@@ -212,8 +212,6 @@ let implicit = function
 ;;
 
 module Error = struct
-  let annots = User_message.Annots.singleton User_message.Annots.needs_stack_trace ()
-
   let duplicate_theory_name (id1 : Id.t) (id2 : Id.t) =
     let name = id1.name in
     User_error.raise
@@ -224,7 +222,7 @@ module Error = struct
 
   let incompatible_boot id1 id2 =
     User_message.make
-      ~annots
+      ~needs_stack_trace:true
       [ Pp.textf "The following theories use incompatible boot libraries:"
       ; Pp.enumerate ~f:Id.pp [ id1; id2 ]
       ]
@@ -235,7 +233,7 @@ module Error = struct
     let name = Coq_lib_name.to_string name in
     Resolve.Memo.fail
     @@ User_message.make
-         ~annots
+         ~needs_stack_trace:true
          ~loc
          ?hints
          [ Pp.textf "Theory %S has not been found." name ]
@@ -260,7 +258,7 @@ module Error = struct
     in
     Resolve.Memo.fail
     @@ User_message.make
-         ~annots
+         ~needs_stack_trace:true
          ~loc
          [ Pp.textf "Theory %s not found in the current scope." name; reason ]
   ;;

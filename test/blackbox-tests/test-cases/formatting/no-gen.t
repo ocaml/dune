@@ -64,11 +64,30 @@ We format again.
   Warning: in total, 1 production is never reduced.
   fake ocamlformat is running: "--intf" "parser_raw.mli"
   File "other_gen.mli", line 1, characters 0-0:
-  Error: Files _build/default/other_gen.mli and
-  _build/default/.formatted/other_gen.mli differ.
+  --- other_gen.mli
+  +++ .formatted/other_gen.mli
+  @@ -0,0 +1 @@
+  +(* fake ocamlformat output *)
+  \ No newline at end of file
   File "parser_raw.mli", line 1, characters 0-0:
-  Error: Files _build/default/parser_raw.mli and
-  _build/default/.formatted/parser_raw.mli differ.
+  --- parser_raw.mli
+  +++ .formatted/parser_raw.mli
+  @@ -1,13 +1 @@
+  -
+  -(* The type of tokens. *)
+  -
+  -type token = 
+  -  | EOL
+  -
+  -(* This exception is raised by the monolithic API functions. *)
+  -
+  -exception Error
+  -
+  -(* The monolithic API. *)
+  -
+  -val prog: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (unit)
+  +(* fake ocamlformat output *)
+  \ No newline at end of file
   [1]
 
 FIXME: unexpectedly, Dune generated the missing parser

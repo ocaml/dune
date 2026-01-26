@@ -59,7 +59,6 @@ type modify_event_selector =
 val create
   :  spawn_thread:((unit -> unit) -> Thread.t)
   -> modify_event_selector:modify_event_selector
-  -> log_error:(string -> unit)
   -> send_emit_events_job_to_scheduler:((unit -> Event.t list) -> unit)
   -> t
 

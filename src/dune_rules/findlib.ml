@@ -191,7 +191,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
           if ext = ext_lib
           then (
             let file = Path.relative t.dir f in
-            if String.is_prefix f ~prefix:Foreign.Archive.Name.lib_file_prefix
+            if String.starts_with ~prefix:Foreign.Archive.Name.lib_file_prefix f
             then Left file
             else Right file)
           else Skip)
@@ -308,7 +308,7 @@ module Loader = struct
             List.filter_partition_map contents ~f:(fun (name, kind) ->
               match resolve_link ~dir:path ~fname:name kind with
               | Some S_DIR -> Left name
-              | Some S_REG when String.is_prefix name ~prefix:file_prefix -> Right name
+              | Some S_REG when String.starts_with ~prefix:file_prefix name -> Right name
               | _ -> Skip)
           in
           Ok
@@ -481,7 +481,7 @@ module Loader = struct
             [ Pp.textf
                 "Unable to read directory %s for findlib package"
                 (Path.to_string_maybe_quoted dir)
-            ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
+            ; User_error.reason (Pp.verbatim (Unix.error_message unix_error))
             ]
         | Ok { sub_dirs; metas } ->
           let+ sub_dirs =

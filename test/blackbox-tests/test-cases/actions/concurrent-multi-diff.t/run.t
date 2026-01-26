@@ -31,7 +31,11 @@ We can now run the rule and see that we fail before diffing C.
 
   $ dune build
   File "B", line 1, characters 0-0:
-  Error: Files _build/default/B and _build/default/B.diff differ.
+  --- B
+  +++ B.diff
+  @@ -1 +1 @@
+  -I am file B.
+  +I am certainly file B.
   [1]
 
 We can check which diffs were run by asking Dune to promote the files.
@@ -71,9 +75,17 @@ We see that all the files get diffed.
 
   $ dune build
   File "B", line 1, characters 0-0:
-  Error: Files _build/default/B and _build/default/B.diff differ.
+  --- B
+  +++ B.diff
+  @@ -1 +1 @@
+  -I am file B.
+  +I am certainly file B.
   File "C", line 1, characters 0-0:
-  Error: Files _build/default/C and _build/default/C.diff differ.
+  --- C
+  +++ C.diff
+  @@ -1 +1 @@
+  -I am file C.
+  +I am most certainly file C.
   [1]
 
 And we have promotions for the two that failed.

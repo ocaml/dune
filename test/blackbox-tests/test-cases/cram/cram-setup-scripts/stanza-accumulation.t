@@ -59,8 +59,15 @@ Run the test:
 
   $ dune runtest
   File "test.t", line 1, characters 0-0:
-  Error: Files _build/default/test.t and _build/default/test.t.corrected
-  differ.
+  --- test.t
+  +++ test.t.corrected
+  @@ -1,5 +1,5 @@
+     $ echo "Scripts loaded: $SCRIPTS_LOADED"
+  -  Scripts loaded: base,helper1,helper2
+  +  Scripts loaded: base
+   
+     $ helper1_func
+     Helper 1 called
   [1]
 
   $ dune promote

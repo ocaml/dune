@@ -273,32 +273,53 @@ struct
   ;;
 
   let read_file ?(binary = true) fn =
-    if binary
-    then Fs_io.read_file (Path.to_string fn) |> Result.ok_exn
-    else read_file_chan ~binary fn
+    let start = Counter.Timer.start () in
+    Counter.incr Metrics.File_read.count;
+    let res =
+      if binary
+      then Fs_io.read_file (Path.to_string fn) |> Result.ok_exn
+      else read_file_chan ~binary fn
+    in
+    Counter.add Metrics.File_read.bytes (String.length res);
+    Counter.Timer.stop Metrics.File_read.time start;
+    res
   ;;
 
   let lines_of_file fn = with_file_in fn ~f:input_lines ~binary:false
   let zero_strings_of_file fn = with_file_in fn ~f:input_zero_separated ~binary:true
 
   let write_file ?(binary = true) ?perm fn data =
-    if binary
-    then
-      Fs_io.write_file
-        ~perm:(Option.value ~default:default_out_perm perm)
-        ~data
-        ~path:(Path.to_string fn)
-      |> Result.ok_exn
-    else with_file_out ~binary ?perm fn ~f:(fun oc -> output_string oc data)
+    let start = Counter.Timer.start () in
+    Counter.incr Metrics.File_write.count;
+    Counter.add Metrics.File_write.bytes (String.length data);
+    let res =
+      if binary
+      then
+        Fs_io.write_file
+          ~perm:(Option.value ~default:default_out_perm perm)
+          ~data
+          ~path:(Path.to_string fn)
+        |> Result.ok_exn
+      else with_file_out ~binary ?perm fn ~f:(fun oc -> output_string oc data)
+    in
+    Counter.Timer.stop Metrics.File_read.time start;
+    res
   ;;
 
   let write_lines ?binary ?perm fn lines =
-    with_file_out ?binary ?perm fn ~f:(fun oc ->
-      List.iter
-        ~f:(fun line ->
-          output_string oc line;
-          output_string oc "\n")
-        lines)
+    let start = Counter.Timer.start () in
+    Counter.incr Metrics.File_write.count;
+    let res =
+      with_file_out ?binary ?perm fn ~f:(fun oc ->
+        List.iter
+          ~f:(fun line ->
+            Counter.add Metrics.File_write.bytes (String.length line + 1);
+            output_string oc line;
+            output_string oc "\n")
+          lines)
+    in
+    Counter.Timer.stop Metrics.Directory_read.time start;
+    res
   ;;
 
   let read_file_and_normalize_eols fn =
@@ -431,7 +452,7 @@ let portable_hardlink ~src ~dst =
       [ Pp.textf
           "Sandbox creation error: cannot resolve symbolic link %S."
           (Path.to_string src)
-      ; Pp.textf "Reason: %s" msg
+      ; User_error.reason (Pp.verbatim msg)
       ]
   in
   (* CR-someday amokhov: Instead of always falling back to copying, we could

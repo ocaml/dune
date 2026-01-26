@@ -2,15 +2,30 @@ exception E of User_message.t
 
 let prefix = Pp.seq (Pp.tag User_message.Style.Error (Pp.verbatim "Error")) (Pp.char ':')
 
-let make ?loc ?hints ?annots paragraphs =
-  User_message.make ?loc ?hints ?annots paragraphs ~prefix
+let make ?has_embedded_location ?needs_stack_trace ?loc ?hints ?annots paragraphs =
+  User_message.make
+    ?has_embedded_location
+    ?needs_stack_trace
+    ?loc
+    ?hints
+    ?annots
+    paragraphs
+    ~prefix
 ;;
 
-let raise ?loc ?hints ?annots paragraphs = raise (E (make ?loc ?hints ?annots paragraphs))
+let raise ?has_embedded_location ?needs_stack_trace ?loc ?hints ?annots paragraphs =
+  raise
+    (E (make ?has_embedded_location ?needs_stack_trace ?loc ?hints ?annots paragraphs))
+;;
 
 let ok_exn = function
   | Ok x -> x
   | Error msg -> Stdlib.raise (E msg)
+;;
+
+let reason =
+  let reason = Pp.tag User_message.Style.Kwd (Pp.verbatim "Reason") in
+  fun msg -> Pp.hovbox (Pp.concat [ reason; Pp.char ':'; Pp.space; msg ])
 ;;
 
 let () =

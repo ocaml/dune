@@ -35,7 +35,7 @@ let run_fmt_command ~common ~config ~preview builder =
       Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts:setup.contexts dir
       |> Alias.request
     in
-    Build.run_build_system ~common ~request
+    Build.run_build_system ~request
     >>| function
     | Ok () -> ()
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported

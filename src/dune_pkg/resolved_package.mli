@@ -5,6 +5,7 @@ type t
 val package : t -> OpamPackage.t
 val opam_file : t -> OpamFile.OPAM.t
 val loc : t -> Loc.t
+val with_opam_file : OpamFile.OPAM.t -> t -> t
 
 (** Determines whether the package is to be built using Dune or not *)
 val dune_build : t -> bool

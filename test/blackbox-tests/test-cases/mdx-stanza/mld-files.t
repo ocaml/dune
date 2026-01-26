@@ -30,8 +30,17 @@ that that file is not being picked up:
   > EOF
   $ dune runtest
   File "needs-fixes.md", line 1, characters 0-0:
-  Error: Files _build/default/needs-fixes.md and
-  _build/default/.mdx/needs-fixes.md.corrected differ.
+  --- needs-fixes.md
+  +++ .mdx/needs-fixes.md.corrected
+  @@ -2,7 +2,7 @@
+   
+   ```ocaml
+      # List.map (fun x -> x * x) [(1 + 9); 2; 3; 4];;
+  -   - : int list = [1; 2; 3; 8]
+  +   - : int list = [100; 4; 9; 16]
+   ```
+   
+   A run of MDX should output a fixed version.
   [1]
 
 It did pick up the error in the `.md` file, so let's promote the fix.
@@ -52,8 +61,17 @@ least as of mdx stanza version 0.3 and require MDX 2.3.0 at minimum.
   > EOF
   $ dune runtest
   File "needs-fixes.mld", line 1, characters 0-0:
-  Error: Files _build/default/needs-fixes.mld and
-  _build/default/.mdx/needs-fixes.mld.corrected differ.
+  --- needs-fixes.mld
+  +++ .mdx/needs-fixes.mld.corrected
+  @@ -2,7 +2,7 @@
+    
+   {[
+     # List.map (fun x -> x * x) [(1 + 9); 2; 3; 4];;
+  -  - : int list = [1; 2; 3; 8]
+  +  - : int list = [100; 4; 9; 16]
+   ]}
+   
+   A run of MDX should output a fixed version.
   [1]
 
 The error in the `.mld` file was found, promoting should work and re-running
@@ -104,8 +122,17 @@ Updating the dune-lang should make the test run.
   > EOF
   $ dune runtest
   File "needs-fixes.mld", line 1, characters 0-0:
-  Error: Files _build/default/needs-fixes.mld and
-  _build/default/.mdx/needs-fixes.mld.corrected differ.
+  --- needs-fixes.mld
+  +++ .mdx/needs-fixes.mld.corrected
+  @@ -2,7 +2,7 @@
+    
+   {[
+     # List.map (fun x -> x * x) [(1 + 9); 2; 3; 4];;
+  -  - : int list = [1; 2; 3; 8]
+  +  - : int list = [100; 4; 9; 16]
+   ]}
+   
+   A run of MDX should output a fixed version.
   [1]
   $ dune promote
   Promoting _build/default/.mdx/needs-fixes.mld.corrected to needs-fixes.mld.
@@ -129,8 +156,17 @@ We also make sure that `:standard` resolves properly:
   > EOF
   $ dune runtest
   File "needs-fixes.mld", line 1, characters 0-0:
-  Error: Files _build/default/needs-fixes.mld and
-  _build/default/.mdx/needs-fixes.mld.corrected differ.
+  --- needs-fixes.mld
+  +++ .mdx/needs-fixes.mld.corrected
+  @@ -2,7 +2,7 @@
+    
+   {[
+     # List.map (fun x -> x * x) [(1 + 9); 2; 3; 4];;
+  -  - : int list = [1; 2; 3; 8]
+  +  - : int list = [100; 4; 9; 16]
+   ]}
+   
+   A run of MDX should output a fixed version.
   [1]
   $ dune promote
   Promoting _build/default/.mdx/needs-fixes.mld.corrected to needs-fixes.mld.

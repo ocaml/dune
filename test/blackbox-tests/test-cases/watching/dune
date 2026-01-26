@@ -3,9 +3,6 @@
   (binaries ../../utils/ocamlformat.exe)))
 
 (cram
- (setup_scripts helpers.sh))
-
-(cram
  (applies_to fmt-test)
  (deps %{bin:ocamlformat}))
 
@@ -24,13 +21,6 @@
 (cram
  (applies_to what-dune-watches)
  (deps %{bin:strace}))
-
-(rule
- (alias runtest)
- (enabled_if %{bin-available:shellcheck})
- (deps helpers.sh)
- (action
-  (run %{bin:shellcheck} -s bash %{deps})))
 
 ;; Disabled due to timeouts
 

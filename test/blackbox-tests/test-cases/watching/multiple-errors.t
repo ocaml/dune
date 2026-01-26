@@ -30,7 +30,17 @@ We test the behavior of watch mode when we have multiple errors
 
   $ stop_dune
   File "x", line 1, characters 0-0:
-  Error: Files _build/default/x and _build/default/y differ.
+  --- x
+  +++ y
+  @@ -1 +1 @@
+  -not so
+  +different
+  \ No newline at end of file
   File "x", line 1, characters 0-0:
-  Error: Files _build/default/x and _build/default/z differ.
+  --- x
+  +++ z
+  @@ -1 +1 @@
+  -not so
+  +different
+  \ No newline at end of file
   Had 2 errors, waiting for filesystem changes...

@@ -473,7 +473,7 @@ module Pkg = struct
       | ".hg" | ".git" | "_darcs" | "_opam" | "_build" | "_esy" -> true
       | _ -> false
     in
-    let skip_file = String.is_prefix ~prefix:".#" in
+    let skip_file = String.starts_with ~prefix:".#" in
     let rec loop root acc path =
       let full_path = Path.External.append_local root path in
       Fs_memo.dir_contents (External full_path)
@@ -1890,8 +1890,7 @@ module Install_action = struct
                 (Loc.pp loc |> Pp.map_tags ~f:(fun Loc.Loc -> User_message.Style.Loc))
                 ++ error
             in
-            User_error.raise
-              [ message_with_loc; Pp.seq (Pp.text "Reason: ") (Pp.text message) ]
+            User_error.raise [ message_with_loc; User_error.reason (Pp.verbatim message) ]
         in
         OpamFile.Dot_config.bindings config
         |> List.map ~f:(fun (name, value) -> Package_variable_name.of_opam name, value)

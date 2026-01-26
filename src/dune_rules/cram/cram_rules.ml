@@ -165,7 +165,7 @@ let test_rule
        let+ () = List.map ~f:Path.build [ script; output ] |> Action_builder.paths in
        Action.progn
          [ Cram_exec.diff ~src:(Path.build script) ~output:(Path.build output)
-         ; Promote.Diff_action.diff
+         ; Action.diff
              ~optional:true
              ~mode:Text
              (Path.build script)

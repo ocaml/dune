@@ -33,6 +33,6 @@ let supports_cmi_file version = version >= (5, 0, 0)
 let supports_oxcaml version =
   let jst = "+jst" in
   let ox = "+ox" in
-  Stdune.String.is_suffix ~suffix:jst version
-  || Stdune.String.is_suffix ~suffix:ox version
+  Stdune.String.ends_with ~suffix:jst version
+  || Stdune.String.ends_with ~suffix:ox version
 ;;

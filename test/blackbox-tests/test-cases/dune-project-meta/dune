@@ -1,3 +1,0 @@
-(cram
- (applies_to version)
- (deps ../git-helpers.sh))

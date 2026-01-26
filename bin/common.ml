@@ -423,7 +423,7 @@ let shared_with_config_file =
           ~doc:(Some doc))
   and+ sandboxing_preference =
     let all =
-      List.map Dune_engine.Sandbox_mode.all ~f:(fun s ->
+      List.map Dune_engine.Sandbox_mode.all_except_patch_back_source_tree ~f:(fun s ->
         Dune_engine.Sandbox_mode.to_string s, s)
     in
     Arg.(
@@ -443,7 +443,7 @@ let shared_with_config_file =
                   (String.concat
                      ~sep:", "
                      (List.map
-                        Dune_engine.Sandbox_mode.all
+                        Dune_engine.Sandbox_mode.all_except_patch_back_source_tree
                         ~f:Dune_engine.Sandbox_mode.to_string)))))
   and+ terminal_persistence =
     let modes = Dune_config.Terminal_persistence.all in
@@ -564,7 +564,6 @@ module Builder = struct
     ; store_orig_src_dir : bool
     ; default_target : Arg.Dep.t (* For build & runtest only *)
     ; watch : Dune_rpc_impl.Watch_mode_config.t
-    ; print_metrics : bool
     ; dump_gc_stats : Path.External.t option
     ; always_show_command_line : bool
     ; promote_install_files : bool
@@ -717,14 +716,6 @@ module Builder = struct
       match res with
       | None -> Dune_rpc_impl.Watch_mode_config.No
       | Some mode -> Yes mode
-    and+ print_metrics =
-      Arg.(
-        value
-        & flag
-        & info
-            [ "print-metrics" ]
-            ~docs
-            ~doc:(Some "Print out various performance metrics after every build."))
     and+ dump_gc_stats =
       Arg.(
         value
@@ -933,7 +924,6 @@ module Builder = struct
     ; store_orig_src_dir
     ; default_target
     ; watch
-    ; print_metrics
     ; dump_gc_stats =
         Option.map dump_gc_stats ~f:Path.External.of_filename_relative_to_initial_cwd
     ; always_show_command_line
@@ -984,7 +974,6 @@ module Builder = struct
         ; store_orig_src_dir
         ; default_target
         ; watch
-        ; print_metrics
         ; dump_gc_stats
         ; always_show_command_line
         ; promote_install_files
@@ -1018,7 +1007,6 @@ module Builder = struct
     && Bool.equal t.store_orig_src_dir store_orig_src_dir
     && Arg.Dep.equal t.default_target default_target
     && Dune_rpc_impl.Watch_mode_config.equal t.watch watch
-    && Bool.equal t.print_metrics print_metrics
     && Option.equal Path.External.equal t.dump_gc_stats dump_gc_stats
     && Bool.equal t.always_show_command_line always_show_command_line
     && Bool.equal t.promote_install_files promote_install_files
@@ -1049,7 +1037,6 @@ let capture_outputs t = t.builder.capture_outputs
 let root t = t.root
 let watch t = t.builder.watch
 let x t = t.builder.workspace_config.x
-let print_metrics t = t.builder.print_metrics
 let file_watcher t = t.builder.file_watcher
 let prefix_target t s = t.root.reach_from_root_prefix ^ s
 
@@ -1146,7 +1133,6 @@ let build (root : Workspace_root.t) (builder : Builder.t) =
            Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir))
     else `Forbid_builds
   in
-  if builder.print_metrics then Metrics.enable ();
   { builder; root; rpc }
 ;;
 
@@ -1251,7 +1237,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   Dune_rules.Clflags.debug_package_logs := c.builder.debug_package_logs;
   Dune_digest.Clflags.wait_for_filesystem_clock := c.builder.wait_for_filesystem_clock;
   Dune_engine.Clflags.capture_outputs := c.builder.capture_outputs;
-  Promote.Clflags.diff_command := c.builder.diff_command;
+  Dune_engine.Clflags.diff_command := c.builder.diff_command;
   Dune_engine.Clflags.promote := c.builder.promote;
   Dune_engine.Clflags.force := c.builder.force;
   Dune_engine.Clflags.stop_on_first_error := c.builder.stop_on_first_error;

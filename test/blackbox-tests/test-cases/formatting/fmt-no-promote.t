@@ -11,11 +11,21 @@ Run `dune fmt --preview` twice to test it is idempotent. In a terminal these
 commands would also print the diff of what would be changed.
   $ dune fmt --preview
   File "dune", line 1, characters 0-0:
-  Error: Files _build/default/dune and _build/default/.formatted/dune differ.
+  --- dune
+  +++ .formatted/dune
+  @@ -1 +1,2 @@
+  -(rule (write-file a b))
+  +(rule
+  + (write-file a b))
   [1]
   $ dune fmt --preview
   File "dune", line 1, characters 0-0:
-  Error: Files _build/default/dune and _build/default/.formatted/dune differ.
+  --- dune
+  +++ .formatted/dune
+  @@ -1 +1,2 @@
+  -(rule (write-file a b))
+  +(rule
+  + (write-file a b))
   [1]
 
 Show the formatted file from _build.
@@ -26,7 +36,12 @@ Show the formatted file from _build.
 Actually format the file
   $ dune fmt
   File "dune", line 1, characters 0-0:
-  Error: Files _build/default/dune and _build/default/.formatted/dune differ.
+  --- dune
+  +++ .formatted/dune
+  @@ -1 +1,2 @@
+  -(rule (write-file a b))
+  +(rule
+  + (write-file a b))
   Promoting _build/default/.formatted/dune to dune.
   [1]
 

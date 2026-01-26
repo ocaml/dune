@@ -41,7 +41,8 @@ let create =
       Thread.create f x
 ;;
 
-let spawn f =
+let spawn ~name f =
+  Dune_trace.emit Thread (fun () -> Dune_trace.Event.spawn_thread ~name);
   let f () =
     try f () with
     | exn ->

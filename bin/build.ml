@@ -1,39 +1,7 @@
 open Import
 
-let with_metrics ~common f =
-  let start_time = Time.now () in
-  Fiber.finalize f ~finally:(fun () ->
-    let duration = Time.diff (Time.now ()) start_time in
-    if Common.print_metrics common
-    then (
-      let gc_stat = Gc.quick_stat () in
-      (* We reset Memo counters below, unconditionally. *)
-      let memo_counters_report = Memo.Metrics.report ~reset_after_reporting:false in
-      Console.print_user_message
-        (User_message.make
-           ([ Pp.textf "%s" memo_counters_report
-            ; Pp.textf
-                "(%.2fs total, %.1fM heap words)"
-                (Time.Span.to_secs duration)
-                (float_of_int gc_stat.heap_words /. 1_000_000.)
-            ; Pp.text "Timers:"
-            ]
-            @ List.map
-                ~f:(fun (timer, { Metrics.Timer.Measure.cumulative_time; count }) ->
-                  Pp.textf
-                    "%s - time spent = %.2fs, count = %d"
-                    timer
-                    (Time.Span.to_secs cumulative_time)
-                    count)
-                (String.Map.to_list (Metrics.Timer.aggregated_timers ())))));
-    Memo.Metrics.reset ();
-    Fiber.return ())
-;;
-
-let run_build_system ~common ~request =
-  let run ~(toplevel : unit Memo.Lazy.t) =
-    with_metrics ~common (fun () -> build (fun () -> Memo.Lazy.force toplevel))
-  in
+let run_build_system ~request =
+  let run ~(toplevel : unit Memo.Lazy.t) = build (fun () -> Memo.Lazy.force toplevel) in
   let open Fiber.O in
   Fiber.finalize
     (fun () ->
@@ -87,7 +55,7 @@ let poll_handling_rpc_build_requests ~(common : Common.t) =
              ~to_cwd:root.to_cwd
              ~test_paths
        in
-       run_build_system ~common ~request, outcome)
+       run_build_system ~request, outcome)
 ;;
 
 let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
@@ -99,7 +67,7 @@ let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
        (* Run two fibers concurrently. One is responible for rebuilding targets
        named on the command line in reaction to file system changes. The other
        is responsible for building targets named in RPC build requests. *)
-       let+ () = Scheduler.Run.poll (run_build_system ~common ~request)
+       let+ () = Scheduler.Run.poll (run_build_system ~request)
        and+ () = poll_handling_rpc_build_requests ~common in
        ())
 ;;
@@ -116,7 +84,7 @@ let run_build_command_poll_passive ~common ~config ~request:_ : unit =
 let run_build_command_once ~(common : Common.t) ~config ~request =
   let open Fiber.O in
   let once () =
-    let+ res = run_build_system ~common ~request in
+    let+ res = run_build_system ~request in
     match res with
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
     | Ok () -> ()

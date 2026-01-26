@@ -1,6 +1,5 @@
 This test verifies that the `library_parameter` stanza works as expected.
 
-  $ . ./helpers.sh
   $ cat > "dune-project" <<EOF
   > (lang dune 3.20)
   > EOF

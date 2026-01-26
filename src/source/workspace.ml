@@ -557,7 +557,7 @@ module Context = struct
     ;;
 
     let name_hint_opt name =
-      if String.is_prefix ~prefix:"/" name
+      if String.starts_with ~prefix:"/" name
       then (
         let context_name = Filename.basename name in
         Some [ Pp.textf "(name %s) would be a valid context name" context_name ])

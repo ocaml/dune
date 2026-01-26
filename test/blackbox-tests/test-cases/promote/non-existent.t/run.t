@@ -6,7 +6,7 @@ Tests for promoting with non existent reference
   cat: x-non-existent: No such file or directory
   [1]
 
-  $ dune build @blah-non-existent
+  $ dune build @blah-non-existent --diff-command -
   File "x-non-existent", line 1, characters 0-0:
   Error: Files _build/default/x-non-existent and _build/default/x.gen differ.
   [1]

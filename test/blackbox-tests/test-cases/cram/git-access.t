@@ -10,8 +10,12 @@ Check that actions don't have access to the outer git repository.
 
   $ dune runtest --auto-promote
   File "test.t", line 1, characters 0-0:
-  Error: Files _build/default/test.t and _build/default/test.t.corrected
-  differ.
+  --- test.t
+  +++ test.t.corrected
+  @@ -1 +1,3 @@
+     $ git rev-parse --show-toplevel
+  +  fatal: invalid gitfile format: $TESTCASE_ROOT/git/_build/.sandbox/.git
+  +  [128]
   Promoting _build/default/test.t.corrected to test.t.
   [1]
 

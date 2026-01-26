@@ -34,6 +34,14 @@ Run the test:
 
   $ dune runtest
   File "visibility.t", line 1, characters 0-0:
-  Error: Files _build/default/visibility.t and
-  _build/default/visibility.t.corrected differ.
+  --- visibility.t
+  +++ visibility.t.corrected
+  @@ -1,7 +1,6 @@
+   Test that the setup script is NOT visible in the test directory
+   
+     $ ls | sort
+  -  visibility.t
+   
+   Test that we can still call the helper function
+   
   [1]

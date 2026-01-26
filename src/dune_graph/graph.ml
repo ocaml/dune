@@ -226,7 +226,7 @@ let serialize_summary t oc =
      these nodes to a single table since they only have a single entry each *)
   let rename_all_deps label =
     Option.map label ~f:(fun label ->
-      if String.is_suffix label ~suffix:".all-deps" then "*.all-deps" else label)
+      if String.ends_with ~suffix:".all-deps" label then "*.all-deps" else label)
   in
   let by_label =
     Int.Map.fold t.nodes ~init:String_opt_map.empty ~f:(fun node acc ->

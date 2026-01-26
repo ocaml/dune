@@ -19,8 +19,19 @@ commands:
 The test should fail but still capture output from executed commands:
   $ dune runtest
   File "test.t", line 1, characters 0-0:
-  Error: Files _build/default/test.t and _build/default/test.t.corrected
-  differ.
+  --- test.t
+  +++ test.t.corrected
+  @@ -1,5 +1,10 @@
+     $ echo "First command"
+  +  First command
+     $ echo "Second command"
+  +  Second command
+     $ exit 1
+  +  ***** UNREACHABLE *****
+     $ echo "This will never execute"
+  +  ***** UNREACHABLE *****
+     $ echo "Neither will this"
+  +  ***** UNREACHABLE *****
   [1]
   $ dune promote
   Promoting _build/default/test.t.corrected to test.t.

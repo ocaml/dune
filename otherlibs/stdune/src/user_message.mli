@@ -41,12 +41,6 @@ module Annots : sig
   val empty : t
   val is_empty : t -> bool
   val singleton : 'a Key.t -> 'a -> t
-
-  (** The message has a location embed in the text. *)
-  val has_embedded_location : unit Key.t
-
-  (** The message needs a stack trace for clarity. *)
-  val needs_stack_trace : unit Key.t
 end
 
 (** A user message.contents composed of an optional file location and a list of
@@ -68,6 +62,8 @@ type t =
   ; annots : Annots.t
   ; context : string option
   ; dir : string option
+  ; has_embedded_location : bool
+  ; needs_stack_trace : bool
   }
 
 val compare : t -> t -> Ordering.t
@@ -89,7 +85,9 @@ end
     should not end with a space as a space is automatically inserted by [make]
     if necessary. *)
 val make
-  :  ?loc:Loc0.t
+  :  ?has_embedded_location:bool
+  -> ?needs_stack_trace:bool
+  -> ?loc:Loc0.t
   -> ?prefix:Style.t Pp.t
   -> ?hints:Style.t Pp.t list
   -> ?annots:Annots.t

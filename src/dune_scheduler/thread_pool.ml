@@ -54,7 +54,7 @@ let spawn_worker t =
       Mutex.unlock t.mutex)
   in
   t.running <- t.running + 1;
-  let (_ : Thread.t) = Thread0.spawn start in
+  let (_ : Thread.t) = Thread0.spawn ~name:"thread-pool" start in
   ()
 ;;
 

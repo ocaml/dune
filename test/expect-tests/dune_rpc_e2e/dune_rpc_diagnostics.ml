@@ -292,7 +292,8 @@ let%expect_test "promotion" =
     Building (alias foo)
     Build (alias foo) failed
     [ "Add"
-    ; [ [ "id"; "0" ]
+    ; [ [ "directory"; "$CWD" ]
+      ; [ "id"; "0" ]
       ; [ "loc"
         ; [ [ "start"
             ; [ [ "pos_bol"; "0" ]
@@ -312,7 +313,13 @@ let%expect_test "promotion" =
         ]
       ; [ "message"
         ; [ "Verbatim"
-          ; "Error: Files _build/default/x and _build/default/x.gen differ.\n\
+          ; "--- x\n\
+             +++ x.gen\n\
+             @@ -1 +1 @@\n\
+             -titi\n\
+             \\ No newline at end of file\n\
+             +toto\n\
+             \\ No newline at end of file\n\
              "
           ]
         ]
@@ -326,7 +333,8 @@ let%expect_test "promotion" =
       ; [ "severity"; "error" ]
       ; [ "targets"; [] ]
       ]
-    ] |}]
+    ]
+    |}]
 ;;
 
 let%expect_test "optional promotion" =
@@ -350,7 +358,8 @@ let%expect_test "optional promotion" =
     Build (alias foo) failed
     FAILURE: promotion file $CWD/_build/default/output.actual does not exist
     [ "Add"
-    ; [ [ "id"; "0" ]
+    ; [ [ "directory"; "$CWD" ]
+      ; [ "id"; "0" ]
       ; [ "loc"
         ; [ [ "start"
             ; [ [ "pos_bol"; "0" ]
@@ -370,8 +379,13 @@ let%expect_test "optional promotion" =
         ]
       ; [ "message"
         ; [ "Verbatim"
-          ; "Error: Files _build/default/output.expected and _build/default/output.actual\n\
-             differ.\n\
+          ; "--- output.expected\n\
+             +++ output.actual\n\
+             @@ -1 +1 @@\n\
+             -foo\n\
+             \\ No newline at end of file\n\
+             +bar\n\
+             \\ No newline at end of file\n\
              "
           ]
         ]
@@ -385,7 +399,8 @@ let%expect_test "optional promotion" =
       ; [ "severity"; "error" ]
       ; [ "targets"; [] ]
       ]
-    ] |}]
+    ]
+    |}]
 ;;
 
 (* Non-fatal compiler warnings aren't transferred to the RPC client. *)

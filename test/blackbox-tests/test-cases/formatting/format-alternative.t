@@ -12,8 +12,14 @@ Dune files names dune-file should be formatted
 
   $ dune fmt
   File "dune-file", line 1, characters 0-0:
-  Error: Files _build/default/dune-file and _build/default/.formatted/dune-file
-  differ.
+  --- dune-file
+  +++ .formatted/dune-file
+  @@ -1,2 +1,4 @@
+   (rule
+  -(with-stdout-to foo (echo bar)))
+  + (with-stdout-to
+  +  foo
+  +  (echo bar)))
   Promoting _build/default/.formatted/dune-file to dune-file.
   [1]
 

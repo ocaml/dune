@@ -74,7 +74,7 @@ let promote_target_if_not_up_to_date
          this, perhaps, by making artifact substitution a field of [promote]. *)
       Fiber.return false
     | _ ->
-      Dune_trace.emit Promote (fun () -> Dune_trace.Event.promote src dst);
+      Dune_trace.emit Promote (fun () -> Dune_trace.Event.Promote.promote src dst);
       if promote_until_clean then To_delete.add dst;
       (* The file in the build directory might be read-only if it comes from the
          shared cache. However, we want the file in the source tree to be
@@ -127,12 +127,12 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
         let extra_messages =
           match unix_error with
           | None -> []
-          | Some error -> [ Unix_error.Detailed.pp ~prefix:"Reason: " error ]
+          | Some error -> [ Unix_error.Detailed.pp_reason error ]
         in
         User_error.raise
+          ~needs_stack_trace:true
           ~loc
           (msg (Path.Source.to_string into_dir) :: extra_messages)
-          ~annots:(User_message.Annots.singleton User_message.Annots.needs_stack_trace ())
       in
       Memo.run (Fs_memo.path_kind (In_source_dir into_dir))
       >>| (function
@@ -146,11 +146,11 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
     let msgs =
       match unix_error with
       | None -> msgs
-      | Some error -> Unix_error.Detailed.pp ~prefix:"Reason: " error :: msgs
+      | Some error -> Unix_error.Detailed.pp_reason error :: msgs
     in
     User_error.raise
       (Pp.textf "Cannot promote files to %S." (Path.to_string dst_dir) :: msgs)
-      ~annots:(User_message.Annots.singleton User_message.Annots.needs_stack_trace ())
+      ~needs_stack_trace:true
   in
   let create_directory_if_needed ~dir =
     let dst_dir = relocate dir in

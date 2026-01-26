@@ -61,10 +61,7 @@ let promote_correction (m : Module.t) build ~suffix ~ml_kind =
   Action.Full.reduce
     [ act
     ; Action.Full.make
-        (Promote.Diff_action.diff
-           ~optional:true
-           src
-           (Path.Build.extend_basename dst ~suffix))
+        (Action.diff ~optional:true src (Path.Build.extend_basename dst ~suffix))
     ]
 ;;
 
@@ -74,7 +71,7 @@ let promote_correction_with_target fn build ~suffix =
     ; Action_builder.with_no_targets
         (Action_builder.return
            (Action.Full.make
-              (Promote.Diff_action.diff
+              (Action.diff
                  ~optional:true
                  (Path.build fn)
                  (Path.Build.extend_basename fn ~suffix))))

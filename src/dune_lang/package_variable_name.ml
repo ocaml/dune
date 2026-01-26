@@ -116,6 +116,8 @@ module Project = struct
 
   let decode =
     Decoder.atom_matching ~desc:"variable" (fun s ->
-      if String.is_prefix s ~prefix:":" then Some (of_string (String.drop s 1)) else None)
+      if String.starts_with ~prefix:":" s
+      then Some (of_string (String.drop s 1))
+      else None)
   ;;
 end

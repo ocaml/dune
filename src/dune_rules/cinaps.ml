@@ -231,7 +231,7 @@ let gen_rules sctx t ~dir ~scope =
               [ Action.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ]
               ; Action.concurrent
                 @@ List.map cinapsed_files ~f:(fun fn ->
-                  Promote.Diff_action.diff
+                  Action.diff
                     ~optional:true
                     (Path.build fn)
                     (Path.Build.extend_basename fn ~suffix:".cinaps-corrected"))

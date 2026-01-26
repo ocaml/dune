@@ -202,7 +202,7 @@ let init events =
   in
   if Sys.win32
   then (
-    let (_ : Thread.t) = Thread0.spawn (fun () -> run_win32 t) in
+    let (_ : Thread.t) = Thread0.spawn ~name:"process-watcher" (fun () -> run_win32 t) in
     ());
   t
 ;;

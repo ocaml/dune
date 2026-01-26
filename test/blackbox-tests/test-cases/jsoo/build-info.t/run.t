@@ -1,5 +1,3 @@
-  $ . ../../git-helpers.sh
-
 Jsoo and build-info
 
   $ echo "(lang dune 3.0)" > dune-project

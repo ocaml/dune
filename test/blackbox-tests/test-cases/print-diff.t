@@ -50,7 +50,12 @@ The default behavior (when --diff-command is not passed) is equivalent to
 
   $ dune runtest
   File "a", line 1, characters 0-0:
-  Error: Files _build/default/a and _build/default/b differ.
+  --- a
+  +++ b
+  @@ -1 +1 @@
+  -a
+  +b
+  \ No newline at end of file
   [1]
 
 Outside of dune, it is to first look for patdiff in PATH.
@@ -113,8 +118,8 @@ If patdiff or git are unavailable, it uses diff.
   $ rm _path/git
   $ (unset INSIDE_DUNE; PATH=_path dune runtest --always-show-command-line --root .)
   File "a", line 1, characters 0-0:
-  (cd _build/default && $TESTCASE_ROOT/_path/diff -u a b)
-  Running $TESTCASE_ROOT/_path/diff -u a b
+  (cd _build/default && $TESTCASE_ROOT/_path/diff -u --label a --label b a b)
+  Running $TESTCASE_ROOT/_path/diff -u --label a --label b a b
   [1]
 
 In this situation (when an automatically discovered command is used), if the
@@ -122,8 +127,8 @@ command succeeds, the "difference" message is still printed.
 
   $ cp _tools/succeed _path/diff
   $ (unset INSIDE_DUNE; PATH=_path dune runtest --always-show-command-line --root .)
-  (cd _build/default && $TESTCASE_ROOT/_path/diff -u a b)
-  Running $TESTCASE_ROOT/_path/diff -u a b
+  (cd _build/default && $TESTCASE_ROOT/_path/diff -u --label a --label b a b)
+  Running $TESTCASE_ROOT/_path/diff -u --label a --label b a b
   File "a", line 1, characters 0-0:
   Error: Files _build/default/a and _build/default/b differ.
   [1]

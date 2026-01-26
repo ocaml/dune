@@ -1,6 +1,75 @@
 (* Because other the syntax s.[x] causes trouble *)
 module String = Stdlib.String
 
+module Cased_functions (X : sig
+    val normalize : char -> char
+  end) =
+struct
+  let length = String.length
+  let sub = StringLabels.sub
+
+  let rec check_prefix s ~prefix len i =
+    i = len
+    || (X.normalize s.[i] = X.normalize prefix.[i] && check_prefix s ~prefix len (i + 1))
+  ;;
+
+  let rec check_suffix s ~suffix suffix_len offset i =
+    i = suffix_len
+    || (X.normalize s.[offset + i] = X.normalize suffix.[i]
+        && check_suffix s ~suffix suffix_len offset (i + 1))
+  ;;
+
+  let starts_with ~prefix s =
+    let len = length s in
+    let prefix_len = length prefix in
+    len >= prefix_len && check_prefix s ~prefix prefix_len 0
+  ;;
+
+  let ends_with ~suffix s =
+    let len = length s in
+    let suffix_len = length suffix in
+    len >= suffix_len && check_suffix s ~suffix suffix_len (len - suffix_len) 0
+  ;;
+
+  let drop_prefix s ~prefix =
+    if starts_with ~prefix s
+    then
+      if length s = length prefix
+      then Some ""
+      else Some (sub s ~pos:(length prefix) ~len:(length s - length prefix))
+    else None
+  ;;
+
+  let drop_prefix_if_exists s ~prefix =
+    match drop_prefix s ~prefix with
+    | None -> s
+    | Some s -> s
+  ;;
+
+  let drop_suffix s ~suffix =
+    if ends_with ~suffix s
+    then
+      if length s = length suffix
+      then Some ""
+      else Some (sub s ~pos:0 ~len:(length s - length suffix))
+    else None
+  ;;
+
+  let drop_suffix_if_exists s ~suffix =
+    match drop_suffix s ~suffix with
+    | None -> s
+    | Some s -> s
+  ;;
+end
+
+include Cased_functions (struct
+    let normalize c = c
+  end)
+
+module Caseless = Cased_functions (struct
+    let normalize = Char.lowercase_ascii
+  end)
+
 module StringLabels = struct
   (* functions potentially in the stdlib, depending on OCaml version *)
 
@@ -17,6 +86,9 @@ module StringLabels = struct
     in
     fun ~f s -> loop s 0 (String.length s) f
   ;;
+
+  let[@warning "-32"] starts_with = starts_with
+  let[@warning "-32"] ends_with = ends_with
 
   (* overwrite them with stdlib versions if available *)
   include Stdlib.StringLabels
@@ -48,72 +120,6 @@ let rindex = rindex_opt
 let rindex_from = rindex_from_opt
 let break s ~pos = sub s ~pos:0 ~len:pos, sub s ~pos ~len:(length s - pos)
 let is_empty s = length s = 0
-
-module Cased_functions (X : sig
-    val normalize : char -> char
-  end) =
-struct
-  let rec check_prefix s ~prefix len i =
-    i = len
-    || (X.normalize s.[i] = X.normalize prefix.[i] && check_prefix s ~prefix len (i + 1))
-  ;;
-
-  let rec check_suffix s ~suffix suffix_len offset i =
-    i = suffix_len
-    || (X.normalize s.[offset + i] = X.normalize suffix.[i]
-        && check_suffix s ~suffix suffix_len offset (i + 1))
-  ;;
-
-  let is_prefix s ~prefix =
-    let len = length s in
-    let prefix_len = length prefix in
-    len >= prefix_len && check_prefix s ~prefix prefix_len 0
-  ;;
-
-  let is_suffix s ~suffix =
-    let len = length s in
-    let suffix_len = length suffix in
-    len >= suffix_len && check_suffix s ~suffix suffix_len (len - suffix_len) 0
-  ;;
-
-  let drop_prefix s ~prefix =
-    if is_prefix s ~prefix
-    then
-      if length s = length prefix
-      then Some ""
-      else Some (sub s ~pos:(length prefix) ~len:(length s - length prefix))
-    else None
-  ;;
-
-  let drop_prefix_if_exists s ~prefix =
-    match drop_prefix s ~prefix with
-    | None -> s
-    | Some s -> s
-  ;;
-
-  let drop_suffix s ~suffix =
-    if is_suffix s ~suffix
-    then
-      if length s = length suffix
-      then Some ""
-      else Some (sub s ~pos:0 ~len:(length s - length suffix))
-    else None
-  ;;
-
-  let drop_suffix_if_exists s ~suffix =
-    match drop_suffix s ~suffix with
-    | None -> s
-    | Some s -> s
-  ;;
-end
-
-include Cased_functions (struct
-    let normalize c = c
-  end)
-
-module Caseless = Cased_functions (struct
-    let normalize = Char.lowercase_ascii
-  end)
 
 let extract_words s ~is_word_char =
   let rec skip_blanks i =
@@ -311,7 +317,7 @@ let drop_prefix_and_suffix t ~prefix ~suffix =
   let s_len = String.length suffix in
   let t_len = String.length t in
   let p_s_len = p_len + s_len in
-  if p_s_len <= t_len && is_prefix t ~prefix && is_suffix t ~suffix
+  if p_s_len <= t_len && starts_with ~prefix t && ends_with ~suffix t
   then Some (sub t ~pos:p_len ~len:(t_len - p_s_len))
   else None
 ;;

@@ -37,3 +37,6 @@ val display : Display.t ref
 
 (** Whether actions are cacheable by default, default [false] *)
 val can_go_in_shared_cache_default : bool ref
+
+(** Command to use to diff files *)
+val diff_command : string option ref

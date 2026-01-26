@@ -161,11 +161,11 @@ let command_alias ?orig_name cmd term name =
 let build_system_mutex = Fiber.Mutex.create ()
 
 let build f =
-  Hooks.End_of_build.once Promote.Diff_promotion.finalize;
+  Hooks.End_of_build.once Dune_engine.Diff_promotion.finalize;
   Fiber.Mutex.with_lock build_system_mutex ~f:(fun () -> Build_system.run f)
 ;;
 
 let build_exn f =
-  Hooks.End_of_build.once Promote.Diff_promotion.finalize;
+  Hooks.End_of_build.once Dune_engine.Diff_promotion.finalize;
   Fiber.Mutex.with_lock build_system_mutex ~f:(fun () -> Build_system.run_exn f)
 ;;

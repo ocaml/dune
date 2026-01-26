@@ -14,7 +14,11 @@ Demonstrate the shell field in the cram stanza
 
   $ dune runtest foo.t
   File "foo.t", line 1, characters 0-0:
-  Error: Files _build/default/foo.t and _build/default/foo.t.corrected differ.
+  --- foo.t
+  +++ foo.t.corrected
+  @@ -1 +1,2 @@
+     $ echo foo
+  +  foo
   [1]
   $ printShell
   "sh"
@@ -26,7 +30,11 @@ Demonstrate the shell field in the cram stanza
 
   $ dune runtest foo.t
   File "foo.t", line 1, characters 0-0:
-  Error: Files _build/default/foo.t and _build/default/foo.t.corrected differ.
+  --- foo.t
+  +++ foo.t.corrected
+  @@ -1 +1,2 @@
+     $ echo foo
+  +  foo
   [1]
   $ printShell
   "bash"
@@ -62,7 +70,7 @@ Undefined Variables:
   >   ***** UNREACHABLE *****
   > EOF
 
-  $ dune runtest undefined.t
+  $ dune runtest undefined.t --diff-command -
   File "undefined.t", line 1, characters 0-0:
   Error: Files _build/default/undefined.t and
   _build/default/undefined.t.corrected differ.

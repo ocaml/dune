@@ -25,10 +25,21 @@ the observed output.
 
   $ dune test tests/myothertest.t
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
-  Error: Files _build/default/tests/myothertest.t/run.t and
-  _build/default/tests/myothertest.t/run.t.corrected differ.
+  --- tests/myothertest.t/run.t
+  +++ tests/myothertest.t/run.t.corrected
+  @@ -1,2 +1,2 @@
+     $ cat hello.world
+  -  "Goodbye, world!"
+  +  Hello, world!
   [1]
   $ dune promotion diff tests/myothertest.t/run.t
+  File "tests/myothertest.t/run.t", line 1, characters 0-0:
+  --- tests/myothertest.t/run.t
+  +++ _build/.promotion-staging/tests/myothertest.t/run.t
+  @@ -1,2 +1,2 @@
+     $ cat hello.world
+  -  "Goodbye, world!"
+  +  Hello, world!
 
 We use the promotion diff command to check there is a promotion pending. If
 there is no promotion it will warn. 
@@ -38,10 +49,23 @@ be the corresponding directory cram test.
 
   $ dune test tests/myothertest.t/run.t
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
-  Error: Files _build/default/tests/myothertest.t/run.t and
-  _build/default/tests/myothertest.t/run.t.corrected differ.
+  --- tests/myothertest.t/run.t
+  +++ tests/myothertest.t/run.t.corrected
+  @@ -1,2 +1,3 @@
+     $ cat hello.world
+  -  "Goodbye, world!"
+  +  cat: hello.world: No such file or directory
+  +  [1]
   [1]
   $ dune promotion diff tests/myothertest.t/run.t
+  File "tests/myothertest.t/run.t", line 1, characters 0-0:
+  --- tests/myothertest.t/run.t
+  +++ _build/.promotion-staging/tests/myothertest.t/run.t
+  @@ -1,2 +1,3 @@
+     $ cat hello.world
+  -  "Goodbye, world!"
+  +  cat: hello.world: No such file or directory
+  +  [1]
 
 We cannot give the name of a cram test in a subdirectory and expect Dune to
 find it.
@@ -100,13 +124,21 @@ Passing a directory should run all the tests in that directory (recursively).
 - We can build in absolute paths:
   $ dune test $PWD/mytest.t
   File "mytest.t", line 1, characters 0-0:
-  Error: Files _build/default/mytest.t and _build/default/mytest.t.corrected
-  differ.
+  --- mytest.t
+  +++ mytest.t.corrected
+  @@ -1,2 +1,2 @@
+     $ echo "Hello, world!"
+  -  "Goodbye, world!"
+  +  Hello, world!
   [1]
   $ dune test $PWD/_build/default/mytest.t
   File "mytest.t", line 1, characters 0-0:
-  Error: Files _build/default/mytest.t and _build/default/mytest.t.corrected
-  differ.
+  --- mytest.t
+  +++ mytest.t.corrected
+  @@ -1,2 +1,2 @@
+     $ echo "Hello, world!"
+  -  "Goodbye, world!"
+  +  Hello, world!
   [1]
 
 Here we test some error cases a user may encounter and make sure the error
@@ -178,10 +210,20 @@ Here we test behaviour for running tests in specific contexts.
 
   $ dune test mytest.t
   File "mytest.t", line 1, characters 0-0:
-  Error: Files _build/alt/mytest.t and _build/alt/mytest.t.corrected differ.
+  Context: alt
+  --- mytest.t
+  +++ mytest.t.corrected
+  @@ -1,2 +1,2 @@
+     $ echo "Hello, world!"
+  -  "Goodbye, world!"
+  +  Hello, world!
   File "mytest.t", line 1, characters 0-0:
-  Error: Files _build/default/mytest.t and _build/default/mytest.t.corrected
-  differ.
+  --- mytest.t
+  +++ mytest.t.corrected
+  @@ -1,2 +1,2 @@
+     $ echo "Hello, world!"
+  -  "Goodbye, world!"
+  +  Hello, world!
   [1]
 
 - Building a specific test in a specific build directory will build only in
@@ -189,6 +231,12 @@ that context as expected.
 
   $ dune test _build/alt/mytest.t
   File "mytest.t", line 1, characters 0-0:
-  Error: Files _build/alt/mytest.t and _build/alt/mytest.t.corrected differ.
+  Context: alt
+  --- mytest.t
+  +++ mytest.t.corrected
+  @@ -1,2 +1,2 @@
+     $ echo "Hello, world!"
+  -  "Goodbye, world!"
+  +  Hello, world!
   [1]
 

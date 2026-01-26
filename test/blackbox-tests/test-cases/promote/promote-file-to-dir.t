@@ -16,8 +16,11 @@ Run the cram test, should fail and file should be staged for promotion
 
   $ dune build @runtest
   File "my_cram.t", line 1, characters 0-0:
-  Error: Files _build/default/my_cram.t and _build/default/my_cram.t.corrected
-  differ.
+  --- my_cram.t
+  +++ my_cram.t.corrected
+  @@ -1 +1,2 @@
+     $ echo hello
+  +  hello
   [1]
 
 Change cram test to a directory cram test
@@ -32,8 +35,11 @@ Run the cram test, should fail and file should be promoted
 
   $ dune build @runtest 2>&1 | sed -E 's#/.*.sandbox/[^/]+#/.sandbox/$SANDBOX#g'
   File "my_cram.t/run.t", line 1, characters 0-0:
-  Error: Files _build/default/my_cram.t/run.t and
-  _build/default/my_cram.t/run.t.corrected differ.
+  --- my_cram.t/run.t
+  +++ my_cram.t/run.t.corrected
+  @@ -1 +1,2 @@
+     $ echo hello
+  +  hello
   Error: rename(_build/default/my_cram.t/run.t.corrected): Not a directory
   -> required by alias my_cram
   -> required by alias runtest

@@ -35,8 +35,13 @@ The cinaps stanza offers a promotion workflow:
 
   $ dune runtest --auto-promote
   File "test.ml", line 1, characters 0-0:
-  Error: Files _build/default/test.ml and
-  _build/default/test.ml.cinaps-corrected differ.
+  --- test.ml
+  +++ test.ml.cinaps-corrected
+  @@ -1,3 +1,4 @@
+   (*$ print_endline "\nhello" *)
+  +hello
+   (*$*)
+   let x = 1
   Promoting _build/default/test.ml.cinaps-corrected to test.ml.
   [1]
 

@@ -126,11 +126,11 @@ let adjust_dst_gen =
       let is_executable =
         let has_ext ext =
           match src_suffix with
-          | Full s -> String.is_suffix s ~suffix:ext
+          | Full s -> String.ends_with ~suffix:ext s
           | Partial { source_pform; suffix } ->
-            if String.is_suffix suffix ~suffix:ext
+            if String.ends_with ~suffix:ext suffix
             then true
-            else if String.is_suffix ext ~suffix
+            else if String.ends_with ~suffix ext
             then error source_pform
             else false
         in

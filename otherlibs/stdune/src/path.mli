@@ -40,7 +40,8 @@
 
     Represented as: either the root, or a '/' separated list of components other
     that ".", ".." and not containing a '/'. *)
-module Local_gen : Path_intf.Local_gen
+
+module Local_gen : module type of Path0.Local_gen
 
 module Unspecified : sig
   type w = Path_intf.Unspecified.w
@@ -52,7 +53,7 @@ end
     not containing a '/'. *)
 module Local : sig
   type w = Unspecified.w
-  type t = w Local_gen.t
+  type t = w Path0.Local_gen.t
 
   include Path_intf.S with type t := t
 
@@ -77,7 +78,6 @@ module External : sig
   val initial_cwd : t
   val cwd : unit -> t
   val relative : t -> string -> t
-  val mkdir_p : ?perms:int -> t -> unit
   val of_filename_relative_to_initial_cwd : string -> t
   val append_local : t -> Local.t -> t
 
@@ -87,7 +87,7 @@ end
 (** In the source section of the current workspace. *)
 module Source : sig
   type w
-  type t = w Local_gen.t
+  type t = w Path0.Local_gen.t
 
   include Path_intf.S with type t := t
 
@@ -151,7 +151,7 @@ end
 
 module Build : sig
   type w
-  type t = w Local_gen.t
+  type t = w Path0.Local_gen.t
 
   include Path_intf.S with type t := t
 

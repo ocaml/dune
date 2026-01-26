@@ -22,6 +22,7 @@ type t =
   | Cache
   | Digest
   | Artifact_substitution
+  | Thread
 
 let all =
   [ Rpc
@@ -45,6 +46,7 @@ let all =
   ; Cache
   ; Digest
   ; Artifact_substitution
+  ; Thread
   ]
 ;;
 
@@ -70,6 +72,7 @@ let to_string = function
   | Cache -> "cache"
   | Digest -> "digest"
   | Artifact_substitution -> "artifact_subtitution"
+  | Thread -> "thread"
 ;;
 
 let of_string =
@@ -107,6 +110,7 @@ module Set = Bit_set.Make (struct
       | Cache -> 18
       | Digest -> 19
       | Artifact_substitution -> 20
+      | Thread -> 21
     ;;
   end)
 
@@ -125,5 +129,6 @@ let default =
   ; Cram
   ; Action
   ; Artifact_substitution
+  ; Thread
   ]
 ;;

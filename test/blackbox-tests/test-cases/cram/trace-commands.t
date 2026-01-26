@@ -18,7 +18,16 @@ Demonstrate command level trace events
 
   $ dune runtest foo.t
   File "foo.t", line 1, characters 0-0:
-  Error: Files _build/default/foo.t and _build/default/foo.t.corrected differ.
+  --- foo.t
+  +++ foo.t.corrected
+  @@ -1,4 +1,7 @@
+     $ echo a
+     > echo b
+  +  a
+  +  b
+   Break
+     $ echo c
+  +  c
   [1]
 
   $ dune trace cat | jq 'include "dune"; select(.cat == "cram") | .args | redactCommandTimes'
@@ -53,8 +62,11 @@ We have to override TIMEFORMAT to get this timing information:
 
   $ dune runtest timeformat.t
   File "timeformat.t", line 1, characters 0-0:
-  Error: Files _build/default/timeformat.t and
-  _build/default/timeformat.t.corrected differ.
+  --- timeformat.t
+  +++ timeformat.t.corrected
+  @@ -1 +1,2 @@
+     $ echo $TIMEFORMAT
+  +  %3R|%3S|%3U
   [1]
   $ dune promotion show timeformat.t
     $ echo $TIMEFORMAT
@@ -76,8 +88,11 @@ Timeout:
 
   $ dune runtest timeout.t
   File "timeout.t", line 1, characters 0-0:
-  Error: Files _build/default/timeout.t and _build/default/timeout.t.corrected
-  differ.
+  --- timeout.t
+  +++ timeout.t.corrected
+  @@ -1,2 +0,0 @@
+  -   $ echo foo
+  -   $ sleep 10
   [1]
 
   $ dune trace cat | jq 'include "dune"; select(.cat == "cram") | .args | redactCommandTimes'

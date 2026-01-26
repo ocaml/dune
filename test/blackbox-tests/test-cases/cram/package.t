@@ -31,7 +31,11 @@ don't want our own test file to be visible.
 
   $ dune build @runtest --only-packages foo
   File "foo.t", line 1, characters 0-0:
-  Error: Files _build/default/foo.t and _build/default/foo.t.corrected differ.
+  --- foo.t
+  +++ foo.t.corrected
+  @@ -1 +1,2 @@
+     $ echo foo
+  +  foo
   [1]
 
   $ dune promote foo.t
@@ -40,7 +44,11 @@ don't want our own test file to be visible.
 
   $ dune build @runtest --only-packages bar
   File "bar.t", line 1, characters 0-0:
-  Error: Files _build/default/bar.t and _build/default/bar.t.corrected differ.
+  --- bar.t
+  +++ bar.t.corrected
+  @@ -1 +1,2 @@
+     $ echo bar
+  +  bar
   [1]
 
   $ dune promote bar.t

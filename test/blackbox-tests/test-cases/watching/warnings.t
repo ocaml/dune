@@ -29,7 +29,11 @@ This should be a warning for both A and B.
 Now A is in the promotion database.
   $ dune build @a
   File "a.t", line 1, characters 0-0:
-  Error: Files _build/default/a.t and _build/default/a.t.corrected differ.
+  --- a.t
+  +++ a.t.corrected
+  @@ -1 +1,2 @@
+     $ echo hello
+  +  hello
   Error: Build failed with 1 error.
   [1]
 
@@ -40,6 +44,10 @@ This should be a success for A (and print nothing), and a warning for B.
 
   $ stop_dune
   File "a.t", line 1, characters 0-0:
-  Error: Files _build/default/a.t and _build/default/a.t.corrected differ.
+  --- a.t
+  +++ a.t.corrected
+  @@ -1 +1,2 @@
+     $ echo hello
+  +  hello
   Had 1 error, waiting for filesystem changes...
   Promoting _build/default/a.t.corrected to a.t.

@@ -15,8 +15,11 @@ Reproduction case for https://github.com/ocaml/dune/issues/12250
 
   $ dune runtest somelib/my/path/
   File "somelib/my/path/test.t", line 1, characters 0-0:
-  Error: Files _build/default/somelib/my/path/test.t and
-  _build/default/somelib/my/path/test.t.corrected differ.
+  --- somelib/my/path/test.t
+  +++ somelib/my/path/test.t.corrected
+  @@ -1 +1,2 @@
+     $ echo hi
+  +  hi
   [1]
 
 dune runtest should be able to run in a subdirectory and the arguments passed

@@ -101,7 +101,7 @@ module External = struct
     which "diff"
     |> Option.map ~f:(fun prog ->
       let args =
-        [ "-u" ]
+        [ "-u"; "--label"; file1; "--label"; file2 ]
         @ (if skip_trailing_cr then [ "--strip-trailing-cr" ] else [])
         @ [ file1; file2 ]
       in
@@ -206,21 +206,23 @@ let prepare ~skip_trailing_cr annots path1 path2 =
                        cmd)
               ]))
   | None ->
+    let diff = External.diff ~skip_trailing_cr ~dir annots loc file1 file2 in
     if Execution_env.inside_dune
-    then fallback
+    then (
+      match diff with
+      | None -> fallback
+      | Some diff -> With_fallback.run diff ~fallback)
     else (
-      let normal_diff =
+      let git_or_diff =
         match
-          match External.git ~skip_trailing_cr annots loc path1 path2 with
-          | Some g -> Some g
-          | None -> External.diff ~skip_trailing_cr ~dir annots loc file1 file2
+          Option.first_some (External.git ~skip_trailing_cr annots loc path1 path2) diff
         with
         | None -> fallback
         | Some command -> With_fallback.run command ~fallback
       in
       match External.patdiff ~dir annots loc file1 file2 with
-      | None -> normal_diff
-      | Some command -> With_fallback.run command ~fallback:normal_diff)
+      | None -> git_or_diff
+      | Some command -> With_fallback.run command ~fallback:git_or_diff)
 ;;
 
 let print ~skip_trailing_cr annots path1 path2 =

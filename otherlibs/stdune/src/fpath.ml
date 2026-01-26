@@ -182,17 +182,26 @@ let rec clear_dir dir =
       | _ -> unlink_no_err fn);
     Cleared
 
-and rm_rf_dir path =
-  match clear_dir path with
-  | Directory_does_not_exist -> ()
-  | Cleared ->
-    (match Unix.rmdir path with
-     | () -> ()
-     | exception Unix.Unix_error (ENOENT, _, _) ->
-       (* How can we end up here? [clear_dir] cleared the directory successfully,
+and rm_rf_dir =
+  let max_rm_dir_attempts = 5 in
+  let rec rm_rf_dir path n =
+    match clear_dir path with
+    | Directory_does_not_exist -> ()
+    | Cleared ->
+      (match Unix.rmdir path with
+       | () -> ()
+       | exception Unix.Unix_error (ENOENT, _, _) ->
+         (* How can we end up here? [clear_dir] cleared the directory successfully,
           but by the time the above [Unix.rmdir] was called, another process
           deleted the directory. *)
-       ())
+         ()
+       | exception (Unix.Unix_error (ENOTEMPTY, _, _) as e) ->
+         (* How can we end up here? [clear_dir] cleared the directory successfully,
+          but by the time the above [Unix.rmdir] was called, another process
+          wrote to the directory. *)
+         if n < max_rm_dir_attempts then rm_rf_dir path (n + 1) else Exn.reraise e)
+  in
+  fun path -> rm_rf_dir path 0
 ;;
 
 let rm_rf fn =

@@ -61,8 +61,8 @@ Test dependency on installed package
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @install --display=short
   Entering directory 'b'
-        ocamlc .b.objs/byte/b.{cmi,cmo,cmt}
       ocamldep .b.objs/b__Bar.impl.d
+        ocamlc .b.objs/byte/b.{cmi,cmo,cmt}
       ocamlopt .b.objs/native/b.{cmx,o}
         ocamlc .b.objs/byte/b__Bar.{cmi,cmo,cmt}
       ocamlopt .b.objs/native/b__Bar.{cmx,o}

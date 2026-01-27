@@ -16,6 +16,7 @@ end
 module File : sig
   type t
 
+  val compare : t -> t -> Ordering.t
   val source : t -> Path.Source.t
   val correction_file : t -> Path.t
   val to_dyn : t -> Dyn.t
@@ -50,7 +51,3 @@ type all =
 
 val partition_db : db -> Files_to_promote.t -> all
 val promote_files_registered_in_last_run : Files_to_promote.t -> Path.Source.t list
-
-(** [display_diffs db files] will only print the diffs of files that are both
-    in [files] and in [db]. *)
-val display_diffs : all -> unit Fiber.t

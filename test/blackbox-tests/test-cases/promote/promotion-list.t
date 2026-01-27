@@ -40,13 +40,13 @@
   +B actual
   [1]
 
-  $ dune promotion list --diff-command 'diff -u' 2>&1
+  $ dune promotion list --diff-command 'diff -u'
   a.expected
   b.expected
 
-  $ dune promotion list b.expected --diff-command 'diff -u' 2>&1
+  $ dune promotion list b.expected --diff-command 'diff -u'
   b.expected
 
-  $ dune promotion list a.expected nothing-to-promote.txt --diff-command 'diff -u' 2>&1
+  $ dune promotion list a.expected nothing-to-promote.txt --diff-command 'diff -u'
   Warning: Nothing to promote for nothing-to-promote.txt.
   a.expected

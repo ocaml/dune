@@ -116,7 +116,7 @@ module Files = struct
     List.sort present ~compare:(fun x y ->
       Path.Source.compare (Diff_promotion.File.source x) (Diff_promotion.File.source y))
     |> List.iter ~f:(fun file ->
-      Diff_promotion.File.source file |> Path.Source.to_string |> Console.printf "%s")
+      Diff_promotion.File.source file |> Path.Source.to_string |> print_endline)
   ;;
 
   let command = Cmd.v info term

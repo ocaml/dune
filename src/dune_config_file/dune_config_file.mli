@@ -57,7 +57,7 @@ module Dune_config : sig
     end
   end
 
-  module Pkg_enabled : sig
+  module Pkg : sig
     (** Configuration for Dune's package management features.
         
         - [Set (loc, `Enabled)]: Package management is explicitly enabled. Forces package 
@@ -74,8 +74,13 @@ module Dune_config : sig
       | Cli
       | Loc of Loc.t
 
+    type what =
+      | Enabled_with_lockdir
+      | Auto_locking
+      | Disabled
+
     type t =
-      | Set of where * Config.Toggle.t
+      | Set of where * what
       | Unset
 
     val all : where -> (string * t) list
@@ -112,7 +117,7 @@ module Dune_config : sig
       ; action_stdout_on_success : Action_output_on_success.t field
       ; action_stderr_on_success : Action_output_on_success.t field
       ; project_defaults : Project_defaults.t field
-      ; pkg_enabled : Pkg_enabled.t field
+      ; pkg : Pkg.t field
       ; experimental : (string * (Loc.t * string)) list field
       }
   end

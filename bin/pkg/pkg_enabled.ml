@@ -5,7 +5,6 @@ let term =
   let common, config = Common.init builder in
   Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     Memo.run
-    (* CR-ElectreAAS: we should be using lock_dir_active (and not ignore --ignore-lock-dir) *)
     @@
     let open Memo.O in
     let+ workspace = Workspace.workspace () in
@@ -20,9 +19,9 @@ let term =
     (* CR-Leonidas-from-XIV: change this logic when we stop detecting lock
        directories in the source tree *)
     let enabled =
-      match workspace.config.pkg_enabled with
-      | Set (_, `Enabled) -> true
-      | Set (_, `Disabled) -> false
+      match workspace.config.pkg with
+      | Set (_, (Auto_locking | Enabled_with_lockdir)) -> true
+      | Set (_, Disabled) -> false
       | Unset -> any_lockdir_exists
     in
     match enabled with

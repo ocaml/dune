@@ -132,7 +132,7 @@ module Options_implied_by_dash_p = struct
     ; always_show_command_line : bool
     ; promote_install_files : bool
     ; require_dune_project_file : bool
-    ; ignore_lock_dir : bool
+      (* FIXME ambre: [pkg] would also belong here, but it's not here yet. *)
     }
 
   let docs = copts_sect
@@ -251,9 +251,6 @@ module Options_implied_by_dash_p = struct
         last
         & opt_all ~vopt:true bool [ false ]
         & info [ "require-dune-project-file" ] ~docs ~doc:(Some doc))
-    and+ ignore_lock_dir =
-      let doc = "Ignore dune.lock/ directory." in
-      Arg.(value & flag & info [ "ignore-lock-dir" ] ~docs ~doc:(Some doc))
     in
     { root
     ; only_packages = No_restriction
@@ -264,7 +261,6 @@ module Options_implied_by_dash_p = struct
     ; always_show_command_line
     ; promote_install_files
     ; require_dune_project_file
-    ; ignore_lock_dir
     }
   ;;
 
@@ -329,7 +325,7 @@ module Options_implied_by_dash_p = struct
   ;;
 
   let dash_p =
-    let dash_p_implies = [ "--release"; "--pkg=disabled"; "--only-packages" ] in
+    let dash_p_implies = [ "--release"; "--pkg"; "disabled"; "--only-packages" ] in
     Term.with_used_args
       Arg.(
         value
@@ -528,19 +524,20 @@ let shared_with_config_file ~allow_pkg_flag =
                 $(b,--action-stdout-on-success=swallow \
                 --action-stderr-on-success=must-be-empty). This ensures that a \
                 successful build has a \"clean\" empty output."))
-  and+ pkg_enabled =
+  and+ pkg =
     if allow_pkg_flag
     then
       Arg.(
         value
-        & opt (some (enum Dune_config.Pkg_enabled.(all Cli))) None
+        & opt (some (enum Dune_config.Pkg.(all Cli))) None
         & info
             [ "pkg" ]
             ~docs
             ~doc:
               (Some
-                 "Enable or disable package management. The default behaviour depends on \
-                  whether a lock directory exists."))
+                 "TODO ambre update\n\
+                 \                 Enable or disable package management. The default \
+                  behaviour depends on whether a lock directory exists."))
     else Term.const None
   in
   { Dune_config.Partial.display
@@ -556,7 +553,7 @@ let shared_with_config_file ~allow_pkg_flag =
   ; action_stdout_on_success
   ; action_stderr_on_success
   ; project_defaults = None
-  ; pkg_enabled
+  ; pkg
   ; experimental = None
   }
 ;;
@@ -575,7 +572,6 @@ module Builder = struct
     ; ignore_promoted_rules : bool
     ; force : bool
     ; no_print_directory : bool
-    ; ignore_lock_dir : bool
     ; store_orig_src_dir : bool
     ; default_target : Arg.Dep.t (* For build & runtest only *)
     ; watch : Dune_rpc_impl.Watch_mode_config.t
@@ -768,7 +764,6 @@ module Builder = struct
          ; always_show_command_line
          ; promote_install_files
          ; require_dune_project_file
-         ; ignore_lock_dir
          }
       =
       Options_implied_by_dash_p.term
@@ -953,7 +948,6 @@ module Builder = struct
     ; ignore_promoted_rules
     ; force
     ; no_print_directory
-    ; ignore_lock_dir
     ; store_orig_src_dir
     ; default_target
     ; watch
@@ -1011,7 +1005,6 @@ module Builder = struct
         ; ignore_promoted_rules
         ; force
         ; no_print_directory
-        ; ignore_lock_dir
         ; store_orig_src_dir
         ; default_target
         ; watch
@@ -1046,7 +1039,6 @@ module Builder = struct
     && Bool.equal t.ignore_promoted_rules ignore_promoted_rules
     && Bool.equal t.force force
     && Bool.equal t.no_print_directory no_print_directory
-    && Bool.equal t.ignore_lock_dir ignore_lock_dir
     && Bool.equal t.store_orig_src_dir store_orig_src_dir
     && Arg.Dep.equal t.default_target default_target
     && Dune_rpc_impl.Watch_mode_config.equal t.watch watch
@@ -1292,7 +1284,6 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   Dune_rules.Clflags.promote_install_files := c.builder.promote_install_files;
   Dune_engine.Clflags.always_show_command_line := c.builder.always_show_command_line;
   Dune_rules.Clflags.ignore_promoted_rules := c.builder.ignore_promoted_rules;
-  Dune_rules.Clflags.ignore_lock_dir := c.builder.ignore_lock_dir;
   Source.Clflags.on_missing_dune_project_file
   := if c.builder.require_dune_project_file then Error else Warn;
   (Dune_engine.Clflags.can_go_in_shared_cache_default

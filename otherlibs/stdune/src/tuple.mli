@@ -28,4 +28,12 @@ module T3 : sig
     -> ('a, 'b, 'c) t
     -> ('a, 'b, 'c) t
     -> bool
+
+  val compare
+    :  ('a -> 'a -> Ordering.t)
+    -> ('b -> 'b -> Ordering.t)
+    -> ('c -> 'c -> Ordering.t)
+    -> ('a, 'b, 'c) t
+    -> ('a, 'b, 'c) t
+    -> Ordering.t
 end

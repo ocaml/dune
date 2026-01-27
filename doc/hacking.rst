@@ -209,6 +209,44 @@ We have the following shells for specific tasks:
   + ``make test-rocq``: these work well on a regular Dune opam dev switch
   + ``make test-rocq-native``: these require the Rocq native compiler to run, and thus need OCaml 4.x
 
+Testing Reverse Dependencies
+============================
+
+You can test how changes to Dune affect reverse dependencies (packages that
+depend on Dune) using Nix. The ``revdeps`` flake output builds OCaml packages
+with a specified version of Dune.
+
+.. code:: console
+
+   # Build lwt with current version of dune
+   $ nix build .#revdeps.x86_64-linux.lwt --override-input revdeps-dune path:.
+
+   # Build base and core with dune 3.20.2
+   $ nix build .#revdeps.x86_64-linux.{base,core} --override-input revdeps-dune github:ocaml/dune/3.20.2
+
+   # Build all revdeps
+   $ nix build .#revdeps.x86_64-linux.all --override-input revdeps-dune path:.
+
+Bisecting Regressions
+---------------------
+
+To find which commit broke a reverse dependency, use ``git bisect`` with
+``--no-checkout`` to keep the current flake in place while varying the Dune
+source:
+
+.. code:: console
+
+   $ git bisect start --no-checkout
+   $ git bisect bad HEAD
+   $ git bisect good 3.16.0
+
+   $ git bisect run sh -c 'nix build .#revdeps.x86_64-linux.lwt --override-input revdeps-dune "github:ocaml/dune/$(git rev-parse BISECT_HEAD)"' 
+
+The ``--no-checkout`` flag ensures that the working tree stays on the current
+branch (with the working ``revdeps`` output), while ``BISECT_HEAD`` points to
+the commit being tested. The Dune source is fetched from GitHub for each
+bisect step.
+
 Releasing Dune
 ==============
 

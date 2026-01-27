@@ -51,9 +51,6 @@ type all =
 val partition_db : db -> Files_to_promote.t -> all
 val promote_files_registered_in_last_run : Files_to_promote.t -> Path.Source.t list
 
-(** [missing db files] returns the list of files in [files] but not in [db]. *)
-val missing : all -> Path.Source.t list Fiber.t
-
 (** [display_diffs db files] will only print the diffs of files that are both
     in [files] and in [db]. *)
 val display_diffs : all -> unit Fiber.t

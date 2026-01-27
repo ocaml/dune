@@ -270,12 +270,6 @@ let sort_for_display { present; missing } =
   sorted_diffs, sorted_missing
 ;;
 
-let missing all =
-  let open Fiber.O in
-  let+ _diffs, missing = sort_for_display all in
-  missing
-;;
-
 let display_diffs all =
   let open Fiber.O in
   let+ diffs, _missing = sort_for_display all in

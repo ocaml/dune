@@ -78,15 +78,10 @@ module Diff = struct
 
   let display_diffs present =
     let open Fiber.O in
-    Fiber.parallel_map present ~f:(fun file ->
-      let+ diff_opt = diff_for_file file in
-      match diff_opt with
-      | Ok diff -> Some (file, diff)
-      | Error _ -> None)
+    List.sort present ~compare:Diff_promotion.File.compare
+    |> Fiber.parallel_map ~f:(fun file -> diff_for_file file >>| Result.to_option)
     >>| List.filter_opt
-    >>| List.sort ~compare:(fun (file, _) (file', _) ->
-      Diff_promotion.File.compare file file')
-    >>| List.iter ~f:(fun (_, diff) -> Dune_engine.Print_diff.Diff.print diff)
+    >>| List.iter ~f:Dune_engine.Print_diff.Diff.print
   ;;
 
   let term =

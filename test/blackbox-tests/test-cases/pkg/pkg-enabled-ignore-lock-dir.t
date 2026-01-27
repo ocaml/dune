@@ -8,7 +8,6 @@ With one that is properly detected, pkg is enabled
   $ test -d dune.lock
   $ dune pkg enabled
 
-However the --ignore-lock-dir option raises a bug in the detection mechanism
+The --ignore-lock-dir flag reverts to the initial behaviour as expected
   $ dune pkg enabled --ignore-lock-dir
-^^^^^^^^
-This should be [1]
+  [1]

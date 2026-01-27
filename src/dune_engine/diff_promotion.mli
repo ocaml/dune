@@ -16,6 +16,7 @@ end
 module File : sig
   type t
 
+  val source : t -> Path.Source.t
   val to_dyn : t -> Dyn.t
   val in_staging_area : Path.Source.t -> Path.Build.t
 
@@ -40,6 +41,13 @@ type db
 val finalize : unit -> unit
 
 val load_db : unit -> db
+
+type all =
+  { present : File.t list
+  ; missing : Path.Source.t list
+  }
+
+val partition_db : db -> Files_to_promote.t -> all
 val promote_files_registered_in_last_run : Files_to_promote.t -> Path.Source.t list
 
 (** [missing db files] returns the list of files in [files] but not in [db]. *)
@@ -48,10 +56,6 @@ val missing : db -> Files_to_promote.t -> Path.Source.t list Fiber.t
 (** [display_diffs db files] will only print the diffs of files that are both
     in [files] and in [db]. *)
 val display_diffs : db -> Files_to_promote.t -> unit Fiber.t
-
-(** [display_file_names db files] will only print the filenames of files that are
-    both in [files] and in [db]. *)
-val display_files : db -> Files_to_promote.t -> unit Fiber.t
 
 (** [display_corrected_contents db files] will print the changes in plain text
     of files that are both in [files] and in [db]. *)

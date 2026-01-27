@@ -1,5 +1,4 @@
-open Stdune
-
+let sprintf = Printf.sprintf
 let lock_file = Path.Build.(relative root ".lock")
 
 let with_timeout ~timeout f =

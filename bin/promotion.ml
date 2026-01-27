@@ -46,7 +46,7 @@ module Apply = struct
     in
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
-    match Dune_util.Global_lock.lock ~timeout:None with
+    match Global_lock.lock ~timeout:None with
     | Ok () ->
       Scheduler_setup.go_without_rpc_server ~common ~config (fun () ->
         let open Fiber.O in

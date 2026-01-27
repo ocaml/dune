@@ -1167,7 +1167,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
            an existing trace from another dune process *)
          if String.equal stats (Stdune.Path.Local.to_string default_trace_file)
          then (
-           match Dune_util.Global_lock.lock ~timeout:None with
+           match Global_lock.lock ~timeout:None with
            | Ok () -> `Create
            | Error _ -> `Skip)
          else `Create

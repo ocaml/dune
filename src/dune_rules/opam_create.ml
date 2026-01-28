@@ -144,11 +144,9 @@ let depends_field t =
     | true -> []
     | false -> [ Package_constraint.Bvar (Variable var) ]
   in
-  let depends = Package.depends t |> List.filter ~f:(fun d -> not @@ is_doc_depend d) in
+  let doc_depends, depends = t |> Package.depends |> List.partition ~f:is_doc_depend in
   let doc_depends =
-    t
-    |> Package.depends
-    |> List.filter ~f:is_doc_depend
+    doc_depends
     |> List.map ~f:(fun (doc_dep : Package_dependency.t) ->
       let constraint_ =
         let original = Option.to_list doc_dep.constraint_ in

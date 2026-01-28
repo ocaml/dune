@@ -228,12 +228,6 @@ let promote_files_registered_in_last_run files_to_promote =
   missing
 ;;
 
-let diff_for_file (file : File.t) =
-  let original = Path.source file.dst in
-  let correction = File.correction_file file in
-  Print_diff.get original correction
-;;
-
 type all =
   { present : File.t list
   ; missing : Path.Source.t list
@@ -253,25 +247,4 @@ let partition_db db files_to_promote =
         | None -> Right path)
   in
   { present; missing }
-;;
-
-let sort_for_display { present; missing } =
-  let open Fiber.O in
-  let+ sorted_diffs =
-    Fiber.parallel_map present ~f:(fun file ->
-      let+ diff_opt = diff_for_file file in
-      match diff_opt with
-      | Ok diff -> Some (file, diff)
-      | Error _ -> None)
-    >>| List.filter_opt
-    >>| List.sort ~compare:(fun (file, _) (file', _) -> File.compare file file')
-  in
-  let sorted_missing = List.sort missing ~compare:Path.Source.compare in
-  sorted_diffs, sorted_missing
-;;
-
-let display_diffs all =
-  let open Fiber.O in
-  let+ diffs, _missing = sort_for_display all in
-  List.iter diffs ~f:(fun (_file, diff) -> Print_diff.Diff.print diff)
 ;;

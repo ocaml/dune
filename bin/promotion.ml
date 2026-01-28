@@ -70,6 +70,25 @@ end
 module Diff = struct
   let info = Cmd.info ~doc:"List promotions to be applied" "diff"
 
+  let diff_for_file (file : Diff_promotion.File.t) =
+    let original = Diff_promotion.File.source file in
+    let correction = Diff_promotion.File.correction_file file in
+    Dune_engine.Print_diff.get (Path.source original) correction
+  ;;
+
+  let display_diffs present =
+    let open Fiber.O in
+    Fiber.parallel_map present ~f:(fun file ->
+      let+ diff_opt = diff_for_file file in
+      match diff_opt with
+      | Ok diff -> Some (file, diff)
+      | Error _ -> None)
+    >>| List.filter_opt
+    >>| List.sort ~compare:(fun (file, _) (file', _) ->
+      Diff_promotion.File.compare file file')
+    >>| List.iter ~f:(fun (_, diff) -> Dune_engine.Print_diff.Diff.print diff)
+  ;;
+
   let term =
     let+ builder = Common.Builder.term
     and+ files =
@@ -81,11 +100,11 @@ module Diff = struct
     (* CR-soon rgrinberg: remove pointless args *)
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
       let db = Diff_promotion.load_db () in
-      let ({ Diff_promotion.present = _; missing } as all) =
+      let { Diff_promotion.present; missing } =
         Diff_promotion.partition_db db files_to_promote
       in
       on_missing missing;
-      Diff_promotion.display_diffs all)
+      display_diffs present)
   ;;
 
   let command = Cmd.v info term

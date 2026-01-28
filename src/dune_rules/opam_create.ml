@@ -292,8 +292,7 @@ let opam_fields project (package : Package.t) =
   let optional_fields =
     [ "bug-reports", Package_info.bug_reports info
     ; "homepage", Package_info.homepage info
-    ; ( "doc"
-      , Package_info.documentation info |> fun (x : Dune_lang.Documentation.t) -> x.url )
+    ; "doc", Package_info.documentation info
     ; ( "license"
       , match Package_info.license info with
         | Some [ x ] -> Some x

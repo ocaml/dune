@@ -128,9 +128,7 @@ module Show = struct
     List.iter present ~f:(fun file ->
       let correction_file = Diff_promotion.File.correction_file file in
       if Path.exists correction_file
-      then (
-        let contents = Io.read_file correction_file in
-        Console.printf "%s" contents)
+      then Io.read_file correction_file |> print_endline
       else
         User_warning.emit
           [ Pp.textf
@@ -142,11 +140,12 @@ module Show = struct
   let term =
     let+ builder = Common.Builder.term
     and+ files =
+      (* CR-someday rgrinberg: should we really allow more than one file? How
+         are users supposed to distinguish the output? *)
       Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
     in
     let common, _config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
-    (* CR-soon rgrinberg: remove pointless args *)
     let db = Diff_promotion.load_db () in
     let { Diff_promotion.present = _; missing } =
       Diff_promotion.partition_db db files_to_promote

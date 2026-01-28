@@ -8,10 +8,29 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
   | Some x -> sprintf "%s-%s.install" package (Context_name.to_string x)
 ;;
 
+let with_doc = Package_variable_name.with_doc
+
+let rec has_with_doc_constraint (constraint_ : Package_constraint.t) =
+  match constraint_ with
+  | Bvar (Package_constraint.Value.Variable var) ->
+    Package_variable_name.equal var with_doc
+  | Bvar (Package_constraint.Value.String_literal _) -> false
+  | And constraints -> List.exists ~f:has_with_doc_constraint constraints
+  | Or constraints -> List.for_all ~f:has_with_doc_constraint constraints
+  | Not constraint_ -> not @@ has_with_doc_constraint constraint_
+  | Uop _ | Bop _ ->
+    (* unary or binary operators don't make sense on with_doc *)
+    false
+;;
+
+let is_with_doc_dependency ({ name = _; constraint_ } : Package_dependency.t) =
+  match constraint_ with
+  | None -> false
+  | Some constraint_ -> has_with_doc_constraint constraint_
+;;
+
 let need_odoc_config (pkg : Package.t) =
-  match pkg |> Package.info |> Package_info.documentation with
-  | { packages = []; url = _ } -> false
-  | _ -> true
+  pkg |> Package.depends |> List.exists ~f:is_with_doc_dependency
 ;;
 
 module Package_paths = struct
@@ -907,9 +926,7 @@ end = struct
   ;;
 
   let gen_odoc_config sctx (pkg : Package.t) =
-    let { Dune_lang.Documentation.packages; url = _ } =
-      pkg |> Package.info |> Package_info.documentation
-    in
+    let packages = pkg |> Package.depends |> List.filter ~f:is_with_doc_dependency in
     let ctx = Super_context.context sctx |> Context.build_context in
     match Package_paths.odoc_config_file ctx pkg with
     | None -> Memo.return ()

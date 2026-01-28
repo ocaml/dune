@@ -7,11 +7,9 @@ packages which are marked `with-doc`.
   > (package
   >  (name foo)
   >  (allow_empty)
-  >  (documentation
-  >   (depends
-  >    (ppx_derivers (>= 1.0))
-  >     brr)
-  >   (url "url")))
+  >  (depends
+  >   (ppx_derivers (and (>= 1.0) :with-doc))
+  >   (brr :with-doc)))
   > EOF
 
 Dependencies for odoc are explained here:

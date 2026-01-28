@@ -271,7 +271,7 @@ let foreign_rules (library : Foreign_library.t) ~sctx ~expander ~dir ~dir_conten
         ~has_cxx:(fun () -> Foreign.Sources.has_cxx_sources foreign_sources)
         sctx
     in
-    Expander.expand_and_eval_set expander Ordered_set_lang.Unexpanded.standard ~standard
+    Expander.expand_and_eval_set expander library.c_library_flags ~standard
   in
   ocamlmklib
     ~archive_name

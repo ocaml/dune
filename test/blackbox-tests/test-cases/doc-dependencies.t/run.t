@@ -13,7 +13,7 @@ They need to be in the x-extra-doc-deps field of the opam file (to be able to
 generate the opam universe) and installed in the odoc-config.sexp file (so that
 the driver knows what to make available to reference). Let's check that.
 
-Generate it's opam file
+Generate its opam file
   $ dune build foo.opam
 
 and check that the x-extra-doc-deps has been generated successfully

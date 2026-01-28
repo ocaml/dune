@@ -51,11 +51,8 @@ module Package_paths = struct
   let odoc_config_file ctx pkg =
     if need_odoc_config pkg
     then (
-      let name = Package.name pkg in
-      Some
-        (Path.Build.relative
-           (build_dir ctx pkg)
-           (Package.Name.to_string name ^ ".odoc-config.sexp")))
+      let name = pkg |> Package.name |> Package.Name.to_string in
+      Some (Path.Build.relative (build_dir ctx pkg) (sprintf "%s.odoc-config.sexp" name)))
     else None
   ;;
 
@@ -918,15 +915,15 @@ end = struct
     | None -> Memo.return ()
     | Some odoc_config_file ->
       let action =
+        let packages =
+          packages
+          |> List.map ~f:(fun (dep : Package_dependency.t) ->
+            Dune_lang.Package_name.to_string dep.name)
+          |> String.concat ~sep:" "
+        in
         Action_builder.write_file_dyn
           odoc_config_file
-          (Action_builder.return
-           @@ Format.asprintf
-                "(packages %s)"
-                (packages
-                 |> List.map ~f:(fun (d : Package_dependency.t) ->
-                   d.name |> Dune_lang.Package_name.to_string)
-                 |> String.concat ~sep:" "))
+          (Action_builder.return (sprintf "(packages %s)" packages))
       in
       Super_context.add_rule sctx ~dir:ctx.build_dir action
   ;;

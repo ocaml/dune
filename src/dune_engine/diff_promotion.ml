@@ -248,8 +248,7 @@ let partition_db db files_to_promote =
     | Files_to_promote.All -> db, []
     | These paths ->
       List.partition_map paths ~f:(fun path ->
-        let res = List.find db ~f:(fun (f : File.t) -> Path.Source.equal f.dst path) in
-        match res with
+        match List.find db ~f:(fun (f : File.t) -> Path.Source.equal f.dst path) with
         | Some file -> Left file
         | None -> Right path)
   in
@@ -259,17 +258,14 @@ let partition_db db files_to_promote =
 let sort_for_display db files_to_promote =
   let open Fiber.O in
   let { present; missing } = partition_db db files_to_promote in
-  let+ diff_opts =
+  let+ sorted_diffs =
     Fiber.parallel_map present ~f:(fun file ->
       let+ diff_opt = diff_for_file file in
       match diff_opt with
       | Ok diff -> Some (file, diff)
       | Error _ -> None)
-  in
-  let sorted_diffs =
-    diff_opts
-    |> List.filter_opt
-    |> List.sort ~compare:(fun (file, _) (file', _) -> File.compare file file')
+    >>| List.filter_opt
+    >>| List.sort ~compare:(fun (file, _) (file', _) -> File.compare file file')
   in
   let sorted_missing = List.sort missing ~compare:Path.Source.compare in
   sorted_diffs, sorted_missing

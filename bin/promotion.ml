@@ -154,8 +154,7 @@ module Show = struct
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
       let open Fiber.O in
       let db = Diff_promotion.load_db () in
-      let+ missing = Diff_promotion.missing db files_to_promote in
-      List.iter ~f:on_missing missing;
+      let+ () = Diff_promotion.missing db files_to_promote >>| List.iter ~f:on_missing in
       display_corrected_contents db files_to_promote)
   ;;
 

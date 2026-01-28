@@ -49,25 +49,6 @@ module File = struct
       ]
   ;;
 
-  let db : t list ref = ref []
-
-  let register_dep ~source_file ~correction_file =
-    let src = snd (Path.Build.split_sandbox_root correction_file) in
-    Dune_trace.emit Promote (fun () ->
-      Dune_trace.Event.Promote.register `Direct src source_file);
-    db := { src; staging = None; dst = source_file } :: !db
-  ;;
-
-  let register_intermediate ~source_file ~correction_file =
-    let src = snd (Path.Build.split_sandbox_root correction_file) in
-    Dune_trace.emit Promote (fun () ->
-      Dune_trace.Event.Promote.register `Staged src source_file);
-    let staging = in_staging_area source_file in
-    Path.mkdir_p (Path.build (Option.value_exn (Path.Build.parent staging)));
-    Unix.rename (Path.Build.to_string correction_file) (Path.Build.to_string staging);
-    db := { src; staging = Some staging; dst = source_file } :: !db
-  ;;
-
   let do_promote ~correction_file ~dst =
     Fpath.unlink_no_err (Path.Source.to_string dst);
     let chmod = Path.Permissions.add Path.Permissions.write in
@@ -110,8 +91,26 @@ end
 
 type db = File.t list
 
-let clear_cache () = File.db := []
+let db : db ref = ref []
+let clear_cache () = db := []
 let () = Hooks.End_of_build.always clear_cache
+
+let register_dep ~source_file ~correction_file =
+  let src = snd (Path.Build.split_sandbox_root correction_file) in
+  Dune_trace.emit Promote (fun () ->
+    Dune_trace.Event.Promote.register `Direct src source_file);
+  db := { src; staging = None; dst = source_file } :: !db
+;;
+
+let register_intermediate ~source_file ~correction_file =
+  let src = snd (Path.Build.split_sandbox_root correction_file) in
+  Dune_trace.emit Promote (fun () ->
+    Dune_trace.Event.Promote.register `Staged src source_file);
+  let staging = File.in_staging_area source_file in
+  Path.mkdir_p (Path.build (Option.value_exn (Path.Build.parent staging)));
+  Unix.rename (Path.Build.to_string correction_file) (Path.Build.to_string staging);
+  db := { src; staging = Some staging; dst = source_file } :: !db
+;;
 
 module P = Persistent.Make (struct
     type t = File.t list
@@ -212,9 +211,9 @@ let finalize () =
   let db =
     match !Clflags.promote with
     | Some Automatically ->
-      do_promote_all !File.db;
+      do_promote_all !db;
       []
-    | Some Never | None -> !File.db
+    | Some Never | None -> !db
   in
   dump_db db
 ;;

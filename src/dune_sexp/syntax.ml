@@ -319,8 +319,8 @@ module Error = struct
     User_error.raise
       ~loc
       ([ Pp.textf
-           "%s is available only when %s is enabled in the dune-project file. You must \
-            enable it using (using %s %s) in your dune-project file."
+           "%s is available only when %s is enabled in the dune-project or workspace \
+            file. You must enable it using (using %s %s) in the file."
            what
            t.name
            t.name

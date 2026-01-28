@@ -1009,21 +1009,25 @@ let step1 ~(lang : Lang.Instance.t) clflags =
     let+ x = field in
     lazy (Option.value cl ~default:(Lazy.force x))
   in
-  let* extensions =
+  let* explicit_extensions =
     multi_field
       "using"
       (let+ loc = loc
        and+ name = located string
-       and+ ver = located Dune_lang.Syntax.Version.decode in
-       Dune_lang.Dune_project.Extension.find_syntax
+       and+ ver = located Dune_lang.Syntax.Version.decode
+       and+ parse_args = capture in
+       Dune_lang.Dune_project.Extension.instantiate
          ~dune_lang_ver:lang.version
          ~loc
+         ~parse_args
          name
          ver)
   in
-  let parsing_context =
-    List.fold_left extensions ~init:Univ_map.empty ~f:(fun acc (syntax, version) ->
-      Univ_map.set acc (Dune_lang.Syntax.key syntax) (Active version))
+  let parsing_context, _stanza_parser, _extension_args =
+    let lang : Dune_lang.Dune_project.Lang.Instance.t =
+      { syntax = lang.syntax; version = lang.version; data = [] }
+    in
+    Dune_lang.Dune_project.interpret_lang_and_extensions ~lang ~explicit_extensions
   in
   Dune_lang.Decoder.set_many parsing_context
   @@

@@ -184,11 +184,6 @@ let package_fields package ~project =
   in
   let dep_fields =
     [ "depends", depends_field package
-    ; ( "x-extra-doc-deps"
-      , package
-        |> Package.info
-        |> Package_info.documentation
-        |> fun { packages; _ } -> packages )
     ; "conflicts", Package.conflicts package
     ; "depopts", Package.depopts package
     ]

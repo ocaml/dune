@@ -1,4 +1,5 @@
-This project contains an (empty) package, which has some doc dependencies:
+Make sure Dune generates a correct odoc configuration file that includes
+packages which are marked `with-doc`.
 
   $ cat > dune-project << EOF
   > (lang dune 3.22)
@@ -15,10 +16,6 @@ This project contains an (empty) package, which has some doc dependencies:
 
 Dependencies for odoc are explained here:
 https://ocaml.github.io/odoc/odoc/odoc_for_authors.html#config-file
-
-They need to be in the x-extra-doc-deps field of the opam file (to be able to
-generate the opam universe) and installed in the odoc-config.sexp file (so that
-the driver knows what to make available to reference). Let's check that.
 
 Generate its opam file:
 

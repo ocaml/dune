@@ -137,10 +137,12 @@ let rec constraint_of_blang (blang : Blang.t) : Package_constraint.t =
 
 let depends_field t =
   let depends = Package.depends t in
-  let pkg_already_in_depends (pkg : Package_dependency.t) =
-    List.exists
-      ~f:(fun (dep : Package_dependency.t) -> Package_name.equal pkg.name dep.name)
-      depends
+  let pkg_already_in_depends =
+    let depends =
+      List.map ~f:(fun (dep : Package_dependency.t) -> dep.name) depends
+      |> Package_name.Set.of_list
+    in
+    fun (dep : Package_dependency.t) -> Package_name.Set.mem depends dep.name
   in
   let doc = t |> Package.info |> Package_info.documentation in
   let doc_depends = doc.packages in

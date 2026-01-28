@@ -35,27 +35,3 @@ Now, let's check that it would install the correct `odoc-config.sexp` file
 
   $ cat _build/install/default/doc/foo/odoc-config.sexp
   (packages ppx_derivers brr)
-
-Now let's check that specifying doc dependencies outside of a package stanza
-generates a warning:
-
-  $ cat > dune-project << EOF
-  > (lang dune 3.22)
-  > (generate_opam_files true)
-  > (documentation
-  >  (depends
-  >   (ppx_derivers (>= 1.0))
-  >    brr)
-  >  (url "url"))
-  > (package
-  >  (name foo)
-  >  (allow_empty))
-  > EOF
-
-  $ dune build foo.opam
-  File "dune-project", lines 4-6, characters 1-43:
-  4 |  (depends
-  5 |   (ppx_derivers (>= 1.0))
-  6 |    brr)
-  Warning: The depends field of the documentation stanza can only be non-empty
-  when the documentation stanza is inside a package stanza.

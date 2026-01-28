@@ -255,9 +255,8 @@ let partition_db db files_to_promote =
   { present; missing }
 ;;
 
-let sort_for_display db files_to_promote =
+let sort_for_display { present; missing } =
   let open Fiber.O in
-  let { present; missing } = partition_db db files_to_promote in
   let+ sorted_diffs =
     Fiber.parallel_map present ~f:(fun file ->
       let+ diff_opt = diff_for_file file in
@@ -271,14 +270,14 @@ let sort_for_display db files_to_promote =
   sorted_diffs, sorted_missing
 ;;
 
-let missing db files_to_promote =
+let missing all =
   let open Fiber.O in
-  let+ _diffs, missing = sort_for_display db files_to_promote in
+  let+ _diffs, missing = sort_for_display all in
   missing
 ;;
 
-let display_diffs db files_to_promote =
+let display_diffs all =
   let open Fiber.O in
-  let+ diffs, _missing = sort_for_display db files_to_promote in
+  let+ diffs, _missing = sort_for_display all in
   List.iter diffs ~f:(fun (_file, diff) -> Print_diff.Diff.print diff)
 ;;

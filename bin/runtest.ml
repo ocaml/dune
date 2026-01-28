@@ -39,7 +39,7 @@ let runtest_term =
   let+ builder = Common.Builder.term
   and+ test_paths = Arg.(value & pos_all string [ "." ] name) in
   let common, config = Common.init builder in
-  match Dune_util.Global_lock.lock ~timeout:None with
+  match Global_lock.lock ~timeout:None with
   | Ok () ->
     Build.run_build_command ~common ~config ~request:(fun setup ->
       Runtest_common.make_request

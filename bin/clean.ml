@@ -16,7 +16,7 @@ let command =
        https://github.com/ocaml/dune/issues/2964). *)
     let builder = Common.Builder.disable_log_file builder in
     let _common, _config = Common.init builder in
-    Dune_util.Global_lock.lock_exn ~timeout:None;
+    Global_lock.lock_exn ~timeout:None;
     Dune_engine.Target_promotion.files_in_source_tree_to_delete ()
     |> Path.Source.Set.iter ~f:(fun p -> Fpath.unlink_no_err (Path.Source.to_string p));
     Path.rm_rf Path.build_dir

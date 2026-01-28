@@ -26,7 +26,7 @@ val fire_request
   :  name:string
   -> wait:bool
   -> ?warn_forwarding:bool
-  -> ?lock_held_by:Dune_util.Global_lock.Lock_held_by.t
+  -> ?lock_held_by:Global_lock.Lock_held_by.t
   -> Common.Builder.t
   -> ('a, 'b) Dune_rpc.Decl.request
   -> 'a
@@ -41,7 +41,7 @@ val fire_notification
   :  name:string
   -> wait:bool
   -> ?warn_forwarding:bool
-  -> ?lock_held_by:Dune_util.Global_lock.Lock_held_by.t
+  -> ?lock_held_by:Global_lock.Lock_held_by.t
   -> Common.Builder.t
   -> 'a Dune_rpc.Decl.notification
   -> 'a
@@ -53,4 +53,4 @@ val wrap_build_outcome_exn
   -> unit
 
 (** Warn the user that since a RPC server is running, some arguments are ignored. *)
-val warn_ignore_arguments : Dune_util.Global_lock.Lock_held_by.t -> unit
+val warn_ignore_arguments : Global_lock.Lock_held_by.t -> unit

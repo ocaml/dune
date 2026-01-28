@@ -80,6 +80,7 @@ module Debug = Debug
 module Config = Config
 module Metrics = Metrics
 module Counter = Counter
+module Global_lock = Global_lock
 
 module type Top_closure = Top_closure.Top_closure
 

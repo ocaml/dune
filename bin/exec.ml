@@ -317,7 +317,7 @@ let term : unit Term.t =
      For watch mode, we should finalize the backend and then restart it in between
      runs. *)
   let common, config = Common.init builder in
-  match Dune_util.Global_lock.lock ~timeout:None with
+  match Global_lock.lock ~timeout:None with
   | Error lock_held_by ->
     (match Common.watch common with
      | Yes _ ->

@@ -40,7 +40,7 @@ let run_fmt_command ~common ~config ~preview builder =
     | Ok () -> ()
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
   in
-  match Dune_util.Global_lock.lock ~timeout:None with
+  match Global_lock.lock ~timeout:None with
   | Ok () -> Scheduler_setup.go_with_rpc_server ~common ~config once
   | Error lock_held_by ->
     (* The --preview flag is being ignored by the RPC server, warn the user. *)

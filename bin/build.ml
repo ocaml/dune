@@ -169,7 +169,7 @@ let build =
        the status of the lock by taking prevents a race condition where the
        state of the lock could otherwise change between checking it and taking
        it. *)
-    match Dune_util.Global_lock.lock ~timeout:None with
+    match Global_lock.lock ~timeout:None with
     | Error lock_held_by ->
       (* This case is reached if dune detects that another instance of dune
          is already running. Rather than performing the build itself, the

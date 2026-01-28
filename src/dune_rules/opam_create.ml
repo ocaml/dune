@@ -136,35 +136,27 @@ let rec constraint_of_blang (blang : Blang.t) : Package_constraint.t =
 ;;
 
 let depends_field t =
-  let depends = Package.depends t in
-  let pkg_already_in_depends =
-    let depends =
-      List.map ~f:(fun (dep : Package_dependency.t) -> dep.name) depends
-      |> Package_name.Set.of_list
-    in
-    fun (dep : Package_dependency.t) -> Package_name.Set.mem depends dep.name
+  let is_doc_depend =
+    Package_dependency.has_constraint_on Package_variable_name.with_doc
   in
-  let doc = t |> Package.info |> Package_info.documentation in
-  let doc_depends = doc.packages in
+  let constraint_if_needed dep var =
+    match Package_dependency.has_constraint_on var dep with
+    | true -> []
+    | false -> [ Package_constraint.Bvar (Variable var) ]
+  in
+  let depends = Package.depends t |> List.filter ~f:(fun d -> not @@ is_doc_depend d) in
   let doc_depends =
-    List.filter_map
-      ~f:(fun (doc_dep : Package_dependency.t) ->
-        if pkg_already_in_depends doc_dep
-        then None
-        else (
-          let constraint_ =
-            let c = Option.to_list doc_dep.constraint_ in
-            let c =
-              Package_constraint.And
-                (c
-                 @ [ Package_constraint.Bvar (Variable Package_variable_name.post)
-                   ; Package_constraint.Bvar (Variable Package_variable_name.with_doc)
-                   ])
-            in
-            Some c
-          in
-          Some { doc_dep with constraint_ }))
-      doc_depends
+    t
+    |> Package.depends
+    |> List.filter ~f:is_doc_depend
+    |> List.map ~f:(fun (doc_dep : Package_dependency.t) ->
+      let constraint_ =
+        let original = Option.to_list doc_dep.constraint_ in
+        let with_doc = constraint_if_needed doc_dep Package_variable_name.with_doc in
+        let post = constraint_if_needed doc_dep Package_variable_name.post in
+        Some (Package_constraint.And (original @ with_doc @ post))
+      in
+      { doc_dep with constraint_ })
   in
   depends @ doc_depends
 ;;

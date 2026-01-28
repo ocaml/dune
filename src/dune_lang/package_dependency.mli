@@ -9,3 +9,4 @@ val encode : t Encoder.t
 val decode : t Decoder.t
 val to_dyn : t -> Dyn.t
 val equal : t -> t -> bool
+val has_constraint_on : Package_variable_name.t -> t -> bool

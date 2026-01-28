@@ -24,15 +24,7 @@ Generate its opam file:
 
   $ dune build foo.opam
 
-and check that the x-extra-doc-deps has been generated successfully
-
-  $ grep extra-doc-deps foo.opam -A 3
-  x-extra-doc-deps: [
-    "ppx_derivers" {>= "1.0"}
-    "brr"
-  ]
-
-The normal deps should be modified accordingly:
+The depends field should be modified accordingly:
 
   $ grep depends foo.opam -A 5
   depends: [

@@ -77,9 +77,10 @@ module Dir_map = struct
       { sexps : Dune_lang.Ast.t list
       ; subdir_status : Source_dir_status.Spec.input
       ; files : Files.t
+      ; scope : (Loc.t * Dune_lang.Scope_stanza.t) Filename.Map.t
       }
 
-    let to_dyn { sexps; subdir_status = _; files = _ } =
+    let to_dyn { sexps; subdir_status = _; files = _; scope = _ } =
       let open Dyn in
       record
         [ "sexps", list Dune_lang.to_dyn (List.map ~f:Dune_lang.Ast.remove_locs sexps) ]
@@ -89,6 +90,7 @@ module Dir_map = struct
       { sexps = []
       ; subdir_status = Source_dir_status.Map.init ~f:(fun _ -> None)
       ; files = None
+      ; scope = Filename.Map.empty
       }
     ;;
 
@@ -97,6 +99,9 @@ module Dir_map = struct
       ; subdir_status =
           Source_dir_status.Map.merge d1.subdir_status d2.subdir_status ~f:no_dupes
       ; files = no_dupes d1.files d2.files
+      ; scope =
+          Filename.Map.union d1.scope d2.scope ~f:(fun _dir v1 v2 ->
+            no_dupes (Some v1) (Some v2))
       }
     ;;
   end
@@ -144,6 +149,7 @@ module Ast = struct
     | Vendored_dirs of Loc.t * Predicate_lang.Glob.Element.t Predicate_lang.t
     | Dirs of Loc.t * Predicate_lang.Glob.t
     | Files of Loc.t * Predicate_lang.Glob.t
+    | Scope of Dune_lang.Scope_stanza.t
     | Subdir of Path.Local.t * t list
     | Include of
         { loc : Loc.t
@@ -228,6 +234,14 @@ module Ast = struct
     Vendored_dirs (loc, vendored)
   ;;
 
+  let scope =
+    let+ s =
+      Dune_lang.Syntax.since Stanza.syntax (3, 22)
+      >>> Dune_lang.Scope_stanza.decode ~dir:(strict_subdir "scope")
+    in
+    Scope s
+  ;;
+
   let dirs =
     let+ loc, dirs =
       Dune_lang.Syntax.since Stanza.syntax (1, 6)
@@ -296,6 +310,7 @@ module Ast = struct
       multi_field "ignored_subdirs" (ignored_sub_dirs ~inside_subdir)
     and+ vendored_dirs = field_o "vendored_dirs" vendored_dirs
     and+ data_only_dirs = field_o "data_only_dirs" data_only_dirs
+    and+ scope_stanzas = multi_field "scope" scope
     and+ include_stanza = multi_field "include" decode_include
     and+ rest = leftover_fields in
     let ast =
@@ -305,6 +320,7 @@ module Ast = struct
         ; Option.to_list vendored_dirs
         ; subdirs
         ; ignored_sub_dirs
+        ; scope_stanzas
         ; include_stanza
         ; Option.to_list data_only_dirs
         ]
@@ -317,7 +333,14 @@ module Ast = struct
   let statically_evaluated_stanzas =
     (* This list must be kept in sync with [decode]
        [include] is excluded b/c it's also a normal stanza *)
-    [ "data_only_dirs"; "vendored_dirs"; "ignored_sub_dirs"; "subdir"; "dirs"; "files" ]
+    [ "data_only_dirs"
+    ; "vendored_dirs"
+    ; "scope"
+    ; "ignored_sub_dirs"
+    ; "subdir"
+    ; "dirs"
+    ; "files"
+    ]
   ;;
 
   let decode ~inside_subdir ~inside_include =
@@ -377,6 +400,7 @@ module Group = struct
     ; vendored_dirs : (Loc.t * Predicate_lang.Glob.Element.t Predicate_lang.t) option
     ; dirs : (Loc.t * Predicate_lang.Glob.t) option
     ; files : (Loc.t * Predicate_lang.Glob.t) option
+    ; scope : (Loc.t * Dune_lang.Scope_stanza.t) Filename.Map.t
     ; leftovers : Dune_lang.Ast.t list
     ; subdirs : (Path.Local.t * Ast.t list) list
     }
@@ -387,6 +411,7 @@ module Group = struct
     ; vendored_dirs = None
     ; dirs = None
     ; files = None
+    ; scope = Filename.Map.empty
     ; subdirs = []
     ; leftovers = []
     }
@@ -424,6 +449,11 @@ module Group = struct
       { t with vendored_dirs = Some (no_dupes "vendored_dirs" loc t.vendored_dirs glob) }
     | Dirs (loc, glob) -> { t with dirs = Some (no_dupes "dirs" loc t.dirs glob) }
     | Files (loc, glob) -> { t with files = Some (no_dupes "files" loc t.files glob) }
+    | Scope s ->
+      let dir = Dune_lang.Scope_stanza.directory s in
+      let loc = Dune_lang.Scope_stanza.loc s in
+      let v = no_dupes "scope" loc (Filename.Map.find t.scope dir) s in
+      { t with scope = Filename.Map.set t.scope dir v }
     | Subdir (path, stanzas) -> { t with subdirs = (path, stanzas) :: t.subdirs }
     | Leftovers stanzas -> { t with leftovers = List.rev_append stanzas t.leftovers }
     | Include _ -> assert false
@@ -452,7 +482,9 @@ let rec to_dir_map ast =
   let node =
     let subdir_status = Group.subdir_status group in
     let files = group.files in
-    Dir_map.singleton { Dir_map.Per_dir.sexps = group.leftovers; subdir_status; files }
+    let scope = group.scope in
+    Dir_map.singleton
+      { Dir_map.Per_dir.sexps = group.leftovers; subdir_status; files; scope }
   in
   let subdirs =
     List.map group.subdirs ~f:(fun (path, stanzas) ->
@@ -504,6 +536,7 @@ let kind t = t.kind
 let path t = t.path
 let sub_dir_status t = Source_dir_status.Spec.create (Dir_map.root t.plain).subdir_status
 let files t = (Dir_map.root t.plain).files
+let scope t = (Dir_map.root t.plain).scope
 
 let load_plain sexps ~file ~from_parent ~project =
   let+ parsed =

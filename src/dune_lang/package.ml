@@ -21,6 +21,11 @@ module Duplicate_dep_warning = struct
     }
 end
 
+type status =
+  { enabled : bool
+  ; vendored : bool
+  }
+
 type t =
   { id : Id.t
   ; opam_file : Path.Source.t

@@ -13,6 +13,11 @@ type opam_file =
   | Exists of bool
   | Generated
 
+type status =
+  { enabled : bool
+  ; vendored : bool
+  }
+
 type t
 
 val loc : t -> Loc.t

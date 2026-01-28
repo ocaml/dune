@@ -66,10 +66,21 @@ module Dune_config : sig
         - [Set (loc, `Disabled)]: Package management is explicitly disabled. Forces package 
           management to be inactive even if lock directories are present.
 
-        - [Unset]: Package management enablement is not explicitly configured.  *)
+        - [Unset]: Package management enablement is not explicitly configured.
+        
+        [loc] is only relevant for error reporting. *)
+
+    type where =
+      | Cli
+      | Loc of Loc.t
+
     type t =
-      | Set of Loc.t * Config.Toggle.t
+      | Set of where * Config.Toggle.t
       | Unset
+
+    val all : where -> (string * t) list
+    val to_dyn : t -> Dyn.t
+    val equal : t -> t -> bool
   end
 
   module Terminal_persistence : sig

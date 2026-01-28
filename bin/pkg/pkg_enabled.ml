@@ -5,6 +5,7 @@ let term =
   let common, config = Common.init builder in
   Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     Memo.run
+    (* CR-ElectreAAS: we should be using lock_dir_active (and not ignore --ignore-lock-dir) *)
     @@
     let open Memo.O in
     let+ workspace = Workspace.workspace () in

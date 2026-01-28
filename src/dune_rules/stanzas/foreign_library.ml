@@ -6,6 +6,7 @@ type t =
   ; stubs : Foreign.Stubs.t
   ; enabled_if : Blang.t
   ; extra_objects : Ordered_set_lang.Unexpanded.t
+  ; c_library_flags : Ordered_set_lang.Unexpanded.t
   }
 
 let decode =
@@ -20,8 +21,14 @@ let decode =
        Ordered_set_lang.Unexpanded.field
          "extra_objects"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 19))
+     and+ c_library_flags = Ordered_set_lang.Unexpanded.field "c_library_flags"
      in
-     { archive_name; archive_name_loc; stubs; enabled_if; extra_objects })
+     { archive_name
+     ; archive_name_loc
+     ; stubs
+     ; enabled_if
+     ; extra_objects
+     ; c_library_flags })
 ;;
 
 include Stanza.Make (struct

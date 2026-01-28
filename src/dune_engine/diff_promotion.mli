@@ -17,6 +17,7 @@ module File : sig
   type t
 
   val source : t -> Path.Source.t
+  val correction_file : t -> Path.t
   val to_dyn : t -> Dyn.t
   val in_staging_area : Path.Source.t -> Path.Build.t
 
@@ -56,7 +57,3 @@ val missing : db -> Files_to_promote.t -> Path.Source.t list Fiber.t
 (** [display_diffs db files] will only print the diffs of files that are both
     in [files] and in [db]. *)
 val display_diffs : db -> Files_to_promote.t -> unit Fiber.t
-
-(** [display_corrected_contents db files] will print the changes in plain text
-    of files that are both in [files] and in [db]. *)
-val display_corrected_contents : db -> Files_to_promote.t -> unit

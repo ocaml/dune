@@ -125,6 +125,24 @@ end
 module Show = struct
   let info = Cmd.info ~doc:"Display contents of a corrected file" "show"
 
+  let display_corrected_contents db files_to_promote =
+    let { Diff_promotion.present; missing = _ } =
+      Diff_promotion.partition_db db files_to_promote
+    in
+    List.iter present ~f:(fun file ->
+      let correction_file = Diff_promotion.File.correction_file file in
+      if Path.exists correction_file
+      then (
+        let contents = Io.read_file correction_file in
+        Console.printf "%s" contents)
+      else
+        User_warning.emit
+          [ Pp.textf
+              "Corrected file does not exist for %s."
+              (Diff_promotion.File.source file |> Path.Source.to_string_maybe_quoted)
+          ])
+  ;;
+
   let term =
     let+ builder = Common.Builder.term
     and+ files =
@@ -138,7 +156,7 @@ module Show = struct
       let db = Diff_promotion.load_db () in
       let+ missing = Diff_promotion.missing db files_to_promote in
       List.iter ~f:on_missing missing;
-      Diff_promotion.display_corrected_contents db files_to_promote)
+      display_corrected_contents db files_to_promote)
   ;;
 
   let command = Cmd.v info term

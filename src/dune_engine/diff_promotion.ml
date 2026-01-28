@@ -28,6 +28,7 @@ module File = struct
 
   (* CR-soon rgrinberg: rename either this accessor or the function *)
   let source t = t.dst
+  let correction_file { src; staging; _ } = Path.build (Option.value staging ~default:src)
 
   let compare { src; staging; dst } t =
     let open Ordering.O in
@@ -78,8 +79,6 @@ module File = struct
         ; Pp.text (Unix.error_message e)
         ]
   ;;
-
-  let correction_file { src; staging; _ } = Path.build (Option.value staging ~default:src)
 
   let promote ({ src; staging; dst } as file) =
     let correction_file = correction_file file in
@@ -286,20 +285,4 @@ let display_diffs db files_to_promote =
   let open Fiber.O in
   let+ diffs, _missing = sort_for_display db files_to_promote in
   List.iter diffs ~f:(fun (_file, diff) -> Print_diff.Diff.print diff)
-;;
-
-let display_corrected_contents db files_to_promote =
-  let { present; missing = _ } = partition_db db files_to_promote in
-  List.iter present ~f:(fun file ->
-    let correction_file = File.correction_file file in
-    if Path.Untracked.exists correction_file
-    then (
-      let contents = Io.read_file correction_file in
-      Console.printf "%s" contents)
-    else
-      User_warning.emit
-        [ Pp.textf
-            "Corrected file does not exist for %s."
-            (File.source file |> Path.Source.to_string_maybe_quoted)
-        ])
 ;;

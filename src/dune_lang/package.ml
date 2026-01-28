@@ -176,7 +176,7 @@ let decode =
        and+ depopts_with_locs =
          field ~default:[] "depopts" (repeat (located Package_dependency.decode))
        and+ enabled_if = field_o "enabled_if" (Unreleased.since () >>> enabled_if)
-       and+ info = Package_info.decode ~toplevel:false ~since:(2, 0) ()
+       and+ info = Package_info.decode ~since:(2, 0) ()
        and+ tags = field "tags" (enter (repeat string)) ~default:[]
        and+ exclusive_dir =
          field_o

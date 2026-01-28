@@ -907,18 +907,15 @@ end = struct
   ;;
 
   let gen_odoc_config sctx (pkg : Package.t) =
-    let packages =
-      pkg
-      |> Package.depends
-      |> List.filter ~f:(Package_dependency.has_constraint_on with_doc)
-    in
     let ctx = Super_context.context sctx |> Context.build_context in
     match Package_paths.odoc_config_file ctx pkg with
     | None -> Memo.return ()
     | Some odoc_config_file ->
       let action =
         let packages =
-          packages
+          pkg
+          |> Package.depends
+          |> List.filter ~f:(Package_dependency.has_constraint_on with_doc)
           |> List.map ~f:(fun (dep : Package_dependency.t) ->
             Dune_lang.Package_name.to_string dep.name)
           |> String.concat ~sep:" "

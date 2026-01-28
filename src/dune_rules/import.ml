@@ -33,8 +33,6 @@ include struct
   module type Stringlike = Stringlike
 end
 
-include Dune_config_file
-
 include struct
   open Dune_engine
   module Dir_set = Dir_set

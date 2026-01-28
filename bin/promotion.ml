@@ -50,10 +50,7 @@ module Apply = struct
     let files_to_promote = files_to_promote ~common files in
     match Global_lock.lock ~timeout:None with
     | Ok () ->
-      Scheduler_setup.go_without_rpc_server ~common ~config (fun () ->
-        let open Fiber.O in
-        let+ () = Fiber.return () in
-        Diff_promotion.promote_files_registered_in_last_run files_to_promote |> on_missing)
+      Diff_promotion.promote_files_registered_in_last_run files_to_promote |> on_missing
     | Error lock_held_by ->
       Scheduler_setup.no_build_no_rpc ~config (fun () ->
         let open Fiber.O in
@@ -147,17 +144,15 @@ module Show = struct
     and+ files =
       Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
     in
-    let common, config = Common.init builder in
+    let common, _config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
     (* CR-soon rgrinberg: remove pointless args *)
-    Scheduler_setup.no_build_no_rpc ~config (fun () ->
-      let db = Diff_promotion.load_db () in
-      let { Diff_promotion.present = _; missing } =
-        Diff_promotion.partition_db db files_to_promote
-      in
-      on_missing missing;
-      display_corrected_contents db files_to_promote;
-      Fiber.return ())
+    let db = Diff_promotion.load_db () in
+    let { Diff_promotion.present = _; missing } =
+      Diff_promotion.partition_db db files_to_promote
+    in
+    on_missing missing;
+    display_corrected_contents db files_to_promote
   ;;
 
   let command = Cmd.v info term

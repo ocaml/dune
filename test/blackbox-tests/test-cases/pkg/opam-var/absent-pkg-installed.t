@@ -15,14 +15,13 @@ First, test the variable in string interpolation context (command argument):
   Solution for dune.lock:
   - string-context.0.0.1
 
-Currently the variable is left as a pform. It should resolve to "false" at
-solve time:
+The variable resolves to "false" at solve time:
 
   $ cat dune.lock/string-context.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (all_platforms ((action (run echo %{pkg:not-in-lock:installed})))))
+   (all_platforms ((action (run echo false)))))
 
 Now test the variable in truthy/filter context (conditional on command):
 
@@ -37,7 +36,8 @@ Now test the variable in truthy/filter context (conditional on command):
   Solution for dune.lock:
   - truthy-context.0.0.1
 
-In truthy context, the variable is left for build time evaluation:
+In truthy context, the variable is left for build time evaluation where it will
+be undefined and thus falsey:
 
   $ cat dune.lock/truthy-context.0.0.1.pkg
   (version 0.0.1)
@@ -62,7 +62,8 @@ The "enable" variable is desugared to "installed?enable:disable". The
   Solution for dune.lock:
   - enable-context.0.0.1
 
-The conditional handles undefined at build time (evaluates to "disable"):
+The conditional evaluates to "disable" at build time when the variable is
+undefined:
 
   $ cat dune.lock/enable-context.0.0.1.pkg
   (version 0.0.1)

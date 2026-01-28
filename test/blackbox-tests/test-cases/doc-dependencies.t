@@ -24,9 +24,9 @@ The depends field should be modified accordingly:
   $ grep depends foo.opam -A 5
   depends: [
     "dune" {>= "3.22"}
-    "odoc" {with-doc}
-    "ppx_derivers" {>= "1.0" & post & with-doc}
-    "brr" {post & with-doc}
+    "ppx_derivers" {>= "1.0" & with-doc & post}
+    "brr" {with-doc & post}
+    "odoc" {with-doc & post}
   ]
 
 Now, let's check that it would install the correct `odoc-config.sexp` file

@@ -5,11 +5,15 @@ Profiling Dune
    - reference: the CLI
    - howto: profiling a dune build
 
-If ``--trace-file FILE`` is passed, Dune will write detailed data about internal
-operations, such as the timing of commands that Dune runs.
+Dune writes detailed trace data about internal operations (such as command
+timing) to ``_build/trace.csexp`` by default. Use ``--trace-file FILE`` to
+write to a different location.
 
-The format is compatible with `Catapult trace-viewer`_. In particular, these
-files can be loaded into Chromium's ``chrome://tracing``. Note that the exact
-format is subject to change between versions.
+To load traces into Chromium's ``chrome://tracing`` or Perfetto_, convert them
+to Chrome trace format:
 
-.. _Catapult trace-viewer: https://github.com/catapult-project/catapult/blob/master/tracing/README.md
+.. code:: console
+
+   $ dune trace cat --chrome-trace > trace.json
+
+.. _Perfetto: https://ui.perfetto.dev/

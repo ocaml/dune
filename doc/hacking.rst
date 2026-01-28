@@ -139,6 +139,47 @@ This list is not exhaustive and may change in the future. In order to find the
 exact behaviour, it is recommended to search for ``INSIDE_DUNE`` in the
 codebase.
 
+Inspecting Traces with jq
+-------------------------
+
+Dune writes trace events to ``_build/trace.csexp`` in canonical s-expression
+format. Use ``dune trace cat`` to read and convert these events to JSON (one
+object per line). The test suite includes a shared jq library at
+``test/blackbox-tests/dune.jq`` with helper functions for common patterns.
+
+.. code:: console
+
+   # Use the shared library with include
+   $ dune trace cat | jq 'include "dune"; processes'
+
+   # Filter events by category
+   $ dune trace cat | jq 'select(.cat == "cache")'
+
+Use the ``-s`` (slurp) flag when you need to collect all events into an array,
+for example when counting, sorting, or accessing first/last events:
+
+.. code:: console
+
+   $ dune trace cat | jq -s '[ .[] | select(.cat == "cache") ] | length'
+   $ dune trace cat | jq -s 'first | {name, cat}'
+
+Enable additional trace categories with ``DUNE_TRACE`` (see
+``src/dune_trace/category.ml`` for the full list):
+
+.. code:: console
+
+   $ export DUNE_TRACE=cache
+   $ dune build && dune trace cat | jq 'include "dune"; cacheMisses'
+
+For deterministic test output, use helpers like ``redactCommandTimes`` to
+replace timing values that vary between runs:
+
+.. code:: console
+
+   $ dune trace cat | jq 'include "dune"; select(.cat == "cram") | .args | redactCommandTimes'
+
+.. seealso:: :doc:`advanced/profiling-dune` for loading traces into chrome://tracing
+
 Guidelines
 ----------
 

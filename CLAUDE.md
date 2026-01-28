@@ -108,6 +108,9 @@ Console.printf "something: %s" (Something.to_dyn something |> Dyn.to_string);
 ```
 This output will appear in cram test diffs, making it easy to observe values.
 
+**Trace Inspection:** Use `dune trace cat | jq` to inspect build traces. See
+`doc/hacking.rst` for details on using jq with traces in cram tests.
+
 ### Development Guidelines
 - Always verify changes build with `dune build @check`
 - Run `dune fmt` to ensure code formatting (requires ocamlformat)

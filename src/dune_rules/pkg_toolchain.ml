@@ -47,7 +47,7 @@ let installation_prefix pkg =
   Path.Outside_build_dir.relative pkg_dir "target"
 ;;
 
-let is_compiler_and_toolchains_enabled name =
+let is_compiler_package_with_toolchains_enabled name =
   match Config.get Compile_time.toolchains with
   | `Enabled -> Dune_pkg.Dev_tool.is_compiler_package name
   | `Disabled -> false

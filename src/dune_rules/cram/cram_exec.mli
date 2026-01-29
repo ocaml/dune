@@ -9,7 +9,8 @@ val make_script
 
 (** Runs the script created in [make_script] *)
 val run
-  :  src:Path.t
+  :  version:Dune_lang.Syntax.Version.t
+  -> src:Path.t
   -> dir:Path.t
   -> script:Path.t
   -> output:Path.Build.t
@@ -22,7 +23,7 @@ val run
 val diff : src:Path.t -> output:Path.t -> Action.t
 
 (** Corresponds the user written cram action *)
-val action : Path.t -> Action.t
+val action : version:Dune_lang.Syntax.Version.t -> Path.t -> Action.t
 
 module For_tests : sig
   val cram_stanzas : Lexing.lexbuf -> (Loc.t * string list Cram_lexer.block) list

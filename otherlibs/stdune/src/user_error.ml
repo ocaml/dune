@@ -2,20 +2,38 @@ exception E of User_message.t
 
 let prefix = Pp.seq (Pp.tag User_message.Style.Error (Pp.verbatim "Error")) (Pp.char ':')
 
-let make ?has_embedded_location ?needs_stack_trace ?loc ?hints ?annots paragraphs =
+let make ?has_embedded_location ?needs_stack_trace ?loc ?hints ?annots ?related paragraphs
+  =
   User_message.make
     ?has_embedded_location
     ?needs_stack_trace
     ?loc
     ?hints
     ?annots
+    ?related
     paragraphs
     ~prefix
 ;;
 
-let raise ?has_embedded_location ?needs_stack_trace ?loc ?hints ?annots paragraphs =
+let raise
+      ?has_embedded_location
+      ?needs_stack_trace
+      ?loc
+      ?hints
+      ?annots
+      ?related
+      paragraphs
+  =
   raise
-    (E (make ?has_embedded_location ?needs_stack_trace ?loc ?hints ?annots paragraphs))
+    (E
+       (make
+          ?has_embedded_location
+          ?needs_stack_trace
+          ?loc
+          ?hints
+          ?annots
+          ?related
+          paragraphs))
 ;;
 
 let ok_exn = function

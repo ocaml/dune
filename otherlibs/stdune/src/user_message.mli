@@ -64,6 +64,7 @@ type t =
   ; dir : string option
   ; has_embedded_location : bool
   ; needs_stack_trace : bool
+  ; related : t list
   }
 
 val compare : t -> t -> Ordering.t
@@ -93,6 +94,7 @@ val make
   -> ?annots:Annots.t
   -> ?context:string
   -> ?dir:string
+  -> ?related:t list
   -> Style.t Pp.t list
   -> t
 

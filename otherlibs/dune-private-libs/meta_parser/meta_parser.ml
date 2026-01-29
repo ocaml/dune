@@ -20,6 +20,8 @@ module Make (Stdune : sig
     end
 
     module User_message : sig
+      type t
+
       module Style : sig
         type t
       end
@@ -36,6 +38,7 @@ module Make (Stdune : sig
         -> ?loc:Loc.t
         -> ?hints:User_message.Style.t Pp.t list
         -> ?annots:User_message.Annots.t
+        -> ?related:User_message.t list
         -> User_message.Style.t Pp.t list
         -> _
     end

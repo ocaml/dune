@@ -382,6 +382,31 @@ module Context = struct
     ;;
   end
 
+  module Cms_cmt_dependency = struct
+    type t =
+      | No_dependency
+      | Depends_on_cms
+      | Depends_on_cmt
+
+    let equal x y =
+      match x, y with
+      | No_dependency, No_dependency
+      | Depends_on_cms, Depends_on_cms
+      | Depends_on_cmt, Depends_on_cmt -> true
+      | (No_dependency | Depends_on_cms | Depends_on_cmt), _ -> false
+    ;;
+
+    let to_dyn : t -> Dyn.t = function
+      | No_dependency -> String "none"
+      | Depends_on_cms -> String "cms"
+      | Depends_on_cmt -> String "cmt"
+    ;;
+
+    let decode =
+      enum [ "none", No_dependency; "cms", Depends_on_cms; "cmt", Depends_on_cmt ]
+    ;;
+  end
+
   module Common = struct
     type t =
       { loc : Loc.t
@@ -396,6 +421,7 @@ module Context = struct
       ; dynamically_linked_foreign_archives : bool
       ; instrument_with : Lib_name.t list
       ; merlin : Merlin.t
+      ; cms_cmt_dependency : Cms_cmt_dependency.t
       }
 
     let to_dyn { name; targets; host_context; _ } =
@@ -419,6 +445,7 @@ module Context = struct
           ; dynamically_linked_foreign_archives
           ; instrument_with
           ; merlin
+          ; cms_cmt_dependency
           }
           t
       =
@@ -435,6 +462,7 @@ module Context = struct
            t.dynamically_linked_foreign_archives
       && List.equal Lib_name.equal instrument_with t.instrument_with
       && Merlin.equal merlin t.merlin
+      && Cms_cmt_dependency.equal cms_cmt_dependency t.cms_cmt_dependency
     ;;
 
     let fdo_suffix t =
@@ -505,6 +533,12 @@ module Context = struct
         field_b
           ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 16))
           "generate_merlin_rules"
+      and+ cms_cmt_dependency =
+        field
+          "cms-cmt-dependency"
+          ~default:Cms_cmt_dependency.No_dependency
+          (Dune_lang.Syntax.since Dune_lang.Oxcaml.syntax (0, 1)
+           >>> Cms_cmt_dependency.decode)
       in
       fun ~profile_default ~instrument_with_default ->
         let profile = Option.value profile ~default:profile_default in
@@ -537,6 +571,7 @@ module Context = struct
                (match generate_merlin_rules with
                 | true -> Rules_only
                 | false -> Not_selected))
+        ; cms_cmt_dependency
         }
     ;;
   end
@@ -708,6 +743,7 @@ module Context = struct
           ; dynamically_linked_foreign_archives = true
           ; instrument_with = Option.value instrument_with ~default:[]
           ; merlin = Not_selected
+          ; cms_cmt_dependency = Cms_cmt_dependency.No_dependency
           }
       }
   ;;
@@ -979,7 +1015,7 @@ let check_lock_dirs_no_dupes lock_dirs =
       ]
 ;;
 
-let step1 clflags =
+let step1 ~(lang : Lang.Instance.t) clflags =
   let { Clflags.x
       ; profile = cl_profile
       ; instrument_with = cl_instrument_with
@@ -1009,6 +1045,24 @@ let step1 clflags =
     let+ x = field in
     lazy (Option.value cl ~default:(Lazy.force x))
   in
+  let* extensions =
+    multi_field
+      "using"
+      (let+ loc = loc
+       and+ name = located string
+       and+ ver = located Dune_lang.Syntax.Version.decode in
+       Dune_lang.Dune_project.Extension.find_syntax
+         ~dune_lang_ver:lang.version
+         ~loc
+         name
+         ver)
+  in
+  let parsing_context =
+    List.fold_left extensions ~init:Univ_map.empty ~f:(fun acc (syntax, version) ->
+      Univ_map.set acc (Dune_lang.Syntax.key syntax) (Active version))
+  in
+  Dune_lang.Decoder.set_many parsing_context
+  @@
   let* () = Dune_lang.Versioned_file.no_more_lang
   and+ env = env_field_lazy
   and+ profile =
@@ -1111,7 +1165,7 @@ let step1 clflags =
   { Step1.t; config }
 ;;
 
-let step1 clflags = fields (step1 clflags)
+let step1 ~lang clflags = fields (step1 ~lang clflags)
 
 let default clflags =
   let { Clflags.x
@@ -1157,7 +1211,7 @@ let load_step1 clflags p =
       parse_contents lb ~f:(fun lang ->
         String_with_vars.set_decoding_env
           (Pform.Env.initial ~stanza:lang.version ~extensions:[])
-          (step1 clflags)))
+          (step1 ~lang clflags)))
 ;;
 
 let filename = "dune-workspace"

@@ -85,11 +85,13 @@ type config =
   ; error_on_use : User_message.t option
   ; warn_on_load : User_message.t option
   ; bin_annot : bool option
+  ; bin_annot_cms : bool option
   }
 
-let dyn_of_config { bin_annot; _ } =
+let dyn_of_config { bin_annot; bin_annot_cms; _ } =
   let open Dyn in
-  record [ "bin_annot", option bool bin_annot ]
+  record
+    [ "bin_annot", option bool bin_annot; "bin_annot_cms", option bool bin_annot_cms ]
 ;;
 
 let equal_config
@@ -109,6 +111,7 @@ let equal_config
       ; error_on_use
       ; warn_on_load
       ; bin_annot
+      ; bin_annot_cms
       }
       t
   =
@@ -131,6 +134,7 @@ let equal_config
   && Option.equal User_message.equal error_on_use t.error_on_use
   && Option.equal User_message.equal warn_on_load t.warn_on_load
   && Option.equal Bool.equal bin_annot t.bin_annot
+  && Option.equal Bool.equal bin_annot_cms t.bin_annot_cms
 ;;
 
 let hash_config = Poly.hash
@@ -152,6 +156,7 @@ let empty_config =
   ; error_on_use = None
   ; warn_on_load = None
   ; bin_annot = None
+  ; bin_annot_cms = None
   }
 ;;
 
@@ -231,6 +236,7 @@ let wasm_of_ocaml_field =
 ;;
 
 let bin_annot = field_o "bin_annot" (Syntax.since Stanza.syntax (3, 8) >>> bool)
+let bin_annot_cms = field_o "bin_annot_cms" (Syntax.since Oxcaml.syntax (0, 1) >>> bool)
 
 let config =
   let+ flags = Ocaml_flags.Spec.decode
@@ -251,7 +257,8 @@ let config =
   and+ coq = Coq_env.decode
   and+ rocq = Rocq_env.decode
   and+ format_config = Format_config.field ~since:(2, 8)
-  and+ bin_annot = bin_annot in
+  and+ bin_annot = bin_annot
+  and+ bin_annot_cms = bin_annot_cms in
   let menhir =
     match menhir_flags, menhir with
     | Some flags, None -> { Menhir_env.empty with flags }
@@ -276,6 +283,7 @@ let config =
   ; error_on_use = None
   ; warn_on_load = None
   ; bin_annot
+  ; bin_annot_cms
   }
 ;;
 

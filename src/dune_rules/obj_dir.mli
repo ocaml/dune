@@ -131,6 +131,13 @@ module Module : sig
   (** Either the .cmti, or .cmt if the module has no interface *)
   val cmti_file : 'path t -> Module.t -> cm_kind:Lib_mode.Cm_kind.t -> 'path
 
+  val cms_file
+    :  'path t
+    -> Module.t
+    -> ml_kind:Ml_kind.t
+    -> cm_kind:Lib_mode.Cm_kind.t
+    -> 'path option
+
   val odoc : 'path t -> Module.t -> 'path
 
   module L : sig

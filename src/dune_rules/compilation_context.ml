@@ -99,6 +99,8 @@ type t =
   ; melange_package_name : Lib_name.t option
   ; modes : Lib_mode.Map.Set.t
   ; bin_annot : bool
+  ; bin_annot_cms : bool
+  ; cms_cmt_dependency : Workspace.Context.Cms_cmt_dependency.t
   ; loc : Loc.t option
   ; ocaml : Ocaml_toolchain.t
   ; for_ : Compilation_mode.t
@@ -126,6 +128,8 @@ let melange_package_name t = t.melange_package_name
 let implements t = t.implements
 let modes t = t.modes
 let bin_annot t = t.bin_annot
+let bin_annot_cms t = t.bin_annot_cms
+let cms_cmt_dependency t = t.cms_cmt_dependency
 let context t = Super_context.context t.super_context
 let dep_graphs t = t.modules.dep_graphs
 let ocaml t = t.ocaml
@@ -160,6 +164,8 @@ let create
       ?parameters
       ?modes
       ?bin_annot
+      ?bin_annot_cms
+      ?cms_cmt_dependency
       ?loc
       ?instances
       for_
@@ -209,6 +215,16 @@ let create
     match bin_annot with
     | Some b -> Memo.return b
     | None -> Env_stanza_db.bin_annot ~dir:(Obj_dir.dir obj_dir)
+  and+ bin_annot_cms =
+    match bin_annot_cms with
+    | Some b -> Memo.return b
+    | None -> Env_stanza_db.bin_annot_cms ~dir:(Obj_dir.dir obj_dir)
+  and+ cms_cmt_dependency =
+    match cms_cmt_dependency with
+    | Some v -> Memo.return v
+    | None ->
+      let context = Super_context.context super_context in
+      Memo.return (Context.cms_cmt_dependency context)
   in
   { super_context
   ; scope
@@ -230,6 +246,8 @@ let create
   ; melange_package_name
   ; modes
   ; bin_annot
+  ; bin_annot_cms
+  ; cms_cmt_dependency
   ; loc
   ; ocaml
   ; instances
@@ -341,7 +359,14 @@ let for_plugin_executable t ~embed_in_plugin_libraries =
   { t with requires_link }
 ;;
 
-let without_bin_annot t = { t with bin_annot = false }
+let without_bin_annot t =
+  { t with
+    bin_annot = false
+  ; bin_annot_cms = false
+  ; cms_cmt_dependency = Workspace.Context.Cms_cmt_dependency.No_dependency
+  }
+;;
+
 let set_obj_dir t obj_dir = { t with obj_dir }
 let set_modes t ~modes = { t with modes }
 

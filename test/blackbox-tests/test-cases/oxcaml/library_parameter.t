@@ -146,9 +146,11 @@ parameters.
     (META
      dune-package
      intf/param_intf.cmi
+     intf/param_intf.cmsi
      intf/param_intf.cmti
      intf/param_intf.mli
      intf2/param_intf2.cmi
+     intf2/param_intf2.cmsi
      intf2/param_intf2.cmti
      intf2/param_intf2.mli)))
   (library
@@ -181,9 +183,11 @@ We verify it will install the data to the correct location.
     "_build/install/default/lib/param/META"
     "_build/install/default/lib/param/dune-package"
     "_build/install/default/lib/param/intf/param_intf.cmi" {"intf/param_intf.cmi"}
+    "_build/install/default/lib/param/intf/param_intf.cmsi" {"intf/param_intf.cmsi"}
     "_build/install/default/lib/param/intf/param_intf.cmti" {"intf/param_intf.cmti"}
     "_build/install/default/lib/param/intf/param_intf.mli" {"intf/param_intf.mli"}
     "_build/install/default/lib/param/intf2/param_intf2.cmi" {"intf2/param_intf2.cmi"}
+    "_build/install/default/lib/param/intf2/param_intf2.cmsi" {"intf2/param_intf2.cmsi"}
     "_build/install/default/lib/param/intf2/param_intf2.cmti" {"intf2/param_intf2.cmti"}
     "_build/install/default/lib/param/intf2/param_intf2.mli" {"intf2/param_intf2.mli"}
   ]

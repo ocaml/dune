@@ -210,30 +210,37 @@ modules:
    (lib
     (META
      a/a.cmi
+     a/a.cmsi
      a/a.cmti
      a/a.mli
      b/b.cmi
+     b/b.cmsi
      b/b.cmti
      b/b.mli
      dune-package
      lib/lib.a
      lib/lib.cma
      lib/lib.cmi
+     lib/lib.cms
      lib/lib.cmt
      lib/lib.cmx
      lib/lib.cmxa
      lib/lib.ml
      lib/lib__.cmi
+     lib/lib__.cms
      lib/lib__.cmt
      lib/lib__.cmx
      lib/lib__.ml
      lib/lib__Lib_util.cmi
+     lib/lib__Lib_util.cms
      lib/lib__Lib_util.cmt
      lib/lib__Lib_util.cmx
      lib/lib_util.ml
      utils/utils.a
      utils/utils.cma
      utils/utils.cmi
+     utils/utils.cms
+     utils/utils.cmsi
      utils/utils.cmt
      utils/utils.cmti
      utils/utils.cmx

@@ -76,6 +76,17 @@ module Extension : sig
 
   (** Register experimental extensions that were deleted *)
   val register_deleted : name:string -> deleted_in:Syntax.Version.t -> unit
+
+  (** Look up an extension by name and return its syntax and the requested
+      version. This is useful for workspace files that need to activate
+      extension syntaxes without the full stanza registration mechanism.
+      Raises if the extension is unknown or deleted. *)
+  val find_syntax
+    :  dune_lang_ver:Syntax.Version.t
+    -> loc:Loc.t
+    -> Loc.t * string
+    -> Loc.t * Syntax.Version.t
+    -> Syntax.t * Syntax.Version.t
 end
 
 (** Create an anonymous project at the given directory

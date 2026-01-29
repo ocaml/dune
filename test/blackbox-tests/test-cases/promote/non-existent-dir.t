@@ -26,6 +26,3 @@ dune promote should be able to promote into directories that don't exist
 
   $ dune promote
   Promoting _build/default/foo to dir/foo.
-  Error: failed to promote dir/foo
-  No such file or directory
-  [1]

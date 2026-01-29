@@ -52,6 +52,7 @@ module File = struct
   let do_promote ~correction_file ~dst =
     Fpath.unlink_no_err (Path.Source.to_string dst);
     let chmod = Path.Permissions.add Path.Permissions.write in
+    Path.mkdir_p (Path.source (Path.Source.parent_exn dst));
     match Io.copy_file ~chmod ~src:correction_file ~dst:(Path.source dst) () with
     | () -> ()
     | exception Unix.Unix_error (e, _, _) ->

@@ -69,11 +69,10 @@ let exec loc ({ Diff.optional; file1; file2; mode } as diff) =
            (* Promote if in the source tree or not a target. The second case
                 means that the diffing have been done with the empty file *)
            if in_source_or_target && not (is_copied_from_source_tree (Path.build file2))
-           then Diff_promotion.File.register_dep ~source_file ~correction_file:file2
+           then Diff_promotion.register_dep ~source_file ~correction_file:file2
          | true ->
            if in_source_or_target
-           then
-             Diff_promotion.File.register_intermediate ~source_file ~correction_file:file2
+           then Diff_promotion.register_intermediate ~source_file ~correction_file:file2
            else remove_intermediate_file ());
         Fiber.return ()))
 ;;

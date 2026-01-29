@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 
 (** Library for finding and printing outdated packges in the dune_pkg lock directory. *)
 

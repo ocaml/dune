@@ -18,6 +18,7 @@ include struct
   module Blang = Blang
   module Slang = Slang
   module Package_variable_name = Package_variable_name
+  module Relop = Relop
 end
 
 include struct
@@ -27,3 +28,4 @@ include struct
 end
 
 module OpamUrl = OpamUrl0
+module Variable_value = Dune_opam.Variable_value

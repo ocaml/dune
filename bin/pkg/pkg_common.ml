@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 module Lock_dir = Dune_pkg.Lock_dir
 module Solver_env = Dune_pkg.Solver_env
 module Package_variable_name = Dune_lang.Package_variable_name
@@ -122,7 +123,7 @@ let unset_solver_vars_of_workspace workspace ~lock_dir_path =
 let find_local_packages =
   let open Memo.O in
   Dune_rules.Dune_load.packages ()
-  >>| Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
+  >>| Dune_lang.Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
 ;;
 
 let pp_package { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; avoid; _ }; _ } =

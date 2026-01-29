@@ -1,4 +1,5 @@
 (** Parsing and interpretation of opam files *)
+open Dune_opam
 
 open Stdune
 

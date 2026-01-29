@@ -22,8 +22,8 @@ let digest_feed = Dune_digest.Feed.string
 let compare = String.compare
 let to_dyn = Dyn.string
 let to_string = Fun.id
-let decode = Decoder.string
-let encode = Encoder.string
+let decode = Dune_lang.Decoder.string
+let encode = Dune_lang.Encoder.string
 let to_opam_filter t = OpamTypes.FString t
 let to_opam_variable_contents t = OpamTypes.S t
 

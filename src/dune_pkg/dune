@@ -14,6 +14,7 @@
   dune_util
   dune_trace
   dune_lang
+  dune_opam
   dune_console
   dune_digest
   re

@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 
 type candidate =
   { is_immediate_dep_of_local_package : bool

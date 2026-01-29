@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 module Digest_feed = Dune_digest.Feed
 
 module Solver_env_disjunction = struct

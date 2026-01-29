@@ -1,3 +1,4 @@
+open Dune_opam
 module Fetch = Fetch
 module Checksum = Checksum
 module Source = Source

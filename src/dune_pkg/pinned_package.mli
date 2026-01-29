@@ -1,4 +1,5 @@
 (** Support for [pin-depends] *)
+open Dune_opam
 
 (** Collect and resolve all pins in [local_packages] using the sources defined
     in [local_packages].

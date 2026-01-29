@@ -382,6 +382,7 @@ let make_parsing_context ~(lang : Lang.Instance.t) extensions =
 ;;
 
 let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions =
+  let explicit_extensions = explicit_extensions_map explicit_extensions in
   let extensions = Extension.automatic ~explicitly_selected:explicit_extensions in
   let parsing_context = make_parsing_context ~lang extensions in
   let extension_args, extension_stanzas =
@@ -520,7 +521,7 @@ let infer ~dir info packages =
   let lang = get_dune_lang () in
   let name = default_name ~dir ~packages in
   let parsing_context, stanza_parser, extension_args =
-    interpret_lang_and_extensions ~lang ~explicit_extensions:String.Map.empty
+    interpret_lang_and_extensions ~lang ~explicit_extensions:[]
   in
   let implicit_transitive_deps = Implicit_transitive_deps.Stanza.default ~lang in
   let wrapped_executables = wrapped_executables_default ~lang in
@@ -904,10 +905,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
      in
      Pform.Env.initial ~stanza:lang.version ~extensions)
   @@
-  let parsing_context, _, _ =
-    let explicit_extensions = explicit_extensions_map explicit_extensions in
-    interpret_lang_and_extensions ~lang ~explicit_extensions
-  in
+  let parsing_context, _, _ = interpret_lang_and_extensions ~lang ~explicit_extensions in
   Decoder.set_many parsing_context
   @@
   let+ name = field_o "name" Dune_project_name.decode
@@ -999,10 +997,10 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
       | Some n -> n
       | None -> default_name ~dir ~packages
     in
-    let explicit_extensions = explicit_extensions_map explicit_extensions in
     let parsing_context, stanza_parser, extension_args =
       interpret_lang_and_extensions ~lang ~explicit_extensions
     in
+    let explicit_extensions_map = explicit_extensions_map explicit_extensions in
     let implicit_transitive_deps =
       Option.value
         implicit_transitive_deps
@@ -1044,7 +1042,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
     let root = dir in
     let dialects =
       let dialects =
-        match String.Map.find explicit_extensions Melange_syntax.name with
+        match String.Map.find explicit_extensions_map Melange_syntax.name with
         | Some extension -> (extension.loc, Dialect.rescript) :: dialects
         | None -> dialects
       in

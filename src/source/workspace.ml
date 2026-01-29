@@ -979,7 +979,7 @@ let check_lock_dirs_no_dupes lock_dirs =
       ]
 ;;
 
-let step1 clflags =
+let step1 ~(lang : Lang.Instance.t) clflags =
   let { Clflags.x
       ; profile = cl_profile
       ; instrument_with = cl_instrument_with
@@ -1009,6 +1009,28 @@ let step1 clflags =
     let+ x = field in
     lazy (Option.value cl ~default:(Lazy.force x))
   in
+  let* explicit_extensions =
+    multi_field
+      "using"
+      (let+ loc = loc
+       and+ name = located string
+       and+ ver = located Dune_lang.Syntax.Version.decode
+       and+ parse_args = capture in
+       Dune_lang.Dune_project.Extension.instantiate
+         ~dune_lang_ver:lang.version
+         ~loc
+         ~parse_args
+         name
+         ver)
+  in
+  let parsing_context, _stanza_parser, _extension_args =
+    let lang : Dune_lang.Dune_project.Lang.Instance.t =
+      { syntax = lang.syntax; version = lang.version; data = [] }
+    in
+    Dune_lang.Dune_project.interpret_lang_and_extensions ~lang ~explicit_extensions
+  in
+  Dune_lang.Decoder.set_many parsing_context
+  @@
   let* () = Dune_lang.Versioned_file.no_more_lang
   and+ env = env_field_lazy
   and+ profile =
@@ -1111,7 +1133,7 @@ let step1 clflags =
   { Step1.t; config }
 ;;
 
-let step1 clflags = fields (step1 clflags)
+let step1 ~lang clflags = fields (step1 ~lang clflags)
 
 let default clflags =
   let { Clflags.x
@@ -1157,7 +1179,7 @@ let load_step1 clflags p =
       parse_contents lb ~f:(fun lang ->
         String_with_vars.set_decoding_env
           (Pform.Env.initial ~stanza:lang.version ~extensions:[])
-          (step1 clflags)))
+          (step1 ~lang clflags)))
 ;;
 
 let filename = "dune-workspace"

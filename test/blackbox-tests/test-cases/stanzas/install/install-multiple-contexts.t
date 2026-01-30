@@ -31,11 +31,13 @@ One must pass a --context argument:
   Installing _install/a/lib/a/META
   Installing _install/a/lib/a/dune-package
   Installing _install/a/share/a/hello
+  Installing _install/a/doc/a/odoc-config.sexp
 
   $ dune install --prefix _install/b --context b --display short
   Installing _install/b/lib/a/META
   Installing _install/b/lib/a/dune-package
   Installing _install/b/share/a/hello
+  Installing _install/b/doc/a/odoc-config.sexp
 
 Passing an invalid context name fails:
 

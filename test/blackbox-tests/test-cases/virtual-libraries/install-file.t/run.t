@@ -14,6 +14,9 @@ Install files for implementations and virtual libs have all the artifacts:
     "_build/install/default/lib/vlib/vlib__Foo.cmi"
     "_build/install/default/lib/vlib/vlib__Foo.cmti"
   ]
+  doc: [
+    "_build/install/default/doc/vlib/odoc-config.sexp"
+  ]
   lib: [
     "_build/install/default/lib/impl/META"
     "_build/install/default/lib/impl/dune-package"
@@ -34,4 +37,7 @@ Install files for implementations and virtual libs have all the artifacts:
   ]
   libexec: [
     "_build/install/default/lib/impl/impl.cmxs"
+  ]
+  doc: [
+    "_build/install/default/doc/impl/odoc-config.sexp"
   ]

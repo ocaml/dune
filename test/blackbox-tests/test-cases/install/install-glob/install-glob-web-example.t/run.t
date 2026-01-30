@@ -15,10 +15,16 @@ Simple example of installing website files
     "_build/install/default/share/blog/style/bar.css" {"style/bar.css"}
     "_build/install/default/share/blog/style/foo.css" {"style/foo.css"}
   ]
+  doc: [
+    "_build/install/default/doc/blog/odoc-config.sexp"
+  ]
 
   $ find _build/install | sort
   _build/install
   _build/install/default
+  _build/install/default/doc
+  _build/install/default/doc/blog
+  _build/install/default/doc/blog/odoc-config.sexp
   _build/install/default/lib
   _build/install/default/lib/blog
   _build/install/default/lib/blog/META

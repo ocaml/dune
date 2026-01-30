@@ -46,6 +46,9 @@ Allow directories to be installable
     "_build/install/default/share/foo/bar/y" {"bar/y"}
     "_build/install/default/share/foo/bar/z" {"bar/z"}
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]
 
   $ mkdir ./installation
   $ dune install --prefix ./installation --display short
@@ -58,6 +61,7 @@ Allow directories to be installable
   Installing installation/share/foo/bar/x
   Installing installation/share/foo/bar/y
   Installing installation/share/foo/bar/z
+  Installing installation/doc/foo/odoc-config.sexp
   $ ls ./installation/lib/foo
   META
   dune-package

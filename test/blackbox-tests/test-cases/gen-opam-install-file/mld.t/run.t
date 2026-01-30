@@ -7,5 +7,6 @@ mld files are installed
     "_build/install/default/lib/foo/opam"
   ]
   doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
     "_build/install/default/doc/foo/odoc-pages/doc.mld" {"odoc-pages/doc.mld"}
   ]

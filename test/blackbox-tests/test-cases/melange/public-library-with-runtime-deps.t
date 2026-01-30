@@ -39,6 +39,9 @@ Test `melange.runtime_deps` in a public library in the workspace
     "_build/install/default/lib/foo/melange/foo.cmt" {"melange/foo.cmt"}
     "_build/install/default/lib/foo/nested/hello.txt" {"nested/hello.txt"}
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]
 
   $ mkdir assets
   $ cat > assets/file.txt <<EOF

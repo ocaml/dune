@@ -36,6 +36,9 @@ Test that we get a warning if `(files ...)` has a dst starting with "..":
   etc: [
     "_build/install/default/etc/b" {"../b"}
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]
 
 Test that we get a warning if `(dirs ...)` has a dst starting with "..":
   $ cat >dune <<EOF
@@ -63,6 +66,9 @@ Test that we get a warning if `(dirs ...)` has a dst starting with "..":
   ]
   etc: [
     "_build/install/default/etc/baz/baz.txt" {"../baz/baz.txt"}
+  ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
   ]
 
 Test that we get a warning if `(dirs ...)` has a dst that is exactly "..":
@@ -92,6 +98,9 @@ Test that we get a warning if `(dirs ...)` has a dst that is exactly "..":
   etc: [
     "_build/install/default/etc/baz.txt" {"../baz.txt"}
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]
 
 Test that we get get a warning if the ".." is the result of variable expansion:
   $ printf ".." > prefix.txt
@@ -116,6 +125,9 @@ Test that we get get a warning if the ".." is the result of variable expansion:
   ]
   etc: [
     "_build/install/default/etc/b" {"../b"}
+  ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
   ]
 
 Test that we get an error if `(source_tree ...)` has a dst starting with "..".
@@ -173,6 +185,9 @@ Test that we get a warning if the ".." comes from the prefix of a glob:
   etc: [
     "_build/install/default/etc/baz/b.txt" {"../baz/b.txt"}
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]
 
 Test that on older versions of dune we don't get warnings in this case:
   $ cat >dune-project <<EOF
@@ -210,6 +225,9 @@ Test that on older versions of dune we don't get warnings in this case:
   etc: [
     "_build/install/default/etc/b" {"../b"}
     "_build/install/default/etc/baz/b.txt" {"../baz/b.txt"}
+  ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
   ]
 
 Test that we don't get the warning if a vendored project starts an install dst
@@ -260,5 +278,8 @@ produce warnings, the first project doesn't get spammed with those warnings.
   ]
   bin: [
     "_build/install/default/bin/foo"
+  ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
   ]
 

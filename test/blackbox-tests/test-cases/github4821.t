@@ -10,5 +10,5 @@ Ensure that a public, non-optional library can be disabled.
   > cat _build/install/default/lib/foo/dune-package | sed 's/dune [0-9].[0-9]*/dune $version/';
   (lang dune $version)
   (name foo)
-  (sections (lib .))
-  (files (lib (META dune-package opam)))
+  (sections (lib .) (doc ../../doc/foo))
+  (files (lib (META dune-package opam)) (doc (odoc-config.sexp)))

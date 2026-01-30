@@ -41,6 +41,9 @@ Show target promotion in-source for `melange.emit`
     "_build/install/default/lib/foo/melange/foo.cmt" {"melange/foo.cmt"}
     "_build/install/default/lib/foo/nested/hello.txt" {"nested/hello.txt"}
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]
 
   $ cat lib/_build/install/default/lib/foo/dune-package | grep melange_runtime_deps
    (melange_runtime_deps index.txt nested/hello.txt))

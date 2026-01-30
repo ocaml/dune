@@ -30,6 +30,7 @@ Reproduce github #7020
   Installing _install/lib/dummyfoo/melange/dummyfoo.cmi
   Installing _install/lib/dummyfoo/melange/dummyfoo.cmj
   Installing _install/lib/dummyfoo/melange/dummyfoo.cmt
+  Installing _install/doc/dummyfoo/odoc-config.sexp
   $ cd ..
 
   $ export OCAMLPATH=$PWD/$dir/_install/lib

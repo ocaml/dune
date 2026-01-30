@@ -57,6 +57,7 @@ Check that dune >= 2.4 removes target write permissions.
   Installing bin/foo
   Installing bin/foo.exe
   Installing share/foo/target
+  Installing doc/foo/odoc-config.sexp
   $ dune_cmd stat permissions 2.4/bin/foo.exe | head -c1
   7
   $ dune_cmd stat permissions 2.4/share/foo/target | head -c1

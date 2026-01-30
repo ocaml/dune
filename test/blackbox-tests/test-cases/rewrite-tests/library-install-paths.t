@@ -92,3 +92,7 @@ the grep 0.
   Installing _install/lib/minlib/minlib.cmxs
   Creating directory _install/lib/minlib
   Copying _build/install/default/lib/minlib/minlib.cmxs to _install/lib/minlib/minlib.cmxs (executable: true)
+  Removing (if it exists) _install/doc/minlib/odoc-config.sexp
+  Installing _install/doc/minlib/odoc-config.sexp
+  Creating directory _install/doc/minlib
+  Copying _build/install/default/doc/minlib/odoc-config.sexp to _install/doc/minlib/odoc-config.sexp (executable: false)

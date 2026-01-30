@@ -189,6 +189,9 @@ Test with an opam like installation
   libexec: [
     "_destdir/_destdir/lib/a/a.cmxs"
   ]
+  doc: [
+    "_build/install/default/doc/a/odoc-config.sexp"
+  ]
 
 Build everything
 ----------------

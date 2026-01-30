@@ -68,3 +68,6 @@ Simple example of including a file in the install stanza
     "_build/install/default/share/hello/b.txt"
     "_build/install/default/share/hello/c.txt"
   ]
+  doc: [
+    "_build/install/default/doc/hello/odoc-config.sexp"
+  ]

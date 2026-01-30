@@ -41,3 +41,6 @@ Including a file in the install stanza which includes another file
   share: [
     "_build/install/default/share/hello/a.txt"
   ]
+  doc: [
+    "_build/install/default/doc/hello/odoc-config.sexp"
+  ]

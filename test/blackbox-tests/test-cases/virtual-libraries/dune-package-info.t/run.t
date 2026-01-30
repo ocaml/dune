@@ -2,7 +2,7 @@ Include variants and implementation information in dune-package
   $ dune build | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
   (lang dune <version>)
   (name foo)
-  (sections (lib .) (libexec .))
+  (sections (lib .) (libexec .) (doc ../../doc/foo))
   (files
    (lib
     (META
@@ -30,7 +30,8 @@ Include variants and implementation information in dune-package
      vlib/vlib__Vmod.cmi
      vlib/vlib__Vmod.cmti
      vlib/vmod.mli))
-   (libexec (impl/impl.cmxs)))
+   (libexec (impl/impl.cmxs))
+   (doc (odoc-config.sexp)))
   (library
    (name foo.impl)
    (kind normal)

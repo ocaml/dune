@@ -10,3 +10,6 @@ byte code only library
     "_build/install/default/lib/foo/dune-package"
     "_build/install/default/lib/foo/opam"
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]

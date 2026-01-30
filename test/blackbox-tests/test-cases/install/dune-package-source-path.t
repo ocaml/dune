@@ -39,6 +39,9 @@ Test paths on public libraries with `.` are correct
   libexec: [
     "_build/install/default/lib/a/sub/a.cmxs" {"sub/a.cmxs"}
   ]
+  doc: [
+    "_build/install/default/doc/a/odoc-config.sexp"
+  ]
 
   $ cat a/_build/install/default/lib/a/dune-package | grep path
        (source (path A) (impl (path sub/a.ml-gen))))
@@ -93,6 +96,9 @@ Test paths on public libraries with `.` are correct
   ]
   libexec: [
     "_build/install/default/lib/b/sub/b.cmxs" {"sub/b.cmxs"}
+  ]
+  doc: [
+    "_build/install/default/doc/b/odoc-config.sexp"
   ]
 
   $ cat b/_build/install/default/lib/b/dune-package | grep path

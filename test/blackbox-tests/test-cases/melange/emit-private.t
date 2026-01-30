@@ -32,6 +32,7 @@ Test dependency on a private library in the same package as melange.emit
   Installing $TESTCASE_ROOT/prefix/lib/pkg/__private__/a/melange/a.cmj
   Installing $TESTCASE_ROOT/prefix/lib/pkg/__private__/a/melange/a__Foo.cmj
   Installing $TESTCASE_ROOT/prefix/lib/pkg/dune-package
+  Installing $TESTCASE_ROOT/prefix/doc/pkg/odoc-config.sexp
 
   $ cat > b/dune <<EOF
   > (melange.emit

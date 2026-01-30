@@ -32,6 +32,22 @@ The depends field should be modified accordingly:
 Now, let's check that it would install the correct `odoc-config.sexp` file
 
   $ dune build @install
-
   $ cat _build/install/default/doc/foo/odoc-config.sexp
   (packages ppx_derivers brr)
+
+If we have no doc dependencies:
+
+  $ cat > dune-project << EOF
+  > (lang dune 3.22)
+  > (generate_opam_files true)
+  > (package
+  >  (name foo)
+  >  (allow_empty)
+  >  (depends
+  >   ppx_derivers
+  >   brr))
+  > EOF
+
+  $ dune build @install
+  $ cat _build/install/default/doc/foo/odoc-config.sexp
+  (packages )

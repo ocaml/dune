@@ -39,6 +39,7 @@ Test `melange.runtime_deps` in a library that has been installed
   Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmj
   Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmt
   Installing $TESTCASE_ROOT/prefix/lib/foo/some_dir/inside-dir-target.txt
+  Installing $TESTCASE_ROOT/prefix/doc/foo/odoc-config.sexp
 
   $ rm -rf $PWD/prefix
   $ dune clean
@@ -64,3 +65,4 @@ Test `melange.runtime_deps` in a library that has been installed
   Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmj
   Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmt
   Installing $TESTCASE_ROOT/prefix/lib/foo/some_dir/inside-dir-target.txt
+  Installing $TESTCASE_ROOT/prefix/doc/foo/odoc-config.sexp

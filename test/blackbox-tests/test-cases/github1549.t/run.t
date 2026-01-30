@@ -7,7 +7,7 @@ Reproduction case for #1549: too many parentheses in installed .dune files
   $ dune_cmd cat backend/_build/install/default/lib/dune_inline_tests/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
   (lang dune <version>)
   (name dune_inline_tests)
-  (sections (lib .) (libexec .))
+  (sections (lib .) (libexec .) (doc ../../doc/dune_inline_tests))
   (files
    (lib
     (META
@@ -20,7 +20,8 @@ Reproduction case for #1549: too many parentheses in installed .dune files
      simple_tests.cmx
      simple_tests.cmxa
      simple_tests.ml))
-   (libexec (simple_tests.cmxs)))
+   (libexec (simple_tests.cmxs))
+   (doc (odoc-config.sexp)))
   (library
    (name dune_inline_tests)
    (kind normal)

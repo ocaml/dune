@@ -33,6 +33,7 @@ form `foo.bar.baz`
   Installing $TESTCASE_ROOT/prefix/lib/a/sub/melange/a__Foo.cmi
   Installing $TESTCASE_ROOT/prefix/lib/a/sub/melange/a__Foo.cmj
   Installing $TESTCASE_ROOT/prefix/lib/a/sub/melange/a__Foo.cmt
+  Installing $TESTCASE_ROOT/prefix/doc/a/odoc-config.sexp
 
   $ cat prefix/lib/a/dune-package | grep path
        (source (path A) (impl (path sub/a.ml-gen))))

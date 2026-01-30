@@ -10,10 +10,6 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
 
 let with_doc = Package_variable_name.with_doc
 
-let need_odoc_config (pkg : Package.t) =
-  pkg |> Package.depends |> List.exists ~f:(Package_dependency.has_constraint_on with_doc)
-;;
-
 module Package_paths = struct
   let opam_file (ctx : Build_context.t) (pkg : Package.t) =
     let opam_file = Package.opam_file pkg in
@@ -49,11 +45,8 @@ module Package_paths = struct
   ;;
 
   let odoc_config_file ctx pkg =
-    if need_odoc_config pkg
-    then (
-      let name = pkg |> Package.name |> Package.Name.to_string in
-      Some (Path.Build.relative (build_dir ctx pkg) (sprintf "%s.odoc-config.sexp" name)))
-    else None
+    let name = pkg |> Package.name |> Package.Name.to_string in
+    Path.Build.relative (build_dir ctx pkg) (sprintf "%s.odoc-config.sexp" name)
   ;;
 
   let deprecated_dune_package_file ctx pkg name =
@@ -594,9 +587,8 @@ end = struct
           let meta_file = Package_paths.meta_file ctx pkg in
           let dune_package_file = Package_paths.dune_package_file ctx pkg in
           let odoc_config_file =
-            match Package_paths.odoc_config_file ctx pkg with
-            | None -> []
-            | Some config_file -> [ file Doc config_file "odoc-config.sexp" ]
+            let config_file = Package_paths.odoc_config_file ctx pkg in
+            [ file Doc config_file "odoc-config.sexp" ]
           in
           (file Lib meta_file Dune_findlib.Package.meta_fn
            :: file Lib dune_package_file Dune_package.fn
@@ -895,23 +887,21 @@ end = struct
 
   let gen_odoc_config sctx (pkg : Package.t) =
     let ctx = Super_context.context sctx |> Context.build_context in
-    match Package_paths.odoc_config_file ctx pkg with
-    | None -> Memo.return ()
-    | Some odoc_config_file ->
-      let action =
-        let packages =
-          pkg
-          |> Package.depends
-          |> List.filter ~f:(Package_dependency.has_constraint_on with_doc)
-          |> List.map ~f:(fun (dep : Package_dependency.t) ->
-            Dune_lang.Package_name.to_string dep.name)
-          |> String.concat ~sep:" "
-        in
-        Action_builder.write_file_dyn
-          odoc_config_file
-          (Action_builder.return (sprintf "(packages %s)" packages))
+    let odoc_config_file = Package_paths.odoc_config_file ctx pkg in
+    let action =
+      let packages =
+        pkg
+        |> Package.depends
+        |> List.filter ~f:(Package_dependency.has_constraint_on with_doc)
+        |> List.map ~f:(fun (dep : Package_dependency.t) ->
+          Dune_lang.Package_name.to_string dep.name)
+        |> String.concat ~sep:" "
       in
-      Super_context.add_rule sctx ~dir:ctx.build_dir action
+      Action_builder.write_file_dyn
+        odoc_config_file
+        (Action_builder.return (sprintf "(packages %s)" packages))
+    in
+    Super_context.add_rule sctx ~dir:ctx.build_dir action
   ;;
 
   let gen_meta_file sctx (pkg : Package.t) entries =

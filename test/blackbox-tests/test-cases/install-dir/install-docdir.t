@@ -12,3 +12,7 @@
   Installing $TESTCASE_ROOT/docdir/foo/docfile
   Creating directory $TESTCASE_ROOT/docdir/foo
   Copying _build/install/default/doc/foo/docfile to $TESTCASE_ROOT/docdir/foo/docfile (executable: false)
+  Removing (if it exists) $TESTCASE_ROOT/docdir/foo/odoc-config.sexp
+  Installing $TESTCASE_ROOT/docdir/foo/odoc-config.sexp
+  Creating directory $TESTCASE_ROOT/docdir/foo
+  Copying _build/install/default/doc/foo/odoc-config.sexp to $TESTCASE_ROOT/docdir/foo/odoc-config.sexp (executable: false)

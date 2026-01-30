@@ -175,6 +175,7 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
   Installing install/lib/external_library/extlib.ml
   Installing install/lib/external_library/opam
   Installing install/lib/external_library/extlib.cmxs
+  Installing install/doc/external_library/odoc-config.sexp
 
   $ cat >src/dune <<EOF
   > (library

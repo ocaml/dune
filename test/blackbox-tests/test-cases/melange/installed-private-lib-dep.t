@@ -41,6 +41,7 @@ Melange (installed) library depends on private library
   Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmi
   Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmj
   Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmt
+  Installing $TESTCASE_ROOT/prefix/doc/foo/odoc-config.sexp
 
   $ mkdir app
   $ cat > app/dune-project <<EOF

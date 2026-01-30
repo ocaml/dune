@@ -3,6 +3,7 @@
   Installing _install/lib/github4389/META
   Installing _install/lib/github4389/dune-package
   Installing _install/bin/main
+  Installing _install/doc/github4389/odoc-config.sexp
   $ grep sites _install/lib/github4389/dune-package
   (sites (github4389 share))
   $ grep -o '[^ ]*/_install/share/github4389' _install/lib/github4389/dune-package

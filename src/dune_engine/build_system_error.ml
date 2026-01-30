@@ -19,6 +19,38 @@ module Event = struct
     | Remove of t
 end
 
+let main_for_compound ?loc_override (main : User_message.t) =
+  let first_paragraphs =
+    match main.paragraphs with
+    | [] -> []
+    | first :: _ -> [ first ]
+  in
+  let message =
+    User_message.to_string
+      { main with
+        loc = None
+      ; paragraphs = first_paragraphs
+      ; hints = []
+      ; related = []
+      ; context = None
+      }
+  in
+  { main with
+    loc = Option.first_some loc_override main.loc
+  ; paragraphs = [ Pp.verbatim message ]
+  ; hints = []
+  ; related = []
+  ; context = None
+  }
+;;
+
+let extract_loc_override related =
+  match related with
+  | ({ User_message.loc = Some loc; paragraphs = []; hints = []; _ } : User_message.t)
+    :: rest -> Some loc, rest
+  | _ -> None, related
+;;
+
 let of_exn (exn : Exn_with_backtrace.t) =
   let exn =
     match exn.exn with
@@ -29,18 +61,32 @@ let of_exn (exn : Exn_with_backtrace.t) =
   | User_error.E main ->
     let dir = Option.map ~f:Path.of_string main.dir in
     let promotion = User_message.Annots.find main.annots Diff_promotion.Annot.annot in
-    (match User_message.Annots.find main.annots Compound_user_error.annot with
-     | None ->
+    (match main.related with
+     | _ :: _ as related ->
+       let loc_override, related = extract_loc_override related in
        [ Diagnostic
            { dir
            ; id = Id.gen ()
-           ; diagnostic = Compound_user_error.make ~main ~related:[]
+           ; diagnostic =
+               Compound_user_error.make
+                 ~main:(main_for_compound ?loc_override main)
+                 ~related
            ; promotion
            }
        ]
-     | Some diagnostics ->
-       List.map diagnostics ~f:(fun diagnostic ->
-         Diagnostic { id = Id.gen (); diagnostic; dir; promotion }))
+     | [] ->
+       (match User_message.Annots.find main.annots Compound_user_error.annot with
+        | None ->
+          [ Diagnostic
+              { dir
+              ; id = Id.gen ()
+              ; diagnostic = Compound_user_error.make ~main ~related:[]
+              ; promotion
+              }
+          ]
+        | Some diagnostics ->
+          List.map diagnostics ~f:(fun diagnostic ->
+            Diagnostic { id = Id.gen (); diagnostic; dir; promotion })))
   | _ -> [ Exn { id = Id.gen (); exn } ]
 ;;
 

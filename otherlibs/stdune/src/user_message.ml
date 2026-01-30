@@ -174,18 +174,20 @@ type t =
   ; dir : string option
   ; has_embedded_location : bool
   ; needs_stack_trace : bool
+  ; related : t list
   }
 
-let to_dyn
-      { loc
-      ; paragraphs
-      ; hints
-      ; annots
-      ; context
-      ; dir
-      ; has_embedded_location
-      ; needs_stack_trace
-      }
+let rec to_dyn
+          { loc
+          ; paragraphs
+          ; hints
+          ; annots
+          ; context
+          ; dir
+          ; has_embedded_location
+          ; needs_stack_trace
+          ; related
+          }
   =
   Dyn.record
     [ "loc", Dyn.option Loc0.to_dyn loc
@@ -196,28 +198,31 @@ let to_dyn
     ; "dir", Dyn.option Dyn.string dir
     ; "has_embedded_location", Dyn.bool has_embedded_location
     ; "needs_stack_trace", Dyn.bool needs_stack_trace
+    ; "related", Dyn.list to_dyn related
     ]
 ;;
 
-let compare
-      { loc
-      ; paragraphs
-      ; hints
-      ; annots
-      ; context = _
-      ; dir = _
-      ; has_embedded_location
-      ; needs_stack_trace
-      }
-      t
+let rec compare
+          { loc
+          ; paragraphs
+          ; hints
+          ; annots
+          ; context = _
+          ; dir = _
+          ; has_embedded_location
+          ; needs_stack_trace
+          ; related
+          }
+          t
   =
   let open Ordering.O in
   let= () = Option.compare Loc0.compare loc t.loc in
-  let compare = Pp.compare ~compare:Style.compare in
-  let= () = List.compare paragraphs t.paragraphs ~compare in
-  let= () = List.compare hints t.hints ~compare in
+  let pp_compare = Pp.compare ~compare:Style.compare in
+  let= () = List.compare paragraphs t.paragraphs ~compare:pp_compare in
+  let= () = List.compare hints t.hints ~compare:pp_compare in
   let= () = Bool.compare has_embedded_location t.has_embedded_location in
   let= () = Bool.compare needs_stack_trace t.needs_stack_trace in
+  let= () = List.compare related t.related ~compare in
   Poly.compare annots t.annots
 ;;
 
@@ -232,6 +237,7 @@ let make
       ?(annots = Annots.empty)
       ?context
       ?dir
+      ?(related = [])
       paragraphs
   =
   let paragraphs =
@@ -248,6 +254,7 @@ let make
   ; dir
   ; has_embedded_location
   ; needs_stack_trace
+  ; related
   }
 ;;
 
@@ -260,6 +267,7 @@ let pp
       ; dir = _
       ; has_embedded_location = _
       ; needs_stack_trace = _
+      ; related = _
       }
   =
   let open Pp.O in

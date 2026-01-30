@@ -63,18 +63,12 @@ module Emit = struct
           let main_message =
             Pp.textf "JavaScript extension %s appears more than once:" ext
           in
-          let annots =
-            let main = User_message.make ~loc:loc2 [ main_message ] in
-            let related =
-              [ User_message.make ~loc:loc1 [ Pp.text "Already defined here" ] ]
-            in
-            User_message.Annots.singleton
-              Compound_user_error.annot
-              [ Compound_user_error.make ~main ~related ]
+          let related =
+            [ User_message.make ~loc:loc1 [ Pp.text "Already defined here" ] ]
           in
           User_error.raise
-            ~annots
             ~loc:loc2
+            ~related
             [ main_message
             ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
             ; Pp.textf "Extensions must be unique per melange.emit stanza"

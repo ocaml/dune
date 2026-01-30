@@ -776,26 +776,18 @@ let make_packages
          ]
    | _, _ -> ());
   (let package_defined_twice name loc1 loc2 =
-     let main_message =
-       [ Pp.textf "Package name %s is defined twice:" (Package.Name.to_string name) ]
+     let message loc =
+       User_message.make
+         ~loc
+         [ Pp.textf "package named %s" (Package.Name.to_string name) ]
      in
-     let annots =
-       let message loc =
-         User_message.make
-           ~loc
-           [ Pp.textf "package named %s" (Package.Name.to_string name) ]
-       in
-       let related = [ message loc1; message loc2 ] in
-       User_message.Annots.singleton
-         Compound_user_error.annot
-         [ Compound_user_error.make ~main:(User_message.make main_message) ~related ]
-     in
+     let related = [ message loc1; message loc2 ] in
      User_error.raise
-       ~annots
-       (main_message
-        @ [ Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-          ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-          ])
+       ~related
+       [ Pp.textf "Package name %s is defined twice:" (Package.Name.to_string name)
+       ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+       ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+       ]
    in
    let deprecated_package_names =
      List.fold_left packages ~init:Package.Name.Map.empty ~f:(fun acc package ->

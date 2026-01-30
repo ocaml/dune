@@ -289,18 +289,15 @@ let lock_dirs_of_workspace (workspace : Workspace.t) =
 
 let lock_dir_active ctx =
   let open Memo.O in
-  if !Clflags.ignore_lock_dir
-  then Memo.return false
-  else
-    let* workspace = Workspace.workspace () in
-    match workspace.config.pkg_enabled with
-    | Set (_, `Enabled) -> Memo.return true
-    | Set (_, `Disabled) -> Memo.return false
-    | Unset ->
-      get_source_path_for_context ctx
-      >>= (function
-       | None -> Memo.return false
-       | Some source -> Source_tree.find_dir source >>| Option.is_some)
+  let* workspace = Workspace.workspace () in
+  match workspace.config.pkg with
+  | Set (_, (Auto_locking | Enabled_with_lockdir)) -> Memo.return true
+  | Set (_, Disabled) -> Memo.return false
+  | Unset ->
+    get_source_path_for_context ctx
+    >>= (function
+     | None -> Memo.return false
+     | Some source -> Source_tree.find_dir source >>| Option.is_some)
 ;;
 
 let source_kind (source : Dune_pkg.Source.t) =

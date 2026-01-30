@@ -212,9 +212,17 @@ let check_pkg_management_enabled () =
   @@
   let open Memo.O in
   let+ workspace = Workspace.workspace () in
-  match workspace.config.pkg_enabled with
-  | Set (_, `Enabled) | Unset -> ()
-  | Set (loc, `Disabled) ->
+  match workspace.config.pkg with
+  | Set (_, (Auto_locking | Enabled_with_lockdir)) | Unset -> ()
+  | Set (Cli, Disabled) ->
+    User_error.raise
+      [ Pp.text "Package management is disabled in a command line argument." ]
+      ~hints:
+        [ Pp.text
+            "To enable package management, remove the explicit --pkg=disabled flag from \
+             your command line arguments."
+        ]
+  | Set (Loc loc, Disabled) ->
     User_error.raise
       ~loc
       [ Pp.text "Package management is disabled in workspace configuration." ]

@@ -19,9 +19,9 @@ let term =
     (* CR-Leonidas-from-XIV: change this logic when we stop detecting lock
        directories in the source tree *)
     let enabled =
-      match workspace.config.pkg_enabled with
-      | Set (_, `Enabled) -> true
-      | Set (_, `Disabled) -> false
+      match workspace.config.pkg with
+      | Set (_, (Auto_locking | Enabled_with_lockdir)) -> true
+      | Set (_, Disabled) -> false
       | Unset -> any_lockdir_exists
     in
     match enabled with

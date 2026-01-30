@@ -17,6 +17,6 @@ val capture_outputs : bool ref
 val debug_package_logs : bool ref
 
 (** Whether we are ignoring "dune.lock/". *)
-val ignore_lock_dir : bool ref
+(* val ignore_lock_dir : bool ref *)
 
 val concurrency : int ref

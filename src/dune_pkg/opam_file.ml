@@ -1,4 +1,5 @@
 open Stdune
+open Dune_opam
 open OpamParserTypes.FullPos
 
 type t = opamfile

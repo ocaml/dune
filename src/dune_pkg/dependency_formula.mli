@@ -1,3 +1,5 @@
+open Dune_opam
+
 type t
 
 (** Create a dependency formula out of a [Package_dependency.t] list where

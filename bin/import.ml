@@ -67,7 +67,6 @@ include struct
   module Stanza = Stanza
   module Profile = Profile
   module Lib_name = Lib_name
-  module Package_name = Package_name
   module Package = Package
   module Package_version = Package_version
   module Source_kind = Source_kind

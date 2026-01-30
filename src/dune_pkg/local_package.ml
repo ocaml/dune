@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 module Package_constraint = Dune_lang.Package_constraint
 
 module Origin = struct

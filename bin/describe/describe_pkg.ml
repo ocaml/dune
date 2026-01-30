@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 module Lock_dir = Dune_pkg.Lock_dir
 module Local_package = Dune_pkg.Local_package
 

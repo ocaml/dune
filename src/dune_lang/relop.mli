@@ -13,3 +13,4 @@ val to_string : t -> string
 val map : (string * t) list
 val encode : t -> Dune_sexp.t
 val eval : t -> Ordering.t -> bool
+val of_opam : OpamParserTypes.relop -> t

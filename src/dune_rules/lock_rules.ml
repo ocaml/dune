@@ -5,7 +5,6 @@ module Gen_rules = Build_config.Gen_rules
 include struct
   open Dune_pkg
   module Solver_env = Solver_env
-  module Package_name = Package_name
   module Opam_repo = Opam_repo
   module Local_package = Local_package
   module Resolved_package = Resolved_package

@@ -53,6 +53,7 @@ let missing_run_t (error : Cram_test.t) =
 ;;
 
 let test_rule
+      ~version
       ~sctx
       ~dir
       ({ test_name_alias
@@ -144,6 +145,7 @@ let test_rule
           and+ () = Action_builder.paths setup_scripts
           and+ locks = locks >>| Path.Set.to_list in
           Cram_exec.run
+            ~version
             ~src:(Path.build script)
             ~dir:
               (Path.build
@@ -201,7 +203,7 @@ let collect_stanzas =
     | Some dir -> collect_whole_subtree [ acc ] dir
 ;;
 
-let rules ~sctx ~dir tests =
+let rules ~version ~sctx ~dir tests =
   let* stanzas = collect_stanzas ~dir
   and* with_package_mask =
     Dune_load.mask ()
@@ -346,7 +348,7 @@ let rules ~sctx ~dir tests =
       in
       { acc with extra_aliases }
     in
-    with_package_mask spec.packages (fun () -> test_rule ~sctx ~dir spec test))
+    with_package_mask spec.packages (fun () -> test_rule ~version ~sctx ~dir spec test))
 ;;
 
 let cram_tests dir =
@@ -393,5 +395,7 @@ let rules ~sctx ~dir source_dir =
   cram_tests source_dir
   >>= function
   | [] -> Memo.return ()
-  | tests -> rules ~sctx ~dir tests
+  | tests ->
+    let version = Source_tree.Dir.project source_dir |> Dune_project.dune_version in
+    rules ~version ~sctx ~dir tests
 ;;

@@ -95,6 +95,20 @@ let bin_annot ~dir =
   value ~default:true ~dir ~f:(fun (t : Dune_env.config) -> Memo.return t.bin_annot)
 ;;
 
+let bin_annot_cms ~dir =
+  let* explicit =
+    value ~default:None ~dir ~f:(fun (t : Dune_env.config) ->
+      Memo.return (Option.map t.bin_annot_cms ~f:Option.some))
+  in
+  match explicit with
+  | Some b -> Memo.return b
+  | None ->
+    (* Enabled by default for OxCaml *)
+    let* context = Context.DB.by_dir dir in
+    let+ ocaml = Context.ocaml context in
+    Ocaml_config.ox ocaml.ocaml_config
+;;
+
 let inline_tests ~dir =
   value ~default:None ~dir ~f:(fun (t : Dune_env.config) ->
     Memo.return

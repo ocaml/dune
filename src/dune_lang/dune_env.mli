@@ -37,6 +37,7 @@ type config =
   ; error_on_use : User_message.t option
   ; warn_on_load : User_message.t option
   ; bin_annot : bool option
+  ; bin_annot_cms : bool option
   }
 
 type pattern =

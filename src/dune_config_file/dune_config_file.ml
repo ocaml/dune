@@ -51,28 +51,54 @@ module Dune_config = struct
   end
 
   module Pkg_enabled = struct
+    module Where = struct
+      type t =
+        | Cli
+        | Loc of Loc.t
+
+      let equal x y =
+        match x, y with
+        | Cli, Cli -> true
+        | Loc x, Loc y -> Loc.equal x y
+        | _, _ -> false
+      ;;
+
+      let to_dyn = function
+        | Cli -> Dyn.variant "Cli" []
+        | Loc loc -> Dyn.variant "Loc" [ Loc.to_dyn loc ]
+      ;;
+    end
+
+    type where = Where.t =
+      | Cli
+      | Loc of Loc.t
+
     type t =
-      | Set of Loc.t * Config.Toggle.t
+      | Set of where * Config.Toggle.t
       | Unset
 
     let decode =
       let open Dune_lang.Decoder in
-      let+ loc, value = located (enum [ "enabled", `Enabled; "disabled", `Disabled ]) in
-      Set (loc, value)
+      let+ loc, value = located (enum Config.Toggle.all) in
+      Set (Loc loc, value)
     ;;
 
     let equal x y =
       match x, y with
       | Set (x_loc, x_toggle), Set (y_loc, y_toggle) ->
-        Loc.equal x_loc y_loc && Config.Toggle.equal x_toggle y_toggle
-      | Set _, _ | _, Set _ -> false
+        Where.equal x_loc y_loc && Config.Toggle.equal x_toggle y_toggle
       | Unset, Unset -> true
+      | _, _ -> false
     ;;
 
     let to_dyn = function
       | Set (loc, toggle) ->
-        Dyn.variant "Set" [ Loc.to_dyn loc; Config.Toggle.to_dyn toggle ]
+        Dyn.variant "Set" [ Where.to_dyn loc; Config.Toggle.to_dyn toggle ]
       | Unset -> Dyn.variant "Unset" []
+    ;;
+
+    let all where =
+      [ "enabled", Set (where, `Enabled); "disabled", Set (where, `Disabled) ]
     ;;
   end
 

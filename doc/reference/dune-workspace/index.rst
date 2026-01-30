@@ -50,5 +50,6 @@ project.
   env
   lock_dir
   pin
+  pkg
   profile
   repository

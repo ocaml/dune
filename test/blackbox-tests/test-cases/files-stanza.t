@@ -1,9 +1,7 @@
 The ``files`` stanza lets us ignore source artifacts produced by other build
 tools.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
 First, without the stanza, a pre-existing artifact conflicts with an explicit
 rule targeting the same filename.

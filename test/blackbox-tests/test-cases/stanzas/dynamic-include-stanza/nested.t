@@ -2,9 +2,7 @@ Nesting of dynamic_include stanzas
 
   $ mkdir a b c
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.14)
-  > EOF
+  $ make_dune_project 3.14
 
   $ cat >a/dune <<EOF
   > (dynamic_include ../b/dune.inc)

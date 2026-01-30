@@ -4,9 +4,7 @@ Feature request https://github.com/ocaml/dune/issues/12399
 
 Create a [dune-project] and [dune] at the root and in 2 subdirectories:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
   $ cat >dune <<EOF
   > (rule
   >   (alias runtest)

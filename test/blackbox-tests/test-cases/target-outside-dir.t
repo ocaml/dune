@@ -5,9 +5,7 @@ Generate rules in sub directories. There's two ways targets are specified:
 
 The restriction on generating targets should be the same on both.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.2)
-  > EOF
+  $ make_dune_project 3.2
 
   $ cat >dune <<EOF
   > (rule

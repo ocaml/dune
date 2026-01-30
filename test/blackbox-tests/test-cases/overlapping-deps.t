@@ -48,9 +48,7 @@ Then we try to build a library that uses some_package1 which in turn
 depends on the overlapping some_package2:
   $ mkdir proj2
   $ cd proj2
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > EOF
+  $ make_dune_project 2.8
   $ cat >dune <<EOF
   > (library
   >  (name bar)

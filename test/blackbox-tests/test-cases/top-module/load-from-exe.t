@@ -1,8 +1,6 @@
 We try to load a module defined in an executable
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.3)
-  > EOF
+  $ make_dune_project 3.3
 
   $ cat >bar.ml <<EOF
   > let v = 42

@@ -1,8 +1,6 @@
 Test a library that uses a `ocamlyacc` parser.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ mkdir -p gen
 

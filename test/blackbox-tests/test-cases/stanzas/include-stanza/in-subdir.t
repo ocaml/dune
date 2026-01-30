@@ -1,8 +1,6 @@
 Test the include stanza inside a subdirectory
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
   $ mkdir a
   $ cat >a/dune <<EOF
   > (include dune.inc)

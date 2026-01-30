@@ -1,9 +1,7 @@
 Black-box testing: we check that warning 32 (unused-value-declaration) is
 enabled by default in the dev profile in Dune version 3.20 but not in 3.21.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.20)
-  > EOF
+  $ make_dune_project 3.20
 
   $ cat >main.ml <<EOF
   > let unused = 42
@@ -25,17 +23,13 @@ enabled by default in the dev profile in Dune version 3.20 but not in 3.21.
 
 Now in 3.21...
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ dune build
 
 Version check for %{dune-warnings}.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.20)
-  > EOF
+  $ make_dune_project 3.20
 
   $ cat >dune <<EOF
   > (executable (name main) (flags :standard %{dune-warnings}))
@@ -49,9 +43,7 @@ Version check for %{dune-warnings}.
   language. Please update your dune-project file to have (lang dune 3.21).
   [1]
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ dune build
   File "main.ml", line 1, characters 4-10:

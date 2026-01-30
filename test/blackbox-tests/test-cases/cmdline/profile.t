@@ -2,9 +2,7 @@ The interaction and order of overriding DUNE_PROFILE, --profile, and --release.
 
 Bug #4632
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
 
   $ runtest() {
   > dune build $@

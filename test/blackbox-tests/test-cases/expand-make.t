@@ -24,9 +24,7 @@ subdirectory with links to all the executables dune needs.
 
   $ chmod +x make/make gmake/gmake
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ cat >dune <<EOF
   > (data_only_dirs bin)

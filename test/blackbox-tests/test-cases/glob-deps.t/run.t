@@ -14,9 +14,7 @@ Globs should not match directories when matching in external folders either:
   $ DIR=glob-external-dir
   $ mkdir $DIR
   $ cd $DIR
-  $ cat >dune-project <<EOF
-  > (lang dune 3.2)
-  > EOF
+  $ make_dune_project 3.2
   $ mkdir -p _foo/dir
   $ touch _foo/file
   $ cat >dune <<EOF

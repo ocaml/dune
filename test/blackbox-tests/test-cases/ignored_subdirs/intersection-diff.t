@@ -6,9 +6,7 @@ We need the extra (or ()) to avoid some simplfication steps.
   > (dirs * \ (and))
   > EOF
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.8)
-  > EOF
+  $ make_dune_project 3.8
 
   $ mkdir sub
   $ cat >sub/dune <<EOF

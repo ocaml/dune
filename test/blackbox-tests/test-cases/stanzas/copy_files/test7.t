@@ -1,9 +1,7 @@
 Show that copy_files errors out if no files are found
 
   $ mkdir -p target foo
-  $ cat >dune-project <<EOF
-  > (lang dune 3.17)
-  > EOF
+  $ make_dune_project 3.17
   $ cat >target/dune <<EOF
   > (copy_files
   >  (files ../foo/*.txt))
@@ -18,8 +16,6 @@ Show that copy_files errors out if no files are found
 
 It doesn't error out in older dune lang versions
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.16)
-  > EOF
+  $ make_dune_project 3.16
 
   $ dune build

@@ -17,9 +17,7 @@ The feature is not supported in < 3.0.
 
 The feature *is* supported in 3.0 and later, but it is opt-in:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ cat >dune <<EOF
   > (rule (alias foo) (action (echo "In dune")))

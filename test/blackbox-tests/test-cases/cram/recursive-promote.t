@@ -1,8 +1,6 @@
 Demonstrate that cram tests that add new commands are correctly executed:
 
-  $  cat >dune-project <<EOF
-  > (lang dune 3.17)
-  > EOF
+  $  make_dune_project 3.17
 
   $ cat >test.t <<EOF
   >   $ echo "$ echo foo"

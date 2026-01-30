@@ -1,9 +1,7 @@
 Tests for the `dune describe pkg dependency-hash` command.
 
 The case where there are no local packages:
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > EOF
+  $ make_dune_project 3.11
   $ dune describe pkg dependency-hash
   Error: No non-local dependencies
   [1]

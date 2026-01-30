@@ -1,9 +1,7 @@
 -std=c++11 is given on OCaml 5.0
 ================================
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.14)
-  > EOF
+  $ make_dune_project 3.14
 
   $ cat >dune <<EOF
   > ;; will fail if :standard doesn't have -std=c++11 on OCaml >= 5.0

@@ -11,9 +11,7 @@ the rule and the sandbox cleanup.
   >           )))
   > EOF
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > EOF
+  $ make_dune_project 3.11
 
   $ dune build ./foo --sandbox=copy 2>&1 | sed -E 's#/.*.sandbox/[^/]+#/.sandbox/$SANDBOX#g'
   File "dune", lines 1-5, characters 0-157:

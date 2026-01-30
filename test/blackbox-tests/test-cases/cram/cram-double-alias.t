@@ -1,9 +1,7 @@
 In this test we make sure a cram test is not run twice when it belongs to two separate
 aliases that are being built together.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.17)
-  > EOF
+  $ make_dune_project 3.17
 
   $ cat >dune <<EOF
   > (cram

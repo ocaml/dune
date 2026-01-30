@@ -2,9 +2,7 @@
   > (*TEST: assert (1 = 2) *)
   > EOF
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.6)
-  > EOF
+  $ make_dune_project 2.6
 
   $ cat >dune <<EOF
   > (library

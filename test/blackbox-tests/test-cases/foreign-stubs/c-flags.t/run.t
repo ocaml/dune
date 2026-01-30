@@ -16,9 +16,7 @@ bar.c is built with an "empty" set of flags.
 use_standard_c_and_cxx_flags = default (false)
 ==================================
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > EOF
+  $ make_dune_project 2.8
 
   $ dune rules -m foo.o | tr -s '\t\n\\' ' ' > out_foo
   File "dune", line 4, characters 36-39:

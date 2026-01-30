@@ -38,9 +38,7 @@ Currently, dune's behavior is broken in this situation. The virtual library's
 modules remain hidden.
   $ export OCAMLPATH=$PWD/vlib/_build/install/default/lib:$PWD/impl/_build/install/default/lib
   $ mkdir use-external-impl && cd use-external-impl
-  $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
   $ cat >dune <<EOF
   > (executable
   >  (name blah)

@@ -1,9 +1,7 @@
 In this test we check a cycle when a library depends on a genrated source file which in
 turn depends on the inline-test-name alias of the inline tests of the library.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.18)
-  > EOF
+  $ make_dune_project 3.18
 
   $ cat >test.ml <<EOF
   > (*TEST: assert (1 = 2) *)

@@ -50,9 +50,7 @@ based on the logs package, which triggers the issue in real life.
 
 Setup the dune project.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.4)
-  > EOF
+  $ make_dune_project 3.4
   $ cat >dune <<EOF
   > (library
   >  (name root_module)

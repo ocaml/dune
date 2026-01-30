@@ -1,8 +1,6 @@
 Test %{profile} in enabled_if on executables
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.14)
-  > EOF
+  $ make_dune_project 3.14
 
   $ cat >dune <<EOF
   > (executable

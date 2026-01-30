@@ -1,8 +1,6 @@
 Run inline tests using node js
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
 (With the dev profile on OCaml 5, the warning is expected)
 

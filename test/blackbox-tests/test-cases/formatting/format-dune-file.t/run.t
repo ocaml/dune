@@ -200,9 +200,7 @@ Non 0 error code:
 
 Using the built-in action.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.18)
-  > EOF
+  $ make_dune_project 3.18
 
   $ cat >dune <<EOF
   > (rule (with-stdout-to file (echo "(   a     c)")))
@@ -216,9 +214,7 @@ Using the built-in action.
 
 Version check.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.17)
-  > EOF
+  $ make_dune_project 3.17
 
   $ dune build file.out
   File "dune", line 2, characters 0-45:
@@ -244,9 +240,7 @@ Version check.
 
 Behaviour when the dune file is not syntactically valid.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.18)
-  > EOF
+  $ make_dune_project 3.18
 
   $ cat >dune <<EOF
   > (rule (with-stdout-to file (echo "xxx yyy (")))
@@ -268,17 +262,13 @@ project is used (if any).
   > aaaaaaaaaaa bbbbbbbbbbbbb ccccccccccccccccc dddddddddddddddddd)
   > EOF
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.7)
-  > EOF
+  $ make_dune_project 2.7
 
   $ dune format-dune-file <test
   (aaaaaaaaaaa bbbbbbbbbbbbb ccccccccccccccccc dddddddddddddddddd aaaaaaaaaaa
     bbbbbbbbbbbbb ccccccccccccccccc dddddddddddddddddd)
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > EOF
+  $ make_dune_project 2.8
 
   $ dune format-dune-file <test
   (aaaaaaaaaaa

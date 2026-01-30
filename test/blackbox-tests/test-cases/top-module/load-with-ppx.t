@@ -1,8 +1,6 @@
 Load a module that requires ppx
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.3)
-  > EOF
+  $ make_dune_project 3.3
 
   $ cat >dune <<EOF
   > (library

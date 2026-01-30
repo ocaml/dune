@@ -79,9 +79,7 @@ Begin by installing a library with C stubs.
 
 Now let us define an executable using that installed library.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
   $ cat >dune <<EOF
   > (executable
   >  (name exeA)

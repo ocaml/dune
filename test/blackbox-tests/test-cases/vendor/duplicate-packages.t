@@ -4,9 +4,7 @@ First we verify that packages alone do not cause duplication errors:
   $ mkdir -p vendor/duped/
   $ touch vendor/pkg/vendor/duped/duped.opam
   $ touch vendor/duped/duped.opam
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > EOF
+  $ make_dune_project 2.8
   $ cat >dune <<EOF
   > (vendored_dirs vendor)
   > EOF

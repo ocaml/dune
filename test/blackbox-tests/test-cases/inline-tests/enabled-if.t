@@ -1,9 +1,7 @@
 enabled_if inside the inline_tests field in the library stanza
 
   $ mkdir tmp && cd tmp
-  $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
   $ cat >dune <<EOF
   > (library
   >  (name backend_mbc)

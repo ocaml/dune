@@ -1,8 +1,6 @@
 Test error message when user adds extra parenthesis around dependencies: (#12784)
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ cat >dune <<EOF
   > (library

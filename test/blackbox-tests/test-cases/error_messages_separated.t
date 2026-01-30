@@ -7,9 +7,7 @@ a separating blank line (issue #6158, PR #6823).
 Test setup
 ----------
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.3)
-  > EOF
+  $ make_dune_project 2.3
 
   $ cat >dune <<EOF
   > (library

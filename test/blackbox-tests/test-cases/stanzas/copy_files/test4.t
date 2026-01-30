@@ -1,8 +1,6 @@
 Test external paths:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.7)
-  > EOF
+  $ make_dune_project 2.7
   $ P=$(mktemp)
   $ echo Hola > $P
   $ cat >dune <<EOF

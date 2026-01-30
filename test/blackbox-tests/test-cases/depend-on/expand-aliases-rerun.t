@@ -2,9 +2,7 @@ Setting (expand_aliases_in_sandbox) should re-run the action
 
 First, we create an action and make it depend on an alias
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > EOF
+  $ make_dune_project 3.11
   $ export DUNE_SANDBOX=symlink
   $ cat >dune <<EOF
   > (rule

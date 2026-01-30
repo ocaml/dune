@@ -10,9 +10,7 @@ They witness an issue reported in #6486, that is fixed in #6727
 Setup
 -----
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.4)
-  > EOF
+  $ make_dune_project 3.4
   $ mkdir static_lib
   $ cd static_lib
   $ cat >dune <<EOF

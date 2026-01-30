@@ -3,9 +3,7 @@ Tests for reading dependencies out of opam files
   $ mkrepo
   $ add_mock_repo_if_needed
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.17)
-  > EOF
+  $ make_dune_project 3.17
 
 Make sure we can read an disjunction from the opam file and solve a project
 respecting the filters.

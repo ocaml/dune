@@ -16,6 +16,13 @@ init_oxcaml_project() {
 	EOF
 }
 
+make_dune_project() {
+  version="$1"
+  cat > dune-project <<- EOF
+	(lang dune $version)
+	EOF
+}
+
 make_dir_with_dune() {
   path="$1"
   mkdir -p "$path"

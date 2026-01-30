@@ -1,8 +1,6 @@
 The @check alias should detect dependency cycles
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.2)
-  > EOF
+  $ make_dune_project 3.2
 
   $ cat >dune <<EOF
   > (library (name foo))

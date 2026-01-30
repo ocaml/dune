@@ -19,9 +19,7 @@ We set up a library that will be installed as part of the package:
 
 Now we set up a lock file with this package and then attempt to use it:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > EOF
+  $ make_dune_project 3.11
 
   $ make_lockdir
   $ make_lockpkg mypkg <<EOF

@@ -1,8 +1,6 @@
 Syntax error inside a cram command
   $ mkdir foo && cd foo
-  $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ cat >t1.t <<EOF
   >   $ if then fi

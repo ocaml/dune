@@ -1,7 +1,5 @@
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
 
   $ cat >dune <<EOF
   > (include_subdirs qualified)

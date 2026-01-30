@@ -1,8 +1,6 @@
 Test for multiple libraries with inline_tests set in the same directory
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.6)
-  > EOF
+  $ make_dune_project 2.6
 
 Create a dummy backend and two libraries with inline_tests
 

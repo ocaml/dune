@@ -1,8 +1,6 @@
 Here we demonstrate that we expand any variable in enabled_if on libraries
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.15)
-  > EOF
+  $ make_dune_project 3.15
 
   $ cat >dune <<EOF
   > (library

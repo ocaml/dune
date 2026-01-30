@@ -1,9 +1,7 @@
 Demonstrate our support for pin-depends.
 
   $ add_mock_repo_if_needed
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
   $ mkrepo
   $ mkpkg bar 0.0.1
 

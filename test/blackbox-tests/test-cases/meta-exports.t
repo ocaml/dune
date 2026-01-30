@@ -21,9 +21,7 @@ re-export `bar`. The package `bar` consists of a bytecode library, `bar.cma`.
 
 We now define a Dune project that will consume `foo`.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ cat >dune <<EOF
   > (executable

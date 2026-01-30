@@ -2,9 +2,7 @@ Reproduce #8281
 
 Whenever an invalid package name is used, dune crashes when building @doc
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.4)
-  > EOF
+  $ make_dune_project 2.4
   $ touch x.opam x.y.opam
 
   $ mkdir x && cd x

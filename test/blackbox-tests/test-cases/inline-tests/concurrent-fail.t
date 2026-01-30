@@ -1,8 +1,6 @@
 Failing inline tests shouldn't hinder the diffing or promotion of other tests.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
 
   $ cat > dune << EOF
   > (library

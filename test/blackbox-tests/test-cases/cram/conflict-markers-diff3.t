@@ -1,8 +1,6 @@
 Cram tests can forbid git diff3 conflicts:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ cat >dune <<EOF
   > (cram (conflict_markers error))

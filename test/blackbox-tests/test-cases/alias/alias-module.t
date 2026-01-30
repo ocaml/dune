@@ -1,8 +1,6 @@
 Test alias module for wrapped libraries:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.5)
-  > EOF
+  $ make_dune_project 3.5
 
   $ cat >dune <<EOF
   > (library

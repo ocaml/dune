@@ -1,8 +1,6 @@
 Generate empty interfaces when using (empty_module_interface_if_absent)
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
 Executables
 
@@ -38,9 +36,7 @@ Libraries
 
 Version check
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.9)
-  > EOF
+  $ make_dune_project 2.9
 
   $ dune build
   File "dune", line 1, characters 32-66:

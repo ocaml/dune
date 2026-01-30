@@ -1,8 +1,6 @@
 This test is about `binaries` in `env` stanzas in `dune-workspace` files.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
 
   $ cat >dune <<EOF
   > (rule

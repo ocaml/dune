@@ -80,9 +80,7 @@ We also check that we can pass arguments to the ppx.
   dune-project file to have (lang dune 2.8).
   [1]
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > EOF
+  $ make_dune_project 2.8
   $ dune build --instrument-with hello
   $ _build/default/main.exe
   Hello from Spain (<none>)!
@@ -113,9 +111,7 @@ We also check that we can declare dependencies to the ppx.
   Please update your dune-project file to have (lang dune 2.9).
   [1]
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
   $ dune build --instrument-with hello
   $ _build/default/main.exe
   Hello from Spain (really)!

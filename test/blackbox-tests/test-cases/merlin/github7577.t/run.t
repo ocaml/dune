@@ -1,8 +1,6 @@
 We check that the Merlin helper can handle filenames with capital letters in them.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
 
   $ touch mainFOO.ml
 

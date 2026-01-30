@@ -1,8 +1,6 @@
 Expansion of enabled_if in the cram stanza
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.14)
-  > EOF
+  $ make_dune_project 3.14
 
 We define a test that is disabled by default but can be turned using the FOO
 env var.

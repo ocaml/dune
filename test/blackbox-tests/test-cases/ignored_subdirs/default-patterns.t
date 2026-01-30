@@ -1,8 +1,6 @@
 Test our default ignore pattern for directories:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.8)
-  > EOF
+  $ make_dune_project 3.8
 
   $ mkdir .ignoreme _ignoreme p
   $ touch .ignoreme/a _ignoreme/a p/a

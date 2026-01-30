@@ -1,8 +1,6 @@
 We don't need to run ocamldep on ther alias module
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.19)
-  > EOF
+  $ make_dune_project 3.19
 
   $ cat >dune <<EOF
   > (library

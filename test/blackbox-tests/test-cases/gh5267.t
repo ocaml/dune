@@ -2,9 +2,7 @@ This issue demonstrates a bug when there's a library without any modules and an
 executable with a module with the same name as the library's entry point in the
 same directory.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 1.2)
-  > EOF
+  $ make_dune_project 1.2
   $ cat >dune<<EOF
   > (library
   >  (name foo)

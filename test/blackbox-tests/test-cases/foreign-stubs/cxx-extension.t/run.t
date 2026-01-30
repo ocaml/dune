@@ -15,9 +15,7 @@
   >  (action (run ./bar.exe)))
   > EOF
 
-  $ cat >dune-project <<EOF
-  > (lang dune 1.8)
-  > EOF
+  $ make_dune_project 1.8
 
 * .cxx extension is allowed
   $ dune build

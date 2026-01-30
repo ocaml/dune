@@ -27,9 +27,7 @@ Reproduces #11405
   $ mkdir external_sources/yes
   $ touch external_sources/yes/yes.cma
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.17)
-  > EOF
+  $ make_dune_project 3.17
 
   $ make_lockdir
 

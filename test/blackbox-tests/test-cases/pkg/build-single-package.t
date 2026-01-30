@@ -2,9 +2,7 @@ Requesting to build a single package should not build unrelated things:
 
   $ make_lockdir
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.12)
-  > EOF
+  $ make_dune_project 3.12
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.20)

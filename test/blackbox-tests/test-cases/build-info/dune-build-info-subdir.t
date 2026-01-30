@@ -1,9 +1,7 @@
 Demonstrate using a library defined inside a (subdir ..) stanza along side with
 dune-build-info.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.15)
-  > EOF
+  $ make_dune_project 3.15
 
   $ touch foo.ml
 

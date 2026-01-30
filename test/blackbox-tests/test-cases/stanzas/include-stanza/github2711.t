@@ -1,6 +1,4 @@
-  $ cat >dune-project <<EOF
-  > (lang dune 2.7)
-  > EOF
+  $ make_dune_project 2.7
   $ cat >dune.inc <<EOF
   > (dirs foo)
   > (rule (with-stdout-to foo (echo bar)))

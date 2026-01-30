@@ -1,8 +1,6 @@
 A cram stanza may not match any tests:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
 This stanza does not apply to anything:
 

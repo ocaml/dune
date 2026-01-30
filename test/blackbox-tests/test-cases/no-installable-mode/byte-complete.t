@@ -2,9 +2,7 @@ Byte_complete is allowed to be installable since 3.6
 
   $ pkg=foobarbaz
   $ bin=testbin
-  $ cat >dune-project <<EOF
-  > (lang dune 3.5)
-  > EOF
+  $ make_dune_project 3.5
   $ touch $pkg.opam testbin.ml
   $ cat >dune <<EOF
   > (executable
@@ -19,9 +17,7 @@ Byte_complete is allowed to be installable since 3.6
   Error: byte_complete is only available since version 3.6 of the dune
   language. Please update your dune-project file to have (lang dune 3.6).
   [1]
-  $ cat >dune-project <<EOF
-  > (lang dune 3.6)
-  > EOF
+  $ make_dune_project 3.6
   $ dune build $pkg.install
   $ grep $bin _build/default/$pkg.install
     "_build/install/default/bin/testbin"

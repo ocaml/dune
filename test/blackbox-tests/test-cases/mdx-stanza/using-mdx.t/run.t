@@ -1,6 +1,4 @@
-  $ cat >dune-project <<EOF
-  > (lang dune 2.4)
-  > EOF
+  $ make_dune_project 2.4
 
 To use the mdx stanza you need to explicitly set (using mdx ..) in the
 dune-project

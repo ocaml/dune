@@ -1,8 +1,6 @@
 Run inline tests using Node.js
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.17)
-  > EOF
+  $ make_dune_project 3.17
 
   $ dune runtest
   inline tests (Byte)

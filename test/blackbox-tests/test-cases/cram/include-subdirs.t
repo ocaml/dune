@@ -1,8 +1,6 @@
 Cram tests inside (include_subdirs unqualified)
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > EOF
+  $ make_dune_project 3.11
 
 We have a file cram test inside a subdirectory and a directory cram test. When
 the (include_subdirs unqualified) is not present, both tests fail as expected.

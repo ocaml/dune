@@ -1,9 +1,7 @@
 Create a cram test and try to run it with DUNE_BUILD_DIR set to an absolute
 path
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.5)
-  > EOF
+  $ make_dune_project 3.5
 
   $ cat >foo.t <<EOF
   >   $ echo "  $ echo bar" >bar.t

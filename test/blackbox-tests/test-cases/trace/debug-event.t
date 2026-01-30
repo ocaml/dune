@@ -1,8 +1,6 @@
 The debug event can be triggered with Sigusr1
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ ready=$(mktemp -d)/ready
   $ mkfifo $ready

@@ -2,9 +2,7 @@ Test dune trace commands with special characters and multiple directories
 
 Set up a project with subdirectories:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ mkdir -p subdir
 

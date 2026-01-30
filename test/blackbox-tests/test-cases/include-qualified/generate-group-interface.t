@@ -1,8 +1,6 @@
 Show generating an interface for an `(include_subdirs qualified)` module group
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ cat >dune <<EOF
   > (include_subdirs qualified)

@@ -1,9 +1,7 @@
 Demonstrate the --alias argument to build aliases in the command
 line without the @ syntax
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.19)
-  > EOF
+  $ make_dune_project 3.19
 
   $ cat >dune <<EOF
   > (rule

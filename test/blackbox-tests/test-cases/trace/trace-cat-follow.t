@@ -1,8 +1,6 @@
 dune trace cat --follow
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ fifo="$(mktemp -d)/fifo"
   $ mkfifo $fifo

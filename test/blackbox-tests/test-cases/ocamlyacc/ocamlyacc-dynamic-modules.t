@@ -2,9 +2,7 @@ Test the ability of `(modules ..)` to contain dynamic forms such as
 `(:include)` and variables such as `%{read-lines:...}` in the `ocamlyacc`
 stanza.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ mkdir -p gen
 

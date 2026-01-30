@@ -3,9 +3,7 @@ Project Toggle
 ##############
 
 Without the toggle, we get an error message for using the new mode subfield
-  $ cat >dune-project <<EOF
-  > (lang dune 3.5)
-  > EOF
+  $ make_dune_project 3.5
 
   $ dune build 2>&1 | head -n 6 || true
   File "dune", line 11, characters 3-16:

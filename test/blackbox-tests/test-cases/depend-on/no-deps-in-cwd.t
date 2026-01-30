@@ -1,7 +1,5 @@
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
 You can `chdir` into a directory without declaring any dependencies
 and dune makes sure that the directory exists inside the sandbox.

@@ -1,8 +1,6 @@
 include_subdirs should not recurse past project root
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.1)
-  > EOF
+  $ make_dune_project 3.1
 
   $ cat >dune <<EOF
   > (include_subdirs unqualified)

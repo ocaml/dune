@@ -1,8 +1,6 @@
 Test the %{ppx:...} pform that creates a combined ppx executable
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
 Create two simple ppx rewriters
 

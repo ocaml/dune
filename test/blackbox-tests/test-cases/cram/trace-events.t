@@ -1,9 +1,7 @@
 Demonstrate teh trace events emitted for running a cram test:
 
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ cat >dune <<EOF
   > (cram (shell bash))

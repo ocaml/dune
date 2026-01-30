@@ -30,9 +30,7 @@ foo.h should only be visible when we use mypkg.sub
   $ mkdir subdir
   $ cd subdir
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.8)
-  > EOF
+  $ make_dune_project 3.8
 
 We depend on mypkg, but we can see the header of mypkg.sub
 

@@ -4,9 +4,7 @@ archive.
 
 https://github.com/ocaml/dune/issues/7027
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
   $ mkdir vlib
   $ cat >vlib/dune <<EOF
   > (library

@@ -1,9 +1,7 @@
 Demonstrate a failure of dune to resolve a binary added via binaries in
 a dune-workspace file:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ cat >dune-workspace <<EOF
   > (lang dune 3.21)

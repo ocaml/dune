@@ -11,9 +11,7 @@ Cross compilation setup that causes dune to crash
   >   (host default)))
   > EOF
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.6)
-  > EOF
+  $ make_dune_project 3.6
   $ cat >dune <<EOF
   > (executable (name cat))
   > EOF

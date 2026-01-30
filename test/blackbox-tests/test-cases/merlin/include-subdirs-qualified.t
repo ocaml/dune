@@ -1,6 +1,4 @@
-  $ cat >dune-project <<EOF
-  > (lang dune 3.12)
-  > EOF
+  $ make_dune_project 3.12
 
   $ cat >dune <<EOF
   > (include_subdirs qualified)

@@ -1,9 +1,7 @@
 Demonstrate the first event that is emitted in the trace file. This must always
 be a particular event emitted by dune.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ dune build
 

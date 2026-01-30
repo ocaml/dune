@@ -3,9 +3,7 @@ build failure:
 
   $ echo "module X = Root.Unix" > main.ml
   $ touch main.opam
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > EOF
+  $ make_dune_project 2.8
   $ cat >dune <<EOF
   > (library
   >  (name main)

@@ -1,6 +1,4 @@
-  $ cat >dune-project <<EOF
-  > (lang dune 3.3)
-  > EOF
+  $ make_dune_project 3.3
 
   $ mkdir vlib impl
   $ touch vlib/foo.mli

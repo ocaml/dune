@@ -1,8 +1,6 @@
 Reproduction case for #2499: dune doesn't cleanup stale directories
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.0)
-  > EOF
+  $ make_dune_project 2.0
 
   $ cat >dune <<EOF
   > (data_only_dirs data)

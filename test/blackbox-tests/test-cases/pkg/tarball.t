@@ -6,9 +6,7 @@ Demonstrate that we should support tarballs with and without a root directory
   $ tar -czf tarball1.tar.gz -C _source foo
   $ tar -czf tarball2.tar.gz _source/foo
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
 
   $ make_lockdir
 

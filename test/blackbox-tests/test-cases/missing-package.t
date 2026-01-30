@@ -1,9 +1,7 @@
 Demonstrate what happens when we try to attach a library to a package that
 doesn't exist:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
 
   $ cat >dune <<EOF
   > (library
@@ -55,9 +53,7 @@ Now we use another form instead of a library
 
 Same thing but without packages in the project
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
   $ dune build @install
   File "dune", line 4, characters 10-13:
   4 |  (package foo))

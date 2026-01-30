@@ -1,9 +1,7 @@
 When (include_subdirs qualified) is enabled, we should forbid the same module
 to be defined by both a normal compilation unit and a directory of modules
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
   $ cat >dune <<EOF
   > (include_subdirs qualified)
   > (executable

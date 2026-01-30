@@ -77,101 +77,96 @@ let test_rule
     |> Alias.Name.Set.to_list_map ~f:(Alias.make ~dir)
   in
   let alias = Alias.make ~dir test_name_alias in
-  (* Here we get all other aliases to depend on the main alias which is the same as the
-     name of the cram test. *)
-  let* () =
+  let add_extra_aliases_deps () =
     Memo.parallel_iter extra_aliases ~f:(fun extra_alias ->
       Rules.Produce.Alias.add_deps ~loc extra_alias (Action_builder.dep (Dep.alias alias)))
   in
   match test with
   | Error (Missing_run_t test) ->
     (* We error out on invalid tests even if they are disabled. *)
+    let* () = add_extra_aliases_deps () in
     Action_builder.fail { fail = (fun () -> missing_run_t test) }
     |> Alias_rules.add sctx ~alias ~loc
   | Ok test ->
-    (* Morally, this is equivalent to evaluating them all concurrently and
-       taking the conjunction, but we do it this way to avoid evaluating things
-       unnecessarily *)
-    Memo.List.for_all enabled_if ~f:(fun (expander, blang) ->
-      Expander.eval_blang expander blang)
-    >>= (function
-     | false -> Alias_rules.add_empty sctx ~alias ~loc
-     | true ->
-       let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
-       let script = Path.Build.append_source prefix_with (Cram_test.script test) in
-       let base_path =
-         Path.Build.append_source
-           prefix_with
-           (let path =
-              match test with
-              | File f -> f
-              | Dir d -> d.dir
-            in
-            let dir = Path.Source.parent_exn path in
-            let basename = Path.Source.basename path in
-            Path.Source.relative dir (".cram." ^ basename))
-       in
-       let script_sh = Path.Build.relative base_path "cram.sh" in
-       let output = Path.Build.relative base_path "cram.out" in
-       let* () =
-         (let open Action_builder.O in
-          let+ () = Action_builder.path (Path.build script) in
-          Cram_exec.make_script
-            ~src:(Path.build script)
-            ~script:script_sh
-            ~conflict_markers
-          |> Action.Full.make)
-         |> Action_builder.with_file_targets ~file_targets:[ script_sh ]
-         |> Super_context.add_rule sctx ~dir ~loc
-       in
-       let* () =
-         (let open Action_builder.O in
-          let+ () = Action_builder.all_unit deps
-          and+ () = Action_builder.path (Path.build script_sh)
-          and+ () =
-            match test with
-            | File _ -> Action_builder.return ()
-            | Dir { dir; file } ->
-              let file = Path.Build.append_source prefix_with file |> Path.build in
-              let deps =
-                Path.Build.append_source prefix_with dir
-                |> Path.build
-                |> Source_deps.files_with_filter ~filter:(fun file' ->
-                  not (Path.equal file file'))
-              in
-              let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
-              ()
-          and+ () = Action_builder.paths setup_scripts
-          and+ locks = locks >>| Path.Set.to_list in
-          Cram_exec.run
-            ~src:(Path.build script)
-            ~dir:
-              (Path.build
-                 (match test with
-                  | File _ -> Path.Build.parent_exn script
-                  | Dir d -> Path.Build.append_source prefix_with d.dir))
-            ~script:(Path.build script_sh)
-            ~output
-            ~timeout
-            ~setup_scripts
-            shell
-          |> Action.Full.make ~locks ~sandbox)
-         |> Action_builder.with_file_targets ~file_targets:[ output ]
-         |> Super_context.add_rule sctx ~dir ~loc
-       in
-       Alias_rules.add sctx ~alias ~loc
-       @@
-       let open Action_builder.O in
-       let+ () = List.map ~f:Path.build [ script; output ] |> Action_builder.paths in
-       Action.progn
-         [ Cram_exec.diff ~src:(Path.build script) ~output:(Path.build output)
-         ; Action.diff
-             ~optional:true
-             ~mode:Text
-             (Path.build script)
-             (Path.Build.extend_basename script ~suffix:".corrected")
-         ]
+    (* enabled_if controls whether this test is included in @runtest (and other aliases),
+       but the test can always be run explicitly via its own alias. *)
+    let* enabled =
+      Memo.List.for_all enabled_if ~f:(fun (expander, blang) ->
+        Expander.eval_blang expander blang)
+    in
+    let* () = if enabled then add_extra_aliases_deps () else Memo.return () in
+    let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
+    let script = Path.Build.append_source prefix_with (Cram_test.script test) in
+    let base_path =
+      Path.Build.append_source
+        prefix_with
+        (let path =
+           match test with
+           | File f -> f
+           | Dir d -> d.dir
+         in
+         let dir = Path.Source.parent_exn path in
+         let basename = Path.Source.basename path in
+         Path.Source.relative dir (".cram." ^ basename))
+    in
+    let script_sh = Path.Build.relative base_path "cram.sh" in
+    let output = Path.Build.relative base_path "cram.out" in
+    let* () =
+      (let open Action_builder.O in
+       let+ () = Action_builder.path (Path.build script) in
+       Cram_exec.make_script ~src:(Path.build script) ~script:script_sh ~conflict_markers
        |> Action.Full.make)
+      |> Action_builder.with_file_targets ~file_targets:[ script_sh ]
+      |> Super_context.add_rule sctx ~dir ~loc
+    in
+    let* () =
+      (let open Action_builder.O in
+       let+ () = Action_builder.all_unit deps
+       and+ () = Action_builder.path (Path.build script_sh)
+       and+ () =
+         match test with
+         | File _ -> Action_builder.return ()
+         | Dir { dir; file } ->
+           let file = Path.Build.append_source prefix_with file |> Path.build in
+           let deps =
+             Path.Build.append_source prefix_with dir
+             |> Path.build
+             |> Source_deps.files_with_filter ~filter:(fun file' ->
+               not (Path.equal file file'))
+           in
+           let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
+           ()
+       and+ () = Action_builder.paths setup_scripts
+       and+ locks = locks >>| Path.Set.to_list in
+       Cram_exec.run
+         ~src:(Path.build script)
+         ~dir:
+           (Path.build
+              (match test with
+               | File _ -> Path.Build.parent_exn script
+               | Dir d -> Path.Build.append_source prefix_with d.dir))
+         ~script:(Path.build script_sh)
+         ~output
+         ~timeout
+         ~setup_scripts
+         shell
+       |> Action.Full.make ~locks ~sandbox)
+      |> Action_builder.with_file_targets ~file_targets:[ output ]
+      |> Super_context.add_rule sctx ~dir ~loc
+    in
+    Alias_rules.add sctx ~alias ~loc
+    @@
+    let open Action_builder.O in
+    let+ () = List.map ~f:Path.build [ script; output ] |> Action_builder.paths in
+    Action.progn
+      [ Cram_exec.diff ~src:(Path.build script) ~output:(Path.build output)
+      ; Action.diff
+          ~optional:true
+          ~mode:Text
+          (Path.build script)
+          (Path.Build.extend_basename script ~suffix:".corrected")
+      ]
+    |> Action.Full.make
 ;;
 
 let collect_stanzas =

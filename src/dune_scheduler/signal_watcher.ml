@@ -46,7 +46,7 @@ let run ~print_ctrl_c_warning q : unit =
       Queue.push last_exit_signals now;
       (* Discard old signals *)
       while
-        Queue.length last_exit_signals >= 0
+        Queue.length last_exit_signals > 0
         && Poly.(Time.diff now (Queue.peek_exn last_exit_signals) > one_second)
       do
         ignore (Queue.pop_exn last_exit_signals : Time.t)

@@ -904,8 +904,8 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
      in
      Pform.Env.initial ~stanza:lang.version ~extensions)
   @@
-  let parsing_context, _, _ =
-    let explicit_extensions = explicit_extensions_map explicit_extensions in
+  let explicit_extensions = explicit_extensions_map explicit_extensions in
+  let parsing_context, stanza_parser, extension_args =
     interpret_lang_and_extensions ~lang ~explicit_extensions
   in
   Decoder.set_many parsing_context
@@ -998,10 +998,6 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
       match name with
       | Some n -> n
       | None -> default_name ~dir ~packages
-    in
-    let explicit_extensions = explicit_extensions_map explicit_extensions in
-    let parsing_context, stanza_parser, extension_args =
-      interpret_lang_and_extensions ~lang ~explicit_extensions
     in
     let implicit_transitive_deps =
       Option.value

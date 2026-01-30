@@ -18,7 +18,6 @@ Below, 0: after should *not* be appearing.
 
   $ dune exec --watch ./foo.exe &
   0: before
-  0: after
   1: before
   1: after
   Success, waiting for filesystem changes...

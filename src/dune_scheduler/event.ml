@@ -2,10 +2,17 @@ open Stdune
 
 type job =
   { pid : Pid.t
+  ; is_process_group_leader : bool
   ; ivar : Proc.Process_info.t Fiber.Ivar.t
   }
 
-let dyn_of_job { pid; ivar = _ } = Dyn.record [ "pid", Dyn.int (Pid.to_int pid) ]
+let dyn_of_job { pid; is_process_group_leader; ivar } =
+  Dyn.record
+    [ "pid", Dyn.int (Pid.to_int pid)
+    ; "is_process_group_leader", Dyn.bool is_process_group_leader
+    ; "ivar", Dyn.opaque ivar
+    ]
+;;
 
 type build_input_change =
   | Fs_event of File_watcher.Fs_memo_event.t

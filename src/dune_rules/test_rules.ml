@@ -145,27 +145,24 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
           match test_kind dir_contents (loc, s, ext) with
           | `Regular -> add_alias ~loc ~action:run_action
           | `Expect diff ->
-            let rule =
-              { Rule_conf.targets = Infer
-              ; deps
-              ; action =
-                  ( loc
-                  , Action_unexpanded.Redirect_out (Stdout, diff.file2, Normal, run_action)
-                  )
-              ; mode = Standard
-              ; locks = t.locks
-              ; loc
-              ; enabled_if = t.enabled_if
-              ; aliases = []
-              ; package = t.package
-              }
+            let* (_ignored_targets : Targets.Validated.t) =
+              let expander = Expander.add_bindings expander ~bindings:extra_bindings in
+              let* mode =
+                Rule_mode_expand.expand_path ~expander ~dir Rule_mode.Standard
+              in
+              Action_unexpanded.expand
+                ~chdir:(Expander.dir expander)
+                ~loc
+                ~expander
+                ~deps
+                ~targets:Targets_spec.Infer
+                ~targets_dir:dir
+                (Action_unexpanded.Redirect_out (Stdout, diff.file2, Normal, run_action))
+              >>| Action_builder.With_targets.map_build
+                    ~f:(Simple_rules.interpret_and_add_locks ~expander t.locks)
+              >>= Super_context.add_rule_get_targets sctx ~dir ~mode ~loc
             in
-            add_alias ~loc ~action:(Diff diff)
-            >>> let+ (_ignored_targets : Targets.Validated.t option) =
-                  (* CR-someday rgrinberg: use direct api *)
-                  Simple_rules.user_rule sctx rule ~extra_bindings ~dir ~expander
-                in
-                ()))
+            add_alias ~loc ~action:(Diff diff)))
   in
   Exe_rules.rules t.exes ~sctx ~scope ~expander ~dir_contents
 ;;

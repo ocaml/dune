@@ -592,6 +592,7 @@ module Unprocessed = struct
              ~chdir
              ~what:"preprocessing actions"
              action
+             Sandbox_config.no_special_requirements
          in
          let pp_of_action exe args =
            match exe with

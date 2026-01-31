@@ -236,6 +236,7 @@ include Sub_system.Register_end_point (struct
                  Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
                    Action_unexpanded.expand_no_targets
                      action
+                     Sandbox_config.no_special_requirements
                      ~loc
                      ~expander
                      ~chdir:dir

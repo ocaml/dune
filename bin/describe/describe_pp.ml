@@ -43,6 +43,7 @@ let execute_pp_action ~sctx file pp_file dump_file =
         let+ build =
           Dune_rules.For_tests.Action_unexpanded.expand_no_targets
             action
+            Dune_engine.Sandbox_config.no_special_requirements
             ~chdir:build_dir
             ~loc
             ~expander

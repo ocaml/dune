@@ -91,6 +91,7 @@ let action_for_pp ~sandbox ~loc ~expander ~action ~src =
   Action_builder.path (Path.build src)
   >>> Action_unexpanded.expand_no_targets
         action
+        Sandbox_config.no_special_requirements
         ~chdir:(Expander.context expander |> Context_name.build_dir)
         ~loc
         ~expander

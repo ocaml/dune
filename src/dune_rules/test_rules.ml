@@ -55,6 +55,7 @@ let runtest_modes modes jsoo_enabled_modes project =
 
 let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
   let* () =
+    let project = Scope.project scope in
     let* runtest_modes =
       let+ jsoo_enabled_modes =
         Jsoo_rules.jsoo_enabled_modes
@@ -62,7 +63,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
           ~dir
           ~in_context:(Js_of_ocaml.In_context.make ~dir t.exes.buildable.js_of_ocaml)
       in
-      runtest_modes t.exes.modes jsoo_enabled_modes (Scope.project scope)
+      runtest_modes t.exes.modes jsoo_enabled_modes project
     in
     Expander.eval_blang expander t.enabled_if
     >>= function
@@ -158,7 +159,9 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                 ~targets:Targets_spec.Infer
                 ~targets_dir:dir
                 (Action_unexpanded.Redirect_out (Stdout, diff.file2, Normal, run_action))
-                Sandbox_config.no_special_requirements
+                (if Dune_project.dune_version project >= (3, 22)
+                 then Sandbox_config.needs_sandboxing
+                 else Sandbox_config.no_special_requirements)
               >>| Action_builder.With_targets.map_build
                     ~f:(Simple_rules.interpret_and_add_locks ~expander t.locks)
               >>= Super_context.add_rule_get_targets sctx ~dir ~mode ~loc

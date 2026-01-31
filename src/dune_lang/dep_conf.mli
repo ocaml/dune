@@ -21,7 +21,10 @@ module Sandbox_config : sig
 
   val fold
     :  t
-    -> f:([ `None | `Always | `Preserve_file_kind ] -> 'acc -> 'acc)
+    -> f:
+         ([ `None | `Always | `Preserve_file_kind | `Patch_back_source_tree ]
+          -> 'acc
+          -> 'acc)
     -> init:'acc
     -> 'acc
 end

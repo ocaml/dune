@@ -63,6 +63,12 @@ module Partial = struct
       | _ -> None)
   ;;
 
+  let patch_back_source_tree =
+    Sandbox_mode.Dict.of_func (function
+      | Some Patch_back_source_tree -> Some true
+      | _ -> Some false)
+  ;;
+
   let disallow (mode : Sandbox_mode.t) =
     Sandbox_mode.Dict.of_func (fun mode' ->
       if Sandbox_mode.equal mode mode' then Some false else None)

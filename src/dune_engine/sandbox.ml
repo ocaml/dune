@@ -181,26 +181,7 @@ let create ~mode ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
   in
   Option.iter dune_stats ~f:(fun trace -> Dune_trace.Out.finish trace event);
   match mode with
-  | Patch_back_source_tree ->
-    (* Only supported on Linux because we rely on the mtime changing to detect
-       when a file changes. This doesn't work on OSX for instance as the file
-       system granularity is 1s, which is too coarse. *)
-    (match Platform.OS.value with
-     | Linux -> ()
-     | _ ->
-       User_error.raise
-         ~loc:rule_loc
-         [ Pp.textf
-             "(mode patch-back-source-tree) is only supported on Linux at the moment."
-         ]);
-    (* We expect this call to [snapshot t] to return the same set of files as
-       [deps], given that's exactly what we just copied in the sandbox. So in
-       theory, we could iterate over [deps] rather than scan the file system.
-       However, the code is simpler if we just call [snapshot t] before and
-       after running the action. Given that [patch_back_source_tree] is a dodgy
-       feature that we hope to get rid of in the long run, we favor code
-       simplicity over performance. *)
-    { t with snapshot = Some (snapshot t) }
+  | Patch_back_source_tree -> { t with snapshot = Some (snapshot t) }
   | _ -> t
 ;;
 
@@ -217,35 +198,38 @@ let rename_optional_file ~src ~dst =
      | () -> ())
 ;;
 
-let apply_changes_to_source_tree t ~old_snapshot =
+let apply_changes_to_source_tree t (targets : Targets.Validated.t) ~old_snapshot =
   let new_snapshot = snapshot t in
   (* Same as promotion: make the file writable when copying to the source
      tree. *)
   let in_source_tree p =
-    Path.extract_build_context_dir_maybe_sandboxed p
-    |> Option.value_exn
-    |> snd
-    |> Path.source
+    Path.extract_build_context_dir_maybe_sandboxed p |> Option.value_exn |> snd
   in
   let copy_file p =
-    let in_source_tree = in_source_tree p in
-    Fpath.unlink_no_err (Path.to_string in_source_tree);
-    Option.iter (Path.parent in_source_tree) ~f:Path.mkdir_p;
-    Io.copy_file ~src:p ~dst:in_source_tree ()
+    let source_file = in_source_tree p in
+    let correction_file = Path.as_in_build_dir_exn p in
+    Diff_promotion.register_intermediate ~source_file ~correction_file
   in
-  let delete_file p =
-    let in_source_tree = in_source_tree p in
-    Fpath.unlink_no_err (Path.to_string in_source_tree)
-  in
+  let delete_file file = in_source_tree file |> Diff_promotion.register_delete in
+  (* CR-soon rgrinberg: handle deleting directories *)
+  let target_root_in_sandbox = map_path t targets.root in
   Path.Map.iter2 old_snapshot new_snapshot ~f:(fun p before after ->
-    match before, after with
-    | None, None -> assert false
-    | None, Some _ -> copy_file p
-    | Some _, None -> delete_file p
-    | Some before, Some after ->
-      (match Cached_digest.Reduced_stats.compare before after with
-       | Eq -> ()
-       | Lt | Gt -> copy_file p))
+    if
+      not
+        (let dir = Path.as_in_build_dir_exn (Path.parent_exn p) in
+         Path.Build.equal dir target_root_in_sandbox
+         &&
+         let basename = Path.basename p in
+         Filename.Set.mem targets.files basename || Filename.Set.mem targets.dirs basename)
+    then (
+      match before, after with
+      | None, None -> assert false
+      | None, Some _ -> copy_file p
+      | Some _, None -> delete_file p
+      | Some before, Some after ->
+        (match Cached_digest.Reduced_stats.compare before after with
+         | Eq -> ()
+         | Lt | Gt -> copy_file p)))
 ;;
 
 let hint_delete_dir =
@@ -260,7 +244,7 @@ let move_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated
   =
   maybe_async (fun () ->
     Option.iter t.snapshot ~f:(fun old_snapshot ->
-      apply_changes_to_source_tree t ~old_snapshot);
+      apply_changes_to_source_tree t targets ~old_snapshot);
     Targets.Validated.iter
       targets
       ~file:(fun target ->

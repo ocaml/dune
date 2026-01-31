@@ -14,4 +14,4 @@ val rules
   -> dir_contents:Dir_contents.t
   -> expander:Expander.t
   -> scope:Scope.t
-  -> (Compilation_context.t * Merlin.t) Memo.t
+  -> (Compilation_context.t * Merlin.t) option Compilation_mode.By_mode.t Memo.t

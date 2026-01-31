@@ -307,7 +307,7 @@ and named_paths_builder ~expander l =
   builder, bindings
 ;;
 
-let named ~expander l =
+let named sandbox ~expander l =
   let builder, bindings = named_paths_builder ~expander l in
   let builder =
     let builder =
@@ -320,7 +320,7 @@ let named ~expander l =
   let expander = Expander.add_bindings_full expander ~bindings in
   ( Action_builder.ignore builder
   , expander
-  , Bindings.fold l ~init:Sandbox_config.no_special_requirements ~f:(fun one acc ->
+  , Bindings.fold l ~init:sandbox ~f:(fun one acc ->
       match one with
       | Unnamed dep -> add_sandbox_config acc dep
       | Named (_, l) -> List.fold_left l ~init:acc ~f:add_sandbox_config) )

@@ -243,7 +243,10 @@ let rules ~sctx ~dir tests =
                 | None -> acc.deps, acc.sandbox
                 | Some deps ->
                   let (deps : unit Action_builder.t), _, sandbox =
-                    Dep_conf_eval.named ~expander deps
+                    Dep_conf_eval.named
+                      ~expander
+                      Sandbox_config.no_special_requirements
+                      deps
                   in
                   deps :: acc.deps, Sandbox_config.inter acc.sandbox sandbox
               in

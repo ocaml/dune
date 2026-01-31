@@ -23,6 +23,7 @@ val unnamed_get_paths
     register dependencies as well as an expander that can be used to expand to
     expand variables from the bindings. *)
 val named
-  :  expander:Expander.t
+  :  Sandbox_config.t
+  -> expander:Expander.t
   -> Dep_conf.t Bindings.t
   -> unit Action_builder.t * Expander.t * Sandbox_config.t

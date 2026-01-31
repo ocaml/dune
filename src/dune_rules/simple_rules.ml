@@ -291,7 +291,13 @@ let alias sctx ~dir ~expander (alias_conf : Alias_conf.t) =
   | true ->
     (match alias_conf.action with
      | None ->
-       let builder, _expander, _sandbox = Dep_conf_eval.named ~expander alias_conf.deps in
+       (* Sandboxing options don't make sense for deps, only for actions *)
+       let builder, _expander, _sandbox =
+         Dep_conf_eval.named
+           ~expander
+           Sandbox_config.no_special_requirements
+           alias_conf.deps
+       in
        Rules.Produce.Alias.add_deps alias ~loc builder
      | Some (action_loc, action) ->
        let action =

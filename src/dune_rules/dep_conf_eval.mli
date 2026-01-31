@@ -7,7 +7,7 @@ val package_install : context:Build_context.t -> pkg:Package.t -> Alias.t
 
 (** Evaluates unnamed dependency specifications. *)
 val unnamed
-  :  ?sandbox:Sandbox_config.t
+  :  Sandbox_config.t
   -> expander:Expander.t
   -> Dep_conf.t list
   -> unit Action_builder.t * Sandbox_config.t

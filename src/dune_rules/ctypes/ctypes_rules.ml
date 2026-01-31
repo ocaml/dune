@@ -334,7 +334,9 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
   let headers =
     gen_headers ~expander ctypes.headers |> Action_builder.memoize "ctypes-gen-headers"
   in
-  let deps, sandbox = Dep_conf_eval.unnamed ~expander ctypes.deps in
+  let deps, sandbox =
+    Dep_conf_eval.unnamed Sandbox_config.no_special_requirements ~expander ctypes.deps
+  in
   let exe_link_only = exe_link_only ~deps ~dir ~shared_cctx:cctx ~sandbox in
   (* Type_gen produces a .c file, taking your type description module above as
      an input. The .c file is compiled into an .exe. The .exe, when run produces

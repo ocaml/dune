@@ -88,7 +88,7 @@ let add_user_rule
   Super_context.add_rule_get_targets sctx ~dir ~mode ~loc:rule.loc action
 ;;
 
-let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
+let user_rule sctx ~dir ~expander (rule : Rule_conf.t) =
   Expander.eval_blang expander rule.enabled_if
   >>= function
   | false ->
@@ -114,11 +114,6 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
             List.map ~f:(fun value -> check_filename ~kind ~dir ~error_loc value, kind))
         in
         Targets_spec.Static { multiplicity; targets }
-    in
-    let expander =
-      match extra_bindings with
-      | None -> expander
-      | Some bindings -> Expander.add_bindings expander ~bindings
     in
     let* action =
       let chdir = Expander.dir expander in
@@ -286,7 +281,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   | false -> Memo.return Path.Set.empty
 ;;
 
-let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
+let alias sctx ~dir ~expander (alias_conf : Alias_conf.t) =
   let alias = Alias.make ~dir alias_conf.name in
   let loc = alias_conf.loc in
   Alias_rules.check_empty ~loc ~dir alias
@@ -300,11 +295,6 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
        Rules.Produce.Alias.add_deps alias ~loc builder
      | Some (action_loc, action) ->
        let action =
-         let expander =
-           match extra_bindings with
-           | None -> expander
-           | Some bindings -> Expander.add_bindings expander ~bindings
-         in
          let chdir = Expander.dir expander in
          Action_unexpanded.expand_no_targets
            action

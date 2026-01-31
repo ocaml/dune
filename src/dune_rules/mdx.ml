@@ -212,6 +212,7 @@ let syntax =
     ; (0, 2), `Since (3, 0)
     ; (0, 3), `Since (3, 2)
     ; (0, 4), `Since (3, 8)
+    ; (0, 5), `Since (3, 22)
     ]
 ;;
 
@@ -379,7 +380,9 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
             Dep_conf.Package (Package.Name.to_string pkg |> String_with_vars.make_text loc))
         in
         Dep_conf_eval.unnamed
-          Sandbox_config.no_special_requirements
+          (if version < (0, 5)
+           then Sandbox_config.no_special_requirements
+           else Sandbox_config.needs_sandboxing)
           ~expander
           (mdx_package_deps @ mdx_generic_deps)
       in

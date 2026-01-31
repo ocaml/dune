@@ -30,7 +30,7 @@ val follow_symlink : string -> (string, follow_symlink_error) result
     [Error Max_depth_exceeded] on some intermediate path). *)
 val follow_symlinks : string -> string option
 
-val unlink_exn : string -> unit
+val unlink_exn : ?chmod:bool -> string -> unit
 val unlink_no_err : string -> unit
 
 type unlink_status =
@@ -50,10 +50,10 @@ type clear_dir_result =
 
 (** [clear_dir t] deletes all the contents of directory [t] without removing [t]
     itself. *)
-val clear_dir : string -> clear_dir_result
+val clear_dir : ?chmod:bool -> string -> clear_dir_result
 
 (** If the path does not exist, this function is a no-op. *)
-val rm_rf : string -> unit
+val rm_rf : ?chmod:bool -> string -> unit
 
 val is_root : string -> bool
 

@@ -20,16 +20,6 @@ the rule and the sandbox cleanup.
   3 |  (action (bash "\| touch foo && mkdir bar && touch bar/x && chmod -w bar &&
   4 |                "\| echo failed action && exit 1
   5 |           )))
-  Error: failed to delete sandbox in
-  _build/.sandbox/$SANDBOX
-  Reason:
-  rmdir(_build/.sandbox/$SANDBOX/default/bar): Directory not empty
-  File "dune", lines 1-5, characters 0-157:
-  1 | (rule
-  2 |  (target foo)
-  3 |  (action (bash "\| touch foo && mkdir bar && touch bar/x && chmod -w bar &&
-  4 |                "\| echo failed action && exit 1
-  5 |           )))
   failed action
   [1]
 

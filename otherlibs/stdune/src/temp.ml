@@ -37,7 +37,7 @@ let create_temp_file ?(perms = 0o600) path =
 ;;
 
 let destroy = function
-  | Dir -> Path.rm_rf ~allow_external:true
+  | Dir -> Path.rm_rf ~chmod:true ~allow_external:true
   | File -> fun p -> Fpath.unlink_no_err (Path.to_string p)
 ;;
 

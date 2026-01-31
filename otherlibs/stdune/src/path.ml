@@ -652,10 +652,10 @@ let extend_basename t ~suffix =
   | External t -> external_ (External.extend_basename t ~suffix)
 ;;
 
-let rm_rf ?(allow_external = false) t =
+let rm_rf ?chmod ?(allow_external = false) t =
   if (not allow_external) && not (is_managed t)
   then Code_error.raise "Path.rm_rf called on external dir" [ "t", to_dyn t ];
-  Fpath.rm_rf (to_string t)
+  Fpath.rm_rf ?chmod (to_string t)
 ;;
 
 let mkdir_p ?perms = function

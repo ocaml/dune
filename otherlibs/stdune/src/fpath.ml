@@ -166,40 +166,74 @@ type clear_dir_result =
   | Cleared
   | Directory_does_not_exist
 
-let rec clear_dir dir =
-  match Readdir.read_directory_with_kinds dir with
+let unlink_exn_ignore_missing fn =
+  match unlink_exn fn with
+  | () -> ()
+  | exception Unix.Unix_error (ENOENT, _, _) -> ()
+;;
+
+let rmdir_ignore_missing fn =
+  match Unix.rmdir fn with
+  | () -> ()
+  | exception Unix.Unix_error (ENOENT, _, _) ->
+    (* How can we end up here? [clear_dir] cleared the directory successfully,
+       but by the time the above [Unix.rmdir] was called, another process
+       deleted the directory. *)
+    ()
+;;
+
+let unlink_exn ~chmod dir fn =
+  match unlink_exn_ignore_missing fn with
+  | () -> ()
+  | exception Unix.Unix_error ((EPERM | EACCES), _, _) when chmod ->
+    Unix.chmod dir 0o777;
+    unlink_exn_ignore_missing fn
+;;
+
+let rec clear_dir ?(chmod = false) dir =
+  match
+    match Readdir.read_directory_with_kinds dir with
+    | Error ((EPERM | EACCES), _, _) when chmod ->
+      Unix.chmod dir 0o777;
+      Readdir.read_directory_with_kinds dir
+    | s -> s
+  with
   | Error (ENOENT, _, _) -> Directory_does_not_exist
   | Error (error, _, _) ->
     raise (Unix.Unix_error (error, dir, "Stdune.Path.rm_rf: read_directory_with_kinds"))
   | Ok listing ->
-    List.iter listing ~f:(fun (fn, kind) ->
-      let fn = Filename.concat dir fn in
-      (* Note that by the time we reach this point, [fn] might have been
-         deleted by a concurrent process. Both [rm_rf_dir] and [unlink_no_err]
-         will tolerate such phantom paths and succeed. *)
-      match kind with
-      | Unix.S_DIR -> rm_rf_dir fn
-      | _ -> unlink_no_err fn);
+    clear_files ~chmod dir listing;
     Cleared
 
-and rm_rf_dir path =
-  match clear_dir path with
+and clear_files ?(chmod = false) dir listing =
+  List.iter listing ~f:(fun (fn, kind) ->
+    let fn = Filename.concat dir fn in
+    (* Note that by the time we reach this point, [fn] might have been
+       deleted by a concurrent process. Both [rm_rf_dir] and [unlink_no_err]
+       will tolerate such phantom paths and succeed. *)
+    match kind with
+    | Unix.S_DIR -> rm_rf_dir ~chmod fn
+    | _ -> unlink_exn ~chmod dir fn)
+
+and rm_rf_dir ?(chmod = false) path =
+  match clear_dir ~chmod path with
   | Directory_does_not_exist -> ()
   | Cleared ->
-    (match Unix.rmdir path with
+    (match rmdir_ignore_missing path with
      | () -> ()
-     | exception Unix.Unix_error (ENOENT, _, _) ->
-       (* How can we end up here? [clear_dir] cleared the directory successfully,
-          but by the time the above [Unix.rmdir] was called, another process
-          deleted the directory. *)
-       ())
+     | exception Unix.Unix_error ((EPERM | EACCES), _, _) when chmod ->
+       let parent = Filename.dirname path in
+       Unix.chmod parent 0o777;
+       rmdir_ignore_missing path)
 ;;
 
-let rm_rf fn =
+let unlink_exn ?(chmod = false) file = unlink_exn ~chmod (Filename.dirname file) file
+
+let rm_rf ?(chmod = false) fn =
   match Unix.lstat fn with
   | exception Unix.Unix_error (ENOENT, _, _) -> ()
-  | { Unix.st_kind = S_DIR; _ } -> rm_rf_dir fn
-  | _ -> unlink_exn fn
+  | { Unix.st_kind = S_DIR; _ } -> rm_rf_dir ~chmod fn
+  | _ -> unlink_exn ~chmod fn
 ;;
 
 let default ~dir:_ _ acc = acc

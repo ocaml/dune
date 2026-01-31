@@ -79,7 +79,7 @@ We want to see mangled names in the dune-package file as well:
      __private__/secret/secret.cmx
      __private__/secret/secret.cmxa
      __private__/secret/secret.ml
-   (libexec (__private__/secret/secret.cmxs bar/foo.cmxs)))
+   (libexec (__private__/secret/secret.cmxs bar/foo.cmxs))
    (requires foo.__private__.secret)
    (name foo.__private__.secret)
     (byte __private__/secret/secret.cma)

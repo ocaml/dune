@@ -38,10 +38,16 @@ Simple example of using a glob to specify files to install
     "_build/install/default/share/foo/b.txt"
     "_build/install/default/share/foo/c.txt"
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]
 
   $ find _build/install | sort
   _build/install
   _build/install/default
+  _build/install/default/doc
+  _build/install/default/doc/foo
+  _build/install/default/doc/foo/odoc-config.sexp
   _build/install/default/lib
   _build/install/default/lib/foo
   _build/install/default/lib/foo/META

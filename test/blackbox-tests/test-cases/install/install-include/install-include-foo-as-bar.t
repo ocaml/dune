@@ -37,3 +37,6 @@ Include a file which contains the (foo as bar) syntax for renaming a file
   share: [
     "_build/install/default/share/hello/b/c.txt" {"b/c.txt"}
   ]
+  doc: [
+    "_build/install/default/doc/hello/odoc-config.sexp"
+  ]

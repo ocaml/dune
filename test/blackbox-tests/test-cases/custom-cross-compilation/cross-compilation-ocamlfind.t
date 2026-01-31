@@ -123,6 +123,7 @@ Library is built in the target context
   repro.cmxs
   repro.dune-package
   repro.ml-gen
+  repro.odoc-config.sexp
 
 Executable was built in the host context
 

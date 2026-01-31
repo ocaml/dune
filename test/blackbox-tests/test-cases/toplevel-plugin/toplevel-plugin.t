@@ -141,6 +141,7 @@ Testsuite for (toplevel that loads plugins).
   Installing _install/lib/top-plugin1/plugin1_impl/plugin1_impl.cmt
   Installing _install/lib/top-plugin1/plugin1_impl/plugin1_impl.ml
   Installing _install/lib/top_with_plugins/top_plugins/plugin1/META
+  Installing _install/doc/top-plugin1/odoc-config.sexp
   Installing _install/lib/top-plugin2/META
   Installing _install/lib/top-plugin2/dune-package
   Installing _install/lib/top-plugin2/opam
@@ -149,6 +150,7 @@ Testsuite for (toplevel that loads plugins).
   Installing _install/lib/top-plugin2/plugin2_impl/plugin2_impl.cmt
   Installing _install/lib/top-plugin2/plugin2_impl/plugin2_impl.ml
   Installing _install/lib/top_with_plugins/top_plugins/plugin2/META
+  Installing _install/doc/top-plugin2/odoc-config.sexp
   Installing _install/lib/top_with_plugins/META
   Installing _install/lib/top_with_plugins/dune-package
   Installing _install/lib/top_with_plugins/register/registration.cma
@@ -156,6 +158,7 @@ Testsuite for (toplevel that loads plugins).
   Installing _install/lib/top_with_plugins/register/registration.cmt
   Installing _install/lib/top_with_plugins/register/registration.ml
   Installing _install/bin/top_with_plugins
+  Installing _install/doc/top_with_plugins/odoc-config.sexp
   $ export OCAMLPATH=$PWD/_install/lib
   $ ./_install/bin/top_with_plugins -noinit -no-version <<EOF
   > 2+2;;

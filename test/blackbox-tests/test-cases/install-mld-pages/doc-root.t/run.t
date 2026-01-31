@@ -48,6 +48,7 @@ Let's now verify that the install file is correct:
     "_build/install/default/lib/testing_mld/dune-package"
   ]
   doc: [
+    "_build/install/default/doc/testing_mld/odoc-config.sexp"
     "_build/install/default/doc/testing_mld/odoc-pages/examples/example1/index.mld" {"odoc-pages/examples/example1/index.mld"}
     "_build/install/default/doc/testing_mld/odoc-pages/examples/example2/index.mld" {"odoc-pages/examples/example2/index.mld"}
     "_build/install/default/doc/testing_mld/odoc-pages/examples/index.mld" {"odoc-pages/examples/index.mld"}

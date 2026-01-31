@@ -43,6 +43,7 @@ Test dependency on installed package
   Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
   Installing $TESTCASE_ROOT/prefix/lib/a/foo.ml
   Installing $TESTCASE_ROOT/prefix/lib/a/a.cmxs
+  Installing $TESTCASE_ROOT/prefix/doc/a/odoc-config.sexp
 
   $ cat >b/dune-project <<EOF
   > (lang dune 3.7)

@@ -7,4 +7,5 @@ Odig files should be detected relative to the package directory
   ]
   doc: [
     "_build/install/default/doc/foobar/LICENSE"
+    "_build/install/default/doc/foobar/odoc-config.sexp"
   ]

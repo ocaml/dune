@@ -38,6 +38,9 @@ Basic example of using this feature:
     "_build/install/default/share/foo/bar/b.txt" {"bar/b.txt"}
     "_build/install/default/share/foo/bar/c.txt" {"bar/c.txt"}
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]
 
 Test with multiple with_prefix blocks in a single files entry:
   $ cat >dune <<EOF
@@ -59,6 +62,9 @@ Test with multiple with_prefix blocks in a single files entry:
     "_build/install/default/share/foo/txt/b.txt" {"txt/b.txt"}
     "_build/install/default/share/foo/txt/c.txt" {"txt/c.txt"}
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]
 
 Use "." as the prefix:
   $ cat >dune <<EOF
@@ -75,6 +81,9 @@ Use "." as the prefix:
     "_build/install/default/share/foo/a.txt" {"./a.txt"}
     "_build/install/default/share/foo/b.txt" {"./b.txt"}
     "_build/install/default/share/foo/c.txt" {"./c.txt"}
+  ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
   ]
 
 Use a pform in the prefix:
@@ -93,6 +102,9 @@ Use a pform in the prefix:
     "_build/install/default/share/foo/baz/a.txt" {"baz/a.txt"}
     "_build/install/default/share/foo/baz/b.txt" {"baz/b.txt"}
     "_build/install/default/share/foo/baz/c.txt" {"baz/c.txt"}
+  ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
   ]
 
 Use a prefix with a recursive glob:
@@ -116,6 +128,9 @@ Use a prefix with a recursive glob:
     "_build/install/default/share/foo/qux/b.txt" {"qux/b.txt"}
     "_build/install/default/share/foo/qux/c.txt" {"qux/c.txt"}
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]
 
 Demonstrating behaviour of `with_prefix` on globs with a prefix:
   $ mkdir -p path/to/files
@@ -134,6 +149,9 @@ Demonstrating behaviour of `with_prefix` on globs with a prefix:
     "_build/install/default/share/foo/some/new/path/bar.txt" {"some/new/path/bar.txt"}
     "_build/install/default/share/foo/some/new/path/baz.txt" {"some/new/path/baz.txt"}
     "_build/install/default/share/foo/some/new/path/foo.txt" {"some/new/path/foo.txt"}
+  ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
   ]
 
 Replacing the prefix with the empty string works the same as with ".".
@@ -157,6 +175,9 @@ Replacing the prefix with the empty string works the same as with ".".
     "_build/install/default/share/foo/path/to/files/bar.txt" {"path/to/files/bar.txt"}
     "_build/install/default/share/foo/path/to/files/baz.txt" {"path/to/files/baz.txt"}
     "_build/install/default/share/foo/path/to/files/foo.txt" {"path/to/files/foo.txt"}
+  ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
   ]
 
 It's an error to use an absolute path as the prefix.

@@ -28,6 +28,7 @@
   Installing prefix/lib/foo/foo.cmxa
   Installing prefix/lib/foo/foo.ml
   Installing prefix/lib/foo/foo.cmxs
+  Installing prefix/doc/foo/odoc-config.sexp
 
   $ test -x prefix/lib/foo/foo.cmxs
 
@@ -49,6 +50,7 @@ directory instead of a file.
   Installing prefix/lib/foo/foo.cmxa
   Installing prefix/lib/foo/foo.ml
   Installing prefix/lib/foo/foo.cmxs
+  Installing prefix/doc/foo/odoc-config.sexp
 
 Test the error message if a destination is a non-empty directory instead of a file.
 

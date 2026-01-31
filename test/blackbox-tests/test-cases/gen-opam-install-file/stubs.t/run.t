@@ -20,6 +20,9 @@ stubs and js files installed
   libexec: [
     "_build/install/default/lib/foo/foo.cmxs"
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]
   stublibs: [
     "_build/install/default/lib/stublibs/dllfoo_stubs$ext_dll"
   ]

@@ -17,3 +17,6 @@
   bin: [
     "DUNE_BUILD_DIR/install/default/bin/foo"
   ]
+  doc: [
+    "DUNE_BUILD_DIR/install/default/doc/foo/odoc-config.sexp"
+  ]

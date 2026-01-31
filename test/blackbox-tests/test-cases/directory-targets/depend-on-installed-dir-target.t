@@ -30,9 +30,12 @@ Test installed directory targets may be depended on
     "_build/install/default/lib/foo/foo.ml"
     "_build/install/default/lib/foo/some_dir/inside-dir-target.txt" {"some_dir/inside-dir-target.txt"}
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]
 
   $ cat lib/_build/install/default/lib/foo/dune-package | grep some_dir
-   (lib (META dune-package foo.cma foo.cmi foo.cmt foo.ml (dir some_dir))))
+   (lib (META dune-package foo.cma foo.cmi foo.cmt foo.ml (dir some_dir)))
 
   $ dune install --root lib --prefix $PWD/prefix
 

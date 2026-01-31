@@ -650,6 +650,7 @@ Testsuite for the (foreign_library ...) stanza.
   Installing install/lib/external_library/extlib.ml
   Installing install/lib/external_library/opam
   Installing install/lib/external_library/extlib.cmxs
+  Installing install/doc/external_library/odoc-config.sexp
 
   $ echo "(lang dune 2.1)" > some/dir/dune-project
   $ cat >some/dir/dune <<EOF

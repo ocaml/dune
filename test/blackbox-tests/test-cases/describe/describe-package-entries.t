@@ -215,4 +215,12 @@ Test for the `dune describe package-entries` command
         (kind File)
         (dst main.exe)
         (section BIN)
+        (optional false))))
+     ((source Dune)
+      (entry
+       ((src
+         (In_build_dir default/foo.odoc-config.sexp))
+        (kind File)
+        (dst odoc-config.sexp)
+        (section DOC)
         (optional false)))))))

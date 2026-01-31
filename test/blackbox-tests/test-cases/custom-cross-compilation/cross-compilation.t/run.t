@@ -40,3 +40,6 @@
   bin: [
     "_build/install/default.foo/bin/blah" {"../foo-sysroot/bin/blah"}
   ]
+  doc: [
+    "_build/install/default.foo/doc/p/odoc-config.sexp" {"../../foo-sysroot/doc/p/odoc-config.sexp"}
+  ]

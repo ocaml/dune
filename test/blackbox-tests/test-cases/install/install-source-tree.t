@@ -39,6 +39,7 @@ Create the source directory and fill it up with some dummy stuff for the test:
     "_build/install/default/doc/mypkg/mydocs/baz.md" {"mydocs/baz.md"}
     "_build/install/default/doc/mypkg/mydocs/foo.md" {"mydocs/foo.md"}
     "_build/install/default/doc/mypkg/mydocs/foo/bar.md" {"mydocs/foo/bar.md"}
+    "_build/install/default/doc/mypkg/odoc-config.sexp"
   ]
 
   $ test "(mydocs as yourdocs)"
@@ -47,6 +48,7 @@ Create the source directory and fill it up with some dummy stuff for the test:
     "_build/install/default/lib/mypkg/dune-package"
   ]
   doc: [
+    "_build/install/default/doc/mypkg/odoc-config.sexp"
     "_build/install/default/doc/mypkg/yourdocs/baz.md" {"yourdocs/baz.md"}
     "_build/install/default/doc/mypkg/yourdocs/foo.md" {"yourdocs/foo.md"}
     "_build/install/default/doc/mypkg/yourdocs/foo/bar.md" {"yourdocs/foo/bar.md"}
@@ -58,6 +60,7 @@ Create the source directory and fill it up with some dummy stuff for the test:
     "_build/install/default/lib/mypkg/dune-package"
   ]
   doc: [
+    "_build/install/default/doc/mypkg/odoc-config.sexp"
     "_build/install/default/doc/mypkg/your/docs/baz.md" {"your/docs/baz.md"}
     "_build/install/default/doc/mypkg/your/docs/foo.md" {"your/docs/foo.md"}
     "_build/install/default/doc/mypkg/your/docs/foo/bar.md" {"your/docs/foo/bar.md"}
@@ -73,6 +76,7 @@ Install docs directly into docs/<pkg>/:
     "_build/install/default/doc/mypkg/baz.md" {"./baz.md"}
     "_build/install/default/doc/mypkg/foo.md" {"./foo.md"}
     "_build/install/default/doc/mypkg/foo/bar.md" {"./foo/bar.md"}
+    "_build/install/default/doc/mypkg/odoc-config.sexp"
   ]
 
 Install multiple source trees at once:
@@ -87,6 +91,7 @@ Install multiple source trees at once:
     "_build/install/default/doc/mypkg/mydocs/baz.md" {"mydocs/baz.md"}
     "_build/install/default/doc/mypkg/mydocs/foo.md" {"mydocs/foo.md"}
     "_build/install/default/doc/mypkg/mydocs/foo/bar.md" {"mydocs/foo/bar.md"}
+    "_build/install/default/doc/mypkg/odoc-config.sexp"
     "_build/install/default/doc/mypkg/otherdocs/help.txt" {"otherdocs/help.txt"}
   ]
 
@@ -95,6 +100,9 @@ Install zero source trees:
   lib: [
     "_build/install/default/lib/mypkg/META"
     "_build/install/default/lib/mypkg/dune-package"
+  ]
+  doc: [
+    "_build/install/default/doc/mypkg/odoc-config.sexp"
   ]
 
 It is an error for the destination path to start with "..".

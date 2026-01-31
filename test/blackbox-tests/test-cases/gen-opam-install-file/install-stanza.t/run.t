@@ -10,3 +10,6 @@ install stanza is respected
     "_build/install/default/share/foo/foobar"
     "_build/install/default/share/foo/share1"
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]

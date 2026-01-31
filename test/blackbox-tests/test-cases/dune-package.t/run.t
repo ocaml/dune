@@ -7,7 +7,7 @@
   $ dune_cmd cat a/_build/install/default/lib/a/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
   (lang dune <version>)
   (name a)
-  (sections (lib .) (libexec .) (share ../../share/a))
+  (sections (lib .) (libexec .) (share ../../share/a) (doc ../../doc/a))
   (files
    (lib
     (META
@@ -45,7 +45,8 @@
      opam
      x.ml))
    (libexec (a.cmxs b/c/c.cmxs))
-   (share (foo.txt)))
+   (share (foo.txt))
+   (doc (odoc-config.sexp)))
   (library
    (name a)
    (kind normal)
@@ -151,7 +152,7 @@ Install the package directly
   $ dune_cmd cat prefix/lib/a/dune-package | grep -e 'lib/a' -e 'share/a'
     $TESTCASE_ROOT/prefix/lib/a)
     $TESTCASE_ROOT/prefix/lib/a)
-    $TESTCASE_ROOT/prefix/share/a))
+    $TESTCASE_ROOT/prefix/share/a)
 
 
 Install as opam does
@@ -184,4 +185,4 @@ Install as opam does
     "_build/install/default/lib/a/dune-package"
 
   $ dune_cmd cat "a/_build/install/default/lib/a/dune-package" | grep -e 'lib [.]' -e 'share [.]'
-  (sections (lib .) (libexec .) (share ../../share/a))
+  (sections (lib .) (libexec .) (share ../../share/a) (doc ../../doc/a))

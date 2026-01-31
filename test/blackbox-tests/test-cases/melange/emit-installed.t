@@ -41,6 +41,7 @@ Test dependency on installed package
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Sub.cmj
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Sub.cmt
   Installing $TESTCASE_ROOT/prefix/lib/a/sub/sub.ml
+  Installing $TESTCASE_ROOT/prefix/doc/a/odoc-config.sexp
 
   $ cat >b/dune-project <<EOF
   > (lang dune 3.8)

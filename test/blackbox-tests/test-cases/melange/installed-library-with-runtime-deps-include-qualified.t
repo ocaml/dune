@@ -41,6 +41,9 @@ nested more than the dune-project file
     "_build/install/default/lib/foo/melange/foo.cmt" {"melange/foo.cmt"}
     "_build/install/default/lib/foo/runtime/runtime.js" {"runtime/runtime.js"}
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]
 
   $ grep melange_runtime_deps lib/_build/install/default/lib/foo/dune-package
    (melange_runtime_deps runtime/runtime.js))
@@ -67,6 +70,9 @@ nested more than the dune-project file
     "_build/install/default/lib/foo/melange/foo.cmj" {"melange/foo.cmj"}
     "_build/install/default/lib/foo/melange/foo.cmt" {"melange/foo.cmt"}
     "_build/install/default/lib/foo/runtime/runtime.js" {"runtime/runtime.js"}
+  ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
   ]
 
   $ grep melange_runtime_deps lib/_build/install/default/lib/foo/dune-package

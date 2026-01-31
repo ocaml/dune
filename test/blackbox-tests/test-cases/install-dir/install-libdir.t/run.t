@@ -14,6 +14,7 @@ dune install should handle destination directories that don't exist
   Installing $TESTCASE_ROOT/install/lib/foo/opam
   Installing $TESTCASE_ROOT/install/lib/foo/foo.cmxs
   Installing install/bin/exec
+  Installing install/doc/foo/odoc-config.sexp
   Installing install/man/a-man-page-with-no-ext
   Installing install/man/man1/a-man-page.1
   Installing install/man/man3/another-man-page.3
@@ -34,6 +35,7 @@ Even if it is possible to ask for different libexecdir than libdir, the installe
   Installing $TESTCASE_ROOT/install2/lib/foo/opam
   Installing $TESTCASE_ROOT/install2/libexec/foo/foo.cmxs
   Installing install2/bin/exec
+  Installing install2/doc/foo/odoc-config.sexp
   Installing install2/man/a-man-page-with-no-ext
   Installing install2/man/man1/a-man-page.1
   Installing install2/man/man3/another-man-page.3
@@ -89,6 +91,10 @@ If prefix is passed, the default for libdir is `$prefix/lib`:
   Installing install/bin/exec
   Creating directory install/bin
   Copying _build/install/default/bin/exec to install/bin/exec (executable: true)
+  Removing (if it exists) install/doc/foo/odoc-config.sexp
+  Installing install/doc/foo/odoc-config.sexp
+  Creating directory install/doc/foo
+  Copying _build/install/default/doc/foo/odoc-config.sexp to install/doc/foo/odoc-config.sexp (executable: false)
   Removing (if it exists) install/man/a-man-page-with-no-ext
   Installing install/man/a-man-page-with-no-ext
   Creating directory install/man
@@ -155,6 +161,10 @@ If prefix is not passed, libdir defaults to the opam-prefix/lib directory:
   Installing $TESTCASE_ROOT/switch/bin/exec
   Creating directory $TESTCASE_ROOT/switch/bin
   Copying _build/install/default/bin/exec to $TESTCASE_ROOT/switch/bin/exec (executable: true)
+  Removing (if it exists) $TESTCASE_ROOT/switch/doc/foo/odoc-config.sexp
+  Installing $TESTCASE_ROOT/switch/doc/foo/odoc-config.sexp
+  Creating directory $TESTCASE_ROOT/switch/doc/foo
+  Copying _build/install/default/doc/foo/odoc-config.sexp to $TESTCASE_ROOT/switch/doc/foo/odoc-config.sexp (executable: false)
   Removing (if it exists) $TESTCASE_ROOT/switch/man/a-man-page-with-no-ext
   Installing $TESTCASE_ROOT/switch/man/a-man-page-with-no-ext
   Creating directory $TESTCASE_ROOT/switch/man
@@ -179,6 +189,7 @@ If prefix is not passed, libdir defaults to the opam-prefix/lib directory:
   Removing (if it exists) $TESTCASE_ROOT/switch/lib/foo/opam
   Removing (if it exists) $TESTCASE_ROOT/switch/lib/foo/foo.cmxs
   Removing (if it exists) $TESTCASE_ROOT/switch/bin/exec
+  Removing (if it exists) $TESTCASE_ROOT/switch/doc/foo/odoc-config.sexp
   Removing (if it exists) $TESTCASE_ROOT/switch/man/a-man-page-with-no-ext
   Removing (if it exists) $TESTCASE_ROOT/switch/man/man1/a-man-page.1
   Removing (if it exists) $TESTCASE_ROOT/switch/man/man3/another-man-page.3
@@ -186,6 +197,7 @@ If prefix is not passed, libdir defaults to the opam-prefix/lib directory:
   Removing directory (warn if not empty) $TESTCASE_ROOT/switch/man/man1
   Removing directory (warn if not empty) $TESTCASE_ROOT/switch/man
   Removing directory (warn if not empty) $TESTCASE_ROOT/switch/lib/foo
+  Removing directory (warn if not empty) $TESTCASE_ROOT/switch/doc/foo
   Removing directory (warn if not empty) $TESTCASE_ROOT/switch/bin
 
 If only libdir is passed, binaries are installed under prefix/bin and libraries
@@ -241,6 +253,10 @@ in libdir:
   Installing $TESTCASE_ROOT/switch/bin/exec
   Creating directory $TESTCASE_ROOT/switch/bin
   Copying _build/install/default/bin/exec to $TESTCASE_ROOT/switch/bin/exec (executable: true)
+  Removing (if it exists) $TESTCASE_ROOT/switch/doc/foo/odoc-config.sexp
+  Installing $TESTCASE_ROOT/switch/doc/foo/odoc-config.sexp
+  Creating directory $TESTCASE_ROOT/switch/doc/foo
+  Copying _build/install/default/doc/foo/odoc-config.sexp to $TESTCASE_ROOT/switch/doc/foo/odoc-config.sexp (executable: false)
   Removing (if it exists) $TESTCASE_ROOT/switch/man/a-man-page-with-no-ext
   Installing $TESTCASE_ROOT/switch/man/a-man-page-with-no-ext
   Creating directory $TESTCASE_ROOT/switch/man
@@ -265,12 +281,14 @@ in libdir:
   Removing (if it exists) /LIBDIR/foo/opam
   Removing (if it exists) /LIBDIR/foo/foo.cmxs
   Removing (if it exists) $TESTCASE_ROOT/switch/bin/exec
+  Removing (if it exists) $TESTCASE_ROOT/switch/doc/foo/odoc-config.sexp
   Removing (if it exists) $TESTCASE_ROOT/switch/man/a-man-page-with-no-ext
   Removing (if it exists) $TESTCASE_ROOT/switch/man/man1/a-man-page.1
   Removing (if it exists) $TESTCASE_ROOT/switch/man/man3/another-man-page.3
   Removing directory (warn if not empty) $TESTCASE_ROOT/switch/man/man3
   Removing directory (warn if not empty) $TESTCASE_ROOT/switch/man/man1
   Removing directory (warn if not empty) $TESTCASE_ROOT/switch/man
+  Removing directory (warn if not empty) $TESTCASE_ROOT/switch/doc/foo
   Removing directory (warn if not empty) $TESTCASE_ROOT/switch/bin
   Removing directory (warn if not empty) /LIBDIR/foo
 
@@ -326,6 +344,10 @@ This is the case when the prefix is implicit:
   Installing DESTDIR$TESTCASE_ROOT/switch/bin/exec
   Creating directory DESTDIR$TESTCASE_ROOT/switch/bin
   Copying _build/install/default/bin/exec to DESTDIR$TESTCASE_ROOT/switch/bin/exec (executable: true)
+  Removing (if it exists) DESTDIR$TESTCASE_ROOT/switch/doc/foo/odoc-config.sexp
+  Installing DESTDIR$TESTCASE_ROOT/switch/doc/foo/odoc-config.sexp
+  Creating directory DESTDIR$TESTCASE_ROOT/switch/doc/foo
+  Copying _build/install/default/doc/foo/odoc-config.sexp to DESTDIR$TESTCASE_ROOT/switch/doc/foo/odoc-config.sexp (executable: false)
   Removing (if it exists) DESTDIR$TESTCASE_ROOT/switch/man/a-man-page-with-no-ext
   Installing DESTDIR$TESTCASE_ROOT/switch/man/a-man-page-with-no-ext
   Creating directory DESTDIR$TESTCASE_ROOT/switch/man
@@ -390,6 +412,10 @@ But also when the prefix is explicit:
   Installing DESTDIR/prefix/bin/exec
   Creating directory DESTDIR/prefix/bin
   Copying _build/install/default/bin/exec to DESTDIR/prefix/bin/exec (executable: true)
+  Removing (if it exists) DESTDIR/prefix/doc/foo/odoc-config.sexp
+  Installing DESTDIR/prefix/doc/foo/odoc-config.sexp
+  Creating directory DESTDIR/prefix/doc/foo
+  Copying _build/install/default/doc/foo/odoc-config.sexp to DESTDIR/prefix/doc/foo/odoc-config.sexp (executable: false)
   Removing (if it exists) DESTDIR/prefix/man/a-man-page-with-no-ext
   Installing DESTDIR/prefix/man/a-man-page-with-no-ext
   Creating directory DESTDIR/prefix/man
@@ -454,6 +480,10 @@ DESTDIR can also be passed as a command line flag.
   Installing DESTDIR/prefix/bin/exec
   Creating directory DESTDIR/prefix/bin
   Copying _build/install/default/bin/exec to DESTDIR/prefix/bin/exec (executable: true)
+  Removing (if it exists) DESTDIR/prefix/doc/foo/odoc-config.sexp
+  Installing DESTDIR/prefix/doc/foo/odoc-config.sexp
+  Creating directory DESTDIR/prefix/doc/foo
+  Copying _build/install/default/doc/foo/odoc-config.sexp to DESTDIR/prefix/doc/foo/odoc-config.sexp (executable: false)
   Removing (if it exists) DESTDIR/prefix/man/a-man-page-with-no-ext
   Installing DESTDIR/prefix/man/a-man-page-with-no-ext
   Creating directory DESTDIR/prefix/man

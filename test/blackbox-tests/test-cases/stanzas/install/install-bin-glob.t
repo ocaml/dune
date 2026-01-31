@@ -30,6 +30,9 @@ Refer to the scripts with a glob.
   _build/install/default/bin
   _build/install/default/bin/foo.sh
   _build/install/default/bin/hello.sh
+  _build/install/default/doc
+  _build/install/default/doc/foo
+  _build/install/default/doc/foo/odoc-config.sexp
   _build/install/default/lib
   _build/install/default/lib/foo
   _build/install/default/lib/foo/META

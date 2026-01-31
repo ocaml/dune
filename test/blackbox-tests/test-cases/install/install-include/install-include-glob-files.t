@@ -34,3 +34,6 @@ Test that `(include ...)` composes with `(glob_files ...)`
     "_build/install/default/share/foo/dir2/foo/bar/e.txt" {"dir2/foo/bar/e.txt"}
     "_build/install/default/share/foo/dir2/foo/d.txt" {"dir2/foo/d.txt"}
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]

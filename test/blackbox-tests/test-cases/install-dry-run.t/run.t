@@ -46,6 +46,10 @@
   Installing _install/lib/mylib/mylib.cmxs
   Creating directory _install/lib/mylib
   Copying _build/install/default/lib/mylib/mylib.cmxs to _install/lib/mylib/mylib.cmxs (executable: true)
+  Removing (if it exists) _install/doc/mylib/odoc-config.sexp
+  Installing _install/doc/mylib/odoc-config.sexp
+  Creating directory _install/doc/mylib
+  Copying _build/install/default/doc/mylib/odoc-config.sexp to _install/doc/mylib/odoc-config.sexp (executable: false)
 
   $ dune uninstall --dry-run --prefix _install --display short 2>&1 | dune_cmd sanitize
   Removing (if it exists) _install/lib/mylib/META
@@ -59,4 +63,6 @@
   Removing (if it exists) _install/lib/mylib/mylib.ml
   Removing (if it exists) _install/lib/mylib/opam
   Removing (if it exists) _install/lib/mylib/mylib.cmxs
+  Removing (if it exists) _install/doc/mylib/odoc-config.sexp
   Removing directory (warn if not empty) _install/lib/mylib
+  Removing directory (warn if not empty) _install/doc/mylib

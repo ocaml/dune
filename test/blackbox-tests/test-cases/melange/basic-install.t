@@ -25,14 +25,18 @@ Test that we can install melange mode libraries
     "_build/install/default/lib/foo/melange/foo.cmj" {"melange/foo.cmj"}
     "_build/install/default/lib/foo/melange/foo.cmt" {"melange/foo.cmt"}
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]
 
   $ sed -E 's/lang dune [0-9.]+/lang dune XXX/' _build/install/default/lib/foo/dune-package
   (lang dune XXX)
   (name foo)
-  (sections (lib .))
+  (sections (lib .) (doc ../../doc/foo))
   (files
    (lib
-    (META dune-package foo.ml melange/foo.cmi melange/foo.cmj melange/foo.cmt)))
+    (META dune-package foo.ml melange/foo.cmi melange/foo.cmj melange/foo.cmt))
+   (doc (odoc-config.sexp)))
   (library
    (name foo)
    (kind normal)
@@ -51,4 +55,5 @@ Test that we can install melange mode libraries
   Installing prefix/lib/foo/melange/foo.cmi
   Installing prefix/lib/foo/melange/foo.cmj
   Installing prefix/lib/foo/melange/foo.cmt
+  Installing prefix/doc/foo/odoc-config.sexp
 

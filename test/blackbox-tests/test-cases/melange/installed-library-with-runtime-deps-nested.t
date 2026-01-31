@@ -40,6 +40,9 @@ nested more than the dune-project file
     "_build/install/default/lib/foo/melange/foo.cmt" {"melange/foo.cmt"}
     "_build/install/default/lib/foo/runtime.js"
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]
 
   $ cat lib/_build/install/default/lib/foo/dune-package | grep melange_runtime_deps
    (melange_runtime_deps runtime.js))

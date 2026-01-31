@@ -33,6 +33,7 @@ and for comparison here is the output with --display short:
   Installing another_prefix/lib/foo/foo.cmxa
   Installing another_prefix/lib/foo/foo.ml
   Installing another_prefix/lib/foo/foo.cmxs
+  Installing another_prefix/doc/foo/odoc-config.sexp
   $ dune uninstall --prefix another_prefix -p foo --display short
   Deleting another_prefix/lib/foo/META
   Deleting another_prefix/lib/foo/dune-package
@@ -44,4 +45,6 @@ and for comparison here is the output with --display short:
   Deleting another_prefix/lib/foo/foo.cmxa
   Deleting another_prefix/lib/foo/foo.ml
   Deleting another_prefix/lib/foo/foo.cmxs
+  Deleting another_prefix/doc/foo/odoc-config.sexp
   Deleting empty directory another_prefix/lib/foo
+  Deleting empty directory another_prefix/doc/foo

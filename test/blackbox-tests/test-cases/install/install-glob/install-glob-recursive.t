@@ -53,10 +53,16 @@ Add some files which don't match the glob.
     "_build/install/default/share/foo/b/b.txt" {"b/b.txt"}
     "_build/install/default/share/foo/b/c/c.txt" {"b/c/c.txt"}
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-config.sexp"
+  ]
 
   $ find _build/install | sort
   _build/install
   _build/install/default
+  _build/install/default/doc
+  _build/install/default/doc/foo
+  _build/install/default/doc/foo/odoc-config.sexp
   _build/install/default/lib
   _build/install/default/lib/foo
   _build/install/default/lib/foo/META

@@ -25,8 +25,8 @@ The test build should fails because the oxcaml extension is not available.
   2 |  (public_name param.intf)
   3 |  (name param_intf))
   Error: 'library_parameter' is available only when oxcaml is enabled in the
-  dune-project file. You must enable it using (using oxcaml 0.1) in your
-  dune-project file.
+  dune-project or workspace file. You must enable it using (using oxcaml 0.1)
+  in the file.
   Note however that oxcaml is experimental and might change without notice in
   the future.
   [1]

@@ -50,7 +50,13 @@ module Lang : sig
       what stanzas the user can write in [dune] files. *)
 
   val register : Syntax.t -> Stanza.Parser.t list -> unit
+
+  module Instance : sig
+    type t
+  end
 end
+
+val workspace_instance : syntax:Syntax.t -> version:Syntax.Version.t -> Lang.Instance.t
 
 module Extension : sig
   type 'a t
@@ -76,7 +82,21 @@ module Extension : sig
 
   (** Register experimental extensions that were deleted *)
   val register_deleted : name:string -> deleted_in:Syntax.Version.t -> unit
+
+  (** An instantiated extension with captured arguments *)
+  type instance
+
+  val parse_extensions
+    :  lang_version:Syntax.Version.t
+    -> (instance String.Map.t * instance list) Decoder.fields_parser
 end
+
+(** Interpret extensions and build parsing context. Returns the parsing context,
+    stanza parser, and extension arguments. *)
+val interpret_lang_and_extensions
+  :  lang:Lang.Instance.t
+  -> explicit_extensions:Extension.instance list
+  -> Univ_map.t * Stanza.t list Decoder.t * Univ_map.t
 
 (** Create an anonymous project at the given directory
 

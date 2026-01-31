@@ -7,6 +7,6 @@ dune-project
   File "dune", line 1, characters 0-5:
   1 | (mdx)
       ^^^^^
-  Error: 'mdx' is available only when mdx is enabled in the dune-project file.
-  You must enable it using (using mdx 0.1) in your dune-project file.
+  Error: 'mdx' is available only when mdx is enabled in the dune-project or
+  workspace file. You must enable it using (using mdx 0.1) in the file.
   [1]

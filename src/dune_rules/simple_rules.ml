@@ -119,6 +119,7 @@ let user_rule sctx ~dir ~expander (rule : Rule_conf.t) =
       let chdir = Expander.dir expander in
       Action_unexpanded.expand
         (snd rule.action)
+        Sandbox_config.no_special_requirements
         ~loc:(fst rule.action)
         ~chdir
         ~expander
@@ -304,6 +305,7 @@ let alias sctx ~dir ~expander (alias_conf : Alias_conf.t) =
          let chdir = Expander.dir expander in
          Action_unexpanded.expand_no_targets
            action
+           Sandbox_config.no_special_requirements
            ~loc:action_loc
            ~expander
            ~chdir

@@ -19,6 +19,7 @@ val remove_locs : t -> t
     - The [targets] mode is respected *)
 val expand
   :  t
+  -> Sandbox_config.t
   -> loc:Loc.t
   -> chdir:Path.Build.t
   -> deps:Dep_conf.t Bindings.t
@@ -31,6 +32,7 @@ val expand
     [Expander.Expanding_what.User_action_without_targets] *)
 val expand_no_targets
   :  t
+  -> Sandbox_config.t
   -> loc:Loc.t
   -> chdir:Path.Build.t
   -> deps:Dep_conf.t Bindings.t

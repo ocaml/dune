@@ -129,6 +129,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                 let chdir = Expander.dir expander in
                 Action_unexpanded.expand_no_targets
                   action
+                  Sandbox_config.no_special_requirements
                   ~loc
                   ~expander
                   ~chdir
@@ -157,6 +158,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                 ~targets:Targets_spec.Infer
                 ~targets_dir:dir
                 (Action_unexpanded.Redirect_out (Stdout, diff.file2, Normal, run_action))
+                Sandbox_config.no_special_requirements
               >>| Action_builder.With_targets.map_build
                     ~f:(Simple_rules.interpret_and_add_locks ~expander t.locks)
               >>= Super_context.add_rule_get_targets sctx ~dir ~mode ~loc

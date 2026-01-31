@@ -103,7 +103,6 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
           in
           let* runtest_alias = runtest_alias runtest_mode ~dir in
           let deps =
-            (* is this useless? we are going to infer the dependency anyway *)
             match custom_runner with
             | None -> t.deps
             | Some _ ->

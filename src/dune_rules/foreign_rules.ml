@@ -370,7 +370,11 @@ let build_o_files
           let extra_deps =
             let extra_deps, sandbox =
               match Foreign.Source.kind src with
-              | Stubs stubs -> Dep_conf_eval.unnamed stubs.extra_deps ~expander
+              | Stubs stubs ->
+                Dep_conf_eval.unnamed
+                  Sandbox_config.no_special_requirements
+                  stubs.extra_deps
+                  ~expander
               | Ctypes _ -> Action_builder.return (), Sandbox_config.default
             in
             (* We don't sandbox the C compiler, see comment in [build_file] about

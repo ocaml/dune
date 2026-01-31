@@ -378,7 +378,10 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
           |> List.map ~f:(fun (loc, pkg) ->
             Dep_conf.Package (Package.Name.to_string pkg |> String_with_vars.make_text loc))
         in
-        Dep_conf_eval.unnamed ~expander (mdx_package_deps @ mdx_generic_deps)
+        Dep_conf_eval.unnamed
+          Sandbox_config.no_special_requirements
+          ~expander
+          (mdx_package_deps @ mdx_generic_deps)
       in
       let+ action =
         Action_builder.with_no_targets deps

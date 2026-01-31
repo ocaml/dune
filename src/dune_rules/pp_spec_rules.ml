@@ -386,7 +386,12 @@ let make
     Module_name.Per_item.map preprocess ~f:(fun pp ->
       Preprocess.remove_future_syntax ~for_:Compiler pp ocaml.version)
   in
-  let preprocessor_deps, sandbox = Dep_conf_eval.unnamed preprocessor_deps ~expander in
+  let preprocessor_deps, sandbox =
+    Dep_conf_eval.unnamed
+      Sandbox_config.no_special_requirements
+      preprocessor_deps
+      ~expander
+  in
   let sandbox =
     match Sandbox_config.equal Sandbox_config.no_special_requirements sandbox with
     | false -> `Set_by_user sandbox

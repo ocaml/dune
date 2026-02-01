@@ -24,8 +24,9 @@ This command should succeed:
   +(* formatted *)
   Promoting _build/default/.formatted/ocamlformat.ml to ocamlformat.ml.
   Promoting _build/default/result/.formatted/foo.ml to result/foo.ml.
-  Error: failed to promote result/foo.ml
-  Permission denied
+  Error: Error promoting _build/default/result/.formatted/foo.ml to
+  result/foo.ml
+  Unix.Unix_error(Unix.EACCES, "unlink", "result/foo.ml")
   [1]
 
 Allow Dune to remove temporary files (calling Dune crashes without this):

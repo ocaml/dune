@@ -53,7 +53,14 @@ module File = struct
     (match Fpath.unlink (Path.Source.to_string dst) with
      | Success | Does_not_exist -> ()
      | Is_a_directory -> Path.rm_rf (Path.source dst)
-     | Error _ -> ());
+     | Error e ->
+       User_error.raise
+         [ Pp.textf
+             "Error promoting %s to %s"
+             (Path.to_string correction_file)
+             (Path.Source.to_string dst)
+         ; Exn.pp e
+         ]);
     let chmod = Path.Permissions.add Path.Permissions.write in
     Path.mkdir_p (Path.source (Path.Source.parent_exn dst));
     match Io.copy_file ~chmod ~src:correction_file ~dst:(Path.source dst) () with

@@ -26,6 +26,11 @@ type mkdir_p_result =
   | Already_exists
   | Created
 
+let dyn_of_mkdir_p_result = function
+  | Already_exists -> Dyn.variant "Already_exists" []
+  | Created -> Dyn.variant "Created" []
+;;
+
 let rec mkdir_p ?perms t_s =
   match mkdir ?perms t_s with
   | Created -> Created

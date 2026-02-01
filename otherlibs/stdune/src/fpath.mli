@@ -1,16 +1,18 @@
 (** Functions on paths that are represented as strings *)
 
+(** No parent directory, use [mkdir_p] if you want to create it too. *)
 type mkdir_result =
-  | Already_exists (** The directory already exists. No action was taken. *)
-  | Created (** The directory was created. *)
-  | Missing_parent_directory
-  (** No parent directory, use [mkdir_p] if you want to create it too. *)
+  [ `Already_exists (** The directory already exists. No action was taken. *)
+  | `Created (** The directory was created. *)
+  | `Missing_parent_directory
+  ]
 
 val mkdir : ?perms:int -> string -> mkdir_result
 
 type mkdir_p_result =
-  | Already_exists (** The directory already exists. No action was taken. *)
-  | Created (** The directory was created. *)
+  [ `Already_exists (** The directory already exists. No action was taken. *)
+  | `Created (** The directory was created. *)
+  ]
 
 val dyn_of_mkdir_p_result : mkdir_p_result -> Dyn.t
 val mkdir_p : ?perms:int -> string -> mkdir_p_result

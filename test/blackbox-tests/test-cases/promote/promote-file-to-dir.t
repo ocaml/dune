@@ -1,6 +1,6 @@
-Demonstrate issue https://github.com/ocaml/dune/issues/7383 with changing a file for
-promotion from a file to a directory whilst in the staging area. This causes Dune to get
-confused and stuck.
+Demonstrate issue https://github.com/ocaml/dune/issues/7383 with changing
+a file for promotion from a file to a directory whilst in the staging area.
+This caused Dune to get confused and stuck.
 
 Create a cram test:
 
@@ -40,11 +40,12 @@ Run the cram test, should fail and file should be promoted
   @@ -1 +1,2 @@
      $ echo hello
   +  hello
-  Error: rename(_build/default/my_cram.t/run.t.corrected): Not a directory
-  -> required by alias my_cram
-  -> required by alias runtest
   [1]
 
-We cannot promote:
+We can promote:
 
   $ dune promote
+  Promoting _build/default/my_cram.t/run.t.corrected to my_cram.t/run.t.
+
+  $ [ -f my_cram.t/run.t ] && echo promted to a file
+  promted to a file

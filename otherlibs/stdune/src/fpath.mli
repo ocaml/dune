@@ -16,6 +16,7 @@ type mkdir_p_result =
 
 val dyn_of_mkdir_p_result : mkdir_p_result -> Dyn.t
 val mkdir_p : ?perms:int -> string -> mkdir_p_result
+val mkdir_p_strict : ?perms:int -> string -> [ mkdir_p_result | `Not_a_dir ]
 
 (** [link src dst] creates a hardlink from [src] to [dst]. *)
 val link : string -> string -> unit

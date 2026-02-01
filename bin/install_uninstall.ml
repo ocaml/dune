@@ -357,17 +357,11 @@ module File_ops_real (W : sig
   ;;
 
   let mkdir_p p =
-    (* CR-someday amokhov: We should really change [Path.mkdir_p dir] to fail if
-       it turns out that [dir] exists and is not a directory. Even better, make
-       [Path.mkdir_p] return an explicit variant to deal with. *)
-    match Fpath.mkdir_p (Path.to_string p) with
-    | `Created -> ()
-    | `Already_exists ->
-      (match Path.is_directory p with
-       | true -> ()
-       | false ->
-         User_error.raise
-           [ Pp.textf "Please delete file %s manually." (Path.to_string_maybe_quoted p) ])
+    match Fpath.mkdir_p_strict (Path.to_string p) with
+    | `Created | `Already_exists -> ()
+    | `Not_a_dir ->
+      User_error.raise
+        [ Pp.textf "Please delete file %s manually." (Path.to_string_maybe_quoted p) ]
   ;;
 end
 

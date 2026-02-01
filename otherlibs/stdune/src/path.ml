@@ -634,8 +634,8 @@ let ensure_build_dir_exists () =
   | External p ->
     let p = External.to_string p in
     (match Fpath.mkdir ~perms p with
-     | Created | Already_exists -> ()
-     | Missing_parent_directory ->
+     | `Created | `Already_exists -> ()
+     | `Missing_parent_directory ->
        User_error.raise
          [ Pp.textf
              "Cannot create external build directory %s. Make sure that the parent dir \

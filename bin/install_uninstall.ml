@@ -361,8 +361,8 @@ module File_ops_real (W : sig
        it turns out that [dir] exists and is not a directory. Even better, make
        [Path.mkdir_p] return an explicit variant to deal with. *)
     match Fpath.mkdir_p (Path.to_string p) with
-    | Created -> ()
-    | Already_exists ->
+    | `Created -> ()
+    | `Already_exists ->
       (match Path.is_directory p with
        | true -> ()
        | false ->

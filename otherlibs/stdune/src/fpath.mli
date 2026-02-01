@@ -12,6 +12,7 @@ type mkdir_p_result =
   | Already_exists (** The directory already exists. No action was taken. *)
   | Created (** The directory was created. *)
 
+val dyn_of_mkdir_p_result : mkdir_p_result -> Dyn.t
 val mkdir_p : ?perms:int -> string -> mkdir_p_result
 
 (** [link src dst] creates a hardlink from [src] to [dst]. *)

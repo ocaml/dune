@@ -57,6 +57,15 @@ let rec mkdir_p ?perms t_s =
            Code_error.raise "failed to create parent directory" [ "t_s", Dyn.string t_s ]))
 ;;
 
+let mkdir_p_strict ?perms t_s =
+  match mkdir_p ?perms t_s with
+  | `Created -> `Created
+  | `Already_exists ->
+    (match (Unix.stat t_s).st_kind with
+     | S_DIR -> `Already_exists
+     | _ -> `Not_a_dir)
+;;
+
 let link src dst =
   match Unix.link src dst with
   | exception Unix.Unix_error (Unix.EUNKNOWNERR -1142, syscall, arg)

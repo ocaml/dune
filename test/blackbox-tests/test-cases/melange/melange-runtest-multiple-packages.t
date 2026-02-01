@@ -33,9 +33,8 @@ Show interaction of `dune runtest -p ..` and `(melange.emit ..)`
 Selecting only the package a should not build b
 
   $ dune runtest -p a
-  $ ls _build/default/b/out/b
-  x.js
+  $ test -e _build/default/b/out/b/x.js
+  [1]
 
   $ dune runtest -p b
-  $ ls _build/default/b/out/b
-  x.js
+  $ test -e _build/default/b/out/b/x.js

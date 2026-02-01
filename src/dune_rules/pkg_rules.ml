@@ -1940,6 +1940,7 @@ module Install_action = struct
              | Ok resolved ->
                (match Unix.lstat resolved with
                 | { Unix.st_kind = S_REG; _ } ->
+                  (* CR-someday rgrinberg: pass chmod:true here? *)
                   Fpath.unlink_exn path;
                   Io.portable_hardlink
                     ~src:(Path.of_string resolved)
@@ -2020,7 +2021,9 @@ module Install_action = struct
               |> Section.Map.of_list_multi
             in
             let+ () =
-              Async.async (fun () -> Fpath.unlink_exn (Path.to_string install_file))
+              Async.async (fun () ->
+                (* CR-someday rgrinberg: pass chmod:true here? *)
+                Fpath.unlink_exn (Path.to_string install_file))
             in
             map
         in

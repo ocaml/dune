@@ -301,7 +301,7 @@ let failed_to_delete_sandbox dir reason =
 
 let destroy t =
   maybe_async (fun () ->
-    try Path.rm_rf (Path.build t.dir) with
+    try Path.rm_rf ~chmod:true (Path.build t.dir) with
     | Sys_error e -> failed_to_delete_sandbox t.dir (Pp.verbatim e)
     | Unix.Unix_error (error, syscall, arg) ->
       failed_to_delete_sandbox

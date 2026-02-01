@@ -43,7 +43,7 @@
   $ dune promotion diff --diff-command 'diff -u' 2>&1 | sed -e 's/\t.*$//'
   File "a.expected", line 1, characters 0-0:
   --- a.expected
-  +++ _build/default/a.actual
+  +++ _build/.promotion-staging/a.expected
   @@ -1 +1 @@
   -A expected
   +A actual
@@ -66,7 +66,7 @@
   Warning: Nothing to promote for nothing-to-promote.txt.
   File "a.expected", line 1, characters 0-0:
   --- a.expected
-  +++ _build/default/a.actual
+  +++ _build/.promotion-staging/a.expected
   @@ -1 +1 @@
   -A expected
   +A actual

@@ -136,7 +136,7 @@ Reproduction case for #1772
   [1]
   $ rm -f _build/default/x.gen
   $ dune promote
-  Skipping promotion of _build/default/x.gen to x as the file is missing.
+  Promoting _build/default/x.gen to x.
   Promoting _build/default/y.gen to y.
 
 Tests for promote-into

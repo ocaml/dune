@@ -33,7 +33,7 @@ Demonstrate a promotion going missing because of sandboxing
   {
     "src": "_build/default/foo",
     "dst": "bar",
-    "how": "direct"
+    "how": "staged"
   }
   promotions:
   bar
@@ -51,9 +51,9 @@ Demonstrate a promotion going missing because of sandboxing
   {
     "src": "_build/default/foo",
     "dst": "bar",
-    "how": "direct"
+    "how": "staged"
   }
   promotions:
   bar
   promoting ...
-  Skipping promotion of _build/default/foo to bar as the file is missing.
+  Promoting _build/default/foo to bar.

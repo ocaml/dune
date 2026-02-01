@@ -50,7 +50,10 @@ module File = struct
   ;;
 
   let do_promote ~correction_file ~dst =
-    Fpath.unlink_no_err (Path.Source.to_string dst);
+    (match Fpath.unlink (Path.Source.to_string dst) with
+     | Success | Does_not_exist -> ()
+     | Is_a_directory -> Path.rm_rf (Path.source dst)
+     | Error _ -> ());
     let chmod = Path.Permissions.add Path.Permissions.write in
     Path.mkdir_p (Path.source (Path.Source.parent_exn dst));
     match Io.copy_file ~chmod ~src:correction_file ~dst:(Path.source dst) () with
@@ -108,7 +111,18 @@ let register_intermediate ~source_file ~correction_file =
   Dune_trace.emit Promote (fun () ->
     Dune_trace.Event.Promote.register `Staged src source_file);
   let staging = File.in_staging_area source_file in
-  Path.mkdir_p (Path.build (Option.value_exn (Path.Build.parent staging)));
+  let staging_dir = Path.Build.parent_exn staging in
+  let mkdir_p () = Fpath.mkdir_p_strict (Path.Build.to_string staging_dir) in
+  (match
+     match mkdir_p () with
+     | `Not_a_dir ->
+       Path.rm_rf (Path.build staging_dir);
+       mkdir_p ()
+     | x -> x
+   with
+   | `Already_exists | `Created -> ()
+   | `Not_a_dir ->
+     Code_error.raise "dir was deleted" [ "staging_dir", Path.Build.to_dyn staging_dir ]);
   Unix.rename (Path.Build.to_string correction_file) (Path.Build.to_string staging);
   db := { src; staging = Some staging; dst = source_file } :: !db
 ;;
@@ -155,18 +169,18 @@ let promote_one dst srcs =
   | [] -> assert false
   | (src, staging) :: others ->
     (* We used to remove promoted files from the digest cache, to force Dune
-         to redigest them on the next run. We did this because on OSX [mtime] is
-         not precise enough and if a file is modified and promoted quickly, it
-         looked like it hadn't changed even though it might have.
+       to redigest them on the next run. We did this because on OSX [mtime] is
+       not precise enough and if a file is modified and promoted quickly, it
+       looked like it hadn't changed even though it might have.
 
-         aalekseyev: This is probably unnecessary now, depending on when
-         [do_promote] runs (before or after [invalidate_cached_timestamps]).
+       aalekseyev: This is probably unnecessary now, depending on when
+       [do_promote] runs (before or after [invalidate_cached_timestamps]).
 
-         amokhov: I removed this logic. In the current state of the world, files
-         in the build directory should be redigested automatically (plus we do
-         not promote into the build directory anyway), and source digests should
-         be correctly invalidated via [fs_memo]. If that doesn't happen, we
-         should fix [fs_memo] instead of manually resetting the caches here. *)
+       amokhov: I removed this logic. In the current state of the world, files
+       in the build directory should be redigested automatically (plus we do
+       not promote into the build directory anyway), and source digests should
+       be correctly invalidated via [fs_memo]. If that doesn't happen, we
+       should fix [fs_memo] instead of manually resetting the caches here. *)
     File.promote { src; staging; dst };
     List.iter others ~f:(fun (path, _staging) ->
       Console.print

@@ -86,7 +86,8 @@ module File = struct
                (Path.Source.to_string_maybe_quoted dst)
            else
              Pp.textf
-               "Skipping promotion of %s to %s as the %s is missing."
+               "%S Skipping promotion of %s to %s as the %s is missing."
+               (Path.to_string correction_file)
                (Path.to_string_maybe_quoted (Path.build src))
                (Path.Source.to_string_maybe_quoted dst)
                (match staging with
@@ -106,14 +107,7 @@ let db : db ref = ref []
 let clear_cache () = db := []
 let () = Hooks.End_of_build.always clear_cache
 
-let register_dep ~source_file ~correction_file =
-  let src = snd (Path.Build.split_sandbox_root correction_file) in
-  Dune_trace.emit Promote (fun () ->
-    Dune_trace.Event.Promote.register `Direct src source_file);
-  db := { src; staging = None; dst = source_file } :: !db
-;;
-
-let register_intermediate ~source_file ~correction_file =
+let register_intermediate how ~source_file ~correction_file =
   let src = snd (Path.Build.split_sandbox_root correction_file) in
   Dune_trace.emit Promote (fun () ->
     Dune_trace.Event.Promote.register `Staged src source_file);
@@ -130,7 +124,15 @@ let register_intermediate ~source_file ~correction_file =
    | `Already_exists | `Created -> ()
    | `Not_a_dir ->
      Code_error.raise "dir was deleted" [ "staging_dir", Path.Build.to_dyn staging_dir ]);
-  Unix.rename (Path.Build.to_string correction_file) (Path.Build.to_string staging);
+  (match how with
+   | `Move ->
+     Unix.rename (Path.Build.to_string correction_file) (Path.Build.to_string staging)
+   | `Copy ->
+     Io.copy_file
+       ~chmod:Path.Permissions.(add write)
+       ~src:(Path.build correction_file)
+       ~dst:(Path.build staging)
+       ());
   db := { src; staging = Some staging; dst = source_file } :: !db
 ;;
 

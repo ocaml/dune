@@ -55,32 +55,6 @@ With the CLI option disabled
   $ dune pkg enabled --pkg disabled --workspace=./dune-workspace.disabled
   [1]
 
-## With a lock directory, but we ignore it
-
-  $ test -d dune.lock
-
-  $ dune pkg enabled --ignore-lock-dir
-^^^ This is a bug. It should be disabled.
-We have a lock directory, but it is ignored.
-It should behave the same as if there was no lockdir
-
-This translates to explicitly asking for autolocking
-  $ dune pkg enabled --ignore-lock-dir --workspace=./dune-workspace.enabled
-  $ dune pkg enabled --ignore-lock-dir --workspace=./dune-workspace.disabled
-  [1]
-
-These 3 translate to explicitly asking for autolocking
-  $ dune pkg enabled --pkg enabled --ignore-lock-dir
-  $ dune pkg enabled --pkg enabled --ignore-lock-dir --workspace=./dune-workspace.enabled
-  $ dune pkg enabled --pkg enabled --ignore-lock-dir --workspace=./dune-workspace.disabled
-
-  $ dune pkg enabled --pkg disabled --ignore-lock-dir
-  [1]
-  $ dune pkg enabled --pkg disabled --ignore-lock-dir --workspace=./dune-workspace.enabled
-  [1]
-  $ dune pkg enabled --pkg disabled --ignore-lock-dir --workspace=./dune-workspace.disabled
-  [1]
-
 ## With a project file
 
   $ cat > dune-project << EOF

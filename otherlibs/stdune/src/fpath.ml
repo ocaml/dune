@@ -281,11 +281,12 @@ let traverse
   let handle_kind ~dir fname kind stack acc =
     match (kind : Unix.file_kind) with
     | S_DIR ->
-      let acc = on_dir ~dir fname acc in
-      let stack =
-        if enter_dir ~dir fname then Filename.concat dir fname :: stack else stack
-      in
-      stack, acc
+      (match enter_dir ~dir fname with
+       | false -> stack, acc
+       | true ->
+         let acc = on_dir ~dir fname acc in
+         let stack = Filename.concat dir fname :: stack in
+         stack, acc)
     | S_REG -> stack, on_file ~dir fname acc
     | kind -> stack, on_other ~dir fname kind acc
   in

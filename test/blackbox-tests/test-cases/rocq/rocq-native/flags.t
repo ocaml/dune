@@ -23,39 +23,9 @@ Test case: default flags
   > EOF
 
   $ runFlags
-  "--config"
-  "dep"
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "-dyndep"
-  "opt"
-  "-vos"
-  "foo.v"
-  "compile"
-  "-q"
-  "-w"
-  "-deprecated-native-compiler-option"
-  "-native-output-dir"
-  "."
-  "-native-compiler"
-  "on"
-  "-nI"
-  "rocq-runtime/kernel"
-  "-nI"
-  "."
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "foo.v"
+  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
+  {"name":"rocq","args":["compile","-q","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
 
 TC: :standard
 
@@ -66,39 +36,9 @@ TC: :standard
   > EOF
 
   $ runFlags
-  "--config"
-  "dep"
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "-dyndep"
-  "opt"
-  "-vos"
-  "foo.v"
-  "compile"
-  "-q"
-  "-w"
-  "-deprecated-native-compiler-option"
-  "-native-output-dir"
-  "."
-  "-native-compiler"
-  "on"
-  "-nI"
-  "rocq-runtime/kernel"
-  "-nI"
-  "."
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "foo.v"
+  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
+  {"name":"rocq","args":["compile","-q","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
 
 TC: override :standard
 
@@ -109,38 +49,9 @@ TC: override :standard
   > EOF
 
   $ runFlags
-  "--config"
-  "dep"
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "-dyndep"
-  "opt"
-  "-vos"
-  "foo.v"
-  "compile"
-  "-w"
-  "-deprecated-native-compiler-option"
-  "-native-output-dir"
-  "."
-  "-native-compiler"
-  "on"
-  "-nI"
-  "rocq-runtime/kernel"
-  "-nI"
-  "."
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "foo.v"
+  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
+  {"name":"rocq","args":["compile","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
 
 TC: add to :standard
 
@@ -151,40 +62,9 @@ TC: add to :standard
   > EOF
 
   $ runFlags
-  "--config"
-  "dep"
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "-dyndep"
-  "opt"
-  "-vos"
-  "foo.v"
-  "compile"
-  "-q"
-  "-type-in-type"
-  "-w"
-  "-deprecated-native-compiler-option"
-  "-native-output-dir"
-  "."
-  "-native-compiler"
-  "on"
-  "-nI"
-  "rocq-runtime/kernel"
-  "-nI"
-  "."
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "foo.v"
+  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
+  {"name":"rocq","args":["compile","-q","-type-in-type","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
 
 TC: extend in workspace + override standard
 
@@ -200,39 +80,9 @@ TC: extend in workspace + override standard
   > EOF
 
   $ runFlags
-  "--config"
-  "dep"
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "-dyndep"
-  "opt"
-  "-vos"
-  "foo.v"
-  "compile"
-  "-type-in-type"
-  "-w"
-  "-deprecated-native-compiler-option"
-  "-native-output-dir"
-  "."
-  "-native-compiler"
-  "on"
-  "-nI"
-  "rocq-runtime/kernel"
-  "-nI"
-  "."
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "foo.v"
+  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
+  {"name":"rocq","args":["compile","-type-in-type","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
 
 TC: extend in workspace + override standard
 
@@ -242,40 +92,9 @@ TC: extend in workspace + override standard
   > EOF
 
   $ runFlags
-  "--config"
-  "dep"
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "-dyndep"
-  "opt"
-  "-vos"
-  "foo.v"
-  "compile"
-  "-q"
-  "-type-in-type"
-  "-w"
-  "-deprecated-native-compiler-option"
-  "-native-output-dir"
-  "."
-  "-native-compiler"
-  "on"
-  "-nI"
-  "rocq-runtime/kernel"
-  "-nI"
-  "."
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "foo.v"
+  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
+  {"name":"rocq","args":["compile","-q","-type-in-type","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
 
 TC: extend in dune (env) + override standard
 
@@ -286,39 +105,9 @@ TC: extend in dune (env) + override standard
   > EOF
 
   $ runFlags
-  "--config"
-  "dep"
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "-dyndep"
-  "opt"
-  "-vos"
-  "foo.v"
-  "compile"
-  "-type-in-type"
-  "-w"
-  "-deprecated-native-compiler-option"
-  "-native-output-dir"
-  "."
-  "-native-compiler"
-  "on"
-  "-nI"
-  "rocq-runtime/kernel"
-  "-nI"
-  "."
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "foo.v"
+  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
+  {"name":"rocq","args":["compile","-type-in-type","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
 
 TC: extend in dune (env) + standard
 
@@ -329,41 +118,9 @@ TC: extend in dune (env) + standard
   > EOF
 
   $ runFlags
-  "--config"
-  "dep"
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "-dyndep"
-  "opt"
-  "-vos"
-  "foo.v"
-  "compile"
-  "-q"
-  "-type-in-type"
-  "-type-in-type"
-  "-w"
-  "-deprecated-native-compiler-option"
-  "-native-output-dir"
-  "."
-  "-native-compiler"
-  "on"
-  "-nI"
-  "rocq-runtime/kernel"
-  "-nI"
-  "."
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "foo.v"
+  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
+  {"name":"rocq","args":["compile","-q","-type-in-type","-type-in-type","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
 
 TC: extend in dune (env) + workspace + standard
 
@@ -379,38 +136,6 @@ TC: extend in dune (env) + workspace + standard
   > EOF
 
   $ runFlags
-  "--config"
-  "dep"
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "-dyndep"
-  "opt"
-  "-vos"
-  "foo.v"
-  "compile"
-  "-q"
-  "-type-in-type"
-  "-bt"
-  "-w"
-  "-deprecated-native-compiler-option"
-  "-native-output-dir"
-  "."
-  "-native-compiler"
-  "on"
-  "-nI"
-  "rocq-runtime/kernel"
-  "-nI"
-  "."
-  "-boot"
-  "-R"
-  "coq/theories"
-  "Corelib"
-  "-R"
-  "."
-  "foo"
-  "foo.v"
+  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
+  {"name":"rocq","args":["compile","-q","-type-in-type","-bt","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}

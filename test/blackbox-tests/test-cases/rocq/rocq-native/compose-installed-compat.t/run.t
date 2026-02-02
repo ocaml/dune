@@ -52,15 +52,15 @@ Now we check the flags that were passed to coqdep and coqc:
 
   $ dune trace cat | jq 'include "dune"; coqcCoqdepFlags'
   {
-    "name": "finish",
+    "name": "rocq",
     "args": [
       "dep",
       "-boot",
       "-R",
-      "$TESTCASE_ROOT/lib/coq/theories",
+      "coq/theories",
       "Corelib",
       "-Q",
-      "$TESTCASE_ROOT/lib/coq/user-contrib/B",
+      "coq/user-contrib/B",
       "B",
       "-R",
       ".",
@@ -72,7 +72,7 @@ Now we check the flags that were passed to coqdep and coqc:
     ]
   }
   {
-    "name": "finish",
+    "name": "rocq",
     "args": [
       "compile",
       "-q",
@@ -83,15 +83,15 @@ Now we check the flags that were passed to coqdep and coqc:
       "-native-compiler",
       "on",
       "-nI",
-      "/home/runner/work/dune/dune/_opam/lib/rocq-runtime/kernel",
+      "rocq-runtime/kernel",
       "-nI",
       ".",
       "-boot",
       "-R",
-      "$TESTCASE_ROOT/lib/coq/theories",
+      "coq/theories",
       "Corelib",
       "-Q",
-      "$TESTCASE_ROOT/lib/coq/user-contrib/B",
+      "coq/user-contrib/B",
       "B",
       "-R",
       ".",

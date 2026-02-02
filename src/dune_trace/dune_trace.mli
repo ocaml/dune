@@ -25,6 +25,7 @@ module Category : sig
     | Digest
     | Artifact_substitution
     | Thread
+    | Runtime
 end
 
 module Event : sig
@@ -317,6 +318,7 @@ val always_emit : Event.t -> unit
 val enabled : Category.t -> bool
 val emit : ?buffered:bool -> Category.t -> (unit -> Event.t) -> unit
 val emit_all : ?buffered:bool -> Category.t -> (unit -> Event.t list) -> unit
+val emit_runtime : unit -> unit
 val flush : unit -> unit
 val reset_alloc_profile : unit -> unit
 val capture_alloc_profile : [ `Build of int | `Exit ] -> Event.t option

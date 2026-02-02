@@ -35,7 +35,7 @@ module Memprof = struct
   let start ~sampling_rate:_ ?callstack_size:_ (_ : (_, _) tracker) = ()
 end
 
-[%%if ocaml_version >= (5, 4, 0)]
+[%%if ocaml_version >= (5, 4, 0) && not_defined_permissive oxcaml]
 
 open Gc
 
@@ -192,7 +192,7 @@ let start () =
   t
 ;;
 
-[%%if ocaml_version >= (5, 4, 0)]
+[%%if ocaml_version >= (5, 4, 0) && not_defined_permissive oxcaml]
 
 let stop t =
   Option.iter t.profile ~f:(fun profile ->

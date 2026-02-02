@@ -1,11 +1,22 @@
 open Stdune
 
+type runtime_clock =
+  { dune : Time.t
+  ; runtime : int64
+  }
+
+type runtime =
+  { callbacks : Runtime.Callbacks.t
+  ; cursor : Runtime.cursor
+  }
+
 type t =
   { fd : Fd.t
   ; buf : Buffer.t
   ; cats : Category.Set.t
   ; mutex : Mutex.t
   ; alloc : Alloc.t option
+  ; runtime : runtime option
   }
 
 let fd t = t.fd
@@ -57,27 +68,6 @@ let close t =
       Fd.close t.fd))
 ;;
 
-let create how =
-  let buf = Buffer.create (1 lsl 16) in
-  let cats = Category.enabled () in
-  let fd =
-    match how with
-    | `Fd fd -> fd
-    | `Path path ->
-      Unix.openfile
-        (Path.to_string path)
-        [ O_TRUNC; O_APPEND; O_CLOEXEC; O_WRONLY; O_CREAT ]
-        0o644
-      |> Fd.unsafe_of_unix_file_descr
-  in
-  { fd
-  ; cats
-  ; buf
-  ; mutex = Mutex.create ()
-  ; alloc = (if Category.Set.mem cats Alloc then Some (Alloc.start ()) else None)
-  }
-;;
-
 let to_buffer t sexp =
   let rec loop = function
     | Csexp.Atom str ->
@@ -113,6 +103,15 @@ let flush t =
   Mutex.protect t.mutex (fun () -> if not (Fd.is_closed t.fd) then flush_unlocked t)
 ;;
 
+let emit_runtime t =
+  Option.iter t.runtime ~f:(fun { callbacks; cursor } ->
+    (* Avoid recording allocations done while consuming runtime events. *)
+    Runtime.pause ();
+    Exn.protect ~finally:Runtime.resume ~f:(fun () ->
+      ignore (Runtime.read_poll cursor callbacks None);
+      flush t))
+;;
+
 let start t k : Event.Async.t option =
   match t with
   | None -> None
@@ -132,4 +131,87 @@ let finish t event =
     in
     let event = Event.Event.complete ?args ~start ~dur cat ~name in
     emit t event
+;;
+
+let setup_runtime ~events_dir =
+  Option.iter events_dir ~f:(fun path ->
+    let dir = Path.relative (Path.parent_exn path) ".runtime-events" in
+    Path.mkdir_p dir;
+    Unix.putenv "OCAML_RUNTIME_EVENTS_DIR" (Path.to_absolute_filename dir));
+  Runtime.start ();
+  Runtime.pause ()
+;;
+
+let runtime_callbacks =
+  (* Runtime event timestamps use the runtime's clock rather than the wall-clock
+    timestamps used by dune trace. Keep one sample from both clocks to translate
+    runtime timestamps into the trace clock. *)
+  let runtime_clock_base clock timestamp =
+    match !clock with
+    | Some base -> base
+    | None ->
+      let runtime =
+        match Runtime.current_timestamp () with
+        | None -> timestamp
+        | Some now -> Runtime.Timestamp.to_int64 now
+      in
+      let base = { dune = Time.now (); runtime } in
+      clock := Some base;
+      base
+  in
+  let time_of_runtime_timestamp clock timestamp =
+    let timestamp = Runtime.Timestamp.to_int64 timestamp in
+    let { dune; runtime } = runtime_clock_base clock timestamp in
+    let delta = Int64.sub timestamp runtime |> Int64.to_int |> Time.Span.of_ns in
+    Time.add dune delta
+  in
+  fun t ->
+    let clock = ref None in
+    let emit event = emit (Lazy.force t) ~buffered:true event in
+    let time timestamp = time_of_runtime_timestamp clock timestamp in
+    Runtime.Callbacks.create
+      ~runtime_begin:(fun _ timestamp phase ->
+        emit (Event.runtime (time timestamp) `Begin phase))
+      ~runtime_end:(fun _ timestamp phase ->
+        emit (Event.runtime (time timestamp) `End phase))
+      ~runtime_counter:(fun _ timestamp name value ->
+        emit (Event.runtime_counter (time timestamp) name value))
+      ()
+;;
+
+let create how =
+  let cats = Category.enabled () in
+  let runtime_enabled = Category.Set.mem cats Runtime in
+  if runtime_enabled
+  then
+    setup_runtime
+      ~events_dir:
+        (match how with
+         | `Fd _ -> None
+         | `Path path -> Some path);
+  let fd =
+    match how with
+    | `Fd fd -> fd
+    | `Path path ->
+      Unix.openfile
+        (Path.to_string path)
+        [ O_TRUNC; O_APPEND; O_CLOEXEC; O_WRONLY; O_CREAT ]
+        0o644
+      |> Fd.unsafe_of_unix_file_descr
+  in
+  let buf = Buffer.create (1 lsl 16) in
+  let alloc = if Category.Set.mem cats Alloc then Some (Alloc.start ()) else None in
+  let rec t =
+    lazy { fd; cats; buf; mutex = Mutex.create (); alloc; runtime = Lazy.force runtime }
+  and runtime =
+    lazy
+      (match runtime_enabled with
+       | false -> None
+       | true ->
+         let callbacks = runtime_callbacks t in
+         Some { callbacks; cursor = Runtime.create_cursor None })
+  in
+  let t = Lazy.force t in
+  if runtime_enabled then Runtime.resume ();
+  t
 ;;

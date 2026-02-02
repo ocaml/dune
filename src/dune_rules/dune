@@ -8,6 +8,7 @@
   csexp
   action_plugin
   dune_action_plugin
+  dune_config_file
   dune_console
   dune_digest
   dune_engine

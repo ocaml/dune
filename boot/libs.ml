@@ -363,24 +363,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_patch"
-    ; main_module_name = Some "Dune_patch"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "otherlibs/dune-site/src/private"
-    ; main_module_name = Some "Dune_site_private"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/scheme"
-    ; main_module_name = Some "Scheme"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/dune_threaded_console"
     ; main_module_name = Some "Dune_threaded_console"
     ; include_subdirs = No
@@ -419,6 +401,24 @@ let local_libraries =
     }
   ; { path = "src/dune_config_file"
     ; main_module_name = Some "Dune_config_file"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/dune_patch"
+    ; main_module_name = Some "Dune_patch"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "otherlibs/dune-site/src/private"
+    ; main_module_name = Some "Dune_site_private"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/scheme"
+    ; main_module_name = Some "Scheme"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None

@@ -289,8 +289,10 @@ let lock_dirs_of_workspace (workspace : Workspace.t) =
 
 let lock_dir_active ctx =
   let open Memo.O in
-  let* workspace = Workspace.workspace () in
-  match workspace.config.pkg_enabled with
+  let* { config = { Dune_config_file.Dune_config.pkg_enabled; _ }; _ } =
+    Workspace.workspace ()
+  in
+  match pkg_enabled with
   | Set (_, `Enabled) -> Memo.return true
   | Set (_, `Disabled) -> Memo.return false
   | Unset ->

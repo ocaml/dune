@@ -92,14 +92,6 @@
                 );
               })
               melange.overlays.default
-              (self: super: {
-                coq_8_16_native = super.coq_8_16.overrideAttrs (a: {
-                  configureFlags = [
-                    "-native-compiler"
-                    "yes"
-                  ];
-                });
-              })
             ];
           in
           f pkgs
@@ -410,7 +402,7 @@
           slim = makeDuneDevShell {
             meta.description = ''
               Provides a minimal shell environment built purely from nixpkgs
-              that can run the testsuite (except the coq / melange tests).
+              that can run the testsuite (except the melange tests).
             '';
           };
           slim-melange = makeDuneDevShell {
@@ -419,7 +411,7 @@
             ];
             meta.description = ''
               Provides a minimal shell environment built purely from nixpkgs
-              that can run the testsuite (except the coq tests).
+              that can run the test suite
             '';
           };
           slim-opam =
@@ -432,28 +424,6 @@
                 dependencies to run the testsuite.";
               '';
             };
-
-          coq = pkgs.mkShell {
-            inherit INSIDE_NIX;
-            nativeBuildInputs = (testNativeBuildInputs pkgs);
-            # Coq requires OCaml 4.x
-            inputsFrom = [
-              pkgs.ocaml-ng.ocamlPackages_4_14.dune_3
-            ];
-            buildInputs = with pkgs; [
-              ocaml-ng.ocamlPackages_4_14.csexp
-              ocaml-ng.ocamlPackages_4_14.pp
-              ocaml-ng.ocamlPackages_4_14.re
-              ocaml-ng.ocamlPackages_4_14.spawn
-              ocaml-ng.ocamlPackages_4_14.uutf
-              coq_8_16_native
-              coq_8_16_native.ocamlPackages.findlib
-            ];
-            meta.description = ''
-              Provides a minimal shell environment built purely from nixpkgs
-              that can build Dune and the Coq testsuite.
-            '';
-          };
 
           rocq = makeDuneDevShell {
             extraBuildInputs = pkgs: [

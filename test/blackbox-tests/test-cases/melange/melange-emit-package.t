@@ -80,14 +80,11 @@ we can still build my-ppx independently
 
   $ dune build -p my-ppx
 
-and fails if it can't resolve libraries to build the alias
+and fails to build any `@melange`-related stuff, because none is defined for
+the package `my-ppx`
 
   $ dune build @melange -p my-ppx
-  File "test/dune", line 6, characters 12-19:
-  6 |  (libraries mel-foo))
-                  ^^^^^^^
-  Error: Library "mel-foo" not found.
-  -> required by _build/default/test/js-out/test/test_entry.js
-  -> required by alias test/melange
+  Error: Alias "melange" specified on the command line is empty.
+  It is not defined in . or any of its descendants.
   [1]
 

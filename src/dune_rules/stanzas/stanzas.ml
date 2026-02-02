@@ -135,6 +135,7 @@ let stanza_package stanza =
      | Tests.T { package = Some package; _ } -> Some package
      | Coq_stanza.Theory.T { package = Some package; _ } -> Some package
      | Rocq_stanza.Theory.T { package = Some package; _ } -> Some package
+     | Melange_stanzas.Emit.T { package = Some package; _ } -> Some package
      | _ -> None)
     |> Option.map ~f:Package.id
   with

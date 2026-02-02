@@ -6,10 +6,10 @@ First we create a wrapper around coqc so we can make it fail. It should only fai
   $ mkdir bin
   $ cat > bin/rocq <<'EOF'
   > #!/bin/sh
-  > if    [ $1 = --config ]        && [ -n "$FAIL_CONFIG" ]; then
+  > if    [ "$1" = --config ] && [ -n "$FAIL_CONFIG" ]; then
   >   echo "rocq --config has failed for some reason" >&2
   >   exit 1
-  > elif  [ $1 = --print-version ] && [ -n "$FAIL_VERSION" ]; then
+  > elif  [ "$1" = --print-version ] && [ -n "$FAIL_VERSION" ]; then
   >   echo "rocq --print-version has failed for some reason" >&2
   >   exit 1
   > fi
@@ -127,7 +127,7 @@ however a failing --print-version will not.
   > EOF
 
 Should fail.
-  $ export coqlib="$(rocq -config | grep COQLIB | sed 's/COQLIB=//')"
+  $ export coqlib="$(rocq --config | grep COQLIB | sed 's/COQLIB=//')"
   $ FAIL_CONFIG=1 \
   > dune build @config 
   File "dune", line 4, characters 8-23:

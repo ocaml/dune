@@ -133,15 +133,6 @@ Coq package should fail:
   -> required by _build/install/default/lib/coq/user-contrib/Common/Foo.glob
   -> required by _build/default/example-coq.install
   -> required by alias install
-  File "coq/extracted/dune", line 6, characters 11-17:
-  6 |  (theories Stdlib Common))
-                 ^^^^^^
-  Theory "Stdlib" has not been found.
-  -> required by _build/default/coq/extracted/CRelationClasses.ml
-  -> required by _build/default/coq/CRelationClasses.ml
-  -> required by _build/install/default/lib/example-coq/coq/CRelationClasses.ml
-  -> required by _build/default/example-coq.install
-  -> required by alias install
   [1]
   $ cat example-coq.install
   cat: example-coq.install: No such file or directory

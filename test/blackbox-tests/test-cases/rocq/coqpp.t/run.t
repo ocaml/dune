@@ -67,7 +67,7 @@ Same again but with one .mlg file removed
   > EOF
 
   $ dune build
-  File "marg.mlg", line 3, characters 12-20:
+  File "marg.mlg", line 3, characters 12-16:
   Error: Unbound module Gram
   [1]
 

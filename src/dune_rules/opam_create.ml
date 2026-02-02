@@ -135,30 +135,6 @@ let rec constraint_of_blang (blang : Blang.t) : Package_constraint.t =
   | Expr b -> Bvar (var_of_sw b)
 ;;
 
-let depends_field t =
-  let is_doc_depend =
-    Package_dependency.has_constraint_on Package_variable_name.with_doc
-  in
-  let constraint_if_needed dep var =
-    match Package_dependency.has_constraint_on var dep with
-    | true -> []
-    | false -> [ Package_constraint.Bvar (Variable var) ]
-  in
-  let doc_depends, depends = t |> Package.depends |> List.partition ~f:is_doc_depend in
-  let doc_depends =
-    doc_depends
-    |> List.map ~f:(fun (doc_dep : Package_dependency.t) ->
-      let constraint_ =
-        let original = Option.to_list doc_dep.constraint_ in
-        let with_doc = constraint_if_needed doc_dep Package_variable_name.with_doc in
-        let post = constraint_if_needed doc_dep Package_variable_name.post in
-        Some (Package_constraint.And (original @ with_doc @ post))
-      in
-      { doc_dep with constraint_ })
-  in
-  depends @ doc_depends
-;;
-
 let package_fields package ~project =
   let open Opam_file.Create in
   let tags =
@@ -173,7 +149,7 @@ let package_fields package ~project =
       | Some v -> Some (k, string v))
   in
   let dep_fields =
-    [ "depends", depends_field package
+    [ "depends", Package.depends package
     ; "conflicts", Package.conflicts package
     ; "depopts", Package.depopts package
     ]

@@ -89,23 +89,42 @@ The same file, but in the current version:
     (action
      (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))
 
-In multi-line strings, newlines are escaped, but their syntax is not preserved.
+For dune-lang >= 3.24, multi-line block strings are preserved:
 
-  $ dune format-dune-file <<EOF
+  $ dune format-dune-file --dune-version 3.24 <<EOF
   > (echo "\> multi
   >       "\> line
   >       "\> string
   >       "\| string
   > )
-  > 
+  > EOF
+  (echo
+   "\> multi
+   "\> line
+   "\> string
+   "\| string
+   )
+
+For older versions, multi-line strings are escaped:
+
+  $ dune format-dune-file --dune-version 3.23 <<EOF
+  > (echo "\> multi
+  >       "\> line
+  >       "\> string
+  >       "\| string
+  > )
+  > EOF
+  (echo "multi\nline\nstring\nstring\n")
+
+Regular quoted strings with embedded newlines are always escaped:
+
+  $ dune format-dune-file <<EOF
   > (echo "\
   > multi
   > line
   > string
   > ")
   > EOF
-  (echo "multi\nline\nstring\nstring\n")
-  
   (echo "multi\nline\nstring\n")
 
 Comments are preserved.
@@ -309,3 +328,55 @@ within Dune is always the directory directly containing the file.
    bbbbbbbbbbbbb
    ccccccccccccccccc
    dddddddddddddddddd)
+
+Block strings can be used for multi-line bash commands (>= 3.24):
+
+  $ dune format-dune-file --dune-version 3.24 <<EOF
+  > (bash "\| long command
+  >       "\| with continuation
+  > )
+  > EOF
+  (bash
+   "\| long command
+   "\| with continuation
+   )
+
+Raw block strings preserve special characters:
+
+  $ dune format-dune-file --dune-version 3.24 <<EOF
+  > (bash "\> echo "hello"
+  >       "\> echo "world"
+  > )
+  > EOF
+  (bash
+   "\> echo "hello"
+   "\> echo "world"
+   )
+
+Using block strings for long bash commands (>= 3.24) preserves line breaks:
+
+  $ dune format-dune-file --dune-version 3.24 <<EOF
+  > (rule
+  >  (targets jumptbl.h)
+  >  (mode fallback)
+  >  (deps
+  >   (:h instruct.h))
+  >  (action
+  >   (with-stdout-to
+  >    %{targets}
+  >    (bash "\> cat %{h} | tr -d '\r' |
+  >          "\>   sed -n -e '/^  /s/ \([A-Z]\)/ \&\&lbl_\1/gp' -e '/^}/q'
+  > ))))
+  > EOF
+  (rule
+   (targets jumptbl.h)
+   (mode fallback)
+   (deps
+    (:h instruct.h))
+   (action
+    (with-stdout-to
+     %{targets}
+     (bash
+      "\> cat %{h} | tr -d '\r' |
+      "\>   sed -n -e '/^  /s/ \([A-Z]\)/ \&\&lbl_\1/gp' -e '/^}/q'
+      ))))

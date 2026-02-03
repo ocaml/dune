@@ -96,7 +96,7 @@ let decode_manually f =
   | Atom (loc, A s) -> literal ~quoted:false ~loc s
   | Quoted_string (loc, s) -> literal ~quoted:true ~loc s
   | List (loc, _) -> User_error.raise ~loc [ Pp.text "Unexpected list" ]
-  | Template { quoted; loc; parts } ->
+  | Template { quoted; loc; parts; _ } ->
     { quoted
     ; loc
     ; parts =

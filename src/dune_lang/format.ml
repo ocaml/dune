@@ -12,17 +12,54 @@ let parse lb =
   else Sexps (Parser.parse lb ~mode:Cst)
 ;;
 
-let can_be_displayed_wrapped =
+let block_string_min_version = 3, 24
+
+let can_be_displayed_wrapped ~version =
   List.for_all ~f:(fun (c : Cst.t) ->
     match c with
-    | Atom _ | Quoted_string _ | Template _ | List (_, []) | List (_, [ _ ]) -> true
+    | Atom _ | List (_, []) | List (_, [ _ ]) -> true
+    | Template _ -> true
+    | Quoted_string (_, Quoted_string.Multi _) when version >= block_string_min_version ->
+      false
+    | Quoted_string _ -> true
     | List _ | Comment _ -> false)
 ;;
 
 let pp_simple t = Cst.abstract t |> Option.value_exn |> Ast.remove_locs |> Dune_sexp.pp
 
+let pp_quoted_string ~version (qs : Quoted_string.t) =
+  match qs with
+  | Single s -> Pp.verbatim (Escape.quoted s)
+  | Multi lines when version >= block_string_min_version ->
+    (* Remove trailing empty line if present - it's implicit in block string format *)
+    let lines =
+      match List.rev lines with
+      | (_, []) :: rest -> List.rev rest
+      | (_, [ Template.Part.Text "" ]) :: rest -> List.rev rest
+      | _ -> lines
+    in
+    Pp.vbox
+      (Pp.concat_map lines ~sep:Pp.cut ~f:(fun (kind, parts) ->
+         let delim = Quoted_string.Block_kind.delimiter kind in
+         let content = Template.Part.list_to_string parts in
+         Pp.verbatim (Printf.sprintf "\"%s %s" delim content))
+       ++ Pp.cut)
+  | Multi _ ->
+    (match Quoted_string.flatten qs with
+     | String s -> Pp.verbatim (Escape.quoted s)
+     | Parts parts -> Template.pp { quoted = true; parts; loc = Loc.none })
+;;
+
 let print_wrapped_list ~version x =
-  let inner = Pp.concat_map ~sep:Pp.space ~f:pp_simple x in
+  let inner =
+    Pp.concat_map
+      ~sep:Pp.space
+      ~f:(fun (t : Cst.t) ->
+        match t with
+        | Cst.Quoted_string (_, qs) -> pp_quoted_string ~version qs
+        | _ -> pp_simple t)
+      x
+  in
   if version < (2, 8)
   then Pp.char '(' ++ Pp.hovbox ~indent:1 inner ++ Pp.char ')'
   else Pp.hvbox ~indent:1 (Pp.char '(' ++ inner ++ Pp.char ')')
@@ -47,11 +84,12 @@ let pp_list_with_comments pp_sexp sexps =
 ;;
 
 let rec pp_sexp ~version : Cst.t -> _ = function
-  | (Atom _ | Quoted_string _ | Template _) as sexp -> pp_simple sexp
+  | Quoted_string (_, qs) -> pp_quoted_string ~version qs
+  | (Atom _ | Template _) as sexp -> pp_simple sexp
   | List (_, sexps) ->
     Pp.vbox
       ~indent:1
-      (if can_be_displayed_wrapped sexps
+      (if can_be_displayed_wrapped ~version sexps
        then print_wrapped_list ~version sexps
        else pp_sexp_list ~version sexps)
   | Comment (_, c) -> pp_comment c

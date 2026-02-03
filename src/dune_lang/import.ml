@@ -10,6 +10,9 @@ include struct
   module Parser = Parser
   module Ast = Ast
   module Template = Template
+  module Quoted_string = Quoted_string
+  module Part = Part
+  module Escape = Escape
 end
 
 include struct

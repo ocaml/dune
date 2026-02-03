@@ -89,23 +89,42 @@ The same file, but in the current version:
     (action
      (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))
 
-In multi-line strings, newlines are escaped, but their syntax is not preserved.
+For dune-lang >= 3.22, multi-line block strings are preserved:
 
-  $ dune format-dune-file <<EOF
+  $ dune format-dune-file --dune-version 3.22 <<EOF
   > (echo "\> multi
   >       "\> line
   >       "\> string
   >       "\| string
   > )
-  > 
+  > EOF
+  (echo
+   "\> multi
+   "\> line
+   "\> string
+   "\| string
+   )
+
+For older versions, multi-line strings are escaped:
+
+  $ dune format-dune-file --dune-version 3.21 <<EOF
+  > (echo "\> multi
+  >       "\> line
+  >       "\> string
+  >       "\| string
+  > )
+  > EOF
+  (echo "multi\nline\nstring\nstring\n")
+
+Regular quoted strings with embedded newlines are always escaped:
+
+  $ dune format-dune-file <<EOF
   > (echo "\
   > multi
   > line
   > string
   > ")
   > EOF
-  (echo "multi\nline\nstring\nstring\n")
-  
   (echo "multi\nline\nstring\n")
 
 Comments are preserved.
@@ -313,3 +332,96 @@ within Dune is always the directory directly containing the file.
    ccccccccccccccccc
    dddddddddddddddddd)
   Leaving directory '..'
+
+Strings with backslash line continuation lose the continuation during parsing:
+
+  $ dune format-dune-file <<EOF
+  > (bash "long command \
+  > with continuation")
+  > EOF
+  (bash "long command with continuation")
+
+Block strings can be used for multi-line bash commands (>= 3.22):
+
+  $ dune format-dune-file --dune-version 3.22 <<EOF
+  > (bash "\| long command
+  >       "\| with continuation
+  > )
+  > EOF
+  (bash
+   "\| long command
+   "\| with continuation
+   )
+
+Raw block strings preserve special characters:
+
+  $ dune format-dune-file --dune-version 3.22 <<EOF
+  > (bash "\> echo "hello"
+  >       "\> echo "world"
+  > )
+  > EOF
+  (bash
+   "\> echo "hello"
+   "\> echo "world"
+   )
+
+Long single-line strings are not automatically wrapped:
+
+  $ dune format-dune-file <<EOF
+  > (bash "very long command that exceeds 80 characters and should ideally be wrapped somehow but currently just stays on one line")
+  > EOF
+  (bash
+    "very long command that exceeds 80 characters and should ideally be wrapped somehow but currently just stays on one line")
+
+Real-world example with long bash command (stays on one line):
+
+  $ dune format-dune-file <<EOF
+  > (rule
+  >  (targets jumptbl.h)
+  >  (mode fallback)
+  >  (deps
+  >   (:h instruct.h))
+  >  (action
+  >   (with-stdout-to
+  >    %{targets}
+  >    (bash
+  >     "cat %{h} | tr -d '\\\\r' | sed -n -e '/^  /s/ \\\\([A-Z]\\\\)/ \\\\&\\\\&lbl_\\\\1/gp' -e '/^}/q'"))))
+  > EOF
+  (rule
+   (targets jumptbl.h)
+   (mode fallback)
+   (deps
+    (:h instruct.h))
+   (action
+    (with-stdout-to
+     %{targets}
+     (bash
+       "cat %{h} | tr -d '\\r' | sed -n -e '/^  /s/ \\([A-Z]\\)/ \\&\\&lbl_\\1/gp' -e '/^}/q'"))))
+
+Using block strings for long bash commands (>= 3.22) preserves line breaks:
+
+  $ dune format-dune-file --dune-version 3.22 <<EOF
+  > (rule
+  >  (targets jumptbl.h)
+  >  (mode fallback)
+  >  (deps
+  >   (:h instruct.h))
+  >  (action
+  >   (with-stdout-to
+  >    %{targets}
+  >    (bash "\> cat %{h} | tr -d '\r' |
+  >          "\>   sed -n -e '/^  /s/ \([A-Z]\)/ \&\&lbl_\1/gp' -e '/^}/q'
+  > ))))
+  > EOF
+  (rule
+   (targets jumptbl.h)
+   (mode fallback)
+   (deps
+    (:h instruct.h))
+   (action
+    (with-stdout-to
+     %{targets}
+     (bash
+      "\> cat %{h} | tr -d '\r' |
+      "\>   sed -n -e '/^  /s/ \([A-Z]\)/ \&\&lbl_\1/gp' -e '/^}/q'
+      ))))

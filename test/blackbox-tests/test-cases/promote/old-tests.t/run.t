@@ -5,7 +5,13 @@ General tests
 
   $ dune build @blah
   File "x", line 1, characters 0-0:
-  Error: Files _build/default/x and _build/default/x.gen differ.
+  --- x
+  +++ x.gen
+  @@ -1 +1 @@
+  -titi
+  \ No newline at end of file
+  +toto
+  \ No newline at end of file
   [1]
   $ cat x
   titi
@@ -34,7 +40,13 @@ We disable this test for OSX because it's flaky
   $ printf titi > x
   $ dune build @blah x.gen.copy
   File "x", line 1, characters 0-0:
-  Error: Files _build/default/x and _build/default/x.gen differ.
+  --- x
+  +++ x.gen
+  @@ -1 +1 @@
+  -titi
+  \ No newline at end of file
+  +toto
+  \ No newline at end of file
   [1]
   $ cat _build/default/x.gen.copy
   toto
@@ -45,7 +57,13 @@ Otherwise this test fails on OSX
   $ printf titi > x
   $ dune build @blah --auto-promote
   File "x", line 1, characters 0-0:
-  Error: Files _build/default/x and _build/default/x.gen differ.
+  --- x
+  +++ x.gen
+  @@ -1 +1 @@
+  -titi
+  \ No newline at end of file
+  +toto
+  \ No newline at end of file
   Promoting _build/default/x.gen to x.
   [1]
   $ cat x
@@ -61,9 +79,21 @@ Test single file promotion
   $ printf a > y
   $ dune build @blah @blah2
   File "x", line 1, characters 0-0:
-  Error: Files _build/default/x and _build/default/x.gen differ.
+  --- x
+  +++ x.gen
+  @@ -1 +1 @@
+  -a
+  \ No newline at end of file
+  +toto
+  \ No newline at end of file
   File "y", line 1, characters 0-0:
-  Error: Files _build/default/y and _build/default/y.gen differ.
+  --- y
+  +++ y.gen
+  @@ -1 +1 @@
+  -a
+  \ No newline at end of file
+  +titi
+  \ No newline at end of file
   [1]
   $ dune promote x
   Promoting _build/default/x.gen to x.
@@ -88,13 +118,25 @@ Reproduction case for #1772
   $ printf a > y
   $ dune build @blah @blah2
   File "x", line 1, characters 0-0:
-  Error: Files _build/default/x and _build/default/x.gen differ.
+  --- x
+  +++ x.gen
+  @@ -1 +1 @@
+  -a
+  \ No newline at end of file
+  +toto
+  \ No newline at end of file
   File "y", line 1, characters 0-0:
-  Error: Files _build/default/y and _build/default/y.gen differ.
+  --- y
+  +++ y.gen
+  @@ -1 +1 @@
+  -a
+  \ No newline at end of file
+  +titi
+  \ No newline at end of file
   [1]
   $ rm -f _build/default/x.gen
   $ dune promote
-  Skipping promotion of _build/default/x.gen to x as the file is missing.
+  Promoting _build/default/x.gen to x.
   Promoting _build/default/y.gen to y.
 
 Tests for promote-into

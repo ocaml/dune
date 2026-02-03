@@ -27,7 +27,9 @@ let exec loc ({ Diff.optional; file1; file2; mode } as diff) =
     let is_copied_from_source_tree file =
       match Path.extract_build_context_dir_maybe_sandboxed file with
       | None -> false
-      | Some (_, file) -> Stdune.Path.exists (Path.source file)
+      | Some (_, file) ->
+        (* CR-someday rgrinberg: isn't this racy? *)
+        Stdune.Path.exists (Path.source file)
     in
     let in_source_or_target =
       is_copied_from_source_tree file1 || not (Stdune.Path.exists file1)
@@ -41,10 +43,7 @@ let exec loc ({ Diff.optional; file1; file2; mode } as diff) =
            User_message.Annots.singleton
              Diff_promotion.Annot.annot
              { Diff_promotion.Annot.in_source = source_file
-             ; in_build =
-                 (if optional && in_source_or_target
-                  then Diff_promotion.File.in_staging_area source_file
-                  else file2)
+             ; in_build = Diff_promotion.File.in_staging_area source_file
              }
          in
          if mode = Binary
@@ -64,16 +63,16 @@ let exec loc ({ Diff.optional; file1; file2; mode } as diff) =
              (Path.build file2)
              ~skip_trailing_cr:(mode = Text && Sys.win32))
       ~finally:(fun () ->
+        let register how =
+          Diff_promotion.register_intermediate how ~source_file ~correction_file:file2
+        in
         (match optional with
          | false ->
            (* Promote if in the source tree or not a target. The second case
-                means that the diffing have been done with the empty file *)
+              means that the diffing have been done with the empty file *)
            if in_source_or_target && not (is_copied_from_source_tree (Path.build file2))
-           then Diff_promotion.File.register_dep ~source_file ~correction_file:file2
+           then register `Copy
          | true ->
-           if in_source_or_target
-           then
-             Diff_promotion.File.register_intermediate ~source_file ~correction_file:file2
-           else remove_intermediate_file ());
+           if in_source_or_target then register `Move else remove_intermediate_file ());
         Fiber.return ()))
 ;;

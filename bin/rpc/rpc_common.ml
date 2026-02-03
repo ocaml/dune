@@ -104,7 +104,7 @@ let warn_ignore_arguments lock_held_by =
         "Your build request is being forwarded to a running Dune instance%s. Note that \
          certain command line arguments may be ignored."
         (match lock_held_by with
-         | Dune_util.Global_lock.Lock_held_by.Unknown -> ""
+         | Global_lock.Lock_held_by.Unknown -> ""
          | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
     ]
 ;;
@@ -126,7 +126,7 @@ let fire_request
       ~name
       ~wait
       ?(warn_forwarding = true)
-      ?(lock_held_by = Dune_util.Global_lock.Lock_held_by.Unknown)
+      ?(lock_held_by = Global_lock.Lock_held_by.Unknown)
       builder
       request
       arg
@@ -141,7 +141,7 @@ let fire_notification
       ~name
       ~wait
       ?(warn_forwarding = true)
-      ?(lock_held_by = Dune_util.Global_lock.Lock_held_by.Unknown)
+      ?(lock_held_by = Global_lock.Lock_held_by.Unknown)
       builder
       notification
       arg

@@ -23,9 +23,7 @@ Local conflict class defined in a local package:
   > depends: "foo"
   > EOF
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > EOF
+  $ make_dune_project 3.11
 
   $ dune_pkg_lock_normalized
   Error:

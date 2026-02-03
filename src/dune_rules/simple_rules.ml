@@ -88,7 +88,7 @@ let add_user_rule
   Super_context.add_rule_get_targets sctx ~dir ~mode ~loc:rule.loc action
 ;;
 
-let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
+let user_rule sctx ~dir ~expander (rule : Rule_conf.t) =
   Expander.eval_blang expander rule.enabled_if
   >>= function
   | false ->
@@ -115,15 +115,11 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
         in
         Targets_spec.Static { multiplicity; targets }
     in
-    let expander =
-      match extra_bindings with
-      | None -> expander
-      | Some bindings -> Expander.add_bindings expander ~bindings
-    in
     let* action =
       let chdir = Expander.dir expander in
       Action_unexpanded.expand
         (snd rule.action)
+        Sandbox_config.no_special_requirements
         ~loc:(fst rule.action)
         ~chdir
         ~expander
@@ -286,7 +282,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   | false -> Memo.return Path.Set.empty
 ;;
 
-let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
+let alias sctx ~dir ~expander (alias_conf : Alias_conf.t) =
   let alias = Alias.make ~dir alias_conf.name in
   let loc = alias_conf.loc in
   Alias_rules.check_empty ~loc ~dir alias
@@ -296,18 +292,20 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   | true ->
     (match alias_conf.action with
      | None ->
-       let builder, _expander, _sandbox = Dep_conf_eval.named ~expander alias_conf.deps in
+       (* Sandboxing options don't make sense for deps, only for actions *)
+       let builder, _expander, _sandbox =
+         Dep_conf_eval.named
+           ~expander
+           Sandbox_config.no_special_requirements
+           alias_conf.deps
+       in
        Rules.Produce.Alias.add_deps alias ~loc builder
      | Some (action_loc, action) ->
        let action =
-         let expander =
-           match extra_bindings with
-           | None -> expander
-           | Some bindings -> Expander.add_bindings expander ~bindings
-         in
          let chdir = Expander.dir expander in
          Action_unexpanded.expand_no_targets
            action
+           Sandbox_config.no_special_requirements
            ~loc:action_loc
            ~expander
            ~chdir

@@ -63,9 +63,7 @@ Test that installed binaries are visible in dependent packages
 
 It should also be visible in the workspace:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.9)
-  > EOF
+  $ make_dune_project 3.9
 
   $ cat >dune <<EOF
   > (rule

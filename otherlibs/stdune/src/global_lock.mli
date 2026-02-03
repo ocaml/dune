@@ -1,5 +1,3 @@
-open Stdune
-
 (** global lock shared between dune processes.
 
     Before starting rpc, writing to the build dir, this lock should be locked. *)

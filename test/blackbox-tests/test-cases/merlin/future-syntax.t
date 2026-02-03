@@ -3,9 +3,7 @@
   $ ocamlfind_libs="$(ocamlfind printconf path | while read line; do printf lib=${line}:; done)"
   $ export BUILD_PATH_PREFIX_MAP="$ocamlfind_libs:$BUILD_PATH_PREFIX_MAP"
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > EOF
+  $ make_dune_project 3.11
 
   $ cat >dune <<EOF
   > (executable

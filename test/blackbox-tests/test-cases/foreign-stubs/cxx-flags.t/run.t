@@ -1,9 +1,7 @@
 Default: use_standard_c_and_cxx_flags = false
 =============================================
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > EOF
+  $ make_dune_project 2.8
 
 > The flags that Dune should use for compilation
   $ GCC_CF="-x c++"

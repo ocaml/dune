@@ -1760,34 +1760,21 @@ module Install_action = struct
       dst
     ;;
 
-    let readdir path =
-      match Path.Untracked.readdir_unsorted_with_kinds path with
-      | Error _ -> [], []
-      | Ok listing ->
-        List.partition_map listing ~f:(fun (basename, kind) ->
-          let path = Path.relative path basename in
-          match kind with
-          | S_DIR -> Right path
-          | _ -> Left path)
-    ;;
-
-    let rec collect paths acc =
-      match paths with
-      | [] -> acc
-      | path :: paths ->
-        let files, dirs = readdir path in
-        let acc = List.rev_append files acc in
-        collect (List.rev_append dirs paths) acc
-    ;;
-
-    let skip path skip =
-      List.iter skip ~f:(fun s -> assert (Path.equal path (Path.parent_exn s)));
-      let files, dirs = readdir path in
-      let dirs =
-        List.filter_map dirs ~f:(fun path ->
-          if List.mem skip path ~equal:Path.equal then None else Some path)
-      in
-      files, dirs
+    let collect_files ~root ~skip_dirs =
+      List.iter skip_dirs ~f:(fun s -> assert (Path.equal root (Path.parent_exn s)));
+      let path_of ~dir fname = Path.relative root (Filename.concat dir fname) in
+      Fpath.traverse
+        ~dir:(Path.to_string root)
+        ~init:[]
+        ~on_file:(fun ~dir fname acc -> path_of ~dir fname :: acc)
+        ~enter_dir:(fun ~dir fname ->
+          let path = path_of ~dir fname in
+          not (List.mem skip_dirs path ~equal:Path.equal))
+        ~on_error:
+          (`Call
+              (fun ~dir error acc ->
+                if dir = "" then acc else Unix_error.Detailed.raise error))
+        ()
     ;;
 
     let maybe_drop_sandbox_dir path =
@@ -1808,13 +1795,14 @@ module Install_action = struct
       let get = Install.Paths.get install_paths in
       List.concat_map installable_sections ~f:(fun section ->
         let path = get section in
-        let acc, dirs =
+        let files =
           match section with
-          | Lib_root -> skip path [ get Toplevel; get Stublibs; get Lib ]
-          | Share_root -> skip path [ get Share ]
-          | _ -> [], [ path ]
+          | Lib_root ->
+            collect_files ~root:path ~skip_dirs:[ get Toplevel; get Stublibs; get Lib ]
+          | Share_root -> collect_files ~root:path ~skip_dirs:[ get Share ]
+          | _ -> collect_files ~root:path ~skip_dirs:[]
         in
-        collect dirs acc
+        files
         |> List.rev_map ~f:(fun file ->
           let section =
             match
@@ -1952,6 +1940,7 @@ module Install_action = struct
              | Ok resolved ->
                (match Unix.lstat resolved with
                 | { Unix.st_kind = S_REG; _ } ->
+                  (* CR-someday rgrinberg: pass chmod:true here? *)
                   Fpath.unlink_exn path;
                   Io.portable_hardlink
                     ~src:(Path.of_string resolved)
@@ -2032,7 +2021,9 @@ module Install_action = struct
               |> Section.Map.of_list_multi
             in
             let+ () =
-              Async.async (fun () -> Fpath.unlink_exn (Path.to_string install_file))
+              Async.async (fun () ->
+                (* CR-someday rgrinberg: pass chmod:true here? *)
+                Fpath.unlink_exn (Path.to_string install_file))
             in
             map
         in

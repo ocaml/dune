@@ -76,9 +76,7 @@ In conjunction with dune generated files:
 subdir stanzas can also appear in included files
 
   $ mkdir -p include/subdir; cd include
-  $ cat >dune-project <<EOF
-  > (lang dune 2.5)
-  > EOF
+  $ make_dune_project 2.5
   $ cat >dune <<EOF
   > (include dune.inc)
   > EOF
@@ -96,9 +94,7 @@ subdir stanzas can also appear in included files
   since version 2.7 of the dune language. Please update your dune-project file
   to have (lang dune 2.7).
   [1]
-  $ cat >dune-project <<EOF
-  > (lang dune 2.7)
-  > EOF
+  $ make_dune_project 2.7
   $ dune build --root . subdir/hello.txt
   $ cat _build/default/subdir/hello.txt
   Hello from subdir
@@ -106,9 +102,7 @@ subdir stanzas can also appear in included files
 Include stanzas within subdir stanzas
 
   $ mkdir -p subdir-include/a; cd subdir-include
-  $ cat >dune-project <<EOF
-  > (lang dune 2.5)
-  > EOF
+  $ make_dune_project 2.5
   $ cat >dune <<EOF
   > (subdir a (include dune.inc))
   > EOF

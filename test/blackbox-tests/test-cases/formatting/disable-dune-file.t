@@ -23,7 +23,14 @@ dune file.
 
   $ dune build @fmt
   File "dune", line 1, characters 0-0:
-  Error: Files _build/default/dune and _build/default/.formatted/dune differ.
+  --- dune
+  +++ .formatted/dune
+  @@ -1,2 +1,4 @@
+   ; this file should be formatted
+  -(rule (write-file a b))
+  +
+  +(rule
+  + (write-file a b))
   [1]
 
 Disable foramtting in the root directory using context settings

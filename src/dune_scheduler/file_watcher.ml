@@ -413,7 +413,7 @@ let prepare_sync () =
   | Cleared -> ()
   | Directory_does_not_exist ->
     (match Fpath.mkdir_p dir with
-     | Already_exists | Created -> ())
+     | `Already_exists | `Created -> ())
 ;;
 
 let spawn_external_watcher ~root ~backend ~watch_exclusions =

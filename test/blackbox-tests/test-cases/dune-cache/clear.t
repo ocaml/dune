@@ -3,9 +3,7 @@ Test for the "dune cache clear" command.
   $ export DUNE_CACHE=enabled
   $ export DUNE_CACHE_ROOT=$PWD/dune-cache
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.10)
-  > EOF
+  $ make_dune_project 3.10
 
   $ cat >dune <<EOF
   > (rule (with-stdout-to foo (progn)))

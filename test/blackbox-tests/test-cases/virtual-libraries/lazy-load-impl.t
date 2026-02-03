@@ -1,9 +1,7 @@
 This test demonstrates that an incorrect implementation prevents all rules from
 being loaded in the same directory
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
 
 We define an invalid library along with a rule and an executable that should be
 buildable despite the presence of this library

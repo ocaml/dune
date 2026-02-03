@@ -1191,35 +1191,22 @@ struct
     ;;
 
     let read_dir_recursively (entry : _ Install.Entry.t) =
-      let rec loop acc dirs =
-        match dirs with
-        | [] ->
-          List.rev_map acc ~f:(fun (path, comps) ->
-            let comps = List.rev comps in
-            make_entry entry path comps)
-          |> List.sort
-               ~compare:
-                 (fun
-                   (x : Path.t Install.Entry.Expanded.t)
-                   (y : Path.t Install.Entry.Expanded.t)
-                 -> Path.compare x.src y.src)
-        | (dir, comps) :: dirs ->
-          (match Path.Untracked.readdir_unsorted_with_kinds dir with
-           | Error (e, x, y) -> raise (Unix.Unix_error (e, x, y))
-           | Ok files ->
-             let files, new_dirs =
-               List.partition_map files ~f:(fun (name, kind) ->
-                 let path = Path.relative dir name in
-                 let comps = name :: comps in
-                 match kind with
-                 | Unix.S_DIR -> Right (path, comps)
-                 | _ -> Left (path, comps))
-             in
-             let acc = List.rev_append files acc in
-             let dirs = List.rev_append new_dirs dirs in
-             loop acc dirs)
-      in
-      loop [] [ entry.src, [] ]
+      Fpath.traverse
+        ~dir:(Path.to_string entry.src)
+        ~init:[]
+        ~on_file:(fun ~dir fname acc ->
+          let file = Filename.concat dir fname in
+          let path = Path.relative entry.src file in
+          let comps = Path.Local.of_string file |> Path.Local.explode in
+          (path, comps) :: acc)
+        ()
+      |> List.rev_map ~f:(fun (path, comps) -> make_entry entry path comps)
+      |> List.sort
+           ~compare:
+             (fun
+               (x : Path.t Install.Entry.Expanded.t)
+               (y : Path.t Install.Entry.Expanded.t)
+             -> Path.compare x.src y.src)
     ;;
 
     let action (entries, dst) ~ectx:_ ~eenv:_ =

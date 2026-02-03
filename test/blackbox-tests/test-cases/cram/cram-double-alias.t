@@ -1,9 +1,7 @@
 In this test we make sure a cram test is not run twice when it belongs to two separate
 aliases that are being built together.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.17)
-  > EOF
+  $ make_dune_project 3.17
 
   $ cat >dune <<EOF
   > (cram
@@ -17,7 +15,11 @@ aliases that are being built together.
 
   $ dune build @this @runtest
   File "foo.t", line 1, characters 0-0:
-  Error: Files _build/default/foo.t and _build/default/foo.t.corrected differ.
+  --- foo.t
+  +++ foo.t.corrected
+  @@ -1 +1,2 @@
+     $ echo foo
+  +  foo
   [1]
 
 Here we make sure that the cram test is only run once

@@ -1,8 +1,6 @@
 Unwrapped libraries and (include_subdirs unqualified) 
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
 
   $ mkdir lib/ && cd lib
 

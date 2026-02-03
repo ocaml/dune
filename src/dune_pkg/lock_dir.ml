@@ -1403,29 +1403,23 @@ module Write_disk = struct
     | Error e -> raise_user_error_on_check_existance path e
   ;;
 
-  let rec safely_copy_lock_dir_when_dst_non_existant ~dst src =
+  let safely_copy_lock_dir_when_dst_non_existant ~dst src =
     match check_existing_lock_dir src with
     | Error e -> raise_user_error_on_check_existance src e
     | Ok `Non_existant -> ()
     | Ok `Is_existing_lock_dir ->
-      (match Path.readdir_unsorted_with_kinds src with
-       | Error e ->
-         User_error.raise
-           [ Pp.textf "Failed to list %s with error:" (Path.to_string_maybe_quoted src)
-           ; Unix_error.Detailed.pp e
-           ]
-       | Ok children ->
-         List.iter children ~f:(fun (name, kind) ->
-           let child_src = Path.relative src name in
-           let child_dst = Path.relative dst name in
-           match kind with
-           | Unix.S_DIR ->
-             Path.mkdir_p child_dst;
-             safely_copy_lock_dir_when_dst_non_existant ~dst:child_dst child_src
-           | Unix.S_REG ->
-             Path.mkdir_p dst;
-             Io.copy_file ~src:child_src ~dst:child_dst ()
-           | _ -> assert false))
+      let dst_of ~dir fname = Path.relative dst (Filename.concat dir fname) in
+      Fpath.traverse
+        ~dir:(Path.to_string src)
+        ~init:()
+        ~on_file:(fun ~dir fname () ->
+          let child_src = Path.relative src (Filename.concat dir fname) in
+          let child_dst = dst_of ~dir fname in
+          Path.mkdir_p (Path.relative dst dir);
+          Io.copy_file ~src:child_src ~dst:child_dst ())
+        ~on_dir:(fun ~dir fname () -> Path.mkdir_p (dst_of ~dir fname))
+        ~on_symlink:`Raise
+        ()
   ;;
 
   (* Does the same checks as [safely_remove_lock_dir_if_exists_thunk] but it raises an

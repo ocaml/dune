@@ -3,9 +3,7 @@ other implementations.
 
 Reproduces the issue reported in #10460
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.15)
-  > EOF
+  $ make_dune_project 3.15
 
   $ cat >dune <<EOF
   > (executable

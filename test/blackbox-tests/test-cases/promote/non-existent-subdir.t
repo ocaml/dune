@@ -1,9 +1,7 @@
 Test of a rule that tries to promote to a source directory that doesn't exist.
 
 Taken from #3502
-  $ cat >dune-project <<EOF
-  > (lang dune 3.4)
-  > EOF
+  $ make_dune_project 3.4
   $ cat >dune <<EOF
   > (subdir x
   >  (rule

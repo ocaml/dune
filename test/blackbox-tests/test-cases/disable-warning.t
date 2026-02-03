@@ -1,8 +1,6 @@
 Demonstrate dune's system for enabling/disabling warnings
 
-  $ cat >dune-project <<EOF
-  > (lang dune 1.5)
-  > EOF
+  $ make_dune_project 1.5
 
   $ cat >dune <<EOF
   > (library

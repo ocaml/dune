@@ -2,9 +2,7 @@ We demonstrate that users are allowed to generate rules in "private" dune
 directories. That should be forbidden or dune should generate this stuff
 elsewhere.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.1)
-  > EOF
+  $ make_dune_project 3.1
 
   $ cat >dune <<EOF
   > (dirs :standard .foo.eobjs)

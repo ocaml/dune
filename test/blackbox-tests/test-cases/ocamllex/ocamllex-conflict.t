@@ -1,8 +1,6 @@
 Test conflicting modules where one is an `(ocamllex ..)` generated module
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
 The unit `mod.mll` is present in the working tree, `lib.ml` uses it:
 

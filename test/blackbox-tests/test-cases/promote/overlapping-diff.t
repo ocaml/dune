@@ -26,9 +26,18 @@ Test how overlapping diff actions are handled
   > EOF
 
   $ dune build @foo
+  <one><two>File "foo", line 1, characters 0-0:
+  --- foo
+  +++ foo.expected
+  @@ -0,0 +1 @@
+  +one
+  \ No newline at end of file
   File "foo", line 1, characters 0-0:
-  Error: Files _build/default/foo and _build/default/foo.expected differ.
-  <one><two>
+  --- foo
+  +++ foo.expected
+  @@ -0,0 +1 @@
+  +two
+  \ No newline at end of file
   [1]
 
   $ dune trace cat | jq 'select(.cat == "promote") | .args'
@@ -43,9 +52,9 @@ Test how overlapping diff actions are handled
     "how": "staged"
   }
 
-# CR-someday rgrinberg: why isn't this showing anything?!
-
   $ dune promotion list
+  foo
+  foo
 
   $ dune promote && cat foo
   Promoting _build/default/foo.expected to foo.

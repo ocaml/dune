@@ -1,9 +1,7 @@
 Show that copy_files operates on the build folder
 
   $ mkdir -p target foo
-  $ cat >dune-project <<EOF
-  > (lang dune 3.14)
-  > EOF
+  $ make_dune_project 3.14
   $ cat >target/dune <<EOF
   > (copy_files
   >  (files ../foo/*.txt))

@@ -33,7 +33,7 @@ include struct
   module type Stringlike = Stringlike
 end
 
-include Dune_config_file
+module Targets = Dune_targets
 
 include struct
   open Dune_engine
@@ -55,7 +55,6 @@ include struct
   module Process = Process
   module Execution_parameters = Execution_parameters
   module Build_context = Build_context
-  module Targets = Targets
   module Utils = Utils
   module Load_rules = Load_rules
   module Response_file = Response_file

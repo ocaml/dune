@@ -91,6 +91,6 @@ let create_cache_directories () =
   ]
   |> Result.List.iter ~f:(fun path ->
     match Fpath.mkdir_p (Path.to_string path) with
-    | Already_exists | Created -> Ok ()
+    | `Already_exists | `Created -> Ok ()
     | exception Unix.Unix_error (e, _, _) -> Error (path, e))
 ;;

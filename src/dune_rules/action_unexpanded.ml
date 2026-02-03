@@ -604,10 +604,10 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     assert false
 ;;
 
-let expand_no_targets t ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
+let expand_no_targets t sandbox ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
   let open Action_builder.O in
   let deps_builder, expander, sandbox =
-    Dep_conf_eval.named ~expander deps_written_by_user
+    Dep_conf_eval.named ~expander sandbox deps_written_by_user
   in
   let expander =
     Expander.set_expanding_what expander (User_action_without_targets { what })
@@ -635,6 +635,7 @@ let expand_no_targets t ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
 
 let expand
       t
+      sandbox
       ~loc
       ~chdir
       ~deps:deps_written_by_user
@@ -644,7 +645,7 @@ let expand
   =
   let open Action_builder.O in
   let deps_builder, expander, sandbox =
-    Dep_conf_eval.named ~expander deps_written_by_user
+    Dep_conf_eval.named sandbox ~expander deps_written_by_user
   in
   let expander =
     let expander =

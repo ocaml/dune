@@ -1,7 +1,6 @@
 open Import
 open Fiber.O
 open Dune_rpc_server
-module Global_lock = Dune_util.Global_lock
 
 include struct
   open Dune_rpc

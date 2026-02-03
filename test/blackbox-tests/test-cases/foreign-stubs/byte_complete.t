@@ -1,8 +1,6 @@
 Test the `byte_complete` executable mode
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.2)
-  > EOF
+  $ make_dune_project 2.2
 
   $ cat >dune <<EOF
   > (library

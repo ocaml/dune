@@ -1,8 +1,6 @@
 Demonstrate the following variables: %{os}, %{os_version}, %{os_distribution}, %{os_family}
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.20)
-  > EOF
+  $ make_dune_project 3.20
 
   $ cat >dune <<EOF
   > (rule (write-file out "%{os}\n%{os_version}\n%{os_distribution}\n%{os_family}\n"))

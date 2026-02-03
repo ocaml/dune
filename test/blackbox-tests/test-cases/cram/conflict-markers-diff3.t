@@ -1,8 +1,6 @@
 Cram tests can forbid git diff3 conflicts:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ cat >dune <<EOF
   > (cram (conflict_markers error))
@@ -71,7 +69,7 @@ Partial diff3 conflicts are ignored:
   > |||||||
   > EOF
 
-  $ dune runtest test.t
+  $ dune runtest test.t --diff-command -
   File "test.t", line 1, characters 0-0:
   Error: Files _build/default/test.t and _build/default/test.t.corrected
   differ.
@@ -84,7 +82,7 @@ Partial diff3 conflicts are ignored:
   >   > original
   > EOF
 
-  $ dune runtest test.t
+  $ dune runtest test.t --diff-command -
   File "test.t", line 1, characters 0-0:
   Error: Files _build/default/test.t and _build/default/test.t.corrected
   differ.

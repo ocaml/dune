@@ -139,6 +139,47 @@ This list is not exhaustive and may change in the future. In order to find the
 exact behaviour, it is recommended to search for ``INSIDE_DUNE`` in the
 codebase.
 
+Inspecting Traces with jq
+-------------------------
+
+Dune writes trace events to ``_build/trace.csexp`` in canonical s-expression
+format. Use ``dune trace cat`` to read and convert these events to JSON (one
+object per line). The test suite includes a shared jq library at
+``test/blackbox-tests/dune.jq`` with helper functions for common patterns.
+
+.. code:: console
+
+   # Use the shared library with include
+   $ dune trace cat | jq 'include "dune"; processes'
+
+   # Filter events by category
+   $ dune trace cat | jq 'select(.cat == "cache")'
+
+Use the ``-s`` (slurp) flag when you need to collect all events into an array,
+for example when counting, sorting, or accessing first/last events:
+
+.. code:: console
+
+   $ dune trace cat | jq -s '[ .[] | select(.cat == "cache") ] | length'
+   $ dune trace cat | jq -s 'first | {name, cat}'
+
+Enable additional trace categories with ``DUNE_TRACE`` (see
+``src/dune_trace/category.ml`` for the full list):
+
+.. code:: console
+
+   $ export DUNE_TRACE=cache
+   $ dune build && dune trace cat | jq 'include "dune"; cacheMisses'
+
+For deterministic test output, use helpers like ``redactCommandTimes`` to
+replace timing values that vary between runs:
+
+.. code:: console
+
+   $ dune trace cat | jq 'include "dune"; select(.cat == "cram") | .args | redactCommandTimes'
+
+.. seealso:: :doc:`advanced/profiling-dune` for loading traces into chrome://tracing
+
 Guidelines
 ----------
 
@@ -208,6 +249,44 @@ We have the following shells for specific tasks:
   today, there are two classes of tests:
   + ``make test-rocq``: these work well on a regular Dune opam dev switch
   + ``make test-rocq-native``: these require the Rocq native compiler to run, and thus need OCaml 4.x
+
+Testing Reverse Dependencies
+============================
+
+You can test how changes to Dune affect reverse dependencies (packages that
+depend on Dune) using Nix. The ``revdeps`` flake output builds OCaml packages
+with a specified version of Dune.
+
+.. code:: console
+
+   # Build lwt with current version of dune
+   $ nix build .#revdeps.x86_64-linux.lwt --override-input revdeps-dune path:.
+
+   # Build base and core with dune 3.20.2
+   $ nix build .#revdeps.x86_64-linux.{base,core} --override-input revdeps-dune github:ocaml/dune/3.20.2
+
+   # Build all revdeps
+   $ nix build .#revdeps.x86_64-linux.all --override-input revdeps-dune path:.
+
+Bisecting Regressions
+---------------------
+
+To find which commit broke a reverse dependency, use ``git bisect`` with
+``--no-checkout`` to keep the current flake in place while varying the Dune
+source:
+
+.. code:: console
+
+   $ git bisect start --no-checkout
+   $ git bisect bad HEAD
+   $ git bisect good 3.16.0
+
+   $ git bisect run sh -c 'nix build .#revdeps.x86_64-linux.lwt --override-input revdeps-dune "github:ocaml/dune/$(git rev-parse BISECT_HEAD)"' 
+
+The ``--no-checkout`` flag ensures that the working tree stays on the current
+branch (with the working ``revdeps`` output), while ``BISECT_HEAD`` points to
+the commit being tested. The Dune source is fetched from GitHub for each
+bisect step.
 
 Releasing Dune
 ==============

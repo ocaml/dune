@@ -35,7 +35,7 @@ case $1 in
       echo "does not exist" >&2
       exit 128
     fi
-    echo "Unsupported cat-file command: $@" >&2
+    echo "Unsupported cat-file command:" "$@" >&2
     exit 2
     ;;
   rev-parse)
@@ -44,12 +44,12 @@ case $1 in
       $REAL_GIT "$@"
       exit $?
     fi
-    echo "Unsupported rev-parse command: $@" >&2
+    echo "Unsupported rev-parse command:" "$@" >&2
     exit 2
     ;;
   *)
     # unsupported, exit out
-    echo "Unsupported command: $@" >&2
+    echo "Unsupported command:" "$@" >&2
     exit 2
     ;;
 esac

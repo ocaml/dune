@@ -1,8 +1,6 @@
 Aliases defined in data_only_dirs aren't traversed
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.8)
-  > EOF
+  $ make_dune_project 3.8
 
   $ cat >dune<<EOF
   > (subdir foo

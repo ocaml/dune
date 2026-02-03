@@ -4,9 +4,7 @@
 Check that (include ...) works when generated using OCaml syntax.
 
   $ mkdir -p foo && cd foo
-  $ cat >dune-project <<EOF
-  > (lang dune 2.5)
-  > EOF
+  $ make_dune_project 2.5
   $ cat >dune <<EOF
   > (* -*- tuareg -*- *)
   > let () = Jbuild_plugin.V1.send {|(include dune.inc)|}

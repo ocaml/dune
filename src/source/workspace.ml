@@ -794,6 +794,8 @@ let find_lock_dir t path =
 
 let add_repo t repo = { t with repos = repo :: t.repos }
 
+(* Why do we even have a separate versioned file here if we're using the same
+   syntax as the dune project? *)
 include Dune_lang.Versioned_file.Make (struct
     type t = unit
   end)
@@ -979,7 +981,7 @@ let check_lock_dirs_no_dupes lock_dirs =
       ]
 ;;
 
-let step1 clflags =
+let step1 ~(lang : Lang.Instance.t) clflags =
   let { Clflags.x
       ; profile = cl_profile
       ; instrument_with = cl_instrument_with
@@ -1009,6 +1011,19 @@ let step1 clflags =
     let+ x = field in
     lazy (Option.value cl ~default:(Lazy.force x))
   in
+  (* This is all dodgy but we get away with it because we don't really allow
+     extensions to inject their own stanza into the workspace. *)
+  let* parsing_context, _stanza_parser, _extension_args =
+    let+ _, explicit_extensions =
+      Dune_project.Extension.parse_extensions ~lang_version:lang.version
+    in
+    let lang =
+      Dune_project.workspace_instance ~syntax:lang.syntax ~version:lang.version
+    in
+    Dune_lang.Dune_project.interpret_lang_and_extensions ~lang ~explicit_extensions
+  in
+  Dune_lang.Decoder.set_many parsing_context
+  @@
   let* () = Dune_lang.Versioned_file.no_more_lang
   and+ env = env_field_lazy
   and+ profile =
@@ -1111,7 +1126,7 @@ let step1 clflags =
   { Step1.t; config }
 ;;
 
-let step1 clflags = fields (step1 clflags)
+let step1 ~lang clflags = fields (step1 ~lang clflags)
 
 let default clflags =
   let { Clflags.x
@@ -1157,7 +1172,7 @@ let load_step1 clflags p =
       parse_contents lb ~f:(fun lang ->
         String_with_vars.set_decoding_env
           (Pform.Env.initial ~stanza:lang.version ~extensions:[])
-          (step1 clflags)))
+          (step1 ~lang clflags)))
 ;;
 
 let filename = "dune-workspace"

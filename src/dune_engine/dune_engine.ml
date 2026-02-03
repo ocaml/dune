@@ -14,7 +14,6 @@ module Alias = Alias
 module Dpath = Dpath
 module Rules = Rules
 module Rule = Rule
-module Targets = Dune_targets
 module Target_promotion = Target_promotion
 module Build_context = Build_context
 module Build_config = Build_config

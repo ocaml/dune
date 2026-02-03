@@ -3,9 +3,7 @@ We test two different aspects of preprocessors:
 * The directory in which they run
 * How they reference their file dependencies (relative to what?)
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.9)
-  > EOF
+  $ make_dune_project 2.9
 
 First, we demonstrate that preprocessors run from the context root:
 

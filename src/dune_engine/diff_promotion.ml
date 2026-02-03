@@ -26,7 +26,9 @@ module File = struct
     ; dst : Path.Source.t
     }
 
+  (* CR-soon rgrinberg: rename either this accessor or the function *)
   let source t = t.dst
+  let correction_file { src; staging; _ } = Path.build (Option.value staging ~default:src)
 
   let compare { src; staging; dst } t =
     let open Ordering.O in
@@ -47,28 +49,20 @@ module File = struct
       ]
   ;;
 
-  let db : t list ref = ref []
-
-  let register_dep ~source_file ~correction_file =
-    let src = snd (Path.Build.split_sandbox_root correction_file) in
-    Dune_trace.emit Promote (fun () ->
-      Dune_trace.Event.Promote.register `Direct src source_file);
-    db := { src; staging = None; dst = source_file } :: !db
-  ;;
-
-  let register_intermediate ~source_file ~correction_file =
-    let src = snd (Path.Build.split_sandbox_root correction_file) in
-    Dune_trace.emit Promote (fun () ->
-      Dune_trace.Event.Promote.register `Staged src source_file);
-    let staging = in_staging_area source_file in
-    Path.mkdir_p (Path.build (Option.value_exn (Path.Build.parent staging)));
-    Unix.rename (Path.Build.to_string correction_file) (Path.Build.to_string staging);
-    db := { src; staging = Some staging; dst = source_file } :: !db
-  ;;
-
   let do_promote ~correction_file ~dst =
-    Fpath.unlink_no_err (Path.Source.to_string dst);
+    (match Fpath.unlink (Path.Source.to_string dst) with
+     | Success | Does_not_exist -> ()
+     | Is_a_directory -> Path.rm_rf (Path.source dst)
+     | Error e ->
+       User_error.raise
+         [ Pp.textf
+             "Error promoting %s to %s"
+             (Path.to_string correction_file)
+             (Path.Source.to_string dst)
+         ; Exn.pp e
+         ]);
     let chmod = Path.Permissions.add Path.Permissions.write in
+    Path.mkdir_p (Path.source (Path.Source.parent_exn dst));
     match Io.copy_file ~chmod ~src:correction_file ~dst:(Path.source dst) () with
     | () -> ()
     | exception Unix.Unix_error (e, _, _) ->
@@ -77,8 +71,6 @@ module File = struct
         ; Pp.text (Unix.error_message e)
         ]
   ;;
-
-  let correction_file { src; staging; _ } = Path.build (Option.value staging ~default:src)
 
   let promote ({ src; staging; dst } as file) =
     let correction_file = correction_file file in
@@ -94,7 +86,8 @@ module File = struct
                (Path.Source.to_string_maybe_quoted dst)
            else
              Pp.textf
-               "Skipping promotion of %s to %s as the %s is missing."
+               "%S Skipping promotion of %s to %s as the %s is missing."
+               (Path.to_string correction_file)
                (Path.to_string_maybe_quoted (Path.build src))
                (Path.Source.to_string_maybe_quoted dst)
                (match staging with
@@ -108,8 +101,40 @@ module File = struct
   ;;
 end
 
-let clear_cache () = File.db := []
+type db = File.t list
+
+let db : db ref = ref []
+let clear_cache () = db := []
 let () = Hooks.End_of_build.always clear_cache
+
+let register_intermediate how ~source_file ~correction_file =
+  let src = snd (Path.Build.split_sandbox_root correction_file) in
+  Dune_trace.emit Promote (fun () ->
+    Dune_trace.Event.Promote.register `Staged src source_file);
+  let staging = File.in_staging_area source_file in
+  let staging_dir = Path.Build.parent_exn staging in
+  let mkdir_p () = Fpath.mkdir_p_strict (Path.Build.to_string staging_dir) in
+  (match
+     match mkdir_p () with
+     | `Not_a_dir ->
+       Path.rm_rf (Path.build staging_dir);
+       mkdir_p ()
+     | x -> x
+   with
+   | `Already_exists | `Created -> ()
+   | `Not_a_dir ->
+     Code_error.raise "dir was deleted" [ "staging_dir", Path.Build.to_dyn staging_dir ]);
+  (match how with
+   | `Move ->
+     Unix.rename (Path.Build.to_string correction_file) (Path.Build.to_string staging)
+   | `Copy ->
+     Io.copy_file
+       ~chmod:Path.Permissions.(add write)
+       ~src:(Path.build correction_file)
+       ~dst:(Path.build staging)
+       ());
+  db := { src; staging = Some staging; dst = source_file } :: !db
+;;
 
 module P = Persistent.Make (struct
     type t = File.t list
@@ -153,18 +178,18 @@ let promote_one dst srcs =
   | [] -> assert false
   | (src, staging) :: others ->
     (* We used to remove promoted files from the digest cache, to force Dune
-         to redigest them on the next run. We did this because on OSX [mtime] is
-         not precise enough and if a file is modified and promoted quickly, it
-         looked like it hadn't changed even though it might have.
+       to redigest them on the next run. We did this because on OSX [mtime] is
+       not precise enough and if a file is modified and promoted quickly, it
+       looked like it hadn't changed even though it might have.
 
-         aalekseyev: This is probably unnecessary now, depending on when
-         [do_promote] runs (before or after [invalidate_cached_timestamps]).
+       aalekseyev: This is probably unnecessary now, depending on when
+       [do_promote] runs (before or after [invalidate_cached_timestamps]).
 
-         amokhov: I removed this logic. In the current state of the world, files
-         in the build directory should be redigested automatically (plus we do
-         not promote into the build directory anyway), and source digests should
-         be correctly invalidated via [fs_memo]. If that doesn't happen, we
-         should fix [fs_memo] instead of manually resetting the caches here. *)
+       amokhov: I removed this logic. In the current state of the world, files
+       in the build directory should be redigested automatically (plus we do
+       not promote into the build directory anyway), and source digests should
+       be correctly invalidated via [fs_memo]. If that doesn't happen, we
+       should fix [fs_memo] instead of manually resetting the caches here. *)
     File.promote { src; staging; dst };
     List.iter others ~f:(fun (path, _staging) ->
       Console.print
@@ -210,9 +235,9 @@ let finalize () =
   let db =
     match !Clflags.promote with
     | Some Automatically ->
-      do_promote_all !File.db;
+      do_promote_all !db;
       []
-    | Some Never | None -> !File.db
+    | Some Never | None -> !db
   in
   dump_db db
 ;;
@@ -226,77 +251,23 @@ let promote_files_registered_in_last_run files_to_promote =
   missing
 ;;
 
-let diff_for_file (file : File.t) =
-  let msg = User_message.Annots.empty in
-  let original = Path.source file.dst in
-  let correction = File.correction_file file in
-  Print_diff.get msg original correction
-;;
+type all =
+  { present : File.t list
+  ; missing : Path.Source.t list
+  }
 
 (** [partition_db db files_to_promote] splits [files_to_promote] into two lists
     - The files present in [db] as actual [File.t]s.
     - The files absent from [db] as [Path]s. *)
 let partition_db db files_to_promote =
-  match files_to_promote with
-  | Files_to_promote.All -> db, []
-  | These paths ->
-    List.partition_map paths ~f:(fun path ->
-      let res = List.find db ~f:(fun (f : File.t) -> Path.Source.equal f.dst path) in
-      match res with
-      | Some file -> Left file
-      | None -> Right path)
-;;
-
-let sort_for_display db files_to_promote =
-  let open Fiber.O in
-  let files, missing = partition_db db files_to_promote in
-  let+ diff_opts =
-    Fiber.parallel_map files ~f:(fun file ->
-      let+ diff_opt = diff_for_file file in
-      match diff_opt with
-      | Ok diff -> Some (file, diff)
-      | Error _ -> None)
+  let present, missing =
+    match files_to_promote with
+    | Files_to_promote.All -> db, []
+    | These paths ->
+      List.partition_map paths ~f:(fun path ->
+        match List.find db ~f:(fun (f : File.t) -> Path.Source.equal f.dst path) with
+        | Some file -> Left file
+        | None -> Right path)
   in
-  let sorted_diffs =
-    diff_opts
-    |> List.filter_opt
-    |> List.sort ~compare:(fun (file, _) (file', _) -> File.compare file file')
-  in
-  let sorted_missing = List.sort missing ~compare:Path.Source.compare in
-  sorted_diffs, sorted_missing
-;;
-
-let missing ~db files_to_promote =
-  let open Fiber.O in
-  let+ _diffs, missing = sort_for_display db files_to_promote in
-  missing
-;;
-
-let display_diffs ~db files_to_promote =
-  let open Fiber.O in
-  let+ diffs, _missing = sort_for_display db files_to_promote in
-  List.iter diffs ~f:(fun (_file, diff) -> Print_diff.Diff.print diff)
-;;
-
-let display_files ~db files_to_promote =
-  let open Fiber.O in
-  let+ diffs, _missing = sort_for_display db files_to_promote in
-  List.iter diffs ~f:(fun (file, _diff) ->
-    Console.printf "%s" (File.source file |> Path.Source.to_string))
-;;
-
-let display_corrected_contents ~db files_to_promote =
-  let files, _missing = partition_db db files_to_promote in
-  List.iter files ~f:(fun file ->
-    let correction_file = File.correction_file file in
-    if Path.Untracked.exists correction_file
-    then (
-      let contents = Io.read_file correction_file in
-      Console.printf "%s" contents)
-    else
-      User_warning.emit
-        [ Pp.textf
-            "Corrected file does not exist for %s."
-            (File.source file |> Path.Source.to_string_maybe_quoted)
-        ])
+  { present; missing }
 ;;

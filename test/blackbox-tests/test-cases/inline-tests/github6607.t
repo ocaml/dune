@@ -35,7 +35,14 @@ file.
 
   $ CLICOLOR_FORCE=0 dune runtest --auto-promote
   File "l.ml", line 1, characters 0-0:
-  Error: Files _build/default/l.ml and _build/default/l.ml.corrected differ.
+  --- l.ml
+  +++ l.ml.corrected
+  @@ -2,4 +2,4 @@
+   
+   let%expect_test _ =
+     User_message.print (User_error.make []);
+  -  [%expect]
+  +  [%expect {| Error: |}]
   Promoting _build/default/l.ml.corrected to l.ml.
   [1]
   $ < l.ml tr '\033' '?'
@@ -47,7 +54,14 @@ file.
   $ dune clean
   $ CLICOLOR_FORCE=1 dune runtest --auto-promote
   File "l.ml", line 1, characters 0-0:
-  Error: Files _build/default/l.ml and _build/default/l.ml.corrected differ.
+  --- l.ml
+  +++ l.ml.corrected
+  @@ -2,4 +2,4 @@
+   
+   let%expect_test _ =
+     User_message.print (User_error.make []);
+  -  [%expect {| Error: |}]
+  +  [%expect {| Error: |}]
   Promoting _build/default/l.ml.corrected to l.ml.
   [1]
   $ < l.ml tr '\033' '?'

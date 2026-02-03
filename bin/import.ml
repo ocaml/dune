@@ -2,6 +2,7 @@ include Stdune
 include Dune_config_file
 include Dune_vcs
 include Dune_scheduler
+module Targets = Dune_targets
 
 include struct
   open Dune_engine
@@ -17,7 +18,6 @@ include struct
   module Dpath = Dpath
   module Findlib = Dune_rules.Findlib
   module Diff_promotion = Diff_promotion
-  module Targets = Targets
   module Context_name = Context_name
 end
 

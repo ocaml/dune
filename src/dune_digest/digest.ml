@@ -83,7 +83,9 @@ let file_async file =
   in
   Counter.add Metrics.Digest.File.bytes size;
   if size = 0
-  then Fiber.return (Lazy.force zero)
+  then
+    let+ () = Fiber.return @@ Unix.close fd in
+    Lazy.force zero
   else if size < async_digest_minimum
   then Fiber.return (digest_and_close_fd fd)
   else Dune_scheduler.Scheduler.async_exn (fun () -> digest_and_close_fd fd)

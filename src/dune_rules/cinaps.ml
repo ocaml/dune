@@ -216,7 +216,7 @@ let gen_rules sctx t ~dir ~scope =
           then Sandbox_config.needs_sandboxing
           else Sandbox_config.no_special_requirements
         in
-        Dep_conf_eval.unnamed ~sandbox ~expander t.runtime_deps
+        Dep_conf_eval.unnamed sandbox ~expander t.runtime_deps
       in
       let* () = runtime_deps in
       let+ () =

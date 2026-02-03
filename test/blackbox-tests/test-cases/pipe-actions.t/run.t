@@ -1,8 +1,6 @@
 The new pipe actions are only available since dune 2.7:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.6)
-  > EOF
+  $ make_dune_project 2.6
 
   $ cat >dune <<EOF
   > (rule
@@ -28,9 +26,7 @@ The new pipe actions are only available since dune 2.7:
 
 You need to set the language to 2.7 or higher for it to work:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.7)
-  > EOF
+  $ make_dune_project 2.7
 
   $ dune build @pipe
   x

@@ -1,8 +1,6 @@
 This test demonstrates a dependency being pulled via an mli only module:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
 
   $ lib=foo
 

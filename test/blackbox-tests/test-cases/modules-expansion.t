@@ -3,9 +3,7 @@ Here we test the ability of (modules) to be contain dynamic forms such as
 
 Begin by setting up a project and check the versioning guards.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > EOF
+  $ make_dune_project 3.11
 
 As we will see later in the test, it is imperative that build dependencies
 needed to evaluate the `(modules)` field not live in the same directory as the
@@ -46,9 +44,7 @@ Let's check that it fails in the current version of Dune:
 
 Update the version...
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
 
 ... and it works!
 

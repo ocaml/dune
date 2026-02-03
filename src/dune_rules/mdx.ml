@@ -24,8 +24,10 @@ module Files = struct
   let deps_file build_path = Path.Build.extend_basename ~suffix:".mdx.deps" build_path
 
   let from_source_file ~mdx_dir src =
-    let basename = Path.Build.basename src in
-    let dot_mdx_path = Path.Build.relative mdx_dir basename in
+    let dot_mdx_path =
+      let basename = Path.Build.basename src in
+      Path.Build.relative mdx_dir basename
+    in
     let deps = deps_file dot_mdx_path in
     let corrected = corrected_file dot_mdx_path in
     { src; deps; corrected }
@@ -61,8 +63,10 @@ module Deps = struct
 
   let read (files : Files.t) =
     let open Action_builder.O in
-    let path = Path.build files.deps in
-    let+ content = Action_builder.contents path in
+    let+ content =
+      let path = Path.build files.deps in
+      Action_builder.contents path
+    in
     match parse content with
     | Ok deps -> deps
     | Error msg ->
@@ -92,16 +96,16 @@ module Deps = struct
   ;;
 
   let to_path ~version ~dir str =
-    if not (Filename.is_relative str)
-    then Error (`Absolute str)
-    else (
+    match Filename.is_relative str with
+    | false -> Error (`Absolute str)
+    | true ->
       let path = Path.relative_to_source_in_build_or_external ~dir str in
-      match path with
-      | In_build_dir _ ->
-        if version < (0, 3) && path_escapes_dir str
-        then Error (`Escapes_dir str)
-        else Ok path
-      | _ -> Error (`Escapes_workspace str))
+      (match path with
+       | In_build_dir _ ->
+         if version < (0, 3) && path_escapes_dir str
+         then Error (`Escapes_dir str)
+         else Ok path
+       | _ -> Error (`Escapes_workspace str))
   ;;
 
   let add_acc (dirs, files) kind path =
@@ -208,6 +212,7 @@ let syntax =
     ; (0, 2), `Since (3, 0)
     ; (0, 3), `Since (3, 2)
     ; (0, 4), `Since (3, 8)
+    ; (0, 5), `Since (3, 22)
     ]
 ;;
 
@@ -305,7 +310,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
   let* () = Super_context.add_rule sctx ~loc ~dir (Deps.rule ~dir ~mdx_prog files)
   and* () =
     (* Add the rule for generating the .corrected file using ocaml-mdx test *)
-    let mdx_action ~loc:_ =
+    let mdx_action =
       let open Action_builder.With_targets.O in
       let mdx_input_dependencies =
         let open Action_builder.O in
@@ -374,7 +379,12 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
           |> List.map ~f:(fun (loc, pkg) ->
             Dep_conf.Package (Package.Name.to_string pkg |> String_with_vars.make_text loc))
         in
-        Dep_conf_eval.unnamed ~expander (mdx_package_deps @ mdx_generic_deps)
+        Dep_conf_eval.unnamed
+          (if version < (0, 5)
+           then Sandbox_config.no_special_requirements
+           else Sandbox_config.needs_sandboxing)
+          ~expander
+          (mdx_package_deps @ mdx_generic_deps)
       in
       let+ action =
         Action_builder.with_no_targets deps
@@ -393,7 +403,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
       in
       Action.Full.add_locks locks action |> Action.Full.add_sandbox sandbox
     in
-    Super_context.add_rule sctx ~loc ~dir (mdx_action ~loc)
+    Super_context.add_rule sctx ~loc ~dir mdx_action
   in
   (* Attach the diff action to the @runtest for the src and corrected files *)
   Files.diff_action files
@@ -449,8 +459,8 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
      field *)
   let main_module_name = Module_name.of_checked_string name in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
-  let lib name = Lib_dep.Direct (loc, Lib_name.of_string name) in
   let* cctx =
+    let lib name = Lib_dep.Direct (loc, Lib_name.of_string name) in
     let compile_info =
       Lib.DB.resolve_user_written_deps
         (Scope.libs scope)

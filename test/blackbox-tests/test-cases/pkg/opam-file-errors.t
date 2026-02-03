@@ -3,9 +3,7 @@ Tests for error messages while reading package metadata from opam files
   $ mkrepo
   $ add_mock_repo_if_needed
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.12)
-  > EOF
+  $ make_dune_project 3.12
 
 Empty files are not allowed as they lack the format version.
   $ touch x.opam

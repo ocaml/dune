@@ -12,6 +12,7 @@ module Diff : sig
     ; file2 : 'target
     }
 
+  val to_dyn : ('path -> Dyn.t) -> ('target -> Dyn.t) -> ('path, 'target) t -> Dyn.t
   val map : ('p, 't) t -> path:('p -> 'a) -> target:('t -> 'b) -> ('a, 'b) t
 end
 

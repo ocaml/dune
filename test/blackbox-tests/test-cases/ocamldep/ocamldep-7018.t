@@ -4,9 +4,7 @@ modules as having separate dependencies.
 
 Reproduces #7018
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
   $ cat >dune <<EOF
   > (library
   >  (wrapped false)

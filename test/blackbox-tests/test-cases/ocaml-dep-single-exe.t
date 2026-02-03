@@ -1,9 +1,7 @@
 When creating single module libraries & executables, running ocamldep isn't
 necessary.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > EOF
+  $ make_dune_project 2.8
   $ cat >dune <<EOF
   > (executable (name foo))
   > EOF

@@ -10,15 +10,23 @@ This command should succeed:
 
   $ dune fmt
   File "ocamlformat.ml", line 1, characters 0-0:
-  Error: Files _build/default/ocamlformat.ml and
-  _build/default/.formatted/ocamlformat.ml differ.
+  --- ocamlformat.ml
+  +++ .formatted/ocamlformat.ml
+  @@ -1,2 +1 @@
+  -(* Avoid adding dependencies to this cram test *)
+  -let () = print_endline "(* formatted *)"
+  +(* formatted *)
   File "result/foo.ml", line 1, characters 0-0:
-  Error: Files _build/default/result/foo.ml and
-  _build/default/result/.formatted/foo.ml differ.
+  --- result/foo.ml
+  +++ result/.formatted/foo.ml
+  @@ -1 +1 @@
+  -let x  = 2
+  +(* formatted *)
   Promoting _build/default/.formatted/ocamlformat.ml to ocamlformat.ml.
   Promoting _build/default/result/.formatted/foo.ml to result/foo.ml.
-  Error: failed to promote result/foo.ml
-  Permission denied
+  Error: Error promoting _build/.promotion-staging/result/foo.ml to
+  result/foo.ml
+  Unix.Unix_error(Unix.EACCES, "unlink", "result/foo.ml")
   [1]
 
 Allow Dune to remove temporary files (calling Dune crashes without this):

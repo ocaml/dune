@@ -1,18 +1,22 @@
 (** Functions on paths that are represented as strings *)
 
+(** No parent directory, use [mkdir_p] if you want to create it too. *)
 type mkdir_result =
-  | Already_exists (** The directory already exists. No action was taken. *)
-  | Created (** The directory was created. *)
-  | Missing_parent_directory
-  (** No parent directory, use [mkdir_p] if you want to create it too. *)
+  [ `Already_exists (** The directory already exists. No action was taken. *)
+  | `Created (** The directory was created. *)
+  | `Missing_parent_directory
+  ]
 
 val mkdir : ?perms:int -> string -> mkdir_result
 
 type mkdir_p_result =
-  | Already_exists (** The directory already exists. No action was taken. *)
-  | Created (** The directory was created. *)
+  [ `Already_exists (** The directory already exists. No action was taken. *)
+  | `Created (** The directory was created. *)
+  ]
 
+val dyn_of_mkdir_p_result : mkdir_p_result -> Dyn.t
 val mkdir_p : ?perms:int -> string -> mkdir_p_result
+val mkdir_p_strict : ?perms:int -> string -> [ mkdir_p_result | `Not_a_dir ]
 
 (** [link src dst] creates a hardlink from [src] to [dst]. *)
 val link : string -> string -> unit
@@ -30,7 +34,7 @@ val follow_symlink : string -> (string, follow_symlink_error) result
     [Error Max_depth_exceeded] on some intermediate path). *)
 val follow_symlinks : string -> string option
 
-val unlink_exn : string -> unit
+val unlink_exn : ?chmod:bool -> string -> unit
 val unlink_no_err : string -> unit
 
 type unlink_status =
@@ -50,19 +54,33 @@ type clear_dir_result =
 
 (** [clear_dir t] deletes all the contents of directory [t] without removing [t]
     itself. *)
-val clear_dir : string -> clear_dir_result
+val clear_dir : ?chmod:bool -> string -> clear_dir_result
 
 (** If the path does not exist, this function is a no-op. *)
-val rm_rf : string -> unit
+val rm_rf : ?chmod:bool -> string -> unit
 
 val is_root : string -> bool
 
 val traverse
   :  dir:string
   -> init:'acc
-  -> on_file:(dir:string -> Filename.t -> 'acc -> 'acc)
-  -> on_dir:(dir:string -> Filename.t -> 'acc -> 'acc)
-  -> on_broken_symlink:(dir:string -> Filename.t -> 'acc -> 'acc)
+  -> ?on_file:(dir:string -> Filename.t -> 'acc -> 'acc)
+  -> ?on_dir:(dir:string -> Filename.t -> 'acc -> 'acc)
+  -> ?on_other:
+       [ `Ignore
+       | `Raise
+       | `Call of dir:string -> Filename.t -> Unix.file_kind -> 'acc -> 'acc
+       ]
+  -> ?on_symlink:
+       [ `Ignore
+       | `Resolve
+       | `Raise
+       | `Call of dir:string -> Filename.t -> 'acc -> 'acc * Unix.file_kind option
+       ]
+  -> ?enter_dir:(dir:string -> Filename.t -> bool)
+  -> ?on_error:
+       [ `Ignore | `Raise | `Call of dir:string -> Unix_error.Detailed.t -> 'acc -> 'acc ]
+  -> unit
   -> 'acc
 
 val traverse_files

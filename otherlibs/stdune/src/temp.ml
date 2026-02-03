@@ -37,16 +37,16 @@ let create_temp_file ?(perms = 0o600) path =
 ;;
 
 let destroy = function
-  | Dir -> Path.rm_rf ~allow_external:true
+  | Dir -> Path.rm_rf ~chmod:true ~allow_external:true
   | File -> fun p -> Fpath.unlink_no_err (Path.to_string p)
 ;;
 
 let create_temp_dir ?perms path =
   let dir = Path.to_string path in
   match Fpath.mkdir ?perms dir with
-  | Created -> Ok ()
-  | Already_exists -> Error `Retry
-  | Missing_parent_directory ->
+  | `Created -> Ok ()
+  | `Already_exists -> Error `Retry
+  | `Missing_parent_directory ->
     Code_error.raise
       "[Temp.create_temp_dir] called in a nonexistent directory"
       [ "dir", Path.to_dyn path ]

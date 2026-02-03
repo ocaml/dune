@@ -2,9 +2,7 @@ Test running inline tests in bytecode mode
 
 Reproduction case for #5515
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.9)
-  > EOF
+  $ make_dune_project 2.9
 
   $ cat >dune <<EOF
   > (library

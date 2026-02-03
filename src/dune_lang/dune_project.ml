@@ -222,6 +222,8 @@ include Versioned_file.Make (struct
     type t = Stanza.Parser.t list
   end)
 
+let workspace_instance ~syntax ~version = { Lang.Instance.syntax; version; data = [] }
+
 let default_dune_language_version =
   ref (Syntax.greatest_supported_version_exn Stanza.syntax)
 ;;
@@ -321,28 +323,53 @@ module Extension = struct
          | Deleted_in _ -> acc
          | Extension e -> Not_selected e :: acc))
   ;;
+
+  let explicit_extensions_map explicit_extensions =
+    match
+      String.Map.of_list
+        (List.map explicit_extensions ~f:(fun (e : instance) ->
+           let syntax =
+             let (Packed e) = e.extension in
+             e.syntax
+           in
+           Syntax.name syntax, e))
+    with
+    | Error (name, _, ext) ->
+      User_error.raise
+        ~loc:ext.loc
+        [ Pp.textf "Extension %S specified for the second time." name ]
+    | Ok map -> map
+  ;;
+
+  let parse_extensions ~lang_version =
+    let open Decoder in
+    let* explicit_extensions =
+      multi_field
+        "using"
+        (let+ loc = loc
+         and+ name = located string
+         and+ ver = located Syntax.Version.decode
+         and+ parse_args = capture in
+         (* We don't parse the arguments quite yet as we want to set the
+          version of extensions before parsing them. *)
+         instantiate ~dune_lang_ver:lang_version ~loc ~parse_args name ver)
+    in
+    String_with_vars.set_decoding_env
+      (let extensions =
+         List.map explicit_extensions ~f:(fun (instance : instance) ->
+           let (Packed { syntax; _ }) = instance.extension in
+           syntax, instance.version)
+       in
+       Pform.Env.initial ~stanza:lang_version ~extensions)
+    @@
+    let explicit_extensions_map = explicit_extensions_map explicit_extensions in
+    return (explicit_extensions_map, explicit_extensions)
+  ;;
 end
 
 module Melange_syntax = struct
   let name = "melange"
 end
-
-let explicit_extensions_map explicit_extensions =
-  match
-    String.Map.of_list
-      (List.map explicit_extensions ~f:(fun (e : Extension.instance) ->
-         let syntax =
-           let (Packed e) = e.extension in
-           e.syntax
-         in
-         Syntax.name syntax, e))
-  with
-  | Error (name, _, ext) ->
-    User_error.raise
-      ~loc:ext.loc
-      [ Pp.textf "Extension %S specified for the second time." name ]
-  | Ok map -> map
-;;
 
 let make_parsing_context ~(lang : Lang.Instance.t) extensions =
   let init =
@@ -382,6 +409,7 @@ let make_parsing_context ~(lang : Lang.Instance.t) extensions =
 ;;
 
 let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions =
+  let explicit_extensions = Extension.explicit_extensions_map explicit_extensions in
   let extensions = Extension.automatic ~explicitly_selected:explicit_extensions in
   let parsing_context = make_parsing_context ~lang extensions in
   let extension_args, extension_stanzas =
@@ -520,7 +548,7 @@ let infer ~dir info packages =
   let lang = get_dune_lang () in
   let name = default_name ~dir ~packages in
   let parsing_context, stanza_parser, extension_args =
-    interpret_lang_and_extensions ~lang ~explicit_extensions:String.Map.empty
+    interpret_lang_and_extensions ~lang ~explicit_extensions:[]
   in
   let implicit_transitive_deps = Implicit_transitive_deps.Stanza.default ~lang in
   let wrapped_executables = wrapped_executables_default ~lang in
@@ -885,27 +913,10 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
   let open Decoder in
   fields
   @@
-  let* explicit_extensions =
-    multi_field
-      "using"
-      (let+ loc = loc
-       and+ name = located string
-       and+ ver = located Syntax.Version.decode
-       and+ parse_args = capture in
-       (* We don't parse the arguments quite yet as we want to set the
-          version of extensions before parsing them. *)
-       Extension.instantiate ~dune_lang_ver:lang.version ~loc ~parse_args name ver)
+  let* explicit_extensions_map, explicit_extensions =
+    Extension.parse_extensions ~lang_version:lang.version
   in
-  String_with_vars.set_decoding_env
-    (let extensions =
-       List.map explicit_extensions ~f:(fun (instance : Extension.instance) ->
-         let (Extension.Packed { syntax; _ }) = instance.extension in
-         syntax, instance.version)
-     in
-     Pform.Env.initial ~stanza:lang.version ~extensions)
-  @@
-  let parsing_context, _, _ =
-    let explicit_extensions = explicit_extensions_map explicit_extensions in
+  let parsing_context, stanza_parser, extension_args =
     interpret_lang_and_extensions ~lang ~explicit_extensions
   in
   Decoder.set_many parsing_context
@@ -999,10 +1010,6 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
       | Some n -> n
       | None -> default_name ~dir ~packages
     in
-    let explicit_extensions = explicit_extensions_map explicit_extensions in
-    let parsing_context, stanza_parser, extension_args =
-      interpret_lang_and_extensions ~lang ~explicit_extensions
-    in
     let implicit_transitive_deps =
       Option.value
         implicit_transitive_deps
@@ -1044,7 +1051,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
     let root = dir in
     let dialects =
       let dialects =
-        match String.Map.find explicit_extensions Melange_syntax.name with
+        match String.Map.find explicit_extensions_map Melange_syntax.name with
         | Some extension -> (extension.loc, Dialect.rescript) :: dialects
         | None -> dialects
       in

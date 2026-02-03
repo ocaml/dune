@@ -11,11 +11,13 @@ let files_to_promote ~common files : Dune_rpc.Files_to_promote.t =
     These files
 ;;
 
-let on_missing fn =
-  User_warning.emit
-    [ Pp.paragraphf "Nothing to promote for %s." (Path.Source.to_string_maybe_quoted fn)
-      |> Pp.tag User_message.Style.Warning
-    ]
+let on_missing missing =
+  List.sort missing ~compare:Path.Source.compare
+  |> List.iter ~f:(fun fn ->
+    User_warning.emit
+      [ Pp.paragraphf "Nothing to promote for %s." (Path.Source.to_string_maybe_quoted fn)
+        |> Pp.tag User_message.Style.Warning
+      ])
 ;;
 
 module Apply = struct
@@ -46,15 +48,9 @@ module Apply = struct
     in
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
-    match Dune_util.Global_lock.lock ~timeout:None with
+    match Global_lock.lock ~timeout:None with
     | Ok () ->
-      Scheduler_setup.go_without_rpc_server ~common ~config (fun () ->
-        let open Fiber.O in
-        let+ () = Fiber.return () in
-        let missing =
-          Diff_promotion.promote_files_registered_in_last_run files_to_promote
-        in
-        List.iter ~f:on_missing missing)
+      Diff_promotion.promote_files_registered_in_last_run files_to_promote |> on_missing
     | Error lock_held_by ->
       Scheduler_setup.no_build_no_rpc ~config (fun () ->
         let open Fiber.O in
@@ -74,6 +70,20 @@ end
 module Diff = struct
   let info = Cmd.info ~doc:"List promotions to be applied" "diff"
 
+  let diff_for_file (file : Diff_promotion.File.t) =
+    let original = Diff_promotion.File.source file in
+    let correction = Diff_promotion.File.correction_file file in
+    Dune_engine.Print_diff.get (Path.source original) correction
+  ;;
+
+  let display_diffs present =
+    let open Fiber.O in
+    List.sort present ~compare:Diff_promotion.File.compare
+    |> Fiber.parallel_map ~f:(fun file -> diff_for_file file >>| Result.to_option)
+    >>| List.filter_opt
+    >>| List.iter ~f:Dune_engine.Print_diff.Diff.print
+  ;;
+
   let term =
     let+ builder = Common.Builder.term
     and+ files =
@@ -84,11 +94,12 @@ module Diff = struct
     let files_to_promote = files_to_promote ~common files in
     (* CR-soon rgrinberg: remove pointless args *)
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
-      let open Fiber.O in
       let db = Diff_promotion.load_db () in
-      let* missing = Diff_promotion.missing ~db files_to_promote in
-      List.iter ~f:on_missing missing;
-      Diff_promotion.display_diffs ~db files_to_promote)
+      let { Diff_promotion.present; missing } =
+        Diff_promotion.partition_db db files_to_promote
+      in
+      on_missing missing;
+      display_diffs present)
   ;;
 
   let command = Cmd.v info term
@@ -101,17 +112,21 @@ module Files = struct
     let+ builder = Common.Builder.term
     and+ files =
       (* CR-someday Alizter: document this option *)
+      (* CR-soon rgrinberg: why do we even need this argument? *)
       Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
     in
-    let common, config = Common.init builder in
+    let common, _config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
     (* CR-soon rgrinberg: remove pointless args *)
-    Scheduler_setup.no_build_no_rpc ~config (fun () ->
-      let open Fiber.O in
-      let db = Diff_promotion.load_db () in
-      let* missing = Diff_promotion.missing ~db files_to_promote in
-      List.iter ~f:on_missing missing;
-      Diff_promotion.display_files ~db files_to_promote)
+    let db = Diff_promotion.load_db () in
+    let { Diff_promotion.present; missing } =
+      Diff_promotion.partition_db db files_to_promote
+    in
+    on_missing missing;
+    List.sort present ~compare:(fun x y ->
+      Path.Source.compare (Diff_promotion.File.source x) (Diff_promotion.File.source y))
+    |> List.iter ~f:(fun file ->
+      Diff_promotion.File.source file |> Path.Source.to_string |> print_endline)
   ;;
 
   let command = Cmd.v info term
@@ -120,20 +135,37 @@ end
 module Show = struct
   let info = Cmd.info ~doc:"Display contents of a corrected file" "show"
 
+  let display_corrected_contents db files_to_promote =
+    let { Diff_promotion.present; missing = _ } =
+      Diff_promotion.partition_db db files_to_promote
+    in
+    List.iter present ~f:(fun file ->
+      let correction_file = Diff_promotion.File.correction_file file in
+      if Path.exists correction_file
+      then Io.read_file correction_file |> print_endline
+      else
+        User_warning.emit
+          [ Pp.textf
+              "Corrected file does not exist for %s."
+              (Diff_promotion.File.source file |> Path.Source.to_string_maybe_quoted)
+          ])
+  ;;
+
   let term =
     let+ builder = Common.Builder.term
     and+ files =
+      (* CR-someday rgrinberg: should we really allow more than one file? How
+         are users supposed to distinguish the output? *)
       Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
     in
-    let common, config = Common.init builder in
+    let common, _config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
-    (* CR-soon rgrinberg: remove pointless args *)
-    Scheduler_setup.no_build_no_rpc ~config (fun () ->
-      let open Fiber.O in
-      let db = Diff_promotion.load_db () in
-      let+ missing = Diff_promotion.missing ~db files_to_promote in
-      List.iter ~f:on_missing missing;
-      Diff_promotion.display_corrected_contents ~db files_to_promote)
+    let db = Diff_promotion.load_db () in
+    let { Diff_promotion.present = _; missing } =
+      Diff_promotion.partition_db db files_to_promote
+    in
+    on_missing missing;
+    display_corrected_contents db files_to_promote
   ;;
 
   let command = Cmd.v info term

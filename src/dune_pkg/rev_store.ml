@@ -379,7 +379,7 @@ let with_flock lock_path ~f =
          Fiber.finalize
            (fun () ->
               Unix.ftruncate fd 0;
-              Dune_util.Global_lock.write_pid fd;
+              Global_lock.write_pid fd;
               f ())
            ~finally:(fun () ->
              let+ () = Fiber.return () in
@@ -635,7 +635,7 @@ let load_or_create ~dir =
   let+ () =
     with_flock lock ~f:(fun () ->
       match Fpath.mkdir_p (Path.to_string dir) with
-      | Already_exists ->
+      | `Already_exists ->
         (* CR-Leonidas-from-XIV: this doesn't actually care about whethe the
            result is [true] or [false] (and it doesn't matter too much), it's
            mostly about whether rev-parse recognizes the repo as valid. *)
@@ -657,7 +657,7 @@ let load_or_create ~dir =
                  "The folder at the revision store location is not a valid bare git \
                   repository."
              ])
-      | Created ->
+      | `Created ->
         run t ~display:Quiet [ "init"; "--bare" ]
         >>| (function
          | Ok () -> ()

@@ -41,68 +41,54 @@ type t =
 let dir t = t.dir
 let map_path t p = Path.Build.append t.dir p
 
-module Item = struct
-  type t =
-    | File
-    | Directory of { perms : int }
-    | Link
-    | Other of Unix.file_kind
-
-  let of_path path =
-    let { Unix.st_kind; st_perm; _ } = Unix.stat (Path.to_string path) in
-    match st_kind with
-    | S_DIR -> Directory { perms = st_perm }
-    | S_REG -> File
-    | kind -> Other kind
-  ;;
-
-  let of_kind path (kind : Unix.file_kind) =
-    match kind with
-    | S_DIR -> Directory { perms = (Unix.stat (Path.to_string path)).st_perm }
-    | S_REG -> File
-    | S_LNK -> Link
-    | _ -> Other kind
-  ;;
-end
-
 let copy_recursively =
   let chmod_file = Path.Permissions.add Path.Permissions.write in
   let chmod_dir p =
     Path.Permissions.add Path.Permissions.execute p
     |> Path.Permissions.add Path.Permissions.write
   in
-  let rec loop item ~src ~dst =
-    match (item : Item.t) with
-    | Link ->
-      (match Unix.stat (Path.to_string src) with
-       | { Unix.st_kind = S_REG; _ } -> Io.copy_file ~chmod:chmod_file ~src ~dst ()
-       | { Unix.st_kind = S_DIR; st_perm = perms; _ } ->
-         loop (Directory { perms }) ~src ~dst
-       | { Unix.st_kind; _ } -> loop (Other st_kind) ~src ~dst)
-    | File -> Io.copy_file ~chmod:chmod_file ~src ~dst ()
-    | Directory { perms } ->
-      (match Path.Untracked.readdir_unsorted_with_kinds src with
-       | Error e -> Unix_error.Detailed.raise e
-       | Ok contents ->
-         let perms = chmod_dir perms in
-         Path.mkdir_p ~perms dst;
-         List.iter contents ~f:(fun (name, kind) ->
-           let src = Path.relative src name in
-           let item = Item.of_kind src kind in
-           loop item ~src ~dst:(Path.relative dst name)))
-    | Other kind ->
-      User_error.raise
-        ~hints:
-          [ Pp.text
-              "Re-run Dune to delete the stale artifact, or manually delete this file"
-          ]
-        [ Pp.textf
-            "Failed to copy file %s of kind %S while creating a copy sandbox"
-            (Path.to_string_maybe_quoted src)
-            (File_kind.to_string_hum kind)
+  let raise_other_kind ~src kind =
+    User_error.raise
+      ~hints:
+        [ Pp.text "Re-run Dune to delete the stale artifact, or manually delete this file"
         ]
+      [ Pp.textf
+          "Failed to copy file %s of kind %S while creating a copy sandbox"
+          (Path.to_string_maybe_quoted src)
+          (File_kind.to_string_hum kind)
+      ]
   in
-  loop
+  let copy_file ~src ~dst = Io.copy_file ~chmod:chmod_file ~src ~dst () in
+  let mkdir_with_perms ~src ~dst =
+    let perms = (Unix.stat (Path.to_string src)).st_perm |> chmod_dir in
+    Path.mkdir_p ~perms dst
+  in
+  fun ~src ~dst ->
+    let { Unix.st_kind; st_perm; _ } = Unix.stat (Path.to_string src) in
+    match st_kind with
+    | S_REG -> copy_file ~src ~dst
+    | S_DIR ->
+      Path.mkdir_p ~perms:(chmod_dir st_perm) dst;
+      Fpath.traverse
+        ~dir:(Path.to_string src)
+        ~init:()
+        ~on_file:(fun ~dir fname () ->
+          let rel = Filename.concat dir fname in
+          let src = Path.relative src rel in
+          let dst = Path.relative dst rel in
+          copy_file ~src ~dst)
+        ~on_dir:(fun ~dir fname () ->
+          let rel = Filename.concat dir fname in
+          let src = Path.relative src rel in
+          let dst = Path.relative dst rel in
+          mkdir_with_perms ~src ~dst)
+        ~on_other:
+          (`Call
+              (fun ~dir fname kind () ->
+                let src = Path.relative src (Filename.concat dir fname) in
+                raise_other_kind ~src kind))
+        ()
+    | kind -> raise_other_kind ~src kind
 ;;
 
 let create_dir t dir = Path.mkdir_p (Path.build (map_path t dir))
@@ -117,7 +103,7 @@ let link_function ~(mode : Sandbox_mode.some) =
     let mode = Sandbox_mode.to_string (Some mode) in
     Code_error.raise
       (sprintf
-         "Don't have %ss on win32, but [%s] sandboxing mode was selected. To use \
+         "Don't have %ss on win32, but [%s] sandboxing mode was selected. To use  \
           emulation via copy, the [copy] sandboxing mode should be selected."
          mode
          mode)
@@ -129,10 +115,7 @@ let link_function ~(mode : Sandbox_mode.some) =
        (match Sys.win32 with
         | true -> win32_error mode
         | false -> fun src dst -> Io.portable_symlink ~src ~dst)
-     | Copy ->
-       fun src dst ->
-         let what = Item.of_path src in
-         copy_recursively what ~src ~dst
+     | Copy -> fun src dst -> copy_recursively ~src ~dst
      | Hardlink ->
        (match Sys.win32 with
         | true -> win32_error mode
@@ -162,22 +145,17 @@ let link_deps t ~mode ~deps =
 ;;
 
 let snapshot t =
-  (* CR-someday jeremiedimino: we do this kind of traversal in other places.
-     Might be worth trying to factorise the code. *)
-  let rec walk dir acc =
-    match Path.Untracked.readdir_unsorted_with_kinds dir with
-    | Error (err, func, arg) -> raise (Unix.Unix_error (err, func, arg))
-    | Ok files ->
-      List.fold_left files ~init:acc ~f:(fun acc (basename, (kind : Unix.file_kind)) ->
-        let p = Path.relative dir basename in
-        match kind with
-        | S_REG ->
-          let stats = Unix.lstat (Path.to_string p) in
-          Path.Map.add_exn acc p (Cached_digest.Reduced_stats.of_unix_stats stats)
-        | S_DIR -> walk p acc
-        | _ -> acc)
-  in
-  walk (Path.build t.dir) Path.Map.empty
+  let root = Path.build t.dir in
+  Fpath.traverse
+    ~dir:(Path.to_string root)
+    ~init:Path.Map.empty
+    ~on_file:(fun ~dir fname acc ->
+      let p = Path.relative root (Filename.concat dir fname) in
+      let stats = Unix.stat (Path.to_string p) in
+      Path.Map.add_exn acc p (Cached_digest.Reduced_stats.of_unix_stats stats))
+    ~on_other:`Ignore
+    ~on_symlink:`Ignore
+    ()
 ;;
 
 let create ~mode ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
@@ -323,7 +301,7 @@ let failed_to_delete_sandbox dir reason =
 
 let destroy t =
   maybe_async (fun () ->
-    try Path.rm_rf (Path.build t.dir) with
+    try Path.rm_rf ~chmod:true (Path.build t.dir) with
     | Sys_error e -> failed_to_delete_sandbox t.dir (Pp.verbatim e)
     | Unix.Unix_error (error, syscall, arg) ->
       failed_to_delete_sandbox

@@ -1,8 +1,6 @@
 Failing inline tests shouldn't hinder the diffing or promotion of other tests.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
 
   $ cat > dune << EOF
   > (library
@@ -28,11 +26,17 @@ We have two files with an inline test. Both tests should fail.
 
   $ dune test
   File "test1.ml", line 1, characters 0-0:
-  Error: Files _build/default/test1.ml and _build/default/test1.ml.corrected
-  differ.
+  --- test1.ml
+  +++ test1.ml.corrected
+  @@ -1 +1 @@
+  -let%expect_test "test1" = Print.f "hello"; [%expect {| |}]
+  +let%expect_test "test1" = Print.f "hello"; [%expect {| hello |}]
   File "test2.ml", line 1, characters 0-0:
-  Error: Files _build/default/test2.ml and _build/default/test2.ml.corrected
-  differ.
+  --- test2.ml
+  +++ test2.ml.corrected
+  @@ -1 +1 @@
+  -let%expect_test "test1" = Print.f "hello"; [%expect {| |}]
+  +let%expect_test "test1" = Print.f "hello"; [%expect {| hello |}]
   [1]
 
   $ dune promote

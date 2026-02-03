@@ -2,9 +2,7 @@ Test the ability of `(modules ..)` to contain dynamic
 forms such as `(:include)` and variables such as `"%{read-lines:}"` in the
 ocamllex / ocamlyacc stanzas.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ mkdir -p gen
 
@@ -44,9 +42,7 @@ Building under dune 3.22 throws an error
   to have (lang dune 3.22).
   [1]
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
   $ dune build foo.cma
 
 `%{read-lines:..}` also works

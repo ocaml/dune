@@ -8,9 +8,7 @@ Using a package that is installed needs 2.9 and above
   > EOF
 
   $ runtest() {
-  > cat >dune-project <<EOF
-  > (lang dune $1)
-  > EOF
+  > make_dune_project $1
   > dune build @foo
   > }
 

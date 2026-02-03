@@ -5,8 +5,12 @@
   $ cp hello.wrong-output hello.expected
   $ dune runtest
   File "hello.expected", line 1, characters 0-0:
-  Error: Files _build/default/hello.expected and _build/default/hello.output
-  differ.
+  --- hello.expected
+  +++ hello.output
+  @@ -1 +1 @@
+  -blah
+  \ No newline at end of file
+  +Hello, world!
   [1]
   $ dune promote
   Promoting _build/default/hello.output to hello.expected.

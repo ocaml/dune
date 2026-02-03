@@ -1,8 +1,6 @@
 We try to build a disabled library using the %{cma:..} pfrom
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.14)
-  > EOF
+  $ make_dune_project 3.14
 
   $ cat >dune <<EOF
   > (library

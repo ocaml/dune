@@ -1,8 +1,6 @@
 dune utop should read libraries in (subdir ..)
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.6)
-  > EOF
+  $ make_dune_project 3.6
 
   $ cat >dune <<EOF
   > (data_only_dirs foo)

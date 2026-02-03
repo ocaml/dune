@@ -236,6 +236,7 @@ include Sub_system.Register_end_point (struct
                  Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
                    Action_unexpanded.expand_no_targets
                      action
+                     Sandbox_config.no_special_requirements
                      ~loc
                      ~expander
                      ~chdir:dir
@@ -362,7 +363,7 @@ include Sub_system.Register_end_point (struct
           then Sandbox_config.no_special_requirements
           else Sandbox_config.needs_sandboxing
         in
-        Dep_conf_eval.unnamed ~sandbox info.deps ~expander
+        Dep_conf_eval.unnamed sandbox info.deps ~expander
       in
       let action = action sctx ~deps ~loc ~dir ~inline_test_dir ~runner_name in
       Memo.parallel_iter modes ~f:(fun (mode : Mode_conf.t) ->

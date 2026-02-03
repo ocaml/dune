@@ -2,9 +2,7 @@ Demonstrate if we're running ocamldep for the root module. There should be no
 need to do so since this module cannot depend on any other module in the same
 compilation unit.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.20)
-  > EOF
+  $ make_dune_project 3.20
 
   $ mkdir lib/
   $ cat >lib/dune <<EOF

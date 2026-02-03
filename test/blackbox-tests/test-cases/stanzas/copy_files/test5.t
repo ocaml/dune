@@ -1,9 +1,7 @@
 Test (enabled_if ...)
 
   $ mkdir -p subdir
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > EOF
+  $ make_dune_project 2.8
   $ cat >subdir/dune <<EOF
   > (rule (with-stdout-to foo.txt (progn)))
   > EOF

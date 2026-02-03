@@ -21,8 +21,8 @@ It should fail because the syntax extension wasn't enabled in `dune-project`:
   1 | (library (name lib) (parameters a))
                           ^^^^^^^^^^^^^^
   Error: 'parameters' is available only when oxcaml is enabled in the
-  dune-project file. You must enable it using (using oxcaml 0.1) in your
-  dune-project file.
+  dune-project or workspace file. You must enable it using (using oxcaml 0.1)
+  in the file.
   Note however that oxcaml is experimental and might change without notice in
   the future.
   [1]

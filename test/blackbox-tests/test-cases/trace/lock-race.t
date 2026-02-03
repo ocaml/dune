@@ -2,9 +2,7 @@ Demonstrate that dune acquires the lock before writing to the default trace file
 This test verifies that a second dune process will NOT overwrite the trace file
 from the first process when it cannot acquire the lock.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ ready=$(mktemp -d)/ready
   $ mkfifo $ready

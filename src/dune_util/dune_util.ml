@@ -2,7 +2,6 @@ module Action = Action
 module Alias_name = Alias_name
 module Build_path_prefix_map = Build_path_prefix_map0
 module Gc = Gc
-module Global_lock = Global_lock
 module Persistent = Persistent
 module Report_error = Report_error
 module Stringlike = Stringlike

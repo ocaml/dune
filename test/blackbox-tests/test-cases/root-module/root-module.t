@@ -1,8 +1,6 @@
 A library can be shadowed by an internal module name:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > EOF
+  $ make_dune_project 2.8
 
   $ mkdir lib0 lib1 lib2
 

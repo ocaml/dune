@@ -1,8 +1,6 @@
 Test (alias ...) and (mode ...) fields:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.6)
-  > EOF
+  $ make_dune_project 2.6
   $ cat >dune <<EOF
   > (copy_files
   >  (alias foo)
@@ -20,9 +18,7 @@ Test (alias ...) and (mode ...) fields:
   Please update your dune-project file to have (lang dune 2.7).
   [1]
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.7)
-  > EOF
+  $ make_dune_project 2.7
 
   $ dune build @foo
 

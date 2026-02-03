@@ -3,17 +3,15 @@ Project Toggle
 ##############
 
 Without the toggle, we get an error message for using the new mode subfield
-  $ cat >dune-project <<EOF
-  > (lang dune 3.5)
-  > EOF
+  $ make_dune_project 3.5
 
   $ dune build 2>&1 | head -n 6 || true
   File "dune", line 11, characters 3-16:
   11 |    (mode native)
           ^^^^^^^^^^^^^
   Error: 'mode' is available only when mode_specific_stubs is enabled in the
-  dune-project file. You must enable it using (using mode_specific_stubs 0.1)
-  in your dune-project file.
+  dune-project or workspace file. You must enable it using (using
+  mode_specific_stubs 0.1) in the file.
 
 But the toggle only exists in Dune 3.5
   $ cat >dune-project <<EOF

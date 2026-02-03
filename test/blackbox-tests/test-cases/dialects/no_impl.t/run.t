@@ -7,9 +7,17 @@ Test the (dialect ...) stanza inside the `dune-project` file.
   fake ocamlformat is running: "--impl" "main.ml"
   Formatting main.mfi
   File "fmt.ml", line 1, characters 0-0:
-  Error: Files _build/default/fmt.ml and _build/default/.formatted/fmt.ml
-  differ.
+  --- fmt.ml
+  +++ .formatted/fmt.ml
+  @@ -1 +1 @@
+  -prerr_endline ("Formatting " ^ Sys.argv.(1))
+  +(* fake ocamlformat output *)
+  \ No newline at end of file
   File "main.ml", line 1, characters 0-0:
-  Error: Files _build/default/main.ml and _build/default/.formatted/main.ml
-  differ.
+  --- main.ml
+  +++ .formatted/main.ml
+  @@ -1 +1 @@
+  -let () = ()
+  +(* fake ocamlformat output *)
+  \ No newline at end of file
   [1]

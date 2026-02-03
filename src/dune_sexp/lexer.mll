@@ -4,7 +4,7 @@ open Stdune
 module Token = struct
   type t =
     | Atom of Atom.t
-    | Quoted_string of string
+    | Quoted_string of Quoted_string.t
     | Lparen
     | Rparen
     | Eof
@@ -81,10 +81,17 @@ module Template = struct
     val add_var : Part.t -> unit
     val add_text : string -> unit
     val add_text_c : char -> unit
+    val set_block_kind : Quoted_string.Block_kind.t -> unit
+    val finish_block_line : unit -> unit
   end = struct
     type state =
       | String
-      | Template of Part.t list
+      | Template of { parts : Part.t list }
+      | BlockString of
+          { current_kind : Quoted_string.Block_kind.t
+          ; current_line_parts : Part.t list  (* parts accumulated for current line *)
+          ; lines : (Quoted_string.Block_kind.t * Part.t list) list
+          }
 
     let text_buf = Buffer.create 256
 
@@ -102,14 +109,39 @@ module Template = struct
       | "" -> parts
       | t -> add_text parts t
 
+    let set_block_kind kind =
+      match !state with
+      | String -> state := BlockString { current_kind = kind; current_line_parts = []; lines = [] }
+      | BlockString bs -> state := BlockString { bs with current_kind = kind }
+      | Template _ -> ()
+
+    let finish_block_line () =
+      match !state with
+      | BlockString { current_kind; current_line_parts; lines } ->
+        (* Add any remaining text in buffer to parts *)
+        let parts = add_buf_to_parts current_line_parts in
+        let line = (current_kind, List.rev parts) in
+        state := BlockString { current_kind; current_line_parts = []; lines = line :: lines }
+      | Template _ ->
+        (* Regular template - preserve newline in text *)
+        Buffer.add_char text_buf '\n'
+      | String -> ()
+
     let get () =
       match !state with
-      | String -> Token.Quoted_string (take_buf ())
-      | Template parts ->
+      | String -> Token.Quoted_string (Quoted_string.Single (take_buf ()))
+      | BlockString { current_kind; current_line_parts; lines } ->
+        state := String;
+        (* Finalize current line *)
+        let final_parts = add_buf_to_parts current_line_parts in
+        let final_line = (current_kind, List.rev final_parts) in
+        let all_lines = List.rev (final_line :: lines) in
+        Token.Quoted_string (Quoted_string.Multi all_lines)
+      | Template { parts } ->
         state := String;
         begin match add_buf_to_parts parts with
         | [] -> assert false
-        | [Text s] -> Quoted_string s
+        | [Text s] -> Quoted_string (Quoted_string.Single s)
         | parts ->
           Token.Template
             { quoted = true
@@ -121,10 +153,14 @@ module Template = struct
     let add_var v =
       match !state with
       | String ->
-        state := Template (v :: add_buf_to_parts []);
-      | Template parts ->
+        state := Template { parts = v :: add_buf_to_parts [] }
+      | BlockString bs ->
+        (* Add pform to current line parts, stay in BlockString state *)
+        let parts = add_buf_to_parts bs.current_line_parts in
+        state := BlockString { bs with current_line_parts = v :: parts }
+      | Template { parts } ->
         let parts = add_buf_to_parts parts in
-        state := Template (v::parts)
+        state := Template { parts = v :: parts }
 
     let add_text   = Buffer.add_string text_buf
     let add_text_c = Buffer.add_char text_buf
@@ -196,13 +232,25 @@ and start_quoted_string = parse
     { quoted_string lexbuf }
 
 and block_string_start kind = parse
-  | newline as s
+  | newline
     { Lexing.new_line lexbuf;
-      Template.Buffer.add_text s;
+      let block_kind =
+        match kind with
+        | With_escape_sequences -> Quoted_string.Block_kind.Escaped
+        | Raw -> Quoted_string.Block_kind.Raw
+      in
+      Template.Buffer.set_block_kind block_kind;
+      Template.Buffer.finish_block_line ();
       block_string_after_newline lexbuf
     }
   | ' '
-    { match kind with
+    { let block_kind =
+        match kind with
+        | With_escape_sequences -> Quoted_string.Block_kind.Escaped
+        | Raw -> Quoted_string.Block_kind.Raw
+      in
+      Template.Buffer.set_block_kind block_kind;
+      match kind with
       | With_escape_sequences -> block_string lexbuf
       | Raw -> raw_block_string lexbuf
     }
@@ -213,10 +261,15 @@ and block_string_start kind = parse
     }
 
 and block_string = parse
-  | newline as s
+  | newline
     { Lexing.new_line lexbuf;
-      Template.Buffer.add_text s;
+      Template.Buffer.finish_block_line ();
       block_string_after_newline lexbuf
+    }
+  | "\\n"
+    { (* In block strings, \n creates a line break rather than embedding a newline *)
+      Template.Buffer.finish_block_line ();
+      block_string lexbuf
     }
   | '\\'
     { match escape_sequence lexbuf with
@@ -246,10 +299,15 @@ and block_string_after_newline = parse
     }
 
 and raw_block_string = parse
-  | newline as s
+  | newline
     { Lexing.new_line lexbuf;
-      Template.Buffer.add_text s;
+      Template.Buffer.finish_block_line ();
       block_string_after_newline lexbuf
+    }
+  | "%{" {
+      let var = template_variable lexbuf in
+      Template.Buffer.add_var var;
+      raw_block_string lexbuf
     }
   | _ as c
     { Template.Buffer.add_text_c c;
@@ -348,8 +406,8 @@ and template_variable = parse
       (* -2 to account for the "%{" *)
       let start = { start with pos_cnum = start.pos_cnum - 2 } in
       let loc = Loc.create ~start ~stop:(Lexing.lexeme_end_p lexbuf) in
-      Template.Part.Pform
-        { loc ; name ; payload = Option.map ~f:Template.Pform.Payload.of_string payload }
+      Part.Pform
+        { loc ; name ; payload = Option.map ~f:Part.Pform.Payload.of_string payload }
   }
   | '}' | eof
     { error lexbuf "%{...} forms cannot be empty" }

@@ -3,6 +3,7 @@ open Stdune
 type t =
   | Atom of Loc.t * Atom.t
   | Quoted_string of Loc.t * string
+  | Block_string of Loc.t * Block_string.t
   | Template of Template.t
   | List of Loc.t * t list
   | Comment of Loc.t * string list
@@ -12,6 +13,8 @@ let rec to_dyn =
   function
   | Atom (_, a) -> variant "Atom" [ Atom.to_dyn a ]
   | Quoted_string (_, s) -> variant "Quoted_string" [ string s ]
+  | Block_string (_, block_string) ->
+    variant "Block_string" [ Repr.to_dyn Block_string.repr block_string ]
   | Template t -> variant "Template" [ Template.to_dyn t ]
   | List (_, l) -> variant "List" [ list to_dyn l ]
   | Comment (_, c) -> variant "Comment" [ Dyn.(list string) c ]
@@ -20,6 +23,7 @@ let rec to_dyn =
 let loc
       ( Atom (loc, _)
       | Quoted_string (loc, _)
+      | Block_string (loc, _)
       | List (loc, _)
       | Template { loc; _ }
       | Comment (loc, _) )
@@ -30,6 +34,7 @@ let loc
 let rec abstract : t -> Ast.t option = function
   | Atom (loc, atom) -> Some (Atom (loc, atom))
   | Quoted_string (loc, s) -> Some (Quoted_string (loc, s))
+  | Block_string (loc, block_string) -> Some (Block_string.to_ast ~loc block_string)
   | Template t -> Some (Template t)
   | List (loc, l) -> Some (List (loc, List.filter_map ~f:abstract l))
   | Comment _ -> None
@@ -46,7 +51,7 @@ let to_sexp c = abstract c |> Option.map ~f:Ast.remove_locs
 
 let extract_comments =
   let rec loop acc = function
-    | Atom _ | Quoted_string _ | Template _ -> acc
+    | Atom _ | Quoted_string _ | Block_string _ | Template _ -> acc
     | List (_, l) -> List.fold_left l ~init:acc ~f:loop
     | Comment (loc, comment) -> (loc, comment) :: acc
   in
@@ -59,6 +64,7 @@ let tokenize ts =
   let rec iter = function
     | Atom (loc, s) -> emit loc (Atom s)
     | Quoted_string (loc, s) -> emit loc (Quoted_string s)
+    | Block_string (loc, block_string) -> emit loc (Block_string block_string)
     | Template ({ loc; _ } as template) -> emit loc (Template template)
     | Comment (loc, comment) -> emit loc (Comment comment)
     | List (loc, l) ->

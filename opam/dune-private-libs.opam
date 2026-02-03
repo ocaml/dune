@@ -22,7 +22,7 @@ depends: [
   "pp" {>= "1.1.0"}
   "dyn" {= version}
   "stdune" {= version}
-  "ocaml" {>= "4.08"}
+  "ocaml" {>= "4.14"}
   "odoc" {with-doc}
 ]
 dev-repo: "git+https://github.com/ocaml/dune.git"

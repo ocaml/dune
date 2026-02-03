@@ -1246,7 +1246,7 @@ let setup_rocqpp_rules ~sctx ~dir ({ loc; modules } : Rocq_stanza.Rocqpp.t) =
 ;;
 
 let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.t) =
-  let wrapper_name = "DuneExtraction" in
+  let wrapper_name = "DuneExtraction" ^ Rocq_module.Name.to_string (snd s.prelude) in
   let* rocq_module =
     let+ rocq = Dir_contents.rocq dir_contents in
     Rocq_sources.extract rocq s
@@ -1315,7 +1315,7 @@ let rocqtop_args_extraction ~sctx ~dir (s : Rocq_stanza.Extraction.t) rocq_modul
     let context = Super_context.context sctx |> Context.name in
     extraction_context ~context ~scope s.buildable
   in
-  let wrapper_name = "DuneExtraction" in
+  let wrapper_name = "DuneExtraction" ^ Rocq_module.Name.to_string (snd s.prelude) in
   let boot_type = Bootstrap.make ~scope ~use_stdlib ~wrapper_name rocq_module in
   let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
   let per_file_flags = None in

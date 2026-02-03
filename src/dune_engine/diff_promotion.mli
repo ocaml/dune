@@ -46,3 +46,5 @@ val register_intermediate
   -> source_file:Path.Source.t
   -> correction_file:Path.Build.t
   -> unit
+
+val register_delete : [ `File | `Directory ] -> Path.Source.t -> unit

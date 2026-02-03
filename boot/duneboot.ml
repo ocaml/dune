@@ -1158,10 +1158,7 @@ end = struct
     | false, Some path -> path, Mode.Native, ".cmxa"
   ;;
 
-  let output_complete_obj_arg =
-    if ocaml_version < (4, 10) then "-custom" else "-output-complete-exe"
-  ;;
-
+  let output_complete_obj_arg = "-output-complete-exe"
   let unix_library_flags = if ocaml_version >= (5, 0) then [ "-I"; "+unix" ] else []
 
   type t = string String.Map.t

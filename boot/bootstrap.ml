@@ -4,7 +4,7 @@ open Printf
 (* This program performs version checking of the compiler and switches to the
    secondary compiler if necessary. The script should execute in OCaml 4.02! *)
 
-let min_supported_natively = 4, 08, 0
+let min_supported_natively = 4, 14, 0
 
 let keep_generated_files =
   let anon s = raise (Arg.Bad (sprintf "don't know what to do with %s\n" s)) in
@@ -103,7 +103,7 @@ let () =
        compiler
        (* Make sure to produce a self-contained binary as dlls tend to cause
           issues *)
-       (if v < (4, 10, 1) then "-custom" else "-output-complete-exe")
+       "-output-complete-exe"
        prog
        (if v >= (5, 0, 0) then "-I +unix " else "")
        (List.map modules ~f:(fun m -> m ^ ".ml") |> String.concat ~sep:" "));

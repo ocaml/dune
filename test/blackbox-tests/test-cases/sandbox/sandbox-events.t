@@ -19,10 +19,10 @@ Demonstrate sandbox events:
   > '
   {
     "cat": "sandbox",
-    "name": "create-sandbox",
+    "name": "create",
     "args": {
       "loc": "dune:1",
-      "dir": null
+      "dir": "_build/.sandbox/$DIGEST"
     }
   }
   {

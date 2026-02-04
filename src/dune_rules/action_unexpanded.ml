@@ -586,8 +586,15 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     let+ l = A.all (List.map l ~f:expand) in
     O.Pipe (outputs, l)
   | Cram script ->
-    let+ script = E.dep script in
-    Cram_exec.action script
+    A.with_expander (fun expander ->
+      let open Memo.O in
+      let+ version =
+        let dir = Expander.dir expander in
+        Dune_load.find_project ~dir >>| Dune_project.dune_version
+      in
+      let open Action_expander.O in
+      let+ script = E.dep script in
+      Cram_exec.action ~version script)
   | Format_dune_file (src, dst) ->
     A.with_expander (fun expander ->
       let open Memo.O in

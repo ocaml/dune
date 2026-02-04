@@ -15,6 +15,7 @@ val value_opt
 
 val profile : dir:Path.Build.t -> Profile.t Memo.t
 val bin_annot : dir:Path.Build.t -> bool Memo.t
+val bin_annot_cms : dir:Path.Build.t -> bool Memo.t
 val inline_tests : dir:Path.Build.t -> Dune_env.Inline_tests.t Memo.t
 
 (** [inherited ~name ~root ~f] create a function that computes a value derived

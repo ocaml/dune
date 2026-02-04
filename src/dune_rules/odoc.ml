@@ -259,48 +259,6 @@ module Flags = struct
   ;;
 end
 
-module Version = struct
-  type t = int * int * int (* major * minor * patch *)
-
-  let regex =
-    let open Re in
-    seq
-      [ bos
-      ; rep1 digit |> group
-      ; char '.'
-      ; rep1 digit |> group
-      ; opt (seq [ char '.'; rep1 digit |> group ])
-      ]
-    |> compile
-  ;;
-
-  let of_string s : t option =
-    let open Option.O in
-    let* groups = Re.exec_opt regex s in
-    let* major = Int.of_string (Re.Group.get groups 1) in
-    let* minor = Int.of_string (Re.Group.get groups 2) in
-    let+ patch =
-      match Re.Group.get_opt groups 3 with
-      | None -> Some 0
-      | Some p -> Int.of_string p
-    in
-    major, minor, patch
-  ;;
-
-  let compare = Tuple.T3.compare Int.compare Int.compare Int.compare
-
-  let higher_than_310 version =
-    match version with
-    | None -> false
-    | Some v ->
-      (match compare v (3, 1, 0) with
-       | Ordering.Lt -> false
-       | Ordering.Eq | Ordering.Gt -> true)
-  ;;
-
-  let to_string (major, minor, patch) = Printf.sprintf "%d.%d.%d" major minor patch
-end
-
 let odoc_base_flags quiet build_dir =
   let open Action_builder.O in
   let+ conf = Flags.get ~dir:build_dir in
@@ -310,96 +268,6 @@ let odoc_base_flags quiet build_dir =
        artifact (e.g. stdlib.cmti) - so no point in warn-error *)
     if quiet then Command.Args.S [] else A "--warn-error"
   | Nonfatal -> S []
-;;
-
-let get_odoc_version_impl bin =
-  let* () =
-    match Path.as_in_build_dir bin with
-    | Some p -> Build_system.build_file (Path.build p)
-    | None -> Memo.return ()
-  in
-  Memo.of_reproducible_fiber
-  @@
-  let open Fiber.O in
-  let+ output, exit_code =
-    Process.run_capture_lines
-      ~display:Quiet
-      ~stderr_to:
-        (Process.Io.make_stderr
-           ~output_on_success:Swallow
-           ~output_limit:Execution_parameters.Action_output_limit.default)
-      Return
-      bin
-      [ "--version" ]
-  in
-  output, exit_code
-;;
-
-let odoc_version_memo =
-  Memo.create "odoc-version" ~input:(module Path) get_odoc_version_impl
-;;
-
-let get_odoc_version odoc_path =
-  let open Memo.O in
-  let+ output, exit_code = Memo.exec odoc_version_memo odoc_path in
-  if exit_code <> 0
-  then None
-  else (
-    match output with
-    | [ version_line ] -> Version.of_string version_line
-    | _ -> None)
-;;
-
-let program sctx =
-  let ctx = Super_context.context sctx in
-  Super_context.resolve_program_memo
-    sctx
-    ~dir:(Context.build_dir ctx)
-    ~where:Original_path
-    "odoc"
-    ~loc:None
-;;
-
-let supports_doc_markdown sctx =
-  let* odoc_prog = program sctx in
-  match odoc_prog with
-  | Error _ -> Memo.return false
-  | Ok odoc_path ->
-    let+ version = get_odoc_version odoc_path in
-    Version.higher_than_310 version
-;;
-
-let warn_if_markdown_not_supported sctx =
-  match !Clflags.display with
-  | Quiet | Short -> Memo.return ()
-  | Verbose ->
-    let* odoc_prog = program sctx in
-    (match odoc_prog with
-     | Error _ ->
-       User_warning.emit
-         [ Pp.textf
-             "odoc could not be found. Markdown documentation requires odoc version \
-              3.1.0 or higher."
-         ];
-       Memo.return ()
-     | Ok odoc_path ->
-       let+ version = get_odoc_version odoc_path in
-       (match version with
-        | None ->
-          User_warning.emit
-            [ Pp.textf
-                "Could not determine odoc version. Markdown documentation requires odoc \
-                 version 3.1.0 or higher."
-            ]
-        | Some v ->
-          if not (Version.higher_than_310 (Some v))
-          then
-            User_warning.emit
-              [ Pp.textf
-                  "odoc version %s is installed, but markdown documentation requires \
-                   version 3.1.0 or higher."
-                  (Version.to_string v)
-              ]))
 ;;
 
 let odoc_dev_tool_exe_path_building_if_necessary () =
@@ -1139,64 +1007,53 @@ let setup_pkg_html_rules sctx ~pkg ~for_ : unit Memo.t =
 ;;
 
 let setup_lib_markdown_rules sctx lib =
-  let* markdown_supported = supports_doc_markdown sctx in
-  if not markdown_supported
-  then Memo.return ()
-  else (
-    let target = Lib lib in
-    let* odocs = odoc_artefacts sctx target in
-    let* () =
-      match Lib_info.package (Lib.Local.info lib) with
-      | Some _ -> Memo.return ()
-      | None ->
-        (* when there's no package, we still need to have rules for each odoc file *)
-        Memo.parallel_iter odocs ~f:(fun odoc -> setup_generate_markdown sctx odoc)
-    in
-    Memo.With_implicit_output.exec setup_lib_markdown_rules_def (sctx, lib))
+  let target = Lib lib in
+  let* odocs = odoc_artefacts sctx target in
+  let* () =
+    match Lib_info.package (Lib.Local.info lib) with
+    | Some _ -> Memo.return ()
+    | None -> Memo.parallel_iter odocs ~f:(fun odoc -> setup_generate_markdown sctx odoc)
+  in
+  Memo.With_implicit_output.exec setup_lib_markdown_rules_def (sctx, lib)
 ;;
 
 let setup_pkg_markdown_rules_def =
   let f (sctx, pkg, _for_) =
     let ctx = Super_context.context sctx in
-    let* markdown_supported = supports_doc_markdown sctx in
-    if not markdown_supported
-    then Memo.return ()
-    else
-      let* libs = Context.name ctx |> libs_of_pkg ~pkg in
-      let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
-      let* lib_odocs =
-        Memo.List.concat_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
-      in
-      let all_odocs = pkg_odocs @ lib_odocs in
-      (* odoc generates all markdown files on the same level for the package so we use one rule with directory target and batch all odoc commands. *)
-      let* () =
-        if List.is_empty all_odocs
-        then Memo.return ()
-        else (
-          let pkg_markdown_dir = Paths.markdown ctx (Pkg pkg) in
-          let markdown_root = Paths.markdown_root ctx in
-          let actions =
-            List.map all_odocs ~f:(fun odoc ->
-              run_odoc
-                sctx
-                ~dir:(Path.build markdown_root)
-                "markdown-generate"
-                ~quiet:false
-                ~flags_for:None
-                [ Command.Args.A "-o"
-                ; Command.Args.Path (Path.build markdown_root)
-                ; Command.Args.Dep (Path.build odoc.odocl_file)
-                ])
-          in
-          let rule =
-            Action_builder.progn actions
-            |> Action_builder.With_targets.add_directories
-                 ~directory_targets:[ pkg_markdown_dir ]
-          in
-          add_rule sctx rule)
-      in
-      let* () = Memo.parallel_iter libs ~f:(setup_lib_markdown_rules sctx) in
-      add_format_alias_deps ctx Markdown (Pkg pkg) all_odocs
+    let* libs = Context.name ctx |> libs_of_pkg ~pkg in
+    let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
+    let* lib_odocs =
+      Memo.List.concat_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
+    in
+    let all_odocs = pkg_odocs @ lib_odocs in
+    let* () =
+      if List.is_empty all_odocs
+      then Memo.return ()
+      else (
+        let pkg_markdown_dir = Paths.markdown ctx (Pkg pkg) in
+        let markdown_root = Paths.markdown_root ctx in
+        let actions =
+          List.map all_odocs ~f:(fun odoc ->
+            run_odoc
+              sctx
+              ~dir:(Path.build markdown_root)
+              "markdown-generate"
+              ~quiet:false
+              ~flags_for:None
+              [ Command.Args.A "-o"
+              ; Command.Args.Path (Path.build markdown_root)
+              ; Command.Args.Dep (Path.build odoc.odocl_file)
+              ])
+        in
+        let rule =
+          Action_builder.progn actions
+          |> Action_builder.With_targets.add_directories
+               ~directory_targets:[ pkg_markdown_dir ]
+        in
+        add_rule sctx rule)
+    in
+    let* () = Memo.parallel_iter libs ~f:(setup_lib_markdown_rules sctx) in
+    add_format_alias_deps ctx Markdown (Pkg pkg) all_odocs
   in
   setup_pkg_rules_def "setup-package-markdown-rules" f
 ;;
@@ -1215,19 +1072,15 @@ let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.
   in
   match (output : Output_format.t) with
   | Markdown ->
-    let* markdown_supported = supports_doc_markdown sctx in
-    if not markdown_supported
-    then Memo.return ()
-    else (
-      let directory_target = Paths.markdown ctx (Pkg name) in
-      let toplevel_index = Paths.markdown_index ctx in
-      let deps =
-        let open Action_builder.O in
-        let+ () = Action_builder.path (Path.build directory_target)
-        and+ () = Action_builder.path (Path.build toplevel_index) in
-        ()
-      in
-      Rules.Produce.Alias.add_deps alias deps)
+    let directory_target = Paths.markdown ctx (Pkg name) in
+    let toplevel_index = Paths.markdown_index ctx in
+    let deps =
+      let open Action_builder.O in
+      let+ () = Action_builder.path (Path.build directory_target)
+      and+ () = Action_builder.path (Path.build toplevel_index) in
+      ()
+    in
+    Rules.Produce.Alias.add_deps alias deps
   | Html | Json ->
     let* libs =
       Context.name ctx |> libs_of_pkg ~pkg:name >>| List.map ~f:(fun lib -> Lib lib)
@@ -1377,29 +1230,23 @@ let gen_rules sctx ~dir rest =
   | [ "_markdown" ] ->
     let* packages = Dune_load.packages () in
     let ctx = Super_context.context sctx in
-    let* is_markdown_supported = supports_doc_markdown sctx in
-    if not is_markdown_supported
-    then
-      let+ () = warn_if_markdown_not_supported sctx in
-      Gen_rules.no_rules
-    else (
-      let all_package_dirs =
-        Package.Name.Map.to_list packages
-        |> List.map ~f:(fun (_, (pkg : Package.t)) ->
-          let pkg_name = Package.name pkg in
-          Paths.markdown ctx (Pkg pkg_name))
-      in
-      let directory_targets =
-        List.fold_left all_package_dirs ~init:Path.Build.Map.empty ~f:(fun acc dir ->
-          Path.Build.Map.set acc dir Loc.none)
-      in
-      has_rules
-        ~directory_targets
-        (let* () = setup_toplevel_index_rule sctx Markdown in
-         Package.Name.Map.to_seq packages
-         |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
-           let pkg_name = Package.name pkg in
-           setup_pkg_markdown_rules sctx ~pkg:pkg_name ~for_:Compilation_mode.Ocaml)))
+    let all_package_dirs =
+      Package.Name.Map.to_list packages
+      |> List.map ~f:(fun (_, (pkg : Package.t)) ->
+        let pkg_name = Package.name pkg in
+        Paths.markdown ctx (Pkg pkg_name))
+    in
+    let directory_targets =
+      List.fold_left all_package_dirs ~init:Path.Build.Map.empty ~f:(fun acc dir ->
+        Path.Build.Map.set acc dir Loc.none)
+    in
+    has_rules
+      ~directory_targets
+      (let* () = setup_toplevel_index_rule sctx Markdown in
+       Package.Name.Map.to_seq packages
+       |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
+         let pkg_name = Package.name pkg in
+         setup_pkg_markdown_rules sctx ~pkg:pkg_name ~for_:Compilation_mode.Ocaml))
   | [ "_markdown"; _lib_unique_name_or_pkg ] ->
     (* package directories are directory targets *)
     Memo.return Gen_rules.no_rules

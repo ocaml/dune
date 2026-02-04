@@ -12,9 +12,10 @@ Demonstrate sandbox events:
   $ dune build @foo
 
   $ dune trace cat | jq '
+  >  include "dune";
   >   select(.cat == "sandbox")
   > | del(.ts,.dur, .args.queued)
-  > | .args.dir |= (if . then sub("[0-9a-f]{32}"; "$DIGEST") else . end)
+  > | censorDigestDir
   > '
   {
     "cat": "sandbox",

@@ -17,8 +17,9 @@ val coq_libs : t -> Coq_lib.DB.t Memo.t
 
 val rocq_libs : t -> Rocq_lib.DB.t Memo.t
 
-(** Scope databases *)
 module DB : sig
+  val packages : unit -> Package.t Package.Name.Map.t Memo.t
+  val mask : unit -> Only_packages.t Memo.t
   val find_by_dir : Path.Build.t -> t Memo.t
   val find_by_project : Context_name.t -> Dune_project.t -> t Memo.t
   val public_libs : Context_name.t -> Lib.DB.t Memo.t

@@ -308,7 +308,7 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
       (let open Action_builder.O in
        let+ packages =
          let open Memo.O in
-         Dune_load.packages ()
+         Scope.DB.packages ()
          >>| Dune_lang.Package.Name.Map.map ~f:Local_package.of_package
          |> Action_builder.of_memo
        and+ repos =

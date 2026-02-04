@@ -75,3 +75,6 @@ def fsUpdateWithPath($path):
     select(.name == "fs_update")
   | .args
   | select(.path == $path);
+
+def censorDigestDir:
+  .args.dir |= (if . then sub("[0-9a-f]{32}"; "$DIGEST") else . end);

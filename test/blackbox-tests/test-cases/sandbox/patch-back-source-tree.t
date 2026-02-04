@@ -34,6 +34,22 @@ All modified dependencies are promoted
 
   $ echo blah > x
   $ dune build
+
+  $ dune trace cat | jq '
+  > include "dune";
+  >   select(.cat == "sandbox" and .name == "snapshot")
+  > | censorDigestDir
+  > | .args
+  > '
+  {
+    "loc": "dune:1",
+    "dir": "_build/.sandbox/$DIGEST"
+  }
+  {
+    "loc": "dune:1",
+    "dir": "_build/.sandbox/$DIGEST"
+  }
+
   $ dune promote x
   Promoting _build/default/x to x.
   $ cat x

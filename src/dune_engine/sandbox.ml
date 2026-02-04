@@ -147,19 +147,26 @@ let link_deps t ~mode ~deps =
 
 let snapshot t =
   let root = Path.build t.dir in
-  Fpath.traverse
-    ~dir:(Path.to_string root)
-    ~init:Path.Map.empty
-    ~on_dir:(fun ~dir fname acc ->
-      let path = Path.relative root (Filename.concat dir fname) in
-      Path.Map.add_exn acc path `Dir)
-    ~on_file:(fun ~dir fname acc ->
-      let p = Path.relative root (Filename.concat dir fname) in
-      let stats = Unix.stat (Path.to_string p) in
-      Path.Map.add_exn acc p (`File (Cached_digest.Reduced_stats.of_unix_stats stats)))
-    ~on_other:`Ignore
-    ~on_symlink:`Ignore
-    ()
+  let start = Time.now () in
+  let snapshot =
+    Fpath.traverse
+      ~dir:(Path.to_string root)
+      ~init:Path.Map.empty
+      ~on_dir:(fun ~dir fname acc ->
+        let path = Path.relative root (Filename.concat dir fname) in
+        Path.Map.add_exn acc path `Dir)
+      ~on_file:(fun ~dir fname acc ->
+        let p = Path.relative root (Filename.concat dir fname) in
+        let stats = Unix.stat (Path.to_string p) in
+        Path.Map.add_exn acc p (`File (Cached_digest.Reduced_stats.of_unix_stats stats)))
+      ~on_other:`Ignore
+      ~on_symlink:`Ignore
+      ()
+  in
+  let stop = Time.now () in
+  Dune_trace.emit ~buffered:true Sandbox (fun () ->
+    Dune_trace.Event.sandbox `Snapshot ~start ~stop ~queued:None t.loc ~dir:t.dir);
+  snapshot
 ;;
 
 let create ~mode ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
@@ -316,5 +323,5 @@ let destroy t =
   in
   Dune_trace.emit ~buffered:true Sandbox (fun () ->
     let queued = Time.diff start queue_start in
-    Dune_trace.Event.sandbox_destroy ~start ~stop ~queued t.loc ~dir:t.dir)
+    Dune_trace.Event.sandbox `Destroy ~start ~stop ~queued:(Some queued) t.loc ~dir:t.dir)
 ;;

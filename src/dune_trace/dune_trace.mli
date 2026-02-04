@@ -37,10 +37,11 @@ module Event : sig
 
   type t
 
-  val sandbox_destroy
-    :  start:Time.t
+  val sandbox
+    :  [ `Snapshot | `Destroy ]
+    -> start:Time.t
     -> stop:Time.t
-    -> queued:Time.Span.t
+    -> queued:Time.Span.t option
     -> Loc.t
     -> dir:Path.Build.t
     -> t

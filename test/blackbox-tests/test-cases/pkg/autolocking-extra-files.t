@@ -36,15 +36,8 @@ Test to make sure that autlocking with extra files works
   $ dune pkg enabled && echo "package management enabled"
   package management enabled
 
-When trying to install the packages it reports the extra files are not found
+Autolocking correctly handles packages with extra files (patches)
 
-  $ dune build @pkg-install 2>&1 \
-  > | dune_cmd subst '_build/\.sandbox/[0-9a-f]+' '_build/.sandbox/HASH' \
-  > | dune_cmd subst 'ocamlbuild\.0\.0\.1-[0-9a-f]+' 'ocamlbuild.0.0.1-HASH1'
-  Error:
-  open(_build/.sandbox/HASH/_private/default/.pkg/ocamlbuild.0.0.1-HASH1/source/fix.patch): No such file or directory
-  -> required by
-     _build/_private/default/.pkg/ocamlbuild.0.0.1-HASH1/target
-  -> required by alias pkg-install
-  [1]
+  $ dune build @pkg-install 2>&1
+  patched
 

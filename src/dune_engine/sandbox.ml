@@ -170,11 +170,6 @@ let snapshot t =
 ;;
 
 let create ~mode ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
-  let dune_stats = Dune_trace.global () in
-  let event =
-    Dune_trace.Out.start dune_stats (fun () ->
-      Dune_trace.Event.Async.create_sandbox ~loc:rule_loc)
-  in
   init ();
   let sandbox_dir =
     let sandbox_suffix = rule_digest |> Digest.to_string in
@@ -182,15 +177,21 @@ let create ~mode ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
   in
   let t = { dir = sandbox_dir; snapshot = None; loc = rule_loc } in
   let open Fiber.O in
-  let+ () =
+  let queue_start = Time.now () in
+  let+ start, stop =
     maybe_async (fun () ->
+      let start = Time.now () in
       Path.rm_rf (Path.build sandbox_dir);
       create_dirs t ~dirs ~rule_dir;
       (* CR-someday amokhov: Note that this doesn't link dynamic dependencies, so
          targets produced dynamically will be unavailable. *)
-      link_deps t ~mode ~deps)
+      link_deps t ~mode ~deps;
+      let stop = Time.now () in
+      start, stop)
   in
-  Option.iter dune_stats ~f:(fun trace -> Dune_trace.Out.finish trace event);
+  Dune_trace.emit ~buffered:true Sandbox (fun () ->
+    let queued = Time.diff start queue_start in
+    Dune_trace.Event.sandbox `Create ~start ~stop ~queued:(Some queued) t.loc ~dir:t.dir);
   match mode with
   | Patch_back_source_tree -> { t with snapshot = Some (snapshot t) }
   | _ -> t

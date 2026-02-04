@@ -38,7 +38,7 @@ module Event : sig
   type t
 
   val sandbox
-    :  [ `Snapshot | `Destroy ]
+    :  [ `Create | `Snapshot | `Destroy ]
     -> start:Time.t
     -> stop:Time.t
     -> queued:Time.Span.t option

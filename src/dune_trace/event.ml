@@ -760,6 +760,7 @@ let sandbox name ~start ~stop ~queued loc ~dir =
     match name with
     | `Destroy -> "destroy"
     | `Snapshot -> "snapshot"
+    | `Create -> "create"
   in
   Event.complete ~args ~name ~start ~dur Sandbox
 ;;

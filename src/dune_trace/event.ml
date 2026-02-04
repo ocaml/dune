@@ -761,6 +761,7 @@ let sandbox name ~start ~stop ~queued loc ~dir =
     | `Destroy -> "destroy"
     | `Snapshot -> "snapshot"
     | `Create -> "create"
+    | `Extract -> "extract"
   in
   Event.complete ~args ~name ~start ~dur Sandbox
 ;;

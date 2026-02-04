@@ -274,7 +274,7 @@ let move_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated
   : unit Fiber.t
   =
   let open Fiber.O in
-  let+ _start, _finish, _queued =
+  let+ start, stop, queued =
     maybe_async (fun () ->
       Option.iter t.snapshot ~f:(fun old_snapshot ->
         register_snapshot_promotion t targets ~old_snapshot);
@@ -308,7 +308,8 @@ let move_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated
           if Path.Untracked.exists (Path.build src_dir)
           then Unix.rename (Path.Build.to_string src_dir) (Path.Build.to_string target)))
   in
-  ()
+  Dune_trace.emit ~buffered:true Sandbox (fun () ->
+    Dune_trace.Event.sandbox `Extract ~start ~stop ~queued t.loc ~dir:t.dir)
 ;;
 
 let failed_to_delete_sandbox dir reason =

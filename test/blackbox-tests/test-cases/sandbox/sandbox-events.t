@@ -27,6 +27,14 @@ Demonstrate sandbox events:
   }
   {
     "cat": "sandbox",
+    "name": "extract",
+    "args": {
+      "loc": "dune:1",
+      "dir": "_build/.sandbox/$DIGEST"
+    }
+  }
+  {
+    "cat": "sandbox",
     "name": "destroy",
     "args": {
       "loc": "dune:1",

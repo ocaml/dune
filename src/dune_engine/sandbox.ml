@@ -7,8 +7,22 @@ let maybe_async f =
      type of this function would need to be polymorphic which is forbidden by the
      relaxed value restriction. *)
   match Config.(get background_sandboxes) with
-  | `Disabled -> Fiber.return (f ())
-  | `Enabled -> Scheduler.async_exn f
+  | `Disabled ->
+    let start = Time.now () in
+    f ();
+    let finish = Time.now () in
+    Fiber.return (start, finish, None)
+  | `Enabled ->
+    let queue_start = Time.now () in
+    let open Fiber.O in
+    let+ start, finish =
+      Scheduler.async_exn (fun () ->
+        let start = Time.now () in
+        f ();
+        let finish = Time.now () in
+        start, finish)
+    in
+    start, finish, Some (Time.diff start queue_start)
 ;;
 
 let init =
@@ -177,21 +191,16 @@ let create ~mode ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
   in
   let t = { dir = sandbox_dir; snapshot = None; loc = rule_loc } in
   let open Fiber.O in
-  let queue_start = Time.now () in
-  let+ start, stop =
+  let+ start, stop, queued =
     maybe_async (fun () ->
-      let start = Time.now () in
       Path.rm_rf (Path.build sandbox_dir);
       create_dirs t ~dirs ~rule_dir;
       (* CR-someday amokhov: Note that this doesn't link dynamic dependencies, so
          targets produced dynamically will be unavailable. *)
-      link_deps t ~mode ~deps;
-      let stop = Time.now () in
-      start, stop)
+      link_deps t ~mode ~deps)
   in
   Dune_trace.emit ~buffered:true Sandbox (fun () ->
-    let queued = Time.diff start queue_start in
-    Dune_trace.Event.sandbox `Create ~start ~stop ~queued:(Some queued) t.loc ~dir:t.dir);
+    Dune_trace.Event.sandbox `Create ~start ~stop ~queued t.loc ~dir:t.dir);
   match mode with
   | Patch_back_source_tree -> { t with snapshot = Some (snapshot t) }
   | _ -> t
@@ -264,38 +273,42 @@ let hint_delete_dir =
 let move_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated.t)
   : unit Fiber.t
   =
-  maybe_async (fun () ->
-    Option.iter t.snapshot ~f:(fun old_snapshot ->
-      register_snapshot_promotion t targets ~old_snapshot);
-    Targets.Validated.iter
-      targets
-      ~file:(fun target ->
-        if not (should_be_skipped target)
-        then rename_optional_file ~src:(map_path t target) ~dst:target)
-      ~dir:(fun target ->
-        let src_dir = map_path t target in
-        (match Path.Untracked.stat (Path.build target) with
-         | Error (Unix.ENOENT, _, _) -> ()
-         | Error e ->
-           User_error.raise
-             ~hints:hint_delete_dir
-             [ Pp.textf "unable to stat %s" (Path.Build.to_string_maybe_quoted target)
-             ; Pp.text "reason:"
-             ; Pp.text (Unix_error.Detailed.to_string_hum e)
-             ]
-         | Ok { Unix.st_kind; _ } ->
-           (* We clean up all targets (including directory targets) before
+  let open Fiber.O in
+  let+ _start, _finish, _queued =
+    maybe_async (fun () ->
+      Option.iter t.snapshot ~f:(fun old_snapshot ->
+        register_snapshot_promotion t targets ~old_snapshot);
+      Targets.Validated.iter
+        targets
+        ~file:(fun target ->
+          if not (should_be_skipped target)
+          then rename_optional_file ~src:(map_path t target) ~dst:target)
+        ~dir:(fun target ->
+          let src_dir = map_path t target in
+          (match Path.Untracked.stat (Path.build target) with
+           | Error (Unix.ENOENT, _, _) -> ()
+           | Error e ->
+             User_error.raise
+               ~hints:hint_delete_dir
+               [ Pp.textf "unable to stat %s" (Path.Build.to_string_maybe_quoted target)
+               ; Pp.text "reason:"
+               ; Pp.text (Unix_error.Detailed.to_string_hum e)
+               ]
+           | Ok { Unix.st_kind; _ } ->
+             (* We clean up all targets (including directory targets) before
               running an action, so this branch should be unreachable unless
               the rule somehow escaped the sandbox *)
-           User_error.raise
-             ~hints:hint_delete_dir
-             [ Pp.textf
-                 "Target %s of kind %S already exists in the build directory"
-                 (Path.Build.to_string_maybe_quoted target)
-                 (File_kind.to_string_hum st_kind)
-             ]);
-        if Path.Untracked.exists (Path.build src_dir)
-        then Unix.rename (Path.Build.to_string src_dir) (Path.Build.to_string target)))
+             User_error.raise
+               ~hints:hint_delete_dir
+               [ Pp.textf
+                   "Target %s of kind %S already exists in the build directory"
+                   (Path.Build.to_string_maybe_quoted target)
+                   (File_kind.to_string_hum st_kind)
+               ]);
+          if Path.Untracked.exists (Path.build src_dir)
+          then Unix.rename (Path.Build.to_string src_dir) (Path.Build.to_string target)))
+  in
+  ()
 ;;
 
 let failed_to_delete_sandbox dir reason =
@@ -306,23 +319,16 @@ let failed_to_delete_sandbox dir reason =
 ;;
 
 let destroy t =
-  let queue_start = Time.now () in
   let open Fiber.O in
-  let+ start, stop =
+  let+ start, stop, queued =
     maybe_async (fun () ->
-      let start = Time.now () in
-      let () =
-        try Path.rm_rf ~chmod:true (Path.build t.dir) with
-        | Sys_error e -> failed_to_delete_sandbox t.dir (Pp.verbatim e)
-        | Unix.Unix_error (error, syscall, arg) ->
-          failed_to_delete_sandbox
-            t.dir
-            (Unix_error.Detailed.pp (Unix_error.Detailed.create error ~syscall ~arg))
-      in
-      let stop = Time.now () in
-      start, stop)
+      try Path.rm_rf ~chmod:true (Path.build t.dir) with
+      | Sys_error e -> failed_to_delete_sandbox t.dir (Pp.verbatim e)
+      | Unix.Unix_error (error, syscall, arg) ->
+        failed_to_delete_sandbox
+          t.dir
+          (Unix_error.Detailed.pp (Unix_error.Detailed.create error ~syscall ~arg)))
   in
   Dune_trace.emit ~buffered:true Sandbox (fun () ->
-    let queued = Time.diff start queue_start in
-    Dune_trace.Event.sandbox `Destroy ~start ~stop ~queued:(Some queued) t.loc ~dir:t.dir)
+    Dune_trace.Event.sandbox `Destroy ~start ~stop ~queued t.loc ~dir:t.dir)
 ;;

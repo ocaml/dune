@@ -1,8 +1,6 @@
 open Stdune
 open Fiber.O
 
-let () = Dune_tests_common.init ()
-
 let push_log = function
   | `Ok -> printfn "Successful push."
   | `Closed -> printfn "Couldn't push! Bus was closed."
@@ -14,23 +12,23 @@ let pop_log = function
 ;;
 
 let push t s =
-  let+ r = Fiber_event_bus.push t s in
+  let+ r = Fiber.Event_bus.push t s in
   push_log r
 ;;
 
 let pop t =
-  let+ r = Fiber_event_bus.pop t in
+  let+ r = Fiber.Event_bus.pop t in
   pop_log r
 ;;
 
 let create () =
-  let bus = Fiber_event_bus.create () in
+  let bus = Fiber.Event_bus.create () in
   printfn "Created bus.";
   bus
 ;;
 
 let close t =
-  let+ () = Fiber_event_bus.close t in
+  let+ () = Fiber.Event_bus.close t in
   printfn "Closed bus."
 ;;
 

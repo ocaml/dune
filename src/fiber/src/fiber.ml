@@ -8,6 +8,7 @@ module Throttle = Throttle
 module Mutex = Mutex
 module Scheduler = Scheduler
 module Lazy = Lazy
+module Event_bus = Event_bus
 
 let run =
   let rec loop ~iter (s : _ Scheduler.step) =

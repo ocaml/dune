@@ -178,18 +178,18 @@ end
 
 (* A generic loop that continuously fetches events from a [sub] that it opens a
    poll to and writes them to the [event] bus. *)
-let fetch_loop ~(event : Event.t Fiber_event_bus.t) ~client ~f sub =
+let fetch_loop ~(event : Event.t Fiber.Event_bus.t) ~client ~f sub =
   Client.poll client sub
   >>= function
   | Error version_error ->
-    let* () = Fiber_event_bus.close event in
+    let* () = Fiber.Event_bus.close event in
     User_error.raise [ Pp.verbatim (Version_error.message version_error) ]
   | Ok poller ->
     let rec loop () =
       Fiber.collect_errors (fun () -> Client.Stream.next poller)
       >>= (function
-       | Ok (Some payload) -> Fiber_event_bus.push event (f payload)
-       | Error _ | Ok None -> Fiber_event_bus.close event >>> Fiber.return `Closed)
+       | Ok (Some payload) -> Fiber.Event_bus.push event (f payload)
+       | Error _ | Ok None -> Fiber.Event_bus.close event >>> Fiber.return `Closed)
       >>= function
       | `Closed -> Fiber.return ()
       | `Ok -> loop ()
@@ -198,11 +198,11 @@ let fetch_loop ~(event : Event.t Fiber_event_bus.t) ~client ~f sub =
 ;;
 
 (* Main render loop *)
-let render_loop ~(event : Event.t Fiber_event_bus.t) =
+let render_loop ~(event : Event.t Fiber.Event_bus.t) =
   Console.reset ();
   let state = State.init () in
   let rec loop () =
-    Fiber_event_bus.pop event
+    Fiber.Event_bus.pop event
     >>= function
     | `Closed ->
       Console.print_user_message
@@ -230,7 +230,7 @@ let monitor ~quit_on_disconnect () =
           (Dune_rpc.Initialize.Request.create
              ~id:(Dune_rpc.Id.make (Sexp.Atom "monitor_cmd")))
           ~f:(fun client ->
-            let event = Fiber_event_bus.create () in
+            let event = Fiber.Event_bus.create () in
             let module Sub = Dune_rpc_private.Public.Sub in
             Fiber.all_concurrently_unit
               [ render_loop ~event

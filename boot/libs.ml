@@ -291,12 +291,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/fiber_event_bus"
-    ; main_module_name = Some "Fiber_event_bus"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "otherlibs/dune-private-libs/meta_parser"
     ; main_module_name = Some "Dune_meta_parser"
     ; include_subdirs = No
@@ -477,7 +471,6 @@ let main =
             ; "Dune_lang"
             ; "Predicate_lang"
             ; "Fiber"
-            ; "Fiber_event_bus"
             ; "Top_closure"
             ; "Ordering"
             ; "Dyn"

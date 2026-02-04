@@ -37,6 +37,14 @@ module Event : sig
 
   type t
 
+  val sandbox_destroy
+    :  start:Time.t
+    -> stop:Time.t
+    -> queued:Time.Span.t
+    -> Loc.t
+    -> dir:Path.Build.t
+    -> t
+
   val evalauted_rules : rule_total:int -> t
 
   module Exit_status : sig

@@ -36,6 +36,7 @@ type snapshot = [ `Dir | `File of Cached_digest.Reduced_stats.t ] Path.Map.t
 type t =
   { dir : Path.Build.t
   ; snapshot : snapshot option
+  ; loc : Loc.t
   }
 
 let dir t = t.dir
@@ -172,7 +173,7 @@ let create ~mode ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
     let sandbox_suffix = rule_digest |> Digest.to_string in
     Path.Build.relative sandbox_dir sandbox_suffix
   in
-  let t = { dir = sandbox_dir; snapshot = None } in
+  let t = { dir = sandbox_dir; snapshot = None; loc = rule_loc } in
   let open Fiber.O in
   let+ () =
     maybe_async (fun () ->
@@ -297,11 +298,23 @@ let failed_to_delete_sandbox dir reason =
 ;;
 
 let destroy t =
-  maybe_async (fun () ->
-    try Path.rm_rf ~chmod:true (Path.build t.dir) with
-    | Sys_error e -> failed_to_delete_sandbox t.dir (Pp.verbatim e)
-    | Unix.Unix_error (error, syscall, arg) ->
-      failed_to_delete_sandbox
-        t.dir
-        (Unix_error.Detailed.pp (Unix_error.Detailed.create error ~syscall ~arg)))
+  let queue_start = Time.now () in
+  let open Fiber.O in
+  let+ start, stop =
+    maybe_async (fun () ->
+      let start = Time.now () in
+      let () =
+        try Path.rm_rf ~chmod:true (Path.build t.dir) with
+        | Sys_error e -> failed_to_delete_sandbox t.dir (Pp.verbatim e)
+        | Unix.Unix_error (error, syscall, arg) ->
+          failed_to_delete_sandbox
+            t.dir
+            (Unix_error.Detailed.pp (Unix_error.Detailed.create error ~syscall ~arg))
+      in
+      let stop = Time.now () in
+      start, stop)
+  in
+  Dune_trace.emit ~buffered:true Sandbox (fun () ->
+    let queued = Time.diff start queue_start in
+    Dune_trace.Event.sandbox_destroy ~start ~stop ~queued t.loc ~dir:t.dir)
 ;;

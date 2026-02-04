@@ -7,13 +7,11 @@ include
     (struct
       include Csexp_rpc.Session
 
-      let write t = function
-        | None -> close t
-        | Some packets ->
-          write t packets
-          >>| (function
-           | Ok () -> ()
-           | Error `Closed -> raise Dune_util.Report_error.Already_reported)
+      let write t packets =
+        write t packets
+        >>| function
+        | Ok () -> ()
+        | Error `Closed -> raise Dune_util.Report_error.Already_reported
       ;;
     end)
 

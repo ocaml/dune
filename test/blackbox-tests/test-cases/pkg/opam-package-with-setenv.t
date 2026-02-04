@@ -2,8 +2,9 @@ Testing the translation of the setenv field of an opam file into the dune lock d
 
   $ mkrepo
 
-Make a package with a setenv. We also test all the kinds of env updates here expcept for
+Make a package with a setenv. We also test all the kinds of env updates here except for
 =+= which isn't used at all in the wild. 
+
   $ mkpkg with-setenv <<EOF
   > setenv: [
   >  [EXPORTED_ENV_VAR = "Hello from the other package!"]
@@ -25,7 +26,7 @@ Make another package that depends on that and outputs the exported env vars
   >  [ "sh" "-c" "echo $append_with_leading_sep" ]
   > ]
   > EOF
-  > solve deps-on-with-setenv
+  $ solve deps-on-with-setenv
   Solution for dune.lock:
   - deps-on-with-setenv.0.0.1
   - with-setenv.0.0.1
@@ -92,7 +93,7 @@ difference between a propagated export_env versus the initial env.
   >  [append_with_leading_sep =: "Appended 2nd time with leading sep"]
   > ]
   > EOF
-  > mkpkg deps-on-with-setenv-2 <<'EOF'
+  $ mkpkg deps-on-with-setenv-2 <<'EOF'
   > depends: [ "with-setenv-2" ]
   > build: [
   >  [ "sh" "-c" "echo $EXPORTED_ENV_VAR" ]
@@ -102,7 +103,7 @@ difference between a propagated export_env versus the initial env.
   >  [ "sh" "-c" "echo $append_with_leading_sep" ]
   > ]
   > EOF
-  > solve deps-on-with-setenv-2
+  $ solve deps-on-with-setenv-2
   Solution for dune.lock:
   - deps-on-with-setenv-2.0.0.1
   - with-setenv.0.0.1

@@ -55,13 +55,9 @@ Now we add [mli] files for the two modules whose implementation is generated:
   $ touch other_gen.mli
   $ touch parser_raw.mli 
 
-We format again.
-  $ dune build @fmt
+We format again. Filter menhir warnings (which vary by version) to keep output stable.
+  $ dune build @fmt 2>&1 | grep -v "end-of-stream" | grep -v "never reduced" | grep -v 'File "parser_raw.mly"' | grep -v "in total"
   fake ocamlformat is running: "--intf" "other_gen.mli"
-  Warning: one state end-of-stream conflict was arbitrarily resolved.
-  File "parser_raw.mly", line 5, characters 4-7:
-  Warning: production prog -> EOL is never reduced.
-  Warning: in total, 1 production is never reduced.
   fake ocamlformat is running: "--intf" "parser_raw.mli"
   File "other_gen.mli", line 1, characters 0-0:
   --- other_gen.mli

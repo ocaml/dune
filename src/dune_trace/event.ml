@@ -745,3 +745,14 @@ let spawn_thread ~name =
   let args = [ "name", Arg.string name ] in
   Event.instant ~args ~name:"spawn_thread" now Thread
 ;;
+
+let sandbox_destroy ~start ~stop ~queued loc ~dir =
+  let args =
+    [ "queued", Arg.span queued
+    ; "loc", Arg.string (Loc.to_file_colon_line loc)
+    ; "dir", Arg.build_path dir
+    ]
+  in
+  let dur = Time.diff stop start in
+  Event.complete ~args ~name:"destroy" ~start ~dur Sandbox
+;;

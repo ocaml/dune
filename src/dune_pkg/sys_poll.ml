@@ -192,6 +192,18 @@ let os_distribution ~os ~android_release ~os_release_fields ~path =
                    (match Scanf.sscanf s " %s " Fun.id with
                     | Error _ -> linux
                     | Ok s -> norm s)))))
+     | Some "win32" as os ->
+       uname ~path [ "-s" ]
+       >>| (function
+        (* The output of `uname -s` generally looks like this:
+           - Cygwin :: CYGWIN_NT-10.0-26200
+           - MSYS2 (MSYS env) :: MSYS_NT-10.0-26200
+           - MSYS2 (any other env) :: MINGW64_NT-10.0-26200 *)
+        | Some s when String.starts_with s ~prefix:"cygwin" -> Some "cygwin"
+        | Some s
+          when String.starts_with s ~prefix:"msys" || String.starts_with s ~prefix:"mingw"
+          -> Some "msys2"
+        | _ -> os)
      | os -> Fiber.return os)
 ;;
 

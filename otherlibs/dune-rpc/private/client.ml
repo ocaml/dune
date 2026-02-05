@@ -91,6 +91,25 @@ module type S = sig
     -> 'a fiber
 end
 
+type abort =
+  | Invalid_session of Conv.error
+  | Server_aborted of Message.t
+
+exception Abort of abort
+
+let () =
+  Printexc.register_printer (function
+    | Abort error ->
+      let dyn =
+        match error with
+        | Invalid_session e -> Dyn.variant "Invalid_session" [ Conv.dyn_of_error e ]
+        | Server_aborted e ->
+          Dyn.variant "Server_aborted" [ Sexp.to_dyn (Message.to_sexp_unversioned e) ]
+      in
+      Some (Dyn.to_string dyn)
+    | _ -> None)
+;;
+
 module Make
     (Fiber : Fiber_intf.S)
     (Chan : sig
@@ -148,25 +167,6 @@ struct
     ;;
   end
 
-  type abort =
-    | Invalid_session of Conv.error
-    | Server_aborted of Message.t
-
-  exception Abort of abort
-
-  let () =
-    Printexc.register_printer (function
-      | Abort error ->
-        let dyn =
-          match error with
-          | Invalid_session e -> Dyn.variant "Invalid_session" [ Conv.dyn_of_error e ]
-          | Server_aborted e ->
-            Dyn.variant "Server_aborted" [ Sexp.to_dyn (Message.to_sexp_unversioned e) ]
-        in
-        Some (Dyn.to_string dyn)
-      | _ -> None)
-  ;;
-
   type t =
     { chan : Chan.t
     ; requests :
@@ -181,15 +181,15 @@ struct
     ; mutable running : bool
     ; mutable handler_initialized : bool
     ; (* We need this field to be an Ivar to ensure that any typed
-           communications are correctly versioned. The contract of the [Fiber]
-           interface ensures that this will be filled before any user code is
-           run. *)
+         communications are correctly versioned. The contract of the [Fiber]
+         interface ensures that this will be filled before any user code is
+         run. *)
       handler : unit V.Handler.t Fiber.t
     ; on_preemptive_abort : Message.t -> unit Fiber.t
     }
 
   (* When the client is terminated via this function, the session is
-       considered to be dead without a way to recover. *)
+     considered to be dead without a way to recover. *)
   let terminate t =
     let* () = Fiber.return () in
     match t.running with
@@ -222,8 +222,8 @@ struct
       (fun () -> terminate t)
       (fun () ->
          (* TODO stop using code error here. If [terminate_with_error] is
-             called, it's because the other side is doing something unexpected,
-             not because we have a bug *)
+            called, it's because the other side is doing something unexpected,
+            not because we have a bug *)
          Code_error.raise message info)
   ;;
 
@@ -348,6 +348,7 @@ struct
         Response.Error.create
           ~payload
           ~message:"notification sent while connection is dead"
+            (* CR-soon rgrinberg: Should be Connection_dead *)
           ~kind:Code_error
           ()
       in

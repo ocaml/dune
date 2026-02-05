@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 
 module Variable = struct
   type t =

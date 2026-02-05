@@ -48,3 +48,12 @@ let eval t (x : Ordering.t) =
   | (Eq | Gte | Lte), Eq | (Neq | Lt | Lte), Lt | (Neq | Gt | Gte), Gt -> true
   | _, _ -> false
 ;;
+
+let of_opam : OpamParserTypes.relop -> t = function
+  | `Eq -> Eq
+  | `Geq -> Gte
+  | `Leq -> Lte
+  | `Gt -> Gt
+  | `Lt -> Lt
+  | `Neq -> Neq
+;;

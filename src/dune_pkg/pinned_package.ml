@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 open Fiber.O
 
 let merge_pins name (pin1 : Local_package.pin) (pin2 : Local_package.pin) =

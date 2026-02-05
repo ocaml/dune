@@ -1,11 +1,5 @@
+open Dune_opam
 open Stdune
-
-(** Add values for expanding [%{name}] for a package *)
-val add_self_to_filter_env
-  :  OpamPackage.t
-  -> (OpamTypes.full_variable -> OpamVariable.variable_contents option)
-  -> OpamTypes.full_variable
-  -> OpamVariable.variable_contents option
 
 (** Convert a selected opam package to a package that dune can save to the lock
     directory *)

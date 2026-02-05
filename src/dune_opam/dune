@@ -1,0 +1,3 @@
+(library
+ (name dune_opam)
+ (libraries stdune dune_lang dune_digest opam_format opam_core re))

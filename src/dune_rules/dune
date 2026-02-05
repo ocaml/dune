@@ -16,6 +16,7 @@
   dune_findlib
   dune_glob
   dune_lang
+  dune_opam
   dune_patch
   dune_pkg
   re

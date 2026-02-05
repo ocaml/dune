@@ -1,4 +1,5 @@
 open Import
+open Dune_opam
 module Pin_stanza = Dune_lang.Pin_stanza
 module Package = Pin_stanza.Package
 

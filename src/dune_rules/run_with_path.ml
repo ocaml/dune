@@ -1,4 +1,5 @@
 open Import
+module Env = Stdune.Env
 module Display = Dune_engine.Display
 
 let depexts_hint = function
@@ -18,7 +19,7 @@ module Output : sig
 
   val with_error
     :  accepted_exit_codes:int Predicate.t
-    -> pkg:Dune_pkg.Package_name.t * Loc.t
+    -> pkg:Package.Name.t * Loc.t
     -> depexts:string list
     -> display:Display.t
     -> (error -> 'a)
@@ -27,7 +28,7 @@ module Output : sig
   val prerr : rc:int -> error -> unit
 end = struct
   type error =
-    { pkg : Dune_pkg.Package_name.t * Loc.t
+    { pkg : Package.Name.t * Loc.t
     ; depexts : string list
     ; filename : Dpath.t
     ; io : Process.Io.output Process.Io.t
@@ -166,7 +167,7 @@ module Spec = struct
     { prog : ('path, Action.Prog.Not_found.t) result
     ; args : 'path arg Array.Immutable.t
     ; ocamlfind_destdir : 'path
-    ; pkg : Dune_pkg.Package_name.t * Loc.t
+    ; pkg : Package.Name.t * Loc.t
     ; depexts : string list
     }
 

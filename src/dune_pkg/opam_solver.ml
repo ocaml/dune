@@ -13,6 +13,7 @@
 *)
 
 open Import
+open Dune_opam
 open Fiber.O
 
 let with_test solver_env =
@@ -181,7 +182,7 @@ module Context = struct
         OpamFilter.partial_eval
           (Solver_env.to_env t.solver_env
            |> Solver_stats.Updater.wrap_env t.stats_updater
-           |> Lock_pkg.add_self_to_filter_env package)
+           |> Opam_env.add_self_to_filter_env package)
           available
         |> eval_to_bool
       with
@@ -248,7 +249,7 @@ module Context = struct
     let with_test = package_is_local && with_test t.solver_env in
     Solver_env.to_env t.solver_env
     |> Solver_stats.Updater.wrap_env t.stats_updater
-    |> Lock_pkg.add_self_to_filter_env package
+    |> Opam_env.add_self_to_filter_env package
     |> Resolve_opam_formula.apply_filter ~with_test ~formula:filtered_formula
   ;;
 
@@ -1565,7 +1566,7 @@ let reject_unreachable_packages =
                     (Package_version.to_opam_package_version pkg.version)
                 in
                 Solver_env.to_env solver_env
-                |> Lock_pkg.add_self_to_filter_env opam_package
+                |> Opam_env.add_self_to_filter_env opam_package
               in
               let with_test = with_test solver_env in
               Dependency_formula.to_filtered_formula pkg.dependencies

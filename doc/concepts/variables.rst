@@ -78,6 +78,9 @@ Dune supports the following variables:
   stricter warning set. The old behaviour of Dune can be recovered by using the
   following stanza in a top-level ``dune`` file: ``(env (dev (flags :standard
   %{dune-warnings})))``.
+- ``jobs`` is the maximum number of concurrent jobs Dune has been allowed to
+  have (see :doc:`/reference/config/jobs.rst`). An initial value of ``auto``
+  expands to the auto-detected number of cores.
 - ``<ext>:<path>`` where ``<ext>`` is one of ``cmo``, ``cmi``, ``cma``,
   ``cmx``, or ``cmxa``. See :ref:`variables-for-artifacts`.
 - ``env:<var>=<default`` expands to the value of the environment

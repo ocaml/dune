@@ -467,6 +467,12 @@ module Rpc = struct
     let args = [ "id", Arg.int id ] in
     Event.instant ~args ~name:"close" now Rpc
   ;;
+
+  let dropped_write_client_disconnect exn =
+    let now = Time.now () in
+    let args = [ "exn", Arg.dyn (Exn.to_dyn exn) ] in
+    Event.instant ~args ~name:"drop-write-client-disconnect" now Rpc
+  ;;
 end
 
 let gc () =

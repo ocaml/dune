@@ -208,7 +208,8 @@ let write t sexps =
        (match error with
         | `Cancelled -> ()
         | `Exn exn ->
-          Dune_console.print [ Pp.textf "Rpc Client disconnected"; Exn.pp exn ]);
+          Dune_trace.emit Rpc (fun () ->
+            Dune_trace.Event.Rpc.dropped_write_client_disconnect exn));
        let+ () = close t in
        Error `Closed)
 ;;

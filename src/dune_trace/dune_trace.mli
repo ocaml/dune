@@ -167,6 +167,7 @@ module Event : sig
     val packet_write : id:int -> count:int -> t
     val accept : success:bool -> error:string option -> t
     val close : id:int -> t
+    val dropped_write_client_disconnect : Exn.t -> t
   end
 
   module Cram : sig

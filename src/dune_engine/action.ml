@@ -73,7 +73,7 @@ module Prog = struct
     let create ?hint ~context ~program ~loc () = { hint; context; program; loc }
 
     let raise { context; program; hint; loc } =
-      raise (User_error.E (Utils.program_not_found_message ?hint ~loc ~context program))
+      Utils.program_not_found ?hint ~loc ~context program
     ;;
 
     let to_dyn { context; program; hint; loc = _ } =

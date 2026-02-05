@@ -52,8 +52,31 @@ module Public = struct
       ;;
     end
 
-    let v1 = Decl.Request.make_current_gen ~req:V1.req ~resp:Conv.string ~version:1
-    let decl = Decl.Request.make ~method_:"format-dune-file" ~generations:[ v1 ]
+    module V2 = struct
+      let req =
+        let open Conv in
+        let path = field "path" (required string) in
+        let contents = field "contents" (required string) in
+        let version = field "version" (optional (pair int int)) in
+        let to_ ((path, contents), version) = path, `Contents contents, version in
+        let from (path, `Contents contents, version) = (path, contents), version in
+        iso (record (both (both path contents) version)) to_ from
+      ;;
+    end
+
+    let v1 =
+      Decl.Request.make_gen
+        ~version:1
+        ~req:V1.req
+        ~resp:Conv.string
+        ~upgrade_req:(fun (path, `Contents contents) -> path, `Contents contents, None)
+        ~downgrade_req:(fun (path, `Contents contents, _) -> path, `Contents contents)
+        ~upgrade_resp:Fun.id
+        ~downgrade_resp:Fun.id
+    ;;
+
+    let v2 = Decl.Request.make_current_gen ~req:V2.req ~resp:Conv.string ~version:2
+    let decl = Decl.Request.make ~method_:"format-dune-file" ~generations:[ v1; v2 ]
   end
 
   module Promote = struct

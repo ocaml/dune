@@ -637,7 +637,7 @@ let%expect_test "formatting dune files" =
       printfn "Unformatted:\n%s" unformatted;
       let run uri what =
         let+ res =
-          request_exn client Request.format_dune_file (uri, `Contents unformatted)
+          request_exn client Request.format_dune_file (uri, `Contents unformatted, None)
         in
         match res with
         | Ok s -> printfn "Formatted (%s):\n%s" what s

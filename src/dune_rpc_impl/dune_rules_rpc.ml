@@ -24,14 +24,17 @@ end
 let register rpc =
   let open Fiber.O in
   let () =
-    let f _ (path, `Contents contents) =
+    let f _ (path, `Contents contents, version_opt) =
       let+ version =
-        Memo.run
-          (let open Memo.O in
-           let source_path = For_handlers.source_path_of_string path in
-           let+ dir = Source_tree.nearest_dir source_path in
-           let project = Source_tree.Dir.project dir in
-           Dune_project.dune_version project)
+        match version_opt with
+        | Some version -> Fiber.return version
+        | None ->
+          Memo.run
+            (let open Memo.O in
+             let source_path = For_handlers.source_path_of_string path in
+             let+ dir = Source_tree.nearest_dir source_path in
+             let project = Source_tree.Dir.project dir in
+             Dune_project.dune_version project)
       in
       Dune_lang.Format.format_string ~version contents
     in

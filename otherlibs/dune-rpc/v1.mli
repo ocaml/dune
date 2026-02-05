@@ -323,8 +323,9 @@ module Request : sig
 
   (** format a [dune], [dune-project], or a [dune-workspace] file. The full
       path to the file is necessary so that dune knows the formatting options
-      for the project this file is in *)
-  val format_dune_file : (Path.t * [ `Contents of string ], string) t
+      for the project this file is in. The optional version parameter allows
+      specifying the dune language version directly. *)
+  val format_dune_file : (Path.t * [ `Contents of string ] * (int * int) option, string) t
 
   (** Promote a file. *)
   val promote : (Path.t, unit) t

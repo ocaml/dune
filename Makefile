@@ -70,6 +70,13 @@ install-ocamlformat:
 dev-deps:
 	opam install -y . --deps-only --with-dev-setup
 
+.PHONY: test-deps
+test-deps:
+	# CR-soon Alizter: Lwt 5.9.2 breaks on msvc so we pin it here. Remove
+	# this when https://github.com/ocsigen/lwt/issues/1071 is fixed.
+	opam pin add lwt 5.9.1 --no-action
+	opam install -y . --deps-only --with-dev-setup --with-test
+
 .PHONY: dev-deps-sans-melange
 dev-deps-sans-melange: dev-deps
 

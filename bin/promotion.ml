@@ -78,7 +78,7 @@ module Apply = struct
     let files_to_promote = files_to_promote ~common files in
     match Dune_util.Global_lock.lock ~timeout:None with
     | Ok () ->
-      Scheduler.go_with_rpc_server ~common ~config (fun () ->
+      Scheduler.go_without_rpc_server ~common ~config (fun () ->
         let open Fiber.O in
         let+ () = Fiber.return () in
         Diff_promotion.promote_files_registered_in_last_run files_to_promote)

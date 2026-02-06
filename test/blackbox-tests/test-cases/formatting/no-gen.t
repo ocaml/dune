@@ -65,7 +65,6 @@ We format again. Filter menhir warnings (which vary by version) to keep output s
   File "parser_raw.mli", line 1, characters 0-0:
   Error: Files _build/default/parser_raw.mli and
   _build/default/.formatted/parser_raw.mli differ.
-  [1]
 
 FIXME: unexpectedly, Dune generated the missing parser
   $ dune_cmd exists _build/default/parser_raw.ml

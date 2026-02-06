@@ -24,8 +24,8 @@ Reference a branch that does not exist:
   > EOF
 
   $ export BUILD_PATH_PREFIX_MAP="PWD=//$PWD:$BUILD_PATH_PREFIX_MAP"
-  $ dune pkg lock 2>&1 | dune_cmd subst '-\d+' '-eol' | dune_cmd delete '\^+'
-  File "dune-workspace", line 6, characters 6-eol:
+  $ dune pkg lock 2>&1 | dune_cmd subst 'characters \d+-\d+:' 'characters start-eol:' | dune_cmd delete '\^+'
+  File "dune-workspace", line 6, characters start-eol:
   6 |  (url "git+file:PWD/mock-opam-repository#nonexistent-branch"))
   revision "nonexistent-branch" not found in
   file:PWD/mock-opam-repository

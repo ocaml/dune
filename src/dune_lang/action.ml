@@ -5,7 +5,7 @@ open Dune_sexp
 module Action_plugin = struct
   let syntax =
     Syntax.create
-      ~name:"action-plugin"
+      ~name:(Syntax.Name.parse "action-plugin")
       ~desc:"action plugin extension"
       ~experimental:true
       [ (0, 1), `Since (2, 0) ]

@@ -3,7 +3,7 @@ open Dune_lang.Decoder
 
 let coq_syntax =
   Dune_lang.Syntax.create
-    ~name:"coq"
+    ~name:(Syntax.Name.parse "coq")
     ~desc:"the Coq language"
     [ (0, 1), `Since (1, 9)
     ; (0, 2), `Since (2, 5)

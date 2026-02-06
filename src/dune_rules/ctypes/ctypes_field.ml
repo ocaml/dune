@@ -5,7 +5,7 @@ let name = "ctypes"
 
 let syntax =
   Dune_lang.Syntax.create
-    ~name
+    ~name:(Syntax.Name.parse name)
     ~desc:"the ctypes extension"
     [ (0, 1), `Deleted_in (3, 11); (0, 2), `Deleted_in (3, 11); (0, 3), `Since (3, 7) ]
 ;;

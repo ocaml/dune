@@ -1,5 +1,19 @@
 open Stdune
 
+module Name = struct
+  include String
+
+  let parse x =
+    if String.contains x '.'
+    then User_error.raise [ Pp.textf "syntax name %s may not contain '.'" x ];
+    x
+  ;;
+
+  let dune = "dune"
+  let encode t = Encoder.string (to_string t)
+  let decode = Decoder.string
+end
+
 module Version = struct
   module T = struct
     type t = int * int

@@ -528,7 +528,7 @@ let prepend_version ~dune_version sexps =
   let list s = Dune_lang.List s in
   [ list
       [ Dune_lang.atom "lang"
-      ; string (Dune_lang.Syntax.name Stanza.syntax)
+      ; string (Dune_lang.Syntax.Name.to_string (Dune_lang.Syntax.name Stanza.syntax))
       ; Dune_lang.Syntax.Version.encode dune_version
       ]
   ]

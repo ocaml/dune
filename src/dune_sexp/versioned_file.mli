@@ -26,7 +26,7 @@ module type S = sig
     end
 
     (** Return the latest version of a language. *)
-    val get_exn : string -> Instance.t
+    val get_exn : Syntax.Name.t -> Instance.t
   end
 
   (** [load_exn fn ~f] loads a versioned file. It parses the first line, looks

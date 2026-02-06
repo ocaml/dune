@@ -73,7 +73,7 @@ module Infix = Comparator.Operators (String)
 
 let dune_site_syntax =
   Syntax.create
-    ~name:"dune_site"
+    ~name:(Syntax.Name.parse "dune_site")
     ~experimental:true
     ~desc:"the sites locations extension (experimental)"
     [ (0, 1), `Since (2, 8) ]

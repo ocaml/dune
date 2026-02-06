@@ -229,7 +229,7 @@ let default_dune_language_version =
 ;;
 
 let get_dune_lang () =
-  { (Lang.get_exn "dune") with version = !default_dune_language_version }
+  { (Lang.get_exn Syntax.Name.dune) with version = !default_dune_language_version }
 ;;
 
 module Extension = struct
@@ -257,7 +257,7 @@ module Extension = struct
 
   (* CR-someday amokhov: convert this mutable table to a memoized function,
      which depends on the contents of dune files that declare extensions. *)
-  let extensions = Table.create (module String) 32
+  let extensions = Table.create (module Syntax.Name) 32
 
   let register syntax stanzas arg_to_dyn =
     let name = Syntax.name syntax in
@@ -265,8 +265,8 @@ module Extension = struct
     then
       Code_error.raise
         "Dune_project.Extension.register: already registered"
-        [ "name", Dyn.string name ];
-    let key = Univ_map.Key.create ~name arg_to_dyn in
+        [ "name", Syntax.Name.to_dyn name ];
+    let key = Univ_map.Key.create ~name:(Syntax.Name.to_string name) arg_to_dyn in
     let ext = { syntax; stanzas; key } in
     Table.add_exn extensions name (Extension (Packed ext));
     key
@@ -293,11 +293,14 @@ module Extension = struct
   let instantiate ~dune_lang_ver ~loc ~parse_args (name_loc, name) (ver_loc, ver) =
     match Table.find extensions name with
     | None ->
+      let name = Syntax.Name.to_string name in
+      let candidates = Table.keys extensions |> List.map ~f:Syntax.Name.to_string in
       User_error.raise
         ~loc:name_loc
         [ Pp.textf "Unknown extension %S." name ]
-        ~hints:(User_message.did_you_mean name ~candidates:(Table.keys extensions))
+        ~hints:(User_message.did_you_mean name ~candidates)
     | Some (Deleted_in v) ->
+      let name = Syntax.Name.to_string name in
       User_error.raise
         ~loc
         [ Pp.textf
@@ -316,7 +319,7 @@ module Extension = struct
 
   let automatic ~explicitly_selected : automatic list =
     Table.foldi extensions ~init:[] ~f:(fun name extension acc ->
-      match String.Map.find explicitly_selected name with
+      match Syntax.Name.Map.find explicitly_selected name with
       | Some instance -> Selected instance :: acc
       | None ->
         (match extension with
@@ -326,7 +329,7 @@ module Extension = struct
 
   let explicit_extensions_map explicit_extensions =
     match
-      String.Map.of_list
+      Syntax.Name.Map.of_list
         (List.map explicit_extensions ~f:(fun (e : instance) ->
            let syntax =
              let (Packed e) = e.extension in
@@ -335,6 +338,7 @@ module Extension = struct
            Syntax.name syntax, e))
     with
     | Error (name, _, ext) ->
+      let name = Syntax.Name.to_string name in
       User_error.raise
         ~loc:ext.loc
         [ Pp.textf "Extension %S specified for the second time." name ]
@@ -347,7 +351,7 @@ module Extension = struct
       multi_field
         "using"
         (let+ loc = loc
-         and+ name = located string
+         and+ name = located Syntax.Name.decode
          and+ ver = located Syntax.Version.decode
          and+ parse_args = capture in
          (* We don't parse the arguments quite yet as we want to set the
@@ -368,7 +372,7 @@ module Extension = struct
 end
 
 module Melange_syntax = struct
-  let name = "melange"
+  let name = Syntax.Name.parse "melange"
 end
 
 let make_parsing_context ~(lang : Lang.Instance.t) extensions =
@@ -635,7 +639,7 @@ let encode : t -> Dune_sexp.t list =
       ; exclusive_dir_packages = _
       } ->
   let open Encoder in
-  let lang = Lang.get_exn "dune" in
+  let lang = Lang.get_exn Syntax.Name.dune in
   let flags =
     let flag name value default =
       if Bool.equal value (default ~lang) then None else Some (constr name bool value)
@@ -1051,7 +1055,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
     let root = dir in
     let dialects =
       let dialects =
-        match String.Map.find explicit_extensions_map Melange_syntax.name with
+        match Syntax.Name.Map.find explicit_extensions_map Melange_syntax.name with
         | Some extension -> (extension.loc, Dialect.rescript) :: dialects
         | None -> dialects
       in

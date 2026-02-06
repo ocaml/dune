@@ -131,7 +131,7 @@ module Stubs = struct
   ;;
 
   let syntax =
-    let name = "mode_specific_stubs" in
+    let name = Syntax.Name.parse "mode_specific_stubs" in
     let desc = "syntax extension for mode-specific foreign stubs" in
     Dune_lang.Syntax.create ~name ~desc [ (0, 1), `Since (3, 5) ]
   ;;

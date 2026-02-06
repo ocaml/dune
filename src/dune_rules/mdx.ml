@@ -206,7 +206,7 @@ let syntax =
   let name = "mdx" in
   let desc = "mdx extension to verify code blocks in .md files" in
   Dune_lang.Syntax.create
-    ~name
+    ~name:(Syntax.Name.parse name)
     ~desc
     [ (0, 1), `Since (2, 4)
     ; (0, 2), `Since (3, 0)

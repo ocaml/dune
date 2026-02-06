@@ -1228,7 +1228,7 @@ let encode_metadata
     list
       sexp
       [ string "lang"
-      ; string (Syntax.name Dune_lang.Pkg.syntax)
+      ; Syntax.Name.encode (Syntax.name Dune_lang.Pkg.syntax)
       ; Syntax.Version.encode version
       ]
   in
@@ -1569,7 +1569,7 @@ struct
             , expanded_solver_variable_bindings
             , solved_for_platforms )))
     in
-    if String.equal (Syntax.name syntax) (Syntax.name Dune_lang.Pkg.syntax)
+    if Syntax.Name.equal (Syntax.name syntax) (Syntax.name Dune_lang.Pkg.syntax)
     then
       ( version
       , dependency_hash
@@ -1582,8 +1582,8 @@ struct
         [ Pp.textf
             "In %s, expected language to be %s, but found %s"
             (Path.to_string metadata_file_path)
-            (Syntax.name Dune_lang.Pkg.syntax)
-            (Syntax.name syntax)
+            (Syntax.Name.to_string (Syntax.name Dune_lang.Pkg.syntax))
+            (Syntax.Name.to_string (Syntax.name syntax))
         ]
   ;;
 

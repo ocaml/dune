@@ -430,7 +430,7 @@ include Stanza.Make (struct
 let bootstrap_info_extension =
   let syntax =
     Dune_lang.Syntax.create
-      ~name:"dune-bootstrap-info"
+      ~name:(Syntax.Name.parse "dune-bootstrap-info")
       ~desc:"private extension to handle Dune bootstrap"
       [ (0, 1), `Since (2, 0) ]
   in

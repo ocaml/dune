@@ -10,6 +10,7 @@ val compare : t -> t -> Ordering.t
 val hash : t -> int
 val to_dyn : t -> Dyn.t
 val break : t -> pos:int -> t * t
+val to_string : t -> t
 val is_empty : t -> bool
 val of_list : char list -> t
 val starts_with : prefix:t -> t -> bool

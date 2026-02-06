@@ -15,7 +15,7 @@ module type S = sig
         }
     end
 
-    val get_exn : string -> Instance.t
+    val get_exn : Syntax.Name.t -> Instance.t
   end
 
   val load_exn : Path.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
@@ -43,7 +43,7 @@ struct
 
     (* This mutable table is safe under the assumption that we call [register]
        only at the top level, which is currently true. *)
-    let langs = Table.create (module String) 32
+    let langs = Table.create (module Syntax.Name) 32
 
     let register syntax data =
       let name = Syntax.name syntax in
@@ -51,12 +51,13 @@ struct
       then
         Code_error.raise
           "Versioned_file.Lang.register: already registered"
-          [ "name", Dyn.string name ];
+          [ "name", Syntax.Name.to_dyn name ];
       Table.add_exn langs name { syntax; data }
     ;;
 
     let parse first_line : Instance.t =
       let { First_line.lang = name_loc, name; version = ver_loc, ver } = first_line in
+      let name = Syntax.Name.parse name in
       let ver_atom =
         match Atom.parse ver with
         | Some atom -> atom
@@ -75,10 +76,14 @@ struct
       in
       match Table.find langs name with
       | None ->
+        let name = Syntax.Name.to_string name in
         User_error.raise
           ~loc:name_loc
           [ Pp.textf "Unknown language %S." name ]
-          ~hints:(User_message.did_you_mean name ~candidates:(Table.keys langs))
+          ~hints:
+            (User_message.did_you_mean
+               name
+               ~candidates:(Table.keys langs |> List.map ~f:Syntax.Name.to_string))
       | Some t ->
         Syntax.check_supported ~dune_lang_ver t.syntax (ver_loc, dune_lang_ver);
         { syntax = t.syntax; data = t.data; version = dune_lang_ver }

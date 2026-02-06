@@ -104,10 +104,19 @@ and used to extract:
   bsdtar cp dune sh tar
   $ (PATH=.fakebin build_pkg foo)
 
+Build the package with gtar present:
+
+  $ rm .fakebin/{bsd,}tar
+  $ ln -s .binaries/gnutar .fakebin/gtar
+  $ ln -s .binaries/bsdtar .fakebin/tar
+  $ show_path
+  cp dune gtar sh tar
+  $ (PATH=.fakebin build_pkg foo)
+
 Build with unzip only:
 
   $ ln -s .binaries/unzip .fakebin/unzip
-  $ rm .fakebin/bsdtar .fakebin/tar
+  $ rm .fakebin/gtar .fakebin/tar
   $ show_path
   cp dune sh unzip
   $ (PATH=.fakebin build_pkg foo)

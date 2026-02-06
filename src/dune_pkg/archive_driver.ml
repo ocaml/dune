@@ -27,17 +27,16 @@ let make_zip_args ~archive ~target_in_temp =
 let tar =
   let command =
     Fiber.Lazy.create (fun () ->
-      match
-        (* Test for tar before bsdtar as tar is more likely to be installed
-            and both work equally well for tarballs. *)
-        List.find_map [ "tar"; "bsdtar" ] ~f:which
-      with
+      (* Test for tar before bsdtar as tar is more likely to be installed
+         and both work equally well for tarballs. *)
+      let tars = [ "tar"; "bsdtar"; "gtar" ] in
+      match List.find_map tars ~f:which with
       | Some bin -> Fiber.return { Command.bin; make_args = make_tar_args }
       | None ->
         Fiber.return
         @@ User_error.raise
              [ Pp.text "No program found to extract tar file. Tried:"
-             ; Pp.enumerate [ "tar"; "bsdtar" ] ~f:Pp.verbatim
+             ; Pp.enumerate tars ~f:Pp.verbatim
              ])
   in
   { command; suffixes = [ ".tar"; ".tar.gz"; ".tgz"; ".tar.bz2"; ".tbz" ] }
@@ -58,16 +57,15 @@ let zip =
       match which "unzip" with
       | Some bin -> Fiber.return { Command.bin; make_args = make_zip_args }
       | None ->
-        let rec find_tar programs =
-          match programs with
+        let rec find_bsdtar = function
           | [] -> Fiber.return None
           | x :: xs ->
             let* res = which_bsdtar x in
             (match res with
              | Some _ -> Fiber.return res
-             | None -> find_tar xs)
+             | None -> find_bsdtar xs)
         in
-        let* program = find_tar [ "bsdtar"; "tar" ] in
+        let* program = find_bsdtar [ "bsdtar"; "tar" ] in
         (match program with
          | Some bin -> Fiber.return { Command.bin; make_args = make_tar_args }
          | None ->

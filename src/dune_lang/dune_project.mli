@@ -15,6 +15,7 @@ type t
 
 val to_dyn : t -> Dyn.t
 val packages : t -> Package.t Package.Name.Map.t
+val exclusive_package : t -> dir:Path.Source.t -> Package_id.t option
 val name : t -> Dune_project_name.t
 val version : t -> Package_version.t option
 val root : t -> Path.Source.t

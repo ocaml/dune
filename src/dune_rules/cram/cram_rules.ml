@@ -201,19 +201,41 @@ let collect_stanzas =
     | Some dir -> collect_whole_subtree [ acc ] dir
 ;;
 
-let rules ~sctx ~dir tests =
+let rules ~sctx ~dir tests project =
   let* stanzas = collect_stanzas ~dir
   and* with_package_mask =
-    Dune_load.mask ()
-    >>| Only_packages.enumerate
-    >>| function
-    | `All -> fun _packages f -> f ()
-    | `Set only ->
-      fun packages f ->
-        Memo.when_
-          (Package.Name.Set.is_empty packages
-           || Package.Name.Set.(not (is_empty (inter only packages))))
-          f
+    let+ mask = Dune_load.mask () >>| Only_packages.enumerate in
+    match
+      Dune_project.exclusive_package project ~dir:(Path.Build.drop_build_context_exn dir)
+      |> Option.map ~f:Package.Id.name
+    with
+    | None ->
+      (match mask with
+       | `All -> fun _packages f -> f ()
+       | `Set only ->
+         fun packages f ->
+           Memo.when_
+             (Package.Name.Set.is_empty packages
+              || Package.Name.Set.(not (is_empty (inter only packages))))
+             f)
+    | Some p ->
+      let singleton = Package.Name.Set.singleton p in
+      let with_validate_packages packages ~f =
+        if Package.Name.Set.is_empty packages || Package.Name.Set.equal packages singleton
+        then f ()
+        else
+          Code_error.raise
+            "All cram tests in this directory belong to a particular package by virtue \
+             of the dir stanza in the packge declaration itself. It's not possible to \
+             re-assign it to another package using the cram stanza"
+            [ "package", Package.Name.to_dyn p ]
+      in
+      (match mask with
+       | `All -> fun packages f -> with_validate_packages packages ~f
+       | `Set only ->
+         if Package.Name.Set.mem only p
+         then fun packages f -> with_validate_packages packages ~f
+         else fun packages _f -> with_validate_packages packages ~f:Memo.return)
   in
   Memo.parallel_iter tests ~f:(fun test ->
     let* spec =
@@ -396,5 +418,5 @@ let rules ~sctx ~dir source_dir =
   cram_tests source_dir
   >>= function
   | [] -> Memo.return ()
-  | tests -> rules ~sctx ~dir tests
+  | tests -> rules ~sctx ~dir tests (Source_tree.Dir.project source_dir)
 ;;

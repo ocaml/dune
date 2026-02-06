@@ -96,7 +96,7 @@ val with_job_slot : (Fiber.Cancel.t -> Config.t -> 'a Fiber.t) -> 'a Fiber.t
     timeout. *)
 val wait_for_process
   :  ?timeout:Time.Span.t
-  -> ?is_process_group_leader:bool
+  -> is_process_group_leader:bool
   -> Pid.t
   -> Proc.Process_info.t Fiber.t
 
@@ -107,7 +107,7 @@ type termination_reason =
 
 val wait_for_build_process
   :  ?timeout:Time.Span.t
-  -> ?is_process_group_leader:bool
+  -> is_process_group_leader:bool
   -> Pid.t
   -> (Proc.Process_info.t * termination_reason) Fiber.t
 

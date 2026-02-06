@@ -2,6 +2,7 @@ open Stdune
 
 type job =
   { pid : Pid.t
+  ; is_process_group_leader : bool
   ; ivar : Proc.Process_info.t Fiber.Ivar.t
   }
 

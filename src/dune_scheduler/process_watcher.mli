@@ -1,6 +1,6 @@
 open Stdune
 
-val kill_process_group : Pid.t -> int -> unit
+val kill_process_group : Pid.t -> int -> is_process_group_leader:bool -> unit
 
 (** Initialize the process watcher thread. *)
 type t

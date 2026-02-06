@@ -1,8 +1,8 @@
 open Stdune
 
-let kill_process_group pid signal =
-  match Sys.win32 with
-  | false ->
+let kill_process_group pid signal ~is_process_group_leader =
+  match (not Sys.win32) && is_process_group_leader with
+  | true ->
     (* Send to the entire process group so that any child processes created by
        the job are also terminated.
 
@@ -22,10 +22,15 @@ let kill_process_group pid signal =
      (* CR-someday rgrinerg: do we need to catch this error now that we're no
         longer racing? *)
      | Unix.Unix_error _ -> ())
-  | true ->
+  | false ->
     (* Process groups are not supported on Windows (or even if they are, [spawn]
        does not know how to use them), so we're only sending the signal to the
-       job itself. *)
+       job itself.
+
+      There can also be other situations where [Spawn] explicitly does not have
+      a process group id that we know about. This happens when
+      [is_process_group_leader] is [false]. In those cases, it doesn't make
+      sense to pretend the pid corresponds to the correct process group. *)
     (try Unix.kill (Pid.to_int pid) signal with
      | Unix.Unix_error _ -> ())
 ;;
@@ -122,7 +127,8 @@ let register_job_unix t job =
 let register_job = if Sys.win32 then register_job_win32 else register_job_unix
 
 let killall_unix t signal =
-  Process_table.iter t ~f:(fun job -> kill_process_group job.pid signal)
+  Process_table.iter t ~f:(fun job ->
+    kill_process_group job.pid signal ~is_process_group_leader:job.is_process_group_leader)
 ;;
 
 let killall_win32 t signal =

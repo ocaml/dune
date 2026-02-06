@@ -134,13 +134,13 @@ module Process = struct
     let prog_command_line = command_line prog args in
     logf t "run: %s" prog_command_line;
     let n = gen_id t in
-    let create_process =
+    let create_process stdin stdout stderr =
       let args = Array.of_list (prog :: args) in
       match env with
-      | None -> Unix.create_process prog args
+      | None -> Unix.create_process prog args stdin stdout stderr
       | Some env ->
         let env = Array.of_list env in
-        Unix.create_process_env prog args env
+        Unix.create_process_env prog args env stdin stdout stderr
     in
     let stdout_fn = t.dest_dir ^/ sprintf "stdout-%d" n in
     let stderr_fn = t.dest_dir ^/ sprintf "stderr-%d" n in
@@ -795,7 +795,7 @@ let main ?(args = []) ~name f =
     let t =
       create_from_inside_dune
         ~dest_dir:!dest_dir
-        ~log:(if !verbose then prerr_endline else log)
+        ~log:(if !verbose then fun s -> prerr_endline s else fun s -> log s)
         ~build_dir
         ~name
     in

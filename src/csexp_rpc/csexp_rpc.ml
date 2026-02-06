@@ -238,7 +238,7 @@ module Session = struct
   let write t b =
     match Platform.OS.value with
     | Linux -> send t b
-    | _ -> Unix.single_write t b
+    | _ -> fun pos len -> Unix.single_write t b pos len
   ;;
 
   let rec csexp_write_loop fd out_buf token =

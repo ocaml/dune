@@ -63,20 +63,12 @@
                     odoc-parser = osuper.odoc-parser.overrideAttrs (old: {
                       version = "3.1.0";
                       src = odoc-src;
-                      patches = [ ];
                       doCheck = false;
-                      postPatch = ''
-                        find . -type f -name "*.ml" -exec sed -i 's/%%VERSION%%/3.1.0/g' {} +
-                      '';
                     });
                     odoc = osuper.odoc.overrideAttrs (old: {
                       version = "3.1.0";
                       src = odoc-src;
-                      patches = [ ];
                       doCheck = false;
-                      postPatch = ''
-                        find . -type f -name "*.ml" -exec sed -i 's/%%VERSION%%/3.1.0/g' {} +
-                      '';
                     });
                   }
                 );
@@ -125,12 +117,10 @@
           dune-static-overlay = self: super: {
             ocamlPackages = super.ocaml-ng.ocamlPackages_5_4.overrideScope (
               oself: osuper: {
-                mdx = osuper.mdx.override {
-                  logs = oself.logs;
-                };
-                utop = osuper.utop.overrideAttrs {
-                  dontGzipMan = true;
-                };
+                dune_3 = osuper.dune_3.overrideAttrs (a: {
+                  src = ./.;
+                  preBuild = "ocaml boot/bootstrap.ml --static";
+                });
               }
             );
           };

@@ -258,6 +258,23 @@
         "type": "github"
       }
     },
+    "odoc-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1764246576,
+        "narHash": "sha256-/rU7van8mtF1TEMZLDL3Kj0FUYfF5oc6yg4yvFf6JE8=",
+        "owner": "ocaml",
+        "repo": "odoc",
+        "rev": "d8460cdaa2b91a03434a9a045d673703b7fabfb2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ocaml",
+        "repo": "odoc",
+        "rev": "d8460cdaa2b91a03434a9a045d673703b7fabfb2",
+        "type": "github"
+      }
+    },
     "oxcaml": {
       "inputs": {
         "flake-utils": "flake-utils",
@@ -366,6 +383,7 @@
         "nixpkgs": "nixpkgs",
         "nixpkgs-old": "nixpkgs-old",
         "ocaml-overlays": "ocaml-overlays",
+        "odoc-src": "odoc-src",
         "oxcaml": "oxcaml",
         "oxcaml-opam-repository": "oxcaml-opam-repository",
         "revdeps-dune": "revdeps-dune"

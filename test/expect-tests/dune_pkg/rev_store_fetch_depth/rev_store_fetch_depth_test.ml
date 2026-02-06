@@ -16,14 +16,10 @@ let () =
   Dune_tests_common.init ()
 ;;
 
-let%expect_test "second fetch cannot negotiate due to missing refs (bug #13323)" =
-  (* This test demonstrates that when fetching a second commit from the same
-     repo, git cannot negotiate what it already has because the rev_store
-     doesn't maintain any refs. This causes git to re-download objects it
-     already has.
-
-     The fix would be to use --negotiation-tip to tell git what we have,
-     or to maintain refs in the bare repo. *)
+let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" =
+  (* This test verifies that when fetching a second commit from the same repo,
+     git can negotiate what it already has using refs created by previous
+     fetches. This avoids re-downloading objects we already have. *)
   let repo_dir = Temp.create Dir ~prefix:"git-repo-" ~suffix:"" in
   let trace_file = Temp.create File ~prefix:"git-trace-" ~suffix:".log" in
   let env =
@@ -142,7 +138,7 @@ let%expect_test "second fetch cannot negotiate due to missing refs (bug #13323)"
         in
         (* Get the new HEAD commit *)
         let* second_head = git_out ~dir:repo_dir [ "rev-parse"; "HEAD" ] in
-        (* Second fetch with tracing - this is where the bug manifests *)
+        (* Second fetch with tracing - negotiation should use refs from first fetch *)
         let* () =
           Rev_store.Object.of_sha1 second_head
           |> Option.value_exn
@@ -159,10 +155,7 @@ let%expect_test "second fetch cannot negotiate due to missing refs (bug #13323)"
         in
         Console.print [ Pp.textf "Negotiation 'have' lines sent: %d" have_count ];
         Dune_scheduler.Scheduler.cancel_current_build ()));
-  (* The bug: have_count is 0 because there are no refs to negotiate with. Git
-     can't tell the server "I already have commits 1-3" so it downloads
-     everything again.
-
-     After fixing with --negotiation-tip, have_count should be > 0 *)
-  [%expect {| Negotiation 'have' lines sent: 0 |}]
+  (* With refs created by previous fetches, git can tell the server what it
+     already has, avoiding redundant downloads. *)
+  [%expect {| Negotiation 'have' lines sent: 3 |}]
 ;;

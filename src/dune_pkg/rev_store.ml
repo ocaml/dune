@@ -536,6 +536,27 @@ let rev_parse { dir; _ } rev =
   | _, _ -> None
 ;;
 
+(* Create a ref for a fetched object so git can use it for negotiation.
+   Refs are stored as refs/dune-pkg/<object-hash>. *)
+let add_object_ref { dir; _ } obj =
+  let hex = Object.to_hex obj in
+  let git = Lazy.force Vcs.git in
+  let env = with_specified_git_dir ~dir env in
+  Process.run
+    ~dir
+    ~display:Quiet
+    ~env
+    Return
+    git
+    [ "update-ref"; "refs/dune-pkg/" ^ hex; hex ]
+  >>| function
+  | (), 0 -> ()
+  | (), exit_code ->
+    Log.info
+      "Rev_store: failed to create negotiation ref"
+      [ "object", Dyn.string hex; "exit_code", Dyn.int exit_code ]
+;;
+
 let object_exists_no_lock { dir; _ } obj =
   let git = Lazy.force Vcs.git in
   let+ (), code =
@@ -748,12 +769,14 @@ let fetch_allow_failure ~env repo ~url obj =
         repo
         ~display:!Dune_engine.Clflags.display
         [ "fetch"; "--no-write-fetch-head"; url; Object.to_hex obj ]
-      >>| (function
+      >>= (function
        | Ok 0 ->
          Table.set repo.present_objects obj ();
+         (* Create ref so git can negotiate with it on future fetches *)
+         let+ () = add_object_ref repo obj in
          `Fetched
        | Error { Git_error.exit_code; output; _ } when exit_code = 128 ->
-         `Not_found output
+         Fiber.return (`Not_found output)
        | Error git_error -> Git_error.raise_code_error git_error
        | _ -> assert false))
 ;;

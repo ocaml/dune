@@ -66,6 +66,46 @@ let create_repo_at dir =
   >>> git_out ~dir [ "rev-parse"; "HEAD" ]
 ;;
 
+let%expect_test "fetching non-existent object twice returns consistent results" =
+  (* This test checks that fetching a non-existent object twice returns
+     consistent errors. *)
+  let dir = Temp.create Dir ~prefix:"git-repo-" ~suffix:"" in
+  let rev_store = run (fun () -> Rev_store.get) in
+  run (fun () -> create_repo_at dir >>| ignore);
+  let remote =
+    Rev_store.remote
+      rev_store
+      ~loc:Loc.none
+      ~url:(Path.to_string dir |> OpamUrl.parse |> OpamUrl.to_string)
+  in
+  (* A SHA that definitely doesn't exist *)
+  let fake_sha = "0000000000000000000000000000000000000000" in
+  let fetch_fake () =
+    Rev_store.Object.of_sha1 fake_sha
+    |> Option.value_exn
+    |> Rev_store.fetch_object rev_store remote
+    >>| function
+    | Ok _ -> Console.print [ Pp.text "fetch returned Ok (unexpected)" ]
+    | Error _ -> Console.print [ Pp.text "fetch returned Error (expected)" ]
+  in
+  (* First attempt should fail *)
+  run (fun () -> fetch_fake ());
+  [%expect {| fetch returned Error (expected) |}];
+  (* Second attempt - bug causes this to crash instead of returning Error *)
+  (try
+     run (fun () -> fetch_fake ());
+     [%expect.unreachable]
+   with
+   | Dune_util.Report_error.Already_reported ->
+     (* Extract just the git error from the output *)
+     [%expect.output]
+     |> String.split_lines
+     |> List.find ~f:(String.starts_with ~prefix:"fatal:")
+     |> Option.value ~default:"no fatal error found"
+     |> print_endline);
+  [%expect {| fatal: not a tree object |}]
+;;
+
 let%expect_test "adding remotes" =
   let dir = Temp.create Dir ~prefix:"git-repo-" ~suffix:"" in
   run (fun () ->

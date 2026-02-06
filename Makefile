@@ -110,7 +110,7 @@ test-rocq: $(BIN)
 
 .PHONY: test-rocq-native
 test-rocq-native: $(BIN)
-	DUNE_ROCQ_NATIVE_TEST=enable $(BIN) build @runtest-rocq-native
+	DUNE_ROCQ_TEST=enable DUNE_ROCQ_NATIVE_TEST=enable $(BIN) build @runtest-rocq-native
 
 test-melange: $(BIN)
 	$(BIN) build @runtest-melange

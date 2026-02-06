@@ -46,8 +46,8 @@ def coqcCoqdepFlags:
 
 def coqdocFlags:
     processes
-  | select((.args.prog | basename) == "coqdoc")
-  | .args.process_args
+  | select((.args.prog | basename | (contains("rocq") or contains("coq"))) and .args.process_args[0] == "doc")
+  | .args.process_args[1:]
   | .[]
   | rocqArg;
 

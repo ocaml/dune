@@ -22,6 +22,6 @@ This test is currently broken due to the workspace resolution being faulty #5899
   1 | (rocq.theory
   2 |  (name foo))
   Error: 'rocq.theory' is available only when rocq is enabled in the
-  dune-project file. You must enable it using (using rocq 0.11) in your
-  dune-project file.
+  dune-project or workspace file. You must enable it using (using rocq 0.11) in
+  the file.
   [1]

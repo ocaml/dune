@@ -50,21 +50,15 @@ Now we check the flags that were passed to coqdep and coqc:
 
   $ dune trace cat | jq 'include "dune"; coqcCoqdepFlags'
   {
-    "name": "finish",
-    "args": [
-      "--config"
-    ]
-  }
-  {
-    "name": "finish",
+    "name": "rocq",
     "args": [
       "dep",
       "-boot",
       "-R",
-      "$TESTCASE_ROOT/lib/coq/theories",
+      "coq/theories",
       "Corelib",
       "-Q",
-      "$TESTCASE_ROOT/lib/coq/user-contrib/B",
+      "coq/user-contrib/B",
       "B",
       "-R",
       ".",
@@ -76,7 +70,7 @@ Now we check the flags that were passed to coqdep and coqc:
     ]
   }
   {
-    "name": "finish",
+    "name": "rocq",
     "args": [
       "compile",
       "-q",
@@ -88,10 +82,10 @@ Now we check the flags that were passed to coqdep and coqc:
       "ondemand",
       "-boot",
       "-R",
-      "$TESTCASE_ROOT/lib/coq/theories",
+      "coq/theories",
       "Corelib",
       "-Q",
-      "$TESTCASE_ROOT/lib/coq/user-contrib/B",
+      "coq/user-contrib/B",
       "B",
       "-R",
       ".",

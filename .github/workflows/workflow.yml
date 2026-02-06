@@ -290,8 +290,8 @@ jobs:
             ~/work/dune/dune/_opam
           key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
 
-  coq:
-    name: Coq 8.16.1
+  rocq:
+    name: Rocq 9.1
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
@@ -305,61 +305,24 @@ jobs:
             nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
           gc-max-store-size-linux: 5G
-      - run: nix develop .#coq -c make test-coq
-        env:
-          # We disable the Dune cache when running the tests
-          DUNE_CACHE: disabled
+      - run: nix develop .#rocq -c make test-rocq
 
-  # Disabled until these in nix
-  # rocq:
-  #   name: Rocq Language (Rocq 9.1.0)
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     matrix:
-  #       include:
-  #         # Keep packages and OCaml version in sync with the version
-  #         # in the makefile; rocq-stdlib should be easy to remove
-  #         - ocaml-compiler: 5.3
-  #           opam-packages: rocq-core.9.1.0 rocq-stdlib.9.0.0 csexp re spawn pp uutf
-  #           test-target: test-rocq
-  #         - ocaml-compiler: 4.14
-  #           opam-packages: rocq-core.9.1.0 rocq-stdlib.9.0.0 csexp re spawn pp uutf rocq-native
-  #           test-target: test-rocq-native
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v6
-  #
-  #     - name: Setup OCaml
-  #       uses: ocaml/setup-ocaml@v3
-  #       with:
-  #         ocaml-compiler: ${{ matrix.ocaml-compiler }}
-  #         dune-cache: true
-  #     - name: Load opam cache when not Windows
-  #       if: runner.os != 'Windows'
-  #       id: opam-cache
-  #       uses: actions/cache/restore@v5
-  #       with:
-  #         path: |
-  #           ~/.opam
-  #           ~/work/dune/dune/_opam
-  #         key: opam-rocq-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
-  #
-  #     - name: install Rocq Prover
-  #       run: opam install -y ${{ matrix.opam-packages }}
-  #     - name: test Rocq Prover Build Language
-  #       run: opam exec -- make ${{ matrix.test-target }}
-  #       env:
-  #         # We disable the Dune cache when running the tests
-  #         DUNE_CACHE: disabled
-  #
-  #     - name: Save cache when not Windows
-  #       uses: actions/cache/save@v5
-  #       if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
-  #       with:
-  #         path: |
-  #           ~/.opam
-  #           ~/work/dune/dune/_opam
-  #         key: opam-rocq-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+  rocq-native:
+    name: Rocq 9.1 (native)
+    needs: nix-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: |
+            nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
+          gc-max-store-size-linux: 5G
+      - run: nix develop .#rocq-native -c make test-rocq-native
 
   wasm:
     name: Wasm_of_ocaml

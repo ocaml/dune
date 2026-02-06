@@ -14,3 +14,4 @@ Dune should be passing '--coqlib' to coqdoc, but it doesn't. This is a bug.
 
   $ dune trace cat | jq -c 'include "dune"; select(.args.process_args.[0] == "doc") | .args.process_args'
   ["doc","-R","../Coq","Corelib","-R",".","A","--toc","--html","-d","A.html","a.v"]
+  ["doc","-R","../Coq","Corelib","-R",".","A","--toc","--html","-d","A.html","a.v"]

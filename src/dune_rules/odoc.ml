@@ -935,30 +935,6 @@ let setup_lib_html_rules_def =
     f
 ;;
 
-let setup_lib_markdown_rules_def =
-  let module Input = struct
-    module Super_context = Super_context.As_memo_key
-
-    type t = Super_context.t * Lib.Local.t
-
-    let equal (sc1, l1) (sc2, l2) = Super_context.equal sc1 sc2 && Lib.Local.equal l1 l2
-    let hash = Tuple.T2.hash Super_context.hash Lib.Local.hash
-    let to_dyn _ = Dyn.Opaque
-  end
-  in
-  let f (sctx, lib) =
-    let ctx = Super_context.context sctx in
-    let target = Lib lib in
-    let* odocs = odoc_artefacts sctx target in
-    add_format_alias_deps ctx Markdown target odocs
-  in
-  Memo.With_implicit_output.create
-    "setup-library-markdown-rules"
-    ~implicit_output:Rules.implicit_output
-    ~input:(module Input)
-    f
-;;
-
 let search_db_for_lib sctx lib =
   let target = Lib lib in
   let ctx = Super_context.context sctx in
@@ -1008,58 +984,55 @@ let setup_pkg_html_rules sctx ~pkg ~for_ : unit Memo.t =
 
 let setup_lib_markdown_rules sctx lib =
   let target = Lib lib in
-  let* odocs = odoc_artefacts sctx target in
   let* () =
     match Lib_info.package (Lib.Local.info lib) with
     | Some _ -> Memo.return ()
-    | None -> Memo.parallel_iter odocs ~f:(fun odoc -> setup_generate_markdown sctx odoc)
+    | None ->
+      odoc_artefacts sctx target
+      >>= Memo.parallel_iter ~f:(fun odoc -> setup_generate_markdown sctx odoc)
   in
-  Memo.With_implicit_output.exec setup_lib_markdown_rules_def (sctx, lib)
+  let ctx = Super_context.context sctx in
+  odoc_artefacts sctx (Lib lib) >>= add_format_alias_deps ctx Markdown target
 ;;
 
-let setup_pkg_markdown_rules_def =
-  let f (sctx, pkg, _for_) =
-    let ctx = Super_context.context sctx in
-    let* libs = Context.name ctx |> libs_of_pkg ~pkg in
+let setup_pkg_markdown_rules sctx ~pkg =
+  let ctx = Super_context.context sctx in
+  let* libs = Context.name ctx |> libs_of_pkg ~pkg in
+  let* all_odocs =
     let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
-    let* lib_odocs =
+    let+ lib_odocs =
       Memo.List.concat_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
     in
-    let all_odocs = pkg_odocs @ lib_odocs in
-    let* () =
-      if List.is_empty all_odocs
-      then Memo.return ()
-      else (
-        let pkg_markdown_dir = Paths.markdown ctx (Pkg pkg) in
-        let markdown_root = Paths.markdown_root ctx in
-        let actions =
-          List.map all_odocs ~f:(fun odoc ->
-            run_odoc
-              sctx
-              ~dir:(Path.build markdown_root)
-              "markdown-generate"
-              ~quiet:false
-              ~flags_for:None
-              [ Command.Args.A "-o"
-              ; Command.Args.Path (Path.build markdown_root)
-              ; Command.Args.Dep (Path.build odoc.odocl_file)
-              ])
-        in
-        let rule =
-          Action_builder.progn actions
-          |> Action_builder.With_targets.add_directories
-               ~directory_targets:[ pkg_markdown_dir ]
-        in
-        add_rule sctx rule)
-    in
-    let* () = Memo.parallel_iter libs ~f:(setup_lib_markdown_rules sctx) in
-    add_format_alias_deps ctx Markdown (Pkg pkg) all_odocs
+    pkg_odocs @ lib_odocs
   in
-  setup_pkg_rules_def "setup-package-markdown-rules" f
-;;
-
-let setup_pkg_markdown_rules sctx ~pkg ~for_ : unit Memo.t =
-  Memo.With_implicit_output.exec setup_pkg_markdown_rules_def (sctx, pkg, for_)
+  let* () =
+    if List.is_empty all_odocs
+    then Memo.return ()
+    else (
+      let pkg_markdown_dir = Paths.markdown ctx (Pkg pkg) in
+      let markdown_root = Paths.markdown_root ctx in
+      let actions =
+        List.map all_odocs ~f:(fun odoc ->
+          run_odoc
+            sctx
+            ~dir:(Path.build markdown_root)
+            "markdown-generate"
+            ~quiet:false
+            ~flags_for:None
+            [ Command.Args.A "-o"
+            ; Command.Args.Path (Path.build markdown_root)
+            ; Command.Args.Dep (Path.build odoc.odocl_file)
+            ])
+      in
+      let rule =
+        Action_builder.progn actions
+        |> Action_builder.With_targets.add_directories
+             ~directory_targets:[ pkg_markdown_dir ]
+      in
+      add_rule sctx rule)
+  in
+  let* () = Memo.parallel_iter libs ~f:(setup_lib_markdown_rules sctx) in
+  add_format_alias_deps ctx Markdown (Pkg pkg) all_odocs
 ;;
 
 let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.t) =
@@ -1246,7 +1219,7 @@ let gen_rules sctx ~dir rest =
        Package.Name.Map.to_seq packages
        |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
          let pkg_name = Package.name pkg in
-         setup_pkg_markdown_rules sctx ~pkg:pkg_name ~for_:Compilation_mode.Ocaml))
+         setup_pkg_markdown_rules sctx ~pkg:pkg_name))
   | [ "_markdown"; _lib_unique_name_or_pkg ] ->
     (* package directories are directory targets *)
     Memo.return Gen_rules.no_rules

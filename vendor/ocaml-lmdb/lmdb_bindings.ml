@@ -216,7 +216,10 @@ module Block_option = struct
   external get_unsafe  : 'a t -> 'a = "%identity"
   let is_some o = Obj.(is_block (repr o))
   let is_none o = not (is_some o)
-  let some x = assert (is_some x); some_unsafe x
+  let some x =
+    if is_some x
+    then some_unsafe x
+    else invalid_arg "Mdb.Block_option: is no block value"
   let get_exn o =
     if is_some o
     then get_unsafe o
@@ -279,6 +282,8 @@ module Ops = struct
   let set_range       = set_range
   (* let prev_multiple  = prev_multiple - only since lmdb 0.9.19 *)
 end
+external cursor_txn : cursor -> txn
+  = "mdbs_cursor_txn"
 external cursor_open : txn -> dbi -> cursor
   = "mdbs_cursor_open"
 external cursor_close : cursor -> unit

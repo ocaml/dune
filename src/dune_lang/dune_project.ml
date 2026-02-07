@@ -1142,10 +1142,10 @@ let load =
   gen_load ~read
 ;;
 
-let _oxcaml_extension =
-  (* This is required to register the extension because OxCaml doesn't have a
-     specific decoder. *)
-  Extension.register Oxcaml.syntax (Decoder.return ((), [])) Dyn.unit
+let () =
+  (* This is required to register the extension because OxCaml doesn't have any
+     stanzas. *)
+  Extension.register_simple Oxcaml.syntax (Decoder.return [])
 ;;
 
-let _unreleased = Extension.register Unreleased.syntax (Decoder.return ((), [])) Dyn.unit
+let () = Extension.register_simple Unreleased.syntax (Decoder.return [])

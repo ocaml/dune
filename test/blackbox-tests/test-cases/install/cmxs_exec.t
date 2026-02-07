@@ -67,6 +67,5 @@ Test the error message if a destination is a file instead of a directory.
   $ rm -rf prefix
   $ mkdir -p prefix/lib; touch prefix/lib/foo
   $ dune install --prefix prefix --display short
-  Installing prefix/lib/foo/META
-  Error: Please delete file prefix/lib/foo manually.
+  Error: stat(prefix/lib/foo/META): Not a directory
   [1]

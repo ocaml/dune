@@ -619,13 +619,7 @@ let exists t =
 
 let readdir_unsorted t = Readdir.read_directory (to_string t)
 let readdir_unsorted_with_kinds t = Readdir.read_directory_with_kinds (to_string t)
-
-let is_directory t =
-  try Sys.is_directory (to_string t) with
-  | Sys_error _ -> false
-;;
-
-let build_dir_exists () = is_directory build_dir
+let build_dir_exists () = Fpath.is_directory (to_string build_dir)
 
 let ensure_build_dir_exists () =
   let perms = 0o777 in

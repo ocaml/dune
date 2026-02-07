@@ -739,7 +739,7 @@ let wait_for_initial_watches_established_blocking t =
 (* Return the parent directory of [ext] if [ext] denotes a file. *)
 let parent_directory ext =
   let rec loop p =
-    if Path.is_directory (Path.external_ p)
+    if Fpath.is_directory (Path.External.to_string p)
     then Some ext
     else (
       match Path.External.parent p with

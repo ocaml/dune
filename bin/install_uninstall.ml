@@ -452,7 +452,7 @@ let install_entry
   | false -> Fiber.return entry
   | true ->
     let+ () =
-      (match Path.is_directory dst with
+      (match Fpath.is_directory (Path.to_string dst) with
        | true -> Ops.remove_dir_if_exists ~if_non_empty:Fail dst
        | false -> Ops.remove_file_if_exists dst);
       print_line

@@ -33,17 +33,6 @@
 [@@@alert unstable "The API of this library is not stable and may change without notice."]
 [@@@alert "-unstable"]
 
-module Id : sig
-  (** Id's for requests, responses, sessions.
-
-      Id's are permitted to be arbitrary s-expressions to allow users pick
-      descriptive tokens to ease debugging. *)
-
-  type t
-
-  val make : Csexp.t -> t
-end
-
 module Response : sig
   module Error : sig
     type kind =
@@ -61,12 +50,6 @@ module Response : sig
   end
 
   type t = (Csexp.t, Error.t) result
-end
-
-module Initialize : sig
-  type t
-
-  val create : id:Id.t -> t
 end
 
 module Loc : sig
@@ -331,6 +314,23 @@ module Request : sig
 
   (** Returns the location of the build directory for the current build. *)
   val build_dir : (unit, Path.t) t
+
+  module Id : sig
+    (** Id's for requests.
+
+        Id's are permitted to be arbitrary s-expressions to allow users pick
+        descriptive tokens to ease debugging. *)
+
+    type t
+
+    val make : Csexp.t -> t
+  end
+end
+
+module Initialize : sig
+  type t
+
+  val create : id:Request.Id.t -> t
 end
 
 module Client : sig
@@ -391,7 +391,7 @@ module Client : sig
     (** [request ?id client decl req] send a request [req] specified by [decl]
         to [client]. If [id] is [None], it will be automatically generated. *)
     val request
-      :  ?id:Id.t
+      :  ?id:Request.Id.t
       -> t
       -> ('a, 'b) Versioned.request
       -> 'a
@@ -420,7 +420,11 @@ module Client : sig
     end
 
     (** [poll client sub] Initialize a polling loop for [sub] *)
-    val poll : ?id:Id.t -> t -> 'a Sub.t -> ('a Stream.t, Version_error.t) result fiber
+    val poll
+      :  ?id:Request.Id.t
+      -> t
+      -> 'a Sub.t
+      -> ('a Stream.t, Version_error.t) result fiber
 
     module Batch : sig
       type client := t
@@ -429,7 +433,7 @@ module Client : sig
       val create : client -> t
 
       val request
-        :  ?id:Id.t
+        :  ?id:Request.Id.t
         -> t
         -> ('a, 'b) Versioned.request
         -> 'a

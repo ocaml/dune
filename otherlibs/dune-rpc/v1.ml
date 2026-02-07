@@ -1,5 +1,4 @@
 open Dune_rpc_private
-module Id = Id
 module Response = Response
 module Version_error = Version_error
 module Initialize = Initialize.Request

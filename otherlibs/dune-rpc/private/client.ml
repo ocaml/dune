@@ -669,7 +669,8 @@ struct
                        client
                        "server responded with invalid version menu"
                        [ ( "duplicated"
-                         , Dyn.Tuple [ Method.Name.to_dyn method_; Dyn.Int a; Dyn.Int b ] )
+                         , Dyn.Tuple [ Method.Name.to_dyn method_; Dyn.Int a; Dyn.Int b ]
+                         )
                        ])))
         in
         let handler =

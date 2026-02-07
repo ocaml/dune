@@ -5,20 +5,20 @@ open Types
    as of commit [3cd240e], which the initial versioning implementation was based
    on. *)
 let compatibility_menu =
-    [ "ping", 1
-    ; "diagnostics", 1
-    ; "shutdown", 1
-    ; "subscribe", 1
-    ; "unsubscribe", 1
-    ; "build", 1
-    ; "status", 1
-    ; "notify/abort", 1
-    ; "notify/diagnostic", 1
-    ; "notify/log", 1
-    ; "notify/progress", 1
-    ]
-    |> List.map ~f:(fun (name, version) -> Method.Name.of_string name, version)
-    |> Method.Name.Map.of_list_exn
+  [ "ping", 1
+  ; "diagnostics", 1
+  ; "shutdown", 1
+  ; "subscribe", 1
+  ; "unsubscribe", 1
+  ; "build", 1
+  ; "status", 1
+  ; "notify/abort", 1
+  ; "notify/diagnostic", 1
+  ; "notify/log", 1
+  ; "notify/progress", 1
+  ]
+  |> List.map ~f:(fun (name, version) -> Method.Name.of_string name, version)
+  |> Method.Name.Map.of_list_exn
 ;;
 
 type t = Method.Version.t Method.Name.Map.t

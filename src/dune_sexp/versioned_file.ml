@@ -1,27 +1,7 @@
 open Stdune
 module First_line = Versioned_file_first_line
 
-module type S = sig
-  type data
-
-  module Lang : sig
-    val register : Syntax.t -> data -> unit
-
-    module Instance : sig
-      type t =
-        { syntax : Syntax.t
-        ; data : data
-        ; version : Syntax.Version.t
-        }
-    end
-
-    val get_exn : Syntax.Name.t -> Instance.t
-  end
-
-  val load_exn : Path.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
-  val load : Path.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a Or_exn.t
-  val parse_contents : Lexing.lexbuf -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
-end
+module type S = Versioned_file_intf.S
 
 module Make (Data : sig
     type t

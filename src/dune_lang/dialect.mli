@@ -38,7 +38,7 @@ val print_ast : t -> Ml_kind.t -> (Loc.t * Action.t) option
 val ocaml : t
 val reason : t
 val rescript : t
-val ml_suffix : t -> Ml_kind.t -> string option
+val ml_suffix : t -> Ml_kind.t -> Filename.Extension.t option
 
 module DB : sig
   type dialect := t
@@ -55,7 +55,7 @@ module DB : sig
 
   type for_merlin =
     { extensions : string option Ml_kind.Dict.t list
-    ; readers : Filename.Extension.t list String.Map.t
+    ; readers : string list String.Map.t
     }
 
   val for_merlin : t -> for_merlin

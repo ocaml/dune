@@ -9,7 +9,7 @@ type t =
   ; system : string
   ; model : string
   ; natdynlink_supported : Dynlink_supported.By_the_os.t
-  ; ext_dll : string
+  ; ext_dll : Filename.Extension.t
   ; stdlib_dir : Path.t
   ; ccomp_type : Ocaml_config.Ccomp_type.t
   ; ocaml_version_string : string
@@ -58,13 +58,13 @@ let cc_g t =
 
 let create ocaml_config ~ocamlopt =
   { has_native = Result.is_ok ocamlopt
-  ; ext_obj = Ocaml_config.ext_obj ocaml_config
-  ; ext_lib = Ocaml_config.ext_lib ocaml_config
+  ; ext_obj = Filename.Extension.of_string_exn (Ocaml_config.ext_obj ocaml_config)
+  ; ext_lib = Filename.Extension.of_string_exn (Ocaml_config.ext_lib ocaml_config)
   ; os_type = Ocaml_config.os_type ocaml_config
   ; architecture = Ocaml_config.architecture ocaml_config
   ; system = Ocaml_config.system ocaml_config
   ; model = Ocaml_config.model ocaml_config
-  ; ext_dll = Ocaml_config.ext_dll ocaml_config
+  ; ext_dll = Filename.Extension.of_string_exn (Ocaml_config.ext_dll ocaml_config)
   ; natdynlink_supported =
       (let natdynlink_supported = Ocaml_config.natdynlink_supported ocaml_config in
        Dynlink_supported.By_the_os.of_bool natdynlink_supported)

@@ -50,8 +50,8 @@ let matching_extensions extensions =
   let re =
     let open Re in
     [ rep any
-    ; char '.'
     ; List.map extensions ~f:(fun s ->
+        let s = Filename.Extension.to_string s in
         match of_string s with
         | Literal _ -> str s
         | Re _ ->
@@ -69,7 +69,10 @@ let matching_extensions extensions =
     ; repr =
         (match extensions with
          | [] -> Code_error.raise "empty list of extensions" []
-         | [ x ] -> sprintf "*.%s" x
-         | xs -> sprintf "*.{%s}" (String.concat xs ~sep:","))
+         | [ x ] -> sprintf "*%s" (Filename.Extension.to_string x)
+         | xs ->
+           sprintf
+             "*{%s}"
+             (String.concat (List.map xs ~f:Filename.Extension.to_string) ~sep:","))
     }
 ;;

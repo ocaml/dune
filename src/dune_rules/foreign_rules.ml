@@ -336,11 +336,12 @@ let build_o_files
   =
   let includes =
     let h_files =
+      let header_ext = Filename.Extension.to_string Foreign_language.header_extension in
       Dir_contents.dirs dir_contents
       |> List.fold_left ~init:[] ~f:(fun acc dc ->
         Dir_contents.text_files dc
         |> Filename.Set.fold ~init:acc ~f:(fun fn acc ->
-          if String.ends_with ~suffix:Foreign_language.header_extension fn
+          if String.ends_with ~suffix:header_ext fn
           then Path.relative (Path.build (Dir_contents.dir dc)) fn :: acc
           else acc))
     in
@@ -393,7 +394,7 @@ let build_o_files
           in
           Command.Args.S [ includes; extra_flags; Dyn extra_deps ]
         in
-        let dst = Path.Build.relative dir (obj ^ ext_obj) in
+        let dst = Path.Build.relative dir (obj ^ Filename.Extension.to_string ext_obj) in
         let+ () =
           build_c
             ~kind:(Foreign.Source.language src)

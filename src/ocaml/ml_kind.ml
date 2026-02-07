@@ -16,13 +16,13 @@ let to_string = choose ~impl:"impl" ~intf:"intf"
 let to_dyn t = Dyn.String (to_string t)
 
 let cmt_ext = function
-  | Impl -> ".cmt"
-  | Intf -> ".cmti"
+  | Impl -> Filename.Extension.cmt
+  | Intf -> Filename.Extension.cmti
 ;;
 
 let cms_ext = function
-  | Impl -> ".cms"
-  | Intf -> ".cmsi"
+  | Impl -> Filename.Extension.cms
+  | Intf -> Filename.Extension.cmsi
 ;;
 
 module Dict = struct

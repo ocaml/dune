@@ -151,13 +151,15 @@ end = struct
           | Coq_stanza.Coqpp.T { modules; _ } ->
             Coq_sources.mlg_files ~sctx ~dir ~modules
             >>| List.rev_map ~f:(fun mlg_file ->
-              Path.Build.set_extension mlg_file ~ext:".ml" |> Path.Build.basename)
+              Path.Build.set_extension mlg_file ~ext:Filename.Extension.ml
+              |> Path.Build.basename)
           | Coq_stanza.Extraction.T s ->
             Memo.return (Coq_stanza.Extraction.ml_target_fnames s)
           | Rocq_stanza.Rocqpp.T { modules; _ } ->
             Rocq_sources.mlg_files ~sctx ~dir ~modules
             >>| List.rev_map ~f:(fun mlg_file ->
-              Path.Build.set_extension mlg_file ~ext:".ml" |> Path.Build.basename)
+              Path.Build.set_extension mlg_file ~ext:Filename.Extension.ml
+              |> Path.Build.basename)
           | Rocq_stanza.Extraction.T s ->
             Memo.return (Rocq_stanza.Extraction.ml_target_fnames s)
           | Rule_conf.T rule ->

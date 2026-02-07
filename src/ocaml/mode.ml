@@ -29,11 +29,11 @@ let to_string = choose "byte" "native"
 let encode t = Dune_sexp.Encoder.string (to_string t)
 let to_dyn t = Dyn.variant (to_string t) []
 let compiled_unit_ext = choose (Cm_kind.ext Cmo) (Cm_kind.ext Cmx)
-let compiled_lib_ext = choose ".cma" ".cmxa"
-let plugin_ext = choose ".cma" ".cmxs"
+let compiled_lib_ext = choose Filename.Extension.cma Filename.Extension.cmxa
+let plugin_ext = choose Filename.Extension.cma Filename.Extension.cmxs
 let variant = choose Variant.byte Variant.native
 let cm_kind = choose Cm_kind.Cmo Cmx
-let exe_ext = choose ".bc" ".exe"
+let exe_ext = choose Filename.Extension.bc Filename.Extension.exe
 
 module Dict = struct
   let mode_equal = equal

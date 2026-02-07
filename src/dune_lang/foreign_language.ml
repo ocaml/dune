@@ -68,7 +68,7 @@ module Dict = struct
   let merge t1 t2 ~f = { c = f t1.c t2.c; cxx = f t1.cxx t2.cxx }
 end
 
-let header_extension = ".h"
+let header_extension = Filename.Extension.h
 
 let source_extensions =
   String.Map.of_list_exn
@@ -77,5 +77,10 @@ let source_extensions =
 
 let has_foreign_extension ~fn =
   let ext = Filename.extension fn in
-  ext = header_extension || String.Map.mem source_extensions (String.drop ext 1)
+  if Filename.Extension.Or_empty.is_empty ext
+  then false
+  else (
+    let ext = Filename.Extension.Or_empty.extension_exn ext in
+    Filename.Extension.equal ext header_extension
+    || String.Map.mem source_extensions (Filename.Extension.drop_dot ext))
 ;;

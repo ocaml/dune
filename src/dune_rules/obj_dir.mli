@@ -114,11 +114,16 @@ module Module : sig
     :  'path t
     -> Module_name.Unique.t
     -> kind:Lib_mode.Cm_kind.t
-    -> ext:string
+    -> ext:Filename.Extension.t
     -> visibility:Visibility.t
     -> 'path
 
-  val obj_file : 'path t -> Module.t -> kind:Lib_mode.Cm_kind.t -> ext:string -> 'path
+  val obj_file
+    :  'path t
+    -> Module.t
+    -> kind:Lib_mode.Cm_kind.t
+    -> ext:Filename.Extension.t
+    -> 'path
 
   (** Same as [cm_file] but raises if [cm_kind] is [Cmo] or [Cmx] and the module
       has no implementation.*)

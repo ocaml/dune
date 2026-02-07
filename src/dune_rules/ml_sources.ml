@@ -230,16 +230,19 @@ let modules_of_files ~path ~dialects ~dir ~files =
       match String.lsplit2 fn ~on:'.' with
       | None -> Skip
       | Some (s, ext) ->
-        (match Dialect.DB.find_by_extension dialects ("." ^ ext) with
+        (match Filename.Extension.of_string ("." ^ ext) with
          | None -> Skip
-         | Some (dialect, ml_kind) ->
-           let module_ =
-             let name = Module_name.of_string_allow_invalid (loc, s) in
-             make_module dialect name fn
-           in
-           (match ml_kind with
-            | Impl -> Left module_
-            | Intf -> Right module_)))
+         | Some ext ->
+           (match Dialect.DB.find_by_extension dialects ext with
+            | None -> Skip
+            | Some (dialect, ml_kind) ->
+              let module_ =
+                let name = Module_name.of_string_allow_invalid (loc, s) in
+                make_module dialect name fn
+              in
+              (match ml_kind with
+               | Impl -> Left module_
+               | Intf -> Right module_))))
   in
   let parse_one_set (files : (Module_name.Unchecked.t * Module.File.t) list) =
     match Module_name.Unchecked.Map.of_list files with
@@ -462,8 +465,8 @@ module Parser_generators = struct
 
     let extension ~for_ =
       match for_ with
-      | Ocamllex _ -> ".mll"
-      | Ocamlyacc _ | Menhir _ -> ".mly"
+      | Ocamllex _ -> Filename.Extension.mll
+      | Ocamlyacc _ | Menhir _ -> Filename.Extension.mly
     ;;
   end
 
@@ -756,30 +759,34 @@ module Generated_modules = struct
                  ]
              | Some descendant ->
                let basename, ext = Path.Build.basename dst |> Filename.split_extension in
-               (match Dialect.DB.find_by_extension dialects ext with
-                | Some (dialect, ml_kind) ->
-                  let file = Module.File.make dialect (Path.build dst) in
-                  let module_path =
-                    let base_path =
-                      match include_subdirs with
-                      | Include_subdirs.No | Include Unqualified -> []
-                      | Include Qualified ->
-                        module_path
-                          ~loc:(Some loc)
-                          ~include_subdirs
-                          ~dir
-                          (Path.Local.parent_exn descendant |> Path.Local.explode)
-                    in
-                    let module_name =
-                      Module_name.of_string_allow_invalid (loc, basename)
-                      |> Module_name.Unchecked.validate_exn
-                    in
-                    Nonempty_list.(base_path @ [ Module_name.unchecked module_name ])
-                  in
-                  (match ml_kind with
-                   | Ml_kind.Impl -> Left (module_path, (loc, file))
-                   | Intf -> Right (module_path, (loc, file)))
-                | None -> Skip)))
+               if Filename.Extension.Or_empty.is_empty ext
+               then Skip
+               else (
+                 let ext = Filename.Extension.Or_empty.extension_exn ext in
+                 match Dialect.DB.find_by_extension dialects ext with
+                 | Some (dialect, ml_kind) ->
+                   let file = Module.File.make dialect (Path.build dst) in
+                   let module_path =
+                     let base_path =
+                       match include_subdirs with
+                       | Include_subdirs.No | Include Unqualified -> []
+                       | Include Qualified ->
+                         module_path
+                           ~loc:(Some loc)
+                           ~include_subdirs
+                           ~dir
+                           (Path.Local.parent_exn descendant |> Path.Local.explode)
+                     in
+                     let module_name =
+                       Module_name.of_string_allow_invalid (loc, basename)
+                       |> Module_name.Unchecked.validate_exn
+                     in
+                     Nonempty_list.(base_path @ [ Module_name.unchecked module_name ])
+                   in
+                   (match ml_kind with
+                    | Ml_kind.Impl -> Left (module_path, (loc, file))
+                    | Intf -> Right (module_path, (loc, file)))
+                 | None -> Skip)))
       in
       let impls = parse_one_set ~dir impl_files in
       let intfs = parse_one_set ~dir intf_files in

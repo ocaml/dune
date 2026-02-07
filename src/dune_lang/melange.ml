@@ -11,8 +11,8 @@ module Cm_kind = struct
   ;;
 
   let ext = function
-    | Cmi -> ".cmi"
-    | Cmj -> ".cmj"
+    | Cmi -> Filename.Extension.cmi
+    | Cmj -> Filename.Extension.cmj
   ;;
 
   let to_dyn =

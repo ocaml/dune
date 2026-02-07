@@ -9,7 +9,7 @@ type t =
   ; system : string
   ; model : string (** Native dynlink *)
   ; natdynlink_supported : Dynlink_supported.By_the_os.t
-  ; ext_dll : string
+  ; ext_dll : Filename.Extension.t
   ; stdlib_dir : Path.t
   ; ccomp_type : Ocaml_config.Ccomp_type.t
   ; ocaml_version_string : string

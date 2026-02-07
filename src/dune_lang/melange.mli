@@ -6,7 +6,7 @@ module Cm_kind : sig
     | Cmj
 
   val source : t -> Ocaml.Ml_kind.t
-  val ext : t -> string
+  val ext : t -> Filename.Extension.t
   val to_dyn : t -> Dyn.t
 
   module Map : sig

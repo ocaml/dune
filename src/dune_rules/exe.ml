@@ -16,20 +16,20 @@ module Linkage = struct
 
   type t =
     { mode : mode
-    ; ext : string
+    ; ext : Filename.Extension.t
     ; flags : string list
     }
 
-  let byte = { mode = Ocaml Byte; ext = ".bc"; flags = [] }
+  let byte = { mode = Ocaml Byte; ext = Filename.Extension.bc; flags = [] }
 
   let byte_for_jsoo =
     { mode = Ocaml Byte_for_jsoo
-    ; ext = ".bc-for-jsoo"
+    ; ext = Filename.Extension.of_string_exn ".bc-for-jsoo"
     ; flags = [ "-no-check-prims"; "-noautolink" ]
     }
   ;;
 
-  let native = { mode = Ocaml Native; ext = ".exe"; flags = [] }
+  let native = { mode = Ocaml Native; ext = Filename.Extension.exe; flags = [] }
 
   let is_native x =
     match x.mode with
@@ -56,7 +56,7 @@ module Linkage = struct
     }
   ;;
 
-  let custom = custom_with_ext ~ext:".exe"
+  let custom = custom_with_ext ~ext:Filename.Extension.exe
 
   let native_or_custom (ocaml : Ocaml_toolchain.t) =
     match ocaml.ocamlopt with
@@ -68,7 +68,8 @@ module Linkage = struct
   let wasm = { mode = Jsoo Wasm; ext = Js_of_ocaml.Ext.exe ~mode:Wasm; flags = [] }
 
   let is_plugin t =
-    List.mem (List.map ~f:Mode.plugin_ext Mode.all) t.ext ~equal:String.equal
+    let plugin_exts = List.map Mode.all ~f:Mode.plugin_ext in
+    List.mem plugin_exts t.ext ~equal:Filename.Extension.equal
   ;;
 
   let c_flags = [ "-output-obj" ]
@@ -154,7 +155,9 @@ module Linkage = struct
 end
 
 let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
-  Path.Build.relative (Compilation_context.dir cctx) (name ^ linkage.ext)
+  Path.Build.relative
+    (Compilation_context.dir cctx)
+    (name ^ Filename.Extension.to_string linkage.ext)
 ;;
 
 let link_exe

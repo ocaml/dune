@@ -26,6 +26,6 @@ val of_string_exn : Loc.t -> string -> t
 val compare : t -> t -> Ordering.t
 val hash : t -> int
 
-(** [matching_extensions xs] return a glob that will match any of the extensions
-    in [xs] *)
+(** [matching_extensions xs] return a glob that will match any of the dot-prefixed
+    extensions in [xs]. *)
 val matching_extensions : Filename.Extension.t list -> t

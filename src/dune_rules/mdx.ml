@@ -494,7 +494,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
       ~package:None
       for_
   in
-  let ext = ".bc.exe" in
+  let ext = Filename.Extension.bc_exe in
   let+ (_ : Exe.dep_graphs) =
     Exe.build_and_link
       cctx
@@ -503,7 +503,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
       ~linkages:[ Exe.Linkage.custom_with_ext ~ext ocaml_toolchain.version ]
       ~promote:None
   in
-  Path.Build.relative dir (name ^ ext)
+  Path.Build.relative dir (name ^ Filename.Extension.to_string ext)
 ;;
 
 (** Generates the rules for a given mdx stanza *)

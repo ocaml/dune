@@ -113,7 +113,7 @@ module Artifact : sig
 
   val compare : t -> t -> Ordering.t
   val to_dyn : t -> Dyn.t
-  val ext : t -> string
+  val ext : t -> Filename.Extension.t
   val all : t list
 end
 

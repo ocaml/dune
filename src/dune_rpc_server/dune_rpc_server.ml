@@ -211,7 +211,7 @@ module Session = struct
 
   let prepare_notification t decl = V.Handler.prepare_notification t.handler decl
 
-  let send_notification t { Versioned.Staged.encode } n =
+  let send_notification t { Versioned_intf.Staged.encode } n =
     t.base.send (Some [ Notification (encode n) ])
   ;;
 
@@ -224,7 +224,7 @@ module Session = struct
         [ "id", Dune_rpc_private.Id.to_dyn id
         ; "error", Dune_rpc_private.Version_error.to_dyn error
         ]
-    | Ok { Versioned.Staged.encode_req; decode_resp } ->
+    | Ok { Versioned_intf.Staged.encode_req; decode_resp } ->
       let req = encode_req req in
       let* ivar = Stage1.request t.base (id, req) in
       let+ resp = Fiber.Ivar.read ivar in

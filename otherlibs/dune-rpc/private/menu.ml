@@ -5,7 +5,6 @@ open Types
    as of commit [3cd240e], which the initial versioning implementation was based
    on. *)
 let compatibility_menu =
-  Method.Name.Map.of_list_exn
     [ "ping", 1
     ; "diagnostics", 1
     ; "shutdown", 1
@@ -18,6 +17,8 @@ let compatibility_menu =
     ; "notify/log", 1
     ; "notify/progress", 1
     ]
+    |> List.map ~f:(fun (name, version) -> Method.Name.of_string name, version)
+    |> Method.Name.Map.of_list_exn
 ;;
 
 type t = Method.Version.t Method.Name.Map.t

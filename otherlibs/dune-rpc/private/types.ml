@@ -39,10 +39,14 @@ module Method = struct
   module Name = struct
     type t = string
 
+    let equal = String.equal
+    let to_dyn = Dyn.string
+    let hash = String.hash
+    let of_string s = s
+    let to_string s = s
     let sexp : t Conv.value = Conv.string
 
     module Map = String.Map
-    module Table = String.Table
   end
 
   module Version = struct
@@ -265,7 +269,7 @@ module Version_negotiation = struct
     ;;
 
     let of_call { Call.method_; params } ~version =
-      if String.equal method_ method_name
+      if Method.Name.equal method_ method_name
       then Conv.of_sexp sexp ~version params |> Result.map_error ~f:Response.Error.of_conv
       else (
         let message = "version negotiation request expected" in
@@ -447,7 +451,12 @@ module Decl = struct
     let make ~method_ ~generations =
       { generations
       ; decl =
-          { method_; key = Univ_map.Key.create ~name:method_ (Int.Map.to_dyn gen_to_dyn) }
+          { method_
+          ; key =
+              Univ_map.Key.create
+                ~name:(Method.Name.to_string method_)
+                (Int.Map.to_dyn gen_to_dyn)
+          }
       }
     ;;
 

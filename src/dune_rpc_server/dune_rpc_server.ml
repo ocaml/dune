@@ -277,7 +277,7 @@ module Event = struct
     | Session of Dune_trace.Event.Rpc.stage
     | Message of
         { kind : message_kind
-        ; meth_ : string
+        ; meth_ : Method.Name.t
         ; stage : Dune_trace.Event.Rpc.stage
         }
 
@@ -292,7 +292,7 @@ module Event = struct
           | Request id -> `Request (Dune_rpc_private.Id.to_sexp id)
           | Notification -> `Notification
         in
-        Dune_trace.Event.Rpc.message kind ~meth_ ~id stage)
+        Dune_trace.Event.Rpc.message kind ~meth_:(Method.Name.to_string meth_) ~id stage)
   ;;
 end
 
@@ -307,7 +307,7 @@ module H = struct
   type 'a stage1 =
     { base : 'a base
     ; to_handler : Menu.t -> 'a Session.t V.Handler.t
-    ; known_versions : Int.Set.t String.Map.t
+    ; known_versions : Int.Set.t Method.Name.Map.t
     }
 
   type 'a t = { handler : 'a Session.t V.Handler.t }
@@ -316,7 +316,9 @@ module H = struct
     let open Fiber.O in
     let msg = { Message.message; payload } in
     let call =
-      { Call.params = Message.to_sexp_unversioned msg; method_ = "notify/abort" }
+      { Call.params = Message.to_sexp_unversioned msg
+      ; method_ = Method.Name.of_string "notify/abort"
+      }
     in
     let* () = session.send (Some [ Notification call ]) in
     session.send None
@@ -335,7 +337,9 @@ module H = struct
           "received badly-versioned notification"
           [ ( "notification"
             , Dyn.Record
-                [ "method_", Dyn.String n.method_; "params", Sexp.to_dyn n.params ] )
+                [ "method_", Method.Name.to_dyn n.method_
+                ; "params", Sexp.to_dyn n.params
+                ] )
           ; "description", Response.Error.to_dyn e
           ]
       | Ok r -> r
@@ -469,7 +473,7 @@ module H = struct
       in
       let known_versions =
         V.Builder.registered_procedures builder
-        |> String.Map.of_list_map_exn ~f:(fun (name, gens) -> name, Int.Set.of_list gens)
+        |> Method.Name.Map.of_list_map_exn ~f:(fun (name, gens) -> name, Int.Set.of_list gens)
       in
       { to_handler
       ; base = { on_init; on_terminate; on_upgrade; version }

@@ -6,7 +6,7 @@ let raise_version_bug ~method_ ~selected ~verb ~known =
   Code_error.raise
     "bug with version negotiation; selected bad method version"
     [ "message", Dyn.String ("version is " ^ verb)
-    ; "method", Dyn.String method_
+    ; "method", Method.Name.to_dyn method_
     ; "implemented versions", Dyn.list Dyn.int known
     ; "selected version", Dyn.Int selected
     ]
@@ -98,9 +98,10 @@ struct
     type 'state t =
       { mutable declared_requests : packed list Method.Name.Map.t * Univ_map.t
       ; mutable declared_notifications : packed list Method.Name.Map.t * Univ_map.t
-      ; implemented_requests : 'state r_handler Method.Version.Map.t Method.Name.Table.t
+      ; implemented_requests :
+          (Method.Name.t, 'state r_handler Method.Version.Map.t) Table.t
       ; implemented_notifications :
-          'state n_handler Method.Version.Map.t Method.Name.Table.t
+          (Method.Name.t, 'state n_handler Method.Version.Map.t) Table.t
       }
 
     (* A [('state, 'key, 'output) field_witness] is a first-class representation
@@ -139,8 +140,8 @@ struct
               * ('a, unit) Decl.Generation.t Method.Version.Map.t Univ_map.Key.t
             , ('a, unit) Decl.Generation.t )
             field_witness
-      | Impl_requests : ('state, string, 'state r_handler) field_witness
-      | Impl_notifs : ('state, string, 'state n_handler) field_witness
+      | Impl_requests : ('state, Method.Name.t, 'state r_handler) field_witness
+      | Impl_notifs : ('state, Method.Name.t, 'state n_handler) field_witness
 
     let get (type st a b) (t : st t) (witness : (st, a, b) field_witness) (key : a)
       : b Method.Version.Map.t option
@@ -154,8 +155,8 @@ struct
         let _, key = key in
         let _, table = t.declared_notifications in
         Univ_map.find table key
-      | Impl_requests -> Method.Name.Table.find t.implemented_requests key
-      | Impl_notifs -> Method.Name.Table.find t.implemented_notifications key
+      | Impl_requests -> Table.find t.implemented_requests key
+      | Impl_notifs -> Table.find t.implemented_notifications key
     ;;
 
     let set
@@ -176,8 +177,8 @@ struct
         let known_keys, table = t.declared_notifications in
         t.declared_notifications
         <- Method.Name.Map.add_multi known_keys name (T key), Univ_map.set table key value
-      | Impl_requests -> Method.Name.Table.set t.implemented_requests key value
-      | Impl_notifs -> Method.Name.Table.set t.implemented_notifications key value
+      | Impl_requests -> Table.set t.implemented_requests key value
+      | Impl_notifs -> Table.set t.implemented_notifications key value
     ;;
 
     let registered_procedures
@@ -198,7 +199,7 @@ struct
                 Code_error.raise
                   "versioning: method found in versioning table without actually being \
                    declared"
-                  [ "method_", Dyn.String name
+                  [ "method_", Method.Name.to_dyn name
                   ; "table", Dyn.String ("known_" ^ which ^ "_table")
                   ])
           in
@@ -214,7 +215,7 @@ struct
           declared_notification_table
       in
       let batch_implementations table =
-        Method.Name.Table.foldi table ~init:[] ~f:(fun name listing acc ->
+        Table.foldi table ~init:[] ~f:(fun name listing acc ->
           (name, Method.Version.Map.keys listing) :: acc)
       in
       let implemented_requests = batch_implementations implemented_requests in
@@ -230,8 +231,8 @@ struct
     let create () =
       let declared_requests = Method.Name.Map.empty, Univ_map.empty in
       let declared_notifications = Method.Name.Map.empty, Univ_map.empty in
-      let implemented_requests = Method.Name.Table.create 16 in
-      let implemented_notifications = Method.Name.Table.create 16 in
+      let implemented_requests = Table.create (module Method.Name) 16 in
+      let implemented_notifications = Table.create (module Method.Name) 16 in
       { declared_requests
       ; declared_notifications
       ; implemented_requests
@@ -254,7 +255,7 @@ struct
         |> Option.iter ~f:(fun _ ->
           Code_error.raise
             "attempted to implement and declare method"
-            [ "method", Dyn.String method_ ])
+            [ "method", Method.Name.to_dyn method_ ])
       in
       let prior_registered_generations =
         get t registry registry_key |> Option.value ~default:Method.Version.Map.empty
@@ -273,7 +274,7 @@ struct
       else
         Code_error.raise
           "attempted to register duplicate generations for RPC method"
-          [ "method", Dyn.String method_
+          [ "method", Method.Name.to_dyn method_
           ; "duplicated", Method.Version.Set.to_dyn duplicate_generations
           ]
     ;;
@@ -330,10 +331,10 @@ struct
       match get t table key, Menu.find menu method_ with
       | Some subtable, Some version -> s (subtable, version)
       | None, _ ->
-        let payload = Sexp.record [ "method", Atom method_ ] in
+        let payload = Sexp.record [ "method", Atom (Method.Name.to_string method_) ] in
         k (Version_error.create ~message:"invalid method" ~payload ())
       | _, None ->
-        let payload = Sexp.record [ "method", Atom method_ ] in
+        let payload = Sexp.record [ "method", Atom (Method.Name.to_string method_) ] in
         k
           (Version_error.create
              ~message:"remote and local have no common version for method"

@@ -146,7 +146,7 @@ let request_exn client witness n =
 ;;
 
 let%expect_test "call method with matching versions" =
-  let decl = simple_request ~method_:"double" Conv.int Conv.int in
+  let decl = simple_request ~method_:(Method.Name.of_string "double") Conv.int Conv.int in
   let handler =
     let rpc = Handler.create ~on_init ~version:(1, 1) () in
     let () =
@@ -193,7 +193,7 @@ let%expect_test "call method with matching versions" =
 ;;
 
 let%expect_test "call method with no matching versions" =
-  let decl = simple_request ~method_:"double" Conv.int Conv.int in
+  let decl = simple_request ~method_:(Method.Name.of_string "double") Conv.int Conv.int in
   let handler =
     let rpc = Handler.create ~on_init ~version:(2, 0) () in
     let () =
@@ -216,7 +216,9 @@ let%expect_test "call method with no matching versions" =
     ; id = Id.make (Atom "test-client")
     }
   in
-  let decl' = simple_request ~method_:"double" ~version:2 Conv.int Conv.int in
+  let decl' =
+    simple_request ~method_:(Method.Name.of_string "double") ~version:2 Conv.int Conv.int
+  in
   test ~init ~client ~handler ~private_menu:[ Request decl' ] ();
   [%expect
     {|
@@ -299,8 +301,13 @@ module Add = struct
   ;;
 end
 
-let add_v1_only = Decl.Request.make ~method_:"add" ~generations:[ Add.v1_only ]
-let add_v1_v2 = Decl.Request.make ~method_:"add" ~generations:[ Add.v1; Add.v2 ]
+let add_v1_only =
+  Decl.Request.make ~method_:(Method.Name.of_string "add") ~generations:[ Add.v1_only ]
+;;
+
+let add_v1_v2 =
+  Decl.Request.make ~method_:(Method.Name.of_string "add") ~generations:[ Add.v1; Add.v2 ]
+;;
 
 let%expect_test "client is newer than server" =
   let handler =
@@ -567,7 +574,7 @@ let%test_module "long polling" =
 ;;
 
 let%expect_test "server to client request" =
-  let decl = simple_request ~method_:"double" Conv.int Conv.int in
+  let decl = simple_request ~method_:(Method.Name.of_string "double") Conv.int Conv.int in
   let client_finish = Fiber.Ivar.create () in
   let pool = Fiber.Pool.create () in
   let on_upgrade session _menu =
@@ -620,7 +627,10 @@ let%expect_test "server to client request" =
 
 let%test_module "finalization" =
   (module struct
-    let decl = simple_request ~method_:"double" Conv.unit Conv.unit
+    let decl =
+      simple_request ~method_:(Method.Name.of_string "double") Conv.unit Conv.unit
+    ;;
+
     let witness = Decl.Request.witness decl
 
     type callback =

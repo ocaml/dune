@@ -17,7 +17,16 @@ let raise_version_bug ~method_ ~selected ~verb ~known =
    listing. *)
 type packed = T : 'a Method.Version.Map.t Univ_map.Key.t -> packed
 
-module Make (Fiber : Fiber_intf.S) = struct
+module Make (Fiber : sig
+    type 'a t
+
+    val return : 'a -> 'a t
+
+    module O : sig
+      val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+    end
+  end) =
+struct
   module Handler = struct
     type 'state t =
       { menu : Menu.t

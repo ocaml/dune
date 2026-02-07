@@ -487,7 +487,7 @@ struct
       Fiber.parallel_iter packets ~f:(function
         | Packet.Notification n ->
           if
-            String.equal n.method_ Procedures.Server_side.abort.decl.method_
+            Method.Name.equal n.method_ Procedures.Server_side.abort.decl.method_
             && not t.handler_initialized
           then (
             match
@@ -669,7 +669,7 @@ struct
                        client
                        "server responded with invalid version menu"
                        [ ( "duplicated"
-                         , Dyn.Tuple [ Dyn.String method_; Dyn.Int a; Dyn.Int b ] )
+                         , Dyn.Tuple [ Method.Name.to_dyn method_; Dyn.Int a; Dyn.Int b ] )
                        ])))
         in
         let handler =

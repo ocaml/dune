@@ -24,12 +24,16 @@ end
 
 module Method : sig
   module Name : sig
-    type t = string
+    type t
 
+    val to_dyn : t -> Dyn.t
+    val of_string : string -> t
+    val to_string : t -> string
     val sexp : t Conv.value
+    val equal : t -> t -> bool
+    val hash : t -> int
 
-    module Map = String.Map
-    module Table = String.Table
+    module Map : Stdune.Map.S with type key = t
   end
 
   module Version : sig
@@ -132,9 +136,9 @@ module Version_negotiation : sig
   end
 
   module Response : sig
-    type t = private Selected of (string * int) list
+    type t = private Selected of (Method.Name.t * int) list
 
-    val create : (string * int) list -> t
+    val create : (Method.Name.t * int) list -> t
     val to_response : t -> Sexp.t
     val sexp : t Conv.value
   end

@@ -5,11 +5,11 @@ module Status = struct
   module Menu = struct
     type t =
       | Uninitialized
-      | Menu of (string * int) list
+      | Menu of (Method.Name.t * int) list
 
     let sexp =
       let open Conv in
-      let menu = constr "menu" (list (pair string int)) (fun m -> Menu m) in
+      let menu = constr "menu" (list (pair Method.Name.sexp int)) (fun m -> Menu m) in
       let uninitialized = constr "stage1" unit (fun () -> Uninitialized) in
       let variants = [ econstr menu; econstr uninitialized ] in
       sum variants (function
@@ -28,7 +28,10 @@ module Status = struct
   ;;
 
   let v1 = Decl.Request.make_current_gen ~req:Conv.unit ~resp:sexp ~version:1
-  let decl = Decl.Request.make ~method_:"status" ~generations:[ v1 ]
+
+  let decl =
+    Decl.Request.make ~method_:(Method.Name.of_string "status") ~generations:[ v1 ]
+  ;;
 end
 
 module Build = struct
@@ -46,7 +49,9 @@ module Build = struct
       ~version:2
   ;;
 
-  let decl = Decl.Request.make ~method_:"build" ~generations:[ v1; v2 ]
+  let decl =
+    Decl.Request.make ~method_:(Method.Name.of_string "build") ~generations:[ v1; v2 ]
+  ;;
 end
 
 let build = Build.decl

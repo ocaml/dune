@@ -5,7 +5,10 @@ open Exported_types
 module Public = struct
   module Ping = struct
     let v1 = Decl.Request.make_current_gen ~req:Conv.unit ~resp:Conv.unit ~version:1
-    let decl = Decl.Request.make ~method_:"ping" ~generations:[ v1 ]
+
+    let decl =
+      Decl.Request.make ~method_:(Method.Name.of_string "ping") ~generations:[ v1 ]
+    ;;
   end
 
   module Diagnostics = struct
@@ -27,17 +30,29 @@ module Public = struct
         ~resp:(Conv.list Diagnostic.sexp)
     ;;
 
-    let decl = Decl.Request.make ~method_:"diagnostics" ~generations:[ v1; v2 ]
+    let decl =
+      Decl.Request.make
+        ~method_:(Method.Name.of_string "diagnostics")
+        ~generations:[ v1; v2 ]
+    ;;
   end
 
   module Shutdown = struct
     let v1 = Decl.Notification.make_current_gen ~conv:Conv.unit ~version:1
-    let decl = Decl.Notification.make ~method_:"shutdown" ~generations:[ v1 ]
+
+    let decl =
+      Decl.Notification.make
+        ~method_:(Method.Name.of_string "shutdown")
+        ~generations:[ v1 ]
+    ;;
   end
 
   module Format = struct
     let v1 = Decl.Request.make_current_gen ~req:Conv.unit ~resp:Conv.unit ~version:1
-    let decl = Decl.Request.make ~method_:"format" ~generations:[ v1 ]
+
+    let decl =
+      Decl.Request.make ~method_:(Method.Name.of_string "format") ~generations:[ v1 ]
+    ;;
   end
 
   module Format_dune_file = struct
@@ -53,12 +68,20 @@ module Public = struct
     end
 
     let v1 = Decl.Request.make_current_gen ~req:V1.req ~resp:Conv.string ~version:1
-    let decl = Decl.Request.make ~method_:"format-dune-file" ~generations:[ v1 ]
+
+    let decl =
+      Decl.Request.make
+        ~method_:(Method.Name.of_string "format-dune-file")
+        ~generations:[ v1 ]
+    ;;
   end
 
   module Promote = struct
     let v1 = Decl.Request.make_current_gen ~req:Path.sexp ~resp:Conv.unit ~version:1
-    let decl = Decl.Request.make ~method_:"promote" ~generations:[ v1 ]
+
+    let decl =
+      Decl.Request.make ~method_:(Method.Name.of_string "promote") ~generations:[ v1 ]
+    ;;
   end
 
   module Promote_many = struct
@@ -69,12 +92,19 @@ module Public = struct
         ~version:1
     ;;
 
-    let decl = Decl.Request.make ~method_:"promote_many" ~generations:[ v1 ]
+    let decl =
+      Decl.Request.make
+        ~method_:(Method.Name.of_string "promote_many")
+        ~generations:[ v1 ]
+    ;;
   end
 
   module Build_dir = struct
     let v1 = Decl.Request.make_current_gen ~req:Conv.unit ~resp:Path.sexp ~version:1
-    let decl = Decl.Request.make ~method_:"build_dir" ~generations:[ v1 ]
+
+    let decl =
+      Decl.Request.make ~method_:(Method.Name.of_string "build_dir") ~generations:[ v1 ]
+    ;;
   end
 
   module Runtest = struct
@@ -85,7 +115,9 @@ module Public = struct
         ~version:1
     ;;
 
-    let decl = Decl.Request.make ~method_:"runtest" ~generations:[ v1 ]
+    let decl =
+      Decl.Request.make ~method_:(Method.Name.of_string "runtest") ~generations:[ v1 ]
+    ;;
   end
 
   let ping = Ping.decl
@@ -102,12 +134,22 @@ end
 module Server_side = struct
   module Abort = struct
     let v1 = Decl.Notification.make_current_gen ~conv:Message.sexp ~version:1
-    let decl = Decl.Notification.make ~method_:"notify/abort" ~generations:[ v1 ]
+
+    let decl =
+      Decl.Notification.make
+        ~method_:(Method.Name.of_string "notify/abort")
+        ~generations:[ v1 ]
+    ;;
   end
 
   module Log = struct
     let v1 = Decl.Notification.make_current_gen ~conv:Message.sexp ~version:1
-    let decl = Decl.Notification.make ~method_:"notify/log" ~generations:[ v1 ]
+
+    let decl =
+      Decl.Notification.make
+        ~method_:(Method.Name.of_string "notify/log")
+        ~generations:[ v1 ]
+    ;;
   end
 
   let abort = Abort.decl
@@ -130,9 +172,13 @@ module Poll = struct
     }
 
   let make name generations =
-    let poll = Decl.Request.make ~method_:("poll/" ^ name) ~generations in
+    let poll =
+      Decl.Request.make ~method_:(Method.Name.of_string ("poll/" ^ name)) ~generations
+    in
     let cancel =
-      Decl.Notification.make ~method_:("cancel-poll/" ^ name) ~generations:[ cancel_gen ]
+      Decl.Notification.make
+        ~method_:(Method.Name.of_string ("cancel-poll/" ^ name))
+        ~generations:[ cancel_gen ]
     in
     { poll; cancel; name }
   ;;

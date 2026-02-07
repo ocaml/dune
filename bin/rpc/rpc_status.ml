@@ -130,7 +130,7 @@ let term =
           | Menu menu ->
             [ Pp.textf "Client [%s] with the following RPC versions:" id
             ; Pp.enumerate menu ~f:(fun (method_, version) ->
-                Pp.textf "%s: %d" method_ version)
+                Pp.textf "%s: %d" (Dune_rpc_private.Method.Name.to_string method_) version)
             ]
         in
         Console.print message))

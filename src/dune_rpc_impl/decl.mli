@@ -7,7 +7,7 @@ module Status : sig
   module Menu : sig
     type t =
       | Uninitialized
-      | Menu of (string * int) list
+      | Menu of (Method.Name.t * int) list
 
     val sexp : (t, Conv.values) Conv.t
   end

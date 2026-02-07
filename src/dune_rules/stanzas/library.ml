@@ -391,7 +391,10 @@ let foreign_dll_files t ~dir ~ext_dll =
   | None -> foreign_archives
 ;;
 
-let archive_basename t ~ext = Lib_name.Local.to_string (snd t.name) ^ ext
+let archive_basename t ~ext =
+  Lib_name.Local.to_string (snd t.name) ^ Filename.Extension.to_string ext
+;;
+
 let archive t ~dir ~ext = Path.Build.relative dir (archive_basename t ~ext)
 
 let best_name t =

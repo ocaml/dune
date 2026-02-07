@@ -258,8 +258,8 @@ module Artifact = struct
   ;;
 
   let ext = function
-    | Mod Cmt -> ".cmt"
-    | Mod Cmti -> ".cmti"
+    | Mod Cmt -> Filename.Extension.cmt
+    | Mod Cmti -> Filename.Extension.cmti
     | Mod (Cm_kind cm_kind) -> Cm_kind.ext cm_kind
     | Lib mode -> Mode.compiled_lib_ext mode
   ;;
@@ -421,7 +421,7 @@ module Macro = struct
     | Pkg -> Ok "pkg"
     | Pkg_self -> Ok "pkg-self"
     | Ppx -> Ok "ppx"
-    | Artifact a -> Ok (String.drop (Artifact.ext a) 1)
+    | Artifact a -> Ok (Artifact.ext a |> Filename.Extension.drop_dot)
   ;;
 end
 
@@ -657,7 +657,7 @@ module Env = struct
     let macros =
       let macro (x : Macro.t) = No_info x in
       let artifact x =
-        let name = String.drop (Artifact.ext x) 1 in
+        let name = Artifact.ext x |> Filename.Extension.drop_dot in
         let version =
           match x with
           | Mod Cmt | Mod Cmti -> 3, 21

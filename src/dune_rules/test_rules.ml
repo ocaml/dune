@@ -15,7 +15,10 @@ let test_kind dir_contents (loc, name, ext) =
   then
     `Expect
       { Diff.file1 = String_with_vars.make_text loc expected_basename
-      ; file2 = String_with_vars.make_text loc (name ^ ext ^ ".output")
+      ; file2 =
+          String_with_vars.make_text
+            loc
+            (name ^ Filename.Extension.to_string ext ^ ".output")
       ; optional = false
       ; mode = Text
       }
@@ -25,8 +28,8 @@ let test_kind dir_contents (loc, name, ext) =
 let ext_of_mode runtest_mode =
   match runtest_mode with
   | `js mode -> Js_of_ocaml.Ext.exe ~mode
-  | `bc -> ".bc"
-  | `exe -> ".exe"
+  | `bc -> Filename.Extension.bc
+  | `exe -> Filename.Extension.exe
 ;;
 
 let custom_runner runtest_mode =
@@ -91,7 +94,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                    (String_with_vars.make_text loc runner)
                    [ String_with_vars.make_pform loc test_pform ])
           in
-          let test_exe = s ^ ext in
+          let test_exe = s ^ Filename.Extension.to_string ext in
           let extra_bindings =
             let test_exe_path, _, _ =
               Expander.map_exe
@@ -113,7 +116,9 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                | `js Wasm ->
                  Bindings.Unnamed
                    (Dep_conf.File
-                      (String_with_vars.make_text loc (s ^ Js_of_ocaml.Ext.wasm_dir)))
+                      (String_with_vars.make_text
+                         loc
+                         (s ^ Filename.Extension.to_string Js_of_ocaml.Ext.wasm_dir)))
                  :: t.deps
                | `js JS | `exe | `bc -> t.deps)
           in

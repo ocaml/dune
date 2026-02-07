@@ -114,7 +114,10 @@ let mlg_files ~sctx ~dir ~modules =
   let+ standard =
     (* All .mlg files in the current directory *)
     let filter_mlg file =
-      if Path.Source.extension file = ".mlg"
+      if
+        Filename.Extension.Or_empty.check
+          (Path.Source.extension file)
+          Filename.Extension.mlg
       then
         Some
           (Path.Build.append_source

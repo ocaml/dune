@@ -2,16 +2,20 @@ open Import
 module Dialect = Dune_lang.Dialect
 
 let dialect_and_ml_kind file =
+  let file = Path.of_string file in
   let open Memo.O in
-  let _base, ext =
-    let file = Path.of_string file in
-    Path.split_extension file
-  in
+  let _base, ext = Path.split_extension file in
   let+ project = Source_tree.root () >>| Source_tree.Dir.project in
   let dialects = Dune_project.dialects project in
-  match Dialect.DB.find_by_extension dialects ext with
-  | None -> User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
-  | Some x -> x
+  if Filename.Extension.Or_empty.is_empty ext
+  then User_error.raise [ Pp.textf "file %s has no extension" (Path.to_string file) ]
+  else (
+    let ext = Filename.Extension.Or_empty.extension_exn ext in
+    match Dialect.DB.find_by_extension dialects ext with
+    | None ->
+      User_error.raise
+        [ Pp.textf "unsupported extension: %s" (Filename.Extension.to_string ext) ]
+    | Some x -> x)
 ;;
 
 let execute_pp_action ~sctx file pp_file dump_file =
@@ -88,8 +92,8 @@ let print_pped_file =
       pp_file
       ~ext:
         (match (ml_kind : Root.Ocaml.Ml_kind.t) with
-         | Intf -> ".cmi.dump"
-         | Impl -> ".cmo.dump")
+         | Intf -> Filename.Extension.cmi_dump
+         | Impl -> Filename.Extension.cmo_dump)
     |> Path.as_in_build_dir_exn
   in
   fun ~sctx file pp_file ~ml_kind ->

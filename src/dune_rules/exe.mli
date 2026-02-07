@@ -22,7 +22,7 @@ module Linkage : sig
   val native : t
 
   (** like [custom] but allows for a custom extension *)
-  val custom_with_ext : ext:string -> Ocaml.Version.t -> t
+  val custom_with_ext : ext:Filename.Extension.t -> Ocaml.Version.t -> t
 
   (** Byte compilation with stubs statically linked in, extension [.exe] *)
   val custom : Ocaml.Version.t -> t

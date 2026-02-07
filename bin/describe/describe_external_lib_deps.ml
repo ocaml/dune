@@ -43,7 +43,7 @@ module Item = struct
     ; internal_deps : lib_dep list
     ; names : string list
     ; package : Package.t option
-    ; extensions : string list
+    ; extensions : Filename.Extension.t list
     }
 
   let to_dyn { kind; dir; external_deps; internal_deps; names; package; extensions } =
@@ -51,7 +51,7 @@ module Item = struct
     let record =
       record
         [ "names", (list string) names
-        ; "extensions", (list string) extensions
+        ; "extensions", (list Filename.Extension.to_dyn) extensions
         ; "package", option Package.Name.to_dyn (Option.map ~f:Package.name package)
         ; "source_dir", String (Path.Source.to_string dir)
         ; "external_deps", list lib_dep_to_dyn external_deps

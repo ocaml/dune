@@ -325,20 +325,16 @@ module Local_gen = struct
   let reach = Reach.reach
   let extend_basename t ~suffix = t ^ suffix
   let extension t = Filename.extension t
-
-  let split_extension t =
-    let s, ext = Filename.split_extension t in
-    s, ext
-  ;;
+  let split_extension t = Filename.split_extension t
 
   let set_extension t ~ext =
     let base, _ = split_extension t in
-    base ^ ext
+    base ^ Filename.Extension.to_string ext
   ;;
 
   let map_extension t ~f =
     let base, ext = split_extension t in
-    base ^ f ext
+    base ^ Filename.Extension.Or_empty.to_string (f ext)
   ;;
 
   module Prefix = struct

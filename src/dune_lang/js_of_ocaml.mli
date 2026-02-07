@@ -109,13 +109,11 @@ module In_context : sig
 end
 
 module Ext : sig
-  type t = string
-
-  val exe : mode:Mode.t -> t
-  val cmo : mode:Mode.t -> t
-  val cma : mode:Mode.t -> t
-  val runtime : mode:Mode.t -> t
-  val wasm_dir : t
+  val exe : mode:Mode.t -> Filename.Extension.t
+  val cmo : mode:Mode.t -> Filename.Extension.t
+  val cma : mode:Mode.t -> Filename.Extension.t
+  val runtime : mode:Mode.t -> Filename.Extension.t
+  val wasm_dir : Filename.Extension.t
 end
 
 module Env : sig

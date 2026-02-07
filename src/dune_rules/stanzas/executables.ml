@@ -180,7 +180,7 @@ end = struct
             Option.map pub ~f:(fun pub ->
               Install_entry.File.of_file_binding
                 (File_binding.Unexpanded.make
-                   ~src:(locn, name ^ ext)
+                   ~src:(locn, name ^ Filename.Extension.to_string ext)
                    ~dst:(locp, pub)
                    ~dune_syntax:t.dune_syntax
                    ~dir:(Some dir))))
@@ -230,6 +230,8 @@ module Link_mode = struct
 
   include T
 
+  let default_obj_ext = Filename.Extension.of_string_exn ".OBJ"
+  let default_dll_ext = Filename.Extension.of_string_exn ".DLL"
   let make mode kind = Other { mode; kind }
   let exe = make Best Exe
   let object_ = make Best Object
@@ -308,8 +310,9 @@ module Link_mode = struct
   ;;
 
   let extension t ~loc ~ext_obj ~ext_dll =
+    let of_string = Filename.Extension.of_string_exn in
     match t with
-    | Byte_complete -> ".bc.exe"
+    | Byte_complete -> Filename.Extension.bc_exe
     | Jsoo mode -> Js_of_ocaml.Ext.exe ~mode
     | Other { mode; kind } ->
       let same_as_mode : Mode.t =
@@ -321,14 +324,14 @@ module Link_mode = struct
           Native
       in
       (match same_as_mode, kind with
-       | Byte, C -> ".bc.c"
+       | Byte, C -> of_string ".bc.c"
        | Native, C ->
          User_error.raise ~loc [ Pp.text "C file generation only supports bytecode!" ]
-       | Byte, Exe -> ".bc"
-       | Native, Exe -> ".exe"
-       | Byte, Object -> ".bc" ^ ext_obj
-       | Native, Object -> ".exe" ^ ext_obj
-       | Byte, Shared_object -> ".bc" ^ ext_dll
+       | Byte, Exe -> Filename.Extension.bc
+       | Native, Exe -> Filename.Extension.exe
+       | Byte, Object -> of_string (".bc" ^ Filename.Extension.to_string ext_obj)
+       | Native, Object -> of_string (".exe" ^ Filename.Extension.to_string ext_obj)
+       | Byte, Shared_object -> of_string (".bc" ^ Filename.Extension.to_string ext_dll)
        | Native, Shared_object -> ext_dll
        | mode, Plugin -> Mode.plugin_ext mode)
   ;;
@@ -351,9 +354,11 @@ module Link_mode = struct
           List.fold_left l ~init:empty ~f:(fun acc (loc, link_mode) ->
             set acc link_mode loc)
         in
+        let ext_obj = default_obj_ext in
+        let ext_dll = default_dll_ext in
         (match
-           String.Map.of_list_map (to_list t) ~f:(fun (lm, loc) ->
-             extension lm ~loc ~ext_obj:".OBJ" ~ext_dll:".DLL", lm)
+           Filename.Extension.Map.of_list_map (to_list t) ~f:(fun (lm, loc) ->
+             extension lm ~loc ~ext_obj ~ext_dll, lm)
          with
          | Ok _ -> ()
          | Error (_ext, (lm1, _), (lm2, _)) ->
@@ -514,10 +519,10 @@ let common =
       | Some mode ->
         let ext =
           match mode with
-          | Byte_complete -> ".bc.exe"
+          | Byte_complete -> Filename.Extension.bc_exe
           | Jsoo mode -> Js_of_ocaml.Ext.exe ~mode
-          | Other { mode = Byte; _ } -> ".bc"
-          | Other { mode = Native | Best; _ } -> ".exe"
+          | Other { mode = Byte; _ } -> Filename.Extension.bc
+          | Other { mode = Native | Best; _ } -> Filename.Extension.exe
         in
         Names.install_conf names ~ext ~enabled_if ~dir:project_root
     in

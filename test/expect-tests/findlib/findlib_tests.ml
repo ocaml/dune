@@ -14,6 +14,9 @@ open Dune_rules.For_tests
 open Dune_tests_common
 
 let () = init ()
+let ext_lib = Filename.Extension.of_string_exn ".a"
+let ext_obj = Filename.Extension.of_string_exn ".o"
+let ext_dll = Filename.Extension.of_string_exn ".so"
 
 let foo_meta =
   {|
@@ -36,14 +39,14 @@ let print_pkg ppf pkg =
 let findlib =
   let lib_config : Lib_config.t =
     { has_native = true
-    ; ext_lib = ".a"
-    ; ext_obj = ".o"
+    ; ext_lib
+    ; ext_obj
     ; os_type = Ocaml_config.Os_type.Other ""
     ; architecture = ""
     ; system = ""
     ; model = ""
     ; natdynlink_supported = Dynlink_supported.By_the_os.of_bool true
-    ; ext_dll = ".so"
+    ; ext_dll
     ; stdlib_dir = Path.source @@ Path.Source.(relative root) "stdlib"
     ; ccomp_type = Cc
     ; ocaml_version_string = "4.02.3"

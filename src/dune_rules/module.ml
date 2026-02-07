@@ -304,8 +304,6 @@ let to_dyn { source; obj_name; pp; visibility; kind; install_as } =
     ]
 ;;
 
-let ml_gen = ".ml-gen"
-
 let wrapped_compat t =
   assert (t.visibility = Public);
   let source =
@@ -318,7 +316,10 @@ let wrapped_compat t =
            a source dir *)
         Path.L.relative
           (src_dir t)
-          [ ".wrapped_compat"; Module_name.Path.to_string t.source.path ^ ml_gen ]
+          [ ".wrapped_compat"
+          ; (Module_name.Path.to_string t.source.path
+             ^ Filename.Extension.(to_string ml_gen))
+          ]
       in
       Some { File.dialect = Dialect.ocaml; path; original_path = path }
     in
@@ -404,7 +405,11 @@ let pped =
   map_files ~f:(fun _kind (file : File.t) ->
     (* We need to insert the suffix before the extension as some tools inspect
        the extension *)
-    let pp_path = Path.map_extension file.path ~f:(fun ext -> ".pp" ^ ext) in
+    let pp_path =
+      Path.map_extension file.path ~f:(fun ext ->
+        Filename.Extension.Or_empty.of_string_exn
+          (".pp" ^ Filename.Extension.Or_empty.to_string ext))
+    in
     { file with path = pp_path })
 ;;
 
@@ -413,7 +418,9 @@ let ml_source =
     match Dialect.ml_suffix f.dialect ml_kind with
     | None -> f
     | Some suffix ->
-      let path = Path.extend_basename f.path ~suffix in
+      let path =
+        Path.extend_basename f.path ~suffix:(Filename.Extension.to_string suffix)
+      in
       { f with dialect = Dialect.ocaml; path })
 ;;
 
@@ -436,7 +443,9 @@ let generated
   in
   let source =
     let impl =
-      let basename = Module_name.Unique.artifact_filename obj_name ~ext:ml_gen in
+      let basename =
+        Module_name.Unique.artifact_filename obj_name ~ext:Filename.Extension.ml_gen
+      in
       let src_dir =
         match for_ with
         | Ocaml -> src_dir

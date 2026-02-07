@@ -30,7 +30,17 @@ module Emit = struct
   let implicit_alias = Alias.Name.of_string "melange"
 
   let decode =
-    let extension_field = extension in
+    let extension_field =
+      let open Dune_lang.Decoder in
+      located extension
+      >>| fun (loc, ext) ->
+      match Filename.Extension.of_string ext with
+      | Some ext -> loc, ext
+      | None ->
+        User_error.raise
+          ~loc
+          [ Pp.text "extension must start with '.' and not contain '/'." ]
+    in
     let module_systems =
       let module Module_system = Melange.Module_system in
       let module_system =
@@ -48,20 +58,22 @@ module Emit = struct
       in
       let+ module_systems =
         repeat
-          (pair module_system (located extension_field)
+          (pair module_system extension_field
            <|> let+ loc, module_system = located module_system in
                let _, ext = Module_system.default in
                module_system, (loc, ext))
       in
       let module_systems =
         match
-          String.Map.of_list_map module_systems ~f:(fun (ms, (loc, ext)) ->
+          Filename.Extension.Map.of_list_map module_systems ~f:(fun (ms, (loc, ext)) ->
             ext, (loc, ms))
         with
-        | Ok m -> String.Map.to_list_map m ~f:(fun ext (_loc, ms) -> ms, ext)
+        | Ok m -> Filename.Extension.Map.to_list_map m ~f:(fun ext (_loc, ms) -> ms, ext)
         | Error (ext, (_, (loc1, _)), (_, (loc2, _))) ->
           let main_message =
-            Pp.textf "JavaScript extension %s appears more than once:" ext
+            Pp.textf
+              "JavaScript extension %s appears more than once:"
+              (Filename.Extension.to_string ext)
           in
           let annots =
             let main = User_message.make ~loc:loc2 [ main_message ] in

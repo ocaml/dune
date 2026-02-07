@@ -37,7 +37,9 @@ let files_to_load_of_requires sctx requires =
   let+ () = Memo.parallel_iter files ~f:Build_system.build_file in
   List.filter files ~f:(fun p ->
     let ext = Path.extension p in
-    ext = Root.Ocaml.Mode.compiled_lib_ext Byte || ext = Root.Ocaml.Cm_kind.ext Cmo)
+    let compiled_lib_ext = Root.Ocaml.Mode.compiled_lib_ext Byte in
+    let cmo_ext = Root.Ocaml.Cm_kind.ext Cmo in
+    Filename.Extension.Or_empty.(check ext compiled_lib_ext || check ext cmo_ext))
 ;;
 
 let term =
@@ -113,7 +115,8 @@ module Module = struct
     let src = Path.Build.append_source (Context.build_dir ctx) mod_ in
     let dir = Path.Build.parent_exn src in
     let filename = Path.Build.basename src in
-    if Filename.extension filename = ""
+    let extension = Filename.extension filename in
+    if Filename.Extension.Or_empty.is_empty extension
     then User_error.raise [ Pp.text "file is missing an extension" ];
     let open Memo.O in
     let module_name =

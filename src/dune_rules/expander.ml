@@ -398,7 +398,11 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
                      (Lib_name.to_string lib))
               ]
       | _ ->
-        if (not lib_exec) || (not Sys.win32) || Filename.extension file = ".exe"
+        let has_exe_ext =
+          let extension = Filename.extension file in
+          Filename.Extension.Or_empty.check extension Filename.Extension.exe
+        in
+        if (not lib_exec) || (not Sys.win32) || has_exe_ext
         then dep p
         else (
           let p_exe = Path.extend_basename p ~suffix:".exe" in
@@ -438,9 +442,9 @@ let make loc context =
 let lib_config_var (var : Pform.Var.t) (lib_config : Lib_config.t) =
   [ (match var with
      | Ocaml_stdlib_dir -> Value.Dir lib_config.stdlib_dir
-     | Ext_obj -> String lib_config.ext_obj
-     | Ext_lib -> String lib_config.ext_lib
-     | Ext_dll -> String lib_config.ext_dll
+     | Ext_obj -> String (Filename.Extension.to_string lib_config.ext_obj)
+     | Ext_lib -> String (Filename.Extension.to_string lib_config.ext_lib)
+     | Ext_dll -> String (Filename.Extension.to_string lib_config.ext_dll)
      | Ccomp_type -> String (Ocaml_config.Ccomp_type.to_string lib_config.ccomp_type)
      | _ -> Code_error.raise "not a Lib_config.t variable" [ "var", Pform.Var.to_dyn var ])
   ]
@@ -458,6 +462,7 @@ let ocaml_config_var (var : Pform.Var.t) (ocaml_config : Ocaml_config.t) =
   | Ext_plugin ->
     (if Ocaml_config.natdynlink_supported ocaml_config then Mode.Native else Byte)
     |> Mode.plugin_ext
+    |> Filename.Extension.to_string
     |> string
   | Os_type ->
     Ocaml_config.os_type ocaml_config |> Ocaml_config.Os_type.to_string |> string

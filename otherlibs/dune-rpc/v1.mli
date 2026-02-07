@@ -325,12 +325,12 @@ module Request : sig
 
     val make : Csexp.t -> t
   end
-end
 
-module Initialize : sig
-  type t
+  module Initialize : sig
+    type t
 
-  val create : id:Request.Id.t -> t
+    val create : id:Id.t -> t
+  end
 end
 
 module Client : sig
@@ -449,7 +449,7 @@ module Client : sig
     val connect
       :  ?handler:Handler.t
       -> chan
-      -> Initialize.t
+      -> Request.Initialize.t
       -> f:(t -> 'a fiber)
       -> 'a fiber
   end

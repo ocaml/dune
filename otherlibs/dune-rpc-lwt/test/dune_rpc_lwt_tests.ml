@@ -81,7 +81,7 @@ let run_with_timeout f =
 let initial_cwd = Sys.getcwd ()
 
 let%expect_test "run and connect" =
-  let initialize = Initialize.create ~id:(Id.make (Csexp.Atom "test")) in
+  let initialize = Request.Initialize.create ~id:(Request.Id.make (Csexp.Atom "test")) in
   Sys.chdir initial_cwd;
   Lwt_main.run
     (let* root_dir = Lwt_io.create_temp_dir () in

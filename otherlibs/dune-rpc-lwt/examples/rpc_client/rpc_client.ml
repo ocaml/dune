@@ -1,7 +1,7 @@
 let () =
   let init =
-    Dune_rpc.V1.Initialize.create
-      ~id:(Dune_rpc.V1.Id.make (Csexp.Atom "example_rpc_client"))
+    Dune_rpc.V1.Request.Initialize.create
+      ~id:(Dune_rpc.V1.Request.Id.make (Csexp.Atom "example_rpc_client"))
   in
   let where = Dune_rpc_lwt.V1.Where.default ~build_dir:"_build" () in
   Lwt_main.run

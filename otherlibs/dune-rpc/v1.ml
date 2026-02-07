@@ -1,8 +1,6 @@
 open Dune_rpc_private
-module Id = Id
 module Response = Response
 module Version_error = Version_error
-module Initialize = Initialize.Request
 module Call = Call
 module Loc = Loc
 module Target = Target
@@ -87,7 +85,7 @@ module Client = struct
     val connect
       :  ?handler:Handler.t
       -> chan
-      -> Initialize.t
+      -> Request.Initialize.t
       -> f:(t -> 'a fiber)
       -> 'a fiber
   end

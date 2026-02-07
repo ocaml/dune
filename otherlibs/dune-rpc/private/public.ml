@@ -3,6 +3,9 @@ open Types
 module Request = struct
   type ('a, 'b) t = ('a, 'b) Decl.Request.witness
 
+  module Id = Id
+  module Initialize = Initialize.Request
+
   let ping = Procedures.Public.ping.decl
   let diagnostics = Procedures.Public.diagnostics.decl
   let format = Procedures.Public.format.decl

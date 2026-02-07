@@ -126,11 +126,10 @@ struct
   module Chan = struct
     type t =
       { read : unit -> Sexp.t option Fiber.t
-      ; write : Sexp.t list -> unit Fiber.t
-      ; close : unit -> unit Fiber.t
       ; closed_read : bool
       ; mutable closed_write : bool
       ; disconnected : unit Fiber.Ivar.t
+      ; chan : Chan.t
       }
 
     let of_chan c =
@@ -143,13 +142,7 @@ struct
           None
         | _ -> Fiber.return result
       in
-      { read
-      ; write = (fun s -> Chan.write c s)
-      ; close = (fun () -> Chan.close c)
-      ; closed_read = false
-      ; closed_write = false
-      ; disconnected
-      }
+      { chan = c; read; closed_read = false; closed_write = false; disconnected }
     ;;
 
     let close t =
@@ -158,17 +151,16 @@ struct
       then Fiber.return ()
       else (
         t.closed_write <- true;
-        t.close ())
+        Chan.close t.chan)
     ;;
 
-    let write t s =
-      let* () = Fiber.return () in
-      t.write s
+    let write (t : t) packet =
+      List.map ~f:(Conv.to_sexp Packet.sexp) packet |> Chan.write t.chan
     ;;
 
     let read t =
       let* () = Fiber.return () in
-      if t.closed_read then Fiber.return None else t.read ()
+      if t.closed_read then Fiber.return None else Chan.read t.chan
     ;;
   end
 
@@ -232,10 +224,6 @@ struct
          Code_error.raise message info)
   ;;
 
-  let send conn (packet : Packet.t list) =
-    List.map ~f:(Conv.to_sexp Packet.sexp) packet |> Chan.write conn.chan
-  ;;
-
   let create ~chan ~initialize ~handler ~on_preemptive_abort =
     let requests = Table.create (module Id) 16 in
     { chan
@@ -277,7 +265,7 @@ struct
     match prepare_request' conn (id, req) with
     | Error e -> Fiber.return (`Completed (Error e))
     | Ok ivar ->
-      let* () = send conn [ Request (id, req) ] in
+      let* () = Chan.write conn.chan [ Request (id, req) ] in
       Fiber.Ivar.read ivar
   ;;
 
@@ -361,7 +349,7 @@ struct
 
   let notification (type a) t (stg : a Versioned.notification) (n : a) =
     let* () = Fiber.return () in
-    make_notification t stg n (fun call -> send t [ Notification call ])
+    make_notification t stg n (fun call -> Chan.write t.chan [ Notification call ])
   ;;
 
   let disconnected t = Fiber.Ivar.read t.chan.disconnected
@@ -491,7 +479,7 @@ struct
       let* () = Fiber.return () in
       let pending = List.rev t.pending in
       t.pending <- [];
-      send t.client pending
+      Chan.write t.client.chan pending
     ;;
   end
 
@@ -525,7 +513,7 @@ struct
         | Request (id, req) ->
           let* handler = t.handler in
           let* result = V.Handler.handle_request handler () (id, req) in
-          send t [ Response (id, result) ]
+          Chan.write t.chan [ Response (id, result) ]
         | Response (id, response) ->
           (match Table.find t.requests id with
            | Some status ->

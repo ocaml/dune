@@ -333,7 +333,6 @@ module Make (Fiber : Fiber_intf.S) = struct
     ;;
 
     let to_handler t ~session_version =
-      let open Fiber.O in
       let handle_request menu state (_id, (n : Call.t)) =
         lookup_method_generic
           t
@@ -354,6 +353,7 @@ module Make (Fiber : Fiber_intf.S) = struct
                (match Conv.of_sexp gen.req ~version:(session_version state) n.params with
                 | Error e -> Fiber.return (Error (Response.Error.of_conv e))
                 | Ok req ->
+                  let open Fiber.O in
                   let+ resp = f state (gen.upgrade_req req) in
                   Ok (Conv.to_sexp gen.resp (gen.downgrade_resp resp))))
       in
@@ -377,6 +377,7 @@ module Make (Fiber : Fiber_intf.S) = struct
                (match Conv.of_sexp gen.req ~version:(session_version state) n.params with
                 | Error e -> Fiber.return (Error (Response.Error.of_conv e))
                 | Ok req ->
+                  let open Fiber.O in
                   let+ () = f state (gen.upgrade_req req) in
                   Ok ()))
       in

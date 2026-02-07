@@ -161,15 +161,14 @@ let content_digest t =
 ;;
 
 let load_opam_package_from_dir ~(dir : Path.t) package =
-  let opam_file_path = Paths.opam_file package in
-  match Path.exists (Path.append_local dir opam_file_path) with
+  let opam_file_path = Path.append_local dir (Paths.opam_file package) in
+  match Fpath.exists (Path.to_string opam_file_path) with
   | false -> None
   | true ->
     let files_dir = Some (Paths.files_dir package) in
     let opam_file =
-      let path = Path.append_local dir opam_file_path in
-      let loc = Loc.in_file path in
-      loc, Opam_file.opam_file_of_path path
+      let loc = Loc.in_file opam_file_path in
+      loc, Opam_file.opam_file_of_path opam_file_path
     in
     Some (Resolved_package.local_fs package opam_file ~dir ~files_dir ~url:None)
 ;;

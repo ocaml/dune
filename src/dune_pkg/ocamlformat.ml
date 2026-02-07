@@ -10,7 +10,7 @@ let version_of_ocamlformat_config ocamlformat_config =
 
 let version_of_current_project's_ocamlformat_config () =
   let ocamlformat_config = Path.Source.of_string ".ocamlformat" |> Path.source in
-  match Path.exists ocamlformat_config with
+  match Fpath.exists (Path.to_string ocamlformat_config) with
   | false -> None
   | true -> version_of_ocamlformat_config ocamlformat_config
 ;;

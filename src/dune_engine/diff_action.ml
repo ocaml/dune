@@ -7,9 +7,10 @@ let compare_files = function
 ;;
 
 let diff_eq_files { Diff.optional; mode; file1; file2 } =
-  let file1 = if Stdune.Path.exists file1 then file1 else Dev_null.path in
+  let file1 = if Fpath.exists (Path.to_string file1) then file1 else Dev_null.path in
   let file2 = Path.build file2 in
-  (optional && not (Stdune.Path.exists file2)) || compare_files mode file1 file2 = Eq
+  (optional && not (Fpath.exists (Path.to_string file2)))
+  || compare_files mode file1 file2 = Eq
 ;;
 
 let exec loc ({ Diff.optional; file1; file2; mode } as diff) =
@@ -29,10 +30,10 @@ let exec loc ({ Diff.optional; file1; file2; mode } as diff) =
       | None -> false
       | Some (_, file) ->
         (* CR-someday rgrinberg: isn't this racy? *)
-        Stdune.Path.exists (Path.source file)
+        Fpath.exists (Path.to_string (Path.source file))
     in
     let in_source_or_target =
-      is_copied_from_source_tree file1 || not (Stdune.Path.exists file1)
+      is_copied_from_source_tree file1 || not (Fpath.exists (Path.to_string file1))
     in
     let source_file =
       snd (Option.value_exn (Path.extract_build_context_dir_maybe_sandboxed file1))

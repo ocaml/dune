@@ -237,7 +237,7 @@ let path_stat path =
    [Fs_cache.path_stat] instead of creating separate [Fs_cache] primitives. Here
    are some reasons for doing this:
 
-   - Semantically, this is equivalent because [Path.exists] is also implemented
+   - Semantically, this is equivalent because [Fpath.exists] is also implemented
      by checking that the [stat] call succeeds (see [caml_sys_file_exists]).
 
    - [Fs_cache.path_stat] doesn't change too often because the resulting record
@@ -377,8 +377,8 @@ let invalidate_path_and_its_parent path =
 
    - If [file_exists] currently returns [true] and we receive a corresponding
      [Deleted] event, we can change the result to [false] without rerunning the
-     [Path.exists] function. Similarly for the case where [file_exists] is [false]
-     and we receive a corresponding [Created] event.
+     [Fpath.exists] function. Similarly for the case where [file_exists] is
+     [false] and we receive a corresponding [Created] event.
 
    - Finally, the result of [dir_contents] queries can be updated without
      calling [Path.Untracked.readdir_unsorted_with_kinds]: we know which file or

@@ -26,7 +26,7 @@ let with_ ({ temp_dir; key_to_filename; _ } as t) ~key ~f =
     let+ result = f output_path in
     match result with
     | Ok () ->
-      if not (Path.exists output_path)
+      if not (Fpath.exists (Path.to_string output_path))
       then
         Code_error.raise
           "Callback failed to create file"

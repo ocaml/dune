@@ -10,7 +10,7 @@ let base_dir =
 let base_dir () =
   let base_dir = Lazy.force base_dir in
   let path = Path.outside_build_dir base_dir in
-  if not (Path.Untracked.exists path) then Path.mkdir_p path;
+  if not (Fpath.exists (Path.to_string path)) then Path.mkdir_p path;
   if not (Fpath.is_directory (Path.to_string path))
   then
     User_error.raise

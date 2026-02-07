@@ -120,7 +120,7 @@ module File = struct
     let name = "dune" in
     let full_path = Path.relative (Path.source dir) name in
     let content =
-      if not (Path.exists full_path)
+      if not (Fpath.exists (Path.to_string full_path))
       then []
       else if Fpath.is_directory (Path.to_string full_path)
       then
@@ -166,7 +166,7 @@ module File = struct
     | Dune f -> Ok (write_dune_file f)
     | Text f ->
       let path = Path.source path in
-      if Path.exists path
+      if Fpath.exists (Path.to_string path)
       then Error path
       else Ok (Io.write_file ~binary:false path f.content)
   ;;

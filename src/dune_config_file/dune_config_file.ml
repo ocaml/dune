@@ -647,7 +647,7 @@ module Dune_config = struct
 
   let load_user_config_file () =
     let user_config_file = Lazy.force user_config_file in
-    if Path.exists user_config_file
+    if Fpath.exists (Path.to_string user_config_file)
     then load_config_file user_config_file
     else Partial.empty
   ;;

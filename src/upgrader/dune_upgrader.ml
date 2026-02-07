@@ -113,7 +113,7 @@ module Common = struct
         ->
         let dir = Path.Source.parent_exn path in
         let included_file = Path.Source.relative dir fn in
-        if not (Path.exists (Path.source included_file))
+        if not (Fpath.exists (Path.Source.to_string included_file))
         then
           User_error.raise
             ~loc

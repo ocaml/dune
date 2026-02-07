@@ -195,9 +195,9 @@ module Artifacts = struct
           in
           let store_using_test_and_rename () =
             (* CR-someday amokhov: There is a race here. If [path_in_cache] is
-               created after [Path.exists] but before [Path.rename], it will be
+               created after [Fpath.exists] but before [Path.rename], it will be
                silently overwritten. Find a good way to avoid this race. *)
-            match Path.exists path_in_cache with
+            match Fpath.exists (Path.to_string path_in_cache) with
             | true -> Store_result.Already_present
             | false ->
               (match
@@ -282,7 +282,7 @@ module Artifacts = struct
          | Some parent when not (Path.Local.is_root parent) -> mk_dir parent
          | Some _ | None -> ());
         let path = Path.build (Path.Build.append_local artifacts.root dir) in
-        if not (Path.exists path)
+        if not (Fpath.exists (Path.to_string path))
         then (
           Path.mkdir_p path;
           Unwind.push unwind (fun () -> Unix.rmdir (Path.to_string path)))

@@ -305,7 +305,7 @@ let move_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated
                    (Path.Build.to_string_maybe_quoted target)
                    (File_kind.to_string_hum st_kind)
                ]);
-          if Path.Untracked.exists (Path.build src_dir)
+          if Fpath.exists (Path.Build.to_string src_dir)
           then Unix.rename (Path.Build.to_string src_dir) (Path.Build.to_string target)))
   in
   Dune_trace.emit ~buffered:true Sandbox (fun () ->

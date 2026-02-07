@@ -330,7 +330,7 @@ module File_ops_real (W : sig
   ;;
 
   let remove_file_if_exists dst =
-    if Path.exists dst
+    if Fpath.exists (Path.to_string dst)
     then (
       print_line "Deleting %s" (Path.to_string_maybe_quoted dst);
       print_unix_error (fun () -> Fpath.unlink_exn (Path.to_string dst)))
@@ -541,7 +541,7 @@ let run
           in
           Path.append_source (Path.build (Context.build_dir ctx)) fn
         in
-        if Path.exists fn then Left (ctx, (pkg, fn)) else Right fn))
+        if Fpath.exists (Path.to_string fn) then Left (ctx, (pkg, fn)) else Right fn))
     |> List.partition_map ~f:Fun.id
   in
   if missing_install_files <> []
@@ -585,7 +585,7 @@ let run
           match
             List.filter_map entries ~f:(fun entry ->
               (* CR rgrinberg: this is ignoring optional entries *)
-              Option.some_if (not (Path.exists entry.src)) entry.src)
+              Option.some_if (not (Fpath.exists (Path.to_string entry.src))) entry.src)
           with
           | [] -> package, entries
           | missing_files ->

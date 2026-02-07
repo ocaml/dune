@@ -95,7 +95,7 @@ let which_command dev_tool =
                     exe_name)))
     in
     let _ : Common.t * Dune_config_file.Dune_config.t = Common.init builder in
-    if allow_not_installed || Path.exists exe_path
+    if allow_not_installed || Fpath.exists (Path.to_string exe_path)
     then print_endline (Path.to_string exe_path)
     else User_error.raise [ Pp.textf "%s is not installed as a dev tool" exe_name ]
   in

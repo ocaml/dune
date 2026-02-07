@@ -74,7 +74,7 @@ module File = struct
 
   let promote ({ src; staging; dst } as file) =
     let correction_file = correction_file file in
-    let correction_exists = Path.Untracked.exists correction_file in
+    let correction_exists = Fpath.exists (Path.to_string correction_file) in
     Console.print
       [ Pp.box
           ~indent:2
@@ -183,7 +183,8 @@ let dump_db (db : db) =
   then (
     match db with
     | [] ->
-      if Path.Untracked.exists db_file then Fpath.unlink_no_err (Path.to_string db_file)
+      if Fpath.exists (Path.to_string db_file)
+      then Fpath.unlink_no_err (Path.to_string db_file)
     | l -> P.dump db_file l)
 ;;
 

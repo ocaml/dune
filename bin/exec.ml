@@ -108,7 +108,8 @@ let program_not_built_yet prog =
 
 let build_prog ~no_rebuild ~prog p =
   if no_rebuild
-  then if Path.exists p then Memo.return p else program_not_built_yet prog
+  then
+    if Fpath.exists (Path.to_string p) then Memo.return p else program_not_built_yet prog
   else
     let open Memo.O in
     let+ () = Build_system.build_file p in
@@ -219,7 +220,10 @@ let build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog =
     let path = Path.relative_to_source_in_build_or_external ~dir prog in
     let+ () =
       if no_rebuild
-      then if Path.exists path then Fiber.return () else program_not_built_yet prog
+      then
+        if Fpath.exists (Path.to_string path)
+        then Fiber.return ()
+        else program_not_built_yet prog
       else (
         let target =
           Dune_lang.Dep_conf.File
@@ -238,7 +242,7 @@ let build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog =
     in
     Path.to_absolute_filename path
   | Absolute ->
-    if Path.exists (Path.of_string prog)
+    if Fpath.exists (Path.to_string (Path.of_string prog))
     then Fiber.return prog
     else not_found ~hints:[] ~prog
 ;;

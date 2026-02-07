@@ -47,9 +47,9 @@ let add_atomically ~mode ~src ~dst : Write_result.t =
      | exception e -> Error e)
   | Copy ->
     (* CR-someday amokhov: There is a race here. If the destination [dst] is
-       created after [Path.exists] but before [Path.rename], [dst] will be
+       created after [Fpath.exists] but before [Path.rename], [dst] will be
        silently overwritten. Find a good way to avoid this race. *)
-    (match Path.exists dst with
+    (match Fpath.exists (Path.to_string dst) with
      | true -> Already_present
      | false ->
        (match Optimistically.rename ~src ~dst with

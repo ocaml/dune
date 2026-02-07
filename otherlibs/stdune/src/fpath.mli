@@ -95,3 +95,4 @@ val traverse_files
 val is_broken_symlink : string -> bool
 
 val is_directory : string -> bool
+val exists : string -> bool

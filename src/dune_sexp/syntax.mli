@@ -2,6 +2,21 @@
 
 open Stdune
 
+module Name : sig
+  type t
+
+  include Conv.S with type t := t
+
+  val dune : t
+  val to_string : t -> string
+  val parse : string -> t
+  val equal : t -> t -> bool
+  val hash : t -> int
+  val to_dyn : t -> Dyn.t
+
+  module Map : Map.S with type key = t
+end
+
 module Version : sig
   (** A syntax version.
 
@@ -70,13 +85,13 @@ end
     to describe what this syntax represent in error messages. *)
 val create
   :  ?experimental:bool
-  -> name:string
+  -> name:Name.t
   -> desc:string
   -> (Version.t * [ `Since of Version.t | `Deleted_in of Version.t ]) list
   -> t
 
 (** Return the name of the syntax. *)
-val name : t -> string
+val name : t -> Name.t
 
 (** Indicate the location and kind of value being parsed *)
 val desc : unit -> (Loc.t * string, 'a) Decoder.parser

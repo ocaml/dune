@@ -81,14 +81,14 @@ module Extension : sig
   val register_simple : Syntax.t -> Stanza.Parser.t list Decoder.t -> unit
 
   (** Register experimental extensions that were deleted *)
-  val register_deleted : name:string -> deleted_in:Syntax.Version.t -> unit
+  val register_deleted : name:Syntax.Name.t -> deleted_in:Syntax.Version.t -> unit
 
   (** An instantiated extension with captured arguments *)
   type instance
 
   val parse_extensions
     :  lang_version:Syntax.Version.t
-    -> (instance String.Map.t * instance list) Decoder.fields_parser
+    -> (instance Syntax.Name.Map.t * instance list) Decoder.fields_parser
 end
 
 (** Interpret extensions and build parsing context. Returns the parsing context,
@@ -142,7 +142,7 @@ val filter_packages : t -> f:(Package.Name.t -> bool) -> t
 val including_hidden_packages : t -> Package.t Package.Name.Map.t
 
 module Melange_syntax : sig
-  val name : string
+  val name : Syntax.Name.t
 end
 
 (** Load a project description from the following directory. [files] is the set

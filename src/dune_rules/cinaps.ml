@@ -24,7 +24,7 @@ include Stanza.Make (struct
 
 let syntax =
   Dune_lang.Syntax.create
-    ~name
+    ~name:(Syntax.Name.parse name)
     ~desc:"the cinaps extension"
     [ (1, 0), `Since (1, 11)
     ; (1, 1), `Since (3, 5)

@@ -2,7 +2,7 @@ open Import
 
 let syntax =
   Syntax.create
-    ~name:"unreleased"
+    ~name:(Syntax.Name.parse "unreleased")
     ~desc:"a collection of dune features that have yet to be released"
     ~experimental:true
     [ (0, 1), `Since (3, 22) ]

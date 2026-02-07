@@ -2,7 +2,7 @@ open Import
 
 let syntax =
   Syntax.create
-    ~name:"menhir"
+    ~name:(Syntax.Name.parse "menhir")
     ~desc:"the menhir extension"
     [ (1, 0), `Since (1, 0)
     ; (1, 1), `Since (1, 4)

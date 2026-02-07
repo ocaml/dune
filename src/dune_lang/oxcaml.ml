@@ -4,7 +4,7 @@ let latest_version = 0, 1
 
 let syntax =
   Syntax.create
-    ~name:"oxcaml"
+    ~name:(Syntax.Name.parse "oxcaml")
     ~desc:"experimental support for OxCaml"
     ~experimental:true
     [ (0, 1), `Since (3, 20) ]

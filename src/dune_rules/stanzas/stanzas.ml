@@ -9,7 +9,9 @@ module Jbuild_version = struct
 end
 
 let () =
-  Dune_project.Extension.register_deleted ~name:"library_variants" ~deleted_in:(2, 6)
+  Dune_project.Extension.register_deleted
+    ~name:(Syntax.Name.parse "library_variants")
+    ~deleted_in:(2, 6)
 ;;
 
 module Include = struct

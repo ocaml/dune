@@ -84,7 +84,7 @@ let short_form ~loc =
 let directory_targets_extension =
   let syntax =
     Dune_lang.Syntax.create
-      ~name:"directory-targets"
+      ~name:(Syntax.Name.parse "directory-targets")
       ~desc:"experimental support for directory targets"
       ~experimental:true
       [ (0, 1), `Since (3, 0) ]

@@ -109,7 +109,7 @@ let all_minors (major, minor) = List.init (minor + 1) ~f:(fun i -> since (major,
 
 let syntax =
   Syntax.create
-    ~name:"dune"
+    ~name:Syntax.Name.dune
     ~desc:"the dune language"
     (List.concat [ all_minors (1, 12); all_minors (2, 9); all_minors latest_version ])
 ;;

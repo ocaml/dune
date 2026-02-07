@@ -338,3 +338,5 @@ let last s = if length s > 0 then Some s.[length s - 1] else None
 let replace_char s ~from ~to_ =
   String.map (fun c -> if Char.equal c from then to_ else c) s
 ;;
+
+let to_string x = x

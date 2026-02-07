@@ -1,7 +1,6 @@
 open Import
 open Types
 open Exported_types
-module Version_error = Versioned.Version_error
 
 module type S = sig
   type t
@@ -9,8 +8,8 @@ module type S = sig
   type chan
 
   module Versioned : sig
-    type ('a, 'b) request = ('a, 'b) Versioned.Staged.request
-    type 'a notification = 'a Versioned.Staged.notification
+    type ('a, 'b) request = ('a, 'b) Versioned_intf.Staged.request
+    type 'a notification = 'a Versioned_intf.Staged.notification
 
     val prepare_request
       :  t
@@ -290,8 +289,8 @@ struct
   ;;
 
   module Versioned = struct
-    type ('a, 'b) request = ('a, 'b) Versioned.Staged.request
-    type 'a notification = 'a Versioned.Staged.notification
+    type ('a, 'b) request = ('a, 'b) Versioned_intf.Staged.request
+    type 'a notification = 'a Versioned_intf.Staged.notification
 
     let prepare_request t (decl : _ Decl.Request.witness) =
       let+ handler = t.handler in

@@ -6,7 +6,8 @@ module Where = Where
 module Registry = Registry
 include Types
 include Exported_types
-module Version_error = Versioned.Version_error
+module Versioned_intf = Versioned_intf
+module Version_error = Version_error
 module Decl = Decl
 module Sub = Sub
 module Public = Public

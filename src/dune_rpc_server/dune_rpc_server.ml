@@ -473,7 +473,8 @@ module H = struct
       in
       let known_versions =
         V.Builder.registered_procedures builder
-        |> Method.Name.Map.of_list_map_exn ~f:(fun (name, gens) -> name, Int.Set.of_list gens)
+        |> Method.Name.Map.of_list_map_exn ~f:(fun (name, gens) ->
+          name, Int.Set.of_list gens)
       in
       { to_handler
       ; base = { on_init; on_terminate; on_upgrade; version }

@@ -29,11 +29,6 @@
  (libraries stdune))
 
 (executable
- (modules ocaml_index)
- (name ocaml_index)
- (libraries cmdliner))
-
-(executable
  (modules ocamlformat)
  (name ocamlformat))
 

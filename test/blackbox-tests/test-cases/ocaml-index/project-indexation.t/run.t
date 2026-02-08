@@ -1,7 +1,3 @@
-  $ mkdir bin
-  $ cp $(which ocaml_index) bin/ocaml-index
-  $ export PATH=bin:$PATH
-
   $ dune exec ./main.exe
   1564242
 

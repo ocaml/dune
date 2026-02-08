@@ -13,6 +13,7 @@ val raise
   -> ?loc:Loc0.t
   -> ?hints:User_message.Style.t Pp.t list
   -> ?annots:User_message.Annots.t
+  -> ?promotion:User_message.Diff_annot.t
   -> User_message.Style.t Pp.t list
   -> _
 
@@ -23,6 +24,7 @@ val make
   -> ?loc:Loc0.t
   -> ?hints:User_message.Style.t Pp.t list
   -> ?annots:User_message.Annots.t
+  -> ?promotion:User_message.Diff_annot.t
   -> User_message.Style.t Pp.t list
   -> User_message.t
 

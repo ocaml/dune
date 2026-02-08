@@ -344,6 +344,7 @@ module User_message = struct
           ; dir
           ; has_embedded_location = _
           ; needs_stack_trace = _
+          ; promotion = _
           }
       =
       let loc = Option.map loc ~f:Import.Loc.to_lexbuf_loc in
@@ -359,6 +360,7 @@ module User_message = struct
       ; annots = Annots.empty
       ; needs_stack_trace = false
       ; has_embedded_location = false
+      ; promotion = None
       }
     in
     let loc = field "loc" (optional Loc.sexp) in

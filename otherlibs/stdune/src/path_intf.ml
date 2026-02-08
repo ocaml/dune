@@ -49,6 +49,14 @@ module Unspecified = struct
   type w
 end
 
+module Source = struct
+  type w
+end
+
+module Build = struct
+  type w
+end
+
 (** ['w Local_gen.t] is the type of local paths that live under ['w]. If
     [x : w Local_gen.t] and [w] is a type-level witness corresponding to a (real
     or hypothetical) filesystem location [base], then we think of [x] as

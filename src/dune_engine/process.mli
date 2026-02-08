@@ -80,6 +80,7 @@ type metadata =
   ; categories : string list (** additional categories when emitting stats *)
   ; purpose : purpose
   ; has_embedded_location : bool
+  ; promotion : User_message.Diff_annot.t option
   }
 
 val create_metadata
@@ -89,6 +90,7 @@ val create_metadata
   -> ?name:string
   -> ?categories:string list
   -> ?purpose:purpose
+  -> ?promotion:User_message.Diff_annot.t
   -> unit
   -> metadata
 

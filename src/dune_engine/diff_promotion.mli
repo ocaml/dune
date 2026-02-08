@@ -4,15 +4,6 @@
 
 open Import
 
-module Annot : sig
-  type t =
-    { in_source : Path.Source.t
-    ; in_build : Path.Build.t
-    }
-
-  val annot : t User_message.Annots.Key.t
-end
-
 module File : sig
   type t
 

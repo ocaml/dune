@@ -27,6 +27,10 @@ module Make (Stdune : sig
       module Annots : sig
         type t
       end
+
+      module Diff_annot : sig
+        type t
+      end
     end
 
     module User_error : sig
@@ -36,6 +40,7 @@ module Make (Stdune : sig
         -> ?loc:Loc.t
         -> ?hints:User_message.Style.t Pp.t list
         -> ?annots:User_message.Annots.t
+        -> ?promotion:User_message.Diff_annot.t
         -> User_message.Style.t Pp.t list
         -> _
     end

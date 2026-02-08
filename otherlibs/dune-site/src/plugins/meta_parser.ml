@@ -18,6 +18,8 @@ module Meta_parser = Dune_meta_parser.Meta_parser.Make (struct
     end
 
     module User_message = struct
+      type t = unit
+
       module Style = struct
         type t = unit
       end
@@ -34,6 +36,7 @@ module Meta_parser = Dune_meta_parser.Meta_parser.Make (struct
             ?loc:_
             ?hints:_
             ?annots:_
+            ?related:_
             texts
         =
         invalid_arg (String.concat " " texts)

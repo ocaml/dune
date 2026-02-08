@@ -390,7 +390,8 @@ let js_of_ocaml_rule
          assert (Js_of_ocaml.Mode.select ~mode ~js:true ~wasm:false);
          S
            [ A "--source-map"
-           ; Hidden_targets [ Path.Build.set_extension target ~ext:".map" ]
+           ; Hidden_targets
+               [ Path.Build.set_extension target ~ext:Filename.Extension.map ]
            ])
     ; Command.Args.dyn flags
     ; (match config with
@@ -506,10 +507,13 @@ let exe_rule
 ;;
 
 let with_js_ext ~mode s =
-  match Filename.split_extension s with
-  | name, ".cma" -> name ^ Js_of_ocaml.Ext.cma ~mode
-  | name, ".cmo" -> name ^ Js_of_ocaml.Ext.cmo ~mode
-  | _ -> assert false
+  let name, ext = Filename.split_extension s in
+  let ext = Filename.Extension.Or_empty.extension_exn ext in
+  if Filename.Extension.equal ext Filename.Extension.cma
+  then name ^ Filename.Extension.to_string (Js_of_ocaml.Ext.cma ~mode)
+  else if Filename.Extension.equal ext Filename.Extension.cmo
+  then name ^ Filename.Extension.to_string (Js_of_ocaml.Ext.cmo ~mode)
+  else assert false
 ;;
 
 let jsoo_archives ~mode ctx config lib =
@@ -575,7 +579,12 @@ let link_rule
        META *)
     let stdlib =
       Path.build
-        (in_build_dir ctx ~config [ "stdlib"; "stdlib" ^ Js_of_ocaml.Ext.cma ~mode ])
+        (in_build_dir
+           ctx
+           ~config
+           [ "stdlib"
+           ; "stdlib" ^ Filename.Extension.to_string (Js_of_ocaml.Ext.cma ~mode)
+           ])
     in
     let special_units =
       List.concat_map to_link ~f:(function
@@ -590,7 +599,12 @@ let link_rule
     in
     let std_exit =
       Path.build
-        (in_build_dir ctx ~config [ "stdlib"; "std_exit" ^ Js_of_ocaml.Ext.cmo ~mode ])
+        (in_build_dir
+           ctx
+           ~config
+           [ "stdlib"
+           ; "std_exit" ^ Filename.Extension.to_string (Js_of_ocaml.Ext.cmo ~mode)
+           ])
     in
     let linkall = force_linkall || linkall in
     Command.Args.S

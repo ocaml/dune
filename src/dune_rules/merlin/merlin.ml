@@ -771,7 +771,10 @@ module Unprocessed = struct
           let config =
             { Processed.module_ = Module.set_pp m None
             ; opens = Modules.With_vlib.local_open modules m
-            ; reader = String.Map.find readers (Path.Build.extension src)
+            ; reader =
+                String.Map.find
+                  readers
+                  (Filename.Extension.Or_empty.to_string (Path.Build.extension src))
             }
           in
           (* we add the config with and without the extension, the latter is

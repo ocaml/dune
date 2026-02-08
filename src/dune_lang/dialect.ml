@@ -52,7 +52,7 @@ module File_kind = struct
       sexp
       (kind
        :: record_fields
-            [ field "extension" string extension
+            [ field "extension" string (Filename.Extension.to_string extension)
             ; field_o "preprocess" Action.encode (Option.map ~f:snd preprocess)
             ; field_o "format" Format.encode format
             ; field_o
@@ -67,7 +67,7 @@ module File_kind = struct
     let open Dyn in
     record
       [ "kind", Ml_kind.to_dyn kind
-      ; "extension", string extension
+      ; "extension", Filename.Extension.to_dyn extension
       ; "preprocess", option (fun (_, x) -> Action.to_dyn x) preprocess
       ; "format", option Format.to_dyn format
       ; "print_ast", option (fun (_, x) -> Action.to_dyn x) print_ast
@@ -120,6 +120,14 @@ let decode =
     then (
       let what = "the possibility of defining extensions containing periods" in
       Syntax.Error.since loc Stanza.syntax ver ~what);
+    let extension =
+      match Filename.Extension.of_string extension with
+      | Some extension -> extension
+      | None ->
+        User_error.raise
+          ~loc
+          [ Pp.text "extension must start with '.' and not contain '/'." ]
+    in
     { File_kind.kind; extension; preprocess; format; print_ast; merlin_reader }
   in
   fields
@@ -195,7 +203,7 @@ let ocaml =
   in
   let file_kind kind extension =
     { File_kind.kind
-    ; extension
+    ; extension = Filename.Extension.of_string_exn extension
     ; preprocess = None
     ; format = Some (format kind)
     ; print_ast = Some (Loc.none, print_ast kind)
@@ -238,7 +246,7 @@ let reason =
            ])
     in
     { File_kind.kind
-    ; extension
+    ; extension = Filename.Extension.of_string_exn extension
     ; preprocess = Some (Loc.none, preprocess)
     ; format = Some (Format.Action (Loc.none, format_action))
     ; print_ast = Some (Loc.none, print_ast)
@@ -268,7 +276,7 @@ let rescript =
         [ S.make_pform Loc.none (Var Input_file) ]
     in
     { File_kind.kind
-    ; extension
+    ; extension = Filename.Extension.of_string_exn extension
     ; preprocess = Some (Loc.none, preprocess)
     ; format = Some (Format.Action (Loc.none, format_action))
     ; print_ast = None
@@ -297,8 +305,8 @@ module DB = struct
     }
 
   and for_merlin =
-    { extensions : Filename.Extension.t option Ml_kind.Dict.t list
-    ; readers : Filename.Extension.t list String.Map.t
+    { extensions : string option Ml_kind.Dict.t list
+    ; readers : string list String.Map.t
     }
 
   let fold { by_name; _ } = String.Map.fold by_name
@@ -313,15 +321,17 @@ module DB = struct
   let compute_for_merlin =
     let handle_ml_kind ~dialect kind readers =
       let ext = extension dialect kind in
-      if ext = extension ocaml kind
+      if Option.equal Filename.Extension.equal ext (extension ocaml kind)
       then (* this is standard dialect, exclude *) None, readers
       else (
         match ext, merlin_reader dialect kind with
-        | Some ext, Some reader -> Some ext, String.Map.add_exn readers ext reader
+        | Some ext, Some reader ->
+          let ext = Filename.Extension.to_string ext in
+          Some ext, String.Map.add_exn readers ext reader
         | _ ->
           if preprocess dialect kind <> None
           then (* we have preprocessor defined *) None, readers
-          else ext, readers)
+          else Option.map ext ~f:Filename.Extension.to_string, readers)
     in
     fun by_name ->
       let extensions, readers =
@@ -360,11 +370,12 @@ module DB = struct
         (match Filename.Extension.Map.add map ext dialect with
          | Ok map -> map
          | Error dialect ->
+           let ext = Filename.Extension.drop_dot ext in
            User_error.raise
              ~loc
              [ Pp.textf
                  "extension %S is already registered by dialect %S"
-                 (String.drop ext 1)
+                 ext
                  dialect.name
              ])
       | None -> map
@@ -383,7 +394,8 @@ module DB = struct
       ~f:(fun dialect ->
         let kind =
           match dialect.file_kinds.intf with
-          | Some intf when intf.extension = extension -> Ml_kind.Intf
+          | Some intf when Filename.Extension.equal intf.extension extension ->
+            Ml_kind.Intf
           | _ -> Ml_kind.Impl
         in
         dialect, kind)

@@ -492,7 +492,7 @@ module Context = struct
       and+ fdo_target_exe =
         let f file =
           let ext = Filename.extension file in
-          if ext = ".exe"
+          if Filename.Extension.Or_empty.check ext Filename.Extension.exe
           then Path.(relative root file)
           else
             User_error.raise
@@ -503,7 +503,7 @@ module Context = struct
                       "expects executable filename ending with .exe extension, not %s. \n\
                        Please specify the name of the executable to optimize, including \
                        path from <root>."
-                      ext
+                      (Filename.Extension.Or_empty.to_string ext)
                   ]
                 |> Pp.hovbox
               ]

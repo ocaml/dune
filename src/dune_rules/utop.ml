@@ -9,7 +9,9 @@ let utop_exe =
      (byte))], the [.exe] correspond the bytecode linked in custom mode. We do
      that so that it works without hassle when generating a utop for a library
      with C stubs. *)
-  Filename.concat utop_dir_basename (exe_name ^ Mode.exe_ext Mode.Byte)
+  Filename.concat
+    utop_dir_basename
+    (exe_name ^ Filename.Extension.to_string (Mode.exe_ext Mode.Byte))
 ;;
 
 let source ~dir =

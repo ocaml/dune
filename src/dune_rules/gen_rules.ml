@@ -137,7 +137,9 @@ end = struct
               (Nonempty_list.to_list exes.names
                |> List.concat_map ~f:(fun (_, exe) ->
                  List.map Js_of_ocaml.Mode.all ~f:(fun mode ->
-                   Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe ~mode))))
+                   Path.Build.relative
+                     dir
+                     (exe ^ Filename.Extension.to_string (Js_of_ocaml.Ext.exe ~mode)))))
         })
     | Alias_conf.T alias ->
       let+ () = Simple_rules.alias sctx alias ~dir ~expander in

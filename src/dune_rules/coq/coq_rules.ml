@@ -50,7 +50,9 @@ end = struct
       Mode.Dict.get plugins Mode.Native
     in
     let to_mlpack file =
-      [ Path.set_extension file ~ext:".mlpack"; Path.set_extension file ~ext:".mllib" ]
+      [ Path.set_extension file ~ext:Filename.Extension.mlpack
+      ; Path.set_extension file ~ext:Filename.Extension.mllib
+      ]
     in
     List.concat_map plugins ~f:to_mlpack
   ;;
@@ -517,7 +519,7 @@ let ml_flags_and_ml_pack_rule
 
 let dep_theory_file ~dir ~wrapper_name =
   Path.Build.relative dir ("." ^ wrapper_name)
-  |> Path.Build.set_extension ~ext:".theory.d"
+  |> Path.Build.set_extension ~ext:Filename.Extension.theory_d
 ;;
 
 let theory_coq_args
@@ -781,8 +783,8 @@ let deps_of ~dir ~boot_type ~wrapper_name ~mode coq_module =
   let vo_target =
     let ext =
       match mode with
-      | Coq_mode.VosOnly -> ".vos"
-      | _ -> ".vo"
+      | Coq_mode.VosOnly -> Filename.Extension.vos
+      | _ -> Filename.Extension.vo
     in
     Path.set_extension ~ext (Coq_module.source coq_module)
   in
@@ -1381,7 +1383,7 @@ let setup_coqpp_rules ~sctx ~dir ({ loc; modules } : Coq_stanza.Coqpp.t) =
   and* mlg_files = Coq_sources.mlg_files ~sctx ~dir ~modules in
   let mlg_rule m =
     let source = Path.build m in
-    let target = Path.Build.set_extension m ~ext:".ml" in
+    let target = Path.Build.set_extension m ~ext:Filename.Extension.ml in
     let args = [ Command.Args.Dep source; Hidden_targets [ target ] ] in
     let build_dir = Super_context.context sctx |> Context.build_dir in
     Command.run ~dir:(Path.build build_dir) coqpp args

@@ -259,4 +259,9 @@ val create
 
 val package : _ t -> Package.Name.t option
 val to_dyn : 'path Dyn.builder -> 'path t Dyn.builder
-val for_instance : dir:Path.Build.t -> ext_lib:string -> Path.t t -> Path.Build.t t
+
+val for_instance
+  :  dir:Path.Build.t
+  -> ext_lib:Filename.Extension.t
+  -> Path.t t
+  -> Path.Build.t t

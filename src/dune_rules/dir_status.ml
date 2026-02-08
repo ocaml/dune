@@ -158,7 +158,11 @@ let directory_targets_of_executables
        | true ->
          Nonempty_list.to_list names
          |> List.fold_left ~init:Path.Build.Map.empty ~f:(fun acc (_, name) ->
-           let dir_target = Path.Build.relative dir (name ^ Js_of_ocaml.Ext.wasm_dir) in
+           let dir_target =
+             Path.Build.relative
+               dir
+               (name ^ Filename.Extension.to_string Js_of_ocaml.Ext.wasm_dir)
+           in
            Path.Build.Map.set acc dir_target buildable.loc))
   in
   when_enabled ~dir ~enabled_if directory_targets
@@ -184,7 +188,8 @@ let directory_targets_of_library
            in
            Path.Build.relative
              inline_test_dir
-             (Inline_tests_info.inline_test_runner ^ Js_of_ocaml.Ext.wasm_dir)
+             (Inline_tests_info.inline_test_runner
+              ^ Filename.Extension.to_string Js_of_ocaml.Ext.wasm_dir)
          in
          Path.Build.Map.singleton dir_target loc)
       >>= when_enabled ~dir ~enabled_if

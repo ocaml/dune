@@ -12,15 +12,18 @@ module type S = sig
   include Comparator.OPS with type t := t
 
   val to_dyn : t -> Dyn.t
-  val extension : t -> string
+  val extension : t -> Filename.Extension.Or_empty.t
 
   (** [set_extension path ~ext] replaces extension of [path] by [ext] *)
-  val set_extension : t -> ext:string -> t
+  val set_extension : t -> ext:Filename.Extension.t -> t
 
   (** [map_extension path ~f] replaces extension of [path] by [f extension]*)
-  val map_extension : t -> f:(string -> string) -> t
+  val map_extension
+    :  t
+    -> f:(Filename.Extension.Or_empty.t -> Filename.Extension.Or_empty.t)
+    -> t
 
-  val split_extension : t -> t * string
+  val split_extension : t -> t * Filename.Extension.Or_empty.t
   val basename : t -> Filename.t
   val basename_opt : t -> Filename.t option
   val extend_basename : t -> suffix:Filename.t -> t
@@ -68,15 +71,18 @@ module type Local_gen = sig
   val compare : 'w t -> 'w t -> Ordering.t
 
   val to_dyn : 'w t -> Dyn.t
-  val extension : 'w t -> string
+  val extension : 'w t -> Filename.Extension.Or_empty.t
 
   (** [set_extension path ~ext] replaces extension of [path] by [ext] *)
-  val set_extension : 'w t -> ext:string -> 'w t
+  val set_extension : 'w t -> ext:Filename.Extension.t -> 'w t
 
   (** [map_extension path ~f] replaces extension of [path] by [f extension]*)
-  val map_extension : 'W t -> f:(string -> string) -> 'W t
+  val map_extension
+    :  'w t
+    -> f:(Filename.Extension.Or_empty.t -> Filename.Extension.Or_empty.t)
+    -> 'w t
 
-  val split_extension : 'w t -> 'w t * string
+  val split_extension : 'w t -> 'w t * Filename.Extension.Or_empty.t
   val basename : 'w t -> Filename.t
   val extend_basename : 'w t -> suffix:Filename.t -> 'w t
 

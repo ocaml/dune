@@ -1290,7 +1290,8 @@ let decode_metadata =
 ;;
 
 module Package_filename = struct
-  let file_extension = ".pkg"
+  let file_extension = Filename.Extension.of_string_exn ".pkg"
+  let file_extension_string = Filename.Extension.to_string file_extension
 
   let make package_name maybe_package_version =
     (* TODO(steve): the [maybe_package_version] argument is an [_ option]
@@ -1298,16 +1299,21 @@ module Package_filename = struct
        the behaviour where version numbers are not included in lockfile names.
        Make it non-optional when lockdirs become portable by default. *)
     match maybe_package_version with
-    | None -> Package_name.to_string package_name ^ file_extension
+    | None -> Package_name.to_string package_name ^ file_extension_string
     | Some package_version ->
       Package_name.to_string package_name
       ^ "."
       ^ Package_version.to_string package_version
-      ^ file_extension
+      ^ file_extension_string
   ;;
 
   let to_package_name_and_version package_filename =
-    if String.equal (Filename.extension package_filename) file_extension
+    let ext = Filename.extension package_filename in
+    if
+      Filename.Extension.Or_empty.is_extension ext
+      && Filename.Extension.equal
+           (Filename.Extension.Or_empty.extension_exn ext)
+           file_extension
     then (
       let without_extension = Filename.remove_extension package_filename in
       match String.lsplit2 without_extension ~on:'.' with

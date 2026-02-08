@@ -686,7 +686,7 @@ let set_extension t ~ext =
 
 let map_extension t ~f =
   let base, ext = split_extension t in
-  extend_basename ~suffix:(f ext) base
+  extend_basename ~suffix:(Filename.Extension.Or_empty.to_string (f ext)) base
 ;;
 
 module O = Comparable.Make (T)

@@ -144,7 +144,9 @@ let gen_rules_output
      let output = Path.Build.relative output_dir input_basename in
      let open Option.O in
      let* dialect, kind =
-       Path.Source.extension file |> Dialect.DB.find_by_extension dialects
+       Path.Source.extension file
+       |> Filename.Extension.Or_empty.extension
+       |> Option.bind ~f:(Dialect.DB.find_by_extension dialects)
      in
      let* () =
        Option.some_if (Format_config.includes config (Dialect (Dialect.name dialect))) ()

@@ -1,21 +1,34 @@
 open Import
 
-let is_path_a_source_file path =
-  match Path.extension (Path.source path) with
-  | ".flv"
-  | ".gif"
-  | ".ico"
-  | ".jpeg"
-  | ".jpg"
-  | ".mov"
-  | ".mp3"
-  | ".mp4"
-  | ".otf"
-  | ".pdf"
-  | ".png"
-  | ".ttf"
-  | ".woff" -> false
-  | _ -> true
+let is_path_a_source_file =
+  let skip =
+    let t =
+      lazy
+        (let t = Table.create (module Filename.Extension) 16 in
+         [ ".flv"
+         ; ".gif"
+         ; ".ico"
+         ; ".jpeg"
+         ; ".jpg"
+         ; ".mov"
+         ; ".mp3"
+         ; ".mp4"
+         ; ".otf"
+         ; ".pdf"
+         ; ".png"
+         ; ".ttf"
+         ; ".woff"
+         ]
+         |> List.iter ~f:(fun s ->
+           Table.add_exn t (Filename.Extension.of_string_exn s) ());
+         t)
+    in
+    fun s -> Table.mem (Lazy.force t) s
+  in
+  fun path ->
+    match Path.source path |> Path.extension |> Filename.Extension.Or_empty.extension with
+    | None -> true
+    | Some ext -> not (skip ext)
 ;;
 
 let is_kind_a_source_file path =

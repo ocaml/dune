@@ -33,9 +33,7 @@ module Group = struct
   let to_glob =
     let preds =
       List.map all ~f:(fun g ->
-        let pred =
-          Glob.matching_extensions [ String.drop_prefix_if_exists ~prefix:"." (ext g) ]
-        in
+        let pred = Glob.matching_extensions [ ext g ] in
         g, pred)
     in
     fun g -> Option.value_exn (List.assoc preds g)

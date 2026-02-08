@@ -1,9 +1,11 @@
+open Import
+
 module Module_system = struct
   type t =
     | ESM
     | CommonJS
 
-  let default = CommonJS, ".js"
+  let default = CommonJS, Filename.Extension.js
 
   let to_string = function
     | ESM -> "es6"

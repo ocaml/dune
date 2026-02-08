@@ -12,7 +12,7 @@ module Cm_kind : sig
     | Melange of Melange.Cm_kind.t
 
   val source : t -> Ocaml.Ml_kind.t
-  val ext : t -> string
+  val ext : t -> Filename.Extension.t
   val cmi : t -> t
   val to_dyn : t -> Dyn.t
 

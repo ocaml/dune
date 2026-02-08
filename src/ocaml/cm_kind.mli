@@ -7,7 +7,7 @@ type t =
 
 val compare : t -> t -> Ordering.t
 val all : t list
-val ext : t -> string
+val ext : t -> Filename.Extension.t
 val source : t -> Ml_kind.t
 val to_dyn : t -> Dyn.t
 

@@ -75,7 +75,9 @@ let make_js_name ~js_ext ~output m =
         target_dir
         (src_dir |> Path.as_in_build_dir_exn |> Path.Build.drop_build_context_exn)
   in
-  let basename = Module_compilation.melange_js_basename m ^ js_ext in
+  let basename =
+    Module_compilation.melange_js_basename m ^ Filename.Extension.to_string js_ext
+  in
   Path.Build.relative dst_dir basename
 ;;
 

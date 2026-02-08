@@ -24,7 +24,7 @@ let choose cmi cmo cmx = function
   | Cmx -> cmx
 ;;
 
-let ext = choose ".cmi" ".cmo" ".cmx"
+let ext = Filename.Extension.(choose cmi cmo cmx)
 let source = choose Ml_kind.Intf Impl Impl
 
 let to_dyn =

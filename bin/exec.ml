@@ -85,7 +85,9 @@ let not_found_with_suggestions ~dir ~prog =
       let+ filename_set = Build_system.files_of ~dir:(Path.build dir) in
       Filename_set.filenames filename_set
       |> Filename.Set.to_list
-      |> List.filter ~f:(fun filename -> Filename.extension filename = ".exe")
+      |> List.filter ~f:(fun filename ->
+        let ext = Filename.extension filename in
+        Filename.Extension.Or_empty.check ext Filename.Extension.exe)
       |> List.map ~f:(fun filename -> "./" ^ filename)
     in
     User_message.did_you_mean prog ~candidates

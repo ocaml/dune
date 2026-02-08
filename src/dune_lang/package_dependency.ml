@@ -112,3 +112,22 @@ let equal { name; constraint_ } t =
   Package_name.equal name t.name
   && Option.equal Package_constraint.equal constraint_ t.constraint_
 ;;
+
+let rec has_constraint_on var (constraint_ : Package_constraint.t) =
+  match constraint_ with
+  | Bvar (Package_constraint.Value.Variable candidate) ->
+    Package_variable_name.equal var candidate
+  | Bvar (Package_constraint.Value.String_literal _) -> false
+  | And constraints -> List.exists ~f:(has_constraint_on var) constraints
+  | Or constraints -> List.for_all ~f:(has_constraint_on var) constraints
+  | Not constraint_ -> not @@ has_constraint_on var constraint_
+  | Uop _ | Bop _ ->
+    (* unary or binary operators don't make sense on variable names *)
+    false
+;;
+
+let has_constraint_on var ({ name = _; constraint_ } : t) =
+  match constraint_ with
+  | None -> false
+  | Some constraint_ -> has_constraint_on var constraint_
+;;

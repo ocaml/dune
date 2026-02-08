@@ -190,6 +190,10 @@ let executables_rules
     Modules.With_vlib.modules modules, pp
   in
   let programs = programs ~modules ~exes in
+  let entry_modules =
+    List.filter_map programs ~f:(fun { Exe.Program.main_module_name; _ } ->
+      Modules.With_vlib.find modules main_module_name)
+  in
   let* cctx =
     let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
     let requires_link = Lib.Compile.requires_link compile_info ~for_ in
@@ -328,6 +332,15 @@ let executables_rules
         link
     in
     Memo.parallel_iter dep_graphs.for_exes ~f:(Check_rules.add_cycle_check sctx ~dir)
+  in
+  let* () =
+    Memo.when_ (Compilation_context.bin_annot cctx) (fun () ->
+      let modules_to_index =
+        Dep_graph.top_closed_implementations
+          (Compilation_context.dep_graphs cctx).impl
+          entry_modules
+      in
+      Ocaml_index.index_modules_rule ~modules_to_index cctx)
   in
   let+ merlin =
     let+ requires_hidden = Compilation_context.requires_hidden cctx in

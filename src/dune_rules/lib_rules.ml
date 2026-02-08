@@ -576,7 +576,13 @@ let library_rules
   let for_ = Compilation_context.for_ cctx in
   let+ () =
     Memo.when_ (Compilation_context.bin_annot cctx) (fun () ->
-      Ocaml_index.cctx_rules cctx)
+      let modules_to_index =
+        Compilation_context.modules cctx
+        |> Modules.With_vlib.drop_vlib
+        |> Modules.fold_user_written ~init:[] ~f:List.cons
+        |> Action_builder.return
+      in
+      Ocaml_index.index_modules_rule ~modules_to_index cctx)
   and+ () =
     Memo.when_
       (not (Library.is_virtual lib))

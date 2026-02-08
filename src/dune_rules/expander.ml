@@ -578,6 +578,7 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
            let+ scope = scope in
            let dune_version = Dune_project.dune_version (Scope.project scope) in
            Value.L.strings (Ocaml_flags.dune_warnings ~dune_version ~profile:Dev)))
+  | Jobs -> string_of_int !Clflags.concurrency |> string |> Memo.return |> static
 ;;
 
 let ocaml_config_macro source macro_invocation context =

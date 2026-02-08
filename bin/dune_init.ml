@@ -122,7 +122,7 @@ module File = struct
     let content =
       if not (Path.exists full_path)
       then []
-      else if Path.is_directory full_path
+      else if Fpath.is_directory (Path.to_string full_path)
       then
         User_error.raise
           [ Pp.textf

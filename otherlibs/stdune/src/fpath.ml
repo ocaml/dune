@@ -365,3 +365,8 @@ let is_broken_symlink path =
      | _ -> false)
   | _ -> false
 ;;
+
+let is_directory x =
+  try (Unix.stat x).st_kind = S_DIR with
+  | Unix.Unix_error (ENOENT, _, _) -> false
+;;

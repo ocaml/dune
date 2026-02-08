@@ -29,7 +29,7 @@ let term =
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS" ~doc:None)) in
   let common, config = Common.init builder in
   let dir = Common.prefix_target common dir in
-  if not (Path.is_directory (Path.of_string dir))
+  if not (Fpath.is_directory (Path.to_string (Path.of_string dir)))
   then User_error.raise [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
   let env, utop_path =
     Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->

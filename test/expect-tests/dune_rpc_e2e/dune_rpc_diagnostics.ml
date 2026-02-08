@@ -707,9 +707,10 @@ let%expect_test "promoting dune files" =
            (Dyn.to_string (Dune_rpc.Response.Error.to_dyn e)));
       [%expect
         {|
-          attempting to promote
-          promoted file contents:
-          toto |}])
+        attempting to promote
+        promoted file contents:
+        toto
+        |}])
   in
   run (fun () -> with_dune_watch exec);
   [%expect {| |}]

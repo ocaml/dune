@@ -93,3 +93,5 @@ val traverse_files
     whose target does not exist.  Returns false if [path] is not a symlink, or
     is a symlink whose target exists. *)
 val is_broken_symlink : string -> bool
+
+val is_directory : string -> bool

@@ -612,7 +612,7 @@ let find_dir common dir =
   let s = Path.source p in
   if not @@ Path.exists s
   then User_error.raise [ Pp.textf "No such file or directory: %s" (Path.to_string s) ];
-  if not @@ Path.is_directory s
+  if not @@ Fpath.is_directory (Path.to_string s)
   then
     User_error.raise
       [ Pp.textf "File exists, but is not a directory: %s" (Path.to_string s) ];

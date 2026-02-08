@@ -451,7 +451,7 @@ let ml_flags_and_ml_pack_rule
 
 let dep_theory_file ~dir ~wrapper_name =
   Path.Build.relative dir ("." ^ wrapper_name)
-  |> Path.Build.set_extension ~ext:".theory.d"
+  |> Path.Build.set_extension ~ext:Filename.Extension.theory_d
 ;;
 
 let theory_rocq_args
@@ -709,8 +709,8 @@ let deps_of ~dir ~boot_type ~wrapper_name ~mode rocq_module =
   let vo_target =
     let ext =
       match mode with
-      | Rocq_mode.VosOnly -> ".vos"
-      | _ -> ".vo"
+      | Rocq_mode.VosOnly -> Filename.Extension.vos
+      | _ -> Filename.Extension.vo
     in
     Path.set_extension ~ext (Rocq_module.source rocq_module)
   in
@@ -1237,7 +1237,7 @@ let setup_rocqpp_rules ~sctx ~dir ({ loc; modules } : Rocq_stanza.Rocqpp.t) =
   and* mlg_files = Rocq_sources.mlg_files ~sctx ~dir ~modules in
   let mlg_rule m =
     let source = Path.build m in
-    let target = Path.Build.set_extension m ~ext:".ml" in
+    let target = Path.Build.set_extension m ~ext:Filename.Extension.ml in
     let args = [ Command.Args.A "pp-mlg"; Dep source; Hidden_targets [ target ] ] in
     let build_dir = Super_context.context sctx |> Context.build_dir in
     Command.run ~dir:(Path.build build_dir) rocq args

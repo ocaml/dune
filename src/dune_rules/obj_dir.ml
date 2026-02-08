@@ -560,10 +560,12 @@ module Module = struct
     | (Ocaml (Cmx | Cmo) | Melange Cmj) when not has_impl -> None
     | (Ocaml Cmi | Melange Cmi) when is_private -> None
     | _ ->
-      let ext = Lib_mode.Cm_kind.ext kind in
       let base = cm_public_dir t kind in
       let obj_name = Module.obj_name m in
-      let fname = Module_name.Unique.artifact_filename obj_name ~ext in
+      let fname =
+        let ext = Lib_mode.Cm_kind.ext kind in
+        Module_name.Unique.artifact_filename obj_name ~ext
+      in
       Some (relative t base fname)
   ;;
 
@@ -607,7 +609,9 @@ module Module = struct
 
   let odoc t m =
     let obj_name = Module.obj_name m in
-    let basename = Module_name.Unique.artifact_filename obj_name ~ext:".odoc" in
+    let basename =
+      Module_name.Unique.artifact_filename obj_name ~ext:Filename.Extension.odoc
+    in
     relative t (odoc_dir t) basename
   ;;
 
@@ -617,14 +621,17 @@ module Module = struct
       | Transitive of Module.t * Ml_kind.t
 
     let make_name m kind ext =
-      let ext = sprintf ".%s.%s" (Ml_kind.to_string kind) ext in
+      let ext =
+        sprintf ".%s%s" (Ml_kind.to_string kind) (Filename.Extension.to_string ext)
+        |> Filename.Extension.of_string_exn
+      in
       let obj = Module.obj_name m in
       Module_name.Unique.artifact_filename obj ~ext
     ;;
 
     let basename = function
-      | Immediate (m, kind) -> make_name m kind "d"
-      | Transitive (m, kind) -> make_name m kind "all-deps"
+      | Immediate (m, kind) -> make_name m kind Filename.Extension.d
+      | Transitive (m, kind) -> make_name m kind Filename.Extension.all_deps
     ;;
   end
 

@@ -27,7 +27,7 @@ module Link_mode : sig
     -> loc:Loc.t
     -> ext_obj:Filename.Extension.t
     -> ext_dll:Filename.Extension.t
-    -> string
+    -> Filename.Extension.t
 
   module Map : sig
     include Map.S with type key = t

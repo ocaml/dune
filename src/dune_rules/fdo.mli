@@ -6,8 +6,8 @@ type phase =
   | Compile
   | Emit
 
-val linear_ext : string
-val linear_fdo_ext : string
+val linear_ext : Filename.Extension.t
+val linear_fdo_ext : Filename.Extension.t
 val phase_flags : phase option -> string list
 val c_flags : Context.t -> string list
 val cxx_flags : Context.t -> string list

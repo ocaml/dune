@@ -243,6 +243,7 @@ let foreign_rules (library : Foreign_library.t) ~sctx ~expander ~dir ~dir_conten
         let+ ocaml = Super_context.context sctx |> Context.ocaml in
         ocaml.lib_config
       in
+      let ext_obj = Filename.Extension.to_string ext_obj in
       let open Action_builder.O in
       Expander.expand_and_eval_set
         expander

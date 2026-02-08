@@ -382,8 +382,8 @@ end = struct
     in
     let install_c_headers =
       List.rev_map lib.install_c_headers ~f:(fun (loc, base) ->
-        Path.Build.relative dir (base ^ Foreign_language.header_extension)
-        |> make_entry ~kind:File ~loc Lib)
+        let header_ext = Filename.Extension.to_string Foreign_language.header_extension in
+        Path.Build.relative dir (base ^ header_ext) |> make_entry ~kind:File ~loc Lib)
     in
     List.rev_concat
       [ sources

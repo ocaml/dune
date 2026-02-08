@@ -34,11 +34,13 @@ module Archive = struct
 
     let lib_file archive_name ~dir ~ext_lib ~mode =
       let archive_name = add_mode_suffix mode archive_name in
+      let ext_lib = Filename.Extension.to_string ext_lib in
       Path.Build.relative dir (sprintf "%s%s%s" lib_file_prefix archive_name ext_lib)
     ;;
 
     let dll_file archive_name ~dir ~ext_dll ~mode =
       let archive_name = add_mode_suffix mode archive_name in
+      let ext_dll = Filename.Extension.to_string ext_dll in
       Path.Build.relative dir (sprintf "dll%s%s" archive_name ext_dll)
     ;;
   end
@@ -189,7 +191,7 @@ end
 module Objects = struct
   module Object_name = struct
     let decode = Dune_lang.Decoder.string
-    let filename t ~ext_obj = t ^ ext_obj
+    let filename t ~ext_obj = t ^ Filename.Extension.to_string ext_obj
 
     let build_path t ~error_loc ~ext_obj ~dir =
       Path.Build.relative ~error_loc dir (filename t ~ext_obj)
@@ -274,6 +276,7 @@ module Sources = struct
   let make t = t
 
   let object_files t ~dir ~ext_obj =
+    let ext_obj = Filename.Extension.to_string ext_obj in
     String.Map.to_list_map t ~f:(fun c _ -> Path.Build.relative dir (c ^ ext_obj))
   ;;
 

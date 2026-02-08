@@ -17,7 +17,7 @@ let force_read_cmi ~obj_dir ~version ~src ~cm_kind module_ : _ Command.Args.t =
   | true, Ocaml _ -> S [ A "-cmi-file"; Dep cmi_file ]
   | _ ->
     S
-      [ As [ "-intf-suffix"; Path.extension src ]
+      [ As [ "-intf-suffix"; Filename.Extension.Or_empty.to_string (Path.extension src) ]
       ; Hidden_deps (Dep.Set.of_files [ cmi_file ])
       ]
 ;;
@@ -224,7 +224,9 @@ let build_cm
      then
        (* CR-someday Alizter: We should use the correct precompiled cmi here.
           Currently, we don't have easy access to it. *)
-       Memo.return (Command.Args.As [ "-intf-suffix"; Path.extension src ])
+       Memo.return
+         (Command.Args.As
+            [ "-intf-suffix"; Filename.Extension.Or_empty.to_string (Path.extension src) ])
      else (
        (* If we're compiling an implementation, then the cmi is present *)
        let public_vlib_module = Module.kind m = Impl_vmodule in
@@ -684,7 +686,7 @@ let with_empty_intf ~sctx ~dir module_ =
   let name =
     Module.file module_ ~ml_kind:Impl
     |> Option.value_exn
-    |> Path.set_extension ~ext:".mli"
+    |> Path.set_extension ~ext:Filename.Extension.mli
   in
   let rule =
     Action_builder.write_file

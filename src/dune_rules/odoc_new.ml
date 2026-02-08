@@ -691,7 +691,7 @@ end = struct
     }
 
   let odoc_file v = v.odoc
-  let odocl_file v = Path.Build.set_extension v.odoc ~ext:".odocl"
+  let odocl_file v = Path.Build.set_extension v.odoc ~ext:Filename.Extension.odocl
   let source_file v = v.source
   let html_file v = v.html_file
   let html_dir v = v.html_dir
@@ -1058,7 +1058,9 @@ let external_module_deps_rule sctx ~all a =
   match Artifact.artifact_ty a with
   | Module _ ->
     let ctx = Super_context.context sctx in
-    let deps_file = Path.Build.set_extension (Artifact.odoc_file a) ~ext:".deps" in
+    let deps_file =
+      Path.Build.set_extension (Artifact.odoc_file a) ~ext:Filename.Extension.deps
+    in
     let+ () =
       let odoc = Odoc.odoc_program sctx (Paths.root ctx ~all) in
       Super_context.add_rule
@@ -1158,7 +1160,8 @@ let modules_of_dir d : (Module_name.t * (Path.t * [ `Cmti | `Cmt | `Cmi ])) list
   | Ok dc ->
     let list = Fs_cache.Dir_contents.to_list dc in
     List.filter_map list ~f:(fun (x, ty) ->
-      match ty, List.assoc extensions (Filename.extension x) with
+      let ext = Filename.Extension.Or_empty.to_string (Filename.extension x) in
+      match ty, List.assoc extensions ext with
       | Unix.S_REG, Some _ -> Some (Filename.remove_extension x)
       | _, _ -> None)
     |> List.sort_uniq ~compare:String.compare

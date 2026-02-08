@@ -80,6 +80,11 @@ type ('src, 'kind) t =
   ; optional : bool
   }
 
+let has_extension filename ext =
+  let extension = Filename.extension filename in
+  Filename.Extension.Or_empty.check extension ext
+;;
+
 let map_dst t ~f = { t with dst = f t.dst }
 
 let to_dyn =
@@ -107,7 +112,7 @@ let adjust_dst_gen =
   in
   fun ~(src_suffix : String_with_vars.known_suffix) ~dst ~section ->
     match dst with
-    | Some dst' when Filename.extension dst' = ".exe" -> Dst.explicit dst'
+    | Some dst' when has_extension dst' Filename.Extension.exe -> Dst.explicit dst'
     | _ ->
       let dst =
         match dst with
@@ -136,8 +141,11 @@ let adjust_dst_gen =
         in
         has_ext ".exe" || has_ext ".bc"
       in
-      if Sys.win32 && is_executable && Filename.extension (Dst.to_string dst) <> ".exe"
-      then Dst.explicit (Dst.to_string dst ^ ".exe")
+      let dst_has_exe = has_extension (Dst.to_string dst) Filename.Extension.exe in
+      if Sys.win32 && is_executable && not dst_has_exe
+      then
+        Dst.explicit
+          (Dst.to_string dst ^ Filename.Extension.to_string Filename.Extension.exe)
       else dst
 ;;
 

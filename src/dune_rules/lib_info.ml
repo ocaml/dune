@@ -715,6 +715,7 @@ let for_dune_package
 ;;
 
 let for_instance ~dir ~ext_lib t =
+  let ext_lib = Filename.Extension.to_string ext_lib in
   let obj_dir =
     Obj_dir.make_lib
       ~dir
@@ -724,7 +725,10 @@ let for_instance ~dir ~ext_lib t =
   in
   let archives =
     Mode.Dict.mapi t.archives ~f:(fun m _ ->
-      [ Path.Build.relative dir ("archive" ^ Mode.compiled_lib_ext m) ])
+      [ Path.Build.relative
+          dir
+          ("archive" ^ Filename.Extension.to_string (Mode.compiled_lib_ext m))
+      ])
   in
   let native_archives = Files [ Path.Build.relative dir ("archive" ^ ext_lib) ] in
   { t with

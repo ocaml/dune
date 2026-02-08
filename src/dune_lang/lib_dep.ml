@@ -35,7 +35,7 @@ module Select = struct
              then (
                let result_prefix, result_suffix =
                  let prefix, ext = Path.Local.split_extension result_fn in
-                 Path.Local.to_string prefix, ext
+                 Path.Local.to_string prefix, Filename.Extension.Or_empty.to_string ext
                in
                match
                  ( String.starts_with ~prefix:result_prefix (Path.Local.to_string file)

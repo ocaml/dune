@@ -16,11 +16,14 @@ let action
   let exe =
     let ext =
       match mode with
-      | Native | Best -> ".exe"
+      | Native | Best -> Filename.Extension.exe
       | Jsoo mode -> Js_of_ocaml.Ext.exe ~mode
-      | Byte -> ".bc"
+      | Byte -> Filename.Extension.bc
     in
-    Path.build (Path.Build.relative inline_test_dir (runner_name ^ ext))
+    Path.build
+      (Path.Build.relative
+         inline_test_dir
+         (runner_name ^ Filename.Extension.to_string ext))
   in
   let open Action_builder.O in
   let+ action =
@@ -57,7 +60,9 @@ let action
     match mode with
     | Native | Best | Byte | Jsoo JS -> Action_builder.return ()
     | Jsoo Wasm ->
-      Path.Build.relative inline_test_dir (runner_name ^ Js_of_ocaml.Ext.wasm_dir)
+      Path.Build.relative
+        inline_test_dir
+        (runner_name ^ Filename.Extension.to_string Js_of_ocaml.Ext.wasm_dir)
       |> Path.build
       |> Action_builder.path
   in
@@ -333,7 +338,7 @@ include Sub_system.Register_end_point (struct
             match mode with
             | Native -> Exe.Linkage.native
             | Best -> Exe.Linkage.native_or_custom ocaml
-            | Byte -> Exe.Linkage.custom_with_ext ~ext:".bc" ocaml.version
+            | Byte -> Exe.Linkage.custom_with_ext ~ext:Filename.Extension.bc ocaml.version
             | Jsoo JS -> Exe.Linkage.js
             | Jsoo Wasm -> Exe.Linkage.wasm)
         in

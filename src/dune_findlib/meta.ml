@@ -146,7 +146,9 @@ let archives ?(kind = [ Mode.Byte; Mode.Native ]) name =
     ]
     ~f:(fun (k, f, ext) ->
       if List.mem kind k ~equal:Mode.equal
-      then Some (f (Mode.to_string k) (name ^ ext k))
+      then (
+        let ext = Filename.Extension.to_string (ext k) in
+        Some (f (Mode.to_string k) (name ^ ext)))
       else None)
 ;;
 
@@ -217,7 +219,7 @@ let pre_ocaml_5_builtins ~stdlib_dir ~version:ocaml_version =
             "native-toplevel"
             [ "compiler-libs.optcomp"; "dynlink" ]
             ~kind:[ Native ]
-            ~exists_if_ext:(Mode.compiled_lib_ext Native)
+            ~exists_if_ext:(Filename.Extension.to_string (Mode.compiled_lib_ext Native))
         ]
     }
   in

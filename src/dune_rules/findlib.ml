@@ -57,7 +57,7 @@ module DB = struct
       ; "stdlib_dir", Path.to_dyn stdlib_dir
       ; "paths", list Path.to_dyn paths
       ; "builtins", Package.Name.Map.to_dyn Meta.Simplified.to_dyn builtins
-      ; "ext_lib", string ext_lib
+      ; "ext_lib", Filename.Extension.to_dyn ext_lib
       ]
   ;;
 
@@ -188,7 +188,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
       | Ok dir_contents ->
         List.rev_filter_partition_map dir_contents ~f:(fun f ->
           let ext = Filename.extension f in
-          if ext = ext_lib
+          if Filename.Extension.Or_empty.check ext ext_lib
           then (
             let file = Path.relative t.dir f in
             if String.starts_with ~prefix:Foreign.Archive.Name.lib_file_prefix f
@@ -217,7 +217,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
                    ; Pp.textf "error: %s" (Unix.error_message e)
                    ])
             | Ok dir_contents ->
-              let ext = Cm_kind.ext Cmi in
+              let ext = Filename.Extension.to_string (Cm_kind.ext Cmi) in
               Result.List.filter_map dir_contents ~f:(fun fname ->
                 match Filename.check_suffix fname ext with
                 | false -> Ok None

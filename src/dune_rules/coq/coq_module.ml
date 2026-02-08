@@ -59,7 +59,9 @@ let cmxs_of_mod ~wrapper_name x =
   let native_base =
     "N" ^ String.concat ~sep:"_" (wrapper_split @ x.prefix @ [ x.name ])
   in
-  [ native_base ^ Cm_kind.ext Cmi; native_base ^ Mode.plugin_ext Native ]
+  [ native_base ^ Filename.Extension.to_string (Cm_kind.ext Cmi)
+  ; native_base ^ Filename.Extension.to_string (Mode.plugin_ext Native)
+  ]
 ;;
 
 let dep_file x ~obj_dir =

@@ -3,6 +3,7 @@ open Memo.O
 module Gen_rules = Build_config.Gen_rules
 
 let ( ++ ) = Path.Build.relative
+let mld_ext = Filename.Extension.of_string_exn ".mld"
 
 module Scope_key : sig
   val of_string : Context_name.t -> string -> (Lib_name.t * Lib.DB.t) Memo.t
@@ -765,8 +766,11 @@ let mlds sctx pkg =
   let+ mlds = Packages.mlds sctx pkg in
   List.partition_map mlds ~f:(fun (mld : Doc_sources.mld) ->
     match Path.Local.explode mld.in_doc with
-    | [ name ] when String.equal (Filename.extension name) ".mld" ->
-      Left (mld.path, Filename.remove_extension name)
+    | [ name ] ->
+      let ext = Filename.extension name in
+      if Filename.Extension.Or_empty.check ext mld_ext
+      then Left (mld.path, Filename.remove_extension name)
+      else Right mld
     | _ -> Right mld)
 ;;
 

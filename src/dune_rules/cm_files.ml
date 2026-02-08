@@ -4,7 +4,7 @@ type t =
   { obj_dir : Path.Build.t Obj_dir.t
   ; modules : Module.t list
   ; top_sorted_modules : Module.t list Action_builder.t
-  ; ext_obj : string
+  ; ext_obj : Filename.Extension.t
   ; excluded_modules : Module_name.Set.t
   }
 

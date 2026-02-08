@@ -7,7 +7,6 @@ let dev_files =
   ; Ml_kind.cms_ext Intf
   ; Cm_kind.ext Cmi
   ]
-  |> List.map ~f:(String.drop_prefix_if_exists ~prefix:".")
   |> Glob.matching_extensions
 ;;
 

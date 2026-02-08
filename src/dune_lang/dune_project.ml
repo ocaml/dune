@@ -122,6 +122,12 @@ let stanza_parser t ~dir =
   Decoder.set Package_mask.key mask parser
 ;;
 
+let exclusive_package t ~dir =
+  match Package_mask.package_env ~dir ~packages:t.exclusive_dir_packages with
+  | Inside_package p -> Some p
+  | Forbidden_packages _ -> None
+;;
+
 let file t = t.project_file
 
 let implicit_transitive_deps t ocaml_version =

@@ -107,19 +107,20 @@ let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~produced_targets
     Targets.Produced.iter_files targets_and_digests ~f:(fun path digest ->
       Cached_digest.set (Path.Build.append_local targets_and_digests.root path) digest)
   in
-  match
-    Targets.Produced.map_with_errors
-      ~f:(fun target ->
-        (* All of this monad boilerplate seems unnecessary since we don't care about errors... *)
-        match Local.Target.create target with
-        | Some t -> Ok t
-        | None -> Error ())
-      ~d:(fun target ->
-        match Local.Target.create target with
-        | Some _ -> Ok ()
-        | None -> Error ())
-      produced_targets
-  with
+  Targets.Produced.map_with_errors
+    ~f:(fun target ->
+      (* All of this monad boilerplate seems unnecessary since we don't care about errors... *)
+      Fiber.return
+      @@
+      match Local.Target.create target with
+      | Some t -> Ok t
+      | None -> Error ())
+    ~d:(fun target ->
+      match Local.Target.create target with
+      | Some _ -> Ok ()
+      | None -> Error ())
+    produced_targets
+  >>= function
   | Error _ -> Fiber.return None
   | Ok targets ->
     Local.store_artifacts ~mode ~rule_digest targets
@@ -158,8 +159,10 @@ let compute_target_digests_or_raise_error
       ~should_remove_write_permissions_on_generated_files
       ~loc
       ~produced_targets
-  : Digest.t Targets.Produced.t
+  : Digest.t Targets.Produced.t Fiber.t
   =
+  let open Fiber.O in
+  let* () = Fiber.return () in
   let compute_digest =
     (* Remove write permissions on targets. A first theoretical reason is that
        the build process should be a computational graph and targets should
@@ -170,7 +173,8 @@ let compute_target_digests_or_raise_error
       ~allow_dirs:true
       ~remove_write_permissions:should_remove_write_permissions_on_generated_files
   in
-  match Targets.Produced.map_with_errors ~f:compute_digest produced_targets with
+  Targets.Produced.map_with_errors ~f:compute_digest produced_targets
+  >>| function
   | Ok result -> result
   | Error errors ->
     let missing, errors =
@@ -256,20 +260,19 @@ let examine_targets_and_store
   | Enabled { storage_mode = mode; reproducibility_check = _ } when can_go_in_shared_cache
     ->
     let open Fiber.O in
-    let+ produced_targets_with_digests =
+    let* produced_targets_with_digests =
       try_to_store_to_shared_cache ~mode ~rule_digest ~produced_targets ~action
     in
     (match produced_targets_with_digests with
-     | Some produced_targets_with_digests -> produced_targets_with_digests
+     | Some produced_targets_with_digests -> Fiber.return produced_targets_with_digests
      | None ->
        compute_target_digests_or_raise_error
          ~should_remove_write_permissions_on_generated_files
          ~loc
          ~produced_targets)
   | _ ->
-    Fiber.return
-      (compute_target_digests_or_raise_error
-         ~should_remove_write_permissions_on_generated_files
-         ~loc
-         ~produced_targets)
+    compute_target_digests_or_raise_error
+      ~should_remove_write_permissions_on_generated_files
+      ~loc
+      ~produced_targets
 ;;

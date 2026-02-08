@@ -96,7 +96,6 @@ that wasn't found:
   1 | (executable (name prog) (libraries a))
                                          ^
   Error: Library "a" not found.
-  -> required by _build/default/c/.prog.eobjs/native/dune__exe__Prog.cmx
   -> required by _build/default/c/prog.exe
   [1]
 

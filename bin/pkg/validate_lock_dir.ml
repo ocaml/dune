@@ -21,7 +21,7 @@ let enumerate_lock_dirs_by_path ~lock_dirs () =
     Workspace.workspace () >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs
   in
   List.filter_map per_contexts ~f:(fun lock_dir_path ->
-    if Path.exists (Path.source lock_dir_path)
+    if Fpath.exists (Path.Source.to_string lock_dir_path)
     then (
       match Lock_dir.read_disk_exn (Path.source lock_dir_path) with
       | lock_dir -> Some (Ok (lock_dir_path, lock_dir))

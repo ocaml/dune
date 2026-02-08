@@ -54,7 +54,7 @@ let trim_broken_metadata_entries ~trimmed_so_far =
                  List.exists entries ~f:(function
                    | { Artifacts.Metadata_entry.digest = Some file_digest; path = _ } ->
                      let reference = Lazy.force (file_path ~file_digest) in
-                     not (Path.exists reference)
+                     not (Fpath.exists (Path.to_string reference))
                      (* no digest means it's a directory. *)
                    | { digest = None; path = _ } -> false))
           in

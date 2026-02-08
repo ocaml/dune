@@ -333,7 +333,6 @@ val as_external : t -> External.t option
 (** Split after the first component if [t] is local *)
 val split_first_component : t -> (Filename.t * t) option
 
-val exists : t -> bool
 val readdir_unsorted : t -> (Filename.t list, Unix_error.Detailed.t) Result.t
 
 val readdir_unsorted_with_kinds

@@ -105,7 +105,10 @@ module Exists = struct
     | _ -> raise (Arg.Bad "Usage: dune_cmd exists <path>")
   ;;
 
-  let run (Path path) = print_string (Path.exists path |> Bool.to_string)
+  let run (Path path) =
+    Path.to_string path |> Fpath.exists |> Bool.to_string |> print_string
+  ;;
+
   let () = register name of_args run
 end
 
@@ -326,7 +329,7 @@ module Wait_for_file_to_appear = struct
   ;;
 
   let run { file } =
-    while not (Path.exists file) do
+    while not (Fpath.exists (Path.to_string file)) do
       Unix.sleepf 0.01
     done
   ;;

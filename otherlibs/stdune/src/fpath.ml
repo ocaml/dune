@@ -370,3 +370,11 @@ let is_directory x =
   try (Unix.stat x).st_kind = S_DIR with
   | Unix.Unix_error (ENOENT, _, _) -> false
 ;;
+
+let exists x =
+  try
+    ignore (Unix.stat x);
+    true
+  with
+  | Unix.Unix_error (ENOENT, _, _) -> false
+;;

@@ -339,7 +339,7 @@ module Script = struct
       Process.run Strict ~display:Quiet ~dir:(Path.source eval.dir) ~env ocaml args
       |> Memo.of_reproducible_fiber
     in
-    if not (Path.Untracked.exists (Path.build generated_dune_file))
+    if not (Fpath.exists (Path.to_string (Path.build generated_dune_file)))
     then
       User_error.raise
         ~loc:(Loc.in_file (Path.source file))

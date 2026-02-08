@@ -612,11 +612,6 @@ let relative_to_source_in_build_or_external ?error_loc ~dir s =
      | In_build_dir _ | External _ -> path)
 ;;
 
-let exists t =
-  try Sys.file_exists (to_string t) with
-  | Sys_error _ -> false
-;;
-
 let readdir_unsorted t = Readdir.read_directory (to_string t)
 let readdir_unsorted_with_kinds t = Readdir.read_directory_with_kinds (to_string t)
 let build_dir_exists () = Fpath.is_directory (to_string build_dir)

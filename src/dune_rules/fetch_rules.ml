@@ -194,9 +194,9 @@ let find_checksum, find_url =
           ~f:(fun acc dev_tool ->
             let dir = Lock_dir.dev_tool_external_lock_dir dev_tool in
             let exists =
-              (* Note we use [Path.Untracked] here rather than [Fs_memo] because a tool's
-                 lockdir may be generated part way through a build. *)
-              Path.Untracked.exists (Path.external_ dir)
+              (* Note we use [Fpath.exists] here rather than [Fs_memo] because a
+                 tool's lockdir may be generated part way through a build. *)
+              Fpath.exists (Path.to_string (Path.external_ dir))
             in
             match exists with
             | false -> Memo.return acc

@@ -5,7 +5,6 @@ module Path = struct
   include Path
 
   module Untracked = struct
-    let exists = exists
     let readdir_unsorted = readdir_unsorted
     let readdir_unsorted_with_kinds = readdir_unsorted_with_kinds
     let stat = stat
@@ -15,9 +14,6 @@ module Path = struct
   (* Encourage using [Fs_memo] equivalents if possible. The untracked versions
      are still available in the [Path.Untracked] module. *)
 
-  let exists = `Use_fs_memo_or_untracked_module_instead
-  let is_file = `Use_fs_memo_or_untracked_module_instead
-  let is_directory_with_error = `Use_fs_memo_or_untracked_module_instead
   let stat = `Use_fs_memo_or_untracked_module_instead
   let stat_exn = `Use_fs_memo_or_untracked_module_instead
   let lstat = `Use_fs_memo_or_untracked_module_instead

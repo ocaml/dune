@@ -256,9 +256,9 @@ let of_dev_tool dev_tool =
 let of_dev_tool_if_lock_dir_exists dev_tool =
   let path = dev_tool |> dev_tool_external_lock_dir |> Path.external_ in
   let exists =
-    (* Note we use [Path.Untracked] here rather than [Fs_memo] because a tool's
+    (* Note we use [Fpath.exists] here rather than [Fs_memo] because a tool's
        lockdir may be generated part way through a build. *)
-    Path.Untracked.exists path
+    Fpath.exists (Path.to_string path)
   in
   if exists
   then

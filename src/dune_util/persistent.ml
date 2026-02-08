@@ -97,7 +97,8 @@ module Make (D : Desc) = struct
          | None -> read_file
          | Some _ -> fun file -> with_record `Load ~file ~f:(fun () -> read_file file))
     in
-    fun file -> if Path.exists file then (Lazy.force read_file) file else None
+    fun file ->
+      if Fpath.exists (Path.to_string file) then (Lazy.force read_file) file else None
   ;;
 end
 

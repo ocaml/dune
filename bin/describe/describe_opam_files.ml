@@ -25,7 +25,7 @@ let term =
       then (
         let template_file = Dune_rules.Opam_create.template_file opam_file in
         let template =
-          if Path.exists template_file
+          if Fpath.exists (Path.to_string template_file)
           then Some (template_file, Io.read_file template_file)
           else None
         in

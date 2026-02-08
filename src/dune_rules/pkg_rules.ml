@@ -1833,7 +1833,7 @@ module Install_action = struct
     ;;
 
     let read_variables config_file =
-      match Path.Untracked.exists config_file with
+      match Fpath.exists (Path.to_string config_file) with
       | false -> []
       | true ->
         let config =
@@ -1890,7 +1890,7 @@ module Install_action = struct
           ~target_dir
           (entry : Path.t Install.Entry.Expanded.t)
       =
-      match Path.Untracked.exists src, entry.optional with
+      match Fpath.exists (Path.to_string src), entry.optional with
       | false, true -> None
       | false, false ->
         User_error.raise
@@ -1991,7 +1991,7 @@ module Install_action = struct
           (* Read all the artifacts from the .install file produced by
              the build command. This is the happy path where we don't guess
              anything. *)
-          Async.async (fun () -> Path.Untracked.exists install_file)
+          Async.async (fun () -> Fpath.exists (Path.to_string install_file))
           >>= function
           | false -> Fiber.return Section.Map.empty
           | true ->
@@ -2042,7 +2042,7 @@ module Install_action = struct
         (* Resolve symlinks in target_dir so that the cache can store them. The
          dune cache doesn't support symlinks, so we replace them with hardlinks
          to their targets. *)
-        if Path.Untracked.exists (Path.build target_dir)
+        if Fpath.exists (Path.Build.to_string target_dir)
         then resolve_symlinks_in (Path.Build.to_string target_dir);
         (* Produce the cookie file in the standard path *)
         let cookie_file = Path.build @@ Paths.install_cookie' target_dir in

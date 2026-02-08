@@ -15,7 +15,7 @@ let term =
         workspace
     in
     let any_lockdir_exists =
-      List.exists lock_dir_paths ~f:(fun p -> Path.exists (Path.source p))
+      List.exists lock_dir_paths ~f:(fun p -> Fpath.exists (Path.Source.to_string p))
     in
     (* CR-Leonidas-from-XIV: change this logic when we stop detecting lock
        directories in the source tree *)

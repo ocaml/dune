@@ -610,7 +610,7 @@ end
 let find_dir common dir =
   let p = Path.Source.(relative root) (Common.prefix_target common dir) in
   let s = Path.source p in
-  if not @@ Path.exists s
+  if not @@ Fpath.exists (Path.to_string s)
   then User_error.raise [ Pp.textf "No such file or directory: %s" (Path.to_string s) ];
   if not @@ Fpath.is_directory (Path.to_string s)
   then

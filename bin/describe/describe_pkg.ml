@@ -126,7 +126,7 @@ module List_locked_dependencies = struct
       Pkg.Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs workspace
     in
     List.filter_map lock_dirs ~f:(fun lock_dir_path ->
-      if Path.exists (Path.source lock_dir_path)
+      if Fpath.exists (Path.Source.to_string lock_dir_path)
       then (
         match Lock_dir.read_disk_exn (Path.source lock_dir_path) with
         | lock_dir -> Some (lock_dir_path, lock_dir)

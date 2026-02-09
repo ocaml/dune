@@ -451,7 +451,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
   run (fun () ->
     let cwd = Path.External.cwd () |> Path.external_ in
     let other_dir = Path.relative cwd "random-git-repo" in
-    let+ git_hash = Rev_store_tests.create_repo_at other_dir in
+    let+ git_hash = Git_test_utils.create_repo_at other_dir in
     let lock_dir =
       let pkg_a =
         let name = Package_name.of_string "a" in

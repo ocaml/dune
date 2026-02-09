@@ -73,7 +73,7 @@ let run thunk =
   in
   Scheduler.Run.go config ~on_event (fun () ->
     let open Fiber.O in
-    Rev_store_tests.git_init_and_config_user (Path.of_string ".") >>> thunk ())
+    Git_test_utils.git_init_and_config_user (Path.of_string ".") >>> thunk ())
 ;;
 
 let%expect_test "downloading simple file" =
@@ -206,7 +206,7 @@ let%expect_test "downloading, tarball with no checksum match" =
 
 let download_git rev_store url ~target =
   let open Fiber.O in
-  Rev_store_tests.git_init_and_config_user (Path.of_string ".")
+  Git_test_utils.git_init_and_config_user (Path.of_string ".")
   >>> Fetch.fetch_git rev_store ~target ~url:(Loc.none, url)
   >>| function
   | Error _ ->
@@ -225,7 +225,7 @@ let%expect_test "downloading via git" =
   run (fun () ->
     let open Fiber.O in
     let* rev_store = Rev_store.get in
-    let* (_commit : string) = Rev_store_tests.create_repo_at source in
+    let* (_commit : string) = Git_test_utils.create_repo_at source in
     let+ () = download_git rev_store url ~target in
     print_endline (Io.read_file entry));
   [%expect {| just some content |}]
@@ -239,7 +239,7 @@ let%expect_test "attempting to download an invalid git url" =
   run (fun () ->
     let open Fiber.O in
     let* rev_store = Rev_store.get in
-    let* (_commit : string) = Rev_store_tests.create_repo_at source in
+    let* (_commit : string) = Git_test_utils.create_repo_at source in
     let+ () = download_git rev_store url ~target in
     print_endline (Io.read_file entry));
   [%expect.unreachable]

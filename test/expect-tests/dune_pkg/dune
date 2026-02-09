@@ -9,13 +9,13 @@
    (env_var DUNE_CONFIG__REV_STORE_CACHE)))
  (libraries
   dune_tests_common
+  git_test_utils
   stdune
   dune_pkg
   dune_engine
   dune_scheduler
   dune_util
   dune_lang
-  dune_vcs
   dune_console
   fiber
   http

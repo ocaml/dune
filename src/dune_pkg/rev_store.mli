@@ -106,8 +106,14 @@ val resolve_revision : t -> Remote.t -> revision:string -> Object.resolved optio
 (** [fetch_object t remote object] ensures that an [object] from the [remote]
     is present in the revision store [t]. If the revision is already present,
     no network I/O is performed. Returns [Error git_error_lines] if the remote
-    reports "not found". *)
-val fetch_object : t -> Remote.t -> Object.t -> (At_rev.t, string list) result Fiber.t
+    reports "not found". The optional [env] parameter allows passing additional
+    environment variables to the git process. *)
+val fetch_object
+  :  ?env:Env.t
+  -> t
+  -> Remote.t
+  -> Object.t
+  -> (At_rev.t, string list) result Fiber.t
 
 (** Fetch the file contents of the repository at the given revision into the
     store and return the repository view. *)

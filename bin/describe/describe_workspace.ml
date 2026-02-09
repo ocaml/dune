@@ -7,6 +7,8 @@ module Options = struct
     ; with_pps : bool
       (* whether to include the dependencies to ppx-rewriters (that are
        used at compile time) *)
+    ; no_recursive : bool
+      (* whether to only consider the provided directories and not descendants *)
     }
 
   (* whether to sanitize absolute paths of workspace items, and their UIDs, to
@@ -46,12 +48,25 @@ module Options = struct
               so that the output is reproducible.")
   ;;
 
+  let arg_no_recursive =
+    let open Arg in
+    value
+    & flag
+    & info
+        [ "no-recursive" ]
+        ~doc:
+          (Some
+             "Do not traverse subdirectories. Only consider the provided directories, or \
+              the workspace root when none are given.")
+  ;;
+
   let arg : t Term.t =
     let+ with_deps = arg_with_deps
     and+ with_pps = arg_with_pps
-    and+ sanitize_for_tests_value = arg_sanitize_for_tests in
+    and+ sanitize_for_tests_value = arg_sanitize_for_tests
+    and+ no_recursive = arg_no_recursive in
     sanitize_for_tests := sanitize_for_tests_value;
-    { with_deps; with_pps }
+    { with_deps; with_pps; no_recursive }
   ;;
 end
 
@@ -515,24 +530,29 @@ module Crawl = struct
 
   (* [source_path_is_in_dirs dirs p] tests whether the source path [p] is a
      descendant of some of the provided directory [dirs]. If [dirs = None],
-     then it always succeeds. If [dirs = Some l], then a matching directory is
-     search in the list [l]. *)
-  let source_path_is_in_dirs dirs (p : Path.Source.t) =
+     then it always succeeds, unless [options.no_recursive] is set in which
+     case it only matches the workspace root. If [dirs = Some l], then a
+     matching directory is search in the list [l]. *)
+  let source_path_is_in_dirs ~no_recursive dirs (p : Path.Source.t) =
     match dirs with
-    | None -> true
-    | Some dirs -> List.exists ~f:(fun dir -> Path.Source.is_descendant p ~of_:dir) dirs
+    | None -> if no_recursive then Path.Source.equal p Path.Source.root else true
+    | Some dirs ->
+      if no_recursive
+      then List.exists ~f:(fun dir -> Path.Source.equal p dir) dirs
+      else List.exists ~f:(fun dir -> Path.Source.is_descendant p ~of_:dir) dirs
   ;;
 
   (* Tests whether a dune file is located in a path that is a descendant of
      some directory *)
-  let dune_file_is_in_dirs dirs dune_file =
-    Dune_file.dir dune_file |> source_path_is_in_dirs dirs
+  let dune_file_is_in_dirs ~no_recursive dirs dune_file =
+    Dune_file.dir dune_file |> source_path_is_in_dirs ~no_recursive dirs
   ;;
 
   (* Tests whether a library is located in a path that is a descendant of some
      directory *)
-  let lib_is_in_dirs dirs (lib : Lib.t) =
+  let lib_is_in_dirs ~no_recursive dirs (lib : Lib.t) =
     source_path_is_in_dirs
+      ~no_recursive
       dirs
       (Path.drop_build_context_exn @@ Lib_info.best_src_dir @@ Lib.info lib)
   ;;
@@ -553,11 +573,13 @@ module Crawl = struct
         dirs
     : Descr.Workspace.t Memo.t
     =
+    let { Options.no_recursive; _ } = options in
     let context_name = Context.name context in
     let sctx = Context_name.Map.find_exn scontexts context_name in
     let open Memo.O in
     let* dune_files =
-      Dune_load.dune_files context_name >>| List.filter ~f:(dune_file_is_in_dirs dirs)
+      Dune_load.dune_files context_name
+      >>| List.filter ~f:(dune_file_is_in_dirs ~no_recursive dirs)
     in
     let* exes, exe_libs =
       (* the list of workspace items that describe executables, and the list of
@@ -591,7 +613,7 @@ module Crawl = struct
         >>| Scope.libs
         >>= Lib.DB.all)
       >>| Lib.Set.union_all
-      >>| Lib.Set.filter ~f:(lib_is_in_dirs dirs)
+      >>| Lib.Set.filter ~f:(lib_is_in_dirs ~no_recursive dirs)
     in
     let+ libs =
       (* the executables' libraries, and the project's libraries *)

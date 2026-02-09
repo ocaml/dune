@@ -1324,6 +1324,9 @@ not stable across different setups.
         (cmti (_build/default/virtual/.virtual.objs/byte/virtual.cmti)))))
      (include_dirs (_build/default/virtual/.virtual.objs/byte)))))
 
+  $ dune describe workspace --lang 0.1 --sanitize-for-tests --no-recursive subdir
+  ((root /WORKSPACE_ROOT)
+   (build_context _build/default))
 
 Test other formats
 ------------------

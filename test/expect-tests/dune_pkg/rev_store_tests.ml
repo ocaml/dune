@@ -91,19 +91,9 @@ let%expect_test "fetching non-existent object twice returns consistent results" 
   (* First attempt should fail *)
   run (fun () -> fetch_fake ());
   [%expect {| fetch returned Error (expected) |}];
-  (* Second attempt - bug causes this to crash instead of returning Error *)
-  (try
-     run (fun () -> fetch_fake ());
-     [%expect.unreachable]
-   with
-   | Dune_util.Report_error.Already_reported ->
-     (* Extract just the git error from the output *)
-     [%expect.output]
-     |> String.split_lines
-     |> List.find ~f:(String.starts_with ~prefix:"fatal:")
-     |> Option.value ~default:"no fatal error found"
-     |> print_endline);
-  [%expect {| fatal: not a tree object |}]
+  (* Second attempt should also fail *)
+  run (fun () -> fetch_fake ());
+  [%expect {| fetch returned Error (expected) |}]
 ;;
 
 let%expect_test "adding remotes" =

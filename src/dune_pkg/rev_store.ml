@@ -555,10 +555,7 @@ let object_exists ({ present_objects; _ } as t) obj =
   match Table.find present_objects obj with
   | Some () -> Fiber.return true
   | None ->
-    Table.set present_objects obj ();
     let+ res = object_exists_no_lock t obj in
-    (* We clear objects that aren't present, so that they can be re-queried
-       after fetches *)
     if res then Table.set present_objects obj ();
     res
 ;;

@@ -912,18 +912,17 @@ end = struct
     | None -> Memo.return ()
     | Some odoc_config_file ->
       let action =
-        let packages =
-          pkg
-          |> Package.depends
-          |> List.filter ~f:(Package_dependency.has_constraint_on with_doc)
-          |> List.map ~f:(fun (dep : Package_dependency.t) ->
-            Dune_lang.Package_name.to_string dep.name)
-          |> String.concat ~sep:" "
-        in
-        Action_builder.write_file_dyn
-          odoc_config_file
-          (Action_builder.return (sprintf "(packages %s)" packages))
+        let open Action_builder.O in
+        let+ () = Action_builder.return () in
+        pkg
+        |> Package.depends
+        |> List.filter ~f:(Package_dependency.has_constraint_on with_doc)
+        |> List.map ~f:(fun (dep : Package_dependency.t) ->
+          Dune_lang.Package_name.to_string dep.name)
+        |> String.concat ~sep:" "
+        |> sprintf "(packages %s)"
       in
+      let action = Action_builder.write_file_dyn odoc_config_file action in
       Super_context.add_rule sctx ~dir:ctx.build_dir action
   ;;
 

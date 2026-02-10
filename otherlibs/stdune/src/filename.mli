@@ -47,6 +47,7 @@ module Extension : sig
   val all_deps : t
   val js : t
   val mlg : t
+  val json : t
   val of_string : string -> t option
   val of_string_exn : string -> t
   val to_string : t -> string

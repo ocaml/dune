@@ -134,7 +134,12 @@ let iter_sexps_follow file ~f =
         (* Check if exit event before processing *)
         let is_exit =
           match base_of_sexp sexp with
-          | "config", "exit", _, _ -> true
+          | "config", "exit", _, rest ->
+            (* Only stop on exit events without a digest (the main dune exit) *)
+            not
+              (List.exists rest ~f:(function
+                 | Sexp.List [ Atom "digest"; Atom _ ] -> true
+                 | _ -> false))
           | _ -> false
           | exception _ -> true
         in

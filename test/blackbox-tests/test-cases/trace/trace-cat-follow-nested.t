@@ -53,6 +53,10 @@ events, outer dune does not:
     "name": "exit",
     "has_digest_hash": true
   }
+  {
+    "name": "exit",
+    "has_digest_hash": false
+  }
 
   $ echo resume > $fifo
 

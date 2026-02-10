@@ -19,3 +19,4 @@ val lock_exn : timeout:Time.Span.t option -> unit
 val unlock : unit -> unit
 
 val write_pid : Unix.file_descr -> unit
+val at_exit : (unit -> unit) -> unit

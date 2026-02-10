@@ -90,7 +90,6 @@ end
 module Config : sig
   type t
 
-  val all : t list
   val path : t -> string
   val of_string : string -> t
   val of_flags : string list -> t
@@ -108,14 +107,6 @@ end = struct
     }
 
   let default = { js_string = None; effects = None; toplevel = None }
-  let bool_opt = [ None; Some true; Some false ]
-  let effects_opt = [ None; Some Cps; Some Double_translation ]
-
-  let all =
-    List.concat_map bool_opt ~f:(fun js_string ->
-      List.concat_map effects_opt ~f:(fun effects ->
-        List.concat_map bool_opt ~f:(fun toplevel -> [ { js_string; effects; toplevel } ])))
-  ;;
 
   let enable name acc =
     match name with

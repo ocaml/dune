@@ -459,27 +459,6 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
       in
       iter_modes_concurrently modes.ocaml ~f:(fun mode ->
         build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode ~cm_files)
-  and* () =
-    (* Build *.cma.js / *.wasma *)
-    Memo.when_ modes.ocaml.byte (fun () ->
-      let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
-      Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
-        let action_with_targets =
-          List.map Jsoo_rules.Config.all ~f:(fun config ->
-            Jsoo_rules.build_cm
-              cctx
-              ~dir
-              ~in_context:
-                (Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml
-                 |> Js_of_ocaml.Mode.Pair.select ~mode)
-              ~mode
-              ~config:(Some config)
-              ~src:(Path.build src)
-              ~deps:(Action_builder.return [])
-              ~obj_dir)
-        in
-        Memo.parallel_iter action_with_targets ~f:(fun rule ->
-          Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc rule)))
   in
   Memo.when_
     (Lib_info.dynlink_supported lib_info
@@ -664,7 +643,7 @@ let library_rules
   merlin
 ;;
 
-let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
+let compile_context_data (lib : Library.t) ~sctx ~dir_contents ~scope =
   let dir = Dir_contents.dir dir_contents in
   let buildable = lib.buildable in
   let libs = Scope.libs scope in
@@ -686,12 +665,39 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
     let { Lib_config.has_native; _ } = ocaml.lib_config in
     Mode_conf.Lib.Set.eval lib.modes ~has_native
   in
-  let f for_ =
-    let* source_modules =
-      Dir_contents.ml dir_contents ~for_
-      >>= Ml_sources.modules ~libs ~for_:(Library lib_id)
-    in
-    let parameters = Lib.parameters local_lib in
+  let+ source_modules =
+    Dir_contents.ml dir_contents ~for_:Ocaml
+    >>= Ml_sources.modules ~libs ~for_:(Library lib_id)
+  in
+  let parameters = Lib.parameters local_lib in
+  local_lib, compile_info, modes, source_modules, parameters
+;;
+
+let compile_context (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
+  let dir = Dir_contents.dir dir_contents in
+  let* _, compile_info, modes, source_modules, parameters =
+    compile_context_data lib ~sctx ~dir_contents ~scope
+  in
+  cctx
+    lib
+    ~sctx
+    ~source_modules
+    ~dir
+    ~scope
+    ~expander
+    ~parameters
+    ~compile_info
+    ~modes
+    ~for_:Ocaml
+;;
+
+let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
+  let dir = Dir_contents.dir dir_contents in
+  let buildable = lib.buildable in
+  let* local_lib, compile_info, modes, source_modules, parameters =
+    compile_context_data lib ~sctx ~dir_contents ~scope
+  in
+  let f () =
     let* cctx =
       cctx
         lib
@@ -703,7 +709,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         ~parameters
         ~compile_info
         ~modes
-        ~for_
+        ~for_:Ocaml
     in
     let* () =
       match buildable.ctypes with
@@ -725,9 +731,5 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir ~for_:Ocaml in
   let merlin_ident = Merlin_ident.for_lib (Library.best_name lib) in
-  Buildable_rules.with_lib_deps
-    (Super_context.context sctx)
-    merlin_ident
-    ~dir
-    ~f:(fun () -> f Ocaml)
+  Buildable_rules.with_lib_deps (Super_context.context sctx) merlin_ident ~dir ~f
 ;;

@@ -193,8 +193,8 @@ let load_db () = Option.value ~default:[] (P.load db_file)
 let group_by_targets db =
   List.map db ~f:(fun op ->
     match op with
-    | Delete (what, f) -> f, `Delete what
-    | File { File.src; staging; dst } -> dst, `Promote (src, staging))
+    | Delete (_, f) -> f, op
+    | File { File.src = _; staging = _; dst } -> dst, op)
   |> Path.Source.Map.of_list_multi
   (* Sort the list of possible sources for deterministic behavior *)
   |> Path.Source.Map.map ~f:(List.sort ~compare:Poly.compare)
@@ -218,14 +218,14 @@ let promote_one dst srcs =
        be correctly invalidated via [fs_memo]. If that doesn't happen, we
        should fix [fs_memo] instead of manually resetting the caches here. *)
     (match op with
-     | `Promote (src, staging) -> File.promote { src; staging; dst }
-     | `Delete `File -> Fpath.unlink_exn (Path.Source.to_string dst)
-     | `Delete `Directory -> Fpath.rm_rf (Path.Source.to_string dst));
+     | File f -> File.promote f
+     | Delete (`File, _) -> Fpath.unlink_exn (Path.Source.to_string dst)
+     | Delete (`Directory, _) -> Fpath.rm_rf (Path.Source.to_string dst));
     List.iter others ~f:(fun op ->
       let path =
         match op with
-        | `Promote (src, _) -> Path.build src
-        | `Delete _ -> Path.source dst
+        | File f -> Path.build f.src
+        | Delete _ -> Path.source dst
       in
       Console.print
         [ Pp.textf " -> ignored %s." (Path.to_string_maybe_quoted path); Pp.space ])
@@ -235,11 +235,7 @@ let do_promote_all db = group_by_targets db |> Path.Source.Map.iteri ~f:promote_
 
 let do_promote_these db files =
   let by_targets = group_by_targets db in
-  let ( (by_targets :
-          [> `Delete of what | `Promote of Path.Build.t * Path.Build.t option ] list
-            Path.Source.Map.t)
-      , missing )
-    =
+  let by_targets, missing =
     let files = Path.Source.Set.of_list files in
     Path.Source.Set.fold files ~init:(by_targets, []) ~f:(fun fn (map, missing) ->
       match Path.Source.Map.find map fn with
@@ -249,11 +245,7 @@ let do_promote_these db files =
         Path.Source.Map.remove map fn, missing)
   in
   let remaining =
-    Path.Source.Map.to_list by_targets
-    |> List.concat_map ~f:(fun (dst, ops) ->
-      List.map ops ~f:(function
-        | `Delete what -> Delete (what, dst)
-        | `Promote (src, staging) -> File { File.src; staging; dst }))
+    Path.Source.Map.to_list by_targets |> List.concat_map ~f:(fun (_dst, ops) -> ops)
   in
   (* [group_by_targets] will sort all files, but the [fold] above reverses
      the list of missing files. Here we re-reverse it so it is sorted.

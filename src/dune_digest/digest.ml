@@ -35,6 +35,38 @@ module Hasher = struct
         in_use := false;
         digest)
   ;;
+
+  let with_pooled =
+    let pool = ref [] in
+    let mutex = Mutex.create () in
+    let take () =
+      Mutex.lock mutex;
+      let hasher =
+        match !pool with
+        | hasher :: rest ->
+          pool := rest;
+          hasher
+        | [] -> Blake3_mini.create ()
+      in
+      Mutex.unlock mutex;
+      hasher
+    in
+    let release hasher =
+      Mutex.lock mutex;
+      pool := hasher :: !pool;
+      Mutex.unlock mutex
+    in
+    fun f ->
+      let hasher = take () in
+      Exn.protectx
+        hasher
+        ~f:(fun hasher ->
+          f hasher;
+          Blake3_mini.digest hasher)
+        ~finally:(fun hasher ->
+          Blake3_mini.reset hasher;
+          release hasher)
+  ;;
 end
 
 let open_for_digest file =
@@ -136,10 +168,13 @@ module Feed = struct
   ;;
 
   let digest hasher digest = contramap string ~f:to_string hasher digest
-  let compute_digest t x = Hasher.with_singleton (fun hasher -> t hasher x)
+  let compute_digest_with t x ~with_hasher = with_hasher (fun hasher -> t hasher x)
+  let compute_digest t x = compute_digest_with t x ~with_hasher:Hasher.with_singleton
+  let compute_digest_pooled t x = compute_digest_with t x ~with_hasher:Hasher.with_pooled
 end
 
 let string s = Feed.compute_digest Feed.string s
+let string_pooled s = Feed.compute_digest_pooled Feed.string s
 let to_string_raw s = Blake3_mini.Digest.to_binary s
 
 let generic a =
@@ -150,18 +185,35 @@ let generic a =
   res
 ;;
 
-let path_with_executable_bit =
+let generic_pooled a =
+  let start = Counter.Timer.start () in
+  Counter.incr Metrics.Digest.Value.count;
+  let res = Feed.compute_digest_pooled Feed.generic a in
+  Counter.Timer.stop Metrics.Digest.Value.time start;
+  res
+;;
+
+let path_with_executable_bit_with string_digest =
   (* We follow the digest scheme used by Jenga. *)
   let string_and_bool ~digest_hex ~bool =
-    string (Blake3_mini.Digest.to_hex digest_hex ^ if bool then "\001" else "\000")
+    let suffix = if bool then "\001" else "\000" in
+    string_digest (Blake3_mini.Digest.to_hex digest_hex ^ suffix)
   in
   fun ~executable ~content_digest ->
     string_and_bool ~digest_hex:content_digest ~bool:executable
 ;;
 
-let file_with_executable_bit ~executable path =
+let path_with_executable_bit = path_with_executable_bit_with string
+let path_with_executable_bit_pooled = path_with_executable_bit_with string_pooled
+
+let file_with_executable_bit_sync ~executable path =
   let content_digest = file path in
   path_with_executable_bit ~content_digest ~executable
+;;
+
+let file_with_executable_bit_pooled ~executable path =
+  let content_digest = file path in
+  path_with_executable_bit_pooled ~content_digest ~executable
 ;;
 
 module Stats_for_digest = struct
@@ -187,13 +239,20 @@ exception E of Path_digest_error.t
 
 let directory_digest_version = 3
 
-let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) =
+let path_with_stats_internal
+      ~allow_dirs
+      ~string_digest
+      ~generic_digest
+      ~file_with_executable_bit
+      path
+      (stats : Stats_for_digest.t)
+  =
   let rec loop path (stats : Stats_for_digest.t) =
     match stats.st_kind with
     | S_LNK ->
       Unix_error.Detailed.catch
         (fun path ->
-           let contents = Path.to_string path |> Unix.readlink |> string in
+           let contents = Path.to_string path |> Unix.readlink |> string_digest in
            path_with_executable_bit ~executable:stats.executable ~content_digest:contents)
         path
       |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
@@ -227,13 +286,34 @@ let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) =
           with
           | exception E e -> Error e
           | contents ->
-            Ok (generic (directory_digest_version, contents, stats.executable))))
+            Ok (generic_digest (directory_digest_version, contents, stats.executable))))
     | S_DIR | S_BLK | S_CHR | S_FIFO | S_SOCK -> Error Unexpected_kind
   in
   match stats.st_kind with
   | S_DIR when not allow_dirs -> Error Path_digest_error.Unexpected_kind
   | S_BLK | S_CHR | S_LNK | S_FIFO | S_SOCK -> Error Unexpected_kind
   | _ -> loop path stats
+;;
+
+let path_with_stats ~allow_dirs path stats =
+  path_with_stats_internal
+    ~allow_dirs
+    ~string_digest:string
+    ~generic_digest:generic
+    ~file_with_executable_bit:file_with_executable_bit_sync
+    path
+    stats
+;;
+
+let path_with_stats_async ~allow_dirs path (stats : Stats_for_digest.t) =
+  Dune_scheduler.Scheduler.async_exn (fun () ->
+    path_with_stats_internal
+      ~allow_dirs
+      ~string_digest:string_pooled
+      ~generic_digest:generic_pooled
+      ~file_with_executable_bit:file_with_executable_bit_pooled
+      path
+      stats)
 ;;
 
 let file_with_executable_bit ~executable path =

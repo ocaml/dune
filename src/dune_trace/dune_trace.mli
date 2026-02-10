@@ -239,6 +239,7 @@ val enabled : Category.t -> bool
 val emit : ?buffered:bool -> Category.t -> (unit -> Event.t) -> unit
 val emit_all : ?buffered:bool -> Category.t -> (unit -> Event.t list) -> unit
 val flush : unit -> unit
+val at_exit : (unit -> unit) -> unit
 
 module Private : sig
   module Fd_count : sig

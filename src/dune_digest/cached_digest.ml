@@ -145,7 +145,7 @@ let dump () =
         P.dump db_file (Lazy.force cache)))
 ;;
 
-let () = at_exit dump
+let () = Dune_trace.at_exit dump
 
 let invalidate_cached_timestamps () =
   if Lazy.is_val cache

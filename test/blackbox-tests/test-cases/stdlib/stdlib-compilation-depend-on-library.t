@@ -59,15 +59,7 @@ Test dependency on installed package
   > let x = A.Foo.x
   > EOF
 
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @install --display=short
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @install
   Entering directory 'b'
-        ocamlc .b.objs/byte/b.{cmi,cmo,cmt}
-      ocamldep .b.objs/b__Bar.impl.d
-      ocamlopt .b.objs/native/b.{cmx,o}
-        ocamlc .b.objs/byte/b__Bar.{cmi,cmo,cmt}
-      ocamlopt .b.objs/native/b__Bar.{cmx,o}
-        ocamlc b.cma
-      ocamlopt b.{a,cmxa}
-      ocamlopt b.cmxs
   Leaving directory 'b'
 

@@ -40,6 +40,7 @@ module Extension = struct
   let js = ".js"
   let h = ".h"
   let mlg = ".mlg"
+  let json = ".json"
 
   let is_valid s =
     (not (String.is_empty s)) && Char.equal s.[0] '.' && not (String.contains s '/')

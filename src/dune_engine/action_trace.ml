@@ -27,21 +27,25 @@ let create digest =
 ;;
 
 let collect_file file ~digest =
-  Io.with_file_in ~binary:true (Path.build file) ~f:(fun chan ->
-    let rec loop () =
-      (* CR-soon rgrinberg: handle json payloads as well *)
-      match Csexp.input_opt chan with
-      | Ok None -> ()
-      | Error _ ->
-        User_error.raise
-          [ Pp.textf "invalid action trace in %s" (Path.Build.to_string_maybe_quoted file)
-          ]
-      | Ok (Some s) ->
-        Dune_trace.emit ~buffered:true Action (fun () ->
-          Dune_trace.Event.Action.trace ~digest s);
-        loop ()
-    in
-    loop ())
+  let file = Path.build file in
+  match
+    Filename.Extension.Or_empty.check (Path.extension file) Filename.Extension.json
+  with
+  | true -> () (* CR-soon rgrinberg: handle json payloads as well *)
+  | false ->
+    Io.with_file_in ~binary:true file ~f:(fun chan ->
+      let rec loop () =
+        match Csexp.input_opt chan with
+        | Ok None -> ()
+        | Error _ ->
+          User_error.raise
+            [ Pp.textf "invalid action trace in %s" (Path.to_string_maybe_quoted file) ]
+        | Ok (Some s) ->
+          Dune_trace.emit ~buffered:true Action (fun () ->
+            Dune_trace.Event.Action.trace ~digest s);
+          loop ()
+      in
+      loop ())
 ;;
 
 let collect { dir; digest } =

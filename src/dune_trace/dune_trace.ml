@@ -21,19 +21,9 @@ module Out = struct
 end
 
 let global = ref None
-let hooks = ref []
 
-let () =
-  Global_lock.at_exit (fun () ->
-    let hooks =
-      let res = !hooks in
-      hooks := [];
-      List.rev res
-    in
-    List.iter hooks ~f:(fun f ->
-      match Exn_with_backtrace.try_with f with
-      | Ok () -> ()
-      | Error exn -> Format.eprintf "%a@." Exn_with_backtrace.pp_uncaught exn);
+let at_exit =
+  At_exit.at_exit Global_lock.at_exit (fun () ->
     match !global with
     | None -> ()
     | Some t ->
@@ -51,8 +41,6 @@ let () =
          in
          Io.copy_file ~src:t.path ~dst ()))
 ;;
-
-let at_exit f = hooks := f :: !hooks
 
 let set_global t =
   if Option.is_some !global then Code_error.raise "global stats have been set" [];

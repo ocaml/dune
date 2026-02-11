@@ -38,4 +38,4 @@ end
 
 module End_of_build = Make ()
 
-let () = Dune_trace.at_exit End_of_build.run
+let () = At_exit.at_exit_ignore Dune_trace.at_exit End_of_build.run

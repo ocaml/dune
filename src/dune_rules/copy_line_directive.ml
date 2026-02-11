@@ -33,7 +33,7 @@ module DB = struct
       Persistent.dump file (Lazy.force t))
   ;;
 
-  let () = Dune_trace.at_exit dump
+  let () = At_exit.at_exit_ignore Dune_trace.at_exit dump
 
   let rec follow_while path ~f =
     let t = Lazy.force t in

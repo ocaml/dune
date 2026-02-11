@@ -144,20 +144,4 @@ let unlock () =
     locked := false)
 ;;
 
-let hooks = ref []
-
-let () =
-  at_exit (fun () ->
-    let hooks =
-      let res = !hooks in
-      hooks := [];
-      List.rev res
-    in
-    List.iter hooks ~f:(fun f ->
-      match Exn_with_backtrace.try_with f with
-      | Ok () -> ()
-      | Error exn -> Format.eprintf "%a@." Exn_with_backtrace.pp_uncaught exn);
-    unlock ())
-;;
-
-let at_exit f = hooks := f :: !hooks
+let at_exit = At_exit.at_exit At_exit.main unlock

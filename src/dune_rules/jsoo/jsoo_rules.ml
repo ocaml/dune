@@ -875,6 +875,43 @@ let jsoo_is_whole_program t ~dir ~in_context =
   { Js_of_ocaml.Mode.Pair.js = is_whole_program js; wasm = is_whole_program wasm }
 ;;
 
+let build_standalone_runtime cc ~loc ~in_context ~jsoo_mode:mode =
+  let sctx = Compilation_context.super_context cc in
+  let dir = Compilation_context.dir cc in
+  let { Js_of_ocaml.In_context.javascript_files
+      ; wasm_files
+      ; flags
+      ; compilation_mode
+      ; sourcemap = _
+      ; enabled_if = _
+      }
+    =
+    in_context
+  in
+  let* cmode =
+    match compilation_mode with
+    | None -> js_of_ocaml_compilation_mode sctx ~dir ~mode
+    | Some x -> Memo.return x
+  in
+  match (cmode : Js_of_ocaml.Compilation_mode.t) with
+  | Whole_program -> Memo.return None
+  | Separate_compilation ->
+    assert (Js_of_ocaml.Mode.select ~mode ~js:(wasm_files = []) ~wasm:true);
+    let runtime_files = javascript_files @ wasm_files in
+    let obj_dir = Compilation_context.obj_dir cc in
+    let target =
+      in_obj_dir
+        ~obj_dir
+        ~config:None
+        [ "runtime" ^ Filename.Extension.to_string (Js_of_ocaml.Ext.runtime ~mode) ]
+    in
+    let+ () =
+      standalone_runtime_rule ~mode cc ~runtime_files ~target ~flags ~sourcemap:Inline
+      |> Super_context.add_rule ~loc sctx ~dir
+    in
+    Some target
+;;
+
 let build_exe
       cc
       ~loc
@@ -886,6 +923,7 @@ let build_exe
       ~linkall
       ~link_time_code_gen
       ~jsoo_mode:mode
+      ~standalone_runtime
   =
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in
@@ -895,14 +933,6 @@ let build_exe
     in_context
   in
   let target = Path.Build.set_extension src ~ext:(Js_of_ocaml.Ext.exe ~mode) in
-  let standalone_runtime =
-    in_obj_dir
-      ~obj_dir
-      ~config:None
-      [ Path.Build.basename
-          (Path.Build.set_extension src ~ext:(Js_of_ocaml.Ext.runtime ~mode))
-      ]
-  in
   let* rule_mode : Rule.Mode.t =
     let* expander = Super_context.expander sctx ~dir in
     let rule_mode =
@@ -930,20 +960,35 @@ let build_exe
   in
   match (cmode : Js_of_ocaml.Compilation_mode.t) with
   | Separate_compilation ->
+    let standalone_runtime_target, needs_runtime_rule =
+      match standalone_runtime with
+      | Some path -> path, false
+      | None ->
+        ( in_obj_dir
+            ~obj_dir
+            ~config:None
+            [ Path.Build.basename
+                (Path.Build.set_extension src ~ext:(Js_of_ocaml.Ext.runtime ~mode))
+            ]
+        , true )
+    in
     let+ () =
-      standalone_runtime_rule
-        ~mode
-        cc
-        ~runtime_files
-        ~target:standalone_runtime
-        ~flags
-        ~sourcemap:Inline
-      |> Super_context.add_rule ~loc sctx ~dir
+      if needs_runtime_rule
+      then
+        standalone_runtime_rule
+          ~mode
+          cc
+          ~runtime_files
+          ~target:standalone_runtime_target
+          ~flags
+          ~sourcemap:Inline
+        |> Super_context.add_rule ~loc sctx ~dir
+      else Memo.return ()
     and+ () =
       link_rule
         ~mode
         cc
-        ~runtime:standalone_runtime
+        ~runtime:standalone_runtime_target
         ~target
         ~directory_targets
         ~obj_dir

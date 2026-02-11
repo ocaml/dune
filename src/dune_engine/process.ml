@@ -870,8 +870,6 @@ let report_process_finished
       ~times:(times : Proc.Times.t))
 ;;
 
-let set_temp_dir_when_running_actions = ref true
-
 let await ~timeout { response_file; pid; is_process_group_leader; _ } =
   let+ process_info, termination_reason =
     Scheduler.wait_for_build_process ?timeout pid ~is_process_group_leader
@@ -956,11 +954,7 @@ let spawn
   in
   let pid =
     let env =
-      let env =
-        match !set_temp_dir_when_running_actions with
-        | true -> Dtemp.add_to_env env
-        | false -> env
-      in
+      let env = Dtemp.add_to_env env in
       Env.to_unix env |> Spawn.Env.of_list
     in
     let stdout = Io.fd stdout in

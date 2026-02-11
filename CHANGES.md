@@ -5,6 +5,19 @@ If you're a contributor, please include your CHANGES entry in a `$PR_NUMBER.md`
 file in either `doc/changes/{added|changed|fixed}/`. At release time, it will
 be incoporated into the changelog properly.
 
+3.21.1 (2026-02-10)
+-------------------
+
+### Fixed
+
+- Fix build issues on NetBSD and OpenBSD via update of vendored ocaml-lmdb
+  (#13074, @Alizter)
+- Fix `melange.emit` not respecting the package mask via `-p <PKG>` (#13522,
+  @anmonteiro)
+
+### Changed
+
+- Stop starting RPC server with `$ dune promote` (#13428, @rgrinberg)
 
 3.21.0 (2026-01-12)
 -------------------

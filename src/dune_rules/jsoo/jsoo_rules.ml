@@ -335,6 +335,12 @@ let js_of_ocaml_flags t ~dir ~mode (spec : Js_of_ocaml.Flags.Spec.t) =
     ~eval:(Expander.expand_and_eval_set expander)
 ;;
 
+let resolve_config sctx ~dir ~mode flags =
+  js_of_ocaml_flags sctx ~dir ~mode flags
+  |> Action_builder.bind ~f:(fun (x : _ Js_of_ocaml.Flags.t) -> x.compile)
+  |> Action_builder.map ~f:Config.of_flags
+;;
+
 let js_of_ocaml_rule
       sctx
       ~(mode : Js_of_ocaml.Mode.t)
@@ -412,14 +418,104 @@ let jsoo_runtime_files ~(mode : Js_of_ocaml.Mode.t) libs =
       (Lib.info t))
 ;;
 
+module Runtime_key : sig
+  type encoded = Digest.t
+
+  module Decoded : sig
+    type t = private
+      { mode : Js_of_ocaml.Mode.t
+      ; lib_names : Lib_name.t list
+      ; project_root : Path.Source.t option
+      }
+
+    val of_libs : mode:Js_of_ocaml.Mode.t -> Lib.t list -> t
+  end
+
+  val encode : Decoded.t -> encoded
+  val decode : encoded -> Decoded.t
+end = struct
+  type encoded = Digest.t
+
+  module Decoded = struct
+    type t =
+      { mode : Js_of_ocaml.Mode.t
+      ; lib_names : Lib_name.t list
+      ; project_root : Path.Source.t option
+      }
+
+    let equal x y =
+      Js_of_ocaml.Mode.equal x.mode y.mode
+      && List.equal Lib_name.equal x.lib_names y.lib_names
+      && Option.equal Path.Source.equal x.project_root y.project_root
+    ;;
+
+    let to_string { mode; lib_names; project_root } =
+      let s =
+        sprintf
+          "%s runtime for %s"
+          (Js_of_ocaml.Mode.select ~mode ~js:"js" ~wasm:"wasm")
+          (String.enumerate_and (List.map lib_names ~f:Lib_name.to_string))
+      in
+      match project_root with
+      | None -> s
+      | Some dir ->
+        sprintf "%s (in project: %s)" s (Path.Source.to_string_maybe_quoted dir)
+    ;;
+
+    let of_libs ~mode libs =
+      let libs_with_runtime =
+        List.filter libs ~f:(fun lib ->
+          not (List.is_empty (jsoo_runtime_files ~mode [ lib ])))
+      in
+      let lib_names =
+        List.sort libs_with_runtime ~compare:(fun a b ->
+          Lib_name.compare (Lib.name a) (Lib.name b))
+        |> List.map ~f:Lib.name
+      in
+      let project_root = Lib.L.project_root libs_with_runtime in
+      { mode; lib_names; project_root }
+    ;;
+  end
+
+  let reverse_table : (Digest.t, Decoded.t) Table.t = Table.create (module Digest) 128
+
+  let encode ({ Decoded.mode; lib_names; project_root } as x) =
+    let y = Digest.generic (mode, lib_names, project_root) in
+    match Table.find reverse_table y with
+    | None ->
+      Table.set reverse_table y x;
+      y
+    | Some x' ->
+      if Decoded.equal x x'
+      then y
+      else
+        User_error.raise
+          [ Pp.textf "Hash collision between jsoo standalone runtimes:"
+          ; Pp.textf "- cache : %s" (Decoded.to_string x')
+          ; Pp.textf "- fetch : %s" (Decoded.to_string x)
+          ]
+  ;;
+
+  let decode y =
+    match Table.find reverse_table y with
+    | Some x -> x
+    | None ->
+      User_error.raise
+        [ Pp.textf
+            "I don't know what jsoo runtime set %s correspond to."
+            (Digest.to_string y)
+        ]
+  ;;
+end
+
+type standalone_runtime =
+  | Shared of Digest.t
+  | Per_stanza of Path.Build.t
+
 let standalone_runtime_rule ~mode cc ~runtime_files ~target ~flags ~sourcemap =
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
-  let config =
-    js_of_ocaml_flags sctx ~dir ~mode flags
-    |> Action_builder.bind ~f:(fun (x : _ Js_of_ocaml.Flags.t) -> x.compile)
-    |> Action_builder.map ~f:Config.of_flags
-  in
+  let config = resolve_config sctx ~dir ~mode flags in
   let libs = Compilation_context.requires_link cc in
   let spec =
     Command.Args.S
@@ -538,7 +634,7 @@ let cmo_js_of_module ~mode m =
 let link_rule
       ~mode
       cc
-      ~runtime
+      ~runtime_dep
       ~target
       ~directory_targets
       ~obj_dir
@@ -554,10 +650,7 @@ let link_rule
   let build_dir = Super_context.context sctx |> Context.build_dir in
   let get_all =
     let open Action_builder.O in
-    let+ config =
-      js_of_ocaml_flags sctx ~dir ~mode flags
-      |> Action_builder.bind ~f:(fun (x : _ Js_of_ocaml.Flags.t) -> x.compile)
-      |> Action_builder.map ~f:Config.of_flags
+    let+ config = resolve_config sctx ~dir ~mode flags
     and+ cm = cm
     and+ linkall = linkall
     and+ libs = Resolve.Memo.read (Compilation_context.requires_link cc)
@@ -615,7 +708,7 @@ let link_rule
            | None, _ | _, false -> [])
       ]
   in
-  let spec = Command.Args.S [ Dep (Path.build runtime); Dyn get_all ] in
+  let spec = Command.Args.S [ Dyn runtime_dep; Dyn get_all ] in
   js_of_ocaml_rule
     sctx
     ~mode
@@ -708,10 +801,7 @@ let build_cm
     and+ config =
       match config_opt with
       | Some config -> Action_builder.return config
-      | None ->
-        js_of_ocaml_flags sctx ~dir ~mode in_context.flags
-        |> Action_builder.bind ~f:(fun (x : _ Js_of_ocaml.Flags.t) -> x.compile)
-        |> Action_builder.map ~f:Config.of_flags
+      | None -> resolve_config sctx ~dir ~mode in_context.flags
     in
     let deps = List.filter deps ~f:(fun m -> Module.has m ~ml_kind:Impl) in
     (Path.build (in_build_dir ctx ~config [ "stdlib"; with_js_ext ~mode "stdlib.cma" ])
@@ -733,9 +823,58 @@ let build_cm
 
 let for_ = Compilation_mode.Ocaml
 
+let setup_shared_runtime_rule sctx s_config s_digest =
+  let config = Config.of_string s_config in
+  let ctx = Super_context.context sctx in
+  let build_context = Context.build_context ctx in
+  match Digest.from_hex s_digest with
+  | None -> User_error.raise [ Pp.textf "invalid jsoo runtime key: %s" s_digest ]
+  | Some digest ->
+    let { Runtime_key.Decoded.mode; lib_names; project_root } =
+      Runtime_key.decode digest
+    in
+    let* scope =
+      let dir =
+        match project_root with
+        | None -> Context.build_dir ctx
+        | Some dir -> Path.Build.append_source build_context.build_dir dir
+      in
+      Scope.DB.find_by_dir dir
+    in
+    let* libs =
+      let lib_db = Scope.libs scope in
+      Memo.parallel_map lib_names ~f:(fun name ->
+        Lib.DB.resolve lib_db (Loc.none, name) |> Resolve.Memo.read_memo)
+    in
+    let runtime_files = jsoo_runtime_files ~mode libs in
+    let dir = in_build_dir build_context ~config [ ".runtime"; s_digest ] in
+    let target =
+      in_build_dir
+        build_context
+        ~config
+        [ ".runtime"
+        ; s_digest
+        ; "runtime" ^ Filename.Extension.to_string (Js_of_ocaml.Ext.runtime ~mode)
+        ]
+    in
+    js_of_ocaml_rule
+      sctx
+      ~mode
+      ~sub_command:Build_runtime
+      ~dir
+      ~flags:Js_of_ocaml.In_context.default.flags
+      ~target
+      ~spec:(Command.Args.Deps runtime_files)
+      ~config:(Some (Action_builder.return config))
+      ~sourcemap:Inline
+      ~directory_targets:[]
+    |> Super_context.add_rule sctx ~dir
+;;
+
 let setup_separate_compilation_rules sctx components =
   match components with
-  | _ :: _ :: _ :: _ | [] | [ _ ] -> Memo.return ()
+  | [ s_config; ".runtime"; s_digest ] -> setup_shared_runtime_rule sctx s_config s_digest
+  | [] | [ _ ] | [ _; ".runtime" ] -> Memo.return ()
   | [ s_config; s_pkg ] ->
     let config = Config.of_string s_config in
     let pkg = Lib_name.parse_string_exn (Loc.none, s_pkg) in
@@ -809,6 +948,7 @@ let setup_separate_compilation_rules sctx components =
              ~sourcemap:Js_of_ocaml.Sourcemap.Inline
              ~shapes
            |> Super_context.add_rule sctx ~dir)))
+  | _ -> Memo.return ()
 ;;
 
 let js_of_ocaml_compilation_mode t ~dir ~mode =
@@ -898,18 +1038,30 @@ let build_standalone_runtime cc ~loc ~in_context ~jsoo_mode:mode =
   | Separate_compilation ->
     assert (Js_of_ocaml.Mode.select ~mode ~js:(wasm_files = []) ~wasm:true);
     let runtime_files = javascript_files @ wasm_files in
-    let obj_dir = Compilation_context.obj_dir cc in
-    let target =
-      in_obj_dir
-        ~obj_dir
-        ~config:None
-        [ "runtime" ^ Filename.Extension.to_string (Js_of_ocaml.Ext.runtime ~mode) ]
+    let* eligible =
+      if List.is_empty runtime_files
+      then
+        Resolve.Memo.peek (Compilation_context.requires_link cc)
+        >>| function
+        | Ok libs -> Some (Runtime_key.encode (Runtime_key.Decoded.of_libs ~mode libs))
+        | Error () -> None
+      else Memo.return None
     in
-    let+ () =
-      standalone_runtime_rule ~mode cc ~runtime_files ~target ~flags ~sourcemap:Inline
-      |> Super_context.add_rule ~loc sctx ~dir
-    in
-    Some target
+    (match eligible with
+     | Some digest -> Memo.return (Some (Shared digest))
+     | None ->
+       let obj_dir = Compilation_context.obj_dir cc in
+       let target =
+         in_obj_dir
+           ~obj_dir
+           ~config:None
+           [ "runtime" ^ Filename.Extension.to_string (Js_of_ocaml.Ext.runtime ~mode) ]
+       in
+       let+ () =
+         standalone_runtime_rule ~mode cc ~runtime_files ~target ~flags ~sourcemap:Inline
+         |> Super_context.add_rule ~loc sctx ~dir
+       in
+       Some (Per_stanza target))
 ;;
 
 let build_exe
@@ -960,35 +1112,47 @@ let build_exe
   in
   match (cmode : Js_of_ocaml.Compilation_mode.t) with
   | Separate_compilation ->
-    let standalone_runtime_target, needs_runtime_rule =
+    let runtime_dep, per_exe_runtime_target =
       match standalone_runtime with
-      | Some path -> path, false
+      | Some (Shared digest) ->
+        let ctx = Super_context.context sctx |> Context.build_context in
+        ( (let open Action_builder.O in
+           let+ config = resolve_config sctx ~dir ~mode flags in
+           Command.Args.Dep
+             (Path.build
+                (in_build_dir
+                   ctx
+                   ~config
+                   [ ".runtime"
+                   ; Digest.to_string digest
+                   ; "runtime"
+                     ^ Filename.Extension.to_string (Js_of_ocaml.Ext.runtime ~mode)
+                   ])))
+        , None )
+      | Some (Per_stanza path) ->
+        Action_builder.return (Command.Args.Dep (Path.build path)), None
       | None ->
-        ( in_obj_dir
+        let path =
+          in_obj_dir
             ~obj_dir
             ~config:None
             [ Path.Build.basename
                 (Path.Build.set_extension src ~ext:(Js_of_ocaml.Ext.runtime ~mode))
             ]
-        , true )
+        in
+        Action_builder.return (Command.Args.Dep (Path.build path)), Some path
     in
     let+ () =
-      if needs_runtime_rule
-      then
-        standalone_runtime_rule
-          ~mode
-          cc
-          ~runtime_files
-          ~target:standalone_runtime_target
-          ~flags
-          ~sourcemap:Inline
+      match per_exe_runtime_target with
+      | Some target ->
+        standalone_runtime_rule ~mode cc ~runtime_files ~target ~flags ~sourcemap:Inline
         |> Super_context.add_rule ~loc sctx ~dir
-      else Memo.return ()
+      | None -> Memo.return ()
     and+ () =
       link_rule
         ~mode
         cc
-        ~runtime:standalone_runtime_target
+        ~runtime_dep
         ~target
         ~directory_targets
         ~obj_dir

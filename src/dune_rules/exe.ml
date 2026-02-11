@@ -309,7 +309,7 @@ let link_many
   let modules = Compilation_context.modules cctx in
   let* link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
   (* Build shared jsoo standalone runtimes (one per mode) *)
-  let* shared_runtimes =
+  let* (shared_runtimes : Jsoo_rules.standalone_runtime option Js_of_ocaml.Mode.Pair.t) =
     let in_context_for jsoo_mode =
       Compilation_context.js_of_ocaml cctx
       |> Js_of_ocaml.Mode.Pair.select ~mode:jsoo_mode

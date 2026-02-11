@@ -6,7 +6,7 @@ Compilation using WasmOO
       ocamldep lib/.x.objs/x.impl.d
         ocamlc lib/.x.objs/byte/x__.{cmi,cmo,cmt}
       ocamldep lib/.x.objs/x__Y.impl.d
-  wasm_of_ocaml bin/.technologic.eobjs/jsoo/technologic.bc.runtime.wasma
+  wasm_of_ocaml bin/.technologic.eobjs/jsoo/runtime.bc.runtime.wasma
       ocamldep bin/.technologic.eobjs/dune__exe__Z.impl.d
       ocamlopt lib/.x.objs/native/x__.{cmx,o}
         ocamlc lib/.x.objs/byte/x__Y.{cmi,cmo,cmt}

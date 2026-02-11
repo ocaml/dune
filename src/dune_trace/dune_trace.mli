@@ -188,6 +188,7 @@ module Event : sig
   module Action : sig
     val start : name:string -> start:Time.t -> t
     val finish : name:string -> start:Time.t -> t
+    val write_file : start:Time.t -> finish:Time.t -> file:Path.t -> size:int -> t
     val trace : digest:string -> Csexp.t -> t
   end
 

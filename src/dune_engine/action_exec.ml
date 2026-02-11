@@ -244,8 +244,13 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
     Done
   | Write_file (fn, perm, s) ->
     let perm = Action.File_perm.to_unix_perm perm in
-    let+ () = maybe_async (fun () -> Io.write_file (Path.build fn) s ~perm) in
-    Done
+    let fn = Path.build fn in
+    let start = Time.now () in
+    let* () = maybe_async (fun () -> Io.write_file fn s ~perm) in
+    let finish = Time.now () in
+    Dune_trace.emit ~buffered:true Action (fun () ->
+      Dune_trace.Event.Action.write_file ~start ~finish ~file:fn ~size:(String.length s));
+    Produce.return Done
   | Rename (src, dst) ->
     let src = Path.Build.to_string src in
     let dst = Path.Build.to_string dst in

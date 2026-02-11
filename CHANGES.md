@@ -1,3 +1,17 @@
+3.21.1 (2026-02-10)
+-------------------
+
+### Fixed
+
+- Fix build issues on NetBSD and OpenBSD via update of vendored ocaml-lmdb
+  (#13074, @Alizter)
+- Fix `melange.emit` not respecting the package mask via `-p <PKG>` (#13522,
+  @anmonteiro)
+
+### Changed
+
+- Stop starting RPC server with `$ dune promote` (#13428, @rgrinberg)
+
 3.21.0 (2026-01-12)
 -------------------
 

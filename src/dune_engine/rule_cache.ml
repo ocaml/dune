@@ -73,7 +73,7 @@ module Workspace_local = struct
        that text by the "Saving..." message. If this hypothetical scenario turns
        out to be a real problem, we will need to add some synchronisation
        mechanism to prevent clearing the status line too early. *)
-    let () = at_exit dump
+    let () = Dune_trace.at_exit dump
 
     let get path =
       let t = Lazy.force t in

@@ -24,7 +24,7 @@ let global = ref None
 let hooks = ref []
 
 let () =
-  at_exit (fun () ->
+  Global_lock.at_exit (fun () ->
     let hooks =
       let res = !hooks in
       hooks := [];

@@ -40,7 +40,13 @@ let invalid_sexp sexp = User_error.raise [ Pp.text "invalid sexp"; Sexp.pp sexp 
 
 let base_of_sexp (sexp : Sexp.t) =
   match sexp with
-  | List (Atom cat :: Atom name :: ts :: rest) -> cat, name, ts, rest
+  | List (Atom cat :: Atom name :: ts :: rest) ->
+    let digest =
+      List.find_map rest ~f:(function
+        | Sexp.List [ Atom "digest"; Atom d ] -> Some d
+        | _ -> None)
+    in
+    cat, name, ts, rest, digest
   | _ -> invalid_sexp sexp
 ;;
 
@@ -55,7 +61,7 @@ type process_info =
 
 let parse_process_event (sexp : Sexp.t) : process_info option =
   match base_of_sexp sexp with
-  | "process", "finish", _ts, rest ->
+  | "process", "finish", _ts, rest, _ ->
     let rec extract_fields prog args dir exit error stderr = function
       | [] -> prog, args, dir, exit, error, stderr
       | Sexp.List [ Atom "process_args"; List arg_sexps ] :: rest ->
@@ -134,7 +140,8 @@ let iter_sexps_follow file ~f =
         (* Check if exit event before processing *)
         let is_exit =
           match base_of_sexp sexp with
-          | "config", "exit", _, _ -> true
+          (* Only stop on exit events without a digest (the main dune exit) *)
+          | "config", "exit", _, _, None -> true
           | _ -> false
           | exception _ -> true
         in
@@ -163,7 +170,7 @@ let times_of_sexp (sexp : Sexp.t) =
 let pid = lazy (Unix.getpid ())
 
 let json_of_event ~chrome (sexp : Sexp.t) =
-  let cat, name, ts, rest = base_of_sexp sexp in
+  let cat, name, ts, rest, _ = base_of_sexp sexp in
   let ts, dur = times_of_sexp ts in
   let rest =
     List.map rest ~f:(function

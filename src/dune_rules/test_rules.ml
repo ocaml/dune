@@ -135,13 +135,18 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                    |> Rules.Produce.Alias.add_deps runtest_alias)
           in
           let expander = Expander.add_bindings expander ~bindings:extra_bindings in
+          let sandbox =
+            if Dune_project.dune_version project >= (3, 22)
+            then Sandbox_config.needs_sandboxing
+            else Sandbox_config.no_special_requirements
+          in
           match test_kind ~dir:(Expander.dir expander) dir_contents s ext with
           | `Regular ->
             let action =
               let chdir = Expander.dir expander in
               Action_unexpanded.expand_no_targets
                 run_action
-                Sandbox_config.no_special_requirements
+                sandbox
                 ~loc
                 ~expander
                 ~chdir
@@ -161,12 +166,10 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                    ~loc
                    ~expander
                    ~deps
-                   ~targets:Targets_spec.Infer
+                   ~targets:Infer
                    ~targets_dir:dir
                    run_action
-                   (if Dune_project.dune_version project >= (3, 22)
-                    then Sandbox_config.needs_sandboxing
-                    else Sandbox_config.no_special_requirements)
+                   sandbox
                in
                Action_builder.With_targets.add action ~file_targets:[ diff.file2 ]
                |> Action_builder.With_targets.map_build ~f:(fun action ->

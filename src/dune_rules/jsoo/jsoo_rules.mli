@@ -38,6 +38,13 @@ val build_cm
   -> config:Config.t option
   -> Action.Full.t Action_builder.With_targets.t
 
+val build_standalone_runtime
+  :  Compilation_context.t
+  -> loc:Loc.t
+  -> in_context:Js_of_ocaml.In_context.t
+  -> jsoo_mode:Js_of_ocaml.Mode.t
+  -> Path.Build.t option Memo.t
+
 val build_exe
   :  Compilation_context.t
   -> loc:Loc.t
@@ -49,6 +56,7 @@ val build_exe
   -> linkall:bool Action_builder.t
   -> link_time_code_gen:Link_time_code_gen_type.t Resolve.t
   -> jsoo_mode:Js_of_ocaml.Mode.t
+  -> standalone_runtime:Path.Build.t option
   -> unit Memo.t
 
 val setup_separate_compilation_rules : Super_context.t -> string list -> unit Memo.t

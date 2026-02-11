@@ -23,8 +23,8 @@ specify js mode (#1940).
 
   $ dune clean
   $ dune build --display short @@all 2>&1 | grep js_of_ocaml
-   js_of_ocaml .b.eobjs/jsoo/b.bc.runtime.js
-   js_of_ocaml .e.eobjs/jsoo/e.bc.runtime.js
+   js_of_ocaml .b.eobjs/jsoo/runtime.bc.runtime.js
+   js_of_ocaml .e.eobjs/jsoo/runtime.bc.runtime.js
    js_of_ocaml .js/default/stdlib/stdlib.cma.js
    js_of_ocaml .js/default/stdlib/std_exit.cmo.js
    js_of_ocaml .b.eobjs/jsoo/b.cmo.js

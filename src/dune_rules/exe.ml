@@ -258,6 +258,7 @@ let link_js
       ~promote
       ~link_time_code_gen
       ~jsoo_mode
+      ~standalone_runtime
       cctx
   =
   let in_context =
@@ -285,6 +286,7 @@ let link_js
     ~link_time_code_gen
     ~linkall
     ~jsoo_mode
+    ~standalone_runtime
 ;;
 
 type dep_graphs = { for_exes : Module.t list Action_builder.t list }
@@ -306,6 +308,39 @@ let link_many
   in
   let modules = Compilation_context.modules cctx in
   let* link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
+  (* Build shared jsoo standalone runtimes (one per mode) *)
+  let* shared_runtimes =
+    let in_context_for jsoo_mode =
+      Compilation_context.js_of_ocaml cctx
+      |> Js_of_ocaml.Mode.Pair.select ~mode:jsoo_mode
+      |> Option.value ~default:Js_of_ocaml.In_context.default
+    in
+    let loc =
+      match programs with
+      | p :: _ -> p.Program.loc
+      | [] -> Loc.none
+    in
+    let+ js =
+      if List.exists linkages ~f:(Linkage.is_jsoo ~mode:JS)
+      then
+        Jsoo_rules.build_standalone_runtime
+          cctx
+          ~loc
+          ~in_context:(in_context_for JS)
+          ~jsoo_mode:JS
+      else Memo.return None
+    and+ wasm =
+      if List.exists linkages ~f:(Linkage.is_jsoo ~mode:Wasm)
+      then
+        Jsoo_rules.build_standalone_runtime
+          cctx
+          ~loc
+          ~in_context:(in_context_for Wasm)
+          ~jsoo_mode:Wasm
+      else Memo.return None
+    in
+    { Js_of_ocaml.Mode.Pair.js; wasm }
+  in
   let+ for_exes =
     Memo.parallel_map programs ~f:(fun { Program.name; main_module_name; loc } ->
       let top_sorted_modules =
@@ -338,6 +373,9 @@ let link_many
           match linkage.Linkage.mode with
           | Jsoo jsoo_mode ->
             let obj_dir = Compilation_context.obj_dir cctx in
+            let standalone_runtime =
+              Js_of_ocaml.Mode.Pair.select ~mode:jsoo_mode shared_runtimes
+            in
             link_js
               ~loc
               ~name
@@ -348,6 +386,7 @@ let link_many
               cctx
               ~link_time_code_gen
               ~jsoo_mode
+              ~standalone_runtime
           | Ocaml linkage_mode ->
             let* link_time_code_gen =
               match Linkage.is_plugin linkage with

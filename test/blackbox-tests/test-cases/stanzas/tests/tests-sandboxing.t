@@ -23,3 +23,4 @@ Demonstrate that test stanza is now sandbox
 
   $ make_dune_project 3.22
   $ dune runtest dir/foo
+  foo.exe

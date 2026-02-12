@@ -1,5 +1,5 @@
 candidates "ocamlc" = [ "ocamlc.opt.exe"; "ocamlc.exe" ]
-candidates "ocamlc.exe" = [ "ocamlc.exe.exe" ]
-candidates "OCAMLC.EXE" = [ "OCAMLC.EXE.exe" ]
+candidates "ocamlc.exe" = [ "ocamlc.exe" ]
+candidates "OCAMLC.EXE" = [ "OCAMLC.EXE" ]
 candidates "foo" = [ "foo.exe" ]
-candidates "foo.exe" = [ "foo.exe.exe" ]
+candidates "foo.exe" = [ "foo.exe" ]

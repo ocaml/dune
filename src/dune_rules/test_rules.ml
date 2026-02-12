@@ -8,17 +8,16 @@ let runtest_alias mode ~dir =
   >>| Alias.make ~dir
 ;;
 
-let test_kind dir_contents (loc, name, ext) =
+let test_kind ~dir dir_contents name ext =
+  (* let dir = Dir_contents.dir dir_contents in *)
   let files = Dir_contents.text_files dir_contents in
   let expected_basename = name ^ ".expected" in
   if Filename.Set.mem files expected_basename
   then
     `Expect
-      { Diff.file1 = String_with_vars.make_text loc expected_basename
+      { Diff.file1 = Path.build (Path.Build.relative dir expected_basename)
       ; file2 =
-          String_with_vars.make_text
-            loc
-            (name ^ Filename.Extension.to_string ext ^ ".output")
+          Path.Build.relative dir (name ^ Filename.Extension.to_string ext ^ ".output")
       ; optional = false
       ; mode = Text
       }
@@ -123,55 +122,65 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                | `js JS | `exe | `bc -> t.deps)
           in
           let add_alias =
-            let expander = Expander.add_bindings expander ~bindings:extra_bindings in
             let alias =
               [ Alias.Name.to_string (Alias.name runtest_alias); s ]
               |> String.concat ~sep:"-"
               |> Alias.Name.of_string
               |> Alias.make ~dir
             in
-            fun ~loc ~action ->
-              let action =
-                let chdir = Expander.dir expander in
-                Action_unexpanded.expand_no_targets
-                  action
-                  Sandbox_config.no_special_requirements
-                  ~loc
-                  ~expander
-                  ~chdir
-                  ~deps
-                  ~what:"aliases"
-              in
-              Simple_rules.interpret_and_add_locks ~expander t.locks action
-              |> Simple_rules.Alias_rules.add sctx ~loc ~alias
+            fun ~loc action ->
+              Simple_rules.Alias_rules.add sctx ~loc ~alias action
               >>> (Dep.alias alias
                    |> Action_builder.dep
                    |> Rules.Produce.Alias.add_deps runtest_alias)
           in
-          match test_kind dir_contents (loc, s, ext) with
-          | `Regular -> add_alias ~loc ~action:run_action
+          let expander = Expander.add_bindings expander ~bindings:extra_bindings in
+          match test_kind ~dir:(Expander.dir expander) dir_contents s ext with
+          | `Regular ->
+            let action =
+              let chdir = Expander.dir expander in
+              Action_unexpanded.expand_no_targets
+                run_action
+                Sandbox_config.no_special_requirements
+                ~loc
+                ~expander
+                ~chdir
+                ~deps
+                ~what:"aliases"
+            in
+            Simple_rules.interpret_and_add_locks ~expander t.locks action
+            |> add_alias ~loc
           | `Expect diff ->
             let* (_ignored_targets : Targets.Validated.t) =
-              let expander = Expander.add_bindings expander ~bindings:extra_bindings in
               let* mode =
                 Rule_mode_expand.expand_path ~expander ~dir Rule_mode.Standard
               in
-              Action_unexpanded.expand
-                ~chdir:(Expander.dir expander)
-                ~loc
-                ~expander
-                ~deps
-                ~targets:Targets_spec.Infer
-                ~targets_dir:dir
-                (Action_unexpanded.Redirect_out (Stdout, diff.file2, Normal, run_action))
-                (if Dune_project.dune_version project >= (3, 22)
-                 then Sandbox_config.needs_sandboxing
-                 else Sandbox_config.no_special_requirements)
-              >>| Action_builder.With_targets.map_build
-                    ~f:(Simple_rules.interpret_and_add_locks ~expander t.locks)
+              (let+ action =
+                 Action_unexpanded.expand
+                   ~chdir:(Expander.dir expander)
+                   ~loc
+                   ~expander
+                   ~deps
+                   ~targets:Targets_spec.Infer
+                   ~targets_dir:dir
+                   run_action
+                   (if Dune_project.dune_version project >= (3, 22)
+                    then Sandbox_config.needs_sandboxing
+                    else Sandbox_config.no_special_requirements)
+               in
+               Action_builder.With_targets.add action ~file_targets:[ diff.file2 ]
+               |> Action_builder.With_targets.map_build ~f:(fun action ->
+                 Action_builder.map
+                   action
+                   ~f:(Action.Full.map ~f:(Action.with_stdout_to diff.file2))
+                 |> Simple_rules.interpret_and_add_locks ~expander t.locks))
               >>= Super_context.add_rule_get_targets sctx ~dir ~mode ~loc
             in
-            add_alias ~loc ~action:(Diff diff)))
+            add_alias
+              ~loc
+              (let open Action_builder.O in
+               let+ () = Action_builder.paths [ diff.file1; Path.build diff.file2 ] in
+               Action.Full.make (Action.Diff diff))))
   in
   Exe_rules.rules t.exes ~sctx ~scope ~expander ~dir_contents
 ;;

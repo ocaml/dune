@@ -1166,6 +1166,21 @@ module With_vlib = struct
       | Parent_cycle -> Error `Parent_cycle
   ;;
 
+  let implicit_deps t ~of_ =
+    match t with
+    | Impl _ -> []
+    | Modules { modules = Singleton _ | Unwrapped _ | Wrapped _; obj_map = _ } -> []
+    | Modules ({ modules = Stdlib s; obj_map = _ } as t) ->
+      (match Module_name.Set.mem s.unwrapped (Module.name of_) with
+       | true -> []
+       | false ->
+         Module_name.Set.to_list_map s.unwrapped ~f:(fun name ->
+           match Module_name.equal name (Module.name of_) with
+           | true -> None
+           | false -> modules_find t name)
+         |> List.filter_opt)
+  ;;
+
   let singleton_exe m = Modules (make_singleton m Exe)
 
   let impl_only =

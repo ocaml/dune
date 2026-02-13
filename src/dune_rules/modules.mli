@@ -80,6 +80,10 @@ module With_vlib : sig
     -> Module_name.t
     -> (Module.t list, [ `Parent_cycle ]) result
 
+  (** Additional dependencies that aren't always reported by [ocamldep], such
+      as `(modules_before_stdlib ..)` in `(stdlib ..)` libraries. *)
+  val implicit_deps : t -> of_:Module.t -> Module.t list
+
   val find : t -> Module_name.t -> Module.t option
   val impl_only : t -> Module.t list
 

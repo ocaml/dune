@@ -53,6 +53,3 @@ Show interaction between `(library (stdlib ..))` and sandboxed builds
 Fails to pick up the hidden stdlib deps in the sandbox
 
   $ DUNE_SANDBOX=symlink dune build
-  File "_none_", line 1:
-  Error: Unbound module CamlinternalFormatBasics
-  [1]

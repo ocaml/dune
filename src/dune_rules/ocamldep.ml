@@ -158,6 +158,7 @@ let deps_of ~sandbox ~modules ~sctx ~dir ~obj_dir ~ml_kind ~for_ unit =
             |> Action_builder.lines_of
             >>| parse_deps_exn ~file:(Module.File.path source)
             >>| parse_module_names ~dir ~unit ~modules
+            >>| Stdlib.( @ ) (Modules.With_vlib.implicit_deps modules ~of_:unit)
           in
           let transitive_deps = transitive_deps obj_dir immediate_deps ~for_ in
           let immediate_deps = List.map immediate_deps ~f:Module.obj_name in

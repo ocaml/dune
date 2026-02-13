@@ -1253,7 +1253,12 @@ let%expect_test "cancelling a computing node wakes waiters" =
     Started evaluating A
     Started evaluating B
     Started evaluating C
-    Deadlock!
+    Dependency cycle detected:
+    - ("A", ())
+    - called by ("C", ())
+    Dependency cycle detected:
+    - ("C", ())
+    - called by ("A", ())
     |}]
 ;;
 

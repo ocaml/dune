@@ -653,6 +653,12 @@ module Action = struct
     Event.complete ~args:[ "name", Arg.string name ] ~name:"finish" ~start ~dur Action
   ;;
 
+  let write_file ~start ~finish ~file ~size =
+    let dur = Time.diff finish start in
+    let args = [ "file", Arg.path file; "size", Arg.int size ] in
+    Event.complete ~start ~dur ~args ~name:"write-file" Action
+  ;;
+
   let trace ~digest (csexp : Sexp.t) =
     match csexp with
     | List xs -> Sexp.List (xs @ [ Sexp.List [ Atom "digest"; Atom digest ] ])

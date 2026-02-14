@@ -742,8 +742,12 @@ module Computation = struct
          to let the latter get the discovered dependencies [deps_rev]. *)
       Call_stack.push_frame frame (fun () -> fiber frame)
     in
-    let+ () = Fiber.Ivar.fill ivar result in
-    result
+    Fiber.Ivar.peek ivar
+    >>= function
+    | Some _ -> Fiber.return result
+    | None ->
+      let+ () = Fiber.Ivar.fill ivar result in
+      result
   ;;
 
   let read_but_first_check_for_cycles { ivar; dag_node } ~phase ~dep_node =
@@ -1172,6 +1176,30 @@ end = struct
         | true -> Cached_value.create value ~deps_rev
         | false -> Cached_value.confirm_old_value ~deps_rev old_cv)
 
+  and cancel_due_to_dependency_cycle
+    :  'i 'o.
+       dep_node:('i, 'o) Dep_node.t
+    -> dependency_cycle:Cycle_error.t
+    -> unit Fiber.t
+    =
+    fun ~dep_node ~dependency_cycle ->
+    match dep_node.state with
+    | Cached_value { value = Cancelled _; _ } -> Fiber.return ()
+    | Cached_value _ | Out_of_date _ ->
+      dep_node.state <- Cached_value (Cached_value.create_cancelled ~dependency_cycle);
+      Fiber.return ()
+    | Restoring _ ->
+      dep_node.state <- Cached_value (Cached_value.create_cancelled ~dependency_cycle);
+      Fiber.return ()
+    | Computing { compute; _ } ->
+      Fiber.Ivar.peek compute.ivar
+      >>= (function
+       | Some _ -> Fiber.return ()
+       | None ->
+         let cancelled = Cached_value.create_cancelled ~dependency_cycle in
+         dep_node.state <- Cached_value cancelled;
+         Fiber.Ivar.fill compute.ivar cancelled)
+
   and start_restoring
     :  'i 'o.
        dep_node:('i, 'o) Dep_node.t
@@ -1257,11 +1285,11 @@ end = struct
     | Out_of_date { old_value } -> start_computing ~dep_node ~old_value >>| Result.ok
     | Computing { compute; _ } ->
       Computation.read_but_first_check_for_cycles ~phase:Compute compute ~dep_node
-      >>| (function
-       | Ok _ as result -> result
+      >>= (function
+       | Ok _ as result -> Fiber.return result
        | Error dependency_cycle as result ->
-         dep_node.state <- Cached_value (Cached_value.create_cancelled ~dependency_cycle);
-         result)
+         let* () = cancel_due_to_dependency_cycle ~dep_node ~dependency_cycle in
+         Fiber.return result)
   ;;
 
   let exec_dep_node : 'i 'o. ('i, 'o) Dep_node.t -> 'o Fiber.t =

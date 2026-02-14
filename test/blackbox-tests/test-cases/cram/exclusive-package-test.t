@@ -22,18 +22,6 @@ This command should only run the packages for foo:
 # CR-someday rgrinberg: what happened to formatting here?!
 
   $ dune runtest --only-packages foo
-  File "bar/dir.t/run.t", line 1, characters 0-0:
-  --- bar/dir.t/run.t
-  +++ bar/dir.t/run.t.corrected
-  @@ -1 +1,2 @@
-     $ echo foo
-  +  foo
-  File "bar/file.t", line 1, characters 0-0:
-  --- bar/file.t
-  +++ bar/file.t.corrected
-  @@ -1 +1,2 @@
-     $ echo foo
-  +  foo
   File "foo/dir.t/run.t", line 1, characters 0-0:
   --- foo/dir.t/run.t
   +++ foo/dir.t/run.t.corrected

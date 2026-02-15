@@ -2,6 +2,12 @@ open Stdune
 module Process = Dune_engine.Process
 open Fiber.O
 
+(** Tar implementation type, detected via --version output *)
+type tar_impl =
+  | Bsd (** BSD tar / libarchive - auto-detects compression, can extract zip *)
+  | Gnu (** GNU tar - auto-detects compression, no zip support *)
+  | Other (** Unknown (e.g. OpenBSD) - needs explicit -z/-j flags *)
+
 module Command = struct
   type t =
     { bin : Path.t
@@ -16,8 +22,38 @@ type t =
 
 let which bin_name = Bin.which ~path:(Env_path.path Env.initial) bin_name
 
-let make_tar_args ~archive ~target_in_temp =
-  [ "xf"; Path.to_string archive; "-C"; Path.to_string target_in_temp ]
+(** Detect tar implementation by running --version *)
+let detect_tar_impl bin =
+  let+ output, _ = Process.run_capture ~display:Quiet Return bin [ "--version" ] in
+  let matches s = Re.execp (Re.compile (Re.str s)) output in
+  if matches "bsdtar" || matches "libarchive"
+  then Bsd
+  else if matches "GNU tar"
+  then Gnu
+  else Other
+;;
+
+(** Generate tar arguments, adding -z/-j for non-auto-detecting tar *)
+let make_tar_args ~tar_impl ~archive ~target_in_temp =
+  let decompress_flag =
+    match tar_impl with
+    | Bsd | Gnu -> [] (* auto-detect compression *)
+    | Other ->
+      (* Need explicit flags for tar implementations that don't auto-detect *)
+      let archive_str = Path.to_string archive in
+      if
+        Filename.check_suffix archive_str ".tar.gz"
+        || Filename.check_suffix archive_str ".tgz"
+      then [ "-z" ]
+      else if
+        Filename.check_suffix archive_str ".tar.bz2"
+        || Filename.check_suffix archive_str ".tbz"
+      then [ "-j" ]
+      else []
+  in
+  [ "-x" ]
+  @ decompress_flag
+  @ [ "-f"; Path.to_string archive; "-C"; Path.to_string target_in_temp ]
 ;;
 
 let make_zip_args ~archive ~target_in_temp =
@@ -27,12 +63,10 @@ let make_zip_args ~archive ~target_in_temp =
 let tar =
   let command =
     Fiber.Lazy.create (fun () ->
-      match
-        (* Test for tar before bsdtar as tar is more likely to be installed
-            and both work equally well for tarballs. *)
-        List.find_map [ "tar"; "bsdtar" ] ~f:which
-      with
-      | Some bin -> Fiber.return { Command.bin; make_args = make_tar_args }
+      match List.find_map [ "tar"; "bsdtar" ] ~f:which with
+      | Some bin ->
+        let+ tar_impl = detect_tar_impl bin in
+        { Command.bin; make_args = make_tar_args ~tar_impl }
       | None ->
         Fiber.return
         @@ User_error.raise
@@ -69,7 +103,9 @@ let zip =
         in
         let* program = find_tar [ "bsdtar"; "tar" ] in
         (match program with
-         | Some bin -> Fiber.return { Command.bin; make_args = make_tar_args }
+         | Some bin ->
+           (* We know it's bsdtar since which_bsdtar verified it *)
+           Fiber.return { Command.bin; make_args = make_tar_args ~tar_impl:Bsd }
          | None ->
            Fiber.return
            @@ User_error.raise

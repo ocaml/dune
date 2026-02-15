@@ -402,7 +402,11 @@ module Env_update = struct
     else (
       match kind with
       | `Colon ->
-        let old_v = Option.value ~default:[] old_v in
+        let old_v =
+          match old_v with
+          | None | Some [] -> [ Value.String "" ]
+          | Some v -> v
+        in
         Some (f ~old_v ~new_v)
       | `Plus ->
         (match old_v with

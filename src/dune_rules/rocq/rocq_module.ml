@@ -34,20 +34,23 @@ module Module = struct
      Bar.` may benefit from it. *)
   type t =
     { source : Path.t
+    ; expected : Path.t option
     ; prefix : string list
     ; name : Name.t
     }
 
-  let compare { source; prefix; name } t =
+  let compare { source; expected; prefix; name } t =
     let open Ordering.O in
     let= () = Path.compare source t.source in
+    let= () = Option.compare Path.compare expected t.expected in
     let= () = List.compare prefix t.prefix ~compare:String.compare in
     Name.compare name t.name
   ;;
 
-  let to_dyn { source; prefix; name } =
+  let to_dyn { source; expected; prefix; name } =
     Dyn.record
       [ "source", Path.to_dyn source
+      ; "expected", Dyn.option Path.to_dyn expected
       ; "prefix", Dyn.list Dyn.string prefix
       ; "name", Name.to_dyn name
       ]
@@ -57,7 +60,7 @@ end
 include Module
 module Map = Map.Make (Module)
 
-let make ~source ~prefix ~name = { source; prefix; name }
+let make ~source ~expected ~prefix ~name = { source; expected; prefix; name }
 let source x = x.source
 let prefix x = x.prefix
 let name x = x.name
@@ -85,6 +88,12 @@ type obj_files_mode =
 let glob_file x ~obj_dir =
   let vo_dir = build_vo_dir ~obj_dir x in
   Path.Build.relative vo_dir (x.name ^ ".glob")
+;;
+
+let expected_and_output_file x ~obj_dir =
+  Option.map x.expected ~f:(fun expected ->
+    let vo_dir = build_vo_dir ~obj_dir x in
+    expected, Path.Build.relative vo_dir (x.name ^ ".output"))
 ;;
 
 (* As of today we do the same for build and install, it used not to be
@@ -120,15 +129,6 @@ let obj_files x ~wrapper_name ~mode ~obj_dir ~obj_files_mode =
   @ native_objs
 ;;
 
-let to_dyn { source; prefix; name } =
-  let open Dyn in
-  record
-    [ "source", Path.to_dyn source
-    ; "prefix", list string prefix
-    ; "name", Name.to_dyn name
-    ]
-;;
-
 let parse ~dir ~loc s =
   let clist = List.rev @@ String.split s ~on:'.' in
   match clist with
@@ -137,7 +137,7 @@ let parse ~dir ~loc s =
     let prefix = List.rev prefix in
     let source = List.fold_left prefix ~init:dir ~f:Path.Build.relative in
     let source = Path.build @@ Path.Build.relative source (name ^ ".v") in
-    make ~name ~source ~prefix
+    make ~name ~expected:None ~source ~prefix
 ;;
 
 let eval =

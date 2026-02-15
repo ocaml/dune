@@ -41,22 +41,25 @@ let empty =
 ;;
 
 let rocq_modules_of_files ~dirs =
-  let filter_v_files
-        ({ Source_file_dir.dir = _; path_to_root = _; files; source_dir = _; stanzas = _ }
-         as sd)
-    =
-    { sd with files = String.Set.filter files ~f:(fun f -> Filename.check_suffix f ".v") }
-  in
-  let dirs = Nonempty_list.to_list_map dirs ~f:filter_v_files in
-  let build_mod_dir
-        { Source_file_dir.dir; path_to_root = prefix; files; source_dir = _; stanzas = _ }
-    =
-    String.Set.to_list_map files ~f:(fun file ->
+  let build_mod_dir (sd : Source_file_dir.t) =
+    let prefix = sd.path_to_root in
+    let v_files = String.Set.filter sd.files ~f:(fun f -> Filename.check_suffix f ".v") in
+    String.Set.to_list_map v_files ~f:(fun file ->
       let name, _ = Filename.split_extension file in
+      let expected = name ^ ".expected" in
       let name = Rocq_module.Name.make name in
-      Rocq_module.make ~source:(Path.build @@ Path.Build.relative dir file) ~prefix ~name)
+      let expected =
+        if String.Set.mem sd.files expected
+        then Some (Path.build @@ Path.Build.relative sd.dir expected)
+        else None
+      in
+      Rocq_module.make
+        ~source:(Path.build @@ Path.Build.relative sd.dir file)
+        ~expected
+        ~prefix
+        ~name)
   in
-  List.concat_map ~f:build_mod_dir dirs
+  List.concat_map ~f:build_mod_dir (Nonempty_list.to_list dirs)
 ;;
 
 let library t ~name = Rocq_lib_name.Map.find_exn t.libraries name

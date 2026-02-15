@@ -799,6 +799,21 @@ module Per_file = struct
   ;;
 end
 
+let setup_output_diff_rule ~loc ~dir ~sctx rocq_module =
+  match Rocq_module.expected_and_output_file ~obj_dir:dir rocq_module with
+  | None -> Memo.return ()
+  | Some (expected, output) ->
+    let diff = { Diff.file1 = expected; file2 = output; optional = false; mode = Text } in
+    let alias = Alias.make ~dir Alias0.runtest in
+    Simple_rules.Alias_rules.add
+      sctx
+      ~loc
+      ~alias
+      (let open Action_builder.O in
+       let+ () = Action_builder.paths [ diff.file1; Path.build diff.file2 ] in
+       Action.Full.make (Action.Diff diff))
+;;
+
 let setup_rocqc_rule
       ~scope
       ~loc
@@ -831,7 +846,13 @@ let setup_rocqc_rule
       rocq_module
     |> List.map ~f:fst
   in
-  let target_obj_files = Command.Args.Hidden_targets obj_files in
+  let output_file =
+    Option.map (Rocq_module.expected_and_output_file ~obj_dir:dir rocq_module) ~f:snd
+  in
+  let targets =
+    let targets = Option.to_list output_file @ obj_files in
+    Command.Args.Hidden_targets targets
+  in
   let* args =
     generic_rocq_args
       ~sctx
@@ -858,8 +879,9 @@ let setup_rocqc_rule
      >>> Action_builder.With_targets.add ~file_targets
          @@ Command.run
               ~dir:(Path.build rocqc_dir)
+              ?stdout_to:output_file
               rocq
-              (cflag :: target_obj_files :: args)
+              (cflag :: targets :: args)
      (* The way we handle the transitive dependencies of .vo files is not safe for
         sandboxing *)
      >>| Action.Full.add_sandbox Sandbox_config.no_sandboxing)
@@ -1116,24 +1138,24 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
         ~boot_flags
         ~stanza_rocqdep_flags:s.rocqdep_flags
         rocq_modules
-  >>> Memo.parallel_iter
-        rocq_modules
-        ~f:
-          (setup_rocqc_rule
-             ~scope
-             ~loc
-             ~dir
-             ~sctx
-             ~file_targets:[]
-             ~stanza_flags
-             ~modules_flags
-             ~rocqc_dir
-             ~theories_deps
-             ~mode
-             ~wrapper_name
-             ~use_stdlib
-             ~ml_flags
-             ~theory_dirs)
+  >>> Memo.parallel_iter rocq_modules ~f:(fun rocq_module ->
+    setup_rocqc_rule
+      ~scope
+      ~loc
+      ~dir
+      ~sctx
+      ~file_targets:[]
+      ~stanza_flags
+      ~modules_flags
+      ~rocqc_dir
+      ~theories_deps
+      ~mode
+      ~wrapper_name
+      ~use_stdlib
+      ~ml_flags
+      ~theory_dirs
+      rocq_module
+    >>> setup_output_diff_rule ~loc ~dir ~sctx rocq_module)
   (* And finally the rocqdoc rules *)
   >>> setup_rocqdoc_rules ~sctx ~dir ~theories_deps s rocq_modules
 ;;
@@ -1310,6 +1332,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.
         ~use_stdlib:s.buildable.use_stdlib
         ~ml_flags
         ~theory_dirs:Path.Build.Set.empty
+  >>> setup_output_diff_rule ~loc ~dir ~sctx rocq_module
 ;;
 
 let rocqtop_args_extraction ~sctx ~dir (s : Rocq_stanza.Extraction.t) rocq_module =

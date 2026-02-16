@@ -46,6 +46,8 @@ let build = of_string "build"
 let post = of_string "post"
 let dev = of_string "dev"
 let installed = of_string "installed"
+let pinned = of_string "pinned"
+let enable = of_string "enable"
 let one_of t xs = List.mem xs ~equal t
 
 let absent_package_value t =
@@ -75,6 +77,8 @@ let all_known =
   ; post
   ; dev
   ; installed
+  ; pinned
+  ; enable
   ]
 ;;
 

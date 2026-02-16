@@ -33,6 +33,8 @@ val post : t
 val build : t
 val dev : t
 val installed : t
+val pinned : t
+val enable : t
 val one_of : t -> t list -> bool
 
 (** Returns the value of a package variable when the package is not in the

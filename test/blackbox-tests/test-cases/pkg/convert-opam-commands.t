@@ -320,12 +320,4 @@ preserved between opam and dune.
          (if (catch_undefined_var %{pkg-self:installed} false) enable disable)
          -feature))
        (run echo --disable-feature)
-       (run
-        echo
-        (concat
-         --
-         (if
-          (catch_undefined_var (and %{pkg:foo:enable} %{pkg:bar:enable}) false)
-          x
-          y)
-         -feature)))))))
+       (run echo --y-feature))))))

@@ -31,12 +31,14 @@ let simplify_filter ~packages_in_solution get_solver_var =
       if Package_name.Map.mem packages_in_solution name
       then None
       else (
-        (* Package is absent from solution - substitute known boolean values.
-           We only substitute 'installed' because it's a boolean variable.
-           String variables like 'version' can't be converted to boolean
-           by OpamFilter.eval_to_bool when used in filter contexts. *)
+        (* Package is absent from solution - substitute known values.
+           All these are false/falsey for absent packages. *)
         let var_name = OpamVariable.Full.variable var |> Package_variable_name.of_opam in
-        if Package_variable_name.(equal var_name installed) then Some (B false) else None))
+        if
+          Package_variable_name.(
+            equal var_name installed || equal var_name pinned || equal var_name enable)
+        then Some (B false)
+        else None))
 ;;
 
 let partial_eval_filter = function
@@ -87,7 +89,11 @@ let opam_variable_to_slang =
              Package_variable_name.absent_package_value variable_name
              |> Option.value ~default:""
              |> Slang.text
-           else if Package_variable_name.(equal variable_name installed)
+           else if
+             Package_variable_name.(
+               equal variable_name installed
+               || equal variable_name pinned
+               || equal variable_name enable)
            then Slang.bool false
            else opam_var_to_pform variable_name (Package pkg_name)
          | None -> opam_var_to_pform variable_name Self)
@@ -352,14 +358,18 @@ let opam_commands_to_actions
                    in
                    let filter_blang_handling_undefined =
                      (* Wrap the blang filter so that if any undefined
-                         variables are expanded while evaluating the filter,
-                         the filter will return false. *)
-                     let slang =
-                       Slang.catch_undefined_var
-                         (Slang.blang filter_blang)
-                         ~fallback:(Slang.bool false)
-                     in
-                     Blang.Expr slang
+                        variables are expanded while evaluating the filter,
+                        the filter will return false. Skip wrapping if the
+                        filter is already a constant. *)
+                     match filter_blang with
+                     | Const _ -> filter_blang
+                     | _ ->
+                       let slang =
+                         Slang.catch_undefined_var
+                           (Slang.blang filter_blang)
+                           ~fallback:(Slang.bool false)
+                       in
+                       Blang.Expr slang
                    in
                    Slang.when_ filter_blang_handling_undefined slang
                in

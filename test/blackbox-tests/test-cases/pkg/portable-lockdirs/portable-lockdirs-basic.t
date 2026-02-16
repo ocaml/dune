@@ -61,35 +61,15 @@ Create a package that writes a different value to some files depending on the os
   (version 0.0.1)
   
   (build
-   (choice
-    ((((arch x86_64) (os linux)))
-     ((action
-       (progn
-        (run mkdir -p %{share} %{lib}/%{pkg-self:name})
-        (run touch %{lib}/%{pkg-self:name}/META)
-        (run sh -c "echo Linux > %{share}/kernel")
-        (run sh -c "echo x86_64 > %{share}/machine")))))
-    ((((arch arm64) (os linux)))
-     ((action
-       (progn
-        (run mkdir -p %{share} %{lib}/%{pkg-self:name})
-        (run touch %{lib}/%{pkg-self:name}/META)
-        (run sh -c "echo Linux > %{share}/kernel")
-        (run sh -c "echo arm64 > %{share}/machine")))))
-    ((((arch x86_64) (os macos)))
-     ((action
-       (progn
-        (run mkdir -p %{share} %{lib}/%{pkg-self:name})
-        (run touch %{lib}/%{pkg-self:name}/META)
-        (run sh -c "echo Darwin > %{share}/kernel")
-        (run sh -c "echo x86_64 > %{share}/machine")))))
-    ((((arch arm64) (os macos)))
-     ((action
-       (progn
-        (run mkdir -p %{share} %{lib}/%{pkg-self:name})
-        (run touch %{lib}/%{pkg-self:name}/META)
-        (run sh -c "echo Darwin > %{share}/kernel")
-        (run sh -c "echo arm64 > %{share}/machine")))))))
+   (all_platforms
+    ((action
+      (progn
+       (run mkdir -p %{share} %{lib}/%{pkg-self:name})
+       (run touch %{lib}/%{pkg-self:name}/META)
+       (when (= %{os} macos) (run sh -c "echo Darwin > %{share}/kernel"))
+       (when (= %{os} linux) (run sh -c "echo Linux > %{share}/kernel"))
+       (when (= %{arch} x86_64) (run sh -c "echo x86_64 > %{share}/machine"))
+       (when (= %{arch} arm64) (run sh -c "echo arm64 > %{share}/machine")))))))
 
   $ DUNE_CONFIG__ARCH=arm64 dune build
   $ cat $pkg_root/$(dune pkg print-digest foo)/target/share/kernel

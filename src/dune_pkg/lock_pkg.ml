@@ -466,7 +466,13 @@ let opam_package_to_lock_file_pkg
   in
   let get_solver_var variable_name =
     Solver_stats.Updater.expand_variable stats_updater variable_name;
-    Solver_env.get solver_env variable_name
+    if
+      portable_lock_dir
+      && Package_variable_name.Set.mem
+           Package_variable_name.platform_specific
+           variable_name
+    then None
+    else Solver_env.get solver_env variable_name
   in
   let* build_command =
     if Resolved_package.dune_build resolved_package

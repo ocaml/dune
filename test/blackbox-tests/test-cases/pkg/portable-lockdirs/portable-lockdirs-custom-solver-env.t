@@ -63,7 +63,9 @@ Confirming that the build action creates the conditional file:
       (progn
        (run mkdir -p %{share} %{lib}/%{pkg-self:name})
        (run touch %{lib}/%{pkg-self:name}/META)
-       (run sh -c "echo %{sys_ocaml_version} > %{share}/sys-ocaml-version"))))))
+       (when
+        (= %{sys_ocaml_version} 5.4.0+solver-env-version-override)
+        (run sh -c "echo %{sys_ocaml_version} > %{share}/sys-ocaml-version")))))))
 
 Build and print the file that was conditionally added. Note that the value of
 "sys-ocaml-version" at solve-time may be different from "sys-ocaml-version" at

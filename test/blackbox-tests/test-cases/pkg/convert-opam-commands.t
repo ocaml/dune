@@ -191,11 +191,7 @@ Package which has boolean where string was expected. This should be caught while
        (when (< %{pkg-self:version} 1.0) (run echo g))
        (run echo i)
        (run echo j)
-       (when %{pkg:foo:installed} (run echo k))
-       (when (< %{pkg:foo:version} 0.4) (run echo l))
-       (when
-        (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg:baz:installed})
-        (run echo m)))))))
+       (when (< %{pkg:foo:version} 0.4) (run echo l)))))))
 
 Test that if opam filter translation is disabled the output doesn't contain any translated filters:
   $ solve exercise-filters
@@ -235,11 +231,7 @@ Test that if opam filter translation is disabled the output doesn't contain any 
        (when (< %{pkg-self:version} 1.0) (run echo g))
        (run echo i)
        (run echo j)
-       (when %{pkg:foo:installed} (run echo k))
-       (when (< %{pkg:foo:version} 0.4) (run echo l))
-       (when
-        (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg:baz:installed})
-        (run echo m)))))))
+       (when (< %{pkg:foo:version} 0.4) (run echo l)))))))
 
   $ solve exercise-term-filters
   Solution for dune.lock:
@@ -318,23 +310,8 @@ preserved between opam and dune.
          "c "
          (if (catch_undefined_var %{pkg-self:installed} false) x y)
          " d"))
-       (run
-        echo
-        (concat
-         "e "
-         (if (catch_undefined_var %{pkg:foo:installed} false) x y)
-         " f"))
-       (run
-        echo
-        (concat
-         "g "
-         (if
-          (catch_undefined_var
-           (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg-self:installed})
-           false)
-          x
-          y)
-         " h"))
+       (run echo "e y f")
+       (run echo "g y h")
        (run echo --%{pkg-self:enable}-feature)
        (run
         echo
@@ -342,17 +319,7 @@ preserved between opam and dune.
          --
          (if (catch_undefined_var %{pkg-self:installed} false) enable disable)
          -feature))
-       (run
-        echo
-        (concat
-         --
-         (if
-          (catch_undefined_var
-           (and %{pkg:foo:installed} %{pkg:bar:installed})
-           false)
-          enable
-          disable)
-         -feature))
+       (run echo --disable-feature)
        (run
         echo
         (concat

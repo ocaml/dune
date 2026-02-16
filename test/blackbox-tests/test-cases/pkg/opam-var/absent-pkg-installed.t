@@ -36,21 +36,19 @@ Now test the variable in truthy/filter context (conditional on command):
   Solution for dune.lock:
   - truthy-context.0.0.1
 
-In truthy context, the variable is left for build time evaluation where it will
-be undefined and thus falsey:
+In truthy context, the variable evaluates to false at solve time. Commands with
+always-false conditions are removed, and commands with always-true conditions
+have their filters removed:
 
   $ cat dune.lock/truthy-context.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (all_platforms
-    ((action
-      (progn
-       (when %{pkg:not-in-lock:installed} (run echo yes))
-       (when (not %{pkg:not-in-lock:installed}) (run echo no)))))))
+   (all_platforms ((action (run echo no)))))
 
-The "enable" variable is desugared to "installed?enable:disable". The
-"?then:else" syntax uses catch_undefined_var to handle undefined:
+The "enable" variable is desugared to "installed?enable:disable". Since
+"installed" is known to be false for absent packages, the conditional is
+evaluated at solve time:
 
   $ mkpkg "enable-context" <<'EOF'
   > build: [
@@ -62,19 +60,11 @@ The "enable" variable is desugared to "installed?enable:disable". The
   Solution for dune.lock:
   - enable-context.0.0.1
 
-The conditional evaluates to "disable" at build time when the variable is
-undefined:
+The conditional evaluates to "disable" at solve time since "installed" is false:
 
   $ cat dune.lock/enable-context.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (all_platforms
-    ((action
-      (run
-       echo
-       (if
-        (catch_undefined_var %{pkg:not-in-lock:installed} false)
-        enable
-        disable))))))
+   (all_platforms ((action (run echo disable)))))
 

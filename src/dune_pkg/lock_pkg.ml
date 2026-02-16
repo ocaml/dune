@@ -12,7 +12,7 @@ let add_self_to_filter_env package env variable =
     else env variable
 ;;
 
-let simplify_filter get_solver_var =
+let simplify_filter ~packages_in_solution get_solver_var =
   OpamFilter.partial_eval (fun var ->
     match OpamVariable.Full.scope var with
     | Global ->
@@ -25,7 +25,18 @@ let simplify_filter get_solver_var =
            *)
         Some (B false)
       else get_solver_var name |> Option.map ~f:Variable_value.to_opam_variable_contents
-    | _ -> None)
+    | Self -> None
+    | Package pkg_name ->
+      let name = Package_name.of_opam_package_name pkg_name in
+      if Package_name.Map.mem packages_in_solution name
+      then None
+      else (
+        (* Package is absent from solution - substitute known boolean values.
+           We only substitute 'installed' because it's a boolean variable.
+           String variables like 'version' can't be converted to boolean
+           by OpamFilter.eval_to_bool when used in filter contexts. *)
+        let var_name = OpamVariable.Full.variable var |> Package_variable_name.of_opam in
+        if Package_variable_name.(equal var_name installed) then Some (B false) else None))
 ;;
 
 let partial_eval_filter = function
@@ -76,6 +87,8 @@ let opam_variable_to_slang =
              Package_variable_name.absent_package_value variable_name
              |> Option.value ~default:""
              |> Slang.text
+           else if Package_variable_name.(equal variable_name installed)
+           then Slang.bool false
            else opam_var_to_pform variable_name (Package pkg_name)
          | None -> opam_var_to_pform variable_name Self)
     in
@@ -140,10 +153,18 @@ let opam_fident_to_slang ~loc ~packages_in_solution ~for_string_interp fident =
        an undefined variable. The catch_undefined_var operator is used to
        convert expressions that throw undefined variable exceptions into false.
     *)
-    let condition =
-      Blang.Expr (Slang.catch_undefined_var slang ~fallback:(Slang.bool false))
+    let is_known_false =
+      match slang with
+      | Form (_, Blang (Blang.Const false)) -> true
+      | _ -> false
     in
-    Slang.if_ condition ~then_:(Slang.text then_) ~else_:(Slang.text else_)
+    if is_known_false
+    then Slang.text else_
+    else (
+      let condition =
+        Blang.Expr (Slang.catch_undefined_var slang ~fallback:(Slang.bool false))
+      in
+      Slang.if_ condition ~then_:(Slang.text then_) ~else_:(Slang.text else_))
 ;;
 
 let opam_raw_fident_to_slang ~loc ~packages_in_solution ~for_string_interp raw_ident =
@@ -293,13 +314,17 @@ let opam_commands_to_actions
       (commands : OpamTypes.command list)
   =
   List.filter_map commands ~f:(fun (args, filter) ->
-    let filter = Option.map filter ~f:(simplify_filter get_solver_var) in
+    let filter =
+      Option.map filter ~f:(simplify_filter ~packages_in_solution get_solver_var)
+    in
     match partial_eval_filter filter with
     | `Skip -> None
     | `Filter filter ->
       let terms =
         List.filter_map args ~f:(fun ((simple_arg : OpamTypes.simple_arg), filter) ->
-          let filter = Option.map filter ~f:(simplify_filter get_solver_var) in
+          let filter =
+            Option.map filter ~f:(simplify_filter ~packages_in_solution get_solver_var)
+          in
           match partial_eval_filter filter with
           | `Skip -> None
           | `Filter filter ->

@@ -303,16 +303,14 @@ let%expect_test "when unknown" =
 
 (* Slang: If *)
 
-(* CR-soon Alizter: should reduce to Literal "yes" *)
 let%expect_test "if true" =
   print_slang (Slang.if_ (const true) ~then_:(Slang.text "yes") ~else_:(Slang.text "no"));
-  [%expect {| If (Const true, Literal "yes", Literal "no") |}]
+  [%expect {| Literal "yes" |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Literal "no" *)
 let%expect_test "if false" =
   print_slang (Slang.if_ (const false) ~then_:(Slang.text "yes") ~else_:(Slang.text "no"));
-  [%expect {| If (Const false, Literal "yes", Literal "no") |}]
+  [%expect {| Literal "no" |}]
 ;;
 
 let%expect_test "if unknown" =

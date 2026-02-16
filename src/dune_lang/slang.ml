@@ -312,13 +312,11 @@ let rec simplify = function
         | Const false -> Nil
         | _ -> Form (loc, When (simplified_condition, simplify t)))
      | If { condition; then_; else_ } ->
-       Form
-         ( loc
-         , If
-             { condition = simplify_blang condition
-             ; then_ = simplify then_
-             ; else_ = simplify else_
-             } )
+       (match simplify_blang condition with
+        | Const true -> simplify then_
+        | Const false -> simplify else_
+        | condition ->
+          Form (loc, If { condition; then_ = simplify then_; else_ = simplify else_ }))
      | Has_undefined_var t -> Form (loc, Has_undefined_var (simplify t))
      | Catch_undefined_var { value; fallback } ->
        Form

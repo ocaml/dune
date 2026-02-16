@@ -82,28 +82,19 @@ let%expect_test "and singleton" =
   [%expect {| Expr (Literal (template "%{pkg-self:x}")) |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Const false *)
 let%expect_test "and false short-circuits" =
   print_blang (and_ [ expr (pform "x"); const false; expr (pform "y") ]);
-  [%expect
-    {|
-    And
-      (Expr (Literal (template "%{pkg-self:x}")),
-       Const false,
-       Expr (Literal (template "%{pkg-self:y}")))
-    |}]
+  [%expect {| Const false |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Expr ... *)
 let%expect_test "and filters true" =
   print_blang (and_ [ const true; expr (pform "x") ]);
-  [%expect {| And (Const true, Expr (Literal (template "%{pkg-self:x}"))) |}]
+  [%expect {| Expr (Literal (template "%{pkg-self:x}")) |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Const true *)
 let%expect_test "and all true" =
   print_blang (and_ [ const true; const true ]);
-  [%expect {| And (Const true, Const true) |}]
+  [%expect {| Const true |}]
 ;;
 
 let%expect_test "and flattens" =
@@ -124,28 +115,19 @@ let%expect_test "or singleton" =
   [%expect {| Expr (Literal (template "%{pkg-self:x}")) |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Const true *)
 let%expect_test "or true short-circuits" =
   print_blang (or_ [ expr (pform "x"); const true; expr (pform "y") ]);
-  [%expect
-    {|
-    Or
-      (Expr (Literal (template "%{pkg-self:x}")),
-       Const true,
-       Expr (Literal (template "%{pkg-self:y}")))
-    |}]
+  [%expect {| Const true |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Expr ... *)
 let%expect_test "or filters false" =
   print_blang (or_ [ const false; expr (pform "x") ]);
-  [%expect {| Or (Const false, Expr (Literal (template "%{pkg-self:x}"))) |}]
+  [%expect {| Expr (Literal (template "%{pkg-self:x}")) |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Const false *)
 let%expect_test "or all false" =
   print_blang (or_ [ const false; const false ]);
-  [%expect {| Or (Const false, Const false) |}]
+  [%expect {| Const false |}]
 ;;
 
 let%expect_test "or flattens" =

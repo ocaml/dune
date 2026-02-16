@@ -357,7 +357,6 @@ and simplify_blang = function
      | Const b -> Const (not b)
      | Not blang -> blang
      | blang -> Not blang)
-  | And [ b ] -> simplify_blang b
   | And blangs ->
     let blangs =
       List.concat_map blangs ~f:(fun blang ->
@@ -365,8 +364,21 @@ and simplify_blang = function
         | And xs -> xs
         | blang -> [ blang ])
     in
-    And (List.map blangs ~f:simplify_blang)
-  | Or [ b ] -> simplify_blang b
+    if
+      List.exists blangs ~f:(function
+        | Blang.Const false -> true
+        | _ -> false)
+    then Const false
+    else (
+      let blangs =
+        List.filter blangs ~f:(function
+          | Blang.Const true -> false
+          | _ -> true)
+      in
+      match blangs with
+      | [] -> Const true
+      | [ b ] -> b
+      | blangs -> And blangs)
   | Or blangs ->
     let blangs =
       List.concat_map blangs ~f:(fun blang ->
@@ -374,7 +386,21 @@ and simplify_blang = function
         | Or xs -> xs
         | blang -> [ blang ])
     in
-    Or (List.map blangs ~f:simplify_blang)
+    if
+      List.exists blangs ~f:(function
+        | Blang.Const true -> true
+        | _ -> false)
+    then Const true
+    else (
+      let blangs =
+        List.filter blangs ~f:(function
+          | Blang.Const false -> false
+          | _ -> true)
+      in
+      match blangs with
+      | [] -> Const false
+      | [ b ] -> b
+      | blangs -> Or blangs)
 ;;
 
 module Blang = struct

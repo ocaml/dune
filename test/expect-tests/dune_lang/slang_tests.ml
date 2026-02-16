@@ -68,11 +68,10 @@ let%expect_test "expr pform" =
   [%expect {| Expr (Literal (template "%{pkg-self:x}")) |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Const false *)
 let%expect_test "expr (blang const)" =
   let inner = Slang.catch_undefined_var (Slang.bool false) ~fallback:(Slang.bool true) in
   print_blang (expr inner);
-  [%expect {| Expr (Catch_undefined_var (Blang (Const false), Blang (Const true))) |}]
+  [%expect {| Const false |}]
 ;;
 
 (* Blang: And *)
@@ -355,10 +354,9 @@ let%expect_test "if eta: same branches" =
 
 (* Slang: Catch_undefined_var *)
 
-(* CR-soon Alizter: should reduce to Blang (Const false) *)
 let%expect_test "catch const" =
   print_slang (Slang.catch_undefined_var (Slang.bool false) ~fallback:(Slang.bool true));
-  [%expect {| Catch_undefined_var (Blang (Const false), Blang (Const true)) |}]
+  [%expect {| Blang (Const false) |}]
 ;;
 
 let%expect_test "catch unknown" =
@@ -374,10 +372,9 @@ let%expect_test "has_undefined_var pform" =
   [%expect {| Has_undefined_var (Literal (template "%{pkg-self:x}")) |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Blang (Const false) *)
 let%expect_test "has_undefined_var const" =
   print_slang (Slang.has_undefined_var (Slang.bool true));
-  [%expect {| Has_undefined_var (Blang (Const true)) |}]
+  [%expect {| Blang (Const false) |}]
 ;;
 
 (* Slang: And_absorb_undefined_var *)

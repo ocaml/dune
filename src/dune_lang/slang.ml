@@ -317,11 +317,14 @@ let rec simplify = function
         | Const false -> simplify else_
         | condition ->
           Form (loc, If { condition; then_ = simplify then_; else_ = simplify else_ }))
-     | Has_undefined_var t -> Form (loc, Has_undefined_var (simplify t))
+     | Has_undefined_var t ->
+       (match simplify t with
+        | Form (_, Blang (Const _)) -> Form (loc, Blang (Const false))
+        | t -> Form (loc, Has_undefined_var t))
      | Catch_undefined_var { value; fallback } ->
-       Form
-         ( loc
-         , Catch_undefined_var { value = simplify value; fallback = simplify fallback } )
+       (match simplify value with
+        | Form (_, Blang (Const _)) as value -> value
+        | value -> Form (loc, Catch_undefined_var { value; fallback = simplify fallback }))
      | And_absorb_undefined_var blangs ->
        let blangs : blang list =
          List.concat_map blangs ~f:(fun blang ->
@@ -348,7 +351,10 @@ and simplify_blang = function
      | Some "false" -> Const false
      | _ -> expr)
   | Expr (Form (_, Blang blang)) -> simplify_blang blang
-  | Expr s -> Expr (simplify s)
+  | Expr s ->
+    (match simplify s with
+     | Form (_, Blang blang) -> simplify_blang blang
+     | s -> Expr s)
   | Compare (op, lhs, rhs) ->
     let lhs = simplify lhs in
     let rhs = simplify rhs in

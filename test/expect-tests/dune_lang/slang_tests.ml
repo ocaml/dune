@@ -166,16 +166,14 @@ let%expect_test "not unknown" =
   [%expect {| Not (Expr (Literal (template "%{pkg-self:x}"))) |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Const false *)
 let%expect_test "not true" =
   print_blang (not_ (const true));
-  [%expect {| Not (Const true) |}]
+  [%expect {| Const false |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Const true *)
 let%expect_test "not false" =
   print_blang (not_ (const false));
-  [%expect {| Not (Const false) |}]
+  [%expect {| Const true |}]
 ;;
 
 (* CR-soon Alizter: should reduce to Expr ... *)

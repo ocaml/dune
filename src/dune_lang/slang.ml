@@ -352,7 +352,10 @@ and simplify_blang = function
   | Expr (Form (_, Blang blang)) -> simplify_blang blang
   | Expr s -> Expr (simplify s)
   | Compare (op, lhs, rhs) -> Compare (op, simplify lhs, simplify rhs)
-  | Not blang -> Not (simplify_blang blang)
+  | Not blang ->
+    (match simplify_blang blang with
+     | Const b -> Const (not b)
+     | blang -> Not blang)
   | And [ b ] -> simplify_blang b
   | And blangs ->
     let blangs =

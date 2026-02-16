@@ -355,6 +355,7 @@ and simplify_blang = function
   | Not blang ->
     (match simplify_blang blang with
      | Const b -> Const (not b)
+     | Not blang -> blang
      | blang -> Not blang)
   | And [ b ] -> simplify_blang b
   | And blangs ->

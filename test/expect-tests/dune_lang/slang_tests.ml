@@ -176,10 +176,9 @@ let%expect_test "not false" =
   [%expect {| Const true |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Expr ... *)
 let%expect_test "not not" =
   print_blang (not_ (not_ (expr (pform "x"))));
-  [%expect {| Not (Not (Expr (Literal (template "%{pkg-self:x}")))) |}]
+  [%expect {| Expr (Literal (template "%{pkg-self:x}")) |}]
 ;;
 
 (* Blang: Compare *)

@@ -75,6 +75,5 @@ Now we see it!
             ^^^^^^
   Error: Program foobar not found in the tree or in PATH
    (context: default)
-  Hint: You may want to verify the following depexts are installed:
-  - foobar-cram
+  Hint: You may want to verify the following depexts are installed: foobar-cram
   [1]

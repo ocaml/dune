@@ -315,41 +315,22 @@ let%expect_test "if unknown" =
     {| If (Expr (Literal (template "%{pkg-self:x}")), Literal "yes", Literal "no") |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Blang (Expr ...) *)
 let%expect_test "if eta: true/false" =
   print_slang
     (Slang.if_ (expr (pform "c")) ~then_:(Slang.bool true) ~else_:(Slang.bool false));
-  [%expect
-    {|
-    If
-      (Expr (Literal (template "%{pkg-self:c}")),
-       Blang (Const true),
-       Blang (Const false))
-    |}]
+  [%expect {| Blang (Expr (Literal (template "%{pkg-self:c}"))) |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Blang (Not ...) *)
 let%expect_test "if eta: false/true" =
   print_slang
     (Slang.if_ (expr (pform "c")) ~then_:(Slang.bool false) ~else_:(Slang.bool true));
-  [%expect
-    {|
-    If
-      (Expr (Literal (template "%{pkg-self:c}")),
-       Blang (Const false),
-       Blang (Const true))
-    |}]
+  [%expect {| Blang (Not (Expr (Literal (template "%{pkg-self:c}")))) |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Literal "same" *)
 let%expect_test "if eta: same branches" =
   print_slang
     (Slang.if_ (expr (pform "c")) ~then_:(Slang.text "same") ~else_:(Slang.text "same"));
-  [%expect
-    {|
-    If
-      (Expr (Literal (template "%{pkg-self:c}")), Literal "same", Literal "same")
-    |}]
+  [%expect {| Literal "same" |}]
 ;;
 
 (* Slang: Catch_undefined_var *)

@@ -316,7 +316,15 @@ let rec simplify = function
         | Const true -> simplify then_
         | Const false -> simplify else_
         | condition ->
-          Form (loc, If { condition; then_ = simplify then_; else_ = simplify else_ }))
+          let then_ = simplify then_ in
+          let else_ = simplify else_ in
+          (match then_, else_ with
+           | Form (_, Blang (Const true)), Form (_, Blang (Const false)) ->
+             Form (loc, Blang condition)
+           | Form (_, Blang (Const false)), Form (_, Blang (Const true)) ->
+             Form (loc, Blang (Not condition))
+           | _ when equal then_ else_ -> then_
+           | _ -> Form (loc, If { condition; then_; else_ })))
      | Has_undefined_var t ->
        (match simplify t with
         | Form (_, Blang (Const _)) -> Form (loc, Blang (Const false))

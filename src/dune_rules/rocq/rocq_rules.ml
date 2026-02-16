@@ -799,11 +799,14 @@ module Per_file = struct
   ;;
 end
 
-let setup_output_diff_rule ~loc ~dir ~sctx rocq_module =
-  match Rocq_module.expected_and_output_file ~obj_dir:dir rocq_module with
+let setup_output_diff_rule ~loc ~dir ~sctx ~rocq_sources rocq_module =
+  match Rocq_sources.expected_file rocq_sources rocq_module with
   | None -> Memo.return ()
-  | Some (expected, output) ->
-    let diff = { Diff.file1 = expected; file2 = output; optional = false; mode = Text } in
+  | Some expected ->
+    let output = Rocq_module.output_file ~obj_dir:dir rocq_module in
+    let diff =
+      { Diff.file1 = Path.build expected; file2 = output; optional = false; mode = Text }
+    in
     let alias = Alias.make ~dir Alias0.runtest in
     Simple_rules.Alias_rules.add
       sctx
@@ -829,6 +832,7 @@ let setup_rocqc_rule
       ~use_stdlib
       ~ml_flags
       ~theory_dirs
+      ~rocq_sources
       rocq_module
   =
   (* Process rocqdep and generate rules *)
@@ -847,7 +851,8 @@ let setup_rocqc_rule
     |> List.map ~f:fst
   in
   let output_file =
-    Option.map (Rocq_module.expected_and_output_file ~obj_dir:dir rocq_module) ~f:snd
+    Option.map (Rocq_sources.expected_file rocq_sources rocq_module) ~f:(fun _ ->
+      Rocq_module.output_file ~obj_dir:dir rocq_module)
   in
   let targets =
     let targets = Option.to_list output_file @ obj_files in
@@ -1154,8 +1159,9 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
       ~use_stdlib
       ~ml_flags
       ~theory_dirs
+      ~rocq_sources:rocq_dir_contents
       rocq_module
-    >>> setup_output_diff_rule ~loc ~dir ~sctx rocq_module)
+    >>> setup_output_diff_rule ~loc ~dir ~sctx ~rocq_sources:rocq_dir_contents rocq_module)
   (* And finally the rocqdoc rules *)
   >>> setup_rocqdoc_rules ~sctx ~dir ~theories_deps s rocq_modules
 ;;
@@ -1273,10 +1279,8 @@ let extraction_wrapper_name (s : Rocq_stanza.Extraction.t) : string =
 
 let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.t) =
   let wrapper_name = extraction_wrapper_name s in
-  let* rocq_module =
-    let+ rocq = Dir_contents.rocq dir_contents in
-    Rocq_sources.extract rocq s
-  in
+  let* rocq_sources = Dir_contents.rocq dir_contents in
+  let rocq_module = Rocq_sources.extract rocq_sources s in
   let file_targets =
     Rocq_stanza.Extraction.ml_target_fnames s |> List.map ~f:(Path.Build.relative dir)
   in
@@ -1332,7 +1336,8 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.
         ~use_stdlib:s.buildable.use_stdlib
         ~ml_flags
         ~theory_dirs:Path.Build.Set.empty
-  >>> setup_output_diff_rule ~loc ~dir ~sctx rocq_module
+        ~rocq_sources
+  >>> setup_output_diff_rule ~loc ~dir ~sctx ~rocq_sources rocq_module
 ;;
 
 let rocqtop_args_extraction ~sctx ~dir (s : Rocq_stanza.Extraction.t) rocq_module =

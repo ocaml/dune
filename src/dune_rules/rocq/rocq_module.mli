@@ -33,7 +33,6 @@ module Map : Map.S with type key = t
 (** A Rocq module [a.b.foo] defined in file [a/b/foo.v] *)
 val make
   :  source:Path.t (** file = .v source file; module name has to be the same so far *)
-  -> expected:Path.t option (** Expected output file (.expected suffix) if it exists *)
   -> prefix:string list (** Library-local qualified prefix *)
   -> name:Name.t (** Name of the module *)
   -> t
@@ -45,7 +44,7 @@ val prefix : t -> string list
 val name : t -> Name.t
 val dep_file : t -> obj_dir:Path.Build.t -> Path.Build.t
 val glob_file : t -> obj_dir:Path.Build.t -> Path.Build.t
-val expected_and_output_file : t -> obj_dir:Path.Build.t -> (Path.t * Path.Build.t) option
+val output_file : t -> obj_dir:Path.Build.t -> Path.Build.t
 
 (** Some of the object files should not be installed, we control this with the
     following parameter *)

@@ -349,7 +349,16 @@ and simplify_blang = function
      | _ -> expr)
   | Expr (Form (_, Blang blang)) -> simplify_blang blang
   | Expr s -> Expr (simplify s)
-  | Compare (op, lhs, rhs) -> Compare (op, simplify lhs, simplify rhs)
+  | Compare (op, lhs, rhs) ->
+    let lhs = simplify lhs in
+    let rhs = simplify rhs in
+    (match lhs, rhs with
+     | Literal l, Literal r ->
+       (match op, String_with_vars.text_only l, String_with_vars.text_only r with
+        | Relop.Eq, Some l, Some r -> Const (String.equal l r)
+        | Relop.Neq, Some l, Some r -> Const (not (String.equal l r))
+        | _ -> Compare (op, lhs, rhs))
+     | _ -> Compare (op, lhs, rhs))
   | Not blang ->
     (match simplify_blang blang with
      | Const b -> Const (not b)

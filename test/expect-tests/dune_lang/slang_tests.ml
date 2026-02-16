@@ -179,28 +179,24 @@ let%expect_test "compare mixed" =
   [%expect {| Compare (=, Literal "a", Literal (template "%{pkg-self:x}")) |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Const true *)
 let%expect_test "compare eq same" =
   print_blang (compare Relop.Eq (Slang.text "a") (Slang.text "a"));
-  [%expect {| Compare (=, Literal "a", Literal "a") |}]
+  [%expect {| Const true |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Const false *)
 let%expect_test "compare eq different" =
   print_blang (compare Relop.Eq (Slang.text "a") (Slang.text "b"));
-  [%expect {| Compare (=, Literal "a", Literal "b") |}]
+  [%expect {| Const false |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Const false *)
 let%expect_test "compare neq same" =
   print_blang (compare Relop.Neq (Slang.text "a") (Slang.text "a"));
-  [%expect {| Compare (<>, Literal "a", Literal "a") |}]
+  [%expect {| Const false |}]
 ;;
 
-(* CR-soon Alizter: should reduce to Const true *)
 let%expect_test "compare neq different" =
   print_blang (compare Relop.Neq (Slang.text "a") (Slang.text "b"));
-  [%expect {| Compare (<>, Literal "a", Literal "b") |}]
+  [%expect {| Const true |}]
 ;;
 
 (* Ordering comparisons are not reduced because comparison semantics depend on

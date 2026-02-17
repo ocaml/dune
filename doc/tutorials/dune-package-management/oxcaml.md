@@ -48,7 +48,7 @@ Let's add a test program that uses OxCaml syntax.
 :icon: file-code
 
 :::{literalinclude} oxcaml/main.ml
-:language: dune
+:language: ocaml
 :::
 
 ::::

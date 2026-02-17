@@ -30,7 +30,7 @@ constraints are required.
 Configuring the lock directory for a developer tool works in the same way as
 configuring any other lock directory, via the {doc}`lock_dir stanza
 </reference/dune-workspace/lock_dir>`. The difference however is, that the lock
-dir path for a lock dir cannot be chosen freely and must match the interal path
+dir path for a lock dir cannot be chosen freely and must match the internal path
 that Dune will pick for the lock directory of said developer tool.
 
 The format of the lock dir path is

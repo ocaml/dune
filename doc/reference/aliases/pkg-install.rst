@@ -8,7 +8,7 @@ of your ``dune-project`` (see :doc:`/reference/dune-project/package`) and build
 them. It will not build your project.
 
 Indeed, if you need to build the project, you need to use the regular ``dune
-build`` command. Note that if the dependencies have not been already fetch and
+build`` command. Note that if the dependencies have not already been fetched and
 downloaded, ``dune build`` will **also** take care of getting and building them.
 
 .. note::

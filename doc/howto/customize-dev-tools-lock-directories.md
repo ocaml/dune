@@ -88,7 +88,7 @@ configuration:
  (repositories overlay oxcaml upstream))
 ```
 
-It specifies that that lock tool should use a pinned version of `ocamlbuild` as
+It specifies that the lock tool should use a pinned version of `ocamlbuild` as
 well as custom repositories in a specific order (adding the `oxcaml` repository
 in between the repositories that are defined out of the box). Constraints are
 added on the versions of other packages to be selected for for building

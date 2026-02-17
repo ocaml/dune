@@ -1573,6 +1573,29 @@ module Solver = struct
     Input.Role.Map.values sels
     |> List.filter_map ~f:(fun (sel : Solver.selection) -> Input.Impl.version sel.impl)
   ;;
+
+  (* Extract packages grouped by platform from the solver result.
+     Returns a map: package_name -> (platform_id -> version)
+     This lets us detect if a package has different versions on different platforms. *)
+  let packages_by_platform sels =
+    Input.Role.Map.foldi
+      sels
+      ~init:OpamPackage.Name.Map.empty
+      ~f:(fun role (sel : Solver.selection) acc ->
+        match role with
+        | Input.Virtual _ -> acc
+        | Input.Real (name, platform_id) ->
+          (match Input.Impl.version sel.impl with
+           | None -> acc
+           | Some pkg ->
+             let version = OpamPackage.version pkg in
+             let platforms =
+               match OpamPackage.Name.Map.find_opt name acc with
+               | None -> Platform_id.Map.singleton platform_id version
+               | Some platforms -> Platform_id.Map.set platforms platform_id version
+             in
+             OpamPackage.Name.Map.add name platforms acc))
+  ;;
 end
 
 let solve_package_list packages ~context ~platforms =
@@ -1592,7 +1615,10 @@ let solve_package_list packages ~context ~platforms =
      (* CR-rgrinberg: this needs to be handled right *)
      Error (`Exn exn))
   >>= function
-  | Ok packages -> Fiber.return @@ Ok (Solver.packages_of_result packages)
+  | Ok sels ->
+    let packages = Solver.packages_of_result sels in
+    let packages_by_platform = Solver.packages_by_platform sels in
+    Fiber.return @@ Ok (packages, packages_by_platform)
   | Error (`Diagnostics e) ->
     let+ diagnostics = Solver.diagnostics context e in
     Error (`Solve_error diagnostics)
@@ -1919,7 +1945,7 @@ let solve_lock_dir
     |> solve_package_list ~context ~platforms
     >>= (function
      | Error _ as e -> Fiber.return e
-     | Ok solution ->
+     | Ok (solution, _packages_by_platform) ->
        let is_dune name = Package_name.equal Dune_dep.name name in
        (* don't include local packages or dune in the lock dir *)
        let opam_packages_to_lock =

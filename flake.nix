@@ -25,6 +25,13 @@
     revdeps-dune = {
       url = "github:ocaml/dune";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nixpkgs-old.follows = "nixpkgs-old";
+      inputs.odoc-src.follows = "odoc-src";
+      inputs.oxcaml.follows = "oxcaml";
+      inputs.ocaml-overlays.follows = "ocaml-overlays";
+      inputs.melange.follows = "melange";
+      inputs.oxcaml-opam-repository.follows = "oxcaml-opam-repository";
+      inputs.revdeps-dune.follows = "revdeps-dune";
     };
   };
   outputs =
@@ -120,10 +127,10 @@
       # IMPORTANT: revdeps-dune input must be overridden, the default is likely stale
       #
       # Usage:
-      # 
+      #
       # Build lwt with current version of dune
       # $ nix build .#revdeps.x86_64-linux.lwt --override-input revdeps-dune path:.
-      # 
+      #
       # Build base and core with dune 3.20.2
       # $ nix build .#revdeps.x86_64-linux.{base,core} --override-input revdeps-dune github:ocaml/dune/3.20.2
       #

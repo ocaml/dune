@@ -142,7 +142,7 @@ Dune uses two repositories by default:
 * `upstream` refers to the default branch of `opam-repository`, which contains
   all the publicly released packages.
 * `overlay` refers to
-  [opam-overlay](https://github.com/ocaml-dune/opam-overlays), which defines
+  [opam-overlays](https://github.com/ocaml-dune/opam-overlays), which defines
   packages patched to work with package management. The long-term goal is to
   have as few packages as possible in this repository as more and more packages
   work within Dune Package Management upstream. Check the

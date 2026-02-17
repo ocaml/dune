@@ -104,7 +104,7 @@ Here we query the version of Coq. Due to the expansion of %{coq:_} macros we nee
 Succeeds after PR #10631
   $ FAIL_CONFIG=1 \
   > dune build @version
-  9.1.0
+  9.1.1
 
 Should fail.
   $ FAIL_VERSION=1 \

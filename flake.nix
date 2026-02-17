@@ -511,7 +511,9 @@
             inherit INSIDE_NIX;
             buildInputs = [
               pkgs.gnumake
-              oxcaml.packages.${pkgs.stdenv.hostPlatform.system}.default
+              (oxcaml.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (_: {
+                NIX_CFLAGS_COMPILE = "-std=gnu17";
+              }))
             ];
             meta.description = ''
               Provides a minimal shell environment with OxCaml in order to
@@ -527,6 +529,7 @@
               // {
                 # dune_3 = self.packages.${system}.default;
                 ocaml = oxcaml.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
+                  NIX_CFLAGS_COMPILE = "-std=gnu17";
                   passthru = (old.passthru or { }) // pkgs.ocamlPackages.ocaml.passthru;
                   meta = (old.meta or { }) // pkgs.ocamlPackages.ocaml.meta;
                 });
@@ -562,6 +565,7 @@
               // {
                 dune_3 = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
                 ocaml = oxcaml.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
+                  NIX_CFLAGS_COMPILE = "-std=gnu17";
                   passthru = (old.passthru or { }) // pkgs.ocamlPackages.ocaml.passthru;
                   meta = (old.meta or { }) // pkgs.ocamlPackages.ocaml.meta;
                 });

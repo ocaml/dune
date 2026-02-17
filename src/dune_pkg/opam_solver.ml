@@ -57,6 +57,24 @@ module Priority = struct
   let rejected version = { avoid = true; version }
 end
 
+(* Platform identifier for multi-platform solving.
+   Each platform (e.g., linux-x64, macos-arm64) gets a unique id.
+   The actual platform data is stored in Context.platform_envs. *)
+module Platform_id = struct
+  module T = struct
+    type t = int
+
+    let compare = Int.compare
+    let to_dyn = Int.to_dyn
+  end
+
+  include T
+  module Map = Map.Make (T)
+
+  let hash = Int.hash
+  let of_int x = x
+end
+
 module Context = struct
   type rejection =
     | Unavailable
@@ -86,6 +104,9 @@ module Context = struct
     ; local_packages : local_package Package_name.Map.t Lazy.t
     ; local_constraints : (Package_name.t, local_package list) Table.t Lazy.t
     ; solver_env : Solver_env.t
+      (* Default/primary solver env - used for availability checks *)
+    ; platform_envs : Solver_env.t Platform_id.Map.t
+      (* Platform environments keyed by Platform_id for multi-platform solving *)
     ; dune_version : OpamPackage.Version.t
     ; stats_updater : Solver_stats.Updater.t
     ; candidates_cache : (Package_name.t, candidates) Fiber.Cache.t
@@ -103,6 +124,7 @@ module Context = struct
   let create
         ~pinned_packages
         ~solver_env
+        ~platform_envs
         ~repos
         ~local_packages
         ~version_preference
@@ -149,6 +171,10 @@ module Context = struct
     ; local_packages
     ; pinned_packages
     ; solver_env = Solver_env.add_sentinel_values_for_unset_platform_vars solver_env
+    ; platform_envs =
+        Platform_id.Map.map
+          platform_envs
+          ~f:Solver_env.add_sentinel_values_for_unset_platform_vars
     ; dune_version = Dune_dep.version
     ; stats_updater
     ; candidates_cache
@@ -157,6 +183,15 @@ module Context = struct
     ; expanded_packages
     ; local_constraints
     }
+  ;;
+
+  let platform_env t platform_id =
+    match Platform_id.Map.find t.platform_envs platform_id with
+    | Some env -> env
+    | None ->
+      Code_error.raise
+        "Platform_id not found in platform_envs"
+        [ "platform_id", Platform_id.to_dyn platform_id ]
   ;;
 
   let pp_rejection = function
@@ -222,7 +257,8 @@ module Context = struct
     { available; resolved }
   ;;
 
-  let filter_deps t package filtered_formula =
+  (* Filter deps using a specific solver_env *)
+  let filter_deps_with_env t ~solver_env package filtered_formula =
     (* Add additional constraints to the formula. This works in two steps.
        First identify all the additional constraints applied to packages which
        appear in the current package's dependency formula. Then each additional
@@ -245,11 +281,22 @@ module Context = struct
       |> Package_name.of_opam_package_name
       |> Package_name.Map.mem (Lazy.force t.local_packages)
     in
-    let with_test = package_is_local && with_test t.solver_env in
-    Solver_env.to_env t.solver_env
+    let with_test = package_is_local && with_test solver_env in
+    Solver_env.to_env solver_env
     |> Solver_stats.Updater.wrap_env t.stats_updater
     |> Lock_pkg.add_self_to_filter_env package
     |> Resolve_opam_formula.apply_filter ~with_test ~formula:filtered_formula
+  ;;
+
+  (* Filter deps for local packages using primary solver_env *)
+  let filter_deps_local t package filtered_formula =
+    filter_deps_with_env t ~solver_env:t.solver_env package filtered_formula
+  ;;
+
+  (* Filter deps for a specific platform *)
+  let filter_deps t ~platform_id package filtered_formula =
+    let solver_env = platform_env t platform_id in
+    filter_deps_with_env t ~solver_env package filtered_formula
   ;;
 
   exception Found of Package_name.t
@@ -415,23 +462,6 @@ module Solver = struct
     end
 
     module Virtual_id = Id.Make ()
-
-    (* Platform identifier for multi-platform solving.
-       Each platform (e.g., linux-x64, macos-arm64) gets a unique id.
-       The actual platform data is stored externally in a registry. *)
-    module Platform_id : sig
-      type t
-
-      val compare : t -> t -> Ordering.t
-      val hash : t -> int
-      val of_int : int -> t
-    end = struct
-      type t = int
-
-      let compare = Int.compare
-      let hash = Int.hash
-      let of_int x = x
-    end
 
     module Rank : sig
       type t
@@ -681,7 +711,7 @@ module Solver = struct
               lazy
                 (let rank = Rank.assign () in
                  let make_deps importance xform deps =
-                   Context.filter_deps context pkg deps
+                   Context.filter_deps context ~platform_id:platform pkg deps
                    |> xform
                    |> list_deps ~importance ~rank ~platform
                  in
@@ -1413,21 +1443,23 @@ module Solver = struct
     ;;
   end
 
-  let solve context pkgs ~platform =
+  let solve context pkgs ~platforms =
     let req =
-      match pkgs with
-      | [ pkg ] -> Input.Real (pkg, platform)
-      | pkgs ->
-        let impl : Input.Impl.t =
-          let depends =
+      match pkgs, platforms with
+      | [ pkg ], [ platform ] ->
+        (* Single package, single platform - use Real directly *)
+        Input.Real (pkg, platform)
+      | _ ->
+        (* Multiple packages or platforms - create virtual root *)
+        let depends =
+          List.concat_map platforms ~f:(fun platform ->
             List.map pkgs ~f:(fun name ->
               { Input.drole = Real (name, platform)
               ; importance = Ensure
               ; restrictions = []
-              })
-          in
-          VirtualImpl (Input.Rank.bottom, depends)
+              }))
         in
+        let impl : Input.Impl.t = VirtualImpl (Input.Rank.bottom, depends) in
         Input.virtual_role [ impl ]
     in
     Solver.do_solve context ~closest_match:false req
@@ -1482,7 +1514,7 @@ module Solver = struct
   ;;
 end
 
-let solve_package_list packages ~context ~platform =
+let solve_package_list packages ~context ~platforms =
   Fiber.collect_errors (fun () ->
     (* [Solver.solve] returns [Error] when it's unable to find a solution to
        the dependencies, but can also raise exceptions, for example if opam
@@ -1490,7 +1522,7 @@ let solve_package_list packages ~context ~platform =
        an unexpected opam exception from crashing dune, we catch all
        exceptions raised by the solver and report them as [User_error]s
        instead. *)
-    Solver.solve context packages ~platform)
+    Solver.solve context packages ~platforms)
   >>| (function
    | Ok (Ok res) -> Ok res
    | Ok (Error e) -> Error (`Diagnostics e)
@@ -1784,12 +1816,16 @@ let solve_lock_dir
   | Ok pinned_packages ->
     let pinned_package_names = Package_name.Set.of_keys pinned_packages in
     let stats_updater = Solver_stats.Updater.init () in
+    (* For now, single platform with id 0. Multi-platform will add more. *)
+    let platform_envs = Platform_id.Map.singleton (Platform_id.of_int 0) solver_env in
+    let platforms = [ Platform_id.of_int 0 ] in
     let context =
       let rec context =
         lazy
           (Context.create
              ~pinned_packages
              ~solver_env
+             ~platform_envs
              ~repos
              ~version_preference
              ~local_packages:local_packages'
@@ -1809,7 +1845,7 @@ let solve_lock_dir
                  (let opam_package =
                     OpamPackage.create (OpamFile.OPAM.name opam_file) version
                   in
-                  Context.filter_deps (Lazy.force context) opam_package)
+                  Context.filter_deps_local (Lazy.force context) opam_package)
              in
              let depends = lazy (Lazy.force deps (OpamFile.OPAM.depends opam_file)) in
              let conflicts = lazy (Lazy.force deps (OpamFile.OPAM.conflicts opam_file)) in
@@ -1817,11 +1853,9 @@ let solve_lock_dir
       in
       Lazy.force context
     in
-    (* For now, use platform 0. Multi-platform solving will pass multiple platforms. *)
-    let platform = Solver.Input.Platform_id.of_int 0 in
     Package_name.Map.keys local_packages @ selected_depopts
     |> List.map ~f:Package_name.to_opam_package_name
-    |> solve_package_list ~context ~platform
+    |> solve_package_list ~context ~platforms
     >>= (function
      | Error _ as e -> Fiber.return e
      | Ok solution ->

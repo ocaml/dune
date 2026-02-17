@@ -42,5 +42,5 @@
   Mod2.ml
   Mod2.mli
   $ ls _build/default/.*.d | sort
-  _build/default/.DuneExtractionExtr1.theory.d
-  _build/default/.DuneExtractionExtr2.theory.d
+  _build/default/.Dune_Extraction_Extr1.theory.d
+  _build/default/.Dune_Extraction_Extr2.theory.d

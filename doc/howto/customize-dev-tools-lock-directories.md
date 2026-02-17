@@ -8,7 +8,7 @@ server](https://github.com/ocaml/ocaml-lsp) or
 [ocamlformat](https://github.com/ocaml-ppx/ocamlformat).
 
 In general these tools do not require any specific configuration: Dune will
-create a lock dir implicitely and install a compatible version of the tool
+create a lock dir implicitly and install a compatible version of the tool
 depending on its availability in
 [opam-repository](https://github.com/ocaml/opam-repository).
 

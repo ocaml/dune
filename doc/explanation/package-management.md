@@ -150,7 +150,7 @@ Dune uses two repositories by default:
 
 #### Solving
 
-After Dune has read the constraints and loaded set of candidate packages, it is
+After Dune has read the constraints and loaded the set of candidate packages, it is
 necessary to determine which packages and versions should be selected for the
 package lock.
 

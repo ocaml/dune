@@ -433,7 +433,7 @@ let depexts_to_conditional_external_dependencies ~packages_in_solution package d
 ;;
 
 let opam_package_to_lock_file_pkg
-      solver_env
+      solver_envs
       stats_updater
       version_by_package_name
       opam_package
@@ -441,6 +441,13 @@ let opam_package_to_lock_file_pkg
       resolved_package
       ~portable_lock_dir
   =
+  (* Use the first solver_env for filter evaluation *)
+  let solver_env =
+    match solver_envs with
+    | [] ->
+      Code_error.raise "opam_package_to_lock_file_pkg called with empty solver_envs" []
+    | env :: _ -> env
+  in
   let name = Package_name.of_opam_package_name (OpamPackage.name opam_package) in
   let version =
     OpamPackage.version opam_package |> Package_version.of_opam_package_version
@@ -571,15 +578,10 @@ let opam_package_to_lock_file_pkg
   in
   (* Some lockfile fields contain a choice of values predicated on a set of
      platform variables to allow lockfiles to be portable across different
-     platforms. Each invocation of the solver produces a solution associated
-     with a single set of platform variables (those in [solver_env]).
-     [lockfile_field_choice value] creates a choice with a single possible
-     value predicated by the platform variables in [solver_env]. The
-     solver may be run multiple times, and the choice fields of lockfiles
-     will be merged such that different values can be chosen on different
-     platforms. *)
+     platforms. [lockfile_field_choice value] creates a choice with a single
+     possible value predicated by the platforms this package is enabled on. *)
   let lockfile_field_choice value =
-    Lock_dir.Conditional_choice.singleton solver_env value
+    Lock_dir.Conditional_choice.singleton_multi solver_envs value
   in
   let build_command =
     Option.map build_command ~f:lockfile_field_choice
@@ -618,7 +620,9 @@ let opam_package_to_lock_file_pkg
   in
   let depends = lockfile_field_choice depends in
   let enabled_on_platforms =
-    [ Solver_env.remove_all_except_platform_specific solver_env ]
+    if portable_lock_dir
+    then List.map solver_envs ~f:Solver_env.remove_all_except_platform_specific
+    else []
   in
   { Lock_dir.Pkg.build_command
   ; install_command

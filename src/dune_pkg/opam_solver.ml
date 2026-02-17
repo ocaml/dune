@@ -2105,7 +2105,7 @@ let solve_lock_dir
            in
            List.map resolved_pkgs ~f:(fun (name, opam_package, resolved_package) ->
              Lock_pkg.opam_package_to_lock_file_pkg
-               solver_env
+               [ solver_env ]
                stats_updater
                version_by_package_name
                opam_package
@@ -2205,7 +2205,7 @@ let solve_lock_dir
            ~ocaml
            ~repos:(Some repos)
            ~expanded_solver_variable_bindings
-           ~solved_for_platform:(Some solver_env)
+           ~solved_for_platforms:[ solver_env ]
            ~portable_lock_dir
        in
        let+ files =

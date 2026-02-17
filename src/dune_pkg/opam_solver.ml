@@ -569,11 +569,27 @@ module Solver = struct
       | Reject of OpamPackage.t
       | Dummy (* Used for diagnostics *)
 
+    (* Deduplicate a list of dependencies by package name for display purposes.
+       This avoids showing the same package multiple times for different platforms. *)
+    let deduplicate_deps_by_name deps =
+      let seen = ref OpamPackage.Name.Set.empty in
+      List.filter deps ~f:(fun (d : dependency) ->
+        match d.drole with
+        | Virtual _ -> true
+        | Real (name, _platform) ->
+          if OpamPackage.Name.Set.mem name !seen
+          then false
+          else (
+            seen := OpamPackage.Name.Set.add name !seen;
+            true))
+    ;;
+
     let rec pp_version = function
       | RealImpl impl ->
         Pp.text (OpamPackage.Version.to_string (OpamPackage.version impl.pkg))
       | Reject pkg -> Pp.text (OpamPackage.version_to_string pkg)
       | VirtualImpl (_i, deps) ->
+        let deps = deduplicate_deps_by_name deps in
         Pp.concat_map ~sep:(Pp.char '&') deps ~f:(fun d -> pp_role d.drole)
       | Dummy -> Pp.text "(no version)"
 
@@ -1529,6 +1545,68 @@ module Solver = struct
     | None -> Error req
   ;;
 
+  (* Filter a list, keeping the first occurrence of each [Some name] key. Items
+     whose [key] is [None] are kept unconditionally (used to pass Virtual roles
+     through, since they don't carry a package name to deduplicate on). *)
+  let filter_dedup_by_name ~key items =
+    let seen = ref OpamPackage.Name.Set.empty in
+    List.filter items ~f:(fun item ->
+      match key item with
+      | None -> true
+      | Some name ->
+        if OpamPackage.Name.Set.mem name !seen
+        then false
+        else (
+          seen := OpamPackage.Name.Set.add name !seen;
+          true))
+  ;;
+
+  let role_name = function
+    | Input.Virtual _ -> None
+    | Input.Real (name, _) -> Some name
+  ;;
+
+  let deduplicate_roles_by_name = filter_dedup_by_name ~key:role_name
+
+  let deduplicate_components_by_name =
+    filter_dedup_by_name ~key:(fun (c : Diagnostics.Component.t) -> role_name c.role)
+  ;;
+
+  (* Deduplicate impls by package name, keeping one representative per package.
+     For VirtualImpls, skip them if all their deps point to packages we've already seen. *)
+  let deduplicate_impls_by_name impls =
+    let seen = ref OpamPackage.Name.Set.empty in
+    List.filter impls ~f:(fun impl ->
+      match impl with
+      | Input.VirtualImpl (_, deps) ->
+        (* Check if this VirtualImpl has any deps we haven't seen yet *)
+        let has_new_deps =
+          List.exists deps ~f:(fun (d : Input.dependency) ->
+            match d.drole with
+            | Input.Virtual _ -> true
+            | Input.Real (name, _) -> not (OpamPackage.Name.Set.mem name !seen))
+        in
+        if has_new_deps
+        then (
+          (* Add all dep names to seen *)
+          List.iter deps ~f:(fun (d : Input.dependency) ->
+            match d.drole with
+            | Input.Virtual _ -> ()
+            | Input.Real (name, _) -> seen := OpamPackage.Name.Set.add name !seen);
+          true)
+        else false
+      | _ ->
+        (match Input.Impl.version impl with
+         | None -> true
+         | Some pkg ->
+           let name = OpamPackage.name pkg in
+           if OpamPackage.Name.Set.mem name !seen
+           then false
+           else (
+             seen := OpamPackage.Name.Set.add name !seen;
+             true)))
+  ;;
+
   let pp_rolemap ~verbose reasons =
     let good, bad, unknown =
       Input.Role.Map.to_list reasons
@@ -1540,6 +1618,25 @@ module Solver = struct
            | _, `No_candidates -> `Right role
            | _, _ -> `Middle component))
     in
+    (* Deduplicate to avoid showing the same package multiple times for different platforms.
+       Also exclude packages from 'bad' if they appear in 'good' (a package that's
+       selected on one platform shouldn't be shown as a problem due to another platform). *)
+    let good = deduplicate_impls_by_name good in
+    let good_names =
+      List.filter_map good ~f:(fun impl ->
+        match Input.Impl.version impl with
+        | Some pkg -> Some (OpamPackage.name pkg)
+        | None -> None)
+      |> OpamPackage.Name.Set.of_list
+    in
+    let bad =
+      List.filter bad ~f:(fun (component : Diagnostics.Component.t) ->
+        match component.role with
+        | Input.Virtual _ -> true
+        | Input.Real (name, _) -> not (OpamPackage.Name.Set.mem name good_names))
+    in
+    let bad = deduplicate_components_by_name bad in
+    let unknown = deduplicate_roles_by_name unknown in
     let pp_bad = Diagnostics.Component.pp ~verbose in
     let pp_unknown role = Pp.box (Input.Role.pp role) in
     match unknown with

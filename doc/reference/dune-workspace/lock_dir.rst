@@ -76,5 +76,5 @@ changed if desired.
 
       .. versionadded:: 3.19
 
-      Defines which optional packages names (``depopts``) the solver should
+      Defines which optional package names (``depopts``) the solver should
       include when attempting to find a solution for the project.

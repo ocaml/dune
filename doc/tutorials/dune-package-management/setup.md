@@ -126,5 +126,5 @@ See {doc}`/reference/aliases/pkg-install` for more information.
 In this section we learned how to set up a Dune project that picks a compiler
 and installs it without the need for any additional tooling.
 
-In the next section {doc}`dependencies` we will look on how to add third party
+In the next section {doc}`dependencies` we will look at how to add third party
 dependencies.

@@ -9,7 +9,7 @@ that compiles with OxCaml when using Dune package management.
 ## Setting up the `dune-workspace`
 
 OxCaml has a custom `opam-repository` that provides compatible dependencies.
-Dune can use packages from this repositories by configuring it in the
+Dune can use packages from these repositories by configuring it in the
 dune-workspace file using the {doc}`repositories stanza
 </reference/dune-workspace/repository>` and {doc}`lock_dir stanza
 </reference/dune-workspace/lock_dir>`.
@@ -48,7 +48,7 @@ Let's add a test program that uses OxCaml syntax.
 :icon: file-code
 
 :::{literalinclude} oxcaml/main.ml
-:language: dune
+:language: ocaml
 :::
 
 ::::

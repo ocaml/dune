@@ -432,8 +432,10 @@ let depexts_to_conditional_external_dependencies ~packages_in_solution package d
     { Lock_dir.Depexts.external_package_names; enabled_if })
 ;;
 
-let opam_package_to_lock_file_pkg
-      solver_envs
+(* Generate lock file entry for a single solver_env.
+   This is the core implementation that evaluates filters against one platform. *)
+let opam_package_to_lock_file_pkg_single
+      solver_env
       stats_updater
       version_by_package_name
       opam_package
@@ -441,13 +443,6 @@ let opam_package_to_lock_file_pkg
       resolved_package
       ~portable_lock_dir
   =
-  (* Use the first solver_env for filter evaluation *)
-  let solver_env =
-    match solver_envs with
-    | [] ->
-      Code_error.raise "opam_package_to_lock_file_pkg called with empty solver_envs" []
-    | env :: _ -> env
-  in
   let name = Package_name.of_opam_package_name (OpamPackage.name opam_package) in
   let version =
     OpamPackage.version opam_package |> Package_version.of_opam_package_version
@@ -579,9 +574,9 @@ let opam_package_to_lock_file_pkg
   (* Some lockfile fields contain a choice of values predicated on a set of
      platform variables to allow lockfiles to be portable across different
      platforms. [lockfile_field_choice value] creates a choice with a single
-     possible value predicated by the platforms this package is enabled on. *)
+     possible value predicated by the platform this package is enabled on. *)
   let lockfile_field_choice value =
-    Lock_dir.Conditional_choice.singleton_multi solver_envs value
+    Lock_dir.Conditional_choice.singleton_multi [ solver_env ] value
   in
   let build_command =
     Option.map build_command ~f:lockfile_field_choice
@@ -621,7 +616,7 @@ let opam_package_to_lock_file_pkg
   let depends = lockfile_field_choice depends in
   let enabled_on_platforms =
     if portable_lock_dir
-    then List.map solver_envs ~f:Solver_env.remove_all_except_platform_specific
+    then [ Solver_env.remove_all_except_platform_specific solver_env ]
     else []
   in
   { Lock_dir.Pkg.build_command
@@ -634,8 +629,12 @@ let opam_package_to_lock_file_pkg
   }
 ;;
 
+(* Public entry point: handles both single-platform and multi-platform cases.
+   For portable lockdirs with multiple solver_envs, we evaluate the opam file
+   against each platform separately and merge the results. This allows
+   platform-specific build commands, dependencies, etc. to be captured. *)
 let opam_package_to_lock_file_pkg
-      solver_env
+      solver_envs
       stats_updater
       version_by_package_name
       opam_package
@@ -645,14 +644,44 @@ let opam_package_to_lock_file_pkg
   =
   try
     Ok
-      (opam_package_to_lock_file_pkg
-         solver_env
-         stats_updater
-         version_by_package_name
-         opam_package
-         ~pinned
-         resolved_package
-         ~portable_lock_dir)
+      (match solver_envs with
+       | [] ->
+         Code_error.raise "opam_package_to_lock_file_pkg called with empty solver_envs" []
+       | [ solver_env ] ->
+         (* Single platform: use directly *)
+         opam_package_to_lock_file_pkg_single
+           solver_env
+           stats_updater
+           version_by_package_name
+           opam_package
+           ~pinned
+           resolved_package
+           ~portable_lock_dir
+       | _ when not portable_lock_dir ->
+         (* Non-portable with multiple envs: just use the first *)
+         let solver_env = List.hd solver_envs in
+         opam_package_to_lock_file_pkg_single
+           solver_env
+           stats_updater
+           version_by_package_name
+           opam_package
+           ~pinned
+           resolved_package
+           ~portable_lock_dir
+       | first_env :: rest_envs ->
+         (* Portable with multiple platforms: evaluate per-platform and merge *)
+         let to_pkg solver_env =
+           opam_package_to_lock_file_pkg_single
+             solver_env
+             stats_updater
+             version_by_package_name
+             opam_package
+             ~pinned
+             resolved_package
+             ~portable_lock_dir
+         in
+         List.fold_left rest_envs ~init:(to_pkg first_env) ~f:(fun acc env ->
+           Lock_dir.Pkg.merge_conditionals acc (to_pkg env)))
   with
   | User_error.E exn -> Error exn
 ;;

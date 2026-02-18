@@ -17,11 +17,11 @@ end
 
 val build_from_cm
   :  Super_context.t
-  -> dir:Path.Build.w Path.Local_gen.t
+  -> dir:Path.Build.t
   -> in_context:Js_of_ocaml.In_context.t
   -> mode:Js_of_ocaml.Mode.t
   -> src:Path.t
-  -> obj_dir:Path.Build.w Path.Local_gen.t Obj_dir.t
+  -> obj_dir:Path.Build.t Obj_dir.t
   -> shapes:Path.t list Action_builder.t
   -> config:Config.t option
   -> sourcemap:Js_of_ocaml.Sourcemap.t

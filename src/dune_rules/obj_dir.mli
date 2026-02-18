@@ -44,6 +44,7 @@ val native_dir : 'path t -> 'path
 (** The private compiled byte file directories, and all cmi *)
 val byte_dir : 'path t -> 'path
 
+val is_jsoo_dirname : string -> bool
 val jsoo_dir : 'path t -> 'path
 
 (** The private compiled melange file directories, and all cmi *)

@@ -85,12 +85,42 @@ module Version = struct
     | Ok jsoo_path -> Memo.exec version_memo jsoo_path
     | Error e -> Action.Prog.Not_found.raise e
   ;;
+
+  module Build_config_key = struct
+    type t =
+      { jsoo : Path.t
+      ; flags : string list
+      }
+
+    let equal a b = Path.equal a.jsoo b.jsoo && List.equal String.equal a.flags b.flags
+
+    let hash { jsoo; flags } =
+      Tuple.T2.hash Path.hash (List.hash String.hash) (jsoo, flags)
+    ;;
+
+    let to_dyn { jsoo; flags } = Dyn.Tuple [ Path.to_dyn jsoo; Dyn.list Dyn.string flags ]
+  end
+
+  let impl_build_config { Build_config_key.jsoo; flags } =
+    let* _ = Build_system.build_file jsoo in
+    Memo.of_reproducible_fiber
+    @@ Process.run_capture_line ~display:Quiet Strict jsoo ("--build-config" :: flags)
+  ;;
+
+  let build_config_memo =
+    Memo.create "jsoo-build-config" ~input:(module Build_config_key) impl_build_config
+  ;;
+
+  let jsoo_build_config jsoo flags =
+    match jsoo with
+    | Ok jsoo_path -> Memo.exec build_config_memo { jsoo = jsoo_path; flags }
+    | Error e -> Action.Prog.Not_found.raise e
+  ;;
 end
 
 module Config : sig
   type t
 
-  val all : t list
   val path : t -> string
   val of_string : string -> t
   val of_flags : string list -> t
@@ -101,21 +131,15 @@ end = struct
     | Cps
     | Double_translation
 
-  type t =
+  type config =
     { js_string : bool option
     ; effects : effects_backend option
     ; toplevel : bool option
     }
 
-  let default = { js_string = None; effects = None; toplevel = None }
-  let bool_opt = [ None; Some true; Some false ]
-  let effects_opt = [ None; Some Cps; Some Double_translation ]
+  type t = string
 
-  let all =
-    List.concat_map bool_opt ~f:(fun js_string ->
-      List.concat_map effects_opt ~f:(fun effects ->
-        List.concat_map bool_opt ~f:(fun toplevel -> [ { js_string; effects; toplevel } ])))
-  ;;
+  let default = { js_string = None; effects = None; toplevel = None }
 
   let enable name acc =
     match name with
@@ -142,7 +166,7 @@ end = struct
     | Double_translation -> "double-translation"
   ;;
 
-  let path t =
+  let path_of_config t =
     if t = default
     then "default"
     else (
@@ -165,7 +189,7 @@ end = struct
     | _ -> None
   ;;
 
-  let of_string x =
+  let config_of_string x =
     match x with
     | "default" -> default
     | _ ->
@@ -181,7 +205,7 @@ end = struct
            | None -> acc))
   ;;
 
-  let of_flags l =
+  let config_of_flags l =
     let rec loop acc = function
       | [] -> acc
       | "--enable" :: name :: rest -> loop (enable name acc) rest
@@ -236,7 +260,7 @@ end = struct
       Some "--effects=double-translation"
   ;;
 
-  let to_flags ~jsoo_version t =
+  let flags_of_config ~jsoo_version t =
     List.filter_opt
       [ (match t.toplevel with
          | Some true -> Some "--toplevel"
@@ -248,6 +272,11 @@ end = struct
          | None -> None)
       ]
   ;;
+
+  let path t = t
+  let of_string x = x
+  let of_flags l = path_of_config (config_of_flags l)
+  let to_flags ~jsoo_version t = flags_of_config ~jsoo_version (config_of_string t)
 
   let remove_config_flags flags =
     let rec loop acc = function
@@ -328,6 +357,15 @@ let jsoo_has_shapes jsoo_version =
   | None -> false
 ;;
 
+let jsoo_has_build_config jsoo_version =
+  match jsoo_version with
+  | Some version ->
+    (match Version.compare version (6, 4) with
+     | Lt -> false
+     | Gt | Eq -> true)
+  | None -> false
+;;
+
 type sub_command =
   | Compile
   | Link
@@ -342,6 +380,25 @@ let js_of_ocaml_flags t ~dir ~mode (spec : Js_of_ocaml.Flags.Spec.t) =
     ~spec
     ~default:js_of_ocaml.flags
     ~eval:(Expander.expand_and_eval_set expander)
+;;
+
+let resolve_config sctx ~dir ~(mode : Js_of_ocaml.Mode.t) flags =
+  let open Action_builder.O in
+  let* compile_flags =
+    js_of_ocaml_flags sctx ~dir ~mode flags
+    |> Action_builder.bind ~f:(fun (x : _ Js_of_ocaml.Flags.t) -> x.compile)
+  in
+  let* jsoo =
+    match mode with
+    | JS -> jsoo ~dir sctx
+    | Wasm -> wasmoo ~dir sctx
+  in
+  let* jsoo_version = Action_builder.of_memo (Version.jsoo_version jsoo) in
+  if jsoo_has_build_config jsoo_version
+  then
+    Action_builder.of_memo (Version.jsoo_build_config jsoo compile_flags)
+    |> Action_builder.map ~f:Config.of_string
+  else Action_builder.return (Config.of_flags compile_flags)
 ;;
 
 let js_of_ocaml_rule
@@ -402,10 +459,16 @@ let js_of_ocaml_rule
             and+ jsoo_version =
               let* jsoo = jsoo in
               Action_builder.of_memo (Version.jsoo_version jsoo)
-            in
-            Command.Args.S
-              (Config.to_flags ~jsoo_version config
-               |> List.map ~f:(fun x -> Command.Args.A x))))
+            and+ flags = flags in
+            if jsoo_has_build_config jsoo_version
+            then
+              Command.Args.S
+                (List.map flags ~f:(fun x -> Command.Args.A x)
+                 @ [ A "--apply-build-config"; A (Config.path config) ])
+            else
+              Command.Args.S
+                (Config.to_flags ~jsoo_version config
+                 |> List.map ~f:(fun x -> Command.Args.A x))))
     ; A "-o"
     ; Target target
     ; spec
@@ -424,11 +487,7 @@ let jsoo_runtime_files ~(mode : Js_of_ocaml.Mode.t) libs =
 let standalone_runtime_rule ~mode cc ~runtime_files ~target ~flags ~sourcemap =
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
-  let config =
-    js_of_ocaml_flags sctx ~dir ~mode flags
-    |> Action_builder.bind ~f:(fun (x : _ Js_of_ocaml.Flags.t) -> x.compile)
-    |> Action_builder.map ~f:Config.of_flags
-  in
+  let config = resolve_config sctx ~dir ~mode flags in
   let libs = Compilation_context.requires_link cc in
   let spec =
     Command.Args.S
@@ -562,10 +621,7 @@ let link_rule
   let ctx = Super_context.context sctx |> Context.build_context in
   let get_all =
     let open Action_builder.O in
-    let+ config =
-      js_of_ocaml_flags sctx ~dir ~mode flags
-      |> Action_builder.bind ~f:(fun (x : _ Js_of_ocaml.Flags.t) -> x.compile)
-      |> Action_builder.map ~f:Config.of_flags
+    let+ config = resolve_config sctx ~dir ~mode flags
     and+ cm = cm
     and+ linkall = linkall
     and+ libs = Resolve.Memo.read (Compilation_context.requires_link cc)
@@ -700,10 +756,7 @@ let build_cm
     and+ config =
       match config_opt with
       | Some config -> Action_builder.return config
-      | None ->
-        js_of_ocaml_flags sctx ~dir ~mode in_context.flags
-        |> Action_builder.bind ~f:(fun (x : _ Js_of_ocaml.Flags.t) -> x.compile)
-        |> Action_builder.map ~f:Config.of_flags
+      | None -> resolve_config sctx ~dir ~mode in_context.flags
     in
     let deps = List.filter deps ~f:(fun m -> Module.has m ~ml_kind:Impl) in
     (Path.build (in_build_dir ctx ~config [ "stdlib"; with_js_ext ~mode "stdlib.cma" ])

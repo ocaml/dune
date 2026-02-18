@@ -7,7 +7,8 @@ module Paths = struct
 
   let library_native_dir ~obj_dir = Path.Build.relative obj_dir "native"
   let library_byte_dir ~obj_dir = Path.Build.relative obj_dir "byte"
-  let library_jsoo_dir ~obj_dir = Path.Build.relative obj_dir "jsoo"
+  let jsoo_dirname = "jsoo"
+  let library_jsoo_dir ~obj_dir = Path.Build.relative obj_dir jsoo_dirname
   let library_melange_dir ~obj_dir = Path.Build.relative obj_dir "melange"
   let library_public_cmi_ocaml_dir ~obj_dir = Path.Build.relative obj_dir "public_cmi"
 
@@ -400,6 +401,7 @@ let public_cmi_melange_dir =
 ;;
 
 let byte_dir = get_path ~l:Local.byte_dir ~e:External.byte_dir
+let is_jsoo_dirname s = String.equal s Paths.jsoo_dirname
 let jsoo_dir = get_path ~l:Local.jsoo_dir ~e:External.jsoo_dir
 let native_dir = get_path ~l:Local.native_dir ~e:External.native_dir
 let melange_dir = get_path ~l:Local.melange_dir ~e:External.melange_dir

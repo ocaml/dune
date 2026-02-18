@@ -5,7 +5,7 @@ open Import
 module Config : sig
   type t
 
-  val all : t list
+  val of_string : string -> t
 end
 
 module Version : sig

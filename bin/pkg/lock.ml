@@ -179,21 +179,16 @@ let solve_multiple_platforms
   in
   match solver_results, errors with
   | [], [] -> Code_error.raise "Solver did not run for any platforms." []
-  | [], errors ->
+  | _, _ :: _ ->
+    (* Any errors means full failure - no partial solutions *)
     `All_error
       (Platforms_by_message.union_all errors
        |> Platforms_by_message.all_solver_errors_raising_if_any_manifest_errors)
-  | x :: xs, errors ->
+  | x :: xs, [] ->
     let merged_solver_result =
       List.fold_left xs ~init:x ~f:Dune_pkg.Opam_solver.Solver_result.merge
     in
-    if List.is_empty errors
-    then `All_ok merged_solver_result
-    else
-      `Partial
-        ( merged_solver_result
-        , Platforms_by_message.union_all errors
-          |> Platforms_by_message.all_solver_errors_raising_if_any_manifest_errors )
+    `All_ok merged_solver_result
 ;;
 
 let user_lock_dir_path path =
@@ -381,32 +376,6 @@ let solve_lock_dir
     match result with
     | `All_error messages -> Error messages
     | `All_ok solver_result -> Ok (solver_result, [])
-    | `Partial (solver_result, errors) ->
-      Log.info
-        "Solver found partial solution"
-        [ "error_count", Dyn.int (List.length errors) ];
-      let all_platforms =
-        List.concat_map errors ~f:snd |> List.sort_uniq ~compare:Solver_env.compare
-      in
-      Ok
-        ( solver_result
-        , [ Pp.nop
-          ; Pp.tag User_message.Style.Warning
-            @@ Pp.vbox
-            @@ Pp.concat
-                 ~sep:Pp.cut
-                 [ Pp.box
-                   @@ Pp.text "No package solution was found for some requsted platforms."
-                 ; Pp.nop
-                 ; Pp.box @@ Pp.text "Platforms with no solution:"
-                 ; Pp.box @@ Pp.enumerate all_platforms ~f:Solver_env.pp_oneline
-                 ; Pp.nop
-                 ; Pp.box
-                   @@ Pp.text
-                        "See the trace file with --trace-file for more details. \
-                         Configure platforms to solve for in the dune-workspace file."
-                 ]
-          ] )
   in
   match solver_result with
   | Error messages -> Fiber.return (Error (lock_dir_path, messages))

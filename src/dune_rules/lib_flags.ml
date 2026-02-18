@@ -330,7 +330,10 @@ module Lib_and_module = struct
            Action_builder.List.map ts ~f:(function
              | Lib t ->
                let t =
-                 Lib.Parameterised.for_instance ~build_dir ~ext_lib:lib_config.ext_lib t
+                 Lib.Parameterised.for_instance
+                   ~build_dir
+                   ~ext_lib:(Some lib_config.ext_lib)
+                   t
                in
                let+ { Link_params.hidden_deps; include_dirs; deps } =
                  Action_builder.of_memo (Link_params.get sctx t mode lib_config)

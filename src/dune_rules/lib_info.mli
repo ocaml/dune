@@ -262,6 +262,6 @@ val to_dyn : 'path Dyn.builder -> 'path t Dyn.builder
 
 val for_instance
   :  dir:Path.Build.t
-  -> ext_lib:Filename.Extension.t
+  -> ext_lib:Filename.Extension.t option
   -> Path.t t
   -> Path.Build.t t

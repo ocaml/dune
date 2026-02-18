@@ -535,8 +535,6 @@ let cmo_js_of_module ~mode m =
     ~ext:(Js_of_ocaml.Ext.cmo ~mode)
 ;;
 
-let unused_ext_lib = Filename.Extension.of_string_exn ".unused"
-
 let link_rule
       ~mode
       cc
@@ -570,7 +568,7 @@ let link_rule
       Action_builder.of_memo @@ Version.jsoo_version jsoo
     in
     let libs =
-      List.map libs ~f:(Lib.Parameterised.for_instance ~build_dir ~ext_lib:unused_ext_lib)
+      List.map libs ~f:(Lib.Parameterised.for_instance ~build_dir ~ext_lib:None)
     in
     (* Special case for the stdlib because it is not referenced in the
        META *)

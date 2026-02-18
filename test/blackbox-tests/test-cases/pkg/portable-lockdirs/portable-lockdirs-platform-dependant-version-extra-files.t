@@ -66,41 +66,64 @@ Define a project with a package depending on bar:
   >  (libraries foo))
   > EOF
 
-Solve the project. The solution will contain extra files for both versions of foo:
+Under single-solve, allowing different versions of the same package on
+different platforms is no longer supported: the solver returns a combined
+solution and a post-solve check rejects it.
   $ dune pkg lock
-  Solution for dune.lock
-  
-  Dependencies common to all supported platforms:
-  - bar.0.0.1
-  
-  Additionally, some packages will only be built on specific platforms.
-  
-  arch = arm64; os = linux:
-  - foo.1
-  
-  arch = arm64; os = macos:
-  - foo.2
-  
-  arch = x86_64; os = linux:
-  - foo.1
-  
-  arch = x86_64; os = macos:
-  - foo.2
+  Error: Multi-platform solving selected different versions of the same package
+  on different platforms. This is not supported.
+  The following packages have version conflicts:
+  - foo:
+    version 1 on:
+      - arch = x86_64; opam-version = 2.2.0; os = linux; post = true;
+        with-dev-setup = false; with-doc = false
+      - arch = arm64; opam-version = 2.2.0; os = linux; post = true;
+        with-dev-setup = false; with-doc = false
+    version 2 on:
+      - arch = x86_64; opam-version = 2.2.0; os = macos; post = true;
+        with-dev-setup = false; with-doc = false
+      - arch = arm64; opam-version = 2.2.0; os = macos; post = true;
+        with-dev-setup = false; with-doc = false
+  [1]
 
-Verify the contents of the extra files for each version of foo:
+No solution exists so the lockdir has no foo.<ver>.files directories:
   $ cat ${default_lock_dir}/foo.1.files/version.txt
-  version_1
+  cat: dune.lock/foo.1.files/version.txt: No such file or directory
+  [1]
   $ cat ${default_lock_dir}/foo.2.files/version.txt
-  version_2
+  cat: dune.lock/foo.2.files/version.txt: No such file or directory
+  [1]
 
-Build as if we're on linux and verify that the appropriate extra file was copied into _build:
+Without a lockdir, building errors out regardless of platform.
+
+Build as if we're on linux:
   $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=arm64 DUNE_CONFIG__OS_FAMILY=debian DUNE_CONFIG__OS_DISTRIBUTION=ubuntu DUNE_CONFIG__OS_VERSION=24.11 dune build
+  File "dune", line 3, characters 12-15:
+  3 |  (libraries foo))
+                  ^^^
+  Error: Library "foo" not found.
+  -> required by _build/default/.x.eobjs/native/dune__exe__X.cmx
+  -> required by _build/default/x.exe
+  -> required by alias all
+  -> required by alias default
+  [1]
   $ cat ${default_lock_dir}/foo.1.files/version.txt
-  version_1
+  cat: dune.lock/foo.1.files/version.txt: No such file or directory
+  [1]
 
   $ dune clean
 
-Build as if we're on macos and verify that the appropriate extra file was copied into _build:
+Build as if we're on macos:
   $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=x86_64 DUNE_CONFIG__OS_FAMILY=homebrew DUNE_CONFIG__OS_DISTRIBUTION=homebrew DUNE_CONFIG__OS_VERSION=15.3.1 dune build
+  File "dune", line 3, characters 12-15:
+  3 |  (libraries foo))
+                  ^^^
+  Error: Library "foo" not found.
+  -> required by _build/default/.x.eobjs/native/dune__exe__X.cmx
+  -> required by _build/default/x.exe
+  -> required by alias all
+  -> required by alias default
+  [1]
   $ cat ${default_lock_dir}/foo.2.files/version.txt
-  version_2
+  cat: dune.lock/foo.2.files/version.txt: No such file or directory
+  [1]

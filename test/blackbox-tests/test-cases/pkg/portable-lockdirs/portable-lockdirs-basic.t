@@ -38,35 +38,14 @@ Create a package that writes a different value to some files depending on the os
   Dependencies common to all supported platforms:
   - foo.0.0.1
 
-
-The lock above runs the SAT engine once per default platform (4) under the
-current per-platform parallel solving shape. Dump each SAT invocation's
-counters; one entry per invocation.
+Under single-solve, the SAT engine runs once for all default platforms.
 
   $ dune trace cat \
   > | jq -s 'include "dune"; [ .[] | satSolveEvents | .args ]'
   [
     {
-      "num_variables": 2,
-      "num_clauses": 2,
-      "num_decisions": 0,
-      "num_conflicts": 0
-    },
-    {
-      "num_variables": 2,
-      "num_clauses": 2,
-      "num_decisions": 0,
-      "num_conflicts": 0
-    },
-    {
-      "num_variables": 2,
-      "num_clauses": 2,
-      "num_decisions": 0,
-      "num_conflicts": 0
-    },
-    {
-      "num_variables": 2,
-      "num_clauses": 2,
+      "num_variables": 9,
+      "num_clauses": 9,
       "num_decisions": 0,
       "num_conflicts": 0
     }

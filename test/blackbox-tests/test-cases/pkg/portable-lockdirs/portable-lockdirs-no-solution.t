@@ -45,82 +45,28 @@ Solver error when solving fails with the same error on all platforms:
         c.0.2: Incompatible with restriction: = 0.1
   [1]
 
-Even on failure the SAT engine runs once per platform attempt under
-per-platform parallel solving.
+Under single-solve, the SAT engine runs once across all platforms even on
+failure.
 
   $ dune trace cat \
   > | jq -s 'include "dune"; [ .[] | satSolveEvents | .args ]'
   [
     {
-      "num_variables": 4,
-      "num_clauses": 5,
+      "num_variables": 17,
+      "num_clauses": 21,
       "num_decisions": 0,
       "num_conflicts": 0
     },
     {
-      "num_variables": 4,
-      "num_clauses": 5,
+      "num_variables": 17,
+      "num_clauses": 21,
       "num_decisions": 0,
       "num_conflicts": 0
     },
     {
-      "num_variables": 8,
-      "num_clauses": 5,
-      "num_decisions": 3,
-      "num_conflicts": 0
-    },
-    {
-      "num_variables": 4,
-      "num_clauses": 5,
-      "num_decisions": 0,
-      "num_conflicts": 0
-    },
-    {
-      "num_variables": 4,
-      "num_clauses": 5,
-      "num_decisions": 0,
-      "num_conflicts": 0
-    },
-    {
-      "num_variables": 8,
-      "num_clauses": 5,
-      "num_decisions": 3,
-      "num_conflicts": 0
-    },
-    {
-      "num_variables": 4,
-      "num_clauses": 5,
-      "num_decisions": 0,
-      "num_conflicts": 0
-    },
-    {
-      "num_variables": 4,
-      "num_clauses": 5,
-      "num_decisions": 0,
-      "num_conflicts": 0
-    },
-    {
-      "num_variables": 8,
-      "num_clauses": 5,
-      "num_decisions": 3,
-      "num_conflicts": 0
-    },
-    {
-      "num_variables": 4,
-      "num_clauses": 5,
-      "num_decisions": 0,
-      "num_conflicts": 0
-    },
-    {
-      "num_variables": 4,
-      "num_clauses": 5,
-      "num_decisions": 0,
-      "num_conflicts": 0
-    },
-    {
-      "num_variables": 8,
-      "num_clauses": 5,
-      "num_decisions": 3,
+      "num_variables": 34,
+      "num_clauses": 21,
+      "num_decisions": 13,
       "num_conflicts": 0
     }
   ]
@@ -142,6 +88,8 @@ with the platforms where they are relevant:
   The dependency solver failed to find a solution for the following platforms:
   - arch = x86_64; os = linux
   - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
   ...with this error:
   Couldn't solve the package dependency formula.
   Selected candidates: a.0.0.1 b.0.0.1 foo.dev
@@ -149,15 +97,4 @@ with the platforms where they are relevant:
       a 0.0.1 requires = 0.1
       Rejected candidates:
         c.0.2: Incompatible with restriction: = 0.1
-  
-  The dependency solver failed to find a solution for the following platforms:
-  - arch = x86_64; os = macos
-  - arch = arm64; os = macos
-  ...with this error:
-  Couldn't solve the package dependency formula.
-  Selected candidates: a.0.0.1 b.0.0.1 foo.dev
-  - c -> (problem)
-      a 0.0.1 requires = 0.3
-      Rejected candidates:
-        c.0.2: Incompatible with restriction: = 0.3
   [1]

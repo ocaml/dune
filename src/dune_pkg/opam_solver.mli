@@ -13,6 +13,7 @@ end
 
 val solve_lock_dir
   :  Solver_env.t
+  -> platform_overlays:Solver_env.t list
   -> Version_preference.t
   -> Opam_repo.t list
   -> local_packages:Local_package.For_solver.t Package_name.Map.t

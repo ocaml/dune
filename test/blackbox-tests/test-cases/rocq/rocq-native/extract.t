@@ -44,10 +44,10 @@
   $ ls _build/default
   Datatypes.ml
   Datatypes.mli
-  NDuneExtraction_extract.cmi
-  NDuneExtraction_extract.cmx
-  NDuneExtraction_extract.cmxs
-  NDuneExtraction_extract.o
+  NDune_Extraction_extract_extract.cmi
+  NDune_Extraction_extract_extract.cmx
+  NDune_Extraction_extract_extract.cmxs
+  NDune_Extraction_extract_extract.o
   extract.glob
   extract.ml
   extract.mli

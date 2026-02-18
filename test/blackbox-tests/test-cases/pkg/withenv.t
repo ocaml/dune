@@ -20,8 +20,5 @@ Setting environment variables in actions
   XYZ=111:000
   FOO=myfoo
   BAR=yyy:xxx
-  BAZ=baz
-  QUX=qux
-
-Note that the value so of BAZ and QUX above should be "baz:" and ":qux" respectively.
-See https://github.com/ocaml/dune/issues/10440
+  BAZ=baz:
+  QUX=:qux

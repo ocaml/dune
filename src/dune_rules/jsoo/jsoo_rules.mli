@@ -15,6 +15,18 @@ module Version : sig
   val compare : t -> t -> Ordering.t
 end
 
+val build_from_cm
+  :  Super_context.t
+  -> dir:Path.Build.t
+  -> in_context:Js_of_ocaml.In_context.t
+  -> mode:Js_of_ocaml.Mode.t
+  -> src:Path.t
+  -> obj_dir:Path.Build.t Obj_dir.t
+  -> shapes:Path.t list Action_builder.t
+  -> config:Config.t option
+  -> sourcemap:Js_of_ocaml.Sourcemap.t
+  -> Action.Full.t With_targets.t
+
 val build_cm
   :  Compilation_context.t
   -> dir:Path.Build.t

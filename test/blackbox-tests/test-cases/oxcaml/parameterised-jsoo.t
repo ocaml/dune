@@ -128,3 +128,15 @@ Same test for wasm:
   lib2(lib(impl) helper(impl), lib(impl2) helper(impl2))
   lib2(lib(impl2) helper(impl2), lib(impl2) helper(impl2))
   lib(impl) helper(impl)
+
+We can check the separate jsoo compilation with the different flags used:
+
+  $ tree _build/default/.parameterised/*/lib/lib!impl/.instance.objs/jsoo
+  _build/default/.parameterised/dc92a2af50ca3cf185f22c258336dc33/lib/lib!impl/.instance.objs/jsoo
+  |-- default
+  |   |-- archive.cma.js
+  |   `-- archive.wasma
+  `-- use-js-string+effects=double-translation
+      `-- archive.cma.js
+  
+  3 directories, 3 files

@@ -345,26 +345,29 @@ let instantiate ~sctx lib =
   let lib = Lib.Parameterised.for_instance ~build_dir ~ext_lib lib in
   let obj_dir = Lib_info.obj_dir (Lib.info lib) |> Obj_dir.as_local_exn in
   let top_sorted_modules = Dep_graph.top_closed_implementations dep_graph impl_only in
-  let+ () =
-    Memo.parallel_iter Ocaml.Mode.all ~f:(fun mode ->
-      let* modules =
-        build_modules
-          ~sctx
-          ~obj_dir
-          ~modules_obj_dir
-          ~dep_graph
-          ~mode
-          ~requires
-          ~lib
-          impl_only
-      in
-      build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules)
-  and+ () =
-    Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
-      Memo.parallel_iter Jsoo_rules.Config.all ~f:(fun config ->
-        build_jsoo ~sctx ~obj_dir ~dir:build_dir ~lib ~mode ~config:(Some config)))
-  in
-  ()
+  Memo.parallel_iter Ocaml.Mode.all ~f:(fun mode ->
+    let* modules =
+      build_modules
+        ~sctx
+        ~obj_dir
+        ~modules_obj_dir
+        ~dep_graph
+        ~mode
+        ~requires
+        ~lib
+        impl_only
+    in
+    build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules)
+;;
+
+let instantiate_jsoo ~sctx lib s_config =
+  let config = Jsoo_rules.Config.of_string s_config in
+  let ctx = Super_context.context sctx in
+  let build_dir = Context.build_dir ctx in
+  let lib = Lib.Parameterised.for_instance ~build_dir ~ext_lib:None lib in
+  let obj_dir = Lib_info.obj_dir (Lib.info lib) |> Obj_dir.as_local_exn in
+  Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
+    build_jsoo ~sctx ~obj_dir ~dir:build_dir ~lib ~mode ~config:(Some config))
 ;;
 
 let resolve_instantiation scope instance_name =
@@ -447,6 +450,13 @@ let gen_rules ~sctx ~dir rest =
     @@ fun () ->
     let* lib = resolve_instantiation scope instance_name in
     instantiate ~sctx lib
+  | [ scope; _lib_name; instance_name; ".instance.objs"; jsoo; s_config ]
+    when Obj_dir.is_jsoo_dirname jsoo ->
+    let* scope = find_scope ~sctx scope in
+    has_rules
+    @@ fun () ->
+    let* lib = resolve_instantiation scope instance_name in
+    instantiate_jsoo ~sctx lib s_config
   | _ ->
     Memo.return
       (Build_config.Gen_rules.redirect_to_parent Build_config.Gen_rules.Rules.empty)

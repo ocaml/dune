@@ -670,7 +670,17 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
     when String.equal parameterised_dir Dune_lang.Oxcaml.parameterised_dir ->
     let* sctx = sctx in
     Parameterised_rules.gen_rules ~sctx ~dir rest
-  | _ -> gen_rules_regular_directory sctx ~src_dir ~components ~dir
+  | _ ->
+    Jsoo_archive_rules.lib_archive_rules_for_dir ~dir
+    >>= (function
+     | Jsoo_archive_rules.Not_found ->
+       gen_rules_regular_directory sctx ~src_dir ~components ~dir
+     | Jsoo_archive_rules.Root ->
+       let build_dir_only_sub_dirs =
+         Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all
+       in
+       Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty) |> Memo.return
+     | Jsoo_archive_rules.Rules rules -> Gen_rules.make (Memo.return rules) |> Memo.return)
 ;;
 
 let with_context ctx ~f =

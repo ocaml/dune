@@ -90,7 +90,6 @@ end
 module Config : sig
   type t
 
-  val all : t list
   val path : t -> string
   val of_string : string -> t
   val of_flags : string list -> t
@@ -108,14 +107,6 @@ end = struct
     }
 
   let default = { js_string = None; effects = None; toplevel = None }
-  let bool_opt = [ None; Some true; Some false ]
-  let effects_opt = [ None; Some Cps; Some Double_translation ]
-
-  let all =
-    List.concat_map bool_opt ~f:(fun js_string ->
-      List.concat_map effects_opt ~f:(fun effects ->
-        List.concat_map bool_opt ~f:(fun toplevel -> [ { js_string; effects; toplevel } ])))
-  ;;
 
   let enable name acc =
     match name with
@@ -721,6 +712,58 @@ let build_cm
     ~shapes
     ~config:(Option.map config_opt ~f:Action_builder.return)
     ~sourcemap:Js_of_ocaml.Sourcemap.Inline
+;;
+
+let build_cma_js sctx ~dir ~in_context ~obj_dir ~config ~linkall ~mode cm_files basename =
+  let name = with_js_ext ~mode basename in
+  let target = in_obj_dir ~obj_dir ~config [ name ] in
+  let flags = in_context.Js_of_ocaml.In_context.flags in
+  let linkall =
+    let open Action_builder.O in
+    let+ linkall = linkall
+    and+ jsoo_version =
+      let* jsoo = jsoo ~dir sctx in
+      Action_builder.of_memo @@ Version.jsoo_version jsoo
+    in
+    Command.Args.As
+      (match jsoo_version, linkall with
+       | Some version, true ->
+         (match Version.compare version (5, 1) with
+          | Lt -> []
+          | Gt | Eq -> [ "--linkall" ])
+       | None, _ | _, false -> [])
+  in
+  let modules =
+    let open Action_builder.O in
+    let+ l = Cm_files.top_sorted_modules cm_files in
+    let l =
+      List.map l ~f:(fun m ->
+        in_obj_dir
+          ~obj_dir
+          ~config
+          [ Module_name.Unique.to_string (Module.obj_name m)
+            ^ Filename.Extension.to_string (Js_of_ocaml.Ext.cmo ~mode)
+          ]
+        |> Path.build)
+    in
+    l
+  in
+  js_of_ocaml_rule
+    sctx
+    ~dir
+    ~sub_command:Link
+    ~config:None
+    ~flags
+    ~mode
+    ~spec:
+      (S
+         [ A "-a"
+         ; Dyn (Action_builder.map modules ~f:(fun x -> Command.Args.Deps x))
+         ; Dyn linkall
+         ])
+    ~target
+    ~sourcemap:Js_of_ocaml.Sourcemap.Inline
+    ~directory_targets:[]
 ;;
 
 let for_ = Compilation_mode.Ocaml

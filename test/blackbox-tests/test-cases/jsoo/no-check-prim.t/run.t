@@ -21,8 +21,11 @@ Compilation using jsoo
    js_of_ocaml .js/default/js_of_ocaml/js_of_ocaml.cma.js
       ocamlopt lib/x.{a,cmxa}
         ocamlc bin/.technologic.eobjs/byte/technologic.{cmi,cmo,cmt}
-   js_of_ocaml lib/.x.objs/jsoo/default/x.cma.js
+   js_of_ocaml lib/.x.objs/jsoo/default/x__.cmo.js
       ocamlopt lib/x.cmxs
+   js_of_ocaml lib/.x.objs/jsoo/default/x__Y.cmo.js
+   js_of_ocaml lib/.x.objs/jsoo/default/x.cmo.js
+   js_of_ocaml lib/.x.objs/jsoo/default/x.cma.js
    js_of_ocaml bin/.technologic.eobjs/jsoo/z.cmo.js
    js_of_ocaml bin/.technologic.eobjs/jsoo/technologic.cmo.js
    js_of_ocaml bin/technologic.bc.js

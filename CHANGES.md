@@ -10,8 +10,6 @@ be incoporated into the changelog properly.
 
 ### Fixed
 
-- Fix build issues on NetBSD and OpenBSD via update of vendored ocaml-lmdb
-  (#13074, @Alizter)
 - Fix `melange.emit` not respecting the package mask via `-p <PKG>` (#13522,
   @anmonteiro)
 

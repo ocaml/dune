@@ -1207,6 +1207,61 @@ let%expect_test "No deadlocks when creating the same cycle twice" =
   |}]
 ;;
 
+let%expect_test "cancelling a computing node wakes waiters" =
+  let c_fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
+  let a =
+    create ~with_cutoff:true "A" (fun () ->
+      printf "Started evaluating A\n";
+      let* () = Memo.of_reproducible_fiber (Fiber.of_thunk Scheduler.yield) in
+      let+ result = Memo.exec (Fdecl.get c_fdecl) () in
+      printf "Miraculously evaluated A: %d\n" result;
+      result)
+  in
+  let b =
+    create ~with_cutoff:true "B" (fun () ->
+      printf "Started evaluating B\n";
+      let+ result = Memo.exec a () in
+      printf "Miraculously evaluated B: %d\n" result;
+      result)
+  in
+  let c =
+    create ~with_cutoff:true "C" (fun () ->
+      printf "Started evaluating C\n";
+      let+ (_ : int), (_ : int) = Memo.fork_and_join (Memo.exec a) (Memo.exec b) in
+      0)
+  in
+  Fdecl.set c_fdecl c;
+  (match
+     Scheduler.run
+       (Fiber.collect_errors (fun () ->
+          Fiber.fork_and_join
+            (fun () -> Memo.run (Memo.exec a ()))
+            (fun () -> Memo.run (Memo.exec b ()))))
+   with
+   | exception Test_scheduler.Never -> print_endline "Deadlock!"
+   | Ok (_ : int * int) -> print_endline "Unexpected success"
+   | Error errs ->
+     List.iter errs ~f:(fun (e : Exn_with_backtrace.t) ->
+       match e.exn with
+       | Memo.Error.E err ->
+         (match Memo.Error.get err with
+          | Memo.Cycle_error.E error -> print_cycle_error error
+          | exn -> print_endline (Printexc.to_string exn))
+       | exn -> print_endline (Printexc.to_string exn)));
+  [%expect
+    {|
+    Started evaluating A
+    Started evaluating B
+    Started evaluating C
+    Dependency cycle detected:
+    - ("A", ())
+    - called by ("C", ())
+    Dependency cycle detected:
+    - ("C", ())
+    - called by ("A", ())
+    |}]
+;;
+
 let lazy_rec ~name f =
   let fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
   let node = Memo.Lazy.create ~name (fun () -> f (Fdecl.get fdecl)) in

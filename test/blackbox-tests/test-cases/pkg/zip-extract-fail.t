@@ -76,7 +76,7 @@ variable can escape to subseqent shell invocations on MacOS.)
 
 Build with only GNU tar that can't extract ZIP archives:
 
-  $ ln -s .binaries/gnutar .fakebin/tar
+  $ ln -s ../.binaries/gnutar .fakebin/tar
   $ show_path
   cp dune sh tar
   $ (PATH=.fakebin build_pkg foo 2>&1 | grep '^Error:' -A 3)
@@ -89,7 +89,7 @@ Build with only GNU tar that can't extract ZIP archives:
 Build with bsdtar that can extract ZIP archives, without unzip. It should work:
 
   $ rm .fakebin/tar
-  $ cp .binaries/bsdtar .fakebin/tar
+  $ ln -s ../.binaries/bsdtar .fakebin/tar
   $ show_path
   cp dune sh tar
   $ (PATH=.fakebin build_pkg foo)
@@ -98,15 +98,15 @@ Build the package with bsdtar and tar. Now our fake bsdtar will get picked up
 and used to extract:
 
   $ rm .fakebin/tar
-  $ ln -s .binaries/gnutar .fakebin/tar
-  $ ln -s .binaries/bsdtar .fakebin/bsdtar
+  $ ln -s ../.binaries/gnutar .fakebin/tar
+  $ ln -s ../.binaries/bsdtar .fakebin/bsdtar
   $ show_path
   bsdtar cp dune sh tar
   $ (PATH=.fakebin build_pkg foo)
 
 Build with unzip only:
 
-  $ ln -s .binaries/unzip .fakebin/unzip
+  $ ln -s ../.binaries/unzip .fakebin/unzip
   $ rm .fakebin/bsdtar .fakebin/tar
   $ show_path
   cp dune sh unzip

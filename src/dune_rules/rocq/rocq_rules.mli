@@ -23,6 +23,10 @@ val deps_of
   -> Rocq_module.t
   -> unit Dune_engine.Action_builder.t
 
+(** Wrapper name used for the extraction stanza, used for calling [deps_of] on
+    in `dune rocq top`. *)
+val extraction_wrapper_name : Rocq_stanza.Extraction.t -> string
+
 (** ** Rules for Rocq stanzas *)
 
 (** [rocq.theory] stanza rules *)

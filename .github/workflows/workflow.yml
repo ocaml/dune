@@ -424,12 +424,16 @@ jobs:
             ~/work/dune/dune/_opam
           key: opam-ox-${{ hashFiles('**.opam') }}
 
+      - name: Install Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: latest
 
       - name: Pin deps
         run: opam pin add -n . --with-version=3.22.0
 
       - name: Install deps
-        run: opam install csexp pp re spawn uutf ppx_inline_test dune
+        run: opam install csexp pp re spawn uutf ppx_inline_test dune wasm_of_ocaml-compiler
 
       - name: Build dune
         run: opam exec -- make bootstrap

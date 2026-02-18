@@ -356,6 +356,10 @@ let build_js
           Action_builder.dyn_paths_unit paths >>> command)
       | None -> command
     in
+    let build =
+      let open Action_builder.With_targets.O in
+      build >>| Action.Full.add_sandbox Sandbox_config.needs_sandboxing
+    in
     Super_context.add_rule sctx ~dir ~loc ~mode build)
 ;;
 
@@ -594,6 +598,10 @@ let setup_runtime_assets_rules
         | Some (Ok false) | Some (Error _) | None ->
           Left dst, Action_builder.copy ~src ~dst
       in
+      let builder =
+        let open Action_builder.With_targets.O in
+        builder >>| Action.Full.add_sandbox Sandbox_config.needs_sandboxing
+      in
       let+ () = Super_context.add_rule ~loc ~dir ~mode sctx builder in
       dst
     | Some directory_target_ancestor ->
@@ -603,6 +611,10 @@ let setup_runtime_assets_rules
         Path.Build.relative dst rel
       in
       let builder = Action_builder.symlink_dir ~src:new_src ~dst in
+      let builder =
+        let open Action_builder.With_targets.O in
+        builder >>| Action.Full.add_sandbox Sandbox_config.needs_sandboxing
+      in
       let+ () = Super_context.add_rule ~loc ~dir ~mode sctx builder in
       Right dst)
   >>| List.partition_map ~f:Fun.id

@@ -176,15 +176,19 @@ being public:
   $ dune clean
   $ dune exec ./vendored/vendored_bin.exe
   vendored_bin:vendored:lib_param:impl
-  $ tree _build/default/.parameterised
-  _build/default/.parameterised
-  `-- faa0ebd10a0535a3e69ccb9c44974c2a
-      `-- vendored.lib_param
-          `-- vendored.lib_param!param_impl
-              |-- archive.a
-              `-- archive.cmxa
+  $ ls -R _build/default/.parameterised
+  _build/default/.parameterised:
+  faa0ebd10a0535a3e69ccb9c44974c2a
   
-  4 directories, 2 files
+  _build/default/.parameterised/faa0ebd10a0535a3e69ccb9c44974c2a:
+  vendored.lib_param
+  
+  _build/default/.parameterised/faa0ebd10a0535a3e69ccb9c44974c2a/vendored.lib_param:
+  vendored.lib_param!param_impl
+  
+  _build/default/.parameterised/faa0ebd10a0535a3e69ccb9c44974c2a/vendored.lib_param/vendored.lib_param!param_impl:
+  archive.a
+  archive.cmxa
 
 Or only the parameter being public:
 

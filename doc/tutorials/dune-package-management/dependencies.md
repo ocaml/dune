@@ -130,7 +130,7 @@ used for opam dependencies in the `dune-project` file.
 
 This change ensures the `fmt` package to install will be compatible with our
 request. These constraints will be taken into account the next time the build
-system is ran.
+system is run.
 
 ```sh
 dune build

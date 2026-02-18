@@ -193,7 +193,11 @@ let create
     | None -> Resolve.Memo.return []
     | Some parameters -> parameters_main_modules parameters
   in
-  let sandbox = Sandbox_config.no_special_requirements in
+  let sandbox =
+    match for_ with
+    | Compilation_mode.Ocaml -> Sandbox_config.no_special_requirements
+    | Compilation_mode.Melange -> Sandbox_config.needs_sandboxing
+  in
   let modes =
     let default = { Lib_mode.Map.ocaml = Mode.Dict.make_both true; melange = false } in
     Option.value ~default modes

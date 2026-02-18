@@ -2,7 +2,7 @@
 
 For many projects published it can be useful to set up a [continuous
 integration](https://en.wikipedia.org/wiki/Continuous_integration) (CI) system.
-This allows to check whether the code builds on other computers, the tests pass
+This allows checking whether the code builds on other computers, the tests pass
 and helps to assess contributions from other people.
 
 There are numerous CI systems available. In this document we will be using

@@ -87,6 +87,10 @@ dev-switch:
 	$(MAKE) install-ocamlformat
 	opam install -y $(DEV_DEPS)
 
+.PHONY: index
+index: $(BIN)
+	$(BIN) build @ocaml-index
+
 .PHONY: test
 test: $(BIN)
 	$(BIN) runtest

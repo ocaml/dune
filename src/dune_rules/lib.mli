@@ -25,7 +25,13 @@ module Parameterised : sig
   val applied_modules : t -> Module_name.t Parameterised_name.t list Resolve.t
   val applied_name : t -> Module_name.t Parameterised_name.t Resolve.t
   val requires : t -> for_:Compilation_mode.t -> t list Resolve.t
-  val for_instance : build_dir:Path.Build.t -> ext_lib:Filename.Extension.t -> t -> t
+
+  val for_instance
+    :  build_dir:Path.Build.t
+    -> ext_lib:Filename.Extension.t option
+    -> t
+    -> t
+
   val dir : build_dir:Path.Build.t -> t -> Path.Build.t
 
   val instantiate

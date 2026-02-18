@@ -312,18 +312,27 @@ let rec simplify = function
         | Const false -> Nil
         | _ -> Form (loc, When (simplified_condition, simplify t)))
      | If { condition; then_; else_ } ->
-       Form
-         ( loc
-         , If
-             { condition = simplify_blang condition
-             ; then_ = simplify then_
-             ; else_ = simplify else_
-             } )
-     | Has_undefined_var t -> Form (loc, Has_undefined_var (simplify t))
+       (match simplify_blang condition with
+        | Const true -> simplify then_
+        | Const false -> simplify else_
+        | condition ->
+          let then_ = simplify then_ in
+          let else_ = simplify else_ in
+          (match then_, else_ with
+           | Form (_, Blang (Const true)), Form (_, Blang (Const false)) ->
+             Form (loc, Blang condition)
+           | Form (_, Blang (Const false)), Form (_, Blang (Const true)) ->
+             Form (loc, Blang (Not condition))
+           | _ when equal then_ else_ -> then_
+           | _ -> Form (loc, If { condition; then_; else_ })))
+     | Has_undefined_var t ->
+       (match simplify t with
+        | Form (_, Blang (Const _)) -> Form (loc, Blang (Const false))
+        | t -> Form (loc, Has_undefined_var t))
      | Catch_undefined_var { value; fallback } ->
-       Form
-         ( loc
-         , Catch_undefined_var { value = simplify value; fallback = simplify fallback } )
+       (match simplify value with
+        | Form (_, Blang (Const _)) as value -> value
+        | value -> Form (loc, Catch_undefined_var { value; fallback = simplify fallback }))
      | And_absorb_undefined_var blangs ->
        let blangs : blang list =
          List.concat_map blangs ~f:(fun blang ->
@@ -350,10 +359,25 @@ and simplify_blang = function
      | Some "false" -> Const false
      | _ -> expr)
   | Expr (Form (_, Blang blang)) -> simplify_blang blang
-  | Expr s -> Expr (simplify s)
-  | Compare (op, lhs, rhs) -> Compare (op, simplify lhs, simplify rhs)
-  | Not blang -> Not (simplify_blang blang)
-  | And [ b ] -> simplify_blang b
+  | Expr s ->
+    (match simplify s with
+     | Form (_, Blang blang) -> simplify_blang blang
+     | s -> Expr s)
+  | Compare (op, lhs, rhs) ->
+    let lhs = simplify lhs in
+    let rhs = simplify rhs in
+    (match lhs, rhs with
+     | Literal l, Literal r ->
+       (match op, String_with_vars.text_only l, String_with_vars.text_only r with
+        | Relop.Eq, Some l, Some r -> Const (String.equal l r)
+        | Relop.Neq, Some l, Some r -> Const (not (String.equal l r))
+        | _ -> Compare (op, lhs, rhs))
+     | _ -> Compare (op, lhs, rhs))
+  | Not blang ->
+    (match simplify_blang blang with
+     | Const b -> Const (not b)
+     | Not blang -> blang
+     | blang -> Not blang)
   | And blangs ->
     let blangs =
       List.concat_map blangs ~f:(fun blang ->
@@ -361,8 +385,21 @@ and simplify_blang = function
         | And xs -> xs
         | blang -> [ blang ])
     in
-    And (List.map blangs ~f:simplify_blang)
-  | Or [ b ] -> simplify_blang b
+    if
+      List.exists blangs ~f:(function
+        | Blang.Const false -> true
+        | _ -> false)
+    then Const false
+    else (
+      let blangs =
+        List.filter blangs ~f:(function
+          | Blang.Const true -> false
+          | _ -> true)
+      in
+      match blangs with
+      | [] -> Const true
+      | [ b ] -> b
+      | blangs -> And blangs)
   | Or blangs ->
     let blangs =
       List.concat_map blangs ~f:(fun blang ->
@@ -370,7 +407,21 @@ and simplify_blang = function
         | Or xs -> xs
         | blang -> [ blang ])
     in
-    Or (List.map blangs ~f:simplify_blang)
+    if
+      List.exists blangs ~f:(function
+        | Blang.Const true -> true
+        | _ -> false)
+    then Const true
+    else (
+      let blangs =
+        List.filter blangs ~f:(function
+          | Blang.Const false -> false
+          | _ -> true)
+      in
+      match blangs with
+      | [] -> Const false
+      | [ b ] -> b
+      | blangs -> Or blangs)
 ;;
 
 module Blang = struct

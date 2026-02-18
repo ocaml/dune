@@ -8,6 +8,14 @@ val foreign_rules
   -> dir_contents:Dir_contents.t
   -> unit Memo.t
 
+val compile_context
+  :  Library.t
+  -> sctx:Super_context.t
+  -> dir_contents:Dir_contents.t
+  -> expander:Expander.t
+  -> scope:Scope.t
+  -> Compilation_context.t Memo.t
+
 val rules
   :  Library.t
   -> sctx:Super_context.t

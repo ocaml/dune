@@ -74,5 +74,6 @@ separately here:
   - testpkg.0.0.1
 
   $ ocaml_version="$(ocaml -vnum)"
-  $ build_pkg testpkg 2>&1 | dune_cmd subst "$ocaml_version" 'OCAML_VERSION'
+  $ ocaml_version_re=$(printf '%s' "$ocaml_version" | sed -e 's/[+]/\\&/g')
+  $ build_pkg testpkg 2>&1 | dune_cmd subst "$ocaml_version_re" 'OCAML_VERSION'
   OCAML_VERSION

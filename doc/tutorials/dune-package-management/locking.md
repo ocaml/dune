@@ -1,7 +1,7 @@
 # Locking Your Dependencies
 
 In the default use-case Dune will automatically determine which packages to
-install, by reading the package constrains, determining compatible versions and
+install, by reading the package constraints, determining compatible versions and
 installing the dependencies automatically.
 
 For many projects this is a good and acceptable behavior as users often want to

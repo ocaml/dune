@@ -8,7 +8,7 @@ server](https://github.com/ocaml/ocaml-lsp) or
 [ocamlformat](https://github.com/ocaml-ppx/ocamlformat).
 
 In general these tools do not require any specific configuration: Dune will
-create a lock dir implicitely and install a compatible version of the tool
+create a lock dir implicitly and install a compatible version of the tool
 depending on its availability in
 [opam-repository](https://github.com/ocaml/opam-repository).
 
@@ -30,7 +30,7 @@ constraints are required.
 Configuring the lock directory for a developer tool works in the same way as
 configuring any other lock directory, via the {doc}`lock_dir stanza
 </reference/dune-workspace/lock_dir>`. The difference however is, that the lock
-dir path for a lock dir cannot be chosen freely and must match the interal path
+dir path for a lock dir cannot be chosen freely and must match the internal path
 that Dune will pick for the lock directory of said developer tool.
 
 The format of the lock dir path is
@@ -88,10 +88,10 @@ configuration:
  (repositories overlay oxcaml upstream))
 ```
 
-It specifies that that lock tool should use a pinned version of `ocamlbuild` as
+It specifies that the lock tool should use a pinned version of `ocamlbuild` as
 well as custom repositories in a specific order (adding the `oxcaml` repository
 in between the repositories that are defined out of the box). Constraints are
-added on the versions of other packages to be selected for for building
+added on the versions of other packages to be selected for building
 ocamlformat.
 
 :::{seealso}

@@ -1,5 +1,5 @@
   $ mkdir bin
-  $ cp $(which ocaml_index) bin/ocaml-index
+  $ ln -s $(which ocaml_index) bin/ocaml-index
   $ export PATH=bin:$PATH
 
 Building from the workspace folder creates all three indexes:

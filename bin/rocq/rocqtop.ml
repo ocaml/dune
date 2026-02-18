@@ -122,7 +122,7 @@ let term =
         | Some (`Extraction extr) ->
           ( Dune_rules.Rocq.Rocq_rules.rocqtop_args_extraction ~sctx ~dir extr rocq_module
           , extr.buildable.use_stdlib
-          , "DuneExtraction"
+          , Dune_rules.Rocq.Rocq_rules.extraction_wrapper_name extr
           , extr.buildable.mode )
       in
       (* Run rocqdep *)

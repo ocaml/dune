@@ -12,7 +12,6 @@ doesn't contain a lockfile for the "ocaml" package.
   $ make_lockdir
 
   $ dune tools exec ocamllsp
-  Error: The lockdir doesn't contain a lockfile for the package "ocaml".
-  Hint: Add a dependency on "ocaml" to one of the packages in dune-project and
-  then run 'dune pkg lock'
+  Error: The tool ocamllsp is not installed.
+  Hint: Try running 'dune tools install ocamllsp'
   [1]

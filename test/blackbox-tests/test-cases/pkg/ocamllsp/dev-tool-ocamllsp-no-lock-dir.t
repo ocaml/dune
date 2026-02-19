@@ -10,6 +10,6 @@ dune project with no lockdir.
   > EOF
 
   $ dune tools exec ocamllsp
-  Error: Unable to load the lockdir for the default build context.
-  Hint: Try running 'dune pkg lock'
+  Error: The tool ocamllsp is not installed.
+  Hint: Try running 'dune tools install ocamllsp'
   [1]

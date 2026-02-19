@@ -4,10 +4,13 @@ module Display = Dune_engine.Display
 let depexts_hint = function
   | [] -> None
   | depexts ->
-    [ Pp.textf "You may want to verify the following depexts are installed:"
-    ; Pp.enumerate ~f:Pp.verbatim depexts
-    ]
-    |> Pp.concat_map ~sep:Pp.cut ~f:(fun pp -> Pp.box pp)
+    Pp.hovbox
+      (Pp.concat
+         [ Pp.hovbox
+             (Pp.text "You may want to verify the following depexts are installed:")
+         ; Pp.space
+         ; Pp.hovbox (Pp.text (String.concat ~sep:" " depexts))
+         ])
     |> Option.some
 ;;
 

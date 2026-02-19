@@ -46,12 +46,11 @@ error message.
   File "dune-project", line 1, characters 0-0:
   Error: Invalid first line, expected: (lang <lang> <version>)
   
-  Hint: You may want to verify the following depexts are installed:
-  - gnupg
-  - unzip
+  Hint: You may want to verify the following depexts are installed: gnupg unzip
   [1]
 
 Make dune.lock files with unknown program and unknown package.
+
   $ make_lockdir
   $ make_lockpkg foo <<EOF
   > (version 0.0.1)
@@ -73,7 +72,31 @@ when the program is not found.
   Error: Program unknown-program not found in the tree or in PATH
    (context: default)
   Hint: You may want to verify the following depexts are installed:
-  - unknown-package
+  unknown-package
+  [1]
+
+  $ make_lockdir
+  $ make_lockpkg foo <<EOF
+  > (version 0.0.1)
+  > (build
+  >  (run unknown-program))
+  > (depexts foo zoo bar baz tar jar)
+  > (source
+  >  (fetch
+  >   (url file://$PWD/foo.tar)
+  >   (checksum md5=$(md5sum foo.tar | cut -f1 -d' '))))
+  > EOF
+
+Running the same build. It is supposed to show the depexts message at the end,
+when the program is not found.
+  $ dune build
+  File "dune.lock/foo.pkg", line 3, characters 6-21:
+  3 |  (run unknown-program))
+            ^^^^^^^^^^^^^^^
+  Error: Program unknown-program not found in the tree or in PATH
+   (context: default)
+  Hint: You may want to verify the following depexts are installed:
+  bar baz foo jar tar zoo
   [1]
 
 Update the foo lockfile to have a single depext name:
@@ -97,7 +120,7 @@ error message.
   File "dune-project", line 1, characters 0-0:
   Error: Invalid first line, expected: (lang <lang> <version>)
   
-  Hint: You may want to verify the following depexts are installed:- foo
+  Hint: You may want to verify the following depexts are installed: foo
   [1]
 
 Update the foo lockfile to have short depext names:
@@ -121,6 +144,5 @@ error message.
   File "dune-project", line 1, characters 0-0:
   Error: Invalid first line, expected: (lang <lang> <version>)
   
-  Hint: You may want to verify the following depexts are installed:- a
-                                                                   - b
+  Hint: You may want to verify the following depexts are installed: a b
   [1]

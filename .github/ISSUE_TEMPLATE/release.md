@@ -28,7 +28,6 @@ assignees: ''
 - [ ] Update dune changelog to `X.Y.Z` on `X.Y` branch [link to dune PR]
 - [ ] Open then pull request on `opam-repository` [link to OPAM PR]
 - [ ] Triage (ensure it does not break anything)
-- [ ] Update nix-overlays with the new version [link to nix-overlays PRs]
 
 ## Post-release
 
@@ -36,7 +35,6 @@ assignees: ''
 - [ ] Update ocaml.org changelog [link to ocaml.org PR]
 - [ ] Write a post about the release on Discuss [link to post]
 - [ ] Store the revdeps error file in the [logs](https://github.com/ocaml/dune/wiki/Reverse-dependencies-CI-logs)
-- [ ] Create a next release milestone
 <!-- If minor release uncomment this -->
 <!-- - [ ] Increase `lang dune` number   -->
 

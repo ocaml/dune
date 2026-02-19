@@ -17,9 +17,9 @@ let%expect_test "special values" =
   print_float nan;
   [%expect {| nan |}];
   print_float infinity;
-  [%expect {| inf |}];
+  [%expect {| infinity |}];
   print_float neg_infinity;
-  [%expect {| -inf |}]
+  [%expect {| neg_infinity |}]
 ;;
 
 let%expect_test "scientific notation" =
@@ -82,7 +82,8 @@ let%expect_test "round-trip verification" =
   (* Verify that parsing the output gives back the original value *)
   let check x =
     let s = Dyn.to_string (Dyn.float x) in
-    let y = float_of_string s in
+    (* float_of_string doesn't accept "neg_infinity", handle specially *)
+    let y = if s = "neg_infinity" then neg_infinity else float_of_string s in
     if x = y || (x <> x && y <> y) (* nan <> nan *)
     then print_endline "ok"
     else Printf.printf "FAIL: %s -> %f\n" s y

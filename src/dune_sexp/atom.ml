@@ -35,15 +35,25 @@ let is_valid =
     len > 0 && loop s 0 len
 ;;
 
+let table = String.Table.create 512
+
+let make s =
+  match String.Table.find table s with
+  | Some s -> s
+  | None ->
+    String.Table.add_exn table s s;
+    s
+;;
+
 let of_string s =
   if is_valid s
-  then A s
+  then A (make s)
   else Code_error.raise "Dune_lang.Atom.of_string got invalid atom" [ "atom", String s ]
 ;;
 
 let to_string (A s) = s
-let parse s = if is_valid s then Some (A s) else None
-let of_int i = A (string_of_int i)
+let parse s = if is_valid s then Some (A (make s)) else None
+let of_int i = A (make (string_of_int i))
 let of_float x = of_string (string_of_float x)
-let of_bool x = A (string_of_bool x)
+let of_bool x = A (make (string_of_bool x))
 let of_int64 i = A (Int64.to_string i)

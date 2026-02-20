@@ -26,6 +26,7 @@ type t =
   ; stubs : Foreign.Stubs.t
   ; enabled_if : Blang.t
   ; extra_objects : Ordered_set_lang.Unexpanded.t
+  ; c_library_flags : Ordered_set_lang.Unexpanded.t
   }
 
 val decode : t Dune_lang.Decoder.t

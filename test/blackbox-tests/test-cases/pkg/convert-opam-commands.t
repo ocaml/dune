@@ -40,7 +40,10 @@ Make sure we don't mess up percent signs that aren't part of variable interpolat
   > build: [ "./configure" "--prefix=%{prefix" ]
   > EOF
 
+  $ mkpkg foo
+
   $ mkpkg variable-types <<EOF
+  > depends: [ "foo" ]
   > build: [
   >   ["echo" local_var]
   >   ["echo" _:explicit_local_var]
@@ -87,6 +90,7 @@ Package which has boolean where string was expected. This should be caught while
 
   $ solve standard-dune with-interpolation with-percent-sign variable-types
   Solution for dune.lock:
+  - foo.0.0.1
   - standard-dune.0.0.1
   - variable-types.0.0.1
   - with-interpolation.0.0.1
@@ -137,6 +141,9 @@ Package which has boolean where string was expected. This should be caught while
        (run echo %{pkg-self:explicit_local_var})
        (run echo %{pkg:foo:package_var})
        (run echo %{os_family}))))))
+  
+  (depends
+   (all_platforms (foo)))
 
   $ solve with-malformed-interpolation
   File "$TESTCASE_ROOT/mock-opam-repository/packages/with-malformed-interpolation/with-malformed-interpolation.0.0.1/opam", line 1, characters 0-0:

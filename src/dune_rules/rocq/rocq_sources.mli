@@ -42,6 +42,9 @@ val lookup_module
   -> Rocq_module.t
   -> [ `Theory of Theory.t | `Extraction of Extraction.t ] option
 
+(** Returns the path to the .expected file for a module, if one exists *)
+val expected_file : t -> Rocq_module.t -> Path.Build.t option
+
 val mlg_files
   :  sctx:Super_context.t
   -> dir:Path.Build.t

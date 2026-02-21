@@ -81,6 +81,11 @@ The stanza builds all the ``.v`` files in the given directory and its
 subdirectories if the :ref:`include-subdirs <include-subdirs-rocq>` stanza is
 present.
 
+When a ``.v`` file has a corresponding ``.expected`` file, Rocq's standard
+output is captured instead of being output to the terminal, and the output is
+diffed with the ``.expected`` file as part of the ``runtest`` alias. When the
+output differs, it can be promoted as with, e.g., cram tests.
+
 For usage of this stanza, see the :ref:`rocq-examples`.
 
 The semantics of the fields are:

@@ -23,12 +23,12 @@ Copy a minimal set of Caml header and config files for the test.
 
 We compile a first time...
 
-  $ dune build --display short _build/default/cstub.o 2>&1 | sed -E 's/[^ ]+ //'
-           .dune/cc_vendor/cc_vendor
-           cstub.o
+  $ dune build --display short _build/default/cstub.o 2>&1 | sed -E 's/ *[^ ]+ *//'
+  .dune/cc_vendor/cc_vendor
+  cstub.o
 
 And check that we recompile the stub after modifying a Caml header file.
 
   $ touch _caml/caml/new-header.h
-  $ dune build --display short _build/default/cstub.o 2>&1 | sed -E 's/[^ ]+ //'
-           cstub.o
+  $ dune build --display short _build/default/cstub.o 2>&1 | sed -E 's/ *[^ ]+ *//'
+  cstub.o

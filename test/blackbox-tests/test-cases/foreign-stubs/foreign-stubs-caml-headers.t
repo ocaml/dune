@@ -14,14 +14,14 @@ Check that C stub compilation rules are made to depend on the Caml header files.
 
   $ touch main.ml cstub.c
 
-# Copy a minimal set of Caml header and config files for the test.
+Copy a minimal set of Caml header and config files for the test.
 
   $ mkdir -p _caml/caml
   $ cp $(ocamlc -where)/Makefile.config _caml/
   $ cp $(ocamlc -where)/caml/*.h _caml/caml/
   $ export OCAMLLIB=$(pwd)/_caml
 
-# We compile a first time...
+We compile a first time...
 
   $ dune build --display short _build/default/cstub.o
            gcc .dune/cc_vendor/cc_vendor

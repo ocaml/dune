@@ -23,6 +23,14 @@
   $ touch bar.ml $lib.ml
   $ dune build @check
   $ dune ocaml merlin dump-config "$PWD" | grep -i "$lib"
+  Foo__: _build/default/.melange_src/foo__
+  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+   (UNIT_NAME foo__))
+  Foo__: _build/default/.melange_src/foo__.ml-gen
+  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+   (UNIT_NAME foo__))
   ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
    (FLG (-open Foo__))
@@ -41,14 +49,6 @@
    (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
    (FLG (-open Foo__))
    (UNIT_NAME foo))
-  Foo__: _build/default/foo__
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
-   (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-   (UNIT_NAME foo__))
-  Foo__: _build/default/foo__.ml-gen
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
-   (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-   (UNIT_NAME foo__))
 
 Paths to Melange stdlib appear in B and S entries without melange.emit stanza
 
@@ -130,6 +130,24 @@ Check for flag directives ordering when another preprocessor is defined
 User ppx flags should appear in merlin config
 
   $ dune ocaml merlin dump-config $PWD | grep -v "(B "  | grep -v "(S "
+  Foo: _build/default/.melange_src/foo
+  ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /MELC_STDLIB/melange)
+   (SOURCE_ROOT $TESTCASE_ROOT)
+   (EXCLUDE_QUERY_DIR)
+   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
+   (UNIT_NAME foo))
+  Foo: _build/default/.melange_src/foo.ml-gen
+  ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /MELC_STDLIB/melange)
+   (SOURCE_ROOT $TESTCASE_ROOT)
+   (EXCLUDE_QUERY_DIR)
+   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
+   (UNIT_NAME foo))
   Bar: _build/default/bar
   ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
    (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
@@ -150,24 +168,6 @@ User ppx flags should appear in merlin config
    (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (FLG (-open Foo))
    (UNIT_NAME foo__Bar))
-  Foo: _build/default/foo
-  ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
-   (STDLIB /MELC_STDLIB/melange)
-   (SOURCE_ROOT $TESTCASE_ROOT)
-   (EXCLUDE_QUERY_DIR)
-   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
-   (UNIT_NAME foo))
-  Foo: _build/default/foo.ml-gen
-  ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
-   (STDLIB /MELC_STDLIB/melange)
-   (SOURCE_ROOT $TESTCASE_ROOT)
-   (EXCLUDE_QUERY_DIR)
-   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
-   (UNIT_NAME foo))
   Fooppx: _build/default/fooppx
   ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
    (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)

@@ -25,7 +25,7 @@ let gen_select_rules sctx ~dir compile_info ~for_ =
   Lib.Compile.resolved_selects compile_info ~for_
   |> Resolve.Memo.read_memo
   >>= Memo.parallel_iter ~f:(fun { Lib.Compile.Resolved_select.dst_fn; src_fn; loc } ->
-    let dst = Path.Build.append_local dir dst_fn in
+    let dst = Ml_sources.source_in_dir ~dir dst_fn ~for_ in
     Super_context.add_rule
       sctx
       ~loc

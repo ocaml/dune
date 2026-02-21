@@ -457,16 +457,14 @@ let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
   |> Modules.With_vlib.drop_vlib
   |> Modules.fold ~init:[] ~f:(fun m acc ->
     let compiled =
-      let { Compilation_mode.for_merlin; _ } =
-        Compilation_mode.of_mode_set (Lib_info.modes info)
-      in
+      let for_ = Compilation_context.for_ cctx in
       compile_module
         sctx
         ~includes
         ~dep_graphs:(Compilation_context.dep_graphs cctx)
         ~obj_dir
         ~pkg_or_lnu
-        ~mode:for_merlin
+        ~mode:for_
         m
     in
     compiled :: acc)

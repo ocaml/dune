@@ -46,10 +46,16 @@ let library_cctx_memo =
             when the library directory is loaded through [Lib_rules.rules]. *)
          let* cctx, _cctx_rules =
            Rules.collect (fun () ->
-             Lib_rules.compile_context lib ~sctx ~dir_contents ~expander ~scope)
+             Lib_rules.compile_context
+               lib
+               ~sctx
+               ~dir_contents
+               ~expander
+               ~scope
+               ~for_:Ocaml)
          in
-         let modes = Compilation_context.modes cctx in
-         if modes.ocaml.byte then Memo.return (Some (lib, cctx)) else Memo.return None)
+         let modes = Compilation_context.modes cctx |> Option.value_exn in
+         if modes.byte then Memo.return (Some (lib, cctx)) else Memo.return None)
 ;;
 
 module Lib_archive_rule_key = struct

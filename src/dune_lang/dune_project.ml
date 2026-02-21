@@ -817,19 +817,21 @@ let make_packages
      let main_message =
        [ Pp.textf "Package name %s is defined twice:" (Package.Name.to_string name) ]
      in
-     let annots =
-       let message loc =
-         User_message.make
-           ~loc
-           [ Pp.textf "package named %s" (Package.Name.to_string name) ]
+     let related =
+       let message = Pp.textf "package named %s" (Package.Name.to_string name) in
+       let related =
+         [ { User_error.Related.loc = loc1; User_error.Related.message }
+         ; { User_error.Related.loc = loc2; User_error.Related.message }
+         ]
        in
-       let related = [ message loc1; message loc2 ] in
-       User_message.Annots.singleton
-         Compound_user_error.annot
-         [ Compound_user_error.make ~main:(User_message.make main_message) ~related ]
+       [ { User_error.Diagnostic.main = User_message.make main_message
+         ; User_error.Diagnostic.related
+         ; User_error.Diagnostic.severity = User_error.Severity.Error
+         }
+       ]
      in
      User_error.raise
-       ~annots
+       ~related
        (main_message
         @ [ Pp.textf "- %s" (Loc.to_file_colon_line loc1)
           ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)

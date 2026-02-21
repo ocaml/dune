@@ -19,6 +19,11 @@ module Event = struct
     | Remove of t
 end
 
+let severity_to_rpc = function
+  | User_error.Severity.Error -> Dune_rpc_private.Diagnostic.Error
+  | User_error.Severity.Warning -> Dune_rpc_private.Diagnostic.Warning
+;;
+
 let of_exn (exn : Exn_with_backtrace.t) =
   let exn =
     match exn.exn with
@@ -27,20 +32,45 @@ let of_exn (exn : Exn_with_backtrace.t) =
   in
   match exn.exn with
   | User_error.E main ->
+    let related_diagnostics = User_error.related main in
     let dir = Option.map ~f:Path.of_string main.dir in
     let promotion = User_message.Annots.find main.annots Diff_promotion.Annot.annot in
-    (match User_message.Annots.find main.annots Compound_user_error.annot with
-     | None ->
+    (match related_diagnostics with
+     | _ :: _ ->
+       List.map
+         related_diagnostics
+         ~f:
+           (fun
+             ({ User_error.Diagnostic.main
+              ; User_error.Diagnostic.related
+              ; User_error.Diagnostic.severity
+              } :
+               _)
+           ->
+           let related_messages =
+             List.map
+               related
+               ~f:(fun ({ User_error.Related.loc; User_error.Related.message } : _) ->
+                 User_message.make ~loc [ message ])
+           in
+           Diagnostic
+             { dir
+             ; id = Id.gen ()
+             ; diagnostic =
+                 Compound_user_error.make_with_severity
+                   ~main
+                   ~related:related_messages
+                   ~severity:(severity_to_rpc severity)
+             ; promotion
+             })
+     | [] ->
        [ Diagnostic
            { dir
            ; id = Id.gen ()
            ; diagnostic = Compound_user_error.make ~main ~related:[]
            ; promotion
            }
-       ]
-     | Some diagnostics ->
-       List.map diagnostics ~f:(fun diagnostic ->
-         Diagnostic { id = Id.gen (); diagnostic; dir; promotion }))
+       ])
   | _ -> [ Exn { id = Id.gen (); exn } ]
 ;;
 

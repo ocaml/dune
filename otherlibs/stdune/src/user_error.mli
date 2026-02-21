@@ -5,6 +5,13 @@
     understand for people who are not familiar with the dune codebase. *)
 exception E of User_message.t
 
+module Severity = User_message.Severity
+module Related = User_message.Related
+module Diagnostic = User_message.Diagnostic
+
+val related : User_message.t -> Diagnostic.t list
+val with_related : User_message.t -> Diagnostic.t list -> User_message.t
+
 (** Raise a user error. The arguments are interpreted in the same way as
     [User_message.make]. The first paragraph is prefixed with "Error:". *)
 val raise
@@ -13,6 +20,7 @@ val raise
   -> ?loc:Loc0.t
   -> ?hints:User_message.Style.t Pp.t list
   -> ?annots:User_message.Annots.t
+  -> ?related:Diagnostic.t list
   -> User_message.Style.t Pp.t list
   -> _
 

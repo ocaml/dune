@@ -567,32 +567,54 @@ end = struct
       Has_output { with_color; without_color; has_embedded_location }
   ;;
 
-  let get_loc_annots_and_dir ~dir ~metadata ~output =
+  let severity_of_rpc = function
+    | Dune_rpc_private.Diagnostic.Error -> User_error.Severity.Error
+    | Dune_rpc_private.Diagnostic.Warning -> User_error.Severity.Warning
+  ;;
+
+  let related_of_message (msg : User_message.t) =
+    { User_error.Related.loc = Option.value_exn msg.loc
+    ; User_error.Related.message = Pp.concat msg.paragraphs
+    }
+  ;;
+
+  let related_of_compound errors =
+    List.map errors ~f:(fun ({ Compound_user_error.main; related; severity } : _) ->
+      let related = List.map related ~f:related_of_message in
+      let severity = severity_of_rpc severity in
+      { User_error.Diagnostic.main
+      ; User_error.Diagnostic.related
+      ; User_error.Diagnostic.severity
+      })
+  ;;
+
+  let get_loc_annots_related_and_dir ~dir ~metadata ~output =
     let { loc; annots; _ } = metadata in
     let dir = Option.value dir ~default:Path.root in
-    let annots, has_embedded_location =
+    let related, has_embedded_location =
       match output with
-      | No_output -> annots, false
+      | No_output -> [], false
       | Has_output output ->
         if output.has_embedded_location
         then (
           match Compound_user_error.parse_output ~dir output.without_color with
-          | [] -> annots, true
-          | errors ->
-            User_message.Annots.set annots Compound_user_error.annot errors, true)
-        else annots, false
+          | [] -> [], true
+          | errors -> related_of_compound errors, true)
+        else [], false
     in
-    loc, annots, has_embedded_location, dir
+    loc, annots, related, has_embedded_location, dir
   ;;
 
-  let fail ?dir ~loc ~annots ~has_embedded_location paragraphs =
+  let fail ?dir ~loc ~annots ~related ~has_embedded_location paragraphs =
     (* We don't use [User_error.make] as it would add the "Error: " prefix. We
        don't need this prefix as it is already included in the output of the
        command. *)
     let dir = Option.map ~f:Path.to_string dir in
     raise
       (User_error.E
-         (User_message.make ?dir ?loc ~annots ~has_embedded_location paragraphs))
+         (User_error.with_related
+            (User_message.make ?dir ?loc ~annots ~has_embedded_location paragraphs)
+            related))
   ;;
 
   let verbose t ~id ~metadata ~output ~command_line ~dir =
@@ -617,14 +639,15 @@ end = struct
         | Failed n -> sprintf "exited with code %d" n
         | Signaled signame -> sprintf "got signal %s" (Signal.name signame)
       in
-      let loc, annots, has_embedded_location, dir =
-        get_loc_annots_and_dir ~dir ~metadata ~output
+      let loc, annots, related, has_embedded_location, dir =
+        get_loc_annots_related_and_dir ~dir ~metadata ~output
       in
       fail
         ~dir
         ~has_embedded_location
         ~loc
         ~annots
+        ~related
         ((Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
           ++ Pp.space
           ++ pp_id id
@@ -678,8 +701,8 @@ end = struct
       then Console.print_user_message (User_message.make paragraphs);
       n
     | Error error ->
-      let loc, annots, has_embedded_location, dir =
-        get_loc_annots_and_dir ~dir ~metadata ~output
+      let loc, annots, related, has_embedded_location, dir =
+        get_loc_annots_related_and_dir ~dir ~metadata ~output
       in
       let paragraphs =
         match verbosity with
@@ -711,7 +734,7 @@ end = struct
                 | Signaled signame ->
                   [ Pp.textf "Command got signal %s." (Signal.name signame) ]))
       in
-      fail ~dir ~loc ~annots ~has_embedded_location paragraphs
+      fail ~dir ~loc ~annots ~related ~has_embedded_location paragraphs
   ;;
 end
 

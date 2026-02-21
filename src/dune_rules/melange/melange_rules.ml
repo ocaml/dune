@@ -1000,21 +1000,23 @@ let gen_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
      | None -> Some (emit_rules sctx for_melange)
      | Some { stanza_dir = _; stanza = parent_stanza } ->
        let main_message = Pp.text "melange.emit stanzas cannot be nested" in
-       let annots =
+       let related =
          let main = User_message.make ~loc:stanza.loc [ main_message ] in
          let related =
-           [ User_message.make
-               ~loc:parent_stanza.loc
-               [ Pp.text "under this melange stanza" ]
+           [ { User_error.Related.loc = parent_stanza.loc
+             ; User_error.Related.message = Pp.text "under this melange stanza"
+             }
            ]
          in
-         User_message.Annots.singleton
-           Compound_user_error.annot
-           [ Compound_user_error.make ~main ~related ]
+         [ { User_error.Diagnostic.main
+           ; User_error.Diagnostic.related
+           ; User_error.Diagnostic.severity = User_error.Severity.Error
+           }
+         ]
        in
        User_error.raise
          ~loc:stanza.loc
-         ~annots
+         ~related
          [ main_message
          ; Pp.enumerate ~f:Loc.pp_file_colon_line [ parent_stanza.loc; stanza.loc ]
          ]

@@ -160,18 +160,22 @@ module DB = struct
                      let main_message =
                        Pp.textf "Library %s is defined twice:" (Lib_name.to_string name)
                      in
-                     let annots =
+                     let related =
                        let main = User_message.make ~loc:loc2 [ main_message ] in
                        let related =
-                         [ User_message.make ~loc:loc1 [ Pp.text "Already defined here" ]
+                         [ { User_error.Related.loc = loc1
+                           ; User_error.Related.message = Pp.text "Already defined here"
+                           }
                          ]
                        in
-                       User_message.Annots.singleton
-                         Compound_user_error.annot
-                         [ Compound_user_error.make ~main ~related ]
+                       [ { User_error.Diagnostic.main
+                         ; User_error.Diagnostic.related
+                         ; User_error.Diagnostic.severity = User_error.Severity.Error
+                         }
+                       ]
                      in
                      User_error.raise
-                       ~annots
+                       ~related
                        [ main_message
                        ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
                        ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
@@ -581,18 +585,23 @@ module DB = struct
                     "Public library %s is defined twice:"
                     (Lib_name.to_string public_name)
                 in
-                let annots =
+                let related =
                   let main = User_message.make ~loc:loc2 [ main_message ] in
                   let related =
-                    [ User_message.make ~loc:loc1 [ Pp.text "Already defined here" ] ]
+                    [ { User_error.Related.loc = loc1
+                      ; User_error.Related.message = Pp.text "Already defined here"
+                      }
+                    ]
                   in
-                  User_message.Annots.singleton
-                    Compound_user_error.annot
-                    [ Compound_user_error.make ~main ~related ]
+                  [ { User_error.Diagnostic.main
+                    ; User_error.Diagnostic.related
+                    ; User_error.Diagnostic.severity = User_error.Severity.Error
+                    }
+                  ]
                 in
                 User_error.raise
-                  ~annots
                   ~loc:loc2
+                  ~related
                   [ main_message
                   ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
                   ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)

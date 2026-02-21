@@ -43,6 +43,17 @@ module Annots : sig
   val singleton : 'a Key.t -> 'a -> t
 end
 
+(** Typed related diagnostics attached to user messages. These are used for RPC and are
+    intentionally not printed as part of the main message. *)
+type severity =
+  | Error
+  | Warning
+
+type related =
+  { loc : Loc0.t
+  ; message : Style.t Pp.t
+  }
+
 (** A user message.contents composed of an optional file location and a list of
     paragraphs.
 
@@ -60,12 +71,51 @@ type t =
   ; paragraphs : Style.t Pp.t list
   ; hints : Style.t Pp.t list
   ; annots : Annots.t
+  ; related : diagnostic list
   ; context : string option
   ; dir : string option
   ; has_embedded_location : bool
   ; needs_stack_trace : bool
   }
 
+and diagnostic =
+  { main : t
+  ; related : related list
+  ; severity : severity
+  }
+
+module Severity : sig
+  type t = severity =
+    | Error
+    | Warning
+
+  val to_dyn : t -> Dyn.t
+  val compare : t -> t -> Ordering.t
+end
+
+module Related : sig
+  type t = related =
+    { loc : Loc0.t
+    ; message : Style.t Pp.t
+    }
+
+  val to_dyn : t -> Dyn.t
+  val compare : t -> t -> Ordering.t
+end
+
+module Diagnostic : sig
+  type nonrec t = diagnostic =
+    { main : t
+    ; related : related list
+    ; severity : severity
+    }
+
+  val to_dyn : t -> Dyn.t
+  val compare : t -> t -> Ordering.t
+end
+
+val related : t -> Diagnostic.t list
+val with_related : t -> Diagnostic.t list -> t
 val compare : t -> t -> Ordering.t
 val equal : t -> t -> bool
 val pp : t -> Style.t Pp.t
@@ -91,6 +141,7 @@ val make
   -> ?prefix:Style.t Pp.t
   -> ?hints:Style.t Pp.t list
   -> ?annots:Annots.t
+  -> ?related:Diagnostic.t list
   -> ?context:string
   -> ?dir:string
   -> Style.t Pp.t list

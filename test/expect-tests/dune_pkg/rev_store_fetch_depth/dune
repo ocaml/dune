@@ -1,0 +1,24 @@
+(library
+ (name rev_store_fetch_depth_test)
+ (inline_tests
+  (deps %{bin:git}))
+ (libraries
+  dune_tests_common
+  git_test_utils
+  stdune
+  dune_pkg
+  dune_engine
+  dune_scheduler
+  dune_util
+  dune_vcs
+  dune_console
+  fiber
+  opam_core
+  re
+  unix
+  xdg
+  ppx_expect.config
+  ppx_expect.config_types
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

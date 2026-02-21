@@ -311,9 +311,7 @@ let build_c
      in
      let stdlib_dir = ocaml.lib_config.stdlib_dir in
      let caml_headers =
-       File_selector.of_predicate_lang
-         ~dir:(Path.relative stdlib_dir "caml")
-         Predicate_lang.true_
+       File_selector.of_glob ~dir:(Path.relative stdlib_dir "caml") (Glob.of_string "*.h")
      in
      Command.run_dyn_prog
        ~dir:(Path.build dir)

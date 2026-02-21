@@ -309,11 +309,16 @@ let build_c
          sctx
          (Ocaml_config.c_compiler ocaml.ocaml_config)
      in
+     let stdlib_dir = ocaml.lib_config.stdlib_dir in
+     let caml_headers =
+       File_selector.of_glob ~dir:(Path.relative stdlib_dir "caml") (Glob.of_string "*.h")
+     in
      Command.run_dyn_prog
        ~dir:(Path.build dir)
        c_compiler
        ([ Command.Args.dyn with_user_and_std_flags
-        ; S [ A "-I"; Path ocaml.lib_config.stdlib_dir ]
+        ; S [ A "-I"; Path stdlib_dir ]
+        ; Hidden_deps (Dep.Set.singleton (Dep.file_selector caml_headers))
         ; include_flags
         ]
         @ output_param

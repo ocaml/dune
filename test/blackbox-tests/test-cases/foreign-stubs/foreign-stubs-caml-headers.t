@@ -29,6 +29,6 @@ We compile a first time...
 
 And check that we recompile the stub after modifying a Caml header file.
 
-  $ echo dummy > _caml/caml/alloc.h
+  $ touch _caml/caml/new-header.h
   $ dune build --display short _build/default/cstub.o
            gcc cstub.o

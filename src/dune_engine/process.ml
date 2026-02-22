@@ -232,6 +232,7 @@ type metadata =
   ; categories : string list
   ; purpose : purpose
   ; has_embedded_location : bool
+  ; promotion : User_message.Diff_annot.t option
   }
 
 let default_metadata =
@@ -241,6 +242,7 @@ let default_metadata =
   ; categories = []
   ; name = None
   ; has_embedded_location = false
+  ; promotion = None
   }
 ;;
 
@@ -251,9 +253,10 @@ let create_metadata
       ?name
       ?(categories = default_metadata.categories)
       ?(purpose = Internal_job)
+      ?promotion
       ()
   =
-  { loc; annots; name; categories; purpose; has_embedded_location }
+  { loc; annots; name; categories; purpose; has_embedded_location; promotion }
 ;;
 
 let io_to_redirection_path (kind : Io.kind) =
@@ -568,7 +571,7 @@ end = struct
   ;;
 
   let get_loc_annots_and_dir ~dir ~metadata ~output =
-    let { loc; annots; _ } = metadata in
+    let { loc; annots; promotion; _ } = metadata in
     let dir = Option.value dir ~default:Path.root in
     let annots, has_embedded_location =
       match output with
@@ -582,17 +585,23 @@ end = struct
             User_message.Annots.set annots Compound_user_error.annot errors, true)
         else annots, false
     in
-    loc, annots, has_embedded_location, dir
+    loc, annots, has_embedded_location, dir, promotion
   ;;
 
-  let fail ?dir ~loc ~annots ~has_embedded_location paragraphs =
+  let fail ?dir ~loc ~annots ~has_embedded_location ?promotion paragraphs =
     (* We don't use [User_error.make] as it would add the "Error: " prefix. We
        don't need this prefix as it is already included in the output of the
        command. *)
     let dir = Option.map ~f:Path.to_string dir in
     raise
       (User_error.E
-         (User_message.make ?dir ?loc ~annots ~has_embedded_location paragraphs))
+         (User_message.make
+            ?dir
+            ?loc
+            ~annots
+            ~has_embedded_location
+            ?promotion
+            paragraphs))
   ;;
 
   let verbose t ~id ~metadata ~output ~command_line ~dir =
@@ -617,7 +626,7 @@ end = struct
         | Failed n -> sprintf "exited with code %d" n
         | Signaled signame -> sprintf "got signal %s" (Signal.name signame)
       in
-      let loc, annots, has_embedded_location, dir =
+      let loc, annots, has_embedded_location, dir, promotion =
         get_loc_annots_and_dir ~dir ~metadata ~output
       in
       fail
@@ -625,6 +634,7 @@ end = struct
         ~has_embedded_location
         ~loc
         ~annots
+        ?promotion
         ((Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
           ++ Pp.space
           ++ pp_id id
@@ -678,7 +688,7 @@ end = struct
       then Console.print_user_message (User_message.make paragraphs);
       n
     | Error error ->
-      let loc, annots, has_embedded_location, dir =
+      let loc, annots, has_embedded_location, dir, promotion =
         get_loc_annots_and_dir ~dir ~metadata ~output
       in
       let paragraphs =
@@ -711,7 +721,7 @@ end = struct
                 | Signaled signame ->
                   [ Pp.textf "Command got signal %s." (Signal.name signame) ]))
       in
-      fail ~dir ~loc ~annots ~has_embedded_location paragraphs
+      fail ~dir ~loc ~annots ~has_embedded_location ?promotion paragraphs
   ;;
 end
 

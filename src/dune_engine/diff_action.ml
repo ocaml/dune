@@ -40,17 +40,15 @@ let exec loc ({ Diff.optional; file1; file2; mode } as diff) =
     in
     Fiber.finalize
       (fun () ->
-         let annots =
-           User_message.Annots.singleton
-             Diff_promotion.Annot.annot
-             { Diff_promotion.Annot.in_source = source_file
-             ; in_build = Diff_promotion.File.in_staging_area source_file
-             }
+         let promotion =
+           { User_message.Diff_annot.in_source = source_file
+           ; in_build = Diff_promotion.File.in_staging_area source_file
+           }
          in
          if mode = Binary
          then
            User_error.raise
-             ~annots
+             ~promotion
              ~loc
              [ Pp.textf
                  "Files %s and %s differ."
@@ -59,7 +57,7 @@ let exec loc ({ Diff.optional; file1; file2; mode } as diff) =
              ]
          else
            Print_diff.print
-             annots
+             ~promotion
              file1
              (Path.build file2)
              ~skip_trailing_cr:(mode = Text && Sys.win32))

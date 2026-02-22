@@ -165,6 +165,21 @@ module Print_config = struct
   ;;
 end
 
+module Diff_annot = struct
+  type t =
+    { in_source : Path0.Source.t
+    ; in_build : Path0.Build.t
+    }
+
+  let to_dyn { in_source; in_build } =
+    let open Dyn in
+    record
+      [ "in_source", Path0.Local_gen.to_dyn in_source
+      ; "in_build", Path0.Local_gen.to_dyn in_build
+      ]
+  ;;
+end
+
 type t =
   { loc : Loc0.t option
   ; paragraphs : Style.t Pp.t list
@@ -174,6 +189,7 @@ type t =
   ; dir : string option
   ; has_embedded_location : bool
   ; needs_stack_trace : bool
+  ; promotion : Diff_annot.t option
   }
 
 let to_dyn
@@ -185,6 +201,7 @@ let to_dyn
       ; dir
       ; has_embedded_location
       ; needs_stack_trace
+      ; promotion
       }
   =
   Dyn.record
@@ -196,6 +213,7 @@ let to_dyn
     ; "dir", Dyn.option Dyn.string dir
     ; "has_embedded_location", Dyn.bool has_embedded_location
     ; "needs_stack_trace", Dyn.bool needs_stack_trace
+    ; "promotion", Dyn.option Diff_annot.to_dyn promotion
     ]
 ;;
 
@@ -208,6 +226,7 @@ let compare
       ; dir = _
       ; has_embedded_location
       ; needs_stack_trace
+      ; promotion = _
       }
       t
   =
@@ -232,6 +251,7 @@ let make
       ?(annots = Annots.empty)
       ?context
       ?dir
+      ?promotion
       paragraphs
   =
   let paragraphs =
@@ -248,6 +268,7 @@ let make
   ; dir
   ; has_embedded_location
   ; needs_stack_trace
+  ; promotion
   }
 ;;
 
@@ -260,6 +281,7 @@ let pp
       ; dir = _
       ; has_embedded_location = _
       ; needs_stack_trace = _
+      ; promotion = _
       }
   =
   let open Pp.O in

@@ -1,3 +1,5 @@
+(* This intermediate module is needed to break the dependency cycle with [User_error] *)
+
 module Unspecified = Path_intf.Unspecified
 
 open struct
@@ -94,32 +96,32 @@ module Local_gen = struct
       loop t components
     ;;
 
-    let relative ?error_loc t components =
+    let relative t components =
       match relative_result t components with
-      | Result.Ok t -> t
+      | Ok t -> t
       | Error `Outside_the_workspace ->
-        User_error.raise
-          ?loc:error_loc
-          [ Pp.textf
-              "path outside the workspace: %s from %s"
-              (String.concat ~sep:"/" components)
-              t
-          ]
+        Code_error.raise
+          "Local.L.relative: path outside the workspace"
+          [ "t", to_dyn t; "components", Dyn.list Dyn.string components ]
     ;;
   end
 
-  let relative ?error_loc t path =
+  let relative_result t path =
     if not (Filename.is_relative path)
     then
       Code_error.raise
         "Local.relative: received absolute path"
         [ "t", to_dyn t; "path", String path ];
-    match L.relative_result t (explode_path path) with
-    | Result.Ok t -> t
+    L.relative_result t (explode_path path)
+  ;;
+
+  let relative t path =
+    match relative_result t path with
+    | Ok t -> t
     | Error `Outside_the_workspace ->
-      User_error.raise
-        ?loc:error_loc
-        [ Pp.textf "path outside the workspace: %s from %s" path t ]
+      Code_error.raise
+        "Local.relative: path outside the workspace"
+        [ "t", to_dyn t; "path", String path ]
   ;;
 
   (* Check whether a path is in canonical form: no '.' or '..' components, no
@@ -167,14 +169,23 @@ module Local_gen = struct
       len = 0 || before_slash s (len - 1)
   ;;
 
-  let parse_string_exn ~loc s =
+  let parse_string_result s =
     match s with
-    | "" | "." -> root
-    | _ when is_canonicalized s -> s
-    | _ -> relative root s ~error_loc:loc
+    | "" | "." -> Result.Ok root
+    | _ when is_canonicalized s -> Result.Ok s
+    | _ -> relative_result root s
   ;;
 
-  let of_string s = parse_string_exn ~loc:Loc0.none s
+  let parse_string_exn s =
+    match parse_string_result s with
+    | Ok t -> t
+    | Error `Outside_the_workspace ->
+      Code_error.raise
+        "Local.parse_string_exn: path outside the workspace"
+        [ "s", String s ]
+  ;;
+
+  let of_string s = parse_string_exn s
 
   let append a b =
     match is_root a, is_root b with
@@ -421,6 +432,78 @@ module Local = struct
       Comparator.OPS with type t := t)
 
   let of_local t = t
+
+  include Fix_root (struct
+      type nonrec w = w
+    end)
+
+  let basename_opt = basename_opt ~is_root ~basename
+end
+
+module Source = struct
+  type w = Path_intf.Source.w
+
+  include (
+    Local_gen :
+      module type of Local_gen
+      with type 'a t := 'a Local_gen.t
+      with module Prefix := Local_gen.Prefix)
+
+  type nonrec t = w Local_gen.t
+
+  module Prefix = struct
+    open Local_gen
+    include (Prefix : module type of Prefix with type 'a t := 'a Prefix.t)
+
+    type t = w Prefix.t
+  end
+
+  include (
+    Comparator.Operators (struct
+      type nonrec t = t
+
+      let compare = Local_gen.compare
+    end) :
+      Comparator.OPS with type t := t)
+
+  let of_local (t : Local.t) : t = t
+  let to_local (t : t) : Local.t = t
+
+  include Fix_root (struct
+      type nonrec w = w
+    end)
+
+  let basename_opt = basename_opt ~is_root ~basename
+end
+
+module Build = struct
+  type w = Path_intf.Build.w
+
+  include (
+    Local_gen :
+      module type of Local_gen
+      with type 'a t := 'a Local_gen.t
+      with module Prefix := Local_gen.Prefix)
+
+  type nonrec t = w Local_gen.t
+
+  module Prefix = struct
+    open Local_gen
+    include (Prefix : module type of Prefix with type 'a t := 'a Prefix.t)
+
+    type t = w Prefix.t
+  end
+
+  include (
+    Comparator.Operators (struct
+      type nonrec t = t
+
+      let compare = Local_gen.compare
+    end) :
+      Comparator.OPS with type t := t)
+
+  let of_local (t : Local.t) : t = t
+  let local (t : t) : Local.t = t
 
   include Fix_root (struct
       type nonrec w = w

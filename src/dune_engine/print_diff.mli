@@ -3,6 +3,7 @@ open Import
 (** Diff two files that are expected not to match. *)
 val print
   :  skip_trailing_cr:bool
+  -> patch_back:Path.t option
   -> User_message.Diff_annot.t
   -> Path.t
   -> Path.t

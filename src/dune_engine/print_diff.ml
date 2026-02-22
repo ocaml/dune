@@ -102,7 +102,7 @@ module External = struct
     |> Option.map ~f:(fun prog ->
       let relative = Path.reach ~from:dir in
       let args =
-        [ "-u"; "--label"; relative label1; "--label"; relative label2 ]
+        [ "-u"; "--label"; label1; "--label"; label2 ]
         @ (if skip_trailing_cr then [ "--strip-trailing-cr" ] else [])
         @ [ relative file1; relative file2 ]
       in
@@ -158,22 +158,14 @@ end
 
 let noent_to_dev_null f = if Fpath.exists (Path.to_string f) then f else Dev_null.path
 
-let prepare ~skip_trailing_cr promotion path1 path2 =
-  let dir, loc =
-    let dir, file1 =
-      match
-        ( Path.extract_build_context_dir_maybe_sandboxed path1
-        , Path.extract_build_context_dir_maybe_sandboxed path2 )
-      with
-      | Some (dir1, f1), Some (dir2, _) when Path.equal dir1 dir2 -> dir1, Path.source f1
-      | _ -> Path.root, path1
-    in
-    dir, Loc.in_file file1
-  in
-  let label1 = path1 in
-  let label2 = path2 in
-  let path1 = noent_to_dev_null path1 in
-  let path2 = noent_to_dev_null path2 in
+let prepare_with_labels
+      ~skip_trailing_cr
+      ~dir
+      loc
+      promotion
+      (label1, path1)
+      (label2, path2)
+  =
   let fallback =
     With_fallback.fail
       (User_error.make
@@ -181,10 +173,12 @@ let prepare ~skip_trailing_cr promotion path1 path2 =
          ?promotion
          [ Pp.textf
              "Files %s and %s differ."
-             (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root label1))
-             (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root label2))
+             (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path1))
+             (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path2))
          ])
   in
+  let path1 = noent_to_dev_null path1 in
+  let path2 = noent_to_dev_null path2 in
   match !Clflags.diff_command with
   | Some "-" -> fallback
   | Some cmd ->
@@ -232,8 +226,40 @@ let prepare ~skip_trailing_cr promotion path1 path2 =
       External.patdiff ~dir promotion loc path1 path2 |> or_fallback ~fallback)
 ;;
 
-let print ~skip_trailing_cr promotion path1 path2 =
-  let p = prepare ~skip_trailing_cr (Some promotion) path1 path2 in
+let prepare ~skip_trailing_cr promotion path1 path2 =
+  let dir, loc =
+    let dir, file1 =
+      match
+        ( Path.extract_build_context_dir_maybe_sandboxed path1
+        , Path.extract_build_context_dir_maybe_sandboxed path2 )
+      with
+      | Some (dir1, f1), Some (dir2, _) when Path.equal dir1 dir2 -> dir1, Path.source f1
+      | _ -> Path.root, path1
+    in
+    dir, Loc.in_file file1
+  in
+  let label1 = Path.reach ~from:dir path1 in
+  let label2 = Path.reach ~from:dir path2 in
+  prepare_with_labels ~skip_trailing_cr ~dir loc promotion (label1, path1) (label2, path2)
+;;
+
+let print ~skip_trailing_cr ~patch_back promotion path1 path2 =
+  let p =
+    match patch_back with
+    | None -> prepare ~skip_trailing_cr (Some promotion) path1 path2
+    | Some dir ->
+      let path1 = Path.source (Path.drop_optional_build_context_src_exn path1) in
+      let loc = Loc.in_file path1 in
+      let label1 = Path.to_string path1 in
+      let label2 = Path.to_string (Path.drop_optional_sandbox_root path2) in
+      prepare_with_labels
+        ~skip_trailing_cr
+        ~dir
+        loc
+        (Some promotion)
+        (label1, path1)
+        (label2, path2)
+  in
   With_fallback.exec p
 ;;
 

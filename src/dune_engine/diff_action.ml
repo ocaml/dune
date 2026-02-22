@@ -21,7 +21,7 @@ let compare_files { Diff.optional; mode; file1; file2 } =
     | false, true -> `Eq false)
 ;;
 
-let exec loc ({ Diff.optional; file1; file2; mode } as diff) =
+let exec loc ~patch_back ({ Diff.optional; file1; file2; mode } as diff) =
   let remove_intermediate_file () =
     if optional
     then (
@@ -66,6 +66,7 @@ let exec loc ({ Diff.optional; file1; file2; mode } as diff) =
              ]
          else
            Print_diff.print
+             ~patch_back
              promotion
              file1
              (Path.build file2)

@@ -28,7 +28,7 @@ val description
   :  t
   -> [ `Exn of Exn_with_backtrace.t | `Diagnostic of Compound_user_error.t ]
 
-val promotion : t -> Diff_promotion.Annot.t option
+val promotion : t -> User_message.Diff_annot.t option
 
 module Event : sig
   type nonrec t =
@@ -58,7 +58,7 @@ module For_tests : sig
   val make
     :  description:[ `Exn of Exn_with_backtrace.t | `Diagnostic of Compound_user_error.t ]
     -> dir:Path.t option
-    -> promotion:Diff_promotion.Annot.t option
+    -> promotion:User_message.Diff_annot.t option
     -> unit
     -> t
 end

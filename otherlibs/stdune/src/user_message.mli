@@ -43,6 +43,17 @@ module Annots : sig
   val singleton : 'a Key.t -> 'a -> t
 end
 
+(** Annotation for diff-based file promotion. Used to track which files need
+    to be promoted from build directory to source tree. *)
+module Diff_annot : sig
+  type t =
+    { in_source : Path0.Source.t
+    ; in_build : Path0.Build.t
+    }
+
+  val to_dyn : t -> Dyn.t
+end
+
 (** A user message.contents composed of an optional file location and a list of
     paragraphs.
 
@@ -64,6 +75,7 @@ type t =
   ; dir : string option
   ; has_embedded_location : bool
   ; needs_stack_trace : bool
+  ; promotion : Diff_annot.t option
   }
 
 val compare : t -> t -> Ordering.t
@@ -93,6 +105,7 @@ val make
   -> ?annots:Annots.t
   -> ?context:string
   -> ?dir:string
+  -> ?promotion:Diff_annot.t
   -> Style.t Pp.t list
   -> t
 

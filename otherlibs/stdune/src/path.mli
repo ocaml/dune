@@ -60,6 +60,8 @@ module Local : sig
   val root : t
   val append : t -> t -> t
 
+  include Path_intf.With_loc with type t := t
+
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
   end
@@ -77,6 +79,7 @@ module External : sig
   val root : t
   val initial_cwd : t
   val cwd : unit -> t
+  val parse_string_exn : loc:Loc0.t -> string -> t
   val relative : t -> string -> t
   val of_filename_relative_to_initial_cwd : string -> t
   val append_local : t -> Local.t -> t
@@ -86,9 +89,10 @@ end
 
 (** In the source section of the current workspace. *)
 module Source : sig
-  type w
+  type w = Path_intf.Source.w
   type t = w Path0.Local_gen.t
 
+  include Path_intf.With_loc with type t := t
   include Path_intf.S with type t := t
 
   val root : t
@@ -150,7 +154,7 @@ module Outside_build_dir : sig
 end
 
 module Build : sig
-  type w
+  type w = Path_intf.Build.w
   type t = w Path0.Local_gen.t
 
   include Path_intf.S with type t := t
@@ -161,6 +165,8 @@ module Build : sig
 
   (** [append x y] is [append_local x (local y)] *)
   val append : t -> t -> t
+
+  include Path_intf.With_loc with type t := t
 
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
@@ -244,6 +250,8 @@ val relative_to_source_in_build_or_external
   -> dir:Build.t
   -> string
   -> t
+
+include Path_intf.With_loc with type t := t
 
 (** Create an external path. If the argument is relative, assume it is relative
     to the initial directory dune was launched in. *)

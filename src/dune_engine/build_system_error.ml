@@ -10,7 +10,7 @@ type t =
       { id : Id.t
       ; diagnostic : Compound_user_error.t
       ; dir : Path.t option
-      ; promotion : Diff_promotion.Annot.t option
+      ; promotion : User_message.Diff_annot.t option
       }
 
 module Event = struct
@@ -28,7 +28,7 @@ let of_exn (exn : Exn_with_backtrace.t) =
   match exn.exn with
   | User_error.E main ->
     let dir = Option.map ~f:Path.of_string main.dir in
-    let promotion = User_message.Annots.find main.annots Diff_promotion.Annot.annot in
+    let promotion = main.promotion in
     (match User_message.Annots.find main.annots Compound_user_error.annot with
      | None ->
        [ Diagnostic

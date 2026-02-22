@@ -30,6 +30,18 @@ let opens modules m =
   Command.Args.As (Modules.With_vlib.local_open modules m |> Ocaml_flags.open_flags)
 ;;
 
+let add_rule ?mode ?loc ~can_go_in_shared_cache sctx ~dir build =
+  let build =
+    if can_go_in_shared_cache
+    then
+      Action_builder.With_targets.map
+        build
+        ~f:(Action.Full.add_can_go_in_shared_cache true)
+    else build
+  in
+  Super_context.add_rule sctx ?mode ?loc ~dir build
+;;
+
 let other_cm_files
       ~opaque
       ~cm_kind
@@ -86,8 +98,14 @@ let copy_interface ~sctx ~dir ~obj_dir ~cm_kind m =
     (Module.visibility m <> Visibility.Private
      && Obj_dir.need_dedicated_public_dir obj_dir)
     (fun () ->
+       let can_go_in_shared_cache =
+         match cm_kind with
+         | Lib_mode.Cm_kind.Melange _ -> true
+         | Lib_mode.Cm_kind.Ocaml _ -> false
+       in
        let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
-       Super_context.add_rule
+       add_rule
+         ~can_go_in_shared_cache
          sctx
          ~dir
          (Action_builder.symlink
@@ -369,7 +387,13 @@ let build_cm
      Obj_dir.all_obj_dirs obj_dir ~mode
      |> List.concat_map ~f:(fun p -> [ Command.Args.A "-I"; Path (Path.build p) ])
    in
-   Super_context.add_rule
+   let can_go_in_shared_cache =
+     match cm_kind with
+     | Lib_mode.Cm_kind.Melange _ -> true
+     | Lib_mode.Cm_kind.Ocaml _ -> false
+   in
+   add_rule
+     ~can_go_in_shared_cache
      sctx
      ~dir:
        (let dune_version =

@@ -13,13 +13,13 @@
   $ cat >> dune <<EOF
   > (rule
   >  (alias a)
-  >  (action (with-accepted-exit-codes 
+  >  (action (with-accepted-exit-codes
   >           1
   >           (with-stdout-to out.txt
   >            (run ./exit.exe 1)))))
   > EOF
 
-  $ dune build --display=short --root . @a
+  $ dune build --root . @a
   File "dune", lines 9-10, characters 10-64:
    9 |           (with-stdout-to out.txt
   10 |            (run ./exit.exe 1)))))

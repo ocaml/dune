@@ -47,6 +47,6 @@ Allow directories to be installable
   > (alias (name foo) (deps (package foo)))
   > EOF
 
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root=b @foo --display=short
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root=b @foo
   Entering directory 'b'
   Leaving directory 'b'

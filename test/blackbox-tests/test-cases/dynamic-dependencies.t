@@ -34,10 +34,10 @@ Now we define a rule that reads `deps.d` to figure out what to build.
 
 Building `./output` should now produce a file with contents "depA depB"
 
-  $ dune build ./output --display=short
-            sh depA
-            sh depB
-            sh output
+  $ dune build ./output
+
+  $ cat _build/default/output
+  depA depB
 
 Doesn't work in dune pre 3.0
 
@@ -45,7 +45,7 @@ Doesn't work in dune pre 3.0
   > (lang dune 3.0)
   > EOF
 
-  $ dune build ./output --display=short
+  $ dune build ./output
   File "dune", line 12, characters 7-23:
   12 |  (deps (include deps.d))
               ^^^^^^^^^^^^^^^^
@@ -87,13 +87,9 @@ Works with aliases and other dependency specifications
   >   (no-infer (echo "dependencies %{deps}"))))
   > EOF
 
-  $ dune build @output --display=short
-            sh alias depA
+  $ dune build @output
   building depA
-          echo depB
   building depB
-            sh another_dep
-            sh depB
   dependencies depB another_dep
 
 Multiple `(include)` nesting
@@ -110,7 +106,6 @@ Multiple `(include)` nesting
   >  (action (no-infer (echo "metadeps: %{deps}"))))
   > EOF
 
-  $ dune build @nested --display=short
-            sh meta-deps.d
+  $ dune build @nested
   metadeps: depB another_dep
 

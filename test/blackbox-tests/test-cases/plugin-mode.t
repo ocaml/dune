@@ -79,11 +79,17 @@ Testsuite for (mode plugin).
   >   Dynlink.loadfile (Dynlink.adapt_filename "b.cma")
   > EOF
 
-  $ dune build --display short @all 2>&1 | dune_cmd sanitize | grep cmxs | sort
-      ocamlopt a.cmxs
-      ocamlopt b.cmxs
-      ocamlopt foo/bar.cmxs
-      ocamlopt foo/foo.cmxs
+  $ dune build @all
+
+  $ dune trace cat | jq -c '
+  > include "dune";
+  >   targetsMatchingFilter(test("\\.cmxs$"))
+  > | select(length > 0)
+  > ' | sort
+  {"target_files":["_build/default/a.cmxs"]}
+  {"target_files":["_build/default/b.cmxs"]}
+  {"target_files":["_build/default/foo/bar.cmxs"]}
+  {"target_files":["_build/default/foo/foo.cmxs"]}
 
   $ (cd _build/default && main/main.exe)
   12

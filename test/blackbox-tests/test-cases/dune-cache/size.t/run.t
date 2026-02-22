@@ -25,7 +25,7 @@ the cache.
 
 We build a simple file with the contents of "Hello World!".
 
-  $ dune build target_a --display=short
+  $ dune build target_a
 
 Now we remove it so that we are checking the size of the file rather than the
 link Dune created.

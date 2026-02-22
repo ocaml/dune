@@ -1,14 +1,4 @@
-  $ dune build --display short file @install
-      ocamldep .p.eobjs/p.impl.d
-      ocamldep .p.eobjs/p.impl.d [cross]
-        ocamlc .p.eobjs/byte/p.{cmi,cmo,cmt}
-        ocamlc .p.eobjs/byte/p.{cmi,cmo,cmt} [cross]
-      ocamlopt .p.eobjs/native/p.{cmx,o}
-      ocamlopt .p.eobjs/native/p.{cmx,o} [cross]
-      ocamlopt p.exe
-      ocamlopt p.exe [cross]
-             p file
-             p file [cross]
+  $ dune build file @install
 
   $ cat _build/cross/file
   137

@@ -37,14 +37,9 @@ Now we define a rule that reads `deps.d` to figure out what to build.
 
 Building `./output` should now produce a file with contents "depA depB"
 
-  $ dune build ./output --display=short
-            sh deps.d
-            sh depA
-            sh depB
-            sh output
+  $ dune build ./output
   contentsA
   contentsB
-            sh output
 
   $ cat ./_build/default/output
   depA depB

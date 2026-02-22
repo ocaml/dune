@@ -36,7 +36,7 @@ let exec loc ({ Diff.optional; file1; file2; mode } as diff) =
       is_copied_from_source_tree file1 || not (Fpath.exists (Path.to_string file1))
     in
     let source_file =
-      snd (Option.value_exn (Path.extract_build_context_dir_maybe_sandboxed file1))
+      Path.as_in_build_dir_exn file1 |> Path.Build.drop_build_context_maybe_sandboxed_exn
     in
     Fiber.finalize
       (fun () ->

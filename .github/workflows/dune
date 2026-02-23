@@ -1,0 +1,9 @@
+(rule
+ (aliases runtest)
+ (action
+  (diff bench.yml ../../ci/bench.yml.gen)))
+
+(rule
+ (aliases runtest)
+ (action
+  (diff workflow.yml ../../ci/workflow.yml.gen)))

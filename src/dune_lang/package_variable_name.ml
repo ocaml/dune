@@ -54,6 +54,10 @@ let absent_package_value t =
   if equal t installed then Some "false" else if equal t version then Some "" else None
 ;;
 
+let is_falsey_for_absent_package t =
+  equal t installed || equal t pinned || equal t enable
+;;
+
 let platform_specific =
   Set.of_list [ arch; os; os_version; os_distribution; os_family; sys_ocaml_version ]
 ;;

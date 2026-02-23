@@ -34,9 +34,7 @@ let simplify_filter ~packages_in_solution get_solver_var =
         (* Package is absent from solution - substitute known values.
            All these are false/falsey for absent packages. *)
         let var_name = OpamVariable.Full.variable var |> Package_variable_name.of_opam in
-        if
-          Package_variable_name.(
-            equal var_name installed || equal var_name pinned || equal var_name enable)
+        if Package_variable_name.is_falsey_for_absent_package var_name
         then Some (B false)
         else None))
 ;;
@@ -89,11 +87,7 @@ let opam_variable_to_slang =
              Package_variable_name.absent_package_value variable_name
              |> Option.value ~default:""
              |> Slang.text
-           else if
-             Package_variable_name.(
-               equal variable_name installed
-               || equal variable_name pinned
-               || equal variable_name enable)
+           else if Package_variable_name.is_falsey_for_absent_package variable_name
            then Slang.bool false
            else opam_var_to_pform variable_name (Package pkg_name)
          | None -> opam_var_to_pform variable_name Self)

@@ -35,4 +35,4 @@ The rules include the dependency on foo.h, but the include directory has to be
 added manually.
 
   $ dune rules _build/default/bar.o | grep subdir
-     (File (In_build_dir _build/default/subdir/foo.h))))
+     (File (In_build_dir _build/default/subdir/foo.h))

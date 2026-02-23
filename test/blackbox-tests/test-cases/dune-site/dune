@@ -1,0 +1,3 @@
+(cram
+ (applies_to plugin-dev-mode-loading)
+ (alias runtest-windows))

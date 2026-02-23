@@ -20,8 +20,6 @@ dev-repo: "git+https://github.com/ocaml/dune.git"
 x-maintenance-intent: ["(latest)"]
 build: [
   ["dune" "subst"] {dev}
-  ["rm" "-rf" "vendor/csexp"]
-  ["rm" "-rf" "vendor/pp"]
   [
     "dune"
     "build"

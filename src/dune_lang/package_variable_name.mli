@@ -42,6 +42,10 @@ val one_of : t -> t list -> bool
     (e.g., "installed" is "false"), while others are undefined and return None. *)
 val absent_package_value : t -> string option
 
+(** Returns true if the variable is known to be false/falsey for absent packages.
+    This includes "installed", "pinned", and "enable". *)
+val is_falsey_for_absent_package : t -> bool
+
 (** The set of variable names whose values are expected to differ depending on
     the current platform. *)
 val platform_specific : Set.t

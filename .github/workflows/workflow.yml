@@ -95,8 +95,8 @@ jobs:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix develop -i .#bootstrap-check -c make test-bootstrap-script
 
-  nix-build-4-08:
-    name: Nix Build 4.08
+  nix-build-4-14:
+    name: Nix Build 4.14
     strategy:
       fail-fast: false
       matrix:
@@ -114,7 +114,7 @@ jobs:
             nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
           gc-max-store-size-linux: 2G
-      - run: nix develop -i .#bootstrap-check_4_08 -c make release
+      - run: nix develop -i .#bootstrap-check_4_14 -c make release
 
   nix-build-ox:
     # This builds OxCaml with the flake version which is typically ahead of the

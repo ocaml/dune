@@ -455,7 +455,7 @@ module Git_error = struct
   ;;
 end
 
-let run_with_exit_code { dir; _ } ~allow_codes ~display args =
+let run_with_exit_code ~env { dir; _ } ~allow_codes ~display args =
   let stdout_to = make_stdout () in
   let git = Lazy.force Vcs.git in
   let+ stderr, exit_code =
@@ -490,7 +490,7 @@ let run_with_exit_code { dir; _ } ~allow_codes ~display args =
 ;;
 
 let run t ~display args =
-  run_with_exit_code t ~allow_codes:(Int.equal 0) ~display args
+  run_with_exit_code ~env t ~allow_codes:(Int.equal 0) ~display args
   >>| Result.map ~f:(ignore : int -> unit)
 ;;
 
@@ -736,13 +736,14 @@ module Entry = struct
   ;;
 end
 
-let fetch_allow_failure repo ~url obj =
+let fetch_allow_failure ~env repo ~url obj =
   with_mutex repo obj ~f:(fun () ->
     object_exists repo obj
     >>= function
     | true -> Fiber.return `Fetched
     | false ->
       run_with_exit_code
+        ~env
         ~allow_codes:(Int.equal 0)
         repo
         ~display:!Dune_engine.Clflags.display
@@ -757,8 +758,8 @@ let fetch_allow_failure repo ~url obj =
        | _ -> assert false))
 ;;
 
-let fetch repo ~url obj =
-  fetch_allow_failure repo ~url obj
+let fetch ~env repo ~url obj =
+  fetch_allow_failure ~env repo ~url obj
   >>| function
   | `Fetched -> ()
   | `Not_found output ->
@@ -963,7 +964,7 @@ module At_rev = struct
                 (Path.Local.to_string path)
             ]
         | Some revision ->
-          let* () = fetch repo ~url:source revision in
+          let* () = fetch ~env repo ~url:source revision in
           let+ at_rev = of_rev repo ~revision in
           File.Set.map at_rev.files ~f:(fun file ->
             let path = Path.Local.append path (File.path file) in
@@ -1136,7 +1137,7 @@ let remote =
 ;;
 
 let fetch_resolved t (remote : Remote.t) revision =
-  let* () = fetch t ~url:remote.url revision in
+  let* () = fetch ~env t ~url:remote.url revision in
   At_rev.of_rev t ~revision
 ;;
 
@@ -1169,7 +1170,7 @@ let resolve_revision t (remote : Remote.t) ~revision =
   in
   match obj with
   | Some obj as s ->
-    let+ () = fetch t ~url:remote.url obj in
+    let+ () = fetch ~env t ~url:remote.url obj in
     s
   | None ->
     rev_parse t revision
@@ -1178,8 +1179,8 @@ let resolve_revision t (remote : Remote.t) ~revision =
      | Some obj -> resolve_object t obj)
 ;;
 
-let fetch_object t (remote : Remote.t) revision =
-  fetch_allow_failure t ~url:remote.url revision
+let fetch_object ?(env = env) t (remote : Remote.t) revision =
+  fetch_allow_failure ~env t ~url:remote.url revision
   >>= function
   | `Not_found git_output -> Fiber.return (Error git_output)
   | `Fetched -> At_rev.of_rev t ~revision >>| Result.ok

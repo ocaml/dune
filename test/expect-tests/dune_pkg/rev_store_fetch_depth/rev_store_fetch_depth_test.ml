@@ -19,8 +19,13 @@ let () =
 let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" =
   (* This test verifies that when fetching a second commit from the same repo,
      git can negotiate what it already has using refs created by previous
-     fetches. This avoids re-downloading objects we already have. *)
+     fetches. This avoids re-downloading objects we already have.
+
+     We also demonstrate that refs from unrelated remotes are currently used
+     for negotiation. This is probably undesirable in the long term - we may
+     want to restrict negotiation to only use refs from the relevant remote. *)
   let repo_dir = Temp.create Dir ~prefix:"git-repo-" ~suffix:"" in
+  let unrelated_repo_dir = Temp.create Dir ~prefix:"git-unrelated-" ~suffix:"" in
   let trace_file = Temp.create File ~prefix:"git-trace-" ~suffix:".log" in
   let env =
     Env.add Env.initial ~var:"GIT_TRACE_PACKET" ~value:(Path.to_string trace_file)
@@ -34,13 +39,24 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
    let git = git ~dir:repo_dir in
    (* Create a repository with initial commits *)
    let* () = git_init_and_config_user repo_dir in
-   (* Allow fetching by SHA (required for git daemon) *)
+   (* Allow fetching commits by SHA1 directly. By default git servers only
+      allow fetching objects reachable from advertised refs. GitHub/GitLab
+      enable this by default; we must enable it explicitly for git daemon. *)
    let* () = git [ "config"; "uploadpack.allowAnySHA1InWant"; "true" ] in
    let* () =
      Fiber.sequential_iter [ 1; 2; 3 ] ~f:(fun i ->
        let file = sprintf "file%d" i in
        Io.write_lines (Path.relative repo_dir file) [ sprintf "content %d" i ];
        git [ "add"; file ] >>> git [ "commit"; "-m"; sprintf "commit %d" i ])
+   in
+   (* Set up an unrelated repository *)
+   let unrelated_git = Git_test_utils.git ~dir:unrelated_repo_dir in
+   let* () =
+     git_init_and_config_user unrelated_repo_dir
+     >>> unrelated_git [ "config"; "uploadpack.allowAnySHA1InWant"; "true" ]
+     >>> (Io.write_lines (Path.relative unrelated_repo_dir "file") [ "content" ];
+          unrelated_git [ "add"; "file" ])
+     >>> unrelated_git [ "commit"; "-m"; "commit" ]
    in
    let port =
      (* Find an available port by binding to port 0 *)
@@ -56,6 +72,9 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
      port
    in
    let url = sprintf "git://127.0.0.1:%d/%s" port (Path.basename repo_dir) in
+   let unrelated_url =
+     sprintf "git://127.0.0.1:%d/%s" port (Path.basename unrelated_repo_dir)
+   in
    (* Run daemon in background while we do the test. The test cancels the
        build to kill the daemon, so we catch errors. *)
    Fiber.map ~f:(fun _ -> ())
@@ -63,7 +82,7 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
    @@ fun () ->
    Fiber.fork_and_join_unit
      (fun () ->
-        (* Start git daemon to serve the repo over git:// protocol. This is
+        (* Start git daemon to serve both repos over git:// protocol. This is
             needed because file:// URLs don't use pack protocol negotiation.
             The daemon has a timeout as a safety backstop. *)
         let parent_dir = Path.parent_exn repo_dir in
@@ -83,6 +102,7 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
           ; sprintf "--port=%d" port
           ; "--reuseaddr"
           ; Path.to_string repo_dir
+          ; Path.to_string unrelated_repo_dir
           ]
         >>| fun _ -> ())
      (fun () ->
@@ -129,6 +149,22 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
           | Error lines ->
             Code_error.raise "first fetch failed" [ "output", Dyn.list Dyn.string lines ]
         in
+        (* Fetch from unrelated remote - this adds another tip to the rev store *)
+        let unrelated_remote =
+          Rev_store.remote rev_store ~loc:Loc.none ~url:unrelated_url
+        in
+        let* unrelated_head = git_out ~dir:unrelated_repo_dir [ "rev-parse"; "HEAD" ] in
+        let* () =
+          Rev_store.Object.of_sha1 unrelated_head
+          |> Option.value_exn
+          |> Rev_store.fetch_object rev_store unrelated_remote
+          >>| function
+          | Ok _ -> ()
+          | Error lines ->
+            Code_error.raise
+              "unrelated fetch failed"
+              [ "output", Dyn.list Dyn.string lines ]
+        in
         (* Add more commits to the repo *)
         let* () =
           Fiber.sequential_iter [ 4; 5 ] ~f:(fun i ->
@@ -138,7 +174,8 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
         in
         (* Get the new HEAD commit *)
         let* second_head = git_out ~dir:repo_dir [ "rev-parse"; "HEAD" ] in
-        (* Second fetch with tracing - negotiation should use refs from first fetch *)
+        (* Second fetch with tracing - negotiation uses refs from all previous
+           fetches, including the unrelated remote *)
         let* () =
           Rev_store.Object.of_sha1 second_head
           |> Option.value_exn
@@ -156,6 +193,7 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
         Console.print [ Pp.textf "Negotiation 'have' lines sent: %d" have_count ];
         Dune_scheduler.Scheduler.cancel_current_build ()));
   (* With refs created by previous fetches, git can tell the server what it
-     already has, avoiding redundant downloads. *)
-  [%expect {| Negotiation 'have' lines sent: 3 |}]
+     already has, avoiding redundant downloads. The count includes refs from
+     the unrelated remote. *)
+  [%expect {| Negotiation 'have' lines sent: 4 |}]
 ;;

@@ -136,6 +136,29 @@ This approach has several advantages:
   * Minimal metadata stored in the Git repository
   * Only the objects that are required are fetched
 
+### Fetch Negotiation Refs
+
+When Git fetches objects, it uses a negotiation protocol to determine what the
+server needs to send. The client tells the server which objects it already has
+(via "have" lines), and the server responds with only the missing objects. For
+this negotiation to work efficiently, Git needs refs pointing to known commits.
+
+Since the revision store is a bare repository without traditional remotes, we
+create refs for each successfully fetched object:
+
+```
+refs/dune-pkg/<object-hash>
+```
+
+When subsequent fetches occur, Git automatically discovers these refs and uses
+them for negotiation. This allows Git to tell the server "I already have these
+commits" and receive only the new objects, dramatically reducing bandwidth for
+incremental fetches from repositories with shared history.
+
+These refs accumulate over time but are lightweight (just pointers to existing
+objects). They can be safely pruned if disk space becomes a concern, though
+this would cause the next fetch to download more data than strictly necessary.
+
 ### Revision Resolution
 
 When a package specifies a Git source with a branch or tag name (rather than a

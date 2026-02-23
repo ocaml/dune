@@ -537,8 +537,10 @@ let rev_parse { dir; _ } rev =
 ;;
 
 (* Create a ref for a fetched object so git can use it for negotiation.
-   Refs are stored as refs/dune-pkg/<object-hash>. *)
-let add_object_ref { dir; _ } obj =
+   Refs are namespaced by URL: refs/dune-pkg/<url-hash>/<object-hash>.
+   This allows us to use --negotiation-tip during fetch to only send
+   refs relevant to the remote being fetched from. *)
+let add_object_ref { dir; _ } ~negotiation_ref_prefix obj =
   let hex = Object.to_hex obj in
   let git = Lazy.force Vcs.git in
   let env = with_specified_git_dir ~dir env in
@@ -548,7 +550,7 @@ let add_object_ref { dir; _ } obj =
     ~env
     Return
     git
-    [ "update-ref"; "refs/dune-pkg/" ^ hex; hex ]
+    [ "update-ref"; sprintf "%s/%s" negotiation_ref_prefix hex; hex ]
   >>| function
   | (), 0 -> ()
   | (), exit_code ->
@@ -763,17 +765,25 @@ let fetch_allow_failure ~env repo ~url obj =
     >>= function
     | true -> Fiber.return `Fetched
     | false ->
+      let negotiation_ref_prefix =
+        Dune_digest.string url |> Dune_digest.to_string |> sprintf "refs/dune-pkg/%s"
+      in
       run_with_exit_code
         ~env
         ~allow_codes:(Int.equal 0)
         repo
         ~display:!Dune_engine.Clflags.display
-        [ "fetch"; "--no-write-fetch-head"; url; Object.to_hex obj ]
+        [ "fetch"
+        ; "--no-write-fetch-head"
+        ; sprintf "--negotiation-tip=%s/*" negotiation_ref_prefix
+        ; url
+        ; Object.to_hex obj
+        ]
       >>= (function
        | Ok 0 ->
          Table.set repo.present_objects obj ();
          (* Create ref so git can negotiate with it on future fetches *)
-         let+ () = add_object_ref repo obj in
+         let+ () = add_object_ref repo ~negotiation_ref_prefix obj in
          `Fetched
        | Error { Git_error.exit_code; output; _ } when exit_code = 128 ->
          Fiber.return (`Not_found output)

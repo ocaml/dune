@@ -7,13 +7,11 @@ let programs_for_which_we_prefer_opt_ext =
 
 let with_opt p = p ^ ".opt"
 
-let candidates =
-  let make p = p ^ Bin.exe in
-  fun prog ->
-    let base = [ make prog ] in
-    if List.mem programs_for_which_we_prefer_opt_ext prog ~equal:String.equal
-    then make (with_opt prog) :: base
-    else base
+let candidates prog =
+  let base = [ Bin.add_exe prog ] in
+  if List.mem programs_for_which_we_prefer_opt_ext prog ~equal:String.equal
+  then Bin.add_exe (with_opt prog) :: base
+  else base
 ;;
 
 let best_in_dir ~dir program =

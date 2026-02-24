@@ -527,17 +527,6 @@ module Pkg = struct
     |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t -> dep t |> Dep.Set.add acc)
   ;;
 
-  let install_roots t =
-    let default_install_roots = Paths.install_roots t.paths in
-    match Pkg_toolchain.is_compiler_and_toolchains_enabled t.info.name with
-    | false -> default_install_roots
-    | true ->
-      (* Compiler packages store their libraries in a subdirectory named "ocaml". *)
-      { default_install_roots with
-        lib_root = Path.relative default_install_roots.lib_root "ocaml"
-      }
-  ;;
-
   (* Given a list of packages, construct an env containing variables
      set by each package. Variables containing delimited lists of
      paths (e.g. PATH) which appear in multiple package's envs are
@@ -548,7 +537,7 @@ module Pkg = struct
   let build_env_of_deps ts =
     List.fold_left ts ~init:Env.Map.empty ~f:(fun env t ->
       let env =
-        let roots = install_roots t in
+        let roots = Paths.install_roots t.paths in
         let init = Value_list_env.add_path env Env_path.var roots.bin in
         let vars = Install.Roots.to_env_without_path roots ~relative:Path.relative in
         List.fold_left vars ~init ~f:(fun acc (var, path) ->
@@ -1356,12 +1345,42 @@ module DB = struct
     { id : Id.t
     ; pkg_digest_table : Pkg_table.t
     ; system_provided : Package.Name.Set.t
+    ; is_relocatable_compiler_context : bool
     }
 
   let equal x y = Id.equal x.id y.id
 
-  let create ~pkg_digest_table ~system_provided =
-    { id = Id.gen (); pkg_digest_table; system_provided }
+  let create =
+    (* In dra27's relocatable repository, a compiler is relocatable if it
+       depends on this meta-package. *)
+    let[@inline] is_relocatable_compiler_meta_package name =
+      Package.Name.equal name (Package.Name.of_string "relocatable-compiler")
+    in
+    (* OCaml 5.5.0+ is natively relocatable. *)
+    let[@inline] is_ocaml_5_5_or_above name version =
+      Dune_pkg.Dev_tool.is_compiler_package name
+      && OpamPackage.Version.compare
+           (Dune_pkg.Package_version.to_opam_package_version version)
+           (OpamPackage.Version.of_string "5.5.0")
+         |> Ordering.of_int
+         |> function
+         | Gt | Eq -> true
+         | Lt -> false
+    in
+    fun ~pkg_digest_table ~system_provided ->
+      { id = Id.gen ()
+      ; pkg_digest_table
+      ; system_provided
+        (* To know if a given package table has the relocatable compiler, we
+           need to find either the "relocatable-compiler" meta-package or
+           assert that the version of the OCaml compiler is at least 5.5.0. *)
+      ; is_relocatable_compiler_context =
+          Pkg_digest.Map.existsi
+            pkg_digest_table
+            ~f:(fun _ { Pkg_table.pkg = { info = { name; version; _ }; _ }; _ } ->
+              is_relocatable_compiler_meta_package name
+              || is_ocaml_5_5_or_above name version)
+      }
   ;;
 
   let pkg_digest_of_name lock_dir platform pkg_name ~system_provided =
@@ -1590,9 +1609,11 @@ end = struct
       let build_command = Option.map build_command ~f:relocate_build in
       let paths =
         let paths = Paths.map_path write_paths ~f:Path.build in
-        match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name with
-        | false -> paths
-        | true ->
+        if
+          db.is_relocatable_compiler_context
+          || not (Pkg_toolchain.is_compiler_package_with_toolchains_enabled info.name)
+        then paths
+        else (
           (* Modify the environment as well as build and install commands for
              the compiler package. The specific changes are:
              - setting the prefix in the build environment to inside the user's
@@ -1603,16 +1624,21 @@ end = struct
                toolchain directory
              - if a matching version of the compiler is
                already installed in the user's toolchain directory then the
-               build and install commands are replaced with no-ops *)
+               build and install commands are replaced with no-ops
+             - compiler packages store their libraries in a subdirectory
+               named "ocaml" *)
           let prefix = Pkg_toolchain.installation_prefix pkg in
           let install_roots =
-            Pkg_toolchain.install_roots ~prefix
-            |> Install.Roots.map ~f:Path.outside_build_dir
+            let roots =
+              Pkg_toolchain.install_roots ~prefix
+              |> Install.Roots.map ~f:Path.outside_build_dir
+            in
+            { roots with lib_root = Path.relative roots.lib_root "ocaml" }
           in
           { paths with
             prefix = Path.outside_build_dir prefix
           ; install_roots = Lazy.from_val install_roots
-          }
+          })
       in
       let t =
         { Pkg.id

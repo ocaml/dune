@@ -18,7 +18,7 @@ val base_dir : unit -> Path.Outside_build_dir.t
     manage their compiler installation with opam or a system package
     manager, as compilers packages that would be installed by dune will
     not work correctly. *)
-val is_compiler_and_toolchains_enabled : Package.Name.t -> bool
+val is_compiler_package_with_toolchains_enabled : Package.Name.t -> bool
 
 (** Returns the path to the directory containing the given package within the
     toolchain directory. This will be something like

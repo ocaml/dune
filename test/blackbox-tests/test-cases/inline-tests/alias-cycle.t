@@ -33,14 +33,13 @@ This kind of cycle has a difficult to understand error message.
   8 |  (name foo_simple)
   9 |  (inline_tests (backend backend_simple)))
   Error: Dependency cycle between:
-     _build/default/.foo_simple.objs/foo_simple__Bar.impl.all-deps
+     _build/default/.foo_simple.objs/foo_simple__Bar.impl.d
   -> _build/default/.foo_simple.objs/byte/foo_simple__Bar.cmi
   -> _build/default/.foo_simple.inline-tests/.t.eobjs/native/dune__exe__Main.cmx
   -> _build/default/.foo_simple.inline-tests/inline-test-runner.exe
   -> alias runtest-foo_simple in dune:9
   -> _build/default/bar.ml
   -> _build/default/.foo_simple.objs/foo_simple__Bar.impl.d
-  -> _build/default/.foo_simple.objs/foo_simple__Bar.impl.all-deps
   -> required by _build/default/.foo_simple.objs/byte/foo_simple__Bar.cmo
   -> required by _build/default/foo_simple.cma
   -> required by alias all

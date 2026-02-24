@@ -930,7 +930,9 @@ let%expect_test "cyclic dependency error" =
       ; [ [ "id"; "0" ]
         ; [ "message"
           ; [ "Verbatim"
-            ; "Cycle_error.E\n\
+            ; "Error: dependency cycle involving module Foo:\n\
+               -> Baz\n\
+               -> Bar\n\
                "
             ]
           ]

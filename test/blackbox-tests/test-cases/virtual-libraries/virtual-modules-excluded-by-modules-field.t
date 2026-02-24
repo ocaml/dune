@@ -44,7 +44,7 @@ X is warned about:
   1 | (library
   2 |  (name impl)
   3 |  (implements foo))
-  Error: No rule found for src/.foo.objs/y.impl.all-deps
+  Error: No rule found for src/.foo.objs/y.impl.d
   [1]
 
 In 3.11 onwards this warning becomes an error

@@ -628,7 +628,8 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
     has_rules
       ~dir
       (match rest with
-       | [] -> Subdir_set.all
+       | [] | [ _ ] -> Subdir_set.all
+       | [ _; ".runtime" ] -> Subdir_set.all
        | _ -> Subdir_set.empty)
       (fun () ->
          (* XXX the use of the super context is dubious here. We're using it to

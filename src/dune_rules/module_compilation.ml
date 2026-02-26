@@ -83,8 +83,7 @@ let other_cm_files
 let copy_interface ~sctx ~dir ~obj_dir ~cm_kind m =
   (* symlink the .cmi into the public interface directory *)
   Memo.when_
-    (Module.visibility m <> Visibility.Private
-     && Obj_dir.need_dedicated_public_dir obj_dir)
+    (Module.visibility m = Visibility.Public && Obj_dir.need_dedicated_public_dir obj_dir)
     (fun () ->
        let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
        Super_context.add_rule
@@ -366,7 +365,7 @@ let build_cm
      opens modules m
    in
    let obj_dirs =
-     Obj_dir.all_obj_dirs obj_dir ~mode
+     Obj_dir.all_obj_dirs_for_visibility obj_dir ~mode ~visibility:(Module.visibility m)
      |> List.concat_map ~f:(fun p -> [ Command.Args.A "-I"; Path (Path.build p) ])
    in
    Super_context.add_rule

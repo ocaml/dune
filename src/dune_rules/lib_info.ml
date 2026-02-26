@@ -719,6 +719,7 @@ let for_instance ~dir ~ext_lib t =
     Obj_dir.make_lib
       ~dir
       ~has_private_modules:false
+      ~has_excluded_modules:false
       ~private_lib:false
       (Lib_name.Local.of_string "instance")
   in

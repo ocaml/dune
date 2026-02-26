@@ -88,6 +88,11 @@ module Map = struct
     Ocaml.Mode.Dict.equal f ocaml t.ocaml && f melange t.melange
   ;;
 
+  let to_dyn f { ocaml; melange } =
+    let open Dyn in
+    record [ "ocaml", Ocaml.Mode.Dict.to_dyn f ocaml; "melange", f melange ]
+  ;;
+
   let get t = function
     | Ocaml k -> Ocaml.Mode.Dict.get t.ocaml k
     | Melange -> t.melange
@@ -122,9 +127,6 @@ module Map = struct
       }
     ;;
 
-    let to_dyn { ocaml; melange } =
-      let open Dyn in
-      record [ "ocaml", Ocaml.Mode.Dict.Set.to_dyn ocaml; "melange", bool melange ]
-    ;;
+    let to_dyn t = to_dyn Dyn.bool t
   end
 end

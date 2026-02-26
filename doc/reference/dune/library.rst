@@ -294,6 +294,26 @@ order to declare a multi-directory library, you need to use the
    than one stanza and thus a ``modules`` field must be specified,
    ``<modules>`` still need to be added in ``modules``.
 
+.. describe:: (excluded_modules <modules>)
+
+   Specifies a list of modules that are compiled but excluded from the library
+   interface and archives.
+
+   Excluded modules have the following behavior:
+
+   - They are not visible to non-excluded modules of the same library.
+   - They can depend on both excluded and non-excluded modules.
+   - They are not linked into the final ``.cma/.cmxa`` library archives.
+   - They are not installed.
+
+   This field is available since dune language version 3.22.
+
+   ``<modules>`` uses the :doc:`/reference/ordered-set-language` and supports
+   ``(:include ...)`` forms.
+
+   Like ``private_modules``, this field is not merged into ``modules``. If
+   ``modules`` must be specified, the excluded modules must also appear there.
+
 .. describe:: (allow_overlapping_dependencies)
 
    Allows external dependencies to overlap with libraries that are present in

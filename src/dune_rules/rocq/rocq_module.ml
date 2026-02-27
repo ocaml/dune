@@ -87,6 +87,11 @@ let glob_file x ~obj_dir =
   Path.Build.relative vo_dir (x.name ^ ".glob")
 ;;
 
+let output_file x ~obj_dir =
+  let vo_dir = build_vo_dir ~obj_dir x in
+  Path.Build.relative vo_dir (x.name ^ ".output")
+;;
+
 (* As of today we do the same for build and install, it used not to be
    the case *)
 let standard_obj_files ~(mode : Rocq_mode.t) _obj_files_mode name =
@@ -118,15 +123,6 @@ let obj_files x ~wrapper_name ~mode ~obj_dir ~obj_files_mode =
   List.map obj_files ~f:(fun fname ->
     Path.Build.relative vo_dir fname, Filename.concat install_vo_dir fname)
   @ native_objs
-;;
-
-let to_dyn { source; prefix; name } =
-  let open Dyn in
-  record
-    [ "source", Path.to_dyn source
-    ; "prefix", list string prefix
-    ; "name", Name.to_dyn name
-    ]
 ;;
 
 let parse ~dir ~loc s =

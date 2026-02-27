@@ -54,3 +54,23 @@
   foo.exe
   foo.ml
   foo.mli
+
+  $ cat >extract.expected <<EOF
+  > Hello!
+  > EOF
+  $ dune runtest
+  File "./extract.v", line 8, characters 0-23:
+  Warning: Setting extraction output directory by default to
+  "$TESTCASE_ROOT/_build/default".
+  Use "Set Extraction Output Directory" or command line option
+  "-output-directory" to set a different directory for extracted files to
+  appear in. [extraction-default-directory,extraction,default]
+  File "extract.expected", line 1, characters 0-0:
+  --- extract.expected
+  +++ extract.output
+  @@ -1 +0,0 @@
+  -Hello!
+  [1]
+  $ dune promote
+  Promoting _build/default/extract.output to extract.expected.
+  $ dune runtest

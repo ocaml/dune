@@ -25,6 +25,8 @@ type t =
          mode *)
   ; extract : Rocq_module.t Loc.Map.t
   ; rev_map : [ `Theory of Theory.t | `Extraction of Extraction.t ] Rocq_module.Map.t
+  ; expected_files : Path.Build.t Path.Build.Map.t
+    (* Maps source .v file path to its .expected file path, if it exists *)
   }
 
 let find_module ~source t =
@@ -37,26 +39,39 @@ let empty =
   ; directories = Rocq_lib_name.Map.empty
   ; extract = Loc.Map.empty
   ; rev_map = Rocq_module.Map.empty
+  ; expected_files = Path.Build.Map.empty
   }
 ;;
 
 let rocq_modules_of_files ~dirs =
-  let filter_v_files
-        ({ Source_file_dir.dir = _; path_to_root = _; files; source_dir = _; stanzas = _ }
-         as sd)
-    =
-    { sd with files = String.Set.filter files ~f:(fun f -> Filename.check_suffix f ".v") }
-  in
-  let dirs = Nonempty_list.to_list_map dirs ~f:filter_v_files in
-  let build_mod_dir
-        { Source_file_dir.dir; path_to_root = prefix; files; source_dir = _; stanzas = _ }
-    =
-    String.Set.to_list_map files ~f:(fun file ->
+  let build_mod_dir (sd : Source_file_dir.t) =
+    let prefix = sd.path_to_root in
+    let v_files = String.Set.filter sd.files ~f:(fun f -> Filename.check_suffix f ".v") in
+    String.Set.to_list_map v_files ~f:(fun file ->
       let name, _ = Filename.split_extension file in
       let name = Rocq_module.Name.make name in
-      Rocq_module.make ~source:(Path.build @@ Path.Build.relative dir file) ~prefix ~name)
+      Rocq_module.make
+        ~source:(Path.build @@ Path.Build.relative sd.dir file)
+        ~prefix
+        ~name)
   in
-  List.concat_map ~f:build_mod_dir dirs
+  List.concat_map ~f:build_mod_dir (Nonempty_list.to_list dirs)
+;;
+
+let expected_files_of_dirs ~dirs =
+  let build_expected (sd : Source_file_dir.t) =
+    let v_files = String.Set.filter sd.files ~f:(fun f -> Filename.check_suffix f ".v") in
+    String.Set.to_list_map v_files ~f:(fun file ->
+      let name, _ = Filename.split_extension file in
+      let expected_name = name ^ ".expected" in
+      let source = Path.Build.relative sd.dir file in
+      if String.Set.mem sd.files expected_name
+      then Some (source, Path.Build.relative sd.dir expected_name)
+      else None)
+    |> List.filter_opt
+  in
+  List.concat_map ~f:build_expected (Nonempty_list.to_list dirs)
+  |> Path.Build.Map.of_list_exn
 ;;
 
 let library t ~name = Rocq_lib_name.Map.find_exn t.libraries name
@@ -78,7 +93,8 @@ let extract t (stanza : Extraction.t) = Loc.Map.find_exn t.extract stanza.builda
 let of_dir stanzas ~dir ~include_subdirs ~dirs =
   check_no_unqualified include_subdirs;
   let modules = rocq_modules_of_files ~dirs in
-  List.fold_left stanzas ~init:empty ~f:(fun acc stanza ->
+  let expected_files = expected_files_of_dirs ~dirs in
+  List.fold_left stanzas ~init:{ empty with expected_files } ~f:(fun acc stanza ->
     match Stanza.repr stanza with
     | Theory.T rocq ->
       let modules = Rocq_module.eval ~dir rocq.modules ~standard:modules in
@@ -123,6 +139,13 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
 ;;
 
 let lookup_module t m = Rocq_module.Map.find t.rev_map m
+
+let expected_file t m =
+  let source = Rocq_module.source m in
+  match Path.as_in_build_dir source with
+  | Some source -> Path.Build.Map.find t.expected_files source
+  | None -> None
+;;
 
 let mlg_files ~sctx ~dir ~modules =
   let open Memo.O in

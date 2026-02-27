@@ -44,6 +44,7 @@ val prefix : t -> string list
 val name : t -> Name.t
 val dep_file : t -> obj_dir:Path.Build.t -> Path.Build.t
 val glob_file : t -> obj_dir:Path.Build.t -> Path.Build.t
+val output_file : t -> obj_dir:Path.Build.t -> Path.Build.t
 
 (** Some of the object files should not be installed, we control this with the
     following parameter *)

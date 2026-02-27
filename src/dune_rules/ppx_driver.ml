@@ -358,6 +358,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
       ( Expander.add_bindings expander ~bindings
       , Some ("library-name", (library_name, Lib_name.of_local (loc, lib_name))) )
   in
+  let* libs = Resolve.Memo.read_memo (Lib.closure libs ~linking:true ~for_) in
   let+ cookies =
     Memo.List.concat_map libs ~f:(fun t ->
       let info = Lib.info t in

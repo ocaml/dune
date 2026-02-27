@@ -1,4 +1,4 @@
-(dirs _boot :standard \ result)
+(dirs .github _boot :standard \ result)
 
 (data_only_dirs _boot)
 

@@ -42,8 +42,7 @@ captured
   [1]
 
 Now try another local package but this time of zip format to test if stderr is
-captured from the unzip tool. Note that preprocessing here makes the unzip
-error message a bit less clear
+captured from the zip extraction tool (bsdtar on macOS, unzip on Linux).
 
   $ echo "corrupted zip" > corrupted.zip
 
@@ -58,7 +57,7 @@ error message a bit less clear
   Solution for dune.lock:
   - foo.0.0.1
 
-  $ build_pkg foo 2>&1 | dune_cmd print-from 'Error:' | dune_cmd print-until '^Reason' | dune_cmd subst "'[0-9]*'" X
+  $ build_pkg foo 2>&1 | dune_cmd print-from 'Error:' | dune_cmd print-until '^Reason' | dune_cmd subst "'[0-9]*'" X | dune_cmd subst "'(unzip|bsdtar|tar)'" ZIP_TOOL
   Error: failed to extract 'corrupted.zip'
-  Reason: 'unzip' failed with non-zero exit code X and output:
+  Reason: ZIP_TOOL failed with non-zero exit code X and output:
   [1]

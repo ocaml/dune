@@ -124,20 +124,19 @@ let rec find_libarchive_tar = function
 let zip =
   let command =
     Fiber.Lazy.create (fun () ->
-      match which "unzip" with
-      | Some bin -> Fiber.return { Command.bin; make_args = make_zip_args }
+      (* Prefer libarchive/bsdtar over unzip, bsdtar can extract zip natively *)
+      find_libarchive_tar [ "bsdtar"; "tar" ]
+      >>| function
+      | Some bin -> { Command.bin; make_args = make_tar_args ~tar_impl:Libarchive }
       | None ->
-        (* Only libarchive can extract zip, so find a tar that is libarchive *)
-        let* program = find_libarchive_tar [ "bsdtar"; "tar" ] in
-        (match program with
-         | Some bin ->
-           Fiber.return { Command.bin; make_args = make_tar_args ~tar_impl:Libarchive }
+        (* Fall back to unzip if no libarchive tar found *)
+        (match which "unzip" with
+         | Some bin -> { Command.bin; make_args = make_zip_args }
          | None ->
-           Fiber.return
-           @@ User_error.raise
-                [ Pp.text "No program found to extract zip file. Tried:"
-                ; Pp.enumerate [ "unzip"; "bsdtar"; "tar" ] ~f:Pp.verbatim
-                ]))
+           User_error.raise
+             [ Pp.text "No program found to extract zip file. Tried:"
+             ; Pp.enumerate [ "bsdtar"; "tar"; "unzip" ] ~f:Pp.verbatim
+             ]))
   in
   { command; suffixes = [ ".zip" ] }
 ;;

@@ -89,9 +89,9 @@ variable can escape to subseqent shell invocations on MacOS.)
   basename cp dune sh
   $ (PATH=.fakebin build_pkg foo 2>&1 | grep '^Error:' -A 3)
   Error: No program found to extract zip file. Tried:
-  - unzip
   - bsdtar
   - tar
+  - unzip
   [1]
 
 Build with only GNU tar that can't extract ZIP archives:
@@ -101,9 +101,9 @@ Build with only GNU tar that can't extract ZIP archives:
   basename cp dune sh tar
   $ (PATH=.fakebin build_pkg foo 2>&1 | grep '^Error:' -A 3)
   Error: No program found to extract zip file. Tried:
-  - unzip
   - bsdtar
   - tar
+  - unzip
   [1]
 
 Build with bsdtar that can extract ZIP archives, without unzip. It should work:
@@ -133,7 +133,7 @@ Build with unzip only:
   $ (PATH=.fakebin build_pkg foo)
 
 Build with both bsdtar (as tar) and unzip available.
-Currently the code prefers unzip over bsdtar:
+The code prefers bsdtar over unzip since bsdtar can extract zip natively:
 
   $ ln -s ../.binaries/bsdtar .fakebin/tar
   $ show_path
@@ -147,4 +147,5 @@ Use a fresh package to ensure extraction actually runs (not cached from earlier)
 Check which tool was used for extraction:
 
   $ dune trace cat | jq -c 'include "dune"; processes | .args.prog | split("/") | .[-1]'
-  "unzip"
+  "tar"
+  "tar"

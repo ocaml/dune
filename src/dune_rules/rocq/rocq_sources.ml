@@ -140,11 +140,14 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
 
 let lookup_module t m = Rocq_module.Map.find t.rev_map m
 
-let expected_file t m =
-  let source = Rocq_module.source m in
-  match Path.as_in_build_dir source with
-  | Some source -> Path.Build.Map.find t.expected_files source
-  | None -> None
+let expected_file ~rocq_lang_version t m =
+  if rocq_lang_version >= (0, 12)
+  then (
+    let source = Rocq_module.source m in
+    match Path.as_in_build_dir source with
+    | Some source -> Path.Build.Map.find t.expected_files source
+    | None -> None)
+  else None
 ;;
 
 let mlg_files ~sctx ~dir ~modules =

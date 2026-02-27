@@ -799,8 +799,8 @@ module Per_file = struct
   ;;
 end
 
-let setup_output_diff_rule ~loc ~dir ~sctx ~rocq_sources rocq_module =
-  match Rocq_sources.expected_file rocq_sources rocq_module with
+let setup_output_diff_rule ~loc ~dir ~sctx ~rocq_lang_version ~rocq_sources rocq_module =
+  match Rocq_sources.expected_file ~rocq_lang_version rocq_sources rocq_module with
   | None -> Memo.return ()
   | Some expected ->
     let output = Rocq_module.output_file ~obj_dir:dir rocq_module in
@@ -825,6 +825,7 @@ let setup_rocqc_rule
       ~rocqc_dir
       ~file_targets
       ~stanza_flags
+      ~rocq_lang_version
       ~modules_flags
       ~theories_deps
       ~mode
@@ -851,8 +852,9 @@ let setup_rocqc_rule
     |> List.map ~f:fst
   in
   let output_file =
-    Option.map (Rocq_sources.expected_file rocq_sources rocq_module) ~f:(fun _ ->
-      Rocq_module.output_file ~obj_dir:dir rocq_module)
+    Option.map
+      (Rocq_sources.expected_file ~rocq_lang_version rocq_sources rocq_module)
+      ~f:(fun _ -> Rocq_module.output_file ~obj_dir:dir rocq_module)
   in
   let targets =
     let targets = Option.to_list output_file @ obj_files in
@@ -1078,6 +1080,7 @@ let extraction_context ~context ~scope (buildable : Rocq_stanza.Buildable.t) =
 let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
   let* scope = Scope.DB.find_by_dir dir in
   let name = s.name in
+  let rocq_lang_version = s.buildable.rocq_lang_version in
   let theory, theories_deps, ml_flags, mlpack_rule =
     let context = Super_context.context sctx |> Context.name in
     theory_context ~context ~scope ~name s.buildable
@@ -1151,6 +1154,7 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
       ~sctx
       ~file_targets:[]
       ~stanza_flags
+      ~rocq_lang_version
       ~modules_flags
       ~rocqc_dir
       ~theories_deps
@@ -1161,7 +1165,13 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
       ~theory_dirs
       ~rocq_sources:rocq_dir_contents
       rocq_module
-    >>> setup_output_diff_rule ~loc ~dir ~sctx ~rocq_sources:rocq_dir_contents rocq_module)
+    >>> setup_output_diff_rule
+          ~loc
+          ~dir
+          ~sctx
+          ~rocq_lang_version
+          ~rocq_sources:rocq_dir_contents
+          rocq_module)
   (* And finally the rocqdoc rules *)
   >>> setup_rocqdoc_rules ~sctx ~dir ~theories_deps s rocq_modules
 ;;
@@ -1286,6 +1296,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.
   in
   let loc = s.buildable.loc in
   let use_stdlib = s.buildable.use_stdlib in
+  let rocq_lang_version = s.buildable.rocq_lang_version in
   let* scope = Scope.DB.find_by_dir dir in
   let theories_deps, ml_flags, mlpack_rule =
     let context = Super_context.context sctx |> Context.name in
@@ -1324,6 +1335,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.
         ~scope
         ~file_targets
         ~stanza_flags:s.buildable.flags
+        ~rocq_lang_version
         ~modules_flags
         ~sctx
         ~loc
@@ -1337,7 +1349,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.
         ~ml_flags
         ~theory_dirs:Path.Build.Set.empty
         ~rocq_sources
-  >>> setup_output_diff_rule ~loc ~dir ~sctx ~rocq_sources rocq_module
+  >>> setup_output_diff_rule ~loc ~dir ~sctx ~rocq_lang_version ~rocq_sources rocq_module
 ;;
 
 let rocqtop_args_extraction ~sctx ~dir (s : Rocq_stanza.Extraction.t) rocq_module =

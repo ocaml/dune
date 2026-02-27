@@ -44,7 +44,7 @@ example, adding
 
 .. code:: dune
 
-    (using rocq 0.11)
+    (using rocq 0.12)
 
 to a :doc:`/reference/dune-project/index` file enables using the
 ``rocq.theory`` stanza and other ``rocq.*`` stanzas. See the :ref:`Dune Rocq
@@ -85,6 +85,7 @@ When a ``.v`` file has a corresponding ``.expected`` file, Rocq's standard
 output is captured instead of being output to the terminal, and the output is
 diffed with the ``.expected`` file as part of the ``runtest`` alias. When the
 output differs, it can be promoted as with, e.g., cram tests.
+(Appeared in :ref:`Coq lang 0.12<rocq-lang>`)
 
 For usage of this stanza, see the :ref:`rocq-examples`.
 
@@ -363,7 +364,7 @@ The Rocq lang can be modified by adding the following to a
 
 .. code:: dune
 
-    (using rocq 0.11)
+    (using rocq 0.12)
 
 The supported Rocq language versions (not the version of Rocq) are:
 
@@ -372,6 +373,7 @@ The supported Rocq language versions (not the version of Rocq) are:
   + Dune won't install .cmxs files in user-contrib (along .vo files) anymore.
   + ``(mode native)`` is not allowed anymore. It is the default if Rocq was configured with native compute enabled.
   + ``COQPATH`` is not recognized anymore, use ``ROCQPATH``.
+- ``0.12``: Support for output tests.
 
 .. _rocq-lang-1.0:
 
@@ -379,7 +381,7 @@ Rocq Language Version 1.0
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Guarantees with respect to stability are not yet provided, but we
-intend that the ``(0.11)`` version of the language becomes ``1.0``.
+intend that the ``(0.12)`` version of the language becomes ``1.0``.
 The ``1.0`` version of Rocq lang will commit to a stable set of
 functionality. All the features below are expected to reach ``1.0``
 unchanged or minimally modified.
@@ -456,7 +458,7 @@ lang<rocq-lang>` stanza present:
 .. code:: dune
 
   (lang dune 3.22)
-  (using rocq 0.11)
+  (using rocq 0.12)
 
 Next we need a :doc:`/reference/dune/index` file with a :ref:`rocq-theory`
 stanza:
@@ -687,7 +689,7 @@ the plugin to sit in, otherwise Rocq will not be able to find it.
 .. code:: dune
 
   (lang dune 3.22)
-  (using rocq 0.11)
+  (using rocq 0.12)
 
   (package
    (name my-rocq-plugin)

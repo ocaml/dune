@@ -34,10 +34,10 @@ Test `melange.runtime_deps` in a library that has been installed
   Installing $TESTCASE_ROOT/prefix/lib/foo/META
   Installing $TESTCASE_ROOT/prefix/lib/foo/dune-package
   Installing $TESTCASE_ROOT/prefix/lib/foo/file.txt
-  Installing $TESTCASE_ROOT/prefix/lib/foo/foo.ml
   Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmi
   Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmj
   Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.ml
   Installing $TESTCASE_ROOT/prefix/lib/foo/some_dir/inside-dir-target.txt
 
   $ rm -rf $PWD/prefix
@@ -59,8 +59,8 @@ Test `melange.runtime_deps` in a library that has been installed
   Installing $TESTCASE_ROOT/prefix/lib/foo/META
   Installing $TESTCASE_ROOT/prefix/lib/foo/dune-package
   Installing $TESTCASE_ROOT/prefix/lib/foo/file.txt
-  Installing $TESTCASE_ROOT/prefix/lib/foo/foo.ml
   Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmi
   Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmj
   Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/foo/melange/foo.ml
   Installing $TESTCASE_ROOT/prefix/lib/foo/some_dir/inside-dir-target.txt

@@ -34,9 +34,11 @@ Test dependency on installed package
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a.cmi
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a.cmj
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/a/melange/a.ml
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Foo.cmi
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Foo.cmj
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Foo.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/a/melange/foo.ml
 
   $ cat >b/dune-project <<EOF
   > (lang dune 3.8)

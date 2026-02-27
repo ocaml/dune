@@ -350,14 +350,13 @@ module Crawl = struct
     else Digest.generic name
   ;;
 
-  let for_ = Compilation_mode.Ocaml
-
-  let immediate_deps_of_module ~options ~obj_dir ~modules unit =
+  let immediate_deps_of_module ~options ~obj_dir ~modules unit ~for_ =
     match (options : Options.t) with
     | { with_deps = false; _ } ->
       Action_builder.return { Root.Ocaml.Ml_kind.Dict.intf = []; impl = [] }
     | { with_deps = true; _ } ->
       let deps ml_kind =
+        (* TODO(anmonteiro): support Melange *)
         Dune_rules.Dep_rules.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit ~for_
       in
       let open Action_builder.O in
@@ -402,6 +401,8 @@ module Crawl = struct
       module_ ~obj_dir ~deps_for_intf ~deps_for_impl m :: acc)
   ;;
 
+  let for_ = Compilation_mode.Ocaml
+
   (* Builds a workspace item for the provided executables object *)
   let executables sctx ~options ~project ~dir (exes : Executables.t)
     : (Descr.Item.t * Lib.Set.t) option Memo.t
@@ -418,7 +419,7 @@ module Crawl = struct
       let* modules_, obj_dir =
         let+ modules_, obj_dir =
           Dir_contents.get sctx ~dir
-          >>= Dir_contents.ocaml
+          >>= Dir_contents.ml ~for_
           >>= Ml_sources.modules_and_obj_dir
                 ~libs:(Scope.libs scope)
                 ~for_:(Exe { first_exe })
@@ -438,7 +439,7 @@ module Crawl = struct
       in
       let deps_of module_ =
         let module_ = pp_map module_ in
-        immediate_deps_of_module ~options ~obj_dir ~modules:modules_ module_
+        immediate_deps_of_module ~options ~obj_dir ~modules:modules_ module_ ~for_
       in
       let obj_dir = Obj_dir.of_local obj_dir in
       let* modules = modules ~obj_dir ~deps_of modules_ in
@@ -487,7 +488,7 @@ module Crawl = struct
             in
             let+ modules_, obj_dir_ =
               Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
-              >>= Dir_contents.ocaml
+              >>= Dir_contents.ml ~for_
               >>= Ml_sources.modules_and_obj_dir
                     ~libs
                     ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
@@ -511,6 +512,7 @@ module Crawl = struct
               ~obj_dir:obj_dir_
               ~modules:modules_
               (pp_map module_)
+              ~for_
           in
           modules ~obj_dir ~deps_of modules_
       in
@@ -618,7 +620,7 @@ module Crawl = struct
     let+ libs =
       (* the executables' libraries, and the project's libraries *)
       Lib.Set.union exe_libs project_libs
-      |> Lib.Set.to_list
+      |> Lib.Set.to_list (* TODO(anmonteiro): support Melange *)
       |> Lib.descriptive_closure ~with_pps:options.with_pps ~for_
       >>= Memo.parallel_map ~f:(library ~options sctx)
       >>| List.filter_opt

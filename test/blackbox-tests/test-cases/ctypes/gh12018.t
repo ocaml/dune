@@ -42,8 +42,7 @@ Reproduction case for https://github.com/ocaml/dune/issues/12018
   > EOF
 
   $ LIBEX=$(realpath "$PWD/libexample")
-  $ DYLD_LIBRARY_PATH="$LIBEX" LD_LIBRARY_PATH="$LIBEX" PKG_CONFIG_PATH="$LIBEX/pkgconfig" PKG_CONFIG_ARGN="--define-prefix" dune exec ./foo.exe 2>&1 | head -3
-  Internal error, please report upstream including the contents of _build/log.
+  $ DYLD_LIBRARY_PATH="$LIBEX" LD_LIBRARY_PATH="$LIBEX" PKG_CONFIG_PATH="$LIBEX/pkgconfig" PKG_CONFIG_ARGN="--define-prefix" dune exec ./foo.exe 2>&1 | grep -A 1 'Description:'
   Description:
     ("link_many: unable to find module",
   [1]

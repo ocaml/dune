@@ -13,7 +13,9 @@
   $ cp ./bin/foo.exe ./
 
   $ dune build some_file 2>&1 | awk '/Internal error/,/unable to serialize/'
-  Internal error, please report upstream including the contents of _build/log.
+  Internal error! Please report to https://github.com/ocaml/dune/issues,
+  providing the file _build/trace.csexp, if possible. This includes build
+  commands, message logs, and file paths.
   Description:
     ("unable to serialize exception",
 

@@ -57,7 +57,7 @@ let exec loc ({ Diff.optional; file1; file2; mode } as diff) =
              ]
          else
            Print_diff.print
-             ~promotion
+             promotion
              file1
              (Path.build file2)
              ~skip_trailing_cr:(mode = Text && Sys.win32))

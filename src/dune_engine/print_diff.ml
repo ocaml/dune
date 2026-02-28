@@ -84,7 +84,7 @@ end = struct
   ;;
 end
 
-let make_metadata ~has_embedded_location ?promotion loc =
+let make_metadata ~has_embedded_location promotion loc =
   Process.create_metadata
     ~categories:[ "diff" ]
     ~has_embedded_location
@@ -97,7 +97,7 @@ let make_metadata ~has_embedded_location ?promotion loc =
 module External = struct
   let which prog = Bin.which ~path:(Env_path.path Env.initial) prog
 
-  let diff ~skip_trailing_cr ~dir ?promotion loc file1 file2 =
+  let diff ~skip_trailing_cr ~dir promotion loc file1 file2 =
     which "diff"
     |> Option.map ~f:(fun prog ->
       let args =
@@ -108,11 +108,11 @@ module External = struct
       { dir
       ; prog
       ; args
-      ; metadata = make_metadata ~has_embedded_location:false ?promotion loc
+      ; metadata = make_metadata ~has_embedded_location:false promotion loc
       })
   ;;
 
-  let git ~skip_trailing_cr ?promotion loc path1 path2 =
+  let git ~skip_trailing_cr promotion loc path1 path2 =
     which "git"
     |> Option.map ~f:(fun prog ->
       let dir =
@@ -124,7 +124,7 @@ module External = struct
       in
       { dir
       ; prog
-      ; metadata = make_metadata ~has_embedded_location:false ?promotion loc
+      ; metadata = make_metadata ~has_embedded_location:false promotion loc
       ; args =
           [ "--no-pager"; "diff"; "--no-index"; "--color=always"; "-u" ]
           @ (if skip_trailing_cr then [ "--ignore-cr-at-eol" ] else [])
@@ -133,7 +133,7 @@ module External = struct
       })
   ;;
 
-  let patdiff ~dir ?promotion loc file1 file2 =
+  let patdiff ~dir promotion loc file1 file2 =
     which "patdiff"
     |> Option.map ~f:(fun prog ->
       let metadata =
@@ -143,7 +143,7 @@ module External = struct
            [process] module won't recognise that the output has a location.
 
            For this reason, we manually pass the below annotation. *)
-        make_metadata ?promotion loc ~has_embedded_location:true
+        make_metadata promotion loc ~has_embedded_location:true
       in
       let args =
         [ "-keep-whitespace"; "-location-style"; "omake" ]
@@ -154,7 +154,7 @@ module External = struct
   ;;
 end
 
-let prepare ~skip_trailing_cr ?promotion path1 path2 =
+let prepare ~skip_trailing_cr promotion path1 path2 =
   let dir, file1, file2 =
     match
       ( Path.extract_build_context_dir_maybe_sandboxed path1
@@ -187,7 +187,7 @@ let prepare ~skip_trailing_cr ?promotion path1 path2 =
     With_fallback.run
       { prog = sh
       ; args = [ arg; cmd ]
-      ; metadata = make_metadata ~has_embedded_location:false ?promotion loc
+      ; metadata = make_metadata ~has_embedded_location:false promotion loc
       ; dir
       }
       ~fallback:
@@ -206,7 +206,7 @@ let prepare ~skip_trailing_cr ?promotion path1 path2 =
                        cmd)
               ]))
   | None ->
-    let diff = External.diff ~skip_trailing_cr ~dir ?promotion loc file1 file2 in
+    let diff = External.diff ~skip_trailing_cr ~dir promotion loc file1 file2 in
     if Execution_env.inside_dune
     then (
       match diff with
@@ -216,23 +216,23 @@ let prepare ~skip_trailing_cr ?promotion path1 path2 =
       let git_or_diff =
         match
           Option.first_some
-            (External.git ~skip_trailing_cr ?promotion loc path1 path2)
+            (External.git ~skip_trailing_cr promotion loc path1 path2)
             diff
         with
         | None -> fallback
         | Some command -> With_fallback.run command ~fallback
       in
-      match External.patdiff ~dir ?promotion loc file1 file2 with
+      match External.patdiff ~dir promotion loc file1 file2 with
       | None -> git_or_diff
       | Some command -> With_fallback.run command ~fallback:git_or_diff)
 ;;
 
-let print ~skip_trailing_cr ?promotion path1 path2 =
-  let p = prepare ~skip_trailing_cr ?promotion path1 path2 in
+let print ~skip_trailing_cr promotion path1 path2 =
+  let p = prepare ~skip_trailing_cr (Some promotion) path1 path2 in
   With_fallback.exec p
 ;;
 
 let get path1 path2 =
-  let p = prepare ~skip_trailing_cr:Sys.win32 path1 path2 in
+  let p = prepare ~skip_trailing_cr:Sys.win32 None path1 path2 in
   With_fallback.capture p
 ;;

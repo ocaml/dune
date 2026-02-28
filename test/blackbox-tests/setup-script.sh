@@ -114,3 +114,7 @@ stop_dune () {
 build () {
     with_timeout dune rpc build --wait "$@"
 }
+
+file_status() {
+  [ -e "$1" ] && echo "$1 exists" || echo "$1 missing"
+}

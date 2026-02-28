@@ -211,25 +211,19 @@ let prepare ~skip_trailing_cr promotion path1 path2 =
                        cmd)
               ]))
   | None ->
+    let or_fallback ~fallback = function
+      | None -> fallback
+      | Some diff -> With_fallback.run diff ~fallback
+    in
     let diff = External.diff ~skip_trailing_cr ~dir promotion loc path1 path2 in
     if Execution_env.inside_dune
-    then (
-      match diff with
-      | None -> fallback
-      | Some diff -> With_fallback.run diff ~fallback)
+    then or_fallback ~fallback diff
     else (
-      let git_or_diff =
-        match
-          Option.first_some
-            (External.git ~skip_trailing_cr promotion loc path1 path2)
-            diff
-        with
-        | None -> fallback
-        | Some command -> With_fallback.run command ~fallback
+      let fallback =
+        Option.first_some (External.git ~skip_trailing_cr promotion loc path1 path2) diff
+        |> or_fallback ~fallback
       in
-      match External.patdiff ~dir promotion loc path1 path2 with
-      | None -> git_or_diff
-      | Some command -> With_fallback.run command ~fallback:git_or_diff)
+      External.patdiff ~dir promotion loc path1 path2 |> or_fallback ~fallback)
 ;;
 
 let print ~skip_trailing_cr promotion path1 path2 =

@@ -1193,7 +1193,7 @@ let symlinked_entries =
   fun sctx pkg -> Memo.exec memo (sctx, pkg)
 ;;
 
-let package_deps (pkg : Package.t) files =
+let package_deps ~self_alias (pkg : Package.t) files =
   let rec loop rules_seen (fn : Path.Build.t) =
     let* pkgs = packages_file_is_part_of fn in
     if Package.Id.Set.is_empty pkgs || Package.Id.Set.mem pkgs (Package.id pkg)
@@ -1208,15 +1208,21 @@ let package_deps (pkg : Package.t) files =
       then Memo.return (Package.Id.Set.empty, rules_seen)
       else (
         let rules_seen = Rule.Set.add rules_seen rule in
-        let* res = Dune_engine.Build_system.execute_rule rule in
-        loop_files
-          rules_seen
-          (Dep.Facts.paths ~expand_aliases:true res.facts
-           |> Path.Set.to_list
-           |>
-           (* if this file isn't in the build dir, it doesn't belong to any
-                 package and it doesn't have dependencies that do *)
-           List.filter_map ~f:Path.as_in_build_dir))
+        let* (_ : Action.Full.t), static_deps =
+          Action_builder.evaluate_and_collect_deps rule.action
+        in
+        if Dep.Set.mem static_deps (Dep.alias self_alias)
+        then Memo.return (Package.Id.Set.empty, rules_seen)
+        else
+          let* res = Dune_engine.Build_system.execute_rule rule in
+          loop_files
+            rules_seen
+            (Dep.Facts.paths ~expand_aliases:true res.facts
+             |> Path.Set.to_list
+             |>
+             (* if this file isn't in the build dir, it doesn't belong to any
+                package and it doesn't have dependencies that do *)
+             List.filter_map ~f:Path.as_in_build_dir))
   and loop_files rules_seen files =
     Memo.List.fold_left
       ~init:(Package.Id.Set.empty, rules_seen)
@@ -1299,20 +1305,22 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   let entries = Action_builder.of_memo (symlinked_entries sctx package_name >>| fst) in
   let context = Super_context.context sctx in
   let build_context = Context.build_context context in
+  let target_alias = Dep_conf_eval.package_install ~context:build_context ~pkg:package in
   let pkg_build_dir = Package_paths.build_dir build_context package in
-  let files =
-    Action_builder.map
-      entries
-      ~f:(List.rev_map ~f:(fun (e : Install.Entry.Sourced.Expanded.t) -> e.entry.src))
-    |> Action_builder.memoize "entries"
-  in
   let* dune_project = Dune_load.find_project ~dir:pkg_build_dir in
   let strict_package_deps = Dune_project.strict_package_deps dune_project in
   let packages =
     let open Action_builder.O in
     let+ packages =
-      let* files = files in
-      Action_builder.of_memo (package_deps package files)
+      let* files =
+        Action_builder.of_memo
+          (let open Memo.O in
+           install_entries sctx package_name
+           >>| List.rev_map ~f:(fun (e : Install.Entry.Sourced.Unexpanded.t) ->
+             e.entry.src))
+        |> Action_builder.memoize "package-deps-files"
+      in
+      Action_builder.of_memo (package_deps ~self_alias:target_alias package files)
     in
     (match strict_package_deps with
      | false -> ()
@@ -1343,13 +1351,16 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   in
   let install_file_deps =
     let open Action_builder.O in
+    let files =
+      Action_builder.map
+        entries
+        ~f:(List.rev_map ~f:(fun (e : Install.Entry.Sourced.Expanded.t) -> e.entry.src))
+      |> Action_builder.memoize "install-files"
+    in
     files >>| Path.Set.of_list_map ~f:Path.build >>= Action_builder.path_set
   in
   let* () =
     let* all_packages = Dune_load.packages () in
-    let target_alias =
-      Dep_conf_eval.package_install ~context:build_context ~pkg:package
-    in
     let open Action_builder.O in
     Rules.Produce.Alias.add_deps
       target_alias

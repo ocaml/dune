@@ -18,7 +18,7 @@ dune promote should be able to promote into directories that don't exist
 
   $ dune build ./foo --diff-command "$SHELL $PWD/diff.sh"
   File "dir/foo", line 1, characters 0-0:
-  a: dir/foo
+  a: /dev/null
   b: foo
   [1]
 

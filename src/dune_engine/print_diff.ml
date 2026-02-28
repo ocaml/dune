@@ -97,16 +97,14 @@ let make_metadata ~has_embedded_location promotion loc =
 module External = struct
   let which prog = Bin.which ~path:(Env_path.path Env.initial) prog
 
-  let diff ~skip_trailing_cr ~dir promotion loc file1 file2 =
+  let diff ~skip_trailing_cr ~dir promotion loc (label1, file1) (label2, file2) =
     which "diff"
     |> Option.map ~f:(fun prog ->
       let relative = Path.reach ~from:dir in
-      let file1 = relative file1 in
-      let file2 = relative file2 in
       let args =
-        [ "-u"; "--label"; file1; "--label"; file2 ]
+        [ "-u"; "--label"; relative label1; "--label"; relative label2 ]
         @ (if skip_trailing_cr then [ "--strip-trailing-cr" ] else [])
-        @ [ file1; file2 ]
+        @ [ relative file1; relative file2 ]
       in
       { dir
       ; prog
@@ -158,6 +156,8 @@ module External = struct
   ;;
 end
 
+let noent_to_dev_null f = if Fpath.exists (Path.to_string f) then f else Dev_null.path
+
 let prepare ~skip_trailing_cr promotion path1 path2 =
   let dir, loc =
     let dir, file1 =
@@ -170,6 +170,10 @@ let prepare ~skip_trailing_cr promotion path1 path2 =
     in
     dir, Loc.in_file file1
   in
+  let label1 = path1 in
+  let label2 = path2 in
+  let path1 = noent_to_dev_null path1 in
+  let path2 = noent_to_dev_null path2 in
   let fallback =
     With_fallback.fail
       (User_error.make
@@ -177,8 +181,8 @@ let prepare ~skip_trailing_cr promotion path1 path2 =
          ?promotion
          [ Pp.textf
              "Files %s and %s differ."
-             (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path1))
-             (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path2))
+             (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root label1))
+             (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root label2))
          ])
   in
   match !Clflags.diff_command with
@@ -215,7 +219,9 @@ let prepare ~skip_trailing_cr promotion path1 path2 =
       | None -> fallback
       | Some diff -> With_fallback.run diff ~fallback
     in
-    let diff = External.diff ~skip_trailing_cr ~dir promotion loc path1 path2 in
+    let diff =
+      External.diff ~skip_trailing_cr ~dir promotion loc (label1, path1) (label2, path2)
+    in
     if Execution_env.inside_dune
     then or_fallback ~fallback diff
     else (

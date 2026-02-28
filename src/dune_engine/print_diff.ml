@@ -100,6 +100,9 @@ module External = struct
   let diff ~skip_trailing_cr ~dir promotion loc file1 file2 =
     which "diff"
     |> Option.map ~f:(fun prog ->
+      let relative = Path.reach ~from:dir in
+      let file1 = relative file1 in
+      let file2 = relative file2 in
       let args =
         [ "-u"; "--label"; file1; "--label"; file2 ]
         @ (if skip_trailing_cr then [ "--strip-trailing-cr" ] else [])
@@ -146,26 +149,27 @@ module External = struct
         make_metadata promotion loc ~has_embedded_location:true
       in
       let args =
+        let relative = Path.reach ~from:dir in
         [ "-keep-whitespace"; "-location-style"; "omake" ]
         @ (if Lazy.force Ansi_color.stderr_supports_color then [] else [ "-ascii" ])
-        @ [ file1; file2 ]
+        @ [ relative file1; relative file2 ]
       in
       { dir; prog; metadata; args })
   ;;
 end
 
 let prepare ~skip_trailing_cr promotion path1 path2 =
-  let dir, file1, file2 =
-    match
-      ( Path.extract_build_context_dir_maybe_sandboxed path1
-      , Path.extract_build_context_dir_maybe_sandboxed path2 )
-    with
-    | Some (dir1, f1), Some (dir2, f2) when Path.equal dir1 dir2 ->
-      dir1, Path.source f1, Path.source f2
-    | _ -> Path.root, path1, path2
+  let dir, loc =
+    let dir, file1 =
+      match
+        ( Path.extract_build_context_dir_maybe_sandboxed path1
+        , Path.extract_build_context_dir_maybe_sandboxed path2 )
+      with
+      | Some (dir1, f1), Some (dir2, _) when Path.equal dir1 dir2 -> dir1, Path.source f1
+      | _ -> Path.root, path1
+    in
+    dir, Loc.in_file file1
   in
-  let loc = Loc.in_file file1 in
-  let file1, file2 = Path.(to_string file1, to_string file2) in
   let fallback =
     With_fallback.fail
       (User_error.make
@@ -182,7 +186,8 @@ let prepare ~skip_trailing_cr promotion path1 path2 =
   | Some cmd ->
     let sh, arg = Env_path.system_shell_exn ~needed_to:"print diffs" in
     let cmd =
-      sprintf "%s %s %s" cmd (String.quote_for_shell file1) (String.quote_for_shell file2)
+      let path f = Path.reach ~from:dir f |> String.quote_for_shell in
+      String.concat ~sep:" " [ cmd; path path1; path path2 ]
     in
     With_fallback.run
       { prog = sh
@@ -206,7 +211,7 @@ let prepare ~skip_trailing_cr promotion path1 path2 =
                        cmd)
               ]))
   | None ->
-    let diff = External.diff ~skip_trailing_cr ~dir promotion loc file1 file2 in
+    let diff = External.diff ~skip_trailing_cr ~dir promotion loc path1 path2 in
     if Execution_env.inside_dune
     then (
       match diff with
@@ -222,7 +227,7 @@ let prepare ~skip_trailing_cr promotion path1 path2 =
         | None -> fallback
         | Some command -> With_fallback.run command ~fallback
       in
-      match External.patdiff ~dir promotion loc file1 file2 with
+      match External.patdiff ~dir promotion loc path1 path2 with
       | None -> git_or_diff
       | Some command -> With_fallback.run command ~fallback:git_or_diff)
 ;;

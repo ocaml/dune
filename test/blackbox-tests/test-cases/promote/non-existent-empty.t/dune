@@ -1,5 +1,10 @@
 (rule (with-stdout-to x.gen (echo "")))
+(rule (with-stdout-to y.gen (echo foobar)))
 
 (rule
- (alias blah-non-existent)
- (action (diff x-non-existent x.gen)))
+ (alias blah-non-existent-empty)
+ (action (diff x-non-existent-empty x.gen)))
+
+(rule
+ (alias blah-non-existent-non-empty)
+ (action (diff x-non-existent-non-empty y.gen)))

@@ -13,6 +13,13 @@ def targets: (.target_files // []) + (.target_dirs // []);
 
 def processes: select(.cat == "process" and .name == "finish");
 
+def targetsMatchingFilter(f):
+    processes
+  | select(.args | targets | any(f))
+  | .args
+  | {target_files, target_dirs}
+  | del(..|nulls);
+
 def targetsMatching($m):
     processes
   | select(.args | targets | any(contains($m)))
@@ -20,13 +27,27 @@ def targetsMatching($m):
   | {target_files, target_dirs}
   | del(..|nulls);
 
+def basename: split("/") | last;
+
+def progMatching($m):
+    processes
+  | select(.args | .prog | contains($m))
+  | .args
+  | {prog : (.prog | basename), process_args, target_files, target_dirs}
+  | del(..|nulls);
+
+def progMatchingFilter(f):
+    processes
+  | select(.args | .prog | basename | f)
+  | .args
+  | {prog : (.prog | basename), process_args, target_files, target_dirs}
+  | del(..|nulls);
+
 def slowestCommands($n):
   [.[] | select(type == "object" and .args.commands != null)
        | .args.test as $test | .args.commands[] | {test: $test} + .]
   | sort_by(-.real)
   | .[:$n];
-
-def basename: split("/") | last;
 
 def rocqArg:
     sub(".*/coq/theories"; "coq/theories")

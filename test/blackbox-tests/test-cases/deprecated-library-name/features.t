@@ -275,7 +275,7 @@ Another case of ambiguity:
   >  (new_public_name p))
   > EOF
 
-  $ (cd d && dune build --root . --display=short @all)
+  $ (cd d && dune build --root . @all)
   Error: Package name p is defined twice:
   - dune-project:3
   - dune-project:2

@@ -44,7 +44,7 @@ The runtime_dep index.txt was copied to the build folder
   $ ls _build/default/a/output/a/assets
   file.txt
 
-  $ dune build a/output/a/assets/file.txt --display=short
+  $ dune build a/output/a/assets/file.txt
   $ ls _build/default/a/output/a
   assets
   main.js
@@ -155,10 +155,26 @@ Test depending on external paths
   > let () = Js.log file_content
   > EOF
 
-  $ dune build @mel --display=short 2>&1 | grep -i main
-           ppx external/main.pp.ml
-          melc external/.external-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc external/external-output/external/main.js
+  $ dune build @mel
+
+  $ dune trace cat | jq 'include "dune"; targetsMatchingFilter(test("[Mm]ain"))'
+  {
+    "target_files": [
+      "_build/default/external/main.pp.ml"
+    ]
+  }
+  {
+    "target_files": [
+      "_build/default/external/.external-output.mobjs/melange/melange__Main.cmi",
+      "_build/default/external/.external-output.mobjs/melange/melange__Main.cmj",
+      "_build/default/external/.external-output.mobjs/melange/melange__Main.cmt"
+    ]
+  }
+  {
+    "target_files": [
+      "_build/default/external/external-output/external/main.js"
+    ]
+  }
 
 External paths are not copied to the target directory
 

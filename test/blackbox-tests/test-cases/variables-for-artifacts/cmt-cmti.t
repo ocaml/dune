@@ -145,8 +145,7 @@ Test with native-only library (bytecode disabled):
   >   (echo "native-lib cmt: %{cmt:native_lib}\n")))
   > EOF
 
-  $ dune build @show-native-cmt --display short
-        ocamlc .native_lib.objs/byte/native_lib.{cmi,cmo,cmt}
+  $ dune build @show-native-cmt
   native-lib cmt: .native_lib.objs/byte/native_lib.cmt
 
   $ cat > native_lib.mli <<EOF
@@ -161,7 +160,6 @@ Test with native-only library (bytecode disabled):
   >   (echo "native-lib cmti: %{cmti:native_lib}\n")))
   > EOF
 
-  $ dune build @show-native-cmti --display short
-        ocamlc .native_lib.objs/byte/native_lib.{cmi,cmti}
+  $ dune build @show-native-cmti
   native-lib cmti: .native_lib.objs/byte/native_lib.cmti
 

@@ -2,7 +2,7 @@ Test the (dialect ...) stanza inside the `dune-project` file.
 
   $ { echo '(lang dune 3.8)'; cat dune-project.in; } >dune-project
 
-  $ dune build --display short
+  $ dune build
   File "dune-project", line 5, characters 13-20:
   5 |   (extension cppo.ml)
                    ^^^^^^^
@@ -12,12 +12,6 @@ Test the (dialect ...) stanza inside the `dune-project` file.
   [1]
 
   $ { echo '(lang dune 3.9)'; cat dune-project.in; } >dune-project
-
-  $ dune build --display short 2>&1 | grep -i cppo
-        ocamlc .cppo.eobjs/byte/dune__exe__Cppo.{cmi,cmti}
-      ocamlopt .cppo.eobjs/native/dune__exe__Cppo.{cmx,o}
-      ocamlopt cppo.exe
-          cppo main.cppo.ml.ml
 
   $ dune build @show
   print_endline "Hello, World"

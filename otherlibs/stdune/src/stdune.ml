@@ -82,6 +82,7 @@ module Metrics = Metrics
 module Counter = Counter
 module Global_lock = Global_lock
 module At_exit = At_exit
+module Permissions = Permissions
 
 module type Top_closure = Top_closure.Top_closure
 

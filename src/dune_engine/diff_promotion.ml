@@ -44,7 +44,7 @@ module File = struct
              (Path.Source.to_string dst)
          ; Exn.pp e
          ]);
-    let chmod = Path.Permissions.add Path.Permissions.write in
+    let chmod = Permissions.add Permissions.write in
     Path.mkdir_p (Path.source (Path.Source.parent_exn dst));
     match Io.copy_file ~chmod ~src:correction_file ~dst:(Path.source dst) () with
     | () -> ()
@@ -133,7 +133,7 @@ let register_intermediate how ~source_file ~correction_file =
      Unix.rename (Path.Build.to_string correction_file) (Path.Build.to_string staging)
    | `Copy ->
      Io.copy_file
-       ~chmod:Path.Permissions.(add write)
+       ~chmod:Permissions.(add write)
        ~src:(Path.build correction_file)
        ~dst:(Path.build staging)
        ());

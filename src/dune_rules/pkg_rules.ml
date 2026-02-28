@@ -1818,7 +1818,7 @@ module Install_action = struct
             | None -> section
             | Some section' ->
               let perm = (Unix.stat (Path.to_string file)).st_perm in
-              if Path.Permissions.(test execute perm) then section' else section
+              if Permissions.(test execute perm) then section' else section
           in
           section, maybe_drop_sandbox_dir file))
       |> Section.Map.of_list_multi
@@ -1831,7 +1831,7 @@ module Install_action = struct
         let dst = Path.to_string dst in
         let permission =
           let perm = (Unix.stat dst).st_perm in
-          Path.Permissions.(add execute) perm
+          Permissions.(add execute) perm
         in
         Unix.chmod dst permission
     ;;

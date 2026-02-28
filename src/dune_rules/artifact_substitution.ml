@@ -176,7 +176,7 @@ module Conf = struct
       let executable =
         match Path.Untracked.stat file with
         | Error _ -> false
-        | Ok { st_perm; _ } -> Path.Permissions.test Path.Permissions.execute st_perm
+        | Ok { st_perm; _ } -> Permissions.test Permissions.execute st_perm
       in
       if executable
       then

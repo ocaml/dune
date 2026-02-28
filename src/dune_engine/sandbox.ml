@@ -57,10 +57,9 @@ let dir t = t.dir
 let map_path t p = Path.Build.append t.dir p
 
 let copy_recursively =
-  let chmod_file = Path.Permissions.add Path.Permissions.write in
+  let chmod_file = Permissions.add Permissions.write in
   let chmod_dir p =
-    Path.Permissions.add Path.Permissions.execute p
-    |> Path.Permissions.add Path.Permissions.write
+    Permissions.add Permissions.execute p |> Permissions.add Permissions.write
   in
   let raise_other_kind ~src kind =
     User_error.raise
@@ -139,7 +138,7 @@ let link_function ~(mode : Sandbox_mode.some) =
        (* We need to let the action modify its dependencies, so we copy
           dependencies and make them writable. *)
        (* CR-someday: this doesn't work with directory targets *)
-       let chmod = Path.Permissions.add Path.Permissions.write in
+       let chmod = Permissions.add Permissions.write in
        fun src dst -> Io.copy_file ~src ~dst ~chmod ())
 ;;
 

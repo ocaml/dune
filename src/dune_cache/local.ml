@@ -33,12 +33,12 @@ module Target = struct
     let path = Path.Build.to_string path in
     match Unix.lstat path with
     | { Unix.st_kind = Unix.S_REG; st_perm; _ } ->
-      Unix.chmod path (Path.Permissions.remove Path.Permissions.write st_perm);
-      let executable = Path.Permissions.test Path.Permissions.execute st_perm in
+      Unix.chmod path (Permissions.remove Permissions.write st_perm);
+      let executable = Permissions.test Permissions.execute st_perm in
       Some { executable }
     | { Unix.st_kind = Unix.S_DIR; st_perm; _ } ->
       (* Adding "executable" permissions to directories mean we can traverse them. *)
-      Unix.chmod path (Path.Permissions.add Path.Permissions.execute st_perm);
+      Unix.chmod path (Permissions.add Permissions.execute st_perm);
       (* the value of [executable] here is ignored, but [Some] is meaningful. *)
       Some { executable = true }
     | (exception Unix.Unix_error _) | _ -> None

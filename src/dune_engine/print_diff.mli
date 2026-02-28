@@ -3,7 +3,7 @@ open Import
 (** Diff two files that are expected not to match. *)
 val print
   :  skip_trailing_cr:bool
-  -> ?promotion:User_message.Diff_annot.t
+  -> User_message.Diff_annot.t
   -> Path.t
   -> Path.t
   -> _ Fiber.t

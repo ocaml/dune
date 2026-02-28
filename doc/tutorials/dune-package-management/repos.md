@@ -37,29 +37,6 @@ repositories at the defined revisions. These will then be used to determine the
 new solution, which will get used for downloading and building the
 dependencies.
 
-```sh
-dune build
-```
-
-will thus log a new solution in `_build/log`. Note that a lot of package
-versions are different, as the state of the opam-repository is frozen at the
-specific commit:
-
-```
-...
-# Dependency solution for
-# _build/.sandbox/<sandbox-hash>/_private/default/.lock/dune.lock:
-# - base-unix.base
-# - fmt.0.9.0
-# - ocaml.5.0.0
-# - ocaml-base-compiler.5.0.0
-# - ocaml-config.3
-# - ocamlbuild.0.16.1+dune
-# - ocamlfind.1.9.8+dune
-# - topkg.1.0.7
-...
-```
-
 :::{note}
 This feature can also be used to make sure the locked dependencies are
 reproducible, as fixing all the package repository versions will lead to

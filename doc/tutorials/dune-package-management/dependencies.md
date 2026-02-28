@@ -81,28 +81,9 @@ the internal dependency solver to find a solution for the set of packages to
 use. It will then use this new solution to download, build and install these
 dependencies automatically.
 
-We can check the build log in `_build/log` and see the packages that the Dune
-solver has selected:
-
-```
-...
-# Dependency solution for
-# _build/.sandbox/<sandbox-hash>/_private/default/.lock/dune.lock:
-# - base-unix.base
-# - fmt.0.11.0
-# - ocaml.5.4.0
-# - ocaml-base-compiler.5.4.0
-# - ocaml-compiler.5.4.0
-# - ocaml-config.3
-# - ocamlbuild.0.16.1+dune
-# - ocamlfind.1.9.8+dune
-# - topkg.1.1.1
-...
-```
-
 :::{note}
-The list of packages being output includes all dependencies of your project,
-including transitive dependencies.
+The installed packages will includes all the dependencies required by your
+project, including transitive dependencies.
 :::
 
 As we see, the code works and uses `fmt` to do the pretty-printing:
@@ -134,24 +115,6 @@ system is run.
 
 ```sh
 dune build
-```
-
-Checking `_build/log` again reveals that our change was taken into account:
-
-```
-...
-# Dependency solution for
-# _build/.sandbox/<sandbox-hash>/_private/default/.lock/dune.lock:
-# - base-unix.base
-# - fmt.0.9.0
-# - ocaml.5.4.0
-# - ocaml-base-compiler.5.4.0
-# - ocaml-compiler.5.4.0
-# - ocaml-config.3
-# - ocamlbuild.0.16.1+dune
-# - ocamlfind.1.9.8+dune
-# - topkg.1.1.1
-...
 ```
 
 ## Removing Dependencies

@@ -35,25 +35,6 @@ the source tarball released in the `opam-repository`.
 dune build
 ```
 
-will find a new solution, quoting `_build/log`:
-
-```
-...
-
-# Dependency solution for
-# _build/.sandbox/<sandbox-hash>/_private/default/.lock/dune.lock:
-# - base-unix.base
-# - fmt.dev
-# - ocaml.5.4.0
-# - ocaml-base-compiler.5.4.0
-# - ocaml-compiler.5.4.0
-# - ocaml-config.3
-# - ocamlbuild.0.16.1+dune
-# - ocamlfind.1.9.8+dune
-# - topkg.1.1.1
-...
-```
-
 Unlike previously, the version of the `fmt` library that is picked is `dev`, to
 signify a development version.
 

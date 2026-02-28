@@ -14,7 +14,9 @@ A lock directory which does not exist in the source tree:
   > EOF
 
   $ build_pkg foo 2>&1 | awk '/Internal error/,/Raised/'
-  Internal error, please report upstream including the contents of _build/log.
+  Internal error! Please report to https://github.com/ocaml/dune/issues,
+  providing the file _build/trace.csexp, if possible. This includes build
+  commands, message logs, and file paths.
   Description:
     ("Local.relative: received absolute path",
      { t = "."

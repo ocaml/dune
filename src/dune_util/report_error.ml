@@ -21,8 +21,9 @@ let code_error ~loc ~dyn_without_loc =
         [ Pp.tag
             User_message.Style.Error
             (Pp.textf
-               "Internal error, please report upstream including the contents of \
-                _build/log.")
+               "Internal error! Please report to https://github.com/ocaml/dune/issues, \
+                providing the file _build/trace.csexp, if possible. This includes build \
+                commands, message logs, and file paths.")
         ; Pp.text "Description:"
         ; Pp.box ~indent:2 Pp.O.(Pp.verbatim "  " ++ Dyn.pp dyn_without_loc)
         ]

@@ -427,16 +427,8 @@ let copy_lock_dir ~target ~lock_dir ~deps ~files =
 let scan_lock_directory =
   let rec scan dir =
     let open Memo.O in
-    Fs_memo.dir_contents (Path.as_outside_build_dir_exn dir)
-    >>= function
-    | Error (ENOENT, _, _) -> Memo.return Path.Set.empty
-    | Error unix_error ->
-      User_error.raise
-        [ Pp.textf "Failed to read directory %s:" (Path.to_string_maybe_quoted dir)
-        ; Unix_error.Detailed.pp unix_error
-        ]
-    | Ok entries ->
-      Fs_cache.Dir_contents.to_list entries
+    let scan_entries dir (entries : (string * File_kind.t) list) =
+      entries
       |> Memo.parallel_map ~f:(fun (entry, kind) ->
         let path = Path.relative dir entry in
         match (kind : File_kind.t) with
@@ -450,6 +442,30 @@ let scan_lock_directory =
                 (File_kind.to_string kind)
             ])
       >>| Path.Set.union_all
+    in
+    let handle_readdir_result
+          (res : ((string * File_kind.t) list, Unix_error.Detailed.t) result)
+      =
+      match res with
+      | Error (ENOENT, _, _) -> Memo.return Path.Set.empty
+      | Error unix_error ->
+        User_error.raise
+          [ Pp.textf "Failed to read directory %s:" (Path.to_string_maybe_quoted dir)
+          ; Unix_error.Detailed.pp unix_error
+          ]
+      | Ok entries -> scan_entries dir entries
+    in
+    let readdir_memo dir =
+      Fs_memo.dir_contents dir >>| Result.map ~f:Fs_cache.Dir_contents.to_list
+    in
+    let readdir_untracked dir =
+      Memo.return (Path.Untracked.readdir_unsorted_with_kinds dir)
+    in
+    match Path.is_in_build_dir dir with
+    | false -> readdir_untracked dir >>= handle_readdir_result
+    | true ->
+      let dir_out = Path.as_outside_build_dir_exn dir in
+      readdir_memo dir_out >>= handle_readdir_result
   in
   fun lock_dir_path ->
     let+ files = scan lock_dir_path in

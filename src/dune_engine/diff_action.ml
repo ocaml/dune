@@ -6,25 +6,34 @@ let compare_files = function
   | Text -> Io.compare_text_files
 ;;
 
-let diff_eq_files { Diff.optional; mode; file1; file2 } =
-  let file1 = if Fpath.exists (Path.to_string file1) then file1 else Dev_null.path in
-  let file2 = Path.build file2 in
-  (optional && not (Fpath.exists (Path.to_string file2)))
-  || compare_files mode file1 file2 = Eq
+let compare_files { Diff.optional; mode; file1; file2 } =
+  let file2_exists = lazy (Fpath.exists (Path.Build.to_string file2)) in
+  if optional && not (Lazy.force file2_exists)
+  then
+    (* Small optimization to avoid stat'ing file1 *)
+    `Eq true
+  else (
+    let file1_exists = Fpath.exists (Path.to_string file1) in
+    match file1_exists, Lazy.force file2_exists with
+    | true, true -> `Eq (compare_files mode file1 (Path.build file2) = Eq)
+    | false, false -> `Eq true
+    | true, false -> if optional then `Eq true else `Delete
+    | false, true -> `Eq false)
 ;;
 
-let exec loc ({ Diff.optional; file1; file2; mode } as diff) =
+let exec loc ~patch_back ({ Diff.optional; file1; file2; mode } as diff) =
   let remove_intermediate_file () =
     if optional
     then (
       try Fpath.unlink_exn (Path.Build.to_string file2) with
       | Unix.Unix_error (ENOENT, _, _) -> ())
   in
-  if diff_eq_files diff
-  then (
+  match compare_files diff with
+  | `Eq true ->
     remove_intermediate_file ();
-    Fiber.return ())
-  else (
+    Fiber.return ()
+  | `Eq false | `Delete ->
+    (* CR-soon rgrinberg: handle deletion *)
     let is_copied_from_source_tree file =
       match Path.extract_build_context_dir_maybe_sandboxed file with
       | None -> false
@@ -57,6 +66,7 @@ let exec loc ({ Diff.optional; file1; file2; mode } as diff) =
              ]
          else
            Print_diff.print
+             ~patch_back
              promotion
              file1
              (Path.build file2)
@@ -73,5 +83,5 @@ let exec loc ({ Diff.optional; file1; file2; mode } as diff) =
            then register `Copy
          | true ->
            if in_source_or_target then register `Move else remove_intermediate_file ());
-        Fiber.return ()))
+        Fiber.return ())
 ;;

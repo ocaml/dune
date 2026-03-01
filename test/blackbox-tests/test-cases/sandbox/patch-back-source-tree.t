@@ -34,6 +34,13 @@ All modified dependencies are promoted
 
   $ echo blah > x
   $ dune build
+  File "x", line 1, characters 0-0:
+  --- x
+  +++ _build/default/x
+  @@ -1 +1 @@
+  -blah
+  +Hello, world!
+  [1]
 
   $ dune trace cat | jq '
   > include "dune";
@@ -82,6 +89,12 @@ All other new files are copied
   > EOF
 
   $ dune build
+  File "y", line 1, characters 0-0:
+  --- y
+  +++ _build/default/y
+  @@ -0,0 +1 @@
+  +Hello, world!
+  [1]
   $ dune promote
   Promoting _build/default/y to y.
   $ cat y
@@ -98,6 +111,12 @@ Directories are created if needed
   > EOF
 
   $ dune build
+  File "z/z", line 1, characters 0-0:
+  --- z/z
+  +++ _build/default/z/z
+  @@ -0,0 +1 @@
+  +Hello, world!
+  [1]
   $ dune promote
   Promoting _build/default/z/z to z/z.
   $ cat z/z
@@ -116,6 +135,13 @@ Actions are allowed to delete files
   > EOF
 
   $ dune build
+  File "dune", lines 1-4, characters 0-96:
+  1 | (rule
+  2 |  (deps foo (sandbox patch_back_source_tree))
+  3 |  (alias default)
+  4 |  (action (system "rm foo")))
+  Error: File foo should be deleted
+  [1]
   $ dune promote
   $ [[ ! -f foo ]] && echo foo has been deleted
   foo has been deleted
@@ -134,6 +160,25 @@ Actions are allowed to delete directories
   > EOF
 
   $ dune build
+  File "dune", lines 1-4, characters 0-116:
+  1 | (rule
+  2 |  (deps todelete/y/foo (sandbox patch_back_source_tree))
+  3 |  (alias default)
+  4 |  (action (system "rm -rf todelete")))
+  Error: Directory todelete should be deleted
+  File "dune", lines 1-4, characters 0-116:
+  1 | (rule
+  2 |  (deps todelete/y/foo (sandbox patch_back_source_tree))
+  3 |  (alias default)
+  4 |  (action (system "rm -rf todelete")))
+  Error: Directory todelete/y should be deleted
+  File "dune", lines 1-4, characters 0-116:
+  1 | (rule
+  2 |  (deps todelete/y/foo (sandbox patch_back_source_tree))
+  3 |  (alias default)
+  4 |  (action (system "rm -rf todelete")))
+  Error: File todelete/y/foo should be deleted
+  [1]
 
   $ dune promote
   $ [[ ! -d todelete ]] && echo todelete has been deleted
@@ -198,12 +243,27 @@ the rule:
   > }
 
   $ test_with copy
+  File "x", line 1, characters 0-0:
+  --- x
+  +++ _build/default/x
+  @@ -0,0 +1 @@
+  +Hello, world!
   Promoting _build/default/x to x.
   Hello, world!
   $ test_with hardlink
+  File "x", line 1, characters 0-0:
+  --- x
+  +++ _build/default/x
+  @@ -0,0 +1 @@
+  +Hello, world!
   Promoting _build/default/x to x.
   Hello, world!
   $ test_with symlink
+  File "x", line 1, characters 0-0:
+  --- x
+  +++ _build/default/x
+  @@ -0,0 +1 @@
+  +Hello, world!
   Promoting _build/default/x to x.
   Hello, world!
 
@@ -227,6 +287,13 @@ If a source file is read-only, the action sees it as writable:
 
   $ dune build
   writable
+  File "x", line 1, characters 0-0:
+  --- x
+  +++ _build/default/x
+  @@ -1 +1 @@
+  -xx
+  +blah
+  [1]
 
 And as the action modified `x`, its permissions have now changed
 inside the source tree:

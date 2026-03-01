@@ -396,10 +396,6 @@ let build_and_link_many
       cctx
   =
   let* () = Module_compilation.build_all cctx in
-  let* () =
-    Memo.when_ (Compilation_context.bin_annot cctx) (fun () ->
-      Ocaml_index.cctx_rules cctx)
-  in
   link_many
     ?link_args
     ?o_files

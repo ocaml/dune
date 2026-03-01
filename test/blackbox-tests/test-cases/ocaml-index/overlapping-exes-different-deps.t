@@ -55,19 +55,6 @@ shared.ml uses Lib_a, which foo has but bar doesn't:
 Normal build succeeds because each executable only links what it needs:
   $ dune build ./foo.exe ./bar.exe
 
-But ocaml-index fails because bar's compilation context includes shared.ml
-which depends on Lib_a, but bar doesn't have lib_a as a dependency:
+ocaml-index succeeds because each executable only indexes modules reachable
+from its entry point (shared.ml is not reachable from bar.ml):
   $ dune build @ocaml-index
-  File "bar.ml", line 1, characters 23-28:
-  1 | let () = print_endline Lib_b.value_b
-                             ^^^^^
-  Error: Unbound module Lib_b
-  File "foo.ml", line 1, characters 23-28:
-  1 | let () = print_endline Lib_a.value_a
-                             ^^^^^
-  Error: Unbound module Lib_a
-  File "shared.ml", line 1, characters 8-13:
-  1 | let x = Lib_a.value_a
-              ^^^^^
-  Error: Unbound module Lib_a
-  [1]

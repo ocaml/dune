@@ -24,10 +24,9 @@ let
             pname,
             buildInputs ? [ ],
             propagatedBuildInputs ? [ ],
-            preBuild ? "",
           }:
           osuper.buildDunePackage {
-            inherit pname preBuild;
+            inherit pname;
             version = "dev";
             src = revdeps-dune;
             duneVersion = "3";
@@ -67,26 +66,21 @@ let
             top-closure
             fs-io
           ];
-          preBuild = "rm -rf vendor/csexp";
         };
         dune-private-libs = mkDuneLib {
           pname = "dune-private-libs";
           propagatedBuildInputs = with oself; [ stdune ];
-          preBuild = "rm -rf vendor/csexp";
         };
         dune-site = mkDuneLib {
           pname = "dune-site";
           propagatedBuildInputs = with oself; [ dune-private-libs ];
-          preBuild = "rm -rf vendor/csexp";
         };
         dune-configurator = mkDuneLib {
           pname = "dune-configurator";
           propagatedBuildInputs = with oself; [ dune-private-libs ];
-          preBuild = "rm -rf vendor/csexp";
         };
         dune-build-info = mkDuneLib {
           pname = "dune-build-info";
-          preBuild = "rm -rf vendor/csexp";
         };
         dune-glob = mkDuneLib {
           pname = "dune-glob";
@@ -94,7 +88,6 @@ let
             stdune
             re
           ];
-          preBuild = "rm -rf vendor/csexp";
         };
         dune-rpc = mkDuneLib {
           pname = "dune-rpc";
@@ -107,7 +100,6 @@ let
             xdg
             csexp
           ];
-          preBuild = "rm -rf vendor/csexp";
         };
         xdg = mkDuneLib { pname = "xdg"; };
         chrome-trace = mkDuneLib {

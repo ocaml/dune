@@ -1,16 +1,19 @@
-{ pkgs, lib, oxcamlOpamRepo }:
+{
+  pkgs,
+  lib,
+  oxcamlOpamRepo,
+}:
 
 let
   packagesDir = "${oxcamlOpamRepo}/packages";
 
   # Gets all patch files from a package version directory
-  getPatchesFromDir = pkgName: version:
+  getPatchesFromDir =
+    pkgName: version:
     let
       filesDir = "${packagesDir}/${pkgName}/${version}/files";
       files =
-        if builtins.pathExists filesDir
-        then builtins.attrNames (builtins.readDir filesDir)
-        else [ ];
+        if builtins.pathExists filesDir then builtins.attrNames (builtins.readDir filesDir) else [ ];
       patchFiles = lib.filter (f: lib.hasSuffix ".patch" f) files;
     in
     map (patchFile: "${filesDir}/${patchFile}") patchFiles;
@@ -43,23 +46,23 @@ let
   };
 
   # Applies patches to a package if configured
-  applyPatchesIfExists = pkgName: pkg:
+  applyPatchesIfExists =
+    pkgName: pkg:
     if oxcamlPatches ? ${pkgName} && lib.isDerivation pkg && pkg ? overrideAttrs then
       let
         patchConfig = oxcamlPatches.${pkgName};
         numPatches = builtins.length patchConfig.patches;
       in
       if numPatches > 0 then
-        pkg.overrideAttrs
-          (old: {
-            postPatch = (old.postPatch or "") + ''
-              ${lib.concatMapStringsSep "\n" (patch: ''
-                if patch -p1 --no-backup-if-mismatch < ${patch} 2>&1 | grep -q "FAILED"; then
-                  echo "oxcaml: patch failed for ${pkgName}: ${builtins.baseNameOf patch}" >&2
-                fi
-              '') patchConfig.patches}
-            '';
-          })
+        pkg.overrideAttrs (old: {
+          postPatch = (old.postPatch or "") + ''
+            ${lib.concatMapStringsSep "\n" (patch: ''
+              if patch -p1 --no-backup-if-mismatch < ${patch} 2>&1 | grep -q "FAILED"; then
+                echo "oxcaml: patch failed for ${pkgName}: ${builtins.baseNameOf patch}" >&2
+              fi
+            '') patchConfig.patches}
+          '';
+        })
       else
         pkg
     else
@@ -67,10 +70,7 @@ let
 
 in
 oself: osuper:
-lib.mapAttrs
-  (name: pkg:
-  if lib.isDerivation pkg && pkg ? overrideAttrs
-  then applyPatchesIfExists name pkg
-  else pkg
-  )
-  osuper
+lib.mapAttrs (
+  name: pkg:
+  if lib.isDerivation pkg && pkg ? overrideAttrs then applyPatchesIfExists name pkg else pkg
+) osuper

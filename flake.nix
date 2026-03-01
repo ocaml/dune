@@ -35,16 +35,16 @@
     };
   };
   outputs =
-    { self
-    , nixpkgs
-    , nixpkgs-old
-    , melange
-    , ocaml-overlays
-    , odoc-src
-    , oxcaml
-    , oxcaml-opam-repository
-    , revdeps-dune
-    ,
+    {
+      self,
+      nixpkgs,
+      nixpkgs-old,
+      melange,
+      ocaml-overlays,
+      odoc-src,
+      oxcaml,
+      oxcaml-opam-repository,
+      revdeps-dune,
     }:
     let
       forAllSystems =
@@ -93,14 +93,16 @@
                         ocaml = osuper414.ocaml.override {
                           flambdaSupport = false;
                         };
-                        rocq-core = (super.rocqPackages_9_1.rocq-core.override {
-                          customOCamlPackages = oself414;
-                        }).overrideAttrs (a: {
-                          configureFlags = (a.configureFlags or [ ]) ++ [
-                            "-native-compiler"
-                            "yes"
-                          ];
-                        });
+                        rocq-core =
+                          (super.rocqPackages_9_1.rocq-core.override {
+                            customOCamlPackages = oself414;
+                          }).overrideAttrs
+                            (a: {
+                              configureFlags = (a.configureFlags or [ ]) ++ [
+                                "-native-compiler"
+                                "yes"
+                              ];
+                            });
                         mkRocqDerivation = super.rocqPackages_9_1.mkRocqDerivation.override {
                           rocq-core = oself414.rocq-core;
                         };
@@ -139,7 +141,12 @@
       revdeps = forAllSystems (
         pkgs:
         import ./nix/revdeps.nix {
-          inherit nixpkgs ocaml-overlays revdeps-dune pkgs;
+          inherit
+            nixpkgs
+            ocaml-overlays
+            revdeps-dune
+            pkgs
+            ;
         }
       );
 
@@ -231,11 +238,9 @@
               version_string = strings.removePrefix prefix version_line;
               ocamlformat_attr = builtins.replaceStrings [ "." ] [ "_" ] version_string;
             in
-            builtins.getAttr
-              (
-                "ocamlformat_" + ocamlformat_attr
-              )
-              nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+            builtins.getAttr (
+              "ocamlformat_" + ocamlformat_attr
+            ) nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system};
           testBuildInputs =
             with pkgs;
             [
@@ -269,71 +274,66 @@
             myst-parser
           ];
           makeDuneDevShell =
-            { extraBuildInputs ? (pkgs: [ ])
-            , meta ? null
-            , duneFromScope ? false
-            , includeTestDeps ? true
-            , packageOverrides ? (oself: osuper: { })
-            ,
+            {
+              extraBuildInputs ? (pkgs: [ ]),
+              meta ? null,
+              duneFromScope ? false,
+              includeTestDeps ? true,
+              packageOverrides ? (oself: osuper: { }),
             }:
             let
               hasOcamlOverride = (packageOverrides { } { ocaml = null; }) ? ocaml;
 
               pkgs' =
                 if hasOcamlOverride then
-                  pkgs.extend
-                    (
-                      pself: psuper: {
-                        ocamlPackages = psuper.ocamlPackages.overrideScope (
-                          oself: osuper:
-                            (pkgs.lib.mapAttrs
-                              (
-                                name: pkg:
-                                  if pkgs.lib.isDerivation pkg && pkg ? overrideAttrs then
-                                    pkg.overrideAttrs
-                                      (old: {
-                                        doCheck = false;
-                                      })
-                                  else
-                                    pkg
-                              )
-                              osuper)
-                            // (packageOverrides oself osuper)
-                        );
-                      }
-                    )
+                  pkgs.extend (
+                    pself: psuper: {
+                      ocamlPackages = psuper.ocamlPackages.overrideScope (
+                        oself: osuper:
+                        (pkgs.lib.mapAttrs (
+                          name: pkg:
+                          if pkgs.lib.isDerivation pkg && pkg ? overrideAttrs then
+                            pkg.overrideAttrs (old: {
+                              doCheck = false;
+                            })
+                          else
+                            pkg
+                        ) osuper)
+                        // (packageOverrides oself osuper)
+                      );
+                    }
+                  )
                 else if duneFromScope then
-                  pkgs.extend
-                    (
-                      pself: psuper: {
-                        ocamlPackages = psuper.ocamlPackages.overrideScope (
-                          oself: osuper: with oself; {
-                            dune_3 = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
-                            fs-io = buildDunePackage {
-                              pname = "fs-io";
-                              inherit (dune_3) src version;
-                            };
-                            top-closure = buildDunePackage {
-                              pname = "top-closure";
-                              inherit (dune_3) src version;
-                            };
-                            dune-glob = osuper.dune-glob.overrideAttrs (o: {
-                              propagatedBuildInputs = o.propagatedBuildInputs ++ [
-                                pp
-                                re
-                              ];
-                            });
-                            stdune = osuper.stdune.overrideAttrs (o: {
-                              propagatedBuildInputs = o.propagatedBuildInputs ++ [
-                                pp
-                                fs-io
-                                top-closure
-                              ];
-                            });
-                          }
-                        );
-                      }
-                    )
+                  pkgs.extend (
+                    pself: psuper: {
+                      ocamlPackages = psuper.ocamlPackages.overrideScope (
+                        oself: osuper: with oself; {
+                          dune_3 = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
+                          fs-io = buildDunePackage {
+                            pname = "fs-io";
+                            inherit (dune_3) src version;
+                          };
+                          top-closure = buildDunePackage {
+                            pname = "top-closure";
+                            inherit (dune_3) src version;
+                          };
+                          dune-glob = osuper.dune-glob.overrideAttrs (o: {
+                            propagatedBuildInputs = o.propagatedBuildInputs ++ [
+                              pp
+                              re
+                            ];
+                          });
+                          stdune = osuper.stdune.overrideAttrs (o: {
+                            propagatedBuildInputs = o.propagatedBuildInputs ++ [
+                              pp
+                              fs-io
+                              top-closure
+                            ];
+                          });
+                        }
+                      );
+                    }
+                  )
                 else
                   pkgs;
 

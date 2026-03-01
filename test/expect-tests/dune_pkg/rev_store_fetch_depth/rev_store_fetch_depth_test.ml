@@ -21,9 +21,9 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
      git can negotiate what it already has using refs created by previous
      fetches. This avoids re-downloading objects we already have.
 
-     We also demonstrate that refs from unrelated remotes are currently used
-     for negotiation. This is probably undesirable in the long term - we may
-     want to restrict negotiation to only use refs from the relevant remote. *)
+     We also verify that refs from unrelated remotes are not used for
+     negotiation - each remote's refs are namespaced by URL hash and we use
+     --negotiation-tip to restrict to only the relevant namespace. *)
   let repo_dir = Temp.create Dir ~prefix:"git-repo-" ~suffix:"" in
   let unrelated_repo_dir = Temp.create Dir ~prefix:"git-unrelated-" ~suffix:"" in
   let trace_file = Temp.create File ~prefix:"git-trace-" ~suffix:".log" in
@@ -193,7 +193,7 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
         Console.print [ Pp.textf "Negotiation 'have' lines sent: %d" have_count ];
         Dune_scheduler.Scheduler.cancel_current_build ()));
   (* With refs created by previous fetches, git can tell the server what it
-     already has, avoiding redundant downloads. The count includes refs from
-     the unrelated remote. *)
-  [%expect {| Negotiation 'have' lines sent: 4 |}]
+     already has, avoiding redundant downloads. The count does not include
+     refs from the unrelated remote due to URL-based namespacing. *)
+  [%expect {| Negotiation 'have' lines sent: 3 |}]
 ;;

@@ -95,6 +95,17 @@ let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
   Modules.map_user_written modules ~f:(fun m -> Memo.return @@ pped_map m)
 ;;
 
+let add_rule sctx ?mode ?loc ~dir build =
+  Super_context.add_rule
+    sctx
+    ?mode
+    ?loc
+    ~dir
+    (Action_builder.With_targets.map
+       build
+       ~f:(Action.Full.add_can_go_in_shared_cache true))
+;;
+
 let for_ = Compilation_mode.Melange
 
 let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
@@ -360,7 +371,7 @@ let build_js
       let open Action_builder.With_targets.O in
       build >>| Action.Full.add_sandbox Sandbox_config.needs_sandboxing
     in
-    Super_context.add_rule sctx ~dir ~loc ~mode build)
+    add_rule sctx ~dir ~loc ~mode build)
 ;;
 
 (* attach [deps] to the specified [alias] AND the (dune default) [all] alias.
@@ -602,7 +613,7 @@ let setup_runtime_assets_rules
         let open Action_builder.With_targets.O in
         builder >>| Action.Full.add_sandbox Sandbox_config.needs_sandboxing
       in
-      let+ () = Super_context.add_rule ~loc ~dir ~mode sctx builder in
+      let+ () = add_rule sctx ~loc ~dir ~mode builder in
       dst
     | Some directory_target_ancestor ->
       let new_src = Path.build directory_target_ancestor in
@@ -615,7 +626,7 @@ let setup_runtime_assets_rules
         let open Action_builder.With_targets.O in
         builder >>| Action.Full.add_sandbox Sandbox_config.needs_sandboxing
       in
-      let+ () = Super_context.add_rule ~loc ~dir ~mode sctx builder in
+      let+ () = add_rule sctx ~loc ~dir ~mode builder in
       Right dst)
   >>| List.partition_map ~f:Fun.id
   >>= fun (file_deps, directory_targets) ->
@@ -927,7 +938,7 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
       Memo.parallel_iter modules_for_js ~f:(fun m ->
         Memo.parallel_iter module_systems ~f:(fun (_module_system, js_ext) ->
           let file_targets = [ make_js_name ~output ~js_ext m ] in
-          Super_context.add_rule
+          add_rule
             sctx
             ~dir
             ~loc

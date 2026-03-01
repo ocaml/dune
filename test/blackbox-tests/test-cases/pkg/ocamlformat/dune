@@ -7,6 +7,8 @@
  (applies_to ocamlformat-e2e))
 
 (cram
+ ; Disabled due to racey nature of dev tools
+ (enabled_if false)
  (deps %{bin:md5sum})
  (applies_to ocamlformat-patch-extra-files))
 

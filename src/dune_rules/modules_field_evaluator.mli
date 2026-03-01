@@ -30,6 +30,7 @@ val eval
   -> modules:Module.Source.t Module_trie.Unchecked.t
   -> stanza_loc:Loc.t
   -> private_modules:Ordered_set_lang.Unexpanded.t
+  -> excluded_modules:Ordered_set_lang.Unexpanded.t
   -> kind:kind
   -> for_:Compilation_mode.t
   -> src_dir:Path.Build.t

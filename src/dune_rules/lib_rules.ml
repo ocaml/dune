@@ -56,7 +56,9 @@ let build_lib
   Ocaml_toolchain.compiler ocaml mode
   |> Memo.Result.iter ~f:(fun compiler ->
     [ Command.Args.dyn (Ocaml_flags.get flags (Ocaml mode))
-    ; Hidden_deps (Cm_files.unsorted_objects_and_cms cm_files ~mode |> Dep.Set.of_files)
+    ; Hidden_deps
+        (Cm_files.unsorted_objects_and_cms cm_files ~mode ~include_excluded:true
+         |> Dep.Set.of_files)
     ; A "-a"
     ; A "-o"
     ; Target (Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode))
@@ -449,11 +451,16 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
     | Virtual | Dune_file _ ->
       let cm_files =
         let excluded_modules =
+          let excluded_modules =
+            Modules.With_vlib.impl_only modules
+            |> List.filter_map ~f:(fun m ->
+              Option.some_if (Module.visibility m = Excluded) (Module.name m))
+          in
           (* ctypes type_gen and function_gen scripts should not be included in the
            library. Otherwise they will spew stuff to stdout on library load. *)
           match lib.buildable.ctypes with
-          | Some ctypes -> Ctypes_field.non_installable_modules ctypes
-          | None -> []
+          | Some ctypes -> excluded_modules @ Ctypes_field.non_installable_modules ctypes
+          | None -> excluded_modules
         in
         Cm_files.make ~excluded_modules ~obj_dir ~ext_obj ~modules ~top_sorted_modules ()
       in

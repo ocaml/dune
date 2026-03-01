@@ -43,7 +43,11 @@ val lookup_module
   -> [ `Theory of Theory.t | `Extraction of Extraction.t ] option
 
 (** Returns the path to the .expected file for a module, if one exists *)
-val expected_file : t -> Rocq_module.t -> Path.Build.t option
+val expected_file
+  :  rocq_lang_version:Dune_sexp.Syntax.Version.t
+  -> t
+  -> Rocq_module.t
+  -> Path.Build.t option
 
 val mlg_files
   :  sctx:Super_context.t

@@ -18,7 +18,7 @@ let rocq_syntax =
   Dune_lang.Syntax.create
     ~name:(Syntax.Name.parse "rocq")
     ~desc:"Rocq Prover build language"
-    [ (0, 11), `Since (3, 21) ]
+    [ (0, 11), `Since (3, 21); (0, 12), `Since (3, 22) ]
 ;;
 
 let get_rocq_syntax () = Dune_lang.Syntax.get_exn rocq_syntax

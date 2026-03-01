@@ -17,6 +17,6 @@ good when the coq extension is not enabled.
   1 | (rocq.theory
   2 |  (name foo))
   Error: 'rocq.theory' is available only when rocq is enabled in the
-  dune-project or workspace file. You must enable it using (using rocq 0.11) in
+  dune-project or workspace file. You must enable it using (using rocq 0.12) in
   the file.
   [1]

@@ -86,12 +86,13 @@ module Package_universe = struct
     match t with
     | Dependencies ctx -> Lock_dir.get_path ctx
     | Dev_tool dev_tool ->
-      (* CR-Leonidas-from-XIV: It probably isn't always [Some] *)
-      dev_tool
-      |> Lock_dir.dev_tool_external_lock_dir
-      |> Path.external_
-      |> Option.some
-      |> Memo.return
+      Lock_dir.dev_tool_lock_dir dev_tool |> Option.some |> Memo.return
+  ;;
+
+  let lock_dir t =
+    match t with
+    | Dependencies ctx -> Lock_dir.get_exn ctx
+    | Dev_tool dev_tool -> Lock_dir.of_dev_tool dev_tool
   ;;
 end
 
@@ -450,7 +451,7 @@ module Pkg = struct
     ; info : Pkg_info.t
     ; paths : Path.t Paths.t
     ; write_paths : Path.Build.t Paths.t
-    ; files_dir : Path.Build.t option
+    ; files_dir : Path.Build.t
     ; pkg_digest : Pkg_digest.t
     ; mutable exported_env : string Env_update.t list
     }
@@ -1527,58 +1528,15 @@ end = struct
             in
             resolve db dep_loc dep_pkg_digest package_universe)
       and+ files_dir =
-        let* lock_dir =
+        let+ lock_dir_path =
           Package_universe.lock_dir_path package_universe >>| Option.value_exn
-        in
-        let+ files_dir =
-          let module Pkg = Dune_pkg.Lock_dir.Pkg in
-          (* TODO(steve): simplify this once portable lockdirs become the
-             default. This logic currently handles both the cases where
-             lockdirs are non-portable (the files dir won't have a version
-             number in its name) and the case where lockdirs are portable (the
-             solution may have multiple versions of the same package
-             necessitating version numbers in files dirs to prevent
-             collisions). *)
-          let path_with_version =
-            Pkg.source_files_dir info.name (Some info.version) ~lock_dir
-          in
-          let* path_with_version_exists =
-            Fs_memo.dir_exists (Path.Outside_build_dir.In_source_dir path_with_version)
-          in
-          match path_with_version_exists with
-          | true ->
-            Memo.return @@ Some (Pkg.files_dir info.name (Some info.version) ~lock_dir)
-          | false ->
-            let path_without_version = Pkg.source_files_dir info.name None ~lock_dir in
-            let+ path_without_version_exists =
-              Fs_memo.dir_exists
-                (Path.Outside_build_dir.In_source_dir path_without_version)
-            in
-            (match path_without_version_exists with
-             | true -> Some (Pkg.files_dir info.name None ~lock_dir)
-             | false -> None)
-        in
-        files_dir
-        |> Option.map ~f:(fun (p : Path.t) ->
-          match p with
-          | External e ->
-            let source_path = Dune_pkg.Pkg_workspace.dev_tool_path_to_source_dir e in
-            (match Path.Source.explode source_path with
-             | [ "_build"; ".dev-tools.locks"; dev_tool; files_dir ] ->
-               Path.Build.L.relative
-                 Private_context.t.build_dir
-                 [ "default"; ".dev-tool-locks"; dev_tool; files_dir ]
-             | components ->
-               Code_error.raise
-                 "Package files directory is external source directory, this is \
-                  unsupported"
-                 [ "external", Path.External.to_dyn e
-                 ; "source", Path.Source.to_dyn source_path
-                 ; "components", Dyn.(list string) components
-                 ])
-          | In_source_tree s ->
-            Code_error.raise "Unexpected files_dir path" [ "dir", Path.Source.to_dyn s ]
-          | In_build_dir b -> b)
+        and+ lock_dir = Package_universe.lock_dir package_universe in
+        (* Use versioned paths for portable lockdirs *)
+        let _, platforms = lock_dir.solved_for_platforms in
+        let is_portable = not (List.is_empty platforms) in
+        let version = if is_portable then Some info.version else None in
+        Dune_pkg.Lock_dir.Pkg.files_dir info.name version ~lock_dir:lock_dir_path
+        |> Path.as_in_build_dir_exn
       in
       let id = Pkg.Id.gen () in
       let write_paths =
@@ -2150,6 +2108,9 @@ let rec scan_contents p =
   let module P = Path.Build in
   let dir_contents =
     match Readdir.read_directory_with_kinds (P.to_string p) with
+    | Error (Unix.ENOENT, _, _) ->
+      (* Directory doesn't exist - package has no extra files *)
+      []
     | Ok dir_contents -> dir_contents
     | Error e ->
       Code_error.raise
@@ -2201,21 +2162,15 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
           let+ () = Memo.return () in
           let open Action_builder.O in
           [ Action_builder.with_no_targets
-            @@ ((match pkg.files_dir with
-                 | Some files_dir -> Action_builder.path (Path.build files_dir)
-                 | None -> Action_builder.return ())
-                >>> Action_builder.of_memo
-                      (Memo.of_thunk (fun () ->
-                         match pkg.files_dir with
-                         | None -> Memo.return (Path.Set.empty, Dep.Set.empty)
-                         | Some files_dir ->
-                           let deps, source_deps = files files_dir in
-                           Memo.return (source_deps, deps)))
+            @@ (Action_builder.of_memo
+                  (Memo.of_thunk (fun () ->
+                     let deps, source_deps = files pkg.files_dir in
+                     Memo.return (source_deps, deps)))
                 |> Action_builder.dyn_deps
                 >>= fun source_deps ->
                 Path.Set.to_list_map source_deps ~f:(fun src ->
                   let dst =
-                    let prefix = pkg.files_dir |> Option.value_exn |> Path.build in
+                    let prefix = Path.build pkg.files_dir in
                     let local_path = Path.drop_prefix_exn src ~prefix in
                     Path.Build.append_local pkg.write_paths.source_dir local_path
                   in

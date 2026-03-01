@@ -101,6 +101,27 @@ let
             csexp
           ];
         };
+        dune-action-plugin = mkDuneLib {
+          pname = "dune-action-plugin";
+          propagatedBuildInputs = with oself; [
+            dune-rpc
+            dune-glob
+          ];
+        };
+        dune-rpc-lwt = mkDuneLib {
+          pname = "dune-rpc-lwt";
+          propagatedBuildInputs = with oself; [
+            dune-rpc
+            csexp
+            lwt
+          ];
+        };
+        dune-action-trace = mkDuneLib {
+          pname = "dune-action-trace";
+          propagatedBuildInputs = with oself; [
+            csexp
+          ];
+        };
         xdg = mkDuneLib { pname = "xdg"; };
         chrome-trace = mkDuneLib {
           pname = "chrome-trace";

@@ -37,8 +37,10 @@ Now test the variable in truthy/filter context (conditional on command):
   Solution for dune.lock:
   - truthy-context.0.0.1
 
-In truthy context, the variable is left for build time evaluation where it will
-be undefined and thus falsey:
+In truthy context, the variable is currently left for build time evaluation
+where it will be undefined and thus falsey. Ideally, this should also be
+evaluated at solve time (to empty string/falsey), but this is not yet
+implemented:
 
   $ cat dune.lock/truthy-context.0.0.1.pkg
   (version 0.0.1)

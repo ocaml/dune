@@ -46,18 +46,23 @@ let local_binaries { local_bins; _ } =
     | _, Origin _origins -> None)
 ;;
 
-let analyze_binary t name =
+let analyze_binary t ~dir name =
   match Filename.is_relative name with
   | false -> Memo.return (`Resolved (Path.of_filename_relative_to_initial_cwd name))
   | true ->
     let* local_bins = Memo.Lazy.force t.local_bins in
+    let lookup_name =
+      match Filename.analyze_program_name name with
+      | Absolute | In_path -> name
+      | Relative_to_current_dir -> Path.Build.relative dir name |> Path.Build.basename
+    in
     let which () =
-      Context.which t.context name
+      Context.which t.context lookup_name
       >>| function
       | None -> `None
       | Some path -> `Resolved path
     in
-    (match Filename.Map.find local_bins name with
+    (match Filename.Map.find local_bins lookup_name with
      | Some (Resolved p) -> Memo.return (`Resolved (Path.build p.path))
      | None -> which ()
      | Some (Origin origins) ->
@@ -82,8 +87,8 @@ let analyze_binary t name =
             ]))
 ;;
 
-let binary t ?hint ?(where = Install_dir) ~loc name =
-  analyze_binary t name
+let binary t ?hint ?(where = Install_dir) ~dir ~loc name =
+  analyze_binary t ~dir name
   >>= function
   | `Resolved path -> Memo.return @@ Ok path
   | `None ->
@@ -107,8 +112,8 @@ let binary t ?hint ?(where = Install_dir) ~loc name =
        Ok (Path.build src))
 ;;
 
-let binary_available t name =
-  analyze_binary t name
+let binary_available t ~dir name =
+  analyze_binary t ~dir name
   >>| function
   | `None -> false
   | `Resolved _ | `Origin _ -> true

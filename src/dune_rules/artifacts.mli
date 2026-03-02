@@ -33,11 +33,12 @@ val binary
   :  t
   -> ?hint:string
   -> ?where:where
+  -> dir:Path.Build.t
   -> loc:Loc.t option
   -> Filename.t
   -> Action.Prog.t Memo.t
 
-val binary_available : t -> string -> bool Memo.t
+val binary_available : t -> dir:Path.Build.t -> string -> bool Memo.t
 val add_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list -> t
 
 val create

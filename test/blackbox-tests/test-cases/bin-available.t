@@ -35,7 +35,7 @@ Test for %{bin-available:...}
   dune: true
   local program foo: true
   non existent program: false
-  local path foo: false
+  local path foo: true
   local path bar: false
   disabled binary is available: false
   disabled by enabled_if: false

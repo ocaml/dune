@@ -58,6 +58,40 @@ module Stat = struct
   let () = register name of_args run
 end
 
+module NativePath = struct
+  let name = "native-path"
+
+  let native_path =
+    if not Sys.win32
+    then fun fn -> print_endline fn
+    else
+      fun fn ->
+        let cygpath =
+          let path = Env_path.path Env.initial in
+          Bin.which ~path "cygpath"
+        in
+        match cygpath with
+        | None -> User_error.raise [ Pp.text "Unable to find cygpath in PATH" ]
+        | Some cygpath ->
+          let cygpath = Path.to_string cygpath in
+          ignore
+            (Unix.create_process
+               cygpath
+               [| cygpath; "-wl"; fn |]
+               Unix.stdin
+               Unix.stdout
+               Unix.stderr)
+  ;;
+
+  let of_args = function
+    | [ fn ] -> fn
+    | _ -> raise (Arg.Bad ("Usage: dune_cmd " ^ name ^ " <path>"))
+  ;;
+
+  let run fn = native_path fn
+  let () = register name of_args run
+end
+
 module Wait_for_fs_clock_to_advance = struct
   let name = "wait-for-fs-clock-to-advance"
 

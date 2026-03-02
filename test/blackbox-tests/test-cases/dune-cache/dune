@@ -1,0 +1,3 @@
+(cram
+ (applies_to dedup mode-hardlink)
+ (alias runtest-windows))

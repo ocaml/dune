@@ -12,16 +12,16 @@ jobs:
       uses: actions/checkout@v6
       with:
         repository: roburio/caldav
-        ref: 51f0d150542348dc259b7c9f7bc70ee592243f7f
+        ref: 88077909aede711da1a0417f27fc8223c141f0fe
     - name: Use OCaml ${{ matrix.ocaml-compiler }}
       uses: ocaml/setup-ocaml@v3
       with:
         ocaml-compiler: 4.14.x
         opam-depext: false
-    - run: opam repo set-url default git+https://github.com/ocaml/opam-repository#dc24cade5f037058a4d86fcdd008159923152db5
+    - run: opam repo set-url default git+https://github.com/ocaml/opam-repository#a7b8d1036328cf727af175b657f3d2b732b4d868
     - run: sed -i s/1.3/2.7/ dune-project
     - run: opam pin add -n dune.dev git+https://github.com/ocaml/dune#$GITHUB_SHA
     - run: sudo apt install libseccomp-dev
-    - run: opam install mirage.4.4.2 opam-monorepo.0.3.6
+    - run: opam install mirage.4.10.5 opam-monorepo.0.4.3
     - run: cd mirage; opam exec -- mirage configure -f config.ml -t hvt
     - run: cd mirage; opam exec -- make depend lock pull build

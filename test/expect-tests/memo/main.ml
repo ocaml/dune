@@ -1262,6 +1262,58 @@ let%expect_test "cancelling a computing node wakes waiters" =
     |}]
 ;;
 
+let%expect_test "overlapping cycles with waiters can deadlock" =
+  let outer_fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
+  let inner_fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
+  let join =
+    create ~with_cutoff:true "join_repro" (fun () ->
+      printf "Started evaluating join_repro\n";
+      let* () = Memo.of_reproducible_fiber (Fiber.of_thunk Scheduler.yield) in
+      let+ (_ : int), (_ : int) =
+        Memo.fork_and_join
+          (Memo.exec (Fdecl.get outer_fdecl))
+          (Memo.exec (Fdecl.get inner_fdecl))
+      in
+      1)
+  in
+  let inner =
+    create ~with_cutoff:true "inner_repro" (fun () ->
+      printf "Started evaluating inner_repro\n";
+      Memo.exec join ())
+  in
+  let outer =
+    create ~with_cutoff:true "outer_repro" (fun () ->
+      printf "Started evaluating outer_repro\n";
+      Memo.exec inner ())
+  in
+  Fdecl.set outer_fdecl outer;
+  Fdecl.set inner_fdecl inner;
+  (match
+     Scheduler.run
+       (Fiber.collect_errors (fun () ->
+          Fiber.fork_and_join
+            (fun () -> Memo.run (Memo.exec outer ()))
+            (fun () -> Memo.run (Memo.exec join ()))))
+   with
+   | exception Test_scheduler.Never -> print_endline "Deadlock!"
+   | Ok (_ : int * int) -> print_endline "Unexpected success"
+   | Error errs ->
+     List.iter errs ~f:(fun (e : Exn_with_backtrace.t) ->
+       match e.exn with
+       | Memo.Error.E err ->
+         (match Memo.Error.get err with
+          | Memo.Cycle_error.E error -> print_cycle_error error
+          | exn -> print_endline (Printexc.to_string exn))
+       | exn -> print_endline (Printexc.to_string exn)));
+  [%expect
+    {|
+    Started evaluating outer_repro
+    Started evaluating inner_repro
+    Started evaluating join_repro
+    Deadlock!
+    |}]
+;;
+
 let lazy_rec ~name f =
   let fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
   let node = Memo.Lazy.create ~name (fun () -> f (Fdecl.get fdecl)) in

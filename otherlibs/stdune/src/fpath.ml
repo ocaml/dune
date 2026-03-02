@@ -218,7 +218,8 @@ let win32_rename_exn src dst =
 ;;
 
 let rename_exn =
-  if Stdlib.Sys.win32 then fun x -> win32_rename_exn x else fun x -> Unix.rename x
+  if Stdlib.Sys.win32 then fun x y -> win32_rename_exn x y else fun x y -> Unix.rename x y
+;;
 
 let rec clear_dir ?(chmod = false) dir =
   match

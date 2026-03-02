@@ -225,41 +225,68 @@ let register_snapshot_promotion t (targets : Targets.Validated.t) ~old_snapshot 
   let in_source_tree p =
     Path.extract_build_context_dir_maybe_sandboxed p |> Option.value_exn |> snd
   in
-  let copy_file p =
-    let source_file = in_source_tree p in
-    let correction_file = Path.as_in_build_dir_exn p in
-    Diff_promotion.register_intermediate `Move ~source_file ~correction_file
-  in
-  let delete what file = in_source_tree file |> Diff_promotion.register_delete what in
+  let diffs = ref [] in
+  let add_copy_file p = diffs := p :: !diffs in
+  let deletes = ref [] in
+  let add_delete what file = deletes := (what, in_source_tree file) :: !deletes in
   let target_root_in_sandbox = map_path t targets.root in
-  Path.Map.iter2 old_snapshot new_snapshot ~f:(fun p before after ->
-    if
-      not
-        (let dir = Path.as_in_build_dir_exn (Path.parent_exn p) in
-         Path.Build.equal dir target_root_in_sandbox
-         &&
-         let basename = Path.basename p in
-         Filename.Set.mem targets.files basename || Filename.Set.mem targets.dirs basename)
-    then (
-      match before, after with
-      | None, None -> assert false
-      | None, Some (`File _) -> copy_file p
-      | Some (`File _), None -> delete `File p
-      | Some `Dir, None -> delete `Directory p
-      | Some `Dir, Some `Dir -> ()
-      | None, Some `Dir ->
-        (* We don't create empty dirs and rely on the traversal of this dir to
+  let () =
+    Path.Map.iter2 old_snapshot new_snapshot ~f:(fun p before after ->
+      if
+        not
+          (let dir = Path.as_in_build_dir_exn (Path.parent_exn p) in
+           Path.Build.equal dir target_root_in_sandbox
+           &&
+           let basename = Path.basename p in
+           Filename.Set.mem targets.files basename
+           || Filename.Set.mem targets.dirs basename)
+      then (
+        match before, after with
+        | None, None -> assert false
+        | None, Some (`File _) -> add_copy_file p
+        | Some (`File _), None -> add_delete `File p
+        | Some `Dir, None -> add_delete `Directory p
+        | Some `Dir, Some `Dir -> ()
+        | None, Some `Dir ->
+          (* We don't create empty dirs and rely on the traversal of this dir to
            create the underlying files. Mayb e we should try harder *)
-        ()
-      | Some (`File _), Some `Dir ->
-        (* We are going to traverse the target directory here, but we should
+          ()
+        | Some (`File _), Some `Dir ->
+          (* We are going to traverse the target directory here, but we should
            really treat this as a deletion *)
-        ()
-      | Some `Dir, Some (`File _) -> copy_file p
-      | Some (`File before), Some (`File after) ->
-        (match Cached_digest.Reduced_stats.compare before after with
-         | Eq -> ()
-         | Lt | Gt -> copy_file p)))
+          ()
+        | Some `Dir, Some (`File _) -> add_copy_file p
+        | Some (`File before), Some (`File after) ->
+          (match Cached_digest.Reduced_stats.compare before after with
+           | Eq -> ()
+           | Lt | Gt -> add_copy_file p)))
+  in
+  Fiber.fork_and_join_unit
+    (fun () ->
+       Fiber.parallel_iter !diffs ~f:(fun path ->
+         let source = Path.drop_optional_sandbox_root path in
+         Diff_action.exec
+           ~patch_back:(Some (Path.build t.dir))
+           t.loc
+           { Dune_util.Action.Diff.file1 = source
+           ; file2 = Path.as_in_build_dir_exn path
+           ; optional = true
+           ; mode = Text
+           }))
+    (fun () ->
+       Fiber.parallel_iter !deletes ~f:(fun (what, path) ->
+         Diff_promotion.register_delete what path;
+         let what =
+           match what with
+           | `File -> "File"
+           | `Directory -> "Directory"
+         in
+         User_error.raise
+           [ Pp.textf
+               "%s %s should be deleted"
+               what
+               (Path.Source.to_string_maybe_quoted path)
+           ]))
 ;;
 
 let hint_delete_dir =
@@ -273,42 +300,46 @@ let move_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated
   : unit Fiber.t
   =
   let open Fiber.O in
-  let+ start, stop, queued =
-    maybe_async (fun () ->
-      Option.iter t.snapshot ~f:(fun old_snapshot ->
-        register_snapshot_promotion t targets ~old_snapshot);
-      Targets.Validated.iter
-        targets
-        ~file:(fun target ->
-          if not (should_be_skipped target)
-          then rename_optional_file ~src:(map_path t target) ~dst:target)
-        ~dir:(fun target ->
-          let src_dir = map_path t target in
-          (match Path.Untracked.stat (Path.build target) with
-           | Error (Unix.ENOENT, _, _) -> ()
-           | Error e ->
-             User_error.raise
-               ~hints:hint_delete_dir
-               [ Pp.textf "unable to stat %s" (Path.Build.to_string_maybe_quoted target)
-               ; Pp.text "reason:"
-               ; Pp.text (Unix_error.Detailed.to_string_hum e)
-               ]
-           | Ok { Unix.st_kind; _ } ->
-             (* We clean up all targets (including directory targets) before
+  let start = Time.now () in
+  let+ () =
+    match t.snapshot with
+    | None -> Fiber.return ()
+    | Some old_snapshot -> register_snapshot_promotion t targets ~old_snapshot
+  in
+  let () =
+    Targets.Validated.iter
+      targets
+      ~file:(fun target ->
+        if not (should_be_skipped target)
+        then rename_optional_file ~src:(map_path t target) ~dst:target)
+      ~dir:(fun target ->
+        let src_dir = map_path t target in
+        (match Path.Untracked.stat (Path.build target) with
+         | Error (Unix.ENOENT, _, _) -> ()
+         | Error e ->
+           User_error.raise
+             ~hints:hint_delete_dir
+             [ Pp.textf "unable to stat %s" (Path.Build.to_string_maybe_quoted target)
+             ; Pp.text "reason:"
+             ; Pp.text (Unix_error.Detailed.to_string_hum e)
+             ]
+         | Ok { Unix.st_kind; _ } ->
+           (* We clean up all targets (including directory targets) before
               running an action, so this branch should be unreachable unless
               the rule somehow escaped the sandbox *)
-             User_error.raise
-               ~hints:hint_delete_dir
-               [ Pp.textf
-                   "Target %s of kind %S already exists in the build directory"
-                   (Path.Build.to_string_maybe_quoted target)
-                   (File_kind.to_string_hum st_kind)
-               ]);
-          if Fpath.exists (Path.Build.to_string src_dir)
-          then Unix.rename (Path.Build.to_string src_dir) (Path.Build.to_string target)))
+           User_error.raise
+             ~hints:hint_delete_dir
+             [ Pp.textf
+                 "Target %s of kind %S already exists in the build directory"
+                 (Path.Build.to_string_maybe_quoted target)
+                 (File_kind.to_string_hum st_kind)
+             ]);
+        if Fpath.exists (Path.Build.to_string src_dir)
+        then Unix.rename (Path.Build.to_string src_dir) (Path.Build.to_string target))
   in
+  let stop = Time.now () in
   Dune_trace.emit ~buffered:true Sandbox (fun () ->
-    Dune_trace.Event.sandbox `Extract ~start ~stop ~queued t.loc ~dir:t.dir)
+    Dune_trace.Event.sandbox `Extract ~start ~stop ~queued:None t.loc ~dir:t.dir)
 ;;
 
 let failed_to_delete_sandbox dir reason =

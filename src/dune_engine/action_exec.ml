@@ -264,7 +264,7 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
     Done
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
   | Diff diff ->
-    let+ () = Produce.of_fiber (Diff_action.exec ectx.rule_loc diff) in
+    let+ () = Produce.of_fiber (Diff_action.exec ~patch_back:None ectx.rule_loc diff) in
     Done
   | Extension (module A) -> Produce.of_fiber @@ A.Spec.action A.v ~ectx ~eenv
 

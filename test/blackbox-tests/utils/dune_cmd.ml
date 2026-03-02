@@ -77,14 +77,16 @@ module NativePath = struct
           ignore
             (Unix.create_process
                cygpath
-               [|cygpath; "-wl"; fn|]
+               [| cygpath; "-wl"; fn |]
                Unix.stdin
                Unix.stdout
                Unix.stderr)
+  ;;
 
   let of_args = function
-    | [fn] -> fn
+    | [ fn ] -> fn
     | _ -> raise (Arg.Bad ("Usage: dune_cmd " ^ name ^ " <path>"))
+  ;;
 
   let run fn = native_path fn
   let () = register name of_args run

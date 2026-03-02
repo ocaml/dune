@@ -43,6 +43,9 @@ end
 
 type metadata
 
+val metadata_of_sexps : Sexp.t list -> metadata
+val metadata_to_sexps : metadata -> Sexp.t list
+
 (** A [Value] entry corresponds to the standard output of an action. *)
 module Value : sig
   module Metadata_file : sig
@@ -73,10 +76,13 @@ module Artifacts : sig
       }
 
     val store
-      :  Metadata_entry.t list
+      :  metadata:metadata
+      -> Metadata_entry.t list
       -> mode:Mode.t
       -> rule_digest:Dune_digest.t
       -> Store_result.t
+
+    val restore : rule_digest:Dune_digest.t -> t Restore_result.t
   end
 
   (** List entries of a metadata file produced by a rule with a given digest.

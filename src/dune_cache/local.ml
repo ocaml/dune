@@ -120,6 +120,9 @@ let restore_metadata ~rule_or_action_digest ~of_sexp : _ Restore_result.t =
 
 type metadata = Sexp.t list
 
+let metadata_of_sexps sexps = sexps
+let metadata_to_sexps metadata = metadata
+
 module Value = struct
   module Metadata_file = struct
     type t =
@@ -224,11 +227,11 @@ module Artifacts = struct
                    ])))
     ;;
 
-    let store entries ~mode ~rule_digest =
+    let store ~metadata entries ~mode ~rule_digest =
       store_metadata
         ~mode
         ~rule_or_action_digest:rule_digest
-        ~metadata:{ entries; metadata = [] }
+        ~metadata:{ entries; metadata }
         ~to_sexp
         ~matches_existing_entry
     ;;

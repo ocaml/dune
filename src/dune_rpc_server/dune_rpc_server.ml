@@ -46,6 +46,14 @@ end
 module V = Versioned.Make (struct
     include Fiber
 
+    let collect_errors f =
+      Fiber.collect_errors f
+      >>| function
+      | Ok _ as s -> s
+      | Error exns ->
+        Error (List.map exns ~f:(fun { Exn_with_backtrace.exn; backtrace = _ } -> exn))
+    ;;
+
     let parallel_iter t ~f =
       let stream = Fiber.Stream.In.create t in
       Fiber.Stream.In.parallel_iter stream ~f

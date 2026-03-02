@@ -511,7 +511,25 @@ struct
              | Ok () -> Fiber.return ())
         | Request (id, req) ->
           let* handler = t.handler in
-          let* result = V.Handler.handle_request handler () (id, req) in
+          let* result =
+            Fiber.collect_errors (fun () -> V.Handler.handle_request handler () (id, req))
+          in
+          let result =
+            match result with
+            | Ok r -> r
+            | Error [ Response.Error.E t ] -> Error t
+            | Error exns ->
+              let payload =
+                Sexp.List
+                  (List.map exns ~f:(fun exn -> Sexp.Atom (Printexc.to_string exn)))
+              in
+              Error
+                (Response.Error.create
+                   ~payload
+                   ~kind:Code_error
+                   ~message:"unexpected error"
+                   ())
+          in
           Chan.write t.chan [ Response (id, result) ]
         | Response (id, response) ->
           (match Table.find t.requests id with

@@ -5,6 +5,12 @@ module V1 = struct
   module Fiber = struct
     include Lwt
 
+    let collect_errors f =
+      Lwt.catch
+        (fun () -> f () |> Lwt.map (fun x -> Ok x))
+        (fun exn -> Lwt.return_error [ exn ])
+    ;;
+
     let fork_and_join_unit (x : unit -> unit Lwt.t) y =
       let open Lwt in
       Lwt.both (x ()) (y ()) >|= snd

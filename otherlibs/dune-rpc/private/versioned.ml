@@ -354,6 +354,7 @@ struct
           (fun (handlers, version) ->
              match Method.Version.Map.find handlers version with
              | None ->
+               (* CR-soon rgrinberg: we should still report something to the caller about this *)
                raise_version_bug
                  ~method_:n.method_
                  ~selected:version
@@ -364,8 +365,28 @@ struct
                 | Error e -> Fiber.return (Error (Response.Error.of_conv e))
                 | Ok req ->
                   let open Fiber.O in
-                  let+ resp = f state (gen.upgrade_req req) in
-                  Ok (Conv.to_sexp gen.resp (gen.downgrade_resp resp))))
+                  (match gen.upgrade_req req with
+                   | exception e ->
+                     let payload = Sexp.Atom (Printexc.to_string e) in
+                     Fiber.return
+                       (Error
+                          (Response.Error.create
+                             ~message:"Unable to decode request"
+                             ~kind:Code_error
+                             ~payload
+                             ()))
+                   | req ->
+                     let+ resp = f state req in
+                     (match gen.downgrade_resp resp with
+                      | resp -> Ok (Conv.to_sexp gen.resp resp)
+                      | exception e ->
+                        let payload = Sexp.Atom (Printexc.to_string e) in
+                        Error
+                          (Response.Error.create
+                             ~message:"Unable to encode response"
+                             ~kind:Code_error
+                             ~payload
+                             ())))))
       in
       let handle_notification menu state (n : Call.t) =
         lookup_method_generic

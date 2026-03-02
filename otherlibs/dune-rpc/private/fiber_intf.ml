@@ -5,6 +5,7 @@ module type S = sig
   val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
   val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
   val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
+  val collect_errors : (unit -> 'a t) -> ('a, exn list) result t
 
   module O : sig
     val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t

@@ -5,7 +5,7 @@ let print_depexts context_name =
   let+ depexts =
     build_exn (fun () -> Dune_rules.Pkg_rules.all_filtered_depexts context_name)
   in
-  Console.print [ Pp.concat_map ~sep:Pp.newline ~f:Pp.verbatim depexts ]
+  List.iter depexts ~f:print_endline
 ;;
 
 let term =

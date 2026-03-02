@@ -257,10 +257,12 @@ let by_name { rocqlib; rocq_native_compiler_default } name =
       [ "name", Dyn.string name ]
 ;;
 
-let expand source macro artifacts_host =
+let expand source macro ~dir artifacts_host =
   let s = Pform.Macro_invocation.Args.whole macro in
   let open Memo.O in
-  let* rocq = Artifacts.binary artifacts_host ~where:Original_path ~loc:None "rocq" in
+  let* rocq =
+    Artifacts.binary artifacts_host ~where:Original_path ~dir ~loc:None "rocq"
+  in
   let expand m k s =
     let+ t = m ~rocq in
     match t with

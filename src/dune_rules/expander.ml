@@ -664,6 +664,7 @@ let expand_pform_macro
                 let* artifacts_host = t.artifacts_host in
                 Artifacts.binary
                   ~loc:(Some (Dune_lang.Template.Pform.loc source))
+                  ~dir:t.dir
                   artifacts_host
                   s)
            in
@@ -692,7 +693,7 @@ let expand_pform_macro
         Without
           (let open Memo.O in
            let* artifacts_host = t.artifacts_host in
-           let+ b = Artifacts.binary_available artifacts_host s in
+           let+ b = Artifacts.binary_available artifacts_host ~dir:t.dir s in
            b |> string_of_bool |> string))
   | File_available ->
     Direct
@@ -723,7 +724,7 @@ let expand_pform_macro
         Without
           (let open Memo.O in
            let* artifacts_host = t.artifacts_host in
-           Coq_config.expand source macro_invocation artifacts_host))
+           Coq_config.expand source macro_invocation ~dir:t.dir artifacts_host))
   | Ppx ->
     Need_full_expander
       (fun t ->
@@ -747,7 +748,7 @@ let expand_pform_macro
         Without
           (let open Memo.O in
            let* artifacts_host = t.artifacts_host in
-           Rocq_config.expand source macro_invocation artifacts_host))
+           Rocq_config.expand source macro_invocation ~dir:t.dir artifacts_host))
 ;;
 
 let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pform.t)

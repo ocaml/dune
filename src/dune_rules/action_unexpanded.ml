@@ -403,8 +403,9 @@ end = struct
                Action_builder.of_memo
                @@
                let open Memo.O in
+               let dir = env.dir in
                let* where =
-                 let+ project = Dune_load.find_project ~dir:env.dir in
+                 let+ project = Dune_load.find_project ~dir in
                  if Dune_project.dune_version project >= (3, 14)
                  then Artifacts.Original_path
                  else Install_dir
@@ -415,7 +416,7 @@ end = struct
                  | "rescript_syntax" -> Some "opam install rescript-syntax"
                  | _ -> None
                in
-               Artifacts.binary ?hint ~loc:(Some loc) ~where artifacts s)
+               Artifacts.binary ?hint ~loc:(Some loc) ~where ~dir artifacts s)
         in
         let args = Value.L.to_strings ~dir args in
         match prog with

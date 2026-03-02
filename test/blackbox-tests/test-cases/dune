@@ -39,15 +39,8 @@
  (timeout 60))
 
 (cram
- (applies_to windows-diff github6644 dedup mode-hardlink)
+ (applies_to windows-diff github6644)
  (alias runtest-windows))
-
-(subdir
- dune-cache
- (cram
-  (applies_to dedup mode-hardlink)
-  (alias runtest-windows))
-)
 
 ;; DISABLED TESTS
 

@@ -22,7 +22,7 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
      fetches. This avoids re-downloading objects we already have.
 
      We also verify that refs from unrelated remotes are not used for
-     negotiation - each remote's refs are namespaced by URL hash and we use
+     negotiation - each remote's refs are namespaced by escaped URL and we use
      --negotiation-tip to restrict to only the relevant namespace. *)
   let repo_dir = Temp.create Dir ~prefix:"git-repo-" ~suffix:"" in
   let unrelated_repo_dir = Temp.create Dir ~prefix:"git-unrelated-" ~suffix:"" in

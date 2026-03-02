@@ -536,8 +536,13 @@ let rev_parse { dir; _ } rev =
   | _, _ -> None
 ;;
 
+(* Regex matching characters invalid in git refs or Windows filenames.
+   We keep alphanumeric and hyphen, replacing everything else with underscore. *)
+let url_escape_re = Re.(compile (compl [ rg 'a' 'z'; rg 'A' 'Z'; rg '0' '9'; char '-' ]))
+let escape_url_for_ref url = Re.replace_string url_escape_re ~by:"_" url
+
 (* Create a ref for a fetched object so git can use it for negotiation.
-   Refs are namespaced by URL: refs/dune-pkg/<url-hash>/<object-hash>.
+   Refs are namespaced by URL: refs/dune-pkg/<escaped-url>/<object-hash>.
    This allows us to use --negotiation-tip during fetch to only send
    refs relevant to the remote being fetched from. *)
 let add_object_ref { dir; _ } ~negotiation_ref_prefix obj =
@@ -765,9 +770,7 @@ let fetch_allow_failure ~env repo ~url obj =
     >>= function
     | true -> Fiber.return `Fetched
     | false ->
-      let negotiation_ref_prefix =
-        Dune_digest.string url |> Dune_digest.to_string |> sprintf "refs/dune-pkg/%s"
-      in
+      let negotiation_ref_prefix = escape_url_for_ref url |> sprintf "refs/dune-pkg/%s" in
       run_with_exit_code
         ~env
         ~allow_codes:(Int.equal 0)

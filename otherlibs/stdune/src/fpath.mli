@@ -46,6 +46,7 @@ type unlink_status =
 (** Unlink and return error, if any. *)
 val unlink : string -> unlink_status
 
+val rename_exn : string -> string -> unit
 val initial_cwd : string
 
 type clear_dir_result =

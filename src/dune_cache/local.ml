@@ -27,7 +27,14 @@ module Store_artifacts_result = struct
 end
 
 module Target = struct
-  type t = { executable : bool }
+  type t =
+    | File of { executable : bool }
+    | Directory
+
+  let executable = function
+    | File { executable } -> executable
+    | Directory -> Code_error.raise "Target.executable called on directory target" []
+  ;;
 
   let create path =
     let path = Path.Build.to_string path in
@@ -35,12 +42,11 @@ module Target = struct
     | { Unix.st_kind = Unix.S_REG; st_perm; _ } ->
       Unix.chmod path (Permissions.remove Permissions.write st_perm);
       let executable = Permissions.test Permissions.execute st_perm in
-      Some { executable }
+      Some (File { executable })
     | { Unix.st_kind = Unix.S_DIR; st_perm; _ } ->
       (* Adding "executable" permissions to directories mean we can traverse them. *)
       Unix.chmod path (Permissions.add Permissions.execute st_perm);
-      (* the value of [executable] here is ignored, but [Some] is meaningful. *)
-      Some { executable = true }
+      Some Directory
     | (exception Unix.Unix_error _) | _ -> None
   ;;
 end
@@ -129,7 +135,8 @@ module Artifacts = struct
     =
     let open Fiber.O in
     Fiber.collect_errors (fun () ->
-      Targets.Produced.parallel_map targets ~f:(fun path { Target.executable } ->
+      Targets.Produced.parallel_map targets ~f:(fun path target ->
+        let executable = Target.executable target in
         let file = Path.append_local temp_dir path in
         Dune_digest.file_with_executable_bit ~executable file))
     >>| Result.map_error ~f:(function

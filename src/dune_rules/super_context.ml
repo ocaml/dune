@@ -181,7 +181,7 @@ let add_alias_action t alias ~dir ~loc action =
 
 let resolve_program_memo t ~dir ?where ?hint ~loc bin =
   let* artifacts = artifacts_host t ~dir in
-  Artifacts.binary ?hint ?where ~loc artifacts bin
+  Artifacts.binary ?hint ?where ~dir ~loc artifacts bin
 ;;
 
 let resolve_program t ~dir ?where ?hint ~loc bin =

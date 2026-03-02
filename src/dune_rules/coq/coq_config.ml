@@ -248,10 +248,12 @@ let by_name { coqlib; coqcorelib; coq_native_compiler_default } name =
       [ "name", Dyn.string name ]
 ;;
 
-let expand source macro artifacts_host =
+let expand source macro ~dir artifacts_host =
   let s = Pform.Macro_invocation.Args.whole macro in
   let open Memo.O in
-  let* coqc = Artifacts.binary artifacts_host ~where:Original_path ~loc:None "coqc" in
+  let* coqc =
+    Artifacts.binary artifacts_host ~where:Original_path ~dir ~loc:None "coqc"
+  in
   let expand m k s =
     let+ t = m ~coqc in
     match t with

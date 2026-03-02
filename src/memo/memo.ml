@@ -755,14 +755,35 @@ module Computation = struct
     >>= function
     | Some res -> Fiber.return (Ok res)
     | None ->
-      (match (phase : Stack_frame_with_state.phase) with
-       | Restore_from_cache -> Counter.incr Metrics.Restore.blocked
-       | Compute -> Counter.incr Metrics.Compute.blocked);
-      let dag_node = Lazy_dag_node.force dag_node ~dep_node:(Dep_node.T dep_node) in
-      Call_stack.add_path_to ~dag_node
-      >>= (function
-       | Ok () -> Fiber.Ivar.read ivar >>| Result.ok
-       | Error _ as cycle_error -> Fiber.return cycle_error)
+      let dep_node = Dep_node.T dep_node in
+      let* immediate_self_cycle =
+        let+ stack = Call_stack.get_call_stack () in
+        let rec collect_callers_to_dep_node = function
+          | [] -> None
+          | frame :: rest ->
+            let stack_dep_node = Stack_frame_with_state.dep_node frame in
+            if Dep_node.Packed.equal stack_dep_node dep_node
+            then Some []
+            else (
+              match collect_callers_to_dep_node rest with
+              | None -> None
+              | Some callers -> Some (stack_dep_node :: callers))
+        in
+        match collect_callers_to_dep_node stack with
+        | None -> None
+        | Some callers -> Some (dep_node :: callers)
+      in
+      (match immediate_self_cycle with
+       | Some cycle -> Fiber.return (Error cycle)
+       | None ->
+         (match (phase : Stack_frame_with_state.phase) with
+          | Restore_from_cache -> Counter.incr Metrics.Restore.blocked
+          | Compute -> Counter.incr Metrics.Compute.blocked);
+         let dag_node = Lazy_dag_node.force dag_node ~dep_node in
+         Call_stack.add_path_to ~dag_node
+         >>= (function
+          | Ok () -> Fiber.Ivar.read ivar >>| Result.ok
+          | Error _ as cycle_error -> Fiber.return cycle_error))
   ;;
 end
 

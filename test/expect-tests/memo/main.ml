@@ -942,9 +942,9 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
               ; backtrace = ""
               }
             ]
-    Memo graph: 8/8/1 nodes/edges/blocked (restore), 8/7/0 nodes/edges/blocked (compute)
-    Memo cycle detection graph: 6/5/1 nodes/edges/paths
-  |}];
+    Memo graph: 8/8/0 nodes/edges/blocked (restore), 8/7/0 nodes/edges/blocked (compute)
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
+    |}];
   Memo.Metrics.reset ();
   evaluate_and_print summit_yes_cutoff 0;
   print_metrics ();
@@ -977,9 +977,9 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
               ; backtrace = ""
               }
             ]
-    Memo graph: 7/7/1 nodes/edges/blocked (restore), 6/6/0 nodes/edges/blocked (compute)
-    Memo cycle detection graph: 6/5/1 nodes/edges/paths
-  |}];
+    Memo graph: 7/7/0 nodes/edges/blocked (restore), 6/6/0 nodes/edges/blocked (compute)
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
+    |}];
   Memo.Metrics.reset ();
   evaluate_and_print summit_no_cutoff 2;
   print_metrics ();
@@ -1254,11 +1254,15 @@ let%expect_test "cancelling a computing node wakes waiters" =
     Started evaluating B
     Started evaluating C
     Dependency cycle detected:
-    - ("A", ())
+    - ("B", ())
     - called by ("C", ())
+    - called by ("A", ())
     Dependency cycle detected:
     - ("C", ())
     - called by ("A", ())
+    Dependency cycle detected:
+    - ("A", ())
+    - called by ("C", ())
     |}]
 ;;
 
@@ -1310,7 +1314,20 @@ let%expect_test "overlapping cycles with waiters can deadlock" =
     Started evaluating outer_repro
     Started evaluating inner_repro
     Started evaluating join_repro
-    Deadlock!
+    Dependency cycle detected:
+    - ("join_repro", ())
+    - called by ("inner_repro", ())
+    - called by ("outer_repro", ())
+    Dependency cycle detected:
+    - ("join_repro", ())
+    - called by ("inner_repro", ())
+    Dependency cycle detected:
+    - ("inner_repro", ())
+    - called by ("outer_repro", ())
+    - called by ("join_repro", ())
+    Dependency cycle detected:
+    - ("inner_repro", ())
+    - called by ("join_repro", ())
     |}]
 ;;
 

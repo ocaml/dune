@@ -24,9 +24,18 @@
   > EOF
 
   $ dune describe workspace --sanitize-for-tests
-  File "dune", line 8, characters 12-34:
-  8 |  (libraries does_not_exist_gh12997))
-                  ^^^^^^^^^^^^^^^^^^^^^^
-  Error: Library "does_not_exist_gh12997" not found.
-  -> required by library "foo" in _build/default
-  [1]
+  ((root /WORKSPACE_ROOT)
+   (build_context _build/default)
+   (library
+    ((name alive)
+     (uid b8a14a61f9163d57810cc01c7f39d084)
+     (local true)
+     (requires ())
+     (source_dir _build/default)
+     (modules
+      (((name Alive)
+        (impl (_build/default/alive.ml))
+        (intf ())
+        (cmt (_build/default/.alive.objs/byte/alive.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/.alive.objs/byte)))))

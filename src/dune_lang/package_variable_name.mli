@@ -32,7 +32,13 @@ val version : t
 val post : t
 val build : t
 val dev : t
+val installed : t
 val one_of : t -> t list -> bool
+
+(** Returns the slang value of a variable for an absent package. Returns None
+    for variables without known values or contexts where substitution shouldn't
+    occur. *)
+val absent_package_value : t -> Slang.t option
 
 (** The set of variable names whose values are expected to differ depending on
     the current platform. *)

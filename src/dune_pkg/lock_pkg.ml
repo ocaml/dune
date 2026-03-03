@@ -54,40 +54,50 @@ let invalid_variable_error ~loc variable =
     [ Pp.textf "Variable %S is not supported." (OpamVariable.to_string variable) ]
 ;;
 
-let opam_variable_to_slang ~loc packages variable =
-  let variable_string = OpamVariable.to_string variable in
-  let convert_with_package_name package_name =
-    match is_valid_package_variable_name variable_string with
-    | false -> invalid_variable_error ~loc variable
-    | true ->
-      let pform =
-        let name = Package_variable_name.of_string variable_string in
-        let scope : Package_variable.Scope.t =
-          match package_name with
-          | None -> Self
-          | Some p -> Package (Package_name.of_opam_package_name p)
-        in
-        Package_variable.to_pform { Package_variable.name; scope }
-      in
-      Slang.pform pform
+(* CR-someday Alizter: This function is very mysterious and does a lot of
+   things. We should either make it easier to understand or refactor it into
+   more logical steps. Comments explaining what [packages] is would also be
+   useful. (It's for {foo+bar+zar:asdf} payloads). *)
+let opam_variable_to_slang =
+  let opam_var_to_pform variable_name scope =
+    Package_variable.to_pform { Package_variable.name = variable_name; scope }
+    |> Slang.pform
   in
-  match packages with
-  | [] ->
-    (match is_valid_global_variable_name variable_string with
-     | false ->
-       (* Note that there's no syntactic distinction between global variables
+  fun ~loc ~packages_in_solution packages variable ->
+    let variable_string = OpamVariable.to_string variable in
+    let variable_name = Package_variable_name.of_string variable_string in
+    let convert_with_package_name package_name =
+      match is_valid_package_variable_name variable_string with
+      | false -> invalid_variable_error ~loc variable
+      | true ->
+        (match package_name with
+         | Some p ->
+           let pkg_name = Package_name.of_opam_package_name p in
+           let pform = opam_var_to_pform variable_name (Package pkg_name) in
+           if Package_name.Map.mem packages_in_solution pkg_name
+           then pform
+           else
+             Package_variable_name.absent_package_value variable_name
+             |> Option.value ~default:pform
+         | None -> opam_var_to_pform variable_name Self)
+    in
+    match packages with
+    | [] ->
+      (match is_valid_global_variable_name variable_string with
+       | false ->
+         (* Note that there's no syntactic distinction between global variables
           and package variables in the current package. This check will prevent
           invalid global variable names from being used for package variables in the
           current package where the optional qualifier "_:" is omitted. *)
-       invalid_variable_error ~loc variable
-     | true ->
-       (match Pform.Var.of_opam_global_variable_name variable_string with
-        | Some global_var -> Slang.pform (Pform.Var global_var)
-        | None -> convert_with_package_name None))
-  | [ package_name ] -> convert_with_package_name package_name
-  | many ->
-    let many = List.map many ~f:convert_with_package_name in
-    Slang.blang (Blang.And (List.map many ~f:(fun slang -> Blang.Expr slang)))
+         invalid_variable_error ~loc variable
+       | true ->
+         (match Pform.Var.of_opam_global_variable_name variable_string with
+          | Some global_var -> Slang.pform (Pform.Var global_var)
+          | None -> convert_with_package_name None))
+    | [ package_name ] -> convert_with_package_name package_name
+    | many ->
+      let many = List.map many ~f:convert_with_package_name in
+      Slang.blang (Blang.And (List.map many ~f:(fun slang -> Blang.Expr slang)))
 ;;
 
 (* Handles the special case for packages whose names contain '+' characters
@@ -113,11 +123,11 @@ let desugar_special_string_interpolation_syntax
   | _ -> fident
 ;;
 
-let opam_fident_to_slang ~loc fident =
+let opam_fident_to_slang ~loc ~packages_in_solution fident =
   let packages, variable, string_converter =
     OpamFilter.desugar_fident fident |> desugar_special_string_interpolation_syntax
   in
-  let slang = opam_variable_to_slang ~loc packages variable in
+  let slang = opam_variable_to_slang ~loc ~packages_in_solution packages variable in
   match string_converter with
   | None -> slang
   | Some (then_, else_) ->
@@ -125,17 +135,21 @@ let opam_fident_to_slang ~loc fident =
        an undefined variable. The catch_undefined_var operator is used to
        convert expressions that throw undefined variable exceptions into false.
     *)
-    let condition =
-      Blang.Expr (Slang.catch_undefined_var slang ~fallback:(Slang.bool false))
-    in
-    Slang.if_ condition ~then_:(Slang.text then_) ~else_:(Slang.text else_)
+    (match slang with
+     | Form (_, Blang (Blang.Const false)) -> Slang.text else_
+     | _ ->
+       let condition =
+         Blang.Expr (Slang.catch_undefined_var slang ~fallback:(Slang.bool false))
+       in
+       Slang.if_ condition ~then_:(Slang.text then_) ~else_:(Slang.text else_))
 ;;
 
-let opam_raw_fident_to_slang ~loc raw_ident =
-  OpamTypesBase.filter_ident_of_string raw_ident |> opam_fident_to_slang ~loc
+let opam_raw_fident_to_slang ~loc ~packages_in_solution raw_ident =
+  OpamTypesBase.filter_ident_of_string raw_ident
+  |> opam_fident_to_slang ~loc ~packages_in_solution
 ;;
 
-let opam_string_to_slang ~package ~loc opam_string =
+let opam_string_to_slang ~packages_in_solution ~package ~loc opam_string =
   Re.Seq.split_full OpamFilter.string_interp_regex opam_string
   |> Seq.map ~f:(function
     | `Text text -> Slang.text text
@@ -146,7 +160,7 @@ let opam_string_to_slang ~package ~loc opam_string =
          when String.starts_with ~prefix:"%{" interp
               && String.ends_with ~suffix:"}%" interp ->
          let ident = String.sub ~pos:2 ~len:(String.length interp - 4) interp in
-         opam_raw_fident_to_slang ~loc ident
+         opam_raw_fident_to_slang ~loc ~packages_in_solution ident
        | other ->
          User_error.raise
            ~loc
@@ -216,11 +230,11 @@ let resolve_depopts ~resolve depopts =
    These two Slang operators are used to emulate Opam's undefined value
    semantics.
 *)
-let filter_to_blang ~package ~loc filter =
+let filter_to_blang ~packages_in_solution ~package ~loc filter =
   let filter_to_slang (filter : OpamTypes.filter) =
     match filter with
-    | FString s -> opam_string_to_slang ~package ~loc s
-    | FIdent fident -> opam_fident_to_slang ~loc fident
+    | FString s -> opam_string_to_slang ~packages_in_solution ~package ~loc s
+    | FIdent fident -> opam_fident_to_slang ~loc ~packages_in_solution fident
     | other ->
       Code_error.raise
         "The opam file parser should only allow identifiers and strings in places where \
@@ -268,6 +282,7 @@ let filter_to_blang ~package ~loc filter =
 ;;
 
 let opam_commands_to_actions
+      ~packages_in_solution
       get_solver_var
       loc
       package
@@ -287,8 +302,9 @@ let opam_commands_to_actions
             let slang =
               let slang =
                 match simple_arg with
-                | CString s -> opam_string_to_slang ~package ~loc s
-                | CIdent ident -> opam_raw_fident_to_slang ~loc ident
+                | CString s -> opam_string_to_slang ~packages_in_solution ~package ~loc s
+                | CIdent ident ->
+                  opam_raw_fident_to_slang ~loc ~packages_in_solution ident
               in
               Slang.simplify slang
             in
@@ -298,8 +314,9 @@ let opam_commands_to_actions
                  | None -> slang
                  | Some filter ->
                    let filter_blang =
-                     filter_to_blang ~package ~loc filter |> Slang.simplify_blang
-                   and slang = slang in
+                     filter_to_blang ~packages_in_solution ~package ~loc filter
+                     |> Slang.simplify_blang
+                   in
                    let filter_blang_handling_undefined =
                      (* Wrap the blang filter so that if any undefined
                          variables are expanded while evaluating the filter,
@@ -318,17 +335,18 @@ let opam_commands_to_actions
       if List.is_empty terms
       then None
       else (
-        let action =
-          let action = Action.Run terms in
-          match filter with
-          | None -> action
-          | Some filter ->
-            let condition =
-              filter_to_blang ~package ~loc filter |> Slang.simplify_blang
-            in
-            Action.When (condition, action)
-        in
-        Some action))
+        let action = Action.Run terms in
+        match filter with
+        | None -> Some action
+        | Some filter ->
+          let condition =
+            filter_to_blang ~packages_in_solution ~package ~loc filter
+            |> Slang.simplify_blang
+          in
+          (match condition with
+           | Const true -> Some action
+           | Const false -> None
+           | _ -> Some (Action.When (condition, action)))))
 ;;
 
 (* Standard package variables that are always defined at build time.
@@ -379,12 +397,13 @@ let rec filter_vars_are_defined : OpamTypes.filter -> bool = function
 
    Depexts with filters that reference undefined variables are excluded, as
    they would error at build time. *)
-let depexts_to_conditional_external_dependencies package depexts =
+let depexts_to_conditional_external_dependencies ~packages_in_solution package depexts =
   List.filter_map depexts ~f:(fun (sys_pkgs, filter) ->
     let open Option.O in
     let* () = Option.some_if (filter_vars_are_defined filter) () in
     let condition =
-      filter_to_blang ~package ~loc:Loc.none filter |> Slang.simplify_blang
+      filter_to_blang ~packages_in_solution ~package ~loc:Loc.none filter
+      |> Slang.simplify_blang
     in
     let+ () = Option.some_if (not (Slang.Blang.equal condition Slang.Blang.false_)) () in
     let external_package_names =
@@ -489,6 +508,7 @@ let opam_package_to_lock_file_pkg
     Solver_stats.Updater.expand_variable stats_updater variable_name;
     Solver_env.get solver_env variable_name
   in
+  let packages_in_solution = version_by_package_name in
   let build_command =
     if Resolved_package.dune_build resolved_package
     then Some Lock_dir.Build_command.Dune
@@ -512,12 +532,17 @@ let opam_package_to_lock_file_pkg
           | None -> action
           | Some filter ->
             let blang =
-              filter_to_blang ~package:opam_package ~loc:Loc.none filter
+              filter_to_blang
+                ~packages_in_solution
+                ~package:opam_package
+                ~loc:Loc.none
+                filter
               |> Slang.simplify_blang
             in
             Action.When (blang, action))
       and build_step =
         opam_commands_to_actions
+          ~packages_in_solution
           get_solver_var
           loc
           opam_package
@@ -548,6 +573,7 @@ let opam_package_to_lock_file_pkg
     if portable_lock_dir
     then
       depexts_to_conditional_external_dependencies
+        ~packages_in_solution
         opam_package
         (OpamFile.OPAM.depexts opam_file)
     else (
@@ -566,7 +592,7 @@ let opam_package_to_lock_file_pkg
   in
   let install_command =
     OpamFile.OPAM.install opam_file
-    |> opam_commands_to_actions get_solver_var loc opam_package
+    |> opam_commands_to_actions ~packages_in_solution get_solver_var loc opam_package
     |> make_action
     |> Option.map ~f:(fun action -> lockfile_field_choice (build_env action))
     |> Option.value ~default:Lock_dir.Conditional_choice.empty

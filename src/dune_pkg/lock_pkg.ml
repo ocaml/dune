@@ -331,6 +331,33 @@ let opam_commands_to_actions
         Some action))
 ;;
 
+(* Standard package variables that are always defined at build time.
+   CR-Alizter soon: Consolidate with Package_variable_name handling elsewhere. *)
+let is_standard_package_variable var_name =
+  match var_name with
+  | "name" | "version" | "pinned" | "enable" | "installed" | "build-id" | "dev" -> true
+  | _ ->
+    (* Section directories like bin, lib, etc. *)
+    Option.is_some (Pform.Var.Pkg.Section.of_string var_name)
+;;
+
+(* Check if all variables in a filter are defined. A variable that isn't a
+   known platform variable or standard package variable will be undefined at
+   build time. *)
+let rec filter_vars_are_defined : OpamTypes.filter -> bool = function
+  | FBool _ | FString _ -> true
+  | FUndef _ -> false
+  | FIdent (_, var, None) ->
+    let var_name = OpamVariable.to_string var in
+    (* Known platform variable or standard package variable *)
+    Option.is_some (Pform.Var.of_opam_global_variable_name var_name)
+    || is_standard_package_variable var_name
+  | FIdent (_, _, Some _) -> true (* String converter handles undefined *)
+  | FOp (l, _, r) | FAnd (l, r) | FOr (l, r) ->
+    filter_vars_are_defined l && filter_vars_are_defined r
+  | FNot f | FDefined f -> filter_vars_are_defined f
+;;
+
 (* Translate the entire depexts field from the opam file into the lockfile by
    way of the slang dsl. Note that this preserves platform variables such as
    "os" and "os-distribution", which is different from how the "build",
@@ -348,14 +375,20 @@ let opam_commands_to_actions
    mapping distro/version to package names must be preserved in lockfiles when
    solving. Opam allows depexts to be filtered by arbitrary filter expressions,
    which is why the slang dsl is needed as opposed to (say) a map from
-   distro/version to depext name. *)
+   distro/version to depext name.
+
+   Depexts with filters that reference undefined variables are excluded, as
+   they would error at build time. *)
 let depexts_to_conditional_external_dependencies package depexts =
-  List.map depexts ~f:(fun (sys_pkgs, filter) ->
-    let external_package_names =
-      OpamSysPkg.Set.to_list_map OpamSysPkg.to_string sys_pkgs
-    in
+  List.filter_map depexts ~f:(fun (sys_pkgs, filter) ->
+    let open Option.O in
+    let* () = Option.some_if (filter_vars_are_defined filter) () in
     let condition =
       filter_to_blang ~package ~loc:Loc.none filter |> Slang.simplify_blang
+    in
+    let+ () = Option.some_if (not (Slang.Blang.equal condition Slang.Blang.false_)) () in
+    let external_package_names =
+      OpamSysPkg.Set.to_list_map OpamSysPkg.to_string sys_pkgs
     in
     let enabled_if =
       if Slang.Blang.equal condition Slang.Blang.true_

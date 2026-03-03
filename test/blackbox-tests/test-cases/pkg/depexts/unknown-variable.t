@@ -1,27 +1,36 @@
-Solving with an unknown variable on depexts:
+Depexts with unknown variables should be filtered out at lock time.
 
   $ mkrepo
-  $ add_mock_repo_if_needed
-
-The "foobar" variable is not defined:
+  $ mkpkg dep <<EOF
+  > EOF
   $ mkpkg foo <<EOF
-  > depexts: [[ "unzip" ] {foobar}]
+  > depends: [ "dep" ]
+  > depexts: [
+  >   [ "a" ] {foobar}
+  >   [ "b" ] {dep:nonexistent-var}
+  >   [ "c" ] {dep:installed}
+  >   [ "d" ] {nonexistent-pkg:installed}
+  > ]
   > EOF
 
-Make a project that uses the foo library:
-  $ cat > dune-project <<EOF
+  $ solve_project <<EOF
   > (lang dune 3.13)
   > (package
   >  (name bar)
   >  (depends foo))
   > EOF
-
-Locking should succeed and not include the "unzip" package
-  $ dune pkg lock 2>&1 | head -n 1
-  Solution for dune.lock
+  Solution for dune.lock:
+  - dep.0.0.1
+  - foo.0.0.1
 
   $ cat ${default_lock_dir}/foo.0.0.1.pkg
   (version 0.0.1)
   
+  (depends
+   (all_platforms (dep)))
+  
   (depexts
-   ((unzip) %{pkg-self:foobar}))
+   ((a) %{pkg-self:foobar})
+   ((b) %{pkg:dep:nonexistent-var})
+   ((c) %{pkg:dep:installed})
+   ((d) %{pkg:nonexistent-pkg:installed}))

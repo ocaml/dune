@@ -2265,8 +2265,9 @@ let descriptive_closure (l : lib list) ~with_pps ~for_ : lib list Memo.t =
   (* [register_work todo l] reads the list of libraries [l] and adds
      them to the todo list [todo] *)
   let register_work todo l =
-    let+ l = Resolve.read_memo l in
-    add_work todo l
+    match Resolve.peek l with
+    | Error () -> Memo.return todo
+    | Ok l -> Memo.return (add_work todo l)
   in
   (* [work todo acc] adds the transitive-reflexive closure of the
      libraries that are contained in the todo list [todo] and are not

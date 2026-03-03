@@ -15,15 +15,13 @@ First, test the variable in string interpolation context (command argument):
   Solution for dune.lock:
   - string-context.0.0.1
 
-Currently the variable is left as a pform. It should resolve to an empty string
-at solve time:
+The variable resolves to an empty string at solve time:
 
   $ cat dune.lock/string-context.0.0.1.pkg
   (version 0.0.1)
   
   (build
-   (all_platforms ((action (run echo %{pkg:not-in-lock:installed})))))
-
+   (all_platforms ((action (run echo "")))))
 
 Now test the variable in truthy/filter context (conditional on command):
 

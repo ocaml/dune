@@ -32,7 +32,12 @@ val version : t
 val post : t
 val build : t
 val dev : t
+val installed : t
 val one_of : t -> t list -> bool
+
+(** Returns the string value of a variable for an absent package in string
+    interpolation context. Returns None for variables without known values. *)
+val absent_package_value : t -> string option
 
 (** The set of variable names whose values are expected to differ depending on
     the current platform. *)

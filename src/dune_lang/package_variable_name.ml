@@ -45,7 +45,12 @@ let name = of_string "name"
 let build = of_string "build"
 let post = of_string "post"
 let dev = of_string "dev"
+let installed = of_string "installed"
 let one_of t xs = List.mem xs ~equal t
+
+(** Returns the string value of a variable for an absent package in string
+    interpolation context. Returns None for variables without known values. *)
+let absent_package_value t = if equal t installed then Some "" else None
 
 let platform_specific =
   Set.of_list [ arch; os; os_version; os_distribution; os_family; sys_ocaml_version ]
@@ -69,6 +74,7 @@ let all_known =
   ; build
   ; post
   ; dev
+  ; installed
   ]
 ;;
 

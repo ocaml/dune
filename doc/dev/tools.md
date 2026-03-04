@@ -9,7 +9,6 @@ executables can be used as a tool.
 **Table of Contents**
 
 - [Tools](#tools)
-  - [Terminology](#terminology)
   - [Requirements](#requirements)
     - [1. Installation](#1-installation)
       - [1.1. Generality](#11-generality)
@@ -31,13 +30,6 @@ executables can be used as a tool.
   - [TODO: Learnings from the initial dune prototype](#todo-learnings-from-the-initial-dune-prototype)
 
 <!-- markdown-toc end -->
-
-## Terminology
-
-- A **tool** is just an executable provided by some opam package.
-- A tool is **available** if it is part of a well formed opam package published
- on the opam repository, or via pinning from any source (e.g., a Codeberg
- repository).
 
 ## Requirements
 

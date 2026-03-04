@@ -45,7 +45,18 @@ let name = of_string "name"
 let build = of_string "build"
 let post = of_string "post"
 let dev = of_string "dev"
+let installed = of_string "installed"
+let pinned = of_string "pinned"
+let enable = of_string "enable"
 let one_of t xs = List.mem xs ~equal t
+
+let absent_package_value t =
+  if equal t installed then Some "false" else if equal t version then Some "" else None
+;;
+
+let is_falsey_for_absent_package t =
+  equal t installed || equal t pinned || equal t enable
+;;
 
 let platform_specific =
   Set.of_list [ arch; os; os_version; os_distribution; os_family; sys_ocaml_version ]
@@ -69,6 +80,9 @@ let all_known =
   ; build
   ; post
   ; dev
+  ; installed
+  ; pinned
+  ; enable
   ]
 ;;
 

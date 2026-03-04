@@ -18,7 +18,7 @@ let rocq_syntax =
   Dune_lang.Syntax.create
     ~name:(Syntax.Name.parse "rocq")
     ~desc:"Rocq Prover build language"
-    [ (0, 11), `Since (3, 21); (0, 12), `Since (3, 22) ]
+    [ (0, 11), `Since (3, 21); (0, 12), `Since (3, 22); (0, 13), `Since (3, 22) ]
 ;;
 
 let get_rocq_syntax () = Dune_lang.Syntax.get_exn rocq_syntax
@@ -73,6 +73,7 @@ module Extraction = struct
     { (* not a list of modules because we want to preserve whatever case Rocq
          uses *)
       extracted_modules : string list
+    ; extracted_files : string list
     ; prelude : Loc.t * Rocq_module.Name.t
     ; buildable : Buildable.t
     }
@@ -81,12 +82,42 @@ module Extraction = struct
     List.concat_map t.extracted_modules ~f:(fun m -> [ m ^ ".ml"; m ^ ".mli" ])
   ;;
 
+  let target_fnames t = ml_target_fnames t @ t.extracted_files
+
   let decode =
     fields
-      (let+ extracted_modules = field "extracted_modules" (repeat string)
+      (let+ extracted_modules = field "extracted_modules" (repeat string) ~default:[]
+       and+ extracted_files =
+         field
+           "extracted_files"
+           (Dune_lang.Syntax.since rocq_syntax (0, 13) >>> repeat string)
+           ~default:[]
        and+ prelude = field "prelude" (located (string >>| Rocq_module.Name.make))
-       and+ buildable = Buildable.decode in
-       { prelude; extracted_modules; buildable })
+       and+ buildable = Buildable.decode
+       and+ loc = loc in
+       if List.is_empty extracted_modules && List.is_empty extracted_files
+       then
+         User_error.raise
+           ~loc
+           [ Pp.text
+               "At least one of (extracted_modules) or (extracted_files) must be \
+                specified"
+           ];
+       let all_targets =
+         ml_target_fnames { extracted_modules; extracted_files; prelude; buildable }
+         @ extracted_files
+       in
+       (match String.Map.of_list (List.map all_targets ~f:(fun t -> t, ())) with
+        | Ok _ -> ()
+        | Error (dup, (), ()) ->
+          User_error.raise
+            ~loc
+            [ Pp.textf
+                "Duplicate target filename %S across extracted_modules and \
+                 extracted_files"
+                dup
+            ]);
+       { prelude; extracted_modules; extracted_files; buildable })
   ;;
 
   include Stanza.Make (struct

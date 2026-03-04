@@ -12,9 +12,9 @@ executables can be used as a tool.
   - [Requirements](#requirements)
     - [1. Installation](#1-installation)
       - [1.1. Generality](#11-generality)
-      - [1.3. Project sandbox](#13-project-sandbox)
-      - [1.4. System wide](#14-system-wide)
-      - [1.5. Dog fooding](#15-dog-fooding)
+      - [1.2. Project sandbox](#12-project-sandbox)
+      - [1.3. System wide](#13-system-wide)
+      - [1.4. Dog fooding](#14-dog-fooding)
     - [2. Usability](#2-usability)
       - [2.1. Shells](#21-shells)
       - [2.2 Programmatic use](#22-programmatic-use)
@@ -46,11 +46,11 @@ Users must be able to install tools by Dune.
 All available tools must be installable, without requiring changes to the dune
 source code.
 
-#### 1.3. Project sandbox
-Users must be able to install tools within the scope of a project sandbox (i.e., 
+#### 1.2. Project sandbox
+Users must be able to install tools within the scope of a project sandbox (i.e.,
 a "workspace").
 
-#### 1.4. System wide
+#### 1.3. System wide
 Users must be able to install tools in a way that allows them to be used in the
 system-wide environment (e.g., outside of any particular sandbox).
 
@@ -61,7 +61,7 @@ reliable for users to use installed tools outside of a project sandbox (e.g., by
 adding the location of a directory of binaries to their `PATH` or some other
 means).
 
-#### 1.5. Dog fooding
+#### 1.4. Dog fooding
 When projects include the implementation of tools, the tools must installable
 from the project source.
 

@@ -19,6 +19,9 @@ let rec eval_rec (t : Slang.t) ~dir ~(f : expander)
   =
   match t with
   | Nil -> Memo.return (Ok [])
+  | Undefined ->
+    (* Undefined should be simplified away before expansion *)
+    Code_error.raise "Unexpected Undefined in slang expansion" []
   | Literal sw ->
     f sw
     >>| Result.map_error ~f:(function `Undefined_pkg_var variable_name ->

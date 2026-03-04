@@ -63,7 +63,7 @@ let opam_variable_to_slang =
     Package_variable.to_pform { Package_variable.name = variable_name; scope }
     |> Slang.pform
   in
-  fun ~loc ~packages_in_solution packages variable ->
+  fun ~loc ~packages_in_solution ~for_string_interp packages variable ->
     let variable_string = OpamVariable.to_string variable in
     let variable_name = Package_variable_name.of_string variable_string in
     let convert_with_package_name package_name =
@@ -77,7 +77,7 @@ let opam_variable_to_slang =
            if Package_name.Map.mem packages_in_solution pkg_name
            then pform
            else
-             Package_variable_name.absent_package_value variable_name
+             Package_variable_name.absent_package_value ~for_string_interp variable_name
              |> Option.value ~default:pform
          | None -> opam_var_to_pform variable_name Self)
     in
@@ -123,11 +123,18 @@ let desugar_special_string_interpolation_syntax
   | _ -> fident
 ;;
 
-let opam_fident_to_slang ~loc ~packages_in_solution fident =
+let opam_fident_to_slang ~loc ~packages_in_solution ~for_string_interp fident =
   let packages, variable, string_converter =
     OpamFilter.desugar_fident fident |> desugar_special_string_interpolation_syntax
   in
-  let slang = opam_variable_to_slang ~loc ~packages_in_solution packages variable in
+  let for_string_interp =
+    match string_converter with
+    | Some _ -> false
+    | None -> for_string_interp
+  in
+  let slang =
+    opam_variable_to_slang ~loc ~packages_in_solution ~for_string_interp packages variable
+  in
   match string_converter with
   | None -> slang
   | Some (then_, else_) ->
@@ -136,7 +143,7 @@ let opam_fident_to_slang ~loc ~packages_in_solution fident =
        convert expressions that throw undefined variable exceptions into false.
     *)
     (match slang with
-     | Form (_, Blang (Blang.Const false)) -> Slang.text else_
+     | Form (_, Blang (Blang.Const false)) | Slang.Undefined -> Slang.text else_
      | _ ->
        let condition =
          Blang.Expr (Slang.catch_undefined_var slang ~fallback:(Slang.bool false))
@@ -144,9 +151,9 @@ let opam_fident_to_slang ~loc ~packages_in_solution fident =
        Slang.if_ condition ~then_:(Slang.text then_) ~else_:(Slang.text else_))
 ;;
 
-let opam_raw_fident_to_slang ~loc ~packages_in_solution raw_ident =
+let opam_raw_fident_to_slang ~loc ~packages_in_solution ~for_string_interp raw_ident =
   OpamTypesBase.filter_ident_of_string raw_ident
-  |> opam_fident_to_slang ~loc ~packages_in_solution
+  |> opam_fident_to_slang ~loc ~packages_in_solution ~for_string_interp
 ;;
 
 let opam_string_to_slang ~packages_in_solution ~package ~loc opam_string =
@@ -160,7 +167,7 @@ let opam_string_to_slang ~packages_in_solution ~package ~loc opam_string =
          when String.starts_with ~prefix:"%{" interp
               && String.ends_with ~suffix:"}%" interp ->
          let ident = String.sub ~pos:2 ~len:(String.length interp - 4) interp in
-         opam_raw_fident_to_slang ~loc ~packages_in_solution ident
+         opam_raw_fident_to_slang ~loc ~packages_in_solution ~for_string_interp:true ident
        | other ->
          User_error.raise
            ~loc
@@ -234,7 +241,9 @@ let filter_to_blang ~packages_in_solution ~package ~loc filter =
   let filter_to_slang (filter : OpamTypes.filter) =
     match filter with
     | FString s -> opam_string_to_slang ~packages_in_solution ~package ~loc s
-    | FIdent fident -> opam_fident_to_slang ~loc ~packages_in_solution fident
+    | FIdent fident ->
+      (* FIdent in filter context is not string interpolation *)
+      opam_fident_to_slang ~loc ~packages_in_solution ~for_string_interp:false fident
     | other ->
       Code_error.raise
         "The opam file parser should only allow identifiers and strings in places where \
@@ -304,7 +313,11 @@ let opam_commands_to_actions
                 match simple_arg with
                 | CString s -> opam_string_to_slang ~packages_in_solution ~package ~loc s
                 | CIdent ident ->
-                  opam_raw_fident_to_slang ~loc ~packages_in_solution ident
+                  opam_raw_fident_to_slang
+                    ~loc
+                    ~packages_in_solution
+                    ~for_string_interp:true
+                    ident
               in
               Slang.simplify slang
             in

@@ -974,6 +974,7 @@ module Action_expander = struct
          let loc =
            let loc = function
              | Slang.Nil -> None
+             | Slang.Undefined -> None
              | Literal sw -> Some (String_with_vars.loc sw)
              | Form (loc, _) -> Some loc
            in

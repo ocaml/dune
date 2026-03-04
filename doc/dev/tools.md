@@ -1,10 +1,9 @@
 # Tools
 
 This document sets out the design of dune's support for managing tools (e.g.,
-dev tools, such as ocamlformat or odig). The support for managing 
-tools is implemented on the basis of dune package management, but we can and
-should make changes to the implementation of the package management system,
-when needed to achieve robust and usable tool management.
+dev tools, such as ocamlformat or odig). Tools are configured via a `(tool)`
+stanza in `dune-workspace` or via the CLI, and any opam package that provides
+executables can be used as a tool.
 
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 **Table of Contents**

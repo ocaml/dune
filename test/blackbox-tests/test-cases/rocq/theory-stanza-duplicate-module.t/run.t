@@ -12,4 +12,5 @@ Dune should warn about duplicate modules declared inside a rocq.theory stanza
   2 |  (name foo)
   3 |  (modules foo bar foo))
   Error: Duplicate Rocq module "foo".
+  Hint: The Rocq module "foo" is already defined in theory stanza "foo".
   [1]

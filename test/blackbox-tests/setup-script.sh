@@ -73,6 +73,9 @@ export GIT_AUTHOR_NAME="Test Name"
 export GIT_AUTHOR_EMAIL="test@example.com"
 export GIT_COMMITTER_NAME="${GIT_AUTHOR_NAME}"
 export GIT_COMMITTER_EMAIL="${GIT_AUTHOR_EMAIL}"
+# Set various GIT variables to ensure git behaves as "default" as possible in the tests
+export GIT_CONFIG_GLOBAL="/dev/null"
+export GIT_CONFIG_SYSTEM="/dev/null"
 
 export DUNE_RUNNING=0
 

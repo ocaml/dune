@@ -1530,10 +1530,10 @@ end = struct
       and+ files_dir =
         let+ lock_dir_path =
           Package_universe.lock_dir_path package_universe >>| Option.value_exn
-        and+ { solved_for_platforms = _, platforms; _ } =
-          Package_universe.lock_dir package_universe
+        and+ lock_dir = Package_universe.lock_dir package_universe in
+        let version =
+          Option.some_if (Dune_pkg.Lock_dir.uses_versioned_paths lock_dir) info.version
         in
-        let version = Option.some_if (not (List.is_empty platforms)) info.version in
         Dune_pkg.Lock_dir.Pkg.files_dir info.name version ~lock_dir:lock_dir_path
         |> Path.as_in_build_dir_exn
       in

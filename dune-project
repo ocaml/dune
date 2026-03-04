@@ -261,6 +261,6 @@ understood by dune language."))
  (synopsis "Dune Action Traces")
  (depends
   csexp
-  (ocaml (>= 4.08)))
+  (ocaml (>= 4.12)))
  (maintenance_intent none)
  (description "Produce trace events from dune actions"))

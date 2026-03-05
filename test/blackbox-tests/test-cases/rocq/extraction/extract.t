@@ -75,7 +75,7 @@
   Promoting _build/default/extract.output to extract.expected.
   $ dune runtest
 
-Helpful message on theory then extraction module duplication
+Make sure that the error message is helpful if a module is both covered by a theory and an extraction stanza.
   $ cat >dune-project <<EOF
   > (lang dune 3.22)
   > (using rocq 0.12)
@@ -105,11 +105,11 @@ Helpful message on theory then extraction module duplication
   4 |  (prelude extract)
   5 |  (extracted_modules Datatypes extract))
   Error: Duplicate Rocq module "extract".
-  Hint: The Rocq module "extract" is already defined in theory stanza
+  Hint: The Rocq module "extract" is already covered by rocq.theory stanza
   "TestExtr".
   [1]
 
-Helpful message on extraction then theory module duplication
+Make sure that the error message is helpful if a module is both covered by an extraction and a theory stanza.
   $ cat >dune-project <<EOF
   > (lang dune 3.22)
   > (using rocq 0.12)
@@ -138,6 +138,6 @@ Helpful message on extraction then theory module duplication
   4 | (rocq.theory
   5 |  (name TestExtr))
   Error: Duplicate Rocq module "extract".
-  Hint: The Rocq module "extract" is already defined in extraction stanza
+  Hint: The Rocq module "extract" is already covered by rocq.extraction stanza
   "extract".
   [1]

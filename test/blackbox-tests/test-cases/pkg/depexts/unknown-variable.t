@@ -23,6 +23,12 @@ Depexts with unknown variables should be filtered out at lock time.
   - dep.0.0.1
   - foo.0.0.1
 
+Only "c" should be kept since "dep" is in the solution and "installed" is a
+standard package variable. Cases "a", "b", and "d" should be filtered:
+- a: bare undefined variable
+- b: package exists but variable is not standard
+- d: package not in solution (CR-someday Alizter: currently not filtered)
+
   $ cat ${default_lock_dir}/foo.0.0.1.pkg
   (version 0.0.1)
   
@@ -30,7 +36,5 @@ Depexts with unknown variables should be filtered out at lock time.
    (all_platforms (dep)))
   
   (depexts
-   ((a) %{pkg-self:foobar})
-   ((b) %{pkg:dep:nonexistent-var})
    ((c) %{pkg:dep:installed})
    ((d) %{pkg:nonexistent-pkg:installed}))

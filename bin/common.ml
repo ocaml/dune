@@ -62,19 +62,17 @@ let default_build_dir = "_build"
 let trace_file_name = "trace.csexp"
 
 let find_default_trace_file () =
-  let root =
-    Workspace_root.create
-      ~from:Filename.current_dir_name
-      ~default_is_cwd:true
-      ~specified_by_user:None
-      ()
+  let trace_file = Filename.concat default_build_dir trace_file_name in
+  let cwd = Sys.getcwd () in
+  let rec loop dir =
+    let candidate = Filename.concat dir trace_file in
+    if Sys.file_exists candidate
+    then candidate
+    else (
+      let parent = Filename.dirname dir in
+      if parent = dir then Filename.concat cwd trace_file else loop parent)
   in
-  let root_dir =
-    match root with
-    | Some root -> root.dir
-    | None -> Filename.current_dir_name
-  in
-  Filename.concat (Filename.concat root_dir default_build_dir) trace_file_name
+  loop cwd
 ;;
 
 module Package = Dune_lang.Package

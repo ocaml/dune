@@ -27,5 +27,6 @@ dune trace cat should work from both the root and subdirectory:
   }
 
   $ (cd src && dune trace cat | jq 'select(.name == "exit") | {name}')
-  Error: ./_build/trace.csexp: No such file or directory
-  [1]
+  {
+    "name": "exit"
+  }

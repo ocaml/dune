@@ -260,7 +260,7 @@ understood by dune language."))
  (dir otherlibs/dune-action-trace)
  (synopsis "Dune Action Traces")
  (depends
-  csexp
-  (ocaml (>= 4.08)))
+  (csexp (>= 1.5.0))
+  (ocaml (>= 4.14)))
  (maintenance_intent none)
  (description "Produce trace events from dune actions"))

@@ -264,7 +264,7 @@ let cat =
     let trace_file =
       match trace_file with
       | Some s -> s
-      | None -> Path.Local.to_string Common.default_trace_file
+      | None -> Common.find_default_trace_file ()
     in
     if follow
     then iter_sexps_follow trace_file ~f:print_with_flush
@@ -294,7 +294,7 @@ let commands =
     let trace_file =
       match trace_file with
       | Some s -> s
-      | None -> Path.Local.to_string Common.default_trace_file
+      | None -> Common.find_default_trace_file ()
     in
     iter_sexps trace_file ~f:(fun sexp ->
       match parse_process_event sexp with

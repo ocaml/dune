@@ -77,7 +77,7 @@ Dune should be able to find it too
   Entering directory 'app'
   Leaving directory 'app'
 
-  $ dune trace cat | jq '
+  $ dune trace cat --trace-file app/_build/trace.csexp | jq '
   > include "dune";
   >    processes
   > | .args

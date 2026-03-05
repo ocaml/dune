@@ -397,6 +397,8 @@ module Group = struct
       User_error.raise ~loc [ Pp.textf "may not set the %S stanza more than once" name ]
   ;;
 
+  let compose_dirs base next = Predicate_lang.replace_standard ~where:next ~with_:base
+
   let subdir_status { ignored_sub_dirs; data_only_dirs; vendored_dirs; dirs; _ } =
     let data_only =
       match data_only_dirs, ignored_sub_dirs with
@@ -420,7 +422,14 @@ module Group = struct
       }
     | Vendored_dirs (loc, glob) ->
       { t with vendored_dirs = Some (no_dupes "vendored_dirs" loc t.vendored_dirs glob) }
-    | Dirs (loc, glob) -> { t with dirs = Some (no_dupes "dirs" loc t.dirs glob) }
+    | Dirs (loc, glob) ->
+      let dirs =
+        match t.dirs with
+        | None -> loc, glob
+        | Some (existing_loc, existing_glob) ->
+          existing_loc, compose_dirs existing_glob glob
+      in
+      { t with dirs = Some dirs }
     | Files (loc, glob) -> { t with files = Some (no_dupes "files" loc t.files glob) }
     | Subdir (path, stanzas) -> { t with subdirs = (path, stanzas) :: t.subdirs }
     | Leftovers stanzas -> { t with leftovers = List.rev_append stanzas t.leftovers }

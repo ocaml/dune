@@ -11,23 +11,21 @@ Run dune build from the subdirectory:
   Leaving directory '..'
 
 Check that the trace file is not written in the incorrect location:
-(Currently this is the case)
 
   $ test -f src/_build/trace.csexp
+  [1]
 
 The trace file should be written in the correct location:
-(Currently this is not the case)
 
   $ test -f _build/trace.csexp
-  [1]
 
 dune trace cat should work from both the root and subdirectory:
 
   $ dune trace cat | jq 'select(.name == "exit") | {name}'
-  Error: _build/trace.csexp: No such file or directory
-  [1]
-
-  $ (cd src && dune trace cat | jq 'select(.name == "exit") | {name}')
   {
     "name": "exit"
   }
+
+  $ (cd src && dune trace cat | jq 'select(.name == "exit") | {name}')
+  Error: ./_build/trace.csexp: No such file or directory
+  [1]

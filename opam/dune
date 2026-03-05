@@ -45,9 +45,3 @@
 
 (rule
  (copy dune-private-libs.opam.template top-closure.opam.template))
-
-; FIXME(shonfeder): workaround for broken `--with-test` installation
-; see https://github.com/ocaml/dune/issues/13732
-
-(rule
- (copy dune-private-libs.opam.template dune-action-trace.opam.template))

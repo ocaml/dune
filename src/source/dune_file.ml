@@ -412,7 +412,7 @@ module Group = struct
     { Source_dir_status.Map.normal = dirs; data_only; vendored = vendored_dirs }
   ;;
 
-  let combine t (ast : Ast.t) =
+  let combine ~dune_version t (ast : Ast.t) =
     match ast with
     | Ignored_sub_dirs (loc, glob) ->
       { t with ignored_sub_dirs = (loc, glob) :: t.ignored_sub_dirs }
@@ -424,10 +424,13 @@ module Group = struct
       { t with vendored_dirs = Some (no_dupes "vendored_dirs" loc t.vendored_dirs glob) }
     | Dirs (loc, glob) ->
       let dirs =
-        match t.dirs with
-        | None -> loc, glob
-        | Some (existing_loc, existing_glob) ->
-          existing_loc, compose_dirs existing_glob glob
+        if dune_version >= (3, 22)
+        then (
+          match t.dirs with
+          | None -> loc, glob
+          | Some (existing_loc, existing_glob) ->
+            existing_loc, compose_dirs existing_glob glob)
+        else no_dupes "dirs" loc t.dirs glob
       in
       { t with dirs = Some dirs }
     | Files (loc, glob) -> { t with files = Some (no_dupes "files" loc t.files glob) }
@@ -436,8 +439,8 @@ module Group = struct
     | Include _ -> assert false
   ;;
 
-  let of_ast (ast : Ast.t list) =
-    let t = List.fold_left ast ~init:empty ~f:combine in
+  let of_ast (ast : Ast.t list) ~dune_version =
+    let t = List.fold_left ast ~init:empty ~f:(combine ~dune_version) in
     let t = { t with leftovers = List.rev t.leftovers } in
     match t.data_only_dirs, t.dirs, t.ignored_sub_dirs with
     | _, Some (loc, _), _ :: _ ->
@@ -454,8 +457,8 @@ module Group = struct
   ;;
 end
 
-let rec to_dir_map ast =
-  let group = Group.of_ast ast in
+let rec to_dir_map ast ~dune_version =
+  let group = Group.of_ast ast ~dune_version in
   let node =
     let subdir_status = Group.subdir_status group in
     let files = group.files in
@@ -463,7 +466,7 @@ let rec to_dir_map ast =
   in
   let subdirs =
     List.map group.subdirs ~f:(fun (path, stanzas) ->
-      Dir_map.make_at_path (Path.Local.explode path) (to_dir_map stanzas))
+      Dir_map.make_at_path (Path.Local.explode path) (to_dir_map stanzas ~dune_version))
   in
   Dir_map.merge_all (node :: subdirs)
 ;;
@@ -487,7 +490,7 @@ let decode ~file project sexps =
        ~inside_subdir
        ~inside_include
        Filename.current_dir_name
-  >>| to_dir_map
+  >>| to_dir_map ~dune_version:(Dune_project.dune_version project)
 ;;
 
 type t =

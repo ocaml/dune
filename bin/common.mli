@@ -1,5 +1,4 @@
 open Dune_config_file
-open Stdune
 
 type t
 
@@ -20,7 +19,7 @@ val watch_exclusions : t -> string list
 val watch : t -> Dune_rpc_impl.Watch_mode_config.t
 val file_watcher : t -> Dune_scheduler.Scheduler.Run.file_watcher
 val prefix_target : t -> string -> string
-val default_trace_file : Path.Local.t
+val find_default_trace_file : unit -> string
 
 (** [Builder] describes how to initialize Dune. *)
 module Builder : sig

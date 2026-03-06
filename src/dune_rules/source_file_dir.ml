@@ -6,4 +6,5 @@ type t =
   ; files : Filename.Set.t
   ; source_dir : Source_tree.Dir.t option
   ; stanzas : Stanza.t list
+  ; module_path_translation : Module_name.Unchecked.Path.t Module_trie.Unchecked.t
   }

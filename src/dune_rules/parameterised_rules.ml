@@ -305,6 +305,7 @@ let obj_dir_for_dep_rules dir =
   Obj_dir.make_lib
     ~dir
     ~has_private_modules:false
+    ~has_excluded_modules:false
     ~private_lib:false
     (Lib_name.Local.of_string "deps")
 ;;

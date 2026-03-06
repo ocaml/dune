@@ -15,6 +15,6 @@ val make
   -> unit
   -> t
 
-val unsorted_objects_and_cms : t -> mode:Mode.t -> Path.t list
+val unsorted_objects_and_cms : t -> mode:Mode.t -> include_excluded:bool -> Path.t list
 val top_sorted_cms : t -> mode:Mode.t -> Path.t list Action_builder.t
 val top_sorted_objects_and_cms : t -> mode:Mode.t -> Path.t list Action_builder.t

@@ -632,6 +632,8 @@ let make_lib_modules
       ~kind
       ~private_modules:
         (Option.value ~default:Ordered_set_lang.Unexpanded.standard lib.private_modules)
+      ~excluded_modules:
+        (Option.value ~default:Ordered_set_lang.Unexpanded.standard lib.excluded_modules)
       ~src_dir:dir
       modules_settings
       ~version
@@ -968,6 +970,7 @@ let modules_of_stanzas =
         ~src_dir:dir
         ~kind:Modules_field_evaluator.Exe_or_normal_lib
         ~private_modules:Ordered_set_lang.Unexpanded.standard
+        ~excluded_modules:Ordered_set_lang.Unexpanded.standard
         ~version:exes.dune_version
         modules_settings
         ~for_:Ocaml
@@ -1082,6 +1085,7 @@ let modules_of_stanzas =
                    ~kind:Modules_field_evaluator.Exe_or_normal_lib
                    ~version
                    ~private_modules:Ordered_set_lang.Unexpanded.standard
+                   ~excluded_modules:Ordered_set_lang.Unexpanded.standard
                    ~src_dir:dir
                    ~for_:Melange
                    mel.modules

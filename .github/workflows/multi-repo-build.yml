@@ -96,7 +96,7 @@ jobs:
           if [ -n "${{ inputs.depext_linux }}" ]; then
             depexts="${{ inputs.depext_linux }}"
           else
-            depexts=$(cd workspace && nix shell .. -c dune show depexts 2>&1)
+            depexts=$(cd workspace && nix shell .. -c dune show depexts)
           fi
           echo "::endgroup::"
           echo "::group::Installing depexts: $depexts"
@@ -113,7 +113,7 @@ jobs:
           if [ -n "${{ inputs.depext_macos }}" ]; then
             depexts="${{ inputs.depext_macos }}"
           else
-            depexts=$(cd workspace && nix shell .. -c dune show depexts 2>&1)
+            depexts=$(cd workspace && nix shell .. -c dune show depexts)
           fi
           echo "::endgroup::"
           echo "::group::Installing depexts: $depexts"

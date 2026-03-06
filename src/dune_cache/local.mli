@@ -34,10 +34,9 @@ module Target : sig
 
   (** Prepare the target for storing into shared cache.
 
-      If the given file is not regular (e.g. a symbolic link), return [None]
-      because such targets are not supported by the shared cache. Otherwise,
-      remove the "write" permissions and record some additional information
-      about the file, such as whether it is executable or not. *)
+      Return [None] when the target kind is unsupported by the cache.
+      Otherwise, remove write permissions when needed and record additional
+      information required for storing and restoring the target. *)
   val create : Path.Build.t -> t option
 end
 

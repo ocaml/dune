@@ -29,4 +29,3 @@ See #11523.
   $ dune clean
 
   $ dune build d
-  building

@@ -1116,6 +1116,10 @@ let to_dyn
     ]
 ;;
 
+(* CR-someday Alizter: Remove this when portable lock directories are
+   consolidated with non-portable lock directories. *)
+let uses_versioned_paths t = not (List.is_empty (snd t.solved_for_platforms))
+
 type missing_dependency =
   { dependant_package : Pkg.t
   ; dependency : Package_name.t

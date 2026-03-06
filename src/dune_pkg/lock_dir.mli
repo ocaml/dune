@@ -117,6 +117,11 @@ val remove_locs : t -> t
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 
+(** Returns whether this lock directory uses versioned paths for package
+    files directories. Portable lock directories use versioned paths to
+    handle multiple versions of the same package. *)
+val uses_versioned_paths : t -> bool
+
 (** [create_latest_version packages ~ocaml ~repos
     ~expanded_solver_variable_bindings] raises a [Code_error] if [packages] is
     not closed under the "depends on" relationship between packages. Every

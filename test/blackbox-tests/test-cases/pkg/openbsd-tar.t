@@ -1,4 +1,4 @@
-Test that demonstrates the issue with OpenBSD-style tar (#10123).
+Test that OpenBSD-style tar works when dune passes explicit flags (#10123).
 
 Unlike GNU tar and BSD tar (libarchive), OpenBSD tar requires explicit
 flags for compressed archives: -z for gzip, -j for bzip2, etc.
@@ -17,17 +17,17 @@ Set up a fake tar that behaves like OpenBSD tar:
   >     echo "tar (OpenBSD)"
   >     ;;
   >   *)
-  >     # Dune passes: xf archive -C target (or xzf archive -C target with fix)
-  >     flags="$1"
-  >     archive="$2"
-  >     target="$4"
+  >     # Dune passes: -x -z -f archive -C target (or -x -j -f ... for bzip2)
+  >     # $4 = archive, $6 = target
+  >     archive="$4"
+  >     target="$6"
   >     # Require correct flag for compressed archives
   >     case "$archive" in
   >       *.tar.gz|*.tgz)
-  >         echo "$flags" | grep -q 'z' || { echo "tar: Cannot open: compressed archive requires -z flag" >&2; exit 1; }
+  >         echo "$@" | grep -q '\-z' || { echo "tar: Cannot open: compressed archive requires -z flag" >&2; exit 1; }
   >         ;;
   >       *.tar.bz2|*.tbz)
-  >         echo "$flags" | grep -q 'j' || { echo "tar: Cannot open: compressed archive requires -j flag" >&2; exit 1; }
+  >         echo "$@" | grep -q '\-j' || { echo "tar: Cannot open: compressed archive requires -j flag" >&2; exit 1; }
   >         ;;
   >     esac
   >     # Success - create fake extracted content
@@ -48,7 +48,17 @@ Set up fake PATH with only our OpenBSD-style tar:
   $ ln -s $(which grep) .fakebin/grep
   $ ln -s ../.binaries/openbsd-tar .fakebin/tar
 
-Test with a .tar.gz file - fails because dune doesn't pass -z flag:
+Helper to show tar extract args from trace (filters to -x calls only):
+
+  $ tar_extract_args() {
+  >   dune trace cat | jq -c 'include "dune"; processes
+  >     | select(.args.prog | contains("tar"))
+  >     | select(.args.process_args | index("-x"))
+  >     | .args.process_args
+  >     | map(if (startswith("/") or startswith("_build")) then "PATH" else . end)'
+  > }
+
+Test with a .tar.gz file:
 
   $ echo "fake tarball" > test.tar.gz
 
@@ -59,13 +69,14 @@ Test with a .tar.gz file - fails because dune doesn't pass -z flag:
   > (version dev)
   > EOF
 
-  $ PATH=.fakebin build_pkg foo 2>&1 | grep -A2 '^Error'
-  Error: failed to extract 'test.tar.gz'
-  Reason: 'tar' failed with non-zero exit code '1' and output:
-  - tar: Cannot open: compressed archive requires -z flag
-  [1]
+  $ PATH=.fakebin build_pkg foo
 
-Test with a .tbz file - fails because dune doesn't pass -j flag:
+Verify that -z flag was passed:
+
+  $ tar_extract_args
+  ["-x","-z","-f","PATH","-C","PATH"]
+
+Test with a .tbz file (bzip2 compressed):
 
   $ echo "fake tarball" > test.tbz
 
@@ -76,8 +87,47 @@ Test with a .tbz file - fails because dune doesn't pass -j flag:
   > (version dev)
   > EOF
 
-  $ PATH=.fakebin build_pkg bar 2>&1 | grep -A2 '^Error'
-  Error: failed to extract 'test.tbz'
-  Reason: 'tar' failed with non-zero exit code '1' and output:
-  - tar: Cannot open: compressed archive requires -j flag
+  $ PATH=.fakebin build_pkg bar
+
+Verify that -j flag was passed:
+
+  $ tar_extract_args
+  ["-x","-j","-f","PATH","-C","PATH"]
+
+Test with a .tar.xz file - should error with helpful message since OpenBSD tar
+doesn't support XZ:
+
+  $ echo "fake tarball" > test.tar.xz
+
+  $ make_lockpkg xzpkg <<EOF
+  > (source
+  >  (fetch
+  >   (url "file://$PWD/test.tar.xz")))
+  > (version dev)
+  > EOF
+
+  $ PATH=.fakebin build_pkg xzpkg 2>&1 | dune_cmd delete '^File |^ *[0-9]+ \||^ +\^'
+  Error: Cannot extract 'test.tar.xz'
+  The detected tar does not support XZ decompression. XZ archives require GNU
+  tar or libarchive.
+  Hint: Install GNU tar or bsdtar (libarchive) for XZ support.
+  [1]
+
+Test with a .tar.lzma file - should error with helpful message since OpenBSD tar
+doesn't support LZMA:
+
+  $ echo "fake tarball" > test.tar.lzma
+
+  $ make_lockpkg lzmapkg <<EOF
+  > (source
+  >  (fetch
+  >   (url "file://$PWD/test.tar.lzma")))
+  > (version dev)
+  > EOF
+
+  $ PATH=.fakebin build_pkg lzmapkg 2>&1 | dune_cmd delete '^File |^ *[0-9]+ \||^ +\^'
+  Error: Cannot extract 'test.tar.lzma'
+  The detected tar does not support LZMA decompression. LZMA archives require
+  GNU tar or libarchive.
+  Hint: Install GNU tar or bsdtar (libarchive) for LZMA support.
   [1]

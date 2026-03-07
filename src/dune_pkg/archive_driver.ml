@@ -2,6 +2,15 @@ open Stdune
 module Process = Dune_engine.Process
 open Fiber.O
 
+(** Tar implementation type, detected via --version output:
+    - Libarchive: libarchive/bsdtar - auto-detects compression, can extract zip
+    - Gnu: GNU tar - auto-detects compression, no zip support
+    - Other: Unknown (e.g. OpenBSD) - needs explicit -z/-j flags *)
+type tar_impl =
+  | Libarchive
+  | Gnu
+  | Other
+
 module Command = struct
   type t =
     { bin : Path.t
@@ -16,8 +25,55 @@ type t =
 
 let which bin_name = Bin.which ~path:(Env_path.path Env.initial) bin_name
 
-let make_tar_args ~archive ~target_in_temp =
-  [ "xf"; Path.to_string archive; "-C"; Path.to_string target_in_temp ]
+(* Regexes for detecting tar implementation from --version output *)
+let libarchive_re = Re.compile (Re.alt [ Re.str "bsdtar"; Re.str "libarchive" ])
+let gnu_tar_re = Re.compile (Re.str "GNU tar")
+
+(** Detect tar implementation by running --version *)
+let detect_tar_impl bin =
+  let+ output, _ = Process.run_capture ~display:Quiet Return bin [ "--version" ] in
+  if Re.execp libarchive_re output
+  then Libarchive
+  else if Re.execp gnu_tar_re output
+  then Gnu
+  else Other
+;;
+
+(** Generate tar arguments, adding -z/-j for non-auto-detecting tar *)
+let make_tar_args ~tar_impl ~archive ~target_in_temp =
+  let decompress_flag =
+    match tar_impl with
+    | Libarchive | Gnu -> [] (* auto-detect compression *)
+    | Other ->
+      let has_suffix = Filename.check_suffix (Path.to_string archive) in
+      (* Need explicit flags for tar implementations that don't auto-detect *)
+      if has_suffix ".tar.gz" || has_suffix ".tgz"
+      then [ "-z" ]
+      else if has_suffix ".tar.bz2" || has_suffix ".tbz"
+      then [ "-j" ]
+      else if has_suffix ".tar.xz" || has_suffix ".txz"
+      then
+        User_error.raise
+          ~hints:[ Pp.text "Install GNU tar or bsdtar (libarchive) for XZ support." ]
+          [ Pp.textf "Cannot extract '%s'" (Path.basename archive)
+          ; Pp.text
+              "The detected tar does not support XZ decompression. XZ archives require \
+               GNU tar or libarchive."
+          ]
+      else if has_suffix ".tar.lzma" || has_suffix ".tlz"
+      then
+        User_error.raise
+          ~hints:[ Pp.text "Install GNU tar or bsdtar (libarchive) for LZMA support." ]
+          [ Pp.textf "Cannot extract '%s'" (Path.basename archive)
+          ; Pp.text
+              "The detected tar does not support LZMA decompression. LZMA archives \
+               require GNU tar or libarchive."
+          ]
+      else []
+  in
+  [ "-x" ]
+  @ decompress_flag
+  @ [ "-f"; Path.to_string archive; "-C"; Path.to_string target_in_temp ]
 ;;
 
 let make_zip_args ~archive ~target_in_temp =
@@ -27,12 +83,10 @@ let make_zip_args ~archive ~target_in_temp =
 let tar =
   let command =
     Fiber.Lazy.create (fun () ->
-      match
-        (* Test for tar before bsdtar as tar is more likely to be installed
-            and both work equally well for tarballs. *)
-        List.find_map [ "tar"; "bsdtar" ] ~f:which
-      with
-      | Some bin -> Fiber.return { Command.bin; make_args = make_tar_args }
+      match List.find_map [ "tar"; "bsdtar" ] ~f:which with
+      | Some bin ->
+        let+ tar_impl = detect_tar_impl bin in
+        { Command.bin; make_args = make_tar_args ~tar_impl }
       | None ->
         Fiber.return
         @@ User_error.raise
@@ -40,16 +94,31 @@ let tar =
              ; Pp.enumerate [ "tar"; "bsdtar" ] ~f:Pp.verbatim
              ])
   in
-  { command; suffixes = [ ".tar"; ".tar.gz"; ".tgz"; ".tar.bz2"; ".tbz" ] }
+  { command
+  ; suffixes =
+      [ ".tar"
+      ; ".tar.gz"
+      ; ".tgz"
+      ; ".tar.bz2"
+      ; ".tbz"
+      ; ".tar.xz"
+      ; ".txz"
+      ; ".tar.lzma"
+      ; ".tlz"
+      ]
+  }
 ;;
 
-let which_bsdtar (bin_name : string) =
-  match which bin_name with
-  | None -> Fiber.return None
-  | Some bin ->
-    let+ output, _error = Process.run_capture ~display:Quiet Return bin [ "--version" ] in
-    let re = Re.compile (Re.str "bsdtar") in
-    if Re.execp re output then Some bin else None
+let rec find_libarchive_tar = function
+  | [] -> Fiber.return None
+  | name :: rest ->
+    (match which name with
+     | None -> find_libarchive_tar rest
+     | Some bin ->
+       detect_tar_impl bin
+       >>= (function
+        | Libarchive -> Fiber.return (Some bin)
+        | Gnu | Other -> find_libarchive_tar rest))
 ;;
 
 let zip =
@@ -58,18 +127,11 @@ let zip =
       match which "unzip" with
       | Some bin -> Fiber.return { Command.bin; make_args = make_zip_args }
       | None ->
-        let rec find_tar programs =
-          match programs with
-          | [] -> Fiber.return None
-          | x :: xs ->
-            let* res = which_bsdtar x in
-            (match res with
-             | Some _ -> Fiber.return res
-             | None -> find_tar xs)
-        in
-        let* program = find_tar [ "bsdtar"; "tar" ] in
+        (* Only libarchive can extract zip, so find a tar that is libarchive *)
+        let* program = find_libarchive_tar [ "bsdtar"; "tar" ] in
         (match program with
-         | Some bin -> Fiber.return { Command.bin; make_args = make_tar_args }
+         | Some bin ->
+           Fiber.return { Command.bin; make_args = make_tar_args ~tar_impl:Libarchive }
          | None ->
            Fiber.return
            @@ User_error.raise

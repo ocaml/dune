@@ -459,7 +459,13 @@ let setup_emit_cmj_rules
     let* () = Module_compilation.build_all cctx in
     let* () =
       Memo.when_ (Compilation_context.bin_annot cctx) (fun () ->
-        Ocaml_index.cctx_rules cctx)
+        let modules_to_index =
+          Compilation_context.modules cctx
+          |> Modules.With_vlib.drop_vlib
+          |> Modules.fold_user_written ~init:[] ~f:List.cons
+          |> Action_builder.return
+        in
+        Ocaml_index.index_modules_rule ~modules_to_index cctx)
     in
     let* requires_compile = Compilation_context.requires_compile cctx in
     let* requires_hidden = Compilation_context.requires_hidden cctx in

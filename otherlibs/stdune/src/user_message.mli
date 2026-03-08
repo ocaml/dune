@@ -26,23 +26,6 @@ module Style : sig
   val compare : t -> t -> Ordering.t
 end
 
-module Annots : sig
-  module Key : sig
-    type 'a t
-
-    val create : name:string -> ('a -> Dyn.t) -> 'a t
-  end
-
-  type t
-
-  val to_dyn : t -> Dyn.t
-  val find : t -> 'a Key.t -> 'a option
-  val set : t -> 'a Key.t -> 'a -> t
-  val empty : t
-  val is_empty : t -> bool
-  val singleton : 'a Key.t -> 'a -> t
-end
-
 (** Annotation for diff-based file promotion. Used to track which files need
     to be promoted from build directory to source tree. *)
 module Diff_annot : sig

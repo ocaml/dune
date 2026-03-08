@@ -227,7 +227,7 @@ type purpose =
 
 type metadata =
   { loc : Loc.t option
-  ; annots : User_message.Annots.t
+  ; compound : User_message.Compound.t list
   ; name : string option
   ; categories : string list
   ; purpose : purpose
@@ -237,7 +237,7 @@ type metadata =
 
 let default_metadata =
   { loc = None
-  ; annots = User_message.Annots.empty
+  ; compound = []
   ; purpose = Internal_job
   ; categories = []
   ; name = None
@@ -248,7 +248,7 @@ let default_metadata =
 
 let create_metadata
       ?loc
-      ?(annots = default_metadata.annots)
+      ?(compound = default_metadata.compound)
       ?(has_embedded_location = false)
       ?name
       ?(categories = default_metadata.categories)
@@ -256,7 +256,7 @@ let create_metadata
       ?promotion
       ()
   =
-  { loc; annots; name; categories; purpose; has_embedded_location; promotion }
+  { loc; compound; name; categories; purpose; has_embedded_location; promotion }
 ;;
 
 let io_to_redirection_path (kind : Io.kind) =
@@ -570,25 +570,24 @@ end = struct
       Has_output { with_color; without_color; has_embedded_location }
   ;;
 
-  let get_loc_annots_and_dir ~dir ~metadata ~output =
-    let { loc; annots; promotion; _ } = metadata in
+  let get_loc_compound_and_dir ~dir ~metadata ~output =
+    let { loc; compound; promotion; _ } = metadata in
     let dir = Option.value dir ~default:Path.root in
-    let annots, has_embedded_location =
+    let compound, has_embedded_location =
       match output with
-      | No_output -> annots, false
+      | No_output -> compound, false
       | Has_output output ->
         if output.has_embedded_location
         then (
           match Compound_user_error.parse_output ~dir output.without_color with
-          | [] -> annots, true
-          | errors ->
-            User_message.Annots.set annots Compound_user_error.annot errors, true)
-        else annots, false
+          | [] -> compound, true
+          | errors -> errors, true)
+        else compound, false
     in
-    loc, annots, has_embedded_location, dir, promotion
+    loc, compound, has_embedded_location, dir, promotion
   ;;
 
-  let fail ?dir ~loc ~annots ~has_embedded_location ?promotion paragraphs =
+  let fail ?dir ~loc ~compound ~has_embedded_location ?promotion paragraphs =
     (* We don't use [User_error.make] as it would add the "Error: " prefix. We
        don't need this prefix as it is already included in the output of the
        command. *)
@@ -598,7 +597,7 @@ end = struct
          (User_message.make
             ?dir
             ?loc
-            ~annots
+            ~compound
             ~has_embedded_location
             ?promotion
             paragraphs))
@@ -626,14 +625,14 @@ end = struct
         | Failed n -> sprintf "exited with code %d" n
         | Signaled signame -> sprintf "got signal %s" (Signal.name signame)
       in
-      let loc, annots, has_embedded_location, dir, promotion =
-        get_loc_annots_and_dir ~dir ~metadata ~output
+      let loc, compound, has_embedded_location, dir, promotion =
+        get_loc_compound_and_dir ~dir ~metadata ~output
       in
       fail
         ~dir
         ~has_embedded_location
         ~loc
-        ~annots
+        ~compound
         ?promotion
         ((Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
           ++ Pp.space
@@ -688,8 +687,8 @@ end = struct
       then Console.print_user_message (User_message.make paragraphs);
       n
     | Error error ->
-      let loc, annots, has_embedded_location, dir, promotion =
-        get_loc_annots_and_dir ~dir ~metadata ~output
+      let loc, compound, has_embedded_location, dir, promotion =
+        get_loc_compound_and_dir ~dir ~metadata ~output
       in
       let paragraphs =
         match verbosity with
@@ -721,7 +720,7 @@ end = struct
                 | Signaled signame ->
                   [ Pp.textf "Command got signal %s." (Signal.name signame) ]))
       in
-      fail ~dir ~loc ~annots ~has_embedded_location ?promotion paragraphs
+      fail ~dir ~loc ~compound ~has_embedded_location ?promotion paragraphs
   ;;
 end
 
@@ -1267,17 +1266,17 @@ let run_capture_line
           | None -> prog_display
           | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) prog_display
         in
-        let { loc; annots; _ } = Option.value metadata ~default:default_metadata in
+        let { loc; compound; _ } = Option.value metadata ~default:default_metadata in
         (match l with
          | [] ->
            User_error.raise
              ?loc
-             ~annots
+             ~compound
              [ Pp.textf "Command returned nothing: %s" cmdline ]
          | _ ->
            User_error.raise
              ?loc
-             ~annots
+             ~compound
              [ Pp.textf "command returned too many lines: %s" cmdline
              ; Pp.vbox
                  (Pp.concat_map l ~sep:Pp.cut ~f:(fun line ->

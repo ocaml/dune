@@ -22,7 +22,7 @@ module Meta_parser = Dune_meta_parser.Meta_parser.Make (struct
         type t = unit
       end
 
-      module Annots = struct
+      module Compound = struct
         type t = unit
       end
 
@@ -37,7 +37,7 @@ module Meta_parser = Dune_meta_parser.Meta_parser.Make (struct
             ?needs_stack_trace:_
             ?loc:_
             ?hints:_
-            ?annots:_
+            ?compound:_
             ?promotion:_
             texts
         =

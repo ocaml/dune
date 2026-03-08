@@ -339,7 +339,7 @@ module User_message = struct
           { loc
           ; paragraphs
           ; hints
-          ; annots = _
+          ; compound = _
           ; context
           ; dir
           ; has_embedded_location = _
@@ -357,7 +357,7 @@ module User_message = struct
       ; hints
       ; context
       ; dir
-      ; annots = Annots.empty
+      ; compound = []
       ; needs_stack_trace = false
       ; has_embedded_location = false
       ; promotion = None
@@ -487,7 +487,7 @@ let sexp_pp_unit : unit Pp.t Conv.value =
 ;;
 
 module Diagnostic = struct
-  type severity =
+  type severity = Stdune.User_message.Severity.t =
     | Error
     | Warning
 
@@ -730,7 +730,7 @@ module Job = struct
 end
 
 module Compound_user_error = struct
-  type t =
+  type t = Stdune.User_message.Compound.t =
     { main : User_message.t
     ; related : User_message.t list
     ; severity : Diagnostic.severity
@@ -766,10 +766,6 @@ module Compound_user_error = struct
       ; "related", (list string) (List.map related ~f:Stdune.User_message.to_string)
       ; "severity", Diagnostic.severity_to_dyn severity
       ]
-  ;;
-
-  let annot =
-    Stdune.User_message.Annots.Key.create ~name:"compound-user-error" (Dyn.list to_dyn)
   ;;
 
   let make ~main ~related = create ~main ~related ~severity:Error

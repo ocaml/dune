@@ -180,11 +180,17 @@ module Diff_annot = struct
   ;;
 end
 
+module Severity = struct
+  type t =
+    | Error
+    | Warning
+end
+
 type t =
   { loc : Loc0.t option
   ; paragraphs : Style.t Pp.t list
   ; hints : Style.t Pp.t list
-  ; annots : Annots.t
+  ; compound : compound list
   ; context : string option
   ; dir : string option
   ; has_embedded_location : bool
@@ -192,11 +198,27 @@ type t =
   ; promotion : Diff_annot.t option
   }
 
+and compound =
+  { main : t
+  ; related : t list
+  ; severity : Severity.t
+  }
+
+module Compound = struct
+  type nonrec t = compound =
+    { main : t
+    ; related : t list
+    ; severity : Severity.t
+    }
+
+  let to_dyn = Dyn.opaque
+end
+
 let to_dyn
       { loc
       ; paragraphs
       ; hints
-      ; annots
+      ; compound
       ; context
       ; dir
       ; has_embedded_location
@@ -208,7 +230,7 @@ let to_dyn
     [ "loc", Dyn.option Loc0.to_dyn loc
     ; "paragraphs", Dyn.list (Pp.to_dyn Style.to_dyn) paragraphs
     ; "hints", Dyn.list (Pp.to_dyn Style.to_dyn) hints
-    ; "annots", Annots.to_dyn annots
+    ; "compound", Dyn.opaque compound
     ; "context", Dyn.option Dyn.string context
     ; "dir", Dyn.option Dyn.string dir
     ; "has_embedded_location", Dyn.bool has_embedded_location
@@ -221,7 +243,7 @@ let compare
       { loc
       ; paragraphs
       ; hints
-      ; annots
+      ; compound = _
       ; context = _
       ; dir = _
       ; has_embedded_location
@@ -236,8 +258,7 @@ let compare
   let= () = List.compare paragraphs t.paragraphs ~compare in
   let= () = List.compare hints t.hints ~compare in
   let= () = Bool.compare has_embedded_location t.has_embedded_location in
-  let= () = Bool.compare needs_stack_trace t.needs_stack_trace in
-  Poly.compare annots t.annots
+  Bool.compare needs_stack_trace t.needs_stack_trace
 ;;
 
 let equal a b = Ordering.is_eq (compare a b)
@@ -248,7 +269,7 @@ let make
       ?loc
       ?prefix
       ?(hints = [])
-      ?(annots = Annots.empty)
+      ?(compound = [])
       ?context
       ?dir
       ?promotion
@@ -263,7 +284,7 @@ let make
   { loc
   ; hints
   ; paragraphs
-  ; annots
+  ; compound
   ; context
   ; dir
   ; has_embedded_location
@@ -276,7 +297,7 @@ let pp
       { loc
       ; paragraphs
       ; hints
-      ; annots = _
+      ; compound = _
       ; context
       ; dir = _
       ; has_embedded_location = _

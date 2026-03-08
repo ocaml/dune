@@ -212,16 +212,14 @@ module Objects = struct
     | Ok _ -> t
     | Error (name, loc, loc') ->
       let main_message = sprintf "Duplicate object name: %s." name in
-      let annots =
+      let compound =
         let main = User_message.make ~loc [ Pp.text main_message ] in
         let related = [ User_message.make ~loc:loc' [ Pp.text "" ] ] in
-        User_message.Annots.singleton
-          Compound_user_error.annot
-          [ Compound_user_error.make ~main ~related ]
+        [ Compound_user_error.make ~main ~related ]
       in
       User_error.raise
         ~loc
-        ~annots
+        ~compound
         [ Pp.textf "%s Already appears at:" main_message
         ; Pp.textf "- %s" (Loc.to_file_colon_line loc')
         ]

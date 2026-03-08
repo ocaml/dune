@@ -29,8 +29,8 @@ let of_exn (exn : Exn_with_backtrace.t) =
   | User_error.E main ->
     let dir = Option.map ~f:Path.of_string main.dir in
     let promotion = main.promotion in
-    (match User_message.Annots.find main.annots Compound_user_error.annot with
-     | None ->
+    (match main.compound with
+     | [] ->
        [ Diagnostic
            { dir
            ; id = Id.gen ()
@@ -38,7 +38,7 @@ let of_exn (exn : Exn_with_backtrace.t) =
            ; promotion
            }
        ]
-     | Some diagnostics ->
+     | diagnostics ->
        List.map diagnostics ~f:(fun diagnostic ->
          Diagnostic { id = Id.gen (); diagnostic; dir; promotion }))
   | _ -> [ Exn { id = Id.gen (); exn } ]

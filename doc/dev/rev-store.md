@@ -144,16 +144,25 @@ server needs to send. The client tells the server which objects it already has
 this negotiation to work efficiently, Git needs refs pointing to known commits.
 
 Since the revision store is a bare repository without traditional remotes, we
-create refs for each successfully fetched object:
+create refs for each successfully fetched object, namespaced by an escaped form
+of the source URL:
 
 ```
-refs/dune-pkg/<object-hash>
+refs/dune-pkg/<escaped-url>/<object-hash>
 ```
 
-When subsequent fetches occur, Git automatically discovers these refs and uses
-them for negotiation. This allows Git to tell the server "I already have these
-commits" and receive only the new objects, dramatically reducing bandwidth for
-incremental fetches from repositories with shared history.
+The escaped URL replaces characters that are invalid in git refs or Windows
+filenames (everything except alphanumeric and `-`) with underscores. For
+example, `https://github.com/ocaml/dune.git` becomes
+`https___github_com_ocaml_dune_git`. This namespacing ensures that when fetching
+from a remote, only refs from that same remote are used for negotiation. Without
+this, Git would send "have" lines for all objects in the revision store,
+including those from unrelated repositories, which wastes bandwidth during the
+negotiation phase.
+
+During fetch, we use `--negotiation-tip=refs/dune-pkg/<escaped-url>/*` to tell
+Git to only consider refs under the namespace for the URL being fetched. This
+restricts negotiation to relevant commits only.
 
 These refs accumulate over time but are lightweight (just pointers to existing
 objects). They can be safely pruned if disk space becomes a concern, though

@@ -99,7 +99,7 @@ module User_message : sig
 end
 
 module Diagnostic : sig
-  type severity =
+  type severity = Stdune.User_message.Severity.t =
     | Error
     | Warning
 
@@ -232,7 +232,7 @@ end
     retains more structure. This can be used to display the errors in richer
     form by RPC clients. *)
 module Compound_user_error : sig
-  type t = private
+  type t = Stdune.User_message.Compound.t =
     { main : User_message.t
     ; related : User_message.t list
     ; severity : Diagnostic.severity
@@ -240,7 +240,6 @@ module Compound_user_error : sig
 
   val sexp : t Conv.value
   val to_dyn : t -> Dyn.t
-  val annot : t list Stdune.User_message.Annots.Key.t
 
   (** Make a [t] with severity as [Error]. *)
   val make : main:User_message.t -> related:User_message.t list -> t

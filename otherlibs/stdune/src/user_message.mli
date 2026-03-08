@@ -54,6 +54,12 @@ module Diff_annot : sig
   val to_dyn : t -> Dyn.t
 end
 
+module Severity : sig
+  type t =
+    | Error
+    | Warning
+end
+
 (** A user message.contents composed of an optional file location and a list of
     paragraphs.
 
@@ -64,18 +70,24 @@ end
     with "Hint:". Hints should give indication to the user for how to fix the
     issue.
 
-    The [annots] field is intended to carry extra context for other,
+    The [compound] field is intended to carry extra context for other,
     non-user-facing purposes (such as data for the RPC). *)
 type t =
   { loc : Loc0.t option
   ; paragraphs : Style.t Pp.t list
   ; hints : Style.t Pp.t list
-  ; annots : Annots.t
+  ; compound : compound list
   ; context : string option
   ; dir : string option
   ; has_embedded_location : bool
   ; needs_stack_trace : bool
   ; promotion : Diff_annot.t option
+  }
+
+and compound =
+  { main : t
+  ; related : t list
+  ; severity : Severity.t
   }
 
 val compare : t -> t -> Ordering.t
@@ -102,7 +114,7 @@ val make
   -> ?loc:Loc0.t
   -> ?prefix:Style.t Pp.t
   -> ?hints:Style.t Pp.t list
-  -> ?annots:Annots.t
+  -> ?compound:compound list
   -> ?context:string
   -> ?dir:string
   -> ?promotion:Diff_annot.t
@@ -141,3 +153,13 @@ val command : string -> Style.t Pp.t
     space. The left component is padded to 12 characters so that the space
     separating the left and right side of all messages are aligned. *)
 val aligned_message : left:Style.t * string -> right:Style.t Pp.t -> Style.t Pp.t
+
+module Compound : sig
+  type nonrec t = compound =
+    { main : t
+    ; related : t list
+    ; severity : Severity.t
+    }
+
+  val to_dyn : t Dyn.builder
+end

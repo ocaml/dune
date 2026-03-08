@@ -74,7 +74,7 @@ type purpose =
     be attached to error messages. *)
 type metadata =
   { loc : Loc.t option
-  ; annots : User_message.Annots.t
+  ; compound : User_message.Compound.t list
   ; name : string option
     (** name when emitting stats. defaults to the basename of the executable *)
   ; categories : string list (** additional categories when emitting stats *)
@@ -85,7 +85,7 @@ type metadata =
 
 val create_metadata
   :  ?loc:Loc.t
-  -> ?annots:User_message.Annots.t
+  -> ?compound:User_message.Compound.t list
   -> ?has_embedded_location:bool
   -> ?name:string
   -> ?categories:string list

@@ -7,7 +7,7 @@ let make
       ?needs_stack_trace
       ?loc
       ?hints
-      ?annots
+      ?compound
       ?promotion
       paragraphs
   =
@@ -16,7 +16,7 @@ let make
     ?needs_stack_trace
     ?loc
     ?hints
-    ?annots
+    ?compound
     ?promotion
     paragraphs
     ~prefix
@@ -27,7 +27,7 @@ let raise
       ?needs_stack_trace
       ?loc
       ?hints
-      ?annots
+      ?compound
       ?promotion
       paragraphs
   =
@@ -38,7 +38,7 @@ let raise
           ?needs_stack_trace
           ?loc
           ?hints
-          ?annots
+          ?compound
           ?promotion
           paragraphs))
 ;;
@@ -60,9 +60,9 @@ let () =
       let pp =
         User_message.pp t
         ++
-        if User_message.Annots.is_empty t.annots
-        then Pp.nop
-        else Dyn.pp (User_message.Annots.to_dyn t.annots)
+        match t.compound with
+        | [] -> Pp.nop
+        | compound -> Dyn.pp (Dyn.list User_message.Compound.to_dyn compound)
       in
       Some (Format.asprintf "%a" Pp.to_fmt pp)
     | _ -> None)

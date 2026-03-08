@@ -113,7 +113,7 @@ module Windows_executables = struct
   (* This function adds support for shebang line parsing on Windows to allow
      running scripts in run actions using the correct executable. *)
   let adjust_prog_and_args ~metadata ~path ?dir prog args =
-    let { Process.loc; annots; _ } = metadata in
+    let { Process.loc; compound; _ } = metadata in
     let prog_name = Path.basename prog in
     let parse_win32_prog_and_args prog =
       Stdune.Io.with_file_in ~binary:true prog ~f:(fun ic ->
@@ -127,7 +127,7 @@ module Windows_executables = struct
            | None ->
              User_error.raise
                ?loc
-               ~annots
+               ~compound
                [ Pp.textf "Dune could not parse the shebang line in %s:" prog_name
                ; Pp.textf "  #!%s" line
                ; Pp.textf
@@ -149,7 +149,7 @@ module Windows_executables = struct
        | None ->
          User_error.raise
            ?loc
-           ~annots
+           ~compound
            [ Pp.textf "%s: No such file or directory" prog_name ]
        | Some cmd ->
          let prog_str = Path.reach_for_running ?from:dir prog in

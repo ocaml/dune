@@ -12,7 +12,7 @@ val raise
   -> ?needs_stack_trace:bool
   -> ?loc:Loc0.t
   -> ?hints:User_message.Style.t Pp.t list
-  -> ?annots:User_message.Annots.t
+  -> ?compound:User_message.Compound.t list
   -> ?promotion:User_message.Diff_annot.t
   -> User_message.Style.t Pp.t list
   -> _
@@ -23,7 +23,7 @@ val make
   -> ?needs_stack_trace:bool
   -> ?loc:Loc0.t
   -> ?hints:User_message.Style.t Pp.t list
-  -> ?annots:User_message.Annots.t
+  -> ?compound:User_message.Compound.t list
   -> ?promotion:User_message.Diff_annot.t
   -> User_message.Style.t Pp.t list
   -> User_message.t

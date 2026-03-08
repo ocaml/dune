@@ -75,17 +75,15 @@ module Emit = struct
               "JavaScript extension %s appears more than once:"
               (Filename.Extension.to_string ext)
           in
-          let annots =
+          let compound =
             let main = User_message.make ~loc:loc2 [ main_message ] in
             let related =
               [ User_message.make ~loc:loc1 [ Pp.text "Already defined here" ] ]
             in
-            User_message.Annots.singleton
-              Compound_user_error.annot
-              [ Compound_user_error.make ~main ~related ]
+            [ Compound_user_error.make ~main ~related ]
           in
           User_error.raise
-            ~annots
+            ~compound
             ~loc:loc2
             [ main_message
             ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]

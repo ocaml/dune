@@ -44,18 +44,16 @@ module Dir_map = struct
     let no_dupes =
       Option.merge ~f:(fun (loc, _) (loc2, _) ->
         let main_message = Pp.text "This stanza was already specified at:" in
-        let annots =
+        let compound =
           let main = User_message.make ~loc [ main_message ] in
           let related =
             [ User_message.make ~loc:loc2 [ Pp.text "Already defined here" ] ]
           in
-          User_message.Annots.singleton
-            Compound_user_error.annot
-            [ Compound_user_error.make ~main ~related ]
+          [ Compound_user_error.make ~main ~related ]
         in
         User_error.raise
           ~loc
-          ~annots
+          ~compound
           [ main_message; Pp.verbatim (Loc.to_file_colon_line loc2) ])
     ;;
 

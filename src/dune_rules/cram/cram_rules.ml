@@ -288,17 +288,15 @@ let rules ~sctx ~dir tests project =
                        ; Pp.textf "It's already set for the test %S" name
                        ]
                      in
-                     let annots =
+                     let compound =
                        let main = User_message.make ~loc:loc' main_message in
                        let related =
                          [ User_message.make ~loc [ Pp.text "Already set here" ] ]
                        in
-                       User_message.Annots.singleton
-                         Compound_user_error.annot
-                         [ Compound_user_error.make ~main ~related ]
+                       [ Compound_user_error.make ~main ~related ]
                      in
                      User_error.raise
-                       ~annots
+                       ~compound
                        ~loc
                        (main_message
                         @ [ Pp.text "The first definition is at:"

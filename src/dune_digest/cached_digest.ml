@@ -227,6 +227,14 @@ module Digest_result = struct
   let to_option = Result.to_option
   let iter t ~f = Result.iter t ~f
   let to_dyn = Result.to_dyn Digest.to_dyn Error.to_dyn
+
+  let catch_fs_errors f =
+    match f () with
+    | result -> result
+    | exception Unix.Unix_error (error, syscall, arg) ->
+      Error (Error.Unix_error (error, syscall, arg))
+    | exception exn -> Error (Error.Unrecognized exn)
+  ;;
 end
 
 let digest_path_with_stats ~allow_dirs path stats =
@@ -248,17 +256,9 @@ let refresh ~allow_dirs stats path =
   result
 ;;
 
-let catch_fs_errors f =
-  match f () with
-  | result -> result
-  | exception Unix.Unix_error (error, syscall, arg) ->
-    Error (Digest_result.Error.Unix_error (error, syscall, arg))
-  | exception exn -> Error (Digest_result.Error.Unrecognized exn)
-;;
-
 (* Here we make only one [stat] call on the happy path. *)
 let refresh_without_removing_write_permissions ~allow_dirs path =
-  catch_fs_errors (fun () ->
+  Digest_result.catch_fs_errors (fun () ->
     match Unix.stat (Path.to_string path) with
     | stats -> refresh stats ~allow_dirs path
     | exception Unix.Unix_error (ELOOP, _, _) -> Error Cyclic_symlink
@@ -275,7 +275,7 @@ let refresh_without_removing_write_permissions ~allow_dirs path =
    should be possible to avoid paying for two system calls ([lstat] and [stat])
    here, e.g., by telling the subsequent [chmod] to not follow symlinks. *)
 let refresh_and_remove_write_permissions ~allow_dirs path =
-  catch_fs_errors (fun () ->
+  Digest_result.catch_fs_errors (fun () ->
     match Unix.lstat (Path.to_string path) with
     | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
     | stats ->

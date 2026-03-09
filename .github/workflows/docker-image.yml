@@ -64,7 +64,7 @@ jobs:
           mv docker-context/dune*.tbz docker-context/dune.tbz
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build and push Docker image
         id: push

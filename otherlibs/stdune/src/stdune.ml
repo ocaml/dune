@@ -105,6 +105,7 @@ module Per_item = Per_item
 module Bit_set = Bit_set
 module Unix_error = Unix_error
 module File_kind = File_kind
+module Alias_name = Alias_name
 
 module type Per_item = Per_item_intf.S
 module type Applicative = Applicative_intf.S

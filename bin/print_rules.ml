@@ -138,7 +138,7 @@ let encode_alias alias =
   let name = Dune_engine.Alias.name alias in
   record
     [ "dir", encode_path (Path.build dir)
-    ; "name", Dune_sexp.atom_or_quoted_string (Dune_util.Alias_name.to_string name)
+    ; "name", Dune_sexp.atom_or_quoted_string (Alias_name.to_string name)
     ]
 ;;
 

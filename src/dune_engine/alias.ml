@@ -1,7 +1,7 @@
 open Import
 
 module Name = struct
-  include Dune_util.Alias_name
+  include Stdune.Alias_name
 
   let default = of_string "default"
 

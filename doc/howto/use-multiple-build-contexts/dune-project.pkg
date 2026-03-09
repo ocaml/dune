@@ -1,0 +1,10 @@
+(lang dune 3.21)
+
+(package
+ (name tsan-check)
+ (allow_empty)
+ (depends
+  ocamlfind
+  (ocaml
+   (= 5.3.0)))
+ (depopts ocaml-option-tsan))

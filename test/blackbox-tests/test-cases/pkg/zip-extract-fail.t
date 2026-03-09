@@ -131,3 +131,20 @@ Build with unzip only:
   $ show_path
   basename cp dune sh unzip
   $ (PATH=.fakebin build_pkg foo)
+
+Build with both bsdtar (as tar) and unzip available.
+Currently the code prefers unzip over bsdtar:
+
+  $ ln -s ../.binaries/bsdtar .fakebin/tar
+  $ show_path
+  basename cp dune sh tar unzip
+
+Use a fresh package to ensure extraction actually runs (not cached from earlier):
+
+  $ makepkg bar
+  $ (PATH=.fakebin build_pkg bar)
+
+Check which tool was used for extraction:
+
+  $ dune trace cat | jq -c 'include "dune"; processes | .args.prog | split("/") | .[-1]'
+  "unzip"

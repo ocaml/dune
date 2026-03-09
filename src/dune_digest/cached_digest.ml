@@ -297,10 +297,11 @@ let refresh_and_remove_write_permissions ~allow_dirs path =
 ;;
 
 let refresh ~allow_dirs ~remove_write_permissions path =
-  let path = Path.build path in
-  match remove_write_permissions with
-  | false -> refresh_without_removing_write_permissions ~allow_dirs path
-  | true -> refresh_and_remove_write_permissions ~allow_dirs path
+  (if remove_write_permissions
+   then refresh_and_remove_write_permissions
+   else refresh_without_removing_write_permissions)
+    ~allow_dirs
+    (Path.build path)
 ;;
 
 let peek_file ~allow_dirs path =

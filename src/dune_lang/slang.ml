@@ -305,6 +305,7 @@ let rec simplify = function
          let combined_sw = String_with_vars.make ~quoted loc parts in
          Literal combined_sw)
        else Form (loc, Concat (List.map xs ~f:simplify))
+     | When (_, Nil) -> Nil
      | When (condition, t) ->
        let simplified_condition = simplify_blang condition in
        (match (simplified_condition : blang) with

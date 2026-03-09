@@ -1,0 +1,18 @@
+(lang dune 3.21)
+
+(lock_dir
+ (path dune.lock))
+
+(lock_dir
+ (path dune-tsan.lock)
+ (depopts ocaml-option-tsan))
+
+(context
+ (default
+  (name default)
+  (lock_dir dune.lock)))
+
+(context
+ (default
+  (name tsan)
+  (lock_dir dune-tsan.lock)))

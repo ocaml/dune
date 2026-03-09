@@ -334,21 +334,49 @@ let rec simplify = function
         | Form (_, Blang (Const _)) as value -> value
         | value -> Form (loc, Catch_undefined_var { value; fallback = simplify fallback }))
      | And_absorb_undefined_var blangs ->
-       let blangs : blang list =
+       let blangs =
          List.concat_map blangs ~f:(fun blang ->
            match simplify_blang blang with
            | Expr (Form (_, And_absorb_undefined_var blangs)) -> blangs
            | blang -> [ blang ])
        in
-       Form (loc, And_absorb_undefined_var blangs)
+       if
+         List.exists blangs ~f:(function
+           | Blang.Const false -> true
+           | _ -> false)
+       then Form (loc, Blang (Const false))
+       else (
+         let blangs =
+           List.filter blangs ~f:(function
+             | Blang.Const true -> false
+             | _ -> true)
+         in
+         match blangs with
+         | [] -> Form (loc, Blang (Const true))
+         | [ b ] -> Form (loc, Blang b)
+         | _ -> Form (loc, And_absorb_undefined_var blangs))
      | Or_absorb_undefined_var blangs ->
-       let blangs : blang list =
-         List.concat_map blangs ~f:(fun (blang : blang) ->
+       let blangs =
+         List.concat_map blangs ~f:(fun blang ->
            match simplify_blang blang with
            | Expr (Form (_, Or_absorb_undefined_var blangs)) -> blangs
            | blang -> [ blang ])
        in
-       Form (loc, Or_absorb_undefined_var (List.map blangs ~f:simplify_blang))
+       if
+         List.exists blangs ~f:(function
+           | Blang.Const true -> true
+           | _ -> false)
+       then Form (loc, Blang (Const true))
+       else (
+         let blangs =
+           List.filter blangs ~f:(function
+             | Blang.Const false -> false
+             | _ -> true)
+         in
+         match blangs with
+         | [] -> Form (loc, Blang (Const false))
+         | [ b ] -> Form (loc, Blang b)
+         | _ -> Form (loc, Or_absorb_undefined_var blangs))
      | Blang b -> Form (loc, Blang (simplify_blang b)))
 
 and simplify_blang = function

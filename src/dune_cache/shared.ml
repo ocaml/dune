@@ -21,51 +21,49 @@ module Miss_reason = struct
   ;;
 end
 
-let try_to_restore_from_shared_cache ~mode ~rule_digest ~targets
+let try_to_restore_from_shared_cache ~mode ~rule_digest ~(targets : Targets.Validated.t)
   : (Digest.t Targets.Produced.t, Miss_reason.t) Hit_or_miss.t Fiber.t
   =
   let open Fiber.O in
   let+ () = Fiber.return () in
-  let head = Targets.Validated.head targets in
   match Local.restore_artifacts ~mode ~rule_digest ~target_dir:targets.root with
+  | Not_found_in_cache -> Hit_or_miss.Miss Miss_reason.Not_found_in_cache
+  | Error exn -> Miss (Error (Printexc.to_string exn))
   | Restored artifacts ->
     (* it's a small departure from the general "debug cache" semantics that
        we're also printing successes, but it can be useful to see successes
        too if the goal is to understand when and how the file in the build
        directory appeared *)
     Dune_trace.emit ~buffered:true Cache (fun () ->
+      let head = Targets.Validated.head targets in
       Dune_trace.Event.Cache.shared
         `Hit
         ~rule_digest:(Dune_digest.to_string rule_digest)
         ~head);
     Hit_or_miss.Hit artifacts
-  | Not_found_in_cache -> Hit_or_miss.Miss Miss_reason.Not_found_in_cache
-  | Error exn -> Miss (Error (Printexc.to_string exn))
 ;;
 
 let lookup_impl ~rule_digest ~targets =
   match !config with
   | Disabled -> Fiber.return (Hit_or_miss.Miss Miss_reason.Cache_disabled)
   | Enabled { storage_mode = mode; reproducibility_check } ->
-    (match Shared_cache_config.Reproducibility_check.sample reproducibility_check with
-     | true ->
-       (* CR-someday amokhov: Here we re-execute the rule, as in Jenga. To make
+    if Shared_cache_config.Reproducibility_check.sample reproducibility_check
+    then
+      (* CR-someday amokhov: Here we re-execute the rule, as in Jenga. To make
           [check_probability] more meaningful, we could first make sure that
           the shared cache actually does contain an entry for [rule_digest]. *)
-       Fiber.return (Hit_or_miss.Miss Miss_reason.Rerunning_for_reproducibility_check)
-     | false -> try_to_restore_from_shared_cache ~mode ~rule_digest ~targets)
+      Fiber.return (Hit_or_miss.Miss Miss_reason.Rerunning_for_reproducibility_check)
+    else try_to_restore_from_shared_cache ~mode ~rule_digest ~targets
 ;;
 
 let lookup ~can_go_in_shared_cache ~rule_digest ~targets
   : Digest.t Targets.Produced.t option Fiber.t
   =
   let open Fiber.O in
-  let+ result =
-    match can_go_in_shared_cache with
-    | false -> Fiber.return (Hit_or_miss.Miss Miss_reason.Cannot_go_in_shared_cache)
-    | true -> lookup_impl ~rule_digest ~targets
-  in
-  match result with
+  (if can_go_in_shared_cache
+   then lookup_impl ~rule_digest ~targets
+   else Fiber.return (Hit_or_miss.Miss Miss_reason.Cannot_go_in_shared_cache))
+  >>| function
   | Hit result -> Some result
   | Miss (reason : Miss_reason.t) ->
     let always_emit =
@@ -256,10 +254,8 @@ let examine_targets_and_store
   | Enabled { storage_mode = mode; reproducibility_check = _ } when can_go_in_shared_cache
     ->
     let open Fiber.O in
-    let+ produced_targets_with_digests =
-      try_to_store_to_shared_cache ~mode ~rule_digest ~produced_targets ~action
-    in
-    (match produced_targets_with_digests with
+    try_to_store_to_shared_cache ~mode ~rule_digest ~produced_targets ~action
+    >>| (function
      | Some produced_targets_with_digests -> produced_targets_with_digests
      | None ->
        compute_target_digests_or_raise_error

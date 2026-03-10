@@ -4,20 +4,23 @@ Build contexts let Dune compile the same sources in multiple isolated
 environments. This is useful when one build is part of the normal workflow and
 another is only needed on demand, such as a ThreadSanitizer build.
 
-If you have used Dune before, you have already seen one context:
-`_build/default/`. The `default` part is the name of the default build context.
-This is the context Dune builds all projects by default. By adding more
+If you have used Dune before, you have been using one context already: the
+`default` context. You can see this in the build directory at `_build/default`,
+which is where Dune will put the build artifacts of your build. By adding more
 contexts, you can ask Dune to build the same sources with different environments
-environments while keeping the artifacts separate.
+while keeping the artifacts separate.
 
 This can be useful in certain cases: for example you want to test your project
 with multiple compilers without having to edit your `dune-project` file, or opam
-switches every time. We will see a use of this with ThreadSanitizer below. If
-you have not heard of ThreadSanitizer, find more information at the manual page
-[Runtime detection of data races with
-ThreadSanitizer](https://ocaml.org/manual/5.3/tsan.html). However, familiarity
-with TSan is not necessary as this is only an example to show how Dune contexts
-can be used.
+switches every time. We will see a use of this with **ThreadSanitizer** below.
+
+::: {note}
+ThreadSanitizer is a dynamic data race detector that requires a
+special version of the OCaml compiler. You can find more information at the
+[manual page](https://ocaml.org/manual/5.3/tsan.html). However, familiarity with
+ThreadSanitizer is not necessary as this is only an example to show how Dune
+contexts can be used.
+:::
 
 This guide shows two ways to do that:
 
@@ -43,14 +46,15 @@ The examples below use a small program with a data race.
 Build and run it with your current compiler:
 
 ```sh
-dune exec ./tsan_check.exe
+$ dune exec ./tsan_check.exe
 ```
 
 With a stock compiler, you may see the assertion fail, but you will not get a
 ThreadSanitizer report explaining the race.
 
 :::{important}
-This guide assumes that your TSAN compiler environment already exists.
+This guide assumes that your ThreadSanitizer compiler environment already
+exists.
 
 For an `opam`-based setup, that means a switch with a TSAN-enabled compiler.
 For Dune package management, that means enabling `ocaml-option-tsan` in a
@@ -63,6 +67,7 @@ Create a `dune-workspace` file:
 
 :::{literalinclude} use-multiple-build-contexts/dune-workspace.opam
 :language: dune
+:emphasize-lines: 5-9
 :::
 
 This keeps the current environment as the `default` context and adds a second
@@ -71,32 +76,22 @@ context named `tsan`.
 Check the contexts:
 
 ```sh
-dune describe contexts
-```
-
-You should see:
-
-```text
+$ dune describe contexts
 default
 tsan
 ```
 
-Build both binaries:
+Run the stock binary:
 
 ```sh
-dune build _build/default/tsan_check.exe _build/tsan/tsan_check.exe
+$ dune exec ./tsan_check.exe
 ```
 
-Run the stock build:
+Run the ThreadSanitizer binary:
 
 ```sh
-_build/default/tsan_check.exe
-```
-
-Run the TSAN build:
-
-```sh
-_build/tsan/tsan_check.exe
+$ dune build _build/tsan/tsan_check.exe
+$ _build/default/tsan_check.exe
 ```
 
 The `tsan` binary reports the data race, while the `default` binary uses your
@@ -165,7 +160,7 @@ WARNING: ThreadSanitizer: data race (pid=1662846)
     #11 caml_main runtime/startup_nat.c:151 (tsan_check.exe+0xdc29b)
     #12 main runtime/main.c:37 (tsan_check.exe+0x45bf9)
 
-SUMMARY: ThreadSanitizer: data race (/home/sudha/ocaml/work/testing/hello-tsan/_build/default/tsan_check.exe+0x483e2) in camlDune__exe__Tsan_check.inc_272
+SUMMARY: ThreadSanitizer: data race (/path/to/directory/hello-tsan/_build/tsan/tsan_check.exe+0x483e2) in camlDune__exe__Tsan_check.inc_272
 ==================
 x=5014663 expected=10000000
 Fatal error: exception Assert_failure("tsan_check.ml", 19, 2)
@@ -177,39 +172,36 @@ ThreadSanitizer: reported 1 warnings
 ## Use Dune Package Management
 
 The same pattern also works with Dune package management. Instead of an `opam`
-switch, you describe the TSAN requirement through a separate lock directory.
+switch, you describe the ThreadSanitizer requirement through a separate lock
+directory.
 
 First, declare `ocaml-option-tsan` as an optional dependency in
 `dune-project`:
 
 :::{literalinclude} use-multiple-build-contexts/dune-project.pkg
 :language: dune
+:emphasize-lines: 10
 :::
 
 Then define two lock directories and attach one context to each:
 
 :::{literalinclude} use-multiple-build-contexts/dune-workspace.pkg
 :language: dune
+:emphasize-lines: 10-18
 :::
 
 Generate the lock directories:
 
 ```sh
-dune pkg lock dune.lock dune-tsan.lock
+$ dune pkg lock dune.lock dune-tsan.lock
 ```
 
-Build both binaries:
+Run the binaries:
 
 ```sh
-dune build _build/default/tsan_check.exe _build/tsan/tsan_check.exe
+$ _build/default/tsan_check.exe
+$ _build/tsan/tsan_check.exe
 ```
 
-Run them:
-
-```sh
-_build/default/tsan_check.exe
-_build/tsan/tsan_check.exe
-```
-
-This keeps the TSAN compiler requirement out of the normal dependency graph
-while still making the TSAN build reproducible.
+This keeps the ThreadSanitizer compiler requirement out of the normal dependency graph
+while still making the ThreadSanitizer build reproducible.

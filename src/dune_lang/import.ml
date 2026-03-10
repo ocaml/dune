@@ -15,8 +15,3 @@ end
 include struct
   module Mode = Ocaml.Mode
 end
-
-include struct
-  open Dune_util
-  module Alias_name = Alias_name
-end

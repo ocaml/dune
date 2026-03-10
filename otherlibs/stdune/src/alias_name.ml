@@ -1,4 +1,3 @@
-open Stdune
 include String
 
 (* DUNE3 once we get rid the "loose" validation, implement this module using

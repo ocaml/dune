@@ -94,13 +94,14 @@ let default_build_command =
   in
   fun project ->
     Lazy.force
-      (if Dune_project.dune_version project < (1, 11)
+      (let version = Dune_project.dune_version project in
+       if version < (1, 11)
        then before_1_11
-       else if Dune_project.dune_version project < (2, 7)
+       else if version < (2, 7)
        then from_1_11_before_2_7
-       else if Dune_project.dune_version project < (2, 9)
+       else if version < (2, 9)
        then from_2_7
-       else if Dune_project.dune_version project < (3, 0)
+       else if version < (3, 0)
        then from_2_9
        else
          from_3_0

@@ -24,8 +24,8 @@ contexts can be used.
 
 This guide shows two ways to do that:
 
-- with an `opam` switch for the alternate compiler
 - with Dune package management and a separate `lock_dir`
+- with an `opam` switch for the alternate compiler
 
 ## Example Program
 
@@ -56,43 +56,44 @@ ThreadSanitizer report explaining the race.
 This guide assumes that your ThreadSanitizer compiler environment already
 exists.
 
-For an `opam`-based setup, that means a switch with a TSAN-enabled compiler.
 For Dune package management, that means enabling `ocaml-option-tsan` in a
-separate lock directory.
+separate lock directory. For an `opam`-based setup, that means a switch with a
+ThreadSanitizer-enabled compiler.
+
 :::
 
-## Use an `opam` Context
+<!-- ## Use an `opam` Context -->
+## Use Dune Package Management
 
-Create a `dune-workspace` file:
+First, declare `ocaml-option-tsan` as an optional dependency in
+`dune-project`:
 
-:::{literalinclude} use-multiple-build-contexts/dune-workspace.opam
+:::{literalinclude} use-multiple-build-contexts/dune-project.pkg
 :language: dune
-:emphasize-lines: 5-9
+:emphasize-lines: 10
 :::
 
-This keeps the current environment as the `default` context and adds a second
-context named `tsan`.
+Then create a `dune-workspace` file that defines two lock directories and
+attaches one context to each:
 
-Check the contexts:
+:::{literalinclude} use-multiple-build-contexts/dune-workspace.pkg
+:language: dune
+:emphasize-lines: 10-18
+:::
 
-```sh
-$ dune describe contexts
-default
-tsan
-```
-
-Run the stock binary:
+Generate the lock directories:
 
 ```sh
-$ dune exec ./tsan_check.exe
+$ dune pkg lock dune.lock dune-tsan.lock
 ```
 
-Run the ThreadSanitizer binary:
+Build and run the binaries:
 
 ```sh
-$ dune build _build/tsan/tsan_check.exe
-$ _build/default/tsan_check.exe
+$ dune exec --context=default ./tsan_check.exe
+$ dune exec --context=new ./tsan_check.exe
 ```
+
 
 The `tsan` binary reports the data race, while the `default` binary uses your
 normal compiler setup.
@@ -169,39 +170,40 @@ ThreadSanitizer: reported 1 warnings
 
 ::::
 
-## Use Dune Package Management
+## Use an `opam` Context
 
-The same pattern also works with Dune package management. Instead of an `opam`
-switch, you describe the ThreadSanitizer requirement through a separate lock
-directory.
+The second approach uses separate `opam` switches instead of separate lock
+directories.
 
-First, declare `ocaml-option-tsan` as an optional dependency in
-`dune-project`:
+Create a `dune-workspace` file:
 
-:::{literalinclude} use-multiple-build-contexts/dune-project.pkg
+:::{literalinclude} use-multiple-build-contexts/dune-workspace.opam
 :language: dune
-:emphasize-lines: 10
+:emphasize-lines: 5-8
 :::
 
-Then define two lock directories and attach one context to each:
+This keeps the current environment as the `default` context and adds a second
+context named `tsan`.
 
-:::{literalinclude} use-multiple-build-contexts/dune-workspace.pkg
-:language: dune
-:emphasize-lines: 10-18
-:::
-
-Generate the lock directories:
+Check the contexts:
 
 ```sh
-$ dune pkg lock dune.lock dune-tsan.lock
+$ dune describe contexts
+default
+tsan
 ```
 
-Run the binaries:
+Run the stock binary:
 
 ```sh
-$ _build/default/tsan_check.exe
-$ _build/tsan/tsan_check.exe
+$ dune exec --context=default ./tsan_check.exe
 ```
 
-This keeps the ThreadSanitizer compiler requirement out of the normal dependency graph
-while still making the ThreadSanitizer build reproducible.
+Run the ThreadSanitizer binary:
+
+```sh
+$ dune exec --context=tsan ./tsan_check.exe
+```
+
+This lets you keep your regular compiler in the `default` context while using
+an alternate `opam` switch for the ThreadSanitizer build.

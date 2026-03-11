@@ -7,12 +7,13 @@ another is only needed on demand, such as a ThreadSanitizer build.
 If you have used Dune before, you have been using one context already: the
 `default` context. You can see this in the build directory at `_build/default`,
 which is where Dune will put the build artifacts of your build. By adding more
-contexts, you can ask Dune to build the same sources with different environments
+contexts, you can ask Dune to build the same sources in different environments
 while keeping the artifacts separate.
 
 This can be useful in certain cases: for example you want to test your project
 with multiple compilers without having to edit your `dune-project` file, or opam
-switches every time. We will see a use of this with **ThreadSanitizer** below.
+switches every time. We will see a use case of this with **ThreadSanitizer**
+below.
 
 ::: {note}
 ThreadSanitizer is a dynamic data race detector that requires a
@@ -33,14 +34,17 @@ The examples below use a small program with a data race.
 
 :::{literalinclude} use-multiple-build-contexts/dune-project
 :language: dune
+:caption: dune-project
 :::
 
 :::{literalinclude} use-multiple-build-contexts/dune
 :language: dune
+:caption: dune
 :::
 
 :::{literalinclude} use-multiple-build-contexts/tsan_check.ml
 :language: ocaml
+:caption: tsan_check.ml
 :::
 
 Build and run it with your current compiler:
@@ -52,33 +56,17 @@ $ dune exec ./tsan_check.exe
 With a stock compiler, you may see the assertion fail, but you will not get a
 ThreadSanitizer report explaining the race.
 
-:::{important}
-This guide assumes that your ThreadSanitizer compiler environment already
-exists.
-
-For Dune package management, that means enabling `ocaml-option-tsan` in a
-separate lock directory. For an `opam`-based setup, that means a switch with a
-ThreadSanitizer-enabled compiler.
-
-:::
-
-<!-- ## Use an `opam` Context -->
 ## Use Dune Package Management
 
 First, declare `ocaml-option-tsan` as an optional dependency in
-`dune-project`:
-
-:::{literalinclude} use-multiple-build-contexts/dune-project.pkg
-:language: dune
-:emphasize-lines: 10
-:::
-
-Then create a `dune-workspace` file that defines two lock directories and
-attaches one context to each:
+`dune-workspace`, for the ThreadSanitizer build. Then create a `dune-workspace`
+file that defines two lock directories and attaches one context to each:
 
 :::{literalinclude} use-multiple-build-contexts/dune-workspace.pkg
 :language: dune
-:emphasize-lines: 10-18
+:emphasize-lines: 6-8
+:emphasize-lines: 10-15
+:caption: dune-workspace
 :::
 
 Generate the lock directories:
@@ -91,7 +79,7 @@ Build and run the binaries:
 
 ```sh
 $ dune exec --context=default ./tsan_check.exe
-$ dune exec --context=new ./tsan_check.exe
+$ dune exec --context=tsan ./tsan_check.exe
 ```
 
 
@@ -175,11 +163,20 @@ ThreadSanitizer: reported 1 warnings
 The second approach uses separate `opam` switches instead of separate lock
 directories.
 
+:::{important}
+This guide assumes that your ThreadSanitizer compiler environment
+already exists, you can find instructions in the [manual
+page](https://ocaml.org/manual/5.3/tsan.html). You may also want to install
+depexts listed in `dune show depexts`.
+
+:::
+
 Create a `dune-workspace` file:
 
-:::{literalinclude} use-multiple-build-contexts/dune-workspace.opam
+:::{literalinclude} use-multiple-build-contexts/dune-workspace.for-opam
 :language: dune
-:emphasize-lines: 5-8
+:emphasize-lines: 5-9
+:caption: dune-workspace
 :::
 
 This keeps the current environment as the `default` context and adds a second

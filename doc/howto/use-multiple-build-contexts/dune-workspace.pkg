@@ -7,10 +7,7 @@
  (path dune-tsan.lock)
  (depopts ocaml-option-tsan))
 
-(context
- (default
-  (name default)
-  (lock_dir dune.lock)))
+(context default)
 
 (context
  (default

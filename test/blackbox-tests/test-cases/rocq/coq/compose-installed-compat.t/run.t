@@ -58,7 +58,7 @@ Next we go into our Dune project and build it.
 
 Now we check the flags that were passed to coqdep and coqc:
 
-  $ dune trace cat | jq 'include "dune"; rocqFlags'
+  $ dune trace cat --trace-file A/_build/trace.csexp | jq 'include "dune"; rocqFlags'
   {
     "name": "coqc",
     "args": [

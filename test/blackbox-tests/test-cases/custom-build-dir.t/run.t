@@ -2,6 +2,7 @@
   _foobar
   _foobar/default
   _foobar/default/foo
+  _foobar/trace.csexp
 
   $ rm -rf _foobar
 
@@ -34,6 +35,7 @@ Test with build directory being an absolute path
   build
   build/default
   build/default/foo
+  build/trace.csexp
 
   $ rm -rf build
 

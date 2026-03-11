@@ -58,7 +58,22 @@ open struct
   module Manpage = Manpage
 end
 
-let default_trace_file = Path.Local.of_string "_build/trace.csexp"
+let default_build_dir = "_build"
+let trace_file_name = "trace.csexp"
+
+let find_default_trace_file () =
+  let trace_file = Filename.concat default_build_dir trace_file_name in
+  let cwd = Sys.getcwd () in
+  let rec loop dir =
+    let candidate = Filename.concat dir trace_file in
+    if Sys.file_exists candidate
+    then candidate
+    else (
+      let parent = Filename.dirname dir in
+      if parent = dir then Filename.concat cwd trace_file else loop parent)
+  in
+  loop cwd
+;;
 
 module Package = Dune_lang.Package
 open Let_syntax
@@ -74,8 +89,6 @@ let debug_backtraces =
         ~docs:copts_sect
         ~doc:(Some "Always print exception backtraces."))
 ;;
-
-let default_build_dir = "_build"
 
 let one_of term1 term2 =
   Term.ret
@@ -584,7 +597,7 @@ module Builder = struct
     ; watch_exclusions : string list
     ; build_dir : string
     ; root : string option
-    ; trace_file : string option
+    ; trace_file : [ `Default | `User_specified of string ] option
     ; allow_builds : bool
     ; default_root_is_cwd : bool
     ; target_exec : string option
@@ -614,7 +627,7 @@ module Builder = struct
     Buffer.contents b
   ;;
 
-  let make_term ~trace ~allow_pkg_flag =
+  let make_term ~(trace : bool) ~allow_pkg_flag =
     let docs = copts_sect in
     let+ config_from_command_line = shared_with_config_file ~allow_pkg_flag
     and+ debug_dep_path =
@@ -793,7 +806,7 @@ module Builder = struct
     and+ trace_file =
       Arg.(
         value
-        & opt (some string) trace
+        & opt (some string) None
         & info
             [ "trace-file" ]
             ~docs
@@ -952,21 +965,18 @@ module Builder = struct
     ; watch_exclusions
     ; build_dir = Option.value ~default:default_build_dir build_dir
     ; root
-    ; trace_file
+    ; trace_file =
+        (match trace_file with
+         | Some s -> Some (`User_specified s)
+         | None -> if trace then Some `Default else None)
     ; allow_builds = true
     ; default_root_is_cwd = false
     ; target_exec
     }
   ;;
 
-  let term_no_trace_no_pkg = make_term ~trace:None ~allow_pkg_flag:false
-
-  let term =
-    make_term
-      ~trace:(Some (Stdune.Path.Local.to_string default_trace_file))
-      ~allow_pkg_flag:true
-  ;;
-
+  let term_no_trace_no_pkg = make_term ~trace:false ~allow_pkg_flag:false
+  let term = make_term ~trace:true ~allow_pkg_flag:true
   let default = Term.eval_no_args_empty_env term
 
   let equal
@@ -1029,7 +1039,14 @@ module Builder = struct
     && List.equal String.equal t.watch_exclusions watch_exclusions
     && String.equal t.build_dir build_dir
     && Option.equal String.equal t.root root
-    && Option.equal String.equal t.trace_file trace_file
+    && Option.equal
+         (fun a b ->
+            match a, b with
+            | `Default, `Default -> true
+            | `User_specified a, `User_specified b -> String.equal a b
+            | _ -> false)
+         t.trace_file
+         trace_file
     && Bool.equal t.allow_builds allow_builds
     && Bool.equal t.default_root_is_cwd default_root_is_cwd
     && Option.equal String.equal t.target_exec target_exec
@@ -1171,20 +1188,24 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   let () =
     match builder.trace_file with
     | None -> Log.init No_log_file
-    | Some stats ->
+    | Some trace_config ->
       (match
          (* For default location, try to acquire lock first to avoid corrupting
            an existing trace from another dune process *)
-         if String.equal stats (Stdune.Path.Local.to_string default_trace_file)
-         then (
-           match Global_lock.lock ~timeout:None with
-           | Ok () -> `Create
-           | Error _ -> `Skip)
-         else `Create
+         match trace_config with
+         | `Default ->
+           (match Global_lock.lock ~timeout:None with
+            | Ok () -> `Create
+            | Error _ -> `Skip)
+         | `User_specified _ -> `Create
        with
        | `Skip -> Log.init No_log_file
        | `Create ->
-         let trace = Path.of_filename_relative_to_initial_cwd stats in
+         let trace =
+           match trace_config with
+           | `Default -> Path.build (Path.Build.relative Path.Build.root trace_file_name)
+           | `User_specified stats -> Path.of_filename_relative_to_initial_cwd stats
+         in
          Path.parent trace |> Option.iter ~f:Path.mkdir_p;
          let stats = Dune_trace.Out.create trace in
          Dune_trace.set_global stats;

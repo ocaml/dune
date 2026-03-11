@@ -326,10 +326,9 @@ let%expect_test "when unknown" =
   [%expect {| When (Expr (Literal (template "%{pkg-self:x}")), Literal "hello") |}]
 ;;
 
-(* CR-soon Alizter: when with nil body should reduce to Nil *)
 let%expect_test "when unknown nil" =
   print_slang (Slang.when_ (expr (pform "x")) Slang.Nil);
-  [%expect {| When (Expr (Literal (template "%{pkg-self:x}")), Nil) |}]
+  [%expect {| Nil |}]
 ;;
 
 (* Slang: If *)

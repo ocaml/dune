@@ -33,13 +33,13 @@ let build_dev_tool_directly dev_tool =
   | Ok () -> ()
 ;;
 
-let build_dev_tool_via_rpc builder lock_held_by dev_tool =
+let try_build_dev_tool_via_rpc builder lock_held_by dev_tool =
   let target = dev_tool_build_target dev_tool in
   let targets = Rpc.Rpc_common.prepare_targets [ target ] in
   let open Fiber.O in
   Rpc.Rpc_common.fire_request
     ~name:"build"
-    ~wait:true
+    ~wait:false
     ~lock_held_by
     builder
     Dune_rpc_impl.Decl.build
@@ -53,7 +53,7 @@ let lock_and_build_dev_tool ~common ~config builder dev_tool =
   | Error lock_held_by ->
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
       let* () = Lock_dev_tool.lock_dev_tool dev_tool |> Memo.run in
-      build_dev_tool_via_rpc builder lock_held_by dev_tool)
+      try_build_dev_tool_via_rpc builder lock_held_by dev_tool)
   | Ok () ->
     Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
       build_dev_tool_directly dev_tool)

@@ -76,9 +76,26 @@ let%expect_test "expr (blang const)" =
 
 (* Blang: And *)
 
+let%expect_test "and empty" =
+  print_blang (and_ []);
+  [%expect {| Const true |}]
+;;
+
 let%expect_test "and singleton" =
   print_blang (and_ [ expr (pform "x") ]);
   [%expect {| Expr (Literal (template "%{pkg-self:x}")) |}]
+;;
+
+(* CR-soon Alizter: and should deduplicate *)
+let%expect_test "and deduplicates" =
+  print_blang (and_ [ expr (pform "x"); expr (pform "y"); expr (pform "x") ]);
+  [%expect
+    {|
+    And
+      (Expr (Literal (template "%{pkg-self:x}")),
+       Expr (Literal (template "%{pkg-self:y}")),
+       Expr (Literal (template "%{pkg-self:x}")))
+    |}]
 ;;
 
 let%expect_test "and false short-circuits" =
@@ -109,9 +126,26 @@ let%expect_test "and flattens" =
 
 (* Blang: Or *)
 
+let%expect_test "or empty" =
+  print_blang (or_ []);
+  [%expect {| Const false |}]
+;;
+
 let%expect_test "or singleton" =
   print_blang (or_ [ expr (pform "x") ]);
   [%expect {| Expr (Literal (template "%{pkg-self:x}")) |}]
+;;
+
+(* CR-soon Alizter: or should deduplicate *)
+let%expect_test "or deduplicates" =
+  print_blang (or_ [ expr (pform "x"); expr (pform "y"); expr (pform "x") ]);
+  [%expect
+    {|
+    Or
+      (Expr (Literal (template "%{pkg-self:x}")),
+       Expr (Literal (template "%{pkg-self:y}")),
+       Expr (Literal (template "%{pkg-self:x}")))
+    |}]
 ;;
 
 let%expect_test "or true short-circuits" =

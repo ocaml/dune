@@ -86,15 +86,13 @@ let%expect_test "and singleton" =
   [%expect {| Expr (Literal (template "%{pkg-self:x}")) |}]
 ;;
 
-(* CR-soon Alizter: and should deduplicate *)
 let%expect_test "and deduplicates" =
   print_blang (and_ [ expr (pform "x"); expr (pform "y"); expr (pform "x") ]);
   [%expect
     {|
     And
       (Expr (Literal (template "%{pkg-self:x}")),
-       Expr (Literal (template "%{pkg-self:y}")),
-       Expr (Literal (template "%{pkg-self:x}")))
+       Expr (Literal (template "%{pkg-self:y}")))
     |}]
 ;;
 
@@ -136,15 +134,13 @@ let%expect_test "or singleton" =
   [%expect {| Expr (Literal (template "%{pkg-self:x}")) |}]
 ;;
 
-(* CR-soon Alizter: or should deduplicate *)
 let%expect_test "or deduplicates" =
   print_blang (or_ [ expr (pform "x"); expr (pform "y"); expr (pform "x") ]);
   [%expect
     {|
     Or
       (Expr (Literal (template "%{pkg-self:x}")),
-       Expr (Literal (template "%{pkg-self:y}")),
-       Expr (Literal (template "%{pkg-self:x}")))
+       Expr (Literal (template "%{pkg-self:y}")))
     |}]
 ;;
 

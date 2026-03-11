@@ -396,6 +396,11 @@ and simplify_blang = function
           | Blang.Const true -> false
           | _ -> true)
       in
+      let blangs =
+        List.fold_left blangs ~init:[] ~f:(fun acc b ->
+          if List.exists acc ~f:(blang_equal b) then acc else b :: acc)
+        |> List.rev
+      in
       match blangs with
       | [] -> Const true
       | [ b ] -> b
@@ -417,6 +422,11 @@ and simplify_blang = function
         List.filter blangs ~f:(function
           | Blang.Const false -> false
           | _ -> true)
+      in
+      let blangs =
+        List.fold_left blangs ~init:[] ~f:(fun acc b ->
+          if List.exists acc ~f:(blang_equal b) then acc else b :: acc)
+        |> List.rev
       in
       match blangs with
       | [] -> Const false

@@ -74,8 +74,9 @@ documentation for each command is available through ``dune COMMAND --help``.
       Print targets in a given directory. Works similarly to ls. The directory
       may be a path in the source tree, or a build-only directory under
       ``_build/`` (such as ``_build/default/.lib.objs``). Subdirectories
-      containing build targets are listed alongside the targets themselves;
-      pass ``-a``/``--all`` to also include hidden directories.
+      containing build targets are listed alongside the targets themselves.
+      By default, source-file copies are hidden; pass ``-a``/``--all`` to
+      also include source-file copies and hidden directories.
 
    .. describe:: dune describe workspace
 

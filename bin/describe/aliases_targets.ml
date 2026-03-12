@@ -135,14 +135,20 @@ module Targets_cmd = struct
   let fetch_results all (dir : Path.Build.t) =
     let open Action_builder.O in
     let+ load_dir = Action_builder.of_memo (Load_rules.load_dir ~dir:(Path.build dir)) in
+    let only_generated = not all in
     match load_dir with
     | Load_rules.Loaded.Build { rules_here; allowed_subdirs; _ } ->
       let file_targets =
-        Path.Build.Map.keys rules_here.by_file_targets
-        |> List.filter_map ~f:(fun path ->
-          if Path.Build.equal (Path.Build.parent_exn path) dir
-          then Some (Path.Build.basename path |> Filename.to_string)
-          else None)
+        Path.Build.Map.foldi
+          rules_here.by_file_targets
+          ~init:[]
+          ~f:(fun path { Dune_engine.Rule.info; _ } acc ->
+            match info with
+            | Dune_engine.Rule.Info.Source_file_copy _ when only_generated -> acc
+            | _ ->
+              if Path.Build.equal (Path.Build.parent_exn path) dir
+              then (Path.Build.basename path |> Filename.to_string) :: acc
+              else acc)
       in
       let dir_targets =
         Path.Build.Map.keys rules_here.by_directory_targets
@@ -170,7 +176,8 @@ module Targets_cmd = struct
       & flag
       & info
           [ "a"; "all" ]
-          ~doc:(Some "Show hidden directories (those starting with '.')."))
+          ~doc:
+            (Some "Show all targets including source file copies and hidden directories."))
   ;;
 
   let term = ls_term_gen extra_args fetch_results

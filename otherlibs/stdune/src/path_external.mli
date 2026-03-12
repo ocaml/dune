@@ -6,6 +6,8 @@ val root : t
 
 include Path_intf.With_loc with type t := t
 
+val canonicalize_abs : t -> t
+val descendant : t -> of_:t -> t option
 val relative : t -> string -> t
 val initial_cwd : t
 val cwd : unit -> t

@@ -27,7 +27,7 @@
 
     The second part is the "external world". It is all the paths that live
     outside of the workspace and build directory. To be on the safe side Dune
-    makes no assumption does nothing clever with these paths.
+    makes no assumption and does nothing clever with these paths.
 
     External paths are represented as [Path.External.t] values.
 
@@ -84,6 +84,8 @@ module External : sig
   val relative : t -> string -> t
   val of_filename_relative_to_initial_cwd : string -> t
   val append_local : t -> Local.t -> t
+  val canonicalize_abs : t -> t
+  val descendant : t -> of_:t -> t option
 
   module Table : Hashtbl.S with type key = t
 end

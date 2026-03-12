@@ -70,15 +70,15 @@ We cannot see inside directory targets
   Error: Directory d is a directory target. This command does not support the
   inspection of directory targets.
 
-We cannot show targets in build-only directories that don't exist in the source
-tree, like .simple.objs:
+Build-only directories that don't exist in the source tree, like .simple.objs
+(Dune's internal object directory for the `simple` library), can now be
+queried:
 
   $ dune show targets .simple.objs
-  Error: Directory .simple.objs does not exist.
+  cctx.ocaml-index
 
-CR-soon Alizter: This should work
   $ dune show targets _build/default/.simple.objs
-  Error: Directory _build/default/.simple.objs does not exist.
+  cctx.ocaml-index
 
 And we error on non-existent directories
 

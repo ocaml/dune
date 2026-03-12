@@ -29,7 +29,8 @@ Testing the bootstrap of an unwrapped include subdirs unqualified.
   > module M3 = C
   > let () = Printf.printf "Hello from bootstrapped binary!"
   > EOF
-  ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/types.ml boot/libs.ml boot/duneboot.ml
+  ocamllex -q -o boot/pps.ml boot/pps.mll
+  ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/pps.ml boot/types.ml boot/libs.ml boot/duneboot.ml
   ./.duneboot.exe
   Hello from unwrapped a/b/b.ml
   Hello from unwrapped a/b/c/c.ml

@@ -25,7 +25,8 @@ let keep_generated_files =
   !keep_generated_files
 ;;
 
-let modules = [ "boot/types"; "boot/libs"; "boot/duneboot" ]
+let pps = "boot/pps"
+let modules = pps :: [ "boot/types"; "boot/libs"; "boot/duneboot" ]
 let duneboot = ".duneboot"
 let prog = duneboot ^ ".exe"
 
@@ -40,6 +41,8 @@ let () =
   if not keep_generated_files
   then
     at_exit (fun () ->
+      (try Sys.remove "boot/pps.ml" with
+       | Sys_error _ -> ());
       Array.iter (Sys.readdir ".") ~f:(fun fn ->
         if
           String.length fn >= String.length duneboot
@@ -71,9 +74,9 @@ let read_file fn =
 
 let () =
   let v = Scanf.sscanf Sys.ocaml_version "%d.%d.%d" (fun a b c -> a, b, c) in
-  let compiler, which =
+  let compiler, ocamllex, which =
     if v >= min_supported_natively
-    then "ocamlc", None
+    then "ocamlc", "ocamllex", None
     else (
       let compiler = "ocamlfind -toolchain secondary ocamlc" in
       let output_fn, out = Filename.open_temp_file "duneboot" "ocamlfind-output" in
@@ -95,8 +98,10 @@ let () =
              a
              b);
         exit 2);
-      compiler, Some "--secondary")
+      let ocamllex = "ocamlfind -toolchain secondary ocamllex" in
+      compiler, ocamllex, Some "--secondary")
   in
+  exit_if_non_zero (runf "%s -q -o %s %s" ocamllex (pps ^ ".ml") (pps ^ ".mll"));
   exit_if_non_zero
     (runf
        "%s %s -intf-suffix .dummy -g -o %s -I boot %sunix.cma %s"

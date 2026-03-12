@@ -247,6 +247,79 @@ let fetch_local ~checksum ~target (url, url_loc) =
       Unavailable (Some (User_message.make [ Pp.text "Could not unpack:"; pp ])))
 ;;
 
+let rec resolve_directory_symlinks_in dir =
+  let follow_symlink_exn path =
+    match Fpath.follow_symlink path with
+    | Ok resolved -> Some resolved
+    | Error (Unix_error _) -> None
+    | Error Not_a_symlink ->
+      Code_error.raise
+        "resolve_director_symlinks_in: not a symlink"
+        [ "path", Dyn.string path ]
+    | Error Max_depth_exceeded ->
+      User_error.raise
+        [ Pp.textf "Unable to resolve symlink %s: too many levels of symbolic links" path
+        ]
+  in
+  match Readdir.read_directory_with_kinds dir with
+  | Error e -> Unix_error.Detailed.raise e
+  | Ok entries ->
+    List.iter entries ~f:(fun (fname, kind) ->
+      let path = Filename.concat dir fname in
+      match (kind : Unix.file_kind) with
+      | S_DIR -> resolve_directory_symlinks_in path
+      | S_LNK ->
+        (match follow_symlink_exn path with
+         | None ->
+           (* Delete fauly symlinks silently, as they're allowed in fetched sources. *)
+           Fpath.unlink_no_err path
+         | Some resolved ->
+           (match Unix.lstat resolved with
+            | { Unix.st_kind = S_DIR; _ } ->
+              Fpath.unlink_exn path;
+              (match Fpath.mkdir_p path with
+               | `Created -> ()
+               | `Already_exists ->
+                 User_error.raise
+                   [ Pp.textf
+                       "Unable to resolve symlink %s: a directory with the same name \
+                        already exists."
+                       path
+                   ]);
+              (match Readdir.read_directory_with_kinds resolved with
+               | Error e -> Unix_error.Detailed.raise e
+               | Ok children ->
+                 let symlinks_in_children =
+                   List.fold_left
+                     children
+                     ~init:false
+                     ~f:(fun symlinks_in_children (child_name, child_kind) ->
+                       let child_path = Filename.concat resolved child_name in
+                       let src = Path.of_string child_path in
+                       let dst = Path.of_string (Filename.concat path child_name) in
+                       match (child_kind : Unix.file_kind) with
+                       | S_REG ->
+                         Io.portable_hardlink ~src ~dst;
+                         symlinks_in_children
+                       | S_DIR ->
+                         Io.portable_symlink ~src ~dst;
+                         true
+                       | S_LNK ->
+                         follow_symlink_exn child_path
+                         |> Option.iter ~f:(fun linked_path ->
+                           let src = Path.of_string linked_path in
+                           Io.portable_symlink ~src ~dst);
+                         true
+                       | _ -> symlinks_in_children)
+                 in
+                 if symlinks_in_children then resolve_directory_symlinks_in path)
+            | _ ->
+              (* We do not care about symlinks pointing to anything but directories. *)
+              (* Q: Should we do something when a symlink points to another symlink? *)
+              ()))
+      | _ -> ())
+;;
+
 let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
   let event =
     Dune_trace.(
@@ -265,18 +338,29 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
         Dune_trace.Out.finish trace event);
       Fiber.return ())
     (fun () ->
-       match url.backend with
-       | `git ->
-         let* rev_store = Rev_store.get in
-         fetch_git rev_store ~target ~url:(url_loc, url)
-       | `http -> fetch_curl ~unpack ~checksum ~target url
-       | `rsync ->
-         if not unpack
-         then
-           Code_error.raise "fetch_local: unpack is not set" [ "url", OpamUrl.to_dyn url ];
-         fetch_local ~checksum ~target (url, url_loc)
-       | `hg -> unsupported_backend "mercurial"
-       | `darcs -> unsupported_backend "darcs")
+       let+ fetch_result =
+         match url.backend with
+         | `git ->
+           let* rev_store = Rev_store.get in
+           fetch_git rev_store ~target ~url:(url_loc, url)
+         | `http -> fetch_curl ~unpack ~checksum ~target url
+         | `rsync ->
+           if not unpack
+           then
+             Code_error.raise
+               "fetch_local: unpack is not set"
+               [ "url", OpamUrl.to_dyn url ];
+           fetch_local ~checksum ~target (url, url_loc)
+         | `hg -> unsupported_backend "mercurial"
+         | `darcs -> unsupported_backend "darcs"
+       in
+       match fetch_result with
+       | Ok () ->
+         let target_str = Path.to_string target in
+         if (Unix.lstat target_str).st_kind = S_DIR
+         then resolve_directory_symlinks_in target_str;
+         Ok ()
+       | Error e -> Error e)
 ;;
 
 let fetch_without_checksum ~unpack ~target ~url =

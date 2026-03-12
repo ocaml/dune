@@ -56,13 +56,11 @@ Case 2: Tarball source containing a directory symlink.
   > (build (run cat real_dir/file.txt))
   > EOF
 
-CR-someday alizter: Tarball extraction preserves symlinks, but then the target
-validation rejects directory symlinks. We could resolve them after extraction.
+This is now fixed
 
-  $ build_pkg bar 2>&1 | sanitize_pkg_digest bar.0.0.1 | grep -E "^Error:|S_DIR"
-  Error: Error trying to read targets after a rule was run:
-  - default/.pkg/bar.0.0.1-DIGEST_HASH/source/link_to_dir: Unexpected file kind "S_DIR" (directory)
-  [1]
+  $ build_pkg bar 2>&1 | sanitize_pkg_digest bar.0.0.1
+  content
+
 
 The tarball was fully extracted (including the symlink):
 
@@ -85,10 +83,7 @@ Case 3: Downloaded tarball containing a directory symlink (with checksum).
 
   $ echo $PWD/_src.tar.gz >> fake-curls
 
-CR-someday alizter: Same issue as Case 2, but the error occurs during checksum
-validation which happens before the source is made available.
+This is now fixed
 
-  $ build_pkg baz 2>&1 | sed 's/md5=[a-f0-9]*/md5=HASH/g' | grep -E "^Error:|S_DIR"
-  Error: Error trying to read targets after a rule was run:
-  - checksum/md5=HASH/dir/link_to_dir: Unexpected file kind "S_DIR" (directory)
-  [1]
+  $ build_pkg baz 2>&1 | sed 's/md5=[a-f0-9]*/md5=HASH/g'
+  content

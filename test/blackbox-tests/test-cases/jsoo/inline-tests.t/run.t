@@ -12,17 +12,27 @@ Run inline tests using node js
   inline tests (Native)
   inline tests (Native)
   Warning [missing-effects-backend]: your program contains effect handlers; you should probably run js_of_ocaml with option '--effects=cps'
+  Warning [missing-effects-backend]: your program contains effect handlers; you should probably run js_of_ocaml with option '--effects=cps'
   inline tests (JS)
   inline tests (JS)
+  inline tests (JS + custom runner)
+  inline tests (JS + custom runner)
+  Preparing node wrapper for .inline_tests_js2.inline-tests/inline-test-runner.bc.js
 
 CR-Alizter: This test has a different behaviour for the macos-latest in the CI and additionally runs the (Byte) tests. This seems unintentional and should be investigated. For now this test is disabled on macos.
 
   $ dune runtest --profile release
   Warning [missing-effects-backend]: your program contains effect handlers; you should probably run js_of_ocaml with option '--effects=cps'
+  Warning [missing-effects-backend]: your program contains effect handlers; you should probably run js_of_ocaml with option '--effects=cps'
   inline tests (JS)
   inline tests (JS)
+  inline tests (JS + custom runner)
+  inline tests (JS + custom runner)
+  Preparing node wrapper for .inline_tests_js2.inline-tests/inline-test-runner.bc.js
   inline tests (Native)
   inline tests (Native)
+
+  $ dune build bin/node_wrapper.exe
 
   $ dune build js/.inline_tests_js.inline-tests/inline_test_runner_inline_tests_js.bc
   Error: Don't know how to build

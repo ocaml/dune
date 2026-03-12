@@ -123,6 +123,7 @@ module Env : sig
     ; runtest_alias : Alias_name.t option
     ; flags : 'a Flags.t
     ; enabled_if : Blang.t option
+    ; runner : Action.t option
     }
 
   val map : f:('a -> 'b) -> 'a t -> 'b t

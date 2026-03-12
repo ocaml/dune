@@ -29,31 +29,38 @@ let action
   let+ action =
     (* [action] needs to run from [dir] as we use [dir] to resolve
        the exe path in case of a custom [runner] *)
-    match
-      match mode with
-      | Native | Best | Byte -> None
-      | Jsoo _ -> Some Jsoo_rules.runner
-    with
-    | None -> flags >>| Action.run (Ok exe)
-    | Some runner ->
-      let* prog =
-        Super_context.resolve_program
-          ~dir
-          sctx
-          ~where:Original_path
-          ~loc:(Some loc)
-          runner
-      and* flags = flags in
-      let action =
-        Path.reach exe ~from:(Path.build dir) :: flags
-        |> Action.run prog
-        |> Action_builder.return
+    match mode with
+    | Native | Best | Byte -> flags >>| Action.run (Ok exe)
+    | Jsoo jsoo_mode ->
+      let* runner = Jsoo_rules.runner ~dir ~mode:jsoo_mode |> Action_builder.of_memo in
+      let runner_dir, runner_action =
+        match runner with
+        | Some r -> r
+        | None -> Code_error.raise "Jsoo_rules.runner returned None" []
       in
-      (* jeremiedimino: it feels like this pattern should be pushed
-         into [resolve_program] directly *)
-      (match prog with
-       | Error _ -> action
-       | Ok p -> Action_builder.path p >>> action)
+      let* flags = flags in
+      let exe_path = Path.reach exe ~from:(Path.build dir) in
+      let* runner_expander =
+        Action_builder.of_memo (Super_context.expander sctx ~dir:runner_dir)
+      in
+      let runner_expander =
+        Expander.add_bindings
+          runner_expander
+          ~bindings:
+            (Pform.Map.singleton
+               (Pform.Var Test)
+               (Value.String exe_path :: List.map ~f:(fun f -> Value.String f) flags))
+      in
+      Action_unexpanded.expand_no_targets_with_chdir
+        runner_action
+        Sandbox_config.no_special_requirements
+        ~loc
+        ~expander:runner_expander
+        ~chdir:runner_dir
+        ~action_chdir:dir
+        ~deps:[]
+        ~what:"jsoo runner"
+      >>| fun (full : Action.Full.t) -> full.action
   and+ () = deps
   and+ () = Action_builder.path exe
   and+ () =

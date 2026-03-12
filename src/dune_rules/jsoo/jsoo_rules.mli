@@ -52,7 +52,11 @@ val build_exe
   -> unit Memo.t
 
 val setup_separate_compilation_rules : Super_context.t -> string list -> unit Memo.t
-val runner : string
+
+val runner
+  :  dir:Path.Build.t
+  -> mode:Js_of_ocaml.Mode.t
+  -> (Path.Build.t * Dune_lang.Action.t) option Memo.t
 
 val js_of_ocaml_runtest_alias
   :  dir:Path.Build.t

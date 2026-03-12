@@ -39,3 +39,31 @@ val expand_no_targets
   -> expander:Expander.t
   -> what:string
   -> Action.Full.t Action_builder.t
+
+(** Like [expand] but uses [chdir] for path resolution during expansion and
+    [action_chdir] as the runtime working directory baked into the action. *)
+val expand_with_chdir
+  :  t
+  -> Sandbox_config.t
+  -> loc:Loc.t
+  -> chdir:Path.Build.t
+  -> action_chdir:Path.Build.t
+  -> deps:Dep_conf.t Bindings.t
+  -> targets_dir:Path.Build.t
+  -> targets:Path.Build.t Targets_spec.t
+  -> expander:Expander.t
+  -> Action.Full.t Action_builder.With_targets.t Memo.t
+
+(** Like [expand_no_targets] but uses [chdir] for path resolution during
+    expansion and [action_chdir] as the runtime working directory baked into
+    the action. *)
+val expand_no_targets_with_chdir
+  :  t
+  -> Sandbox_config.t
+  -> loc:Loc.t
+  -> chdir:Path.Build.t
+  -> action_chdir:Path.Build.t
+  -> deps:Dep_conf.t Bindings.t
+  -> expander:Expander.t
+  -> what:string
+  -> Action.Full.t Action_builder.t

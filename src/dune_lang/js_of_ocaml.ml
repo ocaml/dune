@@ -314,6 +314,7 @@ module Env = struct
     ; runtest_alias : Alias_name.t option
     ; flags : 'a Flags.t
     ; enabled_if : Blang.t option
+    ; runner : Action.t option
     }
 
   let decode ~mode =
@@ -328,20 +329,27 @@ module Env = struct
        and+ flags = Flags.decode
        and+ enabled_if =
          field_o "enabled_if" (Syntax.since Stanza.syntax (3, 17) >>> Blang.decode)
-       in
-       { compilation_mode; sourcemap; runtest_alias; flags; enabled_if }
+       and+ runner = field_o "runner" Action.decode_dune_file in
+       { compilation_mode; sourcemap; runtest_alias; flags; enabled_if; runner }
   ;;
 
-  let equal { compilation_mode; sourcemap; runtest_alias; flags; enabled_if } t =
+  let equal { compilation_mode; sourcemap; runtest_alias; flags; enabled_if; runner } t =
     Option.equal Compilation_mode.equal compilation_mode t.compilation_mode
     && Option.equal Sourcemap.equal sourcemap t.sourcemap
     && Option.equal Alias_name.equal runtest_alias t.runtest_alias
     && Flags.equal Ordered_set_lang.Unexpanded.equal flags t.flags
     && Option.equal Blang.equal enabled_if t.enabled_if
+    && Option.equal Action.equal runner t.runner
   ;;
 
-  let map ~f { compilation_mode; sourcemap; runtest_alias; flags; enabled_if } =
-    { compilation_mode; sourcemap; runtest_alias; flags = Flags.map ~f flags; enabled_if }
+  let map ~f { compilation_mode; sourcemap; runtest_alias; flags; enabled_if; runner } =
+    { compilation_mode
+    ; sourcemap
+    ; runtest_alias
+    ; flags = Flags.map ~f flags
+    ; enabled_if
+    ; runner
+    }
   ;;
 
   let empty =
@@ -350,6 +358,7 @@ module Env = struct
     ; runtest_alias = None
     ; flags = Flags.standard
     ; enabled_if = None
+    ; runner = None
     }
   ;;
 
@@ -359,6 +368,7 @@ module Env = struct
     ; runtest_alias = None
     ; flags = Flags.default ~profile
     ; enabled_if = None
+    ; runner = None
     }
   ;;
 end

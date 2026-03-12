@@ -132,11 +132,11 @@ module Aliases_cmd = struct
 end
 
 module Targets_cmd = struct
-  let fetch_results () (dir : Path.Build.t) =
+  let fetch_results all (dir : Path.Build.t) =
     let open Action_builder.O in
     let+ load_dir = Action_builder.of_memo (Load_rules.load_dir ~dir:(Path.build dir)) in
     match load_dir with
-    | Load_rules.Loaded.Build { rules_here; _ } ->
+    | Load_rules.Loaded.Build { rules_here; allowed_subdirs; _ } ->
       let file_targets =
         Path.Build.Map.keys rules_here.by_file_targets
         |> List.filter_map ~f:(fun path ->
@@ -151,11 +151,29 @@ module Targets_cmd = struct
           then Some ((Path.Build.basename path |> Filename.to_string) ^ Filename.dir_sep)
           else None)
       in
-      List.sort ~compare:String.compare (file_targets @ dir_targets)
+      let subdirs =
+        match Dune_engine.Dir_set.toplevel_subdirs allowed_subdirs with
+        | Infinite -> []
+        | Finite set ->
+          Filename.Set.to_list set
+          |> Filename.L.to_string
+          |> List.filter ~f:(fun name -> all || String.length name = 0 || name.[0] <> '.')
+          |> List.map ~f:(fun name -> name ^ Filename.dir_sep)
+      in
+      List.sort ~compare:String.compare (file_targets @ dir_targets @ subdirs)
     | _ -> []
   ;;
 
-  let term = ls_term_gen (Term.const ()) fetch_results
+  let extra_args =
+    Arg.(
+      value
+      & flag
+      & info
+          [ "a"; "all" ]
+          ~doc:(Some "Show hidden directories (those starting with '.')."))
+  ;;
+
+  let term = ls_term_gen extra_args fetch_results
 
   let command =
     let doc = "Print targets in a given directory. Works similarly to ls." in

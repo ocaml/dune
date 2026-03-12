@@ -570,6 +570,7 @@ let is_descendant t ~of_ =
   match t, of_ with
   | In_source_tree t, In_source_tree of_ -> Source0.is_descendant t ~of_
   | In_build_dir t, In_build_dir of_ -> Build.is_descendant t ~of_
+  | External t, External of_ -> External.is_descendant t ~of_
   | _ -> false
 ;;
 

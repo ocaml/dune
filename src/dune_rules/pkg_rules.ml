@@ -498,18 +498,14 @@ module Pkg = struct
           let contents = Fs_memo.Dir_contents.to_list contents in
           List.rev_filter_partition_map contents ~f:(fun (name, kind) ->
             (* TODO handle links and cycles correctly *)
+            let relative = Path.Local.relative path name in
             match kind with
-            | S_DIR -> if skip_dir name then Skip else Right name
-            | _ -> if skip_file name then Skip else Left name)
+            | S_DIR -> if skip_dir name then Skip else Right relative
+            | _ -> if skip_file name then Skip else Left relative)
         in
-        let acc =
-          Path.Local.Set.of_list_map files ~f:(Path.Local.relative path)
-          |> Path.Local.Set.union acc
-        in
+        let acc = Path.Local.Set.of_list files |> Path.Local.Set.union acc in
         let+ dirs =
-          Memo.parallel_map dirs ~f:(fun dir ->
-            let dir = Path.Local.relative path dir in
-            loop root Path.Local.Set.empty dir)
+          Memo.parallel_map dirs ~f:(fun dir -> loop root Path.Local.Set.empty dir)
         in
         Path.Local.Set.union_all (acc :: dirs)
     in

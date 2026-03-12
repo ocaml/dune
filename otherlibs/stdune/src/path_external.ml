@@ -75,7 +75,7 @@ include (
 let to_string_maybe_quoted t = String.maybe_quoted (to_string t)
 
 let is_descendant b ~of_:a =
-  is_root a || String.starts_with ~prefix:(to_string a ^ "/") (to_string b)
+  is_root a || a = b || String.starts_with ~prefix:(to_string a ^ "/") (to_string b)
 ;;
 
 module Map = String.Map

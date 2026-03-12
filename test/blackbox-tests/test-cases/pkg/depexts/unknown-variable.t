@@ -36,5 +36,4 @@ standard package variable. Cases "a", "b", and "d" should be filtered:
    (all_platforms (dep)))
   
   (depexts
-   ((c) %{pkg:dep:installed})
-   ((d) %{pkg:nonexistent-pkg:installed}))
+   ((c) %{pkg:dep:installed}))

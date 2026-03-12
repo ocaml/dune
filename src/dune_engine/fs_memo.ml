@@ -316,16 +316,12 @@ let file_digest_exn ?loc path =
   file_digest path
   >>= function
   | Ok digest -> Memo.return digest
-  | Error No_such_file -> report_user_error []
-  | Error Broken_symlink -> report_user_error [ Pp.text "Broken symbolic link" ]
-  | Error Cyclic_symlink -> report_user_error [ Pp.text "Cyclic symbolic link" ]
-  | Error (Unexpected_kind st_kind) ->
-    report_user_error
-      [ Pp.textf "This is not a regular file (%s)" (File_kind.to_string st_kind) ]
-  | Error (Unix_error unix_error) ->
-    report_user_error [ Unix_error.Detailed.pp_reason unix_error ]
-  | Error (Unrecognized exn) ->
-    report_user_error [ Pp.textf "%s" (Printexc.to_string exn) ]
+  | Error e ->
+    if Cached_digest.Digest_result.Error.no_such_file e
+    then report_user_error []
+    else
+      report_user_error
+        [ Cached_digest.Digest_result.Error.pp e (Path.outside_build_dir path) ]
 ;;
 
 let dir_contents ?(force_update = false) path =

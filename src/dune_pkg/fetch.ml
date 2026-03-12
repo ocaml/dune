@@ -247,6 +247,111 @@ let fetch_local ~checksum ~target (url, url_loc) =
       Unavailable (Some (User_message.make [ Pp.text "Could not unpack:"; pp ])))
 ;;
 
+let resolve_directory_symlinks_in root =
+  let follow_symlink_exn name =
+    match Fpath.follow_symlink name with
+    | Ok resolved -> Some resolved
+    | Error (Unix_error _) -> None
+    | Error Not_a_symlink ->
+      Code_error.raise
+        "resolve_directory_symlinks_in: not a symlink"
+        [ "name", Dyn.string name ]
+    | Error Max_depth_exceeded ->
+      User_error.raise
+        [ Pp.textf "Unable to resolve symlink %s: too many levels of symbolic links" name
+        ]
+  in
+  let cycle_error name =
+    User_error.raise
+      [ Pp.textf "Unable to resolve symlink %s, it is part of a cycle." name ]
+  in
+  let rec resolve_rec (dir : Path.t) already_seen =
+    match Readdir.read_directory_with_kinds (Path.to_string dir) with
+    | Error e -> Unix_error.Detailed.raise e
+    | Ok entries ->
+      List.fold_left entries ~init:already_seen ~f:(fun seen (name, kind) ->
+        let relative = Path.relative dir name in
+        let full_name = Path.to_string relative in
+        match (kind : Unix.file_kind) with
+        | S_DIR -> resolve_rec relative seen
+        | S_LNK ->
+          if String.Set.mem already_seen full_name then cycle_error full_name;
+          let seen = String.Set.add seen full_name in
+          (match follow_symlink_exn full_name with
+           | None ->
+             (* Delete faulty symlinks silently, as they're allowed in fetched sources. *)
+             Fpath.unlink_no_err full_name;
+             Log.info
+               "Deleted broken symlink from fetched archive"
+               [ "full_name", Dyn.string full_name ];
+             seen
+           | Some raw_resolved ->
+             (* [raw_resolved] is a relative build path but it might contain indirections,
+                something like _build/foo/../bar
+                or _build/../outside *)
+             let canon_resolved = Path.of_string raw_resolved in
+             if Path.is_descendant relative ~of_:canon_resolved then cycle_error full_name;
+             if not (Path.is_descendant canon_resolved ~of_:root)
+             then
+               User_error.raise
+                 [ Pp.textf
+                     "Unable to resolve symlink %s: its target %s is outside the source \
+                      directory"
+                     full_name
+                     (Path.to_string canon_resolved)
+                 ];
+             (match Unix.stat raw_resolved with
+              | { Unix.st_kind = S_DIR; _ } ->
+                Fpath.unlink_exn full_name;
+                (match Fpath.mkdir_p full_name with
+                 | `Created -> ()
+                 | `Already_exists ->
+                   User_error.raise
+                     [ Pp.textf
+                         "Unable to resolve symlink %s: a directory with the same name \
+                          already exists."
+                         full_name
+                     ]);
+                (match
+                   Readdir.read_directory_with_kinds (Path.to_string canon_resolved)
+                 with
+                 | Error e -> Unix_error.Detailed.raise e
+                 | Ok children ->
+                   let symlinks_in_children =
+                     List.fold_left
+                       children
+                       ~init:false
+                       ~f:(fun symlinks_in_children (child_name, child_kind) ->
+                         let child_path = Filename.concat raw_resolved child_name in
+                         let src = Path.of_string child_path in
+                         let dst =
+                           Path.of_string (Filename.concat full_name child_name)
+                         in
+                         match (child_kind : Unix.file_kind) with
+                         | S_REG ->
+                           Io.portable_hardlink ~src ~dst;
+                           symlinks_in_children
+                         | S_DIR ->
+                           Io.portable_symlink ~src ~dst;
+                           true
+                         | S_LNK ->
+                           follow_symlink_exn child_path
+                           |> Option.iter ~f:(fun linked_path ->
+                             let src = Path.of_string linked_path in
+                             Io.portable_symlink ~src ~dst);
+                           true
+                         | _ -> symlinks_in_children)
+                   in
+                   if symlinks_in_children then resolve_rec relative seen else seen)
+              | _ ->
+                (* We do not care about symlinks pointing to anything but directories. *)
+                seen))
+        | _ -> seen)
+  in
+  let _symlinks_seen : String.Set.t = resolve_rec root String.Set.empty in
+  ()
+;;
+
 let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
   let event =
     Dune_trace.(
@@ -265,18 +370,29 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
         Dune_trace.Out.finish trace event);
       Fiber.return ())
     (fun () ->
-       match url.backend with
-       | `git ->
-         let* rev_store = Rev_store.get in
-         fetch_git rev_store ~target ~url:(url_loc, url)
-       | `http -> fetch_curl ~unpack ~checksum ~target url
-       | `rsync ->
-         if not unpack
-         then
-           Code_error.raise "fetch_local: unpack is not set" [ "url", OpamUrl.to_dyn url ];
-         fetch_local ~checksum ~target (url, url_loc)
-       | `hg -> unsupported_backend "mercurial"
-       | `darcs -> unsupported_backend "darcs")
+       let+ fetch_result =
+         match url.backend with
+         | `git ->
+           let* rev_store = Rev_store.get in
+           fetch_git rev_store ~target ~url:(url_loc, url)
+         | `http -> fetch_curl ~unpack ~checksum ~target url
+         | `rsync ->
+           if not unpack
+           then
+             Code_error.raise
+               "fetch_local: unpack is not set"
+               [ "url", OpamUrl.to_dyn url ];
+           fetch_local ~checksum ~target (url, url_loc)
+         | `hg -> unsupported_backend "mercurial"
+         | `darcs -> unsupported_backend "darcs"
+       in
+       match fetch_result with
+       | Ok () ->
+         let target_str = Path.to_string target in
+         if (Unix.lstat target_str).st_kind = S_DIR
+         then resolve_directory_symlinks_in target;
+         Ok ()
+       | Error e -> Error e)
 ;;
 
 let fetch_without_checksum ~unpack ~target ~url =

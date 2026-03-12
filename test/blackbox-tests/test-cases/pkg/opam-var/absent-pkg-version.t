@@ -21,8 +21,9 @@ context:
   Solution for dune.lock:
   - test-version-var.0.0.1
 
-Currently the variable is left as a pform. It should resolve to empty string
-at solve time:
+String interpolation contexts resolve to empty string at solve time. Truthy and
+filter contexts are left for build time evaluation where they will be undefined
+and thus falsey:
 
   $ cat dune.lock/test-version-var.0.0.1.pkg
   (version 0.0.1)
@@ -31,8 +32,9 @@ at solve time:
    (all_platforms
     ((action
       (progn
-       (run echo %{pkg:absent:version})
-       (run echo %{pkg:absent:version})
+       (run echo "")
+       (run echo "")
        (run echo (if (catch_undefined_var %{pkg:absent:version} false) yes no))
        (when %{pkg:not-in-lock:version} (run echo "has version"))
        (when (not %{pkg:not-in-lock:version}) (run echo "no version")))))))
+

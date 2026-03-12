@@ -367,13 +367,22 @@ and simplify_blang = function
   | Compare (op, lhs, rhs) ->
     let lhs = simplify lhs in
     let rhs = simplify rhs in
-    (match lhs, rhs with
-     | Literal l, Literal r ->
-       (match op, String_with_vars.text_only l, String_with_vars.text_only r with
-        | Relop.Eq, Some l, Some r -> Const (String.equal l r)
-        | Relop.Neq, Some l, Some r -> Const (not (String.equal l r))
-        | _ -> Compare (op, lhs, rhs))
-     | _ -> Compare (op, lhs, rhs))
+    let is_undefined = function
+      | Form (_, Blang (Const false)) -> true
+      | _ -> false
+    in
+    (* Comparisons involving undefined values are themselves undefined,
+       which evaluates to false in filter context *)
+    if is_undefined lhs || is_undefined rhs
+    then Const false
+    else (
+      match lhs, rhs with
+      | Literal l, Literal r ->
+        (match op, String_with_vars.text_only l, String_with_vars.text_only r with
+         | Relop.Eq, Some l, Some r -> Const (String.equal l r)
+         | Relop.Neq, Some l, Some r -> Const (not (String.equal l r))
+         | _ -> Compare (op, lhs, rhs))
+      | _ -> Compare (op, lhs, rhs))
   | Not blang ->
     (match simplify_blang blang with
      | Const b -> Const (not b)

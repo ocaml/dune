@@ -122,6 +122,7 @@ module Spec = struct
             filesystem). Broken symlinks are excluded while copying files from
             local directories into the build directory, and the logic for
             excluding them lives in [Pkg_rules.source_rules]. *)
+         (* CR-Ambre remove this? *)
          let target_abs = Path.to_absolute_filename target in
          let on_symlink ~dir fname () =
            let path = Filename.concat target_abs (Filename.concat dir fname) in

@@ -1062,6 +1062,57 @@ let files_of ~dir =
     Filename_set.create ~dir filenames
 ;;
 
+let targets_of ~dir =
+  Load_rules.load_dir ~dir
+  >>= function
+  | Source _ | External _ ->
+    (* Source/external dirs have no build targets *)
+    Memo.return Targets.empty
+  | Build { rules_here; _ } ->
+    let files =
+      Path.Build.Map.keys rules_here.by_file_targets |> Path.Build.Set.of_list
+    in
+    let dirs =
+      Path.Build.Map.keys rules_here.by_directory_targets |> Path.Build.Set.of_list
+    in
+    Memo.return (Targets.create ~files ~dirs)
+  | Build_under_directory_target { directory_target_ancestor } ->
+    let+ produced = build_dir (Path.build directory_target_ancestor) in
+    let build_dir_path = Path.as_in_build_dir_exn dir in
+    (* Navigate to the requested directory within the produced targets *)
+    let rec find_dir_contents (contents : _ Targets.Produced.dir_contents) path =
+      match path with
+      | [] -> Some contents
+      | component :: rest ->
+        (match Filename.Map.find contents.subdirs component with
+         | Some sub -> find_dir_contents sub rest
+         | None -> None)
+    in
+    let path_within =
+      match
+        Path.Local.descendant
+          (Path.Build.local build_dir_path)
+          ~of_:(Path.Build.local produced.root)
+      with
+      | Some p -> Path.Local.explode p
+      | None -> []
+    in
+    (match find_dir_contents produced.contents path_within with
+     | Some contents ->
+       let files =
+         Filename.Map.keys contents.files
+         |> List.map ~f:(Path.Build.relative_fname build_dir_path)
+         |> Path.Build.Set.of_list
+       in
+       let dirs =
+         Filename.Map.keys contents.subdirs
+         |> List.map ~f:(Path.Build.relative_fname build_dir_path)
+         |> Path.Build.Set.of_list
+       in
+       Targets.create ~files ~dirs
+     | None -> Targets.empty)
+;;
+
 let caused_by_cancellation (exn : Exn_with_backtrace.t) =
   match exn.exn with
   | Scheduler.Run.Build_cancelled -> true

@@ -35,6 +35,10 @@ val eval_pred : File_selector.t -> Filename_set.t Memo.t
 (** Same as [eval_pred] with [Predicate.true_] as predicate. *)
 val files_of : dir:Path.t -> Filename_set.t Memo.t
 
+(** Return all targets (files and directories) in a directory.
+    Handles directory targets by building them first. *)
+val targets_of : dir:Path.t -> Targets.t Memo.t
+
 (** Execute an action. The execution is cached. *)
 val execute_action : observing_facts:Dep.Facts.t -> Rule.Anonymous_action.t -> unit Memo.t
 

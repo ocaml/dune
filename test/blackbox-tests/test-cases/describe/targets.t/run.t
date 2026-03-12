@@ -73,11 +73,28 @@ The command also works with files in the _build directory.
   simple2.cmxs
   simple2.ml-gen
 
-We cannot see inside directory targets
+We can see inside directory targets. The directory target `d` contains files
+and a subdirectory.
 
   $ dune show targets d
-  Error: Directory d is a directory target. This command does not support the
-  inspection of directory targets.
+  bar
+  foo
+  subdir/
+
+We can also inspect directory targets using the _build path:
+
+  $ dune show targets _build/default/d
+  bar
+  foo
+  subdir/
+
+We can also look inside subdirectories of directory targets:
+
+  $ dune show targets d/subdir
+  nested
+
+  $ dune show targets _build/default/d/subdir
+  nested
 
 Build-only directories that don't exist in the source tree, like .simple.objs
 (Dune's internal object directory for the `simple` library), can now be

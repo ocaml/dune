@@ -49,21 +49,17 @@ let ls_term_gen extra_args fetch_results =
                   (Path.to_string_maybe_quoted dir)
               ]
         in
-        (* Check if the directory exists. *)
+        (* Check if the directory exists (in source tree, as a directory target,
+           or as a build-only directory). *)
         let* () =
           Action_builder.of_memo
           @@
           let open Memo.O in
-          (* First check if it's a directory target *)
           Load_rules.load_dir ~dir:(Path.build build_dir)
           >>= function
           | Load_rules.Loaded.Build_under_directory_target _ ->
-            User_error.raise
-              [ Pp.textf
-                  "Directory %s is a directory target. This command does not support the \
-                   inspection of directory targets."
-                  (Path.to_string dir)
-              ]
+            (* Directory target - allow it through for inspection *)
+            Memo.return ()
           | External _ | Build _ | Source _ ->
             (* Check if directory exists in source tree or is a valid build-only directory *)
             Source_tree.find_dir src_dir
@@ -134,34 +130,38 @@ end
 module Targets_cmd = struct
   let fetch_results all (dir : Path.Build.t) =
     let open Action_builder.O in
-    let+ load_dir = Action_builder.of_memo (Load_rules.load_dir ~dir:(Path.build dir)) in
-    match load_dir with
-    | Load_rules.Loaded.Build { rules_here; allowed_subdirs; _ } ->
-      let file_targets =
-        Path.Build.Map.keys rules_here.by_file_targets
-        |> List.filter_map ~f:(fun path ->
-          if Path.Build.equal (Path.Build.parent_exn path) dir
-          then Some (Path.Build.basename path |> Filename.to_string)
-          else None)
-      in
-      let dir_targets =
-        Path.Build.Map.keys rules_here.by_directory_targets
-        |> List.filter_map ~f:(fun path ->
-          if Path.Build.equal (Path.Build.parent_exn path) dir
-          then Some ((Path.Build.basename path |> Filename.to_string) ^ Filename.dir_sep)
-          else None)
-      in
-      let subdirs =
-        match Dune_engine.Dir_set.toplevel_subdirs allowed_subdirs with
-        | Infinite -> []
-        | Finite set ->
-          Filename.Set.to_list set
-          |> Filename.L.to_string
-          |> List.filter ~f:(fun name -> all || String.length name = 0 || name.[0] <> '.')
-          |> List.map ~f:(fun name -> name ^ Filename.dir_sep)
-      in
-      List.sort ~compare:String.compare (file_targets @ dir_targets @ subdirs)
-    | _ -> []
+    let* targets =
+      Action_builder.of_memo (Build_system.targets_of ~dir:(Path.build dir))
+    in
+    let+ subdirs =
+      Action_builder.of_memo
+        (let open Memo.O in
+         Load_rules.load_dir ~dir:(Path.build dir)
+         >>| function
+         | Load_rules.Loaded.Build { allowed_subdirs; _ } ->
+           (match Dune_engine.Dir_set.toplevel_subdirs allowed_subdirs with
+            | Infinite -> []
+            | Finite set ->
+              Filename.Set.to_list set
+              |> Filename.L.to_string
+              |> List.filter ~f:(fun name ->
+                all || String.length name = 0 || name.[0] <> '.')
+              |> List.map ~f:(fun name -> name ^ Filename.dir_sep))
+         | _ -> [])
+    in
+    let target_names =
+      match Dune_targets.validate targets with
+      | Valid validated ->
+        Dune_targets.Validated.fold
+          validated
+          ~init:[]
+          ~file:(fun p acc -> (Path.Build.basename p |> Filename.to_string) :: acc)
+          ~dir:(fun p acc ->
+            ((Path.Build.basename p |> Filename.to_string) ^ Filename.dir_sep) :: acc)
+      | No_targets -> []
+      | Inconsistent_parent_dir | File_and_directory_target_with_the_same_name _ -> []
+    in
+    List.sort ~compare:String.compare (target_names @ subdirs)
   ;;
 
   let extra_args =

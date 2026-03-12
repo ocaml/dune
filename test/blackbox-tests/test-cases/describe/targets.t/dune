@@ -5,5 +5,5 @@
  (targets (dir d))
  (action
   (progn
-   (run mkdir d)
-   (run cat > d/foo))))
+   (run mkdir -p d/subdir)
+   (run touch d/foo d/bar d/subdir/nested))))

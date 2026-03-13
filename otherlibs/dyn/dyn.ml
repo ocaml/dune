@@ -83,8 +83,12 @@ let float_to_string =
     loop 0
   in
   fun x ->
-    let s = format_float "%.15g" x in
-    valid_float_lexeme @@ if float_of_string s = x then s else format_float "%.17g" x
+    match Float.classify_float x with
+    | FP_nan -> "nan"
+    | FP_infinite -> if x > 0. then "infinity" else "neg_infinity"
+    | FP_normal | FP_subnormal | FP_zero ->
+      let s = format_float "%.15g" x in
+      valid_float_lexeme @@ if float_of_string s = x then s else format_float "%.17g" x
 ;;
 
 let pp_sequence start stop x ~f =
@@ -108,13 +112,13 @@ let rec pp ?(in_arg = false) =
   | Opaque -> Pp.verbatim "<opaque>"
   | Unit -> Pp.verbatim "()"
   | Int i -> Pp.verbatim (string_of_int i)
-  | Int32 i -> Pp.verbatim (Int32.to_string i)
-  | Int64 i -> Pp.verbatim (Int64.to_string i)
-  | Nativeint i -> Pp.verbatim (Nativeint.to_string i)
+  | Int32 i -> Pp.verbatim (Int32.to_string i ^ "l")
+  | Int64 i -> Pp.verbatim (Int64.to_string i ^ "L")
+  | Nativeint i -> Pp.verbatim (Nativeint.to_string i ^ "n")
   | Bool b -> Pp.verbatim (string_of_bool b)
   | String s -> string_in_ocaml_syntax s
   | Bytes b -> string_in_ocaml_syntax (Bytes.to_string b)
-  | Char c -> Pp.char c
+  | Char c -> Pp.verbatim (Printf.sprintf "%C" c)
   | Float f -> Pp.verbatim (float_to_string f)
   | Option None -> pp ~in_arg (Variant ("None", []))
   | Option (Some x) -> pp ~in_arg (Variant ("Some", [ x ]))

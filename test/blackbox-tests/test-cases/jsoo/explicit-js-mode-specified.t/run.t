@@ -22,16 +22,19 @@ Check that js targets are attached to @all, but not for tests that do not
 specify js mode (#1940).
 
   $ dune clean
-  $ dune build --display short @@all 2>&1 | grep js_of_ocaml
-   js_of_ocaml .b.eobjs/jsoo/b.bc.runtime.js
-   js_of_ocaml .e.eobjs/jsoo/e.bc.runtime.js
-   js_of_ocaml .js/default/stdlib/stdlib.cma.js
-   js_of_ocaml .js/default/stdlib/std_exit.cmo.js
-   js_of_ocaml .b.eobjs/jsoo/b.cmo.js
-   js_of_ocaml b.bc.js
-   js_of_ocaml .foo.objs/jsoo/default/foo.cma.js
-   js_of_ocaml .e.eobjs/jsoo/e.cmo.js
-   js_of_ocaml e.bc.js
+  $ dune build @@all
+  $ dune trace cat | jq -r 'include "dune";
+  >   processes
+  > | select(.args.prog | test("js_of_ocaml$"))
+  > | .args | targets | .[] | sub("^_build/[^/]+/"; "")' | sort
+  .b.eobjs/jsoo/b.cmo.js
+  .e.eobjs/jsoo/e.cmo.js
+  .foo.objs/jsoo/default/foo.cma.js
+  .js/default/.runtime/69326c30fc4a6ffc800b0a8e0b822993/runtime.bc.runtime.js
+  .js/default/stdlib/std_exit.cmo.js
+  .js/default/stdlib/stdlib.cma.js
+  b.bc.js
+  e.bc.js
 
 Check that building a JS-enabled executable that depends on a library works.
 

@@ -29,3 +29,4 @@ These guides will help you use Dune's features in your project.
    configure-editors-with-package-management
    set-up-ci-with-package-management
    customize-dev-tools-lock-directories
+   use-multiple-build-contexts

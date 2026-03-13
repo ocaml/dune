@@ -251,6 +251,7 @@ end = struct
                   ; files
                   ; source_dir = Some st_dir
                   ; stanzas
+                  ; module_path_translation = Module_trie.Unchecked.empty
                   }
                 ])
           in
@@ -312,8 +313,55 @@ end = struct
       let loc, qualif_mode = qualification in
       loc, Include_subdirs.Include qualif_mode
     in
+    let+ dirmap, module_path_translation =
+      match snd qualification with
+      | Unqualified -> Memo.return (Path.Build.Map.empty, Module_trie.Unchecked.empty)
+      | Qualified { dirs } ->
+        let* expand =
+          let+ expander = Super_context.expander sctx ~dir in
+          Expander.expand_str expander
+        in
+        let+ dirs =
+          Memo.parallel_map dirs ~f:(fun binding ->
+            File_binding_expand.expand binding ~dir ~f:(fun sw ->
+              Action_builder.evaluate_and_collect_facts (expand sw) >>| fst))
+          >>| List.filter_map ~f:(fun expanded ->
+            let open Option.O in
+            let+ dst = File_binding.Expanded.dst expanded in
+            let src = File_binding.Expanded.src expanded in
+            src, dst)
+        in
+        let module_path_translation =
+          let include_subdirs_loc = fst include_subdirs in
+          let dir = Path.Build.local dir in
+          List.fold_left dirs ~init:Module_trie.Unchecked.empty ~f:(fun acc (src, dst) ->
+            match Path.Local.descendant (Path.Build.local src) ~of_:dir with
+            | None -> assert false
+            | Some src ->
+              (match Path.Local.explode src with
+               | [] -> assert false
+               | x :: xs ->
+                 let base_path =
+                   Nonempty_list.(
+                     map (x :: xs) ~f:(fun p ->
+                       Module_name.of_string_allow_invalid (include_subdirs_loc, p)))
+                 in
+                 let replacement =
+                   match Path.Local.descendant (Path.Local.relative dir dst) ~of_:dir with
+                   | None -> assert false
+                   | Some segment ->
+                     (match Path.Local.explode segment with
+                      | [] -> assert false
+                      | x :: xs ->
+                        Nonempty_list.(
+                          map (x :: xs) ~f:(fun p ->
+                            Module_name.of_string_allow_invalid (fst qualification, p))))
+                 in
+                 Module_trie.Unchecked.set acc base_path replacement))
+        in
+        Path.Build.Map.of_list_exn dirs, module_path_translation
+    in
     let loc = loc_of_dune_file source_dir in
-    let+ components = components in
     let contents =
       Memo.lazy_
         ~human_readable_description:(fun () -> human_readable_description dir)
@@ -322,6 +370,7 @@ end = struct
            let stanzas = Dune_file.stanzas dune_file in
            let project = Dune_file.project dune_file in
            let+ (files, subdirs), rules =
+             let group_root_dir = dir in
              Rules.collect (fun () ->
                Memo.fork_and_join
                  (fun () ->
@@ -332,9 +381,23 @@ end = struct
                           ~src_dir:(Dune_file.dir dune_file)
                           ~dir)
                  (fun () ->
+                    let* components = components in
                     Memo.parallel_map
                       components
                       ~f:(fun { dir; path_to_group_root; source_dir; stanzas } ->
+                        let path_to_root =
+                          match Path.Build.Map.find dirmap dir with
+                          | None -> path_to_group_root
+                          | Some dst ->
+                            let replacement = Path.Build.relative group_root_dir dst in
+                            (match
+                               Path.Local.descendant
+                                 (Path.Build.local replacement)
+                                 ~of_:(Path.Build.local group_root_dir)
+                             with
+                             | None -> assert false
+                             | Some segment -> Path.Local.explode segment)
+                        in
                         let+ files =
                           load_text_files
                             sctx
@@ -344,10 +407,11 @@ end = struct
                             ~dir
                         in
                         { Source_file_dir.dir
-                        ; path_to_root = path_to_group_root
+                        ; path_to_root
                         ; files
                         ; source_dir = Some source_dir
                         ; stanzas
+                        ; module_path_translation
                         })))
            in
            let dirs =
@@ -359,6 +423,7 @@ end = struct
                  ; files
                  ; source_dir = Some source_dir
                  ; stanzas
+                 ; module_path_translation
                  }
                  :: subdirs))
            in
@@ -412,6 +477,7 @@ end = struct
                    ; files
                    ; source_dir
                    ; stanzas = _
+                   ; module_path_translation = _
                    }
                  ->
                  { kind = Group_part

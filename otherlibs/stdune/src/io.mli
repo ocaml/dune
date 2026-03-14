@@ -9,10 +9,20 @@ val copy_channels : in_channel -> out_channel -> unit
 include Io_intf.S with type path = Path.t
 module String_path : Io_intf.S with type path = string
 
-(** Symlink with fallback to copy on systems that don't support it. *)
+(** Symlink with fallback to copy on systems that don't support it.
+
+    The labels can be misleading, think of a link as a kind of copy:
+    the contents of [src] will be made available at [dst];
+    do not think of it as an arrow [src -> dst].
+    *)
 val portable_symlink : src:Path.t -> dst:Path.t -> unit
 
-(** Hardlink with fallback to copy on systems that don't support it. *)
+(** Hardlink with fallback to copy on systems that don't support it.
+
+    The labels can be misleading, think of a link as a kind of copy:
+    the contents of [src] will be made available at [dst];
+    do not think of it as an arrow [src -> dst].
+    *)
 val portable_hardlink : src:Path.t -> dst:Path.t -> unit
 
 val set_copy_impl : [ `Portable | `Best ] -> unit

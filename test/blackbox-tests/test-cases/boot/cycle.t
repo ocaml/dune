@@ -1,6 +1,6 @@
 Testing cycle detection in bootstrap.
 
-  $ . ./helpers.sh
+  $ init_bootstrap
 
   $ mkdir -p src/a
   $ cat > src/a/a.ml <<EOF

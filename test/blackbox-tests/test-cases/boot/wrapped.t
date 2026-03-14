@@ -1,6 +1,6 @@
 Testing the bootstrap of wrapped libraries.
 
-  $ . ./helpers.sh
+  $ init_bootstrap
 
   $ mkdir -p src/a
 

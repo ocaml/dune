@@ -2,6 +2,9 @@
 
 open Import
 
+(** For testing only. *)
+val parse_output : file:Path.t -> string -> string list
+
 val deps_of
   :  sandbox:Sandbox_config.t
   -> modules:Modules.With_vlib.t

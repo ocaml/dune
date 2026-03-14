@@ -55,3 +55,17 @@
  (allow_overlapping_dependencies)
  (modules path_bench_main)
  (libraries path_bench core_bench.inline_benchmarks))
+
+(library
+ (name ocamldep_bench)
+ (modules ocamldep_bench)
+ (library_flags -linkall)
+ (preprocess
+  (pps ppx_bench))
+ (libraries base dune_rules stdune core_bench.inline_benchmarks))
+
+(executable
+ (name ocamldep_bench_main)
+ (allow_overlapping_dependencies)
+ (modules ocamldep_bench_main)
+ (libraries ocamldep_bench core_bench.inline_benchmarks))

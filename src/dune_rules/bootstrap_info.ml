@@ -73,13 +73,10 @@ let make_root_module sctx ~name compile_info =
 let rule sctx ~requires_link ~main =
   let open Action_builder.O in
   let* () = Action_builder.return () in
-  let* locals, externals =
+  let* locals =
     Memo.Lazy.force requires_link
     |> Resolve.Memo.read
-    >>| List.partition_map ~f:(fun lib ->
-      match Lib.Local.of_lib lib with
-      | Some x -> Left x
-      | None -> Right lib)
+    >>| List.filter_map ~f:Lib.Local.of_lib
   in
   let+ locals =
     Action_builder.List.map locals ~f:(fun x ->
@@ -118,22 +115,12 @@ let rule sctx ~requires_link ~main =
            | From _ -> None
            | This x -> x))
   in
-  let externals =
-    let available =
-      [ "csexp"; "pp"; "re"; "seq"; "spawn"; "threads.posix"; "uutf" ]
-      |> List.rev_map ~f:Lib_name.of_string
-    in
-    List.filter_map externals ~f:(fun lib ->
-      let name = Lib.name lib in
-      if List.mem available ~equal:Lib_name.equal name then None else Some name)
-  in
   Format.asprintf
     "%a@."
     Pp.to_fmt
     (Pp.concat
        ~sep:Pp.cut
        [ Pp.verbatim "open Types"
-       ; def "external_libraries" (Dyn.list Lib_name.to_dyn externals)
        ; Pp.nop
        ; def "local_libraries" (List locals)
        ; Pp.nop

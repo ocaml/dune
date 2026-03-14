@@ -1005,7 +1005,7 @@ module Process = Fiber.Process
 (** {2 OCaml tools} *)
 
 module Libs = struct
-  let external_libraries = Libs.external_libraries
+  let external_libraries = [ "unix"; "threads" ]
 
   let make_lib lib =
     let root_module =

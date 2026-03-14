@@ -54,7 +54,7 @@ let scan_vo ~dir dir_contents =
     match kind with
     (* Skip some files as Rocq does, for now files with '-' *)
     | _ when String.contains d '-' -> None
-    | (File_kind.S_REG | S_LNK) when Filename.check_suffix d ".vo" ->
+    | (File_kind.S_REG | S_LNK) when String.ends_with ~suffix:".vo" d ->
       Some (Path.relative dir d)
     | _ -> None
   in

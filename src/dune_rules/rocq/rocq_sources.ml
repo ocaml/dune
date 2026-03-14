@@ -46,7 +46,9 @@ let empty =
 let rocq_modules_of_files ~dirs =
   let build_mod_dir (sd : Source_file_dir.t) =
     let prefix = sd.path_to_root in
-    let v_files = String.Set.filter sd.files ~f:(fun f -> Filename.check_suffix f ".v") in
+    let v_files =
+      String.Set.filter sd.files ~f:(fun f -> String.ends_with ~suffix:".v" f)
+    in
     String.Set.to_list_map v_files ~f:(fun file ->
       let name, _ = Filename.split_extension file in
       let name = Rocq_module.Name.make name in
@@ -60,7 +62,9 @@ let rocq_modules_of_files ~dirs =
 
 let expected_files_of_dirs ~dirs =
   let build_expected (sd : Source_file_dir.t) =
-    let v_files = String.Set.filter sd.files ~f:(fun f -> Filename.check_suffix f ".v") in
+    let v_files =
+      String.Set.filter sd.files ~f:(fun f -> String.ends_with ~suffix:".v" f)
+    in
     String.Set.to_list_map v_files ~f:(fun file ->
       let name, _ = Filename.split_extension file in
       let expected_name = name ^ ".expected" in

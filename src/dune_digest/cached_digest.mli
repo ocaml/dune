@@ -4,14 +4,10 @@ open Import
 
 module Digest_result : sig
   module Error : sig
-    type t =
-      | No_such_file
-      | Broken_symlink
-      | Cyclic_symlink
-      | Unexpected_kind of File_kind.t
-      | Unix_error of Unix_error.Detailed.t (** Can't be [ENOENT]. *)
-      | Unrecognized of exn
+    type t
 
+    val no_such_file : t -> bool
+    val pp : t -> Path.t -> _ Pp.t
     val to_dyn : t -> Dyn.t
   end
 

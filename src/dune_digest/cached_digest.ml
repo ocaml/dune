@@ -189,6 +189,36 @@ module Digest_result = struct
       | Unix_error of Unix_error.Detailed.t
       | Unrecognized of exn
 
+    let no_such_file = function
+      | No_such_file -> true
+      | _ -> false
+    ;;
+
+    let pp t path =
+      match t with
+      | No_such_file -> Pp.verbatim "No such file"
+      | Broken_symlink -> Pp.verbatim "Broken symbolic link"
+      | Cyclic_symlink -> Pp.verbatim "Cyclic symbolic link"
+      | Unexpected_kind file_kind ->
+        Pp.verbatimf
+          "Unexpected file kind %S (%s)"
+          (File_kind.to_string file_kind)
+          (File_kind.to_string_hum file_kind)
+      | Unix_error (error, syscall, arg) ->
+        let unix_error = Unix_error.Detailed.create error ~syscall ~arg in
+        Unix_error.Detailed.pp unix_error
+      | Unrecognized exn ->
+        Pp.verbatim
+          (match exn with
+           | Sys_error msg ->
+             let prefix =
+               let expected_syscall_path = Path.to_string path in
+               expected_syscall_path ^ ": "
+             in
+             String.drop_prefix_if_exists ~prefix msg
+           | exn -> Printexc.to_string exn)
+    ;;
+
     let equal x y =
       match x, y with
       | No_such_file, No_such_file -> true

@@ -173,39 +173,11 @@ let compute_target_digests_or_raise_error
   | Error errors ->
     let missing, errors =
       let process_target (target, error) =
-        match error with
-        | Cached_digest.Digest_result.Error.No_such_file -> Left target
-        | Broken_symlink ->
-          let error = Pp.verbatim "Broken symbolic link" in
-          Right (target, error)
-        | Cyclic_symlink ->
-          let error = Pp.verbatim "Cyclic symbolic link" in
-          Right (target, error)
-        | Unexpected_kind file_kind ->
-          let error =
-            Pp.verbatim
-              (sprintf
-                 "Unexpected file kind %S (%s)"
-                 (File_kind.to_string file_kind)
-                 (File_kind.to_string_hum file_kind))
-          in
-          Right (target, error)
-        | Unix_error (error, syscall, arg) ->
-          let unix_error = Unix_error.Detailed.create error ~syscall ~arg in
-          Right (target, Unix_error.Detailed.pp unix_error)
-        | Unrecognized exn ->
-          let error =
-            Pp.verbatim
-              (match exn with
-               | Sys_error msg ->
-                 let prefix =
-                   let expected_syscall_path = Path.to_string (Path.build target) in
-                   expected_syscall_path ^ ": "
-                 in
-                 String.drop_prefix_if_exists ~prefix msg
-               | exn -> Printexc.to_string exn)
-          in
-          Right (target, error)
+        if Cached_digest.Digest_result.Error.no_such_file error
+        then Left target
+        else (
+          let error = Cached_digest.Digest_result.Error.pp error (Path.build target) in
+          Right (target, error))
       in
       Nonempty_list.to_list errors |> List.partition_map ~f:process_target
     in

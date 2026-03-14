@@ -62,8 +62,7 @@ Using the inner ppx directly, the cookie is passed:
   > '
   ["my_cookie=\"the_value\""]
 
-Using the wrapper ppx, the cookie from inner_ppx should also be passed
-(but is currently lost due to the bug):
+Using the wrapper ppx, the cookie from inner_ppx should also be passed:
 
   $ dune build test_wrapped.cma
   $ dune trace cat | jq -c 'include "dune";
@@ -73,3 +72,4 @@ Using the wrapper ppx, the cookie from inner_ppx should also be passed
   > | map(select(startswith("my_cookie")))
   > | select(length > 0)
   > '
+  ["my_cookie=\"the_value\""]

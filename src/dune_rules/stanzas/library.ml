@@ -79,6 +79,7 @@ type t =
   ; parameters : (Loc.t * Lib_name.t) list
   ; default_implementation : (Loc.t * Lib_name.t) option
   ; private_modules : Ordered_set_lang.Unexpanded.t option
+  ; excluded_modules : Ordered_set_lang.Unexpanded.t option
   ; stdlib : Ocaml_stdlib.t option
   ; special_builtin_support : (Loc.t * Lib_info.Special_builtin_support.t) option
   ; enabled_if : Blang.t
@@ -186,6 +187,11 @@ let decode =
          ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 2))
          ~since_expanded:Modules_settings.since_expanded
          "private_modules"
+     and+ excluded_modules =
+       Ordered_set_lang.Unexpanded.field_o
+         ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 22))
+         ~since_expanded:Modules_settings.since_expanded
+         "excluded_modules"
      and+ stdlib =
        field_o
          "stdlib"
@@ -306,6 +312,7 @@ let decode =
      ; parameters
      ; default_implementation
      ; private_modules
+     ; excluded_modules
      ; stdlib
      ; special_builtin_support
      ; enabled_if
@@ -429,6 +436,7 @@ let obj_dir ~dir t =
             but it doesn't work correctly. We need to always pass the
             root_module with [ -H ] at least *)
       )
+    ~has_excluded_modules:(t.excluded_modules <> None)
     ~private_lib
     (snd t.name)
 ;;

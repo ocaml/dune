@@ -111,6 +111,7 @@ type single_module_error =
   | Vmodule_impls_with_own_intf
   | Undeclared_module_without_implementation
   | Undeclared_private_module
+  | Undeclared_excluded_module
   | Undeclared_virtual_module
 
 type errors =
@@ -123,6 +124,7 @@ let find_errors
       ~intf_only
       ~virtual_modules
       ~private_modules
+      ~excluded_modules
       ~existing_virtual_modules
       ~allow_new_public_modules
       ~is_parameter
@@ -131,7 +133,7 @@ let find_errors
     (* We expect that [modules] is big and all the other ones are small, that's
        why the code is implemented this way. *)
     List.fold_left
-      [ intf_only; virtual_modules; private_modules ]
+      [ intf_only; virtual_modules; private_modules; excluded_modules ]
       ~init:(Module_trie.Unchecked.map modules ~f:snd)
       ~f:(fun acc map ->
         Module_trie.Unchecked.foldi map ~init:acc ~f:(fun name (_loc, m) acc ->
@@ -149,6 +151,7 @@ let find_errors
       in
       let modules = Module_trie.Unchecked.find modules module_name in
       let private_ = Module_trie.Unchecked.find private_modules module_name in
+      let excluded_ = Module_trie.Unchecked.find excluded_modules module_name in
       let virtual_ = Module_trie.Unchecked.find virtual_modules module_name in
       let intf_only = Module_trie.Unchecked.find intf_only module_name in
       let with_property prop f acc =
@@ -163,6 +166,7 @@ let find_errors
         private_
         (add_if impl_vmodule Private_impl_of_vmodule
          ++ add_if (not !?modules) Undeclared_private_module)
+      @@ with_property excluded_ (add_if (not !?modules) Undeclared_excluded_module)
       @@ with_property
            intf_only
            (add_if has_impl Spurious_module_intf
@@ -203,6 +207,7 @@ let check_invalid_module_listing
       ~modules
       ~virtual_modules
       ~private_modules
+      ~excluded_modules
       ~existing_virtual_modules
       ~allow_new_public_modules
       ~is_vendored
@@ -215,6 +220,7 @@ let check_invalid_module_listing
       ~intf_only
       ~virtual_modules
       ~private_modules
+      ~excluded_modules
       ~existing_virtual_modules
       ~allow_new_public_modules
       ~is_parameter
@@ -242,6 +248,7 @@ let check_invalid_module_listing
       get Undeclared_module_without_implementation
     in
     let undeclared_private_modules = get Undeclared_private_module in
+    let undeclared_excluded_modules = get Undeclared_excluded_module in
     let undeclared_virtual_modules = get Undeclared_virtual_module in
     let uncapitalized =
       List.map ~f:(fun (_, m) -> Module_name.Unchecked.Path.uncapitalize m)
@@ -314,6 +321,7 @@ let check_invalid_module_listing
       "modules_without_implementation"
       undeclared_modules_without_implementation;
     print_undeclared_modules "private_modules" undeclared_private_modules;
+    print_undeclared_modules "excluded_modules" undeclared_excluded_modules;
     print_undeclared_modules "virtual_modules" undeclared_virtual_modules;
     if missing_intf_only <> []
     then (
@@ -363,6 +371,7 @@ let eval
       ~modules:(all_modules : Module.Source.t Module_trie.Unchecked.t)
       ~stanza_loc
       ~private_modules
+      ~excluded_modules
       ~kind
       ~for_
       ~src_dir
@@ -393,7 +402,8 @@ let eval
       eval ~standard:Module_trie.Unchecked.empty virtual_modules
     | Parameter ->
       Memo.return (Module_trie.Unchecked.map ~f:(fun v -> stanza_loc, v) all_modules)
-  and+ private_modules = eval ~standard:Module_trie.Unchecked.empty private_modules in
+  and+ private_modules = eval ~standard:Module_trie.Unchecked.empty private_modules
+  and+ excluded_modules = eval ~standard:Module_trie.Unchecked.empty excluded_modules in
   let is_parameter =
     match kind with
     | Parameter -> true
@@ -406,6 +416,7 @@ let eval
     ~modules
     ~virtual_modules
     ~private_modules
+    ~excluded_modules
     ~existing_virtual_modules
     ~allow_new_public_modules
     ~is_vendored
@@ -416,7 +427,9 @@ let eval
     Module_trie.mapi modules ~f:(fun _path (_, m) ->
       let name = Nonempty_list.[ Module.Source.name m |> Module_name.unchecked ] in
       let visibility =
-        if Module_trie.Unchecked.mem private_modules name
+        if Module_trie.Unchecked.mem excluded_modules name
+        then Visibility.Excluded
+        else if Module_trie.Unchecked.mem private_modules name
         then Visibility.Private
         else Public
       in
@@ -451,6 +464,7 @@ let eval
       ~modules:(all_modules : Module.Source.t Module_trie.Unchecked.t)
       ~stanza_loc
       ~private_modules
+      ~excluded_modules
       ~kind
       ~for_
       ~src_dir
@@ -473,6 +487,7 @@ let eval
     ~modules:all_modules
     ~stanza_loc
     ~private_modules
+    ~excluded_modules
     ~kind
     ~for_
     ~src_dir

@@ -605,7 +605,16 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     assert false
 ;;
 
-let expand_no_targets t sandbox ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
+let expand_no_targets_impl
+      t
+      sandbox
+      ~loc
+      ~chdir
+      ~action_chdir
+      ~deps:deps_written_by_user
+      ~expander
+      ~what
+  =
   let open Action_builder.O in
   let deps_builder, expander, sandbox =
     Dep_conf_eval.named ~expander sandbox deps_written_by_user
@@ -630,15 +639,25 @@ let expand_no_targets t sandbox ~loc ~chdir ~deps:deps_written_by_user ~expander
       ];
   let+ () = deps_builder
   and+ action = build in
-  let action = Action.Chdir (Path.build chdir, action) in
+  let action = Action.Chdir (Path.build action_chdir, action) in
   Action.Full.make action ~sandbox
 ;;
 
-let expand
+let expand_no_targets t sandbox ~loc ~chdir ~deps ~expander ~what =
+  expand_no_targets_impl t sandbox ~loc ~chdir ~action_chdir:chdir ~deps ~expander ~what
+;;
+
+let expand_no_targets_with_chdir t sandbox ~loc ~chdir ~action_chdir ~deps ~expander ~what
+  =
+  expand_no_targets_impl t sandbox ~loc ~chdir ~action_chdir ~deps ~expander ~what
+;;
+
+let expand_impl
       t
       sandbox
       ~loc
       ~chdir
+      ~action_chdir
       ~deps:deps_written_by_user
       ~targets_dir
       ~targets:targets_written_by_user
@@ -690,9 +709,36 @@ let expand
   let build =
     let+ () = deps_builder
     and+ action = build in
-    Action.Full.make (Action.Chdir (Path.build chdir, action)) ~sandbox
+    Action.Full.make (Action.Chdir (Path.build action_chdir, action)) ~sandbox
   in
   Action_builder.with_targets ~targets build
+;;
+
+let expand t sandbox ~loc ~chdir ~deps ~targets_dir ~targets ~expander =
+  expand_impl
+    t
+    sandbox
+    ~loc
+    ~chdir
+    ~action_chdir:chdir
+    ~deps
+    ~targets_dir
+    ~targets
+    ~expander
+;;
+
+let expand_with_chdir
+      t
+      sandbox
+      ~loc
+      ~chdir
+      ~action_chdir
+      ~deps
+      ~targets_dir
+      ~targets
+      ~expander
+  =
+  expand_impl t sandbox ~loc ~chdir ~action_chdir ~deps ~targets_dir ~targets ~expander
 ;;
 
 (* We re-export [Dune_lang.Action] in the end to avoid polluting the inferred

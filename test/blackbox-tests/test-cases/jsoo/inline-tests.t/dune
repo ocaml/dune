@@ -4,5 +4,5 @@
  (inline_tests.backend
   (generate_runner
    (progn
-    (echo "[@@@warning \"-40\"]\n")
+    (echo "[@@@warning \"-40\"] let () = print_endline (Sys.getcwd ())\n")
     (cat %{impl-files})))))

@@ -27,6 +27,7 @@ let compute_env ~mode =
         ; sourcemap = Option.first_some local.sourcemap parent.sourcemap
         ; enabled_if
         ; runtest_alias
+        ; runner = Option.first_some local.runner parent.runner
         ; flags =
             Js_of_ocaml.Flags.make
               ~spec:local.flags
@@ -969,7 +970,42 @@ let build_exe
     |> Super_context.add_rule sctx ~loc ~dir ~mode:rule_mode
 ;;
 
-let runner = "node"
+let default_runner = "node"
+
+let default_runner_action =
+  let loc = Loc.none in
+  Dune_lang.Action.run
+    (String_with_vars.make_text loc default_runner)
+    [ String_with_vars.make_pform loc (Pform.Var Test) ]
+;;
+
+let compute_runner ~mode =
+  let f =
+    Env_stanza_db_flags.flags
+      ~name:"jsoo-runner"
+      ~root:(fun _ctx _project -> Memo.return None)
+      ~f:(fun ~parent expander (local : Dune_env.config) ->
+        let local =
+          Js_of_ocaml.Mode.select ~mode ~js:local.js_of_ocaml ~wasm:local.wasm_of_ocaml
+        in
+        match local.runner with
+        | Some action -> Memo.return (Some (Expander.dir expander, action))
+        | None -> parent)
+  in
+  fun ~dir ->
+    let* () = Memo.return () in
+    let+ result = (Staged.unstage f) dir in
+    match result with
+    | Some _ -> result
+    | None -> Some (dir, default_runner_action)
+;;
+
+let js_runner = compute_runner ~mode:JS
+let wasm_runner = compute_runner ~mode:Wasm
+
+let runner ~dir ~mode =
+  (Js_of_ocaml.Mode.select ~mode ~js:js_runner ~wasm:wasm_runner) ~dir
+;;
 
 let js_of_ocaml_runtest_alias ~dir ~mode =
   let+ js_of_ocaml = jsoo_env ~dir ~mode in

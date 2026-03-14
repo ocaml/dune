@@ -1,0 +1,4 @@
+(library
+ (name a)
+ (libraries fake_backend_runtime)
+ (inline_tests (modes js) (backend fake_backend)))

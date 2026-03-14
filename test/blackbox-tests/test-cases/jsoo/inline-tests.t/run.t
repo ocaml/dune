@@ -6,23 +6,41 @@ Run inline tests using node js
 
   $ dune runtest
   inline tests (Byte)
+  $TESTCASE_ROOT/_build/default/byte
   inline tests (Byte)
+  $TESTCASE_ROOT/_build/default/js-alias
   inline tests (Byte - alias)
   inline tests (Byte - alias)
   inline tests (Native)
+  $TESTCASE_ROOT/_build/default/native
   inline tests (Native)
   Warning [missing-effects-backend]: your program contains effect handlers; you should probably run js_of_ocaml with option '--effects=cps'
+  Warning [missing-effects-backend]: your program contains effect handlers; you should probably run js_of_ocaml with option '--effects=cps'
   inline tests (JS)
+  $TESTCASE_ROOT/_build/default/js/
   inline tests (JS)
+  inline tests (JS + custom runner)
+  $TESTCASE_ROOT/_build/default/js-custom-node/
+  inline tests (JS + custom runner)
+  Preparing node wrapper for .inline_tests_js2.inline-tests/inline-test-runner.bc.js
 
 CR-Alizter: This test has a different behaviour for the macos-latest in the CI and additionally runs the (Byte) tests. This seems unintentional and should be investigated. For now this test is disabled on macos.
 
   $ dune runtest --profile release
   Warning [missing-effects-backend]: your program contains effect handlers; you should probably run js_of_ocaml with option '--effects=cps'
+  Warning [missing-effects-backend]: your program contains effect handlers; you should probably run js_of_ocaml with option '--effects=cps'
   inline tests (JS)
+  $TESTCASE_ROOT/_build/default/js/
   inline tests (JS)
+  inline tests (JS + custom runner)
+  $TESTCASE_ROOT/_build/default/js-custom-node/
+  inline tests (JS + custom runner)
+  Preparing node wrapper for .inline_tests_js2.inline-tests/inline-test-runner.bc.js
   inline tests (Native)
+  $TESTCASE_ROOT/_build/default/native
   inline tests (Native)
+
+  $ dune build bin/node_wrapper.exe
 
   $ dune build js/.inline_tests_js.inline-tests/inline_test_runner_inline_tests_js.bc
   Error: Don't know how to build
@@ -31,5 +49,6 @@ CR-Alizter: This test has a different behaviour for the macos-latest in the CI a
 
   $ dune build @runtest-js
   Warning [missing-effects-backend]: your program contains effect handlers; you should probably run js_of_ocaml with option '--effects=cps'
+  $TESTCASE_ROOT/_build/default/js-alias/
   inline tests (JS - alias)
   inline tests (JS - alias)

@@ -25,10 +25,10 @@ let () =
     | None -> raise (Arg.Bad "file must be provided")
     | Some f -> f in
 
-  if Filename.check_suffix fname ".re"
-  || Filename.check_suffix fname ".rei" then (
-    if !lint && (Filename.check_suffix fname ".pp.re"
-              || Filename.check_suffix fname ".pp.rei") then (
+  if String.ends_with ~suffix:".re" fname
+  || String.ends_with ~suffix:".rei" fname then (
+    if !lint && (String.ends_with ~suffix:".pp.re" fname
+              || String.ends_with ~suffix:".pp.rei" fname) then (
       Format.eprintf "reason linter doesn't accept preprocessed file %s" fname;
     );
     let ch = open_in fname in

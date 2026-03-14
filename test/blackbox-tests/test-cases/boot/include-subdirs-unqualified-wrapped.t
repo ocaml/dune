@@ -1,6 +1,6 @@
 Testing the bootstrap of a wrapped include subdirs unqualified.
 
-  $ . ./helpers.sh
+  $ init_bootstrap
 
   $ mkdir -p src/a/b/c
 

@@ -1,8 +1,6 @@
 Testing the bootstrap of a wrapped include subdirs qualified.
 
-Currently doesn't work because it is not implemented.
-
-  $ . ./helpers.sh
+  $ init_bootstrap
 
   $ mkdir -p src/a/b
 

@@ -50,8 +50,16 @@ let one_of t xs = List.mem xs ~equal t
 
 (** Returns the slang value of a variable for an absent package. Returns None
     for variables without known values or contexts where substitution shouldn't
-    occur. *)
-let absent_package_value t = if equal t installed then Some (Slang.bool false) else None
+    occur. For [version], returns empty string in string interpolation context,
+    or [bool false] in filter context (representing undefined which evaluates
+    to false). *)
+let absent_package_value ~for_string_interp t =
+  if equal t installed
+  then Some (Slang.bool false)
+  else if equal t version
+  then Some (if for_string_interp then Slang.text "" else Slang.bool false)
+  else None
+;;
 
 let platform_specific =
   Set.of_list [ arch; os; os_version; os_distribution; os_family; sys_ocaml_version ]

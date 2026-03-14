@@ -409,7 +409,9 @@
             buildInputs = with pkgs.ocamlPackages; [
               csexp
               pp
-              # re shouldn't be needed. this is an issue with the fmt rules
+              # Some additional dependencies are needed because formatting
+              # promoted files in boot/ requires building them first
+              ppx_expect
               re
               spawn
               uutf
@@ -472,6 +474,7 @@
                 ocaml414.csexp
                 ocaml414.pp
                 ocaml414.re
+                ocaml414.ppx_expect
                 ocaml414.spawn
                 ocaml414.uutf
                 ocaml414.rocq-core

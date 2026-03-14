@@ -1,5 +1,8 @@
 (library
  (name dune_digest)
+ (preprocess
+  (pps ppx_expect))
+ (inline_tests)
  (libraries
   fiber
   dune_scheduler

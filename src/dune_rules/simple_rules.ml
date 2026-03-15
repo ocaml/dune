@@ -115,11 +115,16 @@ let user_rule sctx ~dir ~expander (rule : Rule_conf.t) =
         in
         Targets_spec.Static { multiplicity; targets }
     in
+    let sandbox =
+      if Dune_project.dune_version (Expander.project expander) >= (3, 23)
+      then Sandbox_config.needs_sandboxing
+      else Sandbox_config.no_special_requirements
+    in
     let* action =
       let chdir = Expander.dir expander in
       Action_unexpanded.expand
         (snd rule.action)
-        Sandbox_config.no_special_requirements
+        sandbox
         ~loc:(fst rule.action)
         ~chdir
         ~expander

@@ -20,6 +20,7 @@ type t = string
 module Extension : sig
   type t
 
+  val corrected : t
   val ml : t
   val mli : t
   val mlpack : t

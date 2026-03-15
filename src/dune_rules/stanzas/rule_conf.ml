@@ -6,10 +6,13 @@ module Mode = struct
   include Rule_mode_decoder
 end
 
+let corrections = enum [ "ignore", Corrections.Ignore; "produce", Produce ]
+
 type t =
   { targets : String_with_vars.t Targets_spec.t
   ; deps : Dep_conf.t Bindings.t
   ; action : Loc.t * Dune_lang.Action.t
+  ; corrections : Corrections.t option
   ; mode : Rule_mode.t
   ; locks : Locks.t
   ; loc : Loc.t
@@ -56,6 +59,7 @@ let atom_table =
     ; "target", Field
     ; "deps", Field
     ; "action", Field
+    ; "corrections", Field
     ; "locks", Field
     ; "fallback", Field
     ; "mode", Field
@@ -72,6 +76,7 @@ let short_form ~loc =
   { targets = Infer
   ; deps = Bindings.empty
   ; action
+  ; corrections = None
   ; mode = Standard
   ; locks = []
   ; loc
@@ -105,6 +110,8 @@ let long_form ~loc =
     (let+ action_o = field_o "action" (located Dune_lang.Action.decode_dune_file)
      and+ targets = Targets_spec.field ~allow_directory_targets
      and+ locks = Locks.field ()
+     and+ corrections =
+       field_o "corrections" (Dune_lang.Syntax.since Stanza.syntax (3, 23) >>> corrections)
      and+ () =
        let+ fallback =
          field_b
@@ -147,7 +154,17 @@ let long_form ~loc =
          in
          field_missing ~hints loc "action"
      in
-     { targets; deps; action; mode; locks; loc; enabled_if; aliases; package })
+     { targets
+     ; deps
+     ; action
+     ; corrections
+     ; mode
+     ; locks
+     ; loc
+     ; enabled_if
+     ; aliases
+     ; package
+     })
 ;;
 
 let decode =

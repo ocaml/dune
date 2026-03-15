@@ -79,29 +79,32 @@ module Fs_cache = struct
 
   module Update_result = struct
     type t =
-      | Skipped (* No need to update a given entry because it has no readers *)
-      | Updated of { changed : bool }
+      [ `Skipped (* No need to update a given entry because it has no readers *)
+      | `Changed
+      | `Unchanged
+      ]
 
-    let combine x y =
+    let combine (x : t) (y : t) =
       match x, y with
-      | Skipped, res | res, Skipped -> res
-      | Updated { changed = x }, Updated { changed = y } -> Updated { changed = x || y }
+      | `Skipped, res | res, `Skipped -> res
+      | `Changed, _ | _, `Changed -> `Changed
+      | `Unchanged, `Unchanged -> `Unchanged
     ;;
 
-    let empty = Skipped
+    let empty = `Skipped
   end
 
   let update { sample; cache; equal; update_hook; _ } path =
     match Path.Outside_build_dir.Table.find cache path with
-    | None -> Update_result.Skipped
+    | None -> `Skipped
     | Some old_result ->
       update_hook path;
       let new_result = sample path in
       (match equal old_result new_result with
-       | true -> Updated { changed = false }
+       | true -> `Unchanged
        | false ->
          Path.Outside_build_dir.Table.set cache path new_result;
-         Updated { changed = true })
+         `Changed)
   ;;
 
   module Untracked = struct
@@ -289,12 +292,6 @@ end = struct
       let result = Fs_cache.update t path in
       Dune_trace.emit ~buffered:true Cache (fun () ->
         let cache_type = Fs_cache.Debug.name t in
-        let result =
-          match result with
-          | Fs_cache.Update_result.Skipped -> `Skipped
-          | Updated { changed = true } -> `Changed
-          | Updated { changed = false } -> `Unchanged
-        in
         Dune_trace.Event.Cache.fs_update ~cache_type ~path result);
       result
     in
@@ -315,8 +312,8 @@ end = struct
      [Memo.create_with_store]. *)
   let invalidate path =
     match update_all path with
-    | Skipped | Updated { changed = false } -> Memo.Invalidation.empty
-    | Updated { changed = true } ->
+    | `Skipped | `Unchanged -> Memo.Invalidation.empty
+    | `Changed ->
       let reason : Memo.Invalidation.Reason.t =
         Path_changed (Path.outside_build_dir path)
       in

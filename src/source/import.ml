@@ -10,7 +10,6 @@ include struct
   module Execution_parameters = Execution_parameters
   module Fs_memo = Fs_memo
   module Build_system = Build_system
-  module Fs_cache = Fs_cache
   module Build_context = Build_context
   include No_io
 end

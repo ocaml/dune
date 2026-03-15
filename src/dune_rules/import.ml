@@ -51,7 +51,6 @@ include struct
   module Sandbox_config = Sandbox_config
   module Sandbox_mode = Sandbox_mode
   module Action = Action
-  module Fs_cache = Fs_cache
   module Process = Process
   module Execution_parameters = Execution_parameters
   module Build_context = Build_context

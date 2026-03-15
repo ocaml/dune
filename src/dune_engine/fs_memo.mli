@@ -1,5 +1,22 @@
 open Import
 
+module Dir_contents : sig
+  type t
+
+  (** The sorted list of file names with kinds. *)
+  val to_list : t -> (Filename.t * File_kind.t) list
+
+  val iter : t -> f:(Filename.t * File_kind.t -> unit) -> unit
+end
+
+module Reduced_stats : sig
+  type t =
+    { st_dev : int
+    ; st_ino : int
+    ; st_kind : Unix.file_kind
+    }
+end
+
 (** [init] must be called at initialization. Returns the set of nodes that need
     to be invalidated because they were accessed before [init] was called. *)
 val init : dune_file_watcher:Dune_scheduler.File_watcher.t option -> Memo.Invalidation.t
@@ -16,7 +33,7 @@ val is_directory : Path.Outside_build_dir.t -> (bool, Unix_error.Detailed.t) res
 (** Call [Path.stat] on a path and declare a dependency on it. *)
 val path_stat
   :  Path.Outside_build_dir.t
-  -> (Fs_cache.Reduced_stats.t, Unix_error.Detailed.t) result Memo.t
+  -> (Reduced_stats.t, Unix_error.Detailed.t) result Memo.t
 
 (** Like [path_stat] but extracts the [st_kind] field from the result. *)
 val path_kind
@@ -59,4 +76,12 @@ val file_contents : Path.Outside_build_dir.t -> string Memo.t
 val dir_contents
   :  ?force_update:bool
   -> Path.Outside_build_dir.t
-  -> (Fs_cache.Dir_contents.t, Unix_error.Detailed.t) result Memo.t
+  -> (Dir_contents.t, Unix_error.Detailed.t) result Memo.t
+
+module Untracked : sig
+  val file_digest : Path.Outside_build_dir.t -> Cached_digest.Digest_result.t
+
+  val path_stat
+    :  Path.Outside_build_dir.t
+    -> (Reduced_stats.t, Unix_error.Detailed.t) result
+end

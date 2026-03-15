@@ -56,7 +56,6 @@ module Dir_contents : sig
   val to_list : t -> (Filename.t * File_kind.t) list
 
   val iter : t -> f:(Filename.t * File_kind.t -> unit) -> unit
-  val equal : t -> t -> bool
 end
 
 (** A few predefined cached operations. They are "untracked" in the sense that

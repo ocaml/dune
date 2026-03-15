@@ -55,12 +55,10 @@ module Fs_cache = struct
     ; sample : Path.Outside_build_dir.t -> 'a
     ; cache : 'a Path.Outside_build_dir.Table.t
     ; equal : 'a -> 'a -> bool (* Used to implement cutoff *)
-    ; update_hook :
-        Path.Outside_build_dir.t -> unit (* Run this hook before updating an entry. *)
     }
 
-  let create ~update_hook name ~sample ~equal : 'a t =
-    { name; sample; equal; cache = Path.Outside_build_dir.Table.create 128; update_hook }
+  let create name ~sample ~equal : 'a t =
+    { name; sample; equal; cache = Path.Outside_build_dir.Table.create 128 }
   ;;
 
   (* If the cache contains the result of applying an operation to a path, return
@@ -77,25 +75,21 @@ module Fs_cache = struct
 
   let evict { cache; _ } path = Path.Outside_build_dir.Table.remove cache path
 
-  module Update_result = struct
-    type t =
-      [ `Skipped (* No need to update a given entry because it has no readers *)
-      | `Changed
-      | `Unchanged
-      ]
-  end
-
-  let update { sample; cache; equal; update_hook; _ } path =
-    match Path.Outside_build_dir.Table.find cache path with
-    | None -> `Skipped
-    | Some old_result ->
-      update_hook path;
-      let new_result = sample path in
-      (match equal old_result new_result with
-       | true -> `Unchanged
-       | false ->
-         Path.Outside_build_dir.Table.set cache path new_result;
-         `Changed)
+  let update { sample; cache; equal; name } path =
+    let result =
+      match Path.Outside_build_dir.Table.find cache path with
+      | None -> `Skipped
+      | Some old_result ->
+        let new_result = sample path in
+        if equal old_result new_result
+        then `Unchanged
+        else (
+          Path.Outside_build_dir.Table.set cache path new_result;
+          `Changed)
+    in
+    Dune_trace.emit ~buffered:true Cache (fun () ->
+      Dune_trace.Event.Cache.fs_update ~cache_type:name ~path result);
+    result
   ;;
 
   module Untracked = struct
@@ -111,34 +105,28 @@ module Fs_cache = struct
         |> Result.map ~f:Reduced_stats.of_unix_stats
       in
       create
-        ~update_hook:(fun _ -> ())
         "path_stat"
         ~sample
         ~equal:(Result.equal Reduced_stats.equal Unix_error.Detailed.equal)
     ;;
 
     (* CR-someday amokhov: There is an overlap in functionality between this
-     module and [cached_digest.ml]. In particular, digests are stored twice, in
-     two separate tables. We should find a way to merge the tables into one. *)
+       module and [cached_digest.ml]. In particular, digests are stored twice,
+      in two separate tables. We should find a way to merge the tables into one.
+    *)
     let file_digest =
       let sample p = Cached_digest.Untracked.source_or_external_file p in
-      let update_hook p = Cached_digest.Untracked.invalidate_cached_timestamp p in
-      create "file_digest" ~sample ~update_hook ~equal:Cached_digest.Digest_result.equal
+      create "file_digest" ~sample ~equal:Cached_digest.Digest_result.equal
     ;;
 
     let dir_contents =
       create
         "dir_contents"
-        ~update_hook:(fun _ -> ())
         ~sample:(fun path ->
           Path.Untracked.readdir_unsorted_with_kinds (Path.outside_build_dir path)
           |> Result.map ~f:Dir_contents.of_list)
         ~equal:(Result.equal Dir_contents.equal Unix_error.Detailed.equal)
     ;;
-  end
-
-  module Debug = struct
-    let name t = t.name
   end
 end
 
@@ -276,24 +264,16 @@ end = struct
     | true -> Memo.exec memo_for_watching_via_parent path
   ;;
 
-  let update_all : Path.Outside_build_dir.t -> Fs_cache.Update_result.t =
-    let update t path =
-      let result = Fs_cache.update t path in
-      Dune_trace.emit ~buffered:true Cache (fun () ->
-        let cache_type = Fs_cache.Debug.name t in
-        Dune_trace.Event.Cache.fs_update ~cache_type ~path result);
-      result
-    in
-    fun p ->
-      [ update Fs_cache.Untracked.path_stat p
-      ; update Fs_cache.Untracked.file_digest p
-      ; update Fs_cache.Untracked.dir_contents p
-      ]
-      |> List.fold_left ~init:`Skipped ~f:(fun x y ->
-        match x, y with
-        | `Skipped, res | res, `Skipped -> res
-        | `Changed, _ | _, `Changed -> `Changed
-        | `Unchanged, `Unchanged -> `Unchanged)
+  let update_all p =
+    Cached_digest.Untracked.invalidate_cached_timestamp p;
+    let dir_contents = Fs_cache.(update Untracked.dir_contents) p in
+    let digest = Fs_cache.(update Untracked.file_digest) p in
+    let stat = Fs_cache.(update Untracked.path_stat) p in
+    List.fold_left [ stat; digest; dir_contents ] ~init:`Skipped ~f:(fun x y ->
+      match x, y with
+      | `Skipped, res | res, `Skipped -> res
+      | `Changed, _ | _, `Changed -> `Changed
+      | `Unchanged, `Unchanged -> `Unchanged)
   ;;
 
   (* CR-someday amokhov: We share Memo tables for tracking different file-system

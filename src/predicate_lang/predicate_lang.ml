@@ -140,19 +140,6 @@ let rec test_ t ~standard ~test elem =
 
 let test = test_
 
-let replace_standard ~where ~with_ =
-  let rec loop = function
-    | True -> True
-    | False -> False
-    | Element a -> Element a
-    | Not t -> Not (loop t)
-    | Standard -> with_
-    | Or xs -> Or (List.map xs ~f:loop)
-    | And xs -> And (List.map xs ~f:loop)
-  in
-  loop where
-;;
-
 let rec compare f x y =
   match x, y with
   | True, True -> Eq

@@ -12,7 +12,7 @@ Dirs stanzas from included files are evaluated.
   $ cat _build/default/foo
   bar
 
-Multiple dirs stanzas are composed in order across dune and include files.
+Multiple dirs stanzas are intersected across dune and include files.
 
   $ mkdir composed
   $ cd composed
@@ -45,7 +45,7 @@ Multiple dirs stanzas are composed in order across dune and include files.
   [1]
   $ cd ..
 
-Later dirs stanzas can replace previous results when they don't use :standard.
+Dirs stanzas that use :standard are interpreted independently.
 
   $ mkdir override
   $ cd override
@@ -65,10 +65,29 @@ Later dirs stanzas can replace previous results when they don't use :standard.
   > (include dune.inc)
   > EOF
   $ dune build ./keep/ok
-  $ cat _build/default/keep/ok
-  keep
+  Error: Don't know how to build ./keep/ok
+  [1]
   $ dune build ./other/nope
   Error: Don't know how to build ./other/nope
+  [1]
+  $ cd ..
+
+The review example evaluates to the empty set of directories.
+
+  $ mkdir review-example
+  $ cd review-example
+  $ make_dune_project 3.22
+  $ mkdir foo
+  $ cat >foo/dune <<EOF
+  > (rule (with-stdout-to ok (echo foo)))
+  > EOF
+  $ cat >dune <<EOF
+  > (dirs foo)
+  > (dirs :standard \ foo)
+  > (dirs foo)
+  > EOF
+  $ dune build ./foo/ok
+  Error: Don't know how to build ./foo/ok
   [1]
   $ cd ..
 

@@ -288,7 +288,7 @@ module Ast = struct
     fields
     @@
     let+ subdirs = multi_field "subdir" (subdir ~inside_include)
-    and+ dirs = field_o "dirs" dirs
+    and+ dirs = multi_field "dirs" dirs
     and+ files = field_o "files" files
     and+ ignored_sub_dirs =
       multi_field "ignored_subdirs" (ignored_sub_dirs ~inside_subdir)
@@ -298,7 +298,7 @@ module Ast = struct
     and+ rest = leftover_fields in
     let ast =
       List.concat
-        [ Option.to_list dirs
+        [ dirs
         ; Option.to_list files
         ; Option.to_list vendored_dirs
         ; subdirs
@@ -397,8 +397,6 @@ module Group = struct
       User_error.raise ~loc [ Pp.textf "may not set the %S stanza more than once" name ]
   ;;
 
-  let compose_dirs base next = Predicate_lang.replace_standard ~where:next ~with_:base
-
   let subdir_status { ignored_sub_dirs; data_only_dirs; vendored_dirs; dirs; _ } =
     let data_only =
       match data_only_dirs, ignored_sub_dirs with
@@ -429,7 +427,7 @@ module Group = struct
           match t.dirs with
           | None -> loc, glob
           | Some (existing_loc, existing_glob) ->
-            existing_loc, compose_dirs existing_glob glob)
+            existing_loc, Predicate_lang.and_ [ existing_glob; glob ])
         else no_dupes "dirs" loc t.dirs glob
       in
       { t with dirs = Some dirs }

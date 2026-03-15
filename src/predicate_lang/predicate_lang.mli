@@ -18,7 +18,6 @@ val decode : 'a Decoder.t -> 'a t Decoder.t
 val encode : 'a Encoder.t -> 'a t Encoder.t
 val to_dyn : 'a Dyn.builder -> 'a t Dyn.builder
 val test : 'a t -> standard:'a t -> test:('a -> 'b -> bool) -> 'b -> bool
-val replace_standard : where:'a t -> with_:'a t -> 'a t
 val false_ : 'a t
 val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
 

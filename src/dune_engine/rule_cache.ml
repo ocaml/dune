@@ -123,34 +123,39 @@ module Workspace_local = struct
   end
 
   let compute_target_digests (targets : Targets.Validated.t)
-    : (Digest.t Targets.Produced.t, Miss_reason.t) Dune_cache.Hit_or_miss.t
+    : (Digest.t Targets.Produced.t, Miss_reason.t) Dune_cache.Hit_or_miss.t Fiber.t
     =
     match Targets.Produced.of_validated targets with
-    | Error error -> Miss (Error_while_collecting_directory_targets error)
+    | Error error ->
+      Fiber.return (Miss (Miss_reason.Error_while_collecting_directory_targets error))
     | Ok targets ->
-      (match
-         Targets.Produced.map_with_errors
-           ~f:(Cached_digest.build_file ~allow_dirs:true)
-           targets
-       with
+      let open Fiber.O in
+      Targets.Produced.map_with_errors
+        ~f:(Cached_digest.build_file ~allow_dirs:true)
+        targets
+      >>| (function
        | Ok produced_targets -> Dune_cache.Hit_or_miss.Hit produced_targets
-       | Error _ -> Miss Targets_missing)
+       | Error _ -> Miss Miss_reason.Targets_missing)
   ;;
 
   let lookup_impl ~rule_digest ~targets ~env ~build_deps =
+    let open Fiber.O in
     (* [prev_trace] will be [None] if [head_target] was never built before. *)
     let head_target = Targets.Validated.head targets in
     let prev_trace = Database.get (Path.build head_target) in
-    let prev_trace_with_produced_targets =
+    let* prev_trace_with_produced_targets =
       match prev_trace with
-      | None -> Miss Miss_reason.No_previous_record
+      | None -> Fiber.return (Miss Miss_reason.No_previous_record)
       | Some prev_trace ->
         (match Digest.equal prev_trace.rule_digest rule_digest with
-         | false -> Miss (Rule_changed (prev_trace.rule_digest, rule_digest))
+         | false ->
+           Fiber.return
+             (Miss (Miss_reason.Rule_changed (prev_trace.rule_digest, rule_digest)))
          | true ->
            (* [compute_target_digests] returns a [Miss] if not all targets are
               available in the workspace-local cache. *)
-           (match compute_target_digests targets with
+           compute_target_digests targets
+           >>| (function
             | Miss reason -> Miss reason
             | Hit produced_targets ->
               (match

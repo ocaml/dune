@@ -46,6 +46,5 @@ Legacy `cxx_names` should keep working with non-OCaml `(select ..)` targets.
   >  (libraries test))
   > EOF
 
-  $ dune exec ./main.exe 2>&1 | grep -o 'fatal error'
-  fatal error
-  [1]
+  $ dune exec ./main.exe
+  7

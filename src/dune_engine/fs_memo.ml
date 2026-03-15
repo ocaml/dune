@@ -298,13 +298,9 @@ let file_digest ?(force_update = false) path =
   Fs_cache.read Fs_cache.Untracked.file_digest path
 ;;
 
-let file_digest_exn ?loc path =
+let file_digest_exn ~loc path =
   let report_user_error details =
-    let+ loc =
-      match loc with
-      | None -> Memo.return None
-      | Some loc -> loc ()
-    in
+    let+ loc = loc () in
     User_error.raise
       ?loc
       ([ Pp.textf

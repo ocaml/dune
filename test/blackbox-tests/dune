@@ -30,7 +30,7 @@
  (mode promote)
  (action
   (system
-   "rg --files-without-match '^\\S' --glob \"*.t\" --glob \"!*coq*\" --glob \"!*rocq*\" --sort=path . > %{target}")))
+   "rg -L --files-without-match '^\\S' --glob \"*.t\" --glob \"!*coq*\" --glob \"!*rocq*\" --sort=path . > %{target}")))
 
 (alias
  (enabled_if %{bin-available:rg})

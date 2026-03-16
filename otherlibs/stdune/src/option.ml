@@ -97,6 +97,8 @@ let try_with f =
 ;;
 
 module List = struct
+  open O
+
   let all =
     let rec loop acc = function
       | [] -> Some (List.rev acc)
@@ -115,6 +117,14 @@ module List = struct
          | Some x -> loop (x :: acc) xs)
     in
     loop [] xs
+  ;;
+
+  let concat_map =
+    let rec loop f acc = function
+      | [] -> Some (List.rev acc)
+      | x :: xs -> f x >>= fun ys -> loop f (List.rev_append ys acc) xs
+    in
+    fun xs ~f -> loop f [] xs
   ;;
 end
 

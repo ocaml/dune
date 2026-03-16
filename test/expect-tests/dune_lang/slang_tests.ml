@@ -395,45 +395,30 @@ let%expect_test "has_undefined_var const" =
 
 (* Slang: And_absorb_undefined_var *)
 
-(* CR-soon Alizter: and_absorb_undefined_var should simplify to [Blang (Const true)] *)
 let%expect_test "and_absorb empty" =
   print_slang (Slang.and_absorb_undefined_var []);
-  [%expect {| And_absorb_undefined_var |}]
+  [%expect {| Blang (Const true) |}]
 ;;
 
-(* CR-soon Alizter: and_absorb_undefined_var should unwrap singleton *)
 let%expect_test "and_absorb singleton" =
   print_slang (Slang.and_absorb_undefined_var [ expr (pform "x") ]);
-  [%expect {| And_absorb_undefined_var (Expr (Literal (template "%{pkg-self:x}"))) |}]
+  [%expect {| Blang (Expr (Literal (template "%{pkg-self:x}"))) |}]
 ;;
 
-(* CR-soon Alizter: and_absorb_undefined_var should filter true *)
 let%expect_test "and_absorb filters true" =
   print_slang (Slang.and_absorb_undefined_var [ const true; expr (pform "x") ]);
-  [%expect
-    {|
-    And_absorb_undefined_var
-      (Const true, Expr (Literal (template "%{pkg-self:x}")))
-    |}]
+  [%expect {| Blang (Expr (Literal (template "%{pkg-self:x}"))) |}]
 ;;
 
-(* CR-soon Alizter: and_absorb_undefined_var should short-circuit on false *)
 let%expect_test "and_absorb false short-circuits" =
   print_slang
     (Slang.and_absorb_undefined_var [ expr (pform "x"); const false; expr (pform "y") ]);
-  [%expect
-    {|
-    And_absorb_undefined_var
-      (Expr (Literal (template "%{pkg-self:x}")),
-       Const false,
-       Expr (Literal (template "%{pkg-self:y}")))
-    |}]
+  [%expect {| Blang (Const false) |}]
 ;;
 
-(* CR-soon Alizter: and_absorb_undefined_var should simplify to [Blang (Const true)] *)
 let%expect_test "and_absorb all true" =
   print_slang (Slang.and_absorb_undefined_var [ const true; const true ]);
-  [%expect {| And_absorb_undefined_var (Const true, Const true) |}]
+  [%expect {| Blang (Const true) |}]
 ;;
 
 let%expect_test "and_absorb flattens" =
@@ -453,45 +438,30 @@ let%expect_test "and_absorb flattens" =
 
 (* Slang: Or_absorb_undefined_var *)
 
-(* CR-soon Alizter: or_absorb_undefined_var should simplify to [Blang (Const false)] *)
 let%expect_test "or_absorb empty" =
   print_slang (Slang.or_absorb_undefined_var []);
-  [%expect {| Or_absorb_undefined_var |}]
+  [%expect {| Blang (Const false) |}]
 ;;
 
-(* CR-soon Alizter: or_absorb_undefined_var should unwrap singleton *)
 let%expect_test "or_absorb singleton" =
   print_slang (Slang.or_absorb_undefined_var [ expr (pform "x") ]);
-  [%expect {| Or_absorb_undefined_var (Expr (Literal (template "%{pkg-self:x}"))) |}]
+  [%expect {| Blang (Expr (Literal (template "%{pkg-self:x}"))) |}]
 ;;
 
-(* CR-soon Alizter: or_absorb_undefined_var should filter false *)
 let%expect_test "or_absorb filters false" =
   print_slang (Slang.or_absorb_undefined_var [ const false; expr (pform "x") ]);
-  [%expect
-    {|
-    Or_absorb_undefined_var
-      (Const false, Expr (Literal (template "%{pkg-self:x}")))
-    |}]
+  [%expect {| Blang (Expr (Literal (template "%{pkg-self:x}"))) |}]
 ;;
 
-(* CR-soon Alizter: or_absorb_undefined_var should short-circuit on true *)
 let%expect_test "or_absorb true short-circuits" =
   print_slang
     (Slang.or_absorb_undefined_var [ expr (pform "x"); const true; expr (pform "y") ]);
-  [%expect
-    {|
-    Or_absorb_undefined_var
-      (Expr (Literal (template "%{pkg-self:x}")),
-       Const true,
-       Expr (Literal (template "%{pkg-self:y}")))
-    |}]
+  [%expect {| Blang (Const true) |}]
 ;;
 
-(* CR-soon Alizter: or_absorb_undefined_var should simplify to [Blang (Const false)] *)
 let%expect_test "or_absorb all false" =
   print_slang (Slang.or_absorb_undefined_var [ const false; const false ]);
-  [%expect {| Or_absorb_undefined_var (Const false, Const false) |}]
+  [%expect {| Blang (Const false) |}]
 ;;
 
 let%expect_test "or_absorb flattens" =

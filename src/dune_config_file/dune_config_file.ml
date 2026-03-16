@@ -5,7 +5,7 @@ module Dune_config = struct
   open Dune_lang.Decoder
   module Display = Display
   module Sandbox_mode = Dune_engine.Sandbox_mode
-  module Console = Dune_console
+  module Console = Console
   module Stanza = Dune_lang.Stanza
   module String_with_vars = Dune_lang.String_with_vars
   module Pform = Dune_lang.Pform

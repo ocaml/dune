@@ -4,7 +4,6 @@
   dune_scheduler
   fiber
   blake3_mini
-  dune_console
   dune_util
   threads.posix
   dune_trace

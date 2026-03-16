@@ -1,5 +1,3 @@
-open Stdune
-
 module No_flush = struct
   let status_line = ref Pp.nop
   let start () = ()

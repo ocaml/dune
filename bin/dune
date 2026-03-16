@@ -16,7 +16,6 @@
   fiber
   stdune
   fs_io
-  dune_console
   unix
   install
   dune_findlib

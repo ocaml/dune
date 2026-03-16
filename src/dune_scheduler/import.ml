@@ -1,2 +1,2 @@
 include Stdune
-module Console = Dune_console
+module Console = Console

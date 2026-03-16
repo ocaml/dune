@@ -1,5 +1,3 @@
-open Stdune
-
 module No_flush : Backend_intf.S = struct
   let start () = ()
   let finish () = ()

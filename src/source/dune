@@ -2,7 +2,6 @@
  (name source)
  (libraries
   dune_config_file
-  dune_console
   dune_digest
   dune_engine
   dune_glob

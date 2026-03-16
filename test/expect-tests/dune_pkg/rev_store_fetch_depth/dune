@@ -11,7 +11,6 @@
   dune_scheduler
   dune_util
   dune_vcs
-  dune_console
   fiber
   opam_core
   re

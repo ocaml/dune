@@ -10,7 +10,6 @@
   unix
   csexp
   stdune
-  dune_console
   dyn
   fiber
   memo

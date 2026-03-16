@@ -46,7 +46,7 @@ let console_backend = function
     (match status_line with
      | false ->
        Terminal_signals.unblock ();
-       Dune_console.Backend.dumb
+       Console.Backend.dumb
      | true ->
        (match Config.(get threaded_console) with
         | `Enabled ->
@@ -54,5 +54,5 @@ let console_backend = function
             ~frames_per_second:(Dune_util.frames_per_second ())
         | `Disabled ->
           Terminal_signals.unblock ();
-          Dune_console.Backend.progress))
+          Console.Backend.progress))
 ;;

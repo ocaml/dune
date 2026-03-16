@@ -255,8 +255,9 @@ let handler (t : _ t Fdecl.t) : 'build_arg Dune_rpc_server.Handler.t =
                | None, None -> assert false
                | Some prev, None ->
                  Some (Diagnostics.diagnostic_event_of_error_event (Remove prev))
-               | _, Some next ->
-                 Some (Diagnostics.diagnostic_event_of_error_event (Add next)))
+               | None, Some next ->
+                 Some (Diagnostics.diagnostic_event_of_error_event (Add next))
+               | Some _, Some _ -> None)
            |> Error.Id.Map.values)
     in
     Handler.implement_long_poll

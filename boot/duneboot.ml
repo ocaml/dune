@@ -138,16 +138,6 @@ module List = struct
      versions allowing compatability >= 4.08 which will get shadowed when the
      stdlib version is available. *)
 
-  (* Introduced in 4.10 *)
-  let rec find_map l ~f =
-    match l with
-    | [] -> None
-    | x :: l ->
-      (match f x with
-       | None -> find_map l ~f
-       | Some _ as x -> x)
-  ;;
-
   (* Introduced in 4.14 *)
   let concat_map l ~f = List.map l ~f |> List.concat
 

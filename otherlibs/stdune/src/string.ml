@@ -70,16 +70,7 @@ module Caseless = Cased_functions (struct
     let normalize = Char.lowercase_ascii
   end)
 
-module StringLabels = struct
-  (* functions potentially in the stdlib, depending on OCaml version *)
-
-  let[@warning "-32"] ends_with = ends_with
-
-  (* overwrite them with stdlib versions if available *)
-  include Stdlib.StringLabels
-end
-
-include StringLabels
+include Stdlib.StringLabels
 
 let compare a b = Ordering.of_int (String.compare a b)
 

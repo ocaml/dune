@@ -11,7 +11,6 @@
   predicate_lang
   dune_cache
   dune_scheduler
-  dune_cache_storage
   dune_glob
   dune_targets
   chrome_trace

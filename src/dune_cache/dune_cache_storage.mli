@@ -1,12 +1,7 @@
 (** Basic functionality for manipulating the Dune cache storage, used by the
     local and cloud caches. *)
 
-open Stdune
 open Import
-module Layout = Layout
-module Mode = Mode
-module Util = Util
-module Version = Version
 
 module Store_result : sig
   (** Outcomes are ordered in the order of severity. *)

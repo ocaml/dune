@@ -49,7 +49,7 @@ module Dune_config : sig
     end
 
     module Storage_mode : sig
-      type t = Dune_cache_storage.Mode.t option
+      type t = Dune_cache.Mode.t option
 
       val all : (string * t) list
       val decode : t Dune_lang.Decoder.t

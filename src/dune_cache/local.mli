@@ -48,7 +48,7 @@ end
     The [compute_digest] function is passed explicitly because the caller might
     want to memoize and/or throttle file digest computations. *)
 val store_artifacts
-  :  mode:Dune_cache_storage.Mode.t
+  :  mode:Mode.t
   -> rule_digest:Digest.t
   -> Target.t Targets.Produced.t
   -> Store_artifacts_result.t Fiber.t
@@ -59,7 +59,7 @@ val store_artifacts
     removing stale versions of the targets, if any, before calling this
     function. *)
 val restore_artifacts
-  :  mode:Dune_cache_storage.Mode.t
+  :  mode:Mode.t
   -> rule_digest:Digest.t
   -> target_dir:Path.Build.t
-  -> Digest.t Targets.Produced.t Restore_result.t
+  -> Digest.t Targets.Produced.t Dune_cache_storage.Restore_result.t

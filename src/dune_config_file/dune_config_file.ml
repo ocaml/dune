@@ -245,23 +245,23 @@ module Dune_config = struct
     end
 
     module Storage_mode = struct
-      type t = Dune_cache_storage.Mode.t option
+      type t = Dune_cache.Mode.t option
 
-      let equal = Option.equal Dune_cache_storage.Mode.equal
+      let equal = Option.equal Dune_cache.Mode.equal
 
       let all =
         ("auto", None)
-        :: List.map ~f:(fun (name, mode) -> name, Some mode) Dune_cache_storage.Mode.all
+        :: List.map ~f:(fun (name, mode) -> name, Some mode) Dune_cache.Mode.all
       ;;
 
       let decode = enum all
 
       let to_string = function
         | None -> "auto"
-        | Some mode -> Dune_cache_storage.Mode.to_string mode
+        | Some mode -> Dune_cache.Mode.to_string mode
       ;;
 
-      let to_dyn = Dyn.option Dune_cache_storage.Mode.to_dyn
+      let to_dyn = Dyn.option Dune_cache.Mode.to_dyn
     end
   end
 
@@ -514,7 +514,7 @@ module Dune_config = struct
     ; sandboxing_preference = []
     ; cache_enabled = Enabled_except_user_rules
     ; cache_reproducibility_check = Skip
-    ; cache_storage_mode = Some (Dune_cache_storage.Mode.default ())
+    ; cache_storage_mode = Some (Dune_cache.Mode.default ())
     ; action_stdout_on_success = Print
     ; action_stderr_on_success = Print
     ; project_defaults =

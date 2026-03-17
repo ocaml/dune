@@ -101,7 +101,7 @@ let clear =
     let man = [ `P "Remove any traces of the Dune cache." ] in
     Cmd.info "clear" ~doc ~man
   in
-  Cmd.v info @@ Term.(const Dune_cache_storage.clear $ const ())
+  Cmd.v info @@ Term.(const Dune_cache.Dune_cache_storage.clear $ const ())
 ;;
 
 let command =

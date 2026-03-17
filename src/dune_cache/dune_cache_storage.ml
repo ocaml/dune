@@ -1,9 +1,4 @@
-open Stdune
 open Import
-module Layout = Layout
-module Mode = Mode
-module Util = Util
-module Version = Version
 
 (* See [doc/dev/cache.md] for design and implementation notes. *)
 

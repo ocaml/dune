@@ -30,7 +30,7 @@ let run_fmt_command ~common ~config ~preview builder =
   let open Fiber.O in
   let once () =
     let* () = lock_ocamlformat () in
-    let request (setup : Import.Main.build_system) =
+    let request (setup : Dune_rules.Main.build_system) =
       let dir = Path.(relative root) (Common.prefix_target common ".") in
       Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts:setup.contexts dir
       |> Alias.request

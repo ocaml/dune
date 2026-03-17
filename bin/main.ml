@@ -15,7 +15,7 @@ let all : _ Cmdliner.Cmd.t list =
       ; Print_rules.command
       ; Ocaml.Utop.command
       ; Promotion.promote
-      ; command_alias Printenv.command Printenv.term "printenv"
+      ; Util.command_alias Printenv.command Printenv.term "printenv"
       ; Help.command
       ; Format_dune_file.command
       ; Upgrade.command

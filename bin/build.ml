@@ -15,7 +15,7 @@ let run_build_system ~request =
          in the [_build] directory. For now, it's unclear if optimising this is
          worth the effort. *)
        Cached_digest.invalidate_cached_timestamps ();
-       let* setup = Import.Main.setup () in
+       let* setup = Util.setup () in
        let request = Action_builder.of_memo setup |> Action_builder.bind ~f:request in
        (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
           time the build system is rerun? *)

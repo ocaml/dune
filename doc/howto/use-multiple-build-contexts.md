@@ -64,8 +64,7 @@ file that defines two lock directories and attaches one context to each:
 
 :::{literalinclude} use-multiple-build-contexts/dune-workspace.pkg
 :language: dune
-:emphasize-lines: 6-8
-:emphasize-lines: 10-15
+:emphasize-lines: 6-8,10-15
 :caption: dune-workspace
 :::
 
@@ -170,6 +169,12 @@ page](https://ocaml.org/manual/5.3/tsan.html). You may also want to install
 depexts listed in `dune show depexts`.
 
 :::
+
+You can setup a ThreadSanitizer switch with the following command:
+
+```sh
+$ opam switch create 5.3.0+tsan ocaml-option-tsan
+```
 
 Create a `dune-workspace` file:
 

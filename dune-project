@@ -230,7 +230,7 @@ understood by dune language."))
  (dir otherlibs/ocamlc-loc)
  (synopsis "Parse ocaml compiler output into structured form")
  (conflicts
-  (ocaml-lsp-server (< 1.15.0)))
+  (ocaml-lsp-server (< 1.17.0)))
  (depends
   (ocaml (>= 4.08.0))
   (dyn (= :version)))

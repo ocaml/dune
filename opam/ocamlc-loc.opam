@@ -16,7 +16,7 @@ depends: [
   "odoc" {with-doc}
 ]
 conflicts: [
-  "ocaml-lsp-server" {< "1.15.0"}
+  "ocaml-lsp-server" {< "1.17.0"}
 ]
 dev-repo: "git+https://github.com/ocaml/dune.git"
 x-maintenance-intent: ["none"]

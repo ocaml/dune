@@ -48,7 +48,6 @@
 ./test-cases/github10685.t
 ./test-cases/github10721.t
 ./test-cases/github2584.t
-./test-cases/github2629.t
 ./test-cases/github3180.t
 ./test-cases/github3672.t
 ./test-cases/github4194.t
@@ -72,6 +71,7 @@
 ./test-cases/inline-tests/many-backends-choose.t
 ./test-cases/inline-tests/missing-backend.t
 ./test-cases/inline-tests/too-many-backends.t
+./test-cases/install-command/github2629.t
 ./test-cases/install-dir/install-bindir.t
 ./test-cases/install-dir/install-datadir.t
 ./test-cases/install-dir/install-docdir.t

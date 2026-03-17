@@ -1,7 +1,7 @@
 open Stdune
 open Dune_config_file
 open Dune_scheduler
-module Console = Dune_console
+module Console = Console
 module Graph = Dune_graph.Graph
 module Profile = Dune_lang.Profile
 
@@ -1301,7 +1301,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   Log.info
     "Workspace root"
     [ "root", Dyn.string (Path.to_absolute_filename Path.root |> String.maybe_quoted) ];
-  Dune_console.separate_messages c.builder.separate_error_messages;
+  Console.separate_messages c.builder.separate_error_messages;
   (* Setup hook for printing GC stats to a file *)
   at_exit (fun () ->
     match c.builder.dump_gc_stats with

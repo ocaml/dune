@@ -39,7 +39,7 @@ let term : unit Term.t =
   let* sctx = setup >>| Import.Main.find_scontext_exn ~name:context in
   let* prog = Exec.Cmd_arg.expand ~root:(Common.root common) ~sctx prog in
   let+ path = Exec.get_path common sctx ~prog >>| Path.to_string in
-  Dune_console.printf "%s" path
+  Console.printf "%s" path
 ;;
 
 let command = Cmd.v info term

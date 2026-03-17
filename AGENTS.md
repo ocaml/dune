@@ -101,7 +101,7 @@ running `dune promote` to accept changes.
 things work. Don't run commands manually - run them through `dune runtest` to
 capture and verify behavior.
 
-**Printf Debugging:** When confused about behavior, use `Dune_console`
+**Printf Debugging:** When confused about behavior, use `Console`
 (commonly aliased as `Console`) for debugging:
 ```ocaml
 Console.printf "something: %s" (Something.to_dyn something |> Dyn.to_string);

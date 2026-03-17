@@ -1,5 +1,3 @@
-open Stdune
-
 module type Backend = Backend_intf.S
 
 module Backend = struct

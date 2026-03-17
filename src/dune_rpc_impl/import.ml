@@ -1,5 +1,5 @@
 include Stdune
-module Console = Dune_console
+module Console = Console
 module Dune_rpc = Dune_rpc_private
 include Dune_scheduler
 

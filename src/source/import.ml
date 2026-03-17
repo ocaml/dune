@@ -2,7 +2,7 @@ include Stdune
 include Dune_vcs
 include Dune_util
 include Dune_config_file
-module Console = Dune_console
+module Console = Console
 
 include struct
   open Dune_engine

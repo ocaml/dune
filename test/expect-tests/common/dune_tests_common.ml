@@ -1,5 +1,5 @@
 open Stdune
-module Console = Dune_console
+module Console = Console
 
 let print pp = Format.printf "%a@." Pp.to_fmt pp
 let print_dyn dyn = print (Dyn.pp dyn)

@@ -60,7 +60,7 @@ module Run = struct
     in
     let with_print_errors f () =
       Fiber.with_error_handler f ~on_error:(fun exn ->
-        Dune_console.print [ Pp.text "Uncaught RPC Error"; Exn_with_backtrace.pp exn ];
+        Console.print [ Pp.text "Uncaught RPC Error"; Exn_with_backtrace.pp exn ];
         Exn_with_backtrace.reraise exn)
     in
     let run () =

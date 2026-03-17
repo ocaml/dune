@@ -3,7 +3,7 @@ open Fiber.O
 open Git_test_utils
 module Rev_store = Dune_pkg.Rev_store
 module Opam_repo = Dune_pkg.Opam_repo
-module Console = Dune_console
+module Console = Console
 
 let () =
   Dune_util.override_xdg

@@ -210,7 +210,7 @@ let gen_report
       (* We don't want a failure to write to the trace raise another event *)
       ()
   in
-  Dune_console.print_user_message { msg with loc; paragraphs }
+  Console.print_user_message { msg with loc; paragraphs }
 ;;
 
 let gen_report exn backtrace =

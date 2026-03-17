@@ -97,7 +97,7 @@ let process_raw_events t events =
       else (
         match Table.find watch_table watch with
         | None ->
-          Dune_console.print
+          Console.print
             [ Pp.verbatimf
                 "Events for an unknown watch (%d) [%s]\n"
                 (Inotify.int_of_watch watch)

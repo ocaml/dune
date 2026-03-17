@@ -21,7 +21,7 @@ include struct
   module Dune_project = Dune_project
 end
 
-module Console = Dune_console
+module Console = Console
 
 type rename_and_edit =
   { original_file : Path.Source.t

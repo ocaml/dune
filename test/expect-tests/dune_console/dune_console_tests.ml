@@ -4,10 +4,10 @@ let escape str =
   str |> String.split_lines |> List.map ~f:String.escaped |> List.iter ~f:print_endline
 ;;
 
-(* Creation of Dune_console is stateful so we introduce a new module for each test. *)
-module New () = Dune_console
+(* Creation of Console is stateful so we introduce a new module for each test. *)
+module New () = Console
 
-module type New_console = module type of Dune_console
+module type New_console = module type of Console
 
 (* In order to keep tests across different backends consistent, we create some
    generic test scripts here that take the created [Console]. We then test these

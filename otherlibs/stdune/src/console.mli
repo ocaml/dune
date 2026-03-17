@@ -1,5 +1,3 @@
-open Stdune
-
 (** Manages the console *)
 
 (** The console is a system than can report messages and a status to the user.

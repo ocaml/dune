@@ -60,7 +60,7 @@ include struct
 end
 
 module Digest = Dune_digest
-module Console = Dune_console
+module Console = Console
 
 include struct
   open Dune_lang

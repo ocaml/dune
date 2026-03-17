@@ -2,7 +2,6 @@
  (name dune_util)
  (libraries
   stdune
-  dune_console
   dune_trace
   xdg
   dyn

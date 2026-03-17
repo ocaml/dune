@@ -1,5 +1,3 @@
-open Stdune
-
 module type S = sig
   val start : unit -> unit
   val print_user_message : User_message.t -> unit

@@ -73,13 +73,6 @@ module Caseless = Cased_functions (struct
 module StringLabels = struct
   (* functions potentially in the stdlib, depending on OCaml version *)
 
-  let[@warning "-32"] exists =
-    let rec loop s i len f =
-      if i = len then false else f (String.unsafe_get s i) || loop s (i + 1) len f
-    in
-    fun ~f s -> loop s 0 (String.length s) f
-  ;;
-
   let[@warning "-32"] for_all =
     let rec loop s i len f =
       i = len || (f (String.unsafe_get s i) && loop s (i + 1) len f)

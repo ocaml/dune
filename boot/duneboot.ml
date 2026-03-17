@@ -138,9 +138,6 @@ module List = struct
      versions allowing compatability >= 4.08 which will get shadowed when the
      stdlib version is available. *)
 
-  (* Introduced in 4.14 *)
-  let concat_map l ~f = List.map l ~f |> List.concat
-
   let partition_map t ~f =
     let rec loop l r = function
       | [] -> l, r

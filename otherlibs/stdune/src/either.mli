@@ -1,10 +1,6 @@
 (** Left or right *)
 
 include sig
-  [@@@warning "-33"]
-
-  (* This open is unused with OCaml >= 4.12 since the stdlib defines an either type *)
-  open Dune_either
   open Stdlib
 
   type ('a, 'b) t = ('a, 'b) Either.t =

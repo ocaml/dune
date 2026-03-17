@@ -41,11 +41,6 @@ module Set : sig
   type t
 
   val add : t -> error -> t
-
-  (** [one_event_diff ~prev ~next] returns the event that constructs [next]
-      from [prev] if [next] is in the successive "generation" of [prev] *)
-  val one_event_diff : prev:t -> next:t -> Event.t option
-
   val equal : t -> t -> bool
   val current : t -> error Id.Map.t
   val empty : t

@@ -35,16 +35,6 @@ open Types
 
 (** {2 Utility functions} *)
 
-include struct
-  [@@@ocaml.warning "-32-34-37"]
-
-  module Either = struct
-    type ('l, 'r) t =
-      | Left of 'l
-      | Right of 'r
-  end
-end
-
 open Stdlib
 open StdLabels
 open MoreLabels

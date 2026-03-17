@@ -133,23 +133,6 @@ module List = struct
        | ne -> ne)
   ;;
 
-  (* Some list functions are introduced in later OCaml versions. There are also
-     improvements to performance in some of these. We introduce fallback
-     versions allowing compatability >= 4.08 which will get shadowed when the
-     stdlib version is available. *)
-
-  let partition_map t ~f =
-    let rec loop l r = function
-      | [] -> l, r
-      | x :: xs ->
-        (match f x with
-         | Either.Left x -> loop (x :: l) r xs
-         | Right x -> loop l (x :: r) xs)
-    in
-    let l, r = loop [] [] t in
-    List.(rev l, rev r)
-  ;;
-
   include List
 end
 

@@ -110,19 +110,6 @@ module List = struct
     | Some x -> x :: t
   ;;
 
-  [@@@ocaml.warning "-32"]
-
-  let rec compare a b ~cmp =
-    match a, b with
-    | [], [] -> 0
-    | [], _ :: _ -> -1
-    | _ :: _, [] -> 1
-    | x :: a, y :: b ->
-      (match cmp x y with
-       | 0 -> compare a b ~cmp
-       | ne -> ne)
-  ;;
-
   include List
 end
 

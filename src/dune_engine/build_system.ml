@@ -1146,14 +1146,13 @@ let handle_final_exns exns =
 
 let run f =
   let open Fiber.O in
-  let* () = State.reset_progress () in
-  let* () = State.reset_errors () in
   let f () =
-    let* res =
-      Fiber.collect_errors (fun () ->
-        Memo.run_with_error_handler f ~handle_error_no_raise:report_early_exn)
-    in
-    match res with
+    Hooks.End_of_build.once Diff_promotion.finalize;
+    let* () = State.reset_progress () in
+    let* () = State.reset_errors () in
+    Fiber.collect_errors (fun () ->
+      Memo.run_with_error_handler f ~handle_error_no_raise:report_early_exn)
+    >>= function
     | Ok res ->
       let+ () = State.set Build_succeeded__now_waiting_for_changes in
       Ok res
@@ -1172,8 +1171,8 @@ let run f =
 
 let run_exn f =
   let open Fiber.O in
-  let+ res = run f in
-  match res with
+  run f
+  >>| function
   | Ok res -> res
   | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
 ;;

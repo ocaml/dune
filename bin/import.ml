@@ -155,17 +155,5 @@ let command_alias ?orig_name cmd term name =
   Cmd.v (Cmd.info name ~docs:"COMMAND ALIASES" ~doc ~man) term
 ;;
 
-(* The build system has some global state which makes it unsafe for
-   multiple instances of it to be executed concurrently, so we ensure
-   serialization by holding this mutex while running the build system. *)
-let build_system_mutex = Fiber.Mutex.create ()
-
-let build f =
-  Hooks.End_of_build.once Dune_engine.Diff_promotion.finalize;
-  Fiber.Mutex.with_lock build_system_mutex ~f:(fun () -> Build_system.run f)
-;;
-
-let build_exn f =
-  Hooks.End_of_build.once Dune_engine.Diff_promotion.finalize;
-  Fiber.Mutex.with_lock build_system_mutex ~f:(fun () -> Build_system.run_exn f)
-;;
+let build f = Build_system.run f
+let build_exn f = Build_system.run_exn f

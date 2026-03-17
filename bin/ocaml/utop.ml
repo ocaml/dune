@@ -35,7 +35,7 @@ let term =
     Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
-      build_exn (fun () ->
+      Build.build_memo_exn (fun () ->
         let open Memo.O in
         let* setup = setup in
         let context = Import.Main.find_context_exn setup ~name:ctx_name in

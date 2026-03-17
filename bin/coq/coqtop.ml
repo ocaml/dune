@@ -62,7 +62,7 @@ let term =
       |> Path.Build.append_local (Context.build_dir context)
     in
     let* coqtop, args, env =
-      build_exn
+      Build.build_memo_exn
       @@ fun () ->
       let open Memo.O in
       let* (tr : Dune_rules.Dir_contents.triage) =

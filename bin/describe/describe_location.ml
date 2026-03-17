@@ -33,7 +33,7 @@ let term : unit Term.t =
   @@ fun () ->
   let open Fiber.O in
   let* setup = Import.Main.setup () in
-  build_exn
+  Build.build_memo_exn
   @@ fun () ->
   let open Memo.O in
   let* sctx = setup >>| Import.Main.find_scontext_exn ~name:context in

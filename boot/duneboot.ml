@@ -241,23 +241,6 @@ module String = struct
     loop ~acc:[] 0 0 ~last_is_cr:false
   ;;
 
-  [@@@ocaml.warning "-32"]
-
-  let ends_with t ~suffix = Filename.check_suffix t suffix
-
-  let starts_with t ~prefix =
-    let len_s = length t
-    and len_pre = length prefix in
-    let rec aux i =
-      if i = len_pre
-      then true
-      else if unsafe_get t i <> unsafe_get prefix i
-      then false
-      else aux (i + 1)
-    in
-    len_s >= len_pre && aux 0
-  ;;
-
   include String
 end
 

@@ -73,7 +73,6 @@ module Caseless = Cased_functions (struct
 module StringLabels = struct
   (* functions potentially in the stdlib, depending on OCaml version *)
 
-  let[@warning "-32"] starts_with = starts_with
   let[@warning "-32"] ends_with = ends_with
 
   (* overwrite them with stdlib versions if available *)

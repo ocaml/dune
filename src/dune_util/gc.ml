@@ -17,7 +17,7 @@ let to_sexp
        ; compactions
        ; top_heap_words
        ; stack_size
-       ; _
+       ; forced_major_collections = _
        } :
         Stdlib.Gc.stat)
   : Sexp.t
@@ -40,7 +40,6 @@ let to_sexp
     ; List [ Atom "compactions"; Atom (string_of_int compactions) ]
     ; List [ Atom "top_heap_words"; Atom (string_of_int top_heap_words) ]
     ; List [ Atom "stack_size"; Atom (string_of_int stack_size) ]
-      (* forced_major_collections is only available from 4.12 so not worth it *)
     ]
 ;;
 
@@ -51,11 +50,6 @@ let serialize (t : Stdlib.Gc.stat) ~path =
 ;;
 
 let decode =
-  (* In order to stay version independent, we use a trick with `with` by
-     creating a dummy value and filling in the fields available in every OCaml
-     version. forced_major_collections is the one missing in versions older than
-     4.12. *)
-  let dummy = Stdlib.Gc.quick_stat () in
   let open Dune_sexp.Decoder in
   enter
   @@ fields
@@ -74,9 +68,9 @@ let decode =
      and+ fragments = field "fragments" int
      and+ compactions = field "compactions" int
      and+ top_heap_words = field "top_heap_words" int
-     and+ stack_size = field "stack_size" int in
-     { dummy with
-       Stdlib.Gc.minor_words
+     and+ stack_size = field "stack_size" int
+     and+ forced_major_collections = field "forced_major_collections" int in
+     { Stdlib.Gc.minor_words
      ; promoted_words
      ; major_words
      ; minor_collections
@@ -92,5 +86,6 @@ let decode =
      ; compactions
      ; top_heap_words
      ; stack_size
+     ; forced_major_collections
      }
 ;;

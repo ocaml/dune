@@ -2067,14 +2067,6 @@ let ocaml_warnings =
   let warnings =
     [ (* Warning 49 [no-cmi-file]: no cmi file was found in path for module *)
       "-49"
-    ; (* Warning 23: all the fields are explicitly listed in this record: the
-        'with' clause is useless.
-
-         In order to stay version independent, we use a trick with `with` by
-         creating a dummy value and filling in the fields available in every
-         OCaml version. forced_major_collections is the one missing in versions
-         older than 4.12. We therefore disable warning 23 for our purposes. *)
-      "-23"
     ; (* Warning 53 [misplaced-attribute]: the "alert" attribute cannot appear
         in this context
 

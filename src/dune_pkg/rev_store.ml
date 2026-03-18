@@ -459,7 +459,7 @@ let run_with_exit_code ~env { dir; _ } ~allow_codes ~display args =
   let stdout_to = make_stdout () in
   let git = Lazy.force Vcs.git in
   let+ stderr, exit_code =
-    Fiber_util.Temp.with_temp_file
+    Fiber.Temp.with_temp_file
       ~prefix:"dune"
       ~suffix:"run_with_exit_code"
       ~dir:(Path.of_string (Filename.get_temp_dir_name ()))

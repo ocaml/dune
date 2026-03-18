@@ -106,6 +106,12 @@
   (= %{os_type} Win32))
  (alias runtest-windows))
 
+(cram
+ (applies_to installed-binary-windows)
+ (enabled_if
+  (= %{os_type} Win32))
+ (alias runtest-windows))
+
 ;; disabled for flakiness
 
 (cram

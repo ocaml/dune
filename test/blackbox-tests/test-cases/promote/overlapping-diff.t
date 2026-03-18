@@ -58,6 +58,4 @@ Test how overlapping diff actions are handled
 
   $ dune promote && cat foo
   Promoting _build/default/foo.expected to foo.
-   -> ignored _build/default/foo.expected.
-   
   two

@@ -98,10 +98,12 @@ let dyn_of_what =
 
 type op =
   | File of File.t
+  | Create_directory of Path.Source.t
   | Delete of what * Path.Source.t
 
 let dyn_of_op = function
   | File f -> Dyn.variant "File" [ File.to_dyn f ]
+  | Create_directory p -> Dyn.variant "Create_directory" [ Path.Source.to_dyn p ]
   | Delete (what, d) -> Dyn.variant "Delete" [ dyn_of_what what; Path.Source.to_dyn d ]
 ;;
 
@@ -145,7 +147,7 @@ module P = Persistent.Make (struct
 
     let name = "TO-PROMOTE"
     let sharing = true
-    let version = 5
+    let version = 6
     let to_dyn = Dyn.list dyn_of_op
   end)
 
@@ -163,20 +165,74 @@ let dump_db (db : db) =
 
 let load_db () = Option.value ~default:[] (P.load db_file)
 
+let compare_what a b =
+  match a, b with
+  | `File, `File | `Directory, `Directory -> Eq
+  | `File, `Directory -> Lt
+  | `Directory, `File -> Gt
+;;
+
+let compare_op a b =
+  let open Ordering.O in
+  match a, b with
+  | File a, File b -> File.compare a b
+  | File _, _ -> Lt
+  | _, File _ -> Gt
+  | Create_directory a, Create_directory b -> Path.Source.compare a b
+  | Create_directory _, _ -> Lt
+  | _, Create_directory _ -> Gt
+  | Delete (what_a, path_a), Delete (what_b, path_b) ->
+    let= () = compare_what what_a what_b in
+    Path.Source.compare path_a path_b
+;;
+
 let group_by_targets db =
   List.map db ~f:(fun op ->
     match op with
+    | Create_directory p -> p, op
     | Delete (_, f) -> f, op
     | File { File.src = _; staging = _; dst } -> dst, op)
   |> Path.Source.Map.of_list_multi
   (* Sort the list of possible sources for deterministic behavior *)
-  |> Path.Source.Map.map ~f:(List.sort ~compare:Poly.compare)
+  |> Path.Source.Map.map ~f:(List.sort ~compare:compare_op)
+;;
+
+let create_directory dst =
+  let path = Path.source dst in
+  match Path.Untracked.stat path with
+  | Ok { Unix.st_kind = S_DIR; _ } -> ()
+  | Error (ENOENT, _, _) -> Path.mkdir_p path
+  | Ok _ ->
+    (match Fpath.unlink (Path.Source.to_string dst) with
+     | Success | Does_not_exist -> ()
+     | Is_a_directory -> assert false
+     | Error e ->
+       User_error.raise
+         [ Pp.textf "failed to create directory %s" (Path.Source.to_string dst)
+         ; Exn.pp e
+         ]);
+    Path.mkdir_p path
+  | Error e ->
+    User_error.raise
+      [ Pp.textf "failed to create directory %s" (Path.Source.to_string dst)
+      ; Unix_error.Detailed.pp_reason e
+      ]
 ;;
 
 let promote_one dst srcs =
+  let ignored others =
+    List.iter others ~f:(fun op ->
+      let path =
+        match op with
+        | File f -> Path.build f.src
+        | Create_directory _ | Delete _ -> Path.source dst
+      in
+      Console.print
+        [ Pp.textf " -> ignored %s." (Path.to_string_maybe_quoted path); Pp.space ])
+  in
   match srcs with
   | [] -> assert false
-  | op :: others ->
+  | srcs ->
     (* We used to remove promoted files from the digest cache, to force Dune
        to redigest them on the next run. We did this because on OSX [mtime] is
        not precise enough and if a file is modified and promoted quickly, it
@@ -190,18 +246,37 @@ let promote_one dst srcs =
        not promote into the build directory anyway), and source digests should
        be correctly invalidated via [fs_memo]. If that doesn't happen, we
        should fix [fs_memo] instead of manually resetting the caches here. *)
-    (match op with
-     | File f -> File.promote f
-     | Delete (`File, _) -> Fpath.unlink_exn (Path.Source.to_string dst)
-     | Delete (`Directory, _) -> Fpath.rm_rf (Path.Source.to_string dst));
-    List.iter others ~f:(fun op ->
-      let path =
-        match op with
-        | File f -> Path.build f.src
-        | Delete _ -> Path.source dst
-      in
-      Console.print
-        [ Pp.textf " -> ignored %s." (Path.to_string_maybe_quoted path); Pp.space ])
+    (match
+       List.find srcs ~f:(function
+         | File _ -> true
+         | _ -> false)
+     with
+     | Some (File f) ->
+       File.promote f;
+       ignored (List.filter srcs ~f:(fun op -> not (compare_op op (File f) = Eq)))
+     | Some _ -> assert false
+     | None ->
+       (match
+          List.find srcs ~f:(function
+            | Create_directory _ -> true
+            | _ -> false)
+        with
+        | Some (Create_directory _) ->
+          create_directory dst;
+          ignored
+            (List.filter srcs ~f:(function
+               | Create_directory _ -> false
+               | _ -> true))
+        | Some _ -> assert false
+        | None ->
+          (match srcs with
+           | Delete (`File, _) :: others ->
+             Fpath.unlink_exn (Path.Source.to_string dst);
+             ignored others
+           | Delete (`Directory, _) :: others ->
+             Fpath.rm_rf (Path.Source.to_string dst);
+             ignored others
+           | _ -> assert false)))
 ;;
 
 let do_promote_all db = group_by_targets db |> Path.Source.Map.iteri ~f:promote_one
@@ -297,10 +372,10 @@ type all =
     - The files absent from [db] as [Path]s. *)
 let partition_db (db : db) files_to_promote =
   let db =
-    (* CR-soon rgrinberg: communicate deletions to the user *)
+    (* CR-soon rgrinberg: communicate deletions and directory creation to the user *)
     List.filter_map db ~f:(function
       | File f -> Some f
-      | Delete _ -> None)
+      | Create_directory _ | Delete _ -> None)
   in
   let present, missing =
     match files_to_promote with
@@ -315,3 +390,4 @@ let partition_db (db : db) files_to_promote =
 ;;
 
 let register_delete what src = db := Delete (what, src) :: !db
+let register_create_directory src = db := Create_directory src :: !db

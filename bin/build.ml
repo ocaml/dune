@@ -1,7 +1,9 @@
 open Import
 
 let run_build_system ~request =
-  let run ~(toplevel : unit Memo.Lazy.t) = build (fun () -> Memo.Lazy.force toplevel) in
+  let run ~(toplevel : unit Memo.Lazy.t) =
+    Build_system.run (fun () -> Memo.Lazy.force toplevel)
+  in
   let open Fiber.O in
   Fiber.finalize
     (fun () ->
@@ -14,12 +16,9 @@ let run_build_system ~request =
          worth the effort. *)
        Cached_digest.invalidate_cached_timestamps ();
        let* setup = Import.Main.setup () in
-       let request =
-         Action_builder.bind (Action_builder.of_memo setup) ~f:(fun setup ->
-           request setup)
-       in
+       let request = Action_builder.of_memo setup |> Action_builder.bind ~f:request in
        (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
-         time the build system is rerun? *)
+          time the build system is rerun? *)
        (* This top-level node is used for traversing the whole Memo graph. *)
        let _toplevel_cell, toplevel =
          Memo.Lazy.Expert.create ~name:"toplevel" (fun () ->
@@ -84,8 +83,8 @@ let run_build_command_poll_passive ~common ~config ~request:_ : unit =
 let run_build_command_once ~(common : Common.t) ~config ~request =
   let open Fiber.O in
   let once () =
-    let+ res = run_build_system ~request in
-    match res with
+    run_build_system ~request
+    >>| function
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
     | Ok () -> ()
   in
@@ -196,3 +195,6 @@ let build =
   in
   Cmd.v (Cmd.info "build" ~doc ~man ~envs:Common.envs) term
 ;;
+
+let build_memo f = Build_system.run f
+let build_memo_exn f = Build_system.run_exn f

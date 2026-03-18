@@ -121,7 +121,7 @@ let term =
          | In_install_dir _ ->
            User_error.raise [ Pp.text "Environment is not defined in install dirs" ])
     in
-    build_exn (fun () ->
+    Build.build_memo_exn (fun () ->
       let open Memo.O in
       let+ res, _facts = Action_builder.evaluate_and_collect_facts request in
       res)

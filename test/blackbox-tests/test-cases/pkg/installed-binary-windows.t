@@ -32,9 +32,4 @@ The binary should be visible in the workspace via %{bin:foo}:
   > EOF
 
   $ dune build ./testout && cat _build/default/testout
-  File "dune", line 3, characters 7-17:
-  3 |   (run %{bin:foo} workspace-test)))
-             ^^^^^^^^^^
-  Error: Program foo not found in the tree or in PATH
-   (context: default)
-  [1]
+  workspace-test

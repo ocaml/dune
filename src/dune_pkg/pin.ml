@@ -148,13 +148,13 @@ module Scan_project = struct
 
   type state =
     { traversed :
-        (OpamUrl.t, (DB.t * Dune_lang.Package.t Package_name.Map.t) option) Fiber_cache.t
+        (OpamUrl.t, (DB.t * Dune_lang.Package.t Package_name.Map.t) option) Fiber.Cache.t
     }
 
-  let make_state () = { traversed = Fiber_cache.create (module OpamUrl) }
+  let make_state () = { traversed = Fiber.Cache.create (module OpamUrl) }
 
   let eval_url t state (loc, url) =
-    Fiber_cache.find_or_add state.traversed url ~f:(fun () ->
+    Fiber.Cache.find_or_add state.traversed url ~f:(fun () ->
       let open Fiber.O in
       let* mount = Mount.of_opam_url loc url in
       let* files =

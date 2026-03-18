@@ -316,6 +316,7 @@ let gen_rules_source_only sctx ~dir source_dir =
   Rules.collect_unit (fun () ->
     let* sctx = sctx in
     let+ () = gen_format_and_cram_rules sctx ~dir source_dir
+    and+ () = Revdep_rules.add ~sctx ~dir
     and+ () =
       Alias_builder.define_all_alias
         ~js_targets:[]
@@ -329,6 +330,7 @@ let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
   : Compilation_context.t Loc.Map.t Memo.t
   =
   let+ () = gen_format_and_cram_rules sctx ~dir source_dir
+  and+ () = Revdep_rules.add ~sctx ~dir
   and+ contexts =
     (* CR-soon rgrinberg: we shouldn't have to fetch the stanzas yet again *)
     Dune_load.stanzas_in_dir dir

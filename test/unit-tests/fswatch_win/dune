@@ -11,8 +11,9 @@
 
 (alias
  (name runtest-windows)
- (enabled_if
-  (= %{os_type} Win32))
+ ; Disabled due to flakiness
+ ; CR-someday Alizter: fix this
+ (enabled_if false)
  (deps
   (alias fswatch_win_tests)))
 

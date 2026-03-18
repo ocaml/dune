@@ -1,2 +1,0 @@
-
-Inductive Hello := World | Bye.

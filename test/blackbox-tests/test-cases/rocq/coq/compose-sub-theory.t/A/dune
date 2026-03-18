@@ -1,3 +1,0 @@
-(coq.theory
- (name Foo.A)
- (package Subtheory))

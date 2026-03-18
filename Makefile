@@ -104,10 +104,6 @@ test-js: $(BIN)
 test-wasm: $(BIN)
 	DUNE_WASM_TEST=enable $(BIN) build @runtest-wasm
 
-.PHONY: test-coq
-test-coq: $(BIN)
-	DUNE_COQ_TEST=enable $(BIN) build @runtest-coq
-
 .PHONY: test-rocq
 test-rocq: $(BIN)
 	DUNE_ROCQ_TEST=enable $(BIN) build @runtest-rocq
@@ -120,7 +116,7 @@ test-melange: $(BIN)
 	$(BIN) build @runtest-melange
 
 test-all: $(BIN)
-	$(BIN) build @runtest @runtest-js @runtest-coq @runtest-rocq @runtest-melange
+	$(BIN) build @runtest @runtest-js @runtest-rocq @runtest-melange
 
 test-ox: $(BIN)
 	$(BIN) runtest test/blackbox-tests/test-cases/oxcaml

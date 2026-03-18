@@ -1,3 +1,0 @@
-(coq.theory
- (name basic)
- (coqdep_flags (:standard --local-flag1 --local-flag2)))

@@ -1,1 +1,0 @@
-Inductive foo := .

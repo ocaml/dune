@@ -1,4 +1,0 @@
-DECLARE PLUGIN "cplugin.ml_plugin_b"
-{
-  let bar = Gram.foo + 4
-}

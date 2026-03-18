@@ -1,5 +1,0 @@
-(coq.theory
- (name User)
- (package coq-user))
-
-

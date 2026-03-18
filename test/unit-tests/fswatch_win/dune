@@ -10,6 +10,13 @@
   (run ./fswatch_win_tests.exe)))
 
 (alias
+ (name runtest-windows)
+ (enabled_if
+  (= %{os_type} Win32))
+ (deps
+  (alias fswatch_win_tests)))
+
+(alias
  (name runtest)
  (enabled_if
   (= %{os_type} Win32))

@@ -39,12 +39,6 @@
 - Fix issue where `dune exec -w` was unable to kill running programs on
   rebuild. (#12360, fixes #12323, @Alizter)
 
-- Fix package extraction on systems with tar implementations that don't
-  auto-detect compression (e.g., OpenBSD). Dune now passes explicit
-  decompression flags (-z for gzip, -j for bzip2) when needed, and provides
-  clear error messages for unsupported formats like XZ and LZMA. (#13688,
-  fixes #10123, @Alizter)
-
 - Resolve context and workspace binaries introduced by the respective `(env
   (binaries ..))` stanzas. (#12952, fixes #6220, @anmonteiro)
 

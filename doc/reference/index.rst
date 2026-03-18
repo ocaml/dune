@@ -78,4 +78,5 @@ These documents specify the various features and languages present in Dune.
        ../coq
        ../rpc
        packages
+       depexts
        findlib

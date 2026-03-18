@@ -1,0 +1,12 @@
+(test
+ (name which_tests)
+ (enabled_if
+  (= %{os_type} Win32))
+ (libraries dyn dune_rules))
+
+(alias
+ (name runtest-windows)
+ (enabled_if
+  (= %{os_type} Win32))
+ (deps
+  (alias runtest-which_tests)))

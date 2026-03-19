@@ -37,7 +37,7 @@ This should build successfully both with and without sandboxing:
 
   $ dune build --sandbox symlink
   File "list.ml", line 1:
-  Error: The implementation list.ml does not match the interface list.mli:
+  Error: The implementation list.ml does not match the interface list.mli: 
          Values do not match:
            val of_seq : 'a Seq.t -> 'a t
          is not included in
@@ -49,7 +49,7 @@ This should build successfully both with and without sandboxing:
          File "list.mli", line 2, characters 0-32: Expected declaration
          File "listLabels.mli", line 562, characters 0-32: Actual declaration
   File "list.ml", line 1:
-  Error: The implementation list.ml does not match the interface list.mli:
+  Error: The implementation list.ml does not match the interface list.mli: 
          Values do not match:
            val of_seq : 'a Seq.t -> 'a t
          is not included in

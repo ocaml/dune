@@ -247,7 +247,6 @@ let fetch_local ~checksum ~target (url, url_loc) =
       Unavailable (Some (User_message.make [ Pp.text "Could not unpack:"; pp ])))
 ;;
 
-(* CR-someday maybe reuse Fpath.traverse? *)
 let rec resolve_directory_symlinks_in dir =
   let follow_symlink_exn path =
     match Fpath.follow_symlink path with
@@ -272,11 +271,11 @@ let rec resolve_directory_symlinks_in dir =
       | S_LNK ->
         (match follow_symlink_exn path with
          | None ->
-           (* Delete fauly symlinks silently, as they're allowed in fetched sources. *)
-           (* CR-someday mention in logs we deleted a broken symlink *)
-           Fpath.unlink_no_err path
+           (* Delete faulty symlinks silently, as they're allowed in fetched sources. *)
+           Fpath.unlink_no_err path;
+           Log.info "Deleted broken symlink" [ "path", Dyn.string path ]
          | Some resolved ->
-           (match Unix.lstat resolved with
+           (match Unix.stat resolved with
             | { Unix.st_kind = S_DIR; _ } ->
               Fpath.unlink_exn path;
               (match Fpath.mkdir_p path with
@@ -317,7 +316,6 @@ let rec resolve_directory_symlinks_in dir =
                  if symlinks_in_children then resolve_directory_symlinks_in path)
             | _ ->
               (* We do not care about symlinks pointing to anything but directories. *)
-              (* Q: Should we do something when a symlink points to another symlink? *)
               ()))
       | _ -> ())
 ;;

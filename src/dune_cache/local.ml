@@ -219,7 +219,11 @@ module Artifacts = struct
   ;;
 
   let store_skipping_metadata ~mode ~targets : Store_artifacts_result.t Fiber.t =
-    Dune_cache_storage.with_temp_dir ~suffix:"artifacts" (function
+    Fiber.Temp.with_temp_dir
+      ~parent_dir:(Lazy.force Layout.temp_dir)
+      ~prefix:"dune"
+      ~suffix:"artifacts"
+      ~f:(function
       | Error exn -> Fiber.return (Store_artifacts_result.Error exn)
       | Ok temp_dir ->
         (match store_targets_to ~temp_dir ~targets ~mode with

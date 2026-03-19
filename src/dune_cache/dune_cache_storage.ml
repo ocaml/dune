@@ -341,14 +341,6 @@ module Metadata = struct
   let restore = restore ~metadata_path:Layout.metadata_path
 end
 
-let with_temp_file ?(prefix = "dune") ~suffix f =
-  Fiber.Temp.with_temp_file ~dir:(Lazy.force Layout.temp_dir) ~prefix ~suffix ~f
-;;
-
-let with_temp_dir ?(prefix = "dune") ~suffix f =
-  Fiber.Temp.with_temp_dir ~parent_dir:(Lazy.force Layout.temp_dir) ~prefix ~suffix ~f
-;;
-
 let clear () =
   let rm_rf path = Path.rm_rf ~allow_external:true path in
   let rmdir path =

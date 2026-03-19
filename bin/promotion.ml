@@ -178,5 +178,5 @@ let info =
 let group = Cmd.group info [ Files.command; Apply.command; Diff.command; Show.command ]
 
 let promote =
-  command_alias ~orig_name:"promotion apply" Apply.command Apply.term "promote"
+  Util.command_alias ~orig_name:"promotion apply" Apply.command Apply.term "promote"
 ;;

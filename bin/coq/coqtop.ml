@@ -48,9 +48,9 @@ let term =
     Scheduler_setup.go_with_rpc_server ~common ~config
     @@ fun () ->
     let open Fiber.O in
-    let* setup = Import.Main.setup () in
+    let* setup = Util.setup () in
     let* setup = Memo.run setup in
-    let sctx = Import.Main.find_scontext_exn setup ~name:context in
+    let sctx = Dune_rules.Main.find_scontext_exn setup ~name:context in
     let context = Dune_rules.Super_context.context sctx in
     let coq_file_build =
       Path.Build.append_local (Context.build_dir context) coq_file_arg
@@ -159,7 +159,7 @@ let term =
     in
     Fiber.return (coqtop, args, env)
   in
-  restore_cwd_and_execve (Common.root common) coqtop args env
+  Util.restore_cwd_and_execve (Common.root common) coqtop args env
 ;;
 
 let command = Cmd.v info term

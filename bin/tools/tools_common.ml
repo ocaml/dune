@@ -68,7 +68,7 @@ let run_dev_tool workspace_root dev_tool ~args =
        ~object_:(User_message.command (String.concat ~sep:" " (exe_name :: args))));
   Console.finish ();
   let env = add_dev_tools_to_path Env.initial in
-  restore_cwd_and_execve workspace_root exe_path_string args env
+  Util.restore_cwd_and_execve workspace_root exe_path_string args env
 ;;
 
 let lock_build_and_run_dev_tool ~common ~config builder dev_tool ~args =

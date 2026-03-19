@@ -61,5 +61,5 @@ let runtest_term =
 
 let commands =
   let command = Cmd.v runtest_info runtest_term in
-  [ command; command_alias command runtest_term "test" ]
+  [ command; Util.command_alias command runtest_term "test" ]
 ;;

@@ -8,3 +8,6 @@ type checked =
   | External of Path.External.t
 
 val check_path : Context.t list -> Path.t -> checked
+val restore_cwd_and_execve : Workspace_root.t -> string -> string list -> Env.t -> 'a
+val command_alias : ?orig_name:string -> 'a Cmd.t -> 'b Term.t -> string -> 'b Cmd.t
+val setup : unit -> Dune_rules.Main.build_system Memo.t Fiber.t

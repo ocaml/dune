@@ -247,6 +247,7 @@ let fetch_local ~checksum ~target (url, url_loc) =
       Unavailable (Some (User_message.make [ Pp.text "Could not unpack:"; pp ])))
 ;;
 
+(* CR-someday maybe reuse Fpath.traverse? *)
 let rec resolve_directory_symlinks_in dir =
   let follow_symlink_exn path =
     match Fpath.follow_symlink path with
@@ -272,6 +273,7 @@ let rec resolve_directory_symlinks_in dir =
         (match follow_symlink_exn path with
          | None ->
            (* Delete fauly symlinks silently, as they're allowed in fetched sources. *)
+           (* CR-someday mention in logs we deleted a broken symlink *)
            Fpath.unlink_no_err path
          | Some resolved ->
            (match Unix.lstat resolved with

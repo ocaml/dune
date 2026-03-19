@@ -49,11 +49,6 @@ module Value : sig
     val restore : action_digest:Digest.t -> t Restore_result.t
   end
 
-  (** Store a [string] value produced by an action with a given digest. If
-      successful, this operation will create one metadata entry and one value
-      entry in the cache. *)
-  val store : mode:Mode.t -> action_digest:Digest.t -> string -> Store_result.t
-
   (** Restore a [string] value produced by an action with a given digest. The
       value is restored only in memory, i.e. no new files will be created. *)
   val restore : action_digest:Digest.t -> string Restore_result.t
@@ -78,10 +73,6 @@ module Artifacts : sig
     (** Store artifacts metadata produced by a rule with a given digest. If
         successful, this operation will create one metadata entry in the cache. *)
     val store : t -> mode:Mode.t -> rule_digest:Digest.t -> Store_result.t
-
-    (** Restore artifacts metadata produced by a rule with a given digest. The
-        metadata is restored only in memory, i.e. no new files will be created. *)
-    val restore : rule_digest:Digest.t -> t Restore_result.t
   end
 
   (** List entries of a metadata file produced by a rule with a given digest.
@@ -96,10 +87,6 @@ module Metadata : sig
     | Artifacts of Artifacts.Metadata_file.t
     | Value of Value.Metadata_file.t
 
-  (** Restore metadata produced by a rule or action with a given digest. The
-      metadata is restored only in memory, i.e. no new files will be created. *)
-  val restore : rule_or_action_digest:Digest.t -> t Restore_result.t
-
   module Versioned : sig
     (** Same as the unversioned function but supports old metadata versions. *)
     val restore
@@ -107,14 +94,6 @@ module Metadata : sig
       -> rule_or_action_digest:Digest.t
       -> t Restore_result.t
   end
-end
-
-module Raw_value : sig
-  val store_unchecked
-    :  mode:Mode.t
-    -> content:string
-    -> content_digest:Digest.t
-    -> Util.Write_result.t
 end
 
 val clear : unit -> unit

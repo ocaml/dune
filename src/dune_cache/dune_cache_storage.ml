@@ -23,13 +23,6 @@ module Store_result = struct
   ;;
 
   let empty = Already_present
-
-  let of_write_result (t : Util.Write_result.t) =
-    match t with
-    | Ok -> Stored
-    | Already_present -> Already_present
-    | Error exn -> Error exn
-  ;;
 end
 
 module Restore_result = struct
@@ -124,28 +117,12 @@ let restore_metadata ~rule_or_action_digest ~of_sexp : _ Restore_result.t =
     ~of_sexp
 ;;
 
-module Raw_value = struct
-  let store_unchecked ~mode ~content ~content_digest =
-    Util.write_atomically
-      ~mode
-      ~content
-      (Lazy.force (Layout.value_path ~value_digest:content_digest))
-  ;;
-end
-
 module Value = struct
   module Metadata_file = struct
     type t =
       { metadata : Sexp.t list
       ; value_digest : Digest.t
       }
-
-    let to_sexp { metadata; value_digest } =
-      Sexp.List
-        [ List (Atom "metadata" :: metadata)
-        ; List [ Atom "value"; Sexp.Atom (Digest.to_string value_digest) ]
-        ]
-    ;;
 
     let of_sexp = function
       | Sexp.List
@@ -161,48 +138,7 @@ module Value = struct
     let restore ~action_digest =
       restore_metadata ~rule_or_action_digest:action_digest ~of_sexp
     ;;
-
-    let matches_existing_entry t ~existing_content : Matches_existing_query.t =
-      match Csexp.parse_string existing_content with
-      | Error _ -> Mismatch (Atom "Malformed value in cache")
-      | Ok sexp ->
-        (match of_sexp sexp with
-         | Error _ -> Mismatch (Atom "Malformed value in cache")
-         | Ok existing ->
-           (match Digest.equal t.value_digest existing.value_digest with
-            | true -> Match
-            | false ->
-              Mismatch
-                (Sexp.record
-                   [ "in_cache", Atom (Digest.to_string existing.value_digest)
-                   ; "computed", Atom (Digest.to_string t.value_digest)
-                   ])))
-    ;;
   end
-
-  let store ~mode ~action_digest value : Store_result.t =
-    let value_digest = Digest.string value in
-    let metadata : Metadata_file.t = { metadata = []; value_digest } in
-    match
-      store_metadata
-        ~mode
-        ~rule_or_action_digest:action_digest
-        ~metadata
-        ~to_sexp:Metadata_file.to_sexp
-        ~matches_existing_entry:Metadata_file.matches_existing_entry
-    with
-    | Will_not_store_due_to_non_determinism details ->
-      Will_not_store_due_to_non_determinism details
-    | Error e -> Error e
-    | (Already_present | Stored) as metadata_result ->
-      (* We assume that there are no hash collisions and hence omit the check
-         for non-determinism when writing values. *)
-      let value_result =
-        Raw_value.store_unchecked ~mode ~content:value ~content_digest:value_digest
-        |> Store_result.of_write_result
-      in
-      Store_result.combine metadata_result value_result
-  ;;
 
   let restore ~action_digest =
     Restore_result.bind
@@ -337,8 +273,6 @@ module Metadata = struct
   module Versioned = struct
     let restore version = restore ~metadata_path:(Layout.Versioned.metadata_path version)
   end
-
-  let restore = restore ~metadata_path:Layout.metadata_path
 end
 
 let clear () =

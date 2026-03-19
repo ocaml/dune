@@ -5,6 +5,219 @@ If you're a contributor, please include your CHANGES entry in a `$PR_NUMBER.md`
 file in either `doc/changes/{added|changed|fixed}/`. At release time, it will
 be incoporated into the changelog properly.
 
+3.22.0 (2026-03-18)
+-------------------
+
+### Fixed
+
+- `Dyn.to_string` now uses a smarter way to convert floats. This ensures that
+  floats are printed with enough precision to round-trip and are valid OCaml
+  lexemes. (#12982, fixes #12980, @Alizter)
+
+- Fix `dune install --prefix` failing with relative paths outside the workspace
+  like `../foo` (#12993, fixes #12241, @benodiwal)
+
+- Place the default trace file inside the build directory at the
+  workspace root, rather than relative to the current directory.
+  (#13735, @vouillon)
+
+- Fixed interpreting relative paths in `%{bin:..}` and `%{bin-available:..}`.
+  These are now interpreted correctly, relative to the dune file they're in.
+  (#13712, fixes #9564, @anmonteiro)
+
+- Delete sandboxes with broken permissions (#13511, @rgrinberg)
+
+- Fix compiling Menhir parsers that refer to sibling modules within a
+  subdirectory of `(include_subdirs qualified)`. (#13118, fixes #11119,
+  @anmonteiro)
+
+- Fixed the dependency specification of C stubs, which could result in C
+  stubs not getting rebuilt when needed (which could in turn lead to
+  segmentation faults and other hard-to-track bugs).
+  (#13652, fixes #13651, @nojb)
+
+- Fix the Dune cache on Windows by correctly handling renames onto read-only
+  files. Before this change, the Dune cache would be filled but the stored
+  artifacts would not generally be usable by Dune. (#13713, @Nevor)
+
+- Fix rpc not transferring promotion warnings to the client
+  (#12604, fixes #12578, @ElectreAAS)
+
+- Fix issue where `dune exec -w` was unable to kill running programs on
+  rebuild. (#12360, fixes #12323, @Alizter)
+
+- Resolve context and workspace binaries introduced by the respective `(env
+  (binaries ..))` stanzas. (#12952, fixes #6220, @anmonteiro)
+
+- Fix `diff` promotions originating from sandboxed rules. Previously, they
+  would be completely ignored as the sandbox with the promoted file would be
+  destroyed if the promotion fired (#13520, @rgrinberg)
+
+- Fix failure to digest installed directory targets, allowing them to be used
+  as dependencies to other rules. (#13045, @anmonteiro)
+
+- Fix handling of `(select ..)` field when used with `(include_subdirs ..)`.
+  `(select <path> from ..)` modules now parse `path` as a relative path
+  starting from the module group root (#13175, fixes #4383, #12450,
+  @anmonteiro)
+
+- Fix dune trying to kill processes that were already reaped due to race
+  conditions (#13245, @rgrinberg)
+
+- Add `O_CLOEXEC` to all files used for stdin/stdout/stderr (#13385, @rgrinberg)
+
+- Fix `$ dune promote dir/foo` when `dir` does not exist (#13493, @rgrinberg)
+
+- Fix `(select ..)` field evaluation when a transitive library has optional
+  dependencies (fixes #13299, #13389, @anmonteiro)
+
+- Fix sandboxed builds of `library` stanzas that set
+  `(stdlib (modules_before_stdlib ..))` (#13624, @anmonteiro)
+
+- Dune cache: use of hard links under Windows. (#13714, @Nevor)
+
+- Fixed non-build caches not following `$DUNE_CACHE_ROOT` and instead only
+  relying on `$XDG_CACHE_HOME`.
+  This means the normal build cache moves:
+  `$DUNE_CACHE_ROOT -> $DUNE_CACHE_ROOT/db` (no changes if that variable was
+  unset). Affected users can prevent a full cache invalidation by moving
+  previous contents:
+  `cd $DUNE_CACHE_ROOT; mkdir db; mv <contents of directory> db`.
+  (#11612, fixes #11584, @ElectreAAS)
+
+- `$ dune promotion list` writes output to stdout rather than stderr (#13462)
+
+- Improve handling of empty files in the `diff` action. These are now correctly
+  distinguished from *empty* files. (#13696, @rgrinberg)
+- Pass `/dev/null` to `--diff-command` instead of non-existent files (#13696,
+  @rgrinberg)
+
+- Fix failure when multiple `rocq.extraction` stanzas existing in a directory
+  (#13531, fixes #8042, @rlepigre-skylabs-ai)
+
+- Print `$ dune promotion show` output to stdout rather than stderr (#13481,
+  @rgrinberg)
+
+- Fix deadlock in the `memo` library in the presence of dependency cycles
+  (#13625, @anmonteiro)
+
+- Fix promotions that modify a directory into a file (#13516, fixes #4067,
+  @rgrinberg)
+
+- Fix installation of implementations of virtual libraries. This failed when
+  the implementation had no private modules, but the virtual library did
+  (#10635, @rgrinberg)
+
+- Respect the `(dir ..)` field on packages when setting up cram tests (#13581,
+  @rgrinberg)
+
+### Added
+
+- Add support for generating `.cms` files using oxcaml and adding `.cms` or
+  `.cmt` files as compilation dependencies (#13397, @spiessimon)
+
+- Add trace events for custom actions (#13265, @rgrinberg)
+
+- Allow enabling extensions with `(using ..)` in `dune-workspace` files
+  (#13395, @spiessimon)
+
+- Add sandbox extraction trace event (#13544, @rgrinberg)
+
+- Add the initial cwd to the first config event (#13026, @rgrinberg)
+
+- Dune dune produces trace events in `DUNE_ACTION_TRACE_DIR` if this variable
+  is set. (#13302, @rgrinberg)
+
+- Add file watching events to the trace file (#13038, @rgrinberg)
+
+- Introduce the `$ dune trace cat` subcommand to view the trace file. (#13055,
+  @rgrinberg)
+
+- Add diagnostic events to the trace. (#13041, @rgrinberg)
+
+- Add `DUNE_JOBS` environment variable for controlling concurrency of Dune from
+  environment. The `INSIDE_DUNE` variable also now no longer controls
+  concurrency (#12800, @Alizter)
+
+- Support for Rocq expected output tests (#13632, @rlepigre-skylabs-ai)
+
+- Add `rusage` information to completed processes in the trace (@rgrinberg,
+  #13241)
+
+- Add process start events to the trace (#13261, rgrinberg)
+
+- Generate odoc documentation in markdown using the `@doc-markdown` alias
+  (#12581, @davesnx)
+
+- Add timing information for every command executed by cram (#13092,
+  @rgrinberg)
+
+- Add the workspace root to the config trace event (#12922, @rgrinberg)
+
+- Introduce the `dune-action-trace` library. This public library is to be used
+  by custom actions to emit trace events while executed as part of a dune
+  build. The trace events emitted through this library will be incorporated
+  into dune's own trace (#13348, @rgrinberg)
+
+- Add `dune-find-dominating` to `dune.el`, a command to find the
+  dominating dune file. (#12696, @arvidj)
+
+- Add a `--no-recursive` flag to `$ dune describe workspace` (#13590, @rgrinberg)
+
+- Trace events for files written directly by dune (#13618, @rgrinberg)
+
+- Allow expansion of special forms like `(:include ..)` and `%{read-lines:..}`
+  in the `modules` specification for the `ocamllex`, `ocamlyacc` and `menhir`
+  stanzas. (#13105, #13135, #13157, @anmonteiro)
+
+- Add a trace event for snapshotting the asndbox (#13541, @rgrinberg)
+
+- Add signal send and receive events to the trace (#13193, @rgrinberg)
+
+- Emit final trace event before exiting. (#13018, @rgrinberg)
+
+- `dune runtest` can now run individual test executables from `(tests)` stanzas
+  and inline tests from `(library (inline_tests))` stanzas by providing their
+  source files as arguments. (#13064, fixes #870, @Alizter)
+
+- Add a `shell` field to the cram stanza. This field allows customizing the
+  shell to be `bash` rather than `sh` (#13083, @haochenx)
+
+### Changed
+
+- Start sandboxing the execution of tests defined with the `test` and `tests`
+  stanzas (#13510, #13617, @rgrinberg)
+
+- Disabled cram tests can now be run explicitly with `dune runtest disabled.t`.
+  The `enabled_if` field now only controls whether a test is included in
+  the `@runtest` alias. (#13081, @Alizter)
+
+- Process categories in trace events are moved to their own field in `args`
+  (#13024, @rgrinberg)
+
+- Sandbox running `ocamllex` and `ocamlyacc` actions. (#13098, @anmonteiro)
+
+- Sandboxing mdx test actions is now the default starting from `0.5` (#13504,
+  @rgrinberg)
+
+- Start sandboxing Melange rules by default in the `(library ..)` and 
+  `(melange.emit ..)` stanzas (#13619, @anmonteiro)
+
+- Introduce a promotion trace event and remove the corresponding verbose log
+  message. (#12949, #13444, @rgrinberg)
+
+- Change dune's trace format to emit canonical s-expressions. This improves
+  performance and is better aligned with dune's usage of the format
+  elsewhere. `$ dune trace cat` can also emit the trace in `--chrome-trace`
+  for perfetto, or `--sexp` for regular s-expressions for interactive usage.
+  (#13059, @rgrinberg)
+
+- Move all logging statements to the trace file. All log statements now contain
+  structured payloads (#13015, fixes #12904, @rgrinberg)
+
+- Add a target resolution event to replace the equivalent log message (#12955,
+  @rgrinberg)
+
 3.21.1 (2026-02-10)
 -------------------
 

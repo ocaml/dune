@@ -45,14 +45,6 @@ val file_storage_dir : Path.t Lazy.t
 (** Path to the artifact corresponding to a given [file_digest]. *)
 val file_path : file_digest:Digest.t -> Path.t Lazy.t
 
-(** This is a storage for outputs and, more generally, other values that the
-    build system might choose to store in the cache in future. As in
-    [files_path], we store the values in the files named by their content
-    digests. However, these files will always have the hard link count equal to
-    one because they do not appear anywhere in build directories. By storing
-    them in a separate directory, we simplify the job of the cache trimmer. *)
-val value_storage_dir : Path.t Lazy.t
-
 (** Path to the value corresponding to a given [value_digest]. *)
 val value_path : value_digest:Digest.t -> Path.t Lazy.t
 
@@ -73,8 +65,6 @@ module Versioned : sig
 
   val file_storage_dir : Version.File.t -> Path.t Lazy.t
   val file_path : Version.File.t -> file_digest:Digest.t -> Path.t Lazy.t
-  val value_storage_dir : Version.Value.t -> Path.t Lazy.t
-  val value_path : Version.Value.t -> value_digest:Digest.t -> Path.t Lazy.t
 
   (** List all metadata entries currently stored in the cache. Note that there
       is no guarantee that the result is up-to-date, since files can be added or
@@ -83,7 +73,4 @@ module Versioned : sig
 
   (** List [list_metadata_entries] but for file entries. *)
   val list_file_entries : Version.File.t -> (Path.t * Digest.t) list Lazy.t
-
-  (** List [list_metadata_entries] but for value entries. *)
-  val list_value_entries : Version.Value.t -> (Path.t * Digest.t) list Lazy.t
 end

@@ -10,7 +10,7 @@
  (modules dune_rpc_e2e)
  (libraries
   dune_rpc_client
-  dune_rpc_private
+  dune_rpc
   dune_util
   stdune
   spawn
@@ -40,7 +40,7 @@
   re
   dune_rpc_client
   dune_rpc_e2e
-  dune_rpc_private
+  dune_rpc
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config
@@ -57,7 +57,7 @@
   (deps
    (package dune)))
  (libraries
-  dune_rpc_private
+  dune_rpc
   dune_rpc_e2e
   dune_engine
   dune_rpc_impl
@@ -88,7 +88,7 @@
   stdune
   dune_rpc_client
   dune_rpc_e2e
-  dune_rpc_private
+  dune_rpc
   unix
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project

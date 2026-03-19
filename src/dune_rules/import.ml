@@ -60,7 +60,7 @@ include struct
   module Subdir_set = Subdir_set
 end
 
-module Compound_user_error = Dune_rpc_private.Compound_user_error
+module Compound_user_error = Dune_rpc.Private.Compound_user_error
 
 include struct
   open Ocaml

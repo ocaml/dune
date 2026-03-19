@@ -85,6 +85,6 @@ include struct
   module Resolved_package = Resolved_package
 end
 
-module Dune_rpc = Dune_rpc_private
+module Dune_rpc = Dune_rpc.Private
 module Graph = Dune_graph.Graph
 include Let_syntax

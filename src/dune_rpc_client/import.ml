@@ -1,2 +1,2 @@
 include Stdune
-module Dune_rpc = Dune_rpc_private
+module Dune_rpc = Dune_rpc.Private

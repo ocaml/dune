@@ -6,7 +6,7 @@
  (libraries
   stdune
   dune_glob
-  dune_rpc_private
+  dune_rpc
   dune_digest
   opam_format
   opam_core

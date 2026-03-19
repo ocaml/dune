@@ -14,7 +14,7 @@ let term =
         ~name:"diagnostics_cmd"
         ~wait:false
         builder
-        Dune_rpc_private.Procedures.Public.diagnostics
+        Dune_rpc.Procedures.Public.diagnostics
         ()
     in
     List.iter errors ~f:(fun err ->

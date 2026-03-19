@@ -110,8 +110,8 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "otherlibs/dune-rpc/private"
-    ; main_module_name = Some "Dune_rpc_private"
+  ; { path = "otherlibs/dune-rpc"
+    ; main_module_name = Some "Dune_rpc"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -493,7 +493,7 @@ let main =
             ; "Csexp"
             ; "Csexp_rpc"
             ; "Dune_rpc_impl"
-            ; "Dune_rpc_private"
+            ; "Dune_rpc"
             ; "Dune_rpc_client"
             ; "Spawn"
             ; "OpamCompat"

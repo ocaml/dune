@@ -4,7 +4,7 @@
  (libraries
   ; ocaml_config
   ; dune_util
-  dune_rpc_private
+  dune_rpc
   dune_rpc_impl
   dune_engine
   re

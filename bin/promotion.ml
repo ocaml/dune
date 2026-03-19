@@ -59,7 +59,7 @@ module Apply = struct
           ~wait:false
           ~lock_held_by
           builder
-          Dune_rpc_private.Procedures.Public.promote_many
+          Dune_rpc.Procedures.Public.promote_many
           files_to_promote
         >>| Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:true)
   ;;

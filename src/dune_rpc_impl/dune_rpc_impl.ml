@@ -14,7 +14,7 @@ module Diagnostics = struct
 end
 
 module Poll_active =
-  Dune_rpc_private.Registry.Poll
+  Dune_rpc.Private.Registry.Poll
     (Fiber)
     (struct
       let scandir dir =

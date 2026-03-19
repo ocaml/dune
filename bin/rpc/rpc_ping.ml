@@ -20,7 +20,7 @@ let term =
       ~name:"ping_cmd"
       ~wait
       builder
-      Dune_rpc_private.Procedures.Public.ping
+      Dune_rpc.Procedures.Public.ping
       ()
   in
   Console.print [ Pp.text "Server appears to be responding normally" ]

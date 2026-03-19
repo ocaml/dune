@@ -1,0 +1,85 @@
+name: Packaging check
+# Check every sub-package within Dune builds in isolation. This is similar to
+# the opam-repo-ci job to check packaging in isolation, for example:
+# https://opam.ci.ocaml.org/github/ocaml/opam-repository/commit/a95df9014bc79103fde668cf2adbe6680fd2f9cf/variant/compilers,5.0,fs-io.3.21.0~alpha3,tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  discover-packages:
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.discover.outputs.packages }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: discover
+        shell: bash
+        # Discover the list of packages by reading the opam directory. We treat
+        # all the .opam files as separate packages
+        run: |
+          set -euo pipefail
+          packages=$(
+            find ./opam -maxdepth 1 -name '*.opam' -printf '%f\n' \
+            | sed 's/\.opam$//' \
+            | sort \
+            | jq -R -s -c 'split("\n")[:-1]'
+          )
+          echo "packages=$packages" >> "$GITHUB_OUTPUT"
+
+  packaging-check:
+    needs: discover-packages
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.discover-packages.outputs.packages) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.4
+          dune-cache: true
+          opam-pin: false
+
+      - name: Lint current package metadata
+        run: opam lint "./opam/${{ matrix.package }}.opam"
+
+      - name: Get dune version
+        # Read the current version of Dune to determine the package versions in
+        # the next step. This information is not present in development opam
+        # files, but will be present in the releases.
+        id: dune-version
+        run: echo "version=$(sed -nE 's/^\(lang dune ([0-9]+(\.[0-9]+)*)\)$/\1/p' dune-project)" >> $GITHUB_OUTPUT
+
+      - name: Pin all packages without installing
+        # Some packages require its sibling package be of the same version.
+        # Furthermore, all packages depend on the current version of Dune. To
+        # make all the deps available, we pin all the packages in the `opam`
+        # directory but don't install them. This way the packages will be pulled
+        # in only if they're required by the package we're building and won't
+        # influence the solver.
+        env:
+          version: ${{ steps.dune-version.outputs.version }}
+        run: for f in opam/*.opam; do pkg=${f##*/}; pkg=${pkg%.opam}; opam pin add "$pkg.$version" . -n; done
+
+      - name: Install package dependencies only
+        run: opam install "./opam/${{ matrix.package }}.opam" --deps-only --with-test -y
+
+      - name: Activate opam environment
+        run: |
+          eval $(opam env)
+          echo "PATH=$PATH" >> $GITHUB_ENV
+
+      - name: Bootstrap dune
+        run: |
+          ocaml boot/bootstrap.ml
+          ./dune.exe --version
+
+      - name: Check package builds and installs in isolation
+        # Builds only the current package.
+        run: ./dune.exe build -p "${{ matrix.package }}" @install

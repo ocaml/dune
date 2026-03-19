@@ -69,25 +69,16 @@ module Versioned = struct
   ;;
 
   let list_file_entries t = lazy (list_entries ~storage:(Lazy.force (file_storage_dir t)))
-
-  let list_value_entries t =
-    lazy (list_entries ~storage:(Lazy.force (value_storage_dir t)))
-  ;;
 end
 
 let metadata_storage_dir = Versioned.metadata_storage_dir Version.Metadata.current
 let metadata_path = Versioned.metadata_path Version.Metadata.current
 let file_storage_dir = Versioned.file_storage_dir Version.File.current
 let file_path = Versioned.file_path Version.File.current
-let value_storage_dir = Versioned.value_storage_dir Version.Value.current
 let value_path = Versioned.value_path Version.Value.current
 
 let create_cache_directories () =
-  [ Lazy.force temp_dir
-  ; Lazy.force metadata_storage_dir
-  ; Lazy.force file_storage_dir
-  ; Lazy.force value_storage_dir
-  ]
+  [ Lazy.force temp_dir; Lazy.force metadata_storage_dir; Lazy.force file_storage_dir ]
   |> Result.List.iter ~f:(fun path ->
     match Fpath.mkdir_p (Path.to_string path) with
     | `Already_exists | `Created -> Ok ()

@@ -355,7 +355,6 @@ let clear () =
   in
   rm_rf_all Version.Metadata.all Layout.Versioned.metadata_storage_dir;
   rm_rf_all Version.File.all Layout.Versioned.file_storage_dir;
-  rm_rf_all Version.Value.all Layout.Versioned.value_storage_dir;
   rm_rf (Lazy.force Layout.temp_dir);
   (* Do not catch errors when deleting the root directory so that they are
      reported to the user. *)

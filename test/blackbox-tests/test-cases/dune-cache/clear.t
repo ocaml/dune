@@ -15,7 +15,6 @@ Test for the "dune cache clear" command.
   files
   meta
   temp
-  values
 
   $ dune cache clear
 

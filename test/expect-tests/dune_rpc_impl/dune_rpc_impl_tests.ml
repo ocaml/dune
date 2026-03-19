@@ -8,16 +8,16 @@ let () =
 
 let test ~dir ~f main =
   let description = `Diagnostic (Dune_rpc.Compound_user_error.make ~main ~related:[]) in
-  Dune_console.printf "---- Original ----";
+  Console.printf "---- Original ----";
   f main;
-  Dune_console.printf "------- RPC ------";
+  Console.printf "------- RPC ------";
   Dune_engine.Build_system_error.For_tests.make ~description ~dir ~promotion:None ()
   |> Dune_rpc_impl.Diagnostics.For_tests.diagnostic_of_error
   |> Dune_rpc_private.Diagnostic.to_user_message
   |> f
 ;;
 
-let test_plain ~dir main = test main ~dir ~f:Dune_console.print_user_message
+let test_plain ~dir main = test main ~dir ~f:Console.print_user_message
 
 let test_dyn ~dir main =
   test main ~dir ~f:(fun x ->

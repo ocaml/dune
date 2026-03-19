@@ -189,6 +189,36 @@ module Digest_result = struct
       | Unix_error of Unix_error.Detailed.t
       | Unrecognized of exn
 
+    let no_such_file = function
+      | No_such_file -> true
+      | _ -> false
+    ;;
+
+    let pp t path =
+      match t with
+      | No_such_file -> Pp.verbatim "No such file"
+      | Broken_symlink -> Pp.verbatim "Broken symbolic link"
+      | Cyclic_symlink -> Pp.verbatim "Cyclic symbolic link"
+      | Unexpected_kind file_kind ->
+        Pp.verbatimf
+          "Unexpected file kind %S (%s)"
+          (File_kind.to_string file_kind)
+          (File_kind.to_string_hum file_kind)
+      | Unix_error (error, syscall, arg) ->
+        let unix_error = Unix_error.Detailed.create error ~syscall ~arg in
+        Unix_error.Detailed.pp unix_error
+      | Unrecognized exn ->
+        Pp.verbatim
+          (match exn with
+           | Sys_error msg ->
+             let prefix =
+               let expected_syscall_path = Path.to_string path in
+               expected_syscall_path ^ ": "
+             in
+             String.drop_prefix_if_exists ~prefix msg
+           | exn -> Printexc.to_string exn)
+    ;;
+
     let equal x y =
       match x, y with
       | No_such_file, No_such_file -> true
@@ -247,26 +277,63 @@ let digest_path_with_stats ~allow_dirs path stats =
   | Error (Unix_error other_error) -> Error (Unix_error other_error)
 ;;
 
-let refresh ~allow_dirs stats path =
-  (* Note that by the time we reach this point, [stats] may become stale due to
-     concurrent processes modifying the [path], so this function can actually
-     return [No_such_file] even if the caller managed to obtain the [stats]. *)
-  let result = digest_path_with_stats ~allow_dirs path stats in
-  Digest_result.iter result ~f:(fun digest -> set_with_stat path digest stats);
-  result
+let refresh_async =
+  let digest_path_with_stats_async ~allow_dirs path stats =
+    let open Fiber.O in
+    Digest.Stats_for_digest.of_unix_stats stats
+    |> Digest.path_with_stats_async ~allow_dirs path
+    >>| function
+    | Ok digest -> Ok digest
+    | Error Unexpected_kind -> Error (Digest_result.Error.Unexpected_kind stats.st_kind)
+    | Error (Unix_error (ENOENT, _, _)) -> Error No_such_file
+    | Error (Unix_error other_error) -> Error (Unix_error other_error)
+  in
+  fun ~allow_dirs stats path ->
+    let path = Path.build path in
+    let open Fiber.O in
+    let+ result = digest_path_with_stats_async ~allow_dirs path stats in
+    Digest_result.iter result ~f:(fun digest -> set_with_stat path digest stats);
+    result
 ;;
 
 (* Here we make only one [stat] call on the happy path. *)
-let refresh_without_removing_write_permissions ~allow_dirs path =
-  Digest_result.catch_fs_errors (fun () ->
-    match Unix.stat (Path.to_string path) with
-    | stats -> refresh stats ~allow_dirs path
-    | exception Unix.Unix_error (ELOOP, _, _) -> Error Cyclic_symlink
-    | exception Unix.Unix_error (ENOENT, _, _) ->
-      (* Test if this is a broken symlink for better error messages. *)
-      (match Unix.lstat (Path.to_string path) with
-       | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
-       | _stats_so_must_be_a_symlink -> Error Broken_symlink))
+let refresh_without_removing_write_permissions =
+  let refresh_sync ~allow_dirs stats path =
+    (* Note that by the time we reach this point, [stats] may become stale due to
+     concurrent processes modifying the [path], so this function can actually
+     return [No_such_file] even if the caller managed to obtain the [stats]. *)
+    let result = digest_path_with_stats ~allow_dirs path stats in
+    Digest_result.iter result ~f:(fun digest -> set_with_stat path digest stats);
+    result
+  in
+  fun ~allow_dirs path ->
+    Digest_result.catch_fs_errors (fun () ->
+      match Unix.stat (Path.to_string path) with
+      | stats -> refresh_sync stats ~allow_dirs path
+      | exception Unix.Unix_error (ELOOP, _, _) -> Error Cyclic_symlink
+      | exception Unix.Unix_error (ENOENT, _, _) ->
+        (* Test if this is a broken symlink for better error messages. *)
+        (match Unix.lstat (Path.to_string path) with
+         | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
+         | _stats_so_must_be_a_symlink -> Error Broken_symlink))
+;;
+
+let refresh_without_removing_write_permissions_async ~allow_dirs path =
+  let open Digest_result.Error in
+  match Unix.stat (Path.Build.to_string path) with
+  | stats -> refresh_async stats ~allow_dirs path
+  | exception Unix.Unix_error (ELOOP, _, _) -> Fiber.return (Error Cyclic_symlink)
+  | exception Unix.Unix_error (ENOENT, _, _) ->
+    (* Test if this is a broken symlink for better error messages. *)
+    (match Unix.lstat (Path.Build.to_string path) with
+     | exception Unix.Unix_error (ENOENT, _, _) -> Fiber.return (Error No_such_file)
+     | exception Unix.Unix_error (error, syscall, arg) ->
+       Fiber.return (Error (Unix_error (error, syscall, arg)))
+     | exception exn -> Fiber.return (Error (Unrecognized exn))
+     | _stats_so_must_be_a_symlink -> Fiber.return (Error Broken_symlink))
+  | exception Unix.Unix_error (error, syscall, arg) ->
+    Fiber.return (Error (Unix_error (error, syscall, arg)))
+  | exception exn -> Fiber.return (Error (Unrecognized exn))
 ;;
 
 (* CR-someday amokhov: We do [lstat] followed by [stat] only because we do not
@@ -274,34 +341,43 @@ let refresh_without_removing_write_permissions ~allow_dirs path =
    be outside of the build directory and not under out control. It seems like it
    should be possible to avoid paying for two system calls ([lstat] and [stat])
    here, e.g., by telling the subsequent [chmod] to not follow symlinks. *)
-let refresh_and_remove_write_permissions ~allow_dirs path =
-  Digest_result.catch_fs_errors (fun () ->
-    match Unix.lstat (Path.to_string path) with
-    | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
-    | stats ->
-      (match stats.st_kind with
-       | S_LNK ->
-         (match Unix.stat (Path.to_string path) with
-          | stats -> refresh stats ~allow_dirs:false path
-          | exception Unix.Unix_error (ELOOP, _, _) -> Error Cyclic_symlink
-          | exception Unix.Unix_error (ENOENT, _, _) -> Error Broken_symlink)
-       | S_REG ->
-         let perm = Permissions.remove Permissions.write stats.st_perm in
-         Unix.chmod (Path.to_string path) perm;
-         (* we know it's a file, so we don't allow directories for safety *)
-         refresh ~allow_dirs:false { stats with st_perm = perm } path
-       | _ ->
-         (* CR-someday amokhov: Shall we proceed if [stats.st_kind = S_DIR]?
-            What about stranger kinds like [S_SOCK]? *)
-         refresh ~allow_dirs stats path))
+
+let refresh_and_remove_write_permissions_async ~allow_dirs path =
+  let open Digest_result.Error in
+  match Unix.lstat (Path.Build.to_string path) with
+  | exception Unix.Unix_error (ENOENT, _, _) -> Fiber.return (Error No_such_file)
+  | exception Unix.Unix_error (error, syscall, arg) ->
+    Fiber.return (Error (Unix_error (error, syscall, arg)))
+  | exception exn -> Fiber.return (Error (Unrecognized exn))
+  | stats ->
+    (match stats.st_kind with
+     | S_LNK ->
+       (match Unix.stat (Path.Build.to_string path) with
+        | stats -> refresh_async stats ~allow_dirs:false path
+        | exception Unix.Unix_error (ELOOP, _, _) -> Fiber.return (Error Cyclic_symlink)
+        | exception Unix.Unix_error (ENOENT, _, _) -> Fiber.return (Error Broken_symlink)
+        | exception Unix.Unix_error (error, syscall, arg) ->
+          Fiber.return (Error (Unix_error (error, syscall, arg)))
+        | exception exn -> Fiber.return (Error (Unrecognized exn)))
+     | S_REG ->
+       let perm = Permissions.remove Permissions.write stats.st_perm in
+       (match Unix.chmod (Path.Build.to_string path) perm with
+        | () -> refresh_async ~allow_dirs:false { stats with st_perm = perm } path
+        | exception Unix.Unix_error (error, syscall, arg) ->
+          Fiber.return (Error (Unix_error (error, syscall, arg)))
+        | exception exn -> Fiber.return (Error (Unrecognized exn)))
+     | _ ->
+       (* CR-someday amokhov: Shall we proceed if [stats.st_kind = S_DIR]?
+          What about stranger kinds like [S_SOCK]? *)
+       refresh_async ~allow_dirs stats path)
 ;;
 
 let refresh ~allow_dirs ~remove_write_permissions path =
   (if remove_write_permissions
-   then refresh_and_remove_write_permissions
-   else refresh_without_removing_write_permissions)
+   then refresh_and_remove_write_permissions_async
+   else refresh_without_removing_write_permissions_async)
     ~allow_dirs
-    (Path.build path)
+    path
 ;;
 
 let peek_file ~allow_dirs path =
@@ -351,13 +427,11 @@ let peek_file ~allow_dirs path =
               digest_result)))
 ;;
 
-let peek_or_refresh_file ~allow_dirs path =
-  match peek_file ~allow_dirs path with
-  | Some digest_result -> digest_result
-  | None -> refresh_without_removing_write_permissions ~allow_dirs path
+let build_file ~allow_dirs path =
+  match peek_file ~allow_dirs (Path.build path) with
+  | Some digest_result -> Fiber.return digest_result
+  | None -> refresh_without_removing_write_permissions_async ~allow_dirs path
 ;;
-
-let build_file ~allow_dirs path = peek_or_refresh_file ~allow_dirs (Path.build path)
 
 let remove path =
   let path = Path.build path in
@@ -368,7 +442,10 @@ let remove path =
 
 module Untracked = struct
   let source_or_external_file path =
-    peek_or_refresh_file ~allow_dirs:true (Path.outside_build_dir path)
+    let path = Path.outside_build_dir path in
+    match peek_file ~allow_dirs:true path with
+    | Some digest_result -> digest_result
+    | None -> refresh_without_removing_write_permissions ~allow_dirs:true path
   ;;
 
   let invalidate_cached_timestamp path =

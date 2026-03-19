@@ -4,7 +4,6 @@
   stdune
   xdg
   dune_scheduler
-  dune_console
   dune_threaded_console
   dune_lang
   dune_cache

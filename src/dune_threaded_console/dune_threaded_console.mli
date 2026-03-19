@@ -1,3 +1,4 @@
+open Stdune
 include module type of Dune_threaded_console_intf
 
 (** [make ~frames_per_second (module T)] is a backend that renders the user interface in a
@@ -5,7 +6,7 @@ include module type of Dune_threaded_console_intf
     special functions included to handle various functions of a user interface.
 
     The [frames_per_second] argument controls how often the user interface is updated. *)
-val make : frames_per_second:int -> (module S) -> Dune_console.Backend.t
+val make : frames_per_second:int -> (module S) -> Console.Backend.t
 
-(** Threaded variant of [Dune_console.Backend.progress]. *)
-val progress : frames_per_second:int -> Dune_console.Backend.t
+(** Threaded variant of [Console.Backend.progress]. *)
+val progress : frames_per_second:int -> Console.Backend.t

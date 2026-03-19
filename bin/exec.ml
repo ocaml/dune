@@ -235,7 +235,7 @@ let build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog =
         let open Fiber.O in
         Rpc.Rpc_common.fire_request
           ~name:"build"
-          ~wait:true
+          ~wait:false
           ~lock_held_by
           builder
           Dune_rpc_impl.Decl.build
@@ -285,13 +285,13 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
     Scheduler.Run.poll
     @@
     let* () = Fiber.return @@ Scheduler_setup.maybe_clear_screen ~details_hum:[] config in
-    build @@ step ~prog ~args ~common ~no_rebuild ~context ~on_exit
+    Build.build_memo @@ step ~prog ~args ~common ~no_rebuild ~context ~on_exit
   | No ->
     Scheduler_setup.go_with_rpc_server ~common ~config
     @@ fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in
-    build_exn (fun () ->
+    Build.build_memo_exn (fun () ->
       let open Memo.O in
       let* sctx = setup >>| Import.Main.find_scontext_exn ~name:context in
       let* env = Super_context.context_env sctx

@@ -33,4 +33,4 @@ val short_no_status : t
 val to_dyn : t -> Dyn.t
 
 (** The console backend corresponding to the selected display mode *)
-val console_backend : t -> Dune_console.Backend.t
+val console_backend : t -> Stdune.Console.Backend.t

@@ -1,10 +1,9 @@
 Testing the bootstrap of an unwrapped include subdirs qualified.
 
-Currently doesn't work because it is not implemented.
-
-  $ . ./helpers.sh
+  $ init_bootstrap
 
   $ mkdir -p src/lib/b/c
+  $ mkdir -p src/lib/a
 
   $ cat > src/lib/x.ml <<EOF
   > let () = Printf.printf "Hello from unwrapped a/x.ml\n"

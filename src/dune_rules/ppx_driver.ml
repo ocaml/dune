@@ -414,7 +414,9 @@ let ppx_driver_and_flags_internal
       Action_builder.List.concat_map flags ~f:(Expander.expand ~mode:Many expander)
       |> Action_builder.map
            ~f:(List.map ~f:(Value.to_string ~dir:(Path.build @@ Expander.dir expander)))
-  and+ cookies = Action_builder.of_memo (get_cookies ~loc ~lib_name ~expander libs)
+  and+ cookies =
+    let* libs = Resolve.Memo.read (Lib.closure libs ~linking:true ~for_) in
+    Action_builder.of_memo (get_cookies ~loc ~lib_name ~expander libs)
   and+ ppx_driver_exe = Action_builder.of_memo @@ ppx_driver_exe context libs in
   ppx_driver_exe, flags @ cookies
 ;;

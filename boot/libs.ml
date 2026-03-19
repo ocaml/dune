@@ -1,5 +1,4 @@
 open Types
-let external_libraries = [ "unix"; "threads" ]
 
 let local_libraries =
   [ { path = "otherlibs/top-closure"
@@ -65,12 +64,6 @@ let local_libraries =
     }
   ; { path = "src/fiber/src"
     ; main_module_name = Some "Fiber"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/dune_console"
-    ; main_module_name = Some "Dune_console"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -477,7 +470,6 @@ let main =
             ; "Pp"
             ; "Stdune"
             ; "Fs_io"
-            ; "Dune_console"
             ; "Unix"
             ; "UnixLabels"
             ; "Install"

@@ -1619,9 +1619,9 @@ end
 module Install_action = struct
   (* The install action does the following:
 
-     1. Runs the install action in the lock file (if exists)
+     1. Runs the install action in the lock file (if it exists)
      2. Reads the .install file produced by the build command
-     3. Discoves all the files produced by 1.
+     3. Discovers all the files produced by 1.
      4. Combines the set of files in 2. and 3. to produce a "cookie" file
   *)
 

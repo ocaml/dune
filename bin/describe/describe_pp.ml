@@ -175,7 +175,7 @@ let term =
   let* setup = Import.Main.setup () in
   let* setup = Memo.run setup in
   let sctx = Import.Main.find_scontext_exn setup ~name:context_name in
-  build_exn
+  Build.build_memo_exn
   @@ fun () ->
   let open Memo.O in
   let* result = get_pped_file sctx file in

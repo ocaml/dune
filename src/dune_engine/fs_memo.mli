@@ -36,7 +36,7 @@ val file_digest
 
 (** Like [file_digest] but raises a user error if the resulting digest is not [Ok _]. *)
 val file_digest_exn
-  :  ?loc:(unit -> Loc.t option Memo.t)
+  :  loc:(unit -> Loc.t option Memo.t)
   -> Path.Outside_build_dir.t
   -> Digest.t Memo.t
 
@@ -60,6 +60,3 @@ val dir_contents
   :  ?force_update:bool
   -> Path.Outside_build_dir.t
   -> (Fs_cache.Dir_contents.t, Unix_error.Detailed.t) result Memo.t
-
-(** Handle file system event. *)
-val handle_fs_event : Dune_scheduler.File_watcher.Fs_memo_event.t -> Memo.Invalidation.t

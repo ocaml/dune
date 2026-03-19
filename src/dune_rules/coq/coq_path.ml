@@ -65,9 +65,9 @@ let scan_vo_cmxs ~dir dir_contents =
     match kind with
     (* Skip some files as Coq does, for now files with '-' *)
     | _ when String.contains d '-' -> List.Skip
-    | (File_kind.S_REG | S_LNK) when Filename.check_suffix d ".cmxs" ->
+    | (File_kind.S_REG | S_LNK) when String.ends_with ~suffix:".cmxs" d ->
       Left (Path.relative dir d)
-    | (File_kind.S_REG | S_LNK) when Filename.check_suffix d ".vo" ->
+    | (File_kind.S_REG | S_LNK) when String.ends_with ~suffix:".vo" d ->
       Right (Path.relative dir d)
     | _ -> Skip
   in

@@ -1,1 +1,0 @@
-Definition aike := 3.

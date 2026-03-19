@@ -4,14 +4,10 @@ open Import
 
 module Digest_result : sig
   module Error : sig
-    type t =
-      | No_such_file
-      | Broken_symlink
-      | Cyclic_symlink
-      | Unexpected_kind of File_kind.t
-      | Unix_error of Unix_error.Detailed.t (** Can't be [ENOENT]. *)
-      | Unrecognized of exn
+    type t
 
+    val no_such_file : t -> bool
+    val pp : t -> Path.t -> _ Pp.t
     val to_dyn : t -> Dyn.t
   end
 
@@ -26,7 +22,7 @@ end
 
     If [allow_dirs = false], this function returns [Unexpected_kind] if the path
     points to a directory. *)
-val build_file : allow_dirs:bool -> Path.Build.t -> Digest_result.t
+val build_file : allow_dirs:bool -> Path.Build.t -> Digest_result.t Fiber.t
 
 (** Same as [build_file], but forces the digest of the file to be re-computed.
 
@@ -36,7 +32,7 @@ val refresh
   :  allow_dirs:bool
   -> remove_write_permissions:bool
   -> Path.Build.t
-  -> Digest_result.t
+  -> Digest_result.t Fiber.t
 
 module Untracked : sig
   (** Digest the contents of a source or external file. This function doesn't

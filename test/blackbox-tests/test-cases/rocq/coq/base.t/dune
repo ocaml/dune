@@ -1,9 +1,0 @@
-(coq.theory
- (name basic)
- (package base)
- (modules :standard)
- (synopsis "Test Coq library"))
-
-(alias
- (name default)
- (action (echo "%{read:base.install}")))

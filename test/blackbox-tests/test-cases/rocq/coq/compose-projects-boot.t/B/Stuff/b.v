@@ -1,1 +1,0 @@
-Check private_boot.

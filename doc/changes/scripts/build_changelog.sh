@@ -66,7 +66,8 @@ append_files_in_dir_if_not_empty() {
   echo "### $subheader" >> "$output"
   add_newline
   for file in $list_of_files; do
-      cat "$file" >> "$output"
+      # Remove any empty lines from each change entry and add them to the output
+      grep -v '^$' "$file" >> "$output"
       add_newline
       rm "$file"
   done

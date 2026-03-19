@@ -1,7 +1,7 @@
 open Import
 include Dune_threaded_console_intf
 
-let make ~frames_per_second (module Base : S) : (module Dune_console.Backend) =
+let make ~frames_per_second (module Base : S) : (module Console.Backend) =
   let module T = struct
     let mutex = Mutex.create ()
     let finish_cv = Condition.create ()
@@ -170,7 +170,7 @@ let progress ~frames_per_second =
   make
     ~frames_per_second
     (module struct
-      include (val Dune_console.Backend.progress_no_flush)
+      include (val Console.Backend.progress_no_flush)
 
       let render (state : state) =
         while not (Queue.is_empty state.messages) do

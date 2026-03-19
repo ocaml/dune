@@ -74,3 +74,70 @@
   $ dune promote
   Promoting _build/default/extract.output to extract.expected.
   $ dune runtest
+
+Make sure that the error message is helpful if a module is both covered by a theory and an extraction stanza.
+  $ cat >dune-project <<EOF
+  > (lang dune 3.22)
+  > (using rocq 0.12)
+  > EOF
+
+  $ cat >extract.v <<EOF
+  > Definition nb (b : bool) : bool :=
+  >   match b with
+  >   | false => true
+  >   | true => false
+  >   end.
+  > 
+  > Require Extraction.
+  > Separate Extraction nb.
+  > EOF
+
+  $ cat >dune <<EOF
+  > (rocq.theory
+  >  (name TestExtr))
+  > (rocq.extraction
+  >  (prelude extract)
+  >  (extracted_modules Datatypes extract))
+  > EOF
+  $ dune build
+  File "dune", lines 3-5, characters 0-75:
+  3 | (rocq.extraction
+  4 |  (prelude extract)
+  5 |  (extracted_modules Datatypes extract))
+  Error: Duplicate Rocq module "extract".
+  Hint: The Rocq module "extract" is already covered by rocq.theory stanza
+  "TestExtr".
+  [1]
+
+Make sure that the error message is helpful if a module is both covered by an extraction and a theory stanza.
+  $ cat >dune-project <<EOF
+  > (lang dune 3.22)
+  > (using rocq 0.12)
+  > EOF
+
+  $ cat >extract.v <<EOF
+  > Definition nb (b : bool) : bool :=
+  >   match b with
+  >   | false => true
+  >   | true => false
+  >   end.
+  > 
+  > Require Extraction.
+  > Separate Extraction nb.
+  > EOF
+
+  $ cat >dune <<EOF
+  > (rocq.extraction
+  >  (prelude extract)
+  >  (extracted_modules Datatypes extract))
+  > (rocq.theory
+  >  (name TestExtr))
+  > EOF
+  $ dune build
+  File "dune", lines 4-5, characters 0-30:
+  4 | (rocq.theory
+  5 |  (name TestExtr))
+  Error: Duplicate Rocq module "extract".
+  Hint: The Rocq module "extract" is already covered by rocq.extraction stanza
+  "extract".
+  [1]

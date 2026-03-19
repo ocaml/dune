@@ -16,7 +16,6 @@
   dune_scheduler
   dune_util
   dune_lang
-  dune_console
   fiber
   http
   opam_core

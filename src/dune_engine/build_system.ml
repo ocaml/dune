@@ -857,14 +857,14 @@ end = struct
     >>= function
     | Source digest -> Memo.return (digest, File_target)
     | Rule (path, rule) ->
-      let+ { facts = _; targets } =
+      let* { facts = _; targets } =
         Memo.push_stack_frame
           (fun () -> execute_rule rule)
           ~human_readable_description:(fun () ->
             Pp.text (Path.to_string_maybe_quoted (Path.build path)))
       in
       (match Targets.Produced.find targets path with
-       | Some digest -> digest, File_target
+       | Some digest -> Memo.return (digest, File_target)
        | None ->
          (* CR-soon amokhov: Here we expect [path] to be a directory target. It seems odd
             to compute its digest here by calling to [Cached_digest.build_file]. Shouldn't
@@ -877,7 +877,8 @@ end = struct
             ElectreAAS: a lot of functions are called [build_file] or [create_file]
             even though they also handle directories, this is expected.
             Also yes this digest is used by [Exported.build_dep] defined above. *)
-         (match Cached_digest.build_file ~allow_dirs:true path with
+         Memo.of_reproducible_fiber (Cached_digest.build_file ~allow_dirs:true path)
+         >>| (function
           | Ok digest -> digest, Dir_target { targets }
           (* Must be a directory target. *)
           | Error _ ->
@@ -1145,14 +1146,13 @@ let handle_final_exns exns =
 
 let run f =
   let open Fiber.O in
-  let* () = State.reset_progress () in
-  let* () = State.reset_errors () in
   let f () =
-    let* res =
-      Fiber.collect_errors (fun () ->
-        Memo.run_with_error_handler f ~handle_error_no_raise:report_early_exn)
-    in
-    match res with
+    Hooks.End_of_build.once Diff_promotion.finalize;
+    let* () = State.reset_progress () in
+    let* () = State.reset_errors () in
+    Fiber.collect_errors (fun () ->
+      Memo.run_with_error_handler f ~handle_error_no_raise:report_early_exn)
+    >>= function
     | Ok res ->
       let+ () = State.set Build_succeeded__now_waiting_for_changes in
       Ok res
@@ -1171,8 +1171,8 @@ let run f =
 
 let run_exn f =
   let open Fiber.O in
-  let+ res = run f in
-  match res with
+  run f
+  >>| function
   | Ok res -> res
   | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
 ;;

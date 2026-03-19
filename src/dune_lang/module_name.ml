@@ -28,12 +28,7 @@ module Unchecked = struct
       }
 
     let compare t1 t2 = String.compare t1.name t2.name
-
-    let equal t1 t2 =
-      match compare t1 t2 with
-      | Eq -> true
-      | Gt | Lt -> false
-    ;;
+    let equal t1 t2 = String.equal t1.name t2.name
 
     let to_dyn t =
       Dyn.record

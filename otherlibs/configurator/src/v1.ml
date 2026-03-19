@@ -97,7 +97,7 @@ module Find_in_path = struct
         let fn = dir ^/ prog ^ exe in
         Option.some_if (Sys.file_exists fn) fn)
     else (
-      let fn = if Filename.check_suffix prog exe then prog else prog ^ exe in
+      let fn = if String.ends_with ~suffix:exe prog then prog else prog ^ exe in
       Option.some_if (Sys.file_exists fn) fn)
   ;;
 end

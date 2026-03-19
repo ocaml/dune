@@ -13,7 +13,7 @@ type 'a t =
       Path.Outside_build_dir.t -> unit (* Run this hook before updating an entry. *)
   }
 
-let create ?(update_hook = fun _path -> ()) name ~sample ~equal : 'a t =
+let create ~update_hook name ~sample ~equal : 'a t =
   { name; sample; equal; cache = Path.Outside_build_dir.Table.create 128; update_hook }
 ;;
 
@@ -107,6 +107,7 @@ module Untracked = struct
       |> Result.map ~f:Reduced_stats.of_unix_stats
     in
     create
+      ~update_hook:(fun _ -> ())
       "path_stat"
       ~sample
       ~equal:(Result.equal Reduced_stats.equal Unix_error.Detailed.equal)
@@ -124,6 +125,7 @@ module Untracked = struct
   let dir_contents =
     create
       "dir_contents"
+      ~update_hook:(fun _ -> ())
       ~sample:(fun path ->
         Path.Untracked.readdir_unsorted_with_kinds (Path.outside_build_dir path)
         |> Result.map ~f:Dir_contents.of_list)

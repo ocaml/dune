@@ -211,7 +211,7 @@ let term =
   let* setup = Import.Main.setup () in
   let* setup = Memo.run setup in
   let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
-  build_exn
+  Build.build_memo_exn
   @@ fun () ->
   let open Memo.O in
   let context_name =

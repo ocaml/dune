@@ -1005,7 +1005,7 @@ module Process = Fiber.Process
 (** {2 OCaml tools} *)
 
 module Libs = struct
-  let external_libraries = Libs.external_libraries
+  let external_libraries = [ "unix"; "threads" ]
 
   let make_lib lib =
     let root_module =
@@ -1892,7 +1892,7 @@ and dep_of_wrapped path (w : Group.wrapped) =
 
 let convert_dependencies ~alias_modules ~all_source_files ~groups ~path { Dep.file; deps }
   =
-  let is_mli = Filename.check_suffix file ".mli" in
+  let is_mli = String.ends_with ~suffix:".mli" file in
   let convert_module module_name =
     List.find_map groups ~f:(fun (g : Group.t) ->
       match Module.Name.Map.find_opt module_name g with

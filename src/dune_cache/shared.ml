@@ -105,19 +105,20 @@ let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~produced_targets
     Targets.Produced.iter_files targets_and_digests ~f:(fun path digest ->
       Cached_digest.set (Path.Build.append_local targets_and_digests.root path) digest)
   in
-  match
-    Targets.Produced.map_with_errors
-      ~f:(fun target ->
-        (* All of this monad boilerplate seems unnecessary since we don't care about errors... *)
-        match Local.Target.create target with
-        | Some t -> Ok t
-        | None -> Error ())
-      ~d:(fun target ->
-        match Local.Target.create target with
-        | Some _ -> Ok ()
-        | None -> Error ())
-      produced_targets
-  with
+  Targets.Produced.map_with_errors
+    ~f:(fun target ->
+      (* All of this monad boilerplate seems unnecessary since we don't care about errors... *)
+      Fiber.return
+      @@
+      match Local.Target.create target with
+      | Some t -> Ok t
+      | None -> Error ())
+    ~d:(fun target ->
+      match Local.Target.create target with
+      | Some _ -> Ok ()
+      | None -> Error ())
+    produced_targets
+  >>= function
   | Error _ -> Fiber.return None
   | Ok targets ->
     Local.store_artifacts ~mode ~rule_digest targets
@@ -156,8 +157,10 @@ let compute_target_digests_or_raise_error
       ~should_remove_write_permissions_on_generated_files
       ~loc
       ~produced_targets
-  : Digest.t Targets.Produced.t
+  : Digest.t Targets.Produced.t Fiber.t
   =
+  let open Fiber.O in
+  let* () = Fiber.return () in
   let compute_digest =
     (* Remove write permissions on targets. A first theoretical reason is that
        the build process should be a computational graph and targets should
@@ -168,44 +171,17 @@ let compute_target_digests_or_raise_error
       ~allow_dirs:true
       ~remove_write_permissions:should_remove_write_permissions_on_generated_files
   in
-  match Targets.Produced.map_with_errors ~f:compute_digest produced_targets with
+  Targets.Produced.map_with_errors ~f:compute_digest produced_targets
+  >>| function
   | Ok result -> result
   | Error errors ->
     let missing, errors =
       let process_target (target, error) =
-        match error with
-        | Cached_digest.Digest_result.Error.No_such_file -> Left target
-        | Broken_symlink ->
-          let error = Pp.verbatim "Broken symbolic link" in
-          Right (target, error)
-        | Cyclic_symlink ->
-          let error = Pp.verbatim "Cyclic symbolic link" in
-          Right (target, error)
-        | Unexpected_kind file_kind ->
-          let error =
-            Pp.verbatim
-              (sprintf
-                 "Unexpected file kind %S (%s)"
-                 (File_kind.to_string file_kind)
-                 (File_kind.to_string_hum file_kind))
-          in
-          Right (target, error)
-        | Unix_error (error, syscall, arg) ->
-          let unix_error = Unix_error.Detailed.create error ~syscall ~arg in
-          Right (target, Unix_error.Detailed.pp unix_error)
-        | Unrecognized exn ->
-          let error =
-            Pp.verbatim
-              (match exn with
-               | Sys_error msg ->
-                 let prefix =
-                   let expected_syscall_path = Path.to_string (Path.build target) in
-                   expected_syscall_path ^ ": "
-                 in
-                 String.drop_prefix_if_exists ~prefix msg
-               | exn -> Printexc.to_string exn)
-          in
-          Right (target, error)
+        if Cached_digest.Digest_result.Error.no_such_file error
+        then Left target
+        else (
+          let error = Cached_digest.Digest_result.Error.pp error (Path.build target) in
+          Right (target, error))
       in
       Nonempty_list.to_list errors |> List.partition_map ~f:process_target
     in
@@ -255,17 +231,16 @@ let examine_targets_and_store
     ->
     let open Fiber.O in
     try_to_store_to_shared_cache ~mode ~rule_digest ~produced_targets ~action
-    >>| (function
-     | Some produced_targets_with_digests -> produced_targets_with_digests
+    >>= (function
+     | Some produced_targets_with_digests -> Fiber.return produced_targets_with_digests
      | None ->
        compute_target_digests_or_raise_error
          ~should_remove_write_permissions_on_generated_files
          ~loc
          ~produced_targets)
   | _ ->
-    Fiber.return
-      (compute_target_digests_or_raise_error
-         ~should_remove_write_permissions_on_generated_files
-         ~loc
-         ~produced_targets)
+    compute_target_digests_or_raise_error
+      ~should_remove_write_permissions_on_generated_files
+      ~loc
+      ~produced_targets
 ;;

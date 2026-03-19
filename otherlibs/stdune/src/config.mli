@@ -26,6 +26,7 @@ end
 val make : name:string -> of_string:(string -> ('a, string) result) -> default:'a -> 'a t
 
 val make_toggle : name:string -> default:Toggle.t -> Toggle.t t
+val make_toggle_lazy_init : name:string -> default:Toggle.t -> Toggle.t t
 
 (** [is_initialized ()] returns whether [init] has been called *)
 val is_initialized : unit -> bool

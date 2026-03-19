@@ -1,6 +1,6 @@
 Testing the bootstrap of unwrapped libraries.
 
-  $ . ./helpers.sh
+  $ init_bootstrap
 
   $ mkdir -p src/a
   $ cat > src/a/a.ml <<EOF

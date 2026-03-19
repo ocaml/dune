@@ -123,43 +123,48 @@ module Workspace_local = struct
   end
 
   let compute_target_digests (targets : Targets.Validated.t)
-    : (Digest.t Targets.Produced.t, Miss_reason.t) Dune_cache.Hit_or_miss.t
+    : (Digest.t Targets.Produced.t, Miss_reason.t) Dune_cache.Hit_or_miss.t Fiber.t
     =
     match Targets.Produced.of_validated targets with
-    | Error error -> Miss (Error_while_collecting_directory_targets error)
+    | Error error ->
+      Fiber.return (Miss (Miss_reason.Error_while_collecting_directory_targets error))
     | Ok targets ->
-      (match
-         Targets.Produced.map_with_errors
-           ~f:(Cached_digest.build_file ~allow_dirs:true)
-           targets
-       with
+      let open Fiber.O in
+      Targets.Produced.map_with_errors
+        ~f:(Cached_digest.build_file ~allow_dirs:true)
+        targets
+      >>| (function
        | Ok produced_targets -> Dune_cache.Hit_or_miss.Hit produced_targets
-       | Error _ -> Miss Targets_missing)
+       | Error _ -> Miss Miss_reason.Targets_missing)
   ;;
 
   let lookup_impl ~rule_digest ~targets ~env ~build_deps =
-    (* [prev_trace] will be [None] if [head_target] was never built before. *)
-    let head_target = Targets.Validated.head targets in
-    let prev_trace = Database.get (Path.build head_target) in
-    let prev_trace_with_produced_targets =
-      match prev_trace with
-      | None -> Miss Miss_reason.No_previous_record
+    let open Fiber.O in
+    let* prev_trace_with_produced_targets =
+      match
+        (* will be [None] if [head_target] was never built before. *)
+        let head_target = Targets.Validated.head targets in
+        Database.get (Path.build head_target)
+      with
+      | None -> Fiber.return (Miss Miss_reason.No_previous_record)
       | Some prev_trace ->
         (match Digest.equal prev_trace.rule_digest rule_digest with
-         | false -> Miss (Rule_changed (prev_trace.rule_digest, rule_digest))
+         | false ->
+           Fiber.return
+             (Miss (Miss_reason.Rule_changed (prev_trace.rule_digest, rule_digest)))
          | true ->
            (* [compute_target_digests] returns a [Miss] if not all targets are
               available in the workspace-local cache. *)
-           (match compute_target_digests targets with
+           compute_target_digests targets
+           >>| (function
             | Miss reason -> Miss reason
             | Hit produced_targets ->
-              (match
-                 Digest.equal
-                   prev_trace.targets_digest
-                   (Targets.Produced.digest produced_targets)
-               with
-               | true -> Hit (prev_trace, produced_targets)
-               | false -> Miss Targets_changed)))
+              if
+                Digest.equal
+                  prev_trace.targets_digest
+                  (Targets.Produced.digest produced_targets)
+              then Hit (prev_trace, produced_targets)
+              else Miss Targets_changed))
     in
     match prev_trace_with_produced_targets with
     | Miss reason -> Fiber.return (Miss reason)
@@ -175,9 +180,9 @@ module Workspace_local = struct
           let open Fiber.O in
           let* deps = Memo.run (build_deps deps) in
           let new_digest = Dep.Facts.digest deps ~env in
-          (match Digest.equal old_digest new_digest with
-           | true -> loop rest
-           | false -> Fiber.return (Miss Miss_reason.Dynamic_deps_changed))
+          if Digest.equal old_digest new_digest
+          then loop rest
+          else Fiber.return (Miss Miss_reason.Dynamic_deps_changed)
       in
       loop prev_trace.dynamic_deps_stages
   ;;
@@ -186,15 +191,12 @@ module Workspace_local = struct
     : Digest.t Targets.Produced.t option Fiber.t
     =
     let open Fiber.O in
-    let+ result =
-      match always_rerun with
-      | true -> Fiber.return (Miss Miss_reason.Always_rerun)
-      | false -> lookup_impl ~rule_digest ~targets ~env ~build_deps
-    in
-    match result with
+    (if always_rerun
+     then Fiber.return (Miss Miss_reason.Always_rerun)
+     else lookup_impl ~rule_digest ~targets ~env ~build_deps)
+    >>| function
     | Hit result -> Some result
     | Miss reason ->
-      let head_target = Targets.Validated.head targets in
       let always_emit =
         match reason with
         | Miss_reason.Error_while_collecting_directory_targets _ -> true
@@ -202,6 +204,7 @@ module Workspace_local = struct
       in
       let event () =
         let reason = Miss_reason.to_string reason in
+        let head_target = Targets.Validated.head targets in
         Dune_trace.Event.Cache.workspace_local_miss ~head:head_target ~reason
       in
       if always_emit

@@ -1,6 +1,6 @@
 (cram
+ (setup_scripts helpers.sh)
  (deps
-  helpers.sh
   %{project_root}/boot/types.ml
   %{project_root}/boot/duneboot.ml
   %{bin:bootstrap.exe}))

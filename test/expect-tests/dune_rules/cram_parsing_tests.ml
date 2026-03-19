@@ -29,7 +29,7 @@ let test content =
         |> Pp.vbox)
       |> Pp.map_tags ~f:(fun _ -> User_message.Style.Loc)
       |> List.singleton
-      |> Dune_console.print)
+      |> Console.print)
 ;;
 
 let%expect_test "simple single line command" =

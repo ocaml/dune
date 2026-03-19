@@ -1248,7 +1248,7 @@ let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =
           (List.filter_map fs ~f:(function
              | { kind = File; dst } ->
                let str = Install.Entry.Dst.to_string dst in
-               if Filename.check_suffix str ".mld"
+               if String.ends_with ~suffix:".mld" str
                then Some (Path.relative doc_path str, str)
                else None
              | { kind = Directory; dst = _ } -> None))

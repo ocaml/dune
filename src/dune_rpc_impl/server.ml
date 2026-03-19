@@ -60,7 +60,7 @@ module Run = struct
     in
     let with_print_errors f () =
       Fiber.with_error_handler f ~on_error:(fun exn ->
-        Dune_console.print [ Pp.text "Uncaught RPC Error"; Exn_with_backtrace.pp exn ];
+        Console.print [ Pp.text "Uncaught RPC Error"; Exn_with_backtrace.pp exn ];
         Exn_with_backtrace.reraise exn)
     in
     let run () =
@@ -241,23 +241,19 @@ let handler (t : _ t Fdecl.t) : 'build_arg Dune_rpc_server.Handler.t =
       | None ->
         Error.Id.Map.to_list_map (Error.Set.current now) ~f:(fun _ e ->
           Diagnostic.Event.Add (Diagnostics.diagnostic_of_error e))
-      | Some (prev : Error.Set.t) ->
-        (match Error.Set.one_event_diff ~prev ~next:now with
-         | Some last_event -> [ Diagnostics.diagnostic_event_of_error_event last_event ]
-         | _ ->
-           (* the slow path where we must calculate a diff between what we have
-              and the last thing we've sent to the poller *)
-           Error.Id.Map.merge
-             (Error.Set.current prev)
-             (Error.Set.current now)
-             ~f:(fun _ prev now ->
-               match prev, now with
-               | None, None -> assert false
-               | Some prev, None ->
-                 Some (Diagnostics.diagnostic_event_of_error_event (Remove prev))
-               | _, Some next ->
-                 Some (Diagnostics.diagnostic_event_of_error_event (Add next)))
-           |> Error.Id.Map.values)
+      | Some prev ->
+        Error.Id.Map.merge
+          (Error.Set.current prev)
+          (Error.Set.current now)
+          ~f:(fun _ prev now ->
+            match prev, now with
+            | None, None -> assert false
+            | Some prev, None ->
+              Some (Diagnostics.diagnostic_event_of_error_event (Remove prev))
+            | None, Some next ->
+              Some (Diagnostics.diagnostic_event_of_error_event (Add next))
+            | Some _, Some _ -> None)
+        |> Error.Id.Map.values
     in
     Handler.implement_long_poll
       rpc

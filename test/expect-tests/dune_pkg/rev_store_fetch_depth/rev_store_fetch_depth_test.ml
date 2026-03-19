@@ -2,7 +2,7 @@ open Stdune
 open Fiber.O
 open Git_test_utils
 module Rev_store = Dune_pkg.Rev_store
-module Console = Dune_console
+module Console = Console
 
 let () =
   let cache_dir = lazy (Temp.create Dir ~prefix:"isolated-cache-" ~suffix:"") in

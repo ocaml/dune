@@ -273,6 +273,9 @@ let rec simplify = function
   | Literal sw -> Literal sw
   | Form (loc, form) ->
     (match form with
+     (* CR-someday Alizter: This does multiple passes: exists, filter, then
+        simplify recursively. Simplify and filter out Nil in a single pass
+        instead. *)
      | Concat with_nil when List.exists with_nil ~f:is_nil ->
        simplify (Form (loc, Concat (List.filter with_nil ~f:(Fun.negate is_nil))))
      | Concat [] -> Literal (String_with_vars.make_text ~quoted:true loc "")
@@ -305,6 +308,7 @@ let rec simplify = function
          let combined_sw = String_with_vars.make ~quoted loc parts in
          Literal combined_sw)
        else Form (loc, Concat (List.map xs ~f:simplify))
+     | When (_, Nil) -> Nil
      | When (condition, t) ->
        let simplified_condition = simplify_blang condition in
        (match (simplified_condition : blang) with
@@ -334,22 +338,69 @@ let rec simplify = function
         | Form (_, Blang (Const _)) as value -> value
         | value -> Form (loc, Catch_undefined_var { value; fallback = simplify fallback }))
      | And_absorb_undefined_var blangs ->
-       let blangs : blang list =
-         List.concat_map blangs ~f:(fun blang ->
-           match simplify_blang blang with
-           | Expr (Form (_, And_absorb_undefined_var blangs)) -> blangs
-           | blang -> [ blang ])
-       in
-       Form (loc, And_absorb_undefined_var blangs)
+       (match
+          simplify_blangs
+            blangs
+            ~flatten_nested:(function
+              | Blang.Expr (Form (_, And_absorb_undefined_var blangs)) -> Some blangs
+              | _ -> None)
+            ~identity:true
+        with
+        | None -> Form (loc, Blang (Const false))
+        | Some [] -> Form (loc, Blang (Const true))
+        | Some [ b ] -> Form (loc, Blang b)
+        | Some blangs -> Form (loc, And_absorb_undefined_var blangs))
      | Or_absorb_undefined_var blangs ->
-       let blangs : blang list =
-         List.concat_map blangs ~f:(fun (blang : blang) ->
-           match simplify_blang blang with
-           | Expr (Form (_, Or_absorb_undefined_var blangs)) -> blangs
-           | blang -> [ blang ])
-       in
-       Form (loc, Or_absorb_undefined_var (List.map blangs ~f:simplify_blang))
+       (match
+          simplify_blangs
+            blangs
+            ~flatten_nested:(function
+              | Blang.Expr (Form (_, Or_absorb_undefined_var blangs)) -> Some blangs
+              | _ -> None)
+            ~identity:false
+        with
+        | None -> Form (loc, Blang (Const true))
+        | Some [] -> Form (loc, Blang (Const false))
+        | Some [ b ] -> Form (loc, Blang b)
+        | Some blangs -> Form (loc, Or_absorb_undefined_var blangs))
      | Blang b -> Form (loc, Blang (simplify_blang b)))
+
+(* Simplify a list of blangs for And/Or-like operations.
+
+   This function simplifies each blang, flattens nested same-kind operations
+   (e.g., And within And), applies boolean absorption/identity rules, and
+   removes duplicates:
+
+   - [flatten_nested] detects nested same-kind operations and extracts their
+     children for flattening. For example, when simplifying [And(a, And(b, c))],
+     the caller provides a [flatten_nested] that returns [Some [b; c]] for the
+     inner And, resulting in a flat [And(a, b, c)]. Returns [None] for blangs
+     that should not be flattened.
+
+   - [Const (not identity)] is the absorbing element: if any element simplifies
+     to this value, the entire expression is dominated and we short-circuit.
+     (For And: false absorbs. For Or: true absorbs.)
+
+   - [Const identity] is the identity element and is filtered out.
+     (For And: true is identity. For Or: false is identity.)
+
+   - Duplicate blangs (compared via [blang_equal]) are removed, keeping only
+     the first occurrence.
+
+   Returns [None] if dominated by the absorbing element, or [Some blangs] with
+   the simplified list (identity elements removed, flattened, and deduplicated). *)
+and simplify_blangs blangs ~flatten_nested ~identity =
+  Option.List.concat_map blangs ~f:(fun blang ->
+    let simplified = simplify_blang blang in
+    Option.value (flatten_nested simplified) ~default:[ simplified ]
+    |> Option.List.concat_map ~f:(function
+      | Blang.Const b when b <> identity -> None
+      | Blang.Const _ -> Some []
+      | b -> Some [ b ]))
+  |> Option.map ~f:(fun blangs ->
+    List.fold_left blangs ~init:[] ~f:(fun acc b ->
+      if List.exists acc ~f:(blang_equal b) then acc else b :: acc)
+    |> List.rev)
 
 and simplify_blang = function
   | Const b -> Const b
@@ -379,49 +430,31 @@ and simplify_blang = function
      | Not blang -> blang
      | blang -> Not blang)
   | And blangs ->
-    let blangs =
-      List.concat_map blangs ~f:(fun blang ->
-        match simplify_blang blang with
-        | And xs -> xs
-        | blang -> [ blang ])
-    in
-    if
-      List.exists blangs ~f:(function
-        | Blang.Const false -> true
-        | _ -> false)
-    then Const false
-    else (
-      let blangs =
-        List.filter blangs ~f:(function
-          | Blang.Const true -> false
-          | _ -> true)
-      in
-      match blangs with
-      | [] -> Const true
-      | [ b ] -> b
-      | blangs -> And blangs)
+    (match
+       simplify_blangs
+         blangs
+         ~flatten_nested:(function
+           | And xs -> Some xs
+           | _ -> None)
+         ~identity:true
+     with
+     | None -> Const false
+     | Some [] -> Const true
+     | Some [ b ] -> b
+     | Some blangs -> And blangs)
   | Or blangs ->
-    let blangs =
-      List.concat_map blangs ~f:(fun blang ->
-        match simplify_blang blang with
-        | Or xs -> xs
-        | blang -> [ blang ])
-    in
-    if
-      List.exists blangs ~f:(function
-        | Blang.Const true -> true
-        | _ -> false)
-    then Const true
-    else (
-      let blangs =
-        List.filter blangs ~f:(function
-          | Blang.Const false -> false
-          | _ -> true)
-      in
-      match blangs with
-      | [] -> Const false
-      | [ b ] -> b
-      | blangs -> Or blangs)
+    (match
+       simplify_blangs
+         blangs
+         ~flatten_nested:(function
+           | Or xs -> Some xs
+           | _ -> None)
+         ~identity:false
+     with
+     | None -> Const true
+     | Some [] -> Const false
+     | Some [ b ] -> b
+     | Some blangs -> Or blangs)
 ;;
 
 module Blang = struct

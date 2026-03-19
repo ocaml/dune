@@ -529,3 +529,19 @@ module Event_bus : sig
   (** [close t] closes the event bus [t] preventing further [push]es and [pop]s. *)
   val close : 'a t -> unit fiber
 end
+
+module Temp : sig
+  val with_temp_file
+    :  dir:Path.t
+    -> prefix:string
+    -> suffix:string
+    -> f:(Path.t Or_exn.t -> 'a t)
+    -> 'a t
+
+  val with_temp_dir
+    :  parent_dir:Path.t
+    -> prefix:string
+    -> suffix:string
+    -> f:(Path.t Or_exn.t -> 'a t)
+    -> 'a t
+end

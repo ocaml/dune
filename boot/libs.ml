@@ -224,12 +224,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/fiber_util"
-    ; main_module_name = Some "Fiber_util"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/dune_cache"
     ; main_module_name = Some "Dune_cache"
     ; include_subdirs = No

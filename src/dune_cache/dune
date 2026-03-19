@@ -7,7 +7,6 @@
   dune_util
   dune_targets
   dune_trace
-  fiber_util
   fiber
   stdune
   unix))

@@ -1163,6 +1163,10 @@ end = struct
 
   type t = string String.Map.t
 
+  (* Cross-compilation support: DUNE_BOOT__* env vars override ocamlc -config.
+     This allows building dune for a different target than the host. *)
+  let env_override key = Sys.getenv_opt ("DUNE_BOOT__" ^ String.uppercase_ascii key)
+
   let ocaml_config () =
     Process.run_and_capture ocamlc [ "-config" ]
     >>| String.split_lines
@@ -1173,13 +1177,25 @@ end = struct
         fatal "invalid line in output of 'ocamlc -config': %s" (String.escaped line))
   ;;
 
-  let ext_obj t = String.Map.find_opt "ext_obj" t |> Option.value ~default:".o"
-  let ccomp_type t = String.Map.find "ccomp_type" t |> Ccomp.of_string
-  let word_size t = String.Map.find "word_size" t |> Word_size.of_string
-  let os_type t = String.Map.find "os_type" t |> Os_type.of_string
-  let architecture t = String.Map.find "architecture" t |> Arch.of_string
-  let system t = String.Map.find "system" t
-  let c_compiler t = String.Map.find "c_compiler" t
+  let get key t =
+    match env_override key with
+    | Some v -> v
+    | None -> String.Map.find key t
+  ;;
+
+  let get_with_default key t ~default =
+    match env_override key with
+    | Some v -> v
+    | None -> String.Map.find_opt key t |> Option.value ~default
+  ;;
+
+  let ext_obj t = get_with_default "ext_obj" t ~default:".o"
+  let ccomp_type t = get "ccomp_type" t |> Ccomp.of_string
+  let word_size t = get "word_size" t |> Word_size.of_string
+  let os_type t = get "os_type" t |> Os_type.of_string
+  let architecture t = get "architecture" t |> Arch.of_string
+  let system t = get "system" t
+  let c_compiler t = get "c_compiler" t
 end
 
 let insert_header fn ~header =

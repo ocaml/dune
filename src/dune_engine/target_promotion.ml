@@ -58,11 +58,11 @@ let promote_target_if_not_up_to_date
       ~promote_until_clean
   =
   let open Fiber.O in
-  (* It is OK to use [Fs_cache.Untracked.file_digest] here because below we use
+  (* It is OK to use [Fs_memo.Untracked.file_digest] here because below we use
      the tracked [Fs_memo.file_digest] to subscribe to the promotion result. *)
   let* promoted =
     match
-      Fs_cache.read Fs_cache.Untracked.file_digest (In_source_dir dst)
+      Fs_memo.Untracked.file_digest (In_source_dir dst)
       |> Cached_digest.Digest_result.to_option
     with
     | Some dst_digest when Digest.equal src_digest dst_digest ->
@@ -158,7 +158,7 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
        will use [Fs_memo.dir_contents] to subscribe to [dst_dir]'s contents, so
        Dune will notice its deletion. Furthermore, if we used a tracked version,
        [Path.mkdir_p] below would generate an unnecessary file-system event. *)
-    match Fs_cache.(read Untracked.path_stat) (In_source_dir dst_dir) with
+    match Fs_memo.Untracked.path_stat (In_source_dir dst_dir) with
     | Ok { st_kind = S_DIR; _ } -> ()
     | Error (ENOENT, _, _) -> Path.mkdir_p (Path.source dst_dir)
     | Ok _ | Error _ ->
@@ -216,7 +216,7 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
     function
     | Error unix_error -> directory_target_error ~unix_error ~dst_dir []
     | Ok dir_contents ->
-      Fs_cache.Dir_contents.iter dir_contents ~f:(function
+      Fs_memo.Dir_contents.iter dir_contents ~f:(function
         | file_name, S_REG ->
           if not (Targets.Produced.mem targets (Path.Build.relative build_dir file_name))
           then Fpath.unlink_no_err (Path.to_string (Path.relative dst_dir file_name))

@@ -95,7 +95,7 @@ let rec scan_path ~(f : ('prefix, 'res) Scan_action.t) ~acc ~prefix ~dir dir_con
       (match dir_contents with
        | Error _ -> Memo.return []
        | Ok dir_contents ->
-         let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
+         let dir_contents = Fs_memo.Dir_contents.to_list dir_contents in
          let prefix = acc prefix d in
          let* subresults = scan_path ~f ~acc ~prefix ~dir dir_contents in
          f ~dir ~prefix ~subresults dir_contents)
@@ -110,7 +110,7 @@ let scan_path ~f ~acc ~prefix dir =
   match dir_contents with
   | Error _ -> Memo.return []
   | Ok dir_contents ->
-    let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
+    let dir_contents = Fs_memo.Dir_contents.to_list dir_contents in
     scan_path ~f ~acc ~prefix ~dir dir_contents
 ;;
 

@@ -113,7 +113,7 @@ let rec dir_contents ~loc d =
   >>= function
   | Error e -> Unix_error.Detailed.raise e
   | Ok contents ->
-    Fs_cache.Dir_contents.to_list contents
+    Fs_memo.Dir_contents.to_list contents
     |> Memo.parallel_map ~f:(fun (entry, kind) ->
       let path = Path.Outside_build_dir.relative d entry in
       match kind with

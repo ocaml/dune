@@ -96,7 +96,7 @@ let get_dir_triage ~dir =
           ];
         Filename.Set.empty
       | Ok filenames ->
-        Fs_cache.Dir_contents.to_list filenames
+        Fs_memo.Dir_contents.to_list filenames
         |> List.filter_map ~f:(fun (filename, kind) ->
           match kind with
           | Unix.S_DIR -> None

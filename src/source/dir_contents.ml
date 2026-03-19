@@ -23,7 +23,7 @@ module File = struct
   include T
 
   let dummy = { ino = 0; dev = 0 }
-  let of_stats (st : Fs_cache.Reduced_stats.t) = { ino = st.st_ino; dev = st.st_dev }
+  let of_stats (st : Fs_memo.Reduced_stats.t) = { ino = st.st_ino; dev = st.st_dev }
 
   module Map = Map.Make (T)
 
@@ -84,7 +84,7 @@ let of_source_path_impl path =
     Memo.return (Error unix_error)
   | Ok dir_contents ->
     let+ files, dirs =
-      Fs_cache.Dir_contents.to_list dir_contents
+      Fs_memo.Dir_contents.to_list dir_contents
       |> Memo.parallel_map ~f:(fun (fn, (kind : File_kind.t)) ->
         let path = Path.Source.relative path fn in
         if is_special kind || Path.Source.is_in_build_dir path || is_temp_file fn

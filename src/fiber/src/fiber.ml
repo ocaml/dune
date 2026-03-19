@@ -33,3 +33,5 @@ module Temp = Stdune.Temp.Monad (struct
 
     let protect ~f ~finally = finalize f ~finally:(fun () -> finally () |> return)
   end)
+
+module Cache = Cache

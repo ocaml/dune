@@ -1909,38 +1909,33 @@ module Install_action = struct
         Some (entry.section, dst)
     ;;
 
-    (* CR-someday maybe reuse Fpath.traverse? *)
-    let rec resolve_symlinks_in dir =
-      match Readdir.read_directory_with_kinds dir with
-      | Error e -> Unix_error.Detailed.raise e
-      | Ok entries ->
-        List.iter entries ~f:(fun (fname, kind) ->
-          let path = Filename.concat dir fname in
-          match (kind : Unix.file_kind) with
-          | S_DIR -> resolve_symlinks_in path
-          | S_LNK ->
-            (match Fpath.follow_symlink path with
-             | Error (Unix_error e) -> Unix_error.Detailed.raise e
-             | Error Not_a_symlink ->
-               Code_error.raise
-                 "resolve_symlinks_in: not a symlink"
-                 [ "path", Dyn.string path ]
-             | Error Max_depth_exceeded ->
-               User_error.raise
-                 [ Pp.textf
-                     "Unable to resolve symlink %s: too many levels of symbolic links"
-                     path
-                 ]
-             | Ok resolved ->
-               (match Unix.lstat resolved with
-                | { Unix.st_kind = S_REG; _ } ->
-                  (* CR-someday rgrinberg: pass chmod:true here? *)
-                  Fpath.unlink_exn path;
-                  Io.portable_hardlink
-                    ~src:(Path.of_string resolved)
-                    ~dst:(Path.of_string path)
-                | _ -> ()))
-          | _ -> ())
+    let resolve_symlinks_in root =
+      let on_symlink ~dir fname () =
+        let path = Filename.concat root (Filename.concat dir fname) in
+        match Fpath.follow_symlink path with
+        | Error (Unix_error e) -> Unix_error.Detailed.raise e
+        | Error Not_a_symlink ->
+          Code_error.raise
+            "resolve_symlinks_in: not a symlink"
+            [ "path", Dyn.string path ]
+        | Error Max_depth_exceeded ->
+          User_error.raise
+            [ Pp.textf
+                "Unable to resolve symlink %s: too many levels of symbolic links"
+                path
+            ]
+        | Ok resolved ->
+          (match Unix.lstat resolved with
+           | { Unix.st_kind = S_REG; _ } ->
+             (* CR-someday rgrinberg: pass chmod:true here? *)
+             Fpath.unlink_exn path;
+             Io.portable_hardlink
+               ~src:(Path.of_string resolved)
+               ~dst:(Path.of_string path)
+           | _ -> ());
+          (), None
+      in
+      Fpath.traverse ~dir:root ~init:() ~on_symlink:(`Call on_symlink) ()
     ;;
 
     let action

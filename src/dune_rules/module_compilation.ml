@@ -287,24 +287,39 @@ let build_cm
    in
    let opaque = Compilation_context.opaque cctx in
    let other_cm_files =
-     let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
+     let dep_graphs = Compilation_context.dep_graphs cctx in
+     let compile_dep_graphs = Compilation_context.compile_dep_graphs cctx in
+     let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
+     let compile_dep_graph = Ml_kind.Dict.get compile_dep_graphs ml_kind in
      let module_deps = Dep_graph.deps_of dep_graph m in
+     let cmi_module_deps = Dep_graph.deps_of compile_dep_graph m in
      let cms_cmt_dependency = Compilation_context.cms_cmt_dependency cctx in
      let bin_annot = Compilation_context.bin_annot cctx in
      let bin_annot_cms = Compilation_context.bin_annot_cms cctx in
      let is_ox = Ocaml_config.ox ocaml.ocaml_config in
      Action_builder.dyn_paths_unit
-       (Action_builder.map
-          module_deps
-          ~f:
-            (other_cm_files
-               ~opaque
-               ~cm_kind
-               ~obj_dir
-               ~cms_cmt_dependency
-               ~bin_annot
-               ~bin_annot_cms
-               ~is_ox))
+       (let open Action_builder.O in
+        let+ module_deps =
+          Action_builder.map
+            module_deps
+            ~f:
+              (other_cm_files
+                 ~opaque
+                 ~cm_kind
+                 ~obj_dir
+                 ~cms_cmt_dependency
+                 ~bin_annot
+                 ~bin_annot_cms
+                 ~is_ox)
+        and+ cmi_module_deps =
+          Action_builder.map
+            cmi_module_deps
+            ~f:
+              (List.filter_map ~f:(fun m ->
+                 Obj_dir.Module.cm_file obj_dir m ~kind:(Lib_mode.Cm_kind.cmi cm_kind)
+                 |> Option.map ~f:Path.build))
+        in
+        Path.Set.of_list (module_deps @ cmi_module_deps) |> Path.Set.to_list)
    in
    let cmt_args =
      match cm_kind with

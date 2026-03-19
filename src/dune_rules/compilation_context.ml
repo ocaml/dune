@@ -72,10 +72,12 @@ let eval_opaque (ocaml : Ocaml_toolchain.t) profile = function
 type modules =
   { modules : Modules.With_vlib.t
   ; dep_graphs : Dep_graph.t Ml_kind.Dict.t
+  ; compile_dep_graphs : Dep_graph.t Ml_kind.Dict.t
   }
 
 let singleton_modules m =
-  { modules = Modules.With_vlib.singleton m; dep_graphs = Dep_graph.Ml_kind.dummy m }
+  let dep_graphs = Dep_graph.Ml_kind.dummy m in
+  { modules = Modules.With_vlib.singleton m; dep_graphs; compile_dep_graphs = dep_graphs }
 ;;
 
 type t =
@@ -132,6 +134,7 @@ let bin_annot_cms t = t.bin_annot_cms
 let cms_cmt_dependency t = t.cms_cmt_dependency
 let context t = Super_context.context t.super_context
 let dep_graphs t = t.modules.dep_graphs
+let compile_dep_graphs t = t.modules.compile_dep_graphs
 let ocaml t = t.ocaml
 
 let parameters_main_modules parameters =
@@ -230,10 +233,11 @@ let create
       let context = Super_context.context super_context in
       Memo.return (Context.cms_cmt_dependency context)
   in
+  let compile_dep_graphs = Dep_graph.Ml_kind.for_module_compilation ~modules dep_graphs in
   { super_context
   ; scope
   ; obj_dir
-  ; modules = { modules; dep_graphs }
+  ; modules = { modules; dep_graphs; compile_dep_graphs }
   ; flags
   ; requires_compile = direct_requires
   ; requires_hidden = hidden_requires

@@ -1,4 +1,4 @@
-open Stdune
+open Import
 open Dune_cache_storage
 
 module Trimming_result = struct

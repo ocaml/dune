@@ -6,7 +6,7 @@
    decision in 6 months. *)
 
 open Stdune
-open Import
+module Digest := Dune_digest
 
 (** The directory containing the build cache.
     Set to [Dune_util.cache_root_dir/db]. *)

@@ -1167,7 +1167,7 @@ let maybe_init_cache (cache_config : Dune_cache.Config.t) =
   match cache_config with
   | Disabled -> cache_config
   | Enabled _ ->
-    (match Dune_cache_storage.Layout.create_cache_directories () with
+    (match Dune_cache.Layout.create_cache_directories () with
      | Ok () -> cache_config
      | Error (path, exn) ->
        User_warning.emit
@@ -1256,8 +1256,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   Log.info
     "Shared cache location"
     [ ( "root_dir"
-      , Dyn.string (Path.to_string (Lazy.force Dune_cache_storage.Layout.build_cache_dir))
-      )
+      , Dyn.string (Path.to_string (Lazy.force Dune_cache.Layout.build_cache_dir)) )
     ];
   Dune_cache.Shared.config := maybe_init_cache cache_config;
   Dune_rules.Main.init ~sandboxing_preference:config.sandboxing_preference ();

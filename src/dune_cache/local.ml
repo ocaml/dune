@@ -1,5 +1,6 @@
 open Import
-open Dune_cache_storage.Layout
+open Dune_cache_storage
+open Layout
 open Fiber.O
 
 module Store_artifacts_result = struct
@@ -109,7 +110,7 @@ module Artifacts = struct
      result is [Ok ()]. *)
   let store_targets_to ~temp_dir ~(targets : _ Targets.Produced.t) ~mode : unit Or_exn.t =
     let portable_hardlink_or_copy =
-      match (mode : Dune_cache_storage.Mode.t) with
+      match (mode : Mode.t) with
       | Hardlink -> Io.portable_hardlink
       | Copy -> fun ~src ~dst -> Io.copy_file ~src ~dst ()
     in
@@ -158,11 +159,7 @@ module Artifacts = struct
           let path_in_temp_dir = Path.append_local temp_dir target in
           let path_in_cache = Lazy.force (file_path ~file_digest) in
           let store_using_hardlinks () =
-            match
-              Dune_cache_storage.Util.Optimistically.link
-                ~src:path_in_temp_dir
-                ~dst:path_in_cache
-            with
+            match Util.Optimistically.link ~src:path_in_temp_dir ~dst:path_in_cache with
             | exception Unix.Unix_error (Unix.EEXIST, _, _) ->
               (* We end up here if the cache already contains an entry for this
                  artifact. We deduplicate by keeping only one copy, in the
@@ -208,15 +205,13 @@ module Artifacts = struct
             | true -> Store_result.Already_present
             | false ->
               (match
-                 Dune_cache_storage.Util.Optimistically.rename
-                   ~src:path_in_temp_dir
-                   ~dst:path_in_cache
+                 Util.Optimistically.rename ~src:path_in_temp_dir ~dst:path_in_cache
                with
                | exception e -> Error e
                | () -> Stored)
           in
           let result =
-            match (mode : Dune_cache_storage.Mode.t) with
+            match (mode : Mode.t) with
             | Hardlink -> store_using_hardlinks ()
             | Copy -> store_using_test_and_rename ()
           in
@@ -279,10 +274,7 @@ module Artifacts = struct
       | Sys_error _ -> raise_notrace (E Not_found_in_cache)
     ;;
 
-    let create_all_or_none
-          (mode : Dune_cache_storage.Mode.t)
-          (artifacts : _ Targets.Produced.t)
-      =
+    let create_all_or_none (mode : Mode.t) (artifacts : _ Targets.Produced.t) =
       let unwind = Unwind.make () in
       let rec mk_dir (dir : Path.Local.t) =
         (match Path.Local.parent dir with

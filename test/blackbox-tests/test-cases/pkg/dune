@@ -112,6 +112,12 @@
   (= %{os_type} Win32))
  (alias runtest-windows))
 
+(cram
+ (applies_to install-entry-missing-exe-suffix)
+ (enabled_if
+  (= %{os_type} Win32))
+ (alias runtest-windows))
+
 ;; disabled for flakiness
 
 (cram

@@ -95,5 +95,3 @@ module Metadata : sig
       -> t Restore_result.t
   end
 end
-
-val clear : unit -> unit

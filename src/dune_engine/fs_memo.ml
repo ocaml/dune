@@ -83,15 +83,6 @@ module Fs_cache = struct
       | `Changed
       | `Unchanged
       ]
-
-    let combine (x : t) (y : t) =
-      match x, y with
-      | `Skipped, res | res, `Skipped -> res
-      | `Changed, _ | _, `Changed -> `Changed
-      | `Unchanged, `Unchanged -> `Unchanged
-    ;;
-
-    let empty = `Skipped
   end
 
   let update { sample; cache; equal; update_hook; _ } path =
@@ -285,8 +276,6 @@ end = struct
     | true -> Memo.exec memo_for_watching_via_parent path
   ;;
 
-  module Update_all = Monoid.Function (Path.Outside_build_dir) (Fs_cache.Update_result)
-
   let update_all : Path.Outside_build_dir.t -> Fs_cache.Update_result.t =
     let update t path =
       let result = Fs_cache.update t path in
@@ -296,13 +285,15 @@ end = struct
       result
     in
     fun p ->
-      let all =
-        [ update Fs_cache.Untracked.path_stat
-        ; update Fs_cache.Untracked.file_digest
-        ; update Fs_cache.Untracked.dir_contents
-        ]
-      in
-      Update_all.reduce all p
+      [ update Fs_cache.Untracked.path_stat p
+      ; update Fs_cache.Untracked.file_digest p
+      ; update Fs_cache.Untracked.dir_contents p
+      ]
+      |> List.fold_left ~init:`Skipped ~f:(fun x y ->
+        match x, y with
+        | `Skipped, res | res, `Skipped -> res
+        | `Changed, _ | _, `Changed -> `Changed
+        | `Unchanged, `Unchanged -> `Unchanged)
   ;;
 
   (* CR-someday amokhov: We share Memo tables for tracking different file-system

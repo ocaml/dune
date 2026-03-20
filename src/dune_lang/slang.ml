@@ -3,6 +3,7 @@ open Dune_sexp
 
 type t =
   | Nil
+  | Undefined
   | Literal of String_with_vars.t
   | Form of (Loc.t * form)
 
@@ -46,6 +47,7 @@ let rec equal a b =
   in
   match a, b with
   | Nil, Nil -> true
+  | Undefined, Undefined -> true
   | Literal a, Literal b -> String_with_vars.equal a b
   | Form a, Form b -> Tuple.T2.equal Loc.equal form_equal a b
   | _, _ -> false
@@ -73,6 +75,7 @@ let rec remove_locs t =
   in
   match t with
   | Nil -> Nil
+  | Undefined -> Undefined
   | Literal sw -> Literal (String_with_vars.remove_locs sw)
   | Form (_loc, form) -> Form (Loc.none, form_remove_locs form)
 
@@ -147,6 +150,10 @@ let rec encode t =
       (Form
          ( Loc.none
          , When (Blang.Ast.false_, Literal (String_with_vars.make_text Loc.none "")) ))
+  | Undefined ->
+    (* Undefined should be simplified away before encoding. If it reaches here,
+       encode it as something that will fail at runtime. *)
+    Code_error.raise "Undefined should not be encoded" []
   | Literal sw -> String_with_vars.encode sw
   | Form (_loc, form) ->
     (match form with
@@ -170,6 +177,7 @@ let rec encode t =
 
 let rec to_dyn = function
   | Nil -> Dyn.variant "Nil" []
+  | Undefined -> Dyn.variant "Undefined" []
   | Literal sw -> Dyn.variant "Literal" [ String_with_vars.to_dyn sw ]
   | Form (_loc, form) ->
     (match form with
@@ -190,6 +198,7 @@ and blang_to_dyn blang = Blang.Ast.to_dyn to_dyn blang
 
 let loc = function
   | Nil -> Loc.none
+  | Undefined -> Loc.none
   | Literal sw -> String_with_vars.loc sw
   | Form (loc, _form) -> loc
 ;;
@@ -198,6 +207,7 @@ let blang_map = Blang.Ast.map_string
 
 let rec map_loc ~f = function
   | Nil -> Nil
+  | Undefined -> Undefined
   | Literal sw -> Literal (String_with_vars.map_loc ~f sw)
   | Form (loc, form) ->
     let loc = f loc in
@@ -270,6 +280,7 @@ let is_nil = function
 
 let rec simplify = function
   | Nil -> Nil
+  | Undefined -> Undefined
   | Literal sw -> Literal sw
   | Form (loc, form) ->
     (match form with
@@ -410,14 +421,17 @@ and simplify_blang = function
      | Some "false" -> Const false
      | _ -> expr)
   | Expr (Form (_, Blang blang)) -> simplify_blang blang
+  | Expr Undefined -> Const false
   | Expr s ->
     (match simplify s with
+     | Undefined -> Const false
      | Form (_, Blang blang) -> simplify_blang blang
      | s -> Expr s)
   | Compare (op, lhs, rhs) ->
     let lhs = simplify lhs in
     let rhs = simplify rhs in
     (match lhs, rhs with
+     | Undefined, _ | _, Undefined -> Const false
      | Literal l, Literal r ->
        (match op, String_with_vars.text_only l, String_with_vars.text_only r with
         | Relop.Eq, Some l, Some r -> Const (String.equal l r)

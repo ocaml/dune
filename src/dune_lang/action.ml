@@ -547,6 +547,7 @@ let rec blang_map_string_with_vars ~f = function
 
 and slang_map_string_with_vars ~f = function
   | Slang.Nil -> Slang.Nil
+  | Slang.Undefined -> Slang.Undefined
   | Literal sw -> Literal (f sw)
   | Form (loc, form) ->
     let form =

@@ -151,13 +151,12 @@ end
 module Artifacts = struct
   module Metadata_entry = struct
     type t =
-      { path : string (** Can have more than one component for directory targets *)
+      { path : Path.Local.t
       ; digest : Digest.t option
-        (** This digest is always present in case [file_path] points to a file, and absent when it's a directory. *)
       }
 
     let equal x y =
-      String.equal x.path y.path && Option.equal Digest.equal x.digest y.digest
+      Path.Local.equal x.path y.path && Option.equal Digest.equal x.digest y.digest
     ;;
 
     let digest_to_sexp = function
@@ -165,7 +164,9 @@ module Artifacts = struct
       | Some digest -> Sexp.Atom (Digest.to_string digest)
     ;;
 
-    let to_sexp { path; digest } = Sexp.List [ Atom path; digest_to_sexp digest ]
+    let to_sexp { path; digest } =
+      Sexp.List [ Atom (Path.Local.to_string path); digest_to_sexp digest ]
+    ;;
 
     let digest_of_sexp = function
       | "<dir>" -> Ok None
@@ -181,7 +182,7 @@ module Artifacts = struct
     let of_sexp = function
       | Sexp.List [ Atom path; Atom digest ] ->
         (match digest_of_sexp digest with
-         | Ok digest -> Ok { path; digest }
+         | Ok digest -> Ok { path = Path.Local.of_string path; digest }
          | Error e -> Error e)
       | _ -> Error (Failure "Cannot parse cache metadata entry")
     ;;

@@ -21,8 +21,6 @@ include struct
   module Context_name = Context_name
 end
 
-module Cached_digest = Dune_digest.Cached_digest
-
 include struct
   open Source
   module Source_tree = Source_tree

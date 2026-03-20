@@ -161,6 +161,14 @@ module Produced = struct
     ; contents : 'a dir_contents
     }
 
+  let head { root; contents = { files; subdirs } } =
+    Path.Build.relative
+      root
+      (match Filename.Map.choose files with
+       | Some (x, _) -> x
+       | None -> Filename.Map.choose subdirs |> Option.value_exn |> fst)
+  ;;
+
   let equal
         { root = root1; contents = contents1 }
         { root = root2; contents = contents2 }
@@ -345,7 +353,7 @@ module Produced = struct
            (* The order shouldn't matter, it's not possible to have both a file
               and a directory with the exact same path and name. *)
            let+ contents = Filename.Map.find subdirs final in
-           Right contents.files)
+           Right contents)
       | parent :: rest ->
         let path = Path.Local.relative path parent in
         let* subdir = Filename.Map.find subdirs parent in
@@ -368,7 +376,7 @@ module Produced = struct
 
   let find_dir t name =
     match find_any t name with
-    | Some (Right found) -> Some found
+    | Some (Right found) -> Some found.files
     | Some (Left _) | None -> None
   ;;
 
@@ -430,7 +438,7 @@ module Produced = struct
     aux Path.Local.root contents init
   ;;
 
-  let iteri { contents; root = _ } ~f ~d =
+  let iteri_dir_contents contents ~f ~d =
     let rec aux path { files; subdirs } =
       Filename.Map.iteri files ~f:(fun file_name payload ->
         let file = Path.Local.relative path file_name in
@@ -442,6 +450,8 @@ module Produced = struct
     in
     aux Path.Local.root contents
   ;;
+
+  let iteri t ~f ~d = iteri_dir_contents t.contents ~f ~d
 
   let to_list_map { contents; root = _ } ~f =
     let rec aux path { files; subdirs } =

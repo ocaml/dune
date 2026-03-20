@@ -416,10 +416,6 @@ let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~produced_targets
       ; Pp.char ')'
       ]
   in
-  let update_cached_digests ~targets_and_digests =
-    Targets.Produced.iter_files targets_and_digests ~f:(fun path digest ->
-      Cached_digest.set (Path.Build.append_local targets_and_digests.root path) digest)
-  in
   Targets.Produced.map_with_errors
     ~f:(fun target ->
       (* All of this monad boilerplate seems unnecessary since we don't care about errors... *)
@@ -440,11 +436,9 @@ let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~produced_targets
     >>= (function
      | Stored targets_and_digests ->
        Log.info "cache store success" [ "hex", Dyn.string hex ];
-       update_cached_digests ~targets_and_digests;
        Fiber.return (Some targets_and_digests)
      | Already_present targets_and_digests ->
        Log.info "cache store skipped: already present" [ "hex", Dyn.string hex ];
-       update_cached_digests ~targets_and_digests;
        Fiber.return (Some targets_and_digests)
      | Error (Unix.Unix_error (Unix.EXDEV, "link", file)) ->
        (* We cannot hardlink across partitions so we kindly let the user know
@@ -468,6 +462,74 @@ let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~produced_targets
        Fiber.return None)
 ;;
 
+module File_digest = struct
+  module Digest_result = Cached_digest.Digest_result
+  module Error = Digest_result.Error
+
+  (* CR-soon rgrinberg: a bunch of this is duplicated from cached_digest.ml.
+     This is temporary since [Cached_digest] is going to be limited source
+     files *)
+
+  let refresh_async ~allow_dirs stats path =
+    let path = Path.build path in
+    let open Fiber.O in
+    Digest.Stats_for_digest.of_unix_stats stats
+    |> Digest.path_with_stats_async ~allow_dirs path
+    >>| function
+    | Ok digest -> Ok digest
+    | Error Unexpected_kind -> Error (Error.Unexpected_kind stats.st_kind)
+    | Error (Unix_error (ENOENT, _, _)) -> Error No_such_file
+    | Error (Unix_error other_error) -> Error (Unix_error other_error)
+  ;;
+
+  let refresh_without_removing_write_permissions_async ~allow_dirs path =
+    match Unix.stat (Path.Build.to_string path) with
+    | stats -> refresh_async stats ~allow_dirs path
+    | exception exn ->
+      Fiber.return
+        (match exn with
+         | Unix.Unix_error (ENOENT, _, _) ->
+           (* Test if this is a broken symlink for better error messages. *)
+           Digest_result.catch_fs_errors (fun () ->
+             match Unix.lstat (Path.Build.to_string path) with
+             | exception Unix.Unix_error (ENOENT, _, _) -> Error Error.No_such_file
+             | _stats_so_must_be_a_symlink -> Error Broken_symlink)
+         | exn -> Error (Digest_result.Error.of_exn exn))
+  ;;
+
+  let refresh_and_remove_write_permissions_async ~allow_dirs path =
+    let open Digest_result.Error in
+    match Unix.lstat (Path.Build.to_string path) with
+    | exception Unix.Unix_error (ENOENT, _, _) -> Fiber.return (Error No_such_file)
+    | exception exn -> Fiber.return (Error (Digest_result.Error.of_exn exn))
+    | stats ->
+      (match stats.st_kind with
+       | S_LNK ->
+         (match Unix.stat (Path.Build.to_string path) with
+          | stats -> refresh_async stats ~allow_dirs:false path
+          | exception Unix.Unix_error (ENOENT, _, _) ->
+            Fiber.return (Error Broken_symlink)
+          | exception exn -> Fiber.return (Error (Digest_result.Error.of_exn exn)))
+       | S_REG ->
+         let perm = Permissions.remove Permissions.write stats.st_perm in
+         (match Unix.chmod (Path.Build.to_string path) perm with
+          | () -> refresh_async ~allow_dirs:false { stats with st_perm = perm } path
+          | exception exn -> Fiber.return (Error (Digest_result.Error.of_exn exn)))
+       | _ ->
+         (* CR-someday amokhov: Shall we proceed if [stats.st_kind = S_DIR]?
+          What about stranger kinds like [S_SOCK]? *)
+         refresh_async ~allow_dirs stats path)
+  ;;
+
+  let refresh ~allow_dirs ~remove_write_permissions path =
+    (if remove_write_permissions
+     then refresh_and_remove_write_permissions_async
+     else refresh_without_removing_write_permissions_async)
+      ~allow_dirs
+      path
+  ;;
+end
+
 let compute_target_digests_or_raise_error
       ~should_remove_write_permissions_on_generated_files
       ~loc
@@ -482,7 +544,7 @@ let compute_target_digests_or_raise_error
        not change state once built. A very practical reason is that enabling
        the cache will remove write permission because of hardlink sharing
        anyway, so always removing them enables to catch mistakes earlier. *)
-    Cached_digest.refresh
+    File_digest.refresh
       ~allow_dirs:true
       ~remove_write_permissions:should_remove_write_permissions_on_generated_files
   in

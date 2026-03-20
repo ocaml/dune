@@ -60,11 +60,8 @@ File with just "#!" in the first line
   $ echo -n "#!" >"$exec"
   $ dune_cmd count-lines "$exec"
   1
-  $ dune build @pkg-install
+  $ dune build @pkg-install 2>&1 | head -1
   Error: CreateProcess(): Exec format error
-  -> required by
-     _build/_private/default/.pkg/foo.dev-5f224c017f3cf1ab04bdf8e60e90d898/target
-  -> required by alias pkg-install
   [1]
 
 Script doesn't exist

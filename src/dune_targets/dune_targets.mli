@@ -90,6 +90,7 @@ module Produced : sig
     ; contents : 'a dir_contents
     }
 
+  val head : _ t -> Path.Build.t
   val equal : 'a t -> 'a t -> equal:('a -> 'a -> bool) -> bool
 
   module Error : sig
@@ -124,7 +125,7 @@ module Produced : sig
   val mem_any : 'a t -> Path.Build.t -> bool
 
   (* Find the value associated with a file, or all the files of a subdirectory, if any. *)
-  val find_any : 'a t -> Path.Build.t -> ('a, 'a Filename.Map.t) either option
+  val find_any : 'a t -> Path.Build.t -> ('a, 'a dir_contents) either option
 
   (** Find the value associated with the file, if any. *)
   val find : 'a t -> Path.Build.t -> 'a option
@@ -147,6 +148,12 @@ module Produced : sig
   val to_list_map : 'a t -> f:(Path.Local.t -> 'a option -> 'b) -> 'b list
   val iter_files : 'a t -> f:(Path.Local.t -> 'a -> unit) -> unit
   val iter_dirs : 'a t -> f:(Path.Local.t -> unit) -> unit
+
+  val iteri_dir_contents
+    :  'a dir_contents
+    -> f:(Path.Local.t -> 'a -> unit)
+    -> d:(Path.Local.t -> unit)
+    -> unit
 
   (** Iterate on all [f]iles & [d]irs in the targets.
       All [Path.Local.t]s are relative to [t.root]. *)

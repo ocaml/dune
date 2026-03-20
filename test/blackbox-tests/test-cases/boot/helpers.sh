@@ -24,6 +24,17 @@ EOF
   export BUILD_PATH_PREFIX_MAP="/OCAMLC=$ocamlc:$BUILD_PATH_PREFIX_MAP"
 }
 
+function make_module() {
+  mkdir -p "$(dirname "$1")"
+  cat >"$1" <<- EOF
+module Spawn = Spawn
+module Re = Re
+module Csexp = Csexp
+module Pp = Pp
+module Uutf = Uutf
+EOF
+}
+
 # Creates a fake dune executable that depends on [$1] and emits bootstrap info
 # which is then used to bootstrap the fake dune.
 function create_dune() {

@@ -7,7 +7,8 @@ it picks up the closest one.
 
   $ mkdir a
 
-  $ cat > a/foo.ml << EOF
+  $ make_module a/foo.ml
+  $ cat >> a/foo.ml << EOF
   > let msg = "shouldn't be printed"
   > EOF
 

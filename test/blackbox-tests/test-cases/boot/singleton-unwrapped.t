@@ -4,7 +4,8 @@ Testing the bootstrap of singleton unwrapped libraries.
 
   $ mkdir -p src/a
 
-  $ cat > src/a/b.ml <<EOF
+  $ make_module src/a/b.ml
+  $ cat >> src/a/b.ml <<EOF
   > let () = Printf.printf "Hello from singleton unwrapped a/b.ml\n"
   > EOF
 

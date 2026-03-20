@@ -14,7 +14,7 @@ let run_build_system ~request =
          for the initial build if we assume that the user does not modify files
          in the [_build] directory. For now, it's unclear if optimising this is
          worth the effort. *)
-       Cached_digest.invalidate_cached_timestamps ();
+       Dune_digest.Cached_digest.invalidate_cached_timestamps ();
        let* setup = Util.setup () in
        let request = Action_builder.of_memo setup |> Action_builder.bind ~f:request in
        (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every

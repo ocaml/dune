@@ -1,7 +1,10 @@
 open Import
-open Dune_cache_storage
 open Layout
 open Fiber.O
+module Store_result = Dune_cache_storage.Store_result
+module Restore_result = Dune_cache_storage.Restore_result
+module Metadata_entry = Dune_cache_storage.Artifacts.Metadata_entry
+module Metadata_file = Dune_cache_storage.Artifacts.Metadata_file
 
 module Store_artifacts_result = struct
   type t =
@@ -87,98 +90,87 @@ let link_even_if_there_are_too_many_links_already ~src ~dst =
         Fpath.link src (Path.to_string dst))
 ;;
 
-module Artifacts = struct
-  include Dune_cache_storage.Artifacts
+let store_metadata ~mode ~metadata ~rule_digest (artifacts : Digest.t Targets.Produced.t) =
+  let entries =
+    Targets.Produced.to_list_map artifacts ~f:(fun target digest ->
+      { Metadata_entry.path = Path.Local.to_string target; digest })
+  in
+  Metadata_file.store ~mode { metadata; entries } ~rule_digest
+;;
 
-  let store_metadata
-        ~mode
-        ~metadata
-        ~rule_digest
-        (artifacts : Digest.t Targets.Produced.t)
-    =
-    let entries =
-      Targets.Produced.to_list_map artifacts ~f:(fun target digest ->
-        { Metadata_entry.path = Path.Local.to_string target; digest })
-    in
-    Metadata_file.store ~mode { metadata; entries } ~rule_digest
-  ;;
-
-  (* Step I of [store_skipping_metadata].
+(* Step I of [store_skipping_metadata].
 
      If any of the targets couldn't be stored in the temporary directory, then
      the result is [Error] with the corresponding exception. Otherwise, the
      result is [Ok ()]. *)
-  let store_targets_to ~temp_dir ~(targets : _ Targets.Produced.t) ~mode : unit Or_exn.t =
-    let portable_hardlink_or_copy =
-      match (mode : Mode.t) with
-      | Hardlink -> Io.portable_hardlink
-      | Copy -> fun ~src ~dst -> Io.copy_file ~src ~dst ()
-    in
-    Result.try_with (fun () ->
-      (* CR-someday rleshchinskiy: We recreate the directory structure here but it might be
+let store_targets_to ~temp_dir ~(targets : _ Targets.Produced.t) ~mode : unit Or_exn.t =
+  let portable_hardlink_or_copy =
+    match (mode : Mode.t) with
+    | Hardlink -> Io.portable_hardlink
+    | Copy -> fun ~src ~dst -> Io.copy_file ~src ~dst ()
+  in
+  Result.try_with (fun () ->
+    (* CR-someday rleshchinskiy: We recreate the directory structure here but it might be
          simpler to just use file digests instead of file names and no subdirectories. *)
-      (* The comment above seems outdated wrt. 'no subdirectories'... *)
-      Targets.Produced.iteri
-        targets
-        ~d:(fun dir -> Path.mkdir_p (Path.append_local temp_dir dir))
-        ~f:(fun file _ ->
-          let path_in_build_dir =
-            Path.build (Path.Build.append_local targets.root file)
-          in
-          let path_in_temp_dir = Path.append_local temp_dir file in
-          portable_hardlink_or_copy ~src:path_in_build_dir ~dst:path_in_temp_dir))
-  ;;
+    (* The comment above seems outdated wrt. 'no subdirectories'... *)
+    Targets.Produced.iteri
+      targets
+      ~d:(fun dir -> Path.mkdir_p (Path.append_local temp_dir dir))
+      ~f:(fun file _ ->
+        let path_in_build_dir = Path.build (Path.Build.append_local targets.root file) in
+        let path_in_temp_dir = Path.append_local temp_dir file in
+        portable_hardlink_or_copy ~src:path_in_build_dir ~dst:path_in_temp_dir))
+;;
 
-  (* Step II of [store_skipping_metadata].
+(* Step II of [store_skipping_metadata].
 
      Computing digests can be slow, so we do that in parallel. *)
-  let compute_digests_in ~temp_dir ~targets : Digest.t Targets.Produced.t Or_exn.t Fiber.t
-    =
-    let open Fiber.O in
-    Fiber.collect_errors (fun () ->
-      Targets.Produced.parallel_map targets ~f:(fun path target ->
-        let executable = Target.executable target in
-        let file = Path.append_local temp_dir path in
-        Dune_digest.file_with_executable_bit ~executable file))
-    >>| Result.map_error ~f:(function
-      | exn :: _ -> exn.Exn_with_backtrace.exn
-      | [] -> assert false)
-  ;;
+let compute_digests_in ~temp_dir ~targets : Digest.t Targets.Produced.t Or_exn.t Fiber.t =
+  let open Fiber.O in
+  Fiber.collect_errors (fun () ->
+    Targets.Produced.parallel_map targets ~f:(fun path target ->
+      let executable = Target.executable target in
+      let file = Path.append_local temp_dir path in
+      Dune_digest.file_with_executable_bit ~executable file))
+  >>| Result.map_error ~f:(function
+    | exn :: _ -> exn.Exn_with_backtrace.exn
+    | [] -> assert false)
+;;
 
-  (* Step III of [store_skipping_metadata]. *)
-  let store_to_cache_from ~temp_dir ~mode artifacts =
-    Targets.Produced.foldi
-      artifacts
-      ~init:Store_result.empty
-      ~f:(fun target digest results ->
-        match digest with
-        | None ->
-          (* No digest means [target] is a directory, simply ignore it. *)
-          results
-        | Some file_digest ->
-          let path_in_temp_dir = Path.append_local temp_dir target in
-          let path_in_cache = Lazy.force (file_path ~file_digest) in
-          let store_using_hardlinks () =
-            match Util.Optimistically.link ~src:path_in_temp_dir ~dst:path_in_cache with
-            | exception Unix.Unix_error (Unix.EEXIST, _, _) ->
-              (* We end up here if the cache already contains an entry for this
+(* Step III of [store_skipping_metadata]. *)
+let store_to_cache_from ~temp_dir ~mode artifacts =
+  Targets.Produced.foldi
+    artifacts
+    ~init:Store_result.empty
+    ~f:(fun target digest results ->
+      match digest with
+      | None ->
+        (* No digest means [target] is a directory, simply ignore it. *)
+        results
+      | Some file_digest ->
+        let path_in_temp_dir = Path.append_local temp_dir target in
+        let path_in_cache = Lazy.force (file_path ~file_digest) in
+        let store_using_hardlinks () =
+          match Util.Optimistically.link ~src:path_in_temp_dir ~dst:path_in_cache with
+          | exception Unix.Unix_error (Unix.EEXIST, _, _) ->
+            (* We end up here if the cache already contains an entry for this
                  artifact. We deduplicate by keeping only one copy, in the
                  cache. *)
-              let path_in_build_dir =
-                Path.build (Path.Build.append_local artifacts.root target)
-              in
-              (match
-                 Fpath.unlink_no_err (Path.to_string path_in_temp_dir);
-                 (* At first, we deduplicate the temporary file. Doing this
+            let path_in_build_dir =
+              Path.build (Path.Build.append_local artifacts.root target)
+            in
+            (match
+               Fpath.unlink_no_err (Path.to_string path_in_temp_dir);
+               (* At first, we deduplicate the temporary file. Doing this
                     intermediate step allows us to keep the original target in case
                     the below link step fails. This might happen if the trimmer has
                     just deleted [path_in_cache]. In this rare case, this function
                     fails with an [Error], and so we might end up with some
                     duplicates in the workspace. *)
-                 link_even_if_there_are_too_many_links_already
-                   ~src:path_in_cache
-                   ~dst:path_in_temp_dir;
-                 (* Now we can simply rename the temporary file into the target,
+               link_even_if_there_are_too_many_links_already
+                 ~src:path_in_cache
+                 ~dst:path_in_temp_dir;
+               (* Now we can simply rename the temporary file into the target,
                     knowing that the original target remains in place if the
                     renaming fails.
 
@@ -188,143 +180,140 @@ module Artifacts = struct
                     [rename] operation has a quirk where [path_in_temp_dir] can
                     remain on disk. This is not a problem because we clean the
                     temporary directory later. *)
-                 Fpath.rename_exn
-                   (Path.to_string path_in_temp_dir)
-                   (Path.to_string path_in_build_dir)
-               with
-               | exception e -> Store_result.Error e
-               | () -> Already_present)
-            | exception e -> Error e
-            | () -> Stored
-          in
-          let store_using_test_and_rename () =
-            (* CR-someday amokhov: There is a race here. If [path_in_cache] is
+               Fpath.rename_exn
+                 (Path.to_string path_in_temp_dir)
+                 (Path.to_string path_in_build_dir)
+             with
+             | exception e -> Store_result.Error e
+             | () -> Already_present)
+          | exception e -> Error e
+          | () -> Stored
+        in
+        let store_using_test_and_rename () =
+          (* CR-someday amokhov: There is a race here. If [path_in_cache] is
                created after [Fpath.exists] but before [Path.rename], it will be
                silently overwritten. Find a good way to avoid this race. *)
-            match Fpath.exists (Path.to_string path_in_cache) with
-            | true -> Store_result.Already_present
-            | false ->
-              (match
-                 Util.Optimistically.rename ~src:path_in_temp_dir ~dst:path_in_cache
-               with
-               | exception e -> Error e
-               | () -> Stored)
-          in
-          let result =
-            match (mode : Mode.t) with
-            | Hardlink -> store_using_hardlinks ()
-            | Copy -> store_using_test_and_rename ()
-          in
-          Store_result.combine results result)
-  ;;
+          match Fpath.exists (Path.to_string path_in_cache) with
+          | true -> Store_result.Already_present
+          | false ->
+            (match
+               Util.Optimistically.rename ~src:path_in_temp_dir ~dst:path_in_cache
+             with
+             | exception e -> Error e
+             | () -> Stored)
+        in
+        let result =
+          match (mode : Mode.t) with
+          | Hardlink -> store_using_hardlinks ()
+          | Copy -> store_using_test_and_rename ()
+        in
+        Store_result.combine results result)
+;;
 
-  let store_skipping_metadata ~mode ~targets : Store_artifacts_result.t Fiber.t =
-    Fiber.Temp.with_temp_dir
-      ~parent_dir:(Lazy.force Layout.temp_dir)
-      ~prefix:"dune"
-      ~suffix:"artifacts"
-      ~f:(function
-      | Error exn -> Fiber.return (Store_artifacts_result.Error exn)
-      | Ok temp_dir ->
-        (match store_targets_to ~temp_dir ~targets ~mode with
-         | Error exn -> Fiber.return (Store_artifacts_result.Error exn)
-         | Ok () ->
-           compute_digests_in ~temp_dir ~targets
-           >>| (function
-            | Error exn -> Store_artifacts_result.Error exn
-            | Ok artifacts ->
-              let result = store_to_cache_from ~temp_dir ~mode artifacts in
-              Store_artifacts_result.of_store_result ~artifacts result)))
-  ;;
+let store_skipping_metadata ~mode ~targets : Store_artifacts_result.t Fiber.t =
+  Fiber.Temp.with_temp_dir
+    ~parent_dir:(Lazy.force Layout.temp_dir)
+    ~prefix:"dune"
+    ~suffix:"artifacts"
+    ~f:(function
+    | Error exn -> Fiber.return (Store_artifacts_result.Error exn)
+    | Ok temp_dir ->
+      (match store_targets_to ~temp_dir ~targets ~mode with
+       | Error exn -> Fiber.return (Store_artifacts_result.Error exn)
+       | Ok () ->
+         compute_digests_in ~temp_dir ~targets
+         >>| (function
+          | Error exn -> Store_artifacts_result.Error exn
+          | Ok artifacts ->
+            let result = store_to_cache_from ~temp_dir ~mode artifacts in
+            Store_artifacts_result.of_store_result ~artifacts result)))
+;;
 
-  let store ~mode ~rule_digest targets : Store_artifacts_result.t Fiber.t =
-    let+ result = store_skipping_metadata ~mode ~targets in
-    Store_artifacts_result.bind result ~f:(fun artifacts ->
-      let result = store_metadata ~mode ~rule_digest ~metadata:[] artifacts in
-      Store_artifacts_result.of_store_result ~artifacts result)
-  ;;
+let store_artifacts ~mode ~rule_digest targets : Store_artifacts_result.t Fiber.t =
+  let+ result = store_skipping_metadata ~mode ~targets in
+  Store_artifacts_result.bind result ~f:(fun artifacts ->
+    let result = store_metadata ~mode ~rule_digest ~metadata:[] artifacts in
+    Store_artifacts_result.of_store_result ~artifacts result)
+;;
 
-  module File_restore = struct
-    exception E of Digest.t Targets.Produced.t Restore_result.t
+module File_restore = struct
+  exception E of Digest.t Targets.Produced.t Restore_result.t
 
-    module Unwind : sig
-      type t
+  module Unwind : sig
+    type t
 
-      val make : unit -> t
-      val push : t -> (unit -> unit) -> unit
-      val unwind : t -> unit
-    end = struct
-      type t = (unit -> unit) list ref
+    val make : unit -> t
+    val push : t -> (unit -> unit) -> unit
+    val unwind : t -> unit
+  end = struct
+    type t = (unit -> unit) list ref
 
-      let make () = ref []
-      let push t f = t := f :: !t
+    let make () = ref []
+    let push t f = t := f :: !t
 
-      let unwind t =
-        List.iter !t ~f:(fun f ->
-          try f () with
-          | _ -> ());
-        t := []
-      ;;
-    end
-
-    let hardlink ~src ~dst =
-      try link_even_if_there_are_too_many_links_already ~src ~dst with
-      | Unix.Unix_error (Unix.ENOENT, _, _) -> raise_notrace (E Not_found_in_cache)
-      | exn -> raise_notrace (E (Error exn))
-    ;;
-
-    let copy ~src ~dst =
-      try Io.copy_file ~src ~dst () with
-      | Sys_error _ -> raise_notrace (E Not_found_in_cache)
-    ;;
-
-    let create_all_or_none (mode : Mode.t) (artifacts : _ Targets.Produced.t) =
-      let unwind = Unwind.make () in
-      let rec mk_dir (dir : Path.Local.t) =
-        (match Path.Local.parent dir with
-         | Some parent when not (Path.Local.is_root parent) -> mk_dir parent
-         | Some _ | None -> ());
-        let path = Path.build (Path.Build.append_local artifacts.root dir) in
-        if not (Fpath.exists (Path.to_string path))
-        then (
-          Path.mkdir_p path;
-          Unwind.push unwind (fun () -> Unix.rmdir (Path.to_string path)))
-      in
-      let mk_file file file_digest =
-        let target = Path.Build.append_local artifacts.root file in
-        let dst = Path.build target in
-        let src = Lazy.force (file_path ~file_digest) in
-        (match mode with
-         | Hardlink -> hardlink ~src ~dst
-         | Copy -> copy ~src ~dst);
-        Unwind.push unwind (fun () -> Fpath.unlink_no_err (Path.Build.to_string target))
-      in
-      try Targets.Produced.iteri artifacts ~f:mk_file ~d:mk_dir with
-      | exn ->
-        Unwind.unwind unwind;
-        reraise exn
+    let unwind t =
+      List.iter !t ~f:(fun f ->
+        try f () with
+        | _ -> ());
+      t := []
     ;;
   end
 
-  let restore ~mode ~rule_digest ~target_dir =
-    Restore_result.bind (list ~rule_digest) ~f:(fun (entries : Metadata_entry.t list) ->
-      let artifacts =
-        Path.Local.Map.of_list_map_exn entries ~f:(fun { Metadata_entry.path; digest } ->
-          Path.Local.of_string path, digest)
-        |> Targets.Produced.of_files target_dir
-      in
-      try
-        File_restore.create_all_or_none mode artifacts;
-        Restored artifacts
-      with
-      | File_restore.E result ->
-        (* If [result] is [Not_found_in_cache] then one of the entries mentioned in
-           the metadata is missing. The trimmer will eventually delete such "broken"
-           metadata, so it is reasonable to consider that this [rule_digest] is not
-           found in the cache. *)
-        result)
+  let hardlink ~src ~dst =
+    try link_even_if_there_are_too_many_links_already ~src ~dst with
+    | Unix.Unix_error (Unix.ENOENT, _, _) -> raise_notrace (E Not_found_in_cache)
+    | exn -> raise_notrace (E (Error exn))
+  ;;
+
+  let copy ~src ~dst =
+    try Io.copy_file ~src ~dst () with
+    | Sys_error _ -> raise_notrace (E Not_found_in_cache)
+  ;;
+
+  let create_all_or_none (mode : Mode.t) (artifacts : _ Targets.Produced.t) =
+    let unwind = Unwind.make () in
+    let rec mk_dir (dir : Path.Local.t) =
+      (match Path.Local.parent dir with
+       | Some parent when not (Path.Local.is_root parent) -> mk_dir parent
+       | Some _ | None -> ());
+      let path = Path.build (Path.Build.append_local artifacts.root dir) in
+      if not (Fpath.exists (Path.to_string path))
+      then (
+        Path.mkdir_p path;
+        Unwind.push unwind (fun () -> Unix.rmdir (Path.to_string path)))
+    in
+    let mk_file file file_digest =
+      let target = Path.Build.append_local artifacts.root file in
+      let dst = Path.build target in
+      let src = Lazy.force (file_path ~file_digest) in
+      (match mode with
+       | Hardlink -> hardlink ~src ~dst
+       | Copy -> copy ~src ~dst);
+      Unwind.push unwind (fun () -> Fpath.unlink_no_err (Path.Build.to_string target))
+    in
+    try Targets.Produced.iteri artifacts ~f:mk_file ~d:mk_dir with
+    | exn ->
+      Unwind.unwind unwind;
+      reraise exn
   ;;
 end
 
-let store_artifacts = Artifacts.store
-let restore_artifacts = Artifacts.restore
+let restore_artifacts ~mode ~rule_digest ~target_dir =
+  Dune_cache_storage.Artifacts.list ~rule_digest
+  |> Restore_result.bind ~f:(fun (entries : Metadata_entry.t list) ->
+    let artifacts =
+      Path.Local.Map.of_list_map_exn entries ~f:(fun { Metadata_entry.path; digest } ->
+        Path.Local.of_string path, digest)
+      |> Targets.Produced.of_files target_dir
+    in
+    try
+      File_restore.create_all_or_none mode artifacts;
+      Restored artifacts
+    with
+    | File_restore.E result ->
+      (* If [result] is [Not_found_in_cache] then one of the entries mentioned in
+           the metadata is missing. The trimmer will eventually delete such "broken"
+           metadata, so it is reasonable to consider that this [rule_digest] is not
+           found in the cache. *)
+      result)
+;;

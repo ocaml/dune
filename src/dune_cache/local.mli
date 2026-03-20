@@ -69,7 +69,7 @@ type metadata
 (** A [Value] entry corresponds to the standard output of an action. *)
 module Value : sig
   module Metadata_file : sig
-    type t =
+    type t = private
       { metadata : metadata
       ; value_digest : Digest.t
       }
@@ -79,7 +79,7 @@ end
 (** An [Artifacts] entry corresponds to the targets produced by an action. *)
 module Artifacts : sig
   module Metadata_entry : sig
-    type t =
+    type t = private
       { path : Path.Local.t (** Can have more than one component for directory targets *)
       ; digest : Digest.t option
         (** This digest is always present in case [file_path] points to a file, and absent when it's a directory. *)
@@ -87,7 +87,7 @@ module Artifacts : sig
   end
 
   module Metadata_file : sig
-    type t =
+    type t = private
       { metadata : metadata
       ; (* The entries are listed in the same order that they were provided when
            storing artifacts in the cache. We keep the order to avoid confusion

@@ -8,7 +8,7 @@ module Public : sig
   val format : (unit, unit) Decl.Request.t
   val format_dune_file : (Path.t * [ `Contents of string ], string) Decl.Request.t
   val promote : (Path.t, unit) Decl.Request.t
-  val promote_many : (Files_to_promote.t, Build_outcome_with_diagnostics.t) Decl.Request.t
+  val promote_many : (Promote_targets.t, Build_outcome_with_diagnostics.t) Decl.Request.t
   val build_dir : (unit, Path.t) Decl.Request.t
   val runtest : (string list, Build_outcome_with_diagnostics.t) Decl.Request.t
 end

@@ -6,6 +6,7 @@ module Compound_user_error = Dune_rpc.Private.Compound_user_error
 module Stringlike = Dune_util.Stringlike
 module Files_to_promote = Dune_rpc.Private.Files_to_promote
 include Dune_scheduler
+module Dune_rpc = Dune_rpc.Private
 
 module type Stringlike = Dune_util.Stringlike
 

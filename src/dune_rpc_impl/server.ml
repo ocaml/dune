@@ -364,6 +364,7 @@ let handler (t : _ t Fdecl.t) : 'build_arg Dune_rpc_server.Handler.t =
       | Failure ->
         (match
            Diff_promotion.promote_files_registered_in_last_run
+             ~matching:Exact
              Dune_rpc.Files_to_promote.All
          with
          | [] -> ()
@@ -422,8 +423,8 @@ let handler (t : _ t Fdecl.t) : 'build_arg Dune_rpc_server.Handler.t =
     Handler.implement_request rpc Procedures.Public.diagnostics f
   in
   let () =
-    let f _ files =
-      match Diff_promotion.promote_files_registered_in_last_run files with
+    let f _ { Dune_rpc.Promote_targets.files; matching } =
+      match Diff_promotion.promote_files_registered_in_last_run ~matching files with
       | [] -> Fiber.return Dune_rpc.Build_outcome_with_diagnostics.Success
       | missing ->
         let warnings =
@@ -446,7 +447,9 @@ let handler (t : _ t Fdecl.t) : 'build_arg Dune_rpc_server.Handler.t =
     let f _ path =
       let files = For_handlers.source_path_of_string path in
       let _ignored : Path.Source.t list =
-        Diff_promotion.promote_files_registered_in_last_run (These [ files ])
+        Diff_promotion.promote_files_registered_in_last_run
+          ~matching:Exact
+          (These [ files ])
       in
       Fiber.return ()
     in

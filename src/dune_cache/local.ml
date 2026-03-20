@@ -120,10 +120,12 @@ let restore_metadata ~rule_or_action_digest ~of_sexp : _ Restore_result.t =
   |> restore_metadata_file ~of_sexp
 ;;
 
+type metadata = Sexp.t list
+
 module Value = struct
   module Metadata_file = struct
     type t =
-      { metadata : Sexp.t list
+      { metadata : metadata
       ; value_digest : Digest.t
       }
 

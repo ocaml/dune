@@ -64,11 +64,13 @@ module Restore_result : sig
     | Error of exn
 end
 
+type metadata
+
 (** A [Value] entry corresponds to the standard output of an action. *)
 module Value : sig
   module Metadata_file : sig
     type t =
-      { metadata : Sexp.t list
+      { metadata : metadata
       ; value_digest : Digest.t
       }
   end
@@ -86,7 +88,7 @@ module Artifacts : sig
 
   module Metadata_file : sig
     type t =
-      { metadata : Sexp.t list
+      { metadata : metadata
       ; (* The entries are listed in the same order that they were provided when
            storing artifacts in the cache. We keep the order to avoid confusion
            even though sorting the entres is tempting. *)

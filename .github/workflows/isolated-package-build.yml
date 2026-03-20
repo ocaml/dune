@@ -51,35 +51,34 @@ jobs:
 
       - name: Get dune version
         # Read the current version of Dune to determine the package versions in
-        # the next step. This information is not present in development opam
-        # files, but will be present in the releases.
+        # the next step. This information is absernt in development opam files,
+        # but will be present in the releases.
         id: dune-version
         run: echo "version=$(sed -nE 's/^\(lang dune ([0-9]+(\.[0-9]+)*)\)$/\1/p' dune-project)" >> $GITHUB_OUTPUT
 
       - name: Pin all packages without installing
-        # Some packages require its sibling package be of the same version.
-        # Furthermore, all packages depend on the current version of Dune. To
-        # make all the deps available, we pin all the packages in the `opam`
-        # directory but don't install them. This way the packages will be pulled
-        # in only if they're required by the package we're building and won't
-        # influence the solver.
+        # Some packages require their sibling packages to be at the same version.
+        # All packages also depend on the current version of dune. To make these
+        # dependencies available, we pin all packages in the `opam` directory without
+        # installing them. This way they are pulled in only if required by the package
+        # being built, without influencing the solver for unrelated dependencies.
         env:
           version: ${{ steps.dune-version.outputs.version }}
         run: for f in opam/*.opam; do pkg=${f##*/}; pkg=${pkg%.opam}; opam pin add "$pkg.$version" . -n; done
-
-      - name: Install package dependencies only
-        run: opam install "./opam/${{ matrix.package }}.opam" --deps-only --with-test -y
 
       - name: Activate opam environment
         run: |
           eval $(opam env)
           echo "PATH=$PATH" >> $GITHUB_ENV
 
-      - name: Bootstrap dune
-        run: |
-          ocaml boot/bootstrap.ml
-          ./dune.exe --version
+      - name: Install package
+        run: opam install ${{ matrix.package }} --with-test -y
 
-      - name: Check package builds and installs in isolation
-        # Builds only the current package.
-        run: ./dune.exe build -p "${{ matrix.package }}" @install
+      - name: Lower bounds test
+        # Verify that installation succeeds with lower-bound dependencies.
+        # The package is removed first so that opam reinstalls it fresh,
+        # resolving to the oldest compatible versions rather than reusing
+        # what is already installed.
+        run: |
+          opam remove ${{ matrix.package }}
+          opam install --solver=builtin-0install "--criteria=+count[version-lag,solution]" ${{ matrix.package }}

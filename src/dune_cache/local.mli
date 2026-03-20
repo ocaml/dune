@@ -17,41 +17,16 @@
 
 open Import
 
-module Store_artifacts_result : sig
-  (* Outcomes are ordered in the order of severity. *)
+module Store_result : sig
   type t =
-    | Stored of Digest.t Targets.Produced.t
-    | Already_present of Digest.t Targets.Produced.t
+    | Stored
+    | Already_present
     | Error of exn
-    (** [Error _] can happen due to genuine problems (cannot parse internal
-        cache files) or harmless ones (race with a concurrent change to the
-        cache). *)
     | Will_not_store_due_to_non_determinism of Sexp.t
+
+  val combine : t -> t -> t
+  val empty : t
 end
-
-module Target : sig
-  type t
-
-  (** Prepare the target for storing into shared cache.
-
-      If the given file is not regular (e.g. a symbolic link), return [None]
-      because such targets are not supported by the shared cache. Otherwise,
-      remove the "write" permissions and record some additional information
-      about the file, such as whether it is executable or not. *)
-  val create : Path.Build.t -> t option
-end
-
-(** Store targets produced by a rule with a given digest. If successful, this
-    operation will create one metadata entry plus one file entry per target in
-    the cache.
-
-    The [compute_digest] function is passed explicitly because the caller might
-    want to memoize and/or throttle file digest computations. *)
-val store_artifacts
-  :  mode:Mode.t
-  -> rule_digest:Digest.t
-  -> Target.t Targets.Produced.t
-  -> Store_artifacts_result.t Fiber.t
 
 module Restore_result : sig
   (** Note: [Error _] can be returned due to genuine problems (e.g. if we cannot
@@ -62,6 +37,8 @@ module Restore_result : sig
     | Restored of 'data
     | Not_found_in_cache
     | Error of exn
+
+  val bind : 'a t -> f:('a -> 'b t) -> 'b t
 end
 
 type metadata
@@ -79,7 +56,7 @@ end
 (** An [Artifacts] entry corresponds to the targets produced by an action. *)
 module Artifacts : sig
   module Metadata_entry : sig
-    type t = private
+    type t =
       { path : Path.Local.t (** Can have more than one component for directory targets *)
       ; digest : Digest.t option
         (** This digest is always present in case [file_path] points to a file, and absent when it's a directory. *)
@@ -87,13 +64,19 @@ module Artifacts : sig
   end
 
   module Metadata_file : sig
-    type t = private
+    type t =
       { metadata : metadata
       ; (* The entries are listed in the same order that they were provided when
            storing artifacts in the cache. We keep the order to avoid confusion
            even though sorting the entres is tempting. *)
         entries : Metadata_entry.t list
       }
+
+    val store
+      :  Metadata_entry.t list
+      -> mode:Mode.t
+      -> rule_digest:Dune_digest.t
+      -> Store_result.t
   end
 
   (** List entries of a metadata file produced by a rule with a given digest.
@@ -116,14 +99,3 @@ module Metadata : sig
       -> t Restore_result.t
   end
 end
-
-(** Restore targets produced by a rule with a given digest. If successful, this
-    operation will restore the targets on disk, in the [target_dir] directory,
-    and will also return their paths and digests. The caller is responsible for
-    removing stale versions of the targets, if any, before calling this
-    function. *)
-val restore_artifacts
-  :  mode:Mode.t
-  -> rule_digest:Digest.t
-  -> target_dir:Path.Build.t
-  -> Digest.t Targets.Produced.t Restore_result.t

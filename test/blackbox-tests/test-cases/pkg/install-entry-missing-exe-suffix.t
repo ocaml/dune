@@ -30,16 +30,5 @@ exists:
   >   (run %{bin:foo} workspace-test)))
   > EOF
 
-  $ dune build ./testout 2>&1 | strip_sandbox | sanitize_pkg_digest test.0.0.1
-  Error: entry
-  $SANDBOX/_private/default/.pkg/test.0.0.1-DIGEST_HASH/source/foo
-  in
-  $SANDBOX/_private/default/.pkg/test.0.0.1-DIGEST_HASH/source/test.install
-  does not exist
-  -> required by
-     _build/_private/default/.pkg/test.0.0.1-DIGEST_HASH/target/cookie
-  -> required by Loading all binaries in the lock directory for "default"
-  -> required by looking up binary "foo" in context "default"
-  -> required by %{bin:foo} at dune:3
-  -> required by _build/default/testout
-  [1]
+  $ dune build ./testout && cat _build/default/testout
+  workspace-test

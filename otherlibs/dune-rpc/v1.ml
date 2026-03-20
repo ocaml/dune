@@ -1,4 +1,4 @@
-open Dune_rpc_private
+open Private
 module Response = Response
 module Version_error = Version_error
 module Call = Call

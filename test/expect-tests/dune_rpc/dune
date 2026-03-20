@@ -3,7 +3,7 @@
  (inline_tests)
  (libraries
   dune_util
-  dune_rpc_private
+  dune_rpc
   dune_rpc_server
   dune_rpc_client
   stdune

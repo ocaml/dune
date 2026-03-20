@@ -1,6 +1,6 @@
 include Stdune
 module Console = Console
-module Dune_rpc = Dune_rpc_private
+module Dune_rpc = Dune_rpc.Private
 include Dune_scheduler
 
 include struct

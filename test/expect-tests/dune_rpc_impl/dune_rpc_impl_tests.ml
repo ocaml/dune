@@ -1,5 +1,5 @@
 open Stdune
-module Dune_rpc = Dune_rpc_private
+module Dune_rpc = Dune_rpc.Private
 
 let () =
   Stdune.Path.set_root (Stdune.Path.External.of_filename_relative_to_initial_cwd ".");
@@ -13,7 +13,7 @@ let test ~dir ~f main =
   Console.printf "------- RPC ------";
   Dune_engine.Build_system_error.For_tests.make ~description ~dir ~promotion:None ()
   |> Dune_rpc_impl.Diagnostics.For_tests.diagnostic_of_error
-  |> Dune_rpc_private.Diagnostic.to_user_message
+  |> Dune_rpc.Diagnostic.to_user_message
   |> f
 ;;
 

@@ -1,7 +1,7 @@
 open Stdune
 
 module Where =
-  Dune_rpc_private.Where.Make
+  Dune_rpc.Private.Where.Make
     (struct
       type 'a t = 'a
 
@@ -47,12 +47,12 @@ let to_socket = function
   | `Ip (`Host host, `Port port) -> Unix.ADDR_INET (Unix.inet_addr_of_string host, port)
 ;;
 
-let to_string t = Dune_rpc_private.Where.to_string t
+let to_string t = Dune_rpc.Private.Where.to_string t
 
 let rpc_socket_file =
   let f =
     lazy
-      (Path.Build.(relative root) Dune_rpc_private.Where.rpc_socket_relative_to_build_dir)
+      (Path.Build.(relative root) Dune_rpc.Private.Where.rpc_socket_relative_to_build_dir)
   in
   fun () -> Lazy.force f
 ;;

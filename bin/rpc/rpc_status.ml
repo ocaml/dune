@@ -34,8 +34,8 @@ let server_response_map ~where ~f =
         let** decl =
           Client.Versioned.prepare_request
             session
-            (Dune_rpc_private.Decl.Request.witness Dune_rpc_impl.Decl.status)
-          >>| Result.map_error ~f:Dune_rpc_private.Version_error.message
+            (Dune_rpc.Decl.Request.witness Dune_rpc_impl.Decl.status)
+          >>| Result.map_error ~f:Dune_rpc.Version_error.message
         in
         Client.request session decl ()
         >>| Result.map_error ~f:Dune_rpc.Response.Error.message
@@ -45,11 +45,11 @@ let server_response_map ~where ~f =
 
 (** Get a list of registered Dunes from the RPC registry *)
 let registered_dunes () : Dune_rpc.Registry.Dune.t list Fiber.t =
-  let config = Dune_rpc_private.Registry.Config.create (Lazy.force Dune_util.xdg) in
-  let registry = Dune_rpc_private.Registry.create config in
+  let config = Dune_rpc.Registry.Config.create (Lazy.force Dune_util.xdg) in
+  let registry = Dune_rpc.Registry.create config in
   let open Fiber.O in
   let+ _result = Dune_rpc_impl.Poll_active.poll registry in
-  Dune_rpc_private.Registry.current registry
+  Dune_rpc.Registry.current registry
 ;;
 
 (** The type of server statuses *)
@@ -61,9 +61,9 @@ type status =
 
 (** Fetch the status of a single Dune instance *)
 let get_status (dune : Dune_rpc.Registry.Dune.t) =
-  let root = Dune_rpc_private.Registry.Dune.root dune in
-  let pid = Dune_rpc_private.Registry.Dune.pid dune |> Pid.of_int in
-  let where = Dune_rpc_private.Registry.Dune.where dune in
+  let root = Dune_rpc.Registry.Dune.root dune in
+  let pid = Dune_rpc.Registry.Dune.pid dune |> Pid.of_int in
+  let where = Dune_rpc.Registry.Dune.where dune in
   let open Fiber.O in
   let+ result = server_response_map ~where ~f:List.length in
   { root; pid; result }
@@ -130,7 +130,7 @@ let term =
           | Menu menu ->
             [ Pp.textf "Client [%s] with the following RPC versions:" id
             ; Pp.enumerate menu ~f:(fun (method_, version) ->
-                Pp.textf "%s: %d" (Dune_rpc_private.Method.Name.to_string method_) version)
+                Pp.textf "%s: %d" (Dune_rpc.Method.Name.to_string method_) version)
             ]
         in
         Console.print message))

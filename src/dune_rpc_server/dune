@@ -9,5 +9,5 @@
   ordering
   dune_trace
   dune_util
-  dune_rpc_private
+  dune_rpc
   unix))

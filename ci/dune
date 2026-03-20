@@ -1,6 +1,6 @@
 (executable
  (name update_version)
- (libraries stdune dune_rpc_private re))
+ (libraries stdune dune_rpc re))
 
 (rule
  (deps bench.yml.in)

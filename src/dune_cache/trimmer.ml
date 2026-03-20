@@ -1,5 +1,4 @@
 open Import
-open Dune_cache_storage
 
 module Trimming_result = struct
   type t =
@@ -36,7 +35,7 @@ let trim_broken_metadata_entries ~trimmed_so_far =
         ~init:trimmed_so_far
         ~f:(fun trimmed_so_far (path, rule_or_action_digest) ->
           let should_be_removed =
-            match Metadata.Versioned.restore version ~rule_or_action_digest with
+            match Local.Metadata.Versioned.restore version ~rule_or_action_digest with
             | Not_found_in_cache ->
               (* A concurrent process must have removed this metadata file. No
                  need to try removing such "phantom" metadata files again. *)
@@ -46,13 +45,15 @@ let trim_broken_metadata_entries ~trimmed_so_far =
               true
             | Restored metadata ->
               (match metadata with
-               | Metadata.Value _ ->
+               | Value _ ->
                  (* We do not expect to see any value entries in the cache. Let's
                     keep them untrimmed for now. *)
                  false
-               | Metadata.Artifacts { entries; _ } ->
+               | Artifacts { entries; metadata = _ } ->
                  List.exists entries ~f:(function
-                   | { Artifacts.Metadata_entry.digest = Some file_digest; path = _ } ->
+                   | { Local.Artifacts.Metadata_entry.digest = Some file_digest
+                     ; path = _
+                     } ->
                      let reference = Lazy.force (file_path ~file_digest) in
                      not (Fpath.exists (Path.to_string reference))
                      (* no digest means it's a directory. *)

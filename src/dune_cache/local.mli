@@ -53,6 +53,68 @@ val store_artifacts
   -> Target.t Targets.Produced.t
   -> Store_artifacts_result.t Fiber.t
 
+module Restore_result : sig
+  (** Note: [Error _] can be returned due to genuine problems (e.g. if we cannot
+      parse an internal cache file) or harmless ones (e.g. if another process
+      deletes a cache file between the existence check and the load). *)
+
+  type 'data t =
+    | Restored of 'data
+    | Not_found_in_cache
+    | Error of exn
+end
+
+(** A [Value] entry corresponds to the standard output of an action. *)
+module Value : sig
+  module Metadata_file : sig
+    type t =
+      { metadata : Sexp.t list
+      ; value_digest : Digest.t
+      }
+  end
+end
+
+(** An [Artifacts] entry corresponds to the targets produced by an action. *)
+module Artifacts : sig
+  module Metadata_entry : sig
+    type t =
+      { path : Path.Local.t (** Can have more than one component for directory targets *)
+      ; digest : Digest.t option
+        (** This digest is always present in case [file_path] points to a file, and absent when it's a directory. *)
+      }
+  end
+
+  module Metadata_file : sig
+    type t =
+      { metadata : Sexp.t list
+      ; (* The entries are listed in the same order that they were provided when
+           storing artifacts in the cache. We keep the order to avoid confusion
+           even though sorting the entres is tempting. *)
+        entries : Metadata_entry.t list
+      }
+  end
+
+  (** List entries of a metadata file produced by a rule with a given digest.
+      The list of entries is restored only in memory, i.e. no new files will be
+      created. *)
+  val list : rule_digest:Dune_digest.t -> Metadata_entry.t list Restore_result.t
+end
+
+(** Some generic operations on metadata files. *)
+module Metadata : sig
+  type t =
+    | Artifacts of Artifacts.Metadata_file.t
+    | Value of Value.Metadata_file.t
+
+  module Versioned : sig
+    (** Same as the unversioned function but supports old metadata versions. *)
+    val restore
+      :  Version.Metadata.t
+      -> rule_or_action_digest:Dune_digest.t
+      -> t Restore_result.t
+  end
+end
+
 (** Restore targets produced by a rule with a given digest. If successful, this
     operation will restore the targets on disk, in the [target_dir] directory,
     and will also return their paths and digests. The caller is responsible for
@@ -62,4 +124,4 @@ val restore_artifacts
   :  mode:Mode.t
   -> rule_digest:Digest.t
   -> target_dir:Path.Build.t
-  -> Digest.t Targets.Produced.t Dune_cache_storage.Restore_result.t
+  -> Digest.t Targets.Produced.t Restore_result.t

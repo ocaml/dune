@@ -1153,14 +1153,7 @@ module Action_expander = struct
             let binaries =
               Section.Map.Multi.find cookie.files Bin
               |> List.fold_left ~init:binaries ~f:(fun acc bin ->
-                let name = Path.basename bin in
-                (* CR-soon Alizter: share .exe stripping logic with artifacts.ml *)
-                let name =
-                  if Sys.win32
-                  then Option.value ~default:name (String.drop_suffix name ~suffix:".exe")
-                  else name
-                in
-                Filename.Map.set acc name bin)
+                Filename.Map.set acc (Bin.strip_exe (Path.basename bin)) bin)
             in
             let dep_info =
               let variables =

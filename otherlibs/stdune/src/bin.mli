@@ -23,6 +23,9 @@ val exe : string
 (** Adds an [.exe] suffix unless it is already present *)
 val add_exe : string -> string
 
+(** Strips an [.exe] suffix on Windows, returns unchanged on other platforms *)
+val strip_exe : string -> string
+
 (** Check if a file exists *)
 val exists : Path.t -> bool
 

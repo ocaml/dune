@@ -86,6 +86,7 @@ module For_tests = struct
   module Ocamlobjinfo = Ocamlobjinfo
   module Action_unexpanded = Action_unexpanded
   module Cram_exec = Cram_exec
+  module Which = Which
 end
 
 module Coq = struct

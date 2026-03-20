@@ -93,7 +93,7 @@ let link_even_if_there_are_too_many_links_already ~src ~dst =
 let store_metadata ~mode ~metadata ~rule_digest (artifacts : Digest.t Targets.Produced.t) =
   let entries =
     Targets.Produced.to_list_map artifacts ~f:(fun target digest ->
-      { Metadata_entry.path = Path.Local.to_string target; digest })
+      { Metadata_entry.path = target; digest })
   in
   Metadata_file.store ~mode { metadata; entries } ~rule_digest
 ;;
@@ -303,7 +303,7 @@ let restore_artifacts ~mode ~rule_digest ~target_dir =
   |> Restore_result.bind ~f:(fun (entries : Metadata_entry.t list) ->
     let artifacts =
       Path.Local.Map.of_list_map_exn entries ~f:(fun { Metadata_entry.path; digest } ->
-        Path.Local.of_string path, digest)
+        path, digest)
       |> Targets.Produced.of_files target_dir
     in
     try

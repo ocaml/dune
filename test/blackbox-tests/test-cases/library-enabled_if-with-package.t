@@ -22,9 +22,6 @@ Private library:
   > EOF
 
   $ dune build
-  Error: Dependency cycle between:
-     %{read:configure/enabled} at optional_lib/dune:3
-  [1]
 
 Public library:
 
@@ -50,6 +47,3 @@ Public library:
   > EOF
 
   $ dune build
-  Error: Dependency cycle between:
-     %{read:configure/enabled} at mylib/dune:4
-  [1]

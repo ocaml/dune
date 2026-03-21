@@ -30,7 +30,7 @@ Let's add a comment to the dune file. It shouldn't affect the rule digest.
 
 ... and it doesn't.
 
-  $ rm _build/default/target target
+  $ rm -rf _build/
   $ dune build @default
   running...
   digest: $1

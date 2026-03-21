@@ -71,7 +71,7 @@ Verify we see cache miss events for our targets in the trace:
 Test that rebuilding works. Now we expect to see only workspace-local cache
 misses, because we've cleaned _build/default but not the shared cache.
 
-  $ rm -rf _build/default
+  $ rm -rf _build/
   $ dune build --config-file=config target1
 
 Verify we see only workspace-local miss events for our targets (shared cache hits should not appear as misses):
@@ -80,12 +80,12 @@ Verify we see only workspace-local miss events for our targets (shared cache hit
   {
     "name": "workspace_local_miss",
     "target": "_build/default/source",
-    "reason": "target missing from build dir"
+    "reason": "never seen this target before"
   }
   {
     "name": "workspace_local_miss",
     "target": "_build/default/target1",
-    "reason": "target missing from build dir"
+    "reason": "never seen this target before"
   }
 
   $ dune_cmd stat hardlinks _build/default/source

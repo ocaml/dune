@@ -46,7 +46,7 @@ Switch to the 'hardlink' mode now
 
 Build succeeds and the 'hardlink' mode is respected
 
-  $ rm -rf _build/default
+  $ rm -rf _build/
   $ dune build --config-file config target
   $ dune_cmd stat hardlinks _build/default/target
   3
@@ -141,7 +141,7 @@ So, we comply and delete it
 
 Build succeeds and the 'copy' mode is respected
 
-  $ rm -rf _build/default
+  $ rm -rf _build/
   $ dune build --config-file config target
   $ dune_cmd stat hardlinks _build/default/target
   1
@@ -156,7 +156,7 @@ Switch to the 'hardlink' mode now
 
 Build succeeds and the 'hardlink' mode is respected
 
-  $ rm -rf _build/default
+  $ rm -rf _build/
   $ dune build --config-file config target
   $ dune_cmd stat hardlinks _build/default/target
   3
@@ -172,7 +172,7 @@ Let's disable the cache
 Test that in this mode the shared cache directory is not created
 
   $ rm -rf $DUNE_CACHE_ROOT
-  $ rm -rf _build/default
+  $ rm -rf _build/
   $ dune build --config-file config target
   $ dune_cmd stat hardlinks _build/default/target
   1
@@ -181,7 +181,7 @@ Test that in this mode the shared cache directory is not created
 
 Test that the cache can be enabled via the environment variable
 
-  $ rm -rf _build/default
+  $ rm -rf _build/
   $ DUNE_CACHE=enabled dune build --config-file config target
   $ dune_cmd stat hardlinks _build/default/target
   3
@@ -191,7 +191,7 @@ Test that the cache can be enabled via the environment variable
 Test that we can override the environment variable from the command line
 
   $ rm -rf $DUNE_CACHE_ROOT
-  $ rm -rf _build/default
+  $ rm -rf _build/
   $ DUNE_CACHE=enabled dune build --config-file config target --cache=disabled
   $ dune_cmd stat hardlinks _build/default/target
   1
@@ -206,7 +206,7 @@ Test that we can override the storage mode via the environment variable
   > (cache-storage-mode hardlink)
   > EOF
 
-  $ rm -rf _build/default
+  $ rm -rf _build/
   $ DUNE_CACHE_STORAGE_MODE=copy dune build --config-file config target
   $ dune_cmd stat hardlinks _build/default/target
   1
@@ -214,7 +214,7 @@ Test that we can override the storage mode via the environment variable
 Test that we can override the environment variable from the command line
 
   $ rm -rf $DUNE_CACHE_ROOT
-  $ rm -rf _build/default
+  $ rm -rf _build
   $ DUNE_CACHE_STORAGE_MODE=copy dune build --config-file config target --cache-storage-mode=hardlink
   $ dune_cmd stat hardlinks _build/default/target
   3

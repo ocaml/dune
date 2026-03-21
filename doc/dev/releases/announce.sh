@@ -4,7 +4,7 @@
 OCAML_ORG_REPO="${HOME}/Repos/ocaml/ocaml.org"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-ROOT="${SCRIPT_DIR}/../../"
+ROOT="${SCRIPT_DIR}/../../.."
 CHANGES="${ROOT}/CHANGES.md"
 
 set -ue
@@ -88,9 +88,6 @@ changelog: |
 ${changelog}
 
 ---
-
-The Dune team is pleased to announce [the release of dune
-${version}](https://github.com/ocaml/dune/releases/tag/${version}).
 """
 
     if is_patch_release "$version"

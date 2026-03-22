@@ -27,13 +27,11 @@ Patch-back sandboxing from an included deps file is treated like direct patch-ba
   > EOF
 
   $ dune runtest
-  File "dune", lines 1-4, characters 0-104:
-  1 | (rule
-  2 |  (alias runtest)
-  3 |  (deps mod (sandbox patch_back_source_tree))
-  4 |  (action (system "echo foo > mod")))
-  Error: This rule forbids all sandboxing modes (but it also requires
-  sandboxing)
+  File "mod", line 1, characters 0-0:
+  --- mod
+  +++ _build/default/mod
+  @@ -0,0 +1 @@
+  +foo
   [1]
 
   $ make_dune_project 3.22

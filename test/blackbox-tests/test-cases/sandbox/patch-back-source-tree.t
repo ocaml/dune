@@ -4,7 +4,7 @@ This sandbox allows to safely "modify" source files by turning modifications
 into promotions.
 
   $ cat >dune-project<<EOF
-  > (lang dune 3.22)
+  > (lang dune 3.23)
   > EOF
 
 Targest are not promoted

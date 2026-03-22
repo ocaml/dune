@@ -129,33 +129,6 @@ module Processed = struct
     let name = "merlin-conf"
     let version = 8
     let to_dyn _ = Dyn.String "Use [dune ocaml dump-dot-merlin] instead"
-
-    let test_example () =
-      { config =
-          { stdlib_dir = None
-          ; source_root = Path.Source.root |> Path.source
-          ; obj_dirs = Path.Set.empty
-          ; src_dirs = Path.Set.empty
-          ; hidden_obj_dirs = Path.Set.empty
-          ; hidden_src_dirs = Path.Set.empty
-          ; flags = [ "-x" ]
-          ; extensions = [ { Ml_kind.Dict.intf = None; impl = Some "ext" } ]
-          ; indexes = []
-          ; parameters = []
-          }
-      ; per_file_config = Path.Build.Map.empty
-      ; pp_config =
-          (match
-             Module_name.Per_item.of_mapping
-               [ ( [ Module_name.of_checked_string "Test" ]
-                 , Some { flag = Ppx; args = "-x" } )
-               ]
-               ~default:None
-           with
-           | Ok s -> s
-           | Error (_, _, _) -> assert false)
-      }
-    ;;
   end
 
   module Persist = Dune_util.Persistent.Make (D)

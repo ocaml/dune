@@ -146,17 +146,6 @@ module P = Persistent.Make (struct
     let name = "TO-PROMOTE"
     let version = 4
     let to_dyn = Dyn.list dyn_of_op
-
-    let test_example () =
-      [ File
-          { File.src = Path.Build.(relative root "foo")
-          ; dst = Path.Source.of_string "bar"
-          ; staging = Some Path.Build.(relative root "baz")
-          }
-      ; Delete (`File, Path.Source.of_string "foo")
-      ; Delete (`Directory, Path.Source.of_string "foo")
-      ]
-    ;;
   end)
 
 let db_file = Path.relative Path.build_dir ".to-promote"

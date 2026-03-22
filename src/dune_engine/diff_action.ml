@@ -6,21 +6,6 @@ let compare_file_paths = function
   | Text -> Io.compare_text_files
 ;;
 
-let compare_files { Diff.optional; mode; file1; file2 } =
-  let file2_exists = lazy (Fpath.exists (Path.Build.to_string file2)) in
-  if optional && not (Lazy.force file2_exists)
-  then
-    (* Small optimization to avoid stat'ing file1 *)
-    `Eq true
-  else (
-    let file1_exists = Fpath.exists (Path.to_string file1) in
-    match file1_exists, Lazy.force file2_exists with
-    | true, true -> `Eq (compare_file_paths mode file1 (Path.build file2) = Eq)
-    | false, false -> `Eq true
-    | true, false -> if optional then `Eq true else `Delete
-    | false, true -> `Eq false)
-;;
-
 type kind =
   | Missing
   | File
@@ -30,7 +15,6 @@ type file_diff =
   { source_file : Path.Source.t
   ; file1 : Path.t
   ; file2 : Path.t
-  ; kind : Diff.Mode.t
   }
 
 type change =
@@ -44,6 +28,15 @@ type promotion =
       }
   | Delete of [ `File | `Directory ] * Path.Source.t
   | Create_directory of Path.Source.t
+
+type plan =
+  { changes : change list
+  ; promotions : promotion list
+  }
+
+let empty_plan = { changes = []; promotions = [] }
+let add_change plan change = { plan with changes = change :: plan.changes }
+let add_promotion plan promotion = { plan with promotions = promotion :: plan.promotions }
 
 let remove_intermediate_target path =
   match Fpath.unlink (Path.Build.to_string path) with
@@ -80,10 +73,10 @@ let promotion source_file =
   }
 ;;
 
-let run_change loc ~patch_back = function
+let run_change loc ~patch_back (mode : Diff.Mode.t) = function
   | Message messages -> User_error.raise ~loc messages
-  | File_diff { source_file; file1; file2; kind } ->
-    (match kind with
+  | File_diff { source_file; file1; file2 } ->
+    (match mode with
      | Text ->
        Print_diff.print
          ~patch_back
@@ -113,9 +106,9 @@ let register_promotions how promotions =
 let kind_of_path ~loc path =
   match Path.Untracked.stat path with
   | Error ((ENOENT | ENOTDIR), _, _) -> Missing
-  | Ok { Unix.st_kind = S_REG; _ } -> File
-  | Ok { Unix.st_kind = S_DIR; _ } -> Directory
-  | Ok { Unix.st_kind; _ } ->
+  | Ok { st_kind = S_REG; _ } -> File
+  | Ok { st_kind = S_DIR; _ } -> Directory
+  | Ok { st_kind; _ } ->
     User_error.raise
       ~loc
       [ Pp.textf
@@ -144,203 +137,182 @@ let list_directory ~loc path =
       ]
 ;;
 
-let exec_directory loc ~patch_back { Diff.optional; mode; file1; file2 } =
-  let source_root = source_root file1 in
-  let source_file rel =
-    if String.equal rel "" then source_root else Path.Source.relative source_root rel
+type tree_diff =
+  { loc : Loc.t
+  ; mode : Diff.Mode.t
+  ; source_root : Path.Source.t
+  ; source_root_path : Path.t
+  ; target_dir : Path.Build.t
+  }
+
+let plan_tree_diff ({ mode; source_root; _ } as t) =
+  let source_file rel = Path.Source.append_local source_root rel in
+  let source_path rel =
+    if rel = Path.Local.root then t.source_root_path else Path.source (source_file rel)
   in
-  let source_path rel = Path.source (source_file rel) in
-  let target_path rel =
-    let path = if String.equal rel "" then file2 else Path.Build.relative file2 rel in
-    Path.build path
-  in
-  let target_file rel =
-    if String.equal rel "" then file2 else Path.Build.relative file2 rel
-  in
+  let target_path rel = Path.build (Path.Build.append_local t.target_dir rel) in
+  let kind_of_source rel = kind_of_path ~loc:t.loc (source_path rel) in
+  let kind_of_target rel = kind_of_path ~loc:t.loc (target_path rel) in
+  let list_target_directory rel = list_directory ~loc:t.loc (target_path rel) in
   let path_name rel = Path.Source.to_string_maybe_quoted (source_file rel) in
-  let append_rel rel name = if String.equal rel "" then name else rel ^ "/" ^ name in
-  let promotions = ref [] in
-  let changes = ref [] in
-  let add_message message = changes := Message [ message ] :: !changes in
-  let add_promote_file rel =
-    promotions
-    := Promote_file { source_file = source_file rel; correction_file = target_file rel }
-       :: !promotions
+  let add_message plan message = add_change plan (Message [ message ]) in
+  let add_promote_file plan rel =
+    add_promotion
+      plan
+      (Promote_file
+         { source_file = source_file rel
+         ; correction_file = Path.Build.append_local t.target_dir rel
+         })
   in
-  let add_file_diff rel =
+  let add_file_diff plan rel =
     let source_file = source_file rel in
-    add_promote_file rel;
-    changes
-    := File_diff
-         { source_file; file1 = source_path rel; file2 = target_path rel; kind = mode }
-       :: !changes
+    let plan = add_promote_file plan rel in
+    let change =
+      File_diff { source_file; file1 = source_path rel; file2 = target_path rel }
+    in
+    add_change plan change
   in
-  let add_delete what rel =
-    promotions := Delete (what, source_file rel) :: !promotions;
-    let what =
+  let add_delete plan what rel =
+    let plan = add_promotion plan (Delete (what, source_file rel)) in
+    let what_text =
       match what with
       | `File -> "File"
       | `Directory -> "Directory"
     in
-    add_message (Pp.textf "%s %s should be deleted" what (path_name rel))
+    add_message plan (Pp.textf "%s %s should be deleted" what_text (path_name rel))
   in
-  let add_create_directory rel =
-    promotions := Create_directory (source_file rel) :: !promotions
+  let add_create_directory ~announce plan rel =
+    let plan = add_promotion plan (Create_directory (source_file rel)) in
+    if announce
+    then add_message plan (Pp.textf "Directory %s should be created" (path_name rel))
+    else plan
   in
-  let source_kind_of rel = kind_of_path ~loc (source_path rel) in
-  let target_kind_of rel = kind_of_path ~loc (target_path rel) in
-  let rec collect_target_only rel target_kind =
+  let rec collect_target_only rel target_kind plan =
     match target_kind with
-    | Missing -> ()
-    | File -> add_promote_file rel
+    | Missing -> plan
+    | File -> add_promote_file plan rel
     | Directory ->
-      add_create_directory rel;
-      List.iter
-        (list_directory ~loc (target_path rel))
-        ~f:(fun name ->
-          let rel = append_rel rel name in
-          collect_target_only rel (target_kind_of rel))
-  in
-  let rec loop rel source_kind target_kind =
+      list_target_directory rel
+      |> List.fold_left
+           ~init:(add_create_directory ~announce:false plan rel)
+           ~f:(fun plan name ->
+             let rel = Path.Local.relative rel name in
+             collect_target_only rel (kind_of_target rel) plan)
+  and loop rel source_kind target_kind plan =
     match source_kind, target_kind with
-    | Missing, Missing -> ()
+    | Missing, Missing -> plan
     | File, File ->
-      if compare_file_paths mode (source_path rel) (target_path rel) <> Eq
-      then add_file_diff rel
-    | Missing, File -> add_file_diff rel
+      (match compare_file_paths mode (source_path rel) (target_path rel) with
+       | Eq -> plan
+       | _ -> add_file_diff plan rel)
+    | Missing, File -> add_file_diff plan rel
     | Directory, File ->
-      add_promote_file rel;
-      add_message (Pp.textf "Directory %s should be replaced with a file" (path_name rel))
-    | File, Missing -> add_delete `File rel
-    | Directory, Missing -> add_delete `Directory rel
+      let plan = add_promote_file plan rel in
+      add_message
+        plan
+        (Pp.textf "Directory %s should be replaced with a file" (path_name rel))
+    | File, Missing -> add_delete plan `File rel
+    | Directory, Missing -> add_delete plan `Directory rel
     | Missing, Directory ->
-      let entries = list_directory ~loc (target_path rel) in
-      add_create_directory rel;
+      let entries = list_target_directory rel in
+      let plan = add_create_directory ~announce:(List.is_empty entries) plan rel in
       if List.is_empty entries
-      then add_message (Pp.textf "Directory %s should be created" (path_name rel))
+      then plan
       else
-        List.iter entries ~f:(fun name ->
-          let rel = append_rel rel name in
-          loop rel Missing (target_kind_of rel))
+        List.fold_left entries ~init:plan ~f:(fun plan name ->
+          let rel = Path.Local.relative rel name in
+          loop rel Missing (kind_of_target rel) plan)
     | File, Directory ->
-      add_create_directory rel;
-      add_message (Pp.textf "File %s should be replaced with a directory" (path_name rel));
-      list_directory ~loc (target_path rel)
-      |> List.iter ~f:(fun name ->
-        let rel = append_rel rel name in
-        collect_target_only rel (target_kind_of rel))
+      list_target_directory rel
+      |> List.fold_left
+           ~init:
+             (let plan = add_create_directory ~announce:false plan rel in
+              add_message
+                plan
+                (Pp.textf "File %s should be replaced with a directory" (path_name rel)))
+           ~f:(fun plan name ->
+             let rel = Path.Local.relative rel name in
+             collect_target_only rel (kind_of_target rel) plan)
     | Directory, Directory ->
-      let rec merge source_entries target_entries =
+      let rec merge source_entries target_entries plan =
         match source_entries, target_entries with
-        | [], [] -> ()
+        | [], [] -> plan
         | name :: source_entries, [] ->
-          let rel = append_rel rel name in
-          loop rel (source_kind_of rel) Missing;
-          merge source_entries []
+          let rel = Path.Local.relative rel name in
+          let plan = loop rel (kind_of_source rel) Missing plan in
+          merge source_entries [] plan
         | [], name :: target_entries ->
-          let rel = append_rel rel name in
-          loop rel Missing (target_kind_of rel);
-          merge [] target_entries
+          let rel = Path.Local.relative rel name in
+          let plan = loop rel Missing (kind_of_target rel) plan in
+          merge [] target_entries plan
         | source_name :: source_entries, target_name :: target_entries ->
           (match Filename.compare source_name target_name with
            | Lt ->
-             let rel = append_rel rel source_name in
-             loop rel (source_kind_of rel) Missing;
-             merge source_entries (target_name :: target_entries)
+             let rel = Path.Local.relative rel source_name in
+             let plan = loop rel (kind_of_source rel) Missing plan in
+             merge source_entries (target_name :: target_entries) plan
            | Eq ->
-             let rel = append_rel rel source_name in
-             loop rel (source_kind_of rel) (target_kind_of rel);
-             merge source_entries target_entries
+             let rel = Path.Local.relative rel source_name in
+             let plan = loop rel (kind_of_source rel) (kind_of_target rel) plan in
+             merge source_entries target_entries plan
            | Gt ->
-             let rel = append_rel rel target_name in
-             loop rel Missing (target_kind_of rel);
-             merge (source_name :: source_entries) target_entries)
+             let rel = Path.Local.relative rel target_name in
+             let plan = loop rel Missing (kind_of_target rel) plan in
+             merge (source_name :: source_entries) target_entries plan)
       in
-      merge
-        (list_directory ~loc (source_path rel))
-        (list_directory ~loc (target_path rel))
+      merge (list_directory ~loc:t.loc (source_path rel)) (list_target_directory rel) plan
   in
-  let source_kind = source_kind_of "" in
-  let target_kind = target_kind_of "" in
-  if optional && target_kind = Missing
-  then Fiber.return ()
-  else (
-    loop "" source_kind target_kind;
-    match List.rev !changes with
-    | [] ->
-      if optional then remove_intermediate_target file2;
-      Fiber.return ()
-    | changes ->
-      let promotions = List.rev !promotions in
-      let in_source_or_target = in_source_or_target file1 in
-      let target_is_copied_from_source_tree =
-        is_copied_from_source_tree (Path.build file2)
-      in
-      Fiber.finalize
-        (fun () -> Fiber.parallel_iter changes ~f:(run_change loc ~patch_back))
-        ~finally:(fun () ->
-          (match optional with
-           | false ->
-             if in_source_or_target && not target_is_copied_from_source_tree
-             then register_promotions `Copy promotions
-           | true ->
-             if in_source_or_target
-             then register_promotions `Move promotions
-             else remove_intermediate_target file2);
-          Fiber.return ()))
+  let { changes; promotions } =
+    loop
+      Path.Local.root
+      (kind_of_source Path.Local.root)
+      (kind_of_target Path.Local.root)
+      empty_plan
+  in
+  { changes = List.rev changes; promotions = List.rev promotions }
 ;;
 
-let exec_file loc ~patch_back ({ Diff.optional; file1; file2; mode } as diff) =
-  let remove_intermediate_file () =
-    if optional
-    then (
-      try Fpath.unlink_exn (Path.Build.to_string file2) with
-      | Unix.Unix_error (ENOENT, _, _) -> ())
+let plan_diff loc { Diff.optional; file1; file2; mode } =
+  let source_kind = kind_of_path ~loc file1 in
+  let target_kind = kind_of_path ~loc (Path.build file2) in
+  let source_root_path =
+    match source_kind, target_kind with
+    | Directory, _ | _, Directory -> Path.source (source_root file1)
+    | _ -> file1
   in
-  match compare_files diff with
-  | `Eq true ->
-    remove_intermediate_file ();
+  let tree_diff =
+    { loc; mode; source_root = source_root file1; source_root_path; target_dir = file2 }
+  in
+  if optional && target_kind = Missing then empty_plan else plan_tree_diff tree_diff
+;;
+
+let exec_plan
+      loc
+      ~patch_back
+      { Diff.optional; mode; file1; file2 }
+      ({ changes; promotions } : plan)
+  =
+  match changes with
+  | [] ->
+    if optional then remove_intermediate_target file2;
     Fiber.return ()
-  | `Eq false | `Delete ->
-    (* CR-soon rgrinberg: handle deletion *)
+  | changes ->
     let in_source_or_target = in_source_or_target file1 in
-    let source_file = source_root file1 in
+    let target_is_copied_from_source_tree =
+      is_copied_from_source_tree (Path.build file2)
+    in
     Fiber.finalize
-      (fun () ->
-         if mode = Binary
-         then
-           User_error.raise
-             ~promotion:(promotion source_file)
-             ~loc
-             [ Pp.textf
-                 "Files %s and %s differ."
-                 (Path.to_string_maybe_quoted file1)
-                 (Path.to_string_maybe_quoted (Path.build file2))
-             ]
-         else
-           Print_diff.print
-             ~patch_back
-             (promotion source_file)
-             file1
-             (Path.build file2)
-             ~skip_trailing_cr:(mode = Text && Sys.win32))
+      (fun () -> Fiber.parallel_iter changes ~f:(run_change loc ~patch_back mode))
       ~finally:(fun () ->
-        let register how =
-          Diff_promotion.register_intermediate how ~source_file ~correction_file:file2
-        in
         (match optional with
          | false ->
-           (* Promote if in the source tree or not a target. The second case
-              means that the diffing have been done with the empty file *)
-           if in_source_or_target && not (is_copied_from_source_tree (Path.build file2))
-           then register `Copy
+           if in_source_or_target && not target_is_copied_from_source_tree
+           then register_promotions `Copy promotions
          | true ->
-           if in_source_or_target then register `Move else remove_intermediate_file ());
+           if in_source_or_target
+           then register_promotions `Move promotions
+           else remove_intermediate_target file2);
         Fiber.return ())
 ;;
 
-let exec loc ~patch_back ({ Diff.file1; file2; _ } as diff) =
-  match kind_of_path ~loc file1, kind_of_path ~loc (Path.build file2) with
-  | Directory, _ | _, Directory -> exec_directory loc ~patch_back diff
-  | _ -> exec_file loc ~patch_back diff
-;;
+let exec loc ~patch_back diff = exec_plan loc ~patch_back diff (plan_diff loc diff)

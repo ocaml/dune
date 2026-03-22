@@ -238,8 +238,8 @@ module Cache = struct
       let conv : (File.Set.t * Commit.Set.t) Lmdb.Conv.t =
         Lmdb.Conv.make
           ~serialise:(fun alloc v ->
-            Marshal.to_string v [] |> Lmdb.Conv.(serialise string alloc))
-          ~deserialise:(fun bs -> Marshal.from_string Lmdb.Conv.(deserialise string bs) 0)
+            Marshal.to_string v ~sharing:true |> Lmdb.Conv.(serialise string alloc))
+          ~deserialise:(fun bs -> Marshal.from_string Lmdb.Conv.(deserialise string bs))
           ()
       ;;
     end

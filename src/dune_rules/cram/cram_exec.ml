@@ -661,7 +661,8 @@ module Script = Persistent.Make (struct
     type nonrec t = command_out list
 
     let name = "CRAM-RESULT"
-    let version = 1
+    let sharing = false
+    let version = 2
     let to_dyn = Dyn.list dyn_of_command_out
   end)
 

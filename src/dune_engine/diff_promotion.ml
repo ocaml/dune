@@ -144,7 +144,8 @@ module P = Persistent.Make (struct
     type t = db
 
     let name = "TO-PROMOTE"
-    let version = 4
+    let sharing = true
+    let version = 5
     let to_dyn = Dyn.list dyn_of_op
   end)
 

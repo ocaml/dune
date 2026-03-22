@@ -31,7 +31,8 @@ module Workspace_local = struct
         type nonrec t = t
 
         let name = "INCREMENTAL-DB"
-        let version = 6
+        let version = 7
+        let sharing = true
         let to_dyn = to_dyn
       end)
 

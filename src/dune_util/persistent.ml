@@ -4,6 +4,7 @@ module type Desc = sig
   type t
 
   val name : string
+  val sharing : bool
   val version : int
   val to_dyn : t -> Dyn.t
 end
@@ -51,7 +52,7 @@ module Make (D : Desc) = struct
   ;;
 
   let to_string (v : D.t) =
-    Printf.sprintf "%s%s" magic (Marshal.to_string v ~sharing:true)
+    Printf.sprintf "%s%s" magic (Marshal.to_string v ~sharing:D.sharing)
   ;;
 
   let with_record what ~file ~f =
@@ -66,7 +67,7 @@ module Make (D : Desc) = struct
     let dump file v =
       Io.with_file_out file ~f:(fun oc ->
         output_string oc magic;
-        match Marshal.to_channel oc v ~sharing:true with
+        match Marshal.to_channel oc v ~sharing:D.sharing with
         | s -> s
         | exception Invalid_argument s ->
           raise (Invalid_argument (sprintf "%s (%s)" s D.name)))

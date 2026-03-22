@@ -16,6 +16,7 @@ module type Desc = sig
   type t
 
   val name : string
+  val sharing : bool
   val version : int
   val to_dyn : t -> Dyn.t
 end

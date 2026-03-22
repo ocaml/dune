@@ -305,8 +305,9 @@ module Install_cookie = struct
   module Persistent = Persistent.Make (struct
       type nonrec t = (Section.t * Path.t list) list Gen.t
 
+      let sharing = false
       let name = "INSTALL-COOKIE"
-      let version = 3
+      let version = 4
 
       let to_dyn =
         let open Dyn in

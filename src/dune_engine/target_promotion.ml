@@ -12,7 +12,8 @@ module To_delete = struct
       type t = Path.Source.Set.t
 
       let name = "PROMOTED-TO-DELETE"
-      let version = 3
+      let sharing = true
+      let version = 4
       let to_dyn = Path.Source.Set.to_dyn
     end)
 

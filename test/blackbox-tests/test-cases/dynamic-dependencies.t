@@ -108,4 +108,3 @@ Multiple `(include)` nesting
 
   $ dune build @nested
   metadeps: depB another_dep
-

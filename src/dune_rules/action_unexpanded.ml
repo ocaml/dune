@@ -629,6 +629,7 @@ let expand_no_targets t sandbox ~loc ~chdir ~deps:deps_written_by_user ~expander
       ; pp_targets targets
       ];
   let+ () = deps_builder
+  and+ sandbox = sandbox
   and+ action = build in
   let action = Action.Chdir (Path.build chdir, action) in
   Action.Full.make action ~sandbox
@@ -689,6 +690,7 @@ let expand
   in
   let build =
     let+ () = deps_builder
+    and+ sandbox = sandbox
     and+ action = build in
     Action.Full.make (Action.Chdir (Path.build chdir, action)) ~sandbox
   in

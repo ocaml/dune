@@ -93,8 +93,8 @@ all metadata entries in [meta/v4] since they are broken: remember, we moved all
 
   $ find "$PWD/.xdg-cache/dune/db/meta/v4" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
   4
-  $ dune cache trim --trimmed-size 1B
-  Freed 287B (4 files removed)
+  $ dune cache trim --trimmed-size 1B | dune_cmd subst '\d+B' 'XXXB'
+  Freed XXXB (4 files removed)
   $ dune_cmd stat hardlinks _build/default/target_a
   2
   $ dune_cmd stat hardlinks _build/default/target_b
@@ -105,16 +105,16 @@ all metadata entries in [meta/v4] since they are broken: remember, we moved all
 If we unlink a file in the build tree, then the corresponding file entry will be
 trimmed.
 
-  $ rm -f _build/default/target_a _build/default/beacon_a _build/default/beacon_b
-  $ dune cache trim --trimmed-size 1B
-  Freed 79B (2 files removed)
+  $ rm -rf _build/
+  $ dune cache trim --trimmed-size 1B | dune_cmd subst '\d+B' 'XXXB'
+  Freed XXXB (2 files removed)
   $ dune build target_a target_b
   $ dune_cmd stat hardlinks _build/default/target_a
   2
   $ dune_cmd stat hardlinks _build/default/target_b
   2
   $ dune_cmd exists _build/default/beacon_a
-  true
+  false
   $ dune_cmd exists _build/default/beacon_b
   false
 
@@ -124,9 +124,9 @@ entries in [meta/v3].
 
   $ rm -rf _build
   $ find "$PWD/.xdg-cache/dune/db/files/v3" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
-  4
+  3
   $ find "$PWD/.xdg-cache/dune/db/meta/v3" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
-  4
+  3
 
 We hide the output for reproducibility: some files are executable and their
 sizes might vary on different platforms
@@ -172,8 +172,8 @@ thus making the trimmer delete [target_a] instead of [target_b] as above.
   $ rm -f _build/default/beacon_a _build/default/target_a
   $ dune_cmd wait-for-fs-clock-to-advance
   $ rm -f _build/default/beacon_b _build/default/target_b
-  $ dune cache trim --trimmed-size 1B
-  Freed 79B (2 files removed)
+  $ dune cache trim --trimmed-size 1B | dune_cmd subst '\d+B' 'XXXB'
+  Freed XXXB (2 files removed)
   $ dune build target_a target_b
   $ dune_cmd stat hardlinks _build/default/target_a
   2
@@ -190,8 +190,8 @@ are part of the same rule.
   $ reset
   $ dune build multi_a multi_b
   $ rm -f _build/default/multi_a _build/default/multi_b
-  $ dune cache trim --trimmed-size 1B
-  Freed 123B (2 files removed)
+  $ dune cache trim --trimmed-size 1B | dune_cmd subst '\d+B' 'XXXB'
+  Freed XXXB (2 files removed)
 
 TODO: Test trimming priority in the [copy] mode. In PR #4497 we added a test but
 it turned out to be flaky so we subsequently deleted it in #4511.

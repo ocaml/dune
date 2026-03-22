@@ -7,7 +7,7 @@ module Spec = struct
     ; test_name_alias : Alias.Name.t
     ; extra_aliases : Alias.Name.Set.t
     ; deps : unit Action_builder.t list
-    ; sandbox : Sandbox_config.t
+    ; sandbox : Sandbox_config.t Action_builder.t
     ; enabled_if : (Expander.t * Blang.t) list
     ; locks : Path.Set.t Action_builder.t
     ; packages : Package.Name.Set.t
@@ -24,7 +24,7 @@ module Spec = struct
     ; enabled_if = []
     ; locks = Action_builder.return Path.Set.empty
     ; deps = []
-    ; sandbox = Sandbox_config.needs_sandboxing
+    ; sandbox = Action_builder.return Sandbox_config.needs_sandboxing
     ; packages = Package.Name.Set.empty
     ; timeout = None
     ; conflict_markers = Ignore
@@ -137,6 +137,7 @@ let test_rule
            let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
            ()
        and+ () = Action_builder.paths setup_scripts
+       and+ sandbox = sandbox
        and+ locks = locks >>| Path.Set.to_list in
        Cram_exec.run
          ~src:(Path.build script)
@@ -254,10 +255,10 @@ let rules ~sctx ~dir tests project =
             with
             | false -> Memo.return (runtest_alias, acc)
             | true ->
-              let+ expander = Super_context.expander sctx ~dir in
-              let deps, sandbox =
+              let* expander = Super_context.expander sctx ~dir in
+              let* deps, sandbox =
                 match stanza.deps with
-                | None -> acc.deps, acc.sandbox
+                | None -> Memo.return (acc.deps, acc.sandbox)
                 | Some deps ->
                   let (deps : unit Action_builder.t), _, sandbox =
                     Dep_conf_eval.named
@@ -265,7 +266,13 @@ let rules ~sctx ~dir tests project =
                       Sandbox_config.no_special_requirements
                       deps
                   in
-                  deps :: acc.deps, Sandbox_config.inter acc.sandbox sandbox
+                  let sandbox =
+                    let open Action_builder.O in
+                    let+ acc = acc.sandbox
+                    and+ sandbox = sandbox in
+                    Sandbox_config.inter acc sandbox
+                  in
+                  Memo.return (deps :: acc.deps, sandbox)
               in
               let locks =
                 let open Action_builder.O in
@@ -339,20 +346,21 @@ let rules ~sctx ~dir tests project =
                 @ List.filter acc.setup_scripts ~f:(fun x ->
                   not (List.mem more_current_scripts x ~equal:Path.equal))
               in
-              ( runtest_alias
-              , { acc with
-                  enabled_if
-                ; locks
-                ; deps
-                ; test_name_alias
-                ; extra_aliases
-                ; packages
-                ; sandbox
-                ; timeout
-                ; conflict_markers
-                ; setup_scripts
-                ; shell
-                } ))
+              Memo.return
+                ( runtest_alias
+                , { acc with
+                    enabled_if
+                  ; locks
+                  ; deps
+                  ; test_name_alias
+                  ; extra_aliases
+                  ; packages
+                  ; sandbox
+                  ; timeout
+                  ; conflict_markers
+                  ; setup_scripts
+                  ; shell
+                  } ))
       in
       let extra_aliases =
         let to_add =

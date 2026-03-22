@@ -147,10 +147,7 @@ module Feed = struct
        flag [-I], then [Marshal.to_string] will produce different digests depending
        on whether the corresponding strings ["-I"] point to the same memory location
        or to different memory locations. *)
-  let generic hasher x =
-    contramap string ~f:(fun x -> Marshal.to_string x [ No_sharing ]) hasher x
-  ;;
-
+  let generic hasher x = contramap string ~f:(Marshal.to_string ~sharing:false) hasher x
   let list feed_x hasher xs = List.iter xs ~f:(feed_x hasher)
   let option feed_x hasher option_x = Option.iter option_x ~f:(feed_x hasher)
 

@@ -663,7 +663,6 @@ module Script = Persistent.Make (struct
     let name = "CRAM-RESULT"
     let version = 1
     let to_dyn = Dyn.list dyn_of_command_out
-    let test_example () = []
   end)
 
 let run_and_produce_output

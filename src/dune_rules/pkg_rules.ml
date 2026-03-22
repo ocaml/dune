@@ -312,8 +312,6 @@ module Install_cookie = struct
         let open Dyn in
         Gen.to_dyn (list (pair Section.to_dyn (list Path.to_dyn)))
       ;;
-
-      let test_example () = { Gen.files = []; variables = [] }
     end)
 
   let load_exn f =

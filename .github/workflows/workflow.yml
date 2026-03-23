@@ -213,7 +213,7 @@ jobs:
         run: sudo apt update
 
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
-        uses: ocaml/setup-ocaml@v3
+        uses: ocaml/setup-ocaml@v3.4.8
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
 

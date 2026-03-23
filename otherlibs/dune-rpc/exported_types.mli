@@ -271,3 +271,20 @@ module Files_to_promote : sig
 
   val sexp : t Conv.value
 end
+
+module Promote_targets : sig
+  module Matching : sig
+    type t =
+      | Exact
+      | Prefix
+
+    val sexp : t Conv.value
+  end
+
+  type t =
+    { files : Files_to_promote.t
+    ; matching : Matching.t
+    }
+
+  val sexp : t Conv.value
+end

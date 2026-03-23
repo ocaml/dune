@@ -862,3 +862,30 @@ module Files_to_promote = struct
     iso (list Path.sexp) to_ from
   ;;
 end
+
+module Promote_targets = struct
+  module Matching = struct
+    type t =
+      | Exact
+      | Prefix
+
+    let sexp =
+      let open Conv in
+      enum [ "exact", Exact; "prefix", Prefix ]
+    ;;
+  end
+
+  type t =
+    { files : Files_to_promote.t
+    ; matching : Matching.t
+    }
+
+  let sexp =
+    let open Conv in
+    let files = field "files" (required Files_to_promote.sexp) in
+    let matching = field "matching" (required Matching.sexp) in
+    let to_ (files, matching) = { files; matching } in
+    let from { files; matching } = files, matching in
+    iso (record (both files matching)) to_ from
+  ;;
+end

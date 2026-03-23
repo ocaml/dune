@@ -206,10 +206,8 @@ let promote_one dst srcs =
 
 let do_promote_all db = group_by_targets db |> Path.Source.Map.iteri ~f:promote_one
 
-let do_promote_these db files =
-  let by_targets = group_by_targets db in
+let do_promote_exact by_targets files =
   let by_targets, missing =
-    let files = Path.Source.Set.of_list files in
     Path.Source.Set.fold files ~init:(by_targets, []) ~f:(fun fn (map, missing) ->
       match Path.Source.Map.find map fn with
       | None -> map, fn :: missing
@@ -228,11 +226,45 @@ let do_promote_these db files =
   remaining, sorted_missing
 ;;
 
-let do_promote db = function
+let do_promote_by_prefix by_targets files =
+  let remaining, matched =
+    Path.Source.Map.foldi
+      by_targets
+      ~init:([], Path.Source.Set.empty)
+      ~f:(fun dst srcs (remaining, matched) ->
+        let files =
+          Path.Source.Set.filter files ~f:(fun requested ->
+            Path.Source.is_descendant ~of_:requested dst)
+        in
+        if Path.Source.Set.is_empty files
+        then srcs :: remaining, matched
+        else (
+          promote_one dst srcs;
+          let matched = Path.Source.Set.union files matched in
+          remaining, matched))
+  in
+  let remaining = List.rev remaining |> List.concat in
+  let missing =
+    Path.Source.Set.filter files ~f:(fun requested ->
+      not (Path.Source.Set.mem matched requested))
+    |> Path.Source.Set.to_list
+  in
+  remaining, missing
+;;
+
+let do_promote_these ~(matching : Dune_rpc.Promote_targets.Matching.t) db files =
+  (match matching with
+   | Exact -> do_promote_exact
+   | Prefix -> do_promote_by_prefix)
+    (group_by_targets db)
+    (Path.Source.Set.of_list files)
+;;
+
+let do_promote ~matching db = function
   | Files_to_promote.All ->
     do_promote_all db;
     [], []
-  | These files -> do_promote_these db files
+  | These files -> do_promote_these ~matching db files
 ;;
 
 let finalize () =
@@ -248,9 +280,9 @@ let finalize () =
 
 (* Returns the list of files that were in [files_to_promote]
    but not present in the promotion database. *)
-let promote_files_registered_in_last_run files_to_promote =
+let promote_files_registered_in_last_run ~matching files_to_promote =
   let db = load_db () in
-  let remaining, missing = do_promote db files_to_promote in
+  let remaining, missing = do_promote ~matching db files_to_promote in
   dump_db remaining;
   missing
 ;;

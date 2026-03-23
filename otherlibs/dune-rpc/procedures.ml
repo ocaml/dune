@@ -86,16 +86,27 @@ module Public = struct
 
   module Promote_many = struct
     let v1 =
-      Decl.Request.make_current_gen
+      Decl.Request.make_gen
         ~req:Files_to_promote.sexp
         ~resp:Build_outcome_with_diagnostics.sexp
         ~version:1
+        ~upgrade_req:(fun files -> { Promote_targets.files; matching = Exact })
+        ~downgrade_req:(fun { Promote_targets.files; _ } -> files)
+        ~upgrade_resp:Fun.id
+        ~downgrade_resp:Fun.id
+    ;;
+
+    let v2 =
+      Decl.Request.make_current_gen
+        ~req:Promote_targets.sexp
+        ~resp:Build_outcome_with_diagnostics.sexp
+        ~version:2
     ;;
 
     let decl =
       Decl.Request.make
         ~method_:(Method.Name.of_string "promote_many")
-        ~generations:[ v1 ]
+        ~generations:[ v1; v2 ]
     ;;
   end
 

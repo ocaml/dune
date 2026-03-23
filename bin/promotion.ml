@@ -34,6 +34,11 @@ module Apply = struct
            you might use $(b,(diff file.expected file.generated)) and then call
            $(b,dune promote) to promote the generated file.
          |}
+      ; `P
+          {|When FILE arguments are provided, dune promote matches pending
+           promotions recursively under those paths. Use $(b,--file) to require
+           exact file matching instead.
+         |}
       ; `Blocks Common.help_secs
       ]
     in
@@ -42,15 +47,24 @@ module Apply = struct
 
   let term =
     let+ builder = Common.Builder.term
+    and+ exact =
+      Arg.(
+        value
+        & flag
+        & info [ "file" ] ~doc:(Some "Require each FILE argument to match exactly."))
     and+ files =
       (* CR-someday Alizter: document this option *)
-      Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
+      Arg.(value & pos_all Arg.path [] & info [] ~docv:"FILE" ~doc:None)
     in
     let common, config = Common.init builder in
-    let files_to_promote = files_to_promote ~common files in
+    let files_to_promote = List.map files ~f:Arg.Path.arg |> files_to_promote ~common in
+    let matching : Dune_rpc.Promote_targets.Matching.t =
+      if exact then Exact else Prefix
+    in
     match Global_lock.lock ~timeout:None with
     | Ok () ->
-      Diff_promotion.promote_files_registered_in_last_run files_to_promote |> on_missing
+      Diff_promotion.promote_files_registered_in_last_run ~matching files_to_promote
+      |> on_missing
     | Error lock_held_by ->
       Scheduler_setup.no_build_no_rpc ~config (fun () ->
         let open Fiber.O in
@@ -60,7 +74,7 @@ module Apply = struct
           ~lock_held_by
           builder
           Dune_rpc.Procedures.Public.promote_many
-          files_to_promote
+          { Dune_rpc.Promote_targets.files = files_to_promote; matching }
         >>| Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:true)
   ;;
 

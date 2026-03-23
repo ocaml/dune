@@ -1,17 +1,11 @@
 # Release Process
 
-
-
 ## TODO
 
 - [x] Move the current release process docs into dev docs
 - Followup with PR that proposes improvements to release
     - We need CI to catch obvious packaging mistakes:
-      - lower bounds
-        - 
-      - missing deps
-        - Can we just use opam-dune-lint (https://github.com/ocurrent/opam-dune-lint)
-    - Fix changelog header BS (we don't need it, just a comment)
+    - [ ] Fix changelog header (we don't need it, just a comment): https://github.com/ocaml/dune/pull/13873
     - Document improved diffing: first rerun on last release, then cut a new one
     - Diff based on html
     - Optimistic instead of pessimistict
@@ -88,11 +82,10 @@ stateDiagram-v2
     - Review changelog for correct issues IDs and general intelligibility.
     - Prepare alpha release `0`
   - Prepare alpha release `N`:
-    - prepare changelog
-      - Changelog header should be `x.y.0~alpha<N> (<date>)`)
-      - Commit message should be `[x.y] prepare x.y.z~alphaN release`
+    - Commit changelog update to release branch with commit messeag `[x.y] prepare x.y.z~alphaN release`
     - `make opam-release`
     - edit the release to mark it with `Set as a pre-release `
+      - https://docs.github.com/en/rest/releases/releases?apiVersion=2026-03-10#update-a-release
     - mark opam-repo PR as draft
   - Wait for `opam-repo-ci`
   - Triage phase:

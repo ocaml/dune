@@ -572,6 +572,7 @@ module Pkg = struct
       ; ( "OPAM_PACKAGE_VERSION"
         , [ Value.String (Package_version.to_string t.info.version) ] )
       ; "OPAMCLI", [ Value.String "2.0" ]
+      ; "OPAMSWITCH", [ Value.String "dune" ]
       ]
   ;;
 

@@ -22,6 +22,7 @@ module Feed : sig
   val string : string t
   val bool : bool t
   val int : int t
+  val repr : 'a Repr.t -> 'a t
   val list : 'a t -> 'a list t
   val option : 'a t -> 'a option t
   val tuple2 : 'a t -> 'b t -> ('a * 'b) t
@@ -47,6 +48,7 @@ val file_async : Path.t -> t Fiber.t
 val string : string -> t
 val to_string_raw : t -> string
 val generic : 'a -> t
+val repr : 'a Repr.t -> 'a -> t
 
 (** The subset of fields of [Unix.stats] used by this module.
 

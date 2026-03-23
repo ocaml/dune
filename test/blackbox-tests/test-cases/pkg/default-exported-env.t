@@ -21,8 +21,8 @@ Some environment variables are automatically exported by packages:
   $ ln -s $(which sh) .bin/sh
   $ dune=$(which dune)
   $ MANPATH="" OCAMLPATH="" CAML_LD_LIBRARY_PATH="" OCAMLTOP_INCLUDE_PATH="" PATH="$PWD/.bin" build_pkg usetest
-  MANPATH=$TESTCASE_ROOT/_build/_private/default/.pkg/test.0.0.1-58e701a6bb554b1906e02d898bc78509/target/man
-  OCAMLPATH=$TESTCASE_ROOT/_build/_private/default/.pkg/test.0.0.1-58e701a6bb554b1906e02d898bc78509/target/lib
-  CAML_LD_LIBRARY_PATH=$TESTCASE_ROOT/_build/_private/default/.pkg/test.0.0.1-58e701a6bb554b1906e02d898bc78509/target/lib/stublibs
-  OCAMLTOP_INCLUDE_PATH=$TESTCASE_ROOT/_build/_private/default/.pkg/test.0.0.1-58e701a6bb554b1906e02d898bc78509/target/lib/toplevel
-  PATH=$TESTCASE_ROOT/_build/_private/default/.pkg/test.0.0.1-58e701a6bb554b1906e02d898bc78509/target/bin:$TESTCASE_ROOT/.bin
+  MANPATH=$TESTCASE_ROOT/_build/_private/default/.pkg/test.0.0.1-5dbb5e0d488bff41b54b277edac8db37/target/man
+  OCAMLPATH=$TESTCASE_ROOT/_build/_private/default/.pkg/test.0.0.1-5dbb5e0d488bff41b54b277edac8db37/target/lib
+  CAML_LD_LIBRARY_PATH=$TESTCASE_ROOT/_build/_private/default/.pkg/test.0.0.1-5dbb5e0d488bff41b54b277edac8db37/target/lib/stublibs
+  OCAMLTOP_INCLUDE_PATH=$TESTCASE_ROOT/_build/_private/default/.pkg/test.0.0.1-5dbb5e0d488bff41b54b277edac8db37/target/lib/toplevel
+  PATH=$TESTCASE_ROOT/_build/_private/default/.pkg/test.0.0.1-5dbb5e0d488bff41b54b277edac8db37/target/bin:$TESTCASE_ROOT/.bin

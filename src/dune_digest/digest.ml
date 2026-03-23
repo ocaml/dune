@@ -141,6 +141,10 @@ module Feed = struct
   let bool = contramap string ~f:Bool.to_string
   let int = contramap string ~f:Int.to_string
 
+  let repr repr =
+    contramap string ~f:(fun value -> Repr.to_dyn repr value |> Dyn.to_string)
+  ;;
+
   (* We use [No_sharing] to avoid generating different digests for inputs that
        differ only in how they share internal values. Without [No_sharing], if a
        command line contains duplicate flags, such as multiple occurrences of the
@@ -176,6 +180,14 @@ let generic a =
   let start = Counter.Timer.start () in
   Counter.incr Metrics.Digest.Value.count;
   let res = Feed.compute_digest Feed.generic a in
+  Counter.Timer.stop Metrics.Digest.Value.time start;
+  res
+;;
+
+let repr repr a =
+  let start = Counter.Timer.start () in
+  Counter.incr Metrics.Digest.Value.count;
+  let res = Feed.compute_digest (Feed.repr repr) a in
   Counter.Timer.stop Metrics.Digest.Value.time start;
   res
 ;;

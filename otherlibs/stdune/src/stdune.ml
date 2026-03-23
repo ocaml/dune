@@ -84,6 +84,7 @@ module Global_lock = Global_lock
 module At_exit = At_exit
 module Permissions = Permissions
 module Console = Console
+module Repr = Repr
 module Marshal = Marshal
 
 module type Top_closure = Top_closure.Top_closure

@@ -1,14 +1,14 @@
 module T = struct
   type t = int
 
+  let repr = Repr.int
   let compare (a : int) b : Ordering.t = if a < b then Lt else if a = b then Eq else Gt
-  let to_dyn x = Dyn.Int x
+  let equal (a : t) b = a = b
+  let to_dyn = Repr.to_dyn repr
 end
 
 include T
 include Comparable.Make (T)
-
-let equal (a : t) b = a = b
 
 (* This implementation (including the comment) is taken from the Base
    library. *)

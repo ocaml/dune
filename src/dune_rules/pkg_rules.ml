@@ -135,6 +135,18 @@ module Pkg_digest = struct
         Dune_digest.hash
         (name, version, lockfile_and_dependency_digest)
     ;;
+
+    let digest_repr = Repr.view Repr.string ~to_:Dune_digest.to_string
+
+    let repr =
+      Repr.record
+        "pkg-digest"
+        [ Repr.field "name" Package.Name.repr ~get:(fun t -> t.name)
+        ; Repr.field "version" Package_version.repr ~get:(fun t -> t.version)
+        ; Repr.field "lockfile_and_dependency_digest" digest_repr ~get:(fun t ->
+            t.lockfile_and_dependency_digest)
+        ]
+    ;;
   end
 
   include T
@@ -168,19 +180,10 @@ module Pkg_digest = struct
             { name; version; lockfile_and_dependency_digest }))
   ;;
 
-  let digest_feed =
-    Digest_feed.tuple3
-      Package.Name.digest_feed
-      Package_version.digest_feed
-      Digest_feed.digest
-    |> Digest_feed.contramap ~f:(fun { name; version; lockfile_and_dependency_digest } ->
-      name, version, lockfile_and_dependency_digest)
-  ;;
-
   let create lockfile_pkg depends_pkg_digests =
     let lockfile_and_dependency_digest =
       Digest_feed.compute_digest
-        (Digest_feed.tuple2 Lock_dir.Pkg.digest_feed (Digest_feed.list digest_feed))
+        (Digest_feed.tuple2 Lock_dir.Pkg.digest_feed (Digest_feed.repr (Repr.list repr)))
         (Dune_pkg.Lock_dir.Pkg.remove_locs lockfile_pkg, depends_pkg_digests)
     in
     let name = lockfile_pkg.info.name in

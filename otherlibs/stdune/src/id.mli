@@ -13,6 +13,8 @@ module type S = sig
   (** Convert the id to an integer. *)
   val to_int : t -> int
 
+  val repr : t Repr.t
+
   (** Compare two ids. *)
   val compare : t -> t -> Ordering.t
 

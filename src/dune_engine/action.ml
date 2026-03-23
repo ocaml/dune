@@ -56,8 +56,14 @@ struct
   let remove_tree path = Remove_tree path
   let mkdir path = Mkdir path
 
-  let diff ?(optional = false) ?(mode = Diff.Mode.Text) file1 file2 =
-    Diff { optional; file1; file2; mode }
+  let diff
+        ?(optional = false)
+        ?(mode = Diff.Mode.Text)
+        ?(directory_diffs = true)
+        file1
+        file2
+    =
+    Diff { optional; mode; directory_diffs; file1; file2 }
   ;;
 end
 

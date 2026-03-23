@@ -1,7 +1,7 @@
 Directory diff integrates with the promotion CLI.
 
   $ cat > dune-project <<'EOF'
-  > (lang dune 3.22)
+  > (lang dune 3.23)
   > (using directory-targets 0.1)
   > EOF
 
@@ -51,7 +51,7 @@ Deletion promotions are visible to `dune promotion list` and `diff`.
   $ dune runtest
   File "expected/changed", line 1, characters 0-0:
   --- expected/changed
-  +++ _build/default/actual/changed
+  +++ _build/.sandbox/bc0a36c2131ad591fedd98ed90913d6b/default/actual/changed
   @@ -1 +1 @@
   -before
   +after

@@ -40,6 +40,7 @@ module Diff : sig
   type nonrec ('path, 'target) t = ('path, 'target) t =
     { optional : bool
     ; mode : Mode.t
+    ; directory_diffs : bool
     ; file1 : 'path
     ; file2 : 'target
     }

@@ -1,7 +1,7 @@
 Directory diff can create an empty directory.
 
   $ cat > dune-project <<'EOF'
-  > (lang dune 3.22)
+  > (lang dune 3.23)
   > (using directory-targets 0.1)
   > EOF
 

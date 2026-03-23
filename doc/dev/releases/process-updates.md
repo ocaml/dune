@@ -158,20 +158,26 @@ stateDiagram-v2
     Release --> PostRelease
     PostRelease --> [*]
 ```
+- Pre-requisite:
+  - Previous minor/major release is merged
+    - changelogs of previous point releases are merged
+
 
 - Prepare:
   - Create release tracking issue
   - List fixes present in main to backport
   - Blockers for this release include:
     - all backports of listed fixes
-    - changelogs of previous point releases are merged
+    - reported regressions
 
 - Backport:
   - Branch setup
-    - (z>0) Position on branch `x.y`
+    - Checkout the tag for the latest point release `x.y.z`
+    - Create a new branch `x.y.z+1-rc`
   - `git cherry-pick` commits as merged in `main`
   - Open PR
-    - Set `x.y` as target branch, e.g. `gh pr create -B x.y`
+    - Base: `x.y.z+1-rc`
+    - Set `x.y.z+1-rc` as target branch, e.g. `gh pr create -B x.y.z+1-rc`
     - Title must be `[x.y] backport #<PR id>`
     - List PR in blockers
 

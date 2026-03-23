@@ -27,7 +27,8 @@ src/dune_rules/setup.ml
 
 # nix
 nix/profiles/
-result*
+result
+result-*
 start/dune
 
 .claude/

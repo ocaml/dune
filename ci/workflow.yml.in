@@ -212,7 +212,7 @@ jobs:
         run: sudo apt update
 
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
-        uses: ocaml/setup-ocaml@v3.4.8
+        uses: ocaml/setup-ocaml@fix-cygwin-path-append
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
 

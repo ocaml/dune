@@ -5,6 +5,10 @@ name: Packaging check
 
 on:
   pull_request:
+  push:
+    branches:
+        - main
+        - 'releases/**'
   workflow_dispatch:
 
 jobs:
@@ -17,8 +21,8 @@ jobs:
 
       - id: discover
         shell: bash
-        # Discover the list of packages by reading the opam directory. We treat
-        # all the .opam files as separate packages
+        # Discover the list of packages by reading the opam directory. Each
+        # .opam file defines a separate package.
         run: |
           set -euo pipefail
           packages=$(
@@ -49,13 +53,6 @@ jobs:
       - name: Lint current package metadata
         run: opam lint "./opam/${{ matrix.package }}.opam"
 
-      - name: Get dune version
-        # Read the current version of Dune to determine the package versions in
-        # the next step. This information is absernt in development opam files,
-        # but will be present in the releases.
-        id: dune-version
-        run: echo "version=$(sed -nE 's/^\(lang dune ([0-9]+(\.[0-9]+)*)\)$/\1/p' dune-project)" >> $GITHUB_OUTPUT
-
       - name: Pin all packages without installing
         # Some packages require their sibling packages to be at the same version.
         # All packages also depend on the current version of dune. To make these
@@ -63,8 +60,11 @@ jobs:
         # installing them. This way they are pulled in only if required by the package
         # being built, without influencing the solver for unrelated dependencies.
         env:
-          version: ${{ steps.dune-version.outputs.version }}
-        run: for f in opam/*.opam; do pkg=${f##*/}; pkg=${pkg%.opam}; opam pin add "$pkg.$version" . -n; done
+          packages: ${{ needs.discover-packages.outputs.packages }}
+        run: |
+          echo "$packages" | jq -r '.[]' | while read -r pkg; do
+            opam pin add "$pkg.dev" . -n
+          done
 
       - name: Activate opam environment
         run: |

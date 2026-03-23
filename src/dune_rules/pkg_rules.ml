@@ -1852,12 +1852,30 @@ module Install_action = struct
         |> List.map ~f:(fun (name, value) -> Package_variable_name.of_opam name, value)
     ;;
 
+    (* On Windows, .install files may omit .exe for bin/sbin entries.
+       Try the .exe variant if the original doesn't exist, mirroring opam. *)
+    let maybe_add_exe src (entry : Path.t Install.Entry.Expanded.t) =
+      match
+        match Sys.win32, entry.section with
+        | true, (Bin | Sbin) when not (Fpath.exists (Path.to_string src)) ->
+          let src_exe_str = Bin.add_exe (Path.to_string src) in
+          if Fpath.exists src_exe_str then Some src_exe_str else None
+        | _ -> None
+      with
+      | None -> src, entry
+      | Some src_exe_str ->
+        ( Path.of_string src_exe_str
+        , Install.Entry.map_dst entry ~f:(fun dst ->
+            Install.Entry.Dst.explicit (Bin.add_exe (Install.Entry.Dst.to_string dst))) )
+    ;;
+
     let install_entry
           ~src
           ~install_file
           ~target_dir
           (entry : Path.t Install.Entry.Expanded.t)
       =
+      let src, entry = maybe_add_exe src entry in
       match Fpath.exists (Path.to_string src), entry.optional with
       | false, true -> None
       | false, false ->

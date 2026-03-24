@@ -129,6 +129,22 @@ module Cat = struct
   let () = register name of_args run
 end
 
+module Tee = struct
+  let name = "tee"
+
+  let of_args = function
+    | files -> List.map files ~f:(fun f -> Path.of_filename_relative_to_initial_cwd f)
+  ;;
+
+  let run files =
+    let lines = Io.input_lines stdin in
+    List.iter files ~f:(fun file -> Io.write_lines file lines);
+    List.iter lines ~f:(fun line -> print_endline line)
+  ;;
+
+  let () = register name of_args run
+end
+
 module Exists = struct
   type t = Path of Path.t
 

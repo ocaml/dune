@@ -81,7 +81,7 @@ executable was built.
   (pp (>= 1.1.0))
   (dyn (= :version))
   (stdune (= :version))
-  (ocaml (>= 4.08)))
+  (ocaml (>= 4.14)))
  (maintenance_intent none)
  (description "\
 !!!!!!!!!!!!!!!!!!!!!!
@@ -177,7 +177,7 @@ understood by dune language."))
  (dir otherlibs/dyn)
  (synopsis "Dynamic type")
  (depends
-  (ocaml (>= 4.08.0))
+  (ocaml (>= 4.14))
   (ordering (= :version))
   (pp (>= 1.1.0)))
  (maintenance_intent none)
@@ -188,7 +188,7 @@ understood by dune language."))
  (dir otherlibs/ordering)
  (synopsis "Element ordering")
  (depends
-  (ocaml (>= 4.08.0)))
+  (ocaml (>= 4.14)))
  (maintenance_intent none)
  (description "Element ordering"))
 
@@ -197,7 +197,7 @@ understood by dune language."))
  (dir otherlibs/xdg)
  (synopsis "XDG Base Directory Specification")
  (depends
-  (ocaml (>= 4.08)))
+  (ocaml (>= 4.14)))
  (description "https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html"))
 
 (package
@@ -205,7 +205,7 @@ understood by dune language."))
  (dir otherlibs/top-closure)
  (synopsis "Topological Closure")
  (depends
-  (ocaml (>= 4.08)))
+  (ocaml (>= 4.14)))
  (maintenance_intent none)
  (description "Generic Topological Closure"))
 
@@ -214,7 +214,7 @@ understood by dune language."))
  (dir otherlibs/stdune)
  (synopsis "Dune's unstable standard library")
  (depends
-  (ocaml (>= 4.08.0))
+  (ocaml (>= 4.14))
   base-unix
   (csexp (>= 1.5.0))
   (dyn (= :version))
@@ -230,9 +230,9 @@ understood by dune language."))
  (dir otherlibs/ocamlc-loc)
  (synopsis "Parse ocaml compiler output into structured form")
  (conflicts
-  (ocaml-lsp-server (< 1.15.0)))
+  (ocaml-lsp-server (< 1.17.0)))
  (depends
-  (ocaml (>= 4.08.0))
+  (ocaml (>= 4.14))
   (dyn (= :version)))
  (maintenance_intent none)
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
@@ -242,7 +242,7 @@ understood by dune language."))
  (dir otherlibs/chrome-trace)
  (synopsis "Chrome trace event generation library")
  (depends
-  (ocaml (>= 4.08.0)))
+  (ocaml (>= 4.14)))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 
 (package
@@ -251,7 +251,7 @@ understood by dune language."))
  (synopsis "File System Operations")
  (depends
   base-unix
-  (ocaml (>= 4.08)))
+  (ocaml (>= 4.14)))
  (maintenance_intent none)
  (description "Misc. Collection of File System Operations"))
 

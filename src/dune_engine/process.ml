@@ -876,7 +876,7 @@ let report_process_finished
       ~dir
       ~stdout
       ~stderr
-      ~times:(times : Proc.Times.t))
+      ~(times : Proc.Times.t))
 ;;
 
 let await ~timeout { response_file; pid; is_process_group_leader; _ } =

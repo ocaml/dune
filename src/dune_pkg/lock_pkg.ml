@@ -451,7 +451,7 @@ let opam_package_to_lock_file_pkg
       ( Path.Local.of_string (OpamFilename.Base.to_string opam_basename)
       , let url = Loc.none, OpamFile.URL.url opam_url in
         let checksum =
-          match OpamFile.URL.checksum opam_url with
+          match OpamHash.sort (OpamFile.URL.checksum opam_url) with
           | [] -> None
           | checksum :: _ -> Some (Loc.none, Checksum.of_opam_hash checksum)
         in
@@ -463,6 +463,7 @@ let opam_package_to_lock_file_pkg
       Option.map url ~f:(fun (url : OpamFile.URL.t) ->
         let checksum =
           OpamFile.URL.checksum url
+          |> OpamHash.sort
           |> List.hd_opt
           |> Option.map ~f:(fun hash -> Loc.none, Checksum.of_opam_hash hash)
         in

@@ -55,10 +55,8 @@ append_files_in_dir_if_not_empty() {
     exit 1
   fi
 
-  # List all markdown files, ignoring dot-files and reversing their order.
-  # The order is reversed so that entries will end up added to the changelog
-  # in the numerical order of the PRs as we prepend them to the output file.
-  list_of_files=$(find "$dir" -maxdepth 1 -type f -not -name '.*' -name '*.md' | sort -r)
+  # List all markdown files, ignoring dot-files and sorting them
+  list_of_files=$(find "$dir" -maxdepth 1 -type f -not -name '.*' -name '*.md' | sort)
 
   if [ -z "$list_of_files" ] ; then
     return 0
@@ -89,7 +87,7 @@ cd ../../../
 # Create the output file
 touch "$output"
 
-printf "$warning_prefix" >> "$output"
+printf '%s' "$warning_prefix" >> "$output"
 
 # Add the version section header to the changelog
 generate_version_header

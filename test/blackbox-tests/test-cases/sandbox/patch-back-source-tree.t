@@ -14,7 +14,7 @@ Targest are not promoted
   > (rule
   >  (deps (sandbox patch_back_source_tree))
   >  (targets x)
-  >  (action (system "echo 'Hello, world!' > x")))
+  >  (action (bash "echo 'Hello, world!' > x")))
   > EOF
 
   $ dune build x
@@ -29,7 +29,7 @@ All modified dependencies are promoted
   > (rule
   >  (deps x (sandbox patch_back_source_tree))
   >  (alias default)
-  >  (action (system "echo 'Hello, world!' > x")))
+  >  (action (bash "echo 'Hello, world!' > x")))
   > EOF
 
   $ echo blah > x
@@ -70,7 +70,7 @@ Non-modified dependencies are not promoted
   > (rule
   >  (alias default)
   >  (deps x (sandbox patch_back_source_tree))
-  >  (action (system "echo 'Hello, world!'")))
+  >  (action (bash "echo 'Hello, world!'")))
   > (rule (with-stdout-to x (progn)))
   > EOF
 
@@ -85,7 +85,7 @@ All other new files are copied
   > (rule
   >  (deps (sandbox patch_back_source_tree))
   >  (alias default)
-  >  (action (system "echo 'Hello, world!' > y")))
+  >  (action (bash "echo 'Hello, world!' > y")))
   > EOF
 
   $ dune build
@@ -107,7 +107,7 @@ Directories are created if needed
   > (rule
   >  (deps (sandbox patch_back_source_tree))
   >  (alias default)
-  >  (action (system "mkdir z; echo 'Hello, world!' > z/z")))
+  >  (action (bash "mkdir z; echo 'Hello, world!' > z/z")))
   > EOF
 
   $ dune build
@@ -131,15 +131,15 @@ Actions are allowed to delete files
   > (rule
   >  (deps foo (sandbox patch_back_source_tree))
   >  (alias default)
-  >  (action (system "rm foo")))
+  >  (action (bash "rm foo")))
   > EOF
 
   $ dune build
-  File "dune", lines 1-4, characters 0-96:
+  File "dune", lines 1-4, characters 0-94:
   1 | (rule
   2 |  (deps foo (sandbox patch_back_source_tree))
   3 |  (alias default)
-  4 |  (action (system "rm foo")))
+  4 |  (action (bash "rm foo")))
   Error: File foo should be deleted
   [1]
   $ dune promote
@@ -156,27 +156,27 @@ Actions are allowed to delete directories
   > (rule
   >  (deps todelete/y/foo (sandbox patch_back_source_tree))
   >  (alias default)
-  >  (action (system "rm -rf todelete")))
+  >  (action (bash "rm -rf todelete")))
   > EOF
 
   $ dune build
-  File "dune", lines 1-4, characters 0-116:
+  File "dune", lines 1-4, characters 0-114:
   1 | (rule
   2 |  (deps todelete/y/foo (sandbox patch_back_source_tree))
   3 |  (alias default)
-  4 |  (action (system "rm -rf todelete")))
+  4 |  (action (bash "rm -rf todelete")))
   Error: Directory todelete should be deleted
-  File "dune", lines 1-4, characters 0-116:
+  File "dune", lines 1-4, characters 0-114:
   1 | (rule
   2 |  (deps todelete/y/foo (sandbox patch_back_source_tree))
   3 |  (alias default)
-  4 |  (action (system "rm -rf todelete")))
+  4 |  (action (bash "rm -rf todelete")))
   Error: Directory todelete/y should be deleted
-  File "dune", lines 1-4, characters 0-116:
+  File "dune", lines 1-4, characters 0-114:
   1 | (rule
   2 |  (deps todelete/y/foo (sandbox patch_back_source_tree))
   3 |  (alias default)
-  4 |  (action (system "rm -rf todelete")))
+  4 |  (action (bash "rm -rf todelete")))
   Error: File todelete/y/foo should be deleted
   [1]
 
@@ -194,7 +194,7 @@ Actions are allowed to change directories into files
   > (rule
   >  (deps dir/y/foo (sandbox patch_back_source_tree))
   >  (alias default)
-  >  (action (system "rm -rf dir && echo foo > dir")))
+  >  (action (bash "rm -rf dir && echo foo > dir")))
   > EOF
 
   $ dune promote
@@ -210,15 +210,15 @@ Interaction with explicit sandboxing
   > (rule
   >  (deps (sandbox patch_back_source_tree) (sandbox none))
   >  (alias default)
-  >  (action (system "echo 'Hello, world!'")))
+  >  (action (bash "echo 'Hello, world!'")))
   > EOF
 
   $ dune build
-  File "dune", lines 1-4, characters 0-121:
+  File "dune", lines 1-4, characters 0-119:
   1 | (rule
   2 |  (deps (sandbox patch_back_source_tree) (sandbox none))
   3 |  (alias default)
-  4 |  (action (system "echo 'Hello, world!'")))
+  4 |  (action (bash "echo 'Hello, world!'")))
   Error: This rule forbids all sandboxing modes (but it also requires
   sandboxing)
   [1]
@@ -230,7 +230,7 @@ the rule:
   > (rule
   >  (deps (sandbox patch_back_source_tree))
   >  (alias default)
-  >  (action (system "echo 'Hello, world!' > x")))
+  >  (action (bash "echo 'Hello, world!' > x")))
   > EOF
 
   $ test_with ()
@@ -276,7 +276,7 @@ If a source file is read-only, the action sees it as writable:
   > (rule
   >  (deps x (sandbox patch_back_source_tree))
   >  (alias default)
-  >  (action (system "if test -w x; then echo writable; else echo non-writable; fi; echo blah > x")))
+  >  (action (bash "if test -w x; then echo writable; else echo non-writable; fi; echo blah > x")))
   > EOF
 
   $ echo xx > x
@@ -314,7 +314,7 @@ produced in the sandbox and copied back:
   > (rule
   >  (deps (sandbox patch_back_source_tree))
   >  (alias blah)
-  >  (action (system "echo 'Hello, world!'")))
+  >  (action (bash "echo 'Hello, world!'")))
   > EOF
 
   $ dune build @blah

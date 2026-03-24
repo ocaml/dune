@@ -283,7 +283,7 @@ Now let's see what happens if the symbolic link is produced by a rule.
   > (rule
   >  (targets t)
   >  (deps link)
-  >  (action (system "cp %{deps} t; dune_cmd stat kind %{deps}")))
+  >  (action (bash "cp %{deps} t; dune_cmd stat kind %{deps}")))
   > EOF
 
   $ echo hi again > file
@@ -335,7 +335,7 @@ which is circular.
   > (rule
   >  (targets t)
   >  (deps link)
-  >  (action (system "cp %{deps} t; dune_cmd stat kind %{deps}")))
+  >  (action (bash "cp %{deps} t; dune_cmd stat kind %{deps}")))
   > EOF
 
   $ (cd ..; rm link; ln -s link link)
@@ -362,11 +362,11 @@ So, it seems like we must play dirty to create a symbolic link loop.
   > (rule
   >  (deps link (sandbox none))
   >  (targets dirty-rule)
-  >  (action (system "(cd $PWD/..; rm link; ln -s link link); touch dirty-rule")))
+  >  (action (bash "(cd $PWD/..; rm link; ln -s link link); touch dirty-rule")))
   > (rule
   >  (targets t)
   >  (deps link dirty-rule)
-  >  (action (system "cp %{deps} t; dune_cmd stat kind %{deps}")))
+  >  (action (bash "cp %{deps} t; dune_cmd stat kind %{deps}")))
   > EOF
 
   $ (cd ..; rm link; ln -s file link)
@@ -374,11 +374,11 @@ So, it seems like we must play dirty to create a symbolic link loop.
 Finally, we get to see the error message printed out at sandbox creation.
 
   $ dune build t --sandbox hardlink
-  File "dune", lines 8-11, characters 0-105:
+  File "dune", lines 8-11, characters 0-103:
    8 | (rule
    9 |  (targets t)
   10 |  (deps link dirty-rule)
-  11 |  (action (system "cp %{deps} t; dune_cmd stat kind %{deps}")))
+  11 |  (action (bash "cp %{deps} t; dune_cmd stat kind %{deps}")))
   Error: Sandbox creation error: cannot resolve symbolic link
   "_build/default/link".
   Reason: Too many indirections; is this a cyclic symbolic link?

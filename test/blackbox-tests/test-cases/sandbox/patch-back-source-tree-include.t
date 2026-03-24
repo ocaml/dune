@@ -12,7 +12,7 @@ Patch-back sandboxing from an included deps file is treated like direct patch-ba
   > (rule
   >  (alias runtest)
   >  (deps mod (include deps.inc))
-  >  (action (system "echo foo > mod")))
+  >  (action (bash "echo foo > mod")))
   > EOF
 
   $ dune runtest 2>&1 | grep -o "Permission denied"
@@ -23,7 +23,7 @@ Patch-back sandboxing from an included deps file is treated like direct patch-ba
   > (rule
   >  (alias runtest)
   >  (deps mod (sandbox patch_back_source_tree))
-  >  (action (system "echo foo > mod")))
+  >  (action (bash "echo foo > mod")))
   > EOF
 
   $ dune runtest

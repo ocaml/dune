@@ -77,7 +77,7 @@ stateDiagram-v2
 
 - Alpha time:
   - Branch setup:
-    - create `x.y-rc` branch
+    - create `x.y.0-rc` branch
     - Run `doc/changes/scripts/build_changelog.sh x.y.0~alpha0`
     - Review changelog for correct issues IDs and general intelligibility.
     - Prepare alpha release `0`
@@ -162,34 +162,32 @@ stateDiagram-v2
   - Previous minor/major release is merged
     - changelogs of previous point releases are merged
 
-
 - Prepare:
   - Create release tracking issue
   - List fixes present in main to backport
   - Blockers for this release include:
+    - fixes for all reported regressions
     - all backports of listed fixes
-    - reported regressions
 
 - Backport:
   - Branch setup
     - Checkout the tag for the latest point release `x.y.z`
-    - Create a new branch `x.y.z+1-rc`
+    - Create a new branch `x.y.z'` where `z' = z + 1`
   - `git cherry-pick` commits as merged in `main`
   - Open PR
-    - Base: `x.y.z+1-rc`
-    - Set `x.y.z+1-rc` as target branch, e.g. `gh pr create -B x.y.z+1-rc`
-    - Title must be `[x.y] backport #<PR id>`
+    - Base: `x.y.z'-rc`
+    - Set `x.y.z'-rc` as target branch, e.g. `gh pr create -B x.y.z'-rc`
+    - Title must be `[x.y.z'] backport #<PR id>`
     - List PR in blockers
 
 - Release:
-  - Position on `x.y`
-  - Prepare changelog
-  - Open a PR `prepare-x.y.z`
+  - Checkout `x.y.z'-rc`
+  - Run `doc/changes/scripts/build_changelog.sh x.y.z'~alpha0`
   - `make opam-release`
-  - Triage
+  - Triage revdep failures
 
 - Post-release:
-  - Open PR on `ocaml/ocaml.org` to add a file in under `data/changelog/dune`
+  - Run `./announce.sh`
   - Post changelog on Discuss in the same thread as `x.y.0`
   - Merge changelog
   - Update the Dune target in the [nix-ocaml/nix-overlays](https://github.com/nix-ocaml/nix-overlays) (the hash is computed using `nix-prefetch-url --type sha256 <URL>`)

@@ -12,6 +12,7 @@ val map_path : t -> Path.Build.t -> Path.Build.t
 (** Create a new sandbox containing [dirs] and copy or link dependencies [deps] inside it. *)
 val create
   :  mode:Sandbox_mode.some
+  -> Corrections.t
   -> rule_loc:Loc.t
   -> dirs:Path.Build.Set.t
   -> deps:Path.Set.t

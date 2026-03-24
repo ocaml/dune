@@ -269,7 +269,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 23
+  let rule_digest_version = 24
 
   let compute_rule_digest
         (rule : Rule.t)
@@ -283,6 +283,7 @@ end = struct
         ; locks
         ; can_go_in_shared_cache
         ; sandbox = _ (* already taken into account in [sandbox_mode] *)
+        ; corrections
         }
       =
       action
@@ -299,6 +300,7 @@ end = struct
       , Action.for_shell action
       , can_go_in_shared_cache
       , List.map locks ~f:Path.to_string
+      , corrections
       , Execution_parameters.action_stdout_on_success execution_parameters
       , Execution_parameters.action_stderr_on_success execution_parameters
       , Execution_parameters.workspace_root_to_build_path_prefix_map execution_parameters
@@ -353,7 +355,14 @@ end = struct
     : Exec_result.t Fiber.t
     =
     let open Fiber.O in
-    let { Action.Full.action; env; locks; can_go_in_shared_cache = _; sandbox = _ } =
+    let { Action.Full.action
+        ; env
+        ; locks
+        ; can_go_in_shared_cache = _
+        ; sandbox = _
+        ; corrections
+        }
+      =
       action
     in
     let deps =
@@ -368,6 +377,7 @@ end = struct
         let+ sandbox =
           Sandbox.create
             ~mode
+            (Option.value ~default:Ignore corrections)
             ~dirs:(Dep.Facts.necessary_dirs_for_sandboxing facts)
             ~deps
             ~rule_dir:targets.root
@@ -739,7 +749,7 @@ end = struct
 
   (* The current version of the action digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let action_digest_version = 3
+  let action_digest_version = 4
 
   let execute_action_generic
         ~observing_facts
@@ -773,7 +783,7 @@ end = struct
     ignore observing_facts;
     let digest =
       let { Rule.Anonymous_action.action =
-              { action; env; locks; can_go_in_shared_cache; sandbox }
+              { action; env; locks; can_go_in_shared_cache; sandbox; corrections }
           ; loc = _
           ; dir
           ; alias
@@ -806,7 +816,8 @@ end = struct
         , alias
         , capture_stdout
         , can_go_in_shared_cache
-        , sandbox )
+        , sandbox
+        , corrections )
     in
     (* It might seem superfluous to memoize the execution here, given that a
        given anonymous action will typically only appear once during a given

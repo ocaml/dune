@@ -37,6 +37,7 @@ module Targets = Dune_targets
 
 include struct
   open Dune_engine
+  module Corrections = Corrections
   module Dir_set = Dir_set
   module Rule = Rule
   module Rules = Rules

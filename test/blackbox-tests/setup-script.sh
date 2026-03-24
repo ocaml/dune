@@ -121,3 +121,9 @@ build () {
 file_status() {
   [ -e "$1" ] && echo "$1 exists" || echo "$1 missing"
 }
+
+strip_sandbox() {
+  # we want to substitute it to $SANDBOX
+  # shellcheck disable=SC2016
+  dune_cmd subst '[^ ]*.sandbox[/\\][^/\\]+' '$SANDBOX'
+}

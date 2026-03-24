@@ -42,13 +42,13 @@ Trace Event Format spec. A Unix timestamp in seconds (~1.7e9) vs microseconds
 (~1.7e15) differs by 6 orders of magnitude; 1e12 sits safely between them:
 
   $ dune trace cat --chrome-trace | jq '.[0].ts > 1e12'
-  false
+  true
 
 Duration values should be whole-number microseconds (integer division from
 nanoseconds):
 
   $ dune trace cat --chrome-trace | jq '[.[] | select(.dur) | .dur == (.dur | floor)] | all'
-  false
+  true
 
 All the event types from chrome and field per type:
 

@@ -455,7 +455,7 @@ let shared_with_config_file ~allow_pkg_flag =
           ~doc:(Some doc))
   and+ sandboxing_preference =
     let all =
-      List.map Dune_engine.Sandbox_mode.all_except_patch_back_source_tree ~f:(fun s ->
+      List.map Dune_engine.Sandbox_mode.cli_options ~f:(fun s ->
         Dune_engine.Sandbox_mode.to_string s, s)
     in
     Arg.(

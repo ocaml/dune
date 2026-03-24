@@ -1,3 +1,20 @@
+; Tests that pass on Windows
+
+(cram
+ (applies_to sandboxing sandbox-events corrections-directory-deps)
+ (alias runtest-windows))
+
+(cram
+ (applies_to sandbox-symlink-windows)
+ (enabled_if
+  (= %{os_type} Win32))
+ (alias runtest-windows))
+
+; Tests disabled on Windows:
+; sandbox-chdir: path prefix handling differences
+; sandboxing-stale-directory-target: path prefix handling differences
+; patch-back-source-tree-include: Windows does not enforce read-only permissions
+
 (cram
  (applies_to sandboxing-stale-directory-target)
  (deps %{bin:bash}))

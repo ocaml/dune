@@ -114,13 +114,11 @@ let create_dirs t ~dirs ~rule_dir =
 let link_function ~(mode : Sandbox_mode.some) =
   let win32_error mode =
     let mode = Sandbox_mode.to_string (Some mode) in
-    Code_error.raise
-      (sprintf
-         "Don't have %ss on win32, but [%s] sandboxing mode was selected. To use  \
-          emulation via copy, the [copy] sandboxing mode should be selected."
-         mode
-         mode)
-      []
+    User_error.raise
+      [ Pp.textf
+          "Sandboxing mode %s is not supported on Windows. Use copy or hardlink instead."
+          mode
+      ]
   in
   Staged.stage
     (match mode with
@@ -129,10 +127,7 @@ let link_function ~(mode : Sandbox_mode.some) =
         | true -> win32_error mode
         | false -> fun src dst -> Io.portable_symlink ~src ~dst)
      | Copy -> fun src dst -> copy_recursively ~src ~dst
-     | Hardlink ->
-       (match Sys.win32 with
-        | true -> win32_error mode
-        | false -> fun src dst -> Io.portable_hardlink ~src ~dst)
+     | Hardlink -> fun src dst -> Io.portable_hardlink ~src ~dst
      | Patch_back_source_tree ->
        (* We need to let the action modify its dependencies, so we copy
           dependencies and make them writable. *)

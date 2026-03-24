@@ -75,6 +75,10 @@ end
     choice. Also, we want to get rid of this mode eventually. *)
 val all_except_patch_back_source_tree : t list
 
+(** All modes available in the CLI. Includes symlink on all platforms so that
+    users get a clear error message on Windows instead of "invalid value". *)
+val cli_options : t list
+
 val all : t list
 val none : t
 val symlink : t

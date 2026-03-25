@@ -16,7 +16,7 @@ CAMLprim value dune_clock_gettime_realtime(value v_unit) {
   if (GetSystemTime == NULL) {
     HMODULE h = GetModuleHandleA("kernel32.dll");
     if (h) {
-      GetSystemTime = GetProcAddress(h, "GetSystemTimePreciseAsFileTime");
+      GetSystemTime = (VOID (WINAPI *)(LPFILETIME))GetProcAddress(h, "GetSystemTimePreciseAsFileTime");
     }
     if (GetSystemTime == NULL) { /* < Windows 8 */
       GetSystemTime = GetSystemTimeAsFileTime;

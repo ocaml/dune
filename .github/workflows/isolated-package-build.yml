@@ -4,11 +4,9 @@ name: Packaging check
 # https://opam.ci.ocaml.org/github/ocaml/opam-repository/commit/a95df9014bc79103fde668cf2adbe6680fd2f9cf/variant/compilers,5.0,fs-io.3.21.0~alpha3,tests
 
 on:
-  pull_request:
   push:
     branches:
         - main
-        - 'releases/**'
   workflow_dispatch:
 
 jobs:

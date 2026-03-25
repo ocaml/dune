@@ -4,6 +4,7 @@ val start : t
 val now : unit -> t
 val to_secs : t -> float
 val to_ns : t -> int
+val to_us : t -> int
 val of_epoch_secs : float -> t
 val of_ns : int -> t
 
@@ -17,6 +18,7 @@ module Span : sig
   val to_secs : t -> float
   val of_ns : int -> t
   val to_ns : t -> int
+  val to_us : t -> int
   val add : t -> t -> t
   val diff : t -> t -> t
 end

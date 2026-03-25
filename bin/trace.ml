@@ -206,12 +206,12 @@ let json_of_event ~chrome (sexp : Sexp.t) =
     let base =
       [ "cat", Json.string cat
       ; "name", Json.string name
-      ; "ts", Json.int (Time.to_ns ts / 1000)
+      ; "ts", Json.int (Time.to_us ts)
       ; "args", Json.assoc rest
       ]
       @ (match dur with
          | None -> []
-         | Some k -> [ "dur", Json.int (Time.Span.to_ns k / 1000) ])
+         | Some k -> [ "dur", Json.int (Time.Span.to_us k) ])
       @ [ "ph", Json.string kind; "pid", Json.int (Lazy.force pid) ]
     in
     Json.assoc base

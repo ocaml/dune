@@ -1,0 +1,82 @@
+name: Packaging check
+# Check every sub-package within Dune builds in isolation. This is similar to
+# the opam-repo-ci job to check packaging in isolation, for example:
+# https://opam.ci.ocaml.org/github/ocaml/opam-repository/commit/a95df9014bc79103fde668cf2adbe6680fd2f9cf/variant/compilers,5.0,fs-io.3.21.0~alpha3,tests
+
+on:
+  push:
+    branches:
+        - main
+  workflow_dispatch:
+
+jobs:
+  discover-packages:
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.discover.outputs.packages }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: discover
+        shell: bash
+        # Discover the list of packages by reading the opam directory. Each
+        # .opam file defines a separate package.
+        run: |
+          set -euo pipefail
+          packages=$(
+            find ./opam -maxdepth 1 -name '*.opam' -printf '%f\n' \
+            | sed 's/\.opam$//' \
+            | sort \
+            | jq -R -s -c 'split("\n")[:-1]'
+          )
+          echo "packages=$packages" >> "$GITHUB_OUTPUT"
+
+  packaging-check:
+    needs: discover-packages
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.discover-packages.outputs.packages) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.4
+          dune-cache: true
+          opam-pin: false
+
+      - name: Lint current package metadata
+        run: opam lint "./opam/${{ matrix.package }}.opam"
+
+      - name: Pin all packages without installing
+        # Some packages require their sibling packages to be at the same version.
+        # All packages also depend on the current version of dune. To make these
+        # dependencies available, we pin all packages in the `opam` directory without
+        # installing them. This way they are pulled in only if required by the package
+        # being built, without influencing the solver for unrelated dependencies.
+        env:
+          packages: ${{ needs.discover-packages.outputs.packages }}
+        run: |
+          echo "$packages" | jq -r '.[]' | while read -r pkg; do
+            opam pin add "$pkg.dev" . -n
+          done
+
+      - name: Activate opam environment
+        run: |
+          eval $(opam env)
+          echo "PATH=$PATH" >> $GITHUB_ENV
+
+      - name: Install package
+        run: opam install ${{ matrix.package }} --with-test -y
+
+      - name: Lower bounds test
+        # Verify that installation succeeds with lower-bound dependencies.
+        # The package is removed first so that opam reinstalls it fresh,
+        # resolving to the oldest compatible versions rather than reusing
+        # what is already installed.
+        run: |
+          opam remove ${{ matrix.package }}
+          opam install --solver=builtin-0install "--criteria=+count[version-lag,solution]" ${{ matrix.package }}

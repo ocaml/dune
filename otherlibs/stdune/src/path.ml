@@ -368,10 +368,7 @@ module Build = struct
     let p = local p in
     match Fdecl.get build_dir with
     | In_source_dir b -> Local.to_string (Local.append (Source0.to_local b) p)
-    | External b ->
-      if Local.is_root p
-      then External.to_string b
-      else Filename.concat (External.to_string b) (Local.to_string p)
+    | External b -> External.to_string (External.append_local b p)
   ;;
 
   let to_string_maybe_quoted p = String.maybe_quoted (to_string p)

@@ -309,20 +309,32 @@ let source_kind (source : Dune_pkg.Source.t) =
   if OpamUrl.is_local url && url.backend = `rsync
   then (
     let path =
-      Path.of_string_allow_outside_workspace url.path
-      |> Path.to_absolute_filename
-      |> Path.External.of_string
+      match Path.of_string_allow_outside_workspace url.path with
+      | External e -> Path.Outside_build_dir.External e
+      | In_source_tree s -> Path.Outside_build_dir.In_source_dir s
+      | In_build_dir b ->
+        User_error.raise
+          ~loc
+          [ Pp.textf
+              "package source path %s is inside the build directory"
+              (Path.Build.to_string_maybe_quoted b)
+          ]
     in
-    Fs_memo.path_kind (External path)
+    Fs_memo.path_kind path
     >>| function
     | Error (ENOENT, _, _) ->
       User_error.raise
         ~loc
-        [ Pp.textf "%s does not exist" (Path.External.to_string_maybe_quoted path) ]
+        [ Pp.textf
+            "%s does not exist"
+            (Path.Outside_build_dir.to_string_maybe_quoted path)
+        ]
     | Error exn ->
       User_error.raise
         ~loc
-        [ Pp.textf "unable to read %s" (Path.External.to_string_maybe_quoted path)
+        [ Pp.textf
+            "unable to read %s"
+            (Path.Outside_build_dir.to_string_maybe_quoted path)
         ; Unix_error.Detailed.pp exn
         ]
     | Ok S_REG -> `Local (`File, path)
@@ -332,7 +344,7 @@ let source_kind (source : Dune_pkg.Source.t) =
         ~loc
         [ Pp.textf
             "path %s is not a directory or a file"
-            (Path.External.to_string_maybe_quoted path)
+            (Path.Outside_build_dir.to_string_maybe_quoted path)
         ])
   else Memo.return `Fetch
 ;;

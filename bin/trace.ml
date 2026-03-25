@@ -183,38 +183,31 @@ let json_of_event ~chrome (sexp : Sexp.t) =
       | Sexp.List [ Atom k; v ] -> k, json_of_sexp v
       | _ -> invalid_sexp sexp)
   in
-  match chrome with
-  | false ->
-    let base =
-      [ "cat", Json.string cat
-      ; "name", Json.string name
-      ; "ts", Json.float (Time.to_secs ts)
-      ; "args", Json.assoc rest
+  let base =
+    [ "cat", Json.string cat
+    ; "name", Json.string name
+    ; ("ts", if chrome then Json.int (Time.to_us ts) else Json.float (Time.to_secs ts))
+    ; "args", Json.assoc rest
+    ]
+    @
+    match dur with
+    | None -> []
+    | Some k ->
+      [ ( "dur"
+        , if chrome
+          then Json.int (Time.Span.to_us k)
+          else Json.float (Time.Span.to_secs k) )
       ]
-      @
-      match dur with
-      | None -> []
-      | Some k -> [ "dur", Json.float (Time.Span.to_secs k) ]
-    in
-    Json.assoc base
+  in
+  match chrome with
+  | false -> Json.assoc base
   | true ->
     let kind =
       match dur with
       | None -> "i"
       | Some _ -> "X"
     in
-    let base =
-      [ "cat", Json.string cat
-      ; "name", Json.string name
-      ; "ts", Json.int (Time.to_us ts)
-      ; "args", Json.assoc rest
-      ]
-      @ (match dur with
-         | None -> []
-         | Some k -> [ "dur", Json.int (Time.Span.to_us k) ])
-      @ [ "ph", Json.string kind; "pid", Json.int (Lazy.force pid) ]
-    in
-    Json.assoc base
+    Json.assoc (base @ [ "ph", Json.string kind; "pid", Json.int (Lazy.force pid) ])
 ;;
 
 let cat =

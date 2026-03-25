@@ -1,5 +1,6 @@
 (library
  (name stdune_unit_tests)
+ (modules :standard \ path_external_build_tests)
  (inline_tests
   (deps
    (source_tree ../unit-tests/findlib-db)
@@ -16,3 +17,22 @@
   ppx_inline_test.config)
  (preprocess
   (pps ppx_expect)))
+
+(library
+ (name stdune_external_build_tests)
+ (modules path_external_build_tests)
+ (inline_tests)
+ (libraries
+  stdune
+  unix
+  ppx_expect.config
+  ppx_expect.config_types
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))
+
+(alias
+ (name runtest-windows)
+ (deps
+  (alias runtest-stdune_external_build_tests)))

@@ -37,11 +37,23 @@ CAMLprim value dune_clock_gettime_realtime(value v_unit) {
 
 #include <time.h>
 
+#if defined(__APPLE__)
+#include <sys/time.h>
+#include <AvailabilityMacros.h>
+#endif
+
 CAMLprim value dune_clock_gettime_realtime(value v_unit) {
   (void)v_unit;
+#if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED < 101200
+  // macOS < 10.12 doesn't have clock_gettime, use gettimeofday
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  int64_t ns = ((int64_t)tv.tv_sec * 1000000000LL) + ((int64_t)tv.tv_usec * 1000LL);
+#else
   struct timespec tp;
   clock_gettime(CLOCK_REALTIME, &tp);
   int64_t ns = ((int64_t)tp.tv_sec * 1000000000LL) + (int64_t)tp.tv_nsec;
+#endif
   return Val_long(ns);
 }
 

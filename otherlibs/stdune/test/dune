@@ -1,6 +1,6 @@
 (library
  (name stdune_unit_tests)
- (modules :standard \ path_external_build_tests)
+ (modules :standard \ path_external_build_tests path_tests)
  (inline_tests
   (deps
    (source_tree ../unit-tests/findlib-db)
@@ -11,6 +11,21 @@
   unix
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))
+
+(library
+ (name stdune_path_tests)
+ (modules path_tests)
+ (inline_tests)
+ (libraries
+  stdune
+  dune_tests_common
+  unix
   ppx_expect.config
   ppx_expect.config_types
   base

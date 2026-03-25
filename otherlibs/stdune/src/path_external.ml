@@ -27,7 +27,24 @@ let to_dyn t = Dyn.variant "External" [ Dyn.string t ]
 let relative x y =
   match y with
   | "." -> x
-  | _ -> Filename.concat x y
+  | _ ->
+    let y =
+      if String.length y >= 2 && y.[0] = '.' && is_dir_sep y.[1]
+      then String.drop y 2
+      else y
+    in
+    (match y with
+     | "" | "." -> x
+     | _ ->
+       (* Strip a trailing directory separator from [x] so we don't produce
+          double slashes (e.g. "/root/" + "foo" -> "/root/foo"). We use
+          [is_dir_sep] so that on Windows a trailing '\' is also removed,
+          normalising the join to always use '/'. *)
+       let x =
+         let len = String.length x in
+         if len > 0 && is_dir_sep x.[len - 1] then String.take x (len - 1) else x
+       in
+       x ^ "/" ^ y)
 ;;
 
 let append_local t local = relative t (Local.to_string local)

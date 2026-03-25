@@ -247,7 +247,7 @@ let fetch_local ~checksum ~target (url, url_loc) =
       Unavailable (Some (User_message.make [ Pp.text "Could not unpack:"; pp ])))
 ;;
 
-let rec resolve_directory_symlinks_in dir =
+let resolve_directory_symlinks_in root =
   let follow_symlink_exn path =
     match Fpath.follow_symlink path with
     | Ok resolved -> Some resolved
@@ -261,63 +261,96 @@ let rec resolve_directory_symlinks_in dir =
         [ Pp.textf "Unable to resolve symlink %s: too many levels of symbolic links" path
         ]
   in
-  match Readdir.read_directory_with_kinds dir with
-  | Error e -> Unix_error.Detailed.raise e
-  | Ok entries ->
-    List.iter entries ~f:(fun (fname, kind) ->
-      let path = Filename.concat dir fname in
-      match (kind : Unix.file_kind) with
-      | S_DIR -> resolve_directory_symlinks_in path
-      | S_LNK ->
-        (match follow_symlink_exn path with
-         | None ->
-           (* Delete faulty symlinks silently, as they're allowed in fetched sources. *)
-           Fpath.unlink_no_err path;
-           Log.info "Deleted broken symlink" [ "path", Dyn.string path ]
-         | Some resolved ->
-           (match Unix.stat resolved with
-            | { Unix.st_kind = S_DIR; _ } ->
-              Fpath.unlink_exn path;
-              (match Fpath.mkdir_p path with
-               | `Created -> ()
-               | `Already_exists ->
-                 User_error.raise
-                   [ Pp.textf
-                       "Unable to resolve symlink %s: a directory with the same name \
-                        already exists."
-                       path
-                   ]);
-              (match Readdir.read_directory_with_kinds resolved with
-               | Error e -> Unix_error.Detailed.raise e
-               | Ok children ->
-                 let symlinks_in_children =
-                   List.fold_left
-                     children
-                     ~init:false
-                     ~f:(fun symlinks_in_children (child_name, child_kind) ->
-                       let child_path = Filename.concat resolved child_name in
-                       let src = Path.of_string child_path in
-                       let dst = Path.of_string (Filename.concat path child_name) in
-                       match (child_kind : Unix.file_kind) with
-                       | S_REG ->
-                         Io.portable_hardlink ~src ~dst;
-                         symlinks_in_children
-                       | S_DIR ->
-                         Io.portable_symlink ~src ~dst;
-                         true
-                       | S_LNK ->
-                         follow_symlink_exn child_path
-                         |> Option.iter ~f:(fun linked_path ->
-                           let src = Path.of_string linked_path in
-                           Io.portable_symlink ~src ~dst);
-                         true
-                       | _ -> symlinks_in_children)
-                 in
-                 if symlinks_in_children then resolve_directory_symlinks_in path)
-            | _ ->
-              (* We do not care about symlinks pointing to anything but directories. *)
-              ()))
-      | _ -> ())
+  let rec resolve_rec dir already_seen =
+    match Readdir.read_directory_with_kinds dir with
+    | Error e -> Unix_error.Detailed.raise e
+    | Ok entries ->
+      List.fold_left entries ~init:already_seen ~f:(fun seen (fname, kind) ->
+        let path = Filename.concat dir fname in
+        match (kind : Unix.file_kind) with
+        | S_DIR -> resolve_rec path seen
+        | S_LNK ->
+          if String.Set.mem already_seen path
+          then
+            User_error.raise
+              [ Pp.textf "Unable to resolve symlink %s, it is part of a cycle." path ];
+          let seen = String.Set.add seen path in
+          (match follow_symlink_exn path with
+           | None ->
+             (* Delete faulty symlinks silently, as they're allowed in fetched sources. *)
+             Fpath.unlink_no_err path;
+             Log.info
+               "Deleted broken symlink from fetched archive"
+               [ "path", Dyn.string path ];
+             seen
+           | Some resolved ->
+             (match
+                String.drop_prefix
+                  resolved
+                  ~prefix:(Path.to_string root ^ Filename.dir_sep)
+              with
+              | None ->
+                User_error.raise
+                  [ Pp.textf
+                      "Unable to resolve symlink %s: its target %s is outside the source \
+                       directory"
+                      path
+                      (Path.to_string root)
+                  ]
+              | Some local_resolved ->
+                Printf.printf
+                  "At this point, we have: path %S, resolved %S, local_resolved %S\n"
+                  path
+                  resolved
+                  local_resolved;
+                (match Unix.stat resolved with
+                 | { Unix.st_kind = S_DIR; _ } ->
+                   Fpath.unlink_exn path;
+                   (match Fpath.mkdir_p path with
+                    | `Created -> ()
+                    | `Already_exists ->
+                      User_error.raise
+                        [ Pp.textf
+                            "Unable to resolve symlink %s: a directory with the same \
+                             name already exists."
+                            path
+                        ]);
+                   (match Readdir.read_directory_with_kinds resolved with
+                    | Error e -> Unix_error.Detailed.raise e
+                    | Ok children ->
+                      let symlinks_in_children =
+                        List.fold_left
+                          children
+                          ~init:false
+                          ~f:(fun symlinks_in_children (child_name, child_kind) ->
+                            let child_path = Filename.concat resolved child_name in
+                            let src = Path.of_string child_path in
+                            let dst = Path.of_string (Filename.concat path child_name) in
+                            match (child_kind : Unix.file_kind) with
+                            | S_REG ->
+                              Io.portable_hardlink ~src ~dst;
+                              symlinks_in_children
+                            | S_DIR ->
+                              Io.portable_symlink ~src ~dst;
+                              true
+                            | S_LNK ->
+                              follow_symlink_exn child_path
+                              |> Option.iter ~f:(fun linked_path ->
+                                let src = Path.of_string linked_path in
+                                Io.portable_symlink ~src ~dst);
+                              true
+                            | _ -> symlinks_in_children)
+                      in
+                      if symlinks_in_children then resolve_rec path seen else seen)
+                 | _ ->
+                   (* We do not care about symlinks pointing to anything but directories. *)
+                   seen)))
+        | _ -> seen)
+  in
+  let _symlinks_seen : String.Set.t =
+    resolve_rec (Path.to_string root) String.Set.empty
+  in
+  ()
 ;;
 
 let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
@@ -358,7 +391,7 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
        | Ok () ->
          let target_str = Path.to_string target in
          if (Unix.lstat target_str).st_kind = S_DIR
-         then resolve_directory_symlinks_in target_str;
+         then resolve_directory_symlinks_in target;
          Ok ()
        | Error e -> Error e)
 ;;

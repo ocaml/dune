@@ -479,7 +479,7 @@ module Pkg = struct
       | _ -> false
     in
     let skip_file = String.starts_with ~prefix:".#" in
-    let rec loop root acc path =
+    let rec collect_sources ~root ~acc ~path ~already_seen =
       let full_path = Path.External.append_local root path in
       Fs_memo.dir_contents (External full_path)
       >>= function
@@ -490,54 +490,88 @@ module Pkg = struct
           ; Unix_error.Detailed.pp e
           ]
       | Ok contents ->
-        let files, dirs =
+        let files, dirs, seen =
           let contents = Fs_cache.Dir_contents.to_list contents in
-          List.rev_filter_partition_map contents ~f:(fun (name, kind) ->
-            let relative = Path.Local.relative path name in
-            (* TODO handle cycles correctly *)
-            match kind with
-            | S_DIR -> if skip_dir name then Skip else Right relative
-            | S_LNK ->
-              let full_name = Filename.concat (Path.External.to_string full_path) name in
-              (match Fpath.follow_symlink full_name with
-               | Ok resolved ->
-                 (match
-                    String.drop_prefix
-                      resolved
-                      ~prefix:(Path.External.to_string root ^ Filename.dir_sep)
-                  with
-                  | Some local_resolved ->
-                    (match Unix.lstat resolved with
-                     | { st_kind = S_DIR; _ } ->
-                       let local_path = Path.Local.of_string local_resolved in
-                       if skip_dir name then Skip else Right local_path
-                     | { st_kind = _; _ } ->
-                       if skip_file name then Skip else Left relative)
-                  | None ->
-                    User_error.raise
-                      [ Pp.textf
-                          "Unable to resolve symlink %s: its target %s is outside the \
-                           source directory"
-                          full_name
-                          (Path.External.to_string root)
-                      ])
-               | Error Fpath.Not_a_symlink ->
-                 Code_error.raise
-                   "source_files: not a symlink"
-                   [ "path", Dyn.string full_name ]
-               | Error Fpath.Max_depth_exceeded ->
-                 User_error.raise
-                   [ Pp.textf
-                       "Unable to resolve symlink %s: too many levels of symbolic links"
-                       full_name
-                   ]
-               | Error (Fpath.Unix_error (Unix.ENOENT, _, _)) -> Skip
-               | Error (Fpath.Unix_error err) -> Unix_error.Detailed.raise err)
-            | _ -> if skip_file name then Skip else Left relative)
+          List.fold_left
+            contents
+            ~init:([], [], already_seen)
+            ~f:(fun (files, dirs, already_seen) (name, (kind : Unix.file_kind)) ->
+              let relative = Path.Local.relative path name in
+              match kind with
+              | S_DIR ->
+                if skip_dir name
+                then files, dirs, already_seen
+                else files, relative :: dirs, already_seen
+              | S_LNK ->
+                if Path.Local.Set.mem already_seen relative
+                then
+                  User_error.raise
+                    ~loc
+                    [ Pp.textf
+                        "Unable to resolve symlink %s, it is part of a cycle."
+                        (Path.Local.to_string relative)
+                    ];
+                let seen = Path.Local.Set.add already_seen relative in
+                let full_name =
+                  Filename.concat (Path.External.to_string full_path) name
+                in
+                (match Fpath.follow_symlink full_name with
+                 | Error Fpath.Not_a_symlink ->
+                   Code_error.raise
+                     ~loc
+                     "source_files: not a symlink"
+                     [ "path", Dyn.string full_name ]
+                 | Error Fpath.Max_depth_exceeded ->
+                   User_error.raise
+                     ~loc
+                     [ Pp.textf
+                         "Unable to resolve symlink %s: too many levels of symbolic links"
+                         full_name
+                     ]
+                 | Error (Fpath.Unix_error ((Unix.ENOENT, _, _) as u_err)) ->
+                   (* We simply skip over broken symlinks *)
+                   Log.info
+                     "Found a broken symlink"
+                     [ "full_name", Dyn.string full_name
+                     ; "u_err", Unix_error.Detailed.to_dyn u_err
+                     ];
+                   files, dirs, seen
+                 | Error (Fpath.Unix_error e) -> Unix_error.Detailed.raise e
+                 | Ok resolved ->
+                   (match
+                      String.drop_prefix
+                        resolved
+                        ~prefix:(Path.External.to_string root ^ Filename.dir_sep)
+                    with
+                    | None ->
+                      User_error.raise
+                        ~loc
+                        [ Pp.textf
+                            "Unable to resolve symlink %s: its target %s is outside the \
+                             source directory"
+                            full_name
+                            (Path.External.to_string root)
+                        ]
+                    | Some local_resolved ->
+                      (match Unix.lstat resolved with
+                       | { st_kind = S_DIR; _ } ->
+                         let local_path = Path.Local.of_string local_resolved in
+                         if skip_dir name
+                         then files, dirs, seen
+                         else files, local_path :: dirs, seen
+                       | { st_kind = _; _ } ->
+                         if skip_file name
+                         then files, dirs, seen
+                         else relative :: files, dirs, seen)))
+              | _ ->
+                if skip_file name
+                then files, dirs, already_seen
+                else relative :: files, dirs, already_seen)
         in
         let acc = Path.Local.Set.of_list files |> Path.Local.Set.union acc in
         let+ dirs =
-          Memo.parallel_map dirs ~f:(fun dir -> loop root Path.Local.Set.empty dir)
+          Memo.parallel_map dirs ~f:(fun dir ->
+            collect_sources ~root ~acc:Path.Local.Set.empty ~path:dir ~already_seen:seen)
         in
         Path.Local.Set.union_all (acc :: dirs)
     in
@@ -550,7 +584,12 @@ module Pkg = struct
         | `Local (`Directory, root) -> Some root))
     >>= function
     | None -> Memo.return Path.Local.Set.empty
-    | Some root -> loop root Path.Local.Set.empty Path.Local.root
+    | Some root ->
+      collect_sources
+        ~root
+        ~acc:Path.Local.Set.empty
+        ~path:Path.Local.root
+        ~already_seen:(Path.Local.Set.singleton Path.Local.root)
   ;;
 
   let dep t = Dep.file t.paths.target_dir
@@ -2101,7 +2140,7 @@ let source_rules (pkg : Pkg.t) =
                   explicitly deleted immediately after the archive is
                   extracted. This logic is implemented in the "source-fetch"
                   action spec in [Fetch_rules]. *)
-               (* CR-Ambre updated above comment *)
+               (* CR-Ambre update above comment *)
                source_files, rules
              else (
                let dst = Path.Build.append_local pkg.write_paths.source_dir file in

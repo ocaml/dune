@@ -240,3 +240,18 @@ that context as expected.
   +  Hello, world!
   [1]
 
+- Running tests in a workspace with only a non-default context should work.
+
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.23)
+  > (context (default (name main)))
+  > EOF
+
+  $ dune test mytest.t 2>&1 | grep "Internal error"
+  Internal error! Please report to https://github.com/ocaml/dune/issues,
+  [1]
+
+  $ dune test 2>&1 | grep "Internal error"
+  Internal error! Please report to https://github.com/ocaml/dune/issues,
+  [1]
+

@@ -24,7 +24,7 @@ Case 1: Local directory source containing a directory symlink.
 
 This is now fixed
 
-  $ build_pkg foo 2>&1 | sanitize_pkg_digest foo.0.0.1
+  $ build_pkg foo
   content
 
 Only the real directory was partially copied:
@@ -52,7 +52,7 @@ Case 2: Tarball source containing a directory symlink.
 
 This is now fixed
 
-  $ build_pkg bar 2>&1 | sanitize_pkg_digest bar.0.0.1
+  $ build_pkg bar
   content
 
 
@@ -79,5 +79,5 @@ Case 3: Downloaded tarball containing a directory symlink (with checksum).
 
 This is now fixed
 
-  $ build_pkg baz 2>&1 | sed 's/md5=[a-f0-9]*/md5=HASH/g'
+  $ build_pkg baz
   content

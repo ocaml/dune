@@ -1,0 +1,20 @@
+(library
+ (name fetch_symlinks)
+ (inline_tests)
+ (libraries
+  dune_tests_common
+  dune_rules
+  dune_engine
+  stdune
+  fiber
+  memo
+  dyn
+  test_scheduler
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

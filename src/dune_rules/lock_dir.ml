@@ -308,7 +308,11 @@ let source_kind (source : Dune_pkg.Source.t) =
   let loc, url = source.url in
   if OpamUrl.is_local url && url.backend = `rsync
   then (
-    let path = Path.External.of_string url.path in
+    let path =
+      Path.of_string_allow_outside_workspace url.path
+      |> Path.to_absolute_filename
+      |> Path.External.of_string
+    in
     Fs_memo.path_kind (External path)
     >>| function
     | Error (ENOENT, _, _) ->

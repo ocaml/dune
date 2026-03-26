@@ -24,12 +24,9 @@ void dune_wait4(value v_pid, value flags) {
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <time.h>
 #include <stdint.h>
 
-#if defined(__APPLE__)
-#include <AvailabilityMacros.h>
-#endif
+#include "dune_clock.h"
 
 #define TAG_WEXITED 0
 #define TAG_WSIGNALED 1
@@ -72,11 +69,6 @@ value dune_wait4(value v_pid, value flags) {
   CAMLlocal2(times, res);
 
   int status, cv_flags;
-#if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED < 101200
-  struct timeval tv;
-#else
-  struct timespec tp;
-#endif
   int64_t time_ns;
   cv_flags = caml_convert_flag_list(flags, wait_flag_table);
   pid_t pid = Int_val(v_pid);
@@ -87,14 +79,7 @@ value dune_wait4(value v_pid, value flags) {
   // returns the pid of the terminated process, or -1 on error
   pid = wait4(pid, &status, cv_flags, &ru);
   int wait_errno = errno;
-#if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED < 101200
-  // macOS < 10.12 doesn't have clock_gettime, use gettimeofday
-  gettimeofday(&tv, NULL);
-  time_ns = ((int64_t)tv.tv_sec * 1000000000LL) + ((int64_t)tv.tv_usec * 1000LL);
-#else
-  clock_gettime(CLOCK_REALTIME, &tp);
-  time_ns = ((int64_t)tp.tv_sec * 1000000000LL) + (int64_t)tp.tv_nsec;
-#endif
+  time_ns = dune_clock_gettime_ns();
   caml_leave_blocking_section();
   if (pid == 0) {
     CAMLreturn(Val_none);

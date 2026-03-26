@@ -43,3 +43,4 @@ val register_intermediate
   -> unit
 
 val register_delete : [ `File | `Directory ] -> Path.Source.t -> unit
+val register_create_directory : Path.Source.t -> unit

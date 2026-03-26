@@ -61,6 +61,9 @@ Testing the output of `dune cache size --machine-readable`
              Outputs size as a plain number of bytes.
   
   COMMON OPTIONS
+         --debug-backtraces
+             Always print exception backtraces.
+  
          --help[=FMT] (default=auto)
              Show this help in format FMT. The value FMT must be one of auto,
              pager, groff or plain. With auto, the format is pager or plain
@@ -81,6 +84,21 @@ Testing the output of `dune cache size --machine-readable`
   SEE ALSO
          dune(1)
   
+
+Testing the output of dune cache clear.
+
+  $ dune cache clear --help=plain | grep -- '--debug-backtraces'
+         --debug-backtraces
+
+Commands that now expose the shared no-build backtrace flag:
+
+  $ dune promote --help=plain | grep -- '--debug-backtraces'
+         --debug-backtraces
+  $ dune trace cat --help=plain | grep -- '--debug-backtraces'
+         --debug-backtraces
+  $ dune trace commands --help=plain | grep -- '--debug-backtraces'
+         --debug-backtraces
+
 Testing the output of dune cache trim.
 
   $ dune cache trim --help=plain
@@ -102,6 +120,9 @@ Testing the output of dune cache trim.
              Size to trim from the cache. BYTES is the same as for --size.
   
   COMMON OPTIONS
+         --debug-backtraces
+             Always print exception backtraces.
+  
          --help[=FMT] (default=auto)
              Show this help in format FMT. The value FMT must be one of auto,
              pager, groff or plain. With auto, the format is pager or plain

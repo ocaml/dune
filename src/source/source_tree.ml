@@ -334,14 +334,15 @@ let find_excluded_ancestor path =
          let* child = sub_dir.sub_dir_as_t in
          loop child path
        | None ->
-         let excluded_path = Path.Source.relative dir.path sub_dir in
-         Dir_contents.of_source_path excluded_path
+         Dir_contents.of_source_path dir.path
          >>| (function
-          | Error _ -> None
-          | Ok _ ->
-            (match Option.bind dir.dune_file ~f:Dune_file.dirs_stanza_loc with
-             | None -> None
-             | Some loc -> Some (excluded_path, loc))))
+          | Ok contents
+            when List.exists (Dir_contents.dirs contents) ~f:(fun (name, _) ->
+                   String.equal name sub_dir) ->
+            dir.dune_file
+            |> Option.bind ~f:Dune_file.dirs_stanza_loc
+            |> Option.map ~f:(fun loc -> Path.Source.relative dir.path sub_dir, loc)
+          | _ -> None))
   in
   let* root = Memo.Cell.read root in
   loop root (Path.Source.explode path)

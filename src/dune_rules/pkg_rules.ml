@@ -492,19 +492,51 @@ module Pkg = struct
         let files, dirs =
           let contents = Fs_memo.Dir_contents.to_list contents in
           List.rev_filter_partition_map contents ~f:(fun (name, kind) ->
-            (* TODO handle links and cycles correctly *)
+            let relative = Path.Local.relative path name in
+            (* TODO handle cycles correctly *)
             match kind with
-            | S_DIR -> if skip_dir name then Skip else Right name
-            | _ -> if skip_file name then Skip else Left name)
+            | S_DIR -> if skip_dir name then Skip else Right relative
+            | S_LNK ->
+              let full_name = Filename.concat (Path.External.to_string full_path) name in
+              (match Fpath.follow_symlink full_name with
+               | Ok resolved ->
+                 (match
+                    String.drop_prefix
+                      resolved
+                      ~prefix:(Path.External.to_string root ^ Filename.dir_sep)
+                  with
+                  | Some local_resolved ->
+                    (match Unix.lstat resolved with
+                     | { st_kind = S_DIR; _ } ->
+                       let local_path = Path.Local.of_string local_resolved in
+                       if skip_dir name then Skip else Right local_path
+                     | { st_kind = _; _ } ->
+                       if skip_file name then Skip else Left relative)
+                  | None ->
+                    User_error.raise
+                      [ Pp.textf
+                          "Unable to resolve symlink %s: its target %s is outside the \
+                           source directory"
+                          full_name
+                          (Path.External.to_string root)
+                      ])
+               | Error Fpath.Not_a_symlink ->
+                 Code_error.raise
+                   "source_files: not a symlink"
+                   [ "path", Dyn.string full_name ]
+               | Error Fpath.Max_depth_exceeded ->
+                 User_error.raise
+                   [ Pp.textf
+                       "Unable to resolve symlink %s: too many levels of symbolic links"
+                       full_name
+                   ]
+               | Error (Fpath.Unix_error (Unix.ENOENT, _, _)) -> Skip
+               | Error (Fpath.Unix_error err) -> Unix_error.Detailed.raise err)
+            | _ -> if skip_file name then Skip else Left relative)
         in
-        let acc =
-          Path.Local.Set.of_list_map files ~f:(Path.Local.relative path)
-          |> Path.Local.Set.union acc
-        in
+        let acc = Path.Local.Set.of_list files |> Path.Local.Set.union acc in
         let+ dirs =
-          Memo.parallel_map dirs ~f:(fun dir ->
-            let dir = Path.Local.relative path dir in
-            loop root Path.Local.Set.empty dir)
+          Memo.parallel_map dirs ~f:(fun dir -> loop root Path.Local.Set.empty dir)
         in
         Path.Local.Set.union_all (acc :: dirs)
     in
@@ -1903,6 +1935,7 @@ module Install_action = struct
         Some (entry.section, dst)
     ;;
 
+    (* CR-someday maybe reuse Fpath.traverse? *)
     let rec resolve_symlinks_in dir =
       match Readdir.read_directory_with_kinds dir with
       | Error e -> Unix_error.Detailed.raise e
@@ -2099,6 +2132,7 @@ let source_rules (pkg : Pkg.t) =
                   explicitly deleted immediately after the archive is
                   extracted. This logic is implemented in the "source-fetch"
                   action spec in [Fetch_rules]. *)
+               (* CR-Ambre updated above comment *)
                source_files, rules
              else (
                let dst = Path.Build.append_local pkg.write_paths.source_dir file in

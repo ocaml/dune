@@ -479,13 +479,15 @@ module Pkg = struct
     in
     let skip_file = String.starts_with ~prefix:".#" in
     let rec loop root acc path =
-      let full_path = Path.External.append_local root path in
-      Fs_memo.dir_contents (External full_path)
+      let full_path = Path.Outside_build_dir.append_local root path in
+      Fs_memo.dir_contents full_path
       >>= function
       | Error e ->
         User_error.raise
           ~loc
-          [ Pp.textf "Unable to read %s" (Path.External.to_string_maybe_quoted full_path)
+          [ Pp.textf
+              "Unable to read %s"
+              (Path.Outside_build_dir.to_string_maybe_quoted full_path)
           ; Unix_error.Detailed.pp e
           ]
       | Ok contents ->
@@ -2086,7 +2088,7 @@ let source_rules (pkg : Pkg.t) =
          Memo.return (Dep.Set.of_files [ pkg.paths.source_dir ], [ loc, fetch ])
        | `Local (`Directory, source_root) ->
          let+ source_files, rules =
-           let source_root = Path.external_ source_root in
+           let source_root = Path.outside_build_dir source_root in
            Pkg.source_files pkg ~loc
            >>| Path.Local.Set.fold ~init:([], []) ~f:(fun file (source_files, rules) ->
              let src = Path.append_local source_root file in

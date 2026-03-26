@@ -10,10 +10,6 @@ void dune_wait4(value v_pid, value flags) {
 
 #else
 
-#ifndef Val_none
-#define Val_none Val_int(0)
-#endif
-
 #include <caml/alloc.h>
 #include <caml/memory.h>
 #include <caml/signals.h>

@@ -275,7 +275,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 25
+  let rule_digest_version = 26
 
   let compute_rule_digest
         (rule : Rule.t)
@@ -321,6 +321,9 @@ end = struct
         d
         (Execution_parameters.workspace_root_to_build_path_prefix_map
            execution_parameters);
+      Digest.Manual.generic
+        d
+        (Execution_parameters.action_project_root execution_parameters);
       Digest.Manual.generic
         d
         (Execution_parameters.expand_aliases_in_sandbox execution_parameters);

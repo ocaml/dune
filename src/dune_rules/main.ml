@@ -26,15 +26,28 @@ let implicit_default_alias dir =
 ;;
 
 let execution_parameters =
+  let source_backed_dir path =
+    match Dpath.Target_dir.of_target path with
+    | Regular (With_context (context, source))
+    | Anonymous_action (With_context (context, source)) ->
+      (match Install.Context.analyze_path context source with
+       | Normal (_, source) -> Some source
+       | Install _ | Invalid -> None)
+    | Regular Root | Anonymous_action Root | Invalid _ -> None
+  in
   let f context path =
-    let path = Path.Build.drop_build_context_exn path in
     let open Memo.O in
     let* ep = Execution_parameters.default in
-    if Context_name.equal context Private_context.t.name
+    if
+      Context_name.equal context Private_context.t.name
+      || Context_name.equal context Fetch_rules.context.name
     then Memo.return ep
-    else
-      let+ dir = Source_tree.nearest_dir path in
-      Dune_project.update_execution_parameters (Source_tree.Dir.project dir) ep
+    else (
+      match source_backed_dir path with
+      | None -> Memo.return ep
+      | Some path ->
+        let+ dir = Source_tree.nearest_dir path in
+        Dune_project.update_execution_parameters (Source_tree.Dir.project dir) ep)
   in
   let memo =
     let module Input = struct

@@ -35,16 +35,6 @@ open Types
 
 (** {2 Utility functions} *)
 
-include struct
-  [@@@ocaml.warning "-32-34-37"]
-
-  module Either = struct
-    type ('l, 'r) t =
-      | Left of 'l
-      | Right of 'r
-  end
-end
-
 open Stdlib
 open StdLabels
 open MoreLabels
@@ -118,49 +108,6 @@ module List = struct
     match x with
     | None -> t
     | Some x -> x :: t
-  ;;
-
-  [@@@ocaml.warning "-32"]
-
-  let rec compare a b ~cmp =
-    match a, b with
-    | [], [] -> 0
-    | [], _ :: _ -> -1
-    | _ :: _, [] -> 1
-    | x :: a, y :: b ->
-      (match cmp x y with
-       | 0 -> compare a b ~cmp
-       | ne -> ne)
-  ;;
-
-  (* Some list functions are introduced in later OCaml versions. There are also
-     improvements to performance in some of these. We introduce fallback
-     versions allowing compatability >= 4.08 which will get shadowed when the
-     stdlib version is available. *)
-
-  (* Introduced in 4.10 *)
-  let rec find_map l ~f =
-    match l with
-    | [] -> None
-    | x :: l ->
-      (match f x with
-       | None -> find_map l ~f
-       | Some _ as x -> x)
-  ;;
-
-  (* Introduced in 4.14 *)
-  let concat_map l ~f = List.map l ~f |> List.concat
-
-  let partition_map t ~f =
-    let rec loop l r = function
-      | [] -> l, r
-      | x :: xs ->
-        (match f x with
-         | Either.Left x -> loop (x :: l) r xs
-         | Right x -> loop l (x :: r) xs)
-    in
-    let l, r = loop [] [] t in
-    List.(rev l, rev r)
   ;;
 
   include List
@@ -292,23 +239,6 @@ module String = struct
         | _ -> loop ~acc i (j + 1) ~last_is_cr:false)
     in
     loop ~acc:[] 0 0 ~last_is_cr:false
-  ;;
-
-  [@@@ocaml.warning "-32"]
-
-  let ends_with t ~suffix = Filename.check_suffix t suffix
-
-  let starts_with t ~prefix =
-    let len_s = length t
-    and len_pre = length prefix in
-    let rec aux i =
-      if i = len_pre
-      then true
-      else if unsafe_get t i <> unsafe_get prefix i
-      then false
-      else aux (i + 1)
-    in
-    len_s >= len_pre && aux 0
   ;;
 
   include String

@@ -6,7 +6,7 @@ same sources with a different configuration and stores its artefacts in a
 separate subdirectory of ``_build/``. This is useful for cross compilation or
 building against multiple lock directories or opam switches.
 
-By default, Dune uses a single context called ``default`` with artefacts in
+By default, Dune uses a single context called ``default`` with artifacts in
 ``_build/default/``. There are two kinds of context: ``(default ...)`` for a
 regular build context, or ``(opam ...)`` to use an opam switch.
 

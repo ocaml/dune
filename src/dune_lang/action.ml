@@ -17,17 +17,24 @@ module Diff = struct
 
   let decode path target ~optional =
     let open Decoder in
-    let+ file1 = path
+    let+ version = Syntax.get_exn Stanza.syntax
+    and+ file1 = path
     and+ file2 = target in
-    { Diff.optional; file1; file2; mode = Text }
+    { Diff.optional; mode = Text; directory_diffs = version >= (3, 23); file1; file2 }
   ;;
 
   let decode_binary path target =
     let open Decoder in
     let+ () = Syntax.since Stanza.syntax (1, 0)
+    and+ version = Syntax.get_exn Stanza.syntax
     and+ file1 = path
     and+ file2 = target in
-    { Diff.optional = false; file1; file2; mode = Binary }
+    { Diff.optional = false
+    ; mode = Binary
+    ; directory_diffs = version >= (3, 23)
+    ; file1
+    ; file2
+    }
   ;;
 end
 
@@ -461,12 +468,12 @@ let rec encode =
   | Write_file (x, perm, y) ->
     List [ atom ("write-file" ^ File_perm.suffix perm); sw x; sw y ]
   | Mkdir x -> List [ atom "mkdir"; sw x ]
-  | Diff { optional; file1; file2; mode = Binary } ->
+  | Diff { optional; file1; file2; mode = Binary; directory_diffs = _ } ->
     assert (not optional);
     List [ atom "cmp"; sw file1; sw file2 ]
-  | Diff { optional = false; file1; file2; mode = _ } ->
+  | Diff { optional = false; file1; file2; mode = _; directory_diffs = _ } ->
     List [ atom "diff"; sw file1; sw file2 ]
-  | Diff { optional = true; file1; file2; mode = _ } ->
+  | Diff { optional = true; file1; file2; mode = _; directory_diffs = _ } ->
     List [ atom "diff?"; sw file1; sw file2 ]
   | No_infer r -> List [ atom "no-infer"; encode r ]
   | Pipe (outputs, l) ->

@@ -805,7 +805,12 @@ let setup_output_diff_rule ~loc ~dir ~sctx ~rocq_lang_version ~rocq_sources rocq
   | Some expected ->
     let output = Rocq_module.output_file ~obj_dir:dir rocq_module in
     let diff =
-      { Diff.file1 = Path.build expected; file2 = output; optional = false; mode = Text }
+      { Diff.file1 = Path.build expected
+      ; file2 = output
+      ; optional = false
+      ; mode = Text
+      ; directory_diffs = true
+      }
     in
     let alias = Alias.make ~dir Alias0.runtest in
     Simple_rules.Alias_rules.add

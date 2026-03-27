@@ -20,6 +20,7 @@ let test_kind ~dir dir_contents name ext =
           Path.Build.relative dir (name ^ Filename.Extension.to_string ext ^ ".output")
       ; optional = false
       ; mode = Text
+      ; directory_diffs = true
       }
   else `Regular
 ;;

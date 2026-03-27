@@ -1,7 +1,7 @@
 Directory diff promotes each changed file separately.
 
   $ cat > dune-project <<'EOF'
-  > (lang dune 3.22)
+  > (lang dune 3.23)
   > (using directory-targets 0.1)
   > EOF
 
@@ -19,7 +19,7 @@ Directory diff promotes each changed file separately.
   >  (action (diff expected actual)))
   > EOF
 
-  $ dune runtest
+  $ dune runtest 2>&1 | sed -E 's#_build/\.sandbox/[^/]+/default/#_build/default/#g'
   File "expected/a", line 1, characters 0-0:
   --- expected/a
   +++ _build/default/actual/a

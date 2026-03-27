@@ -98,12 +98,12 @@ let rec encode : Action.For_shell.t -> Dune_lang.t =
   | Mkdir x -> List [ atom "mkdir"; target x ]
   | Pipe (outputs, l) ->
     List (atom (sprintf "pipe-%s" (Outputs.to_string outputs)) :: List.map l ~f:encode)
-  | Diff { optional; file1; file2; mode = Binary } ->
+  | Diff { optional; file1; file2; mode = Binary; directory_diffs = _ } ->
     assert (not optional);
     List [ atom "cmp"; path file1; target file2 ]
-  | Diff { optional = false; file1; file2; mode = _ } ->
+  | Diff { optional = false; file1; file2; mode = _; directory_diffs = _ } ->
     List [ atom "diff"; path file1; target file2 ]
-  | Diff { optional = true; file1; file2; mode = _ } ->
+  | Diff { optional = true; file1; file2; mode = _; directory_diffs = _ } ->
     List [ atom "diff?"; path file1; target file2 ]
   | Extension ext -> List [ atom "ext"; Dune_sexp.Quoted_string (Sexp.to_string ext) ]
 ;;

@@ -272,9 +272,17 @@ let plan_tree_diff ({ mode; source_root; _ } as t) =
   { changes = List.rev changes; promotions = List.rev promotions }
 ;;
 
-let plan_diff loc { Diff.optional; file1; file2; mode } =
+let plan_diff loc { Diff.optional; file1; file2; mode; directory_diffs } =
   let source_kind = kind_of_path ~loc file1 in
   let target_kind = kind_of_path ~loc (Path.build file2) in
+  (match source_kind, target_kind with
+   | (Directory, _ | _, Directory) when not directory_diffs ->
+     User_error.raise
+       ~loc
+       [ Pp.text "Directory operands in diff actions require at least (lang dune 3.23)."
+       ; Pp.text "Please update your dune-project file to have (lang dune 3.23)."
+       ]
+   | _ -> ());
   let source_root_path =
     match source_kind, target_kind with
     | Directory, _ | _, Directory -> Path.source (source_root file1)
@@ -289,7 +297,7 @@ let plan_diff loc { Diff.optional; file1; file2; mode } =
 let exec_plan
       loc
       ~patch_back
-      { Diff.optional; mode; file1; file2 }
+      { Diff.optional; mode; file1; file2; _ }
       ({ changes; promotions } : plan)
   =
   match changes with

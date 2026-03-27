@@ -243,7 +243,12 @@ let register_corrected_file_promotions t ~deps =
     Diff_action.exec
       ~patch_back:(Some (Path.build t.dir))
       t.loc
-      { Dune_util.Action.Diff.file1; file2; optional = false; mode = Text })
+      { Dune_util.Action.Diff.file1
+      ; file2
+      ; optional = false
+      ; mode = Text
+      ; directory_diffs = false
+      })
 ;;
 
 let create
@@ -356,6 +361,7 @@ let register_snapshot_promotion t (targets : Targets.Validated.t) ~old_snapshot 
            ; file2 = Path.as_in_build_dir_exn path
            ; optional = true
            ; mode = Text
+           ; directory_diffs = true
            }))
     (fun () ->
        Fiber.parallel_iter !deletes ~f:(fun (what, path) ->

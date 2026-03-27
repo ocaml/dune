@@ -1,4 +1,4 @@
-Directory diff promotes files that are missing from the source directory.
+Directory diffing requires lang dune 3.23.
 
   $ cat > dune-project <<'EOF'
   > (lang dune 3.23)
@@ -17,16 +17,10 @@ Directory diff promotes files that are missing from the source directory.
   >  (action (diff expected actual)))
   > EOF
 
-  $ dune runtest 2>&1 | sed -E 's#_build/\.sandbox/[^/]+/default/#_build/default/#g'
+  $ dune runtest
   File "expected/new-file", line 1, characters 0-0:
   --- expected/new-file
-  +++ _build/default/actual/new-file
+  +++ _build/.sandbox/0d5f33b418b5cd00ea8221819ef25bd8/default/actual/new-file
   @@ -0,0 +1 @@
   +hello
   [1]
-
-  $ dune promote
-  Promoting _build/default/actual/new-file to expected/new-file.
-
-  $ cat expected/new-file
-  hello

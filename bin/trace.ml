@@ -1,5 +1,15 @@
 open Import
 
+let debug_backtraces =
+  Arg.(
+    value
+    & flag
+    & info
+        [ "debug-backtraces" ]
+        ~docs:"COMMON OPTIONS"
+        ~doc:(Some "Always print exception backtraces."))
+;;
+
 let iter_sexps file ~f =
   Io.String_path.with_file_in ~binary:true file ~f:(fun chan ->
     let rec loop () =
@@ -213,7 +223,8 @@ let json_of_event ~chrome (sexp : Sexp.t) =
 let cat =
   let info = Cmd.info "cat" in
   let term =
-    let+ sexp =
+    let+ debug_backtraces = debug_backtraces
+    and+ sexp =
       Arg.(
         value
         & flag
@@ -236,6 +247,7 @@ let cat =
         & flag
         & info [ "follow"; "f" ] ~doc:(Some "follow the trace file until the exit event"))
     in
+    Common.No_build.set_debug_backtraces debug_backtraces;
     let mode =
       match chrome_trace, sexp with
       | true, true ->
@@ -287,7 +299,8 @@ let commands =
     Cmd.info "commands" ~doc
   in
   let term =
-    let+ trace_file =
+    let+ debug_backtraces = debug_backtraces
+    and+ trace_file =
       Arg.(
         value
         & opt (some string) None
@@ -296,6 +309,7 @@ let commands =
             ~docv:"FILE"
             ~doc:(Some "Read this trace file (default: _build/trace.json)"))
     in
+    Common.No_build.set_debug_backtraces debug_backtraces;
     let trace_file =
       match trace_file with
       | Some s -> s

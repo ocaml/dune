@@ -7,15 +7,19 @@ module Action_output_on_success = struct
     | Must_be_empty
 
   let all = [ "print", Print; "swallow", Swallow; "must-be-empty", Must_be_empty ]
-
-  let to_dyn = function
-    | Print -> Dyn.Variant ("Print", [])
-    | Swallow -> Variant ("Swallow", [])
-    | Must_be_empty -> Variant ("Must_be_empty", [])
-  ;;
-
   let equal = Poly.equal
   let hash = Poly.hash
+
+  let repr =
+    Repr.variant
+      "action-output-on-success"
+      [ Repr.case0 "Print" ~test:(equal Print)
+      ; Repr.case0 "Swallow" ~test:(equal Swallow)
+      ; Repr.case0 "Must_be_empty" ~test:(equal Must_be_empty)
+      ]
+  ;;
+
+  let to_dyn = Repr.to_dyn repr
 end
 
 module Action_output_limit = struct
@@ -23,8 +27,9 @@ module Action_output_limit = struct
 
   let default = 100_000
   let to_string = Int.to_string
-  let to_dyn = Dyn.int
   let equal = Int.equal
+  let repr = Repr.int
+  let to_dyn = Repr.to_dyn repr
 end
 
 module Workspace_root_for_build_prefix_map = struct
@@ -39,12 +44,17 @@ module Workspace_root_for_build_prefix_map = struct
     | Set x, Set y -> String.equal x y
   ;;
 
-  let to_dyn =
-    let open Dyn in
-    function
-    | Unset -> variant "Unset" []
-    | Set s -> variant "Set" [ string s ]
+  let repr =
+    Repr.variant
+      "workspace-root-for-build-prefix-map"
+      [ Repr.case0 "Unset" ~test:(equal Unset)
+      ; Repr.case "Set" Repr.string ~proj:(function
+          | Unset -> None
+          | Set root -> Some root)
+      ]
   ;;
+
+  let to_dyn = Repr.to_dyn repr
 end
 
 type t =
@@ -101,29 +111,31 @@ let hash
     , should_remove_write_permissions_on_generated_files )
 ;;
 
-let to_dyn
-      { action_stdout_on_success
-      ; action_stderr_on_success
-      ; action_stdout_limit
-      ; action_stderr_limit
-      ; expand_aliases_in_sandbox
-      ; workspace_root_to_build_path_prefix_map
-      ; should_remove_write_permissions_on_generated_files
-      }
-  =
-  Dyn.Record
-    [ "action_stdout_on_success", Action_output_on_success.to_dyn action_stdout_on_success
-    ; "action_stderr_on_success", Action_output_on_success.to_dyn action_stderr_on_success
-    ; "action_stdout_limit", Action_output_limit.to_dyn action_stdout_limit
-    ; "action_stderr_limit", Action_output_limit.to_dyn action_stderr_limit
-    ; "expand_aliases_in_sandbox", Bool expand_aliases_in_sandbox
-    ; ( "workspace_root_to_build_path_prefix_map"
-      , Workspace_root_for_build_prefix_map.to_dyn workspace_root_to_build_path_prefix_map
-      )
-    ; ( "should_remove_write_permissions_on_generated_files"
-      , Bool should_remove_write_permissions_on_generated_files )
+let repr =
+  Repr.record
+    "execution-parameters"
+    [ Repr.field "action_stdout_on_success" Action_output_on_success.repr ~get:(fun t ->
+        t.action_stdout_on_success)
+    ; Repr.field "action_stderr_on_success" Action_output_on_success.repr ~get:(fun t ->
+        t.action_stderr_on_success)
+    ; Repr.field "action_stdout_limit" Action_output_limit.repr ~get:(fun t ->
+        t.action_stdout_limit)
+    ; Repr.field "action_stderr_limit" Action_output_limit.repr ~get:(fun t ->
+        t.action_stderr_limit)
+    ; Repr.field "expand_aliases_in_sandbox" Repr.bool ~get:(fun t ->
+        t.expand_aliases_in_sandbox)
+    ; Repr.field
+        "workspace_root_to_build_path_prefix_map"
+        Workspace_root_for_build_prefix_map.repr
+        ~get:(fun t -> t.workspace_root_to_build_path_prefix_map)
+    ; Repr.field
+        "should_remove_write_permissions_on_generated_files"
+        Repr.bool
+        ~get:(fun t -> t.should_remove_write_permissions_on_generated_files)
     ]
 ;;
+
+let to_dyn = Repr.to_dyn repr
 
 let builtin_default =
   { action_stdout_on_success = Print

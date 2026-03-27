@@ -16,8 +16,9 @@ module Map = C.Map
 module Hasher = struct
   type t = Blake3_mini.t
 
+  let singleton = lazy (Blake3_mini.create ())
+
   let with_singleton =
-    let singleton = lazy (Blake3_mini.create ()) in
     let in_use = ref false in
     fun f ->
       if !in_use
@@ -170,6 +171,30 @@ module Feed = struct
   let compute_digest_with t x ~with_hasher = with_hasher (fun hasher -> t hasher x)
   let compute_digest t x = compute_digest_with t x ~with_hasher:Hasher.with_singleton
   let compute_digest_pooled t x = compute_digest_with t x ~with_hasher:Hasher.with_pooled
+end
+
+module Manual = struct
+  type t = unit
+
+  let create () = ()
+
+  let string () s =
+    Blake3_mini.feed_string ~pos:0 ~len:(String.length s) (Lazy.force Hasher.singleton) s
+  ;;
+
+  let generic () s = string () (Marshal.to_string ~sharing:false s)
+
+  let digest () s =
+    let s = Blake3_mini.Digest.to_binary s in
+    string () s
+  ;;
+
+  let get () =
+    let hasher = Lazy.force Hasher.singleton in
+    let res = Blake3_mini.digest hasher in
+    Blake3_mini.reset hasher;
+    res
+  ;;
 end
 
 let string s = Feed.compute_digest Feed.string s

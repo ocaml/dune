@@ -262,20 +262,26 @@ module Set = struct
       add acc (dir_without_files_dep path))
   ;;
 
-  let digest t =
-    fold t ~init:[] ~f:(fun dep acc : Stable_for_digest.t list ->
+  let digest t digest =
+    iter t ~f:(fun dep ->
       match dep with
-      | Env var -> Env var :: acc
-      | Universe -> Universe :: acc
-      | File p -> File (Path.to_string p |> Digest.string) :: acc
-      | File_selector fs -> File_selector (File_selector.digest fs) :: acc
+      | Env var -> Digest.Manual.generic digest (Stable_for_digest.Env var)
+      | Universe -> Digest.Manual.generic digest Stable_for_digest.Universe
+      | File p ->
+        Digest.Manual.generic
+          digest
+          (Stable_for_digest.File (Path.to_string p |> Digest.string))
+      | File_selector fs ->
+        Digest.Manual.generic
+          digest
+          (Stable_for_digest.File_selector (File_selector.digest fs))
       | Alias a ->
-        Alias
-          { dir = Path.Build.to_string (Alias.dir a)
-          ; name = Alias.Name.to_string (Alias.name a)
-          }
-        :: acc)
-    |> Digest.generic
+        Digest.Manual.generic
+          digest
+          (Stable_for_digest.Alias
+             { dir = Path.Build.to_string (Alias.dir a)
+             ; name = Alias.Name.to_string (Alias.name a)
+             }))
   ;;
 end
 
@@ -333,22 +339,26 @@ module Facts = struct
         Path.Build.Set.union_all [ acc; Fact.Files.necessary_dirs_for_sandboxing facts ])
   ;;
 
-  let digest t ~env =
-    let facts =
-      Map.foldi t ~init:[] ~f:(fun dep fact acc : Fact.Stable_for_digest.t list ->
-        match dep with
-        | Env var -> Env (var, Env.get env var) :: acc
-        | Universe -> acc
-        | File _ | File_selector _ | Alias _ ->
-          (match (fact : Fact.t) with
-           | Nothing -> acc
-           | File (p, d) ->
-             File { path_digest = Digest.string (Path.to_string p); file_digest = d }
-             :: acc
-           | File_selector { file_selector_digest; facts } ->
-             File_selector { file_selector_digest; facts_digest = facts.digest } :: acc
-           | Alias ps -> Alias ps.digest :: acc))
-    in
-    Digest.generic facts
+  let digest t digest ~env =
+    Map.iteri t ~f:(fun dep fact ->
+      match dep with
+      | Env var ->
+        Digest.Manual.generic digest (Fact.Stable_for_digest.Env (var, Env.get env var))
+      | Universe -> ()
+      | File _ | File_selector _ | Alias _ ->
+        (match (fact : Fact.t) with
+         | Nothing -> ()
+         | File (p, d) ->
+           Digest.Manual.generic
+             digest
+             (Fact.Stable_for_digest.File
+                { path_digest = Digest.string (Path.to_string p); file_digest = d })
+         | File_selector { file_selector_digest; facts } ->
+           Digest.Manual.generic
+             digest
+             (Fact.Stable_for_digest.File_selector
+                { file_selector_digest; facts_digest = facts.digest })
+         | Alias ps ->
+           Digest.Manual.generic digest (Fact.Stable_for_digest.Alias ps.digest)))
   ;;
 end

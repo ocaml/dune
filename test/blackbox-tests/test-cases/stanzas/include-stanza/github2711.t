@@ -16,7 +16,7 @@ Multiple dirs stanzas are intersected across dune and include files.
 
   $ mkdir composed
   $ cd composed
-  $ make_dune_project 3.22
+  $ make_dune_project 3.23
   $ mkdir keep foo bar
   $ cat >keep/dune <<EOF
   > (rule (with-stdout-to ok (echo keep)))
@@ -39,9 +39,13 @@ Multiple dirs stanzas are intersected across dune and include files.
   keep
   $ dune build ./foo/nope
   Error: Don't know how to build ./foo/nope
+  Hint: directory foo exists on disk but is excluded by a (dirs ...) stanza at
+  dune:1
   [1]
   $ dune build ./bar/nope
   Error: Don't know how to build ./bar/nope
+  Hint: directory bar exists on disk but is excluded by a (dirs ...) stanza at
+  dune:1
   [1]
   $ cd ..
 
@@ -49,7 +53,7 @@ Dirs stanzas that use :standard are interpreted independently.
 
   $ mkdir override
   $ cd override
-  $ make_dune_project 3.22
+  $ make_dune_project 3.23
   $ mkdir keep other
   $ cat >keep/dune <<EOF
   > (rule (with-stdout-to ok (echo keep)))
@@ -66,9 +70,13 @@ Dirs stanzas that use :standard are interpreted independently.
   > EOF
   $ dune build ./keep/ok
   Error: Don't know how to build ./keep/ok
+  Hint: directory keep exists on disk but is excluded by a (dirs ...) stanza at
+  dune:1
   [1]
   $ dune build ./other/nope
   Error: Don't know how to build ./other/nope
+  Hint: directory other exists on disk but is excluded by a (dirs ...) stanza
+  at dune:1
   [1]
   $ cd ..
 
@@ -76,7 +84,7 @@ The review example evaluates to the empty set of directories.
 
   $ mkdir review-example
   $ cd review-example
-  $ make_dune_project 3.22
+  $ make_dune_project 3.23
   $ mkdir foo
   $ cat >foo/dune <<EOF
   > (rule (with-stdout-to ok (echo foo)))
@@ -88,14 +96,16 @@ The review example evaluates to the empty set of directories.
   > EOF
   $ dune build ./foo/ok
   Error: Don't know how to build ./foo/ok
+  Hint: directory foo exists on disk but is excluded by a (dirs ...) stanza at
+  dune:1
   [1]
   $ cd ..
 
-Before version 3.22, multiple dirs stanzas are rejected.
+Before version 3.23, multiple dirs stanzas are rejected.
 
-  $ mkdir pre-3-22
-  $ cd pre-3-22
-  $ make_dune_project 3.21
+  $ mkdir pre-3-23
+  $ cd pre-3-23
+  $ make_dune_project 3.22
   $ cat >dune.inc <<EOF
   > (dirs foo)
   > EOF

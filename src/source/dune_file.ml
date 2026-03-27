@@ -422,7 +422,7 @@ module Group = struct
       { t with vendored_dirs = Some (no_dupes "vendored_dirs" loc t.vendored_dirs glob) }
     | Dirs (loc, glob) ->
       let dirs =
-        if dune_version >= (3, 22)
+        if dune_version >= (3, 23)
         then (
           match t.dirs with
           | None -> loc, glob

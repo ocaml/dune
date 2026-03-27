@@ -91,6 +91,7 @@ val without_bin_annot : t -> t
 (** The dependency graph for the modules of the library. *)
 val dep_graphs : t -> Dep_graph.t Ml_kind.Dict.t
 
+val compile_dep_graphs : t -> Dep_graph.t Ml_kind.Dict.t
 val loc : t -> Loc.t option
 val set_obj_dir : t -> Path.Build.t Obj_dir.t -> t
 val set_modes : t -> modes:Lib_mode.Map.Set.t -> t

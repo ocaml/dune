@@ -91,9 +91,9 @@ let uncapitalize = uncapitalize_ascii
 let uppercase = uppercase_ascii
 let lowercase = lowercase_ascii
 let index = index_opt
-let index_from = index_from_opt
+let index_from s i c = index_from_opt s i c
 let rindex = rindex_opt
-let rindex_from = rindex_from_opt
+let rindex_from s i c = rindex_from_opt s i c
 let break s ~pos = sub s ~pos:0 ~len:pos, sub s ~pos ~len:(length s - pos)
 let is_empty s = length s = 0
 

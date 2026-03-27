@@ -4,6 +4,7 @@ type t
 
 val to_opam : t -> OpamVariable.t
 val of_opam : OpamVariable.t -> t
+val repr : t Repr.t
 val compare : t -> t -> Ordering.t
 val to_dyn : t -> Dyn.t
 val encode : t Encoder.t

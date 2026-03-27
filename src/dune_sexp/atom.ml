@@ -42,6 +42,7 @@ let of_string s =
 ;;
 
 let to_string (A s) = s
+let repr = Repr.view Repr.string ~to_:to_string
 let parse s = if is_valid s then Some (A s) else None
 let of_int i = A (string_of_int i)
 let of_float x = of_string (string_of_float x)

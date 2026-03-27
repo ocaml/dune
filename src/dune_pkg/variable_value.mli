@@ -8,6 +8,7 @@ val false_ : t
 (** Construct a value of type string *)
 val string : string -> t
 
+val repr : t Repr.t
 val equal : t -> t -> bool
 val hash : t -> int
 val digest_feed : t Dune_digest.Feed.t

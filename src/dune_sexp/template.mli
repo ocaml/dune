@@ -6,6 +6,7 @@ module Pform : sig
 
     val of_string : string -> t
     val to_string : t -> string
+    val repr : t Repr.t
     val to_dyn : t -> Dyn.t
     val compare : t -> t -> Ordering.t
     val of_args : string list -> t
@@ -31,6 +32,7 @@ module Pform : sig
     }
 
   val to_string : t -> string
+  val repr : t Repr.t
   val to_dyn : t -> Dyn.t
   val name : t -> string
   val loc : t -> Loc.t
@@ -52,6 +54,8 @@ module Part : sig
   type t =
     | Text of string
     | Pform of Pform.t
+
+  val repr : t Repr.t
 end
 
 type t =
@@ -62,6 +66,7 @@ type t =
 
 val to_string : t -> string
 val equal : t -> t -> bool
+val repr : t Repr.t
 val pp : t -> _ Pp.t
 val remove_locs : t -> t
 val to_dyn : t -> Dyn.t

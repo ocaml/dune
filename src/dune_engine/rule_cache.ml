@@ -21,17 +21,46 @@ module Workspace_local = struct
       ;;
     end
 
+    type digest =
+      { digest : Digest.t
+      ; siblings : Digest.t Targets.Produced.t
+      ; generation : int
+      }
+
+    let dyn_of_digest { digest; siblings; generation } =
+      Dyn.record
+        [ "digest", Digest.to_dyn digest
+        ; "siblings", Targets.Produced.to_dyn siblings
+        ; "generation", Dyn.int generation
+        ]
+    ;;
+
     (* Keyed by the first target of the rule. *)
-    type t = Entry.t Path.Table.t
+    type t =
+      { rules : Entry.t Path.Table.t
+      ; digests : digest Path.Build.Table.t
+      ; invalidated_subtrees : int Path.Build.Table.t
+        (* A digest is only valid if its generation is greater or equal to the
+           generation of all of its parents *)
+      ; mutable generation : int (* The current generation *)
+      }
 
     let file = Path.relative Path.build_dir ".db"
-    let to_dyn = Path.Table.to_dyn Entry.to_dyn
+
+    let to_dyn { rules; digests; invalidated_subtrees; generation } =
+      Dyn.record
+        [ "rules", Path.Table.to_dyn Entry.to_dyn rules
+        ; "digests", Path.Build.Table.to_dyn dyn_of_digest digests
+        ; "invalidated_subtrees", Path.Build.Table.to_dyn Dyn.int invalidated_subtrees
+        ; "generation", Dyn.int generation
+        ]
+    ;;
 
     module P = Dune_util.Persistent.Make (struct
         type nonrec t = t
 
         let name = "INCREMENTAL-DB"
-        let version = 7
+        let version = 8
         let sharing = true
         let to_dyn = to_dyn
       end)
@@ -45,7 +74,12 @@ module Workspace_local = struct
          (* This mutable table is safe: it's only used by [execute_rule_impl] to
             decide whether to rebuild a rule or not; [execute_rule_impl] ensures
             that the targets are produced deterministically. *)
-         | None -> Path.Table.create ())
+         | None ->
+           { rules = Path.Table.create ()
+           ; digests = Path.Build.Table.create 128
+           ; invalidated_subtrees = Path.Build.Table.create 16
+           ; generation = 0
+           })
     ;;
 
     let dump () =
@@ -66,20 +100,81 @@ module Workspace_local = struct
 
     let get path =
       let t = Lazy.force t in
-      Path.Table.find t path
+      Path.Table.find t.rules path
     ;;
 
-    let set path e =
+    let set path e (targets : _ Targets.Produced.t) =
       let t = Lazy.force t in
       needs_dumping := true;
-      Path.Table.set t path e
+      Path.Table.set t.rules path e;
+      let set_digest p digest =
+        let digest = { digest; siblings = targets; generation = t.generation } in
+        Path.Build.Table.set t.digests (Path.Build.append_local targets.root p) digest
+      in
+      Targets.Produced.iteri targets ~f:set_digest ~d:(fun _ -> ())
+    ;;
+
+    let remove (targets : Targets.Validated.t) =
+      let t = Lazy.force t in
+      needs_dumping := true;
+      let remove = Path.Build.Table.remove t.digests in
+      Targets.Validated.iter targets ~file:remove ~dir:remove
+    ;;
+
+    let remove_target path =
+      let t = Lazy.force t in
+      needs_dumping := true;
+      match Path.Build.Table.find t.digests path with
+      | None -> ()
+      | Some { digest = _; siblings; _ } ->
+        let head = Targets.Produced.head siblings in
+        Path.Table.remove t.rules (Path.build head);
+        Targets.Produced.iter_files siblings ~f:(fun path (_ : Digest.t) ->
+          let path = Path.Build.append_local siblings.root path in
+          Path.Build.Table.remove t.digests path)
+    ;;
+
+    let digest =
+      (* We don't need to look up all the parents. Finding one greater should be enough
+         to invalidate *)
+      let invalidation_generation t path =
+        let rec loop path acc =
+          let acc =
+            match Path.Build.Table.find t.invalidated_subtrees path with
+            | None -> acc
+            | Some generation -> Int.max acc generation
+          in
+          match Path.Build.parent path with
+          | None -> acc
+          | Some path -> loop path acc
+        in
+        loop path 0
+      in
+      fun path ->
+        let t = Lazy.force t in
+        match Path.Build.Table.find t.digests path with
+        | None -> None
+        | Some ({ generation; _ } as digest) ->
+          if generation >= invalidation_generation t path
+          then Some digest
+          else (
+            remove_target path;
+            None)
+    ;;
+
+    let remove_subtree root =
+      let t = Lazy.force t in
+      needs_dumping := true;
+      t.generation <- t.generation + 1;
+      Path.Build.Table.set t.invalidated_subtrees root t.generation
     ;;
   end
 
-  let store ~head_target ~rule_digest ~dynamic_deps_stages ~targets_digest =
+  let store ~targets ~head_target ~rule_digest ~dynamic_deps_stages ~targets_digest =
     Database.set
       (Path.build head_target)
       { rule_digest; dynamic_deps_stages; targets_digest }
+      targets
   ;;
 
   module Miss_reason = struct
@@ -119,9 +214,11 @@ module Workspace_local = struct
       Fiber.return (Miss (Miss_reason.Error_while_collecting_directory_targets error))
     | Ok targets ->
       let open Fiber.O in
-      Targets.Produced.map_with_errors
-        ~f:(Cached_digest.build_file ~allow_dirs:true)
-        targets
+      Targets.Produced.map_with_errors targets ~f:(fun file ->
+        Fiber.return
+          (match Database.digest file with
+           | None -> Error ()
+           | Some { digest; siblings = _; _ } -> Ok digest))
       >>| (function
        | Ok produced_targets -> Dune_cache.Hit_or_miss.Hit produced_targets
        | Error _ -> Miss Miss_reason.Targets_missing)
@@ -201,4 +298,8 @@ module Workspace_local = struct
       else Dune_trace.emit ~buffered:true Cache (fun () -> event ());
       None
   ;;
+
+  let remove targets = Database.remove targets
+  let remove_target = Database.remove_target
+  let remove_subtree = Database.remove_subtree
 end

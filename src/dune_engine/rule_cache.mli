@@ -23,9 +23,14 @@ module Workspace_local : sig
 
   (** Add a new record to the rule database. *)
   val store
-    :  head_target:Path.Build.t
+    :  targets:Digest.t Targets.Produced.t
+    -> head_target:Path.Build.t
     -> rule_digest:Digest.t
     -> dynamic_deps_stages:(Dep.Set.t * Digest.t) list
     -> targets_digest:Digest.t
     -> unit
+
+  val remove : Targets.Validated.t -> unit
+  val remove_target : Path.Build.t -> unit
+  val remove_subtree : Path.Build.t -> unit
 end

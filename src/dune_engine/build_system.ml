@@ -584,15 +584,13 @@ end = struct
         | None ->
           (* Step II. Remove stale targets both from the digest table and from
              the build directory. *)
-          let () =
-            Targets.Validated.iter
-              targets
-              ~file:Cached_digest.remove
-              ~dir:Cached_digest.remove
-          in
+          Rule_cache.Workspace_local.remove targets;
           let* () =
             maybe_async_rule_file_op (fun () ->
-              let remove_target_dir dir = Path.rm_rf (Path.build dir) in
+              let remove_target_dir dir =
+                let () = Rule_cache.Workspace_local.remove_subtree dir in
+                Path.rm_rf (Path.build dir)
+              in
               let remove_target_file path =
                 match Fpath.unlink (Path.Build.to_string path) with
                 | Success -> ()
@@ -664,6 +662,7 @@ end = struct
           (* We do not include target names into [targets_digest] because they
              are already included into the rule digest. *)
           Rule_cache.Workspace_local.store
+            ~targets:produced_targets
             ~head_target
             ~rule_digest
             ~dynamic_deps_stages
@@ -874,59 +873,55 @@ end = struct
           ~human_readable_description:(fun () ->
             Pp.text (Path.to_string_maybe_quoted (Path.build path)))
       in
-      (match Targets.Produced.find targets path with
-       | Some digest -> Memo.return (digest, File_target)
+      (match Targets.Produced.find_any targets path with
+       | Some (Left digest) -> Memo.return (digest, File_target)
+       | Some (Right contents) ->
+         let digest =
+           Digest.Feed.compute_digest
+             (fun hasher contents ->
+                Targets.Produced.iteri_dir_contents
+                  contents
+                  ~d:(fun d -> Digest.Feed.string hasher (Path.Local.to_string d))
+                  ~f:(fun path digest ->
+                    Digest.Feed.digest hasher digest;
+                    Digest.Feed.string hasher (Path.Local.to_string path)))
+             contents
+         in
+         Memo.return (digest, Dir_target { targets })
        | None ->
-         (* CR-soon amokhov: Here we expect [path] to be a directory target. It seems odd
-            to compute its digest here by calling to [Cached_digest.build_file]. Shouldn't
-            we do that in [execute_rule], like we do for file targets?
-
-            rleshchinskiy: Is this digest ever used? [build_dir] discards it and do we
-            (or should we) ever use [build_file] to build directories? Perhaps this could
-            be split in two memo tables, one for files and one for directories.
-
-            ElectreAAS: a lot of functions are called [build_file] or [create_file]
-            even though they also handle directories, this is expected.
-            Also yes this digest is used by [Exported.build_dep] defined above. *)
-         Memo.of_reproducible_fiber (Cached_digest.build_file ~allow_dirs:true path)
-         >>| (function
-          | Ok digest -> digest, Dir_target { targets }
-          (* Must be a directory target. *)
-          | Error _ ->
-            (* CR-someday amokhov: The most important reason we end up here is
-               [No_such_file]. I think some of the outcomes above are impossible
-               but some others will benefit from a better error. To be refined. *)
-            let target =
-              Path.Build.drop_build_context_exn path |> Path.Source.to_string_maybe_quoted
-            in
-            let matching_dirs =
-              Filename.Set.to_list_map rule.targets.dirs ~f:(fun dir ->
-                (* CR-someday rleshchinskiy: This test can probably be simplified. *)
-                let dir = Path.Build.relative rule.targets.root dir in
-                match Path.Build.is_descendant path ~of_:dir with
-                | true -> [ dir ]
-                | false -> [])
-              |> List.concat
-            in
-            let matching_target =
-              match matching_dirs with
-              | [ dir ] ->
-                Path.Build.drop_build_context_exn dir
-                |> Path.Source.to_string_maybe_quoted
-              | [] | _ :: _ ->
-                Code_error.raise
-                  "Multiple matching directory targets"
-                  [ "targets", Targets.Validated.to_dyn rule.targets ]
-            in
-            User_error.raise
-              ~loc:rule.loc
-              ~needs_stack_trace:true
-              [ Pp.textf
-                  "This rule defines a directory target %S that matches the requested \
-                   path %S but the rule's action didn't produce it"
-                  matching_target
-                  target
-              ]))
+         (* CR-someday amokhov: The most important reason we end up here is
+            [No_such_file]. I think some of the outcomes above are impossible
+            but some others will benefit from a better error. To be refined. *)
+         let target =
+           Path.Build.drop_build_context_exn path |> Path.Source.to_string_maybe_quoted
+         in
+         let matching_dirs =
+           Filename.Set.to_list_map rule.targets.dirs ~f:(fun dir ->
+             (* CR-someday rleshchinskiy: This test can probably be simplified. *)
+             let dir = Path.Build.relative rule.targets.root dir in
+             match Path.Build.is_descendant path ~of_:dir with
+             | true -> [ dir ]
+             | false -> [])
+           |> List.concat
+         in
+         let matching_target =
+           match matching_dirs with
+           | [ dir ] ->
+             Path.Build.drop_build_context_exn dir |> Path.Source.to_string_maybe_quoted
+           | [] | _ :: _ ->
+             Code_error.raise
+               "Multiple matching directory targets"
+               [ "targets", Targets.Validated.to_dyn rule.targets ]
+         in
+         User_error.raise
+           ~loc:rule.loc
+           ~needs_stack_trace:true
+           [ Pp.textf
+               "This rule defines a directory target %S that matches the requested path \
+                %S but the rule's action didn't produce it"
+               matching_target
+               target
+           ])
   ;;
 
   let execute_anonymous_action action =

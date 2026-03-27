@@ -48,3 +48,4 @@ let of_string s = int_of_string_opt s
 let shift_left = Stdlib.Int.shift_left
 let shift_right = Stdlib.Int.shift_right
 let max_int = Stdlib.Int.max_int
+let max (x : int) (y : int) = max x y

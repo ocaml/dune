@@ -3,6 +3,19 @@ module List = ListLabels
 module String = StringLabels
 include Csexp
 
+let repr =
+  Repr.fix (fun repr ->
+    Repr.variant
+      "sexp"
+      [ Repr.case "Atom" Repr.string ~proj:(function
+          | Atom string -> Some string
+          | List _ -> None)
+      ; Repr.case "List" (Repr.list repr) ~proj:(function
+          | List list -> Some list
+          | Atom _ -> None)
+      ])
+;;
+
 let rec to_string = function
   | Atom s -> Escape.quote_if_needed s
   | List l -> Printf.sprintf "(%s)" (List.map ~f:to_string l |> String.concat ~sep:" ")

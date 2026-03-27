@@ -109,6 +109,8 @@ end
 (** Convert the action to a format suitable for printing *)
 val for_shell : t -> For_shell.t
 
+val digest : Dune_digest.Manual.t -> t -> unit
+
 (** Return the list of directories the action chdirs to *)
 val chdirs : t -> Path.Build.Set.t
 

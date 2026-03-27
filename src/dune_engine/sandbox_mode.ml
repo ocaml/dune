@@ -30,6 +30,17 @@ let equal a b =
   | Lt | Gt -> false
 ;;
 
+let repr =
+  Repr.variant
+    "sandbox-mode"
+    [ Repr.case0 "None" ~test:(equal None)
+    ; Repr.case0 "Symlink" ~test:(equal (Some Symlink))
+    ; Repr.case0 "Copy" ~test:(equal (Some Copy))
+    ; Repr.case0 "Hardlink" ~test:(equal (Some Hardlink))
+    ; Repr.case0 "Patch_back_source_tree" ~test:(equal (Some Patch_back_source_tree))
+    ]
+;;
+
 let to_dyn =
   Dyn.option (function
     | Symlink -> Variant ("Symlink", [])

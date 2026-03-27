@@ -1,8 +1,12 @@
+open Stdune
+
 module Diff : sig
   module Mode : sig
     type t =
       | Binary (** no diffing, just raw comparison *)
       | Text (** diffing after newline normalization *)
+
+    val repr : t Repr.t
   end
 
   type nonrec ('path, 'target) t =
@@ -23,12 +27,14 @@ module Outputs : sig
     | Stderr
     | Outputs (** Both Stdout and Stderr *)
 
+  val repr : t Repr.t
   val to_string : t -> string
 end
 
 module Inputs : sig
   type t = Stdin
 
+  val repr : t Repr.t
   val to_string : t -> string
 end
 
@@ -40,6 +46,7 @@ module File_perm : sig
     | Normal
     | Executable
 
+  val repr : t Repr.t
   val suffix : t -> string
   val to_unix_perm : t -> int
 end

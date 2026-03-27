@@ -273,9 +273,56 @@ end = struct
            ])
   ;;
 
+  let digest_target_paths d (rule : Rule.t) =
+    let digest_target_path name =
+      Path.Build.relative rule.targets.root name
+      |> Path.Build.to_string
+      |> Digest.Manual.string d
+    in
+    Digest.Manual.int
+      d
+      (Filename.Set.cardinal rule.targets.files + Filename.Set.cardinal rule.targets.dirs);
+    Filename.Set.iter rule.targets.files ~f:digest_target_path;
+    Filename.Set.iter rule.targets.dirs ~f:digest_target_path
+  ;;
+
+  let digest_locks d locks =
+    Digest.Manual.list d locks ~f:(fun d path ->
+      Digest.Manual.string d (Path.to_string path))
+  ;;
+
+  let digest_sandbox_config d sandbox =
+    let flags =
+      (if Sandbox_config.mem sandbox None then 1 lsl 0 else 0)
+      lor (if Sandbox_config.mem sandbox (Some Sandbox_mode.Symlink) then 1 lsl 1 else 0)
+      lor (if Sandbox_config.mem sandbox (Some Sandbox_mode.Copy) then 1 lsl 2 else 0)
+      lor (if Sandbox_config.mem sandbox (Some Sandbox_mode.Hardlink) then 1 lsl 3 else 0)
+      lor
+      if Sandbox_config.mem sandbox (Some Sandbox_mode.Patch_back_source_tree)
+      then 1 lsl 4
+      else 0
+    in
+    Digest.Manual.int d flags
+  ;;
+
+  let digest_env_subset d deps env =
+    let count =
+      Dep.Set.fold deps ~init:0 ~f:(fun dep acc ->
+        match dep with
+        | Env _ -> acc + 1
+        | _ -> acc)
+    in
+    Digest.Manual.int d count;
+    Dep.Set.iter deps ~f:(function
+      | Env var ->
+        Digest.Manual.string d var;
+        Digest.Manual.option d ~f:Digest.Manual.string (Env.get env var)
+      | _ -> ())
+  ;;
+
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 26
+  let rule_digest_version = 27
 
   let compute_rule_digest
         (rule : Rule.t)
@@ -294,39 +341,18 @@ end = struct
       =
       action
     in
-    let target_paths names =
-      Filename.Set.to_list_map names ~f:(fun name ->
-        Path.Build.relative rule.targets.root name |> Path.Build.to_string)
-    in
     let digest =
       let d = Digest.Manual.create () in
-      Digest.Manual.generic d rule_digest_version;
+      Digest.Manual.int d rule_digest_version;
       (* Update when changing the rule digest scheme. *)
-      Digest.Manual.generic d sandbox_mode;
+      Digest.Manual.repr d Sandbox_mode.repr sandbox_mode;
       Dep.Facts.digest facts d ~env;
-      Digest.Manual.generic
-        d
-        (target_paths rule.targets.files @ target_paths rule.targets.dirs);
-      Digest.Manual.generic d (Action.for_shell action);
-      Digest.Manual.generic d can_go_in_shared_cache;
-      Digest.Manual.generic d (List.map locks ~f:Path.to_string);
-      Digest.Manual.generic d corrections;
-      Digest.Manual.generic
-        d
-        (Execution_parameters.action_stdout_on_success execution_parameters);
-      Digest.Manual.generic
-        d
-        (Execution_parameters.action_stderr_on_success execution_parameters);
-      Digest.Manual.generic
-        d
-        (Execution_parameters.workspace_root_to_build_path_prefix_map
-           execution_parameters);
-      Digest.Manual.generic
-        d
-        (Execution_parameters.action_project_root execution_parameters);
-      Digest.Manual.generic
-        d
-        (Execution_parameters.expand_aliases_in_sandbox execution_parameters);
+      digest_target_paths d rule;
+      Action.digest d action;
+      Digest.Manual.bool d can_go_in_shared_cache;
+      digest_locks d locks;
+      Digest.Manual.repr d Repr.(option Corrections.repr) corrections;
+      Digest.Manual.digest d (Execution_parameters.digest execution_parameters);
       Digest.Manual.get d
     in
     digest
@@ -774,7 +800,7 @@ end = struct
 
   (* The current version of the action digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let action_digest_version = 5
+  let action_digest_version = 6
 
   let execute_action_generic
         ~observing_facts
@@ -816,7 +842,9 @@ end = struct
         =
         act
       in
-      let env =
+      let digest =
+        let d = Digest.Manual.create () in
+        Digest.Manual.int d action_digest_version;
         (* Here we restrict the environment to only the variables we depend on,
            so that we don't re-execute all actions when some irrelevant
            environment variable changes.
@@ -825,25 +853,19 @@ end = struct
            command, however that might be tedious to do in practice. See this
            ticket for a longer discussion about the management of the
            environment: https://github.com/ocaml/dune/issues/4382 *)
-        Dep.Set.fold deps ~init:Env.Map.empty ~f:(fun dep acc ->
-          match dep with
-          | Env var -> Env.Map.set acc var (Env.get env var)
-          | _ -> acc)
-        |> Env.Map.to_list
-      in
-      let digest =
-        let d = Digest.Manual.create () in
-        Digest.Manual.generic d action_digest_version;
-        Digest.Manual.generic d env;
+        digest_env_subset d deps env;
         Dep.Set.digest deps d;
-        Digest.Manual.generic d (Action.for_shell action);
-        Digest.Manual.generic d (List.map locks ~f:Path.to_string);
-        Digest.Manual.generic d dir;
-        Digest.Manual.generic d alias;
-        Digest.Manual.generic d capture_stdout;
-        Digest.Manual.generic d can_go_in_shared_cache;
-        Digest.Manual.generic d sandbox;
-        Digest.Manual.generic d corrections;
+        Action.digest d action;
+        digest_locks d locks;
+        Digest.Manual.string d (Path.Build.to_string dir);
+        Digest.Manual.option
+          d
+          ~f:(fun d alias -> Digest.Manual.string d (Alias.Name.to_string alias))
+          alias;
+        Digest.Manual.bool d capture_stdout;
+        Digest.Manual.bool d can_go_in_shared_cache;
+        digest_sandbox_config d sandbox;
+        Digest.Manual.repr d Repr.(option Corrections.repr) corrections;
         Digest.Manual.get d
       in
       digest

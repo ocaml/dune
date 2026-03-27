@@ -33,7 +33,7 @@ Testing install actions
   { files =
       [ (LIB_ROOT,
          [ In_build_dir
-             "_private/default/.pkg/test.0.0.1-71a1dbbc8427054a1d2894af5de7c64c/target/lib/xxx"
+             "_private/default/.pkg/test.0.0.1-0d81cce744444ce7e8e1c710ab100040/target/lib/xxx"
          ])
       ]
   ; variables = []

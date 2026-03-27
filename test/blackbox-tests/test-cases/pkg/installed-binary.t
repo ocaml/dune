@@ -43,19 +43,19 @@ Test that installed binaries are visible in dependent packages
   { files =
       [ (LIB,
          [ In_build_dir
-             "_private/default/.pkg/test.0.0.1-8168f8712071be9376e3132742da8230/target/lib/test/libxxx"
+             "_private/default/.pkg/test.0.0.1-100cf7b8687cb006f4cd39e8728417bd/target/lib/test/libxxx"
          ])
       ; (LIB_ROOT,
          [ In_build_dir
-             "_private/default/.pkg/test.0.0.1-8168f8712071be9376e3132742da8230/target/lib/lib_rootxxx"
+             "_private/default/.pkg/test.0.0.1-100cf7b8687cb006f4cd39e8728417bd/target/lib/lib_rootxxx"
          ])
       ; (BIN,
          [ In_build_dir
-             "_private/default/.pkg/test.0.0.1-8168f8712071be9376e3132742da8230/target/bin/foo"
+             "_private/default/.pkg/test.0.0.1-100cf7b8687cb006f4cd39e8728417bd/target/bin/foo"
          ])
       ; (SHARE_ROOT,
          [ In_build_dir
-             "_private/default/.pkg/test.0.0.1-8168f8712071be9376e3132742da8230/target/share/lib_rootxxx"
+             "_private/default/.pkg/test.0.0.1-100cf7b8687cb006f4cd39e8728417bd/target/share/lib_rootxxx"
          ])
       ]
   ; variables = []

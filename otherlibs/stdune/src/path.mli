@@ -58,6 +58,7 @@ module Local : sig
   include Path_intf.S with type t := t
 
   val root : t
+  val repr : t Repr.t
   val append : t -> t -> t
 
   include Path_intf.With_loc with type t := t

@@ -8,6 +8,7 @@ type t =
 val equal : t -> t -> bool
 val decode : (Path.External.t -> t) Dune_sexp.Decoder.t
 val encode : t -> Dune_sexp.t
+val repr : t Repr.t
 val to_dyn : t -> Dyn.t
 val hash : t -> int
 val digest_feed : t Dune_digest.Feed.t

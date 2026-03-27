@@ -106,11 +106,12 @@ module Env_update = struct
       ]
     ;;
 
-    let to_dyn t =
-      List.find_map all ~f:(fun (k, t') ->
-        if equal t t' then Some (Dyn.string k) else None)
+    let to_string t =
+      List.find_map all ~f:(fun (k, t') -> if equal t t' then Some k else None)
       |> Option.value_exn
     ;;
+
+    let repr = Repr.view Repr.string ~to_:to_string
   end
 
   type 'a t =
@@ -131,10 +132,22 @@ module Env_update = struct
     && value_equal value other_value
   ;;
 
-  let to_dyn value_to_dyn { op; var; value } =
-    Dyn.record
-      [ "op", Op.to_dyn op; "var", Env.Var.to_dyn var; "value", value_to_dyn value ]
+  let repr value_repr =
+    Repr.record
+      "env-update"
+      [ Repr.field "op" Op.repr ~get:(fun t -> t.op)
+      ; Repr.field "var" Repr.string ~get:(fun t -> t.var)
+      ; Repr.field "value" value_repr ~get:(fun t -> t.value)
+      ]
   ;;
+
+  module Repr_derived = Repr.Make1 (struct
+      type nonrec 'a t = 'a t
+
+      let repr = repr
+    end)
+
+  let to_dyn = Repr_derived.to_dyn
 
   let decode =
     let open Decoder in
@@ -665,6 +678,7 @@ let make_decode decode =
 
 let decode_dune_file = make_decode decode_dune_file
 let decode_pkg = make_decode decode_pkg
+let repr = Repr.view Dune_sexp.repr ~to_:encode
 let to_dyn a = to_dyn (encode a)
 let equal x y = Poly.equal x y
 let chdir dir t = Chdir (dir, t)

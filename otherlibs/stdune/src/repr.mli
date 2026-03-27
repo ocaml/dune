@@ -31,6 +31,7 @@ val list : 'a t -> 'a list t
 val array : 'a t -> 'a array t
 val pair : 'a t -> 'b t -> ('a * 'b) t
 val triple : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
+val fix : ('a t -> 'a t) -> 'a t
 val view : 'b t -> to_:('a -> 'b) -> 'a t
 val field : string -> 'b t -> get:('a -> 'b) -> 'a field
 val record : string -> 'a field list -> 'a t

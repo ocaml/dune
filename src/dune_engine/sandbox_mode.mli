@@ -84,5 +84,6 @@ val none : t
 val symlink : t
 val copy : t
 val hardlink : t
+val repr : t Repr.t
 val to_string : t -> string
 val to_dyn : t -> Dyn.t

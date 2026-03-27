@@ -269,7 +269,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 24
+  let rule_digest_version = 25
 
   let compute_rule_digest
         (rule : Rule.t)
@@ -292,21 +292,35 @@ end = struct
       Filename.Set.to_list_map names ~f:(fun name ->
         Path.Build.relative rule.targets.root name |> Path.Build.to_string)
     in
-    let trace =
-      ( rule_digest_version (* Update when changing the rule digest scheme. *)
-      , sandbox_mode
-      , Dep.Facts.digest facts ~env
-      , target_paths rule.targets.files @ target_paths rule.targets.dirs
-      , Action.for_shell action
-      , can_go_in_shared_cache
-      , List.map locks ~f:Path.to_string
-      , corrections
-      , Execution_parameters.action_stdout_on_success execution_parameters
-      , Execution_parameters.action_stderr_on_success execution_parameters
-      , Execution_parameters.workspace_root_to_build_path_prefix_map execution_parameters
-      , Execution_parameters.expand_aliases_in_sandbox execution_parameters )
+    let digest =
+      let d = Digest.Manual.create () in
+      Digest.Manual.generic d rule_digest_version;
+      (* Update when changing the rule digest scheme. *)
+      Digest.Manual.generic d sandbox_mode;
+      Dep.Facts.digest facts d ~env;
+      Digest.Manual.generic
+        d
+        (target_paths rule.targets.files @ target_paths rule.targets.dirs);
+      Digest.Manual.generic d (Action.for_shell action);
+      Digest.Manual.generic d can_go_in_shared_cache;
+      Digest.Manual.generic d (List.map locks ~f:Path.to_string);
+      Digest.Manual.generic d corrections;
+      Digest.Manual.generic
+        d
+        (Execution_parameters.action_stdout_on_success execution_parameters);
+      Digest.Manual.generic
+        d
+        (Execution_parameters.action_stderr_on_success execution_parameters);
+      Digest.Manual.generic
+        d
+        (Execution_parameters.workspace_root_to_build_path_prefix_map
+           execution_parameters);
+      Digest.Manual.generic
+        d
+        (Execution_parameters.expand_aliases_in_sandbox execution_parameters);
+      Digest.Manual.get d
     in
-    Digest.generic trace
+    digest
   ;;
 
   let report_evaluated_rule_exn () =
@@ -655,7 +669,10 @@ end = struct
                 List.map
                   exec_result.action_exec_result.dynamic_deps_stages
                   ~f:(fun (deps, fact_map) ->
-                    deps, Dep.Facts.digest fact_map ~env:action.env)
+                    ( deps
+                    , let d = Digest.Manual.create () in
+                      Dep.Facts.digest fact_map d ~env:action.env;
+                      Digest.Manual.get d ))
               in
               Fiber.return (produced_targets, dynamic_deps_stages)
           in
@@ -748,7 +765,7 @@ end = struct
 
   (* The current version of the action digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let action_digest_version = 4
+  let action_digest_version = 5
 
   let execute_action_generic
         ~observing_facts
@@ -805,18 +822,22 @@ end = struct
           | _ -> acc)
         |> Env.Map.to_list
       in
-      Digest.generic
-        ( action_digest_version
-        , env
-        , Dep.Set.digest deps
-        , Action.for_shell action
-        , List.map locks ~f:Path.to_string
-        , dir
-        , alias
-        , capture_stdout
-        , can_go_in_shared_cache
-        , sandbox
-        , corrections )
+      let digest =
+        let d = Digest.Manual.create () in
+        Digest.Manual.generic d action_digest_version;
+        Digest.Manual.generic d env;
+        Dep.Set.digest deps d;
+        Digest.Manual.generic d (Action.for_shell action);
+        Digest.Manual.generic d (List.map locks ~f:Path.to_string);
+        Digest.Manual.generic d dir;
+        Digest.Manual.generic d alias;
+        Digest.Manual.generic d capture_stdout;
+        Digest.Manual.generic d can_go_in_shared_cache;
+        Digest.Manual.generic d sandbox;
+        Digest.Manual.generic d corrections;
+        Digest.Manual.get d
+      in
+      digest
     in
     (* It might seem superfluous to memoize the execution here, given that a
        given anonymous action will typically only appear once during a given

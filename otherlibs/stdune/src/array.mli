@@ -1,4 +1,4 @@
-include module type of Stdlib.ArrayLabels with type 'a t = 'a array
+include module type of Stdlib.ArrayLabels
 
 val find_opt : f:('a -> bool) -> 'a t -> 'a option
 val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool

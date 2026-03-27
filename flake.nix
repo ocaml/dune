@@ -16,7 +16,6 @@
     };
     oxcaml = {
       url = "github:oxcaml/oxcaml";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
     oxcaml-opam-repository = {
       url = "github:oxcaml/opam-repository";

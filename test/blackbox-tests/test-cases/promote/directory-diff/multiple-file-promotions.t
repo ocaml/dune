@@ -19,16 +19,16 @@ Directory diff promotes each changed file separately.
   >  (action (diff expected actual)))
   > EOF
 
-  $ dune runtest 2>&1 | sed -E 's#_build/\.sandbox/[^/]+/default/#_build/default/#g'
+  $ dune runtest 2>&1 | censor
   File "expected/a", line 1, characters 0-0:
   --- expected/a
-  +++ _build/default/actual/a
+  +++ _build/.sandbox/$DIGEST/default/actual/a
   @@ -1 +1 @@
   -old a
   +new a
   File "expected/b", line 1, characters 0-0:
   --- expected/b
-  +++ _build/default/actual/b
+  +++ _build/.sandbox/$DIGEST/default/actual/b
   @@ -1 +1 @@
   -old b
   +new b

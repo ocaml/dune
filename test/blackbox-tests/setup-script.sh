@@ -122,6 +122,10 @@ file_status() {
   [ -e "$1" ] && echo "$1 exists" || echo "$1 missing"
 }
 
+censor() {
+  dune_cmd subst '[0-9a-f]{32}' '$DIGEST'
+}
+
 strip_sandbox() {
   # we want to substitute it to $SANDBOX
   # shellcheck disable=SC2016

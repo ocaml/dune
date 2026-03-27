@@ -48,10 +48,10 @@ Deletion promotions are visible to `dune promotion list` and `diff`.
   >  (action (diff expected actual)))
   > EOF
 
-  $ dune runtest
+  $ dune runtest 2>&1 | censor
   File "expected/changed", line 1, characters 0-0:
   --- expected/changed
-  +++ _build/.sandbox/bc0a36c2131ad591fedd98ed90913d6b/default/actual/changed
+  +++ _build/.sandbox/$DIGEST/default/actual/changed
   @@ -1 +1 @@
   -before
   +after

@@ -12,8 +12,18 @@
 CAMLprim value dune_clock_gettime_realtime(value v_unit) {
   (void)v_unit;
   FILETIME ft;
-  GetSystemTimePreciseAsFileTime(&ft);
+  static VOID (WINAPI *GetSystemTime)(LPFILETIME) = NULL;
+  if (GetSystemTime == NULL) {
+    HMODULE h = GetModuleHandleA("kernel32.dll");
+    if (h) {
+      GetSystemTime = GetProcAddress(h, "GetSystemTimePreciseAsFileTime");
+    }
+    if (GetSystemTime == NULL) { /* < Windows 8 */
+      GetSystemTime = GetSystemTimeAsFileTime;
+    }
+  }
 
+  GetSystemTime(&ft);
   ULARGE_INTEGER li;
   li.LowPart = ft.dwLowDateTime;
   li.HighPart = ft.dwHighDateTime;

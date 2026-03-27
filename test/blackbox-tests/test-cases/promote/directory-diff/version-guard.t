@@ -17,10 +17,10 @@ Directory diffing requires lang dune 3.23.
   >  (action (diff expected actual)))
   > EOF
 
-  $ dune runtest
+  $ dune runtest 2>&1 | censor
   File "expected/new-file", line 1, characters 0-0:
   --- expected/new-file
-  +++ _build/.sandbox/0d5f33b418b5cd00ea8221819ef25bd8/default/actual/new-file
+  +++ _build/.sandbox/$DIGEST/default/actual/new-file
   @@ -0,0 +1 @@
   +hello
   [1]

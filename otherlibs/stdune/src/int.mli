@@ -1,5 +1,6 @@
 type t = int
 
+val repr : t Repr.t
 val compare : t -> t -> Ordering.t
 val equal : t -> t -> bool
 val hash : t -> int

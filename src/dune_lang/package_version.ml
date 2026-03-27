@@ -1,6 +1,8 @@
 open Import
 include String
 
+let repr = Repr.string
+
 include (
   Dune_util.Stringlike.Make (struct
     type t = string

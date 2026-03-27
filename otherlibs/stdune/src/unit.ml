@@ -1,6 +1,7 @@
 type t = unit
 
+let repr = Repr.unit
 let equal () () = true
 let compare () () = Ordering.Eq
+let to_dyn = Repr.to_dyn repr
 let hash () = 0
-let to_dyn () = Dyn.Unit

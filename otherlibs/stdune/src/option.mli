@@ -24,6 +24,7 @@ val is_none : _ t -> bool
 val both : 'a t -> 'b t -> ('a * 'b) t
 val split : ('a * 'b) t -> 'a t * 'b t
 val to_list : 'a t -> 'a list
+val repr : 'a Repr.t -> 'a t Repr.t
 val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 val hash : ('a -> int) -> 'a t -> int
 

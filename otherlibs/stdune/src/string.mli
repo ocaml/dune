@@ -5,6 +5,7 @@ include module type of struct
   end
   with type t := t
 
+val repr : t Repr.t
 val equal : t -> t -> bool
 val compare : t -> t -> Ordering.t
 val hash : t -> int

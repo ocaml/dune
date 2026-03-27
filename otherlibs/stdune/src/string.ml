@@ -72,19 +72,22 @@ module Caseless = Cased_functions (struct
 
 include Stdlib.StringLabels
 
+let repr = Repr.string
 let compare a b = Ordering.of_int (String.compare a b)
 
 module T = struct
   type t = StringLabels.t
 
+  let repr = repr
   let compare = compare
   let equal (x : t) (y : t) = x = y
   let hash (s : t) = Poly.hash s
-  let to_dyn s = Dyn.String s
+  let to_dyn = Repr.to_dyn repr
 end
 
+let compare = T.compare
 let to_dyn = T.to_dyn
-let equal : string -> string -> bool = ( = )
+let equal = T.equal
 let hash = Poly.hash
 let capitalize = capitalize_ascii
 let uncapitalize = uncapitalize_ascii

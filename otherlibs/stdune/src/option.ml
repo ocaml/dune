@@ -74,6 +74,18 @@ let to_list = function
   | Some x -> [ x ]
 ;;
 
+let repr repr =
+  Repr.variant
+    "option"
+    [ Repr.case0 "None" ~test:(function
+        | None -> true
+        | Some _ -> false)
+    ; Repr.case "Some" repr ~proj:(function
+        | None -> None
+        | Some value -> Some value)
+    ]
+;;
+
 let equal eq x y =
   match x, y with
   | None, None -> true

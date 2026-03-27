@@ -1685,6 +1685,11 @@ struct
   ;;
 
   let load lock_dir_path =
+    let event =
+      Dune_trace.(
+        Out.start (global ()) (fun () ->
+          Event.Async.pkg_load_lock_dir ~path:(Path.to_string lock_dir_path)))
+    in
     let open Io.O in
     let* ( version
          , dependency_hash
@@ -1722,16 +1727,20 @@ struct
         pkg)
       >>| Packages.of_pkg_list
     in
-    check_packages packages ~lock_dir_path
-    |> Result.map ~f:(fun () ->
-      { version
-      ; dependency_hash
-      ; packages
-      ; ocaml
-      ; repos
-      ; expanded_solver_variable_bindings
-      ; solved_for_platforms
-      })
+    let result =
+      check_packages packages ~lock_dir_path
+      |> Result.map ~f:(fun () ->
+        { version
+        ; dependency_hash
+        ; packages
+        ; ocaml
+        ; repos
+        ; expanded_solver_variable_bindings
+        ; solved_for_platforms
+        })
+    in
+    Option.iter (Dune_trace.global ()) ~f:(fun trace -> Dune_trace.Out.finish trace event);
+    result
   ;;
 
   let load_exn lock_dir_path =

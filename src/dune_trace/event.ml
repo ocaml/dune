@@ -102,6 +102,11 @@ module Async = struct
     in
     { args = Some args; cat = Pkg; name = "fetch" }
   ;;
+
+  let pkg_load_lock_dir ~path =
+    let args = [ "path", Arg.string path ] in
+    { args = Some args; cat = Pkg; name = "load_lock_dir" }
+  ;;
 end
 
 type t = Event.t

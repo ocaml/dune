@@ -51,7 +51,9 @@ let is_valid_package_variable_name = function
 let invalid_variable_error ~loc variable =
   User_error.raise
     ~loc
-    [ Pp.textf "Variable %S is not supported." (OpamVariable.to_string variable) ]
+    [ Pp.textf "Cannot translate opam variable %S." (OpamVariable.to_string variable)
+    ; Pp.text "Dune only supports a subset of opam variables when translating opam files."
+    ]
 ;;
 
 (* CR-someday Alizter: This function is very mysterious and does a lot of

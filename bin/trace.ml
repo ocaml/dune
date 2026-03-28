@@ -186,13 +186,18 @@ let json_of_event ~chrome (sexp : Sexp.t) =
   let base =
     [ "cat", Json.string cat
     ; "name", Json.string name
-    ; "ts", Json.float (Time.to_secs ts)
+    ; ("ts", if chrome then Json.int (Time.to_us ts) else Json.float (Time.to_secs ts))
     ; "args", Json.assoc rest
     ]
     @
     match dur with
     | None -> []
-    | Some k -> [ "dur", Json.float (Time.Span.to_secs k) ]
+    | Some k ->
+      [ ( "dur"
+        , if chrome
+          then Json.int (Time.Span.to_us k)
+          else Json.float (Time.Span.to_secs k) )
+      ]
   in
   match chrome with
   | false -> Json.assoc base

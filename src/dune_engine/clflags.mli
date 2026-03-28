@@ -40,3 +40,7 @@ val can_go_in_shared_cache_default : bool ref
 
 (** Command to use to diff files *)
 val diff_command : string option ref
+
+(** Wait for the filesystem clock to advance rather than dropping cached digest
+    entries *)
+val wait_for_filesystem_clock : bool ref

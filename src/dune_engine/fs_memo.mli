@@ -85,3 +85,9 @@ module Untracked : sig
     :  Path.Outside_build_dir.t
     -> (Reduced_stats.t, Unix_error.Detailed.t) result
 end
+
+(** {1 Managing the cache} *)
+
+(** Invalidate all cached [stat] values. This causes all subsequent calls to
+    [build_file] or [source_or_external_file] to incur additional [stat] calls. *)
+val invalidate_cached_timestamps : unit -> unit

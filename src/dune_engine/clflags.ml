@@ -31,3 +31,4 @@ let always_show_command_line = ref false
 let display = ref Display.Quiet
 let can_go_in_shared_cache_default = ref false
 let diff_command = ref None
+let wait_for_filesystem_clock = ref false

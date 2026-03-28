@@ -16,6 +16,13 @@ module Paths = struct
     Path.Build.relative obj_dir "public_cmi_melange"
   ;;
 
+  let library_excluded_native_dir ~obj_dir = Path.Build.relative obj_dir "excluded_native"
+  let library_excluded_byte_dir ~obj_dir = Path.Build.relative obj_dir "excluded_byte"
+
+  let library_excluded_melange_dir ~obj_dir =
+    Path.Build.relative obj_dir "excluded_melange"
+  ;;
+
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
   let executable_object_directory ~dir name =
@@ -94,6 +101,8 @@ module External = struct
       Code_error.raise "External.cm_dir" [ "t", to_dyn t ]
     | Ocaml Cmi, Public, _ -> public_cmi_ocaml_dir t
     | Melange Cmi, Public, _ -> public_cmi_melange_dir t
+    | _, Excluded, _ ->
+      Code_error.raise "External.cm_dir: excluded visibility" [ "t", to_dyn t ]
     | Melange Cmj, _, _ -> t.public_dir.melange
     | Ocaml (Cmo | Cmx), _, _ -> t.public_dir.ocaml
   ;;
@@ -184,6 +193,7 @@ module Local = struct
     ; melange_dir : Path.Build.t
     ; public_cmi_ocaml_dir : Path.Build.t option
     ; public_cmi_melange_dir : Path.Build.t option
+    ; excluded_dirs : Path.Build.t Lib_mode.Map.t option
     ; private_lib : bool
     }
 
@@ -198,6 +208,7 @@ module Local = struct
         ; melange_dir
         ; public_cmi_ocaml_dir
         ; public_cmi_melange_dir
+        ; excluded_dirs
         ; private_lib
         }
     =
@@ -211,6 +222,7 @@ module Local = struct
       ; "melange_dir", Path.Build.to_dyn melange_dir
       ; "public_cmi_ocaml_dir", option Path.Build.to_dyn public_cmi_ocaml_dir
       ; "public_cmi_melange_dir", option Path.Build.to_dyn public_cmi_melange_dir
+      ; "excluded_dirs", option (Lib_mode.Map.to_dyn Path.Build.to_dyn) excluded_dirs
       ; "private_lib", bool private_lib
       ]
   ;;
@@ -224,6 +236,7 @@ module Local = struct
         ~melange_dir
         ~public_cmi_ocaml_dir
         ~public_cmi_melange_dir
+        ~excluded_dirs
         ~private_lib
     =
     { dir
@@ -234,6 +247,7 @@ module Local = struct
     ; melange_dir
     ; public_cmi_ocaml_dir
     ; public_cmi_melange_dir
+    ; excluded_dirs
     ; private_lib
     }
   ;;
@@ -272,13 +286,40 @@ module Local = struct
       |> Path.Build.Set.to_list
   ;;
 
-  let make_lib ~dir ~has_private_modules ~private_lib lib_name =
+  let all_obj_dirs_for_visibility t ~(mode : Lib_mode.t) ~(visibility : Visibility.t) =
+    let base = all_obj_dirs t ~mode in
+    match visibility with
+    | Public | Private -> base
+    | Excluded ->
+      (match t.excluded_dirs with
+       | None -> base
+       | Some excluded_dirs ->
+         let extra =
+           let by_mode = Lib_mode.Map.get excluded_dirs mode in
+           match mode with
+           | Ocaml Byte | Melange -> [ by_mode ]
+           | Ocaml Native -> [ excluded_dirs.ocaml.byte; by_mode ]
+         in
+         Path.Build.Set.of_list (List.rev_append base extra) |> Path.Build.Set.to_list)
+  ;;
+
+  let make_lib ~dir ~has_private_modules ~has_excluded_modules ~private_lib lib_name =
     let obj_dir = Paths.library_object_directory ~dir lib_name in
     let public_cmi_ocaml_dir =
       Option.some_if has_private_modules (Paths.library_public_cmi_ocaml_dir ~obj_dir)
     in
     let public_cmi_melange_dir =
       Option.some_if has_private_modules (Paths.library_public_cmi_melange_dir ~obj_dir)
+    in
+    let excluded_dirs =
+      Option.some_if
+        has_excluded_modules
+        { Lib_mode.Map.ocaml =
+            { byte = Paths.library_excluded_byte_dir ~obj_dir
+            ; native = Paths.library_excluded_native_dir ~obj_dir
+            }
+        ; melange = Paths.library_excluded_melange_dir ~obj_dir
+        }
     in
     make
       ~dir
@@ -289,6 +330,7 @@ module Local = struct
       ~melange_dir:(Paths.library_melange_dir ~obj_dir)
       ~public_cmi_ocaml_dir
       ~public_cmi_melange_dir
+      ~excluded_dirs
       ~private_lib
   ;;
 
@@ -303,6 +345,7 @@ module Local = struct
       ~melange_dir:(Paths.library_melange_dir ~obj_dir)
       ~public_cmi_ocaml_dir:None
       ~public_cmi_melange_dir:None
+      ~excluded_dirs:None
       ~private_lib:false
   ;;
 
@@ -317,14 +360,23 @@ module Local = struct
       ~melange_dir:(Paths.library_melange_dir ~obj_dir)
       ~public_cmi_ocaml_dir:None
       ~public_cmi_melange_dir:None
+      ~excluded_dirs:None
       ~private_lib:false
   ;;
 
-  let cm_dir t (cm_kind : Lib_mode.Cm_kind.t) _ =
-    match cm_kind with
-    | Ocaml Cmx -> native_dir t
-    | Ocaml (Cmo | Cmi) -> byte_dir t
-    | Melange (Cmj | Cmi) -> melange_dir t
+  let cm_dir t (cm_kind : Lib_mode.Cm_kind.t) (visibility : Visibility.t) =
+    match visibility with
+    | Public | Private ->
+      (match cm_kind with
+       | Ocaml Cmx -> native_dir t
+       | Ocaml (Cmo | Cmi) -> byte_dir t
+       | Melange (Cmj | Cmi) -> melange_dir t)
+    | Excluded ->
+      (match t.excluded_dirs with
+       | None ->
+         Code_error.raise "Local.cm_dir: excluded visibility without excluded_dirs" []
+       | Some excluded_dirs ->
+         Lib_mode.Map.get excluded_dirs (Lib_mode.of_cm_kind cm_kind))
   ;;
 
   let cm_public_dir t (cm_kind : Lib_mode.Cm_kind.t) =
@@ -375,8 +427,9 @@ let decode ~dir =
   External external_
 ;;
 
-let make_lib ~dir ~has_private_modules ~private_lib lib_name =
-  Local (Local.make_lib ~dir ~has_private_modules ~private_lib lib_name)
+let make_lib ~dir ~has_private_modules ~has_excluded_modules ~private_lib lib_name =
+  Local
+    (Local.make_lib ~dir ~has_private_modules ~has_excluded_modules ~private_lib lib_name)
 ;;
 
 let make_external_no_private ~dir =
@@ -437,6 +490,21 @@ let all_obj_dirs (type path) (t : path t) ~mode : path list =
   | Local_as_path e -> Local.all_obj_dirs e ~mode |> List.map ~f:Path.build
 ;;
 
+let all_obj_dirs_for_visibility (type path) (t : path t) ~mode ~visibility : path list =
+  match t with
+  | External e ->
+    (match visibility with
+     | Visibility.Public | Visibility.Private -> External.all_obj_dirs e ~mode
+     | Visibility.Excluded ->
+       Code_error.raise
+         "Obj_dir.all_obj_dirs_for_visibility: unexpected excluded module in external \
+          obj_dir"
+         [])
+  | Local e -> Local.all_obj_dirs_for_visibility e ~mode ~visibility
+  | Local_as_path e ->
+    Local.all_obj_dirs_for_visibility e ~mode ~visibility |> List.map ~f:Path.build
+;;
+
 let cm_dir t cm_kind visibility =
   get_path
     t
@@ -481,6 +549,7 @@ let for_pp ~dir =
        ~melange_dir:dir
        ~public_cmi_ocaml_dir:None
        ~public_cmi_melange_dir:None
+       ~excluded_dirs:None
        ~private_lib:false)
 ;;
 
@@ -556,11 +625,15 @@ module Module = struct
 
   let cm_public_file (type path) (t : path t) m ~(kind : Lib_mode.Cm_kind.t) : path option
     =
-    let is_private = Module.visibility m = Private in
+    let is_public =
+      match Module.visibility m with
+      | Private | Excluded -> false
+      | Public -> true
+    in
     let has_impl = Module.has m ~ml_kind:Impl in
     match kind with
     | (Ocaml (Cmx | Cmo) | Melange Cmj) when not has_impl -> None
-    | (Ocaml Cmi | Melange Cmi) when is_private -> None
+    | (Ocaml Cmi | Melange Cmi) when not is_public -> None
     | _ ->
       let base = cm_public_dir t kind in
       let obj_name = Module.obj_name m in
@@ -576,7 +649,8 @@ module Module = struct
     | Some x -> x
     | None ->
       Code_error.raise
-        "cm_public_file_exn: invalid access. module has no implementation or is private"
+        "cm_public_file_exn: invalid access. module has no implementation, is private, \
+         or is excluded"
         [ "m", Module.to_dyn m; "kind", Lib_mode.Cm_kind.to_dyn kind ]
   ;;
 

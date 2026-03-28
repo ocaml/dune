@@ -40,6 +40,7 @@ let to_library t =
   ; parameters = []
   ; default_implementation = None
   ; private_modules = None
+  ; excluded_modules = None
   ; stdlib = t.stdlib
   ; special_builtin_support = None
   ; enabled_if = t.enabled_if

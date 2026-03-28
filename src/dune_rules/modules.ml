@@ -184,6 +184,12 @@ module Mangle = struct
                  (Module_name.to_string main_module_name)
                  (Lib_name.Local.to_string lib)
                |> Module_name.of_checked_string
+           ; excluded =
+               sprintf
+                 "%s__%s"
+                 (Module_name.to_string main_module_name)
+                 (Lib_name.Local.to_string lib)
+               |> Module_name.of_checked_string
            ; public = main_module_name
            })
     | Exe ->
@@ -446,7 +452,7 @@ module Group = struct
     fun acc modules m -> loop acc modules (Nonempty_list.to_list (Module.path m))
   ;;
 
-  (* [parents acc modules m] returns [acc] followed by all parent groups of 
+  (* [parents acc modules m] returns [acc] followed by all parent groups of
      module [m], ordered from innermost to outermost parent. *)
   let parents (t : t) m = parents_modules [ t ] t.modules m |> List.rev
 
@@ -577,6 +583,7 @@ module Group = struct
         | Group g -> lib_interface g
       in
       name, m)
+    |> List.filter ~f:(fun (_, m) -> Module.visibility m <> Excluded)
   ;;
 end
 
@@ -721,7 +728,7 @@ module Wrapped = struct
         Module_name.Map.remove toplevel main_module_name
         |> Module_name.Map.filter_map ~f:(fun m ->
           match Module.visibility m with
-          | Private -> None
+          | Private | Excluded -> None
           | Public -> Some (Module.wrapped_compat m))
     in
     let group = Group.of_trie modules ~mangle ~obj_dir in
@@ -1129,11 +1136,14 @@ module With_vlib = struct
 
   let find_dep =
     let from_impl_or_lib = List.map ~f:(fun m -> `Impl_or_lib, m) in
-    let find_dep_result =
+    let find_dep_result ~of_ =
       List.filter_map ~f:(fun (from, m) ->
-        match from with
-        | `Impl_or_lib -> Some m
-        | `Vlib -> Option.some_if (Module.visibility m = Public) m)
+        match Module.visibility of_, Module.visibility m with
+        | (Public | Private), Excluded -> None
+        | (Public | Private | Excluded), (Public | Private) | Excluded, Excluded ->
+          (match from with
+           | `Impl_or_lib -> Some m
+           | `Vlib -> Option.some_if (Module.visibility m = Public) m))
     in
     let raise_parent_cycle = function
       | Ok s -> from_impl_or_lib s
@@ -1150,7 +1160,7 @@ module With_vlib = struct
           | Wrapped w -> Wrapped.find_dep w ~of_ name |> raise_parent_cycle
           | Stdlib s -> Stdlib.find_dep s ~of_ name |> Option.to_list |> from_impl_or_lib
         in
-        find_dep_result result)
+        find_dep_result ~of_ result)
     in
     fun t ~of_ name ->
       try
@@ -1161,7 +1171,7 @@ module With_vlib = struct
              (match find_dep impl ~of_ name with
               | [] -> find_dep vlib ~of_ name |> List.map ~f:(fun m -> `Vlib, m)
               | xs -> from_impl_or_lib xs)
-             |> find_dep_result)
+             |> find_dep_result ~of_)
       with
       | Parent_cycle -> Error `Parent_cycle
   ;;

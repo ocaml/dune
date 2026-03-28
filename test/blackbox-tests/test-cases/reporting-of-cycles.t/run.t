@@ -59,11 +59,11 @@ cryptic and can involve unrelated files:
 
   $ echo 'val xx : B.t' >> indirect/c.mli
   $ dune build @indirect-deps
-  Error: Dependency cycle between:
-     _build/default/indirect/.a.eobjs/a.impl.all-deps
-  -> _build/default/indirect/.a.eobjs/b.impl.all-deps
-  -> _build/default/indirect/.a.eobjs/c.intf.all-deps
-  -> _build/default/indirect/.a.eobjs/a.impl.all-deps
+  Error: dependency cycle involving module A:
+     C
+  -> B
+  -> A
+  -> C
   -> required by _build/default/indirect/a.exe
   -> required by alias indirect/indirect-deps in indirect/dune:6
   [1]

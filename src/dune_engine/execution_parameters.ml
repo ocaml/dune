@@ -54,6 +54,7 @@ type t =
   ; action_stderr_limit : Action_output_limit.t
   ; expand_aliases_in_sandbox : bool
   ; workspace_root_to_build_path_prefix_map : Workspace_root_for_build_prefix_map.t
+  ; action_project_root : Path.Source.t option
   ; should_remove_write_permissions_on_generated_files : bool
   }
 
@@ -64,6 +65,7 @@ let equal
       ; action_stderr_limit
       ; expand_aliases_in_sandbox
       ; workspace_root_to_build_path_prefix_map
+      ; action_project_root
       ; should_remove_write_permissions_on_generated_files
       }
       t
@@ -76,6 +78,7 @@ let equal
   && Workspace_root_for_build_prefix_map.equal
        workspace_root_to_build_path_prefix_map
        t.workspace_root_to_build_path_prefix_map
+  && Option.equal Path.Source.equal action_project_root t.action_project_root
   && Bool.equal
        should_remove_write_permissions_on_generated_files
        t.should_remove_write_permissions_on_generated_files
@@ -88,6 +91,7 @@ let hash
       ; action_stderr_limit
       ; expand_aliases_in_sandbox
       ; workspace_root_to_build_path_prefix_map
+      ; action_project_root
       ; should_remove_write_permissions_on_generated_files
       }
   =
@@ -98,6 +102,7 @@ let hash
     , action_stderr_limit
     , expand_aliases_in_sandbox
     , workspace_root_to_build_path_prefix_map
+    , action_project_root
     , should_remove_write_permissions_on_generated_files )
 ;;
 
@@ -108,6 +113,7 @@ let to_dyn
       ; action_stderr_limit
       ; expand_aliases_in_sandbox
       ; workspace_root_to_build_path_prefix_map
+      ; action_project_root
       ; should_remove_write_permissions_on_generated_files
       }
   =
@@ -120,6 +126,7 @@ let to_dyn
     ; ( "workspace_root_to_build_path_prefix_map"
       , Workspace_root_for_build_prefix_map.to_dyn workspace_root_to_build_path_prefix_map
       )
+    ; "action_project_root", Dyn.option Path.Source.to_dyn action_project_root
     ; ( "should_remove_write_permissions_on_generated_files"
       , Bool should_remove_write_permissions_on_generated_files )
     ]
@@ -132,6 +139,7 @@ let builtin_default =
   ; action_stderr_limit = Action_output_limit.default
   ; expand_aliases_in_sandbox = true
   ; workspace_root_to_build_path_prefix_map = Set "/workspace_root"
+  ; action_project_root = None
   ; should_remove_write_permissions_on_generated_files = true
   }
 ;;
@@ -146,6 +154,8 @@ let set_workspace_root_to_build_path_prefix_map x t =
   { t with workspace_root_to_build_path_prefix_map = x }
 ;;
 
+let set_action_project_root x t = { t with action_project_root = x }
+
 let set_should_remove_write_permissions_on_generated_files x t =
   { t with should_remove_write_permissions_on_generated_files = x }
 ;;
@@ -156,6 +166,7 @@ let action_stdout_on_success t = t.action_stdout_on_success
 let action_stderr_on_success t = t.action_stderr_on_success
 let action_stdout_limit t = t.action_stdout_limit
 let action_stderr_limit t = t.action_stderr_limit
+let action_project_root t = t.action_project_root
 
 let should_remove_write_permissions_on_generated_files t =
   t.should_remove_write_permissions_on_generated_files

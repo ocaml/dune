@@ -42,7 +42,11 @@ module Manual : sig
   type t
 
   val create : unit -> t
+  val bool : t -> bool -> unit
+  val int : t -> int -> unit
   val string : t -> string -> unit
+  val option : t -> f:(t -> 'a -> unit) -> 'a option -> unit
+  val list : t -> f:(t -> 'a -> unit) -> 'a list -> unit
   val generic : t -> 'a -> unit
   val digest : t -> digest -> unit
   val get : t -> digest

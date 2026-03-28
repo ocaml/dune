@@ -176,17 +176,55 @@ end
 module Manual = struct
   type t = unit
 
+  let scratch = Bytes.create 8
   let create () = ()
 
-  let string () s =
+  let feed_string_raw s =
     Blake3_mini.feed_string ~pos:0 ~len:(String.length s) (Lazy.force Hasher.singleton) s
+  ;;
+
+  let feed_int64 i =
+    for byte = 0 to 7 do
+      let shift = 8 * byte in
+      let value = Int64.(to_int (logand (shift_right_logical i shift) 0xffL)) in
+      Bytes.set scratch byte (Char.chr value)
+    done;
+    feed_string_raw (Bytes.unsafe_to_string scratch)
+  ;;
+
+  let bool () b =
+    Bytes.set scratch 0 (if b then '\001' else '\000');
+    Blake3_mini.feed_string
+      ~pos:0
+      ~len:1
+      (Lazy.force Hasher.singleton)
+      (Bytes.unsafe_to_string scratch)
+  ;;
+
+  let int () i = feed_int64 (Int64.of_int i)
+
+  let string () s =
+    int () (String.length s);
+    feed_string_raw s
+  ;;
+
+  let option t ~f = function
+    | None -> bool t false
+    | Some x ->
+      bool t true;
+      f t x
+  ;;
+
+  let list t ~f xs =
+    int t (List.length xs);
+    List.iter xs ~f:(f t)
   ;;
 
   let generic () s = string () (Marshal.to_string ~sharing:false s)
 
   let digest () s =
     let s = Blake3_mini.Digest.to_binary s in
-    string () s
+    feed_string_raw s
   ;;
 
   let get () =

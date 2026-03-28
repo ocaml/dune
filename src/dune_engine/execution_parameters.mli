@@ -20,6 +20,7 @@ type t
 val equal : t -> t -> bool
 val hash : t -> int
 val repr : t Repr.t
+val digest : t -> Digest.t
 val to_dyn : t -> Dyn.t
 
 module Action_output_on_success : sig

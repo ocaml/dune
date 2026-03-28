@@ -183,6 +183,141 @@ let for_shell t =
       | Error e -> e.program)
 ;;
 
+let digest =
+  let open Dune_digest.Manual in
+  let digest_outputs d = function
+    | Outputs.Stdout -> int d 0
+    | Outputs.Stderr -> int d 1
+    | Outputs.Outputs -> int d 2
+  in
+  let digest_inputs d = function
+    | Inputs.Stdin -> int d 0
+  in
+  let digest_file_perm d = function
+    | File_perm.Normal -> int d 0
+    | File_perm.Executable -> int d 1
+  in
+  let digest_mode d = function
+    | Diff.Mode.Binary -> int d 0
+    | Diff.Mode.Text -> int d 1
+  in
+  let digest_program d ~dir (program : Prog.t) =
+    match program with
+    | Ok p -> string d (Path.reach p ~from:dir)
+    | Error e -> string d e.program
+  in
+  let digest_path d ~dir path = string d (Path.reach path ~from:dir) in
+  let digest_target d ~dir target = string d (Path.reach (Path.build target) ~from:dir) in
+  let digest_ext d ~dir ((module A) : Encode_ext.t) =
+    generic
+      d
+      (A.Spec.encode
+         A.v
+         (fun p -> Sexp.Atom (Path.reach p ~from:dir))
+         (fun p -> Sexp.Atom (Path.reach (Path.build p) ~from:dir)))
+  in
+  let rec loop d t ~dir =
+    match t with
+    | Run (prog, args) ->
+      int d 0;
+      digest_program d ~dir prog;
+      int d (Array.Immutable.length args);
+      for i = 0 to Array.Immutable.length args - 1 do
+        string d (Array.Immutable.get args i)
+      done
+    | With_accepted_exit_codes (pred, t) ->
+      int d 1;
+      generic d pred;
+      loop d t ~dir
+    | Chdir (path, t) ->
+      int d 2;
+      digest_path d ~dir path;
+      loop d t ~dir:path
+    | Setenv (var, value, t) ->
+      int d 3;
+      string d var;
+      string d value;
+      loop d t ~dir
+    | Redirect_out (outputs, target, perm, t) ->
+      int d 4;
+      digest_outputs d outputs;
+      digest_target d ~dir target;
+      digest_file_perm d perm;
+      loop d t ~dir
+    | Redirect_in (inputs, path, t) ->
+      int d 5;
+      digest_inputs d inputs;
+      digest_path d ~dir path;
+      loop d t ~dir
+    | Ignore (outputs, t) ->
+      int d 6;
+      digest_outputs d outputs;
+      loop d t ~dir
+    | Progn ts ->
+      int d 7;
+      list d ts ~f:(fun d t -> loop d t ~dir)
+    | Concurrent ts ->
+      int d 8;
+      list d ts ~f:(fun d t -> loop d t ~dir)
+    | Echo xs ->
+      int d 9;
+      list d xs ~f:string
+    | Cat paths ->
+      int d 10;
+      list d paths ~f:(fun d path -> digest_path d ~dir path)
+    | Copy (src, dst) ->
+      int d 11;
+      digest_path d ~dir src;
+      digest_target d ~dir dst
+    | Symlink (src, dst) ->
+      int d 12;
+      let src =
+        match Path.Build.parent dst with
+        | None -> Path.to_string src
+        | Some from -> Path.reach ~from:(Path.build from) src
+      in
+      string d src;
+      digest_target d ~dir dst
+    | Hardlink (src, dst) ->
+      int d 13;
+      digest_path d ~dir src;
+      digest_target d ~dir dst
+    | Bash s ->
+      int d 14;
+      string d s
+    | Write_file (target, perm, contents) ->
+      int d 15;
+      digest_target d ~dir target;
+      digest_file_perm d perm;
+      string d contents
+    | Rename (src, dst) ->
+      int d 16;
+      digest_target d ~dir src;
+      digest_target d ~dir dst
+    | Remove_tree target ->
+      int d 17;
+      digest_target d ~dir target
+    | Mkdir target ->
+      int d 18;
+      digest_target d ~dir target
+    | Pipe (outputs, ts) ->
+      int d 19;
+      digest_outputs d outputs;
+      list d ts ~f:(fun d t -> loop d t ~dir)
+    | Diff { optional; mode; directory_diffs; file1; file2 } ->
+      int d 20;
+      bool d optional;
+      digest_mode d mode;
+      bool d directory_diffs;
+      digest_path d ~dir file1;
+      digest_target d ~dir file2
+    | Extension ext ->
+      int d 21;
+      digest_ext d ~dir ext
+  in
+  fun d t -> loop d t ~dir:Path.root
+;;
+
 let fold_one_step t ~init:acc ~f =
   match t with
   | Chdir (_, t)

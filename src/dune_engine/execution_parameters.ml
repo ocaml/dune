@@ -111,6 +111,65 @@ let hash
     , should_remove_write_permissions_on_generated_files )
 ;;
 
+let action_output_on_success_to_int = function
+  | Action_output_on_success.Print -> 0
+  | Action_output_on_success.Swallow -> 1
+  | Action_output_on_success.Must_be_empty -> 2
+;;
+
+let bool_to_int b = if b then 1 else 0
+
+let workspace_root_for_build_prefix_map_to_root = function
+  | Workspace_root_for_build_prefix_map.Unset -> None
+  | Workspace_root_for_build_prefix_map.Set root -> Some root
+;;
+
+let digest_fields
+      ~action_stdout_on_success
+      ~action_stderr_on_success
+      ~action_stdout_limit
+      ~action_stderr_limit
+      ~expand_aliases_in_sandbox
+      ~workspace_root_to_build_path_prefix_map
+      ~should_remove_write_permissions_on_generated_files
+  =
+  let d = Digest.Manual.create () in
+  let root =
+    workspace_root_for_build_prefix_map_to_root workspace_root_to_build_path_prefix_map
+  in
+  let flags =
+    action_output_on_success_to_int action_stdout_on_success
+    lor (action_output_on_success_to_int action_stderr_on_success lsl 2)
+    lor (bool_to_int expand_aliases_in_sandbox lsl 4)
+    lor (bool_to_int (Option.is_some root) lsl 5)
+    lor (bool_to_int should_remove_write_permissions_on_generated_files lsl 6)
+  in
+  Digest.Manual.int d flags;
+  Digest.Manual.int d action_stdout_limit;
+  Digest.Manual.int d action_stderr_limit;
+  Option.iter root ~f:(Digest.Manual.string d);
+  Digest.Manual.get d
+;;
+
+let make
+      ~action_stdout_on_success
+      ~action_stderr_on_success
+      ~action_stdout_limit
+      ~action_stderr_limit
+      ~expand_aliases_in_sandbox
+      ~workspace_root_to_build_path_prefix_map
+      ~should_remove_write_permissions_on_generated_files
+  =
+  { action_stdout_on_success
+  ; action_stderr_on_success
+  ; action_stdout_limit
+  ; action_stderr_limit
+  ; expand_aliases_in_sandbox
+  ; workspace_root_to_build_path_prefix_map
+  ; should_remove_write_permissions_on_generated_files
+  }
+;;
+
 let repr =
   Repr.record
     "execution-parameters"
@@ -135,31 +194,121 @@ let repr =
     ]
 ;;
 
+let digest
+      { action_stdout_on_success
+      ; action_stderr_on_success
+      ; action_stdout_limit
+      ; action_stderr_limit
+      ; expand_aliases_in_sandbox
+      ; workspace_root_to_build_path_prefix_map
+      ; should_remove_write_permissions_on_generated_files
+      }
+  =
+  digest_fields
+    ~action_stdout_on_success
+    ~action_stderr_on_success
+    ~action_stdout_limit
+    ~action_stderr_limit
+    ~expand_aliases_in_sandbox
+    ~workspace_root_to_build_path_prefix_map
+    ~should_remove_write_permissions_on_generated_files
+;;
+
 let to_dyn = Repr.to_dyn repr
 
 let builtin_default =
-  { action_stdout_on_success = Print
-  ; action_stderr_on_success = Print
-  ; action_stdout_limit = Action_output_limit.default
-  ; action_stderr_limit = Action_output_limit.default
-  ; expand_aliases_in_sandbox = true
-  ; workspace_root_to_build_path_prefix_map = Set "/workspace_root"
-  ; should_remove_write_permissions_on_generated_files = true
-  }
+  make
+    ~action_stdout_on_success:Action_output_on_success.Print
+    ~action_stderr_on_success:Action_output_on_success.Print
+    ~action_stdout_limit:Action_output_limit.default
+    ~action_stderr_limit:Action_output_limit.default
+    ~expand_aliases_in_sandbox:true
+    ~workspace_root_to_build_path_prefix_map:
+      (Workspace_root_for_build_prefix_map.Set "/workspace_root")
+    ~should_remove_write_permissions_on_generated_files:true
 ;;
 
-let set_action_stdout_on_success x t = { t with action_stdout_on_success = x }
-let set_action_stderr_on_success x t = { t with action_stderr_on_success = x }
-let set_action_stdout_limit x t = { t with action_stdout_limit = x }
-let set_action_stderr_limit x t = { t with action_stderr_limit = x }
-let set_expand_aliases_in_sandbox x t = { t with expand_aliases_in_sandbox = x }
+let set_action_stdout_on_success x t =
+  make
+    ~action_stdout_on_success:x
+    ~action_stderr_on_success:t.action_stderr_on_success
+    ~action_stdout_limit:t.action_stdout_limit
+    ~action_stderr_limit:t.action_stderr_limit
+    ~expand_aliases_in_sandbox:t.expand_aliases_in_sandbox
+    ~workspace_root_to_build_path_prefix_map:t.workspace_root_to_build_path_prefix_map
+    ~should_remove_write_permissions_on_generated_files:
+      t.should_remove_write_permissions_on_generated_files
+;;
+
+let set_action_stderr_on_success x t =
+  make
+    ~action_stdout_on_success:t.action_stdout_on_success
+    ~action_stderr_on_success:x
+    ~action_stdout_limit:t.action_stdout_limit
+    ~action_stderr_limit:t.action_stderr_limit
+    ~expand_aliases_in_sandbox:t.expand_aliases_in_sandbox
+    ~workspace_root_to_build_path_prefix_map:t.workspace_root_to_build_path_prefix_map
+    ~should_remove_write_permissions_on_generated_files:
+      t.should_remove_write_permissions_on_generated_files
+;;
+
+let set_action_stdout_limit x t =
+  make
+    ~action_stdout_on_success:t.action_stdout_on_success
+    ~action_stderr_on_success:t.action_stderr_on_success
+    ~action_stdout_limit:x
+    ~action_stderr_limit:t.action_stderr_limit
+    ~expand_aliases_in_sandbox:t.expand_aliases_in_sandbox
+    ~workspace_root_to_build_path_prefix_map:t.workspace_root_to_build_path_prefix_map
+    ~should_remove_write_permissions_on_generated_files:
+      t.should_remove_write_permissions_on_generated_files
+;;
+
+let set_action_stderr_limit x t =
+  make
+    ~action_stdout_on_success:t.action_stdout_on_success
+    ~action_stderr_on_success:t.action_stderr_on_success
+    ~action_stdout_limit:t.action_stdout_limit
+    ~action_stderr_limit:x
+    ~expand_aliases_in_sandbox:t.expand_aliases_in_sandbox
+    ~workspace_root_to_build_path_prefix_map:t.workspace_root_to_build_path_prefix_map
+    ~should_remove_write_permissions_on_generated_files:
+      t.should_remove_write_permissions_on_generated_files
+;;
+
+let set_expand_aliases_in_sandbox x t =
+  make
+    ~action_stdout_on_success:t.action_stdout_on_success
+    ~action_stderr_on_success:t.action_stderr_on_success
+    ~action_stdout_limit:t.action_stdout_limit
+    ~action_stderr_limit:t.action_stderr_limit
+    ~expand_aliases_in_sandbox:x
+    ~workspace_root_to_build_path_prefix_map:t.workspace_root_to_build_path_prefix_map
+    ~should_remove_write_permissions_on_generated_files:
+      t.should_remove_write_permissions_on_generated_files
+;;
 
 let set_workspace_root_to_build_path_prefix_map x t =
-  { t with workspace_root_to_build_path_prefix_map = x }
+  make
+    ~action_stdout_on_success:t.action_stdout_on_success
+    ~action_stderr_on_success:t.action_stderr_on_success
+    ~action_stdout_limit:t.action_stdout_limit
+    ~action_stderr_limit:t.action_stderr_limit
+    ~expand_aliases_in_sandbox:t.expand_aliases_in_sandbox
+    ~workspace_root_to_build_path_prefix_map:x
+    ~should_remove_write_permissions_on_generated_files:
+      t.should_remove_write_permissions_on_generated_files
 ;;
 
 let set_should_remove_write_permissions_on_generated_files x t =
-  { t with should_remove_write_permissions_on_generated_files = x }
+  make
+    ~action_stdout_on_success:t.action_stdout_on_success
+    ~action_stderr_on_success:t.action_stderr_on_success
+    ~action_stdout_limit:t.action_stdout_limit
+    ~action_stderr_limit:t.action_stderr_limit
+    ~expand_aliases_in_sandbox:t.expand_aliases_in_sandbox
+    ~workspace_root_to_build_path_prefix_map:t.workspace_root_to_build_path_prefix_map
+    ~should_remove_write_permissions_on_generated_files:x
 ;;
 
 let expand_aliases_in_sandbox t = t.expand_aliases_in_sandbox

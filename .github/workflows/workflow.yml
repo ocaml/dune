@@ -157,8 +157,8 @@ jobs:
         # 4.02.x and 4.07.x in other environments
         include:
           # OCaml trunk:
-          - ocaml-compiler: ocaml-variants.5.5.0+trunk
-            cache-prefix: ocaml-variants.5.5.0+trunk
+          - ocaml-compiler: ocaml-variants.5.6.0+trunk
+            cache-prefix: ocaml-variants.5.6.0+trunk
             os: ubuntu-latest
           # OCaml 5:
           ## ubuntu (x86)

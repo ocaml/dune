@@ -49,7 +49,7 @@ val path_kind
 val file_digest
   :  ?force_update:bool
   -> Path.Outside_build_dir.t
-  -> Cached_digest.Digest_result.t Memo.t
+  -> Dune_digest.Digest_result.t Memo.t
 
 (** Like [file_digest] but raises a user error if the resulting digest is not [Ok _]. *)
 val file_digest_exn
@@ -79,7 +79,7 @@ val dir_contents
   -> (Dir_contents.t, Unix_error.Detailed.t) result Memo.t
 
 module Untracked : sig
-  val file_digest : Path.Outside_build_dir.t -> Cached_digest.Digest_result.t
+  val file_digest : Path.Outside_build_dir.t -> Dune_digest.Digest_result.t
 
   val path_stat
     :  Path.Outside_build_dir.t

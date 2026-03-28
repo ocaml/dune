@@ -1,5 +1,6 @@
 open Import
 open Memo.O
+module Digest_result = Dune_digest.Digest_result
 
 module Dir_contents = struct
   (* CR-someday amokhov: Using a [Filename.Map] instead of a list would be better
@@ -116,7 +117,7 @@ module Fs_cache = struct
     *)
     let file_digest =
       let sample p = Cached_digest.Untracked.source_or_external_file p in
-      create "file_digest" ~sample ~equal:Cached_digest.Digest_result.equal
+      create "file_digest" ~sample ~equal:Digest_result.equal
     ;;
 
     let dir_contents =
@@ -428,11 +429,9 @@ let file_digest_exn ~loc path =
   >>= function
   | Ok digest -> Memo.return digest
   | Error e ->
-    if Cached_digest.Digest_result.Error.no_such_file e
+    if Digest_result.Error.no_such_file e
     then report_user_error []
-    else
-      report_user_error
-        [ Cached_digest.Digest_result.Error.pp e (Path.outside_build_dir path) ]
+    else report_user_error [ Digest_result.Error.pp e (Path.outside_build_dir path) ]
 ;;
 
 let dir_contents ?(force_update = false) path =
@@ -450,9 +449,7 @@ let tracking_file_digest path =
   (* This is a bit of a hack. By reading [file_digest], we cause the [path] to
      be recorded in the [Fs_cache.Untracked.file_digest], so the build will be
      restarted if the digest changes. *)
-  let (_ : Cached_digest.Digest_result.t) =
-    Fs_cache.read Fs_cache.Untracked.file_digest path
-  in
+  let (_ : Digest_result.t) = Fs_cache.read Fs_cache.Untracked.file_digest path in
   ()
 ;;
 

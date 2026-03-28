@@ -45,10 +45,10 @@ module Cached_digest = struct
   let needs_dumping = ref false
 
   (* CR-someday amokhov: replace this mutable table with a memoized function. This
-   will probably require splitting this module in two, for dealing with source
-   and target files, respectively. For source files, we receive updates via the
-   file-watching API. For target files, we modify the digests ourselves, without
-   subscribing for file-watching updates. *)
+     will probably require splitting this module in two, for dealing with source
+     and target files, respectively. For source files, we receive updates via the
+     file-watching API. For target files, we modify the digests ourselves, without
+     subscribing for file-watching updates. *)
   let cache =
     lazy
       (match P.load db_file with
@@ -78,8 +78,8 @@ module Cached_digest = struct
     if !Clflags.wait_for_filesystem_clock then wait_for_fs_clock_to_advance ();
     let now = get_current_filesystem_time () in
     (* We can only trust digests with timestamps in the past. We had issues in
-     the past with file systems having a slow internal clock, where we cached
-     digests too aggressively. *)
+       the past with file systems having a slow internal clock, where we cached
+       digests too aggressively. *)
     match Float.compare cache.max_timestamp now with
     | Lt -> ()
     | Eq | Gt ->
@@ -141,12 +141,10 @@ module Cached_digest = struct
       }
   ;;
 
-  let digest_path_with_stats ~allow_dirs path stats =
+  let digest_path_with_stats path stats =
     match
-      Digest.path_with_stats
-        ~allow_dirs
-        path
-        (Digest.Stats_for_digest.of_unix_stats stats)
+      Digest.Stats_for_digest.of_unix_stats stats
+      |> Digest.path_with_stats ~allow_dirs:true path
     with
     | Ok digest -> Ok digest
     | Error Unexpected_kind -> Error (Digest_result.Error.Unexpected_kind stats.st_kind)
@@ -155,20 +153,19 @@ module Cached_digest = struct
   ;;
 
   (* Here we make only one [stat] call on the happy path. *)
-  let refresh_without_removing_write_permissions =
-    let refresh_sync ~allow_dirs stats path =
+  let refresh =
+    let refresh_sync stats path =
       (* Note that by the time we reach this point, [stats] may become stale due to
-     concurrent processes modifying the [path], so this function can actually
-     return [No_such_file] even if the caller managed to obtain the [stats]. *)
-      let result = digest_path_with_stats ~allow_dirs path stats in
+         concurrent processes modifying the [path], so this function can actually
+         return [No_such_file] even if the caller managed to obtain the [stats]. *)
+      let result = digest_path_with_stats path stats in
       Result.iter result ~f:(fun digest -> set_with_stat path digest stats);
       result
     in
-    fun ~allow_dirs path ->
+    fun path ->
       Digest_result.catch_fs_errors (fun () ->
         match Unix.stat (Path.to_string path) with
-        | stats -> refresh_sync stats ~allow_dirs path
-        | exception Unix.Unix_error (ELOOP, _, _) -> Error Cyclic_symlink
+        | stats -> refresh_sync stats path
         | exception Unix.Unix_error (ENOENT, _, _) ->
           (* Test if this is a broken symlink for better error messages. *)
           (match Unix.lstat (Path.to_string path) with
@@ -176,13 +173,7 @@ module Cached_digest = struct
            | _stats_so_must_be_a_symlink -> Error Broken_symlink))
   ;;
 
-  (* CR-someday amokhov: We do [lstat] followed by [stat] only because we do not
-   want to remove write permissions from the symbolic link's target, which may
-   be outside of the build directory and not under out control. It seems like it
-   should be possible to avoid paying for two system calls ([lstat] and [stat])
-   here, e.g., by telling the subsequent [chmod] to not follow symlinks. *)
-
-  let peek_file ~allow_dirs path =
+  let peek_file path =
     let cache = Lazy.force cache in
     match Path.Table.find cache.table path with
     | None -> None
@@ -192,27 +183,27 @@ module Cached_digest = struct
          then Ok x.digest
          else (
            (* The [stat] below follows symlinks. *)
-           match Unix.stat (Path.to_string path) with
-           | exception Unix.Unix_error (ELOOP, _, _) ->
-             Error Digest_result.Error.Cyclic_symlink
-           | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
-           | exception Unix.Unix_error (error, syscall, arg) ->
-             Error (Unix_error (Unix_error.Detailed.create ~syscall ~arg error))
-           | exception exn -> Error (Unrecognized exn)
-           | stats ->
+           match
+             Dune_digest.Digest_result.catch_fs_errors (fun () ->
+               match Unix.stat (Path.to_string path) with
+               | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
+               | stats -> Ok stats)
+           with
+           | Error e -> Error e
+           | Ok stats ->
              let reduced_stats = Dune_digest.Reduced_stats.of_unix_stats stats in
              (match Dune_digest.Reduced_stats.compare x.stats reduced_stats with
               | Eq ->
                 (* Even though we're modifying the [stats_checked] field, we don't
-                 need to set [needs_dumping := true] here. This is because
-                 [checked_key] is incremented every time we load from disk, which
-                 makes it so that [stats_checked < checked_key] for all entries
-                 after loading, regardless of whether we save the new value here
-                 or not. *)
+                   need to set [needs_dumping := true] here. This is because
+                   [checked_key] is incremented every time we load from disk, which
+                   makes it so that [stats_checked < checked_key] for all entries
+                   after loading, regardless of whether we save the new value here
+                   or not. *)
                 x.stats_checked <- cache.checked_key;
                 Ok x.digest
               | Gt | Lt ->
-                let digest_result = digest_path_with_stats ~allow_dirs path stats in
+                let digest_result = digest_path_with_stats path stats in
                 Result.iter digest_result ~f:(fun digest ->
                   Dune_trace.emit ~buffered:true Digest (fun () ->
                     Dune_trace.Event.Digest.redigest
@@ -232,9 +223,9 @@ module Cached_digest = struct
   module Untracked = struct
     let source_or_external_file path =
       let path = Path.outside_build_dir path in
-      match peek_file ~allow_dirs:true path with
+      match peek_file path with
       | Some digest_result -> digest_result
-      | None -> refresh_without_removing_write_permissions ~allow_dirs:true path
+      | None -> refresh path
     ;;
 
     let invalidate_cached_timestamp path =

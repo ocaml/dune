@@ -63,7 +63,7 @@ let promote_target_if_not_up_to_date
   let* promoted =
     match
       Fs_memo.Untracked.file_digest (In_source_dir dst)
-      |> Cached_digest.Digest_result.to_option
+      |> Dune_digest.Digest_result.to_option
     with
     | Some dst_digest when Digest.equal src_digest dst_digest ->
       (* CR-someday amokhov: We skip promotion if [src_digest = dst_digest] but
@@ -86,7 +86,7 @@ let promote_target_if_not_up_to_date
   let+ dst_digest_result =
     Memo.run (Fs_memo.file_digest ~force_update:promoted (In_source_dir dst))
   in
-  match Cached_digest.Digest_result.to_option dst_digest_result with
+  match Dune_digest.Digest_result.to_option dst_digest_result with
   | Some dst_digest ->
     (* It's tempting to assert [src_digest = dst_digest] here but it turns out
        this is not necessarily true: artifact substitution can change the
@@ -95,7 +95,7 @@ let promote_target_if_not_up_to_date
   | None ->
     Code_error.raise
       (sprintf "Could not compute digest of promoted file %S" (Path.Source.to_string dst))
-      [ "dst_digest_result", Cached_digest.Digest_result.to_dyn dst_digest_result ]
+      [ "dst_digest_result", Dune_digest.Digest_result.to_dyn dst_digest_result ]
 ;;
 
 (* CR-someday amokhov: If a build causes N file promotions, Dune can potentially

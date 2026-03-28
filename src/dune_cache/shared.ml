@@ -2,6 +2,7 @@ open Fiber.O
 module Shared_cache_config = Config
 module Store_result = Local.Store_result
 module Restore_result = Local.Restore_result
+module Digest_result = Dune_digest.Digest_result
 module Artifacts = Local.Artifacts
 
 let config = ref Config.Disabled
@@ -463,7 +464,7 @@ let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~produced_targets
 ;;
 
 module File_digest = struct
-  module Digest_result = Cached_digest.Digest_result
+  module Digest_result = Dune_digest.Digest_result
   module Error = Digest_result.Error
 
   (* CR-soon rgrinberg: a bunch of this is duplicated from cached_digest.ml.
@@ -554,10 +555,10 @@ let compute_target_digests_or_raise_error
   | Error errors ->
     let missing, errors =
       let process_target (target, error) =
-        if Cached_digest.Digest_result.Error.no_such_file error
+        if Digest_result.Error.no_such_file error
         then Left target
         else (
-          let error = Cached_digest.Digest_result.Error.pp error (Path.build target) in
+          let error = Digest_result.Error.pp error (Path.build target) in
           Right (target, error))
       in
       Nonempty_list.to_list errors |> List.partition_map ~f:process_target

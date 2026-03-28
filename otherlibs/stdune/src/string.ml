@@ -31,7 +31,7 @@ struct
     len >= suffix_len && check_suffix s ~suffix suffix_len (len - suffix_len) 0
   ;;
 
-  let drop_prefix s ~prefix =
+  let drop_prefix ~prefix s =
     if starts_with ~prefix s
     then
       if length s = length prefix
@@ -46,7 +46,7 @@ struct
     | Some s -> s
   ;;
 
-  let drop_suffix s ~suffix =
+  let drop_suffix ~suffix s =
     if ends_with ~suffix s
     then
       if length s = length suffix

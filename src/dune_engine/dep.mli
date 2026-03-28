@@ -74,7 +74,7 @@ module Set : sig
   val of_files : Path.t list -> t
   val of_files_set : Path.Set.t -> t
   val add_paths : t -> Path.Set.t -> t
-  val digest : t -> Digest.t
+  val digest : t -> Digest.Manual.t -> unit
 end
 
 module Facts : sig
@@ -103,6 +103,6 @@ module Facts : sig
       directory. Needed for sandboxing *)
   val necessary_dirs_for_sandboxing : t -> Path.Build.Set.t
 
-  val digest : t -> env:Env.t -> Digest.t
+  val digest : t -> Digest.Manual.t -> env:Env.t -> unit
   val to_dyn : t -> Dyn.t
 end

@@ -35,6 +35,19 @@ module Feed : sig
   val compute_digest : 'a t -> 'a -> digest
 end
 
+module Manual : sig
+  (** A manual API for constucting a digest without allocating. Not thread safe *)
+  type digest := t
+
+  type t
+
+  val create : unit -> t
+  val string : t -> string -> unit
+  val generic : t -> 'a -> unit
+  val digest : t -> digest -> unit
+  val get : t -> digest
+end
+
 include Comparable_intf.S with type key := t
 
 val to_dyn : t -> Dyn.t

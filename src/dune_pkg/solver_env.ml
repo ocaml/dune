@@ -11,6 +11,12 @@ end
 include T
 include Comparable.Make (T)
 
+let repr =
+  Repr.view
+    (Repr.list (Repr.pair Package_variable_name.repr Variable_value.repr))
+    ~to_:Package_variable_name.Map.to_list
+;;
+
 let hash t =
   Package_variable_name.Map.foldi t ~init:0 ~f:(fun key value running_hash ->
     Tuple.T3.hash

@@ -6,7 +6,8 @@ module Pform = struct
 
     let of_string t = t
     let to_string t = t
-    let to_dyn = Dyn.string
+    let repr = Repr.view Repr.string ~to_:to_string
+    let to_dyn = Repr.to_dyn repr
     let equal = String.equal
     let compare = String.compare
 
@@ -80,11 +81,15 @@ module Pform = struct
     | Some p -> before ^ name ^ ":" ^ Payload.to_string p ^ after
   ;;
 
-  let to_dyn { loc = _; name; payload } =
-    let open Dyn in
-    record [ "name", string name; "payload", option Payload.to_dyn payload ]
+  let repr =
+    Repr.record
+      "dune-sexp-template-pform"
+      [ Repr.field "name" Repr.string ~get:name
+      ; Repr.field "payload" (Repr.option Payload.repr) ~get:payload
+      ]
   ;;
 
+  let to_dyn = Repr.to_dyn repr
   let with_name t ~name = { t with name }
 
   let describe t =
@@ -113,9 +118,16 @@ module Part = struct
     | _ -> false
   ;;
 
-  let to_dyn = function
-    | Text s -> Dyn.variant "Text" [ Dyn.string s ]
-    | Pform v -> Dyn.variant "Pform" [ Pform.to_dyn v ]
+  let repr =
+    Repr.variant
+      "dune-sexp-template-part"
+      [ Repr.case "Text" Repr.string ~proj:(function
+          | Text s -> Some s
+          | Pform _ -> None)
+      ; Repr.case "Pform" Pform.repr ~proj:(function
+          | Text _ -> None
+          | Pform pform -> Some pform)
+      ]
   ;;
 
   let remove_locs = function
@@ -185,10 +197,16 @@ end
 let to_string = Pp.to_string
 let pp t = Stdune.Pp.verbatim (Pp.to_string t)
 
-let remove_locs t =
-  { t with loc = Loc.none; parts = List.map t.parts ~f:Part.remove_locs }
+let repr =
+  Repr.record
+    "dune-sexp-template"
+    [ Repr.field "quoted" Repr.bool ~get:(fun t -> t.quoted)
+    ; Repr.field "parts" (Repr.list Part.repr) ~get:(fun t -> t.parts)
+    ]
 ;;
 
-let to_dyn { quoted; parts; loc = _ } =
-  Dyn.record [ "quoted", Dyn.bool quoted; "parts", Dyn.list Part.to_dyn parts ]
+let to_dyn = Repr.to_dyn repr
+
+let remove_locs t =
+  { t with loc = Loc.none; parts = List.map t.parts ~f:Part.remove_locs }
 ;;

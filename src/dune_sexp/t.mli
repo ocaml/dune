@@ -22,5 +22,6 @@ val to_string : t -> string
 (** Serialize a S-expression using indentation to improve readability *)
 val pp : t -> _ Pp.t
 
+val repr : t Repr.t
 val to_dyn : t Dyn.builder
 val to_sexp : t -> Sexp.t

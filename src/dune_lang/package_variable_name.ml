@@ -87,6 +87,7 @@ let all_known =
 ;;
 
 let encode t = Encoder.string (to_string t)
+let repr = Repr.view Repr.string ~to_:to_string
 
 let check_typo_underscore_instead_of_dash =
   let possible_typos =

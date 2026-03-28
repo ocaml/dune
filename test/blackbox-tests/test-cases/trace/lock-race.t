@@ -4,25 +4,23 @@ from the first process when it cannot acquire the lock.
 
   $ make_dune_project 3.22
 
-  $ ready=$(mktemp -d)/ready
-  $ mkfifo $ready
-
-Create a rule that will block the first dune process, holding the lock:
+Create a fast rule so the first dune process can finish its initial build and
+keep holding the lock while waiting for RPC requests:
 
   $ cat >dune <<EOF
   > (rule
   >  (alias foo)
-  >  (action (bash "echo ready > $ready; sleep 10")))
+  >  (action (echo ready)))
   > EOF
 
 Start the first dune process in watch mode. It will acquire the lock and
-hold it while running the rule:
+keep holding it while waiting for filesystem changes:
 
   $ dune build @foo --watch &>/dev/null &
 
-Wait for the first process to start and acquire the lock:
+Wait for the first process to start its RPC server:
 
-  $ read line < $ready
+  $ dune rpc ping --wait &>/dev/null
 
 Extract the PID from the first dune process's trace:
 

@@ -10,7 +10,7 @@
 #include <AvailabilityMacros.h>
 #endif
 
-#if defined(__APPLE__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
+#if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>
@@ -155,7 +155,7 @@ static void dune_fsevents_callback(const FSEventStreamRef streamRef,
       continue;
     }
     CFStringRef cf_path;
-#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
     CFDictionaryRef details = CFArrayGetValueAtIndex(eventPaths, i);
     cf_path =
         CFDictionaryGetValue(details, kFSEventStreamEventExtendedDataPathKey);
@@ -228,7 +228,7 @@ CAMLprim value dune_fsevents_create(value v_paths, value v_latency,
 
   const FSEventStreamEventFlags flags =
       kFSEventStreamCreateFlagNoDefer |
-#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
       kFSEventStreamCreateFlagUseExtendedData |
 #endif
       kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagFileEvents;
@@ -385,7 +385,7 @@ static const FSEventStreamEventFlags all_flags[] = {
     kFSEventStreamEventFlagOwnEvent,
     kFSEventStreamEventFlagItemIsHardlink,
     kFSEventStreamEventFlagItemIsLastHardlink,
-#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
     kFSEventStreamEventFlagItemCloned,
 #endif
 };

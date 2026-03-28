@@ -74,6 +74,7 @@ module Pid = Pid
 module Applicative = Applicative
 module Json = Json
 module Log = Log
+module Stat = Stat
 module Time = Time
 module Escape0 = Escape
 module Debug = Debug

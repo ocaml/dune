@@ -254,10 +254,18 @@ module Stats_for_digest = struct
     ; executable : bool
     }
 
-  let of_unix_stats (stats : Unix.stats) =
+  let of_kind_and_perm ~st_kind ~perm =
     (* Check if any of the +x bits are set, ignore read and write *)
-    let executable = 0o111 land stats.st_perm <> 0 in
-    { st_kind = stats.st_kind; executable }
+    let executable = 0o111 land perm <> 0 in
+    { st_kind; executable }
+  ;;
+
+  let of_unix_stats (stats : Unix.stats) =
+    of_kind_and_perm ~st_kind:stats.st_kind ~perm:stats.st_perm
+  ;;
+
+  let of_time_stat (stats : Stat.t) =
+    of_kind_and_perm ~st_kind:stats.kind ~perm:stats.perm
   ;;
 end
 

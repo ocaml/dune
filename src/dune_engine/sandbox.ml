@@ -172,8 +172,8 @@ let snapshot t =
         Path.Map.add_exn acc path `Dir)
       ~on_file:(fun ~dir fname acc ->
         let p = Path.relative root (Filename.concat dir fname) in
-        let stats = Unix.stat (Path.to_string p) in
-        Path.Map.add_exn acc p (`File (Dune_digest.Reduced_stats.of_unix_stats stats)))
+        let stats = Stat.stat (Path.to_string p) in
+        Path.Map.add_exn acc p (`File (Dune_digest.Reduced_stats.of_time_stat stats)))
       ~on_other:`Ignore
       ~on_symlink:`Ignore
       ()

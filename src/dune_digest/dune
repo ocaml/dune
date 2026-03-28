@@ -6,6 +6,5 @@
   blake3_mini
   dune_util
   threads.posix
-  dune_trace
   stdune
   unix))

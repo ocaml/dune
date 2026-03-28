@@ -3,6 +3,8 @@ function init_bootstrap() {
   mkdir boot
   cp ../../../../boot/types.ml boot/types.ml
   cp ../../../../boot/duneboot.ml boot/duneboot.ml
+  cp ../../../../boot/pps.mll boot/pps.mll
+  cp ../../../../boot/pps.mli boot/pps.mli
 
   cat > dune-project <<EOF
 (lang dune 3.21)

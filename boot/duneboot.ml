@@ -539,24 +539,24 @@ module Io = struct
     | Ok s -> s
   ;;
 
-  let do_then_copy ~f a b =
+  let do_then_copy ~f ~pp a b =
     let s = read_file a in
     with_file_out b ~f:(fun oc ->
       f oc;
-      output_string oc s)
+      output_string oc (if pp then Pps.pp s else s))
   ;;
 
   (* copy a file - fails if the file exists *)
-  let copy a b = do_then_copy ~f:(fun _ -> ()) a b
+  let copy a b = do_then_copy ~pp:false ~f:(fun _ -> ()) a b
 
   (* copy a file and insert a header - fails if the file exists *)
-  let copy_with_header ~header a b =
-    do_then_copy ~f:(fun oc -> output_string oc header) a b
+  let copy_with_header ~pp ~header a b =
+    do_then_copy ~pp ~f:(fun oc -> output_string oc header) a b
   ;;
 
   (* copy a file and insert a directive - fails if the file exists *)
   let copy_with_directive ~directive a b =
-    do_then_copy ~f:(fun oc -> fprintf oc "#%s 1 %S\n" directive a) a b
+    do_then_copy ~pp:false ~f:(fun oc -> fprintf oc "#%s 1 %S\n" directive a) a b
   ;;
 
   let rec rm_rf fn =
@@ -1610,8 +1610,11 @@ module Library = struct
     | Header | C _ ->
       Io.copy_with_directive ~directive:"line" fn dst;
       Fiber.return [ mangled ]
-    | Ml { kind = `Ml | `Mli; _ } ->
-      Io.copy_with_header ~header fn dst;
+    | Ml { kind = `Mli; _ } ->
+      Io.copy_with_header ~pp:false ~header fn dst;
+      Fiber.return [ mangled ]
+    | Ml { kind = `Ml; _ } ->
+      Io.copy_with_header ~pp:true ~header fn dst;
       Fiber.return [ mangled ]
     | Ml { kind = `Mll; _ } -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
     | Ml { kind = `Mly; _ } ->

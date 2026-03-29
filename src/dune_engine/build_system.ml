@@ -1169,9 +1169,11 @@ let handle_final_exns exns =
 ;;
 
 let run f =
+  let finalize_diff_promotion () =
+    protect ~f:Diff_promotion.finalize ~finally:Diff_promotion.clear_cache
+  in
   let open Fiber.O in
   let f () =
-    Hooks.End_of_build.once Diff_promotion.finalize;
     let* () = State.reset_progress () in
     let* () = State.reset_errors () in
     let* res =
@@ -1181,20 +1183,25 @@ let run f =
     Dtemp.clear ();
     Pending_targets.cleanup ();
     Target_promotion.save ();
+    let res =
+      match res with
+      | Ok res ->
+        finalize_diff_promotion ();
+        let+ () = State.set Build_succeeded__now_waiting_for_changes in
+        Ok res
+      | Error exns ->
+        handle_final_exns exns;
+        finalize_diff_promotion ();
+        let final_status =
+          if List.exists exns ~f:caused_by_cancellation
+          then State.Restarting_current_build
+          else Build_failed__now_waiting_for_changes
+        in
+        let+ () = State.set final_status in
+        Error `Already_reported
+    in
     Metrics.reset ();
-    match res with
-    | Ok res ->
-      let+ () = State.set Build_succeeded__now_waiting_for_changes in
-      Ok res
-    | Error exns ->
-      handle_final_exns exns;
-      let final_status =
-        if List.exists exns ~f:caused_by_cancellation
-        then State.Restarting_current_build
-        else Build_failed__now_waiting_for_changes
-      in
-      let+ () = State.set final_status in
-      Error `Already_reported
+    res
   in
   Fiber.Mutex.with_lock State.build_mutex ~f
 ;;

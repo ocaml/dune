@@ -20,6 +20,7 @@ type db
     list of registered files to [_build/.to-promote]. *)
 val finalize : unit -> unit
 
+val clear_cache : unit -> unit
 val load_db : unit -> db
 
 type all =

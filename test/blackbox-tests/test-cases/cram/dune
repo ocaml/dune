@@ -22,3 +22,7 @@
  (enabled_if
   (= %{os_type} Win32))
  (alias runtest-windows))
+
+(cram
+ (applies_to workspace-root-change)
+ (deps %{bin:cksum} %{bin:cut}))

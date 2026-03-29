@@ -110,7 +110,7 @@ end
 
 type nonrec t =
   { config : Config.t
-  ; mutable last_mtime : float option
+  ; mutable last_mtime : Stdune.Time.t option
   ; mutable current : Dune.t list
   }
 
@@ -144,7 +144,7 @@ module Poll
      end)
     (IO : sig
        val scandir : string -> (string list, exn) result Fiber.t
-       val stat : string -> ([ `Mtime of float ], exn) result Fiber.t
+       val stat : string -> ([ `Mtime of Stdune.Time.t ], exn) result Fiber.t
        val read_file : string -> (string, exn) result Fiber.t
      end) =
 struct
@@ -169,7 +169,7 @@ struct
     let** (`Mtime mtime) = IO.stat dir in
     let skip =
       match t.last_mtime with
-      | Some last_mtime -> last_mtime >= mtime
+      | Some last_mtime -> Stdune.Time.compare last_mtime mtime <> Lt
       | None ->
         t.last_mtime <- Some mtime;
         false

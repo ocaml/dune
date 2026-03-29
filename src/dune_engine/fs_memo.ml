@@ -11,7 +11,7 @@ module Cached_digest = struct
 
   type t =
     { mutable checked_key : int
-    ; mutable max_timestamp : float
+    ; mutable max_timestamp : Time.t
     ; table : file Path.Table.t
     }
 
@@ -28,7 +28,7 @@ module Cached_digest = struct
   let to_dyn { checked_key; max_timestamp; table } =
     Dyn.Record
       [ "checked_key", Int checked_key
-      ; "max_timestamp", Float max_timestamp
+      ; "max_timestamp", Int (Time.to_ns max_timestamp)
       ; "table", Path.Table.to_dyn dyn_of_file table
       ]
   ;;
@@ -37,7 +37,7 @@ module Cached_digest = struct
       type nonrec t = t
 
       let name = "DIGEST-DB"
-      let version = 8
+      let version = 9
       let sharing = true
       let to_dyn = to_dyn
     end)
@@ -52,7 +52,8 @@ module Cached_digest = struct
   let cache =
     lazy
       (match P.load db_file with
-       | None -> { checked_key = 0; table = Path.Table.create (); max_timestamp = 0. }
+       | None ->
+         { checked_key = 0; table = Path.Table.create (); max_timestamp = Time.of_ns 0 }
        | Some cache ->
          cache.checked_key <- cache.checked_key + 1;
          cache)
@@ -61,7 +62,7 @@ module Cached_digest = struct
   let get_current_filesystem_time () =
     let special_path = Path.relative Path.build_dir ".filesystem-clock" in
     Io.write_file special_path "<dummy>";
-    (Unix.stat (Path.to_string special_path)).st_mtime
+    (Stat.stat (Path.to_string special_path)).mtime
   ;;
 
   let wait_for_fs_clock_to_advance () =
@@ -80,11 +81,11 @@ module Cached_digest = struct
     (* We can only trust digests with timestamps in the past. We had issues in
        the past with file systems having a slow internal clock, where we cached
        digests too aggressively. *)
-    match Float.compare cache.max_timestamp now with
+    match Time.compare cache.max_timestamp now with
     | Lt -> ()
     | Eq | Gt ->
       let filter (data : file) =
-        match Float.compare data.stats.mtime now with
+        match Time.compare data.stats.mtime now with
         | Lt -> true
         | Gt | Eq -> false
       in
@@ -124,8 +125,8 @@ module Cached_digest = struct
     delete_very_recent_entries ()
   ;;
 
-  let set_max_timestamp cache (stat : Unix.stats) =
-    cache.max_timestamp <- Float.max cache.max_timestamp stat.st_mtime
+  let set_max_timestamp cache (stat : Stat.t) =
+    cache.max_timestamp <- Time.max cache.max_timestamp stat.mtime
   ;;
 
   let set_with_stat path digest stat =
@@ -136,18 +137,20 @@ module Cached_digest = struct
       cache.table
       path
       { digest
-      ; stats = Dune_digest.Reduced_stats.of_unix_stats stat
+      ; stats = Dune_digest.Reduced_stats.of_time_stat stat
       ; stats_checked = cache.checked_key
       }
   ;;
 
   let digest_path_with_stats path stats =
     match
-      Digest.Stats_for_digest.of_unix_stats stats
-      |> Digest.path_with_stats ~allow_dirs:true path
+      Digest.path_with_stats
+        ~allow_dirs:true
+        path
+        (Digest.Stats_for_digest.of_time_stat stats)
     with
     | Ok digest -> Ok digest
-    | Error Unexpected_kind -> Error (Digest_result.Error.Unexpected_kind stats.st_kind)
+    | Error Unexpected_kind -> Error (Digest_result.Error.Unexpected_kind stats.kind)
     | Error (Unix_error (ENOENT, _, _)) -> Error No_such_file
     | Error (Unix_error other_error) -> Error (Unix_error other_error)
   ;;
@@ -163,12 +166,13 @@ module Cached_digest = struct
       result
     in
     fun path ->
+      let path_string = Path.to_string path in
       Digest_result.catch_fs_errors (fun () ->
-        match Unix.stat (Path.to_string path) with
+        match Stat.stat path_string with
         | stats -> refresh_sync stats path
         | exception Unix.Unix_error (ENOENT, _, _) ->
           (* Test if this is a broken symlink for better error messages. *)
-          (match Unix.lstat (Path.to_string path) with
+          (match Unix.lstat path_string with
            | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
            | _stats_so_must_be_a_symlink -> Error Broken_symlink))
   ;;
@@ -183,15 +187,16 @@ module Cached_digest = struct
          then Ok x.digest
          else (
            (* The [stat] below follows symlinks. *)
+           let path_string = Path.to_string path in
            match
              Dune_digest.Digest_result.catch_fs_errors (fun () ->
-               match Unix.stat (Path.to_string path) with
+               match Stat.stat path_string with
                | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
                | stats -> Ok stats)
            with
            | Error e -> Error e
            | Ok stats ->
-             let reduced_stats = Dune_digest.Reduced_stats.of_unix_stats stats in
+             let reduced_stats = Dune_digest.Reduced_stats.of_time_stat stats in
              (match Dune_digest.Reduced_stats.compare x.stats reduced_stats with
               | Eq ->
                 (* Even though we're modifying the [stats_checked] field, we don't

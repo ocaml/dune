@@ -74,6 +74,7 @@ module Stats_for_digest : sig
     }
 
   val of_unix_stats : Unix.stats -> t
+  val of_time_stat : Stat.t -> t
 end
 
 module Path_digest_error : sig

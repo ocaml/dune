@@ -259,6 +259,11 @@ jobs:
           opam exec -- make dev-deps
         if: ${{ matrix.run_tests }}
 
+      - name: Install deps
+        run: |
+          opam install ppx_expect
+        if: ${{ matrix.run_tests && matrix.os == 'window-latest' }}
+
       - name: Run test suite on Unix
         run: opam exec -- make test
         if: ${{ matrix.os != 'windows-latest' && matrix.run_tests }}

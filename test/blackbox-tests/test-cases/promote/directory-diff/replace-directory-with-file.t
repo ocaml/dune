@@ -18,11 +18,11 @@ Directory diff can replace a directory with a file.
   > EOF
 
   $ dune runtest
-  File "expected/node", line 1, characters 0-0:
-  --- expected/node
-  +++ actual/node
-  @@ -0,0 +1 @@
-  +file
+  File "dune", lines 5-7, characters 0-56:
+  5 | (rule
+  6 |  (alias runtest)
+  7 |  (action (diff expected actual)))
+  Error: Directory expected/node should be replaced with a file
   [1]
 
   $ dune promote

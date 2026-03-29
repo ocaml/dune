@@ -100,21 +100,45 @@ end = struct
   let load_merlin_file file =
     (* We search for an appropriate merlin configuration in the current
        directory and its parents *)
+    let get_file_config_at_path p =
+      match Merlin.Processed.load_file p with
+      | Error msg -> Some (Merlin_conf.make_error msg)
+      | Ok config -> Merlin.Processed.get config ~file
+    in
+    let basename = Path.Build.set_extension file ~ext:"" |> Path.Build.basename in
+    let good_names =
+      List.map
+        ~f:(fun pref -> Printf.sprintf "%s-%s" pref basename)
+        [ "lib"; "exe"; "melange" ]
+    in
     let rec find_closest path =
+      let merlin_paths = get_merlin_files_paths path in
+      (* Now we want to look for:
+        1. an exact match
+        2. an approximate match
+        3. recursing to parent directory
+      *)
       match
-        get_merlin_files_paths path
-        |> List.find_map ~f:(fun file_path ->
-          (* FIXME we are racing against the build system writing these
-             files here *)
-          match Merlin.Processed.load_file file_path with
-          | Error msg -> Some (Merlin_conf.make_error msg)
-          | Ok config -> Merlin.Processed.get config ~file)
+        List.find merlin_paths ~f:(fun p ->
+          List.mem good_names (Path.basename p) ~equal:String.equal)
       with
-      | Some p -> Some p
+      | Some p ->
+        (* Found exact match: we are done *)
+        get_file_config_at_path p
       | None ->
-        (match Path.Build.parent path with
-         | None -> None
-         | Some dir -> find_closest dir)
+        (* looking for approximate match *)
+        (match
+           List.find_map merlin_paths ~f:(fun file_path ->
+             (* FIXME we are racing against the build system writing these
+             files here *)
+             get_file_config_at_path file_path)
+         with
+         | Some p -> Some p
+         | None ->
+           (* Otherwise, recurse upwards *)
+           (match Path.Build.parent path with
+            | None -> None
+            | Some dir -> find_closest dir))
     in
     match find_closest (Path.Build.parent_exn file) with
     | Some x -> x

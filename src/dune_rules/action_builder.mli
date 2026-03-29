@@ -20,7 +20,7 @@ val fail : fail -> _ t
 
 module With_targets : module type of With_targets with type 'a t = 'a With_targets.t
 
-(** [path p] records [p] as a file that is read by the action produced by the
+(** [path p] records [p] as a path that is read by the action produced by the
     action builder. *)
 val path : Path.t -> unit t
 
@@ -76,7 +76,7 @@ val with_stdout_to
     of the file at [path]. *)
 val contents : Path.t -> string t
 
-(** Evaluates to [true] if the file is present on the file system or is the
+(** Evaluates to [true] if the path is present on the file system or is the
     target of a rule. It doesn't add the path as dependency *)
 val file_exists : Path.t -> bool t
 

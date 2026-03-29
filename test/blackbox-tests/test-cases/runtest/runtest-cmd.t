@@ -206,17 +206,9 @@ Here we test behaviour for running tests in specific contexts.
   > (context (default (name alt)))
   > EOF
 
-- Building a specific test now will run them in both contexts.
+- Building a specific test will run it in the default context.
 
   $ dune test mytest.t
-  File "mytest.t", line 1, characters 0-0:
-  Context: alt
-  --- mytest.t
-  +++ mytest.t.corrected
-  @@ -1,2 +1,2 @@
-     $ echo "Hello, world!"
-  -  "Goodbye, world!"
-  +  Hello, world!
   File "mytest.t", line 1, characters 0-0:
   --- mytest.t
   +++ mytest.t.corrected
@@ -247,11 +239,54 @@ that context as expected.
   > (context (default (name main)))
   > EOF
 
-  $ dune test mytest.t 2>&1 | grep "Internal error"
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
+  $ dune test mytest.t
+  File "mytest.t", line 1, characters 0-0:
+  Context: main
+  --- mytest.t
+  +++ mytest.t.corrected
+  @@ -1,2 +1,2 @@
+     $ echo "Hello, world!"
+  -  "Goodbye, world!"
+  +  Hello, world!
   [1]
 
-  $ dune test 2>&1 | grep "Internal error"
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
+  $ dune test
+  File "mytest.t", line 1, characters 0-0:
+  Context: main
+  --- mytest.t
+  +++ mytest.t.corrected
+  @@ -1,2 +1,2 @@
+     $ echo "Hello, world!"
+  -  "Goodbye, world!"
+  +  Hello, world!
+  File "tests/filetest.t", line 1, characters 0-0:
+  Context: main
+  --- tests/filetest.t
+  +++ tests/filetest.t.corrected
+  @@ -1,2 +1,2 @@
+     $ echo "Hello, world!"
+  -  "Goodbye, world!"
+  +  Hello, world!
+  File "tests/myothertest.t/run.t", line 1, characters 0-0:
+  Context: main
+  --- tests/myothertest.t/run.t
+  +++ tests/myothertest.t/run.t.corrected
+  @@ -1,2 +1,2 @@
+     $ cat hello.world
+  -  "Goodbye, world!"
+  +  Hello, world!
+  [1]
+
+- Running tests in a workspace with multiple non-default contexts should error.
+
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.23)
+  > (context (default (name ctx1)))
+  > (context (default (name ctx2)))
+  > EOF
+
+  $ dune test mytest.t
+  Error: Multiple contexts are defined but no default context was found. Please
+  use the --context flag or specify a build directory path.
   [1]
 

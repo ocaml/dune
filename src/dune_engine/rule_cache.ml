@@ -207,42 +207,36 @@ module Workspace_local = struct
   end
 
   let compute_target_digests (targets : Targets.Validated.t)
-    : (Digest.t Targets.Produced.t, Miss_reason.t) Dune_cache.Hit_or_miss.t Fiber.t
+    : (Digest.t Targets.Produced.t, Miss_reason.t) Dune_cache.Hit_or_miss.t
     =
     match Targets.Produced.of_validated targets with
-    | Error error ->
-      Fiber.return (Miss (Miss_reason.Error_while_collecting_directory_targets error))
+    | Error error -> Miss (Miss_reason.Error_while_collecting_directory_targets error)
     | Ok targets ->
-      let open Fiber.O in
-      Targets.Produced.map_with_errors targets ~f:(fun file ->
-        Fiber.return
-          (match Database.digest file with
+      (match
+         Targets.Produced.map_with_errors targets ~f:(fun file ->
+           match Database.digest file with
            | None -> Error ()
-           | Some { digest; siblings = _; _ } -> Ok digest))
-      >>| (function
+           | Some { digest; siblings = _; _ } -> Ok digest)
+       with
        | Ok produced_targets -> Dune_cache.Hit_or_miss.Hit produced_targets
        | Error _ -> Miss Miss_reason.Targets_missing)
   ;;
 
   let lookup_impl ~rule_digest ~targets ~env ~build_deps =
-    let open Fiber.O in
-    let* prev_trace_with_produced_targets =
+    let prev_trace_with_produced_targets =
       match
         (* will be [None] if [head_target] was never built before. *)
         let head_target = Targets.Validated.head targets in
         Database.get (Path.build head_target)
       with
-      | None -> Fiber.return (Miss Miss_reason.No_previous_record)
+      | None -> Miss Miss_reason.No_previous_record
       | Some prev_trace ->
         (match Digest.equal prev_trace.rule_digest rule_digest with
-         | false ->
-           Fiber.return
-             (Miss (Miss_reason.Rule_changed (prev_trace.rule_digest, rule_digest)))
+         | false -> Miss (Miss_reason.Rule_changed (prev_trace.rule_digest, rule_digest))
          | true ->
            (* [compute_target_digests] returns a [Miss] if not all targets are
               available in the workspace-local cache. *)
-           compute_target_digests targets
-           >>| (function
+           (match compute_target_digests targets with
             | Miss reason -> Miss reason
             | Hit produced_targets ->
               if

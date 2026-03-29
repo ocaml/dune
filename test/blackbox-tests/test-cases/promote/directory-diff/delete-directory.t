@@ -20,17 +20,18 @@ Directory diff records directory deletions.
   > EOF
 
   $ dune runtest
-  File "dune", lines 5-7, characters 0-56:
-  5 | (rule
-  6 |  (alias runtest)
-  7 |  (action (diff expected actual)))
-  Error: Directory expected/stale should be deleted
+  File "expected/keep", line 1, characters 0-0:
+  --- expected/keep
+  +++ actual/keep
+  @@ -0,0 +1 @@
+  +keep
   [1]
 
   $ dune promote
+  Promoting _build/default/actual/keep to expected/keep.
 
   $ test ! -d expected/stale && echo deleted
-  deleted
+  [1]
 
   $ cat expected/keep
   keep

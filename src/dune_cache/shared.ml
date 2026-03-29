@@ -417,20 +417,20 @@ let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~produced_targets
       ; Pp.char ')'
       ]
   in
-  Targets.Produced.map_with_errors
-    ~f:(fun target ->
-      (* All of this monad boilerplate seems unnecessary since we don't care about errors... *)
-      Fiber.return
-      @@
-      match Target.create target with
-      | Some t -> Ok t
-      | None -> Error ())
-    ~d:(fun target ->
-      match Target.create target with
-      | Some _ -> Ok ()
-      | None -> Error ())
-    produced_targets
-  >>= function
+  match
+    Targets.Produced.map_with_errors
+      produced_targets
+      ~f:(fun target ->
+        (* All of this monad boilerplate seems unnecessary since we
+           don't care about errors... *)
+        match Target.create target with
+        | Some t -> Ok t
+        | None -> Error ())
+      ~d:(fun target ->
+        match Target.create target with
+        | Some _ -> Ok ()
+        | None -> Error ())
+  with
   | Error _ -> Fiber.return None
   | Ok targets ->
     store_artifacts ~mode ~rule_digest targets
@@ -549,7 +549,7 @@ let compute_target_digests_or_raise_error
       ~allow_dirs:true
       ~remove_write_permissions:should_remove_write_permissions_on_generated_files
   in
-  Targets.Produced.map_with_errors ~f:compute_digest produced_targets
+  Targets.Produced.map_with_errors_fiber ~f:compute_digest produced_targets
   >>| function
   | Ok result -> result
   | Error errors ->

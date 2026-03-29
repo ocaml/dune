@@ -166,11 +166,17 @@ module Produced : sig
 
   (* The odd type of [d] and [f] is due to the fact that [map_with_errors]
      is used for a variety of things, not all "map-like". *)
-  val map_with_errors
+  val map_with_errors_fiber
     :  ?d:(Path.Build.t -> (unit, 'e) result)
     -> f:(Path.Build.t -> ('b, 'e) result Fiber.t)
     -> 'a t
     -> ('b t, (Path.Build.t * 'e) Nonempty_list.t) result Fiber.t
+
+  val map_with_errors
+    :  ?d:(Path.Build.t -> (unit, 'e) result)
+    -> f:(Path.Build.t -> ('b, 'e) result)
+    -> 'a t
+    -> ('b t, (Path.Build.t * 'e) Nonempty_list.t) result
 
   val to_dyn : _ t -> Dyn.t
 end

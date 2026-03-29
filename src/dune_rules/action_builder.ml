@@ -32,9 +32,32 @@ let dyn_deps t =
   a
 ;;
 
-let path p = deps (Dep.Set.singleton (Dep.file p))
-let paths ps = deps (Dep.Set.of_files ps)
-let path_set ps = deps (Dep.Set.of_files_set ps)
+let source_dir_exists path =
+  match Path.extract_build_context_dir path with
+  | None -> Memo.return false
+  | Some (_ctx_dir, source_dir) ->
+    Memo.map (Source_tree.find_dir source_dir) ~f:Option.is_some
+;;
+
+(* If a path in the build context corresponds to a source directory, we treat
+   it like [source_tree]. This currently tracks the files under that directory,
+   but it does not materialize empty directories in [_build] or sandboxes. *)
+let source_dir_deps_if_any path =
+  Memo.map (source_dir_exists path) ~f:(fun exists ->
+    Option.some_if exists (Source_deps.files path))
+;;
+
+let path path =
+  let* source_dir_deps = of_memo (source_dir_deps_if_any path) in
+  match source_dir_deps with
+  | Some source_dir_deps ->
+    let+ (_ : Path.Set.t) = dyn_memo_deps source_dir_deps in
+    ()
+  | None -> deps (Dep.Set.singleton (Dep.file path))
+;;
+
+let paths paths = all_unit (Stdune.List.map paths ~f:path)
+let path_set paths = all_unit (Path.Set.to_list paths |> Stdune.List.map ~f:path)
 let dyn_paths paths = dyn_deps (paths >>| fun (x, paths) -> x, Dep.Set.of_files paths)
 let dyn_paths_unit paths = dyn_deps (paths >>| fun paths -> (), Dep.Set.of_files paths)
 let contents p = of_memo (Build_system.read_file p)
@@ -96,12 +119,27 @@ let progn ts =
   With_targets.all ts >>| Action.Full.reduce
 ;;
 
-let if_file_exists p ~then_ ~else_ =
-  let* exists = of_memo (Build_system.file_exists p) in
-  if exists then then_ else else_
+let file_exists path =
+  let* source_dir_exists = of_memo (source_dir_exists path) in
+  if source_dir_exists
+  then return true
+  else
+    let* exists = of_memo (Build_system.file_exists path) in
+    if exists
+    then return true
+    else
+      of_memo
+        (Memo.map (Load_rules.is_target path) ~f:(function
+           | Load_rules.Yes Load_rules.Directory -> true
+           | Load_rules.No
+           | Load_rules.Yes Load_rules.File
+           | Load_rules.Under_directory_target_so_cannot_say -> false))
 ;;
 
-let file_exists p = if_file_exists p ~then_:(return true) ~else_:(return false)
+let if_file_exists p ~then_ ~else_ =
+  let* exists = file_exists p in
+  if exists then then_ else else_
+;;
 
 let paths_existing paths =
   all_unit

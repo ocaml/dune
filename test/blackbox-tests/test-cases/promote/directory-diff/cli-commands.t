@@ -51,7 +51,7 @@ Deletion promotions are visible to `dune promotion list` and `diff`.
   $ dune runtest 2>&1 | censor
   File "expected/changed", line 1, characters 0-0:
   --- expected/changed
-  +++ _build/.sandbox/$DIGEST/default/actual/changed
+  +++ actual/changed
   @@ -1 +1 @@
   -before
   +after

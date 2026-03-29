@@ -20,7 +20,7 @@ Directory diffing requires lang dune 3.23.
   $ dune runtest 2>&1 | censor
   File "expected/new-file", line 1, characters 0-0:
   --- expected/new-file
-  +++ _build/.sandbox/$DIGEST/default/actual/new-file
+  +++ actual/new-file
   @@ -0,0 +1 @@
   +hello
   [1]

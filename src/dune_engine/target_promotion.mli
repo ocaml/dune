@@ -4,6 +4,8 @@
 
 open Import
 
+val save : unit -> unit
+
 val promote
   :  targets:Digest.t Targets.Produced.t
   -> promote:Rule.Promote.t

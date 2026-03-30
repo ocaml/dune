@@ -20,7 +20,7 @@ Test sandboxing when depending on things from the install context using
   > (rule
   >  (alias foo)
   >  (deps (sandbox always) (package foo))
-  >  (action (system "pwd; command -v mybin; echo %{bin:mybin}; mybin")))
+  >  (action (bash "pwd; command -v mybin; echo %{bin:mybin}; mybin")))
   > EOF
 
   $ dune build --sandbox symlink @foo 2>&1 | sed -E 's#.*.sandbox/[^/]+/#.sandbox/$SANDBOX/#g'

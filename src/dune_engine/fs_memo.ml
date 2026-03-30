@@ -3,9 +3,32 @@ open Memo.O
 module Digest_result = Dune_digest.Digest_result
 
 module Cached_digest = struct
+  module Reduced_stats = struct
+    type t =
+      { mtime : Time.t
+      ; size : int
+      ; perm : Unix.file_perm
+      }
+
+    let to_dyn { mtime; size; perm } =
+      Dyn.Record [ "mtime", Int (Time.to_ns mtime); "size", Int size; "perm", Int perm ]
+    ;;
+
+    let of_stat (stats : Stat.t) =
+      { mtime = stats.mtime; size = stats.size; perm = stats.perm }
+    ;;
+
+    let compare { mtime; size; perm } t =
+      let open Ordering.O in
+      let= () = Time.compare mtime t.mtime in
+      let= () = Int.compare size t.size in
+      Int.compare perm t.perm
+    ;;
+  end
+
   type file =
     { mutable digest : Digest.t
-    ; mutable stats : Dune_digest.Reduced_stats.t
+    ; mutable stats : Reduced_stats.t
     ; mutable stats_checked : int
     }
 
@@ -20,7 +43,7 @@ module Cached_digest = struct
   let dyn_of_file { digest; stats; stats_checked } =
     Dyn.Record
       [ "digest", Digest.to_dyn digest
-      ; "stats", Dune_digest.Reduced_stats.to_dyn stats
+      ; "stats", Reduced_stats.to_dyn stats
       ; "stats_checked", Int stats_checked
       ]
   ;;
@@ -136,10 +159,7 @@ module Cached_digest = struct
     Path.Table.set
       cache.table
       path
-      { digest
-      ; stats = Dune_digest.Reduced_stats.of_time_stat stat
-      ; stats_checked = cache.checked_key
-      }
+      { digest; stats = Reduced_stats.of_stat stat; stats_checked = cache.checked_key }
   ;;
 
   let digest_path_with_stats path stats =
@@ -196,8 +216,8 @@ module Cached_digest = struct
            with
            | Error e -> Error e
            | Ok stats ->
-             let reduced_stats = Dune_digest.Reduced_stats.of_time_stat stats in
-             (match Dune_digest.Reduced_stats.compare x.stats reduced_stats with
+             let reduced_stats = Reduced_stats.of_stat stats in
+             (match Reduced_stats.compare x.stats reduced_stats with
               | Eq ->
                 (* Even though we're modifying the [stats_checked] field, we don't
                    need to set [needs_dumping := true] here. This is because
@@ -215,8 +235,8 @@ module Cached_digest = struct
                       ~path
                       ~old_digest:(Digest.to_string x.digest)
                       ~new_digest:(Digest.to_string digest)
-                      ~old_stats:(Dune_digest.Reduced_stats.to_dyn x.stats)
-                      ~new_stats:(Dune_digest.Reduced_stats.to_dyn reduced_stats));
+                      ~old_stats:(Reduced_stats.to_dyn x.stats)
+                      ~new_stats:(Reduced_stats.to_dyn reduced_stats));
                   needs_dumping := true;
                   set_max_timestamp cache stats;
                   x.digest <- digest;

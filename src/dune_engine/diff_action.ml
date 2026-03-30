@@ -205,7 +205,10 @@ let plan_tree_diff ({ mode; source_root; _ } as t) =
       (match compare_file_paths mode (source_path rel) (target_path rel) with
        | Eq -> plan
        | _ -> add_file_diff plan rel)
-    | Missing, File -> add_file_diff plan rel
+    | Missing, File ->
+      (match compare_file_paths mode Dev_null.path (target_path rel) with
+       | Eq -> plan
+       | _ -> add_file_diff plan rel)
     | Directory, File ->
       let plan = add_promote_file plan rel in
       add_message

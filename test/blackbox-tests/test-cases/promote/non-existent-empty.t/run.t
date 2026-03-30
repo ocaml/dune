@@ -6,16 +6,11 @@ Tests for promoting with non existent reference
   x-non-existent-empty missing
 
   $ dune build @blah-non-existent-empty
-  File "x-non-existent-empty", line 1, characters 0-0:
-  Error: Files _build/default/x-non-existent-empty and _build/default/x.gen
-  differ.
-  [1]
 
   $ dune promote
-  Promoting _build/default/x.gen to x-non-existent-empty.
 
   $ file_status x-non-existent-empty
-  x-non-existent-empty exists
+  x-non-existent-empty missing
 
   $ file_status x-non-existent-non-empty
   x-non-existent-non-empty missing

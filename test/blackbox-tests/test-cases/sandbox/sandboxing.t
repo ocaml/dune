@@ -3,8 +3,8 @@ build. Dune fails to detect that:
 
   $ echo '(lang dune 1.12)' > dune-project
   $ true > dune
-  $ echo '(rule (target a) (deps) (action (bash "echo a | tee a > b")))' >> dune
-  $ echo '(rule (target b) (deps) (action (bash "echo b | tee a > b")))' >> dune
+  $ echo '(rule (target a) (deps) (action (bash "echo a | dune_cmd tee a > b")))' >> dune
+  $ echo '(rule (target b) (deps) (action (bash "echo b | dune_cmd tee a > b")))' >> dune
   $ echo '(rule (target c) (deps a b) (action (bash "cat a b > c")))' >> dune
   $ dune build c
   $ cat _build/default/c
@@ -28,8 +28,8 @@ well-behaved:
 
   $ rm -rf _build
   $ true > dune
-  $ echo '(rule (target a) (deps (sandbox always)) (action (bash "echo a | tee a > b")))' >> dune
-  $ echo '(rule (target b) (deps (sandbox always)) (action (bash "echo b | tee a > b")))' >> dune
+  $ echo '(rule (target a) (deps (sandbox always)) (action (bash "echo a | dune_cmd tee a > b")))' >> dune
+  $ echo '(rule (target b) (deps (sandbox always)) (action (bash "echo b | dune_cmd tee a > b")))' >> dune
   $ echo '(rule (target c) (deps a b) (action (bash "cat a b > c")))' >> dune
   $ dune build c
   $ cat _build/default/c

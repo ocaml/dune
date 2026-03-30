@@ -7,4 +7,5 @@ type t =
   ; ino : int
   }
 
+val compare : t -> t -> Ordering.t
 val stat : string -> t

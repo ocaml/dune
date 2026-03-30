@@ -556,6 +556,48 @@
             '';
           };
 
+          ox-trunk =
+            let
+              menhirSrc = pkgs.fetchFromGitLab {
+                domain = "gitlab.inria.fr";
+                owner = "fpottier";
+                repo = "menhir";
+                rev = "20231231";
+                sha256 = "sha256-veB0ORHp6jdRwCyDDAfc7a7ov8sOeHUmiELdOFf/QYk=";
+              };
+              customOcamlPackages = pkgs.ocamlPackages.overrideScope (
+                oself: osuper: {
+                  menhirLib = osuper.menhirLib.overrideAttrs (old: rec {
+                    version = "20231231";
+                    src = menhirSrc;
+                  });
+                  menhirGLR = null;
+                  menhir = osuper.menhir.overrideAttrs (old: {
+                    patches = [];
+                    buildInputs = builtins.filter (x: x != null) (old.buildInputs or [ ]);
+                    postInstall = (old.postInstall or "") + ''
+                      ln -sf ${oself.menhirLib}/lib/ocaml/*/site-lib/menhirLib $out/lib/
+                    '';
+                  });
+                }
+              );
+            in
+            pkgs.mkShell {
+              inherit INSIDE_NIX;
+              shellHook = ''
+                export DUNE_SOURCE_ROOT=$PWD
+              '';
+              inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
+              nativeBuildInputs = (testNativeBuildInputs pkgs) ++ [
+                pkgs.autoconf
+                customOcamlPackages.menhir
+              ];
+              buildInputs = testBuildInputs;
+              meta.description = ''
+                Provides a shell environment with upstream OCaml and menhir 20231231
+                for building the OxCaml trunk.
+              '';
+            };
           ox = makeDuneDevShell {
             packageOverrides =
               oself: osuper:

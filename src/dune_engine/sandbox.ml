@@ -42,10 +42,7 @@ let init =
   fun () -> Lazy.force init
 ;;
 
-(* Snapshot used to detect modifications. We use the same algorithm as
-   [Cached_digest] given that we are trying to detect the same kind of
-   changes. *)
-type snapshot = [ `Dir | `File of Dune_digest.Reduced_stats.t ] Path.Map.t
+type snapshot = [ `Dir | `File of Stat.t ] Path.Map.t
 
 type t =
   { dir : Path.Build.t
@@ -173,7 +170,7 @@ let snapshot t =
       ~on_file:(fun ~dir fname acc ->
         let p = Path.relative root (Filename.concat dir fname) in
         let stats = Stat.stat (Path.to_string p) in
-        Path.Map.add_exn acc p (`File (Dune_digest.Reduced_stats.of_time_stat stats)))
+        Path.Map.add_exn acc p (`File stats))
       ~on_other:`Ignore
       ~on_symlink:`Ignore
       ()
@@ -346,7 +343,7 @@ let register_snapshot_promotion t (targets : Targets.Validated.t) ~old_snapshot 
           ()
         | Some `Dir, Some (`File _) -> add_copy_file p
         | Some (`File before), Some (`File after) ->
-          (match Dune_digest.Reduced_stats.compare before after with
+          (match Stat.compare before after with
            | Eq -> ()
            | Lt | Gt -> add_copy_file p)))
   in

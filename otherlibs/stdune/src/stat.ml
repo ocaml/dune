@@ -7,4 +7,6 @@ type t =
   ; ino : int
   }
 
+let compare = Poly.compare
+
 external stat : string -> t = "dune_stat"

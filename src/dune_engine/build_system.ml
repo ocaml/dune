@@ -1182,6 +1182,7 @@ let run f =
         Memo.run_with_error_handler f ~handle_error_no_raise:report_early_exn)
     in
     Dtemp.clear ();
+    Target_promotion.save ();
     match res with
     | Ok res ->
       let+ () = State.set Build_succeeded__now_waiting_for_changes in

@@ -44,10 +44,9 @@ module To_delete = struct
       needs_dumping := false;
       get_db () |> P.dump fn)
   ;;
-
-  let () = Hooks.End_of_build.always dump
 end
 
+let save = To_delete.dump
 let files_in_source_tree_to_delete () = To_delete.get_db ()
 
 let promote_target_if_not_up_to_date

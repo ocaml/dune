@@ -517,7 +517,7 @@ module Produced = struct
 
   (* The odd type of [d] and [f] is due to the fact that [map_with_errors]
      is used for a variety of things, not all "map-like". *)
-  let map_with_errors
+  let map_with_errors_fiber
         ?(d : (Path.Build.t -> (unit, 'e) result) option)
         ~(f : Path.Build.t -> ('b, 'e) result Fiber.t)
         { root; contents }
@@ -569,6 +569,44 @@ module Produced = struct
     in
     let+ contents = aux root contents in
     let result = { root; contents } in
+    match Nonempty_list.of_list !errors with
+    | None -> Ok result
+    | Some list -> Error list
+  ;;
+
+  (* CR-someday rgrinberg: share code with the implementation above *)
+  let map_with_errors
+        ?(d : (Path.Build.t -> (unit, 'e) result) option)
+        ~(f : Path.Build.t -> ('b, 'e) result)
+        { root; contents }
+    =
+    let errors = ref [] in
+    let f path =
+      match f path with
+      | Ok s -> Some s
+      | Error e ->
+        errors := (path, e) :: !errors;
+        None
+    in
+    let rec aux path { files; subdirs } =
+      let files =
+        Filename.Map.filter_mapi files ~f:(fun file _ ->
+          f (Path.Build.relative path file))
+      in
+      let subdirs =
+        Filename.Map.mapi subdirs ~f:(fun dir subdirs_contents ->
+          let dir = Path.Build.relative path dir in
+          aux dir subdirs_contents)
+      in
+      (match d with
+       | None -> ()
+       | Some f ->
+         (match f path with
+          | Ok () -> ()
+          | Error e -> errors := (path, e) :: !errors));
+      { files; subdirs }
+    in
+    let result = { root; contents = aux root contents } in
     match Nonempty_list.of_list !errors with
     | None -> Ok result
     | Some list -> Error list

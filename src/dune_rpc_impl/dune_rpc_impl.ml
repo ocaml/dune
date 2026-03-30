@@ -26,9 +26,9 @@ module Poll_active =
 
       let stat s =
         Fiber.return
-          (match Unix.stat s with
+          (match Stdune.Stat.stat s with
            | exception exn -> Error exn
-           | s -> Ok (`Mtime s.st_mtime))
+           | stat -> Ok (`Mtime stat.mtime))
       ;;
 
       let read_file s =

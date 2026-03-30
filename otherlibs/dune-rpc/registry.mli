@@ -60,7 +60,7 @@ module Poll
      end)
     (_ : sig
        val scandir : string -> (string list, exn) result Fiber.t
-       val stat : string -> ([ `Mtime of float ], exn) result Fiber.t
+       val stat : string -> ([ `Mtime of Stdune.Time.t ], exn) result Fiber.t
        val read_file : string -> (string, exn) result Fiber.t
      end) : sig
   val poll : t -> (Refresh.t, exn) result Fiber.t

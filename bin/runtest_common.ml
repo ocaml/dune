@@ -184,7 +184,20 @@ let make_request ~scontexts ~to_cwd ~test_paths =
         let dir =
           Path.Source.L.relative Path.Source.root (to_cwd @ Path.Source.explode dir)
         in
-        Context_name.Map.find_exn scontexts Context_name.default, contexts, dir
+        let sctx =
+          match Context_name.Map.find scontexts Context_name.default with
+          | Some sctx -> sctx
+          | None ->
+            (match Context_name.Map.to_list scontexts with
+             | [ (_, sctx) ] -> sctx
+             | _ ->
+               User_error.raise
+                 [ Pp.text
+                     "Multiple contexts are defined but no default context was found. \
+                      Please use the --context flag or specify a build directory path."
+                 ])
+        in
+        sctx, [ Super_context.context sctx ], dir
       | In_private_context _ | In_install_dir _ ->
         User_error.raise
           [ Pp.textf "This path is internal to dune: %s" (Path.to_string_maybe_quoted dir)

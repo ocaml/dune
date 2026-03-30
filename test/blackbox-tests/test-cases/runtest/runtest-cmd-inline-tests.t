@@ -77,13 +77,9 @@ Test with multiple contexts:
   > (context (default (name alt)))
   > EOF
 
-Running inline tests in multiple contexts:
+Running inline tests defaults to the default context:
 
   $ dune test lib.ml
-  File "dune", line 10, characters 1-38:
-  10 |  (inline_tests (backend test_backend)))
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Fatal error: exception File ".mylib.inline-tests/main.ml-gen", line 2, characters 40-46: Assertion failed
   File "dune", line 10, characters 1-38:
   10 |  (inline_tests (backend test_backend)))
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

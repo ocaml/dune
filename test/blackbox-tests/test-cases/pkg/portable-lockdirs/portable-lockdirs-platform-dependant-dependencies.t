@@ -73,13 +73,13 @@ A package that conditionally depends on packages depending on the OS:
 Build the project as if we were on linux and confirm that only the linux-specific dependency is installed:
   $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=arm64 DUNE_CONFIG__OS_FAMILY=debian DUNE_CONFIG__OS_DISTRIBUTION=ubuntu DUNE_CONFIG__OS_VERSION=24.11 dune build
   $ ls $pkg_root/
-  foo.0.0.1-cfb34541fcaab588d193eb2e45f3f8eb
-  linux-only.0.0.1-321218de518133da1e0c7a018e501053
+  foo.0.0.1-c2b956a8203892bfa7b45e595e1ddedd
+  linux-only.0.0.1-758a08ac654cab621cf492933f741368
 
   $ dune clean
 
 Build the project as if we were on macos and confirm that only the macos-specific dependency is installed:
   $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=x86_64 DUNE_CONFIG__OS_FAMILY=homebrew DUNE_CONFIG__OS_DISTRIBUTION=homebrew DUNE_CONFIG__OS_VERSION=15.3.1 dune build
   $ ls $pkg_root/
-  foo.0.0.1-58612d5d6add9ca6fed57493ca909740
-  macos-only.0.0.1-47e409253536c11f685eaaa4bc6a66d0
+  foo.0.0.1-eaf6f59b80b859488722c562ba55562a
+  macos-only.0.0.1-cca34386743cf91827905ba6e657e104

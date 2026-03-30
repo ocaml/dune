@@ -8,6 +8,7 @@ type _ t =
   | Array : 'a t -> 'a array t
   | Pair : 'a t * 'b t -> ('a * 'b) t
   | Triple : 'a t * 'b t * 'c t -> ('a * 'b * 'c) t
+  | Fix : 'a t Lazy.t -> 'a t
   | Record : string * 'a field list -> 'a t
   | Variant : string * 'a case list -> 'a t
   | View :
@@ -67,6 +68,12 @@ let list repr = List repr
 let array repr = Array repr
 let pair left right = Pair (left, right)
 let triple first second third = Triple (first, second, third)
+
+let fix f =
+  let rec repr = Fix (lazy (f repr)) in
+  repr
+;;
+
 let view repr ~to_ = View { repr; to_ }
 let field name repr ~get = Field { name; repr; get }
 let record name fields = Record (name, fields)
@@ -95,6 +102,7 @@ let rec to_dyn : type a. a repr -> a -> Dyn.t =
       (to_dyn second)
       (to_dyn third)
       (first_value, second_value, third_value)
+  | Fix repr -> to_dyn (Lazy.force repr) value
   | Record (_, fields) -> Dyn.record (to_dyn_fields fields value)
   | Variant (type_name, cases) -> to_dyn_case type_name cases value
   | View { repr; to_ } -> to_dyn repr (to_ value)

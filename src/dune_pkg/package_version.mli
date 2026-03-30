@@ -8,6 +8,7 @@ val to_string : t -> string
 val equal : t -> t -> bool
 val compare : t -> t -> ordering
 val hash : t -> int
+val repr : t Repr.t
 val digest_feed : t Dune_digest.Feed.t
 val to_dyn : t -> Dyn.t
 val encode : t Dune_lang.Encoder.t

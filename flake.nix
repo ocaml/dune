@@ -243,7 +243,6 @@
           testBuildInputs =
             with pkgs;
             [
-              file
               jq
               ripgrep
               shellcheck

@@ -8,22 +8,30 @@ module Cached_digest = struct
       { mtime : Time.t
       ; size : int
       ; perm : Unix.file_perm
+      ; dev : int
+      ; ino : int
       }
 
-    let to_dyn { mtime; size; perm } =
-      Dyn.Record [ "mtime", Int (Time.to_ns mtime); "size", Int size; "perm", Int perm ]
+    let to_dyn { mtime; size; perm; dev; ino } =
+      Dyn.Record
+        [ "mtime", Int (Time.to_ns mtime)
+        ; "size", Int size
+        ; "perm", Int perm
+        ; "dev", Int.to_dyn dev
+        ; "ino", Int.to_dyn ino
+        ]
     ;;
 
-    let of_stat (stats : Stat.t) =
-      { mtime = stats.mtime; size = stats.size; perm = stats.perm }
+    let of_stat (stat : Stat.t) =
+      { mtime = stat.mtime
+      ; size = stat.size
+      ; perm = stat.perm
+      ; dev = stat.dev
+      ; ino = stat.dev
+      }
     ;;
 
-    let compare { mtime; size; perm } t =
-      let open Ordering.O in
-      let= () = Time.compare mtime t.mtime in
-      let= () = Int.compare size t.size in
-      Int.compare perm t.perm
-    ;;
+    let compare (t : t) x = Poly.compare t x
   end
 
   type file =
@@ -60,7 +68,7 @@ module Cached_digest = struct
       type nonrec t = t
 
       let name = "DIGEST-DB"
-      let version = 9
+      let version = 10
       let sharing = true
       let to_dyn = to_dyn
     end)

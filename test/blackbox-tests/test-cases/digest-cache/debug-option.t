@@ -13,6 +13,10 @@ Test the tracing of digest events
   > | .args
   > | .old_stats.mtime |= type
   > | .new_stats.mtime |= type
+  > | .new_stats.dev |= type
+  > | .new_stats.ino |= type
+  > | .old_stats.dev |= type
+  > | .old_stats.ino |= type
   > '
   {
     "path": "x",
@@ -21,11 +25,15 @@ Test the tracing of digest events
     "old_stats": {
       "mtime": "number",
       "size": 0,
-      "perm": 420
+      "perm": 420,
+      "dev": "number",
+      "ino": "number"
     },
     "new_stats": {
       "mtime": "number",
       "size": 2,
-      "perm": 420
+      "perm": 420,
+      "dev": "number",
+      "ino": "number"
     }
   }

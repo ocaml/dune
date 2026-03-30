@@ -259,6 +259,17 @@ jobs:
 
       - name: Install deps
         run: |
+          opam pin add lwt 5.9.1 --no-action
+          # CR-soon Alizter: ocaml_intrinsics_kernel v0.17 doesn't compile on
+          # MSVC. Pin to master which has the fix. Remove when v0.18 is released.
+          opam pin add ocaml_intrinsics_kernel https://github.com/janestreet/ocaml_intrinsics_kernel.git --no-action
+          # CR-soon Alizter: base v0.17 doesn't compile on MSVC.
+          # Pin to fork with cherry-picked fix. Remove when merged upstream.
+          # See: https://github.com/LexiFi/base/tree/fix_windows
+          opam pin add base https://github.com/Alizter/base.git#fix_windows_v0.17 --no-action
+          # CR-soon Alizter: time_now v0.17 passes GCC-specific C flags that
+          # break MSVC. Pin to fork with fix. Remove when merged upstream.
+          opam pin add time_now https://github.com/Alizter/time_now.git#fix_msvc_v0.17 --no-action
           opam install . --deps-only --with-test
           opam exec -- make dev-deps
         if: ${{ matrix.run_tests }}

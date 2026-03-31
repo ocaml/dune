@@ -291,7 +291,7 @@ jobs:
           key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
 
   rocq:
-    name: Rocq 9.1
+    name: Rocq 9.2
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
@@ -308,7 +308,7 @@ jobs:
       - run: nix develop .#rocq -c make test-rocq
 
   rocq-native:
-    name: Rocq 9.1 (native)
+    name: Rocq 9.2 (native)
     needs: nix-build
     runs-on: ubuntu-latest
     steps:

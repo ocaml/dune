@@ -140,8 +140,6 @@ module Pending_targets = struct
   ;;
 end
 
-let () = Hooks.End_of_build.always Metrics.reset
-
 type rule_execution_result =
   { facts : Dep.Fact.t Dep.Map.t
   ; targets : Digest.t Targets.Produced.t
@@ -1183,6 +1181,7 @@ let run f =
     in
     Dtemp.clear ();
     Target_promotion.save ();
+    Metrics.reset ();
     match res with
     | Ok res ->
       let+ () = State.set Build_succeeded__now_waiting_for_changes in

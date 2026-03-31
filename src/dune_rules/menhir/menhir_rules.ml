@@ -391,8 +391,7 @@ end
 (* The final glue. *)
 
 let gen_rules ~dir ~module_path cctx stanza =
-  let module R =
-    Run (struct
+  let module R = Run (struct
       let cctx = cctx
       let dir = dir
       let stanza = stanza

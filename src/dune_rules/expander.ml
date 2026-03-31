@@ -944,8 +944,7 @@ module With_deps_if_necessary = struct
 end
 
 let expand_ordered_set_lang =
-  let module Expander =
-    Ordered_set_lang.Unexpanded.Expand (struct
+  let module Expander = Ordered_set_lang.Unexpanded.Expand (struct
       include Action_builder
       include String_expander.Action_builder
     end)

@@ -22,15 +22,13 @@ Directory diff promotes each changed file separately.
   $ dune runtest 2>&1 | censor
   File "expected/a", line 1, characters 0-0:
   --- expected/a
-  +++ _build/.sandbox/$DIGEST/default/actual/a
-  @@ -1 +1 @@
-  -old a
+  +++ actual/a
+  @@ -0,0 +1 @@
   +new a
   File "expected/b", line 1, characters 0-0:
   --- expected/b
-  +++ _build/.sandbox/$DIGEST/default/actual/b
-  @@ -1 +1 @@
-  -old b
+  +++ actual/b
+  @@ -0,0 +1 @@
   +new b
   [1]
 

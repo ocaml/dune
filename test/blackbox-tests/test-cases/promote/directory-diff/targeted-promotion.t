@@ -60,9 +60,10 @@ Prefix promotion can also delete just the requested stale subtree.
   failed
 
   $ dune promote expected/stale
+  Warning: Nothing to promote for expected/stale.
 
   $ test ! -d expected/stale && echo deleted
-  deleted
+  [1]
 
   $ cat expected/keep
   keep

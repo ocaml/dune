@@ -147,9 +147,7 @@ type tree_diff =
 
 let plan_tree_diff ({ mode; source_root; _ } as t) =
   let source_file rel = Path.Source.append_local source_root rel in
-  let source_path rel =
-    if rel = Path.Local.root then t.source_root_path else Path.source (source_file rel)
-  in
+  let source_path rel = Path.append_local t.source_root_path rel in
   let target_path rel = Path.build (Path.Build.append_local t.target_dir rel) in
   let kind_of_source rel = kind_of_path ~loc:t.loc (source_path rel) in
   let kind_of_target rel = kind_of_path ~loc:t.loc (target_path rel) in
@@ -283,13 +281,13 @@ let plan_diff loc { Diff.optional; file1; file2; mode; directory_diffs } =
        ; Pp.text "Please update your dune-project file to have (lang dune 3.23)."
        ]
    | _ -> ());
-  let source_root_path =
-    match source_kind, target_kind with
-    | Directory, _ | _, Directory -> Path.source (source_root file1)
-    | _ -> file1
-  in
   let tree_diff =
-    { loc; mode; source_root = source_root file1; source_root_path; target_dir = file2 }
+    { loc
+    ; mode
+    ; source_root = source_root file1
+    ; source_root_path = file1
+    ; target_dir = file2
+    }
   in
   if optional && target_kind = Missing then empty_plan else plan_tree_diff tree_diff
 ;;

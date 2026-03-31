@@ -32,6 +32,7 @@ let
             duneVersion = "3";
             dontAddPrefix = true;
             inherit buildInputs propagatedBuildInputs;
+            nativeBuildInputs = [ pkgs.git ];
           };
       in
       {
@@ -41,6 +42,7 @@ let
 
         dune_3 = osuper.dune_3.overrideAttrs (old: {
           src = revdeps-dune;
+          nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.git ];
         });
 
         # Internal dune libraries not packaged in nixpkgs

@@ -32,3 +32,15 @@ val read_immediate_deps_of
   -> for_:Compilation_mode.t
   -> Module.t
   -> Module.t list Action_builder.t
+
+(** [read_immediate_deps_raw_of ~obj_dir ~ml_kind ~for_ unit] returns the raw
+    module names (unresolved) from ocamldep output for the file with kind
+    [ml_kind] of the module [unit]. This includes ALL module references, both
+    intra-stanza and external library modules. If there is no such file with
+    kind [ml_kind], an empty set is returned. *)
+val read_immediate_deps_raw_of
+  :  obj_dir:Path.Build.t Obj_dir.t
+  -> ml_kind:Ml_kind.t
+  -> for_:Compilation_mode.t
+  -> Module.t
+  -> Module_name.Set.t Action_builder.t

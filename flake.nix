@@ -32,6 +32,10 @@
       inputs.oxcaml-opam-repository.follows = "oxcaml-opam-repository";
       inputs.revdeps-dune.follows = "revdeps-dune";
     };
+    menhir-src = {
+      url = "gitlab:fpottier/menhir/20231231?host=gitlab.inria.fr";
+      flake = false;
+    };
   };
   outputs =
     {
@@ -44,6 +48,7 @@
       oxcaml,
       oxcaml-opam-repository,
       revdeps-dune,
+      menhir-src
     }:
     let
       forAllSystems =
@@ -558,18 +563,11 @@
 
           ox-trunk =
             let
-              menhirSrc = pkgs.fetchFromGitLab {
-                domain = "gitlab.inria.fr";
-                owner = "fpottier";
-                repo = "menhir";
-                rev = "20231231";
-                sha256 = "sha256-veB0ORHp6jdRwCyDDAfc7a7ov8sOeHUmiELdOFf/QYk=";
-              };
               customOcamlPackages = pkgs.ocamlPackages.overrideScope (
                 oself: osuper: {
                   menhirLib = osuper.menhirLib.overrideAttrs (old: rec {
                     version = "20231231";
-                    src = menhirSrc;
+                    src = menhir-src;
                   });
                   menhirGLR = null;
                   menhir = osuper.menhir.overrideAttrs (old: {

@@ -5,3 +5,9 @@
 (cram
  (applies_to interfere-sandbox-deletion)
  (deps %{bin:bash}))
+
+(cram
+ (applies_to unicode-cleanup)
+ (enabled_if
+  (= %{os_type} Win32))
+ (alias runtest-windows))

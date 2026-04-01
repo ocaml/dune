@@ -7,7 +7,7 @@ good when the coq extension is not enabled.
   > (rocq.theory
   >  (name foo))
   > EOF
-  $ dune build
+  $ dune build 2>&1 | sed "s/(using rocq .*)/(using rocq <version>)/"
   File ".", line 1, characters 0-0:
   Warning: No dune-project file has been found in directory ".". A default one
   is assumed but the project might break when dune is upgraded. Please create a
@@ -17,6 +17,6 @@ good when the coq extension is not enabled.
   1 | (rocq.theory
   2 |  (name foo))
   Error: 'rocq.theory' is available only when rocq is enabled in the
-  dune-project or workspace file. You must enable it using (using rocq 0.12) in
+  dune-project or workspace file. You must enable it using (using rocq <version>) in
   the file.
   [1]

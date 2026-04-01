@@ -78,11 +78,10 @@ module Extraction = struct
     ; buildable : Buildable.t
     }
 
-  let ml_target_fnames t =
+  let target_fnames t =
     List.concat_map t.extracted_modules ~f:(fun m -> [ m ^ ".ml"; m ^ ".mli" ])
+    @ t.extracted_files
   ;;
-
-  let target_fnames t = ml_target_fnames t @ t.extracted_files
 
   let decode =
     fields
@@ -104,17 +103,16 @@ module Extraction = struct
                 specified"
            ];
        let all_targets =
-         ml_target_fnames { extracted_modules; extracted_files; prelude; buildable }
-         @ extracted_files
+         target_fnames { extracted_modules; extracted_files; prelude; buildable }
        in
        (match String.Map.of_list (List.map all_targets ~f:(fun t -> t, ())) with
         | Ok _ -> ()
         | Error (dup, (), ()) ->
-          User_error.raise
+          User_warning.emit
             ~loc
             [ Pp.textf
-                "Duplicate target filename %S across extracted_modules and \
-                 extracted_files"
+                "Duplicate target filename %S across (extracted_modules) and \
+                 (extracted_files)"
                 dup
             ]);
        { prelude; extracted_modules; extracted_files; buildable })

@@ -33,7 +33,6 @@ module Extraction : sig
     ; buildable : Buildable.t
     }
 
-  val ml_target_fnames : t -> string list
   val target_fnames : t -> string list
 
   include Stanza.S with type t := t

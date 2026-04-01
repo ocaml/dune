@@ -177,7 +177,7 @@ end = struct
               Path.Build.set_extension mlg_file ~ext:Filename.Extension.ml
               |> Path.Build.basename)
           | Rocq_stanza.Extraction.T s ->
-            Memo.return (Rocq_stanza.Extraction.ml_target_fnames s)
+            Memo.return (Rocq_stanza.Extraction.target_fnames s)
           | Rule_conf.T rule ->
             Simple_rules.user_rule sctx rule ~dir ~expander
             >>| (function

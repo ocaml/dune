@@ -28,7 +28,11 @@ type all =
   }
 
 val partition_db : db -> Files_to_promote.t -> all
-val promote_files_registered_in_last_run : Files_to_promote.t -> Path.Source.t list
+
+val promote_files_registered_in_last_run
+  :  matching:Dune_rpc.Promote_targets.Matching.t
+  -> Files_to_promote.t
+  -> Path.Source.t list
 
 (** Register an intermediate file to promote. The build path may point to the
     sandbox and the file will be moved to the staging area. *)
@@ -39,3 +43,4 @@ val register_intermediate
   -> unit
 
 val register_delete : [ `File | `Directory ] -> Path.Source.t -> unit
+val register_create_directory : Path.Source.t -> unit

@@ -3,7 +3,6 @@
  (modules bench metrics)
  (libraries
   dune_trace
-  dune_console
   dune_scheduler
   stdune
   fiber

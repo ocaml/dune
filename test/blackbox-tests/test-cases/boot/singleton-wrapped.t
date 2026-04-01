@@ -1,10 +1,11 @@
 Testing the bootstrap of singleton wrapped libraries.
 
-  $ . ./helpers.sh
+  $ init_bootstrap
 
   $ mkdir -p src/a
 
-  $ cat > src/a/a.ml <<EOF
+  $ make_module src/a/a.ml
+  $ cat >> src/a/a.ml <<EOF
   > let () = Printf.printf "Hello from singleton wrapped a/a.ml\n"
   > EOF
 

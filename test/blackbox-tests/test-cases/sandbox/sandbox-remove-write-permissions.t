@@ -8,7 +8,7 @@ Remove write permissions from a sandbox directory and observe the error we get
   $ cat >dune <<EOF
   > (rule
   >  (target (dir foo))
-  >  (action (system "mkdir foo && touch foo/bar && chmod -w foo")))
+  >  (action (bash "mkdir foo && touch foo/bar && chmod -w foo")))
   > EOF
 
   $ dune build ./foo --sandbox=copy 2>&1 | sed -E 's#/.*.sandbox/[^/]+#/.sandbox/$SANDBOX#g'

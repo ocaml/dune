@@ -31,17 +31,11 @@ Then a parameterised library, which uses inline tests:
 Running the test fails, because we did not specify an implementation for the
 parameter:
 
-  $ dune runtest
+  $ DUNE_CONFIG__MEMO_STACK=disabled dune runtest
   File "lib/dune", line 3, characters 14-19:
   3 |   (parameters param)
                     ^^^^^
   Error: To run the inline tests, please provide the missing parameter "param".
-  -> required by
-     _build/default/lib/.lib.inline-tests/.t.eobjs/native/dune__exe__Main.cmx
-  -> required by _build/default/lib/.lib.inline-tests/inline-test-runner.exe
-  -> required by _build/default/lib/.lib.inline-tests/partitions-best
-  -> required by alias lib/runtest-lib in lib/dune:4
-  -> required by alias lib/runtest in lib/dune:1
   Hint: Add (arguments ...) to the inline_tests to specify which implementation
   of the parameter "param" to use.
   [1]

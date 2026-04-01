@@ -1158,7 +1158,7 @@ let modules_of_dir d : (Module_name.t * (Path.t * [ `Cmti | `Cmt | `Cmi ])) list
   >>| function
   | Error _ -> []
   | Ok dc ->
-    let list = Fs_cache.Dir_contents.to_list dc in
+    let list = Fs_memo.Dir_contents.to_list dc in
     List.filter_map list ~f:(fun (x, ty) ->
       let ext = Filename.Extension.Or_empty.to_string (Filename.extension x) in
       match ty, List.assoc extensions ext with
@@ -1248,7 +1248,7 @@ let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =
           (List.filter_map fs ~f:(function
              | { kind = File; dst } ->
                let str = Install.Entry.Dst.to_string dst in
-               if Filename.check_suffix str ".mld"
+               if String.ends_with ~suffix:".mld" str
                then Some (Path.relative doc_path str, str)
                else None
              | { kind = Directory; dst = _ } -> None))

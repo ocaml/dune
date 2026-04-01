@@ -235,7 +235,7 @@ that context as expected.
 - Running tests in a workspace with only a non-default context should work.
 
   $ cat > dune-workspace <<EOF
-  > (lang dune 3.22)
+  > (lang dune 3.23)
   > (context (default (name main)))
   > EOF
 
@@ -280,7 +280,7 @@ that context as expected.
 - Running tests in a workspace with multiple non-default contexts should error.
 
   $ cat > dune-workspace <<EOF
-  > (lang dune 3.22)
+  > (lang dune 3.23)
   > (context (default (name ctx1)))
   > (context (default (name ctx2)))
   > EOF
@@ -289,3 +289,4 @@ that context as expected.
   Error: Multiple contexts are defined but no default context was found. Please
   use the --context flag or specify a build directory path.
   [1]
+

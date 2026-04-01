@@ -2,9 +2,17 @@
 
     A path component is just a string without a '/' character. *)
 
-include module type of struct
-  include Stdlib.Filename
-end
+val current_dir_name : string
+val parent_dir_name : string
+val dir_sep : string
+val concat : string -> string -> string
+val is_relative : string -> bool
+val check_suffix : string -> string -> bool
+val remove_extension : string -> string
+val basename : string -> string
+val dirname : string -> string
+val get_temp_dir_name : unit -> string
+val quote : string -> string
 
 (* TODO add invariants and make this abstract or private *)
 type t = string
@@ -12,6 +20,7 @@ type t = string
 module Extension : sig
   type t
 
+  val corrected : t
   val ml : t
   val mli : t
   val mlpack : t

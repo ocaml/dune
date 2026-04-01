@@ -1,6 +1,6 @@
 Testing the bootstrap of unwrapped libraries.
 
-  $ . ./helpers.sh
+  $ init_bootstrap
 
   $ mkdir -p src/a
   $ cat > src/a/a.ml <<EOF
@@ -17,7 +17,10 @@ Testing the bootstrap of unwrapped libraries.
   >  (wrapped false))
   > EOF
 
+  $ make_module src/a/root.ml
+
   $ create_dune a <<EOF
+  > open Root
   > open A
   > open B
   > let () = Printf.printf "Hello from bootstrapped binary!"

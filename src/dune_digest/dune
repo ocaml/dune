@@ -1,11 +1,10 @@
 (library
  (name dune_digest)
  (libraries
-  fiber
   dune_scheduler
+  fiber
   blake3_mini
-  dune_console
   dune_util
-  dune_trace
+  threads.posix
   stdune
   unix))

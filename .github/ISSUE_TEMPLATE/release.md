@@ -6,33 +6,47 @@ labels: ["release"]
 assignees: ''
 ---
 
-<!-- If release is Patch release use section { -->
+<!-- TODO: Replace X.Y.Z with the correct Dune version -->
+
+<!-- if PATCH RELEASE { -->
 ## Preparation
 
-- Need backport:
-    - [link to PR to backport]
-- Backports:
-    - [link to backport PR]
+- [ ] Create release candidate branch `X.Y.Z-rc` from last point tag `X.Y.Z-1`
+- [ ] Open release draft PR from branch `X.Y.Z-rc` into `main` [link to dune PR]
 
-<!-- } else if release is Minor release use section { -->
+### Fixes
+
+Regressions requiring fixes in `main` and backports to `X.Y.Z-rc`:
+
+- [ ] #...
+  - [ ] backported via PR #...
+- [ ] #...
+  - [ ] backported via PR #...
+<!-- } else if MINOR OR MAJOR RELEASE { -->
+
 ## Known blockers
 
-- [ ] issue #... blocking the release because of ...
+Regressions requiring fixes in  `main` and backports to the latest version:
 
+- [ ] issue #... blocking the release because of ...
+  - [ ] backported via PR #...
 <!-- } -->
 
 ## Release
 
-<!-- Replace X.Y.Z with the correct Dune version -->
-
-- [ ] Update dune changelog to `X.Y.Z` on `X.Y` branch [link to dune PR]
-- [ ] Open then pull request on `opam-repository` [link to OPAM PR]
-- [ ] Triage (ensure it does not break anything)
+- [ ] Update changelog
+<!-- If MINOR OR MAJOR RELEASE: uncomment -->
+<!-- - [ ] Create release candidate branch `X.Y.Z-rc` from main -->
+<!-- - [ ] Open release draft PR from branch `X.Y.Z-rc` into `main` [link to dune PR] -->
+<!-- - [ ] Alpha release PRs into opam repo for triage:  -->
+<!--   - [link to OPAM PR] -->
+<!-- - [ ] Review revdeps diff, and diagnose any new failures -->
+- [ ] opam repo publication PR [link to opam PR]
 
 ## Post-release
 
 - [ ] Merge release branch into `main` [link to dune PR]
 - [ ] Write a post about the release on Discuss [link to post]
-- [ ] Store the revdeps error file in the [logs](https://github.com/ocaml/dune/wiki/Reverse-dependencies-CI-logs)
-<!-- If minor release uncomment this -->
+- [ ] Store the revdeps error file in the [logs](https://github.com/ocaml/dune/wiki/Reverse-dependencies-CI-logs) as HTML
+<!-- If MINOR OR MAJOR RELEASE: uncomment -->
 <!-- - [ ] Increase `lang dune` number   -->

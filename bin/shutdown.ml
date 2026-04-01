@@ -13,7 +13,7 @@ let term =
        ~name:"shutdown_cmd"
        ~wait:false
        builder
-       Dune_rpc_private.Procedures.Public.shutdown)
+       Dune_rpc.Procedures.Public.shutdown)
 ;;
 
 let command = Cmd.v info term

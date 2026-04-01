@@ -56,8 +56,14 @@ struct
   let remove_tree path = Remove_tree path
   let mkdir path = Mkdir path
 
-  let diff ?(optional = false) ?(mode = Diff.Mode.Text) file1 file2 =
-    Diff { optional; file1; file2; mode }
+  let diff
+        ?(optional = false)
+        ?(mode = Diff.Mode.Text)
+        ?(directory_diffs = true)
+        file1
+        file2
+    =
+    Diff { optional; mode; directory_diffs; file1; file2 }
   ;;
 end
 
@@ -314,6 +320,7 @@ module Full = struct
       ; locks : Path.t list
       ; can_go_in_shared_cache : bool
       ; sandbox : Sandbox_config.t
+      ; corrections : Corrections.t option
       }
 
     let empty =
@@ -322,15 +329,29 @@ module Full = struct
       ; locks = []
       ; can_go_in_shared_cache = true
       ; sandbox = Sandbox_config.default
+      ; corrections = None
       }
     ;;
 
-    let combine { action; env; locks; can_go_in_shared_cache; sandbox } x =
+    let combine_corrections (x : Corrections.t option) (y : Corrections.t option) =
+      match x, y with
+      | None, x -> x
+      | x, None -> x
+      | Some Produce, Some Produce -> Some Produce
+      | Some Ignore, Some Ignore -> Some Ignore
+      | Some x, Some y ->
+        Code_error.raise
+          "incompatible corrections settings for action"
+          [ "x", Corrections.to_dyn x; "y", Corrections.to_dyn y ]
+    ;;
+
+    let combine { action; env; locks; can_go_in_shared_cache; sandbox; corrections } x =
       { action = combine action x.action
       ; env = Env.extend_env env x.env
       ; locks = locks @ x.locks
       ; can_go_in_shared_cache = can_go_in_shared_cache && x.can_go_in_shared_cache
       ; sandbox = Sandbox_config.inter sandbox x.sandbox
+      ; corrections = combine_corrections corrections x.corrections
       }
     ;;
   end
@@ -343,9 +364,10 @@ module Full = struct
         ?(locks = [])
         ?(can_go_in_shared_cache = !Clflags.can_go_in_shared_cache_default)
         ?(sandbox = Sandbox_config.default)
+        ?corrections
         action
     =
-    { action; env; locks; can_go_in_shared_cache; sandbox }
+    { action; env; locks; can_go_in_shared_cache; sandbox; corrections }
   ;;
 
   let map t ~f = { t with action = f t.action }
@@ -357,4 +379,8 @@ module Full = struct
   ;;
 
   let add_sandbox s t = { t with sandbox = Sandbox_config.inter t.sandbox s }
+
+  let add_corrections corrections t =
+    { t with corrections = combine_corrections (Some corrections) t.corrections }
+  ;;
 end

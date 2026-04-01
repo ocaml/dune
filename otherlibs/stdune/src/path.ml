@@ -4,6 +4,8 @@ module External = Path_external
 module Local = struct
   include Local
 
+  let repr = Repr.view Repr.string ~to_:to_string
+
   module L = struct
     include L
 

@@ -131,11 +131,12 @@ let i_must_not_crash =
 let report_backtraces_flag = ref false
 let report_backtraces b = report_backtraces_flag := b
 let print_memo_stacks = ref false
+let format_memo_stack = Config.make_toggle_lazy_init ~name:"memo_stack" ~default:`Enabled
 
 let format_memo_stack pps =
-  match pps with
-  | [] -> None
-  | _ ->
+  match pps, Config.get format_memo_stack with
+  | _ :: _, `Disabled | [], _ -> None
+  | _ :: _, `Enabled ->
     Some
       (List.map pps ~f:(fun pp ->
          Pp.O.(Pp.verbatim "-> " ++ Pp.text "required by " ++ pp |> Pp.box ~indent:3))
@@ -209,7 +210,7 @@ let gen_report
       (* We don't want a failure to write to the trace raise another event *)
       ()
   in
-  Dune_console.print_user_message { msg with loc; paragraphs }
+  Console.print_user_message { msg with loc; paragraphs }
 ;;
 
 let gen_report exn backtrace =

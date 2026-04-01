@@ -1,14 +1,14 @@
 module T = struct
   type t = int
 
+  let repr = Repr.int
   let compare (a : int) b : Ordering.t = if a < b then Lt else if a = b then Eq else Gt
-  let to_dyn x = Dyn.Int x
+  let equal (a : t) b = a = b
+  let to_dyn = Repr.to_dyn repr
 end
 
 include T
 include Comparable.Make (T)
-
-let equal (a : t) b = a = b
 
 (* This implementation (including the comment) is taken from the Base
    library. *)
@@ -48,3 +48,4 @@ let of_string s = int_of_string_opt s
 let shift_left = Stdlib.Int.shift_left
 let shift_right = Stdlib.Int.shift_right
 let max_int = Stdlib.Int.max_int
+let max (x : int) (y : int) = max x y

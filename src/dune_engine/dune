@@ -4,7 +4,6 @@
   unix
   csexp
   stdune
-  dune_console
   dyn
   fiber
   memo
@@ -12,7 +11,6 @@
   predicate_lang
   dune_cache
   dune_scheduler
-  dune_cache_storage
   dune_glob
   dune_targets
   chrome_trace
@@ -20,7 +18,7 @@
   dune_action_plugin
   dune_util
   build_path_prefix_map
-  dune_rpc_private
+  dune_rpc
   dune_rpc_client
   spawn
   dune_digest

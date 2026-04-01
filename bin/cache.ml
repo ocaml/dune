@@ -2,6 +2,16 @@ open Import
 
 (* CR-someday amokhov: Implement other commands supported by Jenga. *)
 
+let debug_backtraces =
+  Arg.(
+    value
+    & flag
+    & info
+        [ "debug-backtraces" ]
+        ~docs:"COMMON OPTIONS"
+        ~doc:(Some "Always print exception backtraces."))
+;;
+
 let trim =
   let info =
     let doc = "Trim the Dune cache." in
@@ -21,7 +31,8 @@ let trim =
     Cmd.info "trim" ~doc ~man
   in
   Cmd.v info
-  @@ let+ trimmed_size =
+  @@ let+ debug_backtraces = debug_backtraces
+     and+ trimmed_size =
        Arg.(
          value
          & opt (some bytes) None
@@ -46,6 +57,7 @@ let trim =
                            ~f:(fun (units, _) -> List.hd units)
                            Bytes_unit.conversion_table)))))
      in
+     Common.No_build.set_debug_backtraces debug_backtraces;
      Log.init No_log_file;
      let open Result.O in
      match
@@ -81,7 +93,8 @@ let size =
     Cmd.info "size" ~doc ~man
   in
   Cmd.v info
-  @@ let+ machine_readable =
+  @@ let+ debug_backtraces = debug_backtraces
+     and+ machine_readable =
        Arg.(
          value
          & flag
@@ -89,6 +102,7 @@ let size =
              [ "machine-readable" ]
              ~doc:(Some "Outputs size as a plain number of bytes."))
      in
+     Common.No_build.set_debug_backtraces debug_backtraces;
      let size = Dune_cache.Trimmer.overhead_size () in
      if machine_readable
      then User_message.print (User_message.make [ Pp.textf "%Ld" size ])
@@ -101,7 +115,10 @@ let clear =
     let man = [ `P "Remove any traces of the Dune cache." ] in
     Cmd.info "clear" ~doc ~man
   in
-  Cmd.v info @@ Term.(const Dune_cache_storage.clear $ const ())
+  Cmd.v info
+  @@ let+ debug_backtraces = debug_backtraces in
+     Common.No_build.set_debug_backtraces debug_backtraces;
+     Dune_cache.Trimmer.clear ()
 ;;
 
 let command =

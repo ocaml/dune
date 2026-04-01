@@ -2,6 +2,8 @@ type t
 
 val start : t
 val now : unit -> t
+val compare : t -> t -> Ordering.t
+val max : t -> t -> t
 val to_secs : t -> float
 val to_ns : t -> int
 val to_us : t -> int

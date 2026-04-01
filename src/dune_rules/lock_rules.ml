@@ -436,7 +436,7 @@ let scan_lock_directory =
         ; Unix_error.Detailed.pp unix_error
         ]
     | Ok entries ->
-      Fs_cache.Dir_contents.to_list entries
+      Fs_memo.Dir_contents.to_list entries
       |> Memo.parallel_map ~f:(fun (entry, kind) ->
         let path = Path.relative dir entry in
         match (kind : File_kind.t) with

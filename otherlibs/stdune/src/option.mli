@@ -24,6 +24,7 @@ val is_none : _ t -> bool
 val both : 'a t -> 'b t -> ('a * 'b) t
 val split : ('a * 'b) t -> 'a t * 'b t
 val to_list : 'a t -> 'a list
+val repr : 'a Repr.t -> 'a t Repr.t
 val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 val hash : ('a -> int) -> 'a t -> int
 
@@ -39,6 +40,9 @@ module List : sig
 
   (** Like [all (List.map t ~f)] but short-circuits on the first [None]. *)
   val traverse : 'a list -> f:('a -> 'b option) -> 'b list option
+
+  (** Like [all (List.concat_map t ~f)] but short-circuits on the first [None]. *)
+  val concat_map : 'a list -> f:('a -> 'b list option) -> 'b list option
 end
 
 val merge : 'a t -> 'a t -> f:('a -> 'a -> 'a) -> 'a t

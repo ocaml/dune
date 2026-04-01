@@ -127,35 +127,9 @@ module Processed = struct
     type nonrec t = t
 
     let name = "merlin-conf"
+    let sharing = false
     let version = 8
     let to_dyn _ = Dyn.String "Use [dune ocaml dump-dot-merlin] instead"
-
-    let test_example () =
-      { config =
-          { stdlib_dir = None
-          ; source_root = Path.Source.root |> Path.source
-          ; obj_dirs = Path.Set.empty
-          ; src_dirs = Path.Set.empty
-          ; hidden_obj_dirs = Path.Set.empty
-          ; hidden_src_dirs = Path.Set.empty
-          ; flags = [ "-x" ]
-          ; extensions = [ { Ml_kind.Dict.intf = None; impl = Some "ext" } ]
-          ; indexes = []
-          ; parameters = []
-          }
-      ; per_file_config = Path.Build.Map.empty
-      ; pp_config =
-          (match
-             Module_name.Per_item.of_mapping
-               [ ( [ Module_name.of_checked_string "Test" ]
-                 , Some { flag = Ppx; args = "-x" } )
-               ]
-               ~default:None
-           with
-           | Ok s -> s
-           | Error (_, _, _) -> assert false)
-      }
-    ;;
   end
 
   module Persist = Dune_util.Persistent.Make (D)
@@ -313,7 +287,7 @@ module Processed = struct
     =
     let b = Buffer.create 256 in
     let printf = Printf.bprintf b in
-    let print = Buffer.add_string b in
+    let print s = Buffer.add_string b s in
     print "EXCLUDE_QUERY_DIR\n";
     Option.iter stdlib_dir ~f:(fun stdlib_dir ->
       printf "STDLIB %s\n" (serialize_path stdlib_dir));

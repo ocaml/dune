@@ -8,10 +8,10 @@ let term =
   Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
-  let* setup = Import.Main.setup () in
+  let* setup = Util.setup () in
   let* setup = Memo.run setup in
-  let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
-  build_exn
+  let super_context = Dune_rules.Main.find_scontext_exn setup ~name:context_name in
+  Build.build_memo_exn
   @@ fun () ->
   let open Memo.O in
   Dune_rules.Install_rules.stanzas_to_entries super_context

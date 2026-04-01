@@ -1,3 +1,0 @@
-(coq.theory
- (name minimal)
- (flags -w -notation-overridden))

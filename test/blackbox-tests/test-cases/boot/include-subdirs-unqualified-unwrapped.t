@@ -1,10 +1,11 @@
 Testing the bootstrap of an unwrapped include subdirs unqualified.
 
-  $ . ./helpers.sh
+  $ init_bootstrap
 
   $ mkdir -p src/a/b/c
 
-  $ cat > src/a/x.ml <<EOF
+  $ make_module src/a/x.ml
+  $ cat >> src/a/x.ml <<EOF
   > let () = Printf.printf "Hello from unwrapped a/x.ml\n"
   > EOF
 

@@ -4,6 +4,7 @@ type t =
   { targets : String_with_vars.t Targets_spec.t
   ; deps : Dep_conf.t Bindings.t
   ; action : Loc.t * Dune_lang.Action.t
+  ; corrections : Corrections.t option
   ; mode : Rule_mode.t
   ; locks : Locks.t
   ; loc : Loc.t

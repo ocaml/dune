@@ -1,1 +1,0 @@
-Definition bar := 3.

@@ -161,6 +161,14 @@ module Produced = struct
     ; contents : 'a dir_contents
     }
 
+  let head { root; contents = { files; subdirs } } =
+    Path.Build.relative
+      root
+      (match Filename.Map.choose files with
+       | Some (x, _) -> x
+       | None -> Filename.Map.choose subdirs |> Option.value_exn |> fst)
+  ;;
+
   let equal
         { root = root1; contents = contents1 }
         { root = root2; contents = contents2 }
@@ -345,7 +353,7 @@ module Produced = struct
            (* The order shouldn't matter, it's not possible to have both a file
               and a directory with the exact same path and name. *)
            let+ contents = Filename.Map.find subdirs final in
-           Right contents.files)
+           Right contents)
       | parent :: rest ->
         let path = Path.Local.relative path parent in
         let* subdir = Filename.Map.find subdirs parent in
@@ -368,7 +376,7 @@ module Produced = struct
 
   let find_dir t name =
     match find_any t name with
-    | Some (Right found) -> Some found
+    | Some (Right found) -> Some found.files
     | Some (Left _) | None -> None
   ;;
 
@@ -430,7 +438,7 @@ module Produced = struct
     aux Path.Local.root contents init
   ;;
 
-  let iteri { contents; root = _ } ~f ~d =
+  let iteri_dir_contents contents ~f ~d =
     let rec aux path { files; subdirs } =
       Filename.Map.iteri files ~f:(fun file_name payload ->
         let file = Path.Local.relative path file_name in
@@ -442,6 +450,8 @@ module Produced = struct
     in
     aux Path.Local.root contents
   ;;
+
+  let iteri t ~f ~d = iteri_dir_contents t.contents ~f ~d
 
   let to_list_map { contents; root = _ } ~f =
     let rec aux path { files; subdirs } =
@@ -507,6 +517,64 @@ module Produced = struct
 
   (* The odd type of [d] and [f] is due to the fact that [map_with_errors]
      is used for a variety of things, not all "map-like". *)
+  let map_with_errors_fiber
+        ?(d : (Path.Build.t -> (unit, 'e) result) option)
+        ~(f : Path.Build.t -> ('b, 'e) result Fiber.t)
+        { root; contents }
+    =
+    let open Fiber.O in
+    let errors = ref [] in
+    let f path =
+      let+ result = f path in
+      match result with
+      | Ok value -> Some value
+      | Error error ->
+        errors := (path, error) :: !errors;
+        None
+    in
+    let map_files path files =
+      Filename.Map.foldi
+        files
+        ~init:(Fiber.return Filename.Map.empty)
+        ~f:(fun file_name _payload acc ->
+          let* acc = acc in
+          let path = Path.Build.relative path file_name in
+          let* result = f path in
+          match result with
+          | None -> Fiber.return acc
+          | Some value -> Fiber.return (Filename.Map.set acc file_name value))
+    in
+    let rec map_subdirs path subdirs =
+      Filename.Map.foldi
+        subdirs
+        ~init:(Fiber.return Filename.Map.empty)
+        ~f:(fun dir_name dir_contents acc ->
+          let* acc = acc in
+          let dir = Path.Build.relative path dir_name in
+          let* mapped = aux dir dir_contents in
+          Fiber.return (Filename.Map.set acc dir_name mapped))
+    and aux path { files; subdirs } =
+      let* files = map_files path files in
+      let* subdirs = map_subdirs path subdirs in
+      let* () =
+        match d with
+        | None -> Fiber.return ()
+        | Some f_dir ->
+          Fiber.return
+            (match f_dir path with
+             | Ok () -> ()
+             | Error error -> errors := (path, error) :: !errors)
+      in
+      Fiber.return { files; subdirs }
+    in
+    let+ contents = aux root contents in
+    let result = { root; contents } in
+    match Nonempty_list.of_list !errors with
+    | None -> Ok result
+    | Some list -> Error list
+  ;;
+
+  (* CR-someday rgrinberg: share code with the implementation above *)
   let map_with_errors
         ?(d : (Path.Build.t -> (unit, 'e) result) option)
         ~(f : Path.Build.t -> ('b, 'e) result)

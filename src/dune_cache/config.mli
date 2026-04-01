@@ -47,6 +47,6 @@ end
 type t =
   | Disabled
   | Enabled of
-      { storage_mode : Dune_cache_storage.Mode.t
+      { storage_mode : Mode.t
       ; reproducibility_check : Reproducibility_check.t
       }

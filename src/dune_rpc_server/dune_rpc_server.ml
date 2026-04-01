@@ -1,5 +1,5 @@
 open Stdune
-open Dune_rpc_private
+open Dune_rpc.Private
 open Fiber.O
 module Session_id = Stdune.Id.Make ()
 module User_message = Stdune.User_message
@@ -107,7 +107,7 @@ module Session = struct
       ; pool : Fiber.Pool.t
       ; mutable state : 'a state
       ; (* TODO these should be cancelled when the connection closes *)
-        pending : (Dune_rpc_private.Id.t, Response.t Fiber.Ivar.t) Table.t
+        pending : (Dune_rpc.Private.Id.t, Response.t Fiber.Ivar.t) Table.t
         (** Pending requests sent to the client. When a response is
           received, the ivar for the response will be filled. *)
       ; name : string
@@ -141,7 +141,7 @@ module Session = struct
       ; state = Uninitialized
       ; id = Id.gen ()
       ; pool = Fiber.Pool.create ()
-      ; pending = Table.create (module Dune_rpc_private.Id) 16
+      ; pending = Table.create (module Dune_rpc.Private.Id) 16
       ; name
       }
     ;;
@@ -155,8 +155,8 @@ module Session = struct
       | Some _ ->
         Code_error.raise
           "request with this id is already pending"
-          [ "id", Dune_rpc_private.Id.to_dyn id
-          ; "call", Dune_rpc_private.Call.to_dyn call
+          [ "id", Dune_rpc.Private.Id.to_dyn id
+          ; "call", Dune_rpc.Private.Call.to_dyn call
           ]
       | None ->
         let ivar = Fiber.Ivar.create () in
@@ -204,7 +204,7 @@ module Session = struct
   type 'a t =
     { base : 'a Stage1.t
     ; handler : 'a t V.Handler.t
-    ; mutable pollers : Poller.t Dune_rpc_private.Id.Map.t
+    ; mutable pollers : Poller.t Dune_rpc.Private.Id.Map.t
     }
 
   let get t = Stage1.get t.base
@@ -214,7 +214,7 @@ module Session = struct
   let id t = t.base.id
 
   let of_stage1 (base : _ Stage1.t) handler =
-    { base; handler; pollers = Dune_rpc_private.Id.Map.empty }
+    { base; handler; pollers = Dune_rpc.Private.Id.Map.empty }
   ;;
 
   let prepare_notification t decl = V.Handler.prepare_notification t.handler decl
@@ -229,8 +229,8 @@ module Session = struct
     | Error error ->
       Code_error.raise
         "client doesn't support request"
-        [ "id", Dune_rpc_private.Id.to_dyn id
-        ; "error", Dune_rpc_private.Version_error.to_dyn error
+        [ "id", Dune_rpc.Private.Id.to_dyn id
+        ; "error", Dune_rpc.Private.Version_error.to_dyn error
         ]
     | Ok { Versioned_intf.Staged.encode_req; decode_resp } ->
       let req = encode_req req in
@@ -255,19 +255,19 @@ module Session = struct
   ;;
 
   let find_or_create_poller t (name : Procedures.Poll.Name.t) id =
-    match Dune_rpc_private.Id.Map.find t.pollers id with
+    match Dune_rpc.Private.Id.Map.find t.pollers id with
     | Some poller -> poller
     | None ->
       let poller = Poller.create t.base.id name in
-      t.pollers <- Dune_rpc_private.Id.Map.add_exn t.pollers id poller;
+      t.pollers <- Dune_rpc.Private.Id.Map.add_exn t.pollers id poller;
       poller
   ;;
 
   let cancel_poller t id =
-    match Dune_rpc_private.Id.Map.find t.pollers id with
+    match Dune_rpc.Private.Id.Map.find t.pollers id with
     | None -> None
     | Some poller ->
-      t.pollers <- Dune_rpc_private.Id.Map.remove t.pollers id;
+      t.pollers <- Dune_rpc.Private.Id.Map.remove t.pollers id;
       Some poller
   ;;
 
@@ -275,7 +275,7 @@ module Session = struct
 end
 
 type message_kind =
-  | Request of Dune_rpc_private.Id.t
+  | Request of Dune_rpc.Private.Id.t
   | Notification
 
 module Event = struct
@@ -297,7 +297,7 @@ module Event = struct
       | Message { kind; meth_; stage } ->
         let kind =
           match kind with
-          | Request id -> `Request (Dune_rpc_private.Id.to_sexp id)
+          | Request id -> `Request (Dune_rpc.Private.Id.to_sexp id)
           | Notification -> `Notification
         in
         Dune_trace.Event.Rpc.message kind ~meth_:(Method.Name.to_string meth_) ~id stage)

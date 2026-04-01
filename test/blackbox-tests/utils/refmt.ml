@@ -5,7 +5,7 @@ type ('impl, 'intf) intf_or_impl =
   | Intf of 'intf
 
 module File = struct
-  let of_filename s = if Filename.check_suffix s ".rei" then Intf s else Impl s
+  let of_filename s = if String.ends_with ~suffix:".rei" s then Intf s else Impl s
 
   let output_fn = function
     | Impl fn -> fn ^ ".ml"

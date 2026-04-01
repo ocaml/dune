@@ -1,17 +1,20 @@
 Testing the bootstrap of wrapped libraries.
 
-  $ . ./helpers.sh
+  $ init_bootstrap
 
   $ mkdir -p src/a
 
   $ cat > src/a/a.ml <<EOF
   > module B = B
+  > module Root = Root
   > let () = Printf.printf "Hello from wrapped interface module a/a.ml\n"
   > EOF
 
   $ cat > src/a/b.ml <<EOF
   > let () = Printf.printf "Hello from wrapped module a/b.ml\n"
   > EOF
+
+  $ make_module src/a/root.ml
 
   $ cat > src/a/dune <<EOF
   > (library

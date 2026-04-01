@@ -95,7 +95,7 @@ let term =
   let common, config = Common.init builder in
   Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
-    let* setup = Import.Main.setup () in
+    let* setup = Util.setup () in
     let* setup = Memo.run setup in
     let dir = Path.of_string dir in
     let checked = Util.check_path setup.contexts dir in
@@ -121,7 +121,7 @@ let term =
          | In_install_dir _ ->
            User_error.raise [ Pp.text "Environment is not defined in install dirs" ])
     in
-    build_exn (fun () ->
+    Build.build_memo_exn (fun () ->
       let open Memo.O in
       let+ res, _facts = Action_builder.evaluate_and_collect_facts request in
       res)

@@ -34,7 +34,7 @@ will be installed as a sub-directory.
 
 .. code:: dune
 
-   (lang dune 3.22)
+   (lang dune 3.23)
    (using dune_site 0.1)
    (name mygui)
 
@@ -249,7 +249,7 @@ Main Executable (C)
 
 .. code:: dune
 
-  (lang dune 3.22)
+  (lang dune 3.23)
   (using dune_site 0.1)
   (name app)
 

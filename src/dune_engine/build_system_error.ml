@@ -66,40 +66,12 @@ let description = function
 
 module Set = struct
   type error = t
+  type t = error Id.Map.t
 
-  type t =
-    { current : error Id.Map.t
-    ; stamp : int
-    ; last_event : Event.t option
-    }
-
-  let add t error =
-    let current = Id.Map.set t.current (id error) error in
-    { current; stamp = t.stamp + 1; last_event = Some (Add error) }
-  ;;
-
-  let equal t { current; stamp; last_event } =
-    Int.equal t.stamp stamp
-    &&
-    match t.last_event, last_event with
-    | None, None ->
-      assert (Id.Map.is_empty t.current && Id.Map.is_empty current);
-      true (* only possible when both sets are empty *)
-    | Some x, Some y ->
-      (match x, y with
-       | Add x, Add y -> Id.equal (id x) (id y)
-       | Add _, _ -> false
-       | Remove x, Remove y -> Id.equal (id x) (id y)
-       | Remove _, _ -> false)
-    | Some _, None | None, Some _ -> false
-  ;;
-
-  let one_event_diff ~prev ~next =
-    if prev.stamp + 1 = next.stamp then next.last_event else None
-  ;;
-
-  let current t = t.current
-  let empty = { current = Id.Map.empty; stamp = 0; last_event = None }
+  let add t error = Id.Map.set t (id error) error
+  let equal a b = Id.Map.equal a b ~equal:(fun a b -> Id.equal (id a) (id b))
+  let current t = t
+  let empty = Id.Map.empty
 end
 
 module For_tests = struct

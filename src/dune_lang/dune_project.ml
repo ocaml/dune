@@ -1,7 +1,7 @@
 open Import
 module Versioned_file = Dune_sexp.Versioned_file
 module Execution_parameters = Dune_engine.Execution_parameters
-module Compound_user_error = Dune_rpc_private.Compound_user_error
+module Compound_user_error = Dune_rpc.Private.Compound_user_error
 
 module Implicit_transitive_deps = struct
   type t =

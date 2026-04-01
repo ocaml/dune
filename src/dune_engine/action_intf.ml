@@ -82,7 +82,14 @@ module type Helpers = sig
   val rename : target -> target -> t
   val remove_tree : target -> t
   val mkdir : target -> t
-  val diff : ?optional:bool -> ?mode:Diff.Mode.t -> path -> target -> t
+
+  val diff
+    :  ?optional:bool
+    -> ?mode:Diff.Mode.t
+    -> ?directory_diffs:bool
+    -> path
+    -> target
+    -> t
 end
 
 module Exec = struct

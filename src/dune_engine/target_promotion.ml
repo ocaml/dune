@@ -12,9 +12,9 @@ module To_delete = struct
       type t = Path.Source.Set.t
 
       let name = "PROMOTED-TO-DELETE"
-      let version = 3
+      let sharing = true
+      let version = 4
       let to_dyn = Path.Source.Set.to_dyn
-      let test_example () = Path.Source.Set.empty
     end)
 
   let fn = Path.relative Path.build_dir ".to-delete-in-source-tree"
@@ -44,10 +44,9 @@ module To_delete = struct
       needs_dumping := false;
       get_db () |> P.dump fn)
   ;;
-
-  let () = Hooks.End_of_build.always dump
 end
 
+let save = To_delete.dump
 let files_in_source_tree_to_delete () = To_delete.get_db ()
 
 let promote_target_if_not_up_to_date
@@ -58,12 +57,12 @@ let promote_target_if_not_up_to_date
       ~promote_until_clean
   =
   let open Fiber.O in
-  (* It is OK to use [Fs_cache.Untracked.file_digest] here because below we use
+  (* It is OK to use [Fs_memo.Untracked.file_digest] here because below we use
      the tracked [Fs_memo.file_digest] to subscribe to the promotion result. *)
   let* promoted =
     match
-      Fs_cache.read Fs_cache.Untracked.file_digest (In_source_dir dst)
-      |> Cached_digest.Digest_result.to_option
+      Fs_memo.Untracked.file_digest (In_source_dir dst)
+      |> Dune_digest.Digest_result.to_option
     with
     | Some dst_digest when Digest.equal src_digest dst_digest ->
       (* CR-someday amokhov: We skip promotion if [src_digest = dst_digest] but
@@ -86,7 +85,7 @@ let promote_target_if_not_up_to_date
   let+ dst_digest_result =
     Memo.run (Fs_memo.file_digest ~force_update:promoted (In_source_dir dst))
   in
-  match Cached_digest.Digest_result.to_option dst_digest_result with
+  match Dune_digest.Digest_result.to_option dst_digest_result with
   | Some dst_digest ->
     (* It's tempting to assert [src_digest = dst_digest] here but it turns out
        this is not necessarily true: artifact substitution can change the
@@ -95,7 +94,7 @@ let promote_target_if_not_up_to_date
   | None ->
     Code_error.raise
       (sprintf "Could not compute digest of promoted file %S" (Path.Source.to_string dst))
-      [ "dst_digest_result", Cached_digest.Digest_result.to_dyn dst_digest_result ]
+      [ "dst_digest_result", Dune_digest.Digest_result.to_dyn dst_digest_result ]
 ;;
 
 (* CR-someday amokhov: If a build causes N file promotions, Dune can potentially
@@ -158,7 +157,7 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
        will use [Fs_memo.dir_contents] to subscribe to [dst_dir]'s contents, so
        Dune will notice its deletion. Furthermore, if we used a tracked version,
        [Path.mkdir_p] below would generate an unnecessary file-system event. *)
-    match Fs_cache.(read Untracked.path_stat) (In_source_dir dst_dir) with
+    match Fs_memo.Untracked.path_stat (In_source_dir dst_dir) with
     | Ok { st_kind = S_DIR; _ } -> ()
     | Error (ENOENT, _, _) -> Path.mkdir_p (Path.source dst_dir)
     | Ok _ | Error _ ->
@@ -216,7 +215,7 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
     function
     | Error unix_error -> directory_target_error ~unix_error ~dst_dir []
     | Ok dir_contents ->
-      Fs_cache.Dir_contents.iter dir_contents ~f:(function
+      Fs_memo.Dir_contents.iter dir_contents ~f:(function
         | file_name, S_REG ->
           if not (Targets.Produced.mem targets (Path.Build.relative build_dir file_name))
           then Fpath.unlink_no_err (Path.to_string (Path.relative dst_dir file_name))

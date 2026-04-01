@@ -76,9 +76,24 @@ let%expect_test "expr (blang const)" =
 
 (* Blang: And *)
 
+let%expect_test "and empty" =
+  print_blang (and_ []);
+  [%expect {| Const true |}]
+;;
+
 let%expect_test "and singleton" =
   print_blang (and_ [ expr (pform "x") ]);
   [%expect {| Expr (Literal (template "%{pkg-self:x}")) |}]
+;;
+
+let%expect_test "and deduplicates" =
+  print_blang (and_ [ expr (pform "x"); expr (pform "y"); expr (pform "x") ]);
+  [%expect
+    {|
+    And
+      (Expr (Literal (template "%{pkg-self:x}")),
+       Expr (Literal (template "%{pkg-self:y}")))
+    |}]
 ;;
 
 let%expect_test "and false short-circuits" =
@@ -109,9 +124,24 @@ let%expect_test "and flattens" =
 
 (* Blang: Or *)
 
+let%expect_test "or empty" =
+  print_blang (or_ []);
+  [%expect {| Const false |}]
+;;
+
 let%expect_test "or singleton" =
   print_blang (or_ [ expr (pform "x") ]);
   [%expect {| Expr (Literal (template "%{pkg-self:x}")) |}]
+;;
+
+let%expect_test "or deduplicates" =
+  print_blang (or_ [ expr (pform "x"); expr (pform "y"); expr (pform "x") ]);
+  [%expect
+    {|
+    Or
+      (Expr (Literal (template "%{pkg-self:x}")),
+       Expr (Literal (template "%{pkg-self:y}")))
+    |}]
 ;;
 
 let%expect_test "or true short-circuits" =
@@ -296,6 +326,11 @@ let%expect_test "when unknown" =
   [%expect {| When (Expr (Literal (template "%{pkg-self:x}")), Literal "hello") |}]
 ;;
 
+let%expect_test "when unknown nil" =
+  print_slang (Slang.when_ (expr (pform "x")) Slang.Nil);
+  [%expect {| Nil |}]
+;;
+
 (* Slang: If *)
 
 let%expect_test "if true" =
@@ -360,6 +395,32 @@ let%expect_test "has_undefined_var const" =
 
 (* Slang: And_absorb_undefined_var *)
 
+let%expect_test "and_absorb empty" =
+  print_slang (Slang.and_absorb_undefined_var []);
+  [%expect {| Blang (Const true) |}]
+;;
+
+let%expect_test "and_absorb singleton" =
+  print_slang (Slang.and_absorb_undefined_var [ expr (pform "x") ]);
+  [%expect {| Blang (Expr (Literal (template "%{pkg-self:x}"))) |}]
+;;
+
+let%expect_test "and_absorb filters true" =
+  print_slang (Slang.and_absorb_undefined_var [ const true; expr (pform "x") ]);
+  [%expect {| Blang (Expr (Literal (template "%{pkg-self:x}"))) |}]
+;;
+
+let%expect_test "and_absorb false short-circuits" =
+  print_slang
+    (Slang.and_absorb_undefined_var [ expr (pform "x"); const false; expr (pform "y") ]);
+  [%expect {| Blang (Const false) |}]
+;;
+
+let%expect_test "and_absorb all true" =
+  print_slang (Slang.and_absorb_undefined_var [ const true; const true ]);
+  [%expect {| Blang (Const true) |}]
+;;
+
 let%expect_test "and_absorb flattens" =
   print_slang
     (Slang.and_absorb_undefined_var
@@ -376,6 +437,32 @@ let%expect_test "and_absorb flattens" =
 ;;
 
 (* Slang: Or_absorb_undefined_var *)
+
+let%expect_test "or_absorb empty" =
+  print_slang (Slang.or_absorb_undefined_var []);
+  [%expect {| Blang (Const false) |}]
+;;
+
+let%expect_test "or_absorb singleton" =
+  print_slang (Slang.or_absorb_undefined_var [ expr (pform "x") ]);
+  [%expect {| Blang (Expr (Literal (template "%{pkg-self:x}"))) |}]
+;;
+
+let%expect_test "or_absorb filters false" =
+  print_slang (Slang.or_absorb_undefined_var [ const false; expr (pform "x") ]);
+  [%expect {| Blang (Expr (Literal (template "%{pkg-self:x}"))) |}]
+;;
+
+let%expect_test "or_absorb true short-circuits" =
+  print_slang
+    (Slang.or_absorb_undefined_var [ expr (pform "x"); const true; expr (pform "y") ]);
+  [%expect {| Blang (Const true) |}]
+;;
+
+let%expect_test "or_absorb all false" =
+  print_slang (Slang.or_absorb_undefined_var [ const false; const false ]);
+  [%expect {| Blang (Const false) |}]
+;;
 
 let%expect_test "or_absorb flattens" =
   print_slang

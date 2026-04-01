@@ -7,7 +7,7 @@ Test that dune supports lockfiles with md5, sha256 and sha512 hashes.
   > url {
   >  src: "file://with-md5"
   >  checksum: [
-  >   "md5=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  >   "sha512=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
   >  ]
   > }
   > EOF
@@ -30,8 +30,8 @@ Test that dune supports lockfiles with md5, sha256 and sha512 hashes.
   > }
   > EOF
 
-This package uses multiple hashing algorithms. Currently dune will just add the
-first checksum to the lockfile for this package.
+This package uses multiple hashing algorithms. Currently dune will add the
+strongest checksum to the lockfile for this package.
 
   $ mkpkg with-all <<EOF
   > url {
@@ -82,19 +82,22 @@ first checksum to the lockfile for this package.
   (source
    (fetch
     (url file://with-all)
-    (checksum md5=dddddddddddddddddddddddddddddddd)))
+    (checksum
+     sha512=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)))
   
   (extra_sources
    (fixes.patch
     (fetch
      (url https://unimportant.url/unused.patch)
-     (checksum md5=00000000000000000000000000000000))))
+     (checksum
+      sha512=22222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222))))
   (version 0.0.1)
   
   (source
    (fetch
     (url file://with-md5)
-    (checksum md5=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)))
+    (checksum
+     sha512=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)))
   (version 0.0.1)
   
   (source

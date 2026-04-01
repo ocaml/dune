@@ -1,5 +1,5 @@
 open Stdune
-module Console = Dune_console
+module Console = Console
 
 let () = Dune_tests_common.init ()
 

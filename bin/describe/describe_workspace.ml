@@ -687,12 +687,12 @@ let term : unit Term.t =
   Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
-  let* setup = Import.Main.setup () in
-  build_exn
+  let* setup = Util.setup () in
+  Build.build_memo_exn
   @@ fun () ->
   let open Memo.O in
   let* setup = setup in
-  let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
+  let super_context = Dune_rules.Main.find_scontext_exn setup ~name:context_name in
   let context = Super_context.context super_context in
   let* findlib_paths = Context.findlib_paths context in
   (* prefix directories with the workspace root, so that the

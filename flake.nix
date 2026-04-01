@@ -16,7 +16,6 @@
     };
     oxcaml = {
       url = "github:oxcaml/oxcaml";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
     oxcaml-opam-repository = {
       url = "github:oxcaml/opam-repository";
@@ -244,7 +243,6 @@
           testBuildInputs =
             with pkgs;
             [
-              file
               jq
               ripgrep
               shellcheck
@@ -495,14 +493,14 @@
             '';
           };
 
-          bootstrap-check_4_08 = pkgs.mkShell {
+          bootstrap-check_4_14 = pkgs.mkShell {
             inherit INSIDE_NIX;
             buildInputs = [
               pkgs.gnumake
-              pkgs-old.ocaml-ng.ocamlPackages_4_08.ocaml
+              pkgs.ocaml-ng.ocamlPackages_4_14.ocaml
             ];
             meta.description = ''
-              Provides a minimal shell environment with OCaml 4.08 in order
+              Provides a minimal shell environment with OCaml 4.14 in order
               to test the bootstrapping script.
             '';
           };

@@ -8,6 +8,7 @@ val in_file : Path.t -> t
 val in_dir : Path.t -> t
 val none : t
 val is_none : t -> bool
+val repr : t Repr.t
 val drop_position : t -> t
 val of_lexbuf : Lexing.lexbuf -> t
 val to_dyn : t -> Dyn.t

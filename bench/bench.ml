@@ -5,7 +5,7 @@ module Process = Dune_engine.Process
 open Dune_scheduler
 
 module Console = struct
-  include Dune_console
+  include Console
 
   let printf fmt = printf ("[Bench] " ^^ fmt)
 end

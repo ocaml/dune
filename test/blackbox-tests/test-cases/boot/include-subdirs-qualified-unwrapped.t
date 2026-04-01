@@ -1,10 +1,9 @@
 Testing the bootstrap of an unwrapped include subdirs qualified.
 
-Currently doesn't work because it is not implemented.
-
-  $ . ./helpers.sh
+  $ init_bootstrap
 
   $ mkdir -p src/lib/b/c
+  $ mkdir -p src/lib/a
 
   $ cat > src/lib/x.ml <<EOF
   > let () = Printf.printf "Hello from unwrapped a/x.ml\n"
@@ -19,6 +18,8 @@ Currently doesn't work because it is not implemented.
   > let () = Printf.printf "Hello from unwrapped a/b/c/c.ml\n"
   > EOF
 
+  $ make_module src/lib/root.ml
+
   $ cat > src/lib/dune <<EOF
   > (library
   >  (name lib)
@@ -27,6 +28,7 @@ Currently doesn't work because it is not implemented.
   > EOF
 
   $ create_dune lib <<EOF
+  > module Root = Root
   > module M1 = X
   > module M2 = B
   > module M3 = B.C

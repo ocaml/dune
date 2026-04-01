@@ -3,6 +3,7 @@ open Import
 (** Slang (string-language) is a DSL for computing lists of strings. *)
 type t =
   | Nil
+  | Undefined
   | Literal of String_with_vars.t
   (** A string literal which may contain pforms. It's possible for a single
       unquoted pform to expand to a list of multiple strings. *)

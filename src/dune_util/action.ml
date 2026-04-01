@@ -15,15 +15,17 @@ module Diff = struct
   type ('path, 'target) t =
     { optional : bool
     ; mode : Mode.t
+    ; directory_diffs : bool
     ; file1 : 'path
     ; file2 : 'target
     }
 
-  let to_dyn path target { optional; mode; file1; file2 } =
+  let to_dyn path target { optional; mode; directory_diffs; file1; file2 } =
     let open Dyn in
     record
       [ "optional", bool optional
       ; "mode", Mode.to_dyn mode
+      ; "directory_diffs", bool directory_diffs
       ; "file1", path file1
       ; "file2", target file2
       ]

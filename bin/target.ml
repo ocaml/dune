@@ -110,9 +110,24 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system)
   =
   let open Memo.O in
   let checked = Util.check_path setup.contexts path in
-  let can't_build path =
-    let+ hint = target_hint setup path in
-    Error hint
+  let can't_build ?src path =
+    let open Memo.O in
+    let+ target_hint = target_hint setup path
+    and+ excluded_hint =
+      match src with
+      | None -> Memo.return []
+      | Some src ->
+        Source_tree.find_excluded_ancestor src
+        >>| (function
+         | None -> []
+         | Some (excluded, loc) ->
+           [ Pp.textf
+               "directory %s exists on disk but is excluded by a (dirs ...) stanza at %s"
+               (Path.Source.to_string_maybe_quoted excluded)
+               (Loc.to_file_colon_line loc)
+           ])
+    in
+    Error (excluded_hint @ target_hint)
   in
   let as_source_dir src =
     Source_tree.find_dir src
@@ -149,7 +164,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system)
        as_source_dir src
        >>= (function
         | Some res -> Memo.return (Ok res)
-        | None -> can't_build path)
+        | None -> can't_build ~src path)
      | l -> Memo.return (Ok l))
   | In_build_dir (_ctx, src) ->
     matching_target ()
@@ -159,7 +174,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system)
        as_source_dir src
        >>= (function
         | Some res -> Memo.return (Ok res)
-        | None -> can't_build path))
+        | None -> can't_build ~src path))
   | In_private_context _ | In_install_dir _ ->
     matching_target ()
     >>= (function

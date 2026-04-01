@@ -1,6 +1,6 @@
 open Stdune
 open Fiber.O
-module Dune_rpc = Dune_rpc_private
+module Dune_rpc = Dune_rpc.Private
 open Dune_rpc
 open Dune_rpc_server
 module Scheduler = Test_scheduler
@@ -821,7 +821,6 @@ let%test_module "finalization" =
 ;;
 
 let%expect_test "sexp_for_digest" =
-  let open Dune_rpc_private in
   let print_sexp_for_digest conv =
     Pp.to_fmt Format.std_formatter (Sexp.pp (Conv.sexp_for_digest conv))
   in
@@ -880,7 +879,6 @@ let%expect_test "sexp_for_digest" =
 ;;
 
 let%expect_test "print digests for all public RPCs" =
-  let open Dune_rpc_private in
   Decl.Request.print_generations Procedures.Public.ping;
   [%expect
     {|

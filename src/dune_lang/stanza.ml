@@ -103,7 +103,7 @@ end
 
    To upgrade the latest version of the dune language, you need to edit the file
    in the rpc library. *)
-let latest_version = Dune_rpc_private.Version.latest
+let latest_version = Dune_rpc.Private.Version.latest
 let since v = v, `Since v
 let all_minors (major, minor) = List.init (minor + 1) ~f:(fun i -> since (major, i))
 

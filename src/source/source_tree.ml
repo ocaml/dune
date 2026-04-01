@@ -324,6 +324,30 @@ let find_dir =
 ;;
 
 let nearest_dir = gen_find_dir ~on_success:Memo.return ~on_last_found:Memo.return
+
+let find_excluded_ancestor path =
+  let rec loop (dir : Dir0.t) = function
+    | [] -> Memo.return None
+    | sub_dir :: path ->
+      (match Filename.Map.find dir.sub_dirs sub_dir with
+       | Some sub_dir ->
+         let* child = sub_dir.sub_dir_as_t in
+         loop child path
+       | None ->
+         Dir_contents.of_source_path dir.path
+         >>| (function
+          | Ok contents
+            when List.exists (Dir_contents.dirs contents) ~f:(fun (name, _) ->
+                   String.equal name sub_dir) ->
+            dir.dune_file
+            |> Option.bind ~f:Dune_file.dirs_stanza_loc
+            |> Option.map ~f:(fun loc -> Path.Source.relative dir.path sub_dir, loc)
+          | _ -> None))
+  in
+  let* root = Memo.Cell.read root in
+  loop root (Path.Source.explode path)
+;;
+
 let root () = Memo.Cell.read root
 
 let files_of path =

@@ -117,7 +117,7 @@ let () =
   (match !libexecdir with
    | None -> libexecdir := !library_destdir
    | Some _ -> ());
-  let oc = open_out out in
+  let oc = open_out_bin out in
   let pr fmt = fprintf oc (fmt ^^ "\n") in
   pr "let library_path = %s\n" ((list string) !library_path);
   pr "let roots : string option Install.Roots.t =";

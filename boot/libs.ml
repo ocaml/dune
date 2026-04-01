@@ -1,5 +1,4 @@
 open Types
-let external_libraries = [ "unix"; "threads" ]
 
 let local_libraries =
   [ { path = "otherlibs/top-closure"
@@ -69,12 +68,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_console"
-    ; main_module_name = Some "Dune_console"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/memo"
     ; main_module_name = Some "Memo"
     ; include_subdirs = No
@@ -117,8 +110,8 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "otherlibs/dune-rpc/private"
-    ; main_module_name = Some "Dune_rpc_private"
+  ; { path = "otherlibs/dune-rpc"
+    ; main_module_name = Some "Dune_rpc"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -221,18 +214,6 @@ let local_libraries =
     }
   ; { path = "src/predicate_lang"
     ; main_module_name = Some "Predicate_lang"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/fiber_util"
-    ; main_module_name = Some "Fiber_util"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/dune_cache_storage"
-    ; main_module_name = Some "Dune_cache_storage"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -477,14 +458,12 @@ let main =
             ; "Pp"
             ; "Stdune"
             ; "Fs_io"
-            ; "Dune_console"
             ; "Unix"
             ; "UnixLabels"
             ; "Install"
             ; "Dune_findlib"
             ; "Dune_digest"
             ; "Dune_cache"
-            ; "Dune_cache_storage"
             ; "Dune_graph"
             ; "Dune_rules"
             ; "Dune_vcs"
@@ -514,7 +493,7 @@ let main =
             ; "Csexp"
             ; "Csexp_rpc"
             ; "Dune_rpc_impl"
-            ; "Dune_rpc_private"
+            ; "Dune_rpc"
             ; "Dune_rpc_client"
             ; "Spawn"
             ; "OpamCompat"

@@ -1,9 +1,11 @@
 type t = int
 
+val repr : t Repr.t
 val compare : t -> t -> Ordering.t
 val equal : t -> t -> bool
 val hash : t -> int
 val to_dyn : t -> Dyn.t
+val max : t -> t -> t
 
 include Comparable_intf.S with type key := t
 

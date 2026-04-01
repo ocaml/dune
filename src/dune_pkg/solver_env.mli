@@ -6,6 +6,7 @@ val empty : t
 val equal : t -> t -> bool
 val hash : t -> int
 val digest_feed : t Dune_digest.Feed.t
+val repr : t Repr.t
 val compare : t -> t -> ordering
 val to_dyn : t -> Dyn.t
 val is_empty : t -> bool

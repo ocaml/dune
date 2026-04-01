@@ -520,8 +520,7 @@ let man =
 let info = Cmd.info "subst" ~doc ~man
 
 let term =
-  let+ () = Common.build_info
-  and+ debug_backtraces = Common.debug_backtraces in
+  let+ () = Common.No_build.term_and_set in
   let config : Dune_config.t =
     { Dune_config.default with
       display = Dune_config.Display.quiet
@@ -533,7 +532,6 @@ let term =
      correctly. It should not be necessary, so we should probably make the
      package loading lazier. *)
   Dune_rules.Only_packages.Clflags.set No_restriction;
-  Dune_engine.Clflags.debug_backtraces debug_backtraces;
   Path.set_root (Path.External.cwd ());
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string Common.default_build_dir);
   Dune_config.init config ~watch:false;

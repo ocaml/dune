@@ -501,6 +501,12 @@ let get_static_sexp t = (Dir_map.root t.plain).sexps
 let kind t = t.kind
 let path t = t.path
 let sub_dir_status t = Source_dir_status.Spec.create (Dir_map.root t.plain).subdir_status
+
+let dirs_stanza_loc t =
+  Source_dir_status.Map.find (Dir_map.root t.plain).subdir_status Normal
+  |> Option.map ~f:fst
+;;
+
 let files t = (Dir_map.root t.plain).files
 
 let load_plain sexps ~file ~from_parent ~project =

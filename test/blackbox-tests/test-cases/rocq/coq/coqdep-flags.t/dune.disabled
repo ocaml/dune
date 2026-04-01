@@ -1,4 +1,0 @@
-(env
- (_
-  (coq
-   (coqdep_flags (:standard --global-flag1 --global-flag2)))))

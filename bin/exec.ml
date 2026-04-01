@@ -235,7 +235,7 @@ let build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog =
         let open Fiber.O in
         Rpc.Rpc_common.fire_request
           ~name:"build"
-          ~wait:true
+          ~wait:false
           ~lock_held_by
           builder
           Dune_rpc_impl.Decl.build
@@ -270,7 +270,7 @@ let exec_building_via_rpc_server ~common ~prog ~args ~no_rebuild builder lock_he
   let+ prog =
     build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog
   in
-  restore_cwd_and_execve (Common.root common) prog args Env.initial
+  Util.restore_cwd_and_execve (Common.root common) prog args Env.initial
 ;;
 
 let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
@@ -285,15 +285,15 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
     Scheduler.Run.poll
     @@
     let* () = Fiber.return @@ Scheduler_setup.maybe_clear_screen ~details_hum:[] config in
-    build @@ step ~prog ~args ~common ~no_rebuild ~context ~on_exit
+    Build.build_memo @@ step ~prog ~args ~common ~no_rebuild ~context ~on_exit
   | No ->
     Scheduler_setup.go_with_rpc_server ~common ~config
     @@ fun () ->
     let open Fiber.O in
-    let* setup = Import.Main.setup () in
-    build_exn (fun () ->
+    let* setup = Util.setup () in
+    Build.build_memo_exn (fun () ->
       let open Memo.O in
-      let* sctx = setup >>| Import.Main.find_scontext_exn ~name:context in
+      let* sctx = setup >>| Dune_rules.Main.find_scontext_exn ~name:context in
       let* env = Super_context.context_env sctx
       and* prog =
         let* prog = Cmd_arg.expand ~root:(Common.root common) ~sctx prog in
@@ -301,7 +301,7 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
       and* args =
         Memo.parallel_map ~f:(Cmd_arg.expand ~root:(Common.root common) ~sctx) args
       in
-      restore_cwd_and_execve (Common.root common) prog args env)
+      Util.restore_cwd_and_execve (Common.root common) prog args env)
 ;;
 
 let term : unit Term.t =

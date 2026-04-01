@@ -135,6 +135,18 @@ module Pkg_digest = struct
         Dune_digest.hash
         (name, version, lockfile_and_dependency_digest)
     ;;
+
+    let digest_repr = Repr.view Repr.string ~to_:Dune_digest.to_string
+
+    let repr =
+      Repr.record
+        "pkg-digest"
+        [ Repr.field "name" Package.Name.repr ~get:(fun t -> t.name)
+        ; Repr.field "version" Package_version.repr ~get:(fun t -> t.version)
+        ; Repr.field "lockfile_and_dependency_digest" digest_repr ~get:(fun t ->
+            t.lockfile_and_dependency_digest)
+        ]
+    ;;
   end
 
   include T
@@ -168,19 +180,10 @@ module Pkg_digest = struct
             { name; version; lockfile_and_dependency_digest }))
   ;;
 
-  let digest_feed =
-    Digest_feed.tuple3
-      Package.Name.digest_feed
-      Package_version.digest_feed
-      Digest_feed.digest
-    |> Digest_feed.contramap ~f:(fun { name; version; lockfile_and_dependency_digest } ->
-      name, version, lockfile_and_dependency_digest)
-  ;;
-
   let create lockfile_pkg depends_pkg_digests =
     let lockfile_and_dependency_digest =
       Digest_feed.compute_digest
-        (Digest_feed.tuple2 Lock_dir.Pkg.digest_feed (Digest_feed.list digest_feed))
+        (Digest_feed.tuple2 Lock_dir.Pkg.digest_feed (Digest_feed.repr (Repr.list repr)))
         (Dune_pkg.Lock_dir.Pkg.remove_locs lockfile_pkg, depends_pkg_digests)
     in
     let name = lockfile_pkg.info.name in
@@ -305,15 +308,14 @@ module Install_cookie = struct
   module Persistent = Persistent.Make (struct
       type nonrec t = (Section.t * Path.t list) list Gen.t
 
+      let sharing = false
       let name = "INSTALL-COOKIE"
-      let version = 3
+      let version = 4
 
       let to_dyn =
         let open Dyn in
         Gen.to_dyn (list (pair Section.to_dyn (list Path.to_dyn)))
       ;;
-
-      let test_example () = { Gen.files = []; variables = [] }
     end)
 
   let load_exn f =
@@ -480,18 +482,20 @@ module Pkg = struct
     in
     let skip_file = String.starts_with ~prefix:".#" in
     let rec loop root acc path =
-      let full_path = Path.External.append_local root path in
-      Fs_memo.dir_contents (External full_path)
+      let full_path = Path.Outside_build_dir.append_local root path in
+      Fs_memo.dir_contents full_path
       >>= function
       | Error e ->
         User_error.raise
           ~loc
-          [ Pp.textf "Unable to read %s" (Path.External.to_string_maybe_quoted full_path)
+          [ Pp.textf
+              "Unable to read %s"
+              (Path.Outside_build_dir.to_string_maybe_quoted full_path)
           ; Unix_error.Detailed.pp e
           ]
       | Ok contents ->
         let files, dirs =
-          let contents = Fs_cache.Dir_contents.to_list contents in
+          let contents = Fs_memo.Dir_contents.to_list contents in
           List.rev_filter_partition_map contents ~f:(fun (name, kind) ->
             (* TODO handle links and cycles correctly *)
             match kind with
@@ -572,6 +576,7 @@ module Pkg = struct
       ; ( "OPAM_PACKAGE_VERSION"
         , [ Value.String (Package_version.to_string t.info.version) ] )
       ; "OPAMCLI", [ Value.String "2.0" ]
+      ; "OPAMSWITCH", [ Value.String "dune" ]
       ]
   ;;
 
@@ -974,6 +979,7 @@ module Action_expander = struct
          let loc =
            let loc = function
              | Slang.Nil -> None
+             | Slang.Undefined -> None
              | Literal sw -> Some (String_with_vars.loc sw)
              | Form (loc, _) -> Some loc
            in
@@ -1112,7 +1118,14 @@ module Action_expander = struct
             let binaries =
               Section.Map.Multi.find cookie.files Bin
               |> List.fold_left ~init:binaries ~f:(fun acc bin ->
-                Filename.Map.set acc (Path.basename bin) bin)
+                let name = Path.basename bin in
+                (* CR-soon Alizter: share .exe stripping logic with artifacts.ml *)
+                let name =
+                  if Sys.win32
+                  then Option.value ~default:name (String.drop_suffix name ~suffix:".exe")
+                  else name
+                in
+                Filename.Map.set acc name bin)
             in
             let dep_info =
               let variables =
@@ -1619,9 +1632,9 @@ end
 module Install_action = struct
   (* The install action does the following:
 
-     1. Runs the install action in the lock file (if exists)
+     1. Runs the install action in the lock file (if it exists)
      2. Reads the .install file produced by the build command
-     3. Discoves all the files produced by 1.
+     3. Discovers all the files produced by 1.
      4. Combines the set of files in 2. and 3. to produce a "cookie" file
   *)
 
@@ -1845,12 +1858,30 @@ module Install_action = struct
         |> List.map ~f:(fun (name, value) -> Package_variable_name.of_opam name, value)
     ;;
 
+    (* On Windows, .install files may omit .exe for bin/sbin entries.
+       Try the .exe variant if the original doesn't exist, mirroring opam. *)
+    let maybe_add_exe src (entry : Path.t Install.Entry.Expanded.t) =
+      match
+        match Sys.win32, entry.section with
+        | true, (Bin | Sbin) when not (Fpath.exists (Path.to_string src)) ->
+          let src_exe_str = Bin.add_exe (Path.to_string src) in
+          if Fpath.exists src_exe_str then Some src_exe_str else None
+        | _ -> None
+      with
+      | None -> src, entry
+      | Some src_exe_str ->
+        ( Path.of_string src_exe_str
+        , Install.Entry.map_dst entry ~f:(fun dst ->
+            Install.Entry.Dst.explicit (Bin.add_exe (Install.Entry.Dst.to_string dst))) )
+    ;;
+
     let install_entry
           ~src
           ~install_file
           ~target_dir
           (entry : Path.t Install.Entry.Expanded.t)
       =
+      let src, entry = maybe_add_exe src entry in
       match Fpath.exists (Path.to_string src), entry.optional with
       | false, true -> None
       | false, false ->
@@ -2060,7 +2091,7 @@ let source_rules (pkg : Pkg.t) =
          Memo.return (Dep.Set.of_files [ pkg.paths.source_dir ], [ loc, fetch ])
        | `Local (`Directory, source_root) ->
          let+ source_files, rules =
-           let source_root = Path.external_ source_root in
+           let source_root = Path.outside_build_dir source_root in
            Pkg.source_files pkg ~loc
            >>| Path.Local.Set.fold ~init:([], []) ~f:(fun file (source_files, rules) ->
              let src = Path.append_local source_root file in

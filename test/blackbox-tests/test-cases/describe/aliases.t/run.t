@@ -10,6 +10,10 @@ In an empty dune project, the following aliases are available.
   fmt
   ocaml-index
   pkg-install
+  revdep
+  revdep-check
+  revdep-install
+  revdep-runtest
 
 User defined aliases can be added to a dune file. These should be picked up by
 the command.
@@ -26,6 +30,10 @@ the command.
   foo
   ocaml-index
   pkg-install
+  revdep
+  revdep-check
+  revdep-install
+  revdep-runtest
 
 Aliases in subdirectories should not be picked up.
 
@@ -42,6 +50,10 @@ Aliases in subdirectories should not be picked up.
   foo
   ocaml-index
   pkg-install
+  revdep
+  revdep-check
+  revdep-install
+  revdep-runtest
 
 But checking the subdirectory it should be available.
 
@@ -50,6 +62,10 @@ But checking the subdirectory it should be available.
   bar
   default
   fmt
+  revdep
+  revdep-check
+  revdep-install
+  revdep-runtest
 
 Adding an OCaml library will introduce OCaml specific aliases:
 
@@ -66,6 +82,10 @@ Adding an OCaml library will introduce OCaml specific aliases:
   fmt
   ocaml-index
   pkg-install
+  revdep
+  revdep-check
+  revdep-install
+  revdep-runtest
   unused-libs
 
 Adding a cram test will introduce an alias with the name of the test and also
@@ -81,6 +101,10 @@ bbb
   mytest
   ocaml-index
   pkg-install
+  revdep
+  revdep-check
+  revdep-install
+  revdep-runtest
   runtest
 
 We can also show aliases in multiple directories at once:
@@ -93,6 +117,10 @@ We can also show aliases in multiple directories at once:
   mytest
   ocaml-index
   pkg-install
+  revdep
+  revdep-check
+  revdep-install
+  revdep-runtest
   runtest
   
   subdir:
@@ -100,6 +128,10 @@ We can also show aliases in multiple directories at once:
   bar
   default
   fmt
+  revdep
+  revdep-check
+  revdep-install
+  revdep-runtest
 
 Including those in the _build/ directory:
 
@@ -112,6 +144,10 @@ Including those in the _build/ directory:
   mytest
   ocaml-index
   pkg-install
+  revdep
+  revdep-check
+  revdep-install
+  revdep-runtest
   runtest
   
   _build/default:
@@ -121,6 +157,10 @@ Including those in the _build/ directory:
   mytest
   ocaml-index
   pkg-install
+  revdep
+  revdep-check
+  revdep-install
+  revdep-runtest
   runtest
 
 These are context sensitive:
@@ -142,4 +182,8 @@ These are context sensitive:
   mytest
   ocaml-index
   pkg-install
+  revdep
+  revdep-check
+  revdep-install
+  revdep-runtest
   runtest

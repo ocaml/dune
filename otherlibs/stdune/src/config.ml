@@ -5,15 +5,19 @@ type 'a t =
   { name : string
   ; of_string : string -> ('a, string) result
   ; mutable value : 'a
+  ; lazy_init : bool
+  ; mutable read : bool
   }
 
 let env_name t = sprintf "DUNE_CONFIG__%s" (String.uppercase_ascii t.name)
 let is_initialized () = !initialized
 
 let get t =
-  if not !initialized
-  then Code_error.raise "Config.get: invalid access" [ "name", Dyn.string t.name ];
-  t.value
+  if t.lazy_init || !initialized
+  then (
+    t.read <- true;
+    t.value)
+  else Code_error.raise "Config.get: invalid access" [ "name", Dyn.string t.name ]
 ;;
 
 type packed = E : 'a t -> packed
@@ -80,19 +84,30 @@ let init values =
     | None -> Option.iter config ~f:(fun config -> t.value <- config)
     | Some v ->
       (match t.of_string v with
-       | Ok v -> t.value <- v
+       | Ok v ->
+         if t.read && v <> t.value
+         then Code_error.raise "variable already read" [ "name", Dyn.string t.name ]
+         else t.value <- v
        | Error e ->
          User_error.raise [ Pp.textf "Invalid value for %S" env_name; Pp.text e ]));
   initialized := true
 ;;
 
-let make ~name ~of_string ~default =
-  let t = { name; of_string; value = default } in
+let make ~lazy_init ~name ~of_string ~default =
+  let t = { name; of_string; value = default; lazy_init; read = false } in
   register t;
   t
 ;;
 
-let make_toggle ~name ~default = make ~name ~default ~of_string:Toggle.of_string
+let make_toggle_lazy_init ~name ~default =
+  make ~lazy_init:true ~name ~default ~of_string:Toggle.of_string
+;;
+
+let make_toggle ~name ~default =
+  make ~lazy_init:false ~name ~default ~of_string:Toggle.of_string
+;;
+
+let make ~name ~of_string ~default = make ~lazy_init:false ~name ~of_string ~default
 let global_lock = make ~name:"global_lock" ~of_string:Toggle.of_string ~default:`Enabled
 
 let cutoffs_that_reduce_concurrency_in_watch_mode =

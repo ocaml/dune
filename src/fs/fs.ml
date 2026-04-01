@@ -4,7 +4,6 @@ open Memo.O
 open struct
   open Dune_engine
   module Fs_memo = Fs_memo
-  module Fs_cache = Fs_cache
   module Build_system = Build_system
 end
 
@@ -12,7 +11,7 @@ let dir_contents (dir : Path.t) =
   let* () = Memo.return () in
   match Path.destruct_build_dir dir with
   | `Outside dir ->
-    Fs_memo.dir_contents dir >>| Result.map ~f:Fs_cache.Dir_contents.to_list
+    Fs_memo.dir_contents dir >>| Result.map ~f:Fs_memo.Dir_contents.to_list
   | `Inside _ ->
     let* already_exists = Build_system.file_exists dir in
     let+ () = if already_exists then Build_system.build_dir dir else Memo.return () in

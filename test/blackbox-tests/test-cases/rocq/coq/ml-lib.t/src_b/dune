@@ -1,5 +1,0 @@
-(library
- (public_name ml_lib.ml_plugin_b)
- (name ml_plugin_b)
- (flags :standard -rectypes)
- (libraries ml_plugin_a))

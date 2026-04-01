@@ -6,7 +6,7 @@ Demonstrate sandbox events:
   > (rule
   >  (alias foo)
   >  (deps (sandbox always))
-  >  (action (system "true")))
+  >  (action (bash "true")))
   > EOF
 
   $ dune build @foo

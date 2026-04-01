@@ -30,7 +30,7 @@ let run_fmt_command ~common ~config ~preview builder =
   let open Fiber.O in
   let once () =
     let* () = lock_ocamlformat () in
-    let request (setup : Import.Main.build_system) =
+    let request (setup : Dune_rules.Main.build_system) =
       let dir = Path.(relative root) (Common.prefix_target common ".") in
       Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts:setup.contexts dir
       |> Alias.request
@@ -48,7 +48,7 @@ let run_fmt_command ~common ~config ~preview builder =
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
       Rpc.Rpc_common.fire_request
         ~name:"format"
-        ~wait:true
+        ~wait:false
         ~warn_forwarding:false
         ~lock_held_by
         builder

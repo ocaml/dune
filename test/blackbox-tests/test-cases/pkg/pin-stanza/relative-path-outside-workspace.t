@@ -1,5 +1,4 @@
-Demonstrate that you can't use a relative path referring outside the workspace
-in the pin stanza:
+Demonstrate that relative paths outside the workspace work in pin stanzas:
 
 Make a package containing a library:
   $ mkdir foo
@@ -49,7 +48,7 @@ Lock and build the second package to demonstrate that everything works so far:
   $ dune exec ./bar.exe
   foo
 
-Now change the pin to use a relative path:
+Now change the pin to use a relative path (this should also work):
   $ cat > dune-project <<EOF
   > (lang dune 3.14)
   > (pin
@@ -60,10 +59,10 @@ Now change the pin to use a relative path:
   >  (depends foo))
   > EOF
 
-Solving the project now results in an error, though it's still possible to build the project:
+Solving the project works with relative paths outside the workspace:
   $ dune clean
   $ dune_pkg_lock_normalized
-  Error: path outside the workspace: ../foo from .
-  [1]
+  Solution for dune.lock:
+  - foo.dev
   $ dune exec ./bar.exe
   foo

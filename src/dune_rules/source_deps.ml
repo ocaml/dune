@@ -7,6 +7,7 @@ module Map_reduce =
     (Monoid.Product (Monoid.Union (Path.Set)) (Monoid.Union (Path.Set)))
 
 let files_with_filter dir ~filter =
+  let* () = Memo.return () in
   let prefix_with, dir =
     match (dir : Path.t) with
     | In_source_tree dir -> Path.root, dir

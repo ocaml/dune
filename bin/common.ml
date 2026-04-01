@@ -1,7 +1,7 @@
 open Stdune
 open Dune_config_file
 open Dune_scheduler
-module Console = Dune_console
+module Console = Console
 module Graph = Dune_graph.Graph
 module Profile = Dune_lang.Profile
 
@@ -80,7 +80,7 @@ open Let_syntax
 
 let copts_sect = "COMMON OPTIONS"
 
-let debug_backtraces =
+let debug_backtraces_term =
   Arg.(
     value
     & flag
@@ -133,6 +133,30 @@ let build_info =
        List.iter libs ~f:(fun (name, v) -> pr "- %-*s %s" longest name v));
     exit 0)
 ;;
+
+module No_build = struct
+  type t = { debug_backtraces : bool }
+
+  let equal t { debug_backtraces } = Bool.equal t.debug_backtraces debug_backtraces
+  let debug_backtraces = debug_backtraces_term
+
+  let set_debug_backtraces debug_backtraces =
+    Dune_engine.Clflags.debug_backtraces debug_backtraces
+  ;;
+
+  let set { debug_backtraces } = set_debug_backtraces debug_backtraces
+
+  let term =
+    let+ () = build_info
+    and+ debug_backtraces = debug_backtraces in
+    { debug_backtraces }
+  ;;
+
+  let term_and_set =
+    let+ t = term in
+    set t
+  ;;
+end
 
 module Options_implied_by_dash_p = struct
   type t =
@@ -571,8 +595,8 @@ let shared_with_config_file ~allow_pkg_flag =
 
 module Builder = struct
   type t =
-    { debug_dep_path : bool
-    ; debug_backtraces : bool
+    { no_build : No_build.t
+    ; debug_dep_path : bool
     ; debug_package_logs : bool
     ; wait_for_filesystem_clock : bool
     ; only_packages : Only_packages.Clflags.t
@@ -603,6 +627,7 @@ module Builder = struct
     ; target_exec : string option
     }
 
+  let set_no_build t no_build = { t with no_build }
   let root t = t.root
   let set_root t root = { t with root = Some root }
   let forbid_builds t = { t with allow_builds = false; no_print_directory = true }
@@ -629,7 +654,8 @@ module Builder = struct
 
   let make_term ~(trace : bool) ~allow_pkg_flag =
     let docs = copts_sect in
-    let+ config_from_command_line = shared_with_config_file ~allow_pkg_flag
+    let+ no_build = No_build.term
+    and+ config_from_command_line = shared_with_config_file ~allow_pkg_flag
     and+ debug_dep_path =
       Arg.(
         value
@@ -641,7 +667,6 @@ module Builder = struct
               (Some
                  "In case of error, print the dependency path from the targets on the \
                   command line to the rule that failed."))
-    and+ debug_backtraces = debug_backtraces
     and+ debug_package_logs =
       let doc = "Always print the standard logs when building packages" in
       Arg.(
@@ -833,7 +858,6 @@ module Builder = struct
             ~docs
             ~env:(Cmd.Env.info ~doc "DUNE_STORE_ORIG_SOURCE_DIR")
             ~doc:(Some doc))
-    and+ () = build_info
     and+ instrument_with =
       let doc =
         "Enable instrumentation by $(b,BACKENDS). $(b,BACKENDS) is a comma-separated \
@@ -929,8 +953,8 @@ module Builder = struct
             [ "stop-on-first-error" ]
             ~doc:(Some "Stop the build as soon as an error is encountered."))
     in
-    { debug_dep_path
-    ; debug_backtraces
+    { no_build
+    ; debug_dep_path
     ; debug_package_logs
     ; wait_for_filesystem_clock
     ; only_packages
@@ -981,8 +1005,8 @@ module Builder = struct
 
   let equal
         t
-        { debug_dep_path
-        ; debug_backtraces
+        { no_build
+        ; debug_dep_path
         ; debug_package_logs
         ; wait_for_filesystem_clock
         ; only_packages
@@ -1013,8 +1037,8 @@ module Builder = struct
         ; target_exec
         }
     =
-    Bool.equal t.debug_dep_path debug_dep_path
-    && Bool.equal t.debug_backtraces debug_backtraces
+    No_build.equal t.no_build no_build
+    && Bool.equal t.debug_dep_path debug_dep_path
     && Bool.equal t.debug_package_logs debug_package_logs
     && Bool.equal t.wait_for_filesystem_clock wait_for_filesystem_clock
     && Only_packages.Clflags.equal t.only_packages only_packages
@@ -1167,7 +1191,7 @@ let maybe_init_cache (cache_config : Dune_cache.Config.t) =
   match cache_config with
   | Disabled -> cache_config
   | Enabled _ ->
-    (match Dune_cache_storage.Layout.create_cache_directories () with
+    (match Dune_cache.Layout.create_cache_directories () with
      | Ok () -> cache_config
      | Error (path, exn) ->
        User_warning.emit
@@ -1182,6 +1206,7 @@ let maybe_init_cache (cache_config : Dune_cache.Config.t) =
 
 let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   let c = build root builder in
+  No_build.set c.builder.no_build;
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string c.builder.build_dir);
@@ -1256,17 +1281,15 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   Log.info
     "Shared cache location"
     [ ( "root_dir"
-      , Dyn.string (Path.to_string (Lazy.force Dune_cache_storage.Layout.build_cache_dir))
-      )
+      , Dyn.string (Path.to_string (Lazy.force Dune_cache.Layout.build_cache_dir)) )
     ];
   Dune_cache.Shared.config := maybe_init_cache cache_config;
   Dune_rules.Main.init ~sandboxing_preference:config.sandboxing_preference ();
   Only_packages.Clflags.set c.builder.only_packages;
   Report_error.print_memo_stacks := c.builder.debug_dep_path;
   Dune_engine.Clflags.report_errors_config := c.builder.report_errors_config;
-  Dune_engine.Clflags.debug_backtraces c.builder.debug_backtraces;
   Dune_rules.Clflags.debug_package_logs := c.builder.debug_package_logs;
-  Dune_digest.Clflags.wait_for_filesystem_clock := c.builder.wait_for_filesystem_clock;
+  Dune_engine.Clflags.wait_for_filesystem_clock := c.builder.wait_for_filesystem_clock;
   Dune_engine.Clflags.capture_outputs := c.builder.capture_outputs;
   Dune_engine.Clflags.diff_command := c.builder.diff_command;
   Dune_engine.Clflags.promote := c.builder.promote;
@@ -1301,7 +1324,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
   Log.info
     "Workspace root"
     [ "root", Dyn.string (Path.to_absolute_filename Path.root |> String.maybe_quoted) ];
-  Dune_console.separate_messages c.builder.separate_error_messages;
+  Console.separate_messages c.builder.separate_error_messages;
   (* Setup hook for printing GC stats to a file *)
   at_exit (fun () ->
     match c.builder.dump_gc_stats with

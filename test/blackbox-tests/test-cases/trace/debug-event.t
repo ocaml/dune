@@ -19,11 +19,16 @@ The debug event can be triggered with Sigusr1
 
   $ kill -s sigusr2 -- $pid
 
-  $ dune trace cat | jq 'select(.name == "debug") | .args | .scheduler.process_watcher |= keys'
+  $ dune trace cat | jq '
+  >   select(.name == "debug")
+  > | .args
+  > | .scheduler.process_watcher |= keys
+  > | .scheduler.events.pending_jobs |= type
+  > '
   {
     "scheduler": {
       "events": {
-        "pending_jobs": 1,
+        "pending_jobs": "number",
         "pending_worker_tasks": 0
       },
       "process_watcher": [

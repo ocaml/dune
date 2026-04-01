@@ -729,7 +729,7 @@ module Digest = struct
   let dropped_stale_mtimes paths ~fs_now =
     let now = Time.now () in
     let args =
-      [ "fs_now", Arg.float fs_now; "paths", Arg.list (List.map paths ~f:Arg.path) ]
+      [ "fs_now", Arg.time fs_now; "paths", Arg.list (List.map paths ~f:Arg.path) ]
     in
     Event.instant ~args ~name:"dropped_stale_mtimes" now Digest
   ;;
@@ -774,6 +774,7 @@ let sandbox name ~start ~stop ~queued loc ~dir =
     | `Snapshot -> "snapshot"
     | `Create -> "create"
     | `Extract -> "extract"
+    | `Corrected -> "corrected"
   in
   Event.complete ~args ~name ~start ~dur Sandbox
 ;;

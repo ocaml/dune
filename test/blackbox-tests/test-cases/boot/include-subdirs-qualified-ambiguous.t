@@ -3,10 +3,12 @@ There is ambiguity between the two different foo modules.
 We show that the behaviour is correct in the bootstrap process:
 it picks up the closest one.
 
-  $ . ./helpers.sh
+  $ init_bootstrap
+
   $ mkdir a
 
-  $ cat > a/foo.ml << EOF
+  $ make_module a/foo.ml
+  $ cat >> a/foo.ml << EOF
   > let msg = "shouldn't be printed"
   > EOF
 

@@ -59,9 +59,9 @@ let term =
     Scheduler_setup.go_with_rpc_server ~common ~config
     @@ fun () ->
     let open Fiber.O in
-    let* setup = Import.Main.setup () in
+    let* setup = Util.setup () in
     let* setup = Memo.run setup in
-    let sctx = Import.Main.find_scontext_exn setup ~name:context in
+    let sctx = Dune_rules.Main.find_scontext_exn setup ~name:context in
     let context = Dune_rules.Super_context.context sctx in
     let rocq_file_build =
       Path.Build.append_local (Context.build_dir context) rocq_file_arg
@@ -73,7 +73,7 @@ let term =
       |> Path.Build.append_local (Context.build_dir context)
     in
     let* rocqtop, rocq_arg, args, env =
-      build_exn
+      Build.build_memo_exn
       @@ fun () ->
       let open Memo.O in
       let* (tr : Dune_rules.Dir_contents.triage) =
@@ -171,7 +171,7 @@ let term =
     in
     Fiber.return (rocqtop, args, env)
   in
-  restore_cwd_and_execve (Common.root common) rocqtop args env
+  Util.restore_cwd_and_execve (Common.root common) rocqtop args env
 ;;
 
 let command = Cmd.v info term

@@ -1,0 +1,9 @@
+(lang dune 3.21)
+
+(context default)
+
+(context
+ (opam
+  (switch 5.3.0+tsan)
+  ; needs a ThreadSanitizer enabled switch like 5.3.0+tsan
+  (name tsan)))

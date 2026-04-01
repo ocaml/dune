@@ -102,9 +102,9 @@ Generate a mock opam repository
   $ build_single_package error1
   Solution for dune.lock:
   - error1.0.0.1
-  File "dune.lock/error1.0.0.1.pkg", line 7, characters 4-17:
-  7 |     %{pkg-self:a}
-          ^^^^^^^^^^^^^
+  File "dune.lock/error1.0.0.1.pkg", line 6, characters 28-41:
+  6 |    (or_absorb_undefined_var %{pkg-self:a} %{pkg-self:b} %{pkg-self:c})
+                                  ^^^^^^^^^^^^^
   Error: Undefined package variable "a"
   [1]
   $ build_single_package error2

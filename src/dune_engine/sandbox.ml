@@ -42,14 +42,13 @@ let init =
   fun () -> Lazy.force init
 ;;
 
-(* Snapshot used to detect modifications. We use the same algorithm as
-   [Cached_digest] given that we are trying to detect the same kind of
-   changes. *)
-type snapshot = [ `Dir | `File of Cached_digest.Reduced_stats.t ] Path.Map.t
+type snapshot = [ `Dir | `File of Stat.t ] Path.Map.t
 
 type t =
   { dir : Path.Build.t
   ; snapshot : snapshot option
+  ; corrections : Corrections.t
+  ; deps : Path.Set.t option
   ; loc : Loc.t
   }
 
@@ -170,8 +169,8 @@ let snapshot t =
         Path.Map.add_exn acc path `Dir)
       ~on_file:(fun ~dir fname acc ->
         let p = Path.relative root (Filename.concat dir fname) in
-        let stats = Unix.stat (Path.to_string p) in
-        Path.Map.add_exn acc p (`File (Cached_digest.Reduced_stats.of_unix_stats stats)))
+        let stats = Stat.stat (Path.to_string p) in
+        Path.Map.add_exn acc p (`File stats))
       ~on_other:`Ignore
       ~on_symlink:`Ignore
       ()
@@ -182,13 +181,90 @@ let snapshot t =
   snapshot
 ;;
 
-let create ~mode ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
+let find_corrected_files (t : t) ~deps =
+  (* CR-someday rgrinberg: fuse this step with deletion *)
+  let start = Time.now () in
+  let corrected =
+    Fpath.traverse
+      ~dir:(Path.Build.to_string t.dir)
+      ~init:[]
+      ~on_dir:(fun ~dir:_ _ acc -> acc)
+      ~enter_dir:(fun ~dir:_ fname ->
+        (* We don't want to traverse the corrections produced by a nested dune *)
+        not (String.equal fname ".sandbox" || String.equal fname "_build"))
+      ~on_file:(fun ~dir fname acc ->
+        match
+          let path = Path.Build.relative t.dir (Filename.concat dir fname) in
+          if
+            let extension = Filename.extension fname in
+            Filename.Extension.Or_empty.check extension Filename.Extension.corrected
+            &&
+            let (_ : Path.Build.t option), path = Path.Build.split_sandbox_root path in
+            (* Dependencies cannot be corrections *)
+            not
+              (* CR-soon rgrinberg: slow for no reason. to fix. *)
+              (let path = Path.build path in
+               Path.Set.exists deps ~f:(fun dep ->
+                 Path.equal dep path || Path.is_descendant path ~of_:dep))
+          then Some path
+          else None
+        with
+        | None -> acc
+        | Some path -> path :: acc)
+      ~on_other:`Ignore
+      ~on_symlink:`Ignore
+      ()
+  in
+  let stop = Time.now () in
+  Dune_trace.emit ~buffered:true Sandbox (fun () ->
+    Dune_trace.Event.sandbox `Corrected ~start ~stop ~queued:None t.loc ~dir:t.dir);
+  corrected
+;;
+
+let build_path_without_corrected_suffix path =
+  let basename = Path.Build.basename path in
+  let extension = Filename.extension basename in
+  assert (Filename.Extension.Or_empty.check extension Filename.Extension.corrected);
+  let basename = Filename.remove_extension basename in
+  let parent = Path.Build.parent_exn path in
+  Path.Build.relative parent basename
+;;
+
+let register_corrected_file_promotions t ~deps =
+  find_corrected_files t ~deps
+  |> Fiber.parallel_iter ~f:(fun file2 ->
+    let (_ : Path.Build.t option), file2_without_sandbox =
+      Path.Build.split_sandbox_root file2
+    in
+    let file1 = build_path_without_corrected_suffix file2_without_sandbox |> Path.build in
+    Diff_action.exec
+      ~patch_back:(Some (Path.build t.dir))
+      t.loc
+      { Dune_util.Action.Diff.file1
+      ; file2
+      ; optional = false
+      ; mode = Text
+      ; directory_diffs = false
+      })
+;;
+
+let create
+      ~mode
+      (corrections : Corrections.t)
+      ~rule_loc
+      ~dirs
+      ~deps
+      ~rule_dir
+      ~rule_digest
+  =
   init ();
   let sandbox_dir =
     let sandbox_suffix = rule_digest |> Digest.to_string in
     Path.Build.relative sandbox_dir sandbox_suffix
   in
-  let t = { dir = sandbox_dir; snapshot = None; loc = rule_loc } in
+  let t =
+    { dir = sandbox_dir; snapshot = None; deps = None; loc = rule_loc; corrections }
+  in
   let open Fiber.O in
   let+ start, stop, queued =
     maybe_async (fun () ->
@@ -200,9 +276,19 @@ let create ~mode ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
   in
   Dune_trace.emit ~buffered:true Sandbox (fun () ->
     Dune_trace.Event.sandbox `Create ~start ~stop ~queued t.loc ~dir:t.dir);
+  let deps =
+    match corrections, mode with
+    | Ignore, Patch_back_source_tree -> Some deps
+    | Produce, Patch_back_source_tree ->
+      Code_error.raise "a patch back sandboxed rule may not produce corrections" []
+    | _, (Symlink | Copy | Hardlink) ->
+      (match corrections with
+       | Produce -> Some deps
+       | Ignore -> None)
+  in
   match mode with
-  | Patch_back_source_tree -> { t with snapshot = Some (snapshot t) }
-  | _ -> t
+  | Patch_back_source_tree -> { t with snapshot = Some (snapshot t); deps }
+  | _ -> { t with deps }
 ;;
 
 (* Same as [rename] except that if the source doesn't exist we delete the
@@ -257,7 +343,7 @@ let register_snapshot_promotion t (targets : Targets.Validated.t) ~old_snapshot 
           ()
         | Some `Dir, Some (`File _) -> add_copy_file p
         | Some (`File before), Some (`File after) ->
-          (match Cached_digest.Reduced_stats.compare before after with
+          (match Stat.compare before after with
            | Eq -> ()
            | Lt | Gt -> add_copy_file p)))
   in
@@ -272,6 +358,7 @@ let register_snapshot_promotion t (targets : Targets.Validated.t) ~old_snapshot 
            ; file2 = Path.as_in_build_dir_exn path
            ; optional = true
            ; mode = Text
+           ; directory_diffs = true
            }))
     (fun () ->
        Fiber.parallel_iter !deletes ~f:(fun (what, path) ->
@@ -301,6 +388,13 @@ let move_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated
   =
   let open Fiber.O in
   let start = Time.now () in
+  let* () =
+    match t.corrections with
+    | Ignore -> Fiber.return ()
+    | Produce ->
+      let deps = Option.value_exn t.deps in
+      register_corrected_file_promotions t ~deps
+  in
   let+ () =
     match t.snapshot with
     | None -> Fiber.return ()

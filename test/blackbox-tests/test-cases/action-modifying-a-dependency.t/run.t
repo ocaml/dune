@@ -13,8 +13,11 @@ Dune currently silently ignores this.
   $ cat _build/default/data
   hello
   hello
+  hello
 
   $ dune build @x
   $ cat _build/default/data
+  hello
+  hello
   hello
   hello

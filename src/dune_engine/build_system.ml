@@ -129,18 +129,15 @@ module Pending_targets = struct
   let remove targets = t := Targets.diff !t (Targets.Validated.unvalidate targets)
   let add targets = t := Targets.combine !t (Targets.Validated.unvalidate targets)
 
-  let () =
-    Hooks.End_of_build.always (fun () ->
-      let targets = !t in
-      t := Targets.empty;
-      Targets.iter
-        targets
-        ~file:(fun p -> p |> Path.Build.to_string |> Fpath.unlink_no_err)
-        ~dir:(fun p -> Path.rm_rf (Path.build p)))
+  let cleanup () =
+    let targets = !t in
+    t := Targets.empty;
+    Targets.iter
+      targets
+      ~file:(fun p -> p |> Path.Build.to_string |> Fpath.unlink_no_err)
+      ~dir:(fun p -> Path.rm_rf (Path.build p))
   ;;
 end
-
-let () = Hooks.End_of_build.always Metrics.reset
 
 type rule_execution_result =
   { facts : Dep.Fact.t Dep.Map.t
@@ -269,7 +266,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 23
+  let rule_digest_version = 25
 
   let compute_rule_digest
         (rule : Rule.t)
@@ -283,6 +280,7 @@ end = struct
         ; locks
         ; can_go_in_shared_cache
         ; sandbox = _ (* already taken into account in [sandbox_mode] *)
+        ; corrections
         }
       =
       action
@@ -291,20 +289,35 @@ end = struct
       Filename.Set.to_list_map names ~f:(fun name ->
         Path.Build.relative rule.targets.root name |> Path.Build.to_string)
     in
-    let trace =
-      ( rule_digest_version (* Update when changing the rule digest scheme. *)
-      , sandbox_mode
-      , Dep.Facts.digest facts ~env
-      , target_paths rule.targets.files @ target_paths rule.targets.dirs
-      , Action.for_shell action
-      , can_go_in_shared_cache
-      , List.map locks ~f:Path.to_string
-      , Execution_parameters.action_stdout_on_success execution_parameters
-      , Execution_parameters.action_stderr_on_success execution_parameters
-      , Execution_parameters.workspace_root_to_build_path_prefix_map execution_parameters
-      , Execution_parameters.expand_aliases_in_sandbox execution_parameters )
+    let digest =
+      let d = Digest.Manual.create () in
+      Digest.Manual.generic d rule_digest_version;
+      (* Update when changing the rule digest scheme. *)
+      Digest.Manual.generic d sandbox_mode;
+      Dep.Facts.digest facts d ~env;
+      Digest.Manual.generic
+        d
+        (target_paths rule.targets.files @ target_paths rule.targets.dirs);
+      Digest.Manual.generic d (Action.for_shell action);
+      Digest.Manual.generic d can_go_in_shared_cache;
+      Digest.Manual.generic d (List.map locks ~f:Path.to_string);
+      Digest.Manual.generic d corrections;
+      Digest.Manual.generic
+        d
+        (Execution_parameters.action_stdout_on_success execution_parameters);
+      Digest.Manual.generic
+        d
+        (Execution_parameters.action_stderr_on_success execution_parameters);
+      Digest.Manual.generic
+        d
+        (Execution_parameters.workspace_root_to_build_path_prefix_map
+           execution_parameters);
+      Digest.Manual.generic
+        d
+        (Execution_parameters.expand_aliases_in_sandbox execution_parameters);
+      Digest.Manual.get d
     in
-    Digest.generic trace
+    digest
   ;;
 
   let report_evaluated_rule_exn () =
@@ -353,7 +366,14 @@ end = struct
     : Exec_result.t Fiber.t
     =
     let open Fiber.O in
-    let { Action.Full.action; env; locks; can_go_in_shared_cache = _; sandbox = _ } =
+    let { Action.Full.action
+        ; env
+        ; locks
+        ; can_go_in_shared_cache = _
+        ; sandbox = _
+        ; corrections
+        }
+      =
       action
     in
     let deps =
@@ -368,6 +388,7 @@ end = struct
         let+ sandbox =
           Sandbox.create
             ~mode
+            (Option.value ~default:Ignore corrections)
             ~dirs:(Dep.Facts.necessary_dirs_for_sandboxing facts)
             ~deps
             ~rule_dir:targets.root
@@ -574,15 +595,13 @@ end = struct
         | None ->
           (* Step II. Remove stale targets both from the digest table and from
              the build directory. *)
-          let () =
-            Targets.Validated.iter
-              targets
-              ~file:Cached_digest.remove
-              ~dir:Cached_digest.remove
-          in
+          Rule_cache.Workspace_local.remove targets;
           let* () =
             maybe_async_rule_file_op (fun () ->
-              let remove_target_dir dir = Path.rm_rf (Path.build dir) in
+              let remove_target_dir dir =
+                let () = Rule_cache.Workspace_local.remove_subtree dir in
+                Path.rm_rf (Path.build dir)
+              in
               let remove_target_file path =
                 match Fpath.unlink (Path.Build.to_string path) with
                 | Success -> ()
@@ -647,13 +666,17 @@ end = struct
                 List.map
                   exec_result.action_exec_result.dynamic_deps_stages
                   ~f:(fun (deps, fact_map) ->
-                    deps, Dep.Facts.digest fact_map ~env:action.env)
+                    ( deps
+                    , let d = Digest.Manual.create () in
+                      Dep.Facts.digest fact_map d ~env:action.env;
+                      Digest.Manual.get d ))
               in
               Fiber.return (produced_targets, dynamic_deps_stages)
           in
           (* We do not include target names into [targets_digest] because they
              are already included into the rule digest. *)
           Rule_cache.Workspace_local.store
+            ~targets:produced_targets
             ~head_target
             ~rule_digest
             ~dynamic_deps_stages
@@ -739,7 +762,7 @@ end = struct
 
   (* The current version of the action digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let action_digest_version = 3
+  let action_digest_version = 5
 
   let execute_action_generic
         ~observing_facts
@@ -773,7 +796,7 @@ end = struct
     ignore observing_facts;
     let digest =
       let { Rule.Anonymous_action.action =
-              { action; env; locks; can_go_in_shared_cache; sandbox }
+              { action; env; locks; can_go_in_shared_cache; sandbox; corrections }
           ; loc = _
           ; dir
           ; alias
@@ -796,17 +819,22 @@ end = struct
           | _ -> acc)
         |> Env.Map.to_list
       in
-      Digest.generic
-        ( action_digest_version
-        , env
-        , Dep.Set.digest deps
-        , Action.for_shell action
-        , List.map locks ~f:Path.to_string
-        , dir
-        , alias
-        , capture_stdout
-        , can_go_in_shared_cache
-        , sandbox )
+      let digest =
+        let d = Digest.Manual.create () in
+        Digest.Manual.generic d action_digest_version;
+        Digest.Manual.generic d env;
+        Dep.Set.digest deps d;
+        Digest.Manual.generic d (Action.for_shell action);
+        Digest.Manual.generic d (List.map locks ~f:Path.to_string);
+        Digest.Manual.generic d dir;
+        Digest.Manual.generic d alias;
+        Digest.Manual.generic d capture_stdout;
+        Digest.Manual.generic d can_go_in_shared_cache;
+        Digest.Manual.generic d sandbox;
+        Digest.Manual.generic d corrections;
+        Digest.Manual.get d
+      in
+      digest
     in
     (* It might seem superfluous to memoize the execution here, given that a
        given anonymous action will typically only appear once during a given
@@ -857,64 +885,61 @@ end = struct
     >>= function
     | Source digest -> Memo.return (digest, File_target)
     | Rule (path, rule) ->
-      let+ { facts = _; targets } =
+      let* { facts = _; targets } =
         Memo.push_stack_frame
           (fun () -> execute_rule rule)
           ~human_readable_description:(fun () ->
             Pp.text (Path.to_string_maybe_quoted (Path.build path)))
       in
-      (match Targets.Produced.find targets path with
-       | Some digest -> digest, File_target
+      (match Targets.Produced.find_any targets path with
+       | Some (Left digest) -> Memo.return (digest, File_target)
+       | Some (Right contents) ->
+         let digest =
+           Digest.Feed.compute_digest
+             (fun hasher contents ->
+                Targets.Produced.iteri_dir_contents
+                  contents
+                  ~d:(fun d -> Digest.Feed.string hasher (Path.Local.to_string d))
+                  ~f:(fun path digest ->
+                    Digest.Feed.digest hasher digest;
+                    Digest.Feed.string hasher (Path.Local.to_string path)))
+             contents
+         in
+         Memo.return (digest, Dir_target { targets })
        | None ->
-         (* CR-soon amokhov: Here we expect [path] to be a directory target. It seems odd
-            to compute its digest here by calling to [Cached_digest.build_file]. Shouldn't
-            we do that in [execute_rule], like we do for file targets?
-
-            rleshchinskiy: Is this digest ever used? [build_dir] discards it and do we
-            (or should we) ever use [build_file] to build directories? Perhaps this could
-            be split in two memo tables, one for files and one for directories.
-
-            ElectreAAS: a lot of functions are called [build_file] or [create_file]
-            even though they also handle directories, this is expected.
-            Also yes this digest is used by [Exported.build_dep] defined above. *)
-         (match Cached_digest.build_file ~allow_dirs:true path with
-          | Ok digest -> digest, Dir_target { targets }
-          (* Must be a directory target. *)
-          | Error _ ->
-            (* CR-someday amokhov: The most important reason we end up here is
-               [No_such_file]. I think some of the outcomes above are impossible
-               but some others will benefit from a better error. To be refined. *)
-            let target =
-              Path.Build.drop_build_context_exn path |> Path.Source.to_string_maybe_quoted
-            in
-            let matching_dirs =
-              Filename.Set.to_list_map rule.targets.dirs ~f:(fun dir ->
-                (* CR-someday rleshchinskiy: This test can probably be simplified. *)
-                let dir = Path.Build.relative rule.targets.root dir in
-                match Path.Build.is_descendant path ~of_:dir with
-                | true -> [ dir ]
-                | false -> [])
-              |> List.concat
-            in
-            let matching_target =
-              match matching_dirs with
-              | [ dir ] ->
-                Path.Build.drop_build_context_exn dir
-                |> Path.Source.to_string_maybe_quoted
-              | [] | _ :: _ ->
-                Code_error.raise
-                  "Multiple matching directory targets"
-                  [ "targets", Targets.Validated.to_dyn rule.targets ]
-            in
-            User_error.raise
-              ~loc:rule.loc
-              ~needs_stack_trace:true
-              [ Pp.textf
-                  "This rule defines a directory target %S that matches the requested \
-                   path %S but the rule's action didn't produce it"
-                  matching_target
-                  target
-              ]))
+         (* CR-someday amokhov: The most important reason we end up here is
+            [No_such_file]. I think some of the outcomes above are impossible
+            but some others will benefit from a better error. To be refined. *)
+         let target =
+           Path.Build.drop_build_context_exn path |> Path.Source.to_string_maybe_quoted
+         in
+         let matching_dirs =
+           Filename.Set.to_list_map rule.targets.dirs ~f:(fun dir ->
+             (* CR-someday rleshchinskiy: This test can probably be simplified. *)
+             let dir = Path.Build.relative rule.targets.root dir in
+             match Path.Build.is_descendant path ~of_:dir with
+             | true -> [ dir ]
+             | false -> [])
+           |> List.concat
+         in
+         let matching_target =
+           match matching_dirs with
+           | [ dir ] ->
+             Path.Build.drop_build_context_exn dir |> Path.Source.to_string_maybe_quoted
+           | [] | _ :: _ ->
+             Code_error.raise
+               "Multiple matching directory targets"
+               [ "targets", Targets.Validated.to_dyn rule.targets ]
+         in
+         User_error.raise
+           ~loc:rule.loc
+           ~needs_stack_trace:true
+           [ Pp.textf
+               "This rule defines a directory target %S that matches the requested path \
+                %S but the rule's action didn't produce it"
+               matching_target
+               target
+           ])
   ;;
 
   let execute_anonymous_action action =
@@ -1145,13 +1170,18 @@ let handle_final_exns exns =
 
 let run f =
   let open Fiber.O in
-  let* () = State.reset_progress () in
-  let* () = State.reset_errors () in
   let f () =
+    Hooks.End_of_build.once Diff_promotion.finalize;
+    let* () = State.reset_progress () in
+    let* () = State.reset_errors () in
     let* res =
       Fiber.collect_errors (fun () ->
         Memo.run_with_error_handler f ~handle_error_no_raise:report_early_exn)
     in
+    Dtemp.clear ();
+    Pending_targets.cleanup ();
+    Target_promotion.save ();
+    Metrics.reset ();
     match res with
     | Ok res ->
       let+ () = State.set Build_succeeded__now_waiting_for_changes in
@@ -1171,8 +1201,8 @@ let run f =
 
 let run_exn f =
   let open Fiber.O in
-  let+ res = run f in
-  match res with
+  run f
+  >>| function
   | Ok res -> res
   | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
 ;;

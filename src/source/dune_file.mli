@@ -25,6 +25,9 @@ val path : t -> Path.Source.t option
 
 val sub_dir_status : t -> Source_dir_status.Spec.t
 
+(** The location of the (dirs ...) stanza if present *)
+val dirs_stanza_loc : t -> Loc.t option
+
 module Files : sig
   type t
 

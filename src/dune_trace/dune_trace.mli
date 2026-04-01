@@ -38,7 +38,7 @@ module Event : sig
   type t
 
   val sandbox
-    :  [ `Create | `Snapshot | `Destroy | `Extract ]
+    :  [ `Create | `Snapshot | `Destroy | `Extract | `Corrected ]
     -> start:Time.t
     -> stop:Time.t
     -> queued:Time.Span.t option
@@ -217,7 +217,7 @@ module Event : sig
       -> new_stats:Dyn.t
       -> t
 
-    val dropped_stale_mtimes : Path.t list -> fs_now:float -> t
+    val dropped_stale_mtimes : Path.t list -> fs_now:Time.t -> t
   end
 
   val debug : (string * Dyn.t) list -> t

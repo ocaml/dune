@@ -1,1 +1,0 @@
-Inductive hello := I | am | an | install | loc.

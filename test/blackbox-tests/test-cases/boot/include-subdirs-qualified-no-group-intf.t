@@ -1,12 +1,11 @@
 Testing the bootstrap of a wrapped include subdirs qualified.
 
-Currently doesn't work because it is not implemented.
-
-  $ . ./helpers.sh
+  $ init_bootstrap
 
   $ mkdir -p src/a/b
 
-  $ cat > src/a/b/x.ml <<EOF
+  $ make_module src/a/b/x.ml
+  $ cat >> src/a/b/x.ml <<EOF
   > let () = print_endline "Hello from wrapped a/b/x.ml"
   > EOF
 

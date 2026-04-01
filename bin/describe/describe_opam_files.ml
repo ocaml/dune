@@ -13,7 +13,7 @@ let term =
   let common, config = Common.init builder in
   Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
-  build_exn
+  Build.build_memo_exn
   @@ fun () ->
   let open Memo.O in
   let+ project = Source_tree.root () >>| Source_tree.Dir.project in

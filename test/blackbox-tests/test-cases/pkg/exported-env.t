@@ -19,6 +19,7 @@ Packages can export environment variables
   >           "\| echo BAR=$BAR
   >           "\| echo OPAM_PACKAGE_NAME=$OPAM_PACKAGE_NAME
   >           "\| echo OPAM_PACKAGE_VERSION=$OPAM_PACKAGE_VERSION
+  >           "\| echo OPAMSWITCH=$OPAMSWITCH
   >   )
   >   (run mkdir -p %{prefix})))
   > EOF
@@ -28,3 +29,4 @@ Packages can export environment variables
   BAR=zzz:yyy:xxx
   OPAM_PACKAGE_NAME=usetest
   OPAM_PACKAGE_VERSION=1.2.3
+  OPAMSWITCH=dune

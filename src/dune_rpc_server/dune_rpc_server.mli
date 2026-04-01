@@ -1,5 +1,5 @@
 open Stdune
-open Dune_rpc_private
+open Dune_rpc.Private
 
 module Session : sig
   module Id : Stdune.Id.S
@@ -42,7 +42,7 @@ module Session : sig
   val request
     :  _ t
     -> ('a, 'b) Decl.Request.witness
-    -> Dune_rpc_private.Id.t
+    -> Dune_rpc.Private.Id.t
     -> 'a
     -> 'b Fiber.t
 

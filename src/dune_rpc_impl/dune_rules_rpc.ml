@@ -12,7 +12,7 @@ include struct
 end
 
 include struct
-  open Dune_rpc_private
+  open Dune_rpc.Private
   module Procedures = Procedures
 end
 

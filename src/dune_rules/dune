@@ -9,7 +9,6 @@
   action_plugin
   dune_action_plugin
   dune_config_file
-  dune_console
   dune_digest
   dune_engine
   dune_scheduler
@@ -19,7 +18,7 @@
   dune_patch
   dune_pkg
   re
-  dune_rpc_private
+  dune_rpc
   dune_section
   dune_site_private
   dune_targets

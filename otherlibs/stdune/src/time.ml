@@ -3,6 +3,8 @@ type t = int
 external now : unit -> t = "dune_clock_gettime_realtime"
 
 let start = now ()
+let compare = Int.compare
+let max = Int.max
 let ns_per_sec = 1_000_000_000
 let ns_per_us = 1_000
 let ns_per_sec_float = float_of_int ns_per_sec

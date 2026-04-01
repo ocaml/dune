@@ -32,7 +32,9 @@ let coq_modules_of_files ~dirs =
         ({ Source_file_dir.dir = _; path_to_root = _; files; source_dir = _; stanzas = _ }
          as sd)
     =
-    { sd with files = String.Set.filter files ~f:(fun f -> Filename.check_suffix f ".v") }
+    { sd with
+      files = String.Set.filter files ~f:(fun f -> String.ends_with ~suffix:".v" f)
+    }
   in
   let dirs = Nonempty_list.to_list_map dirs ~f:filter_v_files in
   let build_mod_dir

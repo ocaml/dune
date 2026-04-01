@@ -49,15 +49,15 @@ opam-var-unsupported.t
 
   $ build_pkg testpkg 2>&1 | dune_cmd subst '.*.sandbox/[^/]+' '.sandbox/$SANDBOX'
   dune
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/source
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/lib
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/lib
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/bin
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/sbin
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/share
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/doc
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/etc
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/man
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/lib/toplevel
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/lib/stublibs
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8a78b4e4b2a5a90d80622925984eacbc/source
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8a78b4e4b2a5a90d80622925984eacbc/target
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8a78b4e4b2a5a90d80622925984eacbc/target/lib
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8a78b4e4b2a5a90d80622925984eacbc/target/lib
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8a78b4e4b2a5a90d80622925984eacbc/target/bin
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8a78b4e4b2a5a90d80622925984eacbc/target/sbin
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8a78b4e4b2a5a90d80622925984eacbc/target/share
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8a78b4e4b2a5a90d80622925984eacbc/target/doc
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8a78b4e4b2a5a90d80622925984eacbc/target/etc
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8a78b4e4b2a5a90d80622925984eacbc/target/man
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8a78b4e4b2a5a90d80622925984eacbc/target/lib/toplevel
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8a78b4e4b2a5a90d80622925984eacbc/target/lib/stublibs

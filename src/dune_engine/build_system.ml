@@ -129,14 +129,13 @@ module Pending_targets = struct
   let remove targets = t := Targets.diff !t (Targets.Validated.unvalidate targets)
   let add targets = t := Targets.combine !t (Targets.Validated.unvalidate targets)
 
-  let () =
-    Hooks.End_of_build.always (fun () ->
-      let targets = !t in
-      t := Targets.empty;
-      Targets.iter
-        targets
-        ~file:(fun p -> p |> Path.Build.to_string |> Fpath.unlink_no_err)
-        ~dir:(fun p -> Path.rm_rf (Path.build p)))
+  let cleanup () =
+    let targets = !t in
+    t := Targets.empty;
+    Targets.iter
+      targets
+      ~file:(fun p -> p |> Path.Build.to_string |> Fpath.unlink_no_err)
+      ~dir:(fun p -> Path.rm_rf (Path.build p))
   ;;
 end
 
@@ -1180,6 +1179,7 @@ let run f =
         Memo.run_with_error_handler f ~handle_error_no_raise:report_early_exn)
     in
     Dtemp.clear ();
+    Pending_targets.cleanup ();
     Target_promotion.save ();
     Metrics.reset ();
     match res with

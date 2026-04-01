@@ -1,9 +1,18 @@
-Unreleased
-----------
+3.22.1 (2026-04-01)
+-------------------
 
-If you're a contributor, please include your CHANGES entry in a `$PR_NUMBER.md`
-file in either `doc/changes/{added|changed|fixed}/`. At release time, it will
-be incoporated into the changelog properly.
+### Fixed
+
+- Restore compatibility with Windows 7 (#13905, @nojb)
+
+- `dune test` now runs tests in the default context only. When there is a
+  single context, it is treated as the default. This fixes a crash when the
+  workspace has no context named "default".
+  (#13930, fixes #13904, @Alizter)
+
+- Fix `dune trace cat --chrome-trace` to adhere to the Chrome Trace Event
+  Format by providing timestamps and durations at microsecond granularity
+  (#13911, fixes #13906, @Alizter)
 
 3.22.0 (2026-03-18)
 -------------------

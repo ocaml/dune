@@ -12,7 +12,7 @@ All dune commands work when you run them in sub-directories, so this should be n
   $ cd theories
 
 This test is currently broken due to the workspace resolution being faulty #5899.
-  $ dune rocq top --toplevel=echo -- foo.v
+  $ dune rocq top --toplevel=echo -- foo.v 2>&1 | sed "s/(using rocq .*)/(using rocq <version>)/"
   File ".", line 1, characters 0-0:
   Warning: No dune-project file has been found in directory ".". A default one
   is assumed but the project might break when dune is upgraded. Please create a
@@ -22,6 +22,6 @@ This test is currently broken due to the workspace resolution being faulty #5899
   1 | (rocq.theory
   2 |  (name foo))
   Error: 'rocq.theory' is available only when rocq is enabled in the
-  dune-project or workspace file. You must enable it using (using rocq 0.12) in
+  dune-project or workspace file. You must enable it using (using rocq <version>) in
   the file.
   [1]

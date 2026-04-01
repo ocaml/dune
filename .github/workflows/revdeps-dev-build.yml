@@ -20,7 +20,6 @@ jobs:
   build:
     name: ${{ matrix.name }}
     strategy:
-      fail-fast: false
       matrix:
         include:
           - name: OxCaml Trunk
@@ -31,7 +30,6 @@ jobs:
               autoconf &&
               ./configure --prefix $PWD/_install --enable-dev --enable-runtime5 &&
               make
-            apt_deps: autoconf
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Dune
@@ -56,23 +54,20 @@ jobs:
           # with Nix, it doesn't report the correct version. This step sets the
           # version explicitly so that OxCaml's version check passes.
           version=$(sed -n 's/(lang dune \(.*\))/\1.0/p' dune-project)
-          sed -i "1a (version $version)" dune-project
+          # Add a version if it doesn't exist.
+          grep -q '^(version' dune-project || echo "(version $version)" >> dune-project
           nix develop -c make dev
-
-      - name: Install system dependencies
-        if: matrix.apt_deps != ''
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ${{ matrix.apt_deps }}
 
       - name: Create workspace
         run: mkdir workspace
 
       - name: Clone ${{ matrix.repo }}
-        working-directory: workspace
-        run: |
-          git clone --depth 1 --branch ${{ matrix.ref }} \
-          https://github.com/${{ matrix.repo }}.git
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ matrix.repo }}
+          ref: ${{ matrix.ref }}
+          path: workspace/${{ matrix.repo_name }}
+          fetch-depth: 1
 
       - name: Build ${{ matrix.name }}
         working-directory: workspace/${{ matrix.repo_name }}

@@ -23,12 +23,14 @@ Directory diff promotes each changed file separately.
   File "expected/a", line 1, characters 0-0:
   --- expected/a
   +++ actual/a
-  @@ -0,0 +1 @@
+  @@ -1 +1 @@
+  -old a
   +new a
   File "expected/b", line 1, characters 0-0:
   --- expected/b
   +++ actual/b
-  @@ -0,0 +1 @@
+  @@ -1 +1 @@
+  -old b
   +new b
   [1]
 

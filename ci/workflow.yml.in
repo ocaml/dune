@@ -67,6 +67,13 @@ jobs:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix develop .#fmt -c make fmt
 
+  diff-on-checkout:
+    name: Ensure no files with CRLF line endings are committed to the repo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: git diff --exit-code
+
   doc:
     name: Documentation
     runs-on: ubuntu-latest

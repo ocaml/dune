@@ -40,6 +40,7 @@ val valid_format_doc : User_message.Style.t Pp.t
 val add_suffix : t -> string -> t
 val equal : t -> t -> bool
 val compare : t -> t -> Ordering.t
+val repr : t Repr.t
 val uncapitalize : t -> string
 val pp_quote : Format.formatter -> t -> unit
 
@@ -47,6 +48,7 @@ module Per_item : sig
   include Per_item with type key = t
 
   val decode : default:'a -> 'a Decoder.t -> 'a t Decoder.t
+  val repr : 'a Repr.t -> 'a t Repr.t
 end
 
 module Infix : Comparator.OPS with type t = t

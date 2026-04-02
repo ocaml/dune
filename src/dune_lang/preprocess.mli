@@ -8,6 +8,7 @@ module Pps : sig
     ; staged : bool
     }
 
+  val repr : 'a Repr.t -> 'a t Repr.t
   val compare_no_locs : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
 end
 
@@ -17,12 +18,14 @@ type 'a t =
   | Pps of 'a Pps.t
   | Future_syntax of Loc.t
 
+val repr : 'a Repr.t -> 'a t Repr.t
 val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 val map : 'a t -> f:('a -> 'b) -> 'b t
 
 module Without_instrumentation : sig
   type t = Loc.t * Lib_name.t
 
+  val repr : t Repr.t
   val compare_no_locs : t -> t -> Ordering.t
 end
 
@@ -35,6 +38,7 @@ module With_instrumentation : sig
         ; flags : String_with_vars.t list
         }
 
+  val repr : t Repr.t
   val equal : t -> t -> bool
 end
 
@@ -77,6 +81,7 @@ module Per_module : sig
   type 'a preprocess := 'a t
   type 'a t = 'a preprocess Module_name.Per_item.t
 
+  val repr : 'a Repr.t -> 'a t Repr.t
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
   val decode : Without_instrumentation.t t Decoder.t
   val no_preprocessing : unit -> 'a t

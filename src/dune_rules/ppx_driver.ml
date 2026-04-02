@@ -62,7 +62,11 @@ end = struct
   let reverse_table : (Digest.t, Decoded.t) Table.t = Table.create (module Digest) 128
 
   let encode ({ Decoded.pps; project_root } as x) =
-    let y = Digest.generic (pps, project_root) in
+    let y =
+      Digest.repr
+        Repr.(pair (list Lib_name.repr) (option Path.Source.repr))
+        (pps, project_root)
+    in
     match Table.find reverse_table y with
     | None ->
       Table.set reverse_table y x;

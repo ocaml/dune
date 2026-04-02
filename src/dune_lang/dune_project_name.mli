@@ -7,6 +7,7 @@ type t
 val to_dyn : t -> Dyn.t
 val equal : t -> t -> bool
 val compare : t -> t -> Ordering.t
+val repr : t Repr.t
 
 (** Convert to a string that is suitable for human readable messages *)
 val to_string_hum : t -> string

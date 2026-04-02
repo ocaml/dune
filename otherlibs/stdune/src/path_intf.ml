@@ -4,6 +4,7 @@ module type S = sig
   val hash : t -> int
   val to_string : t -> string
   val of_string : string -> t
+  val repr : t Repr.t
 
   (** a directory is smaller than its descendants *)
   include Comparator.S with type t := t

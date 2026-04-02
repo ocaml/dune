@@ -4,6 +4,7 @@ module type S = sig
 
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  val enumerate : 'a t -> (key * int) list * 'a list
 
   (** Create a mapping where all keys map to the same value *)
   val for_all : 'a -> 'a t

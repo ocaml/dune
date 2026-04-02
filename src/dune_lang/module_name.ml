@@ -13,6 +13,7 @@ include Site.Modulelike (struct
 
 let equal = String.equal
 let compare = String.compare
+let repr = Repr.view Repr.string ~to_:to_string
 let add_suffix = ( ^ )
 let uncapitalize = String.uncapitalize
 let pp_quote fmt x = Format.fprintf fmt "%S" x
@@ -85,6 +86,12 @@ let to_local_lib_name s = Lib_name.Local.of_string s
 module Per_item = struct
   include Per_item.Make (String)
   open Decoder
+
+  let repr value_repr =
+    Repr.view
+      Repr.(pair (list (pair String.repr Int.repr)) (list value_repr))
+      ~to_:enumerate
+  ;;
 
   let decode ~default a =
     peek_exn

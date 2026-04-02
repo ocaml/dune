@@ -59,6 +59,23 @@ module type S2 = sig
   val repr : 'a repr -> 'b repr -> ('a, 'b) t repr
 end
 
+module T3 = struct
+  type ('a, 'b, 'c) t = 'a * 'b * 'c
+
+  let repr first second third = Triple (first, second, third)
+end
+
+module T4 = struct
+  type ('a, 'b, 'c, 'd) t = 'a * 'b * 'c * 'd
+
+  let repr first second third fourth =
+    View
+      { repr = Pair (first, Triple (second, third, fourth))
+      ; to_ = (fun (first, second, third, fourth) -> first, (second, third, fourth))
+      }
+  ;;
+end
+
 let unit = Unit
 let bool = Bool
 let int = Int
@@ -81,6 +98,7 @@ let case tag repr ~proj = Case1 { tag; repr; proj }
 let case0 tag ~test = Case0 { tag; test }
 let variant name cases = Variant (name, cases)
 let repr_for_to_dyn to_dyn = Abstract { to_dyn }
+let abstract to_dyn = Abstract { to_dyn }
 
 let rec to_dyn : type a. a repr -> a -> Dyn.t =
   fun repr value ->

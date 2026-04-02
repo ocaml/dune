@@ -29,6 +29,7 @@ type t =
       ; new_name : Module_name.t option
       }
 
+val repr : t Repr.t
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 val direct : Loc.t * Lib_name.t -> t

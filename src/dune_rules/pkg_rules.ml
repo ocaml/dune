@@ -664,14 +664,49 @@ module Substitute = struct
     let bimap t f g = { t with src = f t.src; dst = g t.dst }
     let is_useful_to ~memoize = memoize
 
+    let variable_value_repr =
+      Repr.variant
+        "pkg-variable-value"
+        [ Repr.case "B" Bool.repr ~proj:(function
+            | Variable.B x -> Some x
+            | _ -> None)
+        ; Repr.case "S" String.repr ~proj:(function
+            | Variable.S x -> Some x
+            | _ -> None)
+        ; Repr.case
+            "L"
+            Repr.(list String.repr)
+            ~proj:(function
+              | Variable.L x -> Some x
+              | _ -> None)
+        ]
+    ;;
+
+    let variable_map_repr =
+      Repr.view
+        Repr.(list (pair Package_variable_name.repr variable_value_repr))
+        ~to_:Package_variable_name.Map.to_list
+    ;;
+
+    let paths_repr = Repr.T3.repr Path.repr Path.repr Package.Name.repr
+
+    let hash_input_repr =
+      Repr.T4.repr
+        paths_repr
+        Repr.(list (pair String.repr Path.repr))
+        Repr.(list (pair variable_map_repr paths_repr))
+        Package_version.repr
+    ;;
+
     let encode { expander; depends; artifacts; src; dst } input output : Sexp.t =
       let e =
         let paths (p : Path.t Paths.t) = p.source_dir, p.target_dir, p.name in
-        ( paths expander.paths
-        , String.Map.to_list artifacts
-        , Package.Name.Map.to_list_map depends ~f:(fun _ (m, p) -> m, paths p)
-        , expander.version )
-        |> Digest.generic
+        Digest.repr
+          hash_input_repr
+          ( paths expander.paths
+          , String.Map.to_list artifacts
+          , Package.Name.Map.to_list_map depends ~f:(fun _ (m, p) -> m, paths p)
+          , expander.version )
         |> Digest.to_string_raw
       in
       List [ Atom e; input src; output dst ]

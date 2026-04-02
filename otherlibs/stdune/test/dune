@@ -16,3 +16,8 @@
   ppx_inline_test.config)
  (preprocess
   (pps ppx_expect)))
+
+(alias
+ (name runtest-windows)
+ (deps
+  (alias runtest)))

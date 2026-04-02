@@ -7,8 +7,7 @@ build. Dune fails to detect that:
   $ echo '(rule (target b) (deps) (action (bash "echo b | dune_cmd tee a > b")))' >> dune
   $ echo '(rule (target c) (deps a b) (action (bash "cat a b > c")))' >> dune
   $ dune build c
-  $ cat _build/default/c
-  b
+  $ tail -1 _build/default/c
   b
 
   $ true > dune
@@ -16,12 +15,12 @@ build. Dune fails to detect that:
   $ echo '(rule (target b) (deps) (action (bash "echo b > b")))' >> dune
   $ echo '(rule (target c) (deps a b) (action (bash "cat a b > c")))' >> dune
   $ dune build c
-  $ cat _build/default/c
-  b
+  $ tail -1 _build/default/c
   b
 
-(it's not obvious what the correct result is on the first invocation, but the second
-invocation is clearly broken (it uses a wrongly cached result))
+(The first invocation's result depends on execution order, but the second
+invocation is clearly broken — it uses a wrongly cached result since the last
+line should be "b" from rule b, yet the rules were replaced)
 
 These rules clearly depend on sandboxing. Specifying that makes the build
 well-behaved:
@@ -72,3 +71,20 @@ anyway.
   >  (action (write-file t "")))
   > EOF
   $ dune build t
+
+Verify that dependencies are hardlinked into the sandbox (not copied) by
+checking the hardlink count from inside the action. A hardlinked file will have
+nlink > 1 while a copied file would have nlink = 1.
+
+  $ cat > source <<EOF
+  > hello
+  > EOF
+  $ cat > dune <<EOF
+  > (rule
+  >  (target out)
+  >  (deps source (sandbox always))
+  >  (action (bash "dune_cmd stat hardlinks source > out")))
+  > EOF
+  $ dune build out --sandbox hardlink
+  $ cat _build/default/out
+  2

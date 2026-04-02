@@ -1,7 +1,26 @@
 (rule
  (mode promote)
+ (targets libs.ml)
+ (deps
+  ../bin/main.exe
+  ../dune-file
+  ../dune-project
+  (source_tree ../bin)
+  (source_tree ../src)
+  (source_tree ../otherlibs)
+  (source_tree ../vendor))
  (action
-  (copy ../bin/bootstrap-info libs.ml)))
+  (with-stdout-to
+   libs.ml
+   (run
+    %{dep:../bin/main.exe}
+    internal
+    bootstrap-info
+    --no-print-directory
+    --root
+    %{env:PWD=.}
+    --profile
+    %{profile}))))
 
 (alias
  (name runtest)

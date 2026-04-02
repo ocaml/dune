@@ -8,6 +8,17 @@ module Select = struct
       ; file : Path.Local.t
       }
 
+    let lib_name_set_repr = Repr.view Repr.(list Lib_name.repr) ~to_:Lib_name.Set.to_list
+
+    let repr =
+      Repr.record
+        "lib-dep-select-choice"
+        [ Repr.field "required" lib_name_set_repr ~get:(fun t -> t.required)
+        ; Repr.field "forbidden" lib_name_set_repr ~get:(fun t -> t.forbidden)
+        ; Repr.field "file" Path.Local.repr ~get:(fun t -> t.file)
+        ]
+    ;;
+
     let decode ~result_fn =
       let open Decoder in
       enter
@@ -84,6 +95,14 @@ module Select = struct
     ; loc : Loc.t
     }
 
+  let repr =
+    Repr.record
+      "lib-dep-select"
+      [ Repr.field "result_fn" Path.Local.repr ~get:(fun t -> t.result_fn)
+      ; Repr.field "choices" Repr.(list Choice.repr) ~get:(fun t -> t.choices)
+      ]
+  ;;
+
   let to_dyn { result_fn; choices; loc = _ } =
     let open Dyn in
     record
@@ -111,6 +130,28 @@ type t =
       ; arguments : (Loc.t * Lib_name.t) list
       ; new_name : Module_name.t option
       }
+
+let repr =
+  Repr.variant
+    "lib-dep"
+    [ Repr.case "Direct" Lib_name.repr ~proj:(function
+        | Direct (_, name) -> Some name
+        | _ -> None)
+    ; Repr.case "Re_export" Lib_name.repr ~proj:(function
+        | Re_export (_, name) -> Some name
+        | _ -> None)
+    ; Repr.case "Select" Select.repr ~proj:(function
+        | Select x -> Some x
+        | _ -> None)
+    ; Repr.case
+        "Instantiate"
+        Repr.(triple Lib_name.repr (list Lib_name.repr) (option Module_name.repr))
+        ~proj:(function
+          | Instantiate { lib; arguments; new_name; loc = _ } ->
+            Some (lib, List.map arguments ~f:snd, new_name)
+          | _ -> None)
+    ]
+;;
 
 let equal = Poly.equal
 

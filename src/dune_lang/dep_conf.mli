@@ -47,6 +47,7 @@ type t =
 
 val equal : t -> t -> bool
 val remove_locs : t -> t
+val repr : t Repr.t
 
 include Conv.S with type t := t
 

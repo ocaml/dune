@@ -128,6 +128,12 @@ censor() {
   dune_cmd subst '[0-9a-f]{32}' '$DIGEST'
 }
 
+censor_ppx() {
+  # we want to substitute it to $DIGEST
+  # shellcheck disable=SC2016
+  dune_cmd subst '[0-9a-f]{32}/ppx.exe' '$DIGEST/ppx.exe'
+}
+
 # CR-someday rgrinberg: get rid of this one or fuse it into censor
 strip_sandbox() {
   # we want to substitute it to $SANDBOX

@@ -7,5 +7,5 @@ This test checks that there is no clash when two private libraries have the same
   Warning: Failed to lookup child page dummy
 
   $ dune trace cat | jq -c 'include "dune"; targetsMatching("docs/test")'
-  {"target_dirs":["_build/default/_doc_new/html/docs/test@38f98c954b37/Test"]}
-  {"target_files":["_build/default/_doc_new/html/docs/test@38f98c954b37/index.html"]}
+  {"target_dirs":["_build/default/_doc_new/html/docs/test@531b32931cc1/Test"]}
+  {"target_files":["_build/default/_doc_new/html/docs/test@531b32931cc1/index.html"]}

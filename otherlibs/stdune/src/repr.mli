@@ -21,6 +21,18 @@ module type S2 = sig
   val repr : 'a repr -> 'b repr -> ('a, 'b) t repr
 end
 
+module T3 : sig
+  type ('a, 'b, 'c) t = 'a * 'b * 'c
+
+  val repr : 'a repr -> 'b repr -> 'c repr -> ('a, 'b, 'c) t repr
+end
+
+module T4 : sig
+  type ('a, 'b, 'c, 'd) t = 'a * 'b * 'c * 'd
+
+  val repr : 'a repr -> 'b repr -> 'c repr -> 'd repr -> ('a, 'b, 'c, 'd) t repr
+end
+
 val to_dyn : 'a repr -> 'a -> Dyn.t
 val unit : unit t
 val bool : bool t
@@ -38,6 +50,7 @@ val record : string -> 'a field list -> 'a t
 val case : string -> 'b t -> proj:('a -> 'b option) -> 'a case
 val case0 : string -> test:('a -> bool) -> 'a case
 val variant : string -> 'a case list -> 'a t
+val abstract : ('a -> Dyn.t) -> 'a t
 
 module Make (T : S) : sig
   val to_dyn : T.t -> Dyn.t

@@ -346,8 +346,10 @@ module Crawl = struct
     if Lib.is_local lib
     then (
       let source_dir = Lib_info.src_dir (Lib.info lib) in
-      Digest.generic (name, Path.to_string source_dir))
-    else Digest.generic name
+      Digest.Feed.compute_digest
+        (Digest.Feed.tuple2 Digest.Feed.string Digest.Feed.string)
+        (Lib_name.to_string name, Path.to_string source_dir))
+    else Digest.string (Lib_name.to_string name)
   ;;
 
   let for_ = Compilation_mode.Ocaml

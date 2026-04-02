@@ -17,6 +17,7 @@ module Make (Key : Map.Key) : Per_item_intf.S with type key = Key.t = struct
     Array.Immutable.equal f t.values values && Map.equal ~equal:Int.equal t.map map
   ;;
 
+  let enumerate { map; values } = Map.to_list map, Array.Immutable.to_list values
   let for_all x = { map = Map.empty; values = Array.Immutable.of_array [| x |] }
 
   let of_mapping l ~default =

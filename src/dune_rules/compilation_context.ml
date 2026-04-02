@@ -69,32 +69,13 @@ let eval_opaque (ocaml : Ocaml_toolchain.t) profile = function
     Profile.is_dev profile && Ocaml.Version.supports_opaque_for_mli ocaml.version
 ;;
 
-module Dep_graphs = struct
-  type t =
-    { for_build : Dep_graph.t Ml_kind.Dict.t
-    ; for_module_compilation : Dep_graph.t Ml_kind.Dict.t
-    }
-
-  let singleton m =
-    let for_build = Dep_graph.Ml_kind.dummy m in
-    { for_build; for_module_compilation = for_build }
-  ;;
-
-  let make ~modules for_build =
-    let for_module_compilation =
-      Dep_graph.Ml_kind.for_module_compilation ~modules for_build
-    in
-    { for_build; for_module_compilation }
-  ;;
-end
-
 type modules =
   { modules : Modules.With_vlib.t
-  ; dep_graphs : Dep_graphs.t
+  ; dep_graphs : Dep_graph.t Ml_kind.Dict.t
   }
 
 let singleton_modules m =
-  { modules = Modules.With_vlib.singleton m; dep_graphs = Dep_graphs.singleton m }
+  { modules = Modules.With_vlib.singleton m; dep_graphs = Dep_graph.Ml_kind.dummy m }
 ;;
 
 type t =
@@ -150,10 +131,7 @@ let bin_annot t = t.bin_annot
 let bin_annot_cms t = t.bin_annot_cms
 let cms_cmt_dependency t = t.cms_cmt_dependency
 let context t = Super_context.context t.super_context
-let dep_graphs t = t.modules.dep_graphs.for_build
-let module_compilation_dep_graphs t =
-  t.modules.dep_graphs.for_module_compilation
-;;
+let dep_graphs t = t.modules.dep_graphs
 let ocaml t = t.ocaml
 
 let parameters_main_modules parameters =
@@ -252,7 +230,6 @@ let create
       let context = Super_context.context super_context in
       Memo.return (Context.cms_cmt_dependency context)
   in
-  let dep_graphs = Dep_graphs.make ~modules dep_graphs in
   { super_context
   ; scope
   ; obj_dir

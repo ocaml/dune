@@ -12,12 +12,6 @@ module Feed : sig
       can consume a value of type ['a] and incorporate it into a hash value. *)
   type 'a t = hasher -> 'a -> unit
 
-  (** Consume any value. The result is based on the in-memory representation of
-      the value, so this is unsafe to perform on types who may have different
-      in-memory representation for values which are conceptually equal, such as
-      sets and maps. *)
-  val generic : _ t
-
   val contramap : 'a t -> f:('b -> 'a) -> 'b t
   val string : string t
   val bool : bool t

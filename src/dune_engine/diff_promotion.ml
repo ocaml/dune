@@ -111,7 +111,6 @@ type db = op list
 
 let db : db ref = ref []
 let clear_cache () = db := []
-let () = Hooks.End_of_build.always clear_cache
 
 let register_intermediate how ~source_file ~correction_file =
   let src = snd (Path.Build.split_sandbox_root correction_file) in

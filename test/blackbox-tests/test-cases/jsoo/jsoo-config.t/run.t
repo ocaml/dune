@@ -21,8 +21,11 @@ tests js_of_ocaml conigs
   bin/bin2.bc.js
   bin/bin3.bc.js
   lib/.library1.objs/jsoo/!use-js-string/library1.cma.js
+  lib/.library1.objs/jsoo/!use-js-string/library1.cmo.js
   lib/.library1.objs/jsoo/default/library1.cma.js
+  lib/.library1.objs/jsoo/default/library1.cmo.js
   lib/.library1.objs/jsoo/use-js-string/library1.cma.js
+  lib/.library1.objs/jsoo/use-js-string/library1.cmo.js
   $ node _build/default/bin/bin1.bc.js
   Hello bin1
   Hi library1

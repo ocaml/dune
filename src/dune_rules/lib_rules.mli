@@ -8,6 +8,8 @@ val foreign_rules
   -> dir_contents:Dir_contents.t
   -> unit Memo.t
 
+val cm_files_for_lib : Library.t -> cctx:Compilation_context.t -> Cm_files.t
+
 val compile_context
   :  Library.t
   -> sctx:Super_context.t

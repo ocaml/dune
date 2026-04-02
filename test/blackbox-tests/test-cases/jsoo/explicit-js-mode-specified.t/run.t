@@ -30,6 +30,8 @@ specify js mode (#1940).
   .b.eobjs/jsoo/b.cmo.js
   .e.eobjs/jsoo/e.cmo.js
   .foo.objs/jsoo/default/foo.cma.js
+  .foo.objs/jsoo/default/foo.cmo.js
+  .foo.objs/jsoo/default/foo__C.cmo.js
   .js/default/.runtime/69326c30fc4a6ffc800b0a8e0b822993/runtime.bc.runtime.js
   .js/default/stdlib/std_exit.cmo.js
   .js/default/stdlib/stdlib.cma.js

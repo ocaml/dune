@@ -110,31 +110,67 @@ let lib_archive_rules_memo =
        >>= function
        | None -> Memo.return None
        | Some (lib, cctx) ->
-         let* sctx =
-           Context.DB.by_dir lib_dir >>| Context.name >>= Super_context.find_exn
-         in
-         let obj_dir = Library.obj_dir ~dir:lib_dir lib in
+         let sctx = Compilation_context.super_context cctx in
+         let obj_dir = Compilation_context.obj_dir cctx in
          let obj_dir_dir = Obj_dir.dir obj_dir in
-         let src =
-           Library.archive lib ~dir:obj_dir_dir ~ext:(Mode.compiled_lib_ext Mode.Byte)
-         in
          let in_context =
            Js_of_ocaml.In_context.make ~dir:lib_dir lib.buildable.js_of_ocaml
          in
          let config = Jsoo_rules.Config.of_string config in
+         let flags = Compilation_context.flags cctx in
+         let modules = Compilation_context.modules cctx in
+         let cm_files = Lib_rules.cm_files_for_lib lib ~cctx in
+         let* expander = Super_context.expander sctx ~dir:lib_dir in
+         let linkall =
+           match lib.kind with
+           | Dune_file (Ppx_deriver _ | Ppx_rewriter _) -> Action_builder.return true
+           | Virtual | Parameter | Dune_file Normal ->
+             let standard = Action_builder.return [] in
+             let open Action_builder.O in
+             let+ library_flags =
+               Expander.expand_and_eval_set expander lib.library_flags ~standard
+             and+ ocaml_flags = Ocaml_flags.get flags (Ocaml Byte) in
+             List.exists library_flags ~f:(String.equal "-linkall")
+             || List.exists ocaml_flags ~f:(String.equal "-linkall")
+         in
          let+ rules =
            Rules.collect_unit (fun () ->
              Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
                let in_context = Js_of_ocaml.Mode.Pair.select ~mode in_context in
-               Jsoo_rules.build_cm
-                 cctx
+               (* Build per-module .cmo.js files *)
+               let* () =
+                 Modules.With_vlib.impl_only modules
+                 |> Memo.parallel_iter ~f:(fun m ->
+                   match Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml Cmo) with
+                   | None -> Memo.return ()
+                   | Some src ->
+                     let dep_graph = (Compilation_context.dep_graphs cctx).impl in
+                     let module_deps = Dep_graph.deps_of dep_graph m in
+                     Jsoo_rules.build_cm
+                       cctx
+                       ~dir:obj_dir_dir
+                       ~in_context
+                       ~mode
+                       ~src:(Path.build src)
+                       ~obj_dir
+                       ~deps:module_deps
+                       ~config:(Some config)
+                     |> Super_context.add_rule
+                          sctx
+                          ~dir:obj_dir_dir
+                          ~loc:lib.buildable.loc)
+               in
+               (* Build .cma.js archive by linking .cmo.js files *)
+               Jsoo_rules.build_cma_js
+                 sctx
                  ~dir:obj_dir_dir
                  ~in_context
-                 ~mode
-                 ~config:(Some config)
-                 ~src:(Path.build src)
-                 ~deps:(Action_builder.return [])
                  ~obj_dir
+                 ~config:(Some config)
+                 ~linkall
+                 ~mode
+                 cm_files
+                 (Library.archive_basename lib ~ext:(Mode.compiled_lib_ext Mode.Byte))
                |> Super_context.add_rule sctx ~dir:obj_dir_dir ~loc:lib.buildable.loc))
          in
          Some rules)

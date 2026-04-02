@@ -64,7 +64,7 @@ let find_module sctx src =
 let module_deps cctx module_ =
   let+ graph, _ =
     let dep_graph =
-      let dg = Compilation_context.compile_dep_graphs cctx in
+      let dg = Compilation_context.module_compilation_dep_graphs cctx in
       Ocaml.Ml_kind.Dict.get dg Impl
     in
     Dep_graph.deps_of dep_graph module_ |> Action_builder.evaluate_and_collect_facts

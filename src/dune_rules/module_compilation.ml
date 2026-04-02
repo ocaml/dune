@@ -288,7 +288,7 @@ let build_cm
    let opaque = Compilation_context.opaque cctx in
    let other_cm_files =
      let dep_graphs = Compilation_context.dep_graphs cctx in
-     let compile_dep_graphs = Compilation_context.compile_dep_graphs cctx in
+     let compile_dep_graphs = Compilation_context.module_compilation_dep_graphs cctx in
      let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
      let compile_dep_graph = Ml_kind.Dict.get compile_dep_graphs ml_kind in
      let module_deps = Dep_graph.deps_of dep_graph m in

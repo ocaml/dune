@@ -24,8 +24,8 @@ Link-time flags for running cinaps
   > | .[]
   > | select(endswith(".exe"))
   > EOF
-  $ dune trace cat | jq -f $jqScript
-  ".cinaps.edaf9873/cinaps.exe"
+  $ dune trace cat | jq -f $jqScript | censor_cinaps
+  "$CINAPS/cinaps.exe"
 
 Check that the version guard is correct.
 

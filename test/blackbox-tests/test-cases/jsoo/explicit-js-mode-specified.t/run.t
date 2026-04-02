@@ -26,11 +26,13 @@ specify js mode (#1940).
   $ dune trace cat | jq -r 'include "dune";
   >   processes
   > | select(.args.prog | test("js_of_ocaml$"))
-  > | .args | targets | .[] | sub("^_build/[^/]+/"; "")' | sort
+  > | .args | targets | .[] | sub("^_build/[^/]+/"; "")' \
+  > | sort \
+  > | censor
   .b.eobjs/jsoo/b.cmo.js
   .e.eobjs/jsoo/e.cmo.js
   .foo.objs/jsoo/default/foo.cma.js
-  .js/default/.runtime/69326c30fc4a6ffc800b0a8e0b822993/runtime.bc.runtime.js
+  .js/default/.runtime/$DIGEST/runtime.bc.runtime.js
   .js/default/stdlib/std_exit.cmo.js
   .js/default/stdlib/stdlib.cma.js
   b.bc.js

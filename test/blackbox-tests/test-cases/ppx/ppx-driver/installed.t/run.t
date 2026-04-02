@@ -3,9 +3,9 @@ Test using installed drivers
   $ dune build --root driver @install
   Entering directory 'driver'
   Leaving directory 'driver'
-  $ OCAMLPATH=driver/_build/install/default/lib dune build --root use-external-driver driveruser.cma
+  $ OCAMLPATH=driver/_build/install/default/lib dune build --root use-external-driver driveruser.cma 2>&1 | censor
   Entering directory 'use-external-driver'
-  .ppx/d1c2c0cf2b61b462226db18f72732070/ppx.exe
+  .ppx/$DIGEST/ppx.exe
   -arg1
   -arg2
   -foo
@@ -25,10 +25,10 @@ Test using installed drivers
   Leaving directory 'use-external-driver'
   [1]
 
-  $ OCAMLPATH=driver/_build/install/default/lib dune build --root replaces driveruser.cma
+  $ OCAMLPATH=driver/_build/install/default/lib dune build --root replaces driveruser.cma 2>&1 | censor
   Entering directory 'replaces'
   replacesdriver
-  .ppx/5c2c5102d9f019e3d5eee93d6abe2029/ppx.exe
+  .ppx/$DIGEST/ppx.exe
   -arg1
   -arg2
   -foo
@@ -51,10 +51,10 @@ Test using installed drivers
   $ OCAMLPATH=driver/_build/install/default/lib dune build --root driver-replaces @install
   Entering directory 'driver-replaces'
   Leaving directory 'driver-replaces'
-  $ OCAMLPATH=driver/_build/install/default/lib:driver-replaces/_build/install/default/lib dune build --root replaces-external driveruser.cma
+  $ OCAMLPATH=driver/_build/install/default/lib:driver-replaces/_build/install/default/lib dune build --root replaces-external driveruser.cma 2>&1 | censor
   Entering directory 'replaces-external'
   replacesdriver
-  .ppx/5c2c5102d9f019e3d5eee93d6abe2029/ppx.exe
+  .ppx/$DIGEST/ppx.exe
   -arg1
   -arg2
   -foo

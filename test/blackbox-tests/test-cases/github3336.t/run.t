@@ -11,5 +11,5 @@ Here we demonstrate that such a ppx .exe is built successfully.
   - executable/exec.pp.ml
   [1]
 
-  $ find _build | grep \.exe$
-  _build/default/.ppx/0747fa92c6bc2f7f4818823e4f8871ab/ppx.exe
+  $ find _build | grep \.exe$ | censor_ppx
+  _build/default/.ppx/$DIGEST/ppx.exe

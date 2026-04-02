@@ -33,6 +33,7 @@ type t =
   ; parameters : (Loc.t * Lib_name.t) list
   ; default_implementation : (Loc.t * Lib_name.t) option
   ; private_modules : Ordered_set_lang.Unexpanded.t option
+  ; excluded_modules : Ordered_set_lang.Unexpanded.t option
   ; stdlib : Ocaml_stdlib.t option
   ; special_builtin_support : (Loc.t * Lib_info.Special_builtin_support.t) option
   ; enabled_if : Blang.t

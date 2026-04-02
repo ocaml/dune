@@ -61,10 +61,17 @@ val public_cmi_melange_dir : 'path t -> 'path
 val odoc_dir : 'path t -> 'path
 val all_obj_dirs : 'path t -> mode:Lib_mode.t -> 'path list
 
+val all_obj_dirs_for_visibility
+  :  'path t
+  -> mode:Lib_mode.t
+  -> visibility:Visibility.t
+  -> 'path list
+
 (** Create the object directory for a library *)
 val make_lib
   :  dir:Path.Build.t
   -> has_private_modules:bool
+  -> has_excluded_modules:bool
   -> private_lib:bool
   -> Lib_name.Local.t
   -> Path.Build.t t

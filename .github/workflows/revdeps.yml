@@ -1,6 +1,14 @@
 name: Reverse Dependencies
 
 on:
+  workflow_call:
+    inputs:
+      packages:
+        required: true
+        type: string
+      dune_version:
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       packages:

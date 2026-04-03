@@ -17,3 +17,4 @@ val is_running : t -> Pid.t -> bool
 val killall : t -> int -> unit
 
 val wait_unix : t -> Fiber.fill list
+val shutdown : t -> unit

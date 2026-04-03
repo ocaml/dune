@@ -9,21 +9,13 @@ let config =
   }
 ;;
 
-let string_contains s needle =
-  let len_s = String.length s in
-  let len_needle = String.length needle in
-  let rec loop i =
-    i + len_needle <= len_s
-    && (String.sub s ~pos:i ~len:len_needle = needle || loop (i + 1))
+let print_relevant_output stdout stderr =
+  let print_if_nonempty s =
+    let s = String.trim s in
+    if not (String.is_empty s) then print_endline s
   in
-  loop 0
-;;
-
-let print_relevant_stderr stderr =
-  String.split_lines stderr
-  |> List.filter ~f:(fun line ->
-    string_contains line "signal watcher received an unexpected signal")
-  |> List.iter ~f:print_endline
+  print_if_nonempty stdout;
+  print_if_nonempty stderr
 ;;
 
 let signal_cleanup_repro_prog =
@@ -68,13 +60,11 @@ let run_signal_cleanup_repro () =
     if String.equal stdout "ok after 1 iterations"
     then true
     else (
-      ignore stdout;
-      print_relevant_stderr stderr;
+      print_relevant_output stdout stderr;
       false)
   | status ->
-    ignore stdout;
     ignore status;
-    print_relevant_stderr stderr;
+    print_relevant_output stdout stderr;
     false
 ;;
 

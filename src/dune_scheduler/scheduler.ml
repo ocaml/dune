@@ -183,6 +183,7 @@ let kill_and_wait_for_all_processes t =
   then (
     Unix.kill (Unix.getpid ()) (Signal.to_int Thread.signal_watcher_interrupt);
     Thread.join t.signal_watcher);
+  Process_watcher.shutdown t.process_watcher;
   !saw_signal
 ;;
 

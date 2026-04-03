@@ -44,8 +44,6 @@ let dyn_of_process_state = function
   | Zombie _ -> Dyn.variant "Zombie" []
 ;;
 
-(* This mutable table is safe: it does not interact with the state we track in
-   the build system. *)
 type t =
   { mutex : Mutex.t Lazy.t
   ; something_is_running : Condition.t option
@@ -214,7 +212,12 @@ let init events =
   in
   if Sys.win32
   then (
-    let (_ : Thread.t) = Thread0.spawn ~name:"process-watcher" (fun () -> run_win32 t) in
+    let (_ : Thread.t) =
+      Thread0.spawn ~name:"process-watcher" (fun () ->
+        run_win32 t)
+    in
     ());
   t
 ;;
+
+let shutdown (_ : t) = ()

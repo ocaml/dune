@@ -58,7 +58,10 @@ let run ~print_ctrl_c_warning q : unit =
       (* On macOS, sometimes we process a `SIGKILL` either immediately before
          or after `SIGINT`. Given Dune is going to exit anyway, we ignore it. *)
       ()
-    | _ -> (* we only blocked the signals above *) assert false
+    | _ ->
+      Code_error.raise
+        "signal watcher received an unexpected signal"
+        [ "signal", Signal.to_dyn signal ]
   done
 ;;
 

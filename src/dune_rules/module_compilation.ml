@@ -286,6 +286,29 @@ let build_cm
         | Some All | None -> Hidden_targets [ obj ])
    in
    let opaque = Compilation_context.opaque cctx in
+   (* Library file dependencies, added per-module. Alias and Wrapped_compat
+      modules are compiled with Includes.empty and need no library file deps.
+      All other modules depend on all libraries in the stanza's requires. *)
+   let lib_cm_deps =
+     let skip_lib_deps =
+       match Module.kind m with
+       | Alias _ | Wrapped_compat -> true
+       | _ -> false
+     in
+     Action_builder.dyn_deps
+       (if skip_lib_deps
+        then Action_builder.return ((), Dep.Set.empty)
+        else
+          let open Action_builder.O in
+          let+ all_libs =
+            Resolve.Memo.read
+              (let open Resolve.Memo.O in
+               let+ direct_libs = Compilation_context.requires_compile cctx
+               and+ hidden_libs = Compilation_context.requires_hidden cctx in
+               direct_libs @ hidden_libs)
+          in
+          (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind all_libs)
+   in
    let other_cm_files =
      let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
      let module_deps = Dep_graph.deps_of dep_graph m in
@@ -404,6 +427,7 @@ let build_cm
      ?loc:(Compilation_context.loc cctx)
      (let open Action_builder.With_targets.O in
       Action_builder.with_no_targets other_cm_files
+      >>> Action_builder.with_no_targets lib_cm_deps
       >>> Command.run
             ~dir:(Path.build (Context.build_dir ctx))
             compiler

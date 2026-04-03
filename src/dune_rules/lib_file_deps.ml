@@ -48,8 +48,24 @@ let deps_of_lib (lib : Lib.t) ~groups =
   |> Dep.Set.of_list
 ;;
 
-let deps_with_exts = Dep.Set.union_map ~f:(fun (lib, groups) -> deps_of_lib lib ~groups)
 let deps libs ~groups = Dep.Set.union_map libs ~f:(deps_of_lib ~groups)
+
+let deps_of_entries ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) (libs : Lib.t list) =
+  let groups =
+    match cm_kind with
+    | Ocaml Cmi | Ocaml Cmo -> [ Group.Ocaml Cmi ]
+    | Melange Cmi -> [ Group.Melange Cmi ]
+    | Melange Cmj -> [ Group.Melange Cmi; Melange Cmj ]
+    | Ocaml Cmx -> [ Group.Ocaml Cmi; Ocaml Cmx ]
+  in
+  Dep.Set.union_map libs ~f:(fun lib ->
+    let groups =
+      match cm_kind with
+      | Ocaml Cmx when opaque && Lib.is_local lib -> [ Group.Ocaml Cmi ]
+      | _ -> groups
+    in
+    deps_of_lib lib ~groups)
+;;
 
 type path_specification =
   | Allow_all

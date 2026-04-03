@@ -53,6 +53,10 @@ Dune is a self-hosting OCaml build system that uses itself to build itself.
 
 ## Development Workflow
 
+Refer to `doc/hacking.rst` for granular instructions on developing Dune. In
+particular, always write code according to the guidelines and style described
+in the hacking document.
+
 ### Build Commands
 ```bash
 dune build @check          # Quick build (recommended for development)

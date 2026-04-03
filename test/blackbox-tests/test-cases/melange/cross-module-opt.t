@@ -64,17 +64,13 @@ closure and the same-library implementation closure it reaches.
 
   $ dune describe rules --display=quiet --profile=release dist_xopt/node_modules/repro/entry.js > xopt-rules.sexp
   $ grep -c 'lib/.repro.objs/melange/dep.cmi' xopt-rules.sexp
-  0
-  [1]
+  1
   $ grep -c 'lib/.repro.objs/melange/dep.cmj' xopt-rules.sexp
-  0
-  [1]
+  1
   $ grep -c 'lib/.repro.objs/melange/leaf.cmi' xopt-rules.sexp
-  0
-  [1]
+  1
   $ grep -c 'lib/.repro.objs/melange/leaf.cmj' xopt-rules.sexp
-  0
-  [1]
+  1
 
 Without xopt, the same emitted module should not stage those extra same-library
 dependencies.

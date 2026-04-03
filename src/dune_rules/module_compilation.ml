@@ -286,28 +286,86 @@ let build_cm
         | Some All | None -> Hidden_targets [ obj ])
    in
    let opaque = Compilation_context.opaque cctx in
-   (* Library file dependencies, added per-module. Alias and Wrapped_compat
-      modules are compiled with Includes.empty and need no library file deps.
-      All other modules depend on all libraries in the stanza's requires. *)
+   (* Library file dependencies - filtered per-module based on ocamldep output.
+      Issue #4572: Finer dependency analysis between libraries. *)
    let lib_cm_deps =
+     let requires_compile = Compilation_context.requires_compile cctx in
+     let requires_hidden = Compilation_context.requires_hidden cctx in
+     let for_ = Compilation_context.for_ cctx in
+     let stanza_modules = Compilation_context.modules cctx in
+     (* Alias modules are compiled with Includes.empty (no -I flags for
+        libraries) by for_alias_module, and Wrapped_compat modules are
+        compiled with Includes.empty by for_wrapped_compat. Neither needs
+        library file deps — they can't access library .cmi files regardless.
+        Skipping them also avoids a cascade where wrapper .cmi changes
+        would trigger recompilation of all stanza modules.
+        Other special modules (Root, etc.) and synthetic contexts (dir
+        mismatch) fall back to all-library glob deps. *)
      let skip_lib_deps =
        match Module.kind m with
        | Alias _ | Wrapped_compat -> true
        | _ -> false
+     in
+     let can_filter =
+       let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
+       let dep_graph_dir = Dep_graph.dir dep_graph in
+       (not skip_lib_deps)
+       && Path.Build.equal dep_graph_dir (Obj_dir.dir obj_dir)
+       &&
+       match Module.kind m with
+       | Root | Wrapped_compat | Impl_vmodule | Virtual | Parameter -> false
+       | _ -> Module.has m ~ml_kind
      in
      Action_builder.dyn_deps
        (if skip_lib_deps
         then Action_builder.return ((), Dep.Set.empty)
         else
           let open Action_builder.O in
-          let+ all_libs =
+          let* all_libs, lib_index_opt =
             Resolve.Memo.read
               (let open Resolve.Memo.O in
-               let+ direct_libs = Compilation_context.requires_compile cctx
-               and+ hidden_libs = Compilation_context.requires_hidden cctx in
-               direct_libs @ hidden_libs)
+               let* direct_libs = requires_compile
+               and* hidden_libs = requires_hidden in
+               let all_libs = direct_libs @ hidden_libs in
+               if can_filter && not (List.is_empty all_libs)
+               then
+                 let+ lib_index = Compilation_context.lib_index cctx in
+                 all_libs, Some lib_index
+               else Resolve.Memo.return (all_libs, None))
           in
-          (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind all_libs)
+          let all_entries = List.map all_libs ~f:(fun lib -> lib, None) in
+          match lib_index_opt with
+          | None ->
+            Action_builder.return
+              ((), Lib_file_deps.deps_of_entries ~opaque ~cm_kind all_entries)
+          | Some lib_index ->
+            let+ referenced_modules =
+              Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind ~for_ m
+            in
+            let references_root_module =
+              Module_name.Set.exists referenced_modules ~f:(fun name ->
+                match Modules.With_vlib.find stanza_modules name with
+                | Some m -> Module.kind m = Root
+                | None -> false)
+            in
+            let external_modules =
+              Module_name.Set.filter referenced_modules ~f:(fun name ->
+                Option.is_none (Modules.With_vlib.find stanza_modules name))
+            in
+            let used_entries =
+              if references_root_module
+              then all_entries
+              else (
+                let used =
+                  Lib_file_deps.Lib_index.filter_libs
+                    lib_index
+                    ~referenced_modules:external_modules
+                in
+                if List.is_empty used && not (Module_name.Set.is_empty external_modules)
+                then all_entries
+                else used)
+            in
+            (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind used_entries)
    in
    let other_cm_files =
      let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in

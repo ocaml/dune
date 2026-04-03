@@ -1,4 +1,4 @@
-Baseline: library dependency recompilation with multiple libraries.
+Per-module filtering: library dependency recompilation with multiple libraries.
 
 When an executable depends on two libraries and only one changes, Dune
 currently recompiles all modules, even those that only reference the unchanged
@@ -96,11 +96,10 @@ Now change ONLY mylib's interface:
   > let new_function () = "hello"
   > EOF
 
-Uses_other is recompiled even though it only uses Otherlib, not Mylib:
+Uses_other is no longer recompiled because it only uses Otherlib, not Mylib:
 
   $ dune build ./main.exe --display short 2>&1 | grep Uses_other
-        ocamlc .main.eobjs/byte/dune__exe__Uses_other.{cmi,cmti}
-      ocamlopt .main.eobjs/native/dune__exe__Uses_other.{cmx,o}
+  [1]
 
 Now change ONLY otherlib's interface:
 
@@ -114,8 +113,7 @@ Now change ONLY otherlib's interface:
   > let new_other_fn s = s ^ "!"
   > EOF
 
-Uses_lib is recompiled even though it only uses Mylib, not Otherlib:
+Uses_lib is no longer recompiled because it only uses Mylib, not Otherlib:
 
   $ dune build ./main.exe --display short 2>&1 | grep Uses_lib
-        ocamlc .main.eobjs/byte/dune__exe__Uses_lib.{cmi,cmti}
-      ocamlopt .main.eobjs/native/dune__exe__Uses_lib.{cmx,o}
+  [1]

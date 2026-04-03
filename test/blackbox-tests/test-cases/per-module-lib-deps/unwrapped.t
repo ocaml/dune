@@ -1,4 +1,4 @@
-Baseline: library dependency recompilation for unwrapped libraries.
+Per-module filtering: library dependency recompilation for unwrapped libraries.
 
 When an unwrapped library module's interface changes, Dune currently recompiles
 all modules in stanzas that depend on the library, even those referencing
@@ -91,11 +91,10 @@ Now change ONLY helper.mli (not utils.mli):
   > let new_helper s = s ^ "!"
   > EOF
 
-Uses_utils is recompiled even though it only references Utils, not Helper:
+Uses_utils is no longer recompiled because it only references Utils, not Helper:
 
   $ dune build ./main.exe --display short 2>&1 | grep Uses_utils
-        ocamlc .main.eobjs/byte/dune__exe__Uses_utils.{cmi,cmti}
-      ocamlopt .main.eobjs/native/dune__exe__Uses_utils.{cmx,o}
+  [1]
 
 Now change ONLY utils.mli (not helper.mli):
 
@@ -109,8 +108,7 @@ Now change ONLY utils.mli (not helper.mli):
   > let new_utils s = s ^ "?"
   > EOF
 
-Uses_helper is recompiled even though it only references Helper, not Utils:
+Uses_helper is no longer recompiled because it only references Helper, not Utils:
 
   $ dune build ./main.exe --display short 2>&1 | grep Uses_helper
-        ocamlc .main.eobjs/byte/dune__exe__Uses_helper.{cmi,cmti}
-      ocamlopt .main.eobjs/native/dune__exe__Uses_helper.{cmx,o}
+  [1]

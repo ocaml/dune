@@ -5,9 +5,9 @@ module Includes = struct
   type t = Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
   (* Library file dependencies (Hidden_deps) are added per-module in
-     module_compilation.ml rather than here.
-     TODO: some of the requires can be filtered out using [ocamldep] info.
-     See issue #4572. *)
+     module_compilation.ml based on ocamldep output. Each module depends
+     only on libraries it actually references.
+     See issue #4572: Finer dependency analysis between libraries. *)
   let make ~project ~direct_requires ~hidden_requires lib_config
     : _ Lib_mode.Cm_kind.Map.t
     =
@@ -68,6 +68,7 @@ type t =
   ; parameters : Module_name.t list Resolve.Memo.t
   ; instances : Parameterised_instances.t Resolve.Memo.t option
   ; includes : Includes.t
+  ; lib_index : Lib_file_deps.Lib_index.t Resolve.Memo.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
   ; js_of_ocaml : Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
@@ -95,6 +96,7 @@ let requires_hidden t = t.requires_hidden
 let requires_link t = Memo.Lazy.force t.requires_link
 let parameters t = t.parameters
 let includes t = t.includes
+let lib_index t = t.lib_index
 let preprocessing t = t.preprocessing
 let opaque t = t.opaque
 let js_of_ocaml t = t.js_of_ocaml
@@ -218,6 +220,11 @@ let create
   ; implements
   ; parameters
   ; includes = Includes.make ~project ~direct_requires ~hidden_requires ocaml.lib_config
+  ; lib_index =
+      (let open Resolve.Memo.O in
+       let* direct_libs = direct_requires
+       and* hidden_libs = hidden_requires in
+       Lib_file_deps.Lib_index.create super_context (direct_libs @ hidden_libs) ~for_)
   ; preprocessing
   ; opaque
   ; js_of_ocaml
@@ -318,6 +325,7 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
   ; flags = Ocaml_flags.empty
   ; requires_link = Memo.lazy_ (fun () -> requires)
   ; requires_compile = requires
+  ; lib_index = Resolve.Memo.return Lib_file_deps.Lib_index.empty
   ; includes
   ; modules
   }

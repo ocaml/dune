@@ -1,4 +1,4 @@
-Baseline: library dependency recompilation with transitive dependencies.
+Per-module filtering: library dependency recompilation with transitive dependencies.
 
 Library A depends on Library B. When B changes, Dune currently recompiles all
 modules in the consuming stanza, even those that don't use A.
@@ -91,8 +91,7 @@ Now change libB's interface (the transitive dependency):
   > let new_base_fn () = "new"
   > EOF
 
-Independent is recompiled even though it doesn't reference libA or libB:
+Independent is no longer recompiled because it doesn't reference libA or libB:
 
   $ dune build ./main.exe --display short 2>&1 | grep Independent
-        ocamlc .main.eobjs/byte/dune__exe__Independent.{cmi,cmti}
-      ocamlopt .main.eobjs/native/dune__exe__Independent.{cmx,o}
+  [1]

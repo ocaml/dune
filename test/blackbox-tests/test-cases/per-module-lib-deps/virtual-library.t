@@ -1,4 +1,4 @@
-Baseline: library dependency recompilation with virtual libraries.
+Per-module filtering: library dependency recompilation with virtual libraries.
 
 When a virtual library's interface changes, Dune currently recompiles all
 modules in stanzas that depend on it, even those that don't reference it.
@@ -84,8 +84,7 @@ Update the implementation to match:
   > let new_virtual s = s ^ "!"
   > EOF
 
-No_vlib is recompiled even though it doesn't reference the virtual library:
+No_vlib is no longer recompiled because it doesn't reference the virtual library:
 
   $ dune build ./main.exe --display short 2>&1 | grep No_vlib
-        ocamlc .main.eobjs/byte/dune__exe__No_vlib.{cmi,cmti}
-      ocamlopt .main.eobjs/native/dune__exe__No_vlib.{cmx,o}
+  [1]

@@ -1,4 +1,4 @@
-Baseline: wrapped-compat module recompilation behavior.
+Per-module filtering: wrapped-compat module recompilation behavior.
 
 Libraries using (wrapped (transition ...)) generate wrapped-compat modules.
 Currently, all inner modules are recompiled when any library dependency changes.
@@ -87,8 +87,7 @@ Now change baselib's INTERFACE:
   > let new_fn () = "hello"
   > EOF
 
-Standalone is recompiled even though it doesn't reference Baselib:
+Standalone is no longer recompiled because it doesn't reference Baselib:
 
   $ dune build ./main.exe --display short 2>&1 | grep Standalone
-        ocamlc translib/.translib.objs/byte/translib__Standalone.{cmi,cmti}
-      ocamlopt translib/.translib.objs/native/translib__Standalone.{cmx,o}
+  [1]

@@ -1,4 +1,4 @@
-Baseline: library-to-library recompilation (unwrapped).
+Per-module filtering: library-to-library recompilation (unwrapped).
 
 When an unwrapped library A depends on an unwrapped library B with multiple
 modules, and one module in B changes, all modules in A are recompiled due to
@@ -101,11 +101,10 @@ Now change ONLY alpha.mli in the base library:
   > let new_alpha_fn () = "alpha"
   > EOF
 
-uses_beta is recompiled even though it only references Beta, not Alpha:
+uses_beta is no longer recompiled because it only references Beta, not Alpha:
 
   $ dune build ./main.exe --display short 2>&1 | grep uses_beta
-        ocamlc upper_unwrapped/.upper_unwrapped.objs/byte/uses_beta.{cmi,cmti}
-      ocamlopt upper_unwrapped/.upper_unwrapped.objs/native/uses_beta.{cmx,o}
+  [1]
 
 Now change ONLY beta.mli in the base library:
 
@@ -119,8 +118,7 @@ Now change ONLY beta.mli in the base library:
   > let new_beta_fn () = "beta"
   > EOF
 
-uses_alpha is recompiled even though it only references Alpha, not Beta:
+uses_alpha is no longer recompiled because it only references Alpha, not Beta:
 
   $ dune build ./main.exe --display short 2>&1 | grep uses_alpha
-        ocamlc upper_unwrapped/.upper_unwrapped.objs/byte/uses_alpha.{cmi,cmti}
-      ocamlopt upper_unwrapped/.upper_unwrapped.objs/native/uses_alpha.{cmx,o}
+  [1]

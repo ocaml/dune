@@ -286,6 +286,30 @@ let build_cm
         | Some All | None -> Hidden_targets [ obj ])
    in
    let opaque = Compilation_context.opaque cctx in
+   (* Library file dependencies, added per-module. Non-stdlib alias modules
+      and Wrapped_compat modules are compiled with Includes.empty and need no
+      library file deps. Stdlib aliases need full deps because they contain
+      code referencing CamlintternalXXX modules. All other modules depend on
+      all libraries in the stanza's requires. *)
+   let lib_cm_deps : _ Command.Args.t =
+     let stanza_modules = Compilation_context.modules cctx in
+     let skip_lib_deps =
+       match Module.kind m with
+       | Alias _ -> not (Modules.With_vlib.is_stdlib_alias stanza_modules m)
+       | Wrapped_compat -> true
+       | _ -> false
+     in
+     if skip_lib_deps
+     then Command.Args.empty
+     else
+       (let open Resolve.Memo.O in
+        let+ direct_libs = Compilation_context.requires_compile cctx
+        and+ hidden_libs = Compilation_context.requires_hidden cctx in
+        Command.Args.Hidden_deps
+          (Lib_file_deps.deps_of_entries ~opaque ~cm_kind (direct_libs @ hidden_libs)))
+       |> Resolve.Memo.args
+       |> Command.Args.memo
+   in
    let other_cm_files =
      let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
      let module_deps = Dep_graph.deps_of dep_graph m in
@@ -414,6 +438,7 @@ let build_cm
             ; Command.Args.S obj_dirs
             ; Command.Args.as_any
                 (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind)
+            ; lib_cm_deps
             ; extra_args
             ; As as_parameter_arg
             ; as_argument_for
@@ -512,12 +537,24 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
   let ctx = Super_context.context sctx in
   let src = Option.value_exn (Module.file m ~ml_kind:Impl) in
   let sandbox = Compilation_context.sandbox cctx in
+  let opaque = Compilation_context.opaque cctx in
   let cm_deps =
     Action_builder.dyn_paths_unit
       (let open Action_builder.O in
        let+ deps = Ml_kind.Dict.get deps Impl in
        List.concat_map deps ~f:(fun m ->
          [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml Cmi)) ]))
+  in
+  let lib_cm_deps : _ Command.Args.t =
+    (let open Resolve.Memo.O in
+     let+ direct_libs = Compilation_context.requires_compile cctx
+     and+ hidden_libs = Compilation_context.requires_hidden cctx in
+     Command.Args.Hidden_deps
+       (Lib_file_deps.deps_of_entries
+          ~opaque
+          ~cm_kind:(Ocaml Cmo)
+          (direct_libs @ hidden_libs)))
+    |> Resolve.Memo.args
   in
   let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml Byte) in
   let modules = Compilation_context.modules cctx in
@@ -540,6 +577,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
                   (Lib_mode.Cm_kind.Map.get
                      (Compilation_context.includes cctx)
                      (Ocaml Cmo))
+              ; lib_cm_deps
               ; opens modules m
               ; A "-short-paths"
               ; A "-i"

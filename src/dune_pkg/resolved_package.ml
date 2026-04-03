@@ -38,6 +38,48 @@ let opam_file = function
   | Rest t -> t.opam_file
 ;;
 
+let commands_are_dune_default ~build ~install =
+  let with_test_var = OpamVariable.of_string "with-test" in
+  let with_doc_var = OpamVariable.of_string "with-doc" in
+  let dev_var = OpamVariable.of_string "dev" in
+  let is_default_subst_command = function
+    | ( [ (OpamTypes.CString "dune", None); (CString "subst", None) ]
+      , Some (OpamTypes.FIdent ([], dev_var_, None)) ) ->
+      OpamVariable.equal dev_var_ dev_var
+    | _ -> false
+  in
+  let is_default_build_command = function
+    | ( [ (OpamTypes.CString "dune", None)
+        ; (CString "build", None)
+        ; (CString "-p", None)
+        ; (CIdent "name", None)
+        ; (CString "-j", None)
+        ; (CIdent "jobs", None)
+        ; (CString "@install", None)
+        ; (CString "@runtest", Some (OpamTypes.FIdent ([], with_test_var_, None)))
+        ; (CString "@doc", Some (OpamTypes.FIdent ([], with_doc_var_, None)))
+        ]
+      , None ) ->
+      OpamVariable.equal with_test_var_ with_test_var
+      && OpamVariable.equal with_doc_var_ with_doc_var
+    | _ -> false
+  in
+  (* Accept packages with no install command, and whose build commands look
+     like the ones inserted by Dune when it generates opam files. *)
+  match install with
+  | _ :: _ -> false
+  | [] ->
+    (match build with
+     | [ build_command ] -> is_default_build_command build_command
+     | [ subst_command; build_command ] ->
+       is_default_subst_command subst_command && is_default_build_command build_command
+     | _ -> false)
+;;
+
+let opam_file_has_default_dune_commands (opam_file : OpamFile.OPAM.t) =
+  commands_are_dune_default ~build:opam_file.build ~install:opam_file.install
+;;
+
 let with_opam_file opam_file = function
   | Dune ->
     Code_error.raise
@@ -54,7 +96,7 @@ let extra_files = function
 let git_repo package (loc, opam_file) rev ~files_dir ~url =
   let opam_file = Opam_file.opam_file_with ~package ~url opam_file in
   Rest
-    { dune_build = false
+    { dune_build = opam_file_has_default_dune_commands opam_file
     ; loc
     ; package
     ; opam_file
@@ -66,7 +108,7 @@ let local_fs package (loc, opam_file) ~dir ~files_dir ~url =
   let files_dir = Option.map files_dir ~f:(Path.append_local dir) in
   let opam_file = Opam_file.opam_file_with ~package ~url opam_file in
   Rest
-    { dune_build = false
+    { dune_build = opam_file_has_default_dune_commands opam_file
     ; loc
     ; package
     ; extra_files = Inside_files_dir files_dir
@@ -103,7 +145,7 @@ let local_package ~command_source (loc, opam_file) opam_package =
   let dune_build =
     match (command_source : Local_package.command_source) with
     | Assume_defaults -> true
-    | Opam_file _ -> false
+    | Opam_file { build; install } -> commands_are_dune_default ~build ~install
   in
   let opam_file = Opam_file.opam_file_with ~package:opam_package ~url:None opam_file in
   let package = OpamFile.OPAM.package opam_file in

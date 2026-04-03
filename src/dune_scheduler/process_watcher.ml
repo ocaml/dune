@@ -31,8 +31,6 @@ let kill_process_group pid signal ~is_process_group_leader =
     ignore (Pid.kill pid `Pid signal : [ `Delivered | `Dead ])
 ;;
 
-(* This mutable table is safe: it does not interact with the state we track in
-   the build system. *)
 type t =
   { mutex : Mutex.t Lazy.t
   ; something_is_running : Condition.t option
@@ -187,7 +185,12 @@ let init events =
   in
   if Sys.win32
   then (
-    let (_ : Thread.t) = Thread0.spawn ~name:"process-watcher" (fun () -> run_win32 t) in
+    let (_ : Thread.t) =
+      Thread0.spawn ~name:"process-watcher" (fun () ->
+        run_win32 t)
+    in
     ());
   t
 ;;
+
+let shutdown (_ : t) = ()

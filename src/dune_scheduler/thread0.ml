@@ -9,13 +9,14 @@ let signal_watcher_interrupt : Signal.t = Usr1
 let signal_watcher_debug : Signal.t = Usr2
 
 (* These are the signals that will make the scheduler attempt to terminate dune
-   or signal to dune to reap a process *)
+   or signal to dune to reap a process.
+*)
 let interrupt_signals : Signal.t list =
   [ signal_watcher_interrupt; signal_watcher_debug; Chld; Int; Quit; Term ]
 ;;
 
 (* In addition, the scheduler also blocks some other signals so that only
-   designated threads can handle them by unblocking *)
+   designated threads can handle them by unblocking. *)
 let blocked_signals : Signal.t list = Terminal_signals.signals @ interrupt_signals
 
 let block_signals =
@@ -35,7 +36,7 @@ let create =
   then Thread.create
   else
     (* On unix, we make sure to block signals globally before starting a
-         thread so that only the signal watcher thread can receive signals. *)
+       thread so that only the signal watcher thread can receive signals. *)
     fun f x ->
       Lazy.force block_signals;
       Thread.create f x

@@ -41,7 +41,7 @@ module Queue : sig
   (** Register the fact that a job was finished. *)
   val finish_job : t -> unit
 
-  (** Number of jobs for which the status hasn't been reported yet .*)
+  (** Number of jobs for which the status hasn't been reported yet. *)
   val pending_jobs : t -> int
 
   val send_worker_task_completed : t -> Fiber.fill -> unit

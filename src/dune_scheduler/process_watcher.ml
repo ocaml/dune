@@ -86,7 +86,10 @@ module Process_table = struct
     | Some (Zombie proc_info) ->
       Table.remove t.table job.pid;
       Event.Queue.send_job_completed t.events job proc_info
-    | Some (Running _) -> assert false
+    | Some (Running _) ->
+      Code_error.raise
+        "process watcher registered a running job twice"
+        [ "pid", Dyn.int (Pid.to_int job.pid) ]
   ;;
 
   let remove t (proc_info : Proc.Process_info.t) =
@@ -98,7 +101,10 @@ module Process_table = struct
       t.running_count <- t.running_count - 1;
       Table.remove t.table proc_info.pid;
       Some job
-    | Some (Zombie _) -> assert false
+    | Some (Zombie _) ->
+      Code_error.raise
+        "process watcher saw the same process exit twice"
+        [ "pid", Dyn.int (Pid.to_int proc_info.pid) ]
   ;;
 
   let iter t ~f =

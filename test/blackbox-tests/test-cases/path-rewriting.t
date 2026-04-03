@@ -5,7 +5,7 @@ rewrite the current working directory:
   $ cat > dune <<"EOF"
   > (rule
   >  (target x)
-  >  (action (system "dune_cmd rewrite-path $PWD; touch x")))
+  >  (action (bash "dune_cmd rewrite-path $PWD; touch x")))
   > EOF
 
   $ dune build

@@ -53,6 +53,7 @@ module Local_gen = struct
   module Table = String.Table
 
   let to_string t = t
+  let repr = Repr.view Repr.string ~to_:to_string
   let hash = String.hash
   let compare = String.compare
   let equal = String.equal

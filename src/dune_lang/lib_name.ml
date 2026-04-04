@@ -16,7 +16,7 @@ module Local = struct
 
   include (
     Stringlike.Make (struct
-      type t = string
+      include String
 
       let valid_char = function
         | 'A' .. 'Z' | 'a' .. 'z' | '_' | '0' .. '9' -> true
@@ -97,6 +97,8 @@ include Stringlike.Make (struct
       | s -> Option.some_if (s.[0] <> '.') s
     ;;
   end)
+
+let repr = String.repr
 
 type analyze =
   | Public of Package_name.t * string list

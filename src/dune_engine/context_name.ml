@@ -7,7 +7,7 @@ let is_default = String.equal default
 
 include (
   Stringlike.Make (struct
-    type nonrec t = t
+    include String
 
     let description_of_valid_string = None
     let hint_valid = None

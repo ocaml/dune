@@ -508,11 +508,13 @@ module Produced = struct
   ;;
 
   let digest { contents; root = _ } =
-    let rec all_digests _ { files; subdirs } =
+    let digest_repr = Repr.view Repr.string ~to_:Digest.to_string in
+    let rec all_digests { files; subdirs } =
       let ffiles = Filename.Map.values files in
-      List.concat (ffiles :: Filename.Map.to_list_map subdirs ~f:all_digests)
+      List.concat
+        (ffiles :: Filename.Map.to_list_map subdirs ~f:(fun _ dir -> all_digests dir))
     in
-    Digest.generic (all_digests "ignored" contents)
+    Digest.repr Repr.(list digest_repr) (all_digests contents)
   ;;
 
   (* The odd type of [d] and [f] is due to the fact that [map_with_errors]

@@ -542,8 +542,24 @@ end = struct
 
   let reverse_table : (Digest.t, Decoded.t) Table.t = Table.create (module Digest) 128
 
+  let mode_repr =
+    Repr.variant
+      "jsoo-mode"
+      [ Repr.case0 "js" ~test:(function
+          | Js_of_ocaml.Mode.JS -> true
+          | Wasm -> false)
+      ; Repr.case0 "wasm" ~test:(function
+          | Js_of_ocaml.Mode.Wasm -> true
+          | JS -> false)
+      ]
+  ;;
+
   let encode ({ Decoded.mode; lib_names; project_root } as x) =
-    let y = Digest.generic (mode, lib_names, project_root) in
+    let y =
+      Digest.repr
+        Repr.(triple mode_repr (list Lib_name.repr) (option Path.Source.repr))
+        (mode, lib_names, project_root)
+    in
     match Table.find reverse_table y with
     | None ->
       Table.set reverse_table y x;

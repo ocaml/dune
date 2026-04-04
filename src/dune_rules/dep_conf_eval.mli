@@ -26,4 +26,4 @@ val named
   :  Sandbox_config.t
   -> expander:Expander.t
   -> Dep_conf.t Bindings.t
-  -> unit Action_builder.t * Expander.t * Sandbox_config.t
+  -> unit Action_builder.t * Expander.t * Sandbox_config.t Action_builder.t

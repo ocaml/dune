@@ -15,8 +15,12 @@ Patch-back sandboxing from an included deps file is treated like direct patch-ba
   >  (action (bash "echo foo > mod")))
   > EOF
 
-  $ dune runtest 2>&1 | grep -o "Permission denied"
-  Permission denied
+  $ dune runtest
+  File "mod", line 1, characters 0-0:
+  --- mod
+  +++ _build/default/mod
+  @@ -0,0 +1 @@
+  +foo
   [1]
 
   $ cat > dune <<'EOF'

@@ -28,11 +28,6 @@
 ./test-cases/dune_memory-and-the-universe.t/run.t
 ./test-cases/enabled_if/eif-dune-describe.t
 ./test-cases/enabled_if/eif-ocaml_version_lte.t/run.t
-./test-cases/env/dune-binaries.t
-./test-cases/env/env-cflags.t/run.t
-./test-cases/env/env-link_flags.t/run.t
-./test-cases/env/env-var-expansion/missing-default-in-blang.t/run.t
-./test-cases/env/env-var-expansion/nesting.t/run.t
 ./test-cases/exclude-missing-module.t/run.t
 ./test-cases/exec/dune-build-dir-exec-1101.t/run.t
 ./test-cases/extensions-versioning/version-unknown.t/run.t
@@ -96,8 +91,6 @@
 ./test-cases/name-field-validation/no-name-exes-syntax-1-0.t/run.t
 ./test-cases/null-dep.t/run.t
 ./test-cases/ocamldep/ocamldep-multi-stanzas.t/run.t
-./test-cases/ocamllex/ocamllex-include-qualified.t
-./test-cases/ocamllex/ocamllex-include-unqualified.t
 ./test-cases/odoc/github717-odoc-index.t/run.t
 ./test-cases/odoc/new/github717-odoc-index.t/run.t
 ./test-cases/package-dep.t/run.t
@@ -115,9 +108,16 @@
 ./test-cases/select-field/select-2-0-rules.t
 ./test-cases/select-field/select.t/run.t
 ./test-cases/stanzas/dynamic-include-stanza/cycle.t
+./test-cases/stanzas/env/dune-binaries.t
+./test-cases/stanzas/env/env-cflags.t/run.t
+./test-cases/stanzas/env/env-link_flags.t/run.t
+./test-cases/stanzas/env/env-var-expansion/missing-default-in-blang.t/run.t
+./test-cases/stanzas/env/env-var-expansion/nesting.t/run.t
 ./test-cases/stanzas/include-stanza/github2711.t
 ./test-cases/stanzas/include-stanza/include-loop.t/run.t
 ./test-cases/stanzas/install/github2123.t/run.t
+./test-cases/stanzas/ocamllex/ocamllex-include-qualified.t
+./test-cases/stanzas/ocamllex/ocamllex-include-unqualified.t
 ./test-cases/stanzas/tests/generated.t/run.t
 ./test-cases/stanzas/tests/modes.t/run.t
 ./test-cases/stanzas/tests/plural.t/run.t

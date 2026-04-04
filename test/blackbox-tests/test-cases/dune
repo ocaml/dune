@@ -44,12 +44,6 @@
 
 ;; DISABLED TESTS
 
-(subdir
- env
- (cram
-  (applies_to envs-and-contexts)
-  (enabled_if false)))
-
 (cram
  (applies_to fdo)
  (enabled_if false))

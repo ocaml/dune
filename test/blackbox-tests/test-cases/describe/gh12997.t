@@ -23,12 +23,12 @@
   > let x = 1
   > EOF
 
-  $ dune describe workspace --sanitize-for-tests
+  $ dune describe workspace --sanitize-for-tests | censor
   ((root /WORKSPACE_ROOT)
    (build_context _build/default)
    (library
     ((name alive)
-     (uid b8a14a61f9163d57810cc01c7f39d084)
+     (uid $DIGEST)
      (local true)
      (requires ())
      (source_dir _build/default)

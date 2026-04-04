@@ -79,12 +79,12 @@ not stable across different setups.
         (cmti ()))))
      (include_dirs (_build/default/exe/.exe.eobjs/byte)))))
 
-  $ dune describe workspace --lang 0.1 --sanitize-for-tests lib
+  $ dune describe workspace --lang 0.1 --sanitize-for-tests lib | censor
   ((root /WORKSPACE_ROOT)
    (build_context _build/default)
    (library
     ((name lib)
-     (uid 48f89f472eed42cfe8a7ae83e2c8c1ce)
+     (uid $DIGEST)
      (local true)
      (requires ())
      (source_dir _build/default/lib)
@@ -96,27 +96,27 @@ not stable across different setups.
         (cmti ()))))
      (include_dirs (_build/default/lib/.lib.objs/byte)))))
 
-  $ dune describe workspace --lang 0.1 --sanitize-for-tests --with-pps exe
+  $ dune describe workspace --lang 0.1 --sanitize-for-tests --with-pps exe | censor
   ((root /WORKSPACE_ROOT)
    (build_context _build/default)
    (executables
     ((names (exe))
      (requires
-      (25fa301af563256248c5dadd60078c6e
-       b3f1696f67e77afbbf90bbd4ff4db3f7
-       3238f110cc121b8de5fb94811b5395f0
-       aa150dea272f13137145f9b1336e6f89
-       dc50e9309dbe56e9ba5a145dd0c7d272
-       c1f4a4a8fcca6a7045ebee5b639dc729
-       5df1715b4499126654748a00e0142c5e
-       9087f2ff68e06ebafea537cd921b2b75
-       3e0806da37ceb5ee0d783c15826db0e1
-       b6a38388b521e9d788bf8c241c8b7131
-       e7b78a2ef3334358a41a86855c8739c2
-       1513262a352b79a04ff483cd84ebd966
-       2c25d00eb24f552a85fba122b2d45dd1
-       12c434f04237f2f66660cf4ef9d28bac
-       d4bbc5a64c5463ce6eb84f54a61aa8b8))
+      ($DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST))
      (modules
       (((name Exe)
         (impl (_build/default/exe/exe.ml))
@@ -126,7 +126,7 @@ not stable across different setups.
      (include_dirs (_build/default/exe/.exe.eobjs/byte))))
    (library
     ((name compiler-libs)
-     (uid 25fa301af563256248c5dadd60078c6e)
+     (uid $DIGEST)
      (local false)
      (requires ())
      (source_dir /FINDLIB/compiler-libs)
@@ -134,20 +134,20 @@ not stable across different setups.
      (include_dirs (/FINDLIB/compiler-libs))))
    (library
     ((name compiler-libs.common)
-     (uid b3f1696f67e77afbbf90bbd4ff4db3f7)
+     (uid $DIGEST)
      (local false)
-     (requires (25fa301af563256248c5dadd60078c6e))
+     (requires ($DIGEST))
      (source_dir /FINDLIB/compiler-libs)
      (modules ())
      (include_dirs (/FINDLIB/compiler-libs))))
    (library
     ((name dummy_ppx)
-     (uid d4bbc5a64c5463ce6eb84f54a61aa8b8)
+     (uid $DIGEST)
      (local true)
      (requires
-      (c1f4a4a8fcca6a7045ebee5b639dc729
-       2c25d00eb24f552a85fba122b2d45dd1
-       12c434f04237f2f66660cf4ef9d28bac))
+      ($DIGEST
+       $DIGEST
+       $DIGEST))
      (source_dir _build/default/dummy_ppx)
      (modules
       (((name Dummy_ppx)
@@ -158,15 +158,15 @@ not stable across different setups.
      (include_dirs (_build/default/dummy_ppx/.dummy_ppx.objs/byte))))
    (library
     ((name ocaml-compiler-libs.common)
-     (uid 3238f110cc121b8de5fb94811b5395f0)
+     (uid $DIGEST)
      (local false)
-     (requires (b3f1696f67e77afbbf90bbd4ff4db3f7))
+     (requires ($DIGEST))
      (source_dir /FINDLIB/ocaml-compiler-libs/common)
      (modules ())
      (include_dirs (/FINDLIB/ocaml-compiler-libs/common))))
    (library
     ((name ocaml-compiler-libs.shadow)
-     (uid 5df1715b4499126654748a00e0142c5e)
+     (uid $DIGEST)
      (local false)
      (requires ())
      (source_dir /FINDLIB/ocaml-compiler-libs/shadow)
@@ -174,7 +174,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ocaml-compiler-libs/shadow))))
    (library
     ((name ppx_derivers)
-     (uid 3e0806da37ceb5ee0d783c15826db0e1)
+     (uid $DIGEST)
      (local false)
      (requires ())
      (source_dir /FINDLIB/ppx_derivers)
@@ -182,43 +182,43 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ppx_derivers))))
    (library
     ((name ppxlib)
-     (uid 2c25d00eb24f552a85fba122b2d45dd1)
+     (uid $DIGEST)
      (local false)
      (requires
-      (c1f4a4a8fcca6a7045ebee5b639dc729
-       5df1715b4499126654748a00e0142c5e
-       aa150dea272f13137145f9b1336e6f89
-       9087f2ff68e06ebafea537cd921b2b75
-       3e0806da37ceb5ee0d783c15826db0e1
-       b6a38388b521e9d788bf8c241c8b7131
-       1513262a352b79a04ff483cd84ebd966
-       dc50e9309dbe56e9ba5a145dd0c7d272
-       e7b78a2ef3334358a41a86855c8739c2
-       b3f1696f67e77afbbf90bbd4ff4db3f7))
+      ($DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST))
      (source_dir /FINDLIB/ppxlib)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib))))
    (library
     ((name ppxlib.ast)
-     (uid c1f4a4a8fcca6a7045ebee5b639dc729)
+     (uid $DIGEST)
      (local false)
      (requires
-      (aa150dea272f13137145f9b1336e6f89 dc50e9309dbe56e9ba5a145dd0c7d272))
+      ($DIGEST $DIGEST))
      (source_dir /FINDLIB/ppxlib/ast)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib/ast))))
    (library
     ((name ppxlib.astlib)
-     (uid aa150dea272f13137145f9b1336e6f89)
+     (uid $DIGEST)
      (local false)
      (requires
-      (3238f110cc121b8de5fb94811b5395f0 b3f1696f67e77afbbf90bbd4ff4db3f7))
+      ($DIGEST $DIGEST))
      (source_dir /FINDLIB/ppxlib/astlib)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib/astlib))))
    (library
     ((name ppxlib.print_diff)
-     (uid 9087f2ff68e06ebafea537cd921b2b75)
+     (uid $DIGEST)
      (local false)
      (requires ())
      (source_dir /FINDLIB/ppxlib/print_diff)
@@ -226,16 +226,16 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ppxlib/print_diff))))
    (library
     ((name ppxlib.stdppx)
-     (uid 1513262a352b79a04ff483cd84ebd966)
+     (uid $DIGEST)
      (local false)
      (requires
-      (e7b78a2ef3334358a41a86855c8739c2 dc50e9309dbe56e9ba5a145dd0c7d272))
+      ($DIGEST $DIGEST))
      (source_dir /FINDLIB/ppxlib/stdppx)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib/stdppx))))
    (library
     ((name ppxlib.traverse_builtins)
-     (uid b6a38388b521e9d788bf8c241c8b7131)
+     (uid $DIGEST)
      (local false)
      (requires ())
      (source_dir /FINDLIB/ppxlib/traverse_builtins)
@@ -243,7 +243,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ppxlib/traverse_builtins))))
    (library
     ((name sexplib0)
-     (uid e7b78a2ef3334358a41a86855c8739c2)
+     (uid $DIGEST)
      (local false)
      (requires ())
      (source_dir /FINDLIB/sexplib0)
@@ -251,7 +251,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/sexplib0))))
    (library
     ((name static_lib)
-     (uid 12c434f04237f2f66660cf4ef9d28bac)
+     (uid $DIGEST)
      (local true)
      (requires ())
      (source_dir _build/default/static_lib)
@@ -264,19 +264,19 @@ not stable across different setups.
      (include_dirs (_build/default/static_lib/.static_lib.objs/byte))))
    (library
     ((name stdlib-shims)
-     (uid dc50e9309dbe56e9ba5a145dd0c7d272)
+     (uid $DIGEST)
      (local false)
      (requires ())
      (source_dir /FINDLIB/stdlib-shims)
      (modules ())
      (include_dirs (/FINDLIB/stdlib-shims)))))
 
-  $ dune describe workspace --lang 0.1 --sanitize-for-tests --with-pps lib
+  $ dune describe workspace --lang 0.1 --sanitize-for-tests --with-pps lib | censor
   ((root /WORKSPACE_ROOT)
    (build_context _build/default)
    (library
     ((name compiler-libs)
-     (uid 25fa301af563256248c5dadd60078c6e)
+     (uid $DIGEST)
      (local false)
      (requires ())
      (source_dir /FINDLIB/compiler-libs)
@@ -284,20 +284,20 @@ not stable across different setups.
      (include_dirs (/FINDLIB/compiler-libs))))
    (library
     ((name compiler-libs.common)
-     (uid b3f1696f67e77afbbf90bbd4ff4db3f7)
+     (uid $DIGEST)
      (local false)
-     (requires (25fa301af563256248c5dadd60078c6e))
+     (requires ($DIGEST))
      (source_dir /FINDLIB/compiler-libs)
      (modules ())
      (include_dirs (/FINDLIB/compiler-libs))))
    (library
     ((name dummy_ppx)
-     (uid d4bbc5a64c5463ce6eb84f54a61aa8b8)
+     (uid $DIGEST)
      (local true)
      (requires
-      (c1f4a4a8fcca6a7045ebee5b639dc729
-       2c25d00eb24f552a85fba122b2d45dd1
-       12c434f04237f2f66660cf4ef9d28bac))
+      ($DIGEST
+       $DIGEST
+       $DIGEST))
      (source_dir _build/default/dummy_ppx)
      (modules
       (((name Dummy_ppx)
@@ -308,7 +308,7 @@ not stable across different setups.
      (include_dirs (_build/default/dummy_ppx/.dummy_ppx.objs/byte))))
    (library
     ((name lib)
-     (uid 48f89f472eed42cfe8a7ae83e2c8c1ce)
+     (uid $DIGEST)
      (local true)
      (requires ())
      (source_dir _build/default/lib)
@@ -321,15 +321,15 @@ not stable across different setups.
      (include_dirs (_build/default/lib/.lib.objs/byte))))
    (library
     ((name ocaml-compiler-libs.common)
-     (uid 3238f110cc121b8de5fb94811b5395f0)
+     (uid $DIGEST)
      (local false)
-     (requires (b3f1696f67e77afbbf90bbd4ff4db3f7))
+     (requires ($DIGEST))
      (source_dir /FINDLIB/ocaml-compiler-libs/common)
      (modules ())
      (include_dirs (/FINDLIB/ocaml-compiler-libs/common))))
    (library
     ((name ocaml-compiler-libs.shadow)
-     (uid 5df1715b4499126654748a00e0142c5e)
+     (uid $DIGEST)
      (local false)
      (requires ())
      (source_dir /FINDLIB/ocaml-compiler-libs/shadow)
@@ -337,7 +337,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ocaml-compiler-libs/shadow))))
    (library
     ((name ppx_derivers)
-     (uid 3e0806da37ceb5ee0d783c15826db0e1)
+     (uid $DIGEST)
      (local false)
      (requires ())
      (source_dir /FINDLIB/ppx_derivers)
@@ -345,43 +345,43 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ppx_derivers))))
    (library
     ((name ppxlib)
-     (uid 2c25d00eb24f552a85fba122b2d45dd1)
+     (uid $DIGEST)
      (local false)
      (requires
-      (c1f4a4a8fcca6a7045ebee5b639dc729
-       5df1715b4499126654748a00e0142c5e
-       aa150dea272f13137145f9b1336e6f89
-       9087f2ff68e06ebafea537cd921b2b75
-       3e0806da37ceb5ee0d783c15826db0e1
-       b6a38388b521e9d788bf8c241c8b7131
-       1513262a352b79a04ff483cd84ebd966
-       dc50e9309dbe56e9ba5a145dd0c7d272
-       e7b78a2ef3334358a41a86855c8739c2
-       b3f1696f67e77afbbf90bbd4ff4db3f7))
+      ($DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST
+       $DIGEST))
      (source_dir /FINDLIB/ppxlib)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib))))
    (library
     ((name ppxlib.ast)
-     (uid c1f4a4a8fcca6a7045ebee5b639dc729)
+     (uid $DIGEST)
      (local false)
      (requires
-      (aa150dea272f13137145f9b1336e6f89 dc50e9309dbe56e9ba5a145dd0c7d272))
+      ($DIGEST $DIGEST))
      (source_dir /FINDLIB/ppxlib/ast)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib/ast))))
    (library
     ((name ppxlib.astlib)
-     (uid aa150dea272f13137145f9b1336e6f89)
+     (uid $DIGEST)
      (local false)
      (requires
-      (3238f110cc121b8de5fb94811b5395f0 b3f1696f67e77afbbf90bbd4ff4db3f7))
+      ($DIGEST $DIGEST))
      (source_dir /FINDLIB/ppxlib/astlib)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib/astlib))))
    (library
     ((name ppxlib.print_diff)
-     (uid 9087f2ff68e06ebafea537cd921b2b75)
+     (uid $DIGEST)
      (local false)
      (requires ())
      (source_dir /FINDLIB/ppxlib/print_diff)
@@ -389,16 +389,16 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ppxlib/print_diff))))
    (library
     ((name ppxlib.stdppx)
-     (uid 1513262a352b79a04ff483cd84ebd966)
+     (uid $DIGEST)
      (local false)
      (requires
-      (e7b78a2ef3334358a41a86855c8739c2 dc50e9309dbe56e9ba5a145dd0c7d272))
+      ($DIGEST $DIGEST))
      (source_dir /FINDLIB/ppxlib/stdppx)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib/stdppx))))
    (library
     ((name ppxlib.traverse_builtins)
-     (uid b6a38388b521e9d788bf8c241c8b7131)
+     (uid $DIGEST)
      (local false)
      (requires ())
      (source_dir /FINDLIB/ppxlib/traverse_builtins)
@@ -406,7 +406,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ppxlib/traverse_builtins))))
    (library
     ((name sexplib0)
-     (uid e7b78a2ef3334358a41a86855c8739c2)
+     (uid $DIGEST)
      (local false)
      (requires ())
      (source_dir /FINDLIB/sexplib0)
@@ -414,7 +414,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/sexplib0))))
    (library
     ((name static_lib)
-     (uid 12c434f04237f2f66660cf4ef9d28bac)
+     (uid $DIGEST)
      (local true)
      (requires ())
      (source_dir _build/default/static_lib)
@@ -427,7 +427,7 @@ not stable across different setups.
      (include_dirs (_build/default/static_lib/.static_lib.objs/byte))))
    (library
     ((name stdlib-shims)
-     (uid dc50e9309dbe56e9ba5a145dd0c7d272)
+     (uid $DIGEST)
      (local false)
      (requires ())
      (source_dir /FINDLIB/stdlib-shims)

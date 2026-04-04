@@ -27,8 +27,7 @@ end
 
 module Extraction : sig
   type t =
-    { extracted_modules : string list
-    ; extracted_files : string list
+    { target_fnames : string list
     ; prelude : Loc.t * Rocq_module.Name.t
     ; buildable : Buildable.t
     }

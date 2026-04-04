@@ -1,4 +1,4 @@
-Test error when neither extracted_modules nor extracted_files is provided:
+Test error when extracted_files is not provided in rocq 0.13:
 
   $ cat >dune-project <<EOF
   > (lang dune 3.22)
@@ -21,8 +21,7 @@ Test error when neither extracted_modules nor extracted_files is provided:
   File "dune", lines 1-2, characters 0-33:
   1 | (rocq.extraction
   2 |  (prelude extr))
-  Error: At least one of (extracted_modules) or (extracted_files) must be
-  specified
+  Error: Field "extracted_files" is required
   [1]
 
 Test version gating: extracted_files requires (rocq 0.13):
@@ -47,7 +46,7 @@ Test version gating: extracted_files requires (rocq 0.13):
   0.13).
   [1]
 
-Test warning on duplicate target filename across extracted_modules and extracted_files:
+Test that extracted_modules is deleted in rocq 0.13 with a helpful error message:
 
   $ cat >dune-project <<EOF
   > (lang dune 3.22)
@@ -58,54 +57,16 @@ Test warning on duplicate target filename across extracted_modules and extracted
   > (rocq.extraction
   >  (prelude extr)
   >  (extracted_modules extr)
-  >  (extracted_files extr.ml)
   >  (flags (:standard -w -extraction-default-directory)))
   > EOF
 
   $ dune build
-  File "dune", lines 1-5, characters 0-140:
-  1 | (rocq.extraction
-  2 |  (prelude extr)
+  File "dune", line 3, characters 1-25:
   3 |  (extracted_modules extr)
-  4 |  (extracted_files extr.ml)
-  5 |  (flags (:standard -w -extraction-default-directory)))
-  Warning: Duplicate target filename "extr.ml" across (extracted_modules) and
-  (extracted_files)
-  $ ls _build/default | sort
-  Datatypes.ml
-  Datatypes.mli
-  extr.glob
-  extr.ml
-  extr.mli
-  extr.v
-  extr.vo
-  extr.vok
-  extr.vos
-
-Test completeness of both extracted_modules and extracted_files (expected failure):
-
-  $ cat >dune-project <<EOF
-  > (lang dune 3.22)
-  > (using rocq 0.13)
-  > EOF
-
-  $ cat >dune <<EOF
-  > (rocq.extraction
-  >  (prelude extr)
-  >  (extracted_modules extr)
-  >  (extracted_files fake.hs)
-  >  (flags (:standard -w -extraction-default-directory)))
-  > EOF
-
-  $ dune build
-  File "dune", lines 1-5, characters 0-140:
-  1 | (rocq.extraction
-  2 |  (prelude extr)
-  3 |  (extracted_modules extr)
-  4 |  (extracted_files fake.hs)
-  5 |  (flags (:standard -w -extraction-default-directory)))
-  Error: Rule failed to generate the following targets:
-  - fake.hs
+       ^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'extracted_modules' was deleted in version 0.13 of Rocq Prover build
+  language. Use (extracted_files ...) instead, listing each .ml and .mli file
+  explicitly.
   [1]
 
 Test using extracted_files with explicit filenames:
@@ -138,7 +99,7 @@ Test using extracted_files with explicit filenames:
   _build/default/Datatypes.ml
   _build/default/extr.ml
 
-Test using extracted_modules with Haskell outputs (expected failure):
+Test that extracted_modules in 0.13 gives deleted_in error for Haskell extraction:
 
   $ cat >dune-project <<EOF
   > (lang dune 3.22)
@@ -165,16 +126,12 @@ Test using extracted_modules with Haskell outputs (expected failure):
   > EOF
 
   $ dune build
-  File "dune", lines 1-4, characters 0-129:
-  1 | (rocq.extraction
-  2 |  (prelude extr)
+  File "dune", line 3, characters 1-41:
   3 |  (extracted_modules Datatypes.hs extr.hs)
-  4 |  (flags (:standard -w -extraction-default-directory)))
-  Error: Rule failed to generate the following targets:
-  - Datatypes.hs.ml
-  - Datatypes.hs.mli
-  - extr.hs.ml
-  - extr.hs.mli
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'extracted_modules' was deleted in version 0.13 of Rocq Prover build
+  language. Use (extracted_files ...) instead, listing each .ml and .mli file
+  explicitly.
   [1]
 
 Test using extracted_files with Haskell outputs (expected success):
@@ -210,8 +167,6 @@ Test using extracted_files with Haskell outputs (expected success):
   extr.hs
   extr.v
   extr.vo
-  extr.vok
-  extr.vos
 
 Test rebuild does not clean extracted files:
 (NOTE: re-using above pre-built context)
@@ -223,7 +178,7 @@ Test rebuild does not clean extracted files:
   extr.v
   extr.vo
 
-Test using extracted_modules with Scheme outputs (expected failure):
+Test that extracted_modules in 0.13 gives deleted_in error for Scheme extraction:
 
   $ cat >dune-project <<EOF
   > (lang dune 3.22)
@@ -250,14 +205,12 @@ Test using extracted_modules with Scheme outputs (expected failure):
   > EOF
 
   $ dune build
-  File "dune", lines 1-4, characters 0-115:
-  1 | (rocq.extraction
-  2 |  (prelude extr)
+  File "dune", line 3, characters 1-27:
   3 |  (extracted_modules nb.scm)
-  4 |  (flags (:standard -w -extraction-default-directory)))
-  Error: Rule failed to generate the following targets:
-  - nb.scm.ml
-  - nb.scm.mli
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'extracted_modules' was deleted in version 0.13 of Rocq Prover build
+  language. Use (extracted_files ...) instead, listing each .ml and .mli file
+  explicitly.
   [1]
 
 Test using extracted_files with Scheme outputs (expected success):
@@ -291,6 +244,4 @@ Test using extracted_files with Scheme outputs (expected success):
   extr.glob
   extr.v
   extr.vo
-  extr.vok
-  extr.vos
   nb.scm

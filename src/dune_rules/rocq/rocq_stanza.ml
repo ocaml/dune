@@ -70,52 +70,48 @@ end
 
 module Extraction = struct
   type t =
-    { (* not a list of modules because we want to preserve whatever case Rocq
-         uses *)
-      extracted_modules : string list
-    ; extracted_files : string list
+    { target_fnames : string list
     ; prelude : Loc.t * Rocq_module.Name.t
     ; buildable : Buildable.t
     }
 
-  let target_fnames t =
-    List.concat_map t.extracted_modules ~f:(fun m -> [ m ^ ".ml"; m ^ ".mli" ])
-    @ t.extracted_files
-  ;;
+  let target_fnames t = t.target_fnames
 
   let decode =
     fields
-      (let+ extracted_modules = field "extracted_modules" (repeat string) ~default:[]
-       and+ extracted_files =
-         field
+      (let* ver = get_rocq_syntax () in
+       let+ extracted_modules_opt =
+         field_o
+           "extracted_modules"
+           (Dune_lang.Syntax.deleted_in
+              rocq_syntax
+              (0, 13)
+              ~extra_info:
+                "Use (extracted_files ...) instead, listing each .ml and .mli file \
+                 explicitly."
+            >>> repeat string)
+       and+ extracted_files_opt =
+         field_o
            "extracted_files"
            (Dune_lang.Syntax.since rocq_syntax (0, 13) >>> repeat string)
-           ~default:[]
        and+ prelude = field "prelude" (located (string >>| Rocq_module.Name.make))
        and+ buildable = Buildable.decode
        and+ loc = loc in
-       if List.is_empty extracted_modules && List.is_empty extracted_files
-       then
-         User_error.raise
-           ~loc
-           [ Pp.text
-               "At least one of (extracted_modules) or (extracted_files) must be \
-                specified"
-           ];
-       let all_targets =
-         target_fnames { extracted_modules; extracted_files; prelude; buildable }
+       let target_fnames =
+         if ver < (0, 13)
+         then (
+           match extracted_modules_opt with
+           | None ->
+             User_error.raise ~loc [ Pp.text "Field \"extracted_modules\" is required" ]
+           | Some modules ->
+             List.concat_map modules ~f:(fun m -> [ m ^ ".ml"; m ^ ".mli" ]))
+         else (
+           match extracted_files_opt with
+           | None ->
+             User_error.raise ~loc [ Pp.text "Field \"extracted_files\" is required" ]
+           | Some files -> files)
        in
-       (match String.Map.of_list (List.map all_targets ~f:(fun t -> t, ())) with
-        | Ok _ -> ()
-        | Error (dup, (), ()) ->
-          User_warning.emit
-            ~loc
-            [ Pp.textf
-                "Duplicate target filename %S across (extracted_modules) and \
-                 (extracted_files)"
-                dup
-            ]);
-       { prelude; extracted_modules; extracted_files; buildable })
+       { target_fnames; prelude; buildable })
   ;;
 
   include Stanza.Make (struct

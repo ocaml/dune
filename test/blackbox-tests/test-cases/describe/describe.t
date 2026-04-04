@@ -1307,12 +1307,12 @@ not stable across different setups.
           (for_impl ()))))))
      (include_dirs (_build/default/virtual_impl2/.virtual_impl2.objs/byte)))))
 
-  $ dune describe workspace --lang 0.1 --sanitize-for-tests virtual
+  $ dune describe workspace --lang 0.1 --sanitize-for-tests virtual | censor
   ((root /WORKSPACE_ROOT)
    (build_context _build/default)
    (library
     ((name virtual)
-     (uid f6cee13b744e81f71621346d08c8df22)
+     (uid $DIGEST)
      (local true)
      (requires ())
      (source_dir _build/default/virtual)

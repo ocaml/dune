@@ -63,9 +63,8 @@
   (copy# setup.defaults.ml setup.ml)))
 
 (rule
- (mode promote)
  (alias runtest)
- (targets setup.defaults.ml)
+ (target setup.defaults.ml.gen)
  (deps
   (:configure %{project_root}/boot/configure.ml))
  (action
@@ -73,5 +72,10 @@
    %{project_root}
    (setenv
     DUNE_CONFIGURE_OUTPUT
-    "src/dune_rules/setup.defaults.ml"
+    "%{target}"
     (run %{ocaml} %{configure})))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff setup.defaults.ml setup.defaults.ml.gen)))

@@ -22,17 +22,17 @@
 ;; tests that do not have a description
 
 (rule
- (target lacking-description)
+ (target lacking-description.gen)
  (deps
   %{bin:rg}
   ;; CR-someday rgrinberg: we need a recursive glob for source_tree
   (source_tree test-cases))
- (mode promote)
  (action
   (system
    "rg -L --files-without-match '^\\S' --glob \"*.t\" --glob \"!*coq*\" --glob \"!*rocq*\" --sort=path . > %{target}")))
 
-(alias
+(rule
  (enabled_if %{bin-available:rg})
- (name runtest)
- (deps lacking-description))
+ (alias runtest)
+ (action
+  (diff lacking-description lacking-description.gen)))

@@ -26,6 +26,8 @@
  (name runtest)
  (deps libs.ml))
 
+(ocamllex pps)
+
 (alias
  (name check)
  (deps libs.ml))

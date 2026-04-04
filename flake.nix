@@ -32,6 +32,10 @@
       inputs.oxcaml-opam-repository.follows = "oxcaml-opam-repository";
       inputs.revdeps-dune.follows = "revdeps-dune";
     };
+    menhir-src = {
+      url = "gitlab:fpottier/menhir/20231231?host=gitlab.inria.fr";
+      flake = false;
+    };
   };
   outputs =
     {
@@ -44,6 +48,7 @@
       oxcaml,
       oxcaml-opam-repository,
       revdeps-dune,
+      menhir-src
     }:
     let
       forAllSystems =
@@ -531,6 +536,41 @@
             '';
           };
 
+          ox-trunk =
+            let
+              customOcamlPackages = pkgs.ocamlPackages.overrideScope (
+                oself: osuper: {
+                  menhirLib = osuper.menhirLib.overrideAttrs (old: rec {
+                    version = "20231231";
+                    src = menhir-src;
+                  });
+                  menhirGLR = null;
+                  menhir = osuper.menhir.overrideAttrs (old: {
+                    patches = [];
+                    buildInputs = builtins.filter (x: x != null) (old.buildInputs or [ ]);
+                    postInstall = (old.postInstall or "") + ''
+                      ln -sf ${oself.menhirLib}/lib/ocaml/*/site-lib/menhirLib $out/lib/
+                    '';
+                  });
+                }
+              );
+            in
+            pkgs.mkShell {
+              inherit INSIDE_NIX;
+              shellHook = ''
+                export DUNE_SOURCE_ROOT=$PWD
+              '';
+              inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
+              nativeBuildInputs = (testNativeBuildInputs pkgs) ++ [
+                pkgs.autoconf
+                customOcamlPackages.menhir
+              ];
+              buildInputs = testBuildInputs;
+              meta.description = ''
+                Provides a shell environment with upstream OCaml and menhir 20231231
+                for building the OxCaml trunk.
+              '';
+            };
           ox = makeDuneDevShell {
             packageOverrides =
               oself: osuper:

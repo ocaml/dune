@@ -62,6 +62,25 @@
         "type": "github"
       }
     },
+    "menhir-src": {
+      "flake": false,
+      "locked": {
+        "host": "gitlab.inria.fr",
+        "lastModified": 1704030991,
+        "narHash": "sha256-veB0ORHp6jdRwCyDDAfc7a7ov8sOeHUmiELdOFf/QYk=",
+        "owner": "fpottier",
+        "repo": "menhir",
+        "rev": "d3d815e4f554da68b8c247241c8f8678926eecaa",
+        "type": "gitlab"
+      },
+      "original": {
+        "host": "gitlab.inria.fr",
+        "owner": "fpottier",
+        "ref": "20231231",
+        "repo": "menhir",
+        "type": "gitlab"
+      }
+    },
     "nix-github-actions": {
       "inputs": {
         "nixpkgs": [
@@ -248,6 +267,7 @@
     "root": {
       "inputs": {
         "melange": "melange",
+        "menhir-src": "menhir-src",
         "nixpkgs": "nixpkgs",
         "nixpkgs-old": "nixpkgs-old",
         "ocaml-overlays": "ocaml-overlays",

@@ -15,8 +15,6 @@ We first test the package builds as normal, when both are in scope:
   Extract.glob
   Extract.v
   Extract.vo
-  Extract.vok
-  Extract.vos
   Foo.ml
   Foo.mli
   patch.sh

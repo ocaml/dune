@@ -76,41 +76,30 @@
                       src = odoc-src;
                       doCheck = false;
                     });
-                    rocq-core = super.rocqPackages_9_1.rocq-core.override {
+                    rocq-core = super.rocqPackages_9_2.rocq-core.override {
                       customOCamlPackages = oself;
                     };
-                    mkRocqDerivation = super.rocqPackages_9_1.mkRocqDerivation.override {
+                    mkRocqDerivation = super.rocqPackages_9_2.mkRocqDerivation.override {
                       rocq-core = oself.rocq-core;
                     };
-                    rocq-stdlib = super.rocqPackages_9_1.stdlib.override {
+                    rocq-stdlib = super.rocqPackages_9_2.stdlib.override {
                       rocq-core = oself.rocq-core;
                       mkRocqDerivation = oself.mkRocqDerivation;
                     };
-                    # Native compilation requires OCaml 4.14
-                    ocamlPackages_4_14 = super.ocaml-ng.ocamlPackages_4_14.overrideScope (
-                      oself414: osuper414: {
-                        ocaml = osuper414.ocaml.override {
-                          flambdaSupport = false;
-                        };
-                        rocq-core =
-                          (super.rocqPackages_9_1.rocq-core.override {
-                            customOCamlPackages = oself414;
-                          }).overrideAttrs
-                            (a: {
-                              configureFlags = (a.configureFlags or [ ]) ++ [
-                                "-native-compiler"
-                                "yes"
-                              ];
-                            });
-                        mkRocqDerivation = super.rocqPackages_9_1.mkRocqDerivation.override {
-                          rocq-core = oself414.rocq-core;
-                        };
-                        rocq-stdlib = super.rocqPackages_9_1.stdlib.override {
-                          rocq-core = oself414.rocq-core;
-                          mkRocqDerivation = oself414.mkRocqDerivation;
-                        };
-                      }
-                    );
+                    # Native compilation
+                    rocq-core-native = oself.rocq-core.overrideAttrs (a: {
+                      configureFlags = (a.configureFlags or [ ]) ++ [
+                        "-native-compiler"
+                        "yes"
+                      ];
+                    });
+                    mkRocqDerivation-native = oself.mkRocqDerivation.override {
+                      rocq-core = oself.rocq-core-native;
+                    };
+                    rocq-stdlib-native = oself.rocq-stdlib.override {
+                      rocq-core = oself.rocq-core-native;
+                      mkRocqDerivation = oself.mkRocqDerivation-native;
+                    };
                   }
                 );
               })
@@ -456,30 +445,16 @@
             '';
           };
 
-          rocq-native =
-            let
-              ocaml414 = pkgs.ocamlPackages.ocamlPackages_4_14;
-            in
-            pkgs.mkShell {
-              inherit INSIDE_NIX;
-              nativeBuildInputs = (testNativeBuildInputs pkgs) ++ [
-                ocaml414.ocaml
-                ocaml414.findlib
-              ];
-              buildInputs = [
-                ocaml414.csexp
-                ocaml414.pp
-                ocaml414.re
-                ocaml414.spawn
-                ocaml414.uutf
-                ocaml414.rocq-core
-                ocaml414.rocq-stdlib
-              ];
-              meta.description = ''
-                Provides a minimal shell environment built purely from nixpkgs
-                that can build Dune and run the Rocq testsuite with native compilation.
-              '';
-            };
+          rocq-native = makeDuneDevShell {
+            extraBuildInputs = pkgs: [
+              pkgs.ocamlPackages.rocq-core-native
+              pkgs.ocamlPackages.rocq-stdlib-native
+            ];
+            meta.description = ''
+              Provides a minimal shell environment built purely from nixpkgs
+              that can build Dune and run the Rocq testsuite with native compilation.
+            '';
+          };
 
           bootstrap-check = pkgs.mkShell {
             inherit INSIDE_NIX;

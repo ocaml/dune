@@ -53,8 +53,6 @@
   extract.mli
   extract.v
   extract.vo
-  extract.vok
-  extract.vos
   foo.exe
   foo.ml
   foo.mli

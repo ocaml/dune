@@ -7,8 +7,6 @@ Testing coqdoc when composed with a boot library
   a.glob
   a.v
   a.vo
-  a.vok
-  a.vos
 
 Dune should be passing '--coqlib' to coqdoc, but it doesn't. This is a bug.
 

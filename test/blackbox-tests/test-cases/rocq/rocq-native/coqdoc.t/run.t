@@ -35,13 +35,9 @@ Note that this currently works due to a bug in @all detecting directory targets.
   bar.glob
   bar.v
   bar.vo
-  bar.vok
-  bar.vos
   base.dune-package
   base.install
   foo.glob
   foo.v
   foo.vo
-  foo.vok
-  foo.vos
 

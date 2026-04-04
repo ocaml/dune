@@ -141,9 +141,9 @@ param_impl)`:
 
   $ ls _build/default/.parameterised/ | censor
   $DIGEST
-  $ ls _build/default/.parameterised/f*
+  $ ls _build/default/.parameterised/*
   lib_param
-  $ ls _build/default/.parameterised/f*/lib_param
+  $ ls _build/default/.parameterised/*/lib_param
   lib_param!param_impl
 
 We can also have a mix of public/private, with e.g. the parameterised library

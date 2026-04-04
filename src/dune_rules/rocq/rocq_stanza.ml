@@ -18,7 +18,7 @@ let rocq_syntax =
   Dune_lang.Syntax.create
     ~name:(Syntax.Name.parse "rocq")
     ~desc:"Rocq Prover build language"
-    [ (0, 11), `Since (3, 21); (0, 12), `Since (3, 22) ]
+    [ (0, 11), `Since (3, 21); (0, 12), `Since (3, 22); (0, 13), `Since (3, 22) ]
 ;;
 
 let get_rocq_syntax () = Dune_lang.Syntax.get_exn rocq_syntax
@@ -70,23 +70,48 @@ end
 
 module Extraction = struct
   type t =
-    { (* not a list of modules because we want to preserve whatever case Rocq
-         uses *)
-      extracted_modules : string list
+    { target_fnames : string list
     ; prelude : Loc.t * Rocq_module.Name.t
     ; buildable : Buildable.t
     }
 
-  let ml_target_fnames t =
-    List.concat_map t.extracted_modules ~f:(fun m -> [ m ^ ".ml"; m ^ ".mli" ])
-  ;;
+  let target_fnames t = t.target_fnames
 
   let decode =
     fields
-      (let+ extracted_modules = field "extracted_modules" (repeat string)
+      (let* ver = get_rocq_syntax () in
+       let+ extracted_modules_opt =
+         field_o
+           "extracted_modules"
+           (Dune_lang.Syntax.deleted_in
+              rocq_syntax
+              (0, 13)
+              ~extra_info:
+                "Use (extracted_files ...) instead, listing each .ml and .mli file \
+                 explicitly."
+            >>> repeat string)
+       and+ extracted_files_opt =
+         field_o
+           "extracted_files"
+           (Dune_lang.Syntax.since rocq_syntax (0, 13) >>> repeat string)
        and+ prelude = field "prelude" (located (string >>| Rocq_module.Name.make))
-       and+ buildable = Buildable.decode in
-       { prelude; extracted_modules; buildable })
+       and+ buildable = Buildable.decode
+       and+ loc = loc in
+       let target_fnames =
+         if ver < (0, 13)
+         then (
+           match extracted_modules_opt with
+           | None ->
+             User_error.raise ~loc [ Pp.text "Field \"extracted_modules\" is required" ]
+           | Some modules ->
+             List.concat_map modules ~f:(fun m -> [ m ^ ".ml"; m ^ ".mli" ]))
+         else (
+           match extracted_files_opt with
+           | None ->
+             User_error.raise ~loc [ Pp.text "Field \"extracted_files\" is required" ]
+           | Some files -> files)
+       in
+       { target_fnames; prelude; buildable })
   ;;
 
   include Stanza.Make (struct

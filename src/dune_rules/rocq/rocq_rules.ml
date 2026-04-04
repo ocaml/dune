@@ -1297,7 +1297,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.
   let* rocq_sources = Dir_contents.rocq dir_contents in
   let rocq_module = Rocq_sources.extract rocq_sources s in
   let file_targets =
-    Rocq_stanza.Extraction.ml_target_fnames s |> List.map ~f:(Path.Build.relative dir)
+    Rocq_stanza.Extraction.target_fnames s |> List.map ~f:(Path.Build.relative dir)
   in
   let loc = s.buildable.loc in
   let use_stdlib = s.buildable.use_stdlib in

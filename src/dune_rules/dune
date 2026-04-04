@@ -43,8 +43,7 @@
 (ocamllex ocamlobjinfo)
 
 (rule
- (mode promote)
- (target assets.ml)
+ (target assets.ml.gen)
  (action
   (with-stdout-to
    %{target}
@@ -55,6 +54,11 @@
     (echo "let jbuild_plugin_mli = {jbp|")
     (cat %{project_root}/plugin/jbuild_plugin.mli)
     (echo "|jbp}")))))
+
+(rule
+ (alias check)
+ (action
+  (diff assets.ml assets.ml.gen)))
 
 (rule
  (targets setup.ml)

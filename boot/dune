@@ -1,6 +1,5 @@
 (rule
- (mode promote)
- (targets libs.ml)
+ (targets libs.ml.gen)
  (deps
   ../bin/main.exe
   ../dune-file
@@ -11,7 +10,7 @@
   (source_tree ../vendor))
  (action
   (with-stdout-to
-   libs.ml
+   libs.ml.gen
    (run
     %{dep:../bin/main.exe}
     internal
@@ -24,11 +23,13 @@
 
 (alias
  (name runtest)
- (deps libs.ml))
+ (deps
+  (alias check)))
 
-(alias
- (name check)
- (deps libs.ml))
+(rule
+ (alias check)
+ (action
+  (diff libs.ml libs.ml.gen)))
 
 (executable
  (name duneboot)

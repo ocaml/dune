@@ -129,7 +129,7 @@ Check for flag directives ordering when another preprocessor is defined
 
 User ppx flags should appear in merlin config
 
-  $ dune ocaml merlin dump-config $PWD | grep -v "(B "  | grep -v "(S "
+  $ dune ocaml merlin dump-config $PWD | grep -v "(B "  | grep -v "(S " | censor_ppx
   Bar: _build/default/bar
   ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
    (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
@@ -137,7 +137,7 @@ User ppx flags should appear in merlin config
    (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (FLG (-open Foo))
    (UNIT_NAME foo__Bar))
   Bar: _build/default/bar.ml
@@ -147,7 +147,7 @@ User ppx flags should appear in merlin config
    (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (FLG (-open Foo))
    (UNIT_NAME foo__Bar))
   Foo: _build/default/foo
@@ -157,7 +157,7 @@ User ppx flags should appear in merlin config
    (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (UNIT_NAME foo))
   Foo: _build/default/foo.ml-gen
   ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
@@ -166,7 +166,7 @@ User ppx flags should appear in merlin config
    (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/3a8685470d9b5edd99690707a29a2b1a/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (UNIT_NAME foo))
   Fooppx: _build/default/fooppx
   ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)

@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       packages:
-        description: 'Packages to test (e.g., "all", "lwt", "{base,core}")'
+        description: 'Packages to test (e.g., "all", "lwt", "base core")'
         required: false
         default: 'all'
         type: string
@@ -45,10 +45,15 @@ jobs:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - name: Build OCaml reverse dependencies
         run: |
-          packages="${{ inputs.packages }}"
+          prefix=".#revdeps.x86_64-linux"
+          targets=""
+          for pkg in ${{ inputs.packages }}; do
+            targets="$targets $prefix.$pkg"
+          done
+
           dune_version="${{ inputs.dune_version }}"
           if [ "$dune_version" = "dev" ] || [ -z "$dune_version" ]; then
-            nix build .#revdeps.x86_64-linux.$packages --keep-going --override-input revdeps-dune path:.
+            nix build $targets --keep-going --override-input revdeps-dune path:.
           else
-            nix build .#revdeps.x86_64-linux.$packages --keep-going --override-input revdeps-dune "github:ocaml/dune/$dune_version"
+            nix build $targets --keep-going --override-input revdeps-dune "github:ocaml/dune/$dune_version"
           fi

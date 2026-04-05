@@ -1,5 +1,5 @@
-Reproduction case for #4923: weird things observed when we add/remove
-a file in watch mode.
+Regression test for #4923: adding or removing an unrelated file in watch mode
+does not corrupt Dune's internal state.
 
   $ echo '(lang dune 3.0)' > dune-project
   $ mkdir a b

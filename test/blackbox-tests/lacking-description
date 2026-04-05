@@ -1,3 +1,5 @@
+./test-cases/absolute-switch-context-name-gh10721.t
+./test-cases/action-stdin-not-inherited-gh3672.t
 ./test-cases/actions/with-exit-codes.t
 ./test-cases/actions/with-nested-exit-codes.t
 ./test-cases/actions/with-stdin-from.t
@@ -23,6 +25,7 @@
 ./test-cases/dialects/bad3.t/run.t
 ./test-cases/directory-targets/old-style/dep.t/run.t
 ./test-cases/directory-targets/old-style/target.t/run.t
+./test-cases/dirs-and-data-only-dirs-gh2584.t
 ./test-cases/double-echo.t/run.t
 ./test-cases/dune-init/github7806.t
 ./test-cases/dune_memory-and-the-universe.t/run.t
@@ -40,21 +43,14 @@
 ./test-cases/foreign-stubs/github734.t/run.t
 ./test-cases/formatting/empty-field.t
 ./test-cases/formatting/error-field.t
-./test-cases/github10685.t
-./test-cases/github10721.t
-./test-cases/github2584.t
-./test-cases/github3180.t
-./test-cases/github3672.t
-./test-cases/github4194.t
-./test-cases/github5273.t
 ./test-cases/github534.t/run.t
-./test-cases/github5528.t
 ./test-cases/github568.t/run.t
 ./test-cases/github597.t/run.t
 ./test-cases/github761.t/run.t
 ./test-cases/github764.t/run.t
 ./test-cases/github784.t/run.t
 ./test-cases/glob-deps-change.t/run.t
+./test-cases/hyphenated-module-name-gh3180.t
 ./test-cases/ignored_subdirs/1.6.t/run.t
 ./test-cases/ignored_subdirs/glob.t/run.t
 ./test-cases/ignored_subdirs/logical.t/run.t
@@ -78,6 +74,7 @@
 ./test-cases/jsoo/sourcemap.t/run.t
 ./test-cases/jsoo/without_implem.t/run.t
 ./test-cases/lib-available.t/run.t
+./test-cases/library-name-starts-with-digit-gh5273.t
 ./test-cases/melange/runtime-deps-in-target-dir.t
 ./test-cases/menhir/cmly.t/run.t
 ./test-cases/menhir/env.t/run.t
@@ -87,12 +84,14 @@
 ./test-cases/merlin/github759.t/run.t
 ./test-cases/merlin/include-subdirs-qualified.t
 ./test-cases/merlin/suffix.t/run.t
+./test-cases/missing-action-alias-hint-gh10685.t
 ./test-cases/mwe-dune-duplicate-dialect.t/duniverse/dune-configurator.2.7.1/test/dialects.t/run.t
 ./test-cases/name-field-validation/no-name-exes-syntax-1-0.t/run.t
 ./test-cases/null-dep.t/run.t
 ./test-cases/ocamldep/ocamldep-multi-stanzas.t/run.t
 ./test-cases/odoc/github717-odoc-index.t/run.t
 ./test-cases/odoc/new/github717-odoc-index.t/run.t
+./test-cases/oversize-action-output-gh4194.t
 ./test-cases/package-dep.t/run.t
 ./test-cases/pform-space-error-message.t
 ./test-cases/ppx/9650-bytecode-rewriter.t/run.t
@@ -105,6 +104,7 @@
 ./test-cases/quoting/quote-from-context.t/run.t
 ./test-cases/quoting/quotes-multi.t/run.t
 ./test-cases/redirections.t/run.t
+./test-cases/runtest-control-sequences-gh5528.t
 ./test-cases/select-field/select-2-0-rules.t
 ./test-cases/select-field/select.t/run.t
 ./test-cases/stanzas/dynamic-include-stanza/cycle.t

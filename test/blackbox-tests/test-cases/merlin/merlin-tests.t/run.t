@@ -246,7 +246,7 @@ Make sure pp flag is correct and variables are expanded
    (UNIT_NAME foobar))
 
 Check hash of executables names if more than one
-  $ dune build ./exes/.merlin-conf/exe-x-e0b998aff107b214969cbb2e501dd255
+  $ dune build @exes/check
   $ dune ocaml merlin dump-config $PWD/exes
   X: _build/default/exes/x
   ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)

@@ -2,11 +2,11 @@ open Import
 module Client = Dune_rpc_client.Client
 module Rpc_error = Dune_rpc.Response.Error
 
-let no_running_server_error ~lock_held_by =
+let no_running_server_error (lock_held_by : Global_lock.Lock_held_by.t) =
   match lock_held_by with
   | Global_lock.Lock_held_by.Unknown ->
     User_error.make [ Pp.paragraph "RPC server not running." ]
-  | Global_lock.Lock_held_by.Pid_from_lockfile _ ->
+  | Pid_from_lockfile _ ->
     User_error.make
       [ Pp.paragraph "Another Dune instance is currently running. Aborting..." ]
 ;;
@@ -14,7 +14,7 @@ let no_running_server_error ~lock_held_by =
 let active_server ?(lock_held_by = Global_lock.Lock_held_by.Unknown) () =
   match Dune_rpc_impl.Where.get () with
   | Some p -> Ok p
-  | None -> Error (no_running_server_error ~lock_held_by)
+  | None -> Error (no_running_server_error lock_held_by)
 ;;
 
 let active_server_exn () = active_server () |> User_error.ok_exn

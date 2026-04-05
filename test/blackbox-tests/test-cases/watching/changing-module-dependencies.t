@@ -1,5 +1,4 @@
-A test case for #5064: errors when changing module dependencies in the
-file-watching mode.
+Regression test for #5064: changing module dependencies in watch mode.
 
   $ echo '(lang dune 3.0)' > dune-project
   $ mkdir lib

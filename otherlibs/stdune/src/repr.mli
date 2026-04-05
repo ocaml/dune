@@ -1,7 +1,45 @@
-type _ t
+type _ t = private
+  | Unit : unit t
+  | Bool : bool t
+  | Int : int t
+  | String : string t
+  | Option : 'a t -> 'a option t
+  | List : 'a t -> 'a list t
+  | Array : 'a t -> 'a array t
+  | Pair : 'a t * 'b t -> ('a * 'b) t
+  | Triple : 'a t * 'b t * 'c t -> ('a * 'b * 'c) t
+  | Fix : 'a t Lazy.t -> 'a t
+  | Record : string * 'a field list -> 'a t
+  | Variant : string * 'a case list -> 'a t
+  | View :
+      { repr : 'b t
+      ; to_ : 'a -> 'b
+      }
+      -> 'a t
+  | Abstract : { to_dyn : 'a -> Dyn.t } -> 'a t
+
+and 'a field = private
+  | Field :
+      { name : string
+      ; repr : 'b t
+      ; get : 'a -> 'b
+      }
+      -> 'a field
+
+and 'a case = private
+  | Case0 :
+      { tag : string
+      ; test : 'a -> bool
+      }
+      -> 'a case
+  | Case1 :
+      { tag : string
+      ; repr : 'b t
+      ; proj : 'a -> 'b option
+      }
+      -> 'a case
+
 type 'a repr = 'a t
-type 'a field
-type 'a case
 
 module type S = sig
   type t

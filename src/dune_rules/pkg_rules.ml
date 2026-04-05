@@ -660,7 +660,7 @@ module Substitute = struct
       }
 
     let name = "substitute"
-    let version = 3
+    let version = 5
     let bimap t f g = { t with src = f t.src; dst = g t.dst }
     let is_useful_to ~memoize = memoize
 

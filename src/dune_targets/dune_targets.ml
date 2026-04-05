@@ -508,13 +508,14 @@ module Produced = struct
   ;;
 
   let digest { contents; root = _ } =
-    let digest_repr = Repr.view Repr.string ~to_:Digest.to_string in
     let rec all_digests { files; subdirs } =
       let ffiles = Filename.Map.values files in
       List.concat
         (ffiles :: Filename.Map.to_list_map subdirs ~f:(fun _ dir -> all_digests dir))
     in
-    Digest.repr Repr.(list digest_repr) (all_digests contents)
+    let d = Digest.Manual.create () in
+    Digest.Manual.list d (all_digests contents) ~f:Digest.Manual.digest;
+    Digest.Manual.get d
   ;;
 
   (* The odd type of [d] and [f] is due to the fact that [map_with_errors]

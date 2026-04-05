@@ -21,6 +21,8 @@ type t
 
 val equal : t -> t -> bool
 val hash : t -> int
+val repr : t Repr.t
+val digest : t -> Digest.t
 val to_dyn : t -> Dyn.t
 
 module Action_output_on_success : sig
@@ -36,6 +38,7 @@ module Action_output_on_success : sig
   val all : (string * t) list
   val equal : t -> t -> bool
   val hash : t -> int
+  val repr : t Repr.t
   val to_dyn : t -> Dyn.t
 end
 
@@ -48,6 +51,7 @@ module Action_output_limit : sig
   val default : t
   val to_string : t -> string
   val equal : t -> t -> bool
+  val repr : t Repr.t
   val to_dyn : t -> Dyn.t
 end
 
@@ -58,6 +62,9 @@ module Workspace_root_for_build_prefix_map : sig
   type t =
     | Unset (** Do not set the workspace root; only used by external Dune rules *)
     | Set of string (** [Set root] substitute the root with [root] *)
+
+  val repr : t Repr.t
+  val to_dyn : t -> Dyn.t
 end
 
 val builtin_default : t

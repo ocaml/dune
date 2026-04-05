@@ -11,7 +11,8 @@ let create ~name =
 ;;
 
 let of_build_path p =
-  match Dpath.analyse_target p with
-  | Regular (name, _) | Alias (name, _) | Anonymous_action name -> Some (create ~name)
-  | Other _ -> None
+  match Dpath.Target_dir.of_target p with
+  | Regular (With_context (name, _)) | Anonymous_action (With_context (name, _)) ->
+    Some (create ~name)
+  | Regular Root | Anonymous_action Root | Invalid _ -> None
 ;;

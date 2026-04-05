@@ -2,10 +2,19 @@ open Import
 module Client = Dune_rpc_client.Client
 module Rpc_error = Dune_rpc.Response.Error
 
-let active_server () =
+let no_running_server_error (lock_held_by : Global_lock.Lock_held_by.t) =
+  match lock_held_by with
+  | Global_lock.Lock_held_by.Unknown ->
+    User_error.make [ Pp.paragraph "RPC server not running." ]
+  | Pid_from_lockfile _ ->
+    User_error.make
+      [ Pp.paragraph "Another Dune instance is currently running. Aborting..." ]
+;;
+
+let active_server ?(lock_held_by = Global_lock.Lock_held_by.Unknown) () =
   match Dune_rpc_impl.Where.get () with
   | Some p -> Ok p
-  | None -> Error (User_error.make [ Pp.paragraph "RPC server not running." ])
+  | None -> Error (no_running_server_error lock_held_by)
 ;;
 
 let active_server_exn () = active_server () |> User_error.ok_exn
@@ -63,15 +72,10 @@ let wait_term =
   Arg.(value & flag & info [ "wait" ] ~doc:(Some doc))
 ;;
 
-let establish_connection () =
-  match active_server () with
+let establish_connection ?(lock_held_by = Global_lock.Lock_held_by.Unknown) () =
+  match active_server ~lock_held_by () with
   | Error e -> Fiber.return (Error e)
   | Ok where -> Client.Connection.connect where
-;;
-
-let establish_connection_exn () =
-  let open Fiber.O in
-  establish_connection () >>| User_error.ok_exn
 ;;
 
 let establish_connection_with_retry () =
@@ -88,8 +92,11 @@ let establish_connection_with_retry () =
   loop ()
 ;;
 
-let establish_client_session ~wait =
-  if wait then establish_connection_with_retry () else establish_connection_exn ()
+let establish_client_session ~wait ~lock_held_by =
+  let open Fiber.O in
+  if wait
+  then establish_connection_with_retry ()
+  else establish_connection ~lock_held_by () >>| User_error.ok_exn
 ;;
 
 let prepare_targets targets =
@@ -132,7 +139,7 @@ let fire_request
       arg
   =
   let open Fiber.O in
-  let* connection = establish_client_session ~wait in
+  let* connection = establish_client_session ~wait ~lock_held_by in
   if should_warn ~warn_forwarding builder then warn_ignore_arguments lock_held_by;
   send_request connection name ~f:(fun client -> request_exn client request arg)
 ;;
@@ -147,7 +154,7 @@ let fire_notification
       arg
   =
   let open Fiber.O in
-  let* connection = establish_client_session ~wait in
+  let* connection = establish_client_session ~wait ~lock_held_by in
   if should_warn ~warn_forwarding builder then warn_ignore_arguments lock_held_by;
   send_request connection name ~f:(fun client -> notify_exn client notification arg)
 ;;

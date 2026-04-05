@@ -16,4 +16,5 @@ module Ml_kind : sig
   type nonrec t = t Ml_kind.Dict.t
 
   val dummy : Module.t -> t
+  val for_module_compilation : modules:Modules.With_vlib.t -> t -> t
 end

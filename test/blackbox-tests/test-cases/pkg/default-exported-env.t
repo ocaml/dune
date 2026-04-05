@@ -20,9 +20,9 @@ Some environment variables are automatically exported by packages:
   $ ln -s $(which ocamlc) .bin/ocamlc
   $ ln -s $(which sh) .bin/sh
   $ dune=$(which dune)
-  $ MANPATH="" OCAMLPATH="" CAML_LD_LIBRARY_PATH="" OCAMLTOP_INCLUDE_PATH="" PATH="$PWD/.bin" build_pkg usetest
-  MANPATH=$TESTCASE_ROOT/_build/_private/default/.pkg/test.0.0.1-1335a850f360f47161c77fd265ddaf99/target/man
-  OCAMLPATH=$TESTCASE_ROOT/_build/_private/default/.pkg/test.0.0.1-1335a850f360f47161c77fd265ddaf99/target/lib
-  CAML_LD_LIBRARY_PATH=$TESTCASE_ROOT/_build/_private/default/.pkg/test.0.0.1-1335a850f360f47161c77fd265ddaf99/target/lib/stublibs
-  OCAMLTOP_INCLUDE_PATH=$TESTCASE_ROOT/_build/_private/default/.pkg/test.0.0.1-1335a850f360f47161c77fd265ddaf99/target/lib/toplevel
-  PATH=$TESTCASE_ROOT/_build/_private/default/.pkg/test.0.0.1-1335a850f360f47161c77fd265ddaf99/target/bin:$TESTCASE_ROOT/.bin
+  $ MANPATH="" OCAMLPATH="" CAML_LD_LIBRARY_PATH="" OCAMLTOP_INCLUDE_PATH="" PATH="$PWD/.bin" build_pkg usetest 2>&1 | strip_sandbox | censor
+  $SANDBOX/default/test/blackbox-tests/test-cases/pkg/_build/_private/default/.pkg/test.0.0.1-$DIGEST/target/man
+  $SANDBOX/default/test/blackbox-tests/test-cases/pkg/_build/_private/default/.pkg/test.0.0.1-$DIGEST/target/lib
+  $SANDBOX/default/test/blackbox-tests/test-cases/pkg/_build/_private/default/.pkg/test.0.0.1-$DIGEST/target/lib/stublibs
+  $SANDBOX/default/test/blackbox-tests/test-cases/pkg/_build/_private/default/.pkg/test.0.0.1-$DIGEST/target/lib/toplevel
+  $SANDBOX/default/test/blackbox-tests/test-cases/pkg/.bin

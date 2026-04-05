@@ -18,6 +18,6 @@ Test that section pforms are substituted with absolute paths.
 
 Note that currently dune incorrectly substitutes relative paths for pforms that
 appear in string interpolations.
-  $ build_pkg test 2>&1 | strip_sandbox
-  --prefix $SANDBOX/_private/default/.pkg/test.0.0.1-1ea966948fe62458dfee9efe3b115cba/target
-  $SANDBOX/_private/default/.pkg/test.0.0.1-1ea966948fe62458dfee9efe3b115cba/target
+  $ build_pkg test 2>&1 | strip_sandbox | censor
+  --prefix $SANDBOX/_private/default/.pkg/test.0.0.1-$DIGEST/target
+  $SANDBOX/_private/default/.pkg/test.0.0.1-$DIGEST/target

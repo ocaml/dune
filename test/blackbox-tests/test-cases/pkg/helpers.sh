@@ -64,7 +64,7 @@ show_pkg_targets() {
 
 show_pkg_cookie() {
   local pkg=$1
-  $dune internal dump "$(get_build_pkg_dir "$pkg")/target/cookie"
+  $dune internal dump "$(get_build_pkg_dir "$pkg")/target/cookie" 2>&1 | censor
 }
 
 mkrepo() {

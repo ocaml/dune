@@ -4,55 +4,32 @@ open Memo.O
 module Includes = struct
   type t = Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
-  let make ~project ~opaque ~direct_requires ~hidden_requires lib_config
+  (* Library file dependencies (Hidden_deps) are added per-module in
+     module_compilation.ml based on ocamldep output. Each module depends
+     only on libraries it actually references.
+     See issue #4572: Finer dependency analysis between libraries. *)
+  let make ~project ~direct_requires ~hidden_requires lib_config
     : _ Lib_mode.Cm_kind.Map.t
     =
-    (* TODO: some of the requires can filtered out using [ocamldep] info *)
     let open Resolve.Memo.O in
     let iflags direct_libs hidden_libs mode =
       Lib_flags.L.include_flags ~project ~direct_libs ~hidden_libs mode lib_config
     in
-    let make_includes_args ~mode groups =
+    let make_includes_args ~mode =
       (let+ direct_libs = direct_requires
        and+ hidden_libs = hidden_requires in
-       Command.Args.S
-         [ iflags direct_libs hidden_libs mode
-         ; Hidden_deps (Lib_file_deps.deps (direct_libs @ hidden_libs) ~groups)
-         ])
+       iflags direct_libs hidden_libs mode)
       |> Resolve.Memo.args
       |> Command.Args.memo
     in
     { ocaml =
-        (let cmi_includes = make_includes_args ~mode:(Ocaml Byte) [ Ocaml Cmi ] in
+        (let cmi_includes = make_includes_args ~mode:(Ocaml Byte) in
          { cmi = cmi_includes
          ; cmo = cmi_includes
-         ; cmx =
-             (let+ direct_libs = direct_requires
-              and+ hidden_libs = hidden_requires in
-              Command.Args.S
-                [ iflags direct_libs hidden_libs (Ocaml Native)
-                ; Hidden_deps
-                    (let libs = direct_libs @ hidden_libs in
-                     if opaque
-                     then
-                       List.map libs ~f:(fun lib ->
-                         ( lib
-                         , if Lib.is_local lib
-                           then [ Lib_file_deps.Group.Ocaml Cmi ]
-                           else [ Ocaml Cmi; Ocaml Cmx ] ))
-                       |> Lib_file_deps.deps_with_exts
-                     else
-                       Lib_file_deps.deps
-                         libs
-                         ~groups:[ Lib_file_deps.Group.Ocaml Cmi; Ocaml Cmx ])
-                ])
-             |> Resolve.Memo.args
-             |> Command.Args.memo
+         ; cmx = make_includes_args ~mode:(Ocaml Native)
          })
     ; melange =
-        { cmi = make_includes_args ~mode:Melange [ Melange Cmi ]
-        ; cmj = make_includes_args ~mode:Melange [ Melange Cmi; Melange Cmj ]
-        }
+        { cmi = make_includes_args ~mode:Melange; cmj = make_includes_args ~mode:Melange }
     }
   ;;
 
@@ -91,6 +68,7 @@ type t =
   ; parameters : Module_name.t list Resolve.Memo.t
   ; instances : Parameterised_instances.t Resolve.Memo.t option
   ; includes : Includes.t
+  ; lib_index : Lib_file_deps.Lib_index.t Resolve.Memo.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
   ; js_of_ocaml : Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
@@ -118,6 +96,7 @@ let requires_hidden t = t.requires_hidden
 let requires_link t = Memo.Lazy.force t.requires_link
 let parameters t = t.parameters
 let includes t = t.includes
+let lib_index t = t.lib_index
 let preprocessing t = t.preprocessing
 let opaque t = t.opaque
 let js_of_ocaml t = t.js_of_ocaml
@@ -240,8 +219,12 @@ let create
   ; requires_link
   ; implements
   ; parameters
-  ; includes =
-      Includes.make ~project ~opaque ~direct_requires ~hidden_requires ocaml.lib_config
+  ; includes = Includes.make ~project ~direct_requires ~hidden_requires ocaml.lib_config
+  ; lib_index =
+      (let open Resolve.Memo.O in
+       let* direct_libs = direct_requires
+       and* hidden_libs = hidden_requires in
+       Lib_file_deps.Lib_index.create super_context (direct_libs @ hidden_libs) ~for_)
   ; preprocessing
   ; opaque
   ; js_of_ocaml
@@ -333,7 +316,6 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
     let direct_requires = requires in
     Includes.make
       ~project:(Scope.project cctx.scope)
-      ~opaque
       ~direct_requires
       ~hidden_requires
       cctx.ocaml.lib_config
@@ -343,6 +325,7 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
   ; flags = Ocaml_flags.empty
   ; requires_link = Memo.lazy_ (fun () -> requires)
   ; requires_compile = requires
+  ; lib_index = Resolve.Memo.return Lib_file_deps.Lib_index.empty
   ; includes
   ; modules
   }

@@ -27,7 +27,7 @@ module Cached_digest = struct
       ; size = stat.size
       ; perm = stat.perm
       ; dev = stat.dev
-      ; ino = stat.dev
+      ; ino = stat.ino
       }
     ;;
 

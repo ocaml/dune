@@ -1,6 +1,6 @@
 open Stdune
-open Async_inotify_for_dune
 open Printf
+module Async_inotify = Dune_scheduler.For_tests.Async_inotify
 
 let ( / ) a b =
   match a with

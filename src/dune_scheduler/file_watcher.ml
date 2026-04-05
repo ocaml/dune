@@ -1,5 +1,5 @@
 open Import
-module Inotify_lib = Async_inotify_for_dune.Async_inotify
+module Inotify_lib = Async_inotify
 
 module Fs_memo_event = struct
   type kind =
@@ -166,11 +166,7 @@ module For_tests = struct
   let should_exclude = create_should_exclude_predicate
 end
 
-let process_inotify_event
-      (event : Async_inotify_for_dune.Async_inotify.Event.t)
-      should_exclude
-  : Event.t list
-  =
+let process_inotify_event (event : Async_inotify.Event.t) should_exclude : Event.t list =
   let create_event_unless_excluded ~kind ~path =
     match should_exclude path with
     | true -> []

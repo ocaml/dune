@@ -14,6 +14,6 @@
   fiber
   memo
   threads.posix
-  dune_trace
-  dune_util)
+ dune_trace
+ dune_util)
  (synopsis "Internal Dune library, do not use!"))

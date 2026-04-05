@@ -53,10 +53,14 @@ end
 module Target = struct
   type t =
     | File of { executable : bool }
+    | Symlink of
+        { destination : string
+        ; executable : bool
+        }
     | Directory
 
   let executable = function
-    | File { executable } -> executable
+    | File { executable } | Symlink { executable; _ } -> executable
     | Directory -> Code_error.raise "Target.executable called on directory target" []
   ;;
 
@@ -71,7 +75,66 @@ module Target = struct
       (* Adding "executable" permissions to directories mean we can traverse them. *)
       Unix.chmod path (Permissions.add Permissions.execute st_perm);
       Some Directory
+    | { Unix.st_kind = Unix.S_LNK; _ } ->
+      (match Unix.readlink path, Unix.stat path with
+       | destination, { Unix.st_perm; _ } ->
+         let executable = Permissions.test Permissions.execute st_perm in
+         Some (Symlink { destination; executable })
+       | exception Unix.Unix_error _ -> None)
     | (exception Unix.Unix_error _) | _ -> None
+  ;;
+end
+
+module Symlink_targets = struct
+  type t = string Path.Local.Map.t
+
+  let empty = Path.Local.Map.empty
+  let metadata_field = "symlink_targets"
+
+  let create (targets : Target.t Targets.Produced.t) =
+    Targets.Produced.foldi targets ~init:empty ~f:(fun path target acc ->
+      match target with
+      | Some (File _) -> acc
+      | Some (Symlink { destination; executable = _ }) ->
+        Path.Local.Map.set acc path destination
+      | Some Directory ->
+        Code_error.raise
+          "Symlink_targets.create: directory in file map"
+          [ "path", Path.Local.to_dyn path ]
+      | None -> acc)
+  ;;
+
+  let to_metadata t =
+    if Path.Local.Map.is_empty t
+    then []
+    else (
+      let symlinks =
+        Path.Local.Map.to_list t
+        |> List.map ~f:(fun (path, destination) ->
+          Sexp.List [ Sexp.Atom (Path.Local.to_string path); Sexp.Atom destination ])
+      in
+      [ Sexp.List (Sexp.Atom metadata_field :: symlinks) ])
+  ;;
+
+  let of_metadata metadata : t Or_exn.t =
+    let open Result.O in
+    let parse_symlink = function
+      | Sexp.List [ Atom path; Atom destination ] ->
+        let+ path =
+          Result.try_with (fun () -> Path.Local.of_string path)
+          |> Result.map_error ~f:(fun _ ->
+            Failure "Cannot parse symlink target path in cache metadata")
+        in
+        path, destination
+      | _ -> Error (Failure "Cannot parse symlink metadata in cache metadata")
+    in
+    Result.List.fold_left metadata ~init:empty ~f:(fun acc metadata_entry ->
+      match metadata_entry with
+      | Sexp.List (Atom field :: symlinks) when String.equal field metadata_field ->
+        Result.List.fold_left symlinks ~init:acc ~f:(fun acc symlink ->
+          let+ path, destination = parse_symlink symlink in
+          Path.Local.Map.set acc path destination)
+      | _ -> Ok acc)
   ;;
 end
 
@@ -110,10 +173,10 @@ let link_even_if_there_are_too_many_links_already ~src ~dst =
         Fpath.link src (Path.to_string dst))
 ;;
 
-let store_metadata ~mode ~rule_digest (artifacts : Digest.t Targets.Produced.t) =
+let store_metadata ~mode ~metadata ~rule_digest (artifacts : Digest.t Targets.Produced.t) =
   Targets.Produced.to_list_map artifacts ~f:(fun target digest ->
     { Artifacts.Metadata_entry.path = target; digest })
-  |> Artifacts.Metadata_file.store ~mode ~rule_digest
+  |> Artifacts.Metadata_file.store ~metadata ~mode ~rule_digest
 ;;
 
 (* Step I of [store_skipping_metadata].
@@ -248,9 +311,12 @@ let store_skipping_metadata ~mode ~targets : Store_artifacts_result.t Fiber.t =
 ;;
 
 let store_artifacts ~mode ~rule_digest targets : Store_artifacts_result.t Fiber.t =
+  let metadata =
+    Symlink_targets.create targets |> Symlink_targets.to_metadata |> Local.metadata_of_sexps
+  in
   let+ result = store_skipping_metadata ~mode ~targets in
   Store_artifacts_result.bind result ~f:(fun artifacts ->
-    let result = store_metadata ~mode ~rule_digest artifacts in
+    let result = store_metadata ~mode ~metadata ~rule_digest artifacts in
     Store_artifacts_result.of_store_result ~artifacts result)
 ;;
 
@@ -288,7 +354,16 @@ module File_restore = struct
     | Sys_error _ -> raise_notrace (E Not_found_in_cache)
   ;;
 
-  let create_all_or_none (mode : Mode.t) (artifacts : _ Targets.Produced.t) =
+  let symlink ~src ~dst =
+    try Unix.symlink src (Path.to_string dst) with
+    | exn -> raise_notrace (E (Error exn))
+  ;;
+
+  let create_all_or_none
+        (mode : Mode.t)
+        ~(symlink_targets : Symlink_targets.t)
+        (artifacts : _ Targets.Produced.t)
+    =
     let unwind = Unwind.make () in
     let rec mk_dir (dir : Path.Local.t) =
       (match Path.Local.parent dir with
@@ -303,10 +378,13 @@ module File_restore = struct
     let mk_file file file_digest =
       let target = Path.Build.append_local artifacts.root file in
       let dst = Path.build target in
-      let src = Lazy.force (Layout.file_path ~file_digest) in
-      (match mode with
-       | Hardlink -> hardlink ~src ~dst
-       | Copy -> copy ~src ~dst);
+      (match Path.Local.Map.find symlink_targets file with
+       | Some src -> symlink ~src ~dst
+       | None ->
+         let src = Lazy.force (Layout.file_path ~file_digest) in
+         (match mode with
+          | Hardlink -> hardlink ~src ~dst
+          | Copy -> copy ~src ~dst));
       Unwind.push unwind (fun () -> Fpath.unlink_no_err (Path.Build.to_string target))
     in
     try Targets.Produced.iteri artifacts ~f:mk_file ~d:mk_dir with
@@ -317,24 +395,28 @@ module File_restore = struct
 end
 
 let restore_artifacts ~mode ~rule_digest ~target_dir =
-  Artifacts.list ~rule_digest
-  |> Restore_result.bind ~f:(fun (entries : Artifacts.Metadata_entry.t list) ->
-    let artifacts =
-      Path.Local.Map.of_list_map_exn
-        entries
-        ~f:(fun { Artifacts.Metadata_entry.path; digest } -> path, digest)
-      |> Targets.Produced.of_files target_dir
-    in
-    try
-      File_restore.create_all_or_none mode artifacts;
-      Restored artifacts
-    with
-    | File_restore.E result ->
-      (* If [result] is [Not_found_in_cache] then one of the entries mentioned in
-           the metadata is missing. The trimmer will eventually delete such "broken"
-           metadata, so it is reasonable to consider that this [rule_digest] is not
-           found in the cache. *)
-      result)
+  Artifacts.Metadata_file.restore ~rule_digest
+  |> Restore_result.bind ~f:(fun metadata ->
+    let { Artifacts.Metadata_file.entries; metadata } = metadata in
+    match Symlink_targets.of_metadata (Local.metadata_to_sexps metadata) with
+    | Error exn -> Error exn
+    | Ok symlink_targets ->
+      let artifacts =
+        Path.Local.Map.of_list_map_exn
+          entries
+          ~f:(fun { Artifacts.Metadata_entry.path; digest } -> path, digest)
+        |> Targets.Produced.of_files target_dir
+      in
+      (try
+         File_restore.create_all_or_none mode ~symlink_targets artifacts;
+         Restored artifacts
+       with
+       | File_restore.E result ->
+         (* If [result] is [Not_found_in_cache] then one of the entries mentioned in
+              the metadata is missing. The trimmer will eventually delete such "broken"
+              metadata, so it is reasonable to consider that this [rule_digest] is not
+              found in the cache. *)
+         result))
 ;;
 
 let try_to_restore_from_shared_cache ~mode ~rule_digest ~(targets : Targets.Validated.t)

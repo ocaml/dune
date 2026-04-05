@@ -35,6 +35,7 @@ result-*
 start/dune
 
 .claude/
+.codex
 
 perf.data
 perf.data.old

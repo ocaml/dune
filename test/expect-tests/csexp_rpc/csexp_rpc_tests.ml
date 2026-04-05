@@ -45,6 +45,37 @@ let ok_exn = function
   | Error (`Exn exn) -> raise exn
 ;;
 
+let scheduler_config =
+  { Scheduler.Config.concurrency = 1
+  ; print_ctrl_c_warning = false
+  ; watch_exclusions = []
+  }
+;;
+
+let run_scheduler f =
+  Dune_engine.Clflags.display := Quiet;
+  Scheduler.Run.go scheduler_config f ~on_event:(fun _ _ -> ())
+;;
+
+let stop_server server addr =
+  run_scheduler (fun () -> Server.stop server);
+  match (addr : Unix.sockaddr) with
+  | ADDR_UNIX path -> Fpath.unlink_no_err path
+  | ADDR_INET _ -> ()
+;;
+
+let%expect_test "csexp server create on unix sockets" =
+  if not Sys.win32
+  then (
+    let tmp_dir = Temp.create Dir ~prefix:"test" ~suffix:"dune_rpc" in
+    let addr : Unix.sockaddr =
+      Unix.ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
+    in
+    let server = server addr in
+    stop_server server addr);
+  [%expect {| |}]
+;;
+
 let%expect_test "csexp server life cycle" =
   let tmp_dir = Temp.create Dir ~prefix:"test" ~suffix:"dune_rpc" in
   let addr : Unix.sockaddr =
@@ -87,14 +118,7 @@ let%expect_test "csexp server life cycle" =
          in
          log "sessions finished")
   in
-  Dune_engine.Clflags.display := Quiet;
-  let config =
-    { Scheduler.Config.concurrency = 1
-    ; print_ctrl_c_warning = false
-    ; watch_exclusions = []
-    }
-  in
-  Scheduler.Run.go config run ~on_event:(fun _ _ -> ());
+  run_scheduler run;
   Logger.print client_log;
   Logger.print server_log;
   [%expect

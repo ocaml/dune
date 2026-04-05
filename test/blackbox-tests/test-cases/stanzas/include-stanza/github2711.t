@@ -12,7 +12,7 @@ Dirs stanzas from included files are evaluated.
   $ cat _build/default/foo
   bar
 
-Multiple dirs stanzas are intersected across dune and include files.
+Multiple dirs stanzas are unioned across dune and include files.
 
   $ mkdir composed
   $ cd composed
@@ -38,15 +38,11 @@ Multiple dirs stanzas are intersected across dune and include files.
   $ cat _build/default/keep/ok
   keep
   $ dune build ./foo/nope
-  Error: Don't know how to build ./foo/nope
-  Hint: directory foo exists on disk but is excluded by a (dirs ...) stanza at
-  dune:1
-  [1]
+  $ cat _build/default/foo/nope
+  foo
   $ dune build ./bar/nope
-  Error: Don't know how to build ./bar/nope
-  Hint: directory bar exists on disk but is excluded by a (dirs ...) stanza at
-  dune:1
-  [1]
+  $ cat _build/default/bar/nope
+  bar
   $ cd ..
 
 Dirs stanzas that use :standard are interpreted independently.
@@ -69,25 +65,24 @@ Dirs stanzas that use :standard are interpreted independently.
   > (include dune.inc)
   > EOF
   $ dune build ./keep/ok
-  Error: Don't know how to build ./keep/ok
-  Hint: directory keep exists on disk but is excluded by a (dirs ...) stanza at
-  dune:1
-  [1]
+  $ cat _build/default/keep/ok
+  keep
   $ dune build ./other/nope
-  Error: Don't know how to build ./other/nope
-  Hint: directory other exists on disk but is excluded by a (dirs ...) stanza
-  at dune:1
-  [1]
+  $ cat _build/default/other/nope
+  other
   $ cd ..
 
-The review example evaluates to the empty set of directories.
+The review example evaluates to the union of all matching directories.
 
   $ mkdir review-example
   $ cd review-example
   $ make_dune_project 3.23
-  $ mkdir foo
+  $ mkdir foo keep
   $ cat >foo/dune <<EOF
   > (rule (with-stdout-to ok (echo foo)))
+  > EOF
+  $ cat >keep/dune <<EOF
+  > (rule (with-stdout-to ok (echo keep)))
   > EOF
   $ cat >dune <<EOF
   > (dirs foo)
@@ -95,10 +90,11 @@ The review example evaluates to the empty set of directories.
   > (dirs foo)
   > EOF
   $ dune build ./foo/ok
-  Error: Don't know how to build ./foo/ok
-  Hint: directory foo exists on disk but is excluded by a (dirs ...) stanza at
-  dune:1
-  [1]
+  $ cat _build/default/foo/ok
+  foo
+  $ dune build ./keep/ok
+  $ cat _build/default/keep/ok
+  keep
   $ cd ..
 
 Before version 3.23, multiple dirs stanzas are rejected.

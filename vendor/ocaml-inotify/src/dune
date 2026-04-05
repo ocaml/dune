@@ -14,6 +14,7 @@
 
 (library
  (name ocaml_inotify)
+ (libraries unix)
  (foreign_stubs
   (language c)
   (flags

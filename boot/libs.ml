@@ -122,12 +122,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/async_inotify_for_dune"
-    ; main_module_name = Some "Async_inotify_for_dune"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/fsevents"
     ; main_module_name = Some "Fsevents"
     ; include_subdirs = No

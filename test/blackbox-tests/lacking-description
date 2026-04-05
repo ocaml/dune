@@ -113,7 +113,6 @@
 ./test-cases/stanzas/env/env-link_flags.t/run.t
 ./test-cases/stanzas/env/env-var-expansion/missing-default-in-blang.t/run.t
 ./test-cases/stanzas/env/env-var-expansion/nesting.t/run.t
-./test-cases/stanzas/include-stanza/github2711.t
 ./test-cases/stanzas/include-stanza/include-loop.t/run.t
 ./test-cases/stanzas/install/github2123.t/run.t
 ./test-cases/stanzas/ocamllex/ocamllex-include-qualified.t

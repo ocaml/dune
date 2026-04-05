@@ -427,7 +427,7 @@ module Group = struct
           match t.dirs with
           | None -> loc, glob
           | Some (existing_loc, existing_glob) ->
-            existing_loc, Predicate_lang.and_ [ existing_glob; glob ])
+            existing_loc, Predicate_lang.or_ [ existing_glob; glob ])
         else no_dupes "dirs" loc t.dirs glob
       in
       { t with dirs = Some dirs }

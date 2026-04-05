@@ -39,7 +39,7 @@
  (timeout 60))
 
 (cram
- (applies_to windows-diff github6644)
+ (applies_to windows-diff staged-pps-with-sandboxing-gh6644)
  (alias runtest-windows))
 
 ;; DISABLED TESTS
@@ -100,7 +100,7 @@
  (deps %{bin:truncate}))
 
 (cram
- (applies_to github8041)
+ (applies_to sendfile-fallback-copy-gh8041)
  (enabled_if
   (= %{system} linux))
  (deps %{bin:strace} %{bin:head}))
@@ -110,7 +110,7 @@
  (deps %{bin:refmt}))
 
 (cram
- (applies_to github4194)
+ (applies_to oversize-action-output-gh4194)
  (enabled_if
   (not %{arch_sixtyfour}))
  (deps %{bin:ocaml}))

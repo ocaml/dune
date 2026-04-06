@@ -7,6 +7,7 @@ let man =
   ; `P
       {|Dump Dune rules for the given targets.
            If no targets are given, dump all the rules.|}
+  ; `P {|With $(b,--deps), only print the dependencies of the matching rules.|}
   ; `P
       {|By default the output is a list of S-expressions,
            one S-expression per rule. Each S-expression is of the form:|}
@@ -185,6 +186,10 @@ let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
   Format.fprintf ppf "%a@," Pp.to_fmt (Dune_lang.pp sexp)
 ;;
 
+let print_rule_deps ppf (rule : Dune_engine.Reflection.Rule.t) =
+  Format.fprintf ppf "%a@," Pp.to_fmt (Dune_lang.pp (encode_dep_set rule.deps))
+;;
+
 module Syntax = struct
   type t =
     | Makefile
@@ -264,6 +269,12 @@ module Syntax = struct
   ;;
 end
 
+let print_rule_deps_only ppf rules =
+  Format.pp_open_vbox ppf 0;
+  Format.pp_print_list print_rule_deps ppf rules;
+  Format.pp_print_flush ppf ()
+;;
+
 let term =
   let+ builder = Common.Builder.term
   and+ out =
@@ -281,9 +292,16 @@ let term =
             (Some
                "Print all rules needed to build the transitive dependencies of the given \
                 targets."))
+  and+ deps_only =
+    Arg.(
+      value
+      & flag
+      & info [ "deps" ] ~doc:(Some "Only print the dependencies of matching rules."))
   and+ syntax = Syntax.term
   (* CR-someday Alizter: document this option *)
   and+ targets = Arg.(value & pos_all dep [] & Arg.info [] ~docv:"TARGET" ~doc:None) in
+  if deps_only && syntax = Makefile
+  then User_error.raise [ Pp.text "--deps and --makefile are mutually exclusive" ];
   let common, config = Common.init builder in
   let out = Option.map ~f:Path.of_string out in
   Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
@@ -303,7 +321,9 @@ let term =
       let+ rules = Dune_engine.Reflection.eval ~request ~recursive in
       let print oc =
         let ppf = Format.formatter_of_out_channel oc in
-        Syntax.print_rules syntax ppf rules
+        if deps_only
+        then print_rule_deps_only ppf rules
+        else Syntax.print_rules syntax ppf rules
       in
       match out with
       | None -> print stdout

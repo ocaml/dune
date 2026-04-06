@@ -26,3 +26,8 @@ depends: [
   "melange" { with-dev-setup & >= "5.1.0-51" & os != "win32" }
   "uutf" { with-dev-setup }
 ]
+depexts: [
+  # the rev store negotiation test launches a git daemon, needs it to be
+  # installed, which is not the case on Fedora by default
+  "git-daemon" { with-test & os-family = "fedora" }
+]

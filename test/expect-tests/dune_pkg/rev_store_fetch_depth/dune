@@ -1,7 +1,7 @@
 (rule
  (target git-daemon)
  (action
-   (run ./build-git-daemon.sh)))
+  (run ./build-git-daemon.sh)))
 
 (library
  (name rev_store_fetch_depth_test)

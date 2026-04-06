@@ -71,37 +71,35 @@ let copy_recursively =
           (File_kind.to_string_hum kind)
       ]
   in
+  let resolve_symlink_kind ~src =
+    match Unix.stat (Path.to_string src) with
+    | { Unix.st_kind; _ } -> Some st_kind
+    | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
+      User_error.raise
+        ~hints:
+          [ Pp.text
+              "Re-run Dune to delete the stale artifact, or manually delete this file"
+          ]
+        [ Pp.textf
+            "Failed to copy file %s because it is a broken symbolic link while creating \
+             a copy sandbox"
+            (Path.to_string_maybe_quoted src)
+        ]
+  in
   let copy_file ~src ~dst = Io.copy_file ~chmod:chmod_file ~src ~dst () in
   let mkdir_with_perms ~src ~dst =
     let perms = (Unix.stat (Path.to_string src)).st_perm |> chmod_dir in
     Path.mkdir_p ~perms dst
   in
   fun ~src ~dst ->
-    let { Unix.st_kind; st_perm; _ } = Unix.stat (Path.to_string src) in
-    match st_kind with
-    | S_REG -> copy_file ~src ~dst
-    | S_DIR ->
-      Path.mkdir_p ~perms:(chmod_dir st_perm) dst;
-      Fpath.traverse
-        ~dir:(Path.to_string src)
-        ~init:()
-        ~on_file:(fun ~dir fname () ->
-          let rel = Filename.concat dir fname in
-          let src = Path.relative src rel in
-          let dst = Path.relative dst rel in
-          copy_file ~src ~dst)
-        ~on_dir:(fun ~dir fname () ->
-          let rel = Filename.concat dir fname in
-          let src = Path.relative src rel in
-          let dst = Path.relative dst rel in
-          mkdir_with_perms ~src ~dst)
-        ~on_other:
-          (`Call
-              (fun ~dir fname kind () ->
-                let src = Path.relative src (Filename.concat dir fname) in
-                raise_other_kind ~src kind))
-        ()
-    | kind -> raise_other_kind ~src kind
+    Tree_copy.copy
+      ~src
+      ~dst
+      ~copy_file
+      ~mkdir:mkdir_with_perms
+      ~on_unsupported:raise_other_kind
+      ~on_symlink:(`Call resolve_symlink_kind)
+      ()
 ;;
 
 let create_dir t dir = Path.mkdir_p (Path.build (map_path t dir))

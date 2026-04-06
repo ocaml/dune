@@ -1,12 +1,12 @@
 (rule
- (target git-daemon)
  (action
-  (run ./build-git-daemon.sh)))
+  (with-stdout-to git-daemon-location
+                  (bash "echo \\($(git --exec-path)/git-daemon\\)"))))
 
 (library
  (name rev_store_fetch_depth_test)
  (inline_tests
-  (deps %{bin:git} git-daemon))
+  (deps %{bin:git} (include git-daemon-location)))
  (libraries
   dune_tests_common
   git_test_utils

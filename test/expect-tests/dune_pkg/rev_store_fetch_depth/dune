@@ -1,7 +1,12 @@
+(rule
+ (target git-daemon)
+ (action
+   (run ./build-git-daemon.sh)))
+
 (library
  (name rev_store_fetch_depth_test)
  (inline_tests
-  (deps %{bin:git} ${bin:git-daemon}))
+  (deps %{bin:git} git-daemon))
  (libraries
   dune_tests_common
   git_test_utils

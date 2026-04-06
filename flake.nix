@@ -141,11 +141,44 @@
       packages = forAllSystems (
         pkgs:
         let
+          lib = pkgs.lib;
+          dune-source = lib.cleanSourceWith {
+            src = ./.;
+            filter =
+              pkgs.nix-gitignore.gitignoreFilterPure
+                (_: _: true)
+                [
+                  ".git"
+                  ./.gitignore
+                ]
+                ./.;
+          };
+          dune-build-files =
+            let
+              fs = lib.fileset;
+            in
+            fs.intersection
+              (fs.fromSource dune-source)
+              (fs.unions [
+                ./bin
+                ./boot
+                ./configure
+                ./dune-project
+                ./dune-file
+                ./src
+                ./plugin
+                ./vendor
+                ./otherlibs
+                ./Makefile
+                (fs.fileFilter
+                  (file: file.hasExt "opam" || file.hasExt "template")
+                  ./.)
+              ]);
           dune-static-overlay = self: super: {
             ocamlPackages = super.ocaml-ng.ocamlPackages_5_4.overrideScope (
               oself: osuper: {
                 dune_3 = osuper.dune_3.overrideAttrs (a: {
-                  src = ./.;
+                  src = dune-source;
                   preBuild = "ocaml boot/bootstrap.ml --static";
                 });
               }
@@ -163,26 +196,10 @@
             stdenv.mkDerivation {
               pname = "dune";
               version = "3.x-n/a";
-              src =
-                let
-                  fs = lib.fileset;
-                in
-                fs.toSource {
-                  root = ./.;
-                  fileset = fs.unions [
-                    ./bin
-                    ./boot
-                    ./configure
-                    ./dune-project
-                    ./dune-file
-                    ./src
-                    ./plugin
-                    ./vendor
-                    ./otherlibs
-                    ./Makefile
-                    (fs.fileFilter (file: file.hasExt "opam" || file.hasExt "template") ./.)
-                  ];
-                };
+              src = lib.fileset.toSource {
+                root = ./.;
+                fileset = dune-build-files;
+              };
               nativeBuildInputs = with ocamlPackages; [
                 ocaml
                 findlib

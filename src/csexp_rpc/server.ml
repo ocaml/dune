@@ -73,7 +73,9 @@ let create sockaddrs ~backlog =
           Unix.socket ~cloexec:true (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0
         in
         Unix.set_nonblock fd;
-        Unix.setsockopt fd Unix.SO_REUSEADDR true;
+        (match (sockaddr : Unix.sockaddr) with
+         | ADDR_UNIX _ -> ()
+         | ADDR_INET _ -> Unix.setsockopt fd Unix.SO_REUSEADDR true);
         Socket.bind fd sockaddr;
         fd)
     in

@@ -34,7 +34,8 @@ First we try to construct X.t directly
 
   $ runtest "()"
   Error: dependency cycle between modules in _build/default:
-     X
+     Y
+  -> X
   -> X
   -> required by _build/default/foobar.a
   -> required by alias all
@@ -52,7 +53,8 @@ Now we use a polymorphic type:
 
   $ runtest "(assert false)"
   Error: dependency cycle between modules in _build/default:
-     X
+     Y
+  -> X
   -> X
   -> required by _build/default/foobar.a
   -> required by alias all
@@ -70,7 +72,9 @@ Or, we can use another module:
 
   $ runtest "Unit.x"
   Error: dependency cycle between modules in _build/default:
-     X
+     Y
+  -> X
+  -> Unit
   -> X
   -> required by _build/default/foobar.a
   -> required by alias all

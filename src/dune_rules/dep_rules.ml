@@ -241,4 +241,5 @@ let rules ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir ~for_ =
           deps_of ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir ~ml_kind ~for_ m)
       in
       Dep_graph.make ~dir ~per_module)
+    |> Memo.map ~f:(Dep_graph.Ml_kind.for_module_compilation ~modules)
 ;;

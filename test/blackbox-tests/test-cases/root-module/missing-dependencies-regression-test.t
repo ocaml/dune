@@ -36,30 +36,5 @@ must be a declared dependency.
 This should build successfully both with and without sandboxing:
 
   $ dune build --sandbox symlink
-  File "list.ml", line 1:
-  Error: The implementation list.ml does not match the interface list.mli: 
-         Values do not match:
-           val of_seq : 'a Seq.t -> 'a t
-         is not included in
-           val of_seq : 'a Mylib.Seq.t -> 'a t
-         The type 'a Seq.t -> 'a t is not compatible with the type
-           'b Mylib.Seq.t -> 'b t
-         Type 'a Seq.t = unit -> 'a Seq.node is not compatible with type
-           'b Mylib.Seq.t
-         File "list.mli", line 2, characters 0-32: Expected declaration
-         File "listLabels.mli", line 562, characters 0-32: Actual declaration
-  File "list.ml", line 1:
-  Error: The implementation list.ml does not match the interface list.mli: 
-         Values do not match:
-           val of_seq : 'a Seq.t -> 'a t
-         is not included in
-           val of_seq : 'a Mylib.Seq.t -> 'a t
-         The type 'a Seq.t -> 'a t is not compatible with the type
-           'b Mylib.Seq.t -> 'b t
-         Type 'a Seq.t = unit -> 'a Seq.node is not compatible with type
-           'b Mylib.Seq.t
-         File "list.mli", line 2, characters 0-32: Expected declaration
-         File "listLabels.mli", line 562, characters 0-32: Actual declaration
-  [1]
 
   $ dune build

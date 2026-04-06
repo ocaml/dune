@@ -273,9 +273,134 @@ module Cached_digest = struct
         Path.Table.set cache.table path entry
     ;;
   end
+
+  let load () = P.load db_file
+
+  let entries { table; _ } =
+    let entries = ref [] in
+    Path.Table.filteri_inplace table ~f:(fun ~key ~data ->
+      entries := (key, data) :: !entries;
+      true);
+    List.sort !entries ~compare:(fun (path_a, _) (path_b, _) ->
+      Path.compare path_a path_b)
+  ;;
 end
 
 let invalidate_cached_timestamps = Cached_digest.invalidate_cached_timestamps
+
+module Debug = struct
+  type selector =
+    | Exact of Path.t
+    | Direct_children_of of Path.t
+
+  let selectors paths =
+    List.map paths ~f:(fun path ->
+      match
+        Unix_error.Detailed.catch (fun path -> Unix.stat (Path.to_string path)) path
+      with
+      | Ok { Unix.st_kind = S_DIR; _ } -> Direct_children_of path
+      | Ok { Unix.st_kind = _; _ } | Error _ -> Exact path)
+  ;;
+
+  let matches selectors path =
+    match selectors with
+    | [] -> true
+    | selectors ->
+      List.exists selectors ~f:(function
+        | Exact selected -> Path.equal path selected
+        | Direct_children_of dir ->
+          (match Path.parent path with
+           | Some parent -> Path.equal parent dir
+           | None -> false))
+  ;;
+
+  let selected_entries db paths =
+    let selectors = selectors paths in
+    Cached_digest.entries db |> List.filter ~f:(fun (path, _) -> matches selectors path)
+  ;;
+
+  let entry_to_dyn path (file : Cached_digest.file) =
+    let { Cached_digest.digest; stats; stats_checked } = file in
+    Dyn.Record
+      [ "path", Path.to_dyn path
+      ; "digest", Digest.to_dyn digest
+      ; "stats", Cached_digest.Reduced_stats.to_dyn stats
+      ; "stats_checked", Dyn.Int stats_checked
+      ]
+  ;;
+
+  let load_exn () =
+    match Cached_digest.load () with
+    | Some db -> db
+    | None ->
+      User_error.raise
+        [ Pp.textf
+            "No digest database found at %s"
+            (Path.to_string_maybe_quoted Cached_digest.db_file)
+        ]
+  ;;
+
+  let dump_digest_db paths =
+    let db = load_exn () in
+    let { Cached_digest.checked_key; max_timestamp; _ } = db in
+    let entries =
+      selected_entries db paths
+      |> List.map ~f:(fun (path, file) -> entry_to_dyn path file)
+    in
+    Dyn.Record
+      [ "checked_key", Int checked_key
+      ; "max_timestamp", Int (Time.to_ns max_timestamp)
+      ; "entries", List entries
+      ]
+  ;;
+
+  let current_digest path =
+    let path_string = Path.to_string path in
+    match
+      Digest_result.catch_fs_errors (fun () ->
+        match Stat.stat path_string with
+        | stats ->
+          Ok
+            ( Some (Cached_digest.Reduced_stats.of_stat stats)
+            , Cached_digest.digest_path_with_stats path stats )
+        | exception Unix.Unix_error (ENOENT, _, _) ->
+          (match Unix.lstat path_string with
+           | exception Unix.Unix_error (ENOENT, _, _) ->
+             Error Digest_result.Error.No_such_file
+           | _ -> Error Digest_result.Error.Broken_symlink))
+    with
+    | Ok current -> current
+    | Error error -> None, Error error
+  ;;
+
+  let finding_to_dyn path ~status ~(cached_digest : Digest.t) ~actual =
+    Dyn.Record
+      [ "status", String status
+      ; "path", Path.to_dyn path
+      ; "cached_digest", Digest.to_dyn cached_digest
+      ; "actual", Digest_result.to_dyn actual
+      ]
+  ;;
+
+  let check_digest_db paths =
+    let db = load_exn () in
+    selected_entries db paths
+    |> List.filter_map ~f:(fun (path, file) ->
+      let { Cached_digest.digest = cached_digest; stats; stats_checked = _ } = file in
+      let current_stats, actual = current_digest path in
+      if Digest_result.equal actual (Ok cached_digest)
+      then None
+      else (
+        let status =
+          match current_stats with
+          | Some current_stats
+            when Cached_digest.Reduced_stats.compare stats current_stats = Eq -> "invalid"
+          | Some _ | None -> "stale"
+        in
+        Some (finding_to_dyn path ~status ~cached_digest ~actual)))
+    |> fun findings -> Dyn.List findings
+  ;;
+end
 
 module Dir_contents = struct
   (* CR-someday amokhov: Using a [Filename.Map] instead of a list would be better

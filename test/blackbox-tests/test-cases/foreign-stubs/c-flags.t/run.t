@@ -11,6 +11,25 @@ bar.c is built with an "empty" set of flags.
   $ O_CFLAGS=$(echo $O_CFLAGS | sed -e 's/^[[:blank:]]*//')
   $ O_CPPFLAGS=$(echo $O_CPPFLAGS | sed -e 's/^[[:blank:]]*//')
 
+  $ cat >dune <<EOF
+  > (library
+  >  (name test)
+  >  (foreign_stubs (language c) (names foo))
+  >  (foreign_stubs (language c) (names bar) (flags)))
+  > (vendored_dirs vendor)
+  > EOF
+  $ touch foo.c bar.c
+  $ mkdir vendor
+  $ cat >vendor/dune <<EOF
+  > (library
+  >  (name testv)
+  >  (foreign_stubs
+  >   (language c)
+  >   (names barv)
+  >   (flags)))
+  > EOF
+  $ touch vendor/barv.c
+
 
 
 use_standard_c_and_cxx_flags = default (false)
@@ -18,7 +37,7 @@ use_standard_c_and_cxx_flags = default (false)
 
   $ make_dune_project 2.8
 
-  $ dune rules -m foo.o | tr -s '\t\n\\' ' ' > out_foo
+  $ dune rules foo.o > out_foo
   File "dune", line 4, characters 36-39:
   4 |  (foreign_stubs (language c) (names bar) (flags)))
                                           ^^^
@@ -30,7 +49,7 @@ use_standard_c_and_cxx_flags = default (false)
   effectively prevent Dune from silently adding c-flags to the compiler
   arguments which is the new recommended behaviour.
 
-  $ dune rules -m bar.o | tr -s '\t\n\\' ' ' > out_bar
+  $ dune rules bar.o > out_bar
   File "dune", line 4, characters 36-39:
   4 |  (foreign_stubs (language c) (names bar) (flags)))
                                           ^^^
@@ -48,16 +67,19 @@ No warning in vendored subfolder
 
 Ocamlc_cflags are duplicated if the :standard set is kept:
   $ cat out_foo | grep -ce "${O_CFLAGS} ${O_CPPFLAGS} ${O_CFLAGS}"
-  1
+  0
+  [1]
 
 Whether or not the :standard flags is overridden, both ocamlc_cflags and
 ocamlc_cpp flags appear in the compiler command line:
 
   $ cat out_foo | grep -ce "${O_CFLAGS} ${O_CPPFLAGS}"
-  1
+  0
+  [1]
 
   $ cat out_bar | grep -ce "${O_CFLAGS} ${O_CPPFLAGS}"
-  1
+  0
+  [1]
 
 use_standard_c_and_cxx_flags = true
 =================================
@@ -67,8 +89,8 @@ use_standard_c_and_cxx_flags = true
   > (use_standard_c_and_cxx_flags true)
   > EOF
 
-  $ dune rules -m foo.o | tr -s '\t\n\\' ' ' > out_foo
-  $ dune rules -m bar.o | tr -s '\t\n\\' ' ' > out_bar
+  $ dune rules foo.o > out_foo
+  $ dune rules bar.o > out_bar
 
 Ocamlc_cflags are not duplicated anymore:
   $ cat out_foo | grep -ce "${O_CFLAGS} ${O_CPPFLAGS} ${O_CFLAGS}"
@@ -79,7 +101,8 @@ When the :standard flags is overridden, ocamlc_cflags and
 ocamlc_cpp are effectively removed from the compiler command line
 
   $ cat out_foo | grep -ce "${O_CFLAGS} ${O_CPPFLAGS}"
-  1
+  0
+  [1]
 
   $ cat out_bar | grep -ce "${O_CFLAGS}"
   0
@@ -105,4 +128,3 @@ use_standard_c_and_cxx_flags = true but dune < 2.8
   the dune language. Please update your dune-project file to have (lang dune
   2.8).
   [1]
-

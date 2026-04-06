@@ -134,14 +134,6 @@ Hints for directory targets.
 
 Print rules:
 
-  $ dune rules -m output | tr '\t' ' '
-  _build/default/output: _build/default/src_x
-   mkdir -p _build/default; \
-   mkdir -p _build/default; \
-   cd _build/default; \
-   bash -e -u -o pipefail -c \
-     'mkdir output; cat src_x > output/x; echo y > output/y'
-
   $ dune rules output
   ((deps ((File (In_build_dir _build/default/src_x))))
    (targets ((files ()) (directories (_build/default/output))))

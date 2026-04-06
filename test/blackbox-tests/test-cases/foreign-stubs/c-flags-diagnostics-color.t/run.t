@@ -8,6 +8,13 @@ We don't actually test that the compiler outputs colors, just that
 Dune correctly passes the flag when required, and doesn't when it's
 not.
 
+  $ cat >dune-project <<EOF
+  > (lang dune 3.5)
+  > EOF
+  $ cat >stub.c <<EOF
+  > #error "error message"
+  > EOF
+
 test that we pass the flag
 ==========================
 
@@ -17,7 +24,7 @@ test that we pass the flag
   >  (foreign_stubs (language c) (names stub)))
   > EOF
 
-  $ dune rules -m stub.o | grep -ce "-fdiagnostics-color=always"
+  $ dune rules stub.o | grep -ce "-fdiagnostics-color=always"
   1
 
 test color flag disabled
@@ -31,7 +38,7 @@ test color flag disabled
   >   (language c) (names stub)))
   > EOF
 
-  $ dune rules -m stub.o | grep -ce "-fdiagnostics-color=always"
+  $ dune rules stub.o | grep -ce "-fdiagnostics-color=always"
   0
   [1]
 

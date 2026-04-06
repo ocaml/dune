@@ -9,15 +9,6 @@ open Stdune
       and seeing an event about it before having filled the hashtable (not that
       we have observed this particular race). *)
 
-module External_deps = struct
-  module Unix = Unix
-  module Table = Table
-
-  let ( ^/ ) = Filename.concat
-  let sprintf = Printf.sprintf
-end
-
-open External_deps
 module Inotify = Ocaml_inotify.Inotify
 
 module Event = struct
@@ -110,7 +101,7 @@ let process_raw_events t events =
           let fn =
             match fn with
             | None -> path
-            | Some fn -> path ^/ fn
+            | Some fn -> Filename.concat path fn
           in
           List.map ev_kinds ~f:(fun ev -> ev, trans_id, fn)))
   in

@@ -46,13 +46,10 @@ Add new dependency c:
 Run build:
 
   $ build a.exe
-  Failure
+  Success
 
 Stop the watch server
 
   $ stop_dune
   Success, waiting for filesystem changes...
-  File "dune.lock/lock.dune", line 1, characters 0-0:
-  Error: The lock dir is not sync with your dune-project
-  Hint: run dune pkg lock
-  Had 1 error, waiting for filesystem changes...
+  Success, waiting for filesystem changes...

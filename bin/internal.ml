@@ -32,8 +32,84 @@ let bootstrap_info =
   Cmd.v info term
 ;;
 
+module Sexp_pp = struct
+  type format =
+    | Sexp
+    | Csexp
+
+  let format_arg =
+    let all = [ "sexp", Sexp; "csexp", Csexp ] in
+    let doc = Printf.sprintf "$(docv) must be %s" (Arg.doc_alts_enum all) in
+    Arg.(value & opt (enum all) Sexp & info [ "format" ] ~docv:"FORMAT" ~doc:(Some doc))
+  ;;
+
+  let version = Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax
+
+  let print csts =
+    Format.fprintf
+      Format.std_formatter
+      "%a%!"
+      Pp.to_fmt
+      (Dune_lang.Format.pp_top_sexps ~version csts)
+  ;;
+
+  let rec dune_lang_of_sexp : Sexp.t -> Dune_lang.t = function
+    | Atom s -> Dune_lang.atom_or_quoted_string s
+    | List xs -> List (List.map xs ~f:dune_lang_of_sexp)
+  ;;
+
+  let parse_dune_sexps path =
+    match path with
+    | Some path -> Dune_lang.Parser.load path ~mode:Cst
+    | None ->
+      Dune_lang.Parser.parse (Lexbuf.from_channel stdin ~fname:"<stdin>") ~mode:Cst
+  ;;
+
+  let parse_csexps path =
+    let parsed =
+      match path with
+      | Some path -> Io.with_file_in ~binary:true path ~f:Csexp.input_many
+      | None -> Csexp.input_many stdin
+    in
+    match parsed with
+    | Ok sexps ->
+      List.map sexps ~f:(fun sexp ->
+        sexp
+        |> dune_lang_of_sexp
+        |> Dune_lang.Ast.add_loc ~loc:Loc.none
+        |> Dune_lang.Cst.concrete)
+    | Error message ->
+      let input =
+        match path with
+        | Some path -> Path.to_string path
+        | None -> "<stdin>"
+      in
+      User_error.raise [ Pp.textf "failed to parse %s as csexp: %s" input message ]
+  ;;
+
+  let command =
+    let doc = "Pretty print s-expressions read from stdin or a file." in
+    let info = Cmd.info "sexp-pp" ~doc in
+    let term =
+      let+ format = format_arg
+      and+ input =
+        let doc = "Read input from this file instead of stdin." in
+        Arg.(value & pos 0 (some Arg.path) None & info [] ~docv:"FILE" ~doc:(Some doc))
+      in
+      let input = Option.map input ~f:Arg.Path.path in
+      let csts =
+        match format with
+        | Sexp -> parse_dune_sexps input
+        | Csexp -> parse_csexps input
+      in
+      print csts
+    in
+    Cmd.v info term
+  ;;
+end
+
 let group =
   Cmd.group
     (Cmd.info "internal")
-    [ Internal_dump.command; latest_lang_version; bootstrap_info ]
+    [ Internal_dump.command; latest_lang_version; bootstrap_info; Sexp_pp.command ]
 ;;

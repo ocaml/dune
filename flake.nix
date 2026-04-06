@@ -206,11 +206,16 @@
         pkgs:
         let
           INSIDE_NIX = "true";
-          applyOxcamlPatches = import ./nix/ox-patches.nix {
+          oxPackageSet = import ./nix/ox-package-set.nix {
             inherit pkgs;
             lib = pkgs.lib;
             oxcamlOpamRepo = oxcaml-opam-repository;
           };
+          oxcamlCompiler = oxcaml.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
+            NIX_CFLAGS_COMPILE = "-std=gnu17";
+            passthru = (old.passthru or { }) // pkgs.ocamlPackages.ocaml.passthru;
+            meta = (old.meta or { }) // pkgs.ocamlPackages.ocaml.meta;
+          });
           # Older nixpkgs for OCaml 4.02 support
           pkgs-old = nixpkgs-old.legacyPackages.${pkgs.stdenv.hostPlatform.system}.appendOverlays [
             ocaml-overlays.overlays.default
@@ -266,6 +271,8 @@
               meta ? null,
               duneFromScope ? false,
               includeTestDeps ? true,
+              excludeTestNativeBuildInputs ? [ ],
+              excludeOcamlLibs ? [ ],
               packageOverrides ? (oself: osuper: { }),
             }:
             let
@@ -331,28 +338,37 @@
                 "$DUNE_SOURCE_ROOT"/_boot/dune.exe $@
               '';
 
-              baseInputs = if includeTestDeps then (testNativeBuildInputs pkgs') ++ docInputs else [ ];
+              baseInputs =
+                if includeTestDeps then
+                  (builtins.filter
+                    (p: !builtins.elem (p.pname or p.name or "") excludeTestNativeBuildInputs)
+                    (testNativeBuildInputs pkgs')
+                  ) ++ docInputs
+                else
+                  [];
 
               ocamlLibs =
                 if includeTestDeps then
-                  (with pkgs'.ocamlPackages; [
-                    ctypes
-                    cinaps
-                    integers
-                    lwt
-                    mdx
-                    menhir
-                    merlin
-                    ocaml-index
-                    ocaml-lsp
-                    odoc
-                    patdiff
-                    pp
-                    ppx_expect
-                    re
-                    spawn
-                    uutf
-                  ])
+                  builtins.filter
+                    (p: !builtins.elem (p.pname or p.name or "") excludeOcamlLibs)
+                    (with pkgs'.ocamlPackages; [
+                      ctypes
+                      cinaps
+                      integers
+                      lwt
+                      mdx
+                      menhir
+                      merlin
+                      ocaml-index
+                      ocaml-lsp
+                      odoc
+                      patdiff
+                      pp
+                      ppx_expect
+                      re
+                      spawn
+                      uutf
+                    ])
                 else
                   [ ];
             in
@@ -484,9 +500,7 @@
             inherit INSIDE_NIX;
             buildInputs = [
               pkgs.gnumake
-              (oxcaml.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (_: {
-                NIX_CFLAGS_COMPILE = "-std=gnu17";
-              }))
+              oxcamlCompiler
             ];
             meta.description = ''
               Provides a minimal shell environment with OxCaml in order to
@@ -494,58 +508,19 @@
             '';
           };
 
-          ox-minimal = makeDuneDevShell {
-            includeTestDeps = false;
-            packageOverrides =
-              oself: osuper:
-              (applyOxcamlPatches oself osuper)
-              // {
-                # dune_3 = self.packages.${system}.default;
-                ocaml = oxcaml.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
-                  NIX_CFLAGS_COMPILE = "-std=gnu17";
-                  passthru = (old.passthru or { }) // pkgs.ocamlPackages.ocaml.passthru;
-                  meta = (old.meta or { }) // pkgs.ocamlPackages.ocaml.meta;
-                });
-                spawn = osuper.spawn.overrideAttrs (old: {
-                  doCheck = false;
-                });
-                csexp = osuper.csexp.overrideAttrs (old: {
-                  doCheck = false;
-                });
-                pp = osuper.pp.overrideAttrs (old: {
-                  doCheck = false;
-                });
-              };
-            extraBuildInputs =
-              pkgs: with pkgs.ocamlPackages; [
-                csexp
-                pp
-                re
-                spawn
-                uutf
-                findlib
-              ];
-            meta.description = ''
-              Provides a minimal shell environment with OxCaml in order to
-              run the OxCaml tests.
-            '';
-          };
-
           ox = makeDuneDevShell {
+            excludeTestNativeBuildInputs = [ "opam" ];
+            excludeOcamlLibs = [ "mdx" "merlin" "ocaml-index" "ocaml-lsp-server" "odoc" ];
             packageOverrides =
               oself: osuper:
-              (applyOxcamlPatches oself osuper)
+              (oxPackageSet oself osuper)
               // {
                 dune_3 = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
-                ocaml = oxcaml.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
-                  NIX_CFLAGS_COMPILE = "-std=gnu17";
-                  passthru = (old.passthru or { }) // pkgs.ocamlPackages.ocaml.passthru;
-                  meta = (old.meta or { }) // pkgs.ocamlPackages.ocaml.meta;
-                });
+                ocaml = oxcamlCompiler;
               };
             meta.description = ''
               Provides a full shell environment with the OxCaml compiler to
-              develop with Dune. Warning: does not work.
+              develop with Dune.
             '';
           };
 

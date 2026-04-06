@@ -33,6 +33,7 @@ module Event : sig
 
     val create_sandbox : loc:Loc.t -> data
     val fetch : url:string -> target:Path.t -> checksum:string option -> data
+    val pkg_load_lock_dir : path:string -> data
   end
 
   type t

@@ -3,7 +3,7 @@ module Async_io = Async_io
 module File_watcher = File_watcher
 
 module For_tests = struct
-  module Async_inotify = Async_inotify
+  module Inotify = Inotify
 end
 
 module For_benchmarks = struct

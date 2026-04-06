@@ -10,6 +10,12 @@
   (= %{os_type} Win32))
  (alias runtest-windows))
 
+(cram
+ (applies_to sandbox-symlink-windows-enabled)
+ (enabled_if
+  (= %{os_type} Win32))
+ (alias runtest-windows))
+
 ; Tests disabled on Windows:
 ; sandbox-chdir: path prefix handling differences
 ; sandboxing-stale-directory-target: path prefix handling differences

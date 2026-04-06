@@ -112,20 +112,22 @@ let create_dirs t ~dirs ~rule_dir =
 ;;
 
 let link_function ~(mode : Sandbox_mode.some) =
-  let win32_error mode =
+  let symlink_error mode =
     let mode = Sandbox_mode.to_string (Some mode) in
     User_error.raise
       [ Pp.textf
-          "Sandboxing mode %s is not supported on Windows. Use copy or hardlink instead."
+          "Sandboxing mode %s is not supported on this system. On Windows, enable \
+           Developer Mode in Windows Settings > Privacy & Security > For Developers, or \
+           use copy or hardlink mode instead."
           mode
       ]
   in
   Staged.stage
     (match mode with
      | Symlink ->
-       (match Sys.win32 with
-        | true -> win32_error mode
-        | false -> fun src dst -> Io.portable_symlink ~src ~dst)
+       (match Io.symlinks_available () with
+        | false -> symlink_error mode
+        | true -> fun src dst -> Io.portable_symlink ~src ~dst)
      | Copy -> fun src dst -> copy_recursively ~src ~dst
      | Hardlink -> fun src dst -> Io.portable_hardlink ~src ~dst
      | Patch_back_source_tree ->

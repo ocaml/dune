@@ -425,10 +425,19 @@ module String_path = struct
   let copy_file = Copyfile.copyfile
 end
 
+let symlinks_available_impl = ref `Auto
+let set_symlinks_available v = symlinks_available_impl := v
+
+let symlinks_available () =
+  match !symlinks_available_impl with
+  | `Enabled -> true
+  | `Disabled -> false
+  | `Auto -> Unix.has_symlink ()
+;;
+
 let portable_symlink ~src ~dst =
-  if Stdlib.Sys.win32
-  then copy_file ~src ~dst ()
-  else (
+  if symlinks_available ()
+  then (
     let src =
       match Path.parent dst with
       | None -> Path.to_string src
@@ -439,11 +448,10 @@ let portable_symlink ~src ~dst =
     | target ->
       if target <> src
       then (
-        (* @@DRA Win32 remove read-only attribute needed when symlinking
-           enabled *)
-        Unix.unlink dst;
+        Fpath.unlink_exn dst;
         Unix.symlink src dst)
     | exception Unix.Unix_error _ -> Unix.symlink src dst)
+  else copy_file ~src ~dst ()
 ;;
 
 let portable_hardlink ~src ~dst =

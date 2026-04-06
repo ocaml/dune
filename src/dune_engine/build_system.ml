@@ -248,16 +248,7 @@ end = struct
       let evaluate_sandboxing_preference preference =
         match Sandbox_mode.Set.mem config preference with
         | false -> None
-        | true ->
-          if Sys.win32 && preference = Some Sandbox_mode.Symlink
-          then
-            User_error.raise
-              ~loc
-              [ Pp.text
-                  "Sandboxing mode symlink is not supported on Windows. Use copy or \
-                   hardlink instead."
-              ]
-          else Some preference
+        | true -> Some preference
       in
       (match List.find_map sandboxing_preference ~f:evaluate_sandboxing_preference with
        | Some choice -> choice

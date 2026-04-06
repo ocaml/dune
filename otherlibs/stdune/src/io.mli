@@ -16,3 +16,5 @@ val portable_symlink : src:Path.t -> dst:Path.t -> unit
 val portable_hardlink : src:Path.t -> dst:Path.t -> unit
 
 val set_copy_impl : [ `Portable | `Best ] -> unit
+val set_symlinks_available : [ `Enabled | `Disabled | `Auto ] -> unit
+val symlinks_available : unit -> bool

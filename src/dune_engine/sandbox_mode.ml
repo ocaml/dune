@@ -107,16 +107,17 @@ module Set = struct
 end
 
 (* All user-facing modes, excluding patch_back_source_tree. Includes symlink
-   on all platforms so that Windows users get a clear error message. *)
+   on all platforms so that users get a clear error message when symlinks are
+   unavailable. *)
 let cli_options = [ None; Some Symlink; Some Copy; Some Hardlink ]
 
 (* The order of sandboxing modes in this list determines the order in which Dune
-   will try to use them when satisfying sandboxing constraints. On Windows,
-   symlink is excluded since it is not supported. *)
+   will try to use them when satisfying sandboxing constraints. Symlink is
+   excluded when the system does not support symlink creation. *)
 let all_except_patch_back_source_tree =
-  if Sys.win32
-  then List.filter cli_options ~f:(fun m -> m <> Some Symlink)
-  else cli_options
+  if Io.symlinks_available ()
+  then cli_options
+  else List.filter cli_options ~f:(fun m -> m <> Some Symlink)
 ;;
 
 let all = all_except_patch_back_source_tree @ [ Some Patch_back_source_tree ]

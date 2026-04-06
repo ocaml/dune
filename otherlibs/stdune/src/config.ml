@@ -169,3 +169,13 @@ let threaded_console_frames_per_second =
       | None -> Error (sprintf "could not parse %S as an integer" x))
     ~default:`Default
 ;;
+
+let symlinks_available =
+  make
+    ~name:"symlinks_available"
+    ~of_string:(function
+      | "enabled" -> Ok `Enabled
+      | "disabled" -> Ok `Disabled
+      | _ -> Error (sprintf "only %S and %S are allowed" "enabled" "disabled"))
+    ~default:`Auto
+;;

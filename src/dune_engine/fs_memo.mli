@@ -91,3 +91,8 @@ end
 (** Invalidate all cached [stat] values. This causes all subsequent calls to
     [build_file] or [source_or_external_file] to incur additional [stat] calls. *)
 val invalidate_cached_timestamps : unit -> unit
+
+module Debug : sig
+  val dump_digest_db : Path.t list -> Dyn.t
+  val check_digest_db : Path.t list -> Dyn.t
+end

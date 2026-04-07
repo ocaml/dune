@@ -111,5 +111,10 @@ end
 let group =
   Cmd.group
     (Cmd.info "internal")
-    [ Internal_dump.command; latest_lang_version; bootstrap_info; Sexp_pp.command ]
+    [ Internal_dump.command
+    ; Internal_digest_db.command
+    ; latest_lang_version
+    ; bootstrap_info
+    ; Sexp_pp.command
+    ]
 ;;

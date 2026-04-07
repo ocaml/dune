@@ -7,6 +7,7 @@ on:
   push:
     branches:
         - main
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -34,10 +35,6 @@ jobs:
   packaging-check:
     needs: discover-packages
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJson(needs.discover-packages.outputs.packages) }}
 
     steps:
       - uses: actions/checkout@v6
@@ -49,7 +46,12 @@ jobs:
           opam-pin: false
 
       - name: Lint current package metadata
-        run: opam lint "./opam/${{ matrix.package }}.opam"
+        env:
+          packages: ${{ needs.discover-packages.outputs.packages }}
+        run: |
+          echo "$packages" | jq -r '.[]' | while read -r pkg; do
+            opam lint "./opam/$pkg.opam"
+          done
 
       - name: Pin all packages without installing
         # Some packages require their sibling packages to be at the same version.
@@ -70,13 +72,24 @@ jobs:
           echo "PATH=$PATH" >> $GITHUB_ENV
 
       - name: Install package
-        run: opam install ${{ matrix.package }} --with-test -y
+        env:
+          packages: ${{ needs.discover-packages.outputs.packages }}
+        run: |
+          echo "$packages" | jq -r '.[]' | while read -r pkg; do
+            opam install "$pkg.dev" --with-test -y
+            opam remove "$pkg.dev" --auto-remove -y
+          done
 
       - name: Lower bounds test
         # Verify that installation succeeds with lower-bound dependencies.
         # The package is removed first so that opam reinstalls it fresh,
         # resolving to the oldest compatible versions rather than reusing
         # what is already installed.
+        if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
+        env:
+          packages: ${{ needs.discover-packages.outputs.packages }}
         run: |
-          opam remove ${{ matrix.package }}
-          opam install --solver=builtin-0install "--criteria=+count[version-lag,solution]" ${{ matrix.package }}
+          echo "$packages" | jq -r '.[]' | while read -r pkg; do
+            opam install --solver=builtin-0install "--criteria=+count[version-lag,solution]" "$pkg.dev" -y
+            opam remove "$pkg.dev" --auto-remove -y
+          done

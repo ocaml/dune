@@ -13,7 +13,9 @@ module Pin_stanza = Dune_lang.Pin_stanza
 module Repository = Dune_pkg.Pkg_workspace.Repository
 module Solver_env = Dune_pkg.Solver_env
 
-let default_repositories = [ Repository.overlay; Repository.upstream ]
+let default_repositories =
+  [ Repository.overlay; Repository.relocatable; Repository.upstream ]
+;;
 
 module Lock_dir = struct
   type t =

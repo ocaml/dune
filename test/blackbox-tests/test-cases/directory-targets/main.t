@@ -151,6 +151,9 @@ Print rules:
      _build/default
      (bash "mkdir output; cat src_x > output/x; echo y > output/y"))))
 
+  $ dune rules --deps output
+  ((File (In_build_dir _build/default/src_x)))
+
 Error when requesting a missing subdirectory of a directory target.
 
   $ cat > dune <<EOF

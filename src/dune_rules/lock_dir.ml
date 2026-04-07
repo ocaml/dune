@@ -215,7 +215,9 @@ let get_with_path =
            Pp.textf "read lock directory %s" (Path.to_string_maybe_quoted p))
          "read-lock-dir"
          ~input:(module Path)
-         Load.load)
+         (fun path ->
+            let* () = Build_system.build_dir path in
+            Load.load path))
   in
   Per_context.create_by_name ~name:"lock-dir-get" (fun ctx ->
     Memo.lazy_ (fun () ->
@@ -228,7 +230,6 @@ let get_with_path =
             "No lock dir path for context available"
             [ "context", Context_name.to_dyn ctx ]
       in
-      let* () = Build_system.build_dir path in
       read_lockdir path
       >>= function
       | Error e -> Memo.return (Error e)

@@ -181,9 +181,9 @@ let process_inotify_event (event : Inotify.Event.t) should_exclude : Event.t lis
     (match move with
      | Away path -> create_event_unless_excluded ~kind:Deleted ~path
      | Into path -> create_event_unless_excluded ~kind:Created ~path
-     | Move (from, to_) ->
-       create_event_unless_excluded ~kind:Deleted ~path:from
-       @ create_event_unless_excluded ~kind:Created ~path:to_)
+     | Move { src; dst } ->
+       create_event_unless_excluded ~kind:Deleted ~path:src
+       @ create_event_unless_excluded ~kind:Created ~path:dst)
   | Queue_overflow -> [ Queue_overflow ]
 ;;
 

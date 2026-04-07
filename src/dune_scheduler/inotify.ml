@@ -15,7 +15,10 @@ module Event = struct
   type move =
     | Away of string
     | Into of string
-    | Move of string * string
+    | Move of
+        { src : string
+        ; dst : string
+        }
 
   type t =
     | Created of string
@@ -28,7 +31,7 @@ module Event = struct
     match m with
     | Away s -> sprintf "%s -> Unknown" s
     | Into s -> sprintf "Unknown -> %s" s
-    | Move (f, t) -> sprintf "%s -> %s" f t
+    | Move { src; dst } -> sprintf "%s -> %s" src dst
   ;;
 
   let to_string t =
@@ -120,7 +123,7 @@ let process_raw_events t events =
            | None -> None, Moved (Into fn) :: actions
            | Some (m_trans_id, m_fn) ->
              if m_trans_id = trans_id
-             then None, Moved (Move (m_fn, fn)) :: actions
+             then None, Moved (Move { src = m_fn; dst = fn }) :: actions
              else None, Moved (Away m_fn) :: Moved (Into fn) :: actions)
         | Move_self -> Some (trans_id, fn), add_pending actions
         | Create -> None, Created fn :: add_pending actions

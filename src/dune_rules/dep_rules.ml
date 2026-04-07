@@ -131,9 +131,6 @@ let deps_of_vlib_module ~obj_dir ~vimpl ~dir ~sctx ~ml_kind ~for_ sourced_module
     Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind ~for_ m
 ;;
 
-(** Tests whether a set of modules is a singleton *)
-let has_single_file modules = Option.is_some @@ Modules.With_vlib.as_singleton modules
-
 let rec deps_of
           ~obj_dir
           ~modules
@@ -153,7 +150,7 @@ let rec deps_of
        | Root | Alias _ -> true
        | _ -> false)
   in
-  if is_alias_or_root || has_single_file modules
+  if is_alias_or_root
   then Memo.return (Action_builder.return [])
   else (
     let skip_if_source_absent f sourced_module =
@@ -187,18 +184,15 @@ let read_deps_of_module ~modules ~obj_dir dep ~for_ =
   | Root | Alias _ -> Action_builder.return []
   | Wrapped_compat -> wrapped_compat_deps modules unit |> Action_builder.return
   | _ ->
-    if has_single_file modules
-    then Action_builder.return []
-    else (
-      match dep with
-      | Immediate (unit, ml_kind) ->
-        Ocamldep.read_immediate_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit
-      | Transitive (unit, ml_kind) ->
-        let open Action_builder.O in
-        let+ deps = Ocamldep.read_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit in
-        (match Modules.With_vlib.alias_for modules unit with
-         | [] -> deps
-         | aliases -> aliases @ deps))
+    (match dep with
+     | Immediate (unit, ml_kind) ->
+       Ocamldep.read_immediate_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit
+     | Transitive (unit, ml_kind) ->
+       let open Action_builder.O in
+       let+ deps = Ocamldep.read_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit in
+       (match Modules.With_vlib.alias_for modules unit with
+        | [] -> deps
+        | aliases -> aliases @ deps))
 ;;
 
 let read_immediate_deps_of ~obj_dir ~modules ~ml_kind ~for_ m =
@@ -223,15 +217,12 @@ let for_module ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_ module_ =
 ;;
 
 let rules ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir ~for_ =
-  match Modules.With_vlib.as_singleton modules with
-  | Some m -> Memo.return (Dep_graph.Ml_kind.dummy m)
-  | None ->
-    dict_of_func_concurrently (fun ~ml_kind ->
-      let+ per_module =
-        Modules.With_vlib.obj_map modules
-        |> Parallel_map.parallel_map ~f:(fun _obj_name m ->
-          deps_of ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir ~ml_kind ~for_ m)
-      in
-      Dep_graph.make ~dir ~per_module)
-    |> Memo.map ~f:(Dep_graph.Ml_kind.for_module_compilation ~modules)
+  dict_of_func_concurrently (fun ~ml_kind ->
+    let+ per_module =
+      Modules.With_vlib.obj_map modules
+      |> Parallel_map.parallel_map ~f:(fun _obj_name m ->
+        deps_of ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir ~ml_kind ~for_ m)
+    in
+    Dep_graph.make ~dir ~per_module)
+  |> Memo.map ~f:(Dep_graph.Ml_kind.for_module_compilation ~modules)
 ;;

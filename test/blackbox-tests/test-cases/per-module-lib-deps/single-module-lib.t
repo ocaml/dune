@@ -1,4 +1,4 @@
-Per-module filtering does not help single-module library consumers.
+Per-module filtering works for single-module library consumers.
 
 When a consumer library has only one module, dune skips ocamldep for that
 stanza. Without ocamldep data, the per-module filtering has nothing to work
@@ -59,8 +59,8 @@ Modify only the unused module:
   > let new_fn () = "new"
   > EOF
 
-uses_alpha is recompiled even though it only references Alpha, not Unused:
+uses_alpha is no longer recompiled because it only references Alpha, not Unused:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("uses_alpha"))] | length'
-  2
+  0

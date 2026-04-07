@@ -23,8 +23,8 @@ where vlib is a virtual library, and impl implements this library.
   Error: Library "vlib" was pulled in.
   -> required by library "lib" in _build/default/lib
   -> required by library "impl" in _build/default/impl
-  -> required by _build/default/impl/.impl.objs/byte/vlib.cmo
-  -> required by _build/default/impl/impl.cma
+  -> required by _build/default/impl/.impl.objs/native/vlib.cmx
+  -> required by _build/default/impl/impl.a
   -> required by alias impl/all
   [1]
 
@@ -37,6 +37,5 @@ The implementation impl was built, but it's not usable:
   -> required by library "lib" in _build/default/lib
   -> required by library "impl" in _build/default/impl
   -> required by executable foo in dune:1
-  -> required by _build/default/.foo.eobjs/native/dune__exe__Foo.cmx
   -> required by _build/default/foo.exe
   [1]

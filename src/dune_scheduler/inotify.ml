@@ -59,8 +59,6 @@ type t =
   ; select_events : Inotify.selector list
   }
 
-type file_info = string * Unix.stats
-
 type modify_event_selector =
   [ `Any_change
   | `Closed_writable_fd

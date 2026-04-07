@@ -186,31 +186,33 @@ let read_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit =
   |> Action_builder.memoize (Path.Build.to_string all_deps_file)
 ;;
 
+(** Read raw ocamldep words for the immediate deps of [unit]. Returns [None]
+    if [unit] has no source for [ml_kind] or no dep file exists. *)
+let immediate_deps_words_of ~obj_dir ~ml_kind ~for_ unit =
+  let open Option.O in
+  let* source = Module.source ~ml_kind unit in
+  let+ ocamldep_output = Obj_dir.Module.dep obj_dir ~for_ (Immediate (unit, ml_kind)) in
+  ( Action_builder.lines_of (Path.build ocamldep_output)
+    |> Action_builder.map ~f:(parse_deps_exn ~file:(Module.File.path source))
+  , ocamldep_output )
+;;
+
 let read_immediate_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit =
-  match Module.source ~ml_kind unit with
+  match immediate_deps_words_of ~obj_dir ~ml_kind ~for_ unit with
   | None -> Action_builder.return []
-  | Some source ->
-    let ocamldep_output =
-      Obj_dir.Module.dep obj_dir ~for_ (Immediate (unit, ml_kind)) |> Option.value_exn
-    in
-    Action_builder.lines_of (Path.build ocamldep_output)
-    |> Action_builder.map ~f:(fun lines ->
-      parse_deps_exn ~file:(Module.File.path source) lines
-      |> parse_module_names ~dir:(Obj_dir.dir obj_dir) ~unit ~modules)
+  | Some (words, ocamldep_output) ->
+    words
+    |> Action_builder.map
+         ~f:(parse_module_names ~dir:(Obj_dir.dir obj_dir) ~unit ~modules)
     |> Action_builder.memoize (Path.Build.to_string ocamldep_output)
 ;;
 
 let read_immediate_deps_raw_of ~obj_dir ~ml_kind ~for_ unit =
-  match Module.source ~ml_kind unit with
+  match immediate_deps_words_of ~obj_dir ~ml_kind ~for_ unit with
   | None -> Action_builder.return Module_name.Set.empty
-  | Some source ->
-    let ocamldep_output =
-      Obj_dir.Module.dep obj_dir ~for_ (Immediate (unit, ml_kind)) |> Option.value_exn
-    in
-    Action_builder.lines_of (Path.build ocamldep_output)
-    |> Action_builder.map ~f:(fun lines ->
-      parse_deps_exn ~file:(Module.File.path source) lines
-      |> List.map ~f:Module_name.of_checked_string
-      |> Module_name.Set.of_list)
+  | Some (words, ocamldep_output) ->
+    words
+    |> Action_builder.map ~f:(fun ws ->
+      List.map ws ~f:Module_name.of_checked_string |> Module_name.Set.of_list)
     |> Action_builder.memoize (Path.Build.to_string ocamldep_output ^ "-raw")
 ;;

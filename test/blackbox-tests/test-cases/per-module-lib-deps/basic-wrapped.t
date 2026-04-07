@@ -1,4 +1,4 @@
-Baseline: library dependency recompilation for a basic wrapped library.
+Per-module filtering: library dependency recompilation for a basic wrapped library.
 
 When a wrapped library's interface changes, Dune currently recompiles ALL
 modules in stanzas that depend on the library, even modules that don't
@@ -58,8 +58,8 @@ Change mylib's interface:
   > let new_function () = "hello"
   > EOF
 
-No_use_lib is recompiled even though it doesn't reference Mylib:
+No_use_lib is no longer recompiled because it doesn't reference Mylib:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("No_use_lib"))] | length'
-  2
+  0

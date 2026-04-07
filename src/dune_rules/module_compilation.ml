@@ -286,29 +286,119 @@ let build_cm
         | Some All | None -> Hidden_targets [ obj ])
    in
    let opaque = Compilation_context.opaque cctx in
-   (* Library file dependencies, added per-module. Non-stdlib alias modules
-      and Wrapped_compat modules are compiled with Includes.empty and need no
-      library file deps. Stdlib aliases need full deps because they contain
-      code referencing CamlintternalXXX modules. All other modules depend on
-      all libraries in the stanza's requires. *)
-   let lib_cm_deps : _ Command.Args.t =
+   (* Library file dependencies - filtered per-module based on ocamldep output.
+      Issue #4572: Finer dependency analysis between libraries. *)
+   let lib_cm_deps =
+     let requires_compile = Compilation_context.requires_compile cctx in
+     let requires_hidden = Compilation_context.requires_hidden cctx in
+     let for_ = Compilation_context.for_ cctx in
      let stanza_modules = Compilation_context.modules cctx in
+     (* Alias modules are compiled with Includes.empty (no -I flags for
+        libraries) by for_alias_module, and Wrapped_compat modules are
+        compiled with Includes.empty by for_wrapped_compat. Neither needs
+        library file deps — they can't access library .cmi files regardless.
+        Skipping them also avoids a cascade where wrapper .cmi changes
+        would trigger recompilation of all stanza modules.
+        Other special modules (Root, etc.) and synthetic contexts (dir
+        mismatch) fall back to all-library glob deps. *)
      let skip_lib_deps =
        match Module.kind m with
        | Alias _ -> not (Modules.With_vlib.is_stdlib_alias stanza_modules m)
        | Wrapped_compat -> true
        | _ -> false
      in
-     if skip_lib_deps
-     then Command.Args.empty
-     else
-       (let open Resolve.Memo.O in
-        let+ direct_libs = Compilation_context.requires_compile cctx
-        and+ hidden_libs = Compilation_context.requires_hidden cctx in
-        Command.Args.Hidden_deps
-          (Lib_file_deps.deps_of_entries ~opaque ~cm_kind (direct_libs @ hidden_libs)))
-       |> Resolve.Memo.args
-       |> Command.Args.memo
+     let can_filter =
+       let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
+       let dep_graph_dir = Dep_graph.dir dep_graph in
+       (not skip_lib_deps)
+       && (match for_ with
+           | Compilation_mode.Melange -> false
+           | Compilation_mode.Ocaml -> true)
+       && Path.Build.equal dep_graph_dir (Obj_dir.dir obj_dir)
+       &&
+       match Module.kind m with
+       | Root | Wrapped_compat | Impl_vmodule | Virtual | Parameter -> false
+       | _ -> Module.has m ~ml_kind
+     in
+     Action_builder.dyn_deps
+       (if skip_lib_deps
+        then Action_builder.return ((), Dep.Set.empty)
+        else
+          let open Action_builder.O in
+          let* all_libs, lib_index_opt =
+            Resolve.Memo.read
+              (let open Resolve.Memo.O in
+               let* direct_libs = requires_compile
+               and* hidden_libs = requires_hidden in
+               let all_libs = direct_libs @ hidden_libs in
+               let has_vlib_impl =
+                 List.exists all_libs ~f:(fun lib -> Option.is_some (Lib.implements lib))
+               in
+               if can_filter && (not has_vlib_impl) && not (List.is_empty all_libs)
+               then
+                 let+ lib_index = Compilation_context.lib_index cctx in
+                 all_libs, Some lib_index
+               else Resolve.Memo.return (all_libs, None))
+          in
+          let all_entries = List.map all_libs ~f:(fun lib -> lib, None) in
+          match lib_index_opt with
+          | None ->
+            Action_builder.return
+              ((), Lib_file_deps.deps_of_entries ~opaque ~cm_kind all_entries)
+          | Some lib_index ->
+            let dep_graph =
+              Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind
+            in
+            let own_modules = Modules.With_vlib.drop_vlib stanza_modules in
+            let own_module_names =
+              Modules.obj_map own_modules
+              |> Module_name.Unique.Map.to_list
+              |> List.map ~f:(fun (_, sm) ->
+                Module.name (Modules.Sourced_module.to_module sm))
+              |> Module_name.Set.of_list
+            in
+            let+ referenced_modules =
+              let open Action_builder.O in
+              let* own_refs =
+                Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind ~for_ m
+              in
+              let* transitive_deps =
+                Dep_graph.top_closed_implementations dep_graph [ m ]
+              in
+              let* from_ocamldep =
+                let+ dep_refs =
+                  Action_builder.List.map transitive_deps ~f:(fun dep_m ->
+                    if Module_name.Set.mem own_module_names (Module.name dep_m)
+                    then Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind ~for_ dep_m
+                    else Action_builder.return Module_name.Set.empty)
+                in
+                List.fold_left dep_refs ~init:own_refs ~f:Module_name.Set.union
+              in
+              (* Also include modules from user -open flags, which
+                 ocamldep doesn't receive and therefore can't report. *)
+              let+ flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
+              let from_open_flags = Ocaml_flags.extract_open_module_names flags in
+              Module_name.Set.union from_ocamldep from_open_flags
+            in
+            let references_root_module =
+              Module_name.Set.exists referenced_modules ~f:(fun name ->
+                match Modules.With_vlib.find stanza_modules name with
+                | Some m -> Module.kind m = Root
+                | None -> false)
+            in
+            let external_modules =
+              Module_name.Set.filter referenced_modules ~f:(fun name ->
+                Option.is_none (Modules.With_vlib.find stanza_modules name))
+            in
+            let used_entries =
+              if references_root_module
+              then all_entries
+              else
+                Lib_file_deps.Lib_index.filter_libs
+                  lib_index
+                  ~referenced_modules:external_modules
+            in
+            (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind used_entries)
    in
    let other_cm_files =
      let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
@@ -428,6 +518,7 @@ let build_cm
      ?loc:(Compilation_context.loc cctx)
      (let open Action_builder.With_targets.O in
       Action_builder.with_no_targets other_cm_files
+      >>> Action_builder.with_no_targets lib_cm_deps
       >>> Command.run
             ~dir:(Path.build (Context.build_dir ctx))
             compiler
@@ -438,7 +529,6 @@ let build_cm
             ; Command.Args.S obj_dirs
             ; Command.Args.as_any
                 (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind)
-            ; lib_cm_deps
             ; extra_args
             ; As as_parameter_arg
             ; as_argument_for
@@ -553,7 +643,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
        (Lib_file_deps.deps_of_entries
           ~opaque
           ~cm_kind:(Ocaml Cmo)
-          (direct_libs @ hidden_libs)))
+          (List.map (direct_libs @ hidden_libs) ~f:(fun lib -> lib, None))))
     |> Resolve.Memo.args
   in
   let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml Byte) in

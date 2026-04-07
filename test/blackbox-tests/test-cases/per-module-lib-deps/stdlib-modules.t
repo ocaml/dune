@@ -1,4 +1,4 @@
-Baseline: modules using only stdlib are recompiled when a library changes.
+Per-module filtering: modules using only stdlib are recompiled when a library changes.
 
 A module that uses Printf (stdlib) but not the library dependency should
 not need recompilation when the library changes.
@@ -55,8 +55,8 @@ See: https://github.com/ocaml/dune/issues/4572
   > let new_function () = "hello"
   > EOF
 
-Uses_stdlib is recompiled even though it only uses Printf, not Mylib:
+Uses_stdlib is no longer recompiled because it only uses Printf, not Mylib:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_stdlib"))] | length'
-  2
+  0

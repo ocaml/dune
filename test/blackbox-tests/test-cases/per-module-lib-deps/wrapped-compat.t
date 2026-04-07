@@ -1,4 +1,4 @@
-Baseline: wrapped-compat module recompilation behavior.
+Per-module filtering: wrapped-compat module recompilation behavior.
 
 Libraries using (wrapped (transition ...)) generate wrapped-compat modules.
 Currently, all inner modules are recompiled when any library dependency changes.
@@ -67,8 +67,8 @@ See: https://github.com/ocaml/dune/issues/4572
   > let new_fn () = "hello"
   > EOF
 
-Standalone is recompiled even though it doesn't reference Baselib:
+Standalone is no longer recompiled because it doesn't reference Baselib:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Standalone"))] | length'
-  2
+  0

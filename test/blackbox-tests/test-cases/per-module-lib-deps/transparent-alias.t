@@ -1,4 +1,4 @@
-Baseline: transparent module aliases and library dependency recompilation.
+Per-module filtering: transparent module aliases and library dependency recompilation.
 
 When a module re-exports a library via a transparent alias (module M = Mylib),
 consumers that use the alias must be recompiled when the library changes.

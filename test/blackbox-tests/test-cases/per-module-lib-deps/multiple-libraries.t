@@ -1,4 +1,4 @@
-Baseline: library dependency recompilation with multiple libraries.
+Per-module filtering: library dependency recompilation with multiple libraries.
 
 When an executable depends on two libraries and only one changes, Dune
 currently recompiles all modules, even those that only reference the unchanged
@@ -78,11 +78,11 @@ Change only mylib's interface:
   > let new_function () = "hello"
   > EOF
 
-Uses_other is recompiled even though it only uses Otherlib, not Mylib:
+Uses_other is no longer recompiled because it only uses Otherlib, not Mylib:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_other"))] | length'
-  2
+  0
 
 Change only otherlib's interface:
 
@@ -95,8 +95,8 @@ Change only otherlib's interface:
   > let new_other_fn s = s ^ "!"
   > EOF
 
-Uses_lib is recompiled even though it only uses Mylib, not Otherlib:
+Uses_lib is no longer recompiled because it only uses Mylib, not Otherlib:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_lib"))] | length'
-  2
+  0

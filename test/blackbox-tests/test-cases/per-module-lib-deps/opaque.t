@@ -1,4 +1,4 @@
-Baseline: opaque mode interaction with library dependency recompilation.
+Per-module filtering: opaque mode interaction with library dependency recompilation.
 
 In release profile (opaque=false), an implementation-only change triggers
 recompilation of all modules in the consuming stanza due to .cmx dependencies.
@@ -62,11 +62,11 @@ Change ONLY the implementation (not the interface):
   > let value = 43
   > EOF
 
-No_use_lib is recompiled even though it doesn't reference Mylib:
+No_use_lib is no longer recompiled because it doesn't reference Mylib:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("No_use_lib"))] | length'
-  1
+  0
 
 --- Dev profile (opaque=true): .cmx deps are NOT tracked for local libs ---
 

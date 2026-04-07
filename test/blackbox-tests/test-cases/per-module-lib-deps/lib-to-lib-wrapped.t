@@ -1,4 +1,4 @@
-Baseline: library-to-library recompilation (wrapped).
+Per-module filtering: library-to-library recompilation (wrapped).
 
 When library A depends on library B, and B's interface changes, all modules
 in A are recompiled due to coarse dependency analysis.
@@ -62,8 +62,8 @@ See: https://github.com/ocaml/dune/issues/4572
   > let new_base_fn () = "hello"
   > EOF
 
-Standalone in middle_lib is recompiled even though it doesn't use base_lib:
+Standalone in middle_lib is no longer recompiled because it doesn't use base_lib:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Standalone"))] | length'
-  2
+  0

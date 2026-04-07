@@ -48,7 +48,7 @@
       oxcaml,
       oxcaml-opam-repository,
       revdeps-dune,
-      menhir-src
+      menhir-src,
     }:
     let
       forAllSystems =
@@ -545,22 +545,30 @@
                 oself: osuper: {
                   menhirLib = osuper.menhirLib.overrideAttrs (old: {
                     version = "20231231";
-                    src = menhirSrc;
+                    src = menhir-src;
                     patches = [ ];
                   });
                   menhirGLR = null;
                   menhir = osuper.menhir.overrideAttrs (old: {
                     version = "20231231";
-                    src = menhirSrc;
+                    src = menhir-src;
                     patches = [ ];
                     buildInputs = builtins.filter (x: x != null) (old.buildInputs or [ ]);
+                    postInstall = (old.postInstall or "") + ''
+                      mkdir -p $out/lib/menhirLib
+                      cp ${oself.menhirLib}/lib/ocaml/*/site-lib/menhirLib/menhirLib.{ml,mli} $out/lib/menhirLib/
+                    '';
                   });
                 }
               );
             in
-            makeDuneDevShell {
-              includeTestDeps = false;
-              extraBuildInputs = _pkgs: [
+            pkgs.mkShell {
+              inherit INSIDE_NIX;
+              shellHook = ''
+                export DUNE_SOURCE_ROOT=$PWD
+              '';
+              inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
+              nativeBuildInputs = [
                 pkgs.autoconf
                 customOcamlPackages.menhir
               ];

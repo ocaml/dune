@@ -32,7 +32,7 @@ src/dune_rules/setup.ml
 nix/profiles/
 result
 result-*
-start/dune
+start/
 
 .claude/
 .codex

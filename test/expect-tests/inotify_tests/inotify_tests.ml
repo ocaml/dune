@@ -1,6 +1,6 @@
 open Stdune
 open Printf
-module Async_inotify = Dune_scheduler.For_tests.Async_inotify
+module Inotify = Dune_scheduler.For_tests.Inotify
 
 let ( / ) a b =
   match a with
@@ -14,7 +14,7 @@ let rm = Sys.remove
 let rmdir = Unix.rmdir
 
 let string_of_event ev =
-  let s = Async_inotify.Event.to_string ev in
+  let s = Inotify.Event.to_string ev in
   (* Add space padding to make events aligned *)
   let kind, rest = String.lsplit2_exn s ~on:' ' in
   sprintf "%-10s%s" kind rest
@@ -26,8 +26,7 @@ let remove_dot_slash s = String.drop_prefix s ~prefix:"./" |> Option.value ~defa
 
 (* Events generated from watching directory "." are prefixed with ".". Remove
    the prefix as it's not super interesting. *)
-let remove_dot_slash_from_event : Async_inotify.Event.t -> Async_inotify.Event.t =
-  function
+let remove_dot_slash_from_event : Inotify.Event.t -> Inotify.Event.t = function
   | Created s -> Created (remove_dot_slash s)
   | Unlinked s -> Unlinked (remove_dot_slash s)
   | Modified s -> Modified (remove_dot_slash s)
@@ -54,7 +53,7 @@ let watch, collect_events =
   let mutex = Mutex.create () in
   let cond = Condition.create () in
   let inotify =
-    Async_inotify.create
+    Inotify.create
       ~spawn_thread:(fun f -> Thread.create f ())
       ~modify_event_selector:`Closed_writable_fd
       ~send_emit_events_job_to_scheduler:(fun f ->
@@ -63,7 +62,7 @@ let watch, collect_events =
         Condition.signal cond;
         Mutex.unlock mutex)
   in
-  let watch fn = Async_inotify.add inotify fn in
+  let watch fn = Inotify.add inotify fn in
   watch beginning_of_test_file;
   watch end_of_test_file;
   let next_events () =
@@ -79,7 +78,7 @@ let watch, collect_events =
     | [] ->
       let events = next_events () in
       collect_events acc events
-    | Async_inotify.Event.Modified fn :: events when fn = end_of_test_file ->
+    | Inotify.Event.Modified fn :: events when fn = end_of_test_file ->
       if not (List.is_empty events)
       then (
         printf "***** Leftover events after end of test marker event *****\n";
@@ -93,7 +92,7 @@ let watch, collect_events =
     let events =
       match next_events () with
       | [] -> assert false
-      | Async_inotify.Event.Modified fn :: events when fn = beginning_of_test_file ->
+      | Inotify.Event.Modified fn :: events when fn = beginning_of_test_file ->
         collect_events [] events
       | events ->
         printf "***** First event is not the beginning of test marker *****\n";
@@ -187,7 +186,7 @@ let gen_changes files =
       mkdir new_dir;
       rmdir new_dir;
       rm new_file;
-      [ Async_inotify.Event.Created new_file
+      [ Inotify.Event.Created new_file
       ; Modified new_file
       ; Created new_dir
       ; Unlinked new_dir
@@ -216,7 +215,7 @@ let check_events ~real_events ~expected_events =
     | ev :: real, [] ->
       printf "%s <- XXX expected no more events\n" (string_of_event ev);
       print_events real
-    | [], ev :: _ -> printf "XXX expected:  %s\n" (Async_inotify.Event.to_string ev)
+    | [], ev :: _ -> printf "XXX expected:  %s\n" (Inotify.Event.to_string ev)
     | ev :: real, ev' :: expected ->
       if ev = ev'
       then (
@@ -226,7 +225,7 @@ let check_events ~real_events ~expected_events =
         printf
           "%s <- XXX first mismatch, expected: %s\n"
           (string_of_event ev)
-          (Async_inotify.Event.to_string ev');
+          (Inotify.Event.to_string ev');
         print_events real)
   in
   loop real_events expected_events
@@ -330,7 +329,7 @@ let%expect_test "Check that FS events are reported chronologically 2" =
   watch "a";
   watch "b";
   let expected_events = Queue.create () in
-  let expect (ev : Async_inotify.Event.t) = Queue.push expected_events ev in
+  let expect (ev : Inotify.Event.t) = Queue.push expected_events ev in
   let create_file fn =
     create_file fn;
     expect (Created fn);
@@ -392,7 +391,7 @@ let%expect_test "Check that FS events are reported chronologically 3" =
   do_actions ();
   let expected_events =
     List.concat_map actions ~f:(fun (fn, _who) ->
-      [ Async_inotify.Event.Created fn; Modified fn ])
+      [ Inotify.Event.Created fn; Modified fn ])
   in
   check_events ~expected_events ~real_events:(collect_events ());
   [%expect

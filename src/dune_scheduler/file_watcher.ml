@@ -1,5 +1,4 @@
 open Import
-module Inotify_lib = Async_inotify
 
 module Fs_memo_event = struct
   type kind =
@@ -144,7 +143,7 @@ type kind =
       ; latency : Time.Span.t
       ; on_event : Fsevents.Event.t -> Path.t -> Event.t option
       }
-  | Inotify of Inotify_lib.t
+  | Inotify of Inotify.t
   | Fswatch_win of
       { t : Fswatch_win.t
       ; scheduler : Scheduler.t
@@ -166,7 +165,7 @@ module For_tests = struct
   let should_exclude = create_should_exclude_predicate
 end
 
-let process_inotify_event (event : Async_inotify.Event.t) should_exclude : Event.t list =
+let process_inotify_event (event : Inotify.Event.t) should_exclude : Event.t list =
   let create_event_unless_excluded ~kind ~path =
     match should_exclude path with
     | true -> []
@@ -426,7 +425,7 @@ let spawn_external_watcher ~root ~backend ~watch_exclusions =
 ;;
 
 let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) should_exclude =
-  Inotify_lib.create
+  Inotify.create
     ~spawn_thread:scheduler.spawn_thread
     ~modify_event_selector:`Closed_writable_fd
     ~send_emit_events_job_to_scheduler:(fun f ->
@@ -434,7 +433,7 @@ let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) should_excl
         let events = f () in
         List.concat_map events ~f:(fun event ->
           let is_fs_sync_event_generated_by_dune =
-            match (event : Inotify_lib.Event.t) with
+            match (event : Inotify.Event.t) with
             | Modified path | Created path | Unlinked path ->
               Option.some_if
                 (Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path)
@@ -534,7 +533,7 @@ let create_inotifylib ~scheduler ~should_exclude =
   prepare_sync ();
   let sync_table = Table.create (module String) 64 in
   let inotify = create_inotifylib_watcher ~sync_table ~scheduler should_exclude in
-  Inotify_lib.add inotify (Lazy.force Fs_sync.special_dir);
+  Inotify.add inotify (Lazy.force Fs_sync.special_dir);
   { kind = Inotify inotify; sync_table }
 ;;
 
@@ -775,7 +774,7 @@ let add_watch t path =
        start *)
     Ok ()
   | Inotify inotify ->
-    (try Ok (Inotify_lib.add inotify (Path.to_string path)) with
+    (try Ok (Inotify.add inotify (Path.to_string path)) with
      | Unix.Unix_error (ENOENT, _, _) -> Error `Does_not_exist)
   | Fswatch_win fswatch ->
     (match path with

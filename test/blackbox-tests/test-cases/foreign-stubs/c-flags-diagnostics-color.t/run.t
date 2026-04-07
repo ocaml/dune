@@ -17,7 +17,7 @@ test that we pass the flag
   >  (foreign_stubs (language c) (names stub)))
   > EOF
 
-  $ dune rules -m stub.o | grep -ce "-fdiagnostics-color=always"
+  $ dune rules stub.o | grep -ce "-fdiagnostics-color=always"
   1
 
 test color flag disabled
@@ -31,7 +31,7 @@ test color flag disabled
   >   (language c) (names stub)))
   > EOF
 
-  $ dune rules -m stub.o | grep -ce "-fdiagnostics-color=always"
+  $ dune rules stub.o | grep -ce "-fdiagnostics-color=always"
   0
   [1]
 

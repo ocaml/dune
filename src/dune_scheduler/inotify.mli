@@ -23,7 +23,10 @@ module Event : sig
   type move =
     | Away of string
     | Into of string
-    | Move of string * string
+    | Move of
+        { src : string
+        ; dst : string
+        }
 
   type t =
     | Created of string

@@ -35,7 +35,8 @@ let remove_dot_slash_from_event : Inotify.Event.t -> Inotify.Event.t = function
       (match x with
        | Away s -> Away (remove_dot_slash s)
        | Into s -> Into (remove_dot_slash s)
-       | Move (a, b) -> Move (remove_dot_slash a, remove_dot_slash b))
+       | Move { src; dst } ->
+         Move { src = remove_dot_slash src; dst = remove_dot_slash dst })
   | Queue_overflow -> Queue_overflow
 ;;
 

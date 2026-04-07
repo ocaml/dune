@@ -16,6 +16,7 @@ val true_ : 'a t
 val decode_one : 'a Decoder.t -> 'a t Decoder.t
 val decode : 'a Decoder.t -> 'a t Decoder.t
 val encode : 'a Encoder.t -> 'a t Encoder.t
+val repr : 'a Repr.t -> 'a t Repr.t
 val to_dyn : 'a Dyn.builder -> 'a t Dyn.builder
 val test : 'a t -> standard:'a t -> test:('a -> 'b -> bool) -> 'b -> bool
 val false_ : 'a t
@@ -28,6 +29,7 @@ module Glob : sig
 
   type nonrec t = Element.t t
 
+  val repr : t Repr.t
   val to_dyn : t -> Dyn.t
   val test : t -> standard:t -> string -> bool
   val of_glob : Dune_glob.V1.t -> t

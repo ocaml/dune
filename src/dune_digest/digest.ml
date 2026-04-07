@@ -128,6 +128,122 @@ let file p = file (Path.to_string p)
 let file_async p = file_async (Path.to_string p)
 let from_hex s = Blake3_mini.Digest.of_hex s
 
+let feed_string_raw hasher s =
+  Counter.add Metrics.Digest.Value.bytes (String.length s);
+  Blake3_mini.feed_string hasher s ~pos:0 ~len:(String.length s)
+;;
+
+let feed_bytes_raw hasher bytes ~len =
+  Counter.add Metrics.Digest.Value.bytes len;
+  Blake3_mini.feed_string hasher (Bytes.unsafe_to_string bytes) ~pos:0 ~len
+;;
+
+let feed_int64 hasher scratch i =
+  for byte = 0 to 7 do
+    let shift = 8 * byte in
+    let value = Int64.(to_int (logand (shift_right_logical i shift) 0xffL)) in
+    Bytes.set scratch byte (Char.chr value)
+  done;
+  feed_bytes_raw hasher scratch ~len:8
+;;
+
+let feed_bool hasher scratch b =
+  Bytes.set scratch 0 (if b then '\001' else '\000');
+  feed_bytes_raw hasher scratch ~len:1
+;;
+
+let feed_int hasher scratch i = feed_int64 hasher scratch (Int64.of_int i)
+
+let feed_string hasher scratch s =
+  feed_int hasher scratch (String.length s);
+  feed_string_raw hasher s
+;;
+
+let feed_repr hasher =
+  let scratch = Bytes.create 8 in
+  let rec loop : type a. a Repr.t -> a -> unit =
+    fun repr value ->
+    match repr with
+    | Unit ->
+      feed_int hasher scratch 1;
+      feed_bool hasher scratch false
+    | Bool ->
+      feed_int hasher scratch 2;
+      feed_bool hasher scratch value
+    | Int ->
+      feed_int hasher scratch 3;
+      feed_int hasher scratch value
+    | String ->
+      feed_int hasher scratch 4;
+      feed_string hasher scratch value
+    | Option repr ->
+      feed_int hasher scratch 5;
+      (match value with
+       | None -> feed_bool hasher scratch false
+       | Some x ->
+         feed_bool hasher scratch true;
+         loop repr x)
+    | List repr ->
+      feed_int hasher scratch 6;
+      feed_int hasher scratch (List.length value);
+      List.iter value ~f:(loop repr)
+    | Array repr ->
+      feed_int hasher scratch 7;
+      feed_int hasher scratch (Array.length value);
+      Array.iter value ~f:(loop repr)
+    | Pair (left, right) ->
+      feed_int hasher scratch 8;
+      let left_value, right_value = value in
+      loop left left_value;
+      loop right right_value
+    | Triple (first, second, third) ->
+      feed_int hasher scratch 9;
+      let first_value, second_value, third_value = value in
+      loop first first_value;
+      loop second second_value;
+      loop third third_value
+    | Fix repr -> loop (Lazy.force repr) value
+    | Record (_, fields) ->
+      feed_int hasher scratch 10;
+      loop_fields fields value
+    | Variant (_, cases) ->
+      feed_int hasher scratch 11;
+      loop_cases cases value
+    | View { repr; to_ } -> loop repr (to_ value)
+    | Abstract _ ->
+      Code_error.raise
+        "Digest.repr does not support Repr.abstract"
+        [ "repr", Dyn.string "<abstract>" ]
+  and loop_fields : type a. a Repr.field list -> a -> unit =
+    fun fields value ->
+    feed_int hasher scratch (List.length fields);
+    List.iter fields ~f:(fun (Repr.Field { name; repr; get }) ->
+      feed_string hasher scratch name;
+      loop repr (get value))
+  and loop_cases : type a. a Repr.case list -> a -> unit =
+    fun cases value ->
+    match cases with
+    | [] ->
+      Code_error.raise
+        "Repr.variant: value did not match any case"
+        [ "value", Dyn.string "<opaque>" ]
+    | Repr.Case0 { tag; test } :: rest ->
+      if test value
+      then (
+        feed_string hasher scratch tag;
+        feed_bool hasher scratch false)
+      else loop_cases rest value
+    | Repr.Case1 { tag; repr; proj } :: rest ->
+      (match proj value with
+       | Some argument ->
+         feed_string hasher scratch tag;
+         feed_bool hasher scratch true;
+         loop repr argument
+       | None -> loop_cases rest value)
+  in
+  loop
+;;
+
 module Feed = struct
   type hasher = Hasher.t
   type 'a t = hasher -> 'a -> unit
@@ -141,10 +257,7 @@ module Feed = struct
 
   let bool = contramap string ~f:Bool.to_string
   let int = contramap string ~f:Int.to_string
-
-  let repr repr =
-    contramap string ~f:(fun value -> Repr.to_dyn repr value |> Dyn.to_string)
-  ;;
+  let repr repr hasher value = feed_repr hasher repr value
 
   (* We use [No_sharing] to avoid generating different digests for inputs that
        differ only in how they share internal values. Without [No_sharing], if a
@@ -153,7 +266,12 @@ module Feed = struct
        on whether the corresponding strings ["-I"] point to the same memory location
        or to different memory locations. *)
   let generic hasher x = contramap string ~f:(Marshal.to_string ~sharing:false) hasher x
-  let list feed_x hasher xs = List.iter xs ~f:(feed_x hasher)
+
+  let list feed_x hasher xs =
+    int hasher (List.length xs);
+    List.iter xs ~f:(feed_x hasher)
+  ;;
+
   let option feed_x hasher option_x = Option.iter option_x ~f:(feed_x hasher)
 
   let tuple2 feed_a feed_b hasher (a, b) =
@@ -176,17 +294,55 @@ end
 module Manual = struct
   type t = unit
 
+  let scratch = Bytes.create 8
   let create () = ()
 
-  let string () s =
+  let feed_string_raw s =
     Blake3_mini.feed_string ~pos:0 ~len:(String.length s) (Lazy.force Hasher.singleton) s
   ;;
 
-  let generic () s = string () (Marshal.to_string ~sharing:false s)
+  let feed_int64 i =
+    for byte = 0 to 7 do
+      let shift = 8 * byte in
+      let value = Int64.(to_int (logand (shift_right_logical i shift) 0xffL)) in
+      Bytes.set scratch byte (Char.chr value)
+    done;
+    feed_string_raw (Bytes.unsafe_to_string scratch)
+  ;;
+
+  let bool () b =
+    Bytes.set scratch 0 (if b then '\001' else '\000');
+    Blake3_mini.feed_string
+      ~pos:0
+      ~len:1
+      (Lazy.force Hasher.singleton)
+      (Bytes.unsafe_to_string scratch)
+  ;;
+
+  let int () i = feed_int64 (Int64.of_int i)
+
+  let string () s =
+    int () (String.length s);
+    feed_string_raw s
+  ;;
+
+  let option t ~f = function
+    | None -> bool t false
+    | Some x ->
+      bool t true;
+      f t x
+  ;;
+
+  let list t ~f xs =
+    int t (List.length xs);
+    List.iter xs ~f:(f t)
+  ;;
+
+  let repr () repr value = Feed.repr repr (Lazy.force Hasher.singleton) value
 
   let digest () s =
     let s = Blake3_mini.Digest.to_binary s in
-    string () s
+    feed_string_raw s
   ;;
 
   let get () =

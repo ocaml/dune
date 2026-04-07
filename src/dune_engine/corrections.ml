@@ -1,8 +1,19 @@
+open Import
+
 type t =
   | Ignore
   | Produce
 
-let to_dyn = function
-  | Ignore -> Dyn.variant "Ignore" []
-  | Produce -> Dyn.variant "Produce" []
+let repr =
+  Repr.variant
+    "corrections"
+    [ Repr.case0 "Ignore" ~test:(function
+        | Ignore -> true
+        | Produce -> false)
+    ; Repr.case0 "Produce" ~test:(function
+        | Produce -> true
+        | Ignore -> false)
+    ]
 ;;
+
+let to_dyn = Repr.to_dyn repr

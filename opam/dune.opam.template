@@ -29,5 +29,5 @@ depends: [
 depexts: [
   # the rev store negotiation test launches a git daemon, needs it to be
   # installed, which is not the case on Fedora by default
-  "git-daemon" { with-test & os-family = "fedora" }
+  ["git-daemon"] { with-test & os-family = "fedora" }
 ]

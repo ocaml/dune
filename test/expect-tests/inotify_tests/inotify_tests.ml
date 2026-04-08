@@ -55,7 +55,6 @@ let watch, collect_events =
   let cond = Condition.create () in
   let inotify =
     Inotify.create
-      ~spawn_thread:(fun f -> Thread.create f ())
       ~modify_event_selector:`Closed_writable_fd
       ~send_emit_events_job_to_scheduler:(fun f ->
         Mutex.lock mutex;

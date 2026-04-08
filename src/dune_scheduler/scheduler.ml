@@ -523,8 +523,7 @@ module Run = struct
         Some
           (File_watcher.create_default
              ~scheduler:
-               { spawn_thread = spawn_thread ~name:"file-watcher"
-               ; thread_safe_send_emit_events_job =
+               { thread_safe_send_emit_events_job =
                    (fun job -> Event_queue.send_file_watcher_task events job)
                }
              ~watch_exclusions:config.watch_exclusions

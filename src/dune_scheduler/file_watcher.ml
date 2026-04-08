@@ -48,10 +48,7 @@ module Event = struct
 end
 
 module Scheduler = struct
-  type t =
-    { spawn_thread : (unit -> unit) -> Thread.t
-    ; thread_safe_send_emit_events_job : (unit -> Event.t list) -> unit
-    }
+  type t = { thread_safe_send_emit_events_job : (unit -> Event.t list) -> unit }
 end
 
 module Watch_trie : sig
@@ -426,7 +423,6 @@ let spawn_external_watcher ~root ~backend ~watch_exclusions =
 
 let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) should_exclude =
   Inotify.create
-    ~spawn_thread:scheduler.spawn_thread
     ~modify_event_selector:`Closed_writable_fd
     ~send_emit_events_job_to_scheduler:(fun f ->
       scheduler.thread_safe_send_emit_events_job (fun () ->
@@ -482,7 +478,9 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend ~watch_exclusi
       scheduler.thread_safe_send_emit_events_job job
     done
   in
-  let (_ : Thread.t) = scheduler.spawn_thread (fun () -> worker_thread pipe) in
+  let (_ : Thread.t) =
+    Thread0.spawn ~name:"file-watcher" (fun () -> worker_thread pipe)
+  in
   { kind = Fswatch { pid; wait_for_watches_established = wait }; sync_table }
 ;;
 
@@ -497,7 +495,7 @@ let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
       Condition.signal event_cv;
       Mutex.unlock event_mtx
     in
-    let scheduler = { scheduler with thread_safe_send_emit_events_job } in
+    let scheduler = { Scheduler.thread_safe_send_emit_events_job } in
     create ~scheduler
   in
   (* The buffer thread is used to avoid flooding the main thread with file
@@ -525,7 +523,7 @@ let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
     Thread.delay debounce_interval;
     buffer_thread ()
   in
-  let (_ : Thread.t) = scheduler.spawn_thread buffer_thread in
+  let (_ : Thread.t) = Thread0.spawn ~name:"file-watcher" buffer_thread in
   res
 ;;
 
@@ -618,7 +616,7 @@ let create_fsevents
   let dispatch_queue_ref = ref None in
   let mutex = Mutex.create () in
   let (_ : Thread.t) =
-    scheduler.spawn_thread (fun () ->
+    Thread0.spawn ~name:"file-watcher" (fun () ->
       let dispatch_queue = Fsevents.Dispatch_queue.create () in
       Mutex.lock mutex;
       dispatch_queue_ref := Some dispatch_queue;
@@ -683,7 +681,7 @@ let create_fswatch_win ~(scheduler : Scheduler.t) ~debounce_interval:sleep ~shou
   let t = Fswatch_win.create () in
   Fswatch_win.add t (Path.to_absolute_filename Path.root);
   let (_ : Thread.t) =
-    scheduler.spawn_thread (fun () ->
+    Thread0.spawn ~name:"file-watcher" (fun () ->
       while true do
         let events = Fswatch_win.wait t ~sleep in
         List.iter ~f:(fswatch_win_callback ~scheduler ~sync_table ~should_exclude) events

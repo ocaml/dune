@@ -48,10 +48,7 @@ end
 module Scheduler : sig
   (** Hook into the fiber scheduler. *)
   type t =
-    { spawn_thread : (unit -> unit) -> Thread.t
-      (** We spawn threads through this function in case the scheduler wants
-        to block signals *)
-    ; thread_safe_send_emit_events_job : (unit -> Event.t list) -> unit
+    { thread_safe_send_emit_events_job : (unit -> Event.t list) -> unit
       (** Send some events to the scheduler. The events are sent in the form
         of a thunk to be executed on the scheduler thread, so that we can
         do some bookkeeping that needs to happen there. *)

@@ -59,8 +59,7 @@ type modify_event_selector =
     [send_emit_events_job_to_scheduler f] is expected to run the job [f] in the
     scheduler, and then process the events returned by that job. *)
 val create
-  :  spawn_thread:((unit -> unit) -> Thread.t)
-  -> modify_event_selector:modify_event_selector
+  :  modify_event_selector:modify_event_selector
   -> send_emit_events_job_to_scheduler:((unit -> Event.t list) -> unit)
   -> t
 

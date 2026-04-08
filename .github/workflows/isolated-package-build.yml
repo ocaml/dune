@@ -8,13 +8,14 @@ on:
     branches:
         - main
   pull_request:
+    paths:
+      - 'opam/*.opam'
   workflow_dispatch:
 
 jobs:
-  discover-packages:
+  packaging-check:
     runs-on: ubuntu-latest
-    outputs:
-      packages: ${{ steps.discover.outputs.packages }}
+
     steps:
       - uses: actions/checkout@v6
 
@@ -32,13 +33,6 @@ jobs:
           )
           echo "packages=$packages" >> "$GITHUB_OUTPUT"
 
-  packaging-check:
-    needs: discover-packages
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v6
-
       - uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 5.4
@@ -47,7 +41,7 @@ jobs:
 
       - name: Lint current package metadata
         env:
-          packages: ${{ needs.discover-packages.outputs.packages }}
+          packages: ${{ steps.discover.outputs.packages }}
         run: |
           for pkg in $packages; do
             opam lint "./opam/$pkg.opam"
@@ -60,7 +54,7 @@ jobs:
         # installing them. This way they are pulled in only if required by the package
         # being built, without influencing the solver for unrelated dependencies.
         env:
-          packages: ${{ needs.discover-packages.outputs.packages }}
+          packages: ${{ steps.discover.outputs.packages }}
         run: |
           for pkg in $packages; do
             opam pin add "$pkg.dev" . -n
@@ -73,7 +67,7 @@ jobs:
 
       - name: Install package
         env:
-          packages: ${{ needs.discover-packages.outputs.packages }}
+          packages: ${{ steps.discover.outputs.packages }}
         run: |
           for pkg in $packages; do
             opam install "$pkg.dev" --with-test -y
@@ -87,7 +81,7 @@ jobs:
         # what is already installed.
         if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
         env:
-          packages: ${{ needs.discover-packages.outputs.packages }}
+          packages: ${{ steps.discover.outputs.packages }}
         run: |
           for pkg in $packages; do
             opam install --solver=builtin-0install "--criteria=+count[version-lag,solution]" "$pkg.dev" -y

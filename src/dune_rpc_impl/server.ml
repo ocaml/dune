@@ -475,7 +475,7 @@ let create ~lock_timeout ~registry ~root =
       (let socket_file = Where.rpc_socket_file () in
        Fpath.unlink_no_err (Path.Build.to_string socket_file);
        Path.mkdir_p (Path.build (Path.Build.parent_exn socket_file));
-       match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:10 with
+       match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:100 with
        | Ok s ->
          (match where with
           | `Ip _ -> Io.write_file (Path.build socket_file) (Where.to_string where)

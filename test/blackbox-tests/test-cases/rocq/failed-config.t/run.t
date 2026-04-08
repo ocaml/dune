@@ -1,4 +1,4 @@
-Here we test what happens when rocq --config or --print-version fails in an unexpected way
+Here we test what happens when rocq c --config or --print-version fails in an unexpected way
 and how dune reacts to this failure.
 
 First we create a wrapper around coqc so we can make it fail. It should only fail on
@@ -6,8 +6,8 @@ First we create a wrapper around coqc so we can make it fail. It should only fai
   $ mkdir bin
   $ cat > bin/rocq <<'EOF'
   > #!/bin/sh
-  > if    [ "$1" = --config ] && [ -n "$FAIL_CONFIG" ]; then
-  >   echo "rocq --config has failed for some reason" >&2
+  > if    [ "$1" = c ] && [ "$2" = --config ] && [ -n "$FAIL_CONFIG" ]; then
+  >   echo "rocq c --config has failed for some reason" >&2
   >   exit 1
   > elif  [ "$1" = --print-version ] && [ -n "$FAIL_VERSION" ]; then
   >   echo "rocq --print-version has failed for some reason" >&2
@@ -23,13 +23,13 @@ To make sure these are working correctly we test them.
 
 These should succeed.
   $ rocq --print-version > /dev/null
-  $ rocq --config > /dev/null
+  $ rocq c --config > /dev/null
 These should fail.
   $ FAIL_VERSION=1 \
   > rocq --print-version 2> /dev/null
   [1]
   $ FAIL_CONFIG=1 \
-  > rocq --config 2> /dev/null
+  > rocq c --config 2> /dev/null
   [1]
 
 Now we create a simple project that uses this coqc wrapper, should
@@ -52,9 +52,9 @@ Should fail: first warning that installed theories are being skipped due to the
 failure, then, as the library requires the stdlib, it fails:
   $ FAIL_CONFIG=1 \
   > dune build
-  Warning: Skipping installed theories due to 'rocq --config' failure:
-  - $TESTCASE_ROOT/bin/rocq --config failed with exit code 1.
-  Hint: Try running 'rocq --config' manually to see the error.
+  Warning: Skipping installed theories due to 'rocq c --config' failure:
+  - $TESTCASE_ROOT/bin/rocq c --config failed with exit code 1.
+  Hint: Try running 'rocq c --config' manually to see the error.
   Couldn't find Rocq standard library, and theory is not using (stdlib no)
   -> required by _build/default/.foo.theory.d
   -> required by alias all
@@ -82,9 +82,9 @@ Should succeed, warning that installed theories are being skipped due to the
 failure (c.f. #8958):
   $ FAIL_CONFIG=1 \
   > dune build
-  Warning: Skipping installed theories due to 'rocq --config' failure:
-  - $TESTCASE_ROOT/bin/rocq --config failed with exit code 1.
-  Hint: Try running 'rocq --config' manually to see the error.
+  Warning: Skipping installed theories due to 'rocq c --config' failure:
+  - $TESTCASE_ROOT/bin/rocq c --config failed with exit code 1.
+  Hint: Try running 'rocq c --config' manually to see the error.
 
   $ FAIL_VERSION=1 \
   > dune build
@@ -127,14 +127,14 @@ however a failing --print-version will not.
   > EOF
 
 Should fail.
-  $ export coqlib="$(rocq --config | grep COQLIB | sed 's/COQLIB=//')"
+  $ export coqlib="$(rocq c --config | grep COQLIB | sed 's/COQLIB=//')"
   $ FAIL_CONFIG=1 \
   > dune build @config 
   File "dune", line 4, characters 8-23:
   4 |   (echo %{rocq:rocqlib})))
               ^^^^^^^^^^^^^^^
   Error: Could not expand %{rocq:rocqlib} as running rocq failed.
-  $TESTCASE_ROOT/bin/rocq --config failed with exit code 1.
+  $TESTCASE_ROOT/bin/rocq c --config failed with exit code 1.
   [1]
 
 Should succeed.

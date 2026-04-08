@@ -447,7 +447,7 @@ jobs:
         run: opam pin add -n . --with-version=%%VERSION%%
 
       - name: Install deps
-        run: opam install csexp pp re spawn uutf ppx_inline_test dune wasm_of_ocaml-compiler
+        run: opam install csexp pp re spawn uutf ppx_expect ppx_inline_test dune wasm_of_ocaml-compiler
 
       - name: Build dune
         run: opam exec -- make bootstrap

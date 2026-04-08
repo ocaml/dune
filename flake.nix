@@ -32,6 +32,10 @@
       inputs.oxcaml-opam-repository.follows = "oxcaml-opam-repository";
       inputs.revdeps-dune.follows = "revdeps-dune";
     };
+    menhir-src = {
+      url = "gitlab:fpottier/menhir/20231231?host=gitlab.inria.fr";
+      flake = false;
+    };
   };
   outputs =
     {
@@ -44,6 +48,7 @@
       oxcaml,
       oxcaml-opam-repository,
       revdeps-dune,
+      menhir-src,
     }:
     let
       forAllSystems =
@@ -144,22 +149,17 @@
           lib = pkgs.lib;
           dune-source = lib.cleanSourceWith {
             src = ./.;
-            filter =
-              pkgs.nix-gitignore.gitignoreFilterPure
-                (_: _: true)
-                [
-                  ".git"
-                  ./.gitignore
-                ]
-                ./.;
+            filter = pkgs.nix-gitignore.gitignoreFilterPure (_: _: true) [
+              ".git"
+              ./.gitignore
+            ] ./.;
           };
           dune-build-files =
             let
               fs = lib.fileset;
             in
-            fs.intersection
-              (fs.fromSource dune-source)
-              (fs.unions [
+            fs.intersection (fs.fromSource dune-source) (
+              fs.unions [
                 ./bin
                 ./boot
                 ./configure
@@ -170,10 +170,9 @@
                 ./vendor
                 ./otherlibs
                 ./Makefile
-                (fs.fileFilter
-                  (file: file.hasExt "opam" || file.hasExt "template")
-                  ./.)
-              ]);
+                (fs.fileFilter (file: file.hasExt "opam" || file.hasExt "template") ./.)
+              ]
+            );
           dune-static-overlay = self: super: {
             ocamlPackages = super.ocaml-ng.ocamlPackages_5_4.overrideScope (
               oself: osuper: {
@@ -357,18 +356,18 @@
 
               baseInputs =
                 if includeTestDeps then
-                  (builtins.filter
-                    (p: !builtins.elem (p.pname or p.name or "") excludeTestNativeBuildInputs)
-                    (testNativeBuildInputs pkgs')
-                  ) ++ docInputs
+                  (builtins.filter (p: !builtins.elem (p.pname or p.name or "") excludeTestNativeBuildInputs) (
+                    testNativeBuildInputs pkgs'
+                  ))
+                  ++ docInputs
                 else
-                  [];
+                  [ ];
 
               ocamlLibs =
                 if includeTestDeps then
-                  builtins.filter
-                    (p: !builtins.elem (p.pname or p.name or "") excludeOcamlLibs)
-                    (with pkgs'.ocamlPackages; [
+                  builtins.filter (p: !builtins.elem (p.pname or p.name or "") excludeOcamlLibs) (
+                    with pkgs'.ocamlPackages;
+                    [
                       ctypes
                       cinaps
                       integers
@@ -385,7 +384,8 @@
                       re
                       spawn
                       uutf
-                    ])
+                    ]
+                  )
                 else
                   [ ];
             in
@@ -525,9 +525,67 @@
             '';
           };
 
+          ox-minimal = makeDuneDevShell {
+            includeTestDeps = false;
+            packageOverrides =
+              oself: osuper:
+              (oxPackageSet oself osuper)
+              // {
+                ocaml = oxcamlCompiler;
+              };
+            meta.description = ''
+              Provides a minimal shell environment with OxCaml in order to
+              run the OxCaml tests.
+            '';
+          };
+
+          ox-trunk =
+            let
+              customOcamlPackages = pkgs.ocamlPackages.overrideScope (
+                oself: osuper: {
+                  menhirLib = osuper.menhirLib.overrideAttrs (old: {
+                    version = "20231231";
+                    src = menhir-src;
+                    patches = [ ];
+                  });
+                  menhirGLR = null;
+                  menhir = osuper.menhir.overrideAttrs (old: {
+                    version = "20231231";
+                    src = menhir-src;
+                    patches = [ ];
+                    buildInputs = builtins.filter (x: x != null) (old.buildInputs or [ ]);
+                    postInstall = (old.postInstall or "") + ''
+                      mkdir -p $out/lib/menhirLib
+                      cp ${oself.menhirLib}/lib/ocaml/*/site-lib/menhirLib/menhirLib.{ml,mli} $out/lib/menhirLib/
+                    '';
+                  });
+                }
+              );
+            in
+            pkgs.mkShell {
+              inherit INSIDE_NIX;
+              shellHook = ''
+                export DUNE_SOURCE_ROOT=$PWD
+              '';
+              inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
+              nativeBuildInputs = [
+                pkgs.autoconf
+                customOcamlPackages.menhir
+              ];
+              meta.description = ''
+                Provides a shell environment with upstream OCaml and menhir 20231231
+                for building the OxCaml trunk.
+              '';
+            };
           ox = makeDuneDevShell {
             excludeTestNativeBuildInputs = [ "opam" ];
-            excludeOcamlLibs = [ "mdx" "merlin" "ocaml-index" "ocaml-lsp-server" "odoc" ];
+            excludeOcamlLibs = [
+              "mdx"
+              "merlin"
+              "ocaml-index"
+              "ocaml-lsp-server"
+              "odoc"
+            ];
             packageOverrides =
               oself: osuper:
               (oxPackageSet oself osuper)

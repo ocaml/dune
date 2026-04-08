@@ -35,7 +35,13 @@ module Fs_memo_event : sig
   val to_dyn : t -> Dyn.t
 end
 
-module Sync_id : Id.S
+module Sync_id : sig
+  type t
+
+  val equal : t -> t -> bool
+  val hash : t -> int
+  val to_dyn : t -> Dyn.t
+end
 
 module Event : sig
   type t =

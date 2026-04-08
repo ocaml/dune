@@ -75,7 +75,7 @@
    (= %{system} macosx))))
 
 (cram
- (applies_to github764)
+ (applies_to symlink-scan-cycle-github764)
  (enabled_if
   (<> %{ocaml-config:system} win)))
 

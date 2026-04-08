@@ -1,5 +1,8 @@
 (cram
- (applies_to github6607 reason-expect concurrent-fail)
+ (applies_to
+  clicolor-force-inline-tests-github6607
+  reason-expect
+  concurrent-fail)
  (deps
   (package ppx_expect)))
 
@@ -8,6 +11,6 @@
  (deps %{bin:refmt}))
 
 (cram
- (applies_to github6607)
+ (applies_to clicolor-force-inline-tests-github6607)
  (deps
   (package stdune)))

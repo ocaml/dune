@@ -129,13 +129,20 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
        | This (Some mmn) -> Module_name.to_string mmn
        | _ -> assert false)
   in
+  let obj_dir = Compilation_context.obj_dir cctx in
   Modules.With_vlib.wrapped_compat modules
   |> Module_name.Map.to_seq
   |> Memo.parallel_iter_seq ~f:(fun (name, m) ->
     let contents =
       let main_module_name = Lazy.force main_module_name in
       let open Action_builder.O in
-      let+ () = Action_builder.return () in
+      let+ () =
+        match Modules.With_vlib.find modules name with
+        | Some internal_m ->
+          let cmi = Obj_dir.Module.cm_file_exn obj_dir internal_m ~kind:(Ocaml Cmi) in
+          Action_builder.path (Path.build cmi)
+        | None -> Action_builder.return ()
+      in
       let name = Module_name.to_string name in
       let hidden_name = sprintf "%s__%s" main_module_name name in
       let real_name = sprintf "%s.%s" main_module_name name in

@@ -281,6 +281,30 @@ The ``dune build`` and ``dune runtest`` commands support a ``-w`` (or
 then wait for file changes and rebuild (or rerun the tests). This feature
 requires ``inotifywait`` or ``fswatch`` to be installed.
 
+To work with the wtach mode, it is recommended to create a dune file in
+``start`` (purely by convention) and define a particular alias in it, such as
+``build`` (again, any name can be used). For example:
+
+.. code:: console
+
+   $ dune build --watch -alias start/build
+
+Now, build requests are just dependencies of this alias specified in
+``start/dune``:
+
+.. code:: dune
+
+   (alias
+    (name build)
+    (deps (alias_rec %{project_root}/runtest)))
+
+As this file is edited, dune will pick up the build requests in it.
+
+It is customary to add this file to ``.gitignore``.
+
+This pattern is common that ``$ dune init start-file`` has been introduced to
+help create such start files
+
 Launching the Toplevel (REPL)
 =============================
 

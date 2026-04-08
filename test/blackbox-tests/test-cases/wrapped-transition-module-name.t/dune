@@ -1,0 +1,7 @@
+(executable
+ (name fooexe)
+ (libraries mylib_impl))
+
+(rule
+ (alias default)
+ (action (run ./fooexe.exe)))

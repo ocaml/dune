@@ -98,8 +98,8 @@ module Stdlib = struct
   let make ~(stdlib : Ocaml_stdlib.t) ~modules ~wrapped ~main_module_name =
     let modules =
       match wrapped with
-      | Wrapped.Simple false -> modules
-      | Simple true | Yes_with_transition _ ->
+      | Wrapped.No -> modules
+      | Yes _ ->
         Module_name.Map.map modules ~f:(fun m ->
           if Module.name m = main_module_name || special_compiler_module stdlib m
           then m
@@ -714,9 +714,9 @@ module Wrapped = struct
     let mangle = Mangle.of_lib ~main_module_name ~lib_name ~implements ~for_ ~modules in
     let wrapped_compat =
       match (wrapped : Dune_lang.Wrapped.t) with
-      | Simple false -> assert false
-      | Simple true -> Module_name.Map.empty
-      | Yes_with_transition _ ->
+      | No -> assert false
+      | Yes { transition = None; _ } -> Module_name.Map.empty
+      | Yes { transition = Some _; _ } ->
         let toplevel = Module_trie.toplevel_only modules in
         Module_name.Map.remove toplevel main_module_name
         |> Module_name.Map.filter_map ~f:(fun m ->
@@ -732,7 +732,7 @@ module Wrapped = struct
     let group = Group.of_trie modules ~mangle ~obj_dir in
     { group
     ; wrapped_compat = Module_name.Map.empty
-    ; wrapped = Simple true
+    ; wrapped = Yes { transition = None; module_name = None }
     ; toplevel_module = `Hidden
     }
   ;;
@@ -858,17 +858,16 @@ let lib
       Stdlib (Stdlib.make ~stdlib ~modules ~wrapped ~main_module_name)
     | None ->
       (match wrapped, main_module_name, Module_trie.as_singleton modules with
-       | Simple false, _, Some m -> Singleton m
-       | Simple false, _, None ->
+       | No, _, Some m -> Singleton m
+       | No, _, None ->
          let mangle = Mangle.Unwrapped in
          Unwrapped (Unwrapped.of_trie modules ~mangle ~obj_dir)
-       | (Yes_with_transition _ | Simple true), Some main_module_name, Some m ->
+       | Yes _, Some main_module_name, Some m ->
          if Module.name m = main_module_name && (not implements) && not has_instances
          then Singleton m
          else make_wrapped main_module_name
-       | (Yes_with_transition _ | Simple true), Some main_module_name, None ->
-         make_wrapped main_module_name
-       | (Simple true | Yes_with_transition _), None, _ ->
+       | Yes _, Some main_module_name, None -> make_wrapped main_module_name
+       | Yes _, None, _ ->
          Code_error.raise "Modules.lib: cannot wrap without main module name" [])
   in
   with_obj_map modules
@@ -914,8 +913,8 @@ let fold t ~init ~f =
 let wrapped t =
   match t.modules with
   | Wrapped w -> w.wrapped
-  | Singleton _ | Unwrapped _ -> Simple false
-  | Stdlib _ -> Simple true
+  | Singleton _ | Unwrapped _ -> No
+  | Stdlib _ -> Yes { transition = None; module_name = None }
 ;;
 
 let is_user_written m =

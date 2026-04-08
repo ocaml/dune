@@ -1,0 +1,3 @@
+(library
+ (name mylib_impl)
+ (wrapped (module_name Mylib)))

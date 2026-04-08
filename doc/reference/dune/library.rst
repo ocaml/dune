@@ -97,6 +97,37 @@ order to declare a multi-directory library, you need to use the
    false)`` to ``(wrapped true)`` without breaking compatibility for users. The
    deprecation notices for the unwrapped modules will include ``<message>``.
 
+.. describe:: (wrapped (module_name <Module_name>))
+
+   .. versionadded:: 3.18
+
+   This is the same as ``(wrapped true)``, except the wrapper module will use
+   the given ``<Module_name>`` instead of the capitalized library name.
+
+   This is useful when multiple libraries need to expose the same module
+   namespace but must have distinct library names. For example, a web framework
+   with separate server and client libraries:
+
+   .. code:: dune
+
+      ; in server/dune
+      (library
+       (name eliom_server)
+       (public_name eliom.server)
+       (wrapped (module_name Eliom)))
+
+      ; in client/dune
+      (library
+       (name eliom_client)
+       (public_name eliom.client)
+       (wrapped (module_name Eliom)))
+
+   Both libraries expose their modules under ``Eliom.XXX`` (e.g.,
+   ``Eliom.Service``, ``Eliom.Content``), while keeping unique internal library
+   names to avoid conflicts. The internal double-underscore modules (e.g.,
+   ``Eliom_server__Service``) still use the library name, so there is no object
+   file collision.
+
 .. describe:: (preprocess <preprocess-spec>)
 
    Specifies how to preprocess files when needed.

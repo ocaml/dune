@@ -120,8 +120,8 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
   let transition_message =
     lazy
       (match Modules.With_vlib.wrapped modules with
-       | Simple _ -> assert false
-       | Yes_with_transition r -> r)
+       | No | Yes { transition = None; _ } -> assert false
+       | Yes { transition = Some r; _ } -> r)
   in
   let main_module_name =
     lazy

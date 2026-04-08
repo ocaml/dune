@@ -752,7 +752,7 @@ let wrapped t =
      | Parameter ->
        (* A parameter is an unwrapped Singleton, but its implementation
           should be wrapped. *)
-       Some (Wrapped.Simple true)
+       Some (Wrapped.Yes { transition = None; module_name = None })
      | Virtual ->
        (match Lib_info.wrapped impl.info with
         | Some (From _) (* can't inherit this value in virtual libs *) | None ->

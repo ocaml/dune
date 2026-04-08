@@ -4,11 +4,11 @@ open Dune_lang.Decoder
 module Wrapped = struct
   include Wrapped
 
-  let default = Simple true
+  let default = Yes { transition = None; module_name = None }
 
   let make ~wrapped ~implements ~special_builtin_support : t Lib_info.Inherited.t =
     (match wrapped, special_builtin_support with
-     | Some (loc, Yes_with_transition _), Some (_loc, _) ->
+     | Some (loc, Yes { transition = Some _; _ }), Some (_loc, _) ->
        (* TODO use _loc *)
        User_error.raise
          ~loc
@@ -433,19 +433,23 @@ let obj_dir ~dir t =
     (snd t.name)
 ;;
 
-let local_main_module_name t = Some (Module_name.of_local_lib_name t.name)
+let local_main_module_name t =
+  match t.wrapped with
+  | This (Yes { module_name = Some m; _ }) -> Some m
+  | _ -> Some (Module_name.of_local_lib_name t.name)
+;;
 
 let main_module_name t : Lib_info.Main_module_name.t =
   match t.implements, t.wrapped with
   | Some x, From _ -> From x
   | Some _, This _ (* cannot specify for wrapped for implements *) | None, From _ ->
     assert false (* cannot inherit for normal libs *)
-  | None, This (Simple false) ->
+  | None, This No ->
     (match t.stdlib with
      | None -> This None
      | Some _ -> This (Some (Module_name.of_local_lib_name t.name)))
-  | None, This (Simple true | Yes_with_transition _) ->
-    This (Some (Module_name.of_local_lib_name t.name))
+  | None, This (Yes { module_name = Some m; _ }) -> This (Some m)
+  | None, This (Yes _) -> This (Some (Module_name.of_local_lib_name t.name))
 ;;
 
 let to_lib_id ~src_dir t =

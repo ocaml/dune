@@ -46,11 +46,12 @@ A consumer still using the bare name during the migration:
 
   $ dune build ./main.exe
 
-The compat shim foo.cmi only depends on the wrapper mylib.cmi, not on the
+The compat shim foo.cmi now depends on both the wrapper mylib.cmi and the
 inner module mylib__Foo.cmi that it re-exports:
 
   $ dune rules --deps mylib/.mylib.objs/byte/foo.cmi 2>&1 | grep In_build_dir
    (File (In_build_dir _build/default/mylib/.mylib.objs/byte/mylib.cmi))
+   (File (In_build_dir _build/default/mylib/.mylib.objs/byte/mylib__Foo.cmi))
    (File (In_build_dir _build/default/mylib/.wrapped_compat/Foo.ml-gen)))
 
 The library author adds a field:
@@ -64,17 +65,6 @@ The library author adds a field:
   > val v : t
   > EOF
 
-CR-soon Alizter: The incremental rebuild should work but doesn't. The compat
-shim (foo.cmi) is never invalidated because dep_rules.ml does not record a
-dependency on the inner module it re-exports:
+The incremental rebuild succeeds:
 
   $ dune build ./main.exe
-  File "_none_", line 1:
-  Error: Files mylib/.mylib.objs/native/foo.cmx
-         and mylib/.mylib.objs/native/mylib__Foo.cmx
-         make inconsistent assumptions over interface Mylib__Foo
-  File "main.ml", line 1:
-  Error: The files mylib/.mylib.objs/byte/foo.cmi
-         and mylib/.mylib.objs/byte/mylib__Foo.cmi
-         make inconsistent assumptions over interface Mylib__Foo
-  [1]

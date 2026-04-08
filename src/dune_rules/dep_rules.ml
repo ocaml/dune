@@ -65,17 +65,17 @@ let ooi_deps
   read
 ;;
 
+let wrapped_compat_deps modules m =
+  let inner = Modules.compat_for_exn (Modules.With_vlib.drop_vlib modules) m in
+  match Modules.With_vlib.lib_interface modules with
+  | Some li -> [ li; inner ]
+  | None -> [ inner ]
+;;
+
 let deps_of_module ~modules ~sandbox ~sctx ~dir ~obj_dir ~ml_kind ~for_ m =
   match Module.kind m with
   | Wrapped_compat ->
-    let interface_module =
-      match Modules.With_vlib.lib_interface modules with
-      | Some m -> m
-      | None ->
-        let modules = Modules.With_vlib.drop_vlib modules in
-        Modules.compat_for_exn modules m
-    in
-    List.singleton interface_module |> Action_builder.return |> Memo.return
+    wrapped_compat_deps modules m |> Action_builder.return |> Memo.return
   | _ ->
     let+ deps = Ocamldep.deps_of ~sandbox ~modules ~sctx ~dir ~obj_dir ~ml_kind ~for_ m in
     (match Modules.With_vlib.alias_for modules m with
@@ -185,15 +185,7 @@ let read_deps_of_module ~modules ~obj_dir dep ~for_ =
   let (Obj_dir.Module.Dep.Immediate (unit, _) | Transitive (unit, _)) = dep in
   match Module.kind unit with
   | Root | Alias _ -> Action_builder.return []
-  | Wrapped_compat ->
-    let interface_module =
-      match Modules.With_vlib.lib_interface modules with
-      | Some m -> m
-      | None ->
-        let modules = Modules.With_vlib.drop_vlib modules in
-        Modules.compat_for_exn modules unit
-    in
-    List.singleton interface_module |> Action_builder.return
+  | Wrapped_compat -> wrapped_compat_deps modules unit |> Action_builder.return
   | _ ->
     if has_single_file modules
     then Action_builder.return []

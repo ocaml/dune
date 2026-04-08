@@ -61,7 +61,6 @@ module Package = struct
     }
 
   let uri { org; name } = sprintf "https://github.com/%s/%s" org name
-  let make org name = { org; name }
 
   let clone t =
     let stdout_to = make_stdout () in
@@ -78,10 +77,7 @@ module Package = struct
   ;;
 end
 
-let duniverse =
-  let pkg = Package.make in
-  [ pkg "ocaml-dune" "dune-bench" ]
-;;
+let duniverse = []
 
 let prepare_workspace () =
   Fiber.parallel_iter duniverse ~f:(fun (pkg : Package.t) ->

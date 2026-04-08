@@ -20,11 +20,10 @@
   > EOF
 
   $ dune build
-  Error: Dependency cycle between:
-     _build/default/.foo.eobjs/dune__exe__Baz.impl.all-deps
-  -> _build/default/.foo.eobjs/dune__exe__Bar.impl.all-deps
-  -> _build/default/.foo.eobjs/dune__exe__Baz.impl.all-deps
-  -> required by _build/default/.foo.eobjs/dune__exe__Foo.impl.all-deps
+  Error: dependency cycle involving module Foo:
+     Bar
+  -> Baz
+  -> Bar
   -> required by _build/default/foo.exe
   -> required by alias all
   -> required by alias default

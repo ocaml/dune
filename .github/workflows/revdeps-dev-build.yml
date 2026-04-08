@@ -6,6 +6,9 @@ name: Revdeps development build
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - '*-rc'
 
 permissions:
   contents: read

@@ -698,7 +698,6 @@ end = struct
                      .should_remove_write_permissions_on_generated_files
                        execution_parameters)
                   ~produced_targets:exec_result.produced_targets
-                  ~action:(fun () -> Action.for_shell action.action |> Action_to_sh.pp)
               in
               let dynamic_deps_stages =
                 List.map

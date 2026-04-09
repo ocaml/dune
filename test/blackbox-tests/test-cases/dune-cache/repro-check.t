@@ -70,7 +70,7 @@ Set 'cache-check-probability' to 1.0, which should trigger the check
   Warning: cache store error [5e64608154a3ed6c86e3d606ac67f24b]: ((in_cache
   ((non-reproducible 7378fb2d7d80dc4468d6558d864f0897))) (computed
   ((non-reproducible 074ebdc1c3853f27c68566d8d183032c)))) after executing
-  (echo 'build non-reproducible';cp dep non-reproducible)
+  action at dune:6
   build reproducible
   build non-reproducible
 
@@ -123,7 +123,7 @@ Test that the environment variable and the command line flag work too
   Warning: cache store error [5e64608154a3ed6c86e3d606ac67f24b]: ((in_cache
   ((non-reproducible 7378fb2d7d80dc4468d6558d864f0897))) (computed
   ((non-reproducible 074ebdc1c3853f27c68566d8d183032c)))) after executing
-  (echo 'build non-reproducible';cp dep non-reproducible)
+  action at dune:6
   build reproducible
   build non-reproducible
 
@@ -135,7 +135,7 @@ Test that the environment variable and the command line flag work too
   Warning: cache store error [5e64608154a3ed6c86e3d606ac67f24b]: ((in_cache
   ((non-reproducible 7378fb2d7d80dc4468d6558d864f0897))) (computed
   ((non-reproducible 074ebdc1c3853f27c68566d8d183032c)))) after executing
-  (echo 'build non-reproducible';cp dep non-reproducible)
+  action at dune:6
   build reproducible
   build non-reproducible
 

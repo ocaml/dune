@@ -402,19 +402,18 @@ let lookup ~can_go_in_shared_cache ~rule_digest ~targets
 (* If this function fails to store the rule to the shared cache, it returns
    [None] because we don't want this to be a catastrophic error. We simply log
    this incident and continue without saving the rule to the shared cache. *)
-let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~produced_targets
+let try_to_store_to_shared_cache ~mode ~rule_digest ~loc ~produced_targets
   : Digest.t Targets.Produced.t option Fiber.t
   =
   let open Fiber.O in
   let hex = Digest.to_string rule_digest in
   let pp_error msg =
-    let action = action () in
     Pp.concat
-      [ Pp.textf "cache store error [%s]: %s after executing" hex msg
-      ; Pp.space
-      ; Pp.char '('
-      ; action
-      ; Pp.char ')'
+      [ Pp.textf
+          "cache store error [%s]: %s after executing action at %s"
+          hex
+          msg
+          (Loc.to_file_colon_line loc)
       ]
   in
   match
@@ -600,7 +599,6 @@ let examine_targets_and_store
       ~loc
       ~rule_digest
       ~should_remove_write_permissions_on_generated_files
-      ~action
       ~(produced_targets : unit Targets.Produced.t)
   : Digest.t Targets.Produced.t Fiber.t
   =
@@ -608,7 +606,7 @@ let examine_targets_and_store
   | Enabled { storage_mode = mode; reproducibility_check = _ } when can_go_in_shared_cache
     ->
     let open Fiber.O in
-    try_to_store_to_shared_cache ~mode ~rule_digest ~produced_targets ~action
+    try_to_store_to_shared_cache ~mode ~rule_digest ~produced_targets ~loc
     >>= (function
      | Some produced_targets_with_digests -> Fiber.return produced_targets_with_digests
      | None ->

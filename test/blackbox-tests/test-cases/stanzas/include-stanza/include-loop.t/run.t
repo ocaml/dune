@@ -1,3 +1,5 @@
+Detects recursive `(include ...)` loops.
+
   $ dune build
   File "dune", line 1, characters 0-15:
   1 | (include a.inc)

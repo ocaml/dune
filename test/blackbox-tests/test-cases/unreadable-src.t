@@ -1,3 +1,5 @@
+Warns about unreadable source directories and suggests ignoring them.
+
   $ mkdir foo && chmod -r foo
   $ dune build
   Warning: Unable to read directory foo. Ignoring.

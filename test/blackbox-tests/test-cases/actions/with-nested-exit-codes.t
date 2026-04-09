@@ -1,3 +1,5 @@
+Allows nested action modifiers under `with-accepted-exit-codes` in Dune 2.2.
+
   $ cat > dune-project << EOF
   > (lang dune 2.2)
   > (using action-plugin 0.1)

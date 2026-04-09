@@ -1,3 +1,5 @@
+Builds installable packages with duplicate private library names.
+
   $ dune build @install
 
   $ dune trace cat | jq -c '

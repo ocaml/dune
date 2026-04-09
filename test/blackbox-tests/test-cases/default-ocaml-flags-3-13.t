@@ -1,3 +1,5 @@
+Tests the default OCaml flags in Dune 3.13.
+
   $ cat >dune <<EOF
   > (library
   >  (modes byte)

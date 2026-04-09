@@ -1,3 +1,5 @@
+Tests Menhir stanzas under env settings.
+
   $ cat > dune-project <<EOF
   > (lang dune 2.2)
   > (using menhir 2.1)

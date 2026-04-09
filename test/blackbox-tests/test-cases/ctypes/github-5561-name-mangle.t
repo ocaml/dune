@@ -1,3 +1,5 @@
+Tests ctypes name mangling for external library names.
+
   $ cat >dune-project <<EOF
   > (lang dune 3.7)
   > (using ctypes 0.3)

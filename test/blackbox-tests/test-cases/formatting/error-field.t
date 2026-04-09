@@ -1,3 +1,5 @@
+Rejects unknown fields in `(formatting ...)`.
+
   $ cat > dune-project << EOF
   > (lang dune 3.5)
   > EOF

@@ -1,3 +1,5 @@
+Tests version-based build_if constraints.
+
   $ cat > dune-project << EOF
   > (lang dune 3.8)
   > EOF

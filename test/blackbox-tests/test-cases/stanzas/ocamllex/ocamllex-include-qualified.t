@@ -1,3 +1,5 @@
+Builds `ocamllex` generators under `(include_subdirs qualified)`.
+
   $ cat > dune-project <<EOF
   > (lang dune 3.21)
   > EOF

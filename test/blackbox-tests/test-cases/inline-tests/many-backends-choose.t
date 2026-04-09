@@ -1,3 +1,5 @@
+Lets a library pick an inline-tests backend explicitly when several are available.
+
   $ make_dune_project 2.6
   $ cat >dune <<EOF
   > (library

@@ -1,3 +1,5 @@
+Reports deprecation of allow_approximate_merlin.
+
   $ cat >dune-project <<EOF
   > (lang dune 2.7)
   > (allow_approximate_merlin true)

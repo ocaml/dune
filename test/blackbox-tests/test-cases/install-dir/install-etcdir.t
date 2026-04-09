@@ -1,3 +1,5 @@
+Honors `--etcdir` for installed configuration files.
+
   $ echo "(lang dune 2.0)" > dune-project
   $ touch foo.opam configfile
   $ cat >dune <<EOF

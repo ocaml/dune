@@ -1,3 +1,5 @@
+Rejects alias names containing slashes.
+
   $ dune build @bar
   File "dune", line 2, characters 7-14:
   2 |  (name foo/bar)

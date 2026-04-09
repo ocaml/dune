@@ -1,3 +1,5 @@
+Rejects stanzas in subdirectories of `(include_subdirs unqualified)`.
+
   $ dune build
   File "src/gen/dune", line 1, characters 0-23:
   1 | (executable (name gen))

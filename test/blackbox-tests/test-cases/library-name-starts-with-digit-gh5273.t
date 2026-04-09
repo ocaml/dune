@@ -1,3 +1,5 @@
+Rejects library names that are not valid module names.
+
   $ cat > dune-project << EOF
   > (lang dune 1.0)
   > EOF

@@ -1,3 +1,5 @@
+Rejects inline tests when multiple independent backends are available.
+
   $ make_dune_project 2.6
   $ cat >dune <<EOF
   > (library

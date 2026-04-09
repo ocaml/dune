@@ -1,3 +1,5 @@
+Reports duplicate modules across directories with (include_subdirs unqualified).
+
   $ dune build
   File "dune", line 1, characters 0-0:
   Error: Module "X" appears in several directories:

@@ -1,3 +1,5 @@
+Reports bad alias paths given as absolute paths.
+
   $ dune runtest
   File "dune", line 4, characters 9-17:
   4 |   (alias /foo/bar)))

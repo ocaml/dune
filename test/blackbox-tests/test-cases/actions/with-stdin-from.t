@@ -1,3 +1,5 @@
+Feeds an action's stdin from a file with `with-stdin-from`.
+
   $ cat > dune-project <<EOF
   > (lang dune 2.0)
   > EOF

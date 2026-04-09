@@ -1,3 +1,5 @@
+Strips terminal control sequences from `dune runtest` output.
+
   $ cat > dune-project <<EOF
   > (lang dune 1.0)
   > EOF
@@ -28,8 +30,8 @@
   >   Printf.printf "%a\n%!" (in_color Cyan output_string) "Can you see it?"
   > EOF
 
-  $ dune runtest -f
-  Very Secret!
+  $ dune runtest -f 2>&1 | tr -d '\r'
+  Very Secret!
   ---------------
   Can you see it?
 

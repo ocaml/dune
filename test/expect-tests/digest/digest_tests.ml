@@ -7,7 +7,7 @@ let%expect_test "directory digest version" =
 
      The expected value is kept outside of the expect block on purpose so that it
      must be modified manually. *)
-  let expected = "b8103f74615da82331f53c68145085fc" in
+  let expected = "0707f6c61422e7e7281faa106824da8c" in
   let dir = Temp.create Dir ~prefix:"digest-tests" ~suffix:"" in
   let stats = { Digest.Stats_for_digest.st_kind = S_DIR; executable = true } in
   (match Digest.path_with_stats ~allow_dirs:true dir stats with

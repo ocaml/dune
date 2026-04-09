@@ -259,14 +259,6 @@ module Feed = struct
   let int = contramap string ~f:Int.to_string
   let repr repr hasher value = feed_repr hasher repr value
 
-  (* We use [No_sharing] to avoid generating different digests for inputs that
-       differ only in how they share internal values. Without [No_sharing], if a
-       command line contains duplicate flags, such as multiple occurrences of the
-       flag [-I], then [Marshal.to_string] will produce different digests depending
-       on whether the corresponding strings ["-I"] point to the same memory location
-       or to different memory locations. *)
-  let generic hasher x = contramap string ~f:(Marshal.to_string ~sharing:false) hasher x
-
   let list feed_x hasher xs =
     int hasher (List.length xs);
     List.iter xs ~f:(feed_x hasher)
@@ -356,33 +348,20 @@ end
 let string s = Feed.compute_digest Feed.string s
 let string_pooled s = Feed.compute_digest_pooled Feed.string s
 let to_string_raw s = Blake3_mini.Digest.to_binary s
+let digest_repr = Repr.view Repr.string ~to_:to_string
 
-let generic a =
+let repr_with compute_digest repr a =
   let start = Counter.Timer.start () in
   Counter.incr Metrics.Digest.Value.count;
-  let res = Feed.compute_digest Feed.generic a in
+  let res = compute_digest (Feed.repr repr) a in
   Counter.Timer.stop Metrics.Digest.Value.time start;
   res
 ;;
 
-let repr repr a =
-  let start = Counter.Timer.start () in
-  Counter.incr Metrics.Digest.Value.count;
-  let res = Feed.compute_digest (Feed.repr repr) a in
-  Counter.Timer.stop Metrics.Digest.Value.time start;
-  res
-;;
-
-let generic_pooled a =
-  let start = Counter.Timer.start () in
-  Counter.incr Metrics.Digest.Value.count;
-  let res = Feed.compute_digest_pooled Feed.generic a in
-  Counter.Timer.stop Metrics.Digest.Value.time start;
-  res
-;;
+let repr repr a = repr_with Feed.compute_digest repr a
+let repr_pooled repr a = repr_with Feed.compute_digest_pooled repr a
 
 let path_with_executable_bit_with string_digest =
-  (* We follow the digest scheme used by Jenga. *)
   let string_and_bool ~digest_hex ~bool =
     let suffix = if bool then "\001" else "\000" in
     string_digest (Blake3_mini.Digest.to_hex digest_hex ^ suffix)
@@ -433,12 +412,17 @@ end
 
 exception E of Path_digest_error.t
 
-let directory_digest_version = 3
+let directory_digest_with =
+  let directory_digest_version = 4 in
+  let directory_digest_repr = Repr.(triple int (list (pair string digest_repr)) bool) in
+  fun repr_digest ~contents ~executable ->
+    repr_digest directory_digest_repr (directory_digest_version, contents, executable)
+;;
 
 let path_with_stats_internal
       ~allow_dirs
       ~string_digest
-      ~generic_digest
+      ~directory_digest
       ~file_with_executable_bit
       path
       (stats : Stats_for_digest.t)
@@ -481,8 +465,7 @@ let path_with_stats_internal
             |> List.sort ~compare:(fun (x, _) (y, _) -> String.compare x y)
           with
           | exception E e -> Error e
-          | contents ->
-            Ok (generic_digest (directory_digest_version, contents, stats.executable))))
+          | contents -> Ok (directory_digest ~contents ~executable:stats.executable)))
     | S_DIR | S_BLK | S_CHR | S_FIFO | S_SOCK -> Error Unexpected_kind
   in
   match stats.st_kind with
@@ -495,7 +478,7 @@ let path_with_stats ~allow_dirs path stats =
   path_with_stats_internal
     ~allow_dirs
     ~string_digest:string
-    ~generic_digest:generic
+    ~directory_digest:(directory_digest_with repr)
     ~file_with_executable_bit:file_with_executable_bit_sync
     path
     stats
@@ -506,7 +489,7 @@ let path_with_stats_async ~allow_dirs path (stats : Stats_for_digest.t) =
     path_with_stats_internal
       ~allow_dirs
       ~string_digest:string_pooled
-      ~generic_digest:generic_pooled
+      ~directory_digest:(directory_digest_with repr_pooled)
       ~file_with_executable_bit:file_with_executable_bit_pooled
       path
       stats

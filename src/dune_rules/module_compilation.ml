@@ -288,6 +288,7 @@ let build_cm
    let opaque = Compilation_context.opaque cctx in
    (* Library file dependencies - filtered per-module based on ocamldep output.
       Issue #4572: Finer dependency analysis between libraries. *)
+   let for_ = Compilation_context.for_ cctx in
    let stanza_modules = Compilation_context.modules cctx in
    let skip_lib_deps =
      match Module.kind m with
@@ -295,7 +296,19 @@ let build_cm
      | Wrapped_compat -> true
      | _ -> false
    in
-   let _can_filter = false in
+   let _can_filter =
+     let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
+     let dep_graph_dir = Dep_graph.dir dep_graph in
+     (not skip_lib_deps)
+     && (match for_ with
+         | Compilation_mode.Melange -> false
+         | Compilation_mode.Ocaml -> true)
+     && Path.Build.equal dep_graph_dir (Obj_dir.dir obj_dir)
+     &&
+     match Module.kind m with
+     | Root | Wrapped_compat | Impl_vmodule | Virtual | Parameter -> false
+     | _ -> Module.has m ~ml_kind
+   in
    (* Static deps as Command.Args.t — used when not filtering. *)
    let lib_cm_deps_arg : _ Command.Args.t =
      if skip_lib_deps

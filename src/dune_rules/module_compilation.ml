@@ -306,7 +306,10 @@ let build_cm
         let+ direct_libs = Compilation_context.requires_compile cctx
         and+ hidden_libs = Compilation_context.requires_hidden cctx in
         Command.Args.Hidden_deps
-          (Lib_file_deps.deps_of_entries ~opaque ~cm_kind (direct_libs @ hidden_libs)))
+          (Lib_file_deps.deps_of_entries
+             ~opaque
+             ~cm_kind
+             (List.map (direct_libs @ hidden_libs) ~f:(fun lib -> lib, None))))
        |> Resolve.Memo.args
        |> Command.Args.memo
    in
@@ -553,7 +556,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
        (Lib_file_deps.deps_of_entries
           ~opaque
           ~cm_kind:(Ocaml Cmo)
-          (direct_libs @ hidden_libs)))
+          (List.map (direct_libs @ hidden_libs) ~f:(fun lib -> lib, None))))
     |> Resolve.Memo.args
   in
   let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml Byte) in

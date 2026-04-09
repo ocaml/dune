@@ -17,7 +17,11 @@ val deps : Lib.t list -> groups:Group.t list -> Dep.Set.t
 
 (** Compute library file dependencies for all [libs] for the given [cm_kind].
     When [opaque] is true, local libraries only depend on .cmi (not .cmx). *)
-val deps_of_entries : opaque:bool -> cm_kind:Lib_mode.Cm_kind.t -> Lib.t list -> Dep.Set.t
+val deps_of_entries
+  :  opaque:bool
+  -> cm_kind:Lib_mode.Cm_kind.t
+  -> (Lib.t * Module.t option) list
+  -> Dep.Set.t
 
 type path_specification =
   | Allow_all

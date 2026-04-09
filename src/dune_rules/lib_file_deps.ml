@@ -48,23 +48,39 @@ let deps_of_lib (lib : Lib.t) ~groups =
   |> Dep.Set.of_list
 ;;
 
+let deps_of_module (lib : Lib.t) (m : Module.t) ~cm_kinds =
+  let obj_dir = Lib.info lib |> Lib_info.obj_dir in
+  List.filter_map cm_kinds ~f:(fun kind ->
+    Obj_dir.Module.cm_public_file obj_dir m ~kind |> Option.map ~f:(fun p -> Dep.file p))
+  |> Dep.Set.of_list
+;;
+
 let deps libs ~groups = Dep.Set.union_map libs ~f:(deps_of_lib ~groups)
 
-let deps_of_entries ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) (libs : Lib.t list) =
-  let groups =
+let deps_of_entries ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) entries =
+  let groups, cm_kinds =
     match cm_kind with
-    | Ocaml Cmi | Ocaml Cmo -> [ Group.Ocaml Cmi ]
-    | Melange Cmi -> [ Group.Melange Cmi ]
-    | Melange Cmj -> [ Group.Melange Cmi; Melange Cmj ]
-    | Ocaml Cmx -> [ Group.Ocaml Cmi; Ocaml Cmx ]
+    | Ocaml Cmi | Ocaml Cmo -> [ Group.Ocaml Cmi ], [ Lib_mode.Cm_kind.Ocaml Cmi ]
+    | Melange Cmi -> [ Group.Melange Cmi ], [ Melange Cmi ]
+    | Melange Cmj -> [ Group.Melange Cmi; Melange Cmj ], [ Melange Cmi; Melange Cmj ]
+    | Ocaml Cmx -> [ Group.Ocaml Cmi; Ocaml Cmx ], [ Ocaml Cmi; Ocaml Cmx ]
   in
-  Dep.Set.union_map libs ~f:(fun lib ->
-    let groups =
+  List.map entries ~f:(fun ((lib : Lib.t), mod_opt) ->
+    let is_opaque_local =
       match cm_kind with
-      | Ocaml Cmx when opaque && Lib.is_local lib -> [ Group.Ocaml Cmi ]
-      | _ -> groups
+      | Ocaml Cmx -> opaque && Lib.is_local lib
+      | _ -> false
     in
-    deps_of_lib lib ~groups)
+    match mod_opt with
+    | Some m ->
+      let cm_kinds =
+        if is_opaque_local then [ Lib_mode.Cm_kind.Ocaml Cmi ] else cm_kinds
+      in
+      deps_of_module lib m ~cm_kinds
+    | None ->
+      let groups = if is_opaque_local then [ Group.Ocaml Cmi ] else groups in
+      deps_of_lib lib ~groups)
+  |> List.fold_left ~init:Dep.Set.empty ~f:Dep.Set.union
 ;;
 
 type path_specification =

@@ -286,19 +286,18 @@ let build_cm
         | Some All | None -> Hidden_targets [ obj ])
    in
    let opaque = Compilation_context.opaque cctx in
-   (* Library file dependencies, added per-module. Non-stdlib alias modules
-      and Wrapped_compat modules are compiled with Includes.empty and need no
-      library file deps. Stdlib aliases need full deps because they contain
-      code referencing CamlintternalXXX modules. All other modules depend on
-      all libraries in the stanza's requires. *)
-   let lib_cm_deps : _ Command.Args.t =
-     let stanza_modules = Compilation_context.modules cctx in
-     let skip_lib_deps =
-       match Module.kind m with
-       | Alias _ -> not (Modules.With_vlib.is_stdlib_alias stanza_modules m)
-       | Wrapped_compat -> true
-       | _ -> false
-     in
+   (* Library file dependencies - filtered per-module based on ocamldep output.
+      Issue #4572: Finer dependency analysis between libraries. *)
+   let stanza_modules = Compilation_context.modules cctx in
+   let skip_lib_deps =
+     match Module.kind m with
+     | Alias _ -> not (Modules.With_vlib.is_stdlib_alias stanza_modules m)
+     | Wrapped_compat -> true
+     | _ -> false
+   in
+   let _can_filter = false in
+   (* Static deps as Command.Args.t — used when not filtering. *)
+   let lib_cm_deps_arg : _ Command.Args.t =
      if skip_lib_deps
      then Command.Args.empty
      else
@@ -313,6 +312,8 @@ let build_cm
        |> Resolve.Memo.args
        |> Command.Args.memo
    in
+   (* Dynamic deps — no-op for now, will hold filtering logic. *)
+   let lib_cm_deps_dyn = Action_builder.return () in
    let other_cm_files =
      let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
      let module_deps = Dep_graph.deps_of dep_graph m in
@@ -431,6 +432,7 @@ let build_cm
      ?loc:(Compilation_context.loc cctx)
      (let open Action_builder.With_targets.O in
       Action_builder.with_no_targets other_cm_files
+      >>> Action_builder.with_no_targets lib_cm_deps_dyn
       >>> Command.run
             ~dir:(Path.build (Context.build_dir ctx))
             compiler
@@ -441,7 +443,7 @@ let build_cm
             ; Command.Args.S obj_dirs
             ; Command.Args.as_any
                 (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind)
-            ; lib_cm_deps
+            ; lib_cm_deps_arg
             ; extra_args
             ; As as_parameter_arg
             ; as_argument_for

@@ -7,6 +7,8 @@ on:
   push:
     branches:
         - main
+    paths:
+        - 'opam/*.opam'
   pull_request:
     paths:
       - 'opam/*.opam'
@@ -79,7 +81,6 @@ jobs:
         # The package is removed first so that opam reinstalls it fresh,
         # resolving to the oldest compatible versions rather than reusing
         # what is already installed.
-        if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
         env:
           packages: ${{ steps.discover.outputs.packages }}
         run: |

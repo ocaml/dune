@@ -396,17 +396,6 @@ rocq.extraction
 Rocq may be instructed to *extract* sources as part of the compilation
 process by using the ``rocq.extraction`` stanza:
 
-For ``(rocq 0.12)`` and below:
-
-.. code:: dune
-
-   (rocq.extraction
-    (prelude <name>)
-    (extracted_modules <names>)
-    <optional-fields>)
-
-For ``(rocq 0.13)`` and above:
-
 .. code:: dune
 
    (rocq.extraction
@@ -417,17 +406,18 @@ For ``(rocq 0.13)`` and above:
 - ``(prelude <name>)`` refers to the Rocq source that contains the extraction
   commands.
 
-- ``(extracted_modules <names>)`` specifies the OCaml modules to be extracted.
-  For each module name, Dune expects both a ``.ml`` and ``.mli`` file to be
-  produced. Available in ``(rocq 0.12)`` and below; replaced by
-  ``extracted_files`` in ``(rocq 0.13)``.
+- ``(extracted_files <filenames>)`` is the list of files Dune expects the
+  extraction to produce. Each entry is a filename with its extension, for 
+  example OCaml (``.ml``, ``.mli``), Haskell (``.hs``), or Scheme (``.scm``).
+  (Appeared in :ref:`Rocq lang 0.13<rocq-lang>`)
 
-- ``(extracted_files <filenames>)`` is a list of filenames (with extensions)
-  that will be produced by the extraction. This allows extraction to languages
-  other than OCaml, such as Haskell (``.hs``) or Scheme (``.scm``). Available
-  since ``(rocq 0.13)``. Users upgrading from ``0.12`` should replace
-  ``(extracted_modules M1 ... Mn)`` with ``(extracted_files M1.ml M1.mli ... Mn.ml
-  Mn.mli)``.
+.. note::
+
+   ``(extracted_modules <names>)`` is the predecessor to ``extracted_files``,
+   available in ``(rocq 0.12)`` and below. It accepts bare module names and
+   expects Dune to produce both a ``.ml`` and ``.mli`` file for each. Users
+   upgrading from ``0.12`` should replace ``(extracted_modules M1 ... Mn)``
+   with ``(extracted_files M1.ml M1.mli ... Mn.ml Mn.mli)``.
 
 - ``<optional-fields>`` are ``flags``, ``stdlib``, ``theories``, and
   ``plugins``. All of these fields have the same meaning as in the

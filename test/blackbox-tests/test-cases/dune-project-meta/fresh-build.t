@@ -18,7 +18,7 @@ source tree if (generate_opam_files true) is enabled.
   $ grep opam _build/default/foo.install
     "_build/install/default/lib/foo/opam"
 
-  $ dune build @check
+  $ dune build @opam
   $ dune build foo.install
   $ grep opam _build/default/foo.install
     "_build/install/default/lib/foo/opam"
@@ -37,4 +37,4 @@ The same should hold once opam generation switches to diff actions.
   $ grep opam _build/default/foo.install
     "_build/install/default/lib/foo/opam"
   $ if test -e foo.opam; then echo present; else echo absent; fi
-  present
+  absent

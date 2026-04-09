@@ -385,6 +385,13 @@ let opam_fields project (package : Package.t) =
 
 let template_file = Path.extend_basename ~suffix:".template"
 
+let build_path ~build_dir pkg =
+  let opam_path = Path.Build.append_source build_dir (Package.opam_file pkg) in
+  match Package.has_opam_file pkg with
+  | Generated_with_diff -> Path.Build.extend_basename opam_path ~suffix:".generated"
+  | Exists _ | Generated -> opam_path
+;;
+
 let opam_template ~opam_path =
   let open Action_builder.O in
   let opam_template_path = template_file opam_path in
@@ -422,35 +429,69 @@ let generate project pkg ~template =
      | Some (_, s) -> s)
 ;;
 
-let add_alias_rule (ctx : Build_context.t) ~project ~pkg =
+let add_alias_rule (ctx : Build_context.t) ~profile ~project ~pkg =
   let build_dir = ctx.build_dir in
   let dir = Path.Build.append_source build_dir (Dune_project.root project) in
+  let source_opam_path = Package.opam_file pkg |> Path.source in
   let opam_path = Path.Build.append_source build_dir (Package.opam_file pkg) in
-  let aliases =
-    [ Alias.make Alias0.install ~dir
-    ; Alias.make Alias0.runtest ~dir
-    ; Alias.make Alias0.check ~dir (* check doesn't pick up the promote target? *)
-    ]
+  let generated_opam_path = build_path ~build_dir pkg in
+  let opam_alias = Alias.make Alias0.opam ~dir in
+  let* use_source_opam =
+    if Profile.is_release profile
+    then Build_system.file_exists source_opam_path
+    else Memo.return false
   in
-  let deps = Path.Set.singleton (Path.build opam_path) in
+  let aliases = [ Alias.make Alias0.install ~dir; Alias.make Alias0.runtest ~dir ] in
+  let* () =
+    let deps =
+      if use_source_opam
+      then Action_builder.return ()
+      else Action_builder.path (Path.build generated_opam_path)
+    in
+    Rules.Produce.Alias.add_deps opam_alias deps
+  in
+  let* () =
+    match Package.has_opam_file pkg with
+    | Generated_with_diff when not use_source_opam ->
+      Rules.Produce.Alias.add_action
+        opam_alias
+        ~loc:(Loc.in_file source_opam_path)
+        (let open Action_builder.O in
+         let+ () = Action_builder.path (Path.build generated_opam_path)
+         and+ () =
+           Action_builder.if_file_exists
+             source_opam_path
+             ~then_:(Action_builder.path (Path.build opam_path))
+             ~else_:(Action_builder.return ())
+         in
+         Action.Full.make (Action.diff (Path.build opam_path) generated_opam_path))
+    | Exists _ | Generated | Generated_with_diff -> Memo.return ()
+  in
   Memo.parallel_iter aliases ~f:(fun alias ->
-    (* TODO slow. we should be calling these functions only once, rather than
-       once per package *)
-    Rules.Produce.Alias.add_deps alias (Action_builder.path_set deps))
+    Rules.Produce.Alias.add_deps alias (Action_builder.dep (Dep.alias opam_alias)))
 ;;
 
 let add_opam_file_rule sctx ~project ~pkg =
-  let open Action_builder.O in
   let build_dir = Super_context.context sctx |> Context.build_dir in
   let opam_path = Path.Build.append_source build_dir (Package.opam_file pkg) in
+  let generated_opam_path = build_path ~build_dir pkg in
   let opam_rule =
+    let open Action_builder.O in
     (let+ template = opam_template ~opam_path:(Path.build opam_path) in
      generate project pkg ~template)
-    |> Action_builder.write_file_dyn opam_path
+    |> Action_builder.write_file_dyn generated_opam_path
   in
   let dir = Path.Build.append_source build_dir (Dune_project.root project) in
-  let mode = Rule.Mode.Promote { lifetime = Unlimited; into = None; only = None } in
-  Super_context.add_rule sctx ~mode ~dir opam_rule
+  match Package.has_opam_file pkg with
+  | Generated_with_diff ->
+    let* () = Super_context.add_rule sctx ~dir opam_rule in
+    let visible_opam_rule =
+      Action_builder.copy ~src:(Path.build generated_opam_path) ~dst:opam_path
+    in
+    Super_context.add_rule sctx ~mode:Fallback ~dir visible_opam_rule
+  | Exists _ | Generated ->
+    let mode = Rule.Mode.Promote { lifetime = Unlimited; into = None; only = None } in
+    Super_context.add_rule sctx ~mode ~dir opam_rule
 ;;
 
 let add_opam_file_rules sctx project =
@@ -470,6 +511,7 @@ let add_rules sctx project =
         let* () =
           add_alias_rule
             (Context.build_context (Super_context.context sctx))
+            ~profile:(Context.profile (Super_context.context sctx))
             ~project
             ~pkg
         in

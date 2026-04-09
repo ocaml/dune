@@ -80,9 +80,13 @@ Release-style builds should take a checked-in opam file as-is:
   > EOF
 
   $ dune build @install 2>&1 | sed -n '1,3p'
+  File "test.opam", line 1, characters 0-0:
+  --- test.opam
+  +++ test.opam.generated
+  [1]
 
   $ dune build -p test @install _build/install/default/lib/test/opam
   $ grep '^# SOURCE COPY$' _build/install/default/lib/test/opam
-  [1]
+  # SOURCE COPY
   $ grep '^# SOURCE COPY$' test.opam
-  [1]
+  # SOURCE COPY

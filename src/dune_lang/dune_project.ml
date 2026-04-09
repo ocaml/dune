@@ -798,6 +798,7 @@ let including_hidden_packages t = t.including_hidden_packages
 let make_packages
       ~opam_packages
       ~dir
+      ~dune_version
       ~generate_opam_files
       ~opam_file_location
       packages
@@ -853,7 +854,11 @@ let make_packages
   | Ok packages ->
     let generated_opam_file =
       if generate_opam_files
-      then fun p -> Package.set_has_opam_file p Package.Generated
+      then (
+        let has_opam_file =
+          if dune_version >= (3, 23) then Package.Generated_with_diff else Generated
+        in
+        fun p -> Package.set_has_opam_file p has_opam_file)
       else Fun.id
     in
     (match opam_file_location with
@@ -885,6 +890,7 @@ let parse_packages
       name
       ~info
       ~dir
+      ~dune_version
       ~version
       packages
       opam_file_location
@@ -905,6 +911,7 @@ let parse_packages
        (make_packages
           ~opam_packages
           ~dir
+          ~dune_version
           ~generate_opam_files
           ~opam_file_location
           packages
@@ -1009,6 +1016,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
         name
         ~info
         ~dir
+        ~dune_version:lang.version
         ~version
         packages
         opam_file_location

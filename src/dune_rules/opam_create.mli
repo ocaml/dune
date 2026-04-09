@@ -5,6 +5,9 @@ open Import
 (** Given an opam filename, returns the filename of the template file *)
 val template_file : Path.t -> Path.t
 
+(** Path to the generated opam file in the build directory. *)
+val build_path : build_dir:Path.Build.t -> Package.t -> Path.Build.t
+
 (** Generate the contents of an opam file. [template] is the filename and
     contents of the template file. *)
 val generate : Dune_project.t -> Package.t -> template:(Path.t * string) option -> string

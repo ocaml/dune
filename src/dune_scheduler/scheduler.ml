@@ -65,7 +65,7 @@ type t =
   ; events : Event.Queue.t
   ; process_watcher : Process_watcher.t
   ; file_watcher : File_watcher.t option
-  ; fs_syncs : unit Fiber.Ivar.t File_watcher.Sync_id.Table.t
+  ; fs_syncs : (File_watcher.Sync_id.t, unit Fiber.Ivar.t) Table.t
   ; mutable build_inputs_changed : Trigger.t
   ; mutable cancel : Fiber.Cancel.t
   ; thread_pool : Thread_pool.t Lazy.t
@@ -219,7 +219,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
     ; config
     ; handler
     ; file_watcher
-    ; fs_syncs = File_watcher.Sync_id.Table.create 64
+    ; fs_syncs = Table.create (module File_watcher.Sync_id) 64
     ; build_inputs_changed = Trigger.create ()
     ; alarm_clock = lazy (Alarm_clock.create events (Time.Span.of_secs 0.1))
     ; cancel
@@ -273,10 +273,10 @@ end = struct
       Event.Queue.send_file_watcher_events t.events events;
       iter t
     | File_system_sync id ->
-      (match File_watcher.Sync_id.Table.find t.fs_syncs id with
+      (match Table.find t.fs_syncs id with
        | None -> iter t
        | Some ivar ->
-         File_watcher.Sync_id.Table.remove t.fs_syncs id;
+         Table.remove t.fs_syncs id;
          [ Fill (ivar, ()) ])
     | Build_inputs_changed events -> build_input_change t events
     | File_system_watcher_terminated ->
@@ -385,7 +385,7 @@ let flush_file_watcher t =
   | Some file_watcher ->
     let ivar = Fiber.Ivar.create () in
     let id = File_watcher.emit_sync file_watcher in
-    File_watcher.Sync_id.Table.set t.fs_syncs id ivar;
+    Table.set t.fs_syncs id ivar;
     Fiber.Ivar.read ivar
 ;;
 

@@ -28,6 +28,5 @@ val examine_targets_and_store
   -> loc:Loc.t
   -> rule_digest:Digest.t
   -> should_remove_write_permissions_on_generated_files:bool
-  -> action:(unit -> User_message.Style.t Pp.t)
   -> produced_targets:unit Targets.Produced.t
   -> Digest.t Targets.Produced.t Fiber.t

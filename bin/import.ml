@@ -14,7 +14,6 @@ include struct
   module Action_builder = Dune_rules.Action_builder
   module Action = Action
   module Dep = Dep
-  module Action_to_sh = Action_to_sh
   module Dpath = Dpath
   module Findlib = Dune_rules.Findlib
   module Diff_promotion = Diff_promotion

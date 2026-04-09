@@ -409,7 +409,9 @@ process by using the ``rocq.extraction`` stanza:
 - ``(extracted_files <filenames>)`` is the list of files Dune expects the
   extraction to produce. Each entry is a filename with its extension, for 
   example OCaml (``.ml``, ``.mli``), Haskell (``.hs``), or Scheme (``.scm``).
-  (Appeared in :ref:`Rocq lang 0.13<rocq-lang>`)
+
+  .. versionadded:: 3.23
+
 
 .. note::
 

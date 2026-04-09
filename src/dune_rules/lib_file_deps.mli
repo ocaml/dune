@@ -35,3 +35,18 @@ val eval
   -> paths:path_specification
   -> Dep_conf.t list
   -> Path.Set.t Memo.t
+
+module Lib_index : sig
+  type entry = Lib.t * Module.t option
+  type t
+
+  val empty : t
+
+  val create
+    :  Super_context.t
+    -> Lib.t list
+    -> for_:Compilation_mode.t
+    -> t Resolve.Memo.t
+
+  val filter_libs : t -> referenced_modules:Module_name.Set.t -> entry list
+end

@@ -114,3 +114,86 @@ let eval ~loc ~expander ~paths:path_spec (deps : Dep_conf.t list) =
        | Some _ -> raise_disallowed_external_path ~loc lib_name path));
   paths
 ;;
+
+module Lib_index = struct
+  type entry = Lib.t * Module.t option
+
+  type t =
+    { by_module_name : entry list Module_name.Map.t
+    ; unresolved : Lib.t list
+    }
+
+  let module_names_of_lib _sctx (lib : Lib.t) ~for_
+    : (Module_name.t * Module.t option) list option Resolve.Memo.t
+    =
+    let open Resolve.Memo.O in
+    let* main_module = Lib.main_module_name lib in
+    match main_module with
+    | Some name -> Resolve.Memo.return (Some [ name, None ])
+    | None ->
+      let info = Lib.info lib in
+      (match Lib_info.entry_modules info ~for_ with
+       | Lib_info.Source.External (Ok names) ->
+         Resolve.Memo.return (Some (List.map names ~f:(fun n -> n, None)))
+       | Lib_info.Source.External (Error _) -> Resolve.Memo.return None
+       | Lib_info.Source.Local ->
+         Resolve.Memo.lift_memo
+           (let open Memo.O in
+            let+ modules_opt = Dir_contents.modules_of_lib _sctx lib ~for_ in
+            match modules_opt with
+            | None -> None
+            | Some modules_with_vlib ->
+              let modules = Modules.With_vlib.drop_vlib modules_with_vlib in
+              let entry_modules = Modules.entry_modules modules in
+              Some (List.map entry_modules ~f:(fun m -> Module.name m, Some m))))
+  ;;
+
+  let empty = { by_module_name = Module_name.Map.empty; unresolved = [] }
+
+  let create sctx (libs : Lib.t list) ~for_ : t Resolve.Memo.t =
+    let open Resolve.Memo.O in
+    let+ entries =
+      Resolve.Memo.List.map libs ~f:(fun lib ->
+        let+ names_opt = module_names_of_lib sctx lib ~for_ in
+        lib, names_opt)
+    in
+    let by_module_name, unresolved =
+      List.fold_left
+        entries
+        ~init:(Module_name.Map.empty, [])
+        ~f:(fun (by_name, unresolved) (lib, names_opt) ->
+          match names_opt with
+          | None -> by_name, lib :: unresolved
+          | Some named_modules ->
+            let by_name =
+              List.fold_left named_modules ~init:by_name ~f:(fun acc (name, mod_opt) ->
+                Module_name.Map.update acc name ~f:(function
+                  | None -> Some [ lib, mod_opt ]
+                  | Some entries -> Some ((lib, mod_opt) :: entries)))
+            in
+            by_name, unresolved)
+    in
+    { by_module_name; unresolved }
+  ;;
+
+  let filter_libs (index : t) ~(referenced_modules : Module_name.Set.t) : entry list =
+    let from_refs =
+      Module_name.Set.fold referenced_modules ~init:[] ~f:(fun name acc ->
+        match Module_name.Map.find index.by_module_name name with
+        | None -> acc
+        | Some entries -> List.rev_append entries acc)
+    in
+    let unresolved = List.map index.unresolved ~f:(fun lib -> lib, None) in
+    let compare (a_lib, a_mod) (b_lib, b_mod) =
+      match Lib.compare a_lib b_lib with
+      | (Lt | Gt) as c -> c
+      | Eq ->
+        (match a_mod, b_mod with
+         | None, None -> Eq
+         | None, Some _ -> Lt
+         | Some _, None -> Gt
+         | Some a, Some b -> Module_name.compare (Module.name a) (Module.name b))
+    in
+    List.rev_append unresolved from_refs |> List.sort_uniq ~compare
+  ;;
+end

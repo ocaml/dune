@@ -140,10 +140,10 @@ let process_raw_events t events =
      | Some (_, fn) -> Moved (Away fn) :: actions)
 ;;
 
-let pump_events t ~spawn_thread =
+let pump_events t =
   let fd = t.fd in
   let (_ : Thread.t) =
-    spawn_thread (fun () ->
+    Thread0.spawn ~name:"file-watcher" (fun () ->
       while true do
         match UnixLabels.select ~read:[ fd ] ~write:[] ~except:[] ~timeout:(-1.) with
         | _, _, _ ->
@@ -155,7 +155,7 @@ let pump_events t ~spawn_thread =
   ()
 ;;
 
-let create ~spawn_thread ~modify_event_selector ~send_emit_events_job_to_scheduler =
+let create ~modify_event_selector ~send_emit_events_job_to_scheduler =
   let fd = Inotify.create () in
   let watch_table = Table.create (module Inotify_watch) 10 in
   let modify_selector : Inotify.selector =
@@ -172,6 +172,6 @@ let create ~spawn_thread ~modify_event_selector ~send_emit_events_job_to_schedul
     ; send_emit_events_job_to_scheduler
     }
   in
-  pump_events t ~spawn_thread;
+  pump_events t;
   t
 ;;

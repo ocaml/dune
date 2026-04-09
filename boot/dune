@@ -31,6 +31,8 @@
  (action
   (diff libs.ml libs.ml.gen)))
 
+(ocamllex pps)
+
 (executable
  (name duneboot)
  (modules :standard \ configure bootstrap)

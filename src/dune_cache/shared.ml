@@ -470,11 +470,11 @@ module File_digest = struct
      This is temporary since [Cached_digest] is going to be limited source
      files *)
 
-  let refresh_async ~allow_dirs stats path =
+  let refresh_async stats path =
     let path = Path.build path in
     let open Fiber.O in
     Digest.Stats_for_digest.of_unix_stats stats
-    |> Digest.path_with_stats_async ~allow_dirs path
+    |> Digest.path_with_stats_async path
     >>| function
     | Ok digest -> Ok digest
     | Error Unexpected_kind -> Error (Error.Unexpected_kind stats.st_kind)
@@ -482,9 +482,9 @@ module File_digest = struct
     | Error (Unix_error other_error) -> Error (Unix_error other_error)
   ;;
 
-  let refresh_without_removing_write_permissions_async ~allow_dirs path =
+  let refresh_without_removing_write_permissions_async path =
     match Unix.stat (Path.Build.to_string path) with
-    | stats -> refresh_async stats ~allow_dirs path
+    | stats -> refresh_async stats path
     | exception exn ->
       Fiber.return
         (match exn with
@@ -497,7 +497,7 @@ module File_digest = struct
          | exn -> Error (Digest_result.Error.of_exn exn))
   ;;
 
-  let refresh_and_remove_write_permissions_async ~allow_dirs path =
+  let refresh_and_remove_write_permissions_async path =
     let open Digest_result.Error in
     match Unix.lstat (Path.Build.to_string path) with
     | exception Unix.Unix_error (ENOENT, _, _) -> Fiber.return (Error No_such_file)
@@ -506,26 +506,25 @@ module File_digest = struct
       (match stats.st_kind with
        | S_LNK ->
          (match Unix.stat (Path.Build.to_string path) with
-          | stats -> refresh_async stats ~allow_dirs:false path
+          | stats -> refresh_async stats path
           | exception Unix.Unix_error (ENOENT, _, _) ->
             Fiber.return (Error Broken_symlink)
           | exception exn -> Fiber.return (Error (Digest_result.Error.of_exn exn)))
        | S_REG ->
          let perm = Permissions.remove Permissions.write stats.st_perm in
          (match Unix.chmod (Path.Build.to_string path) perm with
-          | () -> refresh_async ~allow_dirs:false { stats with st_perm = perm } path
+          | () -> refresh_async { stats with st_perm = perm } path
           | exception exn -> Fiber.return (Error (Digest_result.Error.of_exn exn)))
        | _ ->
          (* CR-someday amokhov: Shall we proceed if [stats.st_kind = S_DIR]?
           What about stranger kinds like [S_SOCK]? *)
-         refresh_async ~allow_dirs stats path)
+         refresh_async stats path)
   ;;
 
-  let refresh ~allow_dirs ~remove_write_permissions path =
+  let refresh ~remove_write_permissions path =
     (if remove_write_permissions
      then refresh_and_remove_write_permissions_async
      else refresh_without_removing_write_permissions_async)
-      ~allow_dirs
       path
   ;;
 end
@@ -545,7 +544,6 @@ let compute_target_digests_or_raise_error
        the cache will remove write permission because of hardlink sharing
        anyway, so always removing them enables to catch mistakes earlier. *)
     File_digest.refresh
-      ~allow_dirs:true
       ~remove_write_permissions:should_remove_write_permissions_on_generated_files
   in
   Targets.Produced.map_with_errors_fiber ~f:compute_digest produced_targets

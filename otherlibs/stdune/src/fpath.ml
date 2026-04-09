@@ -274,6 +274,7 @@ let default ~dir:_ _ acc = acc
 let traverse
       ~dir
       ~init
+      ?(sorted = false)
       ?(on_file = default)
       ?(on_dir = default)
       ?(on_other = `Raise)
@@ -323,6 +324,9 @@ let traverse
          let acc = on_error ~dir e acc in
          loop root dirs acc
        | Ok entries ->
+         let entries =
+           if sorted then List.sort entries ~compare:Poly.compare else entries
+         in
          let stack, acc =
            List.fold_left entries ~init:(dirs, acc) ~f:(fun (stack, acc) (fname, kind) ->
              match (kind : Unix.file_kind) with

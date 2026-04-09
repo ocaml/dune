@@ -86,24 +86,16 @@ end
     - If it's a regular file, the resulting digest includes the file's content
       as well as the its executable permissions bit.
 
-    - If it's a directory and [allow_dirs = true], the function computes the
-      digest of all contained filename/digest pairs, recursively.
-
     - Otherwise, the function returns [Unexpected_kind].
 
     Note that this interface is prone to races: the provided [Stats_for_digest]
     may get stale, so [path_with_stats] may return [Unix_error (ENOENT, _, _)]
     even though you've just successfully run [Path.stat] on it. The call sites
     are expected to gracefully handle such races. *)
-val path_with_stats
-  :  allow_dirs:bool
-  -> Path.t
-  -> Stats_for_digest.t
-  -> (t, Path_digest_error.t) result
+val path_with_stats : Path.t -> Stats_for_digest.t -> (t, Path_digest_error.t) result
 
 val path_with_stats_async
-  :  allow_dirs:bool
-  -> Path.t
+  :  Path.t
   -> Stats_for_digest.t
   -> (t, Path_digest_error.t) result Fiber.t
 

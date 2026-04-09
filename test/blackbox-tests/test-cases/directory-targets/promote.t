@@ -65,10 +65,14 @@ Promoting a badly specified directory target gives a weird error:
   > EOF
 
   $ dune build
-  Error: Is a directory
-  -> required by _build/default/blah-blah
-  -> required by alias all
-  -> required by alias default
+  File "dune", lines 1-5, characters 0-104:
+  1 | (rule
+  2 |  (targets blah-blah)
+  3 |  (deps (sandbox always))
+  4 |  (mode promote)
+  5 |  (action (bash "mkdir %{targets}")))
+  Error: Error trying to read targets after a rule was run:
+  - blah-blah: Unexpected file kind "S_DIR" (directory)
   [1]
 
 Test error message for (promote (into <dir>)) if <dir> is missing.

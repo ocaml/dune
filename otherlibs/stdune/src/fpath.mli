@@ -65,6 +65,7 @@ val is_root : string -> bool
 val traverse
   :  dir:string
   -> init:'acc
+  -> ?sorted:bool
   -> ?on_file:(dir:string -> Filename.t -> 'acc -> 'acc)
   -> ?on_dir:(dir:string -> Filename.t -> 'acc -> 'acc)
   -> ?on_other:

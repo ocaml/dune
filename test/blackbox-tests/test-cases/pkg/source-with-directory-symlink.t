@@ -26,11 +26,12 @@ CR-someday alizter: This fails because directory symlinks are not supported.
 We could potentially resolve them during the copy.
 
   $ build_pkg foo 2>&1 | sanitize_pkg_digest foo.0.0.1
-  Error: Is a directory
-  -> required by
-     _build/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/source/link_to_dir
-  -> required by
-     _build/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/target
+  File "_build/_private/default/.lock/dune.lock/foo.pkg", line 4, characters 7-150:
+  4 |   (url file:///home/rgrinberg/github/ocaml/dune/_build/.sandbox/637033f490b48c23eab3803303024a44/default/test/blackbox-tests/test-cases/pkg/_src_local)))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: File unavailable:
+  $TESTCASE_ROOT/_src_local/link_to_dir
+  Unexpected file kind "S_DIR" (directory)
   [1]
 
 Only the real directory was partially copied:

@@ -157,7 +157,7 @@ let content_digest t =
   match t.source with
   | Repo repo ->
     Rev_store.At_rev.rev repo |> Rev_store.Object.to_hex |> Dune_digest.string
-  | Directory path -> Path_digest.digest_with_lstat path
+  | Directory path -> Path_digest.digest_with_stat path
 ;;
 
 let load_opam_package_from_dir ~(dir : Path.t) package =

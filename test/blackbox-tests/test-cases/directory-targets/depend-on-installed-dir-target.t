@@ -49,7 +49,17 @@ Test installed directory targets may be depended on
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app hello.txt
   Entering directory 'app'
+  File "dune", lines 1-4, characters 0-118:
+  1 | (rule
+  2 |  (target hello.txt)
+  3 |  (deps %{lib:foo:some_dir})
+  4 |  (action (system "cp %{deps}/inside-dir-target.txt %{target}")))
+  Error: File unavailable:
+  $TESTCASE_ROOT/prefix/lib/foo/some_dir
+  Unexpected file kind "S_DIR" (directory)
   Leaving directory 'app'
+  [1]
 
   $ cat app/_build/default/hello.txt
-  hello from file inside dir target
+  cat: app/_build/default/hello.txt: No such file or directory
+  [1]

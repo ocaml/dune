@@ -7,13 +7,17 @@ on:
   push:
     branches:
         - main
+    paths:
+        - 'opam/*.opam'
+  pull_request:
+    paths:
+      - 'opam/*.opam'
   workflow_dispatch:
 
 jobs:
-  discover-packages:
+  packaging-check:
     runs-on: ubuntu-latest
-    outputs:
-      packages: ${{ steps.discover.outputs.packages }}
+
     steps:
       - uses: actions/checkout@v6
 
@@ -27,20 +31,9 @@ jobs:
             find ./opam -maxdepth 1 -name '*.opam' -printf '%f\n' \
             | sed 's/\.opam$//' \
             | sort \
-            | jq -R -s -c 'split("\n")[:-1]'
+            | jq -R -s -r 'split("\n")[:-1] | join(" ")'
           )
           echo "packages=$packages" >> "$GITHUB_OUTPUT"
-
-  packaging-check:
-    needs: discover-packages
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJson(needs.discover-packages.outputs.packages) }}
-
-    steps:
-      - uses: actions/checkout@v6
 
       - uses: ocaml/setup-ocaml@v3
         with:
@@ -49,7 +42,12 @@ jobs:
           opam-pin: false
 
       - name: Lint current package metadata
-        run: opam lint "./opam/${{ matrix.package }}.opam"
+        env:
+          packages: ${{ steps.discover.outputs.packages }}
+        run: |
+          for pkg in $packages; do
+            opam lint "./opam/$pkg.opam"
+          done
 
       - name: Pin all packages without installing
         # Some packages require their sibling packages to be at the same version.
@@ -58,9 +56,9 @@ jobs:
         # installing them. This way they are pulled in only if required by the package
         # being built, without influencing the solver for unrelated dependencies.
         env:
-          packages: ${{ needs.discover-packages.outputs.packages }}
+          packages: ${{ steps.discover.outputs.packages }}
         run: |
-          echo "$packages" | jq -r '.[]' | while read -r pkg; do
+          for pkg in $packages; do
             opam pin add "$pkg.dev" . -n
           done
 
@@ -70,13 +68,23 @@ jobs:
           echo "PATH=$PATH" >> $GITHUB_ENV
 
       - name: Install package
-        run: opam install ${{ matrix.package }} --with-test -y
+        env:
+          packages: ${{ steps.discover.outputs.packages }}
+        run: |
+          for pkg in $packages; do
+            opam install "$pkg.dev" --with-test -y
+            opam remove "$pkg.dev" --auto-remove -y
+          done
 
       - name: Lower bounds test
         # Verify that installation succeeds with lower-bound dependencies.
         # The package is removed first so that opam reinstalls it fresh,
         # resolving to the oldest compatible versions rather than reusing
         # what is already installed.
+        env:
+          packages: ${{ steps.discover.outputs.packages }}
         run: |
-          opam remove ${{ matrix.package }}
-          opam install --solver=builtin-0install "--criteria=+count[version-lag,solution]" ${{ matrix.package }}
+          for pkg in $packages; do
+            opam install --solver=builtin-0install "--criteria=+count[version-lag,solution]" "$pkg.dev" -y
+            opam remove "$pkg.dev" --auto-remove -y
+          done

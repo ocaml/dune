@@ -27,8 +27,9 @@
 ./test-cases/directory-targets/old-style/target.t/run.t
 ./test-cases/dirs-and-data-only-dirs-gh2584.t
 ./test-cases/double-echo.t/run.t
-./test-cases/dune-init/github7806.t
+./test-cases/dune-init/init-project-in-current-dir-github7806.t
 ./test-cases/dune_memory-and-the-universe.t/run.t
+./test-cases/empty-glob-deps-github534.t/run.t
 ./test-cases/enabled_if/eif-dune-describe.t
 ./test-cases/enabled_if/eif-ocaml_version_lte.t/run.t
 ./test-cases/exclude-missing-module.t/run.t
@@ -39,16 +40,10 @@
 ./test-cases/findlib/meta-gen.t/run.t
 ./test-cases/foreign-stubs/exes-with-c.t/run.t
 ./test-cases/foreign-stubs/fs-mode-dependent/fsmd-simple.t/run.t
-./test-cases/foreign-stubs/github1395.t/run.t
-./test-cases/foreign-stubs/github734.t/run.t
+./test-cases/foreign-stubs/relative-c-names-path-github734.t/run.t
+./test-cases/foreign-stubs/self-build-stubs-archive-github1395.t/run.t
 ./test-cases/formatting/empty-field.t
 ./test-cases/formatting/error-field.t
-./test-cases/github534.t/run.t
-./test-cases/github568.t/run.t
-./test-cases/github597.t/run.t
-./test-cases/github761.t/run.t
-./test-cases/github764.t/run.t
-./test-cases/github784.t/run.t
 ./test-cases/glob-deps-change.t/run.t
 ./test-cases/hyphenated-module-name-gh3180.t
 ./test-cases/ignored_subdirs/1.6.t/run.t
@@ -62,7 +57,7 @@
 ./test-cases/inline-tests/many-backends-choose.t
 ./test-cases/inline-tests/missing-backend.t
 ./test-cases/inline-tests/too-many-backends.t
-./test-cases/install-command/github2629.t
+./test-cases/install-command/install-dry-run-build-dir-github2629.t
 ./test-cases/install-dir/install-bindir.t
 ./test-cases/install-dir/install-datadir.t
 ./test-cases/install-dir/install-docdir.t
@@ -70,6 +65,7 @@
 ./test-cases/install-dir/install-mandir.t
 ./test-cases/install-dry-run.t/run.t
 ./test-cases/installable-dup-private-libs.t/run.t
+./test-cases/invalid-alias-name-slash-github761.t/run.t
 ./test-cases/jsoo/env.t
 ./test-cases/jsoo/sourcemap.t/run.t
 ./test-cases/jsoo/without_implem.t/run.t
@@ -80,9 +76,9 @@
 ./test-cases/menhir/env.t/run.t
 ./test-cases/merlin/dump-dot-merlin.t/run.t
 ./test-cases/merlin/future-syntax.t
-./test-cases/merlin/github20.t/run.t
-./test-cases/merlin/github759.t/run.t
+./test-cases/merlin/ignore-user-merlin-file-github759.t/run.t
 ./test-cases/merlin/include-subdirs-qualified.t
+./test-cases/merlin/merlin-conf-target-github20.t/run.t
 ./test-cases/merlin/suffix.t/run.t
 ./test-cases/missing-action-alias-hint-gh10685.t
 ./test-cases/mwe-dune-duplicate-dialect.t/duniverse/dune-configurator.2.7.1/test/dialects.t/run.t
@@ -93,6 +89,7 @@
 ./test-cases/odoc/new/github717-odoc-index.t/run.t
 ./test-cases/oversize-action-output-gh4194.t
 ./test-cases/package-dep.t/run.t
+./test-cases/package-filtered-runtest-aliases-github568.t/run.t
 ./test-cases/pform-space-error-message.t
 ./test-cases/ppx/9650-bytecode-rewriter.t/run.t
 ./test-cases/private-modules/accessible-via-public.t/run.t
@@ -104,6 +101,7 @@
 ./test-cases/quoting/quote-from-context.t/run.t
 ./test-cases/quoting/quotes-multi.t/run.t
 ./test-cases/redirections.t/run.t
+./test-cases/rule-without-targets-github784.t/run.t
 ./test-cases/runtest-control-sequences-gh5528.t
 ./test-cases/select-field/select-2-0-rules.t
 ./test-cases/select-field/select.t/run.t
@@ -114,7 +112,7 @@
 ./test-cases/stanzas/env/env-var-expansion/missing-default-in-blang.t/run.t
 ./test-cases/stanzas/env/env-var-expansion/nesting.t/run.t
 ./test-cases/stanzas/include-stanza/include-loop.t/run.t
-./test-cases/stanzas/install/github2123.t/run.t
+./test-cases/stanzas/install/pkgconfig-install-entry-github2123.t/run.t
 ./test-cases/stanzas/ocamllex/ocamllex-include-qualified.t
 ./test-cases/stanzas/ocamllex/ocamllex-include-unqualified.t
 ./test-cases/stanzas/tests/generated.t/run.t
@@ -122,6 +120,7 @@
 ./test-cases/stanzas/tests/plural.t/run.t
 ./test-cases/stanzas/tests/singular.t/run.t
 ./test-cases/stdlib/stdlib-flags.t
+./test-cases/symlink-scan-cycle-github764.t/run.t
 ./test-cases/targets-with-vars.t/run.t
 ./test-cases/test-build-if/version.t
 ./test-cases/tests-locks.t/tests/a.t
@@ -131,6 +130,7 @@
 ./test-cases/top-module/load-with-pp.t
 ./test-cases/unreadable-src.t
 ./test-cases/unreadable-target.t
+./test-cases/unwrapped-library-cma-build-github597.t/run.t
 ./test-cases/use-meta.t/run.t
 ./test-cases/utop/utop-default-implementation.t/run.t
 ./test-cases/utop/utop-simple.t/run.t

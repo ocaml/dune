@@ -14,5 +14,10 @@ Dune not recognizing it
   >  (action
   >   (run ./fakenpm.exe)))
   > EOF
+  dune: Permission denied
+  [1]
 
   $ dune build @fakenode
+  Error: Alias "fakenode" specified on the command line is empty.
+  It is not defined in . or any of its descendants.
+  [1]

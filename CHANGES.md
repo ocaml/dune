@@ -1,3 +1,12 @@
+3.22.2 (2026-04-10)
+-------------------
+
+### Fixed
+
+- Revert the change in behavior of `--diff-command` back to 3.21. Non-existent
+  files are now passed to this command instead of being replaced with /dev/null
+  (#14098, fixes 13891, @rgrinberg)
+
 3.22.1 (2026-04-01)
 -------------------
 

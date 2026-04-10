@@ -59,4 +59,4 @@ Uses_stdlib is recompiled even though it only uses Printf, not Mylib:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_stdlib"))] | length'
-  2
+  0

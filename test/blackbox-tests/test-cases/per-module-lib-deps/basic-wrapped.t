@@ -62,4 +62,4 @@ No_use_lib is recompiled even though it doesn't reference Mylib:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("No_use_lib"))] | length'
-  2
+  0

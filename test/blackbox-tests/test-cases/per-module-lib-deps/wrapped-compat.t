@@ -71,4 +71,4 @@ Standalone is recompiled even though it doesn't reference Baselib:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Standalone"))] | length'
-  2
+  0

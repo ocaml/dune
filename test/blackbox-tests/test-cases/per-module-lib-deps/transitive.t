@@ -77,4 +77,4 @@ Independent is recompiled even though it doesn't reference libA or libB:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Independent"))] | length'
-  2
+  0

@@ -84,7 +84,7 @@ uses_beta is recompiled even though it only references Beta, not Alpha:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("uses_beta"))] | length'
-  2
+  0
 
 Change only beta.mli:
 
@@ -101,4 +101,4 @@ uses_alpha is recompiled even though it only references Alpha, not Beta:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("uses_alpha"))] | length'
-  2
+  0

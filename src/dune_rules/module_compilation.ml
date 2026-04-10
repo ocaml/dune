@@ -313,7 +313,7 @@ let build_cm
    in
    (* Static deps — always present for all non-skipped modules. *)
    let lib_cm_deps_arg : _ Command.Args.t =
-     if skip_lib_deps
+     if skip_lib_deps || can_filter
      then Command.Args.empty
      else
        (let open Resolve.Memo.O in
@@ -366,7 +366,7 @@ let build_cm
                 Module.name (Modules.Sourced_module.to_module sm))
               |> Module_name.Set.of_list
             in
-            let+ referenced_modules =
+            let* referenced_modules =
               let open Action_builder.O in
               let* own_refs =
                 Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind ~for_ m
@@ -383,9 +383,24 @@ let build_cm
                 in
                 List.fold_left dep_refs ~init:own_refs ~f:Module_name.Set.union
               in
-              let+ flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
+              let* flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
               let from_open_flags = Ocaml_flags.extract_open_module_names flags in
-              Module_name.Set.union from_ocamldep from_open_flags
+              let referenced_modules =
+                Module_name.Set.union from_ocamldep from_open_flags
+              in
+              let* from_parameters =
+                Resolve.Memo.read (Compilation_context.parameters cctx)
+                >>| Module_name.Set.of_list
+              in
+              let+ from_argument_for =
+                let impl = Compilation_context.implements cctx in
+                Resolve.Memo.read @@ Virtual_rules.implements_parameter impl m
+                >>| function
+                | None -> Module_name.Set.empty
+                | Some name -> Module_name.Set.singleton name
+              in
+              Module_name.Set.union_all
+                [ referenced_modules; from_parameters; from_argument_for ]
             in
             let references_root_module =
               Module_name.Set.exists referenced_modules ~f:(fun name ->
@@ -397,13 +412,40 @@ let build_cm
               Module_name.Set.filter referenced_modules ~f:(fun name ->
                 Option.is_none (Modules.With_vlib.find stanza_modules name))
             in
-            let used_entries =
+            let+ used_entries =
               if references_root_module
-              then all_entries
-              else
-                Lib_file_deps.Lib_index.filter_libs
-                  lib_index
-                  ~referenced_modules:external_modules
+              then Action_builder.return all_entries
+              else (
+                let filtered =
+                  Lib_file_deps.Lib_index.filter_libs
+                    lib_index
+                    ~referenced_modules:external_modules
+                in
+                (* Expand: also include direct library deps of each selected
+                   library. This handles re-exports (module Impl = Impl) where
+                   the consumer references Alias but transitively depends on
+                   Impl through the alias. *)
+                let selected_libs = List.map filtered ~f:(fun (lib, _) -> lib) in
+                (* Only expand requires for wrapped libraries (mod_opt = None)
+                   since they use glob deps and may re-export dependencies. *)
+                let wrapped_selected =
+                  List.filter_map filtered ~f:(fun (lib, mod_opt) ->
+                    match mod_opt with
+                    | None -> Some lib
+                    | Some _ -> None)
+                in
+                let+ extra_libs =
+                  Action_builder.List.concat_map wrapped_selected ~f:(fun lib ->
+                    Resolve.Memo.read (Lib.requires lib ~for_))
+                in
+                let already_selected = Lib.Set.of_list selected_libs in
+                let extra_entries =
+                  List.filter_map extra_libs ~f:(fun lib ->
+                    if Lib.Set.mem already_selected lib
+                    then None
+                    else List.find all_entries ~f:(fun (l, _) -> Lib.equal l lib))
+                in
+                filtered @ extra_entries)
             in
             (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind used_entries)
    in

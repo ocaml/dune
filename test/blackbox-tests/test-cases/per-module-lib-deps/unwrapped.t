@@ -77,7 +77,7 @@ Uses_utils is recompiled even though it only references Utils, not Helper:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_utils"))] | length'
-  2
+  0
 
 Change only utils.mli:
 
@@ -94,4 +94,4 @@ Uses_helper is recompiled even though it only references Helper, not Utils:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_helper"))] | length'
-  2
+  0

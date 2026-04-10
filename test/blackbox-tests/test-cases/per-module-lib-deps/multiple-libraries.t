@@ -82,7 +82,7 @@ Uses_other is recompiled even though it only uses Otherlib, not Mylib:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_other"))] | length'
-  2
+  0
 
 Change only otherlib's interface:
 
@@ -99,4 +99,4 @@ Uses_lib is recompiled even though it only uses Mylib, not Otherlib:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_lib"))] | length'
-  2
+  0

@@ -1,3 +1,5 @@
+Expands library artifact variables in alias dependencies.
+
   $ echo >dune <<EOF
   > (alias
   >  (name default)

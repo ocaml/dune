@@ -1,3 +1,5 @@
+Tests user flags on stdlib stanzas.
+
   $ cat > dune-project << EOF
   > (lang dune 3.7)
   > (using experimental_building_ocaml_compiler_with_dune 0.1)

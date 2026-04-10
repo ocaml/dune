@@ -1,3 +1,5 @@
+Promotes output from generated `(tests ...)` stanzas.
+
   $ dune runtest
   File "generated.expected", line 1, characters 0-0:
   --- generated.expected

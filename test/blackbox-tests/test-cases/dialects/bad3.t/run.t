@@ -1,3 +1,5 @@
+Rejects dialect extensions that start with a dot.
+
   $ dune build
   File "dune-project", line 5, characters 28-32:
   5 |  (implementation (extension .foo))

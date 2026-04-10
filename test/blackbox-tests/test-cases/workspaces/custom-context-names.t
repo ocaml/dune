@@ -1,3 +1,5 @@
+Validates custom workspace context names.
+
 
   $ cat > dune-workspace << EOF
   > (lang dune 3.13)

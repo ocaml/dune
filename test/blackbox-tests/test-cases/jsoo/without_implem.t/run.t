@@ -1,3 +1,5 @@
+Tests JSOO rules for modules without implementations.
+
   $ cat > dune-project <<EOF
   > (lang dune 3.21)
   > EOF

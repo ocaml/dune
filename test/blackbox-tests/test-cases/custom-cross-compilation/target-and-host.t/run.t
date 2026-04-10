@@ -1,3 +1,5 @@
+Rejects contexts that set both targets and host.
+
   $ env OCAMLFIND_CONF=$PWD/etc/findlib.conf dune build file @install
   File "dune-workspace", lines 5-8, characters 9-65:
   5 | (context (default

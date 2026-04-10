@@ -1,3 +1,5 @@
+Compares ordinary strings and block strings in actions, including raw escapes.
+
   $ dune build @old
   ARFLAGS=rsc
   CXX=g++

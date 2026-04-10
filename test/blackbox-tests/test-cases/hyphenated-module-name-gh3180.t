@@ -1,3 +1,5 @@
+Tests hyphenated module name.
+
   $ echo "(lang dune 2.3)" > dune-project
   $ cat >dune <<EOF
   > (executable (name foo) (modules foo foo-bar))

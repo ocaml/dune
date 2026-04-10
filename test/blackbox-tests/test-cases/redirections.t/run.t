@@ -1,3 +1,5 @@
+Traces stdout, stderr, and combined-output redirections.
+
   $ dune runtest
 
   $ dune trace cat | jq -c '

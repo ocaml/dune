@@ -1,3 +1,5 @@
+Builds JavaScript sourcemaps and allows requesting the `.map` target directly.
+
 
   $ dune build bin/main.bc.js
 

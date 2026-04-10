@@ -1,3 +1,5 @@
+Rejects switch-derived context names that come from absolute paths.
+
   $ cat > dune-project << EOF
   > (lang dune 3.0)
   > EOF

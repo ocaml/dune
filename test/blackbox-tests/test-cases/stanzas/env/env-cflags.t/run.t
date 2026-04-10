@@ -1,3 +1,5 @@
+Applies `c_flags` and `cxx_flags` from nested `env` stanzas.
+
   $ printenv() {
   > dune printenv --profile default --field c_flags --field cxx_flags $@
   > }
@@ -25,4 +27,3 @@
 
   $ dune exec --profile default ./run/bar.exe
   TEST_CPP defined.
-

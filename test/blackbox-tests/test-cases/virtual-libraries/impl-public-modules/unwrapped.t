@@ -1,3 +1,5 @@
+Tests unwrapped public modules in virtual library implementations.
+
   $ make_dune_project 3.3
 
   $ mkdir vlib impl

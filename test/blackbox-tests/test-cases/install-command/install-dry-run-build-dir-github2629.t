@@ -1,3 +1,5 @@
+Uses `DUNE_BUILD_DIR` in `dune install --dry-run` output.
+
   $ touch foo.ml
   $ cat > dune-project<<EOF
   > (lang dune 1.1)

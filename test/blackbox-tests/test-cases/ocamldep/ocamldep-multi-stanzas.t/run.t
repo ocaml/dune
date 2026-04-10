@@ -1,3 +1,5 @@
+Reports modules that are claimed by multiple stanzas.
+
   $ dune exec ./test.exe --debug-dep
   File "dune", line 1, characters 0-0:
   Error: Module "Lib" is used in several stanzas:

@@ -1,3 +1,5 @@
+Rejects unnamed executables in Dune 1.0 syntax.
+
   $ dune build 
   File "dune", line 1, characters 0-36:
   1 | (executables (public_names foo bar))

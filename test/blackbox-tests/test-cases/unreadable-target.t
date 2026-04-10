@@ -1,3 +1,5 @@
+Reports unreadable or broken targets after a rule runs.
+
   $ cat > dune-project <<EOF
   > (lang dune 2.9)
   > EOF

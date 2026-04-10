@@ -1,3 +1,5 @@
+Reports module dependency cycles inside executables.
+
   $ cat > dune-project <<EOF
   > (lang dune 3.20)
   > EOF
@@ -29,5 +31,4 @@
   -> required by alias all
   -> required by alias default
   [1]
-
 

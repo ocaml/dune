@@ -1,3 +1,5 @@
+Reports wrapped-transition compatibility modules as deprecated.
+
   $ dune build 2>&1 | grep -v ocamlc
   File "fooexe.ml", line 3, characters 0-3:
   3 | Bar.run ();;

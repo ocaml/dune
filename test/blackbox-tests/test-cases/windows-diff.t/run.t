@@ -1,3 +1,5 @@
+Tests diff and promotion behavior on Windows-style files.
+
   $ echo 'Hello, world!' > hello.expected
 
   $ dune runtest

@@ -1,3 +1,5 @@
+Builds executables with C stubs and rejects pure bytecode ones.
+
   $ dune exec ./aa.exe
   A
   $ dune exec ./bb.exe

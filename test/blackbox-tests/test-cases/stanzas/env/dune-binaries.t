@@ -1,3 +1,5 @@
+Adds custom binaries through the `env` stanza.
+
   $ make_dune_project 3.21
 
   $ cat >dune <<EOF

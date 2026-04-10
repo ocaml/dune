@@ -1,3 +1,5 @@
+Applies profile-specific `link_flags` from the `env` stanza.
+
   $ cat >> dune-project <<EOF
   > (lang dune 3.0)
   > EOF

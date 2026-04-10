@@ -1,3 +1,5 @@
+Shows the files that `dune install --dry-run` would copy.
+
   $ ocamlc_where="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
   $ dune build @install

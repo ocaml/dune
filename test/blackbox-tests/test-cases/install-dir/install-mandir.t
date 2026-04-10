@@ -1,3 +1,5 @@
+Honors `--mandir` for installed manpages.
+
   $ echo "(lang dune 2.0)" > dune-project
   $ touch foo.opam manfile
   $ cat >dune <<EOF

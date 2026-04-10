@@ -1,3 +1,5 @@
+Rejects rules that declare no targets.
+
   $ dune build
   File "dune", line 1, characters 0-28:
   1 | (rule (run %{bin:echo} foo))

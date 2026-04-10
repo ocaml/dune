@@ -1,3 +1,5 @@
+Truncates oversized action output instead of crashing.
+
   $ cat > dune-project << EOF
   > (lang dune 3.0)
   > EOF
@@ -17,8 +19,5 @@
   >   done
   > EOF
 
-  $ dune runtest 2>&1 | head -n 5 |grep -v 'fn ='
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("read_file: file is larger than Sys.max_string_length",
-  Raised at Stdune__Code_error.raise in file
+  $ dune runtest 2>&1 | grep -v '^$' | head -n 5 | grep -v 'fn ='
+  ...TRUNCATED BY DUNE...

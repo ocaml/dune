@@ -1,3 +1,5 @@
+Tests old-style directory targets as explicit targets.
+
   $ dune build && cat _build/default/dir/*
   bar contents
   foo contents

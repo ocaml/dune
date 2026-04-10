@@ -1,4 +1,4 @@
-The @check alias should detect dependency cycles
+The @check alias should detect dependency cycles.
 
   $ make_dune_project 3.2
 

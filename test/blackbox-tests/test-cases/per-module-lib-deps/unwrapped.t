@@ -73,11 +73,12 @@ Change only helper.mli:
   > let new_helper s = s ^ "!"
   > EOF
 
-Uses_utils is recompiled even though it only references Utils, not Helper:
+Uses_utils is recompiled because unwrapped libraries use glob deps (per-module
+filtering within unwrapped libraries is not yet supported):
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_utils"))] | length'
-  2
+  1
 
 Change only utils.mli:
 
@@ -90,8 +91,8 @@ Change only utils.mli:
   > let new_utils s = s ^ "?"
   > EOF
 
-Uses_helper is recompiled even though it only references Helper, not Utils:
+Uses_helper is recompiled because unwrapped libraries use glob deps:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_helper"))] | length'
-  2
+  1

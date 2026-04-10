@@ -5,33 +5,28 @@ let run_build_system ~request =
     Build_system.run (fun () -> Memo.Lazy.force toplevel)
   in
   let open Fiber.O in
-  Fiber.finalize
-    (fun () ->
-       (* CR-someday amokhov: Currently we invalidate cached timestamps on every
-         incremental rebuild. This conservative approach helps us to work around
-         some [mtime] resolution problems (e.g. on Mac OS). It would be nice to
-         find a way to avoid doing this. In fact, this may be unnecessary even
-         for the initial build if we assume that the user does not modify files
-         in the [_build] directory. For now, it's unclear if optimising this is
-         worth the effort. *)
-       Dune_engine.Fs_memo.invalidate_cached_timestamps ();
-       let* setup = Util.setup () in
-       let request = Action_builder.of_memo setup |> Action_builder.bind ~f:request in
-       (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
-          time the build system is rerun? *)
-       (* This top-level node is used for traversing the whole Memo graph. *)
-       let _toplevel_cell, toplevel =
-         Memo.Lazy.Expert.create ~name:"toplevel" (fun () ->
-           let open Memo.O in
-           let+ (), (_ : Dep.Fact.t Dep.Map.t) =
-             Action_builder.evaluate_and_collect_facts request
-           in
-           ())
-       in
-       run ~toplevel)
-    ~finally:(fun () ->
-      Hooks.End_of_build.run ();
-      Fiber.return ())
+  (* CR-someday amokhov: Currently we invalidate cached timestamps on every
+     incremental rebuild. This conservative approach helps us to work around
+     some [mtime] resolution problems (e.g. on Mac OS). It would be nice to
+     find a way to avoid doing this. In fact, this may be unnecessary even
+     for the initial build if we assume that the user does not modify files
+     in the [_build] directory. For now, it's unclear if optimising this is
+     worth the effort. *)
+  Dune_engine.Fs_memo.invalidate_cached_timestamps ();
+  let* setup = Util.setup () in
+  let request = Action_builder.of_memo setup |> Action_builder.bind ~f:request in
+  (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
+     time the build system is rerun? *)
+  (* This top-level node is used for traversing the whole Memo graph. *)
+  let _toplevel_cell, toplevel =
+    Memo.Lazy.Expert.create ~name:"toplevel" (fun () ->
+      let open Memo.O in
+      let+ (), (_ : Dep.Fact.t Dep.Map.t) =
+        Action_builder.evaluate_and_collect_facts request
+      in
+      ())
+  in
+  run ~toplevel
 ;;
 
 let poll_handling_rpc_build_requests ~(common : Common.t) =

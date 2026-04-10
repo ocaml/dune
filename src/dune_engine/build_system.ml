@@ -1202,11 +1202,26 @@ let handle_final_exns exns =
 ;;
 
 let run f =
+  let f =
+    (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
+       time the build system is rerun? *)
+    (* This top-level node is used for traversing the whole Memo graph. *)
+    let _toplevel_cell, toplevel = Memo.Lazy.Expert.create ~name:"toplevel" f in
+    fun () -> Memo.Lazy.force toplevel
+  in
   let finalize_diff_promotion () =
     protect ~f:Diff_promotion.finalize ~finally:Diff_promotion.clear_cache
   in
   let open Fiber.O in
   let f () =
+    (* CR-someday amokhov: Currently we invalidate cached timestamps on every
+       incremental rebuild. This conservative approach helps us to work around
+       some [mtime] resolution problems (e.g. on Mac OS). It would be nice to
+       find a way to avoid doing this. In fact, this may be unnecessary even
+       for the initial build if we assume that the user does not modify files
+       in the [_build] directory. For now, it's unclear if optimising this is
+       worth the effort. *)
+    Fs_memo.invalidate_cached_timestamps ();
     let* () = State.reset_progress () in
     let* () = State.reset_errors () in
     let* res =
@@ -1248,27 +1263,11 @@ let run_exn f =
 ;;
 
 let run_action_builder request =
-  let run ~(toplevel : unit Memo.Lazy.t) = run (fun () -> Memo.Lazy.force toplevel) in
-  (* CR-someday amokhov: Currently we invalidate cached timestamps on every
-     incremental rebuild. This conservative approach helps us to work around
-     some [mtime] resolution problems (e.g. on Mac OS). It would be nice to
-     find a way to avoid doing this. In fact, this may be unnecessary even
-     for the initial build if we assume that the user does not modify files
-     in the [_build] directory. For now, it's unclear if optimising this is
-     worth the effort. *)
-  Fs_memo.invalidate_cached_timestamps ();
-  (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
-     time the build system is rerun? *)
-  (* This top-level node is used for traversing the whole Memo graph. *)
-  let _toplevel_cell, toplevel =
-    Memo.Lazy.Expert.create ~name:"toplevel" (fun () ->
-      let open Memo.O in
-      let+ (), (_ : Dep.Fact.t Dep.Map.t) =
-        Action_builder.evaluate_and_collect_facts request
-      in
-      ())
-  in
-  run ~toplevel
+  run (fun () ->
+    let+ (), (_ : Dep.Fact.t Dep.Map.t) =
+      Action_builder.evaluate_and_collect_facts request
+    in
+    ())
 ;;
 
 let build_file p =

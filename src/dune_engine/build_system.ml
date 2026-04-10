@@ -160,11 +160,7 @@ module type Rec = sig
     -> Rule.Anonymous_action.t
     -> unit Memo.t
 
-  val execute_action_stdout
-    :  observing_facts:Dep.Facts.t
-    -> Rule.Anonymous_action.t
-    -> string Memo.t
-
+  val execute_action_stdout : Rule.Anonymous_action.t Action_builder.t -> string Memo.t
   val eval_pred : File_selector.t -> Filename_set.t Memo.t
 end
 
@@ -887,8 +883,9 @@ end = struct
     ()
   ;;
 
-  let execute_action_stdout ~observing_facts act =
-    execute_action_generic ~observing_facts act ~capture_stdout:true
+  let execute_action_stdout action =
+    let* action, observing_facts = Action_builder.evaluate_and_collect_facts action in
+    execute_action_generic ~observing_facts action ~capture_stdout:true
   ;;
 
   (* CR-soon amokhov: Instead of wrapping the result into a variant, [build_file_impl]

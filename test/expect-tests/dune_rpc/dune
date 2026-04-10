@@ -18,3 +18,13 @@
   ppx_inline_test.config)
  (preprocess
   (pps ppx_expect)))
+
+(rule
+ (with-stdout-to
+  digests.mli
+  (echo "")))
+
+(rule
+ (with-stdout-to
+  dune_rpc_tests.mli
+  (echo "")))

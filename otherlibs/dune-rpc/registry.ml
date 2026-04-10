@@ -169,7 +169,7 @@ struct
     let** (`Mtime mtime) = IO.stat dir in
     let skip =
       match t.last_mtime with
-      | Some last_mtime -> last_mtime >= mtime
+      | Some last_mtime -> last_mtime <> mtime
       | None ->
         t.last_mtime <- Some mtime;
         false

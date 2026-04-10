@@ -1,4 +1,4 @@
-name: Platform Reverse Dependencies Check for Prereleases
+name: Devtool Reverse Dependencies Check for Prereleases
 
 on:
   push:

@@ -133,12 +133,10 @@ let term : unit Term.t =
   let common, config = Common.init builder in
   Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
-  let open Fiber.O in
-  let* setup = Util.setup () in
   Build.build_memo_exn
   @@ fun () ->
   let open Memo.O in
-  let* setup = setup in
+  let* setup = Util.setup () in
   let super_context = Dune_rules.Main.find_scontext_exn setup ~name:context_name in
   let context = Super_context.context super_context in
   let* tests_data = Crawl.tests setup context in

@@ -51,11 +51,9 @@ let term =
   in
   let common, config = Common.init builder in
   Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
-    let open Fiber.O in
-    let* setup = Util.setup () in
     Build.build_memo_exn (fun () ->
       let open Memo.O in
-      let* setup = setup in
+      let* setup = Util.setup () in
       let sctx =
         Dune_engine.Context_name.Map.find setup.scontexts ctx_name |> Option.value_exn
       in
@@ -230,11 +228,9 @@ module Module = struct
     in
     let common, config = Common.init builder in
     Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
-      let open Fiber.O in
-      let* setup = Util.setup () in
       Build.build_memo_exn (fun () ->
         let open Memo.O in
-        let* setup = setup in
+        let* setup = Util.setup () in
         let sctx =
           Dune_engine.Context_name.Map.find setup.scontexts ctx_name |> Option.value_exn
         in

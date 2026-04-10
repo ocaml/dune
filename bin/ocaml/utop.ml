@@ -33,11 +33,9 @@ let term =
   then User_error.raise [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
   let env, utop_path =
     Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
-      let open Fiber.O in
-      let* setup = Util.setup () in
       Build.build_memo_exn (fun () ->
         let open Memo.O in
-        let* setup = setup in
+        let* setup = Util.setup () in
         let context = Dune_rules.Main.find_context_exn setup ~name:ctx_name in
         let utop_target_path filename =
           Path.build

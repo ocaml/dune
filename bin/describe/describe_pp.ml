@@ -171,13 +171,11 @@ let term =
   let common, config = Common.init builder in
   Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
-  let open Fiber.O in
-  let* setup = Util.setup () in
-  let* setup = Memo.run setup in
-  let sctx = Dune_rules.Main.find_scontext_exn setup ~name:context_name in
   Build.build_memo_exn
   @@ fun () ->
   let open Memo.O in
+  let* setup = Util.setup () in
+  let sctx = Dune_rules.Main.find_scontext_exn setup ~name:context_name in
   let* result = get_pped_file sctx file in
   match result with
   | Error file -> Io.cat file |> Memo.return

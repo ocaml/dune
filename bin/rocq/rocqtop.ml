@@ -59,8 +59,7 @@ let term =
     Scheduler_setup.go_with_rpc_server ~common ~config
     @@ fun () ->
     let open Fiber.O in
-    let* setup = Util.setup () in
-    let* setup = Memo.run setup in
+    let* setup = Memo.run (Util.setup ()) in
     let sctx = Dune_rules.Main.find_scontext_exn setup ~name:context in
     let context = Dune_rules.Super_context.context sctx in
     let rocq_file_build =

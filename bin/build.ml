@@ -3,11 +3,7 @@ open Import
 let run_build_system ~request =
   Dune_engine.Build_system.run_action_builder
     (let open Action_builder.O in
-     Action_builder.of_memo
-       (let open Memo.O in
-        let* setup = Memo.of_reproducible_fiber (Util.setup ()) in
-        setup)
-     >>= request)
+     Action_builder.of_memo (Util.setup ()) >>= request)
 ;;
 
 let poll_handling_rpc_build_requests ~(common : Common.t) =

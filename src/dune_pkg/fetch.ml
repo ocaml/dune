@@ -269,7 +269,12 @@ let resolve_directory_symlinks_in root =
     match Readdir.read_directory_with_kinds (Path.to_string dir) with
     | Error e -> Unix_error.Detailed.raise e
     | Ok entries ->
-      List.fold_left entries ~init:already_seen ~f:(fun seen (name, kind) ->
+      let sorted_entries =
+        List.sort
+          ~compare:(fun (name1, _k1) (name2, _k2) -> String.compare name1 name2)
+          entries
+      in
+      List.fold_left sorted_entries ~init:already_seen ~f:(fun seen (name, kind) ->
         let relative = Path.relative dir name in
         let full_name = Path.to_string relative in
         match (kind : Unix.file_kind) with

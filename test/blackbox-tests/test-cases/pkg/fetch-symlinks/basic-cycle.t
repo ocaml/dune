@@ -36,6 +36,6 @@ This fails correctly
 This fails correctly
   $ build_pkg bar 2>&1 | sanitize_pkg_digest bar.0.0.1 | tail -3
   Error: Unable to resolve symlink
-  _build/_private/default/.pkg/bar.0.0.1-DIGEST_HASH/source/dir_b/link_to_a/link_to_b,
+  _build/_private/default/.pkg/bar.0.0.1-DIGEST_HASH/source/dir_a/link_to_b/link_to_a,
   it is part of a cycle.
   [1]

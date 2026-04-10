@@ -289,11 +289,10 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
   | No ->
     Scheduler_setup.go_with_rpc_server ~common ~config
     @@ fun () ->
-    let open Fiber.O in
-    let* setup = Util.setup () in
     Build.build_memo_exn (fun () ->
       let open Memo.O in
-      let* sctx = setup >>| Dune_rules.Main.find_scontext_exn ~name:context in
+      let* setup = Util.setup () in
+      let sctx = Dune_rules.Main.find_scontext_exn setup ~name:context in
       let* env = Super_context.context_env sctx
       and* prog =
         let* prog = Cmd_arg.expand ~root:(Common.root common) ~sctx prog in

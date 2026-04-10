@@ -79,8 +79,8 @@ let command_alias ?orig_name cmd term name =
 ;;
 
 let setup () =
-  let open Fiber.O in
-  let* scheduler = Scheduler.t () in
+  let open Memo.O in
+  let* scheduler = Memo.of_reproducible_fiber (Scheduler.t ()) in
   Console.Status_line.set
     (Live
        (fun () ->
@@ -103,5 +103,5 @@ let setup () =
                 (total - done_)
                 (if failed = 0 then "" else sprintf ", %u failed" failed)
                 (Scheduler.running_jobs_count scheduler))));
-  Fiber.return (Memo.of_thunk Dune_rules.Main.get)
+  Dune_rules.Main.get ()
 ;;

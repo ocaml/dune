@@ -797,10 +797,6 @@ end = struct
       execute_action_generic_stage2_impl
   ;;
 
-  (* The current version of the action digest scheme. We should increment it when
-     making any changes to the scheme, to avoid collisions. *)
-  let action_digest_version = 7
-
   let execute_action_generic
         ~observing_facts
         (act : Rule.Anonymous_action.t)
@@ -843,7 +839,7 @@ end = struct
       in
       let digest =
         let d = Digest.Manual.create () in
-        Digest.Manual.int d action_digest_version;
+        Digest.Manual.int d rule_digest_version;
         (* Here we restrict the environment to only the variables we depend on,
            so that we don't re-execute all actions when some irrelevant
            environment variable changes.

@@ -41,6 +41,7 @@ set -u
 rc_branch="${VERSION}-rc"
 backport_branch="backport-${PR}"
 
+# Get the remote configured as the pushDefault, or else fall back to the named origin
 configured_remote=$(git config remote.pushdefault || echo "")
 remote=${configured_remote:-"origin"}
 

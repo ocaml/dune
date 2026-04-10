@@ -374,6 +374,8 @@ The supported Rocq language versions (not the version of Rocq) are:
   + ``(mode native)`` is not allowed anymore. It is the default if Rocq was configured with native compute enabled.
   + ``COQPATH`` is not recognized anymore, use ``ROCQPATH``.
 - ``0.12``: Support for output tests.
+- ``0.13``: ``rocq.extraction`` now uses ``extracted_files`` instead of
+  ``extracted_modules``, supporting extraction to languages other than OCaml.
 
 .. _rocq-lang-1.0:
 
@@ -391,21 +393,33 @@ unchanged or minimally modified.
 rocq.extraction
 ---------------
 
-Rocq may be instructed to *extract* OCaml sources as part of the compilation
+Rocq may be instructed to *extract* sources as part of the compilation
 process by using the ``rocq.extraction`` stanza:
 
 .. code:: dune
 
    (rocq.extraction
     (prelude <name>)
-    (extracted_modules <names>)
+    (extracted_files <filenames>)
     <optional-fields>)
 
 - ``(prelude <name>)`` refers to the Rocq source that contains the extraction
   commands.
 
-- ``(extracted_modules <names>)`` is an exhaustive list of OCaml modules
-  extracted.
+- ``(extracted_files <filenames>)`` is the list of files Dune expects the
+  extraction to produce. Each entry is a filename with its extension, for 
+  example OCaml (``.ml``, ``.mli``), Haskell (``.hs``), or Scheme (``.scm``).
+
+  .. versionadded:: 3.23
+
+
+.. note::
+
+   ``(extracted_modules <names>)`` is the predecessor to ``extracted_files``,
+   available in ``(rocq 0.12)`` and below. It accepts bare module names and
+   expects Dune to produce both a ``.ml`` and ``.mli`` file for each. Users
+   upgrading from ``0.12`` should replace ``(extracted_modules M1 ... Mn)``
+   with ``(extracted_files M1.ml M1.mli ... Mn.ml Mn.mli)``.
 
 - ``<optional-fields>`` are ``flags``, ``stdlib``, ``theories``, and
   ``plugins``. All of these fields have the same meaning as in the

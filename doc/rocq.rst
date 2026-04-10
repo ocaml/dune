@@ -283,7 +283,7 @@ Dune organises it's knowledge about Rocq theories in 3 databases:
   workspace-public theories, Dune will try to locate the theory in the list of
   installed locations Rocq knows about.
 
-  This list is built using the output of ``rocqc --config`` in order  to infer
+  This list is built using the output of ``rocq c --config`` in order  to infer
   the ``ROCQLIB`` and ``ROCQPATH`` environment variables. Each path in ``ROCQPATH``
   and ``ROCQLIB/user-contrib`` is used to build the database of installed
   theories.
@@ -829,9 +829,9 @@ configuration. These are:
 - ``%{rocq:version.suffix}`` the suffix version of Rocq (e.g., ``9.1.2`` gives
   ``.2`` and ``9.2+rc1`` gives ``+rc1``).
 - ``%{rocq:ocaml-version}`` the version of OCaml used to compile Rocq.
-- ``%{rocq:rocqlib}`` the output of ``ROCQLIB`` from ``rocqc -config``.
+- ``%{rocq:rocqlib}`` the output of ``ROCQLIB`` from ``rocq c --config``.
 - ``%{rocq:rocq_native_compiler_default}`` the output of
-  ``ROCQ_NATIVE_COMPILER_DEFAULT`` from ``rocqc -config``.
+  ``ROCQ_NATIVE_COMPILER_DEFAULT`` from ``rocq c --config``.
 
 See :doc:`concepts/variables` for more information on variables supported by
 Dune.

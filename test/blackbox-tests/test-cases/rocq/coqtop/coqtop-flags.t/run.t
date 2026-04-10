@@ -6,6 +6,7 @@ The flags passed to coqc:
   {
     "name": "rocq",
     "args": [
+      "c",
       "--config"
     ]
   }

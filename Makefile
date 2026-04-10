@@ -116,7 +116,7 @@ test-melange: $(BIN)
 	$(BIN) build @runtest-melange
 
 test-all: $(BIN)
-	$(BIN) build @runtest @runtest-js @runtest-rocq @runtest-melange
+	DUNE_ROCQ_TEST=enable $(BIN) build @runtest @runtest-js @runtest-rocq @runtest-melange
 
 test-ox: $(BIN)
 	$(BIN) runtest test/blackbox-tests/test-cases/oxcaml

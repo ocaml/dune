@@ -36,11 +36,11 @@ let config_path_exn rocq_config key =
        (* This should never happen *)
        Code_error.raise "key is not a path" [ key, Rocq_config.Value.to_dyn path ])
   | None ->
-    (* This happens if the output of rocq --config doesn't include the key *)
+    (* This happens if the output of rocq c --config doesn't include the key *)
     User_error.raise
       [ Pp.concat
           ~sep:Pp.space
-          [ Pp.text "key not found from"; User_message.command "rocq --config" ]
+          [ Pp.text "key not found from"; User_message.command "rocq c --config" ]
         |> Pp.hovbox
       ; Pp.text key
       ]
@@ -144,7 +144,7 @@ let of_rocq_install rocq =
       [ Pp.concat
           ~sep:Pp.space
           [ Pp.text "Skipping installed theories due to"
-          ; User_message.command "rocq --config"
+          ; User_message.command "rocq c --config"
           ; Pp.text "failure:"
           ]
         |> Pp.hovbox
@@ -154,7 +154,7 @@ let of_rocq_install rocq =
         [ Pp.concat
             ~sep:Pp.space
             [ Pp.text "Try running"
-            ; User_message.command "rocq --config"
+            ; User_message.command "rocq c --config"
             ; Pp.text "manually to see the error."
             ]
           |> Pp.hovbox

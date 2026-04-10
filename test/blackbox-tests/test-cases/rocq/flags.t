@@ -23,7 +23,7 @@ Test case: default flags
   > }
 
   $ runFlags
-  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-q","-w","-deprecated-native-compiler-option","-w","-native-compiler-disabled","-native-compiler","ondemand","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
 
@@ -36,7 +36,7 @@ TC: :standard
   > EOF
 
   $ runFlags
-  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-q","-w","-deprecated-native-compiler-option","-w","-native-compiler-disabled","-native-compiler","ondemand","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
 
@@ -49,7 +49,7 @@ TC: override :standard
   > EOF
 
   $ runFlags
-  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-w","-deprecated-native-compiler-option","-w","-native-compiler-disabled","-native-compiler","ondemand","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
 
@@ -62,7 +62,7 @@ TC: add to :standard
   > EOF
 
   $ runFlags
-  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-q","-type-in-type","-w","-deprecated-native-compiler-option","-w","-native-compiler-disabled","-native-compiler","ondemand","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
 
@@ -80,7 +80,7 @@ TC: extend in workspace + override standard
   > EOF
 
   $ runFlags
-  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-type-in-type","-w","-deprecated-native-compiler-option","-w","-native-compiler-disabled","-native-compiler","ondemand","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
 
@@ -92,7 +92,7 @@ TC: extend in workspace + override standard
   > EOF
 
   $ runFlags
-  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-q","-type-in-type","-w","-deprecated-native-compiler-option","-w","-native-compiler-disabled","-native-compiler","ondemand","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
 
@@ -105,7 +105,7 @@ TC: extend in dune (env) + override standard
   > EOF
 
   $ runFlags
-  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-type-in-type","-w","-deprecated-native-compiler-option","-w","-native-compiler-disabled","-native-compiler","ondemand","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
 
@@ -118,7 +118,7 @@ TC: extend in dune (env) + standard
   > EOF
 
   $ runFlags
-  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-q","-type-in-type","-type-in-type","-w","-deprecated-native-compiler-option","-w","-native-compiler-disabled","-native-compiler","ondemand","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
 
@@ -136,6 +136,6 @@ TC: extend in dune (env) + workspace + standard
   > EOF
 
   $ runFlags
-  {"name":"rocq","args":["--config"]}
+  {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-q","-type-in-type","-bt","-w","-deprecated-native-compiler-option","-w","-native-compiler-disabled","-native-compiler","ondemand","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}

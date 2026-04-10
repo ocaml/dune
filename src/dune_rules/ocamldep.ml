@@ -199,3 +199,21 @@ let read_immediate_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit =
       |> parse_module_names ~dir:(Obj_dir.dir obj_dir) ~unit ~modules)
     |> Action_builder.memoize (Path.Build.to_string ocamldep_output)
 ;;
+
+(* Like [read_immediate_deps_of] but returns raw module names without
+   resolving against the stanza's module set. This preserves references to
+   external libraries, which [parse_module_names] would discard. Used for
+   per-module inter-library dependency filtering (#4572). *)
+let read_immediate_deps_raw_of ~obj_dir ~ml_kind ~for_ unit =
+  match Module.source ~ml_kind unit with
+  | None -> Action_builder.return Module_name.Set.empty
+  | Some source ->
+    (match Obj_dir.Module.dep obj_dir ~for_ (Immediate (unit, ml_kind)) with
+     | None -> Action_builder.return Module_name.Set.empty
+     | Some ocamldep_output ->
+       Action_builder.lines_of (Path.build ocamldep_output)
+       |> Action_builder.map ~f:(fun lines ->
+         parse_deps_exn ~file:(Module.File.path source) lines
+         |> Module_name.Set.of_list_map ~f:Module_name.of_checked_string)
+       |> Action_builder.memoize (Path.Build.to_string ocamldep_output ^ ".raw"))
+;;

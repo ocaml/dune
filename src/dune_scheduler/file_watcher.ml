@@ -217,51 +217,6 @@ let shutdown t =
   | Fswatch_win { t; _ } -> `Thunk (fun () -> Fswatch_win.shutdown t)
 ;;
 
-let buffer_capacity = 65536
-
-(* Fixed-size buffer for reading line-by-line from file descriptors. Bug:
-   deadlocks if there's a line longer than the capacity of the buffer. TODO: use
-   In_channel? *)
-module Buffer = struct
-  type buffer =
-    { data : Bytes.t
-    ; mutable size : int
-    }
-
-  let create ~capacity = { data = Bytes.create capacity; size = 0 }
-
-  let read_lines buffer fd =
-    let len = Unix.read fd buffer.data buffer.size (buffer_capacity - buffer.size) in
-    buffer.size <- buffer.size + len;
-    if len = 0
-    then `End_of_file (Bytes.sub_string buffer.data ~pos:0 ~len:buffer.size)
-    else
-      `Ok
-        (let lines = ref [] in
-         let line_start = ref 0 in
-         for i = 0 to buffer.size - 1 do
-           let c = Bytes.get buffer.data i in
-           if c = '\n' || c = '\r'
-           then (
-             if !line_start < i
-             then (
-               let line =
-                 Bytes.sub_string buffer.data ~pos:!line_start ~len:(i - !line_start)
-               in
-               lines := line :: !lines);
-             line_start := i + 1)
-         done;
-         buffer.size <- buffer.size - !line_start;
-         Bytes.blit
-           ~src:buffer.data
-           ~src_pos:!line_start
-           ~dst:buffer.data
-           ~dst_pos:0
-           ~len:buffer.size;
-         List.rev !lines)
-  ;;
-end
-
 module Fs_sync : sig
   val special_dir_path : Path.Build.t Lazy.t
   val special_dir : string Lazy.t
@@ -418,7 +373,7 @@ let spawn_external_watcher ~root ~backend ~watch_exclusions =
   let pid = Spawn.spawn () ~prog ~argv ~stdout:w_stdout ?stderr |> Pid.of_int in
   Unix.close w_stdout;
   Option.iter stderr ~f:Unix.close;
-  (r_stdout, parse_line, wait), pid
+  (Unix.in_channel_of_descr r_stdout, parse_line, wait), pid
 ;;
 
 let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) should_exclude =
@@ -454,26 +409,24 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend ~watch_exclusi
     spawn_external_watcher ~root ~backend ~watch_exclusions
   in
   let worker_thread pipe =
-    let buffer = Buffer.create ~capacity:buffer_capacity in
     while true do
       (* This job runs on the scheduler thread because it uses [sync_table]. *)
       let job =
-        match Buffer.read_lines buffer pipe with
-        | `End_of_file _remaining -> fun () -> [ Event.Watcher_terminated ]
-        | `Ok lines ->
+        match input_line pipe with
+        | exception End_of_file -> fun () -> [ Event.Watcher_terminated ]
+        | line ->
           fun () ->
-            List.concat_map lines ~f:(fun line ->
-              match parse_line line with
-              | Error s -> failwith s
-              | Ok path_s ->
-                if Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path_s
-                then (
-                  match Fs_sync.consume_event sync_table path_s with
-                  | None -> []
-                  | Some id -> [ Event.Sync id ])
-                else (
-                  let path = Path.Expert.try_localize_external (Path.of_string path_s) in
-                  [ Fs_memo_event (Fs_memo_event.create ~kind:File_changed ~path) ]))
+            (match parse_line line with
+             | Error s -> failwith s
+             | Ok path_s ->
+               if Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path_s
+               then (
+                 match Fs_sync.consume_event sync_table path_s with
+                 | None -> []
+                 | Some id -> [ Event.Sync id ])
+               else (
+                 let path = Path.Expert.try_localize_external (Path.of_string path_s) in
+                 [ Fs_memo_event (Fs_memo_event.create ~kind:File_changed ~path) ]))
       in
       scheduler.thread_safe_send_emit_events_job job
     done

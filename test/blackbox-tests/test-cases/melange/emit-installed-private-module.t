@@ -118,8 +118,6 @@ stage the installed Melange object dirs rather than only the entry module's
   Leaving directory 'app'
   $ tr '\n' ' ' < deps.sexp | tr -s ' ' > deps.flat
   $ grep -cF "(dir (External $PWD/prefix/lib/repro/foo)) (predicate *.cmj)" deps.flat
-  0
-  [1]
+  1
   $ grep -cF "(dir (External $PWD/prefix/lib/repro/foo)) (predicate *.cmi)" deps.flat
-  0
-  [1]
+  1

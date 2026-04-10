@@ -104,7 +104,6 @@ let term =
           in
           env, Path.to_string utop_exe))
   in
-  Hooks.End_of_build.run ();
   Util.restore_cwd_and_execve (Common.root common) utop_path args env
 ;;
 

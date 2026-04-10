@@ -24,7 +24,6 @@ module Load_rules = Load_rules
 module Clflags = Clflags
 module Response_file = Response_file
 module File_selector = File_selector
-module Hooks = Hooks
 module Print_diff = Print_diff
 module Diff_promotion = Diff_promotion
 module Fs_memo = Fs_memo

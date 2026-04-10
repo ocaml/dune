@@ -28,3 +28,13 @@
  (with-stdout-to
   dune_rpc_tests.mli
   (echo "")))
+
+(rule
+ (with-stdout-to
+  long_polling.mli
+  (echo "")))
+
+(rule
+ (with-stdout-to
+  finalization.mli
+  (echo "")))

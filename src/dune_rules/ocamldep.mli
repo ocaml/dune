@@ -32,3 +32,14 @@ val read_immediate_deps_of
   -> for_:Compilation_mode.t
   -> Module.t
   -> Module.t list Action_builder.t
+
+(** [read_immediate_deps_raw_of ~obj_dir ~ml_kind ~for_ unit] returns the raw
+    module names from ocamldep output without filtering against the stanza's
+    module set. This preserves cross-library references that
+    [read_immediate_deps_of] discards. *)
+val read_immediate_deps_raw_of
+  :  obj_dir:Path.Build.t Obj_dir.t
+  -> ml_kind:Ml_kind.t
+  -> for_:Compilation_mode.t
+  -> Module.t
+  -> Module_name.Set.t Action_builder.t

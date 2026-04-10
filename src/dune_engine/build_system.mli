@@ -59,6 +59,10 @@ val run : (unit -> 'a Memo.t) -> ('a, [ `Already_reported ]) Result.t Fiber.t
 (** A variant of [run] that raises an [Already_reported] exception on error. *)
 val run_exn : (unit -> 'a Memo.t) -> 'a Fiber.t
 
+val run_action_builder
+  :  unit Action_builder.t
+  -> (unit, [ `Already_reported ]) result Fiber.t
+
 (** {2 Misc} *)
 
 module Progress : sig

@@ -60,6 +60,16 @@ let of_string s : (t, exn) result =
 let rpc_socket_relative_to_build_dir = ".rpc/dune"
 let env_var = "DUNE_RPC"
 
+let rpc_address =
+  Config.make
+    ~name:"rpc_address"
+    ~of_string:(fun s ->
+      match of_string s with
+      | Ok w -> Ok (Some w)
+      | Error exn -> Error (Printexc.to_string exn))
+    ~default:None
+;;
+
 let to_dbus : t -> Dbus_address.t = function
   | `Unix p -> { name = "unix"; args = [ "path", p ] }
   | `Ip (`Host host, `Port port) ->
@@ -128,9 +138,13 @@ module Make
          -> ([ `Unix_socket | `Normal_file | `Other ], exn) result Fiber.t
      end) : S with type 'a fiber := 'a Fiber.t = struct
   let default ?(win32 = win32) ~build_dir () =
-    if win32
-    then `Ip (`Host (Unix.string_of_inet_addr Unix.inet_addr_loopback), `Port default_port)
-    else `Unix (Filename.concat build_dir rpc_socket_relative_to_build_dir)
+    match Config.get rpc_address with
+    | Some w -> w
+    | None ->
+      if win32
+      then
+        `Ip (`Host (Unix.string_of_inet_addr Unix.inet_addr_loopback), `Port default_port)
+      else `Unix (Filename.concat build_dir rpc_socket_relative_to_build_dir)
   ;;
 
   let ( let** ) x f =

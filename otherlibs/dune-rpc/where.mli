@@ -11,6 +11,7 @@ val compare : t -> t -> Ordering.t
 val to_dyn : t -> Dyn.t
 val sexp : t Conv.value
 val env_var : Env.Var.t
+val rpc_address : t option Config.t
 val add_to_env : t -> Env.t -> Env.t
 val of_env : Env.t -> (t, [ `Exn of exn | `Missing ]) result
 

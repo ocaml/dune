@@ -1,5 +1,5 @@
 open Import
-module Client = Dune_rpc_client.Client
+module Client = Root.Rpc.Client
 
 let ( let** ) x f =
   let open Fiber.O in

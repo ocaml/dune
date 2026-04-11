@@ -1,0 +1,14 @@
+(library
+ (name rpc)
+ (libraries
+  stdune
+  unix
+  fiber
+  csexp_rpc
+  dune_util
+  xdg
+  dune_rpc
+  dyn
+  ordering
+  dune_trace
+  chrome_trace))

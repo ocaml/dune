@@ -4,8 +4,7 @@
  (libraries
   dune_util
   dune_rpc
-  dune_rpc_server
-  dune_rpc_client
+  rpc
   stdune
   test_scheduler
   csexp

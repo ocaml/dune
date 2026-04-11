@@ -39,7 +39,7 @@
   csexp_rpc
   dune_rpc_impl
   dune_rpc
-  dune_rpc_client
+  rpc
   spawn
   opam_format
   source

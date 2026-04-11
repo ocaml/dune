@@ -1,5 +1,5 @@
 open Import
-module Client = Dune_rpc_client.Client
+module Client = Root.Rpc.Client
 module Rpc_error = Dune_rpc.Response.Error
 
 let no_running_server_error (lock_held_by : Global_lock.Lock_held_by.t) =

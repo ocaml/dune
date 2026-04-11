@@ -19,7 +19,6 @@
   dune_util
   build_path_prefix_map
   dune_rpc
-  dune_rpc_client
   spawn
   dune_digest
   dune_action_trace)

@@ -236,18 +236,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/csexp_rpc"
-    ; main_module_name = Some "Csexp_rpc"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/dune_rpc_client"
-    ; main_module_name = Some "Dune_rpc_client"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/dune_engine"
     ; main_module_name = Some "Dune_engine"
     ; include_subdirs = No
@@ -416,8 +404,14 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_rpc_server"
-    ; main_module_name = Some "Dune_rpc_server"
+  ; { path = "src/csexp_rpc"
+    ; main_module_name = Some "Csexp_rpc"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/rpc"
+    ; main_module_name = Some "Rpc"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -465,7 +459,6 @@ let main =
             ; "Dune_lang"
             ; "Dune_pkg"
             ; "Dune_rpc"
-            ; "Dune_rpc_client"
             ; "Dune_rpc_impl"
             ; "Dune_rules"
             ; "Dune_scheduler"
@@ -524,6 +517,7 @@ let main =
             ; "Pp"
             ; "Predicate_lang"
             ; "Re"
+            ; "Rpc"
             ; "Source"
             ; "Spawn"
             ; "Stdune"

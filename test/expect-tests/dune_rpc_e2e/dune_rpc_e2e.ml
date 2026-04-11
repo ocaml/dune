@@ -4,8 +4,7 @@ open Dune_scheduler
 module Dune_rpc = Dune_rpc.Private
 module Request = Dune_rpc.Public.Request
 module Diagnostic = Dune_rpc.Diagnostic
-module Client = Dune_rpc_client.Client
-module Session = Csexp_rpc.Session
+module Client = Rpc.Client
 
 (* enable to debug process stdout/stderr *)
 let debug = false

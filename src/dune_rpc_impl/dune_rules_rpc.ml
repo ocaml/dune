@@ -16,10 +16,7 @@ include struct
   module Procedures = Procedures
 end
 
-include struct
-  open Dune_rpc_server
-  module Handler = Handler
-end
+module Handler = Rpc.Server.Handler
 
 let register rpc =
   let open Fiber.O in

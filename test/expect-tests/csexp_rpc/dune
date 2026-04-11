@@ -6,7 +6,7 @@
  (libraries
   stdune
   csexp
-  csexp_rpc
+  rpc
   dune_engine
   dune_scheduler
   unix

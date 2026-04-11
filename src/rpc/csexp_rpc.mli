@@ -54,7 +54,3 @@ module Server : sig
   val serve : t -> Session.t Fiber.Stream.In.t Fiber.t
   val listening_address : t -> Unix.sockaddr list
 end
-
-module Private : sig
-  module Io_buffer : module type of Io_buffer
-end

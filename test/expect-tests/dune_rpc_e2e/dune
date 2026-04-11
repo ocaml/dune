@@ -19,7 +19,7 @@
   dune_engine
   dune_scheduler
   dune_rpc_impl
-  csexp_rpc
+  unix
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config_types

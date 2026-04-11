@@ -63,24 +63,11 @@ is hidden there.
   > let greeting = "hello from alt"
   > EOF
 
-@ocaml-index errors because it tries to index the alt context where
-defaultlib is disabled:
+@ocaml-index should only index the default context, not alt:
 
-  $ dune build @ocaml-index 2>&1
-  File "dune", line 3, characters 12-22:
-  3 |  (libraries defaultlib))
-                  ^^^^^^^^^^
-  Error: Library "defaultlib" in _build/alt/defaultlib is hidden (unsatisfied
-  'enabled_if').
-  -> required by _build/alt/.main.eobjs/byte/dune__exe__Main.cmt
-  -> required by _build/alt/.main.eobjs/cctx.ocaml-index
-  -> required by alias ocaml-index (context alt)
-  [1]
-
-It also indexed altlib in the alt context (shouldn't have):
+  $ dune build @ocaml-index
 
   $ find _build -name '*.ocaml-index' | sort
-  _build/alt/altlib/.altlib.objs/cctx.ocaml-index
   _build/default/.main.eobjs/cctx.ocaml-index
   _build/default/defaultlib/.defaultlib.objs/cctx.ocaml-index
 

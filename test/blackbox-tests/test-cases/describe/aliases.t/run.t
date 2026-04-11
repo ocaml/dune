@@ -180,7 +180,6 @@ These are context sensitive:
   default
   fmt
   mytest
-  ocaml-index
   pkg-install
   revdep
   revdep-check

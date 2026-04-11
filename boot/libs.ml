@@ -404,12 +404,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/csexp_rpc"
-    ; main_module_name = Some "Csexp_rpc"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/rpc"
     ; main_module_name = Some "Rpc"
     ; include_subdirs = No
@@ -449,7 +443,6 @@ let main =
             ; "Cmdliner_term_deprecated"
             ; "Cmdliner_trie"
             ; "Csexp"
-            ; "Csexp_rpc"
             ; "Dune_cache"
             ; "Dune_config_file"
             ; "Dune_digest"

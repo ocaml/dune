@@ -1,4 +1,5 @@
 open Stdune
+module Csexp_rpc = Rpc.Csexp_rpc
 open Csexp_rpc
 open Fiber.O
 open Dune_scheduler

@@ -15,3 +15,5 @@ module Fiber = struct
     Fiber.Stream.In.parallel_iter stream ~f
   ;;
 end
+
+module Io_buffer = Io_buffer

@@ -26,6 +26,7 @@ end
 module Server = Rpc.Server
 module Session = Server.Session
 module Handler = Server.Handler
+module Csexp_rpc = Rpc.Csexp_rpc
 
 module Run = struct
   module Registry = Dune_rpc.Registry

@@ -9,6 +9,7 @@ let print pp = Format.printf "%a@." Pp.to_fmt pp
 let print_dyn dyn = print (Dyn.pp dyn)
 let decl = simple_request ~method_:(Method.Name.of_string "double") Conv.unit Conv.unit
 let witness = Decl.Request.witness decl
+let () = Printexc.record_backtrace false
 
 type callback =
   | Print

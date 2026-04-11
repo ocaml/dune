@@ -2,7 +2,7 @@ open Stdune
 open Fiber.O
 module Dune_rpc = Dune_rpc.Private
 open Dune_rpc
-open Dune_rpc_server
+open Rpc.Server
 open Common
 
 let print pp = Format.printf "%a@." Pp.to_fmt pp

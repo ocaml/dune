@@ -2,7 +2,7 @@ open Stdune
 open Fiber.O
 module Dune_rpc = Dune_rpc.Private
 open Dune_rpc
-open Dune_rpc_server
+open Rpc.Server
 module Scheduler = Test_scheduler
 
 module Chan = struct
@@ -39,14 +39,14 @@ end
 module Drpc = struct
   module Client =
     Dune_rpc.Client.Make
-      (Dune_rpc_client.Private.Fiber)
+      (Rpc.Private.Fiber)
       (struct
         include Chan
 
         let write t packets = write t packets >>| Result.ok_exn
       end)
 
-  module Server = Dune_rpc_server.Make (Chan)
+  module Server = Rpc.Server.Make (Chan)
 end
 
 let on_init _ _ = Fiber.return ()
@@ -72,7 +72,7 @@ let test ?(private_menu = []) ?(real_methods = true) ~client ~handler ~init () =
         Chan.close client_chan)
     in
     let server () =
-      let+ () = Drpc.Server.serve sessions (Dune_rpc_server.make handler) in
+      let+ () = Drpc.Server.serve sessions (Rpc.Server.make handler) in
       printfn "server: finished."
     in
     Fiber.parallel_iter [ connect; client; server ] ~f:(fun f -> f ())

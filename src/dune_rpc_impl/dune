@@ -5,9 +5,8 @@
   dune_engine
   dune_lang
   dune_scheduler
-  dune_rpc_client
+  rpc
   dune_rpc
-  dune_rpc_server
   source
   memo
   dune_util

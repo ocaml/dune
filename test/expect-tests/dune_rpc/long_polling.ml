@@ -2,7 +2,6 @@ open Stdune
 open Fiber.O
 module Dune_rpc = Dune_rpc.Private
 open Dune_rpc
-open Dune_rpc_server
 open Common
 open Drpc
 
@@ -26,7 +25,7 @@ let sub_proc =
 let sub_decl = Sub.of_procedure sub_proc
 let version = 3, 0
 let init = init ~version ()
-let rpc () = Handler.create ~on_init ~version ()
+let rpc () = Rpc.Server.Handler.create ~on_init ~version ()
 
 let server f =
   let rpc = rpc () in
@@ -36,7 +35,7 @@ let server f =
       printfn "server: polling cancelled";
       Fiber.return ()
     in
-    Handler.For_tests.implement_poll rpc sub_proc ~on_poll ~on_cancel
+    Rpc.Server.Handler.For_tests.implement_poll rpc sub_proc ~on_poll ~on_cancel
   in
   rpc
 ;;
@@ -44,7 +43,7 @@ let server f =
 let server_long_poll svar =
   let rpc = rpc () in
   let () =
-    Handler.implement_long_poll
+    Rpc.Server.Handler.implement_long_poll
       rpc
       sub_proc
       svar

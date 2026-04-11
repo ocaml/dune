@@ -1,5 +1,5 @@
 open Import
-module Client := Dune_rpc_client.Client
+module Client := Rpc.Client
 
 (** [client t where init ~on_notification ~f] Establishes a client connection to
     [where], initializes it with [init]. Once initialization is done, cals [f]

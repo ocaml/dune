@@ -6,6 +6,8 @@ open Dune_rpc_server
 open Common
 open Drpc
 
+let () = Printexc.record_backtrace false
+
 let init ?(id = Id.make (Csexp.Atom "test-client")) ?(version = 1, 1) () =
   { Initialize.Request.dune_version = version
   ; protocol_version = Protocol.latest_version

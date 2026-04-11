@@ -18,5 +18,5 @@ let entries sctx ~requires_compile ~for_ =
     Action_builder.List.map requires ~f:(fun lib ->
       Action_builder.of_memo (entry_module_names sctx lib ~for_) >>= Resolve.read)
   in
-  Action_builder.return (List.concat l)
+  Action_builder.return (List.concat l |> Module_name.Set.of_list |> Module_name.Set.to_list)
 ;;

@@ -1,15 +1,7 @@
-The following setup makes the `root_module` stanza export the `Logs`
-modules twice, entailing the following error:
-
-```
-| File "root.ml-gen", line 15, characters 0-18:
-| 15 | module Logs = Logs
-|      ^^^^^^^^^^^^^^^^^^
-| Error: Multiple definition of the module name Logs.
-|        Names must be unique in a given structure or signature.
-| [1]
-```
-
+Findlib sub-packages installed in the same directory as their parent
+(like logs.lwt alongside logs) used to cause duplicate module
+definitions in root.ml-gen (see #6148). Verify the fix deduplicates
+entry modules.
 
 Create a dummy library to depend on. The configuration is loosely
 based on the logs package, which triggers the issue in real life.
@@ -61,17 +53,9 @@ Setup the dune project.
   > module Logs = Root.Logs
   > EOF
 
-Trigger the error.
+Build should succeed now that duplicate entries are deduplicated.
 
   $ dune build
-  File "root.ml-gen", line 3, characters 0-18:
-  3 | module Logs = Logs
-      ^^^^^^^^^^^^^^^^^^
-  Error: Multiple definition of the module name Logs.
-         Names must be unique in a given structure or signature.
-  [1]
   $ cat _build/default/root.ml-gen
-  module Logs = Logs
-  module Logs_lwt = Logs_lwt
   module Logs = Logs
   module Logs_lwt = Logs_lwt

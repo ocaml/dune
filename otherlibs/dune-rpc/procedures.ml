@@ -326,3 +326,50 @@ module Poll = struct
     make name [ v1 ]
   ;;
 end
+
+module Builtin = struct
+  type t =
+    | Request :
+        { decl : ('req, 'resp) Decl.Request.t
+        ; declare_with_client : bool
+        }
+        -> t
+    | Notification :
+        { decl : 'payload Decl.Notification.t
+        ; declare_with_client : bool
+        }
+        -> t
+
+  let request ?(declare_with_client = true) decl = Request { decl; declare_with_client }
+
+  let notification ?(declare_with_client = true) decl =
+    Notification { decl; declare_with_client }
+  ;;
+
+  let all =
+    [ request Public.ping
+    ; request Public.diagnostics
+    ; notification Public.shutdown
+    ; request Public.format
+    ; request Public.format_dune_file
+    ; request Public.promote
+    ; request Public.promote_many
+    ; request Public.build_dir
+    ; request Public.runtest
+    ; notification ~declare_with_client:false Server_side.abort
+    ; notification ~declare_with_client:false Server_side.log
+    ; request (Poll.poll Poll.running_jobs)
+    ; request (Poll.poll Poll.diagnostic)
+    ; request (Poll.poll Poll.progress)
+    ; notification (Poll.cancel Poll.running_jobs)
+    ; notification (Poll.cancel Poll.diagnostic)
+    ; notification (Poll.cancel Poll.progress)
+    ]
+  ;;
+
+  let declared_by_client =
+    List.filter all ~f:(function
+        | Request { declare_with_client; _ } | Notification { declare_with_client; _ } ->
+        declare_with_client)
+  ;;
+end

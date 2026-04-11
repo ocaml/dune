@@ -588,30 +588,12 @@ struct
   let setup_versioning ~private_menu ~(handler : Handler.t) =
     let module Builder = V.Builder in
     let t : unit Builder.t = Builder.create () in
-    (* CR-soon cwong: It is a *huge* footgun that you have to remember to
-         declare a request here, or via [private_menu], and there is no
-         mechanism to warn you if you forget. The closest thing is either seeing
-         that [dune rpc status] does not report the new procedure, or need to
-         deal with the [Notification_error.t], which contains some good context,
-         but very little to indicate this specific problem. *)
-    Builder.declare_request t Procedures.Public.ping;
-    Builder.declare_request t Procedures.Public.diagnostics;
-    Builder.declare_request t Procedures.Poll.(poll running_jobs);
-    Builder.declare_notification t Procedures.Public.shutdown;
-    Builder.declare_request t Procedures.Public.format;
-    Builder.declare_request t Procedures.Public.format_dune_file;
-    Builder.declare_request t Procedures.Public.promote;
-    Builder.declare_request t Procedures.Public.promote_many;
-    Builder.declare_request t Procedures.Public.build_dir;
-    Builder.declare_request t Procedures.Public.runtest;
+    List.iter Procedures.Builtin.declared_by_client ~f:(function
+      | Procedures.Builtin.Request { decl; _ } -> Builder.declare_request t decl
+      | Procedures.Builtin.Notification { decl; _ } -> Builder.declare_notification t decl);
     Builder.implement_notification t Procedures.Server_side.abort (fun () ->
       handler.abort);
     Builder.implement_notification t Procedures.Server_side.log (fun () -> handler.log);
-    Builder.declare_request t Procedures.Poll.(poll diagnostic);
-    Builder.declare_request t Procedures.Poll.(poll progress);
-    Builder.declare_notification t Procedures.Poll.(cancel running_jobs);
-    Builder.declare_notification t Procedures.Poll.(cancel diagnostic);
-    Builder.declare_notification t Procedures.Poll.(cancel progress);
     List.iter private_menu ~f:(function
       | Handle_request (r, h) -> Builder.implement_request t r (fun () -> h)
       | Request r -> Builder.declare_request t r

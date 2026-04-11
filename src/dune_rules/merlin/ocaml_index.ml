@@ -157,18 +157,16 @@ let context_indexes =
 ;;
 
 let project_rule sctx project =
-  let ocaml_index_alias =
-    let dir =
-      let build_dir =
-        let ctx = Super_context.context sctx in
-        Context.build_dir ctx
+  let ctx = Super_context.context sctx in
+  Memo.when_ (Context.merlin ctx) (fun () ->
+    let ocaml_index_alias =
+      let dir =
+        Path.Build.append_source (Context.build_dir ctx) @@ Dune_project.root project
       in
-      Path.Build.append_source build_dir @@ Dune_project.root project
+      Alias.make Alias0.ocaml_index ~dir
     in
-    Alias.make Alias0.ocaml_index ~dir
-  in
-  Rules.Produce.Alias.add_deps
-    ocaml_index_alias
-    (let open Action_builder.O in
-     Super_context.context sctx |> context_indexes >>= Action_builder.paths_existing)
+    Rules.Produce.Alias.add_deps
+      ocaml_index_alias
+      (let open Action_builder.O in
+       context_indexes ctx >>= Action_builder.paths_existing))
 ;;

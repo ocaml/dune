@@ -9,6 +9,8 @@ module Lib_and_module : sig
   module L : sig
     type nonrec t = t list
 
+    val expand_archived_libs : Super_context.t -> t -> t Memo.t
+
     val link_flags
       :  Super_context.t
       -> t

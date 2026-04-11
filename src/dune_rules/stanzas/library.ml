@@ -69,6 +69,7 @@ type t =
   ; virtual_deps : (Loc.t * Lib_name.t) list
   ; wrapped : Wrapped.t Lib_info.Inherited.t
   ; optional : bool
+  ; archived : bool
   ; buildable : Buildable.t
   ; dynlink : Dynlink_supported.t
   ; project : Dune_project.t
@@ -151,6 +152,11 @@ let decode =
        in
        virtual_modules, kind
      and+ optional = field_b "optional"
+     and+ archived =
+       field
+         "archived"
+         (Dune_lang.Syntax.since Stanza.syntax (3, 23) >>> bool)
+         ~default:true
      and+ no_dynlink = field_b "no_dynlink"
      and+ () =
        let check =
@@ -283,6 +289,32 @@ let decode =
           ~loc
           [ Pp.text "Only virtual libraries can specify a default implementation." ]
       | _ -> ());
+     (match virtual_modules with
+      | Some virtual_modules when not archived ->
+        User_error.raise
+          ~loc:(Ordered_set_lang.Unexpanded.loc virtual_modules |> Option.value_exn)
+          [ Pp.text "(archived false) may not be used on virtual libraries." ]
+      | None | Some _ -> ());
+     if not archived
+     then (
+       (match visibility with
+        | Public p ->
+          User_error.raise
+            ~loc:(Public_lib.loc p)
+            [ Pp.text "(archived false) libraries must be private." ]
+        | Private (Some (package : Package.t)) ->
+          User_error.raise
+            ~loc:(Package.loc package)
+            [ Pp.text "(archived false) libraries may not be attached to a package." ]
+        | Private None -> ());
+       if Buildable.has_foreign buildable
+       then
+         User_error.raise
+           ~loc:buildable.loc
+           [ Pp.text
+               "(archived false) libraries may not use foreign stubs, foreign \
+                archives, extra objects, or ctypes."
+           ]);
      { name
      ; visibility
      ; synopsis
@@ -296,6 +328,7 @@ let decode =
      ; virtual_deps
      ; wrapped
      ; optional
+     ; archived
      ; buildable
      ; dynlink = Dynlink_supported.of_bool (not no_dynlink)
      ; project
@@ -403,6 +436,7 @@ let best_name t =
   | Public p -> snd p.name
 ;;
 
+let archived t = t.archived
 let is_virtual t = t.kind = Virtual
 let is_impl t = Option.is_some t.implements
 
@@ -506,7 +540,7 @@ let to_lib_info
   in
   let native_archives =
     let archive = archive ext_lib in
-    if virtual_ || not modes.ocaml.native
+    if (not conf.archived) || virtual_ || not modes.ocaml.native
     then Lib_info.Files []
     else if
       Option.is_some conf.implements
@@ -519,7 +553,7 @@ let to_lib_info
   let exit_module = Option.bind conf.stdlib ~f:(fun x -> x.exit_module) in
   let foreign_objects = Lib_info.Source.Local in
   let archives, plugins =
-    if virtual_
+    if virtual_ || not conf.archived
     then Mode.Dict.make_both [], Mode.Dict.make_both []
     else (
       let plugins =
@@ -620,6 +654,7 @@ let to_lib_info
     ~lib_id
     ~kind
     ~status
+    ~archived:conf.archived
     ~src_dir
     ~orig_src_dir
     ~obj_dir

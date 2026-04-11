@@ -121,6 +121,29 @@ order to declare a multi-directory library, you need to use the
    Use this to provide extra features without adding hard dependencies to your
    project.
 
+.. describe:: (archived <boolean>)
+
+   .. version:: 3.23
+
+   Controls whether Dune builds OCaml library archives for the stanza.
+
+   The default is ``true``. When set to ``false``, Dune still compiles the
+   library's modules and allows other libraries and executables in the same
+   workspace to depend on it via ``(libraries ...)``, but it does not build
+   ``.cma``, ``.cmxa``, or ``.cmxs`` files for the library.
+
+   Instead, dependents link the library by using its individual compiled
+   modules.
+
+   ``(archived false)`` libraries are currently restricted to private,
+   workspace-only use:
+
+   - They may not have a ``public_name``.
+   - They may not be attached to a ``package``.
+   - They may not be virtual libraries.
+   - They may not use ``foreign_stubs``, ``foreign_archives``,
+     ``extra_objects``, or ``ctypes``.
+
 .. describe:: (foreign_stubs <foreign-stubs-spec>)
 
    Specifies foreign source files, e.g., C or C++ stubs, to be compiled and

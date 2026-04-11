@@ -303,6 +303,7 @@ type 'path t =
   ; lib_id : Lib_id.t
   ; kind : Lib_kind.t
   ; status : Status.t
+  ; archived : bool
   ; src_dir : 'path
   ; orig_src_dir : 'path option
   ; obj_dir : 'path Obj_dir.t
@@ -349,6 +350,7 @@ let name t = t.name
 let lib_id t = t.lib_id
 let version t = t.version
 let dune_version t = t.dune_version
+let archived t = t.archived
 let loc t = t.loc
 let parameters t = t.parameters
 let requires t ~for_ = Compilation_mode.By_mode.get t.requires ~for_
@@ -413,6 +415,7 @@ let create
       ~lib_id
       ~kind
       ~status
+      ~archived
       ~src_dir
       ~orig_src_dir
       ~obj_dir
@@ -455,6 +458,7 @@ let create
   ; lib_id
   ; kind
   ; status
+  ; archived
   ; src_dir
   ; orig_src_dir
   ; obj_dir
@@ -554,6 +558,7 @@ let to_dyn
       ; lib_id
       ; kind
       ; status
+      ; archived
       ; src_dir
       ; orig_src_dir
       ; obj_dir
@@ -600,6 +605,7 @@ let to_dyn
     ; "lib_id", Lib_id.to_dyn lib_id
     ; "kind", Lib_kind.to_dyn kind
     ; "status", Status.to_dyn status
+    ; "archived", bool archived
     ; "src_dir", path src_dir
     ; "orig_src_dir", option path orig_src_dir
     ; "obj_dir", Obj_dir.to_dyn obj_dir

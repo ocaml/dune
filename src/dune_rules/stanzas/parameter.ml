@@ -46,6 +46,7 @@ let to_library t =
   ; instrumentation_backend = None
   ; melange_runtime_deps = loc, []
   ; optional = t.optional
+  ; archived = true
   }
 ;;
 
